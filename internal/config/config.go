@@ -7,14 +7,18 @@ import (
 )
 
 type Config struct {
-	ServerPort       string
-	DBDSN            string
-	RedisAddr        string
-	EventBatchSize   int
-	EventFlushMs     int
-	StatsFlushMs     int
-	MaxWorkers       int
-	LogRetentionDays int
+	ServerPort        string
+	DBDSN             string
+	RedisAddr         string
+	EventBatchSize    int
+	EventFlushMs      int
+	StatsFlushMs      int
+	MaxWorkers        int
+	LogRetentionDays  int
+	DBMaxConns        int
+	DBMinConns        int
+	WriteTimeoutMs    int
+	ShutdownTimeoutMs int
 }
 
 func getEnvInt(key string, fallback int) int {
@@ -28,14 +32,18 @@ func getEnvInt(key string, fallback int) int {
 
 func Load() (*Config, error) {
 	cfg := &Config{
-		ServerPort:       os.Getenv("SERVER_PORT"),
-		DBDSN:            os.Getenv("DB_DSN"),
-		RedisAddr:        os.Getenv("REDIS_ADDR"),
-		EventBatchSize:   getEnvInt("EVENT_BATCH_SIZE", 1000),
-		EventFlushMs:     getEnvInt("EVENT_FLUSH_MS", 500),
-		StatsFlushMs:     getEnvInt("STATS_FLUSH_MS", 5000),
-		MaxWorkers:       getEnvInt("MAX_WORKERS", 10),
-		LogRetentionDays: getEnvInt("LOG_RETENTION_DAYS", 7),
+		ServerPort:        os.Getenv("SERVER_PORT"),
+		DBDSN:             os.Getenv("DB_DSN"),
+		RedisAddr:         os.Getenv("REDIS_ADDR"),
+		EventBatchSize:    getEnvInt("EVENT_BATCH_SIZE", 1000),
+		EventFlushMs:      getEnvInt("EVENT_FLUSH_MS", 500),
+		StatsFlushMs:      getEnvInt("STATS_FLUSH_MS", 5000),
+		MaxWorkers:        getEnvInt("MAX_WORKERS", 10),
+		LogRetentionDays:  getEnvInt("LOG_RETENTION_DAYS", 7),
+		DBMaxConns:        getEnvInt("DB_MAX_CONNS", 20),
+		DBMinConns:        getEnvInt("DB_MIN_CONNS", 2),
+		WriteTimeoutMs:    getEnvInt("WRITE_TIMEOUT_MS", 5000),
+		ShutdownTimeoutMs: getEnvInt("SHUTDOWN_TIMEOUT_MS", 15000),
 	}
 
 	if cfg.ServerPort == "" {

@@ -8,15 +8,14 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func Connect(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
+func Connect(ctx context.Context, dsn string, maxConns, minConns int) (*pgxpool.Pool, error) {
 	config, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
 
-	// Performance tuning for highload
-	config.MaxConns = 20
-	config.MinConns = 5
+	config.MaxConns = int32(maxConns)
+	config.MinConns = int32(minConns)
 	config.MaxConnIdleTime = 30 * time.Minute
 
 	pool, err := pgxpool.NewWithConfig(ctx, config)
