@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	maxRetries    = 3
-	initialWait   = 100 * time.Millisecond
-	maxWait       = 2 * time.Second
+	maxRetries  = 3
+	initialWait = 100 * time.Millisecond
+	maxWait     = 2 * time.Second
 )
 
 type Event struct {
@@ -32,23 +32,24 @@ type Processor struct {
 	pool      *pgxpool.Pool
 	ch        chan Event
 	batchSize int
-	flushInt  time.Duration
-	wg        sync.WaitGroup
+	flushInt   time.Duration
+	maxWorkers int
+	wg         sync.WaitGroup
 }
 
-func NewProcessor(pool *pgxpool.Pool, batchSize int, flushInt time.Duration) *Processor {
+func NewProcessor(pool *pgxpool.Pool, batchSize int, maxWorkers int, flushInt time.Duration) *Processor {
 	return &Processor{
-		pool:      pool,
-		ch:        make(chan Event, batchSize*2),
-		batchSize: batchSize,
-		flushInt:  flushInt,
+		pool:       pool,
+		ch:         make(chan Event, batchSize*maxWorkers),
+		batchSize:  batchSize,
+		flushInt:   flushInt,
+		maxWorkers: maxWorkers,
 	}
 }
 
 var ErrBufferFull = errors.New("event buffer is full")
 
 func (p *Processor) Process(evt Event) error {
-	// Generate time-sorted UUIDv7
 	id, err := uuid.NewV7()
 	if err != nil {
 		return err
@@ -64,49 +65,57 @@ func (p *Processor) Process(evt Event) error {
 }
 
 func (p *Processor) Start(ctx context.Context) {
-	p.wg.Add(1)
-	go func() {
-		defer p.wg.Done()
-		batch := make([]Event, 0, p.batchSize)
-		ticker := time.NewTicker(p.flushInt)
-		defer ticker.Stop()
+	for i := 0; i < p.maxWorkers; i++ {
+		p.wg.Add(1)
+		go p.worker(ctx)
+	}
+}
 
-		for {
-			select {
-			case <-ctx.Done():
-				// Drain the channel
-			drainLoop:
-				for {
-					select {
-					case evt := <-p.ch:
-						batch = append(batch, evt)
-						if len(batch) >= p.batchSize {
-							p.flush(batch)
-							p.clearBatch(&batch)
-						}
-					default:
-						break drainLoop
+func (p *Processor) worker(ctx context.Context) {
+	defer p.wg.Done()
+	batch := make([]Event, 0, p.batchSize)
+	ticker := time.NewTicker(p.flushInt)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+		drainLoop:
+			for {
+				select {
+				case evt := <-p.ch:
+					batch = append(batch, evt)
+					if len(batch) >= p.batchSize {
+						p.flush(batch)
+						p.clearBatch(&batch)
 					}
-				}
-				if len(batch) > 0 {
-					p.flush(batch)
-				}
-				return
-			case evt := <-p.ch:
-				batch = append(batch, evt)
-				if len(batch) >= p.batchSize {
-					p.flush(batch)
-					p.clearBatch(&batch)
-					ticker.Reset(p.flushInt)
-				}
-			case <-ticker.C:
-				if len(batch) > 0 {
-					p.flush(batch)
-					p.clearBatch(&batch)
+				default:
+					break drainLoop
 				}
 			}
+			if len(batch) > 0 {
+				p.flush(batch)
+			}
+			return
+		case evt := <-p.ch:
+			batch = append(batch, evt)
+			if len(batch) >= p.batchSize {
+				p.flush(batch)
+				p.clearBatch(&batch)
+				ticker.Reset(p.flushInt)
+			}
+		case <-ticker.C:
+			if len(batch) > 0 {
+				p.flush(batch)
+				p.clearBatch(&batch)
+			}
 		}
-	}()
+	}
+}
+
+// Close signals workers to drain and stop
+func (p *Processor) Close() {
+	close(p.ch)
 }
 
 func (p *Processor) Wait() {
@@ -115,7 +124,6 @@ func (p *Processor) Wait() {
 
 func (p *Processor) clearBatch(batch *[]Event) {
 	for i := range *batch {
-		// Clear pointers to prevent memory leaks while reusing slice capacity
 		(*batch)[i].Payload = nil
 		(*batch)[i].IP = ""
 		(*batch)[i].UA = ""
@@ -160,7 +168,6 @@ func (p *Processor) flush(batch []Event) {
 	waitTime := initialWait
 
 	for i := 0; i <= maxRetries; i++ {
-		// Re-create source for each attempt to reset iterator
 		source := &eventCopySource{
 			rows: batch,
 			idx:  -1,
