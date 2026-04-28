@@ -38,19 +38,21 @@ type flushTask struct {
 
 type Aggregator struct {
 	repo     db.Querier
-	data     sync.Map
-	flushInt time.Duration
-	tasks      chan flushTask
-	maxWorkers int
-	wg         sync.WaitGroup
+	data         sync.Map
+	flushInt     time.Duration
+	writeTimeout time.Duration
+	tasks        chan flushTask
+	maxWorkers   int
+	wg           sync.WaitGroup
 }
 
-func NewAggregator(repo db.Querier, flushInt time.Duration, maxWorkers int) *Aggregator {
+func NewAggregator(repo db.Querier, flushInt, writeTimeout time.Duration, maxWorkers int) *Aggregator {
 	return &Aggregator{
-		repo:       repo,
-		flushInt:   flushInt,
-		tasks:      make(chan flushTask, 5000),
-		maxWorkers: maxWorkers,
+		repo:         repo,
+		flushInt:     flushInt,
+		writeTimeout: writeTimeout,
+		tasks:        make(chan flushTask, maxWorkers*2),
+		maxWorkers:   maxWorkers,
 	}
 }
 
@@ -152,7 +154,7 @@ func (a *Aggregator) doBatchFlush(batch []flushTask) {
 	waitTime := initialWait
 
 	for i := 0; i <= maxRetries; i++ {
-		dbCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		dbCtx, cancel := context.WithTimeout(context.Background(), a.writeTimeout)
 		err = a.repo.UpdateCampaignStatsBatch(dbCtx, db.UpdateCampaignStatsBatchParams{
 			CampaignIds: campaignIDs,
 			Impressions: imps,

@@ -29,21 +29,23 @@ type Event struct {
 }
 
 type Processor struct {
-	pool      *pgxpool.Pool
-	ch        chan Event
-	batchSize int
-	flushInt   time.Duration
-	maxWorkers int
-	wg         sync.WaitGroup
+	pool         *pgxpool.Pool
+	ch           chan Event
+	batchSize    int
+	flushInt     time.Duration
+	writeTimeout time.Duration
+	maxWorkers   int
+	wg           sync.WaitGroup
 }
 
-func NewProcessor(pool *pgxpool.Pool, batchSize int, maxWorkers int, flushInt time.Duration) *Processor {
+func NewProcessor(pool *pgxpool.Pool, batchSize int, maxWorkers int, flushInt, writeTimeout time.Duration) *Processor {
 	return &Processor{
-		pool:       pool,
-		ch:         make(chan Event, batchSize*maxWorkers),
-		batchSize:  batchSize,
-		flushInt:   flushInt,
-		maxWorkers: maxWorkers,
+		pool:         pool,
+		ch:           make(chan Event, batchSize*maxWorkers),
+		batchSize:    batchSize,
+		flushInt:     flushInt,
+		writeTimeout: writeTimeout,
+		maxWorkers:   maxWorkers,
 	}
 }
 
@@ -168,6 +170,7 @@ func (p *Processor) flush(batch []Event) {
 	waitTime := initialWait
 
 	for i := 0; i <= maxRetries; i++ {
+		dbCtx, cancel := context.WithTimeout(context.Background(), p.writeTimeout)
 		source := &eventCopySource{
 			rows: batch,
 			idx:  -1,
@@ -176,11 +179,12 @@ func (p *Processor) flush(batch []Event) {
 		}
 
 		_, err = p.pool.CopyFrom(
-			context.Background(),
+			dbCtx,
 			pgx.Identifier{"events"},
 			[]string{"id", "campaign_id", "event_type", "payload", "ip_address", "user_agent", "created_at"},
 			source,
 		)
+		cancel()
 
 		if err == nil {
 			if i > 0 {
