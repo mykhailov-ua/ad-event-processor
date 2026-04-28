@@ -1,0 +1,32 @@
+groups:
+  - name: adpulse_alerts
+    rules:
+      # Оповещение о потере данных (переполнение буфера)
+      - alert: HighEventDropRate
+        expr: rate(ad_events_dropped_total[1m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High event drop rate detected"
+          description: "Processor buffer is full and events are being dropped. Current rate: {{ $value }} events/s"
+
+      # Оповещение об ошибках БД
+      - alert: DatabaseWriteErrors
+        expr: rate(ad_db_write_errors_total[1m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Database write errors detected"
+          description: "System is failing to persist batches to Postgres."
+
+      # Оповещение о высокой задержке (Latency > 500ms)
+      - alert: HighHttpLatency
+        expr: histogram_quantile(0.99, sum by (le) (rate(ad_http_request_duration_seconds_bucket[1m]))) > 0.5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High HTTP latency detected"
+          description: "P99 latency is above 500ms for 2 minutes."
