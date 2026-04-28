@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/mykhailov-ua/ad-event-processor/internal/database/db"
+	"github.com/mykhailov-ua/ad-event-processor/internal/metrics"
 )
 
 const (
@@ -64,6 +65,7 @@ func (a *Aggregator) getCounters(campaignID uuid.UUID) *Counters {
 }
 
 func (a *Aggregator) Increment(campaignID uuid.UUID, eventType string) {
+	metrics.StatsIncrements.Inc()
 	c := a.getCounters(campaignID)
 	switch eventType {
 	case "impression":
@@ -155,15 +157,19 @@ func (a *Aggregator) doBatchFlush(batch []flushTask) {
 
 	for i := 0; i <= maxRetries; i++ {
 		dbCtx, cancel := context.WithTimeout(context.Background(), a.writeTimeout)
+		
+		start := time.Now()
 		err = a.repo.UpdateCampaignStatsBatch(dbCtx, db.UpdateCampaignStatsBatchParams{
 			CampaignIds: campaignIDs,
 			Impressions: imps,
 			Clicks:      clicks,
 			Conversions: convs,
 		})
+		duration := time.Since(start).Seconds()
 		cancel()
 
 		if err == nil {
+			metrics.DbWriteDuration.WithLabelValues("batch_upsert").Observe(duration)
 			if i > 0 {
 				slog.Info("successfully updated campaign stats batch after retry", 
 					"size", len(batch), 
@@ -186,6 +192,7 @@ func (a *Aggregator) doBatchFlush(batch []flushTask) {
 		}
 	}
 
+	metrics.DbWriteErrors.WithLabelValues("batch_upsert").Inc()
 	slog.Error("all retries failed for campaign stats batch, data lost", 
 		"size", len(batch), 
 		"error", err,
@@ -200,7 +207,9 @@ func (a *Aggregator) flush(isShutdown bool) {
 	now := time.Now().Unix()
 	ttlThreshold := int64(CampaignTTL.Seconds())
 
+	activeCount := 0
 	a.data.Range(func(key, value interface{}) bool {
+		activeCount++
 		campaignID := key.(uuid.UUID)
 		c := value.(*Counters)
 
@@ -231,4 +240,6 @@ func (a *Aggregator) flush(isShutdown bool) {
 
 		return true
 	})
+
+	metrics.ActiveCampaignsCount.Set(float64(activeCount))
 }

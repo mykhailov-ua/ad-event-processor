@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/mykhailov-ua/ad-event-processor/internal/metrics"
 )
 
 const (
@@ -60,8 +61,11 @@ func (p *Processor) Process(evt Event) error {
 
 	select {
 	case p.ch <- evt:
+		metrics.EventsProcessed.Inc()
+		metrics.ProcessorBufferUsage.Set(float64(len(p.ch)))
 		return nil
 	default:
+		metrics.EventsDropped.Inc()
 		return ErrBufferFull
 	}
 }
@@ -178,15 +182,18 @@ func (p *Processor) flush(batch []Event) {
 			row:  make([]any, 7),
 		}
 
+		start := time.Now()
 		_, err = p.pool.CopyFrom(
 			dbCtx,
 			pgx.Identifier{"events"},
 			[]string{"id", "campaign_id", "event_type", "payload", "ip_address", "user_agent", "created_at"},
 			source,
 		)
+		duration := time.Since(start).Seconds()
 		cancel()
 
 		if err == nil {
+			metrics.DbWriteDuration.WithLabelValues("copy_from").Observe(duration)
 			if i > 0 {
 				slog.Info("successfully flushed event batch after retry", "attempts", i+1, "size", len(batch))
 			}
@@ -208,5 +215,6 @@ func (p *Processor) flush(batch []Event) {
 		}
 	}
 
+	metrics.DbWriteErrors.WithLabelValues("copy_from").Inc()
 	slog.Error("all retries failed for event batch, data lost", "error", err, "size", len(batch))
 }
