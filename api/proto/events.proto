@@ -4,12 +4,18 @@ package ads.v1;
 
 option go_package = "github.com/mykhailov-ua/ad-event-processor/internal/ads/pb";
 
-import "google/protobuf/timestamp.proto";
-
 message AdEvent {
   string campaign_id = 1;
   string event_type = 2;
-  bytes payload = 3;
+  EventMetadata metadata = 3;
+}
+
+message EventMetadata {
+  string click_id = 1;
+  string user_id = 2;
+  string device_type = 3;
+  string os = 4;
+  map<string, string> extra = 5;
 }
 
 message TrackResponse {

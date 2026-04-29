@@ -1,4 +1,4 @@
-.PHONY: fmt lint test test-unit test-int build
+.PHONY: fmt lint test test-unit test-int build proto
 
 fmt:
 	go fmt ./...
@@ -20,3 +20,6 @@ test: test-unit test-int
 
 build: fmt
 	docker build -t ad-event-processor:latest .
+
+proto:
+	go run github.com/bufbuild/buf/cmd/buf@latest generate
