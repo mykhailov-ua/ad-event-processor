@@ -9,13 +9,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/mykhailov-ua/ad-event-processor/internal/campaign"
+	"github.com/mykhailov-ua/ad-event-processor/internal/ads"
 	"github.com/mykhailov-ua/ad-event-processor/internal/config"
 	"github.com/mykhailov-ua/ad-event-processor/internal/database"
-	"github.com/mykhailov-ua/ad-event-processor/internal/database/db"
-	"github.com/mykhailov-ua/ad-event-processor/internal/event"
-	"github.com/mykhailov-ua/ad-event-processor/internal/server"
-	"github.com/mykhailov-ua/ad-event-processor/internal/stats"
+	"github.com/mykhailov-ua/ad-event-processor/internal/ads/repository"
+
 )
 
 func main() {
@@ -38,13 +36,13 @@ func main() {
 	}
 	defer pool.Close()
 
-	queries := db.New(pool)
+	queries := repository.New(pool)
 
 	// Partition Manager: use retention settings from config
 	partManager := database.NewPartitionManager(pool, cfg.LogRetentionDays, 2)
 	partManager.StartBackground(ctx)
 
-	registry := campaign.NewRegistry(queries)
+	registry := ads.NewRegistry(queries)
 	count, err := registry.Sync(ctx)
 	if err != nil {
 		slog.Warn("initial campaign registry sync failed", "error", err)
@@ -53,7 +51,7 @@ func main() {
 	}
 	registry.StartSync(ctx, 1*time.Minute)
 
-	eventProc := event.NewProcessor(
+	eventProc := ads.NewProcessor(
 		pool,
 		cfg.EventBatchSize,
 		cfg.MaxWorkers,
@@ -62,7 +60,7 @@ func main() {
 	)
 	eventProc.Start(ctx)
 
-	statsAgg := stats.NewAggregator(
+	statsAgg := ads.NewAggregator(
 		queries,
 		time.Duration(cfg.StatsFlushMs)*time.Millisecond,
 		time.Duration(cfg.WriteTimeoutMs)*time.Millisecond,
@@ -70,7 +68,7 @@ func main() {
 	)
 	statsAgg.Start(ctx)
 
-	mux := server.NewRouter(cfg, registry, eventProc, statsAgg)
+	mux := ads.NewRouter(cfg, registry, eventProc, statsAgg)
 
 	slog.Info("starting ad-event-processor", "port", cfg.ServerPort)
 

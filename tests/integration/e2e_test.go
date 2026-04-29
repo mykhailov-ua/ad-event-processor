@@ -10,13 +10,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/mykhailov-ua/ad-event-processor/internal/campaign"
+	"github.com/mykhailov-ua/ad-event-processor/internal/ads"
+	"github.com/mykhailov-ua/ad-event-processor/internal/ads/repository"
 	"github.com/mykhailov-ua/ad-event-processor/internal/config"
 	"github.com/mykhailov-ua/ad-event-processor/internal/database"
-	"github.com/mykhailov-ua/ad-event-processor/internal/database/db"
-	"github.com/mykhailov-ua/ad-event-processor/internal/event"
-	"github.com/mykhailov-ua/ad-event-processor/internal/server"
-	"github.com/mykhailov-ua/ad-event-processor/internal/stats"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,7 +30,7 @@ func TestE2EFlow(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	queries := db.New(pool)
+	queries := repository.New(pool)
 	cfg := &config.Config{
 		EventBatchSize: 10,
 		EventFlushMs:   100,
@@ -49,17 +47,17 @@ func TestE2EFlow(t *testing.T) {
 	_, err = pool.Exec(ctx, "INSERT INTO campaigns (id, name, status) VALUES ($1, $2, $3)", campaignID, "E2E Campaign", "active")
 	require.NoError(t, err)
 
-	registry := campaign.NewRegistry(queries)
+	registry := ads.NewRegistry(queries)
 	_, _ = registry.Sync(ctx)
 
-	eventProc := event.NewProcessor(pool, cfg.EventBatchSize, cfg.MaxWorkers, 100*time.Millisecond, 1*time.Second)
+	eventProc := ads.NewProcessor(pool, cfg.EventBatchSize, cfg.MaxWorkers, 100*time.Millisecond, 1*time.Second)
 	eventProc.Start(ctx)
 	defer eventProc.Close()
 
-	statsAgg := stats.NewAggregator(queries, 100*time.Millisecond, 1*time.Second, cfg.MaxWorkers)
+	statsAgg := ads.NewAggregator(queries, 100*time.Millisecond, 1*time.Second, cfg.MaxWorkers)
 	statsAgg.Start(ctx)
 
-	router := server.NewRouter(cfg, registry, eventProc, statsAgg)
+	router := ads.NewRouter(cfg, registry, eventProc, statsAgg)
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 

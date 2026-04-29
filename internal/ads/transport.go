@@ -1,4 +1,4 @@
-package server
+package ads
 
 import (
 	"encoding/json"
@@ -9,15 +9,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/mykhailov-ua/ad-event-processor/internal/campaign"
 	"github.com/mykhailov-ua/ad-event-processor/internal/config"
-	"github.com/mykhailov-ua/ad-event-processor/internal/event"
-	"github.com/mykhailov-ua/ad-event-processor/internal/metrics"
-	"github.com/mykhailov-ua/ad-event-processor/internal/stats"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func NewRouter(cfg *config.Config, registry *campaign.Registry, proc *event.Processor, agg *stats.Aggregator) http.Handler {
+func NewRouter(cfg *config.Config, registry *Registry, proc *Processor, agg *Aggregator) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.Handle("GET /metrics", promhttp.Handler())
@@ -33,8 +29,8 @@ func NewRouter(cfg *config.Config, registry *campaign.Registry, proc *event.Proc
 
 		defer func() {
 			duration := time.Since(start).Seconds()
-			metrics.HttpRequestsTotal.WithLabelValues("POST", "/track", strconv.Itoa(status)).Inc()
-			metrics.HttpRequestDuration.WithLabelValues("POST", "/track").Observe(duration)
+			HttpRequestsTotal.WithLabelValues("POST", "/track", strconv.Itoa(status)).Inc()
+			HttpRequestDuration.WithLabelValues("POST", "/track").Observe(duration)
 		}()
 
 		requestID := uuid.New().String()
@@ -60,7 +56,7 @@ func NewRouter(cfg *config.Config, registry *campaign.Registry, proc *event.Proc
 			return
 		}
 
-		err := proc.Process(event.Event{
+		err := proc.Process(Event{
 			CampaignID: req.CampaignID,
 			Type:       req.Type,
 			Payload:    req.Payload,
@@ -69,7 +65,7 @@ func NewRouter(cfg *config.Config, registry *campaign.Registry, proc *event.Proc
 		})
 
 		if err != nil {
-			if errors.Is(err, event.ErrBufferFull) {
+			if errors.Is(err, ErrBufferFull) {
 				l.Error("processor buffer full")
 				status = http.StatusTooManyRequests
 				http.Error(w, "server overloaded", status)

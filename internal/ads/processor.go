@@ -1,4 +1,4 @@
-package event
+package ads
 
 import (
 	"context"
@@ -10,14 +10,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/mykhailov-ua/ad-event-processor/internal/metrics"
+
 )
 
-const (
-	maxRetries  = 3
-	initialWait = 100 * time.Millisecond
-	maxWait     = 2 * time.Second
-)
+
 
 type Event struct {
 	ID         uuid.UUID
@@ -64,11 +60,11 @@ func (p *Processor) Process(evt Event) error {
 
 	select {
 	case p.ch <- evt:
-		metrics.EventsProcessed.Inc()
-		metrics.ProcessorBufferUsage.Set(float64(len(p.ch)))
+		EventsProcessed.Inc()
+		ProcessorBufferUsage.Set(float64(len(p.ch)))
 		return nil
 	default:
-		metrics.EventsDropped.Inc()
+		EventsDropped.Inc()
 		return ErrBufferFull
 	}
 }
@@ -202,7 +198,7 @@ func (p *Processor) flush(batch []Event) {
 		cancel()
 
 		if err == nil {
-			metrics.DbWriteDuration.WithLabelValues("copy_from").Observe(duration)
+			DbWriteDuration.WithLabelValues("copy_from").Observe(duration)
 			if i > 0 {
 				slog.Info("successfully flushed event batch after retry", "attempts", i+1, "size", len(batch))
 			}
@@ -224,6 +220,6 @@ func (p *Processor) flush(batch []Event) {
 		}
 	}
 
-	metrics.DbWriteErrors.WithLabelValues("copy_from").Inc()
+	DbWriteErrors.WithLabelValues("copy_from").Inc()
 	slog.Error("all retries failed for event batch, data lost", "error", err, "size", len(batch))
 }

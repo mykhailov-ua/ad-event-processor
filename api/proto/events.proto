@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package ads.v1;
+
+option go_package = "github.com/mykhailov-ua/ad-event-processor/internal/ads/pb";
+
+import "google/protobuf/timestamp.proto";
+
+message AdEvent {
+  string campaign_id = 1;
+  string event_type = 2;
+  bytes payload = 3;
+}
+
+message TrackResponse {
+  string request_id = 1;
+  string status = 2;
+}

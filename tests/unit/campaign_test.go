@@ -7,14 +7,14 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/mykhailov-ua/ad-event-processor/internal/campaign"
-	"github.com/mykhailov-ua/ad-event-processor/internal/database/db"
+	"github.com/mykhailov-ua/ad-event-processor/internal/ads"
+	"github.com/mykhailov-ua/ad-event-processor/internal/ads/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 type MockRepo struct {
-	db.Querier
+	repository.Querier
 	ids []pgtype.UUID
 	err error
 }
@@ -33,7 +33,7 @@ func TestRegistry_Sync(t *testing.T) {
 		},
 	}
 
-	r := campaign.NewRegistry(mock)
+	r := ads.NewRegistry(mock)
 	count, err := r.Sync(context.Background())
 
 	require.NoError(t, err)
@@ -49,7 +49,7 @@ func TestRegistry_StartSync(t *testing.T) {
 		ids: []pgtype.UUID{{Bytes: id1, Valid: true}},
 	}
 
-	r := campaign.NewRegistry(mock)
+	r := ads.NewRegistry(mock)
 	ctx, cancel := context.WithCancel(context.Background())
 
 	r.StartSync(ctx, 10*time.Millisecond)

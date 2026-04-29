@@ -1,4 +1,4 @@
-package stats
+package ads
 
 import (
 	"context"
@@ -9,15 +9,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/mykhailov-ua/ad-event-processor/internal/database/db"
-	"github.com/mykhailov-ua/ad-event-processor/internal/metrics"
+	"github.com/mykhailov-ua/ad-event-processor/internal/ads/repository"
+
 )
 
-const (
-	maxRetries  = 3
-	initialWait = 100 * time.Millisecond
-	maxWait     = 2 * time.Second
-)
+
 
 const (
 	CampaignTTL = 2 * time.Hour
@@ -38,7 +34,7 @@ type flushTask struct {
 }
 
 type Aggregator struct {
-	repo         db.Querier
+	repo         repository.Querier
 	data         sync.Map
 	flushInt     time.Duration
 	writeTimeout time.Duration
@@ -47,7 +43,7 @@ type Aggregator struct {
 	wg           sync.WaitGroup
 }
 
-func NewAggregator(repo db.Querier, flushInt, writeTimeout time.Duration, maxWorkers int) *Aggregator {
+func NewAggregator(repo repository.Querier, flushInt, writeTimeout time.Duration, maxWorkers int) *Aggregator {
 	return &Aggregator{
 		repo:         repo,
 		flushInt:     flushInt,
@@ -65,7 +61,7 @@ func (a *Aggregator) getCounters(campaignID uuid.UUID) *Counters {
 }
 
 func (a *Aggregator) Increment(campaignID uuid.UUID, eventType string) {
-	metrics.StatsIncrements.Inc()
+	StatsIncrements.Inc()
 	c := a.getCounters(campaignID)
 	switch eventType {
 	case "impression":
@@ -165,7 +161,7 @@ func (a *Aggregator) doBatchFlush(batch []flushTask) {
 		dbCtx, cancel := context.WithTimeout(context.Background(), a.writeTimeout)
 
 		start := time.Now()
-		err = a.repo.UpdateCampaignStatsBatch(dbCtx, db.UpdateCampaignStatsBatchParams{
+		err = a.repo.UpdateCampaignStatsBatch(dbCtx, repository.UpdateCampaignStatsBatchParams{
 			CampaignIds: campaignIDs,
 			Impressions: imps,
 			Clicks:      clicks,
@@ -175,7 +171,7 @@ func (a *Aggregator) doBatchFlush(batch []flushTask) {
 		cancel()
 
 		if err == nil {
-			metrics.DbWriteDuration.WithLabelValues("batch_upsert").Observe(duration)
+			DbWriteDuration.WithLabelValues("batch_upsert").Observe(duration)
 			if i > 0 {
 				slog.Info("successfully updated campaign stats batch after retry",
 					"size", len(batch),
@@ -198,7 +194,7 @@ func (a *Aggregator) doBatchFlush(batch []flushTask) {
 		}
 	}
 
-	metrics.DbWriteErrors.WithLabelValues("batch_upsert").Inc()
+	DbWriteErrors.WithLabelValues("batch_upsert").Inc()
 	slog.Error("all retries failed for campaign stats batch, data lost",
 		"size", len(batch),
 		"error", err,
@@ -247,5 +243,5 @@ func (a *Aggregator) flush() {
 		return true
 	})
 
-	metrics.ActiveCampaignsCount.Set(float64(activeCount))
+	ActiveCampaignsCount.Set(float64(activeCount))
 }

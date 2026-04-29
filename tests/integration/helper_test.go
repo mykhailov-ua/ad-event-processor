@@ -41,8 +41,8 @@ func setupTestDB(t *testing.T) (*pgxpool.Pool, func()) {
 		t.Fatalf("failed to connect to db: %s", err)
 	}
 
-	// Read migration from internal/database/migrations
-	path := filepath.Join("..", "..", "internal/database", "migrations", "00001_init_schema.sql")
+	// Read migration from internal/ads/repository/migrations
+	path := filepath.Join("..", "..", "internal/ads/repository", "migrations", "00001_init_schema.sql")
 	sqlBytes, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("failed to read migration from %s: %s", path, err)

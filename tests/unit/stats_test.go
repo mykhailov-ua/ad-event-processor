@@ -7,18 +7,18 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/mykhailov-ua/ad-event-processor/internal/database/db"
-	"github.com/mykhailov-ua/ad-event-processor/internal/stats"
+	"github.com/mykhailov-ua/ad-event-processor/internal/ads"
+	"github.com/mykhailov-ua/ad-event-processor/internal/ads/repository"
 	"github.com/stretchr/testify/assert"
 )
 
 type MockStatsRepo struct {
-	db.Querier
+	repository.Querier
 	mu      sync.Mutex
-	updates []db.UpdateCampaignStatsBatchParams
+	updates []repository.UpdateCampaignStatsBatchParams
 }
 
-func (m *MockStatsRepo) UpdateCampaignStatsBatch(ctx context.Context, arg db.UpdateCampaignStatsBatchParams) error {
+func (m *MockStatsRepo) UpdateCampaignStatsBatch(ctx context.Context, arg repository.UpdateCampaignStatsBatchParams) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.updates = append(m.updates, arg)
@@ -28,7 +28,7 @@ func (m *MockStatsRepo) UpdateCampaignStatsBatch(ctx context.Context, arg db.Upd
 func TestAggregator_Flow(t *testing.T) {
 	mock := &MockStatsRepo{}
 	// Short flush interval for testing
-	agg := stats.NewAggregator(mock, 50*time.Millisecond, 1*time.Second, 1)
+	agg := ads.NewAggregator(mock, 50*time.Millisecond, 1*time.Second, 1)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	agg.Start(ctx)

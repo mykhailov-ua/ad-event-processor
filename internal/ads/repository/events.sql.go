@@ -3,7 +3,7 @@
 //   sqlc v1.31.1
 // source: events.sql
 
-package db
+package repository
 
 import (
 	"context"

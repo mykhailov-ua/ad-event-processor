@@ -1,4 +1,4 @@
-package campaign
+package ads
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/mykhailov-ua/ad-event-processor/internal/database/db"
+	"github.com/mykhailov-ua/ad-event-processor/internal/ads/repository"
 )
 
 // Registry maintains in-memory campaign IDs for O(1) validation in the hot path.
@@ -15,11 +15,11 @@ import (
 type Registry struct {
 	mu   sync.RWMutex
 	ids  map[uuid.UUID]struct{}
-	repo db.Querier
+	repo repository.Querier
 	wg   sync.WaitGroup
 }
 
-func NewRegistry(repo db.Querier) *Registry {
+func NewRegistry(repo repository.Querier) *Registry {
 	return &Registry{
 		ids:  make(map[uuid.UUID]struct{}, 100_000),
 		repo: repo,

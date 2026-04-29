@@ -1,4 +1,4 @@
-package metrics
+package ads
 
 import (
 	"github.com/prometheus/client_golang/prometheus"

@@ -9,14 +9,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/mykhailov-ua/ad-event-processor/internal/event"
+	"github.com/mykhailov-ua/ad-event-processor/internal/ads"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 type MockBatchWriter struct {
 	mu      sync.Mutex
-	flushes [][]event.Event
+	flushes [][]ads.Event
 	err     error
 }
 
@@ -28,13 +28,13 @@ func (m *MockBatchWriter) CopyFrom(ctx context.Context, tableName pgx.Identifier
 		return 0, m.err
 	}
 
-	var batch []event.Event
+	var batch []ads.Event
 	for rowSrc.Next() {
 		vals, _ := rowSrc.Values()
 		id := vals[0].(pgtype.UUID).Bytes
 		cid := vals[1].(pgtype.UUID).Bytes
 
-		batch = append(batch, event.Event{
+		batch = append(batch, ads.Event{
 			ID:         uuid.UUID(id),
 			CampaignID: uuid.UUID(cid),
 			Type:       vals[2].(string),
@@ -50,29 +50,29 @@ func (m *MockBatchWriter) CopyFrom(ctx context.Context, tableName pgx.Identifier
 func TestProcessor_BufferOverflow(t *testing.T) {
 	mock := &MockBatchWriter{}
 	// batchSize=1, maxWorkers=1 => buffer size = 1
-	p := event.NewProcessor(mock, 1, 1, 1*time.Second, 1*time.Second)
+	p := ads.NewProcessor(mock, 1, 1, 1*time.Second, 1*time.Second)
 
-	evt := event.Event{CampaignID: uuid.New(), Type: "click"}
+	evt := ads.Event{CampaignID: uuid.New(), Type: "click"}
 
 	err := p.Process(evt)
 	assert.NoError(t, err)
 
 	// Buffer is now full
 	err = p.Process(evt)
-	assert.ErrorIs(t, err, event.ErrBufferFull)
+	assert.ErrorIs(t, err, ads.ErrBufferFull)
 }
 
 func TestProcessor_Batching(t *testing.T) {
 	mock := &MockBatchWriter{}
 	batchSize := 5
-	p := event.NewProcessor(mock, batchSize, 1, 1*time.Minute, 1*time.Second)
+	p := ads.NewProcessor(mock, batchSize, 1, 1*time.Minute, 1*time.Second)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	p.Start(ctx)
 
 	for i := 0; i < batchSize; i++ {
-		err := p.Process(event.Event{CampaignID: uuid.New(), Type: "imp"})
+		err := p.Process(ads.Event{CampaignID: uuid.New(), Type: "imp"})
 		assert.NoError(t, err)
 	}
 
@@ -88,13 +88,13 @@ func TestProcessor_Batching(t *testing.T) {
 func TestProcessor_Ticker(t *testing.T) {
 	mock := &MockBatchWriter{}
 	flushInt := 100 * time.Millisecond
-	p := event.NewProcessor(mock, 100, 1, flushInt, 1*time.Second)
+	p := ads.NewProcessor(mock, 100, 1, flushInt, 1*time.Second)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	p.Start(ctx)
 
-	err := p.Process(event.Event{CampaignID: uuid.New(), Type: "click"})
+	err := p.Process(ads.Event{CampaignID: uuid.New(), Type: "click"})
 	assert.NoError(t, err)
 
 	time.Sleep(flushInt + 50*time.Millisecond)
@@ -107,12 +107,12 @@ func TestProcessor_Ticker(t *testing.T) {
 
 func TestProcessor_DrainOnClose(t *testing.T) {
 	mock := &MockBatchWriter{}
-	p := event.NewProcessor(mock, 100, 1, 1*time.Minute, 1*time.Second)
+	p := ads.NewProcessor(mock, 100, 1, 1*time.Minute, 1*time.Second)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	p.Start(ctx)
 
-	err := p.Process(event.Event{CampaignID: uuid.New(), Type: "conv"})
+	err := p.Process(ads.Event{CampaignID: uuid.New(), Type: "conv"})
 	assert.NoError(t, err)
 
 	p.Close()
@@ -125,8 +125,8 @@ func TestProcessor_DrainOnClose(t *testing.T) {
 }
 
 func TestProcessor_ClearBatch(t *testing.T) {
-	p := &event.Processor{}
-	batch := []event.Event{
+	p := &ads.Processor{}
+	batch := []ads.Event{
 		{Payload: []byte("data"), IP: "1.2.3.4", UA: "Mozilla"},
 		{Payload: []byte("more"), IP: "5.6.7.8", UA: "Safari"},
 	}

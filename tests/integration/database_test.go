@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/mykhailov-ua/ad-event-processor/internal/database/db"
+	"github.com/mykhailov-ua/ad-event-processor/internal/ads/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -20,7 +20,7 @@ func TestCampaignQueries(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	queries := db.New(pool)
+	queries := repository.New(pool)
 
 	campaignID := uuid.New()
 	_, err := pool.Exec(ctx,
@@ -62,13 +62,13 @@ func TestStatsBatching(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	queries := db.New(pool)
+	queries := repository.New(pool)
 
 	campaignID := uuid.New()
 	_, err := pool.Exec(ctx, "INSERT INTO campaigns (id, name, status) VALUES ($1, $2, $3)", campaignID, "Stats Test", "active")
 	require.NoError(t, err)
 
-	err = queries.UpdateCampaignStatsBatch(ctx, db.UpdateCampaignStatsBatchParams{
+	err = queries.UpdateCampaignStatsBatch(ctx, repository.UpdateCampaignStatsBatchParams{
 		CampaignIds: []pgtype.UUID{{Bytes: campaignID, Valid: true}},
 		Impressions: []int64{10},
 		Clicks:      []int64{5},
@@ -76,7 +76,7 @@ func TestStatsBatching(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = queries.UpdateCampaignStatsBatch(ctx, db.UpdateCampaignStatsBatchParams{
+	err = queries.UpdateCampaignStatsBatch(ctx, repository.UpdateCampaignStatsBatchParams{
 		CampaignIds: []pgtype.UUID{{Bytes: campaignID, Valid: true}},
 		Impressions: []int64{20},
 		Clicks:      []int64{2},
