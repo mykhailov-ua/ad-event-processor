@@ -16,6 +16,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// NewRouter initializes the HTTP router with metrics, health checks, and tracking endpoints.
 func NewRouter(cfg *config.Config, registry *Registry, proc *Processor, agg *Aggregator) http.Handler {
 	mux := http.NewServeMux()
 
@@ -43,6 +44,9 @@ func NewRouter(cfg *config.Config, registry *Registry, proc *Processor, agg *Agg
 		var eventType string
 		var payload []byte
 
+		clickID := requestID // Default to requestID for idempotency if click_id is missing
+
+		// Protocol negotiation: handle high-performance Protobuf or debug-friendly JSON.
 		contentType := r.Header.Get("Content-Type")
 		if contentType == "application/x-protobuf" {
 			body, err := io.ReadAll(r.Body)
@@ -59,7 +63,7 @@ func NewRouter(cfg *config.Config, registry *Registry, proc *Processor, agg *Agg
 				http.Error(w, "invalid protobuf", status)
 				return
 			}
-			
+
 			cid, err := uuid.Parse(pbReq.CampaignId)
 			if err != nil {
 				l.Warn("invalid campaign id in proto", "error", err)
@@ -69,8 +73,10 @@ func NewRouter(cfg *config.Config, registry *Registry, proc *Processor, agg *Agg
 			}
 			campaignID = cid
 			eventType = pbReq.EventType
-			// Marshal metadata to JSON for storage in JSONB column
 			if pbReq.Metadata != nil {
+				if pbReq.Metadata.ClickId != "" {
+					clickID = pbReq.Metadata.ClickId
+				}
 				payload, _ = json.Marshal(pbReq.Metadata)
 			}
 		} else {
@@ -78,6 +84,7 @@ func NewRouter(cfg *config.Config, registry *Registry, proc *Processor, agg *Agg
 			var req struct {
 				CampaignID uuid.UUID       `json:"campaign_id"`
 				Type       string          `json:"type"`
+				ClickID    string          `json:"click_id"`
 				Payload    json.RawMessage `json:"payload"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -89,8 +96,12 @@ func NewRouter(cfg *config.Config, registry *Registry, proc *Processor, agg *Agg
 			campaignID = req.CampaignID
 			eventType = req.Type
 			payload = req.Payload
+			if req.ClickID != "" {
+				clickID = req.ClickID
+			}
 		}
 
+		// Hot-path validation using in-memory registry to avoid DB Foreign Key overhead.
 		if !registry.Exists(campaignID) {
 			l.Warn("campaign not found", "campaign_id", campaignID)
 			status = http.StatusNotFound
@@ -99,6 +110,7 @@ func NewRouter(cfg *config.Config, registry *Registry, proc *Processor, agg *Agg
 		}
 
 		err := proc.Process(Event{
+			ClickID:    clickID,
 			CampaignID: campaignID,
 			Type:       eventType,
 			Payload:    payload,
@@ -121,6 +133,7 @@ func NewRouter(cfg *config.Config, registry *Registry, proc *Processor, agg *Agg
 
 		agg.Increment(campaignID, eventType)
 
+		// Respond in the requested format (Protobuf or JSON).
 		if r.Header.Get("Accept") == "application/x-protobuf" {
 			resp := &pb.TrackResponse{
 				RequestId: requestID,
