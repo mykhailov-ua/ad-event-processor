@@ -10,20 +10,18 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/mykhailov-ua/ad-event-processor/internal/ads/repository"
-
 )
-
-
 
 const (
 	CampaignTTL = 2 * time.Hour
 )
 
+// Counters holds atomic tallies for a single campaign's events in memory.
 type Counters struct {
 	Impressions atomic.Int64
 	Clicks      atomic.Int64
 	Conversions atomic.Int64
-	LastSeen    atomic.Int64
+	LastSeen    atomic.Int64 // Unix timestamp for TTL-based memory cleanup.
 }
 
 type flushTask struct {
@@ -33,9 +31,11 @@ type flushTask struct {
 	convs      int64
 }
 
+// Aggregator provides high-performance, thread-safe event counting in RAM.
+// It periodicially flushes aggregated totals to the database to minimize I/O.
 type Aggregator struct {
 	repo         repository.Querier
-	data         sync.Map
+	data         sync.Map // Map[uuid.UUID]*Counters
 	flushInt     time.Duration
 	writeTimeout time.Duration
 	tasks        chan flushTask
@@ -104,6 +104,8 @@ func (a *Aggregator) Stop() {
 	slog.Info("stats aggregator: stopped")
 }
 
+// worker processes flush tasks from the internal queue.
+// It groups individual campaign updates into larger SQL batches for efficiency.
 func (a *Aggregator) worker() {
 	defer a.wg.Done()
 
@@ -205,6 +207,8 @@ func (a *Aggregator) Wait() {
 	a.wg.Wait()
 }
 
+// flush extracts non-zero counters from the in-memory map and sends them to workers.
+// It also cleans up old campaigns that haven't been seen for CampaignTTL.
 func (a *Aggregator) flush() {
 	now := time.Now().Unix()
 	ttlThreshold := int64(CampaignTTL.Seconds())

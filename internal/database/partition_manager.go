@@ -28,6 +28,8 @@ func NewPartitionManager(pool *pgxpool.Pool, retentionDays int, preCreateDays in
 }
 
 // Run executes the partition maintenance routine.
+// It creates future partitions to ensure data can always be inserted and
+// drops partitions older than the retention period to reclaim disk space.
 func (pm *PartitionManager) Run(ctx context.Context) error {
 	now := time.Now().UTC()
 
@@ -48,6 +50,8 @@ func (pm *PartitionManager) Run(ctx context.Context) error {
 	return nil
 }
 
+// createPartition generates a new hourly/daily partition for the events table.
+// It uses IF NOT EXISTS to be idempotent and safe for concurrent execution.
 func (pm *PartitionManager) createPartition(ctx context.Context, date time.Time) error {
 	tableName := fmt.Sprintf("events_p%s", date.Format("2006_01_02"))
 	startDate := date.Format("2006-01-02")
@@ -65,6 +69,8 @@ func (pm *PartitionManager) createPartition(ctx context.Context, date time.Time)
 	return err
 }
 
+// dropOldPartitions identifies and deletes tables that fall outside the retention window.
+// This is significantly faster and more resource-efficient than DELETE statements.
 func (pm *PartitionManager) dropOldPartitions(ctx context.Context, olderThan time.Time) error {
 	query := `
 		SELECT child.relname
