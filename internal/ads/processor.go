@@ -96,7 +96,10 @@ func (p *Processor) worker(ctx context.Context) {
 		drainLoop:
 			for {
 				select {
-				case evt := <-p.ch:
+				case evt, ok := <-p.ch:
+					if !ok {
+						break drainLoop
+					}
 					batch = append(batch, evt)
 					if len(batch) >= p.batchSize {
 						p.flush(batch)
@@ -168,11 +171,16 @@ func (p *Processor) flush(batch []Event) {
 	createdAts := make([]pgtype.Timestamptz, len(batch))
 
 	now := time.Now()
+	defaultPayload := []byte("{}")
 	for i, evt := range batch {
 		clickIDs[i] = evt.ClickID
 		campaignIDs[i] = pgtype.UUID{Bytes: evt.CampaignID, Valid: true}
 		eventTypes[i] = evt.Type
-		payloads[i] = evt.Payload
+		if evt.Payload == nil {
+			payloads[i] = defaultPayload
+		} else {
+			payloads[i] = evt.Payload
+		}
 		ipAddresses[i] = evt.IP
 		userAgents[i] = evt.UA
 		createdAts[i] = pgtype.Timestamptz{Time: now, Valid: true}
