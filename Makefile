@@ -8,7 +8,9 @@ lint: fmt
 		echo "Installing golangci-lint..."; \
 		go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest; \
 	fi
-	$$(go env GOPATH)/bin/golangci-lint run
+	@GOPATH=$$(go env GOPATH); \
+	if [ -z "$$GOPATH" ]; then GOPATH=$$HOME/go; fi; \
+	$$GOPATH/bin/golangci-lint run
 
 test-unit: fmt
 	go test -v ./tests/unit/...

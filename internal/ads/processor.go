@@ -3,7 +3,9 @@ package ads
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -40,6 +42,7 @@ type Processor struct {
 	wg           sync.WaitGroup
 	cancel       context.CancelFunc
 	drainOnce    sync.Once
+	recoverOnce  sync.Once
 }
 
 // ErrBufferFull is kept for backward compatibility in tests, though Redis Streams don't "fill up" in the same way.
@@ -54,12 +57,19 @@ func NewProcessor(
 	maxWorkers int,
 	flushInt, writeTimeout time.Duration,
 ) *Processor {
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = "unknown"
+	}
+	// Append hostname and short UUID to make Consumer ID unique per process instance
+	uniqueConsumerID := fmt.Sprintf("%s-%s-%s", consumerID, hostname, uuid.NewString()[:8])
+
 	return &Processor{
 		queries:      queries,
 		rdb:          rdb,
 		streamName:   streamName,
 		groupName:    groupName,
-		consumerID:   consumerID,
+		consumerID:   uniqueConsumerID,
 		batchSize:    batchSize,
 		flushInt:     flushInt,
 		writeTimeout: writeTimeout,
@@ -133,13 +143,15 @@ func (p *Processor) Wait() {
 func (p *Processor) worker(ctx context.Context) {
 	defer p.wg.Done()
 
-	err := p.rdb.XGroupCreateMkStream(ctx, p.streamName, p.groupName, "$").Err()
+	err := p.rdb.XGroupCreateMkStream(ctx, p.streamName, p.groupName, "0").Err()
 	if err != nil && err.Error() != "BUSYGROUP Consumer Group name already exists" {
 		slog.Error("failed to create consumer group", "error", err, "stream", p.streamName, "group", p.groupName)
 		return
 	}
 
-	p.recoverPending(ctx)
+	p.recoverOnce.Do(func() {
+		p.recoverPending(ctx)
+	})
 
 	batch := make([]Event, 0, p.batchSize)
 	msgIDs := make([]string, 0, p.batchSize)
@@ -205,6 +217,10 @@ func (p *Processor) drainStream() {
 	drainCtx, cancel := context.WithTimeout(context.Background(), p.writeTimeout)
 	defer cancel()
 
+	// 1. Recover and flush any messages already in the PEL for this consumer
+	p.recoverPending(drainCtx)
+
+	// 2. Read and flush any unread messages from the stream
 	for {
 		streams, err := p.rdb.XReadGroup(drainCtx, &redis.XReadGroupArgs{
 			Group:    p.groupName,
