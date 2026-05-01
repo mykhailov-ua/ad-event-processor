@@ -1,36 +1,38 @@
 # System Architecture & Request Lifecycle
 
-High-performance ad event ingestion logic. Focus on lock-free operations where possible and batch persistence.
+High-performance, stateless ad event ingestion engine. Designed for horizontal scalability and data integrity using a distributed pipeline.
 
 ## Request Lifecycle
 
-`POST /events` flow:
+`POST /track` flow:
 
-1.  **Ingestion & Validation**:
-    - JSON/Protobuf payload is decoded into `Event` struct.
-    - O(1) check via `Campaign Registry` (in-memory map with `RWMutex`).
-    - Invalid campaigns or malformed payloads return `400/404` immediately.
+1.  **Ingestion & Intelligence**:
+    - JSON/Protobuf payload is decoded.
+    - **Intelligent Filtering**: Middleware checks IP rate limits and deduplicates `click_id` via Redis.
+    - **Validation**: O(1) campaign existence check via `Campaign Registry` (synced in-memory map).
+    - Returns `429 Too Many Requests` or `404 Not Found` immediately if filtered.
 
-2.  **Hand-off**:
-    - Handler returns `202 Accepted` once the event is validated and pushed to the internal channel.
-    - `Stats Aggregator` increments atomic counters in a global `sync.Map` using `sync/atomic`.
+2.  **Durable Hand-off**:
+    - Handler returns `202 Accepted` once the event is pushed to **Redis Streams**.
+    - This ensures ingestion is decoupled from database availability.
 
-3.  **Persistence (Async)**:
-    - **Raw Events**: Workers collect events into batches. When `batchSize` or `flushInterval` is reached, data is written to PostgreSQL via `COPY` protocol.
-    - **Aggregated Stats**: A background ticker triggers a `flush`. Deltas are calculated via atomic `Swap` and committed to `campaign_stats` using batch UPSERT.
+3.  **Asynchronous Persistence & Aggregation**:
+    - **Worker Pool**: Consumers read batches from Redis Streams.
+    - **Atomic Persistence**: Events are flushed to PostgreSQL using a **CTE (Common Table Expression)**.
+    - **Exactly-Once Aggregation**: The CTE inserts events (`ON CONFLICT DO NOTHING`) and atomically updates `campaign_stats` only for the rows that were successfully inserted.
 
 ## Core Components
 
-- **Campaign Registry**: Local cache of active campaign IDs. Syncs with DB every minute. Prevents FK violations during bulk inserts.
-- **Worker Pool**: Fixed number of goroutines for event processing. Prevents goroutine explosion and provides natural backpressure.
-- **Retries**: Both processor and aggregator use exponential backoff for DB operations.
+- **Campaign Registry**: Local cache of active campaigns. Syncs with DB every minute. 
+- **Redis Streams**: Acting as a high-throughput, durable write-ahead log (WAL) for incoming events.
+- **Worker Pool**: Distributed consumers with unique Consumer IDs, enabling parallel processing without race conditions.
+- **SQL CTE Aggregator**: Replaces in-memory maps with database-level atomicity, ensuring 100% consistency between raw logs and aggregated stats.
 
 ## Shutdown Sequence (Zero Data Loss)
 
 Strict order of operations on `SIGTERM/SIGINT`:
-1.  **Stop Server**: Close HTTP listeners, stop accepting new requests.
-2.  **Cancel Context**: Stop background sync loops (Registry, Partition Manager).
-3.  **Close Channels**: Close event processor channel.
-4.  **Wait for Processor**: Block until all raw events are flushed to DB.
-5.  **Stop Aggregator**: Final blocking `flush()` for in-memory counters.
-6.  **Close Pool**: Close Postgres connection pool.
+1.  **Stop Server**: Stop accepting new HTTP requests.
+2.  **Close Processor**: Stop fetching from Redis.
+3.  **Drain Loop**: Final attempt to flush current in-flight batches to PostgreSQL.
+4.  **Wait for Workers**: Ensure all DB transactions are committed.
+5.  **Cleanup**: Close Redis and PostgreSQL connection pools.

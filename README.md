@@ -1,26 +1,32 @@
 # Ad Event Processor
 
-High-throughput Go backend for real-time ad event processing.
+High-performance Go backend for real-time, distributed ad event processing.
 
 ## Features
-- Worker-pool batching (`COPY` protocol).
-- Sequential graceful shutdown (no data loss).
-- Atomic in-memory aggregation.
-- Prometheus & Grafana integration.
+- **Durable Ingestion**: Redis Streams for high-throughput, loss-resistant event hand-off.
+- **Atomic Aggregation**: Database-level exactly-once aggregation via SQL CTEs.
+- **Intelligent Filtering**: Distributed IP rate limiting and deduplication middleware.
+- **Stateless Scaling**: Horizontal scalability with zero in-memory state in workers.
+- **Observability**: Built-in Prometheus metrics, Grafana dashboards, and pprof profiling.
 
 ## Docs
-- [**Architecture**](docs/architecture.md) - Internal logic & lifecycle.
-- [**Development**](docs/development.md) - Build & Test setup.
+- [**Architecture**](docs/architecture.md) - Internal logic & distributed lifecycle.
+- [**Development**](docs/development.md) - Setup, Testing & Tooling.
 
 ## Quick Start
 ```bash
-# Start infrastructure
+# Start infrastructure (Postgres + Redis)
 docker compose up -d
 
-# Run tests
+# Run the test suite
 make test
+
+# Start the server
+go run cmd/server/main.go
 ```
 
 ## Monitoring
-- Prometheus: `:9090`
-- Grafana: `:3000` (admin/admin)
+- Prometheus: `:9095` (customizable)
+- Grafana: `:3005` (admin/admin)
+- Health: `GET /health`
+- Metrics: `GET /metrics`

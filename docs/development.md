@@ -18,7 +18,7 @@ Tooling, testing, and maintenance workflow.
 | `make build` | Build production Docker image. |
 
 ## Local Infrastructure
-Spin up full stack:
+Spin up full stack (Postgres, Redis, Prometheus, Grafana):
 ```bash
 docker compose up -d
 ```
@@ -27,12 +27,12 @@ docker compose up -d
 
 ### Unit
 - `tests/unit/`
-- Isolated logic testing using Mocks.
+- Isolated logic testing. Uses **Testcontainers** for fast, ephemeral Redis/Postgres testing when needed.
 
 ### Integration
 - `tests/integration/`
-- Real PG interaction via **Testcontainers**.
-- Fresh Postgres instance for each test suite.
+- End-to-end flow validation using real containers.
+- Covers: Graceful Shutdown, Stream recovery, and SQL CTE aggregation accuracy.
 
 ## CI/CD
 GitHub Actions workflow:
@@ -41,5 +41,6 @@ GitHub Actions workflow:
 3. **Build**: Docker build validation.
 
 ## Metrics & UI
-- **Prometheus**: `http://localhost:9090`
-- **Grafana**: `http://localhost:3000` (admin/admin)
+- **Prometheus**: `http://localhost:9095`
+- **Grafana**: `http://localhost:3005` (admin/admin)
+- **pprof**: `http://localhost:8085/debug/pprof/` (if SERVER_PORT is 8085)
