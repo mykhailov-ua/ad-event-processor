@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unsafe"
 
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
@@ -39,7 +40,6 @@ type StreamConsumer struct {
 	wg           sync.WaitGroup
 	cancel       context.CancelFunc
 	drainOnce    sync.Once
-	recoverOnce  sync.Once
 }
 
 func NewStreamConsumer(
@@ -110,7 +110,7 @@ func (p *StreamConsumer) Start(ctx context.Context) {
 
 	for i := 0; i < p.maxWorkers; i++ {
 		p.wg.Add(1)
-		go p.worker(procCtx)
+		go p.worker(procCtx, i)
 	}
 
 	p.wg.Add(1)
@@ -127,8 +127,17 @@ func (p *StreamConsumer) Wait() {
 	p.wg.Wait()
 }
 
-func (p *StreamConsumer) worker(ctx context.Context) {
+// workerConsumerID returns a unique consumer name for the given worker index.
+// Each goroutine must have its own consumer identity to prevent PEL conflicts
+// when multiple goroutines call XReadGroup concurrently.
+func (p *StreamConsumer) workerConsumerID(workerIdx int) string {
+	return fmt.Sprintf("%s-w%d", p.consumerID, workerIdx)
+}
+
+func (p *StreamConsumer) worker(ctx context.Context, workerIdx int) {
 	defer p.wg.Done()
+
+	workerID := p.workerConsumerID(workerIdx)
 
 	err := p.rdb.XGroupCreateMkStream(ctx, p.streamName, p.groupName, "0").Err()
 	if err != nil && err.Error() != "BUSYGROUP Consumer Group name already exists" {
@@ -136,34 +145,47 @@ func (p *StreamConsumer) worker(ctx context.Context) {
 		return
 	}
 
-	p.recoverOnce.Do(func() {
-		initCtx, cancel := context.WithTimeout(context.Background(), p.writeTimeout*2)
-		defer cancel()
-		p.recoverPending(initCtx)
-	})
+	// Each worker recovers its own PEL. For fresh consumers this is a no-op.
+	// Orphaned messages from dead consumers are handled by the janitor via XAutoClaim.
+	initCtx, initCancel := context.WithTimeout(context.Background(), p.writeTimeout*2)
+	p.recoverPending(initCtx, workerID)
+	initCancel()
 
 	batch := make([]Event, 0, p.batchSize)
 	msgIDs := make([]string, 0, p.batchSize)
 	ticker := time.NewTicker(p.flushInt)
 	defer ticker.Stop()
 
+	// Backoff state for flush retries when DB is unavailable.
+	// Prevents a hot loop of 10 retries/sec per worker.
+	retryWait := 100 * time.Millisecond
+	const maxRetryWait = 5 * time.Second
+
 	for {
 		select {
 		case <-ctx.Done():
 			if len(batch) > 0 {
-				fCtx, cancel := context.WithTimeout(context.Background(), p.writeTimeout)
+				fCtx, fCancel := context.WithTimeout(context.Background(), p.writeTimeout)
 				if err := p.flushBatch(fCtx, batch, msgIDs); err != nil {
-					slog.Error("final worker flush failed", "error", err, "group", p.groupName)
+					slog.Error("final worker flush failed", "error", err, "group", p.groupName, "worker", workerID)
 				}
-				cancel()
+				fCancel()
 			}
-			p.drainOnce.Do(p.drainStream)
+			// Each worker recovers its own PEL independently.
+			// sync.Once.Do blocks all callers until the function completes,
+			// so by the time drainOnce runs, this worker's PEL is already clear.
+			recoverCtx, recoverCancel := context.WithTimeout(context.Background(), p.writeTimeout)
+			p.recoverPending(recoverCtx, workerID)
+			recoverCancel()
+			// One worker drains new unassigned messages from the stream.
+			p.drainOnce.Do(func() { p.drainNewMessages(workerID) })
 			return
 		case <-ticker.C:
 			if len(batch) > 0 {
 				if err := p.flushBatch(ctx, batch, msgIDs); err == nil {
 					batch = batch[:0]
 					msgIDs = msgIDs[:0]
+					retryWait = 100 * time.Millisecond
 				}
 			}
 		default:
@@ -173,15 +195,20 @@ func (p *StreamConsumer) worker(ctx context.Context) {
 					batch = batch[:0]
 					msgIDs = msgIDs[:0]
 					ticker.Reset(p.flushInt)
+					retryWait = 100 * time.Millisecond
 				} else {
-					time.Sleep(100 * time.Millisecond)
+					time.Sleep(retryWait)
+					retryWait *= 2
+					if retryWait > maxRetryWait {
+						retryWait = maxRetryWait
+					}
 				}
 				continue
 			}
 
 			streams, err := p.rdb.XReadGroup(ctx, &redis.XReadGroupArgs{
 				Group:    p.groupName,
-				Consumer: p.consumerID,
+				Consumer: workerID,
 				Streams:  []string{p.streamName, ">"},
 				Count:    readCount,
 				Block:    p.flushInt,
@@ -205,6 +232,7 @@ func (p *StreamConsumer) worker(ctx context.Context) {
 							batch = batch[:0]
 							msgIDs = msgIDs[:0]
 							ticker.Reset(p.flushInt)
+							retryWait = 100 * time.Millisecond
 						}
 					}
 				}
@@ -213,18 +241,19 @@ func (p *StreamConsumer) worker(ctx context.Context) {
 	}
 }
 
-func (p *StreamConsumer) drainStream() {
+// drainNewMessages reads and flushes only new unassigned messages (">") from
+// the stream. Per-worker PEL recovery is handled separately by each worker
+// before this function is called, so no pending messages are missed.
+func (p *StreamConsumer) drainNewMessages(workerID string) {
 	drainCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	slog.Info("starting drain", "group", p.groupName)
+	slog.Info("starting drain", "group", p.groupName, "worker", workerID)
 
 	for {
-		p.recoverPending(drainCtx)
-
 		streams, err := p.rdb.XReadGroup(drainCtx, &redis.XReadGroupArgs{
 			Group:    p.groupName,
-			Consumer: p.consumerID,
+			Consumer: workerID,
 			Streams:  []string{p.streamName, ">"},
 			Count:    int64(p.batchSize),
 			Block:    500 * time.Millisecond,
@@ -270,7 +299,10 @@ func (p *StreamConsumer) parseMessage(id string, values map[string]interface{}) 
 		evt.Type = v
 	}
 	if v, ok := values["payload"].(string); ok {
-		evt.Payload = []byte(v)
+		// Zero-copy string→[]byte. Safe: the source string from go-redis is
+		// a heap-allocated copy, and downstream consumers (pgx, clickhouse-go)
+		// only read the slice.
+		evt.Payload = unsafe.Slice(unsafe.StringData(v), len(v))
 	}
 	if v, ok := values["ip"].(string); ok {
 		evt.IP = v
@@ -279,10 +311,10 @@ func (p *StreamConsumer) parseMessage(id string, values map[string]interface{}) 
 		evt.UA = v
 	}
 
-	// Extract timestamp from Redis message ID (format: <ms>-<seq>)
-	parts := strings.Split(id, "-")
-	if len(parts) > 0 {
-		ms, err := strconv.ParseInt(parts[0], 10, 64)
+	// Extract timestamp from Redis message ID (format: <ms>-<seq>).
+	// strings.IndexByte avoids the []string allocation from strings.Split.
+	if idx := strings.IndexByte(id, '-'); idx > 0 {
+		ms, err := strconv.ParseInt(id[:idx], 10, 64)
 		if err == nil {
 			evt.CreatedAt = time.Unix(0, ms*int64(time.Millisecond))
 		}
@@ -317,7 +349,9 @@ func (p *StreamConsumer) flushBatch(ctx context.Context, batch []Event, msgIDs [
 	return nil
 }
 
-func (p *StreamConsumer) recoverPending(ctx context.Context) {
+// recoverPending re-processes messages stuck in the given consumer's PEL.
+// For fresh consumer names this is a no-op.
+func (p *StreamConsumer) recoverPending(ctx context.Context, consumerID string) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -325,7 +359,7 @@ func (p *StreamConsumer) recoverPending(ctx context.Context) {
 		default:
 			entries, err := p.rdb.XReadGroup(ctx, &redis.XReadGroupArgs{
 				Group:    p.groupName,
-				Consumer: p.consumerID,
+				Consumer: consumerID,
 				Streams:  []string{p.streamName, "0"},
 				Count:    int64(p.batchSize),
 			}).Result()
@@ -367,6 +401,10 @@ func (p *StreamConsumer) janitor(ctx context.Context) {
 	}
 }
 
+// claimStuckMessages uses XAutoClaim to reclaim messages from dead consumers.
+// Claimed messages are immediately processed and ACKed, so the consumer ID
+// used here (p.consumerID) is a transient PEL holder — the entry is removed
+// upon successful ACK.
 func (p *StreamConsumer) claimStuckMessages(ctx context.Context) {
 	startID := "0-0"
 	for {
