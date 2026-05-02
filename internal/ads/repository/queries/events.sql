@@ -8,9 +8,10 @@ SELECT * FROM campaigns WHERE id = $1 LIMIT 1;
 
 -- name: InsertEvent :exec
 -- Inserts a single event with ON CONFLICT for idempotency.
-INSERT INTO events (click_id, campaign_id, event_type, payload, ip_address, user_agent, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-ON CONFLICT (click_id, created_at) DO NOTHING;
+-- created_date is set explicitly for correct dedup within daily partitions.
+INSERT INTO events (click_id, campaign_id, event_type, payload, ip_address, user_agent, created_at, created_date)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+ON CONFLICT (click_id, created_date) DO NOTHING;
 
 -- name: UpdateCampaignStats :exec
 INSERT INTO campaign_stats (campaign_id, date, impressions_count, clicks_count, conversions_count)
@@ -44,8 +45,11 @@ ON CONFLICT (campaign_id, date) DO UPDATE SET
 -- name: InsertEventsBatch :exec
 -- Performs batch insert and atomically updates campaign stats.
 -- Exactly-once aggregation is guaranteed because only newly inserted rows are counted.
+-- Stats are attributed to the event's actual date (created_date), not CURRENT_DATE.
+-- Invalid campaign_ids are filtered out before the stats insert to prevent FK violations
+-- from rolling back the entire batch.
 WITH inserted AS (
-    INSERT INTO events (click_id, campaign_id, event_type, payload, ip_address, user_agent, created_at)
+    INSERT INTO events (click_id, campaign_id, event_type, payload, ip_address, user_agent, created_at, created_date)
     SELECT 
         unnest(@click_ids::text[]),
         unnest(@campaign_ids::uuid[]),
@@ -53,20 +57,23 @@ WITH inserted AS (
         unnest(@payloads::jsonb[]),
         unnest(@ip_addresses::text[]),
         unnest(@user_agents::text[]),
-        unnest(@created_at::timestamptz[])
-    ON CONFLICT (click_id, created_at) DO NOTHING
-    RETURNING campaign_id, event_type
+        unnest(@created_at::timestamptz[]),
+        unnest(@created_dates::date[])
+    ON CONFLICT (click_id, created_date) DO NOTHING
+    RETURNING campaign_id, event_type, created_date
 ),
 stats AS (
-    SELECT campaign_id,
-           COUNT(*) FILTER (WHERE event_type = 'impression') as imps,
-           COUNT(*) FILTER (WHERE event_type = 'click') as clicks,
-           COUNT(*) FILTER (WHERE event_type = 'conversion') as convs
-    FROM inserted
-    GROUP BY campaign_id
+    SELECT i.campaign_id,
+           i.created_date as event_date,
+           COUNT(*) FILTER (WHERE i.event_type = 'impression') as imps,
+           COUNT(*) FILTER (WHERE i.event_type = 'click') as clicks,
+           COUNT(*) FILTER (WHERE i.event_type = 'conversion') as convs
+    FROM inserted i
+    WHERE EXISTS (SELECT 1 FROM campaigns c WHERE c.id = i.campaign_id)
+    GROUP BY i.campaign_id, i.created_date
 )
 INSERT INTO campaign_stats (campaign_id, date, impressions_count, clicks_count, conversions_count)
-SELECT campaign_id, CURRENT_DATE, imps, clicks, convs
+SELECT campaign_id, event_date, imps, clicks, convs
 FROM stats
 ON CONFLICT (campaign_id, date) DO UPDATE SET
     impressions_count = campaign_stats.impressions_count + EXCLUDED.impressions_count,
