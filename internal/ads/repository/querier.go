@@ -15,9 +15,13 @@ type Querier interface {
 	GetCampaign(ctx context.Context, id pgtype.UUID) (Campaign, error)
 	GetCampaignStats(ctx context.Context, campaignID pgtype.UUID) ([]CampaignStat, error)
 	// Inserts a single event with ON CONFLICT for idempotency.
+	// created_date is set explicitly for correct dedup within daily partitions.
 	InsertEvent(ctx context.Context, arg InsertEventParams) error
 	// Performs batch insert and atomically updates campaign stats.
 	// Exactly-once aggregation is guaranteed because only newly inserted rows are counted.
+	// Stats are attributed to the event's actual date (created_date), not CURRENT_DATE.
+	// Invalid campaign_ids are filtered out before the stats insert to prevent FK violations
+	// from rolling back the entire batch.
 	InsertEventsBatch(ctx context.Context, arg InsertEventsBatchParams) error
 	ListCampaignIDs(ctx context.Context) ([]pgtype.UUID, error)
 	UpdateCampaignStats(ctx context.Context, arg UpdateCampaignStatsParams) error

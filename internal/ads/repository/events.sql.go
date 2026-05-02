@@ -94,22 +94,24 @@ func (q *Queries) GetCampaignStats(ctx context.Context, campaignID pgtype.UUID) 
 }
 
 const insertEvent = `-- name: InsertEvent :exec
-INSERT INTO events (click_id, campaign_id, event_type, payload, ip_address, user_agent, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-ON CONFLICT (click_id, created_at) DO NOTHING
+INSERT INTO events (click_id, campaign_id, event_type, payload, ip_address, user_agent, created_at, created_date)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+ON CONFLICT (click_id, created_date) DO NOTHING
 `
 
 type InsertEventParams struct {
-	ClickID    string             `json:"click_id"`
-	CampaignID pgtype.UUID        `json:"campaign_id"`
-	EventType  string             `json:"event_type"`
-	Payload    []byte             `json:"payload"`
-	IpAddress  pgtype.Text        `json:"ip_address"`
-	UserAgent  pgtype.Text        `json:"user_agent"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	ClickID     string             `json:"click_id"`
+	CampaignID  pgtype.UUID        `json:"campaign_id"`
+	EventType   string             `json:"event_type"`
+	Payload     []byte             `json:"payload"`
+	IpAddress   pgtype.Text        `json:"ip_address"`
+	UserAgent   pgtype.Text        `json:"user_agent"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	CreatedDate pgtype.Date        `json:"created_date"`
 }
 
 // Inserts a single event with ON CONFLICT for idempotency.
+// created_date is set explicitly for correct dedup within daily partitions.
 func (q *Queries) InsertEvent(ctx context.Context, arg InsertEventParams) error {
 	_, err := q.db.Exec(ctx, insertEvent,
 		arg.ClickID,
@@ -119,13 +121,14 @@ func (q *Queries) InsertEvent(ctx context.Context, arg InsertEventParams) error 
 		arg.IpAddress,
 		arg.UserAgent,
 		arg.CreatedAt,
+		arg.CreatedDate,
 	)
 	return err
 }
 
 const insertEventsBatch = `-- name: InsertEventsBatch :exec
 WITH inserted AS (
-    INSERT INTO events (click_id, campaign_id, event_type, payload, ip_address, user_agent, created_at)
+    INSERT INTO events (click_id, campaign_id, event_type, payload, ip_address, user_agent, created_at, created_date)
     SELECT 
         unnest($1::text[]),
         unnest($2::uuid[]),
@@ -133,20 +136,23 @@ WITH inserted AS (
         unnest($4::jsonb[]),
         unnest($5::text[]),
         unnest($6::text[]),
-        unnest($7::timestamptz[])
-    ON CONFLICT (click_id, created_at) DO NOTHING
-    RETURNING campaign_id, event_type
+        unnest($7::timestamptz[]),
+        unnest($8::date[])
+    ON CONFLICT (click_id, created_date) DO NOTHING
+    RETURNING campaign_id, event_type, created_date
 ),
 stats AS (
-    SELECT campaign_id,
-           COUNT(*) FILTER (WHERE event_type = 'impression') as imps,
-           COUNT(*) FILTER (WHERE event_type = 'click') as clicks,
-           COUNT(*) FILTER (WHERE event_type = 'conversion') as convs
-    FROM inserted
-    GROUP BY campaign_id
+    SELECT i.campaign_id,
+           i.created_date as event_date,
+           COUNT(*) FILTER (WHERE i.event_type = 'impression') as imps,
+           COUNT(*) FILTER (WHERE i.event_type = 'click') as clicks,
+           COUNT(*) FILTER (WHERE i.event_type = 'conversion') as convs
+    FROM inserted i
+    WHERE EXISTS (SELECT 1 FROM campaigns c WHERE c.id = i.campaign_id)
+    GROUP BY i.campaign_id, i.created_date
 )
 INSERT INTO campaign_stats (campaign_id, date, impressions_count, clicks_count, conversions_count)
-SELECT campaign_id, CURRENT_DATE, imps, clicks, convs
+SELECT campaign_id, event_date, imps, clicks, convs
 FROM stats
 ON CONFLICT (campaign_id, date) DO UPDATE SET
     impressions_count = campaign_stats.impressions_count + EXCLUDED.impressions_count,
@@ -155,17 +161,21 @@ ON CONFLICT (campaign_id, date) DO UPDATE SET
 `
 
 type InsertEventsBatchParams struct {
-	ClickIds    []string             `json:"click_ids"`
-	CampaignIds []pgtype.UUID        `json:"campaign_ids"`
-	EventTypes  []string             `json:"event_types"`
-	Payloads    [][]byte             `json:"payloads"`
-	IpAddresses []string             `json:"ip_addresses"`
-	UserAgents  []string             `json:"user_agents"`
-	CreatedAt   []pgtype.Timestamptz `json:"created_at"`
+	ClickIds     []string             `json:"click_ids"`
+	CampaignIds  []pgtype.UUID        `json:"campaign_ids"`
+	EventTypes   []string             `json:"event_types"`
+	Payloads     [][]byte             `json:"payloads"`
+	IpAddresses  []string             `json:"ip_addresses"`
+	UserAgents   []string             `json:"user_agents"`
+	CreatedAt    []pgtype.Timestamptz `json:"created_at"`
+	CreatedDates []pgtype.Date        `json:"created_dates"`
 }
 
 // Performs batch insert and atomically updates campaign stats.
 // Exactly-once aggregation is guaranteed because only newly inserted rows are counted.
+// Stats are attributed to the event's actual date (created_date), not CURRENT_DATE.
+// Invalid campaign_ids are filtered out before the stats insert to prevent FK violations
+// from rolling back the entire batch.
 func (q *Queries) InsertEventsBatch(ctx context.Context, arg InsertEventsBatchParams) error {
 	_, err := q.db.Exec(ctx, insertEventsBatch,
 		arg.ClickIds,
@@ -175,6 +185,7 @@ func (q *Queries) InsertEventsBatch(ctx context.Context, arg InsertEventsBatchPa
 		arg.IpAddresses,
 		arg.UserAgents,
 		arg.CreatedAt,
+		arg.CreatedDates,
 	)
 	return err
 }
