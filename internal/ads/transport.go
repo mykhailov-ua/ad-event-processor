@@ -16,11 +16,12 @@ import (
 	"github.com/mykhailov-ua/ad-event-processor/internal/ads/pb"
 	"github.com/mykhailov-ua/ad-event-processor/internal/config"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/mykhailov-ua/ad-event-processor/internal/domain"
 	"google.golang.org/protobuf/proto"
 )
 
 // NewRouter initializes the HTTP router with metrics, health checks, and tracking endpoints.
-func NewRouter(cfg *config.Config, registry *Registry, proc *StreamConsumer, filterEngine *FilterEngine) http.Handler {
+func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, proc *StreamConsumer, filterEngine *FilterEngine) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.Handle("GET /metrics", promhttp.Handler())
@@ -121,42 +122,38 @@ func NewRouter(cfg *config.Config, registry *Registry, proc *StreamConsumer, fil
 			return
 		}
 
-		evt := Event{
-			ClickID:    clickID,
-			CampaignID: campaignID,
-			Type:       eventType,
-			Payload:    payload,
-			IP:         ip,
-			UA:         r.UserAgent(),
-		}
+		evt := domain.EventPool.Get().(*domain.Event)
+		evt.Reset()
+		evt.ClickID = clickID
+		evt.CampaignID = campaignID
+		evt.Type = eventType
+		evt.Payload = append(evt.Payload[:0], payload...)
+		evt.IP = ip
+		evt.UA = r.UserAgent()
 
 		if filterEngine != nil {
 			if err := filterEngine.Check(r.Context(), evt); err != nil {
-				l.Warn("event rejected by filter", "error", err)
-				reason := "unknown"
 				if errors.Is(err, ErrRateLimitExceeded) {
-					reason = "rate_limit"
+					l.Warn("event rejected: rate limit", "error", err)
+					http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
+					return
 				} else if errors.Is(err, ErrDuplicateEvent) {
-					reason = "duplicate"
+					l.Warn("event rejected: duplicate", "error", err)
+					http.Error(w, "duplicate event", http.StatusConflict)
+					return
+				} else if errors.Is(err, ErrBudgetExhausted) {
+					l.Warn("event rejected: budget exhausted", "error", err)
+					http.Error(w, "budget exhausted", http.StatusPaymentRequired)
+					return
 				}
-				FilterBlockedTotal.WithLabelValues(reason).Inc()
-
-				status = http.StatusTooManyRequests
-				if r.Header.Get("Accept") == "application/x-protobuf" {
-					http.Error(w, err.Error(), status)
-				} else {
-					w.Header().Set("Content-Type", "application/json")
-					w.WriteHeader(status)
-					_ = json.NewEncoder(w).Encode(map[string]string{
-						"request_id": requestID,
-						"error":      err.Error(),
-					})
-				}
-				return
+				
+				// Fail-open for infrastructure errors (e.g., Redis down)
+				l.Error("filter engine degraded (fail-open)", "error", err)
 			}
 		}
 
 		err := proc.Process(evt)
+		domain.EventPool.Put(evt)
 
 		if err != nil {
 			l.Error("failed to process event", "error", err)
@@ -192,20 +189,34 @@ func NewRouter(cfg *config.Config, registry *Registry, proc *StreamConsumer, fil
 // X-Forwarded-For or X-Real-IP headers. Without these headers, falls
 // back to the TCP connection's RemoteAddr.
 func extractClientIP(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		// X-Forwarded-For: client, proxy1, proxy2
-		// Leftmost entry is the original client IP.
-		if idx := strings.IndexByte(xff, ','); idx != -1 {
-			return strings.TrimSpace(xff[:idx])
-		}
-		return strings.TrimSpace(xff)
-	}
-	if xri := r.Header.Get("X-Real-IP"); xri != "" {
-		return strings.TrimSpace(xri)
-	}
-	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	remoteIP, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
-		return r.RemoteAddr
+		remoteIP = r.RemoteAddr
 	}
-	return ip
+
+	clientIP := remoteIP
+
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		ips := strings.Split(xff, ",")
+		for i := len(ips) - 1; i >= 0; i-- {
+			ipStr := strings.TrimSpace(ips[i])
+			parsedIP := net.ParseIP(ipStr)
+			if parsedIP == nil {
+				continue
+			}
+			if parsedIP.IsPrivate() || parsedIP.IsLoopback() || parsedIP.IsLinkLocalUnicast() {
+				continue
+			}
+			clientIP = ipStr
+			break
+		}
+	} else if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		ipStr := strings.TrimSpace(xri)
+		parsedIP := net.ParseIP(ipStr)
+		if parsedIP != nil && !parsedIP.IsPrivate() && !parsedIP.IsLoopback() && !parsedIP.IsLinkLocalUnicast() {
+			clientIP = ipStr
+		}
+	}
+
+	return clientIP
 }

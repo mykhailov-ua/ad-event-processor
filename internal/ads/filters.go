@@ -8,6 +8,7 @@ import (
 	"time"
 
 	redis "github.com/redis/go-redis/v9"
+	"github.com/mykhailov-ua/ad-event-processor/internal/domain"
 )
 
 var builderPool = sync.Pool{
@@ -19,12 +20,46 @@ var builderPool = sync.Pool{
 var (
 	ErrRateLimitExceeded = errors.New("rate limit exceeded")
 	ErrDuplicateEvent    = errors.New("duplicate event detected")
+	ErrBudgetExhausted   = errors.New("budget exhausted")
 )
+
+type BudgetFilter struct {
+	manager  domain.BudgetManager
+	registry domain.CampaignRegistry
+}
+
+func NewBudgetFilter(manager domain.BudgetManager, registry domain.CampaignRegistry) *BudgetFilter {
+	return &BudgetFilter{
+		manager:  manager,
+		registry: registry,
+	}
+}
+
+func (f *BudgetFilter) Check(ctx context.Context, evt *domain.Event) error {
+	customerID, ok := f.registry.GetCustomerID(evt.CampaignID)
+	if !ok {
+		return errors.New("campaign not found in registry")
+	}
+
+	amount := 0.10
+	if evt.Type == "impression" {
+		amount = 0.01
+	}
+
+	allowed, err := f.manager.CheckAndSpend(ctx, customerID, evt.CampaignID, evt.ClickID, amount)
+	if err != nil {
+		return err
+	}
+	if !allowed {
+		return ErrBudgetExhausted
+	}
+	return nil
+}
 
 // EventFilter defines an interface for filtering incoming events.
 // If Check returns an error, the event should be rejected.
 type EventFilter interface {
-	Check(ctx context.Context, evt Event) error
+	Check(ctx context.Context, evt *domain.Event) error
 }
 
 // FilterEngine executes a chain of EventFilters.
@@ -36,7 +71,7 @@ func NewFilterEngine(filters ...EventFilter) *FilterEngine {
 	return &FilterEngine{filters: filters}
 }
 
-func (e *FilterEngine) Check(ctx context.Context, evt Event) error {
+func (e *FilterEngine) Check(ctx context.Context, evt *domain.Event) error {
 	for _, f := range e.filters {
 		if err := f.Check(ctx, evt); err != nil {
 			return err
@@ -73,7 +108,7 @@ end
 return 0 -- allowed
 `
 
-func (l *IPRateLimiter) Check(ctx context.Context, evt Event) error {
+func (l *IPRateLimiter) Check(ctx context.Context, evt *domain.Event) error {
 	if evt.IP == "" {
 		return nil // skip if no IP
 	}
@@ -116,7 +151,7 @@ func NewDuplicateEventFilter(rdb redis.Cmdable, ttl time.Duration) *DuplicateEve
 	}
 }
 
-func (f *DuplicateEventFilter) Check(ctx context.Context, evt Event) error {
+func (f *DuplicateEventFilter) Check(ctx context.Context, evt *domain.Event) error {
 	if evt.ClickID == "" {
 		return nil
 	}
