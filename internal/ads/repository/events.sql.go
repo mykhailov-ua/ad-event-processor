@@ -12,39 +12,43 @@ import (
 )
 
 const createCampaign = `-- name: CreateCampaign :one
-INSERT INTO campaigns (id, name, budget, status)
-VALUES ($1, $2, $3, $4)
-RETURNING id, name, status, budget, created_at, updated_at
+INSERT INTO campaigns (id, name, budget_limit, status, customer_id)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, name, status, budget_limit, created_at, updated_at, customer_id, current_spend
 `
 
 type CreateCampaignParams struct {
-	ID     pgtype.UUID    `json:"id"`
-	Name   string         `json:"name"`
-	Budget pgtype.Numeric `json:"budget"`
-	Status string         `json:"status"`
+	ID          pgtype.UUID        `json:"id"`
+	Name        string             `json:"name"`
+	BudgetLimit pgtype.Numeric     `json:"budget_limit"`
+	Status      CampaignStatusType `json:"status"`
+	CustomerID  pgtype.UUID        `json:"customer_id"`
 }
 
 func (q *Queries) CreateCampaign(ctx context.Context, arg CreateCampaignParams) (Campaign, error) {
 	row := q.db.QueryRow(ctx, createCampaign,
 		arg.ID,
 		arg.Name,
-		arg.Budget,
+		arg.BudgetLimit,
 		arg.Status,
+		arg.CustomerID,
 	)
 	var i Campaign
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Status,
-		&i.Budget,
+		&i.BudgetLimit,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CustomerID,
+		&i.CurrentSpend,
 	)
 	return i, err
 }
 
 const getCampaign = `-- name: GetCampaign :one
-SELECT id, name, status, budget, created_at, updated_at FROM campaigns WHERE id = $1 LIMIT 1
+SELECT id, name, status, budget_limit, created_at, updated_at, customer_id, current_spend FROM campaigns WHERE id = $1 LIMIT 1
 `
 
 func (q *Queries) GetCampaign(ctx context.Context, id pgtype.UUID) (Campaign, error) {
@@ -54,9 +58,11 @@ func (q *Queries) GetCampaign(ctx context.Context, id pgtype.UUID) (Campaign, er
 		&i.ID,
 		&i.Name,
 		&i.Status,
-		&i.Budget,
+		&i.BudgetLimit,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CustomerID,
+		&i.CurrentSpend,
 	)
 	return i, err
 }
@@ -150,6 +156,7 @@ stats AS (
     FROM inserted i
     WHERE EXISTS (SELECT 1 FROM campaigns c WHERE c.id = i.campaign_id)
     GROUP BY i.campaign_id, i.created_date
+    ORDER BY i.campaign_id, i.created_date
 )
 INSERT INTO campaign_stats (campaign_id, date, impressions_count, clicks_count, conversions_count)
 SELECT campaign_id, event_date, imps, clicks, convs
@@ -191,7 +198,7 @@ func (q *Queries) InsertEventsBatch(ctx context.Context, arg InsertEventsBatchPa
 }
 
 const listCampaignIDs = `-- name: ListCampaignIDs :many
-SELECT id FROM campaigns WHERE status = 'active'
+SELECT id FROM campaigns WHERE status = 'ACTIVE'
 `
 
 func (q *Queries) ListCampaignIDs(ctx context.Context) ([]pgtype.UUID, error) {

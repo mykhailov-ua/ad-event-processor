@@ -1,6 +1,6 @@
 -- name: CreateCampaign :one
-INSERT INTO campaigns (id, name, budget, status)
-VALUES ($1, $2, $3, $4)
+INSERT INTO campaigns (id, name, budget_limit, status, customer_id)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
 -- name: GetCampaign :one
@@ -27,7 +27,7 @@ WHERE campaign_id = $1
 ORDER BY date DESC;
 
 -- name: ListCampaignIDs :many
-SELECT id FROM campaigns WHERE status = 'active';
+SELECT id FROM campaigns WHERE status = 'ACTIVE';
 
 -- name: UpdateCampaignStatsBatch :exec
 INSERT INTO campaign_stats (campaign_id, date, impressions_count, clicks_count, conversions_count)
@@ -71,6 +71,7 @@ stats AS (
     FROM inserted i
     WHERE EXISTS (SELECT 1 FROM campaigns c WHERE c.id = i.campaign_id)
     GROUP BY i.campaign_id, i.created_date
+    ORDER BY i.campaign_id, i.created_date
 )
 INSERT INTO campaign_stats (campaign_id, date, impressions_count, clicks_count, conversions_count)
 SELECT campaign_id, event_date, imps, clicks, convs
