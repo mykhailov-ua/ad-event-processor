@@ -49,7 +49,7 @@ func TestE2EFlow(t *testing.T) {
 	require.NoError(t, err)
 
 	campaignID := uuid.New()
-	_, err = pool.Exec(ctx, "INSERT INTO campaigns (id, name, status) VALUES ($1, $2, $3)", campaignID, "E2E Campaign", "active")
+	_, err = pool.Exec(ctx, "INSERT INTO campaigns (id, name, status) VALUES ($1, $2, $3)", campaignID, "E2E Campaign", "ACTIVE")
 	require.NoError(t, err)
 
 	registry := ads.NewRegistry(queries)
@@ -113,7 +113,7 @@ func TestE2EFlow_Protobuf(t *testing.T) {
 	}
 
 	campaignID := uuid.New()
-	_, _ = pool.Exec(ctx, "INSERT INTO campaigns (id, name, status) VALUES ($1, $2, $3)", campaignID, "Proto Campaign", "active")
+	_, _ = pool.Exec(ctx, "INSERT INTO campaigns (id, name, status) VALUES ($1, $2, $3)", campaignID, "Proto Campaign", "ACTIVE")
 
 	registry := ads.NewRegistry(queries)
 	_, _ = registry.Sync(ctx)

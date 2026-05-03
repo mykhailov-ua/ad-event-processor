@@ -25,7 +25,7 @@ func TestCampaignQueries(t *testing.T) {
 	campaignID := uuid.New()
 	_, err := pool.Exec(ctx,
 		"INSERT INTO campaigns (id, name, status) VALUES ($1, $2, $3)",
-		campaignID, "Test Campaign", "active")
+		campaignID, "Test Campaign", "ACTIVE")
 	require.NoError(t, err)
 
 	ids, err := queries.ListCampaignIDs(ctx)
@@ -65,7 +65,7 @@ func TestStatsBatching(t *testing.T) {
 	queries := repository.New(pool)
 
 	campaignID := uuid.New()
-	_, err := pool.Exec(ctx, "INSERT INTO campaigns (id, name, status) VALUES ($1, $2, $3)", campaignID, "Stats Test", "active")
+	_, err := pool.Exec(ctx, "INSERT INTO campaigns (id, name, status) VALUES ($1, $2, $3)", campaignID, "Stats Test", "ACTIVE")
 	require.NoError(t, err)
 
 	err = queries.UpdateCampaignStatsBatch(ctx, repository.UpdateCampaignStatsBatchParams{
@@ -106,7 +106,7 @@ func TestInvalidEventType(t *testing.T) {
 	ctx := context.Background()
 
 	campaignID := uuid.New()
-	_, err := pool.Exec(ctx, "INSERT INTO campaigns (id, name, status) VALUES ($1, $2, $3)", campaignID, "Constraint Test", "active")
+	_, err := pool.Exec(ctx, "INSERT INTO campaigns (id, name, status) VALUES ($1, $2, $3)", campaignID, "Constraint Test", "ACTIVE")
 	require.NoError(t, err)
 
 	_, err = pool.Exec(ctx,

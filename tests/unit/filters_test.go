@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/mykhailov-ua/ad-event-processor/internal/ads"
+	"github.com/mykhailov-ua/ad-event-processor/internal/domain"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,8 +17,8 @@ func TestIPRateLimiter(t *testing.T) {
 	ctx := context.Background()
 	limiter := ads.NewIPRateLimiter(rdb, 3, 2*time.Second)
 
-	evt1 := ads.Event{IP: "192.168.1.1"}
-	evt2 := ads.Event{IP: "192.168.1.2"}
+	evt1 := &domain.Event{IP: "192.168.1.1"}
+	evt2 := &domain.Event{IP: "192.168.1.2"}
 
 	// IP 1: Allow up to 3
 	assert.NoError(t, limiter.Check(ctx, evt1))
@@ -44,8 +45,8 @@ func TestDuplicateEventFilter(t *testing.T) {
 	ctx := context.Background()
 	filter := ads.NewDuplicateEventFilter(rdb, 1*time.Second)
 
-	evt := ads.Event{ClickID: "click_abc_123"}
-	evtOther := ads.Event{ClickID: "click_xyz_987"}
+	evt := &domain.Event{ClickID: "click_abc_123"}
+	evtOther := &domain.Event{ClickID: "click_xyz_987"}
 
 	// First time allowed
 	assert.NoError(t, filter.Check(ctx, evt))
@@ -55,7 +56,7 @@ func TestDuplicateEventFilter(t *testing.T) {
 	assert.ErrorIs(t, filter.Check(ctx, evt), ads.ErrDuplicateEvent)
 
 	// Events without ClickID should always pass
-	evtEmpty := ads.Event{ClickID: ""}
+	evtEmpty := &domain.Event{ClickID: ""}
 	assert.NoError(t, filter.Check(ctx, evtEmpty))
 	assert.NoError(t, filter.Check(ctx, evtEmpty))
 
@@ -76,9 +77,9 @@ func TestFilterEngine(t *testing.T) {
 
 	engine := ads.NewFilterEngine(limiter, dupFilter)
 
-	evt1 := ads.Event{IP: "10.0.0.1", ClickID: "c_1"}
-	evt2 := ads.Event{IP: "10.0.0.1", ClickID: "c_2"}
-	evt3 := ads.Event{IP: "10.0.0.1", ClickID: "c_3"}
+	evt1 := &domain.Event{IP: "10.0.0.1", ClickID: "c_1"}
+	evt2 := &domain.Event{IP: "10.0.0.1", ClickID: "c_2"}
+	evt3 := &domain.Event{IP: "10.0.0.1", ClickID: "c_3"}
 
 	// Allowed
 	assert.NoError(t, engine.Check(ctx, evt1))

@@ -19,8 +19,15 @@ type MockRepo struct {
 	err error
 }
 
-func (m *MockRepo) ListCampaignIDs(ctx context.Context) ([]pgtype.UUID, error) {
-	return m.ids, m.err
+func (m *MockRepo) ListActiveCampaigns(ctx context.Context) ([]repository.Campaign, error) {
+	var res []repository.Campaign
+	for _, id := range m.ids {
+		res = append(res, repository.Campaign{
+			ID:         id,
+			CustomerID: id, // Mock customer ID
+		})
+	}
+	return res, m.err
 }
 
 func TestRegistry_Sync(t *testing.T) {

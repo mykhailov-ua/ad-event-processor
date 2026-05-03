@@ -48,7 +48,7 @@ func TestGracefulShutdown_NoDataLoss(t *testing.T) {
 	require.NoError(t, pm.Run(ctx))
 
 	campaignID := uuid.New()
-	_, err := pool.Exec(ctx, "INSERT INTO campaigns (id, name, status) VALUES ($1, $2, $3)", campaignID, "Shutdown Test", "active")
+	_, err := pool.Exec(ctx, "INSERT INTO campaigns (id, name, status) VALUES ($1, $2, $3)", campaignID, "Shutdown Test", "ACTIVE")
 	require.NoError(t, err)
 
 	registry := ads.NewRegistry(queries)

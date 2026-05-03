@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mykhailov-ua/ad-event-processor/internal/domain"
 	"github.com/google/uuid"
 	"github.com/mykhailov-ua/ad-event-processor/internal/ads"
 	"github.com/redis/go-redis/v9"
@@ -34,17 +35,17 @@ func setupTestRedis(t *testing.T) (redis.UniversalClient, func()) {
 
 type MockEventStore struct {
 	mu      sync.Mutex
-	flushes [][]ads.Event
+	flushes [][]*domain.Event
 	Err     error
 }
 
-func (m *MockEventStore) StoreBatch(ctx context.Context, events []ads.Event) error {
+func (m *MockEventStore) StoreBatch(ctx context.Context, events []*domain.Event) error {
 	if m.Err != nil {
 		return m.Err
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	batchCopy := make([]ads.Event, len(events))
+	batchCopy := make([]*domain.Event, len(events))
 	copy(batchCopy, events)
 	m.flushes = append(m.flushes, batchCopy)
 	return nil
@@ -64,7 +65,7 @@ func TestStreamConsumer_Ingestion(t *testing.T) {
 	mockStore := &MockEventStore{}
 	proc := ads.NewStreamConsumer(mockStore, rdb, "s1", "g1", "c1", 5, 1, 100*time.Millisecond, 1*time.Second)
 
-	err := proc.Process(ads.Event{CampaignID: uuid.New(), Type: "click"})
+	err := proc.Process(&domain.Event{CampaignID: uuid.New(), Type: "click"})
 	assert.NoError(t, err)
 }
 
@@ -81,7 +82,7 @@ func TestStreamConsumer_BatchFlushing(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	for i := 0; i < 3; i++ {
-		_ = proc.Process(ads.Event{CampaignID: uuid.New(), Type: "click"})
+		_ = proc.Process(&domain.Event{CampaignID: uuid.New(), Type: "click"})
 	}
 
 	time.Sleep(200 * time.Millisecond)
