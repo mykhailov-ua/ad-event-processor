@@ -35,13 +35,14 @@ func TestGracefulShutdown_NoDataLoss(t *testing.T) {
 	defer cancel()
 
 	queries := repository.New(pool)
-
 	cfg := &config.Config{
-		EventBatchSize: 10,
-		EventFlushMs:   100,
-		StatsFlushMs:   100,
-		MaxWorkers:     2,
-		WriteTimeoutMs: 5000,
+		EventBatchSize:     10,
+		EventFlushMs:       100,
+		StatsFlushMs:       100,
+		MaxWorkers:         2,
+		WriteTimeoutMs:     5000,
+		MaxRequestBodySize: 1024 * 1024,
+		StreamMaxLen:       100000,
 	}
 
 	pm := database.NewPartitionManager(pool, 7, 1)
@@ -58,7 +59,7 @@ func TestGracefulShutdown_NoDataLoss(t *testing.T) {
 	_, _ = registry.Sync(ctx)
 
 	store := ads.NewPostgresStore(queries, 5*time.Second)
-	eventProc := ads.NewStreamConsumer(store, rdb, "shutdown-stream", "shutdown-group", "shutdown-c1", cfg.EventBatchSize, cfg.MaxWorkers, 100*time.Millisecond, 5*time.Second)
+	eventProc := ads.NewStreamConsumer(store, rdb, "shutdown-stream", "shutdown-group", "shutdown-c1", cfg.EventBatchSize, cfg.MaxWorkers, 100*time.Millisecond, 5*time.Second, 100000, 100*time.Millisecond, 5*time.Second, 5, 5*time.Minute)
 	eventProc.Start(ctx)
 
 	router := ads.NewRouter(cfg, registry, eventProc, nil)

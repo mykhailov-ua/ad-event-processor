@@ -37,11 +37,13 @@ func TestE2EFlow(t *testing.T) {
 
 	queries := repository.New(pool)
 	cfg := &config.Config{
-		EventBatchSize: 10,
-		EventFlushMs:   100,
-		StatsFlushMs:   100,
-		MaxWorkers:     2,
-		WriteTimeoutMs: 1000,
+		EventBatchSize:     10,
+		EventFlushMs:       100,
+		StatsFlushMs:       100,
+		MaxWorkers:         2,
+		WriteTimeoutMs:     1000,
+		MaxRequestBodySize: 1024 * 1024,
+		StreamMaxLen:       100000,
 	}
 
 	partManager := database.NewPartitionManager(pool, 7, 2)
@@ -60,7 +62,7 @@ func TestE2EFlow(t *testing.T) {
 	_, _ = registry.Sync(ctx)
 
 	store := ads.NewPostgresStore(queries, 1*time.Second)
-	eventProc := ads.NewStreamConsumer(store, rdb, "test-stream", "test-group", "test-c1", cfg.EventBatchSize, cfg.MaxWorkers, 100*time.Millisecond, 1*time.Second)
+	eventProc := ads.NewStreamConsumer(store, rdb, "test-stream", "test-group", "test-c1", cfg.EventBatchSize, cfg.MaxWorkers, 100*time.Millisecond, 1*time.Second, 100000, 100*time.Millisecond, 5*time.Second, 5, 5*time.Minute)
 	eventProc.Start(ctx)
 	defer eventProc.Close()
 
@@ -110,10 +112,12 @@ func TestE2EFlow_Protobuf(t *testing.T) {
 
 	queries := repository.New(pool)
 	cfg := &config.Config{
-		EventBatchSize: 10,
-		EventFlushMs:   100,
-		StatsFlushMs:   100,
-		MaxWorkers:     2,
+		EventBatchSize:     10,
+		EventFlushMs:       100,
+		StatsFlushMs:       100,
+		MaxWorkers:         2,
+		MaxRequestBodySize: 1024 * 1024,
+		StreamMaxLen:       100000,
 	}
 
 	customerID := uuid.New()
@@ -126,7 +130,7 @@ func TestE2EFlow_Protobuf(t *testing.T) {
 	_, _ = registry.Sync(ctx)
 
 	store := ads.NewPostgresStore(queries, 1*time.Second)
-	eventProc := ads.NewStreamConsumer(store, rdb, "test-proto-stream", "test-proto-group", "test-c2", cfg.EventBatchSize, cfg.MaxWorkers, 100*time.Millisecond, 1*time.Second)
+	eventProc := ads.NewStreamConsumer(store, rdb, "test-proto-stream", "test-proto-group", "test-c2", cfg.EventBatchSize, cfg.MaxWorkers, 100*time.Millisecond, 1*time.Second, 100000, 100*time.Millisecond, 5*time.Second, 5, 5*time.Minute)
 	eventProc.Start(ctx)
 	defer eventProc.Close()
 

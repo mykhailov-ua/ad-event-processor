@@ -56,6 +56,9 @@ func TestServiceMetrics(t *testing.T) {
 	
 	repo.user.PasswordHash = "invalid-hash-format" 
 	_, err = service.Login(context.Background(), "test@example.com", "password", time.Hour)
+	if err == nil {
+		t.Fatal("expected error for invalid hash format, got nil")
+	}
 	metrics = service.GetMetrics()
 	if metrics.FailedLoginsTotal != 2 {
 		t.Errorf("expected FailedLoginsTotal 2, got %d", metrics.FailedLoginsTotal)

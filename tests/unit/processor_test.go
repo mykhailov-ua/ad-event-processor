@@ -63,7 +63,7 @@ func TestStreamConsumer_Ingestion(t *testing.T) {
 	defer cleanup()
 
 	mockStore := &MockEventStore{}
-	proc := ads.NewStreamConsumer(mockStore, rdb, "s1", "g1", "c1", 5, 1, 100*time.Millisecond, 1*time.Second)
+	proc := ads.NewStreamConsumer(mockStore, rdb, "s1", "g1", "c1", 5, 1, 100*time.Millisecond, 1*time.Second, 1000, 10*time.Millisecond, 100*time.Millisecond, 3, 1*time.Minute)
 
 	err := proc.Process(&domain.Event{CampaignID: uuid.New(), Type: "click"})
 	assert.NoError(t, err)
@@ -77,7 +77,7 @@ func TestStreamConsumer_BatchFlushing(t *testing.T) {
 	defer cleanup()
 
 	mockStore := &MockEventStore{}
-	proc := ads.NewStreamConsumer(mockStore, rdb, "s2", "g2", "c2", 2, 1, 10*time.Second, 1*time.Second)
+	proc := ads.NewStreamConsumer(mockStore, rdb, "s2", "g2", "c2", 2, 1, 10*time.Second, 1*time.Second, 1000, 10*time.Millisecond, 100*time.Millisecond, 3, 1*time.Minute)
 	proc.Start(context.Background())
 	time.Sleep(100 * time.Millisecond)
 

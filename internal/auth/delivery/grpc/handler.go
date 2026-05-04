@@ -25,7 +25,7 @@ func NewHandler(service *auth.Service, cfg *config.Config) *Handler {
 }
 
 func (h *Handler) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
-	customerID, _ := uuid.Parse(req.Customer_Id)
+	customerID, _ := uuid.Parse(req.CustomerId)
 	id, err := h.service.Register(ctx, auth.RegisterRequest{
 		Email:      req.Email,
 		Password:   req.Password,
@@ -42,7 +42,7 @@ func (h *Handler) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.Re
 }
 
 func (h *Handler) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginResponse, error) {
-	duration := time.Duration(req.Duration_Hours) * time.Hour
+	duration := time.Duration(req.DurationHours) * time.Hour
 	if duration == 0 {
 		duration = time.Duration(h.cfg.DefaultTokenDurationHrs) * time.Hour
 	}

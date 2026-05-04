@@ -60,7 +60,7 @@ func TestBudgetFlow_Integration(t *testing.T) {
 	err = rdb.Set(ctx, "budget:campaign:"+campaignID.String(), 50.0, 0).Err()
 	require.NoError(t, err)
 
-	filter := ads.NewBudgetFilter(budgetManager, registry)
+	filter := ads.NewBudgetFilter(budgetManager, registry, 0.10, 0.01)
 	evt := &domain.Event{
 		ClickID:    uuid.NewString(),
 		CampaignID: campaignID,

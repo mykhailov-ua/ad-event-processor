@@ -4,3 +4,7 @@ plugins:
     out: .
     opt:
       - module=github.com/mykhailov-ua/ad-event-processor
+  - plugin: buf.build/grpc/go
+    out: .
+    opt:
+      - module=github.com/mykhailov-ua/ad-event-processor

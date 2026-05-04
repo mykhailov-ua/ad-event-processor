@@ -38,7 +38,7 @@ func main() {
 	defer pool.Close()
 
 	queries := repository.New(pool)
-	partManager := database.NewPartitionManager(pool, cfg.LogRetentionDays, 2)
+	partManager := database.NewPartitionManager(pool, cfg.LogRetentionDays, cfg.PartitionPreCreateDays)
 	partManager.StartBackground(ctx)
 
 	chConn, err := database.ConnectClickHouse(ctx, cfg.CHDSN)
@@ -55,7 +55,7 @@ func main() {
 	} else {
 		slog.Info("campaign registry loaded", "campaigns", count)
 	}
-	registry.StartSync(ctx, 1*time.Minute)
+	registry.StartSync(ctx, time.Duration(cfg.RegistrySyncIntervalMs)*time.Millisecond)
 
 	rdb, err := database.ConnectRedis(ctx, cfg.RedisAddr, cfg.RedisPassword)
 	if err != nil {
@@ -70,11 +70,10 @@ func main() {
 	campaignRepo := infra_repo.NewCampaignRepo(queries)
 	customerRepo := infra_repo.NewCustomerRepo(queries)
 
-	budgetManager := budget.NewRedisBudgetManager(rdb, campaignRepo, 24*time.Hour)
-	syncWorker := budget.NewSyncWorker(rdb, campaignRepo, customerRepo, 5*time.Second)
+	budgetManager := budget.NewRedisBudgetManager(rdb, campaignRepo, time.Duration(cfg.IdempotencyTTLHrs)*time.Hour)
+	syncWorker := budget.NewSyncWorker(rdb, campaignRepo, customerRepo, time.Duration(cfg.BudgetSyncIntervalMs)*time.Millisecond)
 	go syncWorker.Start(ctx)
 
-	// StreamConsumer for PostgreSQL (group: ..._pg)
 	pgConsumer := ads.NewStreamConsumer(
 		pgStore,
 		rdb,
@@ -85,10 +84,14 @@ func main() {
 		cfg.MaxWorkers,
 		time.Duration(cfg.EventFlushMs)*time.Millisecond,
 		time.Duration(cfg.WriteTimeoutMs)*time.Millisecond,
+		cfg.StreamMaxLen,
+		time.Duration(cfg.RetryInitialWaitMs)*time.Millisecond,
+		time.Duration(cfg.RetryMaxWaitMs)*time.Millisecond,
+		cfg.MaxRetries,
+		time.Duration(cfg.StreamMinIdleMs)*time.Millisecond,
 	)
 	pgConsumer.Start(ctx)
 
-	// StreamConsumer for ClickHouse (group: ..._ch)
 	chConsumer := ads.NewStreamConsumer(
 		chStore,
 		rdb,
@@ -96,16 +99,21 @@ func main() {
 		cfg.RedisGroupName+"_ch",
 		cfg.RedisConsumerID,
 		cfg.CHBatchSize,
-		1,
+		cfg.CHMaxWorkers,
 		time.Duration(cfg.CHFlushIntervalMs)*time.Millisecond,
 		time.Duration(cfg.WriteTimeoutMs)*time.Millisecond,
+		cfg.StreamMaxLen,
+		time.Duration(cfg.RetryInitialWaitMs)*time.Millisecond,
+		time.Duration(cfg.RetryMaxWaitMs)*time.Millisecond,
+		cfg.MaxRetries,
+		time.Duration(cfg.StreamMinIdleMs)*time.Millisecond,
 	)
 	chConsumer.Start(ctx)
 
 	filterEngine := ads.NewFilterEngine(
-		ads.NewIPRateLimiter(rdb, cfg.RateLimitPerMin, 1*time.Minute),
+		ads.NewIPRateLimiter(rdb, cfg.RateLimitPerMin, time.Duration(cfg.RateLimitWindowMs)*time.Millisecond),
 		ads.NewDuplicateEventFilter(rdb, time.Duration(cfg.DuplicateTTLSec)*time.Second),
-		ads.NewBudgetFilter(budgetManager, registry),
+		ads.NewBudgetFilter(budgetManager, registry, cfg.ClickAmount, cfg.ImpressionAmount),
 	)
 
 	mux := ads.NewRouter(cfg, registry, pgConsumer, filterEngine)
@@ -115,10 +123,10 @@ func main() {
 	server := &http.Server{
 		Addr:              ":" + cfg.ServerPort,
 		Handler:           mux,
-		ReadHeaderTimeout: 2 * time.Second,
-		ReadTimeout:       5 * time.Second,
-		WriteTimeout:      10 * time.Second,
-		IdleTimeout:       30 * time.Second,
+		ReadHeaderTimeout: time.Duration(cfg.HttpReadHeaderTimeoutMs) * time.Millisecond,
+		ReadTimeout:       time.Duration(cfg.HttpReadTimeoutMs) * time.Millisecond,
+		WriteTimeout:      time.Duration(cfg.HttpWriteTimeoutMs) * time.Millisecond,
+		IdleTimeout:       time.Duration(cfg.HttpIdleTimeoutMs) * time.Millisecond,
 	}
 
 	go func() {

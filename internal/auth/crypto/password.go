@@ -26,6 +26,22 @@ func init() {
 	DummyHash, _ = h.HashPassword("dummy-password-timing-attack")
 }
 
+type params struct {
+	memory      uint32
+	iterations  uint32
+	parallelism uint8
+	saltLength  uint32
+	keyLength   uint32
+}
+
+const (
+	maxMemory      uint32 = 256 * 1024
+	maxIterations  uint32 = 10
+	maxParallelism uint8  = 32
+	minSaltLength  uint32 = 16
+	minHashLength  uint32 = 32
+)
+
 type PasswordHasher struct {
 	memory      uint32
 	iterations  uint32
