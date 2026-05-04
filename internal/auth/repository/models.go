@@ -9,20 +9,20 @@ import (
 )
 
 type ApiKey struct {
-	ID        pgtype.UUID        `json:"id"`
-	KeyHash   string             `json:"key_hash"`
-	UserID    pgtype.UUID        `json:"user_id"`
-	Name      string             `json:"name"`
 	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	KeyHash   string             `json:"key_hash"`
+	Name      string             `json:"name"`
+	ID        pgtype.UUID        `json:"id"`
+	UserID    pgtype.UUID        `json:"user_id"`
 }
 
 type User struct {
-	ID           pgtype.UUID        `json:"id"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 	Email        string             `json:"email"`
 	PasswordHash string             `json:"password_hash"`
 	Role         string             `json:"role"`
+	ID           pgtype.UUID        `json:"id"`
 	CustomerID   pgtype.UUID        `json:"customer_id"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }

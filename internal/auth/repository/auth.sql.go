@@ -18,17 +18,17 @@ RETURNING id, name, expires_at, created_at
 `
 
 type CreateAPIKeyParams struct {
-	KeyHash   string             `json:"key_hash"`
-	UserID    pgtype.UUID        `json:"user_id"`
-	Name      string             `json:"name"`
 	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	KeyHash   string             `json:"key_hash"`
+	Name      string             `json:"name"`
+	UserID    pgtype.UUID        `json:"user_id"`
 }
 
 type CreateAPIKeyRow struct {
-	ID        pgtype.UUID        `json:"id"`
-	Name      string             `json:"name"`
 	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	Name      string             `json:"name"`
+	ID        pgtype.UUID        `json:"id"`
 }
 
 func (q *Queries) CreateAPIKey(ctx context.Context, arg CreateAPIKeyParams) (CreateAPIKeyRow, error) {
@@ -62,11 +62,11 @@ type CreateUserParams struct {
 }
 
 type CreateUserRow struct {
-	ID         pgtype.UUID        `json:"id"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 	Email      string             `json:"email"`
 	Role       string             `json:"role"`
+	ID         pgtype.UUID        `json:"id"`
 	CustomerID pgtype.UUID        `json:"customer_id"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
@@ -95,11 +95,11 @@ WHERE ak.key_hash = $1 AND (ak.expires_at IS NULL OR ak.expires_at > NOW())
 `
 
 type GetAPIKeyByHashRow struct {
+	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
+	Name       string             `json:"name"`
+	Role       string             `json:"role"`
 	ID         pgtype.UUID        `json:"id"`
 	UserID     pgtype.UUID        `json:"user_id"`
-	Name       string             `json:"name"`
-	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
-	Role       string             `json:"role"`
 	CustomerID pgtype.UUID        `json:"customer_id"`
 }
 
@@ -166,10 +166,10 @@ WHERE user_id = $1
 `
 
 type ListUserAPIKeysRow struct {
-	ID        pgtype.UUID        `json:"id"`
-	Name      string             `json:"name"`
 	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	Name      string             `json:"name"`
+	ID        pgtype.UUID        `json:"id"`
 }
 
 func (q *Queries) ListUserAPIKeys(ctx context.Context, userID pgtype.UUID) ([]ListUserAPIKeysRow, error) {

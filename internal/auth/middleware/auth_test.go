@@ -1,0 +1,121 @@
+package middleware
+
+import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/mykhailov-ua/ad-event-processor/internal/auth/token"
+	"github.com/stretchr/testify/require"
+)
+
+func addAuthorization(
+	t *testing.T,
+	request *http.Request,
+	tokenMaker token.Maker,
+	authorizationType string,
+	userID uuid.UUID,
+	role string,
+	customerID uuid.UUID,
+	duration time.Duration,
+) {
+	token, err := tokenMaker.CreateToken(userID, role, customerID, duration)
+	require.NoError(t, err)
+
+	authorizationHeader := fmt.Sprintf("%s %s", authorizationType, token)
+	request.Header.Set(authorizationHeaderKey, authorizationHeader)
+}
+
+func TestAuthMiddleware(t *testing.T) {
+	testCases := []struct {
+		name          string
+		setupAuth     func(t *testing.T, request *http.Request, tokenMaker token.Maker)
+		allowedRoles  []string
+		checkResponse func(t *testing.T, recorder *httptest.ResponseRecorder)
+	}{
+		{
+			name: "OK",
+			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
+				addAuthorization(t, request, tokenMaker, authorizationTypeBearer, uuid.New(), "admin", uuid.New(), time.Minute)
+			},
+			allowedRoles: []string{"admin"},
+			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusOK, recorder.Code)
+			},
+		},
+		{
+			name: "NoAuthorization",
+			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
+			},
+			allowedRoles: []string{"admin"},
+			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusUnauthorized, recorder.Code)
+			},
+		},
+		{
+			name: "UnsupportedAuthorization",
+			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
+				addAuthorization(t, request, tokenMaker, "unsupported", uuid.New(), "admin", uuid.New(), time.Minute)
+			},
+			allowedRoles: []string{"admin"},
+			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusUnauthorized, recorder.Code)
+			},
+		},
+		{
+			name: "InvalidAuthorizationFormat",
+			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
+				request.Header.Set(authorizationHeaderKey, "invalid")
+			},
+			allowedRoles: []string{"admin"},
+			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusUnauthorized, recorder.Code)
+			},
+		},
+		{
+			name: "ExpiredToken",
+			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
+				addAuthorization(t, request, tokenMaker, authorizationTypeBearer, uuid.New(), "admin", uuid.New(), -time.Minute)
+			},
+			allowedRoles: []string{"admin"},
+			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusUnauthorized, recorder.Code)
+			},
+		},
+		{
+			name: "PermissionDenied",
+			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
+				addAuthorization(t, request, tokenMaker, authorizationTypeBearer, uuid.New(), "customer", uuid.New(), time.Minute)
+			},
+			allowedRoles: []string{"admin"},
+			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusForbidden, recorder.Code)
+			},
+		},
+	}
+
+	for i := range testCases {
+		tc := testCases[i]
+
+		t.Run(tc.name, func(t *testing.T) {
+			tokenMaker, err := token.NewPasetoMaker("12345678901234567890123456789012")
+			require.NoError(t, err)
+
+			authPath := "/auth"
+			handler := AuthMiddleware(tokenMaker, tc.allowedRoles...)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			}))
+
+			recorder := httptest.NewRecorder()
+			request, err := http.NewRequest(http.MethodGet, authPath, nil)
+			require.NoError(t, err)
+
+			tc.setupAuth(t, request, tokenMaker)
+			handler.ServeHTTP(recorder, request)
+			tc.checkResponse(t, recorder)
+		})
+	}
+}
