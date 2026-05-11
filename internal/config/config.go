@@ -15,6 +15,7 @@ func (s Secret) LogValue() slog.Value {
 
 type Config struct {
 	ServerPort              string
+	ProcessorPort           string
 	DBDSN                   Secret
 	RedisAddr               string
 	RedisPassword           Secret
@@ -33,7 +34,8 @@ type Config struct {
 	MaxWorkers              int
 	CHMaxWorkers            int
 	LogRetentionDays        int
-	DBMaxConns              int
+	DBTrackerMaxConns       int
+	DBProcessorMaxConns     int
 	DBMinConns              int
 	WriteTimeoutMs          int
 	ShutdownTimeoutMs       int
@@ -91,6 +93,7 @@ func getEnvInt64(key string, fallback int64) int64 {
 func Load() (*Config, error) {
 	cfg := &Config{
 		ServerPort:              os.Getenv("SERVER_PORT"),
+		ProcessorPort:           os.Getenv("PROCESSOR_PORT"),
 		DBDSN:                   Secret(os.Getenv("DB_DSN")),
 		RedisAddr:               os.Getenv("REDIS_ADDR"),
 		RedisPassword:           Secret(os.Getenv("REDIS_PASSWORD")),
@@ -103,7 +106,8 @@ func Load() (*Config, error) {
 		MaxWorkers:              getEnvInt("MAX_WORKERS", 16),
 		CHMaxWorkers:            getEnvInt("CH_MAX_WORKERS", 1),
 		LogRetentionDays:        getEnvInt("LOG_RETENTION_DAYS", 7),
-		DBMaxConns:              getEnvInt("DB_MAX_CONNS", 16),
+		DBTrackerMaxConns:       getEnvInt("DB_TRACKER_MAX_CONNS", 4),
+		DBProcessorMaxConns:     getEnvInt("DB_PROCESSOR_MAX_CONNS", 16),
 		DBMinConns:              getEnvInt("DB_MIN_CONNS", 2),
 		WriteTimeoutMs:          getEnvInt("WRITE_TIMEOUT_MS", 5000),
 		ShutdownTimeoutMs:       getEnvInt("SHUTDOWN_TIMEOUT_MS", 15000),
@@ -139,6 +143,9 @@ func Load() (*Config, error) {
 
 	if cfg.ServerPort == "" {
 		return nil, errors.New("SERVER_PORT is required")
+	}
+	if cfg.ProcessorPort == "" {
+		cfg.ProcessorPort = "8081"
 	}
 	if cfg.DBDSN == "" {
 		return nil, errors.New("DB_DSN is required")
