@@ -31,7 +31,8 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	pool, err := database.Connect(ctx, string(cfg.DBDSN), cfg.DBMaxConns, cfg.DBMinConns)
+	// Pool is required for Registry sync and loading campaign data on budget cache miss.
+	pool, err := database.Connect(ctx, string(cfg.DBDSN), cfg.DBTrackerMaxConns, cfg.DBMinConns)
 	if err != nil {
 		slog.Error("failed to connect to database", "error", err)
 		os.Exit(1)
@@ -39,16 +40,6 @@ func main() {
 	defer pool.Close()
 
 	queries := repository.New(pool)
-	partManager := database.NewPartitionManager(pool, cfg.LogRetentionDays, cfg.PartitionPreCreateDays)
-	partManager.StartBackground(ctx)
-
-	chConn, err := database.ConnectClickHouse(ctx, string(cfg.CHDSN))
-	if err != nil {
-		slog.Error("failed to connect to clickhouse", "error", err)
-		os.Exit(1)
-	}
-	defer chConn.Close()
-
 	registry := ads.NewRegistry(queries)
 	count, err := registry.Sync(ctx)
 	if err != nil {
@@ -65,51 +56,15 @@ func main() {
 	}
 	defer rdb.Close()
 
-	pgStore := ads.NewPostgresStore(queries, time.Duration(cfg.WriteTimeoutMs)*time.Millisecond)
-	chStore := ads.NewClickHouseStore(chConn, time.Duration(cfg.WriteTimeoutMs)*time.Millisecond)
-
 	campaignRepo := infra_repo.NewCampaignRepo(queries)
-	customerRepo := infra_repo.NewCustomerRepo(queries)
-
 	budgetManager := budget.NewRedisBudgetManager(rdb, campaignRepo, time.Duration(cfg.IdempotencyTTLHrs)*time.Hour)
-	syncWorker := budget.NewSyncWorker(rdb, campaignRepo, customerRepo, time.Duration(cfg.BudgetSyncIntervalMs)*time.Millisecond)
-	go syncWorker.Start(ctx)
 
-	pgConsumer := ads.NewStreamConsumer(
-		pgStore,
+	producer := ads.NewStreamProducer(
 		rdb,
 		cfg.RedisStreamName,
-		cfg.RedisGroupName+"_pg",
-		cfg.RedisConsumerID,
-		cfg.EventBatchSize,
-		cfg.MaxWorkers,
-		time.Duration(cfg.EventFlushMs)*time.Millisecond,
-		time.Duration(cfg.WriteTimeoutMs)*time.Millisecond,
 		cfg.StreamMaxLen,
-		time.Duration(cfg.RetryInitialWaitMs)*time.Millisecond,
-		time.Duration(cfg.RetryMaxWaitMs)*time.Millisecond,
-		cfg.MaxRetries,
-		time.Duration(cfg.StreamMinIdleMs)*time.Millisecond,
-	)
-	pgConsumer.Start(ctx)
-
-	chConsumer := ads.NewStreamConsumer(
-		chStore,
-		rdb,
-		cfg.RedisStreamName,
-		cfg.RedisGroupName+"_ch",
-		cfg.RedisConsumerID,
-		cfg.CHBatchSize,
-		cfg.CHMaxWorkers,
-		time.Duration(cfg.CHFlushIntervalMs)*time.Millisecond,
 		time.Duration(cfg.WriteTimeoutMs)*time.Millisecond,
-		cfg.StreamMaxLen,
-		time.Duration(cfg.RetryInitialWaitMs)*time.Millisecond,
-		time.Duration(cfg.RetryMaxWaitMs)*time.Millisecond,
-		cfg.MaxRetries,
-		time.Duration(cfg.StreamMinIdleMs)*time.Millisecond,
 	)
-	chConsumer.Start(ctx)
 
 	filterEngine := ads.NewFilterEngine(
 		ads.NewIPRateLimiter(rdb, cfg.RateLimitPerMin, time.Duration(cfg.RateLimitWindowMs)*time.Millisecond),
@@ -117,9 +72,9 @@ func main() {
 		ads.NewBudgetFilter(budgetManager, registry, cfg.ClickAmount, cfg.ImpressionAmount),
 	)
 
-	mux := ads_delivery.NewRouter(cfg, registry, pgConsumer, filterEngine)
+	mux := ads_delivery.NewRouter(cfg, registry, producer, filterEngine)
 
-	slog.Info("starting ad-event-processor", "port", cfg.ServerPort)
+	slog.Info("starting ad-event-tracker", "port", cfg.ServerPort)
 
 	server := &http.Server{
 		Addr:              ":" + cfg.ServerPort,
@@ -151,14 +106,5 @@ func main() {
 		slog.Error("server shutdown failed", "error", err)
 	}
 
-	pgConsumer.Close()
-	pgConsumer.Wait()
-	pgStore.Close()
-
-	chConsumer.Close()
-	chConsumer.Wait()
-	chStore.Close()
-
 	registry.Wait()
-	pool.Close()
 }

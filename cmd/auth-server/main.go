@@ -34,7 +34,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	pool, err := database.Connect(ctx, string(cfg.DBDSN), cfg.DBMaxConns, cfg.DBMinConns)
+	pool, err := database.Connect(ctx, string(cfg.DBDSN), cfg.DBTrackerMaxConns, cfg.DBMinConns)
 	if err != nil {
 		slog.Error("failed to connect to database", "error", err)
 		os.Exit(1)
