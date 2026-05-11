@@ -63,11 +63,12 @@ func TestE2EFlow(t *testing.T) {
 	_, _ = registry.Sync(ctx)
 
 	store := ads.NewPostgresStore(queries, 1*time.Second)
-	eventProc := ads.NewStreamConsumer(store, rdb, "test-stream", "test-group", "test-c1", cfg.EventBatchSize, cfg.MaxWorkers, 100*time.Millisecond, 1*time.Second, 100000, 100*time.Millisecond, 5*time.Second, 5, 5*time.Minute)
-	eventProc.Start(ctx)
-	defer eventProc.Close()
+	producer := ads.NewStreamProducer(rdb, "test-stream", 100000, 1*time.Second)
+	consumer := ads.NewStreamConsumer(store, rdb, "test-stream", "test-group", "test-c1", cfg.EventBatchSize, cfg.MaxWorkers, 100*time.Millisecond, 1*time.Second, 100*time.Millisecond, 5*time.Second, 5, 5*time.Minute)
+	consumer.Start(ctx)
+	defer consumer.Close()
 
-	router := ads_delivery.NewRouter(cfg, registry, eventProc, nil)
+	router := ads_delivery.NewRouter(cfg, registry, producer, nil)
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 
@@ -131,11 +132,12 @@ func TestE2EFlow_Protobuf(t *testing.T) {
 	_, _ = registry.Sync(ctx)
 
 	store := ads.NewPostgresStore(queries, 1*time.Second)
-	eventProc := ads.NewStreamConsumer(store, rdb, "test-proto-stream", "test-proto-group", "test-c2", cfg.EventBatchSize, cfg.MaxWorkers, 100*time.Millisecond, 1*time.Second, 100000, 100*time.Millisecond, 5*time.Second, 5, 5*time.Minute)
-	eventProc.Start(ctx)
-	defer eventProc.Close()
+	producer := ads.NewStreamProducer(rdb, "test-proto-stream", 100000, 1*time.Second)
+	consumer := ads.NewStreamConsumer(store, rdb, "test-proto-stream", "test-proto-group", "test-c2", cfg.EventBatchSize, cfg.MaxWorkers, 100*time.Millisecond, 1*time.Second, 100*time.Millisecond, 5*time.Second, 5, 5*time.Minute)
+	consumer.Start(ctx)
+	defer consumer.Close()
 
-	router := ads_delivery.NewRouter(cfg, registry, eventProc, nil)
+	router := ads_delivery.NewRouter(cfg, registry, producer, nil)
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 

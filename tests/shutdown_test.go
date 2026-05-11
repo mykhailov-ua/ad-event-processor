@@ -60,10 +60,11 @@ func TestGracefulShutdown_NoDataLoss(t *testing.T) {
 	_, _ = registry.Sync(ctx)
 
 	store := ads.NewPostgresStore(queries, 5*time.Second)
-	eventProc := ads.NewStreamConsumer(store, rdb, "shutdown-stream", "shutdown-group", "shutdown-c1", cfg.EventBatchSize, cfg.MaxWorkers, 100*time.Millisecond, 5*time.Second, 100000, 100*time.Millisecond, 5*time.Second, 5, 5*time.Minute)
-	eventProc.Start(ctx)
+	producer := ads.NewStreamProducer(rdb, "shutdown-stream", 100000, 5*time.Second)
+	consumer := ads.NewStreamConsumer(store, rdb, "shutdown-stream", "shutdown-group", "shutdown-c1", cfg.EventBatchSize, cfg.MaxWorkers, 100*time.Millisecond, 5*time.Second, 100*time.Millisecond, 5*time.Second, 5, 5*time.Minute)
+	consumer.Start(ctx)
 
-	router := ads_delivery.NewRouter(cfg, registry, eventProc, nil)
+	router := ads_delivery.NewRouter(cfg, registry, producer, nil)
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 
@@ -97,8 +98,8 @@ func TestGracefulShutdown_NoDataLoss(t *testing.T) {
 	wg.Wait()
 	require.Equal(t, int64(eventCount), acceptedCount)
 
-	eventProc.Close()
-	eventProc.Wait()
+	consumer.Close()
+	consumer.Wait()
 
 	cancel()
 
