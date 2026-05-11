@@ -117,18 +117,15 @@ func TestStreamConsumer_DLQ(t *testing.T) {
 
 	proc.Start(ctx)
 
-	// Produce 2 events
 	for i := 0; i < 2; i++ {
 		_ = producer.Process(&domain.Event{CampaignID: uuid.New(), Type: "click"})
 	}
 
-	// Wait for DLQ to process
 	assert.Eventually(t, func() bool {
 		size, err := rdb.XLen(ctx, "ad:events:dlq").Result()
 		return err == nil && size == 2
 	}, 3*time.Second, 50*time.Millisecond, "Should have 2 events in DLQ")
 
-	// Verify original stream is empty for the group
 	pending, err := rdb.XPending(ctx, "s_dlq", "g_dlq").Result()
 	assert.NoError(t, err)
 	assert.Equal(t, int64(0), pending.Count)

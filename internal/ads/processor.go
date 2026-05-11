@@ -119,7 +119,6 @@ func (p *StreamConsumer) Wait() {
 	p.wg.Wait()
 }
 
-// workerConsumerID returns a unique consumer name for the given worker index.
 // Each goroutine must have its own consumer identity to prevent PEL conflicts
 // when multiple goroutines call XReadGroup concurrently.
 func (p *StreamConsumer) workerConsumerID(workerIdx int) string {

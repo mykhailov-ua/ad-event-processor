@@ -105,12 +105,10 @@ func (cb *CircuitBreaker) RecordFailure() {
 	}
 }
 
-// State returns the current circuit state.
 func (cb *CircuitBreaker) State() CircuitState {
 	return CircuitState(cb.state.Load())
 }
 
-// Failures returns the current consecutive failure count.
 func (cb *CircuitBreaker) Failures() int {
 	return int(cb.failures.Load())
 }

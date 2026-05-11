@@ -140,7 +140,7 @@ func (s *Service) Login(ctx context.Context, email, password, userAgent, clientI
 
 	var user repository.User
 	var userFound bool
-	
+
 	// Get user hash first (outside TX to keep TX short)
 	u, err := s.repo.GetUserByEmail(ctx, email)
 	var hashToVerify string

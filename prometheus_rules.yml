@@ -1,7 +1,7 @@
 groups:
   - name: adpulse_alerts
     rules:
-      # Оповещение о потере данных (переполнение буфера)
+      # Alert for event loss (buffer overflow)
       - alert: HighEventDropRate
         expr: rate(ad_events_dropped_total[1m]) > 0
         for: 1m
@@ -11,7 +11,7 @@ groups:
           summary: "High event drop rate detected"
           description: "Processor buffer is full and events are being dropped. Current rate: {{ $value }} events/s"
 
-      # Оповещение об ошибках БД
+      # Alert for database write errors
       - alert: DatabaseWriteErrors
         expr: rate(ad_db_write_errors_total[1m]) > 0
         for: 1m
@@ -21,7 +21,7 @@ groups:
           summary: "Database write errors detected"
           description: "System is failing to persist batches to Postgres."
 
-      # Оповещение о высокой задержке (Latency > 500ms)
+      # Alert for high HTTP latency (>500ms)
       - alert: HighHttpLatency
         expr: histogram_quantile(0.99, sum by (le) (rate(ad_http_request_duration_seconds_bucket[1m]))) > 0.5
         for: 2m

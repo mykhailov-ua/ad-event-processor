@@ -70,7 +70,7 @@ func TestCircuitBreaker_HalfOpenSuccessCloses(t *testing.T) {
 
 	time.Sleep(60 * time.Millisecond)
 
-	require.True(t, cb.Allow()) // transitions to half-open
+	require.True(t, cb.Allow())
 	cb.RecordSuccess()
 	assert.Equal(t, CircuitClosed, cb.State())
 	assert.True(t, cb.Allow())
@@ -85,7 +85,7 @@ func TestCircuitBreaker_HalfOpenFailureReopens(t *testing.T) {
 
 	time.Sleep(60 * time.Millisecond)
 
-	require.True(t, cb.Allow()) // transitions to half-open
+	require.True(t, cb.Allow())
 	cb.RecordFailure()
 	assert.Equal(t, CircuitOpen, cb.State())
 	assert.False(t, cb.Allow())

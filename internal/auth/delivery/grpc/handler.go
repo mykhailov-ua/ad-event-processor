@@ -58,7 +58,7 @@ func (h *Handler) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.Re
 	id, err := h.service.Register(ctx, auth.RegisterRequest{
 		Email:      req.Email,
 		Password:   req.Password,
-		Role:       req.Role, // service layer forces it to "user" now
+		Role:       req.Role,
 		CustomerID: customerID,
 	})
 	if err != nil {
@@ -77,7 +77,7 @@ func (h *Handler) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRes
 	}
 
 	clientIP := extractClientIP(ctx)
-	
+
 	userAgent := "grpc-client"
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
 		if ua := md.Get("user-agent"); len(ua) > 0 {
