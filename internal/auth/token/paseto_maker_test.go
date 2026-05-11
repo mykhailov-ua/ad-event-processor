@@ -61,3 +61,8 @@ func TestInvalidPasetoToken(t *testing.T) {
 	require.EqualError(t, err, ErrInvalidToken.Error())
 	require.Nil(t, payload)
 }
+
+func TestNewPasetoMaker_InvalidKey(t *testing.T) {
+	_, err := NewPasetoMaker("short")
+	require.Error(t, err)
+}
