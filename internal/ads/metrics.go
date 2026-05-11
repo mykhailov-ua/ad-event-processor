@@ -42,4 +42,14 @@ var (
 		Name: "ad_filter_blocked_total",
 		Help: "Total number of events blocked by filters",
 	}, []string{"reason"})
+
+	CircuitBreakerState = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "ad_circuit_breaker_state",
+		Help: "Current state of the circuit breaker (0=closed, 1=open, 2=half-open)",
+	}, []string{"group"})
+
+	DlqSize = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_dlq_size_total",
+		Help: "Current number of events in the Dead Letter Queue",
+	})
 )

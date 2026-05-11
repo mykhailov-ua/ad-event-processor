@@ -101,8 +101,8 @@ func main() {
 	)
 	chConsumer.Start(ctx)
 
-	slog.Info("starting ad-event-processor worker", 
-		"stream", cfg.RedisStreamName, 
+	slog.Info("starting ad-event-processor worker",
+		"stream", cfg.RedisStreamName,
 		"pg_group", cfg.RedisGroupName+"_pg",
 		"ch_group", cfg.RedisGroupName+"_ch",
 		"port", cfg.ProcessorPort,
@@ -132,10 +132,10 @@ func main() {
 	<-stop
 
 	slog.Info("shutting down processor")
-	
+
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), time.Duration(cfg.ShutdownTimeoutMs)*time.Millisecond)
 	defer shutdownCancel()
-	
+
 	cancel()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
