@@ -11,6 +11,7 @@ import (
 	"github.com/mykhailov-ua/ad-event-processor/internal/auth"
 	"github.com/mykhailov-ua/ad-event-processor/internal/auth/crypto"
 	"github.com/mykhailov-ua/ad-event-processor/internal/auth/delivery/grpc"
+	"github.com/mykhailov-ua/ad-event-processor/internal/auth/limiter"
 	"github.com/mykhailov-ua/ad-event-processor/internal/auth/pb"
 	"github.com/mykhailov-ua/ad-event-processor/internal/auth/repository"
 	"github.com/mykhailov-ua/ad-event-processor/internal/auth/token"
@@ -33,26 +34,35 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	pool, err := database.Connect(ctx, cfg.DBDSN, cfg.DBMaxConns, cfg.DBMinConns)
+	pool, err := database.Connect(ctx, string(cfg.DBDSN), cfg.DBMaxConns, cfg.DBMinConns)
 	if err != nil {
 		slog.Error("failed to connect to database", "error", err)
 		os.Exit(1)
 	}
 	defer pool.Close()
 
-	repo := repository.New(pool)
-	tokenMaker, err := token.NewPasetoMaker(cfg.TokenSymmetricKey)
+	rdb, err := database.ConnectRedis(ctx, cfg.RedisAddr, string(cfg.RedisPassword))
+	if err != nil {
+		slog.Error("failed to connect to redis", "error", err)
+		os.Exit(1)
+	}
+	defer rdb.Close()
+
+	repo := repository.NewStore(pool)
+	tokenMaker, err := token.NewPasetoMaker(string(cfg.TokenSymmetricKey))
 	if err != nil {
 		slog.Error("failed to create token maker", "error", err)
 		os.Exit(1)
 	}
+
+	lockoutLimiter := limiter.NewLockoutLimiter(rdb)
 
 	hasher := crypto.NewPasswordHasher(
 		uint32(cfg.Argon2Memory),
 		uint32(cfg.Argon2Iterations),
 		uint8(cfg.Argon2Parallelism),
 	)
-	authService := auth.NewService(repo, tokenMaker, hasher)
+	authService := auth.NewService(repo, tokenMaker, hasher, lockoutLimiter, rdb)
 	grpcHandler := grpc.NewHandler(authService, cfg)
 
 	lis, err := net.Listen("tcp", ":"+cfg.AuthServerPort)

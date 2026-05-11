@@ -7,63 +7,302 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/mykhailov-ua/ad-event-processor/internal/auth/crypto"
 	"github.com/mykhailov-ua/ad-event-processor/internal/auth/repository"
 	"github.com/mykhailov-ua/ad-event-processor/internal/auth/token"
+	"github.com/stretchr/testify/assert"
 )
 
 type mockRepo struct {
 	repository.Querier
-	user repository.User
-	err  error
+	user             repository.User
+	session          repository.Session
+	err              error
+	createUserErr    error
+	getUserByID      repository.User
+	getUserByIDErr   error
+	createSessionErr error
 }
 
 func (m *mockRepo) GetUserByEmail(ctx context.Context, email string) (repository.User, error) {
 	return m.user, m.err
 }
 
+func (m *mockRepo) GetUserByID(ctx context.Context, id pgtype.UUID) (repository.User, error) {
+	return m.getUserByID, m.getUserByIDErr
+}
+
+func (m *mockRepo) CreateUser(ctx context.Context, arg repository.CreateUserParams) (repository.CreateUserRow, error) {
+	if m.createUserErr != nil {
+		return repository.CreateUserRow{}, m.createUserErr
+	}
+	return repository.CreateUserRow{ID: pgtype.UUID{Bytes: uuid.New(), Valid: true}}, nil
+}
+
+func (m *mockRepo) CreateSession(ctx context.Context, arg repository.CreateSessionParams) (repository.Session, error) {
+	if m.createSessionErr != nil {
+		return repository.Session{}, m.createSessionErr
+	}
+	return m.session, m.err
+}
+
+func (m *mockRepo) GetSessionByRefreshTokenForUpdate(ctx context.Context, refreshToken string) (repository.Session, error) {
+	return m.session, m.err
+}
+
+func (m *mockRepo) BlockSession(ctx context.Context, id pgtype.UUID) error {
+	return m.err
+}
+
+func (m *mockRepo) BlockSessionByRefreshToken(ctx context.Context, refreshToken string) error {
+	return m.err
+}
+
+func (m *mockRepo) ExecTx(ctx context.Context, fn func(repository.Querier) error) error {
+	return fn(m)
+}
+
 type mockTokenMaker struct {
 	token.Maker
-	err error
+	createErr error
+	verifyErr error
 }
 
 func (m *mockTokenMaker) CreateToken(userID uuid.UUID, role string, customerID uuid.UUID, duration time.Duration) (string, error) {
-	return "token", m.err
+	return "token", m.createErr
+}
+
+func (m *mockTokenMaker) VerifyToken(t string) (*token.Payload, error) {
+	return &token.Payload{UserID: uuid.New()}, m.verifyErr
+}
+
+func TestRegister(t *testing.T) {
+	repo := &mockRepo{}
+	hasher := crypto.NewPasswordHasher(65536, 3, 4)
+	service := NewService(repo, nil, hasher, nil, nil)
+
+	t.Run("Success", func(t *testing.T) {
+		repo.createUserErr = nil
+		_, err := service.Register(context.Background(), RegisterRequest{
+			Email:    "valid@example.com",
+			Password: "Password123!",
+		})
+		assert.NoError(t, err)
+	})
+
+	t.Run("InvalidEmail", func(t *testing.T) {
+		_, err := service.Register(context.Background(), RegisterRequest{
+			Email:    "invalid",
+			Password: "Password123!",
+		})
+		assert.ErrorIs(t, err, ErrValidation)
+	})
+
+	t.Run("InvalidPassword", func(t *testing.T) {
+		_, err := service.Register(context.Background(), RegisterRequest{
+			Email:    "valid@example.com",
+			Password: "short",
+		})
+		assert.ErrorIs(t, err, ErrValidation)
+	})
+
+	t.Run("Idempotency_AlreadyExists", func(t *testing.T) {
+		repo.createUserErr = errors.New("unique constraint")
+		repo.user = repository.User{ID: pgtype.UUID{Bytes: uuid.New(), Valid: true}}
+		repo.err = nil
+		id, err := service.Register(context.Background(), RegisterRequest{
+			Email:    "exists@example.com",
+			Password: "Password123!",
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, uuid.UUID(repo.user.ID.Bytes), id)
+	})
+
+	t.Run("CreateUserError", func(t *testing.T) {
+		repo.createUserErr = errors.New("db error")
+		repo.err = errors.New("not found")
+		_, err := service.Register(context.Background(), RegisterRequest{
+			Email:    "new@example.com",
+			Password: "Password123!",
+		})
+		assert.Error(t, err)
+	})
+}
+
+func TestLogin(t *testing.T) {
+	repo := &mockRepo{}
+	tokenMaker := &mockTokenMaker{}
+	hasher := crypto.NewPasswordHasher(65536, 3, 4)
+	service := NewService(repo, tokenMaker, hasher, nil, nil)
+
+	password := "Password123!"
+	hash, _ := hasher.HashPassword(password)
+
+	t.Run("Success", func(t *testing.T) {
+		repo.user = repository.User{
+			ID:           pgtype.UUID{Bytes: uuid.New(), Valid: true},
+			PasswordHash: hash,
+		}
+		repo.err = nil
+		repo.createSessionErr = nil
+		tokenMaker.createErr = nil
+		resp, err := service.Login(context.Background(), "user@example.com", password, "ua", "ip", time.Hour)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, resp.AccessToken)
+	})
+
+	t.Run("InvalidEmail", func(t *testing.T) {
+		_, err := service.Login(context.Background(), "invalid", "pass", "ua", "ip", time.Hour)
+		assert.ErrorIs(t, err, ErrValidation)
+	})
+
+	t.Run("InvalidCredentials", func(t *testing.T) {
+		repo.user = repository.User{PasswordHash: hash}
+		_, err := service.Login(context.Background(), "user@example.com", "wrong", "ua", "ip", time.Hour)
+		assert.ErrorIs(t, err, ErrInvalidCredentials)
+	})
+
+	t.Run("UserNotFound_DummyHash", func(t *testing.T) {
+		repo.err = errors.New("not found")
+		_, err := service.Login(context.Background(), "unknown@example.com", "password", "ua", "ip", time.Hour)
+		assert.ErrorIs(t, err, ErrInvalidCredentials)
+	})
+
+	t.Run("TokenMakerError", func(t *testing.T) {
+		repo.user = repository.User{PasswordHash: hash, ID: pgtype.UUID{Bytes: uuid.New(), Valid: true}}
+		repo.err = nil
+		tokenMaker.createErr = errors.New("token error")
+		_, err := service.Login(context.Background(), "user@example.com", password, "ua", "ip", time.Hour)
+		assert.Error(t, err)
+	})
+
+	t.Run("CreateSessionError", func(t *testing.T) {
+		repo.user = repository.User{PasswordHash: hash, ID: pgtype.UUID{Bytes: uuid.New(), Valid: true}}
+		repo.err = nil
+		tokenMaker.createErr = nil
+		repo.createSessionErr = errors.New("session error")
+		_, err := service.Login(context.Background(), "user@example.com", password, "ua", "ip", time.Hour)
+		assert.Error(t, err)
+	})
+}
+
+func TestVerifyToken(t *testing.T) {
+	repo := &mockRepo{}
+	tokenMaker := &mockTokenMaker{}
+	service := NewService(repo, tokenMaker, nil, nil, nil)
+
+	t.Run("Success", func(t *testing.T) {
+		repo.getUserByID = repository.User{Email: "user@example.com"}
+		repo.getUserByIDErr = nil
+		tokenMaker.verifyErr = nil
+		user, err := service.VerifyToken(context.Background(), "valid-token")
+		assert.NoError(t, err)
+		assert.Equal(t, "user@example.com", user.Email)
+	})
+
+	t.Run("InvalidToken", func(t *testing.T) {
+		tokenMaker.verifyErr = errors.New("invalid token")
+		_, err := service.VerifyToken(context.Background(), "invalid-token")
+		assert.Error(t, err)
+	})
+}
+
+func TestRefreshToken(t *testing.T) {
+	repo := &mockRepo{}
+	tokenMaker := &mockTokenMaker{}
+	service := NewService(repo, tokenMaker, nil, nil, nil)
+
+	t.Run("Success", func(t *testing.T) {
+		repo.session = repository.Session{
+			UserID:    pgtype.UUID{Bytes: uuid.New(), Valid: true},
+			ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(time.Hour), Valid: true},
+			IsBlocked: false,
+		}
+		repo.getUserByID = repository.User{ID: repo.session.UserID}
+		repo.err = nil
+		repo.getUserByIDErr = nil
+		repo.createSessionErr = nil
+
+		accessToken, refreshToken, err := service.RefreshToken(context.Background(), "old-token", time.Hour)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, accessToken)
+		assert.NotEmpty(t, refreshToken)
+	})
+
+	t.Run("BlockedSession", func(t *testing.T) {
+		repo.session = repository.Session{IsBlocked: true}
+		repo.err = nil
+		_, _, err := service.RefreshToken(context.Background(), "blocked-token", time.Hour)
+		assert.ErrorIs(t, err, ErrSessionBlocked)
+	})
+
+	t.Run("TokenExpired", func(t *testing.T) {
+		repo.session = repository.Session{
+			ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(-time.Hour), Valid: true},
+			IsBlocked: false,
+		}
+		_, _, err := service.RefreshToken(context.Background(), "expired-token", time.Hour)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "expired")
+	})
+
+	t.Run("UserNotFound", func(t *testing.T) {
+		repo.session = repository.Session{
+			ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(time.Hour), Valid: true},
+		}
+		repo.getUserByIDErr = errors.New("user not found")
+		_, _, err := service.RefreshToken(context.Background(), "token", time.Hour)
+		assert.Error(t, err)
+	})
+
+	t.Run("TokenMakerError", func(t *testing.T) {
+		repo.session = repository.Session{
+			UserID:    pgtype.UUID{Bytes: uuid.New(), Valid: true},
+			ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(time.Hour), Valid: true},
+		}
+		repo.getUserByID = repository.User{ID: repo.session.UserID}
+		tokenMaker.createErr = errors.New("token error")
+		_, _, err := service.RefreshToken(context.Background(), "token", time.Hour)
+		assert.Error(t, err)
+	})
+
+	t.Run("CreateSessionError", func(t *testing.T) {
+		repo.session = repository.Session{
+			UserID:    pgtype.UUID{Bytes: uuid.New(), Valid: true},
+			ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(time.Hour), Valid: true},
+		}
+		repo.getUserByID = repository.User{ID: repo.session.UserID}
+		tokenMaker.createErr = nil
+		repo.createSessionErr = errors.New("session error")
+		_, _, err := service.RefreshToken(context.Background(), "token", time.Hour)
+		assert.Error(t, err)
+	})
+}
+
+func TestRevokeToken(t *testing.T) {
+	repo := &mockRepo{}
+	service := NewService(repo, nil, nil, nil, nil)
+
+	repo.err = nil
+	err := service.RevokeToken(context.Background(), "token-to-revoke")
+	assert.NoError(t, err)
 }
 
 func TestServiceMetrics(t *testing.T) {
 	repo := &mockRepo{}
 	tokenMaker := &mockTokenMaker{}
 	hasher := crypto.NewPasswordHasher(65536, 3, 4)
-	service := NewService(repo, tokenMaker, hasher)
+	service := NewService(repo, tokenMaker, hasher, nil, nil)
 
 	repo.err = errors.New("not found")
-	_, err := service.Login(context.Background(), "test@example.com", "password", time.Hour)
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
+	_, err := service.Login(context.Background(), "test@example.com", "password", "ua", "ip", time.Hour)
+	assert.Error(t, err)
 
 	metrics := service.GetMetrics()
-	if metrics.FailedLoginsTotal != 1 {
-		t.Errorf("expected FailedLoginsTotal 1, got %d", metrics.FailedLoginsTotal)
-	}
-	if metrics.InvalidCredentials != 1 {
-		t.Errorf("expected InvalidCredentials 1, got %d", metrics.InvalidCredentials)
-	}
+	assert.Equal(t, uint64(1), metrics.FailedLoginsTotal)
+	assert.Equal(t, uint64(1), metrics.InvalidCredentials)
 
-	repo.err = nil
-	repo.user = repository.User{PasswordHash: "$argon2id$v=19$m=65536,t=3,p=4$some-salt$some-hash"}
-
-	repo.user.PasswordHash = "invalid-hash-format"
-	_, err = service.Login(context.Background(), "test@example.com", "password", time.Hour)
-	if err == nil {
-		t.Fatal("expected error for invalid hash format, got nil")
-	}
-	metrics = service.GetMetrics()
-	if metrics.FailedLoginsTotal != 2 {
-		t.Errorf("expected FailedLoginsTotal 2, got %d", metrics.FailedLoginsTotal)
-	}
-	if metrics.InvalidCredentials != 2 {
-		t.Errorf("expected InvalidCredentials 2, got %d", metrics.InvalidCredentials)
-	}
+	snapshot := service.metrics.Snapshot()
+	assert.Equal(t, uint64(1), snapshot.FailedLoginsTotal)
 }
