@@ -35,7 +35,16 @@ var (
 	bufferPool = sync.Pool{
 		New: func() any { return new(bytes.Buffer) },
 	}
+	// Pre-allocate status code strings to avoid strconv.Itoa allocations in metrics.
+	statusStrings = map[int]string{
+		http.StatusOK: "200", http.StatusAccepted: "202",
+		http.StatusBadRequest: "400", http.StatusUnauthorized: "401",
+		http.StatusForbidden: "403", http.StatusNotFound: "404",
+		http.StatusConflict: "409", http.StatusTooManyRequests: "429",
+		http.StatusInternalServerError: "500", http.StatusPaymentRequired: "402",
+	}
 )
+
 
 type Pinger interface {
 	Ping(ctx context.Context) error
@@ -82,9 +91,14 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 
 		defer func() {
 			duration := time.Since(start).Seconds()
-			ads.HttpRequestsTotal.WithLabelValues("POST", "/track", strconv.Itoa(status)).Inc()
+			statusStr := statusStrings[status]
+			if statusStr == "" {
+				statusStr = strconv.Itoa(status)
+			}
+			ads.HttpRequestsTotal.WithLabelValues("POST", "/track", statusStr).Inc()
 			ads.HttpRequestDuration.WithLabelValues("POST", "/track").Observe(duration)
 		}()
+
 
 		r.Body = http.MaxBytesReader(w, r.Body, cfg.MaxRequestBodySize)
 
@@ -136,25 +150,43 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 				// Serializes metadata to JSON for downstream processing while reusing buffers to minimize GC pressure.
 				buf := bufferPool.Get().(*bytes.Buffer)
 				buf.Reset()
+				
+				enc := json.NewEncoder(buf)
+				_ = enc.Encode(pbReq.Metadata)
+				payload = buf.Bytes() // Use the internal buffer bytes directly, but must copy to evt later.
+				
+				// We'll copy to evt.Payload later to avoid extra allocation here.
+				// Since we don't put buf back until end of block, this is safe.
 				defer func() {
 					if buf.Cap() <= 64*1024 {
 						bufferPool.Put(buf)
 					}
 				}()
-
-				enc := json.NewEncoder(buf)
-				_ = enc.Encode(pbReq.Metadata)
-				payload = make([]byte, buf.Len())
-				copy(payload, buf.Bytes())
 			}
 		} else {
+			// Read body once into a pooled buffer
+			buf := bufferPool.Get().(*bytes.Buffer)
+			buf.Reset()
+			defer func() {
+				if buf.Cap() <= 64*1024 {
+					bufferPool.Put(buf)
+				}
+			}()
+
+			if _, err := io.Copy(buf, r.Body); err != nil {
+				l.Warn("failed to read body", "error", err)
+				status = http.StatusBadRequest
+				http.Error(w, "invalid body", status)
+				return
+			}
+
 			var req struct {
 				CampaignID uuid.UUID       `json:"campaign_id"`
 				Type       string          `json:"type"`
 				ClickID    string          `json:"click_id"`
 				Payload    json.RawMessage `json:"payload"`
 			}
-			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			if err := json.Unmarshal(buf.Bytes(), &req); err != nil {
 				l.Warn("invalid json body", "error", err)
 				status = http.StatusBadRequest
 				http.Error(w, "invalid json", status)
@@ -167,6 +199,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 				clickID = req.ClickID
 			}
 		}
+
 
 		evt := domain.EventPool.Get().(*domain.Event)
 		evt.Reset()
