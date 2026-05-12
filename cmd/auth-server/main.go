@@ -41,7 +41,7 @@ func main() {
 	}
 	defer pool.Close()
 
-	rdb, err := database.ConnectRedis(ctx, cfg.RedisAddr, string(cfg.RedisPassword))
+	rdb, err := database.ConnectRedis(ctx, cfg.RedisAddrs[0], string(cfg.RedisPassword))
 	if err != nil {
 		slog.Error("failed to connect to redis", "error", err)
 		os.Exit(1)

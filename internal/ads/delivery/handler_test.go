@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/mykhailov-ua/ad-event-processor/internal/ads/pb"
 	"github.com/mykhailov-ua/ad-event-processor/internal/config"
-	"github.com/redis/go-redis/v9"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -23,16 +22,6 @@ func (m *mockRegistry) GetCustomerID(id uuid.UUID) (uuid.UUID, bool)          { 
 func (m *mockRegistry) Sync(ctx context.Context) (int, error)                 { return 0, nil }
 func (m *mockRegistry) StartSync(ctx context.Context, interval time.Duration) {}
 func (m *mockRegistry) Wait()                                                 {}
-
-type mockRedis struct {
-	redis.UniversalClient
-}
-
-func (m *mockRedis) XAdd(ctx context.Context, a *redis.XAddArgs) *redis.StringCmd {
-	cmd := redis.NewStringCmd(ctx)
-	cmd.SetVal("1-0")
-	return cmd
-}
 
 func BenchmarkTrackHandlerJSON(b *testing.B) {
 	cfg := &config.Config{

@@ -24,6 +24,7 @@ func (m *MockRepo) ListActiveCampaigns(ctx context.Context) ([]repository.Campai
 		res = append(res, repository.Campaign{
 			ID:         id,
 			CustomerID: id, // Mock customer ID
+			Status:     repository.CampaignStatusTypeACTIVE,
 		})
 	}
 	return res, m.err

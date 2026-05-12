@@ -2,13 +2,11 @@ package delivery
 
 import (
 	"bytes"
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/mykhailov-ua/ad-event-processor/internal/config"
-	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -49,12 +47,4 @@ func TestTrackHandlerMalformed(t *testing.T) {
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
-}
-
-type mockRedisPing struct {
-	redis.UniversalClient
-}
-
-func (m *mockRedisPing) Ping(ctx context.Context) *redis.StatusCmd {
-	return redis.NewStatusCmd(ctx, "PONG")
 }

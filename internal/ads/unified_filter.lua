@@ -27,23 +27,24 @@ if rl_count > tonumber(ARGV[2]) then
     return 1 -- Rate limited
 end
 
--- 2. Deduplication (Event level)
-local is_dup = redis.call("SET", KEYS[2], "1", "NX", "EX", ARGV[3])
-if not is_dup then
-    return 2 -- Duplicate
-end
-
--- 3. Budget Idempotency
-if redis.call("EXISTS", KEYS[4]) == 1 then
-    return 0 -- Already processed budget, but let it pass (idempotent)
-end
-
--- 4. Budget Check
+-- 2. Budget Cache Miss Check (Must happen before setting any keys to allow Go-side retries)
 local b = redis.call("GET", KEYS[3])
 if not b then
     return -1 -- Cache miss, need to load from DB
 end
 
+-- 3. Deduplication (Event level)
+local is_dup = redis.call("SET", KEYS[2], "1", "NX", "EX", ARGV[3])
+if not is_dup then
+    return 2 -- Duplicate
+end
+
+-- 4. Budget Idempotency
+if redis.call("EXISTS", KEYS[4]) == 1 then
+    return 0 -- Already processed budget, but let it pass (idempotent)
+end
+
+-- 5. Budget Check
 local budget = tonumber(b)
 local amount = tonumber(ARGV[4])
 

@@ -35,9 +35,6 @@ var (
 	bufferPool = sync.Pool{
 		New: func() any { return new(bytes.Buffer) },
 	}
-	metadataPool = sync.Pool{
-		New: func() any { return &pb.EventMetadata{} },
-	}
 )
 
 type Pinger interface {

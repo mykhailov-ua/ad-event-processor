@@ -13,10 +13,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/mykhailov-ua/ad-event-processor/internal/ads"
+	"github.com/redis/go-redis/v9"
 	ads_delivery "github.com/mykhailov-ua/ad-event-processor/internal/ads/delivery"
 	"github.com/mykhailov-ua/ad-event-processor/internal/ads/repository"
 	"github.com/mykhailov-ua/ad-event-processor/internal/config"
 	"github.com/mykhailov-ua/ad-event-processor/internal/database"
+	infra_repo "github.com/mykhailov-ua/ad-event-processor/internal/infra/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -60,11 +62,25 @@ func TestGracefulShutdown_NoDataLoss(t *testing.T) {
 	_, _ = registry.Sync(ctx)
 
 	store := ads.NewPostgresStore(queries, 5*time.Second)
-	producer := ads.NewStreamProducer(rdb, "shutdown-stream", 100000, 5*time.Second)
+	campaignRepo := infra_repo.NewCampaignRepo(queries)
+	unifiedFilter := ads.NewUnifiedFilter(
+		[]redis.UniversalClient{rdb},
+		registry,
+		campaignRepo,
+		1000,
+		time.Minute,
+		45*time.Second,
+		24*time.Hour,
+		0.1,
+		0.01,
+		"shutdown-stream",
+		100000,
+	)
+	filterEngine := ads.NewFilterEngine(unifiedFilter)
 	consumer := ads.NewStreamConsumer(store, rdb, "shutdown-stream", "shutdown-group", "shutdown-c1", cfg.EventBatchSize, cfg.MaxWorkers, 100*time.Millisecond, 5*time.Second, 100*time.Millisecond, 5*time.Second, 5, 5*time.Minute)
 	consumer.Start(ctx)
 
-	router := ads_delivery.NewRouter(cfg, registry, producer, nil)
+	router := ads_delivery.NewRouter(cfg, registry, filterEngine, pool, []redis.UniversalClient{rdb})
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 
