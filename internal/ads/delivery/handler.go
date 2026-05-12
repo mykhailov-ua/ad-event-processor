@@ -1,6 +1,7 @@
 package delivery
 
 import (
+	"context"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -20,6 +21,7 @@ import (
 	"github.com/mykhailov-ua/ad-event-processor/internal/config"
 	"github.com/mykhailov-ua/ad-event-processor/internal/domain"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/redis/go-redis/v9"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -33,14 +35,40 @@ var (
 	bufferPool = sync.Pool{
 		New: func() any { return new(bytes.Buffer) },
 	}
+	metadataPool = sync.Pool{
+		New: func() any { return &pb.EventMetadata{} },
+	}
 )
 
-func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, proc *ads.StreamProducer, filterEngine *ads.FilterEngine) http.Handler {
+type Pinger interface {
+	Ping(ctx context.Context) error
+}
+
+func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngine *ads.FilterEngine, pool Pinger, rdbs []redis.UniversalClient) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.Handle("GET /metrics", promhttp.Handler())
 
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+
+		// Verifies PostgreSQL connectivity to ensure the transactional metadata store is reachable.
+		if err := pool.Ping(ctx); err != nil {
+			slog.Error("health check failed: postgres", "error", err)
+			http.Error(w, "postgres unreachable", http.StatusServiceUnavailable)
+			return
+		}
+
+		// Iterates through all Redis shards to validate global state and budget reservation availability.
+		for i, rdb := range rdbs {
+			if err := rdb.Ping(ctx).Err(); err != nil {
+				slog.Error("health check failed: redis shard", "shard", i, "error", err)
+				http.Error(w, "redis shard unreachable", http.StatusServiceUnavailable)
+				return
+			}
+		}
+
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("OK"))
 	})
@@ -63,7 +91,8 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, proc *ads.S
 
 		r.Body = http.MaxBytesReader(w, r.Body, cfg.MaxRequestBodySize)
 
-		requestID := uuid.New().String()
+		id, _ := uuid.NewV7()
+		requestID := id.String()
 		l := slog.With("request_id", requestID)
 
 		var campaignID uuid.UUID
@@ -74,7 +103,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, proc *ads.S
 		clickID := requestID
 
 		contentType := r.Header.Get("Content-Type")
-		if contentType == "application/x-protobuf" {
+		if contentType == "application/x-protobuf" || contentType == "" {
 			body, err := io.ReadAll(r.Body)
 			if err != nil {
 				l.Warn("failed to read body", "error", err)
@@ -107,6 +136,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, proc *ads.S
 				if pbReq.Metadata.ClickId != "" {
 					clickID = pbReq.Metadata.ClickId
 				}
+				// Serializes metadata to JSON for downstream processing while reusing buffers to minimize GC pressure.
 				buf := bufferPool.Get().(*bytes.Buffer)
 				buf.Reset()
 				defer func() {
@@ -141,13 +171,6 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, proc *ads.S
 			}
 		}
 
-		if !registry.Exists(campaignID) {
-			l.Warn("campaign not found", "campaign_id", campaignID)
-			status = http.StatusNotFound
-			http.Error(w, "campaign not found", status)
-			return
-		}
-
 		evt := domain.EventPool.Get().(*domain.Event)
 		evt.Reset()
 		evt.ClickID = clickID
@@ -159,6 +182,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, proc *ads.S
 
 		if filterEngine != nil {
 			if err := filterEngine.Check(r.Context(), evt); err != nil {
+				domain.EventPool.Put(evt)
 				if errors.Is(err, ads.ErrRateLimitExceeded) {
 					l.Warn("event rejected: rate limit", "error", err)
 					http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
@@ -172,19 +196,13 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, proc *ads.S
 					http.Error(w, "budget exhausted", http.StatusPaymentRequired)
 					return
 				}
-				l.Error("filter engine degraded (fail-open)", "error", err)
+				l.Error("filter engine failure", "error", err)
+				http.Error(w, "internal error", http.StatusInternalServerError)
+				return
 			}
 		}
 
-		err := proc.Process(evt)
 		domain.EventPool.Put(evt)
-
-		if err != nil {
-			l.Error("failed to process event", "error", err)
-			status = http.StatusInternalServerError
-			http.Error(w, "internal error", status)
-			return
-		}
 
 		if r.Header.Get("Accept") == "application/x-protobuf" {
 			resp := trackResponsePool.Get().(*pb.TrackResponse)

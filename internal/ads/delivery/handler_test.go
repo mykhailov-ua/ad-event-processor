@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/mykhailov-ua/ad-event-processor/internal/ads"
 	"github.com/mykhailov-ua/ad-event-processor/internal/ads/pb"
 	"github.com/mykhailov-ua/ad-event-processor/internal/config"
 	"github.com/redis/go-redis/v9"
@@ -40,8 +39,7 @@ func BenchmarkTrackHandlerJSON(b *testing.B) {
 		MaxRequestBodySize: 1024 * 1024,
 	}
 	registry := &mockRegistry{}
-	proc := ads.NewStreamProducer(&mockRedis{}, "s", 1000, 1*time.Second)
-	handler := NewRouter(cfg, registry, proc, nil)
+	handler := NewRouter(cfg, registry, nil, nil, nil)
 
 	payload := map[string]interface{}{
 		"campaign_id": uuid.New(),
@@ -67,8 +65,7 @@ func BenchmarkTrackHandlerProto(b *testing.B) {
 		MaxRequestBodySize: 1024 * 1024,
 	}
 	registry := &mockRegistry{}
-	proc := ads.NewStreamProducer(&mockRedis{}, "s", 1000, 1*time.Second)
-	handler := NewRouter(cfg, registry, proc, nil)
+	handler := NewRouter(cfg, registry, nil, nil, nil)
 
 	pbPayload := &pb.AdEvent{
 		CampaignId: uuid.NewString(),

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type Secret string
@@ -17,7 +18,7 @@ type Config struct {
 	ServerPort              string
 	ProcessorPort           string
 	DBDSN                   Secret
-	RedisAddr               string
+	RedisAddrs              []string
 	RedisPassword           Secret
 	RedisStreamName         string
 	RedisGroupName          string
@@ -61,6 +62,7 @@ type Config struct {
 	Argon2Memory            int
 	Argon2Iterations        int
 	Argon2Parallelism       int
+	RedisPoolSize           int
 }
 
 func getEnvInt(key string, fallback int) int {
@@ -95,7 +97,7 @@ func Load() (*Config, error) {
 		ServerPort:              os.Getenv("SERVER_PORT"),
 		ProcessorPort:           os.Getenv("PROCESSOR_PORT"),
 		DBDSN:                   Secret(os.Getenv("DB_DSN")),
-		RedisAddr:               os.Getenv("REDIS_ADDR"),
+		RedisAddrs:             strings.Split(os.Getenv("REDIS_ADDRS"), ","),
 		RedisPassword:           Secret(os.Getenv("REDIS_PASSWORD")),
 		RedisStreamName:         os.Getenv("REDIS_STREAM_NAME"),
 		RedisGroupName:          os.Getenv("REDIS_GROUP_NAME"),
@@ -139,6 +141,7 @@ func Load() (*Config, error) {
 		Argon2Memory:            getEnvInt("ARGON2_MEMORY", 65536),
 		Argon2Iterations:        getEnvInt("ARGON2_ITERATIONS", 3),
 		Argon2Parallelism:       getEnvInt("ARGON2_PARALLELISM", 4),
+		RedisPoolSize:           getEnvInt("REDIS_POOL_SIZE", 0), // 0 means default
 	}
 
 	if cfg.ServerPort == "" {
@@ -150,8 +153,8 @@ func Load() (*Config, error) {
 	if cfg.DBDSN == "" {
 		return nil, errors.New("DB_DSN is required")
 	}
-	if cfg.RedisAddr == "" {
-		return nil, errors.New("REDIS_ADDR is required")
+	if len(cfg.RedisAddrs) == 0 || cfg.RedisAddrs[0] == "" {
+		return nil, errors.New("REDIS_ADDRS is required")
 	}
 
 	if cfg.RedisStreamName == "" {
