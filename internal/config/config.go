@@ -39,7 +39,6 @@ type Config struct {
 	DBProcessorMaxConns     int
 	DBMinConns              int
 	WriteTimeoutMs          int
-	ShutdownTimeoutMs       int
 	IdempotencyTTLHrs       int
 	RateLimitPerMin         int
 	RateLimitWindowMs       int
@@ -63,6 +62,12 @@ type Config struct {
 	Argon2Iterations        int
 	Argon2Parallelism       int
 	RedisPoolSize           int
+
+	Lifecycle struct {
+		ShutdownTimeoutMs int
+		DrainTimeoutMs    int
+		WaitTimeoutMs     int
+	}
 }
 
 func getEnvInt(key string, fallback int) int {
@@ -112,7 +117,6 @@ func Load() (*Config, error) {
 		DBProcessorMaxConns:     getEnvInt("DB_PROCESSOR_MAX_CONNS", 16),
 		DBMinConns:              getEnvInt("DB_MIN_CONNS", 2),
 		WriteTimeoutMs:          getEnvInt("WRITE_TIMEOUT_MS", 5000),
-		ShutdownTimeoutMs:       getEnvInt("SHUTDOWN_TIMEOUT_MS", 15000),
 		IdempotencyTTLHrs:       getEnvInt("IDEMPOTENCY_TTL_HRS", 24),
 		RateLimitPerMin:         getEnvInt("RATE_LIMIT_PER_MIN", 100),
 		RateLimitWindowMs:       getEnvInt("RATE_LIMIT_WINDOW_MS", 60000),
@@ -143,6 +147,10 @@ func Load() (*Config, error) {
 		Argon2Parallelism:       getEnvInt("ARGON2_PARALLELISM", 4),
 		RedisPoolSize:           getEnvInt("REDIS_POOL_SIZE", 0), // 0 means default
 	}
+
+	cfg.Lifecycle.ShutdownTimeoutMs = getEnvInt("SHUTDOWN_TIMEOUT_MS", 15000)
+	cfg.Lifecycle.DrainTimeoutMs = getEnvInt("DRAIN_TIMEOUT_MS", 10000)
+	cfg.Lifecycle.WaitTimeoutMs = getEnvInt("WAIT_TIMEOUT_MS", 5000)
 
 	if cfg.ServerPort == "" {
 		return nil, errors.New("SERVER_PORT is required")

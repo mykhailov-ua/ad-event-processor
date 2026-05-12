@@ -115,7 +115,7 @@ func main() {
 	sig := <-stop
 	slog.Info("received shutdown signal", "signal", sig.String())
 
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), time.Duration(cfg.ShutdownTimeoutMs)*time.Millisecond)
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), time.Duration(cfg.Lifecycle.ShutdownTimeoutMs)*time.Millisecond)
 	defer shutdownCancel()
 
 	cancel() // Triggers the shutdown of background synchronization tasks and cancels the global context.
@@ -124,13 +124,15 @@ func main() {
 		slog.Error("server shutdown failed", "error", err)
 	}
 
+	if err := registry.Wait(shutdownCtx); err != nil {
+		slog.Error("registry wait failed", "error", err)
+	}
+
 	// Sequentially terminates connections to all Redis shards to ensure clean resource release and prevent socket leakage.
 	for i, rdb := range rdbs {
 		if err := rdb.Close(); err != nil {
 			slog.Error("failed to close redis shard", "shard", i, "error", err)
 		}
 	}
-
-	registry.Wait()
 	slog.Info("ad-event-tracker shutdown complete")
 }

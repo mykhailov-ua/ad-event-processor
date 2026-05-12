@@ -85,11 +85,13 @@ func main() {
 
 	var pgConsumers []*ads.StreamConsumer
 	var chConsumers []*ads.StreamConsumer
+	var syncWorkers []*budget.SyncWorker
 
 	for i, rdb := range rdbs {
 		shardID := fmt.Sprintf("shard_%d", i)
 		
 		sw := budget.NewSyncWorker(rdb, campaignRepo, customerRepo, time.Duration(cfg.BudgetSyncIntervalMs)*time.Millisecond)
+		syncWorkers = append(syncWorkers, sw)
 		go sw.Start(ctx)
 
 		pc := ads.NewStreamConsumer(
@@ -106,9 +108,9 @@ func main() {
 			time.Duration(cfg.RetryMaxWaitMs)*time.Millisecond,
 			cfg.MaxRetries,
 			time.Duration(cfg.StreamMinIdleMs)*time.Millisecond,
+			time.Duration(cfg.Lifecycle.DrainTimeoutMs)*time.Millisecond,
 		)
 		pgConsumers = append(pgConsumers, pc)
-		// pc.Start(ctx) 
 
 		cc := ads.NewStreamConsumer(
 			chStore,
@@ -124,6 +126,7 @@ func main() {
 			time.Duration(cfg.RetryMaxWaitMs)*time.Millisecond,
 			cfg.MaxRetries,
 			time.Duration(cfg.StreamMinIdleMs)*time.Millisecond,
+			time.Duration(cfg.Lifecycle.DrainTimeoutMs)*time.Millisecond,
 		)
 		chConsumers = append(chConsumers, cc)
 		cc.Start(ctx)
@@ -187,7 +190,7 @@ func main() {
 
 	slog.Info("shutting down processor")
 
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), time.Duration(cfg.ShutdownTimeoutMs)*time.Millisecond)
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), time.Duration(cfg.Lifecycle.ShutdownTimeoutMs)*time.Millisecond)
 	defer shutdownCancel()
 
 	cancel()
@@ -196,17 +199,34 @@ func main() {
 		slog.Error("processor server shutdown failed", "error", err)
 	}
 
+	waitCtx, waitCancel := context.WithTimeout(context.Background(), time.Duration(cfg.Lifecycle.WaitTimeoutMs)*time.Millisecond)
+	defer waitCancel()
+
 	for _, pc := range pgConsumers {
 		pc.Close()
-		pc.Wait()
+		if err := pc.Wait(waitCtx); err != nil {
+			slog.Error("pg consumer wait failed", "error", err)
+		}
 	}
 	pgStore.Close()
 
 	for _, cc := range chConsumers {
 		cc.Close()
-		cc.Wait()
+		if err := cc.Wait(waitCtx); err != nil {
+			slog.Error("ch consumer wait failed", "error", err)
+		}
 	}
 	chStore.Close()
+
+	for i, sw := range syncWorkers {
+		if err := sw.Wait(waitCtx); err != nil {
+			slog.Error("sync worker wait failed", "shard", i, "error", err)
+		}
+	}
+
+	if err := partManager.Wait(waitCtx); err != nil {
+		slog.Error("partition manager wait failed", "error", err)
+	}
 
 	// Sequentially terminates connections to all Redis shards to ensure clean resource release.
 	for i, rdb := range rdbs {
