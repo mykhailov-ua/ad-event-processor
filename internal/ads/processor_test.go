@@ -77,7 +77,7 @@ func TestStreamConsumer_BatchFlushing(t *testing.T) {
 
 	mockStore := &MockEventStore{}
 	producer := NewStreamProducer(rdb, "s2", 1000, 1*time.Second)
-	proc := NewStreamConsumer(mockStore, rdb, "s2", "g2", "c2", 2, 1, 10*time.Second, 1*time.Second, 10*time.Millisecond, 100*time.Millisecond, 3, 1*time.Minute)
+	proc := NewStreamConsumer(mockStore, rdb, "s2", "g2", "c2", 2, 1, 10*time.Second, 1*time.Second, 10*time.Millisecond, 100*time.Millisecond, 3, 1*time.Minute, 1*time.Second)
 
 	proc.Start(context.Background())
 	time.Sleep(100 * time.Millisecond)
@@ -88,7 +88,7 @@ func TestStreamConsumer_BatchFlushing(t *testing.T) {
 
 	time.Sleep(200 * time.Millisecond)
 	proc.Close()
-	proc.Wait()
+	proc.Wait(context.Background())
 
 	mockStore.mu.Lock()
 	count := len(mockStore.flushes)
@@ -110,7 +110,7 @@ func TestStreamConsumer_DLQ(t *testing.T) {
 
 	producer := NewStreamProducer(rdb, "s_dlq", 1000, 1*time.Second)
 	// maxRetries=1, retryMaxWait=10ms
-	proc := NewStreamConsumer(failStore, rdb, "s_dlq", "g_dlq", "c_dlq", 2, 1, 10*time.Millisecond, 1*time.Second, 10*time.Millisecond, 10*time.Millisecond, 1, 1*time.Minute)
+	proc := NewStreamConsumer(failStore, rdb, "s_dlq", "g_dlq", "c_dlq", 2, 1, 10*time.Millisecond, 1*time.Second, 10*time.Millisecond, 10*time.Millisecond, 1, 1*time.Minute, 1*time.Second)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -131,5 +131,5 @@ func TestStreamConsumer_DLQ(t *testing.T) {
 	assert.Equal(t, int64(0), pending.Count)
 
 	proc.Close()
-	proc.Wait()
+	proc.Wait(ctx)
 }

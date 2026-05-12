@@ -30,6 +30,7 @@ type StreamConsumer struct {
 	retryInitWait time.Duration
 	retryMaxWait  time.Duration
 	streamMinIdle time.Duration
+	drainTimeout  time.Duration
 	batchSize     int
 	maxWorkers    int
 	maxRetries    int
@@ -48,6 +49,7 @@ func NewStreamConsumer(
 	retryInitWait, retryMaxWait time.Duration,
 	maxRetries int,
 	streamMinIdle time.Duration,
+	drainTimeout time.Duration,
 ) *StreamConsumer {
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -69,6 +71,7 @@ func NewStreamConsumer(
 		retryMaxWait:  retryMaxWait,
 		maxRetries:    maxRetries,
 		streamMinIdle: streamMinIdle,
+		drainTimeout:  drainTimeout,
 		cb:            NewCircuitBreaker(maxRetries, retryMaxWait*2),
 	}
 }
@@ -115,20 +118,34 @@ func (p *StreamConsumer) Close() {
 	}
 }
 
-func (p *StreamConsumer) Wait() {
-	p.wg.Wait()
+func (p *StreamConsumer) Wait(ctx context.Context) error {
+	done := make(chan struct{})
+	go func() {
+		p.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
-// Each goroutine must have its own consumer identity to prevent PEL conflicts
-// when multiple goroutines call XReadGroup concurrently.
 func (p *StreamConsumer) workerConsumerID(workerIdx int) string {
 	return fmt.Sprintf("%s-w%d", p.consumerID, workerIdx)
 }
 
 func (p *StreamConsumer) worker(ctx context.Context, workerIdx int) {
 	workerID := p.workerConsumerID(workerIdx)
+	// Panic recovery is mandatory to prevent a single malformed message from crashing the entire consumer node.
+	defer func() {
+		if r := recover(); r != nil {
+			slog.Error("worker panic recovered", "error", r, "worker", workerID)
+		}
+	}()
 
-	// Each worker recovers its own PEL.
 	initCtx, initCancel := context.WithTimeout(context.Background(), p.writeTimeout*2)
 	p.recoverPending(initCtx, workerID)
 	initCancel()
@@ -138,7 +155,6 @@ func (p *StreamConsumer) worker(ctx context.Context, workerIdx int) {
 	ticker := time.NewTicker(p.flushInt)
 	defer ticker.Stop()
 
-	// Backoff state for flush retries when DB is unavailable.
 	retryWait := p.retryInitWait
 	retryCount := 0
 
@@ -160,12 +176,12 @@ func (p *StreamConsumer) worker(ctx context.Context, workerIdx int) {
 			recoverCancel()
 			p.drainOnce.Do(func() { p.drainNewMessages(workerID) })
 			return
+
 		case <-ticker.C:
 			if len(batch) > 0 {
 				p.tryFlush(ctx, &batch, &msgIDs, &retryCount, workerID, ticker, &retryWait)
 			}
 		default:
-			// Circuit Breaker gate: if open, sleep and skip XReadGroup.
 			if !p.cb.Allow() {
 				wait := p.cb.WaitDuration()
 				if wait > 0 {
@@ -289,7 +305,7 @@ func (p *StreamConsumer) tryFlush(ctx context.Context, batch *[]*domain.Event, m
 }
 
 func (p *StreamConsumer) drainNewMessages(workerID string) {
-	drainCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	drainCtx, cancel := context.WithTimeout(context.Background(), p.drainTimeout)
 	defer cancel()
 
 	slog.Info("starting drain", "group", p.groupName, "worker", workerID)
@@ -356,8 +372,6 @@ func (p *StreamConsumer) parseMessage(id string, values map[string]interface{}) 
 		evt.UA = v
 	}
 
-	// Extract timestamp from Redis message ID (format: <ms>-<seq>).
-	// strings.IndexByte avoids the []string allocation from strings.Split.
 	if idx := strings.IndexByte(id, '-'); idx > 0 {
 		ms, err := strconv.ParseInt(id[:idx], 10, 64)
 		if err == nil {
@@ -436,6 +450,11 @@ func (p *StreamConsumer) recoverPending(ctx context.Context, consumerID string) 
 }
 
 func (p *StreamConsumer) janitor(ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			slog.Error("janitor panic recovered", "error", r)
+		}
+	}()
 	ticker := time.NewTicker(p.streamMinIdle)
 	defer ticker.Stop()
 
@@ -490,6 +509,11 @@ func (p *StreamConsumer) claimStuckMessages(ctx context.Context) {
 }
 
 func (p *StreamConsumer) dlqMonitor(ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			slog.Error("dlq monitor panic recovered", "error", r)
+		}
+	}()
 	ticker := time.NewTicker(15 * time.Second)
 	defer ticker.Stop()
 
