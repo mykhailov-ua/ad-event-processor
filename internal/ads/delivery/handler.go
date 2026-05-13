@@ -36,20 +36,55 @@ var (
 		New: func() any { return new(bytes.Buffer) },
 	}
 	// Pre-allocate status code strings to avoid strconv.Itoa allocations in metrics.
-	statusStrings = map[int]string{
-		http.StatusOK: "200", http.StatusAccepted: "202",
-		http.StatusBadRequest: "400", http.StatusUnauthorized: "401",
-		http.StatusForbidden: "403", http.StatusNotFound: "404",
-		http.StatusConflict: "409", http.StatusTooManyRequests: "429",
-		http.StatusInternalServerError: "500", http.StatusPaymentRequired: "402",
-	}
+	statusStrings     [600]string
+	maxPoolObjectSize = 64 * 1024 // 64KB
 )
 
+func init() {
+	for i := 0; i < 600; i++ {
+		statusStrings[i] = strconv.Itoa(i)
+	}
+}
 
+// putBuffer returns a buffer to the pool only if its capacity is within safe limits.
+func putBuffer(buf *bytes.Buffer) {
+	if buf == nil || buf.Cap() > maxPoolObjectSize {
+		return
+	}
+	buf.Reset()
+	bufferPool.Put(buf)
+}
+
+// putAdEvent ensures that AdEvent objects with oversized metadata maps are discarded.
+func putAdEvent(evt *pb.AdEvent) {
+	if evt == nil {
+		return
+	}
+	// Go maps do not shrink after elements are removed; discard if extra metadata is too large.
+	if evt.Metadata != nil && len(evt.Metadata.Extra) > 100 {
+		return
+	}
+	evt.Reset()
+	adEventPool.Put(evt)
+}
+
+// putTrackResponse returns the response object to the pool after resetting its fields.
+func putTrackResponse(resp *pb.TrackResponse) {
+	if resp == nil {
+		return
+	}
+	resp.Reset()
+	trackResponsePool.Put(resp)
+}
+
+
+// Pinger defines the interface for checking component connectivity.
 type Pinger interface {
 	Ping(ctx context.Context) error
 }
 
+// NewRouter initializes the HTTP transport layer and registers health, metrics, and tracking endpoints.
+// Chosen to isolate routing logic and provide a central entry point for external requests.
 func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngine *ads.FilterEngine, pool Pinger, rdbs []redis.UniversalClient) http.Handler {
 	mux := http.NewServeMux()
 
@@ -59,14 +94,12 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 		defer cancel()
 
-		// Verifies PostgreSQL connectivity to ensure the transactional metadata store is reachable.
 		if err := pool.Ping(ctx); err != nil {
 			slog.Error("health check failed: postgres", "error", err)
 			http.Error(w, "postgres unreachable", http.StatusServiceUnavailable)
 			return
 		}
 
-		// Iterates through all Redis shards to validate global state and budget reservation availability.
 		for i, rdb := range rdbs {
 			if err := rdb.Ping(ctx).Err(); err != nil {
 				slog.Error("health check failed: redis shard", "shard", i, "error", err)
@@ -91,20 +124,18 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 
 		defer func() {
 			duration := time.Since(start).Seconds()
-			statusStr := statusStrings[status]
-			if statusStr == "" {
-				statusStr = strconv.Itoa(status)
+			statusStr := "500"
+			if status >= 0 && status < len(statusStrings) {
+				statusStr = statusStrings[status]
 			}
 			ads.HttpRequestsTotal.WithLabelValues("POST", "/track", statusStr).Inc()
 			ads.HttpRequestDuration.WithLabelValues("POST", "/track").Observe(duration)
 		}()
 
-
 		r.Body = http.MaxBytesReader(w, r.Body, cfg.MaxRequestBodySize)
 
 		id, _ := uuid.NewV7()
 		requestID := id.String()
-		l := slog.With("request_id", requestID)
 
 		var campaignID uuid.UUID
 		var eventType string
@@ -115,20 +146,21 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 
 		contentType := r.Header.Get("Content-Type")
 		if contentType == "application/x-protobuf" || contentType == "" {
-			body, err := io.ReadAll(r.Body)
-			if err != nil {
-				l.Warn("failed to read body", "error", err)
+			buf := bufferPool.Get().(*bytes.Buffer)
+			defer putBuffer(buf)
+
+			if _, err := io.Copy(buf, r.Body); err != nil {
+				slog.Warn("failed to read body", "error", err, "request_id", id)
 				status = http.StatusBadRequest
 				http.Error(w, "invalid body", status)
 				return
 			}
 
 			pbReq := adEventPool.Get().(*pb.AdEvent)
-			pbReq.Reset()
-			defer adEventPool.Put(pbReq)
+			defer putAdEvent(pbReq)
 
-			if err := proto.Unmarshal(body, pbReq); err != nil {
-				l.Warn("invalid protobuf body", "error", err)
+			if err := proto.Unmarshal(buf.Bytes(), pbReq); err != nil {
+				slog.Warn("invalid protobuf body", "error", err, "request_id", id)
 				status = http.StatusBadRequest
 				http.Error(w, "invalid protobuf", status)
 				return
@@ -136,7 +168,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 
 			cid, err := uuid.Parse(pbReq.CampaignId)
 			if err != nil {
-				l.Warn("invalid campaign id in proto", "error", err)
+				slog.Warn("invalid campaign id in proto", "error", err, "request_id", id)
 				status = http.StatusBadRequest
 				http.Error(w, "invalid campaign_id", status)
 				return
@@ -147,34 +179,16 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 				if pbReq.Metadata.ClickId != "" {
 					clickID = pbReq.Metadata.ClickId
 				}
-				// Serializes metadata to JSON for downstream processing while reusing buffers to minimize GC pressure.
-				buf := bufferPool.Get().(*bytes.Buffer)
-				buf.Reset()
 				
-				enc := json.NewEncoder(buf)
-				_ = enc.Encode(pbReq.Metadata)
-				payload = buf.Bytes() // Use the internal buffer bytes directly, but must copy to evt later.
-				
-				// We'll copy to evt.Payload later to avoid extra allocation here.
-				// Since we don't put buf back until end of block, this is safe.
-				defer func() {
-					if buf.Cap() <= 64*1024 {
-						bufferPool.Put(buf)
-					}
-				}()
+				mBuf := bufferPool.Get().(*bytes.Buffer)
+				defer putBuffer(mBuf)
 			}
 		} else {
-			// Read body once into a pooled buffer
 			buf := bufferPool.Get().(*bytes.Buffer)
-			buf.Reset()
-			defer func() {
-				if buf.Cap() <= 64*1024 {
-					bufferPool.Put(buf)
-				}
-			}()
+			defer putBuffer(buf)
 
 			if _, err := io.Copy(buf, r.Body); err != nil {
-				l.Warn("failed to read body", "error", err)
+				slog.Warn("failed to read body", "error", err, "request_id", id)
 				status = http.StatusBadRequest
 				http.Error(w, "invalid body", status)
 				return
@@ -187,7 +201,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 				Payload    json.RawMessage `json:"payload"`
 			}
 			if err := json.Unmarshal(buf.Bytes(), &req); err != nil {
-				l.Warn("invalid json body", "error", err)
+				slog.Warn("invalid json body", "error", err, "request_id", id)
 				status = http.StatusBadRequest
 				http.Error(w, "invalid json", status)
 				return
@@ -199,7 +213,6 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 				clickID = req.ClickID
 			}
 		}
-
 
 		evt := domain.EventPool.Get().(*domain.Event)
 		evt.Reset()
@@ -214,19 +227,19 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 			if err := filterEngine.Check(r.Context(), evt); err != nil {
 				domain.EventPool.Put(evt)
 				if errors.Is(err, ads.ErrRateLimitExceeded) {
-					l.Warn("event rejected: rate limit", "error", err)
+					slog.Warn("event rejected: rate limit", "error", err, "request_id", id)
 					http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
 					return
 				} else if errors.Is(err, ads.ErrDuplicateEvent) {
-					l.Warn("event rejected: duplicate", "error", err)
+					slog.Warn("event rejected: duplicate", "error", err, "request_id", id)
 					http.Error(w, "duplicate event", http.StatusConflict)
 					return
 				} else if errors.Is(err, ads.ErrBudgetExhausted) {
-					l.Warn("event rejected: budget exhausted", "error", err)
+					slog.Warn("event rejected: budget exhausted", "error", err, "request_id", id)
 					http.Error(w, "budget exhausted", http.StatusPaymentRequired)
 					return
 				}
-				l.Error("filter engine failure", "error", err)
+				slog.Error("filter engine failure", "error", err, "request_id", id)
 				http.Error(w, "internal error", http.StatusInternalServerError)
 				return
 			}
@@ -236,13 +249,15 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 
 		if r.Header.Get("Accept") == "application/x-protobuf" {
 			resp := trackResponsePool.Get().(*pb.TrackResponse)
-			resp.Reset()
-			defer trackResponsePool.Put(resp)
+			defer putTrackResponse(resp)
 
 			resp.RequestId = requestID
 			resp.Status = "accepted"
 
-			out, _ := proto.Marshal(resp)
+			buf := bufferPool.Get().(*bytes.Buffer)
+			defer putBuffer(buf)
+
+			out, _ := proto.MarshalOptions{}.MarshalAppend(buf.Bytes(), resp)
 			w.Header().Set("Content-Type", "application/x-protobuf")
 			w.WriteHeader(status)
 			_, _ = w.Write(out)
@@ -251,12 +266,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 			w.WriteHeader(status)
 
 			buf := bufferPool.Get().(*bytes.Buffer)
-			buf.Reset()
-			defer func() {
-				if buf.Cap() <= 64*1024 {
-					bufferPool.Put(buf)
-				}
-			}()
+			defer putBuffer(buf)
 
 			_, _ = buf.WriteString(`{"request_id":"`)
 			_, _ = buf.WriteString(requestID)
@@ -268,25 +278,35 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 	return mux
 }
 
+// extractClientIP retrieves the real client IP from standard HTTP headers or the remote address.
+// Chosen to prioritize transparency via X-Forwarded-For while providing fallbacks for local requests.
 func extractClientIP(r *http.Request) string {
-	remoteIP, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		remoteIP = r.RemoteAddr
-	}
-
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 		last := len(xff)
 		for i := len(xff) - 1; i >= -1; i-- {
 			if i == -1 || xff[i] == ',' {
-				ipStr := strings.TrimSpace(xff[i+1 : last])
-				parsedIP := net.ParseIP(ipStr)
-				if parsedIP != nil && !parsedIP.IsPrivate() && !parsedIP.IsLoopback() && !parsedIP.IsLinkLocalUnicast() {
-					return ipStr
+				start := i + 1
+				for start < last && xff[start] == ' ' {
+					start++
+				}
+				end := last
+				for end > start && xff[end-1] == ' ' {
+					end--
+				}
+				
+				if start < end {
+					ipStr := xff[start:end]
+					parsedIP := net.ParseIP(ipStr)
+					if parsedIP != nil && !parsedIP.IsPrivate() && !parsedIP.IsLoopback() && !parsedIP.IsLinkLocalUnicast() {
+						return ipStr
+					}
 				}
 				last = i
 			}
 		}
-	} else if xri := r.Header.Get("X-Real-IP"); xri != "" {
+	}
+
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
 		ipStr := strings.TrimSpace(xri)
 		parsedIP := net.ParseIP(ipStr)
 		if parsedIP != nil && !parsedIP.IsPrivate() && !parsedIP.IsLoopback() && !parsedIP.IsLinkLocalUnicast() {
@@ -294,5 +314,9 @@ func extractClientIP(r *http.Request) string {
 		}
 	}
 
+	remoteIP, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
 	return remoteIP
 }
