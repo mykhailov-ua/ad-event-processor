@@ -10,27 +10,31 @@ import (
 	"github.com/mykhailov-ua/ad-event-processor/internal/ads/repository"
 )
 
-// Registry maintains in-memory campaign IDs for O(1) validation in the hot path.
-// This prevents batch failures due to Foreign Key violations during bulk inserts.
+// Registry maintains an in-memory map of active campaigns for high-performance lookups.
+// Chosen to eliminate database round-trips for campaign validation in the hot path.
 type campaignInfo struct {
 	customerID uuid.UUID
 	status     repository.CampaignStatusType
 }
 
 type Registry struct {
-	repo repository.Querier
-	data map[uuid.UUID]campaignInfo
-	mu   sync.RWMutex
-	wg   sync.WaitGroup
+	repo          repository.Querier
+	data          map[uuid.UUID]campaignInfo
+	manuallyAdded map[uuid.UUID]bool // Tracks IDs added via Add() that haven't been seen in DB yet
+	mu            sync.RWMutex
+	wg            sync.WaitGroup
 }
 
+// NewRegistry initializes the registry with optimized initial capacities.
 func NewRegistry(repo repository.Querier) *Registry {
 	return &Registry{
-		data: make(map[uuid.UUID]campaignInfo, 100_000),
-		repo: repo,
+		data:          make(map[uuid.UUID]campaignInfo, 100_000),
+		manuallyAdded: make(map[uuid.UUID]bool),
+		repo:          repo,
 	}
 }
 
+// Exists checks if a campaign is registered and currently active.
 func (r *Registry) Exists(id uuid.UUID) bool {
 	r.mu.RLock()
 	info, ok := r.data[id]
@@ -38,6 +42,7 @@ func (r *Registry) Exists(id uuid.UUID) bool {
 	return ok && info.status == repository.CampaignStatusTypeACTIVE
 }
 
+// GetCustomerID retrieves the customer ID associated with a specific campaign.
 func (r *Registry) GetCustomerID(campaignID uuid.UUID) (uuid.UUID, bool) {
 	r.mu.RLock()
 	info, ok := r.data[campaignID]
@@ -48,12 +53,18 @@ func (r *Registry) GetCustomerID(campaignID uuid.UUID) (uuid.UUID, bool) {
 	return info.customerID, true
 }
 
+// Add manually inserts a campaign into the registry and marks it as manually added.
+// This ensures the campaign persists through background syncs until it is confirmed by the database.
 func (r *Registry) Add(id, customerID uuid.UUID) {
 	r.mu.Lock()
-	r.data[id] = campaignInfo{customerID: customerID, status: repository.CampaignStatusTypeACTIVE}
-	r.mu.Unlock()
+	defer r.mu.Unlock()
+	info := campaignInfo{customerID: customerID, status: repository.CampaignStatusTypeACTIVE}
+	r.data[id] = info
+	r.manuallyAdded[id] = true
 }
 
+// Sync fetches all active campaigns from the database and atomicaly merges them with manually added entries.
+// Chosen to maintain the database as the source of truth while supporting immediate consistency for API-driven updates.
 func (r *Registry) Sync(ctx context.Context) (int, error) {
 	rows, err := r.repo.ListActiveCampaigns(ctx)
 	if err != nil {
@@ -62,19 +73,33 @@ func (r *Registry) Sync(ctx context.Context) (int, error) {
 
 	fresh := make(map[uuid.UUID]campaignInfo, len(rows))
 	for _, row := range rows {
-		fresh[uuid.UUID(row.ID.Bytes)] = campaignInfo{
+		id := uuid.UUID(row.ID.Bytes)
+		fresh[id] = campaignInfo{
 			customerID: uuid.UUID(row.CustomerID.Bytes),
 			status:     row.Status,
 		}
 	}
 
 	r.mu.Lock()
-	r.data = fresh
-	r.mu.Unlock()
+	defer r.mu.Unlock()
 
+	// 1. Remove confirmed items from manuallyAdded set
+	for id := range fresh {
+		delete(r.manuallyAdded, id)
+	}
+
+	// 2. Merge remaining manual additions into the fresh map
+	for id := range r.manuallyAdded {
+		if info, ok := r.data[id]; ok {
+			fresh[id] = info
+		}
+	}
+
+	r.data = fresh
 	return len(fresh), nil
 }
 
+// StartSync initiates a background goroutine to periodically synchronize with the database.
 func (r *Registry) StartSync(ctx context.Context, interval time.Duration) {
 	r.wg.Add(1)
 	go func() {
@@ -98,6 +123,7 @@ func (r *Registry) StartSync(ctx context.Context, interval time.Duration) {
 	}()
 }
 
+// Wait blocks until the synchronization goroutine has exited gracefully.
 func (r *Registry) Wait(ctx context.Context) error {
 	done := make(chan struct{})
 	go func() {
