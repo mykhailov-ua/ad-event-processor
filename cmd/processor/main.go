@@ -11,11 +11,9 @@ import (
 
 	"fmt"
 	"github.com/mykhailov-ua/ad-event-processor/internal/ads"
-	"github.com/mykhailov-ua/ad-event-processor/internal/ads/repository"
+	"github.com/mykhailov-ua/ad-event-processor/internal/ads/db"
 	"github.com/mykhailov-ua/ad-event-processor/internal/config"
 	"github.com/mykhailov-ua/ad-event-processor/internal/database"
-	"github.com/mykhailov-ua/ad-event-processor/internal/infra/budget"
-	infra_repo "github.com/mykhailov-ua/ad-event-processor/internal/infra/repository"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
 )
@@ -41,7 +39,7 @@ func main() {
 	}
 	defer pool.Close()
 
-	queries := repository.New(pool)
+	queries := db.New(pool)
 	partManager := database.NewPartitionManager(pool, cfg.LogRetentionDays, cfg.PartitionPreCreateDays)
 	partManager.StartBackground(ctx)
 
@@ -80,17 +78,17 @@ func main() {
 	pgStore := ads.NewPostgresStore(queries, time.Duration(cfg.WriteTimeoutMs)*time.Millisecond)
 	chStore := ads.NewClickHouseStore(chConn, time.Duration(cfg.WriteTimeoutMs)*time.Millisecond)
 
-	campaignRepo := infra_repo.NewCampaignRepo(queries)
-	customerRepo := infra_repo.NewCustomerRepo(queries)
+	campaignRepo := ads.NewCampaignRepo(queries)
+	customerRepo := ads.NewCustomerRepo(queries)
 
 	var pgConsumers []*ads.StreamConsumer
 	var chConsumers []*ads.StreamConsumer
-	var syncWorkers []*budget.SyncWorker
+	var syncWorkers []*ads.SyncWorker
 
 	for i, rdb := range rdbs {
 		shardID := fmt.Sprintf("shard_%d", i)
 
-		sw := budget.NewSyncWorker(rdb, campaignRepo, customerRepo, time.Duration(cfg.BudgetSyncIntervalMs)*time.Millisecond)
+		sw := ads.NewSyncWorker(rdb, campaignRepo, customerRepo, time.Duration(cfg.BudgetSyncIntervalMs)*time.Millisecond)
 		syncWorkers = append(syncWorkers, sw)
 		go sw.Start(ctx)
 
@@ -111,6 +109,7 @@ func main() {
 			time.Duration(cfg.Lifecycle.DrainTimeoutMs)*time.Millisecond,
 		)
 		pgConsumers = append(pgConsumers, pc)
+		pc.Start(ctx)
 
 		cc := ads.NewStreamConsumer(
 			chStore,
