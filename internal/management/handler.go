@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
+	"github.com/mykhailov-ua/ad-event-processor/internal/ads/db"
 	"github.com/mykhailov-ua/ad-event-processor/internal/config"
 	"github.com/shopspring/decimal"
 	"golang.org/x/time/rate"
@@ -114,6 +115,12 @@ func (h *Handler) createCampaign(w http.ResponseWriter, r *http.Request) {
 		CustomerID  uuid.UUID       `json:"customer_id"`
 		Name        string          `json:"name"`
 		BudgetLimit decimal.Decimal `json:"budget_limit"`
+		PacingMode  string          `json:"pacing_mode"`
+		DailyBudget decimal.Decimal `json:"daily_budget"`
+		Timezone    string          `json:"timezone"`
+		FreqLimit       int32           `json:"freq_limit"`
+		FreqWindow      int32           `json:"freq_window"`
+		TargetCountries []string        `json:"target_countries"`
 	}
 	body, _ := io.ReadAll(r.Body)
 	if err := json.Unmarshal(body, &req); err != nil {
@@ -124,8 +131,21 @@ func (h *Handler) createCampaign(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "customer_id is required", http.StatusBadRequest)
 		return
 	}
+
+	// Defaults
+	pacing := db.PacingModeTypeASAP
+	if req.PacingMode == "EVEN" {
+		pacing = db.PacingModeTypeEVEN
+	}
+	if req.Timezone == "" {
+		req.Timezone = "UTC"
+	}
+	if req.FreqWindow == 0 {
+		req.FreqWindow = 86400
+	}
+
 	hash := h.svc.GenerateIdempotencyHash(req.CustomerID, req)
-	id, err := h.svc.CreateCampaign(r.Context(), req.CustomerID, req.Name, req.BudgetLimit, hash)
+	id, err := h.svc.CreateCampaign(r.Context(), req.CustomerID, req.Name, req.BudgetLimit, pacing, req.DailyBudget, req.Timezone, req.FreqLimit, req.FreqWindow, req.TargetCountries, hash)
 	if err != nil {
 		slog.Error("failed to create campaign", "error", err, "customer_id", req.CustomerID)
 		http.Error(w, err.Error(), http.StatusInternalServerError)

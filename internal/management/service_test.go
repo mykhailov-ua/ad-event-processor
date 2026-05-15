@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/mykhailov-ua/ad-event-processor/internal/ads"
+	"github.com/mykhailov-ua/ad-event-processor/internal/ads/db"
 	"github.com/mykhailov-ua/ad-event-processor/internal/config"
 	"github.com/mykhailov-ua/ad-event-processor/internal/database"
 	"github.com/redis/go-redis/v9"
@@ -39,7 +40,7 @@ func TestManagementService_CancelCampaign(t *testing.T) {
 	require.NoError(t, err)
 
 	budget := decimal.NewFromInt(500)
-	campaignID, err := svc.CreateCampaign(ctx, customerID, "Test db.Campaign", budget, "idemp-1")
+	campaignID, err := svc.CreateCampaign(ctx, customerID, "Test Campaign", budget, db.PacingModeTypeASAP, decimal.Zero, "UTC", 0, 0, nil, "idemp-1")
 	require.NoError(t, err)
 
 	_, _ = pool.Exec(ctx, "UPDATE campaigns SET current_spend = $1 WHERE id = $2", ads.ToNumeric(decimal.NewFromInt(200)), campaignID)

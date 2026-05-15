@@ -85,7 +85,7 @@ func (s *Service) TopUpBalance(ctx context.Context, customerID uuid.UUID, amount
 	})
 }
 
-func (s *Service) CreateCampaign(ctx context.Context, customerID uuid.UUID, name string, budgetLimit decimal.Decimal, idempotencyKey string) (uuid.UUID, error) {
+func (s *Service) CreateCampaign(ctx context.Context, customerID uuid.UUID, name string, budgetLimit decimal.Decimal, pacingMode db.PacingModeType, dailyBudget decimal.Decimal, timezone string, freqLimit, freqWindow int32, targetCountries []string, idempotencyKey string) (uuid.UUID, error) {
 	campaignID, _ := uuid.NewV7()
 	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		q := db.New(tx)
@@ -110,11 +110,17 @@ func (s *Service) CreateCampaign(ctx context.Context, customerID uuid.UUID, name
 			return err
 		}
 		_, err = q.CreateCampaign(ctx, db.CreateCampaignParams{
-			ID:          ads.ToUUID(campaignID),
-			Name:        name,
-			BudgetLimit: ads.ToNumeric(budgetLimit),
-			Status:      db.CampaignStatusTypeACTIVE,
-			CustomerID:  ads.ToUUID(customerID),
+			ID:              ads.ToUUID(campaignID),
+			Name:            name,
+			BudgetLimit:     ads.ToNumeric(budgetLimit),
+			Status:          db.CampaignStatusTypeACTIVE,
+			CustomerID:      ads.ToUUID(customerID),
+			PacingMode:      pacingMode,
+			DailyBudget:     ads.ToNumeric(dailyBudget),
+			Timezone:        timezone,
+			FreqLimit:       pgtype.Int4{Int32: freqLimit, Valid: true},
+			FreqWindow:      pgtype.Int4{Int32: freqWindow, Valid: true},
+			TargetCountries: targetCountries,
 		})
 		if err != nil {
 			return err
@@ -135,7 +141,17 @@ func (s *Service) CreateCampaign(ctx context.Context, customerID uuid.UUID, name
 			Reason:     pgtype.Text{String: "db.Campaign Creation", Valid: true},
 		})
 		if err == nil {
-			s.AuditLog(ctx, q, uuid.Nil, "CREATE_CAMPAIGN", "campaign", &campaignID, map[string]any{"name": name, "budget_limit": budgetLimit, "customer_id": customerID}, map[string]any{"idempotency_key": idempotencyKey})
+			s.AuditLog(ctx, q, uuid.Nil, "CREATE_CAMPAIGN", "campaign", &campaignID, map[string]any{
+				"name":             name,
+				"budget_limit":     budgetLimit,
+				"customer_id":      customerID,
+				"pacing_mode":      pacingMode,
+				"daily_budget":     dailyBudget,
+				"timezone":         timezone,
+				"freq_limit":       freqLimit,
+				"freq_window":      freqWindow,
+				"target_countries": targetCountries,
+			}, map[string]any{"idempotency_key": idempotencyKey})
 		}
 		return err
 	})

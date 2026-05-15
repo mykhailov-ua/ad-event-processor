@@ -53,10 +53,13 @@ func TestManagementQueries(t *testing.T) {
 	campaignID := uuid.New()
 	camp, err := queries.CreateCampaign(ctx, db.CreateCampaignParams{
 		ID:          pgtype.UUID{Bytes: campaignID, Valid: true},
-		Name:        "Management Test db.Campaign",
+		Name:        "Management Test Campaign",
 		BudgetLimit: ads.ToNumeric(decimal.NewFromFloat(100.00)),
 		Status:      db.CampaignStatusTypeACTIVE,
 		CustomerID:  pgtype.UUID{Bytes: customerID, Valid: true},
+		PacingMode:  db.PacingModeTypeASAP,
+		DailyBudget: ads.ToNumeric(decimal.Zero),
+		Timezone:    "UTC",
 	})
 	require.NoError(t, err)
 	assert.Equal(t, campaignID, uuid.UUID(camp.ID.Bytes))
