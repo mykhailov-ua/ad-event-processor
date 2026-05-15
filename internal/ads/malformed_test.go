@@ -15,7 +15,8 @@ func TestTrackHandlerMalformed(t *testing.T) {
 		MaxRequestBodySize: 1024,
 	}
 	registry := &mockRegistry{}
-	handler := NewRouter(cfg, registry, nil, nil, nil)
+	sharder := NewJumpHashSharder(1)
+	handler := NewRouter(cfg, registry, nil, nil, nil, sharder, "fraud-stream")
 
 	t.Run("Malformed Protobuf", func(t *testing.T) {
 		body := []byte{0xFF, 0xEE, 0xDD} // Injects a corrupted byte sequence to trigger Protobuf wire-format parsing errors.

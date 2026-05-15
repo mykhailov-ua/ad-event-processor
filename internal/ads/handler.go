@@ -88,7 +88,7 @@ type Pinger interface {
 
 // NewRouter constructs the multiplexer for the tracking API, integrating telemetry and profiling.
 // Chosen to isolate routing logic and provide a central entry point for external requests.
-func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngine *FilterEngine, pool Pinger, rdbs []redis.UniversalClient) http.Handler {
+func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngine *FilterEngine, pool Pinger, rdbs []redis.UniversalClient, sharder Sharder, fraudStream string) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.Handle("GET /metrics", promhttp.Handler())
@@ -142,6 +142,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 
 		var campaignID uuid.UUID
 		var eventType string
+		var userID string
 		var payload []byte
 
 		ip := extractClientIP(r)
@@ -179,12 +180,14 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 			campaignID = cid
 			eventType = pbReq.EventType
 			if pbReq.Metadata != nil {
+				userID = pbReq.Metadata.UserId
 				if pbReq.Metadata.ClickId != "" {
 					clickID = pbReq.Metadata.ClickId
 				}
-
-				mBuf := bufferPool.Get().(*bytes.Buffer)
-				defer putBuffer(mBuf)
+				// Map extra to payload for persistence if desired
+				if pbReq.Metadata.Extra != nil {
+					payload, _ = json.Marshal(pbReq.Metadata.Extra)
+				}
 			}
 		} else {
 			buf := bufferPool.Get().(*bytes.Buffer)
@@ -199,6 +202,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 
 			var req struct {
 				CampaignID uuid.UUID       `json:"campaign_id"`
+				UserID     string          `json:"user_id"`
 				Type       string          `json:"type"`
 				ClickID    string          `json:"click_id"`
 				Payload    json.RawMessage `json:"payload"`
@@ -210,6 +214,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 				return
 			}
 			campaignID = req.CampaignID
+			userID = req.UserID
 			eventType = req.Type
 			payload = req.Payload
 			if req.ClickID != "" {
@@ -221,6 +226,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 		evt.Reset()
 		evt.ClickID = clickID
 		evt.CampaignID = campaignID
+		evt.UserID = userID
 		evt.Type = eventType
 		evt.Payload = append(evt.Payload[:0], payload...)
 		evt.IP = ip
@@ -244,10 +250,52 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 					metrics.FilterBlockedTotal.WithLabelValues("budget").Inc()
 					http.Error(w, "budget exhausted", http.StatusPaymentRequired)
 					return
+				} else if errors.Is(err, ErrPacingExhausted) {
+					slog.Warn("event rejected: pacing exhausted", "error", err, "request_id", id)
+					metrics.FilterBlockedTotal.WithLabelValues("pacing").Inc()
+					http.Error(w, "pacing limit reached", http.StatusTooManyRequests)
+					return
+				} else if errors.Is(err, ErrFreqLimitExceeded) {
+					slog.Warn("event rejected: frequency limit", "error", err, "request_id", id)
+					metrics.FilterBlockedTotal.WithLabelValues("freq").Inc()
+					http.Error(w, "frequency limit reached", http.StatusForbidden)
+					return
+				} else if errors.Is(err, ErrGeoBlocked) {
+					slog.Warn("event rejected: geo blocked", "error", err, "request_id", id)
+					metrics.FilterBlockedTotal.WithLabelValues("geo").Inc()
+					http.Error(w, "geo-targeting blocked", http.StatusForbidden)
+					return
+				} else if errors.Is(err, ErrFraudDetected) {
+					slog.Warn("fraud detected: silent drop", "reason", evt.FraudReason, "request_id", id)
+					metrics.FilterBlockedTotal.WithLabelValues("fraud").Inc()
+					
+					// Push to fraud stream for analytical logging
+					shard := sharder.GetShard(evt.CampaignID)
+					rdb := rdbs[shard]
+					
+					_, _ = rdb.XAdd(r.Context(), &redis.XAddArgs{
+						Stream: fraudStream,
+						MaxLen: int64(cfg.StreamMaxLen),
+						Approx: true,
+						Values: map[string]interface{}{
+							"click_id":     evt.ClickID,
+							"campaign_id":  evt.CampaignID.String(),
+							"user_id":      evt.UserID,
+							"type":         evt.Type,
+							"ip":           evt.IP,
+							"ua":           evt.UA,
+							"payload":      string(evt.Payload),
+							"fraud_reason": evt.FraudReason,
+							"created_at":   evt.CreatedAt.Format(time.RFC3339Nano),
+						},
+					}).Result()
+
+					// Fallthrough to return StatusAccepted for silent drop
+				} else {
+					slog.Error("filter engine failure", "error", err, "request_id", id)
+					http.Error(w, "internal error", http.StatusInternalServerError)
+					return
 				}
-				slog.Error("filter engine failure", "error", err, "request_id", id)
-				http.Error(w, "internal error", http.StatusInternalServerError)
-				return
 			}
 		}
 

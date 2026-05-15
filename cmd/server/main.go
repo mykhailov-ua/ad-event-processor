@@ -73,6 +73,18 @@ func main() {
 	campaignRepo := ads.NewCampaignRepo(queries)
 	sharder := ads.NewJumpHashSharder(len(rdbs))
 
+	// Geo & Fraud setup
+	var geoProvider ads.GeoProvider
+	geoProvider, err = ads.NewMaxMindProvider("deploy/geoip/GeoLite2-Country.mmdb")
+	if err != nil {
+		slog.Warn("failed to load MaxMind DB, using mock", "error", err)
+		geoProvider = &ads.MockGeoProvider{}
+	}
+	defer geoProvider.Close()
+
+	geoFilter := ads.NewGeoFilter(geoProvider, registry)
+	fraudFilter := ads.NewFraudFilter(geoProvider, rdbs[0], time.Duration(cfg.TTCMinMs)*time.Millisecond) // Simplified shard for global fraud
+
 	unifiedFilter := ads.NewUnifiedFilter(
 		rdbs,
 		sharder,
@@ -88,9 +100,9 @@ func main() {
 		cfg.StreamMaxLen,
 	)
 
-	filterEngine := ads.NewFilterEngine(unifiedFilter)
+	filterEngine := ads.NewFilterEngine(geoFilter, fraudFilter, unifiedFilter)
 
-	mux := ads.NewRouter(cfg, registry, filterEngine, pool, rdbs)
+	mux := ads.NewRouter(cfg, registry, filterEngine, pool, rdbs, sharder, cfg.FraudStreamName)
 
 	slog.Info("starting ad-event-tracker", "port", cfg.ServerPort)
 

@@ -49,7 +49,8 @@ func TestHealthCheckPartialFailure(t *testing.T) {
 			&mockFailRedis{fail: false},
 		}
 		pool := &mockPinger{fail: false}
-		handler := NewRouter(cfg, registry, nil, pool, rdbs)
+		sharder := NewJumpHashSharder(1)
+		handler := NewRouter(cfg, registry, nil, pool, rdbs, sharder, "fraud-stream")
 
 		req := httptest.NewRequest("GET", "/health", nil)
 		w := httptest.NewRecorder()
@@ -64,7 +65,8 @@ func TestHealthCheckPartialFailure(t *testing.T) {
 			&mockFailRedis{fail: false},
 		}
 		pool := &mockPinger{fail: true}
-		handler := NewRouter(cfg, registry, nil, pool, rdbs)
+		sharder := NewJumpHashSharder(1)
+		handler := NewRouter(cfg, registry, nil, pool, rdbs, sharder, "fraud-stream")
 
 		req := httptest.NewRequest("GET", "/health", nil)
 		w := httptest.NewRecorder()
@@ -80,7 +82,8 @@ func TestHealthCheckPartialFailure(t *testing.T) {
 			&mockFailRedis{fail: true},
 		}
 		pool := &mockPinger{fail: false}
-		handler := NewRouter(cfg, registry, nil, pool, rdbs)
+		sharder := NewJumpHashSharder(1)
+		handler := NewRouter(cfg, registry, nil, pool, rdbs, sharder, "fraud-stream")
 
 		req := httptest.NewRequest("GET", "/health", nil)
 		w := httptest.NewRecorder()

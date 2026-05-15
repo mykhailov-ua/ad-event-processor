@@ -78,7 +78,8 @@ func TestGracefulShutdown_NoDataLoss(t *testing.T) {
 	consumer := ads.NewStreamConsumer(store, rdb, "shutdown-stream", "shutdown-group", "shutdown-c1", cfg.EventBatchSize, cfg.MaxWorkers, 100*time.Millisecond, 5*time.Second, 100*time.Millisecond, 5*time.Second, 5, 5*time.Minute, 1*time.Second)
 	consumer.Start(ctx)
 
-	router := ads.NewRouter(cfg, registry, filterEngine, pool, []redis.UniversalClient{rdb})
+	sharder := ads.NewJumpHashSharder(1)
+	router := ads.NewRouter(cfg, registry, filterEngine, pool, []redis.UniversalClient{rdb}, sharder, cfg.FraudStreamName)
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 

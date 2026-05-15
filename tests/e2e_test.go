@@ -83,7 +83,8 @@ func TestE2EFlow(t *testing.T) {
 	consumer.Start(ctx)
 	defer consumer.Close()
 
-	router := ads.NewRouter(cfg, registry, filterEngine, pool, []redis.UniversalClient{rdb})
+	sharder := ads.NewJumpHashSharder(1)
+	router := ads.NewRouter(cfg, registry, filterEngine, pool, []redis.UniversalClient{rdb}, sharder, cfg.FraudStreamName)
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 
@@ -167,7 +168,8 @@ func TestE2EFlow_Protobuf(t *testing.T) {
 	consumer.Start(ctx)
 	defer consumer.Close()
 
-	router := ads.NewRouter(cfg, registry, filterEngine, pool, []redis.UniversalClient{rdb})
+	sharder := ads.NewJumpHashSharder(1)
+	router := ads.NewRouter(cfg, registry, filterEngine, pool, []redis.UniversalClient{rdb}, sharder, cfg.FraudStreamName)
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 

@@ -14,14 +14,19 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/mykhailov-ua/ad-event-processor/internal/config"
+	"github.com/mykhailov-ua/ad-event-processor/internal/domain"
 	"google.golang.org/protobuf/proto"
 )
 
 type mockRegistry struct{}
 
-func (m *mockRegistry) Exists(id uuid.UUID) bool                              { return true }
-func (m *mockRegistry) Add(id, customerID uuid.UUID)                          {}
-func (m *mockRegistry) GetCustomerID(id uuid.UUID) (uuid.UUID, bool)          { return uuid.Nil, true }
+func (m *mockRegistry) Exists(id uuid.UUID) bool { return true }
+func (m *mockRegistry) Add(id, customerID uuid.UUID, pacingMode domain.PacingMode, dailyBudget float64, timezone string, freqLimit, freqWindow int32, targetCountries []string) {
+}
+func (m *mockRegistry) GetCustomerID(id uuid.UUID) (uuid.UUID, bool) { return uuid.Nil, true }
+func (m *mockRegistry) GetCampaign(id uuid.UUID) (*domain.Campaign, bool) {
+	return &domain.Campaign{ID: id, CustomerID: uuid.Nil}, true
+}
 func (m *mockRegistry) Sync(ctx context.Context) (int, error)                 { return 0, nil }
 func (m *mockRegistry) StartSync(ctx context.Context, interval time.Duration) {}
 func (m *mockRegistry) Wait(ctx context.Context) error                        { return nil }
@@ -31,7 +36,8 @@ func BenchmarkTrackHandlerJSON(b *testing.B) {
 		MaxRequestBodySize: 1024 * 1024,
 	}
 	registry := &mockRegistry{}
-	handler := NewRouter(cfg, registry, nil, nil, nil)
+	sharder := NewJumpHashSharder(1)
+	handler := NewRouter(cfg, registry, nil, nil, nil, sharder, "fraud-stream")
 
 	payload := map[string]interface{}{
 		"campaign_id": uuid.New(),
@@ -57,7 +63,8 @@ func BenchmarkTrackHandlerProto(b *testing.B) {
 		MaxRequestBodySize: 1024 * 1024,
 	}
 	registry := &mockRegistry{}
-	handler := NewRouter(cfg, registry, nil, nil, nil)
+	sharder := NewJumpHashSharder(1)
+	handler := NewRouter(cfg, registry, nil, nil, nil, sharder, "fraud-stream")
 
 	pbPayload := &pb.AdEvent{
 		CampaignId: uuid.NewString(),

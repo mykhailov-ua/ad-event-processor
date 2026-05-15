@@ -3,6 +3,7 @@ package ads
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -40,13 +41,19 @@ func NewCampaignRepo(queries db.Querier) *CampaignRepo {
 }
 
 func (r *CampaignRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.Campaign, error) {
-	row, err := r.queries.GetCampaignBudget(ctx, pgtype.UUID{Bytes: id, Valid: true})
+	row, err := r.queries.GetCampaignFull(ctx, pgtype.UUID{Bytes: id, Valid: true})
 	if err != nil {
 		return nil, err
 	}
 
 	limit, _ := row.BudgetLimit.Float64Value()
 	spend, _ := row.CurrentSpend.Float64Value()
+	daily, _ := row.DailyBudget.Float64Value()
+
+	loc, _ := time.LoadLocation(row.Timezone)
+	if loc == nil {
+		loc = time.UTC
+	}
 
 	return &domain.Campaign{
 		ID:           id,
@@ -54,11 +61,22 @@ func (r *CampaignRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.Campa
 		BudgetLimit:  limit.Float64,
 		CurrentSpend: spend.Float64,
 		Status:       domain.CampaignStatus(row.Status),
+		PacingMode:   domain.PacingMode(row.PacingMode),
+		DailyBudget:  daily.Float64,
+		Timezone:     row.Timezone,
+		Location:     loc,
+		FreqLimit:       row.FreqLimit.Int32,
+		FreqWindow:      row.FreqWindow.Int32,
+		TargetCountries: row.TargetCountries,
 	}, nil
 }
 
 func (r *CampaignRepo) UpdateStatus(ctx context.Context, id uuid.UUID, status domain.CampaignStatus) error {
-	return nil
+	_, err := r.queries.UpdateCampaignStatus(ctx, db.UpdateCampaignStatusParams{
+		ID:     pgtype.UUID{Bytes: id, Valid: true},
+		Status: db.CampaignStatusType(status),
+	})
+	return err
 }
 
 func (r *CampaignRepo) UpdateSpend(ctx context.Context, id uuid.UUID, amount float64) error {
@@ -82,14 +100,27 @@ func (r *CampaignRepo) ListActive(ctx context.Context) ([]*domain.Campaign, erro
 	for i, row := range rows {
 		limit, _ := row.BudgetLimit.Float64Value()
 		spend, _ := row.CurrentSpend.Float64Value()
+		daily, _ := row.DailyBudget.Float64Value()
+
+		loc, _ := time.LoadLocation(row.Timezone)
+		if loc == nil {
+			loc = time.UTC
+		}
 
 		campaigns[i] = &domain.Campaign{
-			ID:           uuid.UUID(row.ID.Bytes),
-			CustomerID:   uuid.UUID(row.CustomerID.Bytes),
-			Name:         row.Name,
-			BudgetLimit:  limit.Float64,
-			CurrentSpend: spend.Float64,
-			Status:       domain.CampaignStatus(row.Status),
+			ID:              uuid.UUID(row.ID.Bytes),
+			CustomerID:      uuid.UUID(row.CustomerID.Bytes),
+			Name:            row.Name,
+			BudgetLimit:     limit.Float64,
+			CurrentSpend:    spend.Float64,
+			Status:          domain.CampaignStatus(row.Status),
+			PacingMode:      domain.PacingMode(row.PacingMode),
+			DailyBudget:     daily.Float64,
+			Timezone:        row.Timezone,
+			Location:        loc,
+			FreqLimit:       row.FreqLimit.Int32,
+			FreqWindow:      row.FreqWindow.Int32,
+			TargetCountries: row.TargetCountries,
 		}
 	}
 	return campaigns, nil
