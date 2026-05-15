@@ -149,7 +149,7 @@ func (q *Queries) CreateStatusHistory(ctx context.Context, arg CreateStatusHisto
 }
 
 const getCampaignFull = `-- name: GetCampaignFull :one
-SELECT id, name, status, budget_limit, created_at, updated_at, customer_id, current_spend, deleted_at FROM campaigns
+SELECT id, name, status, budget_limit, created_at, updated_at, customer_id, current_spend, deleted_at, pacing_mode, daily_budget, timezone, freq_limit, freq_window, target_countries FROM campaigns
 WHERE id = $1
 `
 
@@ -166,6 +166,12 @@ func (q *Queries) GetCampaignFull(ctx context.Context, id pgtype.UUID) (Campaign
 		&i.CustomerID,
 		&i.CurrentSpend,
 		&i.DeletedAt,
+		&i.PacingMode,
+		&i.DailyBudget,
+		&i.Timezone,
+		&i.FreqLimit,
+		&i.FreqWindow,
+		&i.TargetCountries,
 	)
 	return i, err
 }
@@ -267,7 +273,7 @@ UPDATE campaigns
 SET status = $2,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
-RETURNING id, name, status, budget_limit, created_at, updated_at, customer_id, current_spend, deleted_at
+RETURNING id, name, status, budget_limit, created_at, updated_at, customer_id, current_spend, deleted_at, pacing_mode, daily_budget, timezone, freq_limit, freq_window, target_countries
 `
 
 type UpdateCampaignStatusParams struct {
@@ -288,6 +294,12 @@ func (q *Queries) UpdateCampaignStatus(ctx context.Context, arg UpdateCampaignSt
 		&i.CustomerID,
 		&i.CurrentSpend,
 		&i.DeletedAt,
+		&i.PacingMode,
+		&i.DailyBudget,
+		&i.Timezone,
+		&i.FreqLimit,
+		&i.FreqWindow,
+		&i.TargetCountries,
 	)
 	return i, err
 }

@@ -101,6 +101,48 @@ func (ns NullLedgerType) Value() (driver.Value, error) {
 	return string(ns.LedgerType), nil
 }
 
+type PacingModeType string
+
+const (
+	PacingModeTypeASAP PacingModeType = "ASAP"
+	PacingModeTypeEVEN PacingModeType = "EVEN"
+)
+
+func (e *PacingModeType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = PacingModeType(s)
+	case string:
+		*e = PacingModeType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for PacingModeType: %T", src)
+	}
+	return nil
+}
+
+type NullPacingModeType struct {
+	PacingModeType PacingModeType `json:"pacing_mode_type"`
+	Valid          bool           `json:"valid"` // Valid is true if PacingModeType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullPacingModeType) Scan(value interface{}) error {
+	if value == nil {
+		ns.PacingModeType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.PacingModeType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullPacingModeType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.PacingModeType), nil
+}
+
 type AdminAuditLog struct {
 	ID         int64              `json:"id"`
 	AdminID    pgtype.UUID        `json:"admin_id"`
@@ -132,6 +174,15 @@ type Campaign struct {
 	CustomerID   pgtype.UUID        `json:"customer_id"`
 	CurrentSpend pgtype.Numeric     `json:"current_spend"`
 	DeletedAt    pgtype.Timestamptz `json:"deleted_at"`
+	PacingMode   PacingModeType     `json:"pacing_mode"`
+	DailyBudget  pgtype.Numeric     `json:"daily_budget"`
+	Timezone     string             `json:"timezone"`
+	// Max events per user. 0 means unlimited.
+	FreqLimit pgtype.Int4 `json:"freq_limit"`
+	// Time window for frequency capping in seconds.
+	FreqWindow pgtype.Int4 `json:"freq_window"`
+	// Array of allowed ISO country codes. NULL or empty means all countries allowed.
+	TargetCountries []string `json:"target_countries"`
 }
 
 type CampaignStat struct {
@@ -169,6 +220,7 @@ type Event struct {
 	UserAgent   pgtype.Text        `json:"user_agent"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	CreatedDate pgtype.Date        `json:"created_date"`
+	UserID      pgtype.Text        `json:"user_id"`
 }
 
 type EventsDefault struct {

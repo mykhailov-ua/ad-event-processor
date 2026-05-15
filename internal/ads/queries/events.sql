@@ -1,6 +1,6 @@
 -- name: CreateCampaign :one
-INSERT INTO campaigns (id, name, budget_limit, status, customer_id)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO campaigns (id, name, budget_limit, status, customer_id, pacing_mode, daily_budget, timezone, freq_limit, freq_window, target_countries)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING *;
 
 -- name: GetCampaign :one
@@ -9,8 +9,8 @@ SELECT * FROM campaigns WHERE id = $1 LIMIT 1;
 -- name: InsertEvent :exec
 -- Inserts a single event with ON CONFLICT for idempotency.
 -- created_date is set explicitly for correct dedup within daily partitions.
-INSERT INTO events (click_id, campaign_id, event_type, payload, ip_address, user_agent, created_at, created_date)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+INSERT INTO events (click_id, campaign_id, user_id, event_type, payload, ip_address, user_agent, created_at, created_date)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 ON CONFLICT (click_id, created_date) DO NOTHING;
 
 -- name: UpdateCampaignStats :exec
@@ -49,10 +49,11 @@ ON CONFLICT (campaign_id, date) DO UPDATE SET
 -- Invalid campaign_ids are filtered out before the stats insert to prevent FK violations
 -- from rolling back the entire batch.
 WITH inserted AS (
-    INSERT INTO events (click_id, campaign_id, event_type, payload, ip_address, user_agent, created_at, created_date)
+    INSERT INTO events (click_id, campaign_id, user_id, event_type, payload, ip_address, user_agent, created_at, created_date)
     SELECT 
         unnest(@click_ids::text[]),
         unnest(@campaign_ids::uuid[]),
+        unnest(@user_ids::text[]),
         unnest(@event_types::text[]),
         unnest(@payloads::jsonb[]),
         unnest(@ip_addresses::text[]),

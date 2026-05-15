@@ -62,7 +62,7 @@ func (q *Queries) GetCustomerByID(ctx context.Context, id pgtype.UUID) (Customer
 }
 
 const listActiveCampaigns = `-- name: ListActiveCampaigns :many
-SELECT id, name, status, budget_limit, created_at, updated_at, customer_id, current_spend, deleted_at FROM campaigns WHERE status = 'ACTIVE'
+SELECT id, name, status, budget_limit, created_at, updated_at, customer_id, current_spend, deleted_at, pacing_mode, daily_budget, timezone, freq_limit, freq_window, target_countries FROM campaigns WHERE status = 'ACTIVE'
 `
 
 func (q *Queries) ListActiveCampaigns(ctx context.Context) ([]Campaign, error) {
@@ -84,6 +84,12 @@ func (q *Queries) ListActiveCampaigns(ctx context.Context) ([]Campaign, error) {
 			&i.CustomerID,
 			&i.CurrentSpend,
 			&i.DeletedAt,
+			&i.PacingMode,
+			&i.DailyBudget,
+			&i.Timezone,
+			&i.FreqLimit,
+			&i.FreqWindow,
+			&i.TargetCountries,
 		); err != nil {
 			return nil, err
 		}

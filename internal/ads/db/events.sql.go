@@ -12,17 +12,23 @@ import (
 )
 
 const createCampaign = `-- name: CreateCampaign :one
-INSERT INTO campaigns (id, name, budget_limit, status, customer_id)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, name, status, budget_limit, created_at, updated_at, customer_id, current_spend, deleted_at
+INSERT INTO campaigns (id, name, budget_limit, status, customer_id, pacing_mode, daily_budget, timezone, freq_limit, freq_window, target_countries)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+RETURNING id, name, status, budget_limit, created_at, updated_at, customer_id, current_spend, deleted_at, pacing_mode, daily_budget, timezone, freq_limit, freq_window, target_countries
 `
 
 type CreateCampaignParams struct {
-	ID          pgtype.UUID        `json:"id"`
-	Name        string             `json:"name"`
-	BudgetLimit pgtype.Numeric     `json:"budget_limit"`
-	Status      CampaignStatusType `json:"status"`
-	CustomerID  pgtype.UUID        `json:"customer_id"`
+	ID              pgtype.UUID        `json:"id"`
+	Name            string             `json:"name"`
+	BudgetLimit     pgtype.Numeric     `json:"budget_limit"`
+	Status          CampaignStatusType `json:"status"`
+	CustomerID      pgtype.UUID        `json:"customer_id"`
+	PacingMode      PacingModeType     `json:"pacing_mode"`
+	DailyBudget     pgtype.Numeric     `json:"daily_budget"`
+	Timezone        string             `json:"timezone"`
+	FreqLimit       pgtype.Int4        `json:"freq_limit"`
+	FreqWindow      pgtype.Int4        `json:"freq_window"`
+	TargetCountries []string           `json:"target_countries"`
 }
 
 func (q *Queries) CreateCampaign(ctx context.Context, arg CreateCampaignParams) (Campaign, error) {
@@ -32,6 +38,12 @@ func (q *Queries) CreateCampaign(ctx context.Context, arg CreateCampaignParams) 
 		arg.BudgetLimit,
 		arg.Status,
 		arg.CustomerID,
+		arg.PacingMode,
+		arg.DailyBudget,
+		arg.Timezone,
+		arg.FreqLimit,
+		arg.FreqWindow,
+		arg.TargetCountries,
 	)
 	var i Campaign
 	err := row.Scan(
@@ -44,12 +56,18 @@ func (q *Queries) CreateCampaign(ctx context.Context, arg CreateCampaignParams) 
 		&i.CustomerID,
 		&i.CurrentSpend,
 		&i.DeletedAt,
+		&i.PacingMode,
+		&i.DailyBudget,
+		&i.Timezone,
+		&i.FreqLimit,
+		&i.FreqWindow,
+		&i.TargetCountries,
 	)
 	return i, err
 }
 
 const getCampaign = `-- name: GetCampaign :one
-SELECT id, name, status, budget_limit, created_at, updated_at, customer_id, current_spend, deleted_at FROM campaigns WHERE id = $1 LIMIT 1
+SELECT id, name, status, budget_limit, created_at, updated_at, customer_id, current_spend, deleted_at, pacing_mode, daily_budget, timezone, freq_limit, freq_window, target_countries FROM campaigns WHERE id = $1 LIMIT 1
 `
 
 func (q *Queries) GetCampaign(ctx context.Context, id pgtype.UUID) (Campaign, error) {
@@ -65,6 +83,12 @@ func (q *Queries) GetCampaign(ctx context.Context, id pgtype.UUID) (Campaign, er
 		&i.CustomerID,
 		&i.CurrentSpend,
 		&i.DeletedAt,
+		&i.PacingMode,
+		&i.DailyBudget,
+		&i.Timezone,
+		&i.FreqLimit,
+		&i.FreqWindow,
+		&i.TargetCountries,
 	)
 	return i, err
 }
@@ -102,14 +126,15 @@ func (q *Queries) GetCampaignStats(ctx context.Context, campaignID pgtype.UUID) 
 }
 
 const insertEvent = `-- name: InsertEvent :exec
-INSERT INTO events (click_id, campaign_id, event_type, payload, ip_address, user_agent, created_at, created_date)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+INSERT INTO events (click_id, campaign_id, user_id, event_type, payload, ip_address, user_agent, created_at, created_date)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 ON CONFLICT (click_id, created_date) DO NOTHING
 `
 
 type InsertEventParams struct {
 	ClickID     string             `json:"click_id"`
 	CampaignID  pgtype.UUID        `json:"campaign_id"`
+	UserID      pgtype.Text        `json:"user_id"`
 	EventType   string             `json:"event_type"`
 	Payload     []byte             `json:"payload"`
 	IpAddress   pgtype.Text        `json:"ip_address"`
@@ -124,6 +149,7 @@ func (q *Queries) InsertEvent(ctx context.Context, arg InsertEventParams) error 
 	_, err := q.db.Exec(ctx, insertEvent,
 		arg.ClickID,
 		arg.CampaignID,
+		arg.UserID,
 		arg.EventType,
 		arg.Payload,
 		arg.IpAddress,
@@ -136,16 +162,17 @@ func (q *Queries) InsertEvent(ctx context.Context, arg InsertEventParams) error 
 
 const insertEventsBatch = `-- name: InsertEventsBatch :exec
 WITH inserted AS (
-    INSERT INTO events (click_id, campaign_id, event_type, payload, ip_address, user_agent, created_at, created_date)
+    INSERT INTO events (click_id, campaign_id, user_id, event_type, payload, ip_address, user_agent, created_at, created_date)
     SELECT 
         unnest($1::text[]),
         unnest($2::uuid[]),
         unnest($3::text[]),
-        unnest($4::jsonb[]),
-        unnest($5::text[]),
+        unnest($4::text[]),
+        unnest($5::jsonb[]),
         unnest($6::text[]),
-        unnest($7::timestamptz[]),
-        unnest($8::date[])
+        unnest($7::text[]),
+        unnest($8::timestamptz[]),
+        unnest($9::date[])
     ON CONFLICT (click_id, created_date) DO NOTHING
     RETURNING campaign_id, event_type, created_date
 ),
@@ -172,6 +199,7 @@ ON CONFLICT (campaign_id, date) DO UPDATE SET
 type InsertEventsBatchParams struct {
 	ClickIds     []string             `json:"click_ids"`
 	CampaignIds  []pgtype.UUID        `json:"campaign_ids"`
+	UserIds      []string             `json:"user_ids"`
 	EventTypes   []string             `json:"event_types"`
 	Payloads     [][]byte             `json:"payloads"`
 	IpAddresses  []string             `json:"ip_addresses"`
@@ -189,6 +217,7 @@ func (q *Queries) InsertEventsBatch(ctx context.Context, arg InsertEventsBatchPa
 	_, err := q.db.Exec(ctx, insertEventsBatch,
 		arg.ClickIds,
 		arg.CampaignIds,
+		arg.UserIds,
 		arg.EventTypes,
 		arg.Payloads,
 		arg.IpAddresses,
