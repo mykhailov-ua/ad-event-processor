@@ -23,16 +23,16 @@ const (
 )
 
 type Campaign struct {
-	ID           uuid.UUID
-	CustomerID   uuid.UUID
-	Name         string
-	BudgetLimit  float64
-	CurrentSpend float64
-	Status       CampaignStatus
-	PacingMode   PacingMode
-	DailyBudget  float64
-	Timezone     string
-	Location     *time.Location
+	ID              uuid.UUID
+	CustomerID      uuid.UUID
+	Name            string
+	BudgetLimit     float64
+	CurrentSpend    float64
+	Status          CampaignStatus
+	PacingMode      PacingMode
+	DailyBudget     float64
+	Timezone        string
+	Location        *time.Location
 	FreqLimit       int32
 	FreqWindow      int32
 	TargetCountries []string

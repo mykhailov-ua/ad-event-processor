@@ -104,7 +104,7 @@ func (s *ClickHouseStore) insertToClickHouse(ctx context.Context, events []*doma
 			convs = append(convs, e)
 		}
 	}
-	
+
 	*pImps, *pClicks, *pConvs, *pFraud = imps, clicks, convs, fraud
 
 	insert := func(table string, evts []*domain.Event, isFraud bool) error {

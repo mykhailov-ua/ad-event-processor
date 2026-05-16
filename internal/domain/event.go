@@ -9,12 +9,12 @@ import (
 )
 
 type Event struct {
-	ClickID    string
-	CampaignID uuid.UUID
-	UserID     string
-	Type       string
-	Payload    []byte
-	IP         string
+	ClickID     string
+	CampaignID  uuid.UUID
+	UserID      string
+	Type        string
+	Payload     []byte
+	IP          string
 	UA          string
 	FraudReason string
 	CreatedAt   time.Time

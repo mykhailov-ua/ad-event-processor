@@ -64,7 +64,7 @@ func (r *Registry) GetCampaign(id uuid.UUID) (*domain.Campaign, bool) {
 	if !ok {
 		return nil, false
 	}
-	
+
 	var countries []string
 	if info.targetCountries != nil {
 		countries = make([]string, len(info.targetCountries))
@@ -123,7 +123,7 @@ func (r *Registry) Sync(ctx context.Context) (int, error) {
 	fresh := make(map[uuid.UUID]campaignInfo, len(rows))
 	for _, row := range rows {
 		id := uuid.UUID(row.ID.Bytes)
-		
+
 		loc, err := time.LoadLocation(row.Timezone)
 		if err != nil {
 			slog.Warn("failed to load location, fallback to UTC", "campaign", id, "timezone", row.Timezone)

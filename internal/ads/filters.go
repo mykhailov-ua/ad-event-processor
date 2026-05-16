@@ -99,7 +99,7 @@ func (f *GeoFilter) Check(ctx context.Context, evt *domain.Event) error {
 	if err != nil {
 		slog.Warn("geo lookup failed", "ip", evt.IP, "error", err)
 		// Fallback to allow on lookup failure to prevent ingestion halt
-		return nil 
+		return nil
 	}
 
 	for _, allowed := range camp.TargetCountries {

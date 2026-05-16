@@ -259,10 +259,10 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 				} else if errors.Is(err, ErrFraudDetected) {
 					slog.Warn("fraud detected: silent drop", "reason", evt.FraudReason, "request_id", id)
 					metrics.FilterBlockedTotal.WithLabelValues("fraud").Inc()
-					
+
 					shard := sharder.GetShard(evt.CampaignID)
 					rdb := rdbs[shard]
-					
+
 					_, _ = rdb.XAdd(r.Context(), &redis.XAddArgs{
 						Stream: fraudStream,
 						MaxLen: int64(cfg.StreamMaxLen),
