@@ -13,18 +13,12 @@ import (
 )
 
 var (
-	ErrAuthenticationFailed = errors.New("authentication failed")
-	ErrInvalidPassword      = errors.New("password cannot be empty or exceeds maximum length")
+	ErrAuthenticationFailed   = errors.New("authentication failed")
+	ErrInvalidPassword        = errors.New("password cannot be empty or exceeds maximum length")
+	ErrInsecureHashParameters = errors.New("hash parameters are below minimum security thresholds")
 )
 
 const MaxPasswordLength = 72
-
-var DummyHash string
-
-func init() {
-	h := NewPasswordHasher(65536, 3, 4)
-	DummyHash, _ = h.HashPassword("dummy-password-timing-attack")
-}
 
 type params struct {
 	memory      uint32
@@ -40,24 +34,36 @@ const (
 	maxParallelism uint8  = 32
 	minSaltLength  uint32 = 16
 	minHashLength  uint32 = 32
+	minMemory      uint32 = 32768
+	minIterations  uint32 = 2
+	minParallelism uint8  = 2
 )
 
+// PasswordHasher encapsulates Argon2id configuration state and maintains a pre-computed dummy hash.
+// The dummy hash neutralizes timing side-channels during authentication of non-existent users.
 type PasswordHasher struct {
 	memory      uint32
 	iterations  uint32
 	saltLength  uint32
 	keyLength   uint32
 	parallelism uint8
+	dummyHash   string
 }
 
 func NewPasswordHasher(memory, iterations uint32, parallelism uint8) *PasswordHasher {
-	return &PasswordHasher{
+	h := &PasswordHasher{
 		memory:      memory,
 		iterations:  iterations,
 		parallelism: parallelism,
 		saltLength:  16,
 		keyLength:   32,
 	}
+	h.dummyHash, _ = h.HashPassword("dummy-password-timing-attack")
+	return h
+}
+
+func (h *PasswordHasher) GetDummyHash() string {
+	return h.dummyHash
 }
 
 func (h *PasswordHasher) HashPassword(password string) (string, error) {
@@ -161,7 +167,11 @@ func VerifyPassword(password, encodedHash string) (bool, error) {
 
 	comparisonHash := argon2.IDKey([]byte(password), salt, p.iterations, p.memory, p.parallelism, p.keyLength)
 
+	// ConstantTimeCompare prevents timing attacks when validating the derived hash against the stored hash.
 	if subtle.ConstantTimeCompare(hash, comparisonHash) == 1 {
+		if p.memory < minMemory || p.iterations < minIterations || p.parallelism < minParallelism {
+			return true, ErrInsecureHashParameters
+		}
 		return true, nil
 	}
 

@@ -3,12 +3,15 @@ package auth
 import (
 	"context"
 	"errors"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/mykhailov-ua/ad-event-processor/internal/auth/db"
+	"github.com/mykhailov-ua/ad-event-processor/internal/database"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -57,6 +60,22 @@ func (m *mockRepo) BlockSessionByRefreshToken(ctx context.Context, refreshToken 
 	return m.err
 }
 
+func (m *mockRepo) DeleteExpiredOrBlockedSessions(ctx context.Context) (int64, error) {
+	return 5, m.err
+}
+
+func (m *mockRepo) GetSessionByRefreshToken(ctx context.Context, refreshToken string) (db.Session, error) {
+	return m.session, m.err
+}
+
+func (m *mockRepo) BlockUser(ctx context.Context, email string) error {
+	return m.err
+}
+
+func (m *mockRepo) UpdatePassword(ctx context.Context, arg db.UpdatePasswordParams) error {
+	return m.err
+}
+
 func (m *mockRepo) ExecTx(ctx context.Context, fn func(db.Querier) error) error {
 	return fn(m)
 }
@@ -67,7 +86,7 @@ type mockTokenMaker struct {
 	verifyErr error
 }
 
-func (m *mockTokenMaker) CreateToken(userID uuid.UUID, role string, customerID uuid.UUID, duration time.Duration) (string, error) {
+func (m *mockTokenMaker) CreateToken(userID uuid.UUID, sessionID uuid.UUID, role string, customerID uuid.UUID, duration time.Duration) (string, error) {
 	return "token", m.createErr
 }
 
@@ -287,20 +306,58 @@ func TestRevokeToken(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestServiceMetrics(t *testing.T) {
+
+func TestSessionCleanupWorker(t *testing.T) {
 	repo := &mockRepo{}
-	tokenMaker := &mockTokenMaker{}
+	service := NewService(repo, nil, nil, nil, nil)
+	worker := NewSessionCleanupWorker(service)
+
+	err := worker.Cleanup(context.Background())
+	assert.NoError(t, err)
+}
+
+func TestLoginFlood(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	rdb, cleanup := database.SetupTestRedis(t)
+	defer cleanup()
+
 	hasher := NewPasswordHasher(65536, 3, 4)
-	service := NewService(repo, tokenMaker, hasher, nil, nil)
+	repo := &mockRepo{
+		user: db.User{
+			ID:           pgtype.UUID{Bytes: uuid.New(), Valid: true},
+			PasswordHash: hasher.GetDummyHash(),
+		},
+	}
+	lockout := NewLockoutLimiter(rdb)
+	service := NewService(repo, nil, hasher, lockout, rdb)
 
-	repo.err = errors.New("not found")
-	_, err := service.Login(context.Background(), "test@example.com", "password", "ua", "ip", time.Hour)
-	assert.Error(t, err)
+	email := "flood@example.com"
+	clientIP := "test-ip"
+	var wg sync.WaitGroup
+	var lockedCount atomic.Int32
+	var rateLimitedCount atomic.Int32
 
-	metrics := service.GetMetrics()
-	assert.Equal(t, uint64(1), metrics.FailedLoginsTotal)
-	assert.Equal(t, uint64(1), metrics.InvalidCredentials)
+	// Launch 50 concurrent login attempts with wrong password
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err := service.Login(context.Background(), email, "wrong-password", "ua", clientIP, time.Hour)
+			if errors.Is(err, ErrAccountLocked) {
+				lockedCount.Add(1)
+			} else if errors.Is(err, ErrRateLimitExceeded) {
+				rateLimitedCount.Add(1)
+			}
+		}()
+	}
+	wg.Wait()
 
-	snapshot := service.metrics.Snapshot()
-	assert.Equal(t, uint64(1), snapshot.FailedLoginsTotal)
+	// Verify metrics and lockout enforcement
+	// IP rate limit is 20, so at most 20 requests will hit the account lockout limiter (5 attempts before lock + 15 locked)
+	// Remaining 30 requests should be IP rate limited
+	assert.GreaterOrEqual(t, int(rateLimitedCount.Load()), 25)
+	assert.GreaterOrEqual(t, int(lockedCount.Load()), 10)
 }
