@@ -22,6 +22,7 @@ type Querier interface {
 	CreateCampaign(ctx context.Context, arg CreateCampaignParams) (Campaign, error)
 	CreateCustomer(ctx context.Context, arg CreateCustomerParams) (Customer, error)
 	CreateLedgerEntry(ctx context.Context, arg CreateLedgerEntryParams) (BalanceLedger, error)
+	CreateOutboxEvent(ctx context.Context, arg CreateOutboxEventParams) (OutboxEvent, error)
 	CreateStatusHistory(ctx context.Context, arg CreateStatusHistoryParams) error
 	DeleteBlacklistIP(ctx context.Context, ip string) error
 	GetAllBlacklist(ctx context.Context) ([]GetAllBlacklistRow, error)
@@ -33,7 +34,10 @@ type Querier interface {
 	GetCustomerByID(ctx context.Context, id pgtype.UUID) (Customer, error)
 	GetCustomerForUpdate(ctx context.Context, id pgtype.UUID) (Customer, error)
 	GetCustomerStats(ctx context.Context, customerIds []pgtype.UUID) ([]GetCustomerStatsRow, error)
+	GetDrainingCampaignsForUpdate(ctx context.Context, arg GetDrainingCampaignsForUpdateParams) ([]Campaign, error)
 	GetLedgerByHash(ctx context.Context, idempotencyHash pgtype.Text) (BalanceLedger, error)
+	GetLedgerByHashForUpdate(ctx context.Context, idempotencyHash pgtype.Text) (BalanceLedger, error)
+	GetPendingOutboxEventsForUpdate(ctx context.Context, limit int32) ([]OutboxEvent, error)
 	// Inserts a single event with ON CONFLICT for idempotency.
 	// created_date is set explicitly for correct dedup within daily partitions.
 	InsertEvent(ctx context.Context, arg InsertEventParams) error
@@ -51,6 +55,7 @@ type Querier interface {
 	ListCustomerLedger(ctx context.Context, arg ListCustomerLedgerParams) ([]BalanceLedger, error)
 	ListCustomers(ctx context.Context, arg ListCustomersParams) ([]Customer, error)
 	ListStatusHistory(ctx context.Context, arg ListStatusHistoryParams) ([]CampaignStatusHistory, error)
+	MarkOutboxEventProcessed(ctx context.Context, id int64) error
 	SetSystemSetting(ctx context.Context, arg SetSystemSettingParams) error
 	SoftDeleteCampaign(ctx context.Context, id pgtype.UUID) error
 	UpdateCampaignSpend(ctx context.Context, arg UpdateCampaignSpendParams) error

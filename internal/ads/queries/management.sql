@@ -35,6 +35,11 @@ RETURNING *;
 SELECT * FROM balance_ledger
 WHERE idempotency_hash = $1;
 
+-- name: GetLedgerByHashForUpdate :one
+SELECT * FROM balance_ledger
+WHERE idempotency_hash = $1
+FOR UPDATE;
+
 -- name: CreateStatusHistory :exec
 INSERT INTO campaign_status_history (campaign_id, old_status, new_status, reason)
 VALUES ($1, $2, $3, $4);
@@ -134,3 +139,27 @@ ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = CURRENT_TIM
 
 -- name: GetAllSystemSettings :many
 SELECT key, value FROM system_settings;
+
+-- name: CreateOutboxEvent :one
+INSERT INTO outbox_events (event_type, payload)
+VALUES ($1, $2)
+RETURNING *;
+
+-- name: GetPendingOutboxEventsForUpdate :many
+SELECT * FROM outbox_events
+WHERE status = 'PENDING'
+ORDER BY created_at ASC
+LIMIT $1
+FOR UPDATE SKIP LOCKED;
+
+-- name: MarkOutboxEventProcessed :exec
+UPDATE outbox_events
+SET status = 'PROCESSED'
+WHERE id = $1;
+
+-- name: GetDrainingCampaignsForUpdate :many
+SELECT * FROM campaigns
+WHERE status = 'DRAINING' AND updated_at < $1
+ORDER BY updated_at ASC
+LIMIT $2
+FOR UPDATE SKIP LOCKED;

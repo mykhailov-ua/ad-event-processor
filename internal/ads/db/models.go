@@ -241,6 +241,14 @@ type IpBlacklist struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
+type OutboxEvent struct {
+	ID        int64              `json:"id"`
+	EventType string             `json:"event_type"`
+	Payload   []byte             `json:"payload"`
+	Status    string             `json:"status"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
 type SystemSetting struct {
 	Key       string             `json:"key"`
 	Value     string             `json:"value"`

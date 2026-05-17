@@ -214,6 +214,30 @@ func (q *Queries) CreateLedgerEntry(ctx context.Context, arg CreateLedgerEntryPa
 	return i, err
 }
 
+const createOutboxEvent = `-- name: CreateOutboxEvent :one
+INSERT INTO outbox_events (event_type, payload)
+VALUES ($1, $2)
+RETURNING id, event_type, payload, status, created_at
+`
+
+type CreateOutboxEventParams struct {
+	EventType string `json:"event_type"`
+	Payload   []byte `json:"payload"`
+}
+
+func (q *Queries) CreateOutboxEvent(ctx context.Context, arg CreateOutboxEventParams) (OutboxEvent, error) {
+	row := q.db.QueryRow(ctx, createOutboxEvent, arg.EventType, arg.Payload)
+	var i OutboxEvent
+	err := row.Scan(
+		&i.ID,
+		&i.EventType,
+		&i.Payload,
+		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const createStatusHistory = `-- name: CreateStatusHistory :exec
 INSERT INTO campaign_status_history (campaign_id, old_status, new_status, reason)
 VALUES ($1, $2, $3, $4)
@@ -385,6 +409,55 @@ func (q *Queries) GetCustomerStats(ctx context.Context, customerIds []pgtype.UUI
 	return items, nil
 }
 
+const getDrainingCampaignsForUpdate = `-- name: GetDrainingCampaignsForUpdate :many
+SELECT id, name, status, budget_limit, created_at, updated_at, customer_id, current_spend, deleted_at, pacing_mode, daily_budget, timezone, freq_limit, freq_window, target_countries FROM campaigns
+WHERE status = 'DRAINING' AND updated_at < $1
+ORDER BY updated_at ASC
+LIMIT $2
+FOR UPDATE SKIP LOCKED
+`
+
+type GetDrainingCampaignsForUpdateParams struct {
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	Limit     int32              `json:"limit"`
+}
+
+func (q *Queries) GetDrainingCampaignsForUpdate(ctx context.Context, arg GetDrainingCampaignsForUpdateParams) ([]Campaign, error) {
+	rows, err := q.db.Query(ctx, getDrainingCampaignsForUpdate, arg.UpdatedAt, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Campaign
+	for rows.Next() {
+		var i Campaign
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Status,
+			&i.BudgetLimit,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CustomerID,
+			&i.CurrentSpend,
+			&i.DeletedAt,
+			&i.PacingMode,
+			&i.DailyBudget,
+			&i.Timezone,
+			&i.FreqLimit,
+			&i.FreqWindow,
+			&i.TargetCountries,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getLedgerByHash = `-- name: GetLedgerByHash :one
 SELECT id, customer_id, campaign_id, amount, type, idempotency_hash, created_at FROM balance_ledger
 WHERE idempotency_hash = $1
@@ -403,6 +476,61 @@ func (q *Queries) GetLedgerByHash(ctx context.Context, idempotencyHash pgtype.Te
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const getLedgerByHashForUpdate = `-- name: GetLedgerByHashForUpdate :one
+SELECT id, customer_id, campaign_id, amount, type, idempotency_hash, created_at FROM balance_ledger
+WHERE idempotency_hash = $1
+FOR UPDATE
+`
+
+func (q *Queries) GetLedgerByHashForUpdate(ctx context.Context, idempotencyHash pgtype.Text) (BalanceLedger, error) {
+	row := q.db.QueryRow(ctx, getLedgerByHashForUpdate, idempotencyHash)
+	var i BalanceLedger
+	err := row.Scan(
+		&i.ID,
+		&i.CustomerID,
+		&i.CampaignID,
+		&i.Amount,
+		&i.Type,
+		&i.IdempotencyHash,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getPendingOutboxEventsForUpdate = `-- name: GetPendingOutboxEventsForUpdate :many
+SELECT id, event_type, payload, status, created_at FROM outbox_events
+WHERE status = 'PENDING'
+ORDER BY created_at ASC
+LIMIT $1
+FOR UPDATE SKIP LOCKED
+`
+
+func (q *Queries) GetPendingOutboxEventsForUpdate(ctx context.Context, limit int32) ([]OutboxEvent, error) {
+	rows, err := q.db.Query(ctx, getPendingOutboxEventsForUpdate, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []OutboxEvent
+	for rows.Next() {
+		var i OutboxEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.EventType,
+			&i.Payload,
+			&i.Status,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listAuditLogs = `-- name: ListAuditLogs :many
@@ -654,6 +782,17 @@ func (q *Queries) ListStatusHistory(ctx context.Context, arg ListStatusHistoryPa
 		return nil, err
 	}
 	return items, nil
+}
+
+const markOutboxEventProcessed = `-- name: MarkOutboxEventProcessed :exec
+UPDATE outbox_events
+SET status = 'PROCESSED'
+WHERE id = $1
+`
+
+func (q *Queries) MarkOutboxEventProcessed(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, markOutboxEventProcessed, id)
+	return err
 }
 
 const setSystemSetting = `-- name: SetSystemSetting :exec
