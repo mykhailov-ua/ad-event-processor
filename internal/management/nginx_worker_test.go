@@ -27,7 +27,6 @@ func TestNginxConfigWorker(t *testing.T) {
 
 	exportPath := t.TempDir()
 	worker := NewNginxConfigWorker(svc, exportPath)
-	worker.reloadCmd = "true" // Mock reload command
 
 	ctx := context.Background()
 
@@ -47,5 +46,14 @@ func TestNginxConfigWorker(t *testing.T) {
 		autoContent, err := os.ReadFile(filepath.Join(exportPath, "auto.conf"))
 		require.NoError(t, err)
 		assert.Contains(t, string(autoContent), "deny 5.6.7.8;")
+
+		flagPath := filepath.Join(exportPath, "reload_required.flg")
+		flagInfo, err := os.Stat(flagPath)
+		require.NoError(t, err)
+		assert.Equal(t, os.FileMode(0644), flagInfo.Mode().Perm())
+
+		flagContent, err := os.ReadFile(flagPath)
+		require.NoError(t, err)
+		assert.Equal(t, "1\n", string(flagContent))
 	})
 }

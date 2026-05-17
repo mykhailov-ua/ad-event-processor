@@ -5,23 +5,25 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
 )
 
+// NginxConfigWorker exports blacklist configuration files to a shared volume and signals Nginx to reload.
+// Architectural Isolation (12-Factor App): Rather than executing OS binaries directly via exec syscalls from the HTTP gateway,
+// this worker writes a flag file (reload_required.flg) to the shared directory.
+// A separate lightweight process (e.g., inotify/cron) running inside the Nginx container must monitor this directory
+// for the flag file, execute 'nginx -s reload', and remove the flag upon completion.
 type NginxConfigWorker struct {
 	svc        *Service
 	exportPath string
-	reloadCmd  string
 }
 
 func NewNginxConfigWorker(svc *Service, exportPath string) *NginxConfigWorker {
 	return &NginxConfigWorker{
 		svc:        svc,
 		exportPath: exportPath,
-		reloadCmd:  "nginx -s reload",
 	}
 }
 
@@ -42,6 +44,9 @@ func (w *NginxConfigWorker) Start(ctx context.Context, interval time.Duration) {
 }
 
 func (w *NginxConfigWorker) ExportAndReload(ctx context.Context) error {
+	if len(w.svc.rdbs) == 0 || w.svc.rdbs[0] == nil {
+		return fmt.Errorf("no redis client available")
+	}
 	rdb := w.svc.rdbs[0]
 
 	manual, err := rdb.SMembers(ctx, "blacklist:manual").Result()
@@ -60,12 +65,12 @@ func (w *NginxConfigWorker) ExportAndReload(ctx context.Context) error {
 		return err
 	}
 
-	cmd := exec.CommandContext(ctx, "sh", "-c", w.reloadCmd)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to reload nginx: %w, output: %s", err, string(out))
+	flagPath := filepath.Join(w.exportPath, "reload_required.flg")
+	if err := os.WriteFile(flagPath, []byte("1\n"), 0644); err != nil {
+		return fmt.Errorf("failed to write reload flag: %w", err)
 	}
 
-	slog.Info("nginx blacklist exported and reloaded", "manual_count", len(manual), "auto_count", len(auto))
+	slog.Info("nginx blacklist exported and reload signaled via flag file", "manual_count", len(manual), "auto_count", len(auto))
 	return nil
 }
 

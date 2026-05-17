@@ -2,6 +2,7 @@ package management
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"time"
@@ -9,7 +10,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/mykhailov-ua/ad-event-processor/internal/ads/db"
-	"github.com/redis/go-redis/v9"
 )
 
 type BlacklistDTO struct {
@@ -79,7 +79,7 @@ func (s *Service) UnblockIP(ctx context.Context, ip string, source string) error
 }
 
 func (s *Service) UpdateSettings(ctx context.Context, settings map[string]string) error {
-	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+	return pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		q := db.New(tx)
 		for k, v := range settings {
 			err := q.SetSystemSetting(ctx, db.SetSystemSettingParams{
@@ -96,21 +96,10 @@ func (s *Service) UpdateSettings(ctx context.Context, settings map[string]string
 			uid = u.UserID
 		}
 		s.AuditLog(ctx, q, uid, "UPDATE_SETTINGS", "system", nil, settings, nil)
-		return nil
-	})
-	if err != nil {
+		payloadBytes, _ := json.Marshal(SettingsPayload{Settings: settings})
+		_, err := q.CreateOutboxEvent(ctx, db.CreateOutboxEventParams{EventType: "UPDATE_SETTINGS", Payload: payloadBytes})
 		return err
-	}
-
-	rdb := s.rdbs[0]
-	_, err = rdb.Pipelined(ctx, func(pipe redis.Pipeliner) error {
-		if len(settings) > 0 {
-			pipe.HSet(ctx, "config:values", settings)
-		}
-		pipe.Incr(ctx, "config:version")
-		return nil
 	})
-	return err
 }
 
 func (s *Service) ListBlacklist(ctx context.Context, limit, offset int32) ([]BlacklistDTO, int64, error) {
