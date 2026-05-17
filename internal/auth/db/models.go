@@ -36,4 +36,5 @@ type User struct {
 	CustomerID   pgtype.UUID        `json:"customer_id"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	IsBlocked    bool               `json:"is_blocked"`
 }

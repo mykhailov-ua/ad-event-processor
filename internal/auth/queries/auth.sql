@@ -1,10 +1,10 @@
 -- name: GetUserByEmail :one
-SELECT id, email, password_hash, role, customer_id, created_at, updated_at
+SELECT id, email, password_hash, role, customer_id, created_at, updated_at, is_blocked
 FROM users
 WHERE email = $1;
 
 -- name: GetUserByID :one
-SELECT id, email, password_hash, role, customer_id, created_at, updated_at
+SELECT id, email, password_hash, role, customer_id, created_at, updated_at, is_blocked
 FROM users
 WHERE id = $1;
 
@@ -12,6 +12,16 @@ WHERE id = $1;
 INSERT INTO users (email, password_hash, role, customer_id)
 VALUES ($1, $2, $3, $4)
 RETURNING id, email, role, customer_id, created_at;
+
+-- name: UpdatePassword :exec
+UPDATE users
+SET password_hash = $2, updated_at = NOW()
+WHERE email = $1;
+
+-- name: BlockUser :exec
+UPDATE users
+SET is_blocked = TRUE, updated_at = NOW()
+WHERE email = $1;
 
 -- name: GetAPIKeyByHash :one
 SELECT ak.id, ak.user_id, ak.name, ak.expires_at, u.role, u.customer_id
@@ -59,3 +69,7 @@ WHERE id = $1;
 UPDATE sessions
 SET is_blocked = TRUE
 WHERE refresh_token = $1;
+
+-- name: DeleteExpiredOrBlockedSessions :execrows
+DELETE FROM sessions
+WHERE expires_at < NOW() OR is_blocked = TRUE;

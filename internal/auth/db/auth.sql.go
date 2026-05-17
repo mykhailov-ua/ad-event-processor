@@ -33,6 +33,17 @@ func (q *Queries) BlockSessionByRefreshToken(ctx context.Context, refreshToken s
 	return err
 }
 
+const blockUser = `-- name: BlockUser :exec
+UPDATE users
+SET is_blocked = TRUE, updated_at = NOW()
+WHERE email = $1
+`
+
+func (q *Queries) BlockUser(ctx context.Context, email string) error {
+	_, err := q.db.Exec(ctx, blockUser, email)
+	return err
+}
+
 const createAPIKey = `-- name: CreateAPIKey :one
 INSERT INTO api_keys (key_hash, user_id, name, expires_at)
 VALUES ($1, $2, $3, $4)
@@ -149,6 +160,19 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 	return i, err
 }
 
+const deleteExpiredOrBlockedSessions = `-- name: DeleteExpiredOrBlockedSessions :execrows
+DELETE FROM sessions
+WHERE expires_at < NOW() OR is_blocked = TRUE
+`
+
+func (q *Queries) DeleteExpiredOrBlockedSessions(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteExpiredOrBlockedSessions)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getAPIKeyByHash = `-- name: GetAPIKeyByHash :one
 SELECT ak.id, ak.user_id, ak.name, ak.expires_at, u.role, u.customer_id
 FROM api_keys ak
@@ -247,7 +271,7 @@ func (q *Queries) GetSessionByRefreshTokenForUpdate(ctx context.Context, refresh
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, password_hash, role, customer_id, created_at, updated_at
+SELECT id, email, password_hash, role, customer_id, created_at, updated_at, is_blocked
 FROM users
 WHERE email = $1
 `
@@ -263,12 +287,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.CustomerID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IsBlocked,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, password_hash, role, customer_id, created_at, updated_at
+SELECT id, email, password_hash, role, customer_id, created_at, updated_at, is_blocked
 FROM users
 WHERE id = $1
 `
@@ -284,6 +309,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 		&i.CustomerID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IsBlocked,
 	)
 	return i, err
 }
@@ -324,4 +350,20 @@ func (q *Queries) ListUserAPIKeys(ctx context.Context, userID pgtype.UUID) ([]Li
 		return nil, err
 	}
 	return items, nil
+}
+
+const updatePassword = `-- name: UpdatePassword :exec
+UPDATE users
+SET password_hash = $2, updated_at = NOW()
+WHERE email = $1
+`
+
+type UpdatePasswordParams struct {
+	Email        string `json:"email"`
+	PasswordHash string `json:"password_hash"`
+}
+
+func (q *Queries) UpdatePassword(ctx context.Context, arg UpdatePasswordParams) error {
+	_, err := q.db.Exec(ctx, updatePassword, arg.Email, arg.PasswordHash)
+	return err
 }
