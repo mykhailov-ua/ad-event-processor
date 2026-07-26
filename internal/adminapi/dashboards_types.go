@@ -1,6 +1,6 @@
 package adminapi
 
-// PeriodDTO bounds a reporting window (MANAGEMENT.md section 7).
+// PeriodDTO bounds a reporting window (CONTROL_PLANE.md section 7).
 type PeriodDTO struct {
 	From     string `json:"from"`
 	To       string `json:"to"`

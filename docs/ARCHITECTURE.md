@@ -1,33 +1,13 @@
 # Architecture
 
-Platform topology, request flow, and SLA contracts. Scope stops at system boundaries; module detail lives in linked documents.
-
-| Document | Scope |
-| :--- | :--- |
-| [DATA.md](./DATA.md) | Redis, PostgreSQL, ClickHouse |
-| [GO.md](./GO.md) | Tracker hot path |
-| [EDGE.md](./EDGE.md) | Nginx/OpenResty ingress |
-| [EBPF.md](./EBPF.md) | XDP L4 filter |
-| [RTB.md](./RTB.md) | In-process auction |
-| [MANAGEMENT.md](./MANAGEMENT.md) | Control plane, auth, licensing |
-| [CAPABILITIES.md](./CAPABILITIES.md) | Shipped milestones |
-| [BACKLOG.md](./BACKLOG.md) | Open gaps |
-| [DEVELOPMENT.md](./DEVELOPMENT.md) | Local setup, CI, runbooks |
-| [STYLE.md](./STYLE.md) | Repository layout and code rules |
-| [CHAOS.md](./CHAOS.md) | Fault injection and invariants |
-| [COMPLIANCE.md](./COMPLIANCE.md) | Defensive vs forbidden edge behavior |
-| [BOUNDARIES.md](./BOUNDARIES.md) | Microservice vs in-process decisions |
-
----
-
-## Overview
+Platform topology, data stores, request flow, control plane, and SLA contracts.
 
 eSPX ingests ad events on `/track`, applies filters and atomic budget rules, and enqueues settlement. PostgreSQL holds financial truth; Redis holds hot state; ClickHouse holds telemetry.
 
 | Path | p99 budget | Packages | Persistence |
 | :--- | :--- | :--- | :--- |
 | Hot | `/track` < 80 ms | `internal/ingestion`, `internal/rtb` | Redis Lua, streams |
-| Cold | seconds–minutes | `management`, workers | Postgres outbox → Redis |
+| Cold | seconds to minutes | `management`, workers | Postgres outbox -> Redis |
 | Edge | line-rate drop | `internal/edge`, `cmd/edge-*` | BPF maps, blocklists |
 
 ---
@@ -36,33 +16,29 @@ eSPX ingests ad events on `/track`, applies filters and atomic budget rules, and
 
 | Binary | Port(s) | Role |
 | :--- | :--- | :--- |
-| `tracker` | 8181–8184 | gnet ingest, `FilterEngine`, RTB, Lua |
-| `processor` | 8186 | Stream consumer → PG/CH; `SyncWorker`; CH spool |
+| `tracker` | 8181-8184 | gnet ingest, `FilterEngine`, RTB, Lua |
+| `processor` | 8186 | Stream consumer -> PG/CH; `SyncWorker`; CH spool |
 | `management` | 8188, 51053 | Admin HTTP, settlement gRPC, outbox, recon |
 | `auth` | 51051 | gRPC: Argon2id, PASETO, API keys |
 | `payment` | 51052, 8187 | Stripe webhooks, settlement outbox |
 | `billing` | 51054 | Invoices from `balance_ledger` |
 | `notifier` | 8085 | Alerts |
-| `ivt-detector`, `fraud-scorer` | — | CH batch → management outbox |
-| `edge-xdp`, `edge-bpf-sync` | — | XDP filter, BPF map sync |
-| `broker`, `log-shipper`, … | — | Optional mmap log pipeline |
+| `ivt-detector`, `fraud-scorer` | - | CH batch -> management outbox |
+| `edge-xdp`, `edge-bpf-sync` | - | XDP filter, BPF map sync |
+| `broker`, `log-shipper`, ... | - | Optional mmap log pipeline |
 
-Libraries without `cmd/`: `internal/adminapi`, `internal/licensing`, `internal/billing`, `internal/rtb`.
+Libraries without `cmd/`: `internal/licensing`, `internal/billing`, `internal/rtb`, `internal/campaignmodel`.
 
 ---
 
 ## Topology
 
-```text
-Nginx :8180 → Tracker ×N → Redis ×4 (Lua, streams)
-                ↓              ↑
-           Processor → PG, CH   Management (outbox)
-```
+Nginx :8180 -> Tracker pool -> Redis x4 (Lua, streams). Processor -> PG, CH. Management outbox -> Redis.
 
-1. Ingress: Nginx :8180; `/admin/*` → management; `/track/*` → trackers. See [EDGE.md](./EDGE.md).
-2. Ingestion: `PinnedWorkerPool` by `campaign_id` hash. See [GO.md](./GO.md).
-3. Redis: 4 standalone masters, client-side `StaticSlotSharder`. See [DATA.md](./DATA.md) Part I.
-4. Settlement: per-shard `ad:events:stream` → processor. See [DATA.md](./DATA.md) Part IV.
+1. Ingress: Nginx :8180; `/admin/*` -> management; `/track/*` -> trackers.
+2. Ingestion: `PinnedWorkerPool` by `campaign_id` hash.
+3. Redis: 4 standalone masters, client-side `StaticSlotSharder`.
+4. Settlement: per-shard `ad:events:stream` -> processor.
 5. Persistence: PostgreSQL 16, ClickHouse 24.
 
 Production k8s hot path uses host networking; databases typically on compose bridge with published ports.
@@ -71,29 +47,15 @@ Production k8s hot path uses host networking; databases typically on compose bri
 
 ## Request path
 
-```text
-Ingress → parse → ensureIngestGeo
-       → [RTB if RTB_MODE≠off] → FilterEngine.Check → Lua (or local quanta)
-       → XADD → HTTP response
-```
+Ingress -> parse -> ensureIngestGeo -> [RTB if `RTB_MODE` != off] -> `FilterEngine.Check` -> Lua (or local quanta) -> XADD -> HTTP response.
 
 ### FilterEngine order
 
-1. Emergency breaker  
-2. Fraud / geo (MaxMind; fail-open where configured)  
-3. Schedule, placement, L3, device, consent  
-4. ML fraud boost (Redis snapshot; 0 allocs/op)  
-5. `UnifiedFilter` or `TrySpendLocal` + `budget-fast.lua` with `skip_budget=1` when [M8 local quanta](./CAPABILITIES.md#m8--local-budget-quanta) applies
-
-### RTB hook
-
-| `RTB_MODE` | Behavior |
-| :--- | :--- |
-| `off` | Skip |
-| `shadow` | `RunAuctionEval`; metrics only |
-| `live` | `RunAuction`; winner replaces `campaign_id` |
-
-Detail: [RTB.md](./RTB.md).
+1. Emergency breaker
+2. Fraud / geo (MaxMind; fail-open where configured)
+3. Schedule, placement, L3, device, consent
+4. ML fraud boost (Redis snapshot; 0 allocs/op)
+5. `UnifiedFilter` or `TrySpendLocal` + `budget-fast.lua` with `skip_budget=1` when local quanta applies
 
 ### Sharding (default)
 
@@ -102,50 +64,213 @@ slot  = crc32(campaign_id) & 1023
 shard = slot_table[slot]   # 4 masters, StaticSlotSharder
 ```
 
-Elastic triplets: opt-in. [DATA.md](./DATA.md) Part I §7.
+Elastic triplets: opt-in canary migration mode. Steady-state default is fixed StaticSlot (N=4).
 
 ---
 
-## Settlement
+## Data layer
+
+### Redis
+
+| Item | Detail |
+| :--- | :--- |
+| Shards | 4 standalone masters + replicas + Sentinel (no Redis Cluster) |
+| Routing | `campaign_id` -> CRC32C & 1023 -> slot -> shard; one `EVALSHA` per master |
+| Failover | Sentinel quorum 2; promote ~10-15 s |
+| Circuit breaker | Opens after 150 consecutive errors; half-open after 5 s |
+
+Shard 0 (global): pub/sub `campaigns:update`, auth lockout, creative fan-out. Optional broker fallback (`CAMPAIGN_UPDATE_BROKER_FALLBACK`).
+
+Global keys (fan-out to all shards): `config:values`, blacklists, `ml:score:boost:*`, placement pause hashes, brand creatives.
+
+Local keys: campaign budgets, dedup, idempotency, ingress counters, `ad:events:stream`, migration fences.
+
+Lua tiers:
+
+| Tier | Script | Use |
+| :--- | :--- | :--- |
+| B | `budget-fast.lua` | Impressions: budget, pre-checks, stream in one `EVALSHA` |
+| C | `unified-filter.lua` | Clicks, fcap, pacing, TTC, quota probes |
+| Refill | `local-quota-refill.lua` | Cold path only; refills `LocalQuantaLedger` |
+
+IP rate limits: edge XDP PPS and nginx `limit_req`, not Lua. Lua p99 target < 10 ms per shard.
+
+Fail policy: Geo/blacklists on tracker fail-open; edge blacklists fail-closed (503); Redis circuit and Lua errors fail-closed (no debit).
+
+Key catalog: `internal/ingestion/redis_key_catalog.go` defines COPY/DRAIN lists for slot migration.
+
+### PostgreSQL
+
+| Pattern | Detail |
+| :--- | :--- |
+| Ledger | `balance_ledger` BIGINT micro-units; balances are `SUM` of rows |
+| Idempotency | Click keys in Lua + `sync_idempotency` in PG; CH `insert_deduplicate=1` |
+| Outbox | `outbox_events` with `SELECT FOR UPDATE SKIP LOCKED`; at-least-once -> Redis |
+| Isolation | Explicit txn boundaries; `FOR UPDATE SKIP LOCKED` on hot contention paths |
+
+### ClickHouse
+
+| Pattern | Detail |
+| :--- | :--- |
+| Engine | `ReplicatedMergeTree` for event tables |
+| Insert | Buffered batches from processor; spool on outage |
+| Analytics | Materialized views for hourly aggregates; admin reads with lag flag |
+
+### Durability and settlement
 
 | Stage | Mechanism |
 | :--- | :--- |
 | Stream | `ad:events:stream`; consumer groups PG / CH / fraud |
 | Ack rule | `XAck` after PG commit or CH spool `fsync` |
-| Budget sync | `SyncWorker`: Redis dirty set → PG `UpdateSpend` → Redis commit |
-| Outbox | PG txn + `outbox_events`; `SKIP LOCKED` workers → Redis |
+| Budget sync | `SyncWorker`: Redis dirty set -> PG `UpdateSpend` -> Redis commit |
+| Outbox | PG txn + `outbox_events`; `SKIP LOCKED` workers -> Redis |
 
-Write-path durability: [DATA.md](./DATA.md) Part IV.
+Budget invariant: `current_spend <= budget_limit` in Postgres (+-1 micro-unit).
+
+### Multi-region (target)
+
+1. Hot path in regional cells (tracker, Redis x4, processor).
+2. Global PostgreSQL for finance and configuration.
+3. Cross-region via `outbox_region_delivery` (at-least-once).
+4. No cross-region Redis replication.
+
+---
+
+## RTB
+
+In-process auction on `/track` before `FilterEngine.Check`. Not a standalone OpenRTB exchange endpoint.
+
+| `RTB_MODE` | Behavior |
+| :--- | :--- |
+| `off` | Skip |
+| `shadow` | `RunAuctionEval`; metrics only |
+| `live` | `RunAuction`; winner replaces `campaign_id` |
+
+| Metric | Target |
+| :--- | :--- |
+| `RunAuction` p99 | < 15 us |
+| Candidates scanned p99 | < 500 |
+| Heap allocations | 0 per auction |
+
+Packages: `internal/rtb/`, `internal/ingestion/rtb_*.go`, `internal/management/handler_rtb.go`, `service_rtb_deals.go`.
+
+Cold path: `SyncRtbCatalog`, deal CRUD, `RELOAD_RTB_CATALOG` outbox, floor optimizer from CH.
+
+Hot path: `RunAuction` scans presorted SoA buckets; budget debit via CAS in `BudgetStore` or Redis Lua depending on `RTB_BUDGET_AUTHORITY`.
+
+Open gaps: GAP-RTB-10..12 ([DEVELOPMENT.md](./DEVELOPMENT.md)).
+
+---
+
+## Edge ingress
+
+### Nginx/OpenResty (L7)
+
+| Port | Client | Upstream |
+| :--- | :--- | :--- |
+| 8180 | HTTP/1.1 | HTTP/1.1 -> tracker |
+| 443 | H2/H3/H1.1 | HTTP/1.1 -> tracker |
+
+`access-check.lua`: rate limit, circuit breaker, blacklist cache, body DFA (`edge-parse-dfa.lua`), per-campaign RL, shard balancer (`edge-slot-map.lua`). Shard formula matches Go `StaticSlotSharder`.
+
+`TRACKER_INGRESS_SCHEMA`: `openrtb_3` (default) or `espx_native`; must match tracker `config.IngressSchema`.
+
+Optional tarpit: `EDGE_TARPIT_ENABLED`, `edge-tarpit.lua`; capped delay on edge only.
+
+### XDP L4 (eBPF)
+
+Blocklist, SYN/PPS limits, passive IVT signals (score only, not hard block). Sync path: management outbox -> Redis -> `cmd/edge-bpf-sync` -> pinned BPF maps.
+
+Production: defensive perimeter only; no outbound strike to offender IPs ([Compliance](#compliance)).
+
+---
+
+## Control plane
+
+Cold-path `management` binary: HTTP admin, gRPC settlement, workers. Hot path (`/track`, Redis Lua, XDP) is out of scope for this process.
+
+Mutation rule: config affecting hot path runs in one PostgreSQL transaction plus `outbox_events`. Direct HTTP writes to Redis are forbidden.
+
+Route prefixes: `/admin/*`, `/api/v1/*`, `/api/v1/selfserve/*`.
+
+Workers (sample): `OutboxWorker`, `ReconWorker`, `SyncWorker` x4, `PacingControllerWorker`, `ScheduleWorker`, `LedgerInvariantWorker`.
+
+gRPC peers: `auth`, `payment`, `billing`, `notifier`. `processor` writes PG events and CH batches.
+
+JSON API: `internal/management/handler_api.go`, `handler_*.go`, and `internal/adminapi/` (reporting scaffolds). Contracts are godoc on handlers and DTOs, not OpenAPI.
+
+Entitlements: product license JWT + tenant subscription merged in `internal/licensing/`:
+
+```text
+effective_limit = min(license.limits[X], subscription.limits[X])
+effective_feature = license.features[X] AND subscription.features[X]
+```
+
+Ingress quotas: RPS (UDP epoch), RPD (calendar day, HTTP 429), events/month (`usage_meters`).
 
 ---
 
 ## Fraud path
 
-```text
-Tracker → fraud stream (MPSC: 512 critical + 3584 analytical, M14)
-       → processor → CH
-ivt-detector / fraud-scorer → management outbox → Redis shards
-```
+- Tracker -> fraud stream (MPSC: 512 critical + 3584 analytical) -> processor -> CH
+- ivt-detector / fraud-scorer -> management outbox -> Redis shards
 
-- Critical lane (L1 reject, L3 blocklist): never aggregated; short spin then drop.
-- Analytical lane: adaptive /24 aggregation at ≥80% fill (M11).
-- Consumer lag > `FRAUD_CONSUMER_LAG_SEC`: tracker widens aggregation windows (`aggregating=force`, M14).
+- Critical lane (L1 reject, L3 blocklist): not aggregated; short spin then drop.
+- Analytical lane: adaptive /24 aggregation at >= 80% fill.
+- Consumer lag > `FRAUD_CONSUMER_LAG_SEC`: tracker widens aggregation (`aggregating=force`).
 
 `internal/ingestion` must not import `internal/fraudscoring`.
 
 ---
 
-## Resilience (M14)
+## Resilience
 
 | Fault | Behavior |
 | :--- | :--- |
 | Shard-0 pub/sub down | Stale-serve known campaigns; `503 registry_stale` for unknown; optional broker `campaigns:update` fallback |
-| Shard-0 ingest outage | `503 shard_unavailable` or M2 triplet reroute; shards 1–3 unaffected |
+| Shard-0 ingest outage | `503 shard_unavailable` or triplet reroute; shards 1-3 unaffected |
 | Deep JSON / hostile H2 | Reject at parse (`MaxJSONDepth`); close after `H2_INCOMPLETE_MAX` incomplete spins |
-| Campaign pause / tracker SIGTERM | Flush unused local quanta to Redis + broker return delta |
-| Fraud ring storm | Critical signals preserved in dedicated lane; backlog metrics + Grafana |
+| Campaign pause / tracker SIGTERM | Flush unused local quanta -> Redis + broker return delta |
+| Fraud ring storm | Critical signals in dedicated lane; backlog metrics |
 
-Runbooks: [DEVELOPMENT.md](./DEVELOPMENT.md). Chaos catalog: [CHAOS.md](./CHAOS.md).
+Shard-0 ingest blast radius:
+
+| Campaign home | During shard-0 outage |
+| :--- | :--- |
+| StaticSlot shards 1-3 | Unaffected |
+| StaticSlot shard 0, no triplet | `503 shard_unavailable` |
+| StaticSlot shard 0, HasTriplet | Reroute -> healthy reserve |
+| Unknown + stale registry | `503 registry_stale` |
+
+Runbooks: [DEVELOPMENT.md](./DEVELOPMENT.md).
+
+---
+
+## Compliance
+
+| Class | Examples |
+| :--- | :--- |
+| Allowed | Wire-rate `XDP_DROP` on local NIC; passive TLS/TCP metadata (JA3/JA4 class); in-line tarpit delay on own server (edge only, capped) |
+| Forbidden | Active device fingerprinting on publisher pages; port scan / hack-back; outbound traffic to source IP as counter-attack |
+
+Blacklist mutations: PG txn + `admin_audit_log` + outbox `UPDATE_BLACKLIST`. eBPF map updates only via Redis sync path, not direct kernel writes from management.
+
+PII in ClickHouse: rolling hash for `ip_hash` / `ua_hash`; phase out raw `ip_address` retention.
+
+---
+
+## Service boundaries
+
+| Component | Deployment | Rationale |
+| :--- | :--- | :--- |
+| `tracker` | Separate binary per shard pool | Hot path isolation, pinned workers |
+| `processor` | Separate binary | Stream consumer, PG/CH write concurrency |
+| `management` | Single cold-path binary | Outbox, admin, settlement gRPC |
+| `auth`, `payment`, `billing`, `notifier` | Separate gRPC services | DB isolation, blast radius |
+| RTB auction | In-process in tracker | Sub-15 us budget; 0 allocs |
+| Lua filters | Redis scripts | Single RTT atomicity |
+
+Settlement remains in management (not a separate settlement service). Fraud scoring cold path only (`fraud-scorer`, `ivt-detector`).
 
 ---
 
@@ -155,32 +280,34 @@ Runbooks: [DEVELOPMENT.md](./DEVELOPMENT.md). Chaos catalog: [CHAOS.md](./CHAOS.
 | :--- | :--- |
 | `ad_http_request_duration_seconds` | p95 < 50 ms, p99 < 80 ms, max 100 ms |
 | Redis unified-filter Lua | p99 < 10 ms / shard |
-| Geo filter (sampled) | p99 < 10 µs |
-| `RunAuction` | p99 < 15 µs; candidates p99 < 500 |
+| Geo filter (sampled) | p99 < 10 us |
+| `RunAuction` | p99 < 15 us; candidates p99 < 500 |
 | Fraud boost in `FilterEngine` | ~90 ns; 0 allocs/op |
-| Budget invariant | `current_spend ≤ budget_limit` (±1 micro-unit) |
+| Budget invariant | `current_spend <= budget_limit` (+-1 micro-unit) |
 
-Production: `FILTER_TIMEOUT_MS` ≤ 100.
+Production: `FILTER_TIMEOUT_MS` <= 100.
 
 ---
 
 ## Engineering constraints (hot path)
 
-- 0 heap allocations per request on parse, filter, auction  
-- No `defer`, closures, `interface{}`, `sync.Map`, string `+` in request loops  
-- Monotonic deadlines (`FilterDeadlineMono`)  
-- Pre-bound Prometheus labels  
+- 0 heap allocations per request on parse, filter, auction
+- No `defer`, closures, `interface{}`, `sync.Map`, string `+` in request loops
+- Monotonic deadlines (`FilterDeadlineMono`)
+- Pre-bound Prometheus labels
+- BCE: length check before indexed access on gnet buffers
+- Contended atomics padded to cache line (64 bytes)
 
-CI: `make test-alloc-gate`, `scripts/perf-gate/`, `scripts/chaos-drills/test_chaos.sh`. Rules: [GO.md](./GO.md), [STYLE.md](./STYLE.md).
+CI: `make test-alloc-gate`, `scripts/perf-gate/`, `scripts/chaos-drills/test_chaos.sh`. Runbooks: [DEVELOPMENT.md](./DEVELOPMENT.md).
 
 ---
 
-## Licensing (summary)
+## Licensing
 
-Hot path reads JWT snapshot only. Cold path: `VolumeMeterWorker` → `usage_meters`. Detail: [MANAGEMENT.md](./MANAGEMENT.md) §8–9.
+Hot path reads JWT snapshot only. Cold path: `VolumeMeterWorker` to `usage_meters`. Admin UI and gRPC APIs live in `management`.
 
 ---
 
 ## Optional broker
 
-`cmd/broker`: mmap segment log; used with shipper/compactor/evacuator for regional log evacuation. Not a Kafka replacement.
+`cmd/broker`: mmap segment log; used with shipper/compactor/evacuator for regional log evacuation. Not a Kafka replacement. Not in default compose stack.

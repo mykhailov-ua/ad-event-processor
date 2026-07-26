@@ -65,7 +65,7 @@ When `RTB_MODE≠off`, an in-process auction runs before `FilterEngine.Check`:
 | `shadow` | `RunAuctionEval`; metrics only; request campaign unchanged |
 | `live` | `RunAuction`; winning `campaign_id` and `ClearingPriceMicro` replace request fields |
 
-Auction uses in-memory catalog, PMP deals, geo index, ML fraud boost in ranking, optional pre-bid IVT and `schain` validation. `POST /openrtb/bid` serves OpenRTB 2.6 bid traffic. Admin live gate and bid-shading APIs live in `management`. Detail: [docs/RTB.md](docs/RTB.md).
+Auction uses in-memory catalog, PMP deals, geo index, ML fraud boost in ranking, optional pre-bid IVT and `schain` validation. `POST /openrtb/bid` serves OpenRTB 2.6 bid traffic. Admin live gate and bid-shading APIs live in `management`. Detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ### Fraud and IVT
 
@@ -101,7 +101,7 @@ eSPX targets **self-hosted / on-prem ad networks and buy-side stacks**: event-ti
 
 ### Why Redis Lua (not native modules, KeyDB, or Aerospike)
 
-The hot path needs **one atomic step per event** on a single shard: read budget/quota, apply migration fence and `routing_epoch`, run dedup/idempotency/fcap/pacing/TTC pre-checks, debit (or skip when local quanta already debited via `skip_budget=1`), and `XADD` to `ad:events:stream`. Five scripts are embedded (`budget-fast`, `unified-filter`, `local-quota-refill`, `local-quota-return`, `ip-rate-limit`); hot path uses Tier B or C in **one `EVALSHA`** (~81k ns/op end-to-end with real Redis; p99 < 10 ms/shard SLA). Anything that cannot run as a single server-side atomic unit forces multiple round trips and reintroduces TOCTOU overspend (documented as R-LUA-01 in [docs/DATA.md](docs/DATA.md)).
+The hot path needs **one atomic step per event** on a single shard: read budget/quota, apply migration fence and `routing_epoch`, run dedup/idempotency/fcap/pacing/TTC pre-checks, debit (or skip when local quanta already debited via `skip_budget=1`), and `XADD` to `ad:events:stream`. Five scripts are embedded (`budget-fast`, `unified-filter`, `local-quota-refill`, `local-quota-return`, `ip-rate-limit`); hot path uses Tier B or C in **one `EVALSHA`** (~81k ns/op end-to-end with real Redis; p99 < 10 ms/shard SLA). Anything that cannot run as a single server-side atomic unit forces multiple round trips and reintroduces TOCTOU overspend (documented as R-LUA-01 in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)).
 
 #### Redis Lua (chosen)
 
@@ -155,7 +155,7 @@ Aerospike fits high-cardinality KV at cluster scale, but **does not match eSPX�
 | **KeyDB** | Yes (Lua compatible) | Unverified fork semantics | Non-standard Redis | Active-active / fork risk vs finance invariants |
 | **Aerospike** | UDF required | No (full replatform) | Cluster + UDF deploy | Rewrite streams, migration, outbox; higher TCO |
 
-For this product — **event-time billing, self-hosted, 4-shard Redis, PG ledger** — Lua is the best trade: native atomicity, one RTT, scripts versioned with the tracker, and no second datastore operations model. Deeper key/Lua policy: [docs/DATA.md](docs/DATA.md) Part I §3–5.
+For this product — **event-time billing, self-hosted, 4-shard Redis, PG ledger** — Lua is the best trade: native atomicity, one RTT, scripts versioned with the tracker, and no second datastore operations model. Deeper key/Lua policy: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) Part I §3–5.
 
 #### Why Lua is not the bottleneck
 
@@ -170,7 +170,7 @@ Lua is the **largest single step** on `/track`, but it is not what breaks the **
 | **One `EVALSHA` (Tier B)** | **~80 µs median** bench; **p99 < 10 ms / shard** | `FILTER_TIMEOUT_MS` ≤ 100 ms total |
 | End-to-end handler | varies with RTT, load, GC tails | p99 < 80 ms |
 
-Tier B at ~80 µs leaves **two orders of magnitude** below the handler ceiling before counting network jitter, TLS at the edge, or cross-AZ Redis RTT. Wire parse and in-process auction are not the limiter either ([docs/CAPABILITIES.md](docs/CAPABILITIES.md) §M12 — Lua dominates them in absolute time, but all are ≪ 80 ms).
+Tier B at ~80 µs leaves **two orders of magnitude** below the handler ceiling before counting network jitter, TLS at the edge, or cross-AZ Redis RTT. Wire parse and in-process auction are not the limiter either ([docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §M12 — Lua dominates them in absolute time, but all are ≪ 80 ms).
 
 **2. Most “Lua latency” is network and queueing, not the interpreter**
 
@@ -254,7 +254,7 @@ flowchart TB
   Mgmt --> Redis
 ```
 
-Default ingress: Nginx terminates TLS/H2/H3; upstream H1.1 to tracker. Default body schema: OpenRTB 3.0 (`TRACKER_INGRESS_SCHEMA=openrtb_3`). Detail: [docs/EDGE.md](docs/EDGE.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Default ingress: Nginx terminates TLS/H2/H3; upstream H1.1 to tracker. Default body schema: OpenRTB 3.0 (`TRACKER_INGRESS_SCHEMA=openrtb_3`). Detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 Request path: parse → geo → [RTB if `RTB_MODE≠off`] → `FilterEngine.Check` → Tier B/C Lua (or local quanta + `skip_budget` Lua) → stream `XADD` → response.
 
@@ -358,7 +358,7 @@ Two layers merge in `internal/licensing/`:
 
 Effective limit = `min(license, subscription)` per axis. Hot path reads a JWT snapshot only; `VolumeMeterWorker` records events/month for overage billing.
 
-Detail: [docs/MANAGEMENT.md](docs/MANAGEMENT.md).
+Detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---
 
@@ -415,7 +415,7 @@ Scripts ship in the tracker binary (`go:embed`), `SCRIPT LOAD` on startup, hot p
 
 IP rate limit composite key at edge: `campaign_id` + `user_id`, fallback client IP.
 
-Detail: [docs/DATA.md](docs/DATA.md) Part I §3–5.
+Detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) Part I §3–5.
 
 ### Edge Lua (OpenResty)
 
@@ -436,7 +436,7 @@ Nginx/OpenResty on `:8180` / `:443` terminates TLS, H2, and H3; upstream to trac
 
 Ingress schema must match tracker: `TRACKER_INGRESS_SCHEMA=openrtb_3` (default) or `espx_native`.
 
-Detail: [docs/EDGE.md](docs/EDGE.md), [docs/EBPF.md](docs/EBPF.md) (XDP L4 before nginx).
+Detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (edge ingress and XDP L4).
 
 ---
 
@@ -457,7 +457,7 @@ See [Redis and Lua](#redis-and-lua) for script tiers, key layout, and edge modul
 | Wire hardening (M14) | JSON depth cap (16/32), H2 hostile disconnect, optional edge tarpit |
 | Lua observability (M14) | `filter_lua_branch_total{branch}`; `FILTER_SLOW_MS` slow-script logs |
 
-Rules and PR checklist: [docs/GO.md](docs/GO.md). Runtime: tracker `GOGC=300`, `GOMEMLIMIT=700MiB` (M13).
+Rules and PR checklist: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Runtime: tracker `GOGC=300`, `GOMEMLIMIT=700MiB` (M13).
 
 ---
 
@@ -497,7 +497,7 @@ Rules and PR checklist: [docs/GO.md](docs/GO.md). Runtime: tracker `GOGC=300`, `
 | `BenchmarkLuaScript_Happy` | B (impression) | ~81k | 0 |
 | `BenchmarkLuaScript_Worst` | C (click + fcap) | ~92k | 0 |
 
-Source: [docs/CAPABILITIES.md](docs/CAPABILITIES.md) §M9 (real Redis, 2026-07-24).
+Source: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §M9 (real Redis, 2026-07-24).
 
 ### Broker (`pkg/broker`)
 
@@ -533,19 +533,11 @@ CI gates: `scripts/perf-gate/`, `scripts/chaos-drills/test_chaos.sh`.
 
 | Document | Scope |
 | :--- | :--- |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Topology, request flow, SLAs |
-| [docs/GO.md](docs/GO.md) | Tracker hot path |
-| [docs/DATA.md](docs/DATA.md) | Redis, PostgreSQL, ClickHouse |
-| [docs/EDGE.md](docs/EDGE.md) | Nginx/OpenResty ingress |
-| [docs/EBPF.md](docs/EBPF.md) | XDP L4 |
-| [docs/RTB.md](docs/RTB.md) | In-process auction |
-| [docs/MANAGEMENT.md](docs/MANAGEMENT.md) | Control plane |
-| [docs/CAPABILITIES.md](docs/CAPABILITIES.md) | Shipped milestones (M1–M14) |
-| [docs/BACKLOG.md](docs/BACKLOG.md) | Open gaps |
-| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Local setup, CI, runbooks |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Topology, data stores, request flow, SLAs, control plane |
+| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Local setup, CI, runbooks, code rules, open gaps, roadmap |
 
 ---
 
 ## Licensing
 
-Product license (JWT per deployment) and tenant subscriptions merge in `internal/licensing/`. Binary: `cmd/license-server`. Detail: [docs/MANAGEMENT.md](docs/MANAGEMENT.md) §5–6 and [Management and administration](#management-and-administration) above.
+Product license (JWT per deployment) and tenant subscriptions merge in `internal/licensing/`. Binary: `cmd/license-server`. Detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §5–6 and [Management and administration](#management-and-administration) above.

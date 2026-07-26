@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	bannedWord  = regexp.MustCompile(`(?i)\b(simple|elegant|clean|obviously|just|simply|nice|obvious|trivial)\b`)
+	bannedWord  = regexp.MustCompile(`(?i)\b(simple|elegant|clean|obviously|just|simply|nice|obvious|trivial|minimal|leverage|delve|seamless|seamlessly|moreover|furthermore|additionally|holistic|navigate|testament|harness|effortlessly|notably|essentially|basically)\b`)
 	unicodeDash = regexp.MustCompile(`[—–]`)
 )
 

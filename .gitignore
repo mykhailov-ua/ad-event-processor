@@ -72,6 +72,10 @@ Thumbs.db
 # GeoIP (download MaxMind separately; keep deploy/geoip/.gitkeep)
 deploy/geoip/*.mmdb
 
+# Engineering guidelines (tracked; negate global gitignore `guidelines/`)
+!docs/guidelines/
+!docs/guidelines/**
+
 # Terraform state & plugins
 deploy/terraform/**/.terraform/
 deploy/terraform/**/terraform.tfstate*

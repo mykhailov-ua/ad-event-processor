@@ -1,8 +1,8 @@
-# Management
+# Control Plane
 
 Cold-path control plane: HTTP admin, gRPC settlement, background workers, licensing. Hot path (`/track`, Redis Lua, XDP) is out of scope.
 
-[DATA.md](./DATA.md) · [ARCHITECTURE.md](./ARCHITECTURE.md) · [STYLE.md](./STYLE.md) · [BOUNDARIES.md](./BOUNDARIES.md)
+[DATA_LAYER.md](./DATA_LAYER.md) . [ARCHITECTURE.md](../ARCHITECTURE.md) . [CODE_STYLE.md](./CODE_STYLE.md) . [SERVICE_BOUNDARIES.md](./SERVICE_BOUNDARIES.md)
 
 ---
 
@@ -10,44 +10,7 @@ Cold-path control plane: HTTP admin, gRPC settlement, background workers, licens
 
 Administrative traffic does not share the tracker event loop. Reporting and mutations use PostgreSQL as system of record; Redis receives config via outbox only.
 
-```mermaid
-flowchart TB
-    subgraph clients [Clients]
-        OpUI[Operator / legacy HTMX]
-        ExtAPI[External JSON Client]
-        Tenant[Self-serve API]
-    end
-    subgraph mgmt [management]
-        HTTP[HTTP Gateway]
-        AdminAPI[internal/adminapi]
-        Workers[Outbox, Recon, Pacing, ...]
-        Settle[gRPC Settlement]
-    end
-    subgraph grpc [gRPC]
-        Billing[billing]
-        Payment[payment]
-        Auth[auth]
-        Notifier[notifier]
-    end
-    subgraph stores [Data Stores]
-        PG[(PostgreSQL)]
-        CH[(ClickHouse)]
-        Redis[(Redis x4)]
-    end
-    subgraph ingest [Ingestion Stream]
-        Tracker[tracker]
-        Processor[processor]
-    end
-    OpUI --> HTTP
-    ExtAPI --> HTTP
-    Tenant --> HTTP
-    HTTP --> AdminAPI
-    AdminAPI --> Billing
-    Workers --> PG
-    Workers --> Redis
-    Processor --> PG
-    Processor --> CH
-```
+Clients (operator HTMX, external JSON, self-serve API) -> management HTTP -> adminapi / workers / settlement gRPC -> PG, Redis. gRPC to billing, payment, auth, notifier. Tracker -> streams -> processor -> PG, CH.
 
 ### 1.1 Binaries
 
@@ -58,8 +21,8 @@ flowchart TB
 | `payment` | Payment intents, Stripe webhooks, settlement outbox |
 | `auth` | PASETO tokens, sessions, API keys |
 | `notifier` | Email/Telegram, invoice delivery |
-| `processor` | Redis streams → PG events, `balance_ledger`, CH batches |
-| `ivt-detector`, `fraud-scorer` | CH batch → management outbox → Redis blacklists |
+| `processor` | Redis streams -> PG events, `balance_ledger`, CH batches |
+| `ivt-detector`, `fraud-scorer` | CH batch -> management outbox -> Redis blacklists |
 
 ### 1.2 Route prefixes
 
@@ -68,7 +31,7 @@ flowchart TB
 | `/admin/*` | Legacy admin (mirrored under `/api/v1`) |
 | `/api/v1/*` | REST reporting and automation |
 | `/api/v1/selfserve/*` | Tenant campaigns, payments, API keys |
-| `/api/v1/billing/*`, `/api/v1/ops/*` | Admin API (M2.8) |
+| `/api/v1/billing/*`, `/api/v1/ops/*` | Admin JSON API |
 
 ### 1.3 Mutation rules
 
@@ -86,7 +49,7 @@ flowchart TB
 | :--- | :--- | :--- |
 | RPT-01 | `GET /campaigns/{id}/stats` | PG `campaign_stats` + CH hourly MVs; `stale=true` if CH lag > 5 min |
 | RPT-02 | `GET /customers/{id}/balance` | PG `balance_ledger` sum |
-| RPT-03 | `GET /customers/{id}/balance/export` | Streaming CSV, cursor pagination, chunk ≤ 10 MB |
+| RPT-03 | `GET /customers/{id}/balance/export` | Streaming CSV, cursor pagination, chunk <= 10 MB |
 | RPT-04 | `GET /recon/runs` | PG `recon_runs` |
 | RPT-05 | `GET /disputes` | Payment gRPC proxy |
 | RPT-06 | `POST /forecast/campaign` | CH 90-day trends + PG budget limits |
@@ -107,15 +70,15 @@ flowchart TB
 
 | Worker | Interval / trigger | Function |
 | :--- | :--- | :--- |
-| `OutboxWorker` | 20 ms poll | `outbox_events` → Redis/registry; 20+ event types, priority lanes |
-| `CampaignDrainWorker` | — | Finalize campaign cancellation |
-| `ReconWorker` | — | PG spend ↔ Redis budgets ↔ CH hourly MVs |
-| `PacingControllerWorker` | — | Daypart and spend pacing profiles |
-| `QuotaManager` | — | Regional quota (shadow/live) |
-| `SyncWorker` ×4 | — | PG spend deltas → Redis budget keys |
-| `ScheduleWorker` | — | Schedule-based activate/pause |
+| `OutboxWorker` | 20 ms poll | `outbox_events` -> Redis/registry; 20+ event types, priority lanes |
+| `CampaignDrainWorker` | - | Finalize campaign cancellation |
+| `ReconWorker` | - | PG spend <-> Redis budgets <-> CH hourly MVs |
+| `PacingControllerWorker` | - | Daypart and spend pacing profiles |
+| `QuotaManager` | - | Regional quota (shadow/live) |
+| `SyncWorker` x4 | - | PG spend deltas -> Redis budget keys |
+| `ScheduleWorker` | - | Schedule-based activate/pause |
 | `InvoiceWorker` | monthly | Invoice generation (`billing`) |
-| `LedgerInvariantWorker` | — | Ledger drift scan |
+| `LedgerInvariantWorker` | - | Ledger drift scan |
 
 ---
 
@@ -129,15 +92,15 @@ flowchart TB
 | Composite read | `CompositeReadService`: single-roundtrip PG + CH for statements and forecasts |
 | Fan-out | 4-shard Redis merge with `partial: true` and cursor pagination |
 
-Detail: [DATA.md](./DATA.md).
+Links: [DATA_LAYER.md](./DATA_LAYER.md).
 
 ---
 
 ## 4. Multi-region
 
-Target model ([DATA.md](./DATA.md) Part VII):
+Target model ([DATA_LAYER.md](./DATA_LAYER.md) Part VII):
 
-1. Hot path in regional cells (tracker, Redis ×4, processor).
+1. Hot path in regional cells (tracker, Redis x4, processor).
 2. Global PostgreSQL for finance and configuration.
 3. Cross-region delivery via `outbox_region_delivery` (at-least-once).
 4. No cross-region Redis replication.
@@ -166,8 +129,8 @@ Third axis beside RPS and events/month:
 
 | Axis | Window | Enforcement |
 | :--- | :--- | :--- |
-| RPS | UDP epoch (~1–10 s) | Tracker `ingress_quota` + UDP `:8191` |
-| RPD | Calendar day | Redis `ingress:day:{customer_id}:{YYYYMMDD}` → HTTP 429 |
-| Events/month | Calendar month | `usage_meters` → overage invoices |
+| RPS | UDP epoch (~1-10 s) | Tracker `ingress_quota` + UDP `:8191` |
+| RPD | Calendar day | Redis `ingress:day:{customer_id}:{YYYYMMDD}` -> HTTP 429 |
+| Events/month | Calendar month | `usage_meters` -> overage invoices |
 
-RPD exhaustion: HTTP **429** with `X-RateLimit-Limit-Day`, `X-RateLimit-Remaining-Day`, `X-RateLimit-Reset-Day`.
+RPD exhaustion: HTTP 429 with `X-RateLimit-Limit-Day`, `X-RateLimit-Remaining-Day`, `X-RateLimit-Reset-Day`.

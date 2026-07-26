@@ -1,6 +1,6 @@
 // Package chaos_test runs fault-injection scenarios against a multi-shard Redis
 // topology. Each test stops or partitions individual shards and asserts ingest,
-// budget, and outbox behavior described in docs/CHAOS.md.
+// budget, and outbox behavior described in docs/DEVELOPMENT.md.
 package chaos_test
 
 import (

@@ -12,7 +12,7 @@ type licenseStateReader interface {
 }
 
 // LicenseFilter rejects ingest only when the deployment license is EXPIRED or REVOKED.
-// GRACE and ACTIVE continue per MANAGEMENT.md §8 (zero network, atomic snapshot read).
+// GRACE and ACTIVE continue per CONTROL_PLANE.md section 8 (zero network, atomic snapshot read).
 type LicenseFilter struct {
 	registry licenseStateReader
 }
