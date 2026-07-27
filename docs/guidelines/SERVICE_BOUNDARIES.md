@@ -138,4 +138,4 @@ Open product work: [OPEN_GAPS.md](./OPEN_GAPS.md).
 
 - [../ARCHITECTURE.md](../ARCHITECTURE.md) - topology, settlement
 - [../DEVELOPMENT.md](../DEVELOPMENT.md) - open gaps
-- `.cursorrules` - hot-path constraints
+- `.cursor/rules/espx.mdc` - hot-path constraints

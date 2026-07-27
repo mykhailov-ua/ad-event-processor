@@ -134,6 +134,8 @@ Budget invariant: `current_spend <= budget_limit` in Postgres (+-1 micro-unit).
 3. Cross-region via `outbox_region_delivery` (at-least-once).
 4. No cross-region Redis replication.
 
+Detail: regional proxies, disk gate, node scoring with sliding-window fallbacks — [MULTI_REGION.md](./MULTI_REGION.md).
+
 ---
 
 ## RTB

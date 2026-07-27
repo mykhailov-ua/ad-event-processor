@@ -270,4 +270,4 @@ Write-path mechanisms:
 - `SyncWorker` sole `UpdateCampaignSpend` writer; `syncMu` serializes flushes
 - `TRACKER_PG_FALLBACK=0` in production
 
-Multi-region and extended DR: [OPEN_GAPS.md](./OPEN_GAPS.md), [../DEVELOPMENT.md](../DEVELOPMENT.md).
+Multi-region and extended DR: [MULTI_REGION.md](../MULTI_REGION.md), [OPEN_GAPS.md](./OPEN_GAPS.md), [../DEVELOPMENT.md](../DEVELOPMENT.md).

@@ -1,6 +1,6 @@
 # Code Style and Repository Structure
 
-Repository layout and review rules. Hot path overrides: [HOT_PATH.md](./HOT_PATH.md), `.cursorrules`.
+Repository layout and review rules. Hot path overrides: [HOT_PATH.md](./HOT_PATH.md), `.cursor/rules/espx.mdc`.
 
 ---
 
@@ -247,7 +247,7 @@ I/O on the hot path (best-effort): see R8.3 pt. 6 - increment a counter without 
 
 ### R8. Error Handling
 
-These rules supplement R7 (blank identifier `_`). On the hot path, performance constraints in `.cursorrules` take precedence over idiomatic Go.
+These rules supplement R7 (blank identifier `_`). On the hot path, performance constraints in `.cursor/rules/espx.mdc` take precedence over idiomatic Go.
 
 #### R8.1. Hot-Path and Cold-Path Boundaries
 
@@ -322,7 +322,7 @@ Validation and worker batch guidelines:
 
 #### R8.7. Hot-Path: Performance
 
-R8.3 specifies allocation-free reject and parse. Below are additional rules for latency, cardinality, and algorithms. In case of conflict with R8.3, `.cursorrules` takes precedence.
+R8.3 specifies allocation-free reject and parse. Below are additional rules for latency, cardinality, and algorithms. In case of conflict with R8.3, `.cursor/rules/espx.mdc` takes precedence.
 
 1. Metrics without dynamic labels - banned on the parse -> filter -> respond path:
    - `prometheus.*.WithLabelValues(evt.CampaignID.String(), ...)`

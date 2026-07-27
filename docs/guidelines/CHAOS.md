@@ -208,6 +208,33 @@ Hypothesis: CH gate backpressure; mmap spool absorbs; no unbounded memory; lag d
 
 ---
 
+## Multi-region (M7)
+
+Catalog: [../MULTI_REGION.md](../MULTI_REGION.md) §13. Minimum proofs: `CHAOS_MIN_PROOFS_MR=12`.
+
+| ID | Fault | Hypothesis |
+| :--- | :--- | :--- |
+| CH-MR-01 | New node during `NODE_WARMUP_SEC` | weight capped; `provenance=neighbor_median` |
+| CH-MR-02 | Scrape blackhole 3 epochs | no drain without hard signal; neighbor fallback |
+| CH-MR-03 | All neighbors unhealthy | `historical_daily`; gentle drain only |
+| CH-MR-04 | Disk fsync latency +5 ms | `disk_degraded`; proxy shed; tracker p99 stable |
+| CH-MR-05 | KeyGen CPU throttle | ingress shed; single D3 proposal per `op_id` |
+| CH-MR-06 | Executor PG partition | lease `expired`; retry; `AssertBudgetInvariant` |
+| CH-MR-07 | Ghost executor | `already_confirmed`; no double Redis write |
+| CH-MR-08 | Dual CAS `executing` | one PG winner only |
+| CH-MR-09 | Quorum book 1-of-3 | no client ACK until 2-of-3 |
+| CH-MR-10 | Global PG partition 60 s | hot path OK; proxy WAL spool; heal drains |
+| CH-MR-11 | UDP epoch loss | equal weights; no aggressive drain |
+| CH-MR-12 | Drain 3 epochs | weight → 0; in-flight completes |
+
+Proof format:
+
+```text
+chaos_proof fault=mr_<name> <key>=<value> baseline_ok=true
+```
+
+---
+
 ## Running locally
 
 ```bash

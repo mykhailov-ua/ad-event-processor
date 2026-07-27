@@ -135,6 +135,33 @@ Measure baseline before fault injection. Abort if steady state degrades beyond l
 
 Proof logs: `chaos_proof fault=<name>` in test output. Update `CHAOS_MIN_PROOFS` when new CI proofs land.
 
+Multi-region proofs use the `mr_` prefix. `test_chaos.sh` enforces `CHAOS_MIN_PROOFS_MR=12` (see [MULTI_REGION.md](./MULTI_REGION.md) M7).
+
+---
+
+## Multi-region game day (M7.4)
+
+**Calendar:** quarterly dry-run (first Tuesday of Jan / Apr / Jul / Oct, 09:00 UTC).
+
+**SLA:** regional proxy failover RTO < 120 s; `AssertBudgetInvariant` after heal; zero duplicate global apply.
+
+**Runner:** `bash scripts/chaos-drills/mr_game_day.sh`
+
+### 90-minute operator checklist
+
+| Min | Step | Action | Pass criteria |
+| :--- | :--- | :--- | :--- |
+| 0–10 | Baseline | `dev_preflight.sh`; note tracker p99 and `ad_node_weight` | p99 < 80 ms; weights stable |
+| 10–20 | MR chaos CI | `bash scripts/chaos-drills/mr_game_day.sh` | ≥12 `chaos_proof fault=mr_*` lines |
+| 20–35 | Quorum book | Simulate 1-of-3 proxy ACK (`mr_quorum_book`) | No global apply until 2-of-3 |
+| 35–50 | Lease partition | `TestChaos_OperationLease_PGStopDuringExecuting` or stop regional PG | Lease `expired`; `budget_ok=true` |
+| 50–65 | Proxy failover | Stop one regional-proxy replica; fail over uplink | RTO < 120 s; WAL replays once |
+| 65–75 | Global PG blip | Pause global management PG ≤60 s | Hot path OK; uplink spools; heal drains |
+| 75–85 | Invariants | `AssertBudgetInvariant` on sample campaigns | Redis + PG within ±1 micro-unit |
+| 85–90 | Close | File incident notes; restore compose/k8s | All pods healthy; outbox drained |
+
+Escalation: if tracker p99 > 80 ms for 30 s during drill, abort and roll back traffic shifts.
+
 ---
 
 ## Slot migration
@@ -233,7 +260,25 @@ Hot path: hostNetwork trackers + nginx. Cold path: separate namespace.
 | `scripts/chaos-drills/test_chaos.sh` | Fault injection |
 | `scripts/edge-tuning/edge_nic_tune.sh` | NIC tuning |
 | `scripts/redis-ops/` | Shard ops |
-| `scripts/load-test/` | Load tests |
+| `scripts/load-test/` | Load tests; optional `ESPX_BPF_PROBE=1` for kernel probes |
+
+### Optional BPF probes during load tests
+
+Dev-only utility: parallel eBPF session records syscalls, context switches, TCP retrans, and k6 load-generator overhead while k6 runs. Reports land in `var/load-test/<ts>/bpf-report.md`.
+
+```bash
+# One-time: build BPF object (uses Docker if clang is missing)
+bash scripts/load-test/bpf_build.sh
+go build -o bin/bpf-collector ./cmd/bpf-collector
+
+# Run dirty load with probes (requires root or CAP_BPF on the host)
+sudo ESPX_BPF_PROBE=1 bash scripts/load-test/run_dirty_load.sh smoke
+
+# Laptop-friendly sampling
+sudo ESPX_BPF_PROBE=1 ESPX_BPF_SAMPLE_RATE=10 bash scripts/load-test/run_spike_load.sh
+```
+
+Env: `ESPX_BPF_TARGETS`, `ESPX_BPF_SAMPLE_RATE`, `ESPX_BPF_TRACK_K6` (default tracks k6 comm for honest overhead). Does not run in CI or production.
 
 ---
 
@@ -265,6 +310,41 @@ Full list: `.env.example`.
 | `CH_SPOOL_SEGMENT_MB` | CH outage spool |
 | `LOCAL_QUOTA_MODE` | `live` for local quanta |
 | `ELASTIC_SHARDING_ENABLED` | `false` steady-state default |
+| `CONTROL_FAIL_OPEN` | `0` (default): edge uses conservative routing when control epochs are stale — equal tracker weights, drain frozen. Set `1` for AWS GA-style fail-open (keep last epoch weights). Edge only; see [MULTI_REGION.md](./MULTI_REGION.md) H4. |
+| `NODE_WARMUP_SEC` | Tracker/management warmup before `/ready` and scorer drain (default `300`) |
+| `NODE_WEIGHTS_SYNC_INTERVAL_SEC` | Edge poll interval for `/ops/node-weights` (default `10`) |
+
+---
+
+## Multi-region edge routing (M5)
+
+Weighted tracker pick uses `edge-node-weights.lua` (synced from management `GET /ops/node-weights`). Shard affinity still follows `edge-slot-map.lua` (crc32 Castagnoli + 1024 slot table — same formula as Go `StaticSlotSharder`).
+
+| Policy | `CONTROL_FAIL_OPEN` | Stale epoch / sync gap | Edge behavior |
+| :--- | :---: | :--- | :--- |
+| **Conservative** (default) | `0` | yes | Equal peer weights; drain frozen (§6 Phase E) |
+| **Fail-open** | `1` | yes | Keep last published weights (AWS GA-style) |
+
+`balancer_by_lua` applies weights only to **new** upstream connections (H6); established TCP is not moved.
+
+---
+
+## mmap fsync contract (region-proxy / broker)
+
+Cold-path durability uses **append-only segment logs** on mmap — not btree-on-mmap (see [MULTI_REGION.md](./MULTI_REGION.md) H5).
+
+| Component | Location | Contract |
+| :--- | :--- | :--- |
+| Disk gate | `pkg/iogate/disk_gate.go` | `fsyncSem` capacity **1** serializes fsync; `appendSem` caps concurrent mmap appends; EMA latency drives `disk_degraded` |
+| Region-proxy WAL | `pkg/regionproxy/wal/wal.go` | Append-only records; `Recover()` scans the tail, truncates torn records after crash/SIGKILL, remaps segment |
+| Broker log | `pkg/broker/log/log.go` | Segment `Recover()` replays index + data tail; monotonic offsets preserved |
+
+Operator notes:
+
+1. Do not place B-tree or random-write indexes on mmap segments — append + truncate only.
+2. On restart, call `Recover()` before accepting ingress; torn tails are discarded.
+3. Watch `ad_disk_gate_degraded` and `ad_disk_gate_append_wait_seconds`; shed Low-tier ingress when fsync p99 exceeds `DISK_LATENCY_BUDGET_MS`.
+4. `fsyncSem=1` is intentional: group-commit batches share one fsync slot (RocksDB WAL pattern).
 
 ---
 
@@ -310,7 +390,7 @@ Actions logged in `audit_logs`.
 | GAP-OPS-04 | Operations | DLQ/spool unified dashboard |
 | GAP-PROD-01 | Product | Buyer/finance dashboards; scaffold routes return 501 |
 | GAP-PROD-03 | Product | No OpenAPI; godoc only |
-| GAP-GEO-01 | Geography | Multi-region game days not productized |
+| GAP-GEO-01 | Geography | ~~Multi-region game days not productized~~ done M7.4 |
 | GAP-GEO-02 | Geography | Postgres DR manual; no automated failover |
 | GAP-PAY-01 | Payments | Crypto gateway; Stripe only today |
 | GAP-DATA-01 | Data | Raw PII in ClickHouse; hash pipeline + salt rotation |
@@ -336,7 +416,7 @@ Automated promote: GAP-GEO-02. Operator steps:
 4. Verify `AssertBudgetInvariant` and outbox drain
 5. Run `scripts/chaos-drills/test_chaos.sh` subset after cutover
 
-Multi-region topology: [ARCHITECTURE.md](./ARCHITECTURE.md) Data layer section.
+Multi-region topology: [MULTI_REGION.md](./MULTI_REGION.md).
 
 ---
 

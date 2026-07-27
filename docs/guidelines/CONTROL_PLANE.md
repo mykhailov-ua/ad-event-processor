@@ -98,12 +98,14 @@ Links: [DATA_LAYER.md](./DATA_LAYER.md).
 
 ## 4. Multi-region
 
-Target model ([DATA_LAYER.md](./DATA_LAYER.md) Part VII):
+Target model:
 
 1. Hot path in regional cells (tracker, Redis x4, processor).
 2. Global PostgreSQL for finance and configuration.
 3. Cross-region delivery via `outbox_region_delivery` (at-least-once).
 4. No cross-region Redis replication.
+
+Full design (regional proxy, disk gate, capacity scoring, sliding-window fallbacks): [../MULTI_REGION.md](../MULTI_REGION.md).
 
 ---
 
