@@ -27,6 +27,8 @@ internal/edge/bpf/edge_bpf*.go
 internal/edge/bpf/*.o
 deploy/edge/xdp/bpf/*.o
 deploy/edge/xdp/bpf/*.disasm.txt
+deploy/dev/bpf/*.o
+deploy/dev/bpf/*.disasm.txt
 
 # Dev TLS (generate via deploy/nginx/certs/generate-dev-certs.sh)
 deploy/nginx/certs/*.key
