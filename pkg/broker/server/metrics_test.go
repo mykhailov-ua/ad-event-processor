@@ -62,6 +62,10 @@ func TestMetricsEndpoint(t *testing.T) {
 		"ad_broker_fetch_total",
 		"ad_broker_active_connections",
 		"ad_broker_disk_writable",
+		"ad_disk_gate_degraded",
+		"ad_disk_gate_fsync_in_flight",
+		"ad_disk_gate_shed_total",
+		"ad_disk_gate_append_wait_seconds",
 		`topic="` + protocol.TopicPartitionID(topic, 0) + `"`,
 		`status="ok"`,
 	} {

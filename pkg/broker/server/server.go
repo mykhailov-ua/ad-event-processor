@@ -21,6 +21,8 @@ import (
 	"espx/internal/metrics"
 	"espx/pkg/broker/log"
 	"espx/pkg/broker/protocol"
+	"espx/pkg/iogate"
+
 	"github.com/panjf2000/gnet/v2"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -66,6 +68,8 @@ type Server struct {
 
 	diskOK atomic.Bool
 
+	diskGate *iogate.DiskWriteGate
+
 	retention              log.RetentionPolicy
 	retentionCheckInterval time.Duration
 
@@ -87,6 +91,9 @@ func NewServer(addr string, dataDir string, maxSegSize int64, indexInterval int6
 		offsetStore:        NewMemoryOffsetStore(),
 	}
 	s.diskOK.Store(true)
+	gateCfg := iogate.DefaultConfig()
+	gateCfg.DiskWritable = s.diskOK.Load
+	s.diskGate = iogate.NewDiskWriteGate(gateCfg)
 	return s
 }
 
@@ -105,6 +112,13 @@ func (s *Server) SetShutdownTimeout(d time.Duration) {
 // SetDurability configures the fsync policy applied to all new partition logs.
 func (s *Server) SetDurability(cfg log.DurabilityConfig) {
 	s.durability = cfg
+	if s.diskGate != nil {
+		gateCfg := iogate.DefaultConfig()
+		gateCfg.GroupCommitRecords = cfg.GroupCommitRecords
+		gateCfg.GroupCommitInterval = cfg.FlushInterval
+		gateCfg.DiskWritable = s.diskOK.Load
+		s.diskGate = iogate.NewDiskWriteGate(gateCfg)
+	}
 }
 
 // Durability returns the fsync policy used for new partitions.
@@ -154,6 +168,11 @@ func (s *Server) wireTopicRegistryFromCoord(coord *Coordinator) {
 // HealthAddr returns the bound health check address after dynamic port allocation.
 func (s *Server) HealthAddr() string {
 	return s.healthAddr
+}
+
+// DiskGate returns the shared disk write gate used by partition logs.
+func (s *Server) DiskGate() *iogate.DiskWriteGate {
+	return s.diskGate
 }
 
 // Start brings up disk health monitoring, HTTP healthz, and the gnet event loop.
@@ -712,7 +731,7 @@ func (s *Server) getOrCreatePartition(partitionKey string) (*log.PartitionLog, e
 
 	parts := strings.Split(partitionKey, "/")
 	dir := filepath.Join(append([]string{s.dataDir}, parts...)...)
-	pl, err := log.NewPartitionLogWithDurability(dir, s.maxSegSize, s.indexInterval, s.durability)
+	pl, err := log.NewPartitionLogWithDurabilityAndGate(dir, s.maxSegSize, s.indexInterval, s.durability, s.diskGate)
 	if err != nil {
 		return nil, err
 	}

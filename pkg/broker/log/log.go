@@ -2,9 +2,10 @@
 package log
 
 import (
+	"context"
 	"encoding/binary"
 	"errors"
-	"espx/internal/metrics"
+	"espx/pkg/iogate"
 	"fmt"
 	"io"
 	"math/bits"
@@ -498,6 +499,7 @@ type PartitionLog struct {
 	fencingEpoch  atomic.Uint64
 	durability    DurabilityConfig
 	pendingFsync  atomic.Int64
+	gate          *iogate.DiskWriteGate
 
 	DiskOK atomic.Bool
 }
@@ -509,6 +511,11 @@ func NewPartitionLog(dir string, maxSegSize int64, indexInterval int64) (*Partit
 
 // NewPartitionLogWithDurability opens a partition log with an explicit fsync policy.
 func NewPartitionLogWithDurability(dir string, maxSegSize int64, indexInterval int64, cfg DurabilityConfig) (*PartitionLog, error) {
+	return NewPartitionLogWithDurabilityAndGate(dir, maxSegSize, indexInterval, cfg, nil)
+}
+
+// NewPartitionLogWithDurabilityAndGate opens a partition log wired to a shared disk write gate.
+func NewPartitionLogWithDurabilityAndGate(dir string, maxSegSize int64, indexInterval int64, cfg DurabilityConfig, gate *iogate.DiskWriteGate) (*PartitionLog, error) {
 	if cfg.FlushInterval <= 0 {
 		cfg.FlushInterval = 100 * time.Millisecond
 	}
@@ -526,6 +533,7 @@ func NewPartitionLogWithDurability(dir string, maxSegSize int64, indexInterval i
 		indexInterval: indexInterval,
 		closeChan:     make(chan struct{}),
 		durability:    cfg,
+		gate:          gate,
 	}
 	p.DiskOK.Store(true)
 
@@ -673,9 +681,15 @@ func (p *PartitionLog) startFlushLoop() {
 					continue
 				}
 				if p.durability.Mode == DurabilityGroupCommit {
-					if p.pendingFsync.Load() > 0 {
-						p.Sync()
+					shouldSync := false
+					if p.gate != nil {
+						shouldSync = p.gate.FlushDueByInterval()
+					} else if p.pendingFsync.Load() > 0 {
+						shouldSync = true
 						p.pendingFsync.Store(0)
+					}
+					if shouldSync {
+						p.Sync()
 					}
 				} else {
 					p.Sync()
@@ -758,20 +772,22 @@ func (p *PartitionLog) applyDurabilityAfterLeaderAppend() error {
 	case DurabilitySync:
 		p.syncLocked()
 	case DurabilityGroupCommit:
-		n := p.pendingFsync.Add(1)
-		if n >= p.durability.GroupCommitRecords {
-			p.pendingFsync.Store(0)
-			p.syncLocked()
+		if p.gate != nil {
+			if p.gate.NoteAppend() {
+				p.syncLocked()
+			}
+		} else {
+			n := p.pendingFsync.Add(1)
+			if n >= p.durability.GroupCommitRecords {
+				p.pendingFsync.Store(0)
+				p.syncLocked()
+			}
 		}
 	}
 	return nil
 }
 
 func (p *PartitionLog) syncLocked() {
-	p.timedSyncActive()
-}
-
-func (p *PartitionLog) timedSyncActive() {
 	s := p.snap.Load()
 	if s == nil || s.activeSeg == nil {
 		return
@@ -779,12 +795,45 @@ func (p *PartitionLog) timedSyncActive() {
 	if d := testSyncDelay(); d > 0 {
 		time.Sleep(d)
 	}
+	if p.gate != nil {
+		ctx := context.Background()
+		if err := p.gate.AcquireFsync(ctx); err != nil {
+			p.DiskOK.Store(false)
+			return
+		}
+		start := time.Now()
+		err := s.activeSeg.Sync()
+		latency := time.Since(start)
+		p.gate.ReleaseFsync(latency)
+		recordFsyncDuration(latency.Seconds())
+		if err != nil {
+			p.DiskOK.Store(false)
+			p.gate.SetDegraded(true)
+		}
+		return
+	}
 	start := time.Now()
-	_ = s.activeSeg.Sync()
-	metrics.BrokerFsyncDuration.Observe(time.Since(start).Seconds())
+	err := s.activeSeg.Sync()
+	latency := time.Since(start)
+	recordFsyncDuration(latency.Seconds())
+	if err != nil {
+		p.DiskOK.Store(false)
+	}
 }
 
 func (p *PartitionLog) appendPayloadLocked(offset uint64, payload []byte, trackEpoch bool, epoch uint64) (uint64, error) {
+	if p.gate != nil {
+		if err := p.gate.AcquireAppend(context.Background(), iogate.TierHigh); err != nil {
+			return 0, fmt.Errorf("append: %w", err)
+		}
+		offset, err := p.appendPayloadLockedInner(offset, payload, trackEpoch, epoch)
+		p.gate.ReleaseAppend(iogate.TierHigh)
+		return offset, err
+	}
+	return p.appendPayloadLockedInner(offset, payload, trackEpoch, epoch)
+}
+
+func (p *PartitionLog) appendPayloadLockedInner(offset uint64, payload []byte, trackEpoch bool, epoch uint64) (uint64, error) {
 	if trackEpoch && epoch > p.fencingEpoch.Load() {
 		p.fencingEpoch.Store(epoch)
 		if err := p.persistFencingEpoch(epoch); err != nil {
@@ -824,11 +873,21 @@ func (p *PartitionLog) appendPayloadLocked(offset uint64, payload []byte, trackE
 
 // rollLocked seals the full segment and swaps in a new writable one without blocking readers.
 func (p *PartitionLog) rollLocked(old *segmentSnapshot) error {
-	activeSeg := old.activeSeg
-
-	if err := activeSeg.Sync(); err != nil {
+	if p.gate != nil {
+		if err := p.gate.AcquireAppend(context.Background(), iogate.TierLow); err != nil {
+			return fmt.Errorf("segment roll: %w", err)
+		}
+		err := p.rollLockedInner(old)
+		p.gate.ReleaseAppend(iogate.TierLow)
 		return err
 	}
+	return p.rollLockedInner(old)
+}
+
+func (p *PartitionLog) rollLockedInner(old *segmentSnapshot) error {
+	activeSeg := old.activeSeg
+
+	p.syncLocked()
 
 	activeLogSize := atomic.LoadInt64(&activeSeg.logSize)
 	if err := activeSeg.logFile.Truncate(activeLogSize); err != nil {
@@ -872,7 +931,7 @@ func (p *PartitionLog) rollLocked(old *segmentSnapshot) error {
 
 // Sync fsyncs the active segment on demand from the background flush loop.
 func (p *PartitionLog) Sync() {
-	p.timedSyncActive()
+	p.syncLocked()
 }
 
 // Close stops the flush loop and closes all segment files on broker shutdown.

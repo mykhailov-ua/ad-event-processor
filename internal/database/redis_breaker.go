@@ -136,21 +136,25 @@ func IsNetworkOrSystemError(err error) bool {
 	if err == nil {
 		return false
 	}
+	// Fast path: unwrapped transport errors (0 allocs; avoids errors.Is chain).
+	switch err.(type) {
+	case *net.OpError:
+		return true
+	}
+	if _, ok := err.(net.Error); ok {
+		return true
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
 	if errors.Is(err, redis.Nil) {
 		return false
 	}
 	if errors.Is(err, context.Canceled) {
 		return false
 	}
-	if errors.Is(err, context.DeadlineExceeded) {
-		return true
-	}
 	var opErr *net.OpError
 	if errors.As(err, &opErr) {
-		return true
-	}
-	var netErr net.Error
-	if errors.As(err, &netErr) {
 		return true
 	}
 	errStr := err.Error()

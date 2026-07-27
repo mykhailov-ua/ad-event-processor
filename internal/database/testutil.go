@@ -17,8 +17,15 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-// SetupTestDB exists so integration tests get a migrated Postgres instance without bespoke container wiring.
-func SetupTestDB(t testing.TB) (*pgxpool.Pool, func()) {
+// TestDBInfra holds a migrated Postgres pool and its container for fault injection.
+type TestDBInfra struct {
+	Pool        *pgxpool.Pool
+	PGContainer *postgres.PostgresContainer
+}
+
+// SetupTestDBInfra boots Postgres with ingestion migrations and returns the container handle.
+func SetupTestDBInfra(t testing.TB) (*TestDBInfra, func()) {
+	t.Helper()
 	ctx := context.Background()
 
 	pgContainer, err := postgres.Run(ctx,
@@ -45,6 +52,24 @@ func SetupTestDB(t testing.TB) (*pgxpool.Pool, func()) {
 		t.Fatalf("failed to connect to db: %s", err)
 	}
 
+	applyIngestionMigrations(t, pool)
+
+	infra := &TestDBInfra{Pool: pool, PGContainer: pgContainer}
+	return infra, func() {
+		pool.Close()
+		_ = pgContainer.Terminate(ctx)
+	}
+}
+
+// SetupTestDB exists so integration tests get a migrated Postgres instance without bespoke container wiring.
+func SetupTestDB(t testing.TB) (*pgxpool.Pool, func()) {
+	infra, cleanup := SetupTestDBInfra(t)
+	return infra.Pool, cleanup
+}
+
+func applyIngestionMigrations(t testing.TB, pool *pgxpool.Pool) {
+	t.Helper()
+	ctx := context.Background()
 	_, filename, _, _ := runtime.Caller(0)
 	baseDir := filepath.Join(filepath.Dir(filename), "..", "..")
 	migrationsDir := filepath.Join(baseDir, "internal/ingestion/migrations")
@@ -73,11 +98,6 @@ func SetupTestDB(t testing.TB) (*pgxpool.Pool, func()) {
 		if _, err := pool.Exec(ctx, upPart); err != nil {
 			t.Fatalf("failed to apply migration %s: %s", entry.Name(), err)
 		}
-	}
-
-	return pool, func() {
-		pool.Close()
-		_ = pgContainer.Terminate(ctx)
 	}
 }
 

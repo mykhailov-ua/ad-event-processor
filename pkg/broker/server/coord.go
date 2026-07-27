@@ -32,7 +32,7 @@ type Coordinator struct {
 	nodeID        string
 	tcpAddr       string
 	rdb           redis.UniversalClient
-	server        *Server
+	host          CoordHost
 	cfg           CoordConfig
 	closeChan     chan struct{}
 	closeOnce     sync.Once
@@ -42,13 +42,13 @@ type Coordinator struct {
 	renewMu       sync.Mutex
 }
 
-// NewCoordinator wires Redis leader election to the local broker for HA produce routing.
-func NewCoordinator(nodeID string, tcpAddr string, redisURL string, server *Server) (*Coordinator, error) {
-	return NewCoordinatorWithConfig(nodeID, tcpAddr, redisURL, server, DefaultCoordConfig())
+// NewCoordinator wires Redis leader election to a coordination host (broker or region-proxy).
+func NewCoordinator(nodeID string, tcpAddr string, redisURL string, host CoordHost) (*Coordinator, error) {
+	return NewCoordinatorWithConfig(nodeID, tcpAddr, redisURL, host, DefaultCoordConfig())
 }
 
 // NewCoordinatorWithConfig wires Redis leader election with explicit lease tuning.
-func NewCoordinatorWithConfig(nodeID string, tcpAddr string, redisURL string, server *Server, cfg CoordConfig) (*Coordinator, error) {
+func NewCoordinatorWithConfig(nodeID string, tcpAddr string, redisURL string, host CoordHost, cfg CoordConfig) (*Coordinator, error) {
 	rdb, err := openCoordRedis(redisURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open redis: %w", err)
@@ -58,7 +58,7 @@ func NewCoordinatorWithConfig(nodeID string, tcpAddr string, redisURL string, se
 		nodeID:        nodeID,
 		tcpAddr:       tcpAddr,
 		rdb:           rdb,
-		server:        server,
+		host:          host,
 		cfg:           cfg.normalized(),
 		closeChan:     make(chan struct{}),
 		renewFailures: make(map[string]int),
@@ -238,8 +238,8 @@ func (c *Coordinator) runCoordinationLoop() {
 			return
 		case <-ticker.C:
 			var topics []string
-			c.server.topics.Range(func(key, _ any) bool {
-				topics = append(topics, key.(string))
+			c.host.CoordRangeTopics(func(topic string) bool {
+				topics = append(topics, topic)
 				return true
 			})
 
@@ -281,7 +281,7 @@ func (c *Coordinator) coordTopic(ctx context.Context, topic string, replications
 	currentLeader, err := c.rdb.Get(ctx, lKey).Result()
 	if err == nil && currentLeader == c.nodeID {
 		epoch := c.readEpoch(ctx, topic)
-		pl, plErr := c.server.getOrCreatePartition(topic)
+		pl, plErr := c.host.CoordGetOrCreatePartition(topic)
 		if plErr == nil {
 			c.PublishLogHWM(topic, pl.NextOffset())
 		}
@@ -377,7 +377,7 @@ func (c *Coordinator) clearRenewFailures(topic string) {
 func (c *Coordinator) updateTopicMetrics(ctx context.Context, topic string) {
 	hwm := c.readLogHWM(ctx, topic)
 	local := uint64(0)
-	pl, err := c.server.getOrCreatePartition(topic)
+	pl, err := c.host.CoordGetOrCreatePartition(topic)
 	if err == nil {
 		local = pl.NextOffset()
 	}
@@ -433,7 +433,7 @@ func (c *Coordinator) onAcquiredLeadership(ctx context.Context, topic string, ep
 		metrics.BrokerLeaderElectionTotal.WithLabelValues(topic).Inc()
 	}
 
-	pl, err := c.server.getOrCreatePartition(topic)
+	pl, err := c.host.CoordGetOrCreatePartition(topic)
 	if err != nil {
 		c.setLeaderState(topic, true, epoch, true)
 		slog.Info("Acquired topic leadership", "topic", topic, "epoch", epoch)
@@ -463,7 +463,7 @@ func (c *Coordinator) recoverLeaderReadiness(topic string, targetHWM uint64, sta
 	deadline := time.Now().Add(timeout)
 
 	for time.Now().Before(deadline) {
-		pl, err := c.server.getOrCreatePartition(topic)
+		pl, err := c.host.CoordGetOrCreatePartition(topic)
 		if err == nil && pl.NextOffset() >= targetHWM {
 			c.setLeaderReady(topic, true)
 			metrics.BrokerReplicationCatchupSeconds.WithLabelValues(topic).Observe(time.Since(started).Seconds())
@@ -473,7 +473,7 @@ func (c *Coordinator) recoverLeaderReadiness(topic string, targetHWM uint64, sta
 		time.Sleep(200 * time.Millisecond)
 	}
 
-	pl, err := c.server.getOrCreatePartition(topic)
+	pl, err := c.host.CoordGetOrCreatePartition(topic)
 	if err != nil {
 		c.setLeaderReady(topic, true)
 		metrics.BrokerReplicationCatchupSeconds.WithLabelValues(topic).Observe(time.Since(started).Seconds())
@@ -495,7 +495,7 @@ func (c *Coordinator) demoteTopic(topic string, clusterEpoch uint64) {
 	if clusterEpoch == 0 {
 		return
 	}
-	pl, err := c.server.getOrCreatePartition(topic)
+	pl, err := c.host.CoordGetOrCreatePartition(topic)
 	if err != nil {
 		return
 	}
@@ -589,7 +589,7 @@ func (c *Coordinator) replicate(topic string, leaderID string, stopCh chan struc
 				}
 			}
 
-			pl, err := c.server.getOrCreatePartition(topic)
+			pl, err := c.host.CoordGetOrCreatePartition(topic)
 			if err != nil {
 				continue
 			}
