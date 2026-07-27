@@ -3,6 +3,7 @@ package ingestion
 import (
 	"context"
 	_ "embed"
+	"errors"
 	"sort"
 	"strconv"
 	"sync"
@@ -612,6 +613,10 @@ func (f *UnifiedFilter) runUnifiedLua(
 	shard int,
 	scratch *unifiedCheckScratch,
 ) error {
+	if evt == nil {
+		return errors.New("unified filter: nil event")
+	}
+
 	wDup := &scratch.wDup
 	wIdem := &scratch.wIdem
 	wDate := &scratch.wDate
@@ -785,7 +790,7 @@ func (f *UnifiedFilter) runUnifiedLua(
 	args[25] = f.quotaChunkSizeAny
 	args[26] = f.quotaRefillThresholdPctAny
 	args[27] = campInfo.LuaRoutingEpoch()
-	if evt == nil || evt.FilterDeadlineMono <= 0 {
+	if evt.FilterDeadlineMono <= 0 {
 		args[28] = zeroAny
 		args[29] = zeroAny
 	} else {

@@ -230,6 +230,7 @@ func http1IngressValid(method, path []byte) bool {
 	if len(method) == 3 && method[0] == 'G' && method[1] == 'E' && method[2] == 'T' {
 		return bytesEqual(path, "/health") ||
 			bytesEqual(path, "/healthz") ||
+			bytesEqual(path, "/ready") ||
 			bytesEqual(path, "/readyz") ||
 			bytesEqual(path, "/metrics")
 	}

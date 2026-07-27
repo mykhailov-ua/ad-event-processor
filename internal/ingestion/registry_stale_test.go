@@ -37,7 +37,7 @@ func TestResolveDebitShard_RerouteToReserve(t *testing.T) {
 	f.breakers[0].RecordFailure()
 	require.Equal(t, database.CircuitOpen, f.breakers[0].State())
 
-	campID := uuid.MustParse("00000000-0000-0000-0000-000000000001")
+	var campID uuid.UUID
 	// Force StaticSlot → 0 by picking an ID that maps to shard 0.
 	for {
 		campID = uuid.New()

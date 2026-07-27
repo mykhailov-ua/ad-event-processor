@@ -30,7 +30,7 @@ func TestUDPControlLimits_RPDCodec(t *testing.T) {
 	require.Equal(t, 24, n)
 
 	var decoded UDPControlLimits
-	require.True(t, udpDecodeShardLimits(buf[:n], 2, &decoded))
+	require.True(t, udpDecodeShardLimits(buf[:n], 2, udpProtocolVersion2, &decoded))
 	require.Equal(t, limits.Limits[0], decoded.Limits[0])
 	require.Equal(t, limits.MaxRPD, decoded.MaxRPD)
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"testing"
+	"time"
 
 	"espx/internal/config"
 
@@ -41,7 +42,7 @@ func (m *mockFailRedis) Ping(ctx context.Context) *redis.StatusCmd {
 }
 
 func TestHealthCheckPartialFailure(t *testing.T) {
-	cfg := &config.Config{}
+	cfg := &config.Config{NodeWarmupSec: 300}
 	registry := &mockRegistry{}
 
 	t.Run("All Healthy", func(t *testing.T) {
@@ -50,8 +51,13 @@ func TestHealthCheckPartialFailure(t *testing.T) {
 		sharder := NewJumpHashSharder(1)
 		handler := NewAdsPacketHandler(cfg, registry, nil, pool, rdbs, sharder, "fraud-stream", nil)
 		handler.SetHealthProbeState(true, true)
+		handler.SetStartedAt(time.Now().Add(-301 * time.Second))
 
 		status, body := GetHealthGnet(handler)
+		assert.Equal(t, http.StatusOK, status)
+		assert.Contains(t, body, "OK")
+
+		status, body = GetReadyGnet(handler)
 		assert.Equal(t, http.StatusOK, status)
 		assert.Contains(t, body, "OK")
 	})
@@ -62,8 +68,13 @@ func TestHealthCheckPartialFailure(t *testing.T) {
 		sharder := NewJumpHashSharder(1)
 		handler := NewAdsPacketHandler(cfg, registry, nil, pool, rdbs, sharder, "fraud-stream", nil)
 		handler.SetHealthProbeState(false, true)
+		handler.SetStartedAt(time.Now().Add(-301 * time.Second))
 
 		status, body := GetHealthGnet(handler)
+		assert.Equal(t, http.StatusOK, status, "/health is liveness-only")
+		assert.Contains(t, body, "OK")
+
+		status, body = GetReadyGnet(handler)
 		assert.Equal(t, http.StatusServiceUnavailable, status)
 		assert.Contains(t, body, "not ready")
 	})
@@ -77,8 +88,13 @@ func TestHealthCheckPartialFailure(t *testing.T) {
 		sharder := NewJumpHashSharder(1)
 		handler := NewAdsPacketHandler(cfg, registry, nil, pool, rdbs, sharder, "fraud-stream", nil)
 		handler.SetHealthProbeState(false, true, false)
+		handler.SetStartedAt(time.Now().Add(-301 * time.Second))
 
 		status, body := GetHealthGnet(handler)
+		assert.Equal(t, http.StatusOK, status, "/health is liveness-only")
+		assert.Contains(t, body, "OK")
+
+		status, body = GetReadyGnet(handler)
 		assert.Equal(t, http.StatusServiceUnavailable, status)
 		assert.Contains(t, body, "not ready")
 	})

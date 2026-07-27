@@ -1,6 +1,7 @@
 package ingestion
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -94,7 +95,7 @@ func TestChaos_WireJSONDepthReject(t *testing.T) {
 func TestChaos_H2HostileIncompleteDisconnect(t *testing.T) {
 	cfg := &config.Config{MaxRequestBodySize: 1 << 20, H2IncompleteMax: 3}
 	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewStaticSlotSharder(1), "fraud", nil)
-	defer func() { _ = h.Stop(nil) }()
+	defer func() { _ = h.Stop(context.TODO()) }()
 
 	partial := append([]byte(nil), h2ClientPreface[:20]...)
 	conn := NewGnetHarnessConn(partial)

@@ -78,17 +78,30 @@ TRUNCATE TABLE conversions;
 TRUNCATE TABLE fraud_events;
 "
 
+echo "Applying postgres migrations (ads, auth, billing)"
+if [[ -f .env ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source .env
+  set +a
+fi
+DB_PORT=${DB_PORT:-5440}
+export DB_DSN="${DB_DSN:-postgres://${DB_USER:-ad_event_processor_user}:${DB_PASSWORD:-secure_pass_123}@127.0.0.1:${DB_PORT}/${DB_NAME:-ad_event_processor}?sslmode=${DB_SSLMODE:-disable}}"
+go run ./cmd/migrate-cold-path --only=ads,auth,billing
+
+echo "Repairing schema drift after migrations"
+DB_PORT="$DB_PORT" bash scripts/load-test/reconcile_ingestion_migrations.sh
+DB_PORT="$DB_PORT" bash scripts/load-test/verify_load_test_schema.sh
+
 echo "Restarting trackers and processor to recreate consumer groups"
 # Consumer groups are tied to stream offsets; restart after flush avoids stale pending entries.
-docker compose restart processor tracker-0 tracker-1 tracker-2 tracker-3
+docker compose up -d --build --force-recreate processor tracker-0 tracker-1 tracker-2 tracker-3
 
-echo "Triggering campaign registry sync via Redis Pub/Sub"
-# Trackers load campaigns from registry; publish forces hot-reload of seeded IDs.
-for i in $(seq 1 100); do
-  hex=$(printf "%012x" $i)
-  uuid="00000000-0000-0000-0000-$hex"
-  docker exec espx-redis-0-1 redis-cli -p 6379 -a redis_secure_pass_456 PUBLISH campaigns:update "$uuid" >/dev/null 2>&1
-done
+echo "Triggering full campaign registry snapshot via Redis Pub/Sub"
+REDIS_PASS="${REDIS_PASSWORD:-redis_secure_pass_456}"
+docker exec espx-redis-0-1 redis-cli -p 6379 -a "$REDIS_PASS" \
+  PUBLISH campaigns:update "*" >/dev/null 2>&1
+sleep 3
 
 echo "Verification"
 echo "Active campaign count in Postgres:"

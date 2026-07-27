@@ -62,7 +62,6 @@ var (
 )
 
 var (
-	fraudBlacklistKeyVal   = StringVal{s: fraudBlacklistKey}
 	placementIgnoredKeyVal = StringVal{s: "fcap:ignored"}
 	ingressIgnoredKeyVal   = StringVal{s: "fcap:ignored"}
 )
@@ -87,8 +86,6 @@ type entitlementsLookup interface {
 // luaPrecheckScratch holds pooled keys for consolidated Lua pre-checks (M9-02).
 type luaPrecheckScratch struct {
 	wIngress, wPlacement bufWrapper
-	maxRPDAny            any
-	ingressTTLAny        any
 }
 
 func (f *UnifiedFilter) entitlementsMaxRPD(custID uuid.UUID) uint64 {

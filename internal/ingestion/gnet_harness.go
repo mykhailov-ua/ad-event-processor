@@ -207,6 +207,20 @@ func PostTrackGnetJSONWait(h *AdsPacketHandler, body []byte, timeout time.Durati
 	return 0, nil
 }
 
+// BuildGnetGetReady builds GET /ready request bytes.
+func BuildGnetGetReady() []byte {
+	return BuildGnetHTTP("GET", "/ready", map[string]string{
+		"Connection":     "keep-alive",
+		"Content-Length": "0",
+	}, nil)
+}
+
+// GetReadyGnet sends GET /ready through OnTraffic.
+func GetReadyGnet(h *AdsPacketHandler) (status int, body string) {
+	_, conn := ServeGnetHarness(h, BuildGnetGetReady())
+	return ParseGnetHTTPStatus(conn.Written()), string(ParseGnetHTTPBody(conn.Written()))
+}
+
 // GetHealthGnet sends GET /health through OnTraffic.
 func GetHealthGnet(h *AdsPacketHandler) (status int, body string) {
 	_, conn := ServeGnetHarness(h, BuildGnetGetHealth())

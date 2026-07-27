@@ -143,6 +143,8 @@ func classifyFilterErr(err error) (filterRejectKind, bool) {
 	switch {
 	case errors.Is(err, ErrEmergencyBreakerActive):
 		return filterRejectEmergencyBreaker, true
+	case isInfraFilterErr(err):
+		return filterRejectInfra, true
 	case errors.Is(err, ErrRateLimitExceeded):
 		return filterRejectRateLimit, true
 	case errors.Is(err, ErrDuplicateEvent):
@@ -179,8 +181,6 @@ func classifyFilterErr(err error) (filterRejectKind, bool) {
 		return filterRejectDailyQuotaExceeded, true
 	case errors.Is(err, ErrPlacementBlocked):
 		return filterRejectPlacementBlocked, true
-	case isInfraFilterErr(err):
-		return filterRejectInfra, true
 	default:
 		return 0, false
 	}
