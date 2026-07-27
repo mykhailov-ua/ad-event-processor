@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"net"
 	"testing"
+	"time"
 
 	"espx/internal/config"
 
@@ -14,6 +15,7 @@ import (
 func TestAdsPacketHandler_Validation(t *testing.T) {
 	cfg := &config.Config{
 		MaxRequestBodySize: 100,
+		NodeWarmupSec:      300,
 	}
 	registry := &mockRegistry{}
 	sharder := NewJumpHashSharder(1)
@@ -57,8 +59,8 @@ func TestAdsPacketHandler_Validation(t *testing.T) {
 		assert.True(t, bytes.Equal(conn.Written(), respBadRequestClose))
 	})
 
-	t.Run("GET /health -> 200 OK when healthy", func(t *testing.T) {
-		handler.SetHealthProbeState(true)
+	t.Run("GET /health -> 200 OK liveness even when deps down", func(t *testing.T) {
+		handler.SetHealthProbeState(false)
 		conn := NewGnetHarnessConn(BuildGnetGetHealth())
 		act := handler.OnTraffic(conn)
 		assert.Equal(t, gnet.None, act)
@@ -67,14 +69,29 @@ func TestAdsPacketHandler_Validation(t *testing.T) {
 		}
 	})
 
-	t.Run("GET /health -> 503 Service Unavailable when unhealthy", func(t *testing.T) {
+	t.Run("GET /ready -> 503 when deps down", func(t *testing.T) {
 		handler.SetHealthProbeState(false)
-		conn := NewGnetHarnessConn(BuildGnetGetHealth())
+		conn := NewGnetHarnessConn(BuildGnetGetReady())
 		act := handler.OnTraffic(conn)
 		assert.Equal(t, gnet.None, act)
-		if !bytes.HasPrefix(conn.Written(), []byte("HTTP/1.1 503 Service Unavailable")) || !bytes.Contains(conn.Written(), []byte("not ready")) {
-			t.Fatalf("expected 503 health with not ready body, got: %q", string(conn.Written()))
+		if !bytes.HasPrefix(conn.Written(), []byte("HTTP/1.1 503 Service Unavailable")) {
+			t.Fatalf("expected 503 ready, got: %q", string(conn.Written()))
 		}
+	})
+
+	t.Run("GET /ready -> 503 before warmup elapsed", func(t *testing.T) {
+		handler.SetHealthProbeState(true)
+		status, body := GetReadyGnet(handler)
+		assert.Equal(t, 503, status)
+		assert.Contains(t, body, "not ready")
+	})
+
+	t.Run("GET /ready -> 200 after warmup elapsed", func(t *testing.T) {
+		handler.SetHealthProbeState(true)
+		handler.SetStartedAt(time.Now().Add(-301 * time.Second))
+		status, body := GetReadyGnet(handler)
+		assert.Equal(t, 200, status)
+		assert.Contains(t, body, "OK")
 	})
 }
 

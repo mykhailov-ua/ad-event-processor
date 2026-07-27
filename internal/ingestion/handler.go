@@ -550,6 +550,7 @@ type AdsPacketHandler struct {
 	trackLatencyRing      *LatencyRing
 	healthy               atomic.Int32
 	healthzHits           atomic.Uint64
+	startedAtNano         atomic.Int64
 	rdbsHealthy           []atomic.Int32
 	logger                *logger.Logger
 	loggerShardCounter    atomic.Uint64
@@ -629,6 +630,7 @@ func NewAdsPacketHandler(cfg *config.Config, registry campaignmodel.CampaignRegi
 		trackLatencyRing:      NewLatencyRing(defaultLatencyRingCap),
 		auditLogSampleMask:    auditLogSampleMaskFromConfig(cfg.AuditLogSampleMask),
 	}
+	h.startedAtNano.Store(time.Now().UnixNano())
 	if n := len(rdbs); n > 0 {
 		h.rdbsHealthy = make([]atomic.Int32, n)
 		for i := range h.rdbsHealthy {
@@ -692,9 +694,41 @@ func (h *AdsPacketHandler) HealthzHits() uint64 {
 	return h.healthzHits.Load()
 }
 
-// Ready reports cached readiness from the background health probe.
+// Ready reports cached dependency health from the background health probe.
 func (h *AdsPacketHandler) Ready() bool {
 	return h != nil && h.healthy.Load() == 1
+}
+
+// Uptime returns process uptime since handler construction.
+func (h *AdsPacketHandler) Uptime() time.Duration {
+	if h == nil || h.startedAtNano.Load() == 0 {
+		return 0
+	}
+	return time.Since(time.Unix(0, h.startedAtNano.Load()))
+}
+
+// WarmupElapsed reports whether NODE_WARMUP_SEC grace has passed.
+func (h *AdsPacketHandler) WarmupElapsed() bool {
+	if h == nil {
+		return false
+	}
+	sec := 300
+	if h.cfg != nil && h.cfg.NodeWarmupSec > 0 {
+		sec = h.cfg.NodeWarmupSec
+	}
+	return h.Uptime() >= time.Duration(sec)*time.Second
+}
+
+// WarmReady is readiness: dependencies healthy and warmup grace elapsed.
+func (h *AdsPacketHandler) WarmReady() bool {
+	return h.Ready() && h.WarmupElapsed()
+}
+
+// SetStartedAt adjusts the warmup clock (tests only).
+func (h *AdsPacketHandler) SetStartedAt(t time.Time) {
+	if h != nil {
+		h.startedAtNano.Store(t.UnixNano())
+	}
 }
 
 // SetHealthProbeState mirrors StartHealthProbe atomics for gnet health tests.
@@ -1137,13 +1171,13 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 	}
 
 	if len(req.Method) == 3 && req.Method[0] == 'G' && req.Method[1] == 'E' && req.Method[2] == 'T' {
-		if bytes.Equal(req.Path, []byte("/healthz")) {
+		if bytes.Equal(req.Path, []byte("/healthz")) || bytes.Equal(req.Path, []byte("/health")) {
 			h.healthzHits.Add(1)
 			h.write(c, respHealthzOK, ctx)
 			return gnet.None
 		}
-		if bytes.Equal(req.Path, []byte("/readyz")) || bytes.HasPrefix(req.Path, []byte("/health")) {
-			if h.Ready() {
+		if bytes.Equal(req.Path, []byte("/readyz")) || bytes.Equal(req.Path, []byte("/ready")) {
+			if h.WarmReady() {
 				h.write(c, respReadyzOK, ctx)
 			} else {
 				h.write(c, respReadyz503, ctx)

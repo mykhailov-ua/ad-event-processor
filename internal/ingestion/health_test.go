@@ -28,7 +28,7 @@ func TestTrackerReadyz_RedisDown_503(t *testing.T) {
 
 	h := &AdsPacketHandler{}
 	h.SetHealthProbeState(false)
-	status, body := GetHealthGnet(h)
+	status, body := GetReadyGnet(h)
 	require.Equal(t, 503, status)
 	assert.Contains(t, body, "not ready")
 }

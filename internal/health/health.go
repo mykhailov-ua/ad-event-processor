@@ -10,6 +10,9 @@ import (
 
 const bodyOK = "OK"
 
+// BodyOK is the liveness/readiness response body.
+func BodyOK() string { return bodyOK }
+
 // Liveness tracks /healthz hits without I/O on the request path.
 type Liveness struct {
 	hits atomic.Uint64

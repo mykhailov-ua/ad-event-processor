@@ -439,11 +439,19 @@ func main() {
 	live := &health.Liveness{}
 	ready := &health.ReadinessProbe{}
 	ready.StartBackground(ctx, 2*time.Second, func(probeCtx context.Context) bool {
-		return gnetHandler.Ready()
+		return gnetHandler.WarmReady()
 	})
 	health.Register(metricsMux, live, ready)
 	metricsMux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		ready.ServeReadyz(w, r)
+		health.ServeHealthz(live, w, r)
+	})
+	metricsMux.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {
+		if gnetHandler.WarmReady() {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(health.BodyOK()))
+			return
+		}
+		http.Error(w, "not ready", http.StatusServiceUnavailable)
 	})
 	metricsMux.Handle("/metrics", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gnetHandler.FlushLatency()
