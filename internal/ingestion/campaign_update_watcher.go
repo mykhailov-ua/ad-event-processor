@@ -103,6 +103,15 @@ func (w *CampaignUpdateWatcher) consumeOnce(ctx context.Context) error {
 		for iter.Next() {
 			got = true
 			payload := iter.Payload
+			if IsRegistryFullSyncPayload(string(payload)) {
+				if _, err := w.cfg.Registry.ReloadFullSnapshot(ctx); err != nil {
+					slog.Error("campaign update broker full reload failed", "error", err)
+				} else {
+					w.cfg.Registry.MarkPubSubOK()
+				}
+				nextOffset = iter.Offset + 1
+				continue
+			}
 			id := uuid.UUID{}
 			if !ParseUUID(payload, &id) {
 				slog.Warn("campaign update broker payload invalid", "payload", string(payload))

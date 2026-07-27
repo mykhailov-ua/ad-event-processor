@@ -556,6 +556,14 @@ func (r *Registry) watchPubSubOnce(ctx context.Context, rdb redis.UniversalClien
 			if !ok {
 				return errPubSubClosed
 			}
+			if IsRegistryFullSyncPayload(msg.Payload) {
+				if _, err := r.ReloadFullSnapshot(ctx); err != nil {
+					slog.Error("full campaign registry reload failed", "error", err)
+					continue
+				}
+				r.MarkPubSubOK()
+				continue
+			}
 			id := uuid.UUID{}
 			if !ParseUUID(UnsafeBytes(msg.Payload), &id) {
 				slog.Warn("received invalid campaign id in pubsub", "payload", msg.Payload)

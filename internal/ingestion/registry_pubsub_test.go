@@ -69,3 +69,43 @@ func TestRegistry_StartWatch_IncrementalOnlyOneCampaign(t *testing.T) {
 
 	assert.Equal(t, before, mock.listActiveCalls.Load(), "pub/sub must not trigger full ListActiveCampaigns sync")
 }
+
+func TestRegistry_StartWatch_FullSyncPayload(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rdb, cleanup := setupTestRedis(t)
+	defer cleanup()
+
+	campID := uuid.New()
+	custID := uuid.New()
+
+	mock := &countingMockRepo{
+		MockRepo: MockRepo{
+			ids: []pgtype.UUID{{Bytes: campID, Valid: true}},
+			budgets: map[uuid.UUID]db.GetCampaignBudgetRow{
+				campID: {
+					ID:           pgtype.UUID{Bytes: campID, Valid: true},
+					CustomerID:   pgtype.UUID{Bytes: custID, Valid: true},
+					BudgetLimit:  5_000_000,
+					CurrentSpend: 0,
+					Status:       db.CampaignStatusTypeACTIVE,
+				},
+			},
+		},
+	}
+
+	r := newTestRegistry(t, mock)
+	channel := "test:campaign:updates:full"
+	r.StartWatch(ctx, rdb, channel)
+	time.Sleep(200 * time.Millisecond)
+
+	require.NoError(t, rdb.Publish(ctx, channel, RegistryFullSyncPayload).Err())
+
+	assert.Eventually(t, func() bool {
+		return mock.listActiveCalls.Load() >= 1 && r.Exists(campID)
+	}, 2*time.Second, 50*time.Millisecond)
+}
