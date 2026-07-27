@@ -112,7 +112,18 @@ func main() {
 		defer tcpSrv.Close()
 	}
 
+	if cfg.MultiRegionEnabled {
+		if err := management.ValidateScoringWeightsConfig(ctx, pool, cfg); err != nil {
+			slog.Error("invalid scoring weights config", "error", err)
+			os.Exit(1)
+		}
+	}
+
 	svc := management.NewService(pool, rdbs, sharder, cfg)
+	if svc == nil {
+		slog.Error("management service init failed")
+		os.Exit(1)
+	}
 	svc.SetPaymentPool(pool)
 	if tcpSrv != nil {
 		svc.SetTCPControlServer(tcpSrv)
@@ -352,7 +363,7 @@ func main() {
 	mgmtHandler := management.NewHandler(svc, cfg, authMiddleware, mgmtAuthClient, paymentClient, billingClient)
 
 	mux := http.NewServeMux()
-	management.RegisterOpsRoutes(mux, pool, rdbs)
+	management.RegisterOpsRoutes(mux, pool, rdbs, cfg)
 	if alertmanagerWebhook != nil {
 		alertmanagerWebhook.Register(mux)
 		slog.Info("alertmanager webhook adapter enabled")

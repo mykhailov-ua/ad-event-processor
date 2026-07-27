@@ -228,6 +228,9 @@ ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = CURRENT_TIM
 -- name: GetAllSystemSettings :many
 SELECT key, value FROM system_settings;
 
+-- name: GetSystemSetting :one
+SELECT value FROM system_settings WHERE key = $1;
+
 -- name: CreateOutboxEvent :one
 INSERT INTO outbox_events (event_type, payload)
 VALUES ($1, $2)

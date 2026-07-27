@@ -62,6 +62,9 @@ func newBareService(t *testing.T, pool *pgxpool.Pool, rdbs []redis.UniversalClie
 		cancel:  cancel,
 	}
 	svc.SetPool(pool)
+	if cfg.MultiRegionEnabled {
+		svc.leaseWorker = NewOperationLeaseWorker(svc)
+	}
 	t.Cleanup(func() {
 		cancel()
 		svc.Close()

@@ -55,7 +55,7 @@ groups:
           description: "Events are active in the Dead Letter Queue. Action required to inspect and replay raw event payloads."
 
       # End-to-end /track latency regression at the Go handler (not nginx-only).
-      # SLA targets: p95 < 50ms, p99 < 80ms, hard ceiling 100ms (.cursorrules).
+      # SLA targets: p95 < 50ms, p99 < 80ms, hard ceiling 100ms (.cursor/rules/espx.mdc).
       - alert: TrackerLatencyP95Warning
         expr: histogram_quantile(0.95, sum(rate(ad_http_request_duration_seconds_bucket[5m])) by (le)) > 0.05
         for: 2m
@@ -380,7 +380,7 @@ groups:
           summary: "Broker vs Redis ingest divergence on {{ $labels.topic }}"
           description: "Shadow validation detected Redis stream depth diverging from broker committed offset."
 
-      # In-process RTB auction latency (subsystem budget: p99 < 15µs per .cursorrules).
+      # In-process RTB auction latency (subsystem budget: p99 < 15µs per .cursor/rules/espx.mdc).
       - alert: RtbAuctionLatencyHigh
         expr: histogram_quantile(0.99, sum(rate(ad_rtb_auction_duration_seconds_bucket[5m])) by (le)) > 0.000015
         for: 5m

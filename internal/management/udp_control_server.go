@@ -10,6 +10,7 @@ import (
 
 	"espx/internal/config"
 	"espx/internal/ingestion"
+	db "espx/internal/ingestion/sqlc"
 	"espx/internal/metrics"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -126,13 +127,14 @@ func (s *UDPControlServer) publishLoop(ctx context.Context) {
 
 func (s *UDPControlServer) publishEpoch(ctx context.Context, snapshot bool) {
 	limits := s.buildLimits()
+	weights := s.buildNodeWeights(ctx)
 	epoch := s.epoch.Add(1)
 	slotVersion := int32(0)
 	if sh, ok := s.sharder.(*ingestion.StaticSlotSharder); ok {
 		slotVersion = sh.SnapshotVersion()
 	}
-	hash := ingestion.ComputeUDPConfigHash(epoch, slotVersion, limits)
-	if err := s.persistEpoch(ctx, epoch, hash, slotVersion, limits); err != nil {
+	hash := ingestion.ComputeUDPConfigHashWithWeights(epoch, slotVersion, limits, weights)
+	if err := s.persistEpoch(ctx, epoch, hash, slotVersion, limits, weights); err != nil {
 		slog.Warn("control_plane_epochs insert failed", "error", err)
 	}
 	msgType := ingestion.UDPMsgQuotaEpoch
@@ -148,8 +150,8 @@ func (s *UDPControlServer) publishEpoch(ctx context.Context, snapshot bool) {
 		SlotMapVersion: slotVersion,
 		Flags:          flags,
 	}
-	var pkt [512]byte
-	n := ingestion.EncodeQuotaEpochDatagram(pkt[:], msgType, hdr, limits)
+	pkt := make([]byte, 4096)
+	n := ingestion.EncodeQuotaEpochDatagramWithWeights(pkt, msgType, hdr, limits, weights)
 	if n == 0 {
 		return
 	}
@@ -167,6 +169,7 @@ func (s *UDPControlServer) publishEpoch(ctx context.Context, snapshot bool) {
 
 func (s *UDPControlServer) sendSnapshotBurst(ctx context.Context, addr *net.UDPAddr, count int) {
 	limits := s.buildLimits()
+	weights := s.buildNodeWeights(ctx)
 	epoch := s.epoch.Load()
 	if epoch == 0 {
 		s.publishEpoch(ctx, true)
@@ -176,7 +179,7 @@ func (s *UDPControlServer) sendSnapshotBurst(ctx context.Context, addr *net.UDPA
 	if sh, ok := s.sharder.(*ingestion.StaticSlotSharder); ok {
 		slotVersion = sh.SnapshotVersion()
 	}
-	hash := ingestion.ComputeUDPConfigHash(epoch, slotVersion, limits)
+	hash := ingestion.ComputeUDPConfigHashWithWeights(epoch, slotVersion, limits, weights)
 	hdr := &ingestion.UDPHeader{
 		CoarseTimeNs:   time.Now().UnixNano(),
 		EpochID:        epoch,
@@ -184,8 +187,8 @@ func (s *UDPControlServer) sendSnapshotBurst(ctx context.Context, addr *net.UDPA
 		SlotMapVersion: slotVersion,
 		Flags:          ingestion.UDPFlagSnapshot,
 	}
-	var pkt [512]byte
-	n := ingestion.EncodeQuotaEpochDatagram(pkt[:], ingestion.UDPMsgConfigSnapshot, hdr, limits)
+	pkt := make([]byte, 4096)
+	n := ingestion.EncodeQuotaEpochDatagramWithWeights(pkt, ingestion.UDPMsgConfigSnapshot, hdr, limits, weights)
 	if n == 0 {
 		return
 	}
@@ -257,11 +260,33 @@ func (s *UDPControlServer) buildLimits() *ingestion.UDPControlLimits {
 	return limits
 }
 
-func (s *UDPControlServer) persistEpoch(ctx context.Context, epoch int64, hash [16]byte, slotVersion int32, limits *ingestion.UDPControlLimits) error {
+func (s *UDPControlServer) buildNodeWeights(ctx context.Context) []ingestion.UDPNodeWeight {
+	if s == nil || s.pool == nil || s.cfg == nil || !s.cfg.MultiRegionEnabled {
+		return nil
+	}
+	q := db.New(s.pool)
+	rows, err := q.ListNodeCapacityScoresByRegion(ctx, int16(s.cfg.RegionCode))
+	if err != nil || len(rows) == 0 {
+		return nil
+	}
+	out := make([]ingestion.UDPNodeWeight, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, ingestion.UDPNodeWeight{
+			NodeID:     row.NodeID,
+			Role:       row.Role,
+			Weight:     row.Weight,
+			Score:      row.Score,
+			Provenance: ingestion.ProvenanceToUDPCode(row.Provenance),
+		})
+	}
+	return out
+}
+
+func (s *UDPControlServer) persistEpoch(ctx context.Context, epoch int64, hash [16]byte, slotVersion int32, limits *ingestion.UDPControlLimits, weights []ingestion.UDPNodeWeight) error {
 	if s.pool == nil {
 		return nil
 	}
-	payload, err := ingestion.MarshalEpochPayload(slotVersion, limits)
+	payload, err := ingestion.MarshalEpochPayload(slotVersion, limits, weights)
 	if err != nil {
 		return err
 	}

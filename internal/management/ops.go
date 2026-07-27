@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"espx/internal/config"
 	"espx/internal/database"
 	"espx/internal/health"
 	"espx/internal/ingestion"
@@ -18,7 +19,7 @@ import (
 )
 
 // RegisterOpsRoutes mounts unauthenticated health and metrics endpoints for orchestration probes.
-func RegisterOpsRoutes(mux *http.ServeMux, pool *pgxpool.Pool, rdbs []redis.UniversalClient) {
+func RegisterOpsRoutes(mux *http.ServeMux, pool *pgxpool.Pool, rdbs []redis.UniversalClient, cfg *config.Config) {
 	live := &health.Liveness{}
 	ready := &health.ReadinessProbe{}
 	ready.StartBackground(context.Background(), 2*time.Second, func(ctx context.Context) bool {
@@ -69,4 +70,5 @@ func RegisterOpsRoutes(mux *http.ServeMux, pool *pgxpool.Pool, rdbs []redis.Univ
 			slog.Error("ops slot map encode failed", "error", err)
 		}
 	})
+	registerOpsNodeWeights(mux, pool, cfg)
 }

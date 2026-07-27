@@ -277,8 +277,17 @@ type Config struct {
 	UDPSyncIntervalMs  int
 	UDPDefaultShardRPS uint64
 
-	RegionCode         uint8
-	MultiRegionEnabled bool
+	RegionCode          uint8
+	MultiRegionEnabled  bool
+	NodeID              string
+	NodeRole            string
+	NodeScoreWindowMin  int
+	NodeScoreMinSamples int
+	NodeWarmupSec       int
+	ScoringWeightsJSON  string
+	OpLeaseTimeoutSec   int
+	OpLeaseMaxRenewals  int
+	OpLeaseFencingDir   string
 
 	QuotaAutoRepair bool
 
@@ -658,6 +667,15 @@ func Load() (*Config, error) {
 	cfg.UDPDefaultShardRPS = uint64(getEnvInt64("UDP_DEFAULT_SHARD_RPS", 50_000))
 	cfg.RegionCode = uint8(getEnvInt("ESPX_REGION_CODE", 0))
 	cfg.MultiRegionEnabled = getEnvBool("MULTI_REGION_ENABLED", false)
+	cfg.NodeID = os.Getenv("NODE_ID")
+	cfg.NodeRole = os.Getenv("NODE_ROLE")
+	cfg.NodeScoreWindowMin = getEnvInt("NODE_SCORE_WINDOW_MIN", 15)
+	cfg.NodeScoreMinSamples = getEnvInt("NODE_SCORE_MIN_SAMPLES", 30)
+	cfg.NodeWarmupSec = getEnvInt("NODE_WARMUP_SEC", 300)
+	cfg.ScoringWeightsJSON = os.Getenv("SCORING_WEIGHTS_JSON")
+	cfg.OpLeaseTimeoutSec = getEnvInt("OP_LEASE_TIMEOUT_SEC", 30)
+	cfg.OpLeaseMaxRenewals = getEnvInt("OP_LEASE_MAX_RENEWALS", 3)
+	cfg.OpLeaseFencingDir = os.Getenv("OP_LEASE_FENCING_DIR")
 	cfg.QuotaAutoRepair = getEnvBool("QUOTA_AUTO_REPAIR", false)
 	cfg.ManagementURL = os.Getenv("MANAGEMENT_URL")
 	if cfg.ManagementURL == "" && cfg.ManagementPort != "" {

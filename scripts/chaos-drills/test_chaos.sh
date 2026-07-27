@@ -35,3 +35,8 @@ go test -count=1 -v -run 'Chaos' -timeout 20m \
 PROOFS="$(grep -c 'chaos_proof fault=' "$LOG" || true)"
 echo "chaos_proof lines: $PROOFS (min $MIN_PROOFS)"
 test "$PROOFS" -ge "$MIN_PROOFS"
+
+MR_PROOFS="$(grep -c 'chaos_proof fault=mr_' "$LOG" || true)"
+MIN_MR_PROOFS="${CHAOS_MIN_PROOFS_MR:-12}"
+echo "mr chaos_proof lines: $MR_PROOFS (min $MIN_MR_PROOFS)"
+test "$MR_PROOFS" -ge "$MIN_MR_PROOFS"

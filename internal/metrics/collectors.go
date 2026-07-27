@@ -505,6 +505,53 @@ var (
 		Help: "1 when broker/redis ingest divergence exceeds configured threshold",
 	}, []string{"topic", "group"})
 
+	// Disk gate metrics exist so NVMe contention and TierLow shedding are visible on broker and region-proxy nodes.
+	DiskGateAppendWaitSeconds = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "ad_disk_gate_append_wait_seconds",
+		Help:    "Wait time acquiring the disk append semaphore by tier.",
+		Buckets: []float64{0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0},
+	}, []string{"tier"})
+	DiskGateFsyncInFlight = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_disk_gate_fsync_in_flight",
+		Help: "Number of in-flight fsync operations (capacity 1).",
+	})
+	DiskGateShedTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_disk_gate_shed_total",
+		Help: "Total TierLow append attempts shed while degraded.",
+	})
+	DiskGateDegraded = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_disk_gate_degraded",
+		Help: "Disk gate degraded state (1 = shedding TierLow).",
+	})
+
+	RegionProxyKeygenRate = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_region_proxy_keygen_rate",
+		Help: "WAL records marked WalFlagDedupReady by the KeyGen thread.",
+	})
+	RegionProxyKeygenQueueDepth = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_region_proxy_keygen_queue_depth",
+		Help: "WAL records appended but not yet WalFlagDedupReady.",
+	})
+	RegionProxyKeygenLagSeconds = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name:    "ad_region_proxy_keygen_lag_seconds",
+		Help:    "KeyGen factor_u derivation latency per record.",
+		Buckets: []float64{0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1},
+	})
+
+	OpKeypoolDepth = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_op_keypool_depth",
+		Help: "OpKeyPool MPSC ring backlog.",
+	})
+	RegionProxyIngressShedTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_region_proxy_ingress_shed_total",
+		Help: "Ingress operations shed due to OpKeyPool depth above watermark.",
+	})
+
+	ControlScoreFallbackTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_control_score_fallback_total",
+		Help: "Node capacity scorer fallbacks away from own_window by provenance.",
+	}, []string{"provenance"})
+
 	// RTB auction metrics exist so bid-path fill rate and scan cost are visible before Redis integration cutover.
 	RtbAuctionDuration = promauto.NewHistogram(prometheus.HistogramOpts{
 		Name:    "ad_rtb_auction_duration_seconds",
@@ -661,6 +708,26 @@ var (
 		Name:    "ad_region_outbox_delivery_lag_seconds",
 		Help:    "Outbox created_at to regional DELIVERED latency",
 		Buckets: prometheus.ExponentialBuckets(0.01, 2, 16),
+	})
+	OpLeaseBookedTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_op_lease_booked_total",
+		Help: "Operation leases booked per replica set",
+	})
+	OpLeaseExecutionTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_op_lease_execution_total",
+		Help: "Operation lease CAS wins (booked to executing)",
+	})
+	OpLeaseExpiredTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_op_lease_expired_total",
+		Help: "Operation leases transitioned to expired by the janitor",
+	})
+	OpBookedQueueDepth = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_op_booked_queue_depth",
+		Help: "Standby booked operation leases visible to this node",
+	})
+	OpLeaseHeartbeatRenewTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_op_lease_heartbeat_renew_total",
+		Help: "Operation lease deadline extensions from executor heartbeat",
 	})
 	UDPIngressAcquireTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_udp_ingress_acquire_total",

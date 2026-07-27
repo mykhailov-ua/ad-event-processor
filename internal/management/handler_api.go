@@ -22,6 +22,7 @@ func (h *Handler) registerAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/disputes", h.limit(h.perm(h.listDisputes, PermCustomersRead)))
 	mux.HandleFunc("POST /api/v1/forecast/campaign", h.limit(h.perm(h.forecastCampaign, PermCampaignsRead)))
 	mux.HandleFunc("POST /api/v1/consent", h.limit(h.postConsent))
+	h.registerRegionIngestRoutes(mux)
 }
 
 // getCampaignStats handles GET /api/v1/campaigns/{id}/stats.

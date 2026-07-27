@@ -77,6 +77,17 @@ func TestChaos_DedupMultiRegionDuplicate(t *testing.T) {
 	require.NoError(t, pool.QueryRow(ctx, `SELECT COUNT(*) FROM dedup_key_proposals`).Scan(&proposalCount))
 	require.Equal(t, 1, proposalCount)
 
+	opID := RelayDeliveryOpID(1, eventID)
+	var leaseState string
+	require.NoError(t, pool.QueryRow(ctx, `
+		SELECT lease_state FROM operation_leases WHERE op_id = $1`, ingestion.ToUUID(opID)).Scan(&leaseState))
+	require.Equal(t, string(LeaseStateCompleted), leaseState)
+
+	var idemCount int
+	require.NoError(t, pool.QueryRow(ctx, `
+		SELECT COUNT(*) FROM region_apply_idempotency WHERE region_code = 1 AND outbox_event_id = $1`, eventID).Scan(&idemCount))
+	require.Equal(t, 1, idemCount)
+
 	logChaosProof(t, "dedup_multi_region_duplicate", map[string]string{
 		"subsystem":     "region_outbox_relay",
 		"region_code":   "1",
@@ -84,6 +95,7 @@ func TestChaos_DedupMultiRegionDuplicate(t *testing.T) {
 		"redis_budget":  strconv.FormatInt(val, 10),
 		"proposal_rows": strconv.Itoa(proposalCount),
 		"deliveries":    "3",
+		"lease_state":   leaseState,
 		"baseline_ok":   "true",
 	})
 }

@@ -29,23 +29,26 @@ import (
 
 // Service coordinates management business logic, background workers, and hot-path propagation via outbox.
 type Service struct {
-	pool         *pgxpool.Pool
-	rdbs         []redis.UniversalClient
-	sharder      ingestion.Sharder
-	cfg          *config.Config
-	pgGate       *MgmtPgGate
-	alerter      *OpsAlerter
-	chWrite      driver.Conn
-	chQuery      *database.CHQuery
-	paymentPool  *pgxpool.Pool
-	ctx          context.Context
-	cancel       context.CancelFunc
-	wg           sync.WaitGroup
-	workerMu     sync.Mutex
-	closed       atomic.Bool
-	locCache     sync.Map
-	brokerDeltas BrokerPendingDeltaReader
-	tcpControl   *TCPControlServer
+	pool           *pgxpool.Pool
+	rdbs           []redis.UniversalClient
+	sharder        ingestion.Sharder
+	cfg            *config.Config
+	pgGate         *MgmtPgGate
+	alerter        *OpsAlerter
+	chWrite        driver.Conn
+	chQuery        *database.CHQuery
+	paymentPool    *pgxpool.Pool
+	ctx            context.Context
+	cancel         context.CancelFunc
+	wg             sync.WaitGroup
+	workerMu       sync.Mutex
+	closed         atomic.Bool
+	locCache       sync.Map
+	brokerDeltas   BrokerPendingDeltaReader
+	tcpControl     *TCPControlServer
+	nodeMetrics    *NodeMetricsWorker
+	scoringWeights *ScoringWeightsStore
+	leaseWorker    *OperationLeaseWorker
 }
 
 // StartBackgroundWorker launches an auxiliary goroutine tracked for graceful shutdown.
@@ -84,6 +87,9 @@ func NewService(pool *pgxpool.Pool, rdbs []redis.UniversalClient, sharder ingest
 		s.pgGate = NewMgmtPgGate(cfg.DBTrackerMaxConns)
 	}
 	s.startWorker(func() {
+		if cfg == nil {
+			return
+		}
 		if cfg.MultiRegionCell() {
 			NewRegionOutboxRelay(s).Start(ctx, 20*time.Millisecond)
 			return
@@ -113,6 +119,44 @@ func NewService(pool *pgxpool.Pool, rdbs []redis.UniversalClient, sharder ingest
 	s.startWorker(func() {
 		NewCampaignDrainWorker(s).Start(ctx, 20*time.Millisecond)
 	})
+	if cfg != nil && cfg.MultiRegionEnabled {
+		worker := NewNodeMetricsWorker(s)
+		s.nodeMetrics = worker
+		s.startWorker(func() {
+			worker.Start(ctx)
+		})
+		snapshotWorker := NewNodeMetricsSnapshotWorker(s)
+		s.startWorker(func() {
+			snapshotWorker.Start(ctx)
+		})
+		store, err := NewScoringWeightsStore(ctx, pool, cfg)
+		if err != nil {
+			slog.Error("scoring weights config invalid", "error", err)
+			cancel()
+			return nil
+		}
+		s.scoringWeights = store
+		s.startWorker(func() {
+			store.Start(ctx, pool, cfg)
+		})
+		leaseWorker := NewOperationLeaseWorker(s)
+		s.leaseWorker = leaseWorker
+		s.startWorker(func() {
+			leaseWorker.Start(ctx)
+		})
+	}
+	if cfg != nil && cfg.MultiRegionCell() {
+		scorer := NewNodeCapacityScorer(s)
+		s.startWorker(func() {
+			scorer.Start(ctx)
+		})
+	}
+	if cfg != nil && cfg.MultiRegionGlobal() {
+		globalScorer := NewGlobalRegionTrafficScorer(s)
+		s.startWorker(func() {
+			globalScorer.Start(ctx)
+		})
+	}
 	s.startWorker(func() {
 		NewCreditScoringWorker(s).Start(ctx, 24*time.Hour)
 	})
