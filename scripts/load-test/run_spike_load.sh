@@ -28,6 +28,14 @@ log "ensuring stack (constrained=${CONSTRAINED})"
 
 bash "$ROOT/scripts/load-test/snapshot_runtime.sh" "$OUT/runtime-pre" || true
 
+BPF_PID=""
+if [[ "${ESPX_BPF_PROBE:-0}" == "1" ]]; then
+	bash "$ROOT/scripts/load-test/bpf_probe_session.sh" start "$OUT" || log "WARN: BPF probe start failed"
+	if [[ -f "$OUT/bpf/collector.pid" ]]; then
+		BPF_PID="$(cat "$OUT/bpf/collector.pid")"
+	fi
+fi
+
 TRACKER_BASES="${TRACKER_BASES:-http://127.0.0.1:8181,http://127.0.0.1:8182}"
 K6_LOG="$OUT/k6-spike.log"
 
@@ -43,6 +51,9 @@ docker run --rm --network host \
 	grafana/k6:latest run /scripts/k6_spike_traffic.js 2>&1 | tee "$K6_LOG"
 
 bash "$ROOT/scripts/load-test/snapshot_runtime.sh" "$OUT/runtime-post" || true
+if [[ -n "$BPF_PID" ]]; then
+	bash "$ROOT/scripts/load-test/bpf_probe_session.sh" stop "$OUT" "$BPF_PID" || log "WARN: BPF probe stop failed"
+fi
 bash "$ROOT/scripts/load-test/analyze_bottlenecks.sh" "$OUT"
 
 log "done: $OUT/bottleneck-report.md"

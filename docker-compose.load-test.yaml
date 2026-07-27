@@ -1,7 +1,8 @@
 # Constrained resource profile for local dirty-traffic load tests on laptops.
 # Usage: docker compose -f docker-compose.yaml -f docker-compose.load-test.yaml up -d ...
 #
-# Caps CPU (GOMAXPROCS + cgroup cpus) and memory so k6 + stack fit ~8 GiB host budget.
+# Caps CPU (GOMAXPROCS + cgroup cpus) and memory so k6 + stack fit ~8–9 GiB host budget.
+# Tracker cpus match GOMAXPROCS=2; nginx/redis headroom avoids memory.max false positives.
 
 x-go-load-test-env: &go_load_test_env
   GOMAXPROCS: "2"
@@ -10,24 +11,26 @@ services:
   tracker-0:
     environment:
       - GOMAXPROCS=2
-      - GOMEMLIMIT=350MiB
+      - GOMEMLIMIT=400MiB
       - GOGC=300
+      - TRACKER_INGRESS_SCHEMA=espx_native
     deploy:
       resources:
         limits:
-          cpus: "1.0"
-          memory: 448M
+          cpus: "2.0"
+          memory: 512M
 
   tracker-1:
     environment:
       - GOMAXPROCS=2
-      - GOMEMLIMIT=350MiB
+      - GOMEMLIMIT=400MiB
       - GOGC=300
+      - TRACKER_INGRESS_SCHEMA=espx_native
     deploy:
       resources:
         limits:
-          cpus: "1.0"
-          memory: 448M
+          cpus: "2.0"
+          memory: 512M
 
   # Not started by run_dirty_load.sh; kept defined so base nginx merge stays valid.
   tracker-2:
@@ -52,16 +55,16 @@ services:
   processor:
     environment:
       - GOMAXPROCS=2
-      - GOMEMLIMIT=512MiB
+      - GOMEMLIMIT=576MiB
       - GOGC=100
-      - DB_PROCESSOR_MAX_CONNS=8
-      - MAX_WORKERS=8
-      - CH_MAX_WORKERS=1
+      - DB_PROCESSOR_MAX_CONNS=16
+      - MAX_WORKERS=12
+      - CH_MAX_WORKERS=2
     deploy:
       resources:
         limits:
-          cpus: "1.5"
-          memory: 640M
+          cpus: "1.75"
+          memory: 768M
 
   nginx:
     depends_on: !override
@@ -69,11 +72,17 @@ services:
         condition: service_healthy
       tracker-1:
         condition: service_healthy
+    environment:
+      - EDGE_BL_STALE_SEC=3600
+    volumes:
+      - ./deploy/nginx/nginx.load-test.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/nginx/nginx.load-test.conf:/usr/local/openresty/nginx/conf/nginx.conf:ro
+      - ./deploy/nginx/lua/edge-tracker-peers.load-test.lua:/etc/nginx/lua/edge-tracker-peers.lua:ro
     deploy:
       resources:
         limits:
-          cpus: "0.5"
-          memory: 256M
+          cpus: "1.0"
+          memory: 512M
 
   db:
     command:
@@ -82,28 +91,28 @@ services:
         "-p",
         "${DB_PORT}",
         "-c",
-        "max_connections=200",
+        "max_connections=300",
         "-c",
-        "shared_buffers=256MB",
+        "shared_buffers=320MB",
         "-c",
-        "work_mem=16MB",
+        "work_mem=32MB",
         "-c",
-        "maintenance_work_mem=64MB",
+        "maintenance_work_mem=96MB",
         "-c",
-        "effective_cache_size=512MB",
+        "effective_cache_size=640MB",
       ]
     deploy:
       resources:
         limits:
-          cpus: "1.0"
-          memory: 768M
+          cpus: "1.25"
+          memory: 896M
 
   clickhouse:
     deploy:
       resources:
         limits:
-          cpus: "1.0"
-          memory: 1G
+          cpus: "1.25"
+          memory: 1152M
     volumes:
       - ./deploy/clickhouse/config.load-test.yaml:/etc/clickhouse-server/config.d/memory_limit.yaml:ro
 
@@ -111,38 +120,38 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.25"
-          memory: 256M
+          cpus: "0.35"
+          memory: 384M
   redis-1:
     deploy:
       resources:
         limits:
-          cpus: "0.25"
-          memory: 256M
+          cpus: "0.35"
+          memory: 384M
   redis-2:
     deploy:
       resources:
         limits:
-          cpus: "0.25"
-          memory: 256M
+          cpus: "0.35"
+          memory: 384M
   redis-3:
     deploy:
       resources:
         limits:
-          cpus: "0.25"
-          memory: 256M
+          cpus: "0.35"
+          memory: 384M
   redis-4:
     deploy:
       resources:
         limits:
-          cpus: "0.25"
-          memory: 256M
+          cpus: "0.35"
+          memory: 384M
   redis-5:
     deploy:
       resources:
         limits:
-          cpus: "0.25"
-          memory: 256M
+          cpus: "0.35"
+          memory: 384M
 
   prometheus:
     deploy:

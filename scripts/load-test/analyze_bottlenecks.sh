@@ -89,8 +89,11 @@ REPORT="$OUT/bottleneck-report.md"
 		printf '| %s | %s | %s |\n' "$typ" "${p99:-na}" "${err:-0}"
 	done
 	echo ""
-	echo "- Processor events processed/s: $(prom_scalar 'sum(rate(ad_events_processed_total{job="processor"}[5m]))')"
-	echo "- DLQ size: $(prom_scalar 'ad_dlq_size_total{job="processor"}')"
+	echo "- Tracker stream ingest/s: $(prom_scalar 'sum(rate(ad_events_processed_total{job=~"tracker.*"}[5m]))')"
+	echo "- Processor PG write errors/s: $(prom_scalar 'sum(rate(ad_db_write_errors_total{job="processor",type="postgres"}[5m]))')"
+	echo "- Processor CH write errors/s: $(prom_scalar 'sum(rate(ad_db_write_errors_total{job="processor",type="clickhouse"}[5m]))')"
+	echo "- Processor stream lag (sum xlen): $(prom_scalar 'sum(ad_processor_stream_xlen{job="processor"})')"
+	echo "- DLQ size: $(prom_scalar 'sum(ad_dlq_size_total{job="processor"})')"
 	echo ""
 	echo "## Edge (nginx OpenResty)"
 	echo ""
@@ -127,6 +130,16 @@ REPORT="$OUT/bottleneck-report.md"
 	echo "4. **gnet connections near ulimit** — raise \`worker_rlimit_nofile\` / container ulimits; k6 keep-alive reduces FD churn."
 	echo "5. **fraud_stream_drop > 0** — fraud ring (4096) overflow; hot path lossy by design under dirty traffic."
 	echo "6. **worker_pool_reject** — pinned worker queue full; ingestion exceeds parse+filter capacity."
+	if [[ -f "$OUT/bpf-report.md" ]]; then
+		echo ""
+		echo "## BPF probe (dev)"
+		echo ""
+		echo "Kernel/session detail: [bpf-report.md](bpf-report.md)."
+		k6_line="$(grep -m1 'k6 share of tracked on-CPU' "$OUT/bpf-report.md" 2>/dev/null || true)"
+		if [[ -n "$k6_line" ]]; then
+			echo "- $k6_line"
+		fi
+	fi
 } | tee "$REPORT"
 
 log "wrote $REPORT"

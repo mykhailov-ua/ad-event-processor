@@ -3,9 +3,11 @@
 #
 # Usage:
 #   bash scripts/load-test/run_dirty_load.sh              # constrained 2k RPS × 5m (default)
-#   bash scripts/load-test/run_dirty_load.sh smoke        # 500 RPS × 2m
+#   bash scripts/load-test/run_dirty_load.sh business  # 50/20/30 mix × 2m + PREPARE
 #   CONSTRAINED=0 bash scripts/load-test/run_dirty_load.sh full  # full compose, 5k RPS
-#   PREPARE=1 bash scripts/load-test/run_dirty_load.sh
+#   ESPX_BPF_PROBE=1          enable parallel BPF probes (dev host, root/sudo)
+#   ESPX_BPF_SAMPLE_RATE=1    syscall sampling (10 on laptops)
+#   ESPX_BPF_TARGETS=tracker,nginx,redis,processor
 #
 # Env:
 #   CONSTRAINED=1  use docker-compose.load-test.yaml (default)
@@ -22,6 +24,7 @@ CONSTRAINED="${CONSTRAINED:-1}"
 RATE="${RATE:-}"
 DURATION="${DURATION:-5m}"
 PREPARE="${PREPARE:-0}"
+K6_SCRIPT="${K6_SCRIPT:-}"
 K6_DOCKER="${K6_DOCKER:-1}"
 K6_GOMAXPROCS="${GOMAXPROCS:-4}"
 OUT="$ROOT/var/load-test/$(date -u +%Y%m%dT%H%M%SZ)"
@@ -47,19 +50,33 @@ smoke)
 	DURATION=2m
 	log "smoke mode: ${RATE} RPS × ${DURATION} (constrained=${CONSTRAINED})"
 	;;
+business)
+	RATE="${RATE:-2000}"
+	# Business mode default is 2m; ignore inherited DURATION unless BUSINESS_DURATION is set.
+	DURATION="${BUSINESS_DURATION:-2m}"
+	PREPARE="${PREPARE:-1}"
+	K6_SCRIPT="${K6_SCRIPT:-$ROOT/scripts/load-test/k6_business_mix.js}"
+	PCT_BROKEN="${PCT_BROKEN:-50}"
+	PCT_GRAY="${PCT_GRAY:-20}"
+	log "business mode: ${RATE} RPS × ${DURATION} mix=${PCT_BROKEN}/${PCT_GRAY}/$((100 - PCT_BROKEN - PCT_GRAY)) (constrained=${CONSTRAINED})"
+	;;
 full)
 	RATE="${RATE:-$([[ "$CONSTRAINED" == "1" ]] && echo 2000 || echo 5000)}"
 	log "full mode: ${RATE} RPS × ${DURATION} (constrained=${CONSTRAINED})"
 	;;
 *)
-	die "unknown mode: $MODE (use smoke|full)"
+	die "unknown mode: $MODE (use smoke|business|full)"
 	;;
 esac
 
+if [[ -z "$K6_SCRIPT" ]]; then
+	K6_SCRIPT="$ROOT/scripts/load-test/k6_dirty_traffic.js"
+fi
+
 if [[ "$CONSTRAINED" == "1" ]]; then
 	TRACKER_BASES="${TRACKER_BASES:-http://127.0.0.1:8181,http://127.0.0.1:8182}"
-	PREALLOC_VUS="${PREALLOC_VUS:-200}"
-	MAX_VUS="${MAX_VUS:-800}"
+	PREALLOC_VUS="${PREALLOC_VUS:-80}"
+	MAX_VUS="${MAX_VUS:-250}"
 	OVERSIZE_BYTES="${OVERSIZE_BYTES:-65536}"
 else
 	TRACKER_BASES="${TRACKER_BASES:-http://127.0.0.1:8181,http://127.0.0.1:8182,http://127.0.0.1:8183,http://127.0.0.1:8184}"
@@ -73,17 +90,28 @@ compose_up() {
 }
 
 if [[ "$PREPARE" == "1" ]]; then
-	log "preparing stack (prepare_test.sh)"
-	export RATE_LIMIT_PER_MIN=1000000
-	bash scripts/ci/prepare_test.sh
+	if [[ "$CONSTRAINED" == "1" ]]; then
+		log "preparing constrained stack (campaigns + limits)"
+		bash "$SCRIPTS/load-test/prepare_constrained_stack.sh" 2>&1 | tee -a "$OUT/compose.log"
+	else
+		log "preparing stack (prepare_test.sh)"
+		export RATE_LIMIT_PER_MIN=1000000
+		bash scripts/ci/prepare_test.sh
+	fi
 else
 	log "ensuring constrained stack is up"
 	compose_up "${LOAD_SERVICES[@]}"
-	# Extra replicas are profile-disabled; stop if left over from a prior full run.
-	"${COMPOSE[@]}" stop tracker-2 tracker-3 2>/dev/null || true
+	# Extra replicas are profile-disabled in constrained profile only.
+	if [[ "$CONSTRAINED" == "1" ]]; then
+		"${COMPOSE[@]}" stop tracker-2 tracker-3 2>/dev/null || true
+	fi
 
 	log "waiting for tracker health"
-	for port in 8181 8182; do
+	ports=(8181 8182)
+	if [[ "$CONSTRAINED" != "1" ]]; then
+		ports=(8181 8182 8183 8184)
+	fi
+	for port in "${ports[@]}"; do
 		for _ in $(seq 1 120); do
 			if curl -sf "http://127.0.0.1:${port}/health" >/dev/null 2>&1; then
 				break
@@ -91,11 +119,20 @@ else
 			sleep 1
 		done
 	done
+
+	if [[ "$CONSTRAINED" == "1" ]]; then
+		bash "$SCRIPTS/load-test/seed_load_test_limits.sh" || log "WARN: seed load-test limits failed"
+		"${COMPOSE[@]}" up -d nginx 2>&1 | tee -a "$OUT/compose.log" || true
+		sleep 2
+	fi
 fi
 
 {
 	echo "constrained=$CONSTRAINED"
 	echo "rate=$RATE duration=$DURATION"
+	echo "k6_script=$K6_SCRIPT"
+	echo "mix_broken=${PCT_BROKEN:-}"
+	echo "mix_gray=${PCT_GRAY:-}"
 	echo "trackers=$TRACKER_BASES"
 	echo "gomaxprocs_k6=$K6_GOMAXPROCS prealloc_vus=$PREALLOC_VUS max_vus=$MAX_VUS"
 } >"$OUT/profile.txt"
@@ -114,13 +151,22 @@ if [[ "${SNAPSHOT_RUNTIME:-1}" == "1" ]]; then
 	SNAP_PID=$!
 fi
 
+BPF_PID=""
+if [[ "${ESPX_BPF_PROBE:-0}" == "1" ]]; then
+	bash scripts/load-test/bpf_probe_session.sh start "$OUT" || log "WARN: BPF probe start failed"
+	if [[ -f "$OUT/bpf/collector.pid" ]]; then
+		BPF_PID="$(cat "$OUT/bpf/collector.pid")"
+	fi
+fi
+
 run_k6() {
 	local k6_img="grafana/k6:latest"
-	local script="$ROOT/scripts/load-test/k6_dirty_traffic.js"
+	local script="$K6_SCRIPT"
+	local script_mount="/scripts/$(basename "$script")"
 	if [[ "$K6_DOCKER" == "1" ]]; then
 		docker run --rm --network host \
 			-e GOMAXPROCS="$K6_GOMAXPROCS" \
-			-v "$script:/scripts/k6_dirty_traffic.js:ro" \
+			-v "$script:${script_mount}:ro" \
 			-e RATE="$RATE" \
 			-e DURATION="$DURATION" \
 			-e TRACKER_BASES="$TRACKER_BASES" \
@@ -128,7 +174,9 @@ run_k6() {
 			-e PREALLOC_VUS="$PREALLOC_VUS" \
 			-e MAX_VUS="$MAX_VUS" \
 			-e OVERSIZE_BYTES="$OVERSIZE_BYTES" \
-			"$k6_img" run /scripts/k6_dirty_traffic.js
+			-e PCT_BROKEN="${PCT_BROKEN:-}" \
+			-e PCT_GRAY="${PCT_GRAY:-}" \
+			"$k6_img" run "$script_mount"
 	else
 		GOMAXPROCS="$K6_GOMAXPROCS" k6 run \
 			-e RATE="$RATE" \
@@ -138,11 +186,13 @@ run_k6() {
 			-e PREALLOC_VUS="$PREALLOC_VUS" \
 			-e MAX_VUS="$MAX_VUS" \
 			-e OVERSIZE_BYTES="$OVERSIZE_BYTES" \
+			-e PCT_BROKEN="${PCT_BROKEN:-}" \
+			-e PCT_GRAY="${PCT_GRAY:-}" \
 			"$script"
 	fi
 }
 
-log "starting k6 dirty traffic: ${RATE} req/s for ${DURATION}"
+log "starting k6 ($(basename "$K6_SCRIPT")): ${RATE} req/s for ${DURATION}"
 START_TS=$(date -u +%s)
 if run_k6 2>&1 | tee "$K6_LOG"; then
 	log "k6 finished OK"
@@ -154,6 +204,9 @@ log "k6 wall time: $((END_TS - START_TS))s"
 
 if [[ -n "$SNAP_PID" ]]; then
 	wait "$SNAP_PID" 2>/dev/null || true
+fi
+if [[ -n "$BPF_PID" ]]; then
+	bash scripts/load-test/bpf_probe_session.sh stop "$OUT" "$BPF_PID" || log "WARN: BPF probe stop failed"
 fi
 bash scripts/load-test/snapshot_runtime.sh "$OUT/runtime-post" 10
 
