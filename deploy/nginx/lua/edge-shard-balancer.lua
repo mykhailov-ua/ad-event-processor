@@ -1,15 +1,12 @@
--- edge-shard-balancer.lua: routes /track to the tracker replica for the campaign shard (M9-05).
--- Uses edge-slot-map.get_shard() — same crc32 Castagnoli + slot table as Go StaticSlotSharder.
+-- edge-shard-balancer.lua: routes /track to tracker replicas (M9-05 + M5.2).
+-- Shard pick uses edge-slot-map (crc32 Castagnoli + slot table = Go StaticSlotSharder).
+-- Peer pick uses edge-node-weights weighted random when synced; else shard index fallback.
+-- H6: balancer_by_lua runs only when nginx opens a new upstream connection.
 
 local balancer = require "ngx.balancer"
 local slot_map = require "edge-slot-map"
-
-local TRACKER_PEERS = {
-    { host = "127.0.0.1", port = 8181 },
-    { host = "127.0.0.1", port = 8182 },
-    { host = "127.0.0.1", port = 8183 },
-    { host = "127.0.0.1", port = 8184 },
-}
+local node_weights = require "edge-node-weights"
+local peers = require "edge-tracker-peers"
 
 local campaign_id = ngx.ctx.campaign_id
 if not campaign_id or campaign_id == "" then
@@ -17,17 +14,25 @@ if not campaign_id or campaign_id == "" then
 end
 
 local shard = slot_map.get_shard(campaign_id)
-if shard == nil then
+if shard ~= nil then
+    ngx.ctx.redis_shard = shard
+end
+
+local idx = node_weights.pick_peer_index()
+if idx == nil and shard ~= nil then
+    idx = tonumber(shard)
+end
+if idx == nil then
     return
 end
 
-local idx = tonumber(shard) + 1
-if idx < 1 or idx > #TRACKER_PEERS then
-    ngx.log(ngx.WARN, "edge shard balancer: shard out of range: ", shard)
+local peer_idx = idx + 1
+if peer_idx < 1 or peer_idx > #peers.list then
+    ngx.log(ngx.WARN, "edge shard balancer: peer index out of range: ", idx)
     return
 end
 
-local peer = TRACKER_PEERS[idx]
+local peer = peers.list[peer_idx]
 local ok, err = balancer.set_current_peer(peer.host, peer.port)
 if not ok then
     ngx.log(ngx.ERR, "edge shard balancer: set_current_peer failed: ", err or "unknown")

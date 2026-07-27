@@ -113,7 +113,11 @@ func (c *TCPControlClient) RequestSnapshot(ctx context.Context) error {
 
 	var limits UDPControlLimits
 	if hdr.NumShards > 0 && len(payload) > 0 {
-		if !udpDecodeShardLimits(payload, hdr.NumShards, &limits) {
+		ver := uint8(0)
+		if len(payload) > udpShardPayloadLen(hdr.NumShards)+8 {
+			ver = udpProtocolVersion2
+		}
+		if !udpDecodeShardLimits(payload, hdr.NumShards, ver, &limits) {
 			metrics.TCPControlSnapshotErrorsTotal.Inc()
 			return ErrTCPControlCorrupt
 		}
@@ -143,7 +147,7 @@ func (c *TCPControlClient) applySnapshot(hdr *TCPControlHeader, limits *UDPContr
 			SlotMapVersion: hdr.SlotMapVersion,
 			NumShards:      limits.NumShards,
 		}
-		c.udpControl.commitSnapshot(&udpHdr, limits)
+		c.udpControl.commitSnapshot(&udpHdr, limits, nil)
 		c.udpControl.currentEpoch.Store(hdr.RoutingEpoch)
 		c.udpControl.markFresh()
 	}

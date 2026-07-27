@@ -4,6 +4,7 @@ local hc = require "resty.upstream.healthcheck"
 local edge_config = require "edge-config"
 local blacklist_sync = require "edge-blacklist-sync"
 local edge_slot_map = require "edge-slot-map"
+local edge_node_weights = require "edge-node-weights"
 local quarantine_sub = require "edge-quarantine-sub"
 
 if ngx.worker.id() ~= 0 then
@@ -13,6 +14,7 @@ end
 local CONFIG_SYNC_INTERVAL = 5
 local BLACKLIST_SYNC_INTERVAL = 5
 local SLOT_MAP_SYNC_INTERVAL = tonumber(os.getenv("SLOT_MAP_SYNC_INTERVAL_SEC") or "") or 10
+local NODE_WEIGHTS_SYNC_INTERVAL = tonumber(os.getenv("NODE_WEIGHTS_SYNC_INTERVAL_SEC") or "") or 10
 
 local function sync_edge_config(premature)
     if premature then
@@ -62,6 +64,22 @@ end
 timer_ok, timer_err = ngx.timer.at(0, sync_slot_map)
 if not timer_ok then
     ngx.log(ngx.ERR, "failed to start slot map sync: ", timer_err)
+end
+
+local function sync_node_weights(premature)
+    if premature then
+        return
+    end
+    edge_node_weights.sync()
+    local ok, err = ngx.timer.at(NODE_WEIGHTS_SYNC_INTERVAL, sync_node_weights)
+    if not ok then
+        ngx.log(ngx.ERR, "failed to reschedule node weights sync: ", err)
+    end
+end
+
+timer_ok, timer_err = ngx.timer.at(0, sync_node_weights)
+if not timer_ok then
+    ngx.log(ngx.ERR, "failed to start node weights sync: ", timer_err)
 end
 
 local ok, err = hc.spawn_checker({

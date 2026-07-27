@@ -26,22 +26,22 @@ end
 
 local function expect_nil(cid, err, id, name)
     if cid ~= nil or err ~= nil then
-        error(string.format("expected nil,nil got cid=%s err=%s", tostring(cid), tostring(err)))
+        error(string.format("[%s] %s: expected nil,nil got cid=%s err=%s", id, name, tostring(cid), tostring(err)))
     end
 end
 
 local function expect_err(err_code, cid, err, id, name)
     if err ~= err_code then
-        error(string.format("expected err=%s got cid=%s err=%s", err_code, tostring(cid), tostring(err)))
+        error(string.format("[%s] %s: expected err=%s got cid=%s err=%s", id, name, err_code, tostring(cid), tostring(err)))
     end
 end
 
 local function expect_cid(want, cid, err, id, name)
     if err then
-        error(string.format("unexpected err=%s", tostring(err)))
+        error(string.format("[%s] %s: unexpected err=%s", id, name, tostring(err)))
     end
     if cid ~= want then
-        error(string.format("want cid=%s got %s", want, tostring(cid)))
+        error(string.format("[%s] %s: want cid=%s got %s", id, name, want, tostring(cid)))
     end
 end
 
@@ -70,7 +70,7 @@ end)
 assert_case("E-P03", "oversize_field_len", function()
     -- wire=2, field=2, varint len=65537 (0x10001) as malformed multi-byte
     local body = string.char(0x12) .. string.char(0x81, 0x80, 0x04) .. string.rep("a", 100)
-    local cid, err = dfa.extract_campaign_id(body, #body)
+    local _, err = dfa.extract_campaign_id(body, #body)
     if err ~= dfa.ERR_OVERSIZE and err ~= dfa.ERR_MALFORMED then
         error("expected oversize or malformed got " .. tostring(err))
     end
@@ -114,19 +114,17 @@ end)
 -- E-J02 unicode escape in campaign_id (security: should reject or normalize)
 assert_case("E-J02", "json_unicode_escape_cid", function()
     local json = '{"campaign_id":"\\u0035\\u0035\\u0030e8400-e29b-41d4-a716-446655440000"}'
-    local cid, err = dfa.extract_campaign_id(json, #json)
+    local cid, _ = dfa.extract_campaign_id(json, #json)
     if cid == "550e8400-e29b-41d4-a716-446655440000" then
         error("GAP: unicode escapes accepted literally without normalization policy")
     end
-    if cid == nil and err == nil then
-        -- also acceptable: returns raw escaped string
-    end
+    -- cid == nil and err == nil is also acceptable (raw escaped string path).
 end)
 
 -- E-J05 null byte in string
 assert_case("E-J05", "json_null_in_cid", function()
     local json = '{"campaign_id":"550e8400-e29b-41d4-a716-4466554400\x00"}'
-    local cid, err = dfa.extract_campaign_id(json, #json)
+    local cid, _ = dfa.extract_campaign_id(json, #json)
     if cid ~= nil then
         error("GAP: null byte inside campaign_id accepted")
     end
@@ -149,7 +147,7 @@ end)
 -- E-J04 duplicate keys (last wins in full JSON parsers; DFA may return first)
 assert_case("E-J04", "json_duplicate_campaign_id", function()
     local json = '{"campaign_id":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa","campaign_id":"550e8400-e29b-41d4-a716-446655440000"}'
-    local cid, err = dfa.extract_campaign_id(json, #json)
+    local cid, _ = dfa.extract_campaign_id(json, #json)
     if cid ~= "550e8400-e29b-41d4-a716-446655440000" and cid ~= "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" then
         error("unexpected cid " .. tostring(cid))
     end

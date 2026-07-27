@@ -26,6 +26,7 @@ type ingressSnapshot struct {
 	configHash     [16]byte
 	slotMapVersion int32
 	limits         UDPControlLimits
+	nodeWeights    []UDPNodeWeight
 }
 
 var ingressSnapshotPool = sync.Pool{
@@ -36,21 +37,22 @@ var ingressSnapshotPool = sync.Pool{
 
 // UDPControl receives management quota epochs and exposes per-shard ingress limits.
 type UDPControl struct {
-	enabled        bool
-	failClosed     bool
-	trackerID      uint32
-	bindAddr       string
-	syncInterval   time.Duration
-	mgmtAddr       *net.UDPAddr
-	snapshot       atomic.Pointer[ingressSnapshot]
-	quotaMap       atomic.Pointer[ingressQuotaMap]
-	numWorkers     int
-	channelState   atomic.Uint32
-	currentEpoch   atomic.Int64
-	lastPacketMono atomic.Int64
-	knownHash      [16]byte
-	conn           *net.UDPConn
-	requestConn    *net.UDPConn
+	enabled            bool
+	failClosed         bool
+	trackerID          uint32
+	bindAddr           string
+	syncInterval       time.Duration
+	mgmtAddr           *net.UDPAddr
+	snapshot           atomic.Pointer[ingressSnapshot]
+	quotaMap           atomic.Pointer[ingressQuotaMap]
+	numWorkers         int
+	channelState       atomic.Uint32
+	currentEpoch       atomic.Int64
+	lastPublisherEpoch atomic.Int64
+	lastPacketMono     atomic.Int64
+	knownHash          [16]byte
+	conn               *net.UDPConn
+	requestConn        *net.UDPConn
 }
 
 // UDPControlConfig wires tracker-side UDP ingress control.
@@ -192,6 +194,38 @@ func (c *UDPControl) CurrentEpoch() int64 {
 	return c.currentEpoch.Load()
 }
 
+// PublisherEpoch returns the latest epoch id seen on the wire (may be ahead of applied).
+func (c *UDPControl) PublisherEpoch() int64 {
+	if c == nil {
+		return 0
+	}
+	if ep := c.lastPublisherEpoch.Load(); ep > 0 {
+		return ep
+	}
+	return c.currentEpoch.Load()
+}
+
+// DrainFrozen reports whether peer drain must be suppressed (stale channel or epoch lag).
+func (c *UDPControl) DrainFrozen() bool {
+	if c == nil || !c.enabled {
+		return false
+	}
+	return NodeWeightsDrainFrozen(c.ChannelState() == UDPChannelStale, c.PublisherEpoch(), c.CurrentEpoch())
+}
+
+// NodeWeights returns effective peer weights (equalized when stale).
+func (c *UDPControl) NodeWeights() []UDPNodeWeight {
+	if c == nil {
+		return nil
+	}
+	snap := c.snapshot.Load()
+	if snap == nil || len(snap.nodeWeights) == 0 {
+		return nil
+	}
+	stale := c.ChannelState() == UDPChannelStale
+	return EffectiveNodeWeights(snap.nodeWeights, stale, c.PublisherEpoch(), c.CurrentEpoch())
+}
+
 // TryIngress performs a lock-free per-worker shard quota check (M5).
 func (c *UDPControl) TryIngress(shard, workerID int) bool {
 	if c == nil || !c.enabled {
@@ -242,16 +276,31 @@ func (c *UDPControl) ApplyPacket(buf []byte) bool {
 	}
 	payload = payload[:hdr.PayloadLen]
 	applyUDPCoarseTime(hdr.CoarseTimeNs)
+	c.lastPublisherEpoch.Store(hdr.EpochID)
+	metrics.UDPControlEpochLag.Set(float64(hdr.EpochID - c.currentEpoch.Load()))
 
 	switch hdr.MsgType {
 	case UDPMsgQuotaEpoch, UDPMsgConfigSnapshot:
 		var limits UDPControlLimits
-		if !udpDecodeShardLimits(payload, hdr.NumShards, &limits) {
+		if !udpDecodeShardLimits(payload, hdr.NumShards, hdr.Version, &limits) {
 			metrics.UDPControlCorruptTotal.Inc()
 			return false
 		}
+		shardLen := udpShardPayloadLen(hdr.NumShards)
+		if hdr.Version == udpProtocolVersion2 {
+			shardLen += 8
+		}
+		var nodeWeights []UDPNodeWeight
+		if hdr.Version >= udpProtocolVersion3 || hdr.Flags&UDPFlagNodeWeights != 0 {
+			if len(payload) > shardLen {
+				if !udpDecodeNodeWeights(payload[shardLen:], &nodeWeights) {
+					metrics.UDPControlCorruptTotal.Inc()
+					return false
+				}
+			}
+		}
 		isSnapshot := hdr.MsgType == UDPMsgConfigSnapshot || hdr.Flags&UDPFlagSnapshot != 0
-		return c.applyLimits(&hdr, &limits, isSnapshot)
+		return c.applyLimits(&hdr, &limits, nodeWeights, isSnapshot)
 	case UDPMsgMigrationBarrier:
 		// M1 fences handle migration_gen in Lua; barrier updates slot-map watcher path later.
 		c.markFresh()
@@ -262,7 +311,7 @@ func (c *UDPControl) ApplyPacket(buf []byte) bool {
 	}
 }
 
-func (c *UDPControl) applyLimits(hdr *UDPHeader, limits *UDPControlLimits, isSnapshot bool) bool {
+func (c *UDPControl) applyLimits(hdr *UDPHeader, limits *UDPControlLimits, nodeWeights []UDPNodeWeight, isSnapshot bool) bool {
 	cur := c.currentEpoch.Load()
 	epoch := hdr.EpochID
 
@@ -272,7 +321,7 @@ func (c *UDPControl) applyLimits(hdr *UDPHeader, limits *UDPControlLimits, isSna
 	}
 
 	if epoch == cur+1 || cur == 0 {
-		c.commitSnapshot(hdr, limits)
+		c.commitSnapshot(hdr, limits, nodeWeights)
 		c.currentEpoch.Store(epoch)
 		c.markFresh()
 		if isSnapshot {
@@ -285,7 +334,7 @@ func (c *UDPControl) applyLimits(hdr *UDPHeader, limits *UDPControlLimits, isSna
 	prev := c.snapshot.Load()
 	tightening := udpLimitsTightening(&prev.limits, limits)
 	if tightening {
-		c.commitSnapshot(hdr, limits)
+		c.commitSnapshot(hdr, limits, nodeWeights)
 		c.currentEpoch.Store(epoch)
 		c.markFresh()
 		metrics.UDPControlGapTightenTotal.Inc()
@@ -293,7 +342,7 @@ func (c *UDPControl) applyLimits(hdr *UDPHeader, limits *UDPControlLimits, isSna
 	}
 
 	if isSnapshot {
-		c.commitSnapshot(hdr, limits)
+		c.commitSnapshot(hdr, limits, nodeWeights)
 		c.currentEpoch.Store(epoch)
 		c.markFresh()
 		c.knownHash = hdr.ConfigHash
@@ -305,14 +354,20 @@ func (c *UDPControl) applyLimits(hdr *UDPHeader, limits *UDPControlLimits, isSna
 	return false
 }
 
-func (c *UDPControl) commitSnapshot(hdr *UDPHeader, limits *UDPControlLimits) {
+func (c *UDPControl) commitSnapshot(hdr *UDPHeader, limits *UDPControlLimits, nodeWeights []UDPNodeWeight) {
 	next := ingressSnapshotPool.Get().(*ingressSnapshot)
 	next.epoch = hdr.EpochID
 	next.configHash = hdr.ConfigHash
 	next.slotMapVersion = hdr.SlotMapVersion
 	next.limits = *limits
+	if len(nodeWeights) == 0 {
+		next.nodeWeights = nil
+	} else {
+		next.nodeWeights = append(next.nodeWeights[:0], nodeWeights...)
+	}
 	old := c.snapshot.Swap(next)
 	if old != nil {
+		old.nodeWeights = nil
 		ingressSnapshotPool.Put(old)
 	}
 	if qm := buildIngressQuotaMap(hdr.EpochID, limits, c.numWorkers); qm != nil {
@@ -407,7 +462,7 @@ func (c *UDPControl) tightenCanaryFloor() {
 		SlotMapVersion: snap.slotMapVersion,
 		NumShards:      limits.NumShards,
 	}
-	c.commitSnapshot(&hdr, &limits)
+	c.commitSnapshot(&hdr, &limits, snap.nodeWeights)
 }
 
 func (c *UDPControl) sendConfigRequest() {
@@ -438,11 +493,19 @@ func (c *UDPControl) sendConfigRequest() {
 
 // EncodeQuotaEpochDatagram writes a QUOTA_EPOCH or CONFIG_SNAPSHOT datagram into dst.
 func EncodeQuotaEpochDatagram(dst []byte, msgType uint8, hdr *UDPHeader, limits *UDPControlLimits) int {
+	return EncodeQuotaEpochDatagramWithWeights(dst, msgType, hdr, limits, nil)
+}
+
+// EncodeQuotaEpochDatagramWithWeights writes a v3 epoch datagram when weights are present.
+func EncodeQuotaEpochDatagramWithWeights(dst []byte, msgType uint8, hdr *UDPHeader, limits *UDPControlLimits, weights []UDPNodeWeight) int {
 	if hdr == nil || limits == nil {
 		return 0
 	}
 	hdr.Magic = udpMagic
-	if limits.MaxRPD > 0 {
+	if len(weights) > 0 {
+		hdr.Version = udpProtocolVersion3
+		hdr.Flags |= UDPFlagNodeWeights
+	} else if limits.MaxRPD > 0 {
 		hdr.Version = udpProtocolVersion2
 	} else {
 		hdr.Version = udpProtocolVersion
@@ -453,29 +516,38 @@ func EncodeQuotaEpochDatagram(dst []byte, msgType uint8, hdr *UDPHeader, limits 
 	if limits.MaxRPD > 0 {
 		payloadLen += 8
 	}
+	if len(weights) > 0 {
+		payloadLen += udpNodeWeightsEncodedLen(weights)
+	}
 	hdr.PayloadLen = uint16(payloadLen)
 	if len(dst) < UDPHeaderSize+payloadLen {
 		return 0
 	}
 	udpEncodeHeader(dst, hdr)
-	return UDPHeaderSize + udpEncodeShardLimits(dst[UDPHeaderSize:], limits)
+	off := UDPHeaderSize + udpEncodeShardLimits(dst[UDPHeaderSize:], limits)
+	if len(weights) > 0 {
+		off += udpEncodeNodeWeights(dst[off:], weights)
+	}
+	return off
 }
 
 // EpochPayloadJSON is persisted in control_plane_epochs.payload_json.
 type EpochPayloadJSON struct {
-	ShardLimits    []uint64  `json:"shard_limits_rps"`
-	SlotMapVersion int32     `json:"slot_map_version"`
-	KState         []float64 `json:"k_state,omitempty"`
+	ShardLimits    []uint64            `json:"shard_limits_rps"`
+	SlotMapVersion int32               `json:"slot_map_version"`
+	KState         []float64           `json:"k_state,omitempty"`
+	NodeWeights    []UDPNodeWeightJSON `json:"node_weights,omitempty"`
 }
 
-// MarshalEpochPayload serializes limits for Postgres audit/recovery.
-func MarshalEpochPayload(slotVersion int32, limits *UDPControlLimits) ([]byte, error) {
+// MarshalEpochPayload serializes limits and optional node weights for Postgres audit/recovery.
+func MarshalEpochPayload(slotVersion int32, limits *UDPControlLimits, weights []UDPNodeWeight) ([]byte, error) {
 	if limits == nil {
 		return []byte("{}"), nil
 	}
 	p := EpochPayloadJSON{
 		SlotMapVersion: slotVersion,
 		ShardLimits:    make([]uint64, limits.NumShards),
+		NodeWeights:    NodeWeightsToJSON(weights),
 	}
 	for i := uint8(0); i < limits.NumShards; i++ {
 		p.ShardLimits[i] = limits.Limits[i]

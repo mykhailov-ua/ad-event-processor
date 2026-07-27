@@ -99,7 +99,7 @@ func udpDecodeHeader(src []byte, hdr *UDPHeader) bool {
 	if hdr.Magic != udpMagic {
 		return false
 	}
-	if src[4] != udpProtocolVersion && src[4] != udpProtocolVersion2 {
+	if src[4] != udpProtocolVersion && src[4] != udpProtocolVersion2 && src[4] != udpProtocolVersion3 {
 		return false
 	}
 	hdr.Version = src[4]
@@ -114,7 +114,7 @@ func udpDecodeHeader(src []byte, hdr *UDPHeader) bool {
 	return true
 }
 
-func udpDecodeShardLimits(payload []byte, numShards uint8, out *UDPControlLimits) bool {
+func udpDecodeShardLimits(payload []byte, numShards uint8, version uint8, out *UDPControlLimits) bool {
 	if out == nil {
 		return false
 	}
@@ -127,7 +127,7 @@ func udpDecodeShardLimits(payload []byte, numShards uint8, out *UDPControlLimits
 		out.Limits[i] = binary.LittleEndian.Uint64(payload[i*8 : i*8+8])
 	}
 	out.MaxRPD = 0
-	if len(payload) >= need+8 {
+	if version == udpProtocolVersion2 && len(payload) >= need+8 {
 		out.MaxRPD = binary.LittleEndian.Uint64(payload[need : need+8])
 	}
 	return true
@@ -176,6 +176,11 @@ func udpDecodeConfigRequest(payload []byte, req *UDPConfigRequestPayload) bool {
 
 // ComputeUDPConfigHash derives a 128-bit FNV digest for epoch idempotency.
 func ComputeUDPConfigHash(epoch int64, slotVersion int32, limits *UDPControlLimits) [16]byte {
+	return ComputeUDPConfigHashWithWeights(epoch, slotVersion, limits, nil)
+}
+
+// ComputeUDPConfigHashWithWeights includes optional node weight lanes in the digest.
+func ComputeUDPConfigHashWithWeights(epoch int64, slotVersion int32, limits *UDPControlLimits, weights []UDPNodeWeight) [16]byte {
 	var out [16]byte
 	if limits == nil {
 		return out
@@ -193,6 +198,9 @@ func ComputeUDPConfigHash(epoch int64, slotVersion int32, limits *UDPControlLimi
 	if limits.MaxRPD > 0 {
 		binary.LittleEndian.PutUint64(buf[:], limits.MaxRPD)
 		_, _ = h.Write(buf[:])
+	}
+	if len(weights) > 0 {
+		hashNodeWeights(h, weights)
 	}
 	sum := h.Sum(nil)
 	copy(out[:], sum[:16])

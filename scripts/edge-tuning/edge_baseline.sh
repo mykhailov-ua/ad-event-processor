@@ -9,7 +9,7 @@ PROMETHEUS_URL="${PROMETHEUS_URL:-http://127.0.0.1:9190}"
 BASELINE_DIR="${BASELINE_DIR:-$ROOT/var/edge-baseline}"
 STRICT="${STRICT:-0}"
 
-# SLA targets from .cursorrules / edge-hardening-plan (milliseconds).
+# SLA targets from .cursor/rules/espx.mdc / edge-hardening-plan (milliseconds).
 TRACKER_P95_MAX_MS=50
 TRACKER_P99_MAX_MS=80
 REDIS_LUA_P99_MAX_MS=15
