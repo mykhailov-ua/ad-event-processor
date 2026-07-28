@@ -4,7 +4,7 @@ Enterprise multi-cell topology (M7): regional hot-path cells, global control pla
 
 Status: **target architecture**. Partial implementation exists (`outbox_region_delivery`, `RegionOutboxRelay`, licensing `multi_region`). Regional proxy, disk gate, and node scorer are design targets documented here.
 
-Related: [ARCHITECTURE.md](./ARCHITECTURE.md), [guidelines/CONTROL_PLANE.md](./guidelines/CONTROL_PLANE.md), [guidelines/OPEN_GAPS.md](./guidelines/OPEN_GAPS.md), [guidelines/CHAOS.md](./guidelines/CHAOS.md), [guidelines/CODE_STYLE.md](./guidelines/CODE_STYLE.md), [guidelines/HOT_PATH.md](./guidelines/HOT_PATH.md).
+Related: [ARCHITECTURE.md](./ARCHITECTURE.md), [MILESTONE.md](./MILESTONE.md), [CONTROL_PLANE](.cursor/rules/control-plane.mdc), [CHAOS](.cursor/rules/chaos.mdc), [CODE_STYLE](.cursor/rules/code-style.mdc), [HOT_PATH](.cursor/rules/hot-path.mdc).
 
 ## Document map
 
@@ -594,7 +594,9 @@ Persist epochs in `control_plane_epochs` (existing) for audit and KeyGen routing
 | drain/boost flap | oscillating p99 | score EMA; min epochs in state; hysteresis |
 | thundering herd on boost | spike on healthy node | +5%/epoch cap; check proxy `keygen_queue` |
 
-### 9.7 Multi-region budget (GAP-RTB-12)
+### 9.7 Бюджет в мультирегиональной среде
+
+Cross-region spend sync is implemented via `GlobalSpendReconciler` (idempotent `balance_ledger` debits, `sync_idempotency` keys). See `docs/DEVELOPMENT.md` (Completed roadmap).
 
 | Risk | Symptom | Mitigation |
 | :--- | :--- | :--- |
@@ -833,7 +835,7 @@ DROP TABLE IF EXISTS operation_leases;
 
 | Tier | Scope | Key budgets |
 | :--- | :--- | :--- |
-| **Hot** | tracker `/track`, FilterEngine, RTB | p95 < 50 ms, p99 < 80 ms, max 100 ms; 0 allocs/op ([HOT_PATH.md](./guidelines/HOT_PATH.md)) |
+| **Hot** | tracker `/track`, FilterEngine, RTB | p95 < 50 ms, p99 < 80 ms, max 100 ms; 0 allocs/op ([HOT_PATH.md](.cursor/rules/hot-path.mdc)) |
 | **Cold ingest** | region-proxy ingress, broker produce | p99 < 20 ms ACK after WAL fsync batch |
 | **Cold control** | management workers, scorer, leases | tick < 500 ms; PG CAS p99 < 10 ms |
 | **Global settle** | proxy uplink → PG | p99 < 2 s end-to-end; budget invariant ±1 micro-unit |
@@ -844,9 +846,9 @@ DROP TABLE IF EXISTS operation_leases;
 
 | Layer | Package examples | Rules |
 | :--- | :--- | :--- |
-| **Hot touch** | tracker hooks only | No import of `pkg/regionproxy`; BCE before indexed mmap view; `cpu.CacheLinePad` on atomics; no `defer`/closures in loops ([HOT_PATH.md](./guidelines/HOT_PATH.md)) |
+| **Hot touch** | tracker hooks only | No import of `pkg/regionproxy`; BCE before indexed mmap view; `cpu.CacheLinePad` on atomics; no `defer`/closures in loops ([HOT_PATH.md](.cursor/rules/hot-path.mdc)) |
 | **Cold `pkg/`** | `pkg/iogate`, `pkg/regionproxy`, `pkg/dedupkey` | No `internal/ingestion` hot imports; flat packages; table-driven tests |
-| **Cold `internal/management`** | `service_node_scorer.go`, `operation_lease_worker.go` | Flat package R1; `withPgHigh` / `withPgLow`; errors `fmt.Errorf("verb noun key=%s: %w", id, err)` ([CODE_STYLE.md](./guidelines/CODE_STYLE.md) R7) |
+| **Cold `internal/management`** | `service_node_scorer.go`, `operation_lease_worker.go` | Flat package R1; `withPgHigh` / `withPgLow`; errors `fmt.Errorf("verb noun key=%s: %w", id, err)` ([CODE_STYLE.md](.cursor/rules/code-style.mdc) R7) |
 | **Migrations** | `internal/ingestion/migrations/` | goose up/down; sqlc in `queries/` |
 | **Metrics** | `internal/metrics/collectors.go` | Pre-bound labels at init; no per-request `WithLabelValues` on hot paths |
 
@@ -862,7 +864,7 @@ return fmt.Errorf("region proxy uplink batch seq=%d: %w", seq, errors.Join(errs.
 
 Banned: bare `return err` across package boundaries; `%v` instead of `%w`; string concat in error messages.
 
-### Testing pyramid ([CHAOS.md](./guidelines/CHAOS.md) R5–R6)
+### Testing pyramid ([CHAOS.md](.cursor/rules/chaos.mdc) R5–R6)
 
 | Layer | Command / file | Gate |
 | :--- | :--- | :--- |
@@ -871,7 +873,7 @@ Banned: bare `return err` across package boundaries; `%v` instead of `%w`; strin
 | Chaos | `*_chaos_test.go` | `chaos_proof fault=...`; no mocks on budget/dedup/Lua |
 | E2E | `tests/e2e/region_proxy_*` | compose stack |
 | Perf | `go test -benchmem` | cold: no regression; hot touch: 0 allocs/op unchanged |
-| PR | `make lint`, `make test-alloc-gate` | [CODE_STYLE.md](./guidelines/CODE_STYLE.md) R10 |
+| PR | `make lint`, `make test-alloc-gate` | [CODE_STYLE.md](.cursor/rules/code-style.mdc) R10 |
 
 ### PR checklist (every task)
 
@@ -1518,7 +1520,7 @@ Zero duplicate global apply; client holds WAL until 2-of-3 ACK.
 
 ---
 
-### M7.4 Game day runbook (GAP-GEO-01)
+### M7.4 Регламент учений (Game day runbook) (GAP-GEO-01)
 
 #### SLA
 
@@ -1534,7 +1536,7 @@ RTO regional proxy failover < 120 s.
 
 ## §I. Chaos catalog (reference)
 
-Synced with [guidelines/CHAOS.md](./guidelines/CHAOS.md). Steady-state abort: tracker p99 > 80 ms unless noted.
+Synced with [CHAOS](.cursor/rules/chaos.mdc). Steady-state abort: tracker p99 > 80 ms unless noted.
 
 | ID | Fault | Hypothesis | Proof keys |
 | :--- | :--- | :--- | :--- |
@@ -1559,12 +1561,12 @@ chaos_proof fault=mr_lease_ghost_executor op_id=<uuid> proposal_rows=1 redis_bud
 
 ## §J. Open gaps
 
-| ID | Item | Unblocks |
-| :--- | :--- | :--- |
-| GAP-GEO-01 | ~~Game days not productized~~ done M7.4 | M7.4 |
-| GAP-GEO-02 | Postgres DR manual | cross-region failover |
-| GAP-RTB-12 | Multi-region budget ops | global spend authority |
-| GAP-ENG-02 | `cmd/broker` not in default compose | M1.2 local dev |
-| GAP-MR-01 | ~~`operation_leases` M6.5+ (renew heartbeat, fencing per replica set)~~ done M6.5–M6.6 | M6 |
-| GAP-MR-02 | Scorer split H3 | M4.2 |
-| GAP-MR-03 | Quorum without PG | M6.3 C3 edge case |
+Active engineering backlog: [MILESTONE.md](./MILESTONE.md). Closed multi-region items: [DEVELOPMENT.md](./DEVELOPMENT.md) (Completed roadmap).
+
+| ID | Status |
+| :--- | :--- |
+| GAP-RTB-12 (gtax, admin simulation, A/B cohorts) | Open — see MILESTONE |
+| GAP-ENG-02 (broker / compose) | Open — see MILESTONE |
+| GAP-MR-01 | Closed (M6 operation leases) |
+| GAP-MR-02 | Closed (`GlobalRegionTrafficScorer` + per-cell `NodeCapacityScorer`, H3) |
+| GAP-GEO-01 | Closed (M7.4 game days) |

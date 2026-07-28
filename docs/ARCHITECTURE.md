@@ -160,7 +160,7 @@ Cold path: `SyncRtbCatalog`, deal CRUD, `RELOAD_RTB_CATALOG` outbox, floor optim
 
 Hot path: `RunAuction` scans presorted SoA buckets; budget debit via CAS in `BudgetStore` or Redis Lua depending on `RTB_BUDGET_AUTHORITY`.
 
-Open gaps: GAP-RTB-10..12 ([DEVELOPMENT.md](./DEVELOPMENT.md)).
+Открытые задачи (Open gaps): GAP-RTB-11, оставшийся scope GAP-RTB-12 ([DEVELOPMENT.md](./DEVELOPMENT.md)).
 
 ---
 
@@ -273,6 +273,15 @@ PII in ClickHouse: rolling hash for `ip_hash` / `ua_hash`; phase out raw `ip_add
 | Lua filters | Redis scripts | Single RTT atomicity |
 
 Settlement remains in management (not a separate settlement service). Fraud scoring cold path only (`fraud-scorer`, `ivt-detector`).
+
+### Load-test observability (dev)
+
+Laptop load tests (`scripts/load-test/`) produce paired reports per run:
+
+- **Application** — Prometheus scrape → `bottleneck-report.md` (handler, Lua, processor, fraud drops).
+- **Kernel** — optional `ESPX_BPF_PROBE=1` → `bpf-report.md` (syscalls, cgroup throttle, k6 CPU share).
+
+Detail: [LOAD_TEST_BPF](.cursor/rules/load-test-bpf.mdc). Production edge BPF (XDP blocklist) remains in [EDGE](.cursor/rules/edge.mdc).
 
 ---
 

@@ -1,6 +1,8 @@
 # Development
 
-Local environment, CI gates, operational runbooks, code rules, chaos engineering, and open gaps.
+Local environment, CI gates, operational runbooks, and open gaps.
+
+**Agent engineering rules** (LLM): `.cursor/rules/*.mdc` — start at `guidelines-index.mdc`. Client-facing docs remain below.
 
 ---
 
@@ -16,7 +18,8 @@ Local environment, CI gates, operational runbooks, code rules, chaos engineering
 
 ```bash
 cp .env.example .env
-bash scripts/local-dev/dev_stack.sh build
+bash scripts/local-dev/dev_stack.sh build   # compose images + bpf-dev artifacts
+make bpf-dev                                # or: bash scripts/local-dev/bpf_setup.sh
 bash scripts/local-dev/dev_stack.sh full
 bash scripts/local-dev/dev_preflight.sh
 ```
@@ -26,6 +29,9 @@ bash scripts/local-dev/dev_preflight.sh
 | `infra` | Postgres, Redis x6, ClickHouse |
 | `full` | All services |
 | `sentinel` | Redis Sentinel |
+| `bpf` | Build `loadtest_probe.o` + `bin/bpf-collector` (dev load-test probes) |
+
+Hot-path changes: run constrained load with BPF — `make load-test-bpf` or `sudo ESPX_BPF_PROBE=1 bash scripts/load-test/run_dirty_load.sh business`. See [LOAD_TEST_BPF](.cursor/rules/load-test-bpf.mdc).
 
 ---
 
@@ -260,25 +266,36 @@ Hot path: hostNetwork trackers + nginx. Cold path: separate namespace.
 | `scripts/chaos-drills/test_chaos.sh` | Fault injection |
 | `scripts/edge-tuning/edge_nic_tune.sh` | NIC tuning |
 | `scripts/redis-ops/` | Shard ops |
-| `scripts/load-test/` | Load tests; optional `ESPX_BPF_PROBE=1` for kernel probes |
+| `scripts/load-test/` | Load tests; optional `ESPX_BPF_PROBE=1` for kernel probes (see [LOAD_TEST_BPF](.cursor/rules/load-test-bpf.mdc)) |
 
-### Optional BPF probes during load tests
+### Load tests and BPF analytics
 
-Dev-only utility: parallel eBPF session records syscalls, context switches, TCP retrans, and k6 load-generator overhead while k6 runs. Reports land in `var/load-test/<ts>/bpf-report.md`.
+Dirty/spike runs write under `var/load-test/<UTC-timestamp>/`:
+
+| Artifact | Producer | Content |
+| :--- | :--- | :--- |
+| `bottleneck-report.md` | `analyze_bottlenecks.sh` | Prometheus: handler p99, Redis Lua, PG/CH writes, worker rejects |
+| `bpf-report.md` | `analyze_bpf.sh` | Kernel: syscalls, scheduler, cgroup throttle, FDs, k6 on-CPU share |
+| `k6.log` | k6 | RPS, latency, dropped iterations |
+
+**Constrained profile** (`docker-compose.load-test.yaml`): 2 trackers, capped CPUs/RAM, `TRACKER_INGRESS_SCHEMA=espx_native` for k6 JSON. Business mix:
 
 ```bash
-# One-time: build BPF object (uses Docker if clang is missing)
-bash scripts/load-test/bpf_build.sh
-go build -o bin/bpf-collector ./cmd/bpf-collector
-
-# Run dirty load with probes (requires root or CAP_BPF on the host)
-sudo ESPX_BPF_PROBE=1 bash scripts/load-test/run_dirty_load.sh smoke
-
-# Laptop-friendly sampling
-sudo ESPX_BPF_PROBE=1 ESPX_BPF_SAMPLE_RATE=10 bash scripts/load-test/run_spike_load.sh
+bash scripts/load-test/prepare_constrained_stack.sh   # optional; business mode runs PREPARE=1
+sudo ESPX_BPF_PROBE=1 bash scripts/load-test/run_dirty_load.sh business
 ```
 
-Env: `ESPX_BPF_TARGETS`, `ESPX_BPF_SAMPLE_RATE`, `ESPX_BPF_TRACK_K6` (default tracks k6 comm for honest overhead). Does not run in CI or production.
+Full BPF workflow, env vars, and interpretation: [LOAD_TEST_BPF](.cursor/rules/load-test-bpf.mdc).
+
+Standalone BPF session (no k6): `make bpf-session-start` → traffic → `make bpf-session-stop` → `bash scripts/local-dev/bpf_session.sh report`. Optional in-process uprobes: `bash scripts/local-dev/build_tracker_bpf_trace.sh` and `ESPX_BPF_TRACKER_BINARY`.
+
+```bash
+bash scripts/load-test/bpf_build.sh
+go build -o bin/bpf-collector ./cmd/bpf-collector
+sudo ESPX_BPF_PROBE=1 ESPX_BPF_SAMPLE_RATE=10 bash scripts/load-test/run_dirty_load.sh smoke
+```
+
+Does not run in CI or production.
 
 ---
 
@@ -313,6 +330,137 @@ Full list: `.env.example`.
 | `CONTROL_FAIL_OPEN` | `0` (default): edge uses conservative routing when control epochs are stale — equal tracker weights, drain frozen. Set `1` for AWS GA-style fail-open (keep last epoch weights). Edge only; see [MULTI_REGION.md](./MULTI_REGION.md) H4. |
 | `NODE_WARMUP_SEC` | Tracker/management warmup before `/ready` and scorer drain (default `300`) |
 | `NODE_WEIGHTS_SYNC_INTERVAL_SEC` | Edge poll interval for `/ops/node-weights` (default `10`) |
+
+---
+
+## Multi-region local lab
+
+Optional `multi-region` compose profile adds `region-proxy` (and optional `broker`) without changing the default stack.
+
+```bash
+scripts/local-dev/dev_stack.sh build
+scripts/local-dev/dev_stack.sh infra
+scripts/local-dev/dev_stack.sh multi-region up
+curl -s http://127.0.0.1:8083/health
+scripts/local-dev/dev_stack.sh status   # includes multi-region profile section
+```
+
+Equivalent direct compose:
+
+```bash
+docker compose --profile multi-region up -d region-proxy
+```
+
+Optional broker (mmap log ingest, not required for region-proxy uplink):
+
+```bash
+scripts/local-dev/dev_stack.sh multi-region broker
+curl -s http://127.0.0.1:8084/health
+```
+
+### Env matrix: global vs regional cell
+
+| Cell | `MULTI_REGION_ENABLED` | `ESPX_REGION_CODE` | Key variables |
+| :--- | :---: | :---: | :--- |
+| Global management | `1` | `0` | `GLOBAL_SPEND_BATCH_MIN`, `GLOBAL_SPEND_FLUSH_INTERVAL_MS`, `GLOBAL_SPEND_MAX_CONCURRENCY` |
+| Regional processor | `1` | `>0` | `REGION_PROXY_ADDR`, `REGION_PROXY_REDIS_URL` |
+| Region-proxy | n/a | `>0` | `GLOBAL_INGEST_URL`, `GLOBAL_INGEST_API_KEY` (defaults to `ADMIN_API_KEY`) |
+
+Example regional processor with proxy:
+
+```bash
+MULTI_REGION_ENABLED=1 ESPX_REGION_CODE=1 \
+  docker compose up -d processor
+docker compose --profile multi-region up -d region-proxy
+```
+
+Example global management cell:
+
+```bash
+MULTI_REGION_ENABLED=1 ESPX_REGION_CODE=0 docker compose up -d management
+```
+
+### Ports
+
+| Service | TCP | Health HTTP |
+| :--- | :--- | :--- |
+| region-proxy | `127.0.0.1:9093` | `127.0.0.1:8083` |
+| broker (profile, optional) | `127.0.0.1:9092` | `127.0.0.1:8084` |
+
+The standalone HA broker lab under `deploy/broker/` binds broker nodes on `9093` — do not run it alongside the compose `region-proxy` on the same host.
+
+### E2E tests
+
+In-process region-proxy tests (no compose required):
+
+```bash
+go test ./tests/e2e/... -run RegionProxy -count=1
+```
+
+With compose profile running, verify health endpoints above before uplink tests that hit a live global management cell.
+
+### Weighted processor replicas (GAP-DB-03)
+
+Enable on additional processor instances (not the default single replica):
+
+```bash
+PROCESSOR_WEIGHT_ENABLED=1 NODE_ID=processor-1 MANAGEMENT_URL=http://127.0.0.1:8188 \
+  docker compose --profile multi-region up -d processor-1
+```
+
+Weights are published by management `NodeCapacityScorer` to `node_capacity_scores` and exposed at `GET /ops/processor-weights`. Each processor polls on `UDP_SYNC_INTERVAL_MS` (default 10 s) and scales `XREADGROUP` batch size + inter-read throttle by local weight. PG gate wait EMA above `PROCESSOR_WEIGHT_DRAIN_PG_WAIT_MS` (default 50 ms) drains the instance to `PROCESSOR_WEIGHT_FLOOR`.
+
+Metrics: `ad_processor_weight{instance}`, `ad_processor_stream_lag_seconds{instance}`.
+
+Chaos proof: `go test ./internal/ingestion/... -run TestChaos_ProcessorWeightDrain -count=1`
+
+EXPLAIN audit (processor weights query): `EXPLAIN_AUDIT=1 go test ./internal/database/... -run TestExplainAudit -count=1`
+
+### Edge tarpit and compliance (GAP-CMP-01)
+
+Tarpit is **off** in dev (`.env.example`). Production edge: source `deploy/nginx/edge-production.env` before starting OpenResty.
+
+```bash
+bash scripts/edge-tuning/tarpit_test.sh      # offline + optional live smoke
+EDGE_TARPIT_ENABLED=1 bash scripts/edge-tuning/tarpit_test.sh  # chaos_proof
+```
+
+Control mapping: [COMPLIANCE_MATRIX.md](./COMPLIANCE_MATRIX.md). CI: `scripts/ci/check_compliance.sh`.
+
+### Vendor telemetry (GAP-ENG-03)
+
+Cold-path probes run inside **management** only (`VENDOR_TELEMETRY_ENABLED`). Vendors: `maxmind` (local DB file), `stripe` (balance API), `telegram` (getMe), `smtp` (TCP dial).
+
+```bash
+go test ./pkg/vendorprobe/... -count=1
+```
+
+Metrics: `ad_vendor_probe_success{vendor}`, `ad_vendor_probe_latency_seconds{vendor}`, `ad_vendor_probe_errors_total{vendor}`.
+
+Production profile: `deploy/management/production.env` (`VENDOR_TELEMETRY_ENABLED=true`, 60s interval, 5s timeout).
+
+### Cryptocurrency payment gateway (GAP-PAY-01)
+
+Crypto checkout uses metadata `provider=crypto` on `CreatePaymentIntent`. Webhooks: `POST /webhooks/crypto` with `Crypto-Signature` HMAC (Stripe-style `t=...,v1=...`). Funds sit in `payment.crypto_holds` for 14 days before `SETTLE_BALANCE` outbox delivery to management.
+
+```bash
+go test ./internal/payment/... -run Crypto -count=1
+go test ./internal/payment/... -run TestChaos_CryptoWebhookReplay -count=1
+bash scripts/local-dev/dev_stack.sh crypto up   # compose profile crypto + sandbox env
+```
+
+Chaos proof: `chaos_proof fault=crypto_webhook_replay proposal_rows=1`. Sandbox env: `deploy/payment/crypto-sandbox.env`.
+
+### OpenAPI contract (GAP-PROD-03)
+
+Machine-readable spec for all implemented `/api/v1` JSON routes (`docs/openapi/openapi.yaml`). HTTP 501 stubs and `/admin/*` HTMX HTML routes are excluded.
+
+```bash
+make openapi-lint          # contract tests + drift check
+make openapi-gen           # regenerate paths after adding handlers
+```
+
+Security schemes: `X-Admin-API-Key`, session cookie `accessToken`, `X-Consent-Signature` (consent webhook).
 
 ---
 
@@ -379,36 +527,47 @@ Actions logged in `audit_logs`.
 
 ---
 
-## Open gaps
+## Completed roadmap
 
-| ID | Area | Notes |
+The technology milestone backlog lives in [MILESTONE.md](./MILESTONE.md). Recently completed items:
+
+| ID | Summary | Evidence |
 | :--- | :--- | :--- |
-| GAP-RTB-10 | RTB | Inventory expansion: placement/domain, creative-level auction, video/VAST |
-| GAP-RTB-11 | RTB | Pre-auction caps: daypart bitmasks, frequency-cap pre-check |
-| GAP-RTB-12 | RTB | Platform ops: CTV gtax, admin simulate, A/B cohorts, multi-region budget |
-| GAP-OPS-03 | Operations | CH admin query governance; some paths bypass `CHQuery` |
-| GAP-OPS-04 | Operations | DLQ/spool unified dashboard |
-| GAP-PROD-01 | Product | Buyer/finance dashboards; scaffold routes return 501 |
-| GAP-PROD-03 | Product | No OpenAPI; godoc only |
-| GAP-GEO-01 | Geography | ~~Multi-region game days not productized~~ done M7.4 |
-| GAP-GEO-02 | Geography | Postgres DR manual; no automated failover |
-| GAP-PAY-01 | Payments | Crypto gateway; Stripe only today |
-| GAP-DATA-01 | Data | Raw PII in ClickHouse; hash pipeline + salt rotation |
-| GAP-CMP-01 | Compliance | Tarpit partial; full compliance matrix open |
-| GAP-ENG-01 | Engineering | Large flat `internal/management` package |
-| GAP-ENG-02 | Engineering | `cmd/broker` not in default compose |
-| GAP-ENG-03 | Engineering | Vendor telemetry opt-in only |
-| GAP-DB-01 | Database | Logger group-commit fsync tuning |
-| GAP-DB-02 | Database | CH spool group-commit if PEL retains unacked |
-| GAP-DB-03 | Database | Weighted processor gates |
+| GAP-GEO-02 | Automated Postgres failover (coordinator, fencing, regional DSN push) | `internal/management/pg_failover.go`, `TestChaos_PostgresMasterFailover` |
+| GAP-RTB-12 | Cross-region spend sync (`GlobalSpendReconciler`, idempotent ledger debits) | `internal/management/global_spend_*.go`, `AssertBudgetInvariant` at load |
+| GAP-RTB-10 | VAST 4.2 + creative-level auction (0-alloc hot path) | `internal/rtb/`, `make test-alloc-gate` |
+| GAP-MR-03 | Operation quorum when Postgres is down (2-of-3 Redis ACK) | `operation_lease_quorum_redis.go`, `TestChaos_QuorumBook_WithPGDown` |
+| GAP-DATA-01 | PII hashing before ClickHouse insert (versioned salt) | `pkg/piihash/`, migration `00010_pii_hash_columns.sql` |
+| GAP-DB-01/02 | Disk group-commit, `iogate` `fsyncSem`, WAL alignment, BPF `writev` | [GAP-DB-01-02-report.md](./GAP-DB-01-02-report.md) |
+| GAP-ENG-01 | `internal/management` domain registry, DTO boundaries, coverage gate | [GAP-ENG-01-report.md](./GAP-ENG-01-report.md), `make management-domain-coverage` |
+| GAP-OPS-03 | ClickHouse query governance (`CHQuery` gate, timeout, CI allowlist) | `internal/database/chquery.go`, `scripts/ci/check_ch_direct.sh` |
+| GAP-ENG-02 | Broker and region-proxy in local compose (`multi-region` profile) | `docker-compose.yaml`, `scripts/local-dev/dev_stack.sh multi-region up` |
+| GAP-DB-03 | Weighted processor gates (multi-instance stream cadence) | `internal/ingestion/processor_weight.go`, `GET /ops/processor-weights` |
+| GAP-CMP-01 | Edge tarpit + compliance matrix | `docs/COMPLIANCE_MATRIX.md`, `deploy/nginx/lua/tests/tarpit_test.lua` |
+| GAP-ENG-03 | Vendor telemetry probes | `pkg/vendorprobe/`, `ad_vendor_probe_*` metrics |
+| GAP-PAY-01 | Cryptocurrency payment gateway | `internal/payment/provider_crypto.go`, `TestChaos_CryptoWebhookReplay`, `deploy/payment/crypto-sandbox.env` |
+| GAP-PROD-03 | OpenAPI 3 `/api/v1` contract | `docs/openapi/openapi.yaml`, `make openapi-lint`, `tests/contract/openapi_test.go` |
+| GAP-RTB-12a | CTV gtax settlement | `ApplyCTVSettlement`, `TestChaos_CTVGtaxSettlementReplay` |
+| GAP-RTB-12b | Admin dry-run preview | `ParseDryRun`, `dry_run_test.go` |
+| GAP-RTB-12c | A/B cohorts | `experiment_cohorts`, `cohort_snapshot.go`, `cohort_test.go` |
 
-Suggested order: GAP-RTB-10..12 -> GAP-PROD-01 -> GAP-OPS-03/04 -> GAP-DATA-01 -> GAP-PAY-01 -> GAP-GEO-01/02.
+Engineering backlog in [MILESTONE.md](./MILESTONE.md) is clear except deferred UI (GAP-PROD-01, GAP-OPS-04).
 
 ---
 
-## Postgres DR (manual)
+## Open backlog
 
-Automated promote: GAP-GEO-02. Operator steps:
+Engineering gaps (non-UI): [MILESTONE.md](./MILESTONE.md).
+
+Deferred UI work (not in MILESTONE): GAP-PROD-01 buyer/finance dashboards, GAP-OPS-04 queue monitoring dashboard. HTMX remains for admin errors and cold-path flows only.
+
+---
+
+## Postgres DR
+
+**Automated failover (default):** `internal/management/pg_failover.go` — coordinator election via Redis (`pkg/broker/server/coord.go`), replica promotion, fencing tokens, DSN push to regional management cells. Validated by `TestChaos_PostgresMasterFailover`.
+
+**Manual fallback** (when automation is disabled or for game days):
 
 1. Confirm replica lag and health
 2. Promote sync/async standby per runbook
@@ -446,4 +605,4 @@ See [Shard-0 outage](#shard-0-outage). Shards 1-3 continue ingest; shard-0-homed
 
 ## Payment
 
-Stripe webhooks land on `payment` (:8187). Settlement outbox events -> management. Reconcile via `balance_ledger` sums and payment gRPC dispute routes. Crypto gateway: GAP-PAY-01.
+Вебхуки Stripe приходят на сервис `payment` (:8187). События для расчетов (settlement) передаются в `management` через outbox. Сверка выполняется через суммы в `balance_ledger` и gRPC-маршруты для споров (disputes). Криптовалютный шлюз (USDT): `POST /webhooks/crypto`, профиль compose `crypto` — см. [Cryptocurrency payment gateway (GAP-PAY-01)](#cryptocurrency-payment-gateway-gap-pay-01).
