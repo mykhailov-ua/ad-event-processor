@@ -1,7 +1,7 @@
 package rtb
 
 const (
-	rankDeadlineCheckMask = 31
+	rankDeadlineCheckMask = 127
 	rankMaxScanCandidates = 500
 )
 
@@ -55,22 +55,26 @@ func (registry *Registry) rankCandidates(
 	soa *candidateBucketSoA,
 	bucketStart int,
 	bucketEnd int,
-) (winnerIdx int, secondBid int64, scanned int, noBid NoBidReason) {
+) (winnerIdx int, winnerCreative CreativeID, secondBid int64, scanned int, noBid NoBidReason) {
 	winnerIdx = -1
+	winnerCreative = 0
 	var maxScore int64 = -1
 	secondBid = -1
 	var pacingBlocked bool
 	var dailyBlocked bool
+	var daypartBlocked bool
+	var freqBlocked bool
 
 	if soa == nil || !soa.slicesValid(bucketEnd) {
-		return -1, -1, 0, NoBidCorruptCatalog
+		return -1, 0, -1, 0, NoBidCorruptCatalog
 	}
 	// BCE: one window check eliminates per-iteration bounds checks on bucket slices.
 	if bucketStart < 0 || bucketEnd < bucketStart || bucketEnd > soa.len() {
-		return -1, -1, 0, NoBidCorruptCatalog
+		return -1, 0, -1, 0, NoBidCorruptCatalog
 	}
 
 	catalogIdx := soa.CatalogIdx[bucketStart:bucketEnd]
+	creativeIDs := soa.CreativeIDs[bucketStart:bucketEnd]
 	bids := soa.Bids[bucketStart:bucketEnd]
 	ctrppm := soa.CTRPPM[bucketStart:bucketEnd]
 	reserves := soa.Reserves[bucketStart:bucketEnd]
@@ -80,29 +84,109 @@ func (registry *Registry) rankCandidates(
 	categoryMasks := soa.CategoryMasks[bucketStart:bucketEnd]
 	weights := soa.Weights[bucketStart:bucketEnd]
 	boostPPM := soa.BoostPPM[bucketStart:bucketEnd]
+	mediaTypes := soa.MediaTypes[bucketStart:bucketEnd]
+	durationSec := soa.DurationSec[bucketStart:bucketEnd]
 	budgetIndices := soa.BudgetIndices[bucketStart:bucketEnd]
 	customerBudgetIndices := soa.CustomerBudgetIndices[bucketStart:bucketEnd]
+	daypartMasks := soa.DaypartMasks[bucketStart:bucketEnd]
+	tzOffsets := soa.TZOffsetSec[bucketStart:bucketEnd]
+	scheduleStarts := soa.ScheduleStart[bucketStart:bucketEnd]
+	scheduleEnds := soa.ScheduleEnd[bucketStart:bucketEnd]
+	freqLimits := soa.FreqLimits[bucketStart:bucketEnd]
+	fcapPrefixHashes := soa.FcapPrefixHash[bucketStart:bucketEnd]
 
 	regCount := reg.Count
 	deviceType := req.DeviceType
 	categoryMask := req.CategoryMask
+	mediaMask := req.MediaTypeMask
+	maxDuration := req.MaxDurationSec
 	minBid := req.MinBid
 	store := registry.store
 	winnerPos := -1
 	deadline := req.DeadlineMono
 	hasDeadline := deadline > 0
+	nowUnix := req.NowUnix
+	fcapUserHash := req.FcapUserHash
+	fcapSnap := registry.LoadFcapSnapshot()
 
-	for pos := 0; pos < len(catalogIdx); pos++ {
+	n := len(catalogIdx)
+	if n > 0 {
+		_ = catalogIdx[n-1]
+		_ = creativeIDs[n-1]
+		_ = bids[n-1]
+	}
+
+	for pos := 0; pos < n; pos++ {
+		if hasDeadline && scanned&rankDeadlineCheckMask == 0 && monotonicNano() > deadline {
+			return -1, 0, -1, scanned, NoBidTimeout
+		}
+
+		// Manual inline of scheduleOpen and FcapCount to reduce CALL overhead
+		start := sliceAtI64(scheduleStarts, pos)
+		if start > 0 && nowUnix < start {
+			daypartBlocked = true
+			continue
+		}
+		end := sliceAtI64(scheduleEnds, pos)
+		if end > 0 && nowUnix >= end {
+			daypartBlocked = true
+			continue
+		}
+		mask := sliceAtU32(daypartMasks, pos)
+		if mask != 0 {
+			tzOff := sliceAtI32(tzOffsets, pos)
+			local := nowUnix + int64(tzOff)
+			sec := local % 86400
+			if sec < 0 {
+				sec += 86400
+			}
+			hour := int(sec / 3600)
+			if hour >= 0 && hour < 24 && (mask&(1<<uint(hour)) == 0) {
+				daypartBlocked = true
+				continue
+			}
+		}
+
+		freqLimit := sliceAtU32(freqLimits, pos)
+		if freqLimit > 0 && fcapUserHash != 0 && fcapSnap != nil {
+			prefixHash := sliceAtU64(fcapPrefixHashes, pos)
+			if prefixHash != 0 {
+				lookup := FcapLookupKey(prefixHash, fcapUserHash)
+				snapMask := fcapSnap.Mask
+				snapKeys := fcapSnap.Keys
+				snapVals := fcapSnap.Values
+				if len(snapKeys) > 0 {
+					p := lookup & snapMask
+					found := false
+					for {
+						k := snapKeys[p]
+						if k == lookup {
+							if snapVals[p] >= freqLimit {
+								freqBlocked = true
+								found = true
+							}
+							break
+						}
+						if k == 0 {
+							break
+						}
+						p = (p + 1) & snapMask
+					}
+					if found {
+						continue
+					}
+				}
+			}
+		}
+
 		scanned++
 		if scanned > rankMaxScanCandidates {
-			return -1, -1, scanned, NoBidScanLimit
+			return -1, 0, -1, scanned, NoBidScanLimit
 		}
-		if hasDeadline && scanned&rankDeadlineCheckMask == 0 && monotonicNano() > deadline {
-			return -1, -1, scanned, NoBidTimeout
-		}
+
 		i := int(catalogIdx[pos])
 		if i < 0 || i >= regCount {
-			return -1, -1, scanned, NoBidCorruptCatalog
+			return -1, 0, -1, scanned, NoBidCorruptCatalog
 		}
 
 		if pacingOpen[pos] == PacingClosed {
@@ -115,6 +199,21 @@ func (registry *Registry) rankCandidates(
 		if (categoryMasks[pos] & categoryMask) == 0 {
 			continue
 		}
+		if mediaMask != 0 {
+			mt := mediaTypes[pos]
+			if mt == 0 {
+				mt = uint8(MediaTypeDisplay)
+			}
+			if mt&mediaMask == 0 {
+				continue
+			}
+		}
+		if maxDuration > 0 {
+			dur := durationSec[pos]
+			if dur > 0 && dur > maxDuration {
+				continue
+			}
+		}
 
 		bid := bids[pos]
 		reserve := reserves[pos]
@@ -124,7 +223,7 @@ func (registry *Registry) rankCandidates(
 
 		budgetIdx := budgetIndices[pos]
 		if !store.budgetSlotExists(budgetIdx) {
-			return -1, -1, scanned, NoBidCorruptCatalog
+			return -1, 0, -1, scanned, NoBidCorruptCatalog
 		}
 		if store.LoadBudget(budgetIdx) < bid {
 			continue
@@ -149,11 +248,13 @@ func (registry *Registry) rankCandidates(
 			maxScore = score
 			winnerIdx = i
 			winnerPos = pos
+			winnerCreative = creativeIDs[pos]
 		} else if score == maxScore && winnerIdx >= 0 {
 			if weights[pos] > weights[winnerPos] {
 				secondBid = bids[winnerPos]
 				winnerIdx = i
 				winnerPos = pos
+				winnerCreative = creativeIDs[pos]
 			}
 			if bid > secondBid {
 				secondBid = bid
@@ -164,13 +265,19 @@ func (registry *Registry) rankCandidates(
 	}
 
 	if winnerIdx == -1 {
+		if daypartBlocked {
+			return -1, 0, -1, scanned, NoBidDaypartClosed
+		}
+		if freqBlocked {
+			return -1, 0, -1, scanned, NoBidFreqCapExceeded
+		}
 		if pacingBlocked {
-			return -1, -1, scanned, NoBidPacingClosed
+			return -1, 0, -1, scanned, NoBidPacingClosed
 		}
 		if dailyBlocked {
-			return -1, -1, scanned, NoBidDailyCapExceeded
+			return -1, 0, -1, scanned, NoBidDailyCapExceeded
 		}
-		return -1, -1, scanned, NoBidNoCandidates
+		return -1, 0, -1, scanned, NoBidNoCandidates
 	}
-	return winnerIdx, secondBid, scanned, NoBidNone
+	return winnerIdx, winnerCreative, secondBid, scanned, NoBidNone
 }

@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+// Parsed VAST 4.2 document for video creative cache and vtproto round-trip on the cold path.
+package rtb.v1;
+
+option go_package = "espx/internal/rtb/pb;pb";
+
+message VastDocument {
+  bytes version = 1;
+  repeated VastAd ads = 2;
+}
+
+message VastAd {
+  bytes id = 1;
+  VastInline inline = 2;
+  VastWrapper wrapper = 3;
+}
+
+message VastInline {
+  bytes ad_system = 1;
+  bytes ad_title = 2;
+  repeated VastCreative creatives = 3;
+}
+
+message VastWrapper {
+  bytes vast_ad_tag_uri = 1;
+  repeated VastCreative creatives = 2;
+}
+
+message VastCreative {
+  bytes id = 1;
+  VastLinear linear = 2;
+}
+
+message VastLinear {
+  uint32 duration_sec = 1;
+  repeated VastMediaFile media_files = 2;
+}
+
+message VastMediaFile {
+  bytes uri = 1;
+  bytes mime_type = 2;
+  uint32 width = 3;
+  uint32 height = 4;
+  uint32 bitrate = 5;
+}

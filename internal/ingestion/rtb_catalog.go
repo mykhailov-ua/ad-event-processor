@@ -175,6 +175,9 @@ func (catalog *RtbCatalog) RunAuction(evt *campaignmodel.Event, targeting RtbTar
 		}
 	}
 	targeting = catalog.enrichTargetingDeal(targeting)
+	if catalog.settingsWatcher != nil {
+		catalog.registry.SetFcapSnapshot(catalog.settingsWatcher.GetFcapRtbSnapshot())
+	}
 	req := BidRequestFromEvent(evt, targeting)
 	if catalog.authority == BudgetAuthorityShadow {
 		return catalog.registry.RunAuctionEval(&req)

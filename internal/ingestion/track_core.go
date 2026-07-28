@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"espx/internal/campaignmodel"
+	"espx/internal/ingestion/traceprobe"
 )
 
 // trackStatus is the shared /track decision after filters and landing resolution.
@@ -47,6 +48,17 @@ func newTrackProcessor(filterEngine *FilterEngine, registry campaignmodel.Campai
 
 // processTrack runs RTB (when configured), filter checks, and landing URL resolution for both ingest paths.
 func processTrack(p trackProcessor, evt *campaignmodel.Event, deviceType []byte) trackOutcome {
+	slot := uint32(0)
+	if evt != nil {
+		slot = uint32(CampaignSlotIndex(evt.CampaignID))
+	}
+	traceprobe.ProcessTrackEnter(slot)
+	out := processTrackInner(p, evt, deviceType)
+	traceprobe.ProcessTrackExit(slot)
+	return out
+}
+
+func processTrackInner(p trackProcessor, evt *campaignmodel.Event, deviceType []byte) trackOutcome {
 	ensureIngestGeo(p.ingestGeo, evt)
 	if out, handled := applyRtbAuction(p, evt, deviceType); handled {
 		releaseOpenRTB3Scratch(evt)

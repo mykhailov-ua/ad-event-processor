@@ -213,6 +213,9 @@ func SyncRtbCatalog(
 	inputs := BuildRtbInputsFromRegistry(registry, cfg, metaByID, customerPools, hybrid, boosts)
 	rows := BuildRtbCatalogRowsFromHybrid(campaigns, metaByID, inputs)
 	catalog.SyncCampaignRows(campaigns, rows)
+	if watcher != nil {
+		catalog.registry.SetFcapSnapshot(watcher.GetFcapRtbSnapshot())
+	}
 	SyncRTBBudgetState(ctx, catalog.Registry().Store(), campaigns, customerPools, budgetSync)
 }
 

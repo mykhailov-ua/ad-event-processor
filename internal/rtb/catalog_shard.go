@@ -22,6 +22,12 @@ type CampaignAuctionRegistry struct {
 	BoostPPM              []uint32
 	BudgetIndices         []uint32
 	CustomerBudgetIndices []uint32
+	DaypartMasks          []uint32
+	TZOffsetSec           []int32
+	ScheduleStart         []int64
+	ScheduleEnd           []int64
+	FreqLimits            []uint32
+	FcapPrefixHash        []uint64
 
 	GeoBucketCount int
 	GeoBucketHash  []uint32
@@ -32,6 +38,9 @@ type CampaignAuctionRegistry struct {
 	TargetBucketKey   []uint64
 	TargetBucketStart []uint32
 	TargetBucketSoA   candidateBucketSoA
+
+	CreativeCache         creativeCacheSoA
+	CampaignCreativeStart []uint32
 }
 
 // CampaignData is the cold-path input shape used when management sync rebuilds auction shards.
@@ -50,6 +59,12 @@ type CampaignData struct {
 	Weight         uint32
 	BoostPPM       uint32
 	Budget         int64
+	DaypartMask    uint32
+	TZOffsetSec    int32
+	ScheduleStart  int64
+	ScheduleEnd    int64
+	FreqLimit      uint32
+	FcapPrefixHash uint64
 }
 
 // catalogSnapshot holds every geo shard so UpdateCampaigns publishes the full catalog in one atomic store.

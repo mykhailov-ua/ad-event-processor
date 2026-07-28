@@ -32,6 +32,10 @@ const (
 	NoBidSchainInvalid
 	// NoBidBreakerOpen means the global emergency breaker blocked the auction.
 	NoBidBreakerOpen
+	// NoBidDaypartClosed means every candidate was outside its delivery daypart window.
+	NoBidDaypartClosed
+	// NoBidFreqCapExceeded means every candidate hit the frequency-cap snapshot gate.
+	NoBidFreqCapExceeded
 )
 
 // OK reports whether the auction cleared.
@@ -70,6 +74,10 @@ func (reason NoBidReason) String() string {
 		return "schain_invalid"
 	case NoBidBreakerOpen:
 		return "breaker_open"
+	case NoBidDaypartClosed:
+		return "daypart_closed"
+	case NoBidFreqCapExceeded:
+		return "freq_cap"
 	default:
 		return "unknown"
 	}

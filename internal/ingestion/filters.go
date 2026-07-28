@@ -8,6 +8,7 @@ import (
 	"unsafe"
 
 	"espx/internal/campaignmodel"
+	"espx/internal/ingestion/traceprobe"
 
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
@@ -231,6 +232,17 @@ func (e *FilterEngine) SetSettingsWatcher(watcher *SettingsWatcher) {
 // Check runs filters in order until one rejects or the deadline expires.
 // Production tracker stores the monotonic deadline on evt.FilterDeadlineMono (zero allocs).
 func (e *FilterEngine) Check(ctx context.Context, evt *campaignmodel.Event) error {
+	slot := uint32(0)
+	if evt != nil {
+		slot = uint32(CampaignSlotIndex(evt.CampaignID))
+	}
+	traceprobe.FilterCheckEnter(slot)
+	err := e.checkInner(ctx, evt)
+	traceprobe.FilterCheckExit(slot)
+	return err
+}
+
+func (e *FilterEngine) checkInner(ctx context.Context, evt *campaignmodel.Event) error {
 	if e.timeout > 0 && evt != nil {
 		evt.FilterDeadlineMono = monotonicNano() + e.timeout.Nanoseconds()
 	}

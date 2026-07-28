@@ -11,6 +11,8 @@ type Registry struct {
 	snapGen               atomic.Uint64
 	clearingMode          atomic.Uint32
 	targetingIndexEnabled atomic.Bool
+	pendingCreatives      []CreativeData
+	fcap                  fcapSnap
 }
 
 // NewRegistry creates the geo-partitioned registry that auction readers query without writer locks.
@@ -64,6 +66,25 @@ func (registry *Registry) Store() *BudgetStore {
 	return registry.store
 }
 
+// SetFcapSnapshot swaps the read-only frequency-cap counts used by pre-auction gates.
+func (registry *Registry) SetFcapSnapshot(snap *FcapSnapshot) {
+	registry.fcap.store(snap)
+}
+
+// LoadFcapSnapshot returns the current frequency-cap snapshot without allocation.
+func (registry *Registry) LoadFcapSnapshot() *FcapSnapshot {
+	return registry.fcap.load()
+}
+
+// UpdateCreatives stores creative rows applied on the next UpdateCampaigns rebuild.
+func (registry *Registry) UpdateCreatives(creatives []CreativeData) {
+	if len(creatives) == 0 {
+		registry.pendingCreatives = nil
+		return
+	}
+	registry.pendingCreatives = append(registry.pendingCreatives[:0], creatives...)
+}
+
 // UpdateCampaigns rebuilds every shard off the hot path and swaps pointers atomically so readers never see torn state.
 func (registry *Registry) UpdateCampaigns(campaigns []CampaignData) {
 	var counts [geoShardCount]int
@@ -90,6 +111,12 @@ func (registry *Registry) UpdateCampaigns(campaigns []CampaignData) {
 			BoostPPM:              make([]uint32, n),
 			BudgetIndices:         make([]uint32, n),
 			CustomerBudgetIndices: make([]uint32, n),
+			DaypartMasks:          make([]uint32, n),
+			TZOffsetSec:           make([]int32, n),
+			ScheduleStart:         make([]int64, n),
+			ScheduleEnd:           make([]int64, n),
+			FreqLimits:            make([]uint32, n),
+			FcapPrefixHash:        make([]uint64, n),
 		}
 	}
 
@@ -113,12 +140,20 @@ func (registry *Registry) UpdateCampaigns(campaigns []CampaignData) {
 		reg.BoostPPM[wIdx] = normalizeCTRPPM(c.BoostPPM)
 		reg.BudgetIndices[wIdx] = registry.store.GetOrAllocateSlot(c.ID, c.Budget)
 		reg.CustomerBudgetIndices[wIdx] = registry.store.GetOrAllocateCustomerSlot(c.CustomerID, c.CustomerBudget)
+		reg.DaypartMasks[wIdx] = c.DaypartMask
+		reg.TZOffsetSec[wIdx] = c.TZOffsetSec
+		reg.ScheduleStart[wIdx] = c.ScheduleStart
+		reg.ScheduleEnd[wIdx] = c.ScheduleEnd
+		reg.FreqLimits[wIdx] = c.FreqLimit
+		reg.FcapPrefixHash[wIdx] = c.FcapPrefixHash
 
 		writeIndices[shardIdx]++
 	}
 
 	targetingEnabled := registry.targetingIndexEnabled.Load()
+	shardCreatives := partitionCreativesByShard(campaigns, registry.pendingCreatives)
 	for shardIdx := 0; shardIdx < geoShardCount; shardIdx++ {
+		buildCreativeCache(registries[shardIdx], shardCreatives[shardIdx])
 		buildGeoIndex(registries[shardIdx])
 		if targetingEnabled {
 			buildTargetingIndex(registries[shardIdx])
@@ -127,6 +162,25 @@ func (registry *Registry) UpdateCampaigns(campaigns []CampaignData) {
 	}
 
 	registry.publishCatalog(registries)
+}
+
+func partitionCreativesByShard(campaigns []CampaignData, creatives []CreativeData) [geoShardCount][]CreativeData {
+	var out [geoShardCount][]CreativeData
+	if len(creatives) == 0 {
+		return out
+	}
+	campaignShard := make(map[CampaignID]uint32, len(campaigns))
+	for i := range campaigns {
+		campaignShard[campaigns[i].ID] = campaigns[i].GeoHashVal & geoShardMask
+	}
+	for i := range creatives {
+		shard, ok := campaignShard[creatives[i].CampaignID]
+		if !ok {
+			continue
+		}
+		out[shard] = append(out[shard], creatives[i])
+	}
+	return out
 }
 
 func (registry *Registry) publishCatalog(shards [geoShardCount]*CampaignAuctionRegistry) {

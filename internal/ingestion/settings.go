@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"espx/internal/config"
+	"espx/internal/rtb"
 	"espx/pkg/money"
 
 	"github.com/google/uuid"
@@ -50,6 +51,7 @@ type SettingsWatcher struct {
 	currentVersion   int64
 	snapshot         atomic.Value // *DynamicConfig
 	fraudScoreBoosts atomic.Value // *FraudScoreBoostSnapshot
+	fcapSnap         atomic.Pointer[rtb.FcapSnapshot]
 	onChange         []SettingsChangeListener
 }
 
@@ -71,6 +73,7 @@ func NewSettingsWatcher(rdbs []redis.UniversalClient, initial *config.Config) *S
 	sw.fraudScoreBoosts.Store(&FraudScoreBoostSnapshot{
 		Boosts: make(map[uuid.UUID]uint8),
 	})
+	sw.fcapSnap.Store(emptyFcapSnapshot)
 
 	return sw
 }
@@ -97,6 +100,18 @@ func (sw *SettingsWatcher) GetFraudScoreBoosts() *FraudScoreBoostSnapshot {
 	return v.(*FraudScoreBoostSnapshot)
 }
 
+// GetFcapRtbSnapshot returns the current frequency-cap counts for RTB pre-auction gates.
+func (sw *SettingsWatcher) GetFcapRtbSnapshot() *rtb.FcapSnapshot {
+	if sw == nil {
+		return emptyFcapSnapshot
+	}
+	snap := sw.fcapSnap.Load()
+	if snap == nil {
+		return emptyFcapSnapshot
+	}
+	return snap
+}
+
 // Start polls Redis on interval until the context is cancelled.
 func (sw *SettingsWatcher) Start(ctx context.Context, interval time.Duration) {
 	ticker := time.NewTicker(interval)
@@ -109,6 +124,7 @@ func (sw *SettingsWatcher) Start(ctx context.Context, interval time.Duration) {
 		case <-ticker.C:
 			sw.sync(ctx)
 			sw.syncFraudScoreBoosts(ctx)
+			sw.syncFcapCounts(ctx)
 		}
 	}
 }

@@ -3,6 +3,7 @@ package ingestion
 import (
 	"encoding/binary"
 	"hash/crc32"
+	"unsafe"
 
 	"espx/internal/campaignmodel"
 	"espx/internal/rtb"
@@ -91,6 +92,10 @@ func DeviceMaskFromType(deviceType []byte) uint8 {
 
 // BidRequestFromEvent builds an rtb.BidRequest from ingest state without heap allocation.
 func BidRequestFromEvent(evt *campaignmodel.Event, targeting RtbTargetingInput) rtb.BidRequest {
+	var fcapUserHash uint64
+	if evt != nil && evt.UserID != "" {
+		fcapUserHash = hashUserID(evt.UserID)
+	}
 	return rtb.BidRequest{
 		CategoryMask: targeting.CategoryMask,
 		MinBid:       targeting.PublisherFloorMicro,
@@ -98,7 +103,16 @@ func BidRequestFromEvent(evt *campaignmodel.Event, targeting RtbTargetingInput) 
 		DeviceType:   targeting.DeviceType,
 		DeadlineMono: targeting.DeadlineMono,
 		DealBlock:    targeting.DealBlock,
+		NowUnix:      CachedTimeUTC().Unix(),
+		FcapUserHash: fcapUserHash,
 	}
+}
+
+func hashUserID(userID string) uint64 {
+	if userID == "" {
+		return 0
+	}
+	return rtb.HashBytes64(unsafe.Slice(unsafe.StringData(userID), len(userID)))
 }
 
 // CampaignDataFromDomain converts a hot-path campaign view plus auction input into rtb catalog rows.
@@ -106,6 +120,15 @@ func CampaignDataFromDomain(camp *campaignmodel.Campaign, input RtbCampaignInput
 	remaining := camp.BudgetLimit - camp.CurrentSpend
 	if remaining < 0 {
 		remaining = 0
+	}
+	daypartMask, tzOffset, startUnix, endUnix := scheduleFieldsFromCampaign(camp)
+	var freqLimit uint32
+	if camp.FreqLimit > 0 {
+		freqLimit = uint32(camp.FreqLimit)
+	}
+	var fcapPrefixHash uint64
+	if camp.FcapKeyPrefix != "" {
+		fcapPrefixHash = rtb.HashBytes64([]byte(camp.FcapKeyPrefix))
 	}
 	return rtb.CampaignData{
 		ID:             CampaignIDFromUUID(camp.ID),
@@ -122,7 +145,32 @@ func CampaignDataFromDomain(camp *campaignmodel.Campaign, input RtbCampaignInput
 		Weight:         input.Weight,
 		BoostPPM:       input.BoostPPM,
 		Budget:         remaining,
+		DaypartMask:    daypartMask,
+		TZOffsetSec:    tzOffset,
+		ScheduleStart:  startUnix,
+		ScheduleEnd:    endUnix,
+		FreqLimit:      freqLimit,
+		FcapPrefixHash: fcapPrefixHash,
 	}
+}
+
+func scheduleFieldsFromCampaign(camp *campaignmodel.Campaign) (mask uint32, tzOffset int32, startUnix, endUnix int64) {
+	if camp == nil {
+		return 0, 0, 0, 0
+	}
+	mask = rtb.DaypartMaskFromHours(camp.DaypartHours)
+	now := CachedTimeUTC()
+	if camp.Location != nil {
+		_, off := now.In(camp.Location).Zone()
+		tzOffset = int32(off)
+	}
+	if camp.StartAt != nil {
+		startUnix = camp.StartAt.Unix()
+	}
+	if camp.EndAt != nil {
+		endUnix = camp.EndAt.Unix()
+	}
+	return mask, tzOffset, startUnix, endUnix
 }
 
 // BuildRtbCatalogRows materializes rtb.CampaignData rows from active campaigns and per-campaign inputs.

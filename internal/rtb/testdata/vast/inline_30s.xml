@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VAST version="4.2">
+  <Ad id="ad-linear-30s">
+    <InLine>
+      <AdSystem>ESPX Test</AdSystem>
+      <AdTitle>Linear 30s</AdTitle>
+      <Creatives>
+        <Creative id="cr-1001" sequence="1">
+          <Linear>
+            <Duration>00:00:30</Duration>
+            <MediaFiles>
+              <MediaFile delivery="progressive" type="video/mp4" width="640" height="360" bitrate="800">
+                https://cdn.example.com/video/30s.mp4
+              </MediaFile>
+            </MediaFiles>
+          </Linear>
+        </Creative>
+      </Creatives>
+    </InLine>
+  </Ad>
+</VAST>

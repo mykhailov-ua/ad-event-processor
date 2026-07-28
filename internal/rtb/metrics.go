@@ -35,6 +35,8 @@ type preboundAuctionMetrics struct {
 	noBidPrebidIVT      prometheus.Counter
 	noBidSchainInvalid  prometheus.Counter
 	noBidBreakerOpen    prometheus.Counter
+	noBidDaypartClosed  prometheus.Counter
+	noBidFreqCap        prometheus.Counter
 }
 
 var (
@@ -91,6 +93,12 @@ func bindAuctionMetrics() {
 		noBidBreakerOpen: metrics.RtbAuctionNoBidTotal.WithLabelValues(
 			NoBidBreakerOpen.String(),
 		),
+		noBidDaypartClosed: metrics.RtbAuctionNoBidTotal.WithLabelValues(
+			NoBidDaypartClosed.String(),
+		),
+		noBidFreqCap: metrics.RtbAuctionNoBidTotal.WithLabelValues(
+			NoBidFreqCapExceeded.String(),
+		),
 	}
 }
 
@@ -137,6 +145,10 @@ func recordAuctionNoBid(reason NoBidReason, scanned int) {
 		auctionMetrics.noBidSchainInvalid.Inc()
 	case NoBidBreakerOpen:
 		auctionMetrics.noBidBreakerOpen.Inc()
+	case NoBidDaypartClosed:
+		auctionMetrics.noBidDaypartClosed.Inc()
+	case NoBidFreqCapExceeded:
+		auctionMetrics.noBidFreqCap.Inc()
 	}
 	if scanned > 0 {
 		auctionMetrics.candidatesScanned.Observe(float64(scanned))

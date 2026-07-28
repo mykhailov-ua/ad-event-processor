@@ -40,7 +40,7 @@ func (registry *Registry) runAuction(req *BidRequest, spend bool) (AuctionResult
 	}
 
 	clearing := registry.ClearingMode()
-	winnerIdx, secondBid, scanned, noBid := registry.rankCandidates(reg, req, bucket, bucketStart, bucketEnd)
+	winnerIdx, winnerCreative, secondBid, scanned, noBid := registry.rankCandidates(reg, req, bucket, bucketStart, bucketEnd)
 	if noBid != NoBidNone {
 		recordAuctionOutcome(start, noBid, scanned)
 		return AuctionResult{}, noBid
@@ -68,6 +68,7 @@ func (registry *Registry) runAuction(req *BidRequest, spend bool) (AuctionResult
 	recordAuctionOutcome(start, NoBidNone, scanned)
 	return AuctionResult{
 		CampaignID: reg.CampaignIDs[winnerIdx],
+		CreativeID: winnerCreative,
 		Price:      price,
 	}, NoBidNone
 }
