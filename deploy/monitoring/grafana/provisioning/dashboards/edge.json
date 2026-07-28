@@ -240,6 +240,33 @@
       ],
       "title": "Lua fast path p99 + ratio (M2)",
       "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 22 },
+      "id": 216,
+      "targets": [
+        {
+          "expr": "sum(rate(espx_edge_tarpit_total[1m]))",
+          "legendFormat": "tarpit delayed req/s",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(espx_edge_tarpit_delay_ms_total[1m]))",
+          "legendFormat": "tarpit delay ms/s",
+          "refId": "B"
+        }
+      ],
+      "title": "Edge tarpit (GAP-CMP-01, EDGE_TARPIT_ENABLED)",
+      "type": "timeseries"
     }
   ],
   "refresh": "10s",

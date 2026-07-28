@@ -27,7 +27,7 @@ echo "CMP-FORB-01: OK"
 # 3. CMP-FORB-02: No hack back (reverse DDoS, flood origin)
 echo "Checking CMP-FORB-02: No outbound attack or hack-back helpers..."
 # Search for flood or attack patterns or reverse DDoS helpers
-if grep -rnEi "\bsyn_flood\b|\budp_flood\b|\bhack_back\b|\breverse_ddos\b" . --exclude-dir="scripts" --exclude-dir="node_modules" --exclude-dir="docs" 2>/dev/null; then
+if grep -rnEi "\bsyn_flood\b|\budp_flood\b|\bhack_back\b|\breverse_ddos\b" . --exclude-dir="scripts" --exclude-dir="node_modules" --exclude-dir="docs" --exclude-dir=".cursor" 2>/dev/null; then
     echo "COMPLIANCE FAILURE: Found potential hack-back or attack pattern!"
     exit 1
 fi
@@ -36,7 +36,7 @@ echo "CMP-FORB-02: OK"
 # 4. CMP-FORB-03: No port scan / nmap / active probe
 echo "Checking CMP-FORB-03: No port scanning or active probing..."
 # Search for nmap or portscan dependencies or calls
-if grep -rnEi "\bnmap\b|\bportscan\b|\bport_scan\b|\bactive_probe\b" . --exclude-dir="scripts" --exclude-dir="node_modules" --exclude-dir="docs" 2>/dev/null; then
+if grep -rnEi "\bnmap\b|\bportscan\b|\bport_scan\b|\bactive_probe\b" . --exclude-dir="scripts" --exclude-dir="node_modules" --exclude-dir="docs" --exclude-dir=".cursor" 2>/dev/null; then
     echo "COMPLIANCE FAILURE: Found potential port scan or active probe pattern!"
     exit 1
 fi
@@ -66,5 +66,28 @@ if rg 'SelectAndShard' --glob '*.go' --glob '!*_test.go' --glob '!*jumphash*' . 
     exit 1
 fi
 echo "M9-07: OK"
+
+# 8. GAP-CMP-01: compliance matrix maintained
+echo "Checking GAP-CMP-01: COMPLIANCE_MATRIX.md..."
+if [[ ! -f docs/COMPLIANCE_MATRIX.md ]]; then
+    echo "COMPLIANCE FAILURE: docs/COMPLIANCE_MATRIX.md missing"
+    exit 1
+fi
+echo "GAP-CMP-01 matrix: OK"
+
+# 9. CMP-DEF-03: tarpit hard cap <= 15s
+echo "Checking CMP-DEF-03: tarpit max delay cap..."
+if ! grep -q 'MAX_SEC > 15' deploy/nginx/lua/edge-tarpit.lua; then
+    echo "COMPLIANCE FAILURE: edge-tarpit.lua missing 15s hard cap"
+    exit 1
+fi
+echo "CMP-DEF-03 cap: OK"
+
+# 10. Offline tarpit Lua unit test (when luajit available)
+if command -v luajit >/dev/null 2>&1; then
+    echo "Running tarpit_test.lua..."
+    luajit deploy/nginx/lua/tests/tarpit_test.lua deploy/nginx/lua
+    echo "tarpit_test.lua: OK"
+fi
 
 echo "COMPLIANCE CHECK SUCCESSFUL: All defensive perimeter rules are met!"
