@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 	"testing"
+	"time"
 
 	"espx/internal/config"
 	"espx/internal/database"
@@ -11,8 +12,11 @@ import (
 	"espx/internal/ingestion"
 	db "espx/internal/ingestion/sqlc"
 	"espx/pkg/dedupkey"
+	"espx/pkg/regionproxy/opkey"
+	"espx/pkg/regionproxy/quorum"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 )
 
@@ -133,5 +137,80 @@ func TestChaos_RegionProxyQuorumBook_Kill2of3Simulated(t *testing.T) {
 		"quorum_acks": "1",
 		"client_ack":  "false",
 		"baseline_ok": "true",
+	})
+}
+
+// TestChaos_QuorumBook_WithPGDown is GAP-MR-03: 2-of-3 book ACK via Redis when Postgres is stopped.
+func TestChaos_QuorumBook_WithPGDown(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration test")
+	}
+
+	ctx := context.Background()
+	infra, cleanup := database.SetupTestDBInfra(t)
+	t.Cleanup(cleanup)
+	rdb, cleanupRedis := database.SetupTestRedis(t)
+	t.Cleanup(cleanupRedis)
+
+	cfg := &config.Config{MultiRegionEnabled: true, RegionCode: 1, NodeID: "proxy-a"}
+	svc := newBareService(t, infra.Pool, []redis.UniversalClient{rdb}, cfg)
+	worker := NewOperationLeaseWorker(svc)
+
+	opID := uuid.New()
+	replicas := []string{"proxy-a", "proxy-b", "proxy-c"}
+	scope := dedup.NewAdapter(infra.Pool, 1, 1).RegionScope(dedupkey.RelaySourceID(1), 77, 77)
+
+	stopLeasePGContainer(t, infra)
+	require.Eventually(t, func() bool {
+		return infra.Pool.Ping(ctx) != nil
+	}, 15*time.Second, 200*time.Millisecond)
+
+	bookRes, err := worker.Book(ctx, OperationLeaseBookRequest{
+		OpID:         opID,
+		RegionCode:   1,
+		Role:         "region-proxy",
+		ReplicaSetID: uuid.New(),
+		Attempt:      1,
+		FactorU:      uuid.New(),
+		Scope:        scope,
+		ReplicaNodes: replicas,
+		BookAckNodes: []string{"proxy-a"},
+	})
+	require.ErrorIs(t, err, ErrLeaseQuorumNotMet)
+	require.False(t, bookRes.QuorumMet)
+	require.Equal(t, int32(1), bookRes.AckCount)
+
+	var slot opkey.Slot
+	slot.Seq = 99
+	slot.SetDerivedForTest()
+	copy(slot.OpID[:], opID[:])
+	committer := opkey.NewBatchCommitter(rdb, "proxy-a", replicas)
+	ready, err := committer.PrepareForward(ctx, &slot)
+	require.NoError(t, err)
+	require.False(t, ready)
+	require.Equal(t, uint64(0), committer.Committed())
+
+	status, err := worker.AckBook(ctx, opID, "proxy-b")
+	require.NoError(t, err)
+	require.True(t, status.QuorumMet)
+	require.Equal(t, int32(2), status.AckCount)
+
+	ready, err = committer.PrepareForward(ctx, &slot)
+	require.NoError(t, err)
+	require.True(t, ready)
+	committer.Complete(ctx, &slot)
+	require.Equal(t, uint64(1), committer.Committed())
+
+	st, err := quorum.ReadStatus(ctx, rdb, opIDBytes(opID), len(replicas))
+	require.NoError(t, err)
+	require.Equal(t, quorum.StateCompleted, st.State)
+
+	logChaosProof(t, "mr_quorum_book_pg_down", map[string]string{
+		"subsystem":     "region_proxy_quorum",
+		"op_id":         opID.String(),
+		"quorum_acks":   "2",
+		"client_ack":    "true",
+		"opkey_commits": "1",
+		"baseline_ok":   "true",
 	})
 }

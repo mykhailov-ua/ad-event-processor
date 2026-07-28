@@ -284,6 +284,14 @@ services:
       - CH_SPOOL_DIR=/var/spool/espx/ch
       - TRACKER_PG_FALLBACK=${TRACKER_PG_FALLBACK:-0}
       - ENV=${ENV:-development}
+      - MULTI_REGION_ENABLED=${MULTI_REGION_ENABLED:-0}
+      - ESPX_REGION_CODE=${ESPX_REGION_CODE:-0}
+      - REGION_PROXY_ADDR=${REGION_PROXY_ADDR:-127.0.0.1:9093}
+      - REGION_PROXY_REDIS_URL=${REGION_PROXY_REDIS_URL:-redis://127.0.0.1:6479/0}
+      - GLOBAL_SPEND_BATCH_MIN=${GLOBAL_SPEND_BATCH_MIN:-100}
+      - NODE_ID=${NODE_ID:-processor}
+      - PROCESSOR_WEIGHT_ENABLED=${PROCESSOR_WEIGHT_ENABLED:-0}
+      - MANAGEMENT_URL=${MANAGEMENT_URL:-http://127.0.0.1:8188}
       - GOMEMLIMIT=1500MiB  # processor holds larger in-flight batches; needs wider heap
       - GOGC=100            # standard GC pace; processor is not latency-critical
     healthcheck:
@@ -303,6 +311,128 @@ services:
       redis-0:
         condition: service_healthy
       clickhouse:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+
+  # Second processor replica for weighted consume lab (profile: multi-region).
+  processor-1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: ["/processor"]
+    network_mode: "${NET_MODE:-host}"
+    profiles:
+      - multi-region
+    env_file:
+      - .env
+    volumes:
+      - espx_logs:/var/log/espx:rw
+      - espx_ch_spool_1:/var/spool/espx/ch:rw
+      - ./deploy/geoip:/deploy/geoip:rw
+    environment:
+      - DB_DSN=${DB_DSN}
+      - REDIS_ADDRS=127.0.0.1:6479,127.0.0.1:6480,127.0.0.1:6481,127.0.0.1:6482,127.0.0.1:6483,127.0.0.1:6484
+      - CH_DSN=${CH_DSN}
+      - PROCESSOR_PORT=8187
+      - SERVER_PORT=8187
+      - GEOIP_DB_PATH=/deploy/geoip/GeoLite2-Country.mmdb
+      - DB_PROCESSOR_MAX_CONNS=${DB_PROCESSOR_MAX_CONNS}
+      - CH_SPOOL_DIR=/var/spool/espx/ch
+      - TRACKER_PG_FALLBACK=${TRACKER_PG_FALLBACK:-0}
+      - ENV=${ENV:-development}
+      - NODE_ID=processor-1
+      - NODE_ROLE=processor
+      - PROCESSOR_WEIGHT_ENABLED=1
+      - MANAGEMENT_URL=${MANAGEMENT_URL:-http://127.0.0.1:8188}
+      - GOMEMLIMIT=1500MiB
+      - GOGC=100
+    healthcheck:
+      test: ["CMD", "/processor", "--health-probe", "http://127.0.0.1:8187/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis-0:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+
+  # Multi-region cold ingest (profile: multi-region). Default stack unchanged when profile is off.
+  region-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: ["/region-proxy"]
+    network_mode: "${NET_MODE:-host}"
+    profiles:
+      - multi-region
+    env_file:
+      - .env
+    environment:
+      - GLOBAL_INGEST_URL=${GLOBAL_INGEST_URL:-http://127.0.0.1:8188/api/v1/region/ingest/batch}
+      - GLOBAL_INGEST_API_KEY=${GLOBAL_INGEST_API_KEY:-${ADMIN_API_KEY}}
+    command:
+      - -addr=127.0.0.1:9093
+      - -health-addr=127.0.0.1:8083
+      - -data-dir=/tmp/espx-region-proxy
+      - -node-id=region-proxy-1
+      - -region-code=${ESPX_REGION_CODE:-1}
+      - -redis-url=${REGION_PROXY_REDIS_URL:-redis://127.0.0.1:6479/0}
+      - -global-ingest-url=${GLOBAL_INGEST_URL:-http://127.0.0.1:8188/api/v1/region/ingest/batch}
+      - -global-ingest-api-key=${GLOBAL_INGEST_API_KEY:-${ADMIN_API_KEY}}
+    volumes:
+      - espx_region_proxy_wal:/tmp/espx-region-proxy
+    restart: unless-stopped
+    depends_on:
+      redis-0:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+  # Optional mmap log broker (profile: multi-region). TCP 9092 — not the HA lab on 9093.
+  broker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: ["/broker"]
+    network_mode: "${NET_MODE:-host}"
+    profiles:
+      - multi-region
+    env_file:
+      - .env
+    command:
+      - -addr=127.0.0.1:9092
+      - -health-addr=127.0.0.1:8084
+      - -data-dir=/tmp/espx-broker
+      - -node-id=broker-1
+      - -redis-url=${REGION_PROXY_REDIS_URL:-redis://127.0.0.1:6479/0}
+    volumes:
+      - espx_broker_data:/tmp/espx-broker
+    restart: unless-stopped
+    depends_on:
+      redis-0:
         condition: service_healthy
     logging:
       driver: "json-file"
@@ -369,6 +499,11 @@ services:
       - BLACKLIST_JANITOR_ENABLED=${BLACKLIST_JANITOR_ENABLED:-true}
       - DB_DSN=${DB_DSN}
       - REDIS_ADDRS=127.0.0.1:6479
+      - MULTI_REGION_ENABLED=${MULTI_REGION_ENABLED:-0}
+      - ESPX_REGION_CODE=${ESPX_REGION_CODE:-0}
+      - GLOBAL_SPEND_BATCH_MIN=${GLOBAL_SPEND_BATCH_MIN:-100}
+      - GLOBAL_SPEND_FLUSH_INTERVAL_MS=${GLOBAL_SPEND_FLUSH_INTERVAL_MS:-500}
+      - GLOBAL_SPEND_MAX_CONCURRENCY=${GLOBAL_SPEND_MAX_CONCURRENCY:-8}
     deploy:
       resources:
         limits:
@@ -502,6 +637,7 @@ services:
     network_mode: "${NET_MODE:-host}"
     profiles:
       - chaos
+      - crypto
     env_file:
       - .env
     environment:
@@ -510,6 +646,9 @@ services:
       - SETTLEMENT_SERVER_HOST=127.0.0.1
       - SETTLEMENT_SERVER_PORT=51053
       - PAYMENT_DB_DSN=${PAYMENT_DB_DSN}
+      - CRYPTO_WEBHOOK_SECRET=${CRYPTO_WEBHOOK_SECRET:-}
+      - CRYPTO_MIN_PAYMENT_MICRO=${CRYPTO_MIN_PAYMENT_MICRO:-10000000}
+      - CRYPTO_CONFIRMATION_DEPTH=${CRYPTO_CONFIRMATION_DEPTH:-12}
     deploy:
       resources:
         limits:
@@ -952,4 +1091,7 @@ volumes:
   redis_5_data:
   espx_logs:           # shared mmap audit logs from all trackers/processor
   espx_ch_spool:       # processor ClickHouse mmap WAL during outages
+  espx_ch_spool_1:     # second processor replica spool (multi-region profile)
+  espx_region_proxy_wal: # region-proxy mmap WAL (multi-region profile)
+  espx_broker_data:      # broker mmap segments (multi-region profile, optional)
   log_compactor_state: # warm-tier compactor checkpoints and output

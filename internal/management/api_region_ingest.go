@@ -76,6 +76,9 @@ func (s *Service) ingestRegionProxyBatchDirect(ctx context.Context, in RegionIng
 		if err := adapter.RecordApply(ctx, claim.DedupKey); err != nil {
 			return RegionIngestBatchResult{}, fmt.Errorf("region ingest batch region=%d: %w", in.RegionCode, err)
 		}
+		if err := s.applyRegionSpendSyncBatch(ctx, claim.DedupKey, in.Payload); err != nil {
+			return RegionIngestBatchResult{}, fmt.Errorf("region ingest batch region=%d: %w", in.RegionCode, err)
+		}
 	}
 	return RegionIngestBatchResult{
 		Outcome:  claim.Outcome,
@@ -98,6 +101,9 @@ func (s *Service) ingestRegionProxyBatchLeased(ctx context.Context, in RegionIng
 		result = RegionIngestBatchResult{
 			Outcome:  claim.Outcome,
 			DedupKey: claim.DedupKey,
+		}
+		if claim.ShouldApply() {
+			return s.applyRegionSpendSyncBatch(ctx, claim.DedupKey, in.Payload)
 		}
 		return nil
 	})

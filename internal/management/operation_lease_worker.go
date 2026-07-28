@@ -159,6 +159,10 @@ func (w *OperationLeaseWorker) Book(ctx context.Context, req OperationLeaseBookR
 		return empty, fmt.Errorf("operation lease book op_id=%s: %w", req.OpID, err)
 	}
 
+	if !w.pgAvailable(ctx) {
+		return w.bookRedis(ctx, req)
+	}
+
 	var lease db.OperationLease
 	err = w.svc.withPgHigh(ctx, func(runCtx context.Context) error {
 		q := db.New(w.svc.pool)
@@ -195,6 +199,9 @@ func (w *OperationLeaseWorker) Book(ctx context.Context, req OperationLeaseBookR
 		return nil
 	})
 	if err != nil {
+		if !w.pgAvailable(ctx) || isPgUnavailable(err) {
+			return w.bookRedis(ctx, req)
+		}
 		return empty, fmt.Errorf("operation lease book op_id=%s: %w", req.OpID, err)
 	}
 
@@ -219,6 +226,9 @@ func (w *OperationLeaseWorker) AckBook(ctx context.Context, opID uuid.UUID, node
 	if nodeID == "" {
 		nodeID = w.nodeID
 	}
+	if !w.pgAvailable(ctx) {
+		return w.ackBookRedis(ctx, opID, nodeID, 3)
+	}
 	err := w.svc.withPgHigh(ctx, func(runCtx context.Context) error {
 		return db.New(w.svc.pool).UpsertOperationLeaseReplicaBookAck(runCtx, db.UpsertOperationLeaseReplicaBookAckParams{
 			OpID:   ingestion.ToUUID(opID),
@@ -226,6 +236,9 @@ func (w *OperationLeaseWorker) AckBook(ctx context.Context, opID uuid.UUID, node
 		})
 	})
 	if err != nil {
+		if !w.pgAvailable(ctx) || isPgUnavailable(err) {
+			return w.ackBookRedis(ctx, opID, nodeID, 3)
+		}
 		return empty, fmt.Errorf("operation lease ack book op_id=%s: %w", opID, err)
 	}
 	result, err := w.quorumStatus(ctx, opID)
@@ -239,14 +252,23 @@ func (w *OperationLeaseWorker) AckBook(ctx context.Context, opID uuid.UUID, node
 }
 
 func (w *OperationLeaseWorker) quorumStatus(ctx context.Context, opID uuid.UUID) (OperationLeaseBookResult, error) {
+	if !w.pgAvailable(ctx) {
+		return w.quorumStatusRedis(ctx, opID, 3)
+	}
 	q := db.New(w.svc.pool)
 	opUUID := ingestion.ToUUID(opID)
 	replicaCount, err := q.CountOperationLeaseReplicas(ctx, opUUID)
 	if err != nil {
+		if isPgUnavailable(err) {
+			return w.quorumStatusRedis(ctx, opID, 3)
+		}
 		return OperationLeaseBookResult{}, err
 	}
 	ackCount, err := q.CountOperationLeaseBookAcks(ctx, opUUID)
 	if err != nil {
+		if isPgUnavailable(err) {
+			return w.quorumStatusRedis(ctx, opID, int(replicaCount))
+		}
 		return OperationLeaseBookResult{}, err
 	}
 	quorum := QuorumRequired(int(replicaCount))

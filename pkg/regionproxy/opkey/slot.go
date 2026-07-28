@@ -41,6 +41,11 @@ func (s *Slot) setDerived() {
 	atomic.StoreUint32(&s.flags, OpKeyFlagDerived)
 }
 
+// SetDerivedForTest marks derived in integration tests.
+func (s *Slot) SetDerivedForTest() {
+	s.setDerived()
+}
+
 // TryBook transitions derived -> replica booked (0 allocs).
 func (s *Slot) TryBook() bool {
 	for {

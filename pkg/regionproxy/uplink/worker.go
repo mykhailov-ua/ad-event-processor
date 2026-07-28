@@ -21,14 +21,15 @@ import (
 
 // Config tunes the uplink worker loop.
 type Config struct {
-	RegionCode   uint8
-	NodeID       string
-	SourceEpoch  uint32
-	GlobalURL    string
-	APIKey       string
-	PollInterval time.Duration
-	BatchSize    int
-	HTTPTimeout  time.Duration
+	RegionCode     uint8
+	NodeID         string
+	SourceEpoch    uint32
+	GlobalURL      string
+	APIKey         string
+	PollInterval   time.Duration
+	BatchSize      int
+	HTTPTimeout    time.Duration
+	BatchCommitter *opkey.BatchCommitter
 }
 
 // Worker dequeues OpKey slots and posts them to global management ingest.
@@ -38,10 +39,11 @@ type Worker struct {
 	client *http.Client
 	cfg    Config
 
-	closeCh   chan struct{}
-	wg        sync.WaitGroup
-	forwarded atomic.Uint64
-	acked     atomic.Uint64
+	closeCh    chan struct{}
+	wg         sync.WaitGroup
+	forwarded  atomic.Uint64
+	acked      atomic.Uint64
+	quorumHeld atomic.Uint64
 }
 
 // New builds an uplink worker.
@@ -126,7 +128,18 @@ func (u *Worker) drainBatch() {
 		if !ok {
 			return
 		}
+		if u.cfg.BatchCommitter != nil {
+			ready, err := u.cfg.BatchCommitter.PrepareForward(context.Background(), slot)
+			if err != nil || !ready {
+				u.quorumHeld.Add(1)
+				u.pool.Release(slot)
+				continue
+			}
+		}
 		u.forwardSlot(slot)
+		if u.cfg.BatchCommitter != nil {
+			u.cfg.BatchCommitter.Complete(context.Background(), slot)
+		}
 		u.pool.Release(slot)
 	}
 }

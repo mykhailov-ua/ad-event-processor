@@ -1,0 +1,250 @@
+package management
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"sync"
+	"time"
+
+	"espx/internal/ingestion"
+	db "espx/internal/ingestion/sqlc"
+	"espx/internal/metrics"
+	"espx/pkg/dedupkey"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
+)
+
+const (
+	defaultGlobalSpendBatchMin       = 100
+	defaultGlobalSpendMaxConcurrency = 8
+	defaultGlobalSpendFlushInterval  = 500 * time.Millisecond
+	globalSpendIdempotencyPrefix     = "global_spend:"
+)
+
+// ErrSpendBatchTooSmall is returned when a spend sync batch has fewer txns than the configured minimum.
+var ErrSpendBatchTooSmall = errors.New("spend sync batch below minimum txn count")
+
+// globalSpendCommitScript atomically decrements budget:campaign remaining after a global ledger debit.
+const globalSpendCommitScript = `
+local remaining = redis.call("INCRBY", KEYS[1], -tonumber(ARGV[1]))
+if tonumber(remaining) <= 0 then
+    redis.call("DEL", KEYS[1])
+end
+return remaining
+`
+
+// GlobalSpendReconciler applies cross-region spend batches to global Postgres and Redis mirrors.
+type GlobalSpendReconciler struct {
+	pool           *pgxpool.Pool
+	rdbs           []redis.UniversalClient
+	sharder        ingestion.Sharder
+	campaignRepo   *ingestion.CampaignRepo
+	minBatchSize   int
+	maxConcurrency int
+
+	mu      sync.Mutex
+	pending []dedupkey.SpendSyncTxn
+}
+
+// GlobalSpendReconcilerConfig tunes batch thresholds and worker concurrency.
+type GlobalSpendReconcilerConfig struct {
+	MinBatchSize   int
+	MaxConcurrency int
+}
+
+// NewGlobalSpendReconciler wires a cold-path reconciler for multi-region spend authority.
+func NewGlobalSpendReconciler(
+	pool *pgxpool.Pool,
+	rdbs []redis.UniversalClient,
+	sharder ingestion.Sharder,
+	cfg GlobalSpendReconcilerConfig,
+) *GlobalSpendReconciler {
+	if cfg.MinBatchSize <= 0 {
+		cfg.MinBatchSize = defaultGlobalSpendBatchMin
+	}
+	if cfg.MaxConcurrency <= 0 {
+		cfg.MaxConcurrency = defaultGlobalSpendMaxConcurrency
+	}
+	var repo *ingestion.CampaignRepo
+	if pool != nil {
+		repo = ingestion.NewCampaignRepoWithDB(pool, db.New(pool))
+	}
+	return &GlobalSpendReconciler{
+		pool:           pool,
+		rdbs:           rdbs,
+		sharder:        sharder,
+		campaignRepo:   repo,
+		minBatchSize:   cfg.MinBatchSize,
+		maxConcurrency: cfg.MaxConcurrency,
+	}
+}
+
+// MinBatchSize returns the configured minimum txn count per apply batch.
+func (r *GlobalSpendReconciler) MinBatchSize() int {
+	if r == nil {
+		return defaultGlobalSpendBatchMin
+	}
+	return r.minBatchSize
+}
+
+// Enqueue buffers spend txns until the batch reaches minBatchSize.
+func (r *GlobalSpendReconciler) Enqueue(txns []dedupkey.SpendSyncTxn) {
+	if r == nil || len(txns) == 0 {
+		return
+	}
+	r.mu.Lock()
+	r.pending = append(r.pending, txns...)
+	r.mu.Unlock()
+}
+
+// PendingCount returns buffered txn count (tests and metrics).
+func (r *GlobalSpendReconciler) PendingCount() int {
+	if r == nil {
+		return 0
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return len(r.pending)
+}
+
+// FlushPending applies buffered txns when count >= minBatchSize.
+func (r *GlobalSpendReconciler) FlushPending(ctx context.Context, batchDedupKey string) error {
+	if r == nil {
+		return nil
+	}
+	r.mu.Lock()
+	if len(r.pending) < r.minBatchSize {
+		r.mu.Unlock()
+		return nil
+	}
+	txns := append([]dedupkey.SpendSyncTxn(nil), r.pending...)
+	r.pending = r.pending[:0]
+	r.mu.Unlock()
+	return r.ApplyBatch(ctx, batchDedupKey, txns)
+}
+
+// ApplyBatch commits one spend sync batch idempotently to balance_ledger and Redis mirrors.
+func (r *GlobalSpendReconciler) ApplyBatch(ctx context.Context, batchDedupKey string, txns []dedupkey.SpendSyncTxn) error {
+	if r == nil {
+		return nil
+	}
+	if r.pool == nil || r.campaignRepo == nil {
+		return fmt.Errorf("global spend reconciler: postgres unavailable")
+	}
+	if len(txns) < r.minBatchSize {
+		return fmt.Errorf("global spend batch dedup=%s: %w (%d < %d)", batchDedupKey, ErrSpendBatchTooSmall, len(txns), r.minBatchSize)
+	}
+
+	start := time.Now()
+	items := make([]ingestion.SpendFlushItem, 0, len(txns))
+	redisDeltas := make(map[uuid.UUID]int64, len(txns))
+	for _, txn := range txns {
+		idemID := globalSpendIdempotencyPrefix + batchDedupKey + ":" + txn.TxnID
+		items = append(items, ingestion.SpendFlushItem{
+			CampaignID:  txn.CampaignID,
+			AmountMicro: txn.AmountMicro,
+			TxID:        idemID,
+			StrictFlush: true,
+		})
+		redisDeltas[txn.CampaignID] += txn.AmountMicro
+	}
+
+	for startIdx := 0; startIdx < len(items); startIdx += ingestion.MaxLedgerBatchSize() {
+		endIdx := startIdx + ingestion.MaxLedgerBatchSize()
+		if endIdx > len(items) {
+			endIdx = len(items)
+		}
+		chunk := items[startIdx:endIdx]
+		outcomes, err := r.campaignRepo.UpdateSpendBatch(ctx, chunk)
+		if err != nil {
+			return fmt.Errorf("global spend batch dedup=%s: %w", batchDedupKey, err)
+		}
+		for _, outcome := range outcomes {
+			if outcome.Err != nil && !errors.Is(outcome.Err, ingestion.ErrInsufficientCustomerBalance) {
+				return fmt.Errorf("global spend batch dedup=%s campaign=%s: %w", batchDedupKey, outcome.CampaignID, outcome.Err)
+			}
+		}
+	}
+
+	if err := r.commitRedisBudget(ctx, redisDeltas); err != nil {
+		return fmt.Errorf("global spend batch dedup=%s redis commit: %w", batchDedupKey, err)
+	}
+
+	elapsed := time.Since(start).Seconds()
+	metrics.GlobalSpendBatchesTotal.Inc()
+	metrics.GlobalSpendTxnsTotal.Add(float64(len(txns)))
+	metrics.GlobalSpendBatchSize.Observe(float64(len(txns)))
+	metrics.GlobalSpendApplyLatency.Observe(elapsed)
+	return nil
+}
+
+func (r *GlobalSpendReconciler) commitRedisBudget(ctx context.Context, deltas map[uuid.UUID]int64) error {
+	if len(r.rdbs) == 0 {
+		return nil
+	}
+	sem := make(chan struct{}, r.maxConcurrency)
+	var wg sync.WaitGroup
+	var firstErr error
+	var errMu sync.Mutex
+
+	for campID, amount := range deltas {
+		if amount <= 0 {
+			continue
+		}
+		shardIdx := r.shardIndex(campID)
+		if shardIdx < 0 || shardIdx >= len(r.rdbs) {
+			continue
+		}
+		rdb := r.rdbs[shardIdx]
+		budgetKey := ingestion.BudgetCampaignKey(campID)
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(rdb redis.UniversalClient, budgetKey string, amount int64) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			_, err := rdb.Eval(ctx, globalSpendCommitScript, []string{budgetKey}, amount).Result()
+			if err != nil {
+				errMu.Lock()
+				if firstErr == nil {
+					firstErr = err
+				}
+				errMu.Unlock()
+			}
+		}(rdb, budgetKey, amount)
+	}
+	wg.Wait()
+	return firstErr
+}
+
+func (r *GlobalSpendReconciler) shardIndex(campaignID uuid.UUID) int {
+	if r.sharder == nil {
+		return 0
+	}
+	return int(r.sharder.GetShard(campaignID))
+}
+
+// StartFlushWorker runs periodic pending-buffer drains until ctx is cancelled.
+func (r *GlobalSpendReconciler) StartFlushWorker(ctx context.Context, interval time.Duration) {
+	if r == nil {
+		return
+	}
+	if interval <= 0 {
+		interval = defaultGlobalSpendFlushInterval
+	}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			flushKey := uuid.New().String()
+			if err := r.FlushPending(ctx, flushKey); err != nil && !errors.Is(err, ErrSpendBatchTooSmall) {
+				metrics.GlobalSpendFlushErrorsTotal.Inc()
+			}
+		}
+	}
+}

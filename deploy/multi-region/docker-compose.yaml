@@ -1,0 +1,24 @@
+# Legacy overlay for processor/management multi-region env patches.
+# Prefer the root compose profile:
+#   docker compose --profile multi-region up -d region-proxy
+#   scripts/local-dev/dev_stack.sh multi-region up
+#
+# Merge workflow (still supported):
+#   docker compose -f docker-compose.yaml -f deploy/multi-region/docker-compose.yaml up -d region-proxy
+
+services:
+  processor:
+    environment:
+      - MULTI_REGION_ENABLED=${MULTI_REGION_ENABLED:-0}
+      - ESPX_REGION_CODE=${ESPX_REGION_CODE:-0}
+      - REGION_PROXY_ADDR=${REGION_PROXY_ADDR:-127.0.0.1:9093}
+      - REGION_PROXY_REDIS_URL=${REGION_PROXY_REDIS_URL:-redis://127.0.0.1:6479/0}
+      - GLOBAL_SPEND_BATCH_MIN=${GLOBAL_SPEND_BATCH_MIN:-100}
+
+  management:
+    environment:
+      - MULTI_REGION_ENABLED=${MULTI_REGION_ENABLED:-0}
+      - ESPX_REGION_CODE=${ESPX_REGION_CODE:-0}
+      - GLOBAL_SPEND_BATCH_MIN=${GLOBAL_SPEND_BATCH_MIN:-100}
+      - GLOBAL_SPEND_FLUSH_INTERVAL_MS=${GLOBAL_SPEND_FLUSH_INTERVAL_MS:-500}
+      - GLOBAL_SPEND_MAX_CONCURRENCY=${GLOBAL_SPEND_MAX_CONCURRENCY:-8}

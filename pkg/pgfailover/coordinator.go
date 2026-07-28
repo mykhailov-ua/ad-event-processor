@@ -1,0 +1,258 @@
+package pgfailover
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	"espx/pkg/broker/server"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
+)
+
+// Promoter performs standby promotion and returns the writable DSN.
+type Promoter interface {
+	Promote(ctx context.Context) (dsn string, err error)
+}
+
+// PromoteFunc adapts a function to Promoter.
+type PromoteFunc func(ctx context.Context) (string, error)
+
+func (f PromoteFunc) Promote(ctx context.Context) (string, error) {
+	return f(ctx)
+}
+
+// HealthCheck probes whether the primary Postgres instance accepts connections.
+type HealthCheck func(ctx context.Context) error
+
+// Config tunes global Postgres failover coordination.
+type Config struct {
+	NodeID            string
+	RedisURL          string
+	PrimaryDSN        string
+	StandbyDSN        string
+	HealthInterval    time.Duration
+	HealthTimeout     time.Duration
+	FailThreshold     int
+	MaxConns          int
+	MinConns          int
+	Coord             server.CoordConfig
+}
+
+func (c Config) normalized() Config {
+	out := c
+	if out.HealthInterval <= 0 {
+		out.HealthInterval = 2 * time.Second
+	}
+	if out.HealthTimeout <= 0 {
+		out.HealthTimeout = 2 * time.Second
+	}
+	if out.FailThreshold <= 0 {
+		out.FailThreshold = 2
+	}
+	if out.MaxConns <= 0 {
+		out.MaxConns = 4
+	}
+	if out.MinConns <= 0 {
+		out.MinConns = 1
+	}
+	if out.Coord.LeaseTTL <= 0 {
+		out.Coord = server.DefaultCoordConfig()
+	}
+	return out
+}
+
+// Coordinator elects a failover leader via broker coordination and promotes the sync standby.
+type Coordinator struct {
+	cfg       Config
+	host      *CoordHost
+	coord     *server.Coordinator
+	promoter  Promoter
+	health    HealthCheck
+	rdb       redis.UniversalClient
+	failures  int
+	failMu    sync.Mutex
+	failover  atomic.Bool
+	closeCh   chan struct{}
+	closeOnce sync.Once
+	wg        sync.WaitGroup
+}
+
+// NewCoordinator wires Redis leader election to global Postgres health monitoring.
+func NewCoordinator(cfg Config, promoter Promoter, health HealthCheck) (*Coordinator, error) {
+	cfg = cfg.normalized()
+	if cfg.NodeID == "" {
+		return nil, errors.New("pg failover node id required")
+	}
+	if cfg.RedisURL == "" {
+		return nil, errors.New("pg failover redis url required")
+	}
+	if promoter == nil {
+		return nil, errors.New("pg failover promoter required")
+	}
+	if health == nil {
+		health = PingDSN(cfg.PrimaryDSN)
+	}
+	host := NewCoordHost()
+	coord, err := server.NewCoordinatorWithConfig(cfg.NodeID, "pgfailover:"+cfg.NodeID, cfg.RedisURL, host, cfg.Coord)
+	if err != nil {
+		return nil, err
+	}
+	return &Coordinator{
+		cfg:      cfg,
+		host:     host,
+		coord:    coord,
+		promoter: promoter,
+		health:   health,
+		rdb:      coord.Redis(),
+		closeCh:  make(chan struct{}),
+	}, nil
+}
+
+// Start runs leader election and primary health monitoring loops.
+func (c *Coordinator) Start() {
+	c.coord.Start()
+	c.wg.Add(1)
+	go func() {
+		defer c.wg.Done()
+		c.runHealthLoop()
+	}()
+}
+
+// Stop tears down coordination goroutines.
+func (c *Coordinator) Stop() {
+	c.closeOnce.Do(func() {
+		close(c.closeCh)
+	})
+	c.coord.Stop()
+	c.wg.Wait()
+}
+
+// Redis returns the coordination client.
+func (c *Coordinator) Redis() redis.UniversalClient {
+	return c.rdb
+}
+
+// IsLeader reports whether this node may execute failover.
+func (c *Coordinator) IsLeader() bool {
+	return c.coord.IsLeader(c.host.TopicKey())
+}
+
+func (c *Coordinator) runHealthLoop() {
+	ticker := time.NewTicker(c.cfg.HealthInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-c.closeCh:
+			return
+		case <-ticker.C:
+			if !c.IsLeader() {
+				c.resetFailures()
+				continue
+			}
+			if c.failover.Load() {
+				continue
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), c.cfg.HealthTimeout)
+			err := c.health(ctx)
+			cancel()
+			if err == nil {
+				c.resetFailures()
+				continue
+			}
+			if c.recordFailure() < c.cfg.FailThreshold {
+				continue
+			}
+			if err := c.executeFailover(); err != nil {
+				slog.Warn("postgres failover failed", "error", err)
+			}
+		}
+	}
+}
+
+func (c *Coordinator) recordFailure() int {
+	c.failMu.Lock()
+	defer c.failMu.Unlock()
+	c.failures++
+	return c.failures
+}
+
+func (c *Coordinator) resetFailures() {
+	c.failMu.Lock()
+	defer c.failMu.Unlock()
+	c.failures = 0
+}
+
+func (c *Coordinator) executeFailover() error {
+	if !c.failover.CompareAndSwap(false, true) {
+		return nil
+	}
+	defer c.resetFailures()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	epoch, err := BumpEpoch(ctx, c.rdb)
+	if err != nil {
+		c.failover.Store(false)
+		return fmt.Errorf("bump fencing epoch: %w", err)
+	}
+
+	promotedDSN, err := c.promoter.Promote(ctx)
+	if err != nil {
+		c.failover.Store(false)
+		return fmt.Errorf("promote standby: %w", err)
+	}
+	if promotedDSN == "" {
+		promotedDSN = c.cfg.StandbyDSN
+	}
+	if promotedDSN == "" {
+		c.failover.Store(false)
+		return errors.New("promoted dsn empty")
+	}
+
+	if err := PublishDSN(ctx, c.rdb, promotedDSN, epoch); err != nil {
+		c.failover.Store(false)
+		return fmt.Errorf("publish dsn: %w", err)
+	}
+
+	slog.Info("postgres failover completed",
+		"node_id", c.cfg.NodeID,
+		"fencing_epoch", epoch,
+		"dsn_host", redactDSNHost(promotedDSN),
+	)
+	return nil
+}
+
+// PingDSN returns a health check that pings the given Postgres DSN.
+func PingDSN(dsn string) HealthCheck {
+	return func(ctx context.Context) error {
+		if dsn == "" {
+			return errors.New("dsn required")
+		}
+		cfg, err := pgxpool.ParseConfig(dsn)
+		if err != nil {
+			return err
+		}
+		cfg.MaxConns = 1
+		cfg.MinConns = 0
+		pool, err := pgxpool.NewWithConfig(ctx, cfg)
+		if err != nil {
+			return err
+		}
+		defer pool.Close()
+		return pool.Ping(ctx)
+	}
+}
+
+func redactDSNHost(dsn string) string {
+	cfg, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		return "invalid"
+	}
+	return cfg.ConnConfig.Host
+}
