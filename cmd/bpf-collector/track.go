@@ -6,19 +6,37 @@ import (
 )
 
 func (r *probeRun) trackPID(pid uint32, role uint8, name string) error {
-	if pid == 0 {
-		return fmt.Errorf("invalid pid")
+	return r.trackTarget(pid, 0, role, name)
+}
+
+func (r *probeRun) trackTarget(pid uint32, cgroupID uint64, role uint8, name string) error {
+	if pid == 0 && cgroupID == 0 {
+		return fmt.Errorf("invalid target")
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if _, ok := r.tracked[pid]; ok {
-		return nil
+	if pid != 0 {
+		if existing, ok := r.tracked[pid]; ok {
+			if cgroupID != 0 && cgroupID != existing.CgroupID {
+				_ = r.coll.PutTargetCgroup(cgroupID, role)
+			}
+			return nil
+		}
+		if err := r.coll.PutTargetPID(pid, role); err != nil {
+			return err
+		}
 	}
-	if err := r.coll.PutTargetPID(pid, role); err != nil {
-		return err
+	if cgroupID != 0 {
+		if err := r.coll.PutTargetCgroup(cgroupID, role); err != nil {
+			return err
+		}
 	}
-	r.tracked[pid] = targetEntry{PID: pid, Role: role, Name: name}
-	slog.Info("tracking pid", "pid", pid, "role", roleName(role), "name", name)
+	if pid != 0 {
+		r.tracked[pid] = targetEntry{PID: pid, CgroupID: cgroupID, Role: role, Name: name}
+		slog.Info("tracking pid", "pid", pid, "cgroup_id", cgroupID, "role", roleName(role), "name", name)
+	} else if cgroupID != 0 {
+		slog.Info("tracking cgroup", "cgroup_id", cgroupID, "role", roleName(role), "name", name)
+	}
 	return nil
 }
 
@@ -30,8 +48,8 @@ func roleName(role uint8) string {
 		return "nginx"
 	case roleRedis:
 		return "redis"
-	case roleK6:
-		return "k6"
+	case roleLoadgen:
+		return "loadgen"
 	case roleProcessor:
 		return "processor"
 	default:

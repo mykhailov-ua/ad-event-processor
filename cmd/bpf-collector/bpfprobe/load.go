@@ -65,6 +65,13 @@ type NetStats struct {
 	Rst            uint64
 }
 
+type MarkerHistKey struct {
+	PID          uint32
+	MarkerID     uint32
+	CampaignSlot uint32
+	Pad          uint32
+}
+
 type Programs struct {
 	SysEnter         *ebpf.Program
 	SysExit          *ebpf.Program
@@ -74,18 +81,23 @@ type Programs struct {
 	TcpRetransmit    *ebpf.Program
 	SchedProcessFork *ebpf.Program
 	SchedProcessExit *ebpf.Program
+	TraceEnter       *ebpf.Program
+	TraceExit        *ebpf.Program
 }
 
 type Maps struct {
-	TargetPids   *ebpf.Map
-	Config       *ebpf.Map
-	SyscallEnter *ebpf.Map
-	SyscallHist  *ebpf.Map
+	TargetPids    *ebpf.Map
+	TargetCgroups *ebpf.Map
+	Config        *ebpf.Map
+	SyscallEnter  *ebpf.Map
+	SyscallHist   *ebpf.Map
 	PidStats      *ebpf.Map
 	RunqueueHist  *ebpf.Map
 	WakeupTS      *ebpf.Map
-	NetStats     *ebpf.Map
-	SlowEvents   *ebpf.Map
+	NetStats      *ebpf.Map
+	SlowEvents    *ebpf.Map
+	MarkerEnterTS *ebpf.Map
+	MarkerHist    *ebpf.Map
 }
 
 type Collection struct {
@@ -118,17 +130,22 @@ func Load(objectPath string) (*Collection, error) {
 			TcpRetransmit:    coll.Programs["espx_tcp_retransmit"],
 			SchedProcessFork: coll.Programs["espx_sched_process_fork"],
 			SchedProcessExit: coll.Programs["espx_sched_process_exit"],
+			TraceEnter:       coll.Programs["espx_trace_enter"],
+			TraceExit:        coll.Programs["espx_trace_exit"],
 		},
 		Maps: Maps{
-			TargetPids:   coll.Maps["target_pids"],
-			Config:       coll.Maps["config"],
-			SyscallEnter: coll.Maps["syscall_enter"],
-			SyscallHist:  coll.Maps["syscall_hist"],
-			PidStats:     coll.Maps["pid_stats"],
-			RunqueueHist: coll.Maps["runqueue_hist"],
-			WakeupTS:     coll.Maps["wakeup_ts"],
-			NetStats:     coll.Maps["net_stats"],
-			SlowEvents:   coll.Maps["slow_events"],
+			TargetPids:    coll.Maps["target_pids"],
+			TargetCgroups: coll.Maps["target_cgroups"],
+			Config:        coll.Maps["config"],
+			SyscallEnter:  coll.Maps["syscall_enter"],
+			SyscallHist:   coll.Maps["syscall_hist"],
+			PidStats:      coll.Maps["pid_stats"],
+			RunqueueHist:  coll.Maps["runqueue_hist"],
+			WakeupTS:      coll.Maps["wakeup_ts"],
+			NetStats:      coll.Maps["net_stats"],
+			SlowEvents:    coll.Maps["slow_events"],
+			MarkerEnterTS: coll.Maps["marker_enter_ts"],
+			MarkerHist:    coll.Maps["marker_hist"],
 		},
 	}
 	if out.Progs.SysEnter == nil || out.Progs.SysExit == nil {
@@ -159,8 +176,15 @@ func (c *Collection) PutTargetPID(pid uint32, role uint8) error {
 	return c.Maps.TargetPids.Put(pid, role)
 }
 
+func (c *Collection) PutTargetCgroup(cgroupID uint64, role uint8) error {
+	if c.Maps.TargetCgroups == nil || cgroupID == 0 {
+		return nil
+	}
+	return c.Maps.TargetCgroups.Put(cgroupID, role)
+}
+
 // DecodeSlowEvent parses ringbuf sample for espx_slow_event.
-func DecodeSlowEvent(raw []byte) (tsNs uint64, pid, syscallID uint32, durNs uint64, role, kind uint8) {
+func DecodeSlowEvent(raw []byte) (tsNs uint64, pid, syscallID uint32, durNs uint64, role, kind uint8, campaignSlot uint16, markerID uint32) {
 	if len(raw) < 24 {
 		return
 	}
@@ -171,6 +195,12 @@ func DecodeSlowEvent(raw []byte) (tsNs uint64, pid, syscallID uint32, durNs uint
 	if len(raw) >= 26 {
 		role = raw[24]
 		kind = raw[25]
+	}
+	if len(raw) >= 28 {
+		campaignSlot = binary.LittleEndian.Uint16(raw[26:28])
+	}
+	if len(raw) >= 32 {
+		markerID = binary.LittleEndian.Uint32(raw[28:32])
 	}
 	return
 }

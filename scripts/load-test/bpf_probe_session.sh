@@ -90,10 +90,14 @@ start)
 	SAMPLE="${ESPX_BPF_SAMPLE_RATE:-1}"
 	SLOW_US="${ESPX_BPF_SLOW_US:-10000}"
 	BPF_OBJ="${ESPX_BPF_OBJECT:-$ROOT/deploy/dev/bpf/loadtest_probe.o}"
-	DISCOVER_K6=1
-	if [[ "${ESPX_BPF_TRACK_K6:-1}" == "0" ]]; then
-		DISCOVER_K6=0
+	DISCOVER_LOADGEN=0
+	if [[ "${ESPX_BPF_TRACK_LOADGEN:-${ESPX_BPF_TRACK_K6:-1}}" == "1" ]]; then
+		DISCOVER_LOADGEN=1
 	fi
+	DUMP_INTERVAL="${ESPX_BPF_DUMP_INTERVAL:-0}"
+	REFRESH_TARGETS="${ESPX_BPF_REFRESH_TARGETS:-0}"
+	METRICS_ADDR="${ESPX_BPF_METRICS_ADDR:-}"
+	LOADGEN_COMM="${ESPX_BPF_LOADGEN_COMM:-k6}"
 
 	ESPX_REPO_ROOT="$ROOT" \
 		ulimit -l unlimited 2>/dev/null || true
@@ -104,8 +108,21 @@ start)
 		-bpf-object "$BPF_OBJ"
 		-sample-rate "$SAMPLE"
 		-slow-us "$SLOW_US"
-		-discover-k6="$DISCOVER_K6"
+		-discover-loadgen="$DISCOVER_LOADGEN"
+		-loadgen-comms "$LOADGEN_COMM"
 	)
+	if [[ "$DUMP_INTERVAL" != "0" ]]; then
+		COLLECTOR_CMD+=(-dump-interval "${DUMP_INTERVAL}s")
+	fi
+	if [[ "$REFRESH_TARGETS" != "0" ]]; then
+		COLLECTOR_CMD+=(-refresh-targets "${REFRESH_TARGETS}s")
+	fi
+	if [[ -n "$METRICS_ADDR" ]]; then
+		COLLECTOR_CMD+=(-metrics-addr "$METRICS_ADDR")
+	fi
+	if [[ -n "${ESPX_BPF_TRACKER_BINARY:-}" ]]; then
+		COLLECTOR_CMD+=(-tracker-binary "$ESPX_BPF_TRACKER_BINARY")
+	fi
 
 	launch_bg() {
 		nohup "$@" >"$LOG_FILE" 2>&1 &

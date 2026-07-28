@@ -30,17 +30,27 @@ pid_stats = data.get("pid_stats", [])
 proc_samples = data.get("proc_samples", [])
 cgroup_samples = data.get("cgroup_samples", [])
 hot_syscalls = data.get("hot_syscalls", [])
+markers = data.get("markers", [])
 syscalls = data.get("syscalls", [])
 network = data.get("network", [])
 
 def role_group(stats, role):
     return [s for s in stats if s.get("role") == role]
 
-k6_stats = role_group(pid_stats, "k6")
+def loadgen_group(stats):
+    return [s for s in stats if s.get("role") in ("loadgen", "k6")]
+
+loadgen_stats = loadgen_group(pid_stats)
 tracker_stats = role_group(pid_stats, "tracker")
 total_oncpu = sum(s.get("oncpu_ns", 0) for s in pid_stats)
-k6_oncpu = sum(s.get("oncpu_ns", 0) for s in k6_stats)
-k6_pct = (k6_oncpu / total_oncpu * 100) if total_oncpu else 0
+loadgen_oncpu = sum(s.get("oncpu_ns", 0) for s in loadgen_stats)
+loadgen_pct = (loadgen_oncpu / total_oncpu * 100) if total_oncpu else 0
+
+timeline_path = os.path.join(bpf_dir, "timeline.json")
+timeline = {}
+if os.path.isfile(timeline_path):
+    with open(timeline_path) as tf:
+        timeline = json.load(tf)
 
 lines = []
 lines.append("# eSPX BPF Load-Test Report")
@@ -48,15 +58,19 @@ lines.append("")
 lines.append(f"Generated: {datetime.utcnow().isoformat()}Z")
 lines.append(f"Session dir: `{bpf_dir}`")
 lines.append(f"Duration: {duration:.1f}s")
+if timeline:
+    lines.append(f"Prometheus (session): `{timeline.get('prometheus_url', 'n/a')}`")
+    if timeline.get("started_at"):
+        lines.append(f"Session started: `{timeline['started_at']}`")
 lines.append("")
 
-lines.append("## Load generator overhead (k6)")
+lines.append("## Load generator overhead")
 lines.append("")
-lines.append("Honest capacity note: k6 context switches and on-CPU time are included so host saturation is visible separately from tracker work.")
+lines.append("Load generator context switches and on-CPU time are tracked separately from tracker work.")
 lines.append("")
-if k6_stats:
-    lines.append("| k6 process | ctx/s | voluntary | involuntary | on-CPU % | RSS delta |")
-    lines.append("|------------|-------|-----------|-------------|----------|-----------|")
+if loadgen_stats:
+    lines.append("| process | ctx/s | voluntary | involuntary | on-CPU % | RSS delta |")
+    lines.append("|---------|-------|-----------|-------------|----------|-----------|")
     mem_start = os.path.join(bpf_dir, "mem-start.json")
     mem_end = os.path.join(bpf_dir, "mem-end.json")
     rss_start = {}
@@ -67,7 +81,7 @@ if k6_stats:
                 mj = json.load(mf)
             for p in mj.get("processes", []):
                 store[p["pid"]] = p.get("vm_rss_kb", 0)
-    for s in sorted(k6_stats, key=lambda x: -x.get("oncpu_ns", 0)):
+    for s in sorted(loadgen_stats, key=lambda x: -x.get("oncpu_ns", 0)):
         pid = s["pid"]
         delta = rss_end.get(pid, 0) - rss_start.get(pid, 0)
         lines.append(
@@ -76,17 +90,17 @@ if k6_stats:
             f"{s.get('oncpu_pct', 0):.1f}% | {delta:+d} KB |"
         )
     lines.append("")
-    lines.append(f"- **k6 share of tracked on-CPU time:** {k6_pct:.1f}%")
+    lines.append(f"- **loadgen share of tracked on-CPU time:** {loadgen_pct:.1f}%")
 else:
-    lines.append("_k6 not observed (set ESPX_BPF_TRACK_K6=1 during load; discovery runs automatically)._")
+    lines.append("_loadgen not observed (set ESPX_BPF_TRACK_LOADGEN=1 or ESPX_BPF_LOADGEN_COMM during load)._")
 lines.append("")
 
 lines.append("## Scheduler / context switches (services)")
 lines.append("")
 lines.append("| Process | Role | ctx/s | runqueue avg (µs) | runqueue p99 (µs) | on-CPU % | minor flt | major flt |")
 lines.append("|---------|------|-------|-------------------|-------------------|----------|-----------|-----------|")
-for s in sorted(pid_stats, key=lambda x: (x.get("role") == "k6", -x.get("ctx_switch_per_sec", 0))):
-    if s.get("role") == "k6":
+for s in sorted(pid_stats, key=lambda x: (x.get("role") in ("loadgen", "k6"), -x.get("ctx_switch_per_sec", 0))):
+    if s.get("role") in ("loadgen", "k6"):
         continue
     lines.append(
         f"| {s.get('name', s['pid'])} | {s.get('role')} | {s.get('ctx_switch_per_sec', 0):.0f} | "
@@ -118,7 +132,7 @@ if cgroup_samples:
 if hot_syscalls:
     lines.append("## Hot syscalls (gnet / Redis path)")
     lines.append("")
-    lines.append("Always traced: `epoll_wait`, `read`, `write`, `connect`, `sendto`, `recvfrom`, `futex`.")
+    lines.append("Always traced: `epoll_wait`, `read`, `write`, `writev`, `fsync`, `fdatasync`, `connect`, `sendto`, `recvfrom`, `futex`.")
     lines.append("")
     lines.append("| Role | syscall | count | avg (µs) | p99 (µs) | max (µs) |")
     lines.append("|------|---------|-------|----------|----------|----------|")
@@ -127,6 +141,52 @@ if hot_syscalls:
             f"| {s.get('role')} | {s.get('syscall')} | {s.get('count')} | "
             f"{s.get('avg_us', 0):.1f} | {s.get('p99_us', 0):.1f} | {s.get('max_us', 0):.1f} |"
         )
+    lines.append("")
+
+disk_rows = []
+seen_disk = set()
+for src in (hot_syscalls, syscalls):
+    for s in src:
+        name = s.get("syscall", "")
+        if name not in ("write", "writev", "fsync", "fdatasync"):
+            continue
+        key = (s.get("role"), name, s.get("pid"))
+        if key in seen_disk:
+            continue
+        seen_disk.add(key)
+        disk_rows.append(s)
+
+if disk_rows:
+    write_ops = sum(s.get("count", 0) for s in disk_rows if s.get("syscall") in ("write", "writev"))
+    writev_ops = sum(s.get("count", 0) for s in disk_rows if s.get("syscall") == "writev")
+    sync_ops = sum(s.get("count", 0) for s in disk_rows if s.get("syscall") in ("fsync", "fdatasync"))
+    sync_reduction_pct = 0.0
+    if write_ops > 0 and sync_ops > 0:
+        sync_reduction_pct = (1.0 - (sync_ops / write_ops)) * 100.0
+
+    lines.append("## Disk durability (group-commit / writev)")
+    lines.append("")
+    lines.append("Tracks vectored writes and durability sync syscalls for region-proxy / broker mmap WAL paths (`pkg/iogate` group commit, `fsyncSem` capacity 1).")
+    lines.append("")
+    lines.append("| Role | syscall | count | avg (µs) | p99 (µs) | max (µs) |")
+    lines.append("|------|---------|-------|----------|----------|----------|")
+    for s in sorted(disk_rows, key=lambda x: (-x.get("count", 0), x.get("syscall", ""))):
+        lines.append(
+            f"| {s.get('role')} | {s.get('syscall')} | {s.get('count')} | "
+            f"{s.get('avg_us', 0):.1f} | {s.get('p99_us', 0):.1f} | {s.get('max_us', 0):.1f} |"
+        )
+    lines.append("")
+    lines.append(f"- **vectored writes (writev):** {writev_ops}")
+    lines.append(f"- **combined write+writev:** {write_ops}")
+    lines.append(f"- **durability sync (fsync+fdatasync):** {sync_ops}")
+    if write_ops > 0 and sync_ops > 0:
+        lines.append(f"- **sync reduction vs 1:1 baseline:** {sync_reduction_pct:.1f}% (target ≥70%)")
+        if writev_ops > 0 and sync_reduction_pct >= 70.0:
+            lines.append("- **Group-commit coalescing: PASS** (writev grouping + ≥70% fewer sync syscalls)")
+        elif sync_reduction_pct >= 70.0:
+            lines.append("- **Group-commit coalescing: PASS** (≥70% fewer sync syscalls; mmap path may omit writev)")
+        else:
+            lines.append("- **Group-commit coalescing: FAIL** (sync rate still high — check `GroupCommitRecords` / disk gate)")
     lines.append("")
 
 lines.append("## File descriptors & sockets")
@@ -179,6 +239,20 @@ elif pid_stats:
         )
     lines.append("")
 
+if markers:
+    lines.append("## Hot path uprobes (Go)")
+    lines.append("")
+    lines.append("Requires tracker built with `-tags espx_bpf_trace` and bpf-collector uprobes attached.")
+    lines.append("")
+    lines.append("| role | marker | slot | count | avg (µs) | p99 (µs) | max (µs) |")
+    lines.append("|------|--------|------|-------|----------|----------|----------|")
+    for m in sorted(markers, key=lambda x: (-1 if x.get("role") == "tracker" else 0, -x.get("p99_us", 0))):
+        lines.append(
+            f"| {m.get('role')} | {m.get('marker')} | {m.get('campaign_slot')} | {m.get('count')} | "
+            f"{m.get('avg_us', 0):.1f} | {m.get('p99_us', 0):.1f} | {m.get('max_us', 0):.1f} |"
+        )
+    lines.append("")
+
 lines.append("## Syscalls (wall time)")
 lines.append("")
 lines.append("| Role | syscall | count | avg (µs) | p99 (µs) | max (µs) | wall % |")
@@ -203,33 +277,52 @@ if os.path.isfile(events_path):
             except json.JSONDecodeError:
                 pass
     slow.sort(key=lambda x: -x.get("duration_us", 0))
-    lines.append("## Slow syscall events")
+    slow_syscall = [e for e in slow if e.get("kind", 1) == 1]
+    slow_uprobe = [e for e in slow if e.get("kind") == 2]
+    lines.append("## Slow events")
     lines.append("")
-    if slow:
+    if slow_syscall:
+        lines.append("### Syscalls")
+        lines.append("")
         lines.append("| role | syscall | duration (µs) | pid |")
         lines.append("|------|---------|---------------|-----|")
-        for e in slow[:25]:
+        for e in slow_syscall[:25]:
             lines.append(
                 f"| {e.get('role')} | {e.get('syscall_name')} | {e.get('duration_us')} | {e.get('pid')} |"
             )
-    else:
+        lines.append("")
+    if slow_uprobe:
+        lines.append("### Hot path uprobes")
+        lines.append("")
+        lines.append("| role | marker | slot | duration (µs) | pid |")
+        lines.append("|------|--------|------|---------------|-----|")
+        for e in slow_uprobe[:25]:
+            lines.append(
+                f"| {e.get('role')} | {e.get('marker_name', e.get('marker_id'))} | {e.get('campaign_slot', 0)} | "
+                f"{e.get('duration_us')} | {e.get('pid')} |"
+            )
+        lines.append("")
+    if not slow_syscall and not slow_uprobe:
         lines.append("_No slow events above threshold._")
-    lines.append("")
+        lines.append("")
 
 if network:
-    lines.append("## Network (TCP retrans)")
+    lines.append("## Network (connect latency & TCP retrans)")
     lines.append("")
-    lines.append("| process | role | retrans |")
-    lines.append("|---------|------|---------|")
+    lines.append("| process | role | connect avg (µs) | connects | retrans |")
+    lines.append("|---------|------|------------------|----------|---------|")
     for n in sorted(network, key=lambda x: -x.get("retrans", 0)):
-        if n.get("retrans", 0) == 0:
+        if n.get("retrans", 0) == 0 and n.get("connects", 0) == 0:
             continue
-        lines.append(f"| {n.get('name')} | {n.get('role')} | {n.get('retrans')} |")
+        lines.append(
+            f"| {n.get('name')} | {n.get('role')} | {n.get('connect_avg_us', 0):.1f} | "
+            f"{n.get('connects', 0)} | {n.get('retrans', 0)} |"
+        )
     lines.append("")
 
 lines.append("## Interpretation")
 lines.append("")
-lines.append("1. **k6 on-CPU > 15%** — load generator competes with tracker; lower RATE or run k6 on another host.")
+lines.append("1. **loadgen on-CPU > 15%** — load generator competes with tracker; lower RATE or run generator on another host.")
 lines.append("2. **tracker epoll_wait / read wall %** — gnet poll vs Redis RTT; compare with Prometheus redis_lua p99.")
 lines.append("3. **involuntary ctx >> voluntary** — CPU oversubscription (GOMAXPROCS, compose CPU limits).")
 lines.append("4. **cpu throttle % > 5%** — cgroup CPU limit is biting; raise compose cpus or lower RATE.")
@@ -238,6 +331,8 @@ lines.append("6. **tracker epoll_wait p99 high** — poll wait dominates; check 
 lines.append("7. **peak FDs growing / high open rate** — connection leak or missing close; compare peak sockets with Redis pool size.")
 lines.append("8. **thread_fork >> thread_exit or peak threads climbing** — goroutine/thread pool growth; check GOMAXPROCS and gnet worker count.")
 lines.append("9. **retrans > 0** — kernel TCP retry; check Redis/network chaos or laptop Wi-Fi.")
+lines.append("10. **filter_check p99 (uprobe)** — in-process FilterEngine.Check; compare with Prometheus handler p99.")
+lines.append("11. **process_track p99 (uprobe)** — full /track handler path including RTB branch.")
 lines.append("")
 
 with open(report_path, "w") as rf:

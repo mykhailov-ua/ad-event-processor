@@ -55,14 +55,27 @@ type dumpedSyscall struct {
 	WallPct   float64 `json:"wall_pct"`
 }
 
+type dumpedMarker struct {
+	PID          uint32  `json:"pid"`
+	Role         string  `json:"role"`
+	MarkerID     uint32  `json:"marker_id"`
+	Marker       string  `json:"marker"`
+	CampaignSlot uint32  `json:"campaign_slot"`
+	Count        uint64  `json:"count"`
+	AvgUs        float64 `json:"avg_us"`
+	P99Us        float64 `json:"p99_us"`
+	MaxUs        float64 `json:"max_us"`
+}
+
 type dumpBundle struct {
 	DurationSec   float64            `json:"duration_sec"`
-	PIDStats      []dumpedPIDStats     `json:"pid_stats"`
-	ProcSamples   []procSamplePeak     `json:"proc_samples"`
-	CgroupSamples []cgroupSamplePeak   `json:"cgroup_samples"`
-	HotSyscalls   []dumpedSyscall      `json:"hot_syscalls"`
-	Syscalls      []dumpedSyscall      `json:"syscalls"`
-	Network       []map[string]any     `json:"network"`
+	PIDStats      []dumpedPIDStats   `json:"pid_stats"`
+	ProcSamples   []procSamplePeak   `json:"proc_samples"`
+	CgroupSamples []cgroupSamplePeak `json:"cgroup_samples"`
+	HotSyscalls   []dumpedSyscall    `json:"hot_syscalls"`
+	Syscalls      []dumpedSyscall    `json:"syscalls"`
+	Network       []map[string]any   `json:"network"`
+	Markers       []dumpedMarker     `json:"markers"`
 }
 
 func (r *probeRun) dumpMaps() error {
@@ -94,6 +107,10 @@ func (r *probeRun) dumpMaps() error {
 	}
 	enrichMajorFaultsFromMem(r.session.Dir, pidStats)
 	hotSyscalls := filterHotSyscalls(syscalls)
+	markers, err := r.aggregateMarkers()
+	if err != nil {
+		slog.Warn("marker hist", "error", err)
+	}
 
 	bundle := dumpBundle{
 		DurationSec:   duration,
@@ -103,6 +120,7 @@ func (r *probeRun) dumpMaps() error {
 		HotSyscalls:   hotSyscalls,
 		Syscalls:      syscalls,
 		Network:       netStats,
+		Markers:       markers,
 	}
 	data, err := json.MarshalIndent(bundle, "", "  ")
 	if err != nil {
@@ -189,7 +207,7 @@ func (r *probeRun) aggregatePIDStats(durationSec float64) ([]dumpedPIDStats, err
 		}
 		out = append(out, row)
 		trackedOnCPU += agg.OnCPUNs
-		if role == roleK6 {
+		if role == roleLoadgen {
 			k6OnCPU += agg.OnCPUNs
 		}
 	}
@@ -200,7 +218,7 @@ func (r *probeRun) aggregatePIDStats(durationSec float64) ([]dumpedPIDStats, err
 	if trackedOnCPU > 0 && k6OnCPU > 0 {
 		pct := float64(k6OnCPU) / float64(trackedOnCPU) * 100
 		for i := range out {
-			if out[i].Role == "k6" {
+			if out[i].Role == "loadgen" {
 				out[i].LoadgenOverheadPct = pct
 			}
 		}
@@ -321,14 +339,22 @@ func (r *probeRun) aggregateNet() ([]map[string]any, error) {
 		for _, v := range perCPU {
 			agg.Retrans += v.Retrans
 			agg.Connects += v.Connects
+			agg.ConnectNsSum += v.ConnectNsSum
+			agg.ConnectSamples += v.ConnectSamples
 		}
 		name, role := r.lookupTarget(key.PID, 0)
+		connectAvgUs := float64(0)
+		if agg.ConnectSamples > 0 {
+			connectAvgUs = float64(agg.ConnectNsSum/agg.ConnectSamples) / 1000
+		}
 		out = append(out, map[string]any{
-			"pid":     key.PID,
-			"name":    name,
-			"role":    roleName(role),
-			"dport":   key.Dport,
-			"retrans": agg.Retrans,
+			"pid":            key.PID,
+			"name":           name,
+			"role":           roleName(role),
+			"dport":          key.Dport,
+			"retrans":        agg.Retrans,
+			"connects":       agg.Connects,
+			"connect_avg_us": connectAvgUs,
 		})
 	}
 	return out, iter.Err()
@@ -366,8 +392,8 @@ func enrichMajorFaultsFromMem(sessionDir string, stats []dumpedPIDStats) {
 }
 
 var hotSyscallNames = map[string]bool{
-	"read": true, "write": true, "connect": true, "sendto": true,
-	"recvfrom": true, "futex": true, "epoll_wait": true,
+	"read": true, "write": true, "writev": true, "connect": true, "sendto": true,
+	"recvfrom": true, "futex": true, "epoll_wait": true, "fsync": true, "fdatasync": true,
 }
 
 func filterHotSyscalls(rows []dumpedSyscall) []dumpedSyscall {
@@ -378,6 +404,51 @@ func filterHotSyscalls(rows []dumpedSyscall) []dumpedSyscall {
 		}
 	}
 	return out
+}
+
+func (r *probeRun) aggregateMarkers() ([]dumpedMarker, error) {
+	m := r.coll.Maps.MarkerHist
+	if m == nil {
+		return nil, nil
+	}
+	var out []dumpedMarker
+	var key bpfprobe.MarkerHistKey
+	var perCPU []bpfprobe.Hist
+	iter := m.Iterate()
+	for iter.Next(&key, &perCPU) {
+		var agg bpfprobe.Hist
+		for _, h := range perCPU {
+			mergeHist(&agg, h)
+		}
+		if agg.Count == 0 {
+			continue
+		}
+		_, role := r.lookupTarget(key.PID, 0)
+		avgUs := float64(agg.SumNs/agg.Count) / 1000
+		out = append(out, dumpedMarker{
+			PID:          key.PID,
+			Role:         roleName(role),
+			MarkerID:     key.MarkerID,
+			Marker:       markerLabel(key.MarkerID),
+			CampaignSlot: key.CampaignSlot,
+			Count:        agg.Count,
+			AvgUs:        avgUs,
+			P99Us:        histP99Us(agg),
+			MaxUs:        float64(agg.MaxNs) / 1000,
+		})
+	}
+	return out, iter.Err()
+}
+
+func markerLabel(id uint32) string {
+	switch id {
+	case 1:
+		return "process_track"
+	case 3:
+		return "filter_check"
+	default:
+		return fmt.Sprintf("marker_%d", id)
+	}
 }
 
 var _ = ebpf.Map{}

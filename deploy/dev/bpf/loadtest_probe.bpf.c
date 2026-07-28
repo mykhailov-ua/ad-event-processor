@@ -10,6 +10,7 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 
+#include "common/espx_pt_regs.h"
 #include "common/espx_probe.h"
 #include "common/espx_trace.h"
 
@@ -21,6 +22,13 @@ struct {
 	__type(key, __u32);
 	__type(value, __u8);
 } target_pids SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 128);
+	__type(key, __u64);
+	__type(value, __u8);
+} target_cgroups SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_ARRAY);
@@ -76,6 +84,20 @@ struct {
 	__type(value, struct espx_hist);
 } runqueue_hist SEC(".maps");
 
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 8192);
+	__type(key, struct espx_marker_ts_key);
+	__type(value, __u64);
+} marker_enter_ts SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_HASH);
+	__uint(max_entries, 2048);
+	__type(key, struct espx_marker_hist_key);
+	__type(value, struct espx_hist);
+} marker_hist SEC(".maps");
+
 static __always_inline struct espx_config *probe_config(void)
 {
 	__u32 key = 0;
@@ -96,6 +118,22 @@ static __always_inline struct espx_pid_stats *pid_stats_mut(__u32 pid, __u8 role
 	return bpf_map_lookup_elem(&pid_stats, &pid);
 }
 
+#if defined(__TARGET_ARCH_x86)
+static __always_inline __u32 espx_uprobe_slot(struct pt_regs *ctx)
+{
+	__u32 slot = (__u32)ctx->di;
+	if (!slot)
+		slot = (__u32)ctx->ax;
+	return slot;
+}
+#else
+static __always_inline __u32 espx_uprobe_slot(struct pt_regs *ctx)
+{
+	(void)ctx;
+	return 0;
+}
+#endif
+
 SEC("tracepoint/raw_syscalls/sys_enter")
 int espx_sys_enter(struct trace_event_raw_sys_enter *ctx)
 {
@@ -113,7 +151,7 @@ int espx_sys_enter(struct trace_event_raw_sys_enter *ctx)
 
 	pid_tgid = bpf_get_current_pid_tgid();
 	pid = pid_tgid >> 32;
-	if (!espx_target_role(&target_pids, pid))
+	if (!espx_resolve_role(&target_pids, &target_cgroups, pid))
 		return 0;
 
 	if (!espx_should_sample(cfg) && !espx_is_hot_syscall(syscall_id))
@@ -150,7 +188,7 @@ int espx_sys_exit(struct trace_event_raw_sys_exit *ctx)
 
 	pid_tgid = bpf_get_current_pid_tgid();
 	pid = pid_tgid >> 32;
-	role = espx_target_role(&target_pids, pid);
+	role = espx_resolve_role(&target_pids, &target_cgroups, pid);
 	if (!role)
 		return 0;
 
@@ -176,6 +214,25 @@ int espx_sys_exit(struct trace_event_raw_sys_exit *ctx)
 	if (hist)
 		espx_hist_record(hist, delta);
 
+	if (syscall_id == ESPX_NR_connect) {
+		struct espx_net_key nkey = {};
+		struct espx_net_stats *nst;
+		struct espx_net_stats nfresh = {};
+
+		nkey.pid = pid;
+		nkey.dport = 0;
+		nst = bpf_map_lookup_elem(&net_stats, &nkey);
+		if (!nst) {
+			bpf_map_update_elem(&net_stats, &nkey, &nfresh, BPF_NOEXIST);
+			nst = bpf_map_lookup_elem(&net_stats, &nkey);
+		}
+		if (nst) {
+			nst->connects++;
+			nst->connect_ns_sum += delta;
+			nst->connect_samples++;
+		}
+	}
+
 	if (cfg->slow_syscall_ns && delta >= cfg->slow_syscall_ns) {
 		__builtin_memset(&ev, 0, sizeof(ev));
 		ev.ts_ns = now;
@@ -183,7 +240,9 @@ int espx_sys_exit(struct trace_event_raw_sys_exit *ctx)
 		ev.syscall_id = syscall_id;
 		ev.duration_ns = delta;
 		ev.role = role;
-		ev.kind = 1;
+		ev.kind = ESPX_SLOW_KIND_SYSCALL;
+		ev.campaign_slot = 0;
+		ev.marker_id = 0;
 		bpf_ringbuf_output(&slow_events, &ev, sizeof(ev), 0);
 	}
 	return 0;
@@ -202,7 +261,7 @@ int espx_sched_wakeup(struct trace_event_raw_sched_wakeup *ctx)
 		return 0;
 
 	pid = ctx->pid;
-	role = espx_target_role(&target_pids, pid);
+	role = espx_resolve_role(&target_pids, &target_cgroups, pid);
 	if (!role)
 		return 0;
 
@@ -233,8 +292,8 @@ int espx_sched_switch(struct trace_event_raw_sched_switch *ctx)
 	now = bpf_ktime_get_ns();
 	prev_pid = ctx->prev_pid;
 	next_pid = ctx->next_pid;
-	prev_role = espx_target_role(&target_pids, prev_pid);
-	next_role = espx_target_role(&target_pids, next_pid);
+	prev_role = espx_resolve_role(&target_pids, &target_cgroups, prev_pid);
+	next_role = espx_resolve_role(&target_pids, &target_cgroups, next_pid);
 
 	if (prev_role) {
 		st = pid_stats_mut(prev_pid, prev_role);
@@ -286,7 +345,7 @@ int espx_page_fault_user(struct trace_event_raw_page_fault_user *ctx)
 		return 0;
 
 	pid = bpf_get_current_pid_tgid() >> 32;
-	role = espx_target_role(&target_pids, pid);
+	role = espx_resolve_role(&target_pids, &target_cgroups, pid);
 	if (!role)
 		return 0;
 
@@ -310,7 +369,7 @@ int espx_tcp_retransmit(struct pt_regs *ctx)
 		return 0;
 
 	pid = bpf_get_current_pid_tgid() >> 32;
-	if (!espx_target_role(&target_pids, pid))
+	if (!espx_resolve_role(&target_pids, &target_cgroups, pid))
 		return 0;
 
 	key.pid = pid;
@@ -338,7 +397,7 @@ int espx_sched_process_fork(struct trace_event_raw_sched_process_fork *ctx)
 		return 0;
 
 	tgid = bpf_get_current_pid_tgid() >> 32;
-	role = espx_target_role(&target_pids, tgid);
+	role = espx_resolve_role(&target_pids, &target_cgroups, tgid);
 	if (!role)
 		return 0;
 
@@ -361,12 +420,118 @@ int espx_sched_process_exit(struct trace_event_raw_sched_process_exit *ctx)
 		return 0;
 
 	tgid = bpf_get_current_pid_tgid() >> 32;
-	role = espx_target_role(&target_pids, tgid);
+	role = espx_resolve_role(&target_pids, &target_cgroups, tgid);
 	if (!role)
 		return 0;
 
 	st = pid_stats_mut(tgid, role);
 	if (st)
 		st->thread_exit++;
+	return 0;
+}
+
+SEC("uprobe/espx_trace_enter")
+int espx_trace_enter(struct pt_regs *ctx)
+{
+	struct espx_config *cfg;
+	struct espx_marker_ts_key tkey;
+	__u64 cookie;
+	__u32 marker_id;
+	__u32 slot;
+	__u64 pid_tgid;
+	__u32 pid;
+	__u64 ts;
+
+	cfg = probe_config();
+	if (!cfg || !cfg->enabled)
+		return 0;
+
+	cookie = bpf_get_attach_cookie(ctx);
+	marker_id = (__u32)cookie;
+	if (!marker_id)
+		return 0;
+
+	pid_tgid = bpf_get_current_pid_tgid();
+	pid = pid_tgid >> 32;
+	if (!espx_resolve_role(&target_pids, &target_cgroups, pid))
+		return 0;
+
+	slot = espx_uprobe_slot(ctx);
+	ts = bpf_ktime_get_ns();
+	tkey.pid_tgid = pid_tgid;
+	tkey.marker_id = marker_id;
+	bpf_map_update_elem(&marker_enter_ts, &tkey, &ts, BPF_ANY);
+	(void)slot;
+	return 0;
+}
+
+SEC("uprobe/espx_trace_exit")
+int espx_trace_exit(struct pt_regs *ctx)
+{
+	struct espx_config *cfg;
+	struct espx_marker_ts_key tkey;
+	struct espx_marker_hist_key hkey;
+	struct espx_hist *hist;
+	struct espx_hist fresh = {};
+	struct espx_slow_event ev;
+	__u64 *enter_ts;
+	__u64 cookie;
+	__u32 exit_id;
+	__u32 enter_id;
+	__u32 slot;
+	__u64 pid_tgid;
+	__u32 pid;
+	__u8 role;
+	__u64 now;
+	__u64 delta;
+
+	cfg = probe_config();
+	if (!cfg || !cfg->enabled)
+		return 0;
+
+	cookie = bpf_get_attach_cookie(ctx);
+	exit_id = (__u32)cookie;
+	if (exit_id < 2 || (exit_id & 1) == 0)
+		return 0;
+	enter_id = exit_id - 1;
+
+	pid_tgid = bpf_get_current_pid_tgid();
+	pid = pid_tgid >> 32;
+	role = espx_resolve_role(&target_pids, &target_cgroups, pid);
+	if (!role)
+		return 0;
+
+	slot = espx_uprobe_slot(ctx);
+	tkey.pid_tgid = pid_tgid;
+	tkey.marker_id = enter_id;
+	enter_ts = bpf_map_lookup_elem(&marker_enter_ts, &tkey);
+	if (!enter_ts)
+		return 0;
+	now = bpf_ktime_get_ns();
+	delta = now - *enter_ts;
+	bpf_map_delete_elem(&marker_enter_ts, &tkey);
+
+	hkey.pid = pid;
+	hkey.marker_id = enter_id;
+	hkey.campaign_slot = slot;
+	hist = bpf_map_lookup_elem(&marker_hist, &hkey);
+	if (!hist) {
+		bpf_map_update_elem(&marker_hist, &hkey, &fresh, BPF_NOEXIST);
+		hist = bpf_map_lookup_elem(&marker_hist, &hkey);
+	}
+	if (hist)
+		espx_hist_record(hist, delta);
+
+	if (cfg->slow_syscall_ns && delta >= cfg->slow_syscall_ns) {
+		__builtin_memset(&ev, 0, sizeof(ev));
+		ev.ts_ns = now;
+		ev.pid = pid;
+		ev.duration_ns = delta;
+		ev.role = role;
+		ev.kind = ESPX_SLOW_KIND_UPROBE;
+		ev.campaign_slot = (__u16)slot;
+		ev.marker_id = enter_id;
+		bpf_ringbuf_output(&slow_events, &ev, sizeof(ev), 0);
+	}
 	return 0;
 }

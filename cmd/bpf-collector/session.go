@@ -9,16 +9,18 @@ import (
 )
 
 type targetEntry struct {
-	PID  uint32 `json:"pid"`
-	Role uint8  `json:"role"`
-	Name string `json:"name"`
+	PID      uint32 `json:"pid"`
+	CgroupID uint64 `json:"cgroup_id,omitempty"`
+	Role     uint8  `json:"role"`
+	Name     string `json:"name"`
 }
 
 type sessionMeta struct {
-	StartedAt  time.Time     `json:"started_at"`
-	EndedAt    *time.Time    `json:"ended_at,omitempty"`
-	SampleRate uint32        `json:"sample_rate"`
-	Targets    []targetEntry `json:"targets"`
+	StartedAt   time.Time     `json:"started_at"`
+	EndedAt     *time.Time    `json:"ended_at,omitempty"`
+	SampleRate  uint32        `json:"sample_rate"`
+	RolesWanted string        `json:"roles_wanted,omitempty"`
+	Targets     []targetEntry `json:"targets"`
 }
 
 type session struct {
