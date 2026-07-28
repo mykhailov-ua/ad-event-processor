@@ -1,0 +1,14 @@
+---
+description: Open backlog routing — see docs/MILESTONE.md for active engineering gaps
+alwaysApply: false
+---
+
+Agent: Before planning RTB, operations, payments, or compliance work, read `docs/MILESTONE.md`.
+
+Active backlog: `docs/MILESTONE.md` (non-UI engineering gaps only).
+
+Closed items: `docs/DEVELOPMENT.md` (Completed roadmap).
+
+UI dashboards (GAP-PROD-01, GAP-OPS-04) are deferred and not listed in MILESTONE.
+
+Chaos catalog: `.cursor/rules/chaos.mdc`.

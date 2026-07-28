@@ -1,0 +1,16 @@
+---
+description: Routing — client docs vs agent rules
+alwaysApply: false
+---
+
+Agent: Use this to choose between human-facing docs and `.cursor/rules/*.mdc`.
+
+Capabilities map
+
+System behavior, SLAs, topology: `docs/ARCHITECTURE.md`
+Local dev, CI, load tests, env: `docs/DEVELOPMENT.md`
+Multi-region design: `docs/MULTI_REGION.md`
+Open backlog: `docs/MILESTONE.md`
+Engineering rules for the agent: `.cursor/rules/guidelines-index.mdc` + scoped `*.mdc`
+
+Do not duplicate agent rules into `docs/` — maintain `.cursor/rules/` only.

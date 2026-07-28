@@ -1,0 +1,26 @@
+---
+description: Index of eSPX agent rules — engineering guidelines for LLM
+alwaysApply: true
+---
+
+eSPX agent rules index
+
+Client docs (humans): `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, `docs/MULTI_REGION.md`, `docs/MILESTONE.md`.
+
+Agent rules: `.cursor/rules/*.mdc` — follow scoped rules whose `globs` match files you edit.
+
+`espx.mdc`: Always — SLA, layout, hot-path summary
+`code-style.mdc`: Go, Lua, SQL structure and PR gates
+`hot-path.mdc`: `internal/ingestion`, tracker ingest
+`load-test-bpf.mdc`: Perf validation: BPF + Prometheus, load tests
+`data-layer.mdc`: Redis, Postgres, ClickHouse, migrations
+`control-plane.mdc`: management, outbox, admin APIs
+`rtb.mdc`: In-process auction, OpenRTB
+`edge.mdc`: nginx Lua, XDP programs
+`compliance.mdc`: Defensive perimeter, XDP policy
+`chaos.mdc`: Fault injection, chaos tests
+`service-boundaries.mdc`: cmd/* imports and ownership
+`open-gaps.mdc`: Routes to `docs/MILESTONE.md` backlog
+`capabilities.mdc`: Routing to client vs agent docs
+
+Precedence: `espx.mdc` SLA and alloc rules on `/track`; `code-style.mdc` on structure; `service-boundaries.mdc` on imports; `load-test-bpf.mdc` before claiming perf improvements.
