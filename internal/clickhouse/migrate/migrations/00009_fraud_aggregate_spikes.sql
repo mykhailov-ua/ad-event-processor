@@ -7,5 +7,5 @@ CREATE TABLE IF NOT EXISTS fraud_aggregate_spikes (
     created_at DateTime64(3, 'UTC')
 ) ENGINE = SummingMergeTree()
 PARTITION BY toYYYYMM(created_at)
-ORDER BY (subnet, fraud_reason, created_at)
+ORDER BY (subnet_hash, fraud_reason, created_at)
 TTL toDateTime(created_at) + INTERVAL 90 DAY;

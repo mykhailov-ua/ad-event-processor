@@ -16,6 +16,11 @@ import (
 //go:embed migrations/*.sql
 var clickHouseMigrations embed.FS
 
+// ClickHouseMigrationFS exposes embedded migration SQL for schema audits.
+func ClickHouseMigrationFS() fs.FS {
+	return clickHouseMigrations
+}
+
 // ApplyClickHouseMigrations runs idempotent processor analytics DDL on startup.
 func ApplyClickHouseMigrations(ctx context.Context, conn driver.Conn) error {
 	entries, err := fs.Glob(clickHouseMigrations, "migrations/*.sql")

@@ -1,0 +1,11 @@
+# Raw ClickHouse driver.Conn usage allowed outside CHQuery (writes, DDL, migrations).
+internal/database/chquery.go
+internal/database/clickhouse_connect.go
+internal/database/ch_partition_janitor.go
+internal/clickhouse/migrate/chmigrate.go
+internal/ingestion/clickhouse_store.go
+internal/ingestion/rtb_deal_outcomes_writer.go
+internal/logcompactor/cold_clickhouse.go
+internal/costsync/clickhouse.go
+internal/management/service_erasure.go
+internal/ivtdetector/fraud_scoring_rule.go

@@ -124,6 +124,9 @@ SELECT COALESCE(SUM(amount_micro),0)::bigint FROM campaign_costs WHERE customer_
 			args: []any{custID, time.Now().UTC().Truncate(24 * time.Hour)}},
 		{name: "postback.GetPendingPostbackEventsForUpdate", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 SELECT * FROM outbox_events WHERE status = 'PENDING' AND event_type = 'SEND_POSTBACK' ORDER BY created_at ASC LIMIT 50 FOR UPDATE SKIP LOCKED`},
+		{name: "node_metrics.ListNodeCapacityScoresByRegionRole", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+SELECT node_id, region_code, role, score, weight, provenance, epoch_id, updated_at
+FROM node_capacity_scores WHERE region_code = $1 AND role = $2`, args: []any{int16(0), "processor"}},
 		{name: "inline.volume_meter_campaigns", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT) SELECT id, customer_id FROM campaigns`},
 	}
 
@@ -255,6 +258,24 @@ ON CONFLICT DO NOTHING`)
 VALUES (0, '00000000-0000-4000-8000-000000000001'::uuid, 5000000, 1000000)
 ON CONFLICT DO NOTHING`)
 
+	exec(`CREATE TABLE IF NOT EXISTS node_capacity_scores (
+		node_id TEXT NOT NULL,
+		region_code SMALLINT NOT NULL,
+		role TEXT NOT NULL,
+		score DOUBLE PRECISION NOT NULL,
+		weight DOUBLE PRECISION NOT NULL,
+		provenance TEXT NOT NULL,
+		epoch_id BIGINT NOT NULL,
+		updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+		PRIMARY KEY (node_id, region_code, role)
+	)`)
+	exec(`CREATE INDEX IF NOT EXISTS idx_node_capacity_scores_region_role
+		ON node_capacity_scores (region_code, role)`)
+	exec(`INSERT INTO node_capacity_scores (node_id, region_code, role, score, weight, provenance, epoch_id)
+VALUES ('processor', 0, 'processor', 0.9, 0.55, 'own_window', 1),
+       ('processor-1', 0, 'processor', 0.4, 0.45, 'own_window', 1)
+ON CONFLICT DO NOTHING`)
+
 	exec(`INSERT INTO campaigns (id, name, status, budget_limit, current_spend, customer_id, pacing_mode, timezone, updated_at)
 SELECT ('00000000-0000-4000-8000-' || lpad(to_hex(9000 + g), 12, '0'))::uuid,
   'drain-' || g, 'DRAINING', 100000000, 0,
@@ -269,4 +290,5 @@ FROM generate_series(1, 200) g ON CONFLICT DO NOTHING`)
 	exec(`ANALYZE campaign_stats`)
 	exec(`ANALYZE admin_audit_log`)
 	exec(`ANALYZE ip_blacklist`)
+	exec(`ANALYZE node_capacity_scores`)
 }
