@@ -33,6 +33,26 @@ func TestStripeProvider_CreateCheckout_notWired(t *testing.T) {
 	require.ErrorIs(t, err, ErrProviderNotConfigured)
 }
 
+func TestCryptoProvider_CreateCheckout_belowMinimum(t *testing.T) {
+	p := NewCryptoProvider(12, 10_000_000, "whsec_test")
+	_, _, err := p.CreateCheckout(t.Context(), 5_000_000, "USDT", nil, "idem-crypto-1")
+	require.Error(t, err)
+}
+
+func TestCryptoProvider_CreateCheckout_ok(t *testing.T) {
+	p := NewCryptoProvider(12, 10_000_000, "whsec_test")
+	ref, url, err := p.CreateCheckout(t.Context(), 50_000_000, "USDT", nil, "idem-crypto-2")
+	require.NoError(t, err)
+	assert.Equal(t, "crypto", p.Name())
+	assert.Equal(t, "tx_crypto_idem-crypto-2", ref)
+	assert.Contains(t, url, "idem-crypto-2")
+}
+
+func TestCryptoConfigured(t *testing.T) {
+	assert.False(t, CryptoConfigured(&config.Config{}))
+	assert.True(t, CryptoConfigured(&config.Config{CryptoWebhookSecret: "secret"}))
+}
+
 func TestMergeIntentMetadata_checkoutURL(t *testing.T) {
 	raw, err := mergeIntentMetadata(map[string]string{"foo": "bar"}, "https://checkout.example/pay")
 	require.NoError(t, err)
