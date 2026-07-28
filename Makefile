@@ -1,4 +1,4 @@
-.PHONY: fmt gen lint test test-unit test-int test-alloc-gate test-full test-chaos test-broker-chaos-lab test-sentinel-chaos build proto check-local check-vuln
+.PHONY: fmt gen lint test test-unit test-int test-alloc-gate management-domain-coverage test-full test-chaos test-broker-chaos-lab test-sentinel-chaos build proto check-local check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-bpf openapi-lint openapi-gen
 
 fmt:
 	go fmt ./...
@@ -22,6 +22,10 @@ test-unit: gen fmt
 test-alloc-gate: gen fmt
 	go test -short -count=1 -run 'ZeroAlloc|zeroAlloc_fraudScoring|FraudScoring_LatencySLA|ApplyRtbAuction_shadow_zeroAlloc|RecordRtbShadow|HTTP1Parse' ./internal/ingestion/...
 	go test -run='^$$' -bench='Benchmark(HTTP1Parse$$|TrackRequest_ParseJSONOpt$$|Auction$$)' -benchmem -count=1 ./internal/ingestion/... ./internal/rtb/
+
+# GAP-ENG-01: domain registry, boundary DTO checks, and ≥80% logic-file coverage gate.
+management-domain-coverage:
+	bash scripts/management-domain-coverage.sh
 
 test-int: gen fmt
 	go test -v ./tests/...
@@ -50,8 +54,31 @@ check-local:
 check-vuln:
 	bash scripts/ci/govulncheck.sh
 
+# GAP-PROD-03: OpenAPI contract + drift gate (<2 min).
+openapi-lint:
+	bash scripts/ci/check_openapi.sh
+
+# Regenerate docs/openapi/openapi.yaml paths from handler discovery.
+openapi-gen:
+	go run ./scripts/openapi
+
 build: gen fmt
 	docker build -t ad-event-processor:latest .
+
+# Dev load-test BPF: loadtest_probe.o + bpf-collector (see .cursor/rules/load-test-bpf.mdc).
+bpf-dev:
+	bash scripts/local-dev/bpf_setup.sh
+
+# Standalone BPF session (no k6): requires sudo for attach.
+bpf-session-start: bpf-dev
+	sudo bash scripts/local-dev/bpf_session.sh start
+
+bpf-session-stop:
+	sudo bash scripts/local-dev/bpf_session.sh stop
+
+# Constrained business-mix load test with kernel probes (requires sudo).
+load-test-bpf: bpf-dev
+	sudo ESPX_BPF_PROBE=1 ESPX_BPF_SAMPLE_RATE=$${ESPX_BPF_SAMPLE_RATE:-10} bash scripts/load-test/run_dirty_load.sh business
 
 proto:
 	bash scripts/codegen/gen.sh --proto

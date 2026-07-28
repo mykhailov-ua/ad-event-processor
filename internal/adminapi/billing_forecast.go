@@ -6,8 +6,7 @@ import (
 	"time"
 
 	billingdb "espx/internal/billing/db"
-
-	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
+	"espx/internal/database"
 
 	"github.com/google/uuid"
 
@@ -35,12 +34,12 @@ type CHHourlyPoint struct {
 	Impressions int64  `json:"impressions"`
 }
 
-// WithClickHouse attaches an optional ClickHouse connection for billing forecast.
-func (s *CompositeReadService) WithClickHouse(ch driver.Conn) *CompositeReadService {
+// WithCHQuery attaches a governed ClickHouse client for billing forecast reads.
+func (s *CompositeReadService) WithCHQuery(q *database.CHQuery) *CompositeReadService {
 	if s == nil {
 		return nil
 	}
-	s.ch = ch
+	s.chQuery = q
 	return s
 }
 
@@ -86,7 +85,7 @@ func (s *CompositeReadService) BuildForecast(ctx context.Context, customerID uui
 		ProjectedMonthEndMicro:   mtd + runRate*int64(daysRemaining),
 	}
 
-	if s.ch == nil {
+	if s.chQuery == nil {
 		out.LowConfidence = true
 		out.CHUnavailable = true
 		return out, nil
@@ -139,7 +138,7 @@ func (s *CompositeReadService) customerCampaignIDs(ctx context.Context, customer
 }
 
 func (s *CompositeReadService) queryCHHourlyImpressions(ctx context.Context, from, to time.Time, campaignIDs []uuid.UUID) ([]CHHourlyPoint, error) {
-	if s.ch == nil {
+	if s.chQuery == nil {
 		return nil, fmt.Errorf("clickhouse not configured")
 	}
 	query := `
@@ -148,7 +147,7 @@ FROM mv_campaign_hourly_impressions
 WHERE hour >= ? AND hour < ? AND campaign_id IN (?)
 GROUP BY hr
 ORDER BY hr`
-	rows, err := s.ch.Query(ctx, query, from, to, campaignIDs)
+	rows, err := s.chQuery.Query(ctx, query, from, to, campaignIDs)
 	if err != nil {
 		return nil, err
 	}

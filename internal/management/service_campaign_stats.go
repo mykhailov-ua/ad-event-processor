@@ -45,9 +45,9 @@ type CampaignStatsDTO struct {
 }
 
 // SetClickHouse attaches a read-only analytics connection for reporting endpoints.
-func (s *Service) SetClickHouse(conn driver.Conn) {
+func (s *Service) SetClickHouse(conn driver.Conn, cfg database.CHQueryConfig) {
 	if conn != nil {
-		s.chQuery = database.NewCHQuery(conn, database.CHQueryConfig{})
+		s.chQuery = database.NewCHQuery(conn, cfg)
 	}
 }
 

@@ -10,8 +10,7 @@ import (
 	billingdb "espx/internal/billing/db"
 
 	"espx/internal/config"
-
-	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
+	"espx/internal/database"
 
 	"github.com/google/uuid"
 
@@ -30,7 +29,7 @@ type CompositeReadService struct {
 	cfg      *config.Config
 	provider billing.PaymentProvider
 	queries  *billingdb.Queries
-	ch       driver.Conn
+	chQuery  *database.CHQuery
 }
 
 // NewCompositeReadService constructs statement and wallet read models.
