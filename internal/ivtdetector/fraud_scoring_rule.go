@@ -2,6 +2,7 @@ package ivtdetector
 
 import (
 	"context"
+	"encoding/hex"
 	"log/slog"
 	"time"
 
@@ -86,7 +87,7 @@ func (r *fraudScoringRule) Find(ctx context.Context) ([]SuspiciousIP, error) {
 	query := `
 SELECT
     window_start,
-    ip_address,
+    ip_hash,
     campaign_id,
     events,
     clicks,
@@ -111,9 +112,10 @@ LIMIT ?`
 	for rows.Next() {
 		var fr fraudscoring.FeatureRow
 		var campaignID string
+		var ipHash []byte
 		if err := rows.Scan(
 			&fr.WindowStart,
-			&fr.IPAddress,
+			&ipHash,
 			&campaignID,
 			&fr.Events,
 			&fr.Clicks,
@@ -127,6 +129,7 @@ LIMIT ?`
 			return nil, nil
 		}
 		fr.CampaignID = campaignID
+		fr.IPAddress = hex.EncodeToString(ipHash)
 		featureRows = append(featureRows, fr)
 	}
 

@@ -77,7 +77,7 @@ func ensureFraudScoringShadowTables(t *testing.T, conn driver.Conn) {
 	ddl := []string{
 		`CREATE TABLE IF NOT EXISTS ad_event_processor.ml_features_1m (
 			window_start DateTime,
-			ip_address String,
+			ip_hash FixedString(16),
 			campaign_id UUID,
 			events UInt64,
 			clicks UInt64,
@@ -86,15 +86,15 @@ func ensureFraudScoringShadowTables(t *testing.T, conn driver.Conn) {
 			unique_users UInt64,
 			unique_uas UInt64
 		) ENGINE = SummingMergeTree()
-		ORDER BY (window_start, ip_address, campaign_id)`,
+		ORDER BY (window_start, ip_hash, campaign_id)`,
 		`CREATE TABLE IF NOT EXISTS ad_event_processor.ml_shadow_scores (
-			ip_address String,
+			ip_hash FixedString(16),
 			score Float64,
 			model_name LowCardinality(String),
 			created_at DateTime64(3, 'UTC')
 		) ENGINE = MergeTree()
 		PARTITION BY toYYYYMM(created_at)
-		ORDER BY (model_name, created_at, ip_address)`,
+		ORDER BY (model_name, created_at, ip_hash)`,
 	}
 	for _, stmt := range ddl {
 		require.NoError(t, conn.Exec(ctx, stmt))

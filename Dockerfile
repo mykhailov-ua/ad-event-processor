@@ -24,6 +24,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/
 RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/ivt-detector ./cmd/ivt-detector
 RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/fraud-scorer ./cmd/fraud-scorer
 RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/broker ./cmd/broker
+RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/region-proxy ./cmd/region-proxy
 RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/log-shipper ./cmd/log-shipper
 RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/alertmanager-telegram ./cmd/alertmanager-telegram
 
@@ -42,6 +43,7 @@ COPY --from=builder /bin/notifier /notifier
 COPY --from=builder /bin/ivt-detector /ivt-detector
 COPY --from=builder /bin/fraud-scorer /fraud-scorer
 COPY --from=builder /bin/broker /broker
+COPY --from=builder /bin/region-proxy /region-proxy
 COPY --from=builder /bin/log-shipper /log-shipper
 COPY --from=builder /bin/alertmanager-telegram /alertmanager-telegram
 USER nonroot:nonroot

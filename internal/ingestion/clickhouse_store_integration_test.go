@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"espx/internal/campaignmodel"
+	"espx/pkg/piihash"
 
 	chgo "github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
@@ -87,6 +88,7 @@ func TestClickHouseStore_InsertDeduplicate_RealCH(t *testing.T) {
 	defer cleanup()
 
 	store := NewClickHouseStore(conn, 5*time.Second, "", DefaultCHSpoolConfig(), nil)
+	store.SetPIIHasher(piihash.TestHasher())
 	defer func() { _ = store.Close() }()
 
 	clickID := "ch-dedup-" + uuid.NewString()
@@ -118,6 +120,7 @@ func TestClickHouseStore_InsertDeduplicate_DeterministicToken_RealCH(t *testing.
 	defer cleanup()
 
 	store := NewClickHouseStore(conn, 5*time.Second, "", DefaultCHSpoolConfig(), nil)
+	store.SetPIIHasher(piihash.TestHasher())
 	defer func() { _ = store.Close() }()
 
 	clickID := "ch-dedup-det-" + uuid.NewString()

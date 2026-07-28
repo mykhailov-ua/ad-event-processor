@@ -15,6 +15,7 @@ import (
 	"espx/internal/ivtdetector"
 	"espx/internal/licensing"
 	"espx/pkg/lifecycle"
+	"espx/pkg/piihash"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/redis/go-redis/v9"
@@ -34,6 +35,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	piiHasher, piiErr := piihash.NewFromConfig(cfg)
+	if piiErr != nil {
+		slog.Error("failed to initialize PII hasher", "error", piiErr)
+		os.Exit(1)
+	}
+	ivtdetector.SetPIIHasher(piiHasher)
+
 	ctx, stop := lifecycle.NotifyContext(context.Background())
 	defer stop()
 
@@ -51,7 +59,7 @@ func main() {
 	}
 	defer func() { _ = chRead.Close() }()
 
-	chQuery := database.NewCHQuery(chRead, database.CHQueryConfig{})
+	chQuery := database.NewCHQuery(chRead, database.CHQueryConfigFromApp(cfg))
 
 	analyzerCfg := ivtdetector.AnalyzerConfig{
 		Window:               time.Duration(cfg.IVT.WindowSec) * time.Second,

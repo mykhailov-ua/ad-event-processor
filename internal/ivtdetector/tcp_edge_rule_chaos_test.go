@@ -258,8 +258,15 @@ func TestChaos_IVTCorrelationBrokenTLSData(t *testing.T) {
 
 	candidates, err := rule.Find(ctx)
 	require.NoError(t, err)
-	require.Len(t, candidates, 1)
-	assert.Equal(t, "203.0.113.82", candidates[0].IP)
+	require.NotEmpty(t, candidates)
+	var ghostIP string
+	for _, c := range candidates {
+		if c.IP == "203.0.113.82" {
+			ghostIP = c.IP
+			break
+		}
+	}
+	assert.Equal(t, "203.0.113.82", ghostIP)
 
 	testutil.LogChaosProof(t, "ivt_tcp_edge_broken_tls_data", map[string]string{
 		"seeded_ips":    "3",

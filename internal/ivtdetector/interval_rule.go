@@ -2,6 +2,7 @@ package ivtdetector
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -14,7 +15,7 @@ const (
 	intervalBotReason           = "ivt_interval_bot"
 )
 
-// intervalBotnetRule flags /24 subnets with low inter-click arrival variance (timer bots).
+// intervalBotnetRule flags ip_hash clusters with low inter-click arrival variance (timer bots).
 type intervalBotnetRule struct {
 	q   *database.CHQuery
 	cfg AnalyzerConfig
@@ -42,40 +43,32 @@ func (r *intervalBotnetRule) Find(ctx context.Context) ([]SuspiciousIP, error) {
 
 	query := `
 SELECT
-    sample_ip,
+    sample_ip_hash,
     variance,
     n_intervals
 FROM (
     SELECT
-        subnet,
-        any(ip_address) AS sample_ip,
+        ip_hash,
+        any(ip_hash) AS sample_ip_hash,
         varPop(delta_t) AS variance,
         count() AS n_intervals
     FROM (
         SELECT
-            ip_address,
-            subnet,
+            ip_hash,
             dateDiff(
                 'millisecond',
-                lagInFrame(created_at, 1, created_at) OVER (PARTITION BY subnet ORDER BY created_at),
+                lagInFrame(created_at, 1, created_at) OVER (PARTITION BY ip_hash ORDER BY created_at),
                 created_at
             ) / 1000.0 AS delta_t
-        FROM (
-            SELECT
-                ip_address,
-                created_at,
-                IPv4NumToString(bitAnd(IPv4StringToNumOrDefault(ip_address), toUInt32(0xFFFFFF00))) AS subnet
-            FROM clicks
-            WHERE created_at >= now() - toIntervalSecond(?)
-              AND ip_address != ''
-              AND IPv4StringToNumOrDefault(ip_address) != 0
-        )
+        FROM clicks
+        WHERE created_at >= now() - toIntervalSecond(?)
+          AND ` + emptyIPHashFilter + `
     )
     WHERE delta_t > 0
-    GROUP BY subnet
+    GROUP BY ip_hash
     HAVING n_intervals >= ? AND variance < ?
 )
-WHERE sample_ip != ''`
+WHERE length(sample_ip_hash) > 0`
 
 	rows, err := r.q.Query(ctx, query, windowSec, minIntervals, maxVariance)
 	if err != nil {
@@ -85,17 +78,17 @@ WHERE sample_ip != ''`
 
 	var out []SuspiciousIP
 	for rows.Next() {
-		var ip string
+		var ipHash []byte
 		var variance float64
 		var nIntervals uint64
-		if err := rows.Scan(&ip, &variance, &nIntervals); err != nil {
+		if err := rows.Scan(&ipHash, &variance, &nIntervals); err != nil {
 			return nil, fmt.Errorf("scan interval bot row: %w", err)
 		}
-		if ip == "" {
+		if len(ipHash) == 0 {
 			continue
 		}
 		out = append(out, SuspiciousIP{
-			IP:     ip,
+			IP:     hex.EncodeToString(ipHash),
 			Reason: intervalBotReason,
 			Score:  variance,
 		})

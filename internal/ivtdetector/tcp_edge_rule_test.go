@@ -8,6 +8,7 @@ import (
 
 	"espx/internal/database"
 	"espx/internal/edge/fingerprint"
+	"espx/pkg/piihash"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/google/uuid"
@@ -23,11 +24,12 @@ func seedClickWithTLS(t *testing.T, conn driver.Conn, ip, ua, tlsHash string) uu
 	campaignID := uuid.New()
 	now := time.Now().UTC()
 	clickID := fmt.Sprintf("tls-%s-%s", ip, tlsHash)
+	h := testPIIHasher()
 	require.NoError(t, conn.Exec(ctx, `
 		INSERT INTO ad_event_processor.clicks
-		(click_id, campaign_id, ip_address, user_agent, tls_hash, payload, created_at)
-		VALUES (?, ?, ?, ?, ?, '', ?)`,
-		clickID, campaignID, ip, ua, tlsHash, now,
+		(click_id, campaign_id, ip_hash, ua_hash, pii_salt_version, tls_hash, payload, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, '', ?)`,
+		clickID, campaignID, piihash.FixedString16(h.HashIP(ip)), piihash.FixedString16(h.HashUA(ua)), h.Version(), tlsHash, now,
 	))
 	return campaignID
 }

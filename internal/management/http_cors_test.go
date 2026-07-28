@@ -47,14 +47,30 @@ func TestCORSMiddleware(t *testing.T) {
 		assert.Equal(t, "true", resp.Header().Get("Access-Control-Allow-Credentials"))
 	})
 
+	t.Run("NoOriginHeader", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "/admin", nil)
+		resp := httptest.NewRecorder()
+		handler.ServeHTTP(resp, req)
+		assert.Equal(t, http.StatusOK, resp.Code)
+		assert.Empty(t, resp.Header().Get("Access-Control-Allow-Origin"))
+	})
+
 	t.Run("DisallowedOrigin", func(t *testing.T) {
 		req, _ := http.NewRequest("POST", "/admin/customers", nil)
 		req.Header.Set("Origin", "https://evil.com")
 		resp := httptest.NewRecorder()
-
 		handler.ServeHTTP(resp, req)
-
 		assert.Equal(t, http.StatusOK, resp.Code)
 		assert.Empty(t, resp.Header().Get("Access-Control-Allow-Origin"))
+	})
+
+	t.Run("WildcardOrigin", func(t *testing.T) {
+		wild := NewCORSMiddleware([]string{"*"})
+		handler := wild(dummyHandler)
+		req, _ := http.NewRequest("GET", "/admin", nil)
+		req.Header.Set("Origin", "https://any.example")
+		resp := httptest.NewRecorder()
+		handler.ServeHTTP(resp, req)
+		assert.Equal(t, "https://any.example", resp.Header().Get("Access-Control-Allow-Origin"))
 	})
 }

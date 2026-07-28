@@ -18,7 +18,7 @@ type FraudBackpressureConfig struct {
 	Rdbs        []redis.UniversalClient
 	Writer      *FraudStreamWriter
 	Stream      string // tracker fraud stream name
-	EventStream string // ad:events:stream for PEL age (GAP-OPS-04)
+	EventStream string // поток ad:events:stream для отслеживания возраста PEL (GAP-OPS-04)
 	Group       string
 	LagSec      int
 	Interval    time.Duration

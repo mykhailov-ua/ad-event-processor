@@ -2,12 +2,14 @@ package ivtdetector
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"strings"
 	"time"
 
 	"espx/internal/database"
 	"espx/internal/edge/fingerprint"
+	"espx/pkg/piihash"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -33,6 +35,7 @@ func (r *tcpEdgeCorrelationRule) Find(ctx context.Context) ([]SuspiciousIP, erro
 	}
 
 	ips := make([]string, 0, len(entries))
+	hashedIPs := make([][16]byte, 0, len(entries))
 	seenIP := make(map[string]struct{}, len(entries))
 	for _, e := range entries {
 		if e.IP == "" {
@@ -43,8 +46,9 @@ func (r *tcpEdgeCorrelationRule) Find(ctx context.Context) ([]SuspiciousIP, erro
 		}
 		seenIP[e.IP] = struct{}{}
 		ips = append(ips, e.IP)
+		hashedIPs = append(hashedIPs, hashIPForCH(e.IP))
 	}
-	if len(ips) == 0 {
+	if len(hashedIPs) == 0 {
 		return nil, nil
 	}
 
@@ -53,22 +57,21 @@ func (r *tcpEdgeCorrelationRule) Find(ctx context.Context) ([]SuspiciousIP, erro
 		windowSec = 3600
 	}
 
-	placeholders := strings.TrimRight(strings.Repeat("?,", len(ips)), ",")
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(hashedIPs)), ",")
 	query := fmt.Sprintf(`
 SELECT
-    ip_address,
-    any(user_agent) AS ua,
+    ip_hash,
     any(tls_hash) AS ja3,
     any(toString(campaign_id)) AS campaign_id
 FROM clicks
 WHERE created_at >= now() - toIntervalSecond(?)
-  AND ip_address IN (%s)
-GROUP BY ip_address`, placeholders)
+  AND ip_hash IN (%s)
+GROUP BY ip_hash`, placeholders)
 
-	args := make([]any, 0, 1+len(ips))
+	args := make([]any, 0, 1+len(hashedIPs))
 	args = append(args, windowSec)
-	for _, ip := range ips {
-		args = append(args, ip)
+	for _, h := range hashedIPs {
+		args = append(args, piihash.FixedString16(h))
 	}
 
 	rows, err := r.q.Query(ctx, query, args...)
@@ -78,16 +81,26 @@ GROUP BY ip_address`, placeholders)
 	defer rows.Close()
 
 	var out []SuspiciousIP
+	ipByHash := make(map[string]string, len(ips))
+	for i, ip := range ips {
+		ipByHash[hex.EncodeToString(hashedIPs[i][:])] = ip
+	}
 	for rows.Next() {
-		var ip, ua, ja3, campaignID string
-		if err := rows.Scan(&ip, &ua, &ja3, &campaignID); err != nil {
+		var ipHash []byte
+		var ja3, campaignID string
+		if err := rows.Scan(&ipHash, &ja3, &campaignID); err != nil {
 			return nil, fmt.Errorf("scan tcp edge row: %w", err)
 		}
-		if ip == "" || !IsTLSImpersonating(ua, ja3) {
+		if ja3 == "" || !IsSuspiciousJA3(ja3) {
 			continue
 		}
+		ipKey := hex.EncodeToString(ipHash)
+		rawIP := ipByHash[ipKey]
+		if rawIP == "" {
+			rawIP = ipKey
+		}
 		out = append(out, SuspiciousIP{
-			IP:         ip,
+			IP:         rawIP,
 			CampaignID: campaignID,
 			Reason:     "ivt_tcp_edge_correlation",
 			Score:      70,

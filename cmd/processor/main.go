@@ -22,6 +22,8 @@ import (
 	"espx/internal/management"
 	"espx/internal/metrics"
 	"espx/pkg/logger"
+	"espx/pkg/piihash"
+	rpclient "espx/pkg/regionproxy/client"
 	"fmt"
 	"strconv"
 
@@ -149,6 +151,12 @@ func main() {
 	pgStore := ingestion.NewPostgresStoreWithGate(queries, time.Duration(cfg.WriteTimeoutMs)*time.Millisecond, procPgGate)
 	spoolCfg := ingestion.CHCfgFromConfig(cfg.CHSpoolSegmentMB, cfg.CHSpoolMaxSegments)
 	chStore := ingestion.NewClickHouseStore(chConn, time.Duration(cfg.WriteTimeoutMs)*time.Millisecond, cfg.CHSpoolDir, spoolCfg, procChGate)
+	piiHasher, piiErr := piihash.NewFromConfig(cfg)
+	if piiErr != nil {
+		slog.Error("failed to initialize PII hasher for clickhouse", "error", piiErr)
+		os.Exit(1)
+	}
+	chStore.SetPIIHasher(piiHasher)
 	if err := chStore.RecoverSpool(ctx); err != nil {
 		slog.Error("failed to recover clickhouse spool", "error", err)
 		os.Exit(1)
@@ -175,12 +183,38 @@ func main() {
 	customerRepo := ingestion.NewCustomerRepoWithDB(pool, queries)
 	dedupAdapter := dedup.NewAdapter(pool, cfg.RegionCode, dedup.LoadRoutingEpoch(ctx, pool))
 
+	var weightCtrl *ingestion.ProcessorWeightController
+	if cfg.ProcessorWeightEnabled {
+		weightCtrl = ingestion.NewProcessorWeightController(ingestion.ProcessorWeightConfigFromApp(cfg), procPgGate, nil)
+		weightCtrl.Start(ctx)
+		slog.Info("processor weight scheduling enabled", "node_id", cfg.NodeID)
+	}
+
 	var pgConsumers []*ingestion.StreamConsumer
 	var chConsumers []*ingestion.StreamConsumer
 	var brokerConsumers []*ingestion.BrokerStreamConsumer
 	var brokerReconcile *ingestion.BrokerReconcileWorker
 	var budgetDeltaConsumer *ingestion.BudgetDeltaConsumer
 	var syncWorkers []*ingestion.SyncWorker
+
+	var spendSyncProducer *ingestion.SpendSyncProducer
+	if cfg.MultiRegionCell() {
+		if cfg.RegionProxyAddr == "" {
+			slog.Error("regional processor requires REGION_PROXY_ADDR when MULTI_REGION_ENABLED=1")
+			os.Exit(1)
+		}
+		rpClient := rpclient.New(rpclient.Config{
+			Addr:     cfg.RegionProxyAddr,
+			RedisURL: cfg.RegionProxyRedisURL,
+		})
+		defer func() { _ = rpClient.Close() }()
+		spendSyncProducer = ingestion.NewSpendSyncProducer(rpClient, cfg.GlobalSpendBatchMin)
+		slog.Info("regional spend sync producer enabled",
+			"region", cfg.RegionCode,
+			"proxy_addr", cfg.RegionProxyAddr,
+			"min_batch", cfg.GlobalSpendBatchMin,
+		)
+	}
 
 	for i, rdb := range rdbs {
 		shardID := fmt.Sprintf("shard_%d", i)
@@ -191,6 +225,9 @@ func main() {
 			ingestion.BudgetLockTTLSeconds(cfg.LedgerBatchFlushMs, cfg.BudgetSyncIntervalMs),
 			cfg.QuotaStrictThresholdMicro,
 		)
+		if spendSyncProducer != nil {
+			sw.SetSpendSyncProducer(spendSyncProducer)
+		}
 		syncWorkers = append(syncWorkers, sw)
 		sw.Start(syncCtx)
 
@@ -212,6 +249,9 @@ func main() {
 		)
 		pc.SetLogger(appLogger)
 		pc.SetAuditLogSampleMask(cfg.AuditLogSampleMask)
+		if weightCtrl != nil {
+			pc.SetWeightController(weightCtrl)
+		}
 		pgConsumers = append(pgConsumers, pc)
 		pc.Start(consumerCtx)
 
@@ -233,6 +273,9 @@ func main() {
 		)
 		cc.SetLogger(appLogger)
 		cc.SetAuditLogSampleMask(cfg.AuditLogSampleMask)
+		if weightCtrl != nil {
+			cc.SetWeightController(weightCtrl)
+		}
 
 		if fraudScorer != nil {
 			mb := fraudscoring.NewMicroBatcher(rdb, fraudScorer)
@@ -261,6 +304,9 @@ func main() {
 		)
 		fc.SetLogger(appLogger)
 		fc.SetAuditLogSampleMask(cfg.AuditLogSampleMask)
+		if weightCtrl != nil {
+			fc.SetWeightController(weightCtrl)
+		}
 		chConsumers = append(chConsumers, fc)
 		fc.Start(consumerCtx)
 	}

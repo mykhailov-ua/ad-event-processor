@@ -8,6 +8,8 @@ cd "$ROOT"
 bash "$SCRIPTS/codegen/validate_configs.sh"
 bash "$SCRIPTS/ci/check_comments.sh"
 bash "$SCRIPTS/ci/check_compliance.sh"
+bash "$SCRIPTS/ci/check_ch_direct.sh"
+bash "$SCRIPTS/ci/check_openapi.sh"
 make lint
 make test-alloc-gate
 make test

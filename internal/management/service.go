@@ -18,6 +18,7 @@ import (
 	"espx/internal/metrics"
 	"espx/pkg/coldpath"
 	"espx/pkg/money"
+	"espx/pkg/pgfailover"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/google/uuid"
@@ -49,11 +50,21 @@ type Service struct {
 	nodeMetrics    *NodeMetricsWorker
 	scoringWeights *ScoringWeightsStore
 	leaseWorker    *OperationLeaseWorker
+	pgFencing      *pgfailover.FencingGate
+	globalSpend    *GlobalSpendReconciler
 }
 
 // StartBackgroundWorker launches an auxiliary goroutine tracked for graceful shutdown.
 func (s *Service) StartBackgroundWorker(fn func()) {
 	s.startWorker(fn)
+}
+
+// CHQuery returns the governed read-only ClickHouse client when reporting is enabled.
+func (s *Service) CHQuery() *database.CHQuery {
+	if s == nil {
+		return nil
+	}
+	return s.chQuery
 }
 
 // startWorker launches a background goroutine tracked for graceful shutdown.
@@ -201,6 +212,19 @@ func (s *Service) SetBrokerDeltas(reader BrokerPendingDeltaReader) {
 	s.brokerDeltas = reader
 }
 
+// SetGlobalSpendReconciler wires the cross-region spend authority worker (GAP-RTB-12).
+func (s *Service) SetGlobalSpendReconciler(reconciler *GlobalSpendReconciler) {
+	s.globalSpend = reconciler
+}
+
+// GlobalSpendReconciler returns the wired cross-region spend reconciler, if any.
+func (s *Service) GlobalSpendReconciler() *GlobalSpendReconciler {
+	if s == nil {
+		return nil
+	}
+	return s.globalSpend
+}
+
 // GetPool exposes the Postgres pool for tests and auxiliary workers.
 func (s *Service) GetPool() *pgxpool.Pool {
 	return s.pool
@@ -287,6 +311,9 @@ func (s *Service) GenerateIdempotencyHash(customerID uuid.UUID, params any) (str
 
 // TopUpBalance credits a customer account idempotently and records the ledger entry.
 func (s *Service) TopUpBalance(ctx context.Context, customerID uuid.UUID, amount int64, idempotencyKey string) error {
+	if err := s.requirePgFencing(ctx); err != nil {
+		return err
+	}
 	return pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		q := db.New(tx)
 		_, err := q.GetLedgerByHashForUpdate(ctx, pgtype.Text{String: idempotencyKey, Valid: true})

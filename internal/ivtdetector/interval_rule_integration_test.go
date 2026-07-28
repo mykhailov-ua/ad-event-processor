@@ -38,13 +38,13 @@ func TestIntervalBotnetRule_Find_flagsTimerBot(t *testing.T) {
 
 	var botIP string
 	for _, candidate := range found {
-		if candidate.IP == "203.0.113.50" {
+		if candidate.IP == ipHashHex("203.0.113.50") {
 			botIP = candidate.IP
 			assert.Equal(t, intervalBotReason, candidate.Reason)
 			assert.Less(t, candidate.Score, 0.005)
 		}
 	}
-	assert.Equal(t, "203.0.113.50", botIP, "expected timer bot IP in suspicious set: %+v", found)
+	assert.Equal(t, ipHashHex("203.0.113.50"), botIP, "expected timer bot IP hash in suspicious set: %+v", found)
 }
 
 func TestIntervalBotnetRule_Find_skipsJitteredTraffic(t *testing.T) {
@@ -83,6 +83,6 @@ func TestIntervalBotnetRule_Find_skipsJitteredTraffic(t *testing.T) {
 	found, err := rule.Find(ctx)
 	require.NoError(t, err)
 	for _, candidate := range found {
-		assert.NotEqual(t, "198.51.100.77", candidate.IP, "jittered traffic should not be flagged")
+		assert.NotEqual(t, ipHashHex("198.51.100.77"), candidate.IP, "jittered traffic should not be flagged")
 	}
 }

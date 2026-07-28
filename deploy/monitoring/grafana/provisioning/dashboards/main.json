@@ -1030,7 +1030,7 @@
         }
       ],
       "title": "Fraud Stream Backlog (M14)",
-      "description": "Analytical ring fill, pending depth, PEL age per shard, critical-lane drop rate (GAP-OPS-04).",
+      "description": "Заполнение аналитического кольца, глубина очереди, возраст PEL на шард, частота сброса критических данных (GAP-OPS-04).",
       "type": "timeseries"
     }
   ],

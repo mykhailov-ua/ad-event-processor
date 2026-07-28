@@ -30,6 +30,7 @@ type SyncWorker struct {
 	strictThresholdMicro int64
 	dirtyScanCursor      uint64
 	dedup                *dedup.Adapter
+	spendSync            *SpendSyncProducer
 	wg                   sync.WaitGroup
 	syncMu               sync.Mutex
 	rollupMu             sync.Mutex
@@ -64,7 +65,13 @@ func NewSyncWorker(
 	}
 }
 
-// ConfigureBudgetContention sets lock TTL and strict-band threshold for PG flush contention (M3-03).
+// SetSpendSyncProducer routes campaign ledger flushes through region-proxy in multi-region cells.
+func (w *SyncWorker) SetSpendSyncProducer(producer *SpendSyncProducer) {
+	if w == nil {
+		return
+	}
+	w.spendSync = producer
+}
 func (w *SyncWorker) ConfigureBudgetContention(lockTTLSec int, strictThresholdMicro int64) {
 	if w == nil {
 		return
@@ -119,6 +126,9 @@ func (w *SyncWorker) SyncAll(ctx context.Context) {
 	defer w.syncMu.Unlock()
 	w.collectCampaignRollup(ctx)
 	if w.shouldFlushLedger() {
+		if w.spendSync != nil {
+			_ = w.spendSync.Flush(ctx)
+		}
 		w.flushCampaignRollup(ctx)
 		w.lastLedgerFlush = time.Now()
 	}
@@ -273,6 +283,11 @@ func (w *SyncWorker) flushCampaignRollup(ctx context.Context) {
 	w.campaignRollup = make(map[uuid.UUID]pendingRollup, len(batch))
 	w.rollupMu.Unlock()
 
+	if w.spendSync != nil {
+		w.flushCampaignRollupProxy(ctx, batch)
+		return
+	}
+
 	if batcher, ok := w.campaignRepo.(spendBatchFlusher); ok {
 		w.flushCampaignRollupBatched(ctx, batch, batcher)
 		return
@@ -317,6 +332,14 @@ func (w *SyncWorker) flushCampaignRollup(ctx context.Context) {
 			continue
 		}
 		w.commitRollupRedis(ctx, entry)
+	}
+}
+
+func (w *SyncWorker) flushCampaignRollupProxy(ctx context.Context, batch map[uuid.UUID]pendingRollup) {
+	for id, entry := range batch {
+		if err := w.spendSync.EnqueueRollup(ctx, w, id, entry); err != nil {
+			metrics.SyncLagSeconds.Set(time.Since(w.lastLedgerFlush).Seconds())
+		}
 	}
 }
 
@@ -525,6 +548,9 @@ func (w *SyncWorker) syncEntity(ctx context.Context, prefix string, idStr string
 
 // syncCustomers scans dirty customer keys and syncs each in parallel.
 func (w *SyncWorker) syncCustomers(ctx context.Context) {
+	if w.spendSync != nil {
+		return
+	}
 	var cursor uint64
 	sem := make(chan struct{}, w.maxConcurrency)
 	if w.pgGate != nil {

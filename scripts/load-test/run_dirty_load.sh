@@ -167,6 +167,8 @@ run_k6() {
 		docker run --rm --network host \
 			-e GOMAXPROCS="$K6_GOMAXPROCS" \
 			-v "$script:${script_mount}:ro" \
+			-v "$OUT:/out:rw" \
+			-e K6_SUMMARY_DIR=/out \
 			-e RATE="$RATE" \
 			-e DURATION="$DURATION" \
 			-e TRACKER_BASES="$TRACKER_BASES" \
@@ -179,6 +181,7 @@ run_k6() {
 			"$k6_img" run "$script_mount"
 	else
 		GOMAXPROCS="$K6_GOMAXPROCS" k6 run \
+			-e K6_SUMMARY_DIR="$OUT" \
 			-e RATE="$RATE" \
 			-e DURATION="$DURATION" \
 			-e TRACKER_BASES="$TRACKER_BASES" \
@@ -193,6 +196,14 @@ run_k6() {
 }
 
 log "starting k6 ($(basename "$K6_SCRIPT")): ${RATE} req/s for ${DURATION}"
+# BPF session artifacts may be root-owned; k6 handleSummary must write k6-status-histogram.json.
+if [[ "${ESPX_BPF_PROBE:-0}" == "1" || ! -w "$OUT" ]]; then
+	if [[ -n "${ESPX_BPF_SUDO_PASS:-}" ]]; then
+		printf '%s\n' "$ESPX_BPF_SUDO_PASS" | sudo -S chmod -R a+rwX "$OUT" 2>/dev/null || true
+	else
+		sudo chmod -R a+rwX "$OUT" 2>/dev/null || chmod -R a+rwX "$OUT" 2>/dev/null || true
+	fi
+fi
 START_TS=$(date -u +%s)
 if run_k6 2>&1 | tee "$K6_LOG"; then
 	log "k6 finished OK"
@@ -212,6 +223,7 @@ bash scripts/load-test/snapshot_runtime.sh "$OUT/runtime-post" 10
 
 log "running bottleneck analysis"
 bash scripts/load-test/analyze_bottlenecks.sh "$OUT"
+bash scripts/load-test/analyze_5xx.sh "$OUT"
 
 log "done — artifacts in $OUT"
 log "k6 summary (tail):"

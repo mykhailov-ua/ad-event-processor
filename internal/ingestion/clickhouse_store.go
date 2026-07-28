@@ -14,6 +14,7 @@ import (
 
 	"espx/internal/campaignmodel"
 	"espx/internal/metrics"
+	"espx/pkg/piihash"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 )
@@ -75,6 +76,7 @@ type ClickHouseStore struct {
 	writeTimeout  time.Duration
 	spool         *CHSpool
 	chGate        *ProcessorChGate
+	piiHasher     *piihash.Hasher
 	ctx           context.Context
 	cancel        context.CancelFunc
 	replayWg      sync.WaitGroup
@@ -280,10 +282,11 @@ func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, e
 	}
 
 	for _, e := range evts {
+		pii := hashEventPII(chStore.piiHasher, e)
 		if table == "fraud_aggregate_spikes" {
 			count, windowMs := fraudAggregateFields(e)
 			err = batch.Append(
-				e.IP,
+				piihash.FixedString16(pii.subnetHash),
 				e.FraudReason,
 				count,
 				windowMs,
@@ -293,10 +296,11 @@ func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, e
 			err = batch.Append(
 				e.ClickID,
 				e.CampaignID,
-				e.UserID,
+				piihash.FixedString16(pii.userIDHash),
 				e.Type,
-				e.IP,
-				e.UA,
+				piihash.FixedString16(pii.ipHash),
+				piihash.FixedString16(pii.uaHash),
+				pii.saltVersion,
 				unsafeString(e.Payload),
 				e.FraudReason,
 				e.FraudScore,
@@ -308,8 +312,9 @@ func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, e
 				e.ClickID,
 				e.CampaignID,
 				e.PlacementID,
-				e.IP,
-				e.UA,
+				piihash.FixedString16(pii.ipHash),
+				piihash.FixedString16(pii.uaHash),
+				pii.saltVersion,
 				e.TLSHash,
 				unsafeString(e.Payload),
 				e.CreatedAt,
@@ -319,8 +324,9 @@ func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, e
 				e.ClickID,
 				e.CampaignID,
 				e.PlacementID,
-				e.IP,
-				e.UA,
+				piihash.FixedString16(pii.ipHash),
+				piihash.FixedString16(pii.uaHash),
+				pii.saltVersion,
 				unsafeString(e.Payload),
 				e.CreatedAt,
 			)
@@ -459,6 +465,21 @@ func (chStore *ClickHouseStore) Close() error {
 		_ = chStore.spool.Close()
 	}
 	return chStore.conn.Close()
+}
+
+// SetPIIHasher attaches the versioned salt hasher for batch anonymization before INSERT.
+func (chStore *ClickHouseStore) SetPIIHasher(h *piihash.Hasher) {
+	if chStore != nil {
+		chStore.piiHasher = h
+	}
+}
+
+// PIIHasher returns the configured hasher (may be nil in tests).
+func (chStore *ClickHouseStore) PIIHasher() *piihash.Hasher {
+	if chStore == nil {
+		return nil
+	}
+	return chStore.piiHasher
 }
 
 // SetChGate attaches the processor ClickHouse write gate for SEM-P5 backpressure.

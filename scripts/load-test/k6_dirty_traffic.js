@@ -34,6 +34,29 @@ const serverErrorRate = new Rate('server_5xx');
 const clientErrorRate = new Rate('client_4xx');
 const trackLatency = new Trend('track_latency_ms', true);
 
+// k6 v2 handleSummary omits tagged submetrics on custom counters — use flat counter names.
+const statusCounters = {
+  '0': new Counter('k6_http_status_0'),
+  '202': new Counter('k6_http_status_202'),
+  '400': new Counter('k6_http_status_400'),
+  '404': new Counter('k6_http_status_404'),
+  '413': new Counter('k6_http_status_413'),
+  '429': new Counter('k6_http_status_429'),
+  '500': new Counter('k6_http_status_500'),
+  '502': new Counter('k6_http_status_502'),
+  '503': new Counter('k6_http_status_503'),
+  '504': new Counter('k6_http_status_504'),
+  other: new Counter('k6_http_status_other'),
+};
+const transportCounters = {
+  conn_reset: new Counter('k6_http_err_conn_reset'),
+  broken_pipe: new Counter('k6_http_err_broken_pipe'),
+  timeout: new Counter('k6_http_err_timeout'),
+  eof: new Counter('k6_http_err_eof'),
+  dial: new Counter('k6_http_err_dial'),
+  other: new Counter('k6_http_err_other'),
+};
+
 export const options = {
   scenarios: {
     dirty_mix: {
@@ -89,13 +112,105 @@ function fraudIP(iter) {
   return iter % 2 === 0 ? '203.0.113.66' : '198.51.100.77';
 }
 
+function errorBucket(err) {
+  if (!err) return 'none';
+  const s = String(err);
+  if (s.includes('connection reset by peer')) return 'conn_reset';
+  if (s.includes('broken pipe')) return 'broken_pipe';
+  if (s.includes('timeout') || s.includes('Timeout')) return 'timeout';
+  if (s.includes('EOF')) return 'eof';
+  if (s.includes('dial')) return 'dial';
+  return 'other';
+}
+
+function recordStatus(res) {
+  const status = res.status ? String(res.status) : '0';
+  const counter = statusCounters[status] || statusCounters.other;
+  counter.add(1);
+  if (status !== '0') {
+    return;
+  }
+  const err = errorBucket(res.error);
+  const errCounter = transportCounters[err] || transportCounters.other;
+  errCounter.add(1);
+}
+
 function classify(res) {
+  recordStatus(res);
   if (res.status >= 200 && res.status < 300) acceptRate.add(1);
   else acceptRate.add(0);
   if (res.status >= 400 && res.status < 500) clientErrorRate.add(1);
   else clientErrorRate.add(0);
   if (res.status >= 500) serverErrorRate.add(1);
   else serverErrorRate.add(0);
+}
+
+function metricCount(metrics, name) {
+  const metric = metrics[name];
+  if (!metric || !metric.values) return 0;
+  return metric.values.count || 0;
+}
+
+function buildStatusHistogram(data) {
+  const metrics = data.metrics || {};
+  const byStatus = {};
+  const histogram = [];
+  const statusNames = [
+    ['0', 'k6_http_status_0'],
+    ['202', 'k6_http_status_202'],
+    ['400', 'k6_http_status_400'],
+    ['404', 'k6_http_status_404'],
+    ['413', 'k6_http_status_413'],
+    ['429', 'k6_http_status_429'],
+    ['500', 'k6_http_status_500'],
+    ['502', 'k6_http_status_502'],
+    ['503', 'k6_http_status_503'],
+    ['504', 'k6_http_status_504'],
+    ['other', 'k6_http_status_other'],
+  ];
+  const transportNames = [
+    ['conn_reset', 'k6_http_err_conn_reset'],
+    ['broken_pipe', 'k6_http_err_broken_pipe'],
+    ['timeout', 'k6_http_err_timeout'],
+    ['eof', 'k6_http_err_eof'],
+    ['dial', 'k6_http_err_dial'],
+    ['other', 'k6_http_err_other'],
+  ];
+
+  for (const [status, name] of statusNames) {
+    const count = metricCount(metrics, name);
+    if (count <= 0) continue;
+    byStatus[status] = count;
+    if (status === '0') {
+      for (const [err, errName] of transportNames) {
+        const errCount = metricCount(metrics, errName);
+        if (errCount > 0) {
+          histogram.push({ status, error: err, count: errCount });
+        }
+      }
+    } else {
+      histogram.push({ status, error: 'none', count });
+    }
+  }
+
+  histogram.sort((a, b) => b.count - a.count);
+  return {
+    generated: new Date().toISOString(),
+    histogram,
+    by_status: Object.fromEntries(
+      Object.entries(byStatus).sort((a, b) => Number(b[1]) - Number(a[1])),
+    ),
+  };
+}
+
+export function handleSummary(data) {
+  const report = buildStatusHistogram(data);
+  const out = {};
+  const dir = __ENV.K6_SUMMARY_DIR || '';
+  if (dir) {
+    out[`${dir}/k6-status-histogram.json`] = JSON.stringify(report, null, 2);
+  }
+  return out;
 }
 
 export default function () {

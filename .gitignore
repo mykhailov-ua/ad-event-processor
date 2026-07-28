@@ -35,6 +35,10 @@ deploy/nginx/certs/*.key
 deploy/nginx/certs/*.crt
 
 # IDE
+# Cursor agent rules (engineering guidelines for LLM) — track rules, ignore other IDE state
+.cursor/*
+!.cursor/rules/
+!.cursor/rules/**
 .idea/
 .vscode/
 .vscode/*
@@ -73,10 +77,6 @@ Thumbs.db
 
 # GeoIP (download MaxMind separately; keep deploy/geoip/.gitkeep)
 deploy/geoip/*.mmdb
-
-# Engineering guidelines (tracked; negate global gitignore `guidelines/`)
-!docs/guidelines/
-!docs/guidelines/**
 
 # Terraform state & plugins
 deploy/terraform/**/.terraform/

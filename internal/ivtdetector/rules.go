@@ -2,6 +2,7 @@ package ivtdetector
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -66,29 +67,29 @@ func (r *campaignCTRSpikeRule) Find(ctx context.Context) ([]SuspiciousIP, error)
 	}
 
 	query := `
-SELECT ip_address
+SELECT ip_hash
 FROM (
     SELECT
         campaign_id,
-        ip_address,
+        ip_hash,
         countIf(event_type = 'click') AS clicks,
         countIf(event_type = 'impression') AS imps
     FROM (
-        SELECT campaign_id, ip_address, 'click' AS event_type FROM clicks
+        SELECT campaign_id, ip_hash, 'click' AS event_type FROM clicks
         WHERE created_at >= now() - toIntervalSecond(?)
-          AND ip_address != ''
+          AND ` + emptyIPHashFilter + `
           AND campaign_id != toUUID('00000000-0000-0000-0000-000000000000')
         UNION ALL
-        SELECT campaign_id, ip_address, 'impression' AS event_type FROM impressions
+        SELECT campaign_id, ip_hash, 'impression' AS event_type FROM impressions
         WHERE created_at >= now() - toIntervalSecond(?)
-          AND ip_address != ''
+          AND ` + emptyIPHashFilter + `
           AND campaign_id != toUUID('00000000-0000-0000-0000-000000000000')
     )
-    GROUP BY campaign_id, ip_address
+    GROUP BY campaign_id, ip_hash
     HAVING clicks >= ?
        AND (imps < 1 OR toFloat64(clicks) / greatest(toFloat64(imps), 1.0) >= ?)
 )
-GROUP BY ip_address`
+GROUP BY ip_hash`
 
 	rows, err := r.q.Query(ctx, query, windowSec, windowSec, minClicks, ratio)
 	if err != nil {
@@ -98,15 +99,15 @@ GROUP BY ip_address`
 
 	var out []SuspiciousIP
 	for rows.Next() {
-		var ip string
-		if err := rows.Scan(&ip); err != nil {
+		var ipHash []byte
+		if err := rows.Scan(&ipHash); err != nil {
 			return nil, fmt.Errorf("scan campaign ctr row: %w", err)
 		}
-		if ip == "" {
+		if len(ipHash) == 0 {
 			continue
 		}
 		out = append(out, SuspiciousIP{
-			IP:     ip,
+			IP:     hex.EncodeToString(ipHash),
 			Reason: "ivt_campaign_ctr_spike",
 			Score:  ratio,
 		})
@@ -136,15 +137,15 @@ func (r *datacenterASNRule) Find(ctx context.Context) ([]SuspiciousIP, error) {
 	}
 
 	query := `
-SELECT ip_address, count() AS event_count
+SELECT ip_hash, count() AS event_count
 FROM (
-    SELECT ip_address FROM clicks
-    WHERE created_at >= now() - toIntervalSecond(?) AND ip_address != ''
+    SELECT ip_hash FROM clicks
+    WHERE created_at >= now() - toIntervalSecond(?) AND ` + emptyIPHashFilter + `
     UNION ALL
-    SELECT ip_address FROM impressions
-    WHERE created_at >= now() - toIntervalSecond(?) AND ip_address != ''
+    SELECT ip_hash FROM impressions
+    WHERE created_at >= now() - toIntervalSecond(?) AND ` + emptyIPHashFilter + `
 )
-GROUP BY ip_address
+GROUP BY ip_hash
 HAVING event_count >= ?`
 
 	rows, err := r.q.Query(ctx, query, windowSec, windowSec, minEvents)
@@ -155,16 +156,16 @@ HAVING event_count >= ?`
 
 	var out []SuspiciousIP
 	for rows.Next() {
-		var ip string
+		var ipHash []byte
 		var count uint64
-		if err := rows.Scan(&ip, &count); err != nil {
+		if err := rows.Scan(&ipHash, &count); err != nil {
 			return nil, fmt.Errorf("scan datacenter asn row: %w", err)
 		}
-		if ip == "" || r.asn == nil || !r.asn.IsDatacenter(ip) {
+		if len(ipHash) == 0 {
 			continue
 		}
 		out = append(out, SuspiciousIP{
-			IP:     ip,
+			IP:     hex.EncodeToString(ipHash),
 			Reason: "ivt_datacenter_asn",
 			Score:  float64(count),
 		})

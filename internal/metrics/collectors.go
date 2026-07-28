@@ -606,6 +606,36 @@ var (
 		Name: "ad_rtb_budget_reconcile_samples_total",
 		Help: "Campaign budget reconcile samples completed",
 	})
+	GlobalSpendBatchesTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_global_spend_batches_total",
+		Help: "Cross-region spend sync batches applied on the global cell",
+	})
+	GlobalSpendTxnsTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_global_spend_txns_total",
+		Help: "Cross-region spend sync transactions applied on the global cell",
+	})
+	GlobalSpendFlushErrorsTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_global_spend_flush_errors_total",
+		Help: "Global spend reconciler flush failures",
+	})
+	GlobalSpendBatchSize = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name:    "ad_global_spend_batch_size",
+		Help:    "Txn count per cross-region spend sync batch",
+		Buckets: []float64{50, 100, 150, 200, 300, 500, 1000},
+	})
+	RegionSpendSyncBatchesTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_region_spend_sync_batches_total",
+		Help: "Spend sync batches appended to region-proxy WAL from regional processor",
+	})
+	RegionSpendSyncTxnsTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_region_spend_sync_txns_total",
+		Help: "Spend sync transactions staged for region-proxy uplink",
+	})
+	GlobalSpendApplyLatency = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name:    "ad_global_spend_apply_latency_seconds",
+		Help:    "Wall time to apply one cross-region spend sync batch (PG + Redis)",
+		Buckets: []float64{0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0},
+	})
 	TrackerLocalQuotaBlockTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_tracker_local_quota_block_total",
 		Help: "Total number of events blocked locally by tracker quota cache",
@@ -755,10 +785,14 @@ var (
 		Help: "PG quota rows released after dead-shard quorum confirmed",
 	})
 
-	ProcessorStreamLagSeconds = promauto.NewGauge(prometheus.GaugeOpts{
+	ProcessorStreamLagSeconds = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "ad_processor_stream_lag_seconds",
-		Help: "Current stream processing lag in seconds",
-	})
+		Help: "Current stream processing lag in seconds per processor instance",
+	}, []string{"instance"})
+	ProcessorWeight = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "ad_processor_weight",
+		Help: "Active consume weight for this processor instance (0-1)",
+	}, []string{"instance"})
 	MicroBatchPaused = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "ad_micro_batch_paused",
 		Help: "Whether the micro-batch scoring is paused due to stream lag (1=paused, 0=running)",
@@ -816,6 +850,20 @@ var (
 		Help:    "Duration of tarpit delays introduced on suspicious requests",
 		Buckets: prometheus.ExponentialBuckets(0.1, 2, 12),
 	})
+
+	VendorProbeSuccess = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "ad_vendor_probe_success",
+		Help: "Last vendor probe outcome (1=success, 0=failure)",
+	}, []string{"vendor"})
+	VendorProbeLatencySeconds = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "ad_vendor_probe_latency_seconds",
+		Help:    "Vendor probe round-trip latency",
+		Buckets: prometheus.ExponentialBuckets(0.05, 2, 12),
+	}, []string{"vendor"})
+	VendorProbeErrorsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_vendor_probe_errors_total",
+		Help: "Vendor probe failures (logged once per interval per vendor)",
+	}, []string{"vendor"})
 
 	// Cost sync metrics track network ingest health for M16 buy/sell-side ROI pipeline.
 	CostSyncRunsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
@@ -888,6 +936,16 @@ var (
 	CHJanitorRecompressTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_ch_janitor_recompress_total",
 		Help: "Partitions recompressed (OPTIMIZE FINAL) by CHPartitionJanitor off-peak pass",
+	})
+
+	CHQueryDurationSeconds = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name:    "ad_ch_query_duration_seconds",
+		Help:    "Duration of governed ClickHouse read queries",
+		Buckets: prometheus.ExponentialBuckets(0.001, 2, 16),
+	})
+	CHQueryRejectedTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_ch_query_rejected_total",
+		Help: "Governed ClickHouse queries rejected because the concurrency gate was full",
 	})
 	CHActivePartsMax = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "ad_ch_active_parts_max",

@@ -16,6 +16,11 @@ const (
 	maxLedgerBatchSize      = 32
 )
 
+// MaxLedgerBatchSize returns the campaign count limit per UpdateSpendBatch transaction.
+func MaxLedgerBatchSize() int {
+	return maxLedgerBatchSize
+}
+
 // ErrCampaignSpendSkipped is returned when a campaign row is locked by another flush worker.
 var ErrCampaignSpendSkipped = errors.New("campaign spend row locked")
 

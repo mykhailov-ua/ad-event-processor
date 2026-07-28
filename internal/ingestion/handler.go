@@ -669,13 +669,21 @@ func NewAdsPacketHandler(cfg *config.Config, registry campaignmodel.CampaignRegi
 	return h
 }
 
+// recordTrackStatus increments POST /track HTTP status counters without latency sampling.
+func (h *AdsPacketHandler) recordTrackStatus(status int) {
+	if h == nil {
+		return
+	}
+	if status >= 0 && status < len(h.trackStatusCounters) {
+		h.trackStatusCounters[status].Inc()
+		return
+	}
+	metrics.HttpRequestsTotal.WithLabelValues("POST", "/track", strconv.Itoa(status)).Inc()
+}
+
 // recordMetrics updates pre-bound counters and the latency ring for one gnet request.
 func (h *AdsPacketHandler) recordMetrics(startMono int64, status int) {
-	if status >= 0 && status < 600 {
-		h.trackStatusCounters[status].Inc()
-	} else {
-		metrics.HttpRequestsTotal.WithLabelValues("POST", "/track", strconv.Itoa(status)).Inc()
-	}
+	h.recordTrackStatus(status)
 	h.trackLatencyRing.RecordMono(startMono)
 }
 
@@ -1023,6 +1031,7 @@ func (h *AdsPacketHandler) OnTraffic(c gnet.Conn) (action gnet.Action) {
 			if errors.Is(err, errPayloadTooLarge) {
 				metrics.HttpParseErrors.WithLabelValues("payload_too_large").Inc()
 				_, _ = c.Write(respPayloadTooLarge)
+				h.recordTrackStatus(http.StatusRequestEntityTooLarge)
 				return gnet.Close
 			}
 			metrics.HttpParseErrors.WithLabelValues("invalid").Inc()
@@ -1063,6 +1072,7 @@ func (h *AdsPacketHandler) OnTraffic(c gnet.Conn) (action gnet.Action) {
 				h.contextPool.Put(ctx)
 				metrics.WorkerPoolRejectTotal.Inc()
 				h.write(c, respWorkerPoolOverload, nil)
+				h.recordTrackStatus(http.StatusServiceUnavailable)
 			}
 		} else {
 			act := h.React(req, c)

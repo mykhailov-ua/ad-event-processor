@@ -130,14 +130,42 @@ REPORT="$OUT/bottleneck-report.md"
 	echo "4. **gnet connections near ulimit** — raise \`worker_rlimit_nofile\` / container ulimits; k6 keep-alive reduces FD churn."
 	echo "5. **fraud_stream_drop > 0** — fraud ring (4096) overflow; hot path lossy by design under dirty traffic."
 	echo "6. **worker_pool_reject** — pinned worker queue full; ingestion exceeds parse+filter capacity."
+	if [[ -f "$OUT/k6-status-histogram.json" ]]; then
+		echo ""
+		echo "## k6 HTTP status histogram"
+		echo ""
+		python3 - "$OUT/k6-status-histogram.json" <<'PY'
+import json, sys
+path = sys.argv[1]
+with open(path) as f:
+    data = json.load(f)
+by = data.get("by_status", {})
+total = sum(by.values()) or 1
+print("| status | count | % |")
+print("|--------|-------|---|")
+for status, count in sorted(by.items(), key=lambda kv: -kv[1]):
+    pct = 100.0 * count / total
+    mark = " **5xx**" if status.isdigit() and int(status) >= 500 else ""
+    print(f"| {status} | {count} | {pct:.1f}% |{mark}")
+print("")
+print("Top status×error buckets:")
+for row in data.get("histogram", [])[:12]:
+    print(f"- status={row['status']} error={row['error']}: {row['count']}")
+five = sum(v for k, v in by.items() if k.isdigit() and int(k) >= 500)
+print(f"\n_k6 5xx total: {five} ({100*five/total:.2f}% of classified responses)_")
+PY
+	fi
 	if [[ -f "$OUT/bpf-report.md" ]]; then
 		echo ""
 		echo "## BPF probe (dev)"
 		echo ""
 		echo "Kernel/session detail: [bpf-report.md](bpf-report.md)."
-		k6_line="$(grep -m1 'k6 share of tracked on-CPU' "$OUT/bpf-report.md" 2>/dev/null || true)"
-		if [[ -n "$k6_line" ]]; then
-			echo "- $k6_line"
+		loadgen_line="$(grep -m1 'loadgen share of tracked on-CPU' "$OUT/bpf-report.md" 2>/dev/null || true)"
+		if [[ -z "$loadgen_line" ]]; then
+			loadgen_line="$(grep -m1 'k6 share of tracked on-CPU' "$OUT/bpf-report.md" 2>/dev/null || true)"
+		fi
+		if [[ -n "$loadgen_line" ]]; then
+			echo "- $loadgen_line"
 		fi
 	fi
 } | tee "$REPORT"

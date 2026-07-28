@@ -120,6 +120,12 @@ func main() {
 	}
 
 	svc := management.NewService(pool, rdbs, sharder, cfg)
+	if cfg.PgFailoverEnabled {
+		pgFailoverRT := svc.StartPgFailover(ctx)
+		if pgFailoverRT != nil {
+			defer pgFailoverRT.ClosePgFailover()
+		}
+	}
 	if svc == nil {
 		slog.Error("management service init failed")
 		os.Exit(1)
@@ -154,8 +160,7 @@ func main() {
 		if chWrite != nil {
 			defer chWrite.Close()
 		}
-		svc.SetClickHouse(chRead)
-		chQuery := database.NewCHQuery(chRead, database.CHQueryConfig{})
+		svc.SetClickHouse(chRead, database.CHQueryConfigFromApp(cfg))
 		slog.Info("clickhouse reporting enabled", "readonly_dsn", "CH_READONLY_DSN")
 
 		volumeInterval := time.Hour
@@ -166,7 +171,7 @@ func main() {
 		}
 		if os.Getenv("VOLUME_METER_ENABLED") != "0" {
 			svc.StartBackgroundWorker(func() {
-				management.NewVolumeMeterWorker(pool, chQuery, volumeInterval, svc.PgGate()).Start(ctx)
+				management.NewVolumeMeterWorker(pool, svc.CHQuery(), volumeInterval, svc.PgGate()).Start(ctx)
 			})
 			slog.Info("started volume meter worker", "interval", volumeInterval)
 		}
@@ -217,6 +222,23 @@ func main() {
 		svc.StartBackgroundWorker(func() {
 			sw.Start(ctx)
 		})
+	}
+
+	if cfg.MultiRegionGlobal() {
+		globalSpend := management.NewGlobalSpendReconciler(pool, rdbs, sharder, management.GlobalSpendReconcilerConfig{
+			MinBatchSize:   cfg.GlobalSpendBatchMin,
+			MaxConcurrency: cfg.GlobalSpendMaxConcurrency,
+		})
+		svc.SetGlobalSpendReconciler(globalSpend)
+		flushInterval := time.Duration(cfg.GlobalSpendFlushIntervalMs) * time.Millisecond
+		svc.StartBackgroundWorker(func() {
+			globalSpend.StartFlushWorker(ctx, flushInterval)
+		})
+		slog.Info("started global spend reconciler",
+			"min_batch", cfg.GlobalSpendBatchMin,
+			"flush_interval", flushInterval,
+			"max_concurrency", cfg.GlobalSpendMaxConcurrency,
+		)
 	}
 
 	reconInterval := time.Duration(cfg.Management.ReconIntervalMs) * time.Millisecond
@@ -287,6 +309,14 @@ func main() {
 		janitorInterval := time.Duration(cfg.Management.BlacklistJanitorIntervalSec) * time.Second
 		svc.StartBlacklistJanitor(janitorInterval)
 		slog.Info("started blacklist TTL janitor", "interval", janitorInterval)
+	}
+
+	svc.StartVendorTelemetryWorker()
+	if cfg.VendorTelemetryEnabled {
+		slog.Info("vendor telemetry probes enabled",
+			"interval_sec", cfg.VendorTelemetryIntervalSec,
+			"timeout_sec", cfg.VendorTelemetryTimeoutSec,
+		)
 	}
 
 	if exportPath := os.Getenv("NGINX_DENY_EXPORT_PATH"); exportPath != "" {

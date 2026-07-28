@@ -58,7 +58,7 @@ func (m *MicroBatcher) Enqueue(evt *campaignmodel.Event, msgID string) {
 			if lagSec < 0 {
 				lagSec = 0
 			}
-			metrics.ProcessorStreamLagSeconds.Set(lagSec)
+			metrics.ProcessorStreamLagSeconds.WithLabelValues("fraud").Set(lagSec)
 
 			// If stream lag exceeds 30 seconds, pause micro-batching to prevent OOM
 			if lagSec > 30 {

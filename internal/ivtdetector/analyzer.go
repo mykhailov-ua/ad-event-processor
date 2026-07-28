@@ -2,6 +2,7 @@ package ivtdetector
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -65,24 +66,24 @@ func (analyzer *Analyzer) FindSuspiciousIPs(ctx context.Context) ([]SuspiciousIP
 func (analyzer *Analyzer) findHighClickToImpRatio(ctx context.Context, windowSec int64) ([]SuspiciousIP, error) {
 	query := `
 SELECT
-    c.ip_address,
+    c.ip_hash,
     c.click_count,
     coalesce(i.imp_count, toUInt64(0)) AS imp_count
 FROM (
-    SELECT ip_address, count() AS click_count
+    SELECT ip_hash, count() AS click_count
     FROM clicks
     WHERE created_at >= now() - toIntervalSecond(?)
-      AND ip_address != ''
-    GROUP BY ip_address
+      AND ` + emptyIPHashFilter + `
+    GROUP BY ip_hash
     HAVING click_count >= ?
 ) AS c
 LEFT JOIN (
-    SELECT ip_address, count() AS imp_count
+    SELECT ip_hash, count() AS imp_count
     FROM impressions
     WHERE created_at >= now() - toIntervalSecond(?)
-      AND ip_address != ''
-    GROUP BY ip_address
-) AS i ON c.ip_address = i.ip_address
+      AND ` + emptyIPHashFilter + `
+    GROUP BY ip_hash
+) AS i ON c.ip_hash = i.ip_hash
 WHERE c.click_count >= ?
   AND (
     imp_count < ?
@@ -106,20 +107,21 @@ WHERE c.click_count >= ?
 
 	var out []SuspiciousIP
 	for rows.Next() {
-		var ip string
+		var ipHash []byte
 		var clickCount, impCount uint64
-		if err := rows.Scan(&ip, &clickCount, &impCount); err != nil {
+		if err := rows.Scan(&ipHash, &clickCount, &impCount); err != nil {
 			return nil, fmt.Errorf("scan high click-to-imp row: %w", err)
 		}
-		if ip == "" {
+		if len(ipHash) == 0 {
 			continue
 		}
+		ipKey := hex.EncodeToString(ipHash)
 		ratio := float64(clickCount)
 		if impCount > 0 {
 			ratio /= float64(impCount)
 		}
 		out = append(out, SuspiciousIP{
-			IP:     ip,
+			IP:     ipKey,
 			Reason: "ivt_high_click_to_imp_ratio",
 			Score:  ratio,
 		})
@@ -132,30 +134,30 @@ WHERE c.click_count >= ?
 
 func (analyzer *Analyzer) findSharedFingerprintClusters(ctx context.Context, windowSec int64) ([]SuspiciousIP, error) {
 	query := `
-SELECT ip_address
+SELECT ip_hash
 FROM (
     SELECT
-        user_agent,
-        groupUniqArray(ip_address) AS ips,
-        uniqExact(ip_address) AS ip_count
+        ua_hash,
+        groupUniqArray(ip_hash) AS ips,
+        uniqCombined(ip_hash) AS ip_count
     FROM (
-        SELECT ip_address, user_agent
+        SELECT ip_hash, ua_hash
         FROM impressions
         WHERE created_at >= now() - toIntervalSecond(?)
-          AND ip_address != ''
-          AND user_agent != ''
+          AND ` + emptyIPHashFilter + `
+          AND ua_hash != ''
         UNION ALL
-        SELECT ip_address, user_agent
+        SELECT ip_hash, ua_hash
         FROM clicks
         WHERE created_at >= now() - toIntervalSecond(?)
-          AND ip_address != ''
-          AND user_agent != ''
+          AND ` + emptyIPHashFilter + `
+          AND ua_hash != ''
     )
-    GROUP BY user_agent
+    GROUP BY ua_hash
     HAVING ip_count >= ?
 )
-ARRAY JOIN ips AS ip_address
-GROUP BY ip_address
+ARRAY JOIN ips AS ip_hash
+GROUP BY ip_hash
 HAVING count() >= 1`
 
 	rows, err := analyzer.q.Query(
@@ -172,15 +174,15 @@ HAVING count() >= 1`
 
 	var out []SuspiciousIP
 	for rows.Next() {
-		var ip string
-		if err := rows.Scan(&ip); err != nil {
+		var ipHash []byte
+		if err := rows.Scan(&ipHash); err != nil {
 			return nil, fmt.Errorf("scan shared fingerprint row: %w", err)
 		}
-		if ip == "" {
+		if len(ipHash) == 0 {
 			continue
 		}
 		out = append(out, SuspiciousIP{
-			IP:     ip,
+			IP:     hex.EncodeToString(ipHash),
 			Reason: "ivt_shared_fingerprint_cluster",
 			Score:  float64(analyzer.cfg.MinIPsPerUA),
 		})

@@ -248,7 +248,7 @@ func TestAnalyzer_FindSuspiciousIPs_clickRatio(t *testing.T) {
 
 	found := false
 	for _, candidate := range ips {
-		if candidate.IP == "ratio-ip" {
+		if candidate.IP == ipHashHex("ratio-ip") {
 			found = true
 			assert.Equal(t, "ivt_high_click_to_imp_ratio", candidate.Reason)
 		}

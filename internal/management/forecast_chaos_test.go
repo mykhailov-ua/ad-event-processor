@@ -42,7 +42,7 @@ func TestChaos_ForecastDeterministic(t *testing.T) {
 	}
 	authMW, tokenMaker := integrationTestAuth(t, rdb, cfg)
 	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
-	svc.SetClickHouse(conn)
+	svc.SetClickHouse(conn, database.CHQueryConfig{})
 	h := NewHandler(svc, cfg, authMW, nil, nil, nil)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)

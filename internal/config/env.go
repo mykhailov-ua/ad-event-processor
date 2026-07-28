@@ -48,12 +48,24 @@ type Config struct {
 	ProcessorCHStreamMaxWorkers     int
 	ProcessorPGGateSlots            int
 	ProcessorCHGateSlots            int
+	ProcessorWeightEnabled          bool
+	ProcessorWeightFloor            float64
+	ProcessorWeightCeil             float64
+	ProcessorWeightDrainPgWaitMs    int
+	VendorTelemetryEnabled          bool
+	VendorTelemetryIntervalSec      int
+	VendorTelemetryTimeoutSec       int
 	SyncWorkerMaxConcurrency        int
 	LogRetentionDays                int
 	DBTrackerMaxConns               int
 	DBProcessorMaxConns             int
 	DBMinConns                      int
 	CHMaxConns                      int
+	CHQueryMaxConcurrency           int
+	CHQueryTimeoutSec               int
+	CHQuerySlowLogMS                int
+	CHQueryMaxMemoryBytes           uint64
+	CHQueryMaxExecSec               int
 	CHSpoolDir                      string
 	CHSpoolSegmentMB                int
 	CHSpoolMaxSegments              int
@@ -79,6 +91,8 @@ type Config struct {
 	TTCFailClosed                   bool
 	CHBatchSize                     int
 	CHFlushIntervalMs               int
+	PIISaltVersion                  uint8
+	PIISaltHex                      Secret
 	PartitionPreCreateDays          int
 	RegistrySyncIntervalMs          int
 	BudgetSyncIntervalMs            int
@@ -289,6 +303,28 @@ type Config struct {
 	OpLeaseMaxRenewals  int
 	OpLeaseFencingDir   string
 
+	GlobalSpendBatchMin        int
+	GlobalSpendFlushIntervalMs int
+	GlobalSpendMaxConcurrency  int
+
+	RegionProxyAddr     string
+	RegionProxyRedisURL string
+
+	PgFailoverEnabled        bool
+	PgFailoverCoordinator    bool
+	PgPrimaryDSN             Secret
+	PgStandbyDSN             Secret
+	PgFailoverRedisURL       string
+	PgFailoverHealthMs       int
+	PgFailoverPollMs         int
+	PgFailoverCoordMs        int
+	PgFailoverLeaseSec       int
+	PgFailoverFailThreshold  int
+	PgPromoteCommand         string
+	PgFailoverSnapshotSync   bool
+	PgFailoverSyncPageSize   int
+	PgFailoverAuditWindowSec int
+
 	QuotaAutoRepair bool
 
 	Notifier struct {
@@ -429,12 +465,24 @@ func Load() (*Config, error) {
 		ProcessorCHStreamMaxWorkers:     getEnvInt("PROCESSOR_CH_STREAM_MAX_WORKERS", 0),
 		ProcessorPGGateSlots:            getEnvInt("PROCESSOR_PG_GATE_SLOTS", 0),
 		ProcessorCHGateSlots:            getEnvInt("PROCESSOR_CH_GATE_SLOTS", 0),
+		ProcessorWeightEnabled:          getEnvBool("PROCESSOR_WEIGHT_ENABLED", false),
+		ProcessorWeightFloor:            getEnvFloat("PROCESSOR_WEIGHT_FLOOR", 0.05),
+		ProcessorWeightCeil:             getEnvFloat("PROCESSOR_WEIGHT_CEIL", 0.95),
+		ProcessorWeightDrainPgWaitMs:    getEnvInt("PROCESSOR_WEIGHT_DRAIN_PG_WAIT_MS", 50),
+		VendorTelemetryEnabled:          vendorTelemetryEnabled(appEnv),
+		VendorTelemetryIntervalSec:      getEnvInt("VENDOR_TELEMETRY_INTERVAL_SEC", 60),
+		VendorTelemetryTimeoutSec:       getEnvInt("VENDOR_TELEMETRY_TIMEOUT_SEC", 5),
 		SyncWorkerMaxConcurrency:        getEnvInt("SYNC_WORKER_MAX_CONCURRENCY", 32),
 		LogRetentionDays:                getEnvInt("LOG_RETENTION_DAYS", 7),
 		DBTrackerMaxConns:               getEnvInt("DB_TRACKER_MAX_CONNS", 4),
 		DBProcessorMaxConns:             getEnvInt("DB_PROCESSOR_MAX_CONNS", 16),
 		DBMinConns:                      getEnvInt("DB_MIN_CONNS", 2),
 		CHMaxConns:                      getEnvInt("CH_MAX_CONNS", 8),
+		CHQueryMaxConcurrency:           getEnvInt("CH_QUERY_MAX_CONCURRENCY", 8),
+		CHQueryTimeoutSec:               getEnvInt("CH_QUERY_TIMEOUT_SEC", 30),
+		CHQuerySlowLogMS:                getEnvInt("CH_QUERY_SLOW_LOG_MS", 2000),
+		CHQueryMaxMemoryBytes:           uint64(getEnvInt("CH_QUERY_MAX_MEMORY_BYTES", 0)),
+		CHQueryMaxExecSec:               getEnvInt("CH_QUERY_MAX_EXEC_SEC", 0),
 		CHSpoolDir:                      envOrDefault("CH_SPOOL_DIR", "/var/spool/espx/ch"),
 		CHSpoolSegmentMB:                getEnvInt("CH_SPOOL_SEGMENT_MB", 512),
 		CHSpoolMaxSegments:              getEnvInt("CH_SPOOL_MAX_SEGMENTS", 8),
@@ -462,6 +510,8 @@ func Load() (*Config, error) {
 		CHDSN:                           Secret(os.Getenv("CH_DSN")),
 		CHBatchSize:                     getEnvInt("CH_BATCH_SIZE", 50000),
 		CHFlushIntervalMs:               getEnvInt("CH_FLUSH_INTERVAL_MS", 10000),
+		PIISaltVersion:                  uint8(getEnvInt("PII_SALT_VERSION", 1)),
+		PIISaltHex:                      Secret(os.Getenv("PII_SALT_HEX")),
 		AuthServerPort:                  os.Getenv("AUTH_SERVER_PORT"),
 		TokenSymmetricKey:               Secret(os.Getenv("TOKEN_SYMMETRIC_KEY")),
 		PartitionPreCreateDays:          getEnvInt("PARTITION_PRECREATE_DAYS", 2),
@@ -676,6 +726,33 @@ func Load() (*Config, error) {
 	cfg.OpLeaseTimeoutSec = getEnvInt("OP_LEASE_TIMEOUT_SEC", 30)
 	cfg.OpLeaseMaxRenewals = getEnvInt("OP_LEASE_MAX_RENEWALS", 3)
 	cfg.OpLeaseFencingDir = os.Getenv("OP_LEASE_FENCING_DIR")
+	cfg.GlobalSpendBatchMin = getEnvInt("GLOBAL_SPEND_BATCH_MIN", 100)
+	cfg.GlobalSpendFlushIntervalMs = getEnvInt("GLOBAL_SPEND_FLUSH_INTERVAL_MS", 500)
+	cfg.GlobalSpendMaxConcurrency = getEnvInt("GLOBAL_SPEND_MAX_CONCURRENCY", 8)
+	cfg.RegionProxyAddr = os.Getenv("REGION_PROXY_ADDR")
+	if cfg.RegionProxyRedisURL == "" {
+		cfg.RegionProxyRedisURL = os.Getenv("REGION_PROXY_REDIS_URL")
+	}
+	if cfg.RegionProxyRedisURL == "" && len(cfg.RedisAddrs) > 0 {
+		cfg.RegionProxyRedisURL = "redis://" + cfg.RedisAddrs[0] + "/0"
+	}
+	cfg.PgFailoverEnabled = getEnvBool("PG_FAILOVER_ENABLED", false)
+	cfg.PgFailoverCoordinator = getEnvBool("PG_FAILOVER_COORDINATOR", false)
+	cfg.PgPrimaryDSN = Secret(envOrDefault("PG_PRIMARY_DSN", string(cfg.DBDSN)))
+	cfg.PgStandbyDSN = Secret(os.Getenv("PG_STANDBY_DSN"))
+	cfg.PgFailoverRedisURL = os.Getenv("PG_FAILOVER_REDIS_URL")
+	if cfg.PgFailoverRedisURL == "" && len(cfg.RedisAddrs) > 0 {
+		cfg.PgFailoverRedisURL = "redis://" + cfg.RedisAddrs[0] + "/0"
+	}
+	cfg.PgFailoverHealthMs = getEnvInt("PG_FAILOVER_HEALTH_MS", 750)
+	cfg.PgFailoverPollMs = getEnvInt("PG_FAILOVER_POLL_MS", 300)
+	cfg.PgFailoverCoordMs = getEnvInt("PG_FAILOVER_COORD_MS", 350)
+	cfg.PgFailoverLeaseSec = getEnvInt("PG_FAILOVER_LEASE_SEC", 3)
+	cfg.PgFailoverFailThreshold = getEnvInt("PG_FAILOVER_FAIL_THRESHOLD", 2)
+	cfg.PgPromoteCommand = os.Getenv("PG_PROMOTE_COMMAND")
+	cfg.PgFailoverSnapshotSync = getEnvBool("PG_FAILOVER_SNAPSHOT_SYNC", false)
+	cfg.PgFailoverSyncPageSize = getEnvInt("PG_FAILOVER_SYNC_PAGE_SIZE", 5000)
+	cfg.PgFailoverAuditWindowSec = getEnvInt("PG_FAILOVER_AUDIT_WINDOW_SEC", 3600)
 	cfg.QuotaAutoRepair = getEnvBool("QUOTA_AUTO_REPAIR", false)
 	cfg.ManagementURL = os.Getenv("MANAGEMENT_URL")
 	if cfg.ManagementURL == "" && cfg.ManagementPort != "" {
@@ -1032,4 +1109,14 @@ func (c *Config) FraudScorerStandalone() bool {
 // ClickHouseEnabled reports whether analytics queries should use ClickHouse.
 func (c *Config) ClickHouseEnabled() bool {
 	return c != nil && string(c.CHDSN) != ""
+}
+
+func vendorTelemetryEnabled(appEnv string) bool {
+	if v := os.Getenv("VENDOR_TELEMETRY_ENABLED"); v != "" {
+		return getEnvBool("VENDOR_TELEMETRY_ENABLED", false)
+	}
+	if v := os.Getenv("ESPX_VENDOR_TELEMETRY"); v != "" {
+		return getEnvBool("ESPX_VENDOR_TELEMETRY", false)
+	}
+	return appEnv == "production"
 }

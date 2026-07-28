@@ -60,7 +60,7 @@ func main() {
 	}
 	defer chRead.Close()
 
-	chQuery := database.NewCHQuery(chRead, database.CHQueryConfig{})
+	chQuery := database.NewCHQuery(chRead, database.CHQueryConfigFromApp(cfg))
 
 	// 3. Start worker
 	worker := marginguard.NewWorker(pool, chQuery, cfg, registry, notifier)

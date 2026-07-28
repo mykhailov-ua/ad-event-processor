@@ -7,6 +7,7 @@ import (
 
 	"espx/internal/database"
 	"espx/internal/fraudscoring"
+	"espx/pkg/piihash"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -30,15 +31,15 @@ func TestFraudScoringRule_Integration(t *testing.T) {
 
 	insertQuery := `
 		INSERT INTO ad_event_processor.ml_features_1m
-		(window_start, ip_address, campaign_id, events, clicks, spend_micro, budget_limit_micro, unique_users, unique_uas)
+		(window_start, ip_hash, campaign_id, events, clicks, spend_micro, budget_limit_micro, unique_users, unique_uas)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
+	h := testPIIHasher()
 	// IP 1: low clicks -> score 0.1
-	err := conn.Exec(ctx, insertQuery, now, "1.2.3.4", campaignID, uint64(10), uint64(2), int64(1000000), int64(5000000), uint64(1), uint64(1))
+	err := conn.Exec(ctx, insertQuery, now, piihash.FixedString16(h.HashIP("1.2.3.4")), campaignID, uint64(10), uint64(2), int64(1000000), int64(5000000), uint64(1), uint64(1))
 	require.NoError(t, err)
 
-	// IP 2: high clicks -> score 0.9
-	err = conn.Exec(ctx, insertQuery, now, "5.6.7.8", campaignID, uint64(100), uint64(10), int64(10000000), int64(50000000), uint64(5), uint64(2))
+	err = conn.Exec(ctx, insertQuery, now, piihash.FixedString16(h.HashIP("5.6.7.8")), campaignID, uint64(100), uint64(10), int64(10000000), int64(50000000), uint64(5), uint64(2))
 	require.NoError(t, err)
 
 	// 3. Load the model and create the ML rule
@@ -52,7 +53,7 @@ func TestFraudScoringRule_Integration(t *testing.T) {
 	candidates, err := rule.Find(ctx)
 	require.NoError(t, err)
 	assert.Len(t, candidates, 1)
-	assert.Equal(t, "1.2.3.4", candidates[0].IP)
+	assert.Equal(t, ipHashHex("1.2.3.4"), candidates[0].IP)
 	assert.Equal(t, "boost", candidates[0].Action)
 	assert.Equal(t, int32(52), candidates[0].Boost)
 
@@ -64,11 +65,11 @@ func TestFraudScoringRule_Integration(t *testing.T) {
 
 	// Verify specific scores
 	var score1, score2 float64
-	err = conn.QueryRow(ctx, "SELECT score FROM ad_event_processor.ml_shadow_scores WHERE ip_address = '1.2.3.4' LIMIT 1").Scan(&score1)
+	err = conn.QueryRow(ctx, "SELECT score FROM ad_event_processor.ml_shadow_scores WHERE ip_hash = ? LIMIT 1", piihash.FixedString16(h.HashIP("1.2.3.4"))).Scan(&score1)
 	require.NoError(t, err)
 	assert.InDelta(t, 0.52497, score1, 1e-4)
 
-	err = conn.QueryRow(ctx, "SELECT score FROM ad_event_processor.ml_shadow_scores WHERE ip_address = '5.6.7.8' LIMIT 1").Scan(&score2)
+	err = conn.QueryRow(ctx, "SELECT score FROM ad_event_processor.ml_shadow_scores WHERE ip_hash = ? LIMIT 1", piihash.FixedString16(h.HashIP("5.6.7.8"))).Scan(&score2)
 	require.NoError(t, err)
 	assert.InDelta(t, 0.71094, score2, 1e-4)
 
@@ -90,14 +91,15 @@ func TestFraudScoringRule_FraudScoresHigherThanControl(t *testing.T) {
 	now := time.Now().Truncate(time.Minute)
 	insertQuery := `
 		INSERT INTO ad_event_processor.ml_features_1m
-		(window_start, ip_address, campaign_id, events, clicks, spend_micro, budget_limit_micro, unique_users, unique_uas)
+		(window_start, ip_hash, campaign_id, events, clicks, spend_micro, budget_limit_micro, unique_users, unique_uas)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
+	h := testPIIHasher()
 	controlIP := "203.0.113.10"
 	fraudIP := "203.0.113.20"
 
-	require.NoError(t, conn.Exec(ctx, insertQuery, now, controlIP, campaignID, uint64(20), uint64(1), int64(1000000), int64(5000000), uint64(1), uint64(1)))
-	require.NoError(t, conn.Exec(ctx, insertQuery, now, fraudIP, campaignID, uint64(200), uint64(50), int64(10000000), int64(50000000), uint64(20), uint64(1)))
+	require.NoError(t, conn.Exec(ctx, insertQuery, now, piihash.FixedString16(h.HashIP(controlIP)), campaignID, uint64(20), uint64(1), int64(1000000), int64(5000000), uint64(1), uint64(1)))
+	require.NoError(t, conn.Exec(ctx, insertQuery, now, piihash.FixedString16(h.HashIP(fraudIP)), campaignID, uint64(200), uint64(50), int64(10000000), int64(50000000), uint64(20), uint64(1)))
 
 	scorer, err := fraudscoring.NewLGBMScorer("../fraudscoring/testdata/model.txt")
 	require.NoError(t, err)
@@ -106,8 +108,8 @@ func TestFraudScoringRule_FraudScoresHigherThanControl(t *testing.T) {
 	require.NoError(t, err)
 
 	var controlScore, fraudScore float64
-	require.NoError(t, conn.QueryRow(ctx, "SELECT score FROM ad_event_processor.ml_shadow_scores WHERE ip_address = ? LIMIT 1", controlIP).Scan(&controlScore))
-	require.NoError(t, conn.QueryRow(ctx, "SELECT score FROM ad_event_processor.ml_shadow_scores WHERE ip_address = ? LIMIT 1", fraudIP).Scan(&fraudScore))
+	require.NoError(t, conn.QueryRow(ctx, "SELECT score FROM ad_event_processor.ml_shadow_scores WHERE ip_hash = ? LIMIT 1", piihash.FixedString16(h.HashIP(controlIP))).Scan(&controlScore))
+	require.NoError(t, conn.QueryRow(ctx, "SELECT score FROM ad_event_processor.ml_shadow_scores WHERE ip_hash = ? LIMIT 1", piihash.FixedString16(h.HashIP(fraudIP))).Scan(&fraudScore))
 
 	assert.Greater(t, fraudScore, controlScore, "seeded fraud IP should outrank control IP")
 }
@@ -154,20 +156,14 @@ func TestFraudScoringRule_WithCampaignThresholds(t *testing.T) {
 	now := time.Now().Truncate(time.Minute)
 	insertQuery := `
 		INSERT INTO ad_event_processor.ml_features_1m
-		(window_start, ip_address, campaign_id, events, clicks, spend_micro, budget_limit_micro, unique_users, unique_uas)
+		(window_start, ip_hash, campaign_id, events, clicks, spend_micro, budget_limit_micro, unique_users, unique_uas)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
-	// IP 1: low clicks -> score 0.1 (mapped fraudScore = 10 < pass 20) -> no action
-	require.NoError(t, conn.Exec(ctx, insertQuery, now, "1.1.1.1", campaignID, uint64(10), uint64(2), int64(1000000), int64(5000000), uint64(1), uint64(1)))
-
-	// IP 2: medium clicks -> score 0.4 (mapped fraudScore = 40, in [pass 20, suspect 50)) -> boost action
-	require.NoError(t, conn.Exec(ctx, insertQuery, now, "2.2.2.2", campaignID, uint64(50), uint64(5), int64(5000000), int64(10000000), uint64(3), uint64(1)))
-
-	// IP 3: high clicks -> score 0.75 (mapped fraudScore = 75, in [suspect 50, block 90)) -> ghost action (ghostEnabled = true)
-	require.NoError(t, conn.Exec(ctx, insertQuery, now, "3.3.3.3", campaignID, uint64(100), uint64(10), int64(10000000), int64(20000000), uint64(5), uint64(2)))
-
-	// IP 4: extreme clicks -> score 0.95 (mapped fraudScore = 95, >= block 90) -> blacklist action
-	require.NoError(t, conn.Exec(ctx, insertQuery, now, "4.4.4.4", campaignID, uint64(200), uint64(30), int64(20000000), int64(30000000), uint64(10), uint64(3)))
+	h := testPIIHasher()
+	require.NoError(t, conn.Exec(ctx, insertQuery, now, piihash.FixedString16(h.HashIP("1.1.1.1")), campaignID, uint64(10), uint64(2), int64(1000000), int64(5000000), uint64(1), uint64(1)))
+	require.NoError(t, conn.Exec(ctx, insertQuery, now, piihash.FixedString16(h.HashIP("2.2.2.2")), campaignID, uint64(50), uint64(5), int64(5000000), int64(10000000), uint64(3), uint64(1)))
+	require.NoError(t, conn.Exec(ctx, insertQuery, now, piihash.FixedString16(h.HashIP("3.3.3.3")), campaignID, uint64(100), uint64(10), int64(10000000), int64(20000000), uint64(5), uint64(2)))
+	require.NoError(t, conn.Exec(ctx, insertQuery, now, piihash.FixedString16(h.HashIP("4.4.4.4")), campaignID, uint64(200), uint64(30), int64(20000000), int64(30000000), uint64(10), uint64(3)))
 
 	// 3. Create the mock scorer and ML rule
 	scorer := &mockScorer{
@@ -187,22 +183,19 @@ func TestFraudScoringRule_WithCampaignThresholds(t *testing.T) {
 	}
 
 	// IP 4 (4.4.4.4) should have no candidate (score 0.1 -> fraudScore 10 < pass 20)
-	_, exists := candidateMap["4.4.4.4"]
+	_, exists := candidateMap[ipHashHex("4.4.4.4")]
 	assert.False(t, exists)
 
-	// IP 3 (3.3.3.3) should be "boost" (score 0.4 -> fraudScore 40, in [20, 50))
-	c3, exists := candidateMap["3.3.3.3"]
+	c3, exists := candidateMap[ipHashHex("3.3.3.3")]
 	require.True(t, exists)
 	assert.Equal(t, "boost", c3.Action)
 	assert.Equal(t, int32(40), c3.Boost)
 
-	// IP 2 (2.2.2.2) should be "ghost" (score 0.75 -> fraudScore 75, in [50, 90))
-	c2, exists := candidateMap["2.2.2.2"]
+	c2, exists := candidateMap[ipHashHex("2.2.2.2")]
 	require.True(t, exists)
 	assert.Equal(t, "ghost", c2.Action)
 
-	// IP 1 (1.1.1.1) should be "blacklist" (score 0.95 -> fraudScore 95, >= block 90)
-	c1, exists := candidateMap["1.1.1.1"]
+	c1, exists := candidateMap[ipHashHex("1.1.1.1")]
 	require.True(t, exists)
 	assert.Equal(t, "blacklist", c1.Action)
 }

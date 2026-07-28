@@ -64,9 +64,9 @@ func TestChaos_ivtIntervalAutoblock(t *testing.T) {
 	foundBot := false
 	for _, candidate := range candidates {
 		switch candidate.IP {
-		case protectedIP:
+		case ipHashHex(protectedIP):
 			foundProtected = true
-		case botIP:
+		case ipHashHex(botIP):
 			foundBot = true
 		}
 	}

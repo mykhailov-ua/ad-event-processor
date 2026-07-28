@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"espx/pkg/piihash"
+
 	chgo "github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/google/uuid"
@@ -62,11 +64,18 @@ func openClickHouseTestConn(t *testing.T, dsn string) driver.Conn {
 	return conn
 }
 
+func testPIIHasher() *piihash.Hasher {
+	return piihash.TestHasher()
+}
+
 func seedClickHouseEvents(t *testing.T, conn driver.Conn, ip, userAgent string, impressions, clicks int) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
+	h := testPIIHasher()
+	ipHash := piihash.FixedString16(h.HashIP(ip))
+	uaHash := piihash.FixedString16(h.HashUA(userAgent))
 	campaignID := uuid.New()
 	now := time.Now().UTC()
 
@@ -74,18 +83,18 @@ func seedClickHouseEvents(t *testing.T, conn driver.Conn, ip, userAgent string, 
 		clickID := fmt.Sprintf("imp-%s-%d", ip, i)
 		require.NoError(t, conn.Exec(ctx, `
 			INSERT INTO ad_event_processor.impressions
-			(click_id, campaign_id, ip_address, user_agent, payload, created_at)
-			VALUES (?, ?, ?, ?, '', ?)`,
-			clickID, campaignID, ip, userAgent, now,
+			(click_id, campaign_id, ip_hash, ua_hash, pii_salt_version, payload, created_at)
+			VALUES (?, ?, ?, ?, ?, '', ?)`,
+			clickID, campaignID, ipHash, uaHash, h.Version(), now,
 		))
 	}
 	for i := 0; i < clicks; i++ {
 		clickID := fmt.Sprintf("clk-%s-%d", ip, i)
 		require.NoError(t, conn.Exec(ctx, `
 			INSERT INTO ad_event_processor.clicks
-			(click_id, campaign_id, ip_address, user_agent, payload, created_at)
-			VALUES (?, ?, ?, ?, '', ?)`,
-			clickID, campaignID, ip, userAgent, now,
+			(click_id, campaign_id, ip_hash, ua_hash, pii_salt_version, payload, created_at)
+			VALUES (?, ?, ?, ?, ?, '', ?)`,
+			clickID, campaignID, ipHash, uaHash, h.Version(), now,
 		))
 	}
 }
@@ -95,6 +104,9 @@ func seedIntervalBotClicks(t *testing.T, conn driver.Conn, ip, userAgent string,
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
+	h := testPIIHasher()
+	ipHash := piihash.FixedString16(h.HashIP(ip))
+	uaHash := piihash.FixedString16(h.HashUA(userAgent))
 	campaignID := uuid.New()
 	base := time.Now().UTC().Add(-interval * time.Duration(count))
 
@@ -103,9 +115,9 @@ func seedIntervalBotClicks(t *testing.T, conn driver.Conn, ip, userAgent string,
 		ts := base.Add(interval * time.Duration(i))
 		require.NoError(t, conn.Exec(ctx, `
 			INSERT INTO ad_event_processor.clicks
-			(click_id, campaign_id, ip_address, user_agent, payload, created_at)
-			VALUES (?, ?, ?, ?, '', ?)`,
-			clickID, campaignID, ip, userAgent, ts,
+			(click_id, campaign_id, ip_hash, ua_hash, pii_salt_version, payload, created_at)
+			VALUES (?, ?, ?, ?, ?, '', ?)`,
+			clickID, campaignID, ipHash, uaHash, h.Version(), ts,
 		))
 	}
 }
@@ -115,16 +127,33 @@ func seedJitteredClicks(t *testing.T, conn driver.Conn, ip, userAgent string, de
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
+	h := testPIIHasher()
+	ipHash := piihash.FixedString16(h.HashIP(ip))
+	uaHash := piihash.FixedString16(h.HashUA(userAgent))
 	campaignID := uuid.New()
 	ts := time.Now().UTC().Add(-time.Hour)
 	for i, delta := range deltas {
 		clickID := fmt.Sprintf("jitter-%s-%d", ip, i)
 		require.NoError(t, conn.Exec(ctx, `
 			INSERT INTO ad_event_processor.clicks
-			(click_id, campaign_id, ip_address, user_agent, payload, created_at)
-			VALUES (?, ?, ?, ?, '', ?)`,
-			clickID, campaignID, ip, userAgent, ts,
+			(click_id, campaign_id, ip_hash, ua_hash, pii_salt_version, payload, created_at)
+			VALUES (?, ?, ?, ?, ?, '', ?)`,
+			clickID, campaignID, ipHash, uaHash, h.Version(), ts,
 		))
 		ts = ts.Add(delta)
 	}
+}
+
+func seedClickHouseClickWithTLS(t *testing.T, conn driver.Conn, ip, userAgent, tlsHash string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	h := testPIIHasher()
+	require.NoError(t, conn.Exec(ctx, `
+		INSERT INTO ad_event_processor.clicks
+		(click_id, campaign_id, ip_hash, ua_hash, pii_salt_version, tls_hash, payload, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, '', ?)`,
+		"tls-"+ip, uuid.New(), piihash.FixedString16(h.HashIP(ip)), piihash.FixedString16(h.HashUA(userAgent)), h.Version(), tlsHash, time.Now().UTC(),
+	))
 }
