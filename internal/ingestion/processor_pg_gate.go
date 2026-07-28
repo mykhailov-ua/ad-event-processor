@@ -19,6 +19,7 @@ type ProcessorWriteGate struct {
 	sem      chan struct{}
 	capacity int
 	inFlight atomic.Int32
+	waitEMA  atomic.Uint64
 	backend  string
 }
 
@@ -65,6 +66,7 @@ func (g *ProcessorWriteGate) Acquire(ctx context.Context) error {
 	case g.sem <- struct{}{}:
 		if wait := time.Since(start); wait > 0 {
 			metrics.ProcessorWriteAcquireWaitSeconds.WithLabelValues(g.backend).Observe(wait.Seconds())
+			g.recordWait(wait)
 		}
 		g.inFlight.Add(1)
 		return nil
@@ -96,4 +98,32 @@ func (g *ProcessorWriteGate) InFlight() int {
 		return 0
 	}
 	return int(g.inFlight.Load())
+}
+
+// WaitEMA returns an exponential moving average of recent acquire waits.
+func (g *ProcessorWriteGate) WaitEMA() time.Duration {
+	if g == nil {
+		return 0
+	}
+	return time.Duration(g.waitEMA.Load())
+}
+
+func (g *ProcessorWriteGate) recordWait(wait time.Duration) {
+	if g == nil || wait <= 0 {
+		return
+	}
+	for {
+		old := g.waitEMA.Load()
+		var next uint64
+		if old == 0 {
+			next = uint64(wait)
+		} else {
+			ema := time.Duration(old)
+			ema = time.Duration(0.8*float64(ema) + 0.2*float64(wait))
+			next = uint64(ema)
+		}
+		if g.waitEMA.CompareAndSwap(old, next) {
+			return
+		}
+	}
 }

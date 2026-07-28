@@ -47,6 +47,12 @@ type StreamConsumer struct {
 	auditLogSampleMask uint64
 	dlqStreamName      string
 	onMessageProcessed func(evt *campaignmodel.Event, msgID string)
+	weightCtrl         *ProcessorWeightController
+}
+
+// SetWeightController attaches per-instance consume weight scheduling (GAP-DB-03).
+func (consumer *StreamConsumer) SetWeightController(w *ProcessorWeightController) {
+	consumer.weightCtrl = w
 }
 
 // SetOnMessageProcessed sets the callback invoked when a message is successfully parsed during consumption.
@@ -264,11 +270,18 @@ func (consumer *StreamConsumer) worker(ctx context.Context, workerIdx int) {
 		default:
 		}
 
+		if consumer.weightCtrl != nil {
+			consumer.weightCtrl.ThrottleBeforeRead(ctx)
+		}
+
 		readCount := int64(consumer.batchSize - len(batch))
 		if readCount <= 0 {
 			consumer.tryFlush(ctx, &batch, &msgIDs, &retryCount, workerID, nil, &retryWait)
 			lastFlush = time.Now()
 			continue
+		}
+		if consumer.weightCtrl != nil {
+			readCount = consumer.weightCtrl.EffectiveReadCount(int(readCount))
 		}
 
 		var blockTime time.Duration
@@ -785,8 +798,13 @@ func (consumer *StreamConsumer) flushBatch(ctx context.Context, batch []*campaig
 	}
 
 	if len(batch) > 0 && !batch[0].CreatedAt.IsZero() {
-		metrics.ProcessorStreamLagSeconds.Set(time.Since(batch[0].CreatedAt).Seconds())
-		SetProcessorStreamLagSec(int64(time.Since(batch[0].CreatedAt).Seconds()))
+		lagSec := time.Since(batch[0].CreatedAt).Seconds()
+		instance := "local"
+		if consumer.weightCtrl != nil {
+			instance = consumer.weightCtrl.InstanceLabel()
+		}
+		metrics.ProcessorStreamLagSeconds.WithLabelValues(instance).Set(lagSec)
+		SetProcessorStreamLagSec(int64(lagSec))
 	}
 
 	if consumer.logger != nil {

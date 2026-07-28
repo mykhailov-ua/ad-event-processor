@@ -71,4 +71,5 @@ func RegisterOpsRoutes(mux *http.ServeMux, pool *pgxpool.Pool, rdbs []redis.Univ
 		}
 	})
 	registerOpsNodeWeights(mux, pool, cfg)
+	registerOpsProcessorWeights(mux, pool, cfg)
 }
