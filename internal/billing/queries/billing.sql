@@ -53,6 +53,16 @@ SET country_code = EXCLUDED.country_code,
     updated_at = now()
 RETURNING *;
 
+-- name: UpsertCustomerCTVTaxProfile :one
+INSERT INTO billing.customer_tax_profiles (
+  customer_id, country_code, tax_region, tax_scheme, tax_rate_bps, ctv_gtax_enabled, ctv_gtax_rate_bps
+) VALUES ($1, $2, $3, $4, $5, $6, $7)
+ON CONFLICT (customer_id) DO UPDATE
+SET ctv_gtax_enabled = EXCLUDED.ctv_gtax_enabled,
+    ctv_gtax_rate_bps = EXCLUDED.ctv_gtax_rate_bps,
+    updated_at = now()
+RETURNING *;
+
 -- name: GetInvoiceByCustomerMonth :one
 SELECT *
 FROM billing.invoices

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"espx/internal/ingestion"
-	"espx/internal/ingestion/sqlc"
+	db "espx/internal/ingestion/sqlc"
 	"espx/pkg/coldpath"
 
 	"github.com/google/uuid"
@@ -161,7 +161,21 @@ func (s *Service) emitCampaignLifecycleOutbox(ctx context.Context, q db.Querier,
 
 // PauseCampaign stops delivery for an active campaign and notifies the hot path via coldpath.
 func (s *Service) PauseCampaign(ctx context.Context, campaignID uuid.UUID, reason string) error {
-	return pgx.BeginFunc(ctx, s.GetPool(), func(tx pgx.Tx) error {
+	_, err := s.pauseCampaign(ctx, campaignID, reason, false)
+	return err
+}
+
+// PreviewPauseCampaign validates a pause without PG/outbox/Redis side effects (GAP-RTB-12b).
+func (s *Service) PreviewPauseCampaign(ctx context.Context, campaignID uuid.UUID, reason string) (MutationPreview, error) {
+	return s.pauseCampaign(ctx, campaignID, reason, true)
+}
+
+// pauseCampaign implements pause with optional dry-run preview (GAP-RTB-12b).
+func (s *Service) pauseCampaign(ctx context.Context, campaignID uuid.UUID, reason string, dryRun bool) (MutationPreview, error) {
+	if dryRun {
+		return s.previewPauseCampaign(ctx, campaignID, reason)
+	}
+	err := pgx.BeginFunc(ctx, s.GetPool(), func(tx pgx.Tx) error {
 		q := db.New(tx)
 		camp, err := q.GetCampaignForUpdate(ctx, ingestion.ToUUID(campaignID))
 		if err != nil {
@@ -201,11 +215,57 @@ func (s *Service) PauseCampaign(ctx context.Context, campaignID uuid.UUID, reaso
 		_, err = q.CreateOutboxEvent(ctx, db.CreateOutboxEventParams{EventType: "PAUSE_CAMPAIGN", Payload: payload})
 		return err
 	})
+	return MutationPreview{}, err
+}
+
+func (s *Service) previewPauseCampaign(ctx context.Context, campaignID uuid.UUID, reason string) (MutationPreview, error) {
+	camp, err := db.New(s.GetPool()).GetCampaign(ctx, ingestion.ToUUID(campaignID))
+	if err != nil {
+		return MutationPreview{}, mapNotFound(err, ErrCampaignNotFound)
+	}
+	if camp.Status == db.CampaignStatusTypePAUSED {
+		return MutationPreview{
+			DryRun: true,
+			Action: "PAUSE_CAMPAIGN",
+			WouldChange: map[string]any{
+				"campaign_id": campaignID.String(),
+				"status":      string(camp.Status),
+				"noop":        true,
+			},
+		}, nil
+	}
+	if camp.Status != db.CampaignStatusTypeACTIVE {
+		return MutationPreview{}, fmt.Errorf("%w in status %s", ErrCampaignCannotBePaused, camp.Status)
+	}
+	return MutationPreview{
+		DryRun: true,
+		Action: "PAUSE_CAMPAIGN",
+		WouldChange: map[string]any{
+			"campaign_id":  campaignID.String(),
+			"status_from":  string(camp.Status),
+			"status_to":    string(db.CampaignStatusTypePAUSED),
+			"outbox_event": "PAUSE_CAMPAIGN",
+			"reason":       reason,
+		},
+	}, nil
 }
 
 // ResumeCampaign reactivates a paused campaign when schedule and balance constraints allow.
 func (s *Service) ResumeCampaign(ctx context.Context, campaignID uuid.UUID, reason string) error {
-	return pgx.BeginFunc(ctx, s.GetPool(), func(tx pgx.Tx) error {
+	_, err := s.resumeCampaign(ctx, campaignID, reason, false)
+	return err
+}
+
+// PreviewResumeCampaign validates resume without side effects (GAP-RTB-12b).
+func (s *Service) PreviewResumeCampaign(ctx context.Context, campaignID uuid.UUID, reason string) (MutationPreview, error) {
+	return s.resumeCampaign(ctx, campaignID, reason, true)
+}
+
+func (s *Service) resumeCampaign(ctx context.Context, campaignID uuid.UUID, reason string, dryRun bool) (MutationPreview, error) {
+	if dryRun {
+		return s.previewResumeCampaign(ctx, campaignID, reason)
+	}
+	err := pgx.BeginFunc(ctx, s.GetPool(), func(tx pgx.Tx) error {
 		q := db.New(tx)
 		camp, err := q.GetCampaignForUpdate(ctx, ingestion.ToUUID(campaignID))
 		if err != nil {
@@ -254,6 +314,39 @@ func (s *Service) ResumeCampaign(ctx context.Context, campaignID uuid.UUID, reas
 		_, err = q.CreateOutboxEvent(ctx, db.CreateOutboxEventParams{EventType: "RESUME_CAMPAIGN", Payload: payload})
 		return err
 	})
+	return MutationPreview{}, err
+}
+
+func (s *Service) previewResumeCampaign(ctx context.Context, campaignID uuid.UUID, reason string) (MutationPreview, error) {
+	camp, err := db.New(s.GetPool()).GetCampaign(ctx, ingestion.ToUUID(campaignID))
+	if err != nil {
+		return MutationPreview{}, mapNotFound(err, ErrCampaignNotFound)
+	}
+	if camp.Status != db.CampaignStatusTypePAUSED {
+		return MutationPreview{}, ErrCampaignNotPaused
+	}
+	now := time.Now()
+	var startAt, endAt *time.Time
+	if camp.StartAt.Valid {
+		startAt = &camp.StartAt.Time
+	}
+	if camp.EndAt.Valid {
+		endAt = &camp.EndAt.Time
+	}
+	if resolveScheduleStatus(now, startAt, endAt) != db.CampaignStatusTypeACTIVE {
+		return MutationPreview{}, ErrCampaignOutsideSchedule
+	}
+	return MutationPreview{
+		DryRun: true,
+		Action: "RESUME_CAMPAIGN",
+		WouldChange: map[string]any{
+			"campaign_id":  campaignID.String(),
+			"status_from":  string(camp.Status),
+			"status_to":    string(db.CampaignStatusTypeACTIVE),
+			"outbox_event": "RESUME_CAMPAIGN",
+			"reason":       reason,
+		},
+	}, nil
 }
 
 // UpdateCampaignSchedule changes delivery windows and may auto-pause or resume based on the new schedule.

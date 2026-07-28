@@ -28,26 +28,29 @@ service SettlementService {
 
   // BatchApplySettlement drains payment outbox rows after management outages (<=500 ops per call).
   rpc BatchApplySettlement(BatchApplySettlementRequest) returns (BatchApplySettlementResponse);
+
+  // ApplyCTVSettlement settles CTV inventory spend with gross receipts tax before ledger commit (GAP-RTB-12a).
+  rpc ApplyCTVSettlement(ApplyCTVSettlementRequest) returns (ApplyCTVSettlementResponse);
 }
 
 message ApplyPaymentCreditRequest {
   string customer_id = 1;
   int64 amount_micro = 2;
-  string ledger_idempotency_key = 3;  // e.g. "stripe:evt_01H..."
+  string ledger_idempotency_key = 3; // e.g. "stripe:evt_01H..."
   string payment_intent_id = 4;
   string provider = 5;
   string provider_ref = 6;
 }
 
 message ApplyPaymentCreditResponse {
-  bool applied = 1;       // false = duplicate idempotency hit (still success)
+  bool applied = 1; // false = duplicate idempotency hit (still success)
   int64 ledger_entry_id = 2;
 }
 
 message ApplyPaymentRefundRequest {
   string customer_id = 1;
-  int64 amount_micro = 2;              // positive debit magnitude
-  string ledger_idempotency_key = 3;   // e.g. "refund:re_01H..."
+  int64 amount_micro = 2; // positive debit magnitude
+  string ledger_idempotency_key = 3; // e.g. "refund:re_01H..."
   string payment_intent_id = 4;
   string provider = 5;
   string provider_refund_id = 6;
@@ -61,7 +64,7 @@ message ApplyPaymentRefundResponse {
 message ApplyPaymentChargebackRequest {
   string customer_id = 1;
   int64 amount_micro = 2;
-  string ledger_idempotency_key = 3;   // e.g. "chargeback:withdrawn:dp_01H..."
+  string ledger_idempotency_key = 3; // e.g. "chargeback:withdrawn:dp_01H..."
   string payment_intent_id = 4;
   string provider = 5;
   string provider_dispute_id = 6;
@@ -75,7 +78,7 @@ message ApplyPaymentChargebackResponse {
 message ApplyPaymentChargebackReversalRequest {
   string customer_id = 1;
   int64 amount_micro = 2;
-  string ledger_idempotency_key = 3;   // e.g. "chargeback:reinstated:dp_01H..."
+  string ledger_idempotency_key = 3; // e.g. "chargeback:reinstated:dp_01H..."
   string payment_intent_id = 4;
   string provider = 5;
   string provider_dispute_id = 6;
@@ -117,7 +120,7 @@ message BlockIPResponse {
 }
 
 message EnqueueFraudThreatRequest {
-  string action = 1;      // e.g. "boost", "blacklist", "ghost"
+  string action = 1; // e.g. "boost", "blacklist", "ghost"
   string ip = 2;
   string campaign_id = 3;
   double score = 4;
@@ -147,4 +150,18 @@ message BatchApplySettlementResponse {
   repeated BatchSettlementItemResult refund_results = 2;
   repeated BatchSettlementItemResult chargeback_results = 3;
   repeated BatchSettlementItemResult chargeback_reversal_results = 4;
+}
+
+message ApplyCTVSettlementRequest {
+  string settlement_id = 1;
+  string customer_id = 2;
+  string campaign_id = 3;
+  int64 spend_micro = 4;
+}
+
+message ApplyCTVSettlementResponse {
+  bool applied = 1;
+  int64 fee_ledger_id = 2;
+  int64 tax_ledger_id = 3;
+  int64 tax_micro = 4;
 }

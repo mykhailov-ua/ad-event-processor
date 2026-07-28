@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"espx/internal/ingestion/sqlc"
+	db "espx/internal/ingestion/sqlc"
 	"espx/pkg/coldpath"
 	"espx/pkg/httpresponse"
 
@@ -13,6 +13,7 @@ import (
 )
 
 // registerDeliveryRoutes mounts template, schedule, pause, resume, and creative management endpoints.
+// Dry-run: POST /admin/campaigns/{id}/pause|resume accept ?dry_run=1 or X-Dry-Run: 1 (GAP-RTB-12b).
 func (h *Handler) registerDeliveryRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /admin/campaign-templates", h.limit(h.perm(h.createCampaignTemplate, PermCampaignsWrite)))
 	mux.HandleFunc("GET /admin/campaign-templates", h.limit(h.perm(h.listCampaignTemplates, PermCampaignsRead)))
@@ -213,6 +214,17 @@ func (h *Handler) pauseCampaign(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Warn("failed to decode pause campaign request", "error", err)
 	}
+	dryRun := ParseDryRun(r)
+	if dryRun {
+		preview, err := h.svc.PreviewPauseCampaign(r.Context(), campaignID, req.Reason)
+		if err != nil {
+			writeServiceError(w, err, slog.String("campaign_id", campaignID.String()))
+			return
+		}
+		h.logDryRunAudit(r, "PAUSE_CAMPAIGN", "campaign", &campaignID, preview.WouldChange)
+		httpresponse.JSON(w, http.StatusOK, preview)
+		return
+	}
 	if err := h.svc.PauseCampaign(r.Context(), campaignID, req.Reason); err != nil {
 		writeServiceError(w, err, slog.String("campaign_id", campaignID.String()))
 		return
@@ -236,6 +248,17 @@ func (h *Handler) resumeCampaign(w http.ResponseWriter, r *http.Request) {
 	}](w, r, coldpath.DefaultMaxBody)
 	if err != nil {
 		slog.Warn("failed to decode resume campaign request", "error", err)
+	}
+	dryRun := ParseDryRun(r)
+	if dryRun {
+		preview, err := h.svc.PreviewResumeCampaign(r.Context(), campaignID, req.Reason)
+		if err != nil {
+			writeServiceError(w, err, slog.String("campaign_id", campaignID.String()))
+			return
+		}
+		h.logDryRunAudit(r, "RESUME_CAMPAIGN", "campaign", &campaignID, preview.WouldChange)
+		httpresponse.JSON(w, http.StatusOK, preview)
+		return
 	}
 	if err := h.svc.ResumeCampaign(r.Context(), campaignID, req.Reason); err != nil {
 		writeServiceError(w, err, slog.String("campaign_id", campaignID.String()))

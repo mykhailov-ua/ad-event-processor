@@ -69,6 +69,8 @@ func (w *OutboxWorker) handleOutboxEvent(opCtx, ctx context.Context, ev db.Outbo
 		return w.handleSyncUserConsent(ctx, ev.Payload)
 	case "UPDATE_CAMPAIGN_CONSENT":
 		return w.handleUpdateCampaignConsent(ctx, ev.Payload)
+	case "UPDATE_COHORT_SNAPSHOT":
+		return w.handleUpdateCohortSnapshot(ctx)
 	case "PURGE_USER_DATA":
 		return w.handlePurgeUserData(ctx, ev.Payload)
 	case "ML_SCORE_BOOST":
@@ -433,7 +435,8 @@ func (w *OutboxWorker) handleFraudBlacklistAdd(ctx context.Context, payload []by
 		return nil
 	}
 	ttl := p.TTLSeconds
-	return w.svc.BlockIPWithTTL(ctx, p.IP, "fraud", &ttl)
+	_, err = w.svc.blockIPWithTTL(ctx, p.IP, "fraud", &ttl, false)
+	return err
 }
 
 // handleFraudModelVersion propagates model version and hash to specific or all Redis shards.
@@ -497,4 +500,12 @@ type PausePlacementPayload struct {
 	CampaignID  string `json:"campaign_id"`
 	PlacementID string `json:"placement_id"`
 	Action      string `json:"action,omitempty"` // "add" (default) or "remove"
+}
+
+// handleUpdateCohortSnapshot triggers a registry full reload on all tracker cells (GAP-RTB-12c).
+func (w *OutboxWorker) handleUpdateCohortSnapshot(ctx context.Context) error {
+	if w == nil || w.svc == nil {
+		return fmt.Errorf("service unavailable")
+	}
+	return w.svc.publishRegistryFullSync(ctx)
 }

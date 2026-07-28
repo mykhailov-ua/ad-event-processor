@@ -429,6 +429,7 @@ func (h *Handler) toggleEmergencyBreaker(w http.ResponseWriter, r *http.Request)
 }
 
 // blockIP handles POST /admin/blacklist for operator-initiated IP blocks.
+// Dry-run: accept ?dry_run=1 or X-Dry-Run: 1 (GAP-RTB-12b).
 func (h *Handler) blockIP(w http.ResponseWriter, r *http.Request) {
 	req, err := coldpath.DecodeRequest[struct {
 		IP         string `json:"ip"`
@@ -437,6 +438,17 @@ func (h *Handler) blockIP(w http.ResponseWriter, r *http.Request) {
 	}](w, r, coldpath.DefaultMaxBody)
 	if err != nil || req.IP == "" {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
+		return
+	}
+	dryRun := ParseDryRun(r)
+	if dryRun {
+		preview, err := h.svc.PreviewBlockIP(r.Context(), req.IP, req.Source, req.TTLSeconds)
+		if err != nil {
+			writeServiceError(w, err, slog.String("ip", req.IP))
+			return
+		}
+		h.logDryRunAudit(r, "BLOCK_IP", "system", nil, preview.WouldChange)
+		httpresponse.JSON(w, http.StatusOK, preview)
 		return
 	}
 	if err := h.svc.BlockIPWithTTL(r.Context(), req.IP, req.Source, req.TTLSeconds); err != nil {

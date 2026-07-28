@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"espx/internal/ingestion/sqlc"
+	db "espx/internal/ingestion/sqlc"
 	"espx/pkg/coldpath"
 	"espx/pkg/httpresponse"
 
@@ -163,6 +163,17 @@ func (h *Handler) pauseSelfServeCampaign(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		slog.Warn("failed to decode pause campaign request", "error", err)
 	}
+	dryRun := ParseDryRun(r)
+	if dryRun {
+		preview, err := h.svc.PreviewPauseCampaign(r.Context(), campaignID, req.Reason)
+		if err != nil {
+			writeServiceError(w, err, slog.String("campaign_id", campaignID.String()))
+			return
+		}
+		h.logDryRunAudit(r, "PAUSE_CAMPAIGN", "campaign", &campaignID, preview.WouldChange)
+		httpresponse.JSON(w, http.StatusOK, preview)
+		return
+	}
 	if err := h.svc.PauseCampaign(r.Context(), campaignID, req.Reason); err != nil {
 		writeServiceError(w, err, slog.String("campaign_id", campaignID.String()))
 		return
@@ -185,6 +196,17 @@ func (h *Handler) resumeSelfServeCampaign(w http.ResponseWriter, r *http.Request
 	}](w, r, coldpath.DefaultMaxBody)
 	if err != nil {
 		slog.Warn("failed to decode resume campaign request", "error", err)
+	}
+	dryRun := ParseDryRun(r)
+	if dryRun {
+		preview, err := h.svc.PreviewResumeCampaign(r.Context(), campaignID, req.Reason)
+		if err != nil {
+			writeServiceError(w, err, slog.String("campaign_id", campaignID.String()))
+			return
+		}
+		h.logDryRunAudit(r, "RESUME_CAMPAIGN", "campaign", &campaignID, preview.WouldChange)
+		httpresponse.JSON(w, http.StatusOK, preview)
+		return
 	}
 	if err := h.svc.ResumeCampaign(r.Context(), campaignID, req.Reason); err != nil {
 		writeServiceError(w, err, slog.String("campaign_id", campaignID.String()))

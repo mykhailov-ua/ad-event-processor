@@ -264,7 +264,44 @@ func (h *SettlementHandler) BatchApplySettlement(ctx context.Context, req *pb.Ba
 		revResp, err := h.ApplyPaymentChargebackReversal(ctx, item)
 		resp.ChargebackReversalResults = append(resp.ChargebackReversalResults, batchItemFromChargebackReversal(revResp, err))
 	}
-	return resp, nil
+	return &pb.BatchApplySettlementResponse{
+		CreditResults:             resp.CreditResults,
+		RefundResults:             resp.RefundResults,
+		ChargebackResults:         resp.ChargebackResults,
+		ChargebackReversalResults: resp.ChargebackReversalResults,
+	}, nil
+}
+
+// ApplyCTVSettlement debits CTV spend plus gross receipts tax in one idempotent ledger transaction (GAP-RTB-12a).
+func (h *SettlementHandler) ApplyCTVSettlement(ctx context.Context, req *pb.ApplyCTVSettlementRequest) (*pb.ApplyCTVSettlementResponse, error) {
+	if err := h.requireSettlementToken(ctx); err != nil {
+		return nil, err
+	}
+	if req.GetSettlementId() == "" || req.GetSpendMicro() <= 0 {
+		return nil, status.Error(codes.InvalidArgument, "settlement_id and positive spend_micro required")
+	}
+	customerID, err := uuid.Parse(req.GetCustomerId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid customer id")
+	}
+	campaignID, err := uuid.Parse(req.GetCampaignId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid campaign id")
+	}
+
+	result, err := h.service.ApplyCTVSettlement(ctx, req.GetSettlementId(), customerID, campaignID, req.GetSpendMicro())
+	if err != nil {
+		if errors.Is(err, ErrCampaignNotFound) {
+			return nil, status.Error(codes.NotFound, "campaign not found")
+		}
+		return nil, status.Errorf(codes.Internal, "apply ctv settlement: %v", err)
+	}
+	return &pb.ApplyCTVSettlementResponse{
+		Applied:     result.Applied,
+		FeeLedgerId: result.FeeLedgerID,
+		TaxLedgerId: result.TaxLedgerID,
+		TaxMicro:    result.TaxMicro,
+	}, nil
 }
 
 func batchItemFromCredit(resp *pb.ApplyPaymentCreditResponse, err error) *pb.BatchSettlementItemResult {

@@ -73,6 +73,7 @@ type Registry struct {
 	pool          *pgxpool.Pool
 	data          atomic.Value // holds *campaignMapSnapshot
 	entitlements  atomic.Value // holds *entitlementsSnapshot
+	cohorts       atomic.Value // holds *cohortRegistrySnapshot
 	manuallyAdded map[uuid.UUID]bool
 	mu            sync.Mutex // guards writes (updates to data map, manuallyAdded)
 	replicaPath   string
@@ -96,6 +97,7 @@ func NewRegistry(repo db.Querier) *Registry {
 		byCustomerID: make(map[uuid.UUID]licensing.Entitlements),
 		licenseState: licensing.StateExpired,
 	})
+	r.cohorts.Store(&cohortRegistrySnapshot{byID: make(map[uuid.UUID]campaignmodel.ExperimentCohort)})
 	return r
 }
 
@@ -275,6 +277,9 @@ func (r *Registry) Sync(ctx context.Context) (int, error) {
 	if r.pool != nil {
 		if err := r.SyncEntitlements(ctx); err != nil {
 			slog.Error("entitlements sync failed", "error", err)
+		}
+		if err := r.SyncCohorts(ctx); err != nil {
+			slog.Error("cohort sync failed", "error", err)
 		}
 	}
 	rows, err := r.repo.ListActiveCampaigns(ctx)

@@ -30,16 +30,43 @@ func (s *Service) BlockIP(ctx context.Context, ip string, source string) error {
 	return s.BlockIPWithTTL(ctx, ip, source, nil)
 }
 
+// PreviewBlockIP validates a block without side effects (GAP-RTB-12b).
+func (s *Service) PreviewBlockIP(ctx context.Context, ip string, source string, ttlSeconds *int64) (MutationPreview, error) {
+	return s.blockIPWithTTL(ctx, ip, source, ttlSeconds, true)
+}
+
 // BlockIPWithTTL persists a blacklist entry with optional per-request TTL override.
 func (s *Service) BlockIPWithTTL(ctx context.Context, ip string, source string, ttlSeconds *int64) error {
+	_, err := s.blockIPWithTTL(ctx, ip, source, ttlSeconds, false)
+	return err
+}
+
+func (s *Service) blockIPWithTTL(ctx context.Context, ip string, source string, ttlSeconds *int64, dryRun bool) (MutationPreview, error) {
 	if allowlist.IsProtected(ip) {
-		return fmt.Errorf("IP %s is protected by allowlist", ip)
+		return MutationPreview{}, fmt.Errorf("IP %s is protected by allowlist", ip)
 	}
 
 	reason := normalizeBlacklistReason(source)
 	expiresAt := resolveBlacklistExpiry(reason, ttlSeconds, blacklistTTLFromConfig(s.cfg))
 
-	return pgx.BeginFunc(ctx, s.GetPool(), func(tx pgx.Tx) error {
+	if dryRun {
+		preview := MutationPreview{
+			DryRun: true,
+			Action: "BLOCK_IP",
+			WouldChange: map[string]any{
+				"ip":           ip,
+				"reason":       reason,
+				"outbox_event": "UPDATE_BLACKLIST",
+				"action":       "add",
+			},
+		}
+		if expiresAt.Valid {
+			preview.WouldChange["expires_at"] = expiresAt.Time.UTC().Format(time.RFC3339)
+		}
+		return preview, nil
+	}
+
+	err := pgx.BeginFunc(ctx, s.GetPool(), func(tx pgx.Tx) error {
 		q := db.New(tx)
 		_, err := q.CreateBlacklistIP(ctx, db.CreateBlacklistIPParams{
 			Ip:        ip,
@@ -84,6 +111,7 @@ func (s *Service) BlockIPWithTTL(ctx context.Context, ip string, source string, 
 		})
 		return err
 	})
+	return MutationPreview{}, err
 }
 
 // EnqueueFraudThreat enqueues a fraud enforcement action via outbox.

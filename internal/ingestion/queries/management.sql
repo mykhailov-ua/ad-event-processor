@@ -517,3 +517,36 @@ WHERE campaign_id = $1;
 DELETE FROM campaign_shard_assignment
 WHERE campaign_id = $1;
 
+-- name: GetCTVGtaxSettlement :one
+SELECT *
+FROM ctv_gtax_settlements
+WHERE settlement_id = $1;
+
+-- name: InsertCTVGtaxSettlement :one
+INSERT INTO ctv_gtax_settlements (
+  settlement_id, customer_id, campaign_id, spend_micro, tax_micro, fee_ledger_id, tax_ledger_id
+) VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING *;
+
+-- name: ListActiveExperimentCohorts :many
+SELECT id, name, active, salt, variants, created_at, updated_at
+FROM experiment_cohorts
+WHERE active = TRUE
+ORDER BY name;
+
+-- name: UpsertExperimentCohort :one
+INSERT INTO experiment_cohorts (id, name, active, salt, variants)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (id) DO UPDATE
+SET name = EXCLUDED.name,
+    active = EXCLUDED.active,
+    salt = EXCLUDED.salt,
+    variants = EXCLUDED.variants,
+    updated_at = now()
+RETURNING *;
+
+-- name: GetExperimentCohort :one
+SELECT id, name, active, salt, variants, created_at, updated_at
+FROM experiment_cohorts
+WHERE id = $1;
+
