@@ -96,6 +96,10 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			RequirePermission:       perm,
 			WriteServiceError:       writeErr,
 			AuthorizeCustomerAccess: authCustomer,
+			SupportBundle: supportBundleWriter{
+				pool:   pool,
+				logDir: h.cfg.Logger.Dir,
+			},
 		},
 		ExportHTTP: exportHTTP,
 		LicensingHTTP: &adminapi.LicensingHTTPHandlers{

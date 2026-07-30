@@ -1,0 +1,1 @@
+{"time":"2026-01-01T00:00:00Z","level":"INFO","msg":"track","ip":"203.0.113.10","target_url":"https://example.com/landing?q=1","license_key":"lk_secret","creative":"banner-42","pii_salt_hex":"deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef","stripe":"sk_live_abc123xyz"}

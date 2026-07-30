@@ -27,6 +27,7 @@ type OpsHTTPHandlers struct {
 	RequirePermission       func(string, http.HandlerFunc) http.HandlerFunc
 	WriteServiceError       func(http.ResponseWriter, error)
 	AuthorizeCustomerAccess func(*http.Request, string) error
+	SupportBundle           SupportBundleWriter
 }
 
 func (h *OpsHTTPHandlers) Register(mux *http.ServeMux) {
@@ -56,6 +57,7 @@ func (h *OpsHTTPHandlers) Register(mux *http.ServeMux) {
 	h.registerPlansRoutes(mux)
 	h.registerBlacklistRoutes(mux)
 	h.registerDashboardRoutes(mux)
+	h.registerSupportBundleRoutes(mux)
 }
 
 func (h *OpsHTTPHandlers) getIncidents(w http.ResponseWriter, r *http.Request) {
