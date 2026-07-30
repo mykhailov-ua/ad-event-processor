@@ -31,6 +31,7 @@ var (
 	ErrDailyQuotaExceeded     = errors.New("daily quota exceeded")
 	ErrRegistryStale          = errors.New("registry stale: campaign unknown while control plane unreachable")
 	ErrShardUnavailable       = errors.New("shard unavailable")
+	ErrFilterTimeout          = errors.New("filter timeout")
 )
 
 type bufWrapper struct {
@@ -240,7 +241,7 @@ func (e *FilterEngine) checkInner(ctx context.Context, evt *campaignmodel.Event)
 	var retErr error
 	for _, f := range e.filters {
 		if filterDeadlineExceededEvt(evt, ctx) {
-			retErr = context.DeadlineExceeded
+			retErr = ErrFilterTimeout
 			break
 		}
 		if _, ok := f.(*UnifiedFilter); ok && acc.shouldShortCircuitFraudBudget() {

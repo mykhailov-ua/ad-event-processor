@@ -206,7 +206,7 @@ func TestUnifiedFilter_budgetMiss_respectsDBLookupTimeout(t *testing.T) {
 		IP:         "1.1.1.1",
 	})
 	require.Error(t, err)
-	assert.ErrorIs(t, err, context.DeadlineExceeded)
+	assert.ErrorIs(t, err, ErrFilterTimeout)
 }
 
 func TestFilterEngine_budgetMissRespectsEngineDeadline(t *testing.T) {
@@ -249,7 +249,7 @@ func TestFilterEngine_budgetMissRespectsEngineDeadline(t *testing.T) {
 	elapsed := time.Since(start)
 
 	require.Error(t, err)
-	assert.ErrorIs(t, err, context.DeadlineExceeded)
+	assert.ErrorIs(t, err, ErrFilterTimeout)
 	assert.Less(t, elapsed, 120*time.Millisecond, "budget miss PG lookup must honor FilterEngine deadline")
 }
 

@@ -158,14 +158,14 @@ func (f *slowFilter) Check(ctx context.Context, evt *campaignmodel.Event) error 
 		delay = rem
 	}
 	if delay <= 0 {
-		return context.DeadlineExceeded
+		return ErrFilterTimeout
 	}
 	timer := time.NewTimer(delay)
 	defer timer.Stop()
 	select {
 	case <-timer.C:
 		if filterDeadlineExceededEvt(evt, ctx) {
-			return context.DeadlineExceeded
+			return ErrFilterTimeout
 		}
 		return nil
 	case <-ctx.Done():

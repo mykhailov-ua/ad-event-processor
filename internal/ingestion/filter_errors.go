@@ -1,7 +1,6 @@
 package ingestion
 
 import (
-	"context"
 	"errors"
 	"net/http"
 
@@ -136,7 +135,7 @@ func classifyFilterErr(err error) (filterRejectKind, bool) {
 	switch {
 	case errors.Is(err, ErrEmergencyBreakerActive):
 		return filterRejectEmergencyBreaker, true
-	case errors.Is(err, context.DeadlineExceeded):
+	case errors.Is(err, ErrFilterTimeout):
 		return filterRejectTimeout, true
 	case isInfraFilterErr(err):
 		return filterRejectInfra, true

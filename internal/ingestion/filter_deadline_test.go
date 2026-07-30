@@ -25,7 +25,7 @@ func TestFilterEngine_deadlineBetweenFilters(t *testing.T) {
 
 	err := engine.Check(context.Background(), &campaignmodel.Event{})
 	require.Error(t, err)
-	assert.True(t, errors.Is(err, context.DeadlineExceeded))
+	assert.True(t, errors.Is(err, ErrFilterTimeout))
 	assert.Equal(t, 0, fast.calls)
 }
 

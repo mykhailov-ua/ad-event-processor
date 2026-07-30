@@ -100,6 +100,17 @@ IP rate limits: edge XDP PPS and nginx `limit_req`, not Lua. Lua p99 target < 10
 
 Fail policy: Geo/blacklists on tracker fail-open; edge blacklists fail-closed (503); Redis circuit and Lua errors fail-closed (no debit).
 
+### `/track` filter HTTP contract
+
+| `filterRejectKind` | HTTP | Body (plain) | Notes |
+| :--- | :--- | :--- | :--- |
+| `filter_timeout` | **504** Gateway Timeout | `filter timeout` | `ErrFilterTimeout` when monotonic filter deadline elapses |
+| `infra_unavailable` | 503 | `service unavailable` | Redis circuit, network errors, `context.DeadlineExceeded` from I/O |
+| `emergency_breaker` | 503 | `service temporarily unavailable` | Global breaker |
+| `registry_stale` / `shard_unavailable` | 503 | same family | Shard-0 / routing degradation |
+
+Edge nginx (`deploy/nginx/nginx.conf`) proxies tracker responses unchanged. `504` from the tracker is a valid client response (filter SLA miss); `proxy_next_upstream` may retry upstream on `http_504` only when selecting another tracker backend.
+
 Key catalog: `internal/ingestion/redis_key_catalog.go` defines COPY/DRAIN lists for slot migration.
 
 ### PostgreSQL

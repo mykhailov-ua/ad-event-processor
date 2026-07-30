@@ -99,4 +99,7 @@ func TestProcessTrack_filterTimeout(t *testing.T) {
 	if out.Status != trackStatusRejected || out.RejectKind != filterRejectTimeout {
 		t.Fatalf("outcome=%+v", out)
 	}
+	if filterRejectSpecs[out.RejectKind].status != http.StatusGatewayTimeout {
+		t.Fatal("expected 504 spec")
+	}
 }

@@ -262,7 +262,7 @@ func (f *UnifiedFilter) recoverBudgetAfterMiss(
 		return false, ErrBudgetExhausted
 	}
 	if filterDeadlineExceededEvt(evt, ctx) {
-		return false, context.DeadlineExceeded
+		return false, ErrFilterTimeout
 	}
 
 	recovered, recErr := tryRecoverBudgetFromRegistry(ctx, rdb, f.registry, evt.CampaignID, budgetSourceKey)
@@ -280,7 +280,7 @@ func (f *UnifiedFilter) recoverBudgetAfterMiss(
 	dbTimeout := f.dbLookupTimeout
 	if rem, ok := filterDeadlineRemainingEvt(evt, ctx); ok {
 		if rem <= 0 {
-			return false, context.DeadlineExceeded
+			return false, ErrFilterTimeout
 		}
 		if rem < dbTimeout {
 			dbTimeout = rem
@@ -296,7 +296,7 @@ func (f *UnifiedFilter) recoverBudgetAfterMiss(
 	cancel()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			return false, context.DeadlineExceeded
+			return false, ErrFilterTimeout
 		}
 		return false, err
 	}

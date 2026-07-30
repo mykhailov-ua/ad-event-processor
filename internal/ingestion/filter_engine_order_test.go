@@ -47,6 +47,6 @@ func TestFilterEngine_DeadlineShortCircuit(t *testing.T) {
 	)
 	evt := &campaignmodel.Event{CampaignID: uuid.New()}
 	err := engine.Check(context.Background(), evt)
-	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.ErrorIs(t, err, ErrFilterTimeout)
 	assert.Equal(t, []string{"fast"}, order)
 }
