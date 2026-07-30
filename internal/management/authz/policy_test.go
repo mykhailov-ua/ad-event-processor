@@ -25,12 +25,12 @@ func TestPolicyPermissionMatrix(t *testing.T) {
 	store.SetRole("M", authz.ScopeCustomer, []string{"campaigns:read", "campaigns:write"})
 
 	cases := []struct {
-		name       string
-		role       string
-		perm       string
-		want       bool
-		wantMask   authz.MaskLevel
-		wantScope  authz.Scope
+		name      string
+		role      string
+		perm      string
+		want      bool
+		wantMask  authz.MaskLevel
+		wantScope authz.Scope
 	}{
 		{"admin_read_campaigns", "A", authz.PermCampaignsRead, true, authz.MaskFull, authz.ScopeGlobal},
 		{"admin_pause", "A", authz.PermCampaignsPause, false, authz.MaskFull, authz.ScopeGlobal},
