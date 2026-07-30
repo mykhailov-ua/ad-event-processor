@@ -576,6 +576,24 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /api/v1/campaigns/{id}/margin:
+    get:
+      tags: [Reporting]
+      summary: GET /api/v1/campaigns/{id}/margin
+      operationId: get_campaigns_id_margin
+      security:
+        - AdminAPIKey: []
+        - SessionCookie: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /api/v1/campaigns/{id}/stats:
     get:
       tags: [Reporting]
