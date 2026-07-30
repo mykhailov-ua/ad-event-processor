@@ -81,6 +81,8 @@ func (w *OutboxWorker) handleOutboxEvent(opCtx, ctx context.Context, ev db.Outbo
 		return w.handlePausePlacement(ctx, ev.Payload)
 	case "UPDATE_ENTITLEMENTS":
 		return w.handleUpdateEntitlements(ctx)
+	case "APPLY_GTV_SETTLEMENT":
+		return w.handleApplyGTVSettlement(ctx, ev.Payload)
 	default:
 		return fmt.Errorf("unknown outbox event type: %s", ev.EventType)
 	}

@@ -107,6 +107,10 @@ func TestFault_CTVGtaxSettlementReplay(t *testing.T) {
 	require.NoError(t, pool.QueryRow(ctx, `SELECT COUNT(*) FROM ctv_gtax_settlements WHERE settlement_id = $1`, settlementID).Scan(&settlementRows))
 	require.Equal(t, 1, settlementRows)
 
+	var outboxRows int
+	require.NoError(t, pool.QueryRow(ctx, `SELECT COUNT(*) FROM outbox_events WHERE event_type = 'APPLY_GTV_SETTLEMENT'`).Scan(&outboxRows))
+	require.Equal(t, 1, outboxRows)
+
 	var feeRows, taxRows int
 	require.NoError(t, pool.QueryRow(ctx, `SELECT COUNT(*) FROM balance_ledger WHERE campaign_id = $1 AND type = 'FEE'`, ingestion.ToUUID(campaignID)).Scan(&feeRows))
 	require.NoError(t, pool.QueryRow(ctx, `SELECT COUNT(*) FROM balance_ledger WHERE campaign_id = $1 AND type = 'CTV_GTAX'`, ingestion.ToUUID(campaignID)).Scan(&taxRows))
