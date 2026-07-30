@@ -19,6 +19,7 @@ type PacingMode string
 const (
 	PacingModeAsap PacingMode = "ASAP"
 	PacingModeEven PacingMode = "EVEN"
+	PacingModeVpp  PacingMode = "VPP"
 )
 
 type Campaign struct {

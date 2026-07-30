@@ -167,8 +167,10 @@ func (s *Service) UpdateCampaignPacing(ctx context.Context, campaignID uuid.UUID
 	switch newMode {
 	case "ASAP":
 		pacing = db.PacingModeTypeASAP
-	case "EVEN":
+	case "EVEN", "off", "OFF":
 		pacing = db.PacingModeTypeEVEN
+	case "VPP", "vpp":
+		pacing = db.PacingModeTypeVPP
 	default:
 		return CampaignDTO{}, fmt.Errorf("%w: %s", ErrInvalidPacingMode, newMode)
 	}

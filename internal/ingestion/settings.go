@@ -42,11 +42,16 @@ type FraudScoreBoostSnapshot struct {
 	Boosts map[uuid.UUID]uint8
 }
 
+type VPPRatioSnapshot struct {
+	Ratios map[uuid.UUID]float32
+}
+
 type SettingsWatcher struct {
 	rdbs             []redis.UniversalClient
 	currentVersion   int64
 	snapshot         atomic.Value
 	fraudScoreBoosts atomic.Value
+	vppRatios        atomic.Value
 	fcapSnap         atomic.Pointer[rtb.FcapSnapshot]
 	onChange         []SettingsChangeListener
 }
@@ -68,6 +73,7 @@ func NewSettingsWatcher(rdbs []redis.UniversalClient, initial *config.Config) *S
 	sw.fraudScoreBoosts.Store(&FraudScoreBoostSnapshot{
 		Boosts: make(map[uuid.UUID]uint8),
 	})
+	sw.vppRatios.Store(&VPPRatioSnapshot{Ratios: make(map[uuid.UUID]float32)})
 	sw.fcapSnap.Store(emptyFcapSnapshot)
 
 	return sw
@@ -92,6 +98,22 @@ func (sw *SettingsWatcher) GetFraudScoreBoosts() *FraudScoreBoostSnapshot {
 	return v.(*FraudScoreBoostSnapshot)
 }
 
+func (sw *SettingsWatcher) GetVPPRatio(campaignID uuid.UUID) float32 {
+	v := sw.vppRatios.Load()
+	if v == nil {
+		return 1.0
+	}
+	snap := v.(*VPPRatioSnapshot)
+	if snap == nil || snap.Ratios == nil {
+		return 1.0
+	}
+	ratio, ok := snap.Ratios[campaignID]
+	if !ok {
+		return 1.0
+	}
+	return ratio
+}
+
 func (sw *SettingsWatcher) GetFcapRtbSnapshot() *rtb.FcapSnapshot {
 	if sw == nil {
 		return emptyFcapSnapshot
@@ -114,6 +136,7 @@ func (sw *SettingsWatcher) Start(ctx context.Context, interval time.Duration) {
 		case <-ticker.C:
 			sw.sync(ctx)
 			sw.syncFraudScoreBoosts(ctx)
+			sw.syncVPPRatios(ctx)
 			sw.syncFcapCounts(ctx)
 		}
 	}
@@ -183,6 +206,68 @@ func (sw *SettingsWatcher) syncFraudScoreBoosts(ctx context.Context) {
 			return
 		}
 		newBoosts = make(map[uuid.UUID]uint8)
+	}
+}
+
+func (sw *SettingsWatcher) syncVPPRatios(ctx context.Context) {
+	rdb := sw.pickHealthyShard()
+	if rdb == nil {
+		return
+	}
+
+	newRatios := make(map[uuid.UUID]float32)
+	prefix := "campaign:"
+	suffix := ":pacing"
+
+	for attempt := 0; attempt < len(sw.rdbs); attempt++ {
+		cursor := uint64(0)
+		ok := true
+		for {
+			keys, next, err := rdb.Scan(ctx, cursor, prefix+"*"+suffix, 100).Result()
+			if err != nil {
+				slog.Warn("failed to scan vpp pacing keys from redis", "error", err)
+				ok = false
+				break
+			}
+			for _, key := range keys {
+				parts := strings.Split(key, ":")
+				if len(parts) != 3 || parts[2] != "pacing" {
+					continue
+				}
+				var campID uuid.UUID
+				if !ParseUUID(UnsafeBytes(parts[1]), &campID) {
+					continue
+				}
+				valStr, err := rdb.Get(ctx, key).Result()
+				if err != nil {
+					continue
+				}
+				val, err := strconv.ParseFloat(valStr, 32)
+				if err != nil {
+					continue
+				}
+				if val < 0 {
+					val = 0
+				}
+				if val > 1 {
+					val = 1
+				}
+				newRatios[campID] = float32(val)
+			}
+			cursor = next
+			if cursor == 0 {
+				break
+			}
+		}
+		if ok {
+			sw.vppRatios.Store(&VPPRatioSnapshot{Ratios: newRatios})
+			return
+		}
+		rdb = sw.nextShardAfter(rdb)
+		if rdb == nil {
+			return
+		}
+		newRatios = make(map[uuid.UUID]float32)
 	}
 }
 

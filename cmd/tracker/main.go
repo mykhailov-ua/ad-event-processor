@@ -293,7 +293,8 @@ func main() {
 
 	creativeStore := ingestion.NewBrandCreativeStore(rdbs[0])
 	licenseFilter := ingestion.NewLicenseFilter(registry)
-	filterEngine := ingestion.NewFilterEngine(time.Duration(cfg.FilterTimeoutMs)*time.Millisecond, licenseFilter, breakerFilter, geoFilter, scheduleFilter, fraudFilter, deviceFilter, consentFilter, unifiedFilter)
+	vppFilter := ingestion.NewVPPFilter(registry, settingsWatcher)
+	filterEngine := ingestion.NewFilterEngine(time.Duration(cfg.FilterTimeoutMs)*time.Millisecond, licenseFilter, breakerFilter, geoFilter, scheduleFilter, vppFilter, fraudFilter, deviceFilter, consentFilter, unifiedFilter)
 	filterEngine.SetSettingsWatcher(settingsWatcher)
 
 	var rtbCatalog *ingestion.RtbCatalog

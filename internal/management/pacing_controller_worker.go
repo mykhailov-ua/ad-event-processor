@@ -33,6 +33,9 @@ func (w *PacingControllerWorker) Start(ctx context.Context, interval time.Durati
 			if err := w.svc.ClosedLoopPacingController(ctx, w.syncWorkers); err != nil && !errors.Is(err, ErrMgmtPgGateRejected) {
 				slog.Error("closed-loop pacing controller run failed", "error", err)
 			}
+			if err := w.svc.RunVPPPacingController(ctx); err != nil && !errors.Is(err, ErrMgmtPgGateRejected) {
+				slog.Error("vpp pacing controller run failed", "error", err)
+			}
 		}
 	}
 }

@@ -330,8 +330,9 @@ func (h *Handler) updateCampaignPacing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.PacingMode != "ASAP" && req.PacingMode != "EVEN" {
-		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "pacing_mode must be ASAP or EVEN")
+	if req.PacingMode != "ASAP" && req.PacingMode != "EVEN" && req.PacingMode != "VPP" &&
+		req.PacingMode != "vpp" && req.PacingMode != "off" && req.PacingMode != "OFF" {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "pacing_mode must be ASAP, EVEN, VPP, or off")
 		return
 	}
 

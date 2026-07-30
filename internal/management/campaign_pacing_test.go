@@ -102,4 +102,14 @@ func TestManagementAPI_CampaignPacing(t *testing.T) {
 			return rdbErr == nil && val == "ASAP"
 		}, 3*time.Second, 50*time.Millisecond)
 	})
+
+	t.Run("UpdatePacing_VPP_and_off", func(t *testing.T) {
+		camp, err := svc.UpdateCampaignPacing(ctx, campID, "vpp")
+		require.NoError(t, err)
+		assert.Equal(t, "VPP", camp.PacingMode)
+
+		camp, err = svc.UpdateCampaignPacing(ctx, campID, "off")
+		require.NoError(t, err)
+		assert.Equal(t, "EVEN", camp.PacingMode)
+	})
 }
