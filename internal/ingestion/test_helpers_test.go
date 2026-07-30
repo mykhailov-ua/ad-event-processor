@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"espx/internal/campaignmodel"
+
 	"github.com/redis/go-redis/v9"
 	rediscontainer "github.com/testcontainers/testcontainers-go/modules/redis"
 )
@@ -35,6 +36,7 @@ var (
 	staticStatusCmd = redis.NewStatusCmd(context.Background())
 	staticStringCmd = redis.NewStringCmd(context.Background())
 	staticBoolCmd   = redis.NewBoolCmd(context.Background())
+	staticIntCmd    = redis.NewIntCmd(context.Background())
 )
 
 type mockRedisClient struct {

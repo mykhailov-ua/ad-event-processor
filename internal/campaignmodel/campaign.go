@@ -76,6 +76,11 @@ type Campaign struct {
 	FraudThresholdBlock   uint8
 	GhostIVTEnabled       bool
 	BehaviorFlags         BehaviorFlags
+
+	RetargetSegmentID uuid.UUID
+	SegmentTTLHours   int32
+	SegmentIncludeID  uuid.UUID
+	SegmentExcludeID  uuid.UUID
 }
 
 func (c *Campaign) LuaRoutingEpoch() int64 {

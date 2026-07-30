@@ -17,6 +17,7 @@ import (
 	"espx/internal/metrics"
 	"espx/internal/rtb"
 	"espx/pkg/logger"
+	"espx/pkg/piihash"
 	"espx/pkg/runtimeautotune"
 
 	"github.com/google/uuid"
@@ -293,8 +294,14 @@ func main() {
 
 	creativeStore := ingestion.NewBrandCreativeStore(rdbs[0])
 	licenseFilter := ingestion.NewLicenseFilter(registry)
+	piiHasher, piiErr := piihash.NewFromConfig(cfg)
+	if piiErr != nil {
+		slog.Error("failed to initialize PII hasher for segment filter", "error", piiErr)
+		os.Exit(1)
+	}
 	vppFilter := ingestion.NewVPPFilter(registry, settingsWatcher)
-	filterEngine := ingestion.NewFilterEngine(time.Duration(cfg.FilterTimeoutMs)*time.Millisecond, licenseFilter, breakerFilter, geoFilter, scheduleFilter, vppFilter, fraudFilter, deviceFilter, consentFilter, unifiedFilter)
+	segmentFilter := ingestion.NewSegmentFilter(rdbs, registry, piiHasher)
+	filterEngine := ingestion.NewFilterEngine(time.Duration(cfg.FilterTimeoutMs)*time.Millisecond, licenseFilter, breakerFilter, geoFilter, scheduleFilter, segmentFilter, vppFilter, fraudFilter, deviceFilter, consentFilter, unifiedFilter)
 	filterEngine.SetSettingsWatcher(settingsWatcher)
 
 	var rtbCatalog *ingestion.RtbCatalog

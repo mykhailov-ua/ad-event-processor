@@ -42,7 +42,7 @@ func campaignFromDBRow(row db.Campaign) *campaignmodel.Campaign {
 
 	fcapPrefix := fcapKeyPrefix(id, row.BrandFcapKey)
 
-	return &campaignmodel.Campaign{
+	camp := &campaignmodel.Campaign{
 		ID:                     id,
 		IDStr:                  idStr,
 		IDStrAny:               idStr,
@@ -80,6 +80,8 @@ func campaignFromDBRow(row db.Campaign) *campaignmodel.Campaign {
 		RequireConsentPurposes: row.RequireConsentPurposes,
 		MigrationGen:           row.MigrationGen,
 	}
+	applyCampaignSegmentFields(camp, row.RetargetSegmentID, row.SegmentInclude, row.SegmentExclude, row.SegmentTtlHours)
+	return camp
 }
 
 func campaignFromGetCampaignFullRow(row db.GetCampaignFullRow) *campaignmodel.Campaign {
@@ -141,6 +143,7 @@ func campaignFromGetCampaignFullRow(row db.GetCampaignFullRow) *campaignmodel.Ca
 		RequireConsentPurposes: row.RequireConsentPurposes,
 		MigrationGen:           row.MigrationGen,
 	}
+	applyCampaignSegmentFields(camp, row.RetargetSegmentID, row.SegmentInclude, row.SegmentExclude, row.SegmentTtlHours)
 
 	if row.PrimaryAShard.Valid {
 		camp.HasTriplet = true
@@ -217,6 +220,7 @@ func campaignFromListActiveCampaignsRow(row db.ListActiveCampaignsRow) *campaign
 		RequireConsentPurposes: row.RequireConsentPurposes,
 		MigrationGen:           row.MigrationGen,
 	}
+	applyCampaignSegmentFields(camp, row.RetargetSegmentID, row.SegmentInclude, row.SegmentExclude, row.SegmentTtlHours)
 
 	if row.PrimaryAShard.Valid {
 		camp.HasTriplet = true

@@ -260,6 +260,8 @@ func main() {
 		if weightCtrl != nil {
 			settleW.SetWeightController(weightCtrl)
 		}
+		segmentHandler := ingestion.NewSegmentConversionHandler(campaignRepo, queries, []redis.UniversalClient{rdb}, piiHasher)
+		settleW.SetOnMessageProcessed(segmentHandler.Handle)
 		pgSettlementWorkers = append(pgSettlementWorkers, settleW)
 		settleW.Start(consumerCtx)
 

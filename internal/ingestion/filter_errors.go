@@ -29,6 +29,8 @@ const (
 	filterRejectLicenseExpired
 	filterRejectDailyQuotaExceeded
 	filterRejectPlacementBlocked
+	filterRejectSegmentExcluded
+	filterRejectSegmentNotIncluded
 	filterRejectRegistryStale
 	filterRejectShardUnavailable
 )
@@ -58,6 +60,8 @@ var filterRejectSpecs = [...]filterRejectSpec{
 	filterRejectLicenseExpired:     {http.StatusForbidden, "license expired", respLicenseExpired, "license_expired"},
 	filterRejectDailyQuotaExceeded: {http.StatusTooManyRequests, "daily quota exceeded", respDailyQuotaExceeded, "daily_quota_exceeded"},
 	filterRejectPlacementBlocked:   {http.StatusForbidden, "placement blocked", respPlacementBlocked, "placement_blocked"},
+	filterRejectSegmentExcluded:    {http.StatusForbidden, "segment excluded", respSegmentExcluded, "segment_excluded"},
+	filterRejectSegmentNotIncluded: {http.StatusForbidden, "segment not included", respSegmentNotIncluded, "segment_not_included"},
 	filterRejectRegistryStale:      {http.StatusServiceUnavailable, "registry_stale", respRegistryStale, "registry_stale"},
 	filterRejectShardUnavailable:   {http.StatusServiceUnavailable, "shard_unavailable", respShardUnavailable, "shard_unavailable"},
 }
@@ -169,6 +173,10 @@ func classifyFilterErr(err error) (filterRejectKind, bool) {
 		return filterRejectDailyQuotaExceeded, true
 	case errors.Is(err, ErrPlacementBlocked):
 		return filterRejectPlacementBlocked, true
+	case errors.Is(err, ErrSegmentExcluded):
+		return filterRejectSegmentExcluded, true
+	case errors.Is(err, ErrSegmentNotIncluded):
+		return filterRejectSegmentNotIncluded, true
 	default:
 		return 0, false
 	}

@@ -39,6 +39,8 @@ type Event struct {
 	GeoCountry         string
 	ClearingPriceMicro int64
 	ClickIDBuf         [36]byte
+	UserPIIHash        [16]byte
+	HasUserPIIHash     bool
 }
 
 func (event *Event) Reset() {
@@ -69,6 +71,7 @@ func (event *Event) Reset() {
 	event.GeoHash = 0
 	event.GeoCountry = ""
 	event.ClearingPriceMicro = 0
+	event.HasUserPIIHash = false
 	if cap(event.StringBuffer) > 2048 {
 		event.StringBuffer = make([]byte, 0, 256)
 	} else {
