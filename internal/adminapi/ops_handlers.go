@@ -19,6 +19,8 @@ type OpsHTTPHandlers struct {
 	PaymentIntents          PaymentLister
 	ConsentRecorder         ConsentRecorder
 	ConsentVerifier         ConsentVerifier
+	AuditLister             AuditLister
+	RolesReloader           RolesReloader
 	ApplyRateLimit          func(http.HandlerFunc) http.HandlerFunc
 	RequirePermission       func(string, http.HandlerFunc) http.HandlerFunc
 	WriteServiceError       func(http.ResponseWriter, error)
@@ -47,6 +49,8 @@ func (h *OpsHTTPHandlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/customers/{id}/payments", limit(perm("customers:read", h.listCustomerPayments)))
 	h.registerReconRoutes(mux)
 	h.registerConsentRoutes(mux)
+	h.registerAuditRoutes(mux)
+	h.registerRolesRoutes(mux)
 }
 
 func (h *OpsHTTPHandlers) getIncidents(w http.ResponseWriter, r *http.Request) {

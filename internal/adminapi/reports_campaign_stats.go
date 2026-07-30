@@ -19,8 +19,17 @@ func (h *ReportsHTTPHandlers) registerCampaignStats(mux *http.ServeMux) {
 		return
 	}
 	limit := h.ApplyRateLimit
-	perm := h.RequirePermission
-	mux.HandleFunc("GET /api/v1/campaigns/{id}/stats", limit(perm("campaigns:read", h.getCampaignStats)))
+	permAny := h.RequireAnyPermission
+	if permAny == nil {
+		perm := h.RequirePermission
+		permAny = func(perms []string, next http.HandlerFunc) http.HandlerFunc {
+			if len(perms) == 0 {
+				return next
+			}
+			return perm(perms[0], next)
+		}
+	}
+	mux.HandleFunc("GET /api/v1/campaigns/{id}/stats", limit(permAny([]string{"campaigns:read", "campaigns:read:masked"}, h.getCampaignStats)))
 }
 
 func (h *ReportsHTTPHandlers) getCampaignStats(w http.ResponseWriter, r *http.Request) {

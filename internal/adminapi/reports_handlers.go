@@ -27,6 +27,7 @@ type ReportsHTTPHandlers struct {
 	CHQuery                   *database.CHQuery
 	ApplyRateLimit            func(http.HandlerFunc) http.HandlerFunc
 	RequirePermission         func(string, http.HandlerFunc) http.HandlerFunc
+	RequireAnyPermission      func([]string, http.HandlerFunc) http.HandlerFunc
 	AuthorizeCampaignAccess   func(*http.Request, uuid.UUID) error
 	ResolveForecastCustomerID func(*http.Request, *uuid.UUID) (*uuid.UUID, error)
 	WriteServiceError         func(http.ResponseWriter, error)

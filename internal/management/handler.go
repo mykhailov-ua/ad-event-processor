@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"espx/internal/adminapi"
 	"espx/internal/config"
 	db "espx/internal/ingestion/sqlc"
 	"espx/pkg/coldpath"
@@ -46,6 +47,10 @@ func NewHandler(svc *Service, cfg *config.Config, authMiddleware *AuthMiddleware
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
+	if h.svc != nil && h.svc.GetPool() != nil {
+		adminapi.RegisterRoutes(mux, h.BuildAdminAPIRegistry(h.svc.GetPool(), h.svc.RedisShards()))
+	}
+
 	mux.HandleFunc("POST /admin/customers", h.limit(h.perm(h.createCustomer, PermCustomersWrite)))
 	mux.HandleFunc("POST /admin/customers/{id}/topup", h.limit(h.perm(h.topUpBalance, PermCustomersWrite)))
 	mux.HandleFunc("POST /admin/customers/{id}/payment-intent", h.limit(h.perm(h.createCustomerPaymentIntent, PermCustomersWrite)))
@@ -84,8 +89,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	h.registerSupplyRoutes(mux)
 	h.registerRtbRoutes(mux)
 	h.registerOpsRoutes(mux)
-	h.registerAPIRoutes(mux)
-	h.registerSelfServeRoutes(mux)
+	h.registerRegionIngestRoutes(mux)
 	registerNotificationRoutes(mux, h)
 }
 

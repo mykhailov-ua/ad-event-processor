@@ -62,6 +62,18 @@ func (c *PaymentClient) CreatePaymentIntent(ctx context.Context, customerID stri
 	})
 }
 
+func (c *PaymentClient) ListPaymentIntents(ctx context.Context, customerID string, limit, offset int32) (*paymentpb.ListPaymentIntentsResponse, error) {
+	if c == nil || c.client == nil {
+		return nil, fmt.Errorf("payment client not configured")
+	}
+	grpcCtx := metadata.AppendToOutgoingContext(ctx, "x-internal-token", c.token)
+	return c.client.ListPaymentIntents(grpcCtx, &paymentpb.ListPaymentIntentsRequest{
+		CustomerId: customerID,
+		Limit:      limit,
+		Offset:     offset,
+	})
+}
+
 func (c *PaymentClient) ListDisputes(ctx context.Context, customerID string, limit, offset int32) (*paymentpb.ListDisputesResponse, error) {
 	if c == nil || c.client == nil {
 		return nil, fmt.Errorf("payment client not configured")

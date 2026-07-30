@@ -1,29 +1,45 @@
 package adminapi
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
-	"espx/internal/management"
 	"espx/internal/marginguard"
 	"espx/pkg/httpresponse"
 
 	"github.com/google/uuid"
 )
 
-type MarginGuardHTTPHandlers struct {
-	svc *management.Service
+type MarginGuardService interface {
+	ListMarginGuardPolicies(ctx context.Context, campaignID uuid.UUID) ([]*marginguard.Policy, error)
+	CreateMarginGuardPolicy(ctx context.Context, p *marginguard.Policy) error
+	GetMarginGuardActivity(ctx context.Context, campaignID uuid.UUID) ([]map[string]any, error)
+	RemovePlacementOverride(ctx context.Context, campaignID uuid.UUID, placementID string) error
 }
 
-func NewMarginGuardHTTPHandlers(svc *management.Service) *MarginGuardHTTPHandlers {
-	return &MarginGuardHTTPHandlers{svc: svc}
+type MarginGuardHTTPHandlers struct {
+	Service           MarginGuardService
+	ApplyRateLimit    func(http.HandlerFunc) http.HandlerFunc
+	RequirePermission func(string, http.HandlerFunc) http.HandlerFunc
 }
 
 func (h *MarginGuardHTTPHandlers) Register(mux *http.ServeMux) {
-	mux.HandleFunc("GET /api/v1/margin-guard/policies", h.listPolicies)
-	mux.HandleFunc("POST /api/v1/margin-guard/policies", h.createPolicy)
-	mux.HandleFunc("GET /api/v1/margin-guard/activity", h.listActivity)
-	mux.HandleFunc("POST /api/v1/margin-guard/overrides", h.removeOverride)
+	if h == nil || h.Service == nil {
+		return
+	}
+	limit := h.ApplyRateLimit
+	perm := h.RequirePermission
+	if limit == nil {
+		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
+	}
+	if perm == nil {
+		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
+	}
+	mux.HandleFunc("GET /api/v1/margin-guard/policies", limit(perm("campaigns:read", h.listPolicies)))
+	mux.HandleFunc("POST /api/v1/margin-guard/policies", limit(perm("campaigns:write", h.createPolicy)))
+	mux.HandleFunc("GET /api/v1/margin-guard/activity", limit(perm("campaigns:read", h.listActivity)))
+	mux.HandleFunc("POST /api/v1/margin-guard/overrides", limit(perm("campaigns:write", h.removeOverride)))
 }
 
 func (h *MarginGuardHTTPHandlers) listPolicies(w http.ResponseWriter, r *http.Request) {
@@ -34,7 +50,7 @@ func (h *MarginGuardHTTPHandlers) listPolicies(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	policies, err := h.svc.ListMarginGuardPolicies(r.Context(), campID)
+	policies, err := h.Service.ListMarginGuardPolicies(r.Context(), campID)
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
@@ -49,7 +65,7 @@ func (h *MarginGuardHTTPHandlers) createPolicy(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	if err := h.svc.CreateMarginGuardPolicy(r.Context(), &p); err != nil {
+	if err := h.Service.CreateMarginGuardPolicy(r.Context(), &p); err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}
@@ -64,7 +80,7 @@ func (h *MarginGuardHTTPHandlers) listActivity(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	activity, err := h.svc.GetMarginGuardActivity(r.Context(), campID)
+	activity, err := h.Service.GetMarginGuardActivity(r.Context(), campID)
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
@@ -88,7 +104,7 @@ func (h *MarginGuardHTTPHandlers) removeOverride(w http.ResponseWriter, r *http.
 		return
 	}
 
-	if err := h.svc.RemovePlacementOverride(r.Context(), campID, req.PlacementID); err != nil {
+	if err := h.Service.RemovePlacementOverride(r.Context(), campID, req.PlacementID); err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}

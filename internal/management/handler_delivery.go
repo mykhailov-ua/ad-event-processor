@@ -424,6 +424,21 @@ func (h *Handler) ensureCampaignAccess(r *http.Request, campaignID uuid.UUID) er
 	return nil
 }
 
+func (h *Handler) ensureCustomerAccess(r *http.Request, customerID string) error {
+	u, ok := GetUser(r.Context())
+	if !ok || !u.IsUser() {
+		return nil
+	}
+	cid, err := uuid.Parse(customerID)
+	if err != nil {
+		return err
+	}
+	if u.CustomerID != cid {
+		return errForbidden
+	}
+	return nil
+}
+
 func (h *Handler) ensureBrandAccess(r *http.Request, brandID uuid.UUID) error {
 	u, ok := GetUser(r.Context())
 	if !ok || !u.IsUser() {

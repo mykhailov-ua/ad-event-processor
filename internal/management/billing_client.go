@@ -62,6 +62,14 @@ func (client *BillingClient) GenerateInvoice(ctx context.Context, customerID str
 	})
 }
 
+func (client *BillingClient) GetInvoice(ctx context.Context, invoiceID string) (*pb.Invoice, error) {
+	if client == nil || client.client == nil {
+		return nil, fmt.Errorf("billing client not configured")
+	}
+	grpcCtx := metadata.AppendToOutgoingContext(ctx, "x-internal-token", client.token)
+	return client.client.GetInvoice(grpcCtx, &pb.GetInvoiceRequest{InvoiceId: invoiceID})
+}
+
 func (client *BillingClient) ListInvoices(ctx context.Context, customerID string, limit, offset int32) (*pb.ListInvoicesResponse, error) {
 	if client == nil || client.client == nil {
 		return nil, fmt.Errorf("billing client not configured")

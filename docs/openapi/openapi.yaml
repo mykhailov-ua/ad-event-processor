@@ -231,8 +231,6 @@ paths:
                 $ref: '#/components/schemas/GenericObject'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
 
   /api/v1/audit/export:
     get:
@@ -562,19 +560,12 @@ paths:
 
   /api/v1/campaigns/{id}:
     get:
-      tags: [Campaigns]
+      tags: [Reporting]
       summary: GET /api/v1/campaigns/{id}
       operationId: get_campaigns_id
       security:
         - AdminAPIKey: []
         - SessionCookie: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
       responses:
         '200':
           description: OK
@@ -584,8 +575,6 @@ paths:
                 $ref: '#/components/schemas/GenericObject'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
 
   /api/v1/campaigns/{id}/stats:
     get:
@@ -604,8 +593,6 @@ paths:
                 $ref: '#/components/schemas/CampaignStats'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
 
   /api/v1/consent:
     post:
@@ -1154,24 +1141,6 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
-  /api/v1/ops/shards:
-    get:
-      tags: [Operations]
-      summary: GET /api/v1/ops/shards
-      operationId: get_ops_shards
-      security:
-        - AdminAPIKey: []
-        - SessionCookie: []
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GenericObject'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
   /api/v1/ops/roles/reload:
     post:
       tags: [Operations]
@@ -1189,8 +1158,24 @@ paths:
                 $ref: '#/components/schemas/GenericObject'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/ops/shards:
+    get:
+      tags: [Operations]
+      summary: GET /api/v1/ops/shards
+      operationId: get_ops_shards
+      security:
+        - AdminAPIKey: []
+        - SessionCookie: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /api/v1/postbacks/config:
     get:

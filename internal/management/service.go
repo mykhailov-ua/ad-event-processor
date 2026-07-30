@@ -215,6 +215,13 @@ func (s *Service) GlobalSpendReconciler() *GlobalSpendReconciler {
 	return s.globalSpend
 }
 
+func (s *Service) RedisShards() []redis.UniversalClient {
+	if s == nil {
+		return nil
+	}
+	return s.rdbs
+}
+
 func (s *Service) GetPool() *pgxpool.Pool {
 	return s.pool
 }

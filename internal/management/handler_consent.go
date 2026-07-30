@@ -2,36 +2,12 @@ package management
 
 import (
 	"encoding/json"
-	"io"
 	"net/http"
 
 	"espx/pkg/httpresponse"
 
 	"github.com/google/uuid"
 )
-
-func (h *Handler) postConsent(w http.ResponseWriter, r *http.Request) {
-	body, err := io.ReadAll(io.LimitReader(r.Body, 64*1024))
-	if err != nil {
-		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid body")
-		return
-	}
-	sig := r.Header.Get("X-Consent-Signature")
-	if err := VerifyConsentHMAC([]byte(h.cfg.ConsentHMACSecret), body, sig); err != nil {
-		httpresponse.Error(w, http.StatusUnauthorized, "INVALID_SIGNATURE", "consent signature invalid")
-		return
-	}
-	var in ConsentRecordInput
-	if err := json.Unmarshal(body, &in); err != nil {
-		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid json")
-		return
-	}
-	if err := h.svc.RecordConsent(r.Context(), in); err != nil {
-		writeServiceError(w, err)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
-}
 
 func (h *Handler) postCampaignConsentRequirements(w http.ResponseWriter, r *http.Request) {
 	campaignID, err := parsePathUUID(r, "id")

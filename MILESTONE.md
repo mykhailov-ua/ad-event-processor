@@ -545,13 +545,13 @@ Cold HTTP handler p99 < 200 ms (unchanged).
 
 #### Definition of done
 
-- [ ] `cmd/management/main.go` mounts exclusively via `adminapi.RegisterRoutes(mux, deps)`
-- [ ] No duplicate `HandleFunc` in `handler_api.go` for paths in adminapi
-- [ ] `register.go` — single route catalog for OpenAPI
-- [ ] Duplicate handler bodies deleted (not commented out)
-- [ ] `make openapi-gen` + `make openapi-lint` green
-- [ ] `go test ./internal/adminapi/... ./cmd/management/... -short`
-- [ ] `tests/contract/openapi_test.go` per route prefix
+- [x] `cmd/management/main.go` mounts exclusively via `adminapi.RegisterRoutes(mux, deps)`
+- [x] No duplicate `HandleFunc` in `handler_api.go` for paths in adminapi
+- [x] `register.go` — single route catalog for OpenAPI
+- [x] Duplicate handler bodies deleted (not commented out)
+- [x] `make openapi-gen` + `make openapi-lint` green
+- [x] `go test ./internal/adminapi/... ./cmd/management/... -short`
+- [x] `tests/contract/openapi_test.go` per route prefix
 
 ---
 

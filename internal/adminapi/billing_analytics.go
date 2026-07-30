@@ -43,6 +43,12 @@ func NewCompositeReadService(pool *pgxpool.Pool, cfg *config.Config, provider bi
 	}
 }
 
+func (c *CompositeReadService) SetCHQuery(q *database.CHQuery) {
+	if c != nil {
+		c.chQuery = q
+	}
+}
+
 type PeriodBounds struct {
 	From time.Time `json:"from"`
 	To   time.Time `json:"to"`
