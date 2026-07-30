@@ -52,8 +52,8 @@ func (r *opsReader) GetDashboardMetrics(ctx context.Context, rangeHours int, met
 	since := now.Add(-time.Duration(rangeHours) * time.Hour)
 	q := db.New(r.svc.GetPool())
 	rows, err := q.ListOpsMetricSamplesDownsampled(ctx, db.ListOpsMetricSamplesDownsampledParams{
-		Ts:   pgtype.Timestamptz{Time: since, Valid: true},
-		Ts_2: pgtype.Timestamptz{Time: now, Valid: true},
+		Ts:      pgtype.Timestamptz{Time: since, Valid: true},
+		Ts_2:    pgtype.Timestamptz{Time: now, Valid: true},
 		Column3: metricName,
 		Column4: float64(dashboardMetricsBucketSec),
 	})
@@ -150,8 +150,8 @@ func (r *opsReader) readDashboardLiveSignals(ctx context.Context, now time.Time)
 	}
 	prevSince := now.Add(-2 * defaultOpsMetricScrapeInterval)
 	rows, qerr := q.ListOpsMetricSamplesWindow(ctx, db.ListOpsMetricSamplesWindowParams{
-		Ts:   pgtype.Timestamptz{Time: prevSince, Valid: true},
-		Ts_2: pgtype.Timestamptz{Time: now, Valid: true},
+		Ts:      pgtype.Timestamptz{Time: prevSince, Valid: true},
+		Ts_2:    pgtype.Timestamptz{Time: now, Valid: true},
 		Column3: "ad_http_requests_total",
 	})
 	if qerr != nil || len(rows) < 2 {

@@ -25,8 +25,8 @@ type DashboardMetricPoint struct {
 }
 
 type DashboardMetricsDTO struct {
-	Range      string                 `json:"range"`
-	BucketSec  int                    `json:"bucket_sec"`
-	Points     []DashboardMetricPoint `json:"points"`
-	GeneratedAt string                `json:"generated_at"`
+	Range       string                 `json:"range"`
+	BucketSec   int                    `json:"bucket_sec"`
+	Points      []DashboardMetricPoint `json:"points"`
+	GeneratedAt string                 `json:"generated_at"`
 }

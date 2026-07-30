@@ -22,13 +22,13 @@ const (
 )
 
 type OpsMetricScraper struct {
-	svc      *Service
-	pool     *pgxpool.Pool
-	url      string
-	client   *http.Client
-	interval time.Duration
+	svc       *Service
+	pool      *pgxpool.Pool
+	url       string
+	client    *http.Client
+	interval  time.Duration
 	retention time.Duration
-	fetch    func(ctx context.Context, url string) ([]byte, string, error)
+	fetch     func(ctx context.Context, url string) ([]byte, string, error)
 }
 
 func NewOpsMetricScraper(svc *Service, scrapeURL string) *OpsMetricScraper {

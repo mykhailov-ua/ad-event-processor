@@ -155,6 +155,12 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
 		},
+		RtbFloorsHTTP: &adminapi.RtbFloorsHTTPHandlers{
+			Service:           svc,
+			ApplyRateLimit:    limit,
+			RequirePermission: perm,
+			WriteServiceError: writeErr,
+		},
 		CampaignsHTTP: &adminapi.CampaignsHTTPHandlers{
 			Campaigns:               campaignReaderAdapter{svc: svc},
 			ApplyRateLimit:          limit,

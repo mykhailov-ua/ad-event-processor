@@ -196,6 +196,9 @@ type Config struct {
 
 	DeliveryOptimizerIntervalMs int
 	BidFloorLookbackHours       int
+	BidFloorOptimizerLookbackHours int
+	BidFloorOptimizerIntervalHours int
+	BidFloorBucketMicro         int64
 	BidFloorWinRateLow          float64
 	BidFloorWinRateHigh         float64
 	BidFloorAdjustPct           int
@@ -573,6 +576,9 @@ func Load() (*Config, error) {
 		AutoscaleIntervalMs:             getEnvInt("AUTOSCALE_INTERVAL_MS", 0),
 		DeliveryOptimizerIntervalMs:     getEnvInt("DELIVERY_OPTIMIZER_INTERVAL_MS", 0),
 		BidFloorLookbackHours:           getEnvInt("BID_FLOOR_LOOKBACK_HOURS", 24),
+		BidFloorOptimizerLookbackHours:  getEnvInt("BID_FLOOR_OPTIMIZER_LOOKBACK_HOURS", 168),
+		BidFloorOptimizerIntervalHours:  getEnvInt("BID_FLOOR_OPTIMIZER_INTERVAL_HOURS", 168),
+		BidFloorBucketMicro:             getEnvMicro("BID_FLOOR_BUCKET_MICRO", 10_000),
 		BidFloorWinRateLow:              getEnvFloat("BID_FLOOR_WIN_RATE_LOW", 0.05),
 		BidFloorWinRateHigh:             getEnvFloat("BID_FLOOR_WIN_RATE_HIGH", 0.25),
 		BidFloorAdjustPct:               getEnvInt("BID_FLOOR_ADJUST_PCT", 10),

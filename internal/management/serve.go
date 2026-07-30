@@ -281,16 +281,21 @@ func Serve(ctx context.Context, cfg *config.Config) error {
 		optimizerInterval := time.Duration(cfg.DeliveryOptimizerIntervalMs) * time.Millisecond
 		svc.StartDeliveryOptimizerWorker(syncWorkers, optimizerInterval)
 		slog.Info("started delivery optimizer worker", "interval", optimizerInterval, "mab_interval_ms", cfg.MABIntervalMs)
-	} else {
-		pacingInterval := time.Duration(cfg.Management.PacingIntervalMs) * time.Millisecond
-		svc.StartPacingController(syncWorkers, pacingInterval)
-		slog.Info("started pacing controller", "interval", pacingInterval)
+	}
+	if cfg.BidFloorOptimizerIntervalHours > 0 {
+		floorInterval := time.Duration(cfg.BidFloorOptimizerIntervalHours) * time.Hour
+		svc.StartFloorOptimizerWorker(floorInterval)
+		slog.Info("started floor optimizer worker", "interval", floorInterval)
+	}
 
-		if cfg.AutoscaleIntervalMs > 0 {
-			autoscaleInterval := time.Duration(cfg.AutoscaleIntervalMs) * time.Millisecond
-			svc.StartAutoscaleBudgetWorker(syncWorkers, autoscaleInterval)
-			slog.Info("started autoscale budget worker", "interval", autoscaleInterval)
-		}
+	pacingInterval := time.Duration(cfg.Management.PacingIntervalMs) * time.Millisecond
+	svc.StartPacingController(syncWorkers, pacingInterval)
+	slog.Info("started pacing controller", "interval", pacingInterval)
+
+	if cfg.AutoscaleIntervalMs > 0 {
+		autoscaleInterval := time.Duration(cfg.AutoscaleIntervalMs) * time.Millisecond
+		svc.StartAutoscaleBudgetWorker(syncWorkers, autoscaleInterval)
+		slog.Info("started autoscale budget worker", "interval", autoscaleInterval)
 	}
 
 	svc.StartAuditCleaner(Days(cfg.Management.RetentionDays))

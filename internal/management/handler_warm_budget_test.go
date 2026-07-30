@@ -178,7 +178,10 @@ func TestOptimizeBidFloors_writesRedis(t *testing.T) {
 	recs, err := svc.OptimizeBidFloors(ctx)
 	require.NoError(t, err)
 	require.Len(t, recs, 1)
-	assert.Equal(t, int64(200_000), recs[0].RecommendedMicro)
+
+	result, err := svc.ApplyRtbFloorSuggestions(ctx, false, nil)
+	require.NoError(t, err)
+	require.Equal(t, 1, result.Applied)
 
 	val, err := rdb.Get(ctx, ingestion.RtbFloorRedisKeyPrefix+"opt-deal-1").Int64()
 	require.NoError(t, err)

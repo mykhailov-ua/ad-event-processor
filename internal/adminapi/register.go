@@ -14,6 +14,7 @@ type RouteRegistry struct {
 	PostbackHTTP    *PostbackHTTPHandlers
 	CostSyncHTTP    *CostSyncHTTPHandlers
 	MarginGuardHTTP *MarginGuardHTTPHandlers
+	RtbFloorsHTTP   *RtbFloorsHTTPHandlers
 	CampaignsHTTP   *CampaignsHTTPHandlers
 }
 
@@ -98,6 +99,7 @@ var routeCatalog = []Route{
 	{Method: "PUT", Path: "/api/v1/postbacks/config/{campaign_id}"},
 	{Method: "GET", Path: "/api/v1/postbacks/dlq"},
 	{Method: "POST", Path: "/api/v1/postbacks/dlq/{id}/retry"},
+	{Method: "POST", Path: "/api/v1/rtb/floors/apply"},
 	{Method: "GET", Path: "/api/v1/recon/runs"},
 	{Method: "GET", Path: "/api/v1/reports/campaign-geo-device"},
 	{Method: "GET", Path: "/api/v1/reports/campaign-overview"},
@@ -164,6 +166,9 @@ func RegisterRoutes(mux *http.ServeMux, routes RouteRegistry) {
 	}
 	if routes.MarginGuardHTTP != nil {
 		routes.MarginGuardHTTP.Register(mux)
+	}
+	if routes.RtbFloorsHTTP != nil {
+		routes.RtbFloorsHTTP.Register(mux)
 	}
 	if routes.CampaignsHTTP != nil {
 		routes.CampaignsHTTP.Register(mux)

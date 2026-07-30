@@ -3,7 +3,6 @@ package management
 import (
 	"context"
 	"fmt"
-	"log/slog"
 
 	"espx/internal/ingestion"
 	db "espx/internal/ingestion/sqlc"
@@ -97,10 +96,6 @@ func (s *Service) RunDeliveryOptimizerTick(ctx context.Context, syncWorkers []*i
 		})
 		if err != nil {
 			return err
-		}
-
-		if _, err := s.OptimizeBidFloors(opCtx); err != nil {
-			slog.Error("bid floor optimizer failed", "error", err)
 		}
 		return nil
 	})

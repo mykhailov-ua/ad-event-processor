@@ -503,6 +503,33 @@ RETURNING *;
 -- name: DeleteRtbDeal :exec
 DELETE FROM rtb_deals WHERE id = $1;
 
+-- name: UpsertRtbFloorSuggestion :exec
+INSERT INTO rtb_floor_suggestions (
+    placement_id, deal_id, current_floor_micro, suggested_floor_micro,
+    win_rate, sample_n, floor_bucket_micro, computed_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+ON CONFLICT (placement_id) DO UPDATE SET
+    deal_id = EXCLUDED.deal_id,
+    current_floor_micro = EXCLUDED.current_floor_micro,
+    suggested_floor_micro = EXCLUDED.suggested_floor_micro,
+    win_rate = EXCLUDED.win_rate,
+    sample_n = EXCLUDED.sample_n,
+    floor_bucket_micro = EXCLUDED.floor_bucket_micro,
+    computed_at = EXCLUDED.computed_at;
+
+-- name: ListRtbFloorSuggestions :many
+SELECT placement_id, deal_id, current_floor_micro, suggested_floor_micro,
+       win_rate, sample_n, floor_bucket_micro, computed_at
+FROM rtb_floor_suggestions
+ORDER BY placement_id;
+
+-- name: ListRtbFloorSuggestionsByPlacementIDs :many
+SELECT placement_id, deal_id, current_floor_micro, suggested_floor_micro,
+       win_rate, sample_n, floor_bucket_micro, computed_at
+FROM rtb_floor_suggestions
+WHERE placement_id = ANY($1::text[])
+ORDER BY placement_id;
+
 -- name: UpsertCampaignShardAssignment :one
 INSERT INTO campaign_shard_assignment (
     campaign_id, primary_a_shard, primary_b_shard, reserve_shard, h_ema, c_ema, updated_at
