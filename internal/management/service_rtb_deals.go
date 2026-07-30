@@ -3,7 +3,6 @@ package management
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
@@ -113,11 +112,7 @@ func (s *Service) enqueueRtbCatalogReload(ctx context.Context, q db.Querier, tri
 }
 
 func (s *Service) PublishRtbCatalogReload(ctx context.Context) error {
-	rdb := s.getPubSubRDB()
-	if rdb == nil {
-		return fmt.Errorf("no redis pubsub client available")
-	}
-	return rdb.Publish(ctx, ingestion.RtbCatalogReloadChannel(s.cfg), "reload").Err()
+	return publishControlChannelToAllShards(ctx, s.rdbs, ingestion.RtbCatalogReloadChannel(s.cfg), "reload")
 }
 
 func (s *Service) ListRtbDeals(ctx context.Context) ([]RtbDealDTO, error) {

@@ -77,7 +77,8 @@ func main() {
 	if channel == "" {
 		channel = "campaigns:update"
 	}
-	registry.StartWatch(ctx, rdbs[0], channel)
+	registry.StartWatchShards(ctx, rdbs, channel)
+	registry.StartEpochPoll(ctx, rdbs, time.Duration(cfg.RegistryPollMs)*time.Millisecond)
 
 	consentChannel := cfg.ConsentUpdateChannel
 	if consentChannel == "" {

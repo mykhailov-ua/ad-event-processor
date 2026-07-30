@@ -249,18 +249,8 @@ func (w *OutboxWorker) handleConfigureBrandFcap(ctx context.Context, payload []b
 	if len(campIDs) == 0 {
 		return nil
 	}
-	rdb := w.svc.getPubSubRDB()
-	if rdb == nil {
-		return nil
-	}
 	channel := w.svc.campaignUpdateChannel()
-	_, err = rdb.Pipelined(ctx, func(pipe redis.Pipeliner) error {
-		for _, cidStr := range campIDs {
-			pipe.Publish(ctx, channel, cidStr)
-		}
-		return nil
-	})
-	return err
+	return publishControlMessagesToAllShards(ctx, w.svc.rdbs, channel, campIDs)
 }
 
 func (w *OutboxWorker) listActiveCampaignIDsByBrand(ctx context.Context, brandUUID uuid.UUID) ([]string, error) {

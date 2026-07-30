@@ -38,10 +38,14 @@ func syncGlobalConfigToAllShards(ctx context.Context, rdbs []redis.UniversalClie
 }
 
 func replicateConfigVersionFromPrimary(ctx context.Context, rdbs []redis.UniversalClient) error {
-	if len(rdbs) < 2 || rdbs[0] == nil {
+	if len(rdbs) < 2 {
 		return nil
 	}
-	version, err := rdbs[0].Get(ctx, redisConfigVersionKey).Int64()
+	primary := pickHealthyControlShard(rdbs)
+	if primary == nil {
+		return nil
+	}
+	version, err := primary.Get(ctx, redisConfigVersionKey).Int64()
 	if err == redis.Nil {
 		return nil
 	}

@@ -71,7 +71,7 @@ func (r *RegionOutboxRelay) applyDeliveryDirect(opCtx, ctx context.Context, row 
 		}
 		if r.svc != nil && len(r.svc.rdbs) > 0 && claim.DedupKey != "" {
 			redisKey := dedupkey.RedisKey(claim.DedupKey)
-			ok, nxErr := r.svc.rdbs[0].SetNX(opCtx, redisKey, "1", 48*time.Hour).Result()
+			ok, nxErr := setNXOnAllShards(opCtx, r.svc.rdbs, redisKey, "1", 48*time.Hour)
 			if nxErr == nil && !ok && claim.Outcome == dedup.OutcomeConfirmed {
 				already, idemErr := r.regionAlreadyApplied(opCtx, row.outboxEventID)
 				if idemErr != nil {
@@ -106,7 +106,7 @@ func (r *RegionOutboxRelay) applyDeliverySideEffects(opCtx, ctx context.Context,
 	}
 	if r.svc != nil && len(r.svc.rdbs) > 0 && claim.DedupKey != "" && claim.Outcome == dedup.OutcomeConfirmed {
 		redisKey := dedupkey.RedisKey(claim.DedupKey)
-		ok, nxErr := r.svc.rdbs[0].SetNX(opCtx, redisKey, "1", 48*time.Hour).Result()
+		ok, nxErr := setNXOnAllShards(opCtx, r.svc.rdbs, redisKey, "1", 48*time.Hour)
 		if nxErr == nil && !ok {
 			already, idemErr := r.regionAlreadyApplied(opCtx, row.outboxEventID)
 			if idemErr != nil {

@@ -32,11 +32,24 @@ func (l *RedisLimiter) Allow(ctx context.Context, key string, limit int, window 
 }
 
 type LockoutLimiter struct {
-	rdb redis.UniversalClient
+	rdbs []redis.UniversalClient
 }
 
 func NewLockoutLimiter(rdb redis.UniversalClient) *LockoutLimiter {
-	return &LockoutLimiter{rdb: rdb}
+	if rdb == nil {
+		return &LockoutLimiter{}
+	}
+	return &LockoutLimiter{rdbs: []redis.UniversalClient{rdb}}
+}
+
+func NewLockoutLimiterShards(rdbs []redis.UniversalClient) *LockoutLimiter {
+	out := make([]redis.UniversalClient, 0, len(rdbs))
+	for _, rdb := range rdbs {
+		if rdb != nil {
+			out = append(out, rdb)
+		}
+	}
+	return &LockoutLimiter{rdbs: out}
 }
 
 const (
@@ -123,44 +136,75 @@ return attempts
 
 func (l *LockoutLimiter) AllowIP(ctx context.Context, clientIP string, limit int, window time.Duration) (bool, error) {
 	key := "ratelimit:ip:" + clientIP
-	pipe := l.rdb.Pipeline()
-	incr := pipe.Incr(ctx, key)
-	pipe.ExpireNX(ctx, key, window)
-	_, err := pipe.Exec(ctx)
-	if err != nil {
-		return false, err
+	allowed := true
+	for _, rdb := range l.rdbs {
+		pipe := rdb.Pipeline()
+		incr := pipe.Incr(ctx, key)
+		pipe.ExpireNX(ctx, key, window)
+		_, err := pipe.Exec(ctx)
+		if err != nil {
+			return false, err
+		}
+		if incr.Val() > int64(limit) {
+			allowed = false
+		}
 	}
-	return incr.Val() <= int64(limit), nil
+	return allowed, nil
 }
 
 func (l *LockoutLimiter) Allow(ctx context.Context, clientIP, email string, maxAttempts int, lockoutDuration, attemptWindow time.Duration) (int64, error) {
 	failKey := "lockout:ip_email:" + clientIP + ":{" + email + "}"
 	inflightKey := "lockout:inflight:" + clientIP + ":{" + email + "}"
 	globalFailKey := "lockout:global_email:{" + email + "}"
-	res, err := l.rdb.Eval(ctx, lockoutScript, []string{failKey, inflightKey, globalFailKey}, maxAttempts, int(lockoutDuration.Seconds()), int(attemptWindow.Seconds()), MaxGlobalAttempts).Result()
-	if err != nil {
-		return 0, err
+	var worst int64 = 1
+	for _, rdb := range l.rdbs {
+		res, err := rdb.Eval(ctx, lockoutScript, []string{failKey, inflightKey, globalFailKey}, maxAttempts, int(lockoutDuration.Seconds()), int(attemptWindow.Seconds()), MaxGlobalAttempts).Result()
+		if err != nil {
+			return 0, err
+		}
+		val := res.(int64)
+		if val < worst {
+			worst = val
+		}
 	}
-	return res.(int64), nil
+	return worst, nil
 }
 
 func (l *LockoutLimiter) DecrementInflight(ctx context.Context, clientIP, email string) error {
 	key := "lockout:inflight:" + clientIP + ":{" + email + "}"
-	_, err := l.rdb.Eval(ctx, decrInflightScript, []string{key}).Result()
-	return err
+	var firstErr error
+	for _, rdb := range l.rdbs {
+		if _, err := rdb.Eval(ctx, decrInflightScript, []string{key}).Result(); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
 }
 
 func (l *LockoutLimiter) Increment(ctx context.Context, clientIP, email string, maxAttempts int, lockoutDuration, attemptWindow time.Duration) (int64, error) {
 	key := "lockout:ip_email:" + clientIP + ":{" + email + "}"
 	globalKey := "lockout:global_email:{" + email + "}"
-	res, err := l.rdb.Eval(ctx, incrementScript, []string{key, globalKey}, maxAttempts, int(lockoutDuration.Seconds()), int(attemptWindow.Seconds()), MaxGlobalAttempts, GlobalLockoutDuration).Result()
-	if err != nil {
-		return 0, err
+	var maxResult int64
+	for _, rdb := range l.rdbs {
+		res, err := rdb.Eval(ctx, incrementScript, []string{key, globalKey}, maxAttempts, int(lockoutDuration.Seconds()), int(attemptWindow.Seconds()), MaxGlobalAttempts, GlobalLockoutDuration).Result()
+		if err != nil {
+			return 0, err
+		}
+		val := res.(int64)
+		if val > maxResult {
+			maxResult = val
+		}
 	}
-	return res.(int64), nil
+	return maxResult, nil
 }
 
 func (l *LockoutLimiter) Reset(ctx context.Context, clientIP, email string) error {
 	key := "lockout:ip_email:" + clientIP + ":{" + email + "}"
-	return l.rdb.Del(ctx, key).Err()
+	var firstErr error
+	for _, rdb := range l.rdbs {
+		if err := rdb.Del(ctx, key).Err(); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
 }

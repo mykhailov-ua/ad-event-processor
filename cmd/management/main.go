@@ -89,8 +89,8 @@ func main() {
 	}
 
 	mgmtAuthClient := management.NewAuthClient(authClient)
-	authMiddleware := management.NewAuthMiddleware(tokenMaker, rdbs[0], cfg, mgmtAuthClient)
-	authHandler := management.NewAuthHandler(authClient, tokenMaker, rdbs[0], cfg, authMiddleware)
+	authMiddleware := management.NewAuthMiddlewareShards(tokenMaker, auth.PickAuthControlShard(rdbs), rdbs, cfg, mgmtAuthClient)
+	authHandler := management.NewAuthHandler(authClient, tokenMaker, auth.PickAuthControlShard(rdbs), cfg, authMiddleware)
 
 	if cfg.UDPControlEnabled {
 		udpSrv := management.NewUDPControlServer(cfg, pool, sharder, len(rdbs))
@@ -195,7 +195,8 @@ func main() {
 			slog.Error("invalid ESPX_LICENSE_PUBLIC_KEY", "error", err)
 			os.Exit(1)
 		}
-		watcher := licensing.NewLicenseWatcher(pool, rdbs[0], pubKey)
+		watcher := licensing.NewLicenseWatcher(pool, auth.PickAuthControlShard(rdbs), pubKey)
+		watcher.SetControlRedisShards(rdbs)
 		svc.StartBackgroundWorker(func() {
 			if err := watcher.Start(ctx); err != nil && err != context.Canceled {
 				slog.Error("license watcher stopped", "error", err)

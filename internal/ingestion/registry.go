@@ -489,36 +489,6 @@ func (r *Registry) StartSync(ctx context.Context, interval time.Duration) {
 	}()
 }
 
-func (r *Registry) StartWatch(ctx context.Context, rdb redis.UniversalClient, channel string) {
-	r.wg.Add(1)
-	go func() {
-		defer r.wg.Done()
-		backoff := time.Second
-		for {
-			if ctx.Err() != nil {
-				return
-			}
-			if rdb == nil {
-				slog.Error("registry pubsub: nil redis client")
-				return
-			}
-			err := r.watchPubSubOnce(ctx, rdb, channel)
-			if ctx.Err() != nil {
-				return
-			}
-			slog.Warn("registry pubsub disconnected, reconnecting", "error", err, "backoff", backoff)
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(backoff):
-			}
-			if backoff < 30*time.Second {
-				backoff *= 2
-			}
-		}
-	}()
-}
-
 func (r *Registry) watchPubSubOnce(ctx context.Context, rdb redis.UniversalClient, channel string) error {
 	pubsub := rdb.Subscribe(ctx, channel)
 	defer pubsub.Close()

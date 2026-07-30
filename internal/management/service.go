@@ -711,18 +711,10 @@ func (s *Service) campaignUpdateChannel() string {
 	return "campaigns:update"
 }
 
-func (s *Service) getPubSubRDB() redis.UniversalClient {
-	if len(s.rdbs) == 0 {
-		return nil
-	}
-	return s.rdbs[0]
-}
-
 func (s *Service) publishCampaignUpdate(ctx context.Context, campaignID string) error {
-	rdb := s.getPubSubRDB()
 	var pubErr error
-	if rdb != nil {
-		pubErr = rdb.Publish(ctx, s.campaignUpdateChannel(), campaignID).Err()
+	if len(s.rdbs) > 0 {
+		pubErr = publishCampaignControlToAllShards(ctx, s.rdbs, s.campaignUpdateChannel(), campaignID, time.Time{})
 	} else {
 		pubErr = fmt.Errorf("no redis pubsub client available")
 	}

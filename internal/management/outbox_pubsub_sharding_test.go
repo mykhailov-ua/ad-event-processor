@@ -69,37 +69,36 @@ func newIsolatedRedisShards(t *testing.T) []redis.UniversalClient {
 	return shards
 }
 
-func TestPublishCampaignUpdate_RoutesToShardZero(t *testing.T) {
+func TestPublishCampaignUpdate_FanOutAllShards(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping multi-container redis test")
 	}
 
 	shards := newDedicatedRedisShards(t, testPubSubShards)
-	svc := &Service{rdbs: shards, cfg: &config.Config{CampaignUpdateChannel: "test:pubsub:shard0"}}
+	svc := &Service{rdbs: shards, cfg: &config.Config{CampaignUpdateChannel: "test:pubsub:fanout"}}
 	ctx := context.Background()
 	channel := svc.campaignUpdateChannel()
 
-	sub0 := shards[0].Subscribe(ctx, channel)
-	defer sub0.Close()
-	sub2 := shards[2].Subscribe(ctx, channel)
-	defer sub2.Close()
+	subs := make([]*redis.PubSub, len(shards))
+	for i, shard := range shards {
+		subs[i] = shard.Subscribe(ctx, channel)
+		defer subs[i].Close()
+	}
 
 	campaignID := uuid.New().String()
 	require.NoError(t, svc.publishCampaignUpdate(ctx, campaignID))
 
-	msg, err := sub0.ReceiveMessage(ctx)
-	require.NoError(t, err)
-	assert.Equal(t, campaignID, msg.Payload)
-
-	waitCtx, cancel := context.WithTimeout(ctx, 300*time.Millisecond)
-	defer cancel()
-	_, err = sub2.ReceiveMessage(waitCtx)
-	assert.Error(t, err, "pub/sub must not reach non-zero redis instances")
-
-	assert.Same(t, shards[0], svc.getPubSubRDB())
+	for i, sub := range subs {
+		msg, err := sub.ReceiveMessage(ctx)
+		require.NoError(t, err, "shard %d must receive pubsub", i)
+		assert.Equal(t, campaignID, msg.Payload)
+		epoch, err := shards[i].Get(ctx, ingestion.CampaignEpochKey).Int64()
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), epoch)
+	}
 }
 
-func TestOutboxScheduleUpdate_PubSubOnShardZero(t *testing.T) {
+func TestOutboxScheduleUpdate_PubSubOnAllShards(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping multi-container redis test")
 	}
@@ -108,7 +107,7 @@ func TestOutboxScheduleUpdate_PubSubOnShardZero(t *testing.T) {
 	campaignID := campaignIDForShard(t, testPubSubShards, 2)
 	require.Equal(t, 2, ingestion.NewStaticSlotSharder(testPubSubShards).GetShard(campaignID))
 
-	channel := "test:schedule:pubsub"
+	channel := "test:schedule:pubsub:fanout"
 	svc := &Service{
 		rdbs:    shards,
 		sharder: ingestion.NewStaticSlotSharder(testPubSubShards),
@@ -116,24 +115,22 @@ func TestOutboxScheduleUpdate_PubSubOnShardZero(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	sub0 := shards[0].Subscribe(ctx, channel)
-	defer sub0.Close()
-	subCampaignShard := shards[2].Subscribe(ctx, channel)
-	defer subCampaignShard.Close()
+	subs := make([]*redis.PubSub, len(shards))
+	for i, shard := range shards {
+		subs[i] = shard.Subscribe(ctx, channel)
+		defer subs[i].Close()
+	}
 
 	worker := NewOutboxWorker(svc)
 	payload, err := json.Marshal(map[string]string{"campaign_id": campaignID.String()})
 	require.NoError(t, err)
 	require.NoError(t, worker.handleUpdateCampaignSchedule(ctx, payload))
 
-	msg, err := sub0.ReceiveMessage(ctx)
-	require.NoError(t, err)
-	assert.Equal(t, campaignID.String(), msg.Payload)
-
-	waitCtx, cancel := context.WithTimeout(ctx, 300*time.Millisecond)
-	defer cancel()
-	_, err = subCampaignShard.ReceiveMessage(waitCtx)
-	assert.Error(t, err, "pub/sub must not publish on the campaign data shard redis instance")
+	for i, sub := range subs {
+		msg, err := sub.ReceiveMessage(ctx)
+		require.NoError(t, err, "shard %d", i)
+		assert.Equal(t, campaignID.String(), msg.Payload)
+	}
 }
 
 func TestOutboxCreateCampaign_BudgetOnCampaignShard(t *testing.T) {
@@ -146,7 +143,7 @@ func TestOutboxCreateCampaign_BudgetOnCampaignShard(t *testing.T) {
 
 	shards := newIsolatedRedisShards(t)
 	campaignID := campaignIDForShard(t, testPubSubShards, 1)
-	channel := "test:create:pubsub"
+	channel := "test:create:pubsub:fanout"
 	svc := newBareService(t, pool, shards, &config.Config{CampaignUpdateChannel: channel})
 	ctx := context.Background()
 
@@ -159,8 +156,11 @@ func TestOutboxCreateCampaign_BudgetOnCampaignShard(t *testing.T) {
 	`, ingestion.ToUUID(campaignID), ingestion.ToUUID(customerID))
 	require.NoError(t, err)
 
-	sub0 := shards[0].Subscribe(ctx, channel)
-	defer sub0.Close()
+	subs := make([]*redis.PubSub, len(shards))
+	for i, shard := range shards {
+		subs[i] = shard.Subscribe(ctx, channel)
+		defer subs[i].Close()
+	}
 
 	worker := NewOutboxWorker(svc)
 	payload, err := json.Marshal(CampaignPayload{
@@ -177,20 +177,19 @@ func TestOutboxCreateCampaign_BudgetOnCampaignShard(t *testing.T) {
 
 	exists, err = shards[0].Exists(ctx, budgetKey).Result()
 	require.NoError(t, err)
-	assert.Equal(t, int64(0), exists, "budget key must not be written to pubsub shard")
+	assert.Equal(t, int64(0), exists, "budget key must not be written to unrelated shard")
 
-	receiveCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-	msg, err := sub0.ReceiveMessage(receiveCtx)
-	require.NoError(t, err)
-	assert.Equal(t, campaignID.String(), msg.Payload)
+	for i, sub := range subs {
+		receiveCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		msg, err := sub.ReceiveMessage(receiveCtx)
+		cancel()
+		require.NoError(t, err, "shard %d", i)
+		assert.Equal(t, campaignID.String(), msg.Payload)
+	}
 }
 
-func TestGetPubSubRDB_ReturnsFirstShard(t *testing.T) {
-	svc := &Service{rdbs: []redis.UniversalClient{nil, nil, nil}}
-	assert.Nil(t, svc.getPubSubRDB())
-
+func TestPickHealthyControlShard(t *testing.T) {
+	assert.Nil(t, pickHealthyControlShard(nil))
 	rdb := redis.NewClient(&redis.Options{Addr: "127.0.0.1:9"})
-	svc.rdbs = []redis.UniversalClient{rdb, redis.NewClient(&redis.Options{Addr: "127.0.0.1:8"})}
-	assert.Same(t, rdb, svc.getPubSubRDB())
+	assert.Same(t, rdb, pickHealthyControlShard([]redis.UniversalClient{nil, rdb}))
 }

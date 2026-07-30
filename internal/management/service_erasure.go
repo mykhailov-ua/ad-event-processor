@@ -202,10 +202,7 @@ func (s *Service) PurgeUserDataRedis(ctx context.Context, hashHex, subjectUserID
 	if success == 0 && firstErr != nil {
 		return firstErr
 	}
-	channel := s.consentUpdateChannel()
-	if pub := s.getPubSubRDB(); pub != nil {
-		_ = pub.Publish(ctx, channel, hashHex).Err()
-	}
+	_ = publishControlChannelToAllShards(ctx, s.rdbs, s.consentUpdateChannel(), hashHex)
 	return nil
 }
 
@@ -220,10 +217,7 @@ func (s *Service) SyncUserConsentToRedis(ctx context.Context, hashHex string, pu
 			return err
 		}
 	}
-	if pub := s.getPubSubRDB(); pub != nil {
-		return pub.Publish(ctx, s.consentUpdateChannel(), hashHex).Err()
-	}
-	return nil
+	return publishControlChannelToAllShards(ctx, s.rdbs, s.consentUpdateChannel(), hashHex)
 }
 
 func (s *Service) consentUpdateChannel() string {

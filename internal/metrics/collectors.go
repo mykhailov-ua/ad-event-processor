@@ -300,6 +300,15 @@ var (
 		Name: "ad_shard0_pubsub_unreachable",
 		Help: "1 when shard-0 campaigns:update pub/sub is unreachable (tracker stale-serve), else 0",
 	})
+	ControlFanoutLagSeconds = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "ad_control_fanout_lag_seconds",
+		Help:    "Outbox-to-Redis control fan-out latency per shard",
+		Buckets: []float64{0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0},
+	}, []string{"shard"})
+	RegistryEpoch = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_registry_epoch",
+		Help: "Highest observed campaign_epoch across tracker registry shard polls",
+	})
 
 	GeoProviderStatus = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "ad_geo_provider_status",

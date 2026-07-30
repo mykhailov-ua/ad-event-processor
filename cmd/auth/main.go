@@ -15,6 +15,7 @@ import (
 	"espx/internal/database"
 	"espx/pkg/lifecycle"
 
+	"github.com/redis/go-redis/v9"
 	google_grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -48,6 +49,23 @@ func main() {
 	}
 	defer rdb.Close()
 
+	var controlRdbs []redis.UniversalClient
+	controlRdbs, _, err = database.ConnectRedisShards(ctx, cfg, database.RedisShardOptions{
+		PoolSize: cfg.RedisPoolSize,
+	})
+	if err != nil {
+		slog.Warn("multi-shard redis unavailable, using single shard for control", "error", err)
+		controlRdbs = []redis.UniversalClient{rdb}
+	} else {
+		defer func() {
+			for _, shard := range controlRdbs {
+				if shard != nil && shard != rdb {
+					_ = shard.Close()
+				}
+			}
+		}()
+	}
+
 	repo := db.NewStore(pool)
 	tokenMaker, err := auth.NewPasetoMaker(string(cfg.TokenSymmetricKey))
 	if err != nil {
@@ -55,7 +73,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	lockoutLimiter := auth.NewLockoutLimiter(rdb)
+	lockoutLimiter := auth.NewLockoutLimiterShards(controlRdbs)
 
 	hasher, err := auth.NewPasswordHasher(
 		uint32(cfg.Argon2Memory),
@@ -67,6 +85,7 @@ func main() {
 		os.Exit(1)
 	}
 	authService := auth.NewService(repo, tokenMaker, hasher, lockoutLimiter, rdb)
+	authService.SetControlRedisShards(controlRdbs)
 	cleanupWorker := auth.NewSessionCleanupWorker(authService)
 	var cleanupWG sync.WaitGroup
 	cleanupWG.Add(1)

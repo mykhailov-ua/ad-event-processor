@@ -250,12 +250,10 @@ func (w *OutboxWorker) applyBlacklistPayload(ctx context.Context, p BlacklistPay
 	if err := syncGlobalSetMemberToAllShards(ctx, w.svc.rdbs, key, p.IP, add); err != nil {
 		return fmt.Errorf("blacklist sync failed: %w", err)
 	}
-	if reason == "fraud" && p.Action == "add" && w.svc.rdbs[0] != nil {
-		_ = w.svc.rdbs[0].Publish(ctx, fraudQuarantineChannel, p.IP).Err()
+	if reason == "fraud" && p.Action == "add" {
+		_ = publishControlChannelToAllShards(ctx, w.svc.rdbs, fraudQuarantineChannel, p.IP)
 	}
-	if w.svc.rdbs[0] != nil {
-		_ = w.svc.rdbs[0].Publish(ctx, blacklistUpdateChannel, p.IP+":"+reason).Err()
-	}
+	_ = publishControlChannelToAllShards(ctx, w.svc.rdbs, blacklistUpdateChannel, p.IP+":"+reason)
 	if !queuedAt.IsZero() {
 		lag := time.Since(queuedAt).Seconds()
 		if lag >= 0 {

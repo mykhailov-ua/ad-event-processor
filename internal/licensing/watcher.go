@@ -20,8 +20,9 @@ import (
 )
 
 type LicenseWatcher struct {
-	pool       *pgxpool.Pool
-	rdb        redis.UniversalClient
+	pool        *pgxpool.Pool
+	rdb         redis.UniversalClient
+	controlRdbs []redis.UniversalClient
 	client     *LicenseClient
 	mode       string
 	path       string
@@ -342,9 +343,26 @@ func (w *LicenseWatcher) updateDatabaseAndRedis(ctx context.Context, token strin
 		return fmt.Errorf("redis HMSet failed: %w", err)
 	}
 
-	_ = w.rdb.Publish(ctx, "campaigns:update", "license_update")
+	w.publishCampaignUpdate(ctx)
 
 	return nil
+}
+
+func (w *LicenseWatcher) SetControlRedisShards(rdbs []redis.UniversalClient) {
+	w.controlRdbs = rdbs
+}
+
+func (w *LicenseWatcher) publishCampaignUpdate(ctx context.Context) {
+	channel := "campaigns:update"
+	rdbs := w.controlRdbs
+	if len(rdbs) == 0 && w.rdb != nil {
+		rdbs = []redis.UniversalClient{w.rdb}
+	}
+	for _, rdb := range rdbs {
+		if rdb != nil {
+			_ = rdb.Publish(ctx, channel, "license_update").Err()
+		}
+	}
 }
 
 func boolToInt(b bool) int {

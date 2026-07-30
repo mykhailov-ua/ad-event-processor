@@ -166,6 +166,7 @@ type Config struct {
 	RtbCatalogReloadChannel string
 
 	RegistryStaleTTLSec          int
+	RegistryPollMs               int
 	CampaignUpdateBrokerFallback bool
 	CampaignUpdateBrokerTopic    string
 
@@ -534,6 +535,7 @@ func Load() (*Config, error) {
 		CampaignUpdateChannel:           os.Getenv("CAMPAIGN_UPDATE_CHANNEL"),
 		RtbCatalogReloadChannel:         os.Getenv("RTB_CATALOG_RELOAD_CHANNEL"),
 		RegistryStaleTTLSec:             getEnvInt("REGISTRY_STALE_TTL", 30),
+		RegistryPollMs:                  getEnvInt("REGISTRY_POLL_MS", 5000),
 		CampaignUpdateBrokerFallback:    getEnvBool("CAMPAIGN_UPDATE_BROKER_FALLBACK", false),
 		CampaignUpdateBrokerTopic:       envOrDefault("CAMPAIGN_UPDATE_BROKER_TOPIC", "campaigns:update"),
 		AutoscaleHighCTRThreshold:       getEnvFloat("AUTOSCALE_HIGH_CTR_THRESHOLD", 0.015),

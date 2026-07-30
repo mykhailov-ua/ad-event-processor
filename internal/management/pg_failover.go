@@ -16,18 +16,19 @@ import (
 var ErrStalePgFencingEpoch = pgfailover.ErrStalePgFencingEpoch
 
 type PgFailoverRuntime struct {
-	coord      *pgfailover.Coordinator
-	subscriber *pgfailover.Subscriber
-	fencing    *pgfailover.FencingGate
-	mu         sync.Mutex
-	activePool *pgxpool.Pool
+	coord            *pgfailover.Coordinator
+	subscriber       *pgfailover.Subscriber
+	extraSubscribers []*pgfailover.Subscriber
+	fencing          *pgfailover.FencingGate
+	mu               sync.Mutex
+	activePool       *pgxpool.Pool
 }
 
 func (s *Service) StartPgFailover(ctx context.Context) *PgFailoverRuntime {
 	if s == nil || s.cfg == nil || !s.cfg.PgFailoverEnabled || len(s.rdbs) == 0 {
 		return nil
 	}
-	rdb := s.rdbs[0]
+	rdb := pickHealthyControlShard(s.rdbs)
 	rt := &PgFailoverRuntime{
 		fencing: pgfailover.NewFencingGate(rdb),
 	}
@@ -51,6 +52,14 @@ func (s *Service) StartPgFailover(ctx context.Context) *PgFailoverRuntime {
 	}
 	rt.subscriber = pgfailover.NewSubscriber(rdb, rt.fencing, reconnect, subCfg)
 	rt.subscriber.Start(ctx)
+	for _, shardRDB := range s.rdbs {
+		if shardRDB == nil || shardRDB == rdb {
+			continue
+		}
+		extra := pgfailover.NewSubscriber(shardRDB, rt.fencing, reconnect, subCfg)
+		extra.Start(ctx)
+		rt.extraSubscribers = append(rt.extraSubscribers, extra)
+	}
 
 	runCoordinator := s.cfg.PgFailoverCoordinator || s.cfg.MultiRegionGlobal() || !s.cfg.MultiRegionEnabled
 	if runCoordinator && s.cfg.PgStandbyDSN != "" {
@@ -128,6 +137,11 @@ func (rt *PgFailoverRuntime) ClosePgFailover() {
 	if rt.subscriber != nil {
 		rt.subscriber.Stop()
 	}
+	for _, sub := range rt.extraSubscribers {
+		if sub != nil {
+			sub.Stop()
+		}
+	}
 }
 
 func (rt *PgFailoverRuntime) CurrentDSN() string {
@@ -144,7 +158,8 @@ func (s *Service) requirePgFencing(ctx context.Context) error {
 	if err := s.pgFencing.Refresh(ctx); err != nil {
 		return err
 	}
-	_, epoch, err := pgfailover.ActiveDSN(ctx, s.rdbs[0])
+	reader := newPgFailoverShardReader(s.rdbs)
+	_, epoch, err := reader.activeDSN(ctx)
 	if err != nil {
 		return err
 	}

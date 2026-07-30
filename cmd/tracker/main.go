@@ -123,7 +123,8 @@ func main() {
 	}
 
 	registry.ConfigureStaleMode(time.Duration(cfg.RegistryStaleTTLSec) * time.Second)
-	registry.StartWatch(ctx, rdbs[0], channel)
+	registry.StartWatchShards(ctx, rdbs, channel)
+	registry.StartEpochPoll(ctx, rdbs, time.Duration(cfg.RegistryPollMs)*time.Millisecond)
 
 	if cfg.CampaignUpdateBrokerFallback && cfg.Broker.URL != "" {
 		topic := cfg.CampaignUpdateBrokerTopic

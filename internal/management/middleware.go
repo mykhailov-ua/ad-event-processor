@@ -41,12 +41,17 @@ func GetUser(ctx context.Context) (AuthenticatedUser, bool) {
 type AuthMiddleware struct {
 	tokenMaker    auth.Maker
 	rdb           redis.UniversalClient
+	controlRdbs   []redis.UniversalClient
 	cfg           *config.Config
 	authClient    *AuthClient
 	apiKeyLimiter *apiKeyRateLimiter
 }
 
 func NewAuthMiddleware(tokenMaker auth.Maker, rdb redis.UniversalClient, cfg *config.Config, authClient *AuthClient) *AuthMiddleware {
+	return NewAuthMiddlewareShards(tokenMaker, rdb, nil, cfg, authClient)
+}
+
+func NewAuthMiddlewareShards(tokenMaker auth.Maker, rdb redis.UniversalClient, controlRdbs []redis.UniversalClient, cfg *config.Config, authClient *AuthClient) *AuthMiddleware {
 	rps := defaultAPIKeyRPS
 	burst := defaultAPIKeyBurst
 	if cfg != nil && cfg.SelfServeAPIKeyRPS > 0 {
@@ -59,6 +64,7 @@ func NewAuthMiddleware(tokenMaker auth.Maker, rdb redis.UniversalClient, cfg *co
 	return &AuthMiddleware{
 		tokenMaker:    tokenMaker,
 		rdb:           rdb,
+		controlRdbs:   controlRdbs,
 		cfg:           cfg,
 		authClient:    authClient,
 		apiKeyLimiter: newAPIKeyRateLimiter(rps, burst),
@@ -216,8 +222,12 @@ func (m *AuthMiddleware) authenticate(w http.ResponseWriter, r *http.Request) (A
 		return AuthenticatedUser{}, false
 	}
 
-	if m.rdb != nil {
-		revoked, errRev := auth.CheckTokenRevocation(r.Context(), m.rdb, payload)
+	if len(m.controlRdbs) > 0 || m.rdb != nil {
+		rdbs := m.controlRdbs
+		if len(rdbs) == 0 {
+			rdbs = []redis.UniversalClient{m.rdb}
+		}
+		revoked, errRev := auth.CheckTokenRevocationShards(r.Context(), rdbs, payload)
 		if errRev != nil {
 			slog.Error("redis revocation check failed, blocking request to prevent security bypass", "error", errRev)
 			httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized: security check failed")
