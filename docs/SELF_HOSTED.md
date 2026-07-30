@@ -240,6 +240,8 @@ See [LICENSE_COMMERCE.md](./LICENSE_COMMERCE.md) (vendor-side SKU constructor). 
 
 Compose profiles gate which containers start. Use `scripts/dev/stack.sh` or `docker compose --profile <name>`.
 
+**Full matrix** (services, ports, required env): [README.md § Deploy profiles](../README.md#deploy-profiles).
+
 | Profile | Command | Binaries / services | Audience |
 | :--- | :--- | :--- | :--- |
 | `single_vps` | `stack.sh single-vps` | `tracker`, `processor`, `control` (all cold path in one process) | Default bare-metal / 1–2 CPU |

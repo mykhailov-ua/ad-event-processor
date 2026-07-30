@@ -13,6 +13,10 @@ if docker compose --profile ingest_only config --services | grep -qx clickhouse;
 	echo "ingest_only profile must not include clickhouse" >&2
 	exit 1
 fi
+if docker compose --profile ingest_only config --services | grep -qx db-payment; then
+	echo "ingest_only profile must not include db-payment" >&2
+	exit 1
+fi
 
 echo "compose profile config: network_operator"
 docker compose --profile network_operator config >/dev/null

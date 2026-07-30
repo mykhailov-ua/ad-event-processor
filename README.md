@@ -521,6 +521,22 @@ make test-alloc-gate
 
 ---
 
+## Deploy profiles
+
+Compose profiles gate optional containers (`ingest_only`, `network_operator`, `analytics_ml`). Full matrix (services, ports, required env): [docs/SELF_HOSTED.md § Deploy profiles](docs/SELF_HOSTED.md#deploy-profiles).
+
+| Profile | Stack command | Key env | Ports (host) |
+| :--- | :--- | :--- | :--- |
+| `ingest_only` | `scripts/dev/stack.sh ingest-only` | `CH_ENABLED=0`, `CONTROL_ENABLE_PAYMENT/BILLING/NOTIFIER/MARGIN_GUARD/COST_SYNC=0` | Tracker `8181`, management `8188`, processor `8186` |
+| `network_operator` | `scripts/dev/stack.sh network-operator` | Wallet rail on (`CONTROL_ENABLE_*` default); `db-payment` + ClickHouse | + payment DB `${PAYMENT_DB_PORT}`, CH `${CH_HTTP_PORT}` |
+| `analytics_ml` | `scripts/dev/stack.sh analytics-ml` | `CH_ENABLED=1`, `CH_DSN`, `ADMIN_API_KEY` | ML workers (no public HTTP); CH `8123` |
+
+Validate wiring: `bash scripts/ci/compose_profile_check.sh` or `go run ./cmd/espx doctor --profile <name>`.
+
+Local smoke (compose config + doctor, no full `up`): `scripts/local-dev/smoke_ingest_only.sh`, `smoke_network_operator.sh`, `smoke_analytics_ml.sh`.
+
+---
+
 ## Quick start
 
 ```bash

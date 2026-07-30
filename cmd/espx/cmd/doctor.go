@@ -14,6 +14,7 @@ import (
 
 var (
 	doctorOnly      string
+	doctorProfile   string
 	doctorChecklist bool
 	doctorTimeout   time.Duration
 	bundleOut       string
@@ -33,6 +34,7 @@ var doctorBundleCmd = &cobra.Command{
 
 func init() {
 	doctorCmd.Flags().StringVar(&doctorOnly, "only", "", "comma-separated probe names (kernel,sysctl,redis,clickhouse,disk,tls)")
+	doctorCmd.Flags().StringVar(&doctorProfile, "profile", "", "deploy profile to validate (ingest_only, network_operator, analytics_ml)")
 	doctorCmd.Flags().BoolVar(&doctorChecklist, "checklist", false, "print MVSS checklist from DATA_SECURITY.md")
 	doctorCmd.Flags().DurationVar(&doctorTimeout, "timeout", 60*time.Second, "overall probe timeout")
 
@@ -46,6 +48,12 @@ func init() {
 
 func runDoctor(cmd *cobra.Command, args []string) error {
 	only := splitCSV(doctorOnly)
+	if strings.TrimSpace(doctorProfile) != "" {
+		rows := doctor.DeployProfileChecklist(doctorProfile, nil)
+		doctor.WriteChecklist(os.Stdout, rows)
+		os.Exit(doctor.ChecklistExitCode(rows))
+		return nil
+	}
 	if doctorChecklist {
 		rows := doctor.MVSSChecklist(cfg)
 		doctor.WriteChecklist(os.Stdout, rows)

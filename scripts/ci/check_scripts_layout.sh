@@ -15,6 +15,9 @@ required=(
 	scripts/perf/gate_run.sh
 	scripts/edge/phase0.sh
 	scripts/local-dev/dev_preflight.sh
+	scripts/local-dev/smoke_ingest_only.sh
+	scripts/local-dev/smoke_network_operator.sh
+	scripts/local-dev/smoke_analytics_ml.sh
 	scripts/perf-gate/perf_gate_run.sh
 	scripts/edge-tuning/edge_phase0.sh
 	scripts/redis/verify_topology.sh
