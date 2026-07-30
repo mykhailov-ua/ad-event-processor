@@ -1,0 +1,51 @@
+package main
+
+import (
+	"context"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"espx/internal/config"
+	"espx/internal/control"
+)
+
+func main() {
+	if len(os.Args) > 2 && os.Args[1] == "--health-probe" {
+		resp, err := http.Get(os.Args[2])
+		if err != nil || resp.StatusCode != 200 {
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
+
+	cfg, err := config.Load()
+	if err != nil {
+		slog.Error("failed to load config", "error", err)
+		os.Exit(1)
+	}
+
+	opts := control.OptionsFromConfig(cfg)
+	slog.Info("starting control plane",
+		"auth", opts.Auth,
+		"management", opts.Management,
+		"payment", opts.Payment,
+		"billing", opts.Billing,
+		"notifier", opts.Notifier,
+		"margin_guard", opts.MarginGuard,
+		"cost_sync", opts.CostSync,
+	)
+
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+
+	if err := control.Run(ctx, cfg, opts); err != nil && err != context.Canceled {
+		slog.Error("control plane stopped", "error", err)
+		os.Exit(1)
+	}
+}

@@ -417,12 +417,12 @@ N/A (deploy correctness). Smoke: all `/health` < 2 s after `up`.
 
 #### Definition of done
 
-- [ ] Profile `single_vps`: `control`, `tracker`, `processor`
-- [ ] Profiles `ingest_only`, `network_operator`, `analytics_ml` в compose + `docs/SELF_HOSTED.md`
-- [ ] `ESPX_REGION_CODE=0|>0` matrix в `docs/DEVELOPMENT.md`
-- [ ] margin-guard / cost-sync только в control binary
-- [ ] `docker compose --profile ingest_only up -d` — payment/billing absent
-- [ ] `docker compose --profile network_operator up -d` — payment healthy
+- [x] Profile `single_vps`: `control`, `tracker`, `processor`
+- [x] Profiles `ingest_only`, `network_operator`, `analytics_ml` в compose + `docs/SELF_HOSTED.md`
+- [x] `ESPX_REGION_CODE=0|>0` matrix в `docs/DEVELOPMENT.md`
+- [x] margin-guard / cost-sync только в control binary
+- [x] `docker compose --profile ingest_only up -d` — payment/billing absent
+- [x] `docker compose --profile network_operator up -d` — payment healthy
 
 ---
 

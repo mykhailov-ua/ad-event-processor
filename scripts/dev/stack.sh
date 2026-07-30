@@ -8,6 +8,9 @@ CMD="${1:-status}"
 
 INFRA=(db db-payment redis-0 redis-1 redis-2 redis-3 clickhouse)
 FULL=(db db-payment redis-0 redis-1 redis-2 redis-3 clickhouse processor tracker-0 auth management payment billing notifier ivt-detector)
+SINGLE_VPS=(db redis-0 redis-1 redis-2 redis-3 clickhouse processor tracker-0 control)
+INGEST_ONLY=(db redis-0 redis-1 redis-2 redis-3 clickhouse processor tracker-0 control)
+NETWORK_OPERATOR=(db db-payment redis-0 redis-1 redis-2 redis-3 clickhouse processor tracker-0 control)
 SENTINEL=(redis-0 redis-0-replica sentinel-0 sentinel-1 sentinel-2)
 
 case "$CMD" in
@@ -15,7 +18,21 @@ infra | up-infra)
 	docker compose up -d "${INFRA[@]}"
 	;;
 full | up-full)
-	docker compose up -d "${FULL[@]}"
+	docker compose --profile split_control up -d "${FULL[@]}"
+	;;
+single-vps | up-single-vps)
+	docker compose --profile single_vps up -d "${SINGLE_VPS[@]}"
+	;;
+ingest-only | up-ingest-only)
+	CONTROL_ENABLE_PAYMENT=0 CONTROL_ENABLE_BILLING=0 CONTROL_ENABLE_NOTIFIER=0 \
+		CONTROL_ENABLE_MARGIN_GUARD=0 CONTROL_ENABLE_COST_SYNC=0 \
+		docker compose --profile ingest_only up -d "${INGEST_ONLY[@]}"
+	;;
+network-operator | up-network-operator)
+	docker compose --profile network_operator up -d "${NETWORK_OPERATOR[@]}"
+	;;
+analytics-ml | up-analytics-ml)
+	docker compose --profile analytics_ml --profile fraud-scorer up -d ivt-detector fraud-scorer clickhouse
 	;;
 sentinel | up-sentinel)
 	docker compose up -d "${SENTINEL[@]}"
@@ -92,7 +109,7 @@ probe)
 	esac
 	;;
 *)
-	echo "usage: $0 {infra|full|sentinel|multi-region|crypto|down|status|build|bpf|probe}" >&2
+	echo "usage: $0 {infra|full|single-vps|ingest-only|network-operator|analytics-ml|sentinel|multi-region|crypto|down|status|build|bpf|probe}" >&2
 	exit 2
 	;;
 esac

@@ -434,6 +434,8 @@ services:
       dockerfile: Dockerfile
     entrypoint: ["/auth"]
     network_mode: "${NET_MODE:-host}"
+    profiles:
+      - split_control
     env_file:
       - .env
     environment:
@@ -457,6 +459,65 @@ services:
         max-file: "3"
 
 
+  control:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: ["/control"]
+    network_mode: "${NET_MODE:-host}"
+    profiles:
+      - single_vps
+      - ingest_only
+      - network_operator
+    env_file:
+      - .env
+    environment:
+      - MANAGEMENT_PORT=8188
+      - SETTLEMENT_SERVER_PORT=51053
+      - AUTH_SERVER_PORT=51051
+      - AUTH_SERVER_HOST=127.0.0.1
+      - BILLING_SERVER_HOST=127.0.0.1
+      - BILLING_SERVER_PORT=51054
+      - PAYMENT_SERVER_HOST=127.0.0.1
+      - PAYMENT_SERVER_PORT=51052
+      - NOTIFIER_SERVER_HOST=127.0.0.1
+      - NOTIFIER_PORT=8085
+      - PAYMENT_WEBHOOK_PORT=8187
+      - DB_DSN=${DB_DSN}
+      - PAYMENT_DB_DSN=${PAYMENT_DB_DSN}
+      - REDIS_ADDRS=127.0.0.1:6479
+      - CONTROL_ENABLE_AUTH=1
+      - CONTROL_ENABLE_MANAGEMENT=1
+      - CONTROL_ENABLE_PAYMENT=${CONTROL_ENABLE_PAYMENT:-1}
+      - CONTROL_ENABLE_BILLING=${CONTROL_ENABLE_BILLING:-1}
+      - CONTROL_ENABLE_NOTIFIER=${CONTROL_ENABLE_NOTIFIER:-1}
+      - CONTROL_ENABLE_MARGIN_GUARD=${CONTROL_ENABLE_MARGIN_GUARD:-1}
+      - CONTROL_ENABLE_COST_SYNC=${CONTROL_ENABLE_COST_SYNC:-1}
+      - MULTI_REGION_ENABLED=${MULTI_REGION_ENABLED:-0}
+      - ESPX_REGION_CODE=${ESPX_REGION_CODE:-0}
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+    healthcheck:
+      test: ["CMD", "/control", "--health-probe", "http://127.0.0.1:8188/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+      redis-0:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+
   management:
     build:
       context: .
@@ -464,6 +525,7 @@ services:
     entrypoint: ["/management"]
     network_mode: "${NET_MODE:-host}"
     profiles:
+      - split_control
       - resilience
       - fraud-scorer
     env_file:
@@ -495,8 +557,6 @@ services:
           memory: 768M
     restart: always
     depends_on:
-      auth:
-        condition: service_started
       db:
         condition: service_healthy
       redis-0:
@@ -515,6 +575,7 @@ services:
     entrypoint: ["/notifier"]
     network_mode: "${NET_MODE:-host}"
     profiles:
+      - split_control
       - resilience
     env_file:
       - .env
@@ -546,6 +607,8 @@ services:
     entrypoint: ["/ivt-detector"]
     network_mode: "${NET_MODE:-host}"
     profiles:
+      - analytics_ml
+      - split_control
       - resilience
     env_file:
       - .env
@@ -565,8 +628,6 @@ services:
         condition: service_healthy
       clickhouse:
         condition: service_healthy
-      management:
-        condition: service_started
     logging:
       driver: "json-file"
       options:
@@ -580,6 +641,7 @@ services:
     entrypoint: ["/fraud-scorer"]
     network_mode: "${NET_MODE:-host}"
     profiles:
+      - analytics_ml
       - fraud-scorer
     env_file:
       - .env
@@ -602,8 +664,6 @@ services:
         condition: service_healthy
       clickhouse:
         condition: service_healthy
-      management:
-        condition: service_started
     logging:
       driver: "json-file"
       options:
@@ -618,6 +678,7 @@ services:
     entrypoint: ["/payment"]
     network_mode: "${NET_MODE:-host}"
     profiles:
+      - split_control
       - resilience
       - crypto
     env_file:
@@ -639,8 +700,6 @@ services:
     depends_on:
       db-payment:
         condition: service_healthy
-      management:
-        condition: service_started
     logging:
       driver: "json-file"
       options:
@@ -655,6 +714,7 @@ services:
     entrypoint: ["/billing"]
     network_mode: "${NET_MODE:-host}"
     profiles:
+      - split_control
       - resilience
     env_file:
       - .env

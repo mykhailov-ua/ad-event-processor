@@ -170,6 +170,15 @@ type Config struct {
 		LowBalanceThresholdMicro    int64
 		LowBalanceAlertEnabled      bool
 	}
+	Control struct {
+		EnableAuth        bool
+		EnableManagement  bool
+		EnablePayment     bool
+		EnableBilling     bool
+		EnableNotifier    bool
+		EnableMarginGuard bool
+		EnableCostSync    bool
+	}
 	CampaignUpdateChannel   string
 	RtbCatalogReloadChannel string
 
@@ -894,6 +903,14 @@ func Load() (*Config, error) {
 	cfg.Management.AdminFanoutMaxConcurrency = getEnvInt("ADMIN_FANOUT_MAX_CONCURRENCY", 8)
 	cfg.Management.LowBalanceThresholdMicro = int64(getEnvInt("LOW_BALANCE_THRESHOLD_MICRO", 5_000_000))
 	cfg.Management.LowBalanceAlertEnabled = getEnvBool("LOW_BALANCE_ALERT_ENABLED", true)
+
+	cfg.Control.EnableAuth = getEnvBool("CONTROL_ENABLE_AUTH", true)
+	cfg.Control.EnableManagement = getEnvBool("CONTROL_ENABLE_MANAGEMENT", true)
+	cfg.Control.EnablePayment = getEnvBool("CONTROL_ENABLE_PAYMENT", true)
+	cfg.Control.EnableBilling = getEnvBool("CONTROL_ENABLE_BILLING", true)
+	cfg.Control.EnableNotifier = getEnvBool("CONTROL_ENABLE_NOTIFIER", true)
+	cfg.Control.EnableMarginGuard = getEnvBool("CONTROL_ENABLE_MARGIN_GUARD", true)
+	cfg.Control.EnableCostSync = getEnvBool("CONTROL_ENABLE_COST_SYNC", true)
 
 	cfg.GeoIP.DBPath = os.Getenv("GEOIP_DB_PATH")
 	if cfg.GeoIP.DBPath == "" {

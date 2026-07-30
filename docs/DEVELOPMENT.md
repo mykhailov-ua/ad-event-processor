@@ -328,8 +328,38 @@ Full list: `.env.example`.
 | `LOCAL_QUOTA_MODE` | `live` for local quanta |
 | `ELASTIC_SHARDING_ENABLED` | `false` steady-state default |
 | `CONTROL_FAIL_OPEN` | `0` (default): edge uses conservative routing when control epochs are stale — equal tracker weights, drain frozen. Set `1` for AWS GA-style fail-open (keep last epoch weights). Edge only; see [MULTI_REGION.md](./MULTI_REGION.md) H4. |
+| `CONTROL_ENABLE_*` | Modular monolith (`cmd/control`): set `0` to disable auth, management, payment, billing, notifier, margin-guard, or cost-sync in-process. See `.env.example`. |
 | `NODE_WARMUP_SEC` | Tracker/management warmup before `/ready` and scorer drain (default `300`) |
 | `NODE_WEIGHTS_SYNC_INTERVAL_SEC` | Edge poll interval for `/ops/node-weights` (default `10`) |
+
+---
+
+## Compose deploy profiles (GAP-HYG-28)
+
+Local stacks use compose profiles; see [SELF_HOSTED.md § Deploy profiles](./SELF_HOSTED.md#deploy-profiles).
+
+```bash
+scripts/dev/stack.sh single-vps      # tracker + processor + control
+scripts/dev/stack.sh ingest-only     # control without payment/billing
+scripts/dev/stack.sh network-operator
+scripts/dev/stack.sh analytics-ml    # + fraud-scorer, ivt-detector
+scripts/dev/stack.sh full            # legacy split_control containers
+```
+
+`ingest_only` smoke: payment/billing containers absent; `control` and `tracker` healthy.
+
+```bash
+docker compose --profile ingest_only config --services | rg '^(payment|billing)$' && exit 1 || true
+docker compose --profile ingest_only up -d
+curl -sf http://127.0.0.1:8188/health && curl -sf http://127.0.0.1:8181/health
+```
+
+`network_operator` smoke: payment gRPC inside control (port 51052).
+
+```bash
+docker compose --profile network_operator up -d
+curl -sf http://127.0.0.1:8188/health
+```
 
 ---
 
@@ -360,11 +390,13 @@ curl -s http://127.0.0.1:8084/health
 
 ### Env matrix: global vs regional cell
 
-| Cell | `MULTI_REGION_ENABLED` | `ESPX_REGION_CODE` | Key variables |
-| :--- | :---: | :---: | :--- |
-| Global management | `1` | `0` | `GLOBAL_SPEND_BATCH_MIN`, `GLOBAL_SPEND_FLUSH_INTERVAL_MS`, `GLOBAL_SPEND_MAX_CONCURRENCY` |
-| Regional processor | `1` | `>0` | `REGION_PROXY_ADDR`, `REGION_PROXY_REDIS_URL` |
-| Region-proxy | n/a | `>0` | `GLOBAL_INGEST_URL`, `GLOBAL_INGEST_API_KEY` (defaults to `ADMIN_API_KEY`) |
+| Cell | `MULTI_REGION_ENABLED` | `ESPX_REGION_CODE` | Required services | Key variables |
+| :--- | :---: | :---: | :--- | :--- |
+| Single VPS (default) | `0` | `0` | `control`, `tracker`, `processor` | `CONTROL_ENABLE_*` per profile |
+| Ingest-only | `0` | `0` | `control` (no payment), `tracker`, `processor` | `CONTROL_ENABLE_PAYMENT=0`, … |
+| Global management | `1` | `0` | `control` or `management` + `auth`; no regional processor spend | `GLOBAL_SPEND_BATCH_MIN`, `GLOBAL_SPEND_FLUSH_INTERVAL_MS`, `GLOBAL_SPEND_MAX_CONCURRENCY` |
+| Regional processor | `1` | `>0` | `processor` only (no control on regional cell) | `REGION_PROXY_ADDR`, `REGION_PROXY_REDIS_URL` |
+| Region-proxy | n/a | `>0` | `region-proxy` uplink to global | `GLOBAL_INGEST_URL`, `GLOBAL_INGEST_API_KEY` (defaults to `ADMIN_API_KEY`) |
 
 Example regional processor with proxy:
 
@@ -377,7 +409,7 @@ docker compose --profile multi-region up -d region-proxy
 Example global management cell:
 
 ```bash
-MULTI_REGION_ENABLED=1 ESPX_REGION_CODE=0 docker compose up -d management
+MULTI_REGION_ENABLED=1 ESPX_REGION_CODE=0 docker compose --profile single_vps up -d control
 ```
 
 ### Ports

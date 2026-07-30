@@ -73,9 +73,18 @@ Hot path reads the merged snapshot via `Registry.SyncEntitlements`. Vendor caps 
 
 ## Administrative microservices (re-profiled, not removed)
 
-Services stay separate for blast radius and optional compose profiles. Semantics are **operator treasury and admin**, not vendor SaaS.
+Services stay separate **binaries** for blast radius and the legacy `split_control` compose profile. On a single VPS, run **`cmd/control`** — one process that embeds management, auth, payment, billing, and notifier with env-gated components (`CONTROL_ENABLE_*`).
 
-### `cmd/management` — operator control plane
+Cold-path workers (margin-guard, cost-sync, volume meter, recon, ledger invariant) run **only** in control/management — never in tracker replicas.
+
+### `cmd/control` — modular monolith (recommended for single VPS)
+
+- Compose profiles: `single_vps`, `ingest_only`, `network_operator`.
+- `scripts/dev/stack.sh single-vps` — tracker + processor + control.
+- `ingest_only` disables payment/billing/notifier and margin-guard/cost-sync via `CONTROL_ENABLE_*=0`.
+- Health: `http://127.0.0.1:8188/health` (management HTTP inside control).
+
+### `cmd/management` — operator control plane (split deploy)
 
 - Campaign CRUD, outbox, settlement gRPC, recon, workers.
 - `/api/v1/*` JSON API (+ `internal/adminapi` when wired).
@@ -229,13 +238,19 @@ See [LICENSE_COMMERCE.md](./LICENSE_COMMERCE.md) (vendor-side SKU constructor). 
 
 ### Deploy profiles
 
-| Profile | Binaries | Audience |
-| :--- | :--- | :--- |
-| `ingest_only` | tracker, processor (PG), management, auth | Arbitrage / buy-side |
-| `network_operator` | + payment, billing, notifier | Ad network with wallet |
-| `analytics_ml` | + ClickHouse, ivt-detector, fraud-scorer | Optional; ML cold path needs CH |
+Compose profiles gate which containers start. Use `scripts/dev/stack.sh` or `docker compose --profile <name>`.
 
-ClickHouse optional for ingest-only when licensed ML modules are off (GAP-PROD-05).
+| Profile | Command | Binaries / services | Audience |
+| :--- | :--- | :--- | :--- |
+| `single_vps` | `stack.sh single-vps` | `tracker`, `processor`, `control` (all cold path in one process) | Default bare-metal / 1–2 CPU |
+| `ingest_only` | `stack.sh ingest-only` | Same; `CONTROL_ENABLE_PAYMENT/BILLING/NOTIFIER/MARGIN_GUARD/COST_SYNC=0` | Arbitrage / buy-side |
+| `network_operator` | `stack.sh network-operator` | `control` with payment + billing + notifier enabled | Ad network with wallet |
+| `analytics_ml` | `stack.sh analytics-ml` | + `fraud-scorer`, `ivt-detector` (ClickHouse required) | Optional ML cold path |
+| `split_control` | `stack.sh full` | Separate `auth`, `management`, `payment`, `billing`, `notifier` containers | Legacy / multi-container dev |
+
+ClickHouse stays in the default infra profile (processor analytics); optional for ingest-only when ML modules are off (GAP-PROD-05).
+
+CI validates profile wiring: `scripts/ci/compose_profile_check.sh`.
 
 ---
 
