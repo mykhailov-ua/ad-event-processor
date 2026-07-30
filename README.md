@@ -288,8 +288,12 @@ Administrative traffic does not share the tracker event loop. Mutations that aff
 | Prefix | Audience | Examples |
 | :--- | :--- | :--- |
 | `/api/v1/*` | Operators, automation | Campaign stats, balance, recon, billing, ops |
-| `/api/v1/selfserve/*` | Tenant API keys | Create/pause/resume campaigns, payment intents, invoices |
-| `/admin/*` | Legacy HTMX UI | Mirrored under `/api/v1` where applicable |
+| `/api/v1/selfserve/*` | Advertiser API keys | Create/pause/resume campaigns, payment intents, invoices |
+| `/admin/*` | **Deprecated** legacy HTMX | Use JSON `/api/v1` only; removal [GAP-HYG-04](.cursor/BACKLOG.md) |
+
+Self-hosted UI policy: [docs/SELF_HOSTED.md](docs/SELF_HOSTED.md#ui-no-server-side-htmx). No server-side HTMX SSR required for production installs.
+
+Protection (license, operator data, egress trust): [docs/PROTECTION.md](docs/PROTECTION.md).
 
 RBAC permissions gate routes (`campaigns:read`, `customers:write`, `shards:read`, `audit:read`, etc.). Contracts are godoc on handlers and DTOs in `internal/adminapi`, not OpenAPI.
 
@@ -341,7 +345,7 @@ Additional operator APIs: postback config/DLQ (`/api/v1/postbacks/*`), cost-sync
 | `ScheduleWorker` | Time-based activate/pause |
 | `CampaignDrainWorker` | Finalize cancelled campaigns |
 | `ShardOrchestrator` | Capacity EWMA → hot-campaign micro-migration (opt-in) |
-| `VolumeMeterWorker` | Events/month metering for licensing |
+| `VolumeMeterWorker` | Operator events/month metering (target: PG rollup; CH path deprecated) |
 | `LedgerInvariantWorker` | Ledger drift scan |
 | `ivt-detector` / `fraud-scorer` | CH batch → outbox → Redis blacklists and ML snapshots |
 

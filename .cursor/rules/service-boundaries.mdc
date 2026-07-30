@@ -28,7 +28,7 @@ Control-plane binaries
 
 `cmd/management`: Admin HTTP, settlement gRPC, outbox/recon/pacing workers — :8188, :51053
 `cmd/auth`: Auth gRPC — :51051
-`cmd/payment`: Payment gRPC, Stripe webhooks, HTMX checkout — :51052, :8187
+`cmd/payment`: Payment gRPC, Stripe webhooks, optional legacy HTMX checkout (deprecated) — :51052, :8187
 `cmd/billing`: Invoice gRPC — :51054
 `cmd/notifier`: Notification gRPC + delivery worker — :8085
 `cmd/ivt-detector`: ClickHouse batch analyzer -> management blacklist API — batch job

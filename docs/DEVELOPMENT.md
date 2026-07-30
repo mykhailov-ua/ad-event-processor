@@ -538,6 +538,7 @@ The technology milestone backlog lives in [MILESTONE.md](./MILESTONE.md). Recent
 | GAP-RTB-10 | VAST 4.2 + creative-level auction (0-alloc hot path) | `internal/rtb/`, `make test-alloc-gate` |
 | GAP-MR-03 | Operation quorum when Postgres is down (2-of-3 Redis ACK) | `operation_lease_quorum_redis.go`, `TestChaos_QuorumBook_WithPGDown` |
 | GAP-DATA-01 | PII hashing before ClickHouse insert (versioned salt) | `pkg/piihash/`, migration `00010_pii_hash_columns.sql` |
+| GAP-DATA-02 | PG events retention, production TLS profile, operator MVSS checklist | [runbooks/DATA_SECURITY.md](./runbooks/DATA_SECURITY.md) |
 | GAP-DB-01/02 | Disk group-commit, `iogate` `fsyncSem`, WAL alignment, BPF `writev` | [GAP-DB-01-02-report.md](./GAP-DB-01-02-report.md) |
 | GAP-ENG-01 | `internal/management` domain registry, DTO boundaries, coverage gate | [GAP-ENG-01-report.md](./GAP-ENG-01-report.md), `make management-domain-coverage` |
 | GAP-OPS-03 | ClickHouse query governance (`CHQuery` gate, timeout, CI allowlist) | `internal/database/chquery.go`, `scripts/ci/check_ch_direct.sh` |
@@ -557,9 +558,9 @@ Engineering backlog in [MILESTONE.md](./MILESTONE.md) is clear except deferred U
 
 ## Open backlog
 
-Engineering gaps (non-UI): [MILESTONE.md](./MILESTONE.md).
+Engineering gaps (non-UI): [.cursor/GAP_SPECS.md](../.cursor/GAP_SPECS.md) (canonical DoD, SLA, SQL, patterns, fault tests). Summary index: [.cursor/BACKLOG.md](../.cursor/BACKLOG.md).
 
-Deferred UI work (not in MILESTONE): GAP-PROD-01 buyer/finance dashboards, GAP-OPS-04 queue monitoring dashboard. HTMX remains for admin errors and cold-path flows only.
+Deferred UI work (not in GAP_SPECS): GAP-PROD-01 buyer/finance dashboards, GAP-OPS-04 queue monitoring dashboard. Self-hosted installs use JSON `/api/v1` only; legacy HTMX (`/admin/*`, payment HTML fragments) is deprecated — see [SELF_HOSTED.md](./SELF_HOSTED.md#ui-no-server-side-htmx). Removal tracked as GAP-HYG-04.
 
 ---
 

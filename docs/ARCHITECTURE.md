@@ -4,6 +4,9 @@ Platform topology, data stores, request flow, control plane, and SLA contracts.
 
 eSPX ingests ad events on `/track`, applies filters and atomic budget rules, and enqueues settlement. PostgreSQL holds financial truth; Redis holds hot state; ClickHouse holds telemetry.
 
+**Product model:** self-hosted binaries on customer bare metal; deployment license (vendor) is separate from operator wallet and advertiser billing. See [SELF_HOSTED.md](./SELF_HOSTED.md).  
+**Protection (license, data, trust):** [PROTECTION.md](./PROTECTION.md).
+
 | Path | p99 budget | Packages | Persistence |
 | :--- | :--- | :--- | :--- |
 | Hot | `/track` < 80 ms | `internal/ingestion`, `internal/rtb` | Redis Lua, streams |
@@ -193,22 +196,27 @@ Cold-path `management` binary: HTTP admin, gRPC settlement, workers. Hot path (`
 
 Mutation rule: config affecting hot path runs in one PostgreSQL transaction plus `outbox_events`. Direct HTTP writes to Redis are forbidden.
 
-Route prefixes: `/admin/*`, `/api/v1/*`, `/api/v1/selfserve/*`.
+Route prefixes: `/api/v1/*`, `/api/v1/selfserve/*` (advertiser API). `/admin/*` is **legacy HTMX** — deprecated for self-hosted; use JSON API only ([SELF_HOSTED.md — UI](./SELF_HOSTED.md#ui-no-server-side-htmx)).
 
 Workers (sample): `OutboxWorker`, `ReconWorker`, `SyncWorker` x4, `PacingControllerWorker`, `ScheduleWorker`, `LedgerInvariantWorker`.
 
 gRPC peers: `auth`, `payment`, `billing`, `notifier`. `processor` writes PG events and CH batches.
 
-JSON API: `internal/management/handler_api.go`, `handler_*.go`, and `internal/adminapi/` (reporting scaffolds). Contracts are godoc on handlers and DTOs, not OpenAPI.
+JSON API: `internal/management/handler_api.go`, `handler_*.go`, and `internal/adminapi/` (reporting scaffolds). Contracts: `docs/openapi/openapi.yaml` plus handler godoc.
 
-Entitlements: product license JWT + tenant subscription merged in `internal/licensing/`:
+### Entitlements (three layers)
+
+See [SELF_HOSTED.md](./SELF_HOSTED.md) for Layer V (vendor license) vs Layer O (operator) vs Layer A (advertisers).
 
 ```text
-effective_limit = min(license.limits[X], subscription.limits[X])
-effective_feature = license.features[X] AND subscription.features[X]
+deployment_license  ← license.jwt / billing.license_status (vendor caps, features)
+advertiser_plan     ← billing.customer_subscriptions (operator tiers)
+
+effective_limit   = min(deployment_license.limits[X], advertiser_plan.limits[X])
+effective_feature = deployment_license.features[X] AND advertiser_plan.features[X]
 ```
 
-Ingress quotas: RPS (UDP epoch), RPD (calendar day, HTTP 429), events/month (`usage_meters`).
+Ingress quotas: RPS (UDP epoch), RPD (calendar day, HTTP 429), events/month (operator `usage_meters` from PG — not ClickHouse, not vendor billing).
 
 ---
 
@@ -257,7 +265,7 @@ Runbooks: [DEVELOPMENT.md](./DEVELOPMENT.md).
 
 Blacklist mutations: PG txn + `admin_audit_log` + outbox `UPDATE_BLACKLIST`. eBPF map updates only via Redis sync path, not direct kernel writes from management.
 
-PII in ClickHouse: rolling hash for `ip_hash` / `ua_hash`; phase out raw `ip_address` retention.
+PII in ClickHouse: rolling hash for `ip_hash` / `ua_hash`; phase out raw `ip_address` retention. Operator hardening (at-rest, TLS, secrets): [runbooks/DATA_SECURITY.md](./runbooks/DATA_SECURITY.md).
 
 ---
 

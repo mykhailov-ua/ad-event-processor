@@ -8,9 +8,14 @@ Agent: Use this to choose between human-facing docs and `.cursor/rules/*.mdc`.
 Capabilities map
 
 System behavior, SLAs, topology: `docs/ARCHITECTURE.md`
+Self-hosted product model (license, operator billing, UI): `docs/SELF_HOSTED.md`
+Protection (vendor IP, operator data, trust): `docs/PROTECTION.md`
+Telemetry, trust, opt-in intel: `docs/TELEMETRY_AND_TRUST.md`
+Data security on self-hosted: `docs/runbooks/DATA_SECURITY.md`
 Local dev, CI, load tests, env: `docs/DEVELOPMENT.md`
 Multi-region design: `docs/MULTI_REGION.md`
-Open backlog: `docs/MILESTONE.md`
+Open backlog (summary): `.cursor/BACKLOG.md`
+GAP acceptance criteria (DoD, SLA, SQL, tests): `.cursor/GAP_SPECS.md`
 Engineering rules for the agent: `.cursor/rules/guidelines-index.mdc` + scoped `*.mdc`
 
 Do not duplicate agent rules into `docs/` — maintain `.cursor/rules/` only.

@@ -5,7 +5,7 @@ alwaysApply: true
 
 eSPX
 
-High-requests-per-second Advertising Technology tracker and billing. Stateless ingestion (gnet), Redis-backed filters, async settlement to Postgres and ClickHouse, HTMX admin in management.
+High-requests-per-second Advertising Technology tracker and billing. Stateless ingestion (gnet), Redis-backed filters, async settlement to Postgres and ClickHouse, JSON admin API in management (legacy HTMX deprecated for self-hosted).
 
 Services: tracker, processor, management, auth, payment, billing, notifier (gRPC/Hypertext Transfer Protocol), Invalid Traffic detector (ivt-detector), fraud-scorer (cold path), edge Nginx/OpenResty Lua. Binaries under cmd/.
 
@@ -31,7 +31,7 @@ Stack
 
 Hot path: Go 1.25+, gnet/v2, pgx/v5 + sqlc, ClickHouse, 4 standalone Redis masters (production; StaticSlotSharder, not Cluster), embedded Lua, vtproto (`make proto`), MaxMind, Prometheus.
 
-Cold path: stdlib net/http, HTMX, gRPC (auth, payment, settlement, billing, notifier). Fraud scoring in `internal/fraudscoring` + `cmd/fraud-scorer` only - tracker must not import it.
+Cold path: stdlib net/http, JSON `/api/v1`, gRPC (auth, payment, settlement, billing, notifier). Legacy HTMX fragments deprecated — see `docs/SELF_HOSTED.md`. Fraud scoring in `internal/fraudscoring` + `cmd/fraud-scorer` only - tracker must not import it.
 
 Layout
 

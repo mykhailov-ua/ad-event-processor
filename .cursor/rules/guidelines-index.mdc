@@ -5,7 +5,9 @@ alwaysApply: true
 
 eSPX agent rules index
 
-Client docs (humans): `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, `docs/MULTI_REGION.md`, `docs/MILESTONE.md`.
+Client docs (humans): `docs/ARCHITECTURE.md`, `docs/SELF_HOSTED.md`, `docs/PROTECTION.md`, `docs/LICENSE_COMMERCE.md`, `docs/TELEMETRY_AND_TRUST.md`, `docs/DEVELOPMENT.md`, `docs/MULTI_REGION.md`, `docs/runbooks/`, `docs/MILESTONE.md`.
+
+Agent backlog specs: `.cursor/GAP_SPECS.md` (DoD, SLA, SQL, patterns, fault tests per gap). Index only: `.cursor/BACKLOG.md`.
 
 Agent rules: `.cursor/rules/*.mdc` — follow scoped rules whose `globs` match files you edit.
 
@@ -20,7 +22,7 @@ Agent rules: `.cursor/rules/*.mdc` — follow scoped rules whose `globs` match f
 `compliance.mdc`: Defensive perimeter, XDP policy
 `chaos.mdc`: Fault injection, chaos tests
 `service-boundaries.mdc`: cmd/* imports and ownership
-`open-gaps.mdc`: Routes to `docs/MILESTONE.md` backlog
+`open-gaps.mdc`: Routes to `.cursor/GAP_SPECS.md` backlog
 `capabilities.mdc`: Routing to client vs agent docs
 
 Precedence: `espx.mdc` SLA and alloc rules on `/track`; `code-style.mdc` on structure; `service-boundaries.mdc` on imports; `load-test-bpf.mdc` before claiming perf improvements.

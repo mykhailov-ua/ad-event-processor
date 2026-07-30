@@ -68,6 +68,8 @@ Maps defensive-perimeter controls from `.cursor/rules/compliance.mdc` to impleme
 | Control ID | Description | Implementation | Test / proof |
 | :--- | :--- | :--- | :--- |
 | CMP-PII-01 | PII hashed before ClickHouse insert | `pkg/piihash/`, `internal/ingestion/clickhouse_store.go` | `internal/ingestion/clickhouse_pii_test.go` |
+
+Operator data security runbook (at-rest, TLS, secrets, retention): [runbooks/DATA_SECURITY.md](./runbooks/DATA_SECURITY.md).
 | CMP-TELEM-01 | Vendor telemetry opt-in (`VENDOR_TELEMETRY_ENABLED`) | `pkg/vendorprobe/`, `internal/management/vendor_telemetry.go` | `pkg/vendorprobe/probe_test.go` |
 
 ---

@@ -18,7 +18,7 @@ Cold-path control plane: HTTP admin, gRPC settlement, background workers, licens
 
 Administrative traffic does not share the tracker event loop. Reporting and mutations use PostgreSQL as system of record; Redis receives config via outbox only.
 
-Clients (operator HTMX, external JSON, self-serve API) -> management HTTP -> adminapi / workers / settlement gRPC -> PG, Redis. gRPC to billing, payment, auth, notifier. Tracker -> streams -> processor -> PG, CH.
+Clients (operator JSON API, self-serve API) -> management HTTP -> adminapi / workers / settlement gRPC -> PG, Redis. gRPC to billing, payment, auth, notifier. Tracker -> streams -> processor -> PG, CH. Self-hosted layers: `docs/SELF_HOSTED.md`.
 
 1.1 Binaries
 

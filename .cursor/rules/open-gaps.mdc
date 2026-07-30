@@ -1,14 +1,16 @@
 ---
-description: Open backlog routing — see docs/MILESTONE.md for active engineering gaps
+description: Open backlog routing — canonical specs in .cursor/GAP_SPECS.md
 alwaysApply: false
 ---
 
-Agent: Before planning RTB, operations, payments, or compliance work, read `docs/MILESTONE.md`.
+Agent: before planning implementation work, read `.cursor/GAP_SPECS.md` for the relevant `GAP-*` DoD.
 
-Active backlog: `docs/MILESTONE.md` (non-UI engineering gaps only).
+Index (P-table, CI map, PR slices): `.cursor/BACKLOG.md`.
 
 Closed items: `docs/DEVELOPMENT.md` (Completed roadmap).
 
-UI dashboards (GAP-PROD-01, GAP-OPS-04) are deferred and not listed in MILESTONE.
+Architecture rationale (not backlog): `.cursor/RESTRUCTURE_PLAN.md`.
 
-Chaos catalog: `.cursor/rules/chaos.mdc`.
+Fault/resilience catalog: `.cursor/rules/chaos.mdc`.
+
+Do not use `docs/MILESTONE.md` for open work — it is historical; `GAP_SPECS.md` is canonical.

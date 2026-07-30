@@ -349,7 +349,31 @@ repeated protobuf bytes: 4 allocs/field — `extra_bytes` or `appendReuseBytes` 
 
 R9. Comments
 
+**Default policy (R9.3): no comments in implementation code.** Self-documenting names replace narration. The only permitted comment forms are compiler/tool directives.
+
 Comments record constraints the code cannot express: invariants, failure modes, trust boundaries, performance budgets. They do not narrate control flow, duplicate identifiers, or market the design.
+
+R9.3. Zero comments and no backlog metadata in source
+
+Forbidden in all hand-written Go, Lua, and SQL under `internal/`, `cmd/`, `pkg/`, `tests/`:
+
+1. **Any comment or godoc** except:
+   - `//go:` directives (`//go:embed`, `//go:noinline`, `//go:build`, …)
+   - `//nolint:<linter>` with a one-line reason (ASCII only)
+2. **Backlog and planning tokens** anywhere in comments or godoc:
+   - Gap IDs: `GAP-HYG-30`, `GAP-PROD-11`, any `GAP-<AREA>-<NN>`
+   - Priority labels: `P01` … `P99`
+   - Milestone tags: `M1`, `M5.6`, `M14-01`, `MR-03`, etc.
+   - Words: `milestone`, `chaos` (use `fault` / `resilience` in identifiers and test names)
+3. **Cross-references to planning docs** from code (`MILESTONE.md`, `GAP_SPECS.md`, scenario catalogs). Link in markdown only.
+
+Allowed outside comments: `fault_proof fault=<name>` as a **test log line** (stdout/stderr), not in a `//` comment.
+
+CI (`scripts/ci/check_comments`):
+- Always fails on backlog metadata in comments (GAP, P##, M*, milestone, chaos).
+- With `STRICT_NO_COMMENTS=1`, fails on any comment that is not `//go:` or `//nolint:`.
+
+Gap IDs and `P##` order live in `.cursor/GAP_SPECS.md` and `.cursor/BACKLOG.md` only.
 
 Tone
 
@@ -388,7 +412,7 @@ Invariant: Financial, idempotency, or sharding rule not visible from types (`cur
 Performance: Hot path budget or allocation rule (`one EVALSHA per event`, BCE hint).
 Failure mode: Error path changes durable state or retry semantics (outbox returns to `PENDING`).
 Topology: Shard-0-only, fail-open vs fail-closed, or cross-service trust boundary.
-External spec: Implements a named runbook, chaos scenario, or doc section (cite `docs/DEVELOPMENT.md section N`).
+External spec: Implements a named runbook section (cite `docs/DEVELOPMENT.md section N` in **markdown only**, not in code comments).
 Compiler: `//go:noinline`, `//nolint:` with reason, BCE boundary comment.
 Test: Scenario and expected invariant are not obvious from the test name alone (R9.2).
 
@@ -435,6 +459,8 @@ Mandatory Checks (fail on match in diff / in `internal/`, `pkg/`, `cmd/`, `tests
 2. Emoji - Unicode emojis in comments.
 3. Tier-1 banned words (case-insensitive): tone list in R9 plus AI slop tier 1 (`leverage`, `delve`, `seamless`, `moreover`, `furthermore`, `additionally`, `holistic`, `navigate`, `testament`, `harness`, `effortlessly`, `notably`, `essentially`, `basically`, and tone words `simple`, `elegant`, `clean`, `obviously`, `just`, `simply`, `nice`, `obvious`, `trivial`, `minimal`).
 4. Unicode Dashes and Section Signs - `-`, `-`, `Sec.` in comments (use `-` and `section N`).
+5. Backlog metadata (R9.3) - `GAP-<AREA>-<NN>`, `P##` priority, `M*` milestone tags, words `milestone` or `chaos` in comments.
+6. With `STRICT_NO_COMMENTS=1` - any comment that is not a `//go:` or `//nolint:` directive.
 
 ```bash
 # scripts/ci/check_comments.sh (sketch)

@@ -12,12 +12,18 @@ import (
 )
 
 var (
-	bannedWord  = regexp.MustCompile(`(?i)\b(simple|elegant|clean|obviously|just|simply|nice|obvious|trivial|minimal|leverage|delve|seamless|seamlessly|moreover|furthermore|additionally|holistic|navigate|testament|harness|effortlessly|notably|essentially|basically)\b`)
-	unicodeDash = regexp.MustCompile(`[—–]`)
+	bannedWord       = regexp.MustCompile(`(?i)\b(simple|elegant|clean|obviously|just|simply|nice|obvious|trivial|minimal|leverage|delve|seamless|seamlessly|moreover|furthermore|additionally|holistic|navigate|testament|harness|effortlessly|notably|essentially|basically)\b`)
+	unicodeDash      = regexp.MustCompile(`[—–]`)
+	gapID            = regexp.MustCompile(`(?i)\bGAP-[A-Z]+-\d+\b`)
+	priorityLabel    = regexp.MustCompile(`\bP\d{2}\b`)
+	milestoneTag     = regexp.MustCompile(`\bM\d+([-.][0-9A-Za-z]+)?\b`)
+	milestoneWord    = regexp.MustCompile(`(?i)\bmilestone\b`)
+	chaosWord        = regexp.MustCompile(`(?i)\bchaos\b`)
+	strictNoComments = os.Getenv("STRICT_NO_COMMENTS") == "1"
 )
 
 func main() {
-	roots := []string{"internal", "pkg", "cmd"}
+	roots := []string{"internal", "pkg", "cmd", "tests"}
 	var failed bool
 
 	for _, root := range roots {
@@ -35,7 +41,7 @@ func main() {
 				}
 				return nil
 			}
-			if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			if !strings.HasSuffix(path, ".go") {
 				return nil
 			}
 			for _, v := range scanFile(path) {
@@ -90,6 +96,24 @@ func commentBody(raw string) string {
 }
 
 func checkCommentText(text string) string {
+	if strictNoComments && !isAllowedDirective(text) {
+		return "comment forbidden: only //go: and //nolint: allowed (R9.3)"
+	}
+	if gapID.MatchString(text) {
+		return "GAP-* ID in comment (forbidden; use GAP_SPECS.md)"
+	}
+	if priorityLabel.MatchString(text) {
+		return "P## priority in comment (forbidden)"
+	}
+	if milestoneTag.MatchString(text) {
+		return "milestone tag (M*) in comment (forbidden)"
+	}
+	if milestoneWord.MatchString(text) {
+		return "word 'milestone' in comment (forbidden)"
+	}
+	if chaosWord.MatchString(text) {
+		return "word 'chaos' in comment (use fault/resilience naming)"
+	}
 	if bannedWord.MatchString(text) {
 		return "banned word in comment"
 	}
@@ -104,4 +128,9 @@ func checkCommentText(text string) string {
 		}
 	}
 	return ""
+}
+
+func isAllowedDirective(text string) bool {
+	t := strings.TrimSpace(text)
+	return strings.HasPrefix(t, "go:") || strings.HasPrefix(t, "nolint:")
 }
