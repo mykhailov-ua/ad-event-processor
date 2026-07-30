@@ -17,6 +17,7 @@ import (
 	"espx/internal/metrics"
 	"espx/internal/rtb"
 	"espx/pkg/logger"
+	"espx/pkg/runtimeautotune"
 
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
@@ -41,6 +42,7 @@ func main() {
 		slog.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
+	runtimeautotune.Apply(cfg)
 
 	loggerCfg := logger.Config{
 		LogDir:                cfg.Logger.Dir,

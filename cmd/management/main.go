@@ -9,6 +9,7 @@ import (
 
 	"espx/internal/config"
 	"espx/internal/management"
+	"espx/pkg/runtimeautotune"
 )
 
 func main() {
@@ -20,6 +21,7 @@ func main() {
 		slog.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
+	runtimeautotune.Apply(cfg)
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
