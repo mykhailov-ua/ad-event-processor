@@ -3,6 +3,7 @@ package management
 import (
 	"context"
 	"espx/internal/ingestion/sqlc"
+	"espx/internal/management/authz"
 	"log/slog"
 	"time"
 
@@ -14,6 +15,10 @@ import (
 )
 
 func (s *Service) AuditLog(ctx context.Context, q db.Querier, adminID uuid.UUID, action string, targetType string, targetID *uuid.UUID, changes any, metadata any) {
+	s.auditLogMasked(ctx, q, adminID, action, targetType, targetID, changes, metadata, authz.IsMaskedMutation(ctx))
+}
+
+func (s *Service) auditLogMasked(ctx context.Context, q db.Querier, adminID uuid.UUID, action string, targetType string, targetID *uuid.UUID, changes any, metadata any, isMasked bool) {
 	changesJSON, err := coldpath.MarshalJSON(changes)
 	if err != nil {
 		slog.Error("audit marshal changes failed", "error", err, "admin_id", adminID, "action", action)
@@ -41,6 +46,7 @@ func (s *Service) AuditLog(ctx context.Context, q db.Querier, adminID uuid.UUID,
 		TargetID:   tid,
 		Changes:    changesJSON,
 		Metadata:   metadataJSON,
+		IsMasked:   isMasked,
 	})
 
 	if err != nil {

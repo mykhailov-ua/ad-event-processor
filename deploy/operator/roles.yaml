@@ -1,0 +1,47 @@
+# Operator role constructor (GAP-PROD-11). Reload: POST /api/v1/ops/roles/reload
+roles:
+  A:
+    scope: global
+    permissions:
+      - customers:write
+      - customers:read
+      - campaigns:write
+      - campaigns:read
+      - brands:write
+      - brands:read
+      - settings:write
+      - settings:read
+      - blacklist:write
+      - blacklist:read
+      - audit:read
+      - users:write
+      - shards:write
+      - shards:read
+  M:
+    scope: customer
+    permissions:
+      - customers:write
+      - customers:read
+      - campaigns:write
+      - campaigns:read
+      - brands:write
+      - brands:read
+      - audit:read
+  U:
+    scope: customer
+    permissions:
+      - campaigns:write
+      - campaigns:read
+      - customers:read
+      - brands:write
+      - brands:read
+  B:
+    scope: team
+    permissions:
+      - campaigns:read:masked
+      - campaigns:pause
+  S:
+    scope: global
+    permissions:
+      - campaigns:read:masked
+      - audit:read

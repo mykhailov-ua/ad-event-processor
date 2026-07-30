@@ -14,6 +14,7 @@ import (
 	"espx/pkg/coldpath"
 	"espx/pkg/httpresponse"
 
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc/metadata"
 )
@@ -129,6 +130,11 @@ func (h *AuthHandler) login(w http.ResponseWriter, r *http.Request) {
 		Role:        NormalizeRole(resp.User.Role),
 		CustomerID:  resp.User.CustomerId,
 		Permissions: GetPermissionsForRole(resp.User.Role),
+	}
+	if h.authMiddleware != nil && h.authMiddleware.policy != nil {
+		if uid, err := uuid.Parse(resp.User.Id); err == nil {
+			h.authMiddleware.policy.RefreshUser(uid, userDTO.Role)
+		}
 	}
 
 	httpresponse.JSON(w, http.StatusOK, map[string]any{"user": userDTO})

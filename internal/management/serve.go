@@ -81,6 +81,9 @@ func Serve(ctx context.Context, cfg *config.Config) error {
 	mgmtAuthClient := NewAuthClient(authClient)
 	authMiddleware := NewAuthMiddleware(tokenMaker, PickHealthyControlShard(rdbs), cfg, mgmtAuthClient)
 	authMiddleware.SetControlRedisShards(rdbs)
+	policyStore := InitPolicyStore()
+	authMiddleware.SetPolicyStore(policyStore)
+	authMiddleware.SetPool(pool)
 	authHandler := NewAuthHandler(authClient, tokenMaker, PickHealthyControlShard(rdbs), cfg, authMiddleware)
 
 	if cfg.UDPControlEnabled {

@@ -476,28 +476,28 @@ Policy snapshot; scrub at service boundary; scoped RBAC; audit trail.
 #### Definition of done
 
 **Schema**
-- [ ] `admin_audit_log.is_masked BOOLEAN NOT NULL DEFAULT false`
-- [ ] Permissions: `campaigns:read:masked`, `campaigns:write:masked`, `campaigns:pause`
+- [x] `admin_audit_log.is_masked BOOLEAN NOT NULL DEFAULT false`
+- [x] Permissions: `campaigns:read:masked`, `campaigns:write:masked`, `campaigns:pause`
 
 **Policy**
-- [ ] `authz/policy.go` — `EffectivePermissions(userID) → set`
-- [ ] `MaskLevel(full|masked)` from permission set
-- [ ] Snapshot refresh on login + `POST /api/v1/ops/roles/reload`
+- [x] `authz/policy.go` — `EffectivePermissions(userID) → set`
+- [x] `MaskLevel(full|masked)` from permission set
+- [x] Snapshot refresh on login + `POST /api/v1/ops/roles/reload`
 
 **DTO scrubbing**
-- [ ] `CampaignResponse.Scrub(level)` zeroes `target_url`, `creative_payload`, `referrer_filter`
-- [ ] Scrub in service layer, not handler string replace
-- [ ] Integration: buyer role → `target_url` absent
+- [x] `CampaignResponse.Scrub(level)` zeroes `target_url`, `creative_payload`, `referrer_filter`
+- [x] Scrub in service layer, not handler string replace
+- [x] Integration: buyer role → `target_url` absent
 
 **Scopes / config / audit**
-- [ ] `ScopeGlobal`, `ScopeCustomer`, `ScopeTeam`
-- [ ] `deploy/operator/roles.yaml` + reload endpoint
-- [ ] Mutations by masked roles → `is_masked=true` in audit log
+- [x] `ScopeGlobal`, `ScopeCustomer`, `ScopeTeam`
+- [x] `deploy/operator/roles.yaml` + reload endpoint
+- [x] Mutations by masked roles → `is_masked=true` in audit log
 
 **Verify**
-- [ ] Table-driven: 20 cases permission × route × field
-- [ ] `fault_proof fault=rbac_mask_enforced`
-- [ ] OpenAPI documents 403
+- [x] Table-driven: 20 cases permission × route × field
+- [x] `fault_proof fault=rbac_mask_enforced`
+- [x] OpenAPI documents 403
 
 ---
 

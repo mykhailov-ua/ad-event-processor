@@ -22,6 +22,7 @@ type AuditLogDTO struct {
 	TargetID   string          `json:"target_id,omitempty"`
 	Changes    json.RawMessage `json:"changes"`
 	Metadata   json.RawMessage `json:"metadata"`
+	IsMasked   bool            `json:"is_masked"`
 	CreatedAt  string          `json:"created_at"`
 }
 
@@ -50,6 +51,7 @@ func auditRowToDTO(row db.AdminAuditLog, redactPII bool) AuditLogDTO {
 		TargetType: row.TargetType,
 		Changes:    changes,
 		Metadata:   metadata,
+		IsMasked:   row.IsMasked,
 	}
 	if row.AdminID.Valid {
 		dto.AdminID = uuid.UUID(row.AdminID.Bytes).String()

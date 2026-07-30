@@ -2,6 +2,7 @@ package management
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -15,23 +16,26 @@ import (
 )
 
 type CampaignDTO struct {
-	ID              string   `json:"id"`
-	Name            string   `json:"name"`
-	Status          string   `json:"status"`
-	BudgetLimit     string   `json:"budget_limit"`
-	CurrentSpend    string   `json:"current_spend"`
-	CustomerID      string   `json:"customer_id"`
-	PacingMode      string   `json:"pacing_mode"`
-	DailyBudget     string   `json:"daily_budget"`
-	Timezone        string   `json:"timezone"`
-	FreqLimit       int32    `json:"freq_limit"`
-	FreqWindow      int32    `json:"freq_window"`
-	TargetCountries []string `json:"target_countries"`
-	StartAt         string   `json:"start_at,omitempty"`
-	EndAt           string   `json:"end_at,omitempty"`
-	DaypartHours    []int16  `json:"daypart_hours"`
-	CreatedAt       string   `json:"created_at"`
-	UpdatedAt       string   `json:"updated_at"`
+	ID              string          `json:"id"`
+	Name            string          `json:"name"`
+	Status          string          `json:"status"`
+	BudgetLimit     string          `json:"budget_limit"`
+	CurrentSpend    string          `json:"current_spend"`
+	CustomerID      string          `json:"customer_id"`
+	PacingMode      string          `json:"pacing_mode"`
+	DailyBudget     string          `json:"daily_budget"`
+	Timezone        string          `json:"timezone"`
+	FreqLimit       int32           `json:"freq_limit"`
+	FreqWindow      int32           `json:"freq_window"`
+	TargetCountries []string        `json:"target_countries"`
+	TargetURL       string          `json:"target_url,omitempty"`
+	CreativePayload json.RawMessage `json:"creative_payload,omitempty"`
+	ReferrerFilter  string          `json:"referrer_filter,omitempty"`
+	StartAt         string          `json:"start_at,omitempty"`
+	EndAt           string          `json:"end_at,omitempty"`
+	DaypartHours    []int16         `json:"daypart_hours"`
+	CreatedAt       string          `json:"created_at"`
+	UpdatedAt       string          `json:"updated_at"`
 }
 
 type StatusHistoryDTO struct {
@@ -77,6 +81,9 @@ func toCampaignDTO(c db.Campaign) CampaignDTO {
 		FreqLimit:       c.FreqLimit.Int32,
 		FreqWindow:      c.FreqWindow.Int32,
 		TargetCountries: countries,
+		TargetURL:       c.TargetUrl,
+		CreativePayload: json.RawMessage(c.CreativePayload),
+		ReferrerFilter:  c.ReferrerFilter,
 		StartAt:         formatOptionalTime(c.StartAt),
 		EndAt:           formatOptionalTime(c.EndAt),
 		DaypartHours:    daypartOrEmpty(c.DaypartHours),
@@ -126,7 +133,7 @@ func (s *Service) ListCampaigns(ctx context.Context, customerID uuid.UUID, statu
 	return coldpath.PaginatedList(
 		func() (int64, error) { return q.CountCampaigns(ctx, countParams) },
 		func() ([]db.Campaign, error) { return q.ListCampaigns(ctx, listParams) },
-		toCampaignDTO,
+		func(c db.Campaign) CampaignDTO { return scrubCampaignDTO(ctx, toCampaignDTO(c)) },
 	)
 }
 
@@ -136,7 +143,7 @@ func (s *Service) GetCampaignDTO(ctx context.Context, id uuid.UUID) (CampaignDTO
 	if err != nil {
 		return CampaignDTO{}, mapNotFound(err, ErrCampaignNotFound)
 	}
-	return toCampaignDTO(c), nil
+	return scrubCampaignDTO(ctx, toCampaignDTO(c)), nil
 }
 
 func (s *Service) ListStatusHistory(ctx context.Context, campaignID uuid.UUID, limit, offset int32) ([]StatusHistoryDTO, int64, error) {

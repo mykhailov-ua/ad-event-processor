@@ -6,6 +6,8 @@ const (
 	RoleAdmin   = "A"
 	RoleManager = "M"
 	RoleUser    = "U"
+	RoleBuyer   = "B"
+	RoleSupport = "S"
 )
 
 var rolePermissions = map[string][]string{
@@ -30,6 +32,12 @@ var rolePermissions = map[string][]string{
 		"customers:read",
 		"brands:write", "brands:read",
 	},
+	RoleBuyer: {
+		"campaigns:read:masked", "campaigns:pause",
+	},
+	RoleSupport: {
+		"campaigns:read:masked", "audit:read",
+	},
 }
 
 func NormalizeRole(role string) string {
@@ -40,6 +48,10 @@ func NormalizeRole(role string) string {
 		return RoleManager
 	case "CUSTOMER", "USER", "C", "U":
 		return RoleUser
+	case "BUYER", "B":
+		return RoleBuyer
+	case "SUPPORT", "S":
+		return RoleSupport
 	default:
 		return strings.ToUpper(strings.TrimSpace(role))
 	}

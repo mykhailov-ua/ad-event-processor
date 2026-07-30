@@ -79,8 +79,8 @@ SET status = 'DELETED',
 WHERE id = $1;
 
 -- name: CreateAuditLog :one
-INSERT INTO admin_audit_log (admin_id, action, target_type, target_id, changes, metadata)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO admin_audit_log (admin_id, action, target_type, target_id, changes, metadata, is_masked)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: CleanupAuditLogs :exec

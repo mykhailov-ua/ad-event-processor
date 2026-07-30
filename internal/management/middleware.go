@@ -11,9 +11,11 @@ import (
 
 	"espx/internal/auth"
 	"espx/internal/config"
+	"espx/internal/management/authz"
 	"espx/pkg/httpresponse"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -28,6 +30,7 @@ type AuthenticatedUser struct {
 	Role       string
 	CustomerID uuid.UUID
 	AuthSource string
+	Scope      authz.Scope
 }
 
 func (u AuthenticatedUser) IsUser() bool {
@@ -46,6 +49,8 @@ type AuthMiddleware struct {
 	cfg           *config.Config
 	authClient    *AuthClient
 	apiKeyLimiter *apiKeyRateLimiter
+	policy        *authz.Store
+	pool          *pgxpool.Pool
 }
 
 func NewAuthMiddleware(tokenMaker auth.Maker, rdb redis.UniversalClient, cfg *config.Config, authClient *AuthClient) *AuthMiddleware {
@@ -81,6 +86,36 @@ func (m *AuthMiddleware) controlRedis() []redis.UniversalClient {
 	return nil
 }
 
+func (m *AuthMiddleware) SetPolicyStore(store *authz.Store) {
+	m.policy = store
+}
+
+func (m *AuthMiddleware) SetPool(pool *pgxpool.Pool) {
+	m.pool = pool
+}
+
+func (m *AuthMiddleware) attachAuthz(ctx context.Context, user AuthenticatedUser) context.Context {
+	if m.policy == nil {
+		return context.WithValue(ctx, UserContextKey, user)
+	}
+	snap := m.policy.EffectivePermissionsDB(ctx, m.pool, user.UserID, user.Role)
+	if user.Scope == "" {
+		user.Scope = snap.Scope
+	}
+	if user.AuthSource == "api_key" && user.CustomerID != uuid.Nil {
+		user.Scope = authz.ScopeCustomer
+	}
+	ctx = authz.WithSnapshot(ctx, snap)
+	return context.WithValue(ctx, UserContextKey, user)
+}
+
+func (m *AuthMiddleware) checkPermission(ctx context.Context, user AuthenticatedUser, permission string) bool {
+	if snap, ok := authz.SnapshotFromContext(ctx); ok {
+		return snap.Has(permission)
+	}
+	return HasPermission(user.Role, permission)
+}
+
 func (m *AuthMiddleware) RequirePermission(permission string) func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
@@ -88,11 +123,35 @@ func (m *AuthMiddleware) RequirePermission(permission string) func(http.HandlerF
 			if !ok {
 				return
 			}
-			if !HasPermission(user.Role, permission) {
+			ctx := m.attachAuthz(r.Context(), user)
+			if !m.checkPermission(ctx, user, permission) {
 				httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "forbidden: insufficient permissions")
 				return
 			}
-			ctx := context.WithValue(r.Context(), UserContextKey, user)
+			next(w, r.WithContext(ctx))
+		}
+	}
+}
+
+func (m *AuthMiddleware) RequireAnyPermission(permissions ...string) func(http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			user, ok := m.authenticate(w, r)
+			if !ok {
+				return
+			}
+			ctx := m.attachAuthz(r.Context(), user)
+			allowed := false
+			for _, p := range permissions {
+				if m.checkPermission(ctx, user, p) {
+					allowed = true
+					break
+				}
+			}
+			if !allowed {
+				httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "forbidden: insufficient permissions")
+				return
+			}
 			next(w, r.WithContext(ctx))
 		}
 	}
@@ -106,11 +165,12 @@ func (m *AuthMiddleware) RequireSelfServe(permission string) func(http.HandlerFu
 				if !ok {
 					return
 				}
-				if !HasPermission(user.Role, permission) {
+				user.Scope = authz.ScopeCustomer
+				ctx := m.attachAuthz(r.Context(), user)
+				if !m.checkPermission(ctx, user, permission) {
 					httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "forbidden: insufficient permissions")
 					return
 				}
-				ctx := context.WithValue(r.Context(), UserContextKey, user)
 				next(w, r.WithContext(ctx))
 				return
 			}
@@ -118,11 +178,11 @@ func (m *AuthMiddleware) RequireSelfServe(permission string) func(http.HandlerFu
 			if !ok {
 				return
 			}
-			if !HasPermission(user.Role, permission) {
+			ctx := m.attachAuthz(r.Context(), user)
+			if !m.checkPermission(ctx, user, permission) {
 				httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "forbidden: insufficient permissions")
 				return
 			}
-			ctx := context.WithValue(r.Context(), UserContextKey, user)
 			next(w, r.WithContext(ctx))
 		}
 	}
@@ -146,7 +206,7 @@ func (m *AuthMiddleware) RequireAuth(allowedRoles ...string) func(http.HandlerFu
 				httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "forbidden: insufficient permissions")
 				return
 			}
-			ctx := context.WithValue(r.Context(), UserContextKey, user)
+			ctx := m.attachAuthz(r.Context(), user)
 			next(w, r.WithContext(ctx))
 		}
 	}
@@ -217,6 +277,7 @@ func (m *AuthMiddleware) authenticate(w http.ResponseWriter, r *http.Request) (A
 			Role:       RoleAdmin,
 			CustomerID: uuid.Nil,
 			AuthSource: "api_key",
+			Scope:      authz.ScopeGlobal,
 		}, true
 	}
 

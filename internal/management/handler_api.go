@@ -1,6 +1,7 @@
 package management
 
 import (
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -14,7 +15,9 @@ import (
 const maxStatsRange = 90 * 24 * time.Hour
 
 func (h *Handler) registerAPIRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("GET /api/v1/campaigns/{id}/stats", h.limit(h.perm(h.getCampaignStats, PermCampaignsRead)))
+	mux.HandleFunc("GET /api/v1/campaigns/{id}", h.limit(h.permAny(h.getCampaignAPI, PermCampaignsRead, PermCampaignsReadMasked)))
+	mux.HandleFunc("GET /api/v1/campaigns/{id}/stats", h.limit(h.permAny(h.getCampaignStats, PermCampaignsRead, PermCampaignsReadMasked)))
+	mux.HandleFunc("GET /api/v1/audit", h.limit(h.perm(h.listAuditAPI, PermAuditRead)))
 	mux.HandleFunc("GET /api/v1/customers/{id}/balance", h.limit(h.perm(h.getCustomerBalance, PermCustomersRead)))
 	mux.HandleFunc("GET /api/v1/customers/{id}/balance/export", h.limit(h.limitExportByCustomer(h.perm(h.exportCustomerBalance, PermCustomersRead))))
 	mux.HandleFunc("GET /api/v1/recon/runs", h.limit(h.perm(h.listReconRuns, PermAuditRead)))
@@ -22,6 +25,47 @@ func (h *Handler) registerAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/forecast/campaign", h.limit(h.perm(h.forecastCampaign, PermCampaignsRead)))
 	mux.HandleFunc("POST /api/v1/consent", h.limit(h.postConsent))
 	h.registerRegionIngestRoutes(mux)
+}
+
+func (h *Handler) permAny(next http.HandlerFunc, permissions ...string) http.HandlerFunc {
+	if h.authMiddleware != nil {
+		return h.authMiddleware.RequireAnyPermission(permissions...)(next)
+	}
+	return h.authFallback(next)
+}
+
+func (h *Handler) getCampaignAPI(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	campaignID, err := uuid.Parse(idStr)
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign id")
+		return
+	}
+
+	if err := h.ensureCampaignAccess(r, campaignID); err != nil {
+		writeServiceError(w, err)
+		return
+	}
+
+	campaign, err := h.svc.GetCampaignDTO(r.Context(), campaignID)
+	if err != nil {
+		writeServiceError(w, err, slog.String("campaign_id", campaignID.String()))
+		return
+	}
+
+	httpresponse.JSON(w, http.StatusOK, campaign)
+}
+
+func (h *Handler) listAuditAPI(w http.ResponseWriter, r *http.Request) {
+	limit, offset := parseAPIPagination(r)
+	redact := r.URL.Query().Get("redact_pii") == "true"
+	logs, total, err := h.svc.ListAuditLogsRedacted(r.Context(), limit, offset, redact)
+	if err != nil {
+		slog.Error("failed to list audit logs", "error", err)
+		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error")
+		return
+	}
+	coldpath.WritePaginatedJSON(w, logs, total)
 }
 
 func (h *Handler) getCampaignStats(w http.ResponseWriter, r *http.Request) {
