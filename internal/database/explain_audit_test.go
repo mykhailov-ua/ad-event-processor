@@ -125,6 +125,12 @@ SELECT * FROM outbox_events WHERE status = 'PENDING' AND event_type = 'SEND_POST
 SELECT node_id, region_code, role, score, weight, provenance, epoch_id, updated_at
 FROM node_capacity_scores WHERE region_code = $1 AND role = $2`, args: []any{int16(0), "processor"}},
 		{name: "inline.volume_meter_campaigns", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT) SELECT id, customer_id FROM campaigns`},
+		{name: "inline.volume_meter_events_accepted", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+SELECT c.customer_id, COUNT(*)::bigint
+FROM events e
+JOIN campaigns c ON c.id = e.campaign_id
+WHERE e.created_at >= $1 AND e.created_at < $2 AND e.status = 'accepted'
+GROUP BY c.customer_id`, args: []any{time.Now().UTC().Add(-time.Hour), time.Now().UTC()}},
 	}
 
 	var allFindings []ExplainFinding

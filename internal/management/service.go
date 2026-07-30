@@ -29,28 +29,29 @@ import (
 )
 
 type Service struct {
-	pool           *pgxpool.Pool
-	rdbs           []redis.UniversalClient
-	sharder        ingestion.Sharder
-	cfg            *config.Config
-	pgGate         *MgmtPgGate
-	alerter        *OpsAlerter
-	chWrite        driver.Conn
-	chQuery        *database.CHQuery
-	paymentPool    *pgxpool.Pool
-	ctx            context.Context
-	cancel         context.CancelFunc
-	wg             sync.WaitGroup
-	workerMu       sync.Mutex
-	closed         atomic.Bool
-	locCache       sync.Map
-	brokerDeltas   BrokerPendingDeltaReader
-	tcpControl     *TCPControlServer
-	nodeMetrics    *NodeMetricsWorker
-	scoringWeights *ScoringWeightsStore
-	leaseWorker    *OperationLeaseWorker
-	pgFencing      *pgfailover.FencingGate
-	globalSpend    *GlobalSpendReconciler
+	pool            *pgxpool.Pool
+	settlePoolField *pgxpool.Pool
+	rdbs            []redis.UniversalClient
+	sharder         ingestion.Sharder
+	cfg             *config.Config
+	pgGate          *MgmtPgGate
+	alerter         *OpsAlerter
+	chWrite         driver.Conn
+	chQuery         *database.CHQuery
+	paymentPool     *pgxpool.Pool
+	ctx             context.Context
+	cancel          context.CancelFunc
+	wg              sync.WaitGroup
+	workerMu        sync.Mutex
+	closed          atomic.Bool
+	locCache        sync.Map
+	brokerDeltas    BrokerPendingDeltaReader
+	tcpControl      *TCPControlServer
+	nodeMetrics     *NodeMetricsWorker
+	scoringWeights  *ScoringWeightsStore
+	leaseWorker     *OperationLeaseWorker
+	pgFencing       *pgfailover.FencingGate
+	globalSpend     *GlobalSpendReconciler
 }
 
 func (s *Service) StartBackgroundWorker(fn func()) {

@@ -98,7 +98,7 @@ var (
 		Help: "Total number of errors during automated reconciliation corrections",
 	})
 	ReconDriftMicro = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "ad_reconciliation_drift_micro",
+		Name: "ad_recon_drift_micro",
 		Help: "Absolute micro-unit drift detected during budget snapshot reconciliation",
 	}, []string{"campaign_id"})
 	ReconCorrectionsTotal = promauto.NewCounter(prometheus.CounterOpts{
@@ -775,6 +775,18 @@ var (
 		Name: "ad_processor_stream_lag_seconds",
 		Help: "Current stream processing lag in seconds per processor instance",
 	}, []string{"instance"})
+	SettlementLagSeconds = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_settlement_lag_seconds",
+		Help: "End-to-end settlement lag from event created_at to PG commit",
+	})
+	SettlementLaneDepth = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "ad_settlement_lane_depth",
+		Help: "Buffered events awaiting settlement per pinned lane",
+	}, []string{"lane"})
+	VolumeMeterRowsTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_volume_meter_rows_total",
+		Help: "Total customer-hour rows rolled into billing.usage_meters",
+	})
 	ProcessorWeight = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "ad_processor_weight",
 		Help: "Active consume weight for this processor instance (0-1)",

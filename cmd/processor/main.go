@@ -79,10 +79,18 @@ func main() {
 	}
 	defer pool.Close()
 
-	procPgGate := ingestion.NewProcessorPgGate(cfg.ProcessorPGGateSlots, cfg.DBProcessorMaxConns)
+	settlePool, err := database.Connect(ctx, string(cfg.DBDSN), cfg.PgPoolSettleConns(cfg.SettlementLaneCount()), 1)
+	if err != nil {
+		slog.Error("failed to connect settlement pool", "error", err)
+		os.Exit(1)
+	}
+	defer settlePool.Close()
+
+	procPgGate := ingestion.NewProcessorPgGate(cfg.ProcessorPGGateSlots, cfg.PgPoolSettleConns(cfg.SettlementLaneCount()))
 	procChGate := ingestion.NewProcessorChGate(cfg.ProcessorCHGateSlots, cfg.CHMaxConns)
 
 	queries := db.New(pool)
+	settleQueries := db.New(settlePool)
 	partManager := database.NewPartitionManager(pool, cfg.LogRetentionDays, cfg.PartitionPreCreateDays)
 	partManager.StartBackground(ctx)
 
@@ -147,7 +155,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	pgStore := ingestion.NewPostgresStoreWithGate(queries, time.Duration(cfg.WriteTimeoutMs)*time.Millisecond, procPgGate)
+	pgStore := ingestion.NewPostgresStoreWithGate(settleQueries, time.Duration(cfg.WriteTimeoutMs)*time.Millisecond, procPgGate)
 	spoolCfg := ingestion.CHCfgFromConfig(cfg.CHSpoolSegmentMB, cfg.CHSpoolMaxSegments)
 	chStore := ingestion.NewClickHouseStore(chConn, time.Duration(cfg.WriteTimeoutMs)*time.Millisecond, cfg.CHSpoolDir, spoolCfg, procChGate)
 	piiHasher, piiErr := piihash.NewFromConfig(cfg)
@@ -189,7 +197,7 @@ func main() {
 		slog.Info("processor weight scheduling enabled", "node_id", cfg.NodeID)
 	}
 
-	var pgConsumers []*ingestion.StreamConsumer
+	var pgSettlementWorkers []*ingestion.SettlementWorker
 	var chConsumers []*ingestion.StreamConsumer
 	var brokerConsumers []*ingestion.BrokerStreamConsumer
 	var brokerReconcile *ingestion.BrokerReconcileWorker
@@ -230,15 +238,16 @@ func main() {
 		syncWorkers = append(syncWorkers, sw)
 		sw.Start(syncCtx)
 
-		pc := ingestion.NewStreamConsumer(
+		settleFlush := time.Duration(cfg.SettlementFlushMs) * time.Millisecond
+		settleW := ingestion.NewSettlementWorker(
 			pgStore,
 			rdb,
 			cfg.RedisStreamName,
 			cfg.RedisGroupName+"_pg",
 			cfg.RedisConsumerID+"_"+shardID,
+			cfg.SettlementLaneCount(),
 			cfg.EventBatchSize,
-			cfg.ProcessorPGStreamWorkers(),
-			time.Duration(cfg.EventFlushMs)*time.Millisecond,
+			settleFlush,
 			time.Duration(cfg.WriteTimeoutMs)*time.Millisecond,
 			time.Duration(cfg.RetryInitialWaitMs)*time.Millisecond,
 			time.Duration(cfg.RetryMaxWaitMs)*time.Millisecond,
@@ -246,13 +255,13 @@ func main() {
 			time.Duration(cfg.StreamMinIdleMs)*time.Millisecond,
 			time.Duration(cfg.Lifecycle.DrainTimeoutMs)*time.Millisecond,
 		)
-		pc.SetLogger(appLogger)
-		pc.SetAuditLogSampleMask(cfg.AuditLogSampleMask)
+		settleW.SetLogger(appLogger)
+		settleW.SetAuditLogSampleMask(cfg.AuditLogSampleMask)
 		if weightCtrl != nil {
-			pc.SetWeightController(weightCtrl)
+			settleW.SetWeightController(weightCtrl)
 		}
-		pgConsumers = append(pgConsumers, pc)
-		pc.Start(consumerCtx)
+		pgSettlementWorkers = append(pgSettlementWorkers, settleW)
+		settleW.Start(consumerCtx)
 
 		cc := ingestion.NewStreamConsumer(
 			chStore,
@@ -503,10 +512,10 @@ func main() {
 		}
 	}
 
-	for _, pc := range pgConsumers {
-		pc.Close()
-		if err := pc.Wait(waitCtx); err != nil {
-			slog.Error("pg consumer wait failed", "error", err)
+	for _, sw := range pgSettlementWorkers {
+		sw.Close()
+		if err := sw.Wait(waitCtx); err != nil {
+			slog.Error("pg settlement worker wait failed", "error", err)
 		}
 	}
 	pgStore.Close()

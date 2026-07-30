@@ -658,6 +658,27 @@ func (consumer *StreamConsumer) moveToDLQ(ctx context.Context, batch []*campaign
 	return nil
 }
 
+func (consumer *StreamConsumer) ParseMessage(id string, values map[string]interface{}) *campaignmodel.Event {
+	return consumer.parseMessage(id, values)
+}
+
+func (consumer *StreamConsumer) FlushBatch(ctx context.Context, batch []*campaignmodel.Event, msgIDs []string, workerID string) error {
+	return consumer.flushBatch(ctx, batch, msgIDs, workerID)
+}
+
+func (consumer *StreamConsumer) StartMaintenance(ctx context.Context) {
+	consumer.wg.Add(1)
+	go func() {
+		defer consumer.wg.Done()
+		consumer.janitor(ctx)
+	}()
+	consumer.wg.Add(1)
+	go func() {
+		defer consumer.wg.Done()
+		consumer.dlqMonitor(ctx)
+	}()
+}
+
 func (consumer *StreamConsumer) parseMessage(id string, values map[string]interface{}) *campaignmodel.Event {
 	event := campaignmodel.EventPool.Get().(*campaignmodel.Event)
 	event.Reset()

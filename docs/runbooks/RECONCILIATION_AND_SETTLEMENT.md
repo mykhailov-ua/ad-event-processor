@@ -114,12 +114,13 @@ Detail and EXPLAIN targets: [GAP_SPECS § SQL — GAP-HYG-30](../../.cursor/GAP_
 
 | Pattern | Use |
 | :--- | :--- |
-| Pinned consumer | Per-campaign ordering |
+| Pinned consumer | Per-campaign ordering (`SettlementWorker`, `SETTLEMENT_LANES`) |
 | Transactional batch | Ledger + stats + meter atomic |
-| Idempotency key | `sync_idempotency` |
-| Pool tiering | Settle vs read isolation |
-| Outbox | `FORCE_PAUSE` side effects |
-| Force refill | PG truth over Redis on crash |
+| Idempotency key | `sync_idempotency (event_id, campaign_id)` |
+| Pool tiering | `PgPoolSettle` vs `PgPoolRead` (`PG_POOL_SETTLE_MAX_CONNS`) |
+| Outbox | `FORCE_PAUSE` side effects (`PAUSE_CAMPAIGN`) |
+| Force refill | PG truth over Redis on crash (`RECON_FORCE_REFILL=1`) |
+| Volume meter | `VOLUME_METER_SOURCE=pg` (default); meter `accepted_events` |
 
 ---
 

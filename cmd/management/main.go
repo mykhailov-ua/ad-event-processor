@@ -42,12 +42,13 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	pool, err := database.Connect(ctx, string(cfg.DBDSN), cfg.DBTrackerMaxConns, cfg.DBMinConns)
+	pgPools, err := database.ConnectPgPools(ctx, cfg)
 	if err != nil {
-		slog.Error("failed to connect to database", "error", err)
+		slog.Error("failed to connect pg pools", "error", err)
 		os.Exit(1)
 	}
-	defer pool.Close()
+	defer pgPools.Close()
+	pool := pgPools.Read
 
 	if cfg.MultiRegionEnabled {
 		snap, snapErr := licensing.LoadDeploymentSnapshot(ctx, pool)
@@ -120,6 +121,7 @@ func main() {
 	}
 
 	svc := management.NewService(pool, rdbs, sharder, cfg)
+	svc.SetSettlePool(pgPools.Settle)
 	if cfg.PgFailoverEnabled {
 		pgFailoverRT := svc.StartPgFailover(ctx)
 		if pgFailoverRT != nil {
@@ -162,19 +164,6 @@ func main() {
 		}
 		svc.SetClickHouse(chRead, database.CHQueryConfigFromApp(cfg))
 		slog.Info("clickhouse reporting enabled", "readonly_dsn", "CH_READONLY_DSN")
-
-		volumeInterval := time.Hour
-		if v := os.Getenv("VOLUME_METER_INTERVAL"); v != "" {
-			if d, err := time.ParseDuration(v); err == nil && d > 0 {
-				volumeInterval = d
-			}
-		}
-		if os.Getenv("VOLUME_METER_ENABLED") != "0" {
-			svc.StartBackgroundWorker(func() {
-				management.NewVolumeMeterWorker(pool, svc.CHQuery(), volumeInterval, svc.PgGate()).Start(ctx)
-			})
-			slog.Info("started volume meter worker", "interval", volumeInterval)
-		}
 
 		if os.Getenv("USAGE_DAILY_FLUSH_ENABLED") == "1" {
 			flushInterval := 24 * time.Hour
@@ -226,7 +215,7 @@ func main() {
 	}
 
 	if cfg.MultiRegionGlobal() {
-		globalSpend := management.NewGlobalSpendReconciler(pool, rdbs, sharder, management.GlobalSpendReconcilerConfig{
+		globalSpend := management.NewGlobalSpendReconciler(pgPools.Settle, rdbs, sharder, management.GlobalSpendReconcilerConfig{
 			MinBatchSize:   cfg.GlobalSpendBatchMin,
 			MaxConcurrency: cfg.GlobalSpendMaxConcurrency,
 		})
@@ -245,6 +234,29 @@ func main() {
 	reconInterval := time.Duration(cfg.Management.ReconIntervalMs) * time.Millisecond
 	svc.StartReconWorker(reconInterval)
 	slog.Info("started recon worker", "interval", reconInterval)
+
+	volumeInterval := time.Hour
+	if v := os.Getenv("VOLUME_METER_INTERVAL"); v != "" {
+		if d, err := time.ParseDuration(v); err == nil && d > 0 {
+			volumeInterval = d
+		}
+	}
+	if os.Getenv("VOLUME_METER_ENABLED") != "0" {
+		meterSource := cfg.VolumeMeterSource
+		var chQ *database.CHQuery
+		if meterSource == "ch" {
+			chQ = svc.CHQuery()
+		}
+		svc.StartBackgroundWorker(func() {
+			management.NewVolumeMeterWorker(pgPools.Settle, chQ, meterSource, volumeInterval, svc.PgGate()).Start(ctx)
+		})
+		slog.Info("started volume meter worker", "interval", volumeInterval, "source", meterSource)
+	}
+
+	svc.StartBackgroundWorker(func() {
+		management.NewLedgerInvariantWorker(pgPools.Settle, cfg, nil).Start(ctx)
+	})
+	slog.Info("started ledger invariant worker", "interval_hours", cfg.LedgerInvariantIntervalHours)
 
 	if cfg.BrokerEnabled() && (cfg.LocalQuotaMode == "shadow" || cfg.LocalQuotaMode == "live") {
 		brokerRedisURL := cfg.Broker.RedisURL

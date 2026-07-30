@@ -19,6 +19,11 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+const (
+	meterAcceptedEvents = "accepted_events"
+	meterBillableEvents = "events"
+)
+
 type Service struct {
 	pool           *pgxpool.Pool
 	queries        *db.Queries
@@ -157,11 +162,19 @@ func (service *Service) GenerateInvoice(ctx context.Context, customerID uuid.UUI
 			limitEvents := int64(limits.MaxEventsPerMonth)
 			if limitEvents > 0 {
 				var currentEvents int64 = 0
+				meterName := meterAcceptedEvents
 				meter, err := qtx.GetUsageMeter(ctx, db.GetUsageMeterParams{
 					CustomerID: pgtype.UUID{Bytes: customerID, Valid: true},
-					Meter:      "events",
+					Meter:      meterName,
 					Period:     pgtype.Date{Time: monthStart, Valid: true},
 				})
+				if err != nil {
+					meter, err = qtx.GetUsageMeter(ctx, db.GetUsageMeterParams{
+						CustomerID: pgtype.UUID{Bytes: customerID, Valid: true},
+						Meter:      meterBillableEvents,
+						Period:     pgtype.Date{Time: monthStart, Valid: true},
+					})
+				}
 				if err == nil {
 					currentEvents = meter.Value
 				}

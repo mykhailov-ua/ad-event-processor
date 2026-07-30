@@ -55,12 +55,21 @@ func (w *ReconWorker) Start(ctx context.Context) {
 	snapshotTicker := time.NewTicker(reconSnapshotInterval(w.svc.cfg))
 	defer snapshotTicker.Stop()
 
+	hyg30Interval := 5 * time.Minute
+	if w.svc.cfg != nil && w.svc.cfg.ReconHYG30IntervalMs > 0 {
+		hyg30Interval = time.Duration(w.svc.cfg.ReconHYG30IntervalMs) * time.Millisecond
+	}
+	hyg30Ticker := time.NewTicker(hyg30Interval)
+	defer hyg30Ticker.Stop()
+
 	reconSvc := NewReconService(w.svc)
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
+		case <-hyg30Ticker.C:
+			w.runHYG30Audits(ctx)
 		case <-snapshotTicker.C:
 			if err := w.svc.withPgLow(ctx, func(runCtx context.Context) error {
 				w.ReconcileBudgetSnapshot(runCtx)

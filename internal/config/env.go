@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -58,6 +59,13 @@ type Config struct {
 	DBTrackerMaxConns               int
 	DBProcessorMaxConns             int
 	DBMinConns                      int
+	PgPoolSettleMaxConns            int
+	VolumeMeterSource               string
+	SettlementLanes                 int
+	SettlementFlushMs               int
+	ReconHYG30IntervalMs            int
+	LedgerInvariantIntervalHours    int
+	ReconForceRefill                bool
 	CHMaxConns                      int
 	CHQueryMaxConcurrency           int
 	CHQueryTimeoutSec               int
@@ -467,6 +475,13 @@ func Load() (*Config, error) {
 		DBTrackerMaxConns:               getEnvInt("DB_TRACKER_MAX_CONNS", 4),
 		DBProcessorMaxConns:             getEnvInt("DB_PROCESSOR_MAX_CONNS", 16),
 		DBMinConns:                      getEnvInt("DB_MIN_CONNS", 2),
+		PgPoolSettleMaxConns:            getEnvInt("PG_POOL_SETTLE_MAX_CONNS", 0),
+		VolumeMeterSource:               envOrDefault("VOLUME_METER_SOURCE", "pg"),
+		SettlementLanes:                 getEnvInt("SETTLEMENT_LANES", 0),
+		SettlementFlushMs:               getEnvInt("SETTLEMENT_FLUSH_MS", 100),
+		ReconHYG30IntervalMs:            getEnvInt("RECON_HYG30_INTERVAL_MS", 300_000),
+		LedgerInvariantIntervalHours:    getEnvInt("LEDGER_INVARIANT_INTERVAL_HOURS", 24),
+		ReconForceRefill:                getEnvBool("RECON_FORCE_REFILL", true),
 		CHMaxConns:                      getEnvInt("CH_MAX_CONNS", 8),
 		CHQueryMaxConcurrency:           getEnvInt("CH_QUERY_MAX_CONCURRENCY", 8),
 		CHQueryTimeoutSec:               getEnvInt("CH_QUERY_TIMEOUT_SEC", 30),
@@ -1087,6 +1102,37 @@ func (c *Config) FraudScorerStandalone() bool {
 
 func (c *Config) ClickHouseEnabled() bool {
 	return c != nil && string(c.CHDSN) != ""
+}
+
+func (c *Config) VolumeMeterFromPG() bool {
+	if c == nil {
+		return true
+	}
+	return c.VolumeMeterSource == "" || c.VolumeMeterSource == "pg"
+}
+
+func (c *Config) SettlementLaneCount() int {
+	if c == nil {
+		return runtime.GOMAXPROCS(0)
+	}
+	if c.SettlementLanes > 0 {
+		return c.SettlementLanes
+	}
+	return runtime.GOMAXPROCS(0)
+}
+
+func (c *Config) ReconForceRefillEnabled() bool {
+	return c != nil && c.ReconForceRefill
+}
+
+func (c *Config) PgPoolSettleConns(lanes int) int {
+	if c == nil {
+		return lanes + 2
+	}
+	if c.PgPoolSettleMaxConns > 0 {
+		return c.PgPoolSettleMaxConns
+	}
+	return lanes + 2
 }
 
 func vendorTelemetryEnabled(appEnv string) bool {
