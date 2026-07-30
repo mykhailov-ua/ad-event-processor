@@ -22,7 +22,7 @@ func (w *OperationLeaseWorker) quorumRDB() redis.UniversalClient {
 	if w == nil || w.svc == nil {
 		return nil
 	}
-	return pickHealthyControlShard(w.svc.rdbs)
+	return PickHealthyControlShard(w.svc.rdbs)
 }
 
 func (w *OperationLeaseWorker) bookRedis(ctx context.Context, req OperationLeaseBookRequest) (OperationLeaseBookResult, error) {

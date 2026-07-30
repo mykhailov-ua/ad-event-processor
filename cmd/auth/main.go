@@ -73,7 +73,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	lockoutLimiter := auth.NewLockoutLimiterShards(controlRdbs)
+	lockoutLimiter := auth.NewLockoutLimiter(controlRdbs...)
 
 	hasher, err := auth.NewPasswordHasher(
 		uint32(cfg.Argon2Memory),

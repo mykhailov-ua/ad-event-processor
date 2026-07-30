@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -48,10 +49,6 @@ type AuthMiddleware struct {
 }
 
 func NewAuthMiddleware(tokenMaker auth.Maker, rdb redis.UniversalClient, cfg *config.Config, authClient *AuthClient) *AuthMiddleware {
-	return NewAuthMiddlewareShards(tokenMaker, rdb, nil, cfg, authClient)
-}
-
-func NewAuthMiddlewareShards(tokenMaker auth.Maker, rdb redis.UniversalClient, controlRdbs []redis.UniversalClient, cfg *config.Config, authClient *AuthClient) *AuthMiddleware {
 	rps := defaultAPIKeyRPS
 	burst := defaultAPIKeyBurst
 	if cfg != nil && cfg.SelfServeAPIKeyRPS > 0 {
@@ -64,11 +61,24 @@ func NewAuthMiddlewareShards(tokenMaker auth.Maker, rdb redis.UniversalClient, c
 	return &AuthMiddleware{
 		tokenMaker:    tokenMaker,
 		rdb:           rdb,
-		controlRdbs:   controlRdbs,
 		cfg:           cfg,
 		authClient:    authClient,
 		apiKeyLimiter: newAPIKeyRateLimiter(rps, burst),
 	}
+}
+
+func (m *AuthMiddleware) SetControlRedisShards(rdbs []redis.UniversalClient) {
+	m.controlRdbs = rdbs
+}
+
+func (m *AuthMiddleware) controlRedis() []redis.UniversalClient {
+	if len(m.controlRdbs) > 0 {
+		return m.controlRdbs
+	}
+	if m.rdb != nil {
+		return []redis.UniversalClient{m.rdb}
+	}
+	return nil
 }
 
 func (m *AuthMiddleware) RequirePermission(permission string) func(http.HandlerFunc) http.HandlerFunc {
@@ -222,12 +232,8 @@ func (m *AuthMiddleware) authenticate(w http.ResponseWriter, r *http.Request) (A
 		return AuthenticatedUser{}, false
 	}
 
-	if len(m.controlRdbs) > 0 || m.rdb != nil {
-		rdbs := m.controlRdbs
-		if len(rdbs) == 0 {
-			rdbs = []redis.UniversalClient{m.rdb}
-		}
-		revoked, errRev := auth.CheckTokenRevocationShards(r.Context(), rdbs, payload)
+	if rdbs := m.controlRedis(); len(rdbs) > 0 {
+		revoked, errRev := m.checkTokenRevocation(r.Context(), rdbs, payload)
 		if errRev != nil {
 			slog.Error("redis revocation check failed, blocking request to prevent security bypass", "error", errRev)
 			httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized: security check failed")
@@ -245,4 +251,20 @@ func (m *AuthMiddleware) authenticate(w http.ResponseWriter, r *http.Request) (A
 		CustomerID: payload.CustomerID,
 		AuthSource: "session",
 	}, true
+}
+
+func (m *AuthMiddleware) checkTokenRevocation(ctx context.Context, rdbs []redis.UniversalClient, payload *auth.Payload) (bool, error) {
+	for i, rdb := range rdbs {
+		if rdb == nil {
+			continue
+		}
+		revoked, err := auth.CheckTokenRevocation(ctx, rdb, payload)
+		if err != nil {
+			return false, fmt.Errorf("shard %d: %w", i, err)
+		}
+		if revoked {
+			return true, nil
+		}
+	}
+	return false, nil
 }

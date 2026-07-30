@@ -94,7 +94,7 @@ func setNXOnAllShards(ctx context.Context, rdbs []redis.UniversalClient, key, va
 	return allNew, nil
 }
 
-func pickHealthyControlShard(rdbs []redis.UniversalClient) redis.UniversalClient {
+func PickHealthyControlShard(rdbs []redis.UniversalClient) redis.UniversalClient {
 	for _, rdb := range rdbs {
 		if rdb != nil {
 			return rdb

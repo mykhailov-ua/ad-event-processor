@@ -17,9 +17,9 @@ func newPgFailoverShardReader(rdbs []redis.UniversalClient) *pgFailoverShardRead
 	return &pgFailoverShardReader{rdbs: rdbs}
 }
 
-func (r *pgFailoverShardReader) activeDSN(ctx context.Context) (string, uint64, error) {
+func (reader *pgFailoverShardReader) activeDSN(ctx context.Context) (string, uint64, error) {
 	var lastErr error
-	for i, rdb := range r.rdbs {
+	for i, rdb := range reader.rdbs {
 		if rdb == nil {
 			continue
 		}

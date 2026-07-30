@@ -414,7 +414,7 @@ func (service *Service) VerifyToken(ctx context.Context, accessToken string) (db
 	}
 
 	if len(service.controlRedis()) > 0 {
-		revoked, errRev := CheckTokenRevocationShards(ctx, service.controlRedis(), payload)
+		revoked, errRev := checkTokenRevocationShards(ctx, service.controlRedis(), payload)
 		if errRev != nil {
 			AuthTokenErrors.WithLabelValues("revocation_check_failed").Inc()
 			slog.Error("failed to check token revocation in redis (fail-closed)", slog.Any("error", errRev))
@@ -810,7 +810,7 @@ func (service *Service) BlockUser(ctx context.Context, email string) error {
 		return err
 	}
 	userID := uuid.UUID(user.ID.Bytes)
-	if err := RevokeUserAccessShards(ctx, service.controlRedis(), userID, defaultUserRevocationTTL); err != nil {
+	if err := revokeUserAccessShards(ctx, service.controlRedis(), userID, defaultUserRevocationTTL); err != nil {
 		slog.Error("failed to publish user revocation marker", slog.String("email", email), slog.Any("error", err))
 	}
 	service.AuditLog(ctx, userID, "USER_BLOCKED", "user", userID.String(), "", "", nil, nil)
@@ -827,7 +827,7 @@ func (service *Service) UnblockUser(ctx context.Context, email string) error {
 		return err
 	}
 	userID := uuid.UUID(user.ID.Bytes)
-	if err := ClearUserRevocationShards(ctx, service.controlRedis(), userID); err != nil {
+	if err := clearUserRevocationShards(ctx, service.controlRedis(), userID); err != nil {
 		slog.Error("failed to clear user revocation marker", slog.String("email", email), slog.Any("error", err))
 	}
 	service.AuditLog(ctx, userID, "USER_UNBLOCKED", "user", userID.String(), "", "", nil, nil)

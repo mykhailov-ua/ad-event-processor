@@ -189,7 +189,7 @@ func TestOutboxCreateCampaign_BudgetOnCampaignShard(t *testing.T) {
 }
 
 func TestPickHealthyControlShard(t *testing.T) {
-	assert.Nil(t, pickHealthyControlShard(nil))
+	assert.Nil(t, PickHealthyControlShard(nil))
 	rdb := redis.NewClient(&redis.Options{Addr: "127.0.0.1:9"})
-	assert.Same(t, rdb, pickHealthyControlShard([]redis.UniversalClient{nil, rdb}))
+	assert.Same(t, rdb, PickHealthyControlShard([]redis.UniversalClient{nil, rdb}))
 }

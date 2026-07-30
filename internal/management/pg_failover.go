@@ -28,7 +28,7 @@ func (s *Service) StartPgFailover(ctx context.Context) *PgFailoverRuntime {
 	if s == nil || s.cfg == nil || !s.cfg.PgFailoverEnabled || len(s.rdbs) == 0 {
 		return nil
 	}
-	rdb := pickHealthyControlShard(s.rdbs)
+	rdb := PickHealthyControlShard(s.rdbs)
 	rt := &PgFailoverRuntime{
 		fencing: pgfailover.NewFencingGate(rdb),
 	}

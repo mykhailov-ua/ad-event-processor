@@ -352,13 +352,19 @@ func (w *LicenseWatcher) SetControlRedisShards(rdbs []redis.UniversalClient) {
 	w.controlRdbs = rdbs
 }
 
+func (w *LicenseWatcher) controlRedis() []redis.UniversalClient {
+	if len(w.controlRdbs) > 0 {
+		return w.controlRdbs
+	}
+	if w.rdb != nil {
+		return []redis.UniversalClient{w.rdb}
+	}
+	return nil
+}
+
 func (w *LicenseWatcher) publishCampaignUpdate(ctx context.Context) {
 	channel := "campaigns:update"
-	rdbs := w.controlRdbs
-	if len(rdbs) == 0 && w.rdb != nil {
-		rdbs = []redis.UniversalClient{w.rdb}
-	}
-	for _, rdb := range rdbs {
+	for _, rdb := range w.controlRedis() {
 		if rdb != nil {
 			_ = rdb.Publish(ctx, channel, "license_update").Err()
 		}

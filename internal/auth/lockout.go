@@ -35,14 +35,7 @@ type LockoutLimiter struct {
 	rdbs []redis.UniversalClient
 }
 
-func NewLockoutLimiter(rdb redis.UniversalClient) *LockoutLimiter {
-	if rdb == nil {
-		return &LockoutLimiter{}
-	}
-	return &LockoutLimiter{rdbs: []redis.UniversalClient{rdb}}
-}
-
-func NewLockoutLimiterShards(rdbs []redis.UniversalClient) *LockoutLimiter {
+func NewLockoutLimiter(rdbs ...redis.UniversalClient) *LockoutLimiter {
 	out := make([]redis.UniversalClient, 0, len(rdbs))
 	for _, rdb := range rdbs {
 		if rdb != nil {
@@ -134,10 +127,10 @@ end
 return attempts
 `
 
-func (l *LockoutLimiter) AllowIP(ctx context.Context, clientIP string, limit int, window time.Duration) (bool, error) {
+func (limiter *LockoutLimiter) AllowIP(ctx context.Context, clientIP string, limit int, window time.Duration) (bool, error) {
 	key := "ratelimit:ip:" + clientIP
 	allowed := true
-	for _, rdb := range l.rdbs {
+	for _, rdb := range limiter.rdbs {
 		pipe := rdb.Pipeline()
 		incr := pipe.Incr(ctx, key)
 		pipe.ExpireNX(ctx, key, window)
@@ -152,12 +145,12 @@ func (l *LockoutLimiter) AllowIP(ctx context.Context, clientIP string, limit int
 	return allowed, nil
 }
 
-func (l *LockoutLimiter) Allow(ctx context.Context, clientIP, email string, maxAttempts int, lockoutDuration, attemptWindow time.Duration) (int64, error) {
+func (limiter *LockoutLimiter) Allow(ctx context.Context, clientIP, email string, maxAttempts int, lockoutDuration, attemptWindow time.Duration) (int64, error) {
 	failKey := "lockout:ip_email:" + clientIP + ":{" + email + "}"
 	inflightKey := "lockout:inflight:" + clientIP + ":{" + email + "}"
 	globalFailKey := "lockout:global_email:{" + email + "}"
 	var worst int64 = 1
-	for _, rdb := range l.rdbs {
+	for _, rdb := range limiter.rdbs {
 		res, err := rdb.Eval(ctx, lockoutScript, []string{failKey, inflightKey, globalFailKey}, maxAttempts, int(lockoutDuration.Seconds()), int(attemptWindow.Seconds()), MaxGlobalAttempts).Result()
 		if err != nil {
 			return 0, err
@@ -170,10 +163,10 @@ func (l *LockoutLimiter) Allow(ctx context.Context, clientIP, email string, maxA
 	return worst, nil
 }
 
-func (l *LockoutLimiter) DecrementInflight(ctx context.Context, clientIP, email string) error {
+func (limiter *LockoutLimiter) DecrementInflight(ctx context.Context, clientIP, email string) error {
 	key := "lockout:inflight:" + clientIP + ":{" + email + "}"
 	var firstErr error
-	for _, rdb := range l.rdbs {
+	for _, rdb := range limiter.rdbs {
 		if _, err := rdb.Eval(ctx, decrInflightScript, []string{key}).Result(); err != nil && firstErr == nil {
 			firstErr = err
 		}
@@ -181,11 +174,11 @@ func (l *LockoutLimiter) DecrementInflight(ctx context.Context, clientIP, email 
 	return firstErr
 }
 
-func (l *LockoutLimiter) Increment(ctx context.Context, clientIP, email string, maxAttempts int, lockoutDuration, attemptWindow time.Duration) (int64, error) {
+func (limiter *LockoutLimiter) Increment(ctx context.Context, clientIP, email string, maxAttempts int, lockoutDuration, attemptWindow time.Duration) (int64, error) {
 	key := "lockout:ip_email:" + clientIP + ":{" + email + "}"
 	globalKey := "lockout:global_email:{" + email + "}"
 	var maxResult int64
-	for _, rdb := range l.rdbs {
+	for _, rdb := range limiter.rdbs {
 		res, err := rdb.Eval(ctx, incrementScript, []string{key, globalKey}, maxAttempts, int(lockoutDuration.Seconds()), int(attemptWindow.Seconds()), MaxGlobalAttempts, GlobalLockoutDuration).Result()
 		if err != nil {
 			return 0, err
@@ -198,10 +191,10 @@ func (l *LockoutLimiter) Increment(ctx context.Context, clientIP, email string, 
 	return maxResult, nil
 }
 
-func (l *LockoutLimiter) Reset(ctx context.Context, clientIP, email string) error {
+func (limiter *LockoutLimiter) Reset(ctx context.Context, clientIP, email string) error {
 	key := "lockout:ip_email:" + clientIP + ":{" + email + "}"
 	var firstErr error
-	for _, rdb := range l.rdbs {
+	for _, rdb := range limiter.rdbs {
 		if err := rdb.Del(ctx, key).Err(); err != nil && firstErr == nil {
 			firstErr = err
 		}

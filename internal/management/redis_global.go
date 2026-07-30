@@ -41,7 +41,7 @@ func replicateConfigVersionFromPrimary(ctx context.Context, rdbs []redis.Univers
 	if len(rdbs) < 2 {
 		return nil
 	}
-	primary := pickHealthyControlShard(rdbs)
+	primary := PickHealthyControlShard(rdbs)
 	if primary == nil {
 		return nil
 	}
