@@ -7,6 +7,7 @@ import (
 
 	"espx/internal/database"
 	"espx/internal/metrics"
+	"espx/internal/telemetry"
 )
 
 type filterRejectKind uint8
@@ -245,4 +246,5 @@ func (m *preboundTrackMetrics) recordFilterReject(kind filterRejectKind) {
 
 func recordHTTPFilterReject(kind filterRejectKind) {
 	metrics.FilterBlockedTotal.WithLabelValues(filterRejectSpecs[kind].metricLabel).Inc()
+	telemetry.RecordRejected()
 }

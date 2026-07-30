@@ -165,7 +165,7 @@ func (h *Handler) createCampaignFromTemplate(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *Handler) saveCampaignAsTemplate(w http.ResponseWriter, r *http.Request) {
-	campaignID, err := uuid.Parse(r.PathValue("id"))
+	campaignID, err := coldpath.ParsePathUUID(r, "id")
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign id")
 		return
@@ -192,7 +192,7 @@ func (h *Handler) saveCampaignAsTemplate(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *Handler) pauseCampaign(w http.ResponseWriter, r *http.Request) {
-	campaignID, err := uuid.Parse(r.PathValue("id"))
+	campaignID, err := coldpath.ParsePathUUID(r, "id")
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign id")
 		return
@@ -226,7 +226,7 @@ func (h *Handler) pauseCampaign(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) resumeCampaign(w http.ResponseWriter, r *http.Request) {
-	campaignID, err := uuid.Parse(r.PathValue("id"))
+	campaignID, err := coldpath.ParsePathUUID(r, "id")
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign id")
 		return
@@ -260,7 +260,7 @@ func (h *Handler) resumeCampaign(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) warmCampaignBudget(w http.ResponseWriter, r *http.Request) {
-	campaignID, err := uuid.Parse(r.PathValue("id"))
+	campaignID, err := coldpath.ParsePathUUID(r, "id")
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign id")
 		return
@@ -281,7 +281,7 @@ func (h *Handler) warmCampaignBudget(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) updateCampaignSchedule(w http.ResponseWriter, r *http.Request) {
-	campaignID, err := uuid.Parse(r.PathValue("id"))
+	campaignID, err := coldpath.ParsePathUUID(r, "id")
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign id")
 		return

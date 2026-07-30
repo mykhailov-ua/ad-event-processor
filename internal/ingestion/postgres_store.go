@@ -8,6 +8,7 @@ import (
 	"espx/internal/campaignmodel"
 	"espx/internal/ingestion/sqlc"
 	"espx/internal/metrics"
+	"espx/pkg/piihash"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -18,6 +19,7 @@ type postgresBatchArrays struct {
 	eventTypes   []string
 	payloads     [][]byte
 	ipAddresses  []string
+	ipHashes     [][]byte
 	userAgents   []string
 	createdAts   []pgtype.Timestamptz
 	createdDates []pgtype.Date
@@ -32,6 +34,7 @@ var postgresBatchArraysPool = sync.Pool{
 			eventTypes:   make([]string, 0, 1000),
 			payloads:     make([][]byte, 0, 1000),
 			ipAddresses:  make([]string, 0, 1000),
+			ipHashes:     make([][]byte, 0, 1000),
 			userAgents:   make([]string, 0, 1000),
 			createdAts:   make([]pgtype.Timestamptz, 0, 1000),
 			createdDates: make([]pgtype.Date, 0, 1000),
@@ -40,9 +43,11 @@ var postgresBatchArraysPool = sync.Pool{
 }
 
 type PostgresStore struct {
-	queries      db.Querier
-	writeTimeout time.Duration
-	pgGate       *ProcessorPgGate
+	queries        db.Querier
+	writeTimeout   time.Duration
+	pgGate         *ProcessorPgGate
+	hashIPAtInsert bool
+	piiHasher      *piihash.Hasher
 }
 
 func NewPostgresStore(queries db.Querier, writeTimeout time.Duration) *PostgresStore {
@@ -104,6 +109,11 @@ func (s *PostgresStore) StoreBatch(ctx context.Context, events []*campaignmodel.
 		}
 		arrs.ipAddresses = arrs.ipAddresses[:0]
 
+		for i := range arrs.ipHashes {
+			arrs.ipHashes[i] = nil
+		}
+		arrs.ipHashes = arrs.ipHashes[:0]
+
 		for i := range arrs.userAgents {
 			arrs.userAgents[i] = ""
 		}
@@ -130,6 +140,7 @@ func (s *PostgresStore) StoreBatch(ctx context.Context, events []*campaignmodel.
 		arrs.eventTypes = make([]string, 0, n)
 		arrs.payloads = make([][]byte, 0, n)
 		arrs.ipAddresses = make([]string, 0, n)
+		arrs.ipHashes = make([][]byte, 0, n)
 		arrs.userAgents = make([]string, 0, n)
 		arrs.createdAts = make([]pgtype.Timestamptz, 0, n)
 		arrs.createdDates = make([]pgtype.Date, 0, n)
@@ -147,7 +158,14 @@ func (s *PostgresStore) StoreBatch(ctx context.Context, events []*campaignmodel.
 		} else {
 			arrs.payloads = append(arrs.payloads, evt.Payload)
 		}
-		arrs.ipAddresses = append(arrs.ipAddresses, evt.IP)
+		if s.hashIPAtInsert && s.piiHasher != nil && evt.IP != "" {
+			h := s.piiHasher.HashIP(evt.IP)
+			arrs.ipHashes = append(arrs.ipHashes, h[:])
+			arrs.ipAddresses = append(arrs.ipAddresses, "")
+		} else {
+			arrs.ipHashes = append(arrs.ipHashes, nil)
+			arrs.ipAddresses = append(arrs.ipAddresses, evt.IP)
+		}
 		arrs.userAgents = append(arrs.userAgents, evt.UA)
 
 		const secondsPerDay = 86400
@@ -174,6 +192,7 @@ func (s *PostgresStore) StoreBatch(ctx context.Context, events []*campaignmodel.
 			EventTypes:   arrs.eventTypes,
 			Payloads:     arrs.payloads,
 			IpAddresses:  arrs.ipAddresses,
+			IpHashes:     arrs.ipHashes,
 			UserAgents:   arrs.userAgents,
 			CreatedAt:    arrs.createdAts,
 			CreatedDates: arrs.createdDates,
@@ -204,6 +223,14 @@ func (s *PostgresStore) StoreBatch(ctx context.Context, events []*campaignmodel.
 
 	metrics.DbWriteErrors.WithLabelValues("postgres").Inc()
 	return err
+}
+
+func (s *PostgresStore) SetPIIHashAtInsert(h *piihash.Hasher) {
+	if h == nil {
+		return
+	}
+	s.piiHasher = h
+	s.hashIPAtInsert = true
 }
 
 func (s *PostgresStore) Close() error {

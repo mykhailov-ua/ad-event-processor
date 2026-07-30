@@ -73,3 +73,17 @@ go test ./internal/installer/... -run Preflight -short
 ```
 
 Integration `apply` on a VM is manual and does not block PRs.
+
+## MVSS checklist (production)
+
+Minimum viable security items from [docs/runbooks/DATA_SECURITY.md](../../docs/runbooks/DATA_SECURITY.md):
+
+```bash
+ESPX_PROFILE=production ./bin/espx doctor --checklist
+```
+
+Production compose TLS overlay:
+
+```bash
+docker compose -f docker-compose.yaml -f deploy/compose/production.yaml config
+```

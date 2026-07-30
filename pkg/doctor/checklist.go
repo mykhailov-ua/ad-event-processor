@@ -1,7 +1,9 @@
 package doctor
 
 import (
+	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"espx/internal/config"
@@ -23,7 +25,8 @@ func MVSSChecklist(cfg *config.Config) []ChecklistRow {
 		checkTelemetryOptIn(),
 		checkManual("rbac", "RBAC: operator admins separate from advertiser API keys"),
 		checkManual("backups", "Encrypted backups with offline key"),
-		checkEventsRetention(),
+		checkEventsRetention(cfg),
+		checkRedisTLS(),
 	}
 }
 
@@ -88,14 +91,32 @@ func checkTelemetryOptIn() ChecklistRow {
 	}
 }
 
-func checkEventsRetention() ChecklistRow {
-	if _, ok := os.LookupEnv("EVENTS_RETENTION_DAYS"); ok {
-		return ChecklistRow{ID: "pg_events_retention", Status: StatusPass, Detail: "EVENTS_RETENTION_DAYS set"}
+func checkEventsRetention(cfg *config.Config) ChecklistRow {
+	days := 0
+	if cfg != nil && cfg.EventsRetentionDays > 0 {
+		days = cfg.EventsRetentionDays
+	} else if raw, ok := os.LookupEnv("EVENTS_RETENTION_DAYS"); ok {
+		if n, err := strconv.Atoi(strings.TrimSpace(raw)); err == nil && n > 0 {
+			days = n
+		}
 	}
-	if days := os.Getenv("MANAGEMENT_RETENTION_DAYS"); days != "" {
-		return ChecklistRow{ID: "pg_events_retention", Status: StatusWarn, Detail: "MANAGEMENT_RETENTION_DAYS set; document PG events policy"}
+	if days > 0 {
+		return ChecklistRow{ID: "pg_events_retention", Status: StatusPass, Detail: fmt.Sprintf("EVENTS_RETENTION_DAYS=%d", days)}
 	}
-	return ChecklistRow{ID: "pg_events_retention", Status: StatusWarn, Detail: "set EVENTS_RETENTION_DAYS (see DATA_SECURITY.md)"}
+	return ChecklistRow{ID: "pg_events_retention", Status: StatusWarn, Detail: "set EVENTS_RETENTION_DAYS (default 90 when loaded via config.Load)"}
+}
+
+func checkRedisTLS() ChecklistRow {
+	if os.Getenv("ESPX_PROFILE") != "production" {
+		return ChecklistRow{ID: "redis_tls", Status: StatusSkip, Detail: "ESPX_PROFILE!=production"}
+	}
+	ca := strings.TrimSpace(os.Getenv("REDIS_TLS_CA"))
+	cert := strings.TrimSpace(os.Getenv("REDIS_TLS_CERT"))
+	key := strings.TrimSpace(os.Getenv("REDIS_TLS_KEY"))
+	if ca == "" || cert == "" || key == "" {
+		return ChecklistRow{ID: "redis_tls", Status: StatusFail, Detail: "set REDIS_TLS_CA, REDIS_TLS_CERT, REDIS_TLS_KEY"}
+	}
+	return ChecklistRow{ID: "redis_tls", Status: StatusPass, Detail: "redis client TLS cert paths configured"}
 }
 
 func isExampleSecret(value string, examples ...string) bool {

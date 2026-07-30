@@ -8,6 +8,7 @@ import (
 	"espx/internal/config"
 	"espx/internal/ingestion/pb"
 	"espx/internal/metrics"
+	"espx/internal/telemetry"
 	"espx/pkg/logger"
 	"io"
 	"log/slog"
@@ -196,6 +197,7 @@ func NewRouter(cfg *config.Config, registry campaignmodel.CampaignRegistry, filt
 	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 
 	mux.HandleFunc("POST /track", func(w http.ResponseWriter, r *http.Request) {
+		telemetry.RecordTrack()
 		startMono := monotonicNano()
 		status := http.StatusAccepted
 
@@ -1178,6 +1180,7 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 	}
 
 	startMono := monotonicNano()
+	telemetry.RecordTrack()
 
 	ip := extractClientIPGnet(ctx, &req, c, h.cfg.TrustedProxies)
 	ua := unsafeString(req.UserAgent)

@@ -346,10 +346,10 @@ scripts/dev/stack.sh analytics-ml    # + fraud-scorer, ivt-detector
 scripts/dev/stack.sh full            # legacy split_control containers
 ```
 
-`ingest_only` smoke: payment/billing containers absent; `control` and `tracker` healthy.
+`ingest_only` smoke: payment/billing containers absent; no `clickhouse` service; `control` and `tracker` healthy.
 
 ```bash
-docker compose --profile ingest_only config --services | rg '^(payment|billing)$' && exit 1 || true
+docker compose --profile ingest_only config --services | rg '^(payment|billing|clickhouse)$' && exit 1 || true
 docker compose --profile ingest_only up -d
 curl -sf http://127.0.0.1:8188/health && curl -sf http://127.0.0.1:8181/health
 ```

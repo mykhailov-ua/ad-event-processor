@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
 )
@@ -109,16 +110,25 @@ func main() {
 		)
 	}
 
-	chConn, err := database.ConnectClickHouse(ctx, string(cfg.CHDSN))
-	if err != nil {
-		slog.Error("failed to connect to clickhouse", "error", err)
-		os.Exit(1)
-	}
-	defer chConn.Close()
+	chEnabled := cfg.ClickHouseEnabled()
+	var chConn driver.Conn
+	var chStore *ingestion.ClickHouseStore
+	var chJanitor *database.CHPartitionJanitor
+	if chEnabled {
+		var err error
+		chConn, err = database.ConnectClickHouse(ctx, string(cfg.CHDSN))
+		if err != nil {
+			slog.Error("failed to connect to clickhouse", "error", err)
+			os.Exit(1)
+		}
+		defer chConn.Close()
 
-	if err := migrate.ApplyClickHouseMigrations(ctx, chConn); err != nil {
-		slog.Error("failed to apply clickhouse migrations", "error", err)
-		os.Exit(1)
+		if err := migrate.ApplyClickHouseMigrations(ctx, chConn); err != nil {
+			slog.Error("failed to apply clickhouse migrations", "error", err)
+			os.Exit(1)
+		}
+	} else {
+		slog.Info("clickhouse consumer disabled", "ch_consumer", "disabled")
 	}
 
 	notifierClient, notifierErr := management.NewNotifierClient(cfg)
@@ -130,21 +140,23 @@ func main() {
 	}
 	opsAlerter := management.NewOpsAlerter(notifierClient, cfg)
 	var onEmergencyDrop database.EmergencyDropAlerter
-	if opsAlerter != nil && cfg.CHEmergencyDropPercent > 0 {
+	if chEnabled && opsAlerter != nil && cfg.CHEmergencyDropPercent > 0 {
 		threshold := cfg.CHEmergencyDropPercent
 		onEmergencyDrop = func(table, partition string, diskPct float64) {
 			opsAlerter.AlertCHEmergencyDrop(table, partition, diskPct, threshold)
 		}
 	}
-	chJanitor := database.NewCHPartitionJanitor(chConn, database.CHJanitorOptions{
-		RetentionDays:            cfg.CHRawRetentionDays,
-		EmergencyDropPercent:     cfg.CHEmergencyDropPercent,
-		RecompressPartsThreshold: cfg.CHRecompressPartsThreshold,
-		OffPeakStartHourUTC:      cfg.CHRecompressOffPeakStartUTC,
-		OffPeakEndHourUTC:        cfg.CHRecompressOffPeakEndUTC,
-		OnEmergencyDrop:          onEmergencyDrop,
-	})
-	chJanitor.StartBackground(ctx, 24*time.Hour)
+	if chEnabled && chConn != nil {
+		chJanitor = database.NewCHPartitionJanitor(chConn, database.CHJanitorOptions{
+			RetentionDays:            cfg.CHRawRetentionDays,
+			EmergencyDropPercent:     cfg.CHEmergencyDropPercent,
+			RecompressPartsThreshold: cfg.CHRecompressPartsThreshold,
+			OffPeakStartHourUTC:      cfg.CHRecompressOffPeakStartUTC,
+			OffPeakEndHourUTC:        cfg.CHRecompressOffPeakEndUTC,
+			OnEmergencyDrop:          onEmergencyDrop,
+		})
+		chJanitor.StartBackground(ctx, 24*time.Hour)
+	}
 
 	var rdbs []redis.UniversalClient
 	rdbs, _, err = database.ConnectRedisShards(ctx, cfg, database.RedisShardOptions{
@@ -156,17 +168,23 @@ func main() {
 	}
 
 	pgStore := ingestion.NewPostgresStoreWithGate(settleQueries, time.Duration(cfg.WriteTimeoutMs)*time.Millisecond, procPgGate)
-	spoolCfg := ingestion.CHCfgFromConfig(cfg.CHSpoolSegmentMB, cfg.CHSpoolMaxSegments)
-	chStore := ingestion.NewClickHouseStore(chConn, time.Duration(cfg.WriteTimeoutMs)*time.Millisecond, cfg.CHSpoolDir, spoolCfg, procChGate)
 	piiHasher, piiErr := piihash.NewFromConfig(cfg)
 	if piiErr != nil {
-		slog.Error("failed to initialize PII hasher for clickhouse", "error", piiErr)
+		slog.Error("failed to initialize PII hasher", "error", piiErr)
 		os.Exit(1)
 	}
-	chStore.SetPIIHasher(piiHasher)
-	if err := chStore.RecoverSpool(ctx); err != nil {
-		slog.Error("failed to recover clickhouse spool", "error", err)
-		os.Exit(1)
+	if cfg.EventsHashIPAtInsert {
+		pgStore.SetPIIHashAtInsert(piiHasher)
+		slog.Info("postgres events IP hash-at-insert enabled")
+	}
+	if chEnabled && chConn != nil {
+		spoolCfg := ingestion.CHCfgFromConfig(cfg.CHSpoolSegmentMB, cfg.CHSpoolMaxSegments)
+		chStore = ingestion.NewClickHouseStore(chConn, time.Duration(cfg.WriteTimeoutMs)*time.Millisecond, cfg.CHSpoolDir, spoolCfg, procChGate)
+		chStore.SetPIIHasher(piiHasher)
+		if err := chStore.RecoverSpool(ctx); err != nil {
+			slog.Error("failed to recover clickhouse spool", "error", err)
+			os.Exit(1)
+		}
 	}
 
 	var fraudScorer fraudscoring.Scorer
@@ -265,60 +283,62 @@ func main() {
 		pgSettlementWorkers = append(pgSettlementWorkers, settleW)
 		settleW.Start(consumerCtx)
 
-		cc := ingestion.NewStreamConsumer(
-			chStore,
-			rdb,
-			cfg.RedisStreamName,
-			cfg.RedisGroupName+"_ch",
-			cfg.RedisConsumerID+"_"+shardID,
-			cfg.CHBatchSize,
-			cfg.ProcessorCHStreamWorkers(),
-			time.Duration(cfg.CHFlushIntervalMs)*time.Millisecond,
-			time.Duration(cfg.WriteTimeoutMs)*time.Millisecond,
-			time.Duration(cfg.RetryInitialWaitMs)*time.Millisecond,
-			time.Duration(cfg.RetryMaxWaitMs)*time.Millisecond,
-			cfg.MaxRetries,
-			time.Duration(cfg.StreamMinIdleMs)*time.Millisecond,
-			time.Duration(cfg.Lifecycle.DrainTimeoutMs)*time.Millisecond,
-		)
-		cc.SetLogger(appLogger)
-		cc.SetAuditLogSampleMask(cfg.AuditLogSampleMask)
-		if weightCtrl != nil {
-			cc.SetWeightController(weightCtrl)
-		}
+		if chStore != nil {
+			cc := ingestion.NewStreamConsumer(
+				chStore,
+				rdb,
+				cfg.RedisStreamName,
+				cfg.RedisGroupName+"_ch",
+				cfg.RedisConsumerID+"_"+shardID,
+				cfg.CHBatchSize,
+				cfg.ProcessorCHStreamWorkers(),
+				time.Duration(cfg.CHFlushIntervalMs)*time.Millisecond,
+				time.Duration(cfg.WriteTimeoutMs)*time.Millisecond,
+				time.Duration(cfg.RetryInitialWaitMs)*time.Millisecond,
+				time.Duration(cfg.RetryMaxWaitMs)*time.Millisecond,
+				cfg.MaxRetries,
+				time.Duration(cfg.StreamMinIdleMs)*time.Millisecond,
+				time.Duration(cfg.Lifecycle.DrainTimeoutMs)*time.Millisecond,
+			)
+			cc.SetLogger(appLogger)
+			cc.SetAuditLogSampleMask(cfg.AuditLogSampleMask)
+			if weightCtrl != nil {
+				cc.SetWeightController(weightCtrl)
+			}
 
-		if fraudScorer != nil {
-			mb := fraudscoring.NewMicroBatcher(rdb, fraudScorer)
-			go mb.Start(consumerCtx)
-			cc.SetOnMessageProcessed(mb.Enqueue)
-		}
+			if fraudScorer != nil {
+				mb := fraudscoring.NewMicroBatcher(rdb, fraudScorer)
+				go mb.Start(consumerCtx)
+				cc.SetOnMessageProcessed(mb.Enqueue)
+			}
 
-		chConsumers = append(chConsumers, cc)
-		cc.Start(consumerCtx)
+			chConsumers = append(chConsumers, cc)
+			cc.Start(consumerCtx)
 
-		fc := ingestion.NewStreamConsumer(
-			chStore,
-			rdb,
-			cfg.FraudStreamName,
-			cfg.RedisGroupName+"_fraud",
-			cfg.RedisConsumerID+"_fraud_"+shardID,
-			cfg.CHBatchSize,
-			cfg.ProcessorCHStreamWorkers(),
-			time.Duration(cfg.CHFlushIntervalMs)*time.Millisecond,
-			time.Duration(cfg.WriteTimeoutMs)*time.Millisecond,
-			time.Duration(cfg.RetryInitialWaitMs)*time.Millisecond,
-			time.Duration(cfg.RetryMaxWaitMs)*time.Millisecond,
-			cfg.MaxRetries,
-			time.Duration(cfg.StreamMinIdleMs)*time.Millisecond,
-			time.Duration(cfg.Lifecycle.DrainTimeoutMs)*time.Millisecond,
-		)
-		fc.SetLogger(appLogger)
-		fc.SetAuditLogSampleMask(cfg.AuditLogSampleMask)
-		if weightCtrl != nil {
-			fc.SetWeightController(weightCtrl)
+			fc := ingestion.NewStreamConsumer(
+				chStore,
+				rdb,
+				cfg.FraudStreamName,
+				cfg.RedisGroupName+"_fraud",
+				cfg.RedisConsumerID+"_fraud_"+shardID,
+				cfg.CHBatchSize,
+				cfg.ProcessorCHStreamWorkers(),
+				time.Duration(cfg.CHFlushIntervalMs)*time.Millisecond,
+				time.Duration(cfg.WriteTimeoutMs)*time.Millisecond,
+				time.Duration(cfg.RetryInitialWaitMs)*time.Millisecond,
+				time.Duration(cfg.RetryMaxWaitMs)*time.Millisecond,
+				cfg.MaxRetries,
+				time.Duration(cfg.StreamMinIdleMs)*time.Millisecond,
+				time.Duration(cfg.Lifecycle.DrainTimeoutMs)*time.Millisecond,
+			)
+			fc.SetLogger(appLogger)
+			fc.SetAuditLogSampleMask(cfg.AuditLogSampleMask)
+			if weightCtrl != nil {
+				fc.SetWeightController(weightCtrl)
+			}
+			chConsumers = append(chConsumers, fc)
+			fc.Start(consumerCtx)
 		}
-		chConsumers = append(chConsumers, fc)
-		fc.Start(consumerCtx)
 	}
 
 	ingestion.StartFraudLagPublisher(
@@ -363,15 +383,17 @@ func main() {
 			brokerConsumers = append(brokerConsumers, pgBroker)
 			pgBroker.Start(consumerCtx)
 
-			chBrokerCfg := brokerBase
-			chBrokerCfg.Partition = uint16(p)
-			chBrokerCfg.Group = cfg.RedisGroupName + "_ch_broker"
-			chBrokerCfg.BatchSize = cfg.CHBatchSize
-			chBrokerCfg.FlushInt = time.Duration(cfg.CHFlushIntervalMs) * time.Millisecond
-			chBroker := ingestion.NewBrokerStreamConsumer(chStore, chBrokerCfg, writeTimeout, retryInit, retryMax, cfg.MaxRetries)
-			chBroker.SetLogger(appLogger)
-			brokerConsumers = append(brokerConsumers, chBroker)
-			chBroker.Start(consumerCtx)
+			if chStore != nil {
+				chBrokerCfg := brokerBase
+				chBrokerCfg.Partition = uint16(p)
+				chBrokerCfg.Group = cfg.RedisGroupName + "_ch_broker"
+				chBrokerCfg.BatchSize = cfg.CHBatchSize
+				chBrokerCfg.FlushInt = time.Duration(cfg.CHFlushIntervalMs) * time.Millisecond
+				chBroker := ingestion.NewBrokerStreamConsumer(chStore, chBrokerCfg, writeTimeout, retryInit, retryMax, cfg.MaxRetries)
+				chBroker.SetLogger(appLogger)
+				brokerConsumers = append(brokerConsumers, chBroker)
+				chBroker.Start(consumerCtx)
+			}
 		}
 
 		if len(rdbs) > 0 {
@@ -421,9 +443,12 @@ func main() {
 	slog.Info("starting ad-event-processor worker",
 		"stream", cfg.RedisStreamName,
 		"pg_group", cfg.RedisGroupName+"_pg",
-		"ch_group", cfg.RedisGroupName+"_ch",
+		"ch_enabled", chEnabled,
 		"port", cfg.ProcessorPort,
 	)
+	if !chEnabled {
+		slog.Info("clickhouse stream consumers skipped", "ch_consumer", "disabled")
+	}
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /metrics", promhttp.Handler())
@@ -433,8 +458,10 @@ func main() {
 		if err := pool.Ping(probeCtx); err != nil {
 			return false
 		}
-		if err := chConn.Ping(probeCtx); err != nil {
-			return false
+		if chConn != nil {
+			if err := chConn.Ping(probeCtx); err != nil {
+				return false
+			}
 		}
 		for i, rdb := range rdbs {
 			if err := rdb.Ping(probeCtx).Err(); err != nil {
@@ -446,11 +473,13 @@ func main() {
 				}
 			}
 		}
-		if spool := chStore.Spool(); spool != nil {
-			seg := spool.SegmentCount()
-			metrics.CHSpoolSegments.Set(float64(seg))
-			if seg > cfg.CHSpoolMaxSegments {
-				return false
+		if chStore != nil {
+			if spool := chStore.Spool(); spool != nil {
+				seg := spool.SegmentCount()
+				metrics.CHSpoolSegments.Set(float64(seg))
+				if seg > cfg.CHSpoolMaxSegments {
+					return false
+				}
 			}
 		}
 		if cfg.ProcessorStreamLagMaxSec > 0 && ingestion.ProcessorStreamLagSec() > int64(cfg.ProcessorStreamLagMaxSec) {
@@ -528,7 +557,9 @@ func main() {
 			slog.Error("ch consumer wait failed", "error", err)
 		}
 	}
-	chStore.Close()
+	if chStore != nil {
+		chStore.Close()
+	}
 
 	syncCancel()
 	for i, sw := range syncWorkers {
@@ -540,7 +571,9 @@ func main() {
 	if err := partManager.Wait(waitCtx); err != nil {
 		slog.Error("partition manager wait failed", "error", err)
 	}
-	chJanitor.Wait()
+	if chJanitor != nil {
+		chJanitor.Wait()
+	}
 
 	cancel()
 

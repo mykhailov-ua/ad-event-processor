@@ -2,12 +2,12 @@ package database
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 	"time"
+
+	"espx/pkg/coldpath"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -70,31 +70,8 @@ func applyIngestionMigrations(t testing.TB, pool *pgxpool.Pool) {
 	_, filename, _, _ := runtime.Caller(0)
 	baseDir := filepath.Join(filepath.Dir(filename), "..", "..")
 	migrationsDir := filepath.Join(baseDir, "internal/ingestion/migrations")
-
-	entries, err := os.ReadDir(migrationsDir)
-	if err != nil {
-		t.Fatalf("failed to read migrations dir %s: %s", migrationsDir, err)
-	}
-
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sql") {
-			continue
-		}
-		sqlBytes, err := os.ReadFile(filepath.Join(migrationsDir, entry.Name()))
-		if err != nil {
-			t.Fatalf("failed to read migration %s: %s", entry.Name(), err)
-		}
-
-		sql := string(sqlBytes)
-		parts := strings.Split(sql, "-- +goose Down")
-		upPart := parts[0]
-		upPart = strings.ReplaceAll(upPart, "-- +goose Up", "")
-		upPart = strings.ReplaceAll(upPart, "-- +goose StatementBegin", "")
-		upPart = strings.ReplaceAll(upPart, "-- +goose StatementEnd", "")
-
-		if _, err := pool.Exec(ctx, upPart); err != nil {
-			t.Fatalf("failed to apply migration %s: %s", entry.Name(), err)
-		}
+	if err := coldpath.ApplyTrackedSchemaMigrations(ctx, pool, migrationsDir); err != nil {
+		t.Fatalf("failed to apply ingestion migrations: %s", err)
 	}
 }
 

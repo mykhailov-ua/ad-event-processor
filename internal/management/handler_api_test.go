@@ -79,7 +79,8 @@ func TestAPI_GetCampaignStats_PostgresOnly(t *testing.T) {
 	assert.Equal(t, int64(2), report.Metrics.Conversions)
 	assert.Equal(t, "hour", report.Granularity)
 	assert.Equal(t, "strong", report.Consistency)
-	assert.False(t, report.Stale)
+	assert.True(t, report.Stale)
+	assert.Equal(t, "pg", report.Source)
 	assert.Empty(t, report.Hourly)
 }
 
@@ -179,6 +180,7 @@ func TestAPI_GetCampaignStats_ClickHouseStaleOK(t *testing.T) {
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&report))
 	assert.True(t, report.Stale, "ingestion lag >5m must set stale=true")
 	assert.Equal(t, "eventual", report.Consistency)
+	assert.Equal(t, "ch", report.Source)
 	require.NotEmpty(t, report.Hourly)
 }
 

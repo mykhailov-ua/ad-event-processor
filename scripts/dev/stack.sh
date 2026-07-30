@@ -9,7 +9,7 @@ CMD="${1:-status}"
 INFRA=(db db-payment redis-0 redis-1 redis-2 redis-3 clickhouse)
 FULL=(db db-payment redis-0 redis-1 redis-2 redis-3 clickhouse processor tracker-0 auth management payment billing notifier ivt-detector)
 SINGLE_VPS=(db redis-0 redis-1 redis-2 redis-3 clickhouse processor tracker-0 control)
-INGEST_ONLY=(db redis-0 redis-1 redis-2 redis-3 clickhouse processor tracker-0 control)
+INGEST_ONLY=(db redis-0 redis-1 redis-2 redis-3 processor tracker-0 control)
 NETWORK_OPERATOR=(db db-payment redis-0 redis-1 redis-2 redis-3 clickhouse processor tracker-0 control)
 SENTINEL=(redis-0 redis-0-replica sentinel-0 sentinel-1 sentinel-2)
 
@@ -24,7 +24,7 @@ single-vps | up-single-vps)
 	docker compose --profile single_vps up -d "${SINGLE_VPS[@]}"
 	;;
 ingest-only | up-ingest-only)
-	CONTROL_ENABLE_PAYMENT=0 CONTROL_ENABLE_BILLING=0 CONTROL_ENABLE_NOTIFIER=0 \
+	CH_ENABLED=0 CONTROL_ENABLE_PAYMENT=0 CONTROL_ENABLE_BILLING=0 CONTROL_ENABLE_NOTIFIER=0 \
 		CONTROL_ENABLE_MARGIN_GUARD=0 CONTROL_ENABLE_COST_SYNC=0 \
 		docker compose --profile ingest_only up -d "${INGEST_ONLY[@]}"
 	;;

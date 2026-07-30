@@ -57,6 +57,7 @@ func (a campaignStatsAdapter) GetCampaignStats(ctx context.Context, campaignID u
 		From:        report.From,
 		To:          report.To,
 		Stale:       report.Stale,
+		Source:      report.Source,
 		Consistency: report.Consistency,
 	}, nil
 }

@@ -8,8 +8,8 @@ RETURNING *;
 SELECT * FROM campaigns WHERE id = $1 LIMIT 1;
 
 -- name: InsertEvent :exec
-INSERT INTO events (click_id, campaign_id, user_id, event_type, payload, ip_address, user_agent, created_at, created_date)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+INSERT INTO events (click_id, campaign_id, user_id, event_type, payload, ip_address, ip_hash, user_agent, created_at, created_date)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 ON CONFLICT (click_id, created_date) DO NOTHING;
 
 -- name: UpdateCampaignStats :exec
@@ -51,7 +51,7 @@ ON CONFLICT (campaign_id, date) DO UPDATE SET
 
 -- name: InsertEventsBatch :exec
 WITH inserted AS (
-    INSERT INTO events (click_id, campaign_id, user_id, event_type, payload, ip_address, user_agent, created_at, created_date)
+    INSERT INTO events (click_id, campaign_id, user_id, event_type, payload, ip_address, ip_hash, user_agent, created_at, created_date)
     SELECT 
         unnest(@click_ids::text[]),
         unnest(@campaign_ids::uuid[]),
@@ -59,6 +59,7 @@ WITH inserted AS (
         unnest(@event_types::text[]),
         unnest(@payloads::jsonb[]),
         unnest(@ip_addresses::text[]),
+        unnest(@ip_hashes::bytea[]),
         unnest(@user_agents::text[]),
         unnest(@created_at::timestamptz[]),
         unnest(@created_dates::date[])

@@ -8,6 +8,8 @@ import (
 	"espx/internal/campaignmodel"
 	"espx/internal/ingestion/pb"
 	"espx/internal/metrics"
+	"espx/internal/telemetry"
+
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
 )
@@ -95,6 +97,7 @@ func (p *StreamProducer) Process(evt *campaignmodel.Event) error {
 		*bufPtr = buf
 		byteBufPool.Put(bufPtr)
 		metrics.EventsDropped.Inc()
+		telemetry.RecordRejected()
 		return err
 	}
 	data := buf[:n]
@@ -122,9 +125,11 @@ func (p *StreamProducer) Process(evt *campaignmodel.Event) error {
 
 	if err != nil {
 		metrics.EventsDropped.Inc()
+		telemetry.RecordRejected()
 		return err
 	}
 
 	metrics.EventsProcessed.Inc()
+	telemetry.RecordAccepted()
 	return nil
 }

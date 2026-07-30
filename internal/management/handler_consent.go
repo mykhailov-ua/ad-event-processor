@@ -1,25 +1,22 @@
 package management
 
 import (
-	"encoding/json"
 	"net/http"
 
+	"espx/pkg/coldpath"
 	"espx/pkg/httpresponse"
-
-	"github.com/google/uuid"
 )
 
 func (h *Handler) postCampaignConsentRequirements(w http.ResponseWriter, r *http.Request) {
-	campaignID, err := parsePathUUID(r, "id")
+	campaignID, err := coldpath.ParsePathUUID(r, "id")
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign id")
 		return
 	}
-	var req struct {
+	req, ok := coldpath.DecodeRequestOrBadRequest[struct {
 		RequireConsentPurposes int16 `json:"require_consent_purposes"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid json")
+	}](w, r, coldpath.DefaultMaxBody)
+	if !ok {
 		return
 	}
 	if err := h.svc.UpdateCampaignConsentRequirements(r.Context(), campaignID, req.RequireConsentPurposes); err != nil {
@@ -30,10 +27,13 @@ func (h *Handler) postCampaignConsentRequirements(w http.ResponseWriter, r *http
 }
 
 func (h *Handler) postPrivacyErasure(w http.ResponseWriter, r *http.Request) {
-	var req struct {
+	req, ok := coldpath.DecodeRequestOrBadRequest[struct {
 		UserID string `json:"user_id"`
+	}](w, r, coldpath.DefaultMaxBody)
+	if !ok {
+		return
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.UserID == "" {
+	if req.UserID == "" {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "user_id required")
 		return
 	}
@@ -43,8 +43,4 @@ func (h *Handler) postPrivacyErasure(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpresponse.JSON(w, http.StatusAccepted, map[string]string{"request_id": id.String()})
-}
-
-func parsePathUUID(r *http.Request, key string) (uuid.UUID, error) {
-	return uuid.Parse(r.PathValue(key))
 }

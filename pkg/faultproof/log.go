@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func Log(t *testing.T, fault string, kv map[string]string) {
+func Log(t testing.TB, fault string, kv map[string]string) {
 	t.Helper()
 	var b strings.Builder
 	b.WriteString("fault_proof fault=")

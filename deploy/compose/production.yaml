@@ -1,0 +1,69 @@
+# Production TLS overlay for docker compose.
+#
+# Usage:
+#   docker compose -f docker-compose.yaml -f deploy/compose/production.yaml up -d
+#
+# Prerequisites:
+#   - DB_DSN with sslmode=verify-full and sslrootcert=${PG_SSL_ROOT_CERT}
+#   - Postgres server cert/key under ${PG_TLS_CERT_DIR} (mounted below)
+#   - Redis TLS certs under ${REDIS_TLS_CERT_DIR}; apps use REDIS_TLS_* client paths
+#   - ESPX_PROFILE=production for MVSS doctor checks
+#   - Unique PII_SALT_HEX and REDIS_PASSWORD (not .env.example placeholders)
+
+services:
+  db:
+    command:
+      - postgres
+      - -p
+      - ${DB_PORT}
+      - -c
+      - ssl=on
+      - -c
+      - ssl_cert_file=/var/lib/postgresql/tls/server.crt
+      - -c
+      - ssl_key_file=/var/lib/postgresql/tls/server.key
+      - -c
+      - max_connections=600
+      - -c
+      - shared_buffers=1GB
+      - -c
+      - work_mem=64MB
+      - -c
+      - maintenance_work_mem=256MB
+      - -c
+      - effective_cache_size=3GB
+    volumes:
+      - ${PG_TLS_CERT_DIR:-./deploy/tls/postgres}:/var/lib/postgresql/tls:ro
+
+  redis-0:
+    command:
+      - redis-server
+      - --port
+      - "0"
+      - --tls-port
+      - "6379"
+      - --tls-cert-file
+      - /tls/redis.crt
+      - --tls-key-file
+      - /tls/redis.key
+      - --tls-ca-cert-file
+      - /tls/ca.crt
+      - --requirepass
+      - ${REDIS_PASSWORD}
+      - --appendonly
+      - yes
+      - --appendfsync
+      - everysec
+      - --maxmemory-policy
+      - noeviction
+    volumes:
+      - ${REDIS_TLS_CERT_DIR:-./deploy/tls/redis}:/tls:ro
+
+  management:
+    environment:
+      - ESPX_PROFILE=production
+      - EVENTS_RETENTION_DAYS=${EVENTS_RETENTION_DAYS:-90}
+
+  processor:
+    environment:
+      - EVENTS_HASH_IP_AT_INSERT=${EVENTS_HASH_IP_AT_INSERT:-0}

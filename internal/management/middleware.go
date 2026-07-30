@@ -232,10 +232,10 @@ func (m *AuthMiddleware) authenticateAPIKey(w http.ResponseWriter, r *http.Reque
 		if st, ok := status.FromError(err); ok {
 			switch st.Code() {
 			case codes.Unauthenticated:
-				httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized: invalid api key")
+				httpresponse.WriteGRPCError(w, err)
 				return AuthenticatedUser{}, false
 			case codes.ResourceExhausted:
-				httpresponse.Error(w, http.StatusTooManyRequests, "TOO_MANY_REQUESTS", st.Message())
+				httpresponse.WriteGRPCError(w, err)
 				return AuthenticatedUser{}, false
 			}
 		}

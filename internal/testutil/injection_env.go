@@ -1,7 +1,6 @@
 package testutil
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -34,18 +33,4 @@ func NewInjectionEnv(t testing.TB) (*InjectionEnv, func()) {
 		cleanupPG()
 	}
 	return env, cleanup
-}
-
-func LogFaultProof(t testing.TB, scenario string, attrs map[string]string) {
-	t.Helper()
-	var b strings.Builder
-	b.WriteString("fault_proof fault=")
-	b.WriteString(scenario)
-	for k, v := range attrs {
-		b.WriteByte(' ')
-		b.WriteString(k)
-		b.WriteByte('=')
-		b.WriteString(v)
-	}
-	t.Log(b.String())
 }

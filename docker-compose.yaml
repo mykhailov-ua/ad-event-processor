@@ -265,6 +265,7 @@ services:
       - DB_DSN=${DB_DSN}
       - REDIS_ADDRS=127.0.0.1:6479,127.0.0.1:6480,127.0.0.1:6481,127.0.0.1:6482,127.0.0.1:6483,127.0.0.1:6484
       - CH_DSN=${CH_DSN}
+      - CH_ENABLED=${CH_ENABLED:-1}
       - PROCESSOR_PORT=${PROCESSOR_PORT:-8186}
       - SERVER_PORT=${PROCESSOR_PORT:-8186}
       - GEOIP_DB_PATH=/deploy/geoip/GeoLite2-Country.mmdb
@@ -299,8 +300,6 @@ services:
       db:
         condition: service_healthy
       redis-0:
-        condition: service_healthy
-      clickhouse:
         condition: service_healthy
     logging:
       driver: "json-file"
@@ -355,8 +354,6 @@ services:
       db:
         condition: service_healthy
       redis-0:
-        condition: service_healthy
-      clickhouse:
         condition: service_healthy
     logging:
       driver: "json-file"
@@ -940,6 +937,15 @@ services:
 
   clickhouse:
     image: clickhouse/clickhouse-server:${CH_VERSION}
+    profiles:
+      - single_vps
+      - network_operator
+      - analytics_ml
+      - split_control
+      - resilience
+      - fraud-scorer
+      - multi-region
+      - tools
     env_file:
       - .env
     ports:

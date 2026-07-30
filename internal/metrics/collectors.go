@@ -1005,4 +1005,9 @@ var (
 		Name: "ad_xdp_fingerprint_total",
 		Help: "Passive SYN TCP fingerprints emitted to ringbuf (cold path, score only)",
 	})
+
+	EventsRetentionDeletedTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_events_retention_deleted_total",
+		Help: "PostgreSQL events rows deleted by EventsRetentionWorker",
+	})
 )

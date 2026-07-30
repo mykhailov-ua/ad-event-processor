@@ -22,5 +22,6 @@ type CampaignStatsDTO struct {
 	From         string                    `json:"from"`
 	To           string                    `json:"to"`
 	Stale        bool                      `json:"stale"`
+	Source       string                    `json:"source"`
 	Consistency  string                    `json:"consistency"`
 }

@@ -5,10 +5,6 @@ import (
 
 	"espx/pkg/coldpath"
 	"espx/pkg/httpresponse"
-
-	"github.com/google/uuid"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 type createPaymentIntentRequest struct {
@@ -22,25 +18,15 @@ func (h *Handler) createCustomerPaymentIntent(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	customerID, err := uuid.Parse(r.PathValue("id"))
+	customerID, err := coldpath.ParsePathUUID(r, "id")
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer id")
 		return
 	}
 
-	body, err := coldpath.ReadLimitedBody(w, r, 16*1024)
-	if err != nil {
-		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
+	req, ok := coldpath.DecodeRequestOrBadRequest[createPaymentIntentRequest](w, r, 16*1024)
+	if !ok {
 		return
-	}
-
-	var req createPaymentIntentRequest
-	if len(body) > 0 {
-		req, err = coldpath.DecodeBody[createPaymentIntentRequest](body)
-		if err != nil {
-			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
-			return
-		}
 	}
 	if req.AmountMicro <= 0 {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "amount_micro must be greater than zero")
@@ -59,20 +45,7 @@ func (h *Handler) createCustomerPaymentIntent(w http.ResponseWriter, r *http.Req
 
 	resp, err := h.payment.CreatePaymentIntent(r.Context(), customerID.String(), req.AmountMicro, currency, idempotencyKey, nil)
 	if err != nil {
-		if st, ok := status.FromError(err); ok {
-			switch st.Code() {
-			case codes.InvalidArgument:
-				httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", st.Message())
-				return
-			case codes.AlreadyExists:
-				httpresponse.Error(w, http.StatusConflict, "CONFLICT", st.Message())
-				return
-			case codes.FailedPrecondition:
-				httpresponse.Error(w, http.StatusServiceUnavailable, "PAYMENT_UNAVAILABLE", st.Message())
-				return
-			}
-		}
-		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL", "failed to create payment intent")
+		httpresponse.WriteGRPCError(w, err)
 		return
 	}
 

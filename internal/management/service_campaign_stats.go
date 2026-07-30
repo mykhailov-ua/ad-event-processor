@@ -38,6 +38,7 @@ type CampaignStatsDTO struct {
 	From         string                    `json:"from"`
 	To           string                    `json:"to"`
 	Stale        bool                      `json:"stale"`
+	Source       string                    `json:"source"`
 	Consistency  string                    `json:"consistency"`
 }
 
@@ -86,7 +87,8 @@ func (s *Service) GetCampaignStats(ctx context.Context, campaignID uuid.UUID, fr
 		Granularity: granularity,
 		From:        from.UTC().Format(time.RFC3339),
 		To:          to.UTC().Format(time.RFC3339),
-		Stale:       false,
+		Stale:       true,
+		Source:      "pg",
 		Consistency: "strong",
 	}
 
@@ -100,6 +102,7 @@ func (s *Service) GetCampaignStats(ctx context.Context, campaignID uuid.UUID, fr
 	}
 	report.Hourly = hourly
 	report.Consistency = "eventual"
+	report.Source = "ch"
 	report.Stale = lag > clickHouseStaleThreshold
 	return report, nil
 }

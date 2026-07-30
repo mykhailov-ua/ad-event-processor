@@ -30,6 +30,7 @@ type Config struct {
 	RedisGroupName                  string
 	RedisConsumerID                 string
 	CHDSN                           Secret
+	CHEnabled                       bool
 	AuthServerPort                  string
 	AuthMetricsPort                 string
 	Env                             string
@@ -54,6 +55,10 @@ type Config struct {
 	VendorTelemetryEnabled          bool
 	VendorTelemetryIntervalSec      int
 	VendorTelemetryTimeoutSec       int
+	TelemetryOptIn                  bool
+	TelemetryURL                    Secret
+	TelemetryIntervalSec            int
+	TelemetryHTTPTimeoutSec         int
 	SyncWorkerMaxConcurrency        int
 	LogRetentionDays                int
 	DBTrackerMaxConns               int
@@ -194,16 +199,16 @@ type Config struct {
 	AutoscaleShiftAmount        int64
 	AutoscaleIntervalMs         int
 
-	DeliveryOptimizerIntervalMs int
-	BidFloorLookbackHours       int
+	DeliveryOptimizerIntervalMs    int
+	BidFloorLookbackHours          int
 	BidFloorOptimizerLookbackHours int
 	BidFloorOptimizerIntervalHours int
-	BidFloorBucketMicro         int64
-	BidFloorWinRateLow          float64
-	BidFloorWinRateHigh         float64
-	BidFloorAdjustPct           int
-	BidFloorMinMicro            int64
-	DealFloorRefreshIntervalMs  int
+	BidFloorBucketMicro            int64
+	BidFloorWinRateLow             float64
+	BidFloorWinRateHigh            float64
+	BidFloorAdjustPct              int
+	BidFloorMinMicro               int64
+	DealFloorRefreshIntervalMs     int
 
 	PacingToleranceMargin float64
 
@@ -226,6 +231,8 @@ type Config struct {
 	ConsentRetentionMonths  int
 	ConsentUpdateChannel    string
 	ErasureWorkerIntervalMs int
+	EventsRetentionDays     int
+	EventsHashIPAtInsert    bool
 
 	Lifecycle struct {
 		ShutdownTimeoutMs int
@@ -485,6 +492,10 @@ func Load() (*Config, error) {
 		VendorTelemetryEnabled:          vendorTelemetryEnabled(appEnv),
 		VendorTelemetryIntervalSec:      getEnvInt("VENDOR_TELEMETRY_INTERVAL_SEC", 60),
 		VendorTelemetryTimeoutSec:       getEnvInt("VENDOR_TELEMETRY_TIMEOUT_SEC", 5),
+		TelemetryOptIn:                  telemetryOptInFromEnv(),
+		TelemetryURL:                    Secret(strings.TrimSpace(os.Getenv("ESPX_TELEMETRY_URL"))),
+		TelemetryIntervalSec:            getEnvInt("ESPX_TELEMETRY_INTERVAL_SEC", 3600),
+		TelemetryHTTPTimeoutSec:         getEnvInt("ESPX_TELEMETRY_TIMEOUT_SEC", 5),
 		SyncWorkerMaxConcurrency:        getEnvInt("SYNC_WORKER_MAX_CONCURRENCY", 32),
 		LogRetentionDays:                getEnvInt("LOG_RETENTION_DAYS", 7),
 		DBTrackerMaxConns:               getEnvInt("DB_TRACKER_MAX_CONNS", 4),
@@ -528,6 +539,7 @@ func Load() (*Config, error) {
 		TTCMinMs:                        getEnvInt("TTC_MIN_MS", 300),
 		TTCFailClosed:                   getEnvBool("TTC_FAIL_CLOSED", false),
 		CHDSN:                           Secret(os.Getenv("CH_DSN")),
+		CHEnabled:                       clickHouseEnabledFromEnv(),
 		CHBatchSize:                     getEnvInt("CH_BATCH_SIZE", 50000),
 		CHFlushIntervalMs:               getEnvInt("CH_FLUSH_INTERVAL_MS", 10000),
 		PIISaltVersion:                  uint8(getEnvInt("PII_SALT_VERSION", 1)),
@@ -584,9 +596,9 @@ func Load() (*Config, error) {
 		BidFloorAdjustPct:               getEnvInt("BID_FLOOR_ADJUST_PCT", 10),
 		BidFloorMinMicro:                getEnvMicro("BID_FLOOR_MIN_MICRO", 1000),
 		DealFloorRefreshIntervalMs:      getEnvInt("DEAL_FLOOR_REFRESH_INTERVAL_MS", 60_000),
-		PacingToleranceMargin:            getEnvFloat("PACING_TOLERANCE_MARGIN", 0.15),
-		MarginGuardIntervalSec:         getEnvInt("MARGIN_GUARD_INTERVAL_SEC", 300),
-		MarginGuardDefaultThresholdBps: getEnvInt("MARGIN_GUARD_DEFAULT_THRESHOLD_BPS", 500),
+		PacingToleranceMargin:           getEnvFloat("PACING_TOLERANCE_MARGIN", 0.15),
+		MarginGuardIntervalSec:          getEnvInt("MARGIN_GUARD_INTERVAL_SEC", 300),
+		MarginGuardDefaultThresholdBps:  getEnvInt("MARGIN_GUARD_DEFAULT_THRESHOLD_BPS", 500),
 		CreditScoringMinAgeDays:         getEnvFloat("CREDIT_SCORING_MIN_AGE_DAYS", 7.0),
 		CreditScoringMatureAgeDays:      getEnvFloat("CREDIT_SCORING_MATURE_AGE_DAYS", 30.0),
 		CreditScoringMidTierPercent:     getEnvInt64("CREDIT_SCORING_MID_TIER_PERCENT", 15),
@@ -601,6 +613,8 @@ func Load() (*Config, error) {
 		ConsentRetentionMonths:          getEnvInt("CONSENT_RETENTION_MONTHS", 13),
 		ConsentUpdateChannel:            envOrDefault("CONSENT_UPDATE_CHANNEL", "consent:update"),
 		ErasureWorkerIntervalMs:         getEnvInt("ERASURE_WORKER_INTERVAL_MS", 60_000),
+		EventsRetentionDays:             getEnvInt("EVENTS_RETENTION_DAYS", 90),
+		EventsHashIPAtInsert:            getEnvBool("EVENTS_HASH_IP_AT_INSERT", false),
 		PaymentServerPort:               os.Getenv("PAYMENT_SERVER_PORT"),
 		PaymentServerHost:               os.Getenv("PAYMENT_SERVER_HOST"),
 		PaymentMetricsPort:              os.Getenv("PAYMENT_METRICS_PORT"),
@@ -1091,7 +1105,7 @@ func (c *Config) IVTDetectorEnabled() bool {
 	if c == nil || !c.IVT.Enabled {
 		return false
 	}
-	return string(c.CHDSN) != ""
+	return c.ClickHouseEnabled()
 }
 
 func (c *Config) FraudScoringEnabled() bool {
@@ -1129,7 +1143,47 @@ func (c *Config) FraudScorerStandalone() bool {
 }
 
 func (c *Config) ClickHouseEnabled() bool {
-	return c != nil && string(c.CHDSN) != ""
+	return c != nil && c.CHEnabled && strings.TrimSpace(string(c.CHDSN)) != ""
+}
+
+func clickHouseEnabledFromEnv() bool {
+	raw := strings.TrimSpace(os.Getenv("CH_ENABLED"))
+	if raw == "" {
+		return true
+	}
+	switch strings.ToLower(raw) {
+	case "0", "false", "no", "off":
+		return false
+	default:
+		return true
+	}
+}
+
+func telemetryOptInFromEnv() bool {
+	raw, ok := os.LookupEnv("ESPX_TELEMETRY_OPT_IN")
+	if !ok {
+		return false
+	}
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
+}
+
+func (c *Config) TelemetryInterval() time.Duration {
+	if c == nil || c.TelemetryIntervalSec <= 0 {
+		return time.Hour
+	}
+	return time.Duration(c.TelemetryIntervalSec) * time.Second
+}
+
+func (c *Config) TelemetryHTTPTimeout() time.Duration {
+	if c == nil || c.TelemetryHTTPTimeoutSec <= 0 {
+		return 5 * time.Second
+	}
+	return time.Duration(c.TelemetryHTTPTimeoutSec) * time.Second
 }
 
 func (c *Config) VolumeMeterFromPG() bool {

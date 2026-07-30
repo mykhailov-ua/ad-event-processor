@@ -306,6 +306,13 @@ func Serve(ctx context.Context, cfg *config.Config) error {
 	})
 	slog.Info("started consent retention worker", "retention_months", cfg.ConsentRetentionMonths)
 
+	if cfg.EventsRetentionDays > 0 {
+		svc.StartBackgroundWorker(func() {
+			NewEventsRetentionWorker(pool, cfg.EventsRetentionDays).Start(ctx)
+		})
+		slog.Info("started events retention worker", "retention_days", cfg.EventsRetentionDays)
+	}
+
 	if cfg.ErasureWorkerIntervalMs > 0 {
 		erasureInterval := time.Duration(cfg.ErasureWorkerIntervalMs) * time.Millisecond
 		svc.StartBackgroundWorker(func() {
@@ -321,6 +328,13 @@ func Serve(ctx context.Context, cfg *config.Config) error {
 	}
 
 	svc.StartVendorTelemetryWorker()
+	svc.StartProductTelemetryPulse()
+	if cfg.TelemetryOptIn {
+		slog.Info("product telemetry pulse enabled",
+			"interval_sec", cfg.TelemetryIntervalSec,
+			"url_configured", string(cfg.TelemetryURL) != "",
+		)
+	}
 	if cfg.VendorTelemetryEnabled {
 		slog.Info("vendor telemetry probes enabled",
 			"interval_sec", cfg.VendorTelemetryIntervalSec,

@@ -152,7 +152,7 @@ Pull or push via license server / outbox:
 | Control | What it gives |
 | :--- | :--- |
 | **Network allowlist** | Operator permits only `license.<vendor>` host; telemetry host optional second FQDN |
-| **Published schemas** | `docs/schemas/telemetry-pulse.json`, heartbeat OpenAPI on license server |
+| **Published schemas** | `docs/telemetry/schema_v1.json`, heartbeat OpenAPI on license server |
 | **Proxy logging** | Operator terminates TLS, inspects JSON body |
 | **No telemetry = full function** | Ingest and license work; only intel feed and vendor aggregate stats missing |
 | **Escrow / audit** | Enterprise: read-only source under NDA for core ingest (see [LICENSE_COMMERCE.md](./LICENSE_COMMERCE.md)) |

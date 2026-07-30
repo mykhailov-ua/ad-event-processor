@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"espx/pkg/coldpath"
 	"espx/pkg/httpresponse"
 
 	"github.com/google/uuid"
@@ -65,7 +66,7 @@ func (h *CampaignsHTTPHandlers) getCampaignMargin(w http.ResponseWriter, r *http
 }
 
 func (h *CampaignsHTTPHandlers) parseCampaignID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
-	campaignID, err := uuid.Parse(r.PathValue("id"))
+	campaignID, err := coldpath.ParsePathUUID(r, "id")
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign id")
 		return uuid.Nil, false

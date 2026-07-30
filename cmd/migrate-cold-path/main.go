@@ -10,6 +10,7 @@ import (
 
 	"espx/internal/database"
 	"espx/internal/notifier"
+	"espx/pkg/coldpath"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -66,7 +67,7 @@ func applyColdPathMigrations(ctx context.Context, pool *pgxpool.Pool, only map[s
 			}
 			dir := root + "/" + item.rel
 			slog.Info("applying migrations", "dir", item.rel)
-			if err := database.ApplyTrackedGooseMigrationsDir(ctx, pool, dir); err != nil {
+			if err := coldpath.ApplyTrackedSchemaMigrations(ctx, pool, dir); err != nil {
 				return err
 			}
 		}

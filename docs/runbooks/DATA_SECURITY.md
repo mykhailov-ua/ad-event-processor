@@ -158,15 +158,17 @@ Fallback derives salt from `TOKEN_SYMMETRIC_KEY` if `PII_SALT_HEX` unset — **d
 
 | Table / column | Sensitivity | Policy |
 | :--- | :--- | :--- |
-| `events.ip_address`, `user_agent` | High | Plaintext today; limit retention (GAP-DATA-02) |
+| `events.ip_address`, `user_agent` | High | Plaintext by default; `EVENTS_HASH_IP_AT_INSERT=1` stores `ip_hash` only in new rows |
 | `balance_ledger`, `campaigns` | Financial | Encrypted disk + strict DB roles |
 | `auth` users | Credentials | Argon2id hashes only |
 
-**Recommended operator policy until PG hashing ships:**
+**Recommended operator policy:**
 
-- Retention job: drop or archive `events` older than N days (30–90 typical).
+- `EventsRetentionWorker` (management): batched delete of `events` older than `EVENTS_RETENTION_DAYS` (default 90).
 - Optional: partition by `created_date` and detach/drop old partitions.
 - Do not expose PG port publicly; read-only role for reporting tools.
+
+**Hash-at-insert (`EVENTS_HASH_IP_AT_INSERT=1`):** processor writes `ip_hash` (HighwayHash + `PII_SALT_HEX`) and leaves `ip_address` empty. Tracker/redis dedup, Lua filters, and settlement idempotency still use raw IP on the hot path before PG insert; PG reporting must join on `ip_hash`, not plaintext IP.
 
 ### Redis (hot path)
 
@@ -229,7 +231,7 @@ Tracked in backlog as **GAP-DATA-02** and related items:
 | 2 | Production compose profile with internal TLS defaults | Open |
 | 3 | Redis TLS in reference production profile | Open |
 | 4 | Envelope encryption for `events.payload` (operator DEK) | Open |
-| 5 | Installer checklist gate for MVSS items above | Open |
+| 5 | Installer checklist gate for MVSS items above | `espx doctor --checklist` (see deploy/installer/README.md) |
 | 6 | CH spool segment encryption vs LUKS-only | Open |
 
 ---
@@ -249,6 +251,6 @@ Tracked in backlog as **GAP-DATA-02** and related items:
 | ID | Topic |
 | :--- | :--- |
 | GAP-DATA-01 | PII hashing before ClickHouse insert — **shipped** |
-| GAP-DATA-02 | PG events retention policy, optional IP hashing, production TLS profile — **open** |
+| GAP-DATA-02 | PG events retention, optional IP hashing, production TLS profile — **shipped** (P19) |
 
 See [.cursor/BACKLOG.md](../../.cursor/BACKLOG.md).

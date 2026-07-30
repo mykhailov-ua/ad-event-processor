@@ -9,6 +9,7 @@ import (
 
 	"espx/internal/campaignmodel"
 	"espx/internal/metrics"
+	"espx/internal/telemetry"
 
 	redis "github.com/redis/go-redis/v9"
 )
@@ -211,6 +212,7 @@ func (f *UnifiedFilter) handleLuaResult(
 	case 10:
 		metrics.TTCBypassTotal.Inc()
 		metrics.EventsProcessed.Inc()
+		telemetry.RecordAccepted()
 		f.recordAcceptedSpendIfDebited(shard, evt.CampaignID, amount, sampleLua)
 		return true, nil
 	case 11:
@@ -220,6 +222,7 @@ func (f *UnifiedFilter) handleLuaResult(
 	case luaReturnFraudSignal:
 		addFraudSignal(evt, FraudReasonL3Blocklist)
 		metrics.EventsProcessed.Inc()
+		telemetry.RecordAccepted()
 		f.recordAcceptedSpendIfDebited(shard, evt.CampaignID, amount, sampleLua)
 		return true, nil
 	case luaReturnPlacement:
@@ -227,10 +230,12 @@ func (f *UnifiedFilter) handleLuaResult(
 	case luaReturnTierDegraded:
 		metrics.FilterTierDegradedTotal.Inc()
 		metrics.EventsProcessed.Inc()
+		telemetry.RecordAccepted()
 		f.recordAcceptedSpendIfDebited(shard, evt.CampaignID, amount, sampleLua)
 		return true, nil
 	default:
 		metrics.EventsProcessed.Inc()
+		telemetry.RecordAccepted()
 		f.recordAcceptedSpendIfDebited(shard, evt.CampaignID, amount, sampleLua)
 		return true, nil
 	}

@@ -2,7 +2,6 @@ package adminapi
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
@@ -119,21 +118,6 @@ func (h *ReportsHTTPHandlers) checkTierGate(r *http.Request, customerID uuid.UUI
 	return sub.PlanCode == "pro" || sub.PlanCode == "enterprise", nil
 }
 
-func encodeCursor(offset int) string {
-	return base64.StdEncoding.EncodeToString([]byte(strconv.Itoa(offset)))
-}
-
-func decodeCursor(cursorStr string) (int, error) {
-	if cursorStr == "" {
-		return 0, nil
-	}
-	decoded, err := base64.StdEncoding.DecodeString(cursorStr)
-	if err != nil {
-		return 0, err
-	}
-	return strconv.Atoi(string(decoded))
-}
-
 func (h *ReportsHTTPHandlers) reportFreshness(ctx context.Context) DataFreshnessDTO {
 	dto := DataFreshnessDTO{
 		AsOf:        time.Now().UTC().Format(time.RFC3339),
@@ -190,12 +174,13 @@ func (h *ReportsHTTPHandlers) getPlacementsReport(w http.ResponseWriter, r *http
 			limit = int32(l)
 		}
 	}
-	cursorStr := r.URL.Query().Get("cursor")
-	offset, err := decodeCursor(cursorStr)
+	page, err := coldpath.Paginate(r.URL.Query().Get("cursor"), int(limit), 1000)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid cursor")
 		return
 	}
+	offset := page.Offset
+	limit = int32(page.Limit)
 
 	campaignID := r.URL.Query().Get("campaign_id")
 	if campaignID == "" {
@@ -242,7 +227,7 @@ func (h *ReportsHTTPHandlers) getPlacementsReport(w http.ResponseWriter, r *http
 
 	var nextCursor string
 	if int64(offset)+int64(limit) < total {
-		nextCursor = encodeCursor(offset + int(limit))
+		nextCursor = coldpath.EncodeCursor(offset + int(limit))
 	}
 
 	resp := PlacementReportResponse{
@@ -292,12 +277,13 @@ func (h *ReportsHTTPHandlers) getKeywordsReport(w http.ResponseWriter, r *http.R
 			limit = int32(l)
 		}
 	}
-	cursorStr := r.URL.Query().Get("cursor")
-	offset, err := decodeCursor(cursorStr)
+	page, err := coldpath.Paginate(r.URL.Query().Get("cursor"), int(limit), 1000)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid cursor")
 		return
 	}
+	offset := page.Offset
+	limit = int32(page.Limit)
 
 	campaignID := r.URL.Query().Get("campaign_id")
 	if campaignID == "" {
@@ -345,7 +331,7 @@ func (h *ReportsHTTPHandlers) getKeywordsReport(w http.ResponseWriter, r *http.R
 
 	var nextCursor string
 	if int64(offset)+int64(limit) < total {
-		nextCursor = encodeCursor(offset + int(limit))
+		nextCursor = coldpath.EncodeCursor(offset + int(limit))
 	}
 
 	resp := KeywordReportResponse{

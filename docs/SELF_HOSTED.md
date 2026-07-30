@@ -245,10 +245,22 @@ Compose profiles gate which containers start. Use `scripts/dev/stack.sh` or `doc
 | `single_vps` | `stack.sh single-vps` | `tracker`, `processor`, `control` (all cold path in one process) | Default bare-metal / 1–2 CPU |
 | `ingest_only` | `stack.sh ingest-only` | Same; `CONTROL_ENABLE_PAYMENT/BILLING/NOTIFIER/MARGIN_GUARD/COST_SYNC=0` | Arbitrage / buy-side |
 | `network_operator` | `stack.sh network-operator` | `control` with payment + billing + notifier enabled | Ad network with wallet |
-| `analytics_ml` | `stack.sh analytics-ml` | + `fraud-scorer`, `ivt-detector` (ClickHouse required) | Optional ML cold path |
+| `analytics_ml` | `stack.sh analytics-ml` | + `clickhouse`, `fraud-scorer`, `ivt-detector` | Optional ML cold path |
 | `split_control` | `stack.sh full` | Separate `auth`, `management`, `payment`, `billing`, `notifier` containers | Legacy / multi-container dev |
 
-ClickHouse stays in the default infra profile (processor analytics); optional for ingest-only when ML modules are off (GAP-PROD-05).
+ClickHouse is **optional**: `ingest_only` sets `CH_ENABLED=0` and omits the CH container; settlement and billing remain on PostgreSQL. Enable CH via `single_vps` / `network_operator` profiles or add `analytics_ml` for ML modules.
+
+### Degradation matrix (ClickHouse optional)
+
+| Component | `CH_ENABLED=1` (default) | `CH_ENABLED=0` / `ingest_only` |
+| :--- | :--- | :--- |
+| Tracker `/track` | Unaffected | Unaffected |
+| Processor PG settlement | Active | Active |
+| Processor CH stream consumer | Active | **Skipped** (`ch_consumer=disabled` in logs) |
+| Processor `/health` | PG + Redis + CH ping | PG + Redis only (OK) |
+| `GET /api/v1/campaigns/{id}/stats` | Hourly from CH MVs; `source: "ch"` | PG `campaign_stats` only; `stale: true`, `source: "pg"` |
+| `ivt-detector` / `fraud-scorer` | Requires CH (`analytics_ml` profile) | Not started in `ingest_only` |
+| Margin guard / cost-sync CH paths | Active when licensed | Skipped or PG-only |
 
 CI validates profile wiring: `scripts/ci/compose_profile_check.sh`.
 
