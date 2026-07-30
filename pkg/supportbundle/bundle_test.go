@@ -2,8 +2,8 @@ package supportbundle
 
 import (
 	"archive/tar"
-	"compress/gzip"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"io"
 	"os"
@@ -46,8 +46,8 @@ func TestWriteBundle(t *testing.T) {
 
 	var buf bytes.Buffer
 	err := Write(context.Background(), &buf, Options{
-		Meta: Meta{DeploymentID: "dep-1", LicenseState: "ACTIVE"},
-		LogDir: dir,
+		Meta:     Meta{DeploymentID: "dep-1", LicenseState: "ACTIVE"},
+		LogDir:   dir,
 		MaxBytes: DefaultMaxBytes,
 	})
 	if err != nil {
