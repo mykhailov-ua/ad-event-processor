@@ -279,9 +279,36 @@ RETURNING *;
 SELECT * FROM vendor.licenses WHERE license_key = $1;
 
 -- name: InsertVendorLicense :one
-INSERT INTO vendor.licenses (license_key, customer_name, plan_code, valid_from, valid_until, grace_days, limits_json, features_json, support_tier, revoked)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+INSERT INTO vendor.licenses (license_key, customer_name, plan_code, valid_from, valid_until, grace_days, limits_json, features_json, support_tier, revoked, max_activations)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING *;
+
+-- name: ListLicenseActivationsByKey :many
+SELECT license_key, fingerprint, deployment_id, first_seen_at, last_seen_at
+FROM vendor.license_activations
+WHERE license_key = $1
+ORDER BY first_seen_at;
+
+-- name: UpsertLicenseActivation :one
+INSERT INTO vendor.license_activations (license_key, fingerprint, deployment_id, first_seen_at, last_seen_at)
+VALUES ($1, $2, $3, NOW(), NOW())
+ON CONFLICT (license_key, fingerprint) DO UPDATE SET
+  deployment_id = EXCLUDED.deployment_id,
+  last_seen_at = NOW()
+RETURNING *;
+
+-- name: CountDistinctFingerprintsByLicenseKey :one
+SELECT COUNT(DISTINCT fingerprint)::int AS count
+FROM vendor.license_activations
+WHERE license_key = $1;
+
+-- name: InsertLicenseRevokeFlag :execrows
+INSERT INTO vendor.license_revoke_queue (license_key, reason, detail_json)
+SELECT $1, $2, $3
+WHERE NOT EXISTS (
+    SELECT 1 FROM vendor.license_revoke_queue
+    WHERE license_key = $1 AND reason = $2 AND processed_at IS NULL
+);
 
 -- name: RevokeVendorLicense :exec
 UPDATE vendor.licenses SET revoked = TRUE, updated_at = NOW() WHERE license_key = $1;

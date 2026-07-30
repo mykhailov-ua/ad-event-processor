@@ -19,6 +19,9 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// registryFullSyncPayload must match ingestion.RegistryFullSyncPayload.
+const registryFullSyncPayload = "*"
+
 type LicenseWatcher struct {
 	pool        *pgxpool.Pool
 	rdb         redis.UniversalClient
@@ -258,7 +261,7 @@ func (w *LicenseWatcher) persistLicenseToken(token string) error {
 			return fmt.Errorf("spool append: %w", err)
 		}
 	}
-	if err := os.WriteFile(w.path, []byte(token), 0o600); err != nil {
+	if err := WriteFileAtomic(w.path, []byte(token), 0o600); err != nil {
 		return fmt.Errorf("write license file: %w", err)
 	}
 	return nil
@@ -366,7 +369,7 @@ func (w *LicenseWatcher) publishCampaignUpdate(ctx context.Context) {
 	channel := "campaigns:update"
 	for _, rdb := range w.controlRedis() {
 		if rdb != nil {
-			_ = rdb.Publish(ctx, channel, "license_update").Err()
+			_ = rdb.Publish(ctx, channel, registryFullSyncPayload).Err()
 		}
 	}
 }

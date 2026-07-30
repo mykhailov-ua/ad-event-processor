@@ -156,11 +156,20 @@ Models:  download from vendor CDN with license cookie (ML SKUs)
 
 | Signal | Action |
 | :--- | :--- |
-| Same `license_key` from many fingerprints | Flag / revoke |
+| Same `license_key` from many fingerprints | Flag / revoke queue (`vendor.license_revoke_queue`, reason `same_key_many_fingerprints`) |
 | Heartbeat from conflicting regions simultaneously | Clone suspicion |
 | Impossible version strings | Block refresh |
 
 No PII/traffic content on license heartbeat — only deployment metadata. Optional telemetry is a **separate** opt-in channel.
+
+### Operator migration / re-activation
+
+When moving a deployment to new hardware (fingerprint change) or recovering from loss:
+
+1. Vendor support resets activations for the `license_key` (delete rows in `vendor.license_activations` for that key, or issue a new key).
+2. Operator clears local `license.jwt` and spool (`.license-spool/`) on the new node.
+3. Set `ESPX_LICENSE_KEY` and restart tracker/management — first `/v1/activate` binds the new fingerprint.
+4. Until reset, a second fingerprint on the same key receives **403** (`activation limit exceeded` or `fingerprint mismatch`).
 
 ---
 

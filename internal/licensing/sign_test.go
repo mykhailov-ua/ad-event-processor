@@ -35,6 +35,39 @@ func TestSignJWT_roundTrip(t *testing.T) {
 	require.Equal(t, uint64(1000), parsed.Limits.MaxRPS)
 }
 
+func TestSignJWT_ed25519DeterministicVector(t *testing.T) {
+	seed := make([]byte, ed25519.SeedSize)
+	for i := range seed {
+		seed[i] = byte(i)
+	}
+	priv := ed25519.NewKeyFromSeed(seed)
+	pub := priv.Public().(ed25519.PublicKey)
+
+	validFrom := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	validUntil := validFrom.Add(72 * time.Hour)
+	claims := LicenseClaims{
+		Issuer:       "espx-license",
+		Subject:      "vector-subject",
+		DeploymentID: "dep-vector",
+		CustomerName: "Vector Co",
+		Plan:         "ingest_pro",
+		ValidFrom:    validFrom,
+		ValidUntil:   validUntil,
+		GraceDays:    7,
+	}
+	claims.Bind.Mode = "fingerprint"
+	claims.Bind.Fingerprint = "fp-vector"
+
+	token, err := SignJWT(claims, priv, DefaultLicenseKeyID)
+	require.NoError(t, err)
+	require.NotEmpty(t, token)
+
+	parsed, err := VerifyJWT(token, pub)
+	require.NoError(t, err)
+	require.Equal(t, "vector-subject", parsed.Subject)
+	require.Equal(t, "fp-vector", parsed.Bind.Fingerprint)
+}
+
 func TestLoadSKUFile(t *testing.T) {
 	doc, err := LoadSKUFile(filepath.Join("..", "..", "deploy", "vendor", "sku.yaml"))
 	require.NoError(t, err)
