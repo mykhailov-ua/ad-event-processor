@@ -13,4 +13,4 @@ Architecture rationale (not backlog): `.cursor/RESTRUCTURE_PLAN.md`.
 
 Fault/resilience catalog: `.cursor/rules/fault-resilience.mdc`.
 
-Do not use `docs/MILESTONE.md` for open work — it is historical; `GAP_SPECS.md` is canonical.
+Do not use duplicate backlog tables in `docs/` — open work index is `.cursor/BACKLOG.md`; DoD is `.cursor/GAP_SPECS.md` (same P numbers).

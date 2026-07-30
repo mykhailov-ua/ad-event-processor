@@ -561,7 +561,7 @@ Actions logged in `audit_logs`.
 
 ## Completed roadmap
 
-The technology milestone backlog lives in [MILESTONE.md](./MILESTONE.md). Recently completed items:
+Open and closed backlog index: [`.cursor/BACKLOG.md`](../.cursor/BACKLOG.md) (single table P01→P49). Recently completed items:
 
 | ID | Summary | Evidence |
 | :--- | :--- | :--- |
@@ -584,7 +584,7 @@ The technology milestone backlog lives in [MILESTONE.md](./MILESTONE.md). Recent
 | GAP-RTB-12b | Admin dry-run preview | `ParseDryRun`, `dry_run_test.go` |
 | GAP-RTB-12c | A/B cohorts | `experiment_cohorts`, `cohort_snapshot.go`, `cohort_test.go` |
 
-Engineering backlog in [MILESTONE.md](./MILESTONE.md) is clear except deferred UI (GAP-PROD-01, GAP-OPS-04).
+Engineering backlog: [`.cursor/BACKLOG.md`](../.cursor/BACKLOG.md) — one P01→P49 table; deferred UI only GAP-PROD-01, GAP-OPS-04.
 
 ---
 
