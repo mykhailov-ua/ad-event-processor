@@ -1,26 +1,26 @@
 package licensing
 
 type Limits struct {
-	MaxRPS              uint64 `json:"max_rps"`
-	MaxRequestsPerDay   uint64 `json:"max_requests_per_day"`
-	MaxActiveCampaigns  uint64 `json:"max_active_campaigns"`
-	MaxRegions          uint64 `json:"max_regions"`
-	MaxTenants          uint64 `json:"max_tenants"`
-	MaxEventsPerMonth   uint64 `json:"max_events_per_month"`
-	MaxAPIKeys          uint64 `json:"max_api_keys"`
-	MaxExportChunkBytes uint64 `json:"max_export_chunk_bytes"`
-	QuotaResetTimezone  string `json:"quota_reset_timezone"`
+	MaxRPS              uint64 `json:"max_rps" yaml:"max_rps"`
+	MaxRequestsPerDay   uint64 `json:"max_requests_per_day" yaml:"max_requests_per_day"`
+	MaxActiveCampaigns  uint64 `json:"max_active_campaigns" yaml:"max_active_campaigns"`
+	MaxRegions          uint64 `json:"max_regions" yaml:"max_regions"`
+	MaxTenants          uint64 `json:"max_tenants" yaml:"max_tenants"`
+	MaxEventsPerMonth   uint64 `json:"max_events_per_month" yaml:"max_events_per_month"`
+	MaxAPIKeys          uint64 `json:"max_api_keys" yaml:"max_api_keys"`
+	MaxExportChunkBytes uint64 `json:"max_export_chunk_bytes" yaml:"max_export_chunk_bytes"`
+	QuotaResetTimezone  string `json:"quota_reset_timezone" yaml:"quota_reset_timezone"`
 }
 
 type FeatureSet struct {
-	RtbLive       bool `json:"rtb_live"`
-	OpenRTBEngine bool `json:"openrtb_engine"`
-	IvtMLDetector bool `json:"ivt_ml_detector"`
-	EbpfXDPEdge   bool `json:"ebpf_xdp_edge"`
-	MlFraudBoost  bool `json:"ml_fraud_boost"`
-	MultiRegion   bool `json:"multi_region"`
-	SlotMigration bool `json:"slot_migration"`
-	MarginGuard   bool `json:"margin_guard"`
+	RtbLive       bool `json:"rtb_live" yaml:"rtb_live"`
+	OpenRTBEngine bool `json:"openrtb_engine" yaml:"openrtb_engine"`
+	IvtMLDetector bool `json:"ivt_ml_detector" yaml:"ivt_ml_detector"`
+	EbpfXDPEdge   bool `json:"ebpf_xdp_edge" yaml:"ebpf_xdp_edge"`
+	MlFraudBoost  bool `json:"ml_fraud_boost" yaml:"ml_fraud_boost"`
+	MultiRegion   bool `json:"multi_region" yaml:"multi_region"`
+	SlotMigration bool `json:"slot_migration" yaml:"slot_migration"`
+	MarginGuard   bool `json:"margin_guard" yaml:"margin_guard"`
 }
 
 type Entitlements struct {

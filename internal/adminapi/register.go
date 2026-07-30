@@ -90,6 +90,7 @@ var routeCatalog = []Route{
 	{Method: "GET", Path: "/api/v1/ops/incidents"},
 	{Method: "GET", Path: "/api/v1/ops/outbox"},
 	{Method: "POST", Path: "/api/v1/ops/roles/reload"},
+	{Method: "POST", Path: "/api/v1/ops/plans/reload"},
 	{Method: "GET", Path: "/api/v1/ops/shards"},
 	{Method: "GET", Path: "/api/v1/postbacks/config"},
 	{Method: "PUT", Path: "/api/v1/postbacks/config/{campaign_id}"},

@@ -9,6 +9,7 @@ type LicenseClaims struct {
 	DeploymentID string     `json:"deployment_id"`
 	CustomerName string     `json:"customer_name"`
 	Plan         string     `json:"plan"`
+	SKU          string     `json:"sku,omitempty"`
 	VolumeBand   VolumeBand `json:"volume_band"`
 	ValidFrom    time.Time  `json:"valid_from"`
 	ValidUntil   time.Time  `json:"valid_until"`

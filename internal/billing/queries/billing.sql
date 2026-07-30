@@ -205,6 +205,16 @@ SELECT * FROM billing.subscription_plans;
 -- name: GetSubscriptionPlan :one
 SELECT * FROM billing.subscription_plans WHERE code = $1;
 
+-- name: UpsertSubscriptionPlan :one
+INSERT INTO billing.subscription_plans (code, display_name, limits_json, features_json, base_fee_micro)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (code) DO UPDATE SET
+  display_name = EXCLUDED.display_name,
+  limits_json = EXCLUDED.limits_json,
+  features_json = EXCLUDED.features_json,
+  base_fee_micro = EXCLUDED.base_fee_micro
+RETURNING *;
+
 -- name: GetCustomerSubscription :one
 SELECT s.*, p.display_name, p.limits_json, p.features_json, p.base_fee_micro
 FROM billing.customer_subscriptions s

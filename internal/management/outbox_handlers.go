@@ -79,6 +79,8 @@ func (w *OutboxWorker) handleOutboxEvent(opCtx, ctx context.Context, ev db.Outbo
 		return w.handleFraudModelVersion(ctx, ev.Payload)
 	case "PAUSE_PLACEMENT":
 		return w.handlePausePlacement(ctx, ev.Payload)
+	case "UPDATE_ENTITLEMENTS":
+		return w.handleUpdateEntitlements(ctx)
 	default:
 		return fmt.Errorf("unknown outbox event type: %s", ev.EventType)
 	}
@@ -465,6 +467,13 @@ type PausePlacementPayload struct {
 }
 
 func (w *OutboxWorker) handleUpdateCohortSnapshot(ctx context.Context) error {
+	if w == nil || w.svc == nil {
+		return fmt.Errorf("service unavailable")
+	}
+	return w.svc.publishRegistryFullSync(ctx)
+}
+
+func (w *OutboxWorker) handleUpdateEntitlements(ctx context.Context) error {
 	if w == nil || w.svc == nil {
 		return fmt.Errorf("service unavailable")
 	}

@@ -1,0 +1,56 @@
+# Vendor SKU catalog (Layer V). Not shipped inside customer binaries.
+# Sign with: go run ./cmd/espx-license --sku ingest_pro --customer-name "Acme" --deployment-id <uuid>
+#
+# Schema:
+#   skus[].code              — JWT sku/plan claim (required, unique)
+#   skus[].display_name      — human label
+#   skus[].price_usd_monthly — commercial metadata (not in JWT)
+#   skus[].valid_days        — JWT valid_until = issued_at + valid_days (default 30)
+#   skus[].grace_days        — JWT grace_days (default 7)
+#   skus[].features          — licensing.FeatureSet JSON
+#   skus[].limits            — licensing.Limits JSON
+#   skus[].bind.mode         — fingerprint binding mode (soft|hard)
+#   skus[].support_tier      — optional support tier label
+
+skus:
+  - code: ingest_pro
+    display_name: Ingest + Antifraud Pro
+    price_usd_monthly: 1200
+    valid_days: 30
+    grace_days: 7
+    features:
+      rtb_live: false
+      ebpf_xdp_edge: true
+      ivt_ml_detector: false
+      ml_fraud_boost: false
+      multi_region: false
+    limits:
+      max_regions: 1
+      max_api_keys: 99
+      max_rps: 100000
+      max_requests_per_day: 50000000
+      max_active_campaigns: 500
+    bind:
+      mode: fingerprint
+    support_tier: standard
+
+  - code: network_enterprise
+    display_name: Full network stack
+    price_usd_monthly: 4800
+    valid_days: 30
+    grace_days: 7
+    features:
+      rtb_live: true
+      ivt_ml_detector: true
+      ml_fraud_boost: true
+      multi_region: true
+      margin_guard: true
+    limits:
+      max_regions: 5
+      max_api_keys: 99
+      max_rps: 200000
+      max_requests_per_day: 999999999
+      max_active_campaigns: 999999
+    bind:
+      mode: fingerprint
+    support_tier: enterprise

@@ -10,11 +10,13 @@ import (
 	"time"
 
 	"espx/internal/adminapi"
+	"espx/internal/billing/plansyaml"
 	"espx/internal/ingestion"
 	db "espx/internal/ingestion/sqlc"
 	"espx/internal/management/authz"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type opsReader struct {
@@ -260,3 +262,19 @@ func (r rolesReloader) ReloadRoles() error {
 }
 
 func (r rolesReloader) RolesPath() string { return authz.DefaultRolesPath() }
+
+type plansReloader struct {
+	pool *pgxpool.Pool
+	svc  *Service
+}
+
+func (p plansReloader) ReloadPlans(ctx context.Context, dryRun bool) (plansyaml.ReloadReport, error) {
+	return plansyaml.Reload(ctx, p.pool, plansyaml.DefaultPlansPath(), dryRun, func(ctx context.Context) error {
+		if dryRun || p.svc == nil {
+			return nil
+		}
+		return p.svc.publishRegistryFullSync(ctx)
+	})
+}
+
+func (p plansReloader) PlansPath() string { return plansyaml.DefaultPlansPath() }

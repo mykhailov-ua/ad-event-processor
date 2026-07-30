@@ -17,6 +17,7 @@ roles:
       - users:write
       - shards:write
       - shards:read
+      - ops:write
   M:
     scope: customer
     permissions:

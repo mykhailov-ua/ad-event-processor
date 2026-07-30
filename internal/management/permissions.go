@@ -18,4 +18,5 @@ const (
 	PermUsersWrite     = "users:write"
 	PermShardsRead     = "shards:read"
 	PermShardsWrite    = "shards:write"
+	PermOpsWrite       = "ops:write"
 )

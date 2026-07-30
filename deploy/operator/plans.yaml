@@ -1,0 +1,18 @@
+# Operator advertiser tiers (Layer O). Reload: POST /api/v1/ops/plans/reload
+# Override path: OPERATOR_PLANS_YAML
+
+plans:
+  - code: network_pro
+    display_name: Pro advertiser
+    base_fee_micro: 500000000
+    limits:
+      max_active_campaigns: 200
+      max_rps: 50000
+      max_requests_per_day: 10000000
+      max_events_per_month: 0
+      max_api_keys: 5
+    features:
+      rtb_live: true
+      ml_fraud_boost: false
+
+assignments: []

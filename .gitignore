@@ -5,6 +5,7 @@
 # Build output & vendored deps
 bin/
 vendor/
+!deploy/vendor/
 
 # Generated code (make gen / make proto — repo keeps sources only)
 /api/gen/
