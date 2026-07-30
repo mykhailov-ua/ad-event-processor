@@ -37,6 +37,18 @@ func TestLicenseFilter_revokedRejects(t *testing.T) {
 	require.ErrorIs(t, err, ErrLicenseExpired)
 }
 
+func TestLicenseFilter_offlineWarnAllowsIngest(t *testing.T) {
+	f := NewLicenseFilter(&stubLicenseRegistry{state: licensing.StateOfflineWarn})
+	err := f.Check(context.Background(), &campaignmodel.Event{})
+	assert.NoError(t, err)
+}
+
+func TestLicenseFilter_offlineGraceAllowsIngest(t *testing.T) {
+	f := NewLicenseFilter(&stubLicenseRegistry{state: licensing.StateOfflineGrace})
+	err := f.Check(context.Background(), &campaignmodel.Event{})
+	assert.NoError(t, err)
+}
+
 func TestFault_LicenseGraceIngestContinues(t *testing.T) {
 	f := NewLicenseFilter(&stubLicenseRegistry{state: licensing.StateGrace})
 	if err := f.Check(context.Background(), &campaignmodel.Event{}); err != nil {

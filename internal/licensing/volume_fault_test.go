@@ -55,8 +55,10 @@ func TestFault_LicenseServerUnreachableUsesLastKnownGood(t *testing.T) {
 	require.NoError(t, err)
 	loaded, err := VerifyJWT(tokenStr, pub)
 	require.NoError(t, err)
-	state := DetermineState(loaded, time.Now(), false)
-	assert.Equal(t, StateActive, state)
+
+	now := time.Now()
+	state := DetermineEffectiveState(loaded, now, false, now, true, w.policy)
+	assert.Equal(t, StateOfflineWarn, state)
 	assert.Equal(t, VolumeBandMedium, ParseVolumeBand(string(loaded.VolumeBand)))
 
 	logLicensingFaultProof(t, "license_server_unreachable_last_known_good", map[string]string{

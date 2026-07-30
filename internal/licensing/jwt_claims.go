@@ -26,8 +26,10 @@ type LicenseClaims struct {
 type LicenseState string
 
 const (
-	StateActive  LicenseState = "ACTIVE"
-	StateGrace   LicenseState = "GRACE"
-	StateExpired LicenseState = "EXPIRED"
-	StateRevoked LicenseState = "REVOKED"
+	StateActive       LicenseState = "ACTIVE"
+	StateOfflineWarn  LicenseState = "OFFLINE_WARN"
+	StateOfflineGrace LicenseState = "OFFLINE_GRACE"
+	StateGrace        LicenseState = "GRACE"
+	StateExpired      LicenseState = "EXPIRED"
+	StateRevoked      LicenseState = "REVOKED"
 )

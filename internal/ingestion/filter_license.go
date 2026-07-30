@@ -24,7 +24,7 @@ func (f *LicenseFilter) Check(_ context.Context, _ *campaignmodel.Event) error {
 		return nil
 	}
 	state, _ := f.registry.GetLicenseState()
-	if state == licensing.StateExpired || state == licensing.StateRevoked {
+	if !licensing.IngestAllowed(state) {
 		return ErrLicenseExpired
 	}
 	return nil

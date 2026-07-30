@@ -338,6 +338,7 @@ func (h *LicensingHTTPHandlers) getLicenseStatus(w http.ResponseWriter, r *http.
 		LastVerifiedAt: licRow.LastVerifiedAt.Time.Format(time.RFC3339),
 		RefreshMode:    refreshMode,
 		LastRefreshErr: licRow.LastRefreshError.String,
+		BannerSeverity: lic.BannerSeverity(lic.LicenseState(licRow.State)),
 	})
 }
 

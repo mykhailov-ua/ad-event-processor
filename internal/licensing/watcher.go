@@ -34,6 +34,7 @@ type LicenseWatcher struct {
 	licenseKey string
 	interval   time.Duration
 	timeout    time.Duration
+	policy     HeartbeatPolicy
 	spool      *LicenseSpool
 
 	mu               sync.RWMutex
@@ -41,6 +42,7 @@ type LicenseWatcher struct {
 	currentState     LicenseState
 	lastVerifiedAt   time.Time
 	lastRefreshError error
+	offlineSince     time.Time
 	pubKey           ed25519.PublicKey
 }
 
@@ -74,6 +76,9 @@ func NewLicenseWatcher(pool *pgxpool.Pool, rdb redis.UniversalClient, pubKey ed2
 	if d, err := time.ParseDuration(timeoutStr); err == nil {
 		timeout = d
 	}
+	if timeout > 30*time.Second {
+		timeout = 30 * time.Second
+	}
 
 	client := NewLicenseClient(serverURL, licenseKey, timeout)
 
@@ -88,6 +93,7 @@ func NewLicenseWatcher(pool *pgxpool.Pool, rdb redis.UniversalClient, pubKey ed2
 		licenseKey:   licenseKey,
 		interval:     interval,
 		timeout:      timeout,
+		policy:       LoadHeartbeatPolicyFromEnv(),
 		pubKey:       pubKey,
 		currentState: StateExpired,
 	}
@@ -159,15 +165,26 @@ func (w *LicenseWatcher) Start(ctx context.Context) error {
 }
 
 func (w *LicenseWatcher) verifyAndReload(ctx context.Context) error {
+	now := time.Now()
 	var tokenStr string
 	var err error
+	heartbeatOffline := false
 
 	if w.mode == "online" && w.licenseKey != "" {
+		w.loadOfflineSince(ctx)
 		tokenStr, err = w.performOnlineHeartbeat(ctx)
 		if err != nil {
 			slog.Warn("Online license heartbeat failed, falling back to cached file", "error", err)
 			w.mu.Lock()
 			w.lastRefreshError = err
+			if w.offlineSince.IsZero() {
+				w.offlineSince = now
+			}
+			heartbeatOffline = true
+			w.mu.Unlock()
+		} else {
+			w.mu.Lock()
+			w.offlineSince = time.Time{}
 			w.mu.Unlock()
 		}
 	}
@@ -179,6 +196,7 @@ func (w *LicenseWatcher) verifyAndReload(ctx context.Context) error {
 			w.lastRefreshError = err
 			w.currentState = StateExpired
 			w.mu.Unlock()
+			SetLicenseMetrics(StateExpired, 0)
 			return fmt.Errorf("failed to read local license file: %w", err)
 		}
 	}
@@ -189,25 +207,59 @@ func (w *LicenseWatcher) verifyAndReload(ctx context.Context) error {
 		w.lastRefreshError = err
 		w.currentState = StateExpired
 		w.mu.Unlock()
+		SetLicenseMetrics(StateExpired, 0)
 		return fmt.Errorf("license signature verification failed: %w", err)
 	}
 
-	state := DetermineState(claims, time.Now(), false)
+	w.mu.Lock()
+	offlineSince := w.offlineSince
+	w.mu.Unlock()
+	state := DetermineEffectiveState(claims, now, false, offlineSince, heartbeatOffline, w.policy)
+	offlineDays := 0
+	if heartbeatOffline {
+		offlineDays = OfflineDays(offlineSince, now)
+	}
 
 	w.mu.Lock()
 	w.currentClaims = claims
 	w.currentState = state
-	w.lastVerifiedAt = time.Now()
-	w.lastRefreshError = nil
+	w.lastVerifiedAt = now
+	if !heartbeatOffline {
+		w.lastRefreshError = nil
+	}
 	w.mu.Unlock()
 
-	err = w.updateDatabaseAndRedis(ctx, tokenStr, claims, state)
+	SetLicenseMetrics(state, offlineDays)
+
+	if w.pool == nil && w.rdb == nil {
+		return nil
+	}
+	err = w.updateDatabaseAndRedis(ctx, tokenStr, claims, state, offlineSince, offlineDays)
 	if err != nil {
 		slog.Error("Failed to update license status in DB/Redis", "error", err)
 		return err
 	}
 
 	return nil
+}
+
+func (w *LicenseWatcher) loadOfflineSince(ctx context.Context) {
+	if w.rdb == nil {
+		return
+	}
+	ts, err := w.rdb.HGet(ctx, "entitlement:deployment", "offline_since").Result()
+	if err != nil || ts == "" {
+		return
+	}
+	parsed, err := time.Parse(time.RFC3339, ts)
+	if err != nil {
+		return
+	}
+	w.mu.Lock()
+	if w.offlineSince.IsZero() || parsed.Before(w.offlineSince) {
+		w.offlineSince = parsed
+	}
+	w.mu.Unlock()
 }
 
 func (w *LicenseWatcher) performOnlineHeartbeat(ctx context.Context) (string, error) {
@@ -284,7 +336,7 @@ func (w *LicenseWatcher) readLocalFile() (string, error) {
 	return string(data), nil
 }
 
-func (w *LicenseWatcher) updateDatabaseAndRedis(ctx context.Context, token string, claims *LicenseClaims, state LicenseState) error {
+func (w *LicenseWatcher) updateDatabaseAndRedis(ctx context.Context, token string, claims *LicenseClaims, state LicenseState, offlineSince time.Time, offlineDays int) error {
 	depID, err := uuid.Parse(claims.DeploymentID)
 	if err != nil {
 		return fmt.Errorf("invalid deployment id in claims: %w", err)
@@ -340,6 +392,13 @@ func (w *LicenseWatcher) updateDatabaseAndRedis(ctx context.Context, token strin
 		"ml_fraud_boost":       boolToInt(features.MlFraudBoost),
 		"multi_region":         boolToInt(features.MultiRegion),
 		"slot_migration":       boolToInt(features.SlotMigration),
+		"offline_days":         offlineDays,
+		"banner_severity":      BannerSeverity(state),
+	}
+	if offlineSince.IsZero() {
+		fields["offline_since"] = ""
+	} else {
+		fields["offline_since"] = offlineSince.UTC().Format(time.RFC3339)
 	}
 
 	if err := w.rdb.HMSet(ctx, redisKey, fields).Err(); err != nil {

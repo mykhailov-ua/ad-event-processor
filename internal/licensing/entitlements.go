@@ -65,4 +65,6 @@ type LicenseStatusDTO struct {
 	LastVerifiedAt string        `json:"last_verified_at"`
 	RefreshMode    string        `json:"refresh_mode"`
 	LastRefreshErr string        `json:"last_refresh_error,omitempty"`
+	OfflineDays    int           `json:"offline_days,omitempty"`
+	BannerSeverity string        `json:"banner_severity,omitempty"`
 }
