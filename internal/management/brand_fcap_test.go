@@ -1,11 +1,7 @@
 package management
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
 	"path/filepath"
 	"testing"
 	"time"
@@ -39,58 +35,23 @@ func TestBrandFrequencyCapping(t *testing.T) {
 
 	svc := NewService(pool, []redis.UniversalClient{rdb}, nil, cfg)
 	defer svc.Close()
-	h := NewHandler(svc, cfg, nil, nil, nil, nil)
-	mux := http.NewServeMux()
-	h.RegisterRoutes(mux)
 
 	ctx := context.Background()
 	custID := uuid.New()
 	err := svc.CreateCustomer(ctx, custID, "Brand Owner", 1_000_000_000, "USD")
 	require.NoError(t, err)
 
-	brandReq := map[string]any{
-		"customer_id": custID.String(),
-		"name":        "Nike Group",
-	}
-	brandReqBytes, _ := json.Marshal(brandReq)
-	req, _ := http.NewRequest("POST", "/admin/brands", bytes.NewReader(brandReqBytes))
-	req.Header.Set("X-Admin-API-Key", "test-secret")
-	resp := httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
-	require.Equal(t, http.StatusCreated, resp.Code)
-
-	var brandResp struct {
-		ID string `json:"id"`
-	}
-	err = json.NewDecoder(resp.Body).Decode(&brandResp)
-	require.NoError(t, err)
-	brandID, err := uuid.Parse(brandResp.ID)
+	brandID, err := svc.CreateBrand(ctx, custID, "Nike Group")
 	require.NoError(t, err)
 
-	reqList, _ := http.NewRequest("GET", "/admin/brands?customer_id="+custID.String(), nil)
-	reqList.Header.Set("X-Admin-API-Key", "test-secret")
-	respList := httptest.NewRecorder()
-	mux.ServeHTTP(respList, reqList)
-	require.Equal(t, http.StatusOK, respList.Code)
-
-	var listResp []BrandDTO
-	err = json.NewDecoder(respList.Body).Decode(&listResp)
+	brands, err := svc.ListBrandsByCustomer(ctx, custID)
 	require.NoError(t, err)
-	require.Len(t, listResp, 1)
-	assert.Equal(t, brandResp.ID, listResp[0].ID)
-	assert.Equal(t, custID.String(), listResp[0].CustomerID)
-	assert.Equal(t, "Nike Group", listResp[0].Name)
+	require.Len(t, brands, 1)
+	assert.Equal(t, brandID.String(), brands[0].ID)
+	assert.Equal(t, custID.String(), brands[0].CustomerID)
+	assert.Equal(t, "Nike Group", brands[0].Name)
 
-	fcapReq := map[string]any{
-		"freq_limit":  3,
-		"freq_window": 3600,
-	}
-	fcapReqBytes, _ := json.Marshal(fcapReq)
-	reqFcap, _ := http.NewRequest("POST", "/admin/brands/"+brandResp.ID+"/fcap", bytes.NewReader(fcapReqBytes))
-	reqFcap.Header.Set("X-Admin-API-Key", "test-secret")
-	respFcap := httptest.NewRecorder()
-	mux.ServeHTTP(respFcap, reqFcap)
-	require.Equal(t, http.StatusOK, respFcap.Code)
+	require.NoError(t, svc.ConfigureBrandFcap(ctx, brandID, 3, 3600))
 
 	var dbLimit, dbWindow int32
 	err = pool.QueryRow(ctx, "SELECT freq_limit, freq_window FROM advertiser_brands WHERE id = $1", brandID).Scan(&dbLimit, &dbWindow)
@@ -108,54 +69,34 @@ func TestBrandFrequencyCapping(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), outboxCount)
 
-	campAReq := map[string]any{
-		"customer_id":      custID.String(),
-		"brand_id":         brandResp.ID,
-		"name":             "Air Max Run",
-		"budget_limit":     100.00,
-		"daily_budget":     10.00,
-		"freq_limit":       2,
-		"freq_window":      3600,
-		"target_countries": []string{"US"},
-	}
-	campAReqBytes, _ := json.Marshal(campAReq)
-	reqA, _ := http.NewRequest("POST", "/admin/campaigns", bytes.NewReader(campAReqBytes))
-	reqA.Header.Set("X-Admin-API-Key", "test-secret")
-	respA := httptest.NewRecorder()
-	mux.ServeHTTP(respA, reqA)
-	require.Equal(t, http.StatusCreated, respA.Code)
-
-	var campAResp struct {
-		ID string `json:"id"`
-	}
-	err = json.NewDecoder(respA.Body).Decode(&campAResp)
-	require.NoError(t, err)
-	campAID, err := uuid.Parse(campAResp.ID)
+	campAID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
+		CustomerID:      custID,
+		BrandID:         &brandID,
+		Name:            "Air Max Run",
+		BudgetLimit:     100_000_000,
+		DailyBudget:     10_000_000,
+		PacingMode:      db.PacingModeTypeASAP,
+		Timezone:        "UTC",
+		FreqLimit:       2,
+		FreqWindow:      3600,
+		TargetCountries: []string{"US"},
+		IdempotencyKey:  "brand-fcap-camp-a",
+	})
 	require.NoError(t, err)
 
-	campBReq := map[string]any{
-		"customer_id":      custID.String(),
-		"brand_id":         brandResp.ID,
-		"name":             "Air Max Walk",
-		"budget_limit":     150.00,
-		"daily_budget":     15.00,
-		"freq_limit":       2,
-		"freq_window":      3600,
-		"target_countries": []string{"US"},
-	}
-	campBReqBytes, _ := json.Marshal(campBReq)
-	reqB, _ := http.NewRequest("POST", "/admin/campaigns", bytes.NewReader(campBReqBytes))
-	reqB.Header.Set("X-Admin-API-Key", "test-secret")
-	respB := httptest.NewRecorder()
-	mux.ServeHTTP(respB, reqB)
-	require.Equal(t, http.StatusCreated, respB.Code)
-
-	var campBResp struct {
-		ID string `json:"id"`
-	}
-	err = json.NewDecoder(respB.Body).Decode(&campBResp)
-	require.NoError(t, err)
-	campBID, err := uuid.Parse(campBResp.ID)
+	campBID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
+		CustomerID:      custID,
+		BrandID:         &brandID,
+		Name:            "Air Max Walk",
+		BudgetLimit:     150_000_000,
+		DailyBudget:     15_000_000,
+		PacingMode:      db.PacingModeTypeASAP,
+		Timezone:        "UTC",
+		FreqLimit:       2,
+		FreqWindow:      3600,
+		TargetCountries: []string{"US"},
+		IdempotencyKey:  "brand-fcap-camp-b",
+	})
 	require.NoError(t, err)
 
 	var brandFcapKeyA, brandFcapKeyB string
@@ -165,7 +106,7 @@ func TestBrandFrequencyCapping(t *testing.T) {
 	err = pool.QueryRow(ctx, "SELECT brand_id, brand_fcap_key FROM campaigns WHERE id = $1", campBID).Scan(&brandIDDbB, &brandFcapKeyB)
 	require.NoError(t, err)
 
-	expectedFcapKey := "fcap:b:" + brandResp.ID
+	expectedFcapKey := "fcap:b:" + brandID.String()
 	assert.Equal(t, brandID, brandIDDbA)
 	assert.Equal(t, brandID, brandIDDbB)
 	assert.Equal(t, expectedFcapKey, brandFcapKeyA)

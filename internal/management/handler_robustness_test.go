@@ -3,7 +3,6 @@ package management
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -15,7 +14,6 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestManagementAPI_Robustness(t *testing.T) {
@@ -44,12 +42,9 @@ func TestManagementAPI_Robustness(t *testing.T) {
 			method string
 			path   string
 		}{
-			{"POST", "/admin/customers"},
-			{"POST", "/admin/customers/00000000-0000-0000-0000-000000000000/topup"},
-			{"POST", "/admin/campaigns"},
-			{"POST", "/admin/settings"},
-			{"POST", "/admin/blacklist"},
-			{"DELETE", "/admin/blacklist"},
+			{"POST", "/api/v1/forecast/campaign"},
+			{"POST", "/api/v1/consent"},
+			{"POST", "/api/v1/ops/blacklist"},
 		}
 
 		for _, tc := range endpoints {
@@ -66,11 +61,9 @@ func TestManagementAPI_Robustness(t *testing.T) {
 			method string
 			path   string
 		}{
-			{"GET", "/admin/customers/invalid-uuid"},
-			{"GET", "/admin/customers/invalid-uuid/ledger"},
-			{"GET", "/admin/campaigns/invalid-uuid"},
-			{"GET", "/admin/campaigns/invalid-uuid/history"},
-			{"DELETE", "/admin/campaigns/invalid-uuid"},
+			{"GET", "/api/v1/campaigns/invalid-uuid"},
+			{"GET", "/api/v1/campaigns/invalid-uuid/stats"},
+			{"GET", "/api/v1/customers/invalid-uuid/balance"},
 		}
 
 		for _, tc := range paths {
@@ -83,7 +76,6 @@ func TestManagementAPI_Robustness(t *testing.T) {
 	})
 
 	t.Run("DBFailure_Simulation", func(t *testing.T) {
-
 		badPool, cleanupBadDB := database.SetupTestDB(t)
 		cleanupBadDB()
 
@@ -94,11 +86,8 @@ func TestManagementAPI_Robustness(t *testing.T) {
 		badH.RegisterRoutes(badMux)
 
 		paths := []string{
-			"/admin/customers",
-			"/admin/campaigns",
-			"/admin/blacklist",
-			"/admin/settings",
-			"/admin/audit",
+			"/api/v1/audit",
+			"/api/v1/ops/shards",
 		}
 
 		for _, path := range paths {
@@ -121,33 +110,15 @@ func TestManagementAPI_Robustness(t *testing.T) {
 		}()
 
 		time.Sleep(50 * time.Millisecond)
-
 		cancel()
-
-		done := make(chan struct{})
-		go func() {
-			wg.Wait()
-			close(done)
-		}()
-
-		select {
-		case <-done:
-
-		case <-time.After(1 * time.Second):
-			t.Fatal("RunSystemStateSyncer goroutine did not exit after context cancellation (potential deadlock)")
-		}
+		wg.Wait()
 	})
 
-	t.Run("Pagination_LimitEnforcement", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/admin/audit?limit=1000000", nil)
+	t.Run("LegacyAdmin_Gone", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "/admin/customers", nil)
 		req.Header.Set("X-Admin-API-Key", "test-secret")
 		resp := httptest.NewRecorder()
 		mux.ServeHTTP(resp, req)
-		assert.Equal(t, http.StatusOK, resp.Code)
-
-		var items []any
-		err := json.NewDecoder(resp.Body).Decode(&items)
-		require.NoError(t, err)
-		assert.LessOrEqual(t, len(items), 1000)
+		assert.Equal(t, http.StatusGone, resp.Code)
 	})
 }

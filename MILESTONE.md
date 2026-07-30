@@ -602,24 +602,24 @@ N/A.
 #### Definition of done
 
 **Delete**
-- [ ] All `htmx_*.go` removed
-- [ ] `handler_billing.go` HTML templates removed
-- [ ] `internal/payment/*_html*.go` removed
-- [ ] No `text/template` in management/payment (except error pages if any)
+- [x] All `htmx_*.go` removed
+- [x] `handler_billing.go` HTML templates removed
+- [x] `internal/payment/*_html*.go` removed
+- [x] No `text/template` in management/payment (except error pages if any)
 
 **API**
-- [ ] Every `/api/v1/*` success → `Content-Type: application/json`
-- [ ] Errors via `writeServiceError` / `pkg/coldpath` only
-- [ ] `/admin/*` → `410 Gone` or removed
+- [x] Every `/api/v1/*` success → `Content-Type: application/json`
+- [x] Errors via `writeServiceError` / `pkg/coldpath` only
+- [x] `/admin/*` → `410 Gone` or removed
 
 **CI / interim**
-- [ ] `scripts/ci/check_no_html_success.sh` green
-- [ ] OpenAPI zero `/admin/*` HTML routes
-- [ ] Placeholder `index.html` embed OR JSON 404 on `GET /` — documented in `SELF_HOSTED.md`
+- [x] `scripts/ci/check_no_html_success.sh` green
+- [x] OpenAPI zero `/admin/*` HTML routes
+- [x] Placeholder `index.html` embed OR JSON 404 on `GET /` — documented in `SELF_HOSTED.md`
 
 **Verify**
-- [ ] `rg 'htmx|text/html' internal/management internal/payment` — no success-path matches
-- [ ] Contract test: 20 API routes never return `text/html`
+- [x] `rg 'htmx|text/html' internal/management internal/payment` — no success-path matches
+- [x] Contract test: 20 API routes never return `text/html`
 
 ---
 

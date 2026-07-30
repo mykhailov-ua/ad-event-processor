@@ -38,54 +38,35 @@ func TestManagementAPI_System(t *testing.T) {
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 
+	ctx := context.Background()
+
 	t.Run("SettingsCycle", func(t *testing.T) {
 		settings := map[string]string{
 			"rate_limit_per_min": "100",
 			"click_amount":       "0.05",
 		}
-		body, _ := json.Marshal(settings)
-		req, _ := http.NewRequest("POST", "/admin/settings", bytes.NewReader(body))
-		req.Header.Set("X-Admin-API-Key", "test-secret")
-		resp := httptest.NewRecorder()
-		mux.ServeHTTP(resp, req)
-		assert.Equal(t, http.StatusNoContent, resp.Code)
+		require.NoError(t, svc.UpdateSettings(ctx, settings))
 
-		reqGet, _ := http.NewRequest("GET", "/admin/settings", nil)
-		reqGet.Header.Set("X-Admin-API-Key", "test-secret")
-		respGet := httptest.NewRecorder()
-		mux.ServeHTTP(respGet, reqGet)
-		assert.Equal(t, http.StatusOK, respGet.Code)
-
-		var res map[string]string
-		err := json.NewDecoder(respGet.Body).Decode(&res)
+		got, err := svc.GetSettings(ctx)
 		require.NoError(t, err)
-		assert.Equal(t, "100", res["rate_limit_per_min"])
-		assert.Equal(t, "0.05", res["click_amount"])
+		assert.Equal(t, "100", got["rate_limit_per_min"])
+		assert.Equal(t, "0.05", got["click_amount"])
 
 		assert.Eventually(t, func() bool {
-			val, err := rdb.HGet(context.Background(), "config:values", "rate_limit_per_min").Result()
+			val, err := rdb.HGet(ctx, "config:values", "rate_limit_per_min").Result()
 			return err == nil && val == "100"
 		}, 2*time.Second, 20*time.Millisecond)
 	})
 
 	t.Run("BlacklistCycle", func(t *testing.T) {
-		reqBody := map[string]string{
-			"ip":     "192.168.1.50",
-			"source": "fraud",
-		}
-		body, _ := json.Marshal(reqBody)
-		req, _ := http.NewRequest("POST", "/admin/blacklist", bytes.NewReader(body))
-		req.Header.Set("X-Admin-API-Key", "test-secret")
-		resp := httptest.NewRecorder()
-		mux.ServeHTTP(resp, req)
-		assert.Equal(t, http.StatusCreated, resp.Code)
+		require.NoError(t, svc.BlockIPWithTTL(ctx, "192.168.1.50", "fraud", nil))
 
 		assert.Eventually(t, func() bool {
-			isMember, err := rdb.SIsMember(context.Background(), "blacklist:fraud", "192.168.1.50").Result()
+			isMember, err := rdb.SIsMember(ctx, "blacklist:fraud", "192.168.1.50").Result()
 			return err == nil && isMember
 		}, 2*time.Second, 20*time.Millisecond)
 
-		reqList, _ := http.NewRequest("GET", "/admin/blacklist", nil)
+		reqList, _ := http.NewRequest("GET", "/api/v1/ops/blacklist", nil)
 		reqList.Header.Set("X-Admin-API-Key", "test-secret")
 		respList := httptest.NewRecorder()
 		mux.ServeHTTP(respList, reqList)
@@ -99,17 +80,17 @@ func TestManagementAPI_System(t *testing.T) {
 		assert.Equal(t, "192.168.1.50", bl[0].IP)
 		assert.Equal(t, "fraud", bl[0].Reason)
 
-		err = svc.SyncSystemState(context.Background())
-		require.NoError(t, err)
+		require.NoError(t, svc.SyncSystemState(ctx))
 
-		reqDel, _ := http.NewRequest("DELETE", "/admin/blacklist", bytes.NewReader(body))
+		body, _ := json.Marshal(map[string]string{"ip": "192.168.1.50", "source": "fraud"})
+		reqDel, _ := http.NewRequest("DELETE", "/api/v1/ops/blacklist", bytes.NewReader(body))
 		reqDel.Header.Set("X-Admin-API-Key", "test-secret")
 		respDel := httptest.NewRecorder()
 		mux.ServeHTTP(respDel, reqDel)
 		assert.Equal(t, http.StatusNoContent, respDel.Code)
 
 		assert.Eventually(t, func() bool {
-			isMember, err := rdb.SIsMember(context.Background(), "blacklist:fraud", "192.168.1.50").Result()
+			isMember, err := rdb.SIsMember(ctx, "blacklist:fraud", "192.168.1.50").Result()
 			return err == nil && !isMember
 		}, 2*time.Second, 20*time.Millisecond)
 	})

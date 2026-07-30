@@ -14,11 +14,11 @@ type CampaignReader interface {
 }
 
 type CampaignsHTTPHandlers struct {
-	Campaigns             CampaignReader
-	ApplyRateLimit        func(http.HandlerFunc) http.HandlerFunc
-	RequireAnyPermission  func([]string, http.HandlerFunc) http.HandlerFunc
+	Campaigns               CampaignReader
+	ApplyRateLimit          func(http.HandlerFunc) http.HandlerFunc
+	RequireAnyPermission    func([]string, http.HandlerFunc) http.HandlerFunc
 	AuthorizeCampaignAccess func(*http.Request, uuid.UUID) error
-	WriteServiceError     func(http.ResponseWriter, error)
+	WriteServiceError       func(http.ResponseWriter, error)
 }
 
 func (h *CampaignsHTTPHandlers) Register(mux *http.ServeMux) {

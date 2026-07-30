@@ -21,6 +21,7 @@ type OpsHTTPHandlers struct {
 	ConsentVerifier         ConsentVerifier
 	AuditLister             AuditLister
 	RolesReloader           RolesReloader
+	Blacklist               BlacklistAdmin
 	ApplyRateLimit          func(http.HandlerFunc) http.HandlerFunc
 	RequirePermission       func(string, http.HandlerFunc) http.HandlerFunc
 	WriteServiceError       func(http.ResponseWriter, error)
@@ -51,6 +52,7 @@ func (h *OpsHTTPHandlers) Register(mux *http.ServeMux) {
 	h.registerConsentRoutes(mux)
 	h.registerAuditRoutes(mux)
 	h.registerRolesRoutes(mux)
+	h.registerBlacklistRoutes(mux)
 }
 
 func (h *OpsHTTPHandlers) getIncidents(w http.ResponseWriter, r *http.Request) {

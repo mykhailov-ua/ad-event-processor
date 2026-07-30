@@ -1,9 +1,7 @@
 package management
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -42,11 +40,12 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 
+	ctx := context.Background()
 	custID := uuid.New()
-	err := svc.CreateCustomer(context.Background(), custID, "Advertiser", 500_000_000, "USD")
+	err := svc.CreateCustomer(ctx, custID, "Advertiser", 500_000_000, "USD")
 	require.NoError(t, err)
 
-	campID, err := svc.CreateCampaign(context.Background(), CampaignCreateSpec{
+	campID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
 		CustomerID:      custID,
 		Name:            "Spring Sale",
 		BudgetLimit:     100_000_000,
@@ -61,23 +60,15 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("ListCampaigns", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/admin/campaigns?status=ACTIVE&customer_id="+custID.String(), nil)
-		withAdminAPIKey(req, cfg)
-		resp := httptest.NewRecorder()
-		mux.ServeHTTP(resp, req)
-
-		assert.Equal(t, http.StatusOK, resp.Code)
-		assert.NotEmpty(t, resp.Header().Get("X-Total-Count"))
-
-		var campaigns []CampaignDTO
-		err := json.NewDecoder(resp.Body).Decode(&campaigns)
+		campaigns, total, err := svc.ListCampaigns(ctx, custID, "ACTIVE", 50, 0)
 		require.NoError(t, err)
+		assert.Greater(t, total, int64(0))
 		require.NotEmpty(t, campaigns)
 
 		var found *CampaignDTO
-		for _, c := range campaigns {
-			if c.ID == campID.String() {
-				found = &c
+		for i := range campaigns {
+			if campaigns[i].ID == campID.String() {
+				found = &campaigns[i]
 				break
 			}
 		}
@@ -89,15 +80,7 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 	})
 
 	t.Run("GetCampaignByID", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/admin/campaigns/"+campID.String(), nil)
-		withAdminAPIKey(req, cfg)
-		resp := httptest.NewRecorder()
-		mux.ServeHTTP(resp, req)
-
-		assert.Equal(t, http.StatusOK, resp.Code)
-
-		var camp CampaignDTO
-		err := json.NewDecoder(resp.Body).Decode(&camp)
+		camp, err := svc.GetCampaignDTO(ctx, campID)
 		require.NoError(t, err)
 		assert.Equal(t, campID.String(), camp.ID)
 		assert.Equal(t, "100.00", camp.BudgetLimit)
@@ -105,16 +88,9 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 	})
 
 	t.Run("GetCampaignHistory", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/admin/campaigns/"+campID.String()+"/history", nil)
-		withAdminAPIKey(req, cfg)
-		resp := httptest.NewRecorder()
-		mux.ServeHTTP(resp, req)
-
-		assert.Equal(t, http.StatusOK, resp.Code)
-
-		var history []StatusHistoryDTO
-		err := json.NewDecoder(resp.Body).Decode(&history)
+		history, total, err := svc.ListStatusHistory(ctx, campID, 50, 0)
 		require.NoError(t, err)
+		assert.Greater(t, total, int64(0))
 		require.NotEmpty(t, history)
 		assert.Equal(t, "ACTIVE", history[0].NewStatus)
 	})
@@ -122,7 +98,7 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 	t.Run("CampaignIsolation_Forbidden", func(t *testing.T) {
 		otherCustID := uuid.New()
 
-		req, _ := http.NewRequest("GET", "/admin/campaigns/"+campID.String(), nil)
+		req, _ := http.NewRequest("GET", "/api/v1/campaigns/"+campID.String(), nil)
 		withSessionUser(req, tokenMaker, RoleUser, otherCustID)
 
 		resp := httptest.NewRecorder()
@@ -131,19 +107,17 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, resp.Code)
 	})
 
-	t.Run("CancelCampaign_Accepted", func(t *testing.T) {
-		body, _ := json.Marshal(map[string]string{"reason": "User requested cancellation"})
-		req, _ := http.NewRequest("DELETE", "/admin/campaigns/"+campID.String(), bytes.NewReader(body))
-		withAdminAPIKey(req, cfg)
+	t.Run("CancelCampaign", func(t *testing.T) {
+		require.NoError(t, svc.CancelCampaign(ctx, campID, "User requested cancellation"))
 
-		resp := httptest.NewRecorder()
-		mux.ServeHTTP(resp, req)
-
-		assert.Equal(t, http.StatusAccepted, resp.Code)
+		worker := NewOutboxWorker(svc)
+		require.NoError(t, worker.ProcessOutbox(ctx))
+		drain := NewCampaignDrainWorker(svc)
+		require.NoError(t, drain.ProcessDraining(ctx))
 
 		assert.Eventually(t, func() bool {
 			var status string
-			_ = pool.QueryRow(context.Background(), "SELECT status FROM campaigns WHERE id = $1", campID).Scan(&status)
+			_ = pool.QueryRow(ctx, "SELECT status FROM campaigns WHERE id = $1", campID).Scan(&status)
 			return status == "DELETED"
 		}, 2*time.Second, 20*time.Millisecond)
 	})

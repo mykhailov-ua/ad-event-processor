@@ -165,24 +165,24 @@ One fat image with compose **profiles** is supported; disabling `payment`/`billi
 
 ## UI: no server-side HTMX
 
-Self-hosted installs do **not** require server-rendered HTMX admin. The supported operator surface is:
+Self-hosted installs do **not** use server-rendered HTMX admin. The supported operator surface is:
 
 1. **JSON** `/api/v1/*` (and OpenAPI in `docs/openapi/openapi.yaml`).
 2. **External SPA** (operator-built or packaged separately) against that API.
-3. Optional `//go:embed` static in `management` for a bundled SPA — not SSR fragments.
+3. Optional `//go:embed` static in `management` for a bundled SPA (GAP-PROD-02) — not SSR fragments.
 
-### Legacy HTMX (still in tree, deprecated)
+### Removed in GAP-HYG-04
 
-| Location | Status |
+| Before | After |
 | :--- | :--- |
-| `/admin/*` in `management` | Legacy; mirrored under `/api/v1` where applicable |
-| `handler_billing.go` | HTMX billing dashboard fragments |
-| `internal/payment/http_htmx.go`, `htmx_*.go` | Checkout / top-up HTML for dev embedding |
-| `pkg/httpresponse/htmx_error.go` | HTML error fragments |
+| `/admin/*` HTMX routes | `410 Gone` JSON error; use `/api/v1` |
+| `handler_billing.go` HTML | Deleted; billing via `/api/v1/billing/*` and gRPC |
+| `internal/payment/http_htmx.go`, `htmx_*.go` | Deleted; `/ui/payment/*` returns `410 Gone` |
+| `pkg/httpresponse/htmx_error.go` | Deleted; errors use `pkg/httpresponse` JSON envelope |
 
-**Policy:** no new HTMX routes; remove in [GAP-HYG-04](../.cursor/BACKLOG.md). Product dashboards (GAP-PROD-01, GAP-OPS-04) are **client-side** on JSON APIs, not server HTML.
+`GET /` returns JSON `404` with a link to this section until the bundled SPA ships.
 
-Payment and billing **gRPC/JSON APIs** remain; only HTML fragment UIs are out of scope for self-hosted.
+Payment and billing **gRPC/JSON APIs** remain; only HTML fragment UIs were removed.
 
 ---
 
@@ -197,7 +197,7 @@ Licensed enterprise option (`features.multi_region`), not the default single-cel
 1. Install `license.jwt`; set `ESPX_LICENSE_MODE=file` (or online if allowed).
 2. Configure Stripe/crypto **operator** keys if wallet rail is enabled.
 3. Do not expect vendor billing inside `usage_meters` or CH rollups.
-4. Use JSON API or your own SPA; ignore `/admin/*` HTMX for production UI.
+4. Use JSON API or your own SPA; `/admin/*` returns `410 Gone`.
 5. Treat `subscription_plans` as **your** advertiser tiers, not eSPX SaaS SKUs.
 6. Harden data on your hardware: [runbooks/DATA_SECURITY.md](./runbooks/DATA_SECURITY.md) (LUKS, TLS, secrets, retention).
 7. Review protection model (vendor IP, your data, egress trust): [PROTECTION.md](./PROTECTION.md).

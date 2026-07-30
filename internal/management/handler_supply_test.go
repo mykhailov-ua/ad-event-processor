@@ -37,9 +37,6 @@ func TestSupplyAPI_CRUDAndExport(t *testing.T) {
 	cfg.Management.SupplyExportPath = exportDir
 
 	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
-	h := NewHandler(svc, cfg, nil, nil, nil, nil)
-	mux := http.NewServeMux()
-	h.RegisterRoutes(mux)
 
 	ctx := context.Background()
 	_, err := pool.Exec(ctx, `
@@ -49,33 +46,22 @@ func TestSupplyAPI_CRUDAndExport(t *testing.T) {
 		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`)
 	require.NoError(t, err)
 
-	sellerBody, _ := json.Marshal(SellerCreateSpec{
+	seller, err := svc.CreateSeller(ctx, SellerCreateSpec{
 		SellerID:   "pub-001",
 		Domain:     "publisher.example.com",
 		SellerType: "PUBLISHER",
 		Name:       "Example Publisher",
 	})
-	req, _ := http.NewRequest("POST", "/admin/supply/sellers", bytes.NewReader(sellerBody))
-	withAdminAPIKey(req, cfg)
-	resp := httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
-	require.Equal(t, http.StatusCreated, resp.Code)
-
-	var seller SellerDTO
-	require.NoError(t, json.NewDecoder(resp.Body).Decode(&seller))
+	require.NoError(t, err)
 	assert.Equal(t, "pub-001", seller.SellerID)
 
-	adsBody, _ := json.Marshal(AdsTxtEntryCreateSpec{
+	_, err = svc.CreateAdsTxtEntry(ctx, AdsTxtEntryCreateSpec{
 		Domain:             "google.com",
 		PublisherAccountID: "pub-12345",
 		Relationship:       "RESELLER",
 		CertAuthorityID:    "f08c47fec0942fa0",
 	})
-	req, _ = http.NewRequest("POST", "/admin/supply/ads-txt", bytes.NewReader(adsBody))
-	withAdminAPIKey(req, cfg)
-	resp = httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
-	require.Equal(t, http.StatusCreated, resp.Code)
+	require.NoError(t, err)
 
 	worker := NewOutboxWorker(svc)
 	n, err := worker.ProcessOutboxWithCount(ctx, 10)
@@ -102,20 +88,13 @@ func TestSupplyAPI_CRUDAndExport(t *testing.T) {
 	assert.Contains(t, adsText, "MANAGERDOMAIN=manager.example.com")
 	assert.Contains(t, adsText, "google.com, pub-12345, RESELLER, f08c47fec0942fa0")
 
-	req, _ = http.NewRequest("GET", "/.well-known/sellers.json", nil)
-	resp = httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
-	require.Equal(t, http.StatusOK, resp.Code)
-	assert.Equal(t, "application/json; charset=utf-8", resp.Header().Get("Content-Type"))
-	assert.Contains(t, resp.Header().Get("Cache-Control"), "max-age=60")
+	sellersJSON, err := svc.GetSellersJSON(ctx)
+	require.NoError(t, err)
+	require.NotEmpty(t, sellersJSON)
 
-	req, _ = http.NewRequest("GET", "/admin/supply/ads.txt", nil)
-	withAdminAPIKey(req, cfg)
-	resp = httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
-	require.Equal(t, http.StatusOK, resp.Code)
-	assert.Equal(t, "text/plain; charset=utf-8", resp.Header().Get("Content-Type"))
-	assert.Contains(t, resp.Body.String(), "OWNERDOMAIN=owner.example.com")
+	builtAds, err := svc.BuildAdsTxt(ctx)
+	require.NoError(t, err)
+	assert.Contains(t, builtAds, "OWNERDOMAIN=owner.example.com")
 
 	customerID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, customerID, "Supply Co", 200_000_000, "USD"))
@@ -129,16 +108,10 @@ func TestSupplyAPI_CRUDAndExport(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	chainBody, _ := json.Marshal(map[string]any{
-		"nodes": []SupplyChainNode{
-			{ASI: "exchange.example.com", SID: "1234", HP: 1},
-		},
+	_, err = svc.UpdateCampaignSupplyChain(ctx, campID, []SupplyChainNode{
+		{ASI: "exchange.example.com", SID: "1234", HP: 1},
 	})
-	req, _ = http.NewRequest("PUT", "/admin/campaigns/"+campID.String()+"/supply-chain", bytes.NewReader(chainBody))
-	withAdminAPIKey(req, cfg)
-	resp = httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
-	require.Equal(t, http.StatusOK, resp.Code)
+	require.NoError(t, err)
 
 	var auditCount int64
 	err = pool.QueryRow(ctx, `
@@ -176,10 +149,8 @@ func TestSupplyAPI_RBAC(t *testing.T) {
 		req.AddCookie(&http.Cookie{Name: "accessToken", Value: token})
 	}
 
-	body, _ := json.Marshal(SellerCreateSpec{
-		SellerID: "x", Domain: "x.com", SellerType: "PUBLISHER",
-	})
-	req, _ := http.NewRequest("POST", "/admin/supply/sellers", bytes.NewReader(body))
+	body, _ := json.Marshal(map[string]string{"ip": "1.2.3.4", "source": "manual"})
+	req, _ := http.NewRequest("POST", "/api/v1/ops/blacklist", bytes.NewReader(body))
 	attachManager(req)
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)

@@ -1,11 +1,7 @@
 package management
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -39,25 +35,13 @@ func TestEmergencyCircuitBreaker(t *testing.T) {
 
 	svc := NewService(pool, []redis.UniversalClient{rdb}, nil, cfg)
 	defer svc.Close()
-	h := NewHandler(svc, cfg, nil, nil, nil, nil)
-	mux := http.NewServeMux()
-	h.RegisterRoutes(mux)
 
 	ctx := context.Background()
 
 	sw := ingestion.NewSettingsWatcher([]redis.UniversalClient{rdb}, cfg)
 	assert.False(t, sw.Get().EmergencyBreaker)
 
-	reqBody := map[string]any{
-		"active": true,
-		"reason": "high CPU fraud spike",
-	}
-	reqBytes, _ := json.Marshal(reqBody)
-	req, _ := http.NewRequest("POST", "/admin/system/breaker", bytes.NewReader(reqBytes))
-	req.Header.Set("X-Admin-API-Key", "test-secret")
-	resp := httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
-	require.Equal(t, http.StatusOK, resp.Code)
+	require.NoError(t, svc.ToggleEmergencyBreaker(ctx, true, "high CPU fraud spike"))
 
 	var dbVal string
 	err := pool.QueryRow(ctx, "SELECT value FROM system_settings WHERE key = 'emergency_breaker'").Scan(&dbVal)
@@ -103,16 +87,7 @@ func TestEmergencyCircuitBreaker(t *testing.T) {
 	err = breakerFilter.Check(ctx, testEvt)
 	assert.ErrorIs(t, err, ingestion.ErrEmergencyBreakerActive)
 
-	reqBodyOff := map[string]any{
-		"active": false,
-		"reason": "mitigation completed",
-	}
-	reqBytesOff, _ := json.Marshal(reqBodyOff)
-	reqOff, _ := http.NewRequest("POST", "/admin/system/breaker", bytes.NewReader(reqBytesOff))
-	reqOff.Header.Set("X-Admin-API-Key", "test-secret")
-	respOff := httptest.NewRecorder()
-	mux.ServeHTTP(respOff, reqOff)
-	require.Equal(t, http.StatusOK, respOff.Code)
+	require.NoError(t, svc.ToggleEmergencyBreaker(ctx, false, "mitigation completed"))
 
 	err = worker.ProcessOutbox(ctx)
 	require.NoError(t, err)

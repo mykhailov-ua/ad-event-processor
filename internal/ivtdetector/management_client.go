@@ -53,7 +53,7 @@ func (client *ManagementClient) BlockIP(ctx context.Context, ip string) error {
 		return fmt.Errorf("marshal blacklist request: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, client.baseURL+"/admin/blacklist", bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, client.baseURL+"/api/v1/ops/blacklist", bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("build blacklist request: %w", err)
 	}

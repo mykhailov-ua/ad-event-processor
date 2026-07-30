@@ -3,11 +3,7 @@ package management
 import (
 	"espx/pkg/faultproof"
 
-	"bytes"
 	"context"
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -39,27 +35,16 @@ func TestFault_rtb_catalog_reload_outbox(t *testing.T) {
 
 	cfg := &config.Config{AdminAPIKey: "test-secret"}
 	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
-	h := NewHandler(svc, cfg, nil, nil, nil, nil)
-	mux := http.NewServeMux()
-	h.RegisterRoutes(mux)
-
 	ctx := context.Background()
 	customerID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, customerID, "Test RTB", 1_000_000, "USD"))
 
-	body, _ := json.Marshal(RtbDealCreateSpec{
+	created, err := svc.CreateRtbDeal(ctx, RtbDealCreateSpec{
 		DealID:     "fault-reload-deal",
 		FloorMicro: 100_000,
 		CustomerID: customerID.String(),
 	})
-	req, _ := http.NewRequest("POST", "/admin/rtb/deals", bytes.NewReader(body))
-	withAdminAPIKey(req, cfg)
-	resp := httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
-	require.Equal(t, http.StatusCreated, resp.Code)
-
-	var created RtbDealDTO
-	require.NoError(t, json.NewDecoder(resp.Body).Decode(&created))
+	require.NoError(t, err)
 
 	catalog := ingestion.NewRtbCatalog(rtb.NewBudgetStore(), ingestion.BudgetAuthorityShadow)
 	require.NoError(t, ingestion.ReloadRtbDeals(ctx, db.New(pool), catalog))
@@ -70,22 +55,19 @@ func TestFault_rtb_catalog_reload_outbox(t *testing.T) {
 	channel := ingestion.RtbCatalogReloadChannel(svc.cfg)
 	sub := rdb.Subscribe(ctx, channel)
 	defer sub.Close()
-	_, err := sub.Receive(ctx)
+	_, err = sub.Receive(ctx)
 	require.NoError(t, err)
 
 	_, err = pool.Exec(ctx, "DELETE FROM outbox_events")
 	require.NoError(t, err)
 
-	updateBody, _ := json.Marshal(RtbDealUpdateSpec{
+	updated, err := svc.UpdateRtbDeal(ctx, created.ID, RtbDealUpdateSpec{
 		DealID:     "fault-reload-deal",
 		FloorMicro: 275_000,
 		CustomerID: customerID.String(),
 	})
-	req, _ = http.NewRequest("PUT", "/admin/rtb/deals/"+strconv.FormatInt(created.ID, 10), bytes.NewReader(updateBody))
-	withAdminAPIKey(req, cfg)
-	resp = httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
-	require.Equal(t, http.StatusOK, resp.Code)
+	require.NoError(t, err)
+	_ = updated
 
 	const workers = 24
 	var lookups atomic.Uint64

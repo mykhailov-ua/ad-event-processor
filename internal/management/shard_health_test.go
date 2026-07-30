@@ -110,12 +110,12 @@ func TestHandler_OpsShards_requiresPermShardsRead(t *testing.T) {
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 
-	req, _ := http.NewRequest("GET", "/admin/ops/shards", nil)
+	req, _ := http.NewRequest("GET", "/api/v1/ops/shards", nil)
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
 	assert.Equal(t, http.StatusUnauthorized, resp.Code)
 
-	req, _ = http.NewRequest("GET", "/admin/ops/shards", nil)
+	req, _ = http.NewRequest("GET", "/api/v1/ops/shards", nil)
 	req.Header.Set("X-Admin-API-Key", "test-secret")
 	resp = httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
@@ -151,7 +151,7 @@ func TestHandler_OpsShards_roleUserForbidden(t *testing.T) {
 	token, err := tokenMaker.CreateToken(uuid.New(), uuid.New(), "user", uuid.New(), time.Hour)
 	require.NoError(t, err)
 
-	req, _ := http.NewRequest("GET", "/admin/ops/shards", nil)
+	req, _ := http.NewRequest("GET", "/api/v1/ops/shards", nil)
 	req.AddCookie(&http.Cookie{Name: "accessToken", Value: token})
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)

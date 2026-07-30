@@ -1,12 +1,7 @@
 package management
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"strconv"
 	"testing"
 	"time"
 
@@ -19,6 +14,30 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestValidateOpenRTBBidRequest(t *testing.T) {
+	valid26 := []byte(`{
+	  "id": "req-1",
+	  "imp": [{"id": "1", "banner": {"w": 300, "h": 250}}]
+	}`)
+	result := ingestion.ValidateOpenRTBBidRequest(valid26)
+	assert.True(t, result.Valid)
+	assert.Equal(t, "2.6", result.Version)
+
+	invalid := []byte(`{"openrtb":{"request":{"id":"r","cur":["JPY"],"item":[{"id":"1"}]}}}`)
+	result = ingestion.ValidateOpenRTBBidRequest(invalid)
+	assert.False(t, result.Valid)
+	assert.Equal(t, "3.0", result.Version)
+	assert.NotEmpty(t, result.Errors)
+}
+
+func TestRtbShadowDiffSnapshot(t *testing.T) {
+	ingestion.ResetRtbShadowDiffBuckets()
+
+	snap := ingestion.RtbShadowDiffForWindow(time.Hour)
+	assert.Equal(t, "1h0m0s", snap.Window)
+	assert.Equal(t, "memory", snap.Source)
+}
 
 func TestRtbDealsAPI_CRUDAndOutbox(t *testing.T) {
 	if testing.Short() {
@@ -34,15 +53,12 @@ func TestRtbDealsAPI_CRUDAndOutbox(t *testing.T) {
 		TokenSymmetricKey: "01234567890123456789012345678901",
 	}
 	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
-	h := NewHandler(svc, cfg, nil, nil, nil, nil)
-	mux := http.NewServeMux()
-	h.RegisterRoutes(mux)
 
 	ctx := context.Background()
 	customerID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, customerID, "RTB Advertiser", 1_000_000, "USD"))
 
-	body, _ := json.Marshal(RtbDealCreateSpec{
+	created, err := svc.CreateRtbDeal(ctx, RtbDealCreateSpec{
 		DealID:     "deal-premium-1",
 		FloorMicro: 250_000,
 		GeoMask:    255,
@@ -50,29 +66,15 @@ func TestRtbDealsAPI_CRUDAndOutbox(t *testing.T) {
 		Pacing:     "open",
 		CustomerID: customerID.String(),
 	})
-	req, _ := http.NewRequest("POST", "/admin/rtb/deals", bytes.NewReader(body))
-	withAdminAPIKey(req, cfg)
-	resp := httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
-	require.Equal(t, http.StatusCreated, resp.Code, resp.Body.String())
-
-	var created RtbDealDTO
-	require.NoError(t, json.NewDecoder(resp.Body).Decode(&created))
+	require.NoError(t, err)
 	assert.Equal(t, "deal-premium-1", created.DealID)
 	assert.Equal(t, "open", created.Pacing)
 
-	req, _ = http.NewRequest("GET", "/admin/rtb/deals", nil)
-	withAdminAPIKey(req, cfg)
-	resp = httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
-	require.Equal(t, http.StatusOK, resp.Code)
-	var listResp struct {
-		Deals []RtbDealDTO `json:"deals"`
-	}
-	require.NoError(t, json.NewDecoder(resp.Body).Decode(&listResp))
-	require.Len(t, listResp.Deals, 1)
+	list, err := svc.ListRtbDeals(ctx)
+	require.NoError(t, err)
+	require.Len(t, list, 1)
 
-	updateBody, _ := json.Marshal(RtbDealUpdateSpec{
+	updated, err := svc.UpdateRtbDeal(ctx, created.ID, RtbDealUpdateSpec{
 		DealID:     "deal-premium-1",
 		FloorMicro: 300_000,
 		GeoMask:    255,
@@ -80,14 +82,7 @@ func TestRtbDealsAPI_CRUDAndOutbox(t *testing.T) {
 		Pacing:     "closed",
 		CustomerID: customerID.String(),
 	})
-	req, _ = http.NewRequest("PUT", "/admin/rtb/deals/"+strconv.FormatInt(created.ID, 10), bytes.NewReader(updateBody))
-	withAdminAPIKey(req, cfg)
-	resp = httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
-	require.Equal(t, http.StatusOK, resp.Code)
-
-	var updated RtbDealDTO
-	require.NoError(t, json.NewDecoder(resp.Body).Decode(&updated))
+	require.NoError(t, err)
 	assert.Equal(t, "closed", updated.Pacing)
 	assert.Equal(t, int64(300_000), updated.FloorMicro)
 
@@ -107,11 +102,7 @@ func TestRtbDealsAPI_CRUDAndOutbox(t *testing.T) {
 	require.True(t, ok, "expected redis.Message, got %T", msg)
 	assert.Equal(t, "reload", m.Payload)
 
-	req, _ = http.NewRequest("DELETE", "/admin/rtb/deals/"+strconv.FormatInt(created.ID, 10), nil)
-	withAdminAPIKey(req, cfg)
-	resp = httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
-	require.Equal(t, http.StatusOK, resp.Code)
+	require.NoError(t, svc.DeleteRtbDeal(ctx, created.ID))
 
 	var outboxCount int
 	require.NoError(t, pool.QueryRow(ctx, `
@@ -135,9 +126,6 @@ func TestRtbDealsAPI_duplicateDealID(t *testing.T) {
 
 	cfg := &config.Config{AdminAPIKey: "test-secret"}
 	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
-	h := NewHandler(svc, cfg, nil, nil, nil, nil)
-	mux := http.NewServeMux()
-	h.RegisterRoutes(mux)
 
 	ctx := context.Background()
 	customerID := uuid.New()
@@ -148,40 +136,11 @@ func TestRtbDealsAPI_duplicateDealID(t *testing.T) {
 		FloorMicro: 100,
 		CustomerID: customerID.String(),
 	}
-	body, _ := json.Marshal(spec)
-	req, _ := http.NewRequest("POST", "/admin/rtb/deals", bytes.NewReader(body))
-	withAdminAPIKey(req, cfg)
-	resp := httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
-	require.Equal(t, http.StatusCreated, resp.Code)
+	_, err := svc.CreateRtbDeal(ctx, spec)
+	require.NoError(t, err)
 
-	body, _ = json.Marshal(spec)
-	req, _ = http.NewRequest("POST", "/admin/rtb/deals", bytes.NewReader(body))
-	withAdminAPIKey(req, cfg)
-	resp = httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
-	assert.Equal(t, http.StatusBadRequest, resp.Code)
-}
-
-func TestRtbShadowDiffAPI(t *testing.T) {
-	cfg := &config.Config{AdminAPIKey: "test-secret"}
-	svc := newBareService(t, nil, nil, cfg)
-	h := NewHandler(svc, cfg, nil, nil, nil, nil)
-	mux := http.NewServeMux()
-	h.RegisterRoutes(mux)
-
-	ingestion.ResetRtbShadowDiffBuckets()
-
-	req, _ := http.NewRequest("GET", "/admin/rtb/shadow-diff?window=1h", nil)
-	withAdminAPIKey(req, cfg)
-	resp := httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
-	require.Equal(t, http.StatusOK, resp.Code)
-
-	var snap ingestion.RtbShadowDiffSnapshotDTO
-	require.NoError(t, json.NewDecoder(resp.Body).Decode(&snap))
-	assert.Equal(t, "1h0m0s", snap.Window)
-	assert.Equal(t, "memory", snap.Source)
+	_, err = svc.CreateRtbDeal(ctx, spec)
+	require.Error(t, err)
 }
 
 func TestRtbDealsAPI_invalidSeats(t *testing.T) {
@@ -195,25 +154,18 @@ func TestRtbDealsAPI_invalidSeats(t *testing.T) {
 
 	cfg := &config.Config{AdminAPIKey: "test-secret"}
 	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
-	h := NewHandler(svc, cfg, nil, nil, nil, nil)
-	mux := http.NewServeMux()
-	h.RegisterRoutes(mux)
 
 	ctx := context.Background()
 	customerID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, customerID, "Seats Co", 1_000_000, "USD"))
 
-	body, _ := json.Marshal(RtbDealCreateSpec{
+	_, err := svc.CreateRtbDeal(ctx, RtbDealCreateSpec{
 		DealID:     "bad-seats",
 		FloorMicro: 100,
 		Seats:      -1,
 		CustomerID: customerID.String(),
 	})
-	req, _ := http.NewRequest("POST", "/admin/rtb/deals", bytes.NewReader(body))
-	withAdminAPIKey(req, cfg)
-	resp := httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
-	assert.Equal(t, http.StatusBadRequest, resp.Code)
+	require.Error(t, err)
 }
 
 func TestRtbDeals_ExplainAnalyze(t *testing.T) {

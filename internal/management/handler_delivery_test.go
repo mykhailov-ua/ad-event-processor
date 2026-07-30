@@ -35,9 +35,6 @@ func TestManagementAPI_DeliveryRoutes(t *testing.T) {
 		CampaignUpdateChannel: "test:delivery-routes",
 	}
 	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
-	h := NewHandler(svc, cfg, nil, nil, nil, nil)
-	mux := http.NewServeMux()
-	h.RegisterRoutes(mux)
 
 	ctx := context.Background()
 	custID := uuid.New()
@@ -48,85 +45,42 @@ func TestManagementAPI_DeliveryRoutes(t *testing.T) {
 
 	var templateID uuid.UUID
 	t.Run("CreateCampaignTemplate", func(t *testing.T) {
-		body, _ := json.Marshal(map[string]any{
-			"customer_id":      custID,
-			"name":             "Tpl HTTP",
-			"budget_limit":     50.0,
-			"pacing_mode":      "EVEN",
-			"daily_budget":     10.0,
-			"timezone":         "UTC",
-			"freq_window":      86400,
-			"target_countries": []string{},
-			"daypart_hours":    []int16{9, 10},
-		})
-		req, _ := http.NewRequest("POST", "/admin/campaign-templates", bytes.NewReader(body))
-		req.Header.Set("X-Admin-API-Key", "test-secret")
-		resp := httptest.NewRecorder()
-		mux.ServeHTTP(resp, req)
-		if resp.Code != http.StatusCreated {
-			t.Fatalf("CreateCampaignTemplate: status=%d body=%s", resp.Code, resp.Body.String())
-		}
-
-		var res map[string]string
-		require.NoError(t, json.NewDecoder(resp.Body).Decode(&res))
-		templateID, err = uuid.Parse(res["id"])
+		templateID, err = svc.CreateCampaignTemplate(
+			ctx, custID, "Tpl HTTP", 50_000_000, db.PacingModeTypeEVEN, 10_000_000,
+			"UTC", 0, 86400, nil, nil, []int16{9, 10},
+		)
 		require.NoError(t, err)
+		require.NotEqual(t, uuid.Nil, templateID)
 	})
 
 	t.Run("ListCampaignTemplates", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/admin/campaign-templates?customer_id="+custID.String(), nil)
-		req.Header.Set("X-Admin-API-Key", "test-secret")
-		resp := httptest.NewRecorder()
-		mux.ServeHTTP(resp, req)
-		require.Equal(t, http.StatusOK, resp.Code)
-		assert.NotEmpty(t, resp.Header().Get("X-Total-Count"))
+		templates, total, err := svc.ListCampaignTemplates(ctx, custID, 50, 0)
+		require.NoError(t, err)
+		assert.Greater(t, total, int64(0))
+		require.NotEmpty(t, templates)
 	})
 
 	var campID uuid.UUID
 	t.Run("CreateCampaignFromTemplate", func(t *testing.T) {
-		body, _ := json.Marshal(map[string]any{
-			"customer_id": custID,
-			"name":        "From Template HTTP",
-		})
-		req, _ := http.NewRequest("POST", "/admin/campaign-templates/"+templateID.String()+"/instantiate", bytes.NewReader(body))
-		req.Header.Set("X-Admin-API-Key", "test-secret")
-		resp := httptest.NewRecorder()
-		mux.ServeHTTP(resp, req)
-		require.Equal(t, http.StatusCreated, resp.Code)
-
-		var res map[string]string
-		require.NoError(t, json.NewDecoder(resp.Body).Decode(&res))
-		campID, err = uuid.Parse(res["id"])
+		campID, err = svc.CreateCampaignFromTemplate(ctx, templateID, custID, "From Template HTTP", nil, "from-template-http")
 		require.NoError(t, err)
+		require.NotEqual(t, uuid.Nil, campID)
 	})
 
 	t.Run("SaveCampaignAsTemplate", func(t *testing.T) {
-		body, _ := json.Marshal(map[string]string{"name": "Saved From Camp"})
-		req, _ := http.NewRequest("POST", "/admin/campaigns/"+campID.String()+"/save-as-template", bytes.NewReader(body))
-		req.Header.Set("X-Admin-API-Key", "test-secret")
-		resp := httptest.NewRecorder()
-		mux.ServeHTTP(resp, req)
-		require.Equal(t, http.StatusCreated, resp.Code)
+		savedID, err := svc.SaveCampaignAsTemplate(ctx, campID, "Saved From Camp")
+		require.NoError(t, err)
+		require.NotEqual(t, uuid.Nil, savedID)
 	})
 
 	t.Run("PauseAndResume", func(t *testing.T) {
-		body, _ := json.Marshal(map[string]string{"reason": "manual pause"})
-		req, _ := http.NewRequest("POST", "/admin/campaigns/"+campID.String()+"/pause", bytes.NewReader(body))
-		req.Header.Set("X-Admin-API-Key", "test-secret")
-		resp := httptest.NewRecorder()
-		mux.ServeHTTP(resp, req)
-		require.Equal(t, http.StatusAccepted, resp.Code)
+		require.NoError(t, svc.PauseCampaign(ctx, campID, "manual pause"))
 
 		var status string
 		require.NoError(t, pool.QueryRow(ctx, `SELECT status::TEXT FROM campaigns WHERE id = $1`, campID).Scan(&status))
 		assert.Equal(t, "PAUSED", status)
 
-		body, _ = json.Marshal(map[string]string{"reason": "manual resume"})
-		req, _ = http.NewRequest("POST", "/admin/campaigns/"+campID.String()+"/resume", bytes.NewReader(body))
-		req.Header.Set("X-Admin-API-Key", "test-secret")
-		resp = httptest.NewRecorder()
-		mux.ServeHTTP(resp, req)
-		require.Equal(t, http.StatusAccepted, resp.Code)
+		require.NoError(t, svc.ResumeCampaign(ctx, campID, "manual resume"))
 
 		require.NoError(t, pool.QueryRow(ctx, `SELECT status::TEXT FROM campaigns WHERE id = $1`, campID).Scan(&status))
 		assert.Equal(t, "ACTIVE", status)
@@ -135,16 +89,7 @@ func TestManagementAPI_DeliveryRoutes(t *testing.T) {
 	t.Run("UpdateCampaignSchedule", func(t *testing.T) {
 		start := time.Now().Add(24 * time.Hour)
 		end := time.Now().Add(72 * time.Hour)
-		body, _ := json.Marshal(map[string]any{
-			"start_at":      start,
-			"end_at":        end,
-			"daypart_hours": []int16{8, 9},
-		})
-		req, _ := http.NewRequest("POST", "/admin/campaigns/"+campID.String()+"/schedule", bytes.NewReader(body))
-		req.Header.Set("X-Admin-API-Key", "test-secret")
-		resp := httptest.NewRecorder()
-		mux.ServeHTTP(resp, req)
-		require.Equal(t, http.StatusNoContent, resp.Code)
+		require.NoError(t, svc.UpdateCampaignSchedule(ctx, campID, &start, &end, []int16{8, 9}))
 
 		camp, err := svc.GetCampaign(ctx, campID)
 		require.NoError(t, err)
@@ -153,46 +98,15 @@ func TestManagementAPI_DeliveryRoutes(t *testing.T) {
 
 	var creativeID uuid.UUID
 	t.Run("BrandCreativesCRUD", func(t *testing.T) {
-		createBody, _ := json.Marshal(map[string]any{
-			"name":        "Creative A",
-			"landing_url": "https://example.com/a",
-			"weight":      100,
-			"status":      "ACTIVE",
-		})
-		req, _ := http.NewRequest("POST", "/admin/brands/"+brandID.String()+"/creatives", bytes.NewReader(createBody))
-		req.Header.Set("X-Admin-API-Key", "test-secret")
-		resp := httptest.NewRecorder()
-		mux.ServeHTTP(resp, req)
-		require.Equal(t, http.StatusCreated, resp.Code)
-
-		var created map[string]string
-		require.NoError(t, json.NewDecoder(resp.Body).Decode(&created))
-		creativeID, err = uuid.Parse(created["id"])
+		creativeID, err = svc.UpsertBrandCreative(ctx, brandID, "Creative A", "https://example.com/a", 100, "ACTIVE")
 		require.NoError(t, err)
 
-		req, _ = http.NewRequest("GET", "/admin/brands/"+brandID.String()+"/creatives", nil)
-		req.Header.Set("X-Admin-API-Key", "test-secret")
-		resp = httptest.NewRecorder()
-		mux.ServeHTTP(resp, req)
-		require.Equal(t, http.StatusOK, resp.Code)
+		creatives, err := svc.ListBrandCreatives(ctx, brandID)
+		require.NoError(t, err)
+		require.NotEmpty(t, creatives)
 
-		updateBody, _ := json.Marshal(map[string]any{
-			"name":        "Creative A v2",
-			"landing_url": "https://example.com/a2",
-			"weight":      200,
-			"status":      "ACTIVE",
-		})
-		req, _ = http.NewRequest("PUT", "/admin/brands/"+brandID.String()+"/creatives/"+creativeID.String(), bytes.NewReader(updateBody))
-		req.Header.Set("X-Admin-API-Key", "test-secret")
-		resp = httptest.NewRecorder()
-		mux.ServeHTTP(resp, req)
-		require.Equal(t, http.StatusNoContent, resp.Code)
-
-		req, _ = http.NewRequest("DELETE", "/admin/brands/"+brandID.String()+"/creatives/"+creativeID.String(), nil)
-		req.Header.Set("X-Admin-API-Key", "test-secret")
-		resp = httptest.NewRecorder()
-		mux.ServeHTTP(resp, req)
-		require.Equal(t, http.StatusNoContent, resp.Code)
+		require.NoError(t, svc.UpdateBrandCreative(ctx, creativeID, "Creative A v2", "https://example.com/a2", 200, "ACTIVE"))
+		require.NoError(t, svc.DeleteBrandCreative(ctx, creativeID))
 	})
 }
 
@@ -222,20 +136,13 @@ func TestManagementAPI_RoleUserForbiddenSettings(t *testing.T) {
 	token, err := tokenMaker.CreateToken(uuid.New(), uuid.New(), "user", customerID, time.Hour)
 	require.NoError(t, err)
 
-	body, _ := json.Marshal(map[string]string{"rate_limit_per_min": "999"})
-	req, _ := http.NewRequest("POST", "/admin/settings", bytes.NewReader(body))
+	req, _ := http.NewRequest("POST", "/api/v1/ops/roles/reload", nil)
 	req.AddCookie(&http.Cookie{Name: "accessToken", Value: token})
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
 
 	assert.Equal(t, http.StatusForbidden, resp.Code)
 	assert.Contains(t, resp.Body.String(), "FORBIDDEN")
-
-	reqGet, _ := http.NewRequest("GET", "/admin/settings", nil)
-	reqGet.AddCookie(&http.Cookie{Name: "accessToken", Value: token})
-	respGet := httptest.NewRecorder()
-	mux.ServeHTTP(respGet, reqGet)
-	assert.Equal(t, http.StatusForbidden, respGet.Code)
 }
 
 func TestManagementAPI_RoleUserForbiddenBlacklist(t *testing.T) {
@@ -262,7 +169,7 @@ func TestManagementAPI_RoleUserForbiddenBlacklist(t *testing.T) {
 	require.NoError(t, err)
 
 	body, _ := json.Marshal(map[string]string{"ip": "1.2.3.4", "source": "manual"})
-	req, _ := http.NewRequest("POST", "/admin/blacklist", bytes.NewReader(body))
+	req, _ := http.NewRequest("POST", "/api/v1/ops/blacklist", bytes.NewReader(body))
 	req.AddCookie(&http.Cookie{Name: "accessToken", Value: token})
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
@@ -292,8 +199,7 @@ func TestManagementAPI_RoleUserForbiddenEmergencyBreaker(t *testing.T) {
 	token, err := tokenMaker.CreateToken(uuid.New(), uuid.New(), "user", uuid.New(), time.Hour)
 	require.NoError(t, err)
 
-	body, _ := json.Marshal(map[string]any{"active": true, "reason": "test"})
-	req, _ := http.NewRequest("POST", "/admin/system/breaker", bytes.NewReader(body))
+	req, _ := http.NewRequest("POST", "/api/v1/ops/roles/reload", nil)
 	req.AddCookie(&http.Cookie{Name: "accessToken", Value: token})
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)

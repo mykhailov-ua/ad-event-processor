@@ -785,6 +785,24 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /api/v1/customers/{id}/quota-bump:
+    post:
+      tags: [Customers]
+      summary: POST /api/v1/customers/{id}/quota-bump
+      operationId: post_customers_id_quota_bump
+      security:
+        - AdminAPIKey: []
+        - SessionCookie: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /api/v1/customers/{id}/quota-status:
     get:
       tags: [Customers]
@@ -808,6 +826,22 @@ paths:
       tags: [Customers]
       summary: GET /api/v1/customers/{id}/subscription
       operationId: get_customers_id_subscription
+      security:
+        - AdminAPIKey: []
+        - SessionCookie: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Customers]
+      summary: POST /api/v1/customers/{id}/subscription
+      operationId: post_customers_id_subscription
       security:
         - AdminAPIKey: []
         - SessionCookie: []
@@ -1056,6 +1090,56 @@ paths:
       tags: [Operations]
       summary: POST /api/v1/margin-guard/policies
       operationId: post_margin_guard_policies
+      security:
+        - AdminAPIKey: []
+        - SessionCookie: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/ops/blacklist:
+    delete:
+      tags: [Operations]
+      summary: DELETE /api/v1/ops/blacklist
+      operationId: delete_ops_blacklist
+      security:
+        - AdminAPIKey: []
+        - SessionCookie: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    get:
+      tags: [Operations]
+      summary: GET /api/v1/ops/blacklist
+      operationId: get_ops_blacklist
+      security:
+        - AdminAPIKey: []
+        - SessionCookie: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Operations]
+      summary: POST /api/v1/ops/blacklist
+      operationId: post_ops_blacklist
       security:
         - AdminAPIKey: []
         - SessionCookie: []

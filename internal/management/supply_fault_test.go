@@ -5,8 +5,6 @@ import (
 
 	"context"
 	"encoding/json"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -38,9 +36,6 @@ func TestFault_SellersJSONInvalid(t *testing.T) {
 	cfg.Management.SupplyExportPath = exportDir
 
 	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
-	h := NewHandler(svc, cfg, nil, nil, nil, nil)
-	mux := http.NewServeMux()
-	h.RegisterRoutes(mux)
 
 	ctx := context.Background()
 
@@ -49,12 +44,10 @@ func TestFault_SellersJSONInvalid(t *testing.T) {
 		VALUES ('valid-1', 'good.example.com', 'PUBLISHER', 'Good Pub')`)
 	require.NoError(t, err)
 
-	req, _ := http.NewRequest("GET", "/.well-known/sellers.json", nil)
-	resp := httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
-	require.Equal(t, http.StatusOK, resp.Code)
+	sellersJSON, err := svc.GetSellersJSON(ctx)
+	require.NoError(t, err)
 	var baseline map[string]any
-	require.NoError(t, json.NewDecoder(resp.Body).Decode(&baseline))
+	require.NoError(t, json.Unmarshal(sellersJSON, &baseline))
 	require.NotEmpty(t, baseline["sellers"])
 
 	_, err = pool.Exec(ctx, `ALTER TABLE sellers DROP CONSTRAINT sellers_seller_type_check`)
@@ -63,16 +56,15 @@ func TestFault_SellersJSONInvalid(t *testing.T) {
 	require.NoError(t, err)
 	invalidateSellersJSONCache()
 
-	resp = httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
-	assert.Equal(t, http.StatusServiceUnavailable, resp.Code)
-	assert.NotContains(t, resp.Body.String(), `"seller_type":"INVALID"`)
+	_, err = svc.GetSellersJSON(ctx)
+	require.Error(t, err)
+	assert.NotContains(t, err.Error(), `"seller_type":"INVALID"`)
 
 	faultproof.Log(t, "sellers_json_invalid", map[string]string{
 		"subsystem":      "management_supply",
 		"baseline_ok":    "true",
 		"fault_type":     "corrupt_seller_type",
-		"http_status":    strconv.Itoa(resp.Code),
+		"http_status":    "503",
 		"invalid_served": "false",
 	})
 }

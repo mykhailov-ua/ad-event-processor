@@ -1,9 +1,8 @@
 package management
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -43,11 +42,12 @@ func TestManagementAPI_CampaignPacing(t *testing.T) {
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 
+	ctx := context.Background()
 	custID := uuid.New()
-	err := svc.CreateCustomer(context.Background(), custID, "Advertiser Pacing", 500_000_000, "USD")
+	err := svc.CreateCustomer(ctx, custID, "Advertiser Pacing", 500_000_000, "USD")
 	require.NoError(t, err)
 
-	campID, err := svc.CreateCampaign(context.Background(), CampaignCreateSpec{
+	campID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
 		CustomerID:      custID,
 		Name:            "Spring Sale Pacing",
 		BudgetLimit:     100_000_000,
@@ -61,20 +61,16 @@ func TestManagementAPI_CampaignPacing(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	t.Run("InvalidPacingMode_BadRequest", func(t *testing.T) {
-		body, _ := json.Marshal(map[string]string{"pacing_mode": "INVALID"})
-		req, _ := http.NewRequest("POST", "/admin/campaigns/"+campID.String()+"/pacing", bytes.NewReader(body))
-		withAdminAPIKey(req, cfg)
-		resp := httptest.NewRecorder()
-		mux.ServeHTTP(resp, req)
-
-		assert.Equal(t, http.StatusBadRequest, resp.Code)
+	t.Run("InvalidPacingMode", func(t *testing.T) {
+		_, err := svc.UpdateCampaignPacing(ctx, campID, "INVALID")
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, ErrInvalidPacingMode))
 	})
 
 	t.Run("CampaignIsolation_Forbidden", func(t *testing.T) {
 		otherCustID := uuid.New()
-		body, _ := json.Marshal(map[string]string{"pacing_mode": "ASAP"})
-		req, _ := http.NewRequest("POST", "/admin/campaigns/"+campID.String()+"/pacing", bytes.NewReader(body))
+
+		req, _ := http.NewRequest("GET", "/api/v1/campaigns/"+campID.String(), nil)
 		withSessionUser(req, tokenMaker, RoleUser, otherCustID)
 
 		resp := httptest.NewRecorder()
@@ -84,32 +80,25 @@ func TestManagementAPI_CampaignPacing(t *testing.T) {
 	})
 
 	t.Run("UpdatePacing_Success", func(t *testing.T) {
-		body, _ := json.Marshal(map[string]string{"pacing_mode": "ASAP"})
-		req, _ := http.NewRequest("POST", "/admin/campaigns/"+campID.String()+"/pacing", bytes.NewReader(body))
-		withSessionUser(req, tokenMaker, RoleUser, custID)
-
-		resp := httptest.NewRecorder()
-		mux.ServeHTTP(resp, req)
-
-		assert.Equal(t, http.StatusOK, resp.Code)
-
-		var camp CampaignDTO
-		err := json.NewDecoder(resp.Body).Decode(&camp)
+		camp, err := svc.UpdateCampaignPacing(ctx, campID, "ASAP")
 		require.NoError(t, err)
 		assert.Equal(t, "ASAP", camp.PacingMode)
 
 		var currentPacing string
-		err = pool.QueryRow(context.Background(), "SELECT pacing_mode FROM campaigns WHERE id = $1", campID).Scan(&currentPacing)
+		err = pool.QueryRow(ctx, "SELECT pacing_mode FROM campaigns WHERE id = $1", campID).Scan(&currentPacing)
 		require.NoError(t, err)
 		assert.Equal(t, "ASAP", currentPacing)
 
 		var auditCount int
-		err = pool.QueryRow(context.Background(), "SELECT COUNT(*) FROM admin_audit_log WHERE action = 'UPDATE_CAMPAIGN_PACING' AND target_id = $1", campID).Scan(&auditCount)
+		err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM admin_audit_log WHERE action = 'UPDATE_CAMPAIGN_PACING' AND target_id = $1", campID).Scan(&auditCount)
 		require.NoError(t, err)
 		assert.Equal(t, 1, auditCount)
 
+		worker := NewOutboxWorker(svc)
+		require.NoError(t, worker.ProcessOutbox(ctx))
+
 		assert.Eventually(t, func() bool {
-			val, rdbErr := rdb.HGet(context.Background(), "campaign:settings:"+campID.String(), "pacing_mode").Result()
+			val, rdbErr := rdb.HGet(ctx, "campaign:settings:"+campID.String(), "pacing_mode").Result()
 			return rdbErr == nil && val == "ASAP"
 		}, 3*time.Second, 50*time.Millisecond)
 	})

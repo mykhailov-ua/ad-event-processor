@@ -2,8 +2,6 @@ package management
 
 import (
 	"context"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -28,9 +26,6 @@ func TestWarmCampaignBudgetAPI(t *testing.T) {
 
 	cfg := &config.Config{AdminAPIKey: "test-secret"}
 	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
-	h := NewHandler(svc, cfg, nil, nil, nil, nil)
-	mux := http.NewServeMux()
-	h.RegisterRoutes(mux)
 
 	ctx := context.Background()
 	customerID := uuid.New()
@@ -46,11 +41,9 @@ func TestWarmCampaignBudgetAPI(t *testing.T) {
 	_, err = rdb.Del(ctx, "budget:campaign:"+campaignID.String()).Result()
 	require.NoError(t, err)
 
-	req, _ := http.NewRequest("POST", "/admin/campaigns/"+campaignID.String()+"/warm-budget", nil)
-	withAdminAPIKey(req, cfg)
-	resp := httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
-	require.Equal(t, http.StatusOK, resp.Code, resp.Body.String())
+	remaining, err := svc.WarmCampaignBudget(ctx, campaignID)
+	require.NoError(t, err)
+	assert.Equal(t, budget-spend, remaining)
 
 	val, err := rdb.Get(ctx, "budget:campaign:"+campaignID.String()).Int64()
 	require.NoError(t, err)
@@ -69,9 +62,6 @@ func TestWarmCampaignBudget_noOutboxOrPubsub(t *testing.T) {
 	channel := "campaigns:warm-budget-test"
 	cfg := &config.Config{AdminAPIKey: "test-secret", CampaignUpdateChannel: channel}
 	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
-	h := NewHandler(svc, cfg, nil, nil, nil, nil)
-	mux := http.NewServeMux()
-	h.RegisterRoutes(mux)
 
 	ctx := context.Background()
 	sub := rdb.Subscribe(ctx, channel)
@@ -89,11 +79,8 @@ func TestWarmCampaignBudget_noOutboxOrPubsub(t *testing.T) {
 	_, err = rdb.Del(ctx, "budget:campaign:"+campaignID.String()).Result()
 	require.NoError(t, err)
 
-	req, _ := http.NewRequest("POST", "/admin/campaigns/"+campaignID.String()+"/warm-budget", nil)
-	withAdminAPIKey(req, cfg)
-	resp := httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
-	require.Equal(t, http.StatusOK, resp.Code)
+	_, err = svc.WarmCampaignBudget(ctx, campaignID)
+	require.NoError(t, err)
 
 	var outboxCount int
 	require.NoError(t, pool.QueryRow(ctx, `SELECT COUNT(*) FROM outbox_events`).Scan(&outboxCount))

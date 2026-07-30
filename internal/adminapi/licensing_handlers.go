@@ -57,8 +57,8 @@ func (h *LicensingHTTPHandlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/customers/{id}/usage/daily", limit(perm("customers:read", h.getCustomerUsageDaily)))
 	mux.HandleFunc("GET /api/v1/customers/{id}/quota-status", limit(perm("customers:read", h.getCustomerQuotaStatus)))
 	mux.HandleFunc("GET /api/v1/license/status", limit(perm("customers:read", h.getLicenseStatus)))
-	mux.HandleFunc("POST /admin/customers/{id}/subscription", limit(perm("customers:write", h.postCustomerSubscription)))
-	mux.HandleFunc("POST /admin/customers/{id}/quota-bump", limit(perm("customers:write", h.postCustomerQuotaBump)))
+	mux.HandleFunc("POST /api/v1/customers/{id}/subscription", limit(perm("customers:write", h.postCustomerSubscription)))
+	mux.HandleFunc("POST /api/v1/customers/{id}/quota-bump", limit(perm("customers:write", h.postCustomerQuotaBump)))
 
 	if h.RequireSelfServePermission != nil && h.ResolveSelfServeCustomerID != nil {
 		ssLimit := h.ApplySelfServeRateLimit

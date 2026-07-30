@@ -90,6 +90,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			ConsentVerifier:         consentVerifierAdapter{secret: []byte(h.cfg.ConsentHMACSecret)},
 			AuditLister:             auditLister{svc: svc},
 			RolesReloader:           rolesReloader{mw: h.authMiddleware},
+			Blacklist:               blacklistAdapter{svc: svc},
 			ApplyRateLimit:          limit,
 			RequirePermission:       perm,
 			WriteServiceError:       writeErr,

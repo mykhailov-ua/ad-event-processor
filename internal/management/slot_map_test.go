@@ -1,9 +1,7 @@
 package management
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,6 +10,7 @@ import (
 	"espx/internal/auth"
 	"espx/internal/config"
 	"espx/internal/database"
+	"espx/internal/ingestion"
 
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
@@ -43,38 +42,29 @@ func TestSlotMapAPI_RBAC(t *testing.T) {
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 
+	ctx := context.Background()
 	managerToken, err := tokenMaker.CreateToken(uuid.New(), uuid.New(), "manager", uuid.New(), time.Hour)
 	require.NoError(t, err)
 
-	t.Run("manager forbidden write", func(t *testing.T) {
-		body, _ := json.Marshal(map[string]any{"overrides": []any{}})
-		req, _ := http.NewRequest("POST", "/admin/shards/slot-map/versions", bytes.NewReader(body))
+	t.Run("manager forbidden shards read", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "/api/v1/ops/shards", nil)
 		req.AddCookie(&http.Cookie{Name: "accessToken", Value: managerToken})
 		resp := httptest.NewRecorder()
 		mux.ServeHTTP(resp, req)
 		assert.Equal(t, http.StatusForbidden, resp.Code)
 	})
 
-	t.Run("admin can create version via API key", func(t *testing.T) {
-		body, _ := json.Marshal(map[string]any{
-			"overrides": []map[string]any{
-				{"slot": 5, "shard_id": 2, "state": "MIGRATING"},
-			},
+	t.Run("admin can create version via service", func(t *testing.T) {
+		version, err := svc.CreateSlotMapVersion(ctx, uuid.Nil, nil, []ingestion.SlotOverride{
+			{Slot: 5, ShardID: 2, State: "MIGRATING"},
 		})
-		req, _ := http.NewRequest("POST", "/admin/shards/slot-map/versions", bytes.NewReader(body))
-		req.Header.Set("X-Admin-API-Key", "test-secret")
-		resp := httptest.NewRecorder()
-		mux.ServeHTTP(resp, req)
-		require.Equal(t, http.StatusCreated, resp.Code)
-
-		var out map[string]any
-		require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &out))
-		assert.Equal(t, float64(2), out["version"])
+		require.NoError(t, err)
+		assert.Equal(t, int32(2), version)
 	})
 
 	t.Run("admin audit log written", func(t *testing.T) {
 		var count int64
-		err := pool.QueryRow(context.Background(),
+		err := pool.QueryRow(ctx,
 			"SELECT COUNT(*) FROM admin_audit_log WHERE action = 'SLOT_MAP_VERSION_CREATED'",
 		).Scan(&count)
 		require.NoError(t, err)
@@ -95,41 +85,19 @@ func TestSlotMapAPI_markMigratingAndActivate(t *testing.T) {
 	rdbs := []redis.UniversalClient{rdb, rdb, rdb, rdb}
 	svc := NewService(pool, rdbs, nil, cfg)
 	defer svc.Close()
-	h := NewHandler(svc, cfg, nil, nil, nil, nil)
-	mux := http.NewServeMux()
-	h.RegisterRoutes(mux)
 
-	createBody, _ := json.Marshal(map[string]any{"overrides": []any{}})
-	req, _ := http.NewRequest("POST", "/admin/shards/slot-map/versions", bytes.NewReader(createBody))
-	req.Header.Set("X-Admin-API-Key", "test-secret")
-	resp := httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
-	require.Equal(t, http.StatusCreated, resp.Code)
+	ctx := context.Background()
 
-	migrateBody, _ := json.Marshal(map[string]any{
-		"slots":        []int16{100, 101},
-		"target_shard": 3,
-	})
-	req, _ = http.NewRequest("POST", "/admin/shards/slot-map/versions/2/migrate", bytes.NewReader(migrateBody))
-	req.Header.Set("X-Admin-API-Key", "test-secret")
-	resp = httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
-	require.Equal(t, http.StatusOK, resp.Code)
+	version, err := svc.CreateSlotMapVersion(ctx, uuid.Nil, nil, nil)
+	require.NoError(t, err)
+	require.Equal(t, int32(2), version)
 
-	req, _ = http.NewRequest("POST", "/admin/shards/slot-map/versions/2/copy", nil)
-	req.Header.Set("X-Admin-API-Key", "test-secret")
-	resp = httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
-	require.Equal(t, http.StatusOK, resp.Code)
-
-	req, _ = http.NewRequest("POST", "/admin/shards/slot-map/versions/2/activate", nil)
-	req.Header.Set("X-Admin-API-Key", "test-secret")
-	resp = httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
-	require.Equal(t, http.StatusOK, resp.Code)
+	require.NoError(t, svc.MarkSlotMapMigrating(ctx, uuid.Nil, version, []int16{100, 101}, 3))
+	require.NoError(t, svc.CopyAllMigratingSlots(ctx, version))
+	require.NoError(t, svc.ActivateSlotMapVersion(ctx, uuid.Nil, version))
 
 	var active int32
-	err := pool.QueryRow(context.Background(), "SELECT active_version FROM redis_slot_map_meta WHERE id = 1").Scan(&active)
+	err = pool.QueryRow(ctx, "SELECT active_version FROM redis_slot_map_meta WHERE id = 1").Scan(&active)
 	require.NoError(t, err)
 	assert.Equal(t, int32(2), active)
 }

@@ -20,7 +20,7 @@ func TestCORSMiddleware(t *testing.T) {
 	handler := mdl(dummyHandler)
 
 	t.Run("AllowedOrigin_OPTIONS", func(t *testing.T) {
-		req, _ := http.NewRequest("OPTIONS", "/admin/customers", nil)
+		req, _ := http.NewRequest("OPTIONS", "/api/v1/audit", nil)
 		req.Header.Set("Origin", "https://dashboard.example.com")
 		resp := httptest.NewRecorder()
 
@@ -35,7 +35,7 @@ func TestCORSMiddleware(t *testing.T) {
 	})
 
 	t.Run("AllowedOrigin_POST", func(t *testing.T) {
-		req, _ := http.NewRequest("POST", "/admin/customers", nil)
+		req, _ := http.NewRequest("POST", "/api/v1/consent", nil)
 		req.Header.Set("Origin", "http://localhost:8188")
 		resp := httptest.NewRecorder()
 
@@ -47,7 +47,7 @@ func TestCORSMiddleware(t *testing.T) {
 	})
 
 	t.Run("NoOriginHeader", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/admin", nil)
+		req, _ := http.NewRequest("GET", "/api/v1/audit", nil)
 		resp := httptest.NewRecorder()
 		handler.ServeHTTP(resp, req)
 		assert.Equal(t, http.StatusOK, resp.Code)
@@ -55,7 +55,7 @@ func TestCORSMiddleware(t *testing.T) {
 	})
 
 	t.Run("DisallowedOrigin", func(t *testing.T) {
-		req, _ := http.NewRequest("POST", "/admin/customers", nil)
+		req, _ := http.NewRequest("POST", "/api/v1/consent", nil)
 		req.Header.Set("Origin", "https://evil.com")
 		resp := httptest.NewRecorder()
 		handler.ServeHTTP(resp, req)
@@ -66,7 +66,7 @@ func TestCORSMiddleware(t *testing.T) {
 	t.Run("WildcardOrigin", func(t *testing.T) {
 		wild := NewCORSMiddleware([]string{"*"})
 		handler := wild(dummyHandler)
-		req, _ := http.NewRequest("GET", "/admin", nil)
+		req, _ := http.NewRequest("GET", "/api/v1/audit", nil)
 		req.Header.Set("Origin", "https://any.example")
 		resp := httptest.NewRecorder()
 		handler.ServeHTTP(resp, req)

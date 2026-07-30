@@ -97,13 +97,13 @@ func TestDryRun_BlockIPNoSideEffects(t *testing.T) {
 
 func TestParseDryRun(t *testing.T) {
 	t.Parallel()
-	req, _ := http.NewRequest("POST", "/admin/campaigns/x/pause?dry_run=1", nil)
+	req, _ := http.NewRequest("POST", "/api/v1/selfserve/campaigns/x/pause?dry_run=1", nil)
 	assert.True(t, ParseDryRun(req))
 
-	req, _ = http.NewRequest("POST", "/admin/campaigns/x/pause", nil)
+	req, _ = http.NewRequest("POST", "/api/v1/selfserve/campaigns/x/pause", nil)
 	req.Header.Set("X-Dry-Run", "1")
 	assert.True(t, ParseDryRun(req))
 
-	req, _ = http.NewRequest("POST", "/admin/campaigns/x/pause", nil)
+	req, _ = http.NewRequest("POST", "/api/v1/selfserve/campaigns/x/pause", nil)
 	assert.False(t, ParseDryRun(req))
 }

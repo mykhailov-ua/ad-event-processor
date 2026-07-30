@@ -301,3 +301,21 @@ type consentVerifierAdapter struct{ secret []byte }
 func (v consentVerifierAdapter) Verify(body []byte, signature string) error {
 	return VerifyConsentHMAC(v.secret, body, signature)
 }
+
+type blacklistAdapter struct{ svc *Service }
+
+func (a blacklistAdapter) BlockIPWithTTL(ctx context.Context, ip, source string, ttlSeconds *int64) error {
+	return a.svc.BlockIPWithTTL(ctx, ip, source, ttlSeconds)
+}
+
+func (a blacklistAdapter) PreviewBlockIP(ctx context.Context, ip, source string, ttlSeconds *int64) (any, error) {
+	return a.svc.PreviewBlockIP(ctx, ip, source, ttlSeconds)
+}
+
+func (a blacklistAdapter) UnblockIP(ctx context.Context, ip, source string) error {
+	return a.svc.UnblockIP(ctx, ip, source)
+}
+
+func (a blacklistAdapter) ListBlacklist(ctx context.Context, limit, offset int32) (any, int64, error) {
+	return a.svc.ListBlacklist(ctx, limit, offset)
+}

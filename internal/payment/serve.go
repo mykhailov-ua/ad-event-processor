@@ -67,7 +67,7 @@ func Serve(ctx context.Context, cfg *config.Config) error {
 
 	httpServerMux := http.NewServeMux()
 	NewWebhookHandler(svc, cfg).RegisterRoutes(httpServerMux)
-	NewHTMXHandler(svc).RegisterRoutes(httpServerMux)
+	registerLegacyUIRoutes(httpServerMux)
 
 	httpServer := &http.Server{
 		Addr:              ":" + cfg.PaymentWebhookPort,

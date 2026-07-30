@@ -51,46 +51,9 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 		adminapi.RegisterRoutes(mux, h.BuildAdminAPIRegistry(h.svc.GetPool(), h.svc.RedisShards()))
 	}
 
-	mux.HandleFunc("POST /admin/customers", h.limit(h.perm(h.createCustomer, PermCustomersWrite)))
-	mux.HandleFunc("POST /admin/customers/{id}/topup", h.limit(h.perm(h.topUpBalance, PermCustomersWrite)))
-	mux.HandleFunc("POST /admin/customers/{id}/payment-intent", h.limit(h.perm(h.createCustomerPaymentIntent, PermCustomersWrite)))
-	mux.HandleFunc("POST /admin/campaigns", h.limit(h.perm(h.createCampaign, PermCampaignsWrite)))
-	mux.HandleFunc("POST /admin/brands", h.limit(h.perm(h.createBrand, PermBrandsWrite)))
-	mux.HandleFunc("GET /admin/brands", h.limit(h.perm(h.listBrands, PermBrandsRead)))
-	mux.HandleFunc("POST /admin/brands/{id}/fcap", h.limit(h.perm(h.configureBrandFcap, PermBrandsWrite)))
-	mux.HandleFunc("DELETE /admin/campaigns/{id}", h.limit(h.perm(h.cancelCampaign, PermCampaignsWrite)))
-	mux.HandleFunc("POST /admin/campaigns/{id}/pacing", h.limit(h.perm(h.updateCampaignPacing, PermCampaignsWrite)))
-	mux.HandleFunc("POST /admin/campaigns/{id}/consent-requirements", h.limit(h.perm(h.postCampaignConsentRequirements, PermCampaignsWrite)))
-	mux.HandleFunc("POST /admin/privacy/erasure", h.limit(h.perm(h.postPrivacyErasure, PermAuditRead)))
-
-	mux.HandleFunc("POST /admin/settings", h.limit(h.perm(h.updateSettings, PermSettingsWrite)))
-	mux.HandleFunc("POST /admin/blacklist", h.limit(h.perm(h.blockIP, PermBlacklistWrite)))
-	mux.HandleFunc("DELETE /admin/blacklist", h.limit(h.perm(h.unblockIP, PermBlacklistWrite)))
-	mux.HandleFunc("POST /admin/fraud-scoring/overrides", h.limit(h.perm(h.applyFraudScoringOverrides, PermBlacklistWrite)))
-	mux.HandleFunc("GET /admin/audit", h.limit(h.perm(h.listAudit, PermAuditRead)))
-	mux.HandleFunc("POST /admin/system/breaker", h.limit(h.perm(h.toggleEmergencyBreaker, PermSettingsWrite)))
-
-	mux.HandleFunc("GET /admin/customers", h.limit(h.perm(h.listCustomers, PermCustomersRead)))
-	mux.HandleFunc("GET /admin/customers/{id}", h.limit(h.perm(h.getCustomer, PermCustomersRead)))
-	mux.HandleFunc("GET /admin/customers/{id}/ledger", h.limit(h.perm(h.getCustomerLedger, PermCustomersRead)))
-	mux.HandleFunc("GET /admin/customers/{id}/billing", h.limit(h.perm(h.getCustomerBillingDashboard, PermCustomersRead)))
-	mux.HandleFunc("POST /admin/customers/{id}/billing/invoices", h.limit(h.perm(h.generateCustomerInvoice, PermCustomersWrite)))
-	mux.HandleFunc("POST /admin/payment/webhooks/replay", h.limit(h.perm(h.replayPaymentWebhook, PermAuditRead)))
-
-	mux.HandleFunc("GET /admin/campaigns", h.limit(h.perm(h.listCampaigns, PermCampaignsRead)))
-	mux.HandleFunc("GET /admin/campaigns/{id}", h.limit(h.perm(h.getCampaign, PermCampaignsRead)))
-	mux.HandleFunc("GET /admin/campaigns/{id}/history", h.limit(h.perm(h.getCampaignHistory, PermCampaignsRead)))
-
-	mux.HandleFunc("GET /admin/blacklist", h.limit(h.perm(h.listBlacklist, PermBlacklistRead)))
-	mux.HandleFunc("GET /admin/settings", h.limit(h.perm(h.getSettings, PermSettingsRead)))
-	h.registerDeliveryRoutes(mux)
-	h.registerFraudRoutes(mux)
-	h.registerSlotMapRoutes(mux)
-	h.registerSupplyRoutes(mux)
-	h.registerRtbRoutes(mux)
-	h.registerOpsRoutes(mux)
+	registerAdminGoneRoutes(mux)
+	registerRootHandler(mux)
 	h.registerRegionIngestRoutes(mux)
-	registerNotificationRoutes(mux, h)
 }
 
 func (h *Handler) limit(next http.HandlerFunc) http.HandlerFunc {

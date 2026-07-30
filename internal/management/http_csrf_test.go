@@ -23,7 +23,7 @@ func TestCSRFMiddleware(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("GET_Request_Allowed", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/admin/customers", nil)
+		req, _ := http.NewRequest("GET", "/api/v1/audit", nil)
 		resp := httptest.NewRecorder()
 
 		handler.ServeHTTP(resp, req)
@@ -41,7 +41,7 @@ func TestCSRFMiddleware(t *testing.T) {
 	})
 
 	t.Run("POST_MissingCookie_Forbidden", func(t *testing.T) {
-		req, _ := http.NewRequest("POST", "/admin/customers", nil)
+		req, _ := http.NewRequest("POST", "/api/v1/consent", nil)
 		resp := httptest.NewRecorder()
 
 		handler.ServeHTTP(resp, req)
@@ -50,7 +50,7 @@ func TestCSRFMiddleware(t *testing.T) {
 	})
 
 	t.Run("POST_MissingHeader_Forbidden", func(t *testing.T) {
-		req, _ := http.NewRequest("POST", "/admin/customers", nil)
+		req, _ := http.NewRequest("POST", "/api/v1/consent", nil)
 		req.AddCookie(&http.Cookie{Name: "csrfToken", Value: token})
 		resp := httptest.NewRecorder()
 
@@ -60,7 +60,7 @@ func TestCSRFMiddleware(t *testing.T) {
 	})
 
 	t.Run("POST_MismatchToken_Forbidden", func(t *testing.T) {
-		req, _ := http.NewRequest("POST", "/admin/customers", nil)
+		req, _ := http.NewRequest("POST", "/api/v1/consent", nil)
 		req.AddCookie(&http.Cookie{Name: "csrfToken", Value: token})
 		req.Header.Set("X-CSRF-Token", "wrong-token")
 		resp := httptest.NewRecorder()
@@ -71,7 +71,7 @@ func TestCSRFMiddleware(t *testing.T) {
 	})
 
 	t.Run("POST_ValidCSRF_Success", func(t *testing.T) {
-		req, _ := http.NewRequest("POST", "/admin/customers", nil)
+		req, _ := http.NewRequest("POST", "/api/v1/consent", nil)
 		req.AddCookie(&http.Cookie{Name: "csrfToken", Value: token})
 		req.Header.Set("X-CSRF-Token", token)
 		resp := httptest.NewRecorder()
@@ -84,7 +84,7 @@ func TestCSRFMiddleware(t *testing.T) {
 	t.Run("POST_AdminAPIKey_SkipsCSRF", func(t *testing.T) {
 		mdl := NewCSRFMiddleware("secret-key")
 		handler := mdl(dummyHandler)
-		req, _ := http.NewRequest("POST", "/admin/customers", nil)
+		req, _ := http.NewRequest("POST", "/api/v1/consent", nil)
 		req.Header.Set("X-Admin-API-Key", "secret-key")
 		resp := httptest.NewRecorder()
 

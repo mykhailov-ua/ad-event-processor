@@ -6,6 +6,7 @@ cd "$ROOT"
 
 go test ./tests/contract/... -count=1
 go test ./internal/openapi/... -count=1
+bash "$SCRIPTS/ci/check_no_html_success.sh"
 
 before_hash=$(sha256sum docs/openapi/openapi.yaml | awk '{print $1}')
 go run ./cmd/openapi-gen >/dev/null
