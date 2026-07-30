@@ -153,6 +153,9 @@ func TestIdempotency_DuplicateImport(t *testing.T) {
 }
 
 func TestFault_DuplicateReportLedgerBalanced(t *testing.T) {
+	if testing.Short() {
+		t.Skip("fault integration test")
+	}
 	pool := setupCostSyncDB(t)
 	ctx := context.Background()
 	customerID, campaignID := seedCustomerCampaign(t, pool)

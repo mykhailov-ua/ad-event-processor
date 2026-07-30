@@ -14,7 +14,7 @@ mapfile -t hits < <(
 		| rg -i 'chaos' || true
 )
 
-if ((${
+if ((${#hits[@]})); then
 	echo "check_no_chaos_refs: forbidden 'chaos' in new/changed paths (use fault/resilience naming):"
 	printf '  %s\n' "${hits[@]}"
 	exit 1
@@ -23,10 +23,10 @@ fi
 mapfile -t content_hits < <(
 	git diff "$BASE"...HEAD -- '*.go' '*.sh' '*.lua' '*.yaml' '*.yml' Makefile \
 		| rg -i '\bchaos\b' \
-		| rg -v 'bannedChaosWord|check_no_chaos_refs|word .chaos. in comment' || true
+		| rg -v 'bannedChaosWord|check_no_chaos_refs|no_chaos_refs|word .chaos. in comment' || true
 )
 
-if ((${
+if ((${#content_hits[@]})); then
 	echo "check_no_chaos_refs: forbidden word 'chaos' in diff (use fault/resilience):"
 	printf '  %s\n' "${content_hits[@]}"
 	exit 1

@@ -17,6 +17,8 @@ jobs:
           cache: true
       - name: Comment style (R9.1)
         run: bash scripts/ci/comments.sh
+      - name: No chaos terminology in diff
+        run: bash scripts/ci/check_no_chaos_refs.sh
       - name: OpenAPI contract (GAP-PROD-03)
         run: make openapi-lint
       - name: golangci-lint

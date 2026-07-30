@@ -136,6 +136,8 @@ func classifyFilterErr(err error) (filterRejectKind, bool) {
 	switch {
 	case errors.Is(err, ErrEmergencyBreakerActive):
 		return filterRejectEmergencyBreaker, true
+	case errors.Is(err, context.DeadlineExceeded):
+		return filterRejectTimeout, true
 	case isInfraFilterErr(err):
 		return filterRejectInfra, true
 	case errors.Is(err, ErrRateLimitExceeded):
@@ -162,8 +164,6 @@ func classifyFilterErr(err error) (filterRejectKind, bool) {
 		return filterRejectBidFloor, true
 	case errors.Is(err, ErrMigrationFenced):
 		return filterRejectInfra, true
-	case errors.Is(err, context.DeadlineExceeded):
-		return filterRejectTimeout, true
 	case errors.Is(err, ErrFraudDetected):
 		return filterRejectFraud, true
 	case errors.Is(err, ErrConsentDenied):
