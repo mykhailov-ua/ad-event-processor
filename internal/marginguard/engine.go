@@ -7,13 +7,14 @@ import (
 )
 
 type Policy struct {
-	ID             uuid.UUID `json:"id"`
-	CampaignID     uuid.UUID `json:"campaign_id"`
-	Name           string    `json:"name"`
-	MinClicks      int       `json:"min_clicks"`
-	RoiFloorPct    float64   `json:"roi_floor_pct"`
-	ZeroConvStreak int       `json:"zero_conv_streak"`
-	IsActive       bool      `json:"is_active"`
+	ID                          uuid.UUID `json:"id"`
+	CampaignID                  uuid.UUID `json:"campaign_id"`
+	Name                        string    `json:"name"`
+	MinClicks                   int       `json:"min_clicks"`
+	RoiFloorPct                 float64   `json:"roi_floor_pct"`
+	ZeroConvStreak              int       `json:"zero_conv_streak"`
+	CostOverRevenueThresholdBps int       `json:"cost_over_revenue_threshold_bps"`
+	IsActive                    bool      `json:"is_active"`
 }
 
 type PlacementStats struct {

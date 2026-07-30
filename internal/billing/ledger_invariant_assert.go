@@ -29,7 +29,7 @@ func ReadLedgerInvariant(ctx context.Context, pool *pgxpool.Pool, customerID uui
 	}
 
 	err = pool.QueryRow(ctx,
-		`SELECT COALESCE(SUM(amount), 0)::bigint FROM balance_ledger WHERE customer_id = $1`, customerID,
+		`SELECT COALESCE(SUM(amount), 0)::bigint FROM balance_ledger WHERE customer_id = $1 AND type NOT IN ('rtb_cost', 'operator_margin', 'publisher_payout')`, customerID,
 	).Scan(&snap.LedgerSumMicro)
 	if err != nil {
 		return snap, fmt.Errorf("sum ledger: %w", err)

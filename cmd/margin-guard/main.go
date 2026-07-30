@@ -63,7 +63,7 @@ func main() {
 
 	worker := marginguard.NewWorker(pool, chQuery, cfg, registry, notifier)
 
-	go worker.Start(ctx, 60*time.Second)
+	go worker.Start(ctx, marginguard.WorkerInterval(cfg))
 
 	slog.Info("margin guard binary started")
 

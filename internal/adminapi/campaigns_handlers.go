@@ -11,6 +11,7 @@ import (
 
 type CampaignReader interface {
 	GetCampaign(ctx context.Context, campaignID uuid.UUID) (any, error)
+	GetCampaignMargin(ctx context.Context, campaignID uuid.UUID) (any, error)
 }
 
 type CampaignsHTTPHandlers struct {
@@ -34,20 +35,13 @@ func (h *CampaignsHTTPHandlers) Register(mux *http.ServeMux) {
 		perm = func(_ []string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 	mux.HandleFunc("GET /api/v1/campaigns/{id}", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, h.getCampaign)))
+	mux.HandleFunc("GET /api/v1/campaigns/{id}/margin", limit(perm([]string{"campaigns:read"}, h.getCampaignMargin)))
 }
 
 func (h *CampaignsHTTPHandlers) getCampaign(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-	campaignID, err := uuid.Parse(idStr)
-	if err != nil {
-		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign id")
+	campaignID, ok := h.parseCampaignID(w, r)
+	if !ok {
 		return
-	}
-	if h.AuthorizeCampaignAccess != nil {
-		if err := h.AuthorizeCampaignAccess(r, campaignID); err != nil {
-			h.writeServiceError(w, err)
-			return
-		}
 	}
 	campaign, err := h.Campaigns.GetCampaign(r.Context(), campaignID)
 	if err != nil {
@@ -55,6 +49,34 @@ func (h *CampaignsHTTPHandlers) getCampaign(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, campaign)
+}
+
+func (h *CampaignsHTTPHandlers) getCampaignMargin(w http.ResponseWriter, r *http.Request) {
+	campaignID, ok := h.parseCampaignID(w, r)
+	if !ok {
+		return
+	}
+	margin, err := h.Campaigns.GetCampaignMargin(r.Context(), campaignID)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, margin)
+}
+
+func (h *CampaignsHTTPHandlers) parseCampaignID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
+	campaignID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign id")
+		return uuid.Nil, false
+	}
+	if h.AuthorizeCampaignAccess != nil {
+		if err := h.AuthorizeCampaignAccess(r, campaignID); err != nil {
+			h.writeServiceError(w, err)
+			return uuid.Nil, false
+		}
+	}
+	return campaignID, true
 }
 
 func (h *CampaignsHTTPHandlers) writeServiceError(w http.ResponseWriter, err error) {

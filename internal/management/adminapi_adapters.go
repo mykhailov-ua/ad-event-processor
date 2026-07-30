@@ -2,6 +2,7 @@ package management
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"time"
 
@@ -18,6 +19,13 @@ type campaignReaderAdapter struct{ svc *Service }
 
 func (a campaignReaderAdapter) GetCampaign(ctx context.Context, campaignID uuid.UUID) (any, error) {
 	return a.svc.GetCampaignDTO(ctx, campaignID)
+}
+
+func (a campaignReaderAdapter) GetCampaignMargin(ctx context.Context, campaignID uuid.UUID) (any, error) {
+	if a.svc == nil {
+		return nil, fmt.Errorf("service unavailable")
+	}
+	return a.svc.GetCampaignMargin(ctx, campaignID)
 }
 
 type campaignStatsAdapter struct{ svc *Service }

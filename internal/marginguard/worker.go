@@ -61,6 +61,13 @@ func (w *Worker) Start(ctx context.Context, interval time.Duration) {
 }
 
 func (w *Worker) RunCycle(ctx context.Context) error {
+	if err := w.runLedgerMarginCycle(ctx); err != nil {
+		return err
+	}
+	if w.ch == nil {
+		return nil
+	}
+
 	var lag int64
 	err := w.ch.QueryRow(ctx, "SELECT dateDiff('second', max(hour), now()) FROM placement_stats_hourly").Scan(&lag)
 	if err != nil {
@@ -87,7 +94,7 @@ func (w *Worker) RunCycle(ctx context.Context) error {
 }
 
 func (w *Worker) fetchActivePolicies(ctx context.Context) ([]*Policy, error) {
-	rows, err := w.pool.Query(ctx, "SELECT id, campaign_id, name, min_clicks, roi_floor_pct, zero_conv_streak, is_active FROM margin_guard_policies WHERE is_active = true")
+	rows, err := w.pool.Query(ctx, "SELECT id, campaign_id, name, min_clicks, roi_floor_pct, zero_conv_streak, cost_over_revenue_threshold_bps, is_active FROM margin_guard_policies WHERE is_active = true")
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +103,7 @@ func (w *Worker) fetchActivePolicies(ctx context.Context) ([]*Policy, error) {
 	var policies []*Policy
 	for rows.Next() {
 		p := &Policy{}
-		if err := rows.Scan(&p.ID, &p.CampaignID, &p.Name, &p.MinClicks, &p.RoiFloorPct, &p.ZeroConvStreak, &p.IsActive); err != nil {
+		if err := rows.Scan(&p.ID, &p.CampaignID, &p.Name, &p.MinClicks, &p.RoiFloorPct, &p.ZeroConvStreak, &p.CostOverRevenueThresholdBps, &p.IsActive); err != nil {
 			return nil, err
 		}
 		policies = append(policies, p)

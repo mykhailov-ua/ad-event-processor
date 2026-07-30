@@ -119,7 +119,7 @@ func serveMarginGuard(ctx context.Context, cfg *config.Config) error {
 
 	chQuery := database.NewCHQuery(chRead, database.CHQueryConfigFromApp(cfg))
 	worker := marginguard.NewWorker(pool, chQuery, cfg, registry, notifierClient)
-	worker.Start(ctx, 60*time.Second)
+	worker.Start(ctx, marginguard.WorkerInterval(cfg))
 	<-ctx.Done()
 	return ctx.Err()
 }

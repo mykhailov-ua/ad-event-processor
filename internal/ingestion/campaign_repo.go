@@ -442,6 +442,12 @@ func (r *CampaignRepo) applySpendFlush(
 		return err
 	}
 
+	if item.RtbCostMicro > 0 {
+		if err := WriteMarginEconomicsLegs(ctx, q, budget.CustomerID, item.CampaignID, item.TxID, item.AmountMicro, item.RtbCostMicro); err != nil {
+			return err
+		}
+	}
+
 	if r.auditLedgerFlushEnabled && shouldSampleHistogram(r.auditLedgerFlushSeq.Add(1), r.auditLedgerFlushMask) {
 		changes, _ := json.Marshal(map[string]any{
 			"amount_micro": item.AmountMicro,

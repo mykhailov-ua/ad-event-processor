@@ -24,6 +24,7 @@ var ErrCampaignSpendSkipped = errors.New("campaign spend row locked")
 type SpendFlushItem struct {
 	CampaignID          uuid.UUID
 	AmountMicro         int64
+	RtbCostMicro        int64
 	TxID                string
 	RedisRemainingMicro int64
 	StrictFlush         bool

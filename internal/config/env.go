@@ -204,6 +204,9 @@ type Config struct {
 
 	PacingToleranceMargin float64
 
+	MarginGuardIntervalSec         int
+	MarginGuardDefaultThresholdBps int
+
 	CreditScoringMinAgeDays         float64
 	CreditScoringMatureAgeDays      float64
 	CreditScoringMidTierPercent     int64
@@ -575,7 +578,9 @@ func Load() (*Config, error) {
 		BidFloorAdjustPct:               getEnvInt("BID_FLOOR_ADJUST_PCT", 10),
 		BidFloorMinMicro:                getEnvMicro("BID_FLOOR_MIN_MICRO", 1000),
 		DealFloorRefreshIntervalMs:      getEnvInt("DEAL_FLOOR_REFRESH_INTERVAL_MS", 60_000),
-		PacingToleranceMargin:           getEnvFloat("PACING_TOLERANCE_MARGIN", 0.15),
+		PacingToleranceMargin:            getEnvFloat("PACING_TOLERANCE_MARGIN", 0.15),
+		MarginGuardIntervalSec:         getEnvInt("MARGIN_GUARD_INTERVAL_SEC", 300),
+		MarginGuardDefaultThresholdBps: getEnvInt("MARGIN_GUARD_DEFAULT_THRESHOLD_BPS", 500),
 		CreditScoringMinAgeDays:         getEnvFloat("CREDIT_SCORING_MIN_AGE_DAYS", 7.0),
 		CreditScoringMatureAgeDays:      getEnvFloat("CREDIT_SCORING_MATURE_AGE_DAYS", 30.0),
 		CreditScoringMidTierPercent:     getEnvInt64("CREDIT_SCORING_MID_TIER_PERCENT", 15),

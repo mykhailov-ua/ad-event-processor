@@ -34,6 +34,17 @@ INSERT INTO balance_ledger (customer_id, campaign_id, amount, type, idempotency_
 VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
+-- name: SumCampaignMarginWindow :one
+SELECT
+  COALESCE(SUM(CASE WHEN type = 'FEE' THEN -amount ELSE 0 END), 0)::bigint AS advertiser_spend_micro,
+  COALESCE(SUM(CASE WHEN type = 'rtb_cost' THEN amount ELSE 0 END), 0)::bigint AS rtb_cost_micro,
+  COALESCE(SUM(CASE WHEN type = 'operator_margin' THEN amount ELSE 0 END), 0)::bigint AS operator_margin_micro,
+  COALESCE(SUM(CASE WHEN type = 'publisher_payout' THEN amount ELSE 0 END), 0)::bigint AS publisher_payout_micro
+FROM balance_ledger
+WHERE campaign_id = $1
+  AND created_at >= $2
+  AND type IN ('FEE', 'rtb_cost', 'operator_margin', 'publisher_payout');
+
 -- name: GetLedgerByHash :one
 SELECT * FROM balance_ledger
 WHERE idempotency_hash = $1;
