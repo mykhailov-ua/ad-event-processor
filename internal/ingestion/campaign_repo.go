@@ -17,7 +17,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// ToUUID wraps a uuid.UUID for pgtype query parameters.
 func ToUUID(u uuid.UUID) pgtype.UUID {
 	return pgtype.UUID{Bytes: u, Valid: true}
 }
@@ -234,7 +233,6 @@ func campaignFromListActiveCampaignsRow(row db.ListActiveCampaignsRow) *campaign
 	return camp
 }
 
-// dbQuerier exposes the backing DBTX so sync workers can commit spend with sync_idempotency.
 type dbQuerier struct {
 	db.Querier
 	dbtx db.DBTX
@@ -244,12 +242,10 @@ func (q *dbQuerier) DB() db.DBTX {
 	return q.dbtx
 }
 
-// NewCampaignRepoWithDB wraps querier with a DB handle for idempotent sync flushes.
 func NewCampaignRepoWithDB(dbtx db.DBTX, queries db.Querier) *CampaignRepo {
 	return &CampaignRepo{queries: &dbQuerier{Querier: queries, dbtx: dbtx}}
 }
 
-// CampaignRepo loads campaigns and applies idempotent budget sync updates from Redis.
 type CampaignRepo struct {
 	queries                 db.Querier
 	auditLedgerFlushSeq     atomic.Uint64
@@ -261,8 +257,6 @@ func NewCampaignRepo(queries db.Querier) *CampaignRepo {
 	return &CampaignRepo{queries: queries}
 }
 
-// ConfigureAuditLedgerFlush sets PG admin_audit_log sampling for ledger batch flushes.
-// Negative cfgVal disables audit rows (steady-state default); zero mirrors AUDIT_LOG_SAMPLE_RATE.
 func (r *CampaignRepo) ConfigureAuditLedgerFlush(cfgVal int) {
 	if cfgVal < 0 {
 		r.auditLedgerFlushEnabled = false
@@ -272,7 +266,6 @@ func (r *CampaignRepo) ConfigureAuditLedgerFlush(cfgVal int) {
 	r.auditLedgerFlushMask = histogramSampleMaskFromConfig(cfgVal)
 }
 
-// GetByID loads full campaign fields for budget cache reload paths.
 func (r *CampaignRepo) GetByID(ctx context.Context, id uuid.UUID) (*campaignmodel.Campaign, error) {
 	row, err := r.queries.GetCampaignFull(ctx, pgtype.UUID{Bytes: id, Valid: true})
 	if err != nil {
@@ -289,7 +282,6 @@ func (r *CampaignRepo) UpdateStatus(ctx context.Context, id uuid.UUID, status ca
 	return err
 }
 
-// UpdateSpend applies a consolidated Redis sync window in one PG txn: ledger FEE + current_spend + audit (M12).
 func (r *CampaignRepo) UpdateSpend(ctx context.Context, id uuid.UUID, amount int64, txID string) error {
 	outcomes, err := r.UpdateSpendBatch(ctx, []SpendFlushItem{{
 		CampaignID:  id,
@@ -305,7 +297,6 @@ func (r *CampaignRepo) UpdateSpend(ctx context.Context, id uuid.UUID, amount int
 	return nil
 }
 
-// UpdateSpendBatch commits up to maxLedgerBatchSize campaigns in one Postgres transaction (M-DB-PG-1).
 func (r *CampaignRepo) UpdateSpendBatch(ctx context.Context, items []SpendFlushItem) ([]SpendFlushOutcome, error) {
 	if len(items) == 0 {
 		return nil, nil
@@ -501,7 +492,6 @@ func (r *CampaignRepo) lockCampaignBudgetForFlush(ctx context.Context, exec db.D
 	return row, err
 }
 
-// ListActive returns all active campaigns for reconciliation and admin paths.
 func (r *CampaignRepo) ListActive(ctx context.Context) ([]*campaignmodel.Campaign, error) {
 	rows, err := r.queries.ListActiveCampaigns(ctx)
 	if err != nil {
@@ -515,7 +505,6 @@ func (r *CampaignRepo) ListActive(ctx context.Context) ([]*campaignmodel.Campaig
 	return campaigns, nil
 }
 
-// CustomerRepo loads customers and applies idempotent balance sync updates from Redis.
 type CustomerRepo struct {
 	queries db.Querier
 }
@@ -524,7 +513,6 @@ func NewCustomerRepo(queries db.Querier) *CustomerRepo {
 	return &CustomerRepo{queries: queries}
 }
 
-// NewCustomerRepoWithDB wraps querier with a DB handle for idempotent sync flushes.
 func NewCustomerRepoWithDB(dbtx db.DBTX, queries db.Querier) *CustomerRepo {
 	return &CustomerRepo{queries: &dbQuerier{Querier: queries, dbtx: dbtx}}
 }
@@ -543,7 +531,6 @@ func (r *CustomerRepo) GetByID(ctx context.Context, id uuid.UUID) (*campaignmode
 	}, nil
 }
 
-// UpdateBalance applies a Redis sync delta exactly once per sync transaction id.
 func (r *CustomerRepo) UpdateBalance(ctx context.Context, id uuid.UUID, amount int64, txID string) error {
 	var dbtx db.DBTX
 	if getter, ok := r.queries.(interface{ DB() db.DBTX }); ok {

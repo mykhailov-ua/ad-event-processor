@@ -46,7 +46,6 @@ func TestDetector_FraudBoostEnforcement(t *testing.T) {
 	pool, cleanup := database.SetupTestDB(t)
 	defer cleanup()
 
-	// Setup a stub analyzer that returns one boost candidate and one standard candidate.
 	campaignID := uuid.New().String()
 	stub := stubFinder{
 		ips: []SuspiciousIP{
@@ -78,7 +77,6 @@ func TestDetector_FraudBoostEnforcement(t *testing.T) {
 	assert.Equal(t, 2, res.Candidates)
 	assert.Equal(t, 2, res.Enqueued)
 
-	// Verify that the boost candidate was enqueued to management via EnqueueFraudThreat
 	require.Len(t, mgmt.enqueued, 1)
 	assert.Equal(t, "boost", mgmt.enqueued[0].action)
 	assert.Equal(t, "1.2.3.4", mgmt.enqueued[0].ip)
@@ -87,7 +85,6 @@ func TestDetector_FraudBoostEnforcement(t *testing.T) {
 	assert.Equal(t, int32(45), mgmt.enqueued[0].boost)
 	assert.Equal(t, int64(300), mgmt.enqueued[0].ttlSeconds)
 
-	// Verify that the boost candidate cannot be enqueued again (idempotency)
 	res2, err := detector.Run(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 2, res2.Candidates)

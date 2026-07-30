@@ -1,6 +1,3 @@
-// Package integration_test verifies Postgres and Redis interactions for budget
-// debits, idempotent filter checks, and SyncWorker settlement without the HTTP
-// ingest handler.
 package integration_test
 
 import (
@@ -17,9 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestIntegration_BudgetFlow debits Redis budget through BudgetFilter, confirms
-// that a duplicate click_id does not debit again, and asserts SyncWorker writes
-// current_spend and customer balance to Postgres.
 func TestIntegration_BudgetFlow(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")

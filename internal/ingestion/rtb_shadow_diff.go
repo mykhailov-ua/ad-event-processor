@@ -11,7 +11,6 @@ import (
 
 const rtbShadowDiffBuckets = 24
 
-// RtbShadowDiffSnapshotDTO aggregates shadow vs live-would-bid counters for an admin window.
 type RtbShadowDiffSnapshotDTO struct {
 	Window            string  `json:"window"`
 	Source            string  `json:"source"`
@@ -66,7 +65,6 @@ func recordRtbShadowDiff(catalog *RtbCatalog, evt *campaignmodel.Event, res rtb.
 	b.parityMatch.Add(1)
 }
 
-// RtbShadowDiffForWindow aggregates in-memory hourly buckets for the requested duration.
 func RtbShadowDiffForWindow(window time.Duration) RtbShadowDiffSnapshotDTO {
 	if window <= 0 {
 		window = time.Hour
@@ -103,7 +101,6 @@ func RtbShadowDiffForWindow(window time.Duration) RtbShadowDiffSnapshotDTO {
 	return snap
 }
 
-// ResetRtbShadowDiffBuckets clears in-memory counters (tests only).
 func ResetRtbShadowDiffBuckets() {
 	for i := range rtbShadowDiffRing {
 		b := &rtbShadowDiffRing[i]

@@ -14,7 +14,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// CampaignDTO exposes campaign state and delivery settings to the admin API.
 type CampaignDTO struct {
 	ID              string   `json:"id"`
 	Name            string   `json:"name"`
@@ -35,7 +34,6 @@ type CampaignDTO struct {
 	UpdatedAt       string   `json:"updated_at"`
 }
 
-// StatusHistoryDTO records a campaign status transition for audit and troubleshooting.
 type StatusHistoryDTO struct {
 	ID         int64  `json:"id"`
 	CampaignID string `json:"campaign_id"`
@@ -60,7 +58,6 @@ func statusHistoryToDTO(r db.CampaignStatusHistory) StatusHistoryDTO {
 	}
 }
 
-// toCampaignDTO maps a database campaign row into the admin API representation.
 func toCampaignDTO(c db.Campaign) CampaignDTO {
 	countries := c.TargetCountries
 	if countries == nil {
@@ -88,7 +85,6 @@ func toCampaignDTO(c db.Campaign) CampaignDTO {
 	}
 }
 
-// formatOptionalTime renders optional schedule timestamps for JSON responses.
 func formatOptionalTime(t pgtype.Timestamptz) string {
 	if !t.Valid {
 		return ""
@@ -96,7 +92,6 @@ func formatOptionalTime(t pgtype.Timestamptz) string {
 	return t.Time.Format(time.RFC3339)
 }
 
-// daypartOrEmpty normalizes nil daypart slices to empty JSON arrays.
 func daypartOrEmpty(h []int16) []int16 {
 	if h == nil {
 		return []int16{}
@@ -104,7 +99,6 @@ func daypartOrEmpty(h []int16) []int16 {
 	return h
 }
 
-// ListCampaigns returns paginated campaigns filtered by customer and status for the admin UI.
 func (s *Service) ListCampaigns(ctx context.Context, customerID uuid.UUID, status string, limit, offset int32) ([]CampaignDTO, int64, error) {
 	q := db.New(s.GetPool())
 
@@ -136,7 +130,6 @@ func (s *Service) ListCampaigns(ctx context.Context, customerID uuid.UUID, statu
 	)
 }
 
-// GetCampaignDTO loads a single campaign for detail views and access checks.
 func (s *Service) GetCampaignDTO(ctx context.Context, id uuid.UUID) (CampaignDTO, error) {
 	q := db.New(s.GetPool())
 	c, err := q.GetCampaign(ctx, ingestion.ToUUID(id))
@@ -146,7 +139,6 @@ func (s *Service) GetCampaignDTO(ctx context.Context, id uuid.UUID) (CampaignDTO
 	return toCampaignDTO(c), nil
 }
 
-// ListStatusHistory returns paginated status transitions for a campaign audit trail.
 func (s *Service) ListStatusHistory(ctx context.Context, campaignID uuid.UUID, limit, offset int32) ([]StatusHistoryDTO, int64, error) {
 	q := db.New(s.GetPool())
 	cid := ingestion.ToUUID(campaignID)
@@ -163,7 +155,6 @@ func (s *Service) ListStatusHistory(ctx context.Context, campaignID uuid.UUID, l
 	)
 }
 
-// UpdateCampaignPacing changes manual pacing mode and propagates the update to the hot path via coldpath.
 func (s *Service) UpdateCampaignPacing(ctx context.Context, campaignID uuid.UUID, newMode string) (CampaignDTO, error) {
 	var pacing db.PacingModeType
 	switch newMode {

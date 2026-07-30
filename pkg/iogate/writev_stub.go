@@ -10,7 +10,6 @@ import (
 	"time"
 )
 
-// VectoredWrite coalesces chunks into one write on non-Linux platforms.
 func VectoredWrite(fd int, chunks [][]byte) (int, error) {
 	f := os.NewFile(uintptr(fd), "iogate-vectored")
 	if f == nil {
@@ -26,7 +25,6 @@ func VectoredWrite(fd int, chunks [][]byte) (int, error) {
 	return f.Write(buf.Bytes())
 }
 
-// FlushVectored writes chunks and runs fsyncFn when group-commit threshold is met.
 func (g *DiskWriteGate) FlushVectored(ctx context.Context, fd int, chunks [][]byte, fsyncFn func() error) error {
 	if g == nil {
 		if _, err := VectoredWrite(fd, chunks); err != nil {

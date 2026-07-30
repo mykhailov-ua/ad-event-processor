@@ -1,5 +1,3 @@
-# Path guards for scripts that delete, rsync, or run codegen (buf/sqlc).
-# Source after paths.sh: source "$SCRIPTS/lib/safe_paths.sh"
 
 _SAFE_REALPATH=
 
@@ -8,7 +6,6 @@ safe_die() {
 	exit 1
 }
 
-# Reject empty, root, cwd, parent, globs, and traversal segments.
 safe_assert_not_dangerous() {
 	local p="$1"
 	local label="${2:-path}"
@@ -37,7 +34,6 @@ safe_assert_repo_root() {
 	[[ -d "$ROOT/.git" || -f "$ROOT/.git" ]] || safe_die "ROOT is not a git checkout: $ROOT"
 }
 
-# Sets _SAFE_REALPATH; never call inside $() (safe_die must run in caller shell).
 safe_assert_under_repo() {
 	local p="$1"
 	local label="${2:-path}"
@@ -51,18 +47,16 @@ safe_assert_under_repo() {
 	_SAFE_REALPATH="$real"
 }
 
-# rm -rf only inside repo, never repo root or /.
 safe_rm_rf() {
 	local target="$1"
 	safe_assert_under_repo "$target" "safe_rm_rf target"
 	local real="$_SAFE_REALPATH"
 	local base
 	base="$(basename "$real")"
-	[[ ${#base} -ge 2 ]] || safe_die "safe_rm_rf: basename too short: $base"
+	[[ -n "$base" && "$base" != "." && "$base" != ".." ]] || safe_die "unsafe rm target basename: $base"
 	rm -rf "$real"
 }
 
-# Worktree path: under ROOT/.cache/ or sibling *baseline* dir (legacy).
 safe_worktree_dir() {
 	local p="$1"
 	safe_assert_not_dangerous "$p" "BASELINE_WORKTREE"
@@ -85,7 +79,6 @@ safe_worktree_dir() {
 	safe_die "unsafe BASELINE_WORKTREE: $real (use $ROOT/.cache/perf-baseline-worktree)"
 }
 
-# buf.gen.yaml: out must be a relative staging dir (never ., .., /, or absolute).
 safe_validate_buf_gen_yml() {
 	local f="$1"
 	[[ -f "$f" ]] || safe_die "buf.gen.yaml missing: $f"
@@ -107,7 +100,6 @@ safe_validate_buf_gen_yml() {
 	done <"$f"
 }
 
-# sqlc.yaml: every out must be internal/<svc>/db without traversal.
 safe_validate_sqlc_yml() {
 	local f="$1"
 	[[ -f "$f" ]] || safe_die "sqlc.yaml missing: $f"
@@ -122,7 +114,6 @@ safe_validate_sqlc_yml() {
 	done <"$f"
 }
 
-# Copy buf staging (api/gen/internal/*/pb) into internal/*/pb only.
 safe_sync_proto_gen() {
 	local stage="$ROOT/api/gen"
 	safe_assert_under_repo "$stage" "proto staging"

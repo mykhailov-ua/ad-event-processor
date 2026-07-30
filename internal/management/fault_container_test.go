@@ -1,6 +1,8 @@
 package management
 
 import (
+	"espx/pkg/faultproof"
+
 	"context"
 	"strconv"
 	"testing"
@@ -12,13 +14,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestChaos_MgmtRedisTerminateOutboxStaysPending kills Redis and proves outbox events revert to PENDING.
-func TestChaos_MgmtRedisTerminateOutboxStaysPending(t *testing.T) {
+func TestFault_MgmtRedisTerminateOutboxStaysPending(t *testing.T) {
 	if testing.Short() {
-		t.Skip("chaos integration test")
+		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupMgmtChaosInfra(t)
+	infra, cleanup := setupMgmtFaultInfra(t)
 	defer cleanup()
 
 	cfg := &config.Config{CampaignUpdateChannel: "campaigns:mgmt-redis-kill"}
@@ -41,7 +42,7 @@ func TestChaos_MgmtRedisTerminateOutboxStaysPending(t *testing.T) {
 	status := outboxStatus(t, infra.Pool, eventID)
 	require.Equal(t, "PENDING", status)
 
-	logChaosProof(t, "redis_container_terminate", map[string]string{
+	faultproof.Log(t, "redis_container_terminate", map[string]string{
 		"subsystem":    "management_outbox",
 		"op":           "process_outbox",
 		"baseline_ok":  "true",
@@ -51,13 +52,12 @@ func TestChaos_MgmtRedisTerminateOutboxStaysPending(t *testing.T) {
 	})
 }
 
-// TestChaos_MgmtRedisStopStartOutboxRecovery stops Redis, proves PENDING, then drains after restart.
-func TestChaos_MgmtRedisStopStartOutboxRecovery(t *testing.T) {
+func TestFault_MgmtRedisStopStartOutboxRecovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("chaos integration test")
+		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupMgmtChaosInfra(t)
+	infra, cleanup := setupMgmtFaultInfra(t)
 	defer cleanup()
 
 	cfg := &config.Config{CampaignUpdateChannel: "campaigns:mgmt-redis-recovery"}
@@ -97,7 +97,7 @@ func TestChaos_MgmtRedisStopStartOutboxRecovery(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "88", val)
 
-	logChaosProof(t, "redis_stop_start_recovery", map[string]string{
+	faultproof.Log(t, "redis_stop_start_recovery", map[string]string{
 		"subsystem":    "management_outbox",
 		"op":           "process_outbox",
 		"baseline_ok":  "true",
@@ -106,13 +106,12 @@ func TestChaos_MgmtRedisStopStartOutboxRecovery(t *testing.T) {
 	})
 }
 
-// TestChaos_MgmtPGStopOutboxClaimBlocked stops Postgres and proves outbox claim cannot proceed.
-func TestChaos_MgmtPGStopOutboxClaimBlocked(t *testing.T) {
+func TestFault_MgmtPGStopOutboxClaimBlocked(t *testing.T) {
 	if testing.Short() {
-		t.Skip("chaos integration test")
+		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupMgmtChaosInfra(t)
+	infra, cleanup := setupMgmtFaultInfra(t)
 	defer cleanup()
 
 	cfg := &config.Config{CampaignUpdateChannel: "campaigns:mgmt-pg-stop"}
@@ -138,7 +137,7 @@ func TestChaos_MgmtPGStopOutboxClaimBlocked(t *testing.T) {
 	rebindBareService(svc, infra)
 	require.Equal(t, "PENDING", outboxStatus(t, infra.Pool, eventID))
 
-	logChaosProof(t, "postgres_container_stop", map[string]string{
+	faultproof.Log(t, "postgres_container_stop", map[string]string{
 		"subsystem":    "management_outbox",
 		"op":           "process_outbox",
 		"baseline_ok":  "true",
@@ -148,13 +147,12 @@ func TestChaos_MgmtPGStopOutboxClaimBlocked(t *testing.T) {
 	})
 }
 
-// TestChaos_MgmtPGStopStartOutboxRecovery stops Postgres, then drains outbox after pool refresh.
-func TestChaos_MgmtPGStopStartOutboxRecovery(t *testing.T) {
+func TestFault_MgmtPGStopStartOutboxRecovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("chaos integration test")
+		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupMgmtChaosInfra(t)
+	infra, cleanup := setupMgmtFaultInfra(t)
 	defer cleanup()
 
 	cfg := &config.Config{CampaignUpdateChannel: "campaigns:mgmt-pg-recovery"}
@@ -189,7 +187,7 @@ func TestChaos_MgmtPGStopStartOutboxRecovery(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "true", val)
 
-	logChaosProof(t, "postgres_stop_start_recovery", map[string]string{
+	faultproof.Log(t, "postgres_stop_start_recovery", map[string]string{
 		"subsystem":    "management_outbox",
 		"op":           "process_outbox",
 		"baseline_ok":  "true",

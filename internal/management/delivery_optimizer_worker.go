@@ -8,14 +8,12 @@ import (
 	"espx/internal/ingestion"
 )
 
-// DeliveryOptimizerWorker runs the unified M5.0 delivery pass (pacing, autoscale, MAB, bid floors).
 type DeliveryOptimizerWorker struct {
 	svc         *Service
 	syncWorkers []*ingestion.SyncWorker
 	lastMABRun  time.Time
 }
 
-// NewDeliveryOptimizerWorker binds the unified delivery optimizer to budget sync workers.
 func NewDeliveryOptimizerWorker(svc *Service, syncWorkers []*ingestion.SyncWorker) *DeliveryOptimizerWorker {
 	return &DeliveryOptimizerWorker{
 		svc:         svc,
@@ -23,7 +21,6 @@ func NewDeliveryOptimizerWorker(svc *Service, syncWorkers []*ingestion.SyncWorke
 	}
 }
 
-// Start runs the optimizer on a fixed interval until the context is cancelled.
 func (w *DeliveryOptimizerWorker) Start(ctx context.Context, interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()

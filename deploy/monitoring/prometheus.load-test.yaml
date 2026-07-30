@@ -1,4 +1,3 @@
-# Prometheus scrape config for 2-tracker constrained load tests.
 global:
   scrape_interval: 5s
   evaluation_interval: 5s

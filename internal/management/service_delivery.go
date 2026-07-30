@@ -16,7 +16,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// CreateCampaign atomically reserves budget, persists the campaign, and queues hot-path propagation.
 func (s *Service) CreateCampaign(ctx context.Context, spec CampaignCreateSpec) (uuid.UUID, error) {
 	if err := validateDaypartHours(spec.DaypartHours); err != nil {
 		return uuid.Nil, err
@@ -137,7 +136,6 @@ func (s *Service) CreateCampaign(ctx context.Context, spec CampaignCreateSpec) (
 	return campaignID, err
 }
 
-// emitCampaignLifecycleOutbox enqueues the Redis side effect matching a campaign's initial or transitioned status.
 func (s *Service) emitCampaignLifecycleOutbox(ctx context.Context, q db.Querier, campaignID uuid.UUID, status db.CampaignStatusType, budgetLimit int64) error {
 	switch status {
 	case db.CampaignStatusTypeACTIVE:
@@ -159,18 +157,15 @@ func (s *Service) emitCampaignLifecycleOutbox(ctx context.Context, q db.Querier,
 	}
 }
 
-// PauseCampaign stops delivery for an active campaign and notifies the hot path via coldpath.
 func (s *Service) PauseCampaign(ctx context.Context, campaignID uuid.UUID, reason string) error {
 	_, err := s.pauseCampaign(ctx, campaignID, reason, false)
 	return err
 }
 
-// PreviewPauseCampaign validates a pause without PG/outbox/Redis side effects (GAP-RTB-12b).
 func (s *Service) PreviewPauseCampaign(ctx context.Context, campaignID uuid.UUID, reason string) (MutationPreview, error) {
 	return s.pauseCampaign(ctx, campaignID, reason, true)
 }
 
-// pauseCampaign implements pause with optional dry-run preview (GAP-RTB-12b).
 func (s *Service) pauseCampaign(ctx context.Context, campaignID uuid.UUID, reason string, dryRun bool) (MutationPreview, error) {
 	if dryRun {
 		return s.previewPauseCampaign(ctx, campaignID, reason)
@@ -250,13 +245,11 @@ func (s *Service) previewPauseCampaign(ctx context.Context, campaignID uuid.UUID
 	}, nil
 }
 
-// ResumeCampaign reactivates a paused campaign when schedule and balance constraints allow.
 func (s *Service) ResumeCampaign(ctx context.Context, campaignID uuid.UUID, reason string) error {
 	_, err := s.resumeCampaign(ctx, campaignID, reason, false)
 	return err
 }
 
-// PreviewResumeCampaign validates resume without side effects (GAP-RTB-12b).
 func (s *Service) PreviewResumeCampaign(ctx context.Context, campaignID uuid.UUID, reason string) (MutationPreview, error) {
 	return s.resumeCampaign(ctx, campaignID, reason, true)
 }
@@ -349,7 +342,6 @@ func (s *Service) previewResumeCampaign(ctx context.Context, campaignID uuid.UUI
 	}, nil
 }
 
-// UpdateCampaignSchedule changes delivery windows and may auto-pause or resume based on the new schedule.
 func (s *Service) UpdateCampaignSchedule(ctx context.Context, campaignID uuid.UUID, startAt, endAt *time.Time, daypartHours []int16) error {
 	if err := validateDaypartHours(daypartHours); err != nil {
 		return err
@@ -407,7 +399,6 @@ func (s *Service) UpdateCampaignSchedule(ctx context.Context, campaignID uuid.UU
 	})
 }
 
-// transitionCampaignStatus updates status, records history, and emits the matching lifecycle outbox event.
 func (s *Service) transitionCampaignStatus(ctx context.Context, q db.Querier, campaignID uuid.UUID, old, new db.CampaignStatusType, reason string, budget int64) error {
 	_, err := q.UpdateCampaignStatus(ctx, db.UpdateCampaignStatusParams{
 		ID:     ingestion.ToUUID(campaignID),
@@ -428,7 +419,6 @@ func (s *Service) transitionCampaignStatus(ctx context.Context, q db.Querier, ca
 	return s.emitCampaignLifecycleOutbox(ctx, q, campaignID, new, budget)
 }
 
-// CreateCampaignTemplate stores a reusable campaign preset for a customer.
 func (s *Service) CreateCampaignTemplate(ctx context.Context, customerID uuid.UUID, name string, budgetLimit int64, pacing db.PacingModeType, dailyBudget int64, timezone string, freqLimit, freqWindow int32, targetCountries []string, brandID *uuid.UUID, daypartHours []int16) (uuid.UUID, error) {
 	if err := validateDaypartHours(daypartHours); err != nil {
 		return uuid.Nil, err
@@ -460,7 +450,6 @@ func (s *Service) CreateCampaignTemplate(ctx context.Context, customerID uuid.UU
 	return templateID, err
 }
 
-// ListCampaignTemplates returns paginated templates for a customer's campaign library.
 func (s *Service) ListCampaignTemplates(ctx context.Context, customerID uuid.UUID, limit, offset int32) ([]CampaignTemplateDTO, int64, error) {
 	q := db.New(s.GetPool())
 	cid := ingestion.ToUUID(customerID)
@@ -476,7 +465,6 @@ func (s *Service) ListCampaignTemplates(ctx context.Context, customerID uuid.UUI
 	)
 }
 
-// CreateCampaignFromTemplate instantiates a live campaign from a stored template with optional overrides.
 func (s *Service) CreateCampaignFromTemplate(ctx context.Context, templateID uuid.UUID, customerID uuid.UUID, name string, budgetLimit *int64, idempotencyKey string) (uuid.UUID, error) {
 	tmpl, err := db.New(s.GetPool()).GetCampaignTemplate(ctx, ingestion.ToUUID(templateID))
 	if err != nil {
@@ -517,7 +505,6 @@ func (s *Service) CreateCampaignFromTemplate(ctx context.Context, templateID uui
 	})
 }
 
-// SaveCampaignAsTemplate snapshots an existing campaign configuration as a reusable template.
 func (s *Service) SaveCampaignAsTemplate(ctx context.Context, campaignID uuid.UUID, templateName string) (uuid.UUID, error) {
 	camp, err := s.GetCampaign(ctx, campaignID)
 	if err != nil {
@@ -550,7 +537,6 @@ func (s *Service) SaveCampaignAsTemplate(ctx context.Context, campaignID uuid.UU
 	)
 }
 
-// UpsertBrandCreative creates a weighted landing URL variant and queues a Redis sync via coldpath.
 func (s *Service) UpsertBrandCreative(ctx context.Context, brandID uuid.UUID, name, landingURL string, weight int32, status string) (uuid.UUID, error) {
 	if weight <= 0 {
 		return uuid.Nil, ErrWeightMustBePositive
@@ -588,7 +574,6 @@ func (s *Service) UpsertBrandCreative(ctx context.Context, brandID uuid.UUID, na
 	return creativeID, err
 }
 
-// ListBrandCreatives returns active and paused creatives for a brand.
 func (s *Service) ListBrandCreatives(ctx context.Context, brandID uuid.UUID) ([]BrandCreativeDTO, error) {
 	rows, err := db.New(s.GetPool()).ListBrandCreatives(ctx, ingestion.ToUUID(brandID))
 	if err != nil {
@@ -597,7 +582,6 @@ func (s *Service) ListBrandCreatives(ctx context.Context, brandID uuid.UUID) ([]
 	return coldpath.MapSlice(rows, creativeToDTO), nil
 }
 
-// UpdateBrandCreative edits a creative and triggers hot-path resync via coldpath.
 func (s *Service) UpdateBrandCreative(ctx context.Context, creativeID uuid.UUID, name, landingURL string, weight int32, status string) error {
 	return pgx.BeginFunc(ctx, s.GetPool(), func(tx pgx.Tx) error {
 		q := db.New(tx)
@@ -619,7 +603,6 @@ func (s *Service) UpdateBrandCreative(ctx context.Context, creativeID uuid.UUID,
 	})
 }
 
-// DeleteBrandCreative removes a creative and triggers hot-path resync via coldpath.
 func (s *Service) DeleteBrandCreative(ctx context.Context, creativeID uuid.UUID) error {
 	return pgx.BeginFunc(ctx, s.GetPool(), func(tx pgx.Tx) error {
 		q := db.New(tx)
@@ -634,7 +617,6 @@ func (s *Service) DeleteBrandCreative(ctx context.Context, creativeID uuid.UUID)
 	})
 }
 
-// emitBrandCreativesOutbox queues a Redis refresh of weighted creatives for a brand.
 func (s *Service) emitBrandCreativesOutbox(ctx context.Context, q db.Querier, brandID uuid.UUID) error {
 	payload, err := coldpath.MarshalJSON(map[string]string{"brand_id": brandID.String()})
 	if err != nil {
@@ -644,7 +626,6 @@ func (s *Service) emitBrandCreativesOutbox(ctx context.Context, q db.Querier, br
 	return err
 }
 
-// ProcessScheduleTick claims and applies schedule-driven status changes for due campaigns.
 func (s *Service) ProcessScheduleTick(ctx context.Context) error {
 	opCtx, cancel := workerContext(ctx, workerBatchTimeout)
 	defer cancel()
@@ -661,7 +642,6 @@ func (s *Service) ProcessScheduleTick(ctx context.Context) error {
 	return nil
 }
 
-// processNextScheduledCampaign locks one scheduled campaign and returns whether the queue is empty.
 func (s *Service) processNextScheduledCampaign(ctx context.Context) (done bool, err error) {
 	var campID uuid.UUID
 	var desired db.CampaignStatusType

@@ -14,7 +14,6 @@ import (
 	"github.com/klauspost/compress/zstd"
 )
 
-// decryptedSegmentReader streams plaintext audit records from an encrypted segment file.
 type decryptedSegmentReader struct {
 	file    *os.File
 	aesgcm  cipher.AEAD
@@ -26,7 +25,6 @@ type decryptedSegmentReader struct {
 	nonce   [12]byte
 }
 
-// openPlaintextSegment opens a hot segment as a plaintext record stream.
 func openPlaintextSegment(path string, decryptKey []byte) (io.ReadCloser, error) {
 	if strings.HasSuffix(path, readySuffix) {
 		if len(decryptKey) == 0 {

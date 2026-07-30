@@ -9,14 +9,12 @@ import (
 	"os"
 )
 
-// fileDigests holds content hashes used for S3 ETag verification and checkpoint idempotency.
 type fileDigests struct {
 	SHA256 string
 	MD5    string
 	Size   int64
 }
 
-// computeFileDigests reads the file once and returns SHA-256 and MD5 digests for upload verification.
 func computeFileDigests(path string) (fileDigests, error) {
 	file, err := os.Open(path)
 	if err != nil {

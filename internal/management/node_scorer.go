@@ -9,7 +9,6 @@ import (
 	"espx/internal/metrics"
 )
 
-// Score provenance labels (§0 naming registry).
 const (
 	ProvenanceOwnWindow           = "own_window"
 	ProvenanceNeighborMedian      = "neighbor_median"
@@ -34,7 +33,6 @@ const (
 	maxScrapeMissEpochs      = 2
 )
 
-// MetricKind selects the sliding-window aggregation rule (§6).
 type MetricKind int
 
 const (
@@ -44,14 +42,12 @@ const (
 	MetricCounter
 )
 
-// BucketPoint is one 10 s rollup used by aggregateWindow.
 type BucketPoint struct {
 	P50, P99, Mean         float64
 	SampleCount            int64
 	Numerator, Denominator float64
 }
 
-// ScorerConfig tunes window length, hysteresis, and fallback thresholds.
 type ScorerConfig struct {
 	WindowMin         int
 	MinSamples        int
@@ -68,7 +64,6 @@ type ScorerConfig struct {
 	NodeWarmupSec     int
 }
 
-// DefaultScorerConfig returns §6 defaults.
 func DefaultScorerConfig() ScorerConfig {
 	return ScorerConfig{
 		WindowMin:         defaultScoreWindowMin,
@@ -87,13 +82,11 @@ func DefaultScorerConfig() ScorerConfig {
 	}
 }
 
-// NodeScoreState tracks hysteresis across scorer ticks.
 type NodeScoreState struct {
 	EMAScore    float64
 	DrainEpochs int
 }
 
-// NodeScoreInput is one node metric lane for a scorer tick.
 type NodeScoreInput struct {
 	Uptime           time.Duration
 	Buckets          []BucketPoint
@@ -105,7 +98,6 @@ type NodeScoreInput struct {
 	State            NodeScoreState
 }
 
-// NodeScoreResult is the scored output for one node tick.
 type NodeScoreResult struct {
 	RawValue     float64
 	Score        float64
@@ -116,7 +108,6 @@ type NodeScoreResult struct {
 	WeightFrozen bool
 }
 
-// aggregateWindow rolls up bucket points for one metric kind (pure, no PG).
 func aggregateWindow(buckets []BucketPoint, kind MetricKind) (float64, bool) {
 	if len(buckets) == 0 {
 		return 0, false
@@ -173,7 +164,6 @@ func aggregateWindow(buckets []BucketPoint, kind MetricKind) (float64, bool) {
 	}
 }
 
-// ScorerConfigFrom builds scorer settings from process config.
 func ScorerConfigFrom(cfg *config.Config) ScorerConfig {
 	c := DefaultScorerConfig()
 	if cfg == nil {
@@ -263,7 +253,6 @@ func ScoreNode(in NodeScoreInput, cfg ScorerConfig) NodeScoreResult {
 	}
 }
 
-// ScoreNodes scores many nodes in one tick (used by regional scorer worker).
 func ScoreNodes(inputs []NodeScoreInput, cfg ScorerConfig) []NodeScoreResult {
 	out := make([]NodeScoreResult, len(inputs))
 	for i := range inputs {
@@ -313,7 +302,7 @@ func smoothScore(prevEMA, raw, alpha float64) float64 {
 func applyWeightHysteresis(prevWeight, score float64, provenance string, coldStart, ownOK bool, drainEpochs int, warmupGrace bool, cfg ScorerConfig) (weight float64, outDrain int, frozen bool) {
 	weight = prevWeight
 	if prevWeight <= 0 {
-		weight = 1.0 / float64(maxInt(1, cfg.MinSamples)) // bootstrap equal weight
+		weight = 1.0 / float64(maxInt(1, cfg.MinSamples))
 		if weight > cfg.WeightMax {
 			weight = cfg.WeightMax
 		}
@@ -330,7 +319,6 @@ func applyWeightHysteresis(prevWeight, score float64, provenance string, coldSta
 		return weight, 0, false
 	}
 
-	// Phase C neighbor fallback: do not drain more than one step per epoch.
 	if !ownOK && provenance == ProvenanceNeighborMedian {
 		return weight, 0, false
 	}

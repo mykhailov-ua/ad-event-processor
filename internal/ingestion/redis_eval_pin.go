@@ -12,14 +12,11 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-// filterEvalPinSlot is one sticky eval connection for a pinned worker on one shard.
 type filterEvalPinSlot struct {
 	client *redis.Client
 	conn   *redis.Conn
 }
 
-// filterEvalPin holds sticky redis.Conn values per pinned worker and shard.
-// Each conn is not thread-safe; only the owning worker goroutine may use its row.
 type filterEvalPin struct {
 	shards  int
 	workers int
@@ -41,8 +38,6 @@ func (p *filterEvalPin) conn(worker, shard int) *redis.Conn {
 	return s.conn
 }
 
-// SetFilterEvalPinWorkers configures sticky eval connections opened by PreloadScripts.
-// workers must match PinnedWorkerPool size when offload is enabled.
 func (f *UnifiedFilter) SetFilterEvalPinWorkers(workers int) {
 	if f == nil {
 		return
@@ -53,7 +48,6 @@ func (f *UnifiedFilter) SetFilterEvalPinWorkers(workers int) {
 	f.evalPinWorkers = workers
 }
 
-// FilterEvalPinWorkers returns the configured sticky eval worker row count.
 func (f *UnifiedFilter) FilterEvalPinWorkers() int {
 	if f == nil {
 		return 0
@@ -87,7 +81,6 @@ func isStickyConnRetryable(err error) bool {
 		strings.Contains(s, "reset by peer")
 }
 
-// processFilterEval runs one Redis command on a sticky pin when assigned, with one reopen retry.
 func (f *UnifiedFilter) processFilterEval(ctx context.Context, c redis.UniversalClient, shard int, evt *campaignmodel.Event, cmd redis.Cmder) error {
 	pin := f.evalPinConn(evt, shard)
 	err := processRedisCmd(ctx, c, pin, cmd)
@@ -154,7 +147,6 @@ func (f *UnifiedFilter) reopenEvalPin(ctx context.Context, worker, shard int) er
 	return nil
 }
 
-// CloseFilterEvalPins closes sticky eval connections opened by PreloadScripts.
 func (f *UnifiedFilter) CloseFilterEvalPins() {
 	if f == nil {
 		return
@@ -175,7 +167,6 @@ func (f *UnifiedFilter) closeFilterEvalPins() {
 	f.evalPins = nil
 }
 
-// processRedisCmd runs one pooled command on a sticky conn when pinned, else the shard client.
 func processRedisCmd(ctx context.Context, c redis.UniversalClient, pin *redis.Conn, cmd redis.Cmder) error {
 	if pin != nil {
 		return pin.Process(ctx, cmd)

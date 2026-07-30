@@ -1,6 +1,5 @@
 package rtb
 
-// creativeCacheSoA stores per-creative hot fields in parallel slices for sequential scans.
 type creativeCacheSoA struct {
 	Count       int
 	CreativeIDs []CreativeID

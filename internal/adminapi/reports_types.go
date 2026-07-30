@@ -1,6 +1,5 @@
 package adminapi
 
-// TableDTO is a generic admin report table payload.
 type TableDTO struct {
 	Columns    []ColumnDTO      `json:"columns"`
 	Rows       []map[string]any `json:"rows"`
@@ -9,7 +8,6 @@ type TableDTO struct {
 	NextCursor string           `json:"next_cursor,omitempty"`
 }
 
-// PlacementReportRowDTO is a row in the placements report.
 type PlacementReportRowDTO struct {
 	PlacementID  string  `json:"placement_id"`
 	CampaignID   string  `json:"campaign_id"`
@@ -23,14 +21,12 @@ type PlacementReportRowDTO struct {
 	CPAMicro     int64   `json:"cpa_micro"`
 }
 
-// PlacementReportResponse is the response payload for placements report.
 type PlacementReportResponse struct {
 	Rows       []PlacementReportRowDTO `json:"rows"`
 	Freshness  DataFreshnessDTO        `json:"freshness"`
 	NextCursor string                  `json:"next_cursor,omitempty"`
 }
 
-// KeywordReportRowDTO is a row in the keywords report.
 type KeywordReportRowDTO struct {
 	Keyword      string  `json:"keyword"`
 	CampaignID   string  `json:"campaign_id"`
@@ -43,21 +39,18 @@ type KeywordReportRowDTO struct {
 	ROIPct       float64 `json:"roi_pct"`
 }
 
-// KeywordReportResponse is the response payload for keywords report.
 type KeywordReportResponse struct {
 	Rows       []KeywordReportRowDTO `json:"rows"`
 	Freshness  DataFreshnessDTO      `json:"freshness"`
 	NextCursor string                `json:"next_cursor,omitempty"`
 }
 
-// ColumnDTO describes one report column.
 type ColumnDTO struct {
 	Key   string `json:"key"`
 	Label string `json:"label"`
 	Type  string `json:"type,omitempty"`
 }
 
-// UnitEconomicsRowDTO is ADT-01 campaign unit economics.
 type UnitEconomicsRowDTO struct {
 	CampaignID   string  `json:"campaign_id"`
 	SpendMicro   int64   `json:"spend_micro"`
@@ -71,7 +64,6 @@ type UnitEconomicsRowDTO struct {
 	EPCMicro     int64   `json:"epc_micro"`
 }
 
-// PivotTableDTO is ADT-60 geo/device pivot output.
 type PivotTableDTO struct {
 	RowDim string    `json:"row_dim"`
 	ColDim string    `json:"col_dim"`
@@ -80,7 +72,6 @@ type PivotTableDTO struct {
 	Cells  [][][]any `json:"cells"`
 }
 
-// PostbackReconRowDTO is ADT-23 postback reconciliation row.
 type PostbackReconRowDTO struct {
 	ClickID             string `json:"click_id"`
 	CampaignID          string `json:"campaign_id"`
@@ -91,7 +82,6 @@ type PostbackReconRowDTO struct {
 	Status              string `json:"status"`
 }
 
-// ReportJobSpec schedules an async export (ROL-04).
 type ReportJobSpec struct {
 	ReportKey  string         `json:"report_key"`
 	CustomerID string         `json:"customer_id"`

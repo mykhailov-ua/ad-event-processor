@@ -23,7 +23,6 @@ var (
 	ErrConsentInvalidPayload   = errors.New("invalid consent payload")
 )
 
-// ConsentRecordInput is the signed body for POST /api/v1/consent (M6.2).
 type ConsentRecordInput struct {
 	UserID    string `json:"user_id"`
 	Purposes  int16  `json:"purposes"`
@@ -31,7 +30,6 @@ type ConsentRecordInput struct {
 	Timestamp string `json:"timestamp,omitempty"`
 }
 
-// RecordConsent persists consent, updates user flags, and enqueues Redis sync (M6.2).
 func (s *Service) RecordConsent(ctx context.Context, in ConsentRecordInput) error {
 	if in.UserID == "" {
 		return errValidation("user_id is required")
@@ -78,7 +76,6 @@ func (s *Service) RecordConsent(ctx context.Context, in ConsentRecordInput) erro
 	})
 }
 
-// VerifyConsentHMAC validates X-Consent-Signature over the raw request body.
 func VerifyConsentHMAC(secret []byte, body []byte, signatureHex string) error {
 	if len(secret) == 0 {
 		return ErrConsentInvalidSignature
@@ -96,7 +93,6 @@ func VerifyConsentHMAC(secret []byte, body []byte, signatureHex string) error {
 	return nil
 }
 
-// UpdateCampaignConsentRequirements sets require_consent_purposes and notifies trackers (M6.3).
 func (s *Service) UpdateCampaignConsentRequirements(ctx context.Context, campaignID uuid.UUID, purposes int16) error {
 	if purposes < 0 {
 		return errValidation("require_consent_purposes must be non-negative")
@@ -121,7 +117,6 @@ func (s *Service) UpdateCampaignConsentRequirements(ctx context.Context, campaig
 	})
 }
 
-// CleanupConsentEvents deletes consent audit rows older than retention (M6.1).
 func (s *Service) CleanupConsentEvents(ctx context.Context) error {
 	if s.cfg == nil || s.cfg.ConsentRetentionMonths <= 0 {
 		return nil

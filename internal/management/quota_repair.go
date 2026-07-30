@@ -23,7 +23,6 @@ const (
 	quotaRepairTargetType  = "campaign_quota"
 )
 
-// QuotaRepairAction is the PG-authoritative repair decision applied via outbox.
 type QuotaRepairAction string
 
 const (
@@ -31,7 +30,6 @@ const (
 	QuotaRepairReleasePG  QuotaRepairAction = "release_pg"
 )
 
-// QuotaRepairPayload is the outbox body for QUOTA_REPAIR (M3).
 type QuotaRepairPayload struct {
 	CampaignID    string `json:"campaign_id"`
 	ShardID       int16  `json:"shard_id"`
@@ -52,7 +50,6 @@ type quotaRow struct {
 	updatedAt      time.Time
 }
 
-// RepairQuotaDrift scans PG-Redis quota drift and crash gaps; enqueues QUOTA_REPAIR when enabled.
 func (w *ReconWorker) RepairQuotaDrift(ctx context.Context) {
 	if w == nil || w.svc == nil || w.svc.cfg == nil || !w.svc.cfg.QuotaAutoRepair {
 		return
@@ -272,7 +269,6 @@ func (w *ReconWorker) releaseDeadShardReservations(ctx context.Context) {
 	}
 }
 
-// MonitorQuotaDrift logs drift beyond chunk_size (shadow metric path when auto-repair is off).
 func (w *ReconWorker) MonitorQuotaDrift(ctx context.Context) {
 	pool := w.svc.GetPool()
 	if pool == nil {
@@ -313,7 +309,6 @@ func (w *ReconWorker) MonitorQuotaDrift(ctx context.Context) {
 	}
 }
 
-// ApplyQuotaRepair executes a QUOTA_REPAIR outbox payload (PG is authority for release; Redis for top-up).
 func (w *OutboxWorker) ApplyQuotaRepair(ctx context.Context, eventID int64, payload []byte) error {
 	p, err := parseQuotaRepairPayload(payload)
 	if err != nil {

@@ -16,7 +16,6 @@ import (
 	"espx/pkg/logger"
 )
 
-// BrokerConsumerConfig wires processor stores to a broker topic and consumer group.
 type BrokerConsumerConfig struct {
 	BrokerAddr string
 	RedisURL   string
@@ -31,7 +30,6 @@ type BrokerConsumerConfig struct {
 	ShadowMode bool
 }
 
-// BrokerStreamConsumer reads a broker topic and flushes batches into an EventStore.
 type BrokerStreamConsumer struct {
 	store        campaignmodel.EventStore
 	cfg          BrokerConsumerConfig
@@ -50,7 +48,6 @@ type BrokerStreamConsumer struct {
 	startMu      sync.Mutex
 }
 
-// NewBrokerStreamConsumer creates a cold-path broker reader for PG or CH stores.
 func NewBrokerStreamConsumer(
 	store campaignmodel.EventStore,
 	cfg BrokerConsumerConfig,
@@ -85,19 +82,16 @@ func NewBrokerStreamConsumer(
 	}
 }
 
-// SetDedupAdapter wires D3 v2 batch dedup for PG broker ingest (M4-15).
 func (b *BrokerStreamConsumer) SetDedupAdapter(adapter *dedup.Adapter) {
 	if b != nil {
 		b.dedup = adapter
 	}
 }
 
-// SetLogger attaches audit logging after successful broker batch writes.
 func (b *BrokerStreamConsumer) SetLogger(l *logger.Logger) {
 	b.logger = l
 }
 
-// Start launches the broker fetch loop until Close is called.
 func (b *BrokerStreamConsumer) Start(ctx context.Context) {
 	b.startMu.Lock()
 	defer b.startMu.Unlock()
@@ -119,14 +113,12 @@ func (b *BrokerStreamConsumer) Start(ctx context.Context) {
 	}()
 }
 
-// Close stops the broker consumer loop.
 func (b *BrokerStreamConsumer) Close() {
 	if b.cancel != nil {
 		b.cancel()
 	}
 }
 
-// Wait blocks until the broker consumer exits.
 func (b *BrokerStreamConsumer) Wait(ctx context.Context) error {
 	done := make(chan struct{})
 	go func() {
@@ -185,7 +177,6 @@ func (b *BrokerStreamConsumer) run(ctx context.Context) {
 			}
 			evt, parseErr := ParseBrokerPayload(iter.Payload)
 			if parseErr != nil {
-				// Poison payloads advance the consumer offset without store flush (skip/DLQ-at-offset policy).
 				metrics.BrokerIngestParseErrorsTotal.WithLabelValues(b.cfg.Topic, b.cfg.Group).Inc()
 				slog.Warn("broker payload parse failed", "group", b.cfg.Group, "offset", iter.Offset, "error", parseErr)
 				nextCommit = iter.Offset + 1

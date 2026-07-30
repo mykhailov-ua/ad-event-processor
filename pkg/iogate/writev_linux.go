@@ -10,7 +10,6 @@ import (
 	"unsafe"
 )
 
-// VectoredWrite issues one writev syscall for multiple chunks (GAP-DB-01 write coalescing).
 func VectoredWrite(fd int, chunks [][]byte) (int, error) {
 	if len(chunks) == 0 {
 		return 0, nil
@@ -38,7 +37,6 @@ func VectoredWrite(fd int, chunks [][]byte) (int, error) {
 	return int(n), nil
 }
 
-// FlushVectored writes chunks with writev and runs fsyncFn when group-commit threshold is met.
 func (g *DiskWriteGate) FlushVectored(ctx context.Context, fd int, chunks [][]byte, fsyncFn func() error) error {
 	if g == nil {
 		if _, err := VectoredWrite(fd, chunks); err != nil {

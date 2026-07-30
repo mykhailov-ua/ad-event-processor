@@ -2,7 +2,6 @@ package management
 
 import "time"
 
-// ScorePhase labels §6 fallback tiers (A–E).
 type ScorePhase string
 
 const (
@@ -18,7 +17,6 @@ const (
 	defaultHistoricalDrainStep    = 0.02
 )
 
-// ResolveScorePhase maps scorer input to the active §6 fallback tier.
 func ResolveScorePhase(in NodeScoreInput, cfg ScorerConfig) ScorePhase {
 	if cfg.WindowMin <= 0 {
 		cfg.WindowMin = defaultScoreWindowMin

@@ -23,7 +23,6 @@ var (
 	}, []string{"method", "code"})
 )
 
-// SettlementGRPCMetricsInterceptor records latency and error codes for payment settlement RPCs.
 func SettlementGRPCMetricsInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		start := time.Now()

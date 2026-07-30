@@ -1,7 +1,5 @@
 package openapi
 
-// StubRoutes are registered handlers that return HTTP 501 (GAP-PROD-01 UI deferred).
-// They are excluded from OpenAPI coverage per GAP-PROD-03.
 var StubRoutes = map[string]struct{}{
 	"GET /api/v1/dashboards/buyer":                {},
 	"GET /api/v1/dashboards/adops":                {},
@@ -25,7 +23,6 @@ var StubRoutes = map[string]struct{}{
 	"POST /api/v1/reports/jobs":                   {},
 }
 
-// IsStub reports whether a discovered route is a 501 stub excluded from the spec.
 func IsStub(method, path string) bool {
 	_, ok := StubRoutes[method+" "+path]
 	return ok

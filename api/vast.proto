@@ -1,6 +1,5 @@
 syntax = "proto3";
 
-// Parsed VAST 4.2 document for video creative cache and vtproto round-trip on the cold path.
 package rtb.v1;
 
 option go_package = "espx/internal/rtb/pb;pb";

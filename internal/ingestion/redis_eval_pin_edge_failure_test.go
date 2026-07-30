@@ -40,7 +40,6 @@ func edgeImpressionEvt(campID uuid.UUID, worker int8) *campaignmodel.Event {
 	return evt
 }
 
-// Each goroutine uses a distinct worker row so sticky conns are not shared.
 func TestEdgePin_ConcurrentDistinctWorkers(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
@@ -86,7 +85,6 @@ func TestEdgePin_ConcurrentDistinctWorkers(t *testing.T) {
 	require.Equal(t, int64(workers*perG), ok.Load())
 }
 
-// Worker id above pin table falls back to pooled client without error.
 func TestEdgePin_WorkerAboveTableFallsBack(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
@@ -105,7 +103,6 @@ func TestEdgePin_WorkerAboveTableFallsBack(t *testing.T) {
 	require.NoError(t, f.Check(ctx, evt))
 }
 
-// Closed sticky conn is reopened transparently on the next eval.
 func TestEdgePin_ReopensClosedConn(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
@@ -127,7 +124,6 @@ func TestEdgePin_ReopensClosedConn(t *testing.T) {
 	require.NoError(t, f.Check(ctx, evt))
 }
 
-// Pool reserves headroom for sticky pins so background ops are not starved.
 func TestEdgePin_PoolReserveHeadroom(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
@@ -158,7 +154,6 @@ func TestEdgePin_PoolReserveHeadroom(t *testing.T) {
 	}
 }
 
-// Unset FilterWorkerIdx must not alias to worker row 0.
 func TestEdgePin_UnsetWorkerIdxSkipsPin(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
@@ -206,7 +201,6 @@ func TestEdgePin_DeadlineStringNearDegradeThreshold(t *testing.T) {
 	require.NoError(t, f.Check(ctx, evt))
 }
 
-// Pins must close before shard clients during shutdown.
 func TestEdgePin_ShutdownClosesPinsBeforeShard(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
@@ -229,7 +223,6 @@ func TestEdgePin_ShutdownClosesPinsBeforeShard(t *testing.T) {
 	require.Error(t, err)
 }
 
-// Redis CLIENT KILL triggers sticky conn reopen on next eval.
 func TestEdgePin_ReopensAfterServerKill(t *testing.T) {
 	if testing.Short() {
 		t.Skip()

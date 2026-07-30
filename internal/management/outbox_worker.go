@@ -19,37 +19,31 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// OutboxWorker propagates Postgres transactional changes to Redis for the hot-path ad stack.
 type OutboxWorker struct {
 	svc *Service
 }
 
-// NewOutboxWorker binds outbox processing to the management service.
 func NewOutboxWorker(svc *Service) *OutboxWorker {
 	return &OutboxWorker{svc: svc}
 }
 
-// CampaignPayload carries campaign identity and budget data in outbox events.
 type CampaignPayload struct {
 	CampaignID  string `json:"campaign_id"`
 	BudgetLimit int64  `json:"budget_limit,omitempty"`
 }
 
-// SettingsPayload carries system settings snapshots in outbox events.
 type SettingsPayload struct {
 	Settings map[string]string `json:"settings"`
 }
 
-// BlacklistPayload carries IP block or unblock actions in outbox events.
 type BlacklistPayload struct {
 	Action string `json:"action"`
 	IP     string `json:"ip"`
 	Reason string `json:"reason"`
 }
 
-// FraudThreatPayload carries fraud enforcement details in outbox events.
 type FraudThreatPayload struct {
-	Action     string  `json:"action"` // e.g. "boost", "blacklist", "ghost"
+	Action     string  `json:"action"`
 	IP         string  `json:"ip"`
 	CampaignID string  `json:"campaign_id"`
 	Score      float64 `json:"score"`
@@ -57,7 +51,6 @@ type FraudThreatPayload struct {
 	TTLSeconds int64   `json:"ttl_seconds"`
 }
 
-// normalizeBlacklistReason defaults empty blacklist sources to the manual category.
 func normalizeBlacklistReason(reason string) string {
 	if reason == "" {
 		return "manual"
@@ -65,7 +58,6 @@ func normalizeBlacklistReason(reason string) string {
 	return reason
 }
 
-// Start runs outbox polling, cold sync, and stale lease recovery until the context is cancelled.
 func (w *OutboxWorker) Start(ctx context.Context, interval time.Duration) {
 	if err := w.ProcessOutbox(ctx); err != nil {
 		slog.Error("outbox startup cold sync failed", "error", err)
@@ -117,7 +109,6 @@ func (w *OutboxWorker) Start(ctx context.Context, interval time.Duration) {
 	}
 }
 
-// reclaimStaleProcessing resets outbox rows stuck in PROCESSING after worker crashes.
 func (w *OutboxWorker) reclaimStaleProcessing(ctx context.Context) {
 	_, err := w.svc.GetPool().Exec(ctx, `
 		UPDATE outbox_events
@@ -130,13 +121,11 @@ func (w *OutboxWorker) reclaimStaleProcessing(ctx context.Context) {
 	}
 }
 
-// ProcessOutbox drains pending outbox events up to the default batch size.
 func (w *OutboxWorker) ProcessOutbox(ctx context.Context) error {
 	_, err := w.ProcessOutboxWithCount(ctx, 1000)
 	return err
 }
 
-// ProcessOutboxWithCount claims, applies, and marks a batch of outbox events, returning the success count.
 func (w *OutboxWorker) ProcessOutboxWithCount(ctx context.Context, limit int32) (int, error) {
 	opCtx, cancel := workerContext(ctx, workerOutboxTimeout)
 	defer cancel()
@@ -210,7 +199,6 @@ func (w *OutboxWorker) ProcessOutboxWithCount(ctx context.Context, limit int32) 
 	return len(processedIDs), nil
 }
 
-// campaignRemainingBudget reads authoritative remaining budget from Postgres for Redis seeding.
 func (w *OutboxWorker) campaignRemainingBudget(ctx context.Context, campaignID uuid.UUID) (int64, error) {
 	var limit, spend int64
 	err := w.svc.GetPool().QueryRow(ctx, `
@@ -227,7 +215,6 @@ func (w *OutboxWorker) campaignRemainingBudget(ctx context.Context, campaignID u
 	return remaining, nil
 }
 
-// setCampaignBudgetRemaining writes the remaining budget key used by the hot-path auction filter.
 func (w *OutboxWorker) setCampaignBudgetRemaining(ctx context.Context, pipe redis.Pipeliner, campaignIDStr string, campaignID uuid.UUID, payloadLimit int64) error {
 	remaining, err := w.campaignRemainingBudget(ctx, campaignID)
 	if err != nil {
@@ -243,7 +230,6 @@ func (w *OutboxWorker) setCampaignBudgetRemaining(ctx context.Context, pipe redi
 	return nil
 }
 
-// ToUUID converts a google/uuid value into the pgtype representation used by raw SQL helpers.
 func ToUUID(u uuid.UUID) pgtype.UUID {
 	return pgtype.UUID{Bytes: u, Valid: true}
 }
@@ -251,7 +237,6 @@ func ToUUID(u uuid.UUID) pgtype.UUID {
 const fraudQuarantineChannel = "fraud:quarantine"
 const blacklistUpdateChannel = "blacklist:update"
 
-// applyBlacklistPayload mirrors a blacklist change to every Redis shard.
 func (w *OutboxWorker) applyBlacklistPayload(ctx context.Context, p BlacklistPayload, queuedAt time.Time) error {
 	if len(w.svc.rdbs) == 0 {
 		return fmt.Errorf("no redis client available")
@@ -280,7 +265,6 @@ func (w *OutboxWorker) applyBlacklistPayload(ctx context.Context, p BlacklistPay
 	return nil
 }
 
-// syncBrandCreativesToRedis publishes weighted creative lists for hot-path rotation.
 func (w *OutboxWorker) syncBrandCreativesToRedis(ctx context.Context, brandIDStr string) error {
 	brandID, err := coldpath.ParseUUID(brandIDStr)
 	if err != nil {

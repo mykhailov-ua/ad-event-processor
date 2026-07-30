@@ -1,4 +1,3 @@
-# NodePort exposes payment Stripe webhook HTTP on the host for local checkout tests.
 apiVersion: v1
 kind: Service
 metadata:

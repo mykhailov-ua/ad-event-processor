@@ -9,7 +9,6 @@ import (
 )
 
 func TestParseOpenRTB3Payload_ReorderedNested(t *testing.T) {
-	// Keys reordered vs canonical sample; nested device before item.
 	payload := []byte(`{
   "category_mask": 8,
   "openrtb": {
@@ -78,7 +77,6 @@ func TestParseOpenRTB3Ingress(t *testing.T) {
 		req.Reset()
 		_ = ParseOpenRTB3Ingress(&req, payload)
 	})
-	// Payload is aliased to input; CampaignID/ClickID from stack buffers via unsafeString.
 	assert.Equal(t, float64(0), allocs)
 }
 

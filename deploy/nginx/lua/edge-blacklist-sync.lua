@@ -1,5 +1,3 @@
--- edge-blacklist-sync.lua: background SMEMBERS sync from Redis shard 0 into blacklist_cache.
--- Keys use b:<ip> = version stamp; _bl_ver bumps each successful sync (no dict iteration).
 
 local redis = require "resty.redis"
 
@@ -146,7 +144,6 @@ local function connect_shard0()
     return red, nil
 end
 
--- sync pulls blacklist:manual, blacklist:auto, and blacklist:fraud from shard 0 into shared dict.
 function _M.sync()
     local red, err = connect_shard0()
     if not red then

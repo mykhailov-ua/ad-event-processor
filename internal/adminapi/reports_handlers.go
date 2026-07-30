@@ -20,7 +20,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// ReportsHTTPHandlers serves tabular report JSON routes (M6 CHG waves).
 type ReportsHTTPHandlers struct {
 	CampaignStats             CampaignStatsReader
 	CampaignForecaster        CampaignForecaster
@@ -33,7 +32,6 @@ type ReportsHTTPHandlers struct {
 	WriteServiceError         func(http.ResponseWriter, error)
 }
 
-// Register mounts report routes on mux.
 func (h *ReportsHTTPHandlers) Register(mux *http.ServeMux) {
 	if h == nil {
 		return

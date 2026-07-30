@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// writeOpenRTB26NoBidHTTP writes a 204 nobid HTTP response into buf.
 func writeOpenRTB26NoBidHTTP(buf []byte) int {
 	const body = `{"id":"","nbr":2}`
 	n := copy(buf, "HTTP/1.1 204 No Content\r\nContent-Type: application/json\r\nContent-Length: ")
@@ -17,7 +16,6 @@ func writeOpenRTB26NoBidHTTP(buf []byte) int {
 	return n
 }
 
-// writeOpenRTB26BidHTTP writes a 200 bid HTTP response into buf without heap allocation.
 func writeOpenRTB26BidHTTP(buf []byte, bidID []byte, priceMicro int64, campaignID uuid.UUID) int {
 	var body [256]byte
 	j := 0
@@ -104,7 +102,6 @@ func appendUUIDCompact(dst []byte, id uuid.UUID) int {
 	return n
 }
 
-// OpenRTBBidOutcome is the transport-agnostic result of an OpenRTB auction on /openrtb/bid.
 type OpenRTBBidOutcome struct {
 	HasBid     bool
 	PriceMicro int64
@@ -112,7 +109,6 @@ type OpenRTBBidOutcome struct {
 	NoBid      rtb.NoBidReason
 }
 
-// runOpenRTBBid executes buildRtbTargeting → RunAuction for a parsed OpenRTB 2.6 request.
 func runOpenRTBBid(proc trackProcessor, body []byte, bidID []byte, clientIP string) OpenRTBBidOutcome {
 	if proc.rtbCatalog == nil || proc.rtbMode == rtbModeOff {
 		return OpenRTBBidOutcome{NoBid: rtb.NoBidInvalidRequest}

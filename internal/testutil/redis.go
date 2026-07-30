@@ -9,14 +9,12 @@ import (
 	rediscontainer "github.com/testcontainers/testcontainers-go/modules/redis"
 )
 
-// SetupRedis boots an isolated Redis testcontainer.
 func SetupRedis(t testing.TB) (redis.UniversalClient, func()) {
 	t.Helper()
 	_, client, cleanup := SetupRedisContainer(t)
 	return client, cleanup
 }
 
-// SetupRedisContainer boots Redis and returns the container for fault injection.
 func SetupRedisContainer(t testing.TB) (testcontainers.Container, redis.UniversalClient, func()) {
 	t.Helper()
 	ctx := context.Background()

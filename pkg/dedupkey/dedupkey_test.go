@@ -31,7 +31,6 @@ func TestFormatCanonical_GoldenVector(t *testing.T) {
 	assert.Equal(t, factorU, parsedU)
 	assert.Equal(t, factorD, parsedD)
 
-	// Same batch must produce identical SSID + factor_u.
 	key2 := FormatCanonical(scope, factorU, factorD)
 	assert.Equal(t, key, key2)
 	assert.Equal(t, factorU, FactorU(CanonicalSpendPayload([]SpendPair{{

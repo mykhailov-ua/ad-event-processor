@@ -1,4 +1,3 @@
--- Per-campaign fraud score tier boundaries and behavioral filter toggles for the hot-path registry.
 
 -- +goose Up
 -- +goose StatementBegin

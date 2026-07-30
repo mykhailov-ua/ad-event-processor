@@ -12,15 +12,12 @@ import (
 	"github.com/google/uuid"
 )
 
-// auditLogSampleMaskDefault inherits the Lua metrics downsampling rate for audit logs.
 const auditLogSampleMaskDefault = luaMetricsSampleMask
 
-// auditLogSampleMaskFromConfig aligns audit downsampling with Lua histogram sampling from ops config.
 func auditLogSampleMaskFromConfig(cfgVal int) uint64 {
 	return histogramSampleMaskFromConfig(cfgVal)
 }
 
-// auditLogPriority assigns higher logger priority to billable events during disk pressure.
 func auditLogPriority(eventType string) uint8 {
 	switch eventType {
 	case "click", "conversion":
@@ -30,7 +27,6 @@ func auditLogPriority(eventType string) uint8 {
 	}
 }
 
-// writeAuditLog emits a sampled AdStreamEvent protobuf for accepted track events (broker ingest path).
 func writeAuditLog(
 	l *logger.Logger,
 	seq *atomic.Uint64,
@@ -88,7 +84,6 @@ func writeAuditLog(
 	streamEventPool.Put(pbEvt)
 }
 
-// auditEventFromFields builds a minimal domain event for cold-path audit writes.
 func auditEventFromFields(ts int64, campaignID uuid.UUID, clickID, eventType string) *campaignmodel.Event {
 	evt := campaignmodel.EventPool.Get().(*campaignmodel.Event)
 	evt.Reset()

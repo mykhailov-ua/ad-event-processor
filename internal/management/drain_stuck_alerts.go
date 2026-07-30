@@ -15,7 +15,6 @@ type stuckDrainJob struct {
 	updatedAt time.Time
 }
 
-// CheckStuckDrainJobs alerts operators when slot migration drain jobs exceed the configured threshold.
 func (s *Service) CheckStuckDrainJobs(ctx context.Context) {
 	if s == nil || s.alerter == nil || s.GetPool() == nil {
 		return

@@ -15,7 +15,6 @@ import (
 	notifierpb "espx/internal/notifier/pb"
 )
 
-// OpsAlerter sends deduplicated operator alerts via the notifier gRPC client.
 type OpsAlerter struct {
 	client             *NotifierClient
 	provider           notifierpb.Provider
@@ -23,11 +22,10 @@ type OpsAlerter struct {
 	broadcastProviders []notifierpb.Provider
 	cooldown           time.Duration
 	outboxStuckSec     int
-	lastSent           sync.Map // alert key -> time.Time
+	lastSent           sync.Map
 	enqueueFailures    atomic.Int64
 }
 
-// NewOpsAlerter constructs an alerter when OPS_ALERTS_ENABLED and a recipient are configured.
 func NewOpsAlerter(client *NotifierClient, cfg *config.Config) *OpsAlerter {
 	if client == nil || cfg == nil || !cfg.OpsAlertsEnabled() {
 		return nil
@@ -80,7 +78,7 @@ func (a *OpsAlerter) sendAsync(key, title, body string, broadcast bool) {
 			metrics.ManagementOpsAlertEnqueueFailuresTotal.Inc()
 			slog.Warn("ops alert enqueue failed", "key", key, "error", err, "consecutive_failures", failures)
 			if failures == 1 || failures%5 == 0 {
-				metaTitle := "eSPX: ops alert enqueue failing"
+				metaTitle := "BidShard: ops alert enqueue failing"
 				metaBody := fmt.Sprintf(
 					"<b>Notifier enqueue failures</b>\nConsecutive failures: %d\nLast key: %s\nError: %v",
 					failures, key, err,
@@ -109,13 +107,12 @@ func (a *OpsAlerter) enqueueNotification(ctx context.Context, key, title, body s
 	return a.dispatch(ctx, key, title, body, broadcast)
 }
 
-// AlertReconDiscrepancy notifies operators when a recon run found ledger/Redis drift.
 func (a *OpsAlerter) AlertReconDiscrepancy(runID int64, discrepancies int, totalDelta int64, period string) {
 	if a == nil || discrepancies <= 0 {
 		return
 	}
 	key := fmt.Sprintf("recon:run:%d", runID)
-	title := "eSPX: recon discrepancy"
+	title := "BidShard: recon discrepancy"
 	body := fmt.Sprintf(
 		"<b>Recon discrepancy</b>\nPeriod: %s\nRun #%d\nCampaigns adjusted: %d\nTotal delta (micro): %d",
 		period, runID, discrepancies, totalDelta,
@@ -123,13 +120,12 @@ func (a *OpsAlerter) AlertReconDiscrepancy(runID int64, discrepancies int, total
 	a.sendAsync(key, title, body, true)
 }
 
-// AlertReconDiscrepancyUnresolved notifies operators when discrepancies remain unadjusted for over one hour.
 func (a *OpsAlerter) AlertReconDiscrepancyUnresolved(runID int64, unresolved int, totalDelta int64, period string, oldest time.Time) {
 	if a == nil || unresolved <= 0 {
 		return
 	}
 	key := fmt.Sprintf("recon:unresolved:%d", runID)
-	title := "eSPX: unreconciled budget drift"
+	title := "BidShard: unreconciled budget drift"
 	body := fmt.Sprintf(
 		"<b>Unresolved recon discrepancy</b>\nPeriod: %s\nRun #%d\nUnresolved campaigns: %d\nTotal |delta| (micro): %d\nOldest since: %s",
 		period, runID, unresolved, totalDelta, oldest.UTC().Format(time.RFC3339),
@@ -137,13 +133,12 @@ func (a *OpsAlerter) AlertReconDiscrepancyUnresolved(runID int64, unresolved int
 	a.sendAsync(key, title, body, true)
 }
 
-// AlertRedisShardUnhealthy notifies operators when a Redis shard fails health checks.
 func (a *OpsAlerter) AlertRedisShardUnhealthy(shardIdx int, err error) {
 	if a == nil {
 		return
 	}
 	key := fmt.Sprintf("redis:shard:%d", shardIdx)
-	title := fmt.Sprintf("eSPX: Redis shard %d unreachable", shardIdx)
+	title := fmt.Sprintf("BidShard: Redis shard %d unreachable", shardIdx)
 	body := fmt.Sprintf(
 		"<b>Redis shard unhealthy</b>\nShard: %d\nError: %v\nStuck quota reservations were released.",
 		shardIdx, err,
@@ -151,13 +146,12 @@ func (a *OpsAlerter) AlertRedisShardUnhealthy(shardIdx int, err error) {
 	a.sendAsync(key, title, body, true)
 }
 
-// AlertSlotMapMigrating notifies operators when slots are marked MIGRATING on a draft map version.
 func (a *OpsAlerter) AlertSlotMapMigrating(version int32, slots []int16, targetShard int16) {
 	if a == nil || len(slots) == 0 {
 		return
 	}
 	key := fmt.Sprintf("migration:mark:%d:%d:%s", version, targetShard, formatSlotIDs(slots))
-	title := "eSPX: slot map migration started"
+	title := "BidShard: slot map migration started"
 	body := fmt.Sprintf(
 		"<b>Slot map migration</b>\nVersion: %d\nTarget shard: %d\nSlots (%d): %s\nNext: copy data, then activate.",
 		version, targetShard, len(slots), formatSlotIDs(slots),
@@ -165,13 +159,12 @@ func (a *OpsAlerter) AlertSlotMapMigrating(version int32, slots []int16, targetS
 	a.sendAsync(key, title, body, false)
 }
 
-// AlertDrainStuck notifies operators when slot migration drain does not complete in time.
 func (a *OpsAlerter) AlertDrainStuck(version int32, slot int16, state, lastError string, updatedAt time.Time) {
 	if a == nil {
 		return
 	}
 	key := fmt.Sprintf("drain:%d:%d:%s", version, slot, state)
-	title := "eSPX: slot migration drain stuck"
+	title := "BidShard: slot migration drain stuck"
 	body := fmt.Sprintf(
 		"<b>Drain stuck</b>\nVersion: %d\nSlot: %d\nState: %s\nSince: %s\nError: %s",
 		version, slot, state, updatedAt.UTC().Format(time.RFC3339), lastError,
@@ -179,24 +172,22 @@ func (a *OpsAlerter) AlertDrainStuck(version int32, slot int16, state, lastError
 	a.sendAsync(key, title, body, true)
 }
 
-// AlertBlacklistJanitorFailed notifies operators when temporary blacklist expiry processing fails.
 func (a *OpsAlerter) AlertBlacklistJanitorFailed(err error) {
 	if a == nil || err == nil {
 		return
 	}
 	key := "blacklist:janitor:scan"
-	title := "eSPX: blacklist janitor failed"
+	title := "BidShard: blacklist janitor failed"
 	body := fmt.Sprintf("<b>Blacklist janitor scan failed</b>\nError: %v", err)
 	a.sendAsync(key, title, body, true)
 }
 
-// AlertOutboxStuck notifies operators when the management outbox backlog ages beyond threshold.
 func (a *OpsAlerter) AlertOutboxStuck(pending int64, oldestSeconds float64) {
 	if a == nil || pending <= 0 {
 		return
 	}
 	key := fmt.Sprintf("outbox:stuck:%d", int64(oldestSeconds)/60)
-	title := "eSPX: outbox backlog stale"
+	title := "BidShard: outbox backlog stale"
 	body := fmt.Sprintf(
 		"<b>Outbox backlog stale</b>\nPending events: %d\nOldest pending age (s): %.0f\nHot-path Redis may drift from Postgres.",
 		pending, oldestSeconds,
@@ -204,7 +195,6 @@ func (a *OpsAlerter) AlertOutboxStuck(pending int64, oldestSeconds float64) {
 	a.sendAsync(key, title, body, true)
 }
 
-// OutboxStuckThresholdSec returns the configured outbox age threshold for ops alerts.
 func (a *OpsAlerter) OutboxStuckThresholdSec() int {
 	if a == nil || a.outboxStuckSec <= 0 {
 		return 120
@@ -212,35 +202,32 @@ func (a *OpsAlerter) OutboxStuckThresholdSec() int {
 	return a.outboxStuckSec
 }
 
-// AlertSlotMigrationComplete notifies operators when all drain jobs for the active map finish.
 func (a *OpsAlerter) AlertSlotMigrationComplete(version int32) {
 	if a == nil {
 		return
 	}
 	key := fmt.Sprintf("migration:complete:%d", version)
-	title := "eSPX: slot migration cutover complete"
+	title := "BidShard: slot migration cutover complete"
 	body := fmt.Sprintf("<b>Slot migration complete</b>\nActive version: %d\nPost-cutover R5 verification passed.", version)
 	a.sendAsync(key, title, body, false)
 }
 
-// AlertLedgerDrift notifies operators when billing ledger invariant checks fail.
 func (a *OpsAlerter) AlertLedgerDrift(customerID string, driftErr error) {
 	if a == nil || driftErr == nil {
 		return
 	}
 	key := fmt.Sprintf("billing:drift:%s", customerID)
-	title := "eSPX: billing ledger drift"
+	title := "BidShard: billing ledger drift"
 	body := fmt.Sprintf("<b>Ledger invariant failed</b>\nCustomer: %s\nError: %v", customerID, driftErr)
 	a.sendAsync(key, title, body, true)
 }
 
-// AlertCHEmergencyDrop notifies operators when CHPartitionJanitor drops a partition under disk pressure.
 func (a *OpsAlerter) AlertCHEmergencyDrop(table, partition string, diskUsedPct float64, thresholdPct int) {
 	if a == nil {
 		return
 	}
 	key := fmt.Sprintf("ch:emergency:%s:%s", table, partition)
-	title := "eSPX: ClickHouse emergency partition drop"
+	title := "BidShard: ClickHouse emergency partition drop"
 	body := fmt.Sprintf(
 		"<b>CH emergency drop</b>\nTable: %s\nPartition: %s\nDisk used: %.1f%%\nThreshold: %d%%\nReview retention and ingest volume.",
 		table, partition, diskUsedPct, thresholdPct,
@@ -248,13 +235,12 @@ func (a *OpsAlerter) AlertCHEmergencyDrop(table, partition string, diskUsedPct f
 	a.sendAsync(key, title, body, true)
 }
 
-// AlertSlotMigrationError notifies operators when slot migration orchestrator ticks fail persistently.
 func (a *OpsAlerter) AlertSlotMigrationError(stage string, err error) {
 	if a == nil || err == nil {
 		return
 	}
 	key := fmt.Sprintf("migration:tick:%s", stage)
-	title := fmt.Sprintf("eSPX: slot migration %s failed", stage)
+	title := fmt.Sprintf("BidShard: slot migration %s failed", stage)
 	body := fmt.Sprintf("<b>Slot migration error</b>\nStage: %s\nError: %v", stage, err)
 	a.sendAsync(key, title, body, true)
 }

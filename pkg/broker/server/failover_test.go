@@ -12,8 +12,7 @@ import (
 	rediscontainer "github.com/testcontainers/testcontainers-go/modules/redis"
 )
 
-// TestChaos_SafeFailover_LaggingLeaderNotReady rejects produce until log hwm is reachable.
-func TestChaos_SafeFailover_LaggingLeaderNotReady(t *testing.T) {
+func TestFault_SafeFailover_LaggingLeaderNotReady(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
@@ -87,5 +86,5 @@ func TestChaos_SafeFailover_LaggingLeaderNotReady(t *testing.T) {
 		t.Fatalf("produce after ready failed: %v", err)
 	}
 
-	t.Logf("chaos_proof fault=lagging_leader_not_ready hwm=100 local=1 produce_rejected=true ready_after_catchup=true")
+	t.Logf("fault_proof fault=lagging_leader_not_ready hwm=100 local=1 produce_rejected=true ready_after_catchup=true")
 }

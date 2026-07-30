@@ -18,7 +18,6 @@ type mabCreativeStat struct {
 	clicks      int64
 }
 
-// optimizeBrandCreativeMABTx updates creative weights from ClickHouse CTR and returns brands needing Redis sync (M5.7).
 func (s *Service) optimizeBrandCreativeMABTx(ctx context.Context, tx pgx.Tx) ([]uuid.UUID, error) {
 	if s.chQuery == nil {
 		return nil, nil

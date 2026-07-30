@@ -19,7 +19,6 @@ var (
 
 const maxLicenseTokenBytes = 16 * 1024
 
-// DecodeUnverified parses the token claims without verifying the signature.
 func DecodeUnverified(tokenStr string) (*LicenseClaims, error) {
 	parts := strings.Split(tokenStr, ".")
 	if len(parts) != 3 {
@@ -36,7 +35,6 @@ func DecodeUnverified(tokenStr string) (*LicenseClaims, error) {
 	return &claims, nil
 }
 
-// VerifyJWT verifies the Ed25519 signature of the JWT token string.
 func VerifyJWT(tokenStr string, pubKey ed25519.PublicKey) (*LicenseClaims, error) {
 	if len(tokenStr) > maxLicenseTokenBytes {
 		return nil, ErrTokenTooLarge
@@ -69,12 +67,10 @@ func VerifyJWT(tokenStr string, pubKey ed25519.PublicKey) (*LicenseClaims, error
 	return &claims, nil
 }
 
-// ParsePublicKey parses a 32-byte Ed25519 public key from hex or raw bytes.
 func ParsePublicKey(keyBytes []byte) (ed25519.PublicKey, error) {
 	if len(keyBytes) == 32 {
 		return ed25519.PublicKey(keyBytes), nil
 	}
-	// Fallback/support hex-encoded public key if it's 64 characters
 	keyStr := strings.TrimSpace(string(keyBytes))
 	if len(keyStr) == 64 {
 		var raw [32]byte
@@ -88,7 +84,6 @@ func ParsePublicKey(keyBytes []byte) (ed25519.PublicKey, error) {
 		}
 		return ed25519.PublicKey(raw[:]), nil
 	}
-	// Try base64 decoding
 	decoded, err := base64.StdEncoding.DecodeString(keyStr)
 	if err == nil && len(decoded) == 32 {
 		return ed25519.PublicKey(decoded), nil

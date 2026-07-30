@@ -17,7 +17,6 @@ var (
 	ErrBatchEmpty            = errors.New("batch must contain at least one notification")
 )
 
-// ProviderRateLimitedError signals an upstream provider asked us to slow down (e.g. Telegram 429).
 type ProviderRateLimitedError struct {
 	Provider   string
 	RetryAfter time.Duration

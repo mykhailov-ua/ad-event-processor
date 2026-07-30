@@ -1,7 +1,5 @@
 package ingestion
 
-// handler_http2.go — HTTP/2 cleartext (h2c) ingress on gnet (M5-C3).
-
 import (
 	"errors"
 

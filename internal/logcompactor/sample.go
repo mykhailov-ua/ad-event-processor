@@ -6,7 +6,6 @@ import (
 	"espx/internal/ingestion/pb"
 )
 
-// isAlwaysKeepEvent returns true for billable and fraud-marked audit records.
 func isAlwaysKeepEvent(evt *pb.AdStreamEvent) bool {
 	if evt == nil {
 		return false
@@ -18,7 +17,6 @@ func isAlwaysKeepEvent(evt *pb.AdStreamEvent) bool {
 	return evt.GhostEvent || evt.FraudScore > 0
 }
 
-// shouldSampleImpression applies deterministic hash downsampling to impression records.
 func shouldSampleImpression(clickID []byte, sampleRate uint64) bool {
 	if len(clickID) == 0 {
 		return false
@@ -31,8 +29,6 @@ func shouldSampleImpression(clickID []byte, sampleRate uint64) bool {
 	return h.Sum64()%sampleRate == 0
 }
 
-// shouldKeepEvent decides whether an audit record survives warm-tier downsampling.
-// Deprecated path for tests comparing legacy hash-only sampling.
 func shouldKeepEvent(evt *pb.AdStreamEvent, sampleRate uint64) bool {
 	if isAlwaysKeepEvent(evt) {
 		return true

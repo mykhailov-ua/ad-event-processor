@@ -1,21 +1,18 @@
 package adminapi
 
-// PeriodDTO bounds a reporting window (CONTROL_PLANE.md section 7).
 type PeriodDTO struct {
 	From     string `json:"from"`
 	To       string `json:"to"`
 	Timezone string `json:"timezone,omitempty"`
 }
 
-// DataFreshnessDTO describes analytics consistency for CH-backed screens.
 type DataFreshnessDTO struct {
 	AsOf         string `json:"as_of"`
-	Consistency  string `json:"consistency"` // strong | eventual
+	Consistency  string `json:"consistency"`
 	Stale        bool   `json:"stale"`
 	CHLagSeconds int    `json:"ch_lag_seconds,omitempty"`
 }
 
-// MetricsBlockDTO is the shared KPI block for persona dashboards.
 type MetricsBlockDTO struct {
 	SpendMicro   int64            `json:"spend_micro"`
 	RevenueMicro int64            `json:"revenue_micro"`
@@ -26,7 +23,6 @@ type MetricsBlockDTO struct {
 	Freshness    DataFreshnessDTO `json:"freshness"`
 }
 
-// ActionDTO is a UI affordance on dashboard rows.
 type ActionDTO struct {
 	ID              string `json:"id"`
 	Label           string `json:"label"`
@@ -34,7 +30,6 @@ type ActionDTO struct {
 	ImpactMicro     int64  `json:"impact_micro,omitempty"`
 }
 
-// SourceRowDTO is a traffic-source performance row.
 type SourceRowDTO struct {
 	CampaignID   string      `json:"campaign_id"`
 	Sub1         string      `json:"sub1,omitempty"`
@@ -54,7 +49,6 @@ type SourceRowDTO struct {
 	Actions      []ActionDTO `json:"actions,omitempty"`
 }
 
-// BuyerCampaignRowDTO summarizes one campaign on the buyer home screen.
 type BuyerCampaignRowDTO struct {
 	ID             string      `json:"id"`
 	Name           string      `json:"name"`
@@ -68,7 +62,6 @@ type BuyerCampaignRowDTO struct {
 	Actions        []ActionDTO `json:"actions,omitempty"`
 }
 
-// RecommendationCardDTO is an ML/ops suggestion card.
 type RecommendationCardDTO struct {
 	ID          string      `json:"id"`
 	Type        string      `json:"type"`
@@ -82,7 +75,6 @@ type RecommendationCardDTO struct {
 	Actions     []ActionDTO `json:"actions,omitempty"`
 }
 
-// AlertCardDTO is a lightweight alert tile on dashboards.
 type AlertCardDTO struct {
 	ID     string `json:"id"`
 	Level  string `json:"level"`
@@ -91,7 +83,6 @@ type AlertCardDTO struct {
 	Route  string `json:"route,omitempty"`
 }
 
-// BuyerDashboardDTO is GET /api/v1/dashboards/buyer.
 type BuyerDashboardDTO struct {
 	CustomerID      string                  `json:"customer_id"`
 	Period          PeriodDTO               `json:"period"`
@@ -103,7 +94,6 @@ type BuyerDashboardDTO struct {
 	Recommendations []RecommendationCardDTO `json:"recommendations"`
 }
 
-// AccountantCloseDTO is GET /api/v1/dashboards/accountant.
 type AccountantCloseDTO struct {
 	CustomerID            string `json:"customer_id"`
 	BillingMonth          string `json:"billing_month"`
@@ -112,32 +102,27 @@ type AccountantCloseDTO struct {
 	UnreconciledPostbacks int    `json:"unreconciled_postbacks"`
 }
 
-// CFOSummaryDTO is GET /api/v1/dashboards/cfo.
 type CFOSummaryDTO struct {
 	CustomerID string          `json:"customer_id"`
 	Period     PeriodDTO       `json:"period"`
 	KPIs       MetricsBlockDTO `json:"unit_economics"`
 }
 
-// AdOpsHealthDTO is GET /api/v1/dashboards/adops.
 type AdOpsHealthDTO struct {
 	CustomerID string    `json:"customer_id"`
 	Period     PeriodDTO `json:"period"`
 }
 
-// FraudOverviewDTO is GET /api/v1/dashboards/fraud.
 type FraudOverviewDTO struct {
 	CustomerID string    `json:"customer_id"`
 	Period     PeriodDTO `json:"period"`
 }
 
-// OperatorDashboardDTO is GET /api/v1/dashboards/operator.
 type OperatorDashboardDTO struct {
 	Period PeriodDTO   `json:"period"`
 	XDP    XDPPanelDTO `json:"xdp"`
 }
 
-// XDPPanelDTO surfaces per-CPU aggregated XDP counters for ops dashboards (M10-C4).
 type XDPPanelDTO struct {
 	UpdatedAt     string            `json:"updated_at,omitempty"`
 	Pass          uint64            `json:"pass"`
@@ -146,7 +131,6 @@ type XDPPanelDTO struct {
 	Drops         map[string]uint64 `json:"drops"`
 }
 
-// CampaignDashboardDTO is GET /api/v1/dashboards/campaign/{id}.
 type CampaignDashboardDTO struct {
 	CampaignID string           `json:"campaign_id"`
 	KPIs       MetricsBlockDTO  `json:"kpis"`

@@ -1,6 +1,5 @@
 -- +goose Up
 -- +goose StatementBegin
--- payment schema isolates checkout state from ads ledger so webhook retries do not contend with RTB hot tables.
 CREATE SCHEMA IF NOT EXISTS payment;
 
 CREATE TYPE payment.payment_intent_status AS ENUM (

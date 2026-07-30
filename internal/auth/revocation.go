@@ -9,14 +9,10 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// revocationCheckTimeout bounds Redis revocation lookups so token verification does not stall request paths.
 const revocationCheckTimeout = 100 * time.Millisecond
 
-// defaultUserRevocationTTL covers the longest access-token lifetime we issue.
 const defaultUserRevocationTTL = 24 * time.Hour
 
-// CheckTokenRevocation consults Redis because access tokens are stateless until explicitly revoked.
-// A non-nil error means callers must fail closed rather than accept a token during an outage.
 func CheckTokenRevocation(ctx context.Context, rdb redis.UniversalClient, payload *Payload) (revoked bool, err error) {
 	if rdb == nil || payload == nil {
 		return false, nil
@@ -54,7 +50,6 @@ func CheckTokenRevocation(ctx context.Context, rdb redis.UniversalClient, payloa
 	return false, nil
 }
 
-// RevokeUserAccess propagates admin blocks to stateless access tokens still within their TTL.
 func RevokeUserAccess(ctx context.Context, rdb redis.UniversalClient, userID uuid.UUID, ttl time.Duration) error {
 	if rdb == nil {
 		return nil
@@ -65,7 +60,6 @@ func RevokeUserAccess(ctx context.Context, rdb redis.UniversalClient, userID uui
 	return rdb.Set(ctx, "revoked:user:"+userID.String(), "1", ttl).Err()
 }
 
-// ClearUserRevocation prevents unblocks from leaving stale deny markers in the hot path.
 func ClearUserRevocation(ctx context.Context, rdb redis.UniversalClient, userID uuid.UUID) error {
 	if rdb == nil {
 		return nil

@@ -58,7 +58,6 @@ func seedCustomerCampaign(t testing.TB, pool *pgxpool.Pool) (uuid.UUID, uuid.UUI
 }
 
 func TestCurrency_EURToUSD(t *testing.T) {
-	// 100 EUR = 110 USD at 1.10 rate
 	got := ConvertEURToUSD(100 * microUnit)
 	require.Equal(t, int64(110_000_000), got)
 }
@@ -73,7 +72,6 @@ func TestOAuthRefresh_Meta(t *testing.T) {
 	defer srv.Close()
 
 	refresher := &MetaOAuthRefresher{AppID: "app", AppSecret: "secret", Client: srv.Client()}
-	// Override endpoint via custom transport is complex; test Refresh with mock by patching URL in test
 	_ = refresher
 	t.Log("oauth refresh path covered via MetaOAuthRefresher unit")
 }
@@ -97,7 +95,6 @@ func TestOAuthRefresh_GoogleHttptest(t *testing.T) {
 			Transport: roundTripRewriteHost(srv.URL, nil),
 		},
 	}
-	// Inject test server URL via transport rewrite.
 
 	token, expires, err := refresher.Refresh(context.Background(), Credential{RefreshToken: "rt"})
 	require.NoError(t, err)
@@ -155,7 +152,7 @@ func TestIdempotency_DuplicateImport(t *testing.T) {
 	require.Equal(t, 1, count)
 }
 
-func TestChaos_DuplicateReportLedgerBalanced(t *testing.T) {
+func TestFault_DuplicateReportLedgerBalanced(t *testing.T) {
 	pool := setupCostSyncDB(t)
 	ctx := context.Background()
 	customerID, campaignID := seedCustomerCampaign(t, pool)
@@ -196,7 +193,7 @@ func TestChaos_DuplicateReportLedgerBalanced(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, costCount)
 
-	testutil.LogChaosProof(t, "cost_sync_duplicate_report", map[string]string{"ledger_balanced": "true"})
+	testutil.LogFaultProof(t, "cost_sync_duplicate_report", map[string]string{"ledger_balanced": "true"})
 }
 
 func TestRSOC_TonicGoldenFixture(t *testing.T) {

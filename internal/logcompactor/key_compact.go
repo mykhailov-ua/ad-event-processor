@@ -14,7 +14,6 @@ import (
 
 const compactOkSuffix = ".compact.ok"
 
-// CompactMarker documents warm-tier completion for pipeline ordering with log-evacuator.
 type CompactMarker struct {
 	SourceKey    string `json:"source_key"`
 	SourceSHA256 string `json:"source_sha256"`
@@ -104,12 +103,10 @@ func compactMarkerFileName(hotKey string) string {
 	return hotKey + compactOkSuffix
 }
 
-// CompactMarkerPath returns the marker file path for a hot segment key in sourceDir.
 func CompactMarkerPath(sourceDir, hotKey string) string {
 	return filepath.Join(sourceDir, compactMarkerFileName(hotKey))
 }
 
-// CompactMarkerReady reports whether compactor finished for a ready segment path.
 func CompactMarkerReady(readyPath string) bool {
 	markerPath := markerPathFromReady(readyPath)
 	_, err := os.Stat(markerPath)
@@ -120,7 +117,6 @@ func markerPathFromReady(readyPath string) string {
 	return filepath.Join(filepath.Dir(readyPath), compactMarkerFileName(filepath.Base(readyPath)))
 }
 
-// WriteCompactMarker persists a completion marker for log-evacuator ordering.
 func WriteCompactMarker(sourceDir string, record CheckpointRecord) error {
 	marker := CompactMarker{
 		SourceKey:    record.SourceKey,
@@ -142,7 +138,6 @@ func WriteCompactMarker(sourceDir string, record CheckpointRecord) error {
 	return os.Rename(tmpPath, path)
 }
 
-// RemoveCompactMarker deletes the pipeline marker for a hot segment key.
 func RemoveCompactMarker(sourceDir, hotKey string) error {
 	err := os.Remove(CompactMarkerPath(sourceDir, hotKey))
 	if os.IsNotExist(err) {

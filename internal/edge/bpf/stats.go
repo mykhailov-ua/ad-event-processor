@@ -6,7 +6,6 @@ import (
 	"github.com/cilium/ebpf"
 )
 
-// XDP stat indices — must match enum xdp_stats in edge_filter.c.
 const (
 	StatPass = iota
 	StatPassAllowlist
@@ -24,7 +23,6 @@ const (
 	StatMax
 )
 
-// StatReason maps a stat index to Prometheus label value.
 func StatReason(idx uint32) string {
 	switch idx {
 	case StatPass:
@@ -58,7 +56,6 @@ func StatReason(idx uint32) string {
 	}
 }
 
-// AggregateStats sums per-CPU counters from the pinned stats PERCPU_ARRAY map.
 func AggregateStats(m *ebpf.Map) ([]uint64, error) {
 	if m == nil {
 		return nil, fmt.Errorf("stats map is nil")

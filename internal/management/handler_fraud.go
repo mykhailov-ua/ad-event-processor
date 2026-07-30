@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// registerFraudRoutes mounts campaign fraud configuration endpoints.
 func (h *Handler) registerFraudRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /admin/campaigns/{id}/fraud-config", h.limit(h.perm(h.getCampaignFraudConfig, PermCampaignsRead)))
 	mux.HandleFunc("POST /admin/campaigns/{id}/fraud-config", h.limit(h.perm(h.updateCampaignFraudConfig, PermCampaignsWrite)))

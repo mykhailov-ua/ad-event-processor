@@ -1,6 +1,3 @@
-// Package e2e_test exercises the full ingest path from HTTP accept through Redis
-// filters, stream consumers, and Postgres persistence. Tests use testcontainers
-// and run only when the -short flag is not set.
 package e2e_test
 
 import (
@@ -24,10 +21,6 @@ import (
 
 const e2eClickAmountMicro = 100_000
 
-// TestE2E_Idempotency implements CHAOS.md section 4.3. A duplicate click_id
-// replay returns HTTP 202 without debiting budget again, appending a second
-// stream entry, or inserting a second events row. SyncWorker retries must not
-// add duplicate sync_idempotency rows.
 func TestE2E_Idempotency(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")

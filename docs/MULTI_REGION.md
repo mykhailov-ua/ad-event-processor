@@ -4,7 +4,7 @@ Enterprise multi-cell topology (M7): regional hot-path cells, global control pla
 
 Status: **target architecture**. Partial implementation exists (`outbox_region_delivery`, `RegionOutboxRelay`, licensing `multi_region`). Regional proxy, disk gate, and node scorer are design targets documented here.
 
-Related: [ARCHITECTURE.md](./ARCHITECTURE.md), [MILESTONE.md](./MILESTONE.md), [CONTROL_PLANE](.cursor/rules/control-plane.mdc), [CHAOS](.cursor/rules/chaos.mdc), [CODE_STYLE](.cursor/rules/code-style.mdc), [HOT_PATH](.cursor/rules/hot-path.mdc).
+Related: [ARCHITECTURE.md](./ARCHITECTURE.md), [MILESTONE.md](./MILESTONE.md), [CONTROL_PLANE](.cursor/rules/control-plane.mdc), [FAULT_RESILIENCE](.cursor/rules/fault-resilience.mdc), [CODE_STYLE](.cursor/rules/code-style.mdc), [HOT_PATH](.cursor/rules/hot-path.mdc).
 
 ## Document map
 
@@ -359,7 +359,7 @@ Cross-check against common practice (AWS cells / Global Accelerator, RocksDB/PG 
 | H4 | **Fail-open policy documented** | AWS GA may fail open when no healthy weighted endpoint | eSPX default: **conservative** (§6 Phase E); optional `CONTROL_FAIL_OPEN=1` for edge only |
 | H5 | **mmap fsync contract** | CMU/Quasar: mmap without explicit fsync policy is risky | Document: append-only segment log + `fsyncSem` + `Recover()`; no btree-on-mmap |
 | H6 | **Established connections** | GA does not move in-flight TCP on weight change | Drain = new connections only; document in edge/runbook |
-| H7 | **Hard signal override** | Health overrides weight when invariant/disk fails | Already in §5; chaos tests in M6 |
+| H7 | **Hard signal override** | Health overrides weight when invariant/disk fails | Already in §5; fault tests in M6 |
 
 References: [AWS cell architecture](https://docs.aws.amazon.com/wellarchitected/latest/reducing-scope-of-impact-with-cell-based-architecture/what-is-a-cell-based-architecture.html), [Global Accelerator weights](https://docs.aws.amazon.com/global-accelerator/latest/dg/about-endpoints-endpoint-weights.html), [RocksDB WAL group commit](https://github.com/facebook/rocksdb/wiki/WAL-Performance), [CMU mmap CIDR 2022](https://db.cs.cmu.edu/mmap-cidr2022/).
 
@@ -823,7 +823,7 @@ DROP TABLE IF EXISTS operation_leases;
 | `OP_LEASE_TIMEOUT_SEC` | 30 | M6 |
 | `OP_LEASE_MAX_RENEWALS` | 3 | M6 |
 | `CONTROL_FAIL_OPEN` | 0 | M5 |
-| `CHAOS_MIN_PROOFS_MR` | 12 | M7 |
+| `RESILIENCE_MIN_PROOFS_MR` | 12 | M7 |
 
 ---
 
@@ -864,13 +864,13 @@ return fmt.Errorf("region proxy uplink batch seq=%d: %w", seq, errors.Join(errs.
 
 Banned: bare `return err` across package boundaries; `%v` instead of `%w`; string concat in error messages.
 
-### Testing pyramid ([CHAOS.md](.cursor/rules/chaos.mdc) R5–R6)
+### Testing pyramid ([fault-resilience.mdc](.cursor/rules/fault-resilience.mdc) R5–R6)
 
 | Layer | Command / file | Gate |
 | :--- | :--- | :--- |
 | Unit | `go test ./pkg/iogate/... -race` | table-driven; no sqlmock |
 | Integration | `*_test.go` + testcontainers | real PG/Redis; >= 20 goroutines on lease/dedup paths |
-| Chaos | `*_chaos_test.go` | `chaos_proof fault=...`; no mocks on budget/dedup/Lua |
+| Fault | `*_fault_test.go` | `fault_proof fault=...`; no mocks on budget/dedup/Lua |
 | E2E | `tests/e2e/region_proxy_*` | compose stack |
 | Perf | `go test -benchmem` | cold: no regression; hot touch: 0 allocs/op unchanged |
 | PR | `make lint`, `make test-alloc-gate` | [CODE_STYLE.md](.cursor/rules/code-style.mdc) R10 |
@@ -890,7 +890,7 @@ Banned: bare `return err` across package boundaries; `%v` instead of `%w`; strin
 ```text
 M1 (disk gate) ──► M2 (proxy + OpKeyPool) ──► M6 (leases)
 M3 (metrics) ──► M4 (scorer) ──► M5 (routing)
-M6 + M5 ──► M7 (chaos)
+M6 + M5 ──► M7 (fault/resilience)
 ```
 
 ---
@@ -1022,7 +1022,7 @@ Cardinality: labels `{tier,node_id}` only; no per-op labels.
 | File | Case |
 | :--- | :--- |
 | `pkg/regionproxy/wal/wal_test.go` | append -> flags -> recover round-trip |
-| `pkg/regionproxy/wal/wal_chaos_test.go` | SIGKILL -> restart -> replay idempotent offsets |
+| `pkg/regionproxy/wal/wal_fault_test.go` | SIGKILL -> restart -> replay idempotent offsets |
 | `tests/e2e/region_proxy_ingress_test.go` | produce batch -> ACK -> segment on disk |
 
 #### Code style
@@ -1062,7 +1062,7 @@ Cardinality: labels `{tier,node_id}` only; no per-op labels.
 | :--- | :--- |
 | `pkg/regionproxy/keygen/keygen_bench_test.go` | `BenchmarkFactorUDerive` 0 allocs/op |
 | `pkg/regionproxy/keygen/keygen_test.go` | 10k records; all `WalFlagDedupReady` set |
-| `internal/management/proxy_keygen_chaos_test.go` | CH-MR-05 CPU throttle; shed without duplicate `factor_u` |
+| `internal/management/proxy_keygen_fault_test.go` | CH-MR-05 CPU throttle; shed without duplicate `factor_u` |
 
 #### Code style
 
@@ -1138,7 +1138,7 @@ Cardinality: labels `{tier,node_id}` only; no per-op labels.
 | File | Case |
 | :--- | :--- |
 | `tests/e2e/region_proxy_uplink_test.go` | happy path batch -> PG |
-| `internal/management/region_uplink_chaos_test.go` | 3x replay -> 1 proposal; `chaos_proof fault=mr_uplink_dedup` |
+| `internal/management/region_uplink_fault_test.go` | 3x replay -> 1 proposal; `fault_proof fault=mr_uplink_dedup` |
 | `pkg/dedupkey/factor_test.go` | canonical payload stable sort |
 
 #### Code style
@@ -1148,7 +1148,7 @@ Cardinality: labels `{tier,node_id}` only; no per-op labels.
 
 #### Patterns
 
-`region_outbox_relay.go`, `broker_consumer.go`, `TestChaos_DedupMultiRegionDuplicate`
+`region_outbox_relay.go`, `broker_consumer.go`, `TestFault_DedupMultiRegionDuplicate`
 
 ---
 
@@ -1195,7 +1195,7 @@ Scorer tick < 500 ms for 100 nodes; rate metrics use sum/sum not mean-of-ratios.
 | File | Case |
 | :--- | :--- |
 | `internal/management/node_scorer_test.go` | Phases A–E + `ResolveScorePhase` transitions |
-| `internal/management/node_scorer_chaos_test.go` | CH-MR-01..03 `chaos_proof` lines |
+| `internal/management/node_scorer_fault_test.go` | CH-MR-01..03 `fault_proof` lines |
 
 #### Code style
 
@@ -1264,11 +1264,11 @@ Max weight delta 10%/epoch except hard signals; historical drain max 2%/epoch.
 #### Checklist
 
 - [x] All §6 transitions covered in code + tests
-- [x] CH-MR-01..03 chaos proofs linked (`node_scorer_chaos_test.go`)
+- [x] CH-MR-01..03 fault proofs linked (`node_scorer_fault_test.go`)
 
 #### Tests
 
-`node_scorer_chaos_test.go` with `logChaosProof`
+`node_scorer_fault_test.go` with `logFaultProof`
 
 ---
 
@@ -1398,7 +1398,7 @@ Janitor period 5 s; `ad_op_lease_expired_total` lag p99 < 10 s from `deadline_at
 | File | Case |
 | :--- | :--- |
 | `operation_lease_worker_test.go` | booked -> executing -> completed |
-| `operation_lease_chaos_test.go` | CH-MR-06..08 proofs |
+| `operation_lease_fault_test.go` | CH-MR-06..08 proofs |
 | `region_outbox_relay_test.go` | extended with lease path |
 
 ---
@@ -1435,7 +1435,7 @@ Janitor period 5 s; `ad_op_lease_expired_total` lag p99 < 10 s from `deadline_at
 
 #### Tests
 
-Extend `TestChaos_DedupMultiRegionDuplicate` with lease rows
+Extend `TestFault_DedupMultiRegionDuplicate` with lease rows
 
 ---
 
@@ -1471,9 +1471,9 @@ Slow executor with renew -> not expired; without renew -> expired
 
 ---
 
-## §H. M7 — Chaos and game days
+## §H. M7 — Fault injection and resilience drills
 
-### M7.1 Scoring chaos (CH-MR-01..03)
+### M7.1 Scoring fault (CH-MR-01..03)
 
 #### SLA
 
@@ -1481,12 +1481,12 @@ Tracker p99 < 80 ms throughout fault; no weight drop > 10% without hard signal.
 
 #### Checklist
 
-- [x] Three `chaos_proof` lines in CI
-- [x] `CHAOS_MIN_PROOFS_MR=12` gate in `test_chaos.sh`
+- [x] Three `fault_proof` lines in CI
+- [x] `RESILIENCE_MIN_PROOFS_MR=12` gate in `test_resilience.sh`
 
 #### Tests
 
-`node_scorer_chaos_test.go` (CH-MR-01..03, shared with M4.3); compose load `scripts/load-test/`
+`node_scorer_fault_test.go` (CH-MR-01..03, shared with M4.3); compose load `scripts/load/`
 
 ---
 
@@ -1504,7 +1504,7 @@ Tracker p99 < 80 ms throughout fault; no weight drop > 10% without hard signal.
 
 #### Tests
 
-`operation_lease_partition_chaos_test.go` — real testcontainers; >= 20 goroutines (CHAOS R5)
+`operation_lease_partition_fault_test.go` — real testcontainers; >= 20 goroutines (fault-resilience R5)
 
 ---
 
@@ -1516,7 +1516,7 @@ Zero duplicate global apply; client holds WAL until 2-of-3 ACK.
 
 #### Tests
 
-`region_proxy_quorum_chaos_test.go` — kill 2/3 proxies during book
+`region_proxy_quorum_fault_test.go` — kill 2/3 proxies during book
 
 ---
 
@@ -1528,21 +1528,21 @@ RTO regional proxy failover < 120 s.
 
 #### Checklist
 
-- [x] `scripts/chaos-drills/mr_game_day.sh`
+- [x] `scripts/fault/mr_resilience_drill.sh`
 - [x] `docs/DEVELOPMENT.md` 90 min operator checklist
 - [x] Quarterly dry-run calendar entry
 
 ---
 
-## §I. Chaos catalog (reference)
+## §I. Fault scenario catalog (reference)
 
-Synced with [CHAOS](.cursor/rules/chaos.mdc). Steady-state abort: tracker p99 > 80 ms unless noted.
+Synced with [fault-resilience](.cursor/rules/fault-resilience.mdc). Steady-state abort: tracker p99 > 80 ms unless noted.
 
 | ID | Fault | Hypothesis | Proof keys |
 | :--- | :--- | :--- | :--- |
-| CH-MR-01 | Cold node | weight <= 0.25; `provenance=neighbor_median` | `weight`, `provenance` — `node_scorer_chaos_test.go` |
-| CH-MR-02 | Scrape gap | no drain; neighbor fallback | `weight_delta` — `node_scorer_chaos_test.go` |
-| CH-MR-03 | All neighbors bad | `historical_daily`; drain <= 2%/epoch | `provenance` — `node_scorer_chaos_test.go` |
+| CH-MR-01 | Cold node | weight <= 0.25; `provenance=neighbor_median` | `weight`, `provenance` — `node_scorer_fault_test.go` |
+| CH-MR-02 | Scrape gap | no drain; neighbor fallback | `weight_delta` — `node_scorer_fault_test.go` |
+| CH-MR-03 | All neighbors bad | `historical_daily`; drain <= 2%/epoch | `provenance` — `node_scorer_fault_test.go` |
 | CH-MR-04 | Disk fsync +5 ms | `disk_degraded`; proxy 503 | `tracker_p99_ms` |
 | CH-MR-05 | KeyGen throttle | shed; 1 proposal row | `proposal_rows` |
 | CH-MR-06 | PG partition | lease `expired`; invariant OK | `budget_ok` |
@@ -1554,7 +1554,7 @@ Synced with [CHAOS](.cursor/rules/chaos.mdc). Steady-state abort: tracker p99 > 
 | CH-MR-12 | Drain 3 epochs | weight->0; in-flight OK | `active_conns` |
 
 ```text
-chaos_proof fault=mr_lease_ghost_executor op_id=<uuid> proposal_rows=1 redis_budget=<n> baseline_ok=true
+fault_proof fault=mr_lease_ghost_executor op_id=<uuid> proposal_rows=1 redis_budget=<n> baseline_ok=true
 ```
 
 ---
@@ -1569,4 +1569,4 @@ Active engineering backlog: [MILESTONE.md](./MILESTONE.md). Closed multi-region 
 | GAP-ENG-02 (broker / compose) | Open — see MILESTONE |
 | GAP-MR-01 | Closed (M6 operation leases) |
 | GAP-MR-02 | Closed (`GlobalRegionTrafficScorer` + per-cell `NodeCapacityScorer`, H3) |
-| GAP-GEO-01 | Closed (M7.4 game days) |
+| GAP-GEO-01 | Closed (M7.4 resilience drills) |

@@ -76,7 +76,6 @@ func (s *Service) GetMarginGuardActivity(ctx context.Context, campaignID uuid.UU
 	return activities, nil
 }
 
-// RemovePlacementOverride resumes a paused placement via PAUSE_PLACEMENT outbox (action=remove).
 func (s *Service) RemovePlacementOverride(ctx context.Context, campaignID uuid.UUID, placementID string) error {
 	payload, err := coldpath.MarshalJSON(PausePlacementPayload{
 		CampaignID:  campaignID.String(),

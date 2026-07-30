@@ -11,7 +11,6 @@ import (
 	"time"
 )
 
-// SlackProvider delivers messages via incoming webhook URLs.
 type SlackProvider struct {
 	defaultWebhook     string
 	breaker            *CircuitBreaker
@@ -19,7 +18,6 @@ type SlackProvider struct {
 	client             *http.Client
 }
 
-// NewSlackProvider binds a default webhook used when the recipient field is empty.
 func NewSlackProvider(defaultWebhook string, breaker *CircuitBreaker, requireCredentials bool) *SlackProvider {
 	return &SlackProvider{
 		defaultWebhook:     defaultWebhook,
@@ -35,7 +33,6 @@ func (s *SlackProvider) Name() string {
 	return "SLACK"
 }
 
-// Send posts to the webhook; missing credentials log a dry-run and return nil.
 func (s *SlackProvider) Send(ctx context.Context, recipient, title, body string) error {
 	if !s.breaker.Allow() {
 		return ErrCircuitOpen
@@ -63,7 +60,6 @@ func (s *SlackProvider) Send(ctx context.Context, recipient, title, body string)
 
 	payload := map[string]interface{}{}
 
-	// Build interactive blocks
 	notificationID, _ := NotificationIDFromContext(ctx)
 	actions := BuildInteractiveActions(notificationID, title, body)
 	var buttons []map[string]interface{}

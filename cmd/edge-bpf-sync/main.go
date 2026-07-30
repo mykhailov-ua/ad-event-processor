@@ -1,4 +1,3 @@
-// Command edge-bpf-sync mirrors Redis shard-0 deny and allow sets into pinned XDP LPM trie maps.
 package main
 
 import (
@@ -225,7 +224,7 @@ func serveMetrics(ctx context.Context, port string) {
 func ebpfEdgeLicensed(ctx context.Context, rdb *redis.Client) bool {
 	enabled, err := rdb.HGet(ctx, "entitlement:deployment", "ebpf_xdp_edge").Int()
 	if err != nil {
-		return true // fail-open when entitlement snapshot missing (dev)
+		return true
 	}
 	return enabled == 1
 }

@@ -1,4 +1,3 @@
--- OpenRTB PMP deals catalog (M3.1 control plane).
 
 -- +goose Up
 -- +goose StatementBegin

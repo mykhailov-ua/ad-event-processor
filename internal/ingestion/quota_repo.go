@@ -12,20 +12,16 @@ import (
 )
 
 var (
-	// ErrQuotaBudgetExceeded is returned when current_spend + reserved + chunk exceeds budget_limit.
 	ErrQuotaBudgetExceeded = errors.New("quota reserve exceeds budget_limit")
-	// ErrQuotaInvalidChunk is returned when chunk_size is not positive.
-	ErrQuotaInvalidChunk = errors.New("chunk_size must be positive")
+	ErrQuotaInvalidChunk   = errors.New("chunk_size must be positive")
 )
 
 const quotaIdempotencyPrefix = "quota:"
 
-// CampaignShardID returns the shard index for a campaign via StaticSlot routing (no user_id).
 func CampaignShardID(sharder Sharder, campaignID uuid.UUID) int {
 	return sharder.GetShard(campaignID)
 }
 
-// QuotaRepo reserves Postgres quota chunks for Distributed Quotas (Phase 1.1).
 type QuotaRepo struct {
 	pool *pgxpool.Pool
 }
@@ -34,7 +30,6 @@ func NewQuotaRepo(pool *pgxpool.Pool) *QuotaRepo {
 	return &QuotaRepo{pool: pool}
 }
 
-// ReserveChunkResult is the outcome of a successful quota chunk reservation.
 type ReserveChunkResult struct {
 	ShardID        int16
 	CampaignID     uuid.UUID
@@ -43,9 +38,6 @@ type ReserveChunkResult struct {
 	AlreadyApplied bool
 }
 
-// ReserveChunk atomically reserves chunk_size micro-units against campaigns.budget_limit.
-// Idempotency keys are stored in sync_idempotency with a quota: prefix; retries with the
-// same key return AlreadyApplied without increasing reserved_amount.
 func (r *QuotaRepo) ReserveChunk(
 	ctx context.Context,
 	sharder Sharder,
@@ -164,7 +156,6 @@ func (r *QuotaRepo) ReserveChunk(
 	}, nil
 }
 
-// GetQuota loads the campaign_quotas row for observability and reconciliation paths.
 func (r *QuotaRepo) GetQuota(ctx context.Context, sharder Sharder, campaignID uuid.UUID) (db.CampaignQuota, error) {
 	shardID := int16(CampaignShardID(sharder, campaignID))
 	q := db.New(r.pool)
@@ -174,7 +165,6 @@ func (r *QuotaRepo) GetQuota(ctx context.Context, sharder Sharder, campaignID uu
 	})
 }
 
-// ReleaseChunk decreases the reserved_amount in Postgres (e.g. on Redis refill failure or timeout).
 func (r *QuotaRepo) ReleaseChunk(
 	ctx context.Context,
 	sharder Sharder,
@@ -196,7 +186,6 @@ func (r *QuotaRepo) ReleaseChunk(
 	})
 }
 
-// QuotaShardForCampaign exposes shard_id derivation for tests and QuotaManager wiring.
 func QuotaShardForCampaign(sharder Sharder, campaignID uuid.UUID) int16 {
 	return int16(CampaignShardID(sharder, campaignID))
 }

@@ -8,11 +8,8 @@ import (
 
 const hexChars = "0123456789abcdef"
 
-// ingestKeyStackCap fits two UUIDs, ISO date, separators, and typical network/placement ids.
 const ingestKeyStackCap = 192
 
-// IngestKey builds a deterministic idempotency key for campaign_costs.ingest_key.
-// One heap allocation: the returned string (stack buffer for assembly).
 func IngestKey(customerID, campaignID uuid.UUID, date time.Time, network, placementID string, lineType LineType) string {
 	var buf [ingestKeyStackCap]byte
 	b := buf[:0]

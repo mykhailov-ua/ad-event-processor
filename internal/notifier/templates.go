@@ -9,7 +9,6 @@ import (
 	"espx/internal/notifier/pb"
 )
 
-// RenderTemplate substitutes {{var}} placeholders in a template body.
 func RenderTemplate(body string, vars map[string]string) string {
 	out := body
 	for key, value := range vars {
@@ -51,7 +50,6 @@ func (service *Service) resolveNotificationBody(ctx context.Context, req *pb.Sen
 	return body, nil
 }
 
-// RetryNotification resets a FAILED row to PENDING for operator replay.
 func (service *Service) RetryNotification(ctx context.Context, notificationID string) (*pb.Notification, error) {
 	id, err := pgUUIDFromString(notificationID)
 	if err != nil {

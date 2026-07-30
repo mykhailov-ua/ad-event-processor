@@ -7,7 +7,6 @@ import (
 	"time"
 )
 
-// StartDrainer runs the cold path that drains ring shards and batches records without blocking ingestion goroutines.
 func (l *Logger) StartDrainer() {
 	defer l.wg.Done()
 	ticker := time.NewTicker(5 * time.Millisecond)
@@ -38,7 +37,6 @@ func (l *Logger) StartDrainer() {
 	}
 }
 
-// drainShards collects ready payloads from every shard into one batch and sheds low-priority logs when disk is degraded.
 func (l *Logger) drainShards(buf *AlignedBuffer) (*AlignedBuffer, bool) {
 	degraded := l.diskDegraded.Load() == 1
 	var flushed bool
@@ -75,14 +73,12 @@ func (l *Logger) drainShards(buf *AlignedBuffer) (*AlignedBuffer, bool) {
 	return buf, flushed
 }
 
-// recordPersistQueueDrop counts batches dropped when the persist queue is full so audit loss is visible in metrics.
 func (l *Logger) recordPersistQueueDrop(buf *AlignedBuffer) {
 	l.persistQueueDrops.Add(1)
 	l.persistQueueDropBytes.Add(uint64(buf.offset))
 	l.loadSheddingEvents.Add(uint64(buf.offset / 100))
 }
 
-// sendBuffer hands a batch to the persister and times out on shutdown-except paths so the drainer never blocks ingestion indefinitely.
 func (l *Logger) sendBuffer(buf *AlignedBuffer, blocking bool) {
 	if buf.offset == 0 {
 		bufferPool.Put(buf)

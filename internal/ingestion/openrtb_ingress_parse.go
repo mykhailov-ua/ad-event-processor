@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// OpenRTB 3.0 / AdCOM key IDs for the shared hot-path JSON FSM (M12-02 / M12-08).
 type ortbKeyID uint8
 
 const (
@@ -31,8 +30,6 @@ const (
 	ortbMaxDepth  = OrtbMaxJSONDepth
 )
 
-// OpenRTB3Parsed holds fields extracted by the OpenRTB 3.0 / AdCOM JSON FSM (0 heap).
-// String fields are offsets into the input payload (caller must keep payload live).
 type OpenRTB3Parsed struct {
 	MinBid       int64
 	DeviceType   uint8
@@ -49,20 +46,18 @@ type OpenRTB3Parsed struct {
 	OK           bool
 }
 
-// Packed little-endian constants for OpenRTB / AdCOM JSON keys.
 const (
-	u32OrtbFlr      uint32 = 0x726c66           // "flr" (len 3 uses byte compare)
-	u32OrtbType     uint32 = 0x65707974         // "type"
-	u32OrtbItem     uint32 = 0x6d657469         // "item"
-	u32OrtbTagid    uint32 = 0x69676174         // "tagi", first 4 of "tagid"
-	u32OrtbOpen     uint32 = 0x6e65706f         // "open", first 4 of "openrtb"
-	u32OrtbReq      uint32 = 0x75716572         // "requ", first 4 of "request"
-	u32OrtbCont     uint32 = 0x746e6f63         // "cont", first 4 of "context"
-	u32OrtbDeal     uint32 = 0x6c616564         // "deal", first 4 of "deal_id"
-	u64OrtbCategory uint64 = 0x79726f6765746163 // "category", first 8 of "category_mask"
+	u32OrtbFlr      uint32 = 0x726c66
+	u32OrtbType     uint32 = 0x65707974
+	u32OrtbItem     uint32 = 0x6d657469
+	u32OrtbTagid    uint32 = 0x69676174
+	u32OrtbOpen     uint32 = 0x6e65706f
+	u32OrtbReq      uint32 = 0x75716572
+	u32OrtbCont     uint32 = 0x746e6f63
+	u32OrtbDeal     uint32 = 0x6c616564
+	u64OrtbCategory uint64 = 0x79726f6765746163
 )
 
-// matchOrtbKey maps a JSON object key to ortbKeyID via length + packed compares.
 func matchOrtbKey(key []byte) ortbKeyID {
 	switch len(key) {
 	case 2:
@@ -119,10 +114,9 @@ func matchOrtbKey(key []byte) ortbKeyID {
 type ortbFrame struct {
 	parent  ortbKeyID
 	inArray bool
-	itemIdx int // 0-based index within item array; -1 if not in item array
+	itemIdx int
 }
 
-// parseOpenRTB3FSM walks OpenRTB 3.0 / AdCOM JSON incrementally (no bytes.Index, 0 allocs).
 func parseOpenRTB3FSM(payload []byte) OpenRTB3Parsed {
 	var out OpenRTB3Parsed
 	parseOpenRTB3FSMInto(&out, payload)
@@ -344,7 +338,6 @@ func applyOrtbNumber(out *OpenRTB3Parsed, kid ortbKeyID, frame ortbFrame, val []
 	}
 }
 
-// ortbSlice returns a subslice of payload for an offset/len pair.
 func ortbSlice(payload []byte, off int, ln uint8) []byte {
 	if ln == 0 || off < 0 || off+int(ln) > len(payload) {
 		return nil
@@ -373,17 +366,17 @@ func skipJSONValueAt(data []byte, i, n int) (int, bool) {
 		return skipJSONObjectFrom(data, i+1, n)
 	case '[':
 		return skipJSONArrayFrom(data, i+1, n)
-	case 't': // true
+	case 't':
 		if i+3 < n {
 			return i + 4, false
 		}
 		return i, true
-	case 'f': // false
+	case 'f':
 		if i+4 < n {
 			return i + 5, false
 		}
 		return i, true
-	case 'n': // null
+	case 'n':
 		if i+3 < n {
 			return i + 4, false
 		}
@@ -452,9 +445,6 @@ func skipJSONArrayFrom(data []byte, i, n int) (int, bool) {
 	return i, depth != 0
 }
 
-// ParseOpenRTB3Ingress parses a /track OpenRTB 3.0 body into TrackRequest fields (0 allocs).
-// String fields alias into data; caller must keep data live for the request lifetime.
-// Parsed OpenRTB fields are cached on dst.ortbSlot for reuse by buildRtbTargeting.
 func ParseOpenRTB3Ingress(dst *TrackRequest, data []byte) error {
 	if dst == nil {
 		return errMalformedJSON
@@ -488,7 +478,6 @@ func ParseOpenRTB3Ingress(dst *TrackRequest, data []byte) error {
 	return nil
 }
 
-// ApplyOpenRTB3ToEvent maps parsed OpenRTB 3 fields onto a pooled Event.
 func ApplyOpenRTB3ToEvent(evt *campaignmodel.Event, data []byte, parsed *OpenRTB3Parsed) bool {
 	if evt == nil || parsed == nil || !parsed.OK {
 		return false

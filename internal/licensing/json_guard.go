@@ -9,7 +9,6 @@ import (
 )
 
 const (
-	// DefaultMaxJSONBytes caps cold-path admin JSON bodies for subscription/licensing endpoints.
 	DefaultMaxJSONBytes = 64 * 1024
 )
 
@@ -20,7 +19,6 @@ var (
 	ErrEmptyJSONBody  = errors.New("json body is empty")
 )
 
-// DecodeJSONStrict reads up to maxBytes from r and unmarshals into dst with DisallowUnknownFields.
 func DecodeJSONStrict(r io.Reader, maxBytes int64, dst any) error {
 	if maxBytes <= 0 {
 		maxBytes = DefaultMaxJSONBytes
@@ -51,7 +49,6 @@ func DecodeJSONStrict(r io.Reader, maxBytes int64, dst any) error {
 }
 
 func validateJSONSurface(body []byte) error {
-	// Reject known hostile constructs before full parse (depth bombs, duplicate keys via raw scan).
 	if strings.Contains(string(body), "\x00") {
 		return fmt.Errorf("%w: null byte in payload", ErrJSONDisallowed)
 	}

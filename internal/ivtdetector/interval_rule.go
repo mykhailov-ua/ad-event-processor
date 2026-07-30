@@ -15,7 +15,6 @@ const (
 	intervalBotReason           = "ivt_interval_bot"
 )
 
-// intervalBotnetRule flags ip_hash clusters with low inter-click arrival variance (timer bots).
 type intervalBotnetRule struct {
 	q   *database.CHQuery
 	cfg AnalyzerConfig
@@ -96,7 +95,6 @@ WHERE length(sample_ip_hash) > 0`
 	return out, rows.Err()
 }
 
-// popVariance computes population variance (ClickHouse varPop) for inter-arrival deltas.
 func popVariance(samples []float64) float64 {
 	if len(samples) == 0 {
 		return 0
@@ -114,7 +112,6 @@ func popVariance(samples []float64) float64 {
 	return acc / float64(len(samples))
 }
 
-// isIntervalBot returns true when variance is below threshold with enough samples.
 func isIntervalBot(deltas []float64, minIntervals uint64, maxVariance float64) bool {
 	if uint64(len(deltas)) < minIntervals {
 		return false

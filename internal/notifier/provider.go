@@ -7,13 +7,11 @@ import (
 	"time"
 )
 
-// Provider abstracts outbound delivery to Telegram, Slack, or SMTP.
 type Provider interface {
 	Send(ctx context.Context, recipient, title, body string) error
 	Name() string
 }
 
-// MockSentNotification records one mock delivery for integration tests.
 type MockSentNotification struct {
 	Recipient string
 	Title     string
@@ -21,7 +19,6 @@ type MockSentNotification struct {
 	SentAt    time.Time
 }
 
-// MockProvider captures sent messages in-process for integration tests.
 type MockProvider struct {
 	breaker      *CircuitBreaker
 	ProviderName string
@@ -29,7 +26,6 @@ type MockProvider struct {
 	Sent         []MockSentNotification
 }
 
-// NewMockProvider returns a provider that records deliveries without network calls.
 func NewMockProvider(breaker *CircuitBreaker) *MockProvider {
 	return &MockProvider{breaker: breaker}
 }
@@ -41,7 +37,6 @@ func (m *MockProvider) Name() string {
 	return "TELEGRAM"
 }
 
-// Send records the message; body containing trigger_failure simulates a provider error.
 func (m *MockProvider) Send(ctx context.Context, recipient, title, body string) error {
 	_ = ctx
 	if !m.breaker.Allow() {

@@ -1,5 +1,3 @@
-# Server overrides for docker compose (merged into config.d/).
-# Caps memory, disables heavy system logs, listens on all interfaces.
 
 max_server_memory_usage: 4294967296
 

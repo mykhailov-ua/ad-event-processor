@@ -13,10 +13,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// ErrStalePgFencingEpoch is returned when a stale primary attempts a ledger write after failover.
 var ErrStalePgFencingEpoch = pgfailover.ErrStalePgFencingEpoch
 
-// PgFailoverRuntime holds coordinator and subscriber handles for global Postgres HA.
 type PgFailoverRuntime struct {
 	coord      *pgfailover.Coordinator
 	subscriber *pgfailover.Subscriber
@@ -25,7 +23,6 @@ type PgFailoverRuntime struct {
 	activePool *pgxpool.Pool
 }
 
-// StartPgFailover wires Redis-coordinated Postgres failover for management cells.
 func (s *Service) StartPgFailover(ctx context.Context) *PgFailoverRuntime {
 	if s == nil || s.cfg == nil || !s.cfg.PgFailoverEnabled || len(s.rdbs) == 0 {
 		return nil
@@ -113,7 +110,6 @@ func buildPgFailoverPromoter(s *Service, reconnect func(*pgxpool.Pool)) pgfailov
 	}
 }
 
-// AuditLedgerDuplicatesSinceFailover counts duplicate idempotency hashes in the post-failover window.
 func (s *Service) AuditLedgerDuplicatesSinceFailover(ctx context.Context) (int, error) {
 	if s == nil || s.pool == nil || s.cfg == nil {
 		return 0, nil
@@ -122,7 +118,6 @@ func (s *Service) AuditLedgerDuplicatesSinceFailover(ctx context.Context) (int, 
 	return pgfailover.CountLedgerDuplicatesSinceNow(ctx, s.pool, cfg)
 }
 
-// ClosePgFailover stops coordinator and subscriber goroutines.
 func (rt *PgFailoverRuntime) ClosePgFailover() {
 	if rt == nil {
 		return
@@ -135,7 +130,6 @@ func (rt *PgFailoverRuntime) ClosePgFailover() {
 	}
 }
 
-// CurrentDSN returns the last applied DSN for chaos verification.
 func (rt *PgFailoverRuntime) CurrentDSN() string {
 	if rt == nil || rt.subscriber == nil {
 		return ""

@@ -1,13 +1,3 @@
--- 00001_init_schema.sql: baseline schema for campaigns, partitioned events table,
--- and campaign_stats. The events table uses RANGE partitioning by created_at;
--- daily partitions are managed by database.PartitionManager at runtime.
--- events_default is a catch-all partition that absorbs inserts falling outside
--- all defined range partitions; its presence prevents INSERT failures but data
--- written to it is truncated by PartitionManager as it indicates a missing partition.
---
--- PRIMARY KEY (click_id, created_at): PostgreSQL requires the partition key
--- (created_at) to be part of any unique or primary key on a partitioned table.
--- click_id provides idempotency at the deduplication boundary.
 
 -- +goose Up
 -- +goose StatementBegin
@@ -20,8 +10,6 @@ CREATE TABLE campaigns (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Partitioned table for tracking events.
--- RANGE partitioning by created_at.
 CREATE TABLE events (
     click_id TEXT NOT NULL,
     campaign_id UUID NOT NULL,
@@ -30,12 +18,9 @@ CREATE TABLE events (
     ip_address TEXT,
     user_agent TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    -- Primary key must include the partition key (created_at).
-    -- click_id is used for deduplication/idempotency.
     PRIMARY KEY (click_id, created_at)
 ) PARTITION BY RANGE (created_at);
 
--- Default partition prevents insert failures if a specific range partition is missing.
 CREATE TABLE events_default PARTITION OF events DEFAULT;
 
 CREATE TABLE campaign_stats (
@@ -47,7 +32,6 @@ CREATE TABLE campaign_stats (
     PRIMARY KEY (campaign_id, date)
 );
 
--- Indexes
 CREATE INDEX idx_events_campaign_id ON events(campaign_id);
 CREATE INDEX idx_campaigns_status_active ON campaigns(status) WHERE status = 'active';
 -- +goose StatementEnd

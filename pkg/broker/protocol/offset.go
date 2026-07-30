@@ -15,7 +15,6 @@ const (
 	CommittedOffsetRespMetaLen        = 9
 )
 
-// DecodeOffsetKeyRequest splits topic, partition, and consumer group from commit/committed frames.
 func DecodeOffsetKeyRequest(payload []byte) (topic string, partition uint16, group string, err error) {
 	if len(payload) < 6 {
 		return "", 0, "", errors.New("malformed offset request")
@@ -37,7 +36,6 @@ func DecodeOffsetKeyRequest(payload []byte) (topic string, partition uint16, gro
 	return topic, partition, group, nil
 }
 
-// DecodeCommitOffsetRequest extracts topic, partition, group, and the next-fetch offset to persist.
 func DecodeCommitOffsetRequest(payload []byte) (topic string, partition uint16, group string, offset uint64, err error) {
 	topic, partition, group, err = DecodeOffsetKeyRequest(payload)
 	if err != nil {
@@ -51,7 +49,6 @@ func DecodeCommitOffsetRequest(payload []byte) (topic string, partition uint16, 
 	return topic, partition, group, offset, nil
 }
 
-// EncodeCommitOffsetRequest builds a commit-offset wire frame payload.
 func EncodeCommitOffsetRequest(buf []byte, seq uint64, topic string, partition uint16, group string, offset uint64) []byte {
 	topicBytes := []byte(topic)
 	groupBytes := []byte(group)
@@ -78,7 +75,6 @@ func EncodeCommitOffsetRequest(buf []byte, seq uint64, topic string, partition u
 	return buf[:4+2+8+framePayloadLen+4]
 }
 
-// EncodeCommittedOffsetRequest builds a committed-offset lookup frame payload.
 func EncodeCommittedOffsetRequest(buf []byte, seq uint64, topic string, partition uint16, group string) []byte {
 	topicBytes := []byte(topic)
 	groupBytes := []byte(group)
@@ -103,7 +99,6 @@ func EncodeCommittedOffsetRequest(buf []byte, seq uint64, topic string, partitio
 	return buf[:4+2+8+framePayloadLen+4]
 }
 
-// EncodeCommitOffsetResponse returns commit status and the stored offset.
 func EncodeCommitOffsetResponse(buf []byte, seq uint64, status byte, offset uint64) []byte {
 	binary.BigEndian.PutUint32(buf[0:4], 23)
 	binary.BigEndian.PutUint16(buf[4:6], CmdCommitOffsetResp)
@@ -115,7 +110,6 @@ func EncodeCommitOffsetResponse(buf []byte, seq uint64, status byte, offset uint
 	return buf[:27]
 }
 
-// DecodeCommitOffsetResponse reads status and committed offset from a commit reply.
 func DecodeCommitOffsetResponse(payload []byte) (status byte, offset uint64, err error) {
 	if len(payload) < CommitOffsetRespMetaLen {
 		return 0, 0, errors.New("malformed commit offset response")
@@ -125,7 +119,6 @@ func DecodeCommitOffsetResponse(payload []byte) (status byte, offset uint64, err
 	return status, offset, nil
 }
 
-// EncodeCommittedOffsetResponse returns lookup status and stored offset.
 func EncodeCommittedOffsetResponse(buf []byte, seq uint64, status byte, offset uint64) []byte {
 	binary.BigEndian.PutUint32(buf[0:4], 23)
 	binary.BigEndian.PutUint16(buf[4:6], CmdCommittedOffsetResp)
@@ -137,7 +130,6 @@ func EncodeCommittedOffsetResponse(buf []byte, seq uint64, status byte, offset u
 	return buf[:27]
 }
 
-// DecodeCommittedOffsetResponse reads status and offset from a committed-offset reply.
 func DecodeCommittedOffsetResponse(payload []byte) (status byte, offset uint64, err error) {
 	if len(payload) < CommittedOffsetRespMetaLen {
 		return 0, 0, errors.New("malformed committed offset response")
@@ -147,7 +139,6 @@ func DecodeCommittedOffsetResponse(payload []byte) (status byte, offset uint64, 
 	return status, offset, nil
 }
 
-// ValidateConsumerGroup checks consumer group names before cold-path offset storage.
 func ValidateConsumerGroup(group string) error {
 	if group == "" {
 		return errors.New("consumer group is empty")

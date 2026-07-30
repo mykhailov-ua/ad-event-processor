@@ -45,7 +45,6 @@ func newLPMMap(t *testing.T) *ebpf.Map {
 	return m
 }
 
-// Guards fraud-only IPs are synced into the BPF blocklist map.
 func TestSyncFromRedis_fraudOnly(t *testing.T) {
 	ctx := context.Background()
 	rdb := &redisStub{sets: map[string][]string{
@@ -66,7 +65,6 @@ func TestSyncFromRedis_fraudOnly(t *testing.T) {
 	assert.Equal(t, blockedMarker, val)
 }
 
-// Guards union of manual, auto, and fraud sets with deduplication.
 func TestMergeDenyIPs_allSources(t *testing.T) {
 	manual := []string{"203.0.113.1", "203.0.113.2"}
 	auto := []string{"203.0.113.2", "203.0.113.3"}
@@ -85,7 +83,6 @@ func TestMergeDenyIPs_allSources(t *testing.T) {
 	}
 }
 
-// Guards incremental diff removes IPs dropped from fraud set.
 func TestApplyDiff_fraudRemoval(t *testing.T) {
 	m := newLPMMap(t)
 	store := NewStore()
@@ -115,25 +112,18 @@ func TestApplyDiff_skipsProtected(t *testing.T) {
 	m := newLPMMap(t)
 	store := NewStore()
 
-	// Try to block:
-	// - 8.8.8.8 (resolver, protected)
-	// - 192.168.1.10 (customer LAN, protected)
-	// - 198.51.100.1 (not protected)
 	added, removed, err := store.ApplyDiff(m, []string{"8.8.8.8", "192.168.1.10", "198.51.100.1"}, nil, nil)
 	require.NoError(t, err)
-	assert.Equal(t, 1, added) // only 198.51.100.1 should be added
+	assert.Equal(t, 1, added)
 	assert.Equal(t, 0, removed)
 
-	// Verify 198.51.100.1 is in the map
 	var val uint8
 	err = m.Lookup(KeyFromHost(198, 51, 100, 1), &val)
 	require.NoError(t, err)
 
-	// Verify 8.8.8.8 is NOT in the map
 	err = m.Lookup(KeyFromHost(8, 8, 8, 8), &val)
 	assert.Error(t, err)
 
-	// Verify 192.168.1.10 is NOT in the map
 	err = m.Lookup(KeyFromHost(192, 168, 1, 10), &val)
 	assert.Error(t, err)
 }

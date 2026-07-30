@@ -22,7 +22,6 @@ func (vendorProbeMetrics) ObserveProbeError(vendor string) {
 	metrics.VendorProbeErrorsTotal.WithLabelValues(vendor).Inc()
 }
 
-// StartVendorTelemetryWorker runs cold-path vendor health probes (GAP-ENG-03).
 func (s *Service) StartVendorTelemetryWorker() {
 	if s == nil || s.cfg == nil || !s.cfg.VendorTelemetryEnabled {
 		return

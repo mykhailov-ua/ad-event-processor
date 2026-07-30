@@ -64,26 +64,21 @@ type entitlementsSnapshot struct {
 	licenseState licensing.LicenseState
 }
 
-// Registry maintains an in-memory replica of active campaigns for lock-free hot-path reads.
-//
-// Reads (Exists, GetCampaign, GetCustomerID) use atomic.Value map swaps with no mutex.
-// Writes (Add, Sync) clone the map under mu and publish a new pointer for readers.
 type Registry struct {
 	repo          db.Querier
 	pool          *pgxpool.Pool
-	data          atomic.Value // holds *campaignMapSnapshot
-	entitlements  atomic.Value // holds *entitlementsSnapshot
-	cohorts       atomic.Value // holds *cohortRegistrySnapshot
+	data          atomic.Value
+	entitlements  atomic.Value
+	cohorts       atomic.Value
 	manuallyAdded map[uuid.UUID]bool
-	mu            sync.Mutex // guards writes (updates to data map, manuallyAdded)
+	mu            sync.Mutex
 	replicaPath   string
 	wg            sync.WaitGroup
 	budgetWarmer  *BudgetCacheWarmer
 
-	// M14-02: stale-serve when shard-0 pub/sub (or broker fallback) is quiet.
-	lastPubSubOKUnix int64 // unix nano; atomic
-	staleTTLNano     int64 // atomic; 0 = disabled
-	staleMode        int32 // atomic; 1 = stale
+	lastPubSubOKUnix int64
+	staleTTLNano     int64
+	staleMode        int32
 }
 
 func NewRegistry(repo db.Querier) *Registry {
@@ -105,14 +100,12 @@ func (r *Registry) SetPool(pool *pgxpool.Pool) {
 	r.pool = pool
 }
 
-// SetBudgetWarmer wires incremental Redis budget warming after registry updates.
 func (r *Registry) SetBudgetWarmer(w *BudgetCacheWarmer) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.budgetWarmer = w
 }
 
-// UpdateAndWarmCampaign reloads one campaign from Postgres and warms its Redis budget key (HR-PUB).
 func (r *Registry) UpdateAndWarmCampaign(ctx context.Context, id uuid.UUID) error {
 	start := time.Now()
 	defer func() {
@@ -143,7 +136,6 @@ func (r *Registry) UpdateAndWarmCampaign(ctx context.Context, id uuid.UUID) erro
 		}
 	} else {
 		delete(newMap, id)
-		// M14-13: return unused RAM quanta when campaign leaves ACTIVE.
 		invokeRegistryQuantaFlush(id)
 	}
 	r.data.Store(&campaignMapSnapshot{byID: newMap})
@@ -185,7 +177,6 @@ func (r *Registry) GetCampaign(id uuid.UUID) (*campaignmodel.Campaign, bool) {
 	return info.campaign, true
 }
 
-// ActiveCampaigns returns a snapshot of active campaigns for RTB sync and budget warm paths.
 func (r *Registry) ActiveCampaigns() []*campaignmodel.Campaign {
 	m := r.campaignMapSnapshot().byID
 	if len(m) == 0 {
@@ -271,8 +262,6 @@ func (r *Registry) Add(id, customerID uuid.UUID, brandID *uuid.UUID, brandFcapKe
 	}
 }
 
-// Sync reloads active campaigns from Postgres into a new map and atomically swaps readers.
-// When Postgres is down and memory is empty, falls back to campaigns_replica.json on disk.
 func (r *Registry) Sync(ctx context.Context) (int, error) {
 	if r.pool != nil {
 		if err := r.SyncEntitlements(ctx); err != nil {
@@ -303,9 +292,6 @@ func (r *Registry) Sync(ctx context.Context) (int, error) {
 	for _, row := range rows {
 		id := uuid.UUID(row.ID.Bytes)
 
-		// Measure the lag between the database-recorded UpdatedAt timestamp and the
-		// current time at cache load. This captures end-to-end propagation delay from
-		// management write -> PostgreSQL -> Sync -> in-memory registry.
 		if row.UpdatedAt.Valid {
 			lag := time.Since(row.UpdatedAt.Time).Seconds()
 			if lag >= 0 {
@@ -380,7 +366,6 @@ func (r *Registry) saveReplica(m map[uuid.UUID]campaignInfo) error {
 	tempFile := r.replicaPath + ".tmp"
 	f, err := os.OpenFile(tempFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
-		// Auto-fallback to /tmp if primary directory is not writable
 		if !strings.HasPrefix(r.replicaPath, "/tmp/") {
 			r.replicaPath = "/tmp/campaigns_replica.json"
 			tempFile = r.replicaPath + ".tmp"
@@ -552,7 +537,6 @@ func (r *Registry) watchPubSubOnce(ctx context.Context, rdb redis.UniversalClien
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-ticker.C:
-			// Probe subscription health; failure enters reconnect + stale-serve path.
 			if err := pubsub.Ping(ctx); err != nil {
 				return err
 			}
@@ -612,7 +596,7 @@ func (r *Registry) SyncEntitlements(ctx context.Context) error {
 	var validUntil time.Time
 
 	var licEnt licensing.Entitlements
-	var licState licensing.LicenseState = licensing.StateActive // Default active if not configured
+	var licState licensing.LicenseState = licensing.StateActive
 
 	row := r.pool.QueryRow(ctx, "SELECT plan_code, state, entitlements_json, valid_until FROM billing.license_status LIMIT 1")
 	err := row.Scan(&planCode, &stateStr, &entitlementsBytes, &validUntil)
@@ -620,7 +604,6 @@ func (r *Registry) SyncEntitlements(ctx context.Context) error {
 		licState = licensing.LicenseState(stateStr)
 		_ = json.Unmarshal(entitlementsBytes, &licEnt)
 	} else {
-		// Default limits for testing/development
 		licEnt.Limits.MaxRPS = 999999
 		licEnt.Limits.MaxRequestsPerDay = 999999999
 		licEnt.Limits.MaxActiveCampaigns = 99999

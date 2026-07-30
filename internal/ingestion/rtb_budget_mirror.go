@@ -25,7 +25,6 @@ type rtbBudgetMirrorSlot struct {
 	campaignID rtb.CampaignID
 }
 
-// RtbBudgetMirrorWriter async-flushes RTB authoritative debits to Redis (R20).
 type RtbBudgetMirrorWriter struct {
 	_           [64]byte
 	writeCursor uint64
@@ -45,7 +44,6 @@ type RtbBudgetMirrorWriter struct {
 	wg     sync.WaitGroup
 }
 
-// NewRtbBudgetMirrorWriter starts the background Redis mirror drainer when authority=rtb.
 func NewRtbBudgetMirrorWriter(catalog *RtbCatalog, registry *Registry, rdbs []redis.UniversalClient, sharder Sharder) *RtbBudgetMirrorWriter {
 	if catalog == nil || registry == nil || len(rdbs) == 0 || sharder == nil {
 		return nil
@@ -63,7 +61,6 @@ func NewRtbBudgetMirrorWriter(catalog *RtbCatalog, registry *Registry, rdbs []re
 	return w
 }
 
-// RecordSpend enqueues one authoritative RTB debit for async Redis mirror.
 func (w *RtbBudgetMirrorWriter) RecordSpend(campaignID rtb.CampaignID, _ uint32, priceMicro int64) {
 	if w == nil || priceMicro <= 0 {
 		return
@@ -90,7 +87,6 @@ func (w *RtbBudgetMirrorWriter) RecordSpend(campaignID rtb.CampaignID, _ uint32,
 	}
 }
 
-// Close stops the drainer and clears the global mirror hook.
 func (w *RtbBudgetMirrorWriter) Close() {
 	if w == nil {
 		return

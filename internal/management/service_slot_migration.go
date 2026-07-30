@@ -15,17 +15,12 @@ import (
 )
 
 var (
-	// ErrSlotMigrationNotReady is returned when activate is attempted before copy completes.
-	ErrSlotMigrationNotReady = errors.New("slot migration copy not complete for all MIGRATING slots")
-	// ErrSlotMigrationNoDraft is returned when no draft version with MIGRATING slots exists.
-	ErrSlotMigrationNoDraft = errors.New("no draft slot map version with MIGRATING slots")
-	// ErrSlotMigrationKeysMissing is returned when required keys are absent on the target shard after PG re-warm.
-	ErrSlotMigrationKeysMissing = errors.New("slot migration target shard missing required keys")
-	// ErrSlotMigrationLagNotCaughtUp is returned when dual-write replication lag exceeds epsilon at cutover.
+	ErrSlotMigrationNotReady       = errors.New("slot migration copy not complete for all MIGRATING slots")
+	ErrSlotMigrationNoDraft        = errors.New("no draft slot map version with MIGRATING slots")
+	ErrSlotMigrationKeysMissing    = errors.New("slot migration target shard missing required keys")
 	ErrSlotMigrationLagNotCaughtUp = errors.New("slot migration dual-write lag above epsilon")
 )
 
-// SlotMigrationDTO is the admin view of one slot migration job.
 type SlotMigrationDTO struct {
 	Version         int32  `json:"version"`
 	Slot            int16  `json:"slot"`
@@ -37,7 +32,6 @@ type SlotMigrationDTO struct {
 	LastError       string `json:"last_error,omitempty"`
 }
 
-// GetSlotMigrations returns migration progress for a map version.
 func (s *Service) GetSlotMigrations(ctx context.Context, version int32) ([]SlotMigrationDTO, error) {
 	repo := ingestion.NewSlotMigrationRepo(s.GetPool())
 	rows, err := repo.ListByVersion(ctx, version)
@@ -51,7 +45,6 @@ func (s *Service) GetSlotMigrations(ctx context.Context, version int32) ([]SlotM
 	return out, nil
 }
 
-// EnsureSlotMigrationJobs registers pending jobs for MIGRATING slots in a draft version.
 func (s *Service) EnsureSlotMigrationJobs(ctx context.Context, draftVersion int32) error {
 	mapRepo := ingestion.NewSlotMapRepo(s.GetPool())
 	migRepo := ingestion.NewSlotMigrationRepo(s.GetPool())
@@ -92,7 +85,6 @@ func (s *Service) EnsureSlotMigrationJobs(ctx context.Context, draftVersion int3
 	return nil
 }
 
-// CopySlotMigrationData copies Redis keys for one MIGRATING slot (idempotent).
 func (s *Service) CopySlotMigrationData(ctx context.Context, version int32, slot int16) error {
 	if len(s.rdbs) == 0 {
 		return fmt.Errorf("no redis shards configured")
@@ -189,7 +181,6 @@ func (s *Service) CopySlotMigrationData(ctx context.Context, version int32, slot
 		finalState, "")
 }
 
-// CopyAllMigratingSlots copies data for every pending/copying slot in a draft version.
 func (s *Service) CopyAllMigratingSlots(ctx context.Context, draftVersion int32) error {
 	if err := s.EnsureSlotMigrationJobs(ctx, draftVersion); err != nil {
 		return err
@@ -208,7 +199,6 @@ func (s *Service) CopyAllMigratingSlots(ctx context.Context, draftVersion int32)
 	return nil
 }
 
-// ActivateSlotMapVersionWithMigration validates copy completion, cutovers MIGRATING slots, activates, and starts drain.
 func (s *Service) ActivateSlotMapVersionWithMigration(ctx context.Context, adminID uuid.UUID, version int32) error {
 	mapRepo := ingestion.NewSlotMapRepo(s.GetPool())
 	migRepo := ingestion.NewSlotMigrationRepo(s.GetPool())
@@ -326,7 +316,6 @@ func (s *Service) ActivateSlotMapVersionWithMigration(ctx context.Context, admin
 	return nil
 }
 
-// DrainMigratingSlots deletes stale keys on source shards for DRAINING slots on the active map.
 func (s *Service) DrainMigratingSlots(ctx context.Context, version int32) error {
 	if len(s.rdbs) == 0 {
 		return fmt.Errorf("no redis shards configured")
@@ -379,7 +368,6 @@ func (s *Service) DrainMigratingSlots(ctx context.Context, version int32) error 
 	return nil
 }
 
-// RollbackSlotMapVersion reverts active_version to a previous map and broadcasts reload (Phase 2.3.5).
 func (s *Service) RollbackSlotMapVersion(ctx context.Context, adminID uuid.UUID, previousVersion int32) error {
 	tx, err := s.GetPool().Begin(ctx)
 	if err != nil {
@@ -416,7 +404,6 @@ func (s *Service) RollbackSlotMapVersion(ctx context.Context, adminID uuid.UUID,
 	return nil
 }
 
-// CatchUpDualWriteSlots drains replication streams for slots in dual_writing state.
 func (s *Service) CatchUpDualWriteSlots(ctx context.Context, draftVersion int32) error {
 	if !s.slotMigrationDualWriteEnabled() || len(s.rdbs) == 0 {
 		return nil
@@ -538,7 +525,6 @@ func (s *Service) dualWriteConfig() ingestion.SlotMigrationDualWriteConfig {
 	return cfg
 }
 
-// BumpFencesForPendingMigrations bumps migration_gen and Redis fence keys for campaigns in active copy jobs.
 func (s *Service) BumpFencesForPendingMigrations(ctx context.Context) error {
 	if s.cfg == nil || !s.cfg.MigrationFenceEnabled || len(s.rdbs) == 0 {
 		return nil

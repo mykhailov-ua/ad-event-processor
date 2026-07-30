@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// LeaseDedupScope is the JSONB payload stored on operation_leases.dedup_scope (C5 attempt).
 type LeaseDedupScope struct {
 	RegionID    uuid.UUID `json:"region_id"`
 	SourceID    uuid.UUID `json:"source_id"`
@@ -19,7 +18,6 @@ type LeaseDedupScope struct {
 	Attempt     int32     `json:"attempt"`
 }
 
-// EncodeLeaseDedupScope serializes scope + attempt for PG storage.
 func EncodeLeaseDedupScope(scope dedupkey.Scope, attempt int32) ([]byte, error) {
 	payload := LeaseDedupScope{
 		RegionID:    scope.RegionID,
@@ -36,7 +34,6 @@ func EncodeLeaseDedupScope(scope dedupkey.Scope, attempt int32) ([]byte, error) 
 	return raw, nil
 }
 
-// DecodeLeaseDedupScope parses dedup_scope JSONB from operation_leases.
 func DecodeLeaseDedupScope(raw []byte) (dedupkey.Scope, int32, error) {
 	var payload LeaseDedupScope
 	if err := json.Unmarshal(raw, &payload); err != nil {

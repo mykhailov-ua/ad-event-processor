@@ -51,7 +51,6 @@ func (m *mockAuthClient) RefreshToken(ctx context.Context, in *pb.RefreshTokenRe
 	return nil, errors.New("unexpected call to RefreshToken")
 }
 
-// TestAuthHandler_Login guards login sets secure cookies, CSRF token, and role permissions on success.
 func TestAuthHandler_Login(t *testing.T) {
 	cfg := &config.Config{
 		TokenSymmetricKey: "01234567890123456789012345678901",
@@ -144,7 +143,6 @@ func TestAuthHandler_Login(t *testing.T) {
 	})
 }
 
-// TestAuthHandler_Logout guards logout revokes refresh token and clears session cookies.
 func TestAuthHandler_Logout(t *testing.T) {
 	cfg := &config.Config{
 		TokenSymmetricKey: "01234567890123456789012345678901",
@@ -178,7 +176,6 @@ func TestAuthHandler_Logout(t *testing.T) {
 	}
 }
 
-// TestAuthHandler_Refresh guards refresh rotates access and refresh cookies on valid token.
 func TestAuthHandler_Refresh(t *testing.T) {
 	cfg := &config.Config{
 		TokenSymmetricKey: "01234567890123456789012345678901",
@@ -215,7 +212,6 @@ func TestAuthHandler_Refresh(t *testing.T) {
 	})
 }
 
-// TestAuthHandler_Me guards /me returns identity and permissions from a valid access token.
 func TestAuthHandler_Me(t *testing.T) {
 	cfg := &config.Config{
 		TokenSymmetricKey: "01234567890123456789012345678901",
@@ -249,7 +245,6 @@ func TestAuthHandler_Me(t *testing.T) {
 	assert.Contains(t, dto.Permissions, "campaigns:write")
 }
 
-// TestAuthHandler_MeRedisOutage guards /me fails closed when session validation Redis is unavailable.
 func TestAuthHandler_MeRedisOutage(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")

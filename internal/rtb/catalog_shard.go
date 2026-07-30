@@ -6,7 +6,6 @@ const (
 	legacyGeoShardCount = 16
 )
 
-// CampaignAuctionRegistry stores each targeting dimension in parallel slices so shard scans stay sequential in memory.
 type CampaignAuctionRegistry struct {
 	Count                 int
 	CampaignIDs           []CampaignID
@@ -43,7 +42,6 @@ type CampaignAuctionRegistry struct {
 	CampaignCreativeStart []uint32
 }
 
-// CampaignData is the cold-path input shape used when management sync rebuilds auction shards.
 type CampaignData struct {
 	ID             CampaignID
 	Bid            int64
@@ -67,7 +65,6 @@ type CampaignData struct {
 	FcapPrefixHash uint64
 }
 
-// catalogSnapshot holds every geo shard so UpdateCampaigns publishes the full catalog in one atomic store.
 type catalogSnapshot struct {
 	shards [geoShardCount]*CampaignAuctionRegistry
 }

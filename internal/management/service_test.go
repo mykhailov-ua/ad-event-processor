@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestManagementService_CancelCampaign guards cancel applies fee, refunds remainder, and marks campaign deleted.
 func TestManagementService_CancelCampaign(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
@@ -65,7 +64,6 @@ func TestManagementService_CancelCampaign(t *testing.T) {
 	}, 2*time.Second, 20*time.Millisecond)
 }
 
-// TestManagementService_Idempotency guards duplicate top-up idempotency keys do not double-credit balance.
 func TestManagementService_Idempotency(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")

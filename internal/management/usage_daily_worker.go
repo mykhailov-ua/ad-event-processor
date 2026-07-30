@@ -9,13 +9,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// UsageDailyFlushWorker copies today's usage_meters delta into billing.usage_daily.
 type UsageDailyFlushWorker struct {
 	pool     *pgxpool.Pool
 	interval time.Duration
 }
 
-// NewUsageDailyFlushWorker constructs a daily usage flush worker.
 func NewUsageDailyFlushWorker(pool *pgxpool.Pool, interval time.Duration) *UsageDailyFlushWorker {
 	if interval <= 0 {
 		interval = 24 * time.Hour
@@ -23,7 +21,6 @@ func NewUsageDailyFlushWorker(pool *pgxpool.Pool, interval time.Duration) *Usage
 	return &UsageDailyFlushWorker{pool: pool, interval: interval}
 }
 
-// Start runs until ctx is cancelled.
 func (w *UsageDailyFlushWorker) Start(ctx context.Context) {
 	if w == nil || w.pool == nil {
 		return
@@ -44,7 +41,6 @@ func (w *UsageDailyFlushWorker) Start(ctx context.Context) {
 	}
 }
 
-// Flush copies monthly meter totals into usage_daily for the current UTC date.
 func (w *UsageDailyFlushWorker) Flush(ctx context.Context, now time.Time) error {
 	usageDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 	period := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)

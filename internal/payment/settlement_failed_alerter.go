@@ -15,17 +15,15 @@ import (
 	notifierpb "espx/internal/notifier/pb"
 )
 
-// SettlementFailedAlerter notifies operators when payment outbox settlement permanently fails.
 type SettlementFailedAlerter struct {
 	client             *NotifierClient
 	provider           notifierpb.Provider
 	recipient          string
 	broadcastProviders []notifierpb.Provider
 	cooldown           time.Duration
-	lastSent           sync.Map // payment_intent_id -> time.Time
+	lastSent           sync.Map
 }
 
-// NewSettlementFailedAlerter constructs an alerter when OPS_ALERTS_ENABLED and a recipient are set.
 func NewSettlementFailedAlerter(client *NotifierClient, cfg *config.Config) *SettlementFailedAlerter {
 	if client == nil || cfg == nil || !cfg.OpsAlertsEnabled() {
 		return nil
@@ -61,7 +59,6 @@ func (a *SettlementFailedAlerter) shouldSend(paymentIntentID string) bool {
 	return true
 }
 
-// AlertPermanentFailure enqueues a notifier message for a terminal outbox settlement failure.
 func (a *SettlementFailedAlerter) AlertPermanentFailure(outboxEvent db.PaymentPaymentOutbox, cause error) {
 	if a == nil {
 		return
@@ -75,7 +72,7 @@ func (a *SettlementFailedAlerter) AlertPermanentFailure(outboxEvent db.PaymentPa
 	}
 
 	dedupKey := fmt.Sprintf("payment-settlement-failed:%s", intentID)
-	title := "eSPX: payment settlement failed"
+	title := "BidShard: payment settlement failed"
 	body := formatSettlementFailedAlertBody(outboxEvent, intentID, cause)
 
 	go func() {

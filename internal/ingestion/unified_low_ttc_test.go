@@ -267,7 +267,6 @@ func (ttcBypassRedis) Eval(ctx context.Context, script string, keys []string, ar
 	return cmd
 }
 
-// checkWithFraudScoring runs one filter through FilterEngine so fraud signals finalize on the event.
 func checkWithFraudScoring(ctx context.Context, f EventFilter, evt *campaignmodel.Event) error {
 	engine := NewFilterEngine(time.Second, f)
 	engine.SetRegistry(&mockRegistry{})

@@ -19,12 +19,10 @@ const (
 	forecastDefaultRetryAfterSec = 30
 )
 
-// CampaignForecaster estimates delivery for a planned campaign.
 type CampaignForecaster interface {
 	ForecastCampaign(ctx context.Context, in CampaignForecastInput) (CampaignForecastDTO, error)
 }
 
-// ForecastRetryAfterSec returns the Retry-After hint for forecast 503 responses.
 func ForecastRetryAfterSec() int {
 	return forecastDefaultRetryAfterSec
 }

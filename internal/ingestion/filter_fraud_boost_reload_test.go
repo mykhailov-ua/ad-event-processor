@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// TestFilterFraudBoost_ConcurrentReload hammers snapshot swap while Check runs (M6-09).
 func TestFilterFraudBoost_ConcurrentReload(t *testing.T) {
 	cfg := &config.Config{}
 	sw := NewSettingsWatcher(nil, cfg)

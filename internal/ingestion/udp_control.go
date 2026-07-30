@@ -13,7 +13,6 @@ import (
 	"espx/internal/metrics"
 )
 
-// UDPChannelState is the tracker control-channel health.
 type UDPChannelState uint32
 
 const (
@@ -35,7 +34,6 @@ var ingressSnapshotPool = sync.Pool{
 	},
 }
 
-// UDPControl receives management quota epochs and exposes per-shard ingress limits.
 type UDPControl struct {
 	enabled            bool
 	failClosed         bool
@@ -55,7 +53,6 @@ type UDPControl struct {
 	requestConn        *net.UDPConn
 }
 
-// UDPControlConfig wires tracker-side UDP ingress control.
 type UDPControlConfig struct {
 	Enabled      bool
 	FailClosed   bool
@@ -68,7 +65,6 @@ type UDPControlConfig struct {
 	InitialRPS   uint64
 }
 
-// NewUDPControl builds an idle controller; call Start to open sockets.
 func NewUDPControl(cfg UDPControlConfig) *UDPControl {
 	c := &UDPControl{
 		enabled:      cfg.Enabled,
@@ -116,7 +112,6 @@ func NewUDPControl(cfg UDPControlConfig) *UDPControl {
 	return c
 }
 
-// NewUDPControlFromConfig adapts service config for tracker startup.
 func NewUDPControlFromConfig(cfg *config.Config, numShards int) *UDPControl {
 	if cfg == nil || !cfg.UDPControlEnabled {
 		return nil
@@ -134,7 +129,6 @@ func NewUDPControlFromConfig(cfg *config.Config, numShards int) *UDPControl {
 	})
 }
 
-// Start opens the recv socket and background stale/request loops.
 func (c *UDPControl) Start(ctx context.Context) error {
 	if c == nil || !c.enabled {
 		return nil
@@ -164,7 +158,6 @@ func (c *UDPControl) Start(ctx context.Context) error {
 	return nil
 }
 
-// Close releases UDP sockets.
 func (c *UDPControl) Close() error {
 	if c == nil {
 		return nil
@@ -178,7 +171,6 @@ func (c *UDPControl) Close() error {
 	return nil
 }
 
-// ChannelState returns OK or STALE for metrics/health.
 func (c *UDPControl) ChannelState() UDPChannelState {
 	if c == nil {
 		return UDPChannelOK
@@ -186,7 +178,6 @@ func (c *UDPControl) ChannelState() UDPChannelState {
 	return UDPChannelState(c.channelState.Load())
 }
 
-// CurrentEpoch returns the last applied epoch id.
 func (c *UDPControl) CurrentEpoch() int64 {
 	if c == nil {
 		return 0
@@ -194,7 +185,6 @@ func (c *UDPControl) CurrentEpoch() int64 {
 	return c.currentEpoch.Load()
 }
 
-// PublisherEpoch returns the latest epoch id seen on the wire (may be ahead of applied).
 func (c *UDPControl) PublisherEpoch() int64 {
 	if c == nil {
 		return 0
@@ -205,7 +195,6 @@ func (c *UDPControl) PublisherEpoch() int64 {
 	return c.currentEpoch.Load()
 }
 
-// DrainFrozen reports whether peer drain must be suppressed (stale channel or epoch lag).
 func (c *UDPControl) DrainFrozen() bool {
 	if c == nil || !c.enabled {
 		return false
@@ -213,7 +202,6 @@ func (c *UDPControl) DrainFrozen() bool {
 	return NodeWeightsDrainFrozen(c.ChannelState() == UDPChannelStale, c.PublisherEpoch(), c.CurrentEpoch())
 }
 
-// NodeWeights returns effective peer weights (equalized when stale).
 func (c *UDPControl) NodeWeights() []UDPNodeWeight {
 	if c == nil {
 		return nil
@@ -226,7 +214,6 @@ func (c *UDPControl) NodeWeights() []UDPNodeWeight {
 	return EffectiveNodeWeights(snap.nodeWeights, stale, c.PublisherEpoch(), c.CurrentEpoch())
 }
 
-// TryIngress performs a lock-free per-worker shard quota check (M5).
 func (c *UDPControl) TryIngress(shard, workerID int) bool {
 	if c == nil || !c.enabled {
 		return true
@@ -243,7 +230,6 @@ func (c *UDPControl) TryIngress(shard, workerID int) bool {
 	return false
 }
 
-// ShardLimitRPS returns the active per-shard ingress limit (canary floor when STALE).
 func (c *UDPControl) ShardLimitRPS(shard int) uint64 {
 	if c == nil || shard < 0 || shard >= UDPMaxControlShards {
 		return 0
@@ -258,7 +244,6 @@ func (c *UDPControl) ShardLimitRPS(shard int) uint64 {
 	return snap.limits.Limits[shard]
 }
 
-// ApplyPacket decodes and applies one datagram (recv goroutine; pooled snapshot swap).
 func (c *UDPControl) ApplyPacket(buf []byte) bool {
 	if c == nil || len(buf) < UDPHeaderSize {
 		metrics.UDPControlCorruptTotal.Inc()
@@ -302,7 +287,6 @@ func (c *UDPControl) ApplyPacket(buf []byte) bool {
 		isSnapshot := hdr.MsgType == UDPMsgConfigSnapshot || hdr.Flags&UDPFlagSnapshot != 0
 		return c.applyLimits(&hdr, &limits, nodeWeights, isSnapshot)
 	case UDPMsgMigrationBarrier:
-		// M1 fences handle migration_gen in Lua; barrier updates slot-map watcher path later.
 		c.markFresh()
 		return true
 	default:
@@ -330,7 +314,6 @@ func (c *UDPControl) applyLimits(hdr *UDPHeader, limits *UDPControlLimits, nodeW
 		return true
 	}
 
-	// Epoch gap.
 	prev := c.snapshot.Load()
 	tightening := udpLimitsTightening(&prev.limits, limits)
 	if tightening {
@@ -491,12 +474,10 @@ func (c *UDPControl) sendConfigRequest() {
 	metrics.UDPControlConfigRequestTotal.Inc()
 }
 
-// EncodeQuotaEpochDatagram writes a QUOTA_EPOCH or CONFIG_SNAPSHOT datagram into dst.
 func EncodeQuotaEpochDatagram(dst []byte, msgType uint8, hdr *UDPHeader, limits *UDPControlLimits) int {
 	return EncodeQuotaEpochDatagramWithWeights(dst, msgType, hdr, limits, nil)
 }
 
-// EncodeQuotaEpochDatagramWithWeights writes a v3 epoch datagram when weights are present.
 func EncodeQuotaEpochDatagramWithWeights(dst []byte, msgType uint8, hdr *UDPHeader, limits *UDPControlLimits, weights []UDPNodeWeight) int {
 	if hdr == nil || limits == nil {
 		return 0
@@ -531,7 +512,6 @@ func EncodeQuotaEpochDatagramWithWeights(dst []byte, msgType uint8, hdr *UDPHead
 	return off
 }
 
-// EpochPayloadJSON is persisted in control_plane_epochs.payload_json.
 type EpochPayloadJSON struct {
 	ShardLimits    []uint64            `json:"shard_limits_rps"`
 	SlotMapVersion int32               `json:"slot_map_version"`
@@ -539,7 +519,6 @@ type EpochPayloadJSON struct {
 	NodeWeights    []UDPNodeWeightJSON `json:"node_weights,omitempty"`
 }
 
-// MarshalEpochPayload serializes limits and optional node weights for Postgres audit/recovery.
 func MarshalEpochPayload(slotVersion int32, limits *UDPControlLimits, weights []UDPNodeWeight) ([]byte, error) {
 	if limits == nil {
 		return []byte("{}"), nil

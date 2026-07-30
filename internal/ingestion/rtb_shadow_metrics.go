@@ -43,7 +43,6 @@ func init() {
 	bindRtbShadowMetrics()
 }
 
-// recordRtbShadowAuction compares shadow eval output to the client campaign without heap allocation.
 func recordRtbShadowAuction(
 	catalog *RtbCatalog,
 	evt *campaignmodel.Event,

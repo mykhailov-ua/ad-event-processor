@@ -37,10 +37,10 @@ func TestLicenseFilter_revokedRejects(t *testing.T) {
 	require.ErrorIs(t, err, ErrLicenseExpired)
 }
 
-func TestChaos_LicenseGraceIngestContinues(t *testing.T) {
+func TestFault_LicenseGraceIngestContinues(t *testing.T) {
 	f := NewLicenseFilter(&stubLicenseRegistry{state: licensing.StateGrace})
 	if err := f.Check(context.Background(), &campaignmodel.Event{}); err != nil {
 		t.Fatalf("grace must allow ingest: %v", err)
 	}
-	t.Log("chaos_proof fault=license_grace_ingest subsystem=ingestion state=GRACE")
+	t.Log("fault_proof fault=license_grace_ingest subsystem=ingestion state=GRACE")
 }

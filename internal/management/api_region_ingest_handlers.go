@@ -20,7 +20,6 @@ type regionIngestBatchJSON struct {
 	OpID        string `json:"op_id,omitempty"`
 }
 
-// registerRegionIngestRoutes mounts global D3 ingest for region-proxy uplink.
 func (h *Handler) registerRegionIngestRoutes(mux *http.ServeMux) {
 	if h.cfg == nil || !h.cfg.MultiRegionGlobal() {
 		return
@@ -28,7 +27,6 @@ func (h *Handler) registerRegionIngestRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/region/ingest/batch", h.pgHigh(h.postRegionIngestBatch))
 }
 
-// postRegionIngestBatch handles POST /api/v1/region/ingest/batch from region-proxy uplink.
 func (h *Handler) postRegionIngestBatch(w http.ResponseWriter, r *http.Request) {
 	key := r.Header.Get("X-Admin-API-Key")
 	if key == "" || h.cfg == nil || key != string(h.cfg.AdminAPIKey) {

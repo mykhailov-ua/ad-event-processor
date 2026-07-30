@@ -14,15 +14,12 @@ import (
 
 const redisConnectRetries = 30
 
-// RedisShardOptions tunes per-shard pool sizing and tracker filter deadlines.
 type RedisShardOptions struct {
 	PoolSize         int
-	FilterTimeoutMs  int // tracker hot path: aligns Read/WriteTimeout with filter deadline; 0 = default
-	StickyPinWorkers int // reserve extra pool slots per shard for tracker filter eval pins
+	FilterTimeoutMs  int
+	StickyPinWorkers int
 }
 
-// ConnectRedisShards dials every Redis shard with optional Sentinel failover and per-shard circuit breakers.
-// Breakers are returned in shard order for M14-04 ingest reroute; callers may ignore them.
 func ConnectRedisShards(ctx context.Context, cfg *config.Config, opts RedisShardOptions) ([]redis.UniversalClient, []*RedisBreaker, error) {
 	names := cfg.ResolveRedisMasterNames()
 	if cfg.RedisSentinelEnabled() && len(names) != len(cfg.RedisAddrs) {
@@ -45,7 +42,6 @@ func ConnectRedisShards(ctx context.Context, cfg *config.Config, opts RedisShard
 	return clients, breakers, nil
 }
 
-// ConnectRedisShard dials a single shard (auth and other single-shard services).
 func ConnectRedisShard(ctx context.Context, cfg *config.Config, shardIdx int, opts RedisShardOptions) (redis.UniversalClient, error) {
 	if shardIdx < 0 || shardIdx >= len(cfg.RedisAddrs) {
 		return nil, fmt.Errorf("redis shard index %d out of range [0,%d)", shardIdx, len(cfg.RedisAddrs))

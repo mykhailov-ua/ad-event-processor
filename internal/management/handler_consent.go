@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// postConsent handles POST /api/v1/consent with HMAC-SHA256 body auth (M6.2).
 func (h *Handler) postConsent(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(io.LimitReader(r.Body, 64*1024))
 	if err != nil {
@@ -34,7 +33,6 @@ func (h *Handler) postConsent(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// postCampaignConsentRequirements handles POST /admin/campaigns/{id}/consent-requirements (M6.3).
 func (h *Handler) postCampaignConsentRequirements(w http.ResponseWriter, r *http.Request) {
 	campaignID, err := parsePathUUID(r, "id")
 	if err != nil {
@@ -55,7 +53,6 @@ func (h *Handler) postCampaignConsentRequirements(w http.ResponseWriter, r *http
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// postPrivacyErasure handles POST /admin/privacy/erasure (M6.4).
 func (h *Handler) postPrivacyErasure(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		UserID string `json:"user_id"`

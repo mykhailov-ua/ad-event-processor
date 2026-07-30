@@ -45,14 +45,12 @@ var fullPageErrorTemplate = template.Must(template.New("full_err").Parse(`<!DOCT
 </body>
 </html>`))
 
-// errorTemplateData binds handler context into HTML templates without exposing raw request fields.
 type errorTemplateData struct {
 	Status  int
 	Code    string
 	Message string
 }
 
-// HTMXError returns a fragment for HX-Request and a full page otherwise so admin UI errors stay in-band.
 func HTMXError(w http.ResponseWriter, r *http.Request, status int, code, message string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)

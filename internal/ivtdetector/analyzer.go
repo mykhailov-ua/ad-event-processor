@@ -9,7 +9,6 @@ import (
 	"espx/internal/database"
 )
 
-// SuspiciousIP is a candidate address flagged by a ClickHouse anomaly rule.
 type SuspiciousIP struct {
 	IP         string
 	Reason     string
@@ -20,7 +19,6 @@ type SuspiciousIP struct {
 	TTLSeconds int64
 }
 
-// AnalyzerConfig tunes ClickHouse window and detection thresholds.
 type AnalyzerConfig struct {
 	Window               time.Duration
 	MinClicks            uint64
@@ -32,7 +30,6 @@ type AnalyzerConfig struct {
 	IntervalMaxVariance  float64
 }
 
-// DefaultAnalyzerConfig returns production-oriented thresholds for IVT clustering.
 func DefaultAnalyzerConfig() AnalyzerConfig {
 	return AnalyzerConfig{
 		Window:               time.Hour,
@@ -46,18 +43,15 @@ func DefaultAnalyzerConfig() AnalyzerConfig {
 	}
 }
 
-// Analyzer runs cold-path ClickHouse queries for click-ratio and fingerprint-collision anomalies.
 type Analyzer struct {
 	q   *database.CHQuery
 	cfg AnalyzerConfig
 }
 
-// NewAnalyzer binds a governed ClickHouse query client and detection thresholds.
 func NewAnalyzer(q *database.CHQuery, cfg AnalyzerConfig) *Analyzer {
 	return &Analyzer{q: q, cfg: cfg}
 }
 
-// FindSuspiciousIPs returns deduplicated candidates from all enabled detection rules.
 func (analyzer *Analyzer) FindSuspiciousIPs(ctx context.Context) ([]SuspiciousIP, error) {
 	reg := NewAnalyzerRegistry(analyzer.q, nil, nil, analyzer.cfg, nil, nil, 0, nil)
 	return reg.FindSuspiciousIPs(ctx)

@@ -16,7 +16,7 @@ jobs:
           go-version: '1.25.12'
           cache: true
       - name: Comment style (R9.1)
-        run: bash scripts/ci/check_comments.sh
+        run: bash scripts/ci/comments.sh
       - name: OpenAPI contract (GAP-PROD-03)
         run: make openapi-lint
       - name: golangci-lint
@@ -36,8 +36,8 @@ jobs:
       - name: Run full test suite
         run: bash scripts/ci/full_test.sh
 
-  chaos:
-    name: Container chaos tests
+  resilience:
+    name: Container resilience tests
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -47,8 +47,8 @@ jobs:
           go-version: '1.25.12'
           cache: true
 
-      - name: Run chaos suite
-        run: bash scripts/chaos-drills/test_chaos.sh
+      - name: Run resilience suite
+        run: bash scripts/fault/run.sh
 
   terraform-validate:
     name: Terraform validate (local + staging)

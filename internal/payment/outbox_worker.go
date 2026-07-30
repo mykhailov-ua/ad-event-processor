@@ -26,11 +26,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// PostSettlementMarkHook runs after a successful settlement gRPC call and before the outbox row
-// is marked PROCESSED. Used by chaos tests to simulate the credit/mark-processed gap.
 var PostSettlementMarkHook func(ctx context.Context, outboxEvent db.PaymentPaymentOutbox) error
 
-// OutboxWorker delivers SETTLE_BALANCE outboxEventents to management without blocking webhook HTTP responses.
 type OutboxWorker struct {
 	pool *pgxpool.Pool
 	cfg  *config.Config
@@ -44,12 +41,10 @@ type OutboxWorker struct {
 	wg sync.WaitGroup
 }
 
-// SetSettlementFailedAlerter wires ops notifications for terminal settlement failures.
 func (outboxWorker *OutboxWorker) SetSettlementFailedAlerter(alerter *SettlementFailedAlerter) {
 	outboxWorker.settlementAlerter = alerter
 }
 
-// NewOutboxWorker decouples ledger credit from webhook commit latency via async settlement delivery.
 func NewOutboxWorker(pool *pgxpool.Pool, cfg *config.Config) *OutboxWorker {
 	return &OutboxWorker{
 		pool: pool,
@@ -57,7 +52,6 @@ func NewOutboxWorker(pool *pgxpool.Pool, cfg *config.Config) *OutboxWorker {
 	}
 }
 
-// SettleBalancePayload is the outbox JSON contract shared with management ApplyPaymentCredit.
 type SettleBalancePayload struct {
 	CustomerID           string `json:"customer_id"`
 	AmountMicro          int64  `json:"amount_micro"`
@@ -67,7 +61,6 @@ type SettleBalancePayload struct {
 	ProviderRef          string `json:"provider_ref"`
 }
 
-// Start polls the outbox until shutdown because settlement gRPC may be temporarily unreachable at boot.
 func (outboxWorker *OutboxWorker) Start(ctx context.Context, interval time.Duration) {
 	outboxWorker.wg.Add(1)
 	defer outboxWorker.wg.Done()
@@ -113,12 +106,10 @@ func (outboxWorker *OutboxWorker) Start(ctx context.Context, interval time.Durat
 	}
 }
 
-// Wait blocks shutdown until the poll loop exits so in-flight settlements are not cut off mid-batch.
 func (outboxWorker *OutboxWorker) Wait() {
 	outboxWorker.wg.Wait()
 }
 
-// refreshOutboxPendingGauge exposes backlog depth for alerting when settlement falls behind webhooks.
 func (outboxWorker *OutboxWorker) refreshOutboxPendingGauge(ctx context.Context) {
 	var pending int64
 	err := outboxWorker.pool.QueryRow(ctx, `
@@ -129,7 +120,6 @@ func (outboxWorker *OutboxWorker) refreshOutboxPendingGauge(ctx context.Context)
 	}
 }
 
-// reclaimStaleProcessing recovers rows leased by crashed workers so settlement does not stall indefinitely.
 func (outboxWorker *OutboxWorker) reclaimStaleProcessing(ctx context.Context) {
 	_, err := outboxWorker.pool.Exec(ctx, `
 		UPDATE payment.payment_outbox
@@ -142,7 +132,6 @@ func (outboxWorker *OutboxWorker) reclaimStaleProcessing(ctx context.Context) {
 	}
 }
 
-// ProcessOutbox leases a batch before gRPC calls so duplicate workers cannot credit the same outboxEventent twice.
 func (outboxWorker *OutboxWorker) ProcessOutbox(ctx context.Context, limit int32) (int, error) {
 	if err := outboxWorker.ensureSettlementClient(); err != nil {
 		return 0, err
@@ -213,7 +202,6 @@ func (outboxWorker *OutboxWorker) ProcessOutbox(ctx context.Context, limit int32
 	return successCount, nil
 }
 
-// ensureSettlementClient dials management lazily because payment may start before settlement gRPC is listening.
 func (outboxWorker *OutboxWorker) ensureSettlementClient() error {
 	outboxWorker.clientMu.Lock()
 	defer outboxWorker.clientMu.Unlock()
@@ -231,7 +219,6 @@ func (outboxWorker *OutboxWorker) ensureSettlementClient() error {
 	return nil
 }
 
-// resetSettlementClient drops a dead connection so the next batch opens a fresh settlement channel.
 func (outboxWorker *OutboxWorker) resetSettlementClient() {
 	outboxWorker.clientMu.Lock()
 	defer outboxWorker.clientMu.Unlock()
@@ -243,14 +230,12 @@ func (outboxWorker *OutboxWorker) resetSettlementClient() {
 	outboxWorker.client = nil
 }
 
-// getSettlementClient returns the cached client under lock because gRPC conn is shared across poll iterations.
 func (outboxWorker *OutboxWorker) getSettlementClient() pb.SettlementServiceClient {
 	outboxWorker.clientMu.Lock()
 	defer outboxWorker.clientMu.Unlock()
 	return outboxWorker.client
 }
 
-// isSettlementTransientGRPC distinguishes retryable transport errors from permanent settlement rejection.
 func isSettlementTransientGRPC(err error) bool {
 	if err == nil {
 		return false
@@ -267,7 +252,6 @@ func isSettlementTransientGRPC(err error) bool {
 		strings.Contains(msg, "transport is closing")
 }
 
-// markOutboxProcessedWithRetry tolerates brief DB blips after ledger credit already succeeded.
 func (outboxWorker *OutboxWorker) markOutboxProcessedWithRetry(ctx context.Context, outboxID int64) error {
 	var lastErr error
 	for attempt := 0; attempt < 3; attempt++ {
@@ -283,8 +267,6 @@ func (outboxWorker *OutboxWorker) markOutboxProcessedWithRetry(ctx context.Conte
 	return lastErr
 }
 
-// markOutboxEventRetryable records retry or terminal failure; NotFound also marks the intent SETTLEMENT_FAILED
-// so ops can see money collected but ledger credit rejected.
 func (outboxWorker *OutboxWorker) markOutboxEventRetryable(ctx context.Context, outboxEvent db.PaymentPaymentOutbox, cause error) {
 	var lastErrText pgtype.Text
 	lastErrText.String = cause.Error()
@@ -350,7 +332,6 @@ func (outboxWorker *OutboxWorker) markOutboxEventRetryable(ctx context.Context, 
 	}
 }
 
-// handleOutboxEvent forwards one row to management; ledger idempotency key prevents double credit on retry.
 func (outboxWorker *OutboxWorker) handleOutboxEvent(ctx context.Context, outboxEvent db.PaymentPaymentOutbox) error {
 	switch outboxEvent.EventType {
 	case "SETTLE_BALANCE":

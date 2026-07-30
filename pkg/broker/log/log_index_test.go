@@ -12,7 +12,6 @@ func TestFindActualIndexSize_CorruptPartialWrite(t *testing.T) {
 	idx := make([]byte, 48)
 	binary.BigEndian.PutUint64(idx[0:8], 100)
 	binary.BigEndian.PutUint64(idx[8:16], 0)
-	// Sparse zero entry after first valid row signals torn tail.
 	got := findActualIndexSize(idx, base)
 	assert.Equal(t, int64(16), got)
 }
@@ -34,7 +33,6 @@ func TestFindActualIndexSize_ZeroPaddingBreak(t *testing.T) {
 	idx := make([]byte, 48)
 	binary.BigEndian.PutUint64(idx[0:8], 1)
 	binary.BigEndian.PutUint64(idx[8:16], 0)
-	// zeros at entry 1 signal sparse tail after crash
 	got := findActualIndexSize(idx, base)
 	assert.Equal(t, int64(16), got)
 }

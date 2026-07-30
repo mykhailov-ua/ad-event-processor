@@ -10,7 +10,6 @@ import (
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 )
 
-// InjectionEnv holds live Postgres and Redis containers for fault-injection tests.
 type InjectionEnv struct {
 	Pool           *pgxpool.Pool
 	Redis          redis.UniversalClient
@@ -18,7 +17,6 @@ type InjectionEnv struct {
 	RedisContainer testcontainers.Container
 }
 
-// NewInjectionEnv boots Postgres with ads migrations and Redis for fault-injection tests.
 func NewInjectionEnv(t testing.TB) (*InjectionEnv, func()) {
 	t.Helper()
 
@@ -38,7 +36,6 @@ func NewInjectionEnv(t testing.TB) (*InjectionEnv, func()) {
 	return env, cleanup
 }
 
-// LogFaultProof emits a structured fault-injection record for CI grep (see Makefile test-fault).
 func LogFaultProof(t testing.TB, scenario string, attrs map[string]string) {
 	t.Helper()
 	var b strings.Builder

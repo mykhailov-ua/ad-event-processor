@@ -6,7 +6,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Guards mergeSuspiciousIPs keeps the highest-scoring reason per IP.
 func TestMergeSuspiciousIPs_dedupesByIP(t *testing.T) {
 	merged := mergeSuspiciousIPs(
 		[]SuspiciousIP{

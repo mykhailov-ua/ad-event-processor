@@ -284,10 +284,10 @@ Settlement remains in management (not a separate settlement service). Fraud scor
 
 ### Load-test observability (dev)
 
-Laptop load tests (`scripts/load-test/`) produce paired reports per run:
+Laptop load tests (`scripts/load/`) produce paired reports per run:
 
 - **Application** — Prometheus scrape → `bottleneck-report.md` (handler, Lua, processor, fraud drops).
-- **Kernel** — optional `ESPX_BPF_PROBE=1` → `bpf-report.md` (syscalls, cgroup throttle, k6 CPU share).
+- **Kernel** — optional `ESPX_BPF_PROBE=1` → `bpf-report.md` (syscalls, cgroup throttle, loadgen CPU share).
 
 Detail: [LOAD_TEST_BPF](.cursor/rules/load-test-bpf.mdc). Production edge BPF (XDP blocklist) remains in [EDGE](.cursor/rules/edge.mdc).
 
@@ -317,7 +317,7 @@ Production: `FILTER_TIMEOUT_MS` <= 100.
 - BCE: length check before indexed access on gnet buffers
 - Contended atomics padded to cache line (64 bytes)
 
-CI: `make test-alloc-gate`, `scripts/perf-gate/`, `scripts/chaos-drills/test_chaos.sh`. Runbooks: [DEVELOPMENT.md](./DEVELOPMENT.md).
+CI: `make test-alloc-gate`, `scripts/perf/`, `scripts/fault/run.sh`. Runbooks: [DEVELOPMENT.md](./DEVELOPMENT.md).
 
 ---
 

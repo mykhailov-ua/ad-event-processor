@@ -13,7 +13,6 @@ func uuidFromPg(u pgtype.UUID) uuid.UUID {
 	return uuid.UUID(u.Bytes)
 }
 
-// userToPB omits password hashes and internal flags from outward-facing responses.
 func userToPB(user db.User) *pb.User {
 	return &pb.User{
 		Id:         uuidFromPg(user.ID).String(),
@@ -24,7 +23,6 @@ func userToPB(user db.User) *pb.User {
 	}
 }
 
-// apiKeyRowToPB maps a stored API key row to the gRPC view without secret material.
 func apiKeyRowToPB(row db.ListUserAPIKeysRow) *pb.APIKey {
 	key := &pb.APIKey{
 		Id:        uuidFromPg(row.ID).String(),

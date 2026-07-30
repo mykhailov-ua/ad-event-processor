@@ -43,7 +43,6 @@ func setupFilterFraudBoostBench(t testing.TB) (*FilterEngine, *campaignmodel.Eve
 	return engine, evt, ctx
 }
 
-// BenchmarkFilterFraudBoost measures the hot-path cost of ML score boost application.
 func BenchmarkFilterFraudBoost(b *testing.B) {
 	engine, evt, ctx := setupFilterFraudBoostBench(b)
 	b.ReportAllocs()
@@ -54,7 +53,6 @@ func BenchmarkFilterFraudBoost(b *testing.B) {
 	}
 }
 
-// TestFilterFraudBoost_zeroAlloc guards the boost apply path stays allocation-free.
 func TestFilterFraudBoost_zeroAlloc(t *testing.T) {
 	engine, evt, ctx := setupFilterFraudBoostBench(t)
 	for i := 0; i < 100; i++ {
@@ -79,7 +77,6 @@ func moduleRootAds(t *testing.T) string {
 	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
 }
 
-// TestFilterFraudBoost_escapeClean verifies applyFraudLayerDecision boost path does not escape to heap.
 func TestFilterFraudBoost_escapeClean(t *testing.T) {
 	if testing.Short() {
 		t.Skip("escape analysis build")

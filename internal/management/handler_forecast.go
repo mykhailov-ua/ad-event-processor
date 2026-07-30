@@ -15,7 +15,6 @@ import (
 
 const forecastHandlerTimeout = 2 * time.Second
 
-// forecastCampaign handles POST /api/v1/forecast/campaign (M5.1).
 func (h *Handler) forecastCampaign(w http.ResponseWriter, r *http.Request) {
 	body, err := coldpath.ReadLimitedBody(w, r, coldpath.DefaultMaxBody)
 	if err != nil {

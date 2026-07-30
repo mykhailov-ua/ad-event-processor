@@ -15,15 +15,12 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// Handler is the gRPC adapter; auth runs here because payment has no end-user identity layer.
 type Handler struct {
 	pb.UnimplementedPaymentServiceServer
 	service *Service
 	cfg     *config.Config
 }
 
-// NewHandler exposes payment operations over gRPC because only trusted internal services
-// may create intents; public checkout traffic uses the HTTP sidecar instead.
 func NewHandler(service *Service, cfg *config.Config) *Handler {
 	return &Handler{
 		service: service,
@@ -31,7 +28,6 @@ func NewHandler(service *Service, cfg *config.Config) *Handler {
 	}
 }
 
-// requireInternalToken gates gRPC before any money-bearing work because the service has no end-user auth layer.
 func (h *Handler) requireInternalToken(ctx context.Context) error {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
@@ -48,7 +44,6 @@ func (h *Handler) requireInternalToken(ctx context.Context) error {
 	return nil
 }
 
-// mapStatusToPB keeps sqlc-generated DB enums out of the protobuf API contract.
 func mapStatusToPB(s db.PaymentPaymentIntentStatus) pb.PaymentIntentStatus {
 	switch s {
 	case db.PaymentPaymentIntentStatusCREATED:
@@ -89,7 +84,6 @@ func intentToPB(intent db.PaymentPaymentIntent) *pb.PaymentIntent {
 	}
 }
 
-// CreatePaymentIntent validates wire input here so invalid amounts never reach the idempotent service layer.
 func (handler *Handler) CreatePaymentIntent(ctx context.Context, req *pb.CreatePaymentIntentRequest) (*pb.CreatePaymentIntentResponse, error) {
 	if err := handler.requireInternalToken(ctx); err != nil {
 		return nil, err
@@ -126,7 +120,6 @@ func (handler *Handler) CreatePaymentIntent(ctx context.Context, req *pb.CreateP
 	}, nil
 }
 
-// GetPaymentIntent serves post-checkout polling without exposing the full customer intent list.
 func (handler *Handler) GetPaymentIntent(ctx context.Context, req *pb.GetPaymentIntentRequest) (*pb.PaymentIntent, error) {
 	if err := handler.requireInternalToken(ctx); err != nil {
 		return nil, err
@@ -145,7 +138,6 @@ func (handler *Handler) GetPaymentIntent(ctx context.Context, req *pb.GetPayment
 	return intentToPB(intent), nil
 }
 
-// ListPaymentIntents supports support and billing review without unbounded scans on the hot path.
 func (handler *Handler) ListPaymentIntents(ctx context.Context, req *pb.ListPaymentIntentsRequest) (*pb.ListPaymentIntentsResponse, error) {
 	if err := handler.requireInternalToken(ctx); err != nil {
 		return nil, err
@@ -169,7 +161,6 @@ func (handler *Handler) ListPaymentIntents(ctx context.Context, req *pb.ListPaym
 	}, nil
 }
 
-// ListDisputes returns disputed payment intents for support and self-serve dashboards.
 func (handler *Handler) ListDisputes(ctx context.Context, req *pb.ListDisputesRequest) (*pb.ListDisputesResponse, error) {
 	if err := handler.requireInternalToken(ctx); err != nil {
 		return nil, err
@@ -208,7 +199,6 @@ func (handler *Handler) ListDisputes(ctx context.Context, req *pb.ListDisputesRe
 	return &pb.ListDisputesResponse{Disputes: disputes, Total: total}, nil
 }
 
-// ReplayWebhook re-drives stored Stripe webhook payloads with settlement idempotency.
 func (handler *Handler) ReplayWebhook(ctx context.Context, req *pb.ReplayWebhookRequest) (*pb.ReplayWebhookResponse, error) {
 	if err := handler.requireInternalToken(ctx); err != nil {
 		return nil, err

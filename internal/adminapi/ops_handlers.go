@@ -14,7 +14,6 @@ import (
 	"espx/pkg/httpresponse"
 )
 
-// OpsHTTPHandlers serves M2 ops JSON routes under /api/v1/ops/*.
 type OpsHTTPHandlers struct {
 	OpsReader               ManagementOpsReader
 	PaymentIntents          PaymentLister
@@ -26,7 +25,6 @@ type OpsHTTPHandlers struct {
 	AuthorizeCustomerAccess func(*http.Request, string) error
 }
 
-// Register mounts ops admin routes on mux.
 func (h *OpsHTTPHandlers) Register(mux *http.ServeMux) {
 	if h == nil || h.OpsReader == nil {
 		return
@@ -189,7 +187,6 @@ func (h *OpsHTTPHandlers) exportAudit(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(buf.Bytes())
 }
 
-// PaymentHistoryRow is one payment intent with ledger linkage.
 type PaymentHistoryRow struct {
 	IntentID       string `json:"intent_id"`
 	CustomerID     string `json:"customer_id"`
@@ -204,18 +201,15 @@ type PaymentHistoryRow struct {
 	UpdatedAt      string `json:"updated_at"`
 }
 
-// PaymentLister lists payment intents for a customer.
 type PaymentLister interface {
 	ListPaymentIntents(ctx context.Context, customerID string, limit, offset int32) (PaymentIntentList, error)
 }
 
-// PaymentIntentList is the payment service list response shape.
 type PaymentIntentList struct {
 	Intents []PaymentIntentRow
 	Total   int64
 }
 
-// PaymentIntentRow is one payment intent row.
 type PaymentIntentRow struct {
 	ID             string
 	CustomerID     string

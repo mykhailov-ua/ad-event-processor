@@ -16,7 +16,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// In-memory campaign registry stub for handler and filter tests.
 type mockRegistry struct{}
 
 func (m *mockRegistry) Exists(id uuid.UUID) bool { return true }
@@ -96,7 +95,6 @@ func (m *mockRegistry) Wait(ctx context.Context) error                        { 
 
 var staticRemoteAddr = &net.TCPAddr{IP: net.IPv4(1, 1, 1, 1), Port: 1234}
 
-// gnet.Conn stub capturing writes for packet handler benchmarks.
 type mockGnetConn struct {
 	gnet.Conn
 	written []byte
@@ -115,7 +113,6 @@ func (m *mockGnetConn) RemoteAddr() net.Addr {
 	return staticRemoteAddr
 }
 
-// Tracks JSON gnet packet handler cost as legacy hot path baseline.
 func BenchmarkAdsPacketHandlerJSON(b *testing.B) {
 	cfg := &config.Config{
 		MaxRequestBodySize: 1024 * 1024,
@@ -144,7 +141,6 @@ func BenchmarkAdsPacketHandlerJSON(b *testing.B) {
 	}
 }
 
-// Tracks protobuf gnet packet handler cost for production hot path.
 func BenchmarkAdsPacketHandlerProto(b *testing.B) {
 	cfg := &config.Config{
 		MaxRequestBodySize: 1024 * 1024,

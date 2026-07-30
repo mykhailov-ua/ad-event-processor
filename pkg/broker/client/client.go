@@ -1,4 +1,3 @@
-// Package client is a TCP broker client with leader redirect via Redis coordination.
 package client
 
 import (
@@ -15,7 +14,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// MessageIterator walks fetch response bytes without copying individual payloads.
 type MessageIterator struct {
 	data          []byte
 	idx           int
@@ -26,7 +24,6 @@ type MessageIterator struct {
 	HighWatermark uint64
 }
 
-// Next advances the iterator across one fetched log record.
 func (it *MessageIterator) Next() bool {
 	if it.curr >= it.count || it.idx+12 > len(it.data) {
 		return false
@@ -43,7 +40,6 @@ func (it *MessageIterator) Next() bool {
 	return true
 }
 
-// Client is a framed TCP broker client with optional Redis-backed leader discovery.
 type Client struct {
 	addr      string
 	conn      *net.TCPConn
@@ -58,7 +54,6 @@ type Client struct {
 	fetchIter MessageIterator
 }
 
-// NewClient allocates reusable read and write buffers for the broker wire protocol.
 func NewClient(addr string, timeout time.Duration) *Client {
 	return &Client{
 		addr:     addr,
@@ -69,19 +64,16 @@ func NewClient(addr string, timeout time.Duration) *Client {
 	}
 }
 
-// SetRedisURL enables leader lookup so Produce and Fetch survive broker failover.
 func (c *Client) SetRedisURL(url string) {
 	c.redisURL = url
 }
 
-// Connect dials the broker if the client is not already connected.
 func (c *Client) Connect() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.connectLocked()
 }
 
-// connectLocked opens the TCP session while the caller already holds the client mutex.
 func (c *Client) connectLocked() error {
 	if c.conn != nil {
 		return nil
@@ -100,7 +92,6 @@ func (c *Client) connectLocked() error {
 	return nil
 }
 
-// Close tears down the TCP and Redis handles held by the client.
 func (c *Client) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -117,7 +108,6 @@ func (c *Client) Close() error {
 	return err
 }
 
-// getConn returns a live connection, dialing lazily when needed.
 func (c *Client) getConn() (*net.TCPConn, error) {
 	if c.conn == nil {
 		if err := c.connectLocked(); err != nil {
@@ -127,7 +117,6 @@ func (c *Client) getConn() (*net.TCPConn, error) {
 	return c.conn, nil
 }
 
-// Produce retries across leader failover; callers must not pin to a stale broker address.
 func (c *Client) Produce(topic string, partition uint16, payload []byte) (uint64, error) {
 	var lastErr error
 	for attempt := 0; attempt < 5; attempt++ {
@@ -231,8 +220,6 @@ func (c *Client) Produce(topic string, partition uint16, payload []byte) (uint64
 	return 0, fmt.Errorf("failed after 5 attempts, last error: %w", lastErr)
 }
 
-// Fetch follows the same redirect policy as Produce for HA follower reads.
-// The returned iterator aliases client-owned buffers and is valid until the next Fetch.
 func (c *Client) Fetch(topic string, partition uint16, startOffset uint64, maxBytes uint32) (*MessageIterator, error) {
 	var lastErr error
 	for attempt := 0; attempt < 5; attempt++ {
@@ -346,7 +333,6 @@ func (c *Client) Fetch(topic string, partition uint16, startOffset uint64, maxBy
 	return nil, fmt.Errorf("failed after 5 attempts, last error: %w", lastErr)
 }
 
-// CommitOffset persists the next fetch offset for a consumer group partition.
 func (c *Client) CommitOffset(topic string, partition uint16, group string, offset uint64) (uint64, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -389,7 +375,6 @@ func (c *Client) CommitOffset(topic string, partition uint16, group string, offs
 	return stored, nil
 }
 
-// CommittedOffset returns the stored next-fetch offset for a consumer group partition.
 func (c *Client) CommittedOffset(topic string, partition uint16, group string) (uint64, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -432,7 +417,6 @@ func (c *Client) CommittedOffset(topic string, partition uint16, group string) (
 	return offset, nil
 }
 
-// closeRawConn drops a broken socket so the next RPC establishes a fresh session.
 func (c *Client) closeRawConn() error {
 	if c.conn != nil {
 		err := c.conn.Close()
@@ -442,7 +426,6 @@ func (c *Client) closeRawConn() error {
 	return nil
 }
 
-// resolveLeaderAddr maps a topic partition to the current leader broker address via Redis coordination keys.
 func (c *Client) resolveLeaderAddr(topic string, partition uint16) (string, error) {
 	if c.redisURL == "" {
 		return "", errors.New("redis URL not set")

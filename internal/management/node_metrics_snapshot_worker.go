@@ -15,13 +15,11 @@ import (
 const snapshotRunHourUTC = 0
 const snapshotRunMinuteUTC = 15
 
-// NodeMetricsSnapshotWorker rolls up node_metric_buckets into regional daily snapshots.
 type NodeMetricsSnapshotWorker struct {
 	svc  *Service
 	pool *pgxpool.Pool
 }
 
-// NewNodeMetricsSnapshotWorker wires the nightly snapshot worker to management.
 func NewNodeMetricsSnapshotWorker(svc *Service) *NodeMetricsSnapshotWorker {
 	return &NodeMetricsSnapshotWorker{
 		svc:  svc,
@@ -29,7 +27,6 @@ func NewNodeMetricsSnapshotWorker(svc *Service) *NodeMetricsSnapshotWorker {
 	}
 }
 
-// Start runs at 00:15 UTC daily until ctx is cancelled.
 func (w *NodeMetricsSnapshotWorker) Start(ctx context.Context) {
 	if w == nil || w.pool == nil {
 		return
@@ -60,7 +57,6 @@ func (w *NodeMetricsSnapshotWorker) Start(ctx context.Context) {
 	}
 }
 
-// RunOnce aggregates buckets for one UTC calendar day into node_metric_daily_snapshots.
 func (w *NodeMetricsSnapshotWorker) RunOnce(ctx context.Context, day time.Time) error {
 	if w == nil || w.pool == nil {
 		return nil

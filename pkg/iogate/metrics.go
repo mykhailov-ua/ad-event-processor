@@ -2,7 +2,6 @@ package iogate
 
 import "github.com/prometheus/client_golang/prometheus"
 
-// Series binds disk gate Prometheus collectors registered in internal/metrics/collectors.go.
 type Series struct {
 	AppendWait    [2]prometheus.Observer
 	FsyncInFlight prometheus.Gauge
@@ -17,7 +16,6 @@ var (
 	setDegradedMetric = func(float64) {}
 )
 
-// BindMetrics wires hot-path disk gate recording to centrally registered collectors.
 func BindMetrics(s Series) {
 	if s.AppendWait[TierHigh] != nil {
 		observeAppendWait = func(tier Tier, sec float64) {

@@ -10,7 +10,6 @@ import (
 	"espx/pkg/httpresponse"
 )
 
-// GenerateSecureToken produces unpredictable hex tokens for CSRF cookies and headers.
 func GenerateSecureToken(length int) (string, error) {
 	b := make([]byte, length)
 	if _, err := rand.Read(b); err != nil {
@@ -19,7 +18,6 @@ func GenerateSecureToken(length int) (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-// NewCSRFMiddleware rejects mutating admin and API requests that lack a matching double-submit CSRF token.
 func NewCSRFMiddleware(adminAPIKey string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

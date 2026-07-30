@@ -1,6 +1,8 @@
 package logcompactor
 
 import (
+	"espx/pkg/faultproof"
+
 	"bytes"
 	"context"
 	"os"
@@ -225,7 +227,7 @@ func TestAuditLogRollups_Explain_RealCH(t *testing.T) {
 	for _, q := range queries {
 		plan := queryCHExplainPlan(t, conn, q.query)
 		assert.Contains(t, plan, "MergeTree", "query %s should use MergeTree index", q.name)
-		logChaosProof(t, "log_compactor_ch_explain_"+q.name, map[string]string{
+		faultproof.Log(t, "log_compactor_ch_explain_"+q.name, map[string]string{
 			"subsystem": "log_compactor",
 			"summary":   summarizeExplainPlan(plan),
 		})

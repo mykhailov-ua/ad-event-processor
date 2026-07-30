@@ -24,7 +24,6 @@ func TestOutboxPollBackoff_IdleMedianAboveDoD(t *testing.T) {
 	for i := 0; i < 8; i++ {
 		samples = append(samples, b.next(0))
 	}
-	// 20→40→80→160→250→250→250→250 ms; p50 = 160 ms > 50 ms DoD
 	assert.Greater(t, samples[3], 50*time.Millisecond)
 	assert.Equal(t, outboxPollIdleMax, samples[len(samples)-1])
 }

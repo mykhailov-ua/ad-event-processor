@@ -1,0 +1,25 @@
+name: Sentinel Resilience
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  sentinel-failover:
+    name: Redis Sentinel failover resilience
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.12'
+          cache: true
+
+      - name: Prepare env
+        run: bash scripts/fault/sentinel_failover_env.sh
+
+      - name: Sentinel failover resilience test
+        run: bash scripts/fault/sentinel.sh

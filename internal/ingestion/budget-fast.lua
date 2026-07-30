@@ -1,23 +1,3 @@
--- Tier B fast filter: budget debit + idempotency + stream in one atomic script.
--- M9-02: fraud blocklist, placement blocklist, and daily ingress quota in the same EVALSHA.
--- No fcap, pacing, TTC, or quota-refill side effects.
--- KEYS[1] spend (budget:campaign or budget:quota)
--- KEYS[2] idempotency
--- KEYS[3] campaign_sync
--- KEYS[4] customer_sync
--- KEYS[5] dirty_campaigns
--- KEYS[6] dirty_customers
--- KEYS[7] stream
--- KEYS[8] migration_fence
--- KEYS[9] budget_frozen
--- KEYS[10] blacklist:fraud (global, replicated)
--- KEYS[11] placement blacklist hash (or ignored sentinel)
--- KEYS[12] campaign-hash-tagged ingress:day (or ignored sentinel)
--- ARGV[1] amount, [2] idem_ttl, [3] campaign_id, [4] customer_id, [5] max_stream_len,
---       [6] click_id, [7] evt_type, [8] payload, [9] ip, [10] ua, [11] user_id, [12] skip_budget,
---       [13] routing_epoch, [14] max_rpd (0=skip), [15] ingress_ttl_sec, [16] placement_id
--- Returns: -1 budget miss, 0 ok, 3 budget exhausted, 11 debit fenced,
---          12 daily quota, 14 placement blocked, 21 fraud signal (ok), 20 degraded ok.
 
 local batch = redis.call("MGET", KEYS[1], KEYS[2], KEYS[8], KEYS[9])
 local spend = batch[1]
@@ -106,7 +86,6 @@ redis.call("XADD", KEYS[7], "MAXLEN", "~", ARGV[5], "*",
     "ip", ARGV[9],
     "ua", ARGV[10])
 
--- M14-16 branch tag: 21 = fraud_signal with accept.
 if fraud_list_hit then
     return 21
 end

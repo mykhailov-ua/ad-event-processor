@@ -15,7 +15,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// InvoicePreview is the dry-run result for POST /api/v1/billing/invoices/preview.
 type InvoicePreview struct {
 	CustomerID     string           `json:"customer_id"`
 	BillingMonth   string           `json:"billing_month"`
@@ -30,14 +29,12 @@ type InvoicePreview struct {
 	LedgerSumMicro int64            `json:"ledger_sum_micro"`
 }
 
-// InvoiceLineDTO is one aggregated ledger line in preview/statement views.
 type InvoiceLineDTO struct {
 	LedgerType  string `json:"ledger_type"`
 	AmountMicro int64  `json:"amount_micro"`
 	EntryCount  int32  `json:"entry_count"`
 }
 
-// PreviewInvoice computes invoice lines without persisting a row.
 func (service *Service) PreviewInvoice(ctx context.Context, customerID uuid.UUID, billingMonth time.Time) (*InvoicePreview, error) {
 	if err := validateBillingMonth(billingMonth); err != nil {
 		return nil, err
@@ -106,7 +103,6 @@ func (service *Service) PreviewInvoice(ctx context.Context, customerID uuid.UUID
 	return out, nil
 }
 
-// PreviewInvoiceProto exposes preview over gRPC-shaped clients.
 func (service *Service) PreviewInvoiceProto(ctx context.Context, customerID uuid.UUID, billingMonth time.Time) (*pb.Invoice, bool, error) {
 	preview, err := service.PreviewInvoice(ctx, customerID, billingMonth)
 	if err != nil {
@@ -137,7 +133,6 @@ func (service *Service) PreviewInvoiceProto(ctx context.Context, customerID uuid
 	}, false, nil
 }
 
-// VoidInvoice marks a finalized invoice as VOID without mutating the ledger.
 func (service *Service) VoidInvoice(ctx context.Context, invoiceID uuid.UUID) error {
 	tag, err := service.queries.VoidInvoice(ctx, pgtype.UUID{Bytes: invoiceID, Valid: true})
 	if err != nil {

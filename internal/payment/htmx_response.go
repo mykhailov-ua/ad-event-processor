@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-// WriteHTMXError logs server-side detail while returning a sanitized fragment to the browser.
 func WriteHTMXError(w http.ResponseWriter, r *http.Request, err error, logAttrs ...any) {
 	status, code, message := MapHTMXError(err)
 	if status >= StatusFailed {
@@ -16,7 +15,6 @@ func WriteHTMXError(w http.ResponseWriter, r *http.Request, err error, logAttrs 
 	WriteHTMX(w, r, status, code, message)
 }
 
-// WriteHTMX returns a machine-readable error fragment via X-Payment-Error-Code for host-page branching.
 func WriteHTMX(w http.ResponseWriter, r *http.Request, status int, code, message string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("X-Payment-Error-Code", code)
@@ -24,7 +22,6 @@ func WriteHTMX(w http.ResponseWriter, r *http.Request, status int, code, message
 	_, _ = w.Write([]byte(htmxErrorBody(code, message)))
 }
 
-// WriteHTMXOK returns swap-ready HTML because HTMX success paths expect a fragment, not JSON.
 func WriteHTMXOK(w http.ResponseWriter, r *http.Request, fragment string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
@@ -34,7 +31,6 @@ func WriteHTMXOK(w http.ResponseWriter, r *http.Request, fragment string) {
 	_, _ = w.Write([]byte(fragment))
 }
 
-// htmxErrorBody embeds data-code on the fragment so hosts can style errors without parsing headers.
 func htmxErrorBody(code, message string) string {
 	var b strings.Builder
 	b.WriteString(`<div id="payment-error" data-code="`)

@@ -1,4 +1,3 @@
-// Command broker wires the mmap log ingest broker with on-disk segments and Redis leader election.
 package main
 
 import (

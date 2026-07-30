@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestFetch_MaxBytesBoundary returns a partial batch when the next record exceeds maxBytes.
 func TestFetch_MaxBytesBoundary(t *testing.T) {
 	srv := NewServer("127.0.0.1:0", t.TempDir(), 1024*1024, 4096)
 	require.NoError(t, srv.Start())
@@ -34,7 +33,6 @@ func TestFetch_MaxBytesBoundary(t *testing.T) {
 	_, err = cli.Produce("tracker-logs", 0, large)
 	require.NoError(t, err)
 
-	// First record is ~44 bytes on wire (12 header + 32 payload); cap below combined size.
 	iter, err := cli.Fetch("tracker-logs", 0, 0, 60)
 	require.NoError(t, err)
 

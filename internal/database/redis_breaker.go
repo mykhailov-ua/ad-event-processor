@@ -34,9 +34,6 @@ func (s CircuitState) String() string {
 	}
 }
 
-// RedisBreaker is a lock-free circuit breaker for Redis clients. State transitions use CAS
-// to avoid mutex contention on the hot command path. database.RedisBreaker is shard-scoped;
-// ingestion.CircuitBreaker is per-worker for stream consumers.
 type RedisBreaker struct {
 	state            int32
 	failures         int64
@@ -60,8 +57,6 @@ func (b *RedisBreaker) State() CircuitState {
 	return CircuitState(atomic.LoadInt32(&b.state))
 }
 
-// Allow returns true if the breaker permits a Redis operation. Open -> HalfOpen uses CAS
-// so only one goroutine probes recovery after openTimeout.
 func (b *RedisBreaker) Allow() bool {
 	state := atomic.LoadInt32(&b.state)
 	if state == int32(CircuitClosed) {
@@ -129,14 +124,10 @@ func (b *RedisBreaker) trip() {
 	}
 }
 
-// IsNetworkOrSystemError classifies errors that indicate an unhealthy Redis transport.
-// redis.Nil and business logic errors are successes. context.Canceled is ignored so
-// shutdown or caller cancellation does not trip the breaker.
 func IsNetworkOrSystemError(err error) bool {
 	if err == nil {
 		return false
 	}
-	// Fast path: unwrapped transport errors (0 allocs; avoids errors.Is chain).
 	switch err.(type) {
 	case *net.OpError:
 		return true
@@ -168,9 +159,6 @@ func IsNetworkOrSystemError(err error) bool {
 	return false
 }
 
-// RedisCircuitBreakerHook implements redis.Hook and injects breaker logic into
-// every command dispatched through the client. It must be added via client.AddHook
-// before any commands are issued.
 type RedisCircuitBreakerHook struct {
 	breaker *RedisBreaker
 }

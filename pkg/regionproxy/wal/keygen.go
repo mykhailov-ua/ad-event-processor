@@ -8,7 +8,6 @@ import (
 	"espx/pkg/iogate"
 )
 
-// KeyGenQueueDepth returns records waiting for WalFlagDedupReady.
 func (w *WAL) KeyGenQueueDepth() int64 {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -43,7 +42,6 @@ func (w *WAL) keyGenQueueDepthLocked() int64 {
 	return pending
 }
 
-// ProcessPendingKeyGen derives factor_u for up to max records and sets WalFlagDedupReady.
 func (w *WAL) ProcessPendingKeyGen(max int, derive func(seq uint64, payload []byte) ([32]byte, error)) (int, error) {
 	if max <= 0 {
 		return 0, nil
@@ -124,7 +122,6 @@ func (w *WAL) markKeyGenReadyLocked(headerOff int64, factorU [32]byte) error {
 	return nil
 }
 
-// WaitKeyGenReady blocks until queue depth is zero or ctx is cancelled.
 func (w *WAL) WaitKeyGenReady(ctx context.Context, poll time.Duration) error {
 	if poll <= 0 {
 		poll = time.Millisecond

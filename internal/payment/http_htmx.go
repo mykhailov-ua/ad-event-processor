@@ -12,17 +12,14 @@ import (
 	"github.com/google/uuid"
 )
 
-// HTMXHandler serves cold-path UI fragments without coupling payment to the management Templ stack.
 type HTMXHandler struct {
 	service *Service
 }
 
-// NewHTMXHandler exposes cold-path UI fragments without pulling Templ or session auth into payment gRPC.
 func NewHTMXHandler(service *Service) *HTMXHandler {
 	return &HTMXHandler{service: service}
 }
 
-// RegisterRoutes keeps payment UI endpoints on the webhook sidecar for local demos and integration tests.
 func (h *HTMXHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /ui/payment/topup", h.handleTopupForm)
 	mux.HandleFunc("POST /ui/payment/intents", h.handleCreateIntent)
@@ -30,7 +27,6 @@ func (h *HTMXHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /ui/payment/return", h.handleCheckoutReturn)
 }
 
-// handleTopupForm returns a minimal form fragment so HTMX hosts can embed top-up without a separate frontend build.
 func (h *HTMXHandler) handleTopupForm(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -45,14 +41,12 @@ func (h *HTMXHandler) handleTopupForm(w http.ResponseWriter, r *http.Request) {
 </form>`))
 }
 
-// createIntentForm accepts both form posts and JSON because HTMX and API clients share the sidecar.
 type createIntentForm struct {
 	CustomerID  string  `json:"customer_id"`
 	Amount      float64 `json:"amount"`
 	AmountMicro *int64  `json:"amount_micro"`
 }
 
-// handleCreateIntent drives checkout from form or JSON because the sidecar serves both demo HTML and API clients.
 func (htmxHandler *HTMXHandler) handleCreateIntent(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -93,7 +87,6 @@ func (htmxHandler *HTMXHandler) handleCreateIntent(w http.ResponseWriter, r *htt
 	WriteHTMXOK(w, r, fragment)
 }
 
-// handleIntentStatus polls intent state for HTMX refresh loops after redirect from checkout.
 func (h *HTMXHandler) handleIntentStatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -118,7 +111,6 @@ func (h *HTMXHandler) handleIntentStatus(w http.ResponseWriter, r *http.Request)
 	WriteHTMXOK(w, r, fragment)
 }
 
-// parseCreateIntentInput accepts form and JSON bodies because HTMX posts differ from management admin JSON.
 func parseCreateIntentInput(contentType string, body []byte) (uuid.UUID, int64, error) {
 	if len(body) == 0 {
 		return uuid.Nil, 0, errValidation("invalid request body")
@@ -177,11 +169,8 @@ func parseCreateIntentInput(contentType string, body []byte) (uuid.UUID, int64, 
 	return customerID, amountMicro, nil
 }
 
-// validationError tags client input failures for MapHTMXError without leaking internal error types.
 type validationError string
 
-// Error implements error so validation failures flow through MapHTMXError without importing gRPC types.
 func (e validationError) Error() string { return string(e) }
 
-// errValidation tags client input errors for stable HTMX response mapping.
 func errValidation(msg string) error { return validationError(msg) }

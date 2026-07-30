@@ -15,7 +15,6 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-// PostgresConfig tunes the ephemeral Postgres testcontainer.
 type PostgresConfig struct {
 	DatabaseName  string
 	Username      string

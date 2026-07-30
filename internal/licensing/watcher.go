@@ -23,7 +23,7 @@ type LicenseWatcher struct {
 	pool       *pgxpool.Pool
 	rdb        redis.UniversalClient
 	client     *LicenseClient
-	mode       string // file | online
+	mode       string
 	path       string
 	spoolDir   string
 	serverURL  string
@@ -47,7 +47,7 @@ func NewLicenseWatcher(pool *pgxpool.Pool, rdb redis.UniversalClient, pubKey ed2
 	}
 	path := os.Getenv("ESPX_LICENSE_PATH")
 	if path == "" {
-		path = "license.jwt" // Default for dev
+		path = "license.jwt"
 	}
 	spoolDir := os.Getenv("ESPX_LICENSE_SPOOL_DIR")
 	if spoolDir == "" {
@@ -119,7 +119,6 @@ func (w *LicenseWatcher) Start(ctx context.Context) error {
 		slog.Error("license spool open failed", "error", err)
 	}
 
-	// Recover durable WAL token before first verify.
 	if w.spool != nil {
 		if token, err := w.spool.LatestToken(); err != nil {
 			slog.Warn("license spool recovery failed", "error", err)
@@ -132,12 +131,10 @@ func (w *LicenseWatcher) Start(ctx context.Context) error {
 		}
 	}
 
-	// 1. Initial verify on startup
 	if err := w.verifyAndReload(ctx); err != nil {
 		slog.Error("Initial license verification failed", "error", err)
 	}
 
-	// 2. Ticker loop
 	go func() {
 		ticker := time.NewTicker(w.interval)
 		defer ticker.Stop()
@@ -161,7 +158,6 @@ func (w *LicenseWatcher) verifyAndReload(ctx context.Context) error {
 	var tokenStr string
 	var err error
 
-	// If mode is online, try performing heartbeat first
 	if w.mode == "online" && w.licenseKey != "" {
 		tokenStr, err = w.performOnlineHeartbeat(ctx)
 		if err != nil {
@@ -172,7 +168,6 @@ func (w *LicenseWatcher) verifyAndReload(ctx context.Context) error {
 		}
 	}
 
-	// Fallback to local file if online failed or is in file mode
 	if tokenStr == "" {
 		tokenStr, err = w.readLocalFile()
 		if err != nil {
@@ -184,7 +179,6 @@ func (w *LicenseWatcher) verifyAndReload(ctx context.Context) error {
 		}
 	}
 
-	// Verify JWT
 	claims, err := VerifyJWT(tokenStr, w.pubKey)
 	if err != nil {
 		w.mu.Lock()
@@ -194,7 +188,6 @@ func (w *LicenseWatcher) verifyAndReload(ctx context.Context) error {
 		return fmt.Errorf("license signature verification failed: %w", err)
 	}
 
-	// Determine state
 	state := DetermineState(claims, time.Now(), false)
 
 	w.mu.Lock()
@@ -204,7 +197,6 @@ func (w *LicenseWatcher) verifyAndReload(ctx context.Context) error {
 	w.lastRefreshError = nil
 	w.mu.Unlock()
 
-	// If state is EXPIRED, we don't proceed with DB/Redis updates of active state but record the state
 	err = w.updateDatabaseAndRedis(ctx, tokenStr, claims, state)
 	if err != nil {
 		slog.Error("Failed to update license status in DB/Redis", "error", err)
@@ -215,11 +207,10 @@ func (w *LicenseWatcher) verifyAndReload(ctx context.Context) error {
 }
 
 func (w *LicenseWatcher) performOnlineHeartbeat(ctx context.Context) (string, error) {
-	// First read cached token to extract deployment ID
 	cachedToken, err := w.readLocalFile()
 	var deploymentID string
 	var fingerprint string
-	var uptime int64 = 300 // simulated or tracked uptime
+	var uptime int64 = 300
 
 	if err == nil {
 		claims, err := DecodeUnverified(cachedToken)
@@ -235,13 +226,11 @@ func (w *LicenseWatcher) performOnlineHeartbeat(ctx context.Context) (string, er
 
 	var token string
 	if cachedToken == "" {
-		// Try activation
 		token, err = w.client.Activate(ctx, deploymentID, fingerprint)
 		if err != nil {
 			return "", err
 		}
 	} else {
-		// Try heartbeat
 		var notModified bool
 		token, notModified, err = w.client.Heartbeat(ctx, deploymentID, fingerprint, uptime)
 		if err != nil {
@@ -252,7 +241,6 @@ func (w *LicenseWatcher) performOnlineHeartbeat(ctx context.Context) (string, er
 		}
 	}
 
-	// Save received token to durable spool and file cache.
 	if err := w.persistLicenseToken(token); err != nil {
 		slog.Error("Failed to cache license token", "error", err)
 	}
@@ -293,7 +281,6 @@ func (w *LicenseWatcher) readLocalFile() (string, error) {
 }
 
 func (w *LicenseWatcher) updateDatabaseAndRedis(ctx context.Context, token string, claims *LicenseClaims, state LicenseState) error {
-	// 1. Update database: billing.license_status
 	depID, err := uuid.Parse(claims.DeploymentID)
 	if err != nil {
 		return fmt.Errorf("invalid deployment id in claims: %w", err)
@@ -333,7 +320,6 @@ func (w *LicenseWatcher) updateDatabaseAndRedis(ctx context.Context, token strin
 		return fmt.Errorf("database update failed: %w", err)
 	}
 
-	// 2. Update Redis snapshot: entitlement:deployment
 	redisKey := "entitlement:deployment"
 	features := claims.Features.Normalized()
 	fields := map[string]any{
@@ -356,7 +342,6 @@ func (w *LicenseWatcher) updateDatabaseAndRedis(ctx context.Context, token strin
 		return fmt.Errorf("redis HMSet failed: %w", err)
 	}
 
-	// Publish registry refresh notification
 	_ = w.rdb.Publish(ctx, "campaigns:update", "license_update")
 
 	return nil

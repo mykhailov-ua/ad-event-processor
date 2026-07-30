@@ -19,7 +19,6 @@ const (
 	defaultProcessorWeightCeil  = 0.95
 )
 
-// ProcessorWeightConfig tunes per-instance stream consume cadence from published weights.
 type ProcessorWeightConfig struct {
 	NodeID        string
 	InstanceLabel string
@@ -30,7 +29,6 @@ type ProcessorWeightConfig struct {
 	WeightsURL    string
 }
 
-// ProcessorWeightConfigFromApp builds controller settings from service config.
 func ProcessorWeightConfigFromApp(cfg *config.Config) ProcessorWeightConfig {
 	nodeID := cfg.NodeID
 	if nodeID == "" {
@@ -54,7 +52,6 @@ func ProcessorWeightConfigFromApp(cfg *config.Config) ProcessorWeightConfig {
 	}
 }
 
-// ProcessorWeightController applies regional capacity weights to stream read cadence.
 type ProcessorWeightController struct {
 	cfg    ProcessorWeightConfig
 	pgGate *ProcessorPgGate
@@ -64,7 +61,6 @@ type ProcessorWeightController struct {
 	httpClient  *http.Client
 }
 
-// processorWeightsResponse mirrors GET /ops/processor-weights JSON.
 type processorWeightsResponse struct {
 	Epoch    int64                      `json:"epoch"`
 	EpochLag int64                      `json:"epoch_lag"`
@@ -76,7 +72,6 @@ type processorWeightHTTPEntry struct {
 	Weight float64 `json:"weight"`
 }
 
-// NewProcessorWeightController builds a weight snapshot for one processor instance.
 func NewProcessorWeightController(cfg ProcessorWeightConfig, pgGate *ProcessorPgGate, udp *UDPControl) *ProcessorWeightController {
 	if cfg.Floor <= 0 {
 		cfg.Floor = defaultProcessorWeightFloor
@@ -103,7 +98,6 @@ func NewProcessorWeightController(cfg ProcessorWeightConfig, pgGate *ProcessorPg
 	return c
 }
 
-// Start refreshes published weight on a fixed epoch interval.
 func (c *ProcessorWeightController) Start(ctx context.Context) {
 	if c == nil {
 		return
@@ -192,7 +186,6 @@ func (c *ProcessorWeightController) pgDrainActive() bool {
 	return c.pgGate.WaitEMA() >= c.cfg.DrainPgWait
 }
 
-// LocalWeight returns the active consume weight in [floor, ceil].
 func (c *ProcessorWeightController) LocalWeight() float64 {
 	if c == nil {
 		return 1.0
@@ -200,7 +193,6 @@ func (c *ProcessorWeightController) LocalWeight() float64 {
 	return math.Float64frombits(c.localWeight.Load())
 }
 
-// InstanceLabel returns the Prometheus instance label for this controller.
 func (c *ProcessorWeightController) InstanceLabel() string {
 	if c == nil {
 		return "local"
@@ -208,7 +200,6 @@ func (c *ProcessorWeightController) InstanceLabel() string {
 	return c.cfg.InstanceLabel
 }
 
-// EffectiveReadCount scales XREADGROUP batch size by local weight (minimum 1).
 func (c *ProcessorWeightController) EffectiveReadCount(batchSize int) int64 {
 	if c == nil {
 		return int64(batchSize)
@@ -224,7 +215,6 @@ func (c *ProcessorWeightController) EffectiveReadCount(batchSize int) int64 {
 	return int64(n)
 }
 
-// ThrottleBeforeRead sleeps proportionally when weight is below 1 to reduce read cadence.
 func (c *ProcessorWeightController) ThrottleBeforeRead(ctx context.Context) {
 	if c == nil {
 		return
@@ -249,7 +239,6 @@ func (c *ProcessorWeightController) ThrottleBeforeRead(ctx context.Context) {
 	}
 }
 
-// SetWeightForTest overrides local weight (tests only).
 func (c *ProcessorWeightController) SetWeightForTest(w float64) {
 	if c == nil {
 		return

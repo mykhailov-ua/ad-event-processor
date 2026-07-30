@@ -21,7 +21,6 @@ type mockRedisForRecon struct {
 	data map[string]int64
 }
 
-// newMockRedisForRecon exists so recon tests can exercise Lua budget adjustments without a live Redis server.
 func newMockRedisForRecon() *mockRedisForRecon {
 	return &mockRedisForRecon{data: make(map[string]int64)}
 }
@@ -58,7 +57,6 @@ func (m *mockRedisForRecon) getVal(key string) int64 {
 	return m.data[key]
 }
 
-// TestRecon_RaceConcurrentAdjustments guards concurrent recon deltas remain linear and never negative.
 func TestRecon_RaceConcurrentAdjustments(t *testing.T) {
 	rdb := newMockRedisForRecon()
 	campID := uuid.New()
@@ -92,7 +90,6 @@ func TestRecon_RaceConcurrentAdjustments(t *testing.T) {
 	assert.GreaterOrEqual(t, final, int64(0), "budget must never go negative from recon corrections")
 }
 
-// TestRecon_AdjustRealRedis exercises production recon Lua against live Redis (not mock Eval).
 func TestRecon_AdjustRealRedis(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration test")
@@ -150,7 +147,6 @@ func TestRecon_AdjustRealRedis(t *testing.T) {
 	})
 }
 
-// TestRecon_EdgeCases guards large negative recon deltas clamp budget to zero instead of going negative.
 func TestRecon_EdgeCases(t *testing.T) {
 	t.Run("LargeNegativeDeltaIsClampedByLua", func(t *testing.T) {
 		rdb := newMockRedisForRecon()
@@ -169,7 +165,6 @@ func TestRecon_EdgeCases(t *testing.T) {
 	})
 }
 
-// TestRecon_LedgerTypeSecurity guards only approved ledger types are accepted for balance mutations.
 func TestRecon_LedgerTypeSecurity(t *testing.T) {
 	allowedTypes := []string{"TOPUP", "FEE", "RECONCILIATION_ADJUST", "REFUND"}
 	for _, typ := range allowedTypes {
@@ -178,7 +173,6 @@ func TestRecon_LedgerTypeSecurity(t *testing.T) {
 
 }
 
-// BenchmarkRecon_AtomicAdjustment measures recon Lua adjustment loop overhead.
 func BenchmarkRecon_AtomicAdjustment(b *testing.B) {
 	rdb := newMockRedisForRecon()
 	campID := uuid.New()

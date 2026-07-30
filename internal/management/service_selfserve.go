@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// EnforceSelfServeCreateLimits guards tenant quotas before a new campaign reserves budget.
 func (s *Service) EnforceSelfServeCreateLimits(ctx context.Context, customerID uuid.UUID, budgetMicro int64) error {
 	if s.cfg == nil {
 		return nil

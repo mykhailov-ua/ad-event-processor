@@ -11,6 +11,6 @@ Closed items: `docs/DEVELOPMENT.md` (Completed roadmap).
 
 Architecture rationale (not backlog): `.cursor/RESTRUCTURE_PLAN.md`.
 
-Fault/resilience catalog: `.cursor/rules/chaos.mdc`.
+Fault/resilience catalog: `.cursor/rules/fault-resilience.mdc`.
 
 Do not use `docs/MILESTONE.md` for open work — it is historical; `GAP_SPECS.md` is canonical.

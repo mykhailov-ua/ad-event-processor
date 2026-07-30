@@ -5,17 +5,14 @@ import (
 	"strings"
 )
 
-// Domain groups management sources by filename prefix (GAP-ENG-01 / R1c).
-// The package stays flat and deployable as one binary; domains are navigational only.
 type Domain struct {
 	ID           string
 	Prefixes     []string
 	Files        []string
-	LogicFiles   []string // pure business-logic files subject to the 80% coverage gate
+	LogicFiles   []string
 	TestPrefixes []string
 }
 
-// ManagementDomains is the canonical domain map for internal/management.
 var ManagementDomains = []Domain{
 	{ID: "core", Files: []string{
 		"service.go", "handler.go", "middleware.go", "workers.go",
@@ -67,7 +64,6 @@ var ManagementDomains = []Domain{
 
 const domainBusinessLogicCoverageMin = 0.80
 
-// FileDomain returns the domain ID for a production .go filename in internal/management.
 func FileDomain(name string) string {
 	base := filepath.Base(name)
 	if strings.HasSuffix(base, "_test.go") {
@@ -81,7 +77,6 @@ func FileDomain(name string) string {
 	return ""
 }
 
-// IsBusinessLogicFile reports whether filename holds domain rules (not transport-only).
 func IsBusinessLogicFile(name string) bool {
 	base := filepath.Base(name)
 	if strings.HasSuffix(base, "_test.go") {
@@ -101,7 +96,6 @@ func IsBusinessLogicFile(name string) bool {
 	}
 }
 
-// DomainTestFiles returns test filenames associated with a domain.
 func DomainTestFiles(domainID string) []string {
 	d := domainByID(domainID)
 	if d == nil {
@@ -165,7 +159,6 @@ func (d Domain) testFileStems() []string {
 	return out
 }
 
-// domainLogicFiles returns filenames in domain subject to the coverage gate.
 func domainLogicFiles(domainID string) map[string]bool {
 	d := domainByID(domainID)
 	if d == nil || len(d.LogicFiles) == 0 {

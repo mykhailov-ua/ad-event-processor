@@ -14,33 +14,29 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// Promoter performs standby promotion and returns the writable DSN.
 type Promoter interface {
 	Promote(ctx context.Context) (dsn string, err error)
 }
 
-// PromoteFunc adapts a function to Promoter.
 type PromoteFunc func(ctx context.Context) (string, error)
 
 func (f PromoteFunc) Promote(ctx context.Context) (string, error) {
 	return f(ctx)
 }
 
-// HealthCheck probes whether the primary Postgres instance accepts connections.
 type HealthCheck func(ctx context.Context) error
 
-// Config tunes global Postgres failover coordination.
 type Config struct {
-	NodeID            string
-	RedisURL          string
-	PrimaryDSN        string
-	StandbyDSN        string
-	HealthInterval    time.Duration
-	HealthTimeout     time.Duration
-	FailThreshold     int
-	MaxConns          int
-	MinConns          int
-	Coord             server.CoordConfig
+	NodeID         string
+	RedisURL       string
+	PrimaryDSN     string
+	StandbyDSN     string
+	HealthInterval time.Duration
+	HealthTimeout  time.Duration
+	FailThreshold  int
+	MaxConns       int
+	MinConns       int
+	Coord          server.CoordConfig
 }
 
 func (c Config) normalized() Config {
@@ -66,7 +62,6 @@ func (c Config) normalized() Config {
 	return out
 }
 
-// Coordinator elects a failover leader via broker coordination and promotes the sync standby.
 type Coordinator struct {
 	cfg       Config
 	host      *CoordHost
@@ -82,7 +77,6 @@ type Coordinator struct {
 	wg        sync.WaitGroup
 }
 
-// NewCoordinator wires Redis leader election to global Postgres health monitoring.
 func NewCoordinator(cfg Config, promoter Promoter, health HealthCheck) (*Coordinator, error) {
 	cfg = cfg.normalized()
 	if cfg.NodeID == "" {
@@ -113,7 +107,6 @@ func NewCoordinator(cfg Config, promoter Promoter, health HealthCheck) (*Coordin
 	}, nil
 }
 
-// Start runs leader election and primary health monitoring loops.
 func (c *Coordinator) Start() {
 	c.coord.Start()
 	c.wg.Add(1)
@@ -123,7 +116,6 @@ func (c *Coordinator) Start() {
 	}()
 }
 
-// Stop tears down coordination goroutines.
 func (c *Coordinator) Stop() {
 	c.closeOnce.Do(func() {
 		close(c.closeCh)
@@ -132,12 +124,10 @@ func (c *Coordinator) Stop() {
 	c.wg.Wait()
 }
 
-// Redis returns the coordination client.
 func (c *Coordinator) Redis() redis.UniversalClient {
 	return c.rdb
 }
 
-// IsLeader reports whether this node may execute failover.
 func (c *Coordinator) IsLeader() bool {
 	return c.coord.IsLeader(c.host.TopicKey())
 }
@@ -228,7 +218,6 @@ func (c *Coordinator) executeFailover() error {
 	return nil
 }
 
-// PingDSN returns a health check that pings the given Postgres DSN.
 func PingDSN(dsn string) HealthCheck {
 	return func(ctx context.Context) error {
 		if dsn == "" {

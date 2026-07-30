@@ -106,7 +106,6 @@ func TestConfigureTrackRtb_skipLuaBudget(t *testing.T) {
 }
 
 func TestBuildRtbTargeting_OpenRTB3AndLegacy(t *testing.T) {
-	// 1. OpenRTB 3.0 payload
 	openrtbPayload := []byte(`{
   "openrtb": {
     "ver": "3.0",
@@ -138,11 +137,10 @@ func TestBuildRtbTargeting_OpenRTB3AndLegacy(t *testing.T) {
 
 	targetingOpenRTB := buildRtbTargeting(evtOpenRTB, []byte("desktop"), 0, nil)
 	assert.Equal(t, uint32(12345), targetingOpenRTB.GeoHash)
-	assert.Equal(t, uint8(2), targetingOpenRTB.DeviceType) // mapped from 4 (Phone) to 2 (Mobile)
+	assert.Equal(t, uint8(2), targetingOpenRTB.DeviceType)
 	assert.Equal(t, uint64(8), targetingOpenRTB.CategoryMask)
 	assert.Equal(t, int64(1500000), targetingOpenRTB.PublisherFloorMicro)
 
-	// 2. Legacy payload
 	legacyPayload := []byte(`{"category_mask":4,"bid_micro":100}`)
 	evtLegacy := &campaignmodel.Event{
 		Payload:           legacyPayload,
@@ -152,11 +150,10 @@ func TestBuildRtbTargeting_OpenRTB3AndLegacy(t *testing.T) {
 
 	targetingLegacy := buildRtbTargeting(evtLegacy, []byte("mobile"), 0, nil)
 	assert.Equal(t, uint32(12345), targetingLegacy.GeoHash)
-	assert.Equal(t, uint8(2), targetingLegacy.DeviceType) // mapped from "mobile"
+	assert.Equal(t, uint8(2), targetingLegacy.DeviceType)
 	assert.Equal(t, uint64(4), targetingLegacy.CategoryMask)
 	assert.Equal(t, int64(100), targetingLegacy.PublisherFloorMicro)
 
-	// 3. Zero-allocation check
 	allocs := testing.AllocsPerRun(1000, func() {
 		_ = buildRtbTargeting(evtOpenRTB, []byte("desktop"), 0, nil)
 	})

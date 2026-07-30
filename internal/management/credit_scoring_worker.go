@@ -10,17 +10,14 @@ import (
 	"github.com/google/uuid"
 )
 
-// CreditScoringWorker recalculates customer overdraft limits from payment history on a schedule.
 type CreditScoringWorker struct {
 	svc *Service
 }
 
-// NewCreditScoringWorker binds overdraft evaluation to the management service.
 func NewCreditScoringWorker(svc *Service) *CreditScoringWorker {
 	return &CreditScoringWorker{svc: svc}
 }
 
-// Start runs overdraft evaluation on a fixed interval until the context is cancelled.
 func (w *CreditScoringWorker) Start(ctx context.Context, interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -37,7 +34,6 @@ func (w *CreditScoringWorker) Start(ctx context.Context, interval time.Duration)
 	}
 }
 
-// EvaluateAll recomputes and persists overdraft limits for every customer eligible for scoring.
 func (w *CreditScoringWorker) EvaluateAll(ctx context.Context) error {
 	opCtx, cancel := workerContext(ctx, workerBatchTimeout)
 	defer cancel()
@@ -65,7 +61,6 @@ func (w *CreditScoringWorker) EvaluateAll(ctx context.Context) error {
 	return nil
 }
 
-// calculateOverdraft derives allowed overdraft from account age, top-ups, and PG-Redis recon lag (M5.8).
 func (w *CreditScoringWorker) calculateOverdraft(ageDays float64, topupSum int64, reconLagMicro int64) int64 {
 	if ageDays < w.svc.cfg.CreditScoringMinAgeDays {
 		return 0

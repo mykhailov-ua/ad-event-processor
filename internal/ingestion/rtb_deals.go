@@ -27,7 +27,6 @@ func rtbDealRowToData(row db.RtbDeal) rtb.DealData {
 	}
 }
 
-// ReloadRtbDeals loads all deals from Postgres and rebuilds the in-memory deal index.
 func ReloadRtbDeals(ctx context.Context, q *db.Queries, catalog *RtbCatalog) error {
 	if catalog == nil {
 		return nil
@@ -44,7 +43,6 @@ func ReloadRtbDeals(ctx context.Context, q *db.Queries, catalog *RtbCatalog) err
 	return nil
 }
 
-// ReloadRtbCatalog reloads deals and rebuilds the campaign auction catalog.
 func ReloadRtbCatalog(
 	ctx context.Context,
 	q *db.Queries,
@@ -67,7 +65,6 @@ func ReloadRtbCatalog(
 	return nil
 }
 
-// StartRtbCatalogReloadWatch subscribes to Redis and rebuilds deals plus campaign catalog on reload signals.
 func StartRtbCatalogReloadWatch(
 	ctx context.Context,
 	q *db.Queries,
@@ -136,7 +133,6 @@ func StartRtbCatalogReloadWatch(
 	}()
 }
 
-// RtbCatalogReloadChannel returns the Redis pubsub channel for deal catalog reload.
 func RtbCatalogReloadChannel(cfg *config.Config) string {
 	if cfg != nil && cfg.RtbCatalogReloadChannel != "" {
 		return cfg.RtbCatalogReloadChannel

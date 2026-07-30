@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-// tokenBucket limits sustained request rate with optional burst capacity.
 type tokenBucket struct {
 	mu           sync.Mutex
 	tokens       float64

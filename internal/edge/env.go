@@ -1,4 +1,3 @@
-// Package edge holds cold-path helpers for ingress hardening binaries and BPF sync.
 package edge
 
 import (
@@ -7,7 +6,6 @@ import (
 	"time"
 )
 
-// EnvOr returns the environment variable value or fallback when unset.
 func EnvOr(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
@@ -15,7 +13,6 @@ func EnvOr(key, fallback string) string {
 	return fallback
 }
 
-// EnvDuration parses a duration environment variable or returns fallback on missing/invalid input.
 func EnvDuration(key string, fallback time.Duration) time.Duration {
 	raw := os.Getenv(key)
 	if raw == "" {
@@ -28,7 +25,6 @@ func EnvDuration(key string, fallback time.Duration) time.Duration {
 	return d
 }
 
-// FirstRedisAddr returns shard-0 host:port from REDIS_ADDRS or REDIS_HOST/REDIS_PORT.
 func FirstRedisAddr() string {
 	if addrs := os.Getenv("REDIS_ADDRS"); addrs != "" {
 		first := strings.TrimSpace(strings.Split(addrs, ",")[0])

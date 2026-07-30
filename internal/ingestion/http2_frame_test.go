@@ -32,8 +32,8 @@ func TestHTTP2DecodeFrameHeader_ZeroAlloc(t *testing.T) {
 func TestHTTP2HpackStaticPostTrack(t *testing.T) {
 	var req parsedHTTPRequest
 	block := []byte{
-		0x83,                                     // :method POST (index 3)
-		0x04, 0x06, '/', 't', 'r', 'a', 'c', 'k', // :path /track (name index 4, literal value)
+		0x83,
+		0x04, 0x06, '/', 't', 'r', 'a', 'c', 'k',
 	}
 	require.NoError(t, h2DecodeHeadersBlock(block, &req))
 	assert.Equal(t, "POST", string(req.Method))

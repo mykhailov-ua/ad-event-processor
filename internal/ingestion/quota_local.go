@@ -12,8 +12,6 @@ const (
 	localBlockDuration  = 100 * time.Millisecond
 )
 
-// LocalQuotaCache blocks hot campaigns in-process after distributed quota exhaustion.
-// Each slot is one atomic.Uint64: high 32 bits = campaign hash, low 32 = blocked mono ms.
 type LocalQuotaCache struct {
 	slots [localBlockCacheSize]atomic.Uint64
 }
@@ -42,7 +40,6 @@ func (c *LocalQuotaCache) IsBlocked(id uuid.UUID, nowNano int64) bool {
 	return nowMs-blockedMs < uint32(localBlockDuration/time.Millisecond)
 }
 
-// Block registers a campaign as locally blocked for localBlockDuration.
 func (c *LocalQuotaCache) Block(id uuid.UUID, nowNano int64) {
 	h := crc32Castagnoli(&id)
 	slotIdx := h % localBlockCacheSize

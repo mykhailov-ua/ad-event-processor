@@ -22,23 +22,19 @@ var (
 	numKeys1Any   any = 1
 )
 
-// evalWirePool recycles EVALSHA wire argument slices (3 + keys + argv).
 var evalWirePool = sync.Pool{
 	New: func() any {
-		// Pre-length to unified-filter wire size (3 + 19 keys + 34 argv).
 		s := make([]any, 56, 64)
 		return &s
 	},
 }
 
-// evalCmdPool recycles *redis.Cmd shells for unified-filter EVALSHA round trips.
 var evalCmdPool = sync.Pool{
 	New: func() any {
 		return redis.NewCmd(context.Background())
 	},
 }
 
-// redisCmdHead mirrors the exported redis.Cmd prefix through cmdType for in-place reset.
 type redisCmdHead struct {
 	ctx         context.Context
 	args        []any

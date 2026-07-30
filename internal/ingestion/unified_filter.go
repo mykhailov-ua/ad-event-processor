@@ -21,19 +21,15 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-// unifiedFilterLua holds the Redis script that enforces budget, pacing, dedup, and stream enqueue in one round trip.
-//
 //go:embed unified-filter.lua
 var unifiedFilterLua string
 
 var unifiedFilterLuaAny any
 
-// StringVal wraps a string for zero-copy Redis binary marshaling in Lua args.
 type StringVal struct {
 	s string
 }
 
-// MarshalBinary exposes the wrapped string bytes to go-redis without copying.
 func (sv *StringVal) MarshalBinary() ([]byte, error) {
 	if len(sv.s) == 0 {
 		return nil, nil
@@ -41,7 +37,6 @@ func (sv *StringVal) MarshalBinary() ([]byte, error) {
 	return unsafe.Slice(unsafe.StringData(sv.s), len(sv.s)), nil
 }
 
-// UnifiedStringWrappers groups pooled string adapters passed as Lua arguments.
 type UnifiedStringWrappers struct {
 	clickID     StringVal
 	evtType     StringVal
@@ -59,7 +54,6 @@ var (
 	fcapIgnoredKeyVal    = StringVal{s: "fcap:ignored"}
 )
 
-// unifiedCheckScratch holds pooled buffers for one UnifiedFilter.Check without defer.
 type unifiedCheckScratch struct {
 	wDup, wIdem, wDate, wDS, wFcap, wImpTS, wQuota, wRefillLock, wFence, wFrozen bufWrapper
 	wDeadlineMono, wNowMono                                                      bufWrapper
@@ -98,7 +92,6 @@ var unifiedScratchPool = sync.Pool{
 func (s *unifiedCheckScratch) acquire() {}
 func (s *unifiedCheckScratch) release() {}
 
-// appendDate writes pacing date keys without time.Format allocations in unified filter Lua setup.
 func appendDate(dst []byte, t time.Time) []byte {
 	year, month, day := t.Date()
 	return append(dst,
@@ -113,16 +106,13 @@ func appendDate(dst []byte, t time.Time) []byte {
 	)
 }
 
-// zeroAny and oneAny are reused Lua numeric flag arguments.
 var (
 	zeroAny any = 0
 	oneAny  any = 1
 )
 
-// hourAnyCache pre-boxes hour integers passed to the unified filter Lua script.
 var hourAnyCache [25]any
 
-// init fills hourAnyCache so Lua args avoid per-request boxing allocations.
 func init() {
 	unifiedFilterLuaAny = unifiedFilterLua
 	budgetFastLuaAny = budgetFastLua
@@ -134,12 +124,10 @@ func init() {
 	}
 }
 
-// DBHealthChecker supports SLA sentinel latency probes against Postgres.
 type DBHealthChecker interface {
 	Ping(ctx context.Context) error
 }
 
-// UnifiedFilter runs budget, pacing, dedup, and stream enqueue in one Redis Lua round trip.
 type UnifiedFilter struct {
 	rdbs                     []redis.UniversalClient
 	sharder                  Sharder
@@ -211,11 +199,10 @@ type UnifiedFilter struct {
 	regionCode               uint8
 	evalPinWorkers           int
 	evalPins                 *filterEvalPin
-	breakers                 []*database.RedisBreaker // M14-04 shard-0 outage reroute
-	filterSlowNs             int64                    // M14-17 FILTER_SLOW_MS as nanoseconds; 0 disables
+	breakers                 []*database.RedisBreaker
+	filterSlowNs             int64
 }
 
-// SetFilterSlowMs configures EVALSHA slow-script log threshold (M14-17). Default 5 ms.
 func (f *UnifiedFilter) SetFilterSlowMs(ms int) {
 	if ms <= 0 {
 		f.filterSlowNs = 0
@@ -224,18 +211,15 @@ func (f *UnifiedFilter) SetFilterSlowMs(ms int) {
 	f.filterSlowNs = int64(ms) * int64(time.Millisecond)
 }
 
-// SetPGFallbackAllowed toggles Postgres budget reload on Redis cache miss (disabled in production).
 func (f *UnifiedFilter) SetPGFallbackAllowed(allowed bool) {
 	f.pgFallbackAllowed = allowed
 }
 
-// SetTTCMin configures click fraud time-to-click thresholds for the Lua script.
 func (f *UnifiedFilter) SetTTCMin(d time.Duration) {
 	f.ttcMinMsAny = d.Milliseconds()
 	f.impTsTTLAny = int((10 * time.Minute).Seconds())
 }
 
-// SetTTCFailClosed toggles strict TTC enforcement when impression timestamps are missing.
 func (f *UnifiedFilter) SetTTCFailClosed(v bool) {
 	if v {
 		f.ttcFailClosedAny = oneAny
@@ -244,7 +228,6 @@ func (f *UnifiedFilter) SetTTCFailClosed(v bool) {
 	}
 }
 
-// SetSkipBudgetDebit skips Lua campaign/customer/daily debits when rtb owns authoritative spend.
 func (f *UnifiedFilter) SetSkipBudgetDebit(skip bool) {
 	if skip {
 		f.skipBudgetDebitAny = oneAny
@@ -253,17 +236,14 @@ func (f *UnifiedFilter) SetSkipBudgetDebit(skip bool) {
 	}
 }
 
-// SetGeoProvider attaches GeoIP lookup for bid floor enforcement before Lua.
 func (f *UnifiedFilter) SetGeoProvider(geo GeoProvider) {
 	f.geo = geo
 }
 
-// SetGeoBidFloor registers a country-specific minimum bid for pre-Lua validation.
 func (f *UnifiedFilter) SetGeoBidFloor(country string, floor int64) {
 	f.geoFloors.Store(country, floor)
 }
 
-// parseBidMicro reads bid_micro from JSON payloads without full unmarshaling on the track path.
 func parseBidMicro(payload []byte) int64 {
 	n := len(payload)
 	if n < 11 {
@@ -308,7 +288,6 @@ func parseBidMicro(payload []byte) int64 {
 	return 0
 }
 
-// NewUnifiedFilter wires sharded Redis clients, registry, and budget reload paths.
 func NewUnifiedFilter(
 	rdbs []redis.UniversalClient,
 	sharder Sharder,
@@ -371,23 +350,18 @@ func NewUnifiedFilter(
 	}
 }
 
-// SetMetricsSampleMask configures downsampling for per-campaign Redis observability counters.
 func (f *UnifiedFilter) SetMetricsSampleMask(mask int) {
 	f.redisObservability.sampleMask = histogramSampleMaskFromConfig(mask)
 }
 
-// SetRegionCode scopes consolidated ingress counters to a regional cell (M9-02).
 func (f *UnifiedFilter) SetRegionCode(code uint8) {
 	f.regionCode = code
 }
 
-// SetLuaFastPathEnabled toggles Tier B budget-fast.lua routing for eligible events.
 func (f *UnifiedFilter) SetLuaFastPathEnabled(v bool) {
 	f.fastPathEnabled.Store(v)
 }
 
-// SetQuotaConfig enables distributed quota keys in unified-filter.lua.
-// mode off | shadow | live; off keeps legacy budget:campaign-only path.
 func (f *UnifiedFilter) SetQuotaConfig(mode string, chunkSize int64, thresholdPct int) {
 	f.quotaMode = mode
 	switch mode {
@@ -403,7 +377,6 @@ func (f *UnifiedFilter) SetQuotaConfig(mode string, chunkSize int64, thresholdPc
 	f.quotaRefillThresholdPctAny = thresholdPct
 }
 
-// SetSLATargets configures automatic spend throttling when DB latency exceeds SLA.
 func (f *UnifiedFilter) SetSLATargets(p95, recovery float64, stable time.Duration, alpha float64) {
 	f.p95ThresholdMs = p95
 	f.recoveryEmaMs = recovery
@@ -411,7 +384,6 @@ func (f *UnifiedFilter) SetSLATargets(p95, recovery float64, stable time.Duratio
 	f.emaAlpha = alpha
 }
 
-// ResizeTrackers reallocates the SLA latency sample ring used by the sentinel.
 func (f *UnifiedFilter) ResizeTrackers(size int) {
 	f.latencyMu.Lock()
 	defer f.latencyMu.Unlock()
@@ -419,12 +391,10 @@ func (f *UnifiedFilter) ResizeTrackers(size int) {
 	f.latencyIdx = 0
 }
 
-// SetDBHealthChecker attaches the Postgres ping target for SLA sentinel monitoring.
 func (f *UnifiedFilter) SetDBHealthChecker(checker DBHealthChecker) {
 	f.dbHealth = checker
 }
 
-// StartSLASentinel runs a background loop that toggles Redis SLA penalty flags.
 func (f *UnifiedFilter) StartSLASentinel(ctx context.Context, interval time.Duration) {
 	go func() {
 		ticker := time.NewTicker(interval)
@@ -503,7 +473,6 @@ func (f *UnifiedFilter) StartSLASentinel(ctx context.Context, interval time.Dura
 	}()
 }
 
-// checkGeoBidFloor rejects bids below configured country floors before Lua spend.
 func (f *UnifiedFilter) checkGeoBidFloor(evt *campaignmodel.Event) error {
 	country := evt.GeoCountry
 	if country == "" {
@@ -530,7 +499,6 @@ func (f *UnifiedFilter) checkGeoBidFloor(evt *campaignmodel.Event) error {
 	return nil
 }
 
-// Check runs unified Lua; on budget cache miss reloads from registry before Postgres.
 func (f *UnifiedFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
 	nowNano := monotonicNano()
 	if f.quotaMode == "live" && f.localQuotaCache.IsBlocked(evt.CampaignID, nowNano) {
@@ -762,7 +730,7 @@ func (f *UnifiedFilter) runUnifiedLua(
 	wrappers.userID.s = evt.UserID
 	wrappers.placementID.s = evt.PlacementID
 
-	args[0] = zeroAny // M9-03: IP rate limit enforced at edge only
+	args[0] = zeroAny
 	args[1] = zeroAny
 	args[2] = f.dupTTLAny
 	args[3] = amount
@@ -844,7 +812,6 @@ func (f *UnifiedFilter) runUnifiedLua(
 	return nil
 }
 
-// recordAcceptedSpendIfDebited emits sampled spend only when Lua debited budget.
 func (f *UnifiedFilter) recordAcceptedSpendIfDebited(shard int, campaignID uuid.UUID, amount any, sample bool) {
 	if f.skipBudgetDebitAny == oneAny {
 		return
@@ -852,7 +819,6 @@ func (f *UnifiedFilter) recordAcceptedSpendIfDebited(shard int, campaignID uuid.
 	f.redisObservability.recordAcceptedSpend(shard, campaignID, spendMicroFromAny(amount), sample)
 }
 
-// spendMicroFromAny extracts the Lua debit amount from pre-boxed int64 args.
 func spendMicroFromAny(amount any) int64 {
 	v, ok := amount.(int64)
 	if !ok {

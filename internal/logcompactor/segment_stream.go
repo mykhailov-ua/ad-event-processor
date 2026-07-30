@@ -10,7 +10,6 @@ import (
 
 const maxRecordBytes = 1 << 20
 
-// filterSegmentStream scans length-prefixed records with key-aware impression compaction.
 func filterSegmentStream(r io.Reader, sampleRate uint64, w io.Writer) (compactStats, error) {
 	kc := newKeyCompactor(sampleRate, w)
 	var hdr [4]byte
@@ -54,12 +53,10 @@ func filterSegmentStream(r io.Reader, sampleRate uint64, w io.Writer) (compactSt
 	return kc.stats, nil
 }
 
-// filterSegment scans an in-memory segment using the same key-aware compaction path.
 func filterSegment(src []byte, sampleRate uint64, dst io.Writer) (compactStats, error) {
 	return filterSegmentStream(bytes.NewReader(src), sampleRate, dst)
 }
 
-// countSegmentRecords counts length-prefixed protobuf records in a plaintext segment stream.
 func countSegmentRecords(r io.Reader) (int64, error) {
 	var count int64
 	var hdr [4]byte
@@ -87,7 +84,6 @@ func countSegmentRecords(r io.Reader) (int64, error) {
 	}
 }
 
-// verifyPlaintextSegment checks that a filtered plaintext file contains expectKept records.
 func verifyPlaintextSegment(path string, expectKept int64) error {
 	file, err := os.Open(path)
 	if err != nil {

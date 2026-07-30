@@ -9,17 +9,14 @@ import (
 	"github.com/cilium/ebpf/ringbuf"
 )
 
-// ViolationHandler processes ringbuf violation events (cold path).
 type ViolationHandler struct {
 	onEvent func(ViolationEvent) error
 }
 
-// NewViolationHandler returns a handler for violation events.
 func NewViolationHandler(onEvent func(ViolationEvent) error) *ViolationHandler {
 	return &ViolationHandler{onEvent: onEvent}
 }
 
-// Drain reads ringbuf records until idle or timeout.
 func (h *ViolationHandler) Drain(rd *ringbuf.Reader, idle time.Duration) (int, error) {
 	if rd == nil || h.onEvent == nil {
 		return 0, nil

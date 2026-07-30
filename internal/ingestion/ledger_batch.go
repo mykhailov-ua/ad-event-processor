@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// ErrInsufficientCustomerBalance is returned when a consolidated spend batch exceeds customer funds.
 var ErrInsufficientCustomerBalance = errors.New("insufficient customer balance for spend batch")
 
 const (
@@ -16,15 +15,12 @@ const (
 	maxLedgerBatchSize      = 32
 )
 
-// MaxLedgerBatchSize returns the campaign count limit per UpdateSpendBatch transaction.
 func MaxLedgerBatchSize() int {
 	return maxLedgerBatchSize
 }
 
-// ErrCampaignSpendSkipped is returned when a campaign row is locked by another flush worker.
 var ErrCampaignSpendSkipped = errors.New("campaign spend row locked")
 
-// SpendFlushItem is one campaign's consolidated Redis sync window awaiting PG commit.
 type SpendFlushItem struct {
 	CampaignID          uuid.UUID
 	AmountMicro         int64
@@ -33,18 +29,15 @@ type SpendFlushItem struct {
 	StrictFlush         bool
 }
 
-// SpendFlushOutcome records per-campaign batch flush result.
 type SpendFlushOutcome struct {
 	CampaignID uuid.UUID
-	Err        error // nil = applied or duplicate; ErrInsufficientCustomerBalance pauses delivery
+	Err        error
 }
 
-// spendBatchFlusher batches consolidated campaign spend into one Postgres transaction.
 type spendBatchFlusher interface {
 	UpdateSpendBatch(ctx context.Context, items []SpendFlushItem) ([]SpendFlushOutcome, error)
 }
 
-// pendingRollup holds one campaign's inflight Redis sync awaiting a consolidated PG flush (M12).
 type pendingRollup struct {
 	amountMicro         int64
 	txID                string

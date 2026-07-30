@@ -10,18 +10,18 @@ import (
 )
 
 type procSampleRow struct {
-	TsNs        int64  `json:"ts_ns"`
-	PID         uint32 `json:"pid"`
-	Name        string `json:"name"`
-	Role        string `json:"role"`
-	OpenFDs     uint64 `json:"open_fds"`
-	SocketFDs   uint64 `json:"socket_fds"`
-	Threads     uint64 `json:"threads"`
-	VmRSSKB     uint64 `json:"vm_rss_kb"`
-	VmHWMKB     uint64 `json:"vm_hwm_kb"`
-	RssAnonKB   uint64 `json:"rss_anon_kb"`
-	MinFlt      uint64 `json:"minflt"`
-	MajFlt      uint64 `json:"majflt"`
+	TsNs      int64  `json:"ts_ns"`
+	PID       uint32 `json:"pid"`
+	Name      string `json:"name"`
+	Role      string `json:"role"`
+	OpenFDs   uint64 `json:"open_fds"`
+	SocketFDs uint64 `json:"socket_fds"`
+	Threads   uint64 `json:"threads"`
+	VmRSSKB   uint64 `json:"vm_rss_kb"`
+	VmHWMKB   uint64 `json:"vm_hwm_kb"`
+	RssAnonKB uint64 `json:"rss_anon_kb"`
+	MinFlt    uint64 `json:"minflt"`
+	MajFlt    uint64 `json:"majflt"`
 }
 
 type procSamplePeak struct {
@@ -262,7 +262,6 @@ func splitLines(data []byte) <-chan string {
 	return ch
 }
 
-// readProcFDAndThreads counts open FDs, socket FDs, and OS threads for a process.
 func readProcFDAndThreads(pid uint32) (openFDs, socketFDs, threads uint64, err error) {
 	fdDir := fmt.Sprintf("/proc/%d/fd", pid)
 	entries, err := os.ReadDir(fdDir)

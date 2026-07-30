@@ -9,13 +9,11 @@ import (
 	"strings"
 )
 
-// Route is one HTTP route on the management JSON API.
 type Route struct {
 	Method string
 	Path   string
 }
 
-// Key returns method and path joined for set lookups.
 func (r Route) Key() string {
 	return r.Method + " " + r.Path
 }
@@ -25,7 +23,6 @@ var (
 	literalRE    = regexp.MustCompile(`\{"(GET|POST|PUT|DELETE|PATCH) (/api/v1[^"]+)"`)
 )
 
-// DiscoverAPIV1Routes scans management and adminapi handler registrations.
 func DiscoverAPIV1Routes(repoRoot string) ([]Route, error) {
 	dirs := []string{
 		filepath.Join(repoRoot, "internal", "management"),
@@ -78,7 +75,6 @@ func addRoute(seen map[string]Route, method, path string) {
 	seen[r.Key()] = r
 }
 
-// DocumentedRoutes returns discovered routes minus 501 stubs.
 func DocumentedRoutes(repoRoot string) ([]Route, error) {
 	all, err := DiscoverAPIV1Routes(repoRoot)
 	if err != nil {

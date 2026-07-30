@@ -7,7 +7,6 @@ import (
 	"espx/internal/rtb"
 )
 
-// sortedTargetCountries returns campaign target countries in stable sorted order.
 func sortedTargetCountries(camp *campaignmodel.Campaign) []string {
 	if camp == nil || len(camp.TargetCountries) == 0 {
 		return nil
@@ -20,7 +19,6 @@ func sortedTargetCountries(camp *campaignmodel.Campaign) []string {
 	return out
 }
 
-// fanOutRtbCatalogRows emits one catalog row per target country (R10 multi-country fan-out).
 func fanOutRtbCatalogRows(camp *campaignmodel.Campaign, base RtbCampaignInput) []rtb.CampaignData {
 	countries := sortedTargetCountries(camp)
 	if len(countries) == 0 {

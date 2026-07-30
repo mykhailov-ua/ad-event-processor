@@ -2,13 +2,11 @@ package perimeter
 
 import "strings"
 
-// ASNWhitelist mirrors CDN and mobile ASN bypass lists from config:values.
 type ASNWhitelist struct {
 	cdn    map[string]struct{}
 	mobile map[string]struct{}
 }
 
-// NewASNWhitelist parses comma-separated ASN lists.
 func NewASNWhitelist(cdnRaw, mobileRaw string) *ASNWhitelist {
 	return &ASNWhitelist{
 		cdn:    parseASNSet(cdnRaw),
@@ -30,7 +28,6 @@ func parseASNSet(raw string) map[string]struct{} {
 	return out
 }
 
-// IsWhitelisted reports whether asn bypasses edge blacklist enforcement.
 func (w *ASNWhitelist) IsWhitelisted(asn string) bool {
 	if w == nil || asn == "" {
 		return false

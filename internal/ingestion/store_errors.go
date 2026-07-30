@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-// isRetriableStoreError reports backend outages that must retain PEL entries and avoid DLQ routing.
 func isRetriableStoreError(err error) bool {
 	if err == nil {
 		return false

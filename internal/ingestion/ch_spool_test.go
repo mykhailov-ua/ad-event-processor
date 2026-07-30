@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCHSpool_TID05_PartialFlushRecovery verifies mmap WAL survives reopen after simulated crash.
 func TestCHSpool_TID05_PartialFlushRecovery(t *testing.T) {
 	dir := t.TempDir()
 

@@ -9,14 +9,12 @@ import (
 	"espx/internal/metrics"
 )
 
-// GeoIPWatcher hot-reloads a MaxMindProvider when the database file changes on disk.
 type GeoIPWatcher struct {
 	provider *MaxMindProvider
 	dbPath   string
 	interval time.Duration
 }
 
-// NewGeoIPWatcher polls mtime and reloads the provider without restarting the tracker.
 func NewGeoIPWatcher(provider *MaxMindProvider, dbPath string, interval time.Duration) *GeoIPWatcher {
 	if interval <= 0 {
 		interval = time.Minute
@@ -28,7 +26,6 @@ func NewGeoIPWatcher(provider *MaxMindProvider, dbPath string, interval time.Dur
 	}
 }
 
-// Start watches the database file until the context is cancelled.
 func (w *GeoIPWatcher) Start(ctx context.Context) {
 	if w == nil || w.provider == nil || w.dbPath == "" {
 		return

@@ -7,7 +7,6 @@ import (
 	db "espx/internal/ingestion/sqlc"
 )
 
-// RegionDialInput is one active region for global cross-region traffic scoring.
 type RegionDialInput struct {
 	RegionCode int16
 	Nodes      []db.NodeCapacityScore
@@ -15,7 +14,6 @@ type RegionDialInput struct {
 	State      NodeScoreState
 }
 
-// RegionDialResult is the computed cross-region dial output for one region.
 type RegionDialResult struct {
 	RegionCode int16
 	Score      float64
@@ -24,7 +22,6 @@ type RegionDialResult struct {
 	State      NodeScoreState
 }
 
-// AggregateRegionDialScore rolls up tracker node scores inside one region (read-only).
 func AggregateRegionDialScore(nodes []db.NodeCapacityScore) (score float64, provenance string, ok bool) {
 	if len(nodes) == 0 {
 		return defaultConservativeScore, ProvenanceConservativeDefault, false
@@ -49,7 +46,6 @@ func AggregateRegionDialScore(nodes []db.NodeCapacityScore) (score float64, prov
 	return scoreSum / weightSum, DominantProvenance(provs), true
 }
 
-// ComputeRegionDialResults scores regions for cross-region traffic dial only.
 func ComputeRegionDialResults(inputs []RegionDialInput, cfg ScorerConfig) []RegionDialResult {
 	if len(inputs) == 0 {
 		return nil

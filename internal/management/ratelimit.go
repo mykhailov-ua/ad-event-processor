@@ -11,7 +11,6 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// ipRateLimiter applies per-client token buckets so one noisy peer cannot starve the whole gateway.
 type ipRateLimiter struct {
 	mu      sync.Mutex
 	limit   rate.Limit
@@ -19,7 +18,6 @@ type ipRateLimiter struct {
 	entries map[string]*rate.Limiter
 }
 
-// newIPRateLimiter builds per-IP buckets so one abusive client cannot exhaust the shared admin gateway quota.
 func newIPRateLimiter(rps float64, burst int) *ipRateLimiter {
 	if rps <= 0 {
 		rps = 10
@@ -34,7 +32,6 @@ func newIPRateLimiter(rps float64, burst int) *ipRateLimiter {
 	}
 }
 
-// allow throttles a single client IP independently so one peer cannot exhaust the shared gateway quota.
 func (l *ipRateLimiter) allow(ip string) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -47,7 +44,6 @@ func (l *ipRateLimiter) allow(ip string) bool {
 	return lim.Allow()
 }
 
-// clientIP resolves the caller address behind reverse proxies so rate limits apply to the real client.
 func clientIP(r *http.Request) string {
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 		parts := strings.Split(xff, ",")
@@ -68,7 +64,6 @@ func clientIP(r *http.Request) string {
 	return r.RemoteAddr
 }
 
-// limitByIP wraps handlers with a per-client IP token bucket.
 func (h *Handler) limitByIP(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if h.ipLimiter != nil && !h.ipLimiter.allow(clientIP(r)) {
@@ -85,7 +80,6 @@ const customerExportBurst = 3
 const defaultAPIKeyRPS = 30.0
 const defaultAPIKeyBurst = 60
 
-// apiKeyRateLimiter throttles self-serve machine clients per API key digest.
 type apiKeyRateLimiter struct {
 	mu      sync.Mutex
 	limit   rate.Limit
@@ -118,7 +112,6 @@ func (l *apiKeyRateLimiter) allow(keyDigest string) bool {
 	return lim.Allow()
 }
 
-// customerRateLimiter throttles CSV export per customer so one tenant cannot exhaust gateway capacity.
 type customerRateLimiter struct {
 	mu      sync.Mutex
 	limit   rate.Limit
@@ -145,7 +138,6 @@ func (l *customerRateLimiter) allow(customerID string) bool {
 	return lim.Allow()
 }
 
-// limitExportByCustomer wraps export handlers with per-customer token buckets.
 func (h *Handler) limitExportByCustomer(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		customerID := r.PathValue("id")

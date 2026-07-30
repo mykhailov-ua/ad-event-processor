@@ -23,12 +23,10 @@ redis.call('HSET', KEYS[1], ARGV[1], ARGV[2])
 return ARGV[2]
 `)
 
-// RedisOffsetStore shares consumer offsets across HA broker nodes.
 type RedisOffsetStore struct {
 	rdb redis.UniversalClient
 }
 
-// NewRedisOffsetStore wraps the coordinator Redis client for offset commits.
 func NewRedisOffsetStore(rdb redis.UniversalClient) *RedisOffsetStore {
 	return &RedisOffsetStore{rdb: rdb}
 }
@@ -37,7 +35,6 @@ func redisOffsetsKey(topic string) string {
 	return redisOffsetsKeyPrefix + topic
 }
 
-// Commit stores the next fetch offset when it advances monotonically.
 func (s *RedisOffsetStore) Commit(ctx context.Context, topic, group string, offset uint64) (uint64, error) {
 	if s == nil || s.rdb == nil {
 		return 0, fmt.Errorf("redis offset store is not configured")
@@ -52,7 +49,6 @@ func (s *RedisOffsetStore) Commit(ctx context.Context, topic, group string, offs
 	return parseRedisOffset(res)
 }
 
-// Committed returns the stored next-fetch offset for a consumer group.
 func (s *RedisOffsetStore) Committed(ctx context.Context, topic, group string) (uint64, error) {
 	if s == nil || s.rdb == nil {
 		return 0, fmt.Errorf("redis offset store is not configured")
@@ -74,7 +70,6 @@ func (s *RedisOffsetStore) Committed(ctx context.Context, topic, group string) (
 	return off, nil
 }
 
-// MinCommitted returns the smallest committed offset across all groups on a topic.
 func (s *RedisOffsetStore) MinCommitted(ctx context.Context, topic string) (uint64, bool, error) {
 	groups, err := s.ListGroups(ctx, topic)
 	if err != nil {
@@ -94,7 +89,6 @@ func (s *RedisOffsetStore) MinCommitted(ctx context.Context, topic string) (uint
 	return min, true, nil
 }
 
-// ListGroups returns all committed offsets for a topic.
 func (s *RedisOffsetStore) ListGroups(ctx context.Context, topic string) (map[string]uint64, error) {
 	if s == nil || s.rdb == nil {
 		return nil, fmt.Errorf("redis offset store is not configured")

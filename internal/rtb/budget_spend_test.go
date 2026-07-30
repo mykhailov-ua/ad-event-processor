@@ -6,7 +6,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Guards CheckAndSpendAll rolls back campaign and customer debits when daily cap fails.
 func TestCheckAndSpendAll_rollsBackCustomerOnDailyFail(t *testing.T) {
 	store := NewBudgetStore()
 	campaignIdx := store.GetOrAllocateSlot(1, 1000)

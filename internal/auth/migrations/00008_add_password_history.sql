@@ -1,6 +1,5 @@
 -- +goose Up
 -- +goose StatementBegin
--- password_history: enforce SOC2/PCI-DSS password reuse ban, Argon2id hashes only. Append-only, per-user lookup by (user_id, created_at DESC).
 CREATE TABLE IF NOT EXISTS password_history (
     id BIGSERIAL PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,

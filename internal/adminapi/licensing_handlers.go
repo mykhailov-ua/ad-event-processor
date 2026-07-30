@@ -28,7 +28,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// LicensingHTTPHandlers serves Milestone 3 licensing and subscription JSON routes.
 type LicensingHTTPHandlers struct {
 	Pool              *pgxpool.Pool
 	RedisForCustomer  func(uuid.UUID) redis.UniversalClient
@@ -40,7 +39,6 @@ type LicensingHTTPHandlers struct {
 	ResolveSelfServeCustomerID func(*http.Request) (uuid.UUID, error)
 }
 
-// Register mounts M3 licensing/subscription routes on mux.
 func (h *LicensingHTTPHandlers) Register(mux *http.ServeMux) {
 	if h == nil || h.Pool == nil {
 		return

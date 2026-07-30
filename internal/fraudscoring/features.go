@@ -2,7 +2,6 @@ package fraudscoring
 
 import "time"
 
-// FeatureRow represents a single row of features fetched from ClickHouse.
 type FeatureRow struct {
 	WindowStart      time.Time
 	IPAddress        string
@@ -15,8 +14,6 @@ type FeatureRow struct {
 	UniqueUAs        uint64
 }
 
-// ToVector converts the FeatureRow into a float64 slice (feature vector) for the model.
-// We use float64 because go-lgbm expects float64 slice for PredictDense.
 func (featureRow *FeatureRow) ToVector() []float64 {
 	ctr := 0.0
 	if featureRow.Events > 0 {

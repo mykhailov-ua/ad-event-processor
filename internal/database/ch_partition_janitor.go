@@ -13,10 +13,8 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 )
 
-// EmergencyDropAlerter notifies operators when emergency partition drops run.
 type EmergencyDropAlerter func(table, partition string, diskUsedPct float64)
 
-// CHJanitorOptions configures partition retention, ZSTD recompress, and emergency drop (M6 + M13).
 type CHJanitorOptions struct {
 	RetentionDays            int
 	EmergencyDropPercent     int
@@ -28,9 +26,6 @@ type CHJanitorOptions struct {
 	DiskUsedPercentFn        func(context.Context) (float64, error)
 }
 
-// CHPartitionJanitor drops monthly ClickHouse partitions older than retention (CHJ-*),
-// recompresses fragmented partitions off-peak (M13), and drops oldest partitions when
-// disk usage exceeds CH_EMERGENCY_DROP_PERCENT.
 type CHPartitionJanitor struct {
 	conn                     driver.Conn
 	retentionDays            int
@@ -45,7 +40,6 @@ type CHPartitionJanitor struct {
 	wg                       sync.WaitGroup
 }
 
-// NewCHPartitionJanitor configures raw-table partition lifecycle management.
 func NewCHPartitionJanitor(conn driver.Conn, opts CHJanitorOptions) *CHPartitionJanitor {
 	retention := opts.RetentionDays
 	if retention <= 0 {
@@ -81,7 +75,6 @@ func NewCHPartitionJanitor(conn driver.Conn, opts CHJanitorOptions) *CHPartition
 	}
 }
 
-// Run executes one janitor pass: disk gauge, optional emergency drop, retention drop, off-peak recompress.
 func (j *CHPartitionJanitor) Run(ctx context.Context) error {
 	if j == nil || j.conn == nil {
 		return nil
@@ -276,7 +269,6 @@ func partitionOlderThan(part string, cutoffYYYYMM int) bool {
 	return partInt < cutoffYYYYMM
 }
 
-// chOffPeakUTC reports whether hour is inside [start, end) in UTC; supports windows crossing midnight.
 func chOffPeakUTC(now time.Time, startHour, endHour int) bool {
 	h := now.UTC().Hour()
 	if startHour == endHour {
@@ -288,7 +280,6 @@ func chOffPeakUTC(now time.Time, startHour, endHour int) bool {
 	return h >= startHour || h < endHour
 }
 
-// StartBackground runs lifecycle maintenance on a fixed interval.
 func (j *CHPartitionJanitor) StartBackground(ctx context.Context, interval time.Duration) {
 	if j == nil {
 		return
@@ -316,7 +307,6 @@ func (j *CHPartitionJanitor) StartBackground(ctx context.Context, interval time.
 	}()
 }
 
-// Wait blocks until the background worker exits.
 func (j *CHPartitionJanitor) Wait() {
 	j.wg.Wait()
 }

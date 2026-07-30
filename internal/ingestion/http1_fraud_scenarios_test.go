@@ -1,6 +1,8 @@
 package ingestion
 
 import (
+	"espx/pkg/faultproof"
+
 	"bytes"
 	"fmt"
 	"strings"
@@ -10,8 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// fraudHTTP1Case documents a 2026 IVT-adjacent wire scenario and the secure expectation.
-// Failures surface gaps — do not change parser behavior to make these pass without review.
 type fraudHTTP1Case struct {
 	id        string
 	name      string
@@ -87,7 +87,6 @@ func fraudHTTP1Cases2026() []fraudHTTP1Case {
 		},
 		{
 			id: "H1-11", name: "homoglyph_cyrillic_track_path",
-			// Cyrillic 'а' (U+0430) looks like Latin 'a' in /track
 			payload: []byte("POST /tr\u0430ck HTTP/1.1\r\nContent-Length: 0\r\n\r\n"),
 			maxBody: maxBody, mustErr: true, wantErr: errInvalidRequest,
 		},
@@ -161,7 +160,7 @@ func TestFraudScenarios_HTTP1_2026(t *testing.T) {
 			t.Log(g)
 		}
 	}
-	logChaosProof(t, "fraud_http1_2026", map[string]string{
+	faultproof.Log(t, "fraud_http1_2026", map[string]string{
 		"cases": fmt.Sprintf("%d", len(fraudHTTP1Cases2026())),
 		"gaps":  fmt.Sprintf("%d", len(gaps)),
 	})
@@ -182,7 +181,6 @@ func TestFraudScenarios_HTTP1_PipelineSpam(t *testing.T) {
 }
 
 func TestFraudScenarios_HTTP1_HeaderValueCRLFInjection(t *testing.T) {
-	// Obs-fold style: space + continuation line in header value
 	payload := []byte("POST /track HTTP/1.1\r\nX-Evil: safe\r\n continuation\r\nContent-Length: 0\r\n\r\n")
 	_, _, err := parseHTTP1(payload, 1024)
 	if err == nil {

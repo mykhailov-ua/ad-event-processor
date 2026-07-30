@@ -32,7 +32,6 @@ func intentStatusAllowsDispute(status db.PaymentPaymentIntentStatus) bool {
 		status == db.PaymentPaymentIntentStatusDISPUTED
 }
 
-// ProcessStripeDisputeWebhook records dispute lifecycle events and enqueues chargeback settlement outbox rows.
 func (service *Service) ProcessStripeDisputeWebhook(
 	ctx context.Context,
 	eventID string,

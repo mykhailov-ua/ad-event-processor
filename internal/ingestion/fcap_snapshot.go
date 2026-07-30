@@ -13,8 +13,6 @@ import (
 
 var emptyFcapSnapshot = &rtb.FcapSnapshot{}
 
-// syncFcapCounts scans Redis fcap keys into an immutable snapshot for RTB pre-auction gates.
-// Keys missing from the snapshot fail-open on the auction path.
 func (sw *SettingsWatcher) syncFcapCounts(ctx context.Context) {
 	rdb := sw.pickHealthyShard()
 	if rdb == nil {

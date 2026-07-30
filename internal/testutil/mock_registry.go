@@ -12,7 +12,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// MockCampaignRegistry is an in-memory CampaignRegistry for handler and filter tests.
 type MockCampaignRegistry struct{}
 
 func (m *MockCampaignRegistry) Exists(id uuid.UUID) bool { return true }

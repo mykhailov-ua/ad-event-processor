@@ -16,7 +16,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// integrationTestAuth wires session auth like production so tenant isolation tests are not clobbered by authFallback API-key admin.
 func integrationTestAuth(t *testing.T, rdb redis.UniversalClient, cfg *config.Config) (*AuthMiddleware, auth.Maker) {
 	t.Helper()
 	if cfg.TokenSymmetricKey == "" {
@@ -29,7 +28,6 @@ func integrationTestAuth(t *testing.T, rdb redis.UniversalClient, cfg *config.Co
 	return NewAuthMiddleware(tokenMaker, rdb, cfg, nil), tokenMaker
 }
 
-// withSessionUser attaches a PASETO session cookie for integration tests exercising tenant RBAC.
 func withSessionUser(req *http.Request, tokenMaker auth.Maker, role string, customerID uuid.UUID) {
 	token, err := tokenMaker.CreateToken(uuid.New(), uuid.New(), role, customerID, time.Hour)
 	if err != nil {
@@ -38,12 +36,10 @@ func withSessionUser(req *http.Request, tokenMaker auth.Maker, role string, cust
 	req.AddCookie(&http.Cookie{Name: "accessToken", Value: token})
 }
 
-// withAdminAPIKey attaches the shared admin API key for staff integration tests.
 func withAdminAPIKey(req *http.Request, cfg *config.Config) {
 	req.Header.Set("X-Admin-API-Key", string(cfg.AdminAPIKey))
 }
 
-// newBareService exists so chaos tests avoid background workers that contend on the database pool.
 func newBareService(t *testing.T, pool *pgxpool.Pool, rdbs []redis.UniversalClient, cfg *config.Config) *Service {
 	t.Helper()
 	if cfg == nil {
@@ -72,7 +68,6 @@ func newBareService(t *testing.T, pool *pgxpool.Pool, rdbs []redis.UniversalClie
 	return svc
 }
 
-// isDeadlock exists so chaos tests can retry transient Postgres deadlock conflicts instead of failing.
 func isDeadlock(err error) bool {
 	if err == nil {
 		return false
@@ -81,7 +76,6 @@ func isDeadlock(err error) bool {
 	return strings.Contains(msg, "deadlock detected") || strings.Contains(msg, "40P01")
 }
 
-// slowRedisClient injects latency into Redis calls to exercise outbox timeout and retry behavior.
 type slowRedisClient struct {
 	redis.UniversalClient
 	delay time.Duration

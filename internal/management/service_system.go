@@ -16,7 +16,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// BlacklistDTO exposes blocked IP entries to the admin API.
 type BlacklistDTO struct {
 	ID        int64  `json:"id"`
 	IP        string `json:"ip"`
@@ -25,17 +24,14 @@ type BlacklistDTO struct {
 	ExpiresAt string `json:"expires_at,omitempty"`
 }
 
-// BlockIP persists a blacklist entry and propagates it to Redis and nginx via coldpath.
 func (s *Service) BlockIP(ctx context.Context, ip string, source string) error {
 	return s.BlockIPWithTTL(ctx, ip, source, nil)
 }
 
-// PreviewBlockIP validates a block without side effects (GAP-RTB-12b).
 func (s *Service) PreviewBlockIP(ctx context.Context, ip string, source string, ttlSeconds *int64) (MutationPreview, error) {
 	return s.blockIPWithTTL(ctx, ip, source, ttlSeconds, true)
 }
 
-// BlockIPWithTTL persists a blacklist entry with optional per-request TTL override.
 func (s *Service) BlockIPWithTTL(ctx context.Context, ip string, source string, ttlSeconds *int64) error {
 	_, err := s.blockIPWithTTL(ctx, ip, source, ttlSeconds, false)
 	return err
@@ -114,7 +110,6 @@ func (s *Service) blockIPWithTTL(ctx context.Context, ip string, source string, 
 	return MutationPreview{}, err
 }
 
-// EnqueueFraudThreat enqueues a fraud enforcement action via outbox.
 func (s *Service) EnqueueFraudThreat(ctx context.Context, p FraudThreatPayload) error {
 	if _, err := uuid.Parse(p.CampaignID); err != nil {
 		return fmt.Errorf("invalid campaign id: %w", err)
@@ -147,7 +142,6 @@ func (s *Service) EnqueueFraudThreat(ctx context.Context, p FraudThreatPayload) 
 	})
 }
 
-// UnblockIP removes a blacklist entry and propagates the change to Redis and nginx via coldpath.
 func (s *Service) UnblockIP(ctx context.Context, ip string, source string) error {
 	reason := normalizeBlacklistReason(source)
 
@@ -176,7 +170,6 @@ func (s *Service) UnblockIP(ctx context.Context, ip string, source string) error
 	})
 }
 
-// UpdateSettings persists system configuration and queues a hot-path sync via coldpath.
 func (s *Service) UpdateSettings(ctx context.Context, settings map[string]string) error {
 	normalized, err := normalizeSystemSettings(settings)
 	if err != nil {
@@ -235,7 +228,6 @@ func normalizeSystemSettings(settings map[string]string) (map[string]string, err
 	return out, nil
 }
 
-// ListBlacklist returns paginated blocked IPs for the admin UI.
 func (s *Service) ListBlacklist(ctx context.Context, limit, offset int32) ([]BlacklistDTO, int64, error) {
 	q := db.New(s.GetPool())
 	listParams := db.ListBlacklistParams{Limit: limit, Offset: offset}
@@ -259,7 +251,6 @@ func blacklistToDTO(r db.IpBlacklist) BlacklistDTO {
 	return dto
 }
 
-// GetSettings loads all system settings from Postgres for the admin API.
 func (s *Service) GetSettings(ctx context.Context) (map[string]string, error) {
 	q := db.New(s.GetPool())
 	rows, err := q.GetAllSystemSettings(ctx)
@@ -269,7 +260,6 @@ func (s *Service) GetSettings(ctx context.Context) (map[string]string, error) {
 	return coldpath.KeyByValue(rows, func(r db.GetAllSystemSettingsRow) string { return r.Key }, func(r db.GetAllSystemSettingsRow) string { return r.Value }), nil
 }
 
-// SyncSystemState pushes authoritative blacklist and settings snapshots from Postgres to all Redis shards.
 func (s *Service) SyncSystemState(ctx context.Context) error {
 	q := db.New(s.GetPool())
 
@@ -324,7 +314,6 @@ func (s *Service) SyncSystemState(ctx context.Context) error {
 	return nil
 }
 
-// RunSystemStateSyncer periodically reconciles Redis with Postgres so edge nodes recover after restarts.
 func (s *Service) RunSystemStateSyncer(ctx context.Context) {
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
@@ -343,7 +332,6 @@ func (s *Service) RunSystemStateSyncer(ctx context.Context) {
 	}
 }
 
-// ToggleEmergencyBreaker flips the global kill switch and propagates it to the hot path via coldpath.
 func (s *Service) ToggleEmergencyBreaker(ctx context.Context, active bool, reason string) error {
 	val := "false"
 	if active {

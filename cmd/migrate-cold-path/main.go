@@ -1,4 +1,3 @@
-// Command migrate-cold-path applies tracked Postgres migrations for local k3s cold-path bring-up.
 package main
 
 import (

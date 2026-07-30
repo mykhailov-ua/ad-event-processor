@@ -13,7 +13,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// GoogleAdsProvider fetches spend via Google Ads API searchStream (simplified REST shim).
 type GoogleAdsProvider struct {
 	BaseURL string
 	Client  *http.Client

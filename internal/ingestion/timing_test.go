@@ -21,7 +21,6 @@ func TestShouldSampleLuaMetrics_rate(t *testing.T) {
 			sampled++
 		}
 	}
-	// 1/(mask+1) with mask=127 => 1/128
 	want := n / 128
 	assert.InDelta(t, want, sampled, 2)
 }

@@ -1,6 +1,8 @@
 package payment
 
 import (
+	"espx/pkg/faultproof"
+
 	"context"
 	"fmt"
 	"strconv"
@@ -11,21 +13,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestChaos_PaymentPGStopOutboxClaimBlocked stops Postgres and proves outbox claim cannot proceed.
-func TestChaos_PaymentPGStopOutboxClaimBlocked(t *testing.T) {
+func TestFault_PaymentPGStopOutboxClaimBlocked(t *testing.T) {
 	if testing.Short() {
-		t.Skip("chaos integration test")
+		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupPaymentChaosInfra(t)
+	infra, cleanup := setupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
 	customerID := uuid.New()
-	seed := seedSucceededIntentWithOutbox(t, infra, customerID, 11_000_000, "chaos-pg-stop-"+uuid.New().String())
-	assertPaymentChaosInvariants(t, infra.Pool, seed, 0, 0)
+	seed := seedSucceededIntentWithOutbox(t, infra, customerID, 11_000_000, "fault-pg-stop-"+uuid.New().String())
+	assertPaymentFaultInvariants(t, infra.Pool, seed, 0, 0)
 
-	worker := newOutboxWorkerForChaos(infra)
+	worker := newOutboxWorkerForFault(infra)
 	stopPaymentContainer(t, infra.PGContainer)
 	requirePaymentFaultActive(t, func() bool {
 		return infra.Pool.Ping(ctx) != nil
@@ -38,9 +39,9 @@ func TestChaos_PaymentPGStopOutboxClaimBlocked(t *testing.T) {
 	startPaymentContainer(t, infra.PGContainer)
 	infra.refreshPGPool(t)
 	require.Equal(t, "PENDING", paymentOutboxStatus(t, infra.Pool, seed.OutboxID))
-	assertPaymentChaosInvariants(t, infra.Pool, seed, 0, 0)
+	assertPaymentFaultInvariants(t, infra.Pool, seed, 0, 0)
 
-	logChaosProof(t, "postgres_container_stop", map[string]string{
+	faultproof.Log(t, "postgres_container_stop", map[string]string{
 		"subsystem":    "payment_outbox",
 		"processed":    "0",
 		"balance":      "0",
@@ -50,20 +51,19 @@ func TestChaos_PaymentPGStopOutboxClaimBlocked(t *testing.T) {
 	})
 }
 
-// TestChaos_PaymentPGStopStartOutboxRecovery stops Postgres then drains outbox after restart.
-func TestChaos_PaymentPGStopStartOutboxRecovery(t *testing.T) {
+func TestFault_PaymentPGStopStartOutboxRecovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("chaos integration test")
+		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupPaymentChaosInfra(t)
+	infra, cleanup := setupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
 	customerID := uuid.New()
-	seed := seedSucceededIntentWithOutbox(t, infra, customerID, 13_000_000, "chaos-pg-recovery-"+uuid.New().String())
+	seed := seedSucceededIntentWithOutbox(t, infra, customerID, 13_000_000, "fault-pg-recovery-"+uuid.New().String())
 
-	worker := newOutboxWorkerForChaos(infra)
+	worker := newOutboxWorkerForFault(infra)
 	stopPaymentContainer(t, infra.PGContainer)
 	requirePaymentFaultActive(t, func() bool {
 		return infra.Pool.Ping(ctx) != nil
@@ -83,9 +83,9 @@ func TestChaos_PaymentPGStopStartOutboxRecovery(t *testing.T) {
 		return recovered
 	}, 30*time.Second, 200*time.Millisecond)
 
-	assertPaymentChaosInvariants(t, infra.Pool, seed, seed.AmountMicro, 1)
+	assertPaymentFaultInvariants(t, infra.Pool, seed, seed.AmountMicro, 1)
 
-	logChaosProof(t, "postgres_stop_start_recovery", map[string]string{
+	faultproof.Log(t, "postgres_stop_start_recovery", map[string]string{
 		"subsystem":    "payment_outbox",
 		"recovered":    strconv.FormatBool(recovered),
 		"ledger_rows":  "1",
@@ -94,29 +94,28 @@ func TestChaos_PaymentPGStopStartOutboxRecovery(t *testing.T) {
 	})
 }
 
-// TestChaos_PaymentSettlementDownOutboxStaysPending kills settlement gRPC while Postgres stays up.
-func TestChaos_PaymentSettlementDownOutboxStaysPending(t *testing.T) {
+func TestFault_PaymentSettlementDownOutboxStaysPending(t *testing.T) {
 	if testing.Short() {
-		t.Skip("chaos integration test")
+		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupPaymentChaosInfra(t)
+	infra, cleanup := setupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
 	customerID := uuid.New()
-	seed := seedSucceededIntentWithOutbox(t, infra, customerID, 14_000_000, "chaos-grpc-stop-"+uuid.New().String())
+	seed := seedSucceededIntentWithOutbox(t, infra, customerID, 14_000_000, "fault-grpc-stop-"+uuid.New().String())
 
-	worker := newOutboxWorkerForChaos(infra)
+	worker := newOutboxWorkerForFault(infra)
 	infra.SettlementGRPC.Stop()
 
 	processed, err := worker.ProcessOutbox(ctx, 10)
 	require.NoError(t, err)
 	require.Equal(t, 0, processed)
 	require.Equal(t, "PENDING", paymentOutboxStatus(t, infra.Pool, seed.OutboxID))
-	assertPaymentChaosInvariants(t, infra.Pool, seed, 0, 0)
+	assertPaymentFaultInvariants(t, infra.Pool, seed, 0, 0)
 
-	logChaosProof(t, "settlement_grpc_stop", map[string]string{
+	faultproof.Log(t, "settlement_grpc_stop", map[string]string{
 		"subsystem":     "payment_outbox",
 		"outbox_status": "PENDING",
 		"ledger_rows":   "0",
@@ -125,20 +124,19 @@ func TestChaos_PaymentSettlementDownOutboxStaysPending(t *testing.T) {
 	})
 }
 
-// TestChaos_PaymentSettlementDownThenRecovery restarts settlement gRPC and drains cold.
-func TestChaos_PaymentSettlementDownThenRecovery(t *testing.T) {
+func TestFault_PaymentSettlementDownThenRecovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("chaos integration test")
+		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupPaymentChaosInfra(t)
+	infra, cleanup := setupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
 	customerID := uuid.New()
-	seed := seedSucceededIntentWithOutbox(t, infra, customerID, 16_000_000, "chaos-grpc-recovery-"+uuid.New().String())
+	seed := seedSucceededIntentWithOutbox(t, infra, customerID, 16_000_000, "fault-grpc-recovery-"+uuid.New().String())
 
-	worker := newOutboxWorkerForChaos(infra)
+	worker := newOutboxWorkerForFault(infra)
 	infra.SettlementGRPC.Stop()
 	_, _ = worker.ProcessOutbox(ctx, 10)
 	require.Equal(t, "PENDING", paymentOutboxStatus(t, infra.Pool, seed.OutboxID))
@@ -154,9 +152,9 @@ func TestChaos_PaymentSettlementDownThenRecovery(t *testing.T) {
 		return recovered
 	}, 30*time.Second, 200*time.Millisecond)
 
-	assertPaymentChaosInvariants(t, infra.Pool, seed, seed.AmountMicro, 1)
+	assertPaymentFaultInvariants(t, infra.Pool, seed, seed.AmountMicro, 1)
 
-	logChaosProof(t, "settlement_grpc_stop_start_recovery", map[string]string{
+	faultproof.Log(t, "settlement_grpc_stop_start_recovery", map[string]string{
 		"subsystem":    "payment_outbox",
 		"recovered":    strconv.FormatBool(recovered),
 		"ledger_rows":  "1",
@@ -165,13 +163,12 @@ func TestChaos_PaymentSettlementDownThenRecovery(t *testing.T) {
 	})
 }
 
-// TestChaos_PaymentPGTerminateDuringWebhook terminates Postgres during webhook processing.
-func TestChaos_PaymentPGTerminateDuringWebhook(t *testing.T) {
+func TestFault_PaymentPGTerminateDuringWebhook(t *testing.T) {
 	if testing.Short() {
-		t.Skip("chaos integration test")
+		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupPaymentChaosInfra(t)
+	infra, cleanup := setupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
@@ -179,7 +176,7 @@ func TestChaos_PaymentPGTerminateDuringWebhook(t *testing.T) {
 	seedCustomer(t, infra.Pool, customerID)
 
 	svc := NewService(infra.Pool, NewMockProvider(), infra.Cfg)
-	result, err := svc.CreatePaymentIntent(ctx, customerID, 7_000_000, "USD", "chaos-wh-pg-"+uuid.New().String(), nil)
+	result, err := svc.CreatePaymentIntent(ctx, customerID, 7_000_000, "USD", "fault-wh-pg-"+uuid.New().String(), nil)
 	require.NoError(t, err)
 	intent := result.Intent
 	providerRef := intent.ProviderRef.String
@@ -195,7 +192,7 @@ func TestChaos_PaymentPGTerminateDuringWebhook(t *testing.T) {
 	err = svc.ProcessStripeWebhook(ctx, eventID, "payment_intent.succeeded", []byte(payload), providerRef, 7_000_000, payload)
 	require.Error(t, err)
 
-	logChaosProof(t, "postgres_container_terminate_webhook", map[string]string{
+	faultproof.Log(t, "postgres_container_terminate_webhook", map[string]string{
 		"subsystem":    "payment_webhook",
 		"committed":    "false",
 		"ledger_rows":  "0",

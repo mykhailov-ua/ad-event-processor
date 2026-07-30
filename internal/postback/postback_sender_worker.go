@@ -42,7 +42,6 @@ type PostbackWorker struct {
 
 	adapters map[string]PostbackAdapter
 
-	// Test hooks
 	onDispatchAttempt func()
 }
 
@@ -143,7 +142,6 @@ func (w *PostbackWorker) ProcessBatch(ctx context.Context) error {
 			if errors.Is(err, ErrNotProTier) || errors.Is(err, ErrDuplicateEvent) {
 				_, _ = w.pool.Exec(ctx, "UPDATE outbox_events SET status = 'FAILED', processing_started_at = NULL WHERE id = $1", ev.ID)
 			} else {
-				// Retry or DLQ is handled inside ProcessEvent, but we ensure outbox status is updated
 				_, _ = w.pool.Exec(ctx, "UPDATE outbox_events SET status = 'FAILED', processing_started_at = NULL WHERE id = $1", ev.ID)
 			}
 		} else {
@@ -160,7 +158,6 @@ func (w *PostbackWorker) ProcessEvent(ctx context.Context, ev db.OutboxEvent) er
 		return fmt.Errorf("failed to unmarshal payload: %w", err)
 	}
 
-	// 1. Check Subscriptions Pro gate
 	allowed, err := w.checkProTier(ctx, payload.CustomerID)
 	if err != nil {
 		return fmt.Errorf("failed to check subscription: %w", err)
@@ -169,12 +166,10 @@ func (w *PostbackWorker) ProcessEvent(ctx context.Context, ev db.OutboxEvent) er
 		return ErrNotProTier
 	}
 
-	// 2. Compute Idempotency hash: SHA256(customer_id|click_id|event_type)
 	idempotencyStr := fmt.Sprintf("%s|%s|%s", payload.CustomerID, payload.ClickID, payload.EventType)
 	hashBytes := sha256.Sum256([]byte(idempotencyStr))
 	idempotencyHash := hex.EncodeToString(hashBytes[:])
 
-	// Check if already dispatched
 	var isDuplicate bool
 	err = w.pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM postback_dispatches WHERE idempotency_hash = $1)", idempotencyHash).Scan(&isDuplicate)
 	if err != nil {
@@ -184,7 +179,6 @@ func (w *PostbackWorker) ProcessEvent(ctx context.Context, ev db.OutboxEvent) er
 		return ErrDuplicateEvent
 	}
 
-	// 3. Fetch Postback Configuration
 	var config db.PostbackConfig
 	q := db.New(w.pool)
 	config, err = q.GetPostbackConfig(ctx, pgtype.UUID{Bytes: payload.CampaignID, Valid: true})
@@ -196,7 +190,6 @@ func (w *PostbackWorker) ProcessEvent(ctx context.Context, ev db.OutboxEvent) er
 		return fmt.Errorf("failed to get postback config: %w", err)
 	}
 
-	// 4. Decrypt OAuth tokens / API keys
 	var apiTokenDecrypted string
 	if len(config.ApiTokenEncrypted) > 0 {
 		decrypted, err := DecryptAESGCM(config.ApiTokenEncrypted, w.encryptionKey)
@@ -206,13 +199,11 @@ func (w *PostbackWorker) ProcessEvent(ctx context.Context, ev db.OutboxEvent) er
 		apiTokenDecrypted = string(decrypted)
 	}
 
-	// 5. Get Rate Limiter for domain/provider
 	limiter := w.getLimiter(config.UrlTemplate, config.Provider)
 	if err := limiter.Wait(ctx); err != nil {
 		return fmt.Errorf("rate limiter wait aborted: %w", err)
 	}
 
-	// 6. Execute Dispatch with 5 Retries + Jitter
 	adapter, ok := w.adapters[strings.ToLower(config.Provider)]
 	if !ok {
 		return fmt.Errorf("unsupported provider: %s", config.Provider)
@@ -224,7 +215,6 @@ func (w *PostbackWorker) ProcessEvent(ctx context.Context, ev db.OutboxEvent) er
 
 	err = w.dispatchWithRetry(ctx, adapter, &payload, config.UrlTemplate, apiTokenDecrypted)
 	if err != nil {
-		// DLQ Insertion after 5 failures
 		slog.Error("Postback dispatch failed completely, moving to DLQ", "error", err, "payload", payload)
 		_, dlqErr := q.InsertPostbackDLQ(ctx, db.InsertPostbackDLQParams{
 			OutboxEventID: ev.ID,
@@ -243,7 +233,6 @@ func (w *PostbackWorker) ProcessEvent(ctx context.Context, ev db.OutboxEvent) er
 		return fmt.Errorf("dispatch failed (moved to DLQ): %w", err)
 	}
 
-	// 7. Save to Postback Dispatches on Success (Idempotency)
 	err = q.InsertPostbackDispatch(ctx, db.InsertPostbackDispatchParams{
 		IdempotencyHash: idempotencyHash,
 		CampaignID:      pgtype.UUID{Bytes: payload.CampaignID, Valid: true},
@@ -264,7 +253,6 @@ func (w *PostbackWorker) dispatchWithRetry(ctx context.Context, adapter Postback
 
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		if attempt > 0 {
-			// Exponential backoff with jitter
 			backoff := time.Duration(math.Pow(2, float64(attempt))) * 200 * time.Millisecond
 			jitter := time.Duration(randInt64(50)) * time.Millisecond
 			sleepTime := backoff + jitter
@@ -283,8 +271,6 @@ func (w *PostbackWorker) dispatchWithRetry(ctx context.Context, adapter Postback
 		}
 		lastErr = err
 
-		// In chaos testing, we may abort early or continue based on failure type.
-		// For transient errors, we continue retrying.
 		slog.Warn("Postback dispatch attempt failed", "attempt", attempt+1, "error", err)
 	}
 
@@ -314,7 +300,6 @@ func (w *PostbackWorker) getLimiter(targetURL string, provider string) *rate.Lim
 
 	lim, exists := w.limiters[key]
 	if !exists {
-		// Enforce a sensible default: 100 rps with 200 burst per destination
 		lim = rate.NewLimiter(rate.Limit(100), 200)
 		w.limiters[key] = lim
 	}
@@ -330,8 +315,6 @@ func randInt64(max int64) int64 {
 	}
 	return val % max
 }
-
-// AES-GCM Encrypt/Decrypt helpers
 
 func EncryptAESGCM(plaintext []byte, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)

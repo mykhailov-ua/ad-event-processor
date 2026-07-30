@@ -1,9 +1,7 @@
 #!/bin/bash
-# Resets the docker-compose stack to a known baseline for load and bench runs.
-# Truncates hot-path stores and re-seeds campaigns so every run starts from the same state.
 set -e
 
-source "$(cd "$(dirname "$0")/../lib" && pwd)/paths.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
 echo "Stopping and cleaning up containers (including orphans)"
@@ -31,13 +29,11 @@ for i in 0 1 2 3 4 5; do
 done
 
 echo "Cleaning Redis shards"
-# Hot-path state must be empty so budget and stream tests are deterministic.
 for i in 0 1 2 3 4 5; do
   docker exec espx-redis-$i-1 redis-cli -p 6379 -a redis_secure_pass_456 FLUSHALL >/dev/null 2>&1
 done
 
 echo "Resetting Postgres database"
-# Re-seed customers and campaigns with huge balances for sustained load without mid-run exhaustion.
 docker exec -i espx-db-1 psql -h localhost -p 5440 -U ad_event_processor_user -d ad_event_processor <<'EOF'
 TRUNCATE TABLE events CASCADE;
 TRUNCATE TABLE campaign_stats CASCADE;
@@ -81,7 +77,6 @@ TRUNCATE TABLE fraud_events;
 echo "Applying postgres migrations (ads, auth, billing)"
 if [[ -f .env ]]; then
   set -a
-  # shellcheck disable=SC1091
   source .env
   set +a
 fi
@@ -90,11 +85,10 @@ export DB_DSN="${DB_DSN:-postgres://${DB_USER:-ad_event_processor_user}:${DB_PAS
 go run ./cmd/migrate-cold-path --only=ads,auth,billing
 
 echo "Repairing schema drift after migrations"
-DB_PORT="$DB_PORT" bash scripts/load-test/reconcile_ingestion_migrations.sh
-DB_PORT="$DB_PORT" bash scripts/load-test/verify_load_test_schema.sh
+DB_PORT="$DB_PORT" bash scripts/load/reconcile_ingestion_migrations.sh
+DB_PORT="$DB_PORT" bash scripts/load/verify_load_test_schema.sh
 
 echo "Restarting trackers and processor to recreate consumer groups"
-# Consumer groups are tied to stream offsets; restart after flush avoids stale pending entries.
 docker compose up -d --build --force-recreate processor tracker-0 tracker-1 tracker-2 tracker-3
 
 echo "Triggering full campaign registry snapshot via Redis Pub/Sub"

@@ -7,7 +7,6 @@ import (
 	"time"
 )
 
-// Worker polls the notification queue and delivers pending notifications.
 type Worker struct {
 	service   *Service
 	interval  time.Duration
@@ -15,7 +14,6 @@ type Worker struct {
 	wg        sync.WaitGroup
 }
 
-// NewWorker returns a polling worker; interval and batchSize fall back to package defaults when non-positive.
 func NewWorker(service *Service, interval time.Duration, batchSize int32) *Worker {
 	if interval <= 0 {
 		interval = time.Second
@@ -30,7 +28,6 @@ func NewWorker(service *Service, interval time.Duration, batchSize int32) *Worke
 	}
 }
 
-// Start runs the polling loop in a background goroutine until ctx is cancelled.
 func (worker *Worker) Start(ctx context.Context) {
 	worker.wg.Add(1)
 	go func() {
@@ -73,7 +70,6 @@ func (worker *Worker) Wait() {
 	worker.wg.Wait()
 }
 
-// StartPool runs N independent polling loops for higher throughput.
 func (worker *Worker) StartPool(ctx context.Context, concurrency int) {
 	if concurrency <= 1 {
 		worker.Start(ctx)

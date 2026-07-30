@@ -104,7 +104,6 @@ var (
 	)
 )
 
-// RegisterMetrics exposes compactor counters for ops dashboards.
 func RegisterMetrics() {
 	prometheus.MustRegister(
 		hotLagSeconds,

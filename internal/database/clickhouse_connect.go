@@ -9,7 +9,6 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 )
 
-// ConnectClickHouse opens an analytics connection tuned for async inserts so the processor never blocks on part commits.
 func ConnectClickHouse(ctx context.Context, dsn string) (driver.Conn, error) {
 	opts, err := clickhouse.ParseDSN(dsn)
 	if err != nil {
@@ -37,8 +36,6 @@ func ConnectClickHouse(ctx context.Context, dsn string) (driver.Conn, error) {
 	return conn, nil
 }
 
-// ConnectCHReadonly opens a read-only ClickHouse connection for cold-path queries (CHG-*).
-// Does not enable async_insert; pair with database.CHQuery for per-query caps.
 func ConnectCHReadonly(ctx context.Context, dsn string) (driver.Conn, error) {
 	if dsn == "" {
 		return nil, fmt.Errorf("clickhouse readonly dsn is empty")

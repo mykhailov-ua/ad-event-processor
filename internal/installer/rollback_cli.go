@@ -7,7 +7,6 @@ var serviceTargets = map[string]string{
 	"processor": "/usr/local/bin/processor",
 }
 
-// RunRollbackCLI restores the last backup for a hot-path service.
 func RunRollbackCLI(service string) error {
 	target, ok := serviceTargets[service]
 	if !ok {

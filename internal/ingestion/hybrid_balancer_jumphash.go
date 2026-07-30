@@ -10,10 +10,8 @@ import (
 	"time"
 )
 
-// randSeedSeq mixes per-goroutine RNG seeds to reduce collision under concurrency.
 var randSeedSeq atomic.Int64
 
-// randPool recycles math/rand sources for alias sampling on the jumphash canary path.
 var randPool = sync.Pool{
 	New: func() any {
 		seed := time.Now().UnixNano() ^ randSeedSeq.Add(1)
@@ -21,8 +19,6 @@ var randPool = sync.Pool{
 	},
 }
 
-// SelectAndShard picks a campaign and spreads hot traffic across sub-shards by user.
-// Restricted to jumphash build tag — must not ship on the StaticSlot production tracker (M9-07).
 func (hb *HybridBalancer) SelectAndShard(userID string, currentCampaignRps int64) (*CampaignMeta, int) {
 	table := hb.aliasTable.Load()
 	if table == nil || len(table.prob) == 0 {

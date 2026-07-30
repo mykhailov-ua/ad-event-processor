@@ -1,5 +1,3 @@
-# User overrides for docker compose (merged into users.d/).
-# Password from CH_PASSWORD in .env; networks restricted to private ranges.
 
 users:
   default:

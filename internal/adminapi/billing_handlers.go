@@ -15,7 +15,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// BillingHTTPHandlers serves M2.8 billing JSON routes.
 type BillingHTTPHandlers struct {
 	InvoiceGRPC             InvoiceGRPCClient
 	InProcessInvoices       InProcessInvoiceService
@@ -38,7 +37,6 @@ type BillingHTTPHandlers struct {
 	ResolveDisputeCustomerFilter func(*http.Request) (string, error)
 }
 
-// Register mounts billing admin routes on mux.
 func (h *BillingHTTPHandlers) Register(mux *http.ServeMux) {
 	if h == nil {
 		return
@@ -603,7 +601,6 @@ func invoicePDFPath(invoiceID string) string {
 	return "/api/v1/billing/invoices/" + invoiceID + "/pdf"
 }
 
-// InvoiceToJSON maps a gRPC invoice to JSON-friendly fields for API responses.
 func InvoiceToJSON(invoice *billingpb.Invoice) map[string]any {
 	return invoiceToJSON(invoice)
 }

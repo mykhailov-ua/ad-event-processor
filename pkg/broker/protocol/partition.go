@@ -5,7 +5,6 @@ import (
 	"strings"
 )
 
-// TopicPartitionID is the stable storage and coordination key for one topic partition.
 func TopicPartitionID(topic string, partition uint16) string {
 	var b strings.Builder
 	b.Grow(len(topic) + 8)
@@ -15,7 +14,6 @@ func TopicPartitionID(topic string, partition uint16) string {
 	return b.String()
 }
 
-// ParseTopicPartitionID splits a storage/coordination key into topic name and partition index.
 func ParseTopicPartitionID(tpKey string) (topic string, partition uint16) {
 	i := strings.LastIndex(tpKey, "/")
 	if i < 0 {

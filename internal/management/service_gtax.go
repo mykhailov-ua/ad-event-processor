@@ -14,7 +14,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// CTVSettlementResult records ledger ids produced by ApplyCTVSettlement.
 type CTVSettlementResult struct {
 	Applied     bool
 	FeeLedgerID int64
@@ -22,8 +21,6 @@ type CTVSettlementResult struct {
 	TaxMicro    int64
 }
 
-// ApplyCTVSettlement settles CTV inventory spend with gross receipts tax before balance_ledger commit (GAP-RTB-12a).
-// Idempotent by settlement_id; writes FEE and optional CTV_GTAX rows in the same transaction as campaign spend.
 func (s *Service) ApplyCTVSettlement(
 	ctx context.Context,
 	settlementID string,

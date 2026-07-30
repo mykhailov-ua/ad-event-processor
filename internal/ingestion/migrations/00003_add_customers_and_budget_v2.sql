@@ -1,10 +1,8 @@
 -- +goose Up
 -- +goose StatementBegin
 
--- Create Enum for Campaign Status
 CREATE TYPE campaign_status_type AS ENUM ('ACTIVE', 'PAUSED', 'EXHAUSTED');
 
--- Create Customers table
 CREATE TABLE customers (
     id UUID PRIMARY KEY,
     name TEXT NOT NULL,
@@ -14,17 +12,12 @@ CREATE TABLE customers (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Update Campaigns table
--- 1. Add customer_id link
 ALTER TABLE campaigns ADD COLUMN customer_id UUID REFERENCES customers(id) ON DELETE CASCADE;
 
--- 2. Add current_spend
 ALTER TABLE campaigns ADD COLUMN current_spend DECIMAL(15,2) NOT NULL DEFAULT 0.00;
 
--- 3. Rename budget to budget_limit for clarity
 ALTER TABLE campaigns RENAME COLUMN budget TO budget_limit;
 
--- 4. Convert status column to Enum
 DROP INDEX IF EXISTS idx_campaigns_status_active;
 DROP INDEX IF EXISTS idx_campaigns_status;
 
@@ -37,7 +30,6 @@ ALTER TABLE campaigns ALTER COLUMN status TYPE campaign_status_type
 
 ALTER TABLE campaigns ALTER COLUMN status SET DEFAULT 'ACTIVE';
 
--- Indices
 CREATE INDEX idx_campaigns_customer_id ON campaigns(customer_id);
 CREATE INDEX idx_campaigns_status_active ON campaigns(status) WHERE status = 'ACTIVE'::campaign_status_type;
 

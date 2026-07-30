@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestNginxConfigWorker guards blacklist export writes valid deny files and reload flag.
 func TestNginxConfigWorker(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
@@ -92,7 +91,6 @@ func TestNginxConfigWorker(t *testing.T) {
 	})
 }
 
-// BenchmarkNginxConfigWorker_writeDenyFile measures deny-file write throughput for large IP lists.
 func BenchmarkNginxConfigWorker_writeDenyFile(b *testing.B) {
 	worker := &NginxConfigWorker{exportPath: b.TempDir()}
 	ips := make([]string, 1000)

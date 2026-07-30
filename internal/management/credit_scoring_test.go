@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCreditScoringAndOverdraft guards credit scoring, overdraft limits, and campaign pause on overdraft shrink.
 func TestCreditScoringAndOverdraft(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")

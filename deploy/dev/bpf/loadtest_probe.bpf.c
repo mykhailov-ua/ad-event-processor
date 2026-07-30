@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: GPL-2.0
-// Dev-only load-test probes: syscalls, scheduler context switches, TCP signals.
-// Attach from cmd/bpf-collector during k6 runs; never loaded in production tracker.
+
+
+
 
 #include <linux/bpf.h>
 #include <linux/sched.h>

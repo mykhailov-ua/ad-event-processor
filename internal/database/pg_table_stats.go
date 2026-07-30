@@ -8,7 +8,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// WatchedPgTables are write-heavy relations monitored for autovacuum lag (M-DB-PG-6).
 var WatchedPgTables = []string{"balance_ledger", "campaigns", "outbox_events"}
 
 type pgTableStatsCollector struct {
@@ -17,7 +16,6 @@ type pgTableStatsCollector struct {
 	liveDesc *prometheus.Desc
 }
 
-// NewPgTableStatsCollector exports n_dead_tup / n_live_tup for watched public tables.
 func NewPgTableStatsCollector(pool *pgxpool.Pool) prometheus.Collector {
 	return &pgTableStatsCollector{
 		pool: pool,
@@ -66,7 +64,6 @@ func (c *pgTableStatsCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 }
 
-// QueryPgTableDeadTuples returns dead/live tuple counts for watched tables (tests/ops).
 func QueryPgTableDeadTuples(ctx context.Context, pool *pgxpool.Pool) (map[string]int64, error) {
 	rows, err := pool.Query(ctx, `
 		SELECT relname, COALESCE(n_dead_tup, 0)

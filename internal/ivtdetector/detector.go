@@ -9,7 +9,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// DetectorConfig tunes scan cadence and management outbox backpressure.
 type DetectorConfig struct {
 	ScanInterval       time.Duration
 	OutboxPendingLimit int64
@@ -17,7 +16,6 @@ type DetectorConfig struct {
 	Analyzer           AnalyzerConfig
 }
 
-// DefaultDetectorConfig returns scan and backpressure defaults for production.
 func DefaultDetectorConfig() DetectorConfig {
 	return DetectorConfig{
 		ScanInterval:       5 * time.Minute,
@@ -27,7 +25,6 @@ func DefaultDetectorConfig() DetectorConfig {
 	}
 }
 
-// RunResult summarizes one detector cycle.
 type RunResult struct {
 	Candidates int
 	Enqueued   int
@@ -37,7 +34,6 @@ type RunResult struct {
 
 type suspiciousFinder = SuspiciousFinder
 
-// Detector orchestrates ClickHouse analysis, idempotency claims, and management blacklist enqueue.
 type Detector struct {
 	analyzer   suspiciousFinder
 	idem       *IdempotencyStore
@@ -46,7 +42,6 @@ type Detector struct {
 	cfg        DetectorConfig
 }
 
-// NewDetector wires analyzer, idempotency, management client, and Postgres for outbox pressure checks.
 func NewDetector(
 	analyzer suspiciousFinder,
 	idem *IdempotencyStore,
@@ -63,7 +58,6 @@ func NewDetector(
 	}
 }
 
-// Run executes one analysis cycle and enqueues blacklist:fraud updates for new suspicious IPs.
 func (detector *Detector) Run(ctx context.Context) (RunResult, error) {
 	var result RunResult
 	if detector == nil {
@@ -199,7 +193,6 @@ func (detector *Detector) Run(ctx context.Context) (RunResult, error) {
 	return result, nil
 }
 
-// RunLoop periodically executes detector cycles until the context is cancelled.
 func (detector *Detector) RunLoop(ctx context.Context) error {
 	if detector == nil {
 		return fmt.Errorf("detector: nil receiver")
@@ -260,7 +253,6 @@ func (detector *Detector) outboxBacklogged(ctx context.Context) (bool, error) {
 	return pending >= detector.cfg.OutboxPendingLimit, nil
 }
 
-// PendingOutboxCount exposes the current PENDING outbox depth for tests and metrics hooks.
 func (detector *Detector) PendingOutboxCount(ctx context.Context) (int64, error) {
 	if detector.pool == nil {
 		return 0, fmt.Errorf("detector: nil pool")

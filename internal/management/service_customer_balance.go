@@ -19,7 +19,6 @@ const (
 	ledgerExportBatchLimit = 500
 )
 
-// CustomerBalanceDTO is the JSON payload for GET /api/v1/customers/{id}/balance.
 type CustomerBalanceDTO struct {
 	CustomerID string      `json:"customer_id"`
 	Balance    string      `json:"balance"`
@@ -27,14 +26,12 @@ type CustomerBalanceDTO struct {
 	Ledger     []LedgerDTO `json:"ledger"`
 }
 
-// LedgerExportResult captures cursor continuation metadata after a capped CSV stream.
 type LedgerExportResult struct {
 	NextCursor int64
 	Truncated  bool
 	Bytes      int
 }
 
-// GetCustomerBalance returns balance and the 100 most recent ledger rows by id.
 func (s *Service) GetCustomerBalance(ctx context.Context, customerID uuid.UUID) (CustomerBalanceDTO, error) {
 	q := db.New(s.GetPool())
 	cust, err := q.GetCustomerByID(ctx, ingestion.ToUUID(customerID))
@@ -60,7 +57,6 @@ func (s *Service) GetCustomerBalance(ctx context.Context, customerID uuid.UUID) 
 	}, nil
 }
 
-// ExportCustomerLedgerCSV streams ledger rows as CSV up to ledgerExportMaxBytes.
 func (s *Service) ExportCustomerLedgerCSV(ctx context.Context, customerID uuid.UUID, cursor int64, w io.Writer) (LedgerExportResult, error) {
 	q := db.New(s.GetPool())
 	if _, err := q.GetCustomerByID(ctx, ingestion.ToUUID(customerID)); err != nil {

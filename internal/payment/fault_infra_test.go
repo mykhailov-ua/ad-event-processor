@@ -31,7 +31,7 @@ import (
 
 const paymentContainerStopTimeout = 10 * time.Second
 
-type paymentChaosInfra struct {
+type paymentFaultInfra struct {
 	Pool           *pgxpool.Pool
 	Redis          redis.UniversalClient
 	PGContainer    *postgres.PostgresContainer
@@ -50,14 +50,13 @@ type seededPayment struct {
 	OutboxID    int64
 }
 
-// setupPaymentChaosInfra boots Postgres, Redis, and a live settlement gRPC server for fault injection tests.
-func setupPaymentChaosInfra(t *testing.T) (*paymentChaosInfra, func()) {
+func setupPaymentFaultInfra(t *testing.T) (*paymentFaultInfra, func()) {
 	t.Helper()
 	ctx := context.Background()
 
 	pgContainer, err := postgres.Run(ctx,
 		"postgres:16-alpine",
-		postgres.WithDatabase("payment_chaos_db"),
+		postgres.WithDatabase("payment_fault_db"),
 		postgres.WithUsername("postgres"),
 		postgres.WithPassword("secure_password"),
 		testcontainers.WithWaitStrategy(
@@ -89,9 +88,9 @@ func setupPaymentChaosInfra(t *testing.T) (*paymentChaosInfra, func()) {
 	require.NoError(t, rdb.Ping(ctx).Err())
 
 	cfg := &config.Config{
-		PaymentInternalToken:    "payment_chaos_token",
-		SettlementInternalToken: "settlement_chaos_token",
-		StripeWebhookSecret:     "stripe_chaos_wh_secret",
+		PaymentInternalToken:    "payment_fault_token",
+		SettlementInternalToken: "settlement_fault_token",
+		StripeWebhookSecret:     "stripe_fault_wh_secret",
 		MaxRetries:              3,
 	}
 
@@ -110,7 +109,7 @@ func setupPaymentChaosInfra(t *testing.T) (*paymentChaosInfra, func()) {
 	mgmt_pb.RegisterSettlementServiceServer(grpcServer, settleHandler)
 	go func() { _ = grpcServer.Serve(lis) }()
 
-	infra := &paymentChaosInfra{
+	infra := &paymentFaultInfra{
 		Pool:           pool,
 		Redis:          rdb,
 		PGContainer:    pgContainer,
@@ -131,21 +130,18 @@ func setupPaymentChaosInfra(t *testing.T) (*paymentChaosInfra, func()) {
 	return infra, cleanup
 }
 
-// stopPaymentContainer pauses Postgres to simulate an unreachable database during outbox work.
 func stopPaymentContainer(t *testing.T, c testcontainers.Container) {
 	t.Helper()
 	timeout := paymentContainerStopTimeout
 	require.NoError(t, c.Stop(context.Background(), &timeout))
 }
 
-// startPaymentContainer resumes a stopped Postgres container for recovery scenarios.
 func startPaymentContainer(t *testing.T, c testcontainers.Container) {
 	t.Helper()
 	require.NoError(t, c.Start(context.Background()))
 }
 
-// refreshPGPool recreates the pgx pool and management service pool after Postgres restarts.
-func (infra *paymentChaosInfra) refreshPGPool(t *testing.T) {
+func (infra *paymentFaultInfra) refreshPGPool(t *testing.T) {
 	t.Helper()
 	ctx := context.Background()
 	infra.Pool.Close()
@@ -160,8 +156,7 @@ func (infra *paymentChaosInfra) refreshPGPool(t *testing.T) {
 	}, 30*time.Second, 200*time.Millisecond)
 }
 
-// restartSettlementGRPC rebinds settlement on the same port after grpc.Stop closes the listener.
-func (infra *paymentChaosInfra) restartSettlementGRPC(t *testing.T) {
+func (infra *paymentFaultInfra) restartSettlementGRPC(t *testing.T) {
 	t.Helper()
 	addr := infra.SettlementLis.Addr().String()
 	if infra.SettlementGRPC != nil {
@@ -187,27 +182,24 @@ func (infra *paymentChaosInfra) restartSettlementGRPC(t *testing.T) {
 	}, 5*time.Second, 50*time.Millisecond)
 }
 
-// requirePaymentFaultActive blocks until the injected fault is observable, avoiding false negatives.
 func requirePaymentFaultActive(t *testing.T, faultActive func() bool, msg string) {
 	t.Helper()
 	require.Eventually(t, faultActive, 10*time.Second, 100*time.Millisecond, msg)
 }
 
-// seedCustomer inserts a billing account row required before intent or settlement tests run.
 func seedCustomer(t *testing.T, pool *pgxpool.Pool, customerID uuid.UUID) {
 	t.Helper()
 	ctx := context.Background()
 	_, err := ads_db.New(pool).CreateCustomer(ctx, ads_db.CreateCustomerParams{
 		ID:       ingestion.ToUUID(customerID),
-		Name:     "chaos customer",
+		Name:     "fault customer",
 		Balance:  0,
 		Currency: "USD",
 	})
 	require.NoError(t, err)
 }
 
-// seedSucceededIntentWithOutbox drives checkout plus webhook so chaos tests start with a pending outbox row.
-func seedSucceededIntentWithOutbox(t *testing.T, infra *paymentChaosInfra, customerID uuid.UUID, amountMicro int64, idempotencyKey string) seededPayment {
+func seedSucceededIntentWithOutbox(t *testing.T, infra *paymentFaultInfra, customerID uuid.UUID, amountMicro int64, idempotencyKey string) seededPayment {
 	t.Helper()
 	ctx := context.Background()
 	seedCustomer(t, infra.Pool, customerID)
@@ -236,20 +228,18 @@ func seedSucceededIntentWithOutbox(t *testing.T, infra *paymentChaosInfra, custo
 	}
 }
 
-// seedSettledIntent completes top-up settlement so refund chaos tests start from credited balance.
-func seedSettledIntent(t *testing.T, infra *paymentChaosInfra, customerID uuid.UUID, amountMicro int64, idempotencyKey string) seededPayment {
+func seedSettledIntent(t *testing.T, infra *paymentFaultInfra, customerID uuid.UUID, amountMicro int64, idempotencyKey string) seededPayment {
 	t.Helper()
 	seed := seedSucceededIntentWithOutbox(t, infra, customerID, amountMicro, idempotencyKey)
-	worker := newOutboxWorkerForChaos(infra)
+	worker := newOutboxWorkerForFault(infra)
 	n, err := worker.ProcessOutbox(context.Background(), 10)
 	require.NoError(t, err)
 	require.Equal(t, 1, n)
 	require.Equal(t, "PROCESSED", paymentOutboxStatus(t, infra.Pool, seed.OutboxID))
-	assertPaymentChaosInvariants(t, infra.Pool, seed, seed.AmountMicro, 1)
+	assertPaymentFaultInvariants(t, infra.Pool, seed, seed.AmountMicro, 1)
 	return seed
 }
 
-// processRefundWebhook simulates a Stripe refund.created webhook for chaos and integration tests.
 func processRefundWebhook(t *testing.T, pool *pgxpool.Pool, svc *Service, eventID string, providerRef string, refundID string, refundAmountMicro int64) int64 {
 	t.Helper()
 	stripeCents, err := MicroToStripeAmount(refundAmountMicro)
@@ -267,7 +257,6 @@ func processRefundWebhook(t *testing.T, pool *pgxpool.Pool, svc *Service, eventI
 	return outboxID
 }
 
-// ledgerRefundCountForIntent counts PAYMENT_REFUND rows tied to one intent.
 func ledgerRefundCountForIntent(t *testing.T, pool *pgxpool.Pool, intentID uuid.UUID) int {
 	t.Helper()
 	var n int
@@ -278,14 +267,12 @@ func ledgerRefundCountForIntent(t *testing.T, pool *pgxpool.Pool, intentID uuid.
 	return n
 }
 
-// assertPaymentRefundInvariants checks balance and refund ledger rows after a payback scenario.
 func assertPaymentRefundInvariants(t *testing.T, pool *pgxpool.Pool, seed seededPayment, wantBalance int64, wantRefundRows int) {
 	t.Helper()
 	require.Equal(t, wantBalance, customerBalance(t, pool, seed.CustomerID))
 	require.Equal(t, wantRefundRows, ledgerRefundCountForIntent(t, pool, seed.IntentID))
 }
 
-// processDisputeWebhook simulates Stripe charge.dispute.* webhooks for chaos tests.
 func processDisputeWebhook(t *testing.T, pool *pgxpool.Pool, svc *Service, eventID, eventType, providerRef, disputeID string, amountMicro int64, stripeStatus string) {
 	t.Helper()
 	stripeCents, err := MicroToStripeAmount(amountMicro)
@@ -296,7 +283,6 @@ func processDisputeWebhook(t *testing.T, pool *pgxpool.Pool, svc *Service, event
 	require.NoError(t, err)
 }
 
-// latestOutboxIDByType returns the newest pending outbox row id for one event type.
 func latestOutboxIDByType(t *testing.T, pool *pgxpool.Pool, eventType string) int64 {
 	t.Helper()
 	var outboxID int64
@@ -308,7 +294,6 @@ func latestOutboxIDByType(t *testing.T, pool *pgxpool.Pool, eventType string) in
 	return outboxID
 }
 
-// ledgerChargebackCountForIntent counts PAYMENT_CHARGEBACK rows for one intent.
 func ledgerChargebackCountForIntent(t *testing.T, pool *pgxpool.Pool, intentID uuid.UUID) int {
 	t.Helper()
 	var n int
@@ -319,7 +304,6 @@ func ledgerChargebackCountForIntent(t *testing.T, pool *pgxpool.Pool, intentID u
 	return n
 }
 
-// ledgerChargebackReversalCountForIntent counts PAYMENT_CHARGEBACK_REVERSAL rows for one intent.
 func ledgerChargebackReversalCountForIntent(t *testing.T, pool *pgxpool.Pool, intentID uuid.UUID) int {
 	t.Helper()
 	var n int
@@ -330,7 +314,6 @@ func ledgerChargebackReversalCountForIntent(t *testing.T, pool *pgxpool.Pool, in
 	return n
 }
 
-// assertPaymentChargebackInvariants checks balance and chargeback ledger rows.
 func assertPaymentChargebackInvariants(t *testing.T, pool *pgxpool.Pool, seed seededPayment, wantBalance int64, wantChargebackRows, wantReversalRows int) {
 	t.Helper()
 	require.Equal(t, wantBalance, customerBalance(t, pool, seed.CustomerID))
@@ -338,7 +321,6 @@ func assertPaymentChargebackInvariants(t *testing.T, pool *pgxpool.Pool, seed se
 	require.Equal(t, wantReversalRows, ledgerChargebackReversalCountForIntent(t, pool, seed.IntentID))
 }
 
-// customerBalance reads the ads customer row balance used as the money invariant baseline.
 func customerBalance(t *testing.T, pool *pgxpool.Pool, customerID uuid.UUID) int64 {
 	t.Helper()
 	ctx := context.Background()
@@ -347,7 +329,6 @@ func customerBalance(t *testing.T, pool *pgxpool.Pool, customerID uuid.UUID) int
 	return cust.Balance
 }
 
-// ledgerCountForIntent counts PAYMENT_TOPUP rows tied to one intent for double-credit detection.
 func ledgerCountForIntent(t *testing.T, pool *pgxpool.Pool, intentID uuid.UUID) int {
 	t.Helper()
 	var n int
@@ -358,7 +339,6 @@ func ledgerCountForIntent(t *testing.T, pool *pgxpool.Pool, intentID uuid.UUID) 
 	return n
 }
 
-// paymentOutboxStatus reads the outbox row state for lease and settlement progress assertions.
 func paymentOutboxStatus(t *testing.T, pool *pgxpool.Pool, outboxID int64) string {
 	t.Helper()
 	var status string
@@ -368,20 +348,17 @@ func paymentOutboxStatus(t *testing.T, pool *pgxpool.Pool, outboxID int64) strin
 	return status
 }
 
-// assertPaymentChaosInvariants checks balance and ledger row count after a fault scenario.
-func assertPaymentChaosInvariants(t *testing.T, pool *pgxpool.Pool, seed seededPayment, wantBalance int64, wantLedgerRows int) {
+func assertPaymentFaultInvariants(t *testing.T, pool *pgxpool.Pool, seed seededPayment, wantBalance int64, wantLedgerRows int) {
 	t.Helper()
 	require.Equal(t, wantBalance, customerBalance(t, pool, seed.CustomerID))
 	require.Equal(t, wantLedgerRows, ledgerCountForIntent(t, pool, seed.IntentID))
 }
 
-// itoaPaymentChaos formats integers for chaos_proof log lines without strconv in every test.
-func itoaPaymentChaos(n int) string {
+func itoaPaymentFault(n int) string {
 	return strconv.Itoa(n)
 }
 
-// newOutboxWorkerForChaos builds an outbox worker pre-connected to the infra settlement server.
-func newOutboxWorkerForChaos(infra *paymentChaosInfra) *OutboxWorker {
+func newOutboxWorkerForFault(infra *paymentFaultInfra) *OutboxWorker {
 	w := NewOutboxWorker(infra.Pool, infra.Cfg)
 	target := "127.0.0.1:" + infra.Cfg.SettlementServerPort
 	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))

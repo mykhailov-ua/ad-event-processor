@@ -15,7 +15,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// AutoscaleBudgets shifts budget from low-CTR campaigns to high-CTR siblings under the same customer.
 func (s *Service) AutoscaleBudgets(ctx context.Context, syncWorkers []*ingestion.SyncWorker) error {
 	if s.cfg == nil {
 		return nil
@@ -116,7 +115,6 @@ func (s *Service) autoscaleBudgetsTx(ctx context.Context, tx pgx.Tx, merge deliv
 
 		var worstLocked, bestLocked db.Campaign
 
-		// To prevent deadlocks, always lock campaigns in a consistent sorted order (by UUID string ascending)
 		if worstID.String() < bestID.String() {
 			worstLocked, err = q.GetCampaignForUpdate(ctx, worstCamp.ID)
 			if err != nil {

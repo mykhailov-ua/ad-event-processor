@@ -17,7 +17,6 @@ const (
 	rtbLiveGateInsufficient    = "insufficient_shadow_evals"
 )
 
-// RtbLiveGateResult is the combined readiness snapshot for RTB live cutover.
 type RtbLiveGateResult struct {
 	Ready         bool                     `json:"ready"`
 	Reasons       []string                 `json:"reasons,omitempty"`
@@ -25,7 +24,6 @@ type RtbLiveGateResult struct {
 	ReconcileHigh bool                     `json:"reconcile_high"`
 }
 
-// EvaluateRtbLiveGate checks shadow diff parity and budget reconcile before live mode.
 func EvaluateRtbLiveGate(window time.Duration) RtbLiveGateResult {
 	if window <= 0 {
 		window = rtbLiveGateDefaultWindow
@@ -56,7 +54,6 @@ func rtbBudgetReconcileHigh() bool {
 	return metric.GetGauge().GetValue() >= 1
 }
 
-// CanEnableRtbLive reports whether live mode is safe to enable.
 func CanEnableRtbLive(window time.Duration) (bool, []string) {
 	gate := EvaluateRtbLiveGate(window)
 	return gate.Ready, gate.Reasons

@@ -1,17 +1,11 @@
--- edge-parse-dfa.lua: single-pass byte DFA for /track body (protobuf wire + JSON).
--- Extracts campaign_id for edge_rl; rejects oversize fields and scan budget immediately.
 
 local bit = require "bit"
 
 local _M = {}
 
--- Hard ceiling aligned with tracker MAX_REQUEST_BODY_SIZE / nginx client_max_body_size.
 _M.MAX_BODY_BYTES = 1048576
--- Max bytes the DFA walks per request (campaign_id is field 1 in typical AdEvent).
 _M.MAX_SCAN_BYTES = 8192
--- Max length of campaign_id string value (UUID text or raw proto bytes).
 _M.MAX_CAMPAIGN_LEN = 64
--- Max single protobuf length-delimited field skip (prevents huge skip allocations).
 _M.MAX_FIELD_LEN = 65536
 
 local MAX_BODY_BYTES = _M.MAX_BODY_BYTES
@@ -28,14 +22,12 @@ local sub = string.sub
 
 local HEX = "0123456789abcdef"
 
--- byte_to_hex returns two lowercase hex digits for one byte.
 local function byte_to_hex(b)
     local hi = bit.rshift(b, 4) + 1
     local lo = bit.band(b, 0x0f) + 1
     return char(byte(HEX, hi), byte(HEX, lo))
 end
 
--- format_campaign_id normalizes protobuf 16-byte UUID or passes through JSON UUID text.
 local function format_campaign_id(raw)
     if not raw or raw == "" then
         return nil, nil
@@ -58,7 +50,6 @@ local function format_campaign_id(raw)
     return raw, nil
 end
 
--- decode_varint reads one protobuf varint; returns value, next_pos, err.
 local function decode_varint(data, pos, limit)
     local val = 0
     local shift = 0
@@ -80,7 +71,6 @@ local function decode_varint(data, pos, limit)
     return nil, nil, ERR_MALFORMED
 end
 
--- scan_limit_for returns the number of body bytes the DFA may inspect.
 local function scan_limit_for(body_len, content_length)
     local limit = body_len
     if content_length and content_length > 0 and content_length < limit then
@@ -92,7 +82,6 @@ local function scan_limit_for(body_len, content_length)
     return limit
 end
 
--- scan_proto_dfa walks protobuf wire format; stops on campaign_id (field 1) or scan budget.
 local function scan_proto_dfa(data, scan_limit)
     local pos = 1
     while pos <= scan_limit do
@@ -146,7 +135,6 @@ local function scan_proto_dfa(data, scan_limit)
     return nil, nil
 end
 
--- json_key_id classifies a JSON object key for campaign_id / OpenRTB item extraction.
 local function json_key_id(key)
     if string.find(key, "\\", 1, true) then
         return nil
@@ -168,7 +156,6 @@ local function is_json_ws(b)
     return b == 32 or b == 9 or b == 10 or b == 13
 end
 
--- skip_json_value advances past one JSON value starting at pos; returns next pos or nil, err.
 local function skip_json_value(data, pos, scan_limit)
     local err
     local b = byte(data, pos)
@@ -316,7 +303,6 @@ local function skip_json_value(data, pos, scan_limit)
     return nil, ERR_MALFORMED
 end
 
--- read_json_string reads a JSON string value at pos; returns raw, next_pos, err.
 local function read_json_string(data, pos, scan_limit)
     if byte(data, pos) ~= 34 then
         return nil, nil, ERR_MALFORMED
@@ -350,7 +336,6 @@ local function read_json_string(data, pos, scan_limit)
     return nil, nil, ERR_MALFORMED
 end
 
--- scan_json_dfa walks JSON object keys; extracts campaign_id string value (last wins).
 local function scan_json_dfa(data, scan_limit)
     local err
     local last_cid = nil
@@ -439,7 +424,6 @@ local function scan_json_dfa(data, scan_limit)
     return nil, ERR_MALFORMED
 end
 
--- scan_item_object extracts "id" from one OpenRTB item object; returns id, next_pos, err.
 local function scan_item_object(data, pos, scan_limit)
     local err
     if byte(data, pos) ~= 123 then
@@ -513,7 +497,6 @@ local function scan_item_object(data, pos, scan_limit)
     return nil, nil, ERR_MALFORMED
 end
 
--- scan_json_openrtb_dfa walks nested OpenRTB JSON; extracts item[0].id as campaign key.
 local function scan_json_openrtb_dfa(data, scan_limit)
     local err
     local found = nil
@@ -574,7 +557,6 @@ local function scan_json_openrtb_dfa(data, scan_limit)
                     end
                     found = id
                 end
-                -- skip remainder of array
                 local depth = 1
                 while pos <= scan_limit and depth > 0 do
                     local c = byte(data, pos)
@@ -643,7 +625,6 @@ local function scan_json_openrtb_dfa(data, scan_limit)
     return found, nil
 end
 
--- check_content_length rejects declared bodies over MAX_BODY_BYTES before read_body.
 function _M.check_content_length(content_length)
     if content_length and content_length > MAX_BODY_BYTES then
         return ERR_OVERSIZE
@@ -651,9 +632,6 @@ function _M.check_content_length(content_length)
     return nil
 end
 
--- extract_campaign_id runs the byte DFA on body; content_length optional (from header).
--- schema: "openrtb_3" (default when passed) | "espx_native". When omitted, uses
--- TRACKER_INGRESS_SCHEMA env or espx_native (keeps existing nginx corpus green).
 function _M.extract_campaign_id(body, content_length, schema)
     if content_length and content_length > MAX_BODY_BYTES then
         return nil, ERR_OVERSIZE

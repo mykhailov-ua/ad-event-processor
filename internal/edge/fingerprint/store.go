@@ -1,4 +1,3 @@
-// Package fingerprint stores passive XDP SYN TCP fingerprints for IVT correlation.
 package fingerprint
 
 import (
@@ -17,7 +16,6 @@ const (
 	defaultTTL     = time.Hour
 )
 
-// Entry is one observed SYN fingerprint for an IP.
 type Entry struct {
 	IP      string
 	TCPHash uint32
@@ -27,7 +25,6 @@ type Entry struct {
 	SeenAt  time.Time
 }
 
-// Record stores or refreshes a fingerprint observation for an IP.
 func Record(ctx context.Context, rdb redis.Cmdable, e Entry) error {
 	if rdb == nil || e.IP == "" {
 		return nil
@@ -48,7 +45,6 @@ func Record(ctx context.Context, rdb redis.Cmdable, e Entry) error {
 	return err
 }
 
-// ListRecent returns the most recent fingerprint entries from the staging ZSET.
 func ListRecent(ctx context.Context, rdb redis.Cmdable, limit int) ([]Entry, error) {
 	if rdb == nil {
 		return nil, nil

@@ -12,7 +12,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// AdminInvoiceFilters are optional query filters for cross-customer invoice list.
 type AdminInvoiceFilters struct {
 	CustomerID *uuid.UUID
 	Month      *time.Time
@@ -20,7 +19,6 @@ type AdminInvoiceFilters struct {
 	MinTotal   int64
 }
 
-// AdminInvoiceListResult is the paginated admin invoice list response.
 type AdminInvoiceListResult struct {
 	Items  []InvoiceSummaryDTO `json:"items"`
 	Total  int64               `json:"total"`
@@ -28,7 +26,6 @@ type AdminInvoiceListResult struct {
 	Offset int32               `json:"offset"`
 }
 
-// ListInvoicesAdmin returns invoices across customers with optional filters (admin only).
 func (s *CompositeReadService) ListInvoicesAdmin(ctx context.Context, filters AdminInvoiceFilters, limit, offset int32) (AdminInvoiceListResult, error) {
 	if s == nil || s.queries == nil {
 		return AdminInvoiceListResult{}, fmt.Errorf("composite read service not configured")

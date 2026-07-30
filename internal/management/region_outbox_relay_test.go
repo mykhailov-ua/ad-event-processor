@@ -1,6 +1,8 @@
 package management
 
 import (
+	"espx/pkg/faultproof"
+
 	"context"
 	"encoding/json"
 	"strconv"
@@ -19,7 +21,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestRegionCellIsolation proves Redis keys written in cell A are invisible in cell B.
 func TestRegionCellIsolation(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -42,14 +43,13 @@ func TestRegionCellIsolation(t *testing.T) {
 	_, err = rdbB.Get(ctx, key).Result()
 	require.ErrorIs(t, err, redis.Nil)
 
-	logChaosProof(t, "region_cell_isolation", map[string]string{
+	faultproof.Log(t, "region_cell_isolation", map[string]string{
 		"subsystem":  "multi_region",
 		"cell_a_key": key,
 		"cell_b_hit": "false",
 	})
 }
 
-// TestRegionOutboxRelay applies a global outbox event to the regional Redis cell.
 func TestRegionOutboxRelay(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -119,13 +119,12 @@ func TestRegionOutboxRelay(t *testing.T) {
 		SELECT COUNT(*) FROM region_apply_idempotency WHERE region_code = 1 AND outbox_event_id = $1`, eventID).Scan(&idemCount))
 	require.Equal(t, 1, idemCount)
 
-	// Idempotent replay must not double-apply.
 	require.NoError(t, relay.ProcessPending(ctx))
 	val2, err := rdb.Get(ctx, budgetKey).Int64()
 	require.NoError(t, err)
 	require.Equal(t, val, val2)
 
-	logChaosProof(t, "region_outbox_relay", map[string]string{
+	faultproof.Log(t, "region_outbox_relay", map[string]string{
 		"subsystem":    "region_outbox_relay",
 		"region_code":  "1",
 		"event_id":     strconv.FormatInt(eventID, 10),
@@ -134,7 +133,6 @@ func TestRegionOutboxRelay(t *testing.T) {
 	})
 }
 
-// TestRegionOutboxRelay_WithOperationLease applies delivery through book -> execute -> complete.
 func TestRegionOutboxRelay_WithOperationLease(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -220,7 +218,7 @@ func TestRegionOutboxRelay_WithOperationLease(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(6_000_000), val)
 
-	logChaosProof(t, "region_outbox_relay_lease", map[string]string{
+	faultproof.Log(t, "region_outbox_relay_lease", map[string]string{
 		"subsystem":    "region_outbox_relay",
 		"lease_path":   "true",
 		"region_code":  "1",

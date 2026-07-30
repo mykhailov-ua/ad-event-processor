@@ -1,5 +1,4 @@
 #!/bin/sh
-# Generates sentinel.conf for all eSPX Redis shards and execs redis-sentinel.
 set -eu
 
 CONF=/tmp/sentinel.conf

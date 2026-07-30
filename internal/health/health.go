@@ -1,4 +1,3 @@
-// Package health provides liveness (/healthz) and readiness (/readyz) handlers with cached dependency probes.
 package health
 
 import (
@@ -10,22 +9,18 @@ import (
 
 const bodyOK = "OK"
 
-// BodyOK is the liveness/readiness response body.
 func BodyOK() string { return bodyOK }
 
-// Liveness tracks /healthz hits without I/O on the request path.
 type Liveness struct {
 	hits atomic.Uint64
 }
 
-// Hit records one liveness probe (tracker hot path).
 func (l *Liveness) Hit() {
 	if l != nil {
 		l.hits.Add(1)
 	}
 }
 
-// Hits returns the total /healthz invocations.
 func (l *Liveness) Hits() uint64 {
 	if l == nil {
 		return 0
@@ -33,7 +28,6 @@ func (l *Liveness) Hits() uint64 {
 	return l.hits.Load()
 }
 
-// ServeHealthz answers liveness probes with no dependency I/O.
 func ServeHealthz(l *Liveness, w http.ResponseWriter, _ *http.Request) {
 	if l != nil {
 		l.Hit()
@@ -42,12 +36,10 @@ func ServeHealthz(l *Liveness, w http.ResponseWriter, _ *http.Request) {
 	_, _ = w.Write([]byte(bodyOK))
 }
 
-// ReadinessProbe caches dependency health for /readyz (p99 < 10 ms).
 type ReadinessProbe struct {
 	ready atomic.Int32
 }
 
-// SetReady updates the cached readiness flag.
 func (p *ReadinessProbe) SetReady(ok bool) {
 	if p == nil {
 		return
@@ -59,12 +51,10 @@ func (p *ReadinessProbe) SetReady(ok bool) {
 	}
 }
 
-// Ready reports whether the process may receive traffic.
 func (p *ReadinessProbe) Ready() bool {
 	return p != nil && p.ready.Load() == 1
 }
 
-// ServeReadyz serves the readiness endpoint from cached atomics only.
 func (p *ReadinessProbe) ServeReadyz(w http.ResponseWriter, _ *http.Request) {
 	if p.Ready() {
 		w.WriteHeader(http.StatusOK)
@@ -74,7 +64,6 @@ func (p *ReadinessProbe) ServeReadyz(w http.ResponseWriter, _ *http.Request) {
 	http.Error(w, "not ready", http.StatusServiceUnavailable)
 }
 
-// StartBackground periodically runs check and publishes readiness.
 func (p *ReadinessProbe) StartBackground(ctx context.Context, interval time.Duration, check func(context.Context) bool) {
 	if p == nil || check == nil {
 		return
@@ -96,7 +85,6 @@ func (p *ReadinessProbe) StartBackground(ctx context.Context, interval time.Dura
 	}()
 }
 
-// Register mounts GET /healthz and optional GET /readyz on mux.
 func Register(mux *http.ServeMux, live *Liveness, ready *ReadinessProbe) {
 	if mux == nil {
 		return

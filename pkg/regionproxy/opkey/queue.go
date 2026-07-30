@@ -9,7 +9,6 @@ type ringEntry struct {
 	ready atomic.Bool
 }
 
-// MPSCQueue is a power-of-2 multi-producer single-consumer ring with cache-line isolation.
 type MPSCQueue struct {
 	_     [8]uint64
 	write uint64
@@ -20,7 +19,6 @@ type MPSCQueue struct {
 	ring  []ringEntry
 }
 
-// NewMPSCQueue allocates a ring with size rounded up to the next power of two when needed.
 func NewMPSCQueue(size uint64) *MPSCQueue {
 	if size == 0 || (size&(size-1)) != 0 {
 		size = 4096
@@ -31,14 +29,12 @@ func NewMPSCQueue(size uint64) *MPSCQueue {
 	}
 }
 
-// Depth returns the number of queued slots visible to the consumer.
 func (q *MPSCQueue) Depth() int64 {
 	w := atomic.LoadUint64(&q.write)
 	r := atomic.LoadUint64(&q.read)
 	return int64(w - r)
 }
 
-// Push enqueues slot from any producer goroutine; returns false when full.
 func (q *MPSCQueue) Push(slot *Slot) bool {
 	if slot == nil {
 		return false
@@ -58,7 +54,6 @@ func (q *MPSCQueue) Push(slot *Slot) bool {
 	}
 }
 
-// Pop dequeues one slot for the single consumer; returns false when empty.
 func (q *MPSCQueue) Pop() (*Slot, bool) {
 	r := atomic.LoadUint64(&q.read)
 	w := atomic.LoadUint64(&q.write)

@@ -8,13 +8,11 @@ import (
 	"espx/internal/ingestion"
 )
 
-// SlotMigrationOrchestrator copies MIGRATING slot data and drains old keys after cutover (Phase 2.3).
 type SlotMigrationOrchestrator struct {
 	svc      *Service
 	interval time.Duration
 }
 
-// NewSlotMigrationOrchestrator constructs the slot migration background worker.
 func NewSlotMigrationOrchestrator(svc *Service, interval time.Duration) *SlotMigrationOrchestrator {
 	if interval <= 0 {
 		interval = 30 * time.Second
@@ -22,7 +20,6 @@ func NewSlotMigrationOrchestrator(svc *Service, interval time.Duration) *SlotMig
 	return &SlotMigrationOrchestrator{svc: svc, interval: interval}
 }
 
-// Start runs copy and drain ticks until ctx is cancelled.
 func (o *SlotMigrationOrchestrator) Start(ctx context.Context) {
 	o.bumpPendingMigrationFences(ctx)
 

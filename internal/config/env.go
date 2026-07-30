@@ -1,4 +1,3 @@
-// Package config loads environment-backed settings shared by every service binary at startup.
 package config
 
 import (
@@ -10,7 +9,6 @@ import (
 	"time"
 )
 
-// ExpectedRedisShardCount is the fixed production topology for StaticSlotSharder client sharding.
 const ExpectedRedisShardCount = 4
 
 type Config struct {
@@ -167,7 +165,6 @@ type Config struct {
 	CampaignUpdateChannel   string
 	RtbCatalogReloadChannel string
 
-	// M14-02/M14-03: shard-0 survival
 	RegistryStaleTTLSec          int
 	CampaignUpdateBrokerFallback bool
 	CampaignUpdateBrokerTopic    string
@@ -246,8 +243,6 @@ type Config struct {
 	RtbTargetingIndex        bool
 	RtbPrebidIVT             bool
 
-	// IngressSchema selects /track body wire format: openrtb_3 (default via Load) or espx_native.
-	// Zero-value Config (unit tests) is treated as espx_native by IsESPXNativeIngress.
 	IngressSchema string
 
 	QuotaMode                 string
@@ -404,27 +399,22 @@ type Config struct {
 	BillingInternalToken Secret
 }
 
-// MultiRegionCell reports whether this process is a regional hot-path cell (not global control).
 func (c *Config) MultiRegionCell() bool {
 	return c != nil && c.MultiRegionEnabled && c.RegionCode != 0
 }
 
-// MultiRegionGlobal reports whether this process is the global control plane in multi-region mode.
 func (c *Config) MultiRegionGlobal() bool {
 	return c != nil && c.MultiRegionEnabled && c.RegionCode == 0
 }
 
-// BrokerEnabled reports whether the processor should run the broker ingest bridge.
 func (c *Config) BrokerEnabled() bool {
 	return c != nil && c.Broker.URL != ""
 }
 
-// RedisSentinelEnabled reports whether Go services dial masters via Sentinel instead of REDIS_ADDRS directly.
 func (c *Config) RedisSentinelEnabled() bool {
 	return len(c.RedisSentinelAddrs) > 0
 }
 
-// ResolveRedisMasterNames returns Sentinel master names aligned with REDIS_ADDRS shard count.
 func (c *Config) ResolveRedisMasterNames() []string {
 	if len(c.RedisMasterNames) > 0 {
 		return c.RedisMasterNames
@@ -436,7 +426,6 @@ func (c *Config) ResolveRedisMasterNames() []string {
 	return names
 }
 
-// Load builds a validated Config from the process environment.
 func Load() (*Config, error) {
 	appEnv := os.Getenv("ENV")
 	cfg := &Config{
@@ -588,7 +577,7 @@ func Load() (*Config, error) {
 		StripeCheckoutSuccessURL:        os.Getenv("STRIPE_CHECKOUT_SUCCESS_URL"),
 		StripeCheckoutCancelURL:         os.Getenv("STRIPE_CHECKOUT_CANCEL_URL"),
 		CryptoWebhookSecret:             Secret(envOrDefault("CRYPTO_WEBHOOK_SECRET", "cryptosecret")),
-		CryptoMinPaymentMicro:           getEnvMicro("CRYPTO_MIN_PAYMENT_MICRO", 10.0), // default 10 USD (10,000,000 micro)
+		CryptoMinPaymentMicro:           getEnvMicro("CRYPTO_MIN_PAYMENT_MICRO", 10.0),
 		CryptoConfirmationDepth:         getEnvInt("CRYPTO_CONFIRMATION_DEPTH", 12),
 		PaymentFinancialReconIntervalMs: getEnvInt("PAYMENT_FINANCIAL_RECON_INTERVAL_MS", 0),
 		SelfServeMaxActiveCampaigns:     getEnvInt("SELF_SERVE_MAX_ACTIVE_CAMPAIGNS", 500),
@@ -964,18 +953,15 @@ func Load() (*Config, error) {
 		cfg.AuthMetricsPort = "9091"
 	}
 	if cfg.PaymentServerPort == "" {
-		// Default gRPC port keeps local compose aligned with management payment client dial target.
 		cfg.PaymentServerPort = "51052"
 	}
 	if cfg.PaymentServerHost == "" {
-		// Loopback default matches host-network compose where payment and management share the host stack.
 		cfg.PaymentServerHost = "127.0.0.1"
 	}
 	if cfg.PaymentMetricsPort == "" {
 		cfg.PaymentMetricsPort = "9092"
 	}
 	if cfg.PaymentWebhookPort == "" {
-		// Separate HTTP port isolates Stripe webhook ingress from management admin traffic.
 		cfg.PaymentWebhookPort = "8187"
 	}
 	paymentHTTPBase := "http://127.0.0.1:" + cfg.PaymentWebhookPort
@@ -1011,7 +997,6 @@ func Load() (*Config, error) {
 	return cfg, nil
 }
 
-// NotifierConfigured reports whether at least one delivery channel has credentials in config.
 func (c *Config) NotifierConfigured() bool {
 	if c == nil {
 		return false
@@ -1023,7 +1008,6 @@ func (c *Config) NotifierConfigured() bool {
 		c.Notifier.SMTPSender != ""
 }
 
-// OpsAlertsEnabled reports whether management should dial notifier for operator alerts.
 func (c *Config) OpsAlertsEnabled() bool {
 	if c == nil || !c.Management.OpsAlertsEnabled {
 		return false
@@ -1031,7 +1015,6 @@ func (c *Config) OpsAlertsEnabled() bool {
 	return c.opsAlertRecipient() != ""
 }
 
-// AlertmanagerWebhookEnabled reports whether management should accept Alertmanager webhooks.
 func (c *Config) AlertmanagerWebhookEnabled() bool {
 	if c == nil || !c.Management.AlertmanagerWebhookEnabled {
 		return false
@@ -1039,7 +1022,6 @@ func (c *Config) AlertmanagerWebhookEnabled() bool {
 	return c.opsAlertRecipient() != ""
 }
 
-// NotifierDialEnabled reports whether management should open a notifier gRPC client.
 func (c *Config) NotifierDialEnabled() bool {
 	return c.OpsAlertsEnabled() || c.AlertmanagerWebhookEnabled()
 }
@@ -1060,7 +1042,6 @@ func (c *Config) opsAlertRecipient() string {
 	return ""
 }
 
-// IVTDetectorEnabled reports whether the management-hosted IVT scan loop should run.
 func (c *Config) IVTDetectorEnabled() bool {
 	if c == nil || !c.IVT.Enabled {
 		return false
@@ -1068,12 +1049,10 @@ func (c *Config) IVTDetectorEnabled() bool {
 	return string(c.CHDSN) != ""
 }
 
-// FraudScoringEnabled reports whether the ML analytics shadow scoring should run.
 func (c *Config) FraudScoringEnabled() bool {
 	return c != nil && c.FraudScoring.Enabled
 }
 
-// ProcessorPGStreamWorkers returns PG stream consumer workers per shard (PROCESSOR_PG_STREAM_MAX_WORKERS or MAX_WORKERS).
 func (c *Config) ProcessorPGStreamWorkers() int {
 	if c == nil {
 		return 16
@@ -1087,7 +1066,6 @@ func (c *Config) ProcessorPGStreamWorkers() int {
 	return 16
 }
 
-// ProcessorCHStreamWorkers returns CH stream consumer workers per shard (PROCESSOR_CH_STREAM_MAX_WORKERS or CH_MAX_WORKERS).
 func (c *Config) ProcessorCHStreamWorkers() int {
 	if c == nil {
 		return 1
@@ -1101,12 +1079,10 @@ func (c *Config) ProcessorCHStreamWorkers() int {
 	return 1
 }
 
-// FraudScorerStandalone reports whether the ML analytics is running as a standalone service.
 func (c *Config) FraudScorerStandalone() bool {
 	return c != nil && c.FraudScoring.Standalone
 }
 
-// ClickHouseEnabled reports whether analytics queries should use ClickHouse.
 func (c *Config) ClickHouseEnabled() bool {
 	return c != nil && string(c.CHDSN) != ""
 }

@@ -8,7 +8,6 @@ import (
 	"espx/internal/ingestion/sqlc"
 )
 
-// NewAdsRegistry isolates registry sync from production replica paths.
 func NewAdsRegistry(t testing.TB, repo db.Querier) *ingestion.Registry {
 	t.Helper()
 	r := ingestion.NewRegistry(repo)

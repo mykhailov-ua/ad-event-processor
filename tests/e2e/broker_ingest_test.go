@@ -1,4 +1,3 @@
-// broker_ingest_test.go exercises broker produce → live consumer → Postgres settlement (M6-19).
 package e2e_test
 
 import (

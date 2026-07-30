@@ -22,7 +22,6 @@ var bufferPool = sync.Pool{
 	New: func() any { return new(bytes.Buffer) },
 }
 
-// putBuffer returns a request body buffer to the pool when it is small enough to reuse safely.
 func putBuffer(buf *bytes.Buffer) {
 	if buf == nil || buf.Cap() > 64*1024 {
 		return
@@ -31,7 +30,6 @@ func putBuffer(buf *bytes.Buffer) {
 	bufferPool.Put(buf)
 }
 
-// AuthHandler exposes login, logout, refresh, and registration endpoints for the admin UI.
 type AuthHandler struct {
 	authClient     pb.AuthServiceClient
 	tokenMaker     auth.Maker
@@ -40,7 +38,6 @@ type AuthHandler struct {
 	authMiddleware *AuthMiddleware
 }
 
-// NewAuthHandler wires auth HTTP endpoints to the gRPC auth service and token infrastructure.
 func NewAuthHandler(authClient pb.AuthServiceClient, tokenMaker auth.Maker, rdb redis.UniversalClient, cfg *config.Config, authMiddleware *AuthMiddleware) *AuthHandler {
 	return &AuthHandler{
 		authClient:     authClient,
@@ -51,7 +48,6 @@ func NewAuthHandler(authClient pb.AuthServiceClient, tokenMaker auth.Maker, rdb 
 	}
 }
 
-// RegisterRoutes mounts cookie-based auth endpoints on the provided mux.
 func (h *AuthHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/auth/login", h.login)
 	mux.HandleFunc("POST /api/v1/auth/logout", h.logout)
@@ -64,7 +60,6 @@ func (h *AuthHandler) RegisterRoutes(mux *http.ServeMux) {
 	}
 }
 
-// setCookie writes hardened session cookies shared by login and logout flows.
 func setCookie(w http.ResponseWriter, name, value, path string, maxAge int, httpOnly bool) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
@@ -77,13 +72,11 @@ func setCookie(w http.ResponseWriter, name, value, path string, maxAge int, http
 	})
 }
 
-// LoginRequest carries credentials for the cookie-based admin login endpoint.
 type LoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
-// UserDTO exposes identity, role, and permissions to the frontend after authentication.
 type UserDTO struct {
 	ID          string   `json:"id"`
 	Email       string   `json:"email,omitempty"`
@@ -92,7 +85,6 @@ type UserDTO struct {
 	Permissions []string `json:"permissions,omitempty"`
 }
 
-// login authenticates credentials, sets session cookies, and issues a CSRF token for mutating requests.
 func (h *AuthHandler) login(w http.ResponseWriter, r *http.Request) {
 	buf := bufferPool.Get().(*bytes.Buffer)
 	buf.Reset()
@@ -142,7 +134,6 @@ func (h *AuthHandler) login(w http.ResponseWriter, r *http.Request) {
 	httpresponse.JSON(w, http.StatusOK, map[string]any{"user": userDTO})
 }
 
-// logout revokes refresh tokens, blocklists access tokens, and clears session cookies.
 func (h *AuthHandler) logout(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("refreshToken")
 	if err == nil && cookie.Value != "" {
@@ -173,7 +164,6 @@ func (h *AuthHandler) logout(w http.ResponseWriter, r *http.Request) {
 	httpresponse.JSON(w, http.StatusNoContent, nil)
 }
 
-// refresh rotates access and refresh cookies using a valid refresh token.
 func (h *AuthHandler) refresh(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("refreshToken")
 	if err != nil || cookie.Value == "" {
@@ -196,7 +186,6 @@ func (h *AuthHandler) refresh(w http.ResponseWriter, r *http.Request) {
 	httpresponse.JSON(w, http.StatusOK, map[string]string{"status": "refreshed"})
 }
 
-// me returns the current user profile when the access token is valid and not revoked.
 func (h *AuthHandler) me(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("accessToken")
 	if err != nil || cookie.Value == "" {
@@ -233,7 +222,6 @@ func (h *AuthHandler) me(w http.ResponseWriter, r *http.Request) {
 	httpresponse.JSON(w, http.StatusOK, dto)
 }
 
-// RegisterRequest carries admin-provisioned user creation data for the register endpoint.
 type RegisterRequest struct {
 	Email      string `json:"email"`
 	Password   string `json:"password"`
@@ -241,7 +229,6 @@ type RegisterRequest struct {
 	CustomerID string `json:"customer_id,omitempty"`
 }
 
-// register creates manager or customer users and is restricted to authenticated admins.
 func (h *AuthHandler) register(w http.ResponseWriter, r *http.Request) {
 	buf := bufferPool.Get().(*bytes.Buffer)
 	buf.Reset()

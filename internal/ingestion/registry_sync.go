@@ -5,11 +5,8 @@ import (
 	"log/slog"
 )
 
-// RegistryFullSyncPayload is published on campaigns:update to reload all active
-// campaigns from Postgres (ListActiveCampaigns) and warm Redis budget keys.
 const RegistryFullSyncPayload = "*"
 
-// ReloadFullSnapshot runs a full registry Sync plus optional budget cache warm.
 func (r *Registry) ReloadFullSnapshot(ctx context.Context) (int, error) {
 	count, err := r.Sync(ctx)
 	if err != nil {
@@ -32,7 +29,6 @@ func (r *Registry) ReloadFullSnapshot(ctx context.Context) (int, error) {
 	return count, nil
 }
 
-// IsRegistryFullSyncPayload reports whether a pub/sub payload requests full reload.
 func IsRegistryFullSyncPayload(payload string) bool {
 	return payload == RegistryFullSyncPayload
 }

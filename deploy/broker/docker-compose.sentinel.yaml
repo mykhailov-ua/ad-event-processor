@@ -1,6 +1,3 @@
-# Sentinel overlay for deploy/broker coordination Redis (6379).
-# HA stack:  docker compose -f deploy/broker/docker-compose.yaml -f deploy/broker/docker-compose.sentinel.yaml up -d
-# Coord only (chaos): same files, only redis + redis-replica + redis-sentinel
 
 services:
   redis-replica:

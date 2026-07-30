@@ -28,8 +28,6 @@ func TestRouteRegistration(t *testing.T) {
 
 	RegisterRoutes(mux, registry)
 
-	// Verify routes are registered by sending requests and checking they don't return 404
-	// (they might return 403 or 200, but not 404)
 	routes := []struct {
 		method string
 		path   string
@@ -56,7 +54,6 @@ func TestReports_Placements(t *testing.T) {
 	mux := http.NewServeMux()
 	h.Register(mux)
 
-	// 1. Test basic request
 	req := httptest.NewRequest("GET", "/api/v1/reports/placements?limit=5", nil)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
@@ -72,7 +69,6 @@ func TestReports_Placements(t *testing.T) {
 	assert.Equal(t, 0, resp.Freshness.CHLagSeconds)
 	assert.NotEmpty(t, resp.NextCursor)
 
-	// 2. Test pagination with cursor
 	req2 := httptest.NewRequest("GET", "/api/v1/reports/placements?limit=5&cursor="+resp.NextCursor, nil)
 	w2 := httptest.NewRecorder()
 	mux.ServeHTTP(w2, req2)
@@ -94,7 +90,6 @@ func TestReports_Keywords(t *testing.T) {
 	mux := http.NewServeMux()
 	h.Register(mux)
 
-	// 1. Test basic request
 	req := httptest.NewRequest("GET", "/api/v1/reports/keywords?limit=5", nil)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
@@ -110,7 +105,6 @@ func TestReports_Keywords(t *testing.T) {
 	assert.Equal(t, 0, resp.Freshness.CHLagSeconds)
 	assert.NotEmpty(t, resp.NextCursor)
 
-	// 2. Test pagination with cursor
 	req2 := httptest.NewRequest("GET", "/api/v1/reports/keywords?limit=5&cursor="+resp.NextCursor, nil)
 	w2 := httptest.NewRecorder()
 	mux.ServeHTTP(w2, req2)
@@ -158,7 +152,6 @@ func TestViews_CRUD(t *testing.T) {
 
 	customerID := uuid.New().String()
 
-	// 1. Create View
 	createReq := CreateViewRequest{
 		CustomerID: customerID,
 		Name:       "My Placement View",
@@ -181,7 +174,6 @@ func TestViews_CRUD(t *testing.T) {
 	assert.Equal(t, createReq.Name, created.Name)
 	assert.Equal(t, createReq.CustomerID, created.CustomerID)
 
-	// 2. List Views
 	reqList := httptest.NewRequest("GET", "/api/v1/views?customer_id="+customerID, nil)
 	wList := httptest.NewRecorder()
 	mux.ServeHTTP(wList, reqList)
@@ -195,7 +187,6 @@ func TestViews_CRUD(t *testing.T) {
 	assert.Len(t, list, 1)
 	assert.Equal(t, created.ID, list[0].ID)
 
-	// 3. Get View
 	reqGet := httptest.NewRequest("GET", "/api/v1/views/"+created.ID, nil)
 	wGet := httptest.NewRecorder()
 	mux.ServeHTTP(wGet, reqGet)
@@ -208,7 +199,6 @@ func TestViews_CRUD(t *testing.T) {
 
 	assert.Equal(t, created.ID, fetched.ID)
 
-	// 4. Update View
 	updateReq := UpdateViewRequest{
 		Name:      "Updated View Name",
 		ReportKey: "placements",
@@ -229,14 +219,12 @@ func TestViews_CRUD(t *testing.T) {
 	assert.Equal(t, updateReq.Name, updated.Name)
 	assert.False(t, updated.IsShared)
 
-	// 5. Delete View
 	reqDelete := httptest.NewRequest("DELETE", "/api/v1/views/"+created.ID, nil)
 	wDelete := httptest.NewRecorder()
 	mux.ServeHTTP(wDelete, reqDelete)
 
 	require.Equal(t, http.StatusNoContent, wDelete.Code)
 
-	// Verify deleted
 	reqGet2 := httptest.NewRequest("GET", "/api/v1/views/"+created.ID, nil)
 	wGet2 := httptest.NewRecorder()
 	mux.ServeHTTP(wGet2, reqGet2)

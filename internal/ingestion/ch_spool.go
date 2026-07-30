@@ -35,13 +35,11 @@ var (
 	chSpoolRecordMagic    = [4]byte{'C', 'H', 'S', 'P'}
 )
 
-// CHSpoolConfig controls mmap segment size and rotation retention.
 type CHSpoolConfig struct {
 	SegmentSizeBytes int64
 	MaxSegments      int
 }
 
-// DefaultCHSpoolConfig returns production defaults (512 MiB segment, 8 segments).
 func DefaultCHSpoolConfig() CHSpoolConfig {
 	return CHSpoolConfig{
 		SegmentSizeBytes: chSpoolDefaultSegmentSize,
@@ -49,14 +47,12 @@ func DefaultCHSpoolConfig() CHSpoolConfig {
 	}
 }
 
-// CHSpool is a rotating mmap WAL for ClickHouse batches during outages.
-// Only the active write segment keeps an open FD and mmap; sealed segments are lazy-mapped on Scan.
 type CHSpool struct {
 	dir      string
 	cfg      CHSpoolConfig
 	mu       sync.Mutex
 	active   *chSpoolSegment
-	rotated  []string // sealed segment paths, oldest first
+	rotated  []string
 	nextSeq  int
 	writePos atomic.Int64
 }
@@ -68,12 +64,10 @@ type chSpoolSegment struct {
 	writePos int64
 }
 
-// OpenCHSpool opens the spool directory with production segment defaults.
 func OpenCHSpool(dir string) (*CHSpool, error) {
 	return OpenCHSpoolWithConfig(dir, DefaultCHSpoolConfig())
 }
 
-// OpenCHSpoolWithConfig opens or recovers a multi-segment spool under dir.
 func OpenCHSpoolWithConfig(dir string, cfg CHSpoolConfig) (*CHSpool, error) {
 	if dir == "" {
 		dir = "/var/spool/espx/ch"
@@ -240,7 +234,6 @@ func closeCHSpoolSegment(seg *chSpoolSegment) error {
 	return nil
 }
 
-// findCHSpoolWritePos scans valid records and returns the append offset after the last record.
 func findCHSpoolWritePos(data []byte) int64 {
 	var pos int64
 	for pos+12 <= int64(len(data)) {
@@ -268,7 +261,6 @@ func bytesEqual4(a, b []byte) bool {
 	return len(a) >= 4 && len(b) >= 4 && a[0] == b[0] && a[1] == b[1] && a[2] == b[2] && a[3] == b[3]
 }
 
-// AppendDurably writes one batch to the active segment, rotates on full, and fsyncs before return.
 func (s *CHSpool) AppendDurably(dedupToken string, events []*campaignmodel.Event) error {
 	if len(events) == 0 {
 		return nil
@@ -319,7 +311,6 @@ func (s *CHSpool) appendLocked(payload []byte, recordLen int) error {
 	return nil
 }
 
-// rotateLocked seals the active segment, opens a fresh one, and enforces MaxSegments.
 func (s *CHSpool) rotateLocked() error {
 	total := len(s.rotated) + 1
 	if total >= s.cfg.MaxSegments {
@@ -350,7 +341,6 @@ func (s *CHSpool) rotateLocked() error {
 	return nil
 }
 
-// marshalCHSpoolPayload encodes dedup token and vtproto events for WAL recovery.
 func marshalCHSpoolPayload(dedupToken string, events []*campaignmodel.Event) ([]byte, error) {
 	tokenBytes := []byte(dedupToken)
 	if len(tokenBytes) > 0xffff {
@@ -411,7 +401,6 @@ func eventToStreamPB(e *campaignmodel.Event) *pb.AdStreamEvent {
 	return pbEvt
 }
 
-// CHSpoolRecord is one recovered WAL entry.
 type CHSpoolRecord struct {
 	DedupToken    string
 	Events        []*campaignmodel.Event
@@ -420,7 +409,6 @@ type CHSpoolRecord struct {
 	LastInSegment bool
 }
 
-// Scan returns all valid records across sealed and active segments in append order.
 func (s *CHSpool) Scan() ([]CHSpoolRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -536,7 +524,6 @@ func unmarshalCHSpoolPayload(payload []byte) (string, []*campaignmodel.Event, er
 	return token, events, nil
 }
 
-// ReleaseRecord drops a replayed record: compacts sealed/active segments and deletes empty sealed files.
 func (s *CHSpool) ReleaseRecord(rec CHSpoolRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -580,7 +567,6 @@ func (s *CHSpool) removeRotatedLocked(path string) error {
 	return os.Remove(path)
 }
 
-// TruncatePrefix compacts the active segment after replay (legacy API; prefer ReleaseRecord).
 func (s *CHSpool) TruncatePrefix(endOffset int64) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -605,14 +591,12 @@ func (s *CHSpool) truncateActiveLocked(endOffset int64) error {
 	return s.active.file.Sync()
 }
 
-// SegmentCount returns sealed segments plus the active writer (for chaos diagnostics).
 func (s *CHSpool) SegmentCount() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return len(s.rotated) + 1
 }
 
-// OpenFDCount returns 1 when the active segment FD is open, 0 after Close.
 func (s *CHSpool) OpenFDCount() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -622,14 +606,12 @@ func (s *CHSpool) OpenFDCount() int {
 	return 0
 }
 
-// Close unmmaps the active segment and releases its file descriptor.
 func (s *CHSpool) Close() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return closeCHSpoolSegment(s.active)
 }
 
-// WritePos exposes the durable append offset on the active segment for tests.
 func (s *CHSpool) WritePos() int64 {
 	return s.writePos.Load()
 }

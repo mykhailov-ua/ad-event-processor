@@ -11,13 +11,11 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-// GRPCManagementClient enqueues fraud blacklist entries via settlement gRPC BlockIP.
 type GRPCManagementClient struct {
 	client pb.SettlementServiceClient
 	token  string
 }
 
-// NewGRPCManagementClient dials management settlement gRPC for internal BlockIP.
 func NewGRPCManagementClient(target, token string) (*GRPCManagementClient, *grpc.ClientConn, error) {
 	if target == "" {
 		return nil, nil, fmt.Errorf("management gRPC target required")
@@ -32,7 +30,6 @@ func NewGRPCManagementClient(target, token string) (*GRPCManagementClient, *grpc
 	}, conn, nil
 }
 
-// BlockIP enqueues a fraud blacklist entry via internal gRPC.
 func (client *GRPCManagementClient) BlockIP(ctx context.Context, ip string) error {
 	if client == nil || client.client == nil {
 		return fmt.Errorf("management gRPC client: nil receiver")
@@ -51,7 +48,6 @@ func (client *GRPCManagementClient) BlockIP(ctx context.Context, ip string) erro
 	return nil
 }
 
-// EnqueueFraudThreat enqueues an ML threat candidate via internal gRPC.
 func (client *GRPCManagementClient) EnqueueFraudThreat(ctx context.Context, action string, ip string, campaignID string, score float64, boost int32, ttlSeconds int64) error {
 	if client == nil || client.client == nil {
 		return fmt.Errorf("management gRPC client: nil receiver")

@@ -1,4 +1,3 @@
--- edge-rl.lua: fixed-window per-campaign rate limiter with fraud_score tier scaling.
 
 local edge_config = require "edge-config"
 local edge_fraud_tier = require "edge-fraud-tier"
@@ -20,13 +19,11 @@ local function tier_limit(base_limit, fraud_score)
     return scaled, tier
 end
 
--- retry_after_sec returns Retry-After for a fraud_score tier.
 function _M.retry_after_sec(fraud_score)
     local tier = edge_fraud_tier.tier_from_score(fraud_score)
     return edge_config.get_retry_after(tier)
 end
 
--- allow returns false when the campaign exceeds the tier-scaled window limit.
 function _M.allow(campaign_id, fraud_score)
     if not campaign_id or campaign_id == "" then
         return true

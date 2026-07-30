@@ -16,17 +16,15 @@ import (
 
 var regionalScorerRoles = []string{RoleTracker, RoleRegionProxy, RoleProcessor}
 
-// NodeCapacityScorer computes regional node weights and persists node_capacity_scores.
 type NodeCapacityScorer struct {
 	svc    *Service
 	pool   *pgxpool.Pool
 	region int16
 	cfg    ScorerConfig
 	epoch  atomic.Int64
-	states sync.Map // key: nodeID+"\x00"+role -> NodeScoreState
+	states sync.Map
 }
 
-// NewNodeCapacityScorer wires the regional scorer for one management cell.
 func NewNodeCapacityScorer(svc *Service) *NodeCapacityScorer {
 	region := int16(0)
 	cfg := DefaultScorerConfig()
@@ -42,7 +40,6 @@ func NewNodeCapacityScorer(svc *Service) *NodeCapacityScorer {
 	}
 }
 
-// Start ticks on the UDP epoch interval until ctx is cancelled.
 func (s *NodeCapacityScorer) Start(ctx context.Context) {
 	if s == nil || s.pool == nil {
 		return
@@ -69,7 +66,6 @@ func (s *NodeCapacityScorer) Start(ctx context.Context) {
 	}
 }
 
-// Tick scores all roles in the local region and upserts node_capacity_scores.
 func (s *NodeCapacityScorer) Tick(ctx context.Context, now time.Time) error {
 	if s == nil || s.pool == nil {
 		return nil

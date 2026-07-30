@@ -39,7 +39,7 @@ func TestEvaluate(t *testing.T) {
 			stats: &PlacementStats{
 				Clicks:       50,
 				SpendMicro:   1000000,
-				RevenueMicro: 800000, // ROI = -20%
+				RevenueMicro: 800000,
 			},
 			expected: false,
 		},
@@ -48,16 +48,16 @@ func TestEvaluate(t *testing.T) {
 			stats: &PlacementStats{
 				Clicks:       50,
 				SpendMicro:   1000000,
-				RevenueMicro: 700000, // ROI = -30%
+				RevenueMicro: 700000,
 			},
-			expected: false, // ROI floor is < -30%, not <=
+			expected: false,
 		},
 		{
 			name: "Bad ROI -31%",
 			stats: &PlacementStats{
 				Clicks:       50,
 				SpendMicro:   1000000,
-				RevenueMicro: 690000, // ROI = -31%
+				RevenueMicro: 690000,
 			},
 			expected: true,
 			action:   ActionPause,
@@ -68,7 +68,7 @@ func TestEvaluate(t *testing.T) {
 			stats: &PlacementStats{
 				Clicks:       100,
 				SpendMicro:   1000000,
-				RevenueMicro: 900000, // ROI = -10%, OK
+				RevenueMicro: 900000,
 				Conversions:  0,
 			},
 			expected: true,

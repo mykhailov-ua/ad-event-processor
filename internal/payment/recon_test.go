@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestFinancialReconRun_persistsRunAndFindings stores reconciliation output in payment.financial_recon_* tables.
 func TestFinancialReconRun_persistsRunAndFindings(t *testing.T) {
 	if testing.Short() {
 		t.Skip("requires testcontainers")
@@ -36,7 +35,6 @@ func TestFinancialReconRun_persistsRunAndFindings(t *testing.T) {
 	require.Equal(t, summary.FindingsCount, findingsCount)
 }
 
-// TestFinancialReconRun_missingTopupAfterWebhook detects ledger gap for succeeded-but-unsettled intents.
 func TestFinancialReconRun_missingTopupAfterWebhook(t *testing.T) {
 	if testing.Short() {
 		t.Skip("requires testcontainers")

@@ -57,7 +57,7 @@ coverage.out
 *.prof
 *.test
 
-# Python (scripts/fraud-scoring training)
+# Python (ml/train bootstrap artifacts)
 __pycache__/
 *.py[cod]
 .venv/

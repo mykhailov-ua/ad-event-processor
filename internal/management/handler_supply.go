@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// registerSupplyRoutes mounts IAB supply chain admin and public endpoints.
 func (h *Handler) registerSupplyRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /.well-known/sellers.json", h.limit(h.getSellersJSON))
 	mux.HandleFunc("GET /admin/supply/ads.txt", h.limit(h.perm(h.exportAdsTxt, PermSettingsRead)))

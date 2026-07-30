@@ -25,17 +25,14 @@ redis.call('HSET', KEYS[1], ARGV[1], id)
 return id
 `)
 
-// RedisTopicStore coordinates topic ID allocation across HA broker nodes.
 type RedisTopicStore struct {
 	rdb redis.UniversalClient
 }
 
-// NewRedisTopicStore wraps the coordinator Redis client for shared topic IDs.
 func NewRedisTopicStore(rdb redis.UniversalClient) *RedisTopicStore {
 	return &RedisTopicStore{rdb: rdb}
 }
 
-// Load returns all name->id mappings stored in Redis.
 func (s *RedisTopicStore) Load(ctx context.Context) (protocol.RegistrySnapshot, error) {
 	snap := protocol.RegistrySnapshot{
 		Version: 1,
@@ -74,7 +71,6 @@ func (s *RedisTopicStore) Load(ctx context.Context) (protocol.RegistrySnapshot, 
 	return snap, nil
 }
 
-// Register allocates or returns a stable topic ID in Redis.
 func (s *RedisTopicStore) Register(ctx context.Context, name string) (uint16, error) {
 	if s == nil || s.rdb == nil {
 		return 0, fmt.Errorf("redis topic store is not configured")
@@ -104,7 +100,6 @@ func (s *RedisTopicStore) Register(ctx context.Context, name string) (uint16, er
 	}
 }
 
-// MergeTimeout bounds Redis registry reload during broker startup.
 func MergeTimeout() time.Duration {
 	return 3 * time.Second
 }

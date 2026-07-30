@@ -1,5 +1,3 @@
-// Command tracker wires gnet ingestion, Redis Lua filters, and registry sync in a dedicated process.
-// Metrics and health use a separate listener so Prometheus scrapes do not run on gnet event loops.
 package main
 
 import (
@@ -187,7 +185,7 @@ func main() {
 		sharder,
 		registry,
 		campaignRepo,
-		0, // M9-03: IP rate limit enforced at XDP/nginx edge only
+		0,
 		time.Duration(cfg.RateLimitWindowMs)*time.Millisecond,
 		time.Duration(cfg.DuplicateTTLSec)*time.Second,
 		time.Duration(cfg.IdempotencyTTLHrs)*time.Hour,
@@ -502,7 +500,6 @@ func main() {
 
 	workerPool.Shutdown()
 
-	// M14-14: flush unused RAM quanta before closing refill/publisher/pins.
 	if localQuantaFlusher != nil {
 		flushCtx, flushCancel := context.WithTimeout(context.Background(), 2*time.Second)
 		n := localQuantaFlusher.FlushAll(flushCtx)

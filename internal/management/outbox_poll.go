@@ -11,7 +11,6 @@ const (
 	outboxPollIdleMax        = 250 * time.Millisecond
 )
 
-// outboxPollBackoff implements coefficient backoff for idle outbox polling (M-DB-PG-3).
 type outboxPollBackoff struct {
 	idle time.Duration
 }

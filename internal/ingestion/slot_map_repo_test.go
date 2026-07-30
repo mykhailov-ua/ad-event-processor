@@ -36,7 +36,6 @@ func TestSlotMapRepo_CreateNextVersion_ACID(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int32(2), newVersion)
 
-	// Active version unchanged until explicit activate.
 	active, err = repo.GetActiveVersion(ctx)
 	require.NoError(t, err)
 	require.Equal(t, int32(1), active)

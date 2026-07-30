@@ -15,7 +15,6 @@ type replayWebhookRequest struct {
 	ProviderEventID string `json:"provider_event_id"`
 }
 
-// replayPaymentWebhook handles POST /admin/payment/webhooks/replay for ops recovery.
 func (h *Handler) replayPaymentWebhook(w http.ResponseWriter, r *http.Request) {
 	if h.payment == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "PAYMENT_UNAVAILABLE", "payment service not configured")

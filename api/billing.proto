@@ -7,19 +7,15 @@ option go_package = "espx/internal/billing/pb;pb";
 import "google/protobuf/timestamp.proto";
 
 service BillingService {
-  // GenerateInvoice aggregates ledger spend for one customer and calendar month.
   rpc GenerateInvoice(GenerateInvoiceRequest) returns (Invoice);
 
-  // GetInvoice returns a stored invoice by id.
   rpc GetInvoice(GetInvoiceRequest) returns (Invoice);
 
-  // ListInvoices returns paginated invoice history for a customer.
   rpc ListInvoices(ListInvoicesRequest) returns (ListInvoicesResponse);
 }
 
 message GenerateInvoiceRequest {
   string customer_id = 1;
-  // billing_month is the first day of the month (UTC), e.g. 2026-06-01.
   google.protobuf.Timestamp billing_month = 2;
 }
 

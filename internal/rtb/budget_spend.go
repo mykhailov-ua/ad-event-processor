@@ -7,7 +7,6 @@ import (
 
 const invalidCustomerBudgetIdx uint32 = ^uint32(0)
 
-// CheckAndSpendAll debits campaign, optional customer, and optional daily caps atomically with rollback.
 func (store *BudgetStore) CheckAndSpendAll(campaignIdx, customerIdx uint32, price, dailyLimit int64) bool {
 	if dailyLimit > 0 {
 		store.maybeRollDaily()
@@ -48,7 +47,6 @@ func (store *BudgetStore) loadDailyHeadroom(campaignIdx uint32, dailyLimit int64
 	return dailyLimit - spent
 }
 
-// LoadCustomerBudget returns the remaining shared customer pool for a slot index.
 func (store *BudgetStore) LoadCustomerBudget(customerIdx uint32) int64 {
 	if customerIdx == invalidCustomerBudgetIdx {
 		return 0

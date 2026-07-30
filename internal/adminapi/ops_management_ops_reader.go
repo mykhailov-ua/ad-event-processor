@@ -5,7 +5,6 @@ import (
 	"io"
 )
 
-// ManagementOpsReader is the management.Service surface used by ops JSON handlers.
 type ManagementOpsReader interface {
 	GetIncidentSnapshot(ctx context.Context) (IncidentSnapshotDTO, error)
 	ListOutboxEvents(ctx context.Context, status, eventType, cursor string, limit int32) (OutboxListResult, error)

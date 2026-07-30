@@ -8,7 +8,7 @@ import (
 )
 
 func TestMgmtPgGate_LowRejectedWhenBudgetExhausted(t *testing.T) {
-	gate := NewMgmtPgGate(3) // capacity=2, lowSlots=1
+	gate := NewMgmtPgGate(3)
 	ctx := context.Background()
 
 	require.NoError(t, gate.AcquireLow(ctx))

@@ -19,14 +19,12 @@ import (
 
 const stripeSignatureMaxAge = 5 * time.Minute
 
-// WebhookHandler serves Stripe ingress on a dedicated HTTP listener separate from gRPC intent API.
 type WebhookHandler struct {
 	service *Service
 	cfg     *config.Config
 	now     func() time.Time
 }
 
-// NewWebhookHandler serves Stripe ingress on a dedicated port so webhook volume does not contend with gRPC.
 func NewWebhookHandler(service *Service, cfg *config.Config) *WebhookHandler {
 	return &WebhookHandler{
 		service: service,
@@ -35,7 +33,6 @@ func NewWebhookHandler(service *Service, cfg *config.Config) *WebhookHandler {
 	}
 }
 
-// RegisterRoutes colocates webhook, health, and metrics on the sidecar mux for a single listen port.
 func (h *WebhookHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/webhooks/stripe", h.handleStripeWebhook)
 	mux.HandleFunc("/webhooks/crypto", h.handleCryptoWebhook)
@@ -43,7 +40,6 @@ func (h *WebhookHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.Handle("/metrics", promhttp.Handler())
 }
 
-// handleHealth gives orchestrators a cheap liveness probe independent of Stripe or Postgres depth.
 func (h *WebhookHandler) handleHealth(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -53,7 +49,6 @@ func (h *WebhookHandler) handleHealth(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte("OK"))
 }
 
-// stripeEvent is a minimal Stripe webhook envelope; only fields needed for intent/refund correlation are decoded.
 type stripeEvent struct {
 	ID   string `json:"id"`
 	Type string `json:"type"`
@@ -67,7 +62,6 @@ type stripeEvent struct {
 	} `json:"data"`
 }
 
-// handleStripeWebhook verifies signatures before persistence because forged events must not move intent state.
 func (webhookHandler *WebhookHandler) handleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -139,7 +133,6 @@ func (webhookHandler *WebhookHandler) handleStripeWebhook(w http.ResponseWriter,
 	_, _ = w.Write([]byte("OK"))
 }
 
-// handleStripeRefundEvent routes Stripe refund lifecycle events to the refund settlement path.
 func (webhookHandler *WebhookHandler) handleStripeRefundEvent(w http.ResponseWriter, r *http.Request, event stripeEvent, body []byte) {
 	providerRefundID := event.Data.Object.ID
 	if providerRefundID == "" {
@@ -174,7 +167,6 @@ func (webhookHandler *WebhookHandler) handleStripeRefundEvent(w http.ResponseWri
 	_, _ = w.Write([]byte("OK"))
 }
 
-// handleStripeDisputeEvent routes Stripe dispute lifecycle events to the chargeback settlement path.
 func (webhookHandler *WebhookHandler) handleStripeDisputeEvent(w http.ResponseWriter, r *http.Request, event stripeEvent, body []byte) {
 	providerDisputeID := event.Data.Object.ID
 	if providerDisputeID == "" {
@@ -199,7 +191,6 @@ func (webhookHandler *WebhookHandler) handleStripeDisputeEvent(w http.ResponseWr
 	_, _ = w.Write([]byte("OK"))
 }
 
-// verifyStripeSignature enforces Stripe timestamp tolerance to block replayed webhook payloads.
 func verifyStripeSignature(payload []byte, sigHeader string, secret string, now time.Time) bool {
 	if secret == "" {
 		return false
@@ -244,7 +235,6 @@ func verifyStripeSignature(payload []byte, sigHeader string, secret string, now 
 	return subtle.ConstantTimeCompare([]byte(signature), []byte(expectedSignature)) == 1
 }
 
-// cryptoEvent is a normalized crypto webhook payload.
 type cryptoEvent struct {
 	ID            string `json:"id"`
 	Type          string `json:"type"`
@@ -255,7 +245,6 @@ type cryptoEvent struct {
 	ProviderRef   string `json:"provider_ref"`
 }
 
-// handleCryptoWebhook processes incoming crypto payment notifications.
 func (webhookHandler *WebhookHandler) handleCryptoWebhook(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)

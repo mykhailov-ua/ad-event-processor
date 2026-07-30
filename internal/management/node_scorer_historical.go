@@ -12,13 +12,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// HistoricalSnapshotDay returns the D−1 UTC calendar day used by the scorer.
 func HistoricalSnapshotDay(now time.Time) time.Time {
 	d := now.UTC().AddDate(0, 0, -1)
 	return time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, time.UTC)
 }
 
-// LookupHistoricalDaily loads the regional D−1 snapshot for one metric lane.
 func LookupHistoricalDaily(
 	ctx context.Context,
 	pool *pgxpool.Pool,

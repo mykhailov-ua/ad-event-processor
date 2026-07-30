@@ -11,7 +11,6 @@ import (
 
 const ledgerInvariantToleranceMicro = int64(1)
 
-// LedgerInvariantSnapshot captures customer balance and ledger sum for drift detection.
 type LedgerInvariantSnapshot struct {
 	CustomerID     uuid.UUID
 	BalanceMicro   int64
@@ -39,7 +38,6 @@ func ReadLedgerInvariant(ctx context.Context, pool *pgxpool.Pool, customerID uui
 	return snap, nil
 }
 
-// AssertLedgerBalanceInvariant verifies customers.balance equals SUM(balance_ledger.amount).
 func AssertLedgerBalanceInvariant(t testing.TB, ctx context.Context, pool *pgxpool.Pool, customerID uuid.UUID) {
 	t.Helper()
 
@@ -61,7 +59,6 @@ func AssertLedgerBalanceInvariant(t testing.TB, ctx context.Context, pool *pgxpo
 	}
 }
 
-// CheckLedgerBalanceInvariant returns ErrLedgerDrift when balance and ledger sum diverge.
 func CheckLedgerBalanceInvariant(ctx context.Context, pool *pgxpool.Pool, customerID uuid.UUID) error {
 	snap, err := ReadLedgerInvariant(ctx, pool, customerID)
 	if err != nil {

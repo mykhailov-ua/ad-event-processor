@@ -1,6 +1,3 @@
--- quota.sql: sqlc queries for Distributed Quotas Postgres control plane (Phase 1.1).
--- ReserveChunk orchestration lives in QuotaRepo (transaction + sync_idempotency);
--- these queries provide row locks and DML primitives.
 
 -- name: LockCampaignBudgetForQuota :one
 SELECT budget_limit, current_spend

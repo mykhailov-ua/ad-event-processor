@@ -16,7 +16,6 @@ import (
 	"espx/internal/metrics"
 )
 
-// GeoIPUpdaterConfig controls MaxMind database refresh on a shared volume.
 type GeoIPUpdaterConfig struct {
 	DBPath         string
 	StagingPath    string
@@ -26,12 +25,10 @@ type GeoIPUpdaterConfig struct {
 	HTTPClient     *http.Client
 }
 
-// GeoIPUpdater downloads GeoLite2 archives and atomically replaces the active mmdb file.
 type GeoIPUpdater struct {
 	cfg GeoIPUpdaterConfig
 }
 
-// NewGeoIPUpdater constructs an updater for the given paths and interval.
 func NewGeoIPUpdater(cfg GeoIPUpdaterConfig) *GeoIPUpdater {
 	if cfg.DBPath == "" {
 		cfg.DBPath = "deploy/geoip/GeoLite2-Country.mmdb"
@@ -51,7 +48,6 @@ func NewGeoIPUpdater(cfg GeoIPUpdaterConfig) *GeoIPUpdater {
 	return &GeoIPUpdater{cfg: cfg}
 }
 
-// Start runs periodic update checks until the context is cancelled.
 func (u *GeoIPUpdater) Start(ctx context.Context) {
 	if u == nil {
 		return

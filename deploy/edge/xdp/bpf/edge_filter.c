@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: GPL-2.0
-// XDP edge filter for eSPX tracker ingress (:8180).
-// PASS non-target ports; DROP blocklisted sources, protocol anomalies, SYN/PPS/RST floods.
+
+
+
 
 #include <linux/bpf.h>
 #include <linux/if_ether.h>
@@ -275,7 +275,7 @@ static __always_inline __u32 ipv4_subnet24(__u32 addr)
 	return addr & bpf_htonl(0xFFFFFF00);
 }
 
-/* Scalar config load — avoids struct edge_config stack spills (u32→u64). */
+
 static __always_inline __u8 load_config_scalars(__u32 *syn_limit, __u32 *pps_rate,
 						__u32 *global_syn_limit, __u32 *assumed_cpus,
 						__u32 *syn_subnet_limit)

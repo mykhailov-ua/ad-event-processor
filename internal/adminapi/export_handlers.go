@@ -9,7 +9,6 @@ import (
 	"espx/pkg/httpresponse"
 )
 
-// ExportHTTPHandlers serves EXP-02/03 billing export routes.
 type ExportHTTPHandlers struct {
 	JobRunner               *JobRunner
 	ApplyRateLimit          func(http.HandlerFunc) http.HandlerFunc
@@ -18,7 +17,6 @@ type ExportHTTPHandlers struct {
 	WriteServiceError       func(http.ResponseWriter, error)
 }
 
-// Register mounts billing export routes.
 func (h *ExportHTTPHandlers) Register(mux *http.ServeMux) {
 	if h == nil || h.JobRunner == nil {
 		return

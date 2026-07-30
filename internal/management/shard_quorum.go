@@ -15,7 +15,6 @@ const (
 	trackerBreakerOpenPct  = 0.5
 )
 
-// ShardQuorumTracker records how long per-shard outage signals persist (M3 dead-shard release).
 type ShardQuorumTracker struct {
 	mu             sync.Mutex
 	numShards      int
@@ -26,7 +25,6 @@ type ShardQuorumTracker struct {
 	breakerPctFunc func(ctx context.Context, shard int) float64
 }
 
-// NewShardQuorumTracker builds a tracker for N Redis shards.
 func NewShardQuorumTracker(numShards int, quorum time.Duration) *ShardQuorumTracker {
 	if quorum <= 0 {
 		quorum = defaultDeadShardQuorum
@@ -43,14 +41,12 @@ func NewShardQuorumTracker(numShards int, quorum time.Duration) *ShardQuorumTrac
 	}
 }
 
-// SetBreakerPctFunc overrides how tracker breaker open ratio is sampled (tests inject 1.0).
 func (q *ShardQuorumTracker) SetBreakerPctFunc(fn func(ctx context.Context, shard int) float64) {
 	q.mu.Lock()
 	q.breakerPctFunc = fn
 	q.mu.Unlock()
 }
 
-// ObserveShard samples ping health, sentinel master reachability, and tracker breaker ratio.
 func (q *ShardQuorumTracker) ObserveShard(ctx context.Context, shard int, rdb redis.UniversalClient) {
 	if q == nil || shard < 0 || shard >= q.numShards || rdb == nil {
 		return
@@ -105,7 +101,6 @@ func (q *ShardQuorumTracker) touch(slot *time.Time, active bool, now time.Time) 
 	*slot = time.Time{}
 }
 
-// DeadShardConfirmed is true when ping fail, sentinel down, and >=50% tracker breakers open for >=quorum.
 func (q *ShardQuorumTracker) DeadShardConfirmed(shard int) bool {
 	if q == nil || shard < 0 || shard >= q.numShards {
 		return false

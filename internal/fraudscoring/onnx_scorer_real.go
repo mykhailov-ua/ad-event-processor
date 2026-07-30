@@ -9,13 +9,11 @@ import (
 	ort "github.com/yalue/onnxruntime_go"
 )
 
-// ONNXScorer implements the Scorer interface using onnxruntime.
 type ONNXScorer struct {
 	session *ort.AdvancedSession
 	dims    int
 }
 
-// NewONNXScorer loads an ONNX model and initializes onnxruntime.
 func NewONNXScorer(modelPath string) (*ONNXScorer, error) {
 	if !ort.IsInitialized() {
 		err := ort.Initialize()
@@ -24,7 +22,6 @@ func NewONNXScorer(modelPath string) (*ONNXScorer, error) {
 		}
 	}
 
-	// Create advanced session
 	session, err := ort.NewAdvancedSession(modelPath,
 		[]string{"input"},
 		[]string{"label", "probabilities"},
@@ -40,17 +37,14 @@ func NewONNXScorer(modelPath string) (*ONNXScorer, error) {
 	}, nil
 }
 
-// Name returns the scorer name.
 func (o *ONNXScorer) Name() string {
 	return "onnx_iforest"
 }
 
-// Dims returns the feature dimensions.
 func (o *ONNXScorer) Dims() int {
 	return o.dims
 }
 
-// ScoreBatch scores a batch of FeatureRow.
 func (o *ONNXScorer) ScoreBatch(ctx context.Context, rows []FeatureRow) ([]float64, error) {
 	if len(rows) == 0 {
 		return nil, nil

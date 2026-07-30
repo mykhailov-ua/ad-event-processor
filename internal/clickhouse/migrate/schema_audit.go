@@ -5,7 +5,6 @@ import (
 	"strings"
 )
 
-// ForbiddenCHColumns are raw PII column names that must not appear in ad_event_processor DDL.
 var ForbiddenCHColumns = []string{
 	"ip_address",
 	"user_agent",
@@ -14,7 +13,6 @@ var ForbiddenCHColumns = []string{
 
 var createTableRE = regexp.MustCompile(`(?i)CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:ad_event_processor\.)?(\w+)`)
 
-// AuditSchemaDDL scans ClickHouse migration SQL and reports forbidden PII column definitions.
 func AuditSchemaDDL(files map[string]string) []SchemaAuditViolation {
 	var violations []SchemaAuditViolation
 	for path, body := range files {
@@ -23,7 +21,6 @@ func AuditSchemaDDL(files map[string]string) []SchemaAuditViolation {
 	return violations
 }
 
-// SchemaAuditViolation records one forbidden column still present in DDL.
 type SchemaAuditViolation struct {
 	File   string
 	Table  string

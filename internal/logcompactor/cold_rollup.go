@@ -18,7 +18,6 @@ import (
 
 const maxSampleClickIDs = 5
 
-// RollupRow is one aggregated cold-tier row inserted into ClickHouse.
 type RollupRow struct {
 	RollupHour         time.Time
 	CampaignID         uuid.UUID
@@ -44,7 +43,6 @@ type rollupAgg struct {
 	sampleClickIDs     []string
 }
 
-// aggregateWarmSegment scans a warm plaintext stream and builds hourly rollups.
 func aggregateWarmSegment(r io.Reader, sourceSegment, warmSHA string) ([]RollupRow, error) {
 	aggs := make(map[rollupKey]*rollupAgg)
 	var hdr [4]byte
@@ -172,7 +170,6 @@ func containsString(values []string, target string) bool {
 	return false
 }
 
-// ListWarm returns warm-tier segments older than the cutoff.
 func (store *LocalTierStore) ListWarm(_ context.Context, olderThan time.Time) ([]TierObject, error) {
 	entries, err := os.ReadDir(store.WarmDir)
 	if err != nil {

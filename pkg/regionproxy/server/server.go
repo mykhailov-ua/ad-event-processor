@@ -1,4 +1,3 @@
-// Package server is the gnet ingress front-end for regional proxy WAL append.
 package server
 
 import (
@@ -32,7 +31,6 @@ import (
 )
 
 const (
-	// DefaultIngressTopic is the logical stream replicated through region-proxy HA.
 	DefaultIngressTopic = "region-proxy-ingress"
 	proxyBackpressure   = byte(7)
 )
@@ -51,10 +49,8 @@ var fetchRespPool = sync.Pool{
 	},
 }
 
-// ReadyProbe checks downstream dependencies for /ready.
 type ReadyProbe func(ctx context.Context) error
 
-// Server accepts broker-style ProduceBatch frames and appends to the mmap WAL.
 type Server struct {
 	*gnet.BuiltinEventEngine
 	addr            string
@@ -80,7 +76,6 @@ type Server struct {
 	shutdownTimeout time.Duration
 }
 
-// NewServer constructs a region-proxy ingress node with WAL storage under dataDir.
 func NewServer(addr, dataDir string, gate *iogate.DiskWriteGate) (*Server, error) {
 	if gate == nil {
 		gate = iogate.NewDiskWriteGate(iogate.DefaultConfig())
@@ -110,27 +105,22 @@ func NewServer(addr, dataDir string, gate *iogate.DiskWriteGate) (*Server, error
 	return s, nil
 }
 
-// SetKeyGen configures and enables the pinned KeyGen worker (call before Start).
 func (s *Server) SetKeyGen(cfg keygen.Config) {
 	s.keygen = keygen.New(s.segment, cfg)
 }
 
-// KeyGen returns the active KeyGen worker, if enabled.
 func (s *Server) KeyGen() *keygen.KeyGen {
 	return s.keygen
 }
 
-// SetOpKey configures and enables the OpKeyPool worker (call before Start).
 func (s *Server) SetOpKey(cfg opkey.Config) {
 	s.opkey = opkey.New(s.segment, cfg)
 }
 
-// OpKey returns the active OpKeyPool worker, if enabled.
 func (s *Server) OpKey() *opkey.Pool {
 	return s.opkey
 }
 
-// SetUplink configures the D3 uplink worker (requires OpKey pool; call before Start).
 func (s *Server) SetUplink(cfg uplink.Config) {
 	if s.opkey == nil {
 		s.opkey = opkey.New(s.segment, opkey.Config{NodeID: cfg.NodeID})
@@ -138,34 +128,28 @@ func (s *Server) SetUplink(cfg uplink.Config) {
 	s.uplink = uplink.New(s.segment, s.opkey, cfg)
 }
 
-// Uplink returns the active uplink worker, if enabled.
 func (s *Server) Uplink() *uplink.Worker {
 	return s.uplink
 }
 
-// SetHealthAddr binds the HTTP health and metrics listener.
 func (s *Server) SetHealthAddr(addr string) {
 	s.healthAddr = addr
 }
 
-// SetReadyProbe configures the /ready dependency check (Postgres, Redis, etc.).
 func (s *Server) SetReadyProbe(probe ReadyProbe) {
 	s.readyProbe = probe
 }
 
-// SetShutdownTimeout bounds HTTP shutdown during stop.
 func (s *Server) SetShutdownTimeout(d time.Duration) {
 	if d > 0 {
 		s.shutdownTimeout = d
 	}
 }
 
-// SetCoordinator attaches Redis leader election for HA ingress.
 func (s *Server) SetCoordinator(coord *bserver.Coordinator) {
 	s.coord = coord
 }
 
-// CoordGetOrCreatePartition implements bserver.CoordHost.
 func (s *Server) CoordGetOrCreatePartition(topic string) (bserver.CoordPartition, error) {
 	if topic != s.topicKey {
 		return nil, fmt.Errorf("unknown topic %q", topic)
@@ -173,32 +157,26 @@ func (s *Server) CoordGetOrCreatePartition(topic string) (bserver.CoordPartition
 	return s.partition, nil
 }
 
-// CoordRangeTopics implements bserver.CoordHost.
 func (s *Server) CoordRangeTopics(fn func(topic string) bool) {
 	fn(s.topicKey)
 }
 
-// Addr returns the bound gnet TCP address.
 func (s *Server) Addr() string {
 	return s.addr
 }
 
-// HealthAddr returns the bound HTTP health address.
 func (s *Server) HealthAddr() string {
 	return s.healthAddr
 }
 
-// WAL returns the active mmap segment.
 func (s *Server) WAL() *wal.WAL {
 	return s.segment
 }
 
-// Gate returns the shared disk write gate.
 func (s *Server) Gate() *iogate.DiskWriteGate {
 	return s.gate
 }
 
-// Start runs HTTP health endpoints and the gnet ingress loop.
 func (s *Server) Start() error {
 	if strings.HasSuffix(s.addr, ":0") {
 		l, err := net.Listen("tcp", s.addr)
@@ -256,7 +234,6 @@ func (s *Server) Start() error {
 	}
 }
 
-// Stop shuts down gnet and HTTP listeners and closes the WAL.
 func (s *Server) Stop() {
 	s.closeOnce.Do(func() {
 		s.active.Store(false)
@@ -291,7 +268,6 @@ func (s *Server) Stop() {
 	s.wg.Wait()
 }
 
-// OnBoot records the gnet engine handle for graceful shutdown.
 func (s *Server) OnBoot(eng gnet.Engine) gnet.Action {
 	s.engMu.Lock()
 	s.eng = eng
@@ -327,7 +303,6 @@ func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// OnTraffic parses framed broker commands for region-proxy ingress.
 func (s *Server) OnTraffic(c gnet.Conn) gnet.Action {
 	for {
 		lenBuf, err := c.Peek(4)
@@ -531,12 +506,10 @@ func countMessages(buf []byte) (uint32, uint32) {
 	return count, total
 }
 
-// OpenDataDir is a helper for tests needing the WAL path.
 func OpenDataDir(base string) string {
 	return filepath.Join(base, "wal")
 }
 
-// ProbeDiskWritable returns true when dataDir accepts writes.
 func ProbeDiskWritable(dataDir string) bool {
 	if err := os.MkdirAll(dataDir, 0755); err != nil {
 		return false
@@ -551,7 +524,6 @@ func ProbeDiskWritable(dataDir string) bool {
 	return true
 }
 
-// LogStart logs region-proxy listen addresses after Start.
 func (s *Server) LogStart() {
 	slog.Info("region-proxy ingress running", "addr", s.addr, "health_addr", s.healthAddr, "wal_seq", s.segment.NextSeq())
 }

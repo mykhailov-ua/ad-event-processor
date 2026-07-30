@@ -5,7 +5,6 @@ const (
 	rankMaxScanCandidates = 500
 )
 
-// GeoBitFromHash maps a geo hash to a single targeting bitmask bit.
 func GeoBitFromHash(geoHash uint32) uint64 {
 	return uint64(1) << (geoHash & 63)
 }
@@ -68,7 +67,6 @@ func (registry *Registry) rankCandidates(
 	if soa == nil || !soa.slicesValid(bucketEnd) {
 		return -1, 0, -1, 0, NoBidCorruptCatalog
 	}
-	// BCE: one window check eliminates per-iteration bounds checks on bucket slices.
 	if bucketStart < 0 || bucketEnd < bucketStart || bucketEnd > soa.len() {
 		return -1, 0, -1, 0, NoBidCorruptCatalog
 	}
@@ -121,7 +119,6 @@ func (registry *Registry) rankCandidates(
 			return -1, 0, -1, scanned, NoBidTimeout
 		}
 
-		// Manual inline of scheduleOpen and FcapCount to reduce CALL overhead
 		start := sliceAtI64(scheduleStarts, pos)
 		if start > 0 && nowUnix < start {
 			daypartBlocked = true

@@ -67,7 +67,6 @@ func TestCachedTimeIn_nonUTC(t *testing.T) {
 	assert.Equal(t, want, got)
 }
 
-// Tracks filter engine check cost without deadline enforcement.
 func BenchmarkFilterEngine_Check_noTimeout(b *testing.B) {
 	engine := NewFilterEngine(0, &countingFilter{})
 	evt := &campaignmodel.Event{}
@@ -79,7 +78,6 @@ func BenchmarkFilterEngine_Check_noTimeout(b *testing.B) {
 	}
 }
 
-// Tracks filter engine check cost with deadline enforcement enabled.
 func BenchmarkFilterEngine_Check_withDeadline(b *testing.B) {
 	engine := NewFilterEngine(5*time.Second, &countingFilter{})
 	evt := &campaignmodel.Event{}

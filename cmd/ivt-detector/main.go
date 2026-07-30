@@ -1,4 +1,3 @@
-// Command ivt-detector wires ClickHouse botnet analysis and management blacklist enqueue.
 package main
 
 import (

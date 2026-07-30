@@ -15,7 +15,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// OpsNodeWeightEntry is one tracker peer in the edge routing snapshot (§8).
 type OpsNodeWeightEntry struct {
 	NodeID     string  `json:"node_id"`
 	PeerIndex  int     `json:"peer_index"`
@@ -24,7 +23,6 @@ type OpsNodeWeightEntry struct {
 	Provenance string  `json:"provenance"`
 }
 
-// OpsNodeWeightsResponse is returned by GET /ops/node-weights for edge Lua sync.
 type OpsNodeWeightsResponse struct {
 	Epoch    int64                `json:"epoch"`
 	EpochLag int64                `json:"epoch_lag"`

@@ -19,7 +19,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestManagementAPI_CampaignPacing guards pacing update validation, tenant isolation, and Redis settings sync.
 func TestManagementAPI_CampaignPacing(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")

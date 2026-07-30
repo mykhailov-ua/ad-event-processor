@@ -1,6 +1,5 @@
 package licensing
 
-// MergeLimits overlays non-zero src fields onto dst (subscription overrides).
 func MergeLimits(dst *Limits, src Limits) {
 	if src.MaxRPS != 0 {
 		dst.MaxRPS = src.MaxRPS
@@ -31,7 +30,6 @@ func MergeLimits(dst *Limits, src Limits) {
 	}
 }
 
-// MergeFeatures overlays src feature flags onto dst.
 func MergeFeatures(dst *FeatureSet, src FeatureSet) {
 	src = src.Normalized()
 	dst.RtbLive = src.RtbLive

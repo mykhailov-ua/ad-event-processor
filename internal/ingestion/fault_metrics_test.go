@@ -12,10 +12,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const chaosRedisShardLabel = "0"
+const faultRedisShardLabel = "0"
 
-// chaosGaugeValue reads a Prometheus gauge for CHAOS.md steady-state assertions.
-func chaosGaugeValue(t *testing.T, g interface{ Write(*dto.Metric) error }) float64 {
+func faultGaugeValue(t *testing.T, g interface{ Write(*dto.Metric) error }) float64 {
 	t.Helper()
 	var m dto.Metric
 	require.NoError(t, g.Write(&m))
@@ -24,45 +23,41 @@ func chaosGaugeValue(t *testing.T, g interface{ Write(*dto.Metric) error }) floa
 
 func trackerHealthDegradedMetric(t *testing.T) float64 {
 	t.Helper()
-	return chaosGaugeValue(t, metrics.TrackerHealthDegraded)
+	return faultGaugeValue(t, metrics.TrackerHealthDegraded)
 }
 
 func redisBreakerStateMetric(t *testing.T, shard string) float64 {
 	t.Helper()
 	g, err := metrics.RedisBreakerState.GetMetricWithLabelValues(shard)
 	require.NoError(t, err)
-	return chaosGaugeValue(t, g)
+	return faultGaugeValue(t, g)
 }
 
-// requireRedisOutageMetrics waits until CHAOS.md R8 signals Redis degradation:
-// ad_tracker_health_degraded==1 (health probe) or ad_redis_breaker_state==open.
 func requireRedisOutageMetrics(t *testing.T) {
 	t.Helper()
 	require.Eventually(t, func() bool {
 		if trackerHealthDegradedMetric(t) == 1 {
 			return true
 		}
-		return redisBreakerStateMetric(t, chaosRedisShardLabel) == float64(database.CircuitOpen)
+		return redisBreakerStateMetric(t, faultRedisShardLabel) == float64(database.CircuitOpen)
 	}, 15*time.Second, 200*time.Millisecond,
 		"during Redis outage expect ad_tracker_health_degraded=1 or ad_redis_breaker_state{shard=%q}=open",
-		chaosRedisShardLabel)
+		faultRedisShardLabel)
 }
 
-// requireRedisSteadyStateMetrics proves steady-state restoration after recovery:
-// ad_tracker_health_degraded returns to 0 and ad_redis_breaker_state{shard} is closed.
 func requireRedisSteadyStateMetrics(t *testing.T) {
 	t.Helper()
 	require.Eventually(t, func() bool {
 		if trackerHealthDegradedMetric(t) != 0 {
 			return false
 		}
-		return redisBreakerStateMetric(t, chaosRedisShardLabel) == float64(database.CircuitClosed)
+		return redisBreakerStateMetric(t, faultRedisShardLabel) == float64(database.CircuitClosed)
 	}, 30*time.Second, 200*time.Millisecond,
 		"steady-state restoration: ad_tracker_health_degraded=0 and ad_redis_breaker_state{shard=%q}=closed",
-		chaosRedisShardLabel)
+		faultRedisShardLabel)
 }
 
-func tripChaosRedisBreaker(t *testing.T, infra *adsChaosInfra) {
+func tripFaultRedisBreaker(t *testing.T, infra *adsFaultInfra) {
 	t.Helper()
 	require.NotNil(t, infra.RedisBreaker)
 	ctx := context.Background()

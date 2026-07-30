@@ -32,7 +32,6 @@ var rolePermissions = map[string][]string{
 	},
 }
 
-// NormalizeRole maps legacy and verbose role strings to the compact codes used internally.
 func NormalizeRole(role string) string {
 	switch strings.ToUpper(strings.TrimSpace(role)) {
 	case "SUPERADMIN", "ADMIN", "SA", "A":
@@ -46,7 +45,6 @@ func NormalizeRole(role string) string {
 	}
 }
 
-// GetPermissionsForRole returns the permission strings exposed to the frontend for a given role.
 func GetPermissionsForRole(role string) []string {
 	perms, exists := rolePermissions[NormalizeRole(role)]
 	if !exists {
@@ -55,7 +53,6 @@ func GetPermissionsForRole(role string) []string {
 	return perms
 }
 
-// HasPermission checks whether a role may perform an action identified by a permission string.
 func HasPermission(role, permission string) bool {
 	for _, p := range rolePermissions[NormalizeRole(role)] {
 		if p == permission {

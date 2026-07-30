@@ -7,7 +7,6 @@ import (
 	"espx/internal/ingestion/traceprobe"
 )
 
-// trackStatus is the shared /track decision after filters and landing resolution.
 type trackStatus uint8
 
 const (
@@ -17,14 +16,12 @@ const (
 	trackStatusInternalError
 )
 
-// trackOutcome is the transport-agnostic result of processTrack.
 type trackOutcome struct {
 	Status     trackStatus
 	RejectKind filterRejectKind
 	LandingURL string
 }
 
-// trackProcessor holds dependencies shared by HTTP and gnet /track handlers.
 type trackProcessor struct {
 	filterEngine    *FilterEngine
 	registry        campaignmodel.CampaignRegistry
@@ -46,7 +43,6 @@ func newTrackProcessor(filterEngine *FilterEngine, registry campaignmodel.Campai
 	}
 }
 
-// processTrack runs RTB (when configured), filter checks, and landing URL resolution for both ingest paths.
 func processTrack(p trackProcessor, evt *campaignmodel.Event, deviceType []byte) trackOutcome {
 	slot := uint32(0)
 	if evt != nil {

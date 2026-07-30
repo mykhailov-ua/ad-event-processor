@@ -67,5 +67,5 @@ func packagesYAMLPath() string {
 }
 
 func checkDepsScript() string {
-	return filepath.Join(repoRoot(), "scripts", "ci", "check_deps.sh")
+	return filepath.Join(repoRoot(), "scripts", "ci", "deps.sh")
 }

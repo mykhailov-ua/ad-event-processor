@@ -1,7 +1,5 @@
 package ingestion
 
-// http2_response.go — prebuilt HTTP/2 HEADERS + DATA response encoder (M5-C4).
-
 var (
 	h2ServerSettings = []byte{
 		0x00, 0x00, 0x0c, h2FrameSettings, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -11,11 +9,9 @@ var (
 	h2SettingsACK = []byte{
 		0x00, 0x00, 0x00, h2FrameSettings, 0x01, 0x00, 0x00, 0x00, 0x00,
 	}
-	// h2ConnBootstrap is the fixed server SETTINGS + ACK burst on first client preface (0 allocs/op).
 	h2ConnBootstrap = append(append([]byte(nil), h2ServerSettings...), h2SettingsACK...)
 )
 
-// h2EncodeStatusResponse encodes HEADERS + optional DATA for a status/body pair.
 func h2EncodeStatusResponse(dst []byte, streamID uint32, status int, contentType, body []byte) int {
 	blockOff := h2FrameHeaderSize
 	block := dst[blockOff : blockOff+256]
@@ -82,7 +78,6 @@ func h2EncodeDataFrame(dst []byte, off int, streamID uint32, payload []byte, end
 	return off
 }
 
-// h2WrapH1Response converts a prebuilt H1 response into H2 HEADERS+DATA frames.
 func h2WrapH1Response(dst []byte, streamID uint32, h1 []byte) (int, error) {
 	status, body, contentType, ok := parseH1ResponseForH2(h1)
 	if !ok {

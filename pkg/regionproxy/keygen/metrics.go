@@ -9,7 +9,6 @@ var (
 	metricsBound atomic.Bool
 )
 
-// BindMetrics wires KeyGen counters to Prometheus callbacks.
 func BindMetrics(rate func(float64), queueDepth func(float64), lagObserve func(float64)) {
 	rateFn = rate
 	queueDepthFn = queueDepth

@@ -13,17 +13,14 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// CampaignDrainWorker finalizes cancelled campaigns after the hot path drain window elapses.
 type CampaignDrainWorker struct {
 	svc *Service
 }
 
-// NewCampaignDrainWorker binds campaign drain finalization to the management service.
 func NewCampaignDrainWorker(svc *Service) *CampaignDrainWorker {
 	return &CampaignDrainWorker{svc: svc}
 }
 
-// Start polls for draining campaigns ready to finalize until the context is cancelled.
 func (w *CampaignDrainWorker) Start(ctx context.Context, interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -45,7 +42,6 @@ func (w *CampaignDrainWorker) Start(ctx context.Context, interval time.Duration)
 	}
 }
 
-// ProcessDraining finalizes up to one hundred draining campaigns per tick within a bounded timeout.
 func (w *CampaignDrainWorker) ProcessDraining(ctx context.Context) error {
 	opCtx, cancel := workerContext(ctx, workerDrainTimeout)
 	defer cancel()
@@ -68,7 +64,6 @@ func (w *CampaignDrainWorker) ProcessDraining(ctx context.Context) error {
 	return nil
 }
 
-// finalizeNextDraining locks and completes one draining campaign that has passed the wait threshold.
 func (w *CampaignDrainWorker) finalizeNextDraining(ctx context.Context, threshold time.Time) (bool, error) {
 	finalized := false
 	err := pgx.BeginFunc(ctx, w.svc.GetPool(), func(tx pgx.Tx) error {

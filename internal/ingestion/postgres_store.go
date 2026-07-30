@@ -11,7 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// postgresBatchArrays holds column slices for sqlc batch inserts without per-row boxing.
 type postgresBatchArrays struct {
 	clickIDs     []string
 	campaignIDs  []pgtype.UUID
@@ -24,7 +23,6 @@ type postgresBatchArrays struct {
 	createdDates []pgtype.Date
 }
 
-// postgresBatchArraysPool recycles batch column buffers for stream consumer flushes.
 var postgresBatchArraysPool = sync.Pool{
 	New: func() any {
 		return &postgresBatchArrays{
@@ -41,15 +39,12 @@ var postgresBatchArraysPool = sync.Pool{
 	},
 }
 
-// PostgresStore persists event batches to Postgres for the cold-path consumer.
-// XAck in StreamConsumer.flushBatch runs only after StoreBatch returns nil.
 type PostgresStore struct {
 	queries      db.Querier
 	writeTimeout time.Duration
 	pgGate       *ProcessorPgGate
 }
 
-// NewPostgresStore creates a store without a processor PG gate (tests and management paths).
 func NewPostgresStore(queries db.Querier, writeTimeout time.Duration) *PostgresStore {
 	return &PostgresStore{
 		queries:      queries,
@@ -57,7 +52,6 @@ func NewPostgresStore(queries db.Querier, writeTimeout time.Duration) *PostgresS
 	}
 }
 
-// NewPostgresStoreWithGate wraps StoreBatch with the shared processor PG semaphore (SEM-P1).
 func NewPostgresStoreWithGate(queries db.Querier, writeTimeout time.Duration, gate *ProcessorPgGate) *PostgresStore {
 	return &PostgresStore{
 		queries:      queries,
@@ -66,7 +60,6 @@ func NewPostgresStoreWithGate(queries db.Querier, writeTimeout time.Duration, ga
 	}
 }
 
-// StoreBatch inserts events in one sqlc batch with exponential retry on transient errors.
 func (s *PostgresStore) StoreBatch(ctx context.Context, events []*campaignmodel.Event) error {
 	if len(events) == 0 {
 		return nil
@@ -213,7 +206,6 @@ func (s *PostgresStore) StoreBatch(ctx context.Context, events []*campaignmodel.
 	return err
 }
 
-// Close is a no-op because the sqlc querier owns the pool lifecycle.
 func (s *PostgresStore) Close() error {
 	return nil
 }

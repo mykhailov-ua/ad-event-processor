@@ -165,8 +165,6 @@ func TestUnifiedFilter_budgetMiss_recoversFromRegistryWithoutPG(t *testing.T) {
 	assert.Equal(t, beforeRecover+1, testutil.ToFloat64(metrics.BudgetCacheRegistryRecoverTotal))
 }
 
-// TestVerify_budgetMissRegistryBeforePG documents hot path invariant:
-// Lua -1 -> registry SET NX -> retry Lua; PostgreSQL only when registry lacks campaign budget snapshot.
 func TestVerify_budgetMissRegistryBeforePG(t *testing.T) {
 	TestUnifiedFilter_budgetMiss_recoversFromRegistryWithoutPG(t)
 }
@@ -189,7 +187,6 @@ func TestBudgetCacheWarmer_WarmOne_Incremental(t *testing.T) {
 
 	w := NewBudgetCacheWarmer([]redis.UniversalClient{rdb}, NewJumpHashSharder(1))
 
-	// First warm should succeed (SET NX)
 	warmed, err := w.WarmOne(ctx, camp)
 	require.NoError(t, err)
 	assert.True(t, warmed)
@@ -198,7 +195,6 @@ func TestBudgetCacheWarmer_WarmOne_Incremental(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int64(1_500_000), val)
 
-	// Second warm should return false since key already exists
 	warmed2, err := w.WarmOne(ctx, camp)
 	require.NoError(t, err)
 	assert.False(t, warmed2)
@@ -215,7 +211,6 @@ func TestCampaignRegistry_UpdateAndWarmCampaign_Incremental(t *testing.T) {
 	campID := uuid.New()
 	custID := uuid.New()
 
-	// Настраиваем MockRepo
 	mock := &MockRepo{
 		budgets: map[uuid.UUID]db.GetCampaignBudgetRow{
 			campID: {
@@ -232,25 +227,20 @@ func TestCampaignRegistry_UpdateAndWarmCampaign_Incremental(t *testing.T) {
 	w := NewBudgetCacheWarmer([]redis.UniversalClient{rdb}, NewJumpHashSharder(1))
 	r.SetBudgetWarmer(w)
 
-	// Добавляем кампанию в реестр с изначальными значениями
 	r.Add(campID, custID, nil, "", campaignmodel.PacingModeAsap, 1000, "UTC", 0, 0, nil)
 
-	// Проверяем, что изначальные значения в реестре верны
 	campBefore, ok := r.GetCampaign(campID)
 	require.True(t, ok)
 	assert.Equal(t, int64(1000), campBefore.DailyBudget)
 
-	// Вызываем инкрементальный прогрев/обновление
 	err := r.UpdateAndWarmCampaign(ctx, campID)
 	require.NoError(t, err)
 
-	// Проверяем, что в реестре обновились значения бюджета
 	campAfter, ok := r.GetCampaign(campID)
 	require.True(t, ok)
 	assert.Equal(t, int64(3_000_000), campAfter.BudgetLimit)
 	assert.Equal(t, int64(1_000_000), campAfter.CurrentSpend)
 
-	// Проверяем, что в Redis записался правильный оставшийся бюджет
 	val, err := rdb.Get(ctx, campAfter.BudgetCampaignKey).Int64()
 	require.NoError(t, err)
 	assert.Equal(t, int64(2_000_000), val)
@@ -285,20 +275,16 @@ func TestCampaignRegistry_StartWatch_IncrementalWarm(t *testing.T) {
 	w := NewBudgetCacheWarmer([]redis.UniversalClient{rdb}, NewJumpHashSharder(1))
 	r.SetBudgetWarmer(w)
 
-	// Добавляем кампанию в реестр с изначальными значениями
 	r.Add(campID, custID, nil, "", campaignmodel.PacingModeAsap, 1000, "UTC", 0, 0, nil)
 
 	channel := "test:campaign:updates:incremental"
 	r.StartWatch(ctx, rdb, channel)
 
-	// Даем время подписке установиться
 	time.Sleep(200 * time.Millisecond)
 
-	// Публикуем сообщение в pubsub с ID кампании
 	err := rdb.Publish(ctx, channel, campID.String()).Err()
 	require.NoError(t, err)
 
-	// Проверяем, что в реестре обновились значения бюджета
 	assert.Eventually(t, func() bool {
 		camp, ok := r.GetCampaign(campID)
 		return ok && camp.BudgetLimit == 5_000_000 && camp.CurrentSpend == 1_000_000

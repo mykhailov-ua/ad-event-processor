@@ -15,7 +15,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// Handler is the gRPC adapter for billing invoice operations.
 type Handler struct {
 	pb.UnimplementedBillingServiceServer
 	service *Service

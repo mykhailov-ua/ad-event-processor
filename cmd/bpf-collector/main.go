@@ -1,5 +1,3 @@
-// Dev-only BPF collector for load-test and dev observability sessions.
-
 package main
 
 import (
@@ -38,7 +36,7 @@ func main() {
 	slowUs := flag.Uint("slow-us", 10000, "slow syscall threshold microseconds")
 	discoverLoadgen := flag.Bool("discover-loadgen", true, "watch for load generator PIDs by /proc comm")
 	discoverK6 := flag.Bool("discover-k6", true, "deprecated alias for -discover-loadgen")
-	loadgenComms := flag.String("loadgen-comms", "", "comma-separated /proc comm names (default k6; env ESPX_BPF_LOADGEN_COMM)")
+	loadgenComms := flag.String("loadgen-comms", "", "comma-separated /proc comm names (default loadgen; env ESPX_BPF_LOADGEN_COMM)")
 	discoverSec := flag.Duration("discover-interval", 2*time.Second, "dynamic target scan interval")
 	dumpInterval := flag.Duration("dump-interval", 0, "periodic maps/summary.json dump (0=disabled)")
 	metricsAddr := flag.String("metrics-addr", "", "Prometheus /metrics listen address (empty=disabled)")

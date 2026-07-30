@@ -17,13 +17,11 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-// TestDBInfra holds a migrated Postgres pool and its container for fault injection.
 type TestDBInfra struct {
 	Pool        *pgxpool.Pool
 	PGContainer *postgres.PostgresContainer
 }
 
-// SetupTestDBInfra boots Postgres with ingestion migrations and returns the container handle.
 func SetupTestDBInfra(t testing.TB) (*TestDBInfra, func()) {
 	t.Helper()
 	ctx := context.Background()
@@ -61,7 +59,6 @@ func SetupTestDBInfra(t testing.TB) (*TestDBInfra, func()) {
 	}
 }
 
-// SetupTestDB exists so integration tests get a migrated Postgres instance without bespoke container wiring.
 func SetupTestDB(t testing.TB) (*pgxpool.Pool, func()) {
 	infra, cleanup := SetupTestDBInfra(t)
 	return infra.Pool, cleanup
@@ -101,7 +98,6 @@ func applyIngestionMigrations(t testing.TB, pool *pgxpool.Pool) {
 	}
 }
 
-// SetupTestRedis exists so integration tests get an isolated Redis instance without shared dev dependencies.
 func SetupTestRedis(t testing.TB) (redis.UniversalClient, func()) {
 	ctx := context.Background()
 

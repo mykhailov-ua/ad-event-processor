@@ -17,7 +17,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// CostSyncHTTPHandlers exposes M16 admin endpoints for credentials and manual sync.
 type CostSyncHTTPHandlers struct {
 	Pool              *pgxpool.Pool
 	EncryptionKey     []byte

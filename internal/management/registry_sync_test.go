@@ -17,7 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestRegistryWatch guards registry watch syncs campaign create and cancel into the hot-path replica.
 func TestRegistryWatch(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")

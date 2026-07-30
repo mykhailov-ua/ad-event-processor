@@ -24,10 +24,8 @@ const (
 	chQueryAcquireTimeout        = 10 * time.Millisecond
 )
 
-// ErrCHQueryRejected is returned when the concurrency gate is saturated.
 var ErrCHQueryRejected = errors.New("chquery: concurrency gate full")
 
-// CHQueryConfig governs read-only ClickHouse admin/report queries (CHG-*).
 type CHQueryConfig struct {
 	MaxMemoryBytes      uint64
 	MaxExecutionTimeSec int
@@ -36,7 +34,6 @@ type CHQueryConfig struct {
 	SlowQueryThreshold  time.Duration
 }
 
-// CHQuery wraps ClickHouse reads with per-query memory, time caps, and concurrency governance.
 type CHQuery struct {
 	conn          driver.Conn
 	maxMemory     uint64
@@ -47,7 +44,6 @@ type CHQuery struct {
 	inFlight      atomic.Int32
 }
 
-// NewCHQuery creates a governed read-only query client.
 func NewCHQuery(conn driver.Conn, cfg CHQueryConfig) *CHQuery {
 	maxMem := cfg.MaxMemoryBytes
 	if maxMem == 0 {
@@ -139,7 +135,6 @@ func queryPrefix(query string) string {
 	return query[:max]
 }
 
-// Query runs a governed read-only query.
 func (q *CHQuery) Query(ctx context.Context, query string, args ...any) (driver.Rows, error) {
 	if q == nil || q.conn == nil {
 		return nil, fmt.Errorf("chquery: no connection")
@@ -165,7 +160,6 @@ func (q *CHQuery) Query(ctx context.Context, query string, args ...any) (driver.
 	return rows, err
 }
 
-// QueryRow runs a governed read-only query returning one row.
 func (q *CHQuery) QueryRow(ctx context.Context, query string, args ...any) driver.Row {
 	if q == nil || q.conn == nil {
 		return &errRow{err: fmt.Errorf("chquery: no connection")}
@@ -193,7 +187,6 @@ func (q *CHQuery) QueryRow(ctx context.Context, query string, args ...any) drive
 	}
 }
 
-// Exec runs a governed statement (used in tests for SETTINGS validation).
 func (q *CHQuery) Exec(ctx context.Context, query string, args ...any) error {
 	if q == nil || q.conn == nil {
 		return fmt.Errorf("chquery: no connection")
@@ -219,7 +212,6 @@ func (q *CHQuery) Exec(ctx context.Context, query string, args ...any) error {
 	return err
 }
 
-// InFlight returns the number of in-progress governed queries.
 func (q *CHQuery) InFlight() int {
 	if q == nil {
 		return 0
@@ -227,7 +219,6 @@ func (q *CHQuery) InFlight() int {
 	return int(q.inFlight.Load())
 }
 
-// IngestionLag measures delay between now and the latest event timestamp in raw tables.
 func (q *CHQuery) IngestionLag(ctx context.Context) (time.Duration, error) {
 	var latest time.Time
 	err := q.QueryRow(ctx, `
@@ -251,7 +242,6 @@ SELECT max(latest) FROM (
 	return lag, nil
 }
 
-// Freshness builds admin API freshness metadata from measured lag.
 func Freshness(lag time.Duration, staleThreshold time.Duration) (stale bool, lagSeconds int) {
 	if staleThreshold <= 0 {
 		staleThreshold = defaultCHStaleThreshold

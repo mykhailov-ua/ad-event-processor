@@ -7,15 +7,12 @@ import (
 	"strings"
 )
 
-// Secret wraps sensitive strings so structured logs never emit credentials in plain text.
 type Secret string
 
-// LogValue redacts secret fields when config values are logged through slog.
 func (s Secret) LogValue() slog.Value {
 	return slog.StringValue("**********")
 }
 
-// trimCommaList splits comma-separated env values and drops empty tokens so trailing commas do not create phantom shards.
 func trimCommaList(raw string) []string {
 	if raw == "" {
 		return nil
@@ -68,7 +65,6 @@ func getEnvFloat(key string, fallback float64) float64 {
 	return fallback
 }
 
-// getEnvMicro converts dollar env values to micro-units so billing code stays integer-only.
 func getEnvMicro(key string, fallback int64) int64 {
 	if value, ok := os.LookupEnv(key); ok {
 		if floatVal, err := strconv.ParseFloat(value, 64); err == nil {

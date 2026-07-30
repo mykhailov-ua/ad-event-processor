@@ -12,13 +12,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestLedgerBatch_ConsolidatesDeltas verifies 100 Redis sync increments produce one ledger FEE row.
 func TestLedgerBatch_ConsolidatesDeltas(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration test")
 	}
 
-	infra, cleanup := setupAdsChaosInfra(t)
+	infra, cleanup := setupAdsFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
@@ -79,13 +78,12 @@ func TestLedgerBatch_ConsolidatesDeltas(t *testing.T) {
 	AssertBudgetInvariant(t, ctx, infra.Pool, infra.Redis, campaignID)
 }
 
-// TestLedgerBatch_ZeroBalancePausesCampaign pauses delivery when customer funds cannot cover the batch.
 func TestLedgerBatch_ZeroBalancePausesCampaign(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration test")
 	}
 
-	infra, cleanup := setupAdsChaosInfra(t)
+	infra, cleanup := setupAdsFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
@@ -115,13 +113,12 @@ func TestLedgerBatch_ZeroBalancePausesCampaign(t *testing.T) {
 	assert.Equal(t, "PAUSED", status)
 }
 
-// TestLedgerBatch_MultiCampaignSingleTxn verifies multiple campaigns flush in one batch txn.
 func TestLedgerBatch_MultiCampaignSingleTxn(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration test")
 	}
 
-	infra, cleanup := setupAdsChaosInfra(t)
+	infra, cleanup := setupAdsFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
@@ -166,13 +163,12 @@ func TestLedgerBatch_MultiCampaignSingleTxn(t *testing.T) {
 	assert.Equal(t, 0, auditCount, "audit disabled by default")
 }
 
-// TestLedgerBatch_AuditSampling writes LEDGER_BATCH_FLUSH rows only when sampling is enabled.
 func TestLedgerBatch_AuditSampling(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration test")
 	}
 
-	infra, cleanup := setupAdsChaosInfra(t)
+	infra, cleanup := setupAdsFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
@@ -183,7 +179,7 @@ func TestLedgerBatch_AuditSampling(t *testing.T) {
 	require.NoError(t, err)
 
 	campaignRepo := NewCampaignRepoWithDB(infra.Pool, infra.Queries)
-	campaignRepo.ConfigureAuditLedgerFlush(1) // mask=1 → ~50% sample for deterministic integration proof
+	campaignRepo.ConfigureAuditLedgerFlush(1)
 
 	const flushCount = 64
 	for i := 0; i < flushCount; i++ {

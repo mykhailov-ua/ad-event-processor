@@ -9,12 +9,10 @@ import (
 	"espx/internal/campaignmodel"
 )
 
-// filterDeadlineKey tags context with a monotonic filter deadline independent of wall clock.
 type filterDeadlineKey struct{}
 
 const maxFraudSignals = 4
 
-// FraudTier is the campaign-relative outcome band for an accumulated fraud score.
 type FraudTier uint8
 
 const (
@@ -24,7 +22,6 @@ const (
 	FraudTierBlock
 )
 
-// fraudAccumulator collects weighted fraud signals during one FilterEngine.Check pass.
 type fraudAccumulator struct {
 	score        uint32
 	signals      [maxFraudSignals]FraudReasonID
@@ -90,7 +87,6 @@ func (a *fraudAccumulator) hasFlags(want uint8) bool {
 	return a.countFlags(want) > 0
 }
 
-// shouldShortCircuitFraudBudget reports whether unified Lua can be skipped after L3 or two L1-high signals.
 func (a *fraudAccumulator) shouldShortCircuitFraudBudget() bool {
 	if a == nil || a.count == 0 {
 		return false
@@ -101,7 +97,6 @@ func (a *fraudAccumulator) shouldShortCircuitFraudBudget() bool {
 	return a.countFlags(fraudSignalL1High) >= 2
 }
 
-// attachFilterDeadline attaches a monotonic deadline shared by all filter checks in one request.
 func attachFilterDeadline(ctx context.Context, timeout time.Duration) context.Context {
 	if timeout <= 0 {
 		return ctx
@@ -110,14 +105,12 @@ func attachFilterDeadline(ctx context.Context, timeout time.Duration) context.Co
 	return context.WithValue(ctx, filterDeadlineKey{}, deadlineMono)
 }
 
-// setFilterDeadlineOnEvent stores the filter deadline on evt (zero allocs; production path).
 func setFilterDeadlineOnEvent(evt *campaignmodel.Event, timeout time.Duration) {
 	if evt != nil && timeout > 0 {
 		evt.FilterDeadlineMono = monotonicNano() + timeout.Nanoseconds()
 	}
 }
 
-// attachFraudAccumulator binds a pooled accumulator to evt.Scratch for the current Check pass.
 func attachFraudAccumulator(evt *campaignmodel.Event) *fraudAccumulator {
 	acc := fraudAccPool.Get().(*fraudAccumulator)
 	acc.reset()
@@ -127,7 +120,6 @@ func attachFraudAccumulator(evt *campaignmodel.Event) *fraudAccumulator {
 	return acc
 }
 
-// releaseFraudAccumulator clears Scratch and returns the accumulator to fraudAccPool.
 func releaseFraudAccumulator(evt *campaignmodel.Event, acc *fraudAccumulator) {
 	if acc == nil {
 		return
@@ -139,7 +131,6 @@ func releaseFraudAccumulator(evt *campaignmodel.Event, acc *fraudAccumulator) {
 	}
 }
 
-// fraudAccFromEvent loads the accumulator stored in evt.Scratch during FilterEngine.Check.
 func fraudAccFromEvent(evt *campaignmodel.Event) (*fraudAccumulator, bool) {
 	if evt == nil || evt.Scratch == nil {
 		return nil, false
@@ -147,7 +138,6 @@ func fraudAccFromEvent(evt *campaignmodel.Event) (*fraudAccumulator, bool) {
 	return (*fraudAccumulator)(evt.Scratch), true
 }
 
-// addFraudSignal records a weighted fraud signal for the current filter pass.
 func addFraudSignal(evt *campaignmodel.Event, id FraudReasonID) {
 	acc, ok := fraudAccFromEvent(evt)
 	if !ok {
@@ -156,7 +146,6 @@ func addFraudSignal(evt *campaignmodel.Event, id FraudReasonID) {
 	acc.add(id)
 }
 
-// MapFraudTier maps a fraud score to a tier. Zero boundaries use domain defaults.
 func MapFraudTier(score uint8, pass, suspect, ivt, block uint8) FraudTier {
 	if pass == 0 && suspect == 0 && ivt == 0 {
 		pass = campaignmodel.DefaultFraudThresholdPass
@@ -172,11 +161,10 @@ func MapFraudTier(score uint8, pass, suspect, ivt, block uint8) FraudTier {
 	if score <= ivt {
 		return FraudTierIVT
 	}
-	_ = block // persisted on campaigns; scores above ivt always map to Block.
+	_ = block
 	return FraudTierBlock
 }
 
-// fraudThresholdsFromCampaign returns tier boundaries from camp or domain defaults when unset.
 func fraudThresholdsFromCampaign(camp *campaignmodel.Campaign) (pass, suspect, ivt, block uint8) {
 	if camp == nil {
 		return campaignmodel.DefaultFraudThresholdPass, campaignmodel.DefaultFraudThresholdSuspect,
@@ -193,7 +181,6 @@ func fraudThresholdsFromCampaign(camp *campaignmodel.Campaign) (pass, suspect, i
 	return pass, suspect, ivt, block
 }
 
-// applyFraudAccumulatorForCampaign writes FraudScore, comma-separated FraudReason, and returns the mapped tier.
 func applyFraudAccumulatorForCampaign(evt *campaignmodel.Event, acc *fraudAccumulator, camp *campaignmodel.Campaign) FraudTier {
 	if evt == nil || acc == nil || acc.count == 0 {
 		if evt != nil {
@@ -229,7 +216,6 @@ func applyFraudAccumulatorForCampaign(evt *campaignmodel.Event, acc *fraudAccumu
 	return MapFraudTier(uint8(acc.score), pass, suspect, ivt, block)
 }
 
-// filterDeadlineMonoEvt returns the monotonic deadline from evt or ctx.
 func filterDeadlineMonoEvt(evt *campaignmodel.Event, ctx context.Context) (int64, bool) {
 	if evt != nil && evt.FilterDeadlineMono > 0 {
 		return evt.FilterDeadlineMono, true
@@ -237,7 +223,6 @@ func filterDeadlineMonoEvt(evt *campaignmodel.Event, ctx context.Context) (int64
 	return filterDeadlineMonoFromContext(ctx)
 }
 
-// filterDeadlineExceededEvt reports whether the filter deadline on evt or ctx has elapsed.
 func filterDeadlineExceededEvt(evt *campaignmodel.Event, ctx context.Context) bool {
 	if d, ok := filterDeadlineMonoEvt(evt, ctx); ok {
 		return monotonicNano() > d
@@ -245,7 +230,6 @@ func filterDeadlineExceededEvt(evt *campaignmodel.Event, ctx context.Context) bo
 	return false
 }
 
-// filterDeadlineRemainingEvt returns remaining filter budget from evt or ctx.
 func filterDeadlineRemainingEvt(evt *campaignmodel.Event, ctx context.Context) (time.Duration, bool) {
 	d, ok := filterDeadlineMonoEvt(evt, ctx)
 	if !ok {
@@ -258,7 +242,6 @@ func filterDeadlineRemainingEvt(evt *campaignmodel.Event, ctx context.Context) (
 	return time.Duration(rem), true
 }
 
-// filterDeadlineMonoFromContext returns the monotonic nanosecond deadline attached to ctx.
 func filterDeadlineMonoFromContext(ctx context.Context) (int64, bool) {
 	if ctx == nil {
 		return 0, false
@@ -267,7 +250,6 @@ func filterDeadlineMonoFromContext(ctx context.Context) (int64, bool) {
 	return d, ok
 }
 
-// filterDeadlineExceeded reports whether the filter deadline in ctx has elapsed.
 func filterDeadlineExceeded(ctx context.Context) bool {
 	if d, ok := filterDeadlineMonoFromContext(ctx); ok {
 		return monotonicNano() > d

@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// CampaignMeta carries auction inputs for weighted campaign selection and sharding.
 type CampaignMeta struct {
 	ID                uuid.UUID
 	BidMicro          int64
@@ -17,7 +16,6 @@ type CampaignMeta struct {
 	PeakTrafficFactor float64
 }
 
-// voseAliasTable enables O(1) weighted random campaign selection after an offline rebuild.
 type voseAliasTable struct {
 	campaigns []*CampaignMeta
 	prob      []float64
@@ -25,7 +23,6 @@ type voseAliasTable struct {
 	weights   map[uuid.UUID]uint32
 }
 
-// HybridBalancer selects campaigns and Redis shards for RTB traffic spreading.
 type HybridBalancer struct {
 	totalShards   int
 	maxRpsPerNode int64
@@ -40,7 +37,6 @@ func NewHybridBalancer(totalShards int, maxRpsPerNode int) *HybridBalancer {
 	}
 }
 
-// UpdateCampaigns rebuilds the alias table from current campaign weights and pacing state.
 func (hb *HybridBalancer) UpdateCampaigns(campaigns []*CampaignMeta, secondsElapsed int64, totalSeconds int64) {
 
 	validCampaigns := make([]*CampaignMeta, 0, len(campaigns))
@@ -166,7 +162,6 @@ func buildHybridWeightMap(campaigns []*CampaignMeta, raw []float64) map[uuid.UUI
 	return out
 }
 
-// WeightFor returns hybrid ranking weight for a campaign (R11); minimum 1.
 func (hb *HybridBalancer) WeightFor(id uuid.UUID) uint32 {
 	if hb == nil {
 		return 1

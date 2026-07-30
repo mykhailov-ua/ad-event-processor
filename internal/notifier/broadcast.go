@@ -19,7 +19,6 @@ type broadcastResult struct {
 	err          error
 }
 
-// defaultBroadcastOrder is the fan-out priority when broadcast_providers is empty.
 var defaultBroadcastOrder = []db.NotifierProvider{
 	db.NotifierProviderSLACK,
 	db.NotifierProviderTELEGRAM,

@@ -24,14 +24,14 @@ sudo ./espx-install apply
 | `configure [--interactive]` | Write `install.yaml` (profile + feature flags) |
 | `apply [--dry-run]` | Render systemd units, secrets, compose env; optional binary deploy with health probe + rollback |
 | `rollback <tracker\|processor>` | Restore last backup binary after failed deploy or crash loop |
-| `doctor [--json]` | Run `scripts/ci/check_deps.sh` and topology probes |
+| `doctor [--json]` | Run `scripts/ci/deps.sh` and topology probes |
 | `license install\|activate\|status` | Product license lifecycle (M3) |
 
 ## Profiles
 
 - `single_vps` — bare-metal / single VPS with systemd units
-- `compose_dev` — local compose stack via `scripts/local-dev/dev_stack.sh`
-- `k8s_k3s` — k3s install via `scripts/k8s/install_k3s.sh` (requires cgroup v2)
+- `compose_dev` — local compose stack via `scripts/dev/stack.sh`
+- `k8s_k3s` — k3s install via `scripts/deploy/install_k3s.sh` (requires cgroup v2)
 
 Feature flags:
 

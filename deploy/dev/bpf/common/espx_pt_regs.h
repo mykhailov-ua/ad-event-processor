@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: GPL-2.0
-// Minimal x86_64 struct pt_regs for dev uprobes (no vmlinux.h in container build).
+
+
 
 #ifndef ESPX_PT_REGS_H
 #define ESPX_PT_REGS_H
@@ -28,4 +28,4 @@ struct pt_regs {
 	__u64 ss;
 };
 
-#endif /* ESPX_PT_REGS_H */
+#endif 

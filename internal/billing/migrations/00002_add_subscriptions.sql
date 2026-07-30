@@ -46,28 +46,27 @@ CREATE TABLE billing.license_status (
     last_refresh_error TEXT
 );
 
--- Seed plans
 INSERT INTO billing.subscription_plans (code, display_name, limits_json, features_json, base_fee_micro) VALUES
 (
   'basic',
   'Basic Plan',
   '{"max_active_campaigns": 50, "max_rps": 10000, "max_requests_per_day": 500000, "max_events_per_month": 5000000, "max_regions": 1, "max_api_keys": 2, "max_export_chunk_bytes": 1048576, "quota_reset_timezone": "UTC"}'::jsonb,
   '{"rtb_live": false, "ml_fraud_boost": false, "multi_region": false, "slot_migration": false}'::jsonb,
-  100000000 -- 10 units / month
+  100000000
 ),
 (
   'pro',
   'Pro Plan',
   '{"max_active_campaigns": 500, "max_rps": 50000, "max_requests_per_day": 10000000, "max_events_per_month": 50000000, "max_regions": 1, "max_api_keys": 5, "max_export_chunk_bytes": 5242880, "quota_reset_timezone": "UTC"}'::jsonb,
   '{"rtb_live": false, "ml_fraud_boost": false, "multi_region": false, "slot_migration": false}'::jsonb,
-  500000000 -- 50 units / month
+  500000000
 ),
 (
   'enterprise',
   'Enterprise Plan',
   '{"max_active_campaigns": 999999, "max_rps": 200000, "max_requests_per_day": 999999999, "max_events_per_month": 9999999999, "max_regions": 5, "max_api_keys": 99, "max_export_chunk_bytes": 104857600, "quota_reset_timezone": "UTC"}'::jsonb,
   '{"rtb_live": true, "ml_fraud_boost": true, "multi_region": true, "slot_migration": true}'::jsonb,
-  2000000000 -- 200 units / month
+  2000000000
 );
 
 -- +goose StatementEnd

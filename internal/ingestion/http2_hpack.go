@@ -1,13 +1,10 @@
 package ingestion
 
-// http2_hpack.go — subset HPACK static-table decoder for /track ingress (M5-C2).
-
 type h2StaticEntry struct {
 	name  string
 	value string
 }
 
-// h2StaticTable is RFC 7541 static table (index 1..N).
 var h2StaticTable = []h2StaticEntry{
 	{":authority", ""},
 	{":method", "GET"},
@@ -119,7 +116,6 @@ func h2DecodeString(data []byte, off int) (val []byte, next int, err error) {
 	return raw, off, nil
 }
 
-// h2DecodeHeadersBlock decodes a HEADERS frame block into parsedHTTPRequest (static + literal, no dynamic table).
 func h2DecodeHeadersBlock(block []byte, req *parsedHTTPRequest) error {
 	var hFlags uint8
 	var clValue int

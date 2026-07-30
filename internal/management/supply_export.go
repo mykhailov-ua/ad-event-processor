@@ -9,7 +9,6 @@ import (
 	"espx/pkg/coldpath"
 )
 
-// ExportSupplyFiles writes sellers.json and ads.txt to the configured export directory.
 func (s *Service) ExportSupplyFiles(ctx context.Context) error {
 	exportDir := s.SupplyExportPath()
 	if err := os.MkdirAll(exportDir, 0755); err != nil {
@@ -38,7 +37,6 @@ func (s *Service) ExportSupplyFiles(ctx context.Context) error {
 	return nil
 }
 
-// handleUpdateSupplyFiles processes UPDATE_SUPPLY_FILES outbox events.
 func (w *OutboxWorker) handleUpdateSupplyFiles(ctx context.Context, payload []byte) error {
 	_ = coldpath.UnmarshalLenient[SupplyFilesPayload](payload)
 	return w.svc.ExportSupplyFiles(ctx)

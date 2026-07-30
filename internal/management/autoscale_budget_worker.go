@@ -8,13 +8,11 @@ import (
 	"espx/internal/ingestion"
 )
 
-// AutoscaleBudgetWorker periodically shifts budget from low-CTR to high-CTR campaigns per customer.
 type AutoscaleBudgetWorker struct {
 	svc         *Service
 	syncWorkers []*ingestion.SyncWorker
 }
 
-// NewAutoscaleBudgetWorker binds budget autoscaling to the service and budget sync workers.
 func NewAutoscaleBudgetWorker(svc *Service, syncWorkers []*ingestion.SyncWorker) *AutoscaleBudgetWorker {
 	return &AutoscaleBudgetWorker{
 		svc:         svc,
@@ -22,7 +20,6 @@ func NewAutoscaleBudgetWorker(svc *Service, syncWorkers []*ingestion.SyncWorker)
 	}
 }
 
-// Start runs budget autoscaling on a fixed interval until the context is cancelled.
 func (w *AutoscaleBudgetWorker) Start(ctx context.Context, interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()

@@ -18,7 +18,6 @@ const (
 	defaultCategoryMask uint64 = 1
 )
 
-// BuildCampaignMetaList materializes hybrid balancer weights from active registry campaigns.
 func BuildCampaignMetaList(campaigns []*campaignmodel.Campaign, cfg *config.Config) []*CampaignMeta {
 	if len(campaigns) == 0 || cfg == nil {
 		return nil
@@ -69,7 +68,6 @@ func campaignMetaByID(metas []*CampaignMeta) map[uuid.UUID]*CampaignMeta {
 	return out
 }
 
-// buildCustomerBudgetPools sums remaining campaign budgets per customer for shared RTB pools.
 func buildCustomerBudgetPools(campaigns []*campaignmodel.Campaign) map[uuid.UUID]int64 {
 	if len(campaigns) == 0 {
 		return nil
@@ -84,7 +82,6 @@ func buildCustomerBudgetPools(campaigns []*campaignmodel.Campaign) map[uuid.UUID
 	return out
 }
 
-// BuildRtbInputsFromRegistry materializes per-campaign auction catalog fields from registry snapshots.
 func BuildRtbInputsFromRegistry(
 	registry *Registry,
 	cfg *config.Config,
@@ -179,7 +176,6 @@ func firstTargetCountryGeo(camp *campaignmodel.Campaign) uint32 {
 	return GeoHashFromCountry(countries[0])
 }
 
-// BudgetAuthorityFromConfig maps rollout config to rtb spend policy.
 func BudgetAuthorityFromConfig(cfg *config.Config) BudgetAuthority {
 	return BudgetAuthorityFromSettings(cfg, "")
 }
@@ -189,7 +185,6 @@ func utcSecondsElapsed() int64 {
 	return int64(now.Hour()*3600 + now.Minute()*60 + now.Second())
 }
 
-// SyncRtbCatalog rebuilds the in-process RTB catalog from registry and optional hybrid metadata.
 func SyncRtbCatalog(
 	ctx context.Context,
 	registry *Registry,
@@ -219,7 +214,6 @@ func SyncRtbCatalog(
 	SyncRTBBudgetState(ctx, catalog.Registry().Store(), campaigns, customerPools, budgetSync)
 }
 
-// StartRtbCatalogSync rebuilds the in-process catalog on the registry sync interval.
 func StartRtbCatalogSync(
 	ctx context.Context,
 	registry *Registry,
@@ -253,7 +247,6 @@ func StartRtbCatalogSync(
 	}()
 }
 
-// HybridMaxRPSFromConfig returns the per-node hot-campaign threshold for hybrid sharding.
 func HybridMaxRPSFromConfig(cfg *config.Config) int {
 	if cfg == nil || cfg.RtbHybridMaxRpsPerNode <= 0 {
 		return defaultHybridMaxRPS

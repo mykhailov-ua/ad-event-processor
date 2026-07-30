@@ -8,7 +8,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// updateStripeWebhookStatus records webhook processing outcome for a Stripe event id.
 func updateStripeWebhookStatus(ctx context.Context, q db.Querier, eventID string, status db.PaymentWebhookEventStatus, errMsg string) error {
 	var msg pgtype.Text
 	if errMsg != "" {
@@ -22,7 +21,6 @@ func updateStripeWebhookStatus(ctx context.Context, q db.Querier, eventID string
 	})
 }
 
-// updateCryptoWebhookStatus records webhook processing outcome for a Crypto event id.
 func updateCryptoWebhookStatus(ctx context.Context, q db.Querier, eventID string, status db.PaymentWebhookEventStatus, errMsg string) error {
 	var msg pgtype.Text
 	if errMsg != "" {

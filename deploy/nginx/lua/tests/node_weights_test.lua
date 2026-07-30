@@ -1,8 +1,6 @@
--- node_weights_test.lua: weighted pick distribution and stale equalization (M5.2).
 
 package.path = arg[1] .. "/?.lua;;"
 
--- Stub ngx for offline tests.
 local WEIGHT_SCALE = 1000000
 local STALE_EPOCH_LAG = 2
 local SYNC_INTERVAL_SEC = 10
@@ -63,7 +61,6 @@ local function assert_near(want, got, eps, msg)
     end
 end
 
--- seed two peers 0.25 / 0.75
 dict_store = {}
 dict_store["peer_count"] = 2
 dict_store["w:0"] = math.floor(0.25 * WEIGHT_SCALE + 0.5)
@@ -85,7 +82,6 @@ local ratio1 = counts[1] / trials
 assert_near(0.25, ratio0, 0.05, "weighted ratio peer 0")
 assert_near(0.75, ratio1, 0.05, "weighted ratio peer 1")
 
--- stale sync → equal weights
 dict_store["sync_ts"] = ngx.time() - (SYNC_INTERVAL_SEC * STALE_EPOCH_LAG + 1)
 assert_true(node_weights.stale(), "stale when sync aged out")
 assert_true(node_weights.drain_frozen(), "drain frozen when stale")
@@ -101,7 +97,6 @@ ratio1 = counts[1] / trials
 assert_near(0.5, ratio0, 0.05, "equalized ratio peer 0")
 assert_near(0.5, ratio1, 0.05, "equalized ratio peer 1")
 
--- epoch lag > 2 → stale
 dict_store = {}
 dict_store["peer_count"] = 2
 dict_store["w:0"] = math.floor(0.25 * WEIGHT_SCALE + 0.5)
@@ -111,11 +106,9 @@ dict_store["epoch_lag"] = 3
 dict_store["sync_interval"] = SYNC_INTERVAL_SEC
 assert_true(node_weights.stale(), "stale when epoch_lag > 2")
 
--- conservative default (CONTROL_FAIL_OPEN=0): stale → equalize
 assert_true(not node_weights.fail_open(), "fail_open defaults off")
 assert_true(node_weights.drain_frozen(), "conservative freezes drain when stale")
 
--- fail-open mode keeps last-known weights when stale
 package.loaded["edge-node-weights"] = nil
 local orig_getenv = os.getenv
 local node_weights_fo = require("edge-node-weights")

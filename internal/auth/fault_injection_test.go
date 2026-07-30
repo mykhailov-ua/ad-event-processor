@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"espx/pkg/faultproof"
+
 	"context"
 	"errors"
 	"fmt"
@@ -14,8 +16,8 @@ import (
 )
 
 const (
-	authChaosWorkers  = 20
-	authChaosAttempts = 10
+	authFaultWorkers  = 20
+	authFaultAttempts = 10
 )
 
 func requireAuthFaultActive(t *testing.T, faultActive func() bool, msg string) {
@@ -38,7 +40,7 @@ func countLoginBlocked(ctx context.Context, svc *Service, email, password string
 	n := 0
 	for i := 0; i < attempts; i++ {
 		clientIP := fmt.Sprintf("10.2.0.%d", i+1)
-		_, err := svc.Login(ctx, email, password, "chaos-agent", clientIP, time.Hour)
+		_, err := svc.Login(ctx, email, password, "fault-agent", clientIP, time.Hour)
 		if errors.Is(err, ErrSessionBlocked) || errors.Is(err, ErrInvalidCredentials) {
 			n++
 		}
@@ -46,10 +48,9 @@ func countLoginBlocked(ctx context.Context, svc *Service, email, password string
 	return n
 }
 
-// TestChaos_AuthRedisTerminateFailClosedVerify kills Redis and proves VerifyToken fails closed.
-func TestChaos_AuthRedisTerminateFailClosedVerify(t *testing.T) {
+func TestFault_AuthRedisTerminateFailClosedVerify(t *testing.T) {
 	if testing.Short() {
-		t.Skip("chaos integration test")
+		t.Skip("fault integration test")
 	}
 
 	infra, cleanup := setupAuthTestInfra(t)
@@ -57,7 +58,7 @@ func TestChaos_AuthRedisTerminateFailClosedVerify(t *testing.T) {
 
 	svc := infra.newService(t)
 	ctx := context.Background()
-	email := "chaos-redis-verify@example.com"
+	email := "fault-redis-verify@example.com"
 	password := "SuperSecure123!"
 
 	_, accessToken, _ := infra.registerAndLogin(t, svc, email, password)
@@ -70,23 +71,22 @@ func TestChaos_AuthRedisTerminateFailClosedVerify(t *testing.T) {
 		return countVerifyFailClosed(ctx, svc, accessToken, 3) >= 2
 	}, "VerifyToken must fail closed once Redis is dead")
 
-	failClosed := countVerifyFailClosed(ctx, svc, accessToken, authChaosAttempts)
+	failClosed := countVerifyFailClosed(ctx, svc, accessToken, authFaultAttempts)
 
-	logChaosProof(t, "redis_terminate", map[string]string{
+	faultproof.Log(t, "redis_terminate", map[string]string{
 		"subsystem":    "auth",
 		"op":           "verify_token",
 		"baseline_ok":  "true",
-		"fail_closed":  strconv.Itoa(failClosed) + "/" + strconv.Itoa(authChaosAttempts),
+		"fail_closed":  strconv.Itoa(failClosed) + "/" + strconv.Itoa(authFaultAttempts),
 		"fault_verify": "redis_container_terminated",
 	})
-	require.Equal(t, authChaosAttempts, failClosed,
-		"VerifyToken must fail closed when Redis is dead, got %d/%d", failClosed, authChaosAttempts)
+	require.Equal(t, authFaultAttempts, failClosed,
+		"VerifyToken must fail closed when Redis is dead, got %d/%d", failClosed, authFaultAttempts)
 }
 
-// TestChaos_AuthPGTerminateBlocksLogin terminates Postgres and proves login cannot succeed.
-func TestChaos_AuthPGTerminateBlocksLogin(t *testing.T) {
+func TestFault_AuthPGTerminateBlocksLogin(t *testing.T) {
 	if testing.Short() {
-		t.Skip("chaos integration test")
+		t.Skip("fault integration test")
 	}
 
 	infra, cleanup := setupAuthTestInfra(t)
@@ -94,7 +94,7 @@ func TestChaos_AuthPGTerminateBlocksLogin(t *testing.T) {
 
 	svc := infra.newService(t)
 	ctx := context.Background()
-	email := "chaos-pg-login@example.com"
+	email := "fault-pg-login@example.com"
 	password := "SuperSecure123!"
 
 	_, _, _ = infra.registerAndLogin(t, svc, email, password)
@@ -106,7 +106,7 @@ func TestChaos_AuthPGTerminateBlocksLogin(t *testing.T) {
 
 	loginFails := countLoginBlocked(ctx, svc, email, password, 8)
 
-	logChaosProof(t, "postgres_terminate", map[string]string{
+	faultproof.Log(t, "postgres_terminate", map[string]string{
 		"subsystem":      "auth",
 		"op":             "login",
 		"baseline_ok":    "true",
@@ -118,10 +118,9 @@ func TestChaos_AuthPGTerminateBlocksLogin(t *testing.T) {
 		"login must deny when Postgres is dead, got %d/8", loginFails)
 }
 
-// TestChaos_AuthPGDownVerifyTokenFailClosed stops Postgres while Redis stays up and proves VerifyToken fails closed.
-func TestChaos_AuthPGDownVerifyTokenFailClosed(t *testing.T) {
+func TestFault_AuthPGDownVerifyTokenFailClosed(t *testing.T) {
 	if testing.Short() {
-		t.Skip("chaos integration test")
+		t.Skip("fault integration test")
 	}
 
 	infra, cleanup := setupAuthTestInfra(t)
@@ -129,7 +128,7 @@ func TestChaos_AuthPGDownVerifyTokenFailClosed(t *testing.T) {
 
 	svc := infra.newService(t)
 	ctx := context.Background()
-	email := "chaos-pg-verify@example.com"
+	email := "fault-pg-verify@example.com"
 	password := "SuperSecure123!"
 
 	_, accessToken, _ := infra.registerAndLogin(t, svc, email, password)
@@ -141,24 +140,23 @@ func TestChaos_AuthPGDownVerifyTokenFailClosed(t *testing.T) {
 		return infra.Pool.Ping(ctx) != nil
 	}, "pg ping must fail after stop")
 
-	failClosed := countVerifyFailClosed(ctx, svc, accessToken, authChaosAttempts)
+	failClosed := countVerifyFailClosed(ctx, svc, accessToken, authFaultAttempts)
 
-	logChaosProof(t, "postgres_stop_verify", map[string]string{
+	faultproof.Log(t, "postgres_stop_verify", map[string]string{
 		"subsystem":    "auth",
 		"op":           "verify_token",
 		"baseline_ok":  "true",
 		"redis_alive":  "true",
-		"fail_closed":  strconv.Itoa(failClosed) + "/" + strconv.Itoa(authChaosAttempts),
+		"fail_closed":  strconv.Itoa(failClosed) + "/" + strconv.Itoa(authFaultAttempts),
 		"fault_verify": "postgres_container_stopped",
 	})
-	require.Equal(t, authChaosAttempts, failClosed,
-		"VerifyToken must fail closed when Postgres is down, got %d/%d", failClosed, authChaosAttempts)
+	require.Equal(t, authFaultAttempts, failClosed,
+		"VerifyToken must fail closed when Postgres is down, got %d/%d", failClosed, authFaultAttempts)
 }
 
-// TestChaos_AuthRedisDownLockoutFailClosed stops Redis while Postgres stays up and proves login cannot bypass lockout.
-func TestChaos_AuthRedisDownLockoutFailClosed(t *testing.T) {
+func TestFault_AuthRedisDownLockoutFailClosed(t *testing.T) {
 	if testing.Short() {
-		t.Skip("chaos integration test")
+		t.Skip("fault integration test")
 	}
 
 	infra, cleanup := setupAuthTestInfra(t)
@@ -166,7 +164,7 @@ func TestChaos_AuthRedisDownLockoutFailClosed(t *testing.T) {
 
 	svc := infra.newService(t)
 	ctx := context.Background()
-	email := "chaos-redis-lockout@example.com"
+	email := "fault-redis-lockout@example.com"
 	password := "SuperSecure123!"
 
 	_, _, _ = infra.registerAndLogin(t, svc, email, password)
@@ -180,13 +178,13 @@ func TestChaos_AuthRedisDownLockoutFailClosed(t *testing.T) {
 	const attempts = 8
 	for i := 0; i < attempts; i++ {
 		clientIP := fmt.Sprintf("10.3.0.%d", i+1)
-		_, err := svc.Login(ctx, email, password, "chaos-agent", clientIP, time.Hour)
+		_, err := svc.Login(ctx, email, password, "fault-agent", clientIP, time.Hour)
 		if errors.Is(err, ErrSessionBlocked) {
 			blocked++
 		}
 	}
 
-	logChaosProof(t, "redis_stop_lockout", map[string]string{
+	faultproof.Log(t, "redis_stop_lockout", map[string]string{
 		"subsystem":      "auth",
 		"op":             "login",
 		"baseline_ok":    "true",
@@ -198,10 +196,9 @@ func TestChaos_AuthRedisDownLockoutFailClosed(t *testing.T) {
 		"login must fail closed when lockout store is unreachable, got %d/%d", blocked, attempts)
 }
 
-// TestChaos_AuthRedisStopStartRecovery stops Redis, proves deny, then proves VerifyToken recovers.
-func TestChaos_AuthRedisStopStartRecovery(t *testing.T) {
+func TestFault_AuthRedisStopStartRecovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("chaos integration test")
+		t.Skip("fault integration test")
 	}
 
 	infra, cleanup := setupAuthTestInfra(t)
@@ -209,7 +206,7 @@ func TestChaos_AuthRedisStopStartRecovery(t *testing.T) {
 
 	svc := infra.newService(t)
 	ctx := context.Background()
-	email := "chaos-redis-recovery@example.com"
+	email := "fault-redis-recovery@example.com"
 	password := "SuperSecure123!"
 
 	_, accessToken, _ := infra.registerAndLogin(t, svc, email, password)
@@ -232,7 +229,7 @@ func TestChaos_AuthRedisStopStartRecovery(t *testing.T) {
 		return recovered
 	}, 30*time.Second, 200*time.Millisecond, "VerifyToken must recover after Redis restart")
 
-	logChaosProof(t, "redis_stop_start_recovery", map[string]string{
+	faultproof.Log(t, "redis_stop_start_recovery", map[string]string{
 		"subsystem":    "auth",
 		"op":           "verify_token",
 		"baseline_ok":  "true",
@@ -241,10 +238,9 @@ func TestChaos_AuthRedisStopStartRecovery(t *testing.T) {
 	})
 }
 
-// TestChaos_AuthPGStopStartRecovery stops Postgres, proves login deny, then proves login recovers.
-func TestChaos_AuthPGStopStartRecovery(t *testing.T) {
+func TestFault_AuthPGStopStartRecovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("chaos integration test")
+		t.Skip("fault integration test")
 	}
 
 	infra, cleanup := setupAuthTestInfra(t)
@@ -252,14 +248,14 @@ func TestChaos_AuthPGStopStartRecovery(t *testing.T) {
 
 	svc := infra.newService(t)
 	ctx := context.Background()
-	email := "chaos-pg-recovery@example.com"
+	email := "fault-pg-recovery@example.com"
 	password := "SuperSecure123!"
 
 	_, _, _ = infra.registerAndLogin(t, svc, email, password)
 
 	stopAuthContainer(t, infra.PGContainer)
 	requireAuthFaultActive(t, func() bool {
-		_, err := svc.Login(ctx, email, password, "chaos-agent", "10.4.0.1", time.Hour)
+		_, err := svc.Login(ctx, email, password, "fault-agent", "10.4.0.1", time.Hour)
 		return err != nil
 	}, "login must fail while Postgres is stopped")
 
@@ -269,12 +265,12 @@ func TestChaos_AuthPGStopStartRecovery(t *testing.T) {
 
 	recovered := false
 	require.Eventually(t, func() bool {
-		_, err := svc.Login(ctx, email, password, "chaos-agent", "10.4.0.2", time.Hour)
+		_, err := svc.Login(ctx, email, password, "fault-agent", "10.4.0.2", time.Hour)
 		recovered = err == nil
 		return recovered
 	}, 30*time.Second, 200*time.Millisecond, "login must recover after Postgres restart")
 
-	logChaosProof(t, "postgres_stop_start_recovery", map[string]string{
+	faultproof.Log(t, "postgres_stop_start_recovery", map[string]string{
 		"subsystem":    "auth",
 		"op":           "login",
 		"baseline_ok":  "true",
@@ -283,10 +279,9 @@ func TestChaos_AuthPGStopStartRecovery(t *testing.T) {
 	})
 }
 
-// TestChaos_AuthConcurrentVerifyDuringRedisOutage hammers VerifyToken while Redis is dead.
-func TestChaos_AuthConcurrentVerifyDuringRedisOutage(t *testing.T) {
+func TestFault_AuthConcurrentVerifyDuringRedisOutage(t *testing.T) {
 	if testing.Short() {
-		t.Skip("chaos integration test")
+		t.Skip("fault integration test")
 	}
 
 	infra, cleanup := setupAuthTestInfra(t)
@@ -294,7 +289,7 @@ func TestChaos_AuthConcurrentVerifyDuringRedisOutage(t *testing.T) {
 
 	svc := infra.newService(t)
 	ctx := context.Background()
-	email := "chaos-redis-concurrent@example.com"
+	email := "fault-redis-concurrent@example.com"
 	password := "SuperSecure123!"
 
 	_, accessToken, _ := infra.registerAndLogin(t, svc, email, password)
@@ -306,8 +301,8 @@ func TestChaos_AuthConcurrentVerifyDuringRedisOutage(t *testing.T) {
 
 	var failClosed atomic.Int32
 	var wg sync.WaitGroup
-	wg.Add(authChaosWorkers)
-	for i := 0; i < authChaosWorkers; i++ {
+	wg.Add(authFaultWorkers)
+	for i := 0; i < authFaultWorkers; i++ {
 		go func() {
 			defer wg.Done()
 			for j := 0; j < 5; j++ {
@@ -321,12 +316,12 @@ func TestChaos_AuthConcurrentVerifyDuringRedisOutage(t *testing.T) {
 	wg.Wait()
 
 	total := int(failClosed.Load())
-	expected := authChaosWorkers * 5
+	expected := authFaultWorkers * 5
 
-	logChaosProof(t, "redis_stop_concurrent_verify", map[string]string{
+	faultproof.Log(t, "redis_stop_concurrent_verify", map[string]string{
 		"subsystem":    "auth",
 		"op":           "verify_token",
-		"workers":      strconv.Itoa(authChaosWorkers),
+		"workers":      strconv.Itoa(authFaultWorkers),
 		"fail_closed":  strconv.Itoa(total) + "/" + strconv.Itoa(expected),
 		"fault_verify": "redis_container_stopped_concurrent",
 	})
@@ -334,10 +329,9 @@ func TestChaos_AuthConcurrentVerifyDuringRedisOutage(t *testing.T) {
 		"concurrent VerifyToken must fail closed under Redis outage, got %d/%d", total, expected)
 }
 
-// TestChaos_AuthPGDownRefreshTokenFailClosed stops Postgres and proves refresh rotation cannot succeed.
-func TestChaos_AuthPGDownRefreshTokenFailClosed(t *testing.T) {
+func TestFault_AuthPGDownRefreshTokenFailClosed(t *testing.T) {
 	if testing.Short() {
-		t.Skip("chaos integration test")
+		t.Skip("fault integration test")
 	}
 
 	infra, cleanup := setupAuthTestInfra(t)
@@ -345,7 +339,7 @@ func TestChaos_AuthPGDownRefreshTokenFailClosed(t *testing.T) {
 
 	svc := infra.newService(t)
 	ctx := context.Background()
-	email := "chaos-pg-refresh@example.com"
+	email := "fault-pg-refresh@example.com"
 	password := "SuperSecure123!"
 
 	_, _, refreshToken := infra.registerAndLogin(t, svc, email, password)
@@ -364,7 +358,7 @@ func TestChaos_AuthPGDownRefreshTokenFailClosed(t *testing.T) {
 		}
 	}
 
-	logChaosProof(t, "postgres_stop_refresh", map[string]string{
+	faultproof.Log(t, "postgres_stop_refresh", map[string]string{
 		"subsystem":    "auth",
 		"op":           "refresh_token",
 		"baseline_ok":  "true",

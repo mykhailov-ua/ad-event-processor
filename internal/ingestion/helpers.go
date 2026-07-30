@@ -8,10 +8,8 @@ import (
 	"espx/pkg/money"
 )
 
-// MicroUnitFactor converts dollar floats to micro-dollar integers.
 const MicroUnitFactor = money.MicroUnit
 
-// SliceToMap builds O(1) country lookup sets from string slices.
 func SliceToMap(slice []string) map[string]struct{} {
 	if slice == nil {
 		return nil
@@ -23,7 +21,6 @@ func SliceToMap(slice []string) map[string]struct{} {
 	return m
 }
 
-// UnsafeString views bytes as a string without copy when the backing slice outlives use.
 func UnsafeString(b []byte) string {
 	if len(b) == 0 {
 		return ""
@@ -31,7 +28,6 @@ func UnsafeString(b []byte) string {
 	return unsafe.String(unsafe.SliceData(b), len(b))
 }
 
-// UnsafeBytes views a string as bytes without copy when the string is not mutated.
 func UnsafeBytes(s string) []byte {
 	if s == "" {
 		return nil
@@ -39,24 +35,20 @@ func UnsafeBytes(s string) []byte {
 	return unsafe.Slice(unsafe.StringData(s), len(s))
 }
 
-// ByteSliceValue adapts a byte slice for Redis binary marshaling without allocation.
 type ByteSliceValue struct {
 	b []byte
 }
 
-// MarshalBinary returns the wrapped bytes for Redis stream values.
 func (v *ByteSliceValue) MarshalBinary() ([]byte, error) {
 	return v.b, nil
 }
 
-// byteSliceValuePool recycles ByteSliceValue wrappers for stream XADD calls.
 var byteSliceValuePool = sync.Pool{
 	New: func() any {
 		return new(ByteSliceValue)
 	},
 }
 
-// DeepResetAdStreamEvent clears slice fields in place before returning protobuf objects to a pool.
 func DeepResetAdStreamEvent(m *pb.AdStreamEvent) {
 	if m == nil {
 		return
@@ -73,7 +65,6 @@ func DeepResetAdStreamEvent(m *pb.AdStreamEvent) {
 	m.GhostEvent = false
 }
 
-// ClearAdStreamEvent nils large byte fields so pooled protobuf objects do not pin payload memory.
 func ClearAdStreamEvent(m *pb.AdStreamEvent) {
 	if m == nil {
 		return
@@ -90,7 +81,6 @@ func ClearAdStreamEvent(m *pb.AdStreamEvent) {
 	m.GhostEvent = false
 }
 
-// DeepResetAdDLQEvent clears nested stream events before returning DLQ protobuf objects to a pool.
 func DeepResetAdDLQEvent(m *pb.AdDLQEvent) {
 	if m == nil {
 		return

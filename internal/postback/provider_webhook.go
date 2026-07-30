@@ -11,7 +11,7 @@ import (
 )
 
 type WebhookAdapter struct {
-	templates sync.Map // url template string -> *MacroTemplate
+	templates sync.Map
 }
 
 func (a *WebhookAdapter) cachedTemplate(urlTemplate string) *MacroTemplate {

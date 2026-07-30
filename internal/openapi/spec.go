@@ -9,7 +9,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Document is a parsed OpenAPI 3 document (paths + security schemes).
 type Document struct {
 	OpenAPI    string         `yaml:"openapi"`
 	Paths      map[string]any `yaml:"paths"`
@@ -19,7 +18,6 @@ type Document struct {
 	} `yaml:"components"`
 }
 
-// LoadSpec parses docs/openapi/openapi.yaml from repoRoot.
 func LoadSpec(repoRoot string) (*Document, error) {
 	path := strings.Join([]string{repoRoot, "docs", "openapi", "openapi.yaml"}, string(os.PathSeparator))
 	body, err := os.ReadFile(path)
@@ -39,7 +37,6 @@ func LoadSpec(repoRoot string) (*Document, error) {
 	return &doc, nil
 }
 
-// SpecRoutes lists method+path pairs declared in the OpenAPI document.
 func SpecRoutes(doc *Document) []Route {
 	if doc == nil {
 		return nil
@@ -70,12 +67,10 @@ func sortRoutes(routes []Route) {
 	})
 }
 
-// OpenAPIPath converts Go 1.22 path patterns to OpenAPI path templates.
 func OpenAPIPath(goPath string) string {
 	return goPath
 }
 
-// HasAdminHTMLPaths reports forbidden /admin/* entries in the spec.
 func HasAdminHTMLPaths(doc *Document) []string {
 	if doc == nil {
 		return nil
@@ -89,7 +84,6 @@ func HasAdminHTMLPaths(doc *Document) []string {
 	return bad
 }
 
-// SecuritySchemeNames returns declared security scheme keys.
 func SecuritySchemeNames(doc *Document) []string {
 	if doc == nil || doc.Components.SecuritySchemes == nil {
 		return nil

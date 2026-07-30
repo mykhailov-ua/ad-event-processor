@@ -6,7 +6,6 @@ import (
 	"espx/internal/payment/db"
 )
 
-// BenchmarkIsValidTransition measures webhook state guard cost on the intent status hot path.
 func BenchmarkIsValidTransition(b *testing.B) {
 	statuses := []db.PaymentPaymentIntentStatus{
 		db.PaymentPaymentIntentStatusCREATED,

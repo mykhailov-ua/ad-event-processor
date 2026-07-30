@@ -21,7 +21,6 @@ const (
 	defaultNodeMetricsTTL      = 24 * time.Hour
 )
 
-// NodeMetricsWorker flushes 10 s metric buckets and expires rows older than 24 h.
 type NodeMetricsWorker struct {
 	svc      *Service
 	pool     *pgxpool.Pool
@@ -62,7 +61,6 @@ func (a *metricAccumulator) Drain() map[string][]float64 {
 	return out
 }
 
-// NewNodeMetricsWorker constructs a node metric bucket flusher for the local cell.
 func NewNodeMetricsWorker(svc *Service) *NodeMetricsWorker {
 	nodeID, _ := os.Hostname()
 	if svc != nil && svc.cfg != nil && svc.cfg.NodeID != "" {
@@ -88,7 +86,6 @@ func NewNodeMetricsWorker(svc *Service) *NodeMetricsWorker {
 	}
 }
 
-// Record adds one sample for the next bucket flush.
 func (w *NodeMetricsWorker) Record(metric string, value float64) {
 	if w == nil {
 		return
@@ -96,7 +93,6 @@ func (w *NodeMetricsWorker) Record(metric string, value float64) {
 	w.acc.Record(metric, value)
 }
 
-// Start runs the 10 s flush loop until ctx is cancelled.
 func (w *NodeMetricsWorker) Start(ctx context.Context) {
 	if w == nil || w.pool == nil {
 		return
@@ -121,7 +117,6 @@ func (w *NodeMetricsWorker) Start(ctx context.Context) {
 	}
 }
 
-// Flush drains pending samples, writes buckets, and runs the TTL janitor.
 func (w *NodeMetricsWorker) Flush(ctx context.Context, now time.Time) error {
 	if w == nil || w.pool == nil {
 		return nil

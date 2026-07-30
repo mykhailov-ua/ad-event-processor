@@ -17,7 +17,6 @@ import (
 
 const s3MetadataSHA256Key = "content-sha256"
 
-// S3Config holds cloud tier store settings.
 type S3Config struct {
 	Region         string
 	Bucket         string
@@ -28,14 +27,12 @@ type S3Config struct {
 	ForcePathStyle bool
 }
 
-// S3TierStore syncs hot segments from S3 into a scratch filesystem for compaction.
 type S3TierStore struct {
 	cfg    S3Config
 	client *s3.Client
 	local  *LocalTierStore
 }
 
-// NewS3TierStore builds an S3-backed tier store with local scratch for compaction.
 func NewS3TierStore(ctx context.Context, cfg S3Config) (*S3TierStore, error) {
 	if cfg.Region == "" || cfg.Bucket == "" {
 		return nil, ErrCloudConfigIncomplete
@@ -72,7 +69,6 @@ func NewS3TierStore(ctx context.Context, cfg S3Config) (*S3TierStore, error) {
 	}, nil
 }
 
-// ListHot syncs eligible hot objects from S3 then lists the scratch directory.
 func (store *S3TierStore) ListHot(ctx context.Context, olderThan time.Time) ([]TierObject, error) {
 	if err := store.syncHotFromS3(ctx, olderThan); err != nil {
 		return nil, err
@@ -215,7 +211,6 @@ func (store *S3TierStore) warmObjectKey(name string) string {
 	return store.warmObjectPrefix() + name
 }
 
-// WriteWarm delegates to scratch storage and uploads warm output to S3.
 func (store *S3TierStore) WriteWarm(ctx context.Context, destKey string, plaintext []byte, meta CompactionMeta) error {
 	if err := store.local.WriteWarm(ctx, destKey, plaintext, meta); err != nil {
 		return err
@@ -223,7 +218,6 @@ func (store *S3TierStore) WriteWarm(ctx context.Context, destKey string, plainte
 	return store.uploadWarmArtifacts(ctx, destKey, meta.DestSHA256)
 }
 
-// WriteWarmFromFile writes warm output locally and uploads to S3.
 func (store *S3TierStore) WriteWarmFromFile(ctx context.Context, destKey, filteredPath string, meta CompactionMeta) (string, error) {
 	destSHA, err := store.local.WriteWarmFromFile(ctx, destKey, filteredPath, meta)
 	if err != nil {
@@ -250,7 +244,6 @@ func (store *S3TierStore) uploadWarmArtifacts(ctx context.Context, destKey, sha2
 	return store.uploadFile(ctx, metaKey, metaPath, metaDigest.SHA256)
 }
 
-// RemoveHot deletes the scratch copy and the S3 hot object.
 func (store *S3TierStore) RemoveHot(ctx context.Context, obj TierObject) error {
 	if err := store.local.RemoveHot(ctx, obj); err != nil {
 		return err
@@ -259,22 +252,18 @@ func (store *S3TierStore) RemoveHot(ctx context.Context, obj TierObject) error {
 	return store.deleteObject(ctx, store.hotObjectKey(hotKey))
 }
 
-// ClaimHot claims a scratch hot segment for compaction.
 func (store *S3TierStore) ClaimHot(ctx context.Context, obj TierObject) (TierObject, error) {
 	return store.local.ClaimHot(ctx, obj)
 }
 
-// RollbackHot restores a claimed scratch segment.
 func (store *S3TierStore) RollbackHot(ctx context.Context, obj TierObject) error {
 	return store.local.RollbackHot(ctx, obj)
 }
 
-// ListStuckCompacting returns claimed scratch segments left by a crash.
 func (store *S3TierStore) ListStuckCompacting(ctx context.Context) ([]TierObject, error) {
 	return store.local.ListStuckCompacting(ctx)
 }
 
-// RemoveCompacting deletes a claimed scratch segment and its S3 hot object.
 func (store *S3TierStore) RemoveCompacting(ctx context.Context, obj TierObject) error {
 	hotKey := hotKeyFromCompacting(obj.Key)
 	if err := store.local.RemoveCompacting(ctx, obj); err != nil {
@@ -283,17 +272,14 @@ func (store *S3TierStore) RemoveCompacting(ctx context.Context, obj TierObject) 
 	return store.deleteObject(ctx, store.hotObjectKey(hotKey))
 }
 
-// RemoveWarmArtifacts deletes incomplete warm scratch and S3 temp artifacts.
 func (store *S3TierStore) RemoveWarmArtifacts(destKey string) {
 	store.local.RemoveWarmArtifacts(destKey)
 }
 
-// LocalScratch exposes the scratch LocalTierStore for cold-tier rollup.
 func (store *S3TierStore) LocalScratch() *LocalTierStore {
 	return store.local
 }
 
-// WarmMetaFromS3 downloads warm compaction metadata for ops tooling.
 func (store *S3TierStore) WarmMetaFromS3(ctx context.Context, destKey string) (CompactionMeta, error) {
 	metaKey := store.warmObjectKey(strings.TrimSuffix(destKey, ".zst") + ".meta.json")
 	output, err := store.client.GetObject(ctx, &s3.GetObjectInput{

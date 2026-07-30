@@ -1,4 +1,3 @@
--- edge-tracker-peers.lua: tracker upstream table shared by shard balancer and node weights.
 
 local _M = {}
 

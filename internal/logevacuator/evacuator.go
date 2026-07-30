@@ -20,7 +20,6 @@ const (
 	evacuatingSuffix = ".log.zst.evacuating"
 )
 
-// Config configures the evacuator watcher and upload pipeline.
 type Config struct {
 	LogDir                 string
 	CheckpointPath         string
@@ -29,7 +28,6 @@ type Config struct {
 	RequireCompactorMarker bool
 }
 
-// Evacuator watches for rotated segments and uploads them with checkpointed exactly-once semantics.
 type Evacuator struct {
 	cfg        Config
 	store      ObjectStore
@@ -39,7 +37,6 @@ type Evacuator struct {
 	inflight   map[string]struct{}
 }
 
-// NewEvacuator wires filesystem watching, checkpoint persistence, and object storage upload.
 func NewEvacuator(cfg Config, store ObjectStore) (*Evacuator, error) {
 	if cfg.LogDir == "" {
 		cfg.LogDir = "/var/log/espx"
@@ -65,7 +62,6 @@ func NewEvacuator(cfg Config, store ObjectStore) (*Evacuator, error) {
 	}, nil
 }
 
-// Run starts fsnotify watching, recovers stuck segments, and drains pending ready files until ctx is cancelled.
 func (evac *Evacuator) Run(ctx context.Context) error {
 	if err := os.MkdirAll(evac.cfg.LogDir, 0o755); err != nil {
 		return err

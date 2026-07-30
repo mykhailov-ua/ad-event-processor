@@ -11,10 +11,8 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-// budgetKeyTTL keeps warmed budget keys alive across daily registry sync cycles.
 const budgetKeyTTL = 24 * time.Hour
 
-// RemainingBudgetMicro computes non-negative remaining budget from registry snapshot fields.
 func RemainingBudgetMicro(c *campaignmodel.Campaign) int64 {
 	if c == nil {
 		return 0
@@ -26,24 +24,20 @@ func RemainingBudgetMicro(c *campaignmodel.Campaign) int64 {
 	return rem
 }
 
-// BudgetCacheWarmer seeds Redis budget keys before the filter hot path sees cache misses.
 type BudgetCacheWarmer struct {
 	rdbs    []redis.UniversalClient
 	sharder Sharder
 }
 
-// NewBudgetCacheWarmer creates a shard-aware warmer for campaign budget keys.
 func NewBudgetCacheWarmer(rdbs []redis.UniversalClient, sharder Sharder) *BudgetCacheWarmer {
 	return &BudgetCacheWarmer{rdbs: rdbs, sharder: sharder}
 }
 
-// budgetWarmItem pairs a Redis key with the remaining budget to seed.
 type budgetWarmItem struct {
 	key string
 	val int64
 }
 
-// Warm inserts missing budget keys on each shard without overwriting live counters.
 func (w *BudgetCacheWarmer) Warm(ctx context.Context, campaigns []*campaignmodel.Campaign) (int, error) {
 	if w == nil || len(w.rdbs) == 0 || len(campaigns) == 0 {
 		return 0, nil
@@ -87,7 +81,6 @@ func (w *BudgetCacheWarmer) Warm(ctx context.Context, campaigns []*campaignmodel
 	return warmed, nil
 }
 
-// WarmOne seeds one campaign budget key after an incremental registry update.
 func (w *BudgetCacheWarmer) WarmOne(ctx context.Context, camp *campaignmodel.Campaign) (bool, error) {
 	if w == nil || len(w.rdbs) == 0 || camp == nil || camp.BudgetCampaignKey == "" {
 		return false, nil
@@ -111,7 +104,6 @@ func (w *BudgetCacheWarmer) WarmOne(ctx context.Context, camp *campaignmodel.Cam
 	return warmed, nil
 }
 
-// WarmFromRegistry warms all active campaigns from the in-memory registry snapshot.
 func (w *BudgetCacheWarmer) WarmFromRegistry(ctx context.Context, reg *Registry) (int, error) {
 	if reg == nil {
 		return 0, nil
@@ -119,13 +111,11 @@ func (w *BudgetCacheWarmer) WarmFromRegistry(ctx context.Context, reg *Registry)
 	return w.Warm(ctx, reg.ActiveCampaigns())
 }
 
-// warmBudgetKeyNX inserts a budget key when Lua reports a cache miss.
 func warmBudgetKeyNX(ctx context.Context, rdb redis.UniversalClient, key string, remaining int64) error {
 	_, err := rdb.SetNX(ctx, key, remaining, budgetKeyTTL).Result()
 	return err
 }
 
-// tryRecoverBudgetFromRegistry reloads budget from the registry before hitting Postgres.
 func tryRecoverBudgetFromRegistry(
 	ctx context.Context,
 	rdb redis.UniversalClient,

@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-// LogCompactor holds environment-backed settings for the warm-tier compactor binary.
 type LogCompactor struct {
 	Backend                  string
 	SourceDir                string
@@ -34,7 +33,6 @@ type LogCompactor struct {
 	S3ForcePathStyle         bool
 }
 
-// LoadLogCompactor reads compactor-specific environment variables.
 func LoadLogCompactor() (LogCompactor, error) {
 	cfg := LogCompactor{
 		Backend:                  strings.ToLower(envOrDefault("LOG_COMPACTOR_BACKEND", "local")),

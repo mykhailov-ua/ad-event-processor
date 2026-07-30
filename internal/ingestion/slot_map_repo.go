@@ -12,43 +12,32 @@ import (
 )
 
 const (
-	// SlotCount is the fixed slot space for Fixed Slot Map (Phase 2).
 	SlotCount = 1024
-	// SlotMask is crc32(campaign_id) & SlotMask for slot index.
-	SlotMask = SlotCount - 1
+	SlotMask  = SlotCount - 1
 )
 
 var (
-	// ErrSlotMapIncomplete is returned when a version does not have exactly SlotCount rows.
-	ErrSlotMapIncomplete = errors.New("slot map version must contain exactly 1024 slots")
-	// ErrSlotMapVersionNotFound is returned when no rows exist for the requested version.
+	ErrSlotMapIncomplete      = errors.New("slot map version must contain exactly 1024 slots")
 	ErrSlotMapVersionNotFound = errors.New("slot map version not found")
-	// ErrSlotMapInvalidSlot is returned when slot is outside [0, 1023].
-	ErrSlotMapInvalidSlot = errors.New("slot must be in [0, 1023]")
-	// ErrSlotMapInvalidShard is returned when shard_id is negative.
-	ErrSlotMapInvalidShard = errors.New("shard_id must be non-negative")
-	// ErrSlotMapAlreadyActive is returned when activate targets the current active_version.
-	ErrSlotMapAlreadyActive = errors.New("slot map version is already active")
+	ErrSlotMapInvalidSlot     = errors.New("slot must be in [0, 1023]")
+	ErrSlotMapInvalidShard    = errors.New("shard_id must be non-negative")
+	ErrSlotMapAlreadyActive   = errors.New("slot map version is already active")
 )
 
-// SlotOverride describes a single slot change when cloning a map version.
 type SlotOverride struct {
 	Slot    int16
 	ShardID int16
 	State   db.RedisSlotState
 }
 
-// SlotMapRepo manages Fixed Slot Map versions in Postgres (Phase 2.1 control plane).
 type SlotMapRepo struct {
 	pool *pgxpool.Pool
 }
 
-// NewSlotMapRepo constructs a slot map repository backed by a pgx pool.
 func NewSlotMapRepo(pool *pgxpool.Pool) *SlotMapRepo {
 	return &SlotMapRepo{pool: pool}
 }
 
-// GetActiveVersion returns the version trackers must load at startup.
 func (r *SlotMapRepo) GetActiveVersion(ctx context.Context) (int32, error) {
 	if r.pool == nil {
 		return 0, fmt.Errorf("slot map repo: nil pool")
@@ -60,7 +49,6 @@ func (r *SlotMapRepo) GetActiveVersion(ctx context.Context) (int32, error) {
 	return meta.ActiveVersion, nil
 }
 
-// GetSlotMapMeta returns active version and global routing epoch.
 func (r *SlotMapRepo) GetSlotMapMeta(ctx context.Context) (db.GetSlotMapMetaRow, error) {
 	if r.pool == nil {
 		return db.GetSlotMapMetaRow{}, fmt.Errorf("slot map repo: nil pool")
@@ -68,7 +56,6 @@ func (r *SlotMapRepo) GetSlotMapMeta(ctx context.Context) (db.GetSlotMapMetaRow,
 	return db.New(r.pool).GetSlotMapMeta(ctx)
 }
 
-// ListVersion returns all slot rows for a map version ordered by slot index.
 func (r *SlotMapRepo) ListVersion(ctx context.Context, version int32) ([]db.RedisSlotMap, error) {
 	if r.pool == nil {
 		return nil, fmt.Errorf("slot map repo: nil pool")
@@ -84,7 +71,6 @@ func (r *SlotMapRepo) ListVersion(ctx context.Context, version int32) ([]db.Redi
 	return q.ListSlotMapByVersion(ctx, version)
 }
 
-// ListMigratingSlots returns slots in MIGRATING state for orchestrator batching (Phase 2.3).
 func (r *SlotMapRepo) ListMigratingSlots(ctx context.Context, version int32) ([]db.RedisSlotMap, error) {
 	if r.pool == nil {
 		return nil, fmt.Errorf("slot map repo: nil pool")
@@ -92,7 +78,6 @@ func (r *SlotMapRepo) ListMigratingSlots(ctx context.Context, version int32) ([]
 	return db.New(r.pool).ListMigratingSlotsByVersion(ctx, version)
 }
 
-// CreateNextVersion clones baseVersion into max(version)+1 and applies overrides atomically.
 func (r *SlotMapRepo) CreateNextVersion(
 	ctx context.Context,
 	baseVersion int32,
@@ -168,7 +153,6 @@ func (r *SlotMapRepo) CreateNextVersion(
 	return newVersion, nil
 }
 
-// MarkSlotsMigrating sets slots to MIGRATING with a target shard_id inside one transaction.
 func (r *SlotMapRepo) MarkSlotsMigrating(
 	ctx context.Context,
 	version int32,
@@ -227,7 +211,6 @@ func (r *SlotMapRepo) MarkSlotsMigrating(
 	return tx.Commit(ctx)
 }
 
-// ActivateVersion switches the active map pointer after validating completeness.
 func (r *SlotMapRepo) ActivateVersion(ctx context.Context, version int32) error {
 	if r.pool == nil {
 		return fmt.Errorf("slot map repo: nil pool")
@@ -262,7 +245,6 @@ func (r *SlotMapRepo) ActivateVersion(ctx context.Context, version int32) error 
 	return tx.Commit(ctx)
 }
 
-// TableFromRows builds a [1024]uint16 shard table from Postgres rows (cold path only).
 func TableFromRows(rows []db.RedisSlotMap) (*[SlotCount]uint16, error) {
 	if len(rows) != SlotCount {
 		return nil, ErrSlotMapIncomplete

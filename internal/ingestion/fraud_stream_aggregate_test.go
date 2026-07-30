@@ -1,6 +1,8 @@
 package ingestion
 
 import (
+	"espx/pkg/faultproof"
+
 	"context"
 	"sync"
 	"sync/atomic"
@@ -98,9 +100,9 @@ func TestFraudStreamWriter_L3NeverAggregated(t *testing.T) {
 	assert.Equal(t, primeFraudRingPending()+1, q.Pending())
 }
 
-func TestChaos_FraudStreamL3NeverAggregated(t *testing.T) {
+func TestFault_FraudStreamL3NeverAggregated(t *testing.T) {
 	q := &FraudStreamWriter{
-		stream: "fraud-stream-chaos",
+		stream: "fraud-stream-fault",
 		maxLen: 1000,
 		rdbs:   []redis.UniversalClient{&mockRedisClient{}},
 		stopCh: make(chan struct{}),
@@ -128,20 +130,19 @@ func TestChaos_FraudStreamL3NeverAggregated(t *testing.T) {
 
 	assert.Equal(t, beforePending+1, q.Pending())
 	assert.Equal(t, beforeAgg+1, testutil.ToFloat64(metrics.FraudStreamAggregatedTotal))
-	logChaosProof(t, "fraud_stream_l3_never_aggregated", map[string]string{
+	faultproof.Log(t, "fraud_stream_l3_never_aggregated", map[string]string{
 		"ring_pending": "1",
 		"l3_enqueued":  "true",
 	})
 }
 
-func TestChaos_FraudStreamCriticalLaneAnalyticalFull(t *testing.T) {
+func TestFault_FraudStreamCriticalLaneAnalyticalFull(t *testing.T) {
 	q := &FraudStreamWriter{
 		stream: "fraud-crit",
 		maxLen: 1000,
 		rdbs:   []redis.UniversalClient{&mockRedisClient{}},
 		stopCh: make(chan struct{}),
 	}
-	// Analytical ring at 100% usable fill.
 	q.readCursor = 0
 	q.allocCursor = fraudAnalyticalUsable
 	q.writeCursor = fraudAnalyticalUsable
@@ -161,7 +162,7 @@ func TestChaos_FraudStreamCriticalLaneAnalyticalFull(t *testing.T) {
 	assert.Equal(t, beforeAgg, testutil.ToFloat64(metrics.FraudStreamAggregatedTotal))
 	assert.Equal(t, uint64(1), pendingDelta(atomic.LoadUint64(&q.critWrite), atomic.LoadUint64(&q.critRead)))
 
-	logChaosProof(t, "fraud_critical_lane_no_agg", map[string]string{
+	faultproof.Log(t, "fraud_critical_lane_no_agg", map[string]string{
 		"analytical_fill": "100",
 		"l3_critical":     "true",
 	})

@@ -6,7 +6,6 @@ import (
 	"net"
 )
 
-// HostIPv4 formats a BPF wire-layout IPv4 word as dotted decimal.
 func HostIPv4(addr uint32) string {
 	return net.IPv4(
 		byte(addr),
@@ -16,7 +15,6 @@ func HostIPv4(addr uint32) string {
 	).String()
 }
 
-// WireIPv4 converts dotted decimal to BPF wire-layout uint32.
 func WireIPv4(ip string) (uint32, error) {
 	parsed := net.ParseIP(ip)
 	if parsed == nil {
@@ -29,7 +27,6 @@ func WireIPv4(ip string) (uint32, error) {
 	return binary.LittleEndian.Uint32(v4), nil
 }
 
-// ViolationReasonLabel maps violation reason codes to stable labels.
 func ViolationReasonLabel(reason uint8) string {
 	switch reason {
 	case ViolationSYN:

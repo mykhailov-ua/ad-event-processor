@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// murmur3_32 is a minimal 32-bit MurmurHash3 x86 variant for benchmark comparison only.
 func murmur3_32(data []byte, seed uint32) uint32 {
 	const (
 		c1 = 0xcc9e2d51
@@ -54,7 +53,6 @@ func slotFromHash(h uint32) int {
 	return int(h & SlotMask)
 }
 
-// shardEntropy returns normalized Shannon entropy of shard assignment over numShards buckets.
 func shardEntropy(assign func(uuid.UUID) int, samples int, numShards int) float64 {
 	counts := make([]int, numShards)
 	for i := 0; i < samples; i++ {
@@ -93,7 +91,6 @@ func TestSlotHashEntropy_CRC32Retained(t *testing.T) {
 
 	t.Logf("shard entropy (normalized): crc32=%.4f xxhash=%.4f murmur3=%.4f", crcEntropy, xxEntropy, murEntropy)
 
-	// All hashes distribute well; xxhash/murmur3 do not materially improve entropy.
 	const minEntropy = 0.99
 	if crcEntropy < minEntropy {
 		t.Fatalf("crc32 entropy %.4f below %.2f", crcEntropy, minEntropy)

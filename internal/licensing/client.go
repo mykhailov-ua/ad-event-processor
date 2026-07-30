@@ -11,7 +11,6 @@ import (
 	"time"
 )
 
-// LicenseClient communicates with the vendor license-server.
 type LicenseClient struct {
 	serverURL  string
 	licenseKey string
@@ -45,13 +44,11 @@ func NewLicenseClient(serverURL, licenseKey string, timeout time.Duration) *Lice
 	}
 }
 
-// IsTripped checks if the circuit breaker is currently open.
 func (c *LicenseClient) IsTripped() bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.tripped {
 		if time.Since(c.lastFailedAt) >= 1*time.Minute {
-			// Half-open probe
 			return false
 		}
 		return true

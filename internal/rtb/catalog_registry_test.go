@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Guards UpdateCampaigns does not overwrite live budget for an existing campaign slot.
 func TestRegistry_updateCampaigns_preservesLiveBudget(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)
@@ -32,7 +31,6 @@ func TestRegistry_updateCampaigns_preservesLiveBudget(t *testing.T) {
 	assert.Equal(t, int64(550), store.GetBudget(cid))
 }
 
-// Guards SetBudget and LoadSnapshot cannot corrupt another campaign slot index.
 func TestRegistry_setBudget_loadSnapshot_noCrossWrite(t *testing.T) {
 	storeA := NewBudgetStore()
 	regA := NewRegistry(storeA)
@@ -87,7 +85,6 @@ func TestRegistry_setBudget_loadSnapshot_noCrossWrite(t *testing.T) {
 	assert.Zero(t, crossWrites.Load())
 }
 
-// Guards SaveSnapshot captures catalog and budget slots under one generation.
 func TestRegistry_saveSnapshot_consistentUnderConcurrentSpend(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)
@@ -140,7 +137,6 @@ func TestRegistry_saveSnapshot_consistentUnderConcurrentSpend(t *testing.T) {
 	}
 }
 
-// Guards RCU-pinned auctions never drive budget negative after catalog removal.
 func TestRegistry_runAuction_ghostWinnerBudgetNonNegative(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)
@@ -193,7 +189,6 @@ func TestRegistry_runAuction_ghostWinnerBudgetNonNegative(t *testing.T) {
 	assert.GreaterOrEqual(t, store.GetBudget(cid), int64(0))
 }
 
-// Guards auctions fail after the catalog is emptied without spending budget.
 func TestRegistry_runAuction_emptyCatalogNoSpend(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)
@@ -206,7 +201,6 @@ func TestRegistry_runAuction_emptyCatalogNoSpend(t *testing.T) {
 	assert.Equal(t, int64(1000), store.GetBudget(cid))
 }
 
-// Guards concurrent winners are bounded by clearing price and CAS.
 func TestRegistry_runAuction_concurrentSpendBoundedByCAS(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)
@@ -233,7 +227,6 @@ func TestRegistry_runAuction_concurrentSpendBoundedByCAS(t *testing.T) {
 	assert.Equal(t, int64(120-50*w), store.GetBudget(cid))
 }
 
-// Guards concurrent bidding alongside shard rebuilds without budget overspend.
 func TestRegistry_runAuction_concurrentCatalogRebuild(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)
@@ -301,7 +294,6 @@ func TestRegistry_runAuction_concurrentCatalogRebuild(t *testing.T) {
 	}
 }
 
-// Guards corrupt shard Count values abort the auction safely.
 func TestRegistry_runAuction_rejectsCorruptCount(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)
@@ -315,7 +307,6 @@ func TestRegistry_runAuction_rejectsCorruptCount(t *testing.T) {
 	assert.Equal(t, NoBidCorruptCatalog, reason)
 }
 
-// Guards out-of-range budget indices abort the auction safely.
 func TestRegistry_runAuction_rejectsBadBudgetIndex(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)
@@ -330,7 +321,6 @@ func TestRegistry_runAuction_rejectsBadBudgetIndex(t *testing.T) {
 	assert.False(t, reason.OK())
 }
 
-// Guards readers never observe mixed catalog generations across shards.
 func TestRegistry_updateCampaigns_atomicCatalogPublish(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)

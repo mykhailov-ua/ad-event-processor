@@ -21,7 +21,6 @@ func (s *Service) leaseReplicaNodes() []string {
 	return []string{"management"}
 }
 
-// OperationLeaseWorker returns the wired lease worker, if any.
 func (s *Service) OperationLeaseWorker() *OperationLeaseWorker {
 	if s == nil {
 		return nil
@@ -29,7 +28,6 @@ func (s *Service) OperationLeaseWorker() *OperationLeaseWorker {
 	return s.leaseWorker
 }
 
-// EnsureBook inserts a lease row or returns the existing book/quorum status.
 func (w *OperationLeaseWorker) EnsureBook(ctx context.Context, req OperationLeaseBookRequest) (OperationLeaseBookResult, error) {
 	empty := OperationLeaseBookResult{}
 	if w == nil || w.svc == nil || w.svc.pool == nil {
@@ -55,7 +53,6 @@ func (w *OperationLeaseWorker) EnsureBook(ctx context.Context, req OperationLeas
 	return result, err
 }
 
-// RelayDeliveryBookRequest builds a book request for one outbox relay delivery.
 func RelayDeliveryBookRequest(s *Service, regionCode uint8, outboxEventID int64, eventType string, payload []byte, attempt int32) OperationLeaseBookRequest {
 	adapter := s.dedupAdapter()
 	scope := dedupkey.Scope{}
@@ -78,7 +75,6 @@ func RelayDeliveryBookRequest(s *Service, regionCode uint8, outboxEventID int64,
 	}
 }
 
-// ProxyBatchBookRequest builds a book request for one proxy uplink batch.
 func ProxyBatchBookRequest(ctx context.Context, s *Service, in RegionIngestBatchInput, attempt int32) OperationLeaseBookRequest {
 	epoch := in.SourceEpoch
 	if epoch == 0 && s.pool != nil {

@@ -12,7 +12,6 @@ var (
 	ipAddressRegex = regexp.MustCompile(`\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b`)
 )
 
-// SetAdminBaseURL configures acknowledge/blacklist links for interactive provider buttons.
 func SetAdminBaseURL(baseURL string) {
 	adminBaseURLMu.Lock()
 	defer adminBaseURLMu.Unlock()
@@ -30,14 +29,12 @@ func currentAdminBaseURL() string {
 	return adminBaseURL
 }
 
-// InteractiveActions holds optional admin deep-links derived from notification content.
 type InteractiveActions struct {
 	AcknowledgeURL string
 	BlockIPURL     string
 	BlockIP        string
 }
 
-// BuildInteractiveActions extracts admin URLs for acknowledge and IP block buttons.
 func BuildInteractiveActions(notificationID, title, body string) InteractiveActions {
 	base := currentAdminBaseURL()
 	var actions InteractiveActions

@@ -11,24 +11,19 @@ import (
 )
 
 const (
-	// MigrationFenceKeyPrefix blocks debits on a draining source shard during slot copy.
 	MigrationFenceKeyPrefix = "budget:migration_fence:"
-	// BudgetFrozenKeyPrefix blocks debits when management freezes spend via outbox.
-	BudgetFrozenKeyPrefix = "budget:frozen:"
-	migrationFenceTTL     = 24 * time.Hour
+	BudgetFrozenKeyPrefix   = "budget:frozen:"
+	migrationFenceTTL       = 24 * time.Hour
 )
 
-// MigrationFenceRedisKey returns the Redis key that rejects Lua debits when present.
 func MigrationFenceRedisKey(campaignID uuid.UUID) string {
 	return MigrationFenceKeyPrefix + campaignID.String()
 }
 
-// BudgetFrozenRedisKey returns the Redis key set by BUDGET_FREEZE outbox events.
 func BudgetFrozenRedisKey(campaignID uuid.UUID) string {
 	return BudgetFrozenKeyPrefix + campaignID.String()
 }
 
-// BumpMigrationFences increments Postgres migration_gen and sets fence keys on the source shard.
 func BumpMigrationFences(
 	ctx context.Context,
 	pool *pgxpool.Pool,
@@ -80,7 +75,6 @@ func BumpMigrationFences(
 	return nil
 }
 
-// SetBudgetFrozen marks a campaign shard as spend-frozen until the key is deleted.
 func SetBudgetFrozen(ctx context.Context, rdb redis.Cmdable, campaignID uuid.UUID) error {
 	if rdb == nil {
 		return fmt.Errorf("nil redis client")
@@ -88,7 +82,6 @@ func SetBudgetFrozen(ctx context.Context, rdb redis.Cmdable, campaignID uuid.UUI
 	return rdb.Set(ctx, BudgetFrozenRedisKey(campaignID), "1", 0).Err()
 }
 
-// ClearBudgetFrozen removes the spend-freeze marker for a campaign.
 func ClearBudgetFrozen(ctx context.Context, rdb redis.Cmdable, campaignID uuid.UUID) error {
 	if rdb == nil {
 		return fmt.Errorf("nil redis client")

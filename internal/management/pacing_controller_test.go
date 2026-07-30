@@ -16,7 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestClosedLoopPacingController guards pacing controller switches EVEN and ASAP from spend versus daily budget.
 func TestClosedLoopPacingController(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
@@ -89,7 +88,6 @@ func TestClosedLoopPacingController(t *testing.T) {
 	assert.Equal(t, 1, count)
 }
 
-// TestClosedLoopPacingController_EdgeCases guards pacing controller handles invalid timezone and zero budget safely.
 func TestClosedLoopPacingController_EdgeCases(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
@@ -152,7 +150,6 @@ func TestClosedLoopPacingController_EdgeCases(t *testing.T) {
 	assert.Equal(t, db.PacingModeTypeEVEN, pacing2)
 }
 
-// BenchmarkClosedLoopPacingController measures closed-loop pacing tick cost across multiple campaigns.
 func BenchmarkClosedLoopPacingController(b *testing.B) {
 	if testing.Short() {
 		b.Skip("skipping integration benchmark")

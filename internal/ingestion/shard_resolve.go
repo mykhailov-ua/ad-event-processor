@@ -7,10 +7,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// resolveDebitShard picks the Redis shard for budget debit / Lua EVALSHA.
-// Triplet campaigns use the M2 40/40/20 split. When the chosen shard's breaker is
-// open (M14-04), traffic reroutes to campaign_routing reserve (then A/B); if no
-// healthy alternative exists, returns ErrShardUnavailable — never silent accept.
 func (f *UnifiedFilter) resolveDebitShard(campaignID uuid.UUID, userID string, campInfo *campaignmodel.Campaign) (int, error) {
 	shard := f.sharder.GetShard(campaignID)
 	if campInfo != nil && campInfo.HasTriplet {
@@ -66,7 +62,6 @@ func (f *UnifiedFilter) shardBreakerOpen(shard int) bool {
 	return b.State() == database.CircuitOpen
 }
 
-// SetShardBreakers wires per-shard circuit breakers for M14-04 ingest reroute.
 func (f *UnifiedFilter) SetShardBreakers(breakers []*database.RedisBreaker) {
 	if f == nil {
 		return

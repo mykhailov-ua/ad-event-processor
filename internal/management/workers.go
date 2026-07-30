@@ -11,7 +11,6 @@ const (
 	workerOutboxTimeout = 30 * time.Second
 )
 
-// workerContext bounds batch work so workers respect parent shutdown deadlines and avoid hanging forever.
 func workerContext(parent context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
 	if deadline, ok := parent.Deadline(); ok {
 		remaining := time.Until(deadline)

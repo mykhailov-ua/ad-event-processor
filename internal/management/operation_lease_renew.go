@@ -9,10 +9,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// ErrLeaseRenewExhausted is returned when renew_count reached OP_LEASE_MAX_RENEWALS.
 var ErrLeaseRenewExhausted = errors.New("operation lease renew budget exhausted")
 
-// LeaseRenewHook is invoked after a successful PG lease renew (e.g. OpKeyPool flag).
 type LeaseRenewHook func(opID uuid.UUID)
 
 func (w *OperationLeaseWorker) renewInterval() time.Duration {
@@ -46,7 +44,6 @@ func (w *OperationLeaseWorker) runRenewHeartbeat(ctx context.Context, opID uuid.
 	}
 }
 
-// SetRenewHeartbeat enables or disables automatic renew during ExecuteOp side effects.
 func (w *OperationLeaseWorker) SetRenewHeartbeat(enabled bool) {
 	if w == nil {
 		return
@@ -54,7 +51,6 @@ func (w *OperationLeaseWorker) SetRenewHeartbeat(enabled bool) {
 	w.renewHeartbeat = enabled
 }
 
-// SetLeaseRenewHook registers a callback after each successful renew.
 func (w *OperationLeaseWorker) SetLeaseRenewHook(hook LeaseRenewHook) {
 	if w == nil {
 		return

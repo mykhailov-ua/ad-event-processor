@@ -10,7 +10,6 @@ import (
 	"espx/pkg/httpresponse"
 )
 
-// registerRtbRoutes mounts OpenRTB control plane admin endpoints.
 func (h *Handler) registerRtbRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /admin/rtb/deals", h.limit(h.perm(h.listRtbDeals, PermSettingsRead)))
 	mux.HandleFunc("POST /admin/rtb/deals", h.limit(h.perm(h.createRtbDeal, PermSettingsWrite)))

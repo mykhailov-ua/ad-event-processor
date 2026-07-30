@@ -30,7 +30,7 @@ func TestRedisShardObservability_recordLuaOp(t *testing.T) {
 	t.Parallel()
 
 	campaignID := uuid.MustParse("11111111-1111-4111-8111-111111111111")
-	obs := newRedisShardObservability(4, 0) // sample every op
+	obs := newRedisShardObservability(4, 0)
 	bucket := sampledCampaignBucketLabels[sampledCampaignBucket(campaignID)]
 
 	beforeShard0 := testutil.ToFloat64(metrics.RedisOpsTotal.WithLabelValues("0"))

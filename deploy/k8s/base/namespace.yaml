@@ -1,4 +1,3 @@
-# eSPX application namespace. Cold-path workloads only; ingestion stays off-cluster or hostNetwork.
 apiVersion: v1
 kind: Namespace
 metadata:

@@ -16,7 +16,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// registerSelfServeRoutes mounts customer-facing /api/v1/selfserve endpoints.
 func (h *Handler) registerSelfServeRoutes(mux *http.ServeMux) {
 	ss := h.selfServePerm
 	mux.HandleFunc("POST /api/v1/selfserve/campaigns", h.limit(ss(h.createSelfServeCampaign, PermCampaignsWrite)))
@@ -34,7 +33,6 @@ func (h *Handler) selfServePerm(next http.HandlerFunc, permission string) http.H
 	return h.perm(next, permission)
 }
 
-// createSelfServeCampaign handles POST /api/v1/selfserve/campaigns for tenant-scoped campaign creation.
 func (h *Handler) createSelfServeCampaign(w http.ResponseWriter, r *http.Request) {
 	body, err := coldpath.ReadLimitedBody(w, r, coldpath.DefaultMaxBody)
 	if err != nil {
@@ -221,7 +219,6 @@ type selfServePaymentIntentRequest struct {
 	Currency    string     `json:"currency"`
 }
 
-// createSelfServePaymentIntent proxies top-ups to payment gRPC for authenticated tenants.
 func (h *Handler) createSelfServePaymentIntent(w http.ResponseWriter, r *http.Request) {
 	body, err := coldpath.ReadLimitedBody(w, r, 16*1024)
 	if err != nil {
@@ -293,7 +290,6 @@ func (h *Handler) createSelfServePaymentIntent(w http.ResponseWriter, r *http.Re
 	})
 }
 
-// listSelfServeInvoices handles GET /api/v1/selfserve/invoices for tenant billing history.
 func (h *Handler) listSelfServeInvoices(w http.ResponseWriter, r *http.Request) {
 	if h.billing == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "BILLING_UNAVAILABLE", "billing service not configured")
@@ -348,7 +344,6 @@ func (h *Handler) listSelfServeInvoices(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
-// createSelfServeAPIKey mints a machine credential for the authenticated session user.
 func (h *Handler) createSelfServeAPIKey(w http.ResponseWriter, r *http.Request) {
 	if h.authClient == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "AUTH_UNAVAILABLE", "auth service not configured")
@@ -399,7 +394,6 @@ func (h *Handler) createSelfServeAPIKey(w http.ResponseWriter, r *http.Request) 
 	httpresponse.JSON(w, http.StatusCreated, out)
 }
 
-// resolveSelfServeCustomerID binds tenant context: role U uses session customer_id; staff may pass customer_id.
 func (h *Handler) resolveSelfServeCustomerID(r *http.Request, bodyCustomerID *uuid.UUID) (uuid.UUID, error) {
 	u, ok := GetUser(r.Context())
 	if !ok {

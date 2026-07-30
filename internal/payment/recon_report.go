@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// FinancialReconSummary aggregates counters produced by a reconciliation run.
 type FinancialReconSummary struct {
 	RunID            int64
 	PeriodStart      time.Time
@@ -22,7 +21,6 @@ type FinancialReconSummary struct {
 	SettlementFailed int
 }
 
-// FinancialReconFinding is an in-memory finding before persistence.
 type FinancialReconFinding struct {
 	Kind               db.PaymentFinancialFindingKind
 	PaymentIntentID    uuid.UUID

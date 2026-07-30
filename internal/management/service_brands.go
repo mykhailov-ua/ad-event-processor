@@ -13,7 +13,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// BrandDTO exposes advertiser brand metadata and frequency-cap settings to the admin API.
 type BrandDTO struct {
 	ID         string `json:"id"`
 	CustomerID string `json:"customer_id"`
@@ -24,7 +23,6 @@ type BrandDTO struct {
 	FreqWindow int32  `json:"freq_window"`
 }
 
-// toBrandDTO maps a database brand row into the admin API representation.
 func toBrandDTO(b db.AdvertiserBrand) BrandDTO {
 	return BrandDTO{
 		ID:         uuid.UUID(b.ID.Bytes).String(),
@@ -37,7 +35,6 @@ func toBrandDTO(b db.AdvertiserBrand) BrandDTO {
 	}
 }
 
-// CreateBrand registers a new advertiser brand under an existing customer account.
 func (s *Service) CreateBrand(ctx context.Context, customerID uuid.UUID, name string) (uuid.UUID, error) {
 	brandID, err := uuid.NewV7()
 	if err != nil {
@@ -62,7 +59,6 @@ func (s *Service) CreateBrand(ctx context.Context, customerID uuid.UUID, name st
 	return brandID, nil
 }
 
-// GetBrandDTO loads a single brand for admin display and access checks.
 func (s *Service) GetBrandDTO(ctx context.Context, id uuid.UUID) (BrandDTO, error) {
 	q := db.New(s.GetPool())
 	b, err := q.GetBrand(ctx, ingestion.ToUUID(id))
@@ -72,7 +68,6 @@ func (s *Service) GetBrandDTO(ctx context.Context, id uuid.UUID) (BrandDTO, erro
 	return toBrandDTO(b), nil
 }
 
-// ListBrandsByCustomer returns all brands owned by a customer for the admin UI.
 func (s *Service) ListBrandsByCustomer(ctx context.Context, customerID uuid.UUID) ([]BrandDTO, error) {
 	q := db.New(s.GetPool())
 	rows, err := q.ListBrandsByCustomer(ctx, ingestion.ToUUID(customerID))
@@ -83,7 +78,6 @@ func (s *Service) ListBrandsByCustomer(ctx context.Context, customerID uuid.UUID
 	return coldpath.MapSlice(rows, toBrandDTO), nil
 }
 
-// ConfigureBrandFcap updates brand-level frequency caps and notifies the hot path via coldpath.
 func (s *Service) ConfigureBrandFcap(ctx context.Context, brandID uuid.UUID, limit, window int32) error {
 	return pgx.BeginFunc(ctx, s.GetPool(), func(tx pgx.Tx) error {
 		q := db.New(tx)

@@ -1,4 +1,3 @@
--- edge-ingress.lua: ingress protocol metric + fraud header forwarding for H2/H3 (M5-A).
 
 local edge_metrics = require "edge-metrics"
 
@@ -28,7 +27,6 @@ function _M.record_and_forward()
     if tls_hash and tls_hash ~= "" then
         ngx.req.set_header("X-TLS-Hash", tls_hash)
     elseif ngx.var.ssl_cipher and ngx.var.ssl_cipher ~= "" then
-        -- Passive TLS metadata fallback when ClientHello hook is unavailable.
         ngx.req.set_header("X-TLS-Hash", ngx.var.ssl_protocol .. ":" .. ngx.var.ssl_cipher)
     end
 end

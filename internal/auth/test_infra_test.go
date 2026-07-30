@@ -24,7 +24,6 @@ import (
 
 const testPasetoKey = "yellow-submarine-yellow-submarin"
 
-// authTestInfra holds live Postgres and Redis for integration and chaos tests.
 type authTestInfra struct {
 	Pool           *pgxpool.Pool
 	Redis          redis.UniversalClient
@@ -33,7 +32,6 @@ type authTestInfra struct {
 	RedisContainer testcontainers.Container
 }
 
-// setupAuthTestInfra boots Postgres and Redis with auth migrations applied.
 func setupAuthTestInfra(t *testing.T) (*authTestInfra, func()) {
 	t.Helper()
 	ctx := context.Background()
@@ -83,7 +81,6 @@ func setupAuthTestInfra(t *testing.T) (*authTestInfra, func()) {
 	return infra, cleanup
 }
 
-// newService wires a production-like auth service against live test infra.
 func (infra *authTestInfra) newService(t *testing.T) *Service {
 	t.Helper()
 	tokenMaker, err := NewPasetoMaker(testPasetoKey)
@@ -94,7 +91,6 @@ func (infra *authTestInfra) newService(t *testing.T) *Service {
 	return NewService(infra.Store, tokenMaker, hasher, lockout, infra.Redis)
 }
 
-// registerAndLogin provisions a verified user and returns tokens from a successful login.
 func (infra *authTestInfra) registerAndLogin(t *testing.T, svc *Service, email, password string) (uuid.UUID, string, string) {
 	t.Helper()
 	ctx := context.Background()
@@ -110,20 +106,17 @@ func (infra *authTestInfra) registerAndLogin(t *testing.T, svc *Service, email, 
 
 const authContainerStopTimeout = 10 * time.Second
 
-// stopAuthContainer pauses a dependency without destroying its data (recovery tests).
 func stopAuthContainer(t *testing.T, c testcontainers.Container) {
 	t.Helper()
 	timeout := authContainerStopTimeout
 	require.NoError(t, c.Stop(context.Background(), &timeout))
 }
 
-// startAuthContainer brings a stopped dependency back online.
 func startAuthContainer(t *testing.T, c testcontainers.Container) {
 	t.Helper()
 	require.NoError(t, c.Start(context.Background()))
 }
 
-// waitAuthPGReady blocks until Postgres accepts connections again after stop/start.
 func waitAuthPGReady(t *testing.T, pool *pgxpool.Pool) {
 	t.Helper()
 	require.Eventually(t, func() bool {
@@ -131,7 +124,6 @@ func waitAuthPGReady(t *testing.T, pool *pgxpool.Pool) {
 	}, 30*time.Second, 200*time.Millisecond)
 }
 
-// waitAuthRedisReady blocks until Redis accepts connections again after stop/start.
 func waitAuthRedisReady(t *testing.T, rdb redis.UniversalClient) {
 	t.Helper()
 	require.Eventually(t, func() bool {
@@ -139,7 +131,6 @@ func waitAuthRedisReady(t *testing.T, rdb redis.UniversalClient) {
 	}, 30*time.Second, 200*time.Millisecond)
 }
 
-// refreshRedisClient re-resolves the container endpoint and replaces the pooled client.
 func (infra *authTestInfra) refreshRedisClient(t *testing.T) {
 	t.Helper()
 	ctx := context.Background()
@@ -150,7 +141,6 @@ func (infra *authTestInfra) refreshRedisClient(t *testing.T) {
 	waitAuthRedisReady(t, infra.Redis)
 }
 
-// refreshPGPool re-resolves the container DSN and replaces the pgx pool.
 func (infra *authTestInfra) refreshPGPool(t *testing.T) {
 	t.Helper()
 	ctx := context.Background()
@@ -164,7 +154,6 @@ func (infra *authTestInfra) refreshPGPool(t *testing.T) {
 	waitAuthPGReady(t, infra.Pool)
 }
 
-// countActiveSessions returns live refresh rows for a user after rotation.
 func countActiveSessions(t *testing.T, pool *pgxpool.Pool, userID uuid.UUID) int {
 	t.Helper()
 	var n int
@@ -176,7 +165,6 @@ func countActiveSessions(t *testing.T, pool *pgxpool.Pool, userID uuid.UUID) int
 	return n
 }
 
-// applyAuthMigrations runs goose up SQL from internal/auth/migrations against pool.
 func applyAuthMigrations(t testing.TB, pool *pgxpool.Pool) {
 	t.Helper()
 	ctx := context.Background()

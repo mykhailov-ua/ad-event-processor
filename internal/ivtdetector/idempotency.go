@@ -9,17 +9,14 @@ import (
 
 const idempotencyPrefix = "ivt:block:"
 
-// IdempotencyStore guards exactly-once blacklist enqueue via sync_idempotency.
 type IdempotencyStore struct {
 	pool *pgxpool.Pool
 }
 
-// NewIdempotencyStore binds Postgres for sync_idempotency claims.
 func NewIdempotencyStore(pool *pgxpool.Pool) *IdempotencyStore {
 	return &IdempotencyStore{pool: pool}
 }
 
-// TryClaim inserts an idempotency key and reports whether this caller won the race.
 func (store *IdempotencyStore) TryClaim(ctx context.Context, ip string) (bool, error) {
 	if store == nil || store.pool == nil {
 		return false, fmt.Errorf("idempotency store: nil pool")
@@ -38,7 +35,6 @@ func (store *IdempotencyStore) TryClaim(ctx context.Context, ip string) (bool, e
 	return tag.RowsAffected() > 0, nil
 }
 
-// Release removes a claim so a failed management call can be retried on the next cycle.
 func (store *IdempotencyStore) Release(ctx context.Context, ip string) error {
 	if store == nil || store.pool == nil {
 		return fmt.Errorf("idempotency store: nil pool")
@@ -53,7 +49,6 @@ func (store *IdempotencyStore) Release(ctx context.Context, ip string) error {
 	return nil
 }
 
-// TryClaimFraudEnforcement inserts an idempotency key in ml_enforcement_idempotency and reports whether this caller won the race.
 func (store *IdempotencyStore) TryClaimFraudEnforcement(ctx context.Context, ip string, modelVersion string, reason string) (bool, error) {
 	if store == nil || store.pool == nil {
 		return false, fmt.Errorf("idempotency store: nil pool")
@@ -72,7 +67,6 @@ func (store *IdempotencyStore) TryClaimFraudEnforcement(ctx context.Context, ip 
 	return tag.RowsAffected() > 0, nil
 }
 
-// ReleaseFraudEnforcement removes a claim from ml_enforcement_idempotency.
 func (store *IdempotencyStore) ReleaseFraudEnforcement(ctx context.Context, ip string, modelVersion string, reason string) error {
 	if store == nil || store.pool == nil {
 		return fmt.Errorf("idempotency store: nil pool")
@@ -90,7 +84,6 @@ func (store *IdempotencyStore) ReleaseFraudEnforcement(ctx context.Context, ip s
 	return nil
 }
 
-// HasClaim reports whether an IP was already flagged by a prior detector cycle.
 func (store *IdempotencyStore) HasClaim(ctx context.Context, ip string) (bool, error) {
 	if store == nil || store.pool == nil {
 		return false, fmt.Errorf("idempotency store: nil pool")

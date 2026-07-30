@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Guards fraud blacklist adds publish fraud:quarantine for immediate edge flush.
 func TestApplyBlacklistPayload_publishesQuarantine(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration test")

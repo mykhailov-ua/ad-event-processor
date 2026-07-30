@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestManagementQueries guards sqlc management queries create customers and campaigns correctly.
 func TestManagementQueries(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")

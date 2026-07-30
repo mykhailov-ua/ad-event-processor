@@ -1,6 +1,5 @@
 package adminapi
 
-// SavedViewDTO is a persisted report view (saved_report_views).
 type SavedViewDTO struct {
 	ID         string         `json:"id"`
 	OwnerID    string         `json:"owner_id"`
@@ -13,7 +12,6 @@ type SavedViewDTO struct {
 	UpdatedAt  string         `json:"updated_at"`
 }
 
-// CreateViewRequest is POST /api/v1/views body.
 type CreateViewRequest struct {
 	CustomerID string         `json:"customer_id"`
 	Name       string         `json:"name"`
@@ -22,7 +20,6 @@ type CreateViewRequest struct {
 	IsShared   bool           `json:"is_shared"`
 }
 
-// UpdateViewRequest is PUT /api/v1/views/{id} body.
 type UpdateViewRequest struct {
 	Name      string         `json:"name"`
 	ReportKey string         `json:"report_key"`

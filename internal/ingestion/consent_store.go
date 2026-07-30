@@ -10,10 +10,9 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// ConsentStore caches per-user consent purpose masks loaded from Redis (M6.3 hot path).
 type ConsentStore struct {
 	rdb   redis.UniversalClient
-	cache atomic.Value // *consentMapSnapshot
+	cache atomic.Value
 }
 
 type consentMapSnapshot struct {
@@ -28,14 +27,12 @@ func (s *ConsentStore) snapshot() *consentMapSnapshot {
 	return v
 }
 
-// NewConsentStore creates an in-memory consent cache backed by Redis shard 0.
 func NewConsentStore(rdb redis.UniversalClient) *ConsentStore {
 	s := &ConsentStore{rdb: rdb}
 	s.cache.Store(&consentMapSnapshot{byHashHex: make(map[string]int16, 1024)})
 	return s
 }
 
-// PurposesForUser returns the cached purpose mask for a user id (0 when unknown).
 func (s *ConsentStore) PurposesForUser(userID string) int16 {
 	if userID == "" {
 		return 0
@@ -43,7 +40,6 @@ func (s *ConsentStore) PurposesForUser(userID string) int16 {
 	return s.snapshot().byHashHex[HashUserIDHex(userID)]
 }
 
-// LoadFromRedis refreshes one user's consent mask from Redis into the local cache.
 func (s *ConsentStore) LoadFromRedis(ctx context.Context, hashHex string) {
 	if s.rdb == nil || hashHex == "" {
 		return
@@ -73,7 +69,6 @@ func (s *ConsentStore) upsertLocal(hashHex string, purposes int16) {
 	s.cache.Store(&consentMapSnapshot{byHashHex: next})
 }
 
-// StartWatch subscribes to consent updates and reloads affected users from Redis.
 func (s *ConsentStore) StartWatch(ctx context.Context, rdb redis.UniversalClient, channel string) {
 	if rdb == nil {
 		return
@@ -103,7 +98,6 @@ func (s *ConsentStore) StartWatch(ctx context.Context, rdb redis.UniversalClient
 	}()
 }
 
-// PurgeLocal removes a user from the in-memory cache after erasure.
 func (s *ConsentStore) PurgeLocal(hashHex string) {
 	current := s.snapshot().byHashHex
 	if _, ok := current[hashHex]; !ok {

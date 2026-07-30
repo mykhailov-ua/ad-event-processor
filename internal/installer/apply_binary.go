@@ -15,7 +15,6 @@ const (
 	backupDirName      = ".espx/backup"
 )
 
-// BinaryDeploy describes a single service binary swap with health verification.
 type BinaryDeploy struct {
 	Service    string
 	SourcePath string
@@ -24,7 +23,6 @@ type BinaryDeploy struct {
 	Version    string
 }
 
-// backupRoot returns ~/.espx/backup or $ESPX_INSTALL_ROOT/.espx/backup for tests.
 func backupRoot() string {
 	root := installRoot()
 	if root != "" {
@@ -45,12 +43,10 @@ func backupPath(service, version string) string {
 	return filepath.Join(backupRoot(), name)
 }
 
-// currentBackupMarker stores the path of the last good backup for rollback-guard.
 func currentBackupMarker(service string) string {
 	return filepath.Join(backupRoot(), service+".current")
 }
 
-// BackupBinary copies the installed binary to .espx/backup/<service>-<version>.
 func BackupBinary(service, targetPath, version string) (string, error) {
 	if _, err := os.Stat(targetPath); err != nil {
 		if os.IsNotExist(err) {
@@ -71,7 +67,6 @@ func BackupBinary(service, targetPath, version string) (string, error) {
 	return dest, nil
 }
 
-// RunHealthProbe executes <binary> --health-probe <url> with a 1 s deadline.
 func RunHealthProbe(binaryPath, healthURL string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), healthProbeTimeout)
 	defer cancel()
@@ -82,7 +77,6 @@ func RunHealthProbe(binaryPath, healthURL string) error {
 	return nil
 }
 
-// DeployBinary backs up, replaces, and probes. Rolls back on probe failure.
 func (d *BinaryDeploy) DeployBinary() error {
 	if d.Service == "" || d.SourcePath == "" || d.TargetPath == "" {
 		return fmt.Errorf("service, source, and target paths are required")
@@ -116,7 +110,6 @@ func (d *BinaryDeploy) DeployBinary() error {
 	return nil
 }
 
-// RollbackService restores the binary from the last backup marker.
 func RollbackService(service, targetPath string) error {
 	marker := currentBackupMarker(service)
 	data, err := os.ReadFile(marker)

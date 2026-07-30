@@ -25,7 +25,6 @@ type deliveryOutboxEntry struct {
 	payload   []byte
 }
 
-// deliveryOutboxMerge deduplicates outbox side effects to at most one event per campaign per optimizer tick (M5.0).
 type deliveryOutboxMerge map[uuid.UUID]deliveryOutboxEntry
 
 func (m deliveryOutboxMerge) upsert(campaignID uuid.UUID, priority int, eventType string, payload []byte) {
@@ -58,7 +57,6 @@ func (m deliveryOutboxMerge) flush(ctx context.Context, pool pgx.Tx) error {
 	return nil
 }
 
-// RunDeliveryOptimizerTick is the unified M5.0 delivery pass: sync, pacing, autoscale, MAB, bid floors.
 func (s *Service) RunDeliveryOptimizerTick(ctx context.Context, syncWorkers []*ingestion.SyncWorker, runMAB bool) error {
 	return s.withPgLow(ctx, func(runCtx context.Context) error {
 		opCtx, cancel := workerContext(runCtx, workerBatchTimeout)

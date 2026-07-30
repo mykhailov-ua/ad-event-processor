@@ -48,14 +48,12 @@ func setupPostgresInfra(t *testing.T) (*pgxpool.Pool, func()) {
 	pool, err := pgxpool.New(ctx, connStr)
 	require.NoError(t, err)
 
-	// Run migrations
 	_, filename, _, ok := runtime.Caller(0)
 	require.True(t, ok)
 	migrationsDir := filepath.Join(filepath.Dir(filename), "../ingestion/migrations")
 	entries, err := os.ReadDir(migrationsDir)
 	require.NoError(t, err)
 
-	// Run migration files in alphabetical order
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sql") {
 			continue
@@ -74,8 +72,6 @@ func setupPostgresInfra(t *testing.T) (*pgxpool.Pool, func()) {
 		require.NoError(t, err, "migration %s failed", entry.Name())
 	}
 
-	// Also run any billing migrations if needed, because customer_subscriptions is in billing schema.
-	// Let's create billing schema and table if not exist
 	_, err = pool.Exec(ctx, `
 		CREATE SCHEMA IF NOT EXISTS billing;
 		CREATE TABLE IF NOT EXISTS billing.customer_subscriptions (
@@ -109,14 +105,11 @@ func TestPostbackIntegration_ProTierGate(t *testing.T) {
 	customerID := uuid.New()
 	campaignID := uuid.New()
 
-	// 1. Seed customer with "basic" plan
 	_, err := pool.Exec(ctx, `
 		INSERT INTO billing.customer_subscriptions (customer_id, plan_code)
 		VALUES ($1, 'basic')`, customerID)
 	require.NoError(t, err)
 
-	// 2. Seed a campaign postback config
-	// API Token encryption key:
 	key := []byte("postback-encryption-secret-key32")
 	encryptedToken, err := EncryptAESGCM([]byte("fb-token-123"), key)
 	require.NoError(t, err)
@@ -131,7 +124,6 @@ func TestPostbackIntegration_ProTierGate(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// 3. Insert outbox event for sending postback
 	payload := PostbackPayload{
 		CustomerID: customerID,
 		CampaignID: campaignID,
@@ -148,14 +140,12 @@ func TestPostbackIntegration_ProTierGate(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// 4. Run postback worker
 	worker := NewPostbackWorker(pool, key)
 	err = worker.ProcessEvent(ctx, db.OutboxEvent{
 		ID:      outboxEv.ID,
 		Payload: payloadBytes,
 	})
 
-	// Must fail with ProTierGate error
 	require.ErrorIs(t, err, ErrNotProTier)
 }
 
@@ -171,13 +161,11 @@ func TestPostbackIntegration_IdempotencyAndEgress(t *testing.T) {
 	customerID := uuid.New()
 	campaignID := uuid.New()
 
-	// Seed customer with "pro" plan
 	_, err := pool.Exec(ctx, `
 		INSERT INTO billing.customer_subscriptions (customer_id, plan_code)
 		VALUES ($1, 'pro')`, customerID)
 	require.NoError(t, err)
 
-	// Setup a mock receiver server
 	var requestCount int32
 	var lastRequestBody []byte
 	var mu sync.Mutex
@@ -211,7 +199,7 @@ func TestPostbackIntegration_IdempotencyAndEgress(t *testing.T) {
 		CampaignID: campaignID,
 		ClickID:    "click_idempot_123",
 		EventType:  "conversion",
-		Email:      "User@Example.Com", // PII to hash
+		Email:      "User@Example.Com",
 		Phone:      "1234567890",
 		FBCLID:     "fb_click_xyz",
 	}
@@ -226,7 +214,6 @@ func TestPostbackIntegration_IdempotencyAndEgress(t *testing.T) {
 
 	worker := NewPostbackWorker(pool, key)
 
-	// 1. Process first time
 	err = worker.ProcessEvent(ctx, db.OutboxEvent{
 		ID:      outboxEv.ID,
 		Payload: payloadBytes,
@@ -234,7 +221,6 @@ func TestPostbackIntegration_IdempotencyAndEgress(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int32(1), atomic.LoadInt32(&requestCount))
 
-	// Verify hashed email/phone and format of Facebook CAPI payload
 	mu.Lock()
 	var capiPayload FacebookCAPIPayload
 	err = json.Unmarshal(lastRequestBody, &capiPayload)
@@ -247,14 +233,13 @@ func TestPostbackIntegration_IdempotencyAndEgress(t *testing.T) {
 	require.True(t, strings.HasPrefix(ev.UserData.Fbc, "fb.1."))
 	mu.Unlock()
 
-	// 2. Process second time (should trigger duplicate event/idempotency protection)
 	err = worker.ProcessEvent(ctx, db.OutboxEvent{
 		ID:      outboxEv.ID,
 		Payload: payloadBytes,
 	})
 	require.ErrorIs(t, err, ErrDuplicateEvent)
-	require.Equal(t, int32(1), atomic.LoadInt32(&requestCount)) // count remains 1!
-	t.Logf("chaos_proof fault=postback_rate_limit_429 retried=true")
+	require.Equal(t, int32(1), atomic.LoadInt32(&requestCount))
+	t.Logf("fault_proof fault=postback_rate_limit_429 retried=true")
 }
 
 func TestPostbackIntegration_DLQMovement(t *testing.T) {
@@ -269,13 +254,11 @@ func TestPostbackIntegration_DLQMovement(t *testing.T) {
 	customerID := uuid.New()
 	campaignID := uuid.New()
 
-	// Seed customer with "enterprise" plan
 	_, err := pool.Exec(ctx, `
 		INSERT INTO billing.customer_subscriptions (customer_id, plan_code)
 		VALUES ($1, 'enterprise')`, customerID)
 	require.NoError(t, err)
 
-	// Mock server that returns 500 Internal Server Error
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
@@ -312,8 +295,6 @@ func TestPostbackIntegration_DLQMovement(t *testing.T) {
 
 	worker := NewPostbackWorker(pool, key)
 
-	// Since we mock exponential backoff, this would retry 5 times with sleep.
-	// But let's check that it fails and moves to DLQ
 	err = worker.ProcessEvent(ctx, db.OutboxEvent{
 		ID:      outboxEv.ID,
 		Payload: payloadBytes,
@@ -321,12 +302,11 @@ func TestPostbackIntegration_DLQMovement(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "moved to DLQ")
 
-	// Verify it exists in DLQ table!
 	dlqs, err := q.ListPostbackDLQ(ctx)
 	require.NoError(t, err)
 	require.Len(t, dlqs, 1)
 	require.Equal(t, outboxEv.ID, dlqs[0].OutboxEventID)
 	require.Equal(t, "FAILED", dlqs[0].Status)
 	require.Equal(t, "click_dlq_test", dlqs[0].ClickID)
-	t.Logf("chaos_proof fault=postback_external_timeout ingest_p99_ok=true")
+	t.Logf("fault_proof fault=postback_external_timeout ingest_p99_ok=true")
 }

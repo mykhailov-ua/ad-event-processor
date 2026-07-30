@@ -18,7 +18,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// RegisterOpsRoutes mounts unauthenticated health and metrics endpoints for orchestration probes.
 func RegisterOpsRoutes(mux *http.ServeMux, pool *pgxpool.Pool, rdbs []redis.UniversalClient, cfg *config.Config) {
 	live := &health.Liveness{}
 	ready := &health.ReadinessProbe{}

@@ -10,7 +10,6 @@ var (
 	errMalformedJSON = errors.New("malformed json")
 )
 
-// ParseTrackRequestJSON parses a TrackRequest via a schema-specific DFA with BCE.
 func ParseTrackRequestJSON(v *TrackRequest, data []byte) error {
 	return parseTrackRequestJSON(v, data)
 }
@@ -20,7 +19,7 @@ func skipJSONValue(data []byte, start int) (int, error) {
 	if start >= n {
 		return start, errMalformedJSON
 	}
-	_ = data[n-1] // BCE hint
+	_ = data[n-1]
 
 	i := start
 	b := data[i]
@@ -37,10 +36,9 @@ func skipJSONValue(data []byte, start int) (int, error) {
 		if i >= n {
 			return i, errMalformedJSON
 		}
-		i++ // skip '"'
+		i++
 		return i, nil
 	case '{', '[':
-		// Absolute nest depth from this container; MaxJSONDepth rejects hostile deep nesting (M14-06).
 		depth := 1
 		if depth > MaxJSONDepth {
 			return i, errMalformedJSON
@@ -76,12 +74,12 @@ func skipJSONValue(data []byte, start int) (int, error) {
 			return i, errMalformedJSON
 		}
 		return i, nil
-	case 't', 'f', 'n': // true, false, null
+	case 't', 'f', 'n':
 		for i < n && !isDelimiter(data[i]) {
 			i++
 		}
 		return i, nil
-	default: // number
+	default:
 		for i < n && !isDelimiter(data[i]) {
 			i++
 		}
@@ -119,7 +117,6 @@ func isDelimiter(b byte) bool {
 	return jsonDelimiter[b] != 0
 }
 
-// ParseUUID parses a 16-byte raw or 36-byte string UUID into dst without allocations.
 func ParseUUID(b []byte, dst *uuid.UUID) bool {
 	if len(b) == 16 {
 		copy(dst[:], b)

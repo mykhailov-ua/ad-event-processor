@@ -1,4 +1,3 @@
-// Package quorum implements a 2-of-3 book ACK path via Redis when Postgres is unavailable (GAP-MR-03).
 package quorum
 
 import (
@@ -12,11 +11,8 @@ import (
 )
 
 const (
-	// StateBooked means replicas recorded the book but execution has not started.
-	StateBooked = "booked"
-	// StateExecuting means quorum booked and one replica claimed execution.
+	StateBooked    = "booked"
 	StateExecuting = "executing"
-	// StateCompleted means the batch finished without error.
 	StateCompleted = "completed"
 
 	defaultQuorum     = 2
@@ -25,7 +21,6 @@ const (
 	leaseTTL          = 48 * time.Hour
 )
 
-// Status is the quorum view for one operation id.
 type Status struct {
 	AckCount  int32
 	Quorum    int32
@@ -33,7 +28,6 @@ type Status struct {
 	State     string
 }
 
-// Required returns the minimum ACK count for replicaCount nodes.
 func Required(replicaCount int) int32 {
 	if replicaCount <= 1 {
 		return 1
@@ -41,7 +35,6 @@ func Required(replicaCount int) int32 {
 	return defaultQuorum
 }
 
-// Book records a new lease in Redis and ACKs from nodeID.
 func Book(ctx context.Context, rdb redis.UniversalClient, opID [16]byte, replicaNodes []string, nodeID string) (Status, error) {
 	if rdb == nil {
 		return Status{}, fmt.Errorf("quorum book: redis unavailable")
@@ -67,7 +60,6 @@ func Book(ctx context.Context, rdb redis.UniversalClient, opID [16]byte, replica
 	return readStatus(ctx, rdb, opID, replicaCount)
 }
 
-// AckBook records a replica book ACK in Redis.
 func AckBook(ctx context.Context, rdb redis.UniversalClient, opID [16]byte, replicaCount int, nodeID string) (Status, error) {
 	if rdb == nil {
 		return Status{}, fmt.Errorf("quorum ack book: redis unavailable")
@@ -92,7 +84,6 @@ func AckBook(ctx context.Context, rdb redis.UniversalClient, opID [16]byte, repl
 	return readStatus(ctx, rdb, opID, replicaCount)
 }
 
-// Transition moves lease state when from matches the stored value.
 func Transition(ctx context.Context, rdb redis.UniversalClient, opID [16]byte, from, to string) error {
 	if rdb == nil {
 		return fmt.Errorf("quorum transition: redis unavailable")
@@ -114,7 +105,6 @@ return 0`)
 	return nil
 }
 
-// ReadStatus loads quorum ACK count and lease state from Redis.
 func ReadStatus(ctx context.Context, rdb redis.UniversalClient, opID [16]byte, replicaCount int) (Status, error) {
 	if replicaCount <= 0 {
 		replicaCount = 1
@@ -161,7 +151,6 @@ func leaseAckKey(opID [16]byte) string {
 	return leaseAckKeyPrefix + hex.EncodeToString(opID[:])
 }
 
-// ParseReplicaCount reads replica_count from a Redis hash field.
 func ParseReplicaCount(raw string) int {
 	n, err := strconv.Atoi(raw)
 	if err != nil || n <= 0 {

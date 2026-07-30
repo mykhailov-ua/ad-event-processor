@@ -16,7 +16,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// DynamicConfig holds runtime-tunable limits pushed from the management plane.
 type DynamicConfig struct {
 	Version             int64  `json:"version"`
 	RateLimitPerMin     int    `json:"rate_limit_per_min"`
@@ -37,25 +36,21 @@ type DynamicConfig struct {
 	RtbMode             string `json:"rtb_mode"`
 }
 
-// SettingsChangeListener runs after a new dynamic config snapshot is stored.
 type SettingsChangeListener func(*DynamicConfig)
 
-// FraudScoreBoostSnapshot holds a lock-free map of campaign_id to score boost.
 type FraudScoreBoostSnapshot struct {
 	Boosts map[uuid.UUID]uint8
 }
 
-// SettingsWatcher polls Redis for config changes without restarting trackers.
 type SettingsWatcher struct {
 	rdbs             []redis.UniversalClient
 	currentVersion   int64
-	snapshot         atomic.Value // *DynamicConfig
-	fraudScoreBoosts atomic.Value // *FraudScoreBoostSnapshot
+	snapshot         atomic.Value
+	fraudScoreBoosts atomic.Value
 	fcapSnap         atomic.Pointer[rtb.FcapSnapshot]
 	onChange         []SettingsChangeListener
 }
 
-// NewSettingsWatcher seeds dynamic config from static startup values.
 func NewSettingsWatcher(rdbs []redis.UniversalClient, initial *config.Config) *SettingsWatcher {
 	sw := &SettingsWatcher{
 		rdbs: rdbs,
@@ -78,7 +73,6 @@ func NewSettingsWatcher(rdbs []redis.UniversalClient, initial *config.Config) *S
 	return sw
 }
 
-// AddChangeListener registers a callback invoked after each successful config reload.
 func (sw *SettingsWatcher) AddChangeListener(fn SettingsChangeListener) {
 	if fn == nil {
 		return
@@ -86,12 +80,10 @@ func (sw *SettingsWatcher) AddChangeListener(fn SettingsChangeListener) {
 	sw.onChange = append(sw.onChange, fn)
 }
 
-// Get returns the current immutable config snapshot; callers must not mutate it.
 func (sw *SettingsWatcher) Get() *DynamicConfig {
 	return sw.snapshot.Load().(*DynamicConfig)
 }
 
-// GetFraudScoreBoosts returns the current immutable ML score boost snapshot; callers must not mutate it.
 func (sw *SettingsWatcher) GetFraudScoreBoosts() *FraudScoreBoostSnapshot {
 	v := sw.fraudScoreBoosts.Load()
 	if v == nil {
@@ -100,7 +92,6 @@ func (sw *SettingsWatcher) GetFraudScoreBoosts() *FraudScoreBoostSnapshot {
 	return v.(*FraudScoreBoostSnapshot)
 }
 
-// GetFcapRtbSnapshot returns the current frequency-cap counts for RTB pre-auction gates.
 func (sw *SettingsWatcher) GetFcapRtbSnapshot() *rtb.FcapSnapshot {
 	if sw == nil {
 		return emptyFcapSnapshot
@@ -112,7 +103,6 @@ func (sw *SettingsWatcher) GetFcapRtbSnapshot() *rtb.FcapSnapshot {
 	return snap
 }
 
-// Start polls Redis on interval until the context is cancelled.
 func (sw *SettingsWatcher) Start(ctx context.Context, interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -129,7 +119,6 @@ func (sw *SettingsWatcher) Start(ctx context.Context, interval time.Duration) {
 	}
 }
 
-// syncFraudScoreBoosts scans for active ml:score:boost:* keys, preferring a healthy non-open shard (M14-01).
 func (sw *SettingsWatcher) syncFraudScoreBoosts(ctx context.Context) {
 	rdb := sw.pickHealthyShard()
 	if rdb == nil {
@@ -197,12 +186,10 @@ func (sw *SettingsWatcher) syncFraudScoreBoosts(ctx context.Context) {
 	}
 }
 
-// pickHealthyShard returns the first non-nil Redis client, preferring shards after 0 when multiple exist (M14-01).
 func (sw *SettingsWatcher) pickHealthyShard() redis.UniversalClient {
 	if len(sw.rdbs) == 0 {
 		return nil
 	}
-	// Prefer local copies on shards 1..N when present (shard-0 may be circuit-open).
 	for i := 1; i < len(sw.rdbs); i++ {
 		if sw.rdbs[i] != nil {
 			return sw.rdbs[i]
@@ -232,7 +219,6 @@ func (sw *SettingsWatcher) nextShardAfter(cur redis.UniversalClient) redis.Unive
 	return nil
 }
 
-// readConfigVersion returns config:version from the first responsive Redis shard.
 func (sw *SettingsWatcher) readConfigVersion(ctx context.Context) (int64, redis.UniversalClient, error) {
 	for i, rdb := range sw.rdbs {
 		if rdb == nil {
@@ -249,7 +235,6 @@ func (sw *SettingsWatcher) readConfigVersion(ctx context.Context) (int64, redis.
 	return 0, nil, redis.Nil
 }
 
-// readConfigValues loads config:values from the given shard, falling back across the pool on error.
 func (sw *SettingsWatcher) readConfigValues(ctx context.Context, preferred redis.UniversalClient) (map[string]string, error) {
 	if preferred != nil {
 		data, err := preferred.HGetAll(ctx, "config:values").Result()
@@ -270,7 +255,6 @@ func (sw *SettingsWatcher) readConfigValues(ctx context.Context, preferred redis
 	return nil, redis.Nil
 }
 
-// sync reloads config from Redis when the version advances.
 func (sw *SettingsWatcher) sync(ctx context.Context) {
 	v, rdb, err := sw.readConfigVersion(ctx)
 	if err != nil {
@@ -301,7 +285,6 @@ func (sw *SettingsWatcher) sync(ctx context.Context) {
 	slog.Info("dynamic settings updated", "version", v)
 }
 
-// parseConfig merges Redis hash fields into a new config snapshot.
 func (sw *SettingsWatcher) parseConfig(version int64, data map[string]string) *DynamicConfig {
 	current := sw.Get()
 	next := *current
@@ -327,7 +310,6 @@ func (sw *SettingsWatcher) parseConfig(version int64, data map[string]string) *D
 	return &next
 }
 
-// updateInt applies a string int override when parsing succeeds.
 func updateInt(target *int, val string) {
 	if val == "" {
 		return
@@ -337,7 +319,6 @@ func updateInt(target *int, val string) {
 	}
 }
 
-// updateMicro applies a string decimal dollar amount converted to micro units.
 func updateMicro(target *int64, val string) {
 	if val == "" {
 		return
@@ -347,7 +328,6 @@ func updateMicro(target *int64, val string) {
 	}
 }
 
-// updateBool applies a string bool override when parsing succeeds.
 func updateBool(target *bool, val string) {
 	if val == "" {
 		return
@@ -357,7 +337,6 @@ func updateBool(target *bool, val string) {
 	}
 }
 
-// updateString applies a non-empty string override.
 func updateString(target *string, val string) {
 	if val != "" {
 		*target = val

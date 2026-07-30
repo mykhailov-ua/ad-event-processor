@@ -14,7 +14,6 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-// SettlementLedgerClient reads ledger state from management settlement gRPC.
 type SettlementLedgerClient struct {
 	cfg    *config.Config
 	mu     sync.Mutex
@@ -22,12 +21,10 @@ type SettlementLedgerClient struct {
 	client mgmtpb.SettlementServiceClient
 }
 
-// NewSettlementLedgerClient constructs a lazy settlement reader for payment recon.
 func NewSettlementLedgerClient(cfg *config.Config) *SettlementLedgerClient {
 	return &SettlementLedgerClient{cfg: cfg}
 }
 
-// PaymentIntentLedger aggregates ledger totals returned by GetLedgerEntry.
 type PaymentIntentLedger struct {
 	TopupMicro              int64
 	RefundMicro             int64
@@ -36,7 +33,6 @@ type PaymentIntentLedger struct {
 	HasTopup                bool
 }
 
-// GetPaymentIntentLedger loads ledger totals for one payment intent via settlement gRPC.
 func (c *SettlementLedgerClient) GetPaymentIntentLedger(ctx context.Context, intentID uuid.UUID) (PaymentIntentLedger, error) {
 	if err := c.ensureClient(); err != nil {
 		return PaymentIntentLedger{}, err
@@ -60,7 +56,6 @@ func (c *SettlementLedgerClient) GetPaymentIntentLedger(ctx context.Context, int
 	return out, nil
 }
 
-// Close releases the gRPC connection.
 func (c *SettlementLedgerClient) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()

@@ -18,13 +18,10 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// contextKey is a private type for request-scoped context values to avoid key collisions.
 type contextKey string
 
-// UserContextKey is the request context key for the authenticated admin or customer user.
 const UserContextKey contextKey = "authenticated_user"
 
-// AuthenticatedUser carries identity and tenancy resolved by auth middleware for downstream handlers.
 type AuthenticatedUser struct {
 	UserID     uuid.UUID
 	Role       string
@@ -32,18 +29,15 @@ type AuthenticatedUser struct {
 	AuthSource string
 }
 
-// IsUser reports whether the caller is a customer-scoped user rather than staff.
 func (u AuthenticatedUser) IsUser() bool {
 	return u.Role == RoleUser
 }
 
-// GetUser reads the authenticated user from context when auth middleware ran successfully.
 func GetUser(ctx context.Context) (AuthenticatedUser, bool) {
 	u, ok := ctx.Value(UserContextKey).(AuthenticatedUser)
 	return u, ok
 }
 
-// AuthMiddleware validates tokens or admin API keys and enforces permission-based route access.
 type AuthMiddleware struct {
 	tokenMaker    auth.Maker
 	rdb           redis.UniversalClient
@@ -52,7 +46,6 @@ type AuthMiddleware struct {
 	apiKeyLimiter *apiKeyRateLimiter
 }
 
-// NewAuthMiddleware constructs middleware that checks JWT cookies, revocations, and optional API keys.
 func NewAuthMiddleware(tokenMaker auth.Maker, rdb redis.UniversalClient, cfg *config.Config, authClient *AuthClient) *AuthMiddleware {
 	rps := defaultAPIKeyRPS
 	burst := defaultAPIKeyBurst
@@ -72,7 +65,6 @@ func NewAuthMiddleware(tokenMaker auth.Maker, rdb redis.UniversalClient, cfg *co
 	}
 }
 
-// RequirePermission wraps handlers with authentication and permission checks.
 func (m *AuthMiddleware) RequirePermission(permission string) func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
@@ -90,7 +82,6 @@ func (m *AuthMiddleware) RequirePermission(permission string) func(http.HandlerF
 	}
 }
 
-// RequireSelfServe wraps self-serve routes with session or API-key authentication.
 func (m *AuthMiddleware) RequireSelfServe(permission string) func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
@@ -121,7 +112,6 @@ func (m *AuthMiddleware) RequireSelfServe(permission string) func(http.HandlerFu
 	}
 }
 
-// RequireAuth wraps handlers with authentication and role checks for legacy call sites.
 func (m *AuthMiddleware) RequireAuth(allowedRoles ...string) func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
@@ -204,7 +194,6 @@ func (m *AuthMiddleware) authenticateAPIKey(w http.ResponseWriter, r *http.Reque
 	}, true
 }
 
-// authenticate resolves the caller from a shared API key or session cookie before RBAC checks run.
 func (m *AuthMiddleware) authenticate(w http.ResponseWriter, r *http.Request) (AuthenticatedUser, bool) {
 	if key := r.Header.Get("X-Admin-API-Key"); key != "" && m.cfg != nil && key == string(m.cfg.AdminAPIKey) {
 		return AuthenticatedUser{

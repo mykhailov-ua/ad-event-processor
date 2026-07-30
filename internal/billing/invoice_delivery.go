@@ -9,12 +9,10 @@ import (
 	notifierpb "espx/internal/notifier/pb"
 )
 
-// InvoiceDeliverer sends invoice PDF notifications via notifier gRPC.
 type InvoiceDeliverer interface {
 	DeliverInvoice(ctx context.Context, customerID, invoiceID, month, currency string, totalMicro int64, pdfURL string) error
 }
 
-// NotifierInvoiceDeliverer enqueues invoice delivery through the notifier service.
 type NotifierInvoiceDeliverer struct {
 	client    notifierpb.NotifierServiceClient
 	provider  notifierpb.Provider
@@ -22,7 +20,6 @@ type NotifierInvoiceDeliverer struct {
 	baseURL   string
 }
 
-// NewNotifierInvoiceDeliverer constructs a deliverer when notifier is configured.
 func NewNotifierInvoiceDeliverer(
 	client notifierpb.NotifierServiceClient,
 	provider notifierpb.Provider,
@@ -39,7 +36,6 @@ func NewNotifierInvoiceDeliverer(
 	}
 }
 
-// DeliverInvoice enqueues a templated notification with a PDF download link.
 func (d *NotifierInvoiceDeliverer) DeliverInvoice(
 	ctx context.Context,
 	customerID, invoiceID, month, currency string,
@@ -69,17 +65,14 @@ func (d *NotifierInvoiceDeliverer) DeliverInvoice(
 	return err
 }
 
-// DriftAlerter notifies operators when ledger invariant checks fail.
 type DriftAlerter interface {
 	AlertLedgerDrift(ctx context.Context, customerID string, err error)
 }
 
-// NotifierDriftAlerter sends ledger drift alerts via notifier.
 type NotifierDriftAlerter struct {
 	deliverer *NotifierInvoiceDeliverer
 }
 
-// NewNotifierDriftAlerter wraps a notifier client for drift alerts.
 func NewNotifierDriftAlerter(client notifierpb.NotifierServiceClient, provider notifierpb.Provider, recipient string) *NotifierDriftAlerter {
 	if client == nil || recipient == "" {
 		return nil
@@ -89,12 +82,11 @@ func NewNotifierDriftAlerter(client notifierpb.NotifierServiceClient, provider n
 	}
 }
 
-// AlertLedgerDrift enqueues an ops notification for billing ledger drift.
 func (a *NotifierDriftAlerter) AlertLedgerDrift(ctx context.Context, customerID string, driftErr error) {
 	if a == nil || a.deliverer == nil || driftErr == nil {
 		return
 	}
-	title := "eSPX: billing ledger drift"
+	title := "BidShard: billing ledger drift"
 	body := fmt.Sprintf("<b>Ledger invariant failed</b>\nCustomer: %s\nError: %v", customerID, driftErr)
 	_, err := a.deliverer.client.SendNotification(ctx, &notifierpb.SendNotificationRequest{
 		Provider:  a.deliverer.provider,
@@ -108,7 +100,6 @@ func (a *NotifierDriftAlerter) AlertLedgerDrift(ctx context.Context, customerID 
 	}
 }
 
-// DeliverInvoiceFromProto delivers a generated invoice when a deliverer is configured.
 func (s *Service) DeliverInvoice(ctx context.Context, inv *pb.Invoice) error {
 	if s == nil || inv == nil || s.deliverer == nil {
 		return nil

@@ -1,4 +1,3 @@
-# Hot-path namespace. hostNetwork pods bind host ports directly (no CNI NAT on /track).
 apiVersion: v1
 kind: Namespace
 metadata:

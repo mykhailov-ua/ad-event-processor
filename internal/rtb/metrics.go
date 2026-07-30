@@ -9,8 +9,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// monotonicNano reads the runtime monotonic clock for sampled auction latency.
-//
 //go:linkname monotonicNano runtime.nanotime
 func monotonicNano() int64
 
@@ -102,7 +100,6 @@ func bindAuctionMetrics() {
 	}
 }
 
-// SetMetricsEnabled toggles Prometheus recording for benchmarks and isolated tests.
 func SetMetricsEnabled(enabled bool) {
 	metricsEnabled.Store(enabled)
 }

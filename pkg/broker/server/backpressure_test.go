@@ -9,7 +9,6 @@ import (
 	"espx/pkg/broker/client"
 )
 
-// TestMaxConnections_RejectsExcessClients closes connections above the configured cap.
 func TestMaxConnections_RejectsExcessClients(t *testing.T) {
 	dir, err := os.MkdirTemp("", "max-conn-*")
 	if err != nil {
@@ -60,7 +59,6 @@ func TestMaxConnections_RejectsExcessClients(t *testing.T) {
 	}
 }
 
-// TestAdmissionShedding_ProduceOverloaded sheds produce when connections reach 90% of cap.
 func TestAdmissionShedding_ProduceOverloaded(t *testing.T) {
 	dir, err := os.MkdirTemp("", "admission-*")
 	if err != nil {
@@ -106,9 +104,8 @@ func TestAdmissionShedding_ProduceOverloaded(t *testing.T) {
 	}
 }
 
-// TestChaos_ConnectionLimit_HealthyClientUnaffected ensures an established client can produce under moderate load.
-func TestChaos_ConnectionLimit_HealthyClientUnaffected(t *testing.T) {
-	dir, err := os.MkdirTemp("", "chaos-conn-*")
+func TestFault_ConnectionLimit_HealthyClientUnaffected(t *testing.T) {
+	dir, err := os.MkdirTemp("", "fault-conn-*")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,9 +126,9 @@ func TestChaos_ConnectionLimit_HealthyClientUnaffected(t *testing.T) {
 	}
 	defer cli.Close()
 
-	if _, err := cli.Produce("chaos-conn-topic", 0, []byte("ok")); err != nil {
+	if _, err := cli.Produce("fault-conn-topic", 0, []byte("ok")); err != nil {
 		t.Fatal(err)
 	}
 
-	t.Logf("chaos_proof fault=connection_limit max=100 shedding=false produce_ok=true")
+	t.Logf("fault_proof fault=connection_limit max=100 shedding=false produce_ok=true")
 }

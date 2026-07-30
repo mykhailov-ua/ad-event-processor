@@ -32,7 +32,6 @@ func TestParseBidMicro(t *testing.T) {
 	}
 }
 
-// Tracks ParseBidMicro cost because bid parsing runs per auction request.
 func BenchmarkParseBidMicro(b *testing.B) {
 	payload := []byte(`{"bid_micro": 1500000, "pub_id": "pub-12345"}`)
 	b.ResetTimer()

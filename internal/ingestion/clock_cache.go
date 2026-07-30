@@ -8,36 +8,27 @@ import (
 	"github.com/google/uuid"
 )
 
-// nodeID identifies this process in fast UUID generation.
 var nodeID uint16
 
-// idSequence is the per-process counter mixed into fast UUIDs.
 var idSequence uint64
 
-// cachedUnixMilli avoids time.Now syscalls for TTC and timestamp fields on the hot path.
 var cachedUnixMilli atomic.Int64
 
-// cachedUnixMilliAny mirrors cachedUnixMilli for zero-alloc Lua argv boxing.
 var cachedUnixMilliAny atomic.Value
 
-// cachedNowUTC holds wall time refreshed once per second for schedule and pacing checks.
 var cachedNowUTC atomic.Pointer[time.Time]
 
-// clockRefreshPaused freezes cached wall-clock updates for deterministic chaos tests.
 var clockRefreshPaused atomic.Bool
 
-// SetClockRefreshPaused stops background cachedUnixMilli/cachedNowUTC refresh (tests only).
 func SetClockRefreshPaused(paused bool) {
 	clockRefreshPaused.Store(paused)
 }
 
-// storeCachedNowUTC snapshots the current UTC instant for cached time readers.
 func storeCachedNowUTC() {
 	t := time.Now().UTC()
 	cachedNowUTC.Store(&t)
 }
 
-// CachedTimeUTC returns wall time in UTC without a syscall on the filter hot path.
 func CachedTimeUTC() time.Time {
 	if p := cachedNowUTC.Load(); p != nil {
 		return *p
@@ -45,7 +36,6 @@ func CachedTimeUTC() time.Time {
 	return time.Now().UTC()
 }
 
-// CachedTimeIn converts the cached UTC instant into a campaign timezone.
 func CachedTimeIn(loc *time.Location) time.Time {
 	if loc == nil || loc == time.UTC {
 		return CachedTimeUTC()
@@ -53,7 +43,6 @@ func CachedTimeIn(loc *time.Location) time.Time {
 	return CachedTimeUTC().In(loc)
 }
 
-// init seeds fast UUID node identity and starts background time refresh goroutines.
 func init() {
 	hostname, _ := os.Hostname()
 	h := uint32(os.Getpid())
@@ -92,7 +81,6 @@ func init() {
 	}()
 }
 
-// NewFastUUID generates click IDs without crypto/rand or uuid library overhead.
 func NewFastUUID() uuid.UUID {
 	seq := atomic.AddUint64(&idSequence, 1)
 	now := cachedUnixMilli.Load()

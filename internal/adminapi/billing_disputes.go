@@ -11,7 +11,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// DisputeRowDTO is one disputed payment intent with optional chargeback ledger IDs.
 type DisputeRowDTO struct {
 	IntentID                 string  `json:"intent_id"`
 	CustomerID               string  `json:"customer_id"`
@@ -22,13 +21,11 @@ type DisputeRowDTO struct {
 	ChargebackLedgerEntryIDs []int64 `json:"chargeback_ledger_entry_ids"`
 }
 
-// DisputeListResult is GET /api/v1/disputes.
 type DisputeListResult struct {
 	Disputes []DisputeRowDTO `json:"disputes"`
 	Total    int64           `json:"total"`
 }
 
-// DisputeLister returns tenant-scoped payment disputes.
 type DisputeLister interface {
 	ListDisputes(ctx context.Context, customerFilter string, limit, offset int32) (DisputeListResult, error)
 }

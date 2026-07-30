@@ -49,7 +49,6 @@ func TestSupplyAPI_CRUDAndExport(t *testing.T) {
 		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`)
 	require.NoError(t, err)
 
-	// Create seller
 	sellerBody, _ := json.Marshal(SellerCreateSpec{
 		SellerID:   "pub-001",
 		Domain:     "publisher.example.com",
@@ -66,7 +65,6 @@ func TestSupplyAPI_CRUDAndExport(t *testing.T) {
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&seller))
 	assert.Equal(t, "pub-001", seller.SellerID)
 
-	// Create ads.txt entry
 	adsBody, _ := json.Marshal(AdsTxtEntryCreateSpec{
 		Domain:             "google.com",
 		PublisherAccountID: "pub-12345",
@@ -79,7 +77,6 @@ func TestSupplyAPI_CRUDAndExport(t *testing.T) {
 	mux.ServeHTTP(resp, req)
 	require.Equal(t, http.StatusCreated, resp.Code)
 
-	// Process outbox → export files
 	worker := NewOutboxWorker(svc)
 	n, err := worker.ProcessOutboxWithCount(ctx, 10)
 	require.NoError(t, err)
@@ -105,7 +102,6 @@ func TestSupplyAPI_CRUDAndExport(t *testing.T) {
 	assert.Contains(t, adsText, "MANAGERDOMAIN=manager.example.com")
 	assert.Contains(t, adsText, "google.com, pub-12345, RESELLER, f08c47fec0942fa0")
 
-	// Public sellers.json endpoint
 	req, _ = http.NewRequest("GET", "/.well-known/sellers.json", nil)
 	resp = httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
@@ -113,7 +109,6 @@ func TestSupplyAPI_CRUDAndExport(t *testing.T) {
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header().Get("Content-Type"))
 	assert.Contains(t, resp.Header().Get("Cache-Control"), "max-age=60")
 
-	// Admin ads.txt export
 	req, _ = http.NewRequest("GET", "/admin/supply/ads.txt", nil)
 	withAdminAPIKey(req, cfg)
 	resp = httptest.NewRecorder()
@@ -122,7 +117,6 @@ func TestSupplyAPI_CRUDAndExport(t *testing.T) {
 	assert.Equal(t, "text/plain; charset=utf-8", resp.Header().Get("Content-Type"))
 	assert.Contains(t, resp.Body.String(), "OWNERDOMAIN=owner.example.com")
 
-	// Campaign supply chain
 	customerID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, customerID, "Supply Co", 200_000_000, "USD"))
 	campID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{

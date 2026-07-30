@@ -11,13 +11,11 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// NotifierClient calls the notifier gRPC service to enqueue operator alerts from payment.
 type NotifierClient struct {
 	conn   *grpc.ClientConn
 	client notifierpb.NotifierServiceClient
 }
 
-// NewNotifierClient dials notifier when ops alerts are enabled and a recipient is configured.
 func NewNotifierClient(cfg *config.Config) (*NotifierClient, error) {
 	if cfg == nil || !cfg.OpsAlertsEnabled() {
 		return nil, nil
@@ -35,7 +33,6 @@ func NewNotifierClient(cfg *config.Config) (*NotifierClient, error) {
 	}, nil
 }
 
-// Close releases the gRPC connection on payment shutdown.
 func (client *NotifierClient) Close() error {
 	if client == nil || client.conn == nil {
 		return nil
@@ -43,7 +40,6 @@ func (client *NotifierClient) Close() error {
 	return client.conn.Close()
 }
 
-// SendNotification enqueues an alert for asynchronous delivery by the notifier worker.
 func (client *NotifierClient) SendNotification(ctx context.Context, req *notifierpb.SendNotificationRequest) (*notifierpb.SendNotificationResponse, error) {
 	if client == nil || client.client == nil {
 		return nil, fmt.Errorf("notifier client not configured")

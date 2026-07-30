@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// sqlc querier stub with configurable campaign budgets for registry tests.
 type MockRepo struct {
 	db.Querier
 	ids     []pgtype.UUID

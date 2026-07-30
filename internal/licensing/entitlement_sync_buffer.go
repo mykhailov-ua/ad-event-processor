@@ -11,10 +11,8 @@ import (
 
 var ErrEntitlementBufferFull = errors.New("entitlement sync buffer full")
 
-// EntitlementSyncHandler applies a recovered entitlement update for one customer.
 type EntitlementSyncHandler func(ctx context.Context, customerID uuid.UUID) error
 
-// EntitlementSyncBuffer is a bounded cold-path queue protecting management from OOM during entitlement storms.
 type EntitlementSyncBuffer struct {
 	capacity int
 	ch       chan uuid.UUID
@@ -22,7 +20,6 @@ type EntitlementSyncBuffer struct {
 	wg       sync.WaitGroup
 }
 
-// NewEntitlementSyncBuffer creates a buffer with explicit capacity. capacity must be > 0.
 func NewEntitlementSyncBuffer(capacity int, handler EntitlementSyncHandler) *EntitlementSyncBuffer {
 	if capacity <= 0 {
 		capacity = 256
@@ -34,7 +31,6 @@ func NewEntitlementSyncBuffer(capacity int, handler EntitlementSyncHandler) *Ent
 	}
 }
 
-// Start launches the drain goroutine. Call Stop to shut down cleanly.
 func (b *EntitlementSyncBuffer) Start(ctx context.Context) {
 	b.wg.Add(1)
 	go func() {
@@ -56,7 +52,6 @@ func (b *EntitlementSyncBuffer) Start(ctx context.Context) {
 	}()
 }
 
-// Enqueue schedules a customer entitlement refresh. Returns ErrEntitlementBufferFull when saturated.
 func (b *EntitlementSyncBuffer) Enqueue(customerID uuid.UUID) error {
 	select {
 	case b.ch <- customerID:
@@ -70,7 +65,6 @@ func (b *EntitlementSyncBuffer) Enqueue(customerID uuid.UUID) error {
 	}
 }
 
-// Recover replays pending customer IDs after process restart or dependency recovery.
 func (b *EntitlementSyncBuffer) Recover(ctx context.Context, customerIDs []uuid.UUID) {
 	for _, id := range customerIDs {
 		if err := b.Enqueue(id); err != nil {
@@ -88,12 +82,10 @@ func (b *EntitlementSyncBuffer) Recover(ctx context.Context, customerIDs []uuid.
 	}
 }
 
-// PendingLen returns the number of queued updates (for metrics/tests).
 func (b *EntitlementSyncBuffer) PendingLen() int {
 	return len(b.ch)
 }
 
-// Stop waits for the worker goroutine to exit after context cancellation.
 func (b *EntitlementSyncBuffer) Stop() {
 	b.wg.Wait()
 }

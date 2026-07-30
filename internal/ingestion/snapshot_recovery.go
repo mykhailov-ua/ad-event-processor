@@ -12,19 +12,16 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-// Snapshot captures ClickHouse spend aggregates at a recovery checkpoint.
 type Snapshot struct {
 	CheckpointTime time.Time           `json:"checkpoint_time"`
 	CampaignSpends map[uuid.UUID]int64 `json:"campaign_spends"`
 }
 
-// ClickHouseConn reads telemetry aggregates and raw events for disaster recovery.
 type ClickHouseConn interface {
 	QueryEventsSince(ctx context.Context, since time.Time) ([]*campaignmodel.Event, error)
 	QueryAggregatedSpend(ctx context.Context, until time.Time) (map[uuid.UUID]int64, error)
 }
 
-// PostgresConn updates authoritative spend and idempotency state during recovery.
 type PostgresConn interface {
 	UpdateCampaignSpend(ctx context.Context, campaignID uuid.UUID, currentSpend int64) error
 	GetCampaignBudgetLimit(ctx context.Context, campaignID uuid.UUID) (int64, error)
@@ -32,7 +29,6 @@ type PostgresConn interface {
 	MarkEventIdempotent(ctx context.Context, clickID string) (bool, error)
 }
 
-// SnapshotReplicator coordinates Postgres, Redis, and ClickHouse state after an outage.
 type SnapshotReplicator struct {
 	mu          sync.RWMutex
 	pgConn      PostgresConn
@@ -43,7 +39,6 @@ type SnapshotReplicator struct {
 	impCharge   int64
 }
 
-// NewSnapshotReplicator wires recovery dependencies with per-event charge amounts.
 func NewSnapshotReplicator(
 	pg PostgresConn,
 	ch ClickHouseConn,
@@ -61,7 +56,6 @@ func NewSnapshotReplicator(
 	}
 }
 
-// CreateSnapshot serializes ClickHouse spend totals at a checkpoint time.
 func (sr *SnapshotReplicator) CreateSnapshot(ctx context.Context, until time.Time) ([]byte, error) {
 	sr.mu.Lock()
 	defer sr.mu.Unlock()
@@ -84,7 +78,6 @@ func (sr *SnapshotReplicator) CreateSnapshot(ctx context.Context, until time.Tim
 	return data, nil
 }
 
-// RestoreSnapshot seeds Postgres spend and Redis budget keys from a snapshot.
 func (sr *SnapshotReplicator) RestoreSnapshot(ctx context.Context, snapshotData []byte) (*Snapshot, error) {
 	sr.mu.Lock()
 	defer sr.mu.Unlock()
@@ -122,7 +115,6 @@ func (sr *SnapshotReplicator) RestoreSnapshot(ctx context.Context, snapshotData 
 	return &snap, nil
 }
 
-// ReplayTelemetrySince re-applies post-checkpoint events without double-billing snapshot data.
 func (sr *SnapshotReplicator) ReplayTelemetrySince(ctx context.Context, since time.Time, f *UnifiedFilter) (int, error) {
 	sr.mu.Lock()
 	defer sr.mu.Unlock()

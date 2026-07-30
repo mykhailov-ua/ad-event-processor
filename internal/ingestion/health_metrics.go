@@ -6,7 +6,6 @@ import (
 	"espx/internal/metrics"
 )
 
-// exportHealthProbeMetrics mirrors gnet /health atomics into Prometheus gauges.
 func exportHealthProbeMetrics(healthy bool, shardHealthy []int32) {
 	if healthy {
 		metrics.TrackerHealthDegraded.Set(0)

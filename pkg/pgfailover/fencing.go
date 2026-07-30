@@ -17,26 +17,21 @@ const (
 	redisNotifyChannel   = "espx:pg:global:notify"
 )
 
-// ErrStalePgFencingEpoch is returned when a write presents a fencing epoch below the cluster floor.
 var ErrStalePgFencingEpoch = errors.New("stale pg fencing epoch")
 
-// FencingGate tracks the cluster fencing floor for global Postgres writes.
 type FencingGate struct {
 	rdb   redis.UniversalClient
 	floor atomic.Uint64
 }
 
-// NewFencingGate creates a gate backed by Redis fencing epoch keys.
 func NewFencingGate(rdb redis.UniversalClient) *FencingGate {
 	return &FencingGate{rdb: rdb}
 }
 
-// Floor returns the highest accepted fencing epoch on this node.
 func (g *FencingGate) Floor() uint64 {
 	return g.floor.Load()
 }
 
-// Refresh loads the cluster fencing epoch from Redis and raises the local floor.
 func (g *FencingGate) Refresh(ctx context.Context) error {
 	if g == nil || g.rdb == nil {
 		return nil
@@ -63,7 +58,6 @@ func (g *FencingGate) Refresh(ctx context.Context) error {
 	}
 }
 
-// Validate rejects writes that present a stale fencing epoch.
 func (g *FencingGate) Validate(epoch uint64) error {
 	if g == nil || epoch == 0 {
 		return nil
@@ -74,7 +68,6 @@ func (g *FencingGate) Validate(epoch uint64) error {
 	return nil
 }
 
-// AdvanceFloor raises the local fencing floor when a newer cluster epoch is known.
 func (g *FencingGate) AdvanceFloor(epoch uint64) {
 	if g == nil || epoch == 0 {
 		return
@@ -90,7 +83,6 @@ func (g *FencingGate) AdvanceFloor(epoch uint64) {
 	}
 }
 
-// BumpEpoch allocates the next cluster fencing epoch in Redis.
 func BumpEpoch(ctx context.Context, rdb redis.UniversalClient) (uint64, error) {
 	epoch, err := rdb.Incr(ctx, redisFencingEpochKey).Result()
 	if err != nil {
@@ -99,7 +91,6 @@ func BumpEpoch(ctx context.Context, rdb redis.UniversalClient) (uint64, error) {
 	return uint64(epoch), nil
 }
 
-// PublishDSN stores the active DSN and fencing epoch, then notifies regional cells.
 func PublishDSN(ctx context.Context, rdb redis.UniversalClient, dsn string, fencingEpoch uint64) error {
 	pipe := rdb.Pipeline()
 	pipe.Set(ctx, redisActiveDSNKey, dsn, 0)
@@ -111,7 +102,6 @@ func PublishDSN(ctx context.Context, rdb redis.UniversalClient, dsn string, fenc
 	return rdb.Publish(ctx, redisNotifyChannel, dsn).Err()
 }
 
-// ActiveDSN loads the published global Postgres DSN and fencing epoch from Redis.
 func ActiveDSN(ctx context.Context, rdb redis.UniversalClient) (dsn string, epoch uint64, err error) {
 	pipe := rdb.Pipeline()
 	dsnCmd := pipe.Get(ctx, redisActiveDSNKey)
@@ -137,12 +127,10 @@ func ActiveDSN(ctx context.Context, rdb redis.UniversalClient) (dsn string, epoc
 	return dsn, epoch, nil
 }
 
-// NotifyChannel returns the Redis pub/sub channel for DSN updates.
 func NotifyChannel() string {
 	return redisNotifyChannel
 }
 
-// WaitForDSN polls Redis until the active DSN changes or the context ends.
 func WaitForDSN(ctx context.Context, rdb redis.UniversalClient, wantDSN string, interval time.Duration) error {
 	if interval <= 0 {
 		interval = 200 * time.Millisecond

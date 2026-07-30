@@ -25,7 +25,6 @@ func TestFraudScoringRule_Integration(t *testing.T) {
 	ctx := context.Background()
 	ensureFraudScoringShadowTables(t, conn)
 
-	// 2. Insert test features directly into ml_features_1m
 	campaignID := uuid.New()
 	now := time.Now().Truncate(time.Minute)
 
@@ -35,21 +34,18 @@ func TestFraudScoringRule_Integration(t *testing.T) {
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	h := testPIIHasher()
-	// IP 1: low clicks -> score 0.1
 	err := conn.Exec(ctx, insertQuery, now, piihash.FixedString16(h.HashIP("1.2.3.4")), campaignID, uint64(10), uint64(2), int64(1000000), int64(5000000), uint64(1), uint64(1))
 	require.NoError(t, err)
 
 	err = conn.Exec(ctx, insertQuery, now, piihash.FixedString16(h.HashIP("5.6.7.8")), campaignID, uint64(100), uint64(10), int64(10000000), int64(50000000), uint64(5), uint64(2))
 	require.NoError(t, err)
 
-	// 3. Load the model and create the ML rule
 	scorer, err := fraudscoring.NewLGBMScorer("../fraudscoring/testdata/model.txt")
 	require.NoError(t, err)
 
 	rule := NewFraudScoringRule(database.NewCHQuery(conn, database.CHQueryConfig{}), conn, nil, scorer, 100)
 	assert.Equal(t, "fraud_scoring_shadow", rule.Name())
 
-	// 4. Run the ML rule
 	candidates, err := rule.Find(ctx)
 	require.NoError(t, err)
 	assert.Len(t, candidates, 1)
@@ -57,13 +53,11 @@ func TestFraudScoringRule_Integration(t *testing.T) {
 	assert.Equal(t, "boost", candidates[0].Action)
 	assert.Equal(t, int32(52), candidates[0].Boost)
 
-	// 5. Verify shadow scores were written to ClickHouse
 	var count uint64
 	err = conn.QueryRow(ctx, "SELECT count() FROM ad_event_processor.ml_shadow_scores").Scan(&count)
 	require.NoError(t, err)
 	assert.Equal(t, uint64(2), count)
 
-	// Verify specific scores
 	var score1, score2 float64
 	err = conn.QueryRow(ctx, "SELECT score FROM ad_event_processor.ml_shadow_scores WHERE ip_hash = ? LIMIT 1", piihash.FixedString16(h.HashIP("1.2.3.4"))).Scan(&score1)
 	require.NoError(t, err)
@@ -144,7 +138,6 @@ func TestFraudScoringRule_WithCampaignThresholds(t *testing.T) {
 	ctx := context.Background()
 	ensureFraudScoringShadowTables(t, conn)
 
-	// 1. Create a campaign with custom thresholds in Postgres
 	campaignID := uuid.New()
 	_, err := pool.Exec(ctx, `
 		INSERT INTO campaigns (id, name, status, budget_limit, fraud_threshold_pass, fraud_threshold_suspect, fraud_threshold_block, ghost_ivt_enabled)
@@ -152,7 +145,6 @@ func TestFraudScoringRule_WithCampaignThresholds(t *testing.T) {
 	`, campaignID)
 	require.NoError(t, err)
 
-	// 2. Insert test features into ClickHouse
 	now := time.Now().Truncate(time.Minute)
 	insertQuery := `
 		INSERT INTO ad_event_processor.ml_features_1m
@@ -165,24 +157,20 @@ func TestFraudScoringRule_WithCampaignThresholds(t *testing.T) {
 	require.NoError(t, conn.Exec(ctx, insertQuery, now, piihash.FixedString16(h.HashIP("3.3.3.3")), campaignID, uint64(100), uint64(10), int64(10000000), int64(20000000), uint64(5), uint64(2)))
 	require.NoError(t, conn.Exec(ctx, insertQuery, now, piihash.FixedString16(h.HashIP("4.4.4.4")), campaignID, uint64(200), uint64(30), int64(20000000), int64(30000000), uint64(10), uint64(3)))
 
-	// 3. Create the mock scorer and ML rule
 	scorer := &mockScorer{
 		scores: []float64{0.1, 0.4, 0.75, 0.95},
 	}
 
 	rule := NewFraudScoringRule(database.NewCHQuery(conn, database.CHQueryConfig{}), conn, pool, scorer, 100)
 
-	// 4. Find candidates
 	candidates, err := rule.Find(ctx)
 	require.NoError(t, err)
 
-	// Since ClickHouse might return rows in any order, let's map IP to candidate
 	candidateMap := make(map[string]SuspiciousIP)
 	for _, c := range candidates {
 		candidateMap[c.IP] = c
 	}
 
-	// IP 4 (4.4.4.4) should have no candidate (score 0.1 -> fraudScore 10 < pass 20)
 	_, exists := candidateMap[ipHashHex("4.4.4.4")]
 	assert.False(t, exists)
 

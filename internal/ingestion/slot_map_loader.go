@@ -11,8 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// LoadActiveSlotMap reads active_version from Postgres and atomically swaps the sharder table.
-// On missing schema or incomplete map, falls back to slot % fallbackBuckets and returns an error.
 func LoadActiveSlotMap(
 	ctx context.Context,
 	pool *pgxpool.Pool,
@@ -56,7 +54,6 @@ func LoadActiveSlotMap(
 	return version, nil
 }
 
-// ReloadStaticSlotMapIfChanged reloads when Postgres active_version differs from sharder state.
 func ReloadStaticSlotMapIfChanged(
 	ctx context.Context,
 	pool *pgxpool.Pool,
@@ -81,7 +78,6 @@ func ReloadStaticSlotMapIfChanged(
 	return loaded, true, nil
 }
 
-// SlotMapShardTable builds the 1024-entry shard routing table for ops/edge export.
 func SlotMapShardTable(rows []db.RedisSlotMap) ([]uint16, error) {
 	table, err := TableFromRows(rows)
 	if err != nil {

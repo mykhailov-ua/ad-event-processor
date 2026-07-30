@@ -1,7 +1,5 @@
 package ingestion
 
-// http3_frame.go — HTTP/3 frame varint decoder (RFC 9114, M5-D).
-
 const (
 	h3FrameData        uint64 = 0x0
 	h3FrameHeaders     uint64 = 0x1
@@ -17,7 +15,6 @@ type h3Frame struct {
 	Payload []byte
 }
 
-// quicDecodeVarint decodes a QUIC variable-length integer (RFC 9000).
 func quicDecodeVarint(data []byte, off int) (uint64, int, error) {
 	n := len(data)
 	if off >= n {
@@ -53,7 +50,6 @@ func quicDecodeVarint(data []byte, off int) (uint64, int, error) {
 	}
 }
 
-// h3DecodeFrame parses one HTTP/3 frame from buf.
 func h3DecodeFrame(buf []byte) (h3Frame, int, error) {
 	var fr h3Frame
 	off := 0

@@ -13,17 +13,14 @@ import (
 
 const leaseFencingEpochFile = "fencing.epoch"
 
-// ErrStaleFencingEpoch is returned when a partitioned executor presents a stale epoch (C2).
 var ErrStaleFencingEpoch = errors.New("stale fencing epoch")
 
-// LeaseFencingRegistry holds one fencing.epoch file per replica set (M6.6).
 type LeaseFencingRegistry struct {
 	baseDir string
 	mu      sync.Mutex
 	stores  map[uuid.UUID]*LeaseFencingStore
 }
 
-// NewLeaseFencingRegistry creates a registry rooted at baseDir.
 func NewLeaseFencingRegistry(baseDir string) (*LeaseFencingRegistry, error) {
 	if baseDir == "" {
 		return nil, errors.New("lease fencing dir required")
@@ -58,7 +55,6 @@ func (r *LeaseFencingRegistry) storeFor(replicaSetID uuid.UUID) (*LeaseFencingSt
 	return s, nil
 }
 
-// Next allocates the next fencing epoch for replicaSetID.
 func (r *LeaseFencingRegistry) Next(replicaSetID uuid.UUID) (int64, error) {
 	s, err := r.storeFor(replicaSetID)
 	if err != nil {
@@ -67,7 +63,6 @@ func (r *LeaseFencingRegistry) Next(replicaSetID uuid.UUID) (int64, error) {
 	return s.Next()
 }
 
-// Validate rejects epochs below the persisted floor for replicaSetID.
 func (r *LeaseFencingRegistry) Validate(replicaSetID uuid.UUID, epoch int64) error {
 	s, err := r.storeFor(replicaSetID)
 	if err != nil {
@@ -76,13 +71,11 @@ func (r *LeaseFencingRegistry) Validate(replicaSetID uuid.UUID, epoch int64) err
 	return s.Validate(epoch)
 }
 
-// LeaseFencingStore persists the local fencing floor (broker fencing.epoch pattern).
 type LeaseFencingStore struct {
 	dir   string
 	epoch atomic.Uint64
 }
 
-// NewLeaseFencingStore loads or creates fencing.epoch under dir.
 func NewLeaseFencingStore(dir string) (*LeaseFencingStore, error) {
 	if dir == "" {
 		return nil, errors.New("lease fencing dir required")
@@ -97,7 +90,6 @@ func NewLeaseFencingStore(dir string) (*LeaseFencingStore, error) {
 	return s, nil
 }
 
-// Floor returns the highest accepted fencing epoch on this node.
 func (s *LeaseFencingStore) Floor() uint64 {
 	if s == nil {
 		return 0
@@ -105,7 +97,6 @@ func (s *LeaseFencingStore) Floor() uint64 {
 	return s.epoch.Load()
 }
 
-// Next allocates and persists the next fencing epoch for a CAS claim.
 func (s *LeaseFencingStore) Next() (int64, error) {
 	if s == nil {
 		return 1, nil
@@ -117,7 +108,6 @@ func (s *LeaseFencingStore) Next() (int64, error) {
 	return int64(next), nil
 }
 
-// Validate rejects epochs below the persisted floor.
 func (s *LeaseFencingStore) Validate(epoch int64) error {
 	if s == nil {
 		return nil

@@ -1,4 +1,3 @@
-// Package server is the gnet-based broker TCP front-end with optional HA coordination.
 package server
 
 import (
@@ -41,7 +40,6 @@ var fetchRespPool = sync.Pool{
 	},
 }
 
-// Server is the gnet TCP broker front-end that maps topics to mmap partition logs.
 type Server struct {
 	*gnet.BuiltinEventEngine
 	addr            string
@@ -76,7 +74,6 @@ type Server struct {
 	offsetStore OffsetStore
 }
 
-// NewServer constructs a broker with on-disk segments and a topic ID registry.
 func NewServer(addr string, dataDir string, maxSegSize int64, indexInterval int64) *Server {
 	s := &Server{
 		BuiltinEventEngine: &gnet.BuiltinEventEngine{},
@@ -97,19 +94,16 @@ func NewServer(addr string, dataDir string, maxSegSize int64, indexInterval int6
 	return s
 }
 
-// SetHealthAddr binds the HTTP health listener used by orchestrators and load balancers.
 func (s *Server) SetHealthAddr(addr string) {
 	s.healthAddr = addr
 }
 
-// SetShutdownTimeout bounds HTTP and gnet stop during broker shutdown.
 func (s *Server) SetShutdownTimeout(d time.Duration) {
 	if d > 0 {
 		s.shutdownTimeout = d
 	}
 }
 
-// SetDurability configures the fsync policy applied to all new partition logs.
 func (s *Server) SetDurability(cfg log.DurabilityConfig) {
 	s.durability = cfg
 	if s.diskGate != nil {
@@ -121,12 +115,10 @@ func (s *Server) SetDurability(cfg log.DurabilityConfig) {
 	}
 }
 
-// Durability returns the fsync policy used for new partitions.
 func (s *Server) Durability() log.DurabilityConfig {
 	return s.durability
 }
 
-// SetMaxConnections caps concurrent TCP clients; 0 disables the limit.
 func (s *Server) SetMaxConnections(n int64) {
 	if n < 0 {
 		n = 0
@@ -134,12 +126,10 @@ func (s *Server) SetMaxConnections(n int64) {
 	s.maxConnections = n
 }
 
-// MaxConnections returns the configured connection cap (0 = unlimited).
 func (s *Server) MaxConnections() int64 {
 	return s.maxConnections
 }
 
-// SetCoordinator attaches HA leader election so produce routes to the elected writer.
 func (s *Server) SetCoordinator(coord *Coordinator) {
 	s.coord = coord
 	s.wireTopicRegistryFromCoord(coord)
@@ -165,17 +155,14 @@ func (s *Server) wireTopicRegistryFromCoord(coord *Coordinator) {
 	}
 }
 
-// HealthAddr returns the bound health check address after dynamic port allocation.
 func (s *Server) HealthAddr() string {
 	return s.healthAddr
 }
 
-// DiskGate returns the shared disk write gate used by partition logs.
 func (s *Server) DiskGate() *iogate.DiskWriteGate {
 	return s.diskGate
 }
 
-// Start brings up disk health monitoring, HTTP healthz, and the gnet event loop.
 func (s *Server) Start() error {
 	store, err := protocol.NewFileRegistryStore(s.dataDir)
 	if err != nil {
@@ -254,12 +241,10 @@ func (s *Server) Start() error {
 	}
 }
 
-// Addr returns the bound TCP listen address after dynamic port allocation.
 func (s *Server) Addr() string {
 	return s.addr
 }
 
-// runDiskHealthWorker keeps a cached disk-writable flag off the healthz request path.
 func (s *Server) runDiskHealthWorker() {
 	const interval = 5 * time.Second
 	ticker := time.NewTicker(interval)
@@ -281,7 +266,6 @@ func (s *Server) runDiskHealthWorker() {
 	}
 }
 
-// probeDisk verifies the data directory accepts writes before the broker reports ready.
 func (s *Server) probeDisk() bool {
 	testFile := filepath.Join(s.dataDir, ".healthcheck")
 	f, err := os.OpenFile(testFile, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0600)
@@ -293,7 +277,6 @@ func (s *Server) probeDisk() bool {
 	return true
 }
 
-// handleHealthz answers orchestrator probes without touching partition logs or syscalls per request.
 func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 	if !s.active.Load() {
 		http.Error(w, "server not active", http.StatusServiceUnavailable)
@@ -309,7 +292,6 @@ func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte("OK"))
 }
 
-// handleLeaderz returns 200 when this node is an ready leader for the requested topic (HAProxy produce routing).
 func (s *Server) handleLeaderz(w http.ResponseWriter, r *http.Request) {
 	if !s.active.Load() {
 		http.Error(w, "server not active", http.StatusServiceUnavailable)
@@ -340,7 +322,6 @@ func (s *Server) handleLeaderz(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "not leader", http.StatusServiceUnavailable)
 }
 
-// Stop shuts down gnet, health HTTP, and all open partition logs cleanly.
 func (s *Server) Stop() {
 	s.closeOnce.Do(func() {
 		close(s.closeChan)
@@ -369,7 +350,6 @@ func (s *Server) Stop() {
 	s.wg.Wait()
 }
 
-// OnBoot records the gnet engine handle and marks the broker ready for health checks.
 func (s *Server) OnBoot(eng gnet.Engine) gnet.Action {
 	s.engMu.Lock()
 	s.eng = eng
@@ -382,7 +362,6 @@ func (s *Server) OnBoot(eng gnet.Engine) gnet.Action {
 	return gnet.None
 }
 
-// OnOpen enforces an optional connection cap before accepting broker traffic.
 func (s *Server) OnOpen(c gnet.Conn) ([]byte, gnet.Action) {
 	new := s.connCount.Add(1)
 	if s.maxConnections > 0 && new > s.maxConnections {
@@ -395,13 +374,11 @@ func (s *Server) OnOpen(c gnet.Conn) ([]byte, gnet.Action) {
 	return nil, gnet.None
 }
 
-// OnClose decrements the live connection counter when a client disconnects.
 func (s *Server) OnClose(c gnet.Conn, err error) gnet.Action {
 	metrics.BrokerActiveConnections.Set(float64(s.connCount.Add(-1)))
 	return gnet.None
 }
 
-// isAdmissionShedding returns true when connection use is high enough to shed new produce load.
 func (s *Server) isAdmissionShedding() bool {
 	max := s.maxConnections
 	if max <= 0 {
@@ -414,7 +391,6 @@ func (s *Server) isAdmissionShedding() bool {
 	return s.connCount.Load() >= threshold
 }
 
-// OnTraffic parses framed broker commands and dispatches produce, fetch, and registration handlers.
 func (s *Server) OnTraffic(c gnet.Conn) gnet.Action {
 	for {
 		lenBuf, err := c.Peek(4)
@@ -475,7 +451,6 @@ func (s *Server) OnTraffic(c gnet.Conn) gnet.Action {
 	}
 }
 
-// handleRegisterTopic assigns a numeric topic ID for subsequent batch produce frames.
 func (s *Server) handleRegisterTopic(c gnet.Conn, seq uint64, payload []byte) {
 	bufPtr := bytePool.Get().(*[]byte)
 	defer bytePool.Put(bufPtr)
@@ -499,7 +474,6 @@ func (s *Server) handleRegisterTopic(c gnet.Conn, seq uint64, payload []byte) {
 	_, _ = c.Write(resp)
 }
 
-// handleProduceBatch appends many topic-tagged messages in one partition write pass.
 func (s *Server) handleProduceBatch(c gnet.Conn, seq uint64, payload []byte) {
 	bufPtr := bytePool.Get().(*[]byte)
 	defer bytePool.Put(bufPtr)
@@ -561,7 +535,6 @@ func (s *Server) handleProduceBatch(c gnet.Conn, seq uint64, payload []byte) {
 	_, _ = c.Write(resp)
 }
 
-// handleProduce appends one message when the leader gate and disk path are healthy.
 func (s *Server) handleProduce(c gnet.Conn, seq uint64, payload []byte) {
 	bufPtr := bytePool.Get().(*[]byte)
 	defer bytePool.Put(bufPtr)
@@ -607,8 +580,6 @@ func (s *Server) handleProduce(c gnet.Conn, seq uint64, payload []byte) {
 	finishProduce(c, buf, seq, tpKey, produceStart, true, 0, offset)
 }
 
-// appendLeader writes through the fencing epoch gate when HA coordination is enabled.
-// Produce status codes: 4 = not leader, 5 = stale fencing epoch, 6 = leader catching up, 7 = overloaded.
 func (s *Server) appendLeader(topic string, pl *log.PartitionLog, payload []byte) (uint64, byte, error) {
 	if s.coord != nil {
 		if s.coord.IsLeader(topic) && !s.coord.IsLeaderReady(topic) {
@@ -634,7 +605,6 @@ func (s *Server) appendLeader(topic string, pl *log.PartitionLog, payload []byte
 	return offset, 0, nil
 }
 
-// handleFetch returns a bounded slice of raw log records starting at the client offset.
 func (s *Server) handleFetch(c gnet.Conn, seq uint64, payload []byte) {
 	bufPtr := bytePool.Get().(*[]byte)
 	defer bytePool.Put(bufPtr)
@@ -699,7 +669,6 @@ func (s *Server) writeFetchResponse(c gnet.Conn, buf []byte, seq uint64, tpKey s
 	fetchRespPool.Put(framePtr)
 }
 
-// countMessages derives fetch header counts from a contiguous raw log byte slice.
 func countMessages(buf []byte) (uint32, uint32) {
 	var count, total uint32
 	pos := 0
@@ -716,7 +685,6 @@ func countMessages(buf []byte) (uint32, uint32) {
 	return count, total
 }
 
-// getOrCreatePartition lazily opens one on-disk log per topic partition under double-checked locking.
 func (s *Server) getOrCreatePartition(partitionKey string) (*log.PartitionLog, error) {
 	if val, ok := s.topics.Load(partitionKey); ok {
 		return val.(*log.PartitionLog), nil

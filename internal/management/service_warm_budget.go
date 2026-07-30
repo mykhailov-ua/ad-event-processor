@@ -8,7 +8,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// WarmCampaignBudget writes budget:campaign:{id} from Postgres remaining spend without registry reload.
 func (s *Service) WarmCampaignBudget(ctx context.Context, campaignID uuid.UUID) (int64, error) {
 	rdb := s.getRDB(campaignID)
 	if rdb == nil {

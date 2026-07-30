@@ -1,6 +1,8 @@
 package ingestion
 
 import (
+	"espx/pkg/faultproof"
+
 	"context"
 	"fmt"
 	"testing"
@@ -15,7 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// edgeSlotPick mirrors deploy/nginx/lua/edge-slot-map.lua get_shard for parity tests (M9-05).
 func edgeSlotPick(campaignID uuid.UUID, table *slotTable) (int, bool) {
 	if table == nil {
 		return 0, false
@@ -24,8 +25,7 @@ func edgeSlotPick(campaignID uuid.UUID, table *slotTable) (int, bool) {
 	return int(table[slot]), true
 }
 
-// TestChaos_EdgeSlotMapParity verifies edge get_shard matches Go StaticSlotSharder (M9-05).
-func TestChaos_EdgeSlotMapParity(t *testing.T) {
+func TestFault_EdgeSlotMapParity(t *testing.T) {
 	sharder := NewStaticSlotSharder(4)
 	table := buildSlotTable(4)
 	sharder.SwapSnapshot(7, table, 0)
@@ -43,14 +43,13 @@ func TestChaos_EdgeSlotMapParity(t *testing.T) {
 	}
 	require.Equal(t, 0, mismatches, "edge slot map must match StaticSlotSharder")
 
-	logChaosProof(t, "edge_slot_map_parity", map[string]string{
+	faultproof.Log(t, "edge_slot_map_parity", map[string]string{
 		"samples":    fmt.Sprintf("%d", n),
 		"mismatches": fmt.Sprintf("%d", mismatches),
 		"version":    fmt.Sprintf("%d", sharder.SnapshotVersion()),
 	})
 }
 
-// TestUnifiedFilter_LuaConsolidatedPrechecks exercises entitlements, placement, and fraud list in one EVALSHA (M9-02).
 func TestUnifiedFilter_LuaConsolidatedPrechecks(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
@@ -117,7 +116,6 @@ func (r *entitlementsTestRegistry) GetEntitlements(customerID uuid.UUID) (licens
 	}, true
 }
 
-// TestUnifiedFilter_NoIPRateLimitKeys confirms Tier C Lua does not touch rl:ip keys (M9-03).
 func TestUnifiedFilter_NoIPRateLimitKeys(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
@@ -153,7 +151,6 @@ func TestUnifiedFilter_NoIPRateLimitKeys(t *testing.T) {
 	require.Equal(t, int64(0), val, "rl:ip key must not be incremented by Lua")
 }
 
-// TestUnifiedFilter_TierDegradationNearDeadline skips non-critical Lua gates and records metric (M9-04).
 func TestUnifiedFilter_TierDegradationNearDeadline(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
@@ -184,7 +181,7 @@ func TestUnifiedFilter_TierDegradationNearDeadline(t *testing.T) {
 		CampaignID: campID,
 		ClickID:    uuid.NewString(),
 	}
-	evt.FilterDeadlineMono = monotonicNano() + 500_000 // 0.5 ms remaining
+	evt.FilterDeadlineMono = monotonicNano() + 500_000
 
 	require.NoError(t, f.Check(ctx, evt))
 	after := testutil.ToFloat64(metrics.FilterTierDegradedTotal)

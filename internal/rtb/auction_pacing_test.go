@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Guards pacing-closed campaigns return NoBidPacingClosed.
 func TestAuction_pacingClosed(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)
@@ -20,7 +19,6 @@ func TestAuction_pacingClosed(t *testing.T) {
 	assert.Equal(t, NoBidPacingClosed, reason)
 }
 
-// Guards daily cap blocks candidates before spend when headroom is below bid.
 func TestAuction_dailyCap_blocksBeforeSpend(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)
@@ -36,7 +34,6 @@ func TestAuction_dailyCap_blocksBeforeSpend(t *testing.T) {
 	assert.Equal(t, NoBidDailyCapExceeded, reason)
 }
 
-// Guards successful spend increments the in-memory daily counter.
 func TestAuction_dailyCap_spendTracks(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)
@@ -52,7 +49,6 @@ func TestAuction_dailyCap_spendTracks(t *testing.T) {
 	assert.Equal(t, int64(50), store.loadOn(&store.dailySpent, idx))
 }
 
-// Guards customer-level budget is shared across campaigns of one advertiser.
 func TestAuction_customerBudget_sharedPool(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)

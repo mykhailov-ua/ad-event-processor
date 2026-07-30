@@ -7,12 +7,10 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-// ConnectRedis dials a Redis shard for services that do not need per-command circuit breaking.
 func ConnectRedis(ctx context.Context, addr string, password string) (redis.UniversalClient, error) {
 	return ConnectRedisWithBreaker(ctx, addr, password, nil)
 }
 
-// ConnectRedisWithBreaker dials Redis and optionally installs a breaker hook so unhealthy shards fail fast on the hot path.
 func ConnectRedisWithBreaker(ctx context.Context, addr string, password string, breaker *RedisBreaker) (redis.UniversalClient, error) {
 	rdb := redis.NewUniversalClient(&redis.UniversalOptions{
 		Addrs:    []string{addr},

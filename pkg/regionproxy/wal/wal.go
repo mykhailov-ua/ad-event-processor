@@ -24,7 +24,6 @@ var (
 	walSegmentFile  = "wal.segment"
 )
 
-// WAL is an mmap append-only segment guarded by a shared disk write gate.
 type WAL struct {
 	dir      string
 	path     string
@@ -37,7 +36,6 @@ type WAL struct {
 	mu       sync.Mutex
 }
 
-// Open creates or recovers a WAL segment under dir using gate for append/fsync serialization.
 func Open(dir string, gate *iogate.DiskWriteGate) (*WAL, error) {
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, fmt.Errorf("region proxy wal open dir=%s: %w", dir, err)
@@ -86,7 +84,6 @@ func Open(dir string, gate *iogate.DiskWriteGate) (*WAL, error) {
 	return w, nil
 }
 
-// Append writes one payload with WalFlagAppended and returns the assigned sequence number.
 func (w *WAL) Append(payload []byte) (uint64, error) {
 	if len(payload) == 0 {
 		return 0, ErrEmptyPayload
@@ -146,7 +143,6 @@ func (w *WAL) appendLocked(payload []byte) (uint64, error) {
 	return seq, nil
 }
 
-// AppendBatch appends multiple payloads under one append gate hold and fsyncs when due.
 func (w *WAL) AppendBatch(payloads [][]byte) (lastSeq uint64, committed uint32, err error) {
 	if len(payloads) == 0 {
 		return 0, 0, nil
@@ -201,7 +197,6 @@ func (w *WAL) fsyncLocked() error {
 	return err
 }
 
-// Recover replays the segment tail and truncates torn records after crash or SIGKILL.
 func (w *WAL) Recover() error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -257,22 +252,18 @@ func (w *WAL) Recover() error {
 	return nil
 }
 
-// NextSeq returns the next assignable sequence number.
 func (w *WAL) NextSeq() uint64 {
 	return w.nextSeq.Load()
 }
 
-// WritePos returns the durable byte length of the active segment.
 func (w *WAL) WritePos() int64 {
 	return w.writePos.Load()
 }
 
-// Gate exposes the shared disk write gate wired at open time.
 func (w *WAL) Gate() *iogate.DiskWriteGate {
 	return w.gate
 }
 
-// ReadRecord returns one record header and payload copy at seq for tests.
 func (w *WAL) ReadRecord(seq uint64) (Header, []byte, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -304,7 +295,6 @@ func (w *WAL) ReadRecord(seq uint64) (Header, []byte, error) {
 	}
 }
 
-// Close unmmaps and closes the WAL segment file.
 func (w *WAL) Close() error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -353,7 +343,6 @@ func readHeaderWithFactor(src []byte) Header {
 	return hdr
 }
 
-// ReadRawMessages returns broker-compatible raw log bytes starting at startSeq.
 func (w *WAL) ReadRawMessages(startSeq uint64, maxBytes uint32) ([]byte, *[]byte, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()

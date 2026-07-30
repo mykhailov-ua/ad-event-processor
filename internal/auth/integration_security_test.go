@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestIntegration_RefreshTokenReuseBlocked proves replay of a rotated refresh token is denied.
 func TestIntegration_RefreshTokenReuseBlocked(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration test")
@@ -30,7 +29,6 @@ func TestIntegration_RefreshTokenReuseBlocked(t *testing.T) {
 	require.NotEmpty(t, refreshB)
 	assert.Equal(t, 1, countActiveSessions(t, infra.Pool, userID), "exactly one active session after rotation")
 
-	// Attacker replays stolen refresh after victim rotated (not a legitimate idempotent retry).
 	require.NoError(t, infra.Redis.Del(ctx, "idempotency:refresh:"+refreshA).Err())
 
 	_, _, err = svc.RefreshToken(ctx, refreshA, time.Hour)
@@ -43,7 +41,6 @@ func TestIntegration_RefreshTokenReuseBlocked(t *testing.T) {
 	assert.Equal(t, 1, countActiveSessions(t, infra.Pool, userID))
 }
 
-// TestIntegration_BlockUserRevokesInFlightAccessTokens proves BlockUser denies VerifyToken for in-flight access tokens.
 func TestIntegration_BlockUserRevokesInFlightAccessTokens(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration test")

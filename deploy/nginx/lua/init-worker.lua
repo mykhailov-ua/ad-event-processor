@@ -1,4 +1,3 @@
--- init-worker.lua: tracker upstream health checks and edge config/blacklist sync (worker 0 only).
 
 local hc = require "resty.upstream.healthcheck"
 local edge_config = require "edge-config"

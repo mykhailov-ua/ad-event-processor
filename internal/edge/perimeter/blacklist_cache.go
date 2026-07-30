@@ -1,5 +1,3 @@
-// Package perimeter mirrors OpenResty edge phase-1 blacklist semantics for CI chaos tests.
-// Production enforcement lives in deploy/nginx/lua (access-check.lua, edge-blacklist-sync.lua).
 package perimeter
 
 import (
@@ -16,7 +14,6 @@ const (
 	defaultStaleSec         = 30
 )
 
-// Phase1Outcome is the edge phase-1 decision before any request body is read.
 type Phase1Outcome int
 
 const (
@@ -25,7 +22,6 @@ const (
 	Phase1Stale503
 )
 
-// Metrics tracks edge counters aligned with deploy/nginx/lua/edge-metrics.lua.
 type Metrics struct {
 	Phase1Pass     int64
 	BlockedIP      int64
@@ -33,7 +29,6 @@ type Metrics struct {
 	BlacklistStale int64
 }
 
-// BlacklistCache is an in-process stand-in for ngx.shared.blacklist_cache.
 type BlacklistCache struct {
 	ver          int64
 	syncTS       int64
@@ -43,7 +38,6 @@ type BlacklistCache struct {
 	asnWhitelist *ASNWhitelist
 }
 
-// NewBlacklistCache creates a cache with EDGE_BL_STALE_SEC-aligned staleness window.
 func NewBlacklistCache(staleSec int64) *BlacklistCache {
 	if staleSec <= 0 {
 		staleSec = defaultStaleSec
@@ -54,7 +48,6 @@ func NewBlacklistCache(staleSec int64) *BlacklistCache {
 	}
 }
 
-// SyncFromRedis pulls blacklist:manual, blacklist:auto, and blacklist:fraud from shard 0.
 func (c *BlacklistCache) SyncFromRedis(ctx context.Context, rdb redis.Cmdable) error {
 	manual, err := rdb.SMembers(ctx, redisKeyBlacklistManual).Result()
 	if err != nil {
@@ -101,12 +94,10 @@ func (c *BlacklistCache) SyncFromRedis(ctx context.Context, rdb redis.Cmdable) e
 	return nil
 }
 
-// Phase1Check enforces timer-synced IP blocklist; fail-closed when sync is stale (Lua: phase1_blacklist).
 func (c *BlacklistCache) Phase1Check(clientIP string, nowUnix int64, m *Metrics) Phase1Outcome {
 	return c.Phase1CheckASN(clientIP, "", nowUnix, m)
 }
 
-// Phase1CheckASN enforces blacklist with optional CDN/mobile ASN bypass.
 func (c *BlacklistCache) Phase1CheckASN(clientIP, clientASN string, nowUnix int64, m *Metrics) Phase1Outcome {
 	if c.asnWhitelist != nil && c.asnWhitelist.IsWhitelisted(clientASN) {
 		if m != nil {
@@ -138,13 +129,10 @@ func (c *BlacklistCache) Phase1CheckASN(clientIP, clientASN string, nowUnix int6
 	return Phase1Pass
 }
 
-// SetASNWhitelist attaches CDN/mobile ASN bypass rules for phase-1 checks.
 func (c *BlacklistCache) SetASNWhitelist(w *ASNWhitelist) {
 	c.asnWhitelist = w
 }
 
-// Version returns the current blacklist stamp generation.
 func (c *BlacklistCache) Version() int64 { return c.ver }
 
-// SyncTimestamp returns unix time of the last successful sync.
 func (c *BlacklistCache) SyncTimestamp() int64 { return c.syncTS }

@@ -1,7 +1,5 @@
 package ingestion
 
-// http2_varint.go — HPACK integer FSM (RFC 7541), shared with QPACK (M5-C/D).
-
 func h2DecodeInt(data []byte, off int, prefixBits byte, prefixMask byte) (value int, next int, err error) {
 	n := len(data)
 	if off >= n {

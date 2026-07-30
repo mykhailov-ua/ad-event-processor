@@ -12,7 +12,7 @@ Agent: Apply when changing `/track` ingest, filters, parse, or gnet handlers.
 
 Hot Path - Zero Alloc, BCE, Branches, Padding
 
-Tracker and processor ingestion rules. Architecture: `docs/ARCHITECTURE.md`. Chaos: `.cursor/rules/chaos.mdc` R10.
+Tracker and processor ingestion rules. Architecture: `docs/ARCHITECTURE.md`. Fault: `.cursor/rules/fault-resilience.mdc` R10.
 
 SLA
 
@@ -98,7 +98,7 @@ Wire DFA benchmarks
 `BenchmarkHTTP3DFA_Happy` (QUIC varint): ~2.2 — 0
 `BenchmarkHTTP3DFA_Worst` (H3 HEADERS + DATA): ~50 — 0
 
-Registered in `scripts/perf-gate/perf_gate_bench.sh`.
+Registered in `scripts/perf/gate_bench.sh`.
 
 Ingress hardening
 
@@ -211,6 +211,6 @@ PR checklist
 2. Benchmark delta for perf-critical changes
 3. No new `interface{}` on `/track` path
 4. BCE: explicit length check before indexed loop
-5. New write paths: chaos proof per `.cursor/rules/chaos.mdc` R10
+5. New write paths: fault proof per `.cursor/rules/fault-resilience.mdc` R10
 
 Files: `ingress_quota.go`, `fraud_stream_queue.go`, `unified_filter.go`, `http1_fsm.go`.

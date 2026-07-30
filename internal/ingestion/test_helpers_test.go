@@ -11,7 +11,6 @@ import (
 	rediscontainer "github.com/testcontainers/testcontainers-go/modules/redis"
 )
 
-// Provides isolated Redis for ads integration tests.
 func setupTestRedis(t testing.TB) (redis.UniversalClient, func()) {
 	ctx := context.Background()
 	redisContainer, err := rediscontainer.Run(ctx, "redis:7-alpine")
@@ -38,12 +37,10 @@ var (
 	staticBoolCmd   = redis.NewBoolCmd(context.Background())
 )
 
-// Redis client stub with pipeline and Lua hooks for filter tests and benches.
 type mockRedisClient struct {
 	redis.UniversalClient
 }
 
-// Redis pipeline stub recording commands for filter mocks.
 type mockPipeliner struct {
 	redis.Pipeliner
 	incrCmd  *redis.IntCmd

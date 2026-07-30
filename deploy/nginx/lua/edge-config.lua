@@ -1,5 +1,3 @@
--- edge-config.lua: caches tracker rate-limit and perimeter settings from Redis config:values.
--- Polled on worker 0; edge-rl.lua reads the shared dict without per-request Redis round trips.
 
 local redis = require "resty.redis"
 
@@ -21,7 +19,6 @@ local DEFAULT_RETRY_SUSPECT = 30
 local DEFAULT_RETRY_IVT = 60
 local DEFAULT_RETRY_BLOCK = 120
 
--- parse_first_addr returns host and port for shard 0 (first entry in REDIS_ADDRS).
 local function parse_first_addr()
     if REDIS_ADDRS ~= "" then
         local first = string.match(REDIS_ADDRS, "^%s*([^,]+)")
@@ -35,7 +32,6 @@ local function parse_first_addr()
     return REDIS_HOST, REDIS_PORT
 end
 
--- get returns the cached per-campaign limit and window length in milliseconds.
 function _M.get()
     local limit = dict:get("limit_per_min")
     local window_ms = dict:get("window_ms")
@@ -48,7 +44,6 @@ function _M.get()
     return limit, window_ms
 end
 
--- get_tier_pct returns the rate-limit percentage for a fraud tier (pass=100).
 function _M.get_tier_pct(tier)
     if tier == "suspect" then
         return dict:get("rl_pct_suspect") or DEFAULT_SUSPECT_PCT
@@ -62,7 +57,6 @@ function _M.get_tier_pct(tier)
     return 100
 end
 
--- get_retry_after returns Retry-After seconds for a fraud tier.
 function _M.get_retry_after(tier)
     if tier == "block" then
         return dict:get("retry_block_sec") or DEFAULT_RETRY_BLOCK
@@ -89,7 +83,6 @@ local function stamp_asn_list(field, prefix)
     end
 end
 
--- asn_whitelisted reports CDN or mobile ASN bypass membership.
 function _M.asn_whitelisted(asn)
     if not asn or asn == "" then
         return false
@@ -116,7 +109,6 @@ local function clear_asn_keys()
     end
 end
 
--- sync pulls config:values from Redis shard 0.
 function _M.sync()
     local host, port = parse_first_addr()
     local red = redis:new()

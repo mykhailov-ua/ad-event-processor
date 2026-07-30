@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// fraudSignalsFilter injects stable fraud signals for engine benchmarks and SLA tests.
 type fraudSignalsFilter struct {
 	first  FraudReasonID
 	second FraudReasonID
@@ -57,7 +56,6 @@ func resetFraudBenchEvent(evt *campaignmodel.Event) {
 	evt.StringBuffer = evt.StringBuffer[:0]
 }
 
-// Tracks FilterEngine.Check with fraud accumulator attached but no signals recorded.
 func BenchmarkFilterEngine_Check_fraudScoring_noSignals(b *testing.B) {
 	engine, evt, ctx := benchFilterEngineFraudScoring(b, &countingFilter{})
 	b.ReportAllocs()
@@ -68,7 +66,6 @@ func BenchmarkFilterEngine_Check_fraudScoring_noSignals(b *testing.B) {
 	}
 }
 
-// Tracks FilterEngine.Check with one L2-weak signal and shadow decision.
 func BenchmarkFilterEngine_Check_fraudScoring_L2Shadow(b *testing.B) {
 	engine, evt, ctx := benchFilterEngineFraudScoring(b, &fraudSignalsFilter{first: FraudReasonMissingImpTS})
 	b.ReportAllocs()
@@ -79,7 +76,6 @@ func BenchmarkFilterEngine_Check_fraudScoring_L2Shadow(b *testing.B) {
 	}
 }
 
-// Tracks FilterEngine.Check with dual L1-high signals and L1 reject path.
 func BenchmarkFilterEngine_Check_fraudScoring_L1Reject(b *testing.B) {
 	engine, evt, ctx := benchFilterEngineFraudScoring(b, &fraudSignalsFilter{
 		first:  FraudReasonDatacenterIP,

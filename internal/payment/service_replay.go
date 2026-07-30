@@ -11,13 +11,11 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// DisputeListItem is the service-layer view of a disputed payment intent.
 type DisputeListItem struct {
 	Intent            db.PaymentPaymentIntent
 	ProviderDisputeID string
 }
 
-// ListDisputes returns paginated disputed intents, optionally scoped to one customer.
 func (service *Service) ListDisputes(ctx context.Context, customerID *uuid.UUID, limit, offset int32) ([]DisputeListItem, int64, error) {
 	q := db.New(service.pool)
 	var cust pgtype.UUID
@@ -49,7 +47,6 @@ func (service *Service) ListDisputes(ctx context.Context, customerID *uuid.UUID,
 	return items, total, nil
 }
 
-// ReplayWebhook re-drives Stripe processing from a stored redacted payload with settlement idempotency intact.
 func (service *Service) ReplayWebhook(ctx context.Context, provider, providerEventID string) (string, error) {
 	if provider != "stripe" {
 		return "", fmt.Errorf("%w: unsupported provider %q", ErrInvalidRequestBody, provider)

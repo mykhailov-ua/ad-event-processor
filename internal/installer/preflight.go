@@ -5,7 +5,6 @@ import (
 	"fmt"
 )
 
-// CheckStatus is the outcome of a single preflight probe.
 type CheckStatus string
 
 const (
@@ -14,7 +13,6 @@ const (
 	StatusWarn CheckStatus = "WARN"
 )
 
-// PreflightCheck is one PF-* probe result emitted by preflight.
 type PreflightCheck struct {
 	ID          string      `json:"id"`
 	Description string      `json:"description"`
@@ -22,7 +20,6 @@ type PreflightCheck struct {
 	Message     string      `json:"message,omitempty"`
 }
 
-// PreflightResults aggregates all PF-* checks for human or JSON output.
 type PreflightResults struct {
 	Checks []PreflightCheck `json:"checks"`
 	Passed bool             `json:"passed"`

@@ -9,8 +9,6 @@ import (
 	"github.com/cilium/ebpf"
 )
 
-// Go layouts mirror deploy/dev/bpf/common/espx_probe.h
-
 type Config struct {
 	SampleRate    uint32
 	SlowSyscallNs uint32
@@ -183,7 +181,6 @@ func (c *Collection) PutTargetCgroup(cgroupID uint64, role uint8) error {
 	return c.Maps.TargetCgroups.Put(cgroupID, role)
 }
 
-// DecodeSlowEvent parses ringbuf sample for espx_slow_event.
 func DecodeSlowEvent(raw []byte) (tsNs uint64, pid, syscallID uint32, durNs uint64, role, kind uint8, campaignSlot uint16, markerID uint32) {
 	if len(raw) < 24 {
 		return

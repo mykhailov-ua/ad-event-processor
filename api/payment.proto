@@ -7,35 +7,30 @@ option go_package = "espx/internal/payment/pb;pb";
 import "google/protobuf/timestamp.proto";
 
 service PaymentService {
-  // Internal callers only; idempotency_key prevents duplicate checkout sessions on client retry.
   rpc CreatePaymentIntent(CreatePaymentIntentRequest) returns (CreatePaymentIntentResponse);
 
-  // Post-checkout status polling without listing full customer history.
   rpc GetPaymentIntent(GetPaymentIntentRequest) returns (PaymentIntent);
 
-  // Support and billing review; paginated to avoid unbounded scans.
   rpc ListPaymentIntents(ListPaymentIntentsRequest) returns (ListPaymentIntentsResponse);
 
-  // Disputed intents for self-serve and support consoles.
   rpc ListDisputes(ListDisputesRequest) returns (ListDisputesResponse);
 
-  // Replays a stored webhook payload with idempotent settlement semantics.
   rpc ReplayWebhook(ReplayWebhookRequest) returns (ReplayWebhookResponse);
 }
 
 message CreatePaymentIntentRequest {
-  string customer_id = 1;       // UUID, references ads.customers (no FK)
-  int64 amount_micro = 2;       // > 0, 10^6 scale (matches ledger)
-  string currency = 3;          // ISO 4217, default "USD"
-  string idempotency_key = 4;   // required, client-supplied (HTMX: Idempotency-Key header)
+  string customer_id = 1;
+  int64 amount_micro = 2;
+  string currency = 3;
+  string idempotency_key = 4;
   map<string, string> metadata = 5;
 }
 
 message CreatePaymentIntentResponse {
   string intent_id = 1;
   PaymentIntentStatus status = 2;
-  string checkout_url = 3;      // empty until Stripe connected
-  string provider_ref = 4;      // pi_xxx / cs_xxx when set
+  string checkout_url = 3;
+  string provider_ref = 4;
 }
 
 message GetPaymentIntentRequest {

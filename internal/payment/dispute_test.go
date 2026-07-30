@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestProcessStripeDisputeWebhook_noDoubleChargeback proves duplicate funds_withdrawn events do not enqueue a second outbox row.
 func TestProcessStripeDisputeWebhook_noDoubleChargeback(t *testing.T) {
 	if testing.Short() {
 		t.Skip("requires testcontainers")

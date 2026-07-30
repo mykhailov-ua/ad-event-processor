@@ -15,7 +15,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// SelfServeHTTPHandlers serves customer-facing /api/v1/selfserve routes.
 type SelfServeHTTPHandlers struct {
 	Campaigns                  CampaignAdmin
 	PaymentIntents             PaymentIntents
@@ -28,7 +27,6 @@ type SelfServeHTTPHandlers struct {
 	WriteServiceError          func(http.ResponseWriter, error)
 }
 
-// Register mounts self-serve routes on mux.
 func (h *SelfServeHTTPHandlers) Register(mux *http.ServeMux) {
 	if h == nil {
 		return

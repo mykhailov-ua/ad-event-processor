@@ -12,33 +12,29 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// ReconnectFunc replaces the active Postgres pool after failover.
 type ReconnectFunc func(pool *pgxpool.Pool)
 
-// Subscriber watches Redis for global Postgres DSN updates and reconnects regional cells.
 type Subscriber struct {
-	rdb         redis.UniversalClient
-	fencing     *FencingGate
-	reconnect   ReconnectFunc
-	maxConns    int
-	minConns    int
-	interval    time.Duration
-	closeCh     chan struct{}
-	closeOnce   sync.Once
-	wg          sync.WaitGroup
-	currentDSN  string
+	rdb          redis.UniversalClient
+	fencing      *FencingGate
+	reconnect    ReconnectFunc
+	maxConns     int
+	minConns     int
+	interval     time.Duration
+	closeCh      chan struct{}
+	closeOnce    sync.Once
+	wg           sync.WaitGroup
+	currentDSN   string
 	currentEpoch uint64
-	mu          sync.Mutex
+	mu           sync.Mutex
 }
 
-// SubscriberConfig tunes the regional DSN watcher.
 type SubscriberConfig struct {
 	MaxConns int
 	MinConns int
 	Interval time.Duration
 }
 
-// NewSubscriber creates a regional cell watcher for published Postgres DSN changes.
 func NewSubscriber(rdb redis.UniversalClient, fencing *FencingGate, reconnect ReconnectFunc, cfg SubscriberConfig) *Subscriber {
 	if cfg.Interval <= 0 {
 		cfg.Interval = time.Second
@@ -63,7 +59,6 @@ func NewSubscriber(rdb redis.UniversalClient, fencing *FencingGate, reconnect Re
 	}
 }
 
-// Fencing returns the subscriber fencing gate for ledger write checks.
 func (s *Subscriber) Fencing() *FencingGate {
 	if s == nil {
 		return nil
@@ -71,7 +66,6 @@ func (s *Subscriber) Fencing() *FencingGate {
 	return s.fencing
 }
 
-// Start polls Redis and subscribes to DSN change notifications.
 func (s *Subscriber) Start(ctx context.Context) {
 	s.wg.Add(1)
 	go func() {
@@ -85,7 +79,6 @@ func (s *Subscriber) Start(ctx context.Context) {
 	}()
 }
 
-// Stop waits for background goroutines to exit.
 func (s *Subscriber) Stop() {
 	s.closeOnce.Do(func() {
 		close(s.closeCh)
@@ -189,14 +182,12 @@ func (s *Subscriber) applyDSN(ctx context.Context, dsn string, epoch uint64) err
 	return nil
 }
 
-// CurrentDSN returns the last applied DSN for tests.
 func (s *Subscriber) CurrentDSN() string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.currentDSN
 }
 
-// CurrentEpoch returns the last applied fencing epoch for tests.
 func (s *Subscriber) CurrentEpoch() uint64 {
 	s.mu.Lock()
 	defer s.mu.Unlock()

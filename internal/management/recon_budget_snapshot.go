@@ -20,12 +20,10 @@ import (
 
 const reconciliationAdjustEventType = "RECONCILIATION_ADJUST"
 
-// BrokerPendingDeltaReader supplies unflushed broker budget deltas (M8-04); nil returns zero.
 type BrokerPendingDeltaReader interface {
 	PendingDeltaMicro(ctx context.Context, campaignID uuid.UUID) (int64, error)
 }
 
-// ReconciliationAdjustPayload is the outbox body for budget drift corrections (M3-04).
 type ReconciliationAdjustPayload struct {
 	RunID      int64  `json:"run_id,omitempty"`
 	CampaignID string `json:"campaign_id"`
@@ -45,7 +43,6 @@ type campaignBudgetPG struct {
 	updatedAt     time.Time
 }
 
-// ReconcileBudgetSnapshot scans dirty campaigns and checks the unified budget invariant (M3-01).
 func (w *ReconWorker) ReconcileBudgetSnapshot(ctx context.Context) {
 	if w == nil || w.svc == nil || w.svc.GetPool() == nil {
 		return

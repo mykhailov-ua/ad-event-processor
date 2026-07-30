@@ -12,14 +12,12 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-// PaymentClient calls the payment gRPC service from management after RBAC checks.
 type PaymentClient struct {
 	conn   *grpc.ClientConn
 	client paymentpb.PaymentServiceClient
 	token  string
 }
 
-// NewPaymentClient dials payment only when PAYMENT_INTERNAL_TOKEN is set so management boots without payment in minimal stacks.
 func NewPaymentClient(cfg *config.Config) (*PaymentClient, error) {
 	if cfg == nil || string(cfg.PaymentInternalToken) == "" {
 		return nil, nil
@@ -43,7 +41,6 @@ func NewPaymentClient(cfg *config.Config) (*PaymentClient, error) {
 	}, nil
 }
 
-// Close releases the gRPC connection on management shutdown to avoid leaked conns during deploy restarts.
 func (c *PaymentClient) Close() error {
 	if c == nil || c.conn == nil {
 		return nil
@@ -51,7 +48,6 @@ func (c *PaymentClient) Close() error {
 	return c.conn.Close()
 }
 
-// CreatePaymentIntent attaches the internal token because payment gRPC rejects unauthenticated callers.
 func (c *PaymentClient) CreatePaymentIntent(ctx context.Context, customerID string, amountMicro int64, currency, idempotencyKey string, meta map[string]string) (*paymentpb.CreatePaymentIntentResponse, error) {
 	if c == nil || c.client == nil {
 		return nil, fmt.Errorf("payment client not configured")
@@ -66,7 +62,6 @@ func (c *PaymentClient) CreatePaymentIntent(ctx context.Context, customerID stri
 	})
 }
 
-// ListDisputes returns disputed payment intents from the payment service.
 func (c *PaymentClient) ListDisputes(ctx context.Context, customerID string, limit, offset int32) (*paymentpb.ListDisputesResponse, error) {
 	if c == nil || c.client == nil {
 		return nil, fmt.Errorf("payment client not configured")
@@ -79,7 +74,6 @@ func (c *PaymentClient) ListDisputes(ctx context.Context, customerID string, lim
 	})
 }
 
-// ReplayWebhook re-drives a stored provider webhook event through the payment pipeline.
 func (c *PaymentClient) ReplayWebhook(ctx context.Context, provider, providerEventID string) (*paymentpb.ReplayWebhookResponse, error) {
 	if c == nil || c.client == nil {
 		return nil, fmt.Errorf("payment client not configured")

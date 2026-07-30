@@ -1,6 +1,3 @@
-# Prometheus scrape config for cold-path pods in k3s (NodePort on host NIC).
-# Generate from template: scripts/k8s/render_prometheus_k3s.sh
-# Run host prometheus: prom/prometheus with this file mounted as prometheus.yaml
 
 global:
   scrape_interval: 15s

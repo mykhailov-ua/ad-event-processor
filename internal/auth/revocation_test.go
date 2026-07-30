@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCheckTokenRevocation covers nil Redis and user-wide markers that must deny access.
 func TestCheckTokenRevocation(t *testing.T) {
 	payload := &Payload{
 		ID:        uuid.New(),
@@ -66,7 +65,6 @@ func (p *mockRevocationPipeliner) Exists(ctx context.Context, keys ...string) *r
 	return cmd
 }
 
-// TestRevokeUserAccess ensures user-wide markers are written without requiring Redis in CI.
 func TestRevokeUserAccess(t *testing.T) {
 	rdb := &mockRevocationRedis{exists: map[string]int64{}}
 	userID := uuid.New()

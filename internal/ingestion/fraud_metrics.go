@@ -5,7 +5,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// preboundFraudMetrics holds pre-resolved fraud telemetry counters for the filter hot path.
 type preboundFraudMetrics struct {
 	tierPass    prometheus.Counter
 	tierSuspect prometheus.Counter
@@ -49,7 +48,6 @@ func (pm *preboundFraudMetrics) tierCounter(tier FraudTier) prometheus.Counter {
 	}
 }
 
-// recordFraudMetrics emits pre-bound fraud telemetry after score accumulation.
 func recordFraudMetrics(acc *fraudAccumulator, tier FraudTier, layer FraudLayer) {
 	if acc == nil || acc.count == 0 {
 		return

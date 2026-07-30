@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Guards buildGeoIndex groups campaigns by geo hash for bucket iteration.
 func TestBuildGeoIndex_groupsByGeo(t *testing.T) {
 	reg := &CampaignAuctionRegistry{
 		Count:                 4,
@@ -35,7 +34,6 @@ func TestBuildGeoIndex_groupsByGeo(t *testing.T) {
 	assert.False(t, ok)
 }
 
-// Guards geo index limits candidates to the request geo within a shard.
 func TestAuction_geoIndex_skipsOtherGeoInShard(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)

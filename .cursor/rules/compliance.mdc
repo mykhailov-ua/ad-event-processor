@@ -48,7 +48,7 @@ Action: Hidden JS: Canvas, WebGL, audio APIs, font enumeration, cross-site ident
 GDPR / ePrivacy: Treated like illegal tracking; fines up to EUR20M or 4% global turnover.
 EU AI Act: Prohibited / high-risk when used for covert behavioral or biometric categorization.
 Art. 361 UK: Risk of unauthorized code execution on a foreign system (malware-like).
-eSPX rule: Banned. CI `scripts/ci/check_compliance.sh` fails on fingerprint SDK patterns. Server-side AdTech only.
+eSPX rule: Banned. CI `scripts/ci/compliance.sh` fails on fingerprint SDK patterns. Server-side AdTech only.
 
 B. Active counter-attacks (hack back / strike back)
 
@@ -110,7 +110,7 @@ Library: `https://github.com/cilium/ebpf` - official map API only; no raw kernel
 - [ ] No `nmap`/port-scan dependencies or docs.
 - [ ] Block path calls `allowlist.IsProtected` before persist/BPF sync.
 - [ ] No `cilium/ebpf` import in `management` / `tracker`.
-- [ ] `scripts/ci/check_compliance.sh` green.
+- [ ] `scripts/ci/compliance.sh` green.
 - [ ] Update `docs/COMPLIANCE_MATRIX.md` if compliance surface changes.
 
 7. Operator statement

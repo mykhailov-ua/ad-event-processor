@@ -1,6 +1,5 @@
 package ingestion
 
-// parseTrackJSONLegacy is the pre-opt bool-chain parser kept for benchmark comparison.
 func parseTrackJSONLegacy(v *TrackRequest, data []byte) error {
 	v.Reset()
 	if len(data) == 0 {

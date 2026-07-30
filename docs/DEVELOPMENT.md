@@ -18,10 +18,10 @@ Local environment, CI gates, operational runbooks, and open gaps.
 
 ```bash
 cp .env.example .env
-bash scripts/local-dev/dev_stack.sh build   # compose images + bpf-dev artifacts
-make bpf-dev                                # or: bash scripts/local-dev/bpf_setup.sh
-bash scripts/local-dev/dev_stack.sh full
-bash scripts/local-dev/dev_preflight.sh
+bash scripts/dev/stack.sh build   # compose images + bpf-dev artifacts
+make bpf-dev                                # or: bash scripts/dev/bpf_setup.sh
+bash scripts/dev/stack.sh full
+bash scripts/dev/preflight.sh
 ```
 
 | `dev_stack.sh` mode | Contents |
@@ -31,7 +31,7 @@ bash scripts/local-dev/dev_preflight.sh
 | `sentinel` | Redis Sentinel |
 | `bpf` | Build `loadtest_probe.o` + `bin/bpf-collector` (dev load-test probes) |
 
-Hot-path changes: run constrained load with BPF — `make load-test-bpf` or `sudo ESPX_BPF_PROBE=1 bash scripts/load-test/run_dirty_load.sh business`. See [LOAD_TEST_BPF](.cursor/rules/load-test-bpf.mdc).
+Hot-path changes: run constrained load with BPF — `make load-test-bpf` or `sudo ESPX_BPF_PROBE=1 bash scripts/load/malformed.sh business`. See [LOAD_TEST_BPF](.cursor/rules/load-test-bpf.mdc).
 
 ---
 
@@ -40,14 +40,14 @@ Hot-path changes: run constrained load with BPF — `make load-test-bpf` or `sud
 ```bash
 go test ./... -short
 make lint
-bash scripts/ci/check_comments.sh
-bash scripts/chaos-drills/test_chaos.sh
-bash scripts/perf-gate/perf_gate_run.sh    # when ingestion/rtb touched
+bash scripts/ci/comments.sh
+bash scripts/fault/run.sh
+bash scripts/perf/gate_run.sh    # when ingestion/rtb touched
 make test-alloc-gate
-bash scripts/ci/check_compliance.sh
+bash scripts/ci/compliance.sh
 ```
 
-Chaos steady-state: `/track` p99 < 80 ms; error rate < 0.1% (excluding valid rejects).
+Resilience steady-state: `/track` p99 < 80 ms; error rate < 0.1% (excluding valid rejects).
 
 ---
 
@@ -63,7 +63,7 @@ Flat `package` per service (R1). File name tags act as modules (R2): `handler_*.
 | R4 | `cmd/*/main.go`: config and wiring only |
 | R8 | Hot path: sentinel errors, no wrapped errors in loops; cold path: wrap with context |
 | R9 | Comments explain non-obvious business logic; no decorative prefixes |
-| R10 | PR gates: lint, alloc-gate, chaos when write path changes |
+| R10 | PR gates: lint, alloc-gate, fault when write path changes |
 
 New cold-path JSON: `api_` prefix in `internal/management/api_*.go`; wire via `api_register.go` where used.
 
@@ -90,15 +90,15 @@ PR checklist:
 2. Benchmark delta for perf-critical changes
 3. No new `interface{}` on `/track`
 4. BCE: length check before indexed loop
-5. Chaos proof if new write path (see Chaos engineering)
+5. Fault proof if new write path (see Fault injection and resilience)
 
 Reference files: `ingress_quota.go`, `fraud_stream_queue.go`, `unified_filter.go`, `http1_fsm.go`, `requests_parse_opt.go`.
 
 ---
 
-## Chaos engineering
+## Fault injection and resilience
 
-Runner: `scripts/chaos-drills/test_chaos.sh`. CI: `.github/workflows/sentinel-chaos.yaml`.
+Runner: `scripts/fault/run.sh`. CI: `.github/workflows/sentinel-resilience.yaml`.
 
 ### Steady-state (R1)
 
@@ -139,28 +139,28 @@ Measure baseline before fault injection. Abort if steady state degrades beyond l
 | E | Slot migration mid-traffic | Fence code 11; PG re-warm; rollback playbook |
 | F | RTB live + budget stress | No overspend; reconcile within band |
 
-Proof logs: `chaos_proof fault=<name>` in test output. Update `CHAOS_MIN_PROOFS` when new CI proofs land.
+Proof logs: `fault_proof fault=<name>` in test output. Update `RESILIENCE_MIN_PROOFS` when new CI proofs land.
 
-Multi-region proofs use the `mr_` prefix. `test_chaos.sh` enforces `CHAOS_MIN_PROOFS_MR=12` (see [MULTI_REGION.md](./MULTI_REGION.md) M7).
+Multi-region proofs use the `mr_` prefix. `test_resilience.sh` enforces `RESILIENCE_MIN_PROOFS_MR=12` (see [MULTI_REGION.md](./MULTI_REGION.md) M7).
 
 ---
 
-## Multi-region game day (M7.4)
+## Multi-region resilience drill (M7.4)
 
 **Calendar:** quarterly dry-run (first Tuesday of Jan / Apr / Jul / Oct, 09:00 UTC).
 
 **SLA:** regional proxy failover RTO < 120 s; `AssertBudgetInvariant` after heal; zero duplicate global apply.
 
-**Runner:** `bash scripts/chaos-drills/mr_game_day.sh`
+**Runner:** `bash scripts/fault/mr_resilience_drill.sh`
 
 ### 90-minute operator checklist
 
 | Min | Step | Action | Pass criteria |
 | :--- | :--- | :--- | :--- |
 | 0–10 | Baseline | `dev_preflight.sh`; note tracker p99 and `ad_node_weight` | p99 < 80 ms; weights stable |
-| 10–20 | MR chaos CI | `bash scripts/chaos-drills/mr_game_day.sh` | ≥12 `chaos_proof fault=mr_*` lines |
+| 10–20 | MR fault CI | `bash scripts/fault/mr_resilience_drill.sh` | ≥12 `fault_proof fault=mr_*` lines |
 | 20–35 | Quorum book | Simulate 1-of-3 proxy ACK (`mr_quorum_book`) | No global apply until 2-of-3 |
-| 35–50 | Lease partition | `TestChaos_OperationLease_PGStopDuringExecuting` or stop regional PG | Lease `expired`; `budget_ok=true` |
+| 35–50 | Lease partition | `TestFault_OperationLease_PGStopDuringExecuting` or stop regional PG | Lease `expired`; `budget_ok=true` |
 | 50–65 | Proxy failover | Stop one regional-proxy replica; fail over uplink | RTO < 120 s; WAL replays once |
 | 65–75 | Global PG blip | Pause global management PG ≤60 s | Hot path OK; uplink spools; heal drains |
 | 75–85 | Invariants | `AssertBudgetInvariant` on sample campaigns | Redis + PG within ±1 micro-unit |
@@ -198,7 +198,7 @@ Escalation: if tracker p99 > 80 ms for 30 s during drill, abort and roll back tr
 4. `VerifySlotMigrationR5`, `AssertBudgetInvariant`
 5. Clear `budget:migration_fence:{uuid}`
 
-Chaos: `TestChaos_SlotMigrationRollbackAfterActivate`, `TestChaos_SO02_SlotMigrationPGRewarmCutover`, `TestChaos_LUA10_DebitFencedDuringSlotCopy`.
+Fault: `TestFault_SlotMigrationRollbackAfterActivate`, `TestFault_SlotMigrationPGRewarmCutover`, `TestFault_DebitFencedDuringSlotCopy`.
 
 Elastic sharding: opt-in triplet routing via `campaign_routing` and `routing_epoch`; enable only during controlled migration windows.
 
@@ -232,16 +232,16 @@ Shard 0 holds `campaigns:update` pub/sub, auth lockout, and default outbox notif
 | `CAMPAIGN_UPDATE_BROKER_FALLBACK` | `false` | Broker secondary notify |
 | `CAMPAIGN_UPDATE_BROKER_TOPIC` | `campaigns:update` | Broker topic name |
 
-Chaos: `TestChaos_Shard0Outage`, `scripts/chaos-drills/m14_shard0_failure.sh`.
+Fault: `TestFault_Shard0Outage`, `scripts/fault/shard0_outage_drill.sh`.
 
 ---
 
 ## Kubernetes
 
 ```bash
-bash scripts/k8s/install_k3s.sh
-bash scripts/k8s/k8s_cold_path_up.sh
-bash scripts/k8s/k8s_hot_path_up.sh
+bash scripts/deploy/install_k3s.sh
+bash scripts/deploy/cold_path_up.sh
+bash scripts/deploy/hot_path_up.sh
 ```
 
 Hot path: hostNetwork trackers + nginx. Cold path: separate namespace.
@@ -261,12 +261,12 @@ Hot path: hostNetwork trackers + nginx. Cold path: separate namespace.
 
 | Path | Purpose |
 | :--- | :--- |
-| `scripts/local-dev/dev_stack.sh` | Compose lifecycle |
-| `scripts/perf-gate/perf_gate_run.sh` | Benchmark gate |
-| `scripts/chaos-drills/test_chaos.sh` | Fault injection |
-| `scripts/edge-tuning/edge_nic_tune.sh` | NIC tuning |
-| `scripts/redis-ops/` | Shard ops |
-| `scripts/load-test/` | Load tests; optional `ESPX_BPF_PROBE=1` for kernel probes (see [LOAD_TEST_BPF](.cursor/rules/load-test-bpf.mdc)) |
+| `scripts/dev/stack.sh` | Compose lifecycle |
+| `scripts/perf/gate_run.sh` | Benchmark gate |
+| `scripts/fault/run.sh` | Fault injection |
+| `scripts/edge/nic_tune.sh` | NIC tuning |
+| `scripts/` | Shard ops |
+| `scripts/load/` | Load tests; optional `ESPX_BPF_PROBE=1` for kernel probes (see [LOAD_TEST_BPF](.cursor/rules/load-test-bpf.mdc)) |
 
 ### Load tests and BPF analytics
 
@@ -274,25 +274,25 @@ Dirty/spike runs write under `var/load-test/<UTC-timestamp>/`:
 
 | Artifact | Producer | Content |
 | :--- | :--- | :--- |
-| `bottleneck-report.md` | `analyze_bottlenecks.sh` | Prometheus: handler p99, Redis Lua, PG/CH writes, worker rejects |
-| `bpf-report.md` | `analyze_bpf.sh` | Kernel: syscalls, scheduler, cgroup throttle, FDs, k6 on-CPU share |
-| `k6.log` | k6 | RPS, latency, dropped iterations |
+| `bottleneck-report.md` | `go run ./cmd/load-report prom` | Prometheus: handler p99, Redis Lua, PG/CH, status histogram |
+| `bpf-report.md` | `go run ./cmd/load-report bpf` | Kernel: syscalls, cgroup throttle, FDs, loadgen on-CPU |
+| `loadgen.log` | `cmd/loadgen` | Generator run log |
 
-**Constrained profile** (`docker-compose.load-test.yaml`): 2 trackers, capped CPUs/RAM, `TRACKER_INGRESS_SCHEMA=espx_native` for k6 JSON. Business mix:
+**Constrained profile** (`docker-compose.load-test.yaml`): 2 trackers, capped CPUs/RAM, `TRACKER_INGRESS_SCHEMA=espx_native`. Business mix:
 
 ```bash
-bash scripts/load-test/prepare_constrained_stack.sh   # optional; business mode runs PREPARE=1
-sudo ESPX_BPF_PROBE=1 bash scripts/load-test/run_dirty_load.sh business
+bash scripts/load/prepare_constrained_stack.sh   # optional; business mode runs PREPARE=1
+sudo ESPX_BPF_PROBE=1 bash scripts/load/malformed.sh business
 ```
 
 Full BPF workflow, env vars, and interpretation: [LOAD_TEST_BPF](.cursor/rules/load-test-bpf.mdc).
 
-Standalone BPF session (no k6): `make bpf-session-start` → traffic → `make bpf-session-stop` → `bash scripts/local-dev/bpf_session.sh report`. Optional in-process uprobes: `bash scripts/local-dev/build_tracker_bpf_trace.sh` and `ESPX_BPF_TRACKER_BINARY`.
+Standalone BPF session (no loadgen): `make bpf-session-start` → traffic → `make bpf-session-stop` → `go run ./cmd/load-report bpf $OUT`.
 
 ```bash
-bash scripts/load-test/bpf_build.sh
+bash scripts/load/bpf_build.sh
 go build -o bin/bpf-collector ./cmd/bpf-collector
-sudo ESPX_BPF_PROBE=1 ESPX_BPF_SAMPLE_RATE=10 bash scripts/load-test/run_dirty_load.sh smoke
+sudo ESPX_BPF_PROBE=1 ESPX_BPF_SAMPLE_RATE=10 bash scripts/load/malformed.sh smoke
 ```
 
 Does not run in CI or production.
@@ -338,11 +338,11 @@ Full list: `.env.example`.
 Optional `multi-region` compose profile adds `region-proxy` (and optional `broker`) without changing the default stack.
 
 ```bash
-scripts/local-dev/dev_stack.sh build
-scripts/local-dev/dev_stack.sh infra
-scripts/local-dev/dev_stack.sh multi-region up
+scripts/dev/stack.sh build
+scripts/dev/stack.sh infra
+scripts/dev/stack.sh multi-region up
 curl -s http://127.0.0.1:8083/health
-scripts/local-dev/dev_stack.sh status   # includes multi-region profile section
+scripts/dev/stack.sh status   # includes multi-region profile section
 ```
 
 Equivalent direct compose:
@@ -354,7 +354,7 @@ docker compose --profile multi-region up -d region-proxy
 Optional broker (mmap log ingest, not required for region-proxy uplink):
 
 ```bash
-scripts/local-dev/dev_stack.sh multi-region broker
+scripts/dev/stack.sh multi-region broker
 curl -s http://127.0.0.1:8084/health
 ```
 
@@ -412,7 +412,7 @@ Weights are published by management `NodeCapacityScorer` to `node_capacity_score
 
 Metrics: `ad_processor_weight{instance}`, `ad_processor_stream_lag_seconds{instance}`.
 
-Chaos proof: `go test ./internal/ingestion/... -run TestChaos_ProcessorWeightDrain -count=1`
+Fault proof: `go test ./internal/ingestion/... -run TestFault_ProcessorWeightDrain -count=1`
 
 EXPLAIN audit (processor weights query): `EXPLAIN_AUDIT=1 go test ./internal/database/... -run TestExplainAudit -count=1`
 
@@ -421,11 +421,11 @@ EXPLAIN audit (processor weights query): `EXPLAIN_AUDIT=1 go test ./internal/dat
 Tarpit is **off** in dev (`.env.example`). Production edge: source `deploy/nginx/edge-production.env` before starting OpenResty.
 
 ```bash
-bash scripts/edge-tuning/tarpit_test.sh      # offline + optional live smoke
-EDGE_TARPIT_ENABLED=1 bash scripts/edge-tuning/tarpit_test.sh  # chaos_proof
+bash scripts/test/tarpit_test.sh      # offline + optional live smoke
+EDGE_TARPIT_ENABLED=1 bash scripts/test/tarpit_test.sh  # fault_proof
 ```
 
-Control mapping: [COMPLIANCE_MATRIX.md](./COMPLIANCE_MATRIX.md). CI: `scripts/ci/check_compliance.sh`.
+Control mapping: [COMPLIANCE_MATRIX.md](./COMPLIANCE_MATRIX.md). CI: `scripts/ci/compliance.sh`.
 
 ### Vendor telemetry (GAP-ENG-03)
 
@@ -445,11 +445,11 @@ Crypto checkout uses metadata `provider=crypto` on `CreatePaymentIntent`. Webhoo
 
 ```bash
 go test ./internal/payment/... -run Crypto -count=1
-go test ./internal/payment/... -run TestChaos_CryptoWebhookReplay -count=1
-bash scripts/local-dev/dev_stack.sh crypto up   # compose profile crypto + sandbox env
+go test ./internal/payment/... -run TestFault_CryptoWebhookReplay -count=1
+bash scripts/dev/stack.sh crypto up   # compose profile crypto + sandbox env
 ```
 
-Chaos proof: `chaos_proof fault=crypto_webhook_replay proposal_rows=1`. Sandbox env: `deploy/payment/crypto-sandbox.env`.
+Fault proof: `fault_proof fault=crypto_webhook_replay proposal_rows=1`. Sandbox env: `deploy/payment/crypto-sandbox.env`.
 
 ### OpenAPI contract (GAP-PROD-03)
 
@@ -500,12 +500,12 @@ Operator notes:
 
 ```bash
 go test ./... -short
-go test ./internal/ingestion/ -run 'TestChaos_' -timeout 15m
+go test ./internal/ingestion/ -run 'TestFault_' -timeout 15m
 go test ./tests/e2e/... -count=1
 EXPLAIN_AUDIT=1 go test ./internal/database/... -run TestExplainAudit
 ```
 
-Hot-path change: `make test-alloc-gate`; run chaos if write path changed.
+Hot-path change: `make test-alloc-gate`; run fault if write path changed.
 
 ### Database verification
 
@@ -533,22 +533,22 @@ The technology milestone backlog lives in [MILESTONE.md](./MILESTONE.md). Recent
 
 | ID | Summary | Evidence |
 | :--- | :--- | :--- |
-| GAP-GEO-02 | Automated Postgres failover (coordinator, fencing, regional DSN push) | `internal/management/pg_failover.go`, `TestChaos_PostgresMasterFailover` |
+| GAP-GEO-02 | Automated Postgres failover (coordinator, fencing, regional DSN push) | `internal/management/pg_failover.go`, `TestFault_PostgresMasterFailover` |
 | GAP-RTB-12 | Cross-region spend sync (`GlobalSpendReconciler`, idempotent ledger debits) | `internal/management/global_spend_*.go`, `AssertBudgetInvariant` at load |
 | GAP-RTB-10 | VAST 4.2 + creative-level auction (0-alloc hot path) | `internal/rtb/`, `make test-alloc-gate` |
-| GAP-MR-03 | Operation quorum when Postgres is down (2-of-3 Redis ACK) | `operation_lease_quorum_redis.go`, `TestChaos_QuorumBook_WithPGDown` |
+| GAP-MR-03 | Operation quorum when Postgres is down (2-of-3 Redis ACK) | `operation_lease_quorum_redis.go`, `TestFault_QuorumBook_WithPGDown` |
 | GAP-DATA-01 | PII hashing before ClickHouse insert (versioned salt) | `pkg/piihash/`, migration `00010_pii_hash_columns.sql` |
 | GAP-DATA-02 | PG events retention, production TLS profile, operator MVSS checklist | [runbooks/DATA_SECURITY.md](./runbooks/DATA_SECURITY.md) |
 | GAP-DB-01/02 | Disk group-commit, `iogate` `fsyncSem`, WAL alignment, BPF `writev` | [GAP-DB-01-02-report.md](./GAP-DB-01-02-report.md) |
 | GAP-ENG-01 | `internal/management` domain registry, DTO boundaries, coverage gate | [GAP-ENG-01-report.md](./GAP-ENG-01-report.md), `make management-domain-coverage` |
-| GAP-OPS-03 | ClickHouse query governance (`CHQuery` gate, timeout, CI allowlist) | `internal/database/chquery.go`, `scripts/ci/check_ch_direct.sh` |
-| GAP-ENG-02 | Broker and region-proxy in local compose (`multi-region` profile) | `docker-compose.yaml`, `scripts/local-dev/dev_stack.sh multi-region up` |
+| GAP-OPS-03 | ClickHouse query governance (`CHQuery` gate, timeout, CI allowlist) | `internal/database/chquery.go`, `scripts/ci/ch_direct.sh` |
+| GAP-ENG-02 | Broker and region-proxy in local compose (`multi-region` profile) | `docker-compose.yaml`, `scripts/dev/stack.sh multi-region up` |
 | GAP-DB-03 | Weighted processor gates (multi-instance stream cadence) | `internal/ingestion/processor_weight.go`, `GET /ops/processor-weights` |
 | GAP-CMP-01 | Edge tarpit + compliance matrix | `docs/COMPLIANCE_MATRIX.md`, `deploy/nginx/lua/tests/tarpit_test.lua` |
 | GAP-ENG-03 | Vendor telemetry probes | `pkg/vendorprobe/`, `ad_vendor_probe_*` metrics |
-| GAP-PAY-01 | Cryptocurrency payment gateway | `internal/payment/provider_crypto.go`, `TestChaos_CryptoWebhookReplay`, `deploy/payment/crypto-sandbox.env` |
+| GAP-PAY-01 | Cryptocurrency payment gateway | `internal/payment/provider_crypto.go`, `TestFault_CryptoWebhookReplay`, `deploy/payment/crypto-sandbox.env` |
 | GAP-PROD-03 | OpenAPI 3 `/api/v1` contract | `docs/openapi/openapi.yaml`, `make openapi-lint`, `tests/contract/openapi_test.go` |
-| GAP-RTB-12a | CTV gtax settlement | `ApplyCTVSettlement`, `TestChaos_CTVGtaxSettlementReplay` |
+| GAP-RTB-12a | CTV gtax settlement | `ApplyCTVSettlement`, `TestFault_CTVGtaxSettlementReplay` |
 | GAP-RTB-12b | Admin dry-run preview | `ParseDryRun`, `dry_run_test.go` |
 | GAP-RTB-12c | A/B cohorts | `experiment_cohorts`, `cohort_snapshot.go`, `cohort_test.go` |
 
@@ -566,15 +566,15 @@ Deferred UI work (not in GAP_SPECS): GAP-PROD-01 buyer/finance dashboards, GAP-O
 
 ## Postgres DR
 
-**Automated failover (default):** `internal/management/pg_failover.go` — coordinator election via Redis (`pkg/broker/server/coord.go`), replica promotion, fencing tokens, DSN push to regional management cells. Validated by `TestChaos_PostgresMasterFailover`.
+**Automated failover (default):** `internal/management/pg_failover.go` — coordinator election via Redis (`pkg/broker/server/coord.go`), replica promotion, fencing tokens, DSN push to regional management cells. Validated by `TestFault_PostgresMasterFailover`.
 
-**Manual fallback** (when automation is disabled or for game days):
+**Manual fallback** (when automation is disabled or for resilience drills):
 
 1. Confirm replica lag and health
 2. Promote sync/async standby per runbook
 3. Update connection strings in compose/k8s secrets
 4. Verify `AssertBudgetInvariant` and outbox drain
-5. Run `scripts/chaos-drills/test_chaos.sh` subset after cutover
+5. Run `scripts/fault/run.sh` subset after cutover
 
 Multi-region topology: [MULTI_REGION.md](./MULTI_REGION.md).
 
@@ -591,10 +591,10 @@ Multi-region topology: [MULTI_REGION.md](./MULTI_REGION.md).
 
 ## Post-deploy Redis reconciliation
 
-1. Run `scripts/redis-ops/verify_redis_topology.sh`.
+1. Run `scripts/deploy/verify_redis_topology.sh`.
 2. Compare slot map epoch across trackers, edge Lua, and management outbox version.
 3. Pause affected campaigns before `redis_migrate_campaign.sh`; resume after EXISTS gate passes.
-4. Run `scripts/redis-ops/redis_reconcile_post_deploy.sh` when deploy changes Lua scripts or key catalog.
+4. Run `scripts/deploy/reconcile_post_deploy.sh` when deploy changes Lua scripts or key catalog.
 
 ---
 

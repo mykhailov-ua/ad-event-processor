@@ -9,7 +9,6 @@ import (
 	"espx/internal/campaignmodel"
 )
 
-// trackIngestFields holds decoded /track POST fields before processTrack.
 type trackIngestFields struct {
 	campaignID  uuid.UUID
 	eventType   string
@@ -21,7 +20,6 @@ type trackIngestFields struct {
 	ortbSlot    *openRTBScratchSlot
 }
 
-// parseTrackIngest decodes protobuf or JSON /track bodies into shared ingest fields.
 func (h *AdsPacketHandler) parseTrackIngest(
 	ctx *connContext,
 	req parsedHTTPRequest,
@@ -115,7 +113,6 @@ func fillTrackEvent(evt *campaignmodel.Event, fields trackIngestFields, ip, ua s
 	}
 }
 
-// deliverGnetTrack maps processTrack outcomes to gnet responses and metrics.
 func (h *AdsPacketHandler) deliverGnetTrack(
 	ctx *connContext,
 	req parsedHTTPRequest,

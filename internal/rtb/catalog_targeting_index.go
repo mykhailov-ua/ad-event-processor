@@ -5,9 +5,6 @@ import (
 	"sort"
 )
 
-// Targeting index fields are populated on the cold catalog rebuild path when enabled.
-// Hot path uses targetingRange for O(log n) lookup into a narrow candidate bucket.
-
 func targetingBucketKey(geo uint32, deviceBit uint8, categoryBit uint64) uint64 {
 	devIdx := uint64(bits.TrailingZeros8(deviceBit))
 	catIdx := uint64(bits.TrailingZeros64(categoryBit))
@@ -34,7 +31,6 @@ func forEachCategoryBit(mask uint64, fn func(bit uint64)) {
 	}
 }
 
-// buildTargetingIndex materializes geo+device+category inverted SoA buckets on the cold rebuild path.
 func buildTargetingIndex(reg *CampaignAuctionRegistry) {
 	if reg == nil || reg.Count == 0 {
 		reg.TargetBucketCount = 0
@@ -74,7 +70,6 @@ func buildTargetingIndex(reg *CampaignAuctionRegistry) {
 	reg.TargetBucketStart[reg.TargetBucketCount] = uint32(reg.TargetBucketSoA.len())
 }
 
-// targetingRange returns the half-open [start,end) slice into TargetBucketSoA for one request tuple.
 func (reg *CampaignAuctionRegistry) targetingRange(geo uint32, deviceType uint8, categoryMask uint64) (start int, end int, ok bool) {
 	if reg == nil || reg.TargetBucketCount == 0 {
 		return 0, 0, false

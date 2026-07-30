@@ -6,7 +6,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Guards CDN and mobile ASN lists bypass edge blacklist.
 func TestASNWhitelist_membership(t *testing.T) {
 	w := NewASNWhitelist("15169,20940", "21928")
 	assert.True(t, w.IsWhitelisted("15169"))

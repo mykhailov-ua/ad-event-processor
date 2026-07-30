@@ -1,4 +1,3 @@
--- M11: subnet/reason fraud spike aggregates from adaptive FraudStreamWriter flush worker.
 CREATE TABLE IF NOT EXISTS fraud_aggregate_spikes (
     subnet String,
     fraud_reason LowCardinality(String),

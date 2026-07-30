@@ -15,7 +15,6 @@ import (
 	"github.com/klauspost/compress/zstd"
 )
 
-// CompactionMeta is written alongside warm-tier output for ops inspection.
 type CompactionMeta struct {
 	SourceKey     string    `json:"source_key"`
 	DestKey       string    `json:"dest_key"`
@@ -27,7 +26,6 @@ type CompactionMeta struct {
 	CompactedAt   time.Time `json:"compacted_at"`
 }
 
-// TierObject describes one hot-tier segment eligible for compaction.
 type TierObject struct {
 	Key     string
 	Path    string
@@ -35,20 +33,17 @@ type TierObject struct {
 	Size    int64
 }
 
-// TierStore lists hot segments and writes warm-tier compacted output.
 type TierStore interface {
 	ListHot(ctx context.Context, olderThan time.Time) ([]TierObject, error)
 	WriteWarm(ctx context.Context, destKey string, plaintext []byte, meta CompactionMeta) error
 	RemoveHot(ctx context.Context, obj TierObject) error
 }
 
-// LocalTierStore implements TierStore on a local filesystem (MVP default).
 type LocalTierStore struct {
 	SourceDir string
 	WarmDir   string
 }
 
-// NewLocalTierStore returns a filesystem-backed tier store.
 func NewLocalTierStore(sourceDir, warmDir string) *LocalTierStore {
 	return &LocalTierStore{
 		SourceDir: sourceDir,
@@ -56,7 +51,6 @@ func NewLocalTierStore(sourceDir, warmDir string) *LocalTierStore {
 	}
 }
 
-// ListHot returns rotated segments in SourceDir older than the cutoff time.
 func (store *LocalTierStore) ListHot(_ context.Context, olderThan time.Time) ([]TierObject, error) {
 	entries, err := os.ReadDir(store.SourceDir)
 	if err != nil {
@@ -108,13 +102,11 @@ func isHotSegmentName(name string) bool {
 	return strings.HasPrefix(name, "segment_") && strings.HasSuffix(name, ".log")
 }
 
-// WriteWarm zstd-compresses plaintext and writes destKey plus a JSON sidecar.
 func (store *LocalTierStore) WriteWarm(_ context.Context, destKey string, plaintext []byte, meta CompactionMeta) error {
 	_, err := store.writeWarmFromPath(destKey, bytes.NewReader(plaintext), meta)
 	return err
 }
 
-// WriteWarmFromFile zstd-compresses a filtered plaintext file with verify-before-finalize semantics.
 func (store *LocalTierStore) WriteWarmFromFile(_ context.Context, destKey, filteredPath string, meta CompactionMeta) (string, error) {
 	file, err := os.Open(filteredPath)
 	if err != nil {
@@ -192,7 +184,6 @@ func (store *LocalTierStore) writeWarmFromPath(destKey string, plaintext io.Read
 	return digest.SHA256, nil
 }
 
-// RemoveWarmArtifacts deletes incomplete warm-tier temp files for destKey.
 func (store *LocalTierStore) RemoveWarmArtifacts(destKey string) {
 	destPath := filepath.Join(store.WarmDir, destKey)
 	_ = os.Remove(destPath + warmTmpSuffix)
@@ -201,7 +192,6 @@ func (store *LocalTierStore) RemoveWarmArtifacts(destKey string) {
 	_ = os.Remove(strings.TrimSuffix(destPath, ".zst") + ".meta.json")
 }
 
-// RemoveHot deletes a compacted source segment from the hot directory.
 func (store *LocalTierStore) RemoveHot(_ context.Context, obj TierObject) error {
 	if obj.Path == "" {
 		return fmt.Errorf("empty hot object path")
@@ -209,7 +199,6 @@ func (store *LocalTierStore) RemoveHot(_ context.Context, obj TierObject) error 
 	return os.Remove(obj.Path)
 }
 
-// ReadWarm decompresses a warm-tier segment for tests and ops tooling.
 func ReadWarm(path string) ([]byte, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {

@@ -7,7 +7,6 @@ import (
 	"github.com/cilium/ebpf"
 )
 
-// ExportStatsToPrometheus publishes absolute per-CPU-aggregated counters as Prometheus deltas.
 func ExportStatsToPrometheus(m *ebpf.Map, last []uint64) []uint64 {
 	totals, err := AggregateStats(m)
 	if err != nil || len(totals) != StatMax {
@@ -40,7 +39,6 @@ func ExportStatsToPrometheus(m *ebpf.Map, last []uint64) []uint64 {
 	return last
 }
 
-// BuildSnapshot converts aggregated stats into an operator dashboard snapshot.
 func BuildSnapshot(totals []uint64) xdpstats.Snapshot {
 	snap := xdpstats.Snapshot{Drops: make(map[string]uint64)}
 	if len(totals) != StatMax {

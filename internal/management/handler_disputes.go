@@ -13,7 +13,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// listDisputes handles GET /api/v1/disputes with optional tenant scoping and chargeback ledger IDs.
 func (h *Handler) listDisputes(w http.ResponseWriter, r *http.Request) {
 	if h.payment == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "PAYMENT_UNAVAILABLE", "payment service not configured")

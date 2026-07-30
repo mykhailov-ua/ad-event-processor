@@ -4,7 +4,6 @@ import (
 	"espx/internal/campaignmodel"
 )
 
-// ensureIngestGeo resolves country and geo hash once per event for RTB and GeoFilter.
 func ensureIngestGeo(geo GeoProvider, evt *campaignmodel.Event) {
 	if geo == nil || evt == nil || evt.IP == "" || evt.IngestGeoResolved {
 		return
@@ -18,7 +17,6 @@ func ensureIngestGeo(geo GeoProvider, evt *campaignmodel.Event) {
 	evt.GeoHash = GeoHashFromCountry(country)
 }
 
-// parseCategoryMask reads category_mask from JSON payloads without full unmarshaling.
 func parseCategoryMask(payload []byte) uint64 {
 	n := len(payload)
 	if n < 15 {

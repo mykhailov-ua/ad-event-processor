@@ -2,7 +2,7 @@
 
 Maps defensive-perimeter controls from `.cursor/rules/compliance.mdc` to implementation files and test proof. No HTMX UI; operator-facing architecture notes live in `docs/ARCHITECTURE.md`.
 
-**CI gate:** `scripts/ci/check_compliance.sh` (invoked from `scripts/ci/local_check.sh`).
+**CI gate:** `scripts/ci/compliance.sh` (invoked from `scripts/ci/local_check.sh`).
 
 ---
 
@@ -10,13 +10,13 @@ Maps defensive-perimeter controls from `.cursor/rules/compliance.mdc` to impleme
 
 | Control ID | Description | Implementation | Test / proof |
 | :--- | :--- | :--- | :--- |
-| CMP-DEF-01 | Wire-rate `XDP_DROP` on local NIC (blocklist, SYN/PPS limits) | `deploy/edge/xdp/bpf/edge_filter.c`, `cmd/edge-xdp`, `cmd/edge-bpf-sync` | `pkg/bpf/...` attach tests; `scripts/chaos-drills/` edge lab |
+| CMP-DEF-01 | Wire-rate `XDP_DROP` on local NIC (blocklist, SYN/PPS limits) | `deploy/edge/xdp/bpf/edge_filter.c`, `cmd/edge-xdp`, `cmd/edge-bpf-sync` | `pkg/bpf/...` attach tests; `scripts/fault/` edge lab |
 | CMP-DEF-02 | Passive TLS/TCP metadata (JA3/JA4 class); no covert device probes | `deploy/nginx/lua/edge-tls-hash.lua`, `internal/ingestion/device_filter.go`, `internal/management/service_fraud.go` (`TLSImpersonationWorker`) | `internal/ingestion/device_filter_test.go` |
-| CMP-DEF-03 | In-line network tarpit (capped delay on own server; edge only) | `deploy/nginx/lua/edge-tarpit.lua`, `deploy/nginx/lua/access-check.lua` | `deploy/nginx/lua/tests/tarpit_test.lua`, `scripts/edge-tuning/tarpit_test.sh` |
+| CMP-DEF-03 | In-line network tarpit (capped delay on own server; edge only) | `deploy/nginx/lua/edge-tarpit.lua`, `deploy/nginx/lua/access-check.lua` | `deploy/nginx/lua/tests/tarpit_test.lua`, `scripts/test/tarpit_test.sh` |
 | CMP-EBPF-01 | BPF blocks only after local breach; TTL in map value | `deploy/edge/xdp/bpf/edge_filter.c`, `internal/edge/blocklist/` | `internal/edge/blocklist/*_test.go` |
 | CMP-EBPF-02 | Immutable allowlist before deny in kernel | `allowlist.IsProtected`, `edge_filter.c` `allow_v4` | `internal/edge/blocklist/allowlist_test.go` |
-| CMP-EBPF-03 | Sync path: management → Redis → `edge-bpf-sync` (no direct kernel writes from management) | `cmd/edge-bpf-sync`, management outbox `UPDATE_BLACKLIST` | `scripts/ci/check_compliance.sh` CMP-FORB-04 |
-| M10-C3 | Fingerprint must not be sole L4 drop cause | `deploy/edge/xdp/bpf/edge_filter.c` | `scripts/ci/check_compliance.sh` M10-C3 |
+| CMP-EBPF-03 | Sync path: management → Redis → `edge-bpf-sync` (no direct kernel writes from management) | `cmd/edge-bpf-sync`, management outbox `UPDATE_BLACKLIST` | `scripts/ci/compliance.sh` CMP-FORB-04 |
+| M10-C3 | Fingerprint must not be sole L4 drop cause | `deploy/edge/xdp/bpf/edge_filter.c` | `scripts/ci/compliance.sh` M10-C3 |
 
 ---
 
@@ -24,11 +24,11 @@ Maps defensive-perimeter controls from `.cursor/rules/compliance.mdc` to impleme
 
 | Control ID | Description | Enforcement | Test / proof |
 | :--- | :--- | :--- | :--- |
-| CMP-FORB-01 | No DOM/Canvas/WebGL/audio fingerprint SDK | CI pattern scan | `scripts/ci/check_compliance.sh` |
-| CMP-FORB-02 | No hack-back / reverse DDoS / flood helpers | CI pattern scan | `scripts/ci/check_compliance.sh` |
-| CMP-FORB-03 | No integrated port scan / active probe of visitor hosts | CI pattern scan | `scripts/ci/check_compliance.sh` |
-| CMP-FORB-04 | No `cilium/ebpf` import in management or tracker | `go list` import check | `scripts/ci/check_compliance.sh` |
-| CMP-DEF-04 | No outbound connections to visitor/source IPs from management | CI pattern scan on management | `scripts/ci/check_compliance.sh` |
+| CMP-FORB-01 | No DOM/Canvas/WebGL/audio fingerprint SDK | CI pattern scan | `scripts/ci/compliance.sh` |
+| CMP-FORB-02 | No hack-back / reverse DDoS / flood helpers | CI pattern scan | `scripts/ci/compliance.sh` |
+| CMP-FORB-03 | No integrated port scan / active probe of visitor hosts | CI pattern scan | `scripts/ci/compliance.sh` |
+| CMP-FORB-04 | No `cilium/ebpf` import in management or tracker | `go list` import check | `scripts/ci/compliance.sh` |
+| CMP-DEF-04 | No outbound connections to visitor/source IPs from management | CI pattern scan on management | `scripts/ci/compliance.sh` |
 
 ---
 
@@ -40,7 +40,7 @@ Maps defensive-perimeter controls from `.cursor/rules/compliance.mdc` to impleme
 | CMP-AUDIT-02 | BPF mutations: `edge_block_audit` + bpf-sync logs | `cmd/edge-bpf-sync`, `internal/edge/` | Edge ops runbook |
 | CMP-ALLOW-01 | `allowlist.IsProtected` before any deny persist/BPF sync | `internal/edge/blocklist/allowlist.go` | `allowlist_test.go` |
 | CMP-PRIV-01 | Least privilege: only `edge-xdp` / `edge-bpf-sync` hold `CAP_BPF`/`CAP_NET_ADMIN` | Deploy manifests, `Dockerfile` entrypoints | Architecture review |
-| M9-07 | No `SelectAndShard` in production tracker paths (StaticSlot only) | `internal/ingestion/static_slot_sharder.go` | `scripts/ci/check_compliance.sh` M9-07 |
+| M9-07 | No `SelectAndShard` in production tracker paths (StaticSlot only) | `internal/ingestion/static_slot_sharder.go` | `scripts/ci/compliance.sh` M9-07 |
 
 ---
 
@@ -74,11 +74,11 @@ Operator data security runbook (at-rest, TLS, secrets, retention): [runbooks/DAT
 
 ---
 
-## Chaos proofs
+## Fault proofs
 
 | Fault | Script / test | Expected key |
 | :--- | :--- | :--- |
-| `edge_tarpit_triggered` | `scripts/edge-tuning/tarpit_test.sh` with `EDGE_TARPIT_ENABLED=1` | `espx_edge_tarpit_total` increases |
+| `edge_tarpit_triggered` | `scripts/test/tarpit_test.sh` with `EDGE_TARPIT_ENABLED=1` | `espx_edge_tarpit_total` increases |
 | `edge_tarpit_triggered` | `deploy/nginx/lua/tests/tarpit_test.lua` | delay + metric increment (offline) |
 
 ---
@@ -86,5 +86,5 @@ Operator data security runbook (at-rest, TLS, secrets, retention): [runbooks/DAT
 ## Change process
 
 1. New defensive control: add row here + update `.cursor/rules/compliance.mdc` section 5 binding table.
-2. New forbidden pattern: add CMP-FORB row + CI check in `scripts/ci/check_compliance.sh`.
+2. New forbidden pattern: add CMP-FORB row + CI check in `scripts/ci/compliance.sh`.
 3. PR checklist: `.cursor/rules/compliance.mdc` section 6.

@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Guards round-trip persistence keeps budgets and every shard column intact.
 func TestRegistry_snapshot_roundTrip(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "espx-rtb-snap-*")
 	require.NoError(t, err)
@@ -102,7 +101,6 @@ func TestRegistry_snapshot_roundTrip(t *testing.T) {
 	}
 }
 
-// Guards periodic snapshots and shutdown flush produce a restorable registry file.
 func TestRegistry_startPersistence_periodicFlush(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "espx-rtb-persist-*")
 	require.NoError(t, err)

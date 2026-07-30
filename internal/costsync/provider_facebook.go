@@ -15,7 +15,6 @@ import (
 	"espx/pkg/money"
 )
 
-// FacebookProvider fetches spend from Meta Marketing API insights.
 type FacebookProvider struct {
 	BaseURL string
 	Client  *http.Client
@@ -110,6 +109,5 @@ func (p *FacebookProvider) Fetch(ctx context.Context, cred Credential, date time
 }
 
 func mapExternalCampaignID(customerID uuid.UUID, externalID string) uuid.UUID {
-	// Deterministic UUID v5-style mapping for unmapped external IDs in dev fixtures.
 	return uuid.NewSHA1(customerID, []byte("fb:"+externalID))
 }

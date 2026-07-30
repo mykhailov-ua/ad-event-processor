@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestExplainAudit_PaymentIntentQueries runs EXPLAIN on payment intent hot-path SQL (M-DB-PG-5).
 func TestExplainAudit_PaymentIntentQueries(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping payment EXPLAIN audit in short mode")
@@ -21,7 +20,7 @@ func TestExplainAudit_PaymentIntentQueries(t *testing.T) {
 		t.Skip("set EXPLAIN_AUDIT=1 to run payment query plan audit")
 	}
 
-	infra, cleanup := setupPaymentChaosInfra(t)
+	infra, cleanup := setupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()

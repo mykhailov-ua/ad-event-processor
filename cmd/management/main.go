@@ -1,4 +1,3 @@
-// Command management wires the admin HTTP API and control-plane background workers outside the tracker process.
 package main
 
 import (

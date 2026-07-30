@@ -12,8 +12,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// registerDeliveryRoutes mounts template, schedule, pause, resume, and creative management endpoints.
-// Dry-run: POST /admin/campaigns/{id}/pause|resume accept ?dry_run=1 or X-Dry-Run: 1 (GAP-RTB-12b).
 func (h *Handler) registerDeliveryRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /admin/campaign-templates", h.limit(h.perm(h.createCampaignTemplate, PermCampaignsWrite)))
 	mux.HandleFunc("GET /admin/campaign-templates", h.limit(h.perm(h.listCampaignTemplates, PermCampaignsRead)))
@@ -31,7 +29,6 @@ func (h *Handler) registerDeliveryRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /admin/brands/{brand_id}/creatives/{id}", h.limit(h.perm(h.deleteBrandCreative, PermBrandsWrite)))
 }
 
-// createCampaignTemplate handles POST /admin/campaign-templates for saving reusable campaign presets.
 func (h *Handler) createCampaignTemplate(w http.ResponseWriter, r *http.Request) {
 	req, err := coldpath.DecodeRequest[struct {
 		CustomerID       uuid.UUID  `json:"customer_id"`
@@ -94,7 +91,6 @@ func (h *Handler) createCampaignTemplate(w http.ResponseWriter, r *http.Request)
 	httpresponse.JSON(w, http.StatusCreated, map[string]any{"id": id})
 }
 
-// listCampaignTemplates handles GET /admin/campaign-templates for a customer's template library.
 func (h *Handler) listCampaignTemplates(w http.ResponseWriter, r *http.Request) {
 	var custID uuid.UUID
 	if cStr := r.URL.Query().Get("customer_id"); cStr != "" {
@@ -121,7 +117,6 @@ func (h *Handler) listCampaignTemplates(w http.ResponseWriter, r *http.Request) 
 	coldpath.WritePaginatedJSON(w, items, total)
 }
 
-// createCampaignFromTemplate handles POST /admin/campaign-templates/{id}/instantiate for launching from a preset.
 func (h *Handler) createCampaignFromTemplate(w http.ResponseWriter, r *http.Request) {
 	templateID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
@@ -169,7 +164,6 @@ func (h *Handler) createCampaignFromTemplate(w http.ResponseWriter, r *http.Requ
 	httpresponse.JSON(w, http.StatusCreated, map[string]any{"id": id})
 }
 
-// saveCampaignAsTemplate handles POST /admin/campaigns/{id}/save-as-template for snapshotting live config.
 func (h *Handler) saveCampaignAsTemplate(w http.ResponseWriter, r *http.Request) {
 	campaignID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
@@ -197,7 +191,6 @@ func (h *Handler) saveCampaignAsTemplate(w http.ResponseWriter, r *http.Request)
 	httpresponse.JSON(w, http.StatusCreated, map[string]any{"id": id})
 }
 
-// pauseCampaign handles POST /admin/campaigns/{id}/pause for operator-initiated delivery stop.
 func (h *Handler) pauseCampaign(w http.ResponseWriter, r *http.Request) {
 	campaignID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
@@ -232,7 +225,6 @@ func (h *Handler) pauseCampaign(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusAccepted)
 }
 
-// resumeCampaign handles POST /admin/campaigns/{id}/resume for operator-initiated delivery restart.
 func (h *Handler) resumeCampaign(w http.ResponseWriter, r *http.Request) {
 	campaignID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
@@ -267,7 +259,6 @@ func (h *Handler) resumeCampaign(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusAccepted)
 }
 
-// warmCampaignBudget handles POST /admin/campaigns/{id}/warm-budget for direct Redis budget key refresh.
 func (h *Handler) warmCampaignBudget(w http.ResponseWriter, r *http.Request) {
 	campaignID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
@@ -289,7 +280,6 @@ func (h *Handler) warmCampaignBudget(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// updateCampaignSchedule handles POST /admin/campaigns/{id}/schedule for window and daypart changes.
 func (h *Handler) updateCampaignSchedule(w http.ResponseWriter, r *http.Request) {
 	campaignID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
@@ -316,7 +306,6 @@ func (h *Handler) updateCampaignSchedule(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// createBrandCreative handles POST /admin/brands/{id}/creatives for adding a weighted landing URL.
 func (h *Handler) createBrandCreative(w http.ResponseWriter, r *http.Request) {
 	brandID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
@@ -348,7 +337,6 @@ func (h *Handler) createBrandCreative(w http.ResponseWriter, r *http.Request) {
 	httpresponse.JSON(w, http.StatusCreated, map[string]any{"id": id})
 }
 
-// listBrandCreatives handles GET /admin/brands/{id}/creatives for creative inventory.
 func (h *Handler) listBrandCreatives(w http.ResponseWriter, r *http.Request) {
 	brandID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
@@ -367,7 +355,6 @@ func (h *Handler) listBrandCreatives(w http.ResponseWriter, r *http.Request) {
 	httpresponse.JSON(w, http.StatusOK, items)
 }
 
-// updateBrandCreative handles PUT /admin/brands/{brand_id}/creatives/{id} for editing a creative.
 func (h *Handler) updateBrandCreative(w http.ResponseWriter, r *http.Request) {
 	brandID, err := uuid.Parse(r.PathValue("brand_id"))
 	if err != nil {
@@ -400,7 +387,6 @@ func (h *Handler) updateBrandCreative(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// deleteBrandCreative handles DELETE /admin/brands/{brand_id}/creatives/{id} for removing a variant.
 func (h *Handler) deleteBrandCreative(w http.ResponseWriter, r *http.Request) {
 	brandID, err := uuid.Parse(r.PathValue("brand_id"))
 	if err != nil {
@@ -423,7 +409,6 @@ func (h *Handler) deleteBrandCreative(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// ensureCampaignAccess restricts customer users to campaigns owned by their tenant.
 func (h *Handler) ensureCampaignAccess(r *http.Request, campaignID uuid.UUID) error {
 	u, ok := GetUser(r.Context())
 	if !ok || !u.IsUser() {
@@ -439,7 +424,6 @@ func (h *Handler) ensureCampaignAccess(r *http.Request, campaignID uuid.UUID) er
 	return nil
 }
 
-// ensureBrandAccess restricts customer users to brands owned by their tenant.
 func (h *Handler) ensureBrandAccess(r *http.Request, brandID uuid.UUID) error {
 	u, ok := GetUser(r.Context())
 	if !ok || !u.IsUser() {
@@ -457,8 +441,6 @@ func (h *Handler) ensureBrandAccess(r *http.Request, brandID uuid.UUID) error {
 
 var errForbidden = &forbiddenError{}
 
-// forbiddenError signals a tenant isolation violation without leaking resource existence details.
 type forbiddenError struct{}
 
-// Error implements error for forbidden tenant access responses.
 func (e *forbiddenError) Error() string { return "forbidden" }

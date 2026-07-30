@@ -138,7 +138,7 @@ Verification
 ```bash
 go test -bench=BenchmarkAuction -benchmem ./internal/rtb/
 go test -gcflags="-m" ./internal/rtb/ 2>&1 | rg 'does not escape'
-go test -run TestChaos ./internal/rtb/...
+go test -run TestFault ./internal/rtb/...
 ```
 
 Allocations: 0 B/op on `BenchmarkAuction`

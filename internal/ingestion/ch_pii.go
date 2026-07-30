@@ -5,7 +5,6 @@ import (
 	"espx/pkg/piihash"
 )
 
-// chPIIFields holds hashed PII for one ClickHouse row append.
 type chPIIFields struct {
 	ipHash      [16]byte
 	uaHash      [16]byte

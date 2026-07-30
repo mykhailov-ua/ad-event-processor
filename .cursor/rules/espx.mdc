@@ -53,7 +53,7 @@ cmd/processor: stream consumers, sync worker, partition manager, optional fraud 
 
 deploy/nginx/lua/access_check.lua: edge blacklist, shard pick - must match Go StaticSlot routing.
 
-Scripts layout: `scripts/local-dev` (compose stack), `scripts/load-test`, `scripts/perf-gate`, `scripts/chaos-drills`, `scripts/edge-tuning`, `scripts/redis-ops`, `scripts/fraud-scoring`, `scripts/k8s`, `scripts/lib`.
+Scripts layout: `scripts/{lib,ci,dev,load,perf,fault,edge,deploy,test}/` (one level); index `scripts/README.md`. Go tools in `cmd/`.
 
 Redis: crc32(campaign_id) -> 1024 slots -> shard table. Shard 0 only: pub/sub (`campaigns:update`), auth lockout, brand creatives. Budget/filter keys shard by campaign_id. Edge rate limit composite key: campaign_id + user_id, fallback Internet Protocol address.
 
@@ -97,7 +97,7 @@ Docs
 
 Client-facing: docs/ARCHITECTURE.md, docs/DEVELOPMENT.md. Agent engineering rules: `.cursor/rules/guidelines-index.mdc` and scoped `*.mdc` (code-style, hot-path, load-test-bpf, data-layer, …).
 
-Dev BPF infrastructure: `make bpf-dev` (or `scripts/local-dev/bpf_setup.sh`) builds `deploy/dev/bpf/loadtest_probe.o` and `bin/bpf-collector`. Enable on load tests with `ESPX_BPF_PROBE=1` (see .env.example).
+Dev BPF infrastructure: `make bpf-dev` (or `scripts/dev/bpf_setup.sh`) builds `deploy/dev/bpf/loadtest_probe.o` and `bin/bpf-collector`. Enable on load tests with `ESPX_BPF_PROBE=1` (see .env.example).
 
 Output
 

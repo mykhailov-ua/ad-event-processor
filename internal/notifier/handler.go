@@ -11,13 +11,11 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// Handler is the gRPC boundary for enqueue and status lookup RPCs.
 type Handler struct {
 	pb.UnimplementedNotifierServiceServer
 	service *Service
 }
 
-// NewHandler wires the domain service into the generated NotifierServiceServer interface.
 func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }

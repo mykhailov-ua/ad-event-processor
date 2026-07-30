@@ -1,5 +1,3 @@
--- edge-tarpit.lua: optional slow path for oversized headers or body (M14-08, GAP-CMP-01).
--- Enable with EDGE_TARPIT_ENABLED=true. Cap delay at EDGE_TARPIT_MAX_SEC (default 2, hard max 15).
 
 local edge_metrics = require "edge-metrics"
 
@@ -44,7 +42,6 @@ end
 
 reload_config()
 
--- set_getenv_for_test overrides os.getenv in offline unit tests.
 function _M.set_getenv_for_test(fn)
     if fn then
         getenv = fn
@@ -54,7 +51,6 @@ function _M.set_getenv_for_test(fn)
     reload_config()
 end
 
--- compute_delay returns tarpit sleep seconds for header count and Content-Length.
 function _M.compute_delay(header_count, content_length)
     local delay = 0
     if header_count > MAX_HEADERS then

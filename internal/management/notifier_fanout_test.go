@@ -1,6 +1,8 @@
 package management
 
 import (
+	"espx/pkg/faultproof"
+
 	"bytes"
 	"context"
 	"encoding/json"
@@ -220,9 +222,7 @@ func TestOpsAlerter_WarningEventFallback(t *testing.T) {
 	assert.Equal(t, notifierpb.DeliveryMode_DELIVERY_MODE_UNSPECIFIED, requests[0].DeliveryMode)
 }
 
-// TestChaos_alertmanagerWebhookFanOut verifies critical Prometheus alerts fan-out to all configured channels.
-// Hypothesis: one critical webhook alert enqueues a single BROADCAST notification covering all configured providers.
-func TestChaos_alertmanagerWebhookFanOut(t *testing.T) {
+func TestFault_alertmanagerWebhookFanOut(t *testing.T) {
 	stub := &stubNotifierGRPCClient{}
 	cfg := testNotifierConfig()
 	cfg.Management.AlertmanagerWebhookEnabled = true
@@ -264,7 +264,7 @@ func TestChaos_alertmanagerWebhookFanOut(t *testing.T) {
 		assert.Len(t, req.BroadcastProviders, 3)
 	}
 
-	logChaosProof(t, "alertmanager_webhook_fanout", map[string]string{
+	faultproof.Log(t, "alertmanager_webhook_fanout", map[string]string{
 		"alerts":   "3",
 		"channels": "3",
 		"mode":     "BROADCAST",
@@ -272,9 +272,7 @@ func TestChaos_alertmanagerWebhookFanOut(t *testing.T) {
 	})
 }
 
-// TestChaos_opsEventFanOut verifies critical ops events enqueue broadcast notifications.
-// Hypothesis: recon/redis/drain alerts use BROADCAST; migration alerts stay single-channel fallback.
-func TestChaos_opsEventFanOut(t *testing.T) {
+func TestFault_opsEventFanOut(t *testing.T) {
 	stub := &stubNotifierGRPCClient{}
 	cfg := testNotifierConfig()
 	cfg.Management.OpsAlertsEnabled = true
@@ -305,7 +303,7 @@ func TestChaos_opsEventFanOut(t *testing.T) {
 	assert.Equal(t, 3, broadcastCount)
 	assert.Equal(t, 1, fallbackCount)
 
-	logChaosProof(t, "ops_event_fanout", map[string]string{
+	faultproof.Log(t, "ops_event_fanout", map[string]string{
 		"critical_events": "3",
 		"warning_events":  "1",
 		"channels":        "3",

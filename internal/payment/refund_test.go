@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestProcessStripeRefundWebhook_noDoubleDebit proves a second refund event id does not enqueue another outbox row for the same refund id.
 func TestProcessStripeRefundWebhook_noDoubleDebit(t *testing.T) {
 	if testing.Short() {
 		t.Skip("requires testcontainers")

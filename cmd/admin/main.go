@@ -1,4 +1,3 @@
-// Command admin is the binary entrypoint for the internal developer CLI (cmd/admin/cmd).
 package main
 
 import (

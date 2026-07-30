@@ -1,6 +1,5 @@
 package perimeter
 
-// FraudRLTier is the edge rate-limit band derived from fraud_score.
 type FraudRLTier string
 
 const (
@@ -16,7 +15,6 @@ const (
 	defaultFraudRLIVTMax     = 80
 )
 
-// FraudRLConfig mirrors config:values tier RL fields synced by edge-config.lua.
 type FraudRLConfig struct {
 	BaseLimitPerMin int
 	SuspectPct      int
@@ -27,7 +25,6 @@ type FraudRLConfig struct {
 	RetryBlockSec   int
 }
 
-// DefaultFraudRLConfig returns production-aligned tier RL defaults.
 func DefaultFraudRLConfig() FraudRLConfig {
 	return FraudRLConfig{
 		BaseLimitPerMin: 100,
@@ -40,7 +37,6 @@ func DefaultFraudRLConfig() FraudRLConfig {
 	}
 }
 
-// MapFraudRLTier maps a fraud score to an edge tier.
 func MapFraudRLTier(score int) (FraudRLTier, int) {
 	if score < 0 {
 		score = 0
@@ -60,7 +56,6 @@ func MapFraudRLTier(score int) (FraudRLTier, int) {
 	}
 }
 
-// TierLimit returns the per-window campaign limit for a tier.
 func TierLimit(tier FraudRLTier, cfg FraudRLConfig) int {
 	if cfg.BaseLimitPerMin <= 0 {
 		cfg.BaseLimitPerMin = 100
@@ -93,7 +88,6 @@ func TierLimit(tier FraudRLTier, cfg FraudRLConfig) int {
 	return limit
 }
 
-// RetryAfterSec returns Retry-After seconds for a tier.
 func RetryAfterSec(tier FraudRLTier, cfg FraudRLConfig) int {
 	switch tier {
 	case FraudRLTierBlock:
@@ -119,7 +113,6 @@ func RetryAfterSec(tier FraudRLTier, cfg FraudRLConfig) int {
 	}
 }
 
-// ShouldBlockTier reports whether the tier is an immediate edge block (score > 80).
 func ShouldBlockTier(tier FraudRLTier) bool {
 	return tier == FraudRLTierBlock
 }

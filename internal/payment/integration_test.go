@@ -31,7 +31,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-// setupTestDB provisions Postgres with ads and payment schemas for end-to-end settlement tests.
 func setupTestDB(t testing.TB) (*pgxpool.Pool, func()) {
 	t.Helper()
 	ctx := context.Background()
@@ -75,7 +74,6 @@ func setupTestDB(t testing.TB) (*pgxpool.Pool, func()) {
 	}
 }
 
-// applyMigrations runs goose Up sections in filename order without pulling goose as a test dependency.
 func applyMigrations(t testing.TB, pool *pgxpool.Pool, dir string) {
 	t.Helper()
 	ctx := context.Background()
@@ -110,7 +108,6 @@ func applyMigrations(t testing.TB, pool *pgxpool.Pool, dir string) {
 	}
 }
 
-// setupTestRedis provides the Redis shard management needs for settlement side effects.
 func setupTestRedis(t testing.TB) (redis.UniversalClient, func()) {
 	ctx := context.Background()
 
@@ -134,8 +131,6 @@ func setupTestRedis(t testing.TB) (redis.UniversalClient, func()) {
 	}
 }
 
-// TestPaymentService_Integration covers intent creation, webhook ingestion, outbox delivery, and ledger credit.
-// Requires a customer row in ads.customers because settlement credits the management ledger.
 func TestPaymentService_Integration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping testcontainers integration test in short mode")
@@ -261,7 +256,6 @@ func TestPaymentService_Integration(t *testing.T) {
 	assert.Equal(t, "payment:"+uuid.UUID(intent.ID.Bytes).String(), ledgerRows[0].IdempotencyHash.String)
 	assert.Equal(t, ingestion.ToUUID(uuid.UUID(intent.ID.Bytes)), ledgerRows[0].PaymentIntentID)
 
-	// Refund half the top-up via Stripe webhook and settle the reverse-balance outbox.
 	refundMicro := amountMicro / 2
 	refundID := "re_integration_" + uuid.New().String()
 	refundCents, err := MicroToStripeAmount(refundMicro)

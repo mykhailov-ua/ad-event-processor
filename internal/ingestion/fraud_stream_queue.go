@@ -15,7 +15,6 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-// M14-10: analytical lane 3584 + critical lane 512 (total 4096). Analytical keeps M11 agg at ≥80%.
 const (
 	fraudAnalyticalCapacity = 3584
 	fraudAnalyticalUsable   = fraudAnalyticalCapacity - 1
@@ -25,7 +24,6 @@ const (
 	fraudCriticalUsable   = fraudCriticalCapacity - 1
 	fraudCriticalSpinMax  = 32
 
-	// Compat aliases used by aggregate threshold and older tests.
 	fraudRingCapacity = fraudAnalyticalCapacity
 	fraudRingUsable   = fraudAnalyticalUsable
 
@@ -40,7 +38,6 @@ const (
 	fraudSlotReasonMax  = 128
 )
 
-// fraudStreamSlot stores one fraud event in fixed arrays to avoid heap allocations on enqueue.
 type fraudStreamSlot struct {
 	ready      atomic.Uint32
 	shard      uint8
@@ -68,7 +65,6 @@ type fraudStreamSlot struct {
 	ghostEvent bool
 }
 
-// FraudStreamWriter decouples fraud telemetry from the gnet hot path via lossy async queues.
 type FraudStreamWriter struct {
 	_           [64]byte
 	writeCursor uint64
@@ -108,7 +104,6 @@ type FraudStreamWriter struct {
 	aggWg  sync.WaitGroup
 }
 
-// NewFraudStreamWriter starts the background drainer when Redis and stream name are configured.
 func NewFraudStreamWriter(rdbs []redis.UniversalClient, stream string, maxLen int64) *FraudStreamWriter {
 	if len(rdbs) == 0 || stream == "" {
 		return nil
@@ -130,7 +125,6 @@ func NewFraudStreamWriter(rdbs []redis.UniversalClient, stream string, maxLen in
 	return q
 }
 
-// copyFraudField stores fraud strings in fixed ring slots so enqueue avoids heap allocations.
 func copyFraudField(dst []byte, s string) int {
 	n := len(s)
 	if n > len(dst) {
@@ -159,7 +153,6 @@ func fillFraudSlot(slot *fraudStreamSlot, shard int, evt *campaignmodel.Event) {
 	slot.ready.Store(1)
 }
 
-// Enqueue routes critical (L1/L3) events to the reserved lane; others use analytical + M11 agg.
 func (q *FraudStreamWriter) Enqueue(shard int, evt *campaignmodel.Event) bool {
 	if q == nil || evt == nil {
 		return true
@@ -183,7 +176,6 @@ func (q *FraudStreamWriter) Enqueue(shard int, evt *campaignmodel.Event) bool {
 	return q.enqueueAnalytical(shard, evt)
 }
 
-// SetForceAggregate enables aggregating=force when fraud consumer lag exceeds threshold (M14-12).
 func (q *FraudStreamWriter) SetForceAggregate(force bool) {
 	if q == nil {
 		return
@@ -247,7 +239,6 @@ func (q *FraudStreamWriter) enqueueAnalytical(shard int, evt *campaignmodel.Even
 	return q.enqueueRing(shard, evt)
 }
 
-// enqueueRing copies a fraud event into the analytical MPSC ring; false means overflow.
 func (q *FraudStreamWriter) enqueueRing(shard int, evt *campaignmodel.Event) bool {
 	for {
 		alloc := atomic.LoadUint64(&q.allocCursor)
@@ -287,7 +278,6 @@ func (q *FraudStreamWriter) enqueueRing(shard int, evt *campaignmodel.Event) boo
 	}
 }
 
-// Pending exposes ring backlog so operators can alert before fraud telemetry is dropped.
 func (q *FraudStreamWriter) Pending() uint64 {
 	if q == nil {
 		return 0
@@ -303,7 +293,6 @@ func pendingDelta(head, tail uint64) uint64 {
 	return head - tail
 }
 
-// Stop drains pending fraud events and waits for the background worker to exit.
 func (q *FraudStreamWriter) Stop() {
 	if q == nil {
 		return
@@ -472,8 +461,6 @@ func marshalFraudStreamSlot(slot *fraudStreamSlot) ([]byte, *ByteSliceValue, *[]
 	return data, wrap, bufPtr
 }
 
-// enqueueFraudReject enqueues a rejected fraud event, counting analytical drops when the ring is full.
-// Critical-lane drops are counted inside enqueueCritical.
 func enqueueFraudReject(writer *FraudStreamWriter, shard int, evt *campaignmodel.Event) {
 	if writer == nil {
 		return

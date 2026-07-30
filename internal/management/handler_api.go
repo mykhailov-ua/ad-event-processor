@@ -13,7 +13,6 @@ import (
 
 const maxStatsRange = 90 * 24 * time.Hour
 
-// registerAPIRoutes mounts read-only /api/v1 reporting endpoints.
 func (h *Handler) registerAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/campaigns/{id}/stats", h.limit(h.perm(h.getCampaignStats, PermCampaignsRead)))
 	mux.HandleFunc("GET /api/v1/customers/{id}/balance", h.limit(h.perm(h.getCustomerBalance, PermCustomersRead)))
@@ -25,7 +24,6 @@ func (h *Handler) registerAPIRoutes(mux *http.ServeMux) {
 	h.registerRegionIngestRoutes(mux)
 }
 
-// getCampaignStats handles GET /api/v1/campaigns/{id}/stats.
 func (h *Handler) getCampaignStats(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	campaignID, err := uuid.Parse(idStr)
@@ -99,7 +97,6 @@ func errInvalidQuery(msg string) error {
 
 func (e invalidQueryError) Error() string { return string(e) }
 
-// parseAPIPagination applies M1 defaults: limit default 50, max 1000.
 func parseAPIPagination(r *http.Request) (int32, int32) {
 	limit := int32(50)
 	if l, err := strconv.ParseInt(r.URL.Query().Get("limit"), 10, 32); err == nil && l > 0 {

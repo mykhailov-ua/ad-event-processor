@@ -19,14 +19,12 @@ var localQuotaReturnLua string
 
 var localQuotaReturnScript = redis.NewScript(localQuotaReturnLua)
 
-// Flush reason labels for ad_local_quota_flush_total (M14-13/15).
 const (
 	FlushReasonPause    = "pause"
 	FlushReasonShutdown = "shutdown"
 	FlushReasonStrict   = "strict"
 )
 
-// TakeRemaining atomically drains the campaign's local quantum and returns the amount taken.
 func (l *LocalQuantaLedger) TakeRemaining(id uuid.UUID) int64 {
 	if l == nil {
 		return 0
@@ -46,8 +44,6 @@ func (l *LocalQuantaLedger) TakeRemaining(id uuid.UUID) int64 {
 	}
 }
 
-// FlushOccupied iterates all occupied cells and invokes fn(campaignID, remaining).
-// Used on SIGTERM; cold path only.
 func (l *LocalQuantaLedger) FlushOccupied(fn func(campaignID uuid.UUID, remaining int64)) {
 	if l == nil || fn == nil {
 		return
@@ -73,7 +69,6 @@ func (l *LocalQuantaLedger) FlushOccupied(fn func(campaignID uuid.UUID, remainin
 	}
 }
 
-// LocalQuantaFlusher returns unused RAM quanta to Redis (and optional broker) on pause/shutdown.
 type LocalQuantaFlusher struct {
 	ledger    *LocalQuantaLedger
 	rdbs      []redis.UniversalClient
@@ -81,7 +76,6 @@ type LocalQuantaFlusher struct {
 	publisher *BudgetDeltaPublisher
 }
 
-// NewLocalQuantaFlusher constructs a cold-path flusher.
 func NewLocalQuantaFlusher(
 	ledger *LocalQuantaLedger,
 	rdbs []redis.UniversalClient,
@@ -99,7 +93,6 @@ func NewLocalQuantaFlusher(
 	}
 }
 
-// FlushLocalQuanta drains one campaign's RAM quantum back to Redis budget:quota (M14-13).
 func (f *LocalQuantaFlusher) FlushLocalQuanta(ctx context.Context, campaignID uuid.UUID, reason string) int64 {
 	if f == nil || f.ledger == nil {
 		return 0
@@ -110,7 +103,6 @@ func (f *LocalQuantaFlusher) FlushLocalQuanta(ctx context.Context, campaignID uu
 	}
 	if err := f.returnToRedis(ctx, campaignID, taken); err != nil {
 		slog.Warn("local quanta flush redis return failed", "campaign_id", campaignID, "amount", taken, "error", err)
-		// Best-effort: still publish return delta for recon.
 	}
 	if f.publisher != nil {
 		f.publisher.PublishReturn(campaignID, taken)
@@ -122,7 +114,6 @@ func (f *LocalQuantaFlusher) FlushLocalQuanta(ctx context.Context, campaignID uu
 	return taken
 }
 
-// FlushAll drains every occupied cell (M14-14 graceful shutdown).
 func (f *LocalQuantaFlusher) FlushAll(ctx context.Context) int {
 	if f == nil || f.ledger == nil {
 		return 0
@@ -163,11 +154,9 @@ func (f *LocalQuantaFlusher) returnToRedis(ctx context.Context, campaignID uuid.
 	return err
 }
 
-// AdaptiveChunkSizeStrict lowers the floor when redis remaining approaches the strict threshold (M14-15).
 func AdaptiveChunkSizeStrict(emaRPS float64, floorMicro, ceilingMicro, baseChunk, redisRemaining, strictThreshold int64) int64 {
 	floor := floorMicro
 	if strictThreshold > 0 && redisRemaining > 0 && redisRemaining < strictThreshold*2 {
-		// Halve floor near the strict band to shrink stranded quanta.
 		half := floorMicro / 2
 		if half < 100_000 {
 			half = 100_000
@@ -188,10 +177,8 @@ func AdaptiveChunkSizeStrict(emaRPS float64, floorMicro, ceilingMicro, baseChunk
 	return AdaptiveChunkSize(emaRPS, floor, ceilingMicro, baseChunk)
 }
 
-// Wire registry flush callback (set from tracker main).
 var registryQuantaFlush atomic.Pointer[func(uuid.UUID)]
 
-// SetRegistryQuantaFlushHook installs FlushLocalQuanta on PAUSED/ARCHIVED eviction.
 func SetRegistryQuantaFlushHook(fn func(uuid.UUID)) {
 	if fn == nil {
 		registryQuantaFlush.Store(nil)

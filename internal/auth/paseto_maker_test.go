@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestPasetoMaker verifies that issued PASETO tokens round-trip with expected identity claims.
 func TestPasetoMaker(t *testing.T) {
 	maker, err := NewPasetoMaker("12345678901234567890123456789012")
 	require.NoError(t, err)
@@ -38,7 +37,6 @@ func TestPasetoMaker(t *testing.T) {
 	require.WithinDuration(t, expiredAt, payload.ExpiredAt, time.Second)
 }
 
-// TestExpiredPasetoToken rejects access tokens that are already past their expiry window.
 func TestExpiredPasetoToken(t *testing.T) {
 	maker, err := NewPasetoMaker("12345678901234567890123456789012")
 	require.NoError(t, err)
@@ -53,7 +51,6 @@ func TestExpiredPasetoToken(t *testing.T) {
 	require.Nil(t, payload)
 }
 
-// TestInvalidPasetoToken rejects tokens encrypted with a different symmetric key.
 func TestInvalidPasetoToken(t *testing.T) {
 	maker1, _ := NewPasetoMaker("12345678901234567890123456789012")
 	maker2, _ := NewPasetoMaker("00000000000000000000000000000000")
@@ -66,7 +63,6 @@ func TestInvalidPasetoToken(t *testing.T) {
 	require.Nil(t, payload)
 }
 
-// TestNewPasetoMaker_InvalidKey rejects misconfigured encryption keys at startup.
 func TestNewPasetoMaker_InvalidKey(t *testing.T) {
 	_, err := NewPasetoMaker("short")
 	require.Error(t, err)

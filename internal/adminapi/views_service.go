@@ -12,13 +12,11 @@ var (
 	ErrViewNotFound = errors.New("view not found")
 )
 
-// Service will own PG CRUD for saved_report_views (M6 ADM-W5).
 type Service struct {
 	mu    sync.RWMutex
 	views map[string]SavedViewDTO
 }
 
-// NewService returns a views service stub.
 func NewService() *Service {
 	return &Service{
 		views: make(map[string]SavedViewDTO),

@@ -1,7 +1,5 @@
 package rtb
 
-// candidateBucketSoA stores hot-path candidate fields in bucket iteration order.
-// All slices share the same length; populated on the cold catalog rebuild path.
 type candidateBucketSoA struct {
 	CatalogIdx            []uint32
 	CreativeIDs           []CreativeID

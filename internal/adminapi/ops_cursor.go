@@ -10,7 +10,6 @@ type fanOutCursorState struct {
 	Sources map[string]string `json:"sources"`
 }
 
-// EncodeFanOutCursor serializes cursor state to opaque base64 JSON.
 func EncodeFanOutCursor(state map[string]string) (string, error) {
 	if len(state) == 0 {
 		return "", nil
@@ -22,7 +21,6 @@ func EncodeFanOutCursor(state map[string]string) (string, error) {
 	return base64.RawURLEncoding.EncodeToString(raw), nil
 }
 
-// DecodeFanOutCursor parses an opaque cursor query parameter.
 func DecodeFanOutCursor(raw string) (map[string]string, error) {
 	if raw == "" {
 		return map[string]string{}, nil

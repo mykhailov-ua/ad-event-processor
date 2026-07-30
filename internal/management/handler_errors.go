@@ -17,7 +17,6 @@ func (e validationError) Error() string { return string(e) }
 
 func errValidation(msg string) error { return validationError(msg) }
 
-// mapServiceError maps domain failures to stable client-facing codes without leaking store internals.
 func mapServiceError(err error) (status int, code, message string) {
 	if err == nil {
 		return http.StatusOK, "", ""
@@ -128,7 +127,6 @@ func badRequestMessage(err error) (string, bool) {
 	}
 }
 
-// writeServiceError logs server failures and returns a sanitized HTTP error body.
 func writeServiceError(w http.ResponseWriter, err error, logAttrs ...any) {
 	status, code, message := mapServiceError(err)
 	if status >= http.StatusInternalServerError {

@@ -1,6 +1,5 @@
 package licensing
 
-// Limits holds quantitative caps for the installation or a single customer.
 type Limits struct {
 	MaxRPS              uint64 `json:"max_rps"`
 	MaxRequestsPerDay   uint64 `json:"max_requests_per_day"`
@@ -13,7 +12,6 @@ type Limits struct {
 	QuotaResetTimezone  string `json:"quota_reset_timezone"`
 }
 
-// FeatureSet holds boolean capabilities.
 type FeatureSet struct {
 	RtbLive       bool `json:"rtb_live"`
 	OpenRTBEngine bool `json:"openrtb_engine"`
@@ -25,14 +23,12 @@ type FeatureSet struct {
 	MarginGuard   bool `json:"margin_guard"`
 }
 
-// Entitlements bundles Limits and FeatureSet.
 type Entitlements struct {
 	VolumeBand VolumeBand `json:"volume_band,omitempty"`
 	Limits     Limits     `json:"limits"`
 	Features   FeatureSet `json:"features"`
 }
 
-// LimitsDTO is a DTO copy of Limits for JSON stability.
 type LimitsDTO struct {
 	MaxRPS              uint64 `json:"max_rps"`
 	MaxRequestsPerDay   uint64 `json:"max_requests_per_day"`
@@ -45,7 +41,6 @@ type LimitsDTO struct {
 	QuotaResetTimezone  string `json:"quota_reset_timezone"`
 }
 
-// FeatureSetDTO is a DTO copy of FeatureSet for JSON stability.
 type FeatureSetDTO struct {
 	RtbLive       bool `json:"rtb_live"`
 	OpenRTBEngine bool `json:"openrtb_engine"`
@@ -57,18 +52,17 @@ type FeatureSetDTO struct {
 	MarginGuard   bool `json:"margin_guard"`
 }
 
-// LicenseStatusDTO represents the DTO for GET /api/v1/license/status.
 type LicenseStatusDTO struct {
 	DeploymentID   string        `json:"deployment_id"`
 	LicenseID      string        `json:"license_id"`
-	Plan           string        `json:"plan"`        // starter|growth|enterprise
-	VolumeBand     string        `json:"volume_band"` // S|M|L
-	State          string        `json:"state"`       // ACTIVE|GRACE|EXPIRED|REVOKED
+	Plan           string        `json:"plan"`
+	VolumeBand     string        `json:"volume_band"`
+	State          string        `json:"state"`
 	ValidUntil     string        `json:"valid_until"`
 	GraceEndsAt    string        `json:"grace_ends_at,omitempty"`
 	Limits         LimitsDTO     `json:"limits"`
 	Features       FeatureSetDTO `json:"features"`
 	LastVerifiedAt string        `json:"last_verified_at"`
-	RefreshMode    string        `json:"refresh_mode"` // file|online
+	RefreshMode    string        `json:"refresh_mode"`
 	LastRefreshErr string        `json:"last_refresh_error,omitempty"`
 }

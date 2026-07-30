@@ -23,7 +23,7 @@ func TestLGBMScorer(t *testing.T) {
 			IPAddress:        "1.2.3.4",
 			CampaignID:       "00000000-0000-0000-0000-000000000001",
 			Events:           10,
-			Clicks:           2, // Clicks < 5.0 -> left_child -> leaf_value = 0.1
+			Clicks:           2,
 			SpendMicro:       1000000,
 			BudgetLimitMicro: 5000000,
 			UniqueUsers:      1,
@@ -34,7 +34,7 @@ func TestLGBMScorer(t *testing.T) {
 			IPAddress:        "5.6.7.8",
 			CampaignID:       "00000000-0000-0000-0000-000000000002",
 			Events:           100,
-			Clicks:           10, // Clicks >= 5.0 -> right_child -> leaf_value = 0.9
+			Clicks:           10,
 			SpendMicro:       10000000,
 			BudgetLimitMicro: 50000000,
 			UniqueUsers:      5,
@@ -48,10 +48,6 @@ func TestLGBMScorer(t *testing.T) {
 	}
 
 	assert.Len(t, scores, 2)
-	// LightGBM binary classification output is usually transformed using sigmoid.
-	// Since go-lgbm applies the sigmoid transformation automatically unless raw predictions are requested:
-	// sigmoid(0.1) = 1 / (1 + e^-0.1) = 0.52497
-	// sigmoid(0.9) = 1 / (1 + e^-0.9) = 0.71094
 	assert.InDelta(t, 0.52497, scores[0], 1e-4)
 	assert.InDelta(t, 0.71094, scores[1], 1e-4)
 }

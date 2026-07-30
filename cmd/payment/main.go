@@ -1,4 +1,3 @@
-// Command payment wires gRPC intents, Stripe webhooks, and settlement outbox outside the management HTTP process.
 package main
 
 import (

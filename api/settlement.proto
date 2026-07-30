@@ -5,52 +5,43 @@ package settlement;
 option go_package = "espx/internal/management/pb;pb";
 
 service SettlementService {
-  // Called from payment outbox; ledger idempotency makes retries safe after transient gRPC failures.
   rpc ApplyPaymentCredit(ApplyPaymentCreditRequest) returns (ApplyPaymentCreditResponse);
 
-  // Called from payment outbox on Stripe refund webhooks; debits balance idempotently by refund id.
   rpc ApplyPaymentRefund(ApplyPaymentRefundRequest) returns (ApplyPaymentRefundResponse);
 
-  // Called from payment outbox when Stripe withdraws disputed funds from the platform account.
   rpc ApplyPaymentChargeback(ApplyPaymentChargebackRequest) returns (ApplyPaymentChargebackResponse);
 
-  // Called from payment outbox when Stripe reinstates funds after a won dispute.
   rpc ApplyPaymentChargebackReversal(ApplyPaymentChargebackReversalRequest) returns (ApplyPaymentChargebackReversalResponse);
 
-  // Read-only ledger lookup by payment_intent_id for payment financial recon.
   rpc GetLedgerEntry(GetLedgerEntryRequest) returns (GetLedgerEntryResponse);
 
-  // BlockIP enqueues a fraud blacklist update via management outbox (internal IVT path).
   rpc BlockIP(BlockIPRequest) returns (BlockIPResponse);
 
-  // EnqueueFraudThreat enqueues a fraud enforcement action (boost, blacklist, ghost IVT).
   rpc EnqueueFraudThreat(EnqueueFraudThreatRequest) returns (EnqueueFraudThreatResponse);
 
-  // BatchApplySettlement drains payment outbox rows after management outages (<=500 ops per call).
   rpc BatchApplySettlement(BatchApplySettlementRequest) returns (BatchApplySettlementResponse);
 
-  // ApplyCTVSettlement settles CTV inventory spend with gross receipts tax before ledger commit (GAP-RTB-12a).
   rpc ApplyCTVSettlement(ApplyCTVSettlementRequest) returns (ApplyCTVSettlementResponse);
 }
 
 message ApplyPaymentCreditRequest {
   string customer_id = 1;
   int64 amount_micro = 2;
-  string ledger_idempotency_key = 3; // e.g. "stripe:evt_01H..."
+  string ledger_idempotency_key = 3;
   string payment_intent_id = 4;
   string provider = 5;
   string provider_ref = 6;
 }
 
 message ApplyPaymentCreditResponse {
-  bool applied = 1; // false = duplicate idempotency hit (still success)
+  bool applied = 1;
   int64 ledger_entry_id = 2;
 }
 
 message ApplyPaymentRefundRequest {
   string customer_id = 1;
-  int64 amount_micro = 2; // positive debit magnitude
-  string ledger_idempotency_key = 3; // e.g. "refund:re_01H..."
+  int64 amount_micro = 2;
+  string ledger_idempotency_key = 3;
   string payment_intent_id = 4;
   string provider = 5;
   string provider_refund_id = 6;
@@ -64,7 +55,7 @@ message ApplyPaymentRefundResponse {
 message ApplyPaymentChargebackRequest {
   string customer_id = 1;
   int64 amount_micro = 2;
-  string ledger_idempotency_key = 3; // e.g. "chargeback:withdrawn:dp_01H..."
+  string ledger_idempotency_key = 3;
   string payment_intent_id = 4;
   string provider = 5;
   string provider_dispute_id = 6;
@@ -78,7 +69,7 @@ message ApplyPaymentChargebackResponse {
 message ApplyPaymentChargebackReversalRequest {
   string customer_id = 1;
   int64 amount_micro = 2;
-  string ledger_idempotency_key = 3; // e.g. "chargeback:reinstated:dp_01H..."
+  string ledger_idempotency_key = 3;
   string payment_intent_id = 4;
   string provider = 5;
   string provider_dispute_id = 6;
@@ -112,7 +103,7 @@ message GetLedgerEntryResponse {
 
 message BlockIPRequest {
   string ip = 1;
-  string source = 2; // e.g. "fraud"
+  string source = 2;
 }
 
 message BlockIPResponse {
@@ -120,7 +111,7 @@ message BlockIPResponse {
 }
 
 message EnqueueFraudThreatRequest {
-  string action = 1; // e.g. "boost", "blacklist", "ghost"
+  string action = 1;
   string ip = 2;
   string campaign_id = 3;
   double score = 4;
@@ -142,7 +133,7 @@ message BatchApplySettlementRequest {
 message BatchSettlementItemResult {
   bool applied = 1;
   int64 ledger_entry_id = 2;
-  string error = 3; // empty on success
+  string error = 3;
 }
 
 message BatchApplySettlementResponse {

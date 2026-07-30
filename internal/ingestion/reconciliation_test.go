@@ -15,7 +15,6 @@ import (
 	"espx/internal/metrics"
 )
 
-// Campaign repo stub with configurable spend for drift detection tests.
 type MockCampaignRepository struct {
 	campaigns []*campaignmodel.Campaign
 }

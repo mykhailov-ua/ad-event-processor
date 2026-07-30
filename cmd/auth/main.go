@@ -1,4 +1,3 @@
-// Command auth wires the session and credential gRPC service in a dedicated process.
 package main
 
 import (

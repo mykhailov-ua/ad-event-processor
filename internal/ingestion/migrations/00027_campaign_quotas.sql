@@ -1,8 +1,3 @@
--- 00027_campaign_quotas.sql: Postgres control-plane rows for Distributed Quotas (Phase 1.1).
--- reserved_amount tracks micro-units allocated to Redis budget:quota:{cid} but not yet
--- reflected in campaigns.current_spend. Invariant enforced at reserve time:
---   current_spend + reserved_amount + chunk <= budget_limit
--- shard_id must match StaticSlotSharder(campaign_id); no user_id routing.
 
 -- +goose Up
 -- +goose StatementBegin

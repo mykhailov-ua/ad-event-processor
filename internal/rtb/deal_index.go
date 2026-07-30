@@ -4,7 +4,6 @@ import "sync/atomic"
 
 const dealIDMaxLen = 64
 
-// DealData is the cold-path input shape for PMP deal targeting and floors.
 type DealData struct {
 	DealID     string
 	FloorMicro int64
@@ -27,12 +26,10 @@ type dealSnapshot struct {
 	entries  []dealEntry
 }
 
-// DealIndex holds an atomically swapped deal catalog for read-only hot-path lookups.
 type DealIndex struct {
 	snap atomic.Pointer[dealSnapshot]
 }
 
-// NewDealIndex creates an empty deal index.
 func NewDealIndex() *DealIndex {
 	idx := &DealIndex{}
 	idx.snap.Store(&dealSnapshot{
@@ -41,7 +38,6 @@ func NewDealIndex() *DealIndex {
 	return idx
 }
 
-// UpdateDeals rebuilds the in-memory deal index from Postgres rows.
 func (idx *DealIndex) UpdateDeals(deals []DealData) {
 	if deals == nil {
 		deals = []DealData{}
@@ -71,7 +67,6 @@ func (idx *DealIndex) UpdateDeals(deals []DealData) {
 	idx.snap.Store(snap)
 }
 
-// Lookup returns one deal by deal_id.
 func (idx *DealIndex) Lookup(dealID string) (DealData, bool) {
 	snap := idx.snap.Load()
 	if snap == nil || dealID == "" {
@@ -81,7 +76,6 @@ func (idx *DealIndex) Lookup(dealID string) (DealData, bool) {
 	return d, ok
 }
 
-// LookupBytes returns one deal by deal_id bytes without heap allocation.
 func (idx *DealIndex) LookupBytes(dealID []byte) (DealData, bool) {
 	ln := len(dealID)
 	if ln == 0 || ln > dealIDMaxLen {
@@ -112,7 +106,6 @@ func bytesEqual(a, b []byte) bool {
 	return true
 }
 
-// All returns a snapshot slice of every deal.
 func (idx *DealIndex) All() []DealData {
 	snap := idx.snap.Load()
 	if snap == nil || len(snap.all) == 0 {
@@ -123,7 +116,6 @@ func (idx *DealIndex) All() []DealData {
 	return out
 }
 
-// Len returns the number of indexed deals.
 func (idx *DealIndex) Len() int {
 	snap := idx.snap.Load()
 	if snap == nil {

@@ -19,7 +19,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// Service owns invoice generation and ledger aggregation in strict pgx transactions.
 type Service struct {
 	pool           *pgxpool.Pool
 	queries        *db.Queries
@@ -37,7 +36,6 @@ func NewService(pool *pgxpool.Pool) *Service {
 	}
 }
 
-// SetInvoiceDeliverer configures post-generation PDF delivery.
 func (service *Service) SetInvoiceDeliverer(deliverer InvoiceDeliverer, baseURL string) {
 	if service == nil {
 		return
@@ -46,7 +44,6 @@ func (service *Service) SetInvoiceDeliverer(deliverer InvoiceDeliverer, baseURL 
 	service.invoiceBaseURL = baseURL
 }
 
-// SetDriftAlerter configures ops alerts on ledger invariant failures.
 func (service *Service) SetDriftAlerter(alerter DriftAlerter) {
 	if service == nil {
 		return
@@ -54,7 +51,6 @@ func (service *Service) SetDriftAlerter(alerter DriftAlerter) {
 	service.driftAlerter = alerter
 }
 
-// ListCustomerIDs returns customer ids for monthly invoice sweeps.
 func (service *Service) ListCustomerIDs(ctx context.Context, limit, offset int32) ([]uuid.UUID, error) {
 	if limit <= 0 {
 		limit = 200
@@ -70,7 +66,6 @@ func (service *Service) ListCustomerIDs(ctx context.Context, limit, offset int32
 	return out, nil
 }
 
-// GenerateInvoice aggregates ledger spend for one customer and calendar month.
 func (service *Service) GenerateInvoice(ctx context.Context, customerID uuid.UUID, billingMonth time.Time) (*pb.Invoice, error) {
 	if err := validateBillingMonth(billingMonth); err != nil {
 		return nil, err
@@ -144,7 +139,6 @@ func (service *Service) GenerateInvoice(ctx context.Context, customerID uuid.UUI
 				}
 			}
 
-			// 1. Charge base fee
 			baseFee := plan.BaseFeeMicro
 			baseHash := fmt.Sprintf("subscription:base:%s:%s", customerID.String(), monthStart.Format("2006-01"))
 
@@ -160,7 +154,6 @@ func (service *Service) GenerateInvoice(ctx context.Context, customerID uuid.UUI
 				`, baseFee, customerID)
 			}
 
-			// 2. Charge overage
 			limitEvents := int64(limits.MaxEventsPerMonth)
 			if limitEvents > 0 {
 				var currentEvents int64 = 0
@@ -175,11 +168,11 @@ func (service *Service) GenerateInvoice(ctx context.Context, customerID uuid.UUI
 
 				overageEvents := currentEvents - limitEvents
 				if overageEvents > 0 {
-					var ratePerEvent int64 = 50 // default pro ($50 per 1M)
+					var ratePerEvent int64 = 50
 					if sub.PlanCode == "basic" {
-						ratePerEvent = 100 // $100 per 1M
+						ratePerEvent = 100
 					} else if sub.PlanCode == "enterprise" {
-						ratePerEvent = 20 // $20 per 1M
+						ratePerEvent = 20
 					}
 					overageFee := overageEvents * ratePerEvent
 					overageHash := fmt.Sprintf("subscription:overage:%s:%s", customerID.String(), monthStart.Format("2006-01"))
@@ -383,7 +376,6 @@ func pgTimestamp(t time.Time) pgtype.Timestamp {
 	return pgtype.Timestamp{Time: t.UTC(), Valid: true}
 }
 
-// ParseBillingMonth parses YYYY-MM into the first day of that month in UTC.
 func ParseBillingMonth(raw string) (time.Time, error) {
 	t, err := time.Parse("2006-01", raw)
 	if err != nil {

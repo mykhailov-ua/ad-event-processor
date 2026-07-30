@@ -1,4 +1,3 @@
-# NodePort exposes processor /health and /metrics for host-network Prometheus scrape.
 apiVersion: v1
 kind: Service
 metadata:

@@ -31,7 +31,6 @@ func testTrackRequestJSON(tb testing.TB) []byte {
 	return data
 }
 
-// trackRequestReflect is the encoding/json baseline used only in benchmarks and parity tests.
 type trackRequestReflect struct {
 	CampaignID uuid.UUID       `json:"campaign_id"`
 	UserID     string          `json:"user_id"`

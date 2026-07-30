@@ -26,7 +26,6 @@ const (
 	defaultOpLeaseExpireBatch   = int32(500)
 )
 
-// OperationLeaseBookRequest books one replicated operation lease row.
 type OperationLeaseBookRequest struct {
 	OpID         uuid.UUID
 	RegionCode   int16
@@ -39,7 +38,6 @@ type OperationLeaseBookRequest struct {
 	BookAckNodes []string
 }
 
-// OperationLeaseBookResult is the outcome of a book attempt including quorum status (C3).
 type OperationLeaseBookResult struct {
 	Lease     db.OperationLease
 	AckCount  int32
@@ -47,10 +45,8 @@ type OperationLeaseBookResult struct {
 	QuorumMet bool
 }
 
-// OperationLeaseExecuteFunc runs irreversible side effects after ClaimConfirm.
 type OperationLeaseExecuteFunc func(ctx context.Context, lease db.OperationLease, claim dedup.ClaimResult) error
 
-// OperationLeaseWorker books, claims, and completes replicated cold-path operations.
 type OperationLeaseWorker struct {
 	svc            *Service
 	nodeID         string
@@ -67,7 +63,6 @@ type OperationLeaseWorker struct {
 	onRenew        LeaseRenewHook
 }
 
-// NewOperationLeaseWorker constructs a lease worker for the local management cell.
 func NewOperationLeaseWorker(svc *Service) *OperationLeaseWorker {
 	nodeID, _ := os.Hostname()
 	timeoutSec := 30
@@ -112,7 +107,6 @@ func NewOperationLeaseWorker(svc *Service) *OperationLeaseWorker {
 	}
 }
 
-// SetExecutor registers the side-effect handler for polled booked leases.
 func (w *OperationLeaseWorker) SetExecutor(fn OperationLeaseExecuteFunc) {
 	if w == nil {
 		return
@@ -120,7 +114,6 @@ func (w *OperationLeaseWorker) SetExecutor(fn OperationLeaseExecuteFunc) {
 	w.executor = fn
 }
 
-// SetOpKeyPoolGate wires OpKeyPool backpressure for book shedding (C7).
 func (w *OperationLeaseWorker) SetOpKeyPoolGate(gate OpKeyPoolGate) {
 	if w == nil {
 		return
@@ -128,7 +121,6 @@ func (w *OperationLeaseWorker) SetOpKeyPoolGate(gate OpKeyPoolGate) {
 	w.opKeyGate = gate
 }
 
-// Book inserts a lease with PG-authoritative deadline_at (C4) and replica rows.
 func (w *OperationLeaseWorker) Book(ctx context.Context, req OperationLeaseBookRequest) (OperationLeaseBookResult, error) {
 	empty := OperationLeaseBookResult{}
 	if w == nil || w.svc == nil || w.svc.pool == nil {
@@ -217,7 +209,6 @@ func (w *OperationLeaseWorker) Book(ctx context.Context, req OperationLeaseBookR
 	return result, ErrLeaseQuorumNotMet
 }
 
-// AckBook records a replica book ACK and returns quorum status (C3).
 func (w *OperationLeaseWorker) AckBook(ctx context.Context, opID uuid.UUID, nodeID string) (OperationLeaseBookResult, error) {
 	empty := OperationLeaseBookResult{}
 	if w == nil || w.svc == nil || w.svc.pool == nil {
@@ -279,7 +270,6 @@ func (w *OperationLeaseWorker) quorumStatus(ctx context.Context, opID uuid.UUID)
 	}, nil
 }
 
-// ExecuteOp claims executing, runs ClaimConfirm, applies side effects, RecordApply, and completes.
 func (w *OperationLeaseWorker) ExecuteOp(ctx context.Context, opID uuid.UUID, execute OperationLeaseExecuteFunc) error {
 	if w == nil || w.svc == nil || w.svc.pool == nil {
 		return fmt.Errorf("operation lease execute op_id=%s: worker unavailable", opID)
@@ -400,7 +390,6 @@ func (w *OperationLeaseWorker) ExecuteOp(ctx context.Context, opID uuid.UUID, ex
 	return nil
 }
 
-// RenewLease extends deadline_at for the executing holder (C6).
 func (w *OperationLeaseWorker) RenewLease(ctx context.Context, opID uuid.UUID) (db.OperationLease, error) {
 	if w == nil || w.svc == nil || w.svc.pool == nil {
 		return db.OperationLease{}, fmt.Errorf("operation lease renew op_id=%s: worker unavailable", opID)
@@ -439,7 +428,6 @@ func (w *OperationLeaseWorker) nextFencingEpoch(replicaSetID uuid.UUID) (int64, 
 	return w.fencing.Next(replicaSetID)
 }
 
-// RunJanitor expires stale booked/executing leases (C8 leader election).
 func (w *OperationLeaseWorker) RunJanitor(ctx context.Context) (int32, error) {
 	if w == nil || w.svc == nil || w.svc.pool == nil {
 		return 0, nil
@@ -487,7 +475,6 @@ func (w *OperationLeaseWorker) releaseJanitorLock(ctx context.Context) {
 	)
 }
 
-// ProcessBooked drains booked leases assigned to this node through the registered executor.
 func (w *OperationLeaseWorker) ProcessBooked(ctx context.Context) error {
 	if w == nil || w.svc == nil || w.executor == nil {
 		return nil
@@ -517,7 +504,6 @@ func (w *OperationLeaseWorker) ProcessBooked(ctx context.Context) error {
 	return nil
 }
 
-// Start runs the poll + janitor loops until ctx is cancelled.
 func (w *OperationLeaseWorker) Start(ctx context.Context) {
 	if w == nil || w.svc == nil || w.svc.pool == nil {
 		return
@@ -550,7 +536,6 @@ func (w *OperationLeaseWorker) Start(ctx context.Context) {
 	}
 }
 
-// LeaseOpID extracts the UUID from a sqlc lease row.
 func LeaseOpID(lease db.OperationLease) uuid.UUID {
 	if lease.OpID.Valid {
 		return uuid.UUID(lease.OpID.Bytes)
@@ -558,7 +543,6 @@ func LeaseOpID(lease db.OperationLease) uuid.UUID {
 	return uuid.Nil
 }
 
-// LeaseFactorU extracts factor_u from a sqlc lease row.
 func LeaseFactorU(lease db.OperationLease) uuid.UUID {
 	if lease.FactorU.Valid {
 		return uuid.UUID(lease.FactorU.Bytes)
@@ -566,7 +550,6 @@ func LeaseFactorU(lease db.OperationLease) uuid.UUID {
 	return uuid.Nil
 }
 
-// LeaseDeadline returns the PG deadline when present.
 func LeaseDeadline(lease db.OperationLease) time.Time {
 	if lease.DeadlineAt.Valid {
 		return lease.DeadlineAt.Time

@@ -18,12 +18,10 @@ type cohortVariantDTO struct {
 	Flags  map[string]string `json:"flags,omitempty"`
 }
 
-// cohortRegistrySnapshot is an immutable experiment map swapped via atomic.Value.
 type cohortRegistrySnapshot struct {
 	byID map[uuid.UUID]campaignmodel.ExperimentCohort
 }
 
-// SyncCohorts reloads active experiment definitions from Postgres into an atomic snapshot.
 func (r *Registry) SyncCohorts(ctx context.Context) error {
 	if r == nil || r.repo == nil {
 		return nil
@@ -90,7 +88,6 @@ func (r *Registry) cohortSnapshot() *cohortRegistrySnapshot {
 	return v
 }
 
-// AssignExperiment returns the stable variant id and flags for a subject in an experiment.
 func (r *Registry) AssignExperiment(experimentID uuid.UUID, subjectID string) (variantID string, flags map[string]string, ok bool) {
 	if r == nil || subjectID == "" {
 		return "", nil, false
@@ -103,7 +100,6 @@ func (r *Registry) AssignExperiment(experimentID uuid.UUID, subjectID string) (v
 	return variantID, flags, variantID != ""
 }
 
-// ExperimentCount returns active experiments in the current snapshot (test helper).
 func (r *Registry) ExperimentCount() int {
 	return len(r.cohortSnapshot().byID)
 }

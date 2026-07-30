@@ -1,6 +1,5 @@
 package rtb
 
-// buildCreativeCache materializes per-shard creative SoA and campaign index ranges on catalog rebuild.
 func buildCreativeCache(reg *CampaignAuctionRegistry, creatives []CreativeData) {
 	if reg == nil {
 		return

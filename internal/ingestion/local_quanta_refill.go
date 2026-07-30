@@ -33,7 +33,6 @@ type refillSignal struct {
 	shard      int
 }
 
-// QuotaRefillWorker pulls Redis quota chunks into the local ledger (M8-02, M8-10).
 type QuotaRefillWorker struct {
 	ledger       *LocalQuantaLedger
 	rdbs         []redis.UniversalClient
@@ -54,17 +53,15 @@ type QuotaRefillWorker struct {
 	shardInflight [16]atomic.Int32
 }
 
-// QuotaRefillConfig wires refill worker parameters.
 type QuotaRefillConfig struct {
 	BaseChunkMicro int64
 	ThresholdPct   int
 	MaxPerShard    int
 	FloorMicro     int64
 	CeilingMicro   int64
-	StrictEnter    int64 // QUOTA_STRICT_THRESHOLD_MICRO for AdaptiveChunkSizeStrict (M14-15)
+	StrictEnter    int64
 }
 
-// NewQuotaRefillWorker starts the cold-path refill loop.
 func NewQuotaRefillWorker(
 	ledger *LocalQuantaLedger,
 	rdbs []redis.UniversalClient,
@@ -100,7 +97,6 @@ func NewQuotaRefillWorker(
 	return w
 }
 
-// SetStrictMode wires hysteresis + flusher for M14-15 strict-band chunk tuning.
 func (w *QuotaRefillWorker) SetStrictMode(strict *LocalQuantaStrict, flusher *LocalQuantaFlusher) {
 	if w == nil {
 		return
@@ -109,7 +105,6 @@ func (w *QuotaRefillWorker) SetStrictMode(strict *LocalQuantaStrict, flusher *Lo
 	w.flusher = flusher
 }
 
-// Signal schedules an async refill for a campaign (non-blocking hot path).
 func (w *QuotaRefillWorker) Signal(campaignID uuid.UUID) {
 	if w == nil {
 		return
@@ -122,7 +117,6 @@ func (w *QuotaRefillWorker) Signal(campaignID uuid.UUID) {
 	}
 }
 
-// Close stops the refill worker.
 func (w *QuotaRefillWorker) Close() {
 	if w == nil {
 		return
@@ -228,7 +222,6 @@ func (w *QuotaRefillWorker) tryRefill(sig refillSignal) bool {
 	return true
 }
 
-// RecoverFromDeltas replays broker deltas into the ledger on tracker restart (M8-09).
 func (w *QuotaRefillWorker) RecoverFromDeltas(deltas map[uuid.UUID]int64) {
 	if w == nil || w.ledger == nil || len(deltas) == 0 {
 		return

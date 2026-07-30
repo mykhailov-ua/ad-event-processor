@@ -12,10 +12,8 @@ import (
 
 type contextKey string
 
-// NotificationIDContextKey carries the lead notification ID for interactive provider buttons.
 const NotificationIDContextKey contextKey = "notification_id"
 
-// NotificationIDFromContext returns the notification ID injected by ProcessPending.
 func NotificationIDFromContext(ctx context.Context) (string, bool) {
 	id, ok := ctx.Value(NotificationIDContextKey).(string)
 	return id, ok

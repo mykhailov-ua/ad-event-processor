@@ -4,7 +4,6 @@ import (
 	"unsafe"
 )
 
-// keyID identifies a known TrackRequest JSON field without bool chains.
 type keyID uint8
 
 const (
@@ -17,14 +16,13 @@ const (
 	keyPlacementID
 )
 
-// Packed little-endian constants for fixed JSON keys (no per-byte && chains).
 const (
-	u32Type      uint32 = 0x65707974         // "type"
-	u32Payl      uint32 = 0x6c796170         // "payl", first 4 of "payload"
-	u32User      uint32 = 0x72657375         // "user", first 4 of "user_id"
-	u64ClickID   uint64 = 0x64695f6b63696c63 // "click_id"
-	u64Campaign  uint64 = 0x6e676961706d6163 // "campaign", first 8 of "campaign_id"
-	u64Placement uint64 = 0x6e65636d65636170 // "placemen", first 8 of "placement_id"
+	u32Type      uint32 = 0x65707974
+	u32Payl      uint32 = 0x6c796170
+	u32User      uint32 = 0x72657375
+	u64ClickID   uint64 = 0x64695f6b63696c63
+	u64Campaign  uint64 = 0x6e676961706d6163
+	u64Placement uint64 = 0x6e65636d65636170
 )
 
 var jsonWhitespace [256]byte
@@ -51,7 +49,6 @@ func skipJSONWS(data []byte, i, n int) int {
 	return i
 }
 
-// matchTrackKey maps a JSON object key slice to keyID using length + packed compares.
 func matchTrackKey(key []byte) keyID {
 	switch len(key) {
 	case 4:
@@ -85,12 +82,10 @@ func matchTrackKey(key []byte) keyID {
 	return keyUnknown
 }
 
-// ParseTrackRequestJSONOpt is an alias kept for benchmark parity labels.
 func ParseTrackRequestJSONOpt(v *TrackRequest, data []byte) error {
 	return parseTrackRequestJSON(v, data)
 }
 
-// parseTrackRequestJSON is the production JSON DFA: length switch + packed key compares.
 func parseTrackRequestJSON(v *TrackRequest, data []byte) error {
 	v.resetForParse()
 	if len(data) == 0 {

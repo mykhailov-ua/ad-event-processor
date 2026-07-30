@@ -20,5 +20,4 @@ CREATE INDEX idx_ctv_gtax_settlements_campaign
 -- +goose Down
 -- +goose StatementBegin
 DROP TABLE IF EXISTS ctv_gtax_settlements;
--- Note: PostgreSQL cannot remove enum values; CTV_GTAX remains on ledger_type.
 -- +goose StatementEnd

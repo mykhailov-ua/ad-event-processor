@@ -6,7 +6,6 @@ import (
 	"testing"
 )
 
-// Tracks hot-path auction latency with campaigns spread across geo shards.
 func BenchmarkAuction(b *testing.B) {
 	SetMetricsEnabled(false)
 	store := NewBudgetStore()
@@ -41,7 +40,6 @@ func BenchmarkAuction(b *testing.B) {
 	}
 }
 
-// Tracks worst-case scan cost when many campaigns share one geo shard.
 func BenchmarkAuction_highDensity(b *testing.B) {
 	SetMetricsEnabled(false)
 	store := NewBudgetStore()
@@ -75,7 +73,6 @@ func BenchmarkAuction_highDensity(b *testing.B) {
 	}
 }
 
-// Tracks multi-creative video auction latency with creative-level bucket materialization.
 func BenchmarkRunAuction_MultiCreative(b *testing.B) {
 	SetMetricsEnabled(false)
 	store := NewBudgetStore()

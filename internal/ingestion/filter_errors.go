@@ -9,10 +9,8 @@ import (
 	"espx/internal/metrics"
 )
 
-// filterRejectKind classifies filter errors into stable HTTP and metrics responses.
 type filterRejectKind uint8
 
-// Filter rejection categories mapped to HTTP status and metric labels.
 const (
 	filterRejectEmergencyBreaker filterRejectKind = iota
 	filterRejectRateLimit
@@ -35,7 +33,6 @@ const (
 	filterRejectShardUnavailable
 )
 
-// filterRejectSpec holds the HTTP response template for a rejection kind.
 type filterRejectSpec struct {
 	status      int
 	body        string
@@ -43,7 +40,6 @@ type filterRejectSpec struct {
 	metricLabel string
 }
 
-// filterRejectSpecs is the lookup table from rejection kind to client response.
 var filterRejectSpecs = [...]filterRejectSpec{
 	filterRejectEmergencyBreaker:   {http.StatusServiceUnavailable, "service temporarily unavailable", respEmergencyBreaker, "emergency_breaker"},
 	filterRejectRateLimit:          {http.StatusTooManyRequests, "rate limit exceeded", respRateLimit, "rate_limit"},
@@ -66,10 +62,8 @@ var filterRejectSpecs = [...]filterRejectSpec{
 	filterRejectShardUnavailable:   {http.StatusServiceUnavailable, "shard_unavailable", respShardUnavailable, "shard_unavailable"},
 }
 
-// FraudReasonID indexes stable fraud signal codes shared by filters, metrics, and ClickHouse.
 type FraudReasonID uint8
 
-// Stable fraud_reason string values written to streams and fraud_events.
 const (
 	FraudReasonCodeDatacenterIP   = "datacenter_ip"
 	FraudReasonCodeLowTTC         = "low_ttc"
@@ -79,7 +73,6 @@ const (
 	FraudReasonCodeDeviceMismatch = "device_mismatch"
 )
 
-// Fraud signal identifiers; values are stable across deploys for metrics label binding.
 const (
 	FraudReasonNone FraudReasonID = iota
 	FraudReasonDatacenterIP
@@ -103,7 +96,6 @@ type fraudReasonEntry struct {
 	flags  uint8
 }
 
-// fraudReasonRegistry maps signal IDs to stable codes and weighted score contributions.
 var fraudReasonRegistry = [fraudReasonCount]fraudReasonEntry{
 	FraudReasonNone:           {},
 	FraudReasonDatacenterIP:   {code: FraudReasonCodeDatacenterIP, weight: 45, flags: fraudSignalL1High},
@@ -114,7 +106,6 @@ var fraudReasonRegistry = [fraudReasonCount]fraudReasonEntry{
 	FraudReasonDeviceMismatch: {code: FraudReasonCodeDeviceMismatch, weight: 35, flags: fraudSignalL2Weak},
 }
 
-// FraudReasonCode returns the stable string code for metrics and ClickHouse.
 func FraudReasonCode(id FraudReasonID) string {
 	if id >= fraudReasonCount {
 		return ""
@@ -122,7 +113,6 @@ func FraudReasonCode(id FraudReasonID) string {
 	return fraudReasonRegistry[id].code
 }
 
-// FraudSignalWeight returns weighted score points for a registered fraud signal.
 func FraudSignalWeight(id FraudReasonID) uint8 {
 	if id >= fraudReasonCount {
 		return 0
@@ -130,7 +120,6 @@ func FraudSignalWeight(id FraudReasonID) uint8 {
 	return fraudReasonRegistry[id].weight
 }
 
-// FraudSignalFlags returns L1/L2/L3 classification flags for a registered signal.
 func FraudSignalFlags(id FraudReasonID) uint8 {
 	if id >= fraudReasonCount {
 		return 0
@@ -138,7 +127,6 @@ func FraudSignalFlags(id FraudReasonID) uint8 {
 	return fraudReasonRegistry[id].flags
 }
 
-// classifyFilterErr maps domain filter errors to a stable rejection kind.
 func classifyFilterErr(err error) (filterRejectKind, bool) {
 	switch {
 	case errors.Is(err, ErrEmergencyBreakerActive):
@@ -186,7 +174,6 @@ func classifyFilterErr(err error) (filterRejectKind, bool) {
 	}
 }
 
-// isInfraFilterErr treats Redis circuit and network faults as retryable infra failures.
 func isInfraFilterErr(err error) bool {
 	if errors.Is(err, database.ErrRedisCircuitOpen) {
 		return true
@@ -194,7 +181,6 @@ func isInfraFilterErr(err error) bool {
 	return database.IsNetworkOrSystemError(err)
 }
 
-// recordFilterReject increments pre-bound gnet track counters for a rejection kind.
 func (m *preboundTrackMetrics) recordFilterReject(kind filterRejectKind) {
 	switch kind {
 	case filterRejectEmergencyBreaker:
@@ -246,11 +232,9 @@ func (m *preboundTrackMetrics) recordFilterReject(kind filterRejectKind) {
 		m.blockedShardUnavailable.Inc()
 		m.decisionShardUnavailable.Inc()
 	case filterRejectLicenseExpired, filterRejectDailyQuotaExceeded:
-		// Not tracked in preboundTrackMetrics, handled via dynamic recordHTTPFilterReject
 	}
 }
 
-// recordHTTPFilterReject increments stdlib HTTP track blocked counters.
 func recordHTTPFilterReject(kind filterRejectKind) {
 	metrics.FilterBlockedTotal.WithLabelValues(filterRejectSpecs[kind].metricLabel).Inc()
 }

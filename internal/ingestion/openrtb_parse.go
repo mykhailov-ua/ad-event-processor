@@ -1,6 +1,5 @@
 package ingestion
 
-// parseDecimalMicro parses a decimal string like "1.50" or "150" into micro-units (×1_000_000).
 func parseDecimalMicro(b []byte) int64 {
 	i := 0
 	n := len(b)
@@ -39,8 +38,6 @@ func parseDecimalMicro(b []byte) int64 {
 	return val*1000000 + dec
 }
 
-// ParseOpenRTB3Payload parses a nested OpenRTB 3.0 / AdCOM JSON payload on the hot path with 0 allocs.
-// Uses the shared incremental JSON FSM (M12-02); no bytes.Index substring scans.
 func ParseOpenRTB3Payload(payload []byte) (minBid int64, deviceType uint8, categoryMask uint64, isOpenRTB bool) {
 	p := parseOpenRTB3FSM(payload)
 	if !p.IsOpenRTB {
@@ -49,7 +46,6 @@ func ParseOpenRTB3Payload(payload []byte) (minBid int64, deviceType uint8, categ
 	return p.MinBid, p.DeviceType, p.CategoryMask, true
 }
 
-// ParseDealID extracts a PMP deal_id into a heap string (cold/compat). Prefer ParseDealIDBytes on hot path.
 func ParseDealID(payload []byte) string {
 	var buf [ortbDealIDMax]byte
 	n := ParseDealIDBytes(payload, buf[:])
@@ -59,7 +55,6 @@ func ParseDealID(payload []byte) string {
 	return string(buf[:n])
 }
 
-// ParseDealIDBytes copies deal_id into dst without heap allocation; returns length written.
 func ParseDealIDBytes(payload []byte, dst []byte) int {
 	if len(payload) == 0 || len(dst) == 0 {
 		return 0

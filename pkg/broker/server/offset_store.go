@@ -6,7 +6,6 @@ import (
 	"sync"
 )
 
-// OffsetStore persists consumer group offsets for at-least-once delivery.
 type OffsetStore interface {
 	Commit(ctx context.Context, topic, group string, offset uint64) (uint64, error)
 	Committed(ctx context.Context, topic, group string) (uint64, error)
@@ -14,20 +13,17 @@ type OffsetStore interface {
 	ListGroups(ctx context.Context, topic string) (map[string]uint64, error)
 }
 
-// MemoryOffsetStore keeps offsets in-process for standalone broker nodes.
 type MemoryOffsetStore struct {
 	mu      sync.RWMutex
 	byTopic map[string]map[string]uint64
 }
 
-// NewMemoryOffsetStore creates an empty in-memory offset table.
 func NewMemoryOffsetStore() *MemoryOffsetStore {
 	return &MemoryOffsetStore{
 		byTopic: make(map[string]map[string]uint64),
 	}
 }
 
-// Commit stores the next fetch offset when it advances monotonically.
 func (s *MemoryOffsetStore) Commit(_ context.Context, topic, group string, offset uint64) (uint64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -43,7 +39,6 @@ func (s *MemoryOffsetStore) Commit(_ context.Context, topic, group string, offse
 	return offset, nil
 }
 
-// Committed returns the stored next-fetch offset for a consumer group.
 func (s *MemoryOffsetStore) Committed(_ context.Context, topic, group string) (uint64, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -53,7 +48,6 @@ func (s *MemoryOffsetStore) Committed(_ context.Context, topic, group string) (u
 	return 0, nil
 }
 
-// MinCommitted returns the smallest committed offset across all groups on a topic.
 func (s *MemoryOffsetStore) MinCommitted(_ context.Context, topic string) (uint64, bool, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -72,7 +66,6 @@ func (s *MemoryOffsetStore) MinCommitted(_ context.Context, topic string) (uint6
 	return min, true, nil
 }
 
-// ListGroups returns all committed offsets for a topic.
 func (s *MemoryOffsetStore) ListGroups(_ context.Context, topic string) (map[string]uint64, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

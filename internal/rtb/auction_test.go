@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Guards second-price clearing and budget deduction on a small fixture.
 func TestAuction_secondPrice_basic(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)
@@ -62,7 +61,6 @@ func TestAuction_secondPrice_basic(t *testing.T) {
 	assert.Equal(t, int64(1850), store.GetBudget(c2))
 }
 
-// Guards winner and clearing price when more than 128 campaigns qualify.
 func TestAuction_secondPrice_manyCandidates(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)
@@ -89,7 +87,6 @@ func TestAuction_secondPrice_manyCandidates(t *testing.T) {
 	assert.Equal(t, int64(298), res.Price)
 }
 
-// Guards second-price clearing uses the shared floor when top bids tie.
 func TestAuction_secondPrice_tiedTopFloors(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)
@@ -104,7 +101,6 @@ func TestAuction_secondPrice_tiedTopFloors(t *testing.T) {
 	assert.Equal(t, int64(200), res.Price)
 }
 
-// Guards equal bids pick the higher-weight campaign as winner.
 func TestAuction_secondPrice_winnerTieBreak(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)
@@ -119,7 +115,6 @@ func TestAuction_secondPrice_winnerTieBreak(t *testing.T) {
 	assert.Equal(t, c2, res.CampaignID)
 }
 
-// Guards equal bids and weights keep the first shard-order candidate.
 func TestAuction_secondPrice_winnerTieBreak_equalWeight(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)
@@ -134,7 +129,6 @@ func TestAuction_secondPrice_winnerTieBreak_equalWeight(t *testing.T) {
 	assert.Equal(t, c1, res.CampaignID)
 }
 
-// Guards second-price clearing when many candidates share the same bid floor.
 func TestAuction_secondPrice_manyCandidates_equalFloors(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)
@@ -153,7 +147,6 @@ func TestAuction_secondPrice_manyCandidates_equalFloors(t *testing.T) {
 	assert.Equal(t, int64(300), res.Price)
 }
 
-// Guards malformed requests are rejected without mutating campaign budgets.
 func TestAuction_rejectsInvalidInput(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)
@@ -182,7 +175,6 @@ func TestAuction_rejectsInvalidInput(t *testing.T) {
 	assert.Equal(t, int64(1000), store.GetBudget(c1))
 }
 
-// Guards no-bid reasons for empty catalog and exhausted budgets.
 func TestAuction_noBidReasons(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)
@@ -195,7 +187,6 @@ func TestAuction_noBidReasons(t *testing.T) {
 	assert.Equal(t, NoBidNoCandidates, reason)
 }
 
-// Guards shadow evaluation does not debit budgets.
 func TestAuction_eval_noSpend(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)

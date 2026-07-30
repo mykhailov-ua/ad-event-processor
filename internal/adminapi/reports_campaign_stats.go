@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// CampaignStatsReader loads merged Postgres + ClickHouse campaign stats.
 type CampaignStatsReader interface {
 	GetCampaignStats(ctx context.Context, campaignID uuid.UUID, from, to time.Time, granularity string) (CampaignStatsDTO, error)
 }

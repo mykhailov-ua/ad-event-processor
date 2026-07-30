@@ -1,6 +1,6 @@
-# eSPX
+# BidShard
 
-Event Stream Pacing — ad event ingestion, atomic budget enforcement, async settlement.
+Ad event ingestion, atomic budget enforcement, async settlement (self-hosted ad stack).
 
 Each `/track` request is accepted and debited, or rejected with an explicit cause. PostgreSQL holds financial truth; Redis holds hot state; ClickHouse holds telemetry. The tracker hot path does not import `internal/fraudscoring`.
 
@@ -81,7 +81,7 @@ Three independent axes: **RPS** (tracker `ingress_quota` + optional UDP `:8191`)
 
 ## Design decisions
 
-eSPX targets **self-hosted / on-prem ad networks and buy-side stacks**: event-time budget enforcement, auditable settlement, and tracker p99 < 80 ms under burst traffic. The choices below trade hyperscaler elasticity for predictable cost, operable blast radius, and hard financial invariants.
+BidShard targets **self-hosted / on-prem ad networks and buy-side stacks**: event-time budget enforcement, auditable settlement, and tracker p99 < 80 ms under burst traffic. The choices below trade hyperscaler elasticity for predictable cost, operable blast radius, and hard financial invariants.
 
 | Area | Choice | Why this is optimal here |
 | :--- | :--- | :--- |
@@ -111,10 +111,10 @@ The hot path needs **one atomic step per event** on a single shard: read budget/
 | **Deploy surface** | Scripts are **embedded in the tracker binary** (`go:embed`), `SCRIPT LOAD` on startup. Budget rule changes ship with the tracker version customers already roll; no `.so` on database nodes. Sticky eval pins (M9) and M14 branch metrics ship in the same binary. |
 | **Ops stack** | Stock Redis 7 + Sentinel + replicas. On-prem installs use Docker/apt images without custom builds. Failover, backups, and hiring pool match mainstream Redis. |
 | **Feature fit** | Streams (`XADD`), pub/sub (`campaigns:update` on shard 0), hash tags (`{uuid}…`), `COPY`/`RESTORE` for slot migration, global key fan-out (M14) — all already used in M1/M2/M9/M14. |
-| **Testability** | `testcontainers-go` Redis + chaos suite (`TestChaos_LUA*`) exercise real `EVALSHA` paths in CI. |
+| **Testability** | `testcontainers-go` Redis + fault suite (`TestFault_*` on Lua paths) exercise real `EVALSHA` paths in CI. |
 | **Iteration cost** | Budget tiers (B/C), tier degradation (M9-04), consolidated pre-checks (M9-02) landed as Lua diffs without recompiling Redis or coordinating module ABI across 4 masters. |
 
-Lua’s cost is real: Redis 5.1, no JIT, scripts must stay non-blocking, and long scripts block the whole shard (R-LUA-04). eSPX accepts that because scripts are bounded, tier B skips heavy gates on impressions, and local quanta (M8) removes budget RTT on the highest-RPS lines.
+Lua’s cost is real: Redis 5.1, no JIT, scripts must stay non-blocking, and long scripts block the whole shard (R-LUA-04). BidShard accepts that because scripts are bounded, tier B skips heavy gates on impressions, and local quanta (M8) removes budget RTT on the highest-RPS lines.
 
 #### C/Rust Redis module (rejected for primary path)
 
@@ -131,17 +131,17 @@ Modules remain reasonable for **optional** edge features (e.g. custom probabilis
 
 KeyDB is a Redis fork with multi-threading and optional active-active replication.
 
-- **Compatibility risk:** eSPX relies on Lua 5.1 semantics, `EVALSHA`, streams, and Sentinel behavior tested against **vanilla Redis**. Fork drift in script caching, replication, or `COPY` during slot migration is unpriced risk for budget invariants.
+- **Compatibility risk:** BidShard relies on Lua 5.1 semantics, `EVALSHA`, streams, and Sentinel behavior tested against **vanilla Redis**. Fork drift in script caching, replication, or `COPY` during slot migration is unpriced risk for budget invariants.
 - **Wrong scaling axis:** Per-shard atomicity still serializes on one logical key chain per campaign. Multi-threaded KeyDB increases throughput for **independent keys**, not for a single hot `{campaign_id}budget:*` chain. Horizontal scale is already **4 shards + elastic triplets (M2)**, not bigger single-node Redis.
 - **Active-active:** Cross-master writes break the “one authoritative debit per campaign per shard” model unless you add conflict resolution — unacceptable for `current_spend ≤ budget_limit`.
 - **Business context:** Support and documentation target Redis; asking on-prem buyers to run a fork for marginal CPU gains trades a well-understood SLA for vendor-specific behavior.
 
 #### Aerospike (rejected)
 
-Aerospike fits high-cardinality KV at cluster scale, but **does not match eSPX’s existing data plane or team constraints**:
+Aerospike fits high-cardinality KV at cluster scale, but **does not match BidShard’s existing data plane or team constraints**:
 
 - **Rewrite cost:** Entire key catalog (`CampaignRedisKeyCatalog`), hash-tag colocation, `ad:events:stream` consumers, pub/sub registry reload, outbox fan-out to shards, and M1 `DUMP`/`RESTORE` migration tooling are Redis-specific. Aerospike partitions + UDFs (Lua or C) would be a multi-milestone replatform, not an optimization.
-- **Atomic scope:** Aerospike offers record-level atomicity within one partition; cross-record transactions are limited. eSPX maps **one campaign’s budget, dedup, fcap, and stream enqueue** to one hash-tagged key set on one shard — Redis Lua already matches that boundary. You would still need server-side UDFs; C UDF deploy has the same ops burden as Redis modules, with a smaller on-prem install base in ad-tracking.
+- **Atomic scope:** Aerospike offers record-level atomicity within one partition; cross-record transactions are limited. BidShard maps **one campaign’s budget, dedup, fcap, and stream enqueue** to one hash-tagged key set on one shard — Redis Lua already matches that boundary. You would still need server-side UDFs; C UDF deploy has the same ops burden as Redis modules, with a smaller on-prem install base in ad-tracking.
 - **Streams and cold path:** Processor settlement, fraud stream aggregation (M11), and management outbox patterns are built on **Redis streams and the Redis protocol**. Aerospike would fork the consumer ecosystem or require a bridge process (extra latency, ops).
 - **Economics:** Aerospike cluster TCO and licensing (commercial features, K8s operator maturity) target higher baseline scale than typical **4-shard self-hosted** tenants. Redis + Sentinel + optional M8 local quanta hits the SLA at lower fixed cost.
 - **Business context:** Buyers need **auditable, explainable** budget rejection at event time. A bespoke Aerospike UDF stack complicates support; Redis Lua scripts are inspectable text in the repo and in `SCRIPT EXISTS` on the node.
@@ -186,13 +186,13 @@ A faster C/Rust module would shrink the last fraction; it would **not** remove t
 
 | Failure mode | Symptom | Mitigation in this codebase |
 | :--- | :--- | :--- |
-| **Hot shard / script blocking** | p99 Lua → 10 ms+ on one master | 4 shards + elastic triplets (M2); Tier B on impressions; tier degradation (M9-04); R-LUA-04 chaos tests |
+| **Hot shard / script blocking** | p99 Lua → 10 ms+ on one master | 4 shards + elastic triplets (M2); Tier B on impressions; tier degradation (M9-04); R-LUA-04 fault tests |
 | **Extra Redis round trips** | Linear RTT add per hop | Single `EVALSHA` (M9); local quanta (M8) on quota lines |
 | **GC / heap on tracker** | Handler p99 spikes unrelated to Redis | 0 allocs/op; `GOGC=300` + `GOMEMLIMIT` (M13) |
 | **Cross-AZ or overloaded Redis** | RTT dominates even short scripts | Co-locate tracker + Redis per cell; circuit breaker; edge drop before tracker |
 | **Wrong tier** | Tier C (~92k ns bench) on impression flood | `LUA_FAST_PATH_ENABLED=true` default |
 
-Under load-test abort rules, chaos watches **handler p99 > 80 ms for 30 s**, not Lua microseconds. Lua p99 > 10 ms/shard is an early **shard capacity** signal (add shard, migrate hot campaign, enable quanta), not proof that the language was the wrong choice.
+Under load-test abort rules, fault watches **handler p99 > 80 ms for 30 s**, not Lua microseconds. Lua p99 > 10 ms/shard is an early **shard capacity** signal (add shard, migrate hot campaign, enable quanta), not proof that the language was the wrong choice.
 
 **Summary:** Lua is the mandatory atomic debit + enqueue primitive; it is tuned to **one RTT** and **< 10 ms p99 per shard** so the tracker can spend its budget on everything else. The bottleneck at scale is **Redis shard throughput and RTT**, which sharding, Tier B, and local quanta address — not Lua interpreter performance vs a native module.
 
@@ -529,7 +529,7 @@ make test
 make test-alloc-gate
 ```
 
-CI gates: `scripts/perf-gate/`, `scripts/chaos-drills/test_chaos.sh`.
+CI gates: `scripts/perf/`, `scripts/fault/run.sh`.
 
 ---
 

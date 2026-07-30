@@ -20,7 +20,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestManagementAPI_DeliveryRoutes guards delivery HTTP routes for templates, pause or resume, schedule, and creatives.
 func TestManagementAPI_DeliveryRoutes(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration test")
@@ -197,7 +196,6 @@ func TestManagementAPI_DeliveryRoutes(t *testing.T) {
 	})
 }
 
-// TestManagementAPI_RoleUserForbiddenSettings guards role user cannot read or write system settings.
 func TestManagementAPI_RoleUserForbiddenSettings(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration test")
@@ -240,7 +238,6 @@ func TestManagementAPI_RoleUserForbiddenSettings(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, respGet.Code)
 }
 
-// TestManagementAPI_RoleUserForbiddenBlacklist guards role user cannot modify IP blacklist.
 func TestManagementAPI_RoleUserForbiddenBlacklist(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration test")
@@ -272,7 +269,6 @@ func TestManagementAPI_RoleUserForbiddenBlacklist(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, resp.Code)
 }
 
-// TestManagementAPI_RoleUserForbiddenEmergencyBreaker guards role user cannot toggle the emergency breaker.
 func TestManagementAPI_RoleUserForbiddenEmergencyBreaker(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration test")

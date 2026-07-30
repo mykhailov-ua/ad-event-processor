@@ -6,7 +6,6 @@ import (
 	"espx/internal/campaignmodel"
 )
 
-// AssignCohortVariant picks a variant using stable hashing over salt and subject id.
 func AssignCohortVariant(salt, subjectID string, variants []campaignmodel.CohortVariant) (variantID string, flags map[string]string) {
 	if len(variants) == 0 {
 		return "", nil

@@ -11,7 +11,6 @@ import (
 
 const versionPrefix = "v2"
 
-// FormatCanonical builds the dedup_key string stored in sync_idempotency.
 func FormatCanonical(scope Scope, factorU, factorD uuid.UUID) string {
 	return fmt.Sprintf("%s|%s|%s|%d|%d|%d|%s|%s",
 		versionPrefix,
@@ -25,7 +24,6 @@ func FormatCanonical(scope Scope, factorU, factorD uuid.UUID) string {
 	)
 }
 
-// ParseCanonical splits a dedup_key into scope and factors.
 func ParseCanonical(key string) (Scope, uuid.UUID, uuid.UUID, error) {
 	parts := strings.Split(key, "|")
 	if len(parts) != 8 || parts[0] != versionPrefix {
@@ -68,7 +66,6 @@ func ParseCanonical(key string) (Scope, uuid.UUID, uuid.UUID, error) {
 	}, factorU, factorD, nil
 }
 
-// RedisKey returns the optional regional SET NX key (M4-06).
 func RedisKey(dedupKey string) string {
 	return "dedup/v2:" + dedupKey
 }

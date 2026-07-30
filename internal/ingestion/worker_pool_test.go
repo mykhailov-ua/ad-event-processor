@@ -54,7 +54,6 @@ func TestPinnedWorkerPool_ZeroAlloc(t *testing.T) {
 	}
 }
 
-// Tracks pinned worker pool submit cost for gnet handler capacity planning.
 func BenchmarkPinnedWorkerPool(b *testing.B) {
 	benchmarks := []struct {
 		name      string

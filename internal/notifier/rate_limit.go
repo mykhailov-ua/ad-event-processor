@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-// recipientRateLimiter caps enqueue bursts per recipient using a token bucket.
 type recipientRateLimiter struct {
 	mu      sync.Mutex
 	limit   int
@@ -38,10 +37,9 @@ func (limiter *recipientRateLimiter) allow(recipient string) bool {
 	return bucket.allow(now)
 }
 
-// providerRateLimiter caps delivery per provider and recipient using independent token buckets.
 type providerRateLimiter struct {
 	mu      sync.Mutex
-	limits  map[string]int // provider name -> per-minute limit; missing or 0 = unlimited
+	limits  map[string]int
 	buckets map[string]*tokenBucket
 }
 

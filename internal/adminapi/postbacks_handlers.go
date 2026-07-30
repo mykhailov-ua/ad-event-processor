@@ -128,7 +128,6 @@ func (h *PostbackHTTPHandlers) updatePostbackConfig(w http.ResponseWriter, r *ht
 		return
 	}
 
-	// Fetch campaign to check Customer subscription Pro tier gate
 	q := db.New(h.Pool)
 	campaign, err := q.GetCampaign(r.Context(), pgtype.UUID{Bytes: campaignID, Valid: true})
 	if err != nil {
@@ -175,7 +174,6 @@ skipCheck:
 		}
 	}
 
-	// Encrypt the API Token if provided
 	var encryptedToken []byte
 	if req.ApiToken != "" {
 		key := h.EncryptionKey
@@ -250,7 +248,6 @@ func (h *PostbackHTTPHandlers) getDLQ(w http.ResponseWriter, r *http.Request) {
 func (h *PostbackHTTPHandlers) retryDLQ(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	if idStr == "" {
-		// fallback to parsing URL path suffix
 		idStr = r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:]
 		if idStr == "retry" {
 			parts := strings.Split(r.URL.Path, "/")
@@ -288,7 +285,6 @@ func (h *PostbackHTTPHandlers) retryDLQ(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// 1. Re-enqueue SEND_POSTBACK outbox event
 	_, err = q.CreateOutboxEvent(r.Context(), db.CreateOutboxEventParams{
 		EventType: "SEND_POSTBACK",
 		Payload:   dlq.Payload,
@@ -298,7 +294,6 @@ func (h *PostbackHTTPHandlers) retryDLQ(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// 2. Mark DLQ as RETRIED
 	err = q.UpdatePostbackDLQ(r.Context(), db.UpdatePostbackDLQParams{
 		ID:            dlq.ID,
 		FailuresCount: dlq.FailuresCount,

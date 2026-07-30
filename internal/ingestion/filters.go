@@ -14,7 +14,6 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-// Filter rejection errors returned to track handlers and metrics classifiers.
 var (
 	ErrRateLimitExceeded      = errors.New("rate limit exceeded")
 	ErrDuplicateEvent         = errors.New("duplicate event detected")
@@ -34,12 +33,10 @@ var (
 	ErrShardUnavailable       = errors.New("shard unavailable")
 )
 
-// bufWrapper holds a reusable byte buffer for zero-allocation Redis key construction.
 type bufWrapper struct {
 	buf []byte
 }
 
-// bufPool recycles key buffers shared across filter implementations.
 var bufPool = sync.Pool{
 	New: func() any {
 		return &bufWrapper{
@@ -48,10 +45,8 @@ var bufPool = sync.Pool{
 	},
 }
 
-// hexChars is the lookup table for allocation-free UUID string formatting.
 const hexChars = "0123456789abcdef"
 
-// appendUUID writes canonical UUID text into reusable buffers to avoid fmt on the filter hot path.
 func appendUUID(dst []byte, u uuid.UUID) []byte {
 	return append(dst,
 		hexChars[u[0]>>4], hexChars[u[0]&0xf],
@@ -77,7 +72,6 @@ func appendUUID(dst []byte, u uuid.UUID) []byte {
 	)
 }
 
-// unsafeString views a byte slice as a string without copying when lifetime is bounded.
 func unsafeString(b []byte) string {
 	if len(b) == 0 {
 		return ""
@@ -85,7 +79,6 @@ func unsafeString(b []byte) string {
 	return unsafe.String(&b[0], len(b))
 }
 
-// FraudFilter flags datacenter and proxy IPs before events enter billing paths.
 type FraudFilter struct {
 	geo GeoProvider
 }
@@ -96,7 +89,6 @@ func NewFraudFilter(geo GeoProvider) *FraudFilter {
 	}
 }
 
-// Check marks anonymous IPs as fraud without blocking on GeoIP lookup failures.
 func (f *FraudFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
 	isAnon, err := f.geo.IsAnonymous(evt.IP)
 	if err == nil && isAnon {
@@ -105,7 +97,6 @@ func (f *FraudFilter) Check(ctx context.Context, evt *campaignmodel.Event) error
 	return nil
 }
 
-// GeoFilter enforces campaign country targeting without rejecting on transient GeoIP gaps.
 type GeoFilter struct {
 	geo      GeoProvider
 	registry campaignmodel.CampaignRegistry
@@ -118,7 +109,6 @@ func NewGeoFilter(geo GeoProvider, registry campaignmodel.CampaignRegistry) *Geo
 	}
 }
 
-// Check blocks events whose country is outside the campaign target set.
 func (f *GeoFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
 	start := monotonicNano()
 	err := f.checkGeo(evt)
@@ -162,7 +152,6 @@ func (f *GeoFilter) checkGeo(evt *campaignmodel.Event) error {
 	return ErrGeoBlocked
 }
 
-// BudgetFilter delegates spend checks to the configured budget manager.
 type BudgetFilter struct {
 	manager          campaignmodel.BudgetManager
 	registry         campaignmodel.CampaignRegistry
@@ -179,7 +168,6 @@ func NewBudgetFilter(manager campaignmodel.BudgetManager, registry campaignmodel
 	}
 }
 
-// Check spends budget for the event type or returns ErrBudgetExhausted.
 func (f *BudgetFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
 	customerID, ok := f.registry.GetCustomerID(evt.CampaignID)
 	if !ok {
@@ -201,12 +189,10 @@ func (f *BudgetFilter) Check(ctx context.Context, evt *campaignmodel.Event) erro
 	return nil
 }
 
-// EventFilter is the interface for composable pre-stream event gates.
 type EventFilter interface {
 	Check(ctx context.Context, evt *campaignmodel.Event) error
 }
 
-// FilterEngine runs an ordered filter chain under one shared deadline budget.
 type FilterEngine struct {
 	filters  []EventFilter
 	timeout  time.Duration
@@ -214,23 +200,18 @@ type FilterEngine struct {
 	watcher  *SettingsWatcher
 }
 
-// NewFilterEngine composes filters with a monotonic deadline enforced between checks.
 func NewFilterEngine(timeout time.Duration, filters ...EventFilter) *FilterEngine {
 	return &FilterEngine{filters: filters, timeout: timeout}
 }
 
-// SetRegistry attaches the campaign catalog used for per-campaign fraud tier mapping.
 func (e *FilterEngine) SetRegistry(registry campaignmodel.CampaignRegistry) {
 	e.registry = registry
 }
 
-// SetSettingsWatcher attaches the settings watcher used for ML score boosts.
 func (e *FilterEngine) SetSettingsWatcher(watcher *SettingsWatcher) {
 	e.watcher = watcher
 }
 
-// Check runs filters in order until one rejects or the deadline expires.
-// Production tracker stores the monotonic deadline on evt.FilterDeadlineMono (zero allocs).
 func (e *FilterEngine) Check(ctx context.Context, evt *campaignmodel.Event) error {
 	slot := uint32(0)
 	if evt != nil {
@@ -307,7 +288,6 @@ func (e *FilterEngine) checkInner(ctx context.Context, evt *campaignmodel.Event)
 	return retErr
 }
 
-// DuplicateEventFilter rejects replays using a TTL sized for worst-case stream recovery lag.
 type DuplicateEventFilter struct {
 	rdb redis.Cmdable
 	ttl time.Duration
@@ -320,7 +300,6 @@ func NewDuplicateEventFilter(rdb redis.Cmdable, ttl time.Duration) *DuplicateEve
 	}
 }
 
-// Check rejects events whose type and click id were seen within the TTL window.
 func (f *DuplicateEventFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
 	if evt.ClickID == "" {
 		return nil
@@ -348,7 +327,6 @@ func (f *DuplicateEventFilter) Check(ctx context.Context, evt *campaignmodel.Eve
 	return nil
 }
 
-// EmergencyBreakerFilter stops ingestion when operators enable the global breaker flag.
 type EmergencyBreakerFilter struct {
 	watcher *SettingsWatcher
 }
@@ -357,7 +335,6 @@ func NewEmergencyBreakerFilter(watcher *SettingsWatcher) *EmergencyBreakerFilter
 	return &EmergencyBreakerFilter{watcher: watcher}
 }
 
-// Check returns ErrEmergencyBreakerActive when the breaker is enabled in dynamic config.
 func (f *EmergencyBreakerFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
 	if f.watcher != nil && f.watcher.Get().EmergencyBreaker {
 		return ErrEmergencyBreakerActive
@@ -365,7 +342,6 @@ func (f *EmergencyBreakerFilter) Check(ctx context.Context, evt *campaignmodel.E
 	return nil
 }
 
-// PlacementBlacklistFilter rejects events from paused placements (subids/zones).
 type PlacementBlacklistFilter struct {
 	rdbs []redis.UniversalClient
 }
@@ -374,7 +350,6 @@ func NewPlacementBlacklistFilter(rdbs []redis.UniversalClient) *PlacementBlackli
 	return &PlacementBlacklistFilter{rdbs: rdbs}
 }
 
-// Check rejects the event if the placement_id is in the campaign's placement blacklist.
 func (f *PlacementBlacklistFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
 	if evt == nil || evt.PlacementID == "" {
 		return nil
@@ -393,7 +368,7 @@ func (f *PlacementBlacklistFilter) Check(ctx context.Context, evt *campaignmodel
 	isBlacklisted, err := rdb.HExists(ctx, key, evt.PlacementID).Result()
 	bufPool.Put(w)
 	if err != nil {
-		return nil // Fail open
+		return nil
 	}
 	if isBlacklisted {
 		return ErrPlacementBlocked

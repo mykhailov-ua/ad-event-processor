@@ -1,6 +1,8 @@
 package ingestion
 
 import (
+	"espx/pkg/faultproof"
+
 	"context"
 	"errors"
 	"testing"
@@ -13,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Redis client stub simulating timeout and command failures for fault injection.
 type FailingRedisClient struct {
 	redis.UniversalClient
 	failSet  bool
@@ -72,7 +73,6 @@ func (m *FailingRedisClient) Ping(ctx context.Context) *redis.StatusCmd {
 	return cmd
 }
 
-// Campaign repo stub returning errors for budget miss fault tests.
 type FailingCampaignRepo struct {
 	failErr error
 }
@@ -179,7 +179,7 @@ func TestFaultInjection_StreamConsumerPoisonPillToDLQ(t *testing.T) {
 	consumer.Close()
 	consumer.Wait(ctx)
 
-	logChaosProof(t, "stream_poison_pill_dlq", map[string]string{
+	faultproof.Log(t, "stream_poison_pill_dlq", map[string]string{
 		"subsystem": "ads",
 		"dlq_len":   "1",
 		"pending":   "0",

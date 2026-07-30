@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Tracks flat stream write cost as legacy serialization baseline.
 func BenchmarkStreamWriteFlat(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
@@ -26,7 +25,6 @@ func BenchmarkStreamWriteFlat(b *testing.B) {
 	}
 }
 
-// Tracks protobuf stream write cost for hot-path migration gates.
 func BenchmarkStreamWriteProto(b *testing.B) {
 	evt := &campaignmodel.Event{
 		ClickID:    "c_12345_67890_abcdef",
@@ -82,7 +80,6 @@ func BenchmarkStreamWriteProto(b *testing.B) {
 	}
 }
 
-// Tracks flat stream read and decode cost as legacy baseline.
 func BenchmarkStreamReadFlat(b *testing.B) {
 	cid := uuid.New()
 	values := map[string]interface{}{
@@ -137,7 +134,6 @@ func BenchmarkStreamReadFlat(b *testing.B) {
 	}
 }
 
-// Tracks protobuf stream read cost for consumer hot path.
 func BenchmarkStreamReadProto(b *testing.B) {
 	evtSetup := &campaignmodel.Event{
 		ClickID:    "c_12345_67890_abcdef",
@@ -234,7 +230,6 @@ func TestStreamPayloadSizeComparison(t *testing.T) {
 	t.Logf("flat=%d proto=%d reduction=%.1f%%", flatSize, protoSize, float64(flatSize-protoSize)/float64(flatSize)*100.0)
 }
 
-// Tracks flat DLQ write cost as legacy failure-path baseline.
 func BenchmarkDLQWriteFlat(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
@@ -247,7 +242,6 @@ func BenchmarkDLQWriteFlat(b *testing.B) {
 	}
 }
 
-// Tracks protobuf DLQ write cost for failure-path migration.
 func BenchmarkDLQWriteProto(b *testing.B) {
 	evt := &campaignmodel.Event{
 		ClickID:    "c_12345_67890_abcdef",

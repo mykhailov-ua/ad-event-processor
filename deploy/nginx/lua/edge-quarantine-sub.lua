@@ -1,4 +1,3 @@
--- edge-quarantine-sub.lua: immediate blacklist flush on fraud:quarantine pub/sub (shard 0).
 
 local redis = require "resty.redis"
 local blacklist_sync = require "edge-blacklist-sync"
@@ -73,7 +72,6 @@ local function listen_loop()
     end
 end
 
--- start spawns a background thread that flushes blacklist_cache on quarantine events.
 function _M.start()
     local ok, err = ngx.thread.spawn(listen_loop)
     if not ok then

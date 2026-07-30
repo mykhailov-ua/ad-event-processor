@@ -1,4 +1,3 @@
--- Campaign templates, scheduling, dayparting, brand creatives (A/B landing URLs).
 
 CREATE TABLE campaign_templates (
     id              UUID PRIMARY KEY,

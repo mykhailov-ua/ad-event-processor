@@ -51,7 +51,6 @@ func TestXDP_subnetCapIndependentPerHost(t *testing.T) {
 	cfg.SynLimit = 100
 	require.NoError(t, objs.Config.Update(&key, &cfg, ebpf.UpdateAny))
 
-	// Exhaust /24 bucket with two hosts in same subnet.
 	for _, host := range []byte{1, 2} {
 		pkt := buildSYNPacket(t, net.IPv4(198, 18, 9, host), net.IPv4(10, 0, 0, 1), trackerPort)
 		for i := 0; i < 3; i++ {
@@ -61,7 +60,6 @@ func TestXDP_subnetCapIndependentPerHost(t *testing.T) {
 	pktBlocked := buildSYNPacket(t, net.IPv4(198, 18, 9, 3), net.IPv4(10, 0, 0, 1), trackerPort)
 	assert.Equal(t, uint32(1), runXDP(t, objs.XdpEdgeFilter, pktBlocked))
 
-	// Different /24 still passes.
 	pktOther := buildSYNPacket(t, net.IPv4(198, 18, 10, 1), net.IPv4(10, 0, 0, 1), trackerPort)
 	assert.Equal(t, uint32(2), runXDP(t, objs.XdpEdgeFilter, pktOther))
 }
@@ -122,7 +120,6 @@ func TestXDP_synCookiePathWhenEnabled(t *testing.T) {
 	runXDP(t, objs.XdpEdgeFilter, pkt)
 	ret := runXDP(t, objs.XdpEdgeFilter, pkt)
 
-	// Helper may be unavailable in test harness; cookie stat or DROP both acceptable.
 	cookies := statCount(t, objs.Stats, StatSynCookie)
 	if cookies > 0 {
 		assert.Equal(t, uint32(3), ret, "cookie issued must return XDP_TX")

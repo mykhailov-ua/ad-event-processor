@@ -2,7 +2,6 @@ package server
 
 import "time"
 
-// CoordConfig tunes Redis leader lease behavior for HA broker clusters.
 type CoordConfig struct {
 	LeaseTTL           time.Duration
 	Interval           time.Duration
@@ -10,7 +9,6 @@ type CoordConfig struct {
 	DebounceWindow     time.Duration
 }
 
-// DefaultCoordConfig returns production-oriented lease defaults.
 func DefaultCoordConfig() CoordConfig {
 	return CoordConfig{
 		LeaseTTL:           15 * time.Second,

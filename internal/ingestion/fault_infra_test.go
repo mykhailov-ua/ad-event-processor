@@ -30,14 +30,13 @@ import (
 const adsContainerStopTimeout = 10 * time.Second
 
 const (
-	adsChaosRedisFastTimeout = 200 * time.Millisecond
-	adsChaosRedisBreakerFail = 3
-	adsChaosRedisBreakerHalf = 2
-	adsChaosRedisBreakerOpen = 300 * time.Millisecond
+	adsFaultRedisFastTimeout = 200 * time.Millisecond
+	adsFaultRedisBreakerFail = 3
+	adsFaultRedisBreakerHalf = 2
+	adsFaultRedisBreakerOpen = 300 * time.Millisecond
 )
 
-// adsChaosInfra holds live Postgres and Redis for ads chaos tests.
-type adsChaosInfra struct {
+type adsFaultInfra struct {
 	Pool           *pgxpool.Pool
 	Redis          redis.UniversalClient
 	RedisBreaker   *database.RedisBreaker
@@ -46,7 +45,6 @@ type adsChaosInfra struct {
 	RedisContainer testcontainers.Container
 }
 
-// adsIngestStack wires gnet tracker handler and a stream consumer against chaos infra.
 type adsIngestStack struct {
 	Handler         *AdsPacketHandler
 	Consumer        *StreamConsumer
@@ -62,14 +60,13 @@ type adsIngestStack struct {
 	cfg             *config.Config
 }
 
-// setupAdsChaosInfra boots Postgres and Redis with ads migrations applied.
-func setupAdsChaosInfra(t *testing.T) (*adsChaosInfra, func()) {
+func setupAdsFaultInfra(t *testing.T) (*adsFaultInfra, func()) {
 	t.Helper()
 	ctx := context.Background()
 
 	pgContainer, err := postgres.Run(ctx,
 		"postgres:16-alpine",
-		postgres.WithDatabase("ads_chaos_db"),
+		postgres.WithDatabase("ads_fault_db"),
 		postgres.WithUsername("user"),
 		postgres.WithPassword("pass"),
 		testcontainers.WithWaitStrategy(
@@ -92,7 +89,7 @@ func setupAdsChaosInfra(t *testing.T) (*adsChaosInfra, func()) {
 	endpoint, err := redisContainer.Endpoint(ctx, "")
 	require.NoError(t, err)
 
-	infra := &adsChaosInfra{
+	infra := &adsFaultInfra{
 		Pool:           pool,
 		Queries:        db.New(pool),
 		PGContainer:    pgContainer,
@@ -162,34 +159,33 @@ func waitAdsRedisReady(t *testing.T, rdb redis.UniversalClient) {
 	}, 30*time.Second, 200*time.Millisecond)
 }
 
-func (infra *adsChaosInfra) dialRedisClient(t *testing.T, endpoint string) redis.UniversalClient {
+func (infra *adsFaultInfra) dialRedisClient(t *testing.T, endpoint string) redis.UniversalClient {
 	t.Helper()
 	if infra.RedisBreaker == nil {
 		infra.RedisBreaker = database.NewRedisBreaker(
-			adsChaosRedisBreakerFail,
-			adsChaosRedisBreakerHalf,
-			adsChaosRedisBreakerOpen,
+			adsFaultRedisBreakerFail,
+			adsFaultRedisBreakerHalf,
+			adsFaultRedisBreakerOpen,
 		)
 	}
 	client := redis.NewClient(&redis.Options{
 		Addr:         endpoint,
-		ReadTimeout:  adsChaosRedisFastTimeout,
-		WriteTimeout: adsChaosRedisFastTimeout,
+		ReadTimeout:  adsFaultRedisFastTimeout,
+		WriteTimeout: adsFaultRedisFastTimeout,
 	})
 	client.AddHook(database.NewRedisCircuitBreakerHook(infra.RedisBreaker))
 	require.NoError(t, client.Ping(context.Background()).Err())
 	return client
 }
 
-func (infra *adsChaosInfra) refreshRedisClient(t *testing.T) {
+func (infra *adsFaultInfra) refreshRedisClient(t *testing.T) {
 	t.Helper()
 	ctx := context.Background()
 	_ = infra.Redis.Close()
-	// Fresh breaker after container recovery (matches tracker process restart semantics).
 	infra.RedisBreaker = database.NewRedisBreaker(
-		adsChaosRedisBreakerFail,
-		adsChaosRedisBreakerHalf,
-		adsChaosRedisBreakerOpen,
+		adsFaultRedisBreakerFail,
+		adsFaultRedisBreakerHalf,
+		adsFaultRedisBreakerOpen,
 	)
 	endpoint, err := infra.RedisContainer.Endpoint(ctx, "")
 	require.NoError(t, err)
@@ -197,7 +193,7 @@ func (infra *adsChaosInfra) refreshRedisClient(t *testing.T) {
 	waitAdsRedisReady(t, infra.Redis)
 }
 
-func (infra *adsChaosInfra) refreshPGPool(t *testing.T) {
+func (infra *adsFaultInfra) refreshPGPool(t *testing.T) {
 	t.Helper()
 	ctx := context.Background()
 	infra.Pool.Close()
@@ -215,14 +211,14 @@ func requireAdsFaultActive(t *testing.T, faultActive func() bool, msg string) {
 	require.Eventually(t, faultActive, 10*time.Second, 100*time.Millisecond, msg)
 }
 
-func newChaosRegistry(t *testing.T, queries db.Querier) *Registry {
+func newFaultRegistry(t *testing.T, queries db.Querier) *Registry {
 	t.Helper()
 	r := NewRegistry(queries)
 	r.SetReplicaPath(filepath.Join(t.TempDir(), "campaigns_replica.json"))
 	return r
 }
 
-func seedChaosCampaign(t *testing.T, infra *adsChaosInfra, registry *Registry) uuid.UUID {
+func seedFaultCampaign(t *testing.T, infra *adsFaultInfra, registry *Registry) uuid.UUID {
 	t.Helper()
 	ctx := context.Background()
 	pm := database.NewPartitionManager(infra.Pool, 7, 1)
@@ -231,20 +227,20 @@ func seedChaosCampaign(t *testing.T, infra *adsChaosInfra, registry *Registry) u
 	customerID := uuid.New()
 	_, err := infra.Pool.Exec(ctx,
 		"INSERT INTO customers (id, name, balance) VALUES ($1, $2, $3)",
-		customerID, "Chaos Customer", 1_000_000_000)
+		customerID, "Test Customer", 1_000_000_000)
 	require.NoError(t, err)
 
 	campaignID := uuid.New()
 	_, err = infra.Pool.Exec(ctx,
 		"INSERT INTO campaigns (id, name, status, customer_id, budget_limit) VALUES ($1, $2, $3, $4, $5)",
-		campaignID, "Chaos Campaign", "ACTIVE", customerID, 100_000_000)
+		campaignID, "Test Campaign", "ACTIVE", customerID, 100_000_000)
 	require.NoError(t, err)
 
 	_, _ = registry.Sync(ctx)
 	return campaignID
 }
 
-func seedChaosLicenseActive(registry *Registry, customerID uuid.UUID) {
+func seedFaultLicenseActive(registry *Registry, customerID uuid.UUID) {
 	registry.entitlements.Store(&entitlementsSnapshot{
 		byCustomerID: map[uuid.UUID]licensing.Entitlements{
 			customerID: {
@@ -261,7 +257,7 @@ func seedChaosLicenseActive(registry *Registry, customerID uuid.UUID) {
 	})
 }
 
-func buildChaosProductionFilterEngine(
+func buildFaultProductionFilterEngine(
 	timeout time.Duration,
 	registry *Registry,
 	rdbs []redis.UniversalClient,
@@ -313,15 +309,15 @@ func buildChaosProductionFilterEngine(
 	return engine, unifiedFilter, settingsWatcher
 }
 
-func startAdsIngestStack(t *testing.T, infra *adsChaosInfra, stream string) *adsIngestStack {
+func startAdsIngestStack(t *testing.T, infra *adsFaultInfra, stream string) *adsIngestStack {
 	return startAdsIngestStackOpts(t, infra, stream, adsIngestStackOpts{filterTimeoutMs: 2000})
 }
 
-func startAdsIngestStackWithFilterTimeout(t *testing.T, infra *adsChaosInfra, stream string, filterTimeoutMs int) *adsIngestStack {
+func startAdsIngestStackWithFilterTimeout(t *testing.T, infra *adsFaultInfra, stream string, filterTimeoutMs int) *adsIngestStack {
 	return startAdsIngestStackOpts(t, infra, stream, adsIngestStackOpts{filterTimeoutMs: filterTimeoutMs})
 }
 
-func startAdsIngestStackWithRedisMetrics(t *testing.T, infra *adsChaosInfra, stream string) *adsIngestStack {
+func startAdsIngestStackWithRedisMetrics(t *testing.T, infra *adsFaultInfra, stream string) *adsIngestStack {
 	return startAdsIngestStackOpts(t, infra, stream, adsIngestStackOpts{
 		filterTimeoutMs: 2000,
 		redisMetrics:    true,
@@ -347,12 +343,12 @@ type adsIngestStackOpts struct {
 	redisMetrics      bool
 	maxWorkers        int
 	rateLimit         int
-	redisDelay        time.Duration // Latency Monkey: per-command delay on Redis hook (P0 chaos).
-	useStaticSlot     bool          // Production sharder instead of JumpHash (P0 chaos).
-	productionFilters bool          // Tracker production filter chain (license→…→unified).
+	redisDelay        time.Duration
+	useStaticSlot     bool
+	productionFilters bool
 }
 
-func startAdsIngestStackOpts(t *testing.T, infra *adsChaosInfra, stream string, opts adsIngestStackOpts) *adsIngestStack {
+func startAdsIngestStackOpts(t *testing.T, infra *adsFaultInfra, stream string, opts adsIngestStackOpts) *adsIngestStack {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -367,7 +363,7 @@ func startAdsIngestStackOpts(t *testing.T, infra *adsChaosInfra, stream string, 
 		StreamMaxLen:       100000,
 	}
 
-	registry := newChaosRegistry(t, infra.Queries)
+	registry := newFaultRegistry(t, infra.Queries)
 	var sharder Sharder
 	if opts.useStaticSlot {
 		sharder = NewStaticSlotSharder(1)
@@ -380,10 +376,10 @@ func startAdsIngestStackOpts(t *testing.T, infra *adsChaosInfra, stream string, 
 		}
 	}
 	registry.SetBudgetWarmer(NewBudgetCacheWarmer([]redis.UniversalClient{infra.Redis}, sharder))
-	campaignID := seedChaosCampaign(t, infra, registry)
+	campaignID := seedFaultCampaign(t, infra, registry)
 	if opts.productionFilters {
 		if camp, ok := registry.GetCampaign(campaignID); ok {
-			seedChaosLicenseActive(registry, camp.CustomerID)
+			seedFaultLicenseActive(registry, camp.CustomerID)
 		}
 	}
 
@@ -397,7 +393,7 @@ func startAdsIngestStackOpts(t *testing.T, infra *adsChaosInfra, stream string, 
 		settingsWatcher *SettingsWatcher
 	)
 	if opts.productionFilters {
-		filterEngine, unifiedFilter, settingsWatcher = buildChaosProductionFilterEngine(
+		filterEngine, unifiedFilter, settingsWatcher = buildFaultProductionFilterEngine(
 			time.Duration(cfg.FilterTimeoutMs)*time.Millisecond,
 			registry,
 			[]redis.UniversalClient{infra.Redis},
@@ -482,7 +478,7 @@ func (s *adsIngestStack) Close(t *testing.T) {
 	s.Cancel()
 }
 
-func (s *adsIngestStack) restartConsumer(t *testing.T, infra *adsChaosInfra) {
+func (s *adsIngestStack) restartConsumer(t *testing.T, infra *adsFaultInfra) {
 	t.Helper()
 	s.Consumer.Close()
 	_ = s.Consumer.Wait(context.Background())
@@ -496,22 +492,22 @@ func (s *adsIngestStack) restartConsumer(t *testing.T, infra *adsChaosInfra) {
 	s.Consumer.Start(s.ctx)
 }
 
-func postChaosClick(t *testing.T, h *AdsPacketHandler, campaignID uuid.UUID) int {
-	return postChaosTrack(t, h, campaignID, "click", "chaos-user-1", uuid.NewString())
+func postFaultClick(t *testing.T, h *AdsPacketHandler, campaignID uuid.UUID) int {
+	return postFaultTrack(t, h, campaignID, "click", "fault-user-1", uuid.NewString())
 }
 
-func postChaosImpression(t *testing.T, h *AdsPacketHandler, campaignID uuid.UUID, userID string) int {
-	return postChaosTrack(t, h, campaignID, "impression", userID, uuid.NewString())
+func postFaultImpression(t *testing.T, h *AdsPacketHandler, campaignID uuid.UUID, userID string) int {
+	return postFaultTrack(t, h, campaignID, "impression", userID, uuid.NewString())
 }
 
-func postChaosTrack(t *testing.T, h *AdsPacketHandler, campaignID uuid.UUID, evtType, userID, clickID string) int {
+func postFaultTrack(t *testing.T, h *AdsPacketHandler, campaignID uuid.UUID, evtType, userID, clickID string) int {
 	t.Helper()
 	payload := map[string]any{
 		"campaign_id": campaignID,
 		"type":        evtType,
 		"click_id":    clickID,
 		"user_id":     userID,
-		"payload":     map[string]string{"chaos": "1"},
+		"payload":     map[string]string{"fault": "1"},
 	}
 	body, err := json.Marshal(payload)
 	require.NoError(t, err)
@@ -519,7 +515,7 @@ func postChaosTrack(t *testing.T, h *AdsPacketHandler, campaignID uuid.UUID, evt
 	return status
 }
 
-func countChaosCampaignEvents(t *testing.T, pool *pgxpool.Pool, campaignID uuid.UUID) int64 {
+func countFaultCampaignEvents(t *testing.T, pool *pgxpool.Pool, campaignID uuid.UUID) int64 {
 	t.Helper()
 	var n int64
 	err := pool.QueryRow(context.Background(),
@@ -528,7 +524,7 @@ func countChaosCampaignEvents(t *testing.T, pool *pgxpool.Pool, campaignID uuid.
 	return n
 }
 
-func chaosDomainEventClick(campaignID uuid.UUID) *campaignmodel.Event {
+func faultDomainEventClick(campaignID uuid.UUID) *campaignmodel.Event {
 	return &campaignmodel.Event{
 		CampaignID: campaignID,
 		Type:       "click",
@@ -536,7 +532,7 @@ func chaosDomainEventClick(campaignID uuid.UUID) *campaignmodel.Event {
 	}
 }
 
-func itoaAdsChaos(n int) string {
+func itoaAdsFault(n int) string {
 	if n == 0 {
 		return "0"
 	}

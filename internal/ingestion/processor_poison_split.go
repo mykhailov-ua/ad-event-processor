@@ -8,8 +8,6 @@ import (
 	"espx/internal/metrics"
 )
 
-// splitStoreBatch isolates poison-pill rows via binary split instead of per-row inserts.
-// Returns global indices into the original batch for successes and failures.
 func (consumer *StreamConsumer) splitStoreBatch(ctx context.Context, batch []*campaignmodel.Event, msgIDs []string, baseIdx int) (successIdx, failIdx []int) {
 	if len(batch) == 0 {
 		return nil, nil

@@ -7,7 +7,6 @@ import (
 	"time"
 )
 
-// CreateCampaignInput is the validated self-serve campaign creation payload.
 type CreateCampaignInput struct {
 	CustomerID       uuid.UUID
 	BrandID          *uuid.UUID
@@ -25,7 +24,6 @@ type CreateCampaignInput struct {
 	IdempotencyKey   string
 }
 
-// CampaignAdmin creates and controls tenant-scoped campaigns.
 type CampaignAdmin interface {
 	EnforceSelfServeCreateLimits(ctx context.Context, customerID uuid.UUID, budgetMicro int64) error
 	GenerateIdempotencyHash(customerID uuid.UUID, payload []byte) (string, error)
@@ -34,7 +32,6 @@ type CampaignAdmin interface {
 	ResumeCampaign(ctx context.Context, campaignID uuid.UUID, reason string) error
 }
 
-// PaymentIntentResult is the self-serve top-up response.
 type PaymentIntentResult struct {
 	IntentID    string
 	Status      string
@@ -42,12 +39,10 @@ type PaymentIntentResult struct {
 	ProviderRef string
 }
 
-// PaymentIntents proxies top-ups to the payment service.
 type PaymentIntents interface {
 	CreatePaymentIntent(ctx context.Context, customerID string, amountMicro int64, currency, idempotencyKey string, meta map[string]string) (PaymentIntentResult, error)
 }
 
-// APIKeyResult is returned when minting a machine credential.
 type APIKeyResult struct {
 	ID         string
 	Name       string
@@ -56,10 +51,8 @@ type APIKeyResult struct {
 	HasExpires bool
 }
 
-// APIKeyCreator mints API keys for the authenticated session user.
 type APIKeyCreator interface {
 	CreateAPIKey(ctx context.Context, accessToken, name string) (APIKeyResult, error)
 }
 
-// InvoiceLister lists tenant billing history (reuses billing gRPC client).
 type InvoiceLister = InvoiceGRPCClient

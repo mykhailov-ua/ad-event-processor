@@ -5,21 +5,18 @@ import (
 	"sync"
 )
 
-// ModelRegistry manages the active scorers.
 type ModelRegistry struct {
 	mu      sync.RWMutex
 	scorers map[string]Scorer
 	active  string
 }
 
-// NewModelRegistry creates a new ModelRegistry.
 func NewModelRegistry() *ModelRegistry {
 	return &ModelRegistry{
 		scorers: make(map[string]Scorer),
 	}
 }
 
-// Register registers a scorer.
 func (modelRegistry *ModelRegistry) Register(scorer Scorer) {
 	if scorer == nil {
 		return
@@ -32,7 +29,6 @@ func (modelRegistry *ModelRegistry) Register(scorer Scorer) {
 	}
 }
 
-// SetActive sets the active scorer name.
 func (modelRegistry *ModelRegistry) SetActive(name string) error {
 	modelRegistry.mu.Lock()
 	defer modelRegistry.mu.Unlock()
@@ -44,14 +40,12 @@ func (modelRegistry *ModelRegistry) SetActive(name string) error {
 	return nil
 }
 
-// GetActive returns the active scorer.
 func (modelRegistry *ModelRegistry) GetActive() Scorer {
 	modelRegistry.mu.RLock()
 	defer modelRegistry.mu.RUnlock()
 	return modelRegistry.scorers[modelRegistry.active]
 }
 
-// Get returns a scorer by name.
 func (modelRegistry *ModelRegistry) Get(name string) Scorer {
 	modelRegistry.mu.RLock()
 	defer modelRegistry.mu.RUnlock()

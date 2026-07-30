@@ -6,7 +6,7 @@ CREATE SCHEMA IF NOT EXISTS vendor;
 CREATE TABLE vendor.licenses (
     license_key    TEXT PRIMARY KEY,
     customer_name  TEXT NOT NULL,
-    plan_code      TEXT NOT NULL, -- starter|growth|enterprise
+    plan_code      TEXT NOT NULL,
     valid_from     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     valid_until    TIMESTAMPTZ NOT NULL,
     grace_days     INT NOT NULL DEFAULT 7,

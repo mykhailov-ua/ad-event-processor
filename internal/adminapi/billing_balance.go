@@ -12,7 +12,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// BalanceLedgerDTO exposes one balance_ledger row for GET /api/v1/customers/{id}/balance.
 type BalanceLedgerDTO struct {
 	ID              int64  `json:"id"`
 	CustomerID      string `json:"customer_id"`
@@ -23,7 +22,6 @@ type BalanceLedgerDTO struct {
 	CreatedAt       string `json:"created_at"`
 }
 
-// CustomerBalanceDTO is GET /api/v1/customers/{id}/balance.
 type CustomerBalanceDTO struct {
 	CustomerID string             `json:"customer_id"`
 	Balance    string             `json:"balance"`
@@ -31,14 +29,12 @@ type CustomerBalanceDTO struct {
 	Ledger     []BalanceLedgerDTO `json:"ledger"`
 }
 
-// LedgerExportResult captures cursor continuation metadata after a capped CSV stream.
 type LedgerExportResult struct {
 	NextCursor int64
 	Truncated  bool
 	Bytes      int
 }
 
-// CustomerBalanceReader serves balance JSON and ledger CSV export.
 type CustomerBalanceReader interface {
 	GetCustomerBalance(ctx context.Context, customerID uuid.UUID) (CustomerBalanceDTO, error)
 	ExportCustomerLedgerCSV(ctx context.Context, customerID uuid.UUID, cursor int64, w io.Writer) (LedgerExportResult, error)

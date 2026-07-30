@@ -18,13 +18,11 @@ import (
 
 const microUnit = money.MicroUnit
 
-// CurrencyConverter converts foreign amounts to USD micro-units using ECB daily rates.
 type CurrencyConverter struct {
 	pool   *pgxpool.Pool
 	client *http.Client
 }
 
-// NewCurrencyConverter constructs an ECB-backed converter with optional PG rate cache.
 func NewCurrencyConverter(pool *pgxpool.Pool, client *http.Client) *CurrencyConverter {
 	if client == nil {
 		client = &http.Client{Timeout: 15 * time.Second}
@@ -45,7 +43,6 @@ type ecbDailyRates struct {
 	} `xml:"Cube"`
 }
 
-// ToUSDMicro converts amountMicro in currency to USD micro-units for rateDate.
 func (c *CurrencyConverter) ToUSDMicro(ctx context.Context, amountMicro int64, currency string, rateDate time.Time) (int64, error) {
 	cur := strings.ToUpper(strings.TrimSpace(currency))
 	if cur == "" || cur == "USD" {
@@ -57,7 +54,6 @@ func (c *CurrencyConverter) ToUSDMicro(ctx context.Context, amountMicro int64, c
 		return 0, err
 	}
 
-	// amount_micro is in currency micro-units; usd_per_unit_micro is USD per 1 unit of currency.
 	converted := (amountMicro * usdPerUnit) / microUnit
 	if converted < 0 {
 		return converted, nil
@@ -152,7 +148,6 @@ func rateToMicro(v float64) (int64, error) {
 	return money.LegacyFloatToMicro(v)
 }
 
-// ConvertEURToUSD is a test helper using a fixed ECB sample rate (1 EUR = 1.10 USD).
 func ConvertEURToUSD(amountMicro int64) int64 {
 	return (amountMicro * 1_100_000) / microUnit
 }

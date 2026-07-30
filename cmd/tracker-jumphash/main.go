@@ -1,4 +1,3 @@
-// Command server wires a reduced gnet tracker (JumpHash sharding, no dedicated metrics listener).
 package main
 
 import (

@@ -6,7 +6,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// LoadRoutingEpoch returns the latest control_plane_epochs id for source_epoch (M4-11).
 func LoadRoutingEpoch(ctx context.Context, pool *pgxpool.Pool) uint32 {
 	if pool == nil {
 		return 0

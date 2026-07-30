@@ -1,4 +1,3 @@
-// Command log-evacuator ships rotated tracker segments to S3 with checkpointed at-least-once delivery.
 package main
 
 import (

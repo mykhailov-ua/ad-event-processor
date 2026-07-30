@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// DB health stub with configurable ping delay for SLA tests.
 type MockDBHealthWithDelay struct {
 	Healthy atomic.Bool
 	Delay   atomic.Int64

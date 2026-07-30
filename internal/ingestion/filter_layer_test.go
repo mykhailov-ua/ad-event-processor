@@ -52,25 +52,21 @@ func TestApplyFraudScoreBoost(t *testing.T) {
 		CampaignID: uuid.New(),
 	}
 	acc := &fraudAccumulator{}
-	acc.add(FraudReasonDatacenterIP) // adds 45 (L1 High)
+	acc.add(FraudReasonDatacenterIP)
 
-	// Verify initial score is 45
 	assert.Equal(t, uint32(45), acc.score)
 
-	// Apply boost of 20
 	layer, err := applyFraudLayerDecision(evt, acc, nil, 20)
 	assert.NoError(t, err)
 	assert.Equal(t, FraudLayerL2Shadow, layer)
 	assert.Equal(t, uint32(65), acc.score)
 	assert.Equal(t, uint32(65), evt.FraudScore)
 
-	// Verify second apply doesn't double-boost (idempotency)
 	_, err = applyFraudLayerDecision(evt, acc, nil, 20)
 	assert.NoError(t, err)
 	assert.Equal(t, uint32(65), acc.score)
 }
 
-// TestFraudScoreBoost_suspectTierIntegration guards boost + base score 25 maps to suspect tier (≤60).
 func TestFraudScoreBoost_suspectTierIntegration(t *testing.T) {
 	evt := &campaignmodel.Event{CampaignID: uuid.New()}
 	acc := &fraudAccumulator{

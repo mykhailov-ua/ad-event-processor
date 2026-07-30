@@ -1,4 +1,3 @@
-// Package piihash provides SIMD-accelerated PII hashing for ClickHouse batch inserts (GAP-DATA-01).
 package piihash
 
 import (
@@ -14,26 +13,22 @@ import (
 
 const keySize = 32
 
-// Field kind bytes distinguish hash domains inside one salt version.
 const (
-	fieldIP      byte = 1
-	fieldUA      byte = 2
-	fieldUserID  byte = 3
-	fieldSubnet  byte = 4
+	fieldIP     byte = 1
+	fieldUA     byte = 2
+	fieldUserID byte = 3
+	fieldSubnet byte = 4
 )
 
-// Hasher hashes PII with a versioned 32-byte salt for ClickHouse storage.
 type Hasher struct {
 	version uint8
 	key     [keySize]byte
 }
 
-// New builds a hasher from an explicit salt version and 32-byte key.
 func New(version uint8, key [keySize]byte) *Hasher {
 	return &Hasher{version: version, key: key}
 }
 
-// NewFromConfig loads the active salt from processor config.
 func NewFromConfig(cfg *config.Config) (*Hasher, error) {
 	if cfg == nil {
 		return nil, errors.New("piihash: nil config")
@@ -49,7 +44,6 @@ func NewFromConfig(cfg *config.Config) (*Hasher, error) {
 	return New(version, key), nil
 }
 
-// Version returns the active salt generation.
 func (h *Hasher) Version() uint8 {
 	if h == nil {
 		return 0
@@ -57,22 +51,18 @@ func (h *Hasher) Version() uint8 {
 	return h.version
 }
 
-// HashIP returns a 128-bit HighwayHash of an IP address.
 func (h *Hasher) HashIP(ip string) [16]byte {
 	return h.hash(fieldIP, ip)
 }
 
-// HashUA returns a 128-bit HighwayHash of a user agent string.
 func (h *Hasher) HashUA(ua string) [16]byte {
 	return h.hash(fieldUA, ua)
 }
 
-// HashUserID returns a 128-bit HighwayHash of a user identifier.
 func (h *Hasher) HashUserID(userID string) [16]byte {
 	return h.hash(fieldUserID, userID)
 }
 
-// HashSubnet returns a 128-bit HighwayHash of a masked subnet label.
 func (h *Hasher) HashSubnet(subnet string) [16]byte {
 	return h.hash(fieldSubnet, subnet)
 }
@@ -113,7 +103,6 @@ func decodeSaltKey(saltHex, fallbackSecret string) ([keySize]byte, error) {
 	return key, nil
 }
 
-// FixedString16 encodes a 128-bit hash for ClickHouse FixedString(16) columns.
 func FixedString16(h [16]byte) string {
 	return string(h[:])
 }

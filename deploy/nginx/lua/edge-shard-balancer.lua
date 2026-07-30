@@ -1,7 +1,3 @@
--- edge-shard-balancer.lua: routes /track to tracker replicas (M9-05 + M5.2).
--- Shard pick uses edge-slot-map (crc32 Castagnoli + slot table = Go StaticSlotSharder).
--- Peer pick uses edge-node-weights weighted random when synced; else shard index fallback.
--- H6: balancer_by_lua runs only when nginx opens a new upstream connection.
 
 local balancer = require "ngx.balancer"
 local slot_map = require "edge-slot-map"

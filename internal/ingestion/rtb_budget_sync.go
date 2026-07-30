@@ -10,14 +10,12 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-// RtbBudgetSync carries cold-path Redis readers for RTB budget mirror updates.
 type RtbBudgetSync struct {
 	Authority BudgetAuthority
 	Redis     []redis.UniversalClient
 	Sharder   Sharder
 }
 
-// SyncRTBBudgetState mirrors registry and optional Redis budget keys into the rtb BudgetStore.
 func SyncRTBBudgetState(
 	ctx context.Context,
 	store *rtb.BudgetStore,

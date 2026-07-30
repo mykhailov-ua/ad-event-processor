@@ -1,6 +1,8 @@
 package management
 
 import (
+	"espx/pkg/faultproof"
+
 	"context"
 	"testing"
 	"time"
@@ -40,7 +42,6 @@ func TestReconcileBudgetSnapshot_detectsDriftAndEnqueuesAdjust(t *testing.T) {
 		ingestion.ToUUID(campaignID), budgetLimit, ingestion.ToUUID(customerID))
 	require.NoError(t, err)
 
-	// PG remaining = 10M; Redis total = 9M → drift 1M (within default chunk).
 	require.NoError(t, rdb.Set(ctx, ingestion.BudgetCampaignKey(campaignID), 9_000_000, 0).Err())
 	require.NoError(t, rdb.SAdd(ctx, "budget:dirty_campaigns", campaignID.String()).Err())
 
@@ -153,11 +154,10 @@ func TestReconGraceWindow_fromConfig(t *testing.T) {
 	assert.Equal(t, 15*time.Second, reconGraceWindow(cfg))
 }
 
-// TestChaos_ReconUnderLoad runs snapshot recon while Redis has inflight/sync state and verifies budget invariant (M3-15).
-func TestChaos_ReconUnderLoad(t *testing.T) {
+func TestFault_ReconUnderLoad(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("chaos integration test")
+		t.Skip("fault integration test")
 	}
 
 	ctx := context.Background()
@@ -197,7 +197,7 @@ func TestChaos_ReconUnderLoad(t *testing.T) {
 
 	ingestion.AssertBudgetInvariant(t, ctx, pool, rdb, campaignID)
 
-	logChaosProof(t, "recon_under_load", map[string]string{
+	faultproof.Log(t, "recon_under_load", map[string]string{
 		"subsystem":      "management_recon",
 		"campaign_id":    campaignID.String(),
 		"invariant_ok":   "true",

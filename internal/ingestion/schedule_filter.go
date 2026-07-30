@@ -14,7 +14,6 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-// brandCreativeEntry holds one weighted landing URL for a brand.
 type brandCreativeEntry struct {
 	ID     string `json:"id"`
 	URL    string `json:"url"`
@@ -33,20 +32,17 @@ func (s *BrandCreativeStore) brandCreativeSnapshot() *brandCreativeMapSnapshot {
 	return v
 }
 
-// BrandCreativeStore caches brand creatives in memory for click landing URL selection.
 type BrandCreativeStore struct {
 	rdb   redis.UniversalClient
 	cache atomic.Value
 }
 
-// NewBrandCreativeStore creates an empty in-memory creative cache backed by Redis.
 func NewBrandCreativeStore(rdb redis.UniversalClient) *BrandCreativeStore {
 	s := &BrandCreativeStore{rdb: rdb}
 	s.cache.Store(&brandCreativeMapSnapshot{byBrand: make(map[uuid.UUID][]brandCreativeEntry)})
 	return s
 }
 
-// LoadFromRedis refreshes one brand's creative list from Redis into the local cache.
 func (s *BrandCreativeStore) LoadFromRedis(ctx context.Context, brandID uuid.UUID) {
 	if s.rdb == nil {
 		return
@@ -70,7 +66,6 @@ func (s *BrandCreativeStore) LoadFromRedis(ctx context.Context, brandID uuid.UUI
 	s.cache.Store(&brandCreativeMapSnapshot{byBrand: next})
 }
 
-// SelectLandingURL returns a deterministic weighted creative URL for a user.
 func (s *BrandCreativeStore) SelectLandingURL(brandID uuid.UUID, userID string) string {
 	entries := s.brandCreativeSnapshot().byBrand[brandID]
 	if len(entries) == 0 {
@@ -103,17 +98,14 @@ func (s *BrandCreativeStore) SelectLandingURL(brandID uuid.UUID, userID string) 
 	return entries[len(entries)-1].URL
 }
 
-// ScheduleFilter rejects events outside campaign start, end, or daypart windows.
 type ScheduleFilter struct {
 	registry campaignmodel.CampaignRegistry
 }
 
-// NewScheduleFilter builds a schedule gate backed by the in-memory campaign registry.
 func NewScheduleFilter(registry campaignmodel.CampaignRegistry) *ScheduleFilter {
 	return &ScheduleFilter{registry: registry}
 }
 
-// Check returns ErrScheduleBlocked when the event falls outside delivery hours.
 func (f *ScheduleFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
 	camp, ok := f.registry.GetCampaign(evt.CampaignID)
 	if !ok {
@@ -141,7 +133,6 @@ func (f *ScheduleFilter) Check(ctx context.Context, evt *campaignmodel.Event) er
 	return nil
 }
 
-// DaypartSliceToSet converts daypart hour lists into O(1) lookup sets for the registry.
 func DaypartSliceToSet(hours []int16) map[int16]struct{} {
 	if len(hours) == 0 {
 		return nil

@@ -7,22 +7,18 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 )
 
-// RollupInserter persists cold-tier rollup rows.
 type RollupInserter interface {
 	InsertRollups(ctx context.Context, rows []RollupRow) error
 }
 
-// ClickHouseRollupInserter writes rollups to ad_event_processor.audit_log_rollups.
 type ClickHouseRollupInserter struct {
 	conn driver.Conn
 }
 
-// NewClickHouseRollupInserter wraps a ClickHouse connection for cold-tier inserts.
 func NewClickHouseRollupInserter(conn driver.Conn) *ClickHouseRollupInserter {
 	return &ClickHouseRollupInserter{conn: conn}
 }
 
-// InsertRollups batch-inserts rollup rows.
 func (inserter *ClickHouseRollupInserter) InsertRollups(ctx context.Context, rows []RollupRow) error {
 	if len(rows) == 0 {
 		return nil
@@ -61,12 +57,10 @@ func (inserter *ClickHouseRollupInserter) InsertRollups(ctx context.Context, row
 	return nil
 }
 
-// MemoryRollupInserter stores rollups in-process for tests.
 type MemoryRollupInserter struct {
 	Rows []RollupRow
 }
 
-// InsertRollups appends rows to the in-memory sink.
 func (inserter *MemoryRollupInserter) InsertRollups(_ context.Context, rows []RollupRow) error {
 	inserter.Rows = append(inserter.Rows, rows...)
 	return nil

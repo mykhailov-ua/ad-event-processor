@@ -1,14 +1,9 @@
 package ingestion
 
-// http3_qpack.go — subset QPACK decoder for HTTP/3 (RFC 9204, M5-D2).
-// Static table matches HPACK; field line encoding reuses h2DecodeHeadersBlock.
-
-// h3DecodeQPACKBlock decodes a QPACK HEADERS frame payload into parsedHTTPRequest.
 func h3DecodeQPACKBlock(block []byte, req *parsedHTTPRequest) error {
 	return h2DecodeHeadersBlock(block, req)
 }
 
-// h3ParseRequestFrames extracts one POST /track from a bidirectional H3 stream buffer.
 func h3ParseRequestFrames(buf []byte, maxBody int64) (consumed int, req parsedHTTPRequest, err error) {
 	off := 0
 	gotHeaders := false

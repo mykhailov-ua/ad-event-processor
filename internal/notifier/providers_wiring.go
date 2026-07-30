@@ -8,7 +8,6 @@ import (
 	"espx/internal/notifier/pb"
 )
 
-// ProviderBundle wires delivery providers and their circuit breakers for runtime metrics.
 type ProviderBundle struct {
 	Providers map[pb.Provider]Provider
 	Breakers  map[pb.Provider]*CircuitBreaker
@@ -18,12 +17,10 @@ func isProdEnv(env string) bool {
 	return env == "production" || env == "prod"
 }
 
-// NewProvidersFromConfig wires per-channel providers with isolated circuit breakers from startup config.
 func NewProvidersFromConfig(cfg *config.Config) map[pb.Provider]Provider {
 	return NewProviderBundleFromConfig(cfg).Providers
 }
 
-// NewProviderBundleFromConfig wires providers and breakers for delivery and observability.
 func NewProviderBundleFromConfig(cfg *config.Config) ProviderBundle {
 	if cfg == nil {
 		return ProviderBundle{}
@@ -79,7 +76,6 @@ func NewProviderBundleFromConfig(cfg *config.Config) ProviderBundle {
 	}
 }
 
-// StartCircuitBreakerMetricsScraper publishes breaker state gauges until ctx is cancelled.
 func StartCircuitBreakerMetricsScraper(ctx context.Context, breakers map[pb.Provider]*CircuitBreaker, interval time.Duration) {
 	if len(breakers) == 0 {
 		return

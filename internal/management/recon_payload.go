@@ -5,7 +5,6 @@ import (
 	"fmt"
 )
 
-// parseReconciliationAdjustPayload validates RECONCILIATION_ADJUST outbox JSON (M3-10).
 func parseReconciliationAdjustPayload(payload []byte) (ReconciliationAdjustPayload, error) {
 	var p ReconciliationAdjustPayload
 	if err := json.Unmarshal(payload, &p); err != nil {

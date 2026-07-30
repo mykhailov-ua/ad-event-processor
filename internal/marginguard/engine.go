@@ -55,7 +55,7 @@ func Evaluate(policy *Policy, stats *PlacementStats) (*Decision, bool) {
 		profit := stats.RevenueMicro - stats.SpendMicro
 		roi = float64(profit) / float64(stats.SpendMicro) * 100
 	} else if stats.RevenueMicro > 0 {
-		roi = 100.0 // Infinite ROI if revenue exists but no spend
+		roi = 100.0
 	}
 
 	metrics := map[string]any{
@@ -66,7 +66,6 @@ func Evaluate(policy *Policy, stats *PlacementStats) (*Decision, bool) {
 		"roi_pct":       roi,
 	}
 
-	// Rule 1: ROI floor
 	if roi < policy.RoiFloorPct {
 		return &Decision{
 			PolicyID:    policy.ID,
@@ -78,7 +77,6 @@ func Evaluate(policy *Policy, stats *PlacementStats) (*Decision, bool) {
 		}, true
 	}
 
-	// Rule 2: Zero conversion streak
 	if stats.Conversions == 0 && stats.Clicks >= int64(policy.ZeroConvStreak) {
 		return &Decision{
 			PolicyID:    policy.ID,

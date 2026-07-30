@@ -18,7 +18,6 @@ import (
 
 const testPubSubShards = 3
 
-// campaignIDForShard returns a UUID that StaticSlotSharder maps to wantShard.
 func campaignIDForShard(t *testing.T, numShards, wantShard int) uuid.UUID {
 	t.Helper()
 	sharder := ingestion.NewStaticSlotSharder(numShards)
@@ -32,7 +31,6 @@ func campaignIDForShard(t *testing.T, numShards, wantShard int) uuid.UUID {
 	return uuid.Nil
 }
 
-// newDedicatedRedisShards starts one Redis container per logical shard so pub/sub is isolated.
 func newDedicatedRedisShards(t *testing.T, n int) []redis.UniversalClient {
 	t.Helper()
 	shards := make([]redis.UniversalClient, n)
@@ -71,7 +69,6 @@ func newIsolatedRedisShards(t *testing.T) []redis.UniversalClient {
 	return shards
 }
 
-// TestPublishCampaignUpdate_RoutesToShardZero guards pub/sub always uses shard 0.
 func TestPublishCampaignUpdate_RoutesToShardZero(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping multi-container redis test")
@@ -102,7 +99,6 @@ func TestPublishCampaignUpdate_RoutesToShardZero(t *testing.T) {
 	assert.Same(t, shards[0], svc.getPubSubRDB())
 }
 
-// TestOutboxScheduleUpdate_PubSubOnShardZero guards schedule notifications publish on shard 0 only.
 func TestOutboxScheduleUpdate_PubSubOnShardZero(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping multi-container redis test")
@@ -140,7 +136,6 @@ func TestOutboxScheduleUpdate_PubSubOnShardZero(t *testing.T) {
 	assert.Error(t, err, "pub/sub must not publish on the campaign data shard redis instance")
 }
 
-// TestOutboxCreateCampaign_BudgetOnCampaignShard verifies budget keys stay on the campaign shard.
 func TestOutboxCreateCampaign_BudgetOnCampaignShard(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
@@ -191,7 +186,6 @@ func TestOutboxCreateCampaign_BudgetOnCampaignShard(t *testing.T) {
 	assert.Equal(t, campaignID.String(), msg.Payload)
 }
 
-// TestGetPubSubRDB_ReturnsFirstShard is a fast unit check without containers.
 func TestGetPubSubRDB_ReturnsFirstShard(t *testing.T) {
 	svc := &Service{rdbs: []redis.UniversalClient{nil, nil, nil}}
 	assert.Nil(t, svc.getPubSubRDB())

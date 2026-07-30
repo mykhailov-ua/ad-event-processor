@@ -6,7 +6,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestNormalizeRole guards role alias normalization maps auth tokens to canonical RBAC roles.
 func TestNormalizeRole(t *testing.T) {
 	tests := []struct {
 		in  string
@@ -30,7 +29,6 @@ func TestNormalizeRole(t *testing.T) {
 	}
 }
 
-// TestGetPermissionsForRole guards each role receives the expected permission set.
 func TestGetPermissionsForRole(t *testing.T) {
 	adminPerms := []string{
 		"customers:write", "customers:read",
@@ -76,7 +74,6 @@ func TestGetPermissionsForRole(t *testing.T) {
 	}
 }
 
-// TestHasPermission guards permission checks respect role boundaries.
 func TestHasPermission(t *testing.T) {
 	assert.True(t, HasPermission(RoleAdmin, "users:write"))
 	assert.False(t, HasPermission(RoleUser, "users:write"))

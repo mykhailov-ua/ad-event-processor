@@ -1,8 +1,3 @@
-# Optional RTB live soak overlay (all tracker replicas).
-#
-#   docker compose -f docker-compose.yaml -f deploy/rtb/docker-compose.override.yaml up -d tracker-0 tracker-1 tracker-2 tracker-3
-#
-# Default stack keeps RTB_MODE=off in .env. See deploy/rtb/env.example for variables.
 
 x-rtb-env: &rtb-env
   RTB_MODE: live

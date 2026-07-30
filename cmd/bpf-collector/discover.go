@@ -68,7 +68,7 @@ func loadgenCommMatch(comm string, allowed []string) bool {
 func parseLoadgenComms(raw string) []string {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
-		return []string{"k6"}
+		return []string{"loadgen"}
 	}
 	parts := strings.Split(raw, ",")
 	out := make([]string, 0, len(parts))
@@ -79,7 +79,7 @@ func parseLoadgenComms(raw string) []string {
 		}
 	}
 	if len(out) == 0 {
-		return []string{"k6"}
+		return []string{"loadgen"}
 	}
 	return out
 }

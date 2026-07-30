@@ -18,7 +18,6 @@ var (
 	ipRateLimitScript = redis.NewScript(ipRateLimitLua)
 )
 
-// IPRateLimiter caps per-IP event rates to mitigate abuse on the track endpoint.
 type IPRateLimiter struct {
 	rdb           redis.UniversalClient
 	limit         int
@@ -42,7 +41,6 @@ func NewIPRateLimiter(rdb redis.UniversalClient, limit int, window time.Duration
 	return l
 }
 
-// Check increments the IP counter and rejects when the window limit is exceeded.
 func (l *IPRateLimiter) Check(ctx context.Context, evt *campaignmodel.Event) error {
 	if evt.IP == "" {
 		return nil

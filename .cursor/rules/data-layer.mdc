@@ -120,7 +120,7 @@ TCP cutover (GAP-SHARD-05): management `TCP_MGMT_BIND_ADDR` (:8192) publishes HM
 go test ./internal/management/... -run 'SO_|TCP_Snapshot' -short
 ```
 
-Chaos: `TestChaos_SO_NoFalseMigrate`, `TestChaos_SO_CampaignRoutingMigration`, `TestChaos_TCP_SnapshotHMACACK`.
+Fault: `TestFault_ShardOrchestrator_NoFalseMigrate`, `TestFault_ShardOrchestrator_CampaignRoutingMigration`, `TestFault_TCP_SnapshotHMACACK`.
 
 Shard-0 survival: `docs/DEVELOPMENT.md`.
 

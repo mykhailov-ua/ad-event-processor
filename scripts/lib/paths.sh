@@ -1,10 +1,6 @@
-# Shared paths for scripts in subdirectories (max one level under scripts/).
-# Source from any script: source "$(cd "$(dirname "$0")/../lib" && pwd)/paths.sh"
-_ESPX_COMMON="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ESPX_SCRIPTS_ROOT="$(cd "$_ESPX_COMMON/.." && pwd)"
+_ESPX_SCRIPTS="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ESPX_SCRIPTS_ROOT="$_ESPX_SCRIPTS"
 ESPX_REPO_ROOT="$(cd "$ESPX_SCRIPTS_ROOT/.." && pwd)"
 ROOT="$ESPX_REPO_ROOT"
 SCRIPTS="$ESPX_SCRIPTS_ROOT"
 export ROOT SCRIPTS ESPX_SCRIPTS_ROOT ESPX_REPO_ROOT
-
-# Optional: source "$SCRIPTS/lib/safe_paths.sh" for rm/rsync/codegen guards.

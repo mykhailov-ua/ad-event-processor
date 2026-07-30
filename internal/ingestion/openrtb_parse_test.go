@@ -15,7 +15,7 @@ func TestParseDecimalMicro(t *testing.T) {
 		{"0.5", 500000},
 		{"150", 150000000},
 		{"0.000005", 5},
-		{"2.1234567", 2123456}, // truncated at 6 digits
+		{"2.1234567", 2123456},
 		{"  0.75", 750000},
 	}
 
@@ -60,7 +60,7 @@ func TestParseOpenRTB3Payload(t *testing.T) {
 	minBid, deviceType, categoryMask, isOpenRTB := ParseOpenRTB3Payload(payload)
 	assert.True(t, isOpenRTB)
 	assert.Equal(t, int64(1500000), minBid)
-	assert.Equal(t, uint8(2), deviceType) // mapped from 4 (Phone) to 2 (Mobile)
+	assert.Equal(t, uint8(2), deviceType)
 	assert.Equal(t, uint64(8), categoryMask)
 }
 

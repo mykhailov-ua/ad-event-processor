@@ -13,106 +13,82 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPlatform_mapServiceError_forbidden(t *testing.T) {
+func TestPlatform_errorMapping(t *testing.T) {
 	t.Parallel()
-	status, code, _ := mapServiceError(errForbidden)
-	assert.Equal(t, http.StatusForbidden, status)
-	assert.Equal(t, "FORBIDDEN", code)
-}
 
-func TestPlatform_mapServiceError_conflict(t *testing.T) {
-	t.Parallel()
-	status, code, msg := mapServiceError(ErrSlotMigrationNotReady)
-	assert.Equal(t, http.StatusConflict, status)
-	assert.Equal(t, "CONFLICT", code)
-	assert.Contains(t, msg, "migration")
-}
+	t.Run("mapServiceError", func(t *testing.T) {
+		t.Parallel()
+		cases := []struct {
+			err        error
+			wantStatus int
+			wantCode   string
+			wantMsg    string
+		}{
+			{nil, http.StatusOK, "", ""},
+			{errForbidden, http.StatusForbidden, "FORBIDDEN", ""},
+			{ErrSlotMigrationNotReady, http.StatusConflict, "CONFLICT", "migration"},
+			{ErrSelfServeActiveCampaignLimit, http.StatusTooManyRequests, "LIMIT_EXCEEDED", ""},
+			{invalidQueryError("bad filter"), http.StatusBadRequest, "BAD_REQUEST", "bad filter"},
+			{ErrSellersJSONInvalid, http.StatusServiceUnavailable, "SUPPLY_INVALID", ""},
+		}
+		for _, tc := range cases {
+			status, code, msg := mapServiceError(tc.err)
+			assert.Equal(t, tc.wantStatus, status, tc.err)
+			assert.Equal(t, tc.wantCode, code, tc.err)
+			if tc.wantMsg != "" {
+				assert.Contains(t, msg, tc.wantMsg, tc.err)
+			}
+		}
+	})
 
-func TestPlatform_mapServiceError_limitExceeded(t *testing.T) {
-	t.Parallel()
-	status, code, _ := mapServiceError(ErrSelfServeActiveCampaignLimit)
-	assert.Equal(t, http.StatusTooManyRequests, status)
-	assert.Equal(t, "LIMIT_EXCEEDED", code)
-}
+	t.Run("mapNotFound", func(t *testing.T) {
+		t.Parallel()
+		assert.ErrorIs(t, mapNotFound(pgx.ErrNoRows, ErrCampaignNotFound), ErrCampaignNotFound)
+		assert.NoError(t, mapNotFound(nil, ErrCampaignNotFound))
+		assert.Equal(t, errors.New("other"), mapNotFound(errors.New("other"), ErrCampaignNotFound))
+	})
 
-func TestPlatform_mapNotFound(t *testing.T) {
-	t.Parallel()
-	assert.ErrorIs(t, mapNotFound(pgx.ErrNoRows, ErrCampaignNotFound), ErrCampaignNotFound)
-	assert.NoError(t, mapNotFound(nil, ErrCampaignNotFound))
-	assert.Equal(t, errors.New("other"), mapNotFound(errors.New("other"), ErrCampaignNotFound))
-}
+	t.Run("isNotFoundError", func(t *testing.T) {
+		t.Parallel()
+		assert.True(t, isNotFoundError(ErrBrandNotFound))
+	})
 
-func TestPlatform_isNotFoundError_brand(t *testing.T) {
-	t.Parallel()
-	assert.True(t, isNotFoundError(ErrBrandNotFound))
-}
+	t.Run("badRequestMessage", func(t *testing.T) {
+		t.Parallel()
+		cases := []struct {
+			err     error
+			wantOK  bool
+			contain string
+		}{
+			{ErrInsufficientBalance, true, "insufficient"},
+			{ErrRefundExceedsTopup, true, "refund"},
+			{ErrInvalidPacingMode, true, "pacing"},
+		}
+		for _, tc := range cases {
+			msg, ok := badRequestMessage(tc.err)
+			assert.Equal(t, tc.wantOK, ok, tc.err)
+			if tc.contain != "" {
+				assert.Contains(t, msg, tc.contain, tc.err)
+			}
+		}
+	})
 
-func TestPlatform_badRequestMessage_insufficientBalance(t *testing.T) {
-	t.Parallel()
-	msg, ok := badRequestMessage(ErrInsufficientBalance)
-	assert.True(t, ok)
-	assert.Contains(t, msg, "insufficient")
-}
+	t.Run("conflictMessage", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, "conflict", conflictMessage(errors.New("other")))
+		assert.Contains(t, conflictMessage(ingestion.ErrSlotMapAlreadyActive), "active")
+	})
 
-func TestPlatform_conflictMessage_default(t *testing.T) {
-	t.Parallel()
-	assert.Equal(t, "conflict", conflictMessage(errors.New("other")))
-}
+	t.Run("writeServiceError", func(t *testing.T) {
+		t.Parallel()
+		rec := httptest.NewRecorder()
+		writeServiceError(rec, errors.New("db exploded"))
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 
-func TestPlatform_writeServiceError_internal(t *testing.T) {
-	t.Parallel()
-	rec := httptest.NewRecorder()
-	writeServiceError(rec, errors.New("db exploded"))
-	assert.Equal(t, http.StatusInternalServerError, rec.Code)
-}
-
-func TestPlatform_badRequestMessage_refund(t *testing.T) {
-	t.Parallel()
-	msg, ok := badRequestMessage(ErrRefundExceedsTopup)
-	assert.True(t, ok)
-	assert.Contains(t, msg, "refund")
-}
-
-func TestPlatform_conflictMessage_slotActive(t *testing.T) {
-	t.Parallel()
-	assert.Contains(t, conflictMessage(ingestion.ErrSlotMapAlreadyActive), "active")
-}
-
-func TestPlatform_mapServiceError_nil(t *testing.T) {
-	t.Parallel()
-	status, code, msg := mapServiceError(nil)
-	assert.Equal(t, http.StatusOK, status)
-	assert.Empty(t, code)
-	assert.Empty(t, msg)
-}
-
-func TestPlatform_badRequestMessage_pacing(t *testing.T) {
-	t.Parallel()
-	msg, ok := badRequestMessage(ErrInvalidPacingMode)
-	assert.True(t, ok)
-	assert.Contains(t, msg, "pacing")
-}
-
-func TestPlatform_writeServiceError_clientError(t *testing.T) {
-	t.Parallel()
-	rec := httptest.NewRecorder()
-	writeServiceError(rec, ErrCustomerNotFound)
-	assert.Equal(t, http.StatusNotFound, rec.Code)
-}
-
-func TestPlatform_mapServiceError_invalidQuery(t *testing.T) {
-	t.Parallel()
-	status, code, msg := mapServiceError(invalidQueryError("bad filter"))
-	assert.Equal(t, http.StatusBadRequest, status)
-	assert.Equal(t, "BAD_REQUEST", code)
-	assert.Equal(t, "bad filter", msg)
-}
-
-func TestPlatform_mapServiceError_supplyInvalid(t *testing.T) {
-	t.Parallel()
-	status, code, _ := mapServiceError(ErrSellersJSONInvalid)
-	assert.Equal(t, http.StatusServiceUnavailable, status)
-	assert.Equal(t, "SUPPLY_INVALID", code)
+		rec = httptest.NewRecorder()
+		writeServiceError(rec, ErrCustomerNotFound)
+		assert.Equal(t, http.StatusNotFound, rec.Code)
+	})
 }
 
 func TestPlatform_errValidation(t *testing.T) {

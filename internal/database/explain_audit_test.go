@@ -13,8 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestExplainAudit_AllApplicationQueries runs EXPLAIN (ANALYZE, BUFFERS) on seeded
-// production-shaped data and reports suboptimal plans.
 func TestExplainAudit_AllApplicationQueries(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping full EXPLAIN audit in short mode")
@@ -41,7 +39,6 @@ func TestExplainAudit_AllApplicationQueries(t *testing.T) {
 	hash := "explain-audit-hash-0001"
 
 	queries := []queryCase{
-		// --- Hot path / processor ---
 		{name: "budget.GetCampaignBudget", hotPath: true, sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 SELECT c.id, c.customer_id, c.budget_limit, c.current_spend, c.status, cust.balance AS customer_balance
 FROM campaigns c JOIN customers cust ON c.customer_id = cust.id WHERE c.id = $1 LIMIT 1`, args: []any{campID}},
@@ -184,7 +181,6 @@ func seedExplainAuditData(t *testing.T, ctx context.Context, pool *pgxpool.Pool)
 		}
 	}
 
-	// Extra schemas/tables from later milestones
 	exec(`CREATE TABLE IF NOT EXISTS campaign_costs (
 		id BIGSERIAL PRIMARY KEY,
 		customer_id UUID NOT NULL,

@@ -9,10 +9,9 @@ import (
 )
 
 func buildH2TrackRequest(body []byte) []byte {
-	// :method POST (3), :path /track (literal name idx 4)
 	hdrBlock := []byte{0x83, 0x04, 0x06, '/', 't', 'r', 'a', 'c', 'k'}
 	if len(body) > 0 {
-		hdrBlock = append(hdrBlock, 0x9f) // content-type: application/json (static index 31)
+		hdrBlock = append(hdrBlock, 0x9f)
 	}
 
 	var headersFrame []byte

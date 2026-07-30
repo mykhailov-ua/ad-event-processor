@@ -78,7 +78,6 @@ var (
 	}, []string{"status"})
 )
 
-// RegisterMetrics registers notifier Prometheus collectors.
 func RegisterMetrics() {
 	prometheus.MustRegister(
 		queuePendingTotal,

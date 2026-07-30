@@ -1,4 +1,3 @@
--- edge-metrics.lua: edge phase counters and Prometheus text export.
 
 local _M = {}
 

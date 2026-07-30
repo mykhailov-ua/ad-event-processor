@@ -9,7 +9,6 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 )
 
-// ContainerStopTimeout bounds container stop calls in fault tests.
 const ContainerStopTimeout = 10 * time.Second
 
 func StopContainer(t *testing.T, c testcontainers.Container) {

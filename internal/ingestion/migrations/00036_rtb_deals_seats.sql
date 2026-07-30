@@ -1,4 +1,3 @@
--- M3.6: enforce minimum one buyer seat per PMP deal; document bidfloor micro-units column.
 
 -- +goose Up
 -- +goose StatementBegin

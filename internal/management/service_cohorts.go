@@ -12,14 +12,12 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// CohortVariantSpec is one weighted arm in an experiment config.
 type CohortVariantSpec struct {
 	ID     string            `json:"id"`
 	Weight uint32            `json:"weight"`
 	Flags  map[string]string `json:"flags,omitempty"`
 }
 
-// ExperimentCohortSpec is the management-plane input for cohort upsert.
 type ExperimentCohortSpec struct {
 	ID       uuid.UUID           `json:"id"`
 	Name     string              `json:"name"`
@@ -32,7 +30,6 @@ type cohortSnapshotPayload struct {
 	Version int64 `json:"version"`
 }
 
-// UpsertExperimentCohort stores cohort config and fans out UPDATE_COHORT_SNAPSHOT via outbox (GAP-RTB-12c).
 func (s *Service) UpsertExperimentCohort(ctx context.Context, spec ExperimentCohortSpec) error {
 	if s == nil || s.pool == nil {
 		return fmt.Errorf("service unavailable")
@@ -78,7 +75,6 @@ func (s *Service) UpsertExperimentCohort(ctx context.Context, spec ExperimentCoh
 	})
 }
 
-// publishRegistryFullSync notifies trackers to reload registry snapshots (campaigns + cohorts).
 func (s *Service) publishRegistryFullSync(ctx context.Context) error {
 	return s.publishCampaignUpdate(ctx, ingestion.RegistryFullSyncPayload)
 }

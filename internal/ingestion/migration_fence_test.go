@@ -108,9 +108,9 @@ func TestBumpMigrationFences_setsRedisAndPG(t *testing.T) {
 	require.Equal(t, int64(1), val)
 }
 
-func TestChaos_MigrationFenceConcurrentDebit(t *testing.T) {
+func TestFault_MigrationFenceConcurrentDebit(t *testing.T) {
 	if testing.Short() {
-		t.Skip("chaos integration test")
+		t.Skip("fault integration test")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)
@@ -152,5 +152,5 @@ func TestChaos_MigrationFenceConcurrentDebit(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(9_000_000_000_000_000), remaining)
 
-	t.Logf("chaos_proof fault=slot_migration_fence subsystem=ads_lua workers=32 fenced=%d budget_unchanged=true", fenced)
+	t.Logf("fault_proof fault=slot_migration_fence subsystem=ads_lua workers=32 fenced=%d budget_unchanged=true", fenced)
 }

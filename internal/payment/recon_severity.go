@@ -2,7 +2,6 @@ package payment
 
 import "espx/internal/payment/db"
 
-// FinancialFindingSeverity classifies recon findings for ops alerting thresholds.
 type FinancialFindingSeverity int
 
 const (

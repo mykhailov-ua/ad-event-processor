@@ -37,7 +37,6 @@ func TestFetchBudgetReconSnapshot_atomic(t *testing.T) {
 
 func TestReconToleranceMicro(t *testing.T) {
 	t.Parallel()
-	// tested via management package helpers; snapshot total is pure sum
 	snap := BudgetReconSnapshot{Remaining: 1, Sync: 2, Inflight: 3}
 	assert.Equal(t, int64(6), snap.RedisBudgetRemainingTotal(0))
 	assert.Equal(t, int64(7), snap.RedisBudgetRemainingTotal(1))

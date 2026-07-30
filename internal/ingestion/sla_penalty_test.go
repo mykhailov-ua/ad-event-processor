@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// DB health stub toggling ping success for SLA penalty tests.
 type MockDBHealth struct {
 	Healthy atomic.Bool
 }

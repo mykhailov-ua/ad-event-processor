@@ -257,7 +257,6 @@ func BenchmarkTrackRequest_UnmarshalJSON(b *testing.B) {
 }
 
 func TestParseUUID(t *testing.T) {
-	// Standard 36-byte hex format
 	id := uuid.New()
 	idStr := id.String()
 	idBytes := []byte(idStr)
@@ -267,16 +266,14 @@ func TestParseUUID(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, id, got)
 
-	// Raw 16-byte format
 	idRaw := id[:]
 	var gotRaw uuid.UUID
 	ok = ParseUUID(idRaw, &gotRaw)
 	require.True(t, ok)
 	require.Equal(t, id, gotRaw)
 
-	// Invalid inputs
 	require.False(t, ParseUUID([]byte("invalid-uuid-length-not-36"), &got))
-	require.False(t, ParseUUID([]byte("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a1g"), &got)) // invalid char 'g'
+	require.False(t, ParseUUID([]byte("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a1g"), &got))
 }
 
 func BenchmarkUUID_ParseBytes_Reflect(b *testing.B) {

@@ -1,6 +1,5 @@
 package coldpath
 
-// MapSlice applies fn to each element of in, returning a new slice of equal length.
 func MapSlice[T, R any](in []T, fn func(T) R) []R {
 	out := make([]R, len(in))
 	for i, v := range in {
@@ -9,7 +8,6 @@ func MapSlice[T, R any](in []T, fn func(T) R) []R {
 	return out
 }
 
-// KeyBy builds a map from slice elements; entries with ok=false from key are skipped.
 func KeyBy[T any, K comparable](slice []T, key func(T) (K, bool)) map[K]T {
 	m := make(map[K]T, len(slice))
 	for _, v := range slice {
@@ -20,7 +18,6 @@ func KeyBy[T any, K comparable](slice []T, key func(T) (K, bool)) map[K]T {
 	return m
 }
 
-// KeyByValue builds a map from slice elements using separate key and value projections.
 func KeyByValue[T any, K comparable, V any](slice []T, key func(T) K, val func(T) V) map[K]V {
 	m := make(map[K]V, len(slice))
 	for _, v := range slice {
@@ -29,7 +26,6 @@ func KeyByValue[T any, K comparable, V any](slice []T, key func(T) K, val func(T
 	return m
 }
 
-// PaginatedList runs count, then list when total > 0, and maps rows to the API DTO type.
 func PaginatedList[T, R any](
 	count func() (int64, error),
 	list func() ([]T, error),
@@ -49,7 +45,6 @@ func PaginatedList[T, R any](
 	return MapSlice(rows, mapFn), total, nil
 }
 
-// PaginatedQuery runs count, then list when total > 0.
 func PaginatedQuery[T any](
 	count func() (int64, error),
 	list func() ([]T, error),

@@ -1,4 +1,3 @@
-# NodePort exposes management admin HTTP on the host NIC for local dev without Ingress.
 apiVersion: v1
 kind: Service
 metadata:

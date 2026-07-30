@@ -1,4 +1,3 @@
-// Package allowlist syncs partner CIDR allow entries into the pinned XDP LPM map.
 package allowlist
 
 import (
@@ -13,7 +12,6 @@ import (
 )
 
 const (
-	// DefaultMapPath is the pinned allowlist map from cmd/edge-xdp.
 	DefaultMapPath = "/sys/fs/bpf/espx/allow_v4"
 	allowedMarker  = byte(1)
 )
@@ -24,15 +22,12 @@ var (
 )
 
 func initProtectedCIDRs() {
-	// Default resolvers
 	_, r1, _ := net.ParseCIDR("8.8.8.8/32")
 	_, r2, _ := net.ParseCIDR("1.1.1.1/32")
-	// Loopback
 	_, loopback, _ := net.ParseCIDR("127.0.0.0/8")
 
 	protectedCIDRs = append(protectedCIDRs, r1, r2, loopback)
 
-	// Customer LAN
 	if lan := os.Getenv("INSTALL_LAN_CIDR"); lan != "" {
 		if _, ipNet, err := net.ParseCIDR(lan); err == nil {
 			protectedCIDRs = append(protectedCIDRs, ipNet)
@@ -40,13 +35,11 @@ func initProtectedCIDRs() {
 	}
 }
 
-// ResetProtectedForTest clears cached protected CIDRs (tests only).
 func ResetProtectedForTest() {
 	initOnce = sync.Once{}
 	protectedCIDRs = nil
 }
 
-// IsProtected returns true if the IP is protected (customer LAN, resolvers, loopback).
 func IsProtected(ipStr string) bool {
 	initOnce.Do(initProtectedCIDRs)
 
@@ -63,7 +56,6 @@ func IsProtected(ipStr string) bool {
 	return false
 }
 
-// LoadPinnedMap opens the allowlist map pinned by edge-xdp.
 func LoadPinnedMap(path string) (*ebpf.Map, error) {
 	if path == "" {
 		path = DefaultMapPath
@@ -71,14 +63,12 @@ func LoadPinnedMap(path string) (*ebpf.Map, error) {
 	return ebpf.LoadPinnedMap(path, nil)
 }
 
-// Store holds the last synced allow snapshot and applies incremental map updates.
 type Store struct {
 	mu      sync.Mutex
 	entries map[lpm.StoreID]lpm.IPv4Key
 	scratch map[lpm.StoreID]lpm.IPv4Key
 }
 
-// NewStore returns an empty in-memory allow snapshot.
 func NewStore() *Store {
 	return &Store{
 		entries: make(map[lpm.StoreID]lpm.IPv4Key),
@@ -86,14 +76,12 @@ func NewStore() *Store {
 	}
 }
 
-// Len returns tracked allow prefixes.
 func (s *Store) Len() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return len(s.entries)
 }
 
-// ApplyDiff merges Redis allow members into the pinned BPF map.
 func (s *Store) ApplyDiff(m *ebpf.Map, members []string) (added, removed int, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

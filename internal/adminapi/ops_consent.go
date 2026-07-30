@@ -9,7 +9,6 @@ import (
 	"espx/pkg/httpresponse"
 )
 
-// ConsentRecord is the signed body for POST /api/v1/consent.
 type ConsentRecord struct {
 	UserID    string `json:"user_id"`
 	Purposes  int16  `json:"purposes"`
@@ -17,12 +16,10 @@ type ConsentRecord struct {
 	Timestamp string `json:"timestamp,omitempty"`
 }
 
-// ConsentRecorder persists verified consent payloads.
 type ConsentRecorder interface {
 	RecordConsent(ctx context.Context, in ConsentRecord) error
 }
 
-// ConsentVerifier validates HMAC signatures on consent webhook bodies.
 type ConsentVerifier interface {
 	Verify(body []byte, signature string) error
 }

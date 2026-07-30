@@ -9,7 +9,6 @@ import (
 	"espx/pkg/broker/protocol"
 )
 
-// RegisterTopic assigns a numeric topic ID on the broker or region-proxy leader.
 func (c *Client) RegisterTopic(topic string) (uint16, error) {
 	var lastErr error
 	for attempt := 0; attempt < 5; attempt++ {
@@ -93,13 +92,11 @@ func (c *Client) RegisterTopic(topic string) (uint16, error) {
 	return 0, fmt.Errorf("register topic after 5 attempts: %w", lastErr)
 }
 
-// ProduceBatchResult is the outcome of one batch append to the WAL.
 type ProduceBatchResult struct {
 	Offset    uint64
 	Committed uint32
 }
 
-// ProduceBatch appends one or more topic-tagged payloads in a single WAL fsync batch.
 func (c *Client) ProduceBatch(topic string, topicID uint16, payloads [][]byte) (ProduceBatchResult, error) {
 	var zero ProduceBatchResult
 	if len(payloads) == 0 {

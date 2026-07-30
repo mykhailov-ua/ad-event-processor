@@ -12,7 +12,6 @@ var (
 	piiHasher   = piihash.TestHasher()
 )
 
-// SetPIIHasher configures the ClickHouse ip_hash/ua_hash salt used by IVT queries.
 func SetPIIHasher(h *piihash.Hasher) {
 	piiHasherMu.Lock()
 	defer piiHasherMu.Unlock()

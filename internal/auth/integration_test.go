@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestAuthService_Integration exercises registration, login, password reuse, and email verification against real stores.
 func TestAuthService_Integration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping testcontainers-based integration test in short mode")

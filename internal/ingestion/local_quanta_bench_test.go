@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// BenchmarkLocalQuantaSpend measures hot-path local quanta debit (M8-01 DoD).
 func BenchmarkLocalQuantaSpend(b *testing.B) {
 	ledger := NewLocalQuantaLedger()
 	ledger.SetMode("live")
@@ -24,7 +23,6 @@ func BenchmarkLocalQuantaSpend(b *testing.B) {
 	}
 }
 
-// BenchmarkLocalQuantaSpend_1M verifies 1M ops < 50ms target from M8 DoD.
 func TestLocalQuantaSpend_1M_under50ms(t *testing.T) {
 	ledger := NewLocalQuantaLedger()
 	id := uuid.New()
@@ -46,7 +44,6 @@ func TestLocalQuantaSpend_1M_under50ms(t *testing.T) {
 	}
 }
 
-// BenchmarkLocalQuantaSpend_parallel measures campaign-global pool under workers (M8-08).
 func BenchmarkLocalQuantaSpend_parallel(b *testing.B) {
 	ledger := NewLocalQuantaLedger()
 	id := uuid.New()

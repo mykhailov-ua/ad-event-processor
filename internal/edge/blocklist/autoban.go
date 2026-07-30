@@ -8,7 +8,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// RecordAutoBan adds an IP to blacklist:auto with a lease tracked in a ZSET.
 func RecordAutoBan(ctx context.Context, rdb redis.Cmdable, ip string, ttl time.Duration) error {
 	if rdb == nil || ip == "" {
 		return fmt.Errorf("nil redis client or empty ip")

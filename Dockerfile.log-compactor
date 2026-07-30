@@ -1,4 +1,3 @@
-# Log compactor: downsampled warm-tier archives from rotated tracker audit segments.
 FROM golang:1.25.12-alpine AS builder
 WORKDIR /src
 COPY go.mod go.sum ./

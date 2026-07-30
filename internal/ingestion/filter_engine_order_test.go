@@ -23,7 +23,6 @@ func (f *traceFilter) Check(ctx context.Context, evt *campaignmodel.Event) error
 	return f.fail
 }
 
-// TestFilterEngine_ProductionOrder asserts filters run in registration order until first error (M6-08).
 func TestFilterEngine_ProductionOrder(t *testing.T) {
 	var order []string
 	emergency := &traceFilter{name: "emergency", trace: &order}
@@ -39,7 +38,6 @@ func TestFilterEngine_ProductionOrder(t *testing.T) {
 	assert.Equal(t, []string{"emergency", "geo", "schedule", "unified"}, order)
 }
 
-// TestFilterEngine_DeadlineShortCircuit stops the chain when the monotonic deadline expires (M6-08).
 func TestFilterEngine_DeadlineShortCircuit(t *testing.T) {
 	var order []string
 	engine := NewFilterEngine(5*time.Millisecond,

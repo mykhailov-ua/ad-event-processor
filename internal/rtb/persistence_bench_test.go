@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Tracks cold-path snapshot write cost at production-scale campaign counts.
 func BenchmarkSaveSnapshot(b *testing.B) {
 	tmpDir, err := os.MkdirTemp("", "espx-rtb-bench-*")
 	if err != nil {
@@ -45,7 +44,6 @@ func BenchmarkSaveSnapshot(b *testing.B) {
 	}
 }
 
-// Tracks startup restore cost from a production-scale snapshot file.
 func BenchmarkLoadSnapshot(b *testing.B) {
 	tmpDir, err := os.MkdirTemp("", "espx-rtb-bench-*")
 	if err != nil {

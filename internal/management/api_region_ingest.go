@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// RegionIngestBatchInput is one region-proxy WAL record forwarded to global ingest.
 type RegionIngestBatchInput struct {
 	RegionCode  uint8
 	NodeID      string
@@ -22,13 +21,11 @@ type RegionIngestBatchInput struct {
 	OpID        uuid.UUID
 }
 
-// RegionIngestBatchResult is the D3 claim outcome for one ingest batch.
 type RegionIngestBatchResult struct {
 	Outcome  dedup.Outcome
 	DedupKey string
 }
 
-// IngestRegionProxyBatch claims and records one proxy batch on the global cell.
 func (s *Service) IngestRegionProxyBatch(ctx context.Context, in RegionIngestBatchInput) (RegionIngestBatchResult, error) {
 	if in.RegionCode == 0 {
 		return RegionIngestBatchResult{}, fmt.Errorf("region ingest batch region=%d: invalid region code", in.RegionCode)

@@ -2,7 +2,6 @@ package adminapi
 
 import "net/http"
 
-// RouteRegistry wires cold-path admin JSON handlers into cmd/management.
 type RouteRegistry struct {
 	BillingHTTP     *BillingHTTPHandlers
 	OpsHTTP         *OpsHTTPHandlers
@@ -17,7 +16,6 @@ type RouteRegistry struct {
 	MarginGuardHTTP *MarginGuardHTTPHandlers
 }
 
-// RegisterRoutes mounts adminapi handlers on mux.
 func RegisterRoutes(mux *http.ServeMux, routes RouteRegistry) {
 	if routes.BillingHTTP != nil {
 		routes.BillingHTTP.Register(mux)

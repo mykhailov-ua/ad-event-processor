@@ -12,7 +12,6 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-// benchWorstRegistry returns a campaign that forces unified-filter.lua (rate, fcap, pacing, TTC).
 type benchWorstRegistry struct {
 	customerID uuid.UUID
 	camp       *campaignmodel.Campaign
@@ -74,7 +73,6 @@ func newLuaBenchFilter(b testing.TB, rdb redis.UniversalClient, reg campaignmode
 	return f
 }
 
-// BenchmarkLuaScript_Happy measures budget-fast.lua (Tier B) on impression fast path.
 func BenchmarkLuaScript_Happy(b *testing.B) {
 	if testing.Short() {
 		b.Skip()
@@ -109,7 +107,6 @@ func BenchmarkLuaScript_Happy(b *testing.B) {
 	}
 }
 
-// BenchmarkLuaScript_Worst measures unified-filter.lua with rate, fcap, even pacing, and TTC.
 func BenchmarkLuaScript_Worst(b *testing.B) {
 	if testing.Short() {
 		b.Skip()

@@ -11,14 +11,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestOpenRTBIngest_TruncatedPayload does not panic on truncated OpenRTB JSON (M6-20).
 func TestOpenRTBIngest_TruncatedPayload(t *testing.T) {
 	payload := []byte(`{"openrtb":{"ver":"3.0","item":[{"id":"1","flr":`)
 	_, _, _, ok := ParseOpenRTB3Payload(payload)
 	assert.True(t, ok)
 }
 
-// TestOpenRTBIngest_MultiImp uses the first flr field in the payload (M6-20).
 func TestOpenRTBIngest_MultiImp(t *testing.T) {
 	payload := []byte(`{"openrtb":{"ver":"3.0","item":[{"id":"a","flr":1.5},{"id":"b","flr":9.9}]}}`)
 	minBid, deviceType, categoryMask, ok := ParseOpenRTB3Payload(payload)
@@ -28,7 +26,6 @@ func TestOpenRTBIngest_MultiImp(t *testing.T) {
 	assert.Equal(t, uint64(1), categoryMask)
 }
 
-// TestOpenRTBIngest_LiveWithOpenRTBPayload runs live RTB when track payload embeds OpenRTB (M6-20).
 func TestOpenRTBIngest_LiveWithOpenRTBPayload(t *testing.T) {
 	store := rtb.NewBudgetStore()
 	catalog := NewRtbCatalog(store, BudgetAuthorityRTB)

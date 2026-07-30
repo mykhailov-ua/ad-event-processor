@@ -14,7 +14,6 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-// QuotaManager coordinates Distributed Quota refills and initial allocations (Phase 1.4).
 type QuotaManager struct {
 	svc          *Service
 	quotaRepo    *ingestion.QuotaRepo
@@ -23,7 +22,6 @@ type QuotaManager struct {
 	thresholdPct int
 }
 
-// NewQuotaManager constructs a QuotaManager with config-driven chunk sizes and thresholds.
 func NewQuotaManager(svc *Service) *QuotaManager {
 	var chunkSize int64
 	var thresholdPct int
@@ -32,7 +30,7 @@ func NewQuotaManager(svc *Service) *QuotaManager {
 		thresholdPct = svc.cfg.QuotaRefillThresholdPct
 	}
 	if chunkSize <= 0 {
-		chunkSize = 5000000 // default 5,000,000 micro-units ($5.00)
+		chunkSize = 5000000
 	}
 	if thresholdPct <= 0 {
 		thresholdPct = 20
@@ -46,7 +44,6 @@ func NewQuotaManager(svc *Service) *QuotaManager {
 	}
 }
 
-// Start runs the refill poll loop and periodic initial quota warming until context is cancelled.
 func (qm *QuotaManager) Start(ctx context.Context) {
 	ticker := time.NewTicker(qm.pollInterval)
 	defer ticker.Stop()

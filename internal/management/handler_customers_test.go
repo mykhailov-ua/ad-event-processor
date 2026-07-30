@@ -16,7 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestManagementAPI_Customers guards customer list, detail, ledger, and tenant isolation endpoints.
 func TestManagementAPI_Customers(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")

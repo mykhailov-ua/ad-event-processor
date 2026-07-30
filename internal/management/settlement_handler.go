@@ -272,7 +272,6 @@ func (h *SettlementHandler) BatchApplySettlement(ctx context.Context, req *pb.Ba
 	}, nil
 }
 
-// ApplyCTVSettlement debits CTV spend plus gross receipts tax in one idempotent ledger transaction (GAP-RTB-12a).
 func (h *SettlementHandler) ApplyCTVSettlement(ctx context.Context, req *pb.ApplyCTVSettlementRequest) (*pb.ApplyCTVSettlementResponse, error) {
 	if err := h.requireSettlementToken(ctx); err != nil {
 		return nil, err

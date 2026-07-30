@@ -1,4 +1,3 @@
--- node_metrics.sql: 10 s metric rollups for multi-region node scoring (M3.1).
 
 -- name: InsertNodeMetricBucket :exec
 INSERT INTO node_metric_buckets (

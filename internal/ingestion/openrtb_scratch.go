@@ -7,7 +7,7 @@ import (
 	"espx/internal/campaignmodel"
 )
 
-const openRTBScratchMagic = 0x4f525442335f01 // "ORTB3_" — distinguishes from fraud accumulator Scratch.
+const openRTBScratchMagic = 0x4f525442335f01
 
 type openRTBScratchSlot struct {
 	magic  uintptr

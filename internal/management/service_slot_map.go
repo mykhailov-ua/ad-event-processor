@@ -11,14 +11,12 @@ import (
 	"github.com/google/uuid"
 )
 
-// SlotMapDTO is the admin API view of one slot row.
 type SlotMapDTO struct {
 	Slot    int16  `json:"slot"`
 	ShardID int16  `json:"shard_id"`
 	State   string `json:"state"`
 }
 
-// SlotMapVersionDTO summarizes a slot map version for admin responses.
 type SlotMapVersionDTO struct {
 	Version        int32        `json:"version"`
 	ActiveVersion  int32        `json:"active_version"`
@@ -27,7 +25,6 @@ type SlotMapVersionDTO struct {
 	Slots          []SlotMapDTO `json:"slots,omitempty"`
 }
 
-// GetSlotMap returns the active or requested slot map version.
 func (s *Service) GetSlotMap(ctx context.Context, version *int32, includeSlots bool) (SlotMapVersionDTO, error) {
 	repo := ingestion.NewSlotMapRepo(s.GetPool())
 	active, err := repo.GetActiveVersion(ctx)
@@ -65,7 +62,6 @@ func (s *Service) GetSlotMap(ctx context.Context, version *int32, includeSlots b
 	return dto, nil
 }
 
-// CreateSlotMapVersion clones base (or active) into max(version)+1 with overrides; audit in same tx.
 func (s *Service) CreateSlotMapVersion(ctx context.Context, adminID uuid.UUID, baseVersion *int32, overrides []ingestion.SlotOverride) (int32, error) {
 	base := int32(0)
 	if baseVersion != nil {
@@ -152,7 +148,6 @@ func (s *Service) CreateSlotMapVersion(ctx context.Context, adminID uuid.UUID, b
 	return newVersion, nil
 }
 
-// MarkSlotMapMigrating marks slots MIGRATING on a draft version with audit log in the same tx.
 func (s *Service) MarkSlotMapMigrating(ctx context.Context, adminID uuid.UUID, version int32, slots []int16, targetShard int16) error {
 	if targetShard < 0 {
 		return ingestion.ErrSlotMapInvalidShard
@@ -208,8 +203,6 @@ func (s *Service) MarkSlotMapMigrating(ctx context.Context, adminID uuid.UUID, v
 	return nil
 }
 
-// ActivateSlotMapVersion switches active_version after validation with audit log in the same tx.
-// When the version has MIGRATING slots, copy must be complete before cutover (Phase 2.3).
 func (s *Service) ActivateSlotMapVersion(ctx context.Context, adminID uuid.UUID, version int32) error {
 	return s.ActivateSlotMapVersionWithMigration(ctx, adminID, version)
 }

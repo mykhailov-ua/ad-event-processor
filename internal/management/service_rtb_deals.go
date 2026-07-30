@@ -25,11 +25,10 @@ var (
 	ErrInvalidDealSeats    = errors.New("seats must be at least 1")
 )
 
-// RtbDealDTO is the admin API view of one OpenRTB PMP deal.
 type RtbDealDTO struct {
 	ID         int64  `json:"id"`
 	DealID     string `json:"deal_id"`
-	FloorMicro int64  `json:"floor_micro"` // bidfloor in micro-units (OpenRTB CPM)
+	FloorMicro int64  `json:"floor_micro"`
 	GeoMask    int64  `json:"geo_mask"`
 	CatMask    int64  `json:"cat_mask"`
 	Pacing     string `json:"pacing"`
@@ -39,7 +38,6 @@ type RtbDealDTO struct {
 	UpdatedAt  string `json:"updated_at"`
 }
 
-// RtbDealCreateSpec is the request body for POST /admin/rtb/deals.
 type RtbDealCreateSpec struct {
 	DealID     string `json:"deal_id"`
 	FloorMicro int64  `json:"floor_micro"`
@@ -50,7 +48,6 @@ type RtbDealCreateSpec struct {
 	CustomerID string `json:"customer_id"`
 }
 
-// RtbDealUpdateSpec is the request body for PUT /admin/rtb/deals/{id}.
 type RtbDealUpdateSpec struct {
 	DealID     string `json:"deal_id"`
 	FloorMicro int64  `json:"floor_micro"`
@@ -61,7 +58,6 @@ type RtbDealUpdateSpec struct {
 	CustomerID string `json:"customer_id"`
 }
 
-// RtbCatalogReloadPayload is the outbox payload for RELOAD_RTB_CATALOG.
 type RtbCatalogReloadPayload struct {
 	Trigger string `json:"trigger"`
 }
@@ -116,7 +112,6 @@ func (s *Service) enqueueRtbCatalogReload(ctx context.Context, q db.Querier, tri
 	return err
 }
 
-// PublishRtbCatalogReload notifies trackers to rebuild the RTB catalog and deal index.
 func (s *Service) PublishRtbCatalogReload(ctx context.Context) error {
 	rdb := s.getPubSubRDB()
 	if rdb == nil {
@@ -125,7 +120,6 @@ func (s *Service) PublishRtbCatalogReload(ctx context.Context) error {
 	return rdb.Publish(ctx, ingestion.RtbCatalogReloadChannel(s.cfg), "reload").Err()
 }
 
-// ListRtbDeals returns all PMP deals for admin CRUD.
 func (s *Service) ListRtbDeals(ctx context.Context) ([]RtbDealDTO, error) {
 	rows, err := db.New(s.GetPool()).ListRtbDeals(ctx)
 	if err != nil {
@@ -134,7 +128,6 @@ func (s *Service) ListRtbDeals(ctx context.Context) ([]RtbDealDTO, error) {
 	return coldpath.MapSlice(rows, toRtbDealDTO), nil
 }
 
-// GetRtbDeal returns one deal by internal id.
 func (s *Service) GetRtbDeal(ctx context.Context, id int64) (RtbDealDTO, error) {
 	row, err := db.New(s.GetPool()).GetRtbDeal(ctx, id)
 	if err != nil {
@@ -146,7 +139,6 @@ func (s *Service) GetRtbDeal(ctx context.Context, id int64) (RtbDealDTO, error) 
 	return toRtbDealDTO(row), nil
 }
 
-// CreateRtbDeal persists a deal and queues catalog reload propagation.
 func (s *Service) CreateRtbDeal(ctx context.Context, spec RtbDealCreateSpec) (RtbDealDTO, error) {
 	pacing, err := rtb.ParseDealPacingString(spec.Pacing)
 	if err != nil {
@@ -206,7 +198,6 @@ func (s *Service) CreateRtbDeal(ctx context.Context, spec RtbDealCreateSpec) (Rt
 	return out, err
 }
 
-// UpdateRtbDeal updates a deal and queues catalog reload propagation.
 func (s *Service) UpdateRtbDeal(ctx context.Context, id int64, spec RtbDealUpdateSpec) (RtbDealDTO, error) {
 	pacing, err := rtb.ParseDealPacingString(spec.Pacing)
 	if err != nil {
@@ -271,7 +262,6 @@ func (s *Service) UpdateRtbDeal(ctx context.Context, id int64, spec RtbDealUpdat
 	return out, err
 }
 
-// DeleteRtbDeal removes a deal and queues catalog reload propagation.
 func (s *Service) DeleteRtbDeal(ctx context.Context, id int64) error {
 	return pgx.BeginFunc(ctx, s.GetPool(), func(tx pgx.Tx) error {
 		q := db.New(tx)

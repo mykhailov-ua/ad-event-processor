@@ -16,7 +16,6 @@ import (
 //go:embed migrations/*.sql
 var migrationFiles embed.FS
 
-// ApplyMigrations runs pending embedded payment schema migrations against the payment database.
 func ApplyMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 	if _, err := pool.Exec(ctx, `
 		CREATE SCHEMA IF NOT EXISTS payment;

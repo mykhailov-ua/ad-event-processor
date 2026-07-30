@@ -15,7 +15,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// Handler serves the admin HTTP API with auth, rate limiting, and permission checks.
 type Handler struct {
 	svc             *Service
 	cfg             *config.Config
@@ -27,7 +26,6 @@ type Handler struct {
 	billing         *BillingClient
 }
 
-// NewHandler constructs the admin HTTP handler with per-IP rate limits from config.
 func NewHandler(svc *Service, cfg *config.Config, authMiddleware *AuthMiddleware, authClient *AuthClient, paymentClient *PaymentClient, billingClient *BillingClient) *Handler {
 	rps := 10.0
 	burst := 50
@@ -47,7 +45,6 @@ func NewHandler(svc *Service, cfg *config.Config, authMiddleware *AuthMiddleware
 	}
 }
 
-// RegisterRoutes mounts all admin endpoints on the provided mux.
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /admin/customers", h.limit(h.perm(h.createCustomer, PermCustomersWrite)))
 	mux.HandleFunc("POST /admin/customers/{id}/topup", h.limit(h.perm(h.topUpBalance, PermCustomersWrite)))
@@ -92,7 +89,6 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	registerNotificationRoutes(mux, h)
 }
 
-// limit wraps handlers with a per-client IP token bucket.
 func (h *Handler) limit(next http.HandlerFunc) http.HandlerFunc {
 	return h.limitByIP(h.pgHigh(next))
 }
@@ -112,7 +108,6 @@ func (h *Handler) pgHigh(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// perm wraps handlers with permission-based authentication.
 func (h *Handler) perm(next http.HandlerFunc, permission string) http.HandlerFunc {
 	if h.authMiddleware != nil {
 		return h.authMiddleware.RequirePermission(permission)(next)
@@ -120,7 +115,6 @@ func (h *Handler) perm(next http.HandlerFunc, permission string) http.HandlerFun
 	return h.authFallback(next)
 }
 
-// authFallback allows integration tests to call admin routes with only the shared API key.
 func (h *Handler) authFallback(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		key := r.Header.Get("X-Admin-API-Key")
@@ -138,7 +132,6 @@ func (h *Handler) authFallback(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// createCustomer handles POST /admin/customers for onboarding billing accounts.
 func (h *Handler) createCustomer(w http.ResponseWriter, r *http.Request) {
 	body, err := coldpath.ReadLimitedBody(w, r, coldpath.DefaultMaxBody)
 	if err != nil {
@@ -180,7 +173,6 @@ func (h *Handler) createCustomer(w http.ResponseWriter, r *http.Request) {
 	httpresponse.JSON(w, http.StatusCreated, map[string]any{"id": req.ID})
 }
 
-// topUpBalance handles POST /admin/customers/{id}/topup for idempotent balance credits.
 func (h *Handler) topUpBalance(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	customerID, err := uuid.Parse(idStr)
@@ -227,7 +219,6 @@ func (h *Handler) topUpBalance(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// createCampaign handles POST /admin/campaigns for launching new delivery with budget reservation.
 func (h *Handler) createCampaign(w http.ResponseWriter, r *http.Request) {
 	body, err := coldpath.ReadLimitedBody(w, r, coldpath.DefaultMaxBody)
 	if err != nil {
@@ -326,7 +317,6 @@ func (h *Handler) createCampaign(w http.ResponseWriter, r *http.Request) {
 	httpresponse.JSON(w, http.StatusCreated, map[string]any{"id": id})
 }
 
-// cancelCampaign handles DELETE /admin/campaigns/{id} for graceful campaign shutdown.
 func (h *Handler) cancelCampaign(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	campaignID, err := uuid.Parse(idStr)
@@ -357,7 +347,6 @@ func (h *Handler) cancelCampaign(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusAccepted)
 }
 
-// updateCampaignPacing handles POST /admin/campaigns/{id}/pacing for manual ASAP or EVEN selection.
 func (h *Handler) updateCampaignPacing(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	campaignID, err := uuid.Parse(idStr)
@@ -397,7 +386,6 @@ func (h *Handler) updateCampaignPacing(w http.ResponseWriter, r *http.Request) {
 	httpresponse.JSON(w, http.StatusOK, updatedCamp)
 }
 
-// updateSettings handles POST /admin/settings for system configuration changes.
 func (h *Handler) updateSettings(w http.ResponseWriter, r *http.Request) {
 	settings, err := coldpath.DecodeRequest[map[string]string](w, r, coldpath.DefaultMaxBody)
 	if err != nil {
@@ -411,7 +399,6 @@ func (h *Handler) updateSettings(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// toggleEmergencyBreaker handles POST /admin/system/breaker for the global ad delivery kill switch.
 func (h *Handler) toggleEmergencyBreaker(w http.ResponseWriter, r *http.Request) {
 	req, err := coldpath.DecodeRequest[struct {
 		Active bool   `json:"active"`
@@ -428,8 +415,6 @@ func (h *Handler) toggleEmergencyBreaker(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusOK)
 }
 
-// blockIP handles POST /admin/blacklist for operator-initiated IP blocks.
-// Dry-run: accept ?dry_run=1 or X-Dry-Run: 1 (GAP-RTB-12b).
 func (h *Handler) blockIP(w http.ResponseWriter, r *http.Request) {
 	req, err := coldpath.DecodeRequest[struct {
 		IP         string `json:"ip"`
@@ -458,7 +443,6 @@ func (h *Handler) blockIP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
-// unblockIP handles DELETE /admin/blacklist for removing blocked IPs.
 func (h *Handler) unblockIP(w http.ResponseWriter, r *http.Request) {
 	req, err := coldpath.DecodeRequest[struct {
 		IP     string `json:"ip"`
@@ -475,7 +459,6 @@ func (h *Handler) unblockIP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// listAudit handles GET /admin/audit for compliance review of admin actions.
 func (h *Handler) listAudit(w http.ResponseWriter, r *http.Request) {
 	limit, offset := parseAPIPagination(r)
 	redact := r.URL.Query().Get("redact_pii") == "true"
@@ -489,7 +472,6 @@ func (h *Handler) listAudit(w http.ResponseWriter, r *http.Request) {
 	coldpath.WritePaginatedJSON(w, logs, total)
 }
 
-// parsePagination reads limit and offset query params with safe defaults and caps.
 func parsePagination(r *http.Request) (int32, int32) {
 	limit := int32(20)
 	if l, err := strconv.ParseInt(r.URL.Query().Get("limit"), 10, 32); err == nil && l > 0 {
@@ -505,7 +487,6 @@ func parsePagination(r *http.Request) (int32, int32) {
 	return limit, offset
 }
 
-// listCustomers handles GET /admin/customers for paginated account listing.
 func (h *Handler) listCustomers(w http.ResponseWriter, r *http.Request) {
 	limit, offset := parsePagination(r)
 	customers, total, err := h.svc.ListCustomers(r.Context(), limit, offset)
@@ -517,7 +498,6 @@ func (h *Handler) listCustomers(w http.ResponseWriter, r *http.Request) {
 	coldpath.WritePaginatedJSON(w, customers, total)
 }
 
-// getCustomer handles GET /admin/customers/{id} for account detail with spend stats.
 func (h *Handler) getCustomer(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	customerID, err := uuid.Parse(idStr)
@@ -541,7 +521,6 @@ func (h *Handler) getCustomer(w http.ResponseWriter, r *http.Request) {
 	httpresponse.JSON(w, http.StatusOK, customer)
 }
 
-// getCustomerLedger handles GET /admin/customers/{id}/ledger for billing history.
 func (h *Handler) getCustomerLedger(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	customerID, err := uuid.Parse(idStr)
@@ -566,7 +545,6 @@ func (h *Handler) getCustomerLedger(w http.ResponseWriter, r *http.Request) {
 	coldpath.WritePaginatedJSON(w, ledger, total)
 }
 
-// listCampaigns handles GET /admin/campaigns with optional customer and status filters.
 func (h *Handler) listCampaigns(w http.ResponseWriter, r *http.Request) {
 	limit, offset := parsePagination(r)
 	status := r.URL.Query().Get("status")
@@ -592,7 +570,6 @@ func (h *Handler) listCampaigns(w http.ResponseWriter, r *http.Request) {
 	coldpath.WritePaginatedJSON(w, campaigns, total)
 }
 
-// getCampaign handles GET /admin/campaigns/{id} for campaign detail views.
 func (h *Handler) getCampaign(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	campaignID, err := uuid.Parse(idStr)
@@ -616,7 +593,6 @@ func (h *Handler) getCampaign(w http.ResponseWriter, r *http.Request) {
 	httpresponse.JSON(w, http.StatusOK, campaign)
 }
 
-// getCampaignHistory handles GET /admin/campaigns/{id}/history for status transition audit.
 func (h *Handler) getCampaignHistory(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	campaignID, err := uuid.Parse(idStr)
@@ -644,7 +620,6 @@ func (h *Handler) getCampaignHistory(w http.ResponseWriter, r *http.Request) {
 	coldpath.WritePaginatedJSON(w, history, total)
 }
 
-// listBlacklist handles GET /admin/blacklist for blocked IP inventory.
 func (h *Handler) listBlacklist(w http.ResponseWriter, r *http.Request) {
 	limit, offset := parsePagination(r)
 	items, total, err := h.svc.ListBlacklist(r.Context(), limit, offset)
@@ -656,7 +631,6 @@ func (h *Handler) listBlacklist(w http.ResponseWriter, r *http.Request) {
 	coldpath.WritePaginatedJSON(w, items, total)
 }
 
-// getSettings handles GET /admin/settings for reading system configuration.
 func (h *Handler) getSettings(w http.ResponseWriter, r *http.Request) {
 	settings, err := h.svc.GetSettings(r.Context())
 	if err != nil {
@@ -667,7 +641,6 @@ func (h *Handler) getSettings(w http.ResponseWriter, r *http.Request) {
 	httpresponse.JSON(w, http.StatusOK, settings)
 }
 
-// createBrand handles POST /admin/brands for registering advertiser brands.
 func (h *Handler) createBrand(w http.ResponseWriter, r *http.Request) {
 	req, err := coldpath.DecodeRequest[struct {
 		CustomerID uuid.UUID `json:"customer_id"`
@@ -700,7 +673,6 @@ func (h *Handler) createBrand(w http.ResponseWriter, r *http.Request) {
 	httpresponse.JSON(w, http.StatusCreated, map[string]any{"id": id})
 }
 
-// listBrands handles GET /admin/brands for a customer's brand inventory.
 func (h *Handler) listBrands(w http.ResponseWriter, r *http.Request) {
 	var custID uuid.UUID
 	if cStr := r.URL.Query().Get("customer_id"); cStr != "" {
@@ -728,7 +700,6 @@ func (h *Handler) listBrands(w http.ResponseWriter, r *http.Request) {
 	httpresponse.JSON(w, http.StatusOK, brands)
 }
 
-// configureBrandFcap handles POST /admin/brands/{id}/fcap for brand-level frequency caps.
 func (h *Handler) configureBrandFcap(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	brandID, err := uuid.Parse(idStr)

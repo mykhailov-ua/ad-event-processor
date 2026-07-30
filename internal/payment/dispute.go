@@ -2,10 +2,8 @@ package payment
 
 import "github.com/google/uuid"
 
-// OutboxEventApplyChargeback debits the customer ledger when Stripe withdraws disputed funds.
 const OutboxEventApplyChargeback = "APPLY_CHARGEBACK"
 
-// OutboxEventReverseChargeback credits the customer ledger when Stripe reinstates won dispute funds.
 const OutboxEventReverseChargeback = "REVERSE_CHARGEBACK"
 
 func chargebackWithdrawnLedgerKey(providerDisputeID string) string {
@@ -16,7 +14,6 @@ func chargebackReinstatedLedgerKey(providerDisputeID string) string {
 	return "chargeback:reinstated:" + providerDisputeID
 }
 
-// ApplyChargebackPayload is the outbox JSON contract for management ApplyPaymentChargeback.
 type ApplyChargebackPayload struct {
 	CustomerID           string `json:"customer_id"`
 	AmountMicro          int64  `json:"amount_micro"`
@@ -26,7 +23,6 @@ type ApplyChargebackPayload struct {
 	ProviderDisputeID    string `json:"provider_dispute_id"`
 }
 
-// ReverseChargebackPayload is the outbox JSON contract for management ApplyPaymentChargebackReversal.
 type ReverseChargebackPayload struct {
 	CustomerID           string `json:"customer_id"`
 	AmountMicro          int64  `json:"amount_micro"`

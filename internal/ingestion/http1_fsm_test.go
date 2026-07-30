@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// nginxTrackCorpus is a typical POST /track request proxied from OpenResty (M5-B benchmark corpus).
 var nginxTrackCorpus = []byte(
 	"POST /track HTTP/1.1\r\n" +
 		"Host: edge.local\r\n" +

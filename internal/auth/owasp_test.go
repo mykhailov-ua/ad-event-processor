@@ -108,7 +108,6 @@ func (m *mockRedisClient) Pipelined(ctx context.Context, fn func(redis.Pipeliner
 	return nil, nil
 }
 
-// owaspMockRepo is a minimal store stub focused on OWASP security regression scenarios.
 type owaspMockRepo struct {
 	db.Store
 	createUserFunc     func(ctx context.Context, arg db.CreateUserParams) (db.CreateUserRow, error)
@@ -117,7 +116,6 @@ type owaspMockRepo struct {
 	blockUserFunc      func(ctx context.Context, email string) error
 }
 
-// CreateUser delegates user creation to the test hook when configured.
 func (m *owaspMockRepo) CreateUser(ctx context.Context, arg db.CreateUserParams) (db.CreateUserRow, error) {
 	if m.createUserFunc != nil {
 		return m.createUserFunc(ctx, arg)
@@ -125,7 +123,6 @@ func (m *owaspMockRepo) CreateUser(ctx context.Context, arg db.CreateUserParams)
 	return db.CreateUserRow{}, nil
 }
 
-// GetUserByEmail delegates email lookup to the test hook when configured.
 func (m *owaspMockRepo) GetUserByEmail(ctx context.Context, email string) (db.User, error) {
 	if m.getUserByEmailFunc != nil {
 		return m.getUserByEmailFunc(ctx, email)
@@ -133,7 +130,6 @@ func (m *owaspMockRepo) GetUserByEmail(ctx context.Context, email string) (db.Us
 	return db.User{}, nil
 }
 
-// GetUserByID delegates user lookup to the test hook when configured.
 func (m *owaspMockRepo) GetUserByID(ctx context.Context, id pgtype.UUID) (db.User, error) {
 	if m.getUserByIDFunc != nil {
 		return m.getUserByIDFunc(ctx, id)
@@ -141,7 +137,6 @@ func (m *owaspMockRepo) GetUserByID(ctx context.Context, id pgtype.UUID) (db.Use
 	return db.User{}, nil
 }
 
-// BlockUser delegates account blocking to the test hook when configured.
 func (m *owaspMockRepo) BlockUser(ctx context.Context, email string) error {
 	if m.blockUserFunc != nil {
 		return m.blockUserFunc(ctx, email)
@@ -153,18 +148,14 @@ func (m *owaspMockRepo) ExecTx(ctx context.Context, fn func(db.Querier) error) e
 	return fn(m)
 }
 
-// UnblockUser is a no-op stub for OWASP tests.
 func (m *owaspMockRepo) UnblockUser(ctx context.Context, email string) error { return nil }
 
-// SetEmailVerified is a no-op stub for OWASP tests that do not exercise email verification persistence.
 func (m *owaspMockRepo) SetEmailVerified(ctx context.Context, id pgtype.UUID) error { return nil }
 
-// CreateAuthAuditLog is a no-op stub for OWASP tests that do not exercise audit persistence.
 func (m *owaspMockRepo) CreateAuthAuditLog(ctx context.Context, arg db.CreateAuthAuditLogParams) (db.CreateAuthAuditLogRow, error) {
 	return db.CreateAuthAuditLogRow{}, nil
 }
 
-// ListAuthAuditLogsByUser is a no-op stub for OWASP tests that do not exercise audit reads.
 func (m *owaspMockRepo) ListAuthAuditLogsByUser(ctx context.Context, arg db.ListAuthAuditLogsByUserParams) ([]db.AuthAuditLog, error) {
 	return nil, nil
 }
@@ -173,17 +164,14 @@ func (m *owaspMockRepo) CreateAPIKey(ctx context.Context, arg db.CreateAPIKeyPar
 	return db.CreateAPIKeyRow{ID: pgtype.UUID{Bytes: uuid.New(), Valid: true}}, nil
 }
 
-// CreatePasswordHistoryEntry is a no-op stub for OWASP registration tests.
 func (m *owaspMockRepo) CreatePasswordHistoryEntry(ctx context.Context, arg db.CreatePasswordHistoryEntryParams) error {
 	return nil
 }
 
-// GetPasswordHistory is a no-op stub for OWASP password policy tests.
 func (m *owaspMockRepo) GetPasswordHistory(ctx context.Context, arg db.GetPasswordHistoryParams) ([]string, error) {
 	return nil, nil
 }
 
-// TestOWASP_UserEnumerationRegister ensures duplicate registration returns a neutral error instead of leaking account existence.
 func TestOWASP_UserEnumerationRegister(t *testing.T) {
 	repo := &owaspMockRepo{}
 	hasher, err := NewPasswordHasher(32768, 2, 2)
@@ -201,7 +189,6 @@ func TestOWASP_UserEnumerationRegister(t *testing.T) {
 	assert.ErrorIs(t, err, ErrUserAlreadyExists, "Registration of existing email must return ErrUserAlreadyExists to prevent user enumeration and account probing")
 }
 
-// TestOWASP_LockoutNoPostgresBlock ensures temporary Redis lockout does not permanently block users in Postgres.
 func TestOWASP_LockoutNoPostgresBlock(t *testing.T) {
 	repo := &owaspMockRepo{}
 	hasher, err := NewPasswordHasher(32768, 2, 2)
@@ -239,7 +226,6 @@ func TestOWASP_LockoutNoPostgresBlock(t *testing.T) {
 	assert.Equal(t, int32(0), atomic.LoadInt32(&blockUserCalled), "PostgreSQL BlockUser must NOT be triggered automatically during lockouts to prevent permanent account DOS")
 }
 
-// TestOWASP_IPSpoofingXForwardedFor verifies trusted-proxy IP extraction resists header spoofing.
 func TestOWASP_IPSpoofingXForwardedFor(t *testing.T) {
 	cfg := &config.Config{
 		TrustedProxies: []string{"192.168.1.1"},
@@ -265,7 +251,6 @@ func TestOWASP_IPSpoofingXForwardedFor(t *testing.T) {
 	assert.Equal(t, "88.88.88.88", ip2, "Must prioritize X-Real-IP over X-Forwarded-For")
 }
 
-// TestOWASP_PasswordPolicy enforces minimum password complexity required for account safety.
 func TestOWASP_PasswordPolicy(t *testing.T) {
 
 	assert.Error(t, ValidatePassword("short"), "Password too short must be rejected")
@@ -278,7 +263,6 @@ func TestOWASP_PasswordPolicy(t *testing.T) {
 	assert.NoError(t, ValidatePassword("This is a very secure passphrase #123"), "High-entropy passphrase with spaces and symbols must be accepted to encourage passphrase adoption")
 }
 
-// TestOWASP_MemoryLeakPrevention exercises PASETO token round-trips without retaining unexpected allocations.
 func TestOWASP_MemoryLeakPrevention(t *testing.T) {
 	maker, err := NewPasetoMaker("01234567890123456789012345678901")
 	assert.NoError(t, err)

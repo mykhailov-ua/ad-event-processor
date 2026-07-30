@@ -1,4 +1,3 @@
-// Package protocol defines the internal broker wire format shared by client and server.
 package protocol
 
 import (
@@ -27,19 +26,15 @@ const (
 	CmdRegisterTopicResp uint16 = 104
 )
 
-// FetchRespMetaLen is the fetch response prefix: status + msgCount + highWatermark.
 const FetchRespMetaLen = 13
 
-// ProduceBatchRespMetaLen is status + lastOffset + committedCount in a batch produce reply.
 const ProduceBatchRespMetaLen = 13
 
-// TopicMetadata binds a compact topic ID to its name for batch decode on the wire.
 type TopicMetadata struct {
 	ID   uint16
 	Name string
 }
 
-// TopicRegistry assigns compact numeric IDs so batch produce frames stay small on the wire.
 type TopicRegistry struct {
 	mu         sync.Mutex
 	topics     [65536]unsafe.Pointer
@@ -49,33 +44,28 @@ type TopicRegistry struct {
 	redisStore topicRedisRegistrar
 }
 
-// topicRedisRegistrar allocates topic IDs in Redis for HA clusters.
 type topicRedisRegistrar interface {
 	Register(ctx context.Context, name string) (uint16, error)
 }
 
-// NewTopicRegistry creates the ID table producers and servers share for batch framing.
 func NewTopicRegistry() *TopicRegistry {
 	return &TopicRegistry{
 		byName: make(map[string]uint16),
 	}
 }
 
-// SetFileStore enables on-disk persistence for topic IDs across broker restarts.
 func (r *TopicRegistry) SetFileStore(store *FileRegistryStore) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.fileStore = store
 }
 
-// SetRedisStore enables cluster-wide topic ID allocation via Redis.
 func (r *TopicRegistry) SetRedisStore(store topicRedisRegistrar) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.redisStore = store
 }
 
-// Load restores topic IDs from the configured file store.
 func (r *TopicRegistry) Load() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -89,7 +79,6 @@ func (r *TopicRegistry) Load() error {
 	return r.applySnapshotLocked(snap, false)
 }
 
-// Merge applies an external snapshot; Redis/cluster entries win on name conflicts.
 func (r *TopicRegistry) Merge(snap RegistrySnapshot) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -166,7 +155,6 @@ func (r *TopicRegistry) persistLocked() error {
 	return r.fileStore.Save(r.snapshotLocked())
 }
 
-// Lookup resolves a numeric topic ID without locking so hot handlers stay wait-free.
 func (r *TopicRegistry) Lookup(id uint16) (*TopicMetadata, bool) {
 	ptr := atomic.LoadPointer(&r.topics[id])
 	if ptr == nil {
@@ -175,7 +163,6 @@ func (r *TopicRegistry) Lookup(id uint16) (*TopicMetadata, bool) {
 	return (*TopicMetadata)(ptr), true
 }
 
-// Register assigns or returns a stable ID so batch produce frames avoid repeating topic strings.
 func (r *TopicRegistry) Register(name string) (uint16, error) {
 	if err := validateTopicName(name); err != nil {
 		return 0, err
@@ -220,14 +207,12 @@ func (r *TopicRegistry) Register(name string) (uint16, error) {
 	return id, nil
 }
 
-// BatchMsgHeader prefixes each message inside a produce-batch payload.
 type BatchMsgHeader struct {
 	TopicID    uint16
 	_          uint16
 	PayloadLen uint32
 }
 
-// BatchIterator walks batch payloads without per-message heap allocations.
 type BatchIterator struct {
 	ptr     unsafe.Pointer
 	end     unsafe.Pointer
@@ -235,7 +220,6 @@ type BatchIterator struct {
 	Payload []byte
 }
 
-// NewBatchIterator positions a zero-copy walker over an encoded batch payload.
 func NewBatchIterator(payload []byte) BatchIterator {
 	if len(payload) == 0 {
 		return BatchIterator{}
@@ -247,7 +231,6 @@ func NewBatchIterator(payload []byte) BatchIterator {
 	}
 }
 
-// Next advances the iterator and exposes the current topic ID and payload slice.
 func (it *BatchIterator) Next() bool {
 	if it.ptr == nil || uintptr(it.ptr) >= uintptr(it.end) {
 		return false
@@ -277,7 +260,6 @@ func (it *BatchIterator) Next() bool {
 	return true
 }
 
-// ReadFrame validates length, CRC, and command before handlers touch payload bytes.
 func ReadFrame(r io.Reader, buf []byte, lenBuf []byte) (uint16, uint64, []byte, error) {
 	if _, err := io.ReadFull(r, lenBuf[:4]); err != nil {
 		return 0, 0, nil, err
@@ -296,7 +278,6 @@ func ReadFrame(r io.Reader, buf []byte, lenBuf []byte) (uint16, uint64, []byte, 
 	return parseFrame(readBuf, length)
 }
 
-// ReadFrameTCP reads one frame from a TCP connection without io.Reader boxing.
 func ReadFrameTCP(c *net.TCPConn, buf []byte, lenBuf []byte) (uint16, uint64, []byte, error) {
 	if err := readFullTCPLoop(c, lenBuf[:4]); err != nil {
 		return 0, 0, nil, err
@@ -359,7 +340,6 @@ func parseFrame(readBuf []byte, length uint32) (uint16, uint64, []byte, error) {
 	return cmd, seq, payload, nil
 }
 
-// readFullBufio fills buf from a pinned bufio.Reader without io.Reader boxing.
 func readFullBufio(br *bufio.Reader, buf []byte) error {
 	for n := 0; n < len(buf); {
 		nn, err := br.Read(buf[n:])
@@ -377,7 +357,6 @@ func readFullBufio(br *bufio.Reader, buf []byte) error {
 	return nil
 }
 
-// ReadFrameBufio reads one frame using a reusable bufio.Reader on the TCP hot path.
 func ReadFrameBufio(br *bufio.Reader, buf []byte, lenBuf []byte) (uint16, uint64, []byte, error) {
 	if err := readFullBufio(br, lenBuf[:4]); err != nil {
 		return 0, 0, nil, err
@@ -396,7 +375,6 @@ func ReadFrameBufio(br *bufio.Reader, buf []byte, lenBuf []byte) (uint16, uint64
 	return parseFrame(readBuf, length)
 }
 
-// DecodeProduceRequest splits a produce frame into topic, partition, and payload.
 func DecodeProduceRequest(payload []byte) (string, uint16, []byte, error) {
 	if len(payload) < 4 {
 		return "", 0, nil, errors.New("malformed produce request")
@@ -412,7 +390,6 @@ func DecodeProduceRequest(payload []byte) (string, uint16, []byte, error) {
 	return topic, partition, msgPayload, nil
 }
 
-// DecodeFetchRequest extracts topic, partition, offset, and byte limit from a fetch frame.
 func DecodeFetchRequest(payload []byte) (string, uint16, uint64, uint32, error) {
 	if len(payload) < 16 {
 		return "", 0, 0, 0, errors.New("malformed fetch request")
@@ -431,7 +408,6 @@ func DecodeFetchRequest(payload []byte) (string, uint16, uint64, uint32, error) 
 	return topic, partition, offset, maxBytes, nil
 }
 
-// EncodeProduceRequest builds a checksummed produce frame into caller-provided buffer space.
 func EncodeProduceRequest(buf []byte, seq uint64, topic string, partition uint16, payload []byte) []byte {
 	topicBytes := unsafeBytes(topic)
 	topicLen := len(topicBytes)
@@ -454,7 +430,6 @@ func EncodeProduceRequest(buf []byte, seq uint64, topic string, partition uint16
 	return buf[:4+2+8+framePayloadLen+4]
 }
 
-// EncodeFetchRequest builds a checksummed fetch frame into caller-provided buffer space.
 func EncodeFetchRequest(buf []byte, seq uint64, topic string, partition uint16, startOffset uint64, maxBytes uint32) []byte {
 	topicBytes := unsafeBytes(topic)
 	topicLen := len(topicBytes)
@@ -477,7 +452,6 @@ func EncodeFetchRequest(buf []byte, seq uint64, topic string, partition uint16, 
 	return buf[:4+2+8+framePayloadLen+4]
 }
 
-// EncodeProduceResponse returns append status and assigned offset after a produce attempt.
 func EncodeProduceResponse(buf []byte, seq uint64, status byte, offset uint64) []byte {
 	binary.BigEndian.PutUint32(buf[0:4], 23)
 	binary.BigEndian.PutUint16(buf[4:6], CmdProduceResp)
@@ -491,7 +465,6 @@ func EncodeProduceResponse(buf []byte, seq uint64, status byte, offset uint64) [
 	return buf[:27]
 }
 
-// EncodeFetchResponseHeader prefixes fetch results with status, counts, and log high-water mark.
 func EncodeFetchResponseHeader(headerBuf []byte, seq uint64, status byte, msgCount uint32, msgBytes uint32, highWatermark uint64) []byte {
 	totalLen := uint32(2 + 8 + FetchRespMetaLen + msgBytes + 4)
 	binary.BigEndian.PutUint32(headerBuf[0:4], totalLen)
@@ -503,7 +476,6 @@ func EncodeFetchResponseHeader(headerBuf []byte, seq uint64, status byte, msgCou
 	return headerBuf[:27]
 }
 
-// EncodeFetchResponse builds one contiguous fetch frame for a single TCP write.
 func EncodeFetchResponse(frameBuf []byte, seq uint64, status byte, msgCount uint32, msgBytes uint32, highWatermark uint64, data []byte) []byte {
 	payloadLen := FetchRespMetaLen + len(data)
 	totalLen := uint32(2 + 8 + payloadLen + 4)
@@ -530,7 +502,6 @@ func EncodeFetchResponse(frameBuf []byte, seq uint64, status byte, msgCount uint
 	return frameBuf[:4+totalLen]
 }
 
-// DecodeFetchResponseMeta extracts status, message count, and high watermark from a fetch reply.
 func DecodeFetchResponseMeta(payload []byte) (status byte, msgCount uint32, highWatermark uint64, err error) {
 	if len(payload) < FetchRespMetaLen {
 		return 0, 0, 0, errors.New("malformed fetch response")
@@ -541,7 +512,6 @@ func DecodeFetchResponseMeta(payload []byte) (status byte, msgCount uint32, high
 	return status, msgCount, highWatermark, nil
 }
 
-// EncodeProduceBatchResponse reports batch status, last offset, and how many messages committed.
 func EncodeProduceBatchResponse(buf []byte, seq uint64, status byte, offset uint64, committedCount uint32) []byte {
 	const payloadLen = ProduceBatchRespMetaLen
 	totalLen := uint32(2 + 8 + payloadLen + 4)
@@ -558,7 +528,6 @@ func EncodeProduceBatchResponse(buf []byte, seq uint64, status byte, offset uint
 	return buf[:31]
 }
 
-// DecodeProduceBatchResponse reads status, offset, and committed count from a batch produce reply.
 func DecodeProduceBatchResponse(payload []byte) (status byte, offset uint64, committedCount uint32, err error) {
 	if len(payload) < ProduceBatchRespMetaLen {
 		return 0, 0, 0, errors.New("malformed produce batch response")
@@ -569,7 +538,6 @@ func DecodeProduceBatchResponse(payload []byte) (status byte, offset uint64, com
 	return status, offset, committedCount, nil
 }
 
-// EncodeRegisterTopicRequest registers a topic name and returns its numeric ID on success.
 func EncodeRegisterTopicRequest(buf []byte, seq uint64, topic string) []byte {
 	topicBytes := unsafeBytes(topic)
 	topicLen := len(topicBytes)
@@ -589,7 +557,6 @@ func EncodeRegisterTopicRequest(buf []byte, seq uint64, topic string) []byte {
 	return buf[:4+2+8+framePayloadLen+4]
 }
 
-// DecodeRegisterTopicRequest extracts the topic name from a registration frame.
 func DecodeRegisterTopicRequest(payload []byte) (string, error) {
 	if len(payload) < 2 {
 		return "", errors.New("malformed register topic request")
@@ -602,7 +569,6 @@ func DecodeRegisterTopicRequest(payload []byte) (string, error) {
 	return string(topicBytes), nil
 }
 
-// EncodeRegisterTopicResponse returns registration status and assigned topic ID.
 func EncodeRegisterTopicResponse(buf []byte, seq uint64, status byte, topicID uint16) []byte {
 	binary.BigEndian.PutUint32(buf[0:4], 17)
 	binary.BigEndian.PutUint16(buf[4:6], CmdRegisterTopicResp)
@@ -616,7 +582,6 @@ func EncodeRegisterTopicResponse(buf []byte, seq uint64, status byte, topicID ui
 	return buf[:21]
 }
 
-// DecodeRegisterTopicResponse reads status and topic ID from a registration reply.
 func DecodeRegisterTopicResponse(payload []byte) (byte, uint16, error) {
 	if len(payload) < 3 {
 		return 0, 0, errors.New("malformed register topic response")
@@ -626,7 +591,6 @@ func DecodeRegisterTopicResponse(payload []byte) (byte, uint16, error) {
 	return status, topicID, nil
 }
 
-// AppendBatchMessage appends one topic-tagged message into a reusable batch buffer.
 func AppendBatchMessage(buf []byte, topicID uint16, payload []byte) []byte {
 	start := len(buf)
 	newLen := start + 8 + len(payload)
@@ -647,7 +611,6 @@ func AppendBatchMessage(buf []byte, topicID uint16, payload []byte) []byte {
 	return buf
 }
 
-// EncodeProduceBatchRequest wraps a prebuilt batch payload in a checksummed frame.
 func EncodeProduceBatchRequest(buf []byte, seq uint64, batchPayload []byte) []byte {
 	framePayloadLen := len(batchPayload)
 	totalLen := uint32(2 + 8 + framePayloadLen + 4)
@@ -664,7 +627,6 @@ func EncodeProduceBatchRequest(buf []byte, seq uint64, batchPayload []byte) []by
 	return buf[:4+2+8+framePayloadLen+4]
 }
 
-// unsafeString views topic bytes without copying so decode stays allocation-free on the hot path.
 func unsafeString(b []byte) string {
 	if len(b) == 0 {
 		return ""
@@ -672,7 +634,6 @@ func unsafeString(b []byte) string {
 	return unsafe.String(unsafe.SliceData(b), len(b))
 }
 
-// unsafeBytes views topic strings without copying so encode stays allocation-free on the hot path.
 func unsafeBytes(s string) []byte {
 	if s == "" {
 		return nil

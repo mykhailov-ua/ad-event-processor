@@ -15,12 +15,10 @@ var (
 	telegramAPIBase  = "https://api.telegram.org/bot"
 )
 
-// MaxMindProbe checks the local GeoIP database file.
 type MaxMindProbe struct {
 	DBPath string
 }
 
-// NewMaxMindProbe constructs a MaxMind health probe.
 func NewMaxMindProbe(dbPath string) *MaxMindProbe {
 	return &MaxMindProbe{DBPath: dbPath}
 }
@@ -41,13 +39,11 @@ func (p *MaxMindProbe) Probe(ctx context.Context) error {
 	return nil
 }
 
-// StripeProbe calls Stripe balance API when a secret key is configured.
 type StripeProbe struct {
 	SecretKey string
 	client    *http.Client
 }
 
-// NewStripeProbe constructs a Stripe API health probe.
 func NewStripeProbe(secretKey string, client *http.Client) *StripeProbe {
 	if client == nil {
 		client = &http.Client{Timeout: 5 * time.Second}
@@ -78,13 +74,11 @@ func (p *StripeProbe) Probe(ctx context.Context) error {
 	return nil
 }
 
-// TelegramProbe calls Telegram getMe when a bot token is configured.
 type TelegramProbe struct {
 	BotToken string
 	client   *http.Client
 }
 
-// NewTelegramProbe constructs a Telegram Bot API health probe.
 func NewTelegramProbe(botToken string, client *http.Client) *TelegramProbe {
 	if client == nil {
 		client = &http.Client{Timeout: 5 * time.Second}
@@ -115,13 +109,11 @@ func (p *TelegramProbe) Probe(ctx context.Context) error {
 	return nil
 }
 
-// SMTPProbe dials the configured SMTP endpoint when host is set.
 type SMTPProbe struct {
 	Host string
 	Port string
 }
 
-// NewSMTPProbe constructs an SMTP TCP health probe.
 func NewSMTPProbe(host, port string) *SMTPProbe {
 	if port == "" {
 		port = "587"

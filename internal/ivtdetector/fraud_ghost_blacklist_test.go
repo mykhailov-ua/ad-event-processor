@@ -28,7 +28,6 @@ func TestMLGhostAndBlacklist_EndToEnd(t *testing.T) {
 
 	ctx := context.Background()
 
-	// 1. Create a campaign in Postgres
 	campaignID := uuid.New()
 	_, err := pool.Exec(ctx, `
 		INSERT INTO campaigns (id, name, status, budget_limit, fraud_threshold_pass, fraud_threshold_suspect, fraud_threshold_block, ghost_ivt_enabled)
@@ -36,15 +35,12 @@ func TestMLGhostAndBlacklist_EndToEnd(t *testing.T) {
 	`, campaignID)
 	require.NoError(t, err)
 
-	// Create a Management Service
 	cfg := &config.Config{}
 	sharder := ingestion.NewStaticSlotSharder(1)
 	svc := management.NewService(pool, []redis.UniversalClient{rdb}, sharder, cfg)
 
-	// Create an OutboxWorker
 	worker := management.NewOutboxWorker(svc)
 
-	// Test ML_GHOST_IVT outbox event
 	err = svc.EnqueueFraudThreat(ctx, management.FraudThreatPayload{
 		Action:     "ghost",
 		CampaignID: campaignID.String(),
@@ -54,12 +50,10 @@ func TestMLGhostAndBlacklist_EndToEnd(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// Process outbox events
 	processed, err := worker.ProcessOutboxWithCount(ctx, 10)
 	require.NoError(t, err)
 	assert.Greater(t, processed, 0)
 
-	// Verify that ghost_ivt_enabled was updated to true in Postgres (it was already true, but let's set it to false first and verify)
 	_, err = pool.Exec(ctx, "UPDATE campaigns SET ghost_ivt_enabled = FALSE WHERE id = $1", campaignID)
 	require.NoError(t, err)
 
@@ -81,7 +75,6 @@ func TestMLGhostAndBlacklist_EndToEnd(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, ghostEnabled)
 
-	// Test ML_BLACKLIST_ADD outbox event
 	err = svc.EnqueueFraudThreat(ctx, management.FraudThreatPayload{
 		Action:     "blacklist",
 		CampaignID: campaignID.String(),
@@ -95,13 +88,11 @@ func TestMLGhostAndBlacklist_EndToEnd(t *testing.T) {
 	require.NoError(t, err)
 	assert.Greater(t, processed, 0)
 
-	// Verify IP is blacklisted in Postgres
 	var exists bool
 	err = pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM ip_blacklist WHERE ip = '9.9.9.9')").Scan(&exists)
 	require.NoError(t, err)
 	assert.True(t, exists)
 
-	// Test ApplyFraudScoringOverride to clear boost
 	err = svc.ApplyFraudScoringOverride(ctx, management.FraudScoringOverrideRequest{
 		CampaignID: ptr(campaignID.String()),
 	})
@@ -111,7 +102,6 @@ func TestMLGhostAndBlacklist_EndToEnd(t *testing.T) {
 	require.NoError(t, err)
 	assert.Greater(t, processed, 0)
 
-	// Test ApplyFraudScoringOverride to remove false positive (unblock IP)
 	err = svc.ApplyFraudScoringOverride(ctx, management.FraudScoringOverrideRequest{
 		IP: ptr("9.9.9.9"),
 	})
@@ -121,7 +111,6 @@ func TestMLGhostAndBlacklist_EndToEnd(t *testing.T) {
 	require.NoError(t, err)
 	assert.Greater(t, processed, 0)
 
-	// Verify IP is no longer blacklisted in Postgres
 	err = pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM ip_blacklist WHERE ip = '9.9.9.9')").Scan(&exists)
 	require.NoError(t, err)
 	assert.False(t, exists)

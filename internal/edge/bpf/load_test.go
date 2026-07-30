@@ -6,9 +6,6 @@ import (
 	"github.com/cilium/ebpf"
 )
 
-// LoadEdgeObjectsForTest loads edge BPF objects. It prefers the full collection
-// (including xdp_syn_cookie) and falls back to the main filter only when the
-// kernel rejects syncookie helpers (common in BPF_PROG_TEST_RUN sandboxes).
 func LoadEdgeObjectsForTest(objs *EdgeObjects, opts *ebpf.CollectionOptions) error {
 	if err := LoadEdgeObjects(objs, opts); err == nil {
 		return nil

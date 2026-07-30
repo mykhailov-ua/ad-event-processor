@@ -30,8 +30,6 @@ func blacklistTTLFromConfig(cfg *config.Config) blacklistTTLConfig {
 	return out
 }
 
-// resolveBlacklistExpiry maps reason and optional TTL override to a Postgres expiry timestamp.
-// manual blocks are permanent unless ttl_seconds is set explicitly.
 func resolveBlacklistExpiry(reason string, ttlSeconds *int64, cfg blacklistTTLConfig) pgtype.Timestamptz {
 	if ttlSeconds != nil {
 		if *ttlSeconds <= 0 {

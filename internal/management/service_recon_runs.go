@@ -14,7 +14,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// ReconRunDTO is a unified recon run record from management or payment services.
 type ReconRunDTO struct {
 	Service            string `json:"service"`
 	ID                 int64  `json:"id"`
@@ -31,12 +30,10 @@ type ReconRunDTO struct {
 	CompletedAt        string `json:"completed_at,omitempty"`
 }
 
-// SetPaymentPool attaches the payment database pool for cross-service recon listing.
 func (s *Service) SetPaymentPool(pool *pgxpool.Pool) {
 	s.paymentPool = pool
 }
 
-// ListReconRuns returns a merged list of management and payment recon runs.
 func (s *Service) ListReconRuns(ctx context.Context, service string, limit, offset int32) ([]ReconRunDTO, int64, error) {
 	switch service {
 	case "", "all":

@@ -1,4 +1,3 @@
--- IAB supply chain: sellers.json, ads.txt entries, and per-campaign schain nodes (max 10 hops).
 
 -- +goose Up
 -- +goose StatementBegin

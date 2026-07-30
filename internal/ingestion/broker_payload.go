@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// ParseBrokerPayload decodes broker log bytes as AdStreamEvent or AdLogRecord into a pooled Event.
 func ParseBrokerPayload(data []byte) (*campaignmodel.Event, error) {
 	evt := campaignmodel.EventPool.Get().(*campaignmodel.Event)
 	evt.Reset()
@@ -47,7 +46,6 @@ func ParseBrokerPayload(data []byte) (*campaignmodel.Event, error) {
 	return nil, ErrBrokerPayloadUnrecognized
 }
 
-// fillEventFromStreamProto maps a stream protobuf into a pooled domain event.
 func fillEventFromStreamProto(pbEvt *pb.AdStreamEvent, evt *campaignmodel.Event) {
 	totalLen := len(pbEvt.ClickId) + len(pbEvt.EventType) + len(pbEvt.Ip) + len(pbEvt.Ua) + len(pbEvt.FraudReason)
 	if cap(evt.StringBuffer) < totalLen {

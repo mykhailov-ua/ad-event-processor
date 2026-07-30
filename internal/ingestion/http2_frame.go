@@ -2,8 +2,6 @@ package ingestion
 
 import "unsafe"
 
-// http2_frame.go — HTTP/2 frame header FSM (RFC 9113, M5-C1).
-
 const (
 	h2FrameHeaderSize  = 9
 	h2ClientPrefaceLen = 24
@@ -45,7 +43,6 @@ func isH2ClientPreface(buf []byte) bool {
 	return *(*[24]byte)(unsafe.Pointer(&buf[0])) == h2ClientPreface
 }
 
-// decodeH2FrameHeader parses the 9-byte frame header (0 allocs/op).
 func decodeH2FrameHeader(buf []byte) (h2Frame, int, error) {
 	var fr h2Frame
 	if len(buf) < h2FrameHeaderSize {
@@ -66,7 +63,6 @@ func decodeH2FrameHeader(buf []byte) (h2Frame, int, error) {
 	return fr, total, nil
 }
 
-// encodeH2FrameHeader writes a 9-byte frame header into dst (must have len >= 9).
 func encodeH2FrameHeader(dst []byte, length uint32, typ, flags byte, streamID uint32) int {
 	dst[0] = byte(length >> 16)
 	dst[1] = byte(length >> 8)

@@ -4,16 +4,14 @@ import (
 	"testing"
 )
 
-// FuzzDecodeFingerprint ensures that the ringbuf decoder for fingerprints
-// never panics on malformed or truncated data from the kernel.
 func FuzzDecodeFingerprint(f *testing.F) {
 	seed := []byte{
-		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, // TsNs
-		0x0a, 0x00, 0x00, 0x01, // SrcIP
-		0xde, 0xad, 0xbe, 0xef, // TCPHash
-		0x01, 0x02, // Window
-		0x40, // TTL
-		0xb4, // MSS
+		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+		0x0a, 0x00, 0x00, 0x01,
+		0xde, 0xad, 0xbe, 0xef,
+		0x01, 0x02,
+		0x40,
+		0xb4,
 	}
 	f.Add(seed)
 	f.Add([]byte{})
@@ -26,15 +24,12 @@ func FuzzDecodeFingerprint(f *testing.F) {
 			}
 		}()
 		if len(data) < 20 {
-			// Expected minimum size for the struct
 			return
 		}
 		_ = decodeFingerprint(data)
 	})
 }
 
-// FuzzConfigUpdate ensures that updating the BPF config map doesn't panic
-// even with edge cases like nil maps or unusual options.
 func FuzzConfigUpdate(f *testing.F) {
 	f.Add(true, false)
 	f.Fuzz(func(t *testing.T, cookie, disableFingerprint bool) {
@@ -47,7 +42,6 @@ func FuzzConfigUpdate(f *testing.F) {
 	})
 }
 
-// FuzzStatsAggregation ensures that AggregateStats doesn't panic on nil map.
 func FuzzStatsAggregation(f *testing.F) {
 	f.Add(true)
 	f.Fuzz(func(t *testing.T, isNil bool) {
@@ -60,13 +54,11 @@ func FuzzStatsAggregation(f *testing.F) {
 	})
 }
 
-// FuzzDecodeViolation ensures that the ringbuf decoder for violations
-// never panics on malformed data.
 func FuzzDecodeViolation(f *testing.F) {
 	seed := []byte{
-		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, // TsNs
-		0x0a, 0x00, 0x00, 0x02, // SrcIP
-		0x01, // Reason
+		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+		0x0a, 0x00, 0x00, 0x02,
+		0x01,
 	}
 	f.Add(seed)
 	f.Fuzz(func(t *testing.T, data []byte) {

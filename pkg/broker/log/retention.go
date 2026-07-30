@@ -6,8 +6,6 @@ import (
 	"time"
 )
 
-// RetentionPolicy bounds sealed segment lifetime by age and total on-disk bytes.
-// FloorOffset is reserved for consumer commit floors (0 = age/bytes + safety only).
 type RetentionPolicy struct {
 	MaxAge         time.Duration
 	MaxBytes       int64
@@ -15,12 +13,10 @@ type RetentionPolicy struct {
 	SafetyMessages uint64
 }
 
-// Enabled reports whether any retention limit is configured.
 func (p RetentionPolicy) Enabled() bool {
 	return p.MaxAge > 0 || p.MaxBytes > 0
 }
 
-// RetentionResult summarizes one ApplyRetention pass.
 type RetentionResult struct {
 	DeletedSegments  int
 	BytesFreed       int64
@@ -28,7 +24,6 @@ type RetentionResult struct {
 	TotalBytes       int64
 }
 
-// segmentMeta is a sealed-segment view used for retention decisions.
 type segmentMeta struct {
 	seg        *Segment
 	baseOffset uint64
@@ -37,12 +32,10 @@ type segmentMeta struct {
 	modTime    time.Time
 }
 
-// BaseOffset returns the first message offset stored in the segment.
 func (s *Segment) BaseOffset() uint64 {
 	return s.baseOffset
 }
 
-// OnDiskBytes returns combined log and index file sizes for retention accounting.
 func (s *Segment) OnDiskBytes() (int64, error) {
 	logInfo, err := s.logFile.Stat()
 	if err != nil {
@@ -55,7 +48,6 @@ func (s *Segment) OnDiskBytes() (int64, error) {
 	return logInfo.Size() + idxInfo.Size(), nil
 }
 
-// ModTime returns the log file modification time used for age-based retention.
 func (s *Segment) ModTime() (time.Time, error) {
 	info, err := s.logFile.Stat()
 	if err != nil {
@@ -64,7 +56,6 @@ func (s *Segment) ModTime() (time.Time, error) {
 	return info.ModTime(), nil
 }
 
-// ApplyRetention deletes sealed segments that satisfy age/byte limits and stay below the safety floor.
 func (p *PartitionLog) ApplyRetention(policy RetentionPolicy) (RetentionResult, error) {
 	var result RetentionResult
 	if !policy.Enabled() {

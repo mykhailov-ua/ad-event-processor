@@ -7,10 +7,8 @@ import (
 
 const udpCoarseTimeClampMs = 50
 
-// clockTickPausedUntil is monotonic-ns until background wall-clock tick may advance cachedUnixMilli.
 var clockTickPausedUntil atomic.Int64
 
-// applyUDPCoarseTime aligns cached wall millis from a control datagram (+/-50 ms clamp; never step backward).
 func applyUDPCoarseTime(coarseTimeNs int64) {
 	if coarseTimeNs <= 0 {
 		return
@@ -25,7 +23,6 @@ func applyUDPCoarseTime(coarseTimeNs int64) {
 	}
 	targetMs := localMs + deltaMs
 	if targetMs < localMs {
-		// Local wall is ahead of UDP coarse time: freeze tick until remote catches up.
 		behindMs := localMs - targetMs
 		clockTickPausedUntil.Store(monotonicNano() + behindMs*int64(time.Millisecond))
 		return

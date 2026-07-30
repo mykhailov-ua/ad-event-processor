@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// Campaign repo stub for sync worker budget tests.
 type mockCampaignRepo struct {
 	mock.Mock
 }

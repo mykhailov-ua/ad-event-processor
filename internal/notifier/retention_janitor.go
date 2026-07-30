@@ -8,7 +8,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// RetentionJanitor deletes old SENT and FAILED notification rows.
 type RetentionJanitor struct {
 	pool            *pgxpool.Pool
 	interval        time.Duration
@@ -16,7 +15,6 @@ type RetentionJanitor struct {
 	failedRetention time.Duration
 }
 
-// NewRetentionJanitor constructs a janitor with positive day counts defaulting to 30/90.
 func NewRetentionJanitor(pool *pgxpool.Pool, interval time.Duration, sentDays, failedDays int) *RetentionJanitor {
 	if interval <= 0 {
 		interval = time.Hour
@@ -35,7 +33,6 @@ func NewRetentionJanitor(pool *pgxpool.Pool, interval time.Duration, sentDays, f
 	}
 }
 
-// Start runs periodic retention scans until ctx is cancelled.
 func (j *RetentionJanitor) Start(ctx context.Context) {
 	if j == nil || j.pool == nil {
 		return

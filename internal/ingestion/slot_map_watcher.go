@@ -13,7 +13,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// SlotMapWatcherConfig configures cold-path reload for Fixed Slot Map (Phase 2.2).
 type SlotMapWatcherConfig struct {
 	Pool           *pgxpool.Pool
 	Sharder        *StaticSlotSharder
@@ -26,12 +25,10 @@ type SlotMapWatcherConfig struct {
 	BrokerTimeout  time.Duration
 }
 
-// SlotMapWatcher reloads the slot map from Postgres on poll and broker signals.
 type SlotMapWatcher struct {
 	cfg SlotMapWatcherConfig
 }
 
-// NewSlotMapWatcher constructs a cold-path slot map watcher.
 func NewSlotMapWatcher(cfg SlotMapWatcherConfig) *SlotMapWatcher {
 	if cfg.PollInterval <= 0 {
 		cfg.PollInterval = 10 * time.Second
@@ -49,7 +46,6 @@ func NewSlotMapWatcher(cfg SlotMapWatcherConfig) *SlotMapWatcher {
 	return &SlotMapWatcher{cfg: cfg}
 }
 
-// Start runs poll and optional broker listener until ctx is cancelled.
 func (w *SlotMapWatcher) Start(ctx context.Context) {
 	if w.cfg.Sharder == nil || w.cfg.Pool == nil {
 		return
@@ -181,7 +177,6 @@ func (w *SlotMapWatcher) tryReload(ctx context.Context, source string) {
 	}
 }
 
-// PublishSlotMapReload emits a broker control message after active_version cutover.
 func PublishSlotMapReload(brokerURL, brokerRedisURL, topic string, timeout time.Duration, version int32, routingEpoch int64) error {
 	if brokerURL == "" {
 		return nil

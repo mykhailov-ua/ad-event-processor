@@ -1,14 +1,3 @@
--- Hot-path filter script: non-blocking Redis ops only (MGET, GET, INCR, SET NX, XADD, SADD, EXPIRE).
--- M9-02: fraud blocklist, placement blocklist, ingress quota consolidated in one EVALSHA.
--- M9-03: IP rate limit removed (edge XDP/nginx only).
--- M9-04: tier degradation skips non-critical checks near filter deadline.
--- KEYS[1] blacklist:fraud (was rl:ip; M9-03 edge-only IP RL)
--- KEYS[2..12]: dup, budget, idempotency, sync, dirty, stream, daily, fcap, imp_ts.
--- KEYS[13..15]: quota, refill_lock, refill_needed.
--- KEYS[16..17]: migration_fence, budget_frozen.
--- KEYS[18..19]: ingress:day, placement blacklist (or ignored sentinel).
--- Returns: -1 budget miss, 0 ok, 2 dup, 3 budget, 4 pacing, 5 fcap, 6 low_ttc, 7 missing_imp_ts,
---          10 TTC bypass, 11 debit fenced, 12 daily quota, 14 placement blocked, 21 fraud signal (ok), 20 degraded ok.
 
 local quota_enabled = ARGV[25] == "1"
 local chunk_size = tonumber(ARGV[26]) or 0
@@ -206,7 +195,6 @@ end
 if ttc_bypass then
     return 10
 end
--- M14-16 branch tags: 21 fraud_signal, 20 tier_degraded (documented as 0x15/0x14).
 if fraud_list_hit then
     return 21
 end

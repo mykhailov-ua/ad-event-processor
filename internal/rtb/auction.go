@@ -1,11 +1,9 @@
 package rtb
 
-// RunAuction selects a campaign and debits the winner budget on the hot bid path.
 func (registry *Registry) RunAuction(req *BidRequest) (AuctionResult, NoBidReason) {
 	return registry.runAuction(req, true)
 }
 
-// RunAuctionEval runs the auction without debiting budget for shadow validation.
 func (registry *Registry) RunAuctionEval(req *BidRequest) (AuctionResult, NoBidReason) {
 	return registry.runAuction(req, false)
 }

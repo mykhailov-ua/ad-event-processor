@@ -13,7 +13,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// CustomerDTO aggregates customer account data and spend stats for the admin API.
 type CustomerDTO struct {
 	ID              string `json:"id"`
 	Name            string `json:"name"`
@@ -25,7 +24,6 @@ type CustomerDTO struct {
 	UpdatedAt       string `json:"updated_at"`
 }
 
-// LedgerDTO exposes a single balance ledger entry for customer billing history.
 type LedgerDTO struct {
 	ID              int64  `json:"id"`
 	CustomerID      string `json:"customer_id"`
@@ -52,12 +50,10 @@ func ledgerToDTO(r db.BalanceLedger) LedgerDTO {
 	}
 }
 
-// formatMicro converts micro-unit balances to a two-decimal string for JSON responses.
 func formatMicro(m int64) string {
 	return money.FormatFixed2(m)
 }
 
-// ListCustomers returns a paginated customer list enriched with campaign spend aggregates.
 func (s *Service) ListCustomers(ctx context.Context, limit, offset int32) ([]CustomerDTO, int64, error) {
 	q := db.New(s.GetPool())
 	total, err := q.CountCustomers(ctx)
@@ -106,7 +102,6 @@ func (s *Service) ListCustomers(ctx context.Context, limit, offset int32) ([]Cus
 	}), total, nil
 }
 
-// GetCustomerDTO loads one customer with aggregated stats for detail views.
 func (s *Service) GetCustomerDTO(ctx context.Context, id uuid.UUID) (CustomerDTO, error) {
 	q := db.New(s.GetPool())
 	r, err := q.GetCustomerByID(ctx, ingestion.ToUUID(id))
@@ -136,7 +131,6 @@ func (s *Service) GetCustomerDTO(ctx context.Context, id uuid.UUID) (CustomerDTO
 	}, nil
 }
 
-// ListCustomerLedger returns paginated ledger entries for a customer's billing history.
 func (s *Service) ListCustomerLedger(ctx context.Context, customerID uuid.UUID, limit, offset int32) ([]LedgerDTO, int64, error) {
 	q := db.New(s.GetPool())
 	tid := ingestion.ToUUID(customerID)

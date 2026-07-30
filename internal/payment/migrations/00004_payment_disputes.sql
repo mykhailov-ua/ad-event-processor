@@ -33,5 +33,4 @@ CREATE INDEX idx_payment_disputes_intent
 -- +goose StatementBegin
 DROP TABLE IF EXISTS payment.payment_disputes;
 DROP TYPE IF EXISTS payment.dispute_status;
--- PostgreSQL does not support removing enum values from payment_intent_status.
 -- +goose StatementEnd

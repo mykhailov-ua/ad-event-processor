@@ -11,7 +11,6 @@ import (
 
 const defaultSnapshotPageSize = 5000
 
-// SnapshotSyncConfig tunes paginated DR snapshot copy from primary to standby.
 type SnapshotSyncConfig struct {
 	PageSize int
 }
@@ -23,7 +22,6 @@ func (c SnapshotSyncConfig) pageSize() int {
 	return c.PageSize
 }
 
-// SyncCustomers copies all customer rows from primary to standby (small table).
 func SyncCustomers(ctx context.Context, primary, standby *pgxpool.Pool) error {
 	rows, err := primary.Query(ctx, `SELECT id, name, balance, currency FROM customers`)
 	if err != nil {
@@ -48,7 +46,6 @@ func SyncCustomers(ctx context.Context, primary, standby *pgxpool.Pool) error {
 	return rows.Err()
 }
 
-// SyncBalanceLedgerPaginated copies balance_ledger from primary to standby in keyset pages on id.
 func SyncBalanceLedgerPaginated(ctx context.Context, primary, standby *pgxpool.Pool, cfg SnapshotSyncConfig) (pages int, rows int, err error) {
 	pageSize := cfg.pageSize()
 	var lastID int64
@@ -117,7 +114,6 @@ func applyLedgerPage(ctx context.Context, standby *pgxpool.Pool, batch []ledgerP
 	return nil
 }
 
-// SyncSnapshot runs customer sync then paginated balance_ledger sync (fallback DR path).
 func SyncSnapshot(ctx context.Context, primary, standby *pgxpool.Pool, cfg SnapshotSyncConfig) error {
 	if err := SyncCustomers(ctx, primary, standby); err != nil {
 		return fmt.Errorf("sync customers: %w", err)

@@ -13,18 +13,16 @@ import (
 
 const fraudAggForceKey = "fraud:agg_force"
 
-// FraudBackpressureConfig tunes M14-11/M14-12 fraud consumer lag → force aggregate.
 type FraudBackpressureConfig struct {
 	Rdbs        []redis.UniversalClient
 	Writer      *FraudStreamWriter
-	Stream      string // tracker fraud stream name
-	EventStream string // поток ad:events:stream для отслеживания возраста PEL (GAP-OPS-04)
+	Stream      string
+	EventStream string
 	Group       string
 	LagSec      int
 	Interval    time.Duration
 }
 
-// StartFraudBackpressureWatcher polls Redis for force-agg flag and publishes PEL age gauges.
 func StartFraudBackpressureWatcher(ctx context.Context, cfg FraudBackpressureConfig) {
 	if cfg.Writer == nil || len(cfg.Rdbs) == 0 {
 		return
@@ -67,7 +65,6 @@ func readFraudAggForce(ctx context.Context, rdbs []redis.UniversalClient) bool {
 	return false
 }
 
-// PublishFraudConsumerLag sets fraud:agg_force when consumer idle age exceeds threshold (processor).
 func PublishFraudConsumerLag(ctx context.Context, rdb redis.UniversalClient, stream, group string, lagSec int) {
 	if rdb == nil || stream == "" || group == "" || lagSec <= 0 {
 		return
@@ -129,7 +126,6 @@ func publishStreamPELAges(ctx context.Context, cfg FraudBackpressureConfig) {
 	}
 }
 
-// StartFraudLagPublisher runs on processor: samples fraud stream PEL and signals trackers.
 func StartFraudLagPublisher(ctx context.Context, rdbs []redis.UniversalClient, stream, group string, lagSec int, interval time.Duration) {
 	if len(rdbs) == 0 || stream == "" {
 		return
@@ -153,7 +149,7 @@ func StartFraudLagPublisher(ctx context.Context, rdbs []redis.UniversalClient, s
 						continue
 					}
 					PublishFraudConsumerLag(ctx, rdb, stream, group, lagSec)
-					break // one publish to shared key is enough
+					break
 				}
 			}
 		}

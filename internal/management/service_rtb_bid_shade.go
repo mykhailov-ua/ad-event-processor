@@ -9,7 +9,6 @@ import (
 	"espx/internal/rtb"
 )
 
-// RtbBidShadeRequest is the admin bid-shading simulation input (R16).
 type RtbBidShadeRequest struct {
 	GeoHash      uint32 `json:"geo_hash"`
 	DeviceType   uint8  `json:"device_type"`
@@ -17,7 +16,6 @@ type RtbBidShadeRequest struct {
 	MinBidMicro  int64  `json:"min_bid_micro"`
 }
 
-// RtbBidShadeResponse carries shading recommendation from shadow auction eval.
 type RtbBidShadeResponse struct {
 	HasBid              bool    `json:"has_bid"`
 	CampaignID          string  `json:"campaign_id,omitempty"`
@@ -28,7 +26,6 @@ type RtbBidShadeResponse struct {
 	SecondPriceDeltaPct float64 `json:"second_price_delta_pct"`
 }
 
-// SimulateRtbBidShade runs RunAuctionEval and recommends a shaded bid from second-price delta (R16).
 func (s *Service) SimulateRtbBidShade(ctx context.Context, req RtbBidShadeRequest) (RtbBidShadeResponse, error) {
 	out := RtbBidShadeResponse{}
 	if s == nil || s.pool == nil {

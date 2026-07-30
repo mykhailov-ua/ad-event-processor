@@ -6,7 +6,6 @@ import (
 	"espx/internal/config"
 )
 
-// CHQueryConfigFromApp builds governed-query settings from application config.
 func CHQueryConfigFromApp(cfg *config.Config) CHQueryConfig {
 	if cfg == nil {
 		return CHQueryConfig{}

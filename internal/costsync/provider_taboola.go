@@ -14,7 +14,6 @@ import (
 	"espx/pkg/money"
 )
 
-// TaboolaProvider fetches campaign spend from Taboola Backstage API.
 type TaboolaProvider struct {
 	BaseURL string
 	Client  *http.Client
@@ -99,7 +98,6 @@ func (p *TaboolaProvider) Fetch(ctx context.Context, cred Credential, date time.
 	return lines, nil
 }
 
-// OutbrainProvider fetches spend from Outbrain Amplify API.
 type OutbrainProvider struct {
 	BaseURL string
 	Client  *http.Client

@@ -29,7 +29,6 @@ type fraudScoringRule struct {
 	batchSize int
 }
 
-// NewFraudScoringRule scores ClickHouse feature rows and writes shadow scores.
 func NewFraudScoringRule(q *database.CHQuery, writeConn driver.Conn, pool *pgxpool.Pool, scorer fraudscoring.Scorer, batchSize int) Rule {
 	return &fraudScoringRule{
 		q:         q,
@@ -77,13 +76,11 @@ func (r *fraudScoringRule) Find(ctx context.Context) ([]SuspiciousIP, error) {
 		return nil, nil
 	}
 
-	// Fetch campaign configs from Postgres first
 	configs, err := r.fetchCampaignConfigs(ctx)
 	if err != nil {
 		slog.Warn("fraud shadow scoring: failed to fetch campaign configs from postgres", "error", err)
 	}
 
-	// Fetch recent features from ml_features_1m
 	query := `
 SELECT
     window_start,
@@ -165,10 +162,8 @@ LIMIT ?`
 			"model", r.scorer.Name(),
 		)
 
-		// Map probability to fraud score
 		fraudScore := fraudscoring.ProbabilityToFraudScore(score)
 
-		// Default thresholds
 		pass := uint8(30)
 		suspect := uint8(60)
 		block := uint8(100)
@@ -191,7 +186,7 @@ LIMIT ?`
 				CampaignID: featureRows[i].CampaignID,
 				Action:     "boost",
 				Boost:      int32(fraudScore),
-				TTLSeconds: 300, // 5 minutes TTL
+				TTLSeconds: 300,
 			})
 		} else if uint8(fraudScore) >= suspect && uint8(fraudScore) < block {
 			if ghostEnabled {
@@ -202,7 +197,7 @@ LIMIT ?`
 					CampaignID: featureRows[i].CampaignID,
 					Action:     "ghost",
 					Boost:      int32(fraudScore),
-					TTLSeconds: 300, // 5 minutes TTL
+					TTLSeconds: 300,
 				})
 			}
 		} else if uint8(fraudScore) >= block {
@@ -213,7 +208,7 @@ LIMIT ?`
 				CampaignID: featureRows[i].CampaignID,
 				Action:     "blacklist",
 				Boost:      int32(fraudScore),
-				TTLSeconds: 3600, // 1 hour TTL for blacklist
+				TTLSeconds: 3600,
 			})
 		}
 	}

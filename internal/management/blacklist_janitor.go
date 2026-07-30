@@ -10,13 +10,11 @@ import (
 
 const blacklistJanitorBatchSize = 200
 
-// BlacklistJanitor evicts temporary blacklist rows from Postgres and propagates unblocks via outbox.
 type BlacklistJanitor struct {
 	svc      *Service
 	interval time.Duration
 }
 
-// NewBlacklistJanitor constructs a janitor with the given scan interval.
 func NewBlacklistJanitor(svc *Service, interval time.Duration) *BlacklistJanitor {
 	if interval <= 0 {
 		interval = time.Minute
@@ -24,7 +22,6 @@ func NewBlacklistJanitor(svc *Service, interval time.Duration) *BlacklistJanitor
 	return &BlacklistJanitor{svc: svc, interval: interval}
 }
 
-// Start runs periodic expiry scans until the context is cancelled.
 func (j *BlacklistJanitor) Start(ctx context.Context) {
 	if j == nil || j.svc == nil {
 		return

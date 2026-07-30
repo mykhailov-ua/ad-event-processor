@@ -19,7 +19,6 @@ const (
 	udpProvConservativeDefault uint8 = 3
 )
 
-// UDPNodeWeight is one peer entry in a control epoch (cold path only).
 type UDPNodeWeight struct {
 	NodeID     string
 	Role       string
@@ -28,7 +27,6 @@ type UDPNodeWeight struct {
 	Provenance uint8
 }
 
-// UDPNodeWeightJSON is the §8 audit JSON shape for control_plane_epochs.
 type UDPNodeWeightJSON struct {
 	NodeID     string  `json:"node_id"`
 	Role       string  `json:"role,omitempty"`
@@ -37,7 +35,6 @@ type UDPNodeWeightJSON struct {
 	Provenance string  `json:"provenance"`
 }
 
-// ProvenanceToUDPCode maps §0 provenance strings to on-wire codes.
 func ProvenanceToUDPCode(provenance string) uint8 {
 	switch provenance {
 	case "own_window", "own":
@@ -51,7 +48,6 @@ func ProvenanceToUDPCode(provenance string) uint8 {
 	}
 }
 
-// ProvenanceFromUDPCode maps on-wire codes back to §0 provenance strings.
 func ProvenanceFromUDPCode(code uint8) string {
 	switch code {
 	case udpProvOwnWindow:
@@ -65,7 +61,6 @@ func ProvenanceFromUDPCode(code uint8) string {
 	}
 }
 
-// NodeWeightsToJSON converts live weights for Postgres payload_json.
 func NodeWeightsToJSON(weights []UDPNodeWeight) []UDPNodeWeightJSON {
 	if len(weights) == 0 {
 		return nil
@@ -83,7 +78,6 @@ func NodeWeightsToJSON(weights []UDPNodeWeight) []UDPNodeWeightJSON {
 	return out
 }
 
-// EqualizeNodeWeights assigns weight 1/N to each peer (stale epoch policy).
 func EqualizeNodeWeights(weights []UDPNodeWeight) []UDPNodeWeight {
 	if len(weights) == 0 {
 		return nil
@@ -97,7 +91,6 @@ func EqualizeNodeWeights(weights []UDPNodeWeight) []UDPNodeWeight {
 	return out
 }
 
-// NodeWeightsDrainFrozen reports whether routing must stop draining peers (§8 stale epoch).
 func NodeWeightsDrainFrozen(channelStale bool, publisherEpoch, appliedEpoch int64) bool {
 	if channelStale {
 		return true
@@ -108,7 +101,6 @@ func NodeWeightsDrainFrozen(channelStale bool, publisherEpoch, appliedEpoch int6
 	return publisherEpoch-appliedEpoch > UDPNodeWeightStaleLag
 }
 
-// EffectiveNodeWeights returns published weights or equalized weights when stale.
 func EffectiveNodeWeights(weights []UDPNodeWeight, channelStale bool, publisherEpoch, appliedEpoch int64) []UDPNodeWeight {
 	if len(weights) == 0 {
 		return nil
@@ -223,12 +215,10 @@ func udpDecodeNodeWeights(payload []byte, out *[]UDPNodeWeight) bool {
 	return true
 }
 
-// EdgeControlEqualizeWeights reports whether edge must equalize peer weights (M5.3 conservative default).
 func EdgeControlEqualizeWeights(stale, failOpen bool) bool {
 	return stale && !failOpen
 }
 
-// EdgeControlDrainFrozen reports whether edge must freeze drain-oriented routing (M5.3 conservative default).
 func EdgeControlDrainFrozen(stale, failOpen bool) bool {
 	if failOpen {
 		return false
@@ -236,7 +226,6 @@ func EdgeControlDrainFrozen(stale, failOpen bool) bool {
 	return stale
 }
 
-// ControlFailOpenEnabled parses CONTROL_FAIL_OPEN (edge only; default false).
 func ControlFailOpenEnabled(raw string) bool {
 	return raw == "1" || raw == "true" || raw == "TRUE"
 }

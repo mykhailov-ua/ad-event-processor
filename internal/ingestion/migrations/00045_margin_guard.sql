@@ -1,4 +1,3 @@
--- Margin Guard policies and activity log (M17).
 
 CREATE TABLE IF NOT EXISTS margin_guard_policies (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -19,7 +18,7 @@ CREATE TABLE IF NOT EXISTS margin_guard_activity (
     policy_id UUID NOT NULL REFERENCES margin_guard_policies(id) ON DELETE CASCADE,
     campaign_id UUID NOT NULL,
     placement_id TEXT NOT NULL,
-    action TEXT NOT NULL, -- 'pause', 'resume', 'alert'
+    action TEXT NOT NULL,
     reason TEXT NOT NULL,
     metrics JSONB NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -28,4 +27,3 @@ CREATE TABLE IF NOT EXISTS margin_guard_activity (
 CREATE INDEX IF NOT EXISTS idx_margin_guard_activity_campaign_id ON margin_guard_activity(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_margin_guard_activity_created_at ON margin_guard_activity(created_at);
 
--- Add to outbox_events types documentation if any, or just use 'PAUSE_PLACEMENT'

@@ -17,7 +17,6 @@ import (
 
 const meterBillableEvents = "events"
 
-// VolumeMeterWorker rolls up weighted billable units from ClickHouse into usage_meters.
 type VolumeMeterWorker struct {
 	pool     *pgxpool.Pool
 	ch       *database.CHQuery
@@ -25,7 +24,6 @@ type VolumeMeterWorker struct {
 	pgGate   *MgmtPgGate
 }
 
-// NewVolumeMeterWorker constructs an hourly CH rollup worker.
 func NewVolumeMeterWorker(pool *pgxpool.Pool, ch *database.CHQuery, interval time.Duration, pgGate *MgmtPgGate) *VolumeMeterWorker {
 	if interval <= 0 {
 		interval = time.Hour
@@ -33,7 +31,6 @@ func NewVolumeMeterWorker(pool *pgxpool.Pool, ch *database.CHQuery, interval tim
 	return &VolumeMeterWorker{pool: pool, ch: ch, interval: interval, pgGate: pgGate}
 }
 
-// Start runs the rollup loop until ctx is cancelled.
 func (w *VolumeMeterWorker) Start(ctx context.Context) {
 	if w == nil || w.pool == nil || w.ch == nil {
 		return
@@ -60,7 +57,6 @@ type rollupRow struct {
 	Count      uint64
 }
 
-// RunHour aggregates the previous clock hour into billing.usage_meters.
 func (w *VolumeMeterWorker) RunHour(ctx context.Context, now time.Time) error {
 	if w.pgGate != nil {
 		if err := w.pgGate.AcquireLow(ctx); err != nil {
@@ -166,7 +162,6 @@ func (w *VolumeMeterWorker) loadCampaignCustomers(ctx context.Context) (map[uuid
 	return out, pgRows.Err()
 }
 
-// ComputeWeightedUnitsFromRows is exported for golden-fixture tests.
 func ComputeWeightedUnitsFromRows(rows []rollupRow, campaignCustomers map[uuid.UUID]uuid.UUID) map[uuid.UUID]int64 {
 	customerUnits := make(map[uuid.UUID]int64)
 	for _, row := range rows {

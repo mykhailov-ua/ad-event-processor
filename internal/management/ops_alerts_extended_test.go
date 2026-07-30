@@ -1,6 +1,8 @@
 package management
 
 import (
+	"espx/pkg/faultproof"
+
 	"context"
 	"testing"
 	"time"
@@ -106,8 +108,7 @@ func TestOpsAlerter_EnqueueFailureMetaAlert(t *testing.T) {
 	require.Error(t, err)
 }
 
-// TestChaos_opsAlertExtendedCoverage verifies new ops alert paths enqueue broadcast notifications.
-func TestChaos_opsAlertExtendedCoverage(t *testing.T) {
+func TestFault_opsAlertExtendedCoverage(t *testing.T) {
 	stub := &stubNotifierGRPCClient{}
 	cfg := testNotifierConfig()
 	cfg.Management.OpsAlertsEnabled = true
@@ -126,7 +127,7 @@ func TestChaos_opsAlertExtendedCoverage(t *testing.T) {
 		assert.Equal(t, notifierpb.DeliveryMode_DELIVERY_MODE_BROADCAST, req.DeliveryMode)
 	}
 
-	logChaosProof(t, "ops_alert_extended", map[string]string{
+	faultproof.Log(t, "ops_alert_extended", map[string]string{
 		"blacklist": "true",
 		"outbox":    "true",
 		"migration": "true",

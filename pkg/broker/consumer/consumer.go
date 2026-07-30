@@ -1,4 +1,3 @@
-// Package consumer reads broker topics with at-least-once delivery and offset commits.
 package consumer
 
 import (
@@ -9,10 +8,8 @@ import (
 	"espx/pkg/broker/client"
 )
 
-// Handler processes one log record; returning an error stops the consumer without committing.
 type Handler func(payload []byte, offset uint64) error
 
-// Config wires a broker consumer group to a topic partition.
 type Config struct {
 	BrokerAddr string
 	RedisURL   string
@@ -24,14 +21,12 @@ type Config struct {
 	IdleWait   time.Duration
 }
 
-// Consumer fetches broker records and commits offsets after successful handler batches.
 type Consumer struct {
 	cfg     Config
 	handler Handler
 	cli     *client.Client
 }
 
-// New builds a consumer with sane defaults for cold-path stream processing.
 func New(cfg Config, handler Handler) *Consumer {
 	if cfg.MaxBytes == 0 {
 		cfg.MaxBytes = 1024 * 1024
@@ -49,7 +44,6 @@ func New(cfg Config, handler Handler) *Consumer {
 	}
 }
 
-// Run consumes until ctx is cancelled, committing offsets after each successful fetch batch.
 func (c *Consumer) Run(ctx context.Context) error {
 	if c.handler == nil {
 		return errors.New("consumer handler is nil")

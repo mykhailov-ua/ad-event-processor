@@ -20,7 +20,6 @@ import (
 
 const clickHouseTestImage = "clickhouse/clickhouse-server:24.3-alpine"
 
-// setupClickHouseIntegration boots ClickHouse with production init.sql schema.
 func setupClickHouseIntegration(t *testing.T) (driver.Conn, func()) {
 	t.Helper()
 	if testing.Short() {
@@ -51,7 +50,6 @@ func setupClickHouseIntegration(t *testing.T) (driver.Conn, func()) {
 	return conn, cleanup
 }
 
-// openClickHouseTestConn dials ClickHouse with synchronous inserts for deterministic row counts.
 func openClickHouseTestConn(t *testing.T, dsn string) driver.Conn {
 	t.Helper()
 	opts, err := chgo.ParseDSN(dsn)
@@ -82,7 +80,6 @@ func countClickHouseRows(t *testing.T, conn driver.Conn, table, clickID string) 
 	return n
 }
 
-// TestClickHouseStore_InsertDeduplicate_RealCH verifies insert_deduplicate=1 collapses retries to one row.
 func TestClickHouseStore_InsertDeduplicate_RealCH(t *testing.T) {
 	conn, cleanup := setupClickHouseIntegration(t)
 	defer cleanup()
@@ -99,12 +96,12 @@ func TestClickHouseStore_InsertDeduplicate_RealCH(t *testing.T) {
 		CampaignID: campID,
 		Type:       "impression",
 		IP:         "203.0.113.10",
-		UA:         "chaos-ch-dedup",
-		Payload:    []byte(`{"chaos":"dedup"}`),
+		UA:         "fault-ch-dedup",
+		Payload:    []byte(`{"fault":"dedup"}`),
 		CreatedAt:  createdAt,
 	}
 
-	const token = "chaos-ch-dedup-token-explicit"
+	const token = "fault-ch-dedup-token-explicit"
 	ctx := context.WithValue(context.Background(), campaignmodel.DeduplicationTokenKey, token)
 
 	require.NoError(t, store.StoreBatch(ctx, []*campaignmodel.Event{evt}))
@@ -114,7 +111,6 @@ func TestClickHouseStore_InsertDeduplicate_RealCH(t *testing.T) {
 		"duplicate insert with same dedup token must yield one row")
 }
 
-// TestClickHouseStore_InsertDeduplicate_DeterministicToken_RealCH verifies processor-style SHA token dedupes retries.
 func TestClickHouseStore_InsertDeduplicate_DeterministicToken_RealCH(t *testing.T) {
 	conn, cleanup := setupClickHouseIntegration(t)
 	defer cleanup()
@@ -131,8 +127,8 @@ func TestClickHouseStore_InsertDeduplicate_DeterministicToken_RealCH(t *testing.
 		CampaignID: campID,
 		Type:       "click",
 		IP:         "203.0.113.11",
-		UA:         "chaos-ch-dedup",
-		Payload:    []byte(`{"chaos":"dedup-det"}`),
+		UA:         "fault-ch-dedup",
+		Payload:    []byte(`{"fault":"dedup-det"}`),
 		CreatedAt:  createdAt,
 	}
 

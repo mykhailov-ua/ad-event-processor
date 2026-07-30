@@ -9,7 +9,6 @@ import (
 	"github.com/cilium/ebpf"
 )
 
-// benchOutputPad matches cilium/ebpf RunOptions.DataOut sizing (256 + NET_IP_ALIGN).
 const benchOutputPad = 258
 
 func benchRunOptions(pkt []byte) *ebpf.RunOptions {
@@ -17,7 +16,6 @@ func benchRunOptions(pkt []byte) *ebpf.RunOptions {
 	return &ebpf.RunOptions{Data: pkt, DataOut: out, Repeat: 1}
 }
 
-// BenchmarkXDP_passSYN_noFingerprint isolates Tier C ringbuf cost vs baseline.
 func BenchmarkXDP_passSYN_noFingerprint(b *testing.B) {
 	objs := loadBenchObjects(b)
 	key := uint32(0)
@@ -86,7 +84,7 @@ func BenchmarkXDP_passPPSACK(b *testing.B) {
 func BenchmarkXDP_dropAnomaly(b *testing.B) {
 	objs := loadBenchObjects(b)
 	pkt := buildSYNPacketBench(net.IPv4(10, 3, 4, 5), trackerPort)
-	pkt[47] = 0x03 // SYN+FIN
+	pkt[47] = 0x03
 	opts := benchRunOptions(pkt)
 
 	b.ReportAllocs()
@@ -148,7 +146,7 @@ func buildSYNPacketBench(src net.IP, dport uint16) []byte {
 	tcp := pkt[34:]
 	tcp[12] = 0x50
 	tcp[0] = 0x30
-	tcp[1] = 0x39 // src port 12345
+	tcp[1] = 0x39
 	tcp[2] = byte(dport >> 8)
 	tcp[3] = byte(dport)
 	tcp[13] = 0x02
@@ -157,6 +155,6 @@ func buildSYNPacketBench(src net.IP, dport uint16) []byte {
 
 func buildACKPacketBench(src net.IP, dport uint16) []byte {
 	pkt := buildSYNPacketBench(src, dport)
-	pkt[47] = 0x10 // ACK
+	pkt[47] = 0x10
 	return pkt
 }

@@ -1,4 +1,3 @@
--- region_traffic.sql: global cross-region traffic dial (M4.2).
 
 -- name: ListActiveRegionCodes :many
 SELECT code

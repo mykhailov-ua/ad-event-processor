@@ -17,7 +17,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// getCustomerBillingDashboard handles GET /admin/customers/{id}/billing as an HTMX fragment.
 func (handler *Handler) getCustomerBillingDashboard(w http.ResponseWriter, r *http.Request) {
 	if handler.billing == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "BILLING_UNAVAILABLE", "billing service not configured")
@@ -44,7 +43,6 @@ type generateInvoiceRequest struct {
 	BillingMonth string `json:"billing_month"`
 }
 
-// generateCustomerInvoice handles POST /admin/customers/{id}/billing/invoices.
 func (handler *Handler) generateCustomerInvoice(w http.ResponseWriter, r *http.Request) {
 	if handler.billing == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "BILLING_UNAVAILABLE", "billing service not configured")

@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// ComputeCompositeHash is the legacy string-concat reference for nginx alignment checks.
 func ComputeCompositeHash(campaignID, userID string) uint32 {
 	if campaignID == "" && userID == "" {
 		return 0
@@ -106,7 +105,6 @@ func TestFormatUUIDCanonical(t *testing.T) {
 	require.Equal(t, crc32.ChecksumIEEE(buf[:]), crc32IEEEInplace36(&buf2))
 }
 
-// Tracks JSON composite hash cost against protobuf for format migration decisions.
 func BenchmarkCompositeRouting_JSON(b *testing.B) {
 	campaignUUID := uuid.New()
 	userID := "user_987654321"
@@ -138,7 +136,6 @@ func BenchmarkCompositeRouting_JSON(b *testing.B) {
 	}
 }
 
-// Tracks protobuf composite hash as baseline for routing hot path.
 func BenchmarkCompositeRouting_Protobuf(b *testing.B) {
 	campaignUUID := uuid.New()
 	userID := "user_987654321"
@@ -156,7 +153,6 @@ func BenchmarkCompositeRouting_Protobuf(b *testing.B) {
 	reqProto := adEventPool.Get().(*pb.AdEvent)
 	defer putAdEvent(reqProto)
 
-	// Warm up pool allocations before timing.
 	resetAdEventInPlace(reqProto)
 	_ = reqProto.UnmarshalVT(protoData)
 

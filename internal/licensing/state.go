@@ -4,7 +4,6 @@ import (
 	"time"
 )
 
-// DetermineState computes the LicenseState based on claims, current time, and a revocation check.
 func DetermineState(claims *LicenseClaims, now time.Time, revoked bool) LicenseState {
 	if revoked {
 		return StateRevoked
@@ -13,7 +12,7 @@ func DetermineState(claims *LicenseClaims, now time.Time, revoked bool) LicenseS
 		return StateExpired
 	}
 	if now.Before(claims.ValidFrom) {
-		return StateExpired // Or not yet valid, which defaults to expired for enforcement
+		return StateExpired
 	}
 	if now.Before(claims.ValidUntil) {
 		return StateActive

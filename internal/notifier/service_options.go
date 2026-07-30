@@ -6,7 +6,6 @@ import (
 	"espx/internal/config"
 )
 
-// ServiceOptions tunes queue delivery, deduplication, and rate limiting.
 type ServiceOptions struct {
 	DedupCooldownSec           int64
 	ClaimStaleSec              int64
@@ -46,7 +45,6 @@ func (opts ServiceOptions) groupParallelism() int {
 	return opts.GroupParallelism
 }
 
-// ServiceOptionsFromConfig maps notifier tuning from startup config.
 func ServiceOptionsFromConfig(cfg *config.Config) ServiceOptions {
 	if cfg == nil {
 		return defaultServiceOptions()

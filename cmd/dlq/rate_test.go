@@ -40,7 +40,6 @@ func setupRateTestRedis(t *testing.T) (*redis.Client, func()) {
 	}
 }
 
-// TestRequeueDLQ_RateLimiting verifies requeue throughput with and without -rate throttling.
 func TestRequeueDLQ_RateLimiting(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
@@ -143,7 +142,6 @@ func TestRequeueDLQ_RateLimiting(t *testing.T) {
 	}
 }
 
-// TestRestoreDLQ_RateLimiting verifies restore honors the configured events-per-second cap.
 func TestRestoreDLQ_RateLimiting(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")

@@ -1,5 +1,3 @@
--- Index for time-bounded post-failover duplicate audit (GAP-GEO-02).
--- Supports WHERE created_at >= $since GROUP BY idempotency_hash on recent rows only.
 
 -- +goose Up
 -- +goose StatementBegin

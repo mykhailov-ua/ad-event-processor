@@ -8,20 +8,14 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// CampaignRedisKeyCatalog is the single source for slot-migration COPY/DRAIN key lists.
-// Used by CampaignKeyMigrator, PG re-warm, and DATA_LAYER.md Part I documentation.
 type CampaignRedisKeyCatalog struct{}
 
-// DefaultCampaignRedisKeyCatalog is the process-wide catalog instance.
 var DefaultCampaignRedisKeyCatalog = NewCampaignRedisKeyCatalog()
 
-// NewCampaignRedisKeyCatalog constructs a catalog.
 func NewCampaignRedisKeyCatalog() *CampaignRedisKeyCatalog {
 	return &CampaignRedisKeyCatalog{}
 }
 
-// FixedKeys returns exact Redis keys to COPY/DRAIN for one campaign.
-// Migration fence keys are source-only and omitted from COPY (see SourceOnlyKeys).
 func (c *CampaignRedisKeyCatalog) FixedKeys(id uuid.UUID) []string {
 	idStr := id.String()
 	tag := campaignHashTag(id)
@@ -39,12 +33,10 @@ func (c *CampaignRedisKeyCatalog) FixedKeys(id uuid.UUID) []string {
 	}
 }
 
-// SourceOnlyKeys returns keys that must not be copied to the target shard (fence blocks source debits).
 func (c *CampaignRedisKeyCatalog) SourceOnlyKeys(id uuid.UUID) []string {
 	return []string{MigrationFenceRedisKey(id)}
 }
 
-// PrefixPatterns returns SCAN prefixes for variable-cardinality campaign keys.
 func (c *CampaignRedisKeyCatalog) PrefixPatterns(id uuid.UUID) []string {
 	tag := campaignHashTag(id)
 	return []string{
@@ -58,12 +50,10 @@ func (c *CampaignRedisKeyCatalog) PrefixPatterns(id uuid.UUID) []string {
 	}
 }
 
-// ActivationRequiredKeys returns keys that must exist on the target shard before cutover.
 func (c *CampaignRedisKeyCatalog) ActivationRequiredKeys(id uuid.UUID) []string {
 	return []string{budgetCampaignKey(id)}
 }
 
-// VerifyRequiredKeysExist checks EXISTS on target for activation-required keys.
 func (c *CampaignRedisKeyCatalog) VerifyRequiredKeysExist(ctx context.Context, dst redis.Cmdable, id uuid.UUID) error {
 	for _, key := range c.ActivationRequiredKeys(id) {
 		n, err := dst.Exists(ctx, key).Result()
@@ -77,7 +67,6 @@ func (c *CampaignRedisKeyCatalog) VerifyRequiredKeysExist(ctx context.Context, d
 	return nil
 }
 
-// VerifySlotCampaignKeysExist validates activation-required keys for every campaign in a slot.
 func (c *CampaignRedisKeyCatalog) VerifySlotCampaignKeysExist(
 	ctx context.Context,
 	dst redis.Cmdable,

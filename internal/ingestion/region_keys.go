@@ -4,7 +4,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// IngressDayKey formats the per-region daily ingress counter Redis key (zero heap alloc).
 func IngressDayKey(buf []byte, regionCode uint8, customerID uuid.UUID, dateStr string) []byte {
 	b := append(buf[:0], "ingress:day:"...)
 	if regionCode > 0 {

@@ -1,4 +1,3 @@
-// Package metrics registers Prometheus collectors shared across ingestion, filter, management, and broker services.
 package metrics
 
 import (
@@ -7,7 +6,6 @@ import (
 )
 
 var (
-	// HTTP ingress metrics exist so Grafana can alert on error rate and latency SLO breaches.
 	HttpRequestsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ad_http_requests_total",
 		Help: "Total number of HTTP requests by status code",
@@ -19,7 +17,6 @@ var (
 		Buckets: prometheus.DefBuckets,
 	}, []string{"method", "path"})
 
-	// Event ingestion metrics exist so ops can detect silent data loss at the Redis Streams boundary before downstream consumers starve.
 	EventsProcessed = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_events_processed_total",
 		Help: "Total number of events successfully accepted into Redis Streams",
@@ -30,13 +27,11 @@ var (
 		Help: "Total number of events dropped due to Redis ingestion failure",
 	})
 
-	// Filter block metrics exist so on-call can spot fraud spikes, policy misconfiguration, or abnormal rejection mix by reason.
 	FilterBlockedTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ad_filter_blocked_total",
 		Help: "Total number of events blocked by filters",
 	}, []string{"reason"})
 
-	// Database write metrics exist so persistence slowdowns and write failures page before the processor backlog grows.
 	DbWriteDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "ad_db_write_duration_seconds",
 		Help:    "Duration of database batch write operations",
@@ -48,7 +43,6 @@ var (
 		Help: "Total number of database write errors",
 	}, []string{"type"})
 
-	// Circuit breaker metrics exist so alerts fire when dependency protection opens and the hot path starts shedding load.
 	CircuitBreakerState = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "ad_circuit_breaker_state",
 		Help: "Current state of the circuit breaker (0=closed, 1=open, 2=half-open)",
@@ -59,13 +53,11 @@ var (
 		Help: "Current state of the Redis shard circuit breaker (0=closed, 1=open, 2=half-open)",
 	}, []string{"shard"})
 
-	// DLQ depth exists so unreplayable or stuck events trigger investigation before they accumulate without visibility.
 	DlqSize = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "ad_dlq_size_total",
 		Help: "Current number of events in the Dead Letter Queue",
 	})
 
-	// Management business metrics exist so finance and ops dashboards can track revenue flow and live campaign inventory.
 	CommissionsCollectedTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_management_commissions_total",
 		Help: "Total amount of commissions collected from campaign cancellations",
@@ -81,7 +73,6 @@ var (
 		Help: "Current number of active campaigns in the system",
 	})
 
-	// Reconciliation metrics exist so billing integrity alerts fire when Postgres and ClickHouse spend diverge or auto-corrections fail.
 	DataDriftRatio = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "ad_reconciliation_drift_ratio",
 		Help: "Ratio of discrepancy between Postgres and ClickHouse spend",
@@ -119,7 +110,6 @@ var (
 		Help: "RECONCILIATION_ADJUST outbox events applied successfully",
 	})
 
-	// gnet hot-path metrics exist so capacity alerts catch connection saturation, parse failures, and worker pool overload before requests are dropped.
 	GnetPacketsReceived = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_gnet_packets_received_total",
 		Help: "Total number of network packets received",
@@ -150,14 +140,13 @@ var (
 	}, []string{"error_type"})
 	IngressLegacyJSONTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "espx_ingress_legacy_json_total",
-		Help: "Track payloads that fell back to deprecated flat bid_micro / category_mask JSON (M12-08 sunset)",
+		Help: "Track payloads that fell back to deprecated flat bid_micro / category_mask JSON",
 	})
 	WorkerPoolRejectTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_worker_pool_reject_total",
 		Help: "Requests rejected because pinned worker pool queue is full",
 	})
 
-	// Async side-effect drop metrics exist so audit and fraud pipelines surface ring-buffer overflow before compliance gaps go unnoticed.
 	HandlerLogDropTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_handler_log_drop_total",
 		Help: "Accepted events whose audit log write was dropped (logger ring full)",
@@ -207,7 +196,6 @@ var (
 		Help: "HTTP/2 connections closed after H2_INCOMPLETE_MAX incomplete frames with consumed=0",
 	})
 
-	// Filter engine metrics exist so delivery health dashboards expose pass/block mix, dependency blips, and geo lookup tail latency.
 	FilterThroughput = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ad_filter_throughput_total",
 		Help: "Total throughput through the filter engine",
@@ -231,10 +219,9 @@ var (
 	})
 	FilterTierDegradedTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "filter_tier_degraded_total",
-		Help: "Filter checks that skipped non-critical Lua gates near the monotonic deadline (M9-04)",
+		Help: "Filter checks that skipped non-critical Lua gates near the monotonic deadline",
 	})
 
-	// Redis Lua metrics exist so shard-level script availability and EVAL latency alerts catch filter hot-path regressions early.
 	RedisLuaDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "ad_redis_lua_duration_seconds",
 		Help:    "Execution duration of Redis Lua filters",
@@ -278,7 +265,6 @@ var (
 		Help: "Sampled accepted spend in micro-units by campaign and shard for hot-campaign detection",
 	}, []string{"shard", "campaign_id"})
 
-	// Budget cache metrics exist so overspend risk is visible when warm paths miss and hot-path fallbacks hit PostgreSQL or the registry.
 	BudgetCacheWarmTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ad_budget_cache_warm_total",
 		Help: "Redis budget:campaign:* keys inserted via SET NX during registry sync warm",
@@ -296,7 +282,6 @@ var (
 		Help: "Budget cache misses recovered from in-memory registry without PostgreSQL",
 	})
 
-	// Registry sync lag exists so stale campaign config in the hot path triggers alerts before delivery rules drift from the database.
 	RegistrySyncLag = promauto.NewHistogram(prometheus.HistogramOpts{
 		Name:    "ad_registry_sync_lag_seconds",
 		Help:    "Registry sync lag between database update and cache loading",
@@ -316,13 +301,11 @@ var (
 		Help: "1 when shard-0 campaigns:update pub/sub is unreachable (tracker stale-serve), else 0",
 	})
 
-	// Geo provider status exists so production deploys that accidentally run the mock geo provider are caught before targeting goes wrong.
 	GeoProviderStatus = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "ad_geo_provider_status",
 		Help: "Status of the geo provider: 1 = real MaxMind, 0 = mock",
 	})
 
-	// Tracker health probe mirrors gnet /health DEGRADED redis= state for paging without scraping each replica.
 	TrackerHealthDegraded = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "ad_tracker_health_degraded",
 		Help: "1 when tracker /health is DEGRADED (postgres or any redis shard ping failed), else 0",
@@ -332,7 +315,6 @@ var (
 		Help: "Per-shard redis ping from tracker health probe: 1 healthy, 0 unreachable",
 	}, []string{"shard"})
 
-	// Management outbox lag exposes cold-path sync delay before hot-path Redis drifts from Postgres.
 	ManagementOutboxPendingTotal = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "ad_management_outbox_pending_total",
 		Help: "Count of outbox_events rows in PENDING status awaiting Redis propagation",
@@ -376,7 +358,6 @@ var (
 		Help: "GeoIP hot-reload failures in the tracker watcher",
 	})
 
-	// Fraud scoring metrics exist so ops can alert on IVT mix, signal prevalence, and L1 auto-reject rate.
 	FraudScoreHistogram = promauto.NewHistogram(prometheus.HistogramOpts{
 		Name:    "ad_fraud_score_histogram",
 		Help:    "Accumulated fraud score (0-100) per scored request",
@@ -395,7 +376,6 @@ var (
 		Help: "L1 auto-reject decisions (dual high-confidence or L3 blocklist)",
 	})
 
-	// Broker HA metrics exist so split-brain, replication lag, and fsync stalls surface before log-shipper backpressure grows.
 	BrokerProduceTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ad_broker_produce_total",
 		Help: "Broker produce attempts by topic and status",
@@ -505,7 +485,6 @@ var (
 		Help: "1 when broker/redis ingest divergence exceeds configured threshold",
 	}, []string{"topic", "group"})
 
-	// Disk gate metrics exist so NVMe contention and TierLow shedding are visible on broker and region-proxy nodes.
 	DiskGateAppendWaitSeconds = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "ad_disk_gate_append_wait_seconds",
 		Help:    "Wait time acquiring the disk append semaphore by tier.",
@@ -552,7 +531,6 @@ var (
 		Help: "Node capacity scorer fallbacks away from own_window by provenance.",
 	}, []string{"provenance"})
 
-	// RTB auction metrics exist so bid-path fill rate and scan cost are visible before Redis integration cutover.
 	RtbAuctionDuration = promauto.NewHistogram(prometheus.HistogramOpts{
 		Name:    "ad_rtb_auction_duration_seconds",
 		Help:    "In-process RTB auction latency",
@@ -579,7 +557,6 @@ var (
 		Name: "ad_rtb_budget_spend_rejected_total",
 		Help: "Final CAS budget debits rejected after a winner was selected",
 	})
-	// Shadow-mode divergence metrics validate RTB winners against client campaign_id before live cutover.
 	RtbShadowWinnerMismatchTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_rtb_shadow_winner_mismatch_total",
 		Help: "RTB shadow auctions where the eval winner differs from the client campaign_id",
@@ -658,15 +635,15 @@ var (
 	})
 	LocalQuotaFlushTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ad_local_quota_flush_total",
-		Help: "Local quanta returned to Redis on pause/shutdown/strict (M14-13/15)",
+		Help: "Local quanta returned to Redis on pause/shutdown/strict",
 	}, []string{"reason"})
 	FilterLuaBranchTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "filter_lua_branch_total",
-		Help: "Unified/budget-fast Lua return-code branch tags (M14-16)",
+		Help: "Unified/budget-fast Lua return-code branch tags",
 	}, []string{"branch"})
 	FilterLuaSlowTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "filter_lua_slow_total",
-		Help: "EVALSHA durations exceeding FILTER_SLOW_MS (M14-17)",
+		Help: "EVALSHA durations exceeding FILTER_SLOW_MS",
 	})
 
 	UDPControlPacketsReceivedTotal = promauto.NewCounter(prometheus.CounterOpts{
@@ -865,7 +842,6 @@ var (
 		Help: "Vendor probe failures (logged once per interval per vendor)",
 	}, []string{"vendor"})
 
-	// Cost sync metrics track network ingest health for M16 buy/sell-side ROI pipeline.
 	CostSyncRunsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ad_cost_sync_runs_total",
 		Help: "Cost sync runs by outcome (success, failed)",
@@ -888,7 +864,6 @@ var (
 		Help: "ClickHouse cost_snapshots insert failures",
 	})
 
-	// LedgerBatchPauseTotal counts campaigns paused when a consolidated spend flush cannot complete.
 	LedgerBatchPauseTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ledger_batch_pause_total",
 		Help: "Campaigns paused after ledger batch flush partial failure or insufficient balance",
@@ -956,7 +931,6 @@ var (
 		Help: "ClickHouse store attempts narrowed to a single event during poison-pill binary split",
 	})
 
-	// Slot migration metrics (M1) — lag catch-up and cutover gates for hot-slot migrations.
 	SlotMigrationLagMessages = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "ad_slot_migration_lag_messages",
 		Help: "Replication lag messages between dual-write source and target during slot migration",
@@ -971,7 +945,7 @@ var (
 	}, []string{"reason"})
 	ElasticRoutingCutoverTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_elastic_routing_cutover_total",
-		Help: "Global routing_epoch bumps with broker/TCP cutover (M2)",
+		Help: "Global routing_epoch bumps with broker/TCP cutover",
 	})
 	ElasticCampaignMigrationTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_elastic_campaign_migration_total",
@@ -998,7 +972,6 @@ var (
 		Help: "Management received tracker ACK after TCP snapshot",
 	})
 
-	// XDP edge filter counters — summed per-CPU stats map scraped by edge-bpf-sync.
 	XDPPassTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ad_xdp_pass_total",
 		Help: "XDP packets passed to the kernel stack by reason",

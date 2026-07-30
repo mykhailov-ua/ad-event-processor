@@ -17,7 +17,6 @@ const (
 	vastTagMediaFile  = "MediaFile"
 )
 
-// ParseVASTXML parses a VAST 4.2 XML document on the cold path into a vtproto message.
 func ParseVASTXML(xml []byte) (*pb.VastDocument, error) {
 	if len(xml) == 0 {
 		return nil, ErrVASTMalformed
@@ -39,7 +38,6 @@ func ParseVASTXML(xml []byte) (*pb.VastDocument, error) {
 	return doc, nil
 }
 
-// MarshalVASTDocument serializes a parsed document with vtproto for creative cache storage.
 func MarshalVASTDocument(doc *pb.VastDocument) ([]byte, error) {
 	if doc == nil {
 		return nil, ErrVASTMalformed
@@ -47,7 +45,6 @@ func MarshalVASTDocument(doc *pb.VastDocument) ([]byte, error) {
 	return doc.MarshalVT()
 }
 
-// UnmarshalVASTDocument decodes vtproto bytes into a pooled-free document for tests and cold reload.
 func UnmarshalVASTDocument(wire []byte) (*pb.VastDocument, error) {
 	if len(wire) == 0 {
 		return nil, ErrVASTMalformed
@@ -59,7 +56,6 @@ func UnmarshalVASTDocument(wire []byte) (*pb.VastDocument, error) {
 	return doc, nil
 }
 
-// VASTDurationSec extracts the first linear creative duration from a parsed document.
 func VASTDurationSec(doc *pb.VastDocument) uint32 {
 	if doc == nil {
 		return 0

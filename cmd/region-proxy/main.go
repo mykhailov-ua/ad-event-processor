@@ -1,4 +1,3 @@
-// Command region-proxy aggregates regional upstream writes into a durable mmap WAL.
 package main
 
 import (

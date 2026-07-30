@@ -16,7 +16,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// ReconService compares payment schema state against ads balance_ledger for finance reporting.
 type ReconService struct {
 	paymentPool *pgxpool.Pool
 	ledger      *SettlementLedgerClient
@@ -25,12 +24,10 @@ type ReconService struct {
 	wg sync.WaitGroup
 }
 
-// NewReconService wires payment pool and settlement ledger reader for financial recon.
 func NewReconService(paymentPool *pgxpool.Pool, ledger *SettlementLedgerClient, alerter *FinancialReconAlerter) *ReconService {
 	return &ReconService{paymentPool: paymentPool, ledger: ledger, alerter: alerter}
 }
 
-// StartWorker runs financial reconciliation on a fixed interval until ctx is cancelled.
 func (recon *ReconService) StartWorker(ctx context.Context, interval time.Duration) {
 	recon.wg.Add(1)
 	defer recon.wg.Done()
@@ -52,12 +49,10 @@ func (recon *ReconService) StartWorker(ctx context.Context, interval time.Durati
 	}
 }
 
-// Wait blocks until the recon worker goroutine exits.
 func (recon *ReconService) Wait() {
 	recon.wg.Wait()
 }
 
-// Run executes one financial reconciliation pass and persists findings.
 func (recon *ReconService) Run(ctx context.Context, periodStart, periodEnd time.Time) (FinancialReconSummary, error) {
 	var summary FinancialReconSummary
 	summary.PeriodStart = periodStart

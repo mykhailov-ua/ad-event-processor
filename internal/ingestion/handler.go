@@ -27,7 +27,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// adEventPool recycles protobuf track requests on the HTTP and gnet paths.
 var (
 	adEventPool = sync.Pool{
 		New: func() any {
@@ -65,7 +64,6 @@ var (
 	contentTypeJsonHeader  = []string{"application/json"}
 )
 
-// connContext holds per-connection parse and response buffers for the gnet handler.
 type connContext struct {
 	pbReq    pb.AdEvent
 	trackReq TrackRequest
@@ -81,33 +79,27 @@ type connContext struct {
 	shardID  int
 	workerID int
 
-	// Worker-pool offload (set on gnet event loop, consumed on pinned worker).
 	offloadConn   gnet.Conn
 	offloadReqBuf *[]byte
 	offloadReqLen int
 
-	// Test-only hooks (never set on production /track path).
 	offloadOnEnter func()
 	offloadBlock   <-chan struct{}
 	offloadWG      *sync.WaitGroup
 
-	// M5-C: HTTP/2 cleartext ingress on this connection.
 	protoH2    bool
-	h2         h2ConnState // initialized via newH2ConnState in allocConnContext
+	h2         h2ConnState
 	h2StreamID uint32
 
-	// M5-B3: chunked body assembly scratch.
 	chunkScratch []byte
 }
 
-// init materializes HTTP status label strings once so gnet track metrics avoid per-request strconv.
 func init() {
 	for i := 0; i < 600; i++ {
 		statusStrings[i] = strconv.Itoa(i)
 	}
 }
 
-// putBuffer recycles response buffers only when capacity stays bounded for the gnet track path.
 func putBuffer(buf *bytes.Buffer) {
 	if buf == nil || buf.Cap() > maxPoolObjectSize {
 		return
@@ -116,7 +108,6 @@ func putBuffer(buf *bytes.Buffer) {
 	bufferPool.Put(buf)
 }
 
-// putAdEvent resets and pools a protobuf AdEvent, dropping oversized metadata maps.
 func putAdEvent(evt *pb.AdEvent) {
 	if evt == nil {
 		return
@@ -146,7 +137,6 @@ func putAdEvent(evt *pb.AdEvent) {
 	adEventPool.Put(evt)
 }
 
-// putTrackResponse resets and pools a protobuf TrackResponse.
 func putTrackResponse(resp *pb.TrackResponse) {
 	if resp == nil {
 		return
@@ -155,14 +145,10 @@ func putTrackResponse(resp *pb.TrackResponse) {
 	trackResponsePool.Put(resp)
 }
 
-// Pinger supports health checks against Postgres or other backing stores.
 type Pinger interface {
 	Ping(ctx context.Context) error
 }
 
-// NewRouter builds the stdlib HTTP track handler with health, metrics, and pprof routes.
-// Deprecated: production ingestion uses gnet (AdsPacketHandler). POST /track delegates to
-// shared processTrack(); this router remains for integration and fault tests only.
 func NewRouter(cfg *config.Config, registry campaignmodel.CampaignRegistry, filterEngine *FilterEngine, pool Pinger, rdbs []redis.UniversalClient, sharder Sharder, fraudStream string, creativeStore *BrandCreativeStore) http.Handler {
 	mux := http.NewServeMux()
 
@@ -412,7 +398,6 @@ func NewRouter(cfg *config.Config, registry campaignmodel.CampaignRegistry, filt
 	return mux
 }
 
-// isTrustedProxy reports whether a remote address may supply forwarded client IPs.
 func isTrustedProxy(ipStr string, trustedProxies []string) bool {
 	if len(trustedProxies) == 0 {
 		return false
@@ -437,7 +422,6 @@ func isTrustedProxy(ipStr string, trustedProxies []string) bool {
 	return false
 }
 
-// getIPOnly strips the port from a host:port remote address string.
 func getIPOnly(addr string) string {
 	if idx := strings.LastIndexByte(addr, ':'); idx != -1 {
 		if idx > 0 && addr[idx-1] == ']' {
@@ -450,7 +434,6 @@ func getIPOnly(addr string) string {
 	return addr
 }
 
-// extractClientIP resolves the client IP from trusted proxy headers or RemoteAddr.
 func extractClientIP(r *http.Request, trustedProxies []string) string {
 	remoteIP := getIPOnly(r.RemoteAddr)
 	if !isTrustedProxy(remoteIP, trustedProxies) {
@@ -498,7 +481,6 @@ func extractClientIP(r *http.Request, trustedProxies []string) string {
 	return remoteIP
 }
 
-// Prebuilt gnet HTTP response bytes avoid fmt and strconv on the track rejection hot path.
 var (
 	respInvalidProto       = []byte("HTTP/1.1 400 Bad Request\r\nContent-Type: text/plain\r\nContent-Length: 16\r\nConnection: keep-alive\r\n\r\ninvalid protobuf")
 	respInvalidCampaign    = []byte("HTTP/1.1 400 Bad Request\r\nContent-Type: text/plain\r\nContent-Length: 19\r\nConnection: keep-alive\r\n\r\ninvalid campaign_id")
@@ -532,7 +514,6 @@ var (
 	respReadyz503          = []byte("HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nContent-Length: 9\r\nConnection: keep-alive\r\n\r\nnot ready")
 )
 
-// AdsPacketHandler serves /track over gnet with optional worker-pool offload.
 type AdsPacketHandler struct {
 	*gnet.BuiltinEventEngine
 	eng                   *gnet.Engine
@@ -563,19 +544,16 @@ type AdsPacketHandler struct {
 	udpControl            *UDPControl
 }
 
-// SetUDPControl attaches the UDP ingress limit controller (optional; M2).
 func (h *AdsPacketHandler) SetUDPControl(ctrl *UDPControl) {
 	if h != nil {
 		h.udpControl = ctrl
 	}
 }
 
-// SetLogger attaches the audit log writer for accepted gnet track events.
 func (h *AdsPacketHandler) SetLogger(l *logger.Logger) {
 	h.logger = l
 }
 
-// SetWorkerPool enables pinned-thread offload for React work.
 func (h *AdsPacketHandler) SetWorkerPool(wp *PinnedWorkerPool) {
 	h.workerPool = wp
 	if wp != nil {
@@ -583,7 +561,6 @@ func (h *AdsPacketHandler) SetWorkerPool(wp *PinnedWorkerPool) {
 	}
 }
 
-// write sends a response and returns connContext to the pool when using a worker pool.
 func (h *AdsPacketHandler) write(c gnet.Conn, data []byte, ctx *connContext) {
 	if ctx != nil && ctx.protoH2 && ctx.h2StreamID != 0 {
 		buf := ctx.bufSlice
@@ -605,7 +582,6 @@ func (h *AdsPacketHandler) write(c gnet.Conn, data []byte, ctx *connContext) {
 	}
 }
 
-// NewAdsPacketHandler constructs the gnet track server with pre-bound metrics.
 func NewAdsPacketHandler(cfg *config.Config, registry campaignmodel.CampaignRegistry, filterEngine *FilterEngine, pool Pinger, rdbs []redis.UniversalClient, sharder Sharder, fraudStream string, creativeStore *BrandCreativeStore) *AdsPacketHandler {
 	trackDurationObserver := metrics.HttpRequestDuration.WithLabelValues("POST", "/track")
 	var trackStatusCounters [600]prometheus.Counter
@@ -669,7 +645,6 @@ func NewAdsPacketHandler(cfg *config.Config, registry campaignmodel.CampaignRegi
 	return h
 }
 
-// recordTrackStatus increments POST /track HTTP status counters without latency sampling.
 func (h *AdsPacketHandler) recordTrackStatus(status int) {
 	if h == nil {
 		return
@@ -681,20 +656,17 @@ func (h *AdsPacketHandler) recordTrackStatus(status int) {
 	metrics.HttpRequestsTotal.WithLabelValues("POST", "/track", strconv.Itoa(status)).Inc()
 }
 
-// recordMetrics updates pre-bound counters and the latency ring for one gnet request.
 func (h *AdsPacketHandler) recordMetrics(startMono int64, status int) {
 	h.recordTrackStatus(status)
 	h.trackLatencyRing.RecordMono(startMono)
 }
 
-// FlushLatency exports buffered latency samples during metrics scrape only.
 func (h *AdsPacketHandler) FlushLatency() {
 	if h.trackLatencyRing != nil {
 		h.trackLatencyRing.FlushTo(h.trackDurationObserver)
 	}
 }
 
-// HealthzHits returns the number of liveness probes served on the gnet path.
 func (h *AdsPacketHandler) HealthzHits() uint64 {
 	if h == nil {
 		return 0
@@ -702,12 +674,10 @@ func (h *AdsPacketHandler) HealthzHits() uint64 {
 	return h.healthzHits.Load()
 }
 
-// Ready reports cached dependency health from the background health probe.
 func (h *AdsPacketHandler) Ready() bool {
 	return h != nil && h.healthy.Load() == 1
 }
 
-// Uptime returns process uptime since handler construction.
 func (h *AdsPacketHandler) Uptime() time.Duration {
 	if h == nil || h.startedAtNano.Load() == 0 {
 		return 0
@@ -715,7 +685,6 @@ func (h *AdsPacketHandler) Uptime() time.Duration {
 	return time.Since(time.Unix(0, h.startedAtNano.Load()))
 }
 
-// WarmupElapsed reports whether NODE_WARMUP_SEC grace has passed.
 func (h *AdsPacketHandler) WarmupElapsed() bool {
 	if h == nil {
 		return false
@@ -727,19 +696,16 @@ func (h *AdsPacketHandler) WarmupElapsed() bool {
 	return h.Uptime() >= time.Duration(sec)*time.Second
 }
 
-// WarmReady is readiness: dependencies healthy and warmup grace elapsed.
 func (h *AdsPacketHandler) WarmReady() bool {
 	return h.Ready() && h.WarmupElapsed()
 }
 
-// SetStartedAt adjusts the warmup clock (tests only).
 func (h *AdsPacketHandler) SetStartedAt(t time.Time) {
 	if h != nil {
 		h.startedAtNano.Store(t.UnixNano())
 	}
 }
 
-// SetHealthProbeState mirrors StartHealthProbe atomics for gnet health tests.
 func (h *AdsPacketHandler) SetHealthProbeState(healthy bool, shardOK ...bool) {
 	if healthy {
 		h.healthy.Store(1)
@@ -758,7 +724,6 @@ func (h *AdsPacketHandler) SetHealthProbeState(healthy bool, shardOK ...bool) {
 	}
 }
 
-// writeGnetTrackAccepted emits a 202 track response over a gnet connection.
 func (h *AdsPacketHandler) writeGnetTrackAccepted(ctx *connContext, req parsedHTTPRequest, c gnet.Conn, startMono int64, wReqID *bufWrapper, requestIDStr, landingURL string) {
 	if requestIDStr == "" {
 		requestIDStr = unsafeString(wReqID.buf)
@@ -839,7 +804,6 @@ func (h *AdsPacketHandler) writeGnetTrackAccepted(ctx *connContext, req parsedHT
 	h.recordMetrics(startMono, http.StatusAccepted)
 }
 
-// writeHTTPTrackAccepted emits a 202 track response on the stdlib HTTP handler.
 func writeHTTPTrackAccepted(w http.ResponseWriter, wReqID *bufWrapper, requestIDStr string, accept string, landingURL string) {
 	if requestIDStr == "" {
 		requestIDStr = unsafeString(wReqID.buf)
@@ -891,14 +855,12 @@ func writeHTTPTrackAccepted(w http.ResponseWriter, wReqID *bufWrapper, requestID
 	_, _ = w.Write(buf.Bytes())
 }
 
-// OnBoot stores the gnet engine handle for graceful shutdown.
 func (h *AdsPacketHandler) OnBoot(eng gnet.Engine) (action gnet.Action) {
 	slog.Info("gnet server is booting")
 	h.eng = &eng
 	return gnet.None
 }
 
-// FraudWriter returns the async fraud stream writer for backpressure wiring (M14-12).
 func (h *AdsPacketHandler) FraudWriter() *FraudStreamWriter {
 	if h == nil {
 		return nil
@@ -906,7 +868,6 @@ func (h *AdsPacketHandler) FraudWriter() *FraudStreamWriter {
 	return h.fraudWriter
 }
 
-// Stop shuts down fraud streaming and the gnet engine.
 func (h *AdsPacketHandler) Stop(ctx context.Context) error {
 	if h.fraudWriter != nil {
 		h.fraudWriter.Stop()
@@ -917,7 +878,6 @@ func (h *AdsPacketHandler) Stop(ctx context.Context) error {
 	return nil
 }
 
-// StartHealthProbe periodically pings Postgres and Redis for the gnet health endpoint.
 func (h *AdsPacketHandler) StartHealthProbe(ctx context.Context) {
 	h.healthy.Store(1)
 	go func() {
@@ -963,19 +923,16 @@ func (h *AdsPacketHandler) StartHealthProbe(ctx context.Context) {
 	}()
 }
 
-// OnOpen tracks active gnet connections for capacity metrics.
 func (h *AdsPacketHandler) OnOpen(c gnet.Conn) (out []byte, action gnet.Action) {
 	metrics.GnetActiveConnections.Inc()
 	return nil, gnet.None
 }
 
-// OnClose decrements active gnet connection metrics.
 func (h *AdsPacketHandler) OnClose(c gnet.Conn, err error) (action gnet.Action) {
 	metrics.GnetActiveConnections.Dec()
 	return gnet.None
 }
 
-// requestBufferPool recycles copied request buffers for worker-pool React offload.
 var requestBufferPool = sync.Pool{
 	New: func() any {
 		b := make([]byte, 4096)
@@ -983,7 +940,6 @@ var requestBufferPool = sync.Pool{
 	},
 }
 
-// OnTraffic parses inbound HTTP requests and dispatches them synchronously or via the worker pool.
 func (h *AdsPacketHandler) OnTraffic(c gnet.Conn) (action gnet.Action) {
 
 	loopStart := monotonicNano()
@@ -1088,8 +1044,6 @@ func (h *AdsPacketHandler) OnTraffic(c gnet.Conn) (action gnet.Action) {
 	return gnet.None
 }
 
-// runOffloadedRequest parses and handles one copied request on a pinned worker thread.
-// Fixed dispatch target for PinnedWorkerPool — no per-submit closures on the hot path.
 func (h *AdsPacketHandler) runOffloadedRequest(workerID int, ctx *connContext) {
 	if ctx == nil {
 		return
@@ -1115,7 +1069,6 @@ func (h *AdsPacketHandler) runOffloadedRequest(workerID int, ctx *connContext) {
 	_ = h.React(reqParsed, c)
 }
 
-// parsedHTTPRequest holds zero-copy views into the gnet inbound buffer for one request.
 type parsedHTTPRequest struct {
 	Method           []byte
 	Path             []byte
@@ -1131,14 +1084,12 @@ type parsedHTTPRequest struct {
 	HasContentLength bool
 }
 
-// HTTP parse errors for incomplete, invalid, and oversized gnet requests.
 var (
 	errIncompleteRequest = errors.New("incomplete HTTP request")
 	errInvalidRequest    = errors.New("invalid HTTP request")
 	errPayloadTooLarge   = errors.New("payload too large")
 )
 
-// parseHTTP extracts one HTTP request from the gnet inbound buffer without copying the body.
 func (h *AdsPacketHandler) parseHTTP(data []byte, scratch ...[]byte) (int, parsedHTTPRequest, error) {
 	maxBody := int64(1 << 20)
 	if h != nil && h.cfg != nil {
@@ -1147,7 +1098,6 @@ func (h *AdsPacketHandler) parseHTTP(data []byte, scratch ...[]byte) (int, parse
 	return parseHTTP1(data, maxBody, scratch...)
 }
 
-// React handles a parsed /track POST after filtering and audit logging.
 func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action {
 	ctx, ok := c.Context().(*connContext)
 	if !ok {
@@ -1284,7 +1234,6 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 	return gnet.None
 }
 
-// extractClientIPGnet resolves client IP from gnet request headers and cached remote addr.
 func extractClientIPGnet(ctx *connContext, req *parsedHTTPRequest, c gnet.Conn, trustedProxies []string) string {
 	if ctx.remoteIP == "" {
 		ctx.remoteIP = getIPOnly(c.RemoteAddr().String())
@@ -1323,7 +1272,6 @@ func extractClientIPGnet(ctx *connContext, req *parsedHTTPRequest, c gnet.Conn, 
 	return remoteIP
 }
 
-// trimSpaceBytes normalizes header values in-place on the zero-copy gnet parse buffer.
 func trimSpaceBytes(b []byte) []byte {
 	start := 0
 	for start < len(b) && (b[start] == ' ' || b[start] == '\t') {
@@ -1336,7 +1284,6 @@ func trimSpaceBytes(b []byte) []byte {
 	return b[start:end]
 }
 
-// equalFoldBytes matches HTTP header names on the gnet path without allocating folded strings.
 func equalFoldBytes(a, b []byte) bool {
 	if len(a) != len(b) {
 		return false
@@ -1357,7 +1304,6 @@ func equalFoldBytes(a, b []byte) bool {
 	return true
 }
 
-// parseDecimal decodes Content-Length on the gnet path without importing strconv.
 func parseDecimal(b []byte) int {
 	val := 0
 	for _, c := range b {

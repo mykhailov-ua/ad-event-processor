@@ -8,13 +8,10 @@ import (
 	"espx/internal/metrics"
 )
 
-// ProcessorPgReserve leaves headroom on pgxpool for partition manager and health probes.
 const ProcessorPgReserve = 1
 
-// ProcessorChReserve leaves headroom on the ClickHouse connection pool for health probes.
 const ProcessorChReserve = 1
 
-// ProcessorWriteGate is a process-wide write semaphore shared by stores and SyncWorkers.
 type ProcessorWriteGate struct {
 	sem      chan struct{}
 	capacity int
@@ -23,20 +20,14 @@ type ProcessorWriteGate struct {
 	backend  string
 }
 
-// ProcessorPgGate is the Postgres processor write gate (SEM-P1/P2).
 type ProcessorPgGate = ProcessorWriteGate
 
-// ProcessorChGate is the ClickHouse processor write gate (SEM-P5 / stream backpressure).
 type ProcessorChGate = ProcessorWriteGate
 
-// NewProcessorPgGate sizes the gate from slots or DB_PROCESSOR_MAX_CONNS minus reserve.
-// slots <= 0 selects auto mode: maxConns - ProcessorPgReserve (current default behavior).
 func NewProcessorPgGate(slots, maxConns int) *ProcessorPgGate {
 	return newProcessorWriteGate("postgres", slots, maxConns, ProcessorPgReserve)
 }
 
-// NewProcessorChGate sizes the gate from slots or CH_MAX_CONNS minus reserve.
-// slots <= 0 selects auto mode: maxConns - ProcessorChReserve.
 func NewProcessorChGate(slots, maxConns int) *ProcessorChGate {
 	return newProcessorWriteGate("clickhouse", slots, maxConns, ProcessorChReserve)
 }
@@ -56,7 +47,6 @@ func newProcessorWriteGate(backend string, slots, maxConns, reserve int) *Proces
 	}
 }
 
-// Acquire blocks until a write slot is available or ctx is cancelled.
 func (g *ProcessorWriteGate) Acquire(ctx context.Context) error {
 	if g == nil {
 		return nil
@@ -75,7 +65,6 @@ func (g *ProcessorWriteGate) Acquire(ctx context.Context) error {
 	}
 }
 
-// Release returns a slot acquired by Acquire.
 func (g *ProcessorWriteGate) Release() {
 	if g == nil {
 		return
@@ -84,7 +73,6 @@ func (g *ProcessorWriteGate) Release() {
 	<-g.sem
 }
 
-// Capacity returns the maximum concurrent writers allowed by this gate.
 func (g *ProcessorWriteGate) Capacity() int {
 	if g == nil {
 		return 0
@@ -92,7 +80,6 @@ func (g *ProcessorWriteGate) Capacity() int {
 	return g.capacity
 }
 
-// InFlight returns the number of holders that have acquired but not released.
 func (g *ProcessorWriteGate) InFlight() int {
 	if g == nil {
 		return 0
@@ -100,7 +87,6 @@ func (g *ProcessorWriteGate) InFlight() int {
 	return int(g.inFlight.Load())
 }
 
-// WaitEMA returns an exponential moving average of recent acquire waits.
 func (g *ProcessorWriteGate) WaitEMA() time.Duration {
 	if g == nil {
 		return 0

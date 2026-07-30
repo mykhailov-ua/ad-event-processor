@@ -8,7 +8,6 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-// BudgetReconSnapshot is an atomic Redis view of campaign budget counters (M3-02).
 type BudgetReconSnapshot struct {
 	Remaining int64
 	Sync      int64
@@ -18,7 +17,6 @@ type BudgetReconSnapshot struct {
 	HasFence  bool
 }
 
-// reconSnapshotScript reads budget counters in one EVALSHA to avoid interleaved Lua debits.
 const reconSnapshotScript = `
 local vals = redis.call("MGET", KEYS[1], KEYS[2], KEYS[3])
 local remaining = tonumber(vals[1]) or 0
@@ -33,7 +31,6 @@ local has_fence = redis.call("EXISTS", KEYS[6])
 return {remaining, sync, inflight, quota, has_lock, has_fence}
 `
 
-// FetchBudgetReconSnapshot loads campaign budget keys atomically from Redis.
 func FetchBudgetReconSnapshot(ctx context.Context, rdb redis.Cmdable, campaignID uuid.UUID, quotaMode bool) (BudgetReconSnapshot, error) {
 	idStr := campaignID.String()
 	tag := campaignHashTag(campaignID)
@@ -82,7 +79,6 @@ func parseBudgetReconSnapshot(res any) (BudgetReconSnapshot, error) {
 	}, nil
 }
 
-// RedisBudgetRemainingTotal sums operational Redis budget terms for reconciliation.
 func (s BudgetReconSnapshot) RedisBudgetRemainingTotal(brokerPending int64) int64 {
 	return s.Remaining + s.Sync + s.Inflight + s.Quota + brokerPending
 }

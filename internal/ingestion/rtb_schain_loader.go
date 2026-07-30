@@ -5,7 +5,6 @@ import (
 	db "espx/internal/ingestion/sqlc"
 )
 
-// LoadSupplyChainAllowlist builds a hot-path schain allowlist from Postgres sellers (R18).
 func LoadSupplyChainAllowlist(ctx context.Context, q *db.Queries) (*SupplyChainAllowlistSnapshot, error) {
 	if q == nil {
 		return &SupplyChainAllowlistSnapshot{Allowed: make(map[string]struct{})}, nil

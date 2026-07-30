@@ -1,10 +1,10 @@
-.PHONY: fmt gen lint test test-unit test-int test-alloc-gate management-domain-coverage test-full test-chaos test-broker-chaos-lab test-sentinel-chaos build proto check-local check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-bpf openapi-lint openapi-gen
+.PHONY: fmt gen lint test test-fast test-unit test-integration test-fault test-int test-alloc-gate management-domain-coverage test-full test-resilience test-broker-fault-lab test-sentinel-resilience build proto check-local check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-bpf openapi-lint openapi-gen
 
 fmt:
 	go fmt ./...
 
 gen:
-	bash scripts/codegen/gen.sh --proto
+	bash scripts/ci/gen.sh --proto
 
 lint: gen fmt
 	@if [ -z "$$(which golangci-lint 2> /dev/null)" ]; then \
@@ -15,36 +15,38 @@ lint: gen fmt
 	if [ -z "$$GOPATH" ]; then GOPATH=$$HOME/go; fi; \
 	$$GOPATH/bin/golangci-lint run
 
-test-unit: gen fmt
-	go test -v -short ./internal/...
+test-fast: gen fmt
+	go test -short -count=1 ./internal/... ./pkg/...
 
-# Fast zero-alloc, fraud SLA, and RTB hot-path checks (no long benchmarks).
+test-unit: test-fast
+
+test-integration: gen fmt
+	go test -count=1 -timeout 30m ./internal/... ./pkg/... ./tests/... -skip 'Fault'
+
+test-fault: gen fmt
+	go test -count=1 -timeout 30m -run 'Fault' ./...
+
 test-alloc-gate: gen fmt
 	go test -short -count=1 -run 'ZeroAlloc|zeroAlloc_fraudScoring|FraudScoring_LatencySLA|ApplyRtbAuction_shadow_zeroAlloc|RecordRtbShadow|HTTP1Parse' ./internal/ingestion/...
 	go test -run='^$$' -bench='Benchmark(HTTP1Parse$$|TrackRequest_ParseJSONOpt$$|Auction$$)' -benchmem -count=1 ./internal/ingestion/... ./internal/rtb/
 
-# GAP-ENG-01: domain registry, boundary DTO checks, and ≥80% logic-file coverage gate.
 management-domain-coverage:
-	bash scripts/management-domain-coverage.sh
+	bash scripts/ci/management_domain_coverage.sh
 
 test-int: gen fmt
 	go test -v ./tests/...
 
-# Chaos tests kill real containers (testcontainers). Requires Docker. Skipped by -short elsewhere.
-test-chaos:
-	bash scripts/chaos-drills/test_chaos.sh
+test-resilience:
+	bash scripts/fault/run.sh
 
-# Broker durability lab chaos: slow fsync, page cache, CPU throttle, Redis outage, optional Sentinel stack.
-test-broker-chaos-lab:
-	bash scripts/chaos-drills/broker_chaos_lab.sh
+test-broker-fault-lab:
+	bash scripts/fault/broker_fault_lab.sh
 
-# Sentinel failover chaos: docker compose redis+sentinel stack, stop master, verify go-redis client reads replica.
-test-sentinel-chaos:
-	bash scripts/chaos-drills/test_sentinel_failover.sh
+test-sentinel-resilience:
+	bash scripts/fault/sentinel.sh
 
-test: test-unit test-int
+test: test-fast test-int
 
-# Full suite without -short; chaos tests run only in make test-chaos (CI chaos job).
 test-full: fmt
 	bash scripts/ci/full_test.sh
 
@@ -54,31 +56,26 @@ check-local:
 check-vuln:
 	bash scripts/ci/govulncheck.sh
 
-# GAP-PROD-03: OpenAPI contract + drift gate (<2 min).
 openapi-lint:
-	bash scripts/ci/check_openapi.sh
+	bash scripts/ci/openapi.sh
 
-# Regenerate docs/openapi/openapi.yaml paths from handler discovery.
 openapi-gen:
-	go run ./scripts/openapi
+	go run ./cmd/openapi-gen
 
 build: gen fmt
 	docker build -t ad-event-processor:latest .
 
-# Dev load-test BPF: loadtest_probe.o + bpf-collector (see .cursor/rules/load-test-bpf.mdc).
 bpf-dev:
-	bash scripts/local-dev/bpf_setup.sh
+	bash scripts/dev/bpf_setup.sh
 
-# Standalone BPF session (no k6): requires sudo for attach.
 bpf-session-start: bpf-dev
-	sudo bash scripts/local-dev/bpf_session.sh start
+	sudo bash scripts/dev/bpf_session.sh start
 
 bpf-session-stop:
-	sudo bash scripts/local-dev/bpf_session.sh stop
+	sudo bash scripts/dev/bpf_session.sh stop
 
-# Constrained business-mix load test with kernel probes (requires sudo).
 load-test-bpf: bpf-dev
-	sudo ESPX_BPF_PROBE=1 ESPX_BPF_SAMPLE_RATE=$${ESPX_BPF_SAMPLE_RATE:-10} bash scripts/load-test/run_dirty_load.sh business
+	sudo ESPX_BPF_PROBE=1 ESPX_BPF_SAMPLE_RATE=$${ESPX_BPF_SAMPLE_RATE:-10} bash scripts/load/malformed.sh business
 
 proto:
-	bash scripts/codegen/gen.sh --proto
+	bash scripts/ci/gen.sh --proto

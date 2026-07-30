@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// testCampaignSpec exists so delivery integration tests share one valid campaign fixture shape.
 func testCampaignSpec(customerID uuid.UUID, name string, budgetMicro int64, idem string) CampaignCreateSpec {
 	return CampaignCreateSpec{
 		CustomerID:     customerID,
@@ -30,7 +29,6 @@ func testCampaignSpec(customerID uuid.UUID, name string, budgetMicro int64, idem
 	}
 }
 
-// TestResolveScheduleStatus guards schedule status transitions before, during, and after the active window.
 func TestResolveScheduleStatus(t *testing.T) {
 	now := time.Date(2026, 6, 14, 12, 0, 0, 0, time.UTC)
 	start := now.Add(2 * time.Hour)
@@ -41,7 +39,6 @@ func TestResolveScheduleStatus(t *testing.T) {
 	assert.Equal(t, db.CampaignStatusTypePAUSED, resolveScheduleStatus(end.Add(time.Minute), &start, &end))
 }
 
-// TestCampaignTemplateCloneAndPauseResume guards template cloning and manual pause or resume state transitions.
 func TestCampaignTemplateCloneAndPauseResume(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration test")
@@ -81,7 +78,6 @@ func TestCampaignTemplateCloneAndPauseResume(t *testing.T) {
 	assert.Equal(t, db.CampaignStatusTypeACTIVE, camp.Status)
 }
 
-// TestScheduledCampaignStartsPaused guards future-start campaigns remain paused until their window opens.
 func TestScheduledCampaignStartsPaused(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration test")
@@ -108,7 +104,6 @@ func TestScheduledCampaignStartsPaused(t *testing.T) {
 	assert.Equal(t, db.CampaignStatusTypePAUSED, camp.Status)
 }
 
-// TestValidateDaypartHours guards daypart hour validation rejects out-of-range values.
 func TestValidateDaypartHours(t *testing.T) {
 	assert.NoError(t, validateDaypartHours([]int16{0, 23}))
 	assert.Error(t, validateDaypartHours([]int16{24}))

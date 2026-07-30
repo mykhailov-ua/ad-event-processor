@@ -1,4 +1,3 @@
-// Command notifier wires the gRPC NotifierService and background delivery worker.
 package main
 
 import (

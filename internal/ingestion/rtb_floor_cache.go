@@ -12,13 +12,11 @@ import (
 
 const RtbFloorRedisKeyPrefix = "rtb:floor:"
 
-// DealFloorCache holds read-only optimized deal floors mirrored from Redis.
 type DealFloorCache struct {
 	rdb  redis.UniversalClient
 	snap atomic.Pointer[map[string]int64]
 }
 
-// NewDealFloorCache creates an empty deal floor cache.
 func NewDealFloorCache(rdb redis.UniversalClient) *DealFloorCache {
 	c := &DealFloorCache{rdb: rdb}
 	empty := make(map[string]int64)
@@ -26,7 +24,6 @@ func NewDealFloorCache(rdb redis.UniversalClient) *DealFloorCache {
 	return c
 }
 
-// Get returns an optimized floor for deal_id when present.
 func (c *DealFloorCache) Get(dealID string) (int64, bool) {
 	if dealID == "" {
 		return 0, false
@@ -39,7 +36,6 @@ func (c *DealFloorCache) Get(dealID string) (int64, bool) {
 	return v, ok
 }
 
-// Refresh loads rtb:floor:{deal_id} keys for all known deals from Redis shard 0.
 func (c *DealFloorCache) Refresh(ctx context.Context, dealIDs []string) {
 	if c == nil || c.rdb == nil || len(dealIDs) == 0 {
 		return
@@ -71,7 +67,6 @@ func (c *DealFloorCache) Refresh(ctx context.Context, dealIDs []string) {
 	c.snap.Store(&next)
 }
 
-// StartDealFloorRefresh polls Redis for optimizer floors on a fixed interval.
 func StartDealFloorRefresh(ctx context.Context, cache *DealFloorCache, catalog *RtbCatalog, interval time.Duration) {
 	if cache == nil || catalog == nil || interval <= 0 {
 		return
@@ -104,7 +99,6 @@ func StartDealFloorRefresh(ctx context.Context, cache *DealFloorCache, catalog *
 	}()
 }
 
-// EffectiveDealFloor returns the highest applicable floor from publisher, Postgres deal, and optimizer cache.
 func EffectiveDealFloor(catalog *RtbCatalog, floors *DealFloorCache, dealID string, publisherFloor int64) int64 {
 	floor := publisherFloor
 	if catalog != nil && dealID != "" {

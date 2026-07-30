@@ -1,6 +1,8 @@
 package ingestion
 
 import (
+	"espx/pkg/faultproof"
+
 	"context"
 	"fmt"
 	"net/http"
@@ -25,34 +27,31 @@ import (
 
 const processorPGProxyPort = "5432/tcp"
 
-// adsProcessorPartitionInfra routes Postgres through a processor sidecar (socat) so
-// iptables OUTPUT DROP on :5432 simulates Playbook C processor<->PG partition.
 type adsProcessorPartitionInfra struct {
-	*adsChaosInfra
+	*adsFaultInfra
 	ProcessorContainer testcontainers.Container
 	pgProxyConnStr     string
 }
 
-// TestChaos_AdsProcessorPGNetworkPartition blocks processor->PG with iptables while PG stays up.
-func TestChaos_AdsProcessorPGNetworkPartition(t *testing.T) {
+func TestFault_AdsProcessorPGNetworkPartition(t *testing.T) {
 	if testing.Short() {
-		t.Skip("chaos integration test")
+		t.Skip("fault integration test")
 	}
 
 	infra, cleanup := setupAdsProcessorPartitionInfra(t)
 	defer cleanup()
 
-	stack := startAdsIngestStack(t, infra.adsChaosInfra, "ads-chaos-processor-pg-partition")
+	stack := startAdsIngestStack(t, infra.adsFaultInfra, "ads-fault-processor-pg-partition")
 	defer stack.Close(t)
 
 	ctx := context.Background()
 	const baselineTracks = 4
 	for i := 0; i < baselineTracks; i++ {
-		require.Equal(t, http.StatusAccepted, postChaosClick(t, stack.Handler, stack.CampaignID))
+		require.Equal(t, http.StatusAccepted, postFaultClick(t, stack.Handler, stack.CampaignID))
 	}
-	waitChaosStreamDrained(t, infra.Redis, stack.Stream, stack.Stream+"-group", stack.CampaignID, infra.Pool, baselineTracks)
+	waitFaultStreamDrained(t, infra.Redis, stack.Stream, stack.Stream+"-group", stack.CampaignID, infra.Pool, baselineTracks)
 
-	rowsBaseline := countChaosCampaignEvents(t, infra.Pool, stack.CampaignID)
+	rowsBaseline := countFaultCampaignEvents(t, infra.Pool, stack.CampaignID)
 	streamBeforePartition, err := infra.Redis.XLen(ctx, stack.Stream).Result()
 	require.NoError(t, err)
 
@@ -67,7 +66,7 @@ func TestChaos_AdsProcessorPGNetworkPartition(t *testing.T) {
 	const bufferedTracks = 8
 	acceptedDuringPartition := 0
 	for i := 0; i < bufferedTracks; i++ {
-		if postChaosClick(t, stack.Handler, stack.CampaignID) == http.StatusAccepted {
+		if postFaultClick(t, stack.Handler, stack.CampaignID) == http.StatusAccepted {
 			acceptedDuringPartition++
 		}
 	}
@@ -88,17 +87,17 @@ func TestChaos_AdsProcessorPGNetworkPartition(t *testing.T) {
 	stack.Consumer.Close()
 	_ = stack.Consumer.Wait(ctx)
 	infra.refreshPGPoolViaProxy(t)
-	stack.replaceConsumer(t, infra.adsChaosInfra)
+	stack.replaceConsumer(t, infra.adsFaultInfra)
 
 	expectedRows := rowsBaseline + int64(acceptedDuringPartition)
 	recovered := false
 	require.Eventually(t, func() bool {
-		recovered = countChaosCampaignEvents(t, infra.Pool, stack.CampaignID) >= expectedRows
+		recovered = countFaultCampaignEvents(t, infra.Pool, stack.CampaignID) >= expectedRows
 		return recovered
 	}, 45*time.Second, 200*time.Millisecond, "consumer must drain backlog after partition lift")
 
-	finalRows := countChaosCampaignEvents(t, infra.Pool, stack.CampaignID)
-	distinctClickIDs := countDistinctChaosClickIDs(t, infra.Pool, stack.CampaignID)
+	finalRows := countFaultCampaignEvents(t, infra.Pool, stack.CampaignID)
+	distinctClickIDs := countDistinctFaultClickIDs(t, infra.Pool, stack.CampaignID)
 	idempotencyOK := finalRows == distinctClickIDs && finalRows == expectedRows
 	require.True(t, idempotencyOK,
 		"exactly-once in PG: rows=%d distinct_click_ids=%d expected=%d",
@@ -106,15 +105,15 @@ func TestChaos_AdsProcessorPGNetworkPartition(t *testing.T) {
 
 	AssertBudgetInvariant(t, ctx, infra.Pool, infra.Redis, stack.CampaignID)
 
-	logChaosProof(t, "processor_pg_partition", map[string]string{
+	faultproof.Log(t, "processor_pg_partition", map[string]string{
 		"subsystem":            "ads_processor",
 		"baseline_ok":          "true",
 		"backpressure_active":  strconv.FormatBool(backpressureActive),
 		"idempotency_verified": strconv.FormatBool(idempotencyOK),
 		"recovered":            strconv.FormatBool(recovered),
-		"rows_expected":        itoaAdsChaos(int(expectedRows)),
-		"rows_final":           itoaAdsChaos(int(finalRows)),
-		"stream_delta":         itoaAdsChaos(int(streamDuringPartition - streamBeforePartition)),
+		"rows_expected":        itoaAdsFault(int(expectedRows)),
+		"rows_final":           itoaAdsFault(int(finalRows)),
+		"stream_delta":         itoaAdsFault(int(streamDuringPartition - streamBeforePartition)),
 		"fault_verify":         "processor_iptables_output_drop_5432",
 	})
 }
@@ -128,7 +127,7 @@ func setupAdsProcessorPartitionInfra(t *testing.T) (*adsProcessorPartitionInfra,
 
 	pgContainer, err := postgres.Run(ctx,
 		"postgres:16-alpine",
-		postgres.WithDatabase("ads_chaos_db"),
+		postgres.WithDatabase("ads_fault_db"),
 		postgres.WithUsername("user"),
 		postgres.WithPassword("pass"),
 		tcnetwork.WithNetwork([]string{"postgres"}, nw),
@@ -165,7 +164,7 @@ func setupAdsProcessorPartitionInfra(t *testing.T) (*adsProcessorPartitionInfra,
 	proxyPort, err := processorContainer.MappedPort(ctx, "5432")
 	require.NoError(t, err)
 	pgProxyConnStr := fmt.Sprintf(
-		"postgres://user:pass@%s:%s/ads_chaos_db?sslmode=disable",
+		"postgres://user:pass@%s:%s/ads_fault_db?sslmode=disable",
 		proxyHost, proxyPort.Port(),
 	)
 
@@ -182,7 +181,7 @@ func setupAdsProcessorPartitionInfra(t *testing.T) (*adsProcessorPartitionInfra,
 	rdb := redis.NewUniversalClient(&redis.UniversalOptions{Addrs: []string{endpoint}})
 	require.NoError(t, rdb.Ping(ctx).Err())
 
-	base := &adsChaosInfra{
+	base := &adsFaultInfra{
 		Pool:           pool,
 		Redis:          rdb,
 		Queries:        db.New(pool),
@@ -191,7 +190,7 @@ func setupAdsProcessorPartitionInfra(t *testing.T) (*adsProcessorPartitionInfra,
 	}
 
 	infra := &adsProcessorPartitionInfra{
-		adsChaosInfra:      base,
+		adsFaultInfra:      base,
 		ProcessorContainer: processorContainer,
 		pgProxyConnStr:     pgProxyConnStr,
 	}
@@ -257,13 +256,13 @@ func requirePGContainerAlive(t *testing.T, pgContainer *postgres.PostgresContain
 	t.Helper()
 	ctx := context.Background()
 	exitCode, _, err := pgContainer.Exec(ctx, []string{
-		"pg_isready", "-U", "user", "-d", "ads_chaos_db",
+		"pg_isready", "-U", "user", "-d", "ads_fault_db",
 	})
 	require.NoError(t, err)
 	require.Zero(t, exitCode, "postgres must stay up during network partition (not terminated)")
 }
 
-func countDistinctChaosClickIDs(t *testing.T, pool *pgxpool.Pool, campaignID uuid.UUID) int64 {
+func countDistinctFaultClickIDs(t *testing.T, pool *pgxpool.Pool, campaignID uuid.UUID) int64 {
 	t.Helper()
 	var n int64
 	err := pool.QueryRow(context.Background(),
@@ -273,7 +272,7 @@ func countDistinctChaosClickIDs(t *testing.T, pool *pgxpool.Pool, campaignID uui
 	return n
 }
 
-func (s *adsIngestStack) replaceConsumer(t *testing.T, infra *adsChaosInfra) {
+func (s *adsIngestStack) replaceConsumer(t *testing.T, infra *adsFaultInfra) {
 	t.Helper()
 	store := NewPostgresStore(infra.Queries, 1*time.Second)
 	s.Consumer = NewStreamConsumer(store, infra.Redis, s.Stream, s.Stream+"-group", s.Stream+"-c1",
@@ -284,10 +283,10 @@ func (s *adsIngestStack) replaceConsumer(t *testing.T, infra *adsChaosInfra) {
 	s.Consumer.Start(s.ctx)
 }
 
-func waitChaosStreamDrained(t *testing.T, rdb redis.UniversalClient, stream, group string, campaignID uuid.UUID, pool *pgxpool.Pool, wantEvents int64) {
+func waitFaultStreamDrained(t *testing.T, rdb redis.UniversalClient, stream, group string, campaignID uuid.UUID, pool *pgxpool.Pool, wantEvents int64) {
 	t.Helper()
 	require.Eventually(t, func() bool {
-		if countChaosCampaignEvents(t, pool, campaignID) < wantEvents {
+		if countFaultCampaignEvents(t, pool, campaignID) < wantEvents {
 			return false
 		}
 		pending, err := rdb.XPending(context.Background(), stream, group).Result()

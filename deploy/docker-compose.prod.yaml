@@ -1,10 +1,3 @@
-# Production overlay: hourly payment financial recon + ops alerting.
-#
-#   docker compose -f docker-compose.yaml -f deploy/docker-compose.prod.yaml up -d
-#
-# Requires OPS_ALERTS recipient in .env (TELEGRAM_CHAT_ID or NOTIFIER_SLACK_WEBHOOK_URL).
-# Prometheus alerts: PaymentFinancialReconMissingLedgerTopup, PaymentFinancialReconDeadOutbox
-# (deploy/monitoring/prometheus.rules.yaml). See docs/DEVELOPMENT.md (payment / financial recon).
 
 services:
   payment:

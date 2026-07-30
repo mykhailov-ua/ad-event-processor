@@ -176,7 +176,6 @@ func (service *Service) markGroupFailed(ctx context.Context, lead db.NotifierNot
 	return 1, nil
 }
 
-// ProcessPending claims due rows, delivers outside the claim transaction, then finalizes statuses.
 func (service *Service) ProcessPending(ctx context.Context, batchSize int32) (int, error) {
 	if _, err := service.queries.ReclaimStaleProcessing(ctx, int64(service.options.claimStale().Seconds())); err != nil {
 		return 0, fmt.Errorf("reclaim stale processing notifications: %w", err)
@@ -194,7 +193,6 @@ func (service *Service) ProcessPending(ctx context.Context, batchSize int32) (in
 	return service.processGroupsParallel(ctx, groups)
 }
 
-// ProcessPendingSequential is a test helper that disables parallel group delivery.
 func (service *Service) ProcessPendingSequential(ctx context.Context, batchSize int32) (int, error) {
 	old := service.options.GroupParallelism
 	service.options.GroupParallelism = 1

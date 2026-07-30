@@ -1,5 +1,3 @@
-// Package logger is a sharded lock-free ring logger for hot-path telemetry.
-// Producers never block on disk; drain, persist, compress, and encrypt run offline.
 package logger
 
 import (
@@ -35,7 +33,6 @@ var (
 	zstdDecoder *zstd.Decoder
 )
 
-// init wires a process-wide zstd decoder so DecryptSegment avoids per-call reader setup on the cold path.
 func init() {
 	var err error
 	zstdDecoder, err = zstd.NewReader(nil)
@@ -44,7 +41,6 @@ func init() {
 	}
 }
 
-// LogPayload is one ring slot; the ready flag lets producers publish without locking the drainer.
 type LogPayload struct {
 	ready    atomic.Uint32
 	Priority uint8
@@ -52,8 +48,6 @@ type LogPayload struct {
 	Data     [500]byte
 }
 
-// LogShard is a fixed-size MPSC ring. Cache-line padding isolates producer,
-// drainer, and reader cursors to avoid false sharing under parallel writers.
 type LogShard struct {
 	_           [64]byte
 	writeCursor uint64
@@ -71,17 +65,14 @@ const (
 	ringUsable   = RingCapacity - 1
 )
 
-// NewLogShard allocates an empty shard for logger construction and tests.
 func NewLogShard() *LogShard {
 	return &LogShard{}
 }
 
-// WriteCursor exposes the published tail so drainers and saturation metrics observe the same cursor.
 func (s *LogShard) WriteCursor() uint64 {
 	return atomic.LoadUint64(&s.writeCursor)
 }
 
-// Write enqueues one record without blocking; false means the ring is full and the event is shed.
 func (s *LogShard) Write(priority uint8, data []byte) bool {
 	for {
 		alloc := atomic.LoadUint64(&s.allocCursor)
@@ -125,7 +116,6 @@ func (s *LogShard) Write(priority uint8, data []byte) bool {
 	}
 }
 
-// Config tunes shard count, flush thresholds, and persist backpressure for a Logger instance.
 type Config struct {
 	LogDir                string
 	FlushBufferSize       int
@@ -143,8 +133,6 @@ const (
 	defaultPersistEnqueueDur = 25 * time.Millisecond
 )
 
-// ComputePersistQueueDepth sizes the persist channel so a flush burst survives
-// brief disk stalls without blocking the drainer goroutine.
 func ComputePersistQueueDepth(cfg Config) int {
 	if cfg.PersistQueueDepth > 0 {
 		if cfg.PersistQueueDepth > maxPersistQueueDepth {
@@ -166,7 +154,6 @@ func ComputePersistQueueDepth(cfg Config) int {
 	return depth
 }
 
-// Logger owns sharded rings and background workers so hot-path callers never touch disk or crypto.
 type Logger struct {
 	cfg                   Config
 	shards                []*LogShard
@@ -190,7 +177,6 @@ type Logger struct {
 	nonceBuf    [12]byte
 }
 
-// deriveKeyFromEnv materializes the AES key from env so encrypted segments stay portable across restarts.
 func deriveKeyFromEnv() ([]byte, error) {
 	passphrase := os.Getenv("LOG_ENCRYPTION_KEY")
 	if passphrase == "" {
@@ -200,7 +186,6 @@ func deriveKeyFromEnv() ([]byte, error) {
 	return pbkdf2.Key([]byte(passphrase), salt, 4096, 32, sha256.New), nil
 }
 
-// incrementNonce advances the AEAD nonce so repeated plaintext blocks never reuse the same IV.
 func (l *Logger) incrementNonce() {
 	for i := len(l.nonceBuf) - 1; i >= 0; i-- {
 		l.nonceBuf[i]++
@@ -210,8 +195,6 @@ func (l *Logger) incrementNonce() {
 	}
 }
 
-// NewLogger starts background drain, persist, disk monitor, and compress workers.
-// Callers use Write/WriteToShard from the hot path only.
 func NewLogger(cfg Config, numShards int) *Logger {
 	if cfg.PersistEnqueueTimeout <= 0 {
 		cfg.PersistEnqueueTimeout = defaultPersistEnqueueDur
@@ -267,8 +250,6 @@ func NewLogger(cfg Config, numShards int) *Logger {
 	return l
 }
 
-// StartCompressorWorker rotates plaintext segments to encrypted .zst.ready archives
-// for log_evacuate.sh without blocking the active append file.
 func (l *Logger) StartCompressorWorker() {
 	defer l.wg.Done()
 	ticker := time.NewTicker(50 * time.Millisecond)
@@ -285,7 +266,6 @@ func (l *Logger) StartCompressorWorker() {
 	}
 }
 
-// processPendingSegments picks up rotated plaintext segments so evac tooling receives encrypted archives.
 func (l *Logger) processPendingSegments() {
 	files, err := os.ReadDir(l.cfg.LogDir)
 	if err != nil {
@@ -306,7 +286,6 @@ func (l *Logger) processPendingSegments() {
 	}
 }
 
-// compressAndEncryptFile turns a rotated segment into a .zst.ready blob for offline shipping and retention.
 func (l *Logger) compressAndEncryptFile(srcPath, dstPath string) error {
 	srcFile, err := os.Open(srcPath)
 	if err != nil {
@@ -380,7 +359,6 @@ func (l *Logger) compressAndEncryptFile(srcPath, dstPath string) error {
 	return os.Remove(srcPath)
 }
 
-// Close stops background workers and flushes the active segment before process exit.
 func (l *Logger) Close() {
 	close(l.closeChan)
 	l.wg.Wait()
@@ -389,12 +367,10 @@ func (l *Logger) Close() {
 	}
 }
 
-// Shards exposes ring shards for tests and custom drain paths that bypass round-robin Write.
 func (l *Logger) Shards() []*LogShard {
 	return l.shards
 }
 
-// WriteToShard pins a record to one shard so callers with stable keys avoid cross-shard reordering.
 func (l *Logger) WriteToShard(shardID int, priority uint8, data []byte) bool {
 	if shardID < 0 || shardID >= len(l.shards) {
 		return false
@@ -402,19 +378,16 @@ func (l *Logger) WriteToShard(shardID int, priority uint8, data []byte) bool {
 	return l.shards[shardID].Write(priority, data)
 }
 
-// Write round-robins across shards to spread MPSC contention without caller-side shard selection.
 func (l *Logger) Write(priority uint8, data []byte) bool {
 	shardID := int(l.writerIndex.Add(1) % uint64(len(l.shards)))
 	return l.shards[shardID].Write(priority, data)
 }
 
-// DeriveKey reproduces the on-disk key derivation for ops tooling that decrypts archived segments.
 func DeriveKey(passphrase string) []byte {
 	salt := []byte("espx-logger-salt-salt")
 	return pbkdf2.Key([]byte(passphrase), salt, 4096, 32, sha256.New)
 }
 
-// DecryptSegment reverses on-disk segment format for ops tooling and evac verification.
 func DecryptSegment(filePath string, key []byte) ([]byte, error) {
 	file, err := os.Open(filePath)
 	if err != nil {

@@ -9,21 +9,17 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// contextKey avoids collisions when storing auth values on request context.
 type contextKey string
 
-// AuthorizationPayloadKey is the request context key for the verified token payload downstream handlers read.
 const (
 	AuthorizationPayloadKey contextKey = "authorization_payload"
 )
 
-// authorizationHeaderKey and authorizationTypeBearer name the bearer scheme expected on protected HTTP routes.
 const (
 	authorizationHeaderKey  = "authorization"
 	authorizationTypeBearer = "bearer"
 )
 
-// AuthMiddleware protects HTTP routes because management UI cannot rely on gRPC metadata alone.
 func AuthMiddleware(tokenMaker Maker, rdb redis.UniversalClient, allowedRoles ...string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -80,7 +76,6 @@ func AuthMiddleware(tokenMaker Maker, rdb redis.UniversalClient, allowedRoles ..
 	}
 }
 
-// GetPayload lets handlers read the verified principal without re-parsing the bearer header.
 func GetPayload(ctx context.Context) (*Payload, error) {
 	payload, ok := ctx.Value(AuthorizationPayloadKey).(*Payload)
 	if !ok {

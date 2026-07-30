@@ -13,7 +13,6 @@ const (
 	CircuitHalfOpen CircuitState = 2
 )
 
-// CircuitBreaker fast-fails provider calls after consecutive failures to limit cascade load.
 type CircuitBreaker struct {
 	state            int32
 	failures         int64
@@ -24,7 +23,6 @@ type CircuitBreaker struct {
 	openTimeout      time.Duration
 }
 
-// NewCircuitBreaker opens the circuit after failThreshold failures and closes after successThreshold probes succeed.
 func NewCircuitBreaker(failThreshold, successThreshold int64, openTimeout time.Duration) *CircuitBreaker {
 	return &CircuitBreaker{
 		state:            int32(CircuitClosed),

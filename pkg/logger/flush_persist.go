@@ -8,7 +8,6 @@ import (
 	"time"
 )
 
-// StartPersister serializes disk appends through one goroutine so fsync contention stays off the drain and ingest paths.
 func (l *Logger) StartPersister() {
 	defer l.wg.Done()
 	for buf := range l.persistCh {
@@ -18,7 +17,6 @@ func (l *Logger) StartPersister() {
 	}
 }
 
-// writeBuffer appends a batch with fdatasync and updates latency EMA so the logger can enter degraded mode before NVMe backs up the hot path.
 func (l *Logger) writeBuffer(buf *AlignedBuffer) {
 	l.checkRotation()
 	if l.diskDegraded.Load() == 1 {
@@ -54,7 +52,6 @@ func (l *Logger) writeBuffer(buf *AlignedBuffer) {
 	l.bytesWritten += int64(n)
 }
 
-// checkDiskSpace toggles degraded mode from free space and write latency so billing logs survive before the disk fills or NVMe stalls.
 func (l *Logger) checkDiskSpace() {
 	var stat syscall.Statfs_t
 	err := syscall.Statfs(l.cfg.LogDir, &stat)
@@ -76,7 +73,6 @@ func (l *Logger) checkDiskSpace() {
 	}
 }
 
-// StartDiskMonitor periodically re-evaluates disk health so degraded shedding lifts only when storage is safe again.
 func (l *Logger) StartDiskMonitor() {
 	defer l.wg.Done()
 	ticker := time.NewTicker(5 * time.Second)
@@ -91,7 +87,6 @@ func (l *Logger) StartDiskMonitor() {
 	}
 }
 
-// checkRotation rolls active.log into bounded segments so log-evacuate can ship files without unbounded growth.
 func (l *Logger) checkRotation() {
 	if l.activeFile == nil {
 		l.openActiveFile()
@@ -110,7 +105,6 @@ func (l *Logger) checkRotation() {
 	}
 }
 
-// openActiveFile creates or reopens the writable segment after startup, rotation, or a prior disk error.
 func (l *Logger) openActiveFile() {
 	activePath := filepath.Join(l.cfg.LogDir, "active.log")
 	f, err := os.OpenFile(activePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)

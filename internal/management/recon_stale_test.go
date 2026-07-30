@@ -1,6 +1,8 @@
 package management
 
 import (
+	"espx/pkg/faultproof"
+
 	"context"
 	"testing"
 	"time"
@@ -156,14 +158,13 @@ func TestAlertStaleUnresolvedDiscrepancies_notifiesOps(t *testing.T) {
 	requests := stub.snapshot()
 	require.Len(t, requests, 1)
 	assert.Contains(t, requests[0].Body, "Unresolved recon discrepancy")
-	assert.Equal(t, "recon:unresolved:"+itoaMgmtChaos(int(runID)), requests[0].DedupKey)
+	assert.Equal(t, "recon:unresolved:"+itoaMgmtFault(int(runID)), requests[0].DedupKey)
 }
 
-// TestChaos_ReconStaleDiscrepancyOpsAlert guards unresolved drift older than 1h reaches notifier.
-func TestChaos_ReconStaleDiscrepancyOpsAlert(t *testing.T) {
+func TestFault_ReconStaleDiscrepancyOpsAlert(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("chaos integration test")
+		t.Skip("fault integration test")
 	}
 
 	stub := &stubNotifierGRPCClient{}
@@ -196,9 +197,9 @@ func TestChaos_ReconStaleDiscrepancyOpsAlert(t *testing.T) {
 	requests := stub.snapshot()
 	require.Len(t, requests, 1)
 
-	logChaosProof(t, "recon_stale_discrepancy_ops_alert", map[string]string{
+	faultproof.Log(t, "recon_stale_discrepancy_ops_alert", map[string]string{
 		"subsystem":   "management_recon",
-		"run_id":      itoaMgmtChaos(int(runID)),
+		"run_id":      itoaMgmtFault(int(runID)),
 		"notified":    "true",
 		"baseline_ok": "true",
 		"fault_type":  "stale_unresolved",

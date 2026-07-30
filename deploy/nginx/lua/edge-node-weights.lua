@@ -1,5 +1,3 @@
--- edge-node-weights.lua: polls management /ops/node-weights for capacity-weighted tracker pick (M5.2).
--- Stale sync or epoch_lag > 2 → equal weights (freeze drain). H6: used only from balancer_by_lua (new connections).
 
 local _M = {}
 
@@ -72,7 +70,6 @@ function _M.fail_open()
     return raw == "1" or raw == "true" or raw == "TRUE"
 end
 
--- set_getenv_for_test overrides getenv in offline unit tests only.
 function _M.set_getenv_for_test(fn)
     getenv = fn or os.getenv
 end
@@ -104,7 +101,6 @@ function _M.drain_frozen()
     return _M.stale()
 end
 
--- pick_peer_index returns 0-based tracker peer index using weighted random over the epoch snapshot.
 function _M.pick_peer_index()
     local n = dict:get("peer_count") or 0
     if n <= 0 then

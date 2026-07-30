@@ -21,7 +21,6 @@ const (
 	fraudAggMaxProbe      = 64
 )
 
-// fraudAggCell is one fixed hash-table bucket keyed by IPv4 /24 + fraud reason id.
 type fraudAggCell struct {
 	subnetPrefix atomic.Uint32
 	reasonID     atomic.Uint32
@@ -41,7 +40,6 @@ var fraudAggFlushPool = sync.Pool{
 	},
 }
 
-// fraudAggregateExempt reports L3 blocklist or L1-reject events that must never be aggregated.
 func fraudAggregateExempt(evt *campaignmodel.Event) bool {
 	if evt == nil || evt.FraudReason == "" {
 		return false
@@ -106,7 +104,6 @@ func primaryFraudReasonID(reason string) uint8 {
 	return 0
 }
 
-// ipv4Subnet24Prefix returns the IPv4 /24 network prefix (last octet zeroed).
 func ipv4Subnet24Prefix(ip string) (uint32, bool) {
 	if len(ip) < 7 {
 		return 0, false

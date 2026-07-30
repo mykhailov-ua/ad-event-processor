@@ -1,4 +1,3 @@
-// Command edge-xdp attaches the ingress XDP program and pins BPF maps consumed by edge-bpf-sync.
 package main
 
 import (

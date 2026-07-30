@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func generateTestJWT(t *testing.T, privKey ed25519.PrivateKey, kid string, claims LicenseClaims) string {
@@ -73,16 +74,19 @@ func TestVerifyJWT(t *testing.T) {
 
 	t.Run("Tampered Payload", func(t *testing.T) {
 		token := generateTestJWT(t, priv, "2026-01", claims)
-		parts := assert.NotEmpty(t, token)
-		_ = parts
-		// Swap the payload with another encoded payload without resign
+		require.NotEmpty(t, token)
+
 		otherClaims := claims
 		otherClaims.Limits.MaxRPS = 999999
-		otherBytes, _ := json.Marshal(otherClaims)
+		otherBytes, err := json.Marshal(otherClaims)
+		require.NoError(t, err)
 		otherB64 := base64.RawURLEncoding.EncodeToString(otherBytes)
 
-		tokenParts := []string{token[:strings.Index(token, ".")], otherB64, token[strings.LastIndex(token, ".")+1:]}
-		tamperedToken := tokenParts[0] + "." + tokenParts[1] + "." + tokenParts[2]
+		dot := strings.Index(token, ".")
+		lastDot := strings.LastIndex(token, ".")
+		require.Greater(t, dot, 0)
+		require.Greater(t, lastDot, dot)
+		tamperedToken := token[:dot+1] + otherB64 + "." + token[lastDot+1:]
 
 		_, err = VerifyJWT(tamperedToken, pub)
 		assert.Error(t, err)

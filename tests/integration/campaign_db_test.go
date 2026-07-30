@@ -1,5 +1,3 @@
-// campaign_db_test.go covers sqlc query semantics, stats batch UPSERT behavior,
-// schema constraints, and concurrent update safety against Postgres.
 package integration_test
 
 import (
@@ -18,9 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestIntegration_CampaignQueries asserts that ListCampaignIDs returns ACTIVE
-// campaigns only. The registry hot-reload uses this query to exclude paused
-// campaigns from the in-memory catalog.
 func TestIntegration_CampaignQueries(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
@@ -63,9 +58,6 @@ func TestIntegration_CampaignQueries(t *testing.T) {
 	}
 }
 
-// TestIntegration_StatsBatching applies two UpdateCampaignStatsBatch calls for
-// the same campaign and date, then asserts that impressions, clicks, and
-// conversions are summed rather than overwritten.
 func TestIntegration_StatsBatching(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
@@ -108,8 +100,6 @@ func TestIntegration_StatsBatching(t *testing.T) {
 	assert.Equal(t, int64(1), convs)
 }
 
-// TestIntegration_InvalidEventType inserts an event with an unknown event_type
-// and expects Postgres to reject the row via the events_event_type_check constraint.
 func TestIntegration_InvalidEventType(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
@@ -131,9 +121,6 @@ func TestIntegration_InvalidEventType(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// TestIntegration_ExplainQueries runs EXPLAIN ANALYZE on the unnest-based stats
-// batch UPSERT. Use this test locally after changing indexes or the batch query
-// definition to inspect the execution plan.
 func TestIntegration_ExplainQueries(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
@@ -192,9 +179,6 @@ ON CONFLICT (campaign_id, date) DO UPDATE SET
 	require.NoError(t, rows.Err())
 }
 
-// TestIntegration_StatsDeadlockStress runs concurrent UpdateCampaignStatsBatch
-// calls with shuffled campaign order. The test fails if any worker encounters a
-// deadlock or other Postgres error under contention.
 func TestIntegration_StatsDeadlockStress(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")

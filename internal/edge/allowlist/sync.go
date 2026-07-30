@@ -10,12 +10,10 @@ import (
 
 const redisKeyAllowlistPartners = "allowlist:partners"
 
-// setReader loads Redis SET members for XDP allow sync.
 type setReader interface {
 	SMembers(ctx context.Context, key string) *redis.StringSliceCmd
 }
 
-// SyncFromRedis mirrors allowlist:partners into the pinned BPF map.
 func SyncFromRedis(ctx context.Context, rdb setReader, m *ebpf.Map, store *Store) (added, removed int, err error) {
 	members, err := rdb.SMembers(ctx, redisKeyAllowlistPartners).Result()
 	if err != nil {

@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// addAuthorization attaches a bearer token to a request for middleware table tests.
 func addAuthorization(
 	t *testing.T,
 	request *http.Request,
@@ -29,7 +28,6 @@ func addAuthorization(
 	request.Header.Set(authorizationHeaderKey, authorizationHeader)
 }
 
-// TestAuthMiddleware verifies bearer parsing, expiry, and role enforcement on protected HTTP routes.
 func TestAuthMiddleware(t *testing.T) {
 	testCases := []struct {
 		name          string
@@ -121,7 +119,6 @@ func TestAuthMiddleware(t *testing.T) {
 	}
 }
 
-// BenchmarkAuthMiddleware measures hot-path overhead for bearer verification on protected routes.
 func BenchmarkAuthMiddleware(b *testing.B) {
 	tokenMaker, err := NewPasetoMaker("12345678901234567890123456789012")
 	if err != nil {

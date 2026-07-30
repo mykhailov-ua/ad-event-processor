@@ -1,4 +1,3 @@
-// Package cmd implements the admin developer CLI for operations not exposed on the management HTTP API.
 package cmd
 
 import (
@@ -46,7 +45,6 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-// Execute runs the admin Cobra root command.
 func Execute() error {
 	return rootCmd.Execute()
 }
@@ -55,7 +53,6 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&envPath, "env-path", ".env", "path to .env configuration file")
 }
 
-// loadEnvFile applies unset variables from a dotenv file when admin runs outside Compose env injection.
 func loadEnvFile(path string) error {
 	f, err := os.Open(path)
 	if err != nil {
@@ -89,12 +86,10 @@ func loadEnvFile(path string) error {
 	return scanner.Err()
 }
 
-// getDB uses a small pool because admin subcommands are one-shot and must not hold tracker-sized pools.
 func getDB(ctx context.Context) (*pgxpool.Pool, error) {
 	return database.Connect(ctx, string(cfg.DBDSN), 5, 1)
 }
 
-// getRedisShards dials every shard with StaticSlot routing matching the tracker hot path.
 func getRedisShards(ctx context.Context) ([]redis.UniversalClient, *ingestion.StaticSlotSharder, error) {
 	clients, _, err := database.ConnectRedisShards(ctx, cfg, database.RedisShardOptions{PoolSize: 10})
 	if err != nil {

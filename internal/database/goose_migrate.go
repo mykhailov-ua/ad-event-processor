@@ -15,7 +15,6 @@ import (
 
 const espxMigrationsTable = "public.espx_migrations"
 
-// ApplyGooseMigrationsDir runs goose Up sections from *.sql files in dir, in filename order.
 func ApplyGooseMigrationsDir(ctx context.Context, pool *pgxpool.Pool, dir string) error {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -26,7 +25,6 @@ func ApplyGooseMigrationsDir(ctx context.Context, pool *pgxpool.Pool, dir string
 	})
 }
 
-// ApplyGooseMigrationsFS runs goose Up sections from *.sql files under root in an fs.FS.
 func ApplyGooseMigrationsFS(ctx context.Context, pool *pgxpool.Pool, migrations fs.FS, root string) error {
 	entries, err := fs.ReadDir(migrations, root)
 	if err != nil {
@@ -66,7 +64,6 @@ func applyGooseEntries(
 	return nil
 }
 
-// ApplyTrackedGooseMigrationsDir runs pending goose Up sections from dir, recording filenames in public.espx_migrations.
 func ApplyTrackedGooseMigrationsDir(ctx context.Context, pool *pgxpool.Pool, dir string) error {
 	if _, err := pool.Exec(ctx, `
 		CREATE TABLE IF NOT EXISTS public.espx_migrations (
@@ -152,7 +149,6 @@ func migrationAlreadyApplied(err error) bool {
 	}
 }
 
-// GooseUpSQL extracts the goose Up section from a migration file.
 func GooseUpSQL(sql string) string {
 	parts := strings.Split(sql, "-- +goose Down")
 	upPart := parts[0]

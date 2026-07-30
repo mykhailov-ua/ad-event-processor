@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// quotaRefillSample selects ~1% of campaigns for full-path quota refill probes (section 9.3 Tier C).
 func quotaRefillSample(campaignID uuid.UUID) bool {
 	return campaignID[0]%100 == 0
 }
@@ -25,8 +24,6 @@ func ttcEnabled(ttcMinMsAny any) bool {
 	}
 }
 
-// needsFullLuaPath routes to unified-filter.lua when Tier B cannot satisfy campaign/event constraints.
-// Impressions use budget-fast.lua (M9-01); clicks always use the full script.
 func (f *UnifiedFilter) needsFullLuaPath(evt *campaignmodel.Event, campInfo *campaignmodel.Campaign) bool {
 	if evt.Type != "impression" {
 		return true

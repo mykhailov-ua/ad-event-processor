@@ -15,7 +15,6 @@ import (
 	"espx/pkg/coldpath"
 )
 
-// AlertmanagerAlert mirrors one Alertmanager notification in webhook JSON.
 type AlertmanagerAlert struct {
 	Status      string            `json:"status"`
 	Labels      map[string]string `json:"labels"`
@@ -24,7 +23,6 @@ type AlertmanagerAlert struct {
 	EndsAt      time.Time         `json:"endsAt"`
 }
 
-// AlertmanagerPayload is the webhook envelope Alertmanager posts to receivers.
 type AlertmanagerPayload struct {
 	Receiver          string              `json:"receiver"`
 	Status            string              `json:"status"`
@@ -35,7 +33,6 @@ type AlertmanagerPayload struct {
 	ExternalURL       string              `json:"externalURL"`
 }
 
-// AlertmanagerWebhook forwards Prometheus alerts to the notifier gRPC service.
 type AlertmanagerWebhook struct {
 	client             *NotifierClient
 	provider           notifierpb.Provider
@@ -45,7 +42,6 @@ type AlertmanagerWebhook struct {
 	dryRun             bool
 }
 
-// NewAlertmanagerWebhook constructs a webhook handler when alert routing is configured.
 func NewAlertmanagerWebhook(client *NotifierClient, cfg *config.Config) *AlertmanagerWebhook {
 	if client == nil || cfg == nil || !cfg.AlertmanagerWebhookEnabled() {
 		return nil
@@ -64,7 +60,6 @@ func NewAlertmanagerWebhook(client *NotifierClient, cfg *config.Config) *Alertma
 	}
 }
 
-// Register mounts POST /ops/alertmanager/webhook when the adapter is enabled.
 func (h *AlertmanagerWebhook) Register(mux *http.ServeMux) {
 	if h == nil {
 		return
@@ -131,7 +126,6 @@ func (h *AlertmanagerWebhook) handle(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(`{"status":"ok"}`))
 }
 
-// FormatAlertmanagerAlert renders one alert as HTML suitable for Telegram/Slack providers.
 func FormatAlertmanagerAlert(alert AlertmanagerAlert) (title, body string) {
 	statusText := "ALERT ACTIVE"
 	if alert.Status == "resolved" {
@@ -159,7 +153,7 @@ func FormatAlertmanagerAlert(alert AlertmanagerAlert) (title, body string) {
 		description = "—"
 	}
 
-	title = fmt.Sprintf("eSPX: %s", alertName)
+	title = fmt.Sprintf("BidShard: %s", alertName)
 	body = fmt.Sprintf(
 		"<b>%s</b>\n\n<b>Alert:</b> %s\n<b>Severity:</b> <code>%s</code>\n<b>Description:</b> %s\n<b>Time:</b> <code>%s</code>",
 		statusText,
@@ -182,13 +176,11 @@ func alertmanagerDedupKey(alert AlertmanagerAlert) string {
 	return fmt.Sprintf("alertmanager:%s:%s", alertName, alert.Status)
 }
 
-// FormatAlertmanagerAlertText exposes the rendered body for tests.
 func FormatAlertmanagerAlertText(alert AlertmanagerAlert) string {
 	_, body := FormatAlertmanagerAlert(alert)
 	return body
 }
 
-// AlertmanagerDryRun reports whether notifications are logged instead of enqueued.
 func (h *AlertmanagerWebhook) AlertmanagerDryRun() bool {
 	if h == nil {
 		return true
@@ -196,7 +188,6 @@ func (h *AlertmanagerWebhook) AlertmanagerDryRun() bool {
 	return h.dryRun
 }
 
-// AlertmanagerRecipient exposes the configured notifier recipient for tests.
 func (h *AlertmanagerWebhook) AlertmanagerRecipient() string {
 	if h == nil {
 		return ""

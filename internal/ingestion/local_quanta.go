@@ -12,37 +12,31 @@ const (
 	localQuantaSlotMask  = localQuantaSlotCount - 1
 )
 
-// LocalQuantaMode controls whether local quanta debits affect responses.
 const (
 	LocalQuantaOff    uint32 = 0
 	LocalQuantaShadow uint32 = 1
 	LocalQuantaLive   uint32 = 2
 )
 
-// LocalQuantaCell is a cache-line-isolated campaign quantum counter (M8-01, GUIDE §4).
-// One logical pool per campaign_id across pinned workers (M8-08).
 type LocalQuantaCell struct {
 	campaignHash uint32
 	_            uint32
 	remaining    atomic.Int64
 	chunkSize    int64
-	rpsEMA       atomic.Uint64 // fixed-point EMA: value * 1000
+	rpsEMA       atomic.Uint64
 	campaignID   uuid.UUID
 	_            [localQuantaCacheLine - 8 - 8 - 8 - 8 - 16]byte
 }
 
-// LocalQuantaLedger holds campaign-global local budget chunks in SoA layout.
 type LocalQuantaLedger struct {
 	cells [localQuantaSlotCount]LocalQuantaCell
 	mode  atomic.Uint32
 }
 
-// NewLocalQuantaLedger returns an empty ledger (mode off until configured).
 func NewLocalQuantaLedger() *LocalQuantaLedger {
 	return &LocalQuantaLedger{}
 }
 
-// SetMode configures off | shadow | live local quanta behavior (M8-06).
 func (l *LocalQuantaLedger) SetMode(mode string) {
 	switch mode {
 	case "shadow":
@@ -54,7 +48,6 @@ func (l *LocalQuantaLedger) SetMode(mode string) {
 	}
 }
 
-// Mode returns the current local quanta mode.
 func (l *LocalQuantaLedger) Mode() uint32 {
 	return l.mode.Load()
 }
@@ -64,13 +57,11 @@ func (l *LocalQuantaLedger) cellFor(id uuid.UUID) (*LocalQuantaCell, uint32) {
 	return &l.cells[h&localQuantaSlotMask], h
 }
 
-// HasCredit reports whether the campaign owns a local chunk with any remaining balance.
 func (l *LocalQuantaLedger) HasCredit(id uuid.UUID) bool {
 	cell, h := l.cellFor(id)
 	return cell.campaignHash == h && cell.remaining.Load() > 0
 }
 
-// Remaining returns the local micro-units left for a campaign (0 if unassigned).
 func (l *LocalQuantaLedger) Remaining(id uuid.UUID) int64 {
 	cell, h := l.cellFor(id)
 	if cell.campaignHash != h {
@@ -79,7 +70,6 @@ func (l *LocalQuantaLedger) Remaining(id uuid.UUID) int64 {
 	return cell.remaining.Load()
 }
 
-// ChunkSize returns the active chunk size for a campaign.
 func (l *LocalQuantaLedger) ChunkSize(id uuid.UUID) int64 {
 	cell, h := l.cellFor(id)
 	if cell.campaignHash != h {
@@ -88,7 +78,6 @@ func (l *LocalQuantaLedger) ChunkSize(id uuid.UUID) int64 {
 	return cell.chunkSize
 }
 
-// TrySpendLocal debits amountMicro from the campaign-global pool (0 allocs/op hot path).
 func (l *LocalQuantaLedger) TrySpendLocal(id uuid.UUID, amountMicro int64) bool {
 	if amountMicro <= 0 {
 		return true
@@ -109,7 +98,6 @@ func (l *LocalQuantaLedger) TrySpendLocal(id uuid.UUID, amountMicro int64) bool 
 	}
 }
 
-// Credit adds micro-units from a Redis refill into the campaign slot (cold path).
 func (l *LocalQuantaLedger) Credit(id uuid.UUID, amountMicro, chunkSize int64) {
 	if amountMicro <= 0 {
 		return
@@ -123,7 +111,6 @@ func (l *LocalQuantaLedger) Credit(id uuid.UUID, amountMicro, chunkSize int64) {
 	cell.remaining.Add(amountMicro)
 }
 
-// NeedsRefill reports whether local_remaining/chunk_size < thresholdPct (M8-02).
 func (l *LocalQuantaLedger) NeedsRefill(id uuid.UUID, thresholdPct int) bool {
 	cell, h := l.cellFor(id)
 	if cell.campaignHash != h || cell.chunkSize <= 0 {
@@ -140,7 +127,6 @@ func (l *LocalQuantaLedger) NeedsRefill(id uuid.UUID, thresholdPct int) bool {
 	return rem < threshold
 }
 
-// RPSEMA returns the smoothed events-per-second estimate for adaptive quanta (M8-07).
 func (l *LocalQuantaLedger) RPSEMA(id uuid.UUID) float64 {
 	cell, h := l.cellFor(id)
 	if cell.campaignHash != h {
@@ -150,7 +136,7 @@ func (l *LocalQuantaLedger) RPSEMA(id uuid.UUID) float64 {
 }
 
 func (l *LocalQuantaLedger) recordSpendEMA(cell *LocalQuantaCell) {
-	const alphaMilli = 100 // EMA weight ~0.1 per event at 1kHz sampling
+	const alphaMilli = 100
 	prev := cell.rpsEMA.Load()
 	next := prev + alphaMilli
 	if next > 1_000_000 {
@@ -159,7 +145,6 @@ func (l *LocalQuantaLedger) recordSpendEMA(cell *LocalQuantaCell) {
 	cell.rpsEMA.Store(next)
 }
 
-// AdaptiveChunkSize scales chunk from EMA RPS with floor/ceiling (M8-07).
 func AdaptiveChunkSize(emaRPS float64, floorMicro, ceilingMicro, baseChunk int64) int64 {
 	if baseChunk <= 0 {
 		baseChunk = 5_000_000
@@ -172,7 +157,6 @@ func AdaptiveChunkSize(emaRPS float64, floorMicro, ceilingMicro, baseChunk int64
 	}
 	chunk := baseChunk
 	if emaRPS > 0 {
-		// ~10ms of spend at observed RPS (micro-units ≈ RPS * 10_000 for $0.01 events).
 		scaled := int64(emaRPS * 10_000)
 		if scaled > 0 {
 			chunk = scaled

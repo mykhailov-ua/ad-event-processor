@@ -2,7 +2,6 @@ package ingestion
 
 import "espx/internal/rtb"
 
-// noBidToRejectKind maps RTB no-bid reasons to tracker filter reject kinds for metrics and HTTP.
 func noBidToRejectKind(reason rtb.NoBidReason) filterRejectKind {
 	switch reason {
 	case rtb.NoBidPacingClosed:

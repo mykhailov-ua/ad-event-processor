@@ -10,7 +10,6 @@ const (
 	maxIngressWorkers = 64
 )
 
-// IngressQuotaCell is a cache-line-isolated per-(shard, worker) ingress counter (section 4).
 type IngressQuotaCell struct {
 	maxAllowed uint64
 	_          [ingressCacheLine - 8]byte
@@ -93,7 +92,6 @@ func (m *ingressQuotaMap) tryAcquire(shard, worker int) bool {
 	return true
 }
 
-// unpaddedIngressCounters is a tight array of atomics (false-sharing baseline).
 type unpaddedIngressCounters struct {
 	counters [maxIngressWorkers]atomic.Uint64
 	max      uint64

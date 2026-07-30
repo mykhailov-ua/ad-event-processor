@@ -10,17 +10,15 @@ import (
 )
 
 const (
-	luaReturnDailyQuota int64 = 12
-	luaReturnPlacement  int64 = 14
-	// M14-16 branch tags (high nibble 0x2 family in hex docs: 0x14/0x15 decimal 20/21).
-	luaReturnTierDegraded int64 = 20 // 0x14 — degraded ok path
-	luaReturnFraudSignal  int64 = 21 // 0x15 — fraud signal with accept
+	luaReturnDailyQuota   int64 = 12
+	luaReturnPlacement    int64 = 14
+	luaReturnTierDegraded int64 = 20
+	luaReturnFraudSignal  int64 = 21
 
 	luaPrecheckIngressTTLSec = 28 * 3600
-	luaDegradeThresholdNs    = int64(2_000_000) // 2 ms remaining filter budget
+	luaDegradeThresholdNs    = int64(2_000_000)
 )
 
-// luaBranchLabel maps Lua return codes to Prometheus branch labels (M14-16).
 func luaBranchLabel(res int64) string {
 	switch res {
 	case 0:
@@ -66,7 +64,6 @@ var (
 	ingressIgnoredKeyVal   = StringVal{s: "fcap:ignored"}
 )
 
-// maxRPDAnyCache pre-boxes entitlement daily limits passed to Lua pre-checks.
 var maxRPDAnyCache [8192]any
 
 func maxRPDAsAny(v uint64) any {
@@ -83,7 +80,6 @@ type entitlementsLookup interface {
 	GetEntitlements(customerID uuid.UUID) (licensing.Entitlements, bool)
 }
 
-// luaPrecheckScratch holds pooled keys for consolidated Lua pre-checks (M9-02).
 type luaPrecheckScratch struct {
 	wIngress, wPlacement bufWrapper
 }

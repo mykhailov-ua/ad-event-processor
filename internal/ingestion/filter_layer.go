@@ -10,7 +10,6 @@ import (
 
 const fraudBlacklistKey = "blacklist:fraud"
 
-// FraudLayer is the cascaded anti-fraud outcome after signal accumulation.
 type FraudLayer uint8
 
 const (
@@ -19,7 +18,6 @@ const (
 	FraudLayerL1Reject
 )
 
-// decideFraudLayer maps accumulated signals and score tier to L1/L2/L3 handling.
 func decideFraudLayer(acc *fraudAccumulator, tier FraudTier) FraudLayer {
 	if acc == nil || acc.count == 0 {
 		return FraudLayerNone
@@ -40,7 +38,6 @@ func decideFraudLayer(acc *fraudAccumulator, tier FraudTier) FraudLayer {
 	return FraudLayerNone
 }
 
-// applyFraudLayerDecision finalizes score/reason and applies L1/L2/L3 on the event.
 func applyFraudLayerDecision(evt *campaignmodel.Event, acc *fraudAccumulator, camp *campaignmodel.Campaign, boost uint8) (FraudLayer, error) {
 	if evt == nil {
 		return FraudLayerNone, nil
@@ -75,12 +72,10 @@ func applyFraudLayerDecision(evt *campaignmodel.Event, acc *fraudAccumulator, ca
 	}
 }
 
-// FraudBlacklistFilter flags cold-path L3 quarantine hits replicated to blacklist:fraud.
 type FraudBlacklistFilter struct {
 	rdbs []redis.UniversalClient
 }
 
-// NewFraudBlacklistFilter checks blacklist:fraud on a healthy local shard copy (M14-01 fan-out).
 func NewFraudBlacklistFilter(rdbs []redis.UniversalClient) *FraudBlacklistFilter {
 	if len(rdbs) == 0 {
 		return nil
@@ -88,7 +83,6 @@ func NewFraudBlacklistFilter(rdbs []redis.UniversalClient) *FraudBlacklistFilter
 	return &FraudBlacklistFilter{rdbs: rdbs}
 }
 
-// Check records an L3 signal when the client IP is on the replicated fraud blocklist.
 func (f *FraudBlacklistFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
 	if f == nil || evt == nil || evt.IP == "" {
 		return nil
@@ -107,7 +101,6 @@ func (f *FraudBlacklistFilter) Check(ctx context.Context, evt *campaignmodel.Eve
 	return nil
 }
 
-// pickLocalGlobalShard prefers shards 1..N for global key reads so shard-0 outages do not fail-open wrongly.
 func pickLocalGlobalShard(rdbs []redis.UniversalClient) redis.UniversalClient {
 	if len(rdbs) == 0 {
 		return nil

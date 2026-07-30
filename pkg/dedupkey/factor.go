@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// FactorU derives the userspace proof UUID from canonical payload bytes.
 func FactorU(payload []byte) uuid.UUID {
 	sum := sha256.Sum256(payload)
 	var id uuid.UUID
@@ -17,13 +16,11 @@ func FactorU(payload []byte) uuid.UUID {
 	return id
 }
 
-// SpendPair is one campaign amount in a consolidated flush batch.
 type SpendPair struct {
 	CampaignID  uuid.UUID
 	AmountMicro int64
 }
 
-// CanonicalSpendPayload serializes sorted (campaign_id, amount) pairs for factor_u.
 func CanonicalSpendPayload(pairs []SpendPair) []byte {
 	if len(pairs) == 0 {
 		return []byte("spend|")
@@ -45,7 +42,6 @@ func CanonicalSpendPayload(pairs []SpendPair) []byte {
 	return buf
 }
 
-// CanonicalRelayPayload hashes an outbox relay event body.
 func CanonicalRelayPayload(outboxEventID int64, eventType string, payload []byte) []byte {
 	buf := make([]byte, 0, len(payload)+64)
 	buf = append(buf, "relay|"...)
@@ -57,7 +53,6 @@ func CanonicalRelayPayload(outboxEventID int64, eventType string, payload []byte
 	return buf
 }
 
-// CanonicalBrokerPayload hashes a broker ingest batch for PG dedup (M4-15).
 func CanonicalBrokerPayload(clickIDs []string) []byte {
 	if len(clickIDs) == 0 {
 		return []byte("broker|")

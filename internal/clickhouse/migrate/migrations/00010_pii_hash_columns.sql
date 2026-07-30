@@ -1,4 +1,3 @@
--- GAP-DATA-01: replace raw IP/UA/User-ID columns with versioned HighwayHash fields.
 
 USE ad_event_processor;
 

@@ -9,17 +9,14 @@ import (
 	"github.com/google/uuid"
 )
 
-// ClickHouseInserter writes cost snapshot rows for M17 placement stats MV.
 type ClickHouseInserter struct {
 	conn driver.Conn
 }
 
-// NewClickHouseInserter wraps a ClickHouse connection.
 func NewClickHouseInserter(conn driver.Conn) *ClickHouseInserter {
 	return &ClickHouseInserter{conn: conn}
 }
 
-// InsertSnapshots batch-inserts normalized cost lines into cost_snapshots.
 func (inserter *ClickHouseInserter) InsertSnapshots(ctx context.Context, lines []CostLine, usdMicro []int64) error {
 	if inserter == nil || inserter.conn == nil || len(lines) == 0 {
 		return nil
@@ -47,7 +44,6 @@ func (inserter *ClickHouseInserter) InsertSnapshots(ctx context.Context, lines [
 	return batch.Send()
 }
 
-// MemorySnapshotInserter stores snapshots in-process for tests.
 type MemorySnapshotInserter struct {
 	Rows []struct {
 		CampaignID  uuid.UUID
@@ -57,7 +53,6 @@ type MemorySnapshotInserter struct {
 	}
 }
 
-// InsertSnapshots records rows in memory.
 func (m *MemorySnapshotInserter) InsertSnapshots(_ context.Context, lines []CostLine, usdMicro []int64) error {
 	for i, line := range lines {
 		amount := line.AmountMicro

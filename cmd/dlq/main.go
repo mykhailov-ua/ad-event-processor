@@ -1,4 +1,3 @@
-// Command dlq is the operator CLI for Redis DLQ archive, requeue, restore, inspect, and edit.
 package main
 
 import (
@@ -212,7 +211,6 @@ func archiveDLQ(ctx context.Context, rdb *redis.Client, stream, destFile string,
 			startID = msg.ID
 		}
 
-		// XDEL runs only after every message in the batch is flushed to the archive file.
 		pipe.XDel(ctx, stream, msgIDs...)
 		if _, err := pipe.Exec(ctx); err != nil {
 			return fmt.Errorf("failed to delete archived messages: %w", err)
@@ -532,7 +530,6 @@ func inspectStream(ctx context.Context, rdb *redis.Client, stream string, batchS
 	return nil
 }
 
-// EditableStreamEvent is the JSON shape for editing AdStreamEvent fields in $EDITOR.
 type EditableStreamEvent struct {
 	ClickId       string `json:"click_id"`
 	CampaignId    string `json:"campaign_id"`
@@ -543,7 +540,6 @@ type EditableStreamEvent struct {
 	CreatedAtUnix int64  `json:"created_at_unix"`
 }
 
-// EditableDLQEvent is the JSON shape for editing AdDLQEvent metadata and nested stream fields in $EDITOR.
 type EditableDLQEvent struct {
 	ID            string              `json:"id"`
 	Error         string              `json:"error"`
@@ -698,7 +694,6 @@ func editDLQMessage(ctx context.Context, rdb *redis.Client, stream, id string) e
 		return fmt.Errorf("failed to marshal modified event to Protobuf: %w", err)
 	}
 
-	// Redis stream entries are immutable; replace via XDEL and XADD in one pipeline.
 	pipe := rdb.Pipeline()
 	pipe.XDel(ctx, stream, id)
 	pipe.XAdd(ctx, &redis.XAddArgs{

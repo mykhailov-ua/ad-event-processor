@@ -5,7 +5,6 @@ var (
 	shedFn  func()
 )
 
-// BindMetrics wires OpKeyPool gauges and shed counter to Prometheus callbacks.
 func BindMetrics(depth func(float64), shed func()) {
 	depthFn = depth
 	shedFn = shed

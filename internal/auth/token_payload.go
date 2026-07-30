@@ -7,13 +7,11 @@ import (
 	"github.com/google/uuid"
 )
 
-// ErrInvalidToken and ErrExpiredToken give callers stable auth failure reasons without exposing token internals.
 var (
 	ErrInvalidToken = errors.New("token is invalid")
 	ErrExpiredToken = errors.New("token has expired")
 )
 
-// Payload holds the identity claims carried inside an access token for authorization and revocation checks.
 type Payload struct {
 	ID         uuid.UUID `json:"id"`
 	UserID     uuid.UUID `json:"user_id"`
@@ -24,7 +22,6 @@ type Payload struct {
 	ExpiredAt  time.Time `json:"expired_at"`
 }
 
-// NewPayload assigns a unique token id so per-token revocation remains possible.
 func NewPayload(userID uuid.UUID, sessionID uuid.UUID, role string, customerID uuid.UUID, duration time.Duration) (*Payload, error) {
 	tokenID, err := uuid.NewRandom()
 	if err != nil {
@@ -43,7 +40,6 @@ func NewPayload(userID uuid.UUID, sessionID uuid.UUID, role string, customerID u
 	return payload, nil
 }
 
-// Valid rejects clock-skewed or expired tokens before authorization logic trusts them.
 func (payload *Payload) Valid() error {
 	now := time.Now()
 	if now.After(payload.ExpiredAt) {

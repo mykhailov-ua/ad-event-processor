@@ -142,7 +142,6 @@ func TestUnifiedFilter_quotaRefill_thunderingHerd(t *testing.T) {
 	require.NoError(t, f.PreloadScripts(ctx))
 
 	campID := uuid.New()
-	// chunk=1M, threshold=200k; after 100k debit from 250k -> 150k < 200k triggers refill
 	seedCampaignQuota(t, ctx, rdb, campID, 250_000)
 
 	const workers = 64

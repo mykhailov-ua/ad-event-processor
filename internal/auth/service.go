@@ -24,7 +24,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// Domain errors keep auth responses stable for clients, metrics, and gRPC mapping without leaking internals.
 var (
 	ErrUserAlreadyExists  = errors.New("user already exists")
 	ErrInvalidCredentials = errors.New("invalid credentials")
@@ -37,23 +36,19 @@ var (
 	ErrInvalidAPIKey      = errors.New("invalid api key")
 )
 
-// idempotentResultError carries a cached refresh rotation result out of a transaction without treating it as a failure.
 type idempotentResultError struct {
 	accessToken  string
 	refreshToken string
 }
 
-// Error signals a duplicate refresh that already produced tokens so the caller can return them.
 func (e *idempotentResultError) Error() string {
 	return "idempotency hit"
 }
 
-// emailRegex rejects malformed registration and login addresses before they hit the database.
 var (
 	emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
 )
 
-// AuthLoginAttempts and AuthTokenErrors expose auth health signals for monitoring brute force and token failures.
 var (
 	AuthLoginAttempts = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -71,13 +66,11 @@ var (
 	)
 )
 
-// init registers auth counters at startup so Prometheus scrapes see them from the first request.
 func init() {
 	prometheus.MustRegister(AuthLoginAttempts)
 	prometheus.MustRegister(AuthTokenErrors)
 }
 
-// Service owns registration, login, token lifecycle, and credential policy for the auth service.
 type Service struct {
 	repo       db.Store
 	tokenMaker Maker
@@ -89,7 +82,6 @@ type Service struct {
 	mailer     Mailer
 }
 
-// NewService sizes crypto concurrency from Argon2 parallelism to avoid CPU saturation under login bursts.
 func NewService(repo db.Store, tokenMaker Maker, hasher *PasswordHasher, lockout *LockoutLimiter, rdb redis.UniversalClient) *Service {
 	gomaxprocs := runtime.GOMAXPROCS(0)
 	p := 1
@@ -115,12 +107,10 @@ func NewService(repo db.Store, tokenMaker Maker, hasher *PasswordHasher, lockout
 	}
 }
 
-// SetMailer swaps the log-only default for a real provider before security notifications matter.
 func (service *Service) SetMailer(mailer Mailer) {
 	service.mailer = mailer
 }
 
-// RegisterDTO carries validated registration input from HTTP and gRPC adapters.
 type RegisterDTO struct {
 	Email      string
 	Password   string
@@ -128,7 +118,6 @@ type RegisterDTO struct {
 	CustomerID uuid.UUID
 }
 
-// Register seeds password history on creation so later rotations can detect reuse.
 func (service *Service) Register(ctx context.Context, req RegisterDTO) (uuid.UUID, error) {
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 	if !emailRegex.MatchString(req.Email) {
@@ -190,14 +179,12 @@ func (service *Service) Register(ctx context.Context, req RegisterDTO) (uuid.UUI
 	return userID, nil
 }
 
-// LoginDTO groups login outputs for callers that need tokens plus the authenticated user record.
 type LoginDTO struct {
 	AccessToken  string
 	RefreshToken string
 	User         db.User
 }
 
-// Login centralizes lockout, constant-time verification, and session binding for every client.
 func (service *Service) Login(ctx context.Context, email, password, userAgent, clientIP string, duration time.Duration) (pb.LoginResponse, error) {
 	email = strings.ToLower(strings.TrimSpace(email))
 	if !emailRegex.MatchString(email) {
@@ -404,7 +391,6 @@ func (service *Service) Login(ctx context.Context, email, password, userAgent, c
 	}, nil
 }
 
-// VerifyToken rejects revoked or blocked principals before downstream services trust the token.
 func (service *Service) VerifyToken(ctx context.Context, accessToken string) (db.User, error) {
 	payload, err := service.tokenMaker.VerifyToken(accessToken)
 	if err != nil {
@@ -441,7 +427,6 @@ func (service *Service) VerifyToken(ctx context.Context, accessToken string) (db
 	return user, nil
 }
 
-// RefreshToken blocks refresh-token reuse and caches rotation results for concurrent retries.
 func (service *Service) RefreshToken(ctx context.Context, refreshTokenStr string, duration time.Duration) (string, string, error) {
 	if service.rdb != nil {
 		cached, err := service.rdb.Get(ctx, "idempotency:refresh:"+refreshTokenStr).Result()
@@ -555,7 +540,6 @@ func (service *Service) RefreshToken(ctx context.Context, refreshTokenStr string
 	return accessToken, newRefreshTokenStr, nil
 }
 
-// RevokeToken ends the refresh chain and marks in-flight access tokens via Redis before session block.
 func (service *Service) RevokeToken(ctx context.Context, refreshTokenStr string) error {
 	session, err := service.repo.GetSessionByRefreshToken(ctx, refreshTokenStr)
 	if err == nil && service.rdb != nil {
@@ -574,7 +558,6 @@ func (service *Service) RevokeToken(ctx context.Context, refreshTokenStr string)
 	return service.repo.BlockSessionByRefreshToken(ctx, refreshTokenStr)
 }
 
-// AuditLog must never break primary auth flows when the audit store is down.
 func (service *Service) AuditLog(ctx context.Context, userID uuid.UUID, action, targetType, targetID, clientIP, userAgent string, changes, metadata map[string]any) {
 	changesJSON, err := json.Marshal(changes)
 	if err != nil {
@@ -608,7 +591,6 @@ func (service *Service) AuditLog(ctx context.Context, userID uuid.UUID, action, 
 	}
 }
 
-// ChangePassword enforces reuse policy and alerts the owner because stolen sessions may trigger rotation.
 func (service *Service) ChangePassword(ctx context.Context, userID uuid.UUID, oldPassword, newPassword, clientIP, userAgent string) error {
 	if err := ValidatePassword(newPassword); err != nil {
 		return ErrValidation
@@ -686,7 +668,6 @@ func (service *Service) ChangePassword(ctx context.Context, userID uuid.UUID, ol
 	return nil
 }
 
-// CreateAPIKey returns the raw secret once because only a hash is persisted.
 func (service *Service) CreateAPIKey(ctx context.Context, userID uuid.UUID, name string, expiresAt *time.Time) (id uuid.UUID, rawKey string, err error) {
 
 	raw := make([]byte, 32)
@@ -722,12 +703,10 @@ func (service *Service) CreateAPIKey(ctx context.Context, userID uuid.UUID, name
 	return id, rawKey, nil
 }
 
-// ListUserAPIKeys exposes metadata only; stored secrets are never retrievable after creation.
 func (service *Service) ListUserAPIKeys(ctx context.Context, userID uuid.UUID) ([]db.ListUserAPIKeysRow, error) {
 	return service.repo.ListUserAPIKeys(ctx, pgtype.UUID{Bytes: userID, Valid: true})
 }
 
-// VerifyAPIKey resolves a presented secret to the owning user via lookup index and argon2 verification.
 func (service *Service) VerifyAPIKey(ctx context.Context, rawKey string) (db.User, error) {
 	rawKey = strings.TrimSpace(rawKey)
 	if rawKey == "" {
@@ -769,7 +748,6 @@ func (service *Service) VerifyAPIKey(ctx context.Context, rawKey string) (db.Use
 	return user, nil
 }
 
-// RequestEmailVerification stores a short-lived token in Redis to prove mailbox ownership out of band.
 func (service *Service) RequestEmailVerification(ctx context.Context, userID uuid.UUID) (string, error) {
 	token := uuid.NewString()
 	key := "auth:email_verify:" + token
@@ -780,7 +758,6 @@ func (service *Service) RequestEmailVerification(ctx context.Context, userID uui
 	return token, nil
 }
 
-// ConfirmEmailVerification deletes the token on use so ownership claims cannot be replayed.
 func (service *Service) ConfirmEmailVerification(ctx context.Context, token string) (uuid.UUID, error) {
 	key := "auth:email_verify:" + token
 	userIDStr, err := service.rdb.Get(ctx, key).Result()
@@ -804,7 +781,6 @@ func (service *Service) ConfirmEmailVerification(ctx context.Context, token stri
 	return uid, nil
 }
 
-// BlockUser must invalidate in-flight access tokens because Postgres block alone is not checked on every request.
 func (service *Service) BlockUser(ctx context.Context, email string) error {
 	email = strings.ToLower(strings.TrimSpace(email))
 	user, err := service.repo.GetUserByEmail(ctx, email)
@@ -822,7 +798,6 @@ func (service *Service) BlockUser(ctx context.Context, email string) error {
 	return nil
 }
 
-// UnblockUser clears the Redis marker so restored accounts are not rejected by stale revocation state.
 func (service *Service) UnblockUser(ctx context.Context, email string) error {
 	email = strings.ToLower(strings.TrimSpace(email))
 	user, err := service.repo.GetUserByEmail(ctx, email)
@@ -840,7 +815,6 @@ func (service *Service) UnblockUser(ctx context.Context, email string) error {
 	return nil
 }
 
-// notifyNewIPLogin warns owners about credential use from a new network location.
 func (service *Service) notifyNewIPLogin(ctx context.Context, user db.User, clientIP, userAgent string) {
 	if service.rdb == nil || service.mailer == nil || clientIP == "" || clientIP == "unknown" {
 		return

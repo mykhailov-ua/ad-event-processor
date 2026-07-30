@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestParseTrackRequestJSON_ErrorMatrix guards malformed JSON bodies (M6-07).
 func TestParseTrackRequestJSON_ErrorMatrix(t *testing.T) {
 	cases := []struct {
 		name    string

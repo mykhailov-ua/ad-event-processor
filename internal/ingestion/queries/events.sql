@@ -1,14 +1,3 @@
--- events.sql: sqlc query definitions for campaign and event persistence.
--- All event writes target the PARTITION BY RANGE (created_date) table; callers
--- must supply created_date explicitly to guarantee correct partition routing.
--- ON CONFLICT (click_id, created_date) DO NOTHING provides idempotency within
--- the daily partition boundary.
---
--- InsertEventsBatch is the primary batch-write path. The CTE uses RETURNING to
--- count only newly-inserted rows for campaign_stats aggregation; this prevents
--- double-counting when the same batch is retried. The EXISTS sub-select on campaigns
--- filters orphaned campaign_ids before the stats INSERT to avoid FK violations
--- rolling back the entire batch.
 
 -- name: CreateCampaign :one
 INSERT INTO campaigns (id, name, budget_limit, status, customer_id, pacing_mode, daily_budget, timezone, freq_limit, freq_window, target_countries, brand_id, brand_fcap_key, start_at, end_at, daypart_hours, template_id)
@@ -19,8 +8,6 @@ RETURNING *;
 SELECT * FROM campaigns WHERE id = $1 LIMIT 1;
 
 -- name: InsertEvent :exec
--- Inserts a single event with ON CONFLICT for idempotency.
--- created_date is set explicitly for correct dedup within daily partitions.
 INSERT INTO events (click_id, campaign_id, user_id, event_type, payload, ip_address, user_agent, created_at, created_date)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 ON CONFLICT (click_id, created_date) DO NOTHING;
@@ -63,11 +50,6 @@ ON CONFLICT (campaign_id, date) DO UPDATE SET
     conversions_count = campaign_stats.conversions_count + EXCLUDED.conversions_count;
 
 -- name: InsertEventsBatch :exec
--- Performs batch insert and atomically updates campaign stats.
--- Exactly-once aggregation is guaranteed because only newly inserted rows are counted.
--- Stats are attributed to the event's actual date (created_date), not CURRENT_DATE.
--- Invalid campaign_ids are filtered out before the stats insert to prevent FK violations
--- from rolling back the entire batch.
 WITH inserted AS (
     INSERT INTO events (click_id, campaign_id, user_id, event_type, payload, ip_address, user_agent, created_at, created_date)
     SELECT 

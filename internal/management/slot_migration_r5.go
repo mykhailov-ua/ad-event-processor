@@ -11,7 +11,6 @@ import (
 
 const slotMigrationR5SamplePerShard = 3
 
-// VerifySlotMigrationR5 checks budget invariant (R5) for sample campaigns on each Redis shard.
 func (s *Service) VerifySlotMigrationR5(ctx context.Context) error {
 	if len(s.rdbs) == 0 {
 		return fmt.Errorf("no redis shards configured")
@@ -55,7 +54,6 @@ func (s *Service) VerifySlotMigrationR5(ctx context.Context) error {
 	return nil
 }
 
-// HasPendingSlotDrain reports whether any slot migration drain jobs remain.
 func (s *Service) HasPendingSlotDrain(ctx context.Context) (bool, error) {
 	migRepo := ingestion.NewSlotMigrationRepo(s.GetPool())
 	jobs, err := migRepo.ListDraining(ctx)

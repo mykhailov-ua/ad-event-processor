@@ -8,7 +8,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// CampaignKeyMigrator copies campaign-scoped Redis keys between shards (cold path only).
 type CampaignKeyMigrator struct {
 	Catalog *CampaignRedisKeyCatalog
 }
@@ -20,8 +19,6 @@ func (m *CampaignKeyMigrator) catalog() *CampaignRedisKeyCatalog {
 	return DefaultCampaignRedisKeyCatalog
 }
 
-// MigrateCampaignKeys idempotently copies budget, quota, fcap, and sync keys from src to dst.
-// Returns the number of keys migrated (skipped missing keys are not counted).
 func (m *CampaignKeyMigrator) MigrateCampaignKeys(
 	ctx context.Context,
 	src, dst redis.Cmdable,
@@ -49,7 +46,6 @@ func (m *CampaignKeyMigrator) MigrateCampaignKeys(
 	return migrated, nil
 }
 
-// DrainCampaignKeys deletes campaign keys from src after cutover (old shard cleanup).
 func (m *CampaignKeyMigrator) DrainCampaignKeys(
 	ctx context.Context,
 	src redis.Cmdable,

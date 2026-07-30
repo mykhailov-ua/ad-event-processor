@@ -2,7 +2,6 @@ package ivtdetector
 
 import "strings"
 
-// IsTLSImpersonating reports UA/JA3 mismatches indicative of automated clients.
 func IsTLSImpersonating(ua, ja3 string) bool {
 	if ja3 == "" {
 		return false
@@ -15,7 +14,6 @@ func IsTLSImpersonating(ua, ja3 string) bool {
 	return isChrome && IsSuspiciousJA3(ja3)
 }
 
-// IsSuspiciousJA3 flags known automated TLS fingerprints without requiring raw UA.
 func IsSuspiciousJA3(ja3 string) bool {
 	return strings.Contains(ja3, "python-requests") || ja3 == "37b37375c33a2e6a17b2b6400c436321"
 }

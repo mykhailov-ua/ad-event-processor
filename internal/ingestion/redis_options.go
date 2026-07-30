@@ -6,7 +6,6 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-// FilterRedisOptions aligns Redis client timeouts with the filter deadline on the tracker hot path.
 func FilterRedisOptions(addrs []string, password string, poolSize, filterTimeoutMs int) *redis.UniversalOptions {
 	opts := &redis.UniversalOptions{
 		Addrs:    addrs,
@@ -21,7 +20,6 @@ func FilterRedisOptions(addrs []string, password string, poolSize, filterTimeout
 	return opts
 }
 
-// FilterRedisReadTimeoutMs exposes the configured read timeout for integration tests.
 func FilterRedisReadTimeoutMs(filterTimeoutMs int) int {
 	if filterTimeoutMs <= 0 {
 		return 0

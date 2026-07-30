@@ -47,8 +47,6 @@ func hashSHA256(input string) string {
 }
 
 func (a *FacebookAdapter) Send(ctx context.Context, client *http.Client, payload *PostbackPayload, urlTemplate string, apiTokenDecrypted string) error {
-	// Standard FB CAPI endpoint: https://graph.facebook.com/v19.0/{pixel_id}/events
-	// If urlTemplate is a full URL (e.g. for testing), we use it. Otherwise we construct it.
 	url := urlTemplate
 	if url == "" || !strings.HasPrefix(url, "http") {
 		pixelID := urlTemplate
@@ -63,7 +61,6 @@ func (a *FacebookAdapter) Send(ctx context.Context, client *http.Client, payload
 		eventName = "Purchase"
 	}
 
-	// PII egress: hash email/phone SHA-256 before FB CAPI
 	var ems []string
 	if payload.Email != "" {
 		ems = []string{hashSHA256(payload.Email)}
@@ -75,7 +72,6 @@ func (a *FacebookAdapter) Send(ctx context.Context, client *http.Client, payload
 
 	fbc := payload.FBCLID
 	if fbc != "" && !strings.HasPrefix(fbc, "fb.1.") {
-		// format as standard fbc: fb.1.epoch.click_id
 		fbc = fmt.Sprintf("fb.1.%d.%s", time.Now().Unix(), fbc)
 	}
 

@@ -5,9 +5,6 @@ import (
 	"time"
 )
 
-// CircuitState is the type-safe enumeration of circuit breaker states. The zero
-// value (CircuitClosed = 0) is intentional: a freshly zeroed CircuitBreaker struct
-// begins in the closed (allowing) state without explicit initialization.
 type CircuitState int32
 
 const (
@@ -29,17 +26,6 @@ func (s CircuitState) String() string {
 	}
 }
 
-// CircuitBreaker gates downstream calls for the StreamConsumer worker pool.
-// failThreshold is per workerID; one hot worker does not trip peers below threshold.
-//
-// State transitions:
-//
-//	Closed -> (failures >= threshold per worker) -> Open
-//	Open -> (openTimeout elapsed, first Allow) -> HalfOpen
-//	HalfOpen -> RecordSuccess -> Closed
-//	HalfOpen -> RecordFailure or RecordCancellation -> Open
-//
-// Per-worker failure maps are authoritative; database.RedisBreaker is lock-free and shard-scoped.
 type CircuitBreaker struct {
 	mu            sync.Mutex
 	state         CircuitState
@@ -58,11 +44,6 @@ func NewCircuitBreaker(failThreshold int, openTimeout time.Duration) *CircuitBre
 	}
 }
 
-// Allow returns true if the breaker permits the caller to attempt a downstream
-// operation. In the Open state it returns true only once openTimeout has elapsed,
-// simultaneously transitioning to HalfOpen to probe recovery. Concurrent callers
-// during the Open->HalfOpen transition all read the same state change because the
-// state assignment and Allow check share the same mutex.
 func (cb *CircuitBreaker) Allow() bool {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
@@ -86,8 +67,6 @@ func (cb *CircuitBreaker) Allow() bool {
 	}
 }
 
-// RecordSuccess resets per-worker failure counts and, when in HalfOpen state,
-// promotes the breaker back to Closed.
 func (cb *CircuitBreaker) RecordSuccess(workerID string) {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
@@ -100,9 +79,6 @@ func (cb *CircuitBreaker) RecordSuccess(workerID string) {
 	}
 }
 
-// RecordFailure increments the per-worker failure counter. If the count reaches
-// failThreshold the breaker trips to Open; in HalfOpen the first failure immediately
-// re-opens without checking the threshold.
 func (cb *CircuitBreaker) RecordFailure(workerID string) {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
@@ -143,7 +119,6 @@ func (cb *CircuitBreaker) Failures(workerID string) int {
 	return int(cb.failures[workerID])
 }
 
-// WaitDuration returns remaining open-state cooldown; zero when not Open.
 func (cb *CircuitBreaker) WaitDuration() time.Duration {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()

@@ -11,7 +11,6 @@ import (
 	"time"
 )
 
-// MemoryObjectStore is an in-process S3 substitute for chaos and unit tests.
 type MemoryObjectStore struct {
 	mu      sync.RWMutex
 	objects map[string]memoryObject
@@ -23,12 +22,10 @@ type memoryObject struct {
 	metadata map[string]string
 }
 
-// NewMemoryObjectStore returns an empty in-memory object store.
 func NewMemoryObjectStore() *MemoryObjectStore {
 	return &MemoryObjectStore{objects: make(map[string]memoryObject)}
 }
 
-// Put stores bytes under key.
 func (store *MemoryObjectStore) Put(key string, data []byte, modTime time.Time, metadata map[string]string) {
 	store.mu.Lock()
 	defer store.mu.Unlock()
@@ -43,7 +40,6 @@ func (store *MemoryObjectStore) Put(key string, data []byte, modTime time.Time, 
 	}
 }
 
-// Get returns object bytes.
 func (store *MemoryObjectStore) Get(key string) ([]byte, bool) {
 	store.mu.RLock()
 	defer store.mu.RUnlock()
@@ -54,14 +50,12 @@ func (store *MemoryObjectStore) Get(key string) ([]byte, bool) {
 	return append([]byte(nil), object.data...), true
 }
 
-// Delete removes key.
 func (store *MemoryObjectStore) Delete(key string) {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	delete(store.objects, key)
 }
 
-// List returns keys with prefix.
 func (store *MemoryObjectStore) List(prefix string) []memoryListedObject {
 	store.mu.RLock()
 	defer store.mu.RUnlock()
@@ -88,7 +82,6 @@ type memoryListedObject struct {
 	size    int64
 }
 
-// MemoryS3TierStore implements tier compaction against MemoryObjectStore.
 type MemoryS3TierStore struct {
 	hotPrefix  string
 	warmPrefix string
@@ -96,7 +89,6 @@ type MemoryS3TierStore struct {
 	local      *LocalTierStore
 }
 
-// NewMemoryS3TierStore returns a scratch-backed tier store backed by MemoryObjectStore.
 func NewMemoryS3TierStore(scratchDir, hotPrefix, warmPrefix string, mem *MemoryObjectStore) *MemoryS3TierStore {
 	if mem == nil {
 		mem = NewMemoryObjectStore()
@@ -119,7 +111,6 @@ func NewMemoryS3TierStore(scratchDir, hotPrefix, warmPrefix string, mem *MemoryO
 	}
 }
 
-// ListHot syncs memory hot objects into scratch and lists them.
 func (store *MemoryS3TierStore) ListHot(_ context.Context, olderThan time.Time) ([]TierObject, error) {
 	for _, object := range store.mem.List(store.hotPrefix) {
 		name := strings.TrimPrefix(object.key, store.hotPrefix)
@@ -172,7 +163,6 @@ func (store *MemoryS3TierStore) uploadWarmArtifacts(destKey, sha256 string) erro
 	return nil
 }
 
-// WriteWarm writes warm output locally and to memory store.
 func (store *MemoryS3TierStore) WriteWarm(ctx context.Context, destKey string, plaintext []byte, meta CompactionMeta) error {
 	if err := store.local.WriteWarm(ctx, destKey, plaintext, meta); err != nil {
 		return err
@@ -180,7 +170,6 @@ func (store *MemoryS3TierStore) WriteWarm(ctx context.Context, destKey string, p
 	return store.uploadWarmArtifacts(destKey, meta.DestSHA256)
 }
 
-// WriteWarmFromFile writes warm output locally and to memory store.
 func (store *MemoryS3TierStore) WriteWarmFromFile(ctx context.Context, destKey, filteredPath string, meta CompactionMeta) (string, error) {
 	destSHA, err := store.local.WriteWarmFromFile(ctx, destKey, filteredPath, meta)
 	if err != nil {
@@ -193,7 +182,6 @@ func (store *MemoryS3TierStore) WriteWarmFromFile(ctx context.Context, destKey, 
 	return destSHA, nil
 }
 
-// RemoveHot deletes scratch and memory hot objects.
 func (store *MemoryS3TierStore) RemoveHot(ctx context.Context, obj TierObject) error {
 	if err := store.local.RemoveHot(ctx, obj); err != nil {
 		return err
@@ -202,22 +190,18 @@ func (store *MemoryS3TierStore) RemoveHot(ctx context.Context, obj TierObject) e
 	return nil
 }
 
-// ClaimHot claims a scratch hot segment.
 func (store *MemoryS3TierStore) ClaimHot(ctx context.Context, obj TierObject) (TierObject, error) {
 	return store.local.ClaimHot(ctx, obj)
 }
 
-// RollbackHot restores a claimed scratch segment.
 func (store *MemoryS3TierStore) RollbackHot(ctx context.Context, obj TierObject) error {
 	return store.local.RollbackHot(ctx, obj)
 }
 
-// ListStuckCompacting returns claimed scratch segments.
 func (store *MemoryS3TierStore) ListStuckCompacting(ctx context.Context) ([]TierObject, error) {
 	return store.local.ListStuckCompacting(ctx)
 }
 
-// RemoveCompacting deletes claimed scratch and memory hot objects.
 func (store *MemoryS3TierStore) RemoveCompacting(ctx context.Context, obj TierObject) error {
 	hotKey := hotKeyFromCompacting(obj.Key)
 	if err := store.local.RemoveCompacting(ctx, obj); err != nil {
@@ -227,17 +211,14 @@ func (store *MemoryS3TierStore) RemoveCompacting(ctx context.Context, obj TierOb
 	return nil
 }
 
-// RemoveWarmArtifacts deletes incomplete warm scratch artifacts.
 func (store *MemoryS3TierStore) RemoveWarmArtifacts(destKey string) {
 	store.local.RemoveWarmArtifacts(destKey)
 }
 
-// SeedHot inserts a hot object for tests.
 func (store *MemoryS3TierStore) SeedHot(name string, data []byte, modTime time.Time) {
 	store.mem.Put(store.hotPrefix+name, data, modTime, nil)
 }
 
-// WarmObjectCount returns warm-tier segment count (.compact.zst) in memory store.
 func (store *MemoryS3TierStore) WarmObjectCount() int {
 	count := 0
 	for _, object := range store.mem.List(store.warmPrefix) {
@@ -248,17 +229,14 @@ func (store *MemoryS3TierStore) WarmObjectCount() int {
 	return count
 }
 
-// WarmObject returns warm object bytes by dest key.
 func (store *MemoryS3TierStore) WarmObject(destKey string) ([]byte, bool) {
 	return store.mem.Get(store.warmPrefix + destKey)
 }
 
-// HotObjectCount returns hot-tier object count in memory store.
 func (store *MemoryS3TierStore) HotObjectCount() int {
 	return len(store.mem.List(store.hotPrefix))
 }
 
-// String returns debug summary.
 func (store *MemoryS3TierStore) String() string {
 	return fmt.Sprintf("memory-s3 hot=%d warm=%d", store.HotObjectCount(), store.WarmObjectCount())
 }

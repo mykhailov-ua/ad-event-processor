@@ -36,9 +36,7 @@ func TestIsIntervalBot_insufficientSamples(t *testing.T) {
 }
 
 func TestIsIntervalBot_boundaryVariance(t *testing.T) {
-	// variance of [1.0, 1.1] = 0.0025 < 0.005 → flagged
 	assert.True(t, isIntervalBot([]float64{1.0, 1.1}, 2, 0.005))
 
-	// variance of [1.0, 1.2] = 0.01 >= 0.005 → not flagged
 	assert.False(t, isIntervalBot([]float64{1.0, 1.2}, 2, 0.005))
 }

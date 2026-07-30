@@ -2,14 +2,12 @@ package auth
 
 import "strings"
 
-// Role codes stored in tokens and the users table (aligned with management RBAC).
 const (
 	RoleAdmin   = "A"
 	RoleManager = "M"
 	RoleUser    = "U"
 )
 
-// NormalizeRole keeps RBAC checks stable across legacy provisioning strings and compact codes.
 func NormalizeRole(role string) string {
 	switch strings.ToUpper(strings.TrimSpace(role)) {
 	case "SUPERADMIN", "ADMIN", "SA", "A":
@@ -23,7 +21,6 @@ func NormalizeRole(role string) string {
 	}
 }
 
-// ValidateRegisterRole rejects unknown roles at provisioning time instead of at first login.
 func ValidateRegisterRole(role string) (string, error) {
 	normalized := NormalizeRole(role)
 	if normalized == "" {

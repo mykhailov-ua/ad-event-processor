@@ -115,7 +115,6 @@ func TestJumpHashSharder_NilUUID(t *testing.T) {
 	}
 }
 
-// Tracks jump hash shard lookup cost at 10 shards.
 func BenchmarkJumpHashSharder_10(b *testing.B) {
 	s := NewJumpHashSharder(10)
 	id := uuid.New()
@@ -126,7 +125,6 @@ func BenchmarkJumpHashSharder_10(b *testing.B) {
 	}
 }
 
-// Tracks jump hash shard lookup cost at 1024 shards.
 func BenchmarkJumpHashSharder_1024(b *testing.B) {
 	s := NewJumpHashSharder(1024)
 	id := uuid.New()
@@ -137,7 +135,6 @@ func BenchmarkJumpHashSharder_1024(b *testing.B) {
 	}
 }
 
-// BenchmarkCRC32Castagnoli isolates hardware CRC used by StaticSlotSharder routing.
 func BenchmarkCRC32Castagnoli(b *testing.B) {
 	id := uuid.New()
 	b.ReportAllocs()
@@ -147,7 +144,6 @@ func BenchmarkCRC32Castagnoli(b *testing.B) {
 	}
 }
 
-// BenchmarkCampaignSlotIndex measures slot index for migration / autoscale cohorts.
 func BenchmarkCampaignSlotIndex(b *testing.B) {
 	id := uuid.New()
 	b.ReportAllocs()
@@ -176,7 +172,6 @@ func TestStaticSlotSharder_GetShard(t *testing.T) {
 	}
 }
 
-// Tracks static slot shard lookup cost at 10 shards.
 func BenchmarkStaticSlotSharder_10(b *testing.B) {
 	s := NewStaticSlotSharder(10)
 	id := uuid.New()
@@ -187,7 +182,6 @@ func BenchmarkStaticSlotSharder_10(b *testing.B) {
 	}
 }
 
-// Tracks static slot shard lookup cost at 1024 shards.
 func BenchmarkStaticSlotSharder_1024(b *testing.B) {
 	s := NewStaticSlotSharder(1024)
 	id := uuid.New()
@@ -253,7 +247,6 @@ func requireEqualShard(t *testing.T, want, got int) {
 	}
 }
 
-// Documents production services share StaticSlotSharder, not JumpHash.
 func TestProductionServicesUseStaticSlot(t *testing.T) {
 	const numShards = 4
 	sharder := NewStaticSlotSharder(numShards)
@@ -264,7 +257,6 @@ func TestProductionServicesUseStaticSlot(t *testing.T) {
 	}
 }
 
-// Documents shard migration blast radius when shard count changes for ops runbooks.
 func TestSharderRebalanceImpact(t *testing.T) {
 	const N = 6
 	const samples = 10000
@@ -300,7 +292,6 @@ func TestSharderRebalanceImpact(t *testing.T) {
 	}
 }
 
-// TestSharderStaticVsJumpHashDivergence documents why tracker and management must share StaticSlotSharder, not JumpHash.
 func TestSharderStaticVsJumpHashDivergence(t *testing.T) {
 	const numShards = 4
 	static := NewStaticSlotSharder(numShards)
@@ -352,7 +343,6 @@ func TestStaticSlotSharder_StoreSlotMap_concurrent(t *testing.T) {
 	_ = before
 }
 
-// Documents ~67% shard index change when topology changes 6 -> 4 (4/12 slots keep slot%6 == slot%4).
 func TestStaticSlotSharder_MigrateSixToFour(t *testing.T) {
 	const samples = 10_000
 	old := NewStaticSlotSharder(6)

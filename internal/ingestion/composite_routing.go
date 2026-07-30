@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// FormatUUIDCanonical writes a lowercase canonical UUID string into dst (36 bytes).
 func FormatUUIDCanonical(dst *[36]byte, id uuid.UUID) {
 	b := dst[:]
 	b[0] = hexChars[id[0]>>4]
@@ -48,8 +47,6 @@ func FormatUUIDCanonical(dst *[36]byte, id uuid.UUID) {
 	b[35] = hexChars[id[15]&0xf]
 }
 
-// ComputeCompositeHashUUID hashes campaign_id (canonical UUID text) + user_id bytes
-// without allocating, matching nginx ngx.crc32_long(campaign_id .. user_id).
 func ComputeCompositeHashUUID(campaignID uuid.UUID, userID []byte) uint32 {
 	var crc uint32
 	var started bool
@@ -73,7 +70,6 @@ func ComputeCompositeHashUUID(campaignID uuid.UUID, userID []byte) uint32 {
 	return crc
 }
 
-// crc32IEEEInplace36 checksums a stack-allocated UUID text buffer without heap escape.
 func crc32IEEEInplace36(b *[36]byte) uint32 {
 	crc := ^uint32(0)
 	tab := crc32.IEEETable
@@ -83,12 +79,10 @@ func crc32IEEEInplace36(b *[36]byte) uint32 {
 	return ^crc
 }
 
-// ComputeCompositeHashFromTrackReq hashes routing key from a parsed JSON track request.
 func ComputeCompositeHashFromTrackReq(req *TrackRequest) uint32 {
 	return ComputeCompositeHashUUID(req.CampaignID, UnsafeBytes(req.UserID))
 }
 
-// ComputeCompositeHashFromProto hashes routing key from a decoded protobuf AdEvent.
 func ComputeCompositeHashFromProto(req *pb.AdEvent) uint32 {
 	var camp uuid.UUID
 	if len(req.CampaignId) == 16 {
@@ -101,7 +95,6 @@ func ComputeCompositeHashFromProto(req *pb.AdEvent) uint32 {
 	return ComputeCompositeHashUUID(camp, userID)
 }
 
-// resetAdEventInPlace clears slice fields before re-unmarshal while keeping Metadata allocated.
 func resetAdEventInPlace(evt *pb.AdEvent) {
 	evt.CampaignId = evt.CampaignId[:0]
 	evt.EventType = evt.EventType[:0]

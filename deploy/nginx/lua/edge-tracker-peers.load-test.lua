@@ -1,5 +1,3 @@
--- edge-tracker-peers.lua: constrained load-test profile (tracker-0/1 only).
--- Mounted over edge-tracker-peers.lua by docker-compose.load-test.yaml.
 
 local _M = {}
 

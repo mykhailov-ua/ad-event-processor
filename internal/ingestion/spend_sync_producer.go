@@ -12,7 +12,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// SpendSyncProducer buffers regional spend rollups and forwards full batches to region-proxy.
 type SpendSyncProducer struct {
 	client   *rpclient.Client
 	minBatch int
@@ -27,7 +26,6 @@ type pendingSpendSync struct {
 	rollup pendingRollup
 }
 
-// NewSpendSyncProducer wires a proxy uplink producer for a regional processor cell.
 func NewSpendSyncProducer(client *rpclient.Client, minBatch int) *SpendSyncProducer {
 	if minBatch <= 0 {
 		minBatch = 100
@@ -38,7 +36,6 @@ func NewSpendSyncProducer(client *rpclient.Client, minBatch int) *SpendSyncProdu
 	}
 }
 
-// PendingCount returns buffered txn count (tests and metrics).
 func (p *SpendSyncProducer) PendingCount() int {
 	if p == nil {
 		return 0
@@ -48,7 +45,6 @@ func (p *SpendSyncProducer) PendingCount() int {
 	return len(p.pending)
 }
 
-// EnqueueRollup stages one campaign rollup for proxy uplink when the batch threshold is met.
 func (p *SpendSyncProducer) EnqueueRollup(ctx context.Context, w *SyncWorker, id uuid.UUID, entry pendingRollup) error {
 	if p == nil || p.client == nil {
 		return fmt.Errorf("spend sync producer: unavailable")
@@ -68,7 +64,6 @@ func (p *SpendSyncProducer) EnqueueRollup(ctx context.Context, w *SyncWorker, id
 	return nil
 }
 
-// Flush encodes and produces a full spend sync batch when pending count reaches minBatch.
 func (p *SpendSyncProducer) Flush(ctx context.Context) error {
 	if p == nil || p.client == nil {
 		return nil

@@ -7,7 +7,6 @@ import (
 	"espx/internal/metrics"
 )
 
-// recordOutboxLagMetrics updates Prometheus gauges from the pending outbox queue depth and age.
 func (w *OutboxWorker) recordOutboxLagMetrics(ctx context.Context) {
 	if w.svc == nil || w.svc.GetPool() == nil {
 		return

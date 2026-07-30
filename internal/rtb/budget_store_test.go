@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Guards SetBudget stays visible while GetOrAllocateSlot grows the backing slice.
 func TestBudgetStore_setBudget_concurrentSlotGrowth(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)
@@ -58,7 +57,6 @@ func TestBudgetStore_setBudget_concurrentSlotGrowth(t *testing.T) {
 	assert.Equal(t, int64(500), store.GetBudget(target))
 }
 
-// Guards negative SetBudget values are clamped to zero.
 func TestBudgetStore_setBudget_clampsNegative(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)
@@ -81,7 +79,6 @@ func TestBudgetStore_setBudget_clampsNegative(t *testing.T) {
 	assert.False(t, spent)
 }
 
-// Guards GetBudget stays in bounds while LoadSnapshot races SetBudget.
 func TestBudgetStore_getBudget_noPanicUnderSnapshotRace(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)

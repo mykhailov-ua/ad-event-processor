@@ -7,9 +7,8 @@ import (
 	"espx/pkg/broker/log"
 )
 
-// TestChaos_Replication_GapDetection proves a skipped leader offset does not corrupt the follower log.
-func TestChaos_Replication_GapDetection(t *testing.T) {
-	dir, err := os.MkdirTemp("", "replication-gap-chaos-*")
+func TestFault_Replication_GapDetection(t *testing.T) {
+	dir, err := os.MkdirTemp("", "replication-gap-fault-*")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,5 +42,5 @@ func TestChaos_Replication_GapDetection(t *testing.T) {
 		t.Fatalf("expected nextOffset 3 after gap heal, got %d", pl.NextOffset())
 	}
 
-	t.Logf("chaos_proof fault=replication_gap expected=3 got_halt=true next_offset_preserved=%d healed=true", before)
+	t.Logf("fault_proof fault=replication_gap expected=3 got_halt=true next_offset_preserved=%d healed=true", before)
 }

@@ -6,12 +6,10 @@ import (
 	"espx/pkg/httpresponse"
 )
 
-// registerNotificationRoutes mounts operator notification retry endpoints.
 func registerNotificationRoutes(mux *http.ServeMux, h *Handler) {
 	mux.HandleFunc("POST /admin/notifications/{id}/retry", h.limit(h.perm(h.retryNotification, PermSettingsWrite)))
 }
 
-// retryNotification handles POST /admin/notifications/{id}/retry.
 func (h *Handler) retryNotification(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {

@@ -12,14 +12,12 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-// RtbBudgetReconcileConfig tunes Redis versus RTB budget sampling.
 type RtbBudgetReconcileConfig struct {
 	Interval            time.Duration
 	DivergenceThreshold int64
 	SampleSize          int
 }
 
-// RtbBudgetReconcileWorker samples Redis campaign budgets against the in-process RTB store.
 type RtbBudgetReconcileWorker struct {
 	cfg      RtbBudgetReconcileConfig
 	registry *Registry
@@ -30,7 +28,6 @@ type RtbBudgetReconcileWorker struct {
 	wg       sync.WaitGroup
 }
 
-// NewRtbBudgetReconcileWorker creates a cold-path budget divergence sampler.
 func NewRtbBudgetReconcileWorker(
 	cfg RtbBudgetReconcileConfig,
 	registry *Registry,
@@ -56,7 +53,6 @@ func NewRtbBudgetReconcileWorker(
 	}
 }
 
-// Start launches periodic budget reconcile sampling.
 func (w *RtbBudgetReconcileWorker) Start(ctx context.Context) {
 	if w == nil || w.registry == nil || w.catalog == nil || len(w.rdbs) == 0 || w.sharder == nil {
 		return
@@ -70,14 +66,12 @@ func (w *RtbBudgetReconcileWorker) Start(ctx context.Context) {
 	}()
 }
 
-// Close stops the reconcile worker.
 func (w *RtbBudgetReconcileWorker) Close() {
 	if w != nil && w.cancel != nil {
 		w.cancel()
 	}
 }
 
-// Wait blocks until the worker exits.
 func (w *RtbBudgetReconcileWorker) Wait(ctx context.Context) error {
 	if w == nil {
 		return nil
@@ -155,7 +149,6 @@ func (w *RtbBudgetReconcileWorker) sample(ctx context.Context) {
 	}
 }
 
-// ReconcileCampaignBudget compares Redis and RTB remaining budget for one campaign.
 func ReconcileCampaignBudget(
 	ctx context.Context,
 	store *rtb.BudgetStore,

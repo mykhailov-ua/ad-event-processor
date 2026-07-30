@@ -9,7 +9,6 @@ import (
 	"espx/pkg/broker/client"
 )
 
-// TestFetchHighWatermark reports the next assignable offset on every fetch response.
 func TestFetchHighWatermark(t *testing.T) {
 	dir, err := os.MkdirTemp("", "fetch-hwm-*")
 	if err != nil {
@@ -59,8 +58,7 @@ func TestFetchHighWatermark(t *testing.T) {
 	}
 }
 
-// TestChaos_MonotonicReads_HighWatermarkNeverRegresses ensures hwm does not move backward across fetches.
-func TestChaos_MonotonicReads_HighWatermarkNeverRegresses(t *testing.T) {
+func TestFault_MonotonicReads_HighWatermarkNeverRegresses(t *testing.T) {
 	dir, err := os.MkdirTemp("", "monotonic-hwm-*")
 	if err != nil {
 		t.Fatal(err)
@@ -100,5 +98,5 @@ func TestChaos_MonotonicReads_HighWatermarkNeverRegresses(t *testing.T) {
 		lastHWM = iter.HighWatermark
 	}
 
-	t.Logf("chaos_proof fault=monotonic_reads hwm_monotonic=true final_hwm=%d", lastHWM)
+	t.Logf("fault_proof fault=monotonic_reads hwm_monotonic=true final_hwm=%d", lastHWM)
 }

@@ -7,7 +7,6 @@ import (
 
 const pacingLookbackDays = 90
 
-// fetchPacingHourWeights loads platform hour-of-day impression weights from ClickHouse (M5.6).
 func (s *Service) fetchPacingHourWeights(ctx context.Context) [24]float64 {
 	if s.chQuery == nil {
 		return uniformHourWeights()
@@ -29,7 +28,6 @@ func uniformHourWeights() [24]float64 {
 	return weights
 }
 
-// smartPacingExpectedRatio returns the cumulative daypart-weighted delivery fraction at localNow.
 func smartPacingExpectedRatio(weights [24]float64, daypart []int16, localNow time.Time) float64 {
 	daypartSet := make(map[int16]struct{}, len(daypart))
 	for _, h := range daypart {

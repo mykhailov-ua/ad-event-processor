@@ -111,7 +111,6 @@ func TestFraudStreamWriter_concurrentEnqueue(t *testing.T) {
 	assert.Greater(t, rdb.xadds.Load(), int32(0))
 }
 
-// Tracks fraud stream enqueue cost on the rejection hot path.
 func BenchmarkFraudStreamWriter_Enqueue(b *testing.B) {
 	q := NewFraudStreamWriter(nil, "fraud-stream", 1000)
 	if q == nil {

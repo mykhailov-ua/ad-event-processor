@@ -133,7 +133,6 @@ func TestAdsPacketHandler_metricsFlushBeforeGather(t *testing.T) {
 	require.Equal(t, 1, n)
 }
 
-// Tracks monotonic latency ring record cost on request path.
 func BenchmarkLatencyRing_RecordMono(b *testing.B) {
 	ring := NewLatencyRing(defaultLatencyRingCap)
 	start := monotonicNano()
@@ -144,7 +143,6 @@ func BenchmarkLatencyRing_RecordMono(b *testing.B) {
 	}
 }
 
-// Tracks latency ring record plus flush cost for scrape alignment.
 func BenchmarkLatencyRing_RecordAndFlush(b *testing.B) {
 	ring := NewLatencyRing(defaultLatencyRingCap)
 	obs := &sumObserver{}

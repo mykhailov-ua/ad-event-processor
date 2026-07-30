@@ -8,8 +8,6 @@ import (
 	"time"
 )
 
-// shiftSystemClock adjusts the process-visible system clock by d and returns a restore func.
-// Requires CAP_SYS_TIME; callers should fall back to shiftCachedWallClock when this fails.
 func shiftSystemClock(d time.Duration) (restore func(), err error) {
 	var tv syscall.Timeval
 	if err := syscall.Gettimeofday(&tv); err != nil {

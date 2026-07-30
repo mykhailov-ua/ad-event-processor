@@ -2,8 +2,6 @@ package ingestion
 
 import "unsafe"
 
-// http1_fsm.go — table-driven HTTP/1.1 request-line + header FSM for gnet /track ingress (M5-B).
-
 const (
 	http1MaxMethodLen     = 16
 	http1MaxPathLen       = 2048
@@ -14,7 +12,6 @@ const (
 var (
 	httpFold [256]byte
 
-	// POST /track HTTP/1.1\r\n — nginx keepalive fast path (22 bytes).
 	trackReqLine = [22]byte{
 		'P', 'O', 'S', 'T', ' ', '/', 't', 'r', 'a', 'c', 'k', ' ',
 		'H', 'T', 'T', 'P', '/', '1', '.', '1', '\r', '\n',
@@ -37,7 +34,6 @@ const (
 	http1flCLSet
 )
 
-// parseHTTP1 extracts one HTTP/1.1 request from data without copying the body (0 allocs/op on common path).
 func parseHTTP1(data []byte, maxBody int64, scratch ...[]byte) (int, parsedHTTPRequest, error) {
 	var chunkScratch []byte
 	if len(scratch) > 0 {
@@ -50,11 +46,10 @@ func parseHTTP1(data []byte, maxBody int64, scratch ...[]byte) (int, parsedHTTPR
 	if n == 0 {
 		return 0, req, errIncompleteRequest
 	}
-	_ = data[n-1] // BCE window for all indexed reads below.
+	_ = data[n-1]
 
 	i := 0
 
-	// Fast path: exact POST /track HTTP/1.1\r\n (no query string).
 	if n >= 22 && *(*[22]byte)(unsafe.Pointer(&data[0])) == trackReqLine {
 		req.Method = data[:4]
 		req.Path = data[5:11]
@@ -222,7 +217,6 @@ func httpPathValid(b []byte) bool {
 	return len(b) > 0
 }
 
-// http1IngressValid restricts tracker ingress to POST /track and probe GET paths.
 func http1IngressValid(method, path []byte) bool {
 	if len(method) == 4 && method[0] == 'P' && method[1] == 'O' && method[2] == 'S' && method[3] == 'T' {
 		return httpPathHasPrefix(path, "/track") || httpPathHasPrefix(path, "/openrtb/bid")
@@ -314,7 +308,6 @@ func httpHeaderValValid(b []byte) bool {
 	return true
 }
 
-// parseContentLengthStrict parses Content-Length digits only (rejects empty, alpha, overflow).
 func parseContentLengthStrict(b []byte) (int, bool) {
 	if len(b) == 0 {
 		return 0, false
@@ -368,7 +361,6 @@ func foldKeyU64(key []byte, off int) uint64 {
 		uint64(foldKeyU32(key, off+4))<<32
 }
 
-// http1AssignHeader dispatches a folded header name to parsedHTTPRequest slots (0 allocs).
 func http1AssignHeader(req *parsedHTTPRequest, key, val []byte, hFlags *uint8, clValue *int) error {
 	kl := len(key)
 	if kl < 6 {
@@ -377,40 +369,40 @@ func http1AssignHeader(req *parsedHTTPRequest, key, val []byte, hFlags *uint8, c
 	_ = key[kl-1]
 
 	switch kl {
-	case 6: // accept
+	case 6:
 		if foldKeyU32(key, 0) == 0x65636361 && httpFold[key[4]] == 'p' && httpFold[key[5]] == 't' {
 			req.Accept = val
 		}
-	case 9: // x-real-ip | sec-ch-ua
+	case 9:
 		switch foldKeyU32(key, 0) {
-		case 0x65722d78: // x-re
+		case 0x65722d78:
 			if httpFold[key[4]] == 'a' && httpFold[key[5]] == 'l' && httpFold[key[6]] == '-' &&
 				httpFold[key[7]] == 'i' && httpFold[key[8]] == 'p' {
 				if len(req.ClientIP) == 0 {
 					req.ClientIP = val
 				}
 			}
-		case 0x2d636573: // sec-
+		case 0x2d636573:
 			if foldKeyU32(key, 4) == 0x752d6863 && httpFold[key[8]] == 'a' {
 				req.SecCHUA = val
 			}
 		}
-	case 10: // user-agent | x-tls-hash
+	case 10:
 		switch foldKeyU32(key, 0) {
-		case 0x72657375: // user
+		case 0x72657375:
 			if foldKeyU32(key, 4) == 0x6567612d && httpFold[key[8]] == 'n' && httpFold[key[9]] == 't' {
 				req.UserAgent = val
 			}
-		case 0x6c742d78: // x-tl
+		case 0x6c742d78:
 			if foldKeyU32(key, 4) == 0x61682d73 && httpFold[key[8]] == 's' && httpFold[key[9]] == 'h' {
 				req.TLSHash = val
 			}
 		}
-	case 12: // content-type
+	case 12:
 		if foldKeyU64(key, 0) == 0x2d746e65746e6f63 && foldKeyU32(key, 8) == 0x65707974 {
 			req.ContentType = val
 		}
-	case 14: // content-length
+	case 14:
 		if foldKeyU64(key, 0) == 0x2d746e65746e6f63 && foldKeyU32(key, 8) == 0x676e656c &&
 			httpFold[key[12]] == 't' && httpFold[key[13]] == 'h' {
 			cl, ok := parseContentLengthStrict(val)
@@ -425,20 +417,20 @@ func http1AssignHeader(req *parsedHTTPRequest, key, val []byte, hFlags *uint8, c
 			req.ContentLength = cl
 			req.HasContentLength = true
 		}
-	case 15: // x-forwarded-for | accept-language
+	case 15:
 		switch foldKeyU32(key, 0) {
-		case 0x6f662d78: // x-fo
+		case 0x6f662d78:
 			if foldKeyU64(key, 4) == 0x2d64656472617772 && httpFold[key[12]] == 'f' &&
 				httpFold[key[13]] == 'o' && httpFold[key[14]] == 'r' {
 				req.ClientIP = val
 			}
-		case 0x65636361: // acce
+		case 0x65636361:
 			if foldKeyU64(key, 4) == 0x75676e616c2d7470 && httpFold[key[12]] == 'a' &&
 				httpFold[key[13]] == 'g' && httpFold[key[14]] == 'e' {
 				req.AcceptLang = val
 			}
 		}
-	case 17: // transfer-encoding
+	case 17:
 		if foldKeyU64(key, 0) == 0x726566736e617274 && foldKeyU64(key, 8) == 0x6e69646f636e652d &&
 			httpFold[key[16]] == 'g' {
 			*hFlags |= http1flHasTE

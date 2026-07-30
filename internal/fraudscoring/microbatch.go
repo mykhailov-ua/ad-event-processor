@@ -26,14 +26,12 @@ type aggStats struct {
 	UniqueUAs   map[string]struct{}
 }
 
-// MicroBatcher aggregates events in 100 ms windows and writes score boosts to Redis.
 type MicroBatcher struct {
 	eventsChan chan *campaignmodel.Event
 	rdb        redis.UniversalClient
 	scorer     Scorer
 }
 
-// NewMicroBatcher creates a new MicroBatcher.
 func NewMicroBatcher(rdb redis.UniversalClient, scorer Scorer) *MicroBatcher {
 	return &MicroBatcher{
 		eventsChan: make(chan *campaignmodel.Event, 10000),
@@ -42,13 +40,11 @@ func NewMicroBatcher(rdb redis.UniversalClient, scorer Scorer) *MicroBatcher {
 	}
 }
 
-// Enqueue processes a single event, calculates stream lag, and enqueues the event if lag is acceptable.
 func (m *MicroBatcher) Enqueue(evt *campaignmodel.Event, msgID string) {
 	if evt == nil {
 		return
 	}
 
-	// Parse stream lag from message ID (format: <timestamp>-<sequence>)
 	parts := strings.Split(msgID, "-")
 	if len(parts) > 0 {
 		ms, err := strconv.ParseInt(parts[0], 10, 64)
@@ -60,25 +56,21 @@ func (m *MicroBatcher) Enqueue(evt *campaignmodel.Event, msgID string) {
 			}
 			metrics.ProcessorStreamLagSeconds.WithLabelValues("fraud").Set(lagSec)
 
-			// If stream lag exceeds 30 seconds, pause micro-batching to prevent OOM
 			if lagSec > 30 {
 				metrics.MicroBatchPaused.Set(1)
-				return // Drop event
+				return
 			}
 		}
 	}
 	metrics.MicroBatchPaused.Set(0)
 
-	// Enqueue to bounded channel; drop if full to prevent blocking the processor
 	select {
 	case m.eventsChan <- evt:
 		metrics.MicroBatchProcessedTotal.Inc()
 	default:
-		// Channel full, drop event to prevent memory bloat
 	}
 }
 
-// Start starts the background micro-batch aggregation loop.
 func (m *MicroBatcher) Start(ctx context.Context) {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
@@ -101,7 +93,6 @@ func (m *MicroBatcher) flush(ctx context.Context) {
 	batch := make(map[aggKey]*aggStats)
 	limit := 10000
 
-	// Drain the channel up to the limit
 	for i := 0; i < limit; i++ {
 		select {
 		case evt := <-m.eventsChan:
@@ -125,7 +116,6 @@ func (m *MicroBatcher) flush(ctx context.Context) {
 				stats.UniqueUAs[evt.UA] = struct{}{}
 			}
 		default:
-			// Channel is empty, break loop
 			i = limit
 		}
 	}
@@ -134,7 +124,6 @@ func (m *MicroBatcher) flush(ctx context.Context) {
 		return
 	}
 
-	// Convert aggregated statistics to FeatureRows
 	rows := make([]FeatureRow, 0, len(batch))
 	keys := make([]aggKey, 0, len(batch))
 	for key, stats := range batch {
@@ -152,14 +141,12 @@ func (m *MicroBatcher) flush(ctx context.Context) {
 		keys = append(keys, key)
 	}
 
-	// Run batch prediction
 	scores, err := m.scorer.ScoreBatch(ctx, rows)
 	if err != nil {
 		slog.Error("micro-batch scorer prediction failed", "error", err)
 		return
 	}
 
-	// Write score boosts to Redis with a short 30 s TTL
 	for i, score := range scores {
 		fraudScore := ProbabilityToFraudScore(score)
 		if fraudScore >= 30 {

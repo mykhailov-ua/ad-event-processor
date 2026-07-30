@@ -23,7 +23,6 @@ func benchWritePathEvent() *campaignmodel.Event {
 	}
 }
 
-// BenchmarkCHSpoolAppendDurably measures mmap WAL append + fsync on the cold write path.
 func BenchmarkCHSpoolAppendDurably(b *testing.B) {
 	dir := b.TempDir()
 	spool, err := OpenCHSpool(dir)
@@ -45,7 +44,6 @@ func BenchmarkCHSpoolAppendDurably(b *testing.B) {
 	}
 }
 
-// BenchmarkCHSpoolMarshalPayload isolates vtproto encode cost without fsync.
 func BenchmarkCHSpoolMarshalPayload(b *testing.B) {
 	evt := benchWritePathEvent()
 	events := []*campaignmodel.Event{evt}
@@ -60,7 +58,6 @@ func BenchmarkCHSpoolMarshalPayload(b *testing.B) {
 	}
 }
 
-// BenchmarkPostgresStoreBatch_Mock measures in-memory mock StoreBatch (processor store leg).
 func BenchmarkPostgresStoreBatch_Mock(b *testing.B) {
 	store := &MockEventStore{}
 	evt := benchWritePathEvent()
@@ -76,7 +73,6 @@ func BenchmarkPostgresStoreBatch_Mock(b *testing.B) {
 	}
 }
 
-// BenchmarkClickHouseStoreBatch_Spooled measures CH outage path: spool append without live CH.
 func BenchmarkClickHouseStoreBatch_Spooled(b *testing.B) {
 	dir := b.TempDir()
 	spool, err := OpenCHSpool(dir)
@@ -102,7 +98,6 @@ func BenchmarkClickHouseStoreBatch_Spooled(b *testing.B) {
 	}
 }
 
-// BenchmarkCHSpoolOpenFdDelta reports FD count before/after spool open (linux only).
 func BenchmarkCHSpoolOpenFdDelta(b *testing.B) {
 	if runtime.GOOS != "linux" {
 		b.Skip("requires /proc/self/fd")

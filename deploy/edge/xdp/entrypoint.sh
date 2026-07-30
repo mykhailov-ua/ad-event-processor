@@ -1,5 +1,4 @@
 #!/bin/sh
-# Starts edge-xdp then edge-bpf-sync after the blocklist BPF map is pinned.
 set -eu
 
 if [ -z "${INGRESS_INTERFACE:-}" ]; then

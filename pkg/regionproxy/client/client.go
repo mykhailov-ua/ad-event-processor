@@ -1,4 +1,3 @@
-// Package client sends spend sync batches to region-proxy ingress via the broker wire protocol.
 package client
 
 import (
@@ -10,14 +9,12 @@ import (
 	rserver "espx/pkg/regionproxy/server"
 )
 
-// Config tunes the region-proxy TCP client.
 type Config struct {
 	Addr     string
 	RedisURL string
 	Timeout  time.Duration
 }
 
-// Client appends spend sync payloads to the regional proxy WAL.
 type Client struct {
 	inner    *bclient.Client
 	topicID  uint16
@@ -25,7 +22,6 @@ type Client struct {
 	regErr   error
 }
 
-// New builds a region-proxy ingress client.
 func New(cfg Config) *Client {
 	timeout := cfg.Timeout
 	if timeout <= 0 {
@@ -38,7 +34,6 @@ func New(cfg Config) *Client {
 	return &Client{inner: inner}
 }
 
-// Close tears down the underlying TCP session.
 func (c *Client) Close() error {
 	if c == nil || c.inner == nil {
 		return nil
@@ -56,7 +51,6 @@ func (c *Client) ensureTopic() error {
 	return c.regErr
 }
 
-// ProduceSpendSyncPayload appends one spend sync JSON payload to the proxy WAL.
 func (c *Client) ProduceSpendSyncPayload(payload []byte) (bclient.ProduceBatchResult, error) {
 	if err := c.ensureTopic(); err != nil {
 		return bclient.ProduceBatchResult{}, fmt.Errorf("region-proxy produce: %w", err)

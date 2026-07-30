@@ -12,14 +12,12 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// RegionOutboxRelay applies global outbox events to the local regional Redis cell.
 type RegionOutboxRelay struct {
 	svc        *Service
 	regionCode uint8
 	outbox     *OutboxWorker
 }
 
-// NewRegionOutboxRelay binds regional delivery polling to the management service.
 func NewRegionOutboxRelay(svc *Service) *RegionOutboxRelay {
 	code := uint8(0)
 	if svc != nil && svc.cfg != nil {
@@ -32,7 +30,6 @@ func NewRegionOutboxRelay(svc *Service) *RegionOutboxRelay {
 	}
 }
 
-// Start polls pending regional deliveries until the context is cancelled.
 func (r *RegionOutboxRelay) Start(ctx context.Context, interval time.Duration) {
 	if r == nil || r.svc == nil || r.regionCode == 0 {
 		return
@@ -104,13 +101,11 @@ func (r *RegionOutboxRelay) reclaimStaleProcessing(ctx context.Context) {
 	}
 }
 
-// ProcessPending drains pending regional deliveries up to the default batch size.
 func (r *RegionOutboxRelay) ProcessPending(ctx context.Context) error {
 	_, err := r.ProcessPendingWithCount(ctx, 500)
 	return err
 }
 
-// ProcessPendingWithCount claims, applies, and marks a batch of regional deliveries.
 func (r *RegionOutboxRelay) ProcessPendingWithCount(ctx context.Context, limit int32) (int, error) {
 	if r == nil || r.svc == nil || r.regionCode == 0 {
 		return 0, nil

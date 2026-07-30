@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	udpMagic            uint32 = 0x45535058 // "ESPX"
+	udpMagic            uint32 = 0x45535058
 	udpProtocolVersion  uint8  = 1
 	udpProtocolVersion2 uint8  = 2
 	UDPHeaderSize              = 48
@@ -22,14 +22,12 @@ const (
 	UDPFlagSnapshot uint16 = 1 << 0
 )
 
-// UDPControlLimits carries per-shard ingress RPS limits in a fixed array (zero heap on hot decode).
 type UDPControlLimits struct {
 	NumShards uint8
 	Limits    [UDPMaxControlShards]uint64
-	MaxRPD    uint64 // per-region daily ingress cap (protocol v2 extension)
+	MaxRPD    uint64
 }
 
-// UDPHeader is the fixed 48-byte control datagram prefix (little-endian).
 type UDPHeader struct {
 	Magic          uint32
 	Version        uint8
@@ -43,17 +41,15 @@ type UDPHeader struct {
 	PayloadLen     uint16
 }
 
-// UDPConfigRequestPayload is tracker to management CONFIG_REQUEST body.
 type UDPConfigRequestPayload struct {
 	TrackerID uint32
 	LastEpoch int64
 	Hash      [16]byte
 }
 
-// UDPMigrationBarrierPayload is management to tracker MIGRATION_BARRIER body.
 type UDPMigrationBarrierPayload struct {
 	MigrationGen int64
-	Draining     [128]byte // 1024-bit slot bitmap
+	Draining     [128]byte
 }
 
 func udpShardPayloadLen(numShards uint8) int {
@@ -63,12 +59,10 @@ func udpShardPayloadLen(numShards uint8) int {
 	return int(numShards) * 8
 }
 
-// DecodeUDPHeader parses the fixed datagram header.
 func DecodeUDPHeader(src []byte, hdr *UDPHeader) bool {
 	return udpDecodeHeader(src, hdr)
 }
 
-// DecodeUDPConfigRequest parses CONFIG_REQUEST payload.
 func DecodeUDPConfigRequest(payload []byte, req *UDPConfigRequestPayload) bool {
 	return udpDecodeConfigRequest(payload, req)
 }
@@ -174,12 +168,10 @@ func udpDecodeConfigRequest(payload []byte, req *UDPConfigRequestPayload) bool {
 	return true
 }
 
-// ComputeUDPConfigHash derives a 128-bit FNV digest for epoch idempotency.
 func ComputeUDPConfigHash(epoch int64, slotVersion int32, limits *UDPControlLimits) [16]byte {
 	return ComputeUDPConfigHashWithWeights(epoch, slotVersion, limits, nil)
 }
 
-// ComputeUDPConfigHashWithWeights includes optional node weight lanes in the digest.
 func ComputeUDPConfigHashWithWeights(epoch int64, slotVersion int32, limits *UDPControlLimits, weights []UDPNodeWeight) [16]byte {
 	var out [16]byte
 	if limits == nil {

@@ -13,7 +13,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// Guards validation and not-found errors map to stable gRPC codes.
 func TestMapRPCError(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -75,12 +74,10 @@ func TestMapRPCError(t *testing.T) {
 	}
 }
 
-// Guards nil errors pass through unchanged.
 func TestMapRPCError_nil(t *testing.T) {
 	require.NoError(t, mapRPCError(nil))
 }
 
-// Guards provider enum mapping rejects unspecified values.
 func TestMapPBProviderToDB_unspecified(t *testing.T) {
 	_, err := MapPBProviderToDB(pb.Provider_PROVIDER_UNSPECIFIED)
 	require.ErrorIs(t, err, ErrUnsupportedProvider)

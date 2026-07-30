@@ -1,4 +1,3 @@
-# ClickHouse memory cap for docker-compose.load-test.yaml (1 GiB container budget).
 max_server_memory_usage: 1073741824
 
 listen_host:

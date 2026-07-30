@@ -31,7 +31,6 @@ func TestRtbBudgetAuthoritative(t *testing.T) {
 }
 
 func TestRtbTargetingIndexDefaultOn(t *testing.T) {
-	// env.go defaults RTB_TARGETING_INDEX=true; zero Config is false until loaded.
 	cfg := &Config{RtbTargetingIndex: true}
 	if !cfg.RtbTargetingIndexEnabled() {
 		t.Fatal("targeting index must default on after env load")

@@ -16,8 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestExplainAudit_PgFailoverQueries runs EXPLAIN (ANALYZE, BUFFERS) on SQL touched during
-// GAP-GEO-02 failover: idempotent ledger writes, time-bounded duplicate audit, paginated sync.
 func TestExplainAudit_PgFailoverQueries(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping pg failover EXPLAIN in short mode")
@@ -197,7 +195,6 @@ func collectExplainText(rows pgxRows) (string, error) {
 	return b.String(), rows.Err()
 }
 
-// pgxRows is the minimal row interface used by collectExplainText.
 type pgxRows interface {
 	Next() bool
 	Scan(dest ...any) error

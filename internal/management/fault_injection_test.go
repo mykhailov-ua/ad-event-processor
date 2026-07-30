@@ -1,6 +1,8 @@
 package management
 
 import (
+	"espx/pkg/faultproof"
+
 	"context"
 	"encoding/json"
 	"fmt"
@@ -21,8 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestChaos_DualOutboxWorkerRace guards concurrent outbox workers process each event exactly once.
-func TestChaos_DualOutboxWorkerRace(t *testing.T) {
+func TestFault_DualOutboxWorkerRace(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration test")
 	}
@@ -32,7 +33,7 @@ func TestChaos_DualOutboxWorkerRace(t *testing.T) {
 	rdb, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
-	cfg := &config.Config{CampaignUpdateChannel: "campaigns:update-chaos"}
+	cfg := &config.Config{CampaignUpdateChannel: "campaigns:update-fault"}
 	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
 	ctx := context.Background()
 
@@ -77,7 +78,7 @@ func TestChaos_DualOutboxWorkerRace(t *testing.T) {
 	assert.Equal(t, 1, processedCount)
 	assert.Equal(t, int32(1), totalProcessed.Load(), "exactly one worker batch should mark the event processed")
 
-	logChaosProof(t, "outbox_worker_race", map[string]string{
+	faultproof.Log(t, "outbox_worker_race", map[string]string{
 		"subsystem":   "management_outbox",
 		"workers":     "4",
 		"processed":   "1",
@@ -86,8 +87,7 @@ func TestChaos_DualOutboxWorkerRace(t *testing.T) {
 	})
 }
 
-// TestChaos_PGDeadlockRecovery guards cross-row lock ordering can deadlock without corrupting balances.
-func TestChaos_PGDeadlockRecovery(t *testing.T) {
+func TestFault_PGDeadlockRecovery(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration test")
 	}
@@ -139,7 +139,7 @@ func TestChaos_PGDeadlockRecovery(t *testing.T) {
 	assert.Equal(t, int64(100_000_000), bal1)
 	assert.Equal(t, int64(100_000_000), bal2)
 
-	logChaosProof(t, "postgres_deadlock_recovery", map[string]string{
+	faultproof.Log(t, "postgres_deadlock_recovery", map[string]string{
 		"subsystem":   "management_ledger",
 		"deadlock":    "true",
 		"balances_ok": "true",
@@ -147,8 +147,7 @@ func TestChaos_PGDeadlockRecovery(t *testing.T) {
 	})
 }
 
-// TestChaos_RedisSlowEventuallySucceeds guards slow Redis does not prevent outbox completion.
-func TestChaos_RedisSlowEventuallySucceeds(t *testing.T) {
+func TestFault_RedisSlowEventuallySucceeds(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration test")
 	}
@@ -178,7 +177,7 @@ func TestChaos_RedisSlowEventuallySucceeds(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "false", val)
 
-	logChaosProof(t, "redis_slow_degradation", map[string]string{
+	faultproof.Log(t, "redis_slow_degradation", map[string]string{
 		"subsystem":   "management_outbox",
 		"delay_ms":    "50",
 		"processed":   "1",
@@ -187,8 +186,7 @@ func TestChaos_RedisSlowEventuallySucceeds(t *testing.T) {
 	})
 }
 
-// TestChaos_ScheduleTickRace guards concurrent schedule ticks do not duplicate status history.
-func TestChaos_ScheduleTickRace(t *testing.T) {
+func TestFault_ScheduleTickRace(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration test")
 	}
@@ -238,7 +236,7 @@ func TestChaos_ScheduleTickRace(t *testing.T) {
 	).Scan(&historyCount))
 	assert.Equal(t, 1, historyCount, "concurrent ticks must not duplicate status transitions")
 
-	logChaosProof(t, "schedule_tick_race", map[string]string{
+	faultproof.Log(t, "schedule_tick_race", map[string]string{
 		"subsystem":    "management_schedule",
 		"workers":      "8",
 		"history_rows": "1",
@@ -247,8 +245,7 @@ func TestChaos_ScheduleTickRace(t *testing.T) {
 	})
 }
 
-// TestChaos_ConcurrentBalanceDepletion guards parallel campaign creation cannot overdraw customer balance.
-func TestChaos_ConcurrentBalanceDepletion(t *testing.T) {
+func TestFault_ConcurrentBalanceDepletion(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration test")
 	}
@@ -303,7 +300,7 @@ func TestChaos_ConcurrentBalanceDepletion(t *testing.T) {
 	require.NoError(t, pool.QueryRow(ctx, `SELECT balance FROM customers WHERE id = $1`, ingestion.ToUUID(customerID)).Scan(&balance))
 	assert.Equal(t, int64(0), balance)
 
-	logChaosProof(t, "concurrent_balance_depletion", map[string]string{
+	faultproof.Log(t, "concurrent_balance_depletion", map[string]string{
 		"subsystem":     "management_ledger",
 		"workers":       "10",
 		"success":       "5",
@@ -313,8 +310,7 @@ func TestChaos_ConcurrentBalanceDepletion(t *testing.T) {
 	})
 }
 
-// TestChaos_AutoscaleInsufficientTotalBudget guards autoscaling skips donors whose spend would exceed a reduced limit.
-func TestChaos_AutoscaleInsufficientTotalBudget(t *testing.T) {
+func TestFault_AutoscaleInsufficientTotalBudget(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration test")
 	}
@@ -374,7 +370,7 @@ func TestChaos_AutoscaleInsufficientTotalBudget(t *testing.T) {
 	require.NoError(t, pool.QueryRow(ctx, `SELECT COUNT(*) FROM outbox_events WHERE event_type = 'CREATE_CAMPAIGN'`).Scan(&outboxCount))
 	assert.Equal(t, 0, outboxCount)
 
-	logChaosProof(t, "autoscale_insufficient_budget", map[string]string{
+	faultproof.Log(t, "autoscale_insufficient_budget", map[string]string{
 		"subsystem":   "management_autoscale",
 		"limit_low":   "100000000",
 		"limit_high":  "100000000",
@@ -383,8 +379,7 @@ func TestChaos_AutoscaleInsufficientTotalBudget(t *testing.T) {
 	})
 }
 
-// TestChaos_DualOutboxWorkerManyEvents guards batch outbox processing under concurrent workers leaves no pending events.
-func TestChaos_DualOutboxWorkerManyEvents(t *testing.T) {
+func TestFault_DualOutboxWorkerManyEvents(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration test")
 	}
@@ -394,7 +389,7 @@ func TestChaos_DualOutboxWorkerManyEvents(t *testing.T) {
 	rdb, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
-	cfg := &config.Config{CampaignUpdateChannel: "campaigns:update-chaos-batch"}
+	cfg := &config.Config{CampaignUpdateChannel: "campaigns:update-fault-batch"}
 	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
 	ctx := context.Background()
 
@@ -445,12 +440,12 @@ func TestChaos_DualOutboxWorkerManyEvents(t *testing.T) {
 	).Scan(&processed))
 	assert.Equal(t, eventCount, processed)
 
-	logChaosProof(t, "outbox_worker_many_events", map[string]string{
+	faultproof.Log(t, "outbox_worker_many_events", map[string]string{
 		"subsystem":   "management_outbox",
-		"events":      itoaMgmtChaos(eventCount),
+		"events":      itoaMgmtFault(eventCount),
 		"workers":     "3",
 		"pending":     "0",
-		"processed":   itoaMgmtChaos(processed),
+		"processed":   itoaMgmtFault(processed),
 		"baseline_ok": "true",
 		"fault_type":  "concurrency_stress",
 	})

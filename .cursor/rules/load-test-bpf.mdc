@@ -6,7 +6,7 @@ globs:
   - deploy/nginx/lua/**
   - deploy/dev/bpf/**
   - cmd/bpf-collector/**
-  - scripts/load-test/**
+  - scripts/load/**
 alwaysApply: false
 ---
 
@@ -17,21 +17,19 @@ Hot-path perf gate (summary)
 Validate with both reports in `var/load-test/<UTC-ts>/`:
 
 1. Prometheus — `bottleneck-report.md`: handler p95/p99, `ad_worker_pool_reject_total` (0), fraud stream drops, Redis Lua p99 < 10 ms/shard.
-2. BPF — `bpf-report.md`: k6 on-CPU share, cgroup throttle %, tracker `epoll_wait`/`read`/`futex` p99, peak FDs.
+2. BPF — `bpf-report.md`: loadgen on-CPU share, cgroup throttle %, tracker `epoll_wait`/`read`/`futex` p99, peak FDs.
 
-Preflight: `prepare_constrained_stack.sh` → `make bpf-dev` → `sudo ESPX_BPF_PROBE=1 bash scripts/load-test/run_dirty_load.sh business`.
+Preflight: `prepare_constrained_stack.sh` → `make bpf-dev` → `sudo ESPX_BPF_PROBE=1 bash scripts/load/malformed.sh business`.
 
 After code change: `make test-alloc-gate`; re-run load+BPF when touching filter order, parse, worker pool, or Lua args.
 
 Load-test BPF probes and kernel analytics
 
-Dev-only observability for laptop and staging load tests. Complements Prometheus (`bottleneck-report.md`) with host-kernel signals: syscall latency, scheduler runqueue, cgroup throttle, FD/socket growth, and honest k6 generator overhead.
-
-Not production edge XDP (`.cursor/rules/edge.mdc`). The object `deploy/dev/bpf/loadtest_probe.o` is never loaded by `tracker`, `nginx`, or CI.
+Dev-only observability for laptop and staging load tests. Complements Prometheus (`bottleneck-report.md`) with host-kernel signals: syscall latency, scheduler runqueue, cgroup throttle, FD/socket growth, and loadgen overhead.
 
 Goals
 
-Is k6 saturating the laptop CPU?: BPF — k6 on-CPU %, ctx/s, RSS delta; Prometheus — k6 VUs, dropped iterations (k6 log)
+Is loadgen saturating the laptop CPU?: BPF — loadgen on-CPU %, ctx/s, RSS delta; `loadgen.log`
 Is tracker waiting on epoll/Redis?: BPF — `epoll_wait` / `read` / `write` p99 per role; Prometheus — `ad_http_request_duration_seconds`, Redis Lua histogram
 Are compose CPU limits biting?: BPF — cgroup `cpu.stat` throttle %; Prometheus — container CPU in Grafana
 Connection / thread leak under load?: BPF — peak FDs, `socket()` rate, thread fork/exit; Prometheus — `ad_gnet_*`, worker rejects
@@ -42,54 +40,41 @@ Use both reports from the same run directory: `var/load-test/<timestamp>/`.
 Architecture
 
 ```text
-run_dirty_load.sh / run_spike_load.sh
-  ├─ k6 → nginx → tracker (application path)
+scripts/load/malformed.sh | spike.sh
+  ├─ cmd/loadgen → nginx → tracker
   └─ bpf_probe_session.sh start
-        ├─ bpf_resolve_targets.sh  → bpf/targets.json (container PIDs)
-        ├─ bpf-collector (root/CAP_BPF)
-        │     ├─ loadtest_probe.o  tracepoints (syscalls, sched, TCP)
-        │     ├─ /proc sampler     FDs, threads, faults (2s)
-        │     └─ cgroup sampler    cpu.stat, memory.current (2s)
         └─ bpf_probe_session.sh stop
-              └─ analyze_bpf.sh → bpf-report.md
-                    └─ analyze_bottlenecks.sh links bpf-report.md when present
+              └─ go run ./cmd/load-report bpf|prom|all
 ```
 
-Components
-
-`deploy/dev/bpf/loadtest_probe.bpf.c`: CO-RE BPF program: syscall enter/exit, sched wake/switch, TCP retrans, slow-event ringbuf
-`deploy/dev/bpf/common/espx_probe.h`: Shared map layouts and histogram keys
-`cmd/bpf-collector/`: Go loader: attach probes, aggregate maps, write session artifacts
-`scripts/load-test/bpf_build.sh`: Build `.o` via host `clang` or Docker
-`scripts/load-test/bpf_requirements.sh`: Preflight: BTF, root/tracing, `go`, optional `bpftool`
-`scripts/load-test/bpf_resolve_targets.sh`: Map compose container names → host PIDs + roles
-`scripts/load-test/bpf_probe_session.sh`: Start/stop collector around k6
-`scripts/load-test/analyze_bpf.sh`: Render `bpf-report.md` from `bpf/maps/summary.json`
+`scripts/load/bpf_probe_session.sh`: Start/stop collector around loadgen
+`go run ./cmd/load-report bpf`: Render `bpf-report.md` from `bpf/maps/summary.json`
+`go run ./cmd/load-report prom`: Prometheus `bottleneck-report.md` (+ status histogram)
 
 Quick start
 
 ```bash
 # One-time build (also: make bpf-dev, dev_stack.sh bpf, or dev_stack.sh build)
-bash scripts/local-dev/bpf_setup.sh
+bash scripts/dev/bpf_setup.sh
 # equivalent:
-bash scripts/load-test/bpf_build.sh
+bash scripts/load/bpf_build.sh
 go build -o bin/bpf-collector ./cmd/bpf-collector
 
 # Constrained stack + business mix (prepares DB/registry, 2m, 50/20/30 traffic)
-sudo ESPX_BPF_PROBE=1 bash scripts/load-test/run_dirty_load.sh business
+sudo ESPX_BPF_PROBE=1 bash scripts/load/malformed.sh business
 
 # Smoke with lighter syscall sampling on laptops
-sudo ESPX_BPF_PROBE=1 ESPX_BPF_SAMPLE_RATE=10 bash scripts/load-test/run_dirty_load.sh smoke
+sudo ESPX_BPF_PROBE=1 ESPX_BPF_SAMPLE_RATE=10 bash scripts/load/malformed.sh smoke
 ```
 
-Standalone session (no k6 — staging traffic, curl, vegeta):
+Standalone session (no loadgen — staging traffic, curl):
 
 ```bash
 make bpf-dev
 sudo make bpf-session-start          # or: dev_stack.sh probe start
 # generate traffic...
 sudo make bpf-session-stop
-bash scripts/local-dev/bpf_session.sh report
+bash scripts/dev/bpf_session.sh report
 ```
 
 Defaults for standalone (`bpf_session.sh start`): `ESPX_BPF_NATIVE=1`, periodic dump/refresh every 30s, live metrics on `:9464`.
@@ -113,7 +98,7 @@ var/load-test/<UTC-timestamp>/
 
 Environment variables
 
-`ESPX_BPF_PROBE`, default `0`: Set `1` in `run_dirty_load.sh` / `run_spike_load.sh` to enable session
+`ESPX_BPF_PROBE`, default `0`: Set `1` in `run_malformed_traffic.sh` / `run_spike_load.sh` to enable session
 `ESPX_BPF_SAMPLE_RATE`, default `1`: Syscall sample rate (`10` = 1/10 events; use on laptops)
 `ESPX_BPF_SLOW_US`, default `10000`: Ringbuf slow-syscall threshold (µs)
 `ESPX_BPF_TARGETS`, default `tracker,nginx,redis,processor`: Roles resolved from compose
@@ -121,7 +106,7 @@ Environment variables
 `ESPX_BPF_EXTRA_TARGETS`: Manual targets `pid:role:name` (comma-separated)
 `ESPX_BPF_TRACK_K6`, default `1`: Discover k6 load-generator PIDs on host
 `ESPX_BPF_TRACK_LOADGEN`, default `1` in k6 runs / `0` in standalone: Watch load-generator comm names
-`ESPX_BPF_LOADGEN_COMM`, default `k6`: Comma-separated `/proc/comm` names for loadgen role (e.g. `k6,vegeta`)
+`ESPX_BPF_LOADGEN_COMM`, default `loadgen`: Comma-separated `/proc/comm` names for loadgen role
 `ESPX_BPF_DUMP_INTERVAL`, default `0` (`30` in standalone): Periodic `bpf/maps/summary.json` writes (seconds)
 `ESPX_BPF_REFRESH_TARGETS`, default `0` (`30` in standalone): Re-run `bpf_resolve_targets.sh` interval (seconds)
 `ESPX_BPF_METRICS_ADDR`, default empty (`:9464` in standalone): Live Prometheus exporter (`espx_bpf_connect_avg_us`, on-CPU %, runqueue p99, …)
@@ -182,7 +167,7 @@ Typical healthy constrained run (2k–4k RPS, registry warm):
 2. tracker throttle 0% — compose CPU limits not clipping (raise `cpus:` in `docker-compose.load-test.yaml` if >5%).
 3. Redis read/write p99 < 10 µs on loopback — Redis is not the bottleneck.
 4. tracker p99 (Prometheus) 10–50 ms with high k6 on-CPU — queueing at edge/k6, not hot-path bug.
-5. Compare with abort rule: handler p99 > 80 ms for 30 s (`scripts/load-test/run_dirty_load.sh`).
+5. Compare with abort rule: handler p99 > 80 ms for 30 s (`scripts/load/malformed.sh`).
 
 When BPF and Prometheus disagree, trust BPF for host scheduling and Prometheus for application SLOs.
 
@@ -194,16 +179,16 @@ BTF (`/sys/kernel/btf/vmlinux`): recommended; warn-only if missing
 `cilium/ebpf` (Go): vendored via `go.mod` in `bpf-collector`
 root / CAP_BPF: attach and memlock (`rlimit.RemoveMemlock`)
 
-Run `bash scripts/load-test/bpf_requirements.sh` before first session.
+Run `bash scripts/load/bpf_requirements.sh` before first session.
 
 Related scripts
 
-`scripts/local-dev/bpf_setup.sh`: Standard dev build: preflight + `.o` + `bpf-collector`
-`scripts/local-dev/bpf_session.sh`: Standalone start/stop/status/report (no k6)
-`scripts/local-dev/build_tracker_bpf_trace.sh`: Build `bin/tracker-bpf-trace` with uprobes markers
+`scripts/dev/bpf_setup.sh`: Standard dev build: preflight + `.o` + `bpf-collector`
+`scripts/dev/bpf_session.sh`: Standalone start/stop/status/report (no k6)
+`scripts/dev/build_tracker_bpf_trace.sh`: Build `bin/tracker-bpf-trace` with uprobes markers
 `make bpf-dev` / `make bpf-session-start` / `make bpf-session-stop` / `make load-test-bpf`: Makefile wrappers
 `prepare_constrained_stack.sh`: Migrations, registry full snapshot, CH truncate — run before `business` mode
-`run_dirty_load.sh`: Orchestrates k6 + optional BPF + `analyze_bottlenecks.sh`
+`run_malformed_traffic.sh`: Orchestrates k6 + optional BPF + `analyze_bottlenecks.sh`
 `run_spike_load.sh`: Spike profile; same `ESPX_BPF_PROBE=1` hook
 `sync_tracker_registry.sh`: Full `campaigns:update` snapshot if 404 `campaign_not_found`
 `reconcile_ingestion_migrations.sh`: Fix partial PG schema drift on load-test DB

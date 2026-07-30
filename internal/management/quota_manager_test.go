@@ -26,14 +26,14 @@ func TestQuotaManager_refillCampaign_modes(t *testing.T) {
 		{
 			name:           "live credits Redis and Postgres",
 			mode:           "live",
-			wantRedisQuota: quotaChaosChunkMicro,
-			wantPGReserved: quotaChaosChunkMicro,
+			wantRedisQuota: quotaFaultChunkMicro,
+			wantPGReserved: quotaFaultChunkMicro,
 		},
 		{
 			name:           "shadow reserves Postgres only",
 			mode:           "shadow",
 			wantRedisQuota: 0,
-			wantPGReserved: quotaChaosChunkMicro,
+			wantPGReserved: quotaFaultChunkMicro,
 		},
 	}
 
@@ -56,11 +56,11 @@ func TestQuotaManager_refillCampaign_modes(t *testing.T) {
 				INSERT INTO customers (id, name, balance, currency) VALUES ($1, 'quota-mode', 0, 'USD')`,
 				ingestion.ToUUID(customerID))
 			require.NoError(t, err)
-			seedQuotaChaosCampaign(t, pool, campaignID, customerID, 10_000_000)
+			seedQuotaFaultCampaign(t, pool, campaignID, customerID, 10_000_000)
 
 			cfg := &config.Config{
 				QuotaMode:               tc.mode,
-				QuotaChunkSize:          quotaChaosChunkMicro,
+				QuotaChunkSize:          quotaFaultChunkMicro,
 				QuotaRefillThresholdPct: 20,
 			}
 			svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)

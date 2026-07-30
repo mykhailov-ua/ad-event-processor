@@ -7,7 +7,6 @@ const (
 	schainAllowlistAS = 32
 )
 
-// SchainNode is one hop in an OpenRTB source.ext.schain.nodes[] array.
 type SchainNode struct {
 	ASI    [schainASIMax]byte
 	ASILen uint8
@@ -15,13 +14,11 @@ type SchainNode struct {
 	SIDLen uint8
 }
 
-// SchainNodes holds a stack-fixed schain hop list parsed on the hot path.
 type SchainNodes struct {
 	Count uint8
 	Nodes [schainNodeMax]SchainNode
 }
 
-// SupplyChainAllowlistSnapshot is an immutable asi|sid allowlist for hot schain validation.
 type SupplyChainAllowlistSnapshot struct {
 	Allowed map[string]struct{}
 }
@@ -37,7 +34,6 @@ func schainAllowKey(asi, sid []byte) string {
 	return string(buf)
 }
 
-// ValidateSchainNodes checks each hop against the allowlist snapshot (R18).
 func ValidateSchainNodes(nodes SchainNodes, allow *SupplyChainAllowlistSnapshot) bool {
 	if nodes.Count == 0 {
 		return true
@@ -58,7 +54,6 @@ func ValidateSchainNodes(nodes SchainNodes, allow *SupplyChainAllowlistSnapshot)
 	return true
 }
 
-// BuildSupplyChainAllowlistFromSellers materializes asi|sid keys from seller rows.
 func BuildSupplyChainAllowlistFromSellers(domains []string, sellerIDs []string) *SupplyChainAllowlistSnapshot {
 	if len(domains) == 0 || len(domains) != len(sellerIDs) {
 		return &SupplyChainAllowlistSnapshot{Allowed: make(map[string]struct{})}

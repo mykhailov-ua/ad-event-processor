@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// LocalQuantaDeps groups M8 components wired into UnifiedFilter.
 type LocalQuantaDeps struct {
 	Ledger    *LocalQuantaLedger
 	Strict    *LocalQuantaStrict
@@ -17,7 +16,6 @@ type LocalQuantaDeps struct {
 	Publisher *BudgetDeltaPublisher
 }
 
-// SetLocalQuantaDeps attaches local quanta components to the filter.
 func (f *UnifiedFilter) SetLocalQuantaDeps(deps LocalQuantaDeps) {
 	f.localQuantaLedger = deps.Ledger
 	f.localQuantaStrict = deps.Strict
@@ -25,7 +23,6 @@ func (f *UnifiedFilter) SetLocalQuantaDeps(deps LocalQuantaDeps) {
 	f.localQuantaPublisher = deps.Publisher
 }
 
-// SetLocalQuantaMode configures LOCAL_QUOTA_MODE off|shadow|live (M8-06).
 func (f *UnifiedFilter) SetLocalQuantaMode(mode string) {
 	f.localQuotaMode = mode
 	if f.localQuantaLedger != nil {
@@ -114,7 +111,6 @@ func (f *UnifiedFilter) publishLocalDelta(campaignID uuid.UUID, amountMicro int6
 	}
 }
 
-// RecordShadowLuaOutcome compares shadow local spend with Lua budget result (M8-06).
 func (f *UnifiedFilter) RecordShadowLuaOutcome(campaignID uuid.UUID, luaBudgetExhausted bool) {
 	if f.localQuotaMode != "shadow" || f.localQuantaLedger == nil {
 		return
@@ -125,7 +121,6 @@ func (f *UnifiedFilter) RecordShadowLuaOutcome(campaignID uuid.UUID, luaBudgetEx
 	}
 }
 
-// UpdateStrictFromRedis refreshes strict-mode hysteresis from redis_remaining.
 func (f *UnifiedFilter) UpdateStrictFromRedis(campaignID uuid.UUID, redisRemaining int64) {
 	if f.localQuantaStrict != nil {
 		f.localQuantaStrict.UpdateFromRedisRemaining(campaignID, redisRemaining)

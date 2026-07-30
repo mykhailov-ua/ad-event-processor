@@ -41,8 +41,8 @@ func TestFilterSegment_downsamplesImpressions(t *testing.T) {
 	stats, err := filterSegment(src.Bytes(), 1000, &dst)
 	require.NoError(t, err)
 	assert.Equal(t, int64(2001), stats.OriginalCount)
-	assert.InDelta(t, float64(2), float64(stats.KeptCount), 2) // ~2 impressions + 1 click
-	assert.GreaterOrEqual(t, stats.KeptCount, int64(1))        // click always kept
+	assert.InDelta(t, float64(2), float64(stats.KeptCount), 2)
+	assert.GreaterOrEqual(t, stats.KeptCount, int64(1))
 }
 
 func TestFilterSegment_emptySegment(t *testing.T) {

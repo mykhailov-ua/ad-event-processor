@@ -26,7 +26,6 @@ type budgetDeltaSlot struct {
 	campaignID  uuid.UUID
 }
 
-// BudgetDeltaPublisher enqueues local quanta spends for async broker produce (M8-04).
 type BudgetDeltaPublisher struct {
 	_           [64]byte
 	writeCursor uint64
@@ -46,7 +45,6 @@ type BudgetDeltaPublisher struct {
 	wg     sync.WaitGroup
 }
 
-// BudgetDeltaPublisherConfig wires broker produce for budget-deltas topic.
 type BudgetDeltaPublisherConfig struct {
 	BrokerAddr string
 	RedisURL   string
@@ -55,7 +53,6 @@ type BudgetDeltaPublisherConfig struct {
 	Timeout    time.Duration
 }
 
-// NewBudgetDeltaPublisher starts the async broker drainer.
 func NewBudgetDeltaPublisher(cfg BudgetDeltaPublisherConfig) *BudgetDeltaPublisher {
 	if cfg.BrokerAddr == "" || cfg.Topic == "" {
 		return nil
@@ -78,7 +75,6 @@ func NewBudgetDeltaPublisher(cfg BudgetDeltaPublisherConfig) *BudgetDeltaPublish
 	return p
 }
 
-// Publish enqueues one local spend delta (0 allocs when ring has capacity).
 func (p *BudgetDeltaPublisher) Publish(campaignID uuid.UUID, amountMicro int64) {
 	if p == nil || amountMicro <= 0 {
 		return
@@ -86,7 +82,6 @@ func (p *BudgetDeltaPublisher) Publish(campaignID uuid.UUID, amountMicro int64) 
 	p.enqueue(campaignID, amountMicro)
 }
 
-// PublishReturn enqueues a negative delta when unused local quanta are returned (M14-13).
 func (p *BudgetDeltaPublisher) PublishReturn(campaignID uuid.UUID, amountMicro int64) {
 	if p == nil || amountMicro <= 0 {
 		return
@@ -117,7 +112,6 @@ func (p *BudgetDeltaPublisher) enqueue(campaignID uuid.UUID, amountMicro int64) 
 	}
 }
 
-// Close stops the publisher and drains pending deltas.
 func (p *BudgetDeltaPublisher) Close() {
 	if p == nil {
 		return
@@ -184,14 +178,12 @@ var budgetDeltaPool = sync.Pool{
 	New: func() any { return &pb.BudgetDelta{} },
 }
 
-// BudgetDeltaAggregator tracks unflushed broker deltas for reconciliation (M8-04).
 type BudgetDeltaAggregator struct {
 	mu      sync.Mutex
 	pending map[uuid.UUID]int64
 	flushed map[uuid.UUID]int64
 }
 
-// NewBudgetDeltaAggregator returns an empty pending-delta accumulator.
 func NewBudgetDeltaAggregator() *BudgetDeltaAggregator {
 	return &BudgetDeltaAggregator{
 		pending: make(map[uuid.UUID]int64, 256),
@@ -199,7 +191,6 @@ func NewBudgetDeltaAggregator() *BudgetDeltaAggregator {
 	}
 }
 
-// Record adds a consumed delta to the pending ledger (negative amounts reduce pending on return).
 func (a *BudgetDeltaAggregator) Record(campaignID uuid.UUID, amountMicro int64) {
 	if a == nil || amountMicro == 0 {
 		return
@@ -212,7 +203,6 @@ func (a *BudgetDeltaAggregator) Record(campaignID uuid.UUID, amountMicro int64) 
 	a.mu.Unlock()
 }
 
-// PendingDeltaMicro implements management.BrokerPendingDeltaReader.
 func (a *BudgetDeltaAggregator) PendingDeltaMicro(_ context.Context, campaignID uuid.UUID) (int64, error) {
 	if a == nil {
 		return 0, nil
@@ -222,7 +212,6 @@ func (a *BudgetDeltaAggregator) PendingDeltaMicro(_ context.Context, campaignID 
 	return a.pending[campaignID], nil
 }
 
-// MarkFlushed moves pending deltas into the flushed tally after Redis/PG sync.
 func (a *BudgetDeltaAggregator) MarkFlushed(campaignID uuid.UUID, amountMicro int64) {
 	if a == nil || amountMicro <= 0 {
 		return
@@ -236,7 +225,6 @@ func (a *BudgetDeltaAggregator) MarkFlushed(campaignID uuid.UUID, amountMicro in
 	a.mu.Unlock()
 }
 
-// BudgetDeltaConsumer reads budget-deltas from broker and feeds the aggregator.
 type BudgetDeltaConsumer struct {
 	aggregator *BudgetDeltaAggregator
 	cfg        BrokerConsumerConfig
@@ -245,7 +233,6 @@ type BudgetDeltaConsumer struct {
 	wg         sync.WaitGroup
 }
 
-// NewBudgetDeltaConsumer starts a cold-path broker reader for budget deltas.
 func NewBudgetDeltaConsumer(agg *BudgetDeltaAggregator, cfg BrokerConsumerConfig) *BudgetDeltaConsumer {
 	if agg == nil || cfg.BrokerAddr == "" || cfg.Topic == "" {
 		return nil
@@ -264,7 +251,6 @@ func NewBudgetDeltaConsumer(agg *BudgetDeltaAggregator, cfg BrokerConsumerConfig
 	return c
 }
 
-// Start launches the fetch loop until Close.
 func (c *BudgetDeltaConsumer) Start(ctx context.Context) {
 	if c == nil {
 		return
@@ -281,7 +267,6 @@ func (c *BudgetDeltaConsumer) Start(ctx context.Context) {
 	}()
 }
 
-// Close stops the consumer.
 func (c *BudgetDeltaConsumer) Close() {
 	if c == nil {
 		return
@@ -338,7 +323,6 @@ func (c *BudgetDeltaConsumer) ingest(payload []byte) {
 	budgetDeltaPool.Put(msg)
 }
 
-// FetchRecoveryDeltas replays broker topic from offset for tracker restart (M8-09).
 func FetchRecoveryDeltas(ctx context.Context, cfg BrokerConsumerConfig, startOffset uint64) (map[uuid.UUID]int64, error) {
 	out := make(map[uuid.UUID]int64)
 	if cfg.BrokerAddr == "" || cfg.Topic == "" {

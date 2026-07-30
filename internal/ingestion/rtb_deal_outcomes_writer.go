@@ -30,7 +30,6 @@ type rtbOutcomeSlot struct {
 	dealID     [rtbOutcomeDealIDMax]byte
 }
 
-// rtbOutcomeRow is a cold-path snapshot drained from rtbOutcomeSlot (no atomics — safe to copy).
 type rtbOutcomeRow struct {
 	dealLen    uint8
 	outcome    uint8
@@ -40,7 +39,6 @@ type rtbOutcomeRow struct {
 	dealID     [rtbOutcomeDealIDMax]byte
 }
 
-// RtbDealOutcomeWriter batches PMP auction outcomes to ClickHouse on a lossy ring.
 type RtbDealOutcomeWriter struct {
 	_           [64]byte
 	writeCursor uint64
@@ -59,12 +57,10 @@ type RtbDealOutcomeWriter struct {
 
 var globalRtbOutcomeWriter atomic.Pointer[RtbDealOutcomeWriter]
 
-// SetRtbDealOutcomeWriter installs the process-wide outcome writer (tracker startup).
 func SetRtbDealOutcomeWriter(w *RtbDealOutcomeWriter) {
 	globalRtbOutcomeWriter.Store(w)
 }
 
-// NewRtbDealOutcomeWriter starts the background drainer when ClickHouse is configured.
 func NewRtbDealOutcomeWriter(conn driver.Conn) *RtbDealOutcomeWriter {
 	if conn == nil {
 		return nil
@@ -78,7 +74,6 @@ func NewRtbDealOutcomeWriter(conn driver.Conn) *RtbDealOutcomeWriter {
 	return w
 }
 
-// Close stops the background worker.
 func (w *RtbDealOutcomeWriter) Close() {
 	if w == nil {
 		return
@@ -87,7 +82,6 @@ func (w *RtbDealOutcomeWriter) Close() {
 	w.wg.Wait()
 }
 
-// Enqueue records one deal outcome; false means the ring overflowed and the row is dropped.
 func (w *RtbDealOutcomeWriter) Enqueue(dealID []byte, outcome uint8, floorMicro int64) bool {
 	if w == nil {
 		return true
@@ -104,7 +98,6 @@ func (w *RtbDealOutcomeWriter) Enqueue(dealID []byte, outcome uint8, floorMicro 
 		idx := alloc & rtbOutcomeRingMask
 		slot := &w.slots[idx]
 		for slot.ready.Load() != 0 {
-			// slot not drained yet — treat as lossy drop
 			return false
 		}
 		ln := len(dealID)

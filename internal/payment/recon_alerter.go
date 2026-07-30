@@ -13,17 +13,15 @@ import (
 	notifierpb "espx/internal/notifier/pb"
 )
 
-// FinancialReconAlerter notifies operators when financial recon surfaces WARN+ findings.
 type FinancialReconAlerter struct {
 	client             *NotifierClient
 	provider           notifierpb.Provider
 	recipient          string
 	broadcastProviders []notifierpb.Provider
 	cooldown           time.Duration
-	lastSent           sync.Map // alert key -> time.Time
+	lastSent           sync.Map
 }
 
-// NewFinancialReconAlerter constructs an alerter when OPS_ALERTS_ENABLED and a recipient are set.
 func NewFinancialReconAlerter(client *NotifierClient, cfg *config.Config) *FinancialReconAlerter {
 	if client == nil || cfg == nil || !cfg.OpsAlertsEnabled() {
 		return nil
@@ -59,7 +57,6 @@ func (a *FinancialReconAlerter) shouldSend(key string) bool {
 	return true
 }
 
-// AlertFindings enqueues a notifier message when any finding severity is WARN or higher.
 func (a *FinancialReconAlerter) AlertFindings(summary FinancialReconSummary, findings []FinancialReconFinding) {
 	if a == nil || len(findings) == 0 {
 		return
@@ -86,7 +83,7 @@ func (a *FinancialReconAlerter) AlertFindings(summary FinancialReconSummary, fin
 		return
 	}
 
-	title := "eSPX: payment financial recon findings"
+	title := "BidShard: payment financial recon findings"
 	body := formatFinancialReconAlertBody(summary, alertable)
 
 	a.sendAsync(key, title, body, hasCritical)

@@ -11,10 +11,8 @@ const (
 	weightSumEpsilon         = 1e-6
 )
 
-// ScoringWeightsByRole maps node role to metric weight overrides (Σ w_i = 1 per role).
 type ScoringWeightsByRole map[string]map[string]float64
 
-// ParseScoringWeightsJSON decodes and validates scoring weight overrides.
 func ParseScoringWeightsJSON(raw string) (ScoringWeightsByRole, error) {
 	raw = trimJSON(raw)
 	if raw == "" {
@@ -30,7 +28,6 @@ func ParseScoringWeightsJSON(raw string) (ScoringWeightsByRole, error) {
 	return parsed, nil
 }
 
-// ValidateScoringWeightsByRole ensures each role override sums to 1 and only uses known metrics.
 func ValidateScoringWeightsByRole(byRole ScoringWeightsByRole) error {
 	if len(byRole) == 0 {
 		return nil
@@ -76,7 +73,6 @@ func validateRoleMetricWeights(role string, weights map[string]float64) error {
 	return nil
 }
 
-// RenormalizeMetricWeights scales weights so they sum to 1.
 func RenormalizeMetricWeights(weights map[string]float64) map[string]float64 {
 	if len(weights) == 0 {
 		return weights
@@ -95,7 +91,6 @@ func RenormalizeMetricWeights(weights map[string]float64) map[string]float64 {
 	return out
 }
 
-// ApplyScoringWeights overlays validated metric weights onto default definitions.
 func ApplyScoringWeights(defs []ScoringMetricDef, weights map[string]float64) []ScoringMetricDef {
 	out := make([]ScoringMetricDef, len(defs))
 	copy(out, defs)
@@ -110,7 +105,6 @@ func ApplyScoringWeights(defs []ScoringMetricDef, weights map[string]float64) []
 	return out
 }
 
-// BuildScoringMetricDefsByRole materializes per-role metric defs from defaults plus overrides.
 func BuildScoringMetricDefsByRole(byRole ScoringWeightsByRole) map[string][]ScoringMetricDef {
 	roles := []string{RoleTracker, RoleRegionProxy, RoleProcessor}
 	out := make(map[string][]ScoringMetricDef, len(roles))

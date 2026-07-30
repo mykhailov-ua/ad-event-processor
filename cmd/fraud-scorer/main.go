@@ -1,4 +1,3 @@
-// Command fraud-scorer runs the standalone cold-path fraud scoring worker and registers trained models.
 package main
 
 import (

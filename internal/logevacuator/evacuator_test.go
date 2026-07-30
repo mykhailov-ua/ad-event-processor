@@ -18,7 +18,6 @@ func writeReadySegment(t *testing.T, logDir, name string, payload []byte) string
 	return readyPath
 }
 
-// Guards a ready segment is renamed, uploaded once, checkpointed, and removed locally.
 func TestEvacuator_uploadsReadySegment(t *testing.T) {
 	logDir := t.TempDir()
 	checkpointPath := filepath.Join(t.TempDir(), "checkpoint")
@@ -67,7 +66,6 @@ func TestEvacuator_uploadsReadySegment(t *testing.T) {
 	}
 }
 
-// Guards duplicate processing of the same digest is skipped via object head metadata.
 func TestEvacuator_idempotentHeadSkip(t *testing.T) {
 	logDir := t.TempDir()
 	checkpointPath := filepath.Join(t.TempDir(), "checkpoint")
@@ -99,7 +97,6 @@ func TestEvacuator_idempotentHeadSkip(t *testing.T) {
 	}
 }
 
-// Guards concurrent claims rename only one ready file copy and upload a single object.
 func TestEvacuator_concurrentClaimSingleUpload(t *testing.T) {
 	logDir := t.TempDir()
 	checkpointPath := filepath.Join(t.TempDir(), "checkpoint")

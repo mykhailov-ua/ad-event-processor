@@ -14,7 +14,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// ViewsHTTPHandlers serves saved report view CRUD (M6 ADM-W5).
 type ViewsHTTPHandlers struct {
 	Service           *Service
 	Pool              *pgxpool.Pool
@@ -22,7 +21,6 @@ type ViewsHTTPHandlers struct {
 	RequirePermission func(string, http.HandlerFunc) http.HandlerFunc
 }
 
-// Register mounts saved view routes on mux.
 func (h *ViewsHTTPHandlers) Register(mux *http.ServeMux) {
 	if h == nil {
 		return
@@ -85,7 +83,7 @@ func (h *ViewsHTTPHandlers) createView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ownerID := "system" // default placeholder owner
+	ownerID := "system"
 	view := h.Service.CreateView(req, ownerID)
 	httpresponse.JSON(w, http.StatusCreated, view)
 }

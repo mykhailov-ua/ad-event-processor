@@ -17,7 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestManagementAPI_Hardening guards auth on settings, successful writes, audit listing, and rate limiting.
 func TestManagementAPI_Hardening(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")

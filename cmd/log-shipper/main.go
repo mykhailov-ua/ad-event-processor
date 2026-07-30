@@ -1,4 +1,3 @@
-// Command log-shipper tails length-prefixed tracker log segments and produces them to the mmap broker.
 package main
 
 import (

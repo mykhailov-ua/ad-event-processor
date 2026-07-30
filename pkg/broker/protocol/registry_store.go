@@ -10,19 +10,16 @@ import (
 
 const registryFileVersion = 1
 
-// RegistrySnapshot is the on-disk and Redis-serializable topic ID table.
 type RegistrySnapshot struct {
 	Version uint32            `json:"version"`
 	Topics  map[string]uint16 `json:"topics"`
 	NextID  uint32            `json:"next_id"`
 }
 
-// FileRegistryStore persists topic IDs under the broker data directory.
 type FileRegistryStore struct {
 	path string
 }
 
-// NewFileRegistryStore targets {dataDir}/.topics/registry.json.
 func NewFileRegistryStore(dataDir string) (*FileRegistryStore, error) {
 	dir := filepath.Join(dataDir, ".topics")
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -31,7 +28,6 @@ func NewFileRegistryStore(dataDir string) (*FileRegistryStore, error) {
 	return &FileRegistryStore{path: filepath.Join(dir, "registry.json")}, nil
 }
 
-// Load reads the registry file; a missing file yields an empty snapshot.
 func (s *FileRegistryStore) Load() (RegistrySnapshot, error) {
 	data, err := os.ReadFile(s.path)
 	if err != nil {
@@ -53,7 +49,6 @@ func (s *FileRegistryStore) Load() (RegistrySnapshot, error) {
 	return snap, nil
 }
 
-// Save atomically writes the registry snapshot to disk.
 func (s *FileRegistryStore) Save(snap RegistrySnapshot) error {
 	if snap.Topics == nil {
 		snap.Topics = make(map[string]uint16)
@@ -72,7 +67,6 @@ func (s *FileRegistryStore) Save(snap RegistrySnapshot) error {
 	return os.Rename(tmp, s.path)
 }
 
-// Path returns the registry file location for tests and ops.
 func (s *FileRegistryStore) Path() string {
 	return s.path
 }
@@ -87,7 +81,6 @@ func validateTopicName(name string) error {
 	return nil
 }
 
-// ValidateTopicNameForStore checks topic names before cold-path persistence.
 func ValidateTopicNameForStore(name string) error {
 	return validateTopicName(name)
 }

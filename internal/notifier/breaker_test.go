@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-// Guards closed breaker allows traffic and resets failure count after a successful call.
 func TestCircuitBreaker_closedAllowsAndResetsFailures(t *testing.T) {
 	breaker := NewCircuitBreaker(2, 2, time.Second)
 
@@ -21,7 +20,6 @@ func TestCircuitBreaker_closedAllowsAndResetsFailures(t *testing.T) {
 	}
 }
 
-// Guards consecutive failures trip the breaker to open.
 func TestCircuitBreaker_tripsAfterFailThreshold(t *testing.T) {
 	breaker := NewCircuitBreaker(2, 2, time.Second)
 
@@ -36,7 +34,6 @@ func TestCircuitBreaker_tripsAfterFailThreshold(t *testing.T) {
 	}
 }
 
-// Guards open breaker transitions to half-open after the open timeout elapses.
 func TestCircuitBreaker_halfOpenAfterTimeout(t *testing.T) {
 	breaker := NewCircuitBreaker(1, 1, 10*time.Millisecond)
 
@@ -55,7 +52,6 @@ func TestCircuitBreaker_halfOpenAfterTimeout(t *testing.T) {
 	}
 }
 
-// Guards half-open breaker closes after enough consecutive successes.
 func TestCircuitBreaker_closesFromHalfOpen(t *testing.T) {
 	breaker := NewCircuitBreaker(1, 2, time.Second)
 
@@ -73,7 +69,6 @@ func TestCircuitBreaker_closesFromHalfOpen(t *testing.T) {
 	}
 }
 
-// Guards half-open probe failure reopens the breaker immediately.
 func TestCircuitBreaker_reopensOnHalfOpenFailure(t *testing.T) {
 	breaker := NewCircuitBreaker(1, 2, time.Second)
 

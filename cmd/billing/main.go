@@ -1,4 +1,3 @@
-// Command billing wires the gRPC BillingService for invoice generation and ledger reconciliation.
 package main
 
 import (

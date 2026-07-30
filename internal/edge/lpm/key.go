@@ -1,45 +1,35 @@
-// Package lpm provides IPv4 LPM trie keys for XDP edge maps.
 package lpm
 
 import "encoding/binary"
 
-// IPv4Key matches struct ipv4_lpm_key in deploy/edge-xdp/bpf/edge_filter.c.
-// Addr is stored in BPF wire layout (network-order bytes in little-endian u32).
 type IPv4Key struct {
 	PrefixLen uint32
 	Addr      uint32
 }
 
-// StoreID uniquely identifies a prefix in userspace diff snapshots.
 type StoreID uint64
 
-// StoreKey encodes prefix length and address for map/set keys without string allocation.
 func (k IPv4Key) StoreKey() StoreID {
 	return StoreID(uint64(k.PrefixLen)<<32 | uint64(k.Addr))
 }
 
-// HostKey builds a /32 key from octets (BPF wire layout).
 func HostKey(a, b, c, d byte) IPv4Key {
 	return IPv4Key{PrefixLen: 32, Addr: beToBPFAddr(addrBE(a, b, c, d))}
 }
 
-// BEAddr returns the human-readable big-endian IPv4 word for tests and logging.
 func (k IPv4Key) BEAddr() uint32 {
 	return bpfAddrToBE(k.Addr)
 }
 
-// AddrFrom4 builds a network-order IPv4 word from a 4-byte slice.
 func AddrFrom4(v4 [4]byte) uint32 {
 	return binary.BigEndian.Uint32(v4[:])
 }
 
-// ParseHost parses dotted-decimal IPv4 without heap allocation.
 func ParseHost(s string) (uint32, bool) {
 	addr, ok := parseIPv4(s)
 	return addr, ok
 }
 
-// ParsePrefix parses "a.b.c.d/n" or bare "a.b.c.d" (/32). No heap allocation.
 func ParsePrefix(s string) (IPv4Key, bool) {
 	for i := 0; i < len(s); i++ {
 		if s[i] != '/' {
@@ -126,7 +116,6 @@ func addrBE(a, b, c, d byte) uint32 {
 	return uint32(a)<<24 | uint32(b)<<16 | uint32(c)<<8 | uint32(d)
 }
 
-// beToBPFAddr maps a big-endian IPv4 word to the u32 stored in BPF LPM keys on this host.
 func beToBPFAddr(be uint32) uint32 {
 	var b [4]byte
 	b[0] = byte(be >> 24)
@@ -142,12 +131,10 @@ func bpfAddrToBE(bpfAddr uint32) uint32 {
 	return binary.BigEndian.Uint32(b[:])
 }
 
-// ToBPFAddr converts a big-endian IPv4 word to BPF LPM map layout.
 func ToBPFAddr(be uint32) uint32 {
 	return beToBPFAddr(be)
 }
 
-// MergeHosts inserts /32 hosts from Redis set members into dst without slice concatenation.
 func MergeHosts(dst map[uint32]struct{}, lists ...[]string) {
 	for _, list := range lists {
 		for _, member := range list {
@@ -158,7 +145,6 @@ func MergeHosts(dst map[uint32]struct{}, lists ...[]string) {
 	}
 }
 
-// MergePrefixes inserts CIDR or host members into dst.
 func MergePrefixes(dst map[StoreID]IPv4Key, members []string) {
 	for _, member := range members {
 		key, ok := ParsePrefix(member)

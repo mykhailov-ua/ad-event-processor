@@ -1,12 +1,9 @@
 package rtb
 
-// ClearingMode selects how the winner price is computed after ranking.
 type ClearingMode uint8
 
 const (
-	// ClearingSecondPrice charges the runner-up bid when competition requires it.
 	ClearingSecondPrice ClearingMode = iota
-	// ClearingFirstPrice charges the winner max bid capped by reserve and publisher floor.
 	ClearingFirstPrice
 )
 

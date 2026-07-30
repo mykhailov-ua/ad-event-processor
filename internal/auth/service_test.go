@@ -122,7 +122,6 @@ func (m *mockTokenMaker) VerifyToken(t string) (*Payload, error) {
 	return &Payload{UserID: uuid.New()}, m.verifyErr
 }
 
-// TestRegister covers registration validation and duplicate-user handling.
 func TestRegister(t *testing.T) {
 	repo := &mockRepo{}
 	hasher, err := NewPasswordHasher(65536, 3, 4)
@@ -176,7 +175,6 @@ func TestRegister(t *testing.T) {
 	})
 }
 
-// TestLogin covers credential validation, dummy-hash behavior, and session creation failures.
 func TestLogin(t *testing.T) {
 	repo := &mockRepo{}
 	tokenMaker := &mockTokenMaker{}
@@ -247,7 +245,6 @@ func TestLogin(t *testing.T) {
 	})
 }
 
-// TestVerifyToken covers successful access-token validation and invalid token handling.
 func TestVerifyToken(t *testing.T) {
 	repo := &mockRepo{}
 	tokenMaker := &mockTokenMaker{}
@@ -276,7 +273,6 @@ func TestVerifyToken(t *testing.T) {
 	})
 }
 
-// TestRefreshToken covers rotation, blocked sessions, expiry, and downstream failures.
 func TestRefreshToken(t *testing.T) {
 	repo := &mockRepo{}
 	tokenMaker := &mockTokenMaker{}
@@ -348,7 +344,6 @@ func TestRefreshToken(t *testing.T) {
 	})
 }
 
-// TestRevokeToken verifies refresh revocation succeeds against the mock store.
 func TestRevokeToken(t *testing.T) {
 	repo := &mockRepo{}
 	service := NewService(repo, nil, nil, nil, nil)
@@ -358,7 +353,6 @@ func TestRevokeToken(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestSessionCleanupWorker verifies expired session cleanup delegates to the service store.
 func TestSessionCleanupWorker(t *testing.T) {
 	repo := &mockRepo{}
 	service := NewService(repo, nil, nil, nil, nil)
@@ -368,7 +362,6 @@ func TestSessionCleanupWorker(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestLoginFlood ensures concurrent failed logins trigger Redis lockout and rate limiting under load.
 func TestLoginFlood(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")

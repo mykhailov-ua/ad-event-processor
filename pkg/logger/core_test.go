@@ -11,7 +11,6 @@ import (
 	"time"
 )
 
-// TestSendBufferEnqueueTimeout verifies load shedding when the persist queue is saturated.
 func TestSendBufferEnqueueTimeout(t *testing.T) {
 	l := &Logger{
 		cfg: Config{
@@ -36,7 +35,6 @@ func TestSendBufferEnqueueTimeout(t *testing.T) {
 	}
 }
 
-// TestLoggerZeroAlloc enforces zero-allocation on the hot WriteToShard path.
 func TestLoggerZeroAlloc(t *testing.T) {
 	cfg := Config{
 		LogDir:           t.TempDir(),
@@ -60,7 +58,6 @@ func TestLoggerZeroAlloc(t *testing.T) {
 	}
 }
 
-// TestLogShardMPSCConcurrent stress-tests the ring under parallel producers.
 func TestLogShardMPSCConcurrent(t *testing.T) {
 	const (
 		producers = 8
@@ -102,7 +99,6 @@ func TestLogShardMPSCConcurrent(t *testing.T) {
 	}
 }
 
-// TestLogShardMPSCUniqueLines ensures distinct lines survive MPSC load without slot reuse loss.
 func TestLogShardMPSCUniqueLines(t *testing.T) {
 	const producers = 16
 	s := NewLogShard()
@@ -153,7 +149,6 @@ func TestLogShardMPSCUniqueLines(t *testing.T) {
 	}
 }
 
-// TestLoggerRingBufferOverflow confirms full rings return false instead of blocking producers.
 func TestLoggerRingBufferOverflow(t *testing.T) {
 	s := NewLogShard()
 	data := []byte("overflow testing line")
@@ -169,7 +164,6 @@ func TestLoggerRingBufferOverflow(t *testing.T) {
 	}
 }
 
-// TestLoggerDiskDegradationEmergency verifies priority-0 logs are shed when disk is degraded.
 func TestLoggerDiskDegradationEmergency(t *testing.T) {
 	cfg := Config{
 		LogDir:           t.TempDir(),
@@ -197,7 +191,6 @@ func TestLoggerDiskDegradationEmergency(t *testing.T) {
 	}
 }
 
-// TestLoggerDiskDegradation_keepsCriticalPriority keeps priority-1 lines during degradation.
 func TestLoggerDiskDegradation_keepsCriticalPriority(t *testing.T) {
 	cfg := Config{
 		LogDir:           t.TempDir(),
@@ -229,7 +222,6 @@ func TestLoggerDiskDegradation_keepsCriticalPriority(t *testing.T) {
 	}
 }
 
-// TestLoggerRotation checks size-based roll produces evac-ready compressed segments.
 func TestLoggerRotation(t *testing.T) {
 	logDir := t.TempDir()
 	cfg := Config{
@@ -260,7 +252,6 @@ func TestLoggerRotation(t *testing.T) {
 	}
 }
 
-// TestLoggerEncryptionDecryption validates the on-disk segment format for evac tooling.
 func TestLoggerEncryptionDecryption(t *testing.T) {
 	t.Setenv("LOG_ENCRYPTION_KEY", "test-super-secret-passphrase")
 

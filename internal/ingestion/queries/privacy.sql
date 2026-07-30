@@ -1,4 +1,3 @@
--- Consent (M6.1–M6.2)
 
 -- name: InsertConsentEvent :exec
 INSERT INTO consent_events (user_id_hash, purposes, source)
@@ -25,7 +24,6 @@ DELETE FROM consent_events WHERE created_at < $1;
 -- name: AnonymizeConsentEventsByUserHash :exec
 DELETE FROM consent_events WHERE user_id_hash = $1;
 
--- Campaign consent requirements (M6.3)
 
 -- name: UpdateCampaignConsentPurposes :one
 UPDATE campaigns
@@ -34,7 +32,6 @@ SET require_consent_purposes = $2,
 WHERE id = $1
 RETURNING *;
 
--- Privacy erasure (M6.4)
 
 -- name: CreatePrivacyErasureRequest :one
 INSERT INTO privacy_erasure_requests (id, user_id_hash, subject_user_id, status)

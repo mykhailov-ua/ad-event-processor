@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# generate-dev-certs.sh: self-signed TLS cert for local edge :443 (M5-A). Not for production.
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 openssl req -x509 -nodes -days 825 -newkey rsa:2048 \

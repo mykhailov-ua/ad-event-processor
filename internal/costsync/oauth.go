@@ -11,7 +11,6 @@ import (
 	"time"
 )
 
-// MetaOAuthRefresher refreshes Facebook/Meta Marketing API tokens.
 type MetaOAuthRefresher struct {
 	AppID     string
 	AppSecret string
@@ -59,7 +58,6 @@ func (r *MetaOAuthRefresher) Refresh(ctx context.Context, cred Credential) (stri
 	return parsed.AccessToken, expires, nil
 }
 
-// GoogleOAuthRefresher refreshes Google Ads offline tokens.
 type GoogleOAuthRefresher struct {
 	ClientID     string
 	ClientSecret string

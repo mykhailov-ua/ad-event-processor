@@ -19,7 +19,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestManagementAPI_Campaigns guards campaign list, detail, history, isolation, and async cancel endpoints.
 func TestManagementAPI_Campaigns(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")

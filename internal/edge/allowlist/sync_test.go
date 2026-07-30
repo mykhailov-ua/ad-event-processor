@@ -79,11 +79,9 @@ func TestApplyDiff_cidrRemoval(t *testing.T) {
 }
 
 func TestIsProtected(t *testing.T) {
-	// Setup environment
 	os.Setenv("INSTALL_LAN_CIDR", "192.168.1.0/24")
 	defer os.Unsetenv("INSTALL_LAN_CIDR")
 
-	// Reset once for test
 	ResetProtectedForTest()
 
 	assert.True(t, IsProtected("8.8.8.8"))

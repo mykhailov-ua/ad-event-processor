@@ -12,7 +12,6 @@ import (
 	"time"
 )
 
-// TelegramProvider delivers HTML messages via the Telegram Bot API.
 type TelegramProvider struct {
 	botToken           string
 	defaultID          string
@@ -21,7 +20,6 @@ type TelegramProvider struct {
 	client             *http.Client
 }
 
-// NewTelegramProvider binds bot credentials and a fallback chat ID for empty recipients.
 func NewTelegramProvider(botToken, defaultID string, breaker *CircuitBreaker, requireCredentials bool) *TelegramProvider {
 	return &TelegramProvider{
 		botToken:           botToken,
@@ -38,7 +36,6 @@ func (t *TelegramProvider) Name() string {
 	return "TELEGRAM"
 }
 
-// Send delivers via sendMessage; missing credentials log a dry-run and return nil.
 func (t *TelegramProvider) Send(ctx context.Context, recipient, title, body string) error {
 	if !t.breaker.Allow() {
 		return ErrCircuitOpen
@@ -70,7 +67,6 @@ func (t *TelegramProvider) Send(ctx context.Context, recipient, title, body stri
 		"parse_mode": "HTML",
 	}
 
-	// Build interactive buttons
 	notificationID, _ := NotificationIDFromContext(ctx)
 	actions := BuildInteractiveActions(notificationID, title, body)
 	var inlineKeyboard [][]map[string]interface{}

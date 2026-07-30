@@ -20,17 +20,14 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// adminAPIKeyMetadata names the gRPC metadata key that gates operator-only provisioning RPCs.
 const adminAPIKeyMetadata = "x-admin-api-key"
 
-// Handler is the gRPC boundary so edge and management services share one auth implementation.
 type Handler struct {
 	pb.UnimplementedAuthServiceServer
 	service *Service
 	cfg     *config.Config
 }
 
-// NewHandler needs runtime config for trusted-proxy IP rules and token duration defaults.
 func NewHandler(service *Service, cfg *config.Config) *Handler {
 	return &Handler{
 		service: service,
@@ -38,8 +35,6 @@ func NewHandler(service *Service, cfg *config.Config) *Handler {
 	}
 }
 
-// extractClientIP resolves the caller IP for audit and lockout keys while ignoring spoofed headers from untrusted peers.
-// When X-Real-IP is absent, the rightmost X-Forwarded-For hop is used because nginx appends $remote_addr via $proxy_add_x_forwarded_for.
 func (h *Handler) extractClientIP(ctx context.Context) string {
 	peerIP := "unknown"
 	if p, ok := peer.FromContext(ctx); ok {
@@ -85,7 +80,6 @@ func (h *Handler) extractClientIP(ctx context.Context) string {
 	return peerIP
 }
 
-// extractUserAgent supplies client identity for audit trails when gRPC metadata includes it.
 func (h *Handler) extractUserAgent(ctx context.Context) string {
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
 		if ua := md.Get("user-agent"); len(ua) > 0 {
@@ -95,7 +89,6 @@ func (h *Handler) extractUserAgent(ctx context.Context) string {
 	return "grpc-client"
 }
 
-// requireAdminKey limits account provisioning to operators holding the shared admin secret.
 func (h *Handler) requireAdminKey(ctx context.Context) error {
 	if h.cfg == nil || h.cfg.AdminAPIKey == "" {
 		return status.Error(codes.PermissionDenied, "admin credentials not configured")
@@ -111,7 +104,6 @@ func (h *Handler) requireAdminKey(ctx context.Context) error {
 	return nil
 }
 
-// requireAuthUser binds bearer-gated RPCs to a verified principal before account state changes.
 func (h *Handler) requireAuthUser(ctx context.Context) (db.User, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
@@ -132,7 +124,6 @@ func (h *Handler) requireAuthUser(ctx context.Context) (db.User, error) {
 	return user, nil
 }
 
-// Register is admin-gated because self-registration is disabled in this deployment.
 func (h *Handler) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
 	if err := h.requireAdminKey(ctx); err != nil {
 		return nil, err
@@ -161,7 +152,6 @@ func (h *Handler) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.Re
 	}, nil
 }
 
-// Login establishes sessions for programmatic clients that authenticate over gRPC.
 func (h *Handler) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginResponse, error) {
 	duration := time.Duration(req.DurationHours) * time.Hour
 	if duration <= 0 {
@@ -181,7 +171,6 @@ func (h *Handler) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRes
 	return &resp, nil
 }
 
-// VerifyToken lets peer services validate tokens without holding signing keys locally.
 func (h *Handler) VerifyToken(ctx context.Context, req *pb.VerifyTokenRequest) (*pb.VerifyTokenResponse, error) {
 	user, err := h.service.VerifyToken(ctx, req.AccessToken)
 	if err != nil {
@@ -193,7 +182,6 @@ func (h *Handler) VerifyToken(ctx context.Context, req *pb.VerifyTokenRequest) (
 	}, nil
 }
 
-// RefreshToken renews short-lived access tokens without forcing credential re-entry.
 func (h *Handler) RefreshToken(ctx context.Context, req *pb.RefreshTokenRequest) (*pb.RefreshTokenResponse, error) {
 	duration := time.Duration(h.cfg.DefaultTokenDurationHrs) * time.Hour
 	accessToken, refreshToken, err := h.service.RefreshToken(ctx, req.RefreshToken, duration)
@@ -206,7 +194,6 @@ func (h *Handler) RefreshToken(ctx context.Context, req *pb.RefreshTokenRequest)
 	}, nil
 }
 
-// RevokeToken supports logout and compromise response by ending the refresh chain.
 func (h *Handler) RevokeToken(ctx context.Context, req *pb.RevokeTokenRequest) (*pb.RevokeTokenResponse, error) {
 	err := h.service.RevokeToken(ctx, req.RefreshToken)
 	if err != nil {
@@ -215,7 +202,6 @@ func (h *Handler) RevokeToken(ctx context.Context, req *pb.RevokeTokenRequest) (
 	return &pb.RevokeTokenResponse{}, nil
 }
 
-// CreateAPIKey serves machine clients that need long-lived credentials outside browser sessions.
 func (h *Handler) CreateAPIKey(ctx context.Context, req *pb.CreateAPIKeyRequest) (*pb.CreateAPIKeyResponse, error) {
 	user, err := h.requireAuthUser(ctx)
 	if err != nil {
@@ -245,7 +231,6 @@ func (h *Handler) CreateAPIKey(ctx context.Context, req *pb.CreateAPIKeyRequest)
 	return resp, nil
 }
 
-// VerifyAPIKey authenticates machine clients presenting long-lived API secrets.
 func (h *Handler) VerifyAPIKey(ctx context.Context, req *pb.VerifyAPIKeyRequest) (*pb.VerifyAPIKeyResponse, error) {
 	user, err := h.service.VerifyAPIKey(ctx, req.GetApiKey())
 	if err != nil {
@@ -254,7 +239,6 @@ func (h *Handler) VerifyAPIKey(ctx context.Context, req *pb.VerifyAPIKeyRequest)
 	return &pb.VerifyAPIKeyResponse{User: userToPB(user)}, nil
 }
 
-// ListAPIKeys lets owners audit active keys without receiving stored secrets again.
 func (h *Handler) ListAPIKeys(ctx context.Context, _ *pb.ListAPIKeysRequest) (*pb.ListAPIKeysResponse, error) {
 	user, err := h.requireAuthUser(ctx)
 	if err != nil {
@@ -269,7 +253,6 @@ func (h *Handler) ListAPIKeys(ctx context.Context, _ *pb.ListAPIKeysRequest) (*p
 	return &pb.ListAPIKeysResponse{Keys: coldpath.MapSlice(rows, apiKeyRowToPB)}, nil
 }
 
-// ChangePassword ties credential rotation to the authenticated principal, not email alone.
 func (h *Handler) ChangePassword(ctx context.Context, req *pb.ChangePasswordRequest) (*pb.ChangePasswordResponse, error) {
 	user, err := h.requireAuthUser(ctx)
 	if err != nil {
@@ -285,7 +268,6 @@ func (h *Handler) ChangePassword(ctx context.Context, req *pb.ChangePasswordRequ
 	return &pb.ChangePasswordResponse{}, nil
 }
 
-// RequestEmailVerification starts ownership proof for accounts blocked at login until verified.
 func (h *Handler) RequestEmailVerification(ctx context.Context, _ *pb.RequestEmailVerificationRequest) (*pb.RequestEmailVerificationResponse, error) {
 	user, err := h.requireAuthUser(ctx)
 	if err != nil {
@@ -299,7 +281,6 @@ func (h *Handler) RequestEmailVerification(ctx context.Context, _ *pb.RequestEma
 	return &pb.RequestEmailVerificationResponse{VerificationToken: token}, nil
 }
 
-// ConfirmEmailVerification consumes a one-time token so email ownership claims cannot be replayed.
 func (h *Handler) ConfirmEmailVerification(ctx context.Context, req *pb.ConfirmEmailVerificationRequest) (*pb.ConfirmEmailVerificationResponse, error) {
 	_, err := h.service.ConfirmEmailVerification(ctx, req.VerificationToken)
 	if err != nil {
@@ -308,7 +289,6 @@ func (h *Handler) ConfirmEmailVerification(ctx context.Context, req *pb.ConfirmE
 	return &pb.ConfirmEmailVerificationResponse{}, nil
 }
 
-// mapError keeps client-facing codes and metrics stable while hiding store internals.
 func mapError(err error) error {
 	if err == nil {
 		return nil

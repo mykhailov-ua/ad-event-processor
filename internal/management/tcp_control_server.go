@@ -13,7 +13,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// TCPControlServer serves signed routing snapshots and records tracker ACKs (M2).
 type TCPControlServer struct {
 	cfg       *config.Config
 	pool      *pgxpool.Pool
@@ -23,7 +22,6 @@ type TCPControlServer struct {
 	ln        net.Listener
 }
 
-// NewTCPControlServer builds the management TCP routing cutover server.
 func NewTCPControlServer(cfg *config.Config, pool *pgxpool.Pool, sharder ingestion.Sharder, numShards int) *TCPControlServer {
 	return &TCPControlServer{
 		cfg:       cfg,
@@ -34,7 +32,6 @@ func NewTCPControlServer(cfg *config.Config, pool *pgxpool.Pool, sharder ingesti
 	}
 }
 
-// Start listens until ctx is cancelled.
 func (s *TCPControlServer) Start(ctx context.Context) error {
 	if s == nil || s.cfg == nil || !s.cfg.TCPControlEnabled {
 		return nil
@@ -57,7 +54,6 @@ func (s *TCPControlServer) Start(ctx context.Context) error {
 	return nil
 }
 
-// Close shuts down the listener.
 func (s *TCPControlServer) Close() error {
 	if s != nil && s.ln != nil {
 		return s.ln.Close()
@@ -65,7 +61,6 @@ func (s *TCPControlServer) Close() error {
 	return nil
 }
 
-// PublishSnapshot pushes a signed snapshot to configured tracker TCP endpoints.
 func (s *TCPControlServer) PublishSnapshot(ctx context.Context, routingEpoch int64, slotVersion int32) {
 	if s == nil || !s.cfg.TCPControlEnabled {
 		return

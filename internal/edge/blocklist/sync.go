@@ -15,12 +15,10 @@ const (
 	redisKeyBlacklistAutoTTL = "blacklist:auto:ttl"
 )
 
-// denySetReader loads Redis SET members for XDP deny sync.
 type denySetReader interface {
 	SMembers(ctx context.Context, key string) *redis.StringSliceCmd
 }
 
-// autoBanReader supports TTL-scoped autoban entries.
 type autoBanReader interface {
 	denySetReader
 	ZScore(ctx context.Context, key, member string) *redis.FloatCmd
@@ -28,7 +26,6 @@ type autoBanReader interface {
 	ZRem(ctx context.Context, key string, members ...interface{}) *redis.IntCmd
 }
 
-// SyncFromRedis mirrors blacklist:manual, blacklist:auto, and blacklist:fraud into the pinned BPF map.
 func SyncFromRedis(ctx context.Context, rdb denySetReader, m *ebpf.Map, store *Store) (added, removed int, err error) {
 	manual, err := rdb.SMembers(ctx, redisKeyBlacklistManual).Result()
 	if err != nil {

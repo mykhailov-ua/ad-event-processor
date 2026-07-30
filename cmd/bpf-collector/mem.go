@@ -136,7 +136,6 @@ func readProcStatFlt(pid uint32) (minflt, majflt uint64, err error) {
 	if err != nil {
 		return 0, 0, err
 	}
-	// comm may contain spaces; skip to closing paren.
 	end := strings.LastIndexByte(string(data), ')')
 	if end < 0 {
 		return 0, 0, fmt.Errorf("bad stat")

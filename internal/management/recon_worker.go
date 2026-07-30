@@ -9,14 +9,12 @@ import (
 	"espx/internal/config"
 )
 
-// ReconWorker triggers periodic ledger-to-Redis reconciliation and quota reconciliation (Phase 1.5).
 type ReconWorker struct {
 	svc      *Service
 	interval time.Duration
 	quorum   *ShardQuorumTracker
 }
 
-// NewReconWorker constructs a recon worker that runs on the given interval against the management service.
 func NewReconWorker(svc *Service, interval time.Duration) *ReconWorker {
 	numShards := 1
 	if svc != nil {
@@ -29,7 +27,6 @@ func NewReconWorker(svc *Service, interval time.Duration) *ReconWorker {
 	}
 }
 
-// NewReconWorkerWithQuorum is for tests that need a shorter dead-shard confirmation window.
 func NewReconWorkerWithQuorum(svc *Service, interval, quorum time.Duration) *ReconWorker {
 	w := NewReconWorker(svc, interval)
 	if w.quorum != nil {
@@ -38,7 +35,6 @@ func NewReconWorkerWithQuorum(svc *Service, interval, quorum time.Duration) *Rec
 	return w
 }
 
-// Quorum exposes the shard health tracker for chaos tests.
 func (w *ReconWorker) Quorum() *ShardQuorumTracker {
 	if w == nil {
 		return nil
@@ -46,7 +42,6 @@ func (w *ReconWorker) Quorum() *ShardQuorumTracker {
 	return w.quorum
 }
 
-// Start runs reconciliation for lagged hourly windows and campaign quotas until the context is cancelled.
 func (w *ReconWorker) Start(ctx context.Context) {
 	ticker := time.NewTicker(w.interval)
 	defer ticker.Stop()
@@ -97,7 +92,6 @@ func (w *ReconWorker) Start(ctx context.Context) {
 	}
 }
 
-// ReconcileQuotas checks shard quorum, repairs drift, and monitors quota health (M3).
 func (w *ReconWorker) ReconcileQuotas(ctx context.Context) {
 	if w.svc == nil {
 		return

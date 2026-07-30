@@ -7,7 +7,6 @@ import (
 	"net/smtp"
 )
 
-// SMTPProvider delivers HTML email via plain SMTP with optional AUTH.
 type SMTPProvider struct {
 	host               string
 	port               string
@@ -18,7 +17,6 @@ type SMTPProvider struct {
 	requireCredentials bool
 }
 
-// NewSMTPProvider binds SMTP credentials; port defaults to 587 when empty.
 func NewSMTPProvider(host, port, username, password, sender string, breaker *CircuitBreaker, requireCredentials bool) *SMTPProvider {
 	if port == "" {
 		port = "587"
@@ -38,7 +36,6 @@ func (s *SMTPProvider) Name() string {
 	return "SMTP"
 }
 
-// Send delivers one message; cancel returns when ctx ends but SendMail may still run in the background.
 func (s *SMTPProvider) Send(ctx context.Context, recipient, title, body string) error {
 	if !s.breaker.Allow() {
 		return ErrCircuitOpen

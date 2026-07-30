@@ -11,7 +11,6 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// NewNotifierClient dials notifier when invoice delivery or drift alerts are enabled.
 func NewNotifierClient(cfg *config.Config) (notifierpb.NotifierServiceClient, func() error, error) {
 	if cfg == nil {
 		return nil, func() error { return nil }, nil
@@ -28,7 +27,6 @@ func NewNotifierClient(cfg *config.Config) (notifierpb.NotifierServiceClient, fu
 	return notifierpb.NewNotifierServiceClient(conn), conn.Close, nil
 }
 
-// ResolveInvoiceNotifierTarget picks provider and recipient for invoice delivery.
 func ResolveInvoiceNotifierTarget(cfg *config.Config) (notifierpb.Provider, string) {
 	if cfg == nil {
 		return notifierpb.Provider_PROVIDER_UNSPECIFIED, ""

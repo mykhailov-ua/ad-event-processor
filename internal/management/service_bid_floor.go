@@ -11,7 +11,6 @@ import (
 	db "espx/internal/ingestion/sqlc"
 )
 
-// DealWinLossRate holds ClickHouse win/loss counts for one PMP deal.
 type DealWinLossRate struct {
 	DealID  string
 	Wins    uint64
@@ -20,7 +19,6 @@ type DealWinLossRate struct {
 	SampleN uint64
 }
 
-// BidFloorRecommendationDTO is the optimizer output for one deal.
 type BidFloorRecommendationDTO struct {
 	DealID           string  `json:"deal_id"`
 	BaseFloorMicro   int64   `json:"base_floor_micro"`
@@ -29,7 +27,6 @@ type BidFloorRecommendationDTO struct {
 	SampleN          uint64  `json:"sample_n"`
 }
 
-// computeRecommendedFloor adjusts a deal floor based on observed win rate.
 func computeRecommendedFloor(base int64, rate float64, sampleN uint64, cfg *config.Config) int64 {
 	if base < 0 {
 		base = 0
@@ -99,7 +96,6 @@ GROUP BY deal_id`
 	return out, rows.Err()
 }
 
-// OptimizeBidFloors queries ClickHouse win/loss rates and writes recommendations to Redis.
 func (s *Service) OptimizeBidFloors(ctx context.Context) ([]BidFloorRecommendationDTO, error) {
 	if len(s.rdbs) == 0 {
 		return nil, fmt.Errorf("no redis client available")

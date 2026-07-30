@@ -11,7 +11,6 @@ import (
 	"time"
 )
 
-// BlacklistBlocker enqueues fraud blacklist entries via management HTTP or in-process service.
 type BlacklistBlocker interface {
 	BlockIP(ctx context.Context, ip string) error
 	EnqueueFraudThreat(ctx context.Context, action string, ip string, campaignID string, score float64, boost int32, ttlSeconds int64) error
@@ -19,14 +18,12 @@ type BlacklistBlocker interface {
 
 const blacklistSourceFraud = "fraud"
 
-// ManagementClient posts blacklist entries to the management admin API.
 type ManagementClient struct {
 	baseURL    string
 	apiKey     string
 	httpClient *http.Client
 }
 
-// NewManagementClient dials the management HTTP surface for blacklist writes.
 func NewManagementClient(baseURL, apiKey string, timeout time.Duration) *ManagementClient {
 	if timeout <= 0 {
 		timeout = 10 * time.Second
@@ -40,7 +37,6 @@ func NewManagementClient(baseURL, apiKey string, timeout time.Duration) *Managem
 	}
 }
 
-// BlockIP enqueues a fraud blacklist entry via POST /admin/blacklist.
 func (client *ManagementClient) BlockIP(ctx context.Context, ip string) error {
 	if client == nil {
 		return fmt.Errorf("management client: nil receiver")
@@ -81,7 +77,6 @@ func (client *ManagementClient) BlockIP(ctx context.Context, ip string) error {
 	return fmt.Errorf("%w: status=%d body=%s", ErrManagementUnavailable, resp.StatusCode, strings.TrimSpace(string(payload)))
 }
 
-// EnqueueFraudThreat is a no-op / not implemented for the legacy HTTP client.
 func (client *ManagementClient) EnqueueFraudThreat(ctx context.Context, action string, ip string, campaignID string, score float64, boost int32, ttlSeconds int64) error {
 	return fmt.Errorf("EnqueueFraudThreat not implemented on HTTP client; use gRPC client")
 }

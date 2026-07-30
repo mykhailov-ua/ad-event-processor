@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// SetDedupAdapter wires the D3 v2 claim/confirm adapter (M4-04).
 func (w *SyncWorker) SetDedupAdapter(adapter *dedup.Adapter) {
 	if w == nil {
 		return

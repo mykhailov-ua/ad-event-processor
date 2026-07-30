@@ -1,4 +1,3 @@
--- Cost snapshots for placement-level spend/revenue rollup (M16 feed for M17 margin guard).
 
 USE ad_event_processor;
 

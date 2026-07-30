@@ -1,5 +1,3 @@
--- edge-phase2.lua: PERIMETER.md phase-2 — read_body, DFA, fraud-tier edge_rl (bounded by EDGE_MAX_BODY_BYTES).
--- EDGE_BODY_MODE: full (default) | stream | peek — stream/peek for experiments only.
 
 local edge_rl = require "edge-rl"
 local edge_metrics = require "edge-metrics"
@@ -113,7 +111,6 @@ local function apply_campaign_rl(campaign_id, fraud_score)
     end
 end
 
--- read_bounded_body: read_body on edge (max EDGE_MAX_BODY via nginx + CL); full body for DFA when small.
 local function read_bounded_body(cl)
     check_edge_limits(cl)
     edge_metrics.record_body_read()
@@ -143,7 +140,6 @@ local function read_bounded_body(cl)
     return body, cl
 end
 
--- run_full: IDEAS phase-2 — read_body + DFA + edge_rl.
 function _M.run_full()
     local cl = require_content_length()
     local body, _ = read_bounded_body(cl)
@@ -159,7 +155,6 @@ function _M.run_full()
     edge_metrics.record_phase2_pass()
 end
 
--- run_stream: no read_body; campaign RL via X-Campaign-Id header when present.
 function _M.run_stream()
     local cl = require_content_length()
     check_edge_limits(cl)
@@ -173,7 +168,6 @@ function _M.run_stream()
     edge_metrics.record_phase2_pass()
 end
 
--- run_peek: cosocket window + DFA without read_body (experiment).
 function _M.run_peek()
     local cl = require_content_length()
     check_edge_limits(cl)

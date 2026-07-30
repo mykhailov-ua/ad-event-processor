@@ -1,4 +1,3 @@
-// Package iogate serializes mmap append and fsync on shared NVMe for region-proxy and global ingest.
 package iogate
 
 import (
@@ -13,7 +12,6 @@ import (
 	"golang.org/x/sys/cpu"
 )
 
-// Tier selects append priority when the disk gate is contended or degraded.
 type Tier int
 
 const (
@@ -21,7 +19,6 @@ const (
 	TierLow
 )
 
-// ErrShed is returned when TierLow is rejected while the gate is degraded.
 var ErrShed = errors.New("disk gate shed")
 
 const (
@@ -32,17 +29,14 @@ const (
 	envDiskLatencyBudgetMS     = "DISK_LATENCY_BUDGET_MS"
 )
 
-// Config tunes append concurrency, group-commit batching, and degraded thresholds.
 type Config struct {
 	AppendCapacity      int
 	DiskLatencyBudget   time.Duration
 	GroupCommitRecords  int64
 	GroupCommitInterval time.Duration
-	// DiskWritable reports whether the backing volume accepts writes; nil means writable.
-	DiskWritable func() bool
+	DiskWritable        func() bool
 }
 
-// DefaultConfig returns production defaults aligned with MULTI_REGION §4 and M1.
 func DefaultConfig() Config {
 	return Config{
 		AppendCapacity:      DefaultAppendCapacity,
@@ -64,7 +58,6 @@ func diskLatencyBudgetFromEnv() time.Duration {
 	return time.Duration(ms) * time.Millisecond
 }
 
-// DiskWriteGate limits concurrent mmap appends and serializes fsync with EMA-based degradation.
 type DiskWriteGate struct {
 	appendSem chan struct{}
 	fsyncSem  chan struct{}
@@ -82,7 +75,6 @@ type DiskWriteGate struct {
 	lastFlushAt   atomic.Int64
 }
 
-// NewDiskWriteGate builds a gate with the configured append and fsync semaphores.
 func NewDiskWriteGate(cfg Config) *DiskWriteGate {
 	if cfg.AppendCapacity <= 0 {
 		cfg.AppendCapacity = DefaultAppendCapacity
@@ -103,8 +95,6 @@ func NewDiskWriteGate(cfg Config) *DiskWriteGate {
 	}
 }
 
-// AcquireAppend blocks until an append slot is available or ctx is cancelled.
-// TierLow is shed immediately when degraded or disk is not writable.
 func (g *DiskWriteGate) AcquireAppend(ctx context.Context, tier Tier) error {
 	if g == nil {
 		return nil
@@ -133,7 +123,6 @@ func (g *DiskWriteGate) AcquireAppend(ctx context.Context, tier Tier) error {
 	}
 }
 
-// ReleaseAppend returns an append slot acquired by AcquireAppend.
 func (g *DiskWriteGate) ReleaseAppend(tier Tier) {
 	if g == nil {
 		return
@@ -143,7 +132,6 @@ func (g *DiskWriteGate) ReleaseAppend(tier Tier) {
 	_ = tier
 }
 
-// AcquireFsync blocks until the single fsync slot is available or ctx is cancelled.
 func (g *DiskWriteGate) AcquireFsync(ctx context.Context) error {
 	if g == nil {
 		return nil
@@ -158,7 +146,6 @@ func (g *DiskWriteGate) AcquireFsync(ctx context.Context) error {
 	}
 }
 
-// ReleaseFsync records fsync latency, updates the EMA degraded flag, and releases the fsync slot.
 func (g *DiskWriteGate) ReleaseFsync(latency time.Duration) {
 	if g == nil {
 		return
@@ -170,7 +157,6 @@ func (g *DiskWriteGate) ReleaseFsync(latency time.Duration) {
 	g.resetGroupCommitClock()
 }
 
-// NoteAppend increments the group-commit counter and reports whether fsync should run.
 func (g *DiskWriteGate) NoteAppend() bool {
 	if g == nil {
 		return false
@@ -224,7 +210,6 @@ func (g *DiskWriteGate) setDegraded(v uint32) {
 	setDegradedMetric(float64(v))
 }
 
-// Degraded reports whether TierLow appends are being shed.
 func (g *DiskWriteGate) Degraded() bool {
 	if g == nil {
 		return false
@@ -232,7 +217,6 @@ func (g *DiskWriteGate) Degraded() bool {
 	return g.degraded.Load() == 1
 }
 
-// SetDegraded forces degraded state (tests and disk monitor hooks).
 func (g *DiskWriteGate) SetDegraded(v bool) {
 	if g == nil {
 		return
@@ -244,7 +228,6 @@ func (g *DiskWriteGate) SetDegraded(v bool) {
 	g.setDegraded(n)
 }
 
-// EMALatency returns the current fsync latency EMA in nanoseconds.
 func (g *DiskWriteGate) EMALatency() time.Duration {
 	if g == nil {
 		return 0
@@ -252,7 +235,6 @@ func (g *DiskWriteGate) EMALatency() time.Duration {
 	return time.Duration(g.emaLatency.Load())
 }
 
-// InFlight returns holders that acquired but have not released an append slot.
 func (g *DiskWriteGate) InFlight() int {
 	if g == nil {
 		return 0
@@ -260,7 +242,6 @@ func (g *DiskWriteGate) InFlight() int {
 	return int(g.inFlight.Load())
 }
 
-// FsyncInFlight returns holders that acquired but have not released the fsync slot.
 func (g *DiskWriteGate) FsyncInFlight() int {
 	if g == nil {
 		return 0
@@ -268,7 +249,6 @@ func (g *DiskWriteGate) FsyncInFlight() int {
 	return int(g.fsyncInFlight.Load())
 }
 
-// AppendCapacity returns the configured append semaphore capacity.
 func (g *DiskWriteGate) AppendCapacity() int {
 	if g == nil {
 		return 0
@@ -276,7 +256,6 @@ func (g *DiskWriteGate) AppendCapacity() int {
 	return g.cfg.AppendCapacity
 }
 
-// PendingFsyncRecords returns records not yet covered by a group-commit fsync.
 func (g *DiskWriteGate) PendingFsyncRecords() int64 {
 	if g == nil {
 		return 0
@@ -284,7 +263,6 @@ func (g *DiskWriteGate) PendingFsyncRecords() int64 {
 	return g.pendingFsync.Load()
 }
 
-// FlushDueByInterval reports whether the group-commit interval elapsed with pending records.
 func (g *DiskWriteGate) FlushDueByInterval() bool {
 	if g == nil || g.pendingFsync.Load() == 0 {
 		return false

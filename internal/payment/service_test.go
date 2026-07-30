@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestProcessStripeWebhook_noDoubleSettlement proves a second success event does not enqueue another outbox row.
 func TestProcessStripeWebhook_noDoubleSettlement(t *testing.T) {
 	if testing.Short() {
 		t.Skip("requires testcontainers")
@@ -53,7 +52,6 @@ func TestProcessStripeWebhook_noDoubleSettlement(t *testing.T) {
 	assert.Equal(t, db.PaymentPaymentIntentStatusSUCCEEDED, updated.Status)
 }
 
-// TestProcessStripeWebhook_zeroAmountRejected ignores success webhooks with non-positive amounts.
 func TestProcessStripeWebhook_zeroAmountRejected(t *testing.T) {
 	if testing.Short() {
 		t.Skip("requires testcontainers")

@@ -16,14 +16,12 @@ import (
 
 const clickHouseStaleThreshold = 5 * time.Minute
 
-// CampaignMetricsDTO holds Postgres campaign_stats counters for a date range.
 type CampaignMetricsDTO struct {
 	Impressions int64 `json:"impressions"`
 	Clicks      int64 `json:"clicks"`
 	Conversions int64 `json:"conversions"`
 }
 
-// CampaignHourlyBucketDTO is one hourly aggregate from ClickHouse materialized views.
 type CampaignHourlyBucketDTO struct {
 	Hour        string `json:"hour"`
 	Impressions int64  `json:"impressions"`
@@ -31,7 +29,6 @@ type CampaignHourlyBucketDTO struct {
 	Conversions int64  `json:"conversions"`
 }
 
-// CampaignStatsDTO is the merged Postgres + ClickHouse stats payload for /api/v1/campaigns/{id}/stats.
 type CampaignStatsDTO struct {
 	CampaignID   string                    `json:"campaign_id"`
 	CurrentSpend string                    `json:"current_spend"`
@@ -44,19 +41,16 @@ type CampaignStatsDTO struct {
 	Consistency  string                    `json:"consistency"`
 }
 
-// SetClickHouse attaches a read-only analytics connection for reporting endpoints.
 func (s *Service) SetClickHouse(conn driver.Conn, cfg database.CHQueryConfig) {
 	if conn != nil {
 		s.chQuery = database.NewCHQuery(conn, cfg)
 	}
 }
 
-// SetClickHouseWrite attaches the write DSN for mutations (privacy erasure only).
 func (s *Service) SetClickHouseWrite(conn driver.Conn) {
 	s.chWrite = conn
 }
 
-// GetCampaignStats merges Postgres spend and counters with ClickHouse hourly MVs.
 func (s *Service) GetCampaignStats(ctx context.Context, campaignID uuid.UUID, from, to time.Time, granularity string) (CampaignStatsDTO, error) {
 	if granularity != "hour" {
 		return CampaignStatsDTO{}, fmt.Errorf("%w: %s", ErrUnsupportedGranularity, granularity)

@@ -20,7 +20,6 @@ const (
 	JobStatusFailed    = "FAILED"
 )
 
-// JobSpec is the POST body for async billing export (EXP-02).
 type JobSpec struct {
 	CustomerID string `json:"customer_id"`
 	From       string `json:"from"`
@@ -28,7 +27,6 @@ type JobSpec struct {
 	Format     string `json:"format"`
 }
 
-// JobStatusDTO is returned by GET /api/v1/billing/exports/{job_id} (EXP-03).
 type JobStatusDTO struct {
 	ID          string `json:"id"`
 	CustomerID  string `json:"customer_id"`
@@ -54,7 +52,6 @@ type jobRecord struct {
 	completedAt time.Time
 }
 
-// JobRunner runs async billing ledger exports to disk.
 type JobRunner struct {
 	ledgerReads *CompositeReadService
 	exportDir   string
@@ -62,7 +59,6 @@ type JobRunner struct {
 	jobs        map[string]*jobRecord
 }
 
-// NewJobRunner constructs the billing export job runner.
 func NewJobRunner(ledgerReads *CompositeReadService, exportDir string) *JobRunner {
 	if exportDir == "" {
 		exportDir = "./data/billing-export"
@@ -74,7 +70,6 @@ func NewJobRunner(ledgerReads *CompositeReadService, exportDir string) *JobRunne
 	}
 }
 
-// CreateJob enqueues a ledger export and returns the job id.
 func (s *JobRunner) CreateJob(ctx context.Context, spec JobSpec) (string, error) {
 	if s == nil || s.ledgerReads == nil {
 		return "", fmt.Errorf("export job runner not configured")
@@ -112,7 +107,6 @@ func (s *JobRunner) CreateJob(ctx context.Context, spec JobSpec) (string, error)
 	return jobID, nil
 }
 
-// GetJob returns export job status.
 func (s *JobRunner) GetJob(jobID string) (JobStatusDTO, bool) {
 	s.mu.RLock()
 	rec, ok := s.jobs[jobID]
@@ -123,7 +117,6 @@ func (s *JobRunner) GetJob(jobID string) (JobStatusDTO, bool) {
 	return s.toDTO(jobID, rec), true
 }
 
-// OpenDownload opens the completed export file for streaming download.
 func (s *JobRunner) OpenDownload(jobID string) (*os.File, JobStatusDTO, error) {
 	s.mu.RLock()
 	rec, ok := s.jobs[jobID]

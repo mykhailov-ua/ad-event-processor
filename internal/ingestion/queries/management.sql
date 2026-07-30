@@ -237,7 +237,6 @@ VALUES ($1, $2)
 RETURNING *;
 
 -- name: GetPendingOutboxEventsForUpdate :many
--- Priority lane 0: safety-critical propagation (blacklist, pause, cancel) before bulk pacing/sync.
 SELECT * FROM outbox_events
 WHERE status = 'PENDING'
 ORDER BY
@@ -360,9 +359,6 @@ SET fraud_threshold_pass = $2,
 WHERE id = $1
 RETURNING *;
 
--- Recon queries (financial integrity cold path)
--- These queries power the background reconciliation worker. They are intentionally
--- scoped to closed time windows to eliminate races with the hot SyncWorker path.
 
 -- name: SumLedgerSpendByCampaignWindow :many
 SELECT 
@@ -371,7 +367,7 @@ SELECT
 FROM balance_ledger
 WHERE created_at >= $1 
   AND created_at < $2
-  AND (type = 'FEE' OR type = 'RECONCILIATION_ADJUST' OR type = 'REFUND')  -- spend-like movements
+  AND (type = 'FEE' OR type = 'RECONCILIATION_ADJUST' OR type = 'REFUND')
 GROUP BY campaign_id;
 
 -- name: CreateReconRun :one

@@ -1,4 +1,3 @@
--- 00029_redis_slot_migration.sql: per-slot migration progress for Phase 2.3 orchestrator.
 
 -- +goose Up
 -- +goose StatementBegin

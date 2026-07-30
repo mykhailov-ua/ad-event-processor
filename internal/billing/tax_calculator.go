@@ -6,7 +6,6 @@ import (
 	"espx/internal/billing/db"
 )
 
-// TaxScheme identifies how tax is applied to an invoice subtotal.
 type TaxScheme string
 
 const (
@@ -15,7 +14,6 @@ const (
 	TaxSchemeSalesTax TaxScheme = "SALES_TAX"
 )
 
-// TaxProfile carries customer metadata used to resolve tax rates.
 type TaxProfile struct {
 	CountryCode string
 	TaxRegion   string
@@ -23,7 +21,6 @@ type TaxProfile struct {
 	RateBPS     int32
 }
 
-// TaxCalculator applies VAT or sales tax based on customer metadata.
 type TaxCalculator struct{}
 
 func NewTaxCalculator() *TaxCalculator {
@@ -39,7 +36,6 @@ func ProfileFromDB(row db.BillingCustomerTaxProfile) TaxProfile {
 	}
 }
 
-// DefaultProfile infers tax scheme from customer country when no profile row exists.
 func (calc *TaxCalculator) DefaultProfile(countryCode, currency string) TaxProfile {
 	code := strings.ToUpper(strings.TrimSpace(countryCode))
 	if code == "" {
@@ -60,7 +56,6 @@ func (calc *TaxCalculator) DefaultProfile(countryCode, currency string) TaxProfi
 	return profile
 }
 
-// Compute returns tax micro-units for a subtotal using basis-point rates.
 func (calc *TaxCalculator) Compute(subtotalMicro int64, profile TaxProfile) (taxMicro int64, rateBPS int32) {
 	if subtotalMicro <= 0 || profile.Scheme == TaxSchemeNone {
 		return 0, 0

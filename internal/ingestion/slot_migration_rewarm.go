@@ -9,8 +9,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// RewarmCampaignBudgetKeys seeds authoritative budget keys from Postgres on the target shard.
-// PG re-warm is the cutover source of truth for budget counters; COPY handles ephemeral keys.
 func RewarmCampaignBudgetKeys(
 	ctx context.Context,
 	pool *pgxpool.Pool,

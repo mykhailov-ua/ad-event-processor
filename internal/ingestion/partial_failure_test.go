@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Postgres health double for partial failure health checks.
 type mockPinger struct {
 	fail bool
 }
@@ -25,7 +24,6 @@ func (m *mockPinger) Ping(ctx context.Context) error {
 	return nil
 }
 
-// Redis client that simulates shard ping success or failure.
 type mockFailRedis struct {
 	redis.UniversalClient
 	fail bool

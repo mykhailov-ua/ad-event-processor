@@ -1,9 +1,3 @@
-# Local mmap broker HA lab: Redis coordination, two broker nodes, HAProxy TCP fanout.
-# Not part of default docker-compose.yaml; used with log-shipper and chaos/HA drills.
-#
-# Build: go build -o deploy/broker/bin/espx-broker ./cmd/broker
-# Up:    docker compose -f deploy/broker/docker-compose.yaml up -d
-# Sentinel overlay: -f deploy/broker/docker-compose.sentinel.yaml
 
 services:
   redis:

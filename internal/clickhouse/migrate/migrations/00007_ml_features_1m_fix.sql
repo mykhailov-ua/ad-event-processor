@@ -1,4 +1,3 @@
--- M-DB-CH-2: partition ml_features_1m, replace uniqExact MVs with uniqCombined.
 
 USE ad_event_processor;
 

@@ -1,6 +1,8 @@
 package fraudscoring
 
 import (
+	"espx/pkg/faultproof"
+
 	"context"
 	"fmt"
 	"testing"
@@ -32,7 +34,6 @@ func TestMicroBatch_AggregationAndScoring(t *testing.T) {
 
 	campaignID := uuid.New()
 
-	// Enqueue 10 events (with high click count to trigger high score boost)
 	now := time.Now()
 	for i := 0; i < 10; i++ {
 		evt := &campaignmodel.Event{
@@ -43,20 +44,16 @@ func TestMicroBatch_AggregationAndScoring(t *testing.T) {
 			UA:         "ua1",
 			CreatedAt:  now,
 		}
-		// Message ID format: <timestamp>-<sequence>
 		msgID := fmt.Sprintf("%d-0", now.UnixNano()/1e6)
 		mb.Enqueue(evt, msgID)
 	}
 
-	// Wait for the 100 ms micro-batch window to trigger flush
 	time.Sleep(250 * time.Millisecond)
 
-	// Verify that the score boost key was written to Redis
 	key := fmt.Sprintf("ml:score:boost:%s", campaignID.String())
 	val, err := rdb.Get(ctx, key).Result()
 	require.NoError(t, err)
 
-	// Since clicks are high, the score boost should be set
 	assert.NotEmpty(t, val)
 	ttl, err := rdb.TTL(ctx, key).Result()
 	require.NoError(t, err)
@@ -64,7 +61,7 @@ func TestMicroBatch_AggregationAndScoring(t *testing.T) {
 }
 
 func TestMicroBatch_StreamLagPause(t *testing.T) {
-	rdb := redis.NewClient(&redis.Options{Addr: "localhost:6379"}) // Mock client, won't be used
+	rdb := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
 	defer rdb.Close()
 
 	mb := NewMicroBatcher(rdb, nil)
@@ -77,23 +74,20 @@ func TestMicroBatch_StreamLagPause(t *testing.T) {
 		CreatedAt:  time.Now(),
 	}
 
-	// Enqueue with a message ID that has > 30 seconds lag (e.g. 40 seconds ago)
 	staleTime := time.Now().Add(-40 * time.Second)
 	msgID := fmt.Sprintf("%d-0", staleTime.UnixNano()/1e6)
 
 	mb.Enqueue(evt, msgID)
 
-	// The event should be dropped, so the channel should remain empty
 	assert.Len(t, mb.eventsChan, 0)
 }
 
 func TestMicroBatch_BoundedQueueDrop(t *testing.T) {
-	rdb := redis.NewClient(&redis.Options{Addr: "localhost:6379"}) // Mock client
+	rdb := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
 	defer rdb.Close()
 
 	mb := NewMicroBatcher(rdb, nil)
 
-	// Fill the channel to capacity (10000)
 	campaignID := uuid.New()
 	for i := 0; i < 10000; i++ {
 		evt := &campaignmodel.Event{
@@ -108,7 +102,6 @@ func TestMicroBatch_BoundedQueueDrop(t *testing.T) {
 
 	assert.Len(t, mb.eventsChan, 10000)
 
-	// Enqueuing one more event should drop it and not block
 	evt := &campaignmodel.Event{
 		IP:         "1.2.3.4",
 		CampaignID: campaignID,
@@ -125,14 +118,13 @@ func TestMicroBatch_BoundedQueueDrop(t *testing.T) {
 
 	select {
 	case <-done:
-		// Success: Enqueue did not block
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("Enqueue blocked on full channel")
 	}
 }
 
-func TestChaos_MLProcessorLag(t *testing.T) {
-	rdb := redis.NewClient(&redis.Options{Addr: "localhost:6379"}) // Mock client
+func TestFault_MLProcessorLag(t *testing.T) {
+	rdb := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
 	defer rdb.Close()
 
 	mb := NewMicroBatcher(rdb, nil)
@@ -145,20 +137,17 @@ func TestChaos_MLProcessorLag(t *testing.T) {
 		CreatedAt:  time.Now(),
 	}
 
-	// 1. Enqueue with no lag -> should succeed
 	msgIDNormal := fmt.Sprintf("%d-0", time.Now().UnixNano()/1e6)
 	mb.Enqueue(evt, msgIDNormal)
 	assert.Len(t, mb.eventsChan, 1)
 
-	// 2. Enqueue with high lag (> 30 s) -> should pause/drop
 	staleTime := time.Now().Add(-40 * time.Second)
 	msgIDStale := fmt.Sprintf("%d-0", staleTime.UnixNano()/1e6)
 	mb.Enqueue(evt, msgIDStale)
 
-	// The second event should be dropped, so channel length remains 1
 	assert.Len(t, mb.eventsChan, 1)
 
-	logChaosProof(t, "ml_processor_lag", map[string]string{
+	faultproof.Log(t, "ml_processor_lag", map[string]string{
 		"subsystem": "fraud_scoring",
 		"lag_sec":   "40.0",
 		"paused":    "true",

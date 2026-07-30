@@ -66,7 +66,6 @@ func (m *MockPostgresDB) MarkEventIdempotent(ctx context.Context, clickID string
 	return true, nil
 }
 
-// ClickHouse stub returning aggregated spend for recovery replay tests.
 type MockClickHouseDB struct {
 	mu     sync.RWMutex
 	events []*campaignmodel.Event

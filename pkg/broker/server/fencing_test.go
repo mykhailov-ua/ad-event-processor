@@ -13,8 +13,7 @@ import (
 	rediscontainer "github.com/testcontainers/testcontainers-go/modules/redis"
 )
 
-// TestChaos_StaleLeaderFencingRejected proves demoted leaders cannot append after a newer epoch is known.
-func TestChaos_StaleLeaderFencingRejected(t *testing.T) {
+func TestFault_StaleLeaderFencingRejected(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
@@ -34,7 +33,7 @@ func TestChaos_StaleLeaderFencingRejected(t *testing.T) {
 	}
 	redisURL := fmt.Sprintf("redis://%s/0", redisEndpoint)
 
-	dir, err := os.MkdirTemp("", "fencing-chaos-*")
+	dir, err := os.MkdirTemp("", "fencing-fault-*")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,6 +101,6 @@ func TestChaos_StaleLeaderFencingRejected(t *testing.T) {
 		t.Fatal("expected produce to fail after fencing floor advanced")
 	}
 
-	t.Logf("chaos_proof fault=stale_leader_fencing epoch=%d advanced_to=%d storage_rejected=true produce_rejected=true",
+	t.Logf("fault_proof fault=stale_leader_fencing epoch=%d advanced_to=%d storage_rejected=true produce_rejected=true",
 		epoch, epoch+1)
 }

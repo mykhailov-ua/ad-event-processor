@@ -1,7 +1,5 @@
 package adminapi
 
-// XFM metric keys for report aggregations (CONTROL_PLANE.md section 6).
-// Implementations map CH/PG columns to these names in SQL builders (M6 CHG waves).
 const (
 	MetricSpendMicro     = "spend_micro"
 	MetricRevenueMicro   = "revenue_micro"
@@ -18,7 +16,6 @@ const (
 	MetricPacingDriftPct = "pacing_drift_pct"
 )
 
-// MetricFormulas documents canonical XFM formulas for report SQL review.
 var MetricFormulas = map[string]string{
 	MetricSpendMicro:     "SUM(ledger debits) or CH cost",
 	MetricRevenueMicro:   "SUM(postback payout)",

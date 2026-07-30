@@ -6,7 +6,6 @@ import (
 	"testing"
 )
 
-// Guards checkpoint save and load round-trip across atomic file replacement.
 func TestCheckpointStore_saveLoadRoundTrip(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "checkpoint")
@@ -29,7 +28,6 @@ func TestCheckpointStore_saveLoadRoundTrip(t *testing.T) {
 	}
 }
 
-// Guards missing checkpoint file returns an empty record without error.
 func TestCheckpointStore_missingFile(t *testing.T) {
 	store := NewCheckpointStore(filepath.Join(t.TempDir(), "missing"))
 	loaded, err := store.Load()
@@ -41,7 +39,6 @@ func TestCheckpointStore_missingFile(t *testing.T) {
 	}
 }
 
-// Guards corrupt checkpoint files surface ErrCheckpointCorrupt.
 func TestCheckpointStore_corruptFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "checkpoint")

@@ -11,14 +11,12 @@ import (
 	"github.com/google/uuid"
 )
 
-// DashboardsHTTPHandlers serves persona dashboard JSON routes (M6 waves).
 type DashboardsHTTPHandlers struct {
 	ApplyRateLimit    func(http.HandlerFunc) http.HandlerFunc
 	RequirePermission func(string, http.HandlerFunc) http.HandlerFunc
 	XDPStatsReader    func(context.Context) (xdpstats.Snapshot, error)
 }
 
-// Register mounts dashboard routes on mux.
 func (h *DashboardsHTTPHandlers) Register(mux *http.ServeMux) {
 	if h == nil {
 		return

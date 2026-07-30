@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// ClickHouse batch stub recording appended rows for store tests.
 type mockBatch struct {
 	driver.Batch
 	appendFn func(args ...any) error
@@ -35,7 +34,6 @@ func (m *mockBatch) Send() error {
 	return nil
 }
 
-// ClickHouse connection stub simulating batch send outcomes.
 type mockConn struct {
 	driver.Conn
 	prepareBatchFn func(ctx context.Context, query string) (driver.Batch, error)

@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestClassifyFilterErr_HandlerMatrix covers all filterRejectKind values via gnet handler (M6-06).
 func TestClassifyFilterErr_HandlerMatrix(t *testing.T) {
 	cfg := &config.Config{
 		MaxRequestBodySize: 1024 * 1024,

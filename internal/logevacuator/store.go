@@ -21,7 +21,6 @@ const (
 	defaultPartSize   = 8 * 1024 * 1024
 )
 
-// ObjectHead describes an existing object used for exactly-once idempotency checks.
 type ObjectHead struct {
 	Exists bool
 	SHA256 string
@@ -29,13 +28,11 @@ type ObjectHead struct {
 	Size   int64
 }
 
-// ObjectStore uploads rotated log segments and supports digest-based idempotency.
 type ObjectStore interface {
 	HeadObject(ctx context.Context, key string) (ObjectHead, error)
 	PutObject(ctx context.Context, key string, filePath string, digests fileDigests) error
 }
 
-// S3Store uploads segments to S3 with single-part or multipart uploads and ETag verification.
 type S3Store struct {
 	client             *s3.Client
 	bucket             string
@@ -43,7 +40,6 @@ type S3Store struct {
 	multipartThreshold int64
 }
 
-// S3Config configures the AWS S3 object store backend.
 type S3Config struct {
 	Region             string
 	Bucket             string
@@ -53,7 +49,6 @@ type S3Config struct {
 	MultipartThreshold int64
 }
 
-// NewS3Store builds an S3-backed ObjectStore from AWS SDK configuration.
 func NewS3Store(ctx context.Context, cfg S3Config) (*S3Store, error) {
 	if cfg.Region == "" {
 		return nil, ErrRegionRequired
@@ -87,7 +82,6 @@ func NewS3Store(ctx context.Context, cfg S3Config) (*S3Store, error) {
 	}, nil
 }
 
-// HeadObject returns stored digest metadata for idempotent retries.
 func (store *S3Store) HeadObject(ctx context.Context, key string) (ObjectHead, error) {
 	output, err := store.client.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: aws.String(store.bucket),
@@ -114,7 +108,6 @@ func (store *S3Store) HeadObject(ctx context.Context, key string) (ObjectHead, e
 	return head, nil
 }
 
-// PutObject uploads the file using single-part or multipart upload and verifies the returned ETag.
 func (store *S3Store) PutObject(ctx context.Context, key string, filePath string, digests fileDigests) error {
 	if digests.Size < store.multipartThreshold {
 		return store.putSinglePart(ctx, key, filePath, digests)
@@ -253,7 +246,6 @@ func isS3NotFound(err error) bool {
 	return strings.Contains(err.Error(), "NotFound") || strings.Contains(err.Error(), "404")
 }
 
-// MemoryStore is an in-process object store used by chaos tests to verify digest idempotency without AWS.
 type MemoryStore struct {
 	objects map[string]memoryObject
 }
@@ -265,12 +257,10 @@ type memoryObject struct {
 	Data   []byte
 }
 
-// NewMemoryStore returns an empty in-memory object store.
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{objects: make(map[string]memoryObject)}
 }
 
-// HeadObject reports whether the object exists and returns stored digest metadata.
 func (store *MemoryStore) HeadObject(_ context.Context, key string) (ObjectHead, error) {
 	object, ok := store.objects[key]
 	if !ok {
@@ -284,7 +274,6 @@ func (store *MemoryStore) HeadObject(_ context.Context, key string) (ObjectHead,
 	}, nil
 }
 
-// PutObject stores the file bytes and records digest metadata mirroring S3 ETag semantics.
 func (store *MemoryStore) PutObject(_ context.Context, key string, filePath string, digests fileDigests) error {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
@@ -306,12 +295,10 @@ func (store *MemoryStore) PutObject(_ context.Context, key string, filePath stri
 	return nil
 }
 
-// ObjectCount returns the number of stored objects for test assertions.
 func (store *MemoryStore) ObjectCount() int {
 	return len(store.objects)
 }
 
-// ObjectData returns stored bytes for test assertions.
 func (store *MemoryStore) ObjectData(key string) []byte {
 	return store.objects[key].Data
 }

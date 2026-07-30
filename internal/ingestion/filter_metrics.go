@@ -11,7 +11,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// Pre-bound filter error counters avoid Prometheus label lookup on the rejection hot path.
 var (
 	filterGeoLookupErrors           = metrics.FilterInternalErrors.WithLabelValues("geo_lookup")
 	brandCreativeReplicaParseErrors = metrics.FilterInternalErrors.WithLabelValues("brand_creative_replica")
@@ -31,7 +30,6 @@ func init() {
 	}
 }
 
-// redisShardObservability holds Phase-0 hot-shard metrics: per-shard ops plus sampled campaign breakdown.
 type redisShardObservability struct {
 	opsCounters             []prometheus.Counter
 	sampleMask              uint64
@@ -39,7 +37,6 @@ type redisShardObservability struct {
 	sampledSpendCounters    [][]prometheus.Counter
 }
 
-// newRedisShardObservability pre-binds per-shard Redis op counters and configures campaign sampling.
 func newRedisShardObservability(numShards int, sampleMask uint64) redisShardObservability {
 	if numShards <= 0 {
 		numShards = 1
@@ -66,7 +63,6 @@ func newRedisShardObservability(numShards int, sampleMask uint64) redisShardObse
 	return o
 }
 
-// recordLuaOp increments per-shard Redis RPS and, on sample ticks, per-campaign op counters.
 func (o *redisShardObservability) recordLuaOp(shard int, campaignID uuid.UUID, sample bool) {
 	incRedisOps(o.opsCounters, shard)
 	if sample {
@@ -74,7 +70,6 @@ func (o *redisShardObservability) recordLuaOp(shard int, campaignID uuid.UUID, s
 	}
 }
 
-// recordAcceptedSpend adds sampled micro-unit spend for accepted events that debited budget.
 func (o *redisShardObservability) recordAcceptedSpend(shard int, campaignID uuid.UUID, spendMicro int64, sample bool) {
 	if !sample || spendMicro <= 0 {
 		return
@@ -82,7 +77,6 @@ func (o *redisShardObservability) recordAcceptedSpend(shard int, campaignID uuid
 	recordSampledCampaignSpend(o, shard, campaignID, spendMicro)
 }
 
-// noteLuaEvalDuration records sampled histograms and M14-17 slow-script correlation logs.
 func (f *UnifiedFilter) noteLuaEvalDuration(shard int, campaignID uuid.UUID, tier string, startNs int64, sample bool, fast bool) {
 	if startNs == 0 {
 		return
@@ -110,7 +104,6 @@ func sampledCampaignBucket(campaignID uuid.UUID) int {
 	return int(campaignID[0]) ^ int(campaignID[15])
 }
 
-// recordSampledCampaignOp emits a downsampled per-shard campaign-bucket op counter for Grafana top-N.
 func recordSampledCampaignOp(o *redisShardObservability, shard int, campaignID uuid.UUID) {
 	if len(o.sampledCampaignCounters) == 0 {
 		return
@@ -125,7 +118,6 @@ func recordSampledCampaignOp(o *redisShardObservability, shard int, campaignID u
 	o.sampledCampaignCounters[shard][bucket].Inc()
 }
 
-// recordSampledCampaignSpend emits downsampled accepted spend for hot-campaign dashboards.
 func recordSampledCampaignSpend(o *redisShardObservability, shard int, campaignID uuid.UUID, spendMicro int64) {
 	if len(o.sampledSpendCounters) == 0 {
 		return

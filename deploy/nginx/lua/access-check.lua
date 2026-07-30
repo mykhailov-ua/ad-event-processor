@@ -1,6 +1,3 @@
--- access-check.lua: two-phase OpenResty edge gate for /track (PERIMETER.md).
--- Phase 1 (cheap): limit_req (nginx.conf), circuit breaker, IP blacklist — no read_body.
--- Phase 2 (expensive): read_body, byte DFA, edge_rl — see edge-phase2.lua (default: full).
 
 local edge_metrics = require "edge-metrics"
 local edge_phase2 = require "edge-phase2"
@@ -37,7 +34,6 @@ local function client_asn()
     return headers["X-Client-ASN"] or headers["x-client-asn"]
 end
 
--- phase1_blacklist enforces timer-synced IP blocklist; fail-closed when sync is stale.
 local function phase1_blacklist(client_ip)
     if edge_asn.is_whitelisted(client_asn()) then
         return

@@ -32,7 +32,6 @@ type snapshotCapture struct {
 	snap        *catalogSnapshot
 }
 
-// SaveSnapshot writes the in-memory registry to disk so process restarts can recover budgets and campaign targeting.
 func (registry *Registry) SaveSnapshot(path string) error {
 	for range maxSnapshotRetries {
 		captured := registry.captureSnapshot()
@@ -49,7 +48,6 @@ func (registry *Registry) SaveSnapshot(path string) error {
 	return fmt.Errorf("%w after %d retries", ErrSnapshotUnstable, maxSnapshotRetries)
 }
 
-// LoadSnapshot restores registry and budget state from disk after a restart or crash.
 func (registry *Registry) LoadSnapshot(path string) error {
 	f, err := os.Open(path)
 	if err != nil {
@@ -229,7 +227,6 @@ func (registry *Registry) LoadSnapshot(path string) error {
 	return nil
 }
 
-// StartPersistence reloads state on boot and keeps periodic snapshots so budget drift survives restarts.
 func (registry *Registry) StartPersistence(ctx context.Context, path string, interval time.Duration) error {
 	if path == "" {
 		return nil

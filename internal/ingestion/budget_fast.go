@@ -23,7 +23,6 @@ const (
 	budgetFastArgCount = 16
 )
 
-// budgetFastScratch holds pooled buffers for one budget-fast Lua round trip.
 type budgetFastScratch struct {
 	wIdem, wQuota, wFence, wFrozen bufWrapper
 	precheck                       luaPrecheckScratch
@@ -172,7 +171,6 @@ func (f *UnifiedFilter) runBudgetFastLua(
 	return nil
 }
 
-// handleLuaResult maps unified Lua return codes to filter errors and budget-miss retries.
 func (f *UnifiedFilter) handleLuaResult(
 	ctx context.Context,
 	evt *campaignmodel.Event,
@@ -238,7 +236,6 @@ func (f *UnifiedFilter) handleLuaResult(
 	}
 }
 
-// evalFastScript prefers pooled EVALSHA for budget-fast.lua with NOSCRIPT fallback.
 func (f *UnifiedFilter) evalFastScript(ctx context.Context, rdb redis.UniversalClient, shard int, evt *campaignmodel.Event, keyArgs [budgetFastKeyCount]any, args []any) (int64, error) {
 	res, err := f.evalShaPooledN(ctx, rdb, shard, evt, f.fastScriptHashAny, keyArgs[:], args, budgetFastKeyCount)
 	if err != nil && isNoScriptErr(err) {
@@ -248,7 +245,6 @@ func (f *UnifiedFilter) evalFastScript(ctx context.Context, rdb redis.UniversalC
 	return res, err
 }
 
-// recoverBudgetAfterMiss reloads budget from registry or Postgres after Lua -1.
 func (f *UnifiedFilter) recoverBudgetAfterMiss(
 	ctx context.Context,
 	evt *campaignmodel.Event,

@@ -1,4 +1,3 @@
-// Command processor wires per-shard Redis stream consumers into Postgres, ClickHouse, and fraud pipelines.
 package main
 
 import (

@@ -14,7 +14,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Service owns notification persistence and the background delivery loop.
 type Service struct {
 	pool                *pgxpool.Pool
 	queries             *db.Queries
@@ -24,12 +23,10 @@ type Service struct {
 	deliveryRateLimiter *providerRateLimiter
 }
 
-// NewService binds Postgres and delivery providers for gRPC enqueue and worker dispatch.
 func NewService(pool *pgxpool.Pool, providers map[pb.Provider]Provider) *Service {
 	return NewServiceWithOptions(pool, providers, defaultServiceOptions())
 }
 
-// NewServiceWithOptions binds Postgres with delivery tuning options.
 func NewServiceWithOptions(pool *pgxpool.Pool, providers map[pb.Provider]Provider, opts ServiceOptions) *Service {
 	return &Service{
 		pool:                pool,
@@ -41,7 +38,6 @@ func NewServiceWithOptions(pool *pgxpool.Pool, providers map[pb.Provider]Provide
 	}
 }
 
-// SendNotification persists a PENDING row for asynchronous delivery by the worker.
 func (service *Service) SendNotification(ctx context.Context, req *pb.SendNotificationRequest) (*pb.SendNotificationResponse, error) {
 	if req.Recipient == "" {
 		return nil, ErrRecipientRequired
@@ -77,7 +73,6 @@ func (service *Service) SendNotification(ctx context.Context, req *pb.SendNotifi
 	}, nil
 }
 
-// SendNotificationBatch enqueues multiple notifications atomically per item.
 func (service *Service) SendNotificationBatch(ctx context.Context, req *pb.SendNotificationBatchRequest) (*pb.SendNotificationBatchResponse, error) {
 	if req == nil || len(req.Notifications) == 0 {
 		return nil, ErrBatchEmpty
@@ -94,7 +89,6 @@ func (service *Service) SendNotificationBatch(ctx context.Context, req *pb.SendN
 	return &pb.SendNotificationBatchResponse{Notifications: out}, nil
 }
 
-// GetNotification returns the stored row including delivery status and retry metadata.
 func (service *Service) GetNotification(ctx context.Context, req *pb.GetNotificationRequest) (*pb.GetNotificationResponse, error) {
 	id, err := pgUUIDFromString(req.NotificationId)
 	if err != nil {

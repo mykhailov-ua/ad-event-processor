@@ -4,7 +4,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// TrackRequest is the JSON track payload parsed without reflection on the hot path.
 type TrackRequest struct {
 	CampaignID  uuid.UUID
 	UserID      string
@@ -12,10 +11,9 @@ type TrackRequest struct {
 	ClickID     string
 	PlacementID string
 	Payload     []byte
-	ortbSlot    *openRTBScratchSlot // pooled OpenRTB parse cache; transferred to Event.Scratch on ingest
+	ortbSlot    *openRTBScratchSlot
 }
 
-// Reset clears fields before reuse; Payload is nil'd to drop input-buffer references.
 func (v *TrackRequest) Reset() {
 	v.resetForParse()
 	v.Payload = nil
@@ -25,7 +23,6 @@ func (v *TrackRequest) Reset() {
 	}
 }
 
-// resetForParse clears scalar fields without dropping Payload or the OpenRTB parse cache.
 func (v *TrackRequest) resetForParse() {
 	v.CampaignID = uuid.Nil
 	v.UserID = ""
@@ -34,12 +31,10 @@ func (v *TrackRequest) resetForParse() {
 	v.PlacementID = ""
 }
 
-// UnmarshalJSON decodes track JSON for encoding/json compatibility on cold paths.
 func (v *TrackRequest) UnmarshalJSON(data []byte) error {
 	return ParseTrackRequestJSON(v, data)
 }
 
-// appendJSONString appends a JSON-escaped string to dst.
 func appendJSONString(dst []byte, s []byte) []byte {
 	dst = append(dst, '"')
 	for _, b := range s {
@@ -62,7 +57,6 @@ func appendJSONString(dst []byte, s []byte) []byte {
 	return dst
 }
 
-// marshalExtra serializes parallel extra key/value slices to JSON without reflection.
 func marshalExtra(dst []byte, keys, values [][]byte) []byte {
 	dst = dst[:0]
 	dst = append(dst, '{')

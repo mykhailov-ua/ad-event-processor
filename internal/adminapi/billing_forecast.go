@@ -15,7 +15,6 @@ import (
 
 const billingForecastCHTimeout = 1500 * time.Millisecond
 
-// ForecastDTO projects month-end spend from ledger run-rate and ClickHouse hourly activity.
 type ForecastDTO struct {
 	CustomerID               string          `json:"customer_id"`
 	Month                    string          `json:"month"`
@@ -28,13 +27,11 @@ type ForecastDTO struct {
 	CHUnavailable            bool            `json:"ch_unavailable,omitempty"`
 }
 
-// CHHourlyPoint is one hour bucket from ClickHouse MVs.
 type CHHourlyPoint struct {
 	Hour        string `json:"hour"`
 	Impressions int64  `json:"impressions"`
 }
 
-// WithCHQuery attaches a governed ClickHouse client for billing forecast reads.
 func (s *CompositeReadService) WithCHQuery(q *database.CHQuery) *CompositeReadService {
 	if s == nil {
 		return nil
@@ -43,7 +40,6 @@ func (s *CompositeReadService) WithCHQuery(q *database.CHQuery) *CompositeReadSe
 	return s
 }
 
-// BuildForecast estimates projected month-end spend for one customer.
 func (s *CompositeReadService) BuildForecast(ctx context.Context, customerID uuid.UUID) (ForecastDTO, error) {
 	if s == nil || s.pool == nil {
 		return ForecastDTO{}, fmt.Errorf("composite read service not configured")

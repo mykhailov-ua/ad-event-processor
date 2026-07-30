@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Guards eCTR ranking prefers higher bid*CTR over raw bid.
 func TestAuction_eCTR_ranking(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)
@@ -21,7 +20,6 @@ func TestAuction_eCTR_ranking(t *testing.T) {
 	assert.Equal(t, CampaignID(2), res.CampaignID)
 }
 
-// Guards reserve lifts clearing price above publisher floor.
 func TestAuction_reserve_floor(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)
@@ -34,7 +32,6 @@ func TestAuction_reserve_floor(t *testing.T) {
 	assert.Equal(t, int64(120), res.Price)
 }
 
-// Guards first-price clearing charges the winner bid.
 func TestAuction_firstPrice(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)

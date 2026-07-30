@@ -11,13 +11,11 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// createPaymentIntentRequest carries the amount forwarded to payment gRPC after admin RBAC checks pass.
 type createPaymentIntentRequest struct {
 	AmountMicro int64  `json:"amount_micro"`
 	Currency    string `json:"currency"`
 }
 
-// createCustomerPaymentIntent proxies admin top-ups to payment gRPC after RBAC on the management handler.
 func (h *Handler) createCustomerPaymentIntent(w http.ResponseWriter, r *http.Request) {
 	if h.payment == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "PAYMENT_UNAVAILABLE", "payment service not configured")

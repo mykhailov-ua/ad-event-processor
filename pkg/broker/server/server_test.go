@@ -21,7 +21,6 @@ import (
 	"espx/pkg/broker/protocol"
 )
 
-// TestBrokerIntegration smoke-tests produce, fetch, and persistence across client and server.
 func TestBrokerIntegration(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "broker-test-*")
 	if err != nil {
@@ -121,7 +120,6 @@ func TestClient_ReconnectAfterClose(t *testing.T) {
 	}
 }
 
-// TestBrokerCrashRecovery ensures partition logs reopen with the correct next offset after restart.
 func TestBrokerCrashRecovery(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "broker-recovery-test-*")
 	if err != nil {
@@ -187,7 +185,6 @@ func TestBrokerCrashRecovery(t *testing.T) {
 	}
 }
 
-// TestTornWrite_RecoverTruncatesPartialRecord guards against serving corrupt records after power loss.
 func TestTornWrite_RecoverTruncatesPartialRecord(t *testing.T) {
 	dir, err := os.MkdirTemp("", "torn-write-*")
 	if err != nil {
@@ -253,7 +250,6 @@ func TestTornWrite_RecoverTruncatesPartialRecord(t *testing.T) {
 	}
 }
 
-// TestENOSPC_IndexWriteFails verifies append fails cleanly when segment index space is exhausted.
 func TestENOSPC_IndexWriteFails(t *testing.T) {
 	dir, err := os.MkdirTemp("", "enospc-*")
 	if err != nil {
@@ -289,7 +285,6 @@ func TestENOSPC_IndexWriteFails(t *testing.T) {
 	t.Logf("ENOSPC-like error correctly returned: %v", appendErr)
 }
 
-// TestSlowloris_DoesNotBlockOtherClients ensures one stalled client cannot wedge the event loop.
 func TestSlowloris_DoesNotBlockOtherClients(t *testing.T) {
 	dir, err := os.MkdirTemp("", "slowloris-*")
 	if err != nil {
@@ -341,7 +336,6 @@ func TestSlowloris_DoesNotBlockOtherClients(t *testing.T) {
 	}
 }
 
-// TestFDExhaustion_ServerHandlesGracefully checks behavior at file descriptor limits.
 func TestFDExhaustion_ServerHandlesGracefully(t *testing.T) {
 	if runtime.GOOS != "linux" {
 		t.Skip("FD exhaustion test requires Linux RLIMIT_NOFILE control")
@@ -412,7 +406,6 @@ func TestFDExhaustion_ServerHandlesGracefully(t *testing.T) {
 	}
 }
 
-// TestSplitBrain_IsolatedLogsNoCorruption ensures partitioned brokers do not corrupt logs.
 func TestSplitBrain_IsolatedLogsNoCorruption(t *testing.T) {
 	dirA, err := os.MkdirTemp("", "splitbrain-A-*")
 	if err != nil {
@@ -515,7 +508,6 @@ func TestSplitBrain_IsolatedLogsNoCorruption(t *testing.T) {
 	}
 }
 
-// TestConcurrentProduceFetch_NoRace stress-tests produce and fetch under the race detector.
 func TestConcurrentProduceFetch_NoRace(t *testing.T) {
 	dir, err := os.MkdirTemp("", "concurrent-*")
 	if err != nil {
@@ -584,7 +576,6 @@ func TestConcurrentProduceFetch_NoRace(t *testing.T) {
 	}
 }
 
-// TestSegmentRoll_CrossSegmentFetch validates fetch across a rolled segment boundary.
 func TestSegmentRoll_CrossSegmentFetch(t *testing.T) {
 	dir, err := os.MkdirTemp("", "segroll-*")
 	if err != nil {
@@ -653,7 +644,6 @@ func TestSegmentRoll_CrossSegmentFetch(t *testing.T) {
 	}
 }
 
-// TestMalformedFrames_ServerDoesNotPanic ensures bad wire data closes the conn without panic.
 func TestMalformedFrames_ServerDoesNotPanic(t *testing.T) {
 	dir, err := os.MkdirTemp("", "malformed-*")
 	if err != nil {
@@ -724,7 +714,6 @@ func TestMalformedFrames_ServerDoesNotPanic(t *testing.T) {
 	}
 }
 
-// Guards fetch during segment roll does not use freed mmap buffers.
 func TestSegmentRoll_FetchDuringRoll_NoUseAfterFree(t *testing.T) {
 	dir, err := os.MkdirTemp("", "fix1-uaf-*")
 	if err != nil {
@@ -802,7 +791,6 @@ func TestSegmentRoll_FetchDuringRoll_NoUseAfterFree(t *testing.T) {
 	}
 }
 
-// Guards active connection counter tracks client attach and detach.
 func TestConnectionCounter_TracksClients(t *testing.T) {
 	dir, err := os.MkdirTemp("", "fix4-conncount-*")
 	if err != nil {
@@ -846,7 +834,6 @@ func TestConnectionCounter_TracksClients(t *testing.T) {
 	}
 }
 
-// Guards ReadRawMessages slices remain valid after segment roll.
 func TestReadRawMessages_SliceValidAfterRoll(t *testing.T) {
 	dir, err := os.MkdirTemp("", "fix1-rmr-*")
 	if err != nil {
@@ -913,7 +900,6 @@ func TestReadRawMessages_SliceValidAfterRoll(t *testing.T) {
 	t.Logf("snapshot size: %d bytes, still valid after roll - UAF fix confirmed", len(snapshot))
 }
 
-// Guards healthz stays allocation-free under concurrent load.
 func TestHealthz_NoSyscallUnderLoad(t *testing.T) {
 	dir, err := os.MkdirTemp("", "fix2-nosyscall-*")
 	if err != nil {
@@ -950,7 +936,6 @@ func TestHealthz_NoSyscallUnderLoad(t *testing.T) {
 	}
 }
 
-// Guards concurrent roll, fetch, and health checks do not data-race.
 func TestConcurrentRollFetchHealth_NoDataRace(t *testing.T) {
 	dir, err := os.MkdirTemp("", "fix-stress-*")
 	if err != nil {
@@ -1033,7 +1018,6 @@ func TestConcurrentRollFetchHealth_NoDataRace(t *testing.T) {
 	}
 }
 
-// Guards topic registry IDs stay stable for transient topic name keys.
 func TestTopicRegistry_TransientNameStableID(t *testing.T) {
 	dir, err := os.MkdirTemp("", "fix5-transient-*")
 	if err != nil {
@@ -1070,7 +1054,6 @@ func TestTopicRegistry_TransientNameStableID(t *testing.T) {
 	}
 }
 
-// Guards LocateMessages rejects malformed record length fields.
 func TestLocateMessages_RejectsMalformedLength(t *testing.T) {
 	dir, err := os.MkdirTemp("", "fix6-malformed-*")
 	if err != nil {
@@ -1117,7 +1100,6 @@ func TestLocateMessages_RejectsMalformedLength(t *testing.T) {
 	}
 }
 
-// httpGet returns the HTTP status code for a URL or fails the test.
 func httpGet(t *testing.T, url string) int {
 	t.Helper()
 	resp, err := http.Get(url)
@@ -1128,7 +1110,6 @@ func httpGet(t *testing.T, url string) int {
 	return resp.StatusCode
 }
 
-// unsafeString converts payload bytes to string without allocation for test fixtures.
 func unsafeString(b []byte) string {
 	if len(b) == 0 {
 		return ""
@@ -1136,7 +1117,6 @@ func unsafeString(b []byte) string {
 	return unsafe.String(unsafe.SliceData(b), len(b))
 }
 
-// TestBrokerPipeAllocs measures whether TCP/gnet contributes alloc beyond in-process pipes.
 func TestBrokerPipeAllocs(t *testing.T) {
 	c1, c2 := net.Pipe()
 	defer c1.Close()
@@ -1178,7 +1158,6 @@ func TestBrokerPipeAllocs(t *testing.T) {
 	t.Logf("pipe round-trip allocs: %v", allocs)
 }
 
-// TestBrokerE2EAllocs guards produce/fetch against heap traffic on the steady-state client path.
 func TestBrokerE2EAllocs(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "broker-alloc-*")
 	if err != nil {
@@ -1230,7 +1209,6 @@ func TestBrokerE2EAllocs(t *testing.T) {
 	}
 }
 
-// BenchmarkBrokerThroughput tracks end-to-end produce throughput for perf gate baselines.
 func BenchmarkBrokerThroughput(b *testing.B) {
 	tempDir, err := os.MkdirTemp("", "broker-bench-*")
 	if err != nil {

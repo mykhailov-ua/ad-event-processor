@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// CampaignIDForShard returns a UUID that sharder routes to wantShard.
 func CampaignIDForShard(t testing.TB, sharder ingestion.Sharder, wantShard int) uuid.UUID {
 	t.Helper()
 	for range 20_000 {

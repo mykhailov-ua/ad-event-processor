@@ -5,7 +5,6 @@ import (
 	"testing"
 )
 
-// http1HappyCorpus — POST /track fast-path request line + Content-Length only.
 var http1HappyCorpus = []byte(
 	"POST /track HTTP/1.1\r\n" +
 		"Content-Length: 69\r\n" +
@@ -13,7 +12,6 @@ var http1HappyCorpus = []byte(
 		`{"campaign_id":"00000000-0000-0000-0000-000000000001","type":"click"}`,
 )
 
-// http1WorstCorpus — full nginx edge header set (M5-B benchmark corpus).
 var http1WorstCorpus = nginxTrackCorpus
 
 func BenchmarkHTTP1DFA_Happy(b *testing.B) {
@@ -72,7 +70,7 @@ func BenchmarkHTTP2DFA_Worst(b *testing.B) {
 }
 
 func BenchmarkHTTP3DFA_Happy(b *testing.B) {
-	buf := []byte{0x25} // 1-byte QUIC varint (37)
+	buf := []byte{0x25}
 	b.SetBytes(int64(len(buf)))
 	b.ReportAllocs()
 	b.ResetTimer()

@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-// handleCheckoutReturn serves the browser landing page after Stripe Checkout (including 3DS).
 func (htmxHandler *HTMXHandler) handleCheckoutReturn(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)

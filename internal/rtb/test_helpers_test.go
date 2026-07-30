@@ -1,25 +1,5 @@
 package rtb
 
-import (
-	"strings"
-	"testing"
-)
-
-// logRtbChaosProof emits chaos_proof lines parsed by scripts/chaos-drills/test_chaos.sh.
-func logRtbChaosProof(t *testing.T, fault string, kv map[string]string) {
-	t.Helper()
-	var b strings.Builder
-	b.WriteString("chaos_proof fault=")
-	b.WriteString(fault)
-	for k, v := range kv {
-		b.WriteByte(' ')
-		b.WriteString(k)
-		b.WriteByte('=')
-		b.WriteString(v)
-	}
-	t.Log(b.String())
-}
-
 func itoaU64(v uint64) string {
 	if v == 0 {
 		return "0"
@@ -34,7 +14,6 @@ func itoaU64(v uint64) string {
 	return string(buf[i:])
 }
 
-// Builds a one-campaign UpdateCampaigns payload for tests.
 func singleCampaign(id CampaignID, bid int64, budget int64) []CampaignData {
 	return []CampaignData{{
 		ID:           id,
@@ -47,7 +26,6 @@ func singleCampaign(id CampaignID, bid int64, budget int64) []CampaignData {
 	}}
 }
 
-// Builds a bid request with the common targeting fields used in lifecycle tests.
 func stdReq(geo uint32, minBid int64) *BidRequest {
 	return &BidRequest{
 		DeviceType:   1,
@@ -57,7 +35,6 @@ func stdReq(geo uint32, minBid int64) *BidRequest {
 	}
 }
 
-// Builds the set of campaign IDs present in one catalog snapshot.
 func catalogIDs(reg *Registry) map[CampaignID]struct{} {
 	out := make(map[CampaignID]struct{})
 	snap := reg.loadCatalog()

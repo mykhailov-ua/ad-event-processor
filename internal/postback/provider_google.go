@@ -28,7 +28,6 @@ type GoogleCAPIPayload struct {
 func (a *GoogleAdapter) Send(ctx context.Context, client *http.Client, payload *PostbackPayload, urlTemplate string, apiTokenDecrypted string) error {
 	url := urlTemplate
 	if url == "" || !strings.HasPrefix(url, "http") {
-		// Default mock google ads URL
 		url = "https://googleads.googleapis.com/v15/customers/default/offlineUserDataJobs:run"
 	}
 

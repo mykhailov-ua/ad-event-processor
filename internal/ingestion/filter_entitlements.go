@@ -26,7 +26,6 @@ func NewEntitlementsFilter(registry *Registry, sharder Sharder, rdbs []redis.Uni
 	}
 }
 
-// SetRegionCode scopes daily ingress counters to a regional cell (M7).
 func (f *EntitlementsFilter) SetRegionCode(code uint8) {
 	if f != nil {
 		f.regionCode = code
@@ -39,28 +38,23 @@ func (f *EntitlementsFilter) getRDB(id uuid.UUID) redis.UniversalClient {
 }
 
 func (f *EntitlementsFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
-	// 1. Get customer ID
 	campInfo, ok := f.registry.GetCampaign(evt.CampaignID)
 	if !ok {
 		return ErrCampaignNotFound
 	}
 	custID := campInfo.CustomerID
 
-	// 2. Check customer subscription entitlements
 	ent, ok := f.registry.GetEntitlements(custID)
 	if !ok {
-		// If subscription doesn't exist, we fall back to open/unlimited
 		return nil
 	}
 
-	// Feature flag check
 	if evt.Type == "bid" || evt.Type == "rtb" {
 		if !ent.Features.OpenRTBEnabled() {
 			return ErrLicenseExpired
 		}
 	}
 
-	// 3. RPD daily quota check
 	if ent.Limits.MaxRequestsPerDay == 0 {
 		return nil
 	}

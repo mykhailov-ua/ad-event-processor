@@ -1,0 +1,253 @@
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"math/rand"
+	"net/http"
+	"strconv"
+	"strings"
+	"sync/atomic"
+	"time"
+)
+
+type mixConfig struct {
+	pctValid   int
+	pctFraud   int
+	pctInvalid int
+	pctDDoS    int
+}
+
+func defaultMix(mode string, pctBroken, pctGray int) mixConfig {
+	switch mode {
+	case "business":
+		if pctBroken <= 0 {
+			pctBroken = 50
+		}
+		if pctGray <= 0 {
+			pctGray = 20
+		}
+		clean := 100 - pctBroken - pctGray
+		if clean < 0 {
+			clean = 0
+		}
+		return mixConfig{
+			pctValid:   clean,
+			pctFraud:   pctGray,
+			pctInvalid: pctBroken / 2,
+			pctDDoS:    pctBroken - pctBroken/2,
+		}
+	case "smoke":
+		return mixConfig{pctValid: 50, pctFraud: 10, pctInvalid: 20, pctDDoS: 15}
+	default:
+		return mixConfig{pctValid: 35, pctFraud: 15, pctInvalid: 20, pctDDoS: 15}
+	}
+}
+
+type runner struct {
+	client        *http.Client
+	trackers      []string
+	edgeURL       string
+	oversizeBytes int
+	mix           mixConfig
+	hist          *histogram
+	iter          atomic.Uint64
+}
+
+func newRunner(trackers []string, edgeURL string, oversize int, mix mixConfig, hist *histogram) *runner {
+	return &runner{
+		client: &http.Client{
+			Timeout: 10 * time.Second,
+			Transport: &http.Transport{
+				MaxIdleConns:        512,
+				MaxIdleConnsPerHost: 256,
+				IdleConnTimeout:     90 * time.Second,
+				DisableCompression:  true,
+			},
+		},
+		trackers:      trackers,
+		edgeURL:       edgeURL,
+		oversizeBytes: oversize,
+		mix:           mix,
+		hist:          hist,
+	}
+}
+
+func campaignID(iter uint64) string {
+	n := (iter % 100) + 1
+	return fmt.Sprintf("00000000-0000-0000-0000-%012x", n)
+}
+
+func (r *runner) doOnce() {
+	iter := r.iter.Add(1)
+	roll := rand.Intn(100)
+	base := r.trackers[iter%uint64(len(r.trackers))]
+
+	validEnd := r.mix.pctValid
+	fraudEnd := validEnd + r.mix.pctFraud
+	invalidEnd := fraudEnd + r.mix.pctInvalid
+	ddosEnd := invalidEnd + r.mix.pctDDoS
+
+	switch {
+	case roll < validEnd:
+		body := validBody(iter)
+		r.post(base+"/track", "application/json", body, nil)
+	case roll < fraudEnd:
+		body := fraudBody(iter)
+		r.post(base+"/track", "application/json", body, map[string]string{
+			"X-Forwarded-For": fraudIP(iter),
+		})
+	case roll < invalidEnd:
+		r.invalidTraffic(base, iter)
+	case roll < ddosEnd:
+		r.ddosTraffic(base, iter)
+	default:
+		r.edgeTraffic(base, iter)
+	}
+}
+
+func validBody(iter uint64) []byte {
+	b, _ := json.Marshal(map[string]any{
+		"campaign_id": campaignID(iter),
+		"user_id":     fmt.Sprintf("u-%d", iter),
+		"type":        ternary(iter%3 == 0, "click", "impression"),
+		"click_id":    fmt.Sprintf("clk-%d", iter),
+		"payload":     map[string]any{"slot": "top", "cpm": 1.25},
+	})
+	return b
+}
+
+func fraudBody(iter uint64) []byte {
+	b, _ := json.Marshal(map[string]any{
+		"campaign_id": campaignID(iter),
+		"user_id":     fmt.Sprintf("fraud-%d", iter),
+		"type":        "click",
+		"click_id":    fmt.Sprintf("fclk-%d", iter),
+		"payload":     map[string]any{"bot": true},
+	})
+	return b
+}
+
+func fraudIP(iter uint64) string {
+	return fmt.Sprintf("54.%d.%d.%d", (iter>>8)&255, iter&255, (iter>>16)&255)
+}
+
+func (r *runner) invalidTraffic(base string, iter uint64) {
+	switch iter % 4 {
+	case 0:
+		r.post(base+"/track", "application/json", []byte("{not-json"), nil)
+	case 1:
+		r.post(base+"/track", "application/x-protobuf", []byte{0xff, 0xee, 0xdd, 0xcc, 0xbb}, nil)
+	case 2:
+		b, _ := json.Marshal(map[string]any{
+			"campaign_id": "ffffffff-ffff-ffff-ffff-ffffffffffff",
+			"user_id":     "ghost",
+			"type":        "impression",
+			"click_id":    fmt.Sprintf("bad-%d", iter),
+		})
+		r.post(base+"/track", "application/json", b, nil)
+	default:
+		big := strings.Repeat("x", r.oversizeBytes)
+		r.post(base+"/track", "application/json", []byte(big), nil)
+	}
+}
+
+func (r *runner) ddosTraffic(base string, iter uint64) {
+	switch iter % 5 {
+	case 0:
+		r.get(base + "/track")
+	case 1:
+		r.get(base + "/health")
+	case 2:
+		r.get(base + "/metrics")
+	case 3:
+		dup, _ := json.Marshal(map[string]any{
+			"campaign_id": campaignID(1),
+			"user_id":     "ddos-dup",
+			"type":        "click",
+			"click_id":    "dup-fixed-id",
+			"payload":     map[string]any{},
+		})
+		r.post(base+"/track", "application/json", dup, nil)
+	default:
+		r.post(base+"/admin/boom", "application/json", []byte("{}"), nil)
+	}
+}
+
+func (r *runner) edgeTraffic(base string, iter uint64) {
+	if r.edgeURL != "" {
+		r.post(r.edgeURL+"/track", "application/json", validBody(iter), nil)
+		return
+	}
+	req, _ := http.NewRequest(http.MethodPost, base+"/track", nil)
+	req.Header.Set("Content-Type", "application/json")
+	r.exec(req)
+}
+
+func (r *runner) get(url string) {
+	req, _ := http.NewRequest(http.MethodGet, url, nil)
+	r.exec(req)
+}
+
+func (r *runner) post(url, ctype string, body []byte, extra map[string]string) {
+	req, _ := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
+	req.Header.Set("Content-Type", ctype)
+	req.Header.Set("Connection", "keep-alive")
+	for k, v := range extra {
+		req.Header.Set(k, v)
+	}
+	r.exec(req)
+}
+
+func (r *runner) exec(req *http.Request) {
+	resp, err := r.client.Do(req)
+	if err != nil {
+		r.hist.inc("0", classifyNetErr(err))
+		return
+	}
+	_, _ = io.Copy(io.Discard, resp.Body)
+	resp.Body.Close()
+	r.hist.inc(strconv.Itoa(resp.StatusCode), "none")
+}
+
+func classifyNetErr(err error) string {
+	s := err.Error()
+	switch {
+	case strings.Contains(s, "connection reset"):
+		return "conn_reset"
+	case strings.Contains(s, "broken pipe"):
+		return "broken_pipe"
+	case strings.Contains(s, "timeout"), strings.Contains(s, "deadline"):
+		return "timeout"
+	case strings.Contains(s, "EOF"):
+		return "eof"
+	case strings.Contains(s, "connection refused"), strings.Contains(s, "dial"):
+		return "dial"
+	default:
+		return "other"
+	}
+}
+
+func ternary(cond bool, a, b string) string {
+	if cond {
+		return a
+	}
+	return b
+}
+
+func healthCheck(trackers []string) error {
+	client := &http.Client{Timeout: 5 * time.Second}
+	for _, base := range trackers {
+		resp, err := client.Get(base + "/health")
+		if err != nil {
+			return fmt.Errorf("%s: %w", base, err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("%s: status %d", base, resp.StatusCode)
+		}
+	}
+	return nil
+}

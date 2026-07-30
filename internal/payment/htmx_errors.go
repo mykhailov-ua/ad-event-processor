@@ -7,7 +7,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Public error codes returned in data-code; never expose internal driver or RPC text.
 const (
 	CodeInvalidInput    = "PAYMENT_INVALID_INPUT"
 	CodeInvalidAmount   = "PAYMENT_INVALID_AMOUNT"
@@ -19,7 +18,6 @@ const (
 	CodeFailed          = "PAYMENT_FAILED"
 )
 
-// MapHTMXError maps domain failures to stable codes because HTMX clients must not see driver or RPC text.
 func MapHTMXError(err error) (status int, code, message string) {
 	if err == nil {
 		return 0, "", ""

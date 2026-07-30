@@ -1,4 +1,3 @@
--- operation_leases.sql: M6 operation lease state machine (§10.3).
 
 -- name: InsertOperationLease :one
 INSERT INTO operation_leases (
@@ -63,7 +62,6 @@ SELECT COUNT(*)::INT AS ack_count
 FROM operation_lease_replicas
 WHERE op_id = $1 AND book_ack_at IS NOT NULL;
 
--- RenewOperationLease enforces renew_count < max_renewals in SQL (M6.5 C6).
 -- name: RenewOperationLease :one
 UPDATE operation_leases
 SET deadline_at = NOW() + (sqlc.arg(timeout_sec)::INT * INTERVAL '1 second'),

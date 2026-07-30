@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-// IsPoolClosedError reports Postgres pool teardown errors during worker shutdown.
 func IsPoolClosedError(err error) bool {
 	if err == nil {
 		return false
@@ -14,7 +13,6 @@ func IsPoolClosedError(err error) bool {
 	return strings.Contains(err.Error(), "closed pool")
 }
 
-// IsShutdownError reports errors expected while pools or clients are closing.
 func IsShutdownError(err error) bool {
 	if err == nil {
 		return false

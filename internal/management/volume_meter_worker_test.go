@@ -23,5 +23,5 @@ func TestComputeWeightedUnitsFromRows_goldenFixture(t *testing.T) {
 	}
 
 	got := ComputeWeightedUnitsFromRows(rows, customers)
-	assert.Equal(t, int64(1010), got[custA]) // 1000*1.0 + 100*0.1 + 500*0.0
+	assert.Equal(t, int64(1010), got[custA])
 }

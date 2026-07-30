@@ -170,7 +170,7 @@ Self-hosted binary without opt-in telemetry means the vendor sells an **engine**
 | **Opt-in diagnostic bundle** | On-demand support pack: versions, redacted config, 1h aggregate reject rates |
 | **Pilot customers under NDA** | Explicit threat-sharing agreement for first intel feed |
 | **Public IVT / bot benchmarks** | Rules and models shipped in **releases** |
-| **Synthetic load + chaos tests** | Regression for ingest SLA |
+| **Synthetic load + fault tests** | Regression for ingest SLA |
 | **Release cadence** | Value = fixes, OpenRTB, edge — not "we learned from your data" |
 
 Do not claim network-wide ML training until opt-in threat intel pool exists.

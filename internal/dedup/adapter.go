@@ -14,7 +14,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Outcome is the result of dedup_claim_confirm.
 type Outcome string
 
 const (
@@ -25,7 +24,6 @@ const (
 	OutcomePending          Outcome = "pending"
 )
 
-// ClaimResult is the userspace view of a D3 claim/confirm round-trip.
 type ClaimResult struct {
 	Outcome  Outcome
 	FactorD  uuid.UUID
@@ -34,7 +32,6 @@ type ClaimResult struct {
 	FactorU  uuid.UUID
 }
 
-// Adapter wraps PG dedup_claim_confirm for cold-path workers.
 type Adapter struct {
 	pool    *pgxpool.Pool
 	queries *db.Queries
@@ -42,7 +39,6 @@ type Adapter struct {
 	epoch   uint32
 }
 
-// NewAdapter creates a dedup adapter for one regional cell.
 func NewAdapter(pool *pgxpool.Pool, regionCode uint8, sourceEpoch uint32) *Adapter {
 	if pool == nil {
 		return nil
@@ -55,7 +51,6 @@ func NewAdapter(pool *pgxpool.Pool, regionCode uint8, sourceEpoch uint32) *Adapt
 	}
 }
 
-// SourceEpoch returns the wired routing epoch for SSID scope.
 func (a *Adapter) SourceEpoch() uint32 {
 	if a == nil {
 		return 0
@@ -63,7 +58,6 @@ func (a *Adapter) SourceEpoch() uint32 {
 	return a.epoch
 }
 
-// RegionScope fills region_id on a scope template.
 func (a *Adapter) RegionScope(sourceID uuid.UUID, seqStart, seqEnd int64) dedupkey.Scope {
 	regionID := dedupkey.RegionUUID(a.region)
 	if a.region == 0 {
@@ -78,7 +72,6 @@ func (a *Adapter) RegionScope(sourceID uuid.UUID, seqStart, seqEnd int64) dedupk
 	}
 }
 
-// ClaimConfirm runs dedup_claim_confirm for one logical batch.
 func (a *Adapter) ClaimConfirm(ctx context.Context, scope dedupkey.Scope, factorU uuid.UUID) (ClaimResult, error) {
 	if a == nil || a.pool == nil {
 		key := dedupkey.FormatCanonical(scope, factorU, uuid.Nil)
@@ -125,7 +118,6 @@ func (a *Adapter) ClaimConfirm(ctx context.Context, scope dedupkey.Scope, factor
 	}, nil
 }
 
-// ShouldApply reports whether side-effects must run for this claim outcome.
 func (r ClaimResult) ShouldApply() bool {
 	switch r.Outcome {
 	case OutcomeConfirmed:
@@ -137,7 +129,6 @@ func (r ClaimResult) ShouldApply() bool {
 	}
 }
 
-// RecordApply marks a confirmed dedup_key as fully applied in sync_idempotency.
 func (a *Adapter) RecordApply(ctx context.Context, dedupKey string) error {
 	if a == nil || a.pool == nil || dedupKey == "" {
 		return nil
@@ -157,7 +148,6 @@ func (a *Adapter) NeedsResumeApply(ctx context.Context, dedupKey string) (bool, 
 	return !exists, nil
 }
 
-// RejectStaleProposals runs the pending TTL janitor (M4-07).
 func (a *Adapter) RejectStaleProposals(ctx context.Context) (int64, error) {
 	if a == nil {
 		return 0, nil
@@ -165,13 +155,10 @@ func (a *Adapter) RejectStaleProposals(ctx context.Context) (int64, error) {
 	return a.queries.RejectStaleDedupProposals(ctx)
 }
 
-// ErrHashMismatch is returned when factor_u disagrees with a confirmed scope.
 var ErrHashMismatch = errors.New("dedup hash mismatch")
 
-// ErrRejected is returned when a proposal was rejected (TTL or policy).
 var ErrRejected = errors.New("dedup proposal rejected")
 
-// GuardOutcome maps claim outcomes to apply/skip decisions.
 func GuardOutcome(result ClaimResult) error {
 	switch result.Outcome {
 	case OutcomeHashMismatch:

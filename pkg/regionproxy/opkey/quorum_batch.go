@@ -8,7 +8,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// BatchCommitter gates opkey batch forward on Redis quorum ACKs when configured.
 type BatchCommitter struct {
 	rdb       redis.UniversalClient
 	nodeID    string
@@ -16,7 +15,6 @@ type BatchCommitter struct {
 	committed uint64
 }
 
-// NewBatchCommitter builds a quorum gate for one proxy node.
 func NewBatchCommitter(rdb redis.UniversalClient, nodeID string, replicas []string) *BatchCommitter {
 	return &BatchCommitter{
 		rdb:      rdb,
@@ -25,7 +23,6 @@ func NewBatchCommitter(rdb redis.UniversalClient, nodeID string, replicas []stri
 	}
 }
 
-// Committed returns batches that passed quorum and executing claim.
 func (c *BatchCommitter) Committed() uint64 {
 	if c == nil {
 		return 0
@@ -33,7 +30,6 @@ func (c *BatchCommitter) Committed() uint64 {
 	return c.committed
 }
 
-// PrepareForward transitions derived -> booked -> executing only after 2-of-3 quorum ACKs.
 func (c *BatchCommitter) PrepareForward(ctx context.Context, slot *Slot) (bool, error) {
 	if slot == nil {
 		return false, nil
@@ -67,7 +63,6 @@ func (c *BatchCommitter) PrepareForward(ctx context.Context, slot *Slot) (bool, 
 	return true, nil
 }
 
-// Complete marks executing -> completed in Redis after a successful uplink ACK.
 func (c *BatchCommitter) Complete(ctx context.Context, slot *Slot) {
 	if c == nil || c.rdb == nil || slot == nil {
 		return

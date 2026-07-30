@@ -9,12 +9,10 @@ import (
 	"espx/internal/metrics"
 )
 
-// ErrMgmtPgGateRejected is returned when a LOW-tier worker must yield to HIGH-tier traffic.
 var ErrMgmtPgGateRejected = errors.New("mgmt pg gate rejected")
 
 const mgmtPgReserve = 1
 
-// MgmtPgGate limits concurrent management Postgres usage with HIGH/LOW priority (SEM-P3).
 type MgmtPgGate struct {
 	sem      chan struct{}
 	capacity int
@@ -22,7 +20,6 @@ type MgmtPgGate struct {
 	inFlight atomic.Int32
 }
 
-// NewMgmtPgGate sizes the gate from DB_TRACKER_MAX_CONNS minus one reserve slot for probes.
 func NewMgmtPgGate(maxConns int) *MgmtPgGate {
 	capacity := maxConns - mgmtPgReserve
 	if capacity < 2 {
@@ -39,7 +36,6 @@ func NewMgmtPgGate(maxConns int) *MgmtPgGate {
 	}
 }
 
-// AcquireHigh blocks until a slot is available for HTTP, outbox, or drain work.
 func (g *MgmtPgGate) AcquireHigh(ctx context.Context) error {
 	if g == nil {
 		return nil
@@ -57,7 +53,6 @@ func (g *MgmtPgGate) AcquireHigh(ctx context.Context) error {
 	}
 }
 
-// ReleaseHigh returns a HIGH-tier slot.
 func (g *MgmtPgGate) ReleaseHigh() {
 	if g == nil {
 		return
@@ -66,7 +61,6 @@ func (g *MgmtPgGate) ReleaseHigh() {
 	<-g.sem
 }
 
-// AcquireLow blocks for a background slot or rejects when LOW budget is exhausted.
 func (g *MgmtPgGate) AcquireLow(ctx context.Context) error {
 	if g == nil {
 		return nil
@@ -94,7 +88,6 @@ func (g *MgmtPgGate) AcquireLow(ctx context.Context) error {
 	}
 }
 
-// ReleaseLow returns a LOW-tier slot.
 func (g *MgmtPgGate) ReleaseLow() {
 	if g == nil {
 		return
@@ -104,7 +97,6 @@ func (g *MgmtPgGate) ReleaseLow() {
 	<-g.lowSlots
 }
 
-// InFlight returns holders that have acquired but not released.
 func (g *MgmtPgGate) InFlight() int {
 	if g == nil {
 		return 0

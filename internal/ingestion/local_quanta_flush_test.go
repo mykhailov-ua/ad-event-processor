@@ -74,7 +74,7 @@ func TestLocalQuantaFlusher_FlushAllShutdown(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(500_000), v2)
 
-	t.Logf("chaos_proof fault=quanta_graceful_shutdown campaigns=%d redis_returned=true", n)
+	t.Logf("fault_proof fault=quanta_graceful_shutdown campaigns=%d redis_returned=true", n)
 }
 
 func TestAdaptiveChunkSizeStrict_lowersFloor(t *testing.T) {

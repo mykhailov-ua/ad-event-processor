@@ -12,7 +12,6 @@ import (
 	"espx/pkg/broker/protocol"
 )
 
-// TestMetricsEndpoint exposes broker counters after produce and fetch.
 func TestMetricsEndpoint(t *testing.T) {
 	dir, err := os.MkdirTemp("", "broker-metrics-*")
 	if err != nil {

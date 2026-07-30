@@ -15,9 +15,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// SyncWorker flushes Redis budget deltas to Postgres without losing inflight spend.
-// Campaign spend is consolidated in-memory and flushed at ledgerFlushInterval (M12).
-// When pgGate is set (processor), spend TX shares the global PG budget with StreamConsumer (SEM-P2).
 type SyncWorker struct {
 	rdb                  redis.Cmdable
 	campaignRepo         campaignmodel.CampaignRepository
@@ -38,7 +35,6 @@ type SyncWorker struct {
 	lastLedgerFlush      time.Time
 }
 
-// NewSyncWorker creates a periodic budget sync worker for campaigns and customers.
 func NewSyncWorker(
 	rdb redis.Cmdable,
 	campaignRepo campaignmodel.CampaignRepository,
@@ -65,7 +61,6 @@ func NewSyncWorker(
 	}
 }
 
-// SetSpendSyncProducer routes campaign ledger flushes through region-proxy in multi-region cells.
 func (w *SyncWorker) SetSpendSyncProducer(producer *SpendSyncProducer) {
 	if w == nil {
 		return
@@ -84,7 +79,6 @@ func (w *SyncWorker) ConfigureBudgetContention(lockTTLSec int, strictThresholdMi
 	}
 }
 
-// Start runs the sync loop until the context is cancelled.
 func (w *SyncWorker) Start(ctx context.Context) {
 	w.wg.Add(1)
 	go func() {
@@ -104,7 +98,6 @@ func (w *SyncWorker) Start(ctx context.Context) {
 	}()
 }
 
-// Wait blocks until the background goroutine exits or the context is cancelled.
 func (w *SyncWorker) Wait(ctx context.Context) error {
 	done := make(chan struct{})
 	go func() {
@@ -120,7 +113,6 @@ func (w *SyncWorker) Wait(ctx context.Context) error {
 	}
 }
 
-// SyncAll serializes campaign and customer budget flushes to avoid double application.
 func (w *SyncWorker) SyncAll(ctx context.Context) {
 	w.syncMu.Lock()
 	defer w.syncMu.Unlock()
@@ -148,7 +140,6 @@ func (w *SyncWorker) shouldFlushLedger() bool {
 	return time.Since(w.lastLedgerFlush) >= w.ledgerFlushInterval
 }
 
-// prepareSyncScript moves pending sync counters into inflight under a short-lived lock.
 const prepareSyncScript = `
 if redis.call("EXISTS", KEYS[3]) == 1 then
     return {"0", ""}
@@ -190,7 +181,6 @@ redis.call("SET", KEYS[3], "1", "EX", ARGV[1])
 return {tostring(total), txID}
 `
 
-// commitSyncScript finalizes a Postgres write and clears sync state when counters reach zero.
 const commitSyncScript = `
 local remaining = redis.call("INCRBY", KEYS[1], -tonumber(ARGV[1]))
 if tonumber(remaining) <= 0 then
@@ -213,7 +203,6 @@ redis.call("DEL", KEYS[4])
 return remaining
 `
 
-// collectCampaignRollup moves dirty campaign sync counters into inflight and stages them for batch PG flush.
 func (w *SyncWorker) collectCampaignRollup(ctx context.Context) {
 	sem := make(chan struct{}, w.maxConcurrency)
 	if w.pgGate != nil {
@@ -513,10 +502,8 @@ func (w *SyncWorker) prepareBudgetEntity(ctx context.Context, prefix, idStr stri
 	return id, amountMicro, txIDVal, keys, redisRemaining, true
 }
 
-// maxConcurrencyDefault is the management-path parallel sync cap when no processor PG gate is set.
 const maxConcurrencyDefault = 32
 
-// BudgetLockTTLSeconds derives sync lock TTL from flush intervals (M3-14).
 func BudgetLockTTLSeconds(ledgerFlushMs, budgetSyncMs int) int {
 	sec := ledgerFlushMs/1000 + budgetSyncMs/1000 + 30
 	if sec < 60 {
@@ -525,7 +512,6 @@ func BudgetLockTTLSeconds(ledgerFlushMs, budgetSyncMs int) int {
 	return sec
 }
 
-// syncEntity applies one dirty budget entity through prepare, Postgres update, and commit.
 func (w *SyncWorker) syncEntity(ctx context.Context, prefix string, idStr string, updateFn func(context.Context, uuid.UUID, int64, string) error) {
 	id, amountMicro, txID, keys, _, ok := w.prepareBudgetEntity(ctx, prefix, idStr)
 	if !ok || amountMicro <= 0 {
@@ -546,7 +532,6 @@ func (w *SyncWorker) syncEntity(ctx context.Context, prefix string, idStr string
 	}
 }
 
-// syncCustomers scans dirty customer keys and syncs each in parallel.
 func (w *SyncWorker) syncCustomers(ctx context.Context) {
 	if w.spendSync != nil {
 		return

@@ -182,7 +182,7 @@ Prefix / Template -> Role (legacy + hot path):
 9. `errors.go`, `permissions.go` - small common helpers.
 10. `*_test.go` - tests adjacent to code (`handler_campaigns_test.go`).
 11. `*_bench_test.go` - benchmarks (`handler_proto_bench_test.go`).
-12. `fault_*_test.go`, `*_chaos_test.go` - fault tolerance and chaos test suites (`fault_injection_test.go`).
+12. `fault_*_test.go`, `*_fault_test.go` - fault tolerance and fault test suites (`fault_injection_test.go`).
 
 Hot-path ads files follow the same pattern: `track_core.go`, `broker_consumer.go`, `sharding.go`.
 
@@ -369,7 +369,7 @@ Forbidden in all hand-written Go, Lua, and SQL under `internal/`, `cmd/`, `pkg/`
 
 Allowed outside comments: `fault_proof fault=<name>` as a **test log line** (stdout/stderr), not in a `//` comment.
 
-CI (`scripts/ci/check_comments`):
+CI (`go run ./cmd/check-comments` via `scripts/ci/comments.sh`):
 - Always fails on backlog metadata in comments (GAP, P##, M*, milestone, chaos).
 - With `STRICT_NO_COMMENTS=1`, fails on any comment that is not `//go:` or `//nolint:`.
 
@@ -441,7 +441,7 @@ Tests under `tests/` follow the same ASCII and tone rules as production code (R9
 Test function godoc must state:
 1. The scenario under test (setup, action, or fault injected).
 2. The expected invariant or observable outcome (HTTP status, row count, budget value, outbox status).
-3. An external doc reference when the test implements a named scenario (e.g., `CHAOS.md section 6 scenario A`).
+3. An external doc reference when the test implements a named scenario (e.g., `fault-resilience.mdc section 6 scenario A`).
 
 File headers in `tests/` are allowed when a package spans multiple files and each file covers a distinct area (e.g., `flow_test.go`, `multishard_test.go`).
 
@@ -452,7 +452,7 @@ Helper functions shared within a test file should have a one-line godoc when the
 
 R9.1. Automated Comment Verification
 
-R9 requirements must be verified automatically in pre-commit or CI (script `scripts/ci/check_comments.sh` or `lefthook` equivalent).
+R9 requirements must be verified automatically in pre-commit or CI (script `scripts/ci/comments.sh` or `lefthook` equivalent).
 
 Mandatory Checks (fail on match in diff / in `internal/`, `pkg/`, `cmd/`, `tests/`):
 1. Non-ASCII - characters outside `0x20`-`0x7E` in comments and godoc (except generated code in `*/pb/`, `*/db/`).
@@ -463,7 +463,7 @@ Mandatory Checks (fail on match in diff / in `internal/`, `pkg/`, `cmd/`, `tests
 6. With `STRICT_NO_COMMENTS=1` - any comment that is not a `//go:` or `//nolint:` directive.
 
 ```bash
-# scripts/ci/check_comments.sh (sketch)
+# scripts/ci/comments.sh (sketch)
 git diff --cached -U0 -- '*.go' | rg '^\+\s*//' | rg '[^\x00-\x7F]' && exit 1
 rg -n '//.*(simple|elegant|obviously)\b' internal/ pkg/ cmd/ tests/ --glob '!/pb/' && exit 1
 ```
@@ -485,12 +485,12 @@ R11. Tooling and Codegen
 
 R11.1. Protobuf / vtproto
 
-1. Single Generation Point - `make proto` -> `scripts/codegen/gen.sh --proto` -> `api/buf.gen.yaml` -> staging `api/gen/` -> `safe_sync_proto_gen` in `internal/*/pb/`.
-2. Post-Gen Hot-Path Patch - after syncing, `go run ./scripts/codegen/patch_vtproto_hotpath` is mandatory:
+1. Single Generation Point - `make proto` -> `scripts/ci/gen.sh --proto` -> `api/buf.gen.yaml` -> staging `api/gen/` -> `safe_sync_proto_gen` in `internal/*/pb/`.
+2. Post-Gen Hot-Path Patch - after syncing, `go run ./cmd/patch-vtproto-hotpath` is mandatory:
    - replaces `make+copy` with `appendReuseBytes` for `EventMetadata.ExtraKeys` / `ExtraValues`;
    - the helper lives in `internal/ingestion/pb/unmarshal_helpers.go` (not generated).
 3. Patch Extension - when adding repeated `bytes` on hot ingest:
-   - add the pattern to `scripts/codegen/patch_vtproto_hotpath/main.go`;
+   - add the pattern to `cmd/patch-vtproto-hotpath/main.go`;
    - add a reuse helper to `unmarshal_helpers.go`;
    - add `TestAdEvent_UnmarshalVT_*_ZeroAlloc` or E2E bench with `ReportAllocs`.
 4. Idempotency - running `make proto` repeatedly does not break the tree; patch is a no-op if `appendReuseBytes` is already applied.
@@ -522,19 +522,19 @@ errcheck on non-test:
 R11.3. Benchmark Baseline in CI
 
 1. Documentation - `docs/hot_path_baseline.md` (summary) + `docs/hot_path_baseline_ads_raw.txt`, `docs/hot_path_baseline_rtb_raw.txt` (raw, 5 runs).
-2. Local Gate - `bash scripts/perf-gate/perf_gate_run.sh` or `task perf-gate`:
-   - smoke: `scripts/perf-gate/perf_gate.go` verifies 0 allocs on gated benches;
+2. Local Gate - `bash scripts/perf/gate_run.sh` or `task perf-gate`:
+   - smoke: `scripts/perf/gate.go` verifies 0 allocs on gated benches;
    - strict (self-hosted): benchstat vs baseline worktree `main`.
 3. CI Workflow - `.github/workflows/perf-gate.yaml`:
-   - trigger on push to `main` and path-filter (`internal/ingestion/`, `internal/rtb/`, `api/`, `scripts/perf-gate/`);
+   - trigger on push to `main` and path-filter (`internal/ingestion/`, `internal/rtb/`, `api/`, `scripts/perf/`);
    - artifacts: `pr_bench.txt`, `baseline_bench.txt`, `gate_report.txt`.
-4. Gated Benches - list in `scripts/perf-gate/perf_gate_bench.sh` (E2E accept/reject/infra, filter micro, RTB auction). A new hot-path bench must be added to the gate when a critical path is introduced.
+4. Gated Benches - list in `scripts/perf/gate_bench.sh` (E2E accept/reject/infra, filter micro, RTB auction). A new hot-path bench must be added to the gate when a critical path is introduced.
 5. Baseline Update - upon intentional performance improvements, merge the PR with updated `docs/hot_path_baseline*.md/txt` in the same commit.
 
 R11.4. Other Codegen Hooks
 
 New post-gen patches follow the same contract as `patch_vtproto_hotpath`:
-1. Standalone command in `scripts/codegen/`.
+1. Standalone command in `cmd/patch-vtproto-hotpath` (invoked from `scripts/ci/gen.sh`).
 2. Invocation from `gen.sh` after the corresponding generate.
 3. Fail-fast on generator template changes.
 4. Test or bench securing the invariant.
@@ -564,7 +564,7 @@ Adding a New Source Code File
 
 1. Select a prefix from R2 matching the file's purpose.
 2. Maintain one primary area of responsibility per file.
-3. Add a `*_test.go` file with the matching prefix; fault tolerance tests must use the `fault_*` prefix or `*_chaos_test.go`.
+3. Add a `*_test.go` file with the matching prefix; fault tolerance tests must use the `fault_*` prefix or `*_fault_test.go`.
 
 Adding an Error or Reject Path
 
@@ -587,7 +587,7 @@ Adding a Hot-Path Optimization
 2. Verify the path adheres to R8.3 (sentinels, pre-built responses) and R8.7 (metrics, snapshots, Lua).
 3. Add or update `*_bench_test.go`; for E2E paths, add a bench in `perf_gate_bench.sh`.
 4. On protobuf ingest changes, update `patch_vtproto_hotpath` if needed (R11.1).
-5. Run `bash scripts/perf-gate/perf_gate_run.sh` locally when modifying `internal/ingestion` / `internal/rtb`.
+5. Run `bash scripts/perf/gate_run.sh` locally when modifying `internal/ingestion` / `internal/rtb`.
 
 Writing Comments
 

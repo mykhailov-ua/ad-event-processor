@@ -32,7 +32,7 @@ func TestXDP_synEmitsFingerprint(t *testing.T) {
 	src := net.IPv4(198, 51, 100, 77)
 	pkt := buildSYNPacket(t, src, net.IPv4(10, 0, 0, 1), trackerPort)
 	tcp := pkt[34:]
-	binary.BigEndian.PutUint16(tcp[14:16], 0x6000) // window for hash variance (keep tcp[13] SYN)
+	binary.BigEndian.PutUint16(tcp[14:16], 0x6000)
 	require.Equal(t, uint32(2), runXDP(t, objs.XdpEdgeFilter, pkt))
 
 	n, err := handler.Drain(rd, 500*time.Millisecond)

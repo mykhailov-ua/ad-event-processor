@@ -20,14 +20,12 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// topicLeaderState tracks local leadership, fencing epoch, and write readiness after failover.
 type topicLeaderState struct {
 	isLeader bool
 	epoch    uint64
 	ready    bool
 }
 
-// Coordinator elects per-topic leaders in Redis and tails the leader log on followers.
 type Coordinator struct {
 	nodeID        string
 	tcpAddr       string
@@ -42,12 +40,10 @@ type Coordinator struct {
 	renewMu       sync.Mutex
 }
 
-// NewCoordinator wires Redis leader election to a coordination host (broker or region-proxy).
 func NewCoordinator(nodeID string, tcpAddr string, redisURL string, host CoordHost) (*Coordinator, error) {
 	return NewCoordinatorWithConfig(nodeID, tcpAddr, redisURL, host, DefaultCoordConfig())
 }
 
-// NewCoordinatorWithConfig wires Redis leader election with explicit lease tuning.
 func NewCoordinatorWithConfig(nodeID string, tcpAddr string, redisURL string, host CoordHost, cfg CoordConfig) (*Coordinator, error) {
 	rdb, err := openCoordRedis(redisURL)
 	if err != nil {
@@ -68,7 +64,6 @@ func NewCoordinatorWithConfig(nodeID string, tcpAddr string, redisURL string, ho
 	return c, nil
 }
 
-// openCoordRedis returns a standalone client or Sentinel failover client when lab env vars are set.
 func openCoordRedis(redisURL string) (redis.UniversalClient, error) {
 	master := os.Getenv("BROKER_REDIS_SENTINEL_MASTER")
 	if master != "" {
@@ -105,7 +100,6 @@ func openCoordRedis(redisURL string) (redis.UniversalClient, error) {
 	return redis.NewClient(opts), nil
 }
 
-// Start runs heartbeat and leader-election loops so the node joins cluster coordination.
 func (c *Coordinator) Start() {
 	c.wg.Add(1)
 	go func() {
@@ -120,12 +114,10 @@ func (c *Coordinator) Start() {
 	}()
 }
 
-// Redis returns the coordination client used for leader election and topic registry sync.
 func (c *Coordinator) Redis() redis.UniversalClient {
 	return c.rdb
 }
 
-// Stop tears down coordination goroutines and removes this broker from the discovery registry.
 func (c *Coordinator) Stop() {
 	c.closeOnce.Do(func() {
 		close(c.closeChan)
@@ -134,7 +126,6 @@ func (c *Coordinator) Stop() {
 	_ = c.rdb.Close()
 }
 
-// IsLeader reports whether this node may accept writes for a topic under HA mode.
 func (c *Coordinator) IsLeader(topic string) bool {
 	m := c.leaders.Load()
 	if m == nil {
@@ -143,7 +134,6 @@ func (c *Coordinator) IsLeader(topic string) bool {
 	return (*m)[topic].isLeader
 }
 
-// LeaderEpoch returns the fencing epoch for the current leader term on this node.
 func (c *Coordinator) LeaderEpoch(topic string) (uint64, bool) {
 	m := c.leaders.Load()
 	if m == nil {
@@ -156,7 +146,6 @@ func (c *Coordinator) LeaderEpoch(topic string) (uint64, bool) {
 	return st.epoch, true
 }
 
-// IsLeaderReady reports whether the elected leader has caught up to the published log high-water mark.
 func (c *Coordinator) IsLeaderReady(topic string) bool {
 	m := c.leaders.Load()
 	if m == nil {
@@ -166,14 +155,12 @@ func (c *Coordinator) IsLeaderReady(topic string) bool {
 	return st.isLeader && st.ready
 }
 
-// PublishLogHWM records the leader's next offset so followers can verify readiness on failover.
 func (c *Coordinator) PublishLogHWM(topic string, hwm uint64) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	_ = c.rdb.Set(ctx, logHWMKey(topic), strconv.FormatUint(hwm, 10), 0).Err()
 }
 
-// HasLeader checks Redis for an elected leader so followers can reject stale produce attempts.
 func (c *Coordinator) HasLeader(topic string) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -193,7 +180,6 @@ func logHWMKey(topic string) string {
 	return "espx:topics:" + topic + ":log_hwm"
 }
 
-// runHeartbeatLoop publishes this broker's TCP address so clients and followers can find the leader.
 func (c *Coordinator) runHeartbeatLoop() {
 	interval := c.cfg.Interval
 	if interval <= 0 {
@@ -218,7 +204,6 @@ func (c *Coordinator) runHeartbeatLoop() {
 	}
 }
 
-// runCoordinationLoop acquires topic leadership or starts tailing the elected leader's log.
 func (c *Coordinator) runCoordinationLoop() {
 	interval := c.cfg.Interval
 	if interval <= 0 {
@@ -373,7 +358,6 @@ func (c *Coordinator) clearRenewFailures(topic string) {
 	delete(c.renewFailures, topic)
 }
 
-// updateTopicMetrics publishes HA gauges for dashboards and split-brain alerts.
 func (c *Coordinator) updateTopicMetrics(ctx context.Context, topic string) {
 	hwm := c.readLogHWM(ctx, topic)
 	local := uint64(0)
@@ -457,7 +441,6 @@ func (c *Coordinator) onAcquiredLeadership(ctx context.Context, topic string, ep
 	c.updateTopicMetrics(ctx, topic)
 }
 
-// recoverLeaderReadiness waits for replication catch-up or accepts a bounded gap after failover timeout.
 func (c *Coordinator) recoverLeaderReadiness(topic string, targetHWM uint64, started time.Time) {
 	const timeout = 5 * time.Second
 	deadline := time.Now().Add(timeout)
@@ -489,7 +472,6 @@ func (c *Coordinator) recoverLeaderReadiness(topic string, targetHWM uint64, sta
 		"topic", topic, "local", local, "target_hwm", targetHWM)
 }
 
-// demoteTopic clears local leadership and raises the partition fencing floor to the cluster epoch.
 func (c *Coordinator) demoteTopic(topic string, clusterEpoch uint64) {
 	c.setLeaderState(topic, false, 0, false)
 	if clusterEpoch == 0 {
@@ -504,7 +486,6 @@ func (c *Coordinator) demoteTopic(topic string, clusterEpoch uint64) {
 	}
 }
 
-// setLeaderState publishes leadership and epoch changes without locking readers on the produce path.
 func (c *Coordinator) setLeaderState(topic string, isLeader bool, epoch uint64, ready bool) {
 	for {
 		old := c.leaders.Load()
@@ -541,7 +522,6 @@ func (c *Coordinator) setLeaderReady(topic string, ready bool) {
 	}
 }
 
-// replicate tails the leader partition log so followers serve consistent fetch offsets after failover.
 func (c *Coordinator) replicate(topic string, leaderID string, stopCh chan struct{}) {
 	slog.Info("Starting replication", "topic", topic, "leader", leaderID)
 	defer slog.Info("Stopped replication", "topic", topic)

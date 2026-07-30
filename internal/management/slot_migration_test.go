@@ -35,7 +35,6 @@ func TestSlotMigration_CopyAndActivate(t *testing.T) {
 	active, err := mapRepo.GetActiveVersion(ctx)
 	require.NoError(t, err)
 
-	// Pick slot 0 from active map and a campaign that hashes to slot 0.
 	var campID uuid.UUID
 	var slot int16 = 0
 	for {

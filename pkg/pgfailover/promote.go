@@ -11,7 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// StandbyPromoter promotes a sync standby via an external command and waits until it accepts writes.
 type StandbyPromoter struct {
 	StandbyDSN     string
 	PromoteCommand string
@@ -23,7 +22,6 @@ type StandbyPromoter struct {
 	OnReconnect    func(pool *pgxpool.Pool)
 }
 
-// Promote runs pg_ctl promote (or Patroni/repmgr) when configured, else verifies standby is writable.
 func (p *StandbyPromoter) Promote(ctx context.Context) (string, error) {
 	if p.StandbyDSN == "" {
 		return "", errors.New("standby dsn required")

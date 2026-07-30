@@ -57,7 +57,6 @@ func buildSpendSyncTxns(campaignID uuid.UUID, count int, amountMicro int64, pref
 	return txns
 }
 
-// TestGlobalSpendReconciler_ApplyBatch verifies 100-txn batches debit balance_ledger with idempotency.
 func TestGlobalSpendReconciler_ApplyBatch(t *testing.T) {
 	ctx, pool, rdb, campaignID := setupGlobalSpendTest(t)
 
@@ -101,7 +100,6 @@ func TestGlobalSpendReconciler_ApplyBatch(t *testing.T) {
 	assert.Equal(t, txnCount, ledgerCount)
 }
 
-// TestGlobalSpendReconciler_ConcurrentApply proves idempotent ledger under parallel batch workers.
 func TestGlobalSpendReconciler_ConcurrentApply(t *testing.T) {
 	ctx, pool, rdb, campaignID := setupGlobalSpendTest(t)
 

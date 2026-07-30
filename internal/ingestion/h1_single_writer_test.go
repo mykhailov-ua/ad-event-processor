@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestH1_UpdateSpendSingleWriter audits production code for forbidden management spend writes.
 func TestH1_UpdateSpendSingleWriter(t *testing.T) {
 	_, filename, _, ok := runtime.Caller(0)
 	require.True(t, ok)

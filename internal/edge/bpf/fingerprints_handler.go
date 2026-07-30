@@ -9,17 +9,14 @@ import (
 	"github.com/cilium/ebpf/ringbuf"
 )
 
-// FingerprintHandler processes ringbuf SYN fingerprint events (cold path).
 type FingerprintHandler struct {
 	onEvent func(FingerprintEvent) error
 }
 
-// NewFingerprintHandler returns a handler for fingerprint events.
 func NewFingerprintHandler(onEvent func(FingerprintEvent) error) *FingerprintHandler {
 	return &FingerprintHandler{onEvent: onEvent}
 }
 
-// Drain reads ringbuf records until idle or timeout.
 func (h *FingerprintHandler) Drain(rd *ringbuf.Reader, idle time.Duration) (int, error) {
 	if rd == nil || h.onEvent == nil {
 		return 0, nil

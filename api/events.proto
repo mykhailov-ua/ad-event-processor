@@ -1,6 +1,5 @@
 syntax = "proto3";
 
-// Wire format for tracker ingest and processor streams; bytes fields avoid UTF-8 validation on the hot path.
 package ads.v1;
 
 option go_package = "espx/internal/ingestion/pb;pb";
@@ -11,7 +10,6 @@ message AdEvent {
   EventMetadata metadata = 3;
 }
 
-// Optional fields use bytes so vtproto can pool and zero-copy into Redis/ClickHouse writers.
 message EventMetadata {
   bytes click_id = 1;
   bytes user_id = 2;
@@ -22,14 +20,12 @@ message EventMetadata {
   bytes extra_bytes = 6;
 }
 
-// Returned on /track success so the tracker can redirect without a second Postgres round trip.
 message TrackResponse {
   string request_id = 1;
   string status = 2;
   string landing_url = 3;
 }
 
-// Flat stream record for Redis XADD; unix timestamp avoids protobuf Timestamp alloc on ingest.
 message AdStreamEvent {
   bytes click_id = 1;
   bytes campaign_id = 2;
@@ -44,7 +40,6 @@ message AdStreamEvent {
   bytes user_id = 11;
 }
 
-// DLQ envelope preserves the original stream entry for replay after processor failure.
 message AdDLQEvent {
   AdStreamEvent original_event = 1;
   bytes error = 2;
@@ -54,7 +49,6 @@ message AdDLQEvent {
   int32 retry_count = 6;
 }
 
-// Binary log segment record for mmap logger persistence off the gnet event loop.
 message AdLogRecord {
   int64 timestamp_unix = 1;
   bytes campaign_id = 2;
@@ -63,7 +57,6 @@ message AdLogRecord {
   uint32 priority = 5;
 }
 
-// BudgetDelta is a local-quanta spend record published to broker topic budget-deltas (M8-04).
 message BudgetDelta {
   bytes campaign_id = 1;
   int64 amount_micro = 2;

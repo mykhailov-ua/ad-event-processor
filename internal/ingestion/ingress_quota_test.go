@@ -15,7 +15,6 @@ func TestIngressQuotaMap_tryAcquire_perWorkerLimit(t *testing.T) {
 	m := buildIngressQuotaMap(1, &limits, 4)
 	require.NotNil(t, m)
 
-	// per-worker limit = 100/4 = 25 on shard 0
 	for i := 0; i < 25; i++ {
 		require.True(t, m.tryAcquire(0, 0))
 	}

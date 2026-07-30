@@ -26,7 +26,6 @@ var (
 	openrtbKeySid        = []byte(`"sid"`)
 )
 
-// OpenRTB26Parsed carries hot-path bid request fields parsed without heap allocation.
 type OpenRTB26Parsed struct {
 	BidFloorMicro int64
 	DeviceType    uint8
@@ -39,7 +38,6 @@ type OpenRTB26Parsed struct {
 	OK            bool
 }
 
-// ParseOpenRTB26 parses OpenRTB 2.6 bid request JSON on the hot path with zero heap allocations.
 func ParseOpenRTB26(payload []byte) OpenRTB26Parsed {
 	var out OpenRTB26Parsed
 	n := len(payload)
@@ -202,7 +200,6 @@ func parseQuotedField(payload []byte, start int, dst []byte) int {
 	return ln
 }
 
-// DeadlineMonoFromTmax converts OpenRTB tmax milliseconds to a monotonic auction deadline.
 func DeadlineMonoFromTmax(tmaxMs int32) int64 {
 	if tmaxMs <= 0 {
 		tmaxMs = 200

@@ -2,7 +2,6 @@ package ingestion
 
 import "espx/internal/config"
 
-// RtbAuthorityController applies RTB budget authority from system_settings to hot-path components.
 type RtbAuthorityController struct {
 	cfg        *config.Config
 	watcher    *SettingsWatcher
@@ -11,7 +10,6 @@ type RtbAuthorityController struct {
 	budgetSync *RtbBudgetSync
 }
 
-// NewRtbAuthorityController wires dynamic RTB_BUDGET_AUTHORITY propagation.
 func NewRtbAuthorityController(
 	cfg *config.Config,
 	watcher *SettingsWatcher,
@@ -33,7 +31,6 @@ func NewRtbAuthorityController(
 	return c
 }
 
-// Apply refreshes Lua skip-budget and in-process RTB authority from the latest settings snapshot.
 func (c *RtbAuthorityController) Apply() {
 	setting := ""
 	if c.watcher != nil {

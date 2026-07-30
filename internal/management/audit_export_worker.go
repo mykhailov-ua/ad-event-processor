@@ -18,14 +18,12 @@ import (
 
 const auditExportBatchSize = 1000
 
-// AuditExportWorker writes daily audit_log CSV snapshots and prunes old export files.
 type AuditExportWorker struct {
 	svc           *Service
 	exportPath    string
 	retentionDays int
 }
 
-// NewAuditExportWorker configures the worker with the export directory and file retention window.
 func NewAuditExportWorker(svc *Service, exportPath string, retentionDays int) *AuditExportWorker {
 	if retentionDays <= 0 {
 		retentionDays = 90
@@ -37,7 +35,6 @@ func NewAuditExportWorker(svc *Service, exportPath string, retentionDays int) *A
 	}
 }
 
-// Start periodically exports audit logs until the context is cancelled.
 func (w *AuditExportWorker) Start(ctx context.Context, interval time.Duration) {
 	if err := w.ExportDaily(ctx, time.Now().UTC()); err != nil {
 		slog.Error("audit export failed", "error", err)
@@ -65,7 +62,6 @@ func (w *AuditExportWorker) Start(ctx context.Context, interval time.Duration) {
 	}
 }
 
-// ExportDaily writes a CSV snapshot for the UTC calendar day containing now.
 func (w *AuditExportWorker) ExportDaily(ctx context.Context, now time.Time) error {
 	day := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 	return w.exportDay(ctx, day)

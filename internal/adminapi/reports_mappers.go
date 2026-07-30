@@ -1,6 +1,5 @@
 package adminapi
 
-// placementReportCHRow is one ClickHouse row from placement stats (M6 CHG).
 type placementReportCHRow struct {
 	PlacementID  string
 	CampaignID   string
@@ -11,7 +10,6 @@ type placementReportCHRow struct {
 	RevenueMicro int64
 }
 
-// keywordReportCHRow is one ClickHouse row from keyword stats (M6 CHG).
 type keywordReportCHRow struct {
 	Keyword      string
 	CampaignID   string

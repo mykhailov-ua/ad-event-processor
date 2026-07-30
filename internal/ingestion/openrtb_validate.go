@@ -14,7 +14,6 @@ var allowedBidCurrencies = map[string]struct{}{
 	"EUR": {},
 }
 
-// OpenRTBValidationResultDTO is the admin lint response for bid request payloads.
 type OpenRTBValidationResultDTO struct {
 	Valid   bool     `json:"valid"`
 	Version string   `json:"version,omitempty"`
@@ -40,7 +39,6 @@ func (c *validationCollector) result(version string) OpenRTBValidationResultDTO 
 	}
 }
 
-// ValidateOpenRTBBidRequest lints OpenRTB 2.6 or 3.0 bid request JSON (cold path).
 func ValidateOpenRTBBidRequest(payload []byte) OpenRTBValidationResultDTO {
 	payload = bytes.TrimSpace(payload)
 	if len(payload) == 0 {
@@ -198,7 +196,6 @@ func validateOpenRTB30(payload []byte) OpenRTBValidationResultDTO {
 
 	validateCurrencyList(&c, req.Cur, "openrtb.request.cur")
 
-	// Cross-check hot-path parser outputs for fields the tracker consumes.
 	if bytes.Contains(payload, []byte(`"flr"`)) && minBid == 0 {
 		c.add("openrtb.request.item flr present but could not be parsed (expected decimal CPM)")
 	}

@@ -11,7 +11,6 @@ import (
 	"espx/internal/metrics"
 )
 
-// TCPControlClient pulls signed routing snapshots from management over TCP (M2).
 type TCPControlClient struct {
 	enabled    bool
 	secret     []byte
@@ -23,7 +22,6 @@ type TCPControlClient struct {
 	lastEpoch  atomic.Int64
 }
 
-// TCPControlClientConfig wires tracker-side TCP snapshot pull.
 type TCPControlClientConfig struct {
 	Enabled   bool
 	Secret    []byte
@@ -34,7 +32,6 @@ type TCPControlClientConfig struct {
 	UDP       *UDPControl
 }
 
-// NewTCPControlClient builds an idle TCP control client.
 func NewTCPControlClient(cfg TCPControlClientConfig) *TCPControlClient {
 	if cfg.DialTO <= 0 {
 		cfg.DialTO = 3 * time.Second
@@ -50,7 +47,6 @@ func NewTCPControlClient(cfg TCPControlClientConfig) *TCPControlClient {
 	}
 }
 
-// RequestSnapshot dials management, receives a signed snapshot, applies it, and ACKs.
 func (c *TCPControlClient) RequestSnapshot(ctx context.Context) error {
 	if c == nil || !c.enabled || c.mgmtAddr == "" {
 		return nil

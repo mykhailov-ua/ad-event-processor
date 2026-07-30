@@ -25,13 +25,11 @@ var (
 	ErrLicenseTokenTooLarge = errors.New("license token exceeds max size")
 )
 
-// LicenseSpoolConfig controls mmap segment sizing and token caps.
 type LicenseSpoolConfig struct {
 	SegmentSizeBytes int64
 	MaxTokenBytes    int
 }
 
-// DefaultLicenseSpoolConfig returns page-aligned defaults for cold-path durability.
 func DefaultLicenseSpoolConfig() LicenseSpoolConfig {
 	return LicenseSpoolConfig{
 		SegmentSizeBytes: alignToPageSize(licenseSpoolDefaultSegment),
@@ -39,7 +37,6 @@ func DefaultLicenseSpoolConfig() LicenseSpoolConfig {
 	}
 }
 
-// LicenseSpool is a single-segment mmap WAL for license JWT durability between heartbeat and file cache.
 type LicenseSpool struct {
 	dir string
 	cfg LicenseSpoolConfig
@@ -54,12 +51,10 @@ type licenseSpoolSegment struct {
 	writePos int64
 }
 
-// OpenLicenseSpool opens or recovers the license WAL under dir.
 func OpenLicenseSpool(dir string) (*LicenseSpool, error) {
 	return OpenLicenseSpoolWithConfig(dir, DefaultLicenseSpoolConfig())
 }
 
-// OpenLicenseSpoolWithConfig opens a WAL with explicit sizing. Segment size is rounded up to OS page size.
 func OpenLicenseSpoolWithConfig(dir string, cfg LicenseSpoolConfig) (*LicenseSpool, error) {
 	if dir == "" {
 		return nil, errors.New("license spool dir is required")
@@ -163,7 +158,6 @@ func licenseSpoolMagicEqual(b []byte) bool {
 		b[3] == licenseSpoolMagic[3]
 }
 
-// AppendDurably appends a JWT token and fsyncs before return.
 func (s *LicenseSpool) AppendDurably(token string) error {
 	if len(token) > s.cfg.MaxTokenBytes {
 		return ErrLicenseTokenTooLarge
@@ -198,7 +192,6 @@ func (s *LicenseSpool) appendLocked(payload []byte, recordLen int, fsync bool) e
 	return nil
 }
 
-// LatestToken returns the most recent durable token or empty string if none.
 func (s *LicenseSpool) LatestToken() (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -212,7 +205,6 @@ func (s *LicenseSpool) LatestToken() (string, error) {
 	return tokens[len(tokens)-1], nil
 }
 
-// Recover replays all valid records from the WAL.
 func (s *LicenseSpool) Recover() ([]string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -244,7 +236,6 @@ func (s *LicenseSpool) scanLocked() ([]string, error) {
 	return tokens, nil
 }
 
-// Close unmaps and closes the active segment.
 func (s *LicenseSpool) Close() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -263,12 +254,10 @@ func (s *LicenseSpool) Close() error {
 	return nil
 }
 
-// SegmentSize reports the page-aligned mmap size (for diagnostics).
 func (s *LicenseSpool) SegmentSize() int64 {
 	return s.cfg.SegmentSizeBytes
 }
 
-// WritePos returns the current append offset.
 func (s *LicenseSpool) WritePos() int64 {
 	s.mu.Lock()
 	defer s.mu.Unlock()

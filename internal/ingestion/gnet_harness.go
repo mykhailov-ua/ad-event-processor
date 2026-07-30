@@ -9,10 +9,8 @@ import (
 	"github.com/panjf2000/gnet/v2"
 )
 
-// gnetHarnessRemoteAddr is the default peer for harness connections.
 var gnetHarnessRemoteAddr = &net.TCPAddr{IP: net.IPv4(1, 1, 1, 1), Port: 1234}
 
-// GnetHarnessConn is a minimal gnet.Conn stub for OnTraffic tests.
 type GnetHarnessConn struct {
 	gnet.Conn
 	inbound   []byte
@@ -22,7 +20,6 @@ type GnetHarnessConn struct {
 	addr      net.Addr
 }
 
-// NewGnetHarnessConn returns a connection preloaded with raw HTTP request bytes.
 func NewGnetHarnessConn(inbound []byte) *GnetHarnessConn {
 	return &GnetHarnessConn{
 		inbound: append([]byte(nil), inbound...),
@@ -74,13 +71,10 @@ func (c *GnetHarnessConn) RemoteAddr() net.Addr {
 	return gnetHarnessRemoteAddr
 }
 
-// Written returns the last response bytes written to the connection.
 func (c *GnetHarnessConn) Written() []byte { return c.written }
 
-// WriteCount returns how many HTTP responses were written (pipelining tests).
 func (c *GnetHarnessConn) WriteCount() int { return len(c.responses) }
 
-// AllResponses returns a copy of every response written to the connection.
 func (c *GnetHarnessConn) AllResponses() [][]byte {
 	out := make([][]byte, len(c.responses))
 	for i, r := range c.responses {
@@ -89,10 +83,8 @@ func (c *GnetHarnessConn) AllResponses() [][]byte {
 	return out
 }
 
-// SetRemoteAddr overrides the peer address for proxy header tests.
 func (c *GnetHarnessConn) SetRemoteAddr(addr net.Addr) { c.addr = addr }
 
-// BuildGnetHTTP assembles a minimal HTTP/1.1 request with optional headers and body.
 func BuildGnetHTTP(method, path string, headers map[string]string, body []byte) []byte {
 	var buf bytes.Buffer
 	buf.WriteString(method)
@@ -124,7 +116,6 @@ func copyGnetHarnessHeaders(h map[string]string) map[string]string {
 	return out
 }
 
-// BuildGnetPostTrackJSON wraps a JSON body in POST /track HTTP bytes.
 func BuildGnetPostTrackJSON(body []byte) []byte {
 	return BuildGnetHTTP("POST", "/track", map[string]string{
 		"Content-Type": "application/json",
@@ -132,7 +123,6 @@ func BuildGnetPostTrackJSON(body []byte) []byte {
 	}, body)
 }
 
-// BuildGnetGetHealth builds GET /health request bytes.
 func BuildGnetGetHealth() []byte {
 	return BuildGnetHTTP("GET", "/health", map[string]string{
 		"Connection":     "keep-alive",
@@ -140,13 +130,11 @@ func BuildGnetGetHealth() []byte {
 	}, nil)
 }
 
-// ServeGnetHarness runs OnTraffic against raw HTTP bytes.
 func ServeGnetHarness(h *AdsPacketHandler, inbound []byte) (gnet.Action, *GnetHarnessConn) {
 	c := NewGnetHarnessConn(inbound)
 	return h.OnTraffic(c), c
 }
 
-// ParseGnetHTTPStatus extracts the numeric HTTP status from a raw HTTP response.
 func ParseGnetHTTPStatus(resp []byte) int {
 	if len(resp) < 12 || !bytes.HasPrefix(resp, []byte("HTTP/1.1 ")) {
 		return 0
@@ -162,7 +150,6 @@ func ParseGnetHTTPStatus(resp []byte) int {
 	return code
 }
 
-// ParseGnetHTTPBody returns the response body after the header block.
 func ParseGnetHTTPBody(resp []byte) []byte {
 	idx := bytes.Index(resp, []byte("\r\n\r\n"))
 	if idx < 0 {
@@ -171,7 +158,6 @@ func ParseGnetHTTPBody(resp []byte) []byte {
 	return resp[idx+4:]
 }
 
-// PostTrackGnet sends POST /track through OnTraffic.
 func PostTrackGnet(h *AdsPacketHandler, body []byte, contentType, accept string) (int, []byte) {
 	headers := map[string]string{
 		"Content-Type": contentType,
@@ -184,13 +170,10 @@ func PostTrackGnet(h *AdsPacketHandler, body []byte, contentType, accept string)
 	return ParseGnetHTTPStatus(conn.Written()), conn.Written()
 }
 
-// PostTrackGnetJSON is a shortcut for JSON track requests.
 func PostTrackGnetJSON(h *AdsPacketHandler, body []byte) (int, []byte) {
 	return PostTrackGnetJSONWait(h, body, 0)
 }
 
-// PostTrackGnetJSONWait runs POST /track and polls until the worker pool writes a response or timeout.
-// timeout 0 uses 5s. Required for concurrent chaos load tests using the async gnet worker pool.
 func PostTrackGnetJSONWait(h *AdsPacketHandler, body []byte, timeout time.Duration) (int, []byte) {
 	if timeout <= 0 {
 		timeout = 5 * time.Second
@@ -207,7 +190,6 @@ func PostTrackGnetJSONWait(h *AdsPacketHandler, body []byte, timeout time.Durati
 	return 0, nil
 }
 
-// BuildGnetGetReady builds GET /ready request bytes.
 func BuildGnetGetReady() []byte {
 	return BuildGnetHTTP("GET", "/ready", map[string]string{
 		"Connection":     "keep-alive",
@@ -215,13 +197,11 @@ func BuildGnetGetReady() []byte {
 	}, nil)
 }
 
-// GetReadyGnet sends GET /ready through OnTraffic.
 func GetReadyGnet(h *AdsPacketHandler) (status int, body string) {
 	_, conn := ServeGnetHarness(h, BuildGnetGetReady())
 	return ParseGnetHTTPStatus(conn.Written()), string(ParseGnetHTTPBody(conn.Written()))
 }
 
-// GetHealthGnet sends GET /health through OnTraffic.
 func GetHealthGnet(h *AdsPacketHandler) (status int, body string) {
 	_, conn := ServeGnetHarness(h, BuildGnetGetHealth())
 	return ParseGnetHTTPStatus(conn.Written()), string(ParseGnetHTTPBody(conn.Written()))

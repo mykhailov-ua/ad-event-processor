@@ -1,6 +1,5 @@
 package vendorprobe
 
-// Options wires vendor probes from deployment configuration (cold path only).
 type Options struct {
 	GeoIPDBPath      string
 	StripeSecretKey  string
@@ -9,7 +8,6 @@ type Options struct {
 	SMTPPort         string
 }
 
-// RegistryFromOptions registers MaxMind, Stripe, Telegram, and SMTP probes.
 func RegistryFromOptions(opts Options) *Registry {
 	reg := NewRegistry()
 	reg.Register(NewMaxMindProbe(opts.GeoIPDBPath))

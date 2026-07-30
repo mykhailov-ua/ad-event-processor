@@ -34,7 +34,6 @@ func newRealRedisUnifiedFilter(t testing.TB, rdb redis.UniversalClient) *Unified
 	)
 }
 
-// Seeds Redis budget key so filter tests start with known balance.
 func seedCampaignBudget(t testing.TB, ctx context.Context, rdb redis.UniversalClient, campID uuid.UUID) {
 	t.Helper()
 	reg := &mockRegistry{}
@@ -43,7 +42,6 @@ func seedCampaignBudget(t testing.TB, ctx context.Context, rdb redis.UniversalCl
 	require.NoError(t, rdb.Set(ctx, camp.BudgetCampaignKey, 9_000_000_000_000_000, 0).Err())
 }
 
-// Regression anchor: SCRIPT LOAD SHA must succeed with EVALSHA per Redis spec.
 func TestVerify_1a_RedisSpec_EvalShaAfterScriptLoad(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
@@ -133,7 +131,6 @@ func TestFilterRedisOptions_realClientRespectsReadTimeout(t *testing.T) {
 	}
 }
 
-// Regression anchor: real Redis UnifiedFilter.Check latency stays within SLA envelope.
 func TestVerify_1d_RealRedisLatencyProfile(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
@@ -175,7 +172,6 @@ func TestVerify_1d_RealRedisLatencyProfile(t *testing.T) {
 	}
 }
 
-// Tracks UnifiedFilter.Check against real Redis for integration perf baselines.
 func BenchmarkUnifiedFilter_Check_RealRedis(b *testing.B) {
 	if testing.Short() {
 		b.Skip()

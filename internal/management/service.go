@@ -28,7 +28,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// Service coordinates management business logic, background workers, and hot-path propagation via outbox.
 type Service struct {
 	pool           *pgxpool.Pool
 	rdbs           []redis.UniversalClient
@@ -54,12 +53,10 @@ type Service struct {
 	globalSpend    *GlobalSpendReconciler
 }
 
-// StartBackgroundWorker launches an auxiliary goroutine tracked for graceful shutdown.
 func (s *Service) StartBackgroundWorker(fn func()) {
 	s.startWorker(fn)
 }
 
-// CHQuery returns the governed read-only ClickHouse client when reporting is enabled.
 func (s *Service) CHQuery() *database.CHQuery {
 	if s == nil {
 		return nil
@@ -67,7 +64,6 @@ func (s *Service) CHQuery() *database.CHQuery {
 	return s.chQuery
 }
 
-// startWorker launches a background goroutine tracked for graceful shutdown.
 func (s *Service) startWorker(fn func()) {
 	s.workerMu.Lock()
 	if s.closed.Load() {
@@ -83,7 +79,6 @@ func (s *Service) startWorker(fn func()) {
 	}()
 }
 
-// NewService constructs the management service and starts core background workers.
 func NewService(pool *pgxpool.Pool, rdbs []redis.UniversalClient, sharder ingestion.Sharder, cfg *config.Config) *Service {
 	ctx, cancel := context.WithCancel(context.Background())
 	s := &Service{
@@ -186,38 +181,32 @@ func NewService(pool *pgxpool.Pool, rdbs []redis.UniversalClient, sharder ingest
 	return s
 }
 
-// StartReconWorker starts periodic ledger reconciliation on the given interval.
 func (s *Service) StartReconWorker(interval time.Duration) {
 	s.startWorker(func() {
 		NewReconWorker(s, interval).Start(s.ctx)
 	})
 }
 
-// StartAuditCleaner deletes audit rows older than the configured retention window.
 func (s *Service) StartAuditCleaner(retention Days) {
 	s.startWorker(func() {
 		s.RunAuditCleaner(s.ctx, retention)
 	})
 }
 
-// StartBlacklistJanitor evicts expired temporary blacklist entries from Postgres and Redis.
 func (s *Service) StartBlacklistJanitor(interval time.Duration) {
 	s.startWorker(func() {
 		NewBlacklistJanitor(s, interval).Start(s.ctx)
 	})
 }
 
-// SetBrokerDeltas wires unflushed local-quanta broker deltas for budget snapshot recon (M8-04).
 func (s *Service) SetBrokerDeltas(reader BrokerPendingDeltaReader) {
 	s.brokerDeltas = reader
 }
 
-// SetGlobalSpendReconciler wires the cross-region spend authority worker (GAP-RTB-12).
 func (s *Service) SetGlobalSpendReconciler(reconciler *GlobalSpendReconciler) {
 	s.globalSpend = reconciler
 }
 
-// GlobalSpendReconciler returns the wired cross-region spend reconciler, if any.
 func (s *Service) GlobalSpendReconciler() *GlobalSpendReconciler {
 	if s == nil {
 		return nil
@@ -225,12 +214,10 @@ func (s *Service) GlobalSpendReconciler() *GlobalSpendReconciler {
 	return s.globalSpend
 }
 
-// GetPool exposes the Postgres pool for tests and auxiliary workers.
 func (s *Service) GetPool() *pgxpool.Pool {
 	return s.pool
 }
 
-// PgGate exposes the management Postgres gate for tests.
 func (s *Service) PgGate() *MgmtPgGate {
 	if s == nil {
 		return nil
@@ -238,17 +225,14 @@ func (s *Service) PgGate() *MgmtPgGate {
 	return s.pgGate
 }
 
-// SetPool replaces the Postgres pool after reconnect (e.g. DB failover).
 func (s *Service) SetPool(pool *pgxpool.Pool) {
 	s.pool = pool
 }
 
-// SetOpsAlerter attaches the notifier-backed operator alert sender.
 func (s *Service) SetOpsAlerter(alerter *OpsAlerter) {
 	s.alerter = alerter
 }
 
-// Close cancels background workers and waits for them to exit.
 func (s *Service) Close() {
 	s.closed.Store(true)
 	if s.cancel != nil {
@@ -257,33 +241,28 @@ func (s *Service) Close() {
 	s.wg.Wait()
 }
 
-// StartPacingController starts the closed-loop pacing worker with budget sync dependencies.
 func (s *Service) StartPacingController(syncWorkers []*ingestion.SyncWorker, interval time.Duration) {
 	s.startWorker(func() {
 		NewPacingControllerWorker(s, syncWorkers).Start(s.ctx, interval)
 	})
 }
 
-// StartAutoscaleBudgetWorker starts CTR-based budget shifting when interval is positive.
 func (s *Service) StartAutoscaleBudgetWorker(syncWorkers []*ingestion.SyncWorker, interval time.Duration) {
 	s.startWorker(func() {
 		NewAutoscaleBudgetWorker(s, syncWorkers).Start(s.ctx, interval)
 	})
 }
 
-// StartDeliveryOptimizerWorker runs the unified M5.0 delivery pass (pacing, autoscale, MAB, bid floors).
 func (s *Service) StartDeliveryOptimizerWorker(syncWorkers []*ingestion.SyncWorker, interval time.Duration) {
 	s.startWorker(func() {
 		NewDeliveryOptimizerWorker(s, syncWorkers).Start(s.ctx, interval)
 	})
 }
 
-// GetCampaign loads the full campaign row for internal authorization and lifecycle checks.
 func (s *Service) GetCampaign(ctx context.Context, id uuid.UUID) (db.Campaign, error) {
 	return db.New(s.pool).GetCampaign(ctx, ingestion.ToUUID(id))
 }
 
-// CreateCustomer registers a new billing account with an optional opening balance.
 func (s *Service) CreateCustomer(ctx context.Context, id uuid.UUID, name string, balance int64, currency string) error {
 	_, err := db.New(s.pool).CreateCustomer(ctx, db.CreateCustomerParams{
 		ID:       ingestion.ToUUID(id),
@@ -297,7 +276,6 @@ func (s *Service) CreateCustomer(ctx context.Context, id uuid.UUID, name string,
 	return err
 }
 
-// GenerateIdempotencyHash derives a stable key from customer identity and request payload for safe retries.
 func (s *Service) GenerateIdempotencyHash(customerID uuid.UUID, params any) (string, error) {
 	b, err := coldpath.MarshalJSON(params)
 	if err != nil {
@@ -309,7 +287,6 @@ func (s *Service) GenerateIdempotencyHash(customerID uuid.UUID, params any) (str
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-// TopUpBalance credits a customer account idempotently and records the ledger entry.
 func (s *Service) TopUpBalance(ctx context.Context, customerID uuid.UUID, amount int64, idempotencyKey string) error {
 	if err := s.requirePgFencing(ctx); err != nil {
 		return err
@@ -342,7 +319,6 @@ func (s *Service) TopUpBalance(ctx context.Context, customerID uuid.UUID, amount
 	})
 }
 
-// ApplyPaymentCredit credits a customer account idempotently and records the PAYMENT_TOPUP ledger entry.
 func (s *Service) ApplyPaymentCredit(ctx context.Context, customerID uuid.UUID, amount int64, ledgerIdempotencyKey string, paymentIntentID uuid.UUID, provider string, providerRef string) (bool, int64, error) {
 	var ledgerEntryID int64
 	var applied bool
@@ -415,7 +391,6 @@ func (s *Service) ApplyPaymentCredit(ctx context.Context, customerID uuid.UUID, 
 	return applied, ledgerEntryID, err
 }
 
-// ApplyPaymentRefund debits a customer account idempotently after a Stripe refund webhook.
 func (s *Service) ApplyPaymentRefund(ctx context.Context, customerID uuid.UUID, amountMicro int64, ledgerIdempotencyKey string, paymentIntentID uuid.UUID, provider string, providerRefundID string) (bool, int64, error) {
 	if amountMicro <= 0 {
 		return false, 0, errValidation("refund amount must be positive")
@@ -495,12 +470,10 @@ func (s *Service) ApplyPaymentRefund(ctx context.Context, customerID uuid.UUID, 
 	return applied, ledgerEntryID, err
 }
 
-// ApplyPaymentChargeback debits a customer account when Stripe withdraws disputed funds.
 func (s *Service) ApplyPaymentChargeback(ctx context.Context, customerID uuid.UUID, amountMicro int64, ledgerIdempotencyKey string, paymentIntentID uuid.UUID, provider string, providerDisputeID string) (bool, int64, error) {
 	return s.applyPaymentChargebackMovement(ctx, customerID, amountMicro, ledgerIdempotencyKey, paymentIntentID, provider, providerDisputeID, "PAYMENT_CHARGEBACK", true)
 }
 
-// ApplyPaymentChargebackReversal credits a customer account when Stripe reinstates won dispute funds.
 func (s *Service) ApplyPaymentChargebackReversal(ctx context.Context, customerID uuid.UUID, amountMicro int64, ledgerIdempotencyKey string, paymentIntentID uuid.UUID, provider string, providerDisputeID string) (bool, int64, error) {
 	return s.applyPaymentChargebackMovement(ctx, customerID, amountMicro, ledgerIdempotencyKey, paymentIntentID, provider, providerDisputeID, "PAYMENT_CHARGEBACK_REVERSAL", false)
 }
@@ -618,7 +591,6 @@ func (s *Service) applyPaymentChargebackMovement(
 	return applied, ledgerEntryID, err
 }
 
-// CancelCampaign marks a campaign draining so the hot path can finish in-flight bids before refund.
 func (s *Service) CancelCampaign(ctx context.Context, campaignID uuid.UUID, reason string) error {
 	return pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		q := db.New(tx)
@@ -653,7 +625,6 @@ func (s *Service) CancelCampaign(ctx context.Context, campaignID uuid.UUID, reas
 	})
 }
 
-// FinalizeCancelledCampaign completes refund and deletion for one draining campaign under row lock.
 func (s *Service) FinalizeCancelledCampaign(ctx context.Context, campaignID uuid.UUID, reason string) error {
 	return pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		q := db.New(tx)
@@ -670,7 +641,6 @@ func (s *Service) FinalizeCancelledCampaign(ctx context.Context, campaignID uuid
 	})
 }
 
-// finalizeDrainingCampaign releases remaining budget, collects fees, and soft-deletes a draining campaign.
 func (s *Service) finalizeDrainingCampaign(ctx context.Context, q db.Querier, campaignID uuid.UUID, camp db.Campaign, reason string) error {
 	if camp.Status != db.CampaignStatusTypeDRAINING {
 		return nil
@@ -734,7 +704,6 @@ func (s *Service) finalizeDrainingCampaign(ctx context.Context, q db.Querier, ca
 	return nil
 }
 
-// campaignUpdateChannel returns the Redis pubsub channel used to invalidate hot-path campaign caches.
 func (s *Service) campaignUpdateChannel() string {
 	if s.cfg != nil && s.cfg.CampaignUpdateChannel != "" {
 		return s.cfg.CampaignUpdateChannel
@@ -742,7 +711,6 @@ func (s *Service) campaignUpdateChannel() string {
 	return "campaigns:update"
 }
 
-// getPubSubRDB returns shard 0, the sole Redis instance trackers subscribe on for campaigns:update.
 func (s *Service) getPubSubRDB() redis.UniversalClient {
 	if len(s.rdbs) == 0 {
 		return nil
@@ -750,8 +718,6 @@ func (s *Service) getPubSubRDB() redis.UniversalClient {
 	return s.rdbs[0]
 }
 
-// publishCampaignUpdate notifies trackers via pub/sub on shard 0 regardless of campaign key placement.
-// When CAMPAIGN_UPDATE_BROKER_FALLBACK is enabled, also publishes to the broker topic (M14-03).
 func (s *Service) publishCampaignUpdate(ctx context.Context, campaignID string) error {
 	rdb := s.getPubSubRDB()
 	var pubErr error
@@ -779,7 +745,6 @@ func (s *Service) publishCampaignUpdate(ctx context.Context, campaignID string) 
 				return fmt.Errorf("redis pubsub: %w; broker: %v", pubErr, err)
 			}
 		} else if pubErr != nil {
-			// Broker succeeded while Redis pub/sub failed — still notify via fallback.
 			slog.Warn("campaign update redis pubsub failed; broker fallback ok", "error", pubErr, "campaign_id", campaignID)
 			return nil
 		}
@@ -788,7 +753,6 @@ func (s *Service) publishCampaignUpdate(ctx context.Context, campaignID string) 
 	return pubErr
 }
 
-// getRDB selects the Redis shard that owns a campaign's budget and settings keys.
 func (s *Service) getRDB(campaignID uuid.UUID) redis.UniversalClient {
 	if len(s.rdbs) == 0 {
 		return nil
@@ -800,7 +764,6 @@ func (s *Service) getRDB(campaignID uuid.UUID) redis.UniversalClient {
 	return s.rdbs[idx%len(s.rdbs)]
 }
 
-// ListAuditLogs returns paginated admin audit entries for compliance review.
 func (s *Service) ListAuditLogs(ctx context.Context, limit, offset int32) ([]db.AdminAuditLog, int64, error) {
 	q := db.New(s.pool)
 	return coldpath.PaginatedQuery(
@@ -814,7 +777,6 @@ func (s *Service) ListAuditLogs(ctx context.Context, limit, offset int32) ([]db.
 	)
 }
 
-// GetLedgerEntry returns PAYMENT_TOPUP ledger state and related totals for a payment intent.
 func (s *Service) GetLedgerEntry(ctx context.Context, paymentIntentID uuid.UUID) (found bool, entry db.BalanceLedger, refundTotal, chargebackTotal, reversalTotal int64, err error) {
 	q := db.New(s.pool)
 	entry, err = q.GetLedgerByPaymentIntent(ctx, ingestion.ToUUID(paymentIntentID))
@@ -842,7 +804,6 @@ func (s *Service) GetLedgerEntry(ctx context.Context, paymentIntentID uuid.UUID)
 	return found, entry, refundTotal, chargebackTotal, reversalTotal, nil
 }
 
-// UpdateOverdraft adjusts credit limits and suspends campaigns when reduced overdraft would overcommit balance.
 func (s *Service) UpdateOverdraft(ctx context.Context, id uuid.UUID, newOverdraft int64) error {
 	return pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		q := db.New(tx)
@@ -964,7 +925,6 @@ func (s *Service) UpdateOverdraft(ctx context.Context, id uuid.UUID, newOverdraf
 	})
 }
 
-// SetTCPControlServer wires the M2 TCP routing cutover publisher.
 func (s *Service) SetTCPControlServer(tcp *TCPControlServer) {
 	s.tcpControl = tcp
 }

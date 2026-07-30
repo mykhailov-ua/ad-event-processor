@@ -11,19 +11,14 @@ import (
 	"github.com/google/uuid"
 )
 
-// BudgetAuthority documents which component owns live spend during RTB rollout.
 type BudgetAuthority uint8
 
 const (
-	// BudgetAuthorityRedis keeps unified-filter.lua as the authoritative budget debit (production default).
 	BudgetAuthorityRedis BudgetAuthority = iota
-	// BudgetAuthorityRTB makes rtb.CheckAndSpend authoritative on the bid path; Redis is reconciled async.
 	BudgetAuthorityRTB
-	// BudgetAuthorityShadow runs in-process auctions for metrics without debiting rtb or Redis.
 	BudgetAuthorityShadow
 )
 
-// RtbCampaignInput carries per-campaign auction catalog fields not present on campaignmodel.Campaign.
 type RtbCampaignInput struct {
 	BidMicro         int64
 	CTRPPM           uint32
@@ -39,7 +34,6 @@ type RtbCampaignInput struct {
 	BoostPPM         uint32
 }
 
-// RtbTargetingInput carries request-side auction dimensions derived from ingest metadata.
 type RtbTargetingInput struct {
 	GeoHash             uint32
 	DeviceType          uint8
@@ -55,12 +49,10 @@ type RtbTargetingInput struct {
 	SchainCount         uint8
 }
 
-// CampaignIDFromUUID maps campaign UUIDs to the fixed-width rtb catalog key.
 func CampaignIDFromUUID(id uuid.UUID) rtb.CampaignID {
 	return rtb.CampaignID(binary.BigEndian.Uint64(id[:8]))
 }
 
-// GeoHashFromCountry hashes ISO country codes for rtb geo sharding.
 func GeoHashFromCountry(country string) uint32 {
 	if country == "" {
 		return 0
@@ -68,7 +60,6 @@ func GeoHashFromCountry(country string) uint32 {
 	return crc32.ChecksumIEEE([]byte(country))
 }
 
-// DeviceMaskFromType maps ingest device_type strings to a single device bit.
 func DeviceMaskFromType(deviceType []byte) uint8 {
 	switch len(deviceType) {
 	case 6:
@@ -90,7 +81,6 @@ func DeviceMaskFromType(deviceType []byte) uint8 {
 	return 1
 }
 
-// BidRequestFromEvent builds an rtb.BidRequest from ingest state without heap allocation.
 func BidRequestFromEvent(evt *campaignmodel.Event, targeting RtbTargetingInput) rtb.BidRequest {
 	var fcapUserHash uint64
 	if evt != nil && evt.UserID != "" {
@@ -115,7 +105,6 @@ func hashUserID(userID string) uint64 {
 	return rtb.HashBytes64(unsafe.Slice(unsafe.StringData(userID), len(userID)))
 }
 
-// CampaignDataFromDomain converts a hot-path campaign view plus auction input into rtb catalog rows.
 func CampaignDataFromDomain(camp *campaignmodel.Campaign, input RtbCampaignInput) rtb.CampaignData {
 	remaining := camp.BudgetLimit - camp.CurrentSpend
 	if remaining < 0 {
@@ -173,7 +162,6 @@ func scheduleFieldsFromCampaign(camp *campaignmodel.Campaign) (mask uint32, tzOf
 	return mask, tzOffset, startUnix, endUnix
 }
 
-// BuildRtbCatalogRows materializes rtb.CampaignData rows from active campaigns and per-campaign inputs.
 func BuildRtbCatalogRows(campaigns []*campaignmodel.Campaign, inputs map[uuid.UUID]RtbCampaignInput) []rtb.CampaignData {
 	if len(campaigns) == 0 {
 		return nil

@@ -1,4 +1,3 @@
--- edge-fraud-tier.lua: maps fraud_score (0-100) to perimeter rate-limit tiers.
 
 local _M = {}
 
@@ -6,7 +5,6 @@ local PASS_MAX = 30
 local SUSPECT_MAX = 60
 local IVT_MAX = 80
 
--- tier_from_score returns tier name and clamped score.
 function _M.tier_from_score(score)
     local n = tonumber(score) or 0
     if n < 0 then

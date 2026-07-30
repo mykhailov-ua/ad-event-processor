@@ -12,7 +12,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// ApplyReconciliationAdjust executes a RECONCILIATION_ADJUST outbox payload (M3-10).
 func (w *OutboxWorker) ApplyReconciliationAdjust(ctx context.Context, eventID int64, payload []byte) error {
 	p, err := parseReconciliationAdjustPayload(payload)
 	if err != nil {

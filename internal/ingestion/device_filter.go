@@ -9,7 +9,6 @@ import (
 	"espx/internal/campaignmodel"
 )
 
-// DeviceFilter flags TLS fingerprint and Client Hints mismatches on the ingest path.
 type DeviceFilter struct {
 	settings   *SettingsWatcher
 	blockedTLS map[uint32]struct{}
@@ -36,7 +35,6 @@ func (f *DeviceFilter) reloadBlocklist() {
 	f.mu.Unlock()
 }
 
-// Check records device integrity fraud signals without blocking on its own.
 func (f *DeviceFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
 	if evt == nil {
 		return nil

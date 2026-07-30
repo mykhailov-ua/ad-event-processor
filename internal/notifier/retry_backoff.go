@@ -2,7 +2,6 @@ package notifier
 
 import "time"
 
-// retryBackoffBase must match the 5s base in queries/notifier.sql GetPendingNotificationsForUpdate.
 const (
 	maxDeliveryAttempts = 5
 	workerBatchSize     = 10

@@ -7,7 +7,7 @@ CREATE TABLE payment.crypto_holds (
   amount_micro        BIGINT NOT NULL CHECK (amount_micro > 0),
   currency            TEXT NOT NULL DEFAULT 'USDT',
   tx_hash             TEXT NOT NULL,
-  status              TEXT NOT NULL DEFAULT 'HELD', -- 'HELD', 'RELEASED', 'FRAUD_BLOCKED'
+  status              TEXT NOT NULL DEFAULT 'HELD',
   release_at          TIMESTAMPTZ NOT NULL,
   created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()

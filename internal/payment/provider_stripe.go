@@ -11,14 +11,12 @@ import (
 	"github.com/stripe/stripe-go/v81/checkout/session"
 )
 
-// StripeProvider holds Stripe API credentials and checkout redirect URLs.
 type StripeProvider struct {
 	secretKey  string
 	successURL string
 	cancelURL  string
 }
 
-// NewStripeProvider wires live Stripe checkout when STRIPE_SECRET_KEY is set.
 func NewStripeProvider(cfg *config.Config) *StripeProvider {
 	return &StripeProvider{
 		secretKey:  string(cfg.StripeSecretKey),
@@ -27,12 +25,10 @@ func NewStripeProvider(cfg *config.Config) *StripeProvider {
 	}
 }
 
-// Name matches webhook and intent rows so Stripe events resolve by provider_ref.
 func (p *StripeProvider) Name() string {
 	return "stripe"
 }
 
-// CreateCheckout rejects misaligned amounts before any provider call because Stripe cannot settle sub-cent values.
 func (p *StripeProvider) CreateCheckout(ctx context.Context, amountMicro int64, currency string, metadata map[string]string, idempotencyKey string) (string, string, error) {
 	if p.secretKey == "" {
 		return "", "", ErrProviderNotConfigured
@@ -44,7 +40,6 @@ func (p *StripeProvider) CreateCheckout(ctx context.Context, amountMicro int64, 
 	return createStripeCheckoutSession(p.secretKey, p.successURL, p.cancelURL, amountMicro, currency, metadata, idempotencyKey)
 }
 
-// createStripeCheckoutSession creates a hosted Checkout Session; Stripe handles 3DS on the hosted page.
 func createStripeCheckoutSession(secretKey, successURL, cancelURL string, amountMicro int64, currency string, metadata map[string]string, idempotencyKey string) (providerRef string, checkoutURL string, err error) {
 	cents, err := MicroToStripeAmount(amountMicro)
 	if err != nil {

@@ -15,7 +15,6 @@ const (
 	filteredTmpExt   = ".filtered.tmp"
 )
 
-// hotKeyFromCompacting derives the original hot segment name from a claimed path.
 func hotKeyFromCompacting(name string) string {
 	if !strings.HasSuffix(name, compactingSuffix) {
 		return name
@@ -27,7 +26,6 @@ func hotKeyFromCompacting(name string) string {
 	return base
 }
 
-// compactingPathFor returns the claimed path for a hot segment file.
 func compactingPathFor(hotPath string) string {
 	if strings.HasSuffix(hotPath, readySuffix) {
 		return strings.TrimSuffix(hotPath, readySuffix) + compactingSuffix
@@ -35,7 +33,6 @@ func compactingPathFor(hotPath string) string {
 	return hotPath + compactingSuffix
 }
 
-// ClaimHot renames a hot segment into the compacting state so concurrent workers skip it.
 func (store *LocalTierStore) ClaimHot(_ context.Context, obj TierObject) (TierObject, error) {
 	dstPath := compactingPathFor(obj.Path)
 	if err := os.Rename(obj.Path, dstPath); err != nil {
@@ -56,7 +53,6 @@ func (store *LocalTierStore) ClaimHot(_ context.Context, obj TierObject) (TierOb
 	}, nil
 }
 
-// RollbackHot restores a claimed segment to its original hot name after a failed compaction.
 func (store *LocalTierStore) RollbackHot(_ context.Context, obj TierObject) error {
 	if !strings.HasSuffix(obj.Path, compactingSuffix) {
 		return nil
@@ -69,7 +65,6 @@ func (store *LocalTierStore) RollbackHot(_ context.Context, obj TierObject) erro
 	return nil
 }
 
-// ListStuckCompacting returns claimed segments left by a crash mid-compaction.
 func (store *LocalTierStore) ListStuckCompacting(_ context.Context) ([]TierObject, error) {
 	entries, err := os.ReadDir(store.SourceDir)
 	if err != nil {
@@ -98,7 +93,6 @@ func (store *LocalTierStore) ListStuckCompacting(_ context.Context) ([]TierObjec
 	return objects, nil
 }
 
-// RemoveCompacting deletes a claimed hot segment after checkpoint persistence.
 func (store *LocalTierStore) RemoveCompacting(_ context.Context, obj TierObject) error {
 	if obj.Path == "" {
 		return fmt.Errorf("empty compacting path")

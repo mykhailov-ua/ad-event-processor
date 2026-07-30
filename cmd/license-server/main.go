@@ -42,8 +42,6 @@ func main() {
 	}
 	defer pool.Close()
 
-	// In a real scenario we'd load this from env or a secure vault.
-	// For local-dev/tests we'll generate or load.
 	_, priv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		log.Fatalf("Failed to generate signing key: %v", err)
@@ -273,8 +271,6 @@ func (s *Server) handleHeartbeat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Heuristic: if nothing changed, 304 is fine.
-	// For safety, we can issue a fresh signed JWT on every heartbeat.
 	token, err := s.generateSignedToken(lic, depID, req.Fingerprint)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -293,7 +289,7 @@ func (s *Server) generateSignedToken(lic db.VendorLicense, depID uuid.UUID, fing
 
 	claims := licensing.LicenseClaims{
 		Issuer:       "espx-license",
-		Subject:      uuid.NewString(), // unique license instance token ID
+		Subject:      uuid.NewString(),
 		KeyID:        "2026-01",
 		DeploymentID: depID.String(),
 		CustomerName: lic.CustomerName,

@@ -1,6 +1,5 @@
 package adminapi
 
-// ReconRunDTO is a unified recon run record from management or payment services.
 type ReconRunDTO struct {
 	Service            string `json:"service"`
 	ID                 int64  `json:"id"`

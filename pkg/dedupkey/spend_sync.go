@@ -10,7 +10,6 @@ import (
 
 const spendSyncPayloadKind = "spend_sync"
 
-// SpendSyncTxn is one cross-region spend debit in a proxy uplink batch.
 type SpendSyncTxn struct {
 	CampaignID  uuid.UUID
 	AmountMicro int64
@@ -28,7 +27,6 @@ type spendSyncTxnJS struct {
 	TxnID       string `json:"t"`
 }
 
-// EncodeSpendSyncPayload serializes a spend sync batch for region-proxy uplink.
 func EncodeSpendSyncPayload(txns []SpendSyncTxn) ([]byte, error) {
 	if len(txns) == 0 {
 		return nil, errors.New("dedupkey: empty spend sync batch")
@@ -53,7 +51,6 @@ func EncodeSpendSyncPayload(txns []SpendSyncTxn) ([]byte, error) {
 	return json.Marshal(body)
 }
 
-// DecodeSpendSyncPayload parses a region-proxy spend sync batch.
 func DecodeSpendSyncPayload(payload []byte) ([]SpendSyncTxn, error) {
 	if len(payload) == 0 {
 		return nil, errors.New("dedupkey: empty spend sync payload")
@@ -89,7 +86,6 @@ func DecodeSpendSyncPayload(payload []byte) ([]SpendSyncTxn, error) {
 	return out, nil
 }
 
-// IsSpendSyncPayload reports whether payload bytes look like a spend sync batch.
 func IsSpendSyncPayload(payload []byte) bool {
 	txns, err := DecodeSpendSyncPayload(payload)
 	return err == nil && len(txns) > 0

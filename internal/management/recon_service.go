@@ -14,17 +14,14 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-// ReconService detects and corrects drift between Postgres ledger spend and Redis budget sync counters.
 type ReconService struct {
 	mgmt *Service
 }
 
-// NewReconService attaches reconciliation logic to the management service.
 func NewReconService(svc *Service) *ReconService {
 	return &ReconService{mgmt: svc}
 }
 
-// ReconcileWindow compares ledger totals to Redis sync keys for one time window and posts corrective entries.
 func (reconService *ReconService) ReconcileWindow(ctx context.Context, start, end time.Time) error {
 	opCtx, cancel := workerContext(ctx, workerBatchTimeout)
 	defer cancel()
@@ -172,7 +169,6 @@ func (reconService *ReconService) autoAdjustChunkMicro() int64 {
 	return 5_000_000
 }
 
-// AlertStaleUnresolvedDiscrepancies notifies ops for discrepancies left unadjusted longer than one hour.
 func (reconService *ReconService) AlertStaleUnresolvedDiscrepancies(ctx context.Context) {
 	if reconService.mgmt.alerter == nil {
 		return
@@ -215,7 +211,6 @@ func (reconService *ReconService) AlertStaleUnresolvedDiscrepancies(ctx context.
 	}
 }
 
-// adjustRedisBudgetAtomically applies a recon delta in Redis without leaving stale zero or negative budget keys.
 func (reconService *ReconService) adjustRedisBudgetAtomically(ctx context.Context, rdb redis.UniversalClient, campID uuid.UUID, delta int64) error {
 	script := `
 		local key = KEYS[1]
@@ -231,7 +226,6 @@ func (reconService *ReconService) adjustRedisBudgetAtomically(ctx context.Contex
 	return err
 }
 
-// createRun records a recon run row so partial failures and outcomes remain auditable.
 func (reconService *ReconService) createRun(ctx context.Context, start, end time.Time) (struct{ ID int64 }, error) {
 	var run struct{ ID int64 }
 	err := reconService.mgmt.GetPool().QueryRow(ctx, `
@@ -252,7 +246,6 @@ func (reconService *ReconService) enqueueReconciliationAdjust(
 	return worker.enqueueReconciliationAdjust(ctx, runID, campID, customerID, shardID, ledgerAmt, redisDelta, reason)
 }
 
-// failRun marks a recon run as failed when the pipeline cannot complete the window.
 func (reconService *ReconService) failRun(ctx context.Context, id int64, err error) {
 	_, execErr := reconService.mgmt.GetPool().Exec(ctx, `UPDATE recon_runs SET status = 'FAILED' WHERE id = $1`, id)
 	if execErr != nil {
@@ -261,7 +254,6 @@ func (reconService *ReconService) failRun(ctx context.Context, id int64, err err
 	slog.Error("reconciliation run failed", "run_id", id, "error", err)
 }
 
-// abs returns the absolute value of delta for recon metrics that must report magnitude only.
 func abs(x int64) int64 {
 	if x < 0 {
 		return -x

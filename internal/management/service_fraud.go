@@ -13,7 +13,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// CampaignFraudConfigDTO is the admin API view of per-campaign fraud scoring and behavior toggles.
 type CampaignFraudConfigDTO struct {
 	CampaignID            string `json:"campaign_id"`
 	FraudThresholdPass    uint8  `json:"fraud_threshold_pass"`
@@ -24,7 +23,6 @@ type CampaignFraudConfigDTO struct {
 	BehaviorFlags         uint32 `json:"behavior_flags"`
 }
 
-// CampaignFraudConfigUpdate is the request body for POST /admin/campaigns/{id}/fraud-config.
 type CampaignFraudConfigUpdate struct {
 	FraudThresholdPass    *uint8  `json:"fraud_threshold_pass,omitempty"`
 	FraudThresholdSuspect *uint8  `json:"fraud_threshold_suspect,omitempty"`
@@ -56,7 +54,6 @@ func validateFraudThresholds(pass, suspect, ivt, block uint8) error {
 	return nil
 }
 
-// GetCampaignFraudConfig returns the current fraud configuration for a campaign.
 func (s *Service) GetCampaignFraudConfig(ctx context.Context, campaignID uuid.UUID) (CampaignFraudConfigDTO, error) {
 	row, err := db.New(s.GetPool()).GetCampaign(ctx, ingestion.ToUUID(campaignID))
 	if err != nil {
@@ -65,7 +62,6 @@ func (s *Service) GetCampaignFraudConfig(ctx context.Context, campaignID uuid.UU
 	return campaignFraudConfigFromRow(campaignID, row), nil
 }
 
-// UpdateCampaignFraudConfig persists fraud settings and notifies trackers via the outbox pub/sub path.
 func (s *Service) UpdateCampaignFraudConfig(ctx context.Context, campaignID uuid.UUID, upd CampaignFraudConfigUpdate) (CampaignFraudConfigDTO, error) {
 	var out CampaignFraudConfigDTO
 
@@ -153,7 +149,6 @@ func (s *Service) UpdateCampaignFraudConfig(ctx context.Context, campaignID uuid
 	return out, nil
 }
 
-// ResolveFraudThresholds returns campaign thresholds or PLAN defaults when unset in storage.
 func ResolveFraudThresholds(camp *campaignmodel.Campaign) (pass, suspect, ivt, block uint8) {
 	if camp == nil {
 		return campaignmodel.DefaultFraudThresholdPass, campaignmodel.DefaultFraudThresholdSuspect,
@@ -162,13 +157,11 @@ func ResolveFraudThresholds(camp *campaignmodel.Campaign) (pass, suspect, ivt, b
 	return camp.FraudThresholdPass, camp.FraudThresholdSuspect, camp.FraudThresholdIVT, camp.FraudThresholdBlock
 }
 
-// FraudScoringOverrideRequest is the request payload for POST /admin/fraud-scoring/overrides.
 type FraudScoringOverrideRequest struct {
 	CampaignID *string `json:"campaign_id,omitempty"`
 	IP         *string `json:"ip,omitempty"`
 }
 
-// ApplyFraudScoringOverride clears a campaign score boost and/or removes an IP from the fraud blacklist.
 func (s *Service) ApplyFraudScoringOverride(ctx context.Context, req FraudScoringOverrideRequest) error {
 	return pgx.BeginFunc(ctx, s.GetPool(), func(tx pgx.Tx) error {
 		q := db.New(tx)

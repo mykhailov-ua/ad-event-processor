@@ -91,7 +91,6 @@ func TestParseTemplate_AllocBudget(t *testing.T) {
 	allocs := testing.AllocsPerRun(100, func() {
 		_ = ParseTemplate(tpl)
 	})
-	// Cold path: MacroTemplate struct + owned slab (2 allocs), no per-macro ToLower.
 	if allocs > 2 {
 		t.Fatalf("ParseTemplate allocs/op = %v, want <= 2", allocs)
 	}

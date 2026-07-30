@@ -173,17 +173,14 @@ HAVING event_count >= ?`
 	return out, rows.Err()
 }
 
-// ASNClassifier enriches IPs with ASN metadata for datacenter detection.
 type ASNClassifier interface {
 	IsDatacenter(ip string) bool
 }
 
-// StaticASNClassifier flags known hosting ASN prefixes (tests and offline mode).
 type StaticASNClassifier struct {
 	DatacenterPrefixes []string
 }
 
-// IsDatacenter returns true when the IP matches a configured datacenter prefix.
 func (c *StaticASNClassifier) IsDatacenter(ip string) bool {
 	if c == nil {
 		return false
@@ -206,7 +203,6 @@ func hasIPPrefix(ip, prefix string) bool {
 	return false
 }
 
-// NewAnalyzerRegistry wires default detection rules for production.
 func NewAnalyzerRegistry(q *database.CHQuery, writeConn driver.Conn, pool *pgxpool.Pool, cfg AnalyzerConfig, asn ASNClassifier, scorer fraudscoring.Scorer, fraudScoringBatchSize int, rdb redis.Cmdable) *RuleRegistry {
 	analyzer := NewAnalyzer(q, cfg)
 	reg := NewRuleRegistry()

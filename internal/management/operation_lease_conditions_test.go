@@ -196,7 +196,6 @@ func testConditionC6RenewMax(t *testing.T) {
 		return nil
 	}))
 
-	// Re-book executing lease path: insert fresh executing row for renew test.
 	_, err = pool.Exec(ctx, `
 		UPDATE operation_leases
 		SET lease_state = 'executing', executor_node_id = 'c6-exec', renew_count = 0,

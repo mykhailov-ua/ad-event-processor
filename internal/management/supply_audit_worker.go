@@ -11,18 +11,15 @@ import (
 
 const supplyAuditInterval = 6 * time.Hour
 
-// SupplyAuditWorker periodically validates ads.txt and sellers.json consistency (R19).
 type SupplyAuditWorker struct {
 	svc      *Service
 	interval time.Duration
 }
 
-// NewSupplyAuditWorker wires the supply compliance audit loop.
 func NewSupplyAuditWorker(svc *Service) *SupplyAuditWorker {
 	return &SupplyAuditWorker{svc: svc, interval: supplyAuditInterval}
 }
 
-// Start runs periodic supply audits until context cancellation.
 func (w *SupplyAuditWorker) Start(ctx context.Context) {
 	if w == nil || w.svc == nil {
 		return
@@ -58,14 +55,12 @@ func (w *SupplyAuditWorker) tick(ctx context.Context) {
 	}
 }
 
-// SupplyAuditReport summarizes one compliance audit pass.
 type SupplyAuditReport struct {
 	SellerCount int `json:"seller_count"`
 	AdsTxtLines int `json:"ads_txt_lines"`
 	Issues      int `json:"issues"`
 }
 
-// AuditSupplyCompliance checks sellers.json and ads.txt rows for basic schema consistency (R19).
 func (s *Service) AuditSupplyCompliance(ctx context.Context) (SupplyAuditReport, error) {
 	out := SupplyAuditReport{}
 	if s == nil || s.pool == nil {

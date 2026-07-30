@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestProcessScheduleTickSkipsAlreadyAligned guards schedule tick is no-op when campaign status already matches window.
 func TestProcessScheduleTickSkipsAlreadyAligned(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
@@ -53,7 +52,6 @@ func TestProcessScheduleTickSkipsAlreadyAligned(t *testing.T) {
 	assert.Equal(t, db.CampaignStatusTypeACTIVE, camp.Status)
 }
 
-// TestCreateCampaignRejectsIncompleteIdempotencyLedger guards create campaign rejects orphaned FREEZE ledger rows.
 func TestCreateCampaignRejectsIncompleteIdempotencyLedger(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
@@ -81,7 +79,6 @@ func TestCreateCampaignRejectsIncompleteIdempotencyLedger(t *testing.T) {
 	assert.Contains(t, err.Error(), "incomplete idempotency")
 }
 
-// TestServiceCloseGuardsLateWorkerStart guards worker start after Close returns immediately without blocking.
 func TestServiceCloseGuardsLateWorkerStart(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
@@ -102,7 +99,6 @@ func TestServiceCloseGuardsLateWorkerStart(t *testing.T) {
 	}
 }
 
-// TestUpdateSettingsOutboxVersionIsIdempotent guards reprocessing settings outbox keeps config:version stable.
 func TestUpdateSettingsOutboxVersionIsIdempotent(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")

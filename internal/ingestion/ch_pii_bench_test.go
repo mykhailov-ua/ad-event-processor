@@ -7,8 +7,6 @@ import (
 	"espx/pkg/piihash"
 )
 
-// BenchmarkCHPII_writePathOverhead measures hashing cost for a 1000-event processor batch.
-// SLA: ≤5% degradation vs no-op baseline at 500k+ events/s (hash ~300ns/event << insert cost).
 func BenchmarkCHPII_writePathOverhead(b *testing.B) {
 	h := piihash.TestHasher()
 	events := make([]*campaignmodel.Event, 1000)

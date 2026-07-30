@@ -12,17 +12,14 @@ import (
 
 const defaultRetentionCheckInterval = 5 * time.Minute
 
-// SetRetentionPolicy configures sealed-segment age and byte limits for all topics.
 func (s *Server) SetRetentionPolicy(policy log.RetentionPolicy) {
 	s.retention = policy
 }
 
-// RetentionPolicy returns the configured retention limits.
 func (s *Server) RetentionPolicy() log.RetentionPolicy {
 	return s.retention
 }
 
-// SetRetentionCheckInterval sets how often the background retention worker runs.
 func (s *Server) SetRetentionCheckInterval(d time.Duration) {
 	if d > 0 {
 		s.retentionCheckInterval = d
@@ -36,7 +33,6 @@ func (s *Server) retentionInterval() time.Duration {
 	return defaultRetentionCheckInterval
 }
 
-// runRetentionWorker deletes sealed segments on leaders when age or byte limits are exceeded.
 func (s *Server) runRetentionWorker() {
 	interval := s.retentionInterval()
 	ticker := time.NewTicker(interval)

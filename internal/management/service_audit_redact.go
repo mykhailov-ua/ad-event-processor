@@ -14,7 +14,6 @@ import (
 
 var emailPIIPattern = regexp.MustCompile(`(?i)[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}`)
 
-// AuditLogDTO is the API view of an audit row with optional PII redaction (M6.5).
 type AuditLogDTO struct {
 	ID         int64           `json:"id"`
 	AdminID    string          `json:"admin_id,omitempty"`
@@ -26,7 +25,6 @@ type AuditLogDTO struct {
 	CreatedAt  string          `json:"created_at"`
 }
 
-// ListAuditLogsRedacted returns audit rows with optional email/IP masking.
 func (s *Service) ListAuditLogsRedacted(ctx context.Context, limit, offset int32, redactPII bool) ([]AuditLogDTO, int64, error) {
 	rows, total, err := s.ListAuditLogs(ctx, limit, offset)
 	if err != nil {

@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestAdsPacketHandler_UDPIngress_429 returns 429 when per-worker ingress quota is exhausted.
 func TestAdsPacketHandler_UDPIngress_429(t *testing.T) {
 	before := testutil.ToFloat64(metrics.UDPIngressRejectTotal)
 

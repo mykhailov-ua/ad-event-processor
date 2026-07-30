@@ -24,10 +24,8 @@ const (
 	globalSpendIdempotencyPrefix     = "global_spend:"
 )
 
-// ErrSpendBatchTooSmall is returned when a spend sync batch has fewer txns than the configured minimum.
 var ErrSpendBatchTooSmall = errors.New("spend sync batch below minimum txn count")
 
-// globalSpendCommitScript atomically decrements budget:campaign remaining after a global ledger debit.
 const globalSpendCommitScript = `
 local remaining = redis.call("INCRBY", KEYS[1], -tonumber(ARGV[1]))
 if tonumber(remaining) <= 0 then
@@ -36,7 +34,6 @@ end
 return remaining
 `
 
-// GlobalSpendReconciler applies cross-region spend batches to global Postgres and Redis mirrors.
 type GlobalSpendReconciler struct {
 	pool           *pgxpool.Pool
 	rdbs           []redis.UniversalClient
@@ -49,13 +46,11 @@ type GlobalSpendReconciler struct {
 	pending []dedupkey.SpendSyncTxn
 }
 
-// GlobalSpendReconcilerConfig tunes batch thresholds and worker concurrency.
 type GlobalSpendReconcilerConfig struct {
 	MinBatchSize   int
 	MaxConcurrency int
 }
 
-// NewGlobalSpendReconciler wires a cold-path reconciler for multi-region spend authority.
 func NewGlobalSpendReconciler(
 	pool *pgxpool.Pool,
 	rdbs []redis.UniversalClient,
@@ -82,7 +77,6 @@ func NewGlobalSpendReconciler(
 	}
 }
 
-// MinBatchSize returns the configured minimum txn count per apply batch.
 func (r *GlobalSpendReconciler) MinBatchSize() int {
 	if r == nil {
 		return defaultGlobalSpendBatchMin
@@ -90,7 +84,6 @@ func (r *GlobalSpendReconciler) MinBatchSize() int {
 	return r.minBatchSize
 }
 
-// Enqueue buffers spend txns until the batch reaches minBatchSize.
 func (r *GlobalSpendReconciler) Enqueue(txns []dedupkey.SpendSyncTxn) {
 	if r == nil || len(txns) == 0 {
 		return
@@ -100,7 +93,6 @@ func (r *GlobalSpendReconciler) Enqueue(txns []dedupkey.SpendSyncTxn) {
 	r.mu.Unlock()
 }
 
-// PendingCount returns buffered txn count (tests and metrics).
 func (r *GlobalSpendReconciler) PendingCount() int {
 	if r == nil {
 		return 0
@@ -110,7 +102,6 @@ func (r *GlobalSpendReconciler) PendingCount() int {
 	return len(r.pending)
 }
 
-// FlushPending applies buffered txns when count >= minBatchSize.
 func (r *GlobalSpendReconciler) FlushPending(ctx context.Context, batchDedupKey string) error {
 	if r == nil {
 		return nil
@@ -126,7 +117,6 @@ func (r *GlobalSpendReconciler) FlushPending(ctx context.Context, batchDedupKey 
 	return r.ApplyBatch(ctx, batchDedupKey, txns)
 }
 
-// ApplyBatch commits one spend sync batch idempotently to balance_ledger and Redis mirrors.
 func (r *GlobalSpendReconciler) ApplyBatch(ctx context.Context, batchDedupKey string, txns []dedupkey.SpendSyncTxn) error {
 	if r == nil {
 		return nil
@@ -226,7 +216,6 @@ func (r *GlobalSpendReconciler) shardIndex(campaignID uuid.UUID) int {
 	return int(r.sharder.GetShard(campaignID))
 }
 
-// StartFlushWorker runs periodic pending-buffer drains until ctx is cancelled.
 func (r *GlobalSpendReconciler) StartFlushWorker(ctx context.Context, interval time.Duration) {
 	if r == nil {
 		return

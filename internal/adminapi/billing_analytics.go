@@ -23,7 +23,6 @@ import (
 
 const ledgerInvariantToleranceMicro = int64(1)
 
-// CompositeReadService runs composite billing reads for admin JSON endpoints.
 type CompositeReadService struct {
 	pool     *pgxpool.Pool
 	cfg      *config.Config
@@ -32,7 +31,6 @@ type CompositeReadService struct {
 	chQuery  *database.CHQuery
 }
 
-// NewCompositeReadService constructs statement and wallet read models.
 func NewCompositeReadService(pool *pgxpool.Pool, cfg *config.Config, provider billing.PaymentProvider) *CompositeReadService {
 	if pool == nil {
 		return nil
@@ -45,13 +43,11 @@ func NewCompositeReadService(pool *pgxpool.Pool, cfg *config.Config, provider bi
 	}
 }
 
-// PeriodBounds is the resolved UTC window for statement queries.
 type PeriodBounds struct {
 	From time.Time `json:"from"`
 	To   time.Time `json:"to"`
 }
 
-// StatementDTO is the JOIN-06 billing statement read model.
 type StatementDTO struct {
 	CustomerID          string                   `json:"customer_id"`
 	Period              PeriodBounds             `json:"period"`
@@ -65,7 +61,6 @@ type StatementDTO struct {
 	Currency            string                   `json:"currency"`
 }
 
-// InvoiceSummaryDTO is a compact invoice row in a statement period.
 type InvoiceSummaryDTO struct {
 	ID            string `json:"id"`
 	CustomerID    string `json:"customer_id,omitempty"`
@@ -77,7 +72,6 @@ type InvoiceSummaryDTO struct {
 	Currency      string `json:"currency"`
 }
 
-// PaymentSummaryDTO is a top-up row in a statement period.
 type PaymentSummaryDTO struct {
 	LedgerID        int64  `json:"ledger_id"`
 	AmountMicro     int64  `json:"amount_micro"`
@@ -85,21 +79,18 @@ type PaymentSummaryDTO struct {
 	CreatedAt       string `json:"created_at"`
 }
 
-// TaxBreakdownDTO summarizes tax in the statement window.
 type TaxBreakdownDTO struct {
 	Scheme   string `json:"scheme"`
 	RateBps  int32  `json:"rate_bps"`
 	TaxMicro int64  `json:"tax_micro"`
 }
 
-// ReconciliationDTO compares invoice totals to ledger movement.
 type ReconciliationDTO struct {
 	InvoiceTotalMicro int64 `json:"invoice_total_micro"`
 	LedgerSumMicro    int64 `json:"ledger_sum_micro"`
 	DeltaMicro        int64 `json:"delta_micro"`
 }
 
-// WalletDTO is the wallet card for GET /api/v1/customers/{id}/wallet.
 type WalletDTO struct {
 	CustomerID                string `json:"customer_id"`
 	BalanceMicro              int64  `json:"balance_micro"`
@@ -112,7 +103,6 @@ type WalletDTO struct {
 	PaymentProviderConfigured bool   `json:"payment_provider_configured"`
 }
 
-// InvariantDTO is the FIN-07 ledger invariant HTTP response.
 type InvariantDTO struct {
 	OK             bool   `json:"ok"`
 	CustomerID     string `json:"customer_id,omitempty"`
@@ -121,7 +111,6 @@ type InvariantDTO struct {
 	DiffMicro      int64  `json:"diff_micro,omitempty"`
 }
 
-// SummaryDTO is the ops billing dashboard aggregate.
 type SummaryDTO struct {
 	InvoicedMTDMicro                int64 `json:"invoiced_mtd_micro"`
 	InvoiceCountMTD                 int64 `json:"invoice_count_mtd"`
@@ -129,7 +118,6 @@ type SummaryDTO struct {
 	CustomersWithSpendInMonth       int64 `json:"customers_with_spend_in_month"`
 }
 
-// DeliveryDTO is one notifier row for an invoice.
 type DeliveryDTO struct {
 	ID           string `json:"id"`
 	Status       string `json:"status"`
@@ -142,7 +130,6 @@ type DeliveryDTO struct {
 	UpdatedAt    string `json:"updated_at"`
 }
 
-// LedgerLineDTO is one balance_ledger row for invoice drill-down.
 type LedgerLineDTO struct {
 	ID          int64  `json:"id"`
 	AmountMicro int64  `json:"amount_micro"`
@@ -150,7 +137,6 @@ type LedgerLineDTO struct {
 	CreatedAt   string `json:"created_at"`
 }
 
-// TaxProfileDTO is the customer tax profile JSON shape.
 type TaxProfileDTO struct {
 	CustomerID  string `json:"customer_id"`
 	CountryCode string `json:"country_code"`
@@ -159,7 +145,6 @@ type TaxProfileDTO struct {
 	TaxRateBps  int32  `json:"tax_rate_bps"`
 }
 
-// BuildStatement assembles opening/closing balances and period activity.
 func (s *CompositeReadService) BuildStatement(ctx context.Context, customerID uuid.UUID, from, to time.Time) (StatementDTO, error) {
 	if s == nil || s.pool == nil {
 		return StatementDTO{}, fmt.Errorf("composite read service not configured")
@@ -299,7 +284,6 @@ func (s *CompositeReadService) BuildStatement(ctx context.Context, customerID uu
 	}, nil
 }
 
-// GetWallet returns the wallet card for one customer.
 func (s *CompositeReadService) GetWallet(ctx context.Context, customerID uuid.UUID) (WalletDTO, error) {
 	if s == nil || s.pool == nil {
 		return WalletDTO{}, fmt.Errorf("composite read service not configured")
@@ -344,7 +328,6 @@ func (s *CompositeReadService) GetWallet(ctx context.Context, customerID uuid.UU
 	return wallet, nil
 }
 
-// ListLedgerLines returns paginated ledger rows for an invoice billing month.
 func (s *CompositeReadService) ListLedgerLines(ctx context.Context, customerID uuid.UUID, month time.Time, cursorID int64, limit int32) ([]LedgerLineDTO, string, int64, error) {
 	if s == nil || s.pool == nil {
 		return nil, "", 0, fmt.Errorf("composite read service not configured")
@@ -401,7 +384,6 @@ func (s *CompositeReadService) ListLedgerLines(ctx context.Context, customerID u
 	return out, nextCursor, total, nil
 }
 
-// ListLedgerLinesInWindow returns paginated ledger rows for an arbitrary UTC window.
 func (s *CompositeReadService) ListLedgerLinesInWindow(ctx context.Context, customerID uuid.UUID, from, to time.Time, cursorID int64, limit int32) ([]LedgerLineDTO, string, error) {
 	if s == nil || s.pool == nil {
 		return nil, "", fmt.Errorf("composite read service not configured")
@@ -442,7 +424,6 @@ func (s *CompositeReadService) ListLedgerLinesInWindow(ctx context.Context, cust
 	return out, next, nil
 }
 
-// GetInvariant returns per-customer or global ledger invariant status.
 func (s *CompositeReadService) GetInvariant(ctx context.Context, customerID *uuid.UUID) (InvariantDTO, error) {
 	if s == nil || s.pool == nil {
 		return InvariantDTO{}, fmt.Errorf("composite read service not configured")
@@ -492,7 +473,6 @@ func (s *CompositeReadService) GetInvariant(ctx context.Context, customerID *uui
 	return InvariantDTO{OK: true}, rows.Err()
 }
 
-// GetSummary returns ops billing dashboard aggregates.
 func (s *CompositeReadService) GetSummary(ctx context.Context) (SummaryDTO, error) {
 	if s == nil || s.pool == nil {
 		return SummaryDTO{}, fmt.Errorf("composite read service not configured")
@@ -529,7 +509,6 @@ func (s *CompositeReadService) GetSummary(ctx context.Context) (SummaryDTO, erro
 	}, nil
 }
 
-// ListDeliveries returns notifier rows for an invoice dedup key.
 func (s *CompositeReadService) ListDeliveries(ctx context.Context, invoiceID string) ([]DeliveryDTO, error) {
 	if s == nil || s.pool == nil {
 		return nil, fmt.Errorf("composite read service not configured")
@@ -574,7 +553,6 @@ func (s *CompositeReadService) ListDeliveries(ctx context.Context, invoiceID str
 	return out, rows.Err()
 }
 
-// GetTaxProfile returns stored customer tax metadata.
 func (s *CompositeReadService) GetTaxProfile(ctx context.Context, customerID uuid.UUID) (TaxProfileDTO, error) {
 	if s == nil || s.queries == nil {
 		return TaxProfileDTO{}, fmt.Errorf("composite read service not configured")
@@ -605,7 +583,6 @@ func (s *CompositeReadService) GetTaxProfile(ctx context.Context, customerID uui
 	return dto, nil
 }
 
-// UpsertTaxProfile stores customer tax metadata.
 func (s *CompositeReadService) UpsertTaxProfile(ctx context.Context, customerID uuid.UUID, dto TaxProfileDTO) (TaxProfileDTO, error) {
 	if s == nil || s.queries == nil {
 		return TaxProfileDTO{}, fmt.Errorf("composite read service not configured")
@@ -632,7 +609,6 @@ func (s *CompositeReadService) UpsertTaxProfile(ctx context.Context, customerID 
 	return out, nil
 }
 
-// ParseStatementPeriod resolves from/to query params (RFC3339 or billing month).
 func ParseStatementPeriod(fromRaw, toRaw, monthRaw string) (time.Time, time.Time, error) {
 	if monthRaw != "" {
 		month, err := time.Parse("2006-01", monthRaw)

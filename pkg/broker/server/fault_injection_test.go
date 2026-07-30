@@ -7,9 +7,8 @@ import (
 	"time"
 )
 
-// Guards readonly data directory surfaces unhealthy healthz without panicking.
-func TestChaos_ReadonlyDataDir_HealthzUnavailable(t *testing.T) {
-	dir, err := os.MkdirTemp("", "chaos-disk-*")
+func TestFault_ReadonlyDataDir_HealthzUnavailable(t *testing.T) {
+	dir, err := os.MkdirTemp("", "fault-disk-*")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +59,7 @@ func TestChaos_ReadonlyDataDir_HealthzUnavailable(t *testing.T) {
 		return httpGet(t, healthURL) == http.StatusOK
 	}, 8*time.Second, 500*time.Millisecond, "healthz must recover after disk writable again")
 
-	t.Log("chaos_proof fault=chmod_data_dir_0000 probe_failed=true healthz_503=true recovered=true")
+	t.Log("fault_proof fault=chmod_data_dir_0000 probe_failed=true healthz_503=true recovered=true")
 }
 
 func requireEventually(t *testing.T, fn func() bool, timeout, interval time.Duration, msg string) {

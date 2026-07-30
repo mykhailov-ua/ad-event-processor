@@ -13,24 +13,19 @@ import (
 )
 
 const (
-	// SlotMigrationDualWriteFlagKey marks a source shard as dual-writing debits to the delta stream.
 	SlotMigrationDualWriteFlagKey = "slot_migration:dual_write"
-	// SlotMigrationDeltaStreamKey holds debit deltas replicated from source during hot-slot migration.
-	SlotMigrationDeltaStreamKey = "slot_migration:delta"
-	// SlotMigrationDeltaCursorKey stores the last applied stream entry ID for catch-up.
-	SlotMigrationDeltaCursorKey = "slot_migration:delta:cursor"
-	slotMigrationDualWriteTTL   = 24 * time.Hour
-	slotMigrationDeltaMaxLen    = 100_000
+	SlotMigrationDeltaStreamKey   = "slot_migration:delta"
+	SlotMigrationDeltaCursorKey   = "slot_migration:delta:cursor"
+	slotMigrationDualWriteTTL     = 24 * time.Hour
+	slotMigrationDeltaMaxLen      = 100_000
 )
 
-// SlotMigrationDualWriteConfig tunes lag gates for zero-downtime cutover (M1-08).
 type SlotMigrationDualWriteConfig struct {
 	Enabled      bool
 	LagEpsilon   int64
 	LagThreshold int64
 }
 
-// EnableSlotMigrationDualWrite arms source-shard Lua to XADD debit deltas without fencing debits.
 func EnableSlotMigrationDualWrite(
 	ctx context.Context,
 	src redis.Cmdable,
@@ -48,7 +43,6 @@ func EnableSlotMigrationDualWrite(
 	return err
 }
 
-// DisableSlotMigrationDualWrite clears dual-write mode and delta stream state on the source shard.
 func DisableSlotMigrationDualWrite(ctx context.Context, src redis.Cmdable) error {
 	if src == nil {
 		return nil
@@ -61,14 +55,12 @@ func DisableSlotMigrationDualWrite(ctx context.Context, src redis.Cmdable) error
 	return err
 }
 
-// SlotMigrationDelta is one debit replicated from source to target during dual-write catch-up.
 type SlotMigrationDelta struct {
 	CampaignID uuid.UUID
 	Amount     int64
 	SpendKey   string
 }
 
-// CatchUpSlotMigrationDeltas applies pending stream entries to the target shard and advances the cursor.
 func CatchUpSlotMigrationDeltas(
 	ctx context.Context,
 	src, dst redis.Cmdable,
@@ -123,7 +115,6 @@ func CatchUpSlotMigrationDeltas(
 	return applied, lag, nil
 }
 
-// SlotMigrationReplicationLag returns unconsumed delta stream entries after the catch-up cursor.
 func SlotMigrationReplicationLag(ctx context.Context, src redis.Cmdable) (int64, error) {
 	if src == nil {
 		return 0, fmt.Errorf("nil redis source")
@@ -213,7 +204,6 @@ func applySlotMigrationDelta(ctx context.Context, dst redis.Cmdable, delta SlotM
 	return nil
 }
 
-// PublishSlotMigrationDeltaTestHelper enqueues one delta entry (tests only).
 func PublishSlotMigrationDeltaTestHelper(ctx context.Context, src redis.Cmdable, delta SlotMigrationDelta) error {
 	if src == nil {
 		return fmt.Errorf("nil redis source")

@@ -1,9 +1,5 @@
-# eSPX local stack. Default NET_MODE=host binds services on loopback ports documented in docs/DEVELOPMENT.md.
-# Ingestion (trackers + nginx) and observability use host networking; stateful stores sit on the database network.
 
 services:
-  # Ingestion plane: stateless gnet trackers, one process per port (8181-8184)
-  # SO_REUSEPORT is configured in the binary; host mode avoids Docker NAT on the hot path.
   tracker-0:
     build:
       context: .
@@ -16,14 +12,13 @@ services:
       - SERVER_PORT=8181
       - METRICS_PORT=9101
       - TRACKER_PG_FALLBACK=${TRACKER_PG_FALLBACK:-0}
-      - GOMEMLIMIT=700MiB   # soft heap cap; GC runs before OOM (M13-01)
-      - GOGC=300            # relaxed GC pace; hot path is 0 allocs/op so heap is stable
+      - GOMEMLIMIT=700MiB
+      - GOGC=300
     volumes:
-      - ./deploy/geoip:/deploy/geoip:ro   # MaxMind DBs for geo filter and bid floor lookup
-      - espx_logs:/var/log/espx:rw        # mmap audit log segments written by tracker
+      - ./deploy/geoip:/deploy/geoip:ro
+      - espx_logs:/var/log/espx:rw
     ulimits:
       nofile:
-        # gnet opens one fd per TCP connection; 100 000 allows ~100 k concurrent connections per instance
         soft: 100000
         hard: 100000
     deploy:
@@ -58,7 +53,6 @@ services:
         max-file: "3"
 
 
-  # Replica; same image and deps as tracker-0, different SERVER_PORT.
   tracker-1:
     build:
       context: .
@@ -111,7 +105,6 @@ services:
         max-file: "3"
 
 
-  # Replica; same image and deps as tracker-0, SERVER_PORT=8183.
   tracker-2:
     build:
       context: .
@@ -164,7 +157,6 @@ services:
         max-file: "3"
 
 
-  # Replica; same image and deps as tracker-0, SERVER_PORT=8184.
   tracker-3:
     build:
       context: .
@@ -217,7 +209,6 @@ services:
         max-file: "3"
 
 
-  # Edge LB: /track/* to trackers, /admin/* to management. Lua parses bodies for shard routing and blacklist cache.
   nginx:
     image: openresty/openresty:alpine
     network_mode: "${NET_MODE:-host}"
@@ -258,7 +249,6 @@ services:
         max-file: "3"
 
 
-  # Settlement: Redis stream consumer groups -> Postgres (ledger/stats) + ClickHouse (telemetry).
   processor:
     build:
       context: .
@@ -292,8 +282,8 @@ services:
       - NODE_ID=${NODE_ID:-processor}
       - PROCESSOR_WEIGHT_ENABLED=${PROCESSOR_WEIGHT_ENABLED:-0}
       - MANAGEMENT_URL=${MANAGEMENT_URL:-http://127.0.0.1:8188}
-      - GOMEMLIMIT=1500MiB  # processor holds larger in-flight batches; needs wider heap
-      - GOGC=100            # standard GC pace; processor is not latency-critical
+      - GOMEMLIMIT=1500MiB
+      - GOGC=100
     healthcheck:
       test: ["CMD", "/processor", "--health-probe", "http://127.0.0.1:8186/health"]
       interval: 10s
@@ -319,7 +309,6 @@ services:
         max-file: "3"
 
 
-  # Second processor replica for weighted consume lab (profile: multi-region).
   processor-1:
     build:
       context: .
@@ -376,7 +365,6 @@ services:
         max-file: "3"
 
 
-  # Multi-region cold ingest (profile: multi-region). Default stack unchanged when profile is off.
   region-proxy:
     build:
       context: .
@@ -411,7 +399,6 @@ services:
         max-size: "100m"
         max-file: "3"
 
-  # Optional mmap log broker (profile: multi-region). TCP 9092 — not the HA lab on 9093.
   broker:
     build:
       context: .
@@ -441,7 +428,6 @@ services:
         max-file: "3"
 
 
-  # Control plane: gRPC auth (Argon2id + PASETO). Single Redis shard is enough for session/lockout keys.
   auth:
     build:
       context: .
@@ -471,7 +457,6 @@ services:
         max-file: "3"
 
 
-  # Control plane: REST admin API, settlement gRPC, outbox workers, pacing/schedule/recon background jobs.
   management:
     build:
       context: .
@@ -479,7 +464,7 @@ services:
     entrypoint: ["/management"]
     network_mode: "${NET_MODE:-host}"
     profiles:
-      - chaos
+      - resilience
       - fraud-scorer
     env_file:
       - .env
@@ -523,7 +508,6 @@ services:
         max-file: "3"
 
 
-  # Control plane: async notification delivery (Telegram, Slack, SMTP, SMS).
   notifier:
     build:
       context: .
@@ -531,7 +515,7 @@ services:
     entrypoint: ["/notifier"]
     network_mode: "${NET_MODE:-host}"
     profiles:
-      - chaos
+      - resilience
     env_file:
       - .env
     environment:
@@ -555,7 +539,6 @@ services:
         max-file: "3"
 
 
-  # Off-path IVT botnet detection: ClickHouse analytics → fraud blacklist via management API.
   ivt-detector:
     build:
       context: .
@@ -563,7 +546,7 @@ services:
     entrypoint: ["/ivt-detector"]
     network_mode: "${NET_MODE:-host}"
     profiles:
-      - chaos
+      - resilience
     env_file:
       - .env
     environment:
@@ -628,7 +611,6 @@ services:
         max-file: "3"
 
 
-  # Control plane: payment intents, webhooks, settlement outbox (calls management settlement gRPC).
   payment:
     build:
       context: .
@@ -636,7 +618,7 @@ services:
     entrypoint: ["/payment"]
     network_mode: "${NET_MODE:-host}"
     profiles:
-      - chaos
+      - resilience
       - crypto
     env_file:
       - .env
@@ -666,7 +648,6 @@ services:
         max-file: "3"
 
 
-  # Control plane: monthly invoice generation from balance_ledger aggregates.
   billing:
     build:
       context: .
@@ -674,7 +655,7 @@ services:
     entrypoint: ["/billing"]
     network_mode: "${NET_MODE:-host}"
     profiles:
-      - chaos
+      - resilience
     env_file:
       - .env
     environment:
@@ -695,7 +676,6 @@ services:
         max-file: "3"
 
 
-  # Relational source of truth: campaigns, ledger, outbox, audit. Tuned for many short tracker connections.
   db:
     image: postgres:${POSTGRES_VERSION}
     env_file:
@@ -707,11 +687,6 @@ services:
     ports:
       - "${DB_PORT}:${DB_PORT}"
     command:
-      # max_connections: sized for 4 tracker replicas x 4 conns + processor x 16 + management + auth headroom
-      # shared_buffers: ~25% of container memory limit (2G)
-      # work_mem: per-sort/hash allocation; 64MB per connection x 600 connections worst case = 38G virtual
-      # maintenance_work_mem: index builds and vacuum
-      # effective_cache_size: planner assumption for page cache; ~75% of container memory
       ["postgres", "-p", "${DB_PORT}", "-c", "max_connections=600", "-c", "shared_buffers=1GB", "-c", "work_mem=64MB", "-c", "maintenance_work_mem=256MB", "-c", "effective_cache_size=3GB"]
     volumes:
       - db_data:/var/lib/postgresql/data
@@ -733,7 +708,6 @@ services:
         max-file: "3"
 
 
-  # Payment-only Postgres: checkout intents, webhooks, settlement outbox (compliance isolation from ads ledger).
   db-payment:
     image: postgres:${POSTGRES_VERSION}
     env_file:
@@ -766,8 +740,6 @@ services:
         max-file: "3"
 
 
-  # Redis shards (client-side StaticSlotSharder, ports 6479-6484)
-  # AOF everysec + noeviction: budget/pacing keys must not be silently dropped under memory pressure.
   redis-0:
     image: redis:${REDIS_VERSION}
     env_file:
@@ -906,7 +878,6 @@ services:
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
 
-  # Columnar event store. Processor batches inserts; insert_deduplicate handles at-least-once from streams.
   clickhouse:
     image: clickhouse/clickhouse-server:${CH_VERSION}
     env_file:
@@ -916,7 +887,7 @@ services:
       - "${CH_HTTP_PORT}:8123"
     ulimits:
       nofile:
-        soft: 262144  # ClickHouse requires high fd limits for part merges and replication connections
+        soft: 262144
         hard: 262144
     volumes:
       - clickhouse_data:/var/lib/clickhouse
@@ -948,7 +919,6 @@ services:
         max-file: "3"
 
 
-  # Observability (host network, scrapes tracker/mgmt/processor metrics on loopback)
   prometheus:
     image: prom/prometheus:latest
     network_mode: "${NET_MODE:-host}"
@@ -969,7 +939,6 @@ services:
   grafana:
     image: grafana/grafana:latest
     network_mode: "${NET_MODE:-host}"
-    # Anonymous admin is dev-only; lock down before any non-local exposure.
     volumes:
       - ./deploy/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
     environment:
@@ -989,7 +958,6 @@ services:
   alertmanager:
     image: prom/alertmanager:latest
     network_mode: "${NET_MODE:-host}"
-    # Routes firing alerts to management Alertmanager webhook adapter on :8188.
     command: ["--config.file=/etc/alertmanager/alertmanager.yaml", "--web.listen-address=:9093"]
     volumes:
       - ./deploy/monitoring/alertmanager.yaml:/etc/alertmanager/alertmanager.yaml:ro
@@ -1003,7 +971,6 @@ services:
         max-size: "100m"
         max-file: "3"
 
-  # Webhook proxy: Alertmanager JSON -> Telegram Bot API HTML messages.
   alertmanager-telegram:
     build:
       context: .
@@ -1024,7 +991,6 @@ services:
         max-size: "100m"
         max-file: "3"
 
-  # Warm-tier downsampling of rotated audit segments (local FS MVP). Profile "tools" only.
   log-compactor:
     build:
       context: .
@@ -1051,7 +1017,6 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # Off-path rsync of rotated .log.zst.ready segments to remote storage. Profile "tools" only.
   log-evacuator:
     build:
       context: .
@@ -1074,24 +1039,24 @@ services:
         max-file: "3"
 
 networks:
-  frontend:   # reserved; not wired in this compose file
-  backend:    # reserved; not wired in this compose file
-  database:   # postgres, redis, clickhouse
-  monitoring: # clickhouse metrics export
+  frontend:
+  backend:
+  database:
+  monitoring:
 
 volumes:
-  db_data:           # postgres data dir (ads, auth, billing, notifier)
-  db_payment_data:   # payment schema only
-  clickhouse_data:   # clickhouse parts and metadata
-  redis_0_data:      # per-shard AOF/RDB; keys are not shared across shards
+  db_data:
+  db_payment_data:
+  clickhouse_data:
+  redis_0_data:
   redis_1_data:
   redis_2_data:
   redis_3_data:
   redis_4_data:
   redis_5_data:
-  espx_logs:           # shared mmap audit logs from all trackers/processor
-  espx_ch_spool:       # processor ClickHouse mmap WAL during outages
-  espx_ch_spool_1:     # second processor replica spool (multi-region profile)
-  espx_region_proxy_wal: # region-proxy mmap WAL (multi-region profile)
-  espx_broker_data:      # broker mmap segments (multi-region profile, optional)
-  log_compactor_state: # warm-tier compactor checkpoints and output
+  espx_logs:
+  espx_ch_spool:
+  espx_ch_spool_1:
+  espx_region_proxy_wal:
+  espx_broker_data:
+  log_compactor_state:

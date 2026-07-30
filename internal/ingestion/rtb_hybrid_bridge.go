@@ -10,13 +10,10 @@ import (
 	"github.com/google/uuid"
 )
 
-// CustomerIDFromCustomerUUID maps customer UUIDs to rtb.CustomerID.
 func CustomerIDFromCustomerUUID(id uuid.UUID) rtb.CustomerID {
 	return rtb.CustomerID(binary.BigEndian.Uint64(id[:8]))
 }
 
-// PacingOpenFromManagement maps management pacing state to an rtb catalog gate.
-// externallyOpen is false when the pacing controller closed spend for this campaign.
 func PacingOpenFromManagement(externallyOpen bool) uint8 {
 	if externallyOpen {
 		return rtb.PacingOpen
@@ -24,8 +21,6 @@ func PacingOpenFromManagement(externallyOpen bool) uint8 {
 	return rtb.PacingClosed
 }
 
-// RtbCampaignInputFromHybrid builds rtb catalog input from HybridBalancer metadata.
-// CTR is converted to PPM fixed-point; pacingOpen comes from management, not the balancer.
 func RtbCampaignInputFromHybrid(
 	meta *CampaignMeta,
 	geo uint32,
@@ -64,10 +59,8 @@ func RtbCampaignInputFromHybrid(
 	}
 }
 
-// CTRPPMUnit duplicates rtb.CTRPPMUnit for ads-side helpers without exporting rtb constants.
 const CTRPPMUnit = 1_000_000
 
-// BuildRtbCatalogRowsFromHybrid builds catalog rows using hybrid metadata for bid/ctr.
 func BuildRtbCatalogRowsFromHybrid(
 	campaigns []*campaignmodel.Campaign,
 	metaByID map[uuid.UUID]*CampaignMeta,

@@ -6,7 +6,6 @@ import (
 	"espx/internal/rtb/pb"
 )
 
-// DecodeVASTWire unmarshals vtproto bytes into doc without heap string conversion on field views.
 func DecodeVASTWire(wire []byte, doc *pb.VastDocument) error {
 	if doc == nil || len(wire) == 0 {
 		return ErrVASTMalformed
@@ -14,7 +13,6 @@ func DecodeVASTWire(wire []byte, doc *pb.VastDocument) error {
 	return doc.UnmarshalVT(wire)
 }
 
-// VASTMediaMIME returns the first media file MIME type as a zero-copy string when wire is stable.
 func VASTMediaMIME(doc *pb.VastDocument) string {
 	if doc == nil {
 		return ""
@@ -44,7 +42,6 @@ func vastBytesString(b []byte) string {
 	return unsafe.String(&b[0], len(b))
 }
 
-// PrepareCreativeVASTWire parses XML or accepts pre-encoded vtproto for catalog rebuild.
 func PrepareCreativeVASTWire(c *CreativeData) ([]byte, uint32, error) {
 	if c == nil {
 		return nil, 0, ErrVASTMalformed

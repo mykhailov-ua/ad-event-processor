@@ -11,13 +11,11 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// NotifierClient calls the notifier gRPC service to enqueue operator alerts.
 type NotifierClient struct {
 	conn   *grpc.ClientConn
 	client notifierpb.NotifierServiceClient
 }
 
-// NewNotifierClient dials notifier when ops alerts or the Alertmanager webhook adapter are enabled.
 func NewNotifierClient(cfg *config.Config) (*NotifierClient, error) {
 	if cfg == nil || !cfg.NotifierDialEnabled() {
 		return nil, nil
@@ -35,7 +33,6 @@ func NewNotifierClient(cfg *config.Config) (*NotifierClient, error) {
 	}, nil
 }
 
-// Close releases the gRPC connection on management shutdown.
 func (client *NotifierClient) Close() error {
 	if client == nil || client.conn == nil {
 		return nil
@@ -43,7 +40,6 @@ func (client *NotifierClient) Close() error {
 	return client.conn.Close()
 }
 
-// SendNotification enqueues an alert for asynchronous delivery by the notifier worker.
 func (client *NotifierClient) SendNotification(ctx context.Context, provider notifierpb.Provider, recipient, title, body string) (*notifierpb.SendNotificationResponse, error) {
 	if client == nil || client.client == nil {
 		return nil, fmt.Errorf("notifier client not configured")
@@ -56,7 +52,6 @@ func (client *NotifierClient) SendNotification(ctx context.Context, provider not
 	})
 }
 
-// SendNotificationBatch enqueues multiple alerts in one RPC.
 func (client *NotifierClient) SendNotificationBatch(ctx context.Context, notifications []*notifierpb.SendNotificationRequest) (*notifierpb.SendNotificationBatchResponse, error) {
 	if client == nil || client.client == nil {
 		return nil, fmt.Errorf("notifier client not configured")
@@ -66,7 +61,6 @@ func (client *NotifierClient) SendNotificationBatch(ctx context.Context, notific
 	})
 }
 
-// SendBroadcastNotification enqueues a multi-channel fan-out alert.
 func (client *NotifierClient) SendBroadcastNotification(
 	ctx context.Context,
 	provider notifierpb.Provider,

@@ -13,7 +13,6 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-// isNoScriptErr detects missing Lua script SHA so callers can fall back to EVAL once.
 func isNoScriptErr(err error) bool {
 	if err == nil {
 		return false
@@ -24,7 +23,6 @@ func isNoScriptErr(err error) bool {
 	return strings.Contains(err.Error(), "NOSCRIPT")
 }
 
-// PreloadScripts warms EVALSHA for filter_full and budget_fast on every shard.
 func (f *UnifiedFilter) PreloadScripts(ctx context.Context) error {
 	if f == nil || f.script == nil || f.fastScript == nil {
 		return fmt.Errorf("unified filter scripts are nil")
@@ -47,7 +45,6 @@ func (f *UnifiedFilter) PreloadScripts(ctx context.Context) error {
 	return f.openFilterEvalPins(ctx)
 }
 
-// evalScript prefers pooled EVALSHA and falls back once so cold Redis shards still load the unified filter script.
 func (f *UnifiedFilter) evalScript(ctx context.Context, rdb redis.UniversalClient, shard int, evt *campaignmodel.Event, keyArgs [unifiedFilterKeyCount]any, args []any) (int64, error) {
 	res, err := f.evalShaPooled(ctx, rdb, shard, evt, f.scriptHashAny, keyArgs, args)
 	if err != nil && isNoScriptErr(err) {

@@ -14,13 +14,11 @@ import (
 	"github.com/google/uuid"
 )
 
-// PaddedEma pads the float64 counter to prevent false sharing on CPU cache lines.
 type PaddedEma struct {
 	Value float64
-	_     [56]byte // padding to align to 64-byte cache line boundary
+	_     [56]byte
 }
 
-// ShardOrchestrator monitors Redis shard capacity and triggers elastic triplet migrations (M2).
 type ShardOrchestrator struct {
 	svc             *Service
 	metricsProvider ShardMetricsProvider
@@ -36,7 +34,6 @@ type ShardOrchestrator struct {
 	campaignEma   map[uuid.UUID]*PaddedEma
 }
 
-// NewShardOrchestrator constructs a ShardOrchestrator with 64-byte padded EWMA fields.
 func NewShardOrchestrator(svc *Service, provider ShardMetricsProvider, interval time.Duration) *ShardOrchestrator {
 	if interval <= 0 {
 		interval = 10 * time.Second
@@ -54,7 +51,6 @@ func NewShardOrchestrator(svc *Service, provider ShardMetricsProvider, interval 
 	}
 }
 
-// Start runs the orchestration loop until ctx is cancelled.
 func (o *ShardOrchestrator) Start(ctx context.Context) {
 	ticker := time.NewTicker(o.interval)
 	defer ticker.Stop()

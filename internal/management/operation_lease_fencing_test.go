@@ -1,6 +1,8 @@
 package management
 
 import (
+	"espx/pkg/faultproof"
+
 	"context"
 	"os"
 	"path/filepath"
@@ -65,7 +67,7 @@ func TestOperationLease_StaleFencingEpochRejectsExecutor(t *testing.T) {
 	require.ErrorIs(t, reg.Validate(replicaSetID, staleEpoch), ErrStaleFencingEpoch)
 }
 
-func TestChaos_OperationLease_GhostExecutorFencingProof(t *testing.T) {
+func TestFault_OperationLease_GhostExecutorFencingProof(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
 		t.Skip("integration test")
@@ -119,7 +121,7 @@ func TestChaos_OperationLease_GhostExecutorFencingProof(t *testing.T) {
 	_, err = os.Stat(fencingPath)
 	require.NoError(t, err)
 
-	logChaosProof(t, "mr_lease_ghost_executor", map[string]string{
+	faultproof.Log(t, "mr_lease_ghost_executor", map[string]string{
 		"subsystem":      "operation_lease",
 		"op_id":          opID.String(),
 		"replica_set_id": replicaSetID.String(),

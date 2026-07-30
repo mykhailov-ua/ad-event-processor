@@ -8,14 +8,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// DeploymentSnapshot is the cold-path license_status mirror used by feature workers.
 type DeploymentSnapshot struct {
 	State        LicenseState
 	VolumeBand   VolumeBand
 	Entitlements Entitlements
 }
 
-// LoadDeploymentSnapshot reads billing.license_status (single deployment row).
 func LoadDeploymentSnapshot(ctx context.Context, pool *pgxpool.Pool) (DeploymentSnapshot, error) {
 	var snap DeploymentSnapshot
 	if pool == nil {
@@ -42,7 +40,6 @@ func LoadDeploymentSnapshot(ctx context.Context, pool *pgxpool.Pool) (Deployment
 	return snap, nil
 }
 
-// ModuleAllowed reports whether a subsystem may run under the deployment license.
 func (s DeploymentSnapshot) ModuleAllowed(check func(FeatureSet) bool) bool {
 	if s.State == StateExpired || s.State == StateRevoked {
 		return false

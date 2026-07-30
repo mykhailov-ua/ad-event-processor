@@ -4,7 +4,7 @@ Open engineering work not yet implemented. Closed items: [DEVELOPMENT.md — Com
 
 **Out of scope:** buyer/finance HTMX dashboards (GAP-PROD-01), Grafana-style queue monitoring UI (GAP-OPS-04). HTMX in management is for errors and cold-path admin flows only, not product dashboards.
 
-**Related:** [ARCHITECTURE.md](./ARCHITECTURE.md), [MULTI_REGION.md](./MULTI_REGION.md), [DEVELOPMENT.md](./DEVELOPMENT.md), `.cursor/rules/code-style.mdc`, `.cursor/rules/hot-path.mdc`, `.cursor/rules/chaos.mdc`, `.cursor/rules/rtb.mdc`.
+**Related:** [ARCHITECTURE.md](./ARCHITECTURE.md), [MULTI_REGION.md](./MULTI_REGION.md), [DEVELOPMENT.md](./DEVELOPMENT.md), `.cursor/rules/code-style.mdc`, `.cursor/rules/hot-path.mdc`, `.cursor/rules/fault-resilience.mdc`, `.cursor/rules/rtb.mdc`.
 
 ---
 
@@ -58,7 +58,7 @@ Apply to **every** milestone unless a gap overrides a row explicitly.
 | :--- | :--- | :--- |
 | Unit | `go test ./<pkg>/... -race` | Table-driven; no sqlmock on budget/dedup/Lua paths |
 | Integration | `*_test.go` + testcontainers | Real PG/Redis/CH where I/O involved |
-| Chaos | `*_chaos_test.go` | `chaos_proof fault=<name> ...`; >= 20 goroutines on balance paths when applicable |
+| Fault | `*_fault_test.go` | `fault_proof fault=<name> ...`; >= 20 goroutines on balance paths when applicable |
 | E2E | `tests/e2e/*` | Compose stack for cross-service gaps |
 | Perf | `go test -benchmem` | Hot touch: 0 allocs/op unchanged; run `make test-alloc-gate` |
 | PR | `make lint`, `go test ./... -short` | `.cursor/rules/code-style.mdc` R10 |
@@ -167,7 +167,7 @@ CTV inventory lacks tax calculation hooks in settlement and billing.
 | Layer | Requirement |
 | :--- | :--- |
 | Integration | testcontainers PG; tax row idempotency |
-| Chaos | `chaos_proof fault=gtax_settlement_replay` with `proposal_rows=1` |
+| Fault | `fault_proof fault=gtax_settlement_replay` with `proposal_rows=1` |
 
 ##### Touch
 
@@ -266,7 +266,7 @@ No cohort assignment or global sync for experiment flags across regions.
 | Layer | Requirement |
 | :--- | :--- |
 | Integration | Fanout to Redis shard; registry contains cohort |
-| Chaos | Optional CH-MR-style proof if cross-region |
+| Fault | Optional CH-MR-style proof if cross-region |
 
 ##### Touch
 
@@ -298,7 +298,7 @@ Direct ClickHouse driver calls bypass `internal/database.CHQuery`. Timeouts, con
 - [x] All admin, IVT, forecast paths use `CHQuery`
 - [x] `CHQuery` exposes metrics: `ad_ch_query_duration_seconds`, `ad_ch_query_rejected_total`
 - [x] Document timeout env vars in `.env.example`
-- [x] `scripts/ci/check_ch_direct.sh` guard for new raw CH access
+- [x] `scripts/ci/ch_direct.sh` guard for new raw CH access
 
 #### SLA
 
@@ -324,7 +324,7 @@ Direct ClickHouse driver calls bypass `internal/database.CHQuery`. Timeouts, con
 | :--- | :--- |
 | Unit | Gate semaphore: max concurrency enforced |
 | Integration | testcontainers ClickHouse; slow query logs at threshold |
-| Lint | `scripts/ci/check_ch_direct.sh` or golangci custom linter |
+| Lint | `scripts/ci/ch_direct.sh` or golangci custom linter |
 
 #### Touch
 
@@ -412,7 +412,7 @@ Direct ClickHouse driver calls bypass `internal/database.CHQuery`. Timeouts, con
 - [x] Webhook replay x3 creates one ledger row
 - [x] Secrets only via env `Secret` type in config
 - [x] Service boundary: no payment imports in `internal/ingestion`
-- [x] Chaos proof: `chaos_proof fault=crypto_webhook_replay proposal_rows=1`
+- [x] Fault proof: `fault_proof fault=crypto_webhook_replay proposal_rows=1`
 
 #### SLA
 
@@ -437,7 +437,7 @@ Direct ClickHouse driver calls bypass `internal/database.CHQuery`. Timeouts, con
 | Layer | Requirement |
 | :--- | :--- |
 | Integration | testcontainers PG; webhook signature vectors |
-| Chaos | Duplicate webhook delivery; budget invariant |
+| Fault | Duplicate webhook delivery; budget invariant |
 | Unit | Provider interface table tests with recorded fixtures |
 
 #### Touch
@@ -462,7 +462,7 @@ Direct ClickHouse driver calls bypass `internal/database.CHQuery`. Timeouts, con
 
 1. Production profile defaults for tarpit thresholds; metrics `espx_edge_tarpit_*` wired to Prometheus.
 2. `docs/COMPLIANCE_MATRIX.md` — control ID, implementation file, test proof (no HTMX UI).
-3. Integration test or chaos script with `EDGE_TARPIT_ENABLED=1`.
+3. Integration test or fault script with `EDGE_TARPIT_ENABLED=1`.
 
 #### Definition of done
 
@@ -494,7 +494,7 @@ Direct ClickHouse driver calls bypass `internal/database.CHQuery`. Timeouts, con
 | :--- | :--- |
 | Lua | `*.lua` tests under `deploy/nginx/lua/tests/` |
 | Integration | curl against edge with oversized header; expect delay metric increment |
-| Chaos | Optional: `chaos_proof fault=edge_tarpit_triggered` |
+| Fault | Optional: `fault_proof fault=edge_tarpit_triggered` |
 
 #### Touch
 
@@ -517,7 +517,7 @@ Direct ClickHouse driver calls bypass `internal/database.CHQuery`. Timeouts, con
 #### Deliverables
 
 1. Compose profile `multi-region` (or `tools`) in root stack: broker optional, `region-proxy` service.
-2. `scripts/local-dev/dev_stack.sh` target: `dev_stack.sh multi-region up`.
+2. `scripts/dev/stack.sh` target: `dev_stack.sh multi-region up`.
 3. `DEVELOPMENT.md` section: env matrix for global vs regional processor.
 
 #### Definition of done
@@ -550,7 +550,7 @@ Direct ClickHouse driver calls bypass `internal/database.CHQuery`. Timeouts, con
 
 | Layer | Requirement |
 | :--- | :--- |
-| Smoke | `scripts/local-dev/dev_stack.sh status` includes region-proxy when profile on |
+| Smoke | `scripts/dev/stack.sh status` includes region-proxy when profile on |
 | E2E | `go test ./tests/e2e/... -run RegionProxy` against compose |
 
 #### Touch
@@ -665,7 +665,7 @@ Vendor health (MaxMind, Stripe, SMTP, Telegram) is opt-in and fragmented.
 | Layer | Requirement |
 | :--- | :--- |
 | Integration | Two consumers, artificial slow PG on one instance |
-| Chaos | `chaos_proof fault=processor_weight_drain` with `lag_ratio` key |
+| Fault | `fault_proof fault=processor_weight_drain` with `lag_ratio` key |
 | Bench | No regression on single-instance consume path |
 
 #### Touch
@@ -689,7 +689,7 @@ Vendor health (MaxMind, Stripe, SMTP, Telegram) is opt-in and fragmented.
 
 | ID | Summary |
 | :--- | :--- |
-| GAP-GEO-01 | Game days M7.4 — `scripts/chaos-drills/mr_game_day.sh` |
+| GAP-GEO-01 | Game days M7.4 — `scripts/fault/mr_resilience_drill.sh` |
 | GAP-GEO-02 | Postgres failover — `pg_failover.go` |
 | GAP-MR-01/03 | Operation leases, quorum book |
 | GAP-MR-02 | Global vs regional scorer (H3) |

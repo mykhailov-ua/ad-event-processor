@@ -1,4 +1,3 @@
-// Package keygen runs a pinned-thread worker that derives factor_u for WAL records.
 package keygen
 
 import (
@@ -11,7 +10,6 @@ import (
 	"espx/pkg/regionproxy/wal"
 )
 
-// Config tunes the KeyGen polling loop.
 type Config struct {
 	RegionCode   uint8
 	NodeID       string
@@ -19,7 +17,6 @@ type Config struct {
 	BatchSize    int
 }
 
-// KeyGen derives factor_u for appended WAL records and sets WalFlagDedupReady.
 type KeyGen struct {
 	wal     *wal.WAL
 	cfg     Config
@@ -29,7 +26,6 @@ type KeyGen struct {
 	processed atomic.Uint64
 }
 
-// New builds a KeyGen worker for w.
 func New(w *wal.WAL, cfg Config) *KeyGen {
 	if cfg.PollInterval <= 0 {
 		cfg.PollInterval = time.Millisecond
@@ -44,19 +40,16 @@ func New(w *wal.WAL, cfg Config) *KeyGen {
 	}
 }
 
-// Start launches the pinned KeyGen goroutine.
 func (k *KeyGen) Start() {
 	k.wg.Add(1)
 	go k.loop()
 }
 
-// Stop waits for the KeyGen goroutine to exit.
 func (k *KeyGen) Stop() {
 	close(k.closeCh)
 	k.wg.Wait()
 }
 
-// Processed returns the number of records marked WalFlagDedupReady.
 func (k *KeyGen) Processed() uint64 {
 	return k.processed.Load()
 }

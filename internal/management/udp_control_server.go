@@ -16,7 +16,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// UDPControlServer publishes ingress epochs and answers CONFIG_REQUEST over UDP only.
 type UDPControlServer struct {
 	cfg       *config.Config
 	pool      *pgxpool.Pool
@@ -27,7 +26,6 @@ type UDPControlServer struct {
 	trackers  []*net.UDPAddr
 }
 
-// NewUDPControlServer builds a management UDP control-plane publisher.
 func NewUDPControlServer(cfg *config.Config, pool *pgxpool.Pool, sharder ingestion.Sharder, numShards int) *UDPControlServer {
 	s := &UDPControlServer{
 		cfg:       cfg,
@@ -43,7 +41,6 @@ func NewUDPControlServer(cfg *config.Config, pool *pgxpool.Pool, sharder ingesti
 	return s
 }
 
-// Start listens for CONFIG_REQUEST and publishes periodic epochs.
 func (s *UDPControlServer) Start(ctx context.Context) error {
 	if s == nil || s.cfg == nil || !s.cfg.UDPControlEnabled {
 		return nil
@@ -63,7 +60,6 @@ func (s *UDPControlServer) Start(ctx context.Context) error {
 	return nil
 }
 
-// Close shuts down the UDP socket.
 func (s *UDPControlServer) Close() error {
 	if s != nil && s.conn != nil {
 		return s.conn.Close()
@@ -160,7 +156,6 @@ func (s *UDPControlServer) publishEpoch(ctx context.Context, snapshot bool) {
 			_, _ = s.conn.WriteToUDP(pkt[:n], taddr)
 		}
 	}
-	// broadcast to wildcard tracker port on localhost
 	if bcast, err := net.ResolveUDPAddr("udp", "127.0.0.1:8191"); err == nil {
 		_, _ = s.conn.WriteToUDP(pkt[:n], bcast)
 	}

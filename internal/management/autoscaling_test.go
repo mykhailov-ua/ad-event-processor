@@ -16,7 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestSmartBudgetAutoscaling guards CTR-based budget shifts from low to high performers without corrupting sync state.
 func TestSmartBudgetAutoscaling(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")

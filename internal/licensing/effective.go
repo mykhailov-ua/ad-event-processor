@@ -1,7 +1,5 @@
 package licensing
 
-// Effective calculates the merged entitlements between a product license (deployment)
-// and a tenant subscription (customer) per CONTROL_PLANE.md section 18.
 func Effective(dep, cust Entitlements) Entitlements {
 	var eff Entitlements
 	eff.Limits.MaxRPS = minNonZero(dep.Limits.MaxRPS, cust.Limits.MaxRPS)

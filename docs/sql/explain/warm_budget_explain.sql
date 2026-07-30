@@ -1,0 +1,10 @@
+
+EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+SELECT budget_limit, current_spend
+FROM campaigns
+WHERE id = '00000000-0000-4000-8000-000000000001'::uuid;
+
+EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+SELECT GREATEST(budget_limit - current_spend, 0) AS remaining_micro
+FROM campaigns
+WHERE id = '00000000-0000-4000-8000-000000000001'::uuid;

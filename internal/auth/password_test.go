@@ -5,7 +5,6 @@ import (
 	"testing"
 )
 
-// TestHashAndVerify ensures Argon2id hashes verify correctly and reject empty credentials.
 func TestHashAndVerify(t *testing.T) {
 	password := "super_secret_password_123!"
 
@@ -40,7 +39,6 @@ func TestHashAndVerify(t *testing.T) {
 	}
 }
 
-// TestVerifyPassword_SecurityBoundsAndFormats rejects malformed or out-of-bounds stored hash parameters.
 func TestVerifyPassword_SecurityBoundsAndFormats(t *testing.T) {
 	tests := []struct {
 		name string
@@ -70,7 +68,6 @@ func TestVerifyPassword_SecurityBoundsAndFormats(t *testing.T) {
 	}
 }
 
-// BenchmarkHashPassword measures Argon2id hashing cost for capacity planning.
 func BenchmarkHashPassword(b *testing.B) {
 	password := "benchmark_password"
 	b.ResetTimer()
@@ -85,7 +82,6 @@ func BenchmarkHashPassword(b *testing.B) {
 	}
 }
 
-// BenchmarkVerifyPassword measures Argon2id verification cost on the login hot path.
 func BenchmarkVerifyPassword(b *testing.B) {
 	password := "benchmark_password"
 	hasher, err := NewPasswordHasher(65536, 3, 4)

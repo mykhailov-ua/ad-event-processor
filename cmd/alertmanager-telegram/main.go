@@ -1,4 +1,3 @@
-// Command alertmanager-telegram forwards Alertmanager webhook payloads to the Telegram Bot API.
 package main
 
 import (

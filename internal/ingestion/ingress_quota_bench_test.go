@@ -8,7 +8,6 @@ import (
 	"testing"
 )
 
-// BenchmarkIngressQuota_padded measures cache-line padded per-worker counters.
 func BenchmarkIngressQuota_padded(b *testing.B) {
 	const workers = 8
 	var limits UDPControlLimits
@@ -24,7 +23,6 @@ func BenchmarkIngressQuota_padded(b *testing.B) {
 	})
 }
 
-// BenchmarkIngressQuota_unpadded measures false-sharing baseline (packed atomics).
 func BenchmarkIngressQuota_unpadded(b *testing.B) {
 	const workers = 8
 	m := &unpaddedIngressCounters{max: 1_000_000_000}

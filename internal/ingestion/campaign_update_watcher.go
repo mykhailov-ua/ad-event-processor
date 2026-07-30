@@ -14,7 +14,6 @@ import (
 
 const DefaultCampaignUpdateBrokerTopic = "campaigns:update"
 
-// CampaignUpdateWatcherConfig configures the optional broker fallback for campaigns:update (M14-03).
 type CampaignUpdateWatcherConfig struct {
 	Registry       *Registry
 	BrokerURL      string
@@ -24,12 +23,10 @@ type CampaignUpdateWatcherConfig struct {
 	BrokerTimeout  time.Duration
 }
 
-// CampaignUpdateWatcher consumes broker campaigns:update when shard-0 Redis pub/sub is down.
 type CampaignUpdateWatcher struct {
 	cfg CampaignUpdateWatcherConfig
 }
 
-// NewCampaignUpdateWatcher constructs a cold-path campaign-update broker listener.
 func NewCampaignUpdateWatcher(cfg CampaignUpdateWatcherConfig) *CampaignUpdateWatcher {
 	if cfg.BrokerTopic == "" {
 		cfg.BrokerTopic = DefaultCampaignUpdateBrokerTopic
@@ -44,7 +41,6 @@ func NewCampaignUpdateWatcher(cfg CampaignUpdateWatcherConfig) *CampaignUpdateWa
 	return &CampaignUpdateWatcher{cfg: cfg}
 }
 
-// Start runs until ctx is cancelled.
 func (w *CampaignUpdateWatcher) Start(ctx context.Context) {
 	if w.cfg.Registry == nil || w.cfg.BrokerURL == "" {
 		return
@@ -143,7 +139,6 @@ func (w *CampaignUpdateWatcher) consumeOnce(ctx context.Context) error {
 	}
 }
 
-// PublishCampaignUpdateBroker emits a campaign ID on the broker topic (management cold path).
 func PublishCampaignUpdateBroker(brokerURL, brokerRedisURL, topic string, timeout time.Duration, campaignID string) error {
 	if brokerURL == "" || campaignID == "" {
 		return nil

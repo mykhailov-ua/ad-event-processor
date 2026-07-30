@@ -8,7 +8,6 @@ import (
 	"time"
 )
 
-// ColdConfig configures warm-to-ClickHouse cold-tier rollup.
 type ColdConfig struct {
 	WarmMinAge            time.Duration
 	WorkInterval          time.Duration
@@ -16,7 +15,6 @@ type ColdConfig struct {
 	DeleteWarmAfterRollup bool
 }
 
-// ColdRolluper aggregates warm segments into ClickHouse audit_log_rollups.
 type ColdRolluper struct {
 	cfg        ColdConfig
 	store      *LocalTierStore
@@ -24,7 +22,6 @@ type ColdRolluper struct {
 	inserter   RollupInserter
 }
 
-// NewColdRolluper wires warm listing, checkpointing, and rollup insert.
 func NewColdRolluper(cfg ColdConfig, store *LocalTierStore, checkpoint *CheckpointStore, inserter RollupInserter) *ColdRolluper {
 	if cfg.WorkInterval <= 0 {
 		cfg.WorkInterval = 24 * time.Hour
@@ -40,7 +37,6 @@ func NewColdRolluper(cfg ColdConfig, store *LocalTierStore, checkpoint *Checkpoi
 	}
 }
 
-// Run executes cold rollup passes until ctx is cancelled.
 func (cr *ColdRolluper) Run(ctx context.Context) error {
 	if err := cr.checkpoint.Load(); err != nil {
 		return err
@@ -64,7 +60,6 @@ func (cr *ColdRolluper) Run(ctx context.Context) error {
 	}
 }
 
-// RunOnce processes all eligible warm segments once.
 func (cr *ColdRolluper) RunOnce(ctx context.Context) error {
 	cutoff := time.Now().Add(-cr.cfg.WarmMinAge)
 	objects, err := cr.store.ListWarm(ctx, cutoff)

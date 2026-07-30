@@ -9,8 +9,6 @@ import (
 
 const defaultRegistryStaleTTL = 30 * time.Second
 
-// ConfigureStaleMode arms M14-02 registry stale-serve: when shard-0 pub/sub is quiet
-// longer than ttl, unknown campaign IDs fail with 503 registry_stale instead of 404.
 func (r *Registry) ConfigureStaleMode(ttl time.Duration) {
 	if r == nil {
 		return
@@ -24,7 +22,6 @@ func (r *Registry) ConfigureStaleMode(ttl time.Duration) {
 	r.refreshStaleMode(now)
 }
 
-// MarkPubSubOK records a successful campaigns:update signal (Redis pub/sub or broker fallback).
 func (r *Registry) MarkPubSubOK() {
 	if r == nil {
 		return
@@ -34,7 +31,6 @@ func (r *Registry) MarkPubSubOK() {
 	r.refreshStaleMode(now)
 }
 
-// IsStaleMode reports whether the registry is serving from RAM without fresh control-plane signals.
 func (r *Registry) IsStaleMode() bool {
 	if r == nil {
 		return false

@@ -8,10 +8,10 @@ import (
 )
 
 const (
-	tcpControlMagic      uint32 = 0x45535058 // "ESPX"
+	tcpControlMagic      uint32 = 0x45535058
 	tcpControlVersion    uint8  = 1
 	tcpControlHMACSize          = 32
-	tcpControlPrefixSize        = 32 // bytes signed before HMAC field
+	tcpControlPrefixSize        = 32
 
 	TCPMsgSnapshot        uint8 = 1
 	TCPMsgSnapshotRequest uint8 = 2
@@ -20,7 +20,6 @@ const (
 
 const TCPControlHeaderSize = 64
 
-// TCPControlHeader is the fixed 64-byte routing cutover frame prefix (M2 GAP-SHARD-05).
 type TCPControlHeader struct {
 	Magic          uint32
 	Version        uint8
@@ -34,7 +33,6 @@ type TCPControlHeader struct {
 	HMAC           [tcpControlHMACSize]byte
 }
 
-// TCPAckPayload is tracker → management ACK body.
 type TCPAckPayload struct {
 	TrackerID      uint32
 	AppliedEpoch   int64
@@ -46,7 +44,6 @@ var (
 	ErrTCPControlHMAC    = errors.New("tcp control: hmac mismatch")
 )
 
-// EncodeTCPControlFrame writes a signed control frame into dst.
 func EncodeTCPControlFrame(dst []byte, secret []byte, hdr *TCPControlHeader, payload []byte) (int, error) {
 	if hdr == nil {
 		return 0, ErrTCPControlCorrupt
@@ -68,7 +65,6 @@ func EncodeTCPControlFrame(dst []byte, secret []byte, hdr *TCPControlHeader, pay
 	return TCPControlHeaderSize + pl, nil
 }
 
-// DecodeTCPControlFrame parses and verifies a signed control frame.
 func DecodeTCPControlFrame(src []byte, secret []byte, hdr *TCPControlHeader) ([]byte, error) {
 	if hdr == nil || len(src) < TCPControlHeaderSize {
 		return nil, ErrTCPControlCorrupt
@@ -90,7 +86,6 @@ func DecodeTCPControlFrame(src []byte, secret []byte, hdr *TCPControlHeader) ([]
 	return out, nil
 }
 
-// EncodeTCPAckPayload serializes tracker ACK body.
 func EncodeTCPAckPayload(dst []byte, ack *TCPAckPayload) int {
 	if ack == nil || len(dst) < 16 {
 		return 0
@@ -101,7 +96,6 @@ func EncodeTCPAckPayload(dst []byte, ack *TCPAckPayload) int {
 	return 16
 }
 
-// DecodeTCPAckPayload parses tracker ACK body.
 func DecodeTCPAckPayload(payload []byte, ack *TCPAckPayload) bool {
 	if ack == nil || len(payload) < 16 {
 		return false
@@ -112,7 +106,6 @@ func DecodeTCPAckPayload(payload []byte, ack *TCPAckPayload) bool {
 	return true
 }
 
-// EncodeTCPLimitsPayload serializes shard limits for TCP snapshot bodies.
 func EncodeTCPLimitsPayload(dst []byte, limits *UDPControlLimits) int {
 	return udpEncodeShardLimits(dst, limits)
 }

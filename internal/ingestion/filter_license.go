@@ -11,8 +11,6 @@ type licenseStateReader interface {
 	GetLicenseState() (licensing.LicenseState, licensing.Entitlements)
 }
 
-// LicenseFilter rejects ingest only when the deployment license is EXPIRED or REVOKED.
-// GRACE and ACTIVE continue per CONTROL_PLANE.md section 8 (zero network, atomic snapshot read).
 type LicenseFilter struct {
 	registry licenseStateReader
 }

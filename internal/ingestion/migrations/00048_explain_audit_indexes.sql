@@ -1,5 +1,3 @@
--- Composite/partial indexes for ledger recon, credit scoring, and shard drain workers.
--- Targets seq scans flagged by EXPLAIN (ANALYZE, BUFFERS) audit on balance_ledger and campaigns.
 
 -- +goose Up
 -- +goose StatementBegin

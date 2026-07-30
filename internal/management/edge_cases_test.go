@@ -18,7 +18,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestEdge_RoundingAndSmallAmounts guards cancellation fee rounding on small campaign budgets.
 func TestEdge_RoundingAndSmallAmounts(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
@@ -48,14 +47,12 @@ func TestEdge_RoundingAndSmallAmounts(t *testing.T) {
 	}, 2*time.Second, 20*time.Millisecond)
 }
 
-// TestEdge_ConcurrentBalanceDepletion re-exports chaos balance depletion coverage for the edge-case suite.
 func TestEdge_ConcurrentBalanceDepletion(t *testing.T) {
-	t.Run("delegatesToChaosTest", func(t *testing.T) {
-		TestChaos_ConcurrentBalanceDepletion(t)
+	t.Run("delegatesToFaultTest", func(t *testing.T) {
+		TestFault_ConcurrentBalanceDepletion(t)
 	})
 }
 
-// TestEdge_ResumingStuckSettlement guards cancel can finish settlement when a campaign is stuck in DRAINING.
 func TestEdge_ResumingStuckSettlement(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
@@ -126,7 +123,6 @@ func (p *failingPipeliner) Publish(ctx context.Context, channel string, message 
 	return p.Pipeliner.Publish(ctx, channel, message)
 }
 
-// TestEdge_OutboxPartialRedisFailure guards partial Redis failures leave failed events pending for retry.
 func TestEdge_OutboxPartialRedisFailure(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
@@ -190,7 +186,6 @@ func TestEdge_OutboxPartialRedisFailure(t *testing.T) {
 	assert.Equal(t, "PENDING", statuses[1])
 }
 
-// TestEdge_OutboxWorkerRecoveryOfProcessingEvents guards stale PROCESSING leases revert to PENDING and reprocess.
 func TestEdge_OutboxWorkerRecoveryOfProcessingEvents(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
@@ -257,7 +252,6 @@ func TestEdge_OutboxWorkerRecoveryOfProcessingEvents(t *testing.T) {
 	assert.Equal(t, "PROCESSED", status)
 }
 
-// TestEdge_OutboxSetsRemainingBudget guards resume outbox handler sets Redis budget to limit minus spend.
 func TestEdge_OutboxSetsRemainingBudget(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")

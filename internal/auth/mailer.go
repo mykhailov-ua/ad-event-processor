@@ -8,37 +8,24 @@ import (
 	"time"
 )
 
-// Mailer delivers user-facing security, billing, and operational notifications without coupling auth to a specific email provider.
 type Mailer interface {
-	// SendPasswordChangedEmail alerts the owner because a stolen session may have initiated the change.
 	SendPasswordChangedEmail(ctx context.Context, toEmail, clientIP, userAgent string) error
 
-	// SendNewIPLoginEmail gives the owner a chance to react before further abuse from a new location.
 	SendNewIPLoginEmail(ctx context.Context, toEmail, clientIP, userAgent string) error
-	// SendAccountLockedEmail explains the lockout so users do not mistake it for an account deletion.
 	SendAccountLockedEmail(ctx context.Context, toEmail, clientIP, lockDuration string) error
-	// Send2FACodeEmail delivers an out-of-band factor because password alone is insufficient for step-up.
 	Send2FACodeEmail(ctx context.Context, toEmail, code string) error
 
-	// SendTopUpBalanceEmail confirms funds landed because billing disputes start from missing receipts.
 	SendTopUpBalanceEmail(ctx context.Context, toEmail, amount, currency string) error
-	// SendLowBalanceAlertEmail warns before delivery stops for prepaid accounts with thin runway.
 	SendLowBalanceAlertEmail(ctx context.Context, toEmail, currentBalance, remainingHours string) error
-	// SendMonthlyInvoiceEmail prompts review because spend reconciliation depends on timely statements.
 	SendMonthlyInvoiceEmail(ctx context.Context, toEmail, period, amount string) error
 
-	// SendCampaignDepletedEmail explains why delivery halted so budgets are not misread as platform faults.
 	SendCampaignDepletedEmail(ctx context.Context, toEmail, campaignName, campaignID string) error
-	// SendWeeklyPerformanceEmail surfaces trends without requiring dashboard access for every stakeholder.
 	SendWeeklyPerformanceEmail(ctx context.Context, toEmail, clicks, impressions, ctr string) error
-	// SendCreativeModerationEmail closes the loop because rejected creatives otherwise look stuck in review.
 	SendCreativeModerationEmail(ctx context.Context, toEmail, creativeID, status, reason string) error
 }
 
-// SlogMailer implements Mailer by rendering HTML templates and logging dispatch for local and test environments.
 type SlogMailer struct{}
 
-// renderAndLog keeps local and CI environments observable without requiring an SMTP backend.
 func renderAndLog(ctx context.Context, templateName string, tpl *template.Template, toEmail, subject string, data any) error {
 	var buf bytes.Buffer
 	if err := tpl.Execute(&buf, data); err != nil {
@@ -61,7 +48,6 @@ func renderAndLog(ctx context.Context, templateName string, tpl *template.Templa
 	return nil
 }
 
-// passwordChangedHTMLTemplate is the HTML body for password change security alerts.
 var passwordChangedHTMLTemplate = template.Must(template.New("password_changed").Parse(`<!DOCTYPE html>
 <html>
 <head>
@@ -85,7 +71,6 @@ var passwordChangedHTMLTemplate = template.Must(template.New("password_changed")
 </body>
 </html>`))
 
-// newIPLoginHTMLTemplate is the HTML body for unfamiliar login location alerts.
 var newIPLoginHTMLTemplate = template.Must(template.New("new_ip_login").Parse(`<!DOCTYPE html>
 <html>
 <head>
@@ -110,7 +95,6 @@ var newIPLoginHTMLTemplate = template.Must(template.New("new_ip_login").Parse(`<
 </body>
 </html>`))
 
-// accountLockedHTMLTemplate is the HTML body for temporary account lockout notices.
 var accountLockedHTMLTemplate = template.Must(template.New("account_locked").Parse(`<!DOCTYPE html>
 <html>
 <head>
@@ -135,7 +119,6 @@ var accountLockedHTMLTemplate = template.Must(template.New("account_locked").Par
 </body>
 </html>`))
 
-// twoFactorCodeHTMLTemplate is the HTML body for two-factor verification codes.
 var twoFactorCodeHTMLTemplate = template.Must(template.New("two_factor_code").Parse(`<!DOCTYPE html>
 <html>
 <head>
@@ -157,7 +140,6 @@ var twoFactorCodeHTMLTemplate = template.Must(template.New("two_factor_code").Pa
 </body>
 </html>`))
 
-// topUpBalanceHTMLTemplate is the HTML body for successful balance top-up confirmations.
 var topUpBalanceHTMLTemplate = template.Must(template.New("topup_balance").Parse(`<!DOCTYPE html>
 <html>
 <head>
@@ -179,7 +161,6 @@ var topUpBalanceHTMLTemplate = template.Must(template.New("topup_balance").Parse
 </body>
 </html>`))
 
-// lowBalanceAlertHTMLTemplate is the HTML body for low balance warnings before delivery stops.
 var lowBalanceAlertHTMLTemplate = template.Must(template.New("low_balance_alert").Parse(`<!DOCTYPE html>
 <html>
 <head>
@@ -202,7 +183,6 @@ var lowBalanceAlertHTMLTemplate = template.Must(template.New("low_balance_alert"
 </body>
 </html>`))
 
-// monthlyInvoiceHTMLTemplate is the HTML body for monthly billing statement notices.
 var monthlyInvoiceHTMLTemplate = template.Must(template.New("monthly_invoice").Parse(`<!DOCTYPE html>
 <html>
 <head>
@@ -225,7 +205,6 @@ var monthlyInvoiceHTMLTemplate = template.Must(template.New("monthly_invoice").P
 </body>
 </html>`))
 
-// campaignDepletedHTMLTemplate is the HTML body for campaign budget exhaustion alerts.
 var campaignDepletedHTMLTemplate = template.Must(template.New("campaign_depleted").Parse(`<!DOCTYPE html>
 <html>
 <head>
@@ -248,7 +227,6 @@ var campaignDepletedHTMLTemplate = template.Must(template.New("campaign_depleted
 </body>
 </html>`))
 
-// weeklyPerformanceHTMLTemplate is the HTML body for weekly campaign performance summaries.
 var weeklyPerformanceHTMLTemplate = template.Must(template.New("weekly_performance").Parse(`<!DOCTYPE html>
 <html>
 <head>
@@ -283,7 +261,6 @@ var weeklyPerformanceHTMLTemplate = template.Must(template.New("weekly_performan
 </body>
 </html>`))
 
-// creativeModerationHTMLTemplate is the HTML body for creative moderation outcome updates.
 var creativeModerationHTMLTemplate = template.Must(template.New("creative_moderation").Parse(`<!DOCTYPE html>
 <html>
 <head>
@@ -307,7 +284,6 @@ var creativeModerationHTMLTemplate = template.Must(template.New("creative_modera
 </body>
 </html>`))
 
-// PasswordChangedEmailData carries template fields for password change security alerts.
 type PasswordChangedEmailData struct {
 	Email     string
 	Time      string
@@ -315,7 +291,6 @@ type PasswordChangedEmailData struct {
 	UserAgent string
 }
 
-// SendPasswordChangedEmail alerts the owner because a stolen session may have initiated the change.
 func (m SlogMailer) SendPasswordChangedEmail(ctx context.Context, toEmail, clientIP, userAgent string) error {
 	data := PasswordChangedEmailData{
 		Email:     toEmail,
@@ -326,7 +301,6 @@ func (m SlogMailer) SendPasswordChangedEmail(ctx context.Context, toEmail, clien
 	return renderAndLog(ctx, "password_changed", passwordChangedHTMLTemplate, toEmail, "Security Alert: Password Changed", data)
 }
 
-// NewIPLoginEmailData carries template fields for unfamiliar login location alerts.
 type NewIPLoginEmailData struct {
 	Email     string
 	IP        string
@@ -334,7 +308,6 @@ type NewIPLoginEmailData struct {
 	Time      string
 }
 
-// SendNewIPLoginEmail gives the owner a chance to react before further abuse from a new location.
 func (m SlogMailer) SendNewIPLoginEmail(ctx context.Context, toEmail, clientIP, userAgent string) error {
 	data := NewIPLoginEmailData{
 		Email:     toEmail,
@@ -345,7 +318,6 @@ func (m SlogMailer) SendNewIPLoginEmail(ctx context.Context, toEmail, clientIP, 
 	return renderAndLog(ctx, "new_ip_login", newIPLoginHTMLTemplate, toEmail, "Security Alert: Login from New IP", data)
 }
 
-// AccountLockedEmailData carries template fields for temporary account lockout notices.
 type AccountLockedEmailData struct {
 	Email        string
 	IP           string
@@ -353,7 +325,6 @@ type AccountLockedEmailData struct {
 	Time         string
 }
 
-// SendAccountLockedEmail explains the lockout so users do not mistake it for an account deletion.
 func (m SlogMailer) SendAccountLockedEmail(ctx context.Context, toEmail, clientIP, lockDuration string) error {
 	data := AccountLockedEmailData{
 		Email:        toEmail,
@@ -364,13 +335,11 @@ func (m SlogMailer) SendAccountLockedEmail(ctx context.Context, toEmail, clientI
 	return renderAndLog(ctx, "account_locked", accountLockedHTMLTemplate, toEmail, "Security Alert: Account Temporarily Locked", data)
 }
 
-// TwoFactorCodeEmailData carries template fields for two-factor verification codes.
 type TwoFactorCodeEmailData struct {
 	Email string
 	Code  string
 }
 
-// Send2FACodeEmail delivers an out-of-band factor because password alone is insufficient for step-up.
 func (m SlogMailer) Send2FACodeEmail(ctx context.Context, toEmail, code string) error {
 	data := TwoFactorCodeEmailData{
 		Email: toEmail,
@@ -379,14 +348,12 @@ func (m SlogMailer) Send2FACodeEmail(ctx context.Context, toEmail, code string) 
 	return renderAndLog(ctx, "two_factor_code", twoFactorCodeHTMLTemplate, toEmail, "Your Two-Factor Verification Code", data)
 }
 
-// TopUpBalanceEmailData carries template fields for successful balance top-up confirmations.
 type TopUpBalanceEmailData struct {
 	Email    string
 	Amount   string
 	Currency string
 }
 
-// SendTopUpBalanceEmail confirms funds landed because billing disputes start from missing receipts.
 func (m SlogMailer) SendTopUpBalanceEmail(ctx context.Context, toEmail, amount, currency string) error {
 	data := TopUpBalanceEmailData{
 		Email:    toEmail,
@@ -396,14 +363,12 @@ func (m SlogMailer) SendTopUpBalanceEmail(ctx context.Context, toEmail, amount, 
 	return renderAndLog(ctx, "topup_balance", topUpBalanceHTMLTemplate, toEmail, "Billing: Balance Top-Up Successful", data)
 }
 
-// LowBalanceAlertEmailData carries template fields for low balance warnings before delivery stops.
 type LowBalanceAlertEmailData struct {
 	Email          string
 	CurrentBalance string
 	RemainingHours string
 }
 
-// SendLowBalanceAlertEmail warns before delivery stops for prepaid accounts with thin runway.
 func (m SlogMailer) SendLowBalanceAlertEmail(ctx context.Context, toEmail, currentBalance, remainingHours string) error {
 	data := LowBalanceAlertEmailData{
 		Email:          toEmail,
@@ -413,14 +378,12 @@ func (m SlogMailer) SendLowBalanceAlertEmail(ctx context.Context, toEmail, curre
 	return renderAndLog(ctx, "low_balance_alert", lowBalanceAlertHTMLTemplate, toEmail, "Billing Alert: Low Balance Notice", data)
 }
 
-// MonthlyInvoiceEmailData carries template fields for monthly billing statement notices.
 type MonthlyInvoiceEmailData struct {
 	Email  string
 	Period string
 	Amount string
 }
 
-// SendMonthlyInvoiceEmail prompts review because spend reconciliation depends on timely statements.
 func (m SlogMailer) SendMonthlyInvoiceEmail(ctx context.Context, toEmail, period, amount string) error {
 	data := MonthlyInvoiceEmailData{
 		Email:  toEmail,
@@ -430,14 +393,12 @@ func (m SlogMailer) SendMonthlyInvoiceEmail(ctx context.Context, toEmail, period
 	return renderAndLog(ctx, "monthly_invoice", monthlyInvoiceHTMLTemplate, toEmail, "Billing: Monthly Statement Available", data)
 }
 
-// CampaignDepletedEmailData carries template fields for campaign budget exhaustion alerts.
 type CampaignDepletedEmailData struct {
 	Email        string
 	CampaignName string
 	CampaignID   string
 }
 
-// SendCampaignDepletedEmail explains why delivery halted so budgets are not misread as platform faults.
 func (m SlogMailer) SendCampaignDepletedEmail(ctx context.Context, toEmail, campaignName, campaignID string) error {
 	data := CampaignDepletedEmailData{
 		Email:        toEmail,
@@ -447,7 +408,6 @@ func (m SlogMailer) SendCampaignDepletedEmail(ctx context.Context, toEmail, camp
 	return renderAndLog(ctx, "campaign_depleted", campaignDepletedHTMLTemplate, toEmail, "Operational Notification: Campaign Budget Depleted", data)
 }
 
-// WeeklyPerformanceEmailData carries template fields for weekly campaign performance summaries.
 type WeeklyPerformanceEmailData struct {
 	Email       string
 	Clicks      string
@@ -455,7 +415,6 @@ type WeeklyPerformanceEmailData struct {
 	CTR         string
 }
 
-// SendWeeklyPerformanceEmail surfaces trends without requiring dashboard access for every stakeholder.
 func (m SlogMailer) SendWeeklyPerformanceEmail(ctx context.Context, toEmail, clicks, impressions, ctr string) error {
 	data := WeeklyPerformanceEmailData{
 		Email:       toEmail,
@@ -466,7 +425,6 @@ func (m SlogMailer) SendWeeklyPerformanceEmail(ctx context.Context, toEmail, cli
 	return renderAndLog(ctx, "weekly_performance", weeklyPerformanceHTMLTemplate, toEmail, "Operational Statement: Weekly Analytics Performance Report", data)
 }
 
-// CreativeModerationEmailData carries template fields for creative moderation outcome updates.
 type CreativeModerationEmailData struct {
 	Email      string
 	CreativeID string
@@ -474,7 +432,6 @@ type CreativeModerationEmailData struct {
 	Reason     string
 }
 
-// SendCreativeModerationEmail closes the loop because rejected creatives otherwise look stuck in review.
 func (m SlogMailer) SendCreativeModerationEmail(ctx context.Context, toEmail, creativeID, status, reason string) error {
 	data := CreativeModerationEmailData{
 		Email:      toEmail,

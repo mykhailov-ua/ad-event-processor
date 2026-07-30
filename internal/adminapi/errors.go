@@ -10,10 +10,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// ErrForbidden is returned when a tenant user accesses another customer's data.
 var ErrForbidden = errors.New("forbidden")
 
-// WriteBillingGRPCError maps billing gRPC status codes to HTTP errors.
 func WriteBillingGRPCError(w http.ResponseWriter, err error) {
 	if st, ok := status.FromError(err); ok {
 		switch st.Code() {

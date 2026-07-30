@@ -1,4 +1,3 @@
-// Package database provides shared connection helpers and operational utilities for Postgres, Redis, ClickHouse, and event partitioning.
 package database
 
 import (
@@ -10,7 +9,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Connect builds a warmed Postgres pool so services start with ready connections instead of cold dials under load.
 func Connect(ctx context.Context, dsn string, maxConns, minConns int) (*pgxpool.Pool, error) {
 	config, err := pgxpool.ParseConfig(dsn)
 	if err != nil {

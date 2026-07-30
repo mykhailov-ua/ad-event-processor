@@ -29,7 +29,6 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// 1. Connect to Postgres
 	pool, err := database.Connect(ctx, string(cfg.DBDSN), 10, 2)
 	if err != nil {
 		slog.Error("failed to connect to postgres", "error", err)
@@ -62,10 +61,8 @@ func main() {
 
 	chQuery := database.NewCHQuery(chRead, database.CHQueryConfigFromApp(cfg))
 
-	// 3. Start worker
 	worker := marginguard.NewWorker(pool, chQuery, cfg, registry, notifier)
 
-	// Evaluation interval: 60s as per spec
 	go worker.Start(ctx, 60*time.Second)
 
 	slog.Info("margin guard binary started")

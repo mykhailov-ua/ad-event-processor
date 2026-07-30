@@ -1,6 +1,5 @@
 -- +goose Up
 -- +goose StatementBegin
--- M6: consent events, user consent state, campaign consent requirements, erasure requests.
 
 CREATE TABLE IF NOT EXISTS consent_events (
     id              BIGSERIAL PRIMARY KEY,

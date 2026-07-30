@@ -4,14 +4,12 @@ import (
 	"github.com/google/uuid"
 )
 
-// appendCampaignHashTag writes {uuid} into dst without per-call string concatenation.
 func appendCampaignHashTag(dst []byte, id uuid.UUID) []byte {
 	dst = append(dst, '{')
 	dst = appendUUID(dst, id)
 	return append(dst, '}')
 }
 
-// campaignHashTag returns the Redis cluster hash tag for slot colocation (HR-KEYS).
 func campaignHashTag(id uuid.UUID) string {
 	var buf [38]byte
 	return string(appendCampaignHashTag(buf[:0], id))
@@ -26,12 +24,10 @@ func budgetQuotaKey(id uuid.UUID) string {
 	return campaignHashTag(id) + "budget:quota:" + id.String()
 }
 
-// BudgetCampaignKey returns the Redis key for campaign budget.
 func BudgetCampaignKey(id uuid.UUID) string {
 	return budgetCampaignKey(id)
 }
 
-// CampaignSyncKey returns the Redis sync delta key for a campaign.
 func CampaignSyncKey(id uuid.UUID) string {
 	return campaignSyncKey(id)
 }
@@ -56,12 +52,10 @@ func dailySpendKeyPrefix(campaignID uuid.UUID) string {
 	return campaignHashTag(campaignID) + "budget:daily_spent:campaign:" + campaignID.String() + ":"
 }
 
-// PlacementBlacklistKey is the Redis hash key for paused placements (HR-KEYS).
 func PlacementBlacklistKey(campaignID uuid.UUID) string {
 	return campaignHashTag(campaignID) + "blacklist:placement:" + campaignID.String()
 }
 
-// RedisClusterSlot returns the CRC16 slot for a key (Redis Cluster hash-slot algorithm).
 func RedisClusterSlot(key string) int {
 	tagStart := -1
 	tagEnd := -1

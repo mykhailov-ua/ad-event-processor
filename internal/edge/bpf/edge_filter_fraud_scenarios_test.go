@@ -10,8 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestFraudScenarios_X06_ResidentialProxySubnetBurst documents 2026 botnet pattern:
-// many unique src IPs in same /24, each below per-IP SYN cap but aggregate may hit subnet cap.
 func TestFraudScenarios_X06_ResidentialProxySubnetBurst(t *testing.T) {
 	if testing.Short() {
 		t.Skip("requires CAP_BPF")
@@ -36,7 +34,6 @@ func TestFraudScenarios_X06_ResidentialProxySubnetBurst(t *testing.T) {
 	}
 }
 
-// TestFraudScenarios_X07_FingerprintEmittedUnderNormalSYN verifies tier-C signal for impersonation pipeline.
 func TestFraudScenarios_X07_FingerprintEmittedUnderNormalSYN(t *testing.T) {
 	if testing.Short() {
 		t.Skip("requires CAP_BPF")
@@ -64,7 +61,6 @@ func TestFraudScenarios_X07_FingerprintEmittedUnderNormalSYN(t *testing.T) {
 	}
 }
 
-// TestFraudScenarios_X04_SpoofedSYNStillHandled documents amplification attempt handling.
 func TestFraudScenarios_X04_SpoofedSYNStillHandled(t *testing.T) {
 	if testing.Short() {
 		t.Skip("requires CAP_BPF")

@@ -5,14 +5,12 @@ import (
 	"sort"
 )
 
-// Node role names for regional capacity scoring (§5).
 const (
 	RoleTracker     = "tracker"
 	RoleRegionProxy = "region-proxy"
 	RoleProcessor   = "processor"
 )
 
-// Metric names stored in node_metric_buckets.
 const (
 	MetricCPUUtil              = "cpu_util"
 	MetricRAMUtil              = "ram_util"
@@ -44,7 +42,6 @@ const (
 	maxProxyKeygenPenalty    = 0.50
 )
 
-// ScoringMetricDef describes one weighted lane in the capacity formula.
 type ScoringMetricDef struct {
 	Name   string
 	Weight float64
@@ -60,7 +57,6 @@ type normSpec struct {
 	counterMax float64
 }
 
-// DefaultTrackerMetrics returns §5 default weights for tracker nodes.
 func DefaultTrackerMetrics() []ScoringMetricDef {
 	return []ScoringMetricDef{
 		{MetricCPUUtil, 0.20, MetricUtilization, normSpec{utilCeil: defaultUtilCeil}},
@@ -75,7 +71,6 @@ func DefaultTrackerMetrics() []ScoringMetricDef {
 	}
 }
 
-// DefaultRegionProxyMetrics returns §5 weights for region-proxy nodes.
 func DefaultRegionProxyMetrics() []ScoringMetricDef {
 	return []ScoringMetricDef{
 		{MetricCPUUtil, 0.28, MetricUtilization, normSpec{utilCeil: defaultUtilCeil}},
@@ -86,7 +81,6 @@ func DefaultRegionProxyMetrics() []ScoringMetricDef {
 	}
 }
 
-// DefaultProcessorMetrics returns §5 weights for processor nodes.
 func DefaultProcessorMetrics() []ScoringMetricDef {
 	return []ScoringMetricDef{
 		{MetricCPUUtil, 0.30, MetricUtilization, normSpec{utilCeil: defaultUtilCeil}},
@@ -97,7 +91,6 @@ func DefaultProcessorMetrics() []ScoringMetricDef {
 	}
 }
 
-// MetricsForRole returns the default metric set for a node role.
 func MetricsForRole(role string) []ScoringMetricDef {
 	switch role {
 	case RoleRegionProxy:
@@ -109,7 +102,6 @@ func MetricsForRole(role string) []ScoringMetricDef {
 	}
 }
 
-// NormalizeMetricHealth maps a raw metric value to s_i in [0, 1] (1 = healthy).
 func NormalizeMetricHealth(raw float64, def ScoringMetricDef) float64 {
 	if math.IsNaN(raw) || math.IsInf(raw, 0) {
 		return 0
@@ -150,7 +142,6 @@ func NormalizeMetricHealth(raw float64, def ScoringMetricDef) float64 {
 	}
 }
 
-// ComputeCapacityScoreFromValues returns score_n = Σ w_i · s_i for fixture metrics.
 func ComputeCapacityScoreFromValues(role string, values map[string]float64, defs []ScoringMetricDef) float64 {
 	var score, wsum float64
 	for _, def := range defs {
@@ -181,7 +172,6 @@ func applyProxyKeygenPenalty(role string, values map[string]float64, score float
 	return clamp01(score * (1 - penalty))
 }
 
-// ApplyHardSignals forces weight to zero when disk or budget invariants fail.
 func ApplyHardSignals(weight float64, diskDegraded, budgetInvariantFail bool) float64 {
 	if diskDegraded || budgetInvariantFail {
 		return 0
@@ -189,7 +179,6 @@ func ApplyHardSignals(weight float64, diskDegraded, budgetInvariantFail bool) fl
 	return weight
 }
 
-// HardSignalsActive reports whether a node should be drained immediately.
 func HardSignalsActive(values map[string]float64) (diskDegraded, budgetInvariantFail bool) {
 	if v, ok := values[MetricDiskDegraded]; ok && v >= 1 {
 		diskDegraded = true
@@ -200,7 +189,6 @@ func HardSignalsActive(values map[string]float64) (diskDegraded, budgetInvariant
 	return diskDegraded, budgetInvariantFail
 }
 
-// NormalizePeerWeights clamps and renormalizes peer traffic weights to sum to 1.
 func NormalizePeerWeights(weights []float64, minW, maxW float64) []float64 {
 	if len(weights) == 0 {
 		return nil
@@ -245,7 +233,6 @@ func NormalizePeerWeights(weights []float64, minW, maxW float64) []float64 {
 	return out
 }
 
-// MeanCapacityScore returns the peer mean used for traffic-shift normalization.
 func MeanCapacityScore(scores []float64) float64 {
 	vals := validNeighborValues(scores)
 	if len(vals) == 0 {
@@ -272,7 +259,6 @@ func clamp(v, lo, hi float64) float64 {
 	return v
 }
 
-// DominantProvenance picks the most conservative provenance across metric lanes.
 func DominantProvenance(provenances []string) string {
 	if len(provenances) == 0 {
 		return ProvenanceConservativeDefault
@@ -294,7 +280,6 @@ func DominantProvenance(provenances []string) string {
 	return worst
 }
 
-// SortNodeIDs returns sorted node IDs for deterministic scoring passes.
 func SortNodeIDs(ids []string) []string {
 	out := append([]string(nil), ids...)
 	sort.Strings(out)

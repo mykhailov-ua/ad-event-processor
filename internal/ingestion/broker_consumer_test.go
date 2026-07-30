@@ -157,7 +157,6 @@ func TestBrokerStreamConsumer_LiveFlush(t *testing.T) {
 	t.Fatal("broker live consumer did not flush store and commit offset")
 }
 
-// TestBrokerStreamConsumer_CorruptPayload skips bad vtproto and advances offset (M6-12).
 func TestBrokerStreamConsumer_CorruptPayload(t *testing.T) {
 	srv := bserver.NewServer("127.0.0.1:0", t.TempDir(), 1024*1024, 4096)
 	if err := srv.Start(); err != nil {

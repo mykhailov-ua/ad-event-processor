@@ -17,7 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestManagementAPI_System guards settings and blacklist write cycles propagate to Redis.
 func TestManagementAPI_System(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")

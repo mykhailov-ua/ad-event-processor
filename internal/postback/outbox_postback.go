@@ -24,7 +24,6 @@ type PostbackPayload struct {
 	TTCLID      string    `json:"ttclid"`
 }
 
-// UnmarshalJSON accepts payout_micro or legacy payout (dollar float).
 func (p *PostbackPayload) UnmarshalJSON(data []byte) error {
 	type payloadAlias PostbackPayload
 	aux := struct {
@@ -45,7 +44,6 @@ func (p *PostbackPayload) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// PayoutDollarsAPI returns the payout as a float for external network APIs (egress only).
 func (p *PostbackPayload) PayoutDollarsAPI() float64 {
 	return money.APIValueFloat(p.PayoutMicro)
 }

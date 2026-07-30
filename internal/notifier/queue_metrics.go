@@ -8,7 +8,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// StartQueueMetricsScraper periodically updates queue depth and oldest-age gauges.
 func StartQueueMetricsScraper(ctx context.Context, pool *pgxpool.Pool, interval time.Duration) {
 	if pool == nil {
 		return

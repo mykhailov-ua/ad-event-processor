@@ -8,17 +8,14 @@ import (
 	"github.com/google/uuid"
 )
 
-// InvoiceWorker runs monthly invoice generation on the 1st at 00:15 UTC.
 type InvoiceWorker struct {
 	service *Service
 }
 
-// NewInvoiceWorker constructs the monthly billing cron worker.
 func NewInvoiceWorker(service *Service) *InvoiceWorker {
 	return &InvoiceWorker{service: service}
 }
 
-// Start runs the scheduler until ctx is cancelled.
 func (w *InvoiceWorker) Start(ctx context.Context) {
 	if w == nil || w.service == nil {
 		return
@@ -90,7 +87,6 @@ func (w *InvoiceWorker) runMonth(ctx context.Context, month time.Time) {
 	}
 }
 
-// RunInvoiceMonthForTest exposes a single monthly sweep for chaos tests.
 func (w *InvoiceWorker) RunInvoiceMonthForTest(ctx context.Context, month time.Time) {
 	if w != nil {
 		w.runMonth(ctx, month)
@@ -109,7 +105,6 @@ func (service *Service) releaseInvoiceCronLock(ctx context.Context) {
 	_, _ = service.pool.Exec(ctx, `SELECT pg_advisory_unlock($1)`, invoiceCronLockKey)
 }
 
-// GenerateInvoiceForCustomers runs idempotent invoice generation for explicit customers (tests).
 func (service *Service) GenerateInvoiceForCustomers(ctx context.Context, customerIDs []uuid.UUID, month time.Time) {
 	for _, id := range customerIDs {
 		inv, err := service.GenerateInvoice(ctx, id, month)

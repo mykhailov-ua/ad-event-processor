@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-// LogEvacuator holds environment-backed settings for the audit log evacuator binary.
 type LogEvacuator struct {
 	LogDir                 string
 	CheckpointPath         string
@@ -20,7 +19,6 @@ type LogEvacuator struct {
 	ScanIntervalMs         int
 }
 
-// LoadLogEvacuator reads evacuator-specific environment variables without requiring the full service config.
 func LoadLogEvacuator() (LogEvacuator, error) {
 	cfg := LogEvacuator{
 		LogDir:                 envOrDefault("LOG_EVACUATOR_LOG_DIR", os.Getenv("LOG_DIR")),

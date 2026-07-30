@@ -21,9 +21,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const costSyncAdvisoryLockKey = int64(0x657370785f636f73) // espx_cos
+const costSyncAdvisoryLockKey = int64(0x657370785f636f73)
 
-// Worker ingests network spend and RSOC revenue on an hourly cron schedule.
 type Worker struct {
 	pool          *pgxpool.Pool
 	converter     *CurrencyConverter
@@ -40,10 +39,8 @@ type snapshotInserter interface {
 	InsertSnapshots(ctx context.Context, lines []CostLine, usdMicro []int64) error
 }
 
-// WorkerOption configures optional worker dependencies.
 type WorkerOption func(*Worker)
 
-// WithClickHouse attaches a ClickHouse snapshot inserter.
 func WithClickHouse(inserter *ClickHouseInserter) WorkerOption {
 	return func(w *Worker) {
 		if inserter != nil {
@@ -52,35 +49,30 @@ func WithClickHouse(inserter *ClickHouseInserter) WorkerOption {
 	}
 }
 
-// WithMemorySnapshots uses an in-memory CH sink (tests).
 func WithMemorySnapshots(m *MemorySnapshotInserter) WorkerOption {
 	return func(w *Worker) {
 		w.chInserter = m
 	}
 }
 
-// WithOAuthRefresher registers a network-specific token refresher.
 func WithOAuthRefresher(network string, refresher OAuthRefresher) WorkerOption {
 	return func(w *Worker) {
 		w.oauth[network] = refresher
 	}
 }
 
-// WithProvider overrides or adds a fetch provider (tests).
 func WithProvider(p Provider) WorkerOption {
 	return func(w *Worker) {
 		w.providers[p.Network()] = p
 	}
 }
 
-// WithSyncCompleteHook is a test hook invoked after each network sync.
 func WithSyncCompleteHook(fn func(network string, duration time.Duration)) WorkerOption {
 	return func(w *Worker) {
 		w.onSyncComplete = fn
 	}
 }
 
-// NewWorker constructs the cost sync worker with default network providers.
 func NewWorker(pool *pgxpool.Pool, encryptionKey []byte, opts ...WorkerOption) *Worker {
 	key := normalizeKey(encryptionKey)
 	client := &http.Client{Timeout: 90 * time.Second}
@@ -121,7 +113,6 @@ func normalizeKey(key []byte) []byte {
 	return key
 }
 
-// Start runs the hourly cron loop until ctx is cancelled.
 func (w *Worker) Start(ctx context.Context) {
 	slog.Info("cost-sync worker starting", "interval", "1h")
 	ticker := time.NewTicker(time.Hour)
@@ -139,7 +130,6 @@ func (w *Worker) Start(ctx context.Context) {
 	}
 }
 
-// RunManual triggers sync for optional customer/network/date range (admin API).
 func (w *Worker) RunManual(ctx context.Context, customerID *uuid.UUID, network string, from, to time.Time) error {
 	if to.Before(from) {
 		return fmt.Errorf("invalid date range")
@@ -474,7 +464,6 @@ func abs64(v int64) int64 {
 	return v
 }
 
-// EncryptCredentialFields encrypts credential secrets for storage.
 func EncryptCredentialFields(key []byte, accessToken, refreshToken, apiKey string) (accessEnc, refreshEnc, apiEnc []byte, err error) {
 	key = normalizeKey(key)
 	if accessToken != "" {

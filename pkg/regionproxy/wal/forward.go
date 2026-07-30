@@ -7,7 +7,6 @@ import (
 	"espx/pkg/iogate"
 )
 
-// TryClaimForward CASes WalFlagForwardClaimed on a dedup-ready record.
 func (w *WAL) TryClaimForward(seq uint64) (bool, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -44,7 +43,6 @@ func (w *WAL) TryClaimForward(seq uint64) (bool, error) {
 	return true, nil
 }
 
-// MarkRemoteAcked sets WalFlagRemoteAcked on a forward-claimed record.
 func (w *WAL) MarkRemoteAcked(seq uint64) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -78,7 +76,6 @@ func (w *WAL) MarkRemoteAcked(seq uint64) error {
 	return nil
 }
 
-// ReadRecordPayload returns a copy of the payload at seq.
 func (w *WAL) ReadRecordPayload(seq uint64) ([]byte, error) {
 	_, payload, err := w.ReadRecord(seq)
 	return payload, err

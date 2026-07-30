@@ -15,13 +15,11 @@ const (
 	defaultFanOutPerSourceTO    = 2 * time.Second
 )
 
-// FanOutSourceError records a single source failure during a parallel admin read.
 type FanOutSourceError struct {
 	Source string `json:"source"`
 	Code   string `json:"code"`
 }
 
-// FanOutResult is the generic merge wrapper for multi-source admin reads.
 type FanOutResult[T any] struct {
 	Items      []T                 `json:"items"`
 	Partial    bool                `json:"partial"`
@@ -29,20 +27,17 @@ type FanOutResult[T any] struct {
 	NextCursor string              `json:"next_cursor,omitempty"`
 }
 
-// FanOutSource describes one parallel poll target for FanOutCollector.
 type FanOutSource[T any] struct {
 	ID   string
 	Poll func(ctx context.Context) ([]T, error)
 }
 
-// FanOutCollector runs parallel source polls with per-source timeouts and a concurrency cap.
 type FanOutCollector struct {
 	maxConcurrency int
 	perSourceTO    time.Duration
 	route          string
 }
 
-// NewFanOutCollector builds a collector from config and a route label for metrics.
 func NewFanOutCollector(cfg *config.Config, route string) *FanOutCollector {
 	max := defaultFanOutMaxConcurrency
 	if cfg != nil && cfg.Management.AdminFanoutMaxConcurrency > 0 {
@@ -61,7 +56,6 @@ type fanOutResultSlot[T any] struct {
 	err      error
 }
 
-// CollectFanOut polls all sources in parallel and merges successful slices.
 func CollectFanOut[T any](ctx context.Context, c *FanOutCollector, sources []FanOutSource[T]) FanOutResult[T] {
 	start := time.Now()
 	defer func() {

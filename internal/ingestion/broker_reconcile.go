@@ -13,7 +13,6 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-// BrokerReconcileConfig compares Redis stream depth with broker consumer progress.
 type BrokerReconcileConfig struct {
 	BrokerAddr          string
 	BrokerRedis         string
@@ -25,7 +24,6 @@ type BrokerReconcileConfig struct {
 	DivergenceThreshold uint64
 }
 
-// BrokerReconcileWorker publishes ingest divergence gauges for shadow validation.
 type BrokerReconcileWorker struct {
 	cfg    BrokerReconcileConfig
 	shards []redis.UniversalClient
@@ -34,7 +32,6 @@ type BrokerReconcileWorker struct {
 	wg     sync.WaitGroup
 }
 
-// NewBrokerReconcileWorker samples broker vs Redis ingest depth periodically.
 func NewBrokerReconcileWorker(cfg BrokerReconcileConfig, shards []redis.UniversalClient) *BrokerReconcileWorker {
 	if cfg.Interval <= 0 {
 		cfg.Interval = 30 * time.Second
@@ -52,7 +49,6 @@ func NewBrokerReconcileWorker(cfg BrokerReconcileConfig, shards []redis.Universa
 	}
 }
 
-// Start launches the reconciliation sampling loop.
 func (w *BrokerReconcileWorker) Start(ctx context.Context) {
 	if w.cfg.BrokerAddr == "" || len(w.shards) == 0 {
 		return
@@ -69,14 +65,12 @@ func (w *BrokerReconcileWorker) Start(ctx context.Context) {
 	}()
 }
 
-// Close stops the reconciliation worker.
 func (w *BrokerReconcileWorker) Close() {
 	if w.cancel != nil {
 		w.cancel()
 	}
 }
 
-// Wait blocks until the worker exits.
 func (w *BrokerReconcileWorker) Wait(ctx context.Context) error {
 	done := make(chan struct{})
 	go func() {

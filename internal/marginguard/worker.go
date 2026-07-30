@@ -61,11 +61,9 @@ func (w *Worker) Start(ctx context.Context, interval time.Duration) {
 }
 
 func (w *Worker) RunCycle(ctx context.Context) error {
-	// 1. Check ClickHouse lag
 	var lag int64
 	err := w.ch.QueryRow(ctx, "SELECT dateDiff('second', max(hour), now()) FROM placement_stats_hourly").Scan(&lag)
 	if err != nil {
-		// Fallback to cost_snapshots if placement_stats_hourly is empty
 		_ = w.ch.QueryRow(ctx, "SELECT dateDiff('second', max(snapshot_hour), now()) FROM cost_snapshots").Scan(&lag)
 	}
 
@@ -74,7 +72,6 @@ func (w *Worker) RunCycle(ctx context.Context) error {
 		return nil
 	}
 
-	// 2. Fetch active policies
 	policies, err := w.fetchActivePolicies(ctx)
 	if err != nil {
 		return fmt.Errorf("fetch policies: %w", err)
@@ -108,7 +105,6 @@ func (w *Worker) fetchActivePolicies(ctx context.Context) ([]*Policy, error) {
 }
 
 func (w *Worker) evaluatePolicy(ctx context.Context, policy *Policy) error {
-	// 0. Pro Tier check
 	if w.registry != nil {
 		camp, ok := w.registry.GetCampaign(policy.CampaignID)
 		if ok {
@@ -120,7 +116,6 @@ func (w *Worker) evaluatePolicy(ctx context.Context, policy *Policy) error {
 		}
 	}
 
-	// Query ClickHouse for placement stats for this campaign in the last 24h
 	query := `
 		SELECT 
 			placement_id, 
@@ -157,7 +152,6 @@ func (w *Worker) evaluatePolicy(ctx context.Context, policy *Policy) error {
 }
 
 func (w *Worker) applyDecision(ctx context.Context, d *Decision) error {
-	// 1. Check if already paused (avoid duplicate outbox/activity)
 	var exists bool
 	err := w.pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM margin_guard_activity WHERE campaign_id = $1 AND placement_id = $2 AND action = 'pause' AND created_at > now() - INTERVAL '1 day')", d.CampaignID, d.PlacementID).Scan(&exists)
 	if err != nil {
@@ -167,7 +161,6 @@ func (w *Worker) applyDecision(ctx context.Context, d *Decision) error {
 		return nil
 	}
 
-	// 2. Record activity
 	metricsJSON, _ := json.Marshal(d.Metrics)
 	_, err = w.pool.Exec(ctx, `
 		INSERT INTO margin_guard_activity (policy_id, campaign_id, placement_id, action, reason, metrics)
@@ -177,7 +170,6 @@ func (w *Worker) applyDecision(ctx context.Context, d *Decision) error {
 		return err
 	}
 
-	// 3. Enqueue outbox event
 	if d.Action == ActionPause {
 		payload, _ := json.Marshal(PausePlacementPayload{
 			CampaignID:  d.CampaignID.String(),
@@ -188,7 +180,6 @@ func (w *Worker) applyDecision(ctx context.Context, d *Decision) error {
 			return err
 		}
 
-		// 4. Send alert via Notifier
 		if w.notifier != nil {
 			title := fmt.Sprintf("Margin Guard: Placement Paused (%s)", d.PlacementID)
 			body := fmt.Sprintf("Campaign: %s\nPlacement: %s\nReason: %s\nROI: %.2f%%\nSpend: %s USD\nRevenue: %s USD\nClicks: %d\nConversions: %d",

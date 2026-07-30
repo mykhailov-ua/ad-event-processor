@@ -34,7 +34,6 @@ var (
 	ErrSellersJSONInvalid  = errors.New("sellers.json schema validation failed")
 )
 
-// SupplyChainNode is one hop in an OpenRTB schain (stored on campaigns.supply_chain_nodes).
 type SupplyChainNode struct {
 	ASI string `json:"asi"`
 	SID string `json:"sid"`
@@ -42,7 +41,6 @@ type SupplyChainNode struct {
 	HP  int    `json:"hp"`
 }
 
-// SellerDTO is the admin API view of an IAB sellers.json entry.
 type SellerDTO struct {
 	ID             int64  `json:"id"`
 	SellerID       string `json:"seller_id"`
@@ -54,7 +52,6 @@ type SellerDTO struct {
 	UpdatedAt      string `json:"updated_at"`
 }
 
-// SellerCreateSpec is the request body for POST /admin/supply/sellers.
 type SellerCreateSpec struct {
 	SellerID       string `json:"seller_id"`
 	Domain         string `json:"domain"`
@@ -63,7 +60,6 @@ type SellerCreateSpec struct {
 	IsConfidential bool   `json:"is_confidential"`
 }
 
-// SellerUpdateSpec is the request body for PUT /admin/supply/sellers/{id}.
 type SellerUpdateSpec struct {
 	SellerID       string `json:"seller_id"`
 	Domain         string `json:"domain"`
@@ -72,7 +68,6 @@ type SellerUpdateSpec struct {
 	IsConfidential bool   `json:"is_confidential"`
 }
 
-// AdsTxtEntryDTO is the admin API view of one ads.txt line.
 type AdsTxtEntryDTO struct {
 	ID                 int64  `json:"id"`
 	Domain             string `json:"domain"`
@@ -84,7 +79,6 @@ type AdsTxtEntryDTO struct {
 	UpdatedAt          string `json:"updated_at"`
 }
 
-// AdsTxtEntryCreateSpec is the request body for POST /admin/supply/ads-txt.
 type AdsTxtEntryCreateSpec struct {
 	Domain             string `json:"domain"`
 	PublisherAccountID string `json:"publisher_account_id"`
@@ -93,7 +87,6 @@ type AdsTxtEntryCreateSpec struct {
 	SortOrder          int32  `json:"sort_order"`
 }
 
-// AdsTxtEntryUpdateSpec is the request body for PUT /admin/supply/ads-txt/{id}.
 type AdsTxtEntryUpdateSpec struct {
 	Domain             string `json:"domain"`
 	PublisherAccountID string `json:"publisher_account_id"`
@@ -102,18 +95,15 @@ type AdsTxtEntryUpdateSpec struct {
 	SortOrder          int32  `json:"sort_order"`
 }
 
-// CampaignSupplyChainDTO is the admin API view of campaign schain nodes.
 type CampaignSupplyChainDTO struct {
 	CampaignID string            `json:"campaign_id"`
 	Nodes      []SupplyChainNode `json:"nodes"`
 }
 
-// SupplyFilesPayload is the outbox payload for UPDATE_SUPPLY_FILES.
 type SupplyFilesPayload struct {
 	Trigger string `json:"trigger"`
 }
 
-// sellersJSONCacheEntry holds a cached sellers.json body with expiry.
 type sellersJSONCacheEntry struct {
 	body    []byte
 	expires time.Time
@@ -206,7 +196,6 @@ func invalidateSellersJSONCache() {
 	sellersCache.mu.Unlock()
 }
 
-// ListSellers returns all sellers for admin CRUD.
 func (s *Service) ListSellers(ctx context.Context) ([]SellerDTO, error) {
 	rows, err := db.New(s.GetPool()).ListSellers(ctx)
 	if err != nil {
@@ -215,7 +204,6 @@ func (s *Service) ListSellers(ctx context.Context) ([]SellerDTO, error) {
 	return coldpath.MapSlice(rows, sellerToDTO), nil
 }
 
-// GetSeller returns one seller by internal id.
 func (s *Service) GetSeller(ctx context.Context, id int64) (SellerDTO, error) {
 	row, err := db.New(s.GetPool()).GetSeller(ctx, id)
 	if err != nil {
@@ -224,7 +212,6 @@ func (s *Service) GetSeller(ctx context.Context, id int64) (SellerDTO, error) {
 	return sellerToDTO(row), nil
 }
 
-// CreateSeller persists a seller and queues supply file export.
 func (s *Service) CreateSeller(ctx context.Context, spec SellerCreateSpec) (SellerDTO, error) {
 	sellerType, err := normalizeSellerType(spec.SellerType)
 	if err != nil {
@@ -266,7 +253,6 @@ func (s *Service) CreateSeller(ctx context.Context, spec SellerCreateSpec) (Sell
 	return out, err
 }
 
-// UpdateSeller updates a seller and queues supply file export.
 func (s *Service) UpdateSeller(ctx context.Context, id int64, spec SellerUpdateSpec) (SellerDTO, error) {
 	sellerType, err := normalizeSellerType(spec.SellerType)
 	if err != nil {
@@ -309,7 +295,6 @@ func (s *Service) UpdateSeller(ctx context.Context, id int64, spec SellerUpdateS
 	return out, err
 }
 
-// DeleteSeller removes a seller and queues supply file export.
 func (s *Service) DeleteSeller(ctx context.Context, id int64) error {
 	return pgx.BeginFunc(ctx, s.GetPool(), func(tx pgx.Tx) error {
 		q := db.New(tx)
@@ -329,7 +314,6 @@ func (s *Service) DeleteSeller(ctx context.Context, id int64) error {
 	})
 }
 
-// ListAdsTxtEntries returns all ads.txt lines for admin CRUD.
 func (s *Service) ListAdsTxtEntries(ctx context.Context) ([]AdsTxtEntryDTO, error) {
 	rows, err := db.New(s.GetPool()).ListAdsTxtEntries(ctx)
 	if err != nil {
@@ -338,7 +322,6 @@ func (s *Service) ListAdsTxtEntries(ctx context.Context) ([]AdsTxtEntryDTO, erro
 	return coldpath.MapSlice(rows, adsTxtToDTO), nil
 }
 
-// GetAdsTxtEntry returns one ads.txt line by id.
 func (s *Service) GetAdsTxtEntry(ctx context.Context, id int64) (AdsTxtEntryDTO, error) {
 	row, err := db.New(s.GetPool()).GetAdsTxtEntry(ctx, id)
 	if err != nil {
@@ -347,7 +330,6 @@ func (s *Service) GetAdsTxtEntry(ctx context.Context, id int64) (AdsTxtEntryDTO,
 	return adsTxtToDTO(row), nil
 }
 
-// CreateAdsTxtEntry persists an ads.txt line and queues supply file export.
 func (s *Service) CreateAdsTxtEntry(ctx context.Context, spec AdsTxtEntryCreateSpec) (AdsTxtEntryDTO, error) {
 	rel, err := normalizeRelationship(spec.Relationship)
 	if err != nil {
@@ -388,7 +370,6 @@ func (s *Service) CreateAdsTxtEntry(ctx context.Context, spec AdsTxtEntryCreateS
 	return out, err
 }
 
-// UpdateAdsTxtEntry updates an ads.txt line and queues supply file export.
 func (s *Service) UpdateAdsTxtEntry(ctx context.Context, id int64, spec AdsTxtEntryUpdateSpec) (AdsTxtEntryDTO, error) {
 	rel, err := normalizeRelationship(spec.Relationship)
 	if err != nil {
@@ -428,7 +409,6 @@ func (s *Service) UpdateAdsTxtEntry(ctx context.Context, id int64, spec AdsTxtEn
 	return out, err
 }
 
-// DeleteAdsTxtEntry removes an ads.txt line and queues supply file export.
 func (s *Service) DeleteAdsTxtEntry(ctx context.Context, id int64) error {
 	return pgx.BeginFunc(ctx, s.GetPool(), func(tx pgx.Tx) error {
 		q := db.New(tx)
@@ -448,7 +428,6 @@ func (s *Service) DeleteAdsTxtEntry(ctx context.Context, id int64) error {
 	})
 }
 
-// GetCampaignSupplyChain returns schain nodes for a campaign.
 func (s *Service) GetCampaignSupplyChain(ctx context.Context, campaignID uuid.UUID) (CampaignSupplyChainDTO, error) {
 	row, err := db.New(s.GetPool()).GetCampaignFull(ctx, ingestion.ToUUID(campaignID))
 	if err != nil {
@@ -464,7 +443,6 @@ func (s *Service) GetCampaignSupplyChain(ctx context.Context, campaignID uuid.UU
 	}, nil
 }
 
-// UpdateCampaignSupplyChain persists schain nodes (max 10 hops) with audit log.
 func (s *Service) UpdateCampaignSupplyChain(ctx context.Context, campaignID uuid.UUID, nodes []SupplyChainNode) (CampaignSupplyChainDTO, error) {
 	if err := validateSupplyChainNodes(nodes); err != nil {
 		return CampaignSupplyChainDTO{}, err
@@ -526,7 +504,6 @@ func parseSupplyChainNodes(raw []byte) ([]SupplyChainNode, error) {
 	return nodes, nil
 }
 
-// iabSellersJSON is the IAB sellers.json Final 2019 root document.
 type iabSellersJSON struct {
 	ContactEmail string          `json:"contact_email,omitempty"`
 	Version      string          `json:"version"`
@@ -559,7 +536,6 @@ func validateSellersJSON(doc iabSellersJSON) error {
 	return nil
 }
 
-// BuildSellersJSON assembles the IAB sellers.json document from Postgres.
 func (s *Service) BuildSellersJSON(ctx context.Context) ([]byte, error) {
 	q := db.New(s.GetPool())
 	rows, err := q.ListSellers(ctx)
@@ -600,7 +576,6 @@ func (s *Service) BuildSellersJSON(ctx context.Context) ([]byte, error) {
 	return coldpath.MarshalJSON(doc)
 }
 
-// GetSellersJSON returns sellers.json with a 60-second in-memory cache.
 func (s *Service) GetSellersJSON(ctx context.Context) ([]byte, error) {
 	now := time.Now()
 	sellersCache.mu.RLock()
@@ -622,7 +597,6 @@ func (s *Service) GetSellersJSON(ctx context.Context) ([]byte, error) {
 	return body, nil
 }
 
-// BuildAdsTxt assembles ads.txt 1.1 plain text from Postgres.
 func (s *Service) BuildAdsTxt(ctx context.Context) (string, error) {
 	q := db.New(s.GetPool())
 	rows, err := q.ListAdsTxtEntries(ctx)
@@ -665,7 +639,6 @@ func (s *Service) BuildAdsTxt(ctx context.Context) (string, error) {
 	return b.String(), nil
 }
 
-// SupplyExportPath returns the directory for nginx-facing supply file exports.
 func (s *Service) SupplyExportPath() string {
 	if s.cfg != nil && s.cfg.Management.SupplyExportPath != "" {
 		return s.cfg.Management.SupplyExportPath

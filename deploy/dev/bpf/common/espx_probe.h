@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: GPL-2.0
-// Shared constants and histogram helpers for eSPX dev load-test BPF probes.
+
+
 
 #ifndef ESPX_PROBE_H
 #define ESPX_PROBE_H
@@ -19,7 +19,7 @@
 #define ESPX_SLOW_KIND_UPROBE 2
 
 #define ESPX_HIST_BUCKETS 32
-#define ESPX_SLOW_SYSCALL_NS 10000000ULL  /* 10 ms */
+#define ESPX_SLOW_SYSCALL_NS 10000000ULL  
 #define ESPX_DEFAULT_SAMPLE_RATE 1
 
 struct espx_hist {
@@ -50,7 +50,7 @@ struct espx_pid_stats {
 	__u64 minor_faults;
 };
 
-/* x86_64 hot-path syscalls — always traced regardless of sample_rate */
+
 #define ESPX_NR_read 0
 #define ESPX_NR_write 1
 #define ESPX_NR_writev 19
@@ -151,7 +151,7 @@ struct espx_slow_event {
 	__u32 syscall_id;
 	__u64 duration_ns;
 	__u8 role;
-	__u8 kind; /* ESPX_SLOW_KIND_* */
+	__u8 kind; 
 	__u16 campaign_slot;
 	__u32 marker_id;
 };
@@ -248,4 +248,4 @@ static __always_inline void espx_hist_record(struct espx_hist *hist, __u64 delta
 		hist->max_ns = delta_ns;
 }
 
-#endif /* ESPX_PROBE_H */
+#endif 

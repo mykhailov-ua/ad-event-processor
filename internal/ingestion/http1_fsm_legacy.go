@@ -2,7 +2,6 @@ package ingestion
 
 import "bytes"
 
-// parseHTTPLegacy is the pre-M5-B bytes.Index parser kept for benchmark comparison only.
 func parseHTTPLegacy(data []byte, maxBody int64) (int, parsedHTTPRequest, error) {
 	var req parsedHTTPRequest
 

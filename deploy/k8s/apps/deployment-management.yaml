@@ -1,4 +1,3 @@
-# Management HTTP admin API, settlement gRPC, and background workers (outbox, pacing, recon).
 apiVersion: apps/v1
 kind: Deployment
 metadata:

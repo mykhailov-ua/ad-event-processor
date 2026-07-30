@@ -7,7 +7,6 @@ import (
 	"time"
 )
 
-// finishOffloadCtx runs test hooks when no handler is bound or the job is a noop enqueue.
 func finishOffloadCtx(ctx *connContext) {
 	if ctx == nil {
 		return
@@ -28,7 +27,6 @@ type Slot struct {
 	ready atomic.Bool
 }
 
-// MPSCQueue isolates producer and consumer cache lines to reduce false sharing under load.
 type MPSCQueue struct {
 	_     [8]uint64
 	write uint64
@@ -49,7 +47,6 @@ func NewMPSCQueue(size uint64) *MPSCQueue {
 	}
 }
 
-// PushCtx enqueues an offload context from any producer goroutine; returns false when full.
 func (q *MPSCQueue) PushCtx(ctx *connContext) bool {
 	for {
 		w := atomic.LoadUint64(&q.write)
@@ -83,14 +80,12 @@ func (q *MPSCQueue) PopCtx() (*connContext, bool) {
 	return ctx, true
 }
 
-// Worker runs tasks on a dedicated OS thread for predictable gnet offload latency.
 type Worker struct {
 	pool  *PinnedWorkerPool
 	id    int
 	queue *MPSCQueue
 }
 
-// start loops forever dequeuing and executing tasks on a locked OS thread.
 func (w *Worker) start() {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
@@ -140,7 +135,6 @@ func (w *Worker) start() {
 	}
 }
 
-// PinnedWorkerPool offloads gnet React work to pinned threads to keep the event loop responsive.
 type PinnedWorkerPool struct {
 	workers []*Worker
 	handler *AdsPacketHandler
@@ -173,7 +167,6 @@ func NewPinnedWorkerPool(size int, queueSize int) *PinnedWorkerPool {
 	return p
 }
 
-// SubmitOffload schedules ctx for pinned-thread processing; returns false when all queues are saturated.
 func (p *PinnedWorkerPool) SubmitOffload(ctx *connContext) bool {
 	if atomic.LoadInt32(&p.closed) == 1 {
 		return false
@@ -196,7 +189,6 @@ func (p *PinnedWorkerPool) SubmitOffload(ctx *connContext) bool {
 	return false
 }
 
-// Shutdown closes the pool and waits for in-flight tasks to finish.
 func (p *PinnedWorkerPool) Shutdown() {
 	if atomic.CompareAndSwapInt32(&p.closed, 0, 1) {
 		p.wg.Wait()

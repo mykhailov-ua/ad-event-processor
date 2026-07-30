@@ -16,7 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestAuthMiddleware_RequireAuth guards RequireAuth accepts API key or token and enforces role checks.
 func TestAuthMiddleware_RequireAuth(t *testing.T) {
 	cfg := &config.Config{
 		TokenSymmetricKey: "01234567890123456789012345678901",
@@ -124,7 +123,6 @@ func TestAuthMiddleware_RequireAuth(t *testing.T) {
 	})
 }
 
-// TestAuthMiddleware_RedisOutage guards RequireAuth fails closed when session Redis is unavailable.
 func TestAuthMiddleware_RedisOutage(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")

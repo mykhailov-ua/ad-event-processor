@@ -19,7 +19,6 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 )
 
-// isFraudTelemetry routes fraud signals and ghost events to the fraud_events table.
 func isFraudTelemetry(e *campaignmodel.Event) bool {
 	if e == nil {
 		return false
@@ -32,12 +31,10 @@ func isFraudTelemetry(e *campaignmodel.Event) bool {
 
 const fraudAggregateEventType = "fraud_aggregate"
 
-// isFraudAggregateSpike routes M11 subnet/reason aggregate windows to fraud_aggregate_spikes.
 func isFraudAggregateSpike(e *campaignmodel.Event) bool {
 	return e != nil && e.Type == fraudAggregateEventType
 }
 
-// fraudGhostFlag maps ghost_event to ClickHouse UInt8 without per-row heap allocation.
 func fraudGhostFlag(e *campaignmodel.Event) uint8 {
 	if e.GhostEvent {
 		return 1
@@ -45,7 +42,6 @@ func fraudGhostFlag(e *campaignmodel.Event) uint8 {
 	return 0
 }
 
-// fraudAggregateFields reads count and window_ms stashed in ClickID/UserID by parseMessage.
 func fraudAggregateFields(e *campaignmodel.Event) (uint64, uint32) {
 	var count uint64
 	var windowMs uint32
@@ -62,7 +58,6 @@ func fraudAggregateFields(e *campaignmodel.Event) (uint64, uint32) {
 	return count, windowMs
 }
 
-// slicePool recycles event batch slices for ClickHouse table routing.
 var slicePool = sync.Pool{
 	New: func() any {
 		s := make([]*campaignmodel.Event, 0, 20000)
@@ -70,7 +65,6 @@ var slicePool = sync.Pool{
 	},
 }
 
-// ClickHouseStore batches telemetry writes and blocks until ClickHouse or the mmap WAL confirms durability.
 type ClickHouseStore struct {
 	conn          driver.Conn
 	writeTimeout  time.Duration
@@ -83,7 +77,6 @@ type ClickHouseStore struct {
 	replayRunning atomic.Bool
 }
 
-// NewClickHouseStore starts the spool replayer when spoolDir is non-empty.
 func NewClickHouseStore(conn driver.Conn, writeTimeout time.Duration, spoolDir string, spoolCfg CHSpoolConfig, chGate *ProcessorChGate) *ClickHouseStore {
 	ctx, cancel := context.WithCancel(context.Background())
 	chStore := &ClickHouseStore{
@@ -105,7 +98,6 @@ func NewClickHouseStore(conn driver.Conn, writeTimeout time.Duration, spoolDir s
 	return chStore
 }
 
-// StoreBatch blocks until ClickHouse acknowledges the batch or the batch is fsynced to the mmap WAL.
 func (chStore *ClickHouseStore) StoreBatch(ctx context.Context, events []*campaignmodel.Event) error {
 	if len(events) == 0 {
 		return nil
@@ -161,7 +153,6 @@ func (chStore *ClickHouseStore) StoreBatch(ctx context.Context, events []*campai
 	return nil
 }
 
-// startSpoolReplayer drains mmap WAL entries to ClickHouse when the database recovers.
 func (chStore *ClickHouseStore) startSpoolReplayer() {
 	if chStore.spool == nil || chStore.replayRunning.Swap(true) {
 		return
@@ -183,7 +174,6 @@ func (chStore *ClickHouseStore) startSpoolReplayer() {
 	}()
 }
 
-// replaySpoolOnce replays the oldest WAL record and releases it when ClickHouse accepts the batch.
 func (chStore *ClickHouseStore) replaySpoolOnce() {
 	if chStore.spool == nil {
 		return
@@ -214,7 +204,6 @@ func (chStore *ClickHouseStore) replaySpoolOnce() {
 	metrics.CHSpoolReplayTotal.Inc()
 }
 
-// RecoverSpool replays pending WAL records synchronously; used on processor startup.
 func (chStore *ClickHouseStore) RecoverSpool(ctx context.Context) error {
 	if chStore.spool == nil {
 		return nil
@@ -248,7 +237,6 @@ func (chStore *ClickHouseStore) RecoverSpool(ctx context.Context) error {
 	}
 }
 
-// getDeduplicationToken supplies ClickHouse insert deduplication for at-least-once retries.
 func (chStore *ClickHouseStore) getDeduplicationToken(ctx context.Context, events []*campaignmodel.Event) string {
 	if token, ok := ctx.Value(campaignmodel.DeduplicationTokenKey).(string); ok && token != "" {
 		return token
@@ -266,7 +254,6 @@ func (chStore *ClickHouseStore) getDeduplicationToken(ctx context.Context, event
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-// insertTable sends one prepared batch to a single ClickHouse table.
 func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, evts []*campaignmodel.Event, isFraud bool) error {
 	start := time.Now()
 
@@ -346,7 +333,6 @@ func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, e
 	return nil
 }
 
-// insertToClickHouse writes a multi-table batch synchronously.
 func (chStore *ClickHouseStore) insertToClickHouse(ctx context.Context, events []*campaignmodel.Event) error {
 	start := time.Now()
 
@@ -457,7 +443,6 @@ func (chStore *ClickHouseStore) insertToClickHouse(ctx context.Context, events [
 	return nil
 }
 
-// Close stops the spool replayer and closes connections.
 func (chStore *ClickHouseStore) Close() error {
 	chStore.cancel()
 	chStore.replayWg.Wait()
@@ -467,14 +452,12 @@ func (chStore *ClickHouseStore) Close() error {
 	return chStore.conn.Close()
 }
 
-// SetPIIHasher attaches the versioned salt hasher for batch anonymization before INSERT.
 func (chStore *ClickHouseStore) SetPIIHasher(h *piihash.Hasher) {
 	if chStore != nil {
 		chStore.piiHasher = h
 	}
 }
 
-// PIIHasher returns the configured hasher (may be nil in tests).
 func (chStore *ClickHouseStore) PIIHasher() *piihash.Hasher {
 	if chStore == nil {
 		return nil
@@ -482,17 +465,14 @@ func (chStore *ClickHouseStore) PIIHasher() *piihash.Hasher {
 	return chStore.piiHasher
 }
 
-// SetChGate attaches the processor ClickHouse write gate for SEM-P5 backpressure.
 func (chStore *ClickHouseStore) SetChGate(gate *ProcessorChGate) {
 	chStore.chGate = gate
 }
 
-// SetSpool exposes the mmap WAL for tests.
 func (chStore *ClickHouseStore) SetSpool(spool *CHSpool) {
 	chStore.spool = spool
 }
 
-// Spool returns the active mmap WAL when configured.
 func (chStore *ClickHouseStore) Spool() *CHSpool {
 	return chStore.spool
 }

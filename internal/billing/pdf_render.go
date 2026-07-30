@@ -10,7 +10,6 @@ import (
 	"espx/internal/billing/pb"
 )
 
-// RenderInvoicePDF produces a minimal PDF 1.4 document for invoice delivery.
 func RenderInvoicePDF(inv *pb.Invoice) []byte {
 	if inv == nil {
 		return nil

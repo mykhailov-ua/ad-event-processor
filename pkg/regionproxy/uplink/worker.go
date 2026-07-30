@@ -1,4 +1,3 @@
-// Package uplink forwards region-proxy WAL batches to global D3 ingest.
 package uplink
 
 import (
@@ -19,7 +18,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// Config tunes the uplink worker loop.
 type Config struct {
 	RegionCode     uint8
 	NodeID         string
@@ -32,7 +30,6 @@ type Config struct {
 	BatchCommitter *opkey.BatchCommitter
 }
 
-// Worker dequeues OpKey slots and posts them to global management ingest.
 type Worker struct {
 	wal    *wal.WAL
 	pool   *opkey.Pool
@@ -46,7 +43,6 @@ type Worker struct {
 	quorumHeld atomic.Uint64
 }
 
-// New builds an uplink worker.
 func New(w *wal.WAL, pool *opkey.Pool, cfg Config) *Worker {
 	if cfg.PollInterval <= 0 {
 		cfg.PollInterval = time.Millisecond
@@ -68,24 +64,20 @@ func New(w *wal.WAL, pool *opkey.Pool, cfg Config) *Worker {
 	}
 }
 
-// Start launches the pinned uplink goroutine.
 func (u *Worker) Start() {
 	u.wg.Add(1)
 	go u.loop()
 }
 
-// Stop waits for the uplink goroutine to exit.
 func (u *Worker) Stop() {
 	close(u.closeCh)
 	u.wg.Wait()
 }
 
-// Forwarded returns batches claimed for uplink.
 func (u *Worker) Forwarded() uint64 {
 	return u.forwarded.Load()
 }
 
-// Acked returns batches acknowledged by global ingest.
 func (u *Worker) Acked() uint64 {
 	return u.acked.Load()
 }
@@ -202,7 +194,6 @@ func (u *Worker) forwardSlot(slot *opkey.Slot) {
 	}
 }
 
-// ForwardOnce posts one slot synchronously (tests).
 func (u *Worker) ForwardOnce(slot *opkey.Slot) error {
 	if slot == nil {
 		return fmt.Errorf("region proxy uplink: nil slot")

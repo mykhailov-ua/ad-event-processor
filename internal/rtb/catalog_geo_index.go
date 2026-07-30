@@ -4,7 +4,6 @@ import (
 	"sort"
 )
 
-// geoRange returns the half-open [start,end) slice into GeoBucketSoA for one geo hash.
 func (reg *CampaignAuctionRegistry) geoRange(geoHash uint32) (start int, end int, ok bool) {
 	if reg == nil || reg.GeoBucketCount == 0 {
 		return 0, 0, false
@@ -21,7 +20,6 @@ func (reg *CampaignAuctionRegistry) geoRange(geoHash uint32) (start int, end int
 	return start, end, true
 }
 
-// buildGeoIndex materializes per-geo candidate SoA buckets on the cold catalog rebuild path.
 func buildGeoIndex(reg *CampaignAuctionRegistry) {
 	if reg == nil || reg.Count == 0 {
 		reg.GeoBucketCount = 0

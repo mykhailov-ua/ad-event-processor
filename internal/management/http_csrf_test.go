@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCSRFMiddleware guards CSRF rejects mutating requests without a matching cookie and header.
 func TestCSRFMiddleware(t *testing.T) {
 	mdl := NewCSRFMiddleware("")
 

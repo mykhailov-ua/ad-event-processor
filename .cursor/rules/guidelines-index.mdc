@@ -20,7 +20,7 @@ Agent rules: `.cursor/rules/*.mdc` — follow scoped rules whose `globs` match f
 `rtb.mdc`: In-process auction, OpenRTB
 `edge.mdc`: nginx Lua, XDP programs
 `compliance.mdc`: Defensive perimeter, XDP policy
-`chaos.mdc`: Fault injection, chaos tests
+`fault-resilience.mdc`: Fault injection, fault tests
 `service-boundaries.mdc`: cmd/* imports and ownership
 `open-gaps.mdc`: Routes to `.cursor/GAP_SPECS.md` backlog
 `capabilities.mdc`: Routing to client vs agent docs

@@ -4,13 +4,10 @@ import (
 	"unsafe"
 )
 
-// MaxRenderedURLLen is the stack scratch bound for webhook URL rendering (cold path).
 const MaxRenderedURLLen = 2048
 
-// maxInlineTokens covers typical webhook URLs without spilling token storage to the heap.
 const maxInlineTokens = 48
 
-// TokenKind identifies a parsed template segment. uint8 for dense SoA kinds[] storage.
 type TokenKind uint8
 
 const (
@@ -23,9 +20,6 @@ const (
 	TokenMacroEventType
 )
 
-// MacroTemplate holds a pre-parsed URL template (SoA layout for cache-friendly iteration).
-// kinds[] is byte-strided for prefetch; staticVals[] holds literal segments only.
-// Render uses a flat switch on kinds[i] (jump table ~15% slower on amd64 due to indirect calls).
 type MacroTemplate struct {
 	kinds      [maxInlineTokens]uint8
 	staticVals [maxInlineTokens]string
@@ -33,7 +27,6 @@ type MacroTemplate struct {
 	slab       []byte
 }
 
-// ParseTemplate tokenizes tpl once at config time (2 heap allocs: struct + slab).
 func ParseTemplate(tpl string) *MacroTemplate {
 	mt := &MacroTemplate{}
 	mt.slab = make([]byte, len(tpl))
@@ -149,8 +142,6 @@ type EventContext struct {
 	EventType string
 }
 
-// appendStringInline extends dst with s. Caller uses a large scratch (e.g. RenderStack)
-// so append does not reallocate; copy inlines for small strings.
 func appendStringInline(dst []byte, s string) []byte {
 	n := len(s)
 	if n == 0 {
@@ -166,7 +157,6 @@ func appendStringInline(dst []byte, s string) []byte {
 	return dst
 }
 
-// RenderAppend appends rendered URL bytes into dst without fmt.Sprintf or bytes.Buffer.
 func (mt *MacroTemplate) RenderAppend(dst []byte, ctx *EventContext) []byte {
 	n := int(mt.length)
 	kinds := mt.kinds[:n]
@@ -192,7 +182,6 @@ func (mt *MacroTemplate) RenderAppend(dst []byte, ctx *EventContext) []byte {
 	return dst
 }
 
-// RenderStack renders into a fixed stack buffer; 0 heap allocs when scratch is stack-allocated.
 func (mt *MacroTemplate) RenderStack(ctx *EventContext, scratch *[MaxRenderedURLLen]byte) []byte {
 	return mt.RenderAppend(scratch[:0], ctx)
 }

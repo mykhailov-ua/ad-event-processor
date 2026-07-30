@@ -1,7 +1,5 @@
 package wal
 
-// ScanDedupReady visits up to max records with WalFlagDedupReady starting at fromSeq.
-// fn returns false to stop early (backpressure). Returns the number of records visited.
 func (w *WAL) ScanDedupReady(fromSeq uint64, max int, fn func(seq uint64, factorU [32]byte) bool) int {
 	if max <= 0 || fn == nil {
 		return 0

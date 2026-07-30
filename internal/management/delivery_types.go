@@ -9,7 +9,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// CampaignCreateSpec bundles validated inputs for atomic campaign creation with idempotency.
 type CampaignCreateSpec struct {
 	CustomerID      uuid.UUID
 	BrandID         *uuid.UUID
@@ -28,7 +27,6 @@ type CampaignCreateSpec struct {
 	IdempotencyKey  string
 }
 
-// CampaignTemplateDTO exposes reusable campaign presets to the admin API.
 type CampaignTemplateDTO struct {
 	ID              string   `json:"id"`
 	CustomerID      string   `json:"customer_id"`
@@ -46,7 +44,6 @@ type CampaignTemplateDTO struct {
 	UpdatedAt       string   `json:"updated_at"`
 }
 
-// BrandCreativeDTO represents a weighted landing URL variant served for a brand.
 type BrandCreativeDTO struct {
 	ID         string `json:"id"`
 	BrandID    string `json:"brand_id"`
@@ -58,7 +55,6 @@ type BrandCreativeDTO struct {
 	UpdatedAt  string `json:"updated_at"`
 }
 
-// toTimestamptz converts optional Go times into pgx timestamptz values for database writes.
 func toTimestamptz(t *time.Time) pgtype.Timestamptz {
 	if t == nil {
 		return pgtype.Timestamptz{}
@@ -66,7 +62,6 @@ func toTimestamptz(t *time.Time) pgtype.Timestamptz {
 	return pgtype.Timestamptz{Time: *t, Valid: true}
 }
 
-// templateToDTO maps a stored template row into the admin API representation.
 func templateToDTO(t db.CampaignTemplate) CampaignTemplateDTO {
 	countries := t.TargetCountries
 	if countries == nil {
@@ -98,7 +93,6 @@ func templateToDTO(t db.CampaignTemplate) CampaignTemplateDTO {
 	}
 }
 
-// creativeToDTO maps a brand creative row into the admin API representation.
 func creativeToDTO(c db.BrandCreative) BrandCreativeDTO {
 	return BrandCreativeDTO{
 		ID:         uuid.UUID(c.ID.Bytes).String(),

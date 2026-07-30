@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Redis client with injectable XAck behavior for ack error tests.
 type mockRedisClientAck struct {
 	redis.UniversalClient
 	xAckFunc func(ctx context.Context, stream, group string, ids ...string) *redis.IntCmd

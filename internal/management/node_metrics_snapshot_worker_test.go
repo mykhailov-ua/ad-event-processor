@@ -84,7 +84,7 @@ func TestLookupHistoricalDaily_ReadsPreviousDay(t *testing.T) {
 	defer cleanupDB()
 
 	day := time.Date(2026, 7, 26, 0, 0, 0, 0, time.UTC)
-	now := day.Add(24*time.Hour + 2*time.Hour) // 2026-07-27 02:00 UTC
+	now := day.Add(24*time.Hour + 2*time.Hour)
 
 	q := db.New(pool)
 	require.NoError(t, q.UpsertNodeMetricDailySnapshot(ctx, db.UpsertNodeMetricDailySnapshotParams{

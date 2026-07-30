@@ -1,6 +1,3 @@
-// Command tracker-quic is an HTTP/3 evaluation sidecar (M5-D1).
-// Terminates QUIC/H3 and proxies /track to the gnet tracker over loopback HTTP/1.1.
-// Not on the production hot path — use edge nginx http3 for prod ingress.
 package main
 
 import (

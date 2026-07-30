@@ -11,7 +11,6 @@ import (
 	"time"
 )
 
-// CheckpointRecord tracks one successfully compacted hot segment.
 type CheckpointRecord struct {
 	SourceKey     string    `json:"source_key"`
 	DestKey       string    `json:"dest_key"`
@@ -22,14 +21,12 @@ type CheckpointRecord struct {
 	CompactedAt   time.Time `json:"compacted_at"`
 }
 
-// CheckpointStore persists compaction progress across restarts.
 type CheckpointStore struct {
 	path     string
 	mu       sync.Mutex
 	bySource map[string]CheckpointRecord
 }
 
-// NewCheckpointStore opens or creates the JSON-lines checkpoint file at path.
 func NewCheckpointStore(path string) *CheckpointStore {
 	return &CheckpointStore{
 		path:     path,
@@ -37,7 +34,6 @@ func NewCheckpointStore(path string) *CheckpointStore {
 	}
 }
 
-// Load reads all checkpoint records into memory.
 func (store *CheckpointStore) Load() error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
@@ -71,7 +67,6 @@ func (store *CheckpointStore) Load() error {
 	return scanner.Err()
 }
 
-// IsCompacted reports whether sourceKey with sourceSHA256 was already compacted.
 func (store *CheckpointStore) IsCompacted(sourceKey, sourceSHA256 string) bool {
 	store.mu.Lock()
 	defer store.mu.Unlock()
@@ -85,7 +80,6 @@ func (store *CheckpointStore) IsCompacted(sourceKey, sourceSHA256 string) bool {
 	return record.SourceSHA256 == sourceSHA256
 }
 
-// Has reports whether sourceKey was already compacted.
 func (store *CheckpointStore) Has(sourceKey string) bool {
 	store.mu.Lock()
 	defer store.mu.Unlock()
@@ -93,14 +87,12 @@ func (store *CheckpointStore) Has(sourceKey string) bool {
 	return ok
 }
 
-// Count returns the number of checkpointed source segments.
 func (store *CheckpointStore) Count() int {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	return len(store.bySource)
 }
 
-// Get returns a checkpoint record for sourceKey.
 func (store *CheckpointStore) Get(sourceKey string) (CheckpointRecord, bool) {
 	store.mu.Lock()
 	defer store.mu.Unlock()
@@ -108,7 +100,6 @@ func (store *CheckpointStore) Get(sourceKey string) (CheckpointRecord, bool) {
 	return record, ok
 }
 
-// Save atomically appends one checkpoint record to disk.
 func (store *CheckpointStore) Save(record CheckpointRecord) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()

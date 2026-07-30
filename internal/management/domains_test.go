@@ -107,7 +107,7 @@ func TestBoundaryDTO_ServiceFilesNoHTTPResponse(t *testing.T) {
 func TestDomainBusinessLogicCoverage(t *testing.T) {
 	profile := os.Getenv("ESPX_MGMT_COVER_PROFILE")
 	if profile == "" {
-		t.Skip("set ESPX_MGMT_COVER_PROFILE (see scripts/management-domain-coverage.sh)")
+		t.Skip("set ESPX_MGMT_COVER_PROFILE (see scripts/ci/management_domain_coverage.sh)")
 	}
 	covered, total := parseCoverProfileByDomain(t, profile)
 	for _, d := range ManagementDomains {

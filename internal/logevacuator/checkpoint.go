@@ -10,23 +10,19 @@ import (
 
 const checkpointFieldCount = 3
 
-// CheckpointRecord is the last successfully evacuated segment and its content digest.
 type CheckpointRecord struct {
 	FileName string
 	SHA256   string
 }
 
-// CheckpointStore persists evacuation progress across process restarts.
 type CheckpointStore struct {
 	path string
 }
 
-// NewCheckpointStore opens or creates the flat checkpoint file at path.
 func NewCheckpointStore(path string) *CheckpointStore {
 	return &CheckpointStore{path: path}
 }
 
-// Load reads the last evacuated segment from disk.
 func (store *CheckpointStore) Load() (CheckpointRecord, error) {
 	data, err := os.ReadFile(store.path)
 	if err != nil {
@@ -52,7 +48,6 @@ func (store *CheckpointStore) Load() (CheckpointRecord, error) {
 	}, nil
 }
 
-// Save atomically writes the last evacuated segment to disk.
 func (store *CheckpointStore) Save(record CheckpointRecord) error {
 	if err := os.MkdirAll(filepath.Dir(store.path), 0o755); err != nil {
 		return err

@@ -24,7 +24,6 @@ func (r *countingCampaignRepo) GetByID(ctx context.Context, id uuid.UUID) (*camp
 	return r.slowCampaignRepo.GetByID(ctx, id)
 }
 
-// TestUnifiedFilter_PGFallbackDisabled_NoGetByIDOnCacheMiss guards production hot path from SQL.
 func TestUnifiedFilter_PGFallbackDisabled_NoGetByIDOnCacheMiss(t *testing.T) {
 	campID := uuid.New()
 	custID := uuid.New()

@@ -121,7 +121,6 @@ func TestHybridBalancer_ConcurrencyAndRaces(t *testing.T) {
 	close(stopWriter)
 }
 
-// Tracks hybrid balancer select plus shard cost on routing hot path.
 func BenchmarkHybridBalancer_SelectAndShard(b *testing.B) {
 	c1 := &CampaignMeta{
 		ID:                uuid.New(),

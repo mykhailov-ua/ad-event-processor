@@ -99,7 +99,6 @@ func TestSlotMapAPI_markMigratingAndActivate(t *testing.T) {
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 
-	// Create version 2
 	createBody, _ := json.Marshal(map[string]any{"overrides": []any{}})
 	req, _ := http.NewRequest("POST", "/admin/shards/slot-map/versions", bytes.NewReader(createBody))
 	req.Header.Set("X-Admin-API-Key", "test-secret")

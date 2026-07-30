@@ -20,7 +20,7 @@ func TestSlotMigration_DualWriteCopyAndActivate(t *testing.T) {
 	rdb, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
 	rdbs := []redis.UniversalClient{rdb, rdb, rdb, rdb}
-	svc, pool, ctx := setupSlotMigrationChaos(t, rdbs)
+	svc, pool, ctx := setupSlotMigrationFault(t, rdbs)
 	svc.cfg = &config.Config{
 		SlotMigrationEnabled:          false,
 		MigrationFenceEnabled:         true,
@@ -62,7 +62,7 @@ func TestSlotMigration_DualWriteActivateBlockedOnLag(t *testing.T) {
 	rdb, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
 	rdbs := []redis.UniversalClient{rdb, rdb, rdb, rdb}
-	svc, pool, ctx := setupSlotMigrationChaos(t, rdbs)
+	svc, pool, ctx := setupSlotMigrationFault(t, rdbs)
 	svc.cfg = &config.Config{
 		SlotMigrationDualWriteEnabled: true,
 		SlotMigrationLagEpsilon:       0,

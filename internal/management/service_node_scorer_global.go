@@ -13,17 +13,14 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// GlobalRegionTrafficScorer publishes cross-region traffic dial weights at region_code=0 only.
-// It reads regional node_capacity_scores but never writes per-node tracker weights (H3).
 type GlobalRegionTrafficScorer struct {
 	svc    *Service
 	pool   *pgxpool.Pool
 	cfg    ScorerConfig
 	epoch  atomic.Int64
-	states sync.Map // int16 region code -> NodeScoreState
+	states sync.Map
 }
 
-// NewGlobalRegionTrafficScorer wires the global cross-region dial scorer.
 func NewGlobalRegionTrafficScorer(svc *Service) *GlobalRegionTrafficScorer {
 	cfg := DefaultScorerConfig()
 	if svc != nil && svc.cfg != nil {
@@ -36,7 +33,6 @@ func NewGlobalRegionTrafficScorer(svc *Service) *GlobalRegionTrafficScorer {
 	}
 }
 
-// Start ticks on the UDP epoch interval until ctx is cancelled.
 func (g *GlobalRegionTrafficScorer) Start(ctx context.Context) {
 	if g == nil || g.pool == nil {
 		return
@@ -66,7 +62,6 @@ func (g *GlobalRegionTrafficScorer) Start(ctx context.Context) {
 	}
 }
 
-// Tick aggregates regional tracker scores into region_traffic_dial rows.
 func (g *GlobalRegionTrafficScorer) Tick(ctx context.Context, now time.Time) error {
 	if g == nil || g.pool == nil {
 		return nil

@@ -17,7 +17,6 @@ linters-settings:
       - name: exported
         disabled: true
   staticcheck:
-    # R11.2: SA9003 empty branch, SA4017 crypto/rand misuse (+ default staticcheck suite).
     checks:
       - all
       - SA9003

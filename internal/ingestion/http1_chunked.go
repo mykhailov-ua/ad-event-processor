@@ -1,8 +1,5 @@
 package ingestion
 
-// http1_chunked.go — chunked Transfer-Encoding body decoder for M5-B3.
-
-// teValueOnlyChunked reports whether Transfer-Encoding is exactly "chunked" (no gzip, etc.).
 func teValueOnlyChunked(val []byte) bool {
 	if !teValueHasChunked(val) {
 		return false
@@ -40,8 +37,6 @@ func teValueOnlyChunked(val []byte) bool {
 	return found
 }
 
-// parseHTTP1ChunkedBody decodes a chunked body starting at off.
-// scratch assembles non-contiguous multi-chunk bodies (reused slice returned via scratchOut).
 func parseHTTP1ChunkedBody(data []byte, off int, maxBody int64, scratch []byte) (consumed int, body []byte, contentLen int, scratchOut []byte, err error) {
 	n := len(data)
 	pos := off

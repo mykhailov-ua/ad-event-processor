@@ -16,7 +16,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// CreatePrivacyErasureRequest enqueues a GDPR-style erasure for async processing (M6.4).
 func (s *Service) CreatePrivacyErasureRequest(ctx context.Context, userID string) (uuid.UUID, error) {
 	if userID == "" {
 		return uuid.Nil, errValidation("user_id is required")
@@ -34,7 +33,6 @@ func (s *Service) CreatePrivacyErasureRequest(ctx context.Context, userID string
 	return id, err
 }
 
-// ProcessPrivacyErasureTick advances in-flight erasure requests through the state machine.
 func (s *Service) ProcessPrivacyErasureTick(ctx context.Context) error {
 	opCtx, cancel := workerContext(ctx, workerBatchTimeout)
 	defer cancel()
@@ -179,7 +177,6 @@ func (s *Service) failErasure(ctx context.Context, id pgtype.UUID, err error) er
 	})
 }
 
-// PurgeUserDataRedis deletes consent and fcap keys for a user on all shards (M6.4 outbox handler).
 func (s *Service) PurgeUserDataRedis(ctx context.Context, hashHex, subjectUserID string) error {
 	if len(s.rdbs) == 0 {
 		return fmt.Errorf("no redis clients")
@@ -212,7 +209,6 @@ func (s *Service) PurgeUserDataRedis(ctx context.Context, hashHex, subjectUserID
 	return nil
 }
 
-// SyncUserConsentToRedis writes consent purposes to every shard and publishes an update (M6.2).
 func (s *Service) SyncUserConsentToRedis(ctx context.Context, hashHex string, purposes int16) error {
 	if len(s.rdbs) == 0 {
 		return fmt.Errorf("no redis clients")
@@ -237,7 +233,6 @@ func (s *Service) consentUpdateChannel() string {
 	return ingestion.ConsentDefaultUpdateChannel
 }
 
-// MarkErasureRedisPurgeDone advances erasure after Redis purge outbox (M6.4).
 func (s *Service) MarkErasureRedisPurgeDone(ctx context.Context, erasureID uuid.UUID, partialErr error) error {
 	status := db.PrivacyErasureStatusREDISPURGED
 	if partialErr != nil {

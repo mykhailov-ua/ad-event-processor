@@ -12,7 +12,6 @@ import (
 
 const budgetInvariantToleranceMicro = int64(1)
 
-// BudgetInvariantSnapshot captures Redis budget, sync delta, and Postgres spend for one campaign.
 type BudgetInvariantSnapshot struct {
 	CampaignID     uuid.UUID
 	BudgetLimit    int64
@@ -21,7 +20,6 @@ type BudgetInvariantSnapshot struct {
 	PGCurrentSpend int64
 }
 
-// ReadBudgetInvariant loads budget_limit/current_spend from Postgres and hot-path Redis keys.
 func ReadBudgetInvariant(ctx context.Context, pool *pgxpool.Pool, rdb redis.Cmdable, campaignID uuid.UUID) (BudgetInvariantSnapshot, error) {
 	var snap BudgetInvariantSnapshot
 	snap.CampaignID = campaignID
@@ -46,7 +44,6 @@ func ReadBudgetInvariant(ctx context.Context, pool *pgxpool.Pool, rdb redis.Cmda
 
 	remaining, err := rdb.Get(ctx, budgetKey).Int64()
 	if err == redis.Nil {
-		// Unwarmed key: treat as PG-aligned remaining (not zero spend).
 		remaining = snap.BudgetLimit - snap.PGCurrentSpend - snap.SyncDelta
 		if remaining < 0 {
 			remaining = 0
@@ -59,7 +56,6 @@ func ReadBudgetInvariant(ctx context.Context, pool *pgxpool.Pool, rdb redis.Cmda
 	return snap, nil
 }
 
-// VerifyBudgetInvariant returns nil when R5 holds within tolerance for one campaign.
 func VerifyBudgetInvariant(ctx context.Context, pool *pgxpool.Pool, rdb redis.Cmdable, campaignID uuid.UUID) error {
 	snap, err := ReadBudgetInvariant(ctx, pool, rdb, campaignID)
 	if err != nil {
@@ -77,7 +73,6 @@ func VerifyBudgetInvariant(ctx context.Context, pool *pgxpool.Pool, rdb redis.Cm
 	return nil
 }
 
-// AssertBudgetInvariant verifies CHAOS.md R5: (budget_limit - redis_remaining) = pg_current_spend + sync_delta.
 func AssertBudgetInvariant(t testing.TB, ctx context.Context, pool *pgxpool.Pool, rdb redis.Cmdable, campaignID uuid.UUID) {
 	t.Helper()
 

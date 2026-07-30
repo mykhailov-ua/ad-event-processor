@@ -14,14 +14,12 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// BillingClient calls the billing gRPC service from management after RBAC checks.
 type BillingClient struct {
 	conn   *grpc.ClientConn
 	client pb.BillingServiceClient
 	token  string
 }
 
-// NewBillingClient dials billing only when BILLING_INTERNAL_TOKEN is set.
 func NewBillingClient(cfg *config.Config) (*BillingClient, error) {
 	if cfg == nil || string(cfg.BillingInternalToken) == "" {
 		return nil, nil
@@ -45,7 +43,6 @@ func NewBillingClient(cfg *config.Config) (*BillingClient, error) {
 	}, nil
 }
 
-// Close releases the gRPC connection on management shutdown.
 func (client *BillingClient) Close() error {
 	if client == nil || client.conn == nil {
 		return nil
@@ -53,7 +50,6 @@ func (client *BillingClient) Close() error {
 	return client.conn.Close()
 }
 
-// GenerateInvoice proxies invoice generation to the billing service.
 func (client *BillingClient) GenerateInvoice(ctx context.Context, customerID string, billingMonth time.Time) (*pb.Invoice, error) {
 	if client == nil || client.client == nil {
 		return nil, fmt.Errorf("billing client not configured")
@@ -66,7 +62,6 @@ func (client *BillingClient) GenerateInvoice(ctx context.Context, customerID str
 	})
 }
 
-// ListInvoices returns paginated invoice history for the HTMX dashboard.
 func (client *BillingClient) ListInvoices(ctx context.Context, customerID string, limit, offset int32) (*pb.ListInvoicesResponse, error) {
 	if client == nil || client.client == nil {
 		return nil, fmt.Errorf("billing client not configured")

@@ -6,7 +6,6 @@ import (
 	"os"
 )
 
-// Profile names a supported deployment topology for espx-install.
 type Profile string
 
 const (
@@ -15,24 +14,19 @@ const (
 	ProfileK8sK3s     Profile = "k8s_k3s"
 )
 
-// IngressSchema selects the tracker /track body wire format (M12-08 / M13-05).
 type IngressSchema string
 
 const (
-	// IngressSchemaOpenRTB3 is the default: OpenRTB 3.0 / AdCOM JSON on /track.
-	IngressSchemaOpenRTB3 IngressSchema = "openrtb_3"
-	// IngressSchemaESPXNative enables legacy eSPX TrackRequest JSON + AdEvent protobuf.
+	IngressSchemaOpenRTB3   IngressSchema = "openrtb_3"
 	IngressSchemaESPXNative IngressSchema = "espx_native"
 )
 
-// ServiceDeploy pins binary rollout metadata for apply (M13-03).
 type ServiceDeploy struct {
 	Binary    string `yaml:"binary,omitempty"`
 	HealthURL string `yaml:"health_url,omitempty"`
 	Version   string `yaml:"version,omitempty"`
 }
 
-// InstallProfile is the persisted install.yaml contract: topology, feature flags, and NIC binding.
 type InstallProfile struct {
 	Type             Profile       `yaml:"profile"`
 	IngressSchema    IngressSchema `yaml:"ingress_schema"`
@@ -44,7 +38,6 @@ type InstallProfile struct {
 	Processor        ServiceDeploy `yaml:"processor,omitempty"`
 }
 
-// Validate enforces profile-specific constraints before configure/apply.
 func (p *InstallProfile) Validate() error {
 	switch p.Type {
 	case ProfileSingleVPS, ProfileComposeDev, ProfileK8sK3s:

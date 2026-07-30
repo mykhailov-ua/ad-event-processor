@@ -1,5 +1,3 @@
--- Cold-tier audit log rollups produced by log-compactor from warm .compact.zst segments.
--- SummingMergeTree merges event_count and fraud_event_count for the same ORDER BY key.
 USE ad_event_processor;
 
 CREATE TABLE IF NOT EXISTS audit_log_rollups (

@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: GPL-2.0
-// Tracepoint context layouts for dev probes (no vmlinux.h dependency).
+
+
 
 #ifndef ESPX_TRACE_H
 #define ESPX_TRACE_H
@@ -60,4 +60,4 @@ struct trace_event_raw_sched_process_exit {
 	int prio;
 };
 
-#endif /* ESPX_TRACE_H */
+#endif 

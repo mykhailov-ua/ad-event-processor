@@ -6,18 +6,15 @@ import (
 	"syscall"
 )
 
-// FileLeaderLock provides single-writer leader election via POSIX flock.
 type FileLeaderLock struct {
 	path string
 	file *os.File
 }
 
-// NewFileLeaderLock returns a lock backed by path (created if missing).
 func NewFileLeaderLock(path string) *FileLeaderLock {
 	return &FileLeaderLock{path: path}
 }
 
-// TryAcquire attempts a non-blocking exclusive flock.
 func (lock *FileLeaderLock) TryAcquire() (bool, error) {
 	if lock.file != nil {
 		return true, nil
@@ -42,7 +39,6 @@ func (lock *FileLeaderLock) TryAcquire() (bool, error) {
 	return true, nil
 }
 
-// Release drops the exclusive flock.
 func (lock *FileLeaderLock) Release() error {
 	if lock.file == nil {
 		leaderHeld.Set(0)
@@ -58,7 +54,6 @@ func (lock *FileLeaderLock) Release() error {
 	return closeErr
 }
 
-// Path returns the lock file path.
 func (lock *FileLeaderLock) Path() string {
 	return lock.path
 }

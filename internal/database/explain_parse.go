@@ -7,7 +7,6 @@ import (
 	"strings"
 )
 
-// ExplainNode captures one line from EXPLAIN (ANALYZE, BUFFERS) output.
 type ExplainNode struct {
 	Indent        int
 	NodeType      string
@@ -24,7 +23,6 @@ type ExplainNode struct {
 	Raw           string
 }
 
-// ExplainPlan is a parsed EXPLAIN ANALYZE result.
 type ExplainPlan struct {
 	PlanningTimeMS  float64
 	ExecutionTimeMS float64
@@ -32,9 +30,8 @@ type ExplainPlan struct {
 	Raw             string
 }
 
-// ExplainFinding flags a potentially suboptimal plan characteristic.
 type ExplainFinding struct {
-	Severity string // "warn" | "info"
+	Severity string
 	Query    string
 	Message  string
 	Detail   string
@@ -50,7 +47,6 @@ var (
 	reSortMethod = regexp.MustCompile(`Sort Method: ([^;]+)`)
 )
 
-// ParseExplainPlan parses PostgreSQL EXPLAIN ANALYZE text output.
 func ParseExplainPlan(raw string) ExplainPlan {
 	plan := ExplainPlan{Raw: raw}
 	if m := rePlanning.FindStringSubmatch(raw); len(m) == 2 {
@@ -158,8 +154,6 @@ func lastScanNode(nodes []ExplainNode) int {
 	return -1
 }
 
-// AnalyzeExplainPlan returns findings for a query plan.
-// smallTableRows: seq scans on relations with <= this many actual rows are ignored.
 func AnalyzeExplainPlan(queryName string, plan ExplainPlan, hotPath bool, smallTableRows int64) []ExplainFinding {
 	var out []ExplainFinding
 	execLimit := 500.0

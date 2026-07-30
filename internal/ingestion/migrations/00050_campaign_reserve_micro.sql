@@ -1,4 +1,3 @@
--- M7 R3: per-campaign auction reserve price in micro-units (second-price floor).
 
 -- +goose Up
 -- +goose StatementBegin

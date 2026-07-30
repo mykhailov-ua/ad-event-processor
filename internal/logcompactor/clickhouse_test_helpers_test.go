@@ -87,7 +87,6 @@ func queryCHExplainPlan(t *testing.T, conn driver.Conn, query string) string {
 	return plan
 }
 
-// summarizeExplainPlan flattens a ClickHouse EXPLAIN tree into a single log line.
 func summarizeExplainPlan(plan string) string {
 	var parts []string
 	for _, line := range strings.Split(plan, "\n") {

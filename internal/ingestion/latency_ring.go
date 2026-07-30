@@ -6,10 +6,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// defaultLatencyRingCap is the fallback ring size when NewLatencyRing gets a non-power-of-two capacity.
 const defaultLatencyRingCap = 4096
 
-// LatencyRing buffers request durations off the hot path to avoid Prometheus CAS in gnet.
 type LatencyRing struct {
 	slots    []atomic.Uint64
 	mask     uint64
@@ -17,7 +15,6 @@ type LatencyRing struct {
 	flushSeq atomic.Uint64
 }
 
-// NewLatencyRing allocates a power-of-two ring for monotonic latency samples.
 func NewLatencyRing(capacity int) *LatencyRing {
 	if capacity < 2 || capacity&(capacity-1) != 0 {
 		capacity = defaultLatencyRingCap
@@ -28,7 +25,6 @@ func NewLatencyRing(capacity int) *LatencyRing {
 	}
 }
 
-// Capacity reports ring size for backpressure and observability checks.
 func (r *LatencyRing) Capacity() int {
 	if r == nil {
 		return 0
@@ -36,7 +32,6 @@ func (r *LatencyRing) Capacity() int {
 	return int(r.mask + 1)
 }
 
-// RecordMono stores elapsed monotonic nanoseconds from a request start timestamp.
 func (r *LatencyRing) RecordMono(startMono int64) {
 	if r == nil || startMono <= 0 {
 		return
@@ -49,7 +44,6 @@ func (r *LatencyRing) RecordMono(startMono int64) {
 	r.slots[(next-1)&r.mask].Store(uint64(elapsed))
 }
 
-// FlushTo exports buffered samples to Prometheus during metrics scrape only.
 func (r *LatencyRing) FlushTo(observer prometheus.Observer) int {
 	if r == nil || observer == nil {
 		return 0
@@ -78,7 +72,6 @@ func (r *LatencyRing) FlushTo(observer prometheus.Observer) int {
 	return n
 }
 
-// Pending reports scrape lag so operators can detect saturated latency export buffers.
 func (r *LatencyRing) Pending() uint64 {
 	if r == nil {
 		return 0

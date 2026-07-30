@@ -1,6 +1,8 @@
 package notifier
 
 import (
+	"espx/pkg/faultproof"
+
 	"context"
 	"encoding/json"
 	"fmt"
@@ -25,7 +27,6 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-// Builds a Postgres pool with notifier schema migrations applied.
 func setupTestDB(t testing.TB) (*pgxpool.Pool, func()) {
 	t.Helper()
 	ctx := context.Background()
@@ -65,7 +66,6 @@ func setupTestDB(t testing.TB) (*pgxpool.Pool, func()) {
 	}
 }
 
-// Builds schema from goose migration files without invoking the goose CLI.
 func applyMigrations(t testing.TB, pool *pgxpool.Pool, dir string) {
 	t.Helper()
 	ctx := context.Background()
@@ -97,7 +97,6 @@ func applyMigrations(t testing.TB, pool *pgxpool.Pool, dir string) {
 	}
 }
 
-// Guards enqueue and get round-trip persists a PENDING notification row.
 func TestService_enqueueAndGet(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
@@ -139,7 +138,6 @@ func TestService_enqueueAndGet(t *testing.T) {
 	assert.NotNil(t, getResp.Notification.UpdatedAt)
 }
 
-// Guards worker delivery marks a pending notification as SENT.
 func TestService_processPending_success(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
@@ -181,7 +179,6 @@ func TestService_processPending_success(t *testing.T) {
 	assert.Equal(t, int32(0), getResp.Notification.RetryCount)
 }
 
-// Guards transient provider failures keep the row PENDING and increment retry_count.
 func TestService_processPending_failureAndRetry(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
@@ -219,7 +216,6 @@ func TestService_processPending_failureAndRetry(t *testing.T) {
 	assert.Contains(t, getResp.Notification.ErrorMessage, "mock send failure triggered")
 }
 
-// Guards the fifth failed attempt marks the notification FAILED permanently.
 func TestService_processPending_permanentFailure(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
@@ -261,7 +257,6 @@ func TestService_processPending_permanentFailure(t *testing.T) {
 	assert.Equal(t, int32(maxDeliveryAttempts), getResp.Notification.RetryCount)
 }
 
-// Guards provider circuit breaker open errors propagate into notification error_message.
 func TestService_processPending_circuitBreaker(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
@@ -310,7 +305,6 @@ func TestService_processPending_circuitBreaker(t *testing.T) {
 	assert.True(t, foundBreakerErr, "expected at least one notification to fail with circuit breaker open error")
 }
 
-// Guards SQL backoff skips notifications before the retry window elapses.
 func TestService_processPending_exponentialBackoff(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
@@ -355,7 +349,6 @@ func TestService_processPending_exponentialBackoff(t *testing.T) {
 	assert.Equal(t, 1, processed, "expected notification to be processed after backoff duration elapsed")
 }
 
-// Guards alert deduplication and correlation over a window of pending notifications.
 func TestService_processPending_deduplication(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
@@ -373,7 +366,6 @@ func TestService_processPending_deduplication(t *testing.T) {
 	svc := NewService(pool, providers)
 	ctx := context.Background()
 
-	// Enqueue 5 identical notifications to group them
 	for i := 0; i < 5; i++ {
 		_, err := svc.SendNotification(ctx, &pb.SendNotificationRequest{
 			Provider:  pb.Provider_PROVIDER_TELEGRAM,
@@ -388,7 +380,6 @@ func TestService_processPending_deduplication(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 5, processed, "expected all 5 notifications to be processed as part of deduplication group")
 
-	// Only 1 actual message must have been sent
 	require.Len(t, mockProv.Sent, 1)
 	assert.Equal(t, "12345678", mockProv.Sent[0].Recipient)
 	assert.Equal(t, "Deduplicated Alert", mockProv.Sent[0].Title)
@@ -396,13 +387,12 @@ func TestService_processPending_deduplication(t *testing.T) {
 	assert.Contains(t, mockProv.Sent[0].Body, "Alert details for node 0")
 	assert.Contains(t, mockProv.Sent[0].Body, "Alert details for node 1")
 
-	logChaosProof(t, "notifier_deduplication", map[string]string{
+	faultproof.Log(t, "notifier_deduplication", map[string]string{
 		"size":    "5",
 		"success": "true",
 	})
 }
 
-// Guards multi-channel fallback path (Slack -> Telegram -> SMS -> SMTP).
 func TestService_processPending_fallback(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
@@ -414,13 +404,11 @@ func TestService_processPending_fallback(t *testing.T) {
 	slackBreaker := NewCircuitBreaker(3, 2, 10*time.Second)
 	telegramBreaker := NewCircuitBreaker(3, 2, 10*time.Second)
 
-	// Trip slack breaker so it fast-fails
 	slackBreaker.trip()
 
 	mockSlack := NewMockProvider(slackBreaker)
 	mockTelegram := NewMockProvider(telegramBreaker)
 
-	// Wire them up
 	providers := map[pb.Provider]Provider{
 		pb.Provider_PROVIDER_SLACK:    mockSlack,
 		pb.Provider_PROVIDER_TELEGRAM: mockTelegram,
@@ -429,8 +417,6 @@ func TestService_processPending_fallback(t *testing.T) {
 	svc := NewService(pool, providers)
 	ctx := context.Background()
 
-	// Enqueue a SLACK notification. It should fail on Slack due to open circuit,
-	// and fallback to TELEGRAM which is open and will succeed.
 	req := &pb.SendNotificationRequest{
 		Provider:  pb.Provider_PROVIDER_SLACK,
 		Recipient: "https://hooks.slack.com/services/test",
@@ -445,28 +431,24 @@ func TestService_processPending_fallback(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, processed)
 
-	// Slack should have 0 sends (circuit open)
 	assert.Len(t, mockSlack.Sent, 0)
 
-	// Telegram should have 1 send (successful fallback)
 	require.Len(t, mockTelegram.Sent, 1)
 	assert.Equal(t, "Fallback Alert", mockTelegram.Sent[0].Title)
 	assert.Equal(t, "This notification falls back", mockTelegram.Sent[0].Body)
 
-	// Database record should show SENT status and provider as TELEGRAM!
 	getResp, err := svc.GetNotification(ctx, &pb.GetNotificationRequest{NotificationId: resp.NotificationId})
 	require.NoError(t, err)
 	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_SENT, getResp.Notification.Status)
 	assert.Equal(t, pb.Provider_PROVIDER_TELEGRAM, getResp.Notification.Provider)
 
-	logChaosProof(t, "notifier_fallback", map[string]string{
+	faultproof.Log(t, "notifier_fallback", map[string]string{
 		"primary":  "SLACK",
 		"fallback": "TELEGRAM",
 		"success":  "true",
 	})
 }
 
-// Guards broadcast fan-out delivers to all configured providers in parallel.
 func TestService_processPending_broadcast(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
@@ -517,11 +499,9 @@ func (m mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	return m(req)
 }
 
-// Guards JSON formatting and correct structure of Telegram/Slack interactive buttons.
 func TestProviders_interactiveButtons(t *testing.T) {
 	ctx := context.WithValue(context.Background(), NotificationIDContextKey, "test-notification-uuid-123")
 
-	// 1. Telegram test
 	var capturedTelegram []byte
 	tProv := NewTelegramProvider("token123", "default-chat", NewCircuitBreaker(3, 2, time.Second), false)
 	tProv.client.Transport = mockRoundTripper(func(req *http.Request) (*http.Response, error) {
@@ -550,9 +530,8 @@ func TestProviders_interactiveButtons(t *testing.T) {
 	require.True(t, exists)
 	inlineKeyboard, exists := replyMarkup["inline_keyboard"].([]interface{})
 	require.True(t, exists)
-	assert.Len(t, inlineKeyboard, 2) // Acknowledge and Block IP
+	assert.Len(t, inlineKeyboard, 2)
 
-	// 2. Slack test
 	var capturedSlack []byte
 	sProv := NewSlackProvider("https://hooks.slack.com/services/test", NewCircuitBreaker(3, 2, time.Second), false)
 	sProv.client.Transport = mockRoundTripper(func(req *http.Request) (*http.Response, error) {
@@ -576,8 +555,7 @@ func TestProviders_interactiveButtons(t *testing.T) {
 
 	blocks, exists := sPayload["blocks"].([]interface{})
 	require.True(t, exists)
-	assert.Len(t, blocks, 2) // Section and Actions block
+	assert.Len(t, blocks, 2)
 
-	// Emit chaos proof for interactive buttons
-	logChaosProof(t, "notifier_interactive_buttons", map[string]string{"success": "true"})
+	faultproof.Log(t, "notifier_interactive_buttons", map[string]string{"success": "true"})
 }

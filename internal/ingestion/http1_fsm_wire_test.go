@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestHTTP1Parse_IncompleteTwoReads verifies split TCP delivery across two OnTraffic calls.
 func TestHTTP1Parse_IncompleteTwoReads(t *testing.T) {
 	cfg := &config.Config{MaxRequestBodySize: 1024 * 1024}
 	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud", nil)
@@ -31,7 +30,6 @@ func TestHTTP1Parse_IncompleteTwoReads(t *testing.T) {
 	assert.Equal(t, http.StatusAccepted, ParseGnetHTTPStatus(conn.Written()))
 }
 
-// TestHTTP1Parse_SplitAtHeaderBoundary splits between headers and body.
 func TestHTTP1Parse_SplitAtHeaderBoundary(t *testing.T) {
 	const maxBody = int64(1024 * 1024)
 	full := []byte("POST /track HTTP/1.1\r\nContent-Length: 5\r\n\r\nhello")

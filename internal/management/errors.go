@@ -37,7 +37,6 @@ var (
 	ErrSelfServeBudgetOutOfRange    = errors.New("self-serve budget out of allowed range")
 )
 
-// mapNotFound maps pgx.ErrNoRows to a domain not-found sentinel; other errors pass through.
 func mapNotFound(err error, notFound error) error {
 	if err == nil {
 		return nil

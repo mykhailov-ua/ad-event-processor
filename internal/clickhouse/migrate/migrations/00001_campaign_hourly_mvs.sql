@@ -1,5 +1,3 @@
--- Processor ClickHouse migrations: hourly campaign aggregates for reporting and recon.
--- Applied idempotently on processor startup (compose also mounts deploy/clickhouse/recon_materialized_views.sql).
 
 USE ad_event_processor;
 

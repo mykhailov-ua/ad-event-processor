@@ -33,12 +33,10 @@ func TestResolveDebitShard_RerouteToReserve(t *testing.T) {
 	for i := range f.breakers {
 		f.breakers[i] = database.NewRedisBreaker(1, 1, time.Hour)
 	}
-	// Trip shard 0.
 	f.breakers[0].RecordFailure()
 	require.Equal(t, database.CircuitOpen, f.breakers[0].State())
 
 	var campID uuid.UUID
-	// Force StaticSlot → 0 by picking an ID that maps to shard 0.
 	for {
 		campID = uuid.New()
 		if sharder.GetShard(campID) == 0 {

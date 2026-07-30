@@ -15,7 +15,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// ClosedLoopPacingController switches campaigns between ASAP and EVEN when spend diverges from the daypart curve.
 func (s *Service) ClosedLoopPacingController(ctx context.Context, syncWorkers []*ingestion.SyncWorker) error {
 	return s.withPgLow(ctx, func(runCtx context.Context) error {
 		opCtx, cancel := workerContext(runCtx, workerBatchTimeout)

@@ -5,7 +5,6 @@ import (
 	"espx/internal/rtb"
 )
 
-// rtbPrefilterReject runs lightweight gates before RunAuction in live mode (R13).
 func rtbPrefilterReject(watcher *SettingsWatcher, catalog *RtbCatalog, targeting RtbTargetingInput) rtb.NoBidReason {
 	if watcher != nil && watcher.Get().EmergencyBreaker {
 		return rtb.NoBidBreakerOpen
@@ -23,7 +22,6 @@ func rtbPrefilterReject(watcher *SettingsWatcher, catalog *RtbCatalog, targeting
 	return rtb.NoBidNone
 }
 
-// rtbPrebidIVTReject runs datacenter/proxy check before auction when RTB_PREBID_IVT=1 (R17).
 func rtbPrebidIVTReject(enabled bool, geo GeoProvider, evt *campaignmodel.Event) rtb.NoBidReason {
 	if !enabled || evt == nil || geo == nil || evt.IP == "" {
 		return rtb.NoBidNone

@@ -9,7 +9,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// RetryNotification resets a FAILED notifier row to PENDING for operator replay.
 func (s *Service) RetryNotification(ctx context.Context, notificationID string) error {
 	id, err := uuid.Parse(notificationID)
 	if err != nil {

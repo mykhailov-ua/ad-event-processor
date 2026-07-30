@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestBlockIP_MultipleShards guards block, unblock, and sync propagate to every Redis shard.
 func TestBlockIP_MultipleShards(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")

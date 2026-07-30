@@ -70,7 +70,7 @@ func TestAggregateWindow_RateUsesSumOverSum(t *testing.T) {
 	}
 	got, ok := aggregateWindow(buckets, MetricRate)
 	require.True(t, ok)
-	assert.InDelta(t, 0.10, got, 1e-9) // (10+5)/(100+50) not mean(0.1,0.2)
+	assert.InDelta(t, 0.10, got, 1e-9)
 
 	meanOfRatios, ok := aggregateWindow([]BucketPoint{
 		{Mean: 0.10, SampleCount: 1},

@@ -7,7 +7,6 @@ import (
 	"os"
 )
 
-// fileDigest holds a content hash for checkpoint idempotency.
 type fileDigest struct {
 	SHA256 string
 	Size   int64

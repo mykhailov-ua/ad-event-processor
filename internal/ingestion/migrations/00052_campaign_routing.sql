@@ -1,5 +1,3 @@
--- 00052_campaign_routing.sql: M2 elastic triplets — per-campaign routing with routing_epoch.
--- Replaces campaign_shard_assignment as the canonical triplet home for hot campaigns.
 
 -- +goose Up
 -- +goose StatementBegin
@@ -21,7 +19,6 @@ CREATE INDEX IF NOT EXISTS idx_campaign_routing_primary_a
 ALTER TABLE redis_slot_map_meta
     ADD COLUMN IF NOT EXISTS routing_epoch BIGINT NOT NULL DEFAULT 0;
 
--- Migrate existing triplet assignments from M1 table.
 INSERT INTO campaign_routing (
     campaign_id, home_slot, primary_a_shard, primary_b_shard, reserve_shard, h_ema, c_ema
 )

@@ -12,14 +12,12 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-// streamEventPool recycles protobuf stream events to avoid allocations on produce.
 var streamEventPool = sync.Pool{
 	New: func() any {
 		return new(pb.AdStreamEvent)
 	},
 }
 
-// byteBufPool recycles marshal buffers for stream XADD payloads.
 var byteBufPool = sync.Pool{
 	New: func() any {
 		b := make([]byte, 0, 512)
@@ -27,7 +25,6 @@ var byteBufPool = sync.Pool{
 	},
 }
 
-// producerValuesPool recycles Redis XADD value slices for the stream producer.
 var producerValuesPool = sync.Pool{
 	New: func() any {
 		slice := make([]any, 2)
@@ -36,7 +33,6 @@ var producerValuesPool = sync.Pool{
 	},
 }
 
-// StreamProducer enqueues accepted events onto a Redis stream for async processing.
 type StreamProducer struct {
 	rdb          redis.UniversalClient
 	streamName   string
@@ -44,7 +40,6 @@ type StreamProducer struct {
 	writeTimeout time.Duration
 }
 
-// NewStreamProducer creates a producer with stream trimming sized for consumer lag.
 func NewStreamProducer(
 	rdb redis.UniversalClient,
 	streamName string,
@@ -59,7 +54,6 @@ func NewStreamProducer(
 	}
 }
 
-// Process marshals and XADDs one event after the track handler accepts it.
 func (p *StreamProducer) Process(evt *campaignmodel.Event) error {
 	if evt.ClickID == "" {
 		id, err := uuid.NewV7()

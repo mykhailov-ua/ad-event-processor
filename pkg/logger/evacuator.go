@@ -12,12 +12,10 @@ import (
 	"github.com/klauspost/compress/zstd"
 )
 
-// S3Uploader is the interface for streaming compressed log segments to object storage.
 type S3Uploader interface {
 	UploadMultipart(key string, filePath string) (string, error)
 }
 
-// StartEvacuator runs the background archive/evacuation loop.
 func (l *Logger) StartEvacuator(uploader S3Uploader) {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
@@ -33,8 +31,6 @@ func (l *Logger) StartEvacuator(uploader S3Uploader) {
 	}
 }
 
-// EvacuatePendingSegments scans the log directory for rotated segments,
-// compresses them, uploads to S3, and removes local files on success.
 func (l *Logger) EvacuatePendingSegments(uploader S3Uploader) {
 	pattern := filepath.Join(l.cfg.LogDir, "segment_*.log")
 	matches, err := filepath.Glob(pattern)
@@ -112,7 +108,6 @@ func calculateMD5(filePath string) (string, error) {
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
-// MockS3Uploader is a memory-backed uploader for testing.
 type MockS3Uploader struct {
 	Uploads   map[string]string
 	FailRoute bool

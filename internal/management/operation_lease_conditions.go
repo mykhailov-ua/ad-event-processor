@@ -11,13 +11,10 @@ import (
 	"github.com/google/uuid"
 )
 
-// ErrLeaseQuorumNotMet is returned when fewer than 2-of-3 replicas ACK booked (C3).
 var ErrLeaseQuorumNotMet = errors.New("operation lease book quorum not met")
 
-// ErrOpKeyPoolShed is returned when OpKeyPool depth exceeds watermark (C7).
 var ErrOpKeyPoolShed = errors.New("operation lease book shed: op key pool over watermark")
 
-// OpKeyPoolGate reports OpKeyPool ingress backpressure (C7).
 type OpKeyPoolGate interface {
 	ShouldShed() bool
 }
@@ -27,7 +24,6 @@ const (
 	opLeaseJanitorLockKey1 = int32(0x4d36)
 )
 
-// QuorumRequired returns the minimum book ACK count for replicaCount nodes.
 func QuorumRequired(replicaCount int) int32 {
 	if replicaCount <= 1 {
 		return 1
@@ -35,7 +31,6 @@ func QuorumRequired(replicaCount int) int32 {
 	return defaultLeaseQuorum
 }
 
-// ScopeWithAttempt folds attempt into the D3 SSID seq range (C5).
 func ScopeWithAttempt(scope dedupkey.Scope, attempt int32) dedupkey.Scope {
 	if attempt < 1 {
 		attempt = 1
@@ -55,7 +50,6 @@ func ScopeWithAttempt(scope dedupkey.Scope, attempt int32) dedupkey.Scope {
 	return scope
 }
 
-// DedupScopeForLease returns the D3 scope used at ClaimConfirm time.
 func DedupScopeForLease(lease db.OperationLease) (dedupkey.Scope, error) {
 	base, attempt, err := DecodeLeaseDedupScope(lease.DedupScope)
 	if err != nil {
@@ -67,7 +61,6 @@ func DedupScopeForLease(lease db.OperationLease) (dedupkey.Scope, error) {
 	return ScopeWithAttempt(base, attempt), nil
 }
 
-// AuthoritativeLeaseView validates PG lease_state/deadline before side effects (C1, P4).
 func AuthoritativeLeaseView(lease db.OperationLease, executorNodeID string, now time.Time) error {
 	switch LeaseState(lease.LeaseState) {
 	case LeaseStateExecuting:

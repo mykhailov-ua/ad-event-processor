@@ -14,7 +14,6 @@ import (
 	"espx/pkg/money"
 )
 
-// TonicRSOCProvider blends intraday EPC with stats_by_country adjustments (10-day finalization).
 type TonicRSOCProvider struct {
 	BaseURL string
 	Client  *http.Client
@@ -180,7 +179,6 @@ func (p *TonicRSOCProvider) setAuth(req *http.Request, cred Credential) {
 	}
 }
 
-// System1RSOCProvider fetches hourly intraday revenue with 10-day reconciliation.
 type System1RSOCProvider struct {
 	BaseURL string
 	Client  *http.Client

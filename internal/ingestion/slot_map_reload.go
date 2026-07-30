@@ -6,17 +6,14 @@ import (
 	"time"
 )
 
-// DefaultSlotMapReloadTopic is the broker control topic for map cutover signals (Phase 2.2).
 const DefaultSlotMapReloadTopic = "shards:reload"
 
-// SlotMapReloadMessage is published by management after active_version changes.
 type SlotMapReloadMessage struct {
 	Version      int32 `json:"version"`
 	RoutingEpoch int64 `json:"routing_epoch,omitempty"`
 	AtUnix       int64 `json:"at_unix"`
 }
 
-// EncodeSlotMapReloadMessage serializes a reload signal for broker produce.
 func EncodeSlotMapReloadMessage(version int32, routingEpoch int64) ([]byte, error) {
 	msg := SlotMapReloadMessage{
 		Version:      version,
@@ -26,12 +23,10 @@ func EncodeSlotMapReloadMessage(version int32, routingEpoch int64) ([]byte, erro
 	return json.Marshal(msg)
 }
 
-// EncodeSlotMapReloadMessageVersion is the legacy helper without routing epoch.
 func EncodeSlotMapReloadMessageVersion(version int32) ([]byte, error) {
 	return EncodeSlotMapReloadMessage(version, 0)
 }
 
-// DecodeSlotMapReloadMessage parses a broker payload into a reload signal.
 func DecodeSlotMapReloadMessage(payload []byte) (SlotMapReloadMessage, error) {
 	var msg SlotMapReloadMessage
 	if err := json.Unmarshal(payload, &msg); err != nil {
@@ -43,7 +38,6 @@ func DecodeSlotMapReloadMessage(payload []byte) (SlotMapReloadMessage, error) {
 	return msg, nil
 }
 
-// OpsSlotMapResponse is the compact JSON export for tracker poll and nginx edge sync.
 type OpsSlotMapResponse struct {
 	Version       int32    `json:"version"`
 	ActiveVersion int32    `json:"active_version"`

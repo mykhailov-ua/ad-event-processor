@@ -38,7 +38,6 @@ func setupPlacementBlacklistBench(t testing.TB, blacklisted bool) (*PlacementBla
 	return f, evt, ctx
 }
 
-// BenchmarkPlacementBlacklistFilter_miss measures hot-path cost when placement is allowed.
 func BenchmarkPlacementBlacklistFilter_miss(b *testing.B) {
 	f, evt, ctx := setupPlacementBlacklistBench(b, false)
 	b.ReportAllocs()
@@ -48,7 +47,6 @@ func BenchmarkPlacementBlacklistFilter_miss(b *testing.B) {
 	}
 }
 
-// BenchmarkPlacementBlacklistFilter_hit measures hot-path cost when placement is paused.
 func BenchmarkPlacementBlacklistFilter_hit(b *testing.B) {
 	f, evt, ctx := setupPlacementBlacklistBench(b, true)
 	b.ReportAllocs()
@@ -58,7 +56,6 @@ func BenchmarkPlacementBlacklistFilter_hit(b *testing.B) {
 	}
 }
 
-// TestPlacementBlacklistFilter_zeroAlloc guards the filter path stays allocation-free (mock Redis).
 func TestPlacementBlacklistFilter_zeroAlloc(t *testing.T) {
 	f, evt, ctx := setupPlacementBlacklistBench(t, false)
 	avg := testing.AllocsPerRun(100, func() {
@@ -69,7 +66,6 @@ func TestPlacementBlacklistFilter_zeroAlloc(t *testing.T) {
 	}
 }
 
-// TestPlacementBlacklistFilter_escapeClean verifies Check does not escape key buffer to heap.
 func TestPlacementBlacklistFilter_escapeClean(t *testing.T) {
 	if testing.Short() {
 		t.Skip("escape analysis build")

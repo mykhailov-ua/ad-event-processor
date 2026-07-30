@@ -1,4 +1,3 @@
--- Campaign templates
 
 -- name: CreateCampaignTemplate :one
 INSERT INTO campaign_templates (
@@ -19,7 +18,6 @@ LIMIT $2 OFFSET $3;
 -- name: CountCampaignTemplates :one
 SELECT COUNT(*) FROM campaign_templates WHERE customer_id = $1;
 
--- Campaign schedule / lifecycle
 
 -- name: UpdateCampaignSchedule :one
 UPDATE campaigns
@@ -61,7 +59,6 @@ SET status = 'ACTIVE',
 WHERE id = $1 AND status = 'PAUSED'
 RETURNING *;
 
--- Brand creatives
 
 -- name: CreateBrandCreative :one
 INSERT INTO brand_creatives (id, brand_id, name, landing_url, weight, status)

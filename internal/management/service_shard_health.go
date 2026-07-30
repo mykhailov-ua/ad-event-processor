@@ -8,14 +8,12 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// OutboxHealthSummary is the global outbox backlog snapshot shared across shards.
 type OutboxHealthSummary struct {
 	Pending              int64   `json:"pending"`
 	OldestPendingSeconds float64 `json:"oldest_pending_seconds"`
 	LastProcessedEventID int64   `json:"last_processed_event_id"`
 }
 
-// ShardHealthStatus reports Redis connectivity and config propagation for one shard.
 type ShardHealthStatus struct {
 	ShardID             int     `json:"shard_id"`
 	PingOK              bool    `json:"ping_ok"`
@@ -26,14 +24,12 @@ type ShardHealthStatus struct {
 	ConfigVersionSynced bool    `json:"config_version_synced"`
 }
 
-// ShardHealthReport is the ops dashboard payload for GET /admin/ops/shards.
 type ShardHealthReport struct {
 	EmergencyBreaker string              `json:"emergency_breaker"`
 	Outbox           OutboxHealthSummary `json:"outbox"`
 	Shards           []ShardHealthStatus `json:"shards"`
 }
 
-// GetShardHealth probes each Redis shard and compares config:version against processed outbox events.
 func (s *Service) GetShardHealth(ctx context.Context) (ShardHealthReport, error) {
 	var report ShardHealthReport
 	report.Shards = make([]ShardHealthStatus, 0, len(s.rdbs))

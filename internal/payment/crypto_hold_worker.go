@@ -17,14 +17,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// CryptoHoldWorker periodically processes HELD crypto top-ups after their 14-day hold period.
 type CryptoHoldWorker struct {
 	pool *pgxpool.Pool
 	cfg  *config.Config
 	wg   sync.WaitGroup
 }
 
-// NewCryptoHoldWorker creates a new worker instance.
 func NewCryptoHoldWorker(pool *pgxpool.Pool, cfg *config.Config) *CryptoHoldWorker {
 	return &CryptoHoldWorker{
 		pool: pool,
@@ -32,7 +30,6 @@ func NewCryptoHoldWorker(pool *pgxpool.Pool, cfg *config.Config) *CryptoHoldWork
 	}
 }
 
-// Start runs the background polling loop for releasing holds.
 func (w *CryptoHoldWorker) Start(ctx context.Context, interval time.Duration) {
 	w.wg.Add(1)
 	defer w.wg.Done()
@@ -64,7 +61,6 @@ type cryptoHold struct {
 	ReleaseAt       time.Time
 }
 
-// ProcessHolds scans for eligible holds, evaluates the fraud gate, and releases funds.
 func (w *CryptoHoldWorker) ProcessHolds(ctx context.Context) error {
 	for {
 		var processed bool

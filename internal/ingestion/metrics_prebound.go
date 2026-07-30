@@ -8,7 +8,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// preboundTrackMetrics holds pre-resolved Prometheus counters for the gnet track handler.
 type preboundTrackMetrics struct {
 	throughputProto prometheus.Counter
 	throughputJSON  prometheus.Counter
@@ -49,7 +48,6 @@ type preboundTrackMetrics struct {
 	blockedShardUnavailable prometheus.Counter
 }
 
-// newPreboundTrackMetrics binds all track-path label values once at handler startup.
 func newPreboundTrackMetrics() preboundTrackMetrics {
 	return preboundTrackMetrics{
 		throughputProto: metrics.FilterThroughput.WithLabelValues("protobuf"),
@@ -92,7 +90,6 @@ func newPreboundTrackMetrics() preboundTrackMetrics {
 	}
 }
 
-// newRedisLuaObservers pre-binds per-shard Lua latency histogram observers.
 func newRedisLuaObservers(numShards int) []prometheus.Observer {
 	if numShards <= 0 {
 		numShards = 1
@@ -104,7 +101,6 @@ func newRedisLuaObservers(numShards int) []prometheus.Observer {
 	return observers
 }
 
-// newRedisLuaNoScriptCounters pre-binds per-shard NOSCRIPT fallback counters.
 func newRedisLuaNoScriptCounters(numShards int) []prometheus.Counter {
 	if numShards <= 0 {
 		numShards = 1
@@ -116,7 +112,6 @@ func newRedisLuaNoScriptCounters(numShards int) []prometheus.Counter {
 	return counters
 }
 
-// incRedisLuaNoScript records a NOSCRIPT fallback on the pre-bound shard counter when available.
 func incRedisLuaNoScript(counters []prometheus.Counter, shard int) {
 	if shard >= 0 && shard < len(counters) {
 		counters[shard].Inc()
@@ -125,7 +120,6 @@ func incRedisLuaNoScript(counters []prometheus.Counter, shard int) {
 	metrics.RedisLuaNoScriptTotal.WithLabelValues(strconv.Itoa(shard)).Inc()
 }
 
-// observeRedisLua records Lua duration on the pre-bound shard observer when available.
 func observeRedisLua(observers []prometheus.Observer, shard int, seconds float64) {
 	if shard >= 0 && shard < len(observers) {
 		observers[shard].Observe(seconds)
@@ -134,7 +128,6 @@ func observeRedisLua(observers []prometheus.Observer, shard int, seconds float64
 	metrics.RedisLuaDuration.WithLabelValues(strconv.Itoa(shard)).Observe(seconds)
 }
 
-// newRedisLuaTierObservers pre-binds per-shard fast-path Lua latency histogram observers.
 func newRedisLuaTierObservers(numShards int) []prometheus.Observer {
 	if numShards <= 0 {
 		numShards = 1
@@ -146,7 +139,6 @@ func newRedisLuaTierObservers(numShards int) []prometheus.Observer {
 	return observers
 }
 
-// newRedisLuaPathCounters pre-binds per-shard Lua tier selection counters.
 func newRedisLuaPathCounters(numShards int, fast bool) []prometheus.Counter {
 	if numShards <= 0 {
 		numShards = 1
@@ -163,7 +155,6 @@ func newRedisLuaPathCounters(numShards int, fast bool) []prometheus.Counter {
 	return counters
 }
 
-// incRedisLuaTier records a fast- or full-path Lua invocation on the pre-bound shard counter.
 func incRedisLuaTier(counters []prometheus.Counter, shard int) {
 	if shard >= 0 && shard < len(counters) {
 		counters[shard].Inc()
@@ -172,7 +163,6 @@ func incRedisLuaTier(counters []prometheus.Counter, shard int) {
 	metrics.RedisLuaFastPathTotal.WithLabelValues(strconv.Itoa(shard)).Inc()
 }
 
-// observeRedisLuaTier records fast-path Lua duration on the pre-bound shard observer.
 func observeRedisLuaTier(observers []prometheus.Observer, shard int, seconds float64) {
 	if shard >= 0 && shard < len(observers) {
 		observers[shard].Observe(seconds)
@@ -181,7 +171,6 @@ func observeRedisLuaTier(observers []prometheus.Observer, shard int, seconds flo
 	metrics.RedisLuaFastDuration.WithLabelValues(strconv.Itoa(shard)).Observe(seconds)
 }
 
-// newRedisOpsCounters pre-binds per-shard unified-filter Redis op counters.
 func newRedisOpsCounters(numShards int) []prometheus.Counter {
 	if numShards <= 0 {
 		numShards = 1
@@ -193,7 +182,6 @@ func newRedisOpsCounters(numShards int) []prometheus.Counter {
 	return counters
 }
 
-// incRedisOps records one EvalSha round trip on the pre-bound shard counter when available.
 func incRedisOps(counters []prometheus.Counter, shard int) {
 	if shard >= 0 && shard < len(counters) {
 		counters[shard].Inc()

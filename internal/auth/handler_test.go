@@ -13,7 +13,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// TestHandler_RegisterRequiresAdminKey proves registration stays closed without the admin secret.
 func TestHandler_RegisterRequiresAdminKey(t *testing.T) {
 	handler := NewHandler(nil, &config.Config{AdminAPIKey: "secret-admin-key"})
 

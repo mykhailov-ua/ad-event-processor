@@ -1,7 +1,5 @@
 package ingestion
 
-// http2_conn.go — HTTP/2 connection FSM for gnet tracker ingress (M5-C).
-
 type h2ConnState struct {
 	established     bool
 	settingsSent    bool
@@ -11,7 +9,7 @@ type h2ConnState struct {
 	dataStreamID    uint32
 	settingsScratch [40]byte
 	settingsLen     int
-	incompleteSpin  uint8 // M14-07: consecutive errIncompleteRequest with consumed=0
+	incompleteSpin  uint8
 }
 
 func newH2ConnState() h2ConnState {
@@ -40,7 +38,6 @@ func (s *h2ConnState) appendSettingsOut(extra []byte) []byte {
 	return s.settingsScratch[:s.settingsLen]
 }
 
-// parseH2Ingress consumes H2 frames from buf and returns one complete request when ready.
 func parseH2Ingress(buf []byte, st *h2ConnState, maxBody int64) (consumed int, req parsedHTTPRequest, streamID uint32, settingsOut []byte, err error) {
 	off := 0
 	n := len(buf)

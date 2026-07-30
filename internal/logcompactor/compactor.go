@@ -11,7 +11,6 @@ import (
 	"github.com/klauspost/compress/zstd"
 )
 
-// Config configures the compactor scan loop and downsampling policy.
 type Config struct {
 	HotMinAge                time.Duration
 	SampleRate               uint64
@@ -22,7 +21,6 @@ type Config struct {
 	SourceDir                string
 }
 
-// localTierOps extends TierStore with claim/verify lifecycle used by the local backend.
 type localTierOps interface {
 	TierStore
 	ClaimHot(ctx context.Context, obj TierObject) (TierObject, error)
@@ -33,7 +31,6 @@ type localTierOps interface {
 	RemoveWarmArtifacts(destKey string)
 }
 
-// checkpointStore persists compaction progress across restarts.
 type checkpointStore interface {
 	Load() error
 	IsCompacted(sourceKey, sourceSHA256 string) bool
@@ -41,7 +38,6 @@ type checkpointStore interface {
 	Save(record CheckpointRecord) error
 }
 
-// Compactor scans hot-tier segments and writes downsampled warm-tier output.
 type Compactor struct {
 	cfg        Config
 	store      TierStore
@@ -53,17 +49,14 @@ type Compactor struct {
 	inflight   map[string]struct{}
 }
 
-// CompactorOption configures optional compactor behaviour.
 type CompactorOption func(*Compactor)
 
-// WithLeaderLock enables single-writer leader election for multi-instance deployments.
 func WithLeaderLock(lock *FileLeaderLock) CompactorOption {
 	return func(c *Compactor) {
 		c.leader = lock
 	}
 }
 
-// NewCompactor wires tier storage and checkpoint persistence.
 func NewCompactor(cfg Config, store TierStore, checkpoint checkpointStore, decryptKey []byte, opts ...CompactorOption) *Compactor {
 	if cfg.SampleRate == 0 {
 		cfg.SampleRate = 1000
@@ -96,7 +89,6 @@ func NewCompactor(cfg Config, store TierStore, checkpoint checkpointStore, decry
 	return c
 }
 
-// Run executes compaction passes until ctx is cancelled.
 func (c *Compactor) Run(ctx context.Context) error {
 	if err := c.checkpoint.Load(); err != nil {
 		return err
@@ -141,7 +133,6 @@ func (c *Compactor) runLeaderPass(ctx context.Context) error {
 	return c.RunOnce(ctx)
 }
 
-// RunOnce executes a single compaction scan pass.
 func (c *Compactor) RunOnce(ctx context.Context) error {
 	if c.local == nil {
 		return ErrCloudStoreNotConfigured

@@ -25,7 +25,6 @@ func rtbModeFromConfig(cfg *config.Config) uint8 {
 	}
 }
 
-// ConfigureTrackRtb wires RTB auction state into the shared track processor and Lua filter.
 func ConfigureTrackRtb(proc *trackProcessor, cfg *config.Config, catalog *RtbCatalog, geo GeoProvider, unified *UnifiedFilter, watcher *SettingsWatcher) {
 	if proc == nil || cfg == nil || catalog == nil || !cfg.RtbEnabled() {
 		return
@@ -55,14 +54,12 @@ func ConfigureTrackRtb(proc *trackProcessor, cfg *config.Config, catalog *RtbCat
 	}
 }
 
-// ConfigureIngestGeo wires the shared GeoIP provider used for ingest geo deduplication.
 func ConfigureIngestGeo(proc *trackProcessor, geo GeoProvider) {
 	if proc != nil {
 		proc.ingestGeo = geo
 	}
 }
 
-// ConfigureHandlerRtb wires RTB into a gnet AdsPacketHandler.
 func (h *AdsPacketHandler) ConfigureRtb(catalog *RtbCatalog, geo GeoProvider, unified *UnifiedFilter, watcher *SettingsWatcher) {
 	if h == nil {
 		return
@@ -70,7 +67,6 @@ func (h *AdsPacketHandler) ConfigureRtb(catalog *RtbCatalog, geo GeoProvider, un
 	ConfigureTrackRtb(&h.trackProc, h.cfg, catalog, geo, unified, watcher)
 }
 
-// ConfigureHandlerIngestGeo wires shared GeoIP lookup for ingest geo deduplication.
 func (h *AdsPacketHandler) ConfigureIngestGeo(geo GeoProvider) {
 	if h == nil {
 		return
@@ -86,7 +82,6 @@ func buildRtbTargeting(evt *campaignmodel.Event, deviceType []byte, floorMicro i
 
 	out := RtbTargetingInput{GeoHash: geoHash}
 
-	// Try OpenRTB 3.0 FSM first (shared with ingress / M12-02).
 	if evt != nil && len(evt.Payload) > 0 {
 		var parsed OpenRTB3Parsed
 		var haveParsed bool
@@ -118,7 +113,6 @@ func buildRtbTargeting(evt *campaignmodel.Event, deviceType []byte, floorMicro i
 		}
 	}
 
-	// Legacy flat bid_micro / category_mask (deprecated; counted for one-release sunset).
 	if evt != nil && len(evt.Payload) > 0 {
 		incIngressLegacyJSON()
 	}

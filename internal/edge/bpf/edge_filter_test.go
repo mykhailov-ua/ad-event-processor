@@ -48,25 +48,23 @@ func buildSYNPacket(t *testing.T, src, dst net.IP, dport uint16) []byte {
 	)
 	pkt := make([]byte, ethLen+ipLen+tcpLen)
 
-	// Ethernet: IPv4 ethertype.
 	binary.BigEndian.PutUint16(pkt[12:14], 0x0800)
 
 	ip := pkt[ethLen:]
 	ip[0] = 0x45
-	ip[9] = 6 // TCP
+	ip[9] = 6
 	copy(ip[12:16], src4)
 	copy(ip[16:20], dst4)
 
 	tcp := pkt[ethLen+ipLen:]
-	tcp[12] = 0x50                              // data offset = 5 (20-byte header)
-	binary.BigEndian.PutUint16(tcp[0:2], 12345) // non-zero src port (A2 validity)
+	tcp[12] = 0x50
+	binary.BigEndian.PutUint16(tcp[0:2], 12345)
 	binary.BigEndian.PutUint16(tcp[2:4], dport)
-	tcp[13] = 0x02 // SYN
+	tcp[13] = 0x02
 
 	return pkt
 }
 
-// buildSYNPacketWithMSS builds a SYN with window, TTL, and a 4-byte MSS TCP option.
 func buildSYNPacketWithMSS(t *testing.T, src, dst net.IP, dport uint16, window uint16, ttl byte, mss uint16) []byte {
 	t.Helper()
 	src4 := src.To4()
@@ -77,7 +75,7 @@ func buildSYNPacketWithMSS(t *testing.T, src, dst net.IP, dport uint16, window u
 	const (
 		ethLen  = 14
 		ipLen   = 20
-		tcpDoff = 6 // 24-byte header: 20 fixed + 4-byte MSS option
+		tcpDoff = 6
 		tcpLen  = tcpDoff * 4
 	)
 	pkt := make([]byte, ethLen+ipLen+tcpLen)
@@ -89,7 +87,7 @@ func buildSYNPacketWithMSS(t *testing.T, src, dst net.IP, dport uint16, window u
 	ip[1] = 0
 	binary.BigEndian.PutUint16(ip[2:4], uint16(ipLen+tcpLen))
 	ip[8] = ttl
-	ip[9] = 6 // TCP
+	ip[9] = 6
 	copy(ip[12:16], src4)
 	copy(ip[16:20], dst4)
 
@@ -98,9 +96,9 @@ func buildSYNPacketWithMSS(t *testing.T, src, dst net.IP, dport uint16, window u
 	binary.BigEndian.PutUint16(tcp[0:2], 12345)
 	binary.BigEndian.PutUint16(tcp[2:4], dport)
 	binary.BigEndian.PutUint16(tcp[14:16], window)
-	tcp[13] = 0x02 // SYN
-	tcp[20] = 0x02 // MSS kind
-	tcp[21] = 0x04 // MSS length
+	tcp[13] = 0x02
+	tcp[20] = 0x02
+	tcp[21] = 0x04
 	binary.BigEndian.PutUint16(tcp[22:24], mss)
 
 	return pkt
@@ -109,21 +107,21 @@ func buildSYNPacketWithMSS(t *testing.T, src, dst net.IP, dport uint16, window u
 func buildACKPacket(t *testing.T, src, dst net.IP, dport uint16) []byte {
 	t.Helper()
 	pkt := buildSYNPacket(t, src, dst, dport)
-	pkt[len(pkt)-7] = 0x10 // ACK instead of SYN
+	pkt[len(pkt)-7] = 0x10
 	return pkt
 }
 
 func buildPSHACKPacket(t *testing.T, src, dst net.IP, dport uint16) []byte {
 	t.Helper()
 	pkt := buildACKPacket(t, src, dst, dport)
-	pkt[len(pkt)-7] = 0x18 // PSH+ACK - established connection flood
+	pkt[len(pkt)-7] = 0x18
 	return pkt
 }
 
 func buildRSTPacket(t *testing.T, src, dst net.IP, dport uint16) []byte {
 	t.Helper()
 	pkt := buildACKPacket(t, src, dst, dport)
-	pkt[len(pkt)-7] = 0x04 // RST
+	pkt[len(pkt)-7] = 0x04
 	return pkt
 }
 
@@ -147,7 +145,7 @@ func buildUDPPacket(t *testing.T, src, dst net.IP, dport uint16) []byte {
 
 	ip := pkt[ethLen:]
 	ip[0] = 0x45
-	ip[9] = 17 // UDP
+	ip[9] = 17
 	copy(ip[12:16], src4)
 	copy(ip[16:20], dst4)
 
@@ -169,7 +167,7 @@ func buildSCTPPacket(t *testing.T, src, dst net.IP, dport uint16) []byte {
 
 	ip := pkt[ethLen:]
 	ip[0] = 0x45
-	ip[9] = 132 // IPPROTO_SCTP
+	ip[9] = 132
 	copy(ip[12:16], src4)
 	copy(ip[16:20], dst4)
 
@@ -191,7 +189,7 @@ func buildICMPPacket(t *testing.T, src, dst net.IP) []byte {
 
 	ip := pkt[ethLen:]
 	ip[0] = 0x45
-	ip[9] = 1 // ICMP
+	ip[9] = 1
 	copy(ip[12:16], src4)
 	copy(ip[16:20], dst4)
 	return pkt
@@ -215,7 +213,6 @@ func runXDP(t *testing.T, prog *ebpf.Program, pkt []byte) uint32 {
 	return ret
 }
 
-// Guards blocklisted source is dropped before reaching userspace.
 func TestXDP_dropBlocklistedSource(t *testing.T) {
 	objs := loadTestObjects(t)
 
@@ -223,10 +220,9 @@ func TestXDP_dropBlocklistedSource(t *testing.T) {
 	require.NoError(t, objs.BlocklistV4.Update(key, uint8(1), ebpf.UpdateAny))
 
 	pkt := buildSYNPacket(t, net.IPv4(192, 0, 2, 1), net.IPv4(10, 0, 0, 1), trackerPort)
-	assert.Equal(t, uint32(1), runXDP(t, objs.XdpEdgeFilter, pkt)) // XDP_DROP
+	assert.Equal(t, uint32(1), runXDP(t, objs.XdpEdgeFilter, pkt))
 }
 
-// Guards non-tracker port bypasses filtering.
 func TestXDP_passNonTrackerPort(t *testing.T) {
 	objs := loadTestObjects(t)
 
@@ -234,10 +230,9 @@ func TestXDP_passNonTrackerPort(t *testing.T) {
 	require.NoError(t, objs.BlocklistV4.Update(key, uint8(1), ebpf.UpdateAny))
 
 	pkt := buildSYNPacket(t, net.IPv4(192, 0, 2, 1), net.IPv4(10, 0, 0, 1), 443)
-	assert.Equal(t, uint32(2), runXDP(t, objs.XdpEdgeFilter, pkt)) // XDP_PASS
+	assert.Equal(t, uint32(2), runXDP(t, objs.XdpEdgeFilter, pkt))
 }
 
-// Guards per-IP SYN flood is dropped after limit.
 func TestXDP_dropPerIPSYNFlood(t *testing.T) {
 	objs := loadTestObjects(t)
 	src := net.IPv4(198, 51, 100, 50)
@@ -247,21 +242,18 @@ func TestXDP_dropPerIPSYNFlood(t *testing.T) {
 	for i := 0; i < 70; i++ {
 		last = runXDP(t, objs.XdpEdgeFilter, pkt)
 	}
-	assert.Equal(t, uint32(1), last) // XDP_DROP after SYN_LIMIT_PER_SEC
+	assert.Equal(t, uint32(1), last)
 }
 
-// Guards global SYN cap drops new handshakes under distributed flood simulation.
 func TestXDP_dropGlobalSYNFlood(t *testing.T) {
 	objs := loadTestObjects(t)
 
-	// Set assumed_cpus to 1 for deterministic single-CPU test behavior.
 	key := uint32(0)
 	cfg := DefaultConfig(InitOptions{})
 	cfg.AssumedCpus = 1
 	cfg.GlobalSynLimit = 1000
 	require.NoError(t, objs.Config.Update(&key, &cfg, ebpf.UpdateAny))
 
-	// GLOBAL_SYN_PER_CPU = 1000/1 = 1000 per CPU window.
 	const limit = 1000
 	var last uint32
 	for i := 0; i < limit+10; i++ {
@@ -272,7 +264,6 @@ func TestXDP_dropGlobalSYNFlood(t *testing.T) {
 	assert.Equal(t, uint32(1), last)
 }
 
-// Guards established ACK traffic is not subject to SYN limits.
 func TestXDP_passACKTraffic(t *testing.T) {
 	objs := loadTestObjects(t)
 	src := net.IPv4(198, 51, 100, 99)
@@ -283,7 +274,6 @@ func TestXDP_passACKTraffic(t *testing.T) {
 	}
 }
 
-// Guards per-IP PPS token bucket drops established-connection floods (~2000 burst).
 func TestXDP_dropPPSFlood(t *testing.T) {
 	objs := loadTestObjects(t)
 	src := net.IPv4(198, 18, 5, 42)
@@ -293,10 +283,9 @@ func TestXDP_dropPPSFlood(t *testing.T) {
 	for i := 0; i < 2100; i++ {
 		last = runXDP(t, objs.XdpEdgeFilter, pkt)
 	}
-	assert.Equal(t, uint32(1), last) // XDP_DROP after PPS_BURST exhausted
+	assert.Equal(t, uint32(1), last)
 }
 
-// Guards PPS buckets are independent per source IP.
 func TestXDP_ppsPerIPIndependent(t *testing.T) {
 	objs := loadTestObjects(t)
 	srcA := net.IPv4(198, 18, 5, 1)
@@ -311,7 +300,6 @@ func TestXDP_ppsPerIPIndependent(t *testing.T) {
 	assert.Equal(t, uint32(2), runXDP(t, objs.XdpEdgeFilter, pktB))
 }
 
-// Guards SYN packets are also charged against the PPS bucket.
 func TestXDP_synCountsTowardPPS(t *testing.T) {
 	objs := loadTestObjects(t)
 	src := net.IPv4(198, 18, 5, 99)
@@ -321,11 +309,9 @@ func TestXDP_synCountsTowardPPS(t *testing.T) {
 	for i := 0; i < 2100; i++ {
 		last = runXDP(t, objs.XdpEdgeFilter, pkt)
 	}
-	// SYN limit (64) fires before PPS burst on pure SYN flood.
 	assert.Equal(t, uint32(1), last)
 }
 
-// Guards allowlisted source bypasses blocklist (checked before deny maps).
 func TestXDP_allowBypassBlocklist(t *testing.T) {
 	objs := loadTestObjects(t)
 
@@ -338,7 +324,6 @@ func TestXDP_allowBypassBlocklist(t *testing.T) {
 	assert.Equal(t, uint32(2), runXDP(t, objs.XdpEdgeFilter, pkt))
 }
 
-// Guards allowlisted CIDR match bypasses per-IP PPS limits.
 func TestXDP_allowBypassPPS(t *testing.T) {
 	objs := loadTestObjects(t)
 
@@ -355,7 +340,6 @@ func TestXDP_allowBypassPPS(t *testing.T) {
 	}
 }
 
-// Guards LPM longest-prefix match for partner NAT ranges.
 func TestXDP_allowCIDRPrefix(t *testing.T) {
 	objs := loadTestObjects(t)
 
@@ -401,7 +385,7 @@ func TestXDP_dropInvalidTCP(t *testing.T) {
 
 	t.Run("doff_lt_5", func(t *testing.T) {
 		pkt := buildSYNPacket(t, src, dst, trackerPort)
-		pkt[14+20+12] = 0x40 // data offset = 4
+		pkt[14+20+12] = 0x40
 		assert.Equal(t, uint32(1), runXDP(t, objs.XdpEdgeFilter, pkt))
 	})
 

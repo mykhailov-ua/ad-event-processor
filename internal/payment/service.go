@@ -18,7 +18,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Service owns intent persistence and webhook state transitions in the payment schema.
 type Service struct {
 	pool      *pgxpool.Pool
 	provider  Provider
@@ -26,7 +25,6 @@ type Service struct {
 	cfg       *config.Config
 }
 
-// NewService binds Postgres and a checkout provider so intent persistence and provider calls share one lifecycle.
 func NewService(pool *pgxpool.Pool, prov Provider, cfg *config.Config) *Service {
 	providers := make(map[string]Provider)
 	providers[prov.Name()] = prov
@@ -41,14 +39,11 @@ func NewService(pool *pgxpool.Pool, prov Provider, cfg *config.Config) *Service 
 	}
 }
 
-// CreateIntentResult carries checkout URL alongside the persisted intent for idempotent gRPC and HTMX responses.
 type CreateIntentResult struct {
 	Intent      db.PaymentPaymentIntent
 	CheckoutURL string
 }
 
-// CreatePaymentIntent claims the idempotency key under a brief advisory lock, calls the provider
-// without holding a pool connection, then finalizes the intent row (M-DB-PG-5).
 func (service *Service) CreatePaymentIntent(ctx context.Context, customerID uuid.UUID, amountMicro int64, currency string, idempotencyKey string, metadata map[string]string) (CreateIntentResult, error) {
 	prov := service.provider
 	if pName, ok := metadata["provider"]; ok {
@@ -225,7 +220,6 @@ func (service *Service) markIntentFailed(ctx context.Context, intentID pgtype.UU
 	return err
 }
 
-// reconcileIdempotentIntent enforces that an idempotency key cannot be reused with different money fields.
 func reconcileIdempotentIntent(existing db.PaymentPaymentIntent, customerID uuid.UUID, amountMicro int64, currency string) (CreateIntentResult, error) {
 	existCust := uuid.UUID(existing.CustomerID.Bytes)
 	if existCust != customerID || existing.AmountMicro != amountMicro || existing.Currency != currency {
@@ -234,7 +228,6 @@ func reconcileIdempotentIntent(existing db.PaymentPaymentIntent, customerID uuid
 	return CreateIntentResult{Intent: existing, CheckoutURL: checkoutURLFromIntent(existing)}, nil
 }
 
-// GetPaymentIntent is a thin read path for status polling and admin lookups.
 func (s *Service) GetPaymentIntent(ctx context.Context, intentID uuid.UUID) (db.PaymentPaymentIntent, error) {
 	intent, err := db.New(s.pool).GetPaymentIntent(ctx, pgtype.UUID{Bytes: intentID, Valid: true})
 	if err != nil {
@@ -243,7 +236,6 @@ func (s *Service) GetPaymentIntent(ctx context.Context, intentID uuid.UUID) (db.
 	return intent, nil
 }
 
-// ListPaymentIntents returns paginated history because customer ledgers can accumulate many intents over time.
 func (s *Service) ListPaymentIntents(ctx context.Context, customerID uuid.UUID, limit, offset int32) ([]db.PaymentPaymentIntent, int64, error) {
 	q := db.New(s.pool)
 	custUUID := pgtype.UUID{Bytes: customerID, Valid: true}
@@ -258,7 +250,6 @@ func (s *Service) ListPaymentIntents(ctx context.Context, customerID uuid.UUID, 
 	)
 }
 
-// isValidTransition blocks backward moves that could enqueue a second settlement or mask chargebacks.
 func isValidTransition(oldStatus, newStatus db.PaymentPaymentIntentStatus) bool {
 	if oldStatus == newStatus {
 		return true
@@ -287,13 +278,10 @@ func isValidTransition(oldStatus, newStatus db.PaymentPaymentIntentStatus) bool 
 	}
 }
 
-// ledgerIdempotencyKey is derived from intent id so settlement retries cannot mint duplicate ledger rows.
 func ledgerIdempotencyKey(intentID uuid.UUID) string {
 	return "payment:" + intentID.String()
 }
 
-// ProcessStripeWebhook commits intent status and outbox enqueue in one transaction so settlement
-// is never queued for a webhook that did not durably record success.
 func (service *Service) ProcessStripeWebhook(ctx context.Context, eventID string, eventType string, payload []byte, providerRef string, amountMicro int64, rawEvent string) error {
 	h := sha256.New()
 	h.Write(payload)
@@ -423,7 +411,6 @@ func (service *Service) ProcessStripeWebhook(ctx context.Context, eventID string
 	return err
 }
 
-// ProcessCryptoWebhook commits crypto intent status and hold creation in one transaction.
 func (service *Service) ProcessCryptoWebhook(ctx context.Context, eventID string, eventType string, payload []byte, providerRef string, amountMicro int64, txHash string, confirmations int) error {
 	h := sha256.New()
 	h.Write(payload)
@@ -483,7 +470,6 @@ func (service *Service) ProcessCryptoWebhook(ctx context.Context, eventID string
 			return updateCryptoWebhookStatus(ctx, txQueries, eventID, db.PaymentWebhookEventStatusIGNORED, "zero or negative amount")
 		}
 
-		// Underpay check: Reject below expected amount or minimum payment
 		if amountMicro < intent.AmountMicro {
 			slog.Warn("crypto webhook amount underpay", "intent_id", uuid.UUID(intent.ID.Bytes), "intent_amount", intent.AmountMicro, "webhook_amount", amountMicro)
 			_, _ = txQueries.UpdatePaymentIntentStatus(ctx, db.UpdatePaymentIntentStatusParams{
@@ -504,7 +490,6 @@ func (service *Service) ProcessCryptoWebhook(ctx context.Context, eventID string
 			return updateCryptoWebhookStatus(ctx, txQueries, eventID, db.PaymentWebhookEventStatusIGNORED, "below minimum payment limit")
 		}
 
-		// Check confirmation depth
 		if confirmations < service.cfg.CryptoConfirmationDepth {
 			slog.Info("crypto webhook pending confirmations", "intent_id", uuid.UUID(intent.ID.Bytes), "confirmations", confirmations, "required", service.cfg.CryptoConfirmationDepth)
 			_, err = txQueries.UpdatePaymentIntentStatus(ctx, db.UpdatePaymentIntentStatusParams{
@@ -518,7 +503,6 @@ func (service *Service) ProcessCryptoWebhook(ctx context.Context, eventID string
 			return updateCryptoWebhookStatus(ctx, txQueries, eventID, db.PaymentWebhookEventStatusPROCESSED, "pending confirmations")
 		}
 
-		// We have enough confirmations!
 		targetStatus := db.PaymentPaymentIntentStatusSUCCEEDED
 		if !isValidTransition(intent.Status, targetStatus) {
 			slog.Warn("invalid state transition skipped", "intent_id", uuid.UUID(intent.ID.Bytes), "from", intent.Status, "to", targetStatus)
@@ -538,12 +522,11 @@ func (service *Service) ProcessCryptoWebhook(ctx context.Context, eventID string
 		}
 
 		if !alreadySettled {
-			// Create a crypto hold record instead of immediately settling balance
 			holdID, err := uuid.NewV7()
 			if err != nil {
 				return fmt.Errorf("failed to generate hold id: %w", err)
 			}
-			releaseAt := time.Now().UTC().Add(14 * 24 * time.Hour) // 14-day hold
+			releaseAt := time.Now().UTC().Add(14 * 24 * time.Hour)
 
 			_, err = tx.Exec(ctx, `
 				INSERT INTO payment.crypto_holds (id, payment_intent_id, customer_id, amount_micro, currency, tx_hash, status, release_at)
@@ -563,7 +546,6 @@ func (service *Service) ProcessCryptoWebhook(ctx context.Context, eventID string
 	return err
 }
 
-// ProcessStripeRefundWebhook records a Stripe refund and enqueues REVERSE_BALANCE when funds are returned.
 func (service *Service) ProcessStripeRefundWebhook(ctx context.Context, eventID string, eventType string, payload []byte, providerRefundID string, paymentIntentRef string, refundAmountMicro int64, refundStatus string) error {
 	h := sha256.New()
 	h.Write(payload)
