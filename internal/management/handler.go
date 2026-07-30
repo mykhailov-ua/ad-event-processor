@@ -53,6 +53,9 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 
 	registerAdminGoneRoutes(mux)
 	registerRootHandler(mux)
+	registerOpsDashboardRoute(mux, func(next http.HandlerFunc) http.HandlerFunc {
+		return h.perm(next, "shards:read")
+	})
 	h.registerRegionIngestRoutes(mux)
 }
 

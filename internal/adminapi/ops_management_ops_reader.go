@@ -14,4 +14,6 @@ type ManagementOpsReader interface {
 	ExportAuditCSV(ctx context.Context, cursor string, w io.Writer) (AuditExportResult, error)
 	LookupLedgerIDForPaymentIntent(ctx context.Context, intentID string) (string, error)
 	ListReconRuns(ctx context.Context, service string, limit, offset int32) ([]ReconRunDTO, int64, error)
+	GetDashboardSummary(ctx context.Context) (DashboardSummaryDTO, error)
+	GetDashboardMetrics(ctx context.Context, rangeHours int, metricName string) (DashboardMetricsDTO, error)
 }

@@ -55,6 +55,7 @@ func (h *OpsHTTPHandlers) Register(mux *http.ServeMux) {
 	h.registerRolesRoutes(mux)
 	h.registerPlansRoutes(mux)
 	h.registerBlacklistRoutes(mux)
+	h.registerDashboardRoutes(mux)
 }
 
 func (h *OpsHTTPHandlers) getIncidents(w http.ResponseWriter, r *http.Request) {

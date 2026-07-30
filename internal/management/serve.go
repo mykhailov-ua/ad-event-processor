@@ -402,6 +402,13 @@ func Serve(ctx context.Context, cfg *config.Config) error {
 		alertmanagerWebhook.Register(mux)
 		slog.Info("alertmanager webhook adapter enabled")
 	}
+	scrapeURL := os.Getenv("OPS_METRICS_SCRAPE_URL")
+	if scrapeURL == "" {
+		scrapeURL = "http://127.0.0.1:" + cfg.ManagementPort + "/metrics"
+	}
+	svc.StartOpsMetricScraper(ctx, scrapeURL)
+	slog.Info("ops metric scraper enabled", "url", scrapeURL)
+
 	authHandler.RegisterRoutes(mux)
 	mgmtHandler.RegisterRoutes(mux)
 

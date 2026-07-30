@@ -85,6 +85,8 @@ var routeCatalog = []Route{
 	{Method: "GET", Path: "/api/v1/ops/blacklist"},
 	{Method: "POST", Path: "/api/v1/ops/blacklist"},
 	{Method: "DELETE", Path: "/api/v1/ops/blacklist"},
+	{Method: "GET", Path: "/api/v1/ops/dashboard/metrics"},
+	{Method: "GET", Path: "/api/v1/ops/dashboard/summary"},
 	{Method: "GET", Path: "/api/v1/ops/dlq"},
 	{Method: "POST", Path: "/api/v1/ops/dlq/{id}/retry"},
 	{Method: "GET", Path: "/api/v1/ops/incidents"},

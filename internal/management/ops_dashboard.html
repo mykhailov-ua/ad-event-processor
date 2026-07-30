@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>eSPX Ops Dashboard</title>
+<style>
+body{font-family:system-ui,sans-serif;margin:1.5rem;background:#0f1419;color:#e7ecf3}
+h1{font-size:1.25rem;margin:0 0 1rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(10rem,1fr));gap:.75rem}
+.card{border:1px solid #2a3441;border-radius:.5rem;padding:.75rem;background:#151b23}
+.card h2{font-size:.85rem;margin:0 0 .35rem;font-weight:600}
+.badge{display:inline-block;padding:.15rem .45rem;border-radius:.25rem;font-size:.75rem;text-transform:uppercase}
+.ok{background:#1f3d2d;color:#8dffb0}
+.degraded{background:#3d341f;color:#ffd98d}
+.down,.unknown{background:#3d1f1f;color:#ff9a9a}
+.disabled{background:#2a2f36;color:#aab4c0}
+.alert{margin:.75rem 0;padding:.6rem .8rem;border-radius:.4rem;background:#4a1c1c;color:#ffb4b4}
+.meta{font-size:.85rem;color:#9aa7b8;margin-bottom:1rem}
+input,button{font:inherit;padding:.35rem .5rem;margin-right:.5rem}
+</style>
+</head>
+<body>
+<h1>eSPX Lite Ops Dashboard</h1>
+<div class="meta">
+<label>API key <input id="apiKey" type="password" placeholder="X-Admin-API-Key"></label>
+<button id="refresh">Refresh</button>
+<span id="generated"></span>
+</div>
+<div id="driftAlert" class="alert" hidden>Reconciliation drift detected</div>
+<div class="grid" id="topology"></div>
+<script>
+const keyInput=document.getElementById('apiKey');
+const saved=localStorage.getItem('espx_ops_api_key');
+if(saved){keyInput.value=saved;}
+function headers(){
+  const h={'Accept':'application/json'};
+  const k=keyInput.value.trim();
+  if(k){h['X-Admin-API-Key']=k;localStorage.setItem('espx_ops_api_key',k);}
+  return h;
+}
+function badge(status){
+  const cls=['ok','degraded','down','unknown','disabled'].includes(status)?status:'unknown';
+  return '<span class="badge '+cls+'">'+status+'</span>';
+}
+async function load(){
+  const [summaryRes,metricsRes]=await Promise.all([
+    fetch('/api/v1/ops/dashboard/summary',{headers:headers()}),
+    fetch('/api/v1/ops/dashboard/metrics?range=24h',{headers:headers()})
+  ]);
+  if(!summaryRes.ok){throw new Error('summary '+summaryRes.status);}
+  const summary=await summaryRes.json();
+  document.getElementById('generated').textContent=
+    'RPS ~'+summary.rps_estimate.toFixed(1)+' | outbox '+summary.outbox_pending+
+    ' | drift '+summary.drift_micro_max+' | '+summary.generated_at;
+  const drift=document.getElementById('driftAlert');
+  drift.hidden=!summary.drift_alert;
+  const topo=document.getElementById('topology');
+  topo.innerHTML=summary.services.map(s=>
+    '<div class="card"><h2>'+s.name+'</h2>'+badge(s.status)+
+    (s.detail?'<div style="font-size:.75rem;margin-top:.35rem;color:#9aa7b8">'+s.detail+'</div>':'')+
+    '</div>').join('');
+  if(metricsRes.ok){void metricsRes.json();}
+}
+document.getElementById('refresh').onclick=()=>load().catch(e=>alert(e.message));
+load().catch(e=>alert(e.message));
+setInterval(()=>load().catch(()=>{}),15000);
+</script>
+</body>
+</html>
