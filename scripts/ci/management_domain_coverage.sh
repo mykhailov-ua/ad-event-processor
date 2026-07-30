@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-COVER="${TMPDIR:-/tmp}/espx-mgmt-domain.cover"
-
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
+
+COVER="${TMPDIR:-/tmp}/espx-mgmt-domain.cover"
 
 go test ./internal/management -short -count=1 \
 	-run '^(TestDomainRegistry|TestBoundaryDTO|TestBilling_|TestOperation_|TestRecon_|TestNode_|TestCampaign_|TestCore_|TestScoreNode|TestForecast_|TestPlatform_|TestMapServiceError|TestParseMoneyMicro|TestLeaseFencing|TestAuthHandler|TestCORSMiddleware|TestCSRFMiddleware|TestSettlementGRPC)' \

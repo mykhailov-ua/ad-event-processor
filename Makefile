@@ -1,4 +1,4 @@
-.PHONY: fmt gen lint test test-fast test-unit test-integration test-fault test-int test-alloc-gate management-domain-coverage test-full test-resilience test-broker-fault-lab test-sentinel-resilience build proto check-local check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-bpf openapi-lint openapi-gen
+.PHONY: fmt gen lint test test-fast test-unit test-integration test-fault test-int test-alloc-gate management-domain-coverage test-full test-resilience test-broker-fault-lab test-sentinel-resilience build proto check-local check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-bpf openapi-lint openapi-gen check-scripts-layout dev-preflight-smoke perf-gate-smoke edge-phase0
 
 fmt:
 	go fmt ./...
@@ -76,6 +76,18 @@ bpf-session-stop:
 
 load-test-bpf: bpf-dev
 	sudo ESPX_BPF_PROBE=1 ESPX_BPF_SAMPLE_RATE=$${ESPX_BPF_SAMPLE_RATE:-10} bash scripts/load/malformed.sh business
+
+check-scripts-layout:
+	bash scripts/ci/check_scripts_layout.sh
+
+dev-preflight-smoke:
+	bash scripts/local-dev/dev_preflight.sh
+
+perf-gate-smoke:
+	bash scripts/perf-gate/perf_gate_run.sh
+
+edge-phase0:
+	bash scripts/edge-tuning/edge_phase0.sh
 
 proto:
 	bash scripts/ci/gen.sh --proto

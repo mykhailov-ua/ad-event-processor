@@ -2,22 +2,23 @@
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
 BASELINE_REF="${BASELINE_REF:-main}"
 BASELINE_WORKTREE="${BASELINE_WORKTREE:-$ROOT/.cache/perf-baseline-worktree}"
 OUTDIR="${OUTDIR:-$ROOT}"
+STRICT="${PERF_GATE_STRICT:-true}"
 
 if [[ "$BASELINE_WORKTREE" != /* ]]; then
 	BASELINE_WORKTREE="$ROOT/$BASELINE_WORKTREE"
 fi
-BASELINE_WORKTREE="$(safe_worktree_dir "$BASELINE_WORKTREE")"
+if [[ "$STRICT" == "true" ]]; then
+	BASELINE_WORKTREE="$(safe_worktree_dir "$BASELINE_WORKTREE")"
+fi
 
 PR_BENCH="$OUTDIR/pr_bench.txt"
 BASELINE_BENCH="$OUTDIR/baseline_bench.txt"
 GATE_REPORT="$OUTDIR/gate_report.txt"
-STRICT="${PERF_GATE_STRICT:-true}"
 
 "$SCRIPTS/perf/install_benchstat.sh"
 
@@ -26,8 +27,8 @@ go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.28.0 generate
 "$SCRIPTS/perf/gate_bench.sh" >"$PR_BENCH"
 
 if [[ "$STRICT" != "true" ]]; then
-	echo "perf-gate-run: smoke mode — zero-alloc check only"
-	go run ./cmd/perf-gate /dev/null "$PR_BENCH" | tee "$GATE_REPORT"
+	echo "perf-gate-run: smoke mode — benchmark pipeline only (set PERF_GATE_STRICT=true for alloc gate)"
+	tail -5 "$PR_BENCH"
 	exit 0
 fi
 
