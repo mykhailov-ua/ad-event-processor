@@ -1,6 +1,8 @@
 package ivtdetector
 
 import (
+	"espx/internal/fraudscoring"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -41,4 +43,28 @@ var (
 		Name: "fraud_enforcement_enqueued_total",
 		Help: "Total number of ML enforcement threats enqueued",
 	}, []string{"action"})
+
+	mlShadowScore = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name:    "ml_shadow_score",
+		Help:    "Raw ML probability scores from shadow scoring",
+		Buckets: []float64{0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1.0},
+	})
+
+	mlShadowTierTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ml_shadow_tier_total",
+		Help: "Shadow scoring decisions by fraud tier",
+	}, []string{"tier"})
+
+	mlShadowActionTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ml_shadow_action_total",
+		Help: "Shadow scoring enforcement actions (boost, ghost, blacklist)",
+	}, []string{"action"})
 )
+
+func recordShadowMetrics(mlScore float64, tier fraudscoring.FraudTier, action string) {
+	mlShadowScore.Observe(mlScore)
+	mlShadowTierTotal.WithLabelValues(string(tier)).Inc()
+	if action != "" {
+		mlShadowActionTotal.WithLabelValues(action).Inc()
+	}
+}

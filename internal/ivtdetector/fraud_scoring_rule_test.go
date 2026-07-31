@@ -2,6 +2,8 @@ package ivtdetector
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -13,6 +15,26 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func testFraudModelPath(t *testing.T) string {
+	t.Helper()
+	if path := os.Getenv("FRAUD_TEST_MODEL"); path != "" {
+		if _, err := os.Stat(path); err == nil {
+			return path
+		}
+		t.Skipf("FRAUD_TEST_MODEL not found: %s", path)
+	}
+	candidates := []string{
+		filepath.Join("..", "..", "var", "fraudscore", "artifacts", "model.txt"),
+		filepath.Join("..", "fraudscoring", "testdata", "model.txt"),
+	}
+	for _, path := range candidates {
+		if _, err := os.Stat(path); err == nil {
+			return path
+		}
+	}
+	t.Skip("fraud model not found; run make fraud-modeling-check locally")
+}
 
 func TestFraudScoringRule_Integration(t *testing.T) {
 	if testing.Short() {
@@ -40,7 +62,7 @@ func TestFraudScoringRule_Integration(t *testing.T) {
 	err = conn.Exec(ctx, insertQuery, now, piihash.FixedString16(h.HashIP("5.6.7.8")), campaignID, uint64(100), uint64(10), int64(10000000), int64(50000000), uint64(5), uint64(2))
 	require.NoError(t, err)
 
-	scorer, err := fraudscoring.NewLGBMScorer("../fraudscoring/testdata/model.txt")
+	scorer, err := fraudscoring.NewLGBMScorer(testFraudModelPath(t))
 	require.NoError(t, err)
 
 	rule := NewFraudScoringRule(database.NewCHQuery(conn, database.CHQueryConfig{}), conn, nil, scorer, 100)
@@ -95,7 +117,7 @@ func TestFraudScoringRule_FraudScoresHigherThanControl(t *testing.T) {
 	require.NoError(t, conn.Exec(ctx, insertQuery, now, piihash.FixedString16(h.HashIP(controlIP)), campaignID, uint64(20), uint64(1), int64(1000000), int64(5000000), uint64(1), uint64(1)))
 	require.NoError(t, conn.Exec(ctx, insertQuery, now, piihash.FixedString16(h.HashIP(fraudIP)), campaignID, uint64(200), uint64(50), int64(10000000), int64(50000000), uint64(20), uint64(1)))
 
-	scorer, err := fraudscoring.NewLGBMScorer("../fraudscoring/testdata/model.txt")
+	scorer, err := fraudscoring.NewLGBMScorer(testFraudModelPath(t))
 	require.NoError(t, err)
 
 	_, err = NewFraudScoringRule(database.NewCHQuery(conn, database.CHQueryConfig{}), conn, nil, scorer, 100).Find(ctx)
