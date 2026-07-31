@@ -3,21 +3,10 @@ package notifier
 import (
 	"errors"
 
-	"espx/internal/notifier/pb"
-
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
-
-type Handler struct {
-	pb.UnimplementedNotifierServiceServer
-	service *Service
-}
-
-func NewHandler(service *Service) *Handler {
-	return &Handler{service: service}
-}
 
 func mapRPCError(err error) error {
 	if err == nil {
