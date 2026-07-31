@@ -6,9 +6,7 @@ import (
 	"net"
 	"strings"
 
-	"espx/internal/config"
 	"espx/internal/identity/db"
-	"espx/internal/identity/pb"
 
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
@@ -18,19 +16,6 @@ import (
 )
 
 const adminAPIKeyMetadata = "x-admin-api-key"
-
-type Handler struct {
-	pb.UnimplementedAuthServiceServer
-	service *Service
-	cfg     *config.Config
-}
-
-func NewHandler(service *Service, cfg *config.Config) *Handler {
-	return &Handler{
-		service: service,
-		cfg:     cfg,
-	}
-}
 
 func (h *Handler) extractClientIP(ctx context.Context) string {
 	peerIP := "unknown"

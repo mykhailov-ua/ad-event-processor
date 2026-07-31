@@ -9,15 +9,11 @@ import (
 )
 
 func (h *Handler) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
-	customerID, err := parseOptionalCustomerID(req.CustomerId)
+	result, err := h.register(ctx, req.Email, req.Password, req.Role, req.CustomerId)
 	if err != nil {
 		return nil, err
 	}
-	id, err := h.registerUser(ctx, req.Email, req.Password, req.Role, customerID)
-	if err != nil {
-		return nil, err
-	}
-	return &pb.RegisterResponse{UserId: id.String()}, nil
+	return registerResultToPB(result), nil
 }
 
 func (h *Handler) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginResponse, error) {
@@ -33,7 +29,7 @@ func (h *Handler) VerifyToken(ctx context.Context, req *pb.VerifyTokenRequest) (
 	if err != nil {
 		return nil, err
 	}
-	return &pb.VerifyTokenResponse{User: authUserToPB(user)}, nil
+	return verifyTokenResponseToPB(user), nil
 }
 
 func (h *Handler) RefreshToken(ctx context.Context, req *pb.RefreshTokenRequest) (*pb.RefreshTokenResponse, error) {

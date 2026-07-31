@@ -30,6 +30,10 @@ func (m *mockAuthAPI) VerifyAPIKey(context.Context, string) (identity.AuthUser, 
 	return identity.AuthUser{}, errors.New("unexpected call to VerifyAPIKey")
 }
 
+func (m *mockAuthAPI) VerifyToken(context.Context, string) (identity.AuthUser, error) {
+	return identity.AuthUser{}, errors.New("unexpected call to VerifyToken")
+}
+
 func (m *mockAuthAPI) CreateAPIKey(context.Context, string, string) (identity.CreateAPIKeyResult, error) {
 	return identity.CreateAPIKeyResult{}, errors.New("unexpected call to CreateAPIKey")
 }

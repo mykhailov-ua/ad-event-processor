@@ -32,6 +32,14 @@ func (g *grpcAuthAPI) VerifyAPIKey(ctx context.Context, apiKey string) (AuthUser
 	return authUserFromPB(resp.User), nil
 }
 
+func (g *grpcAuthAPI) VerifyToken(ctx context.Context, accessToken string) (AuthUser, error) {
+	resp, err := g.client.VerifyToken(ctx, &pb.VerifyTokenRequest{AccessToken: accessToken})
+	if err != nil {
+		return AuthUser{}, err
+	}
+	return authUserFromPB(resp.User), nil
+}
+
 func (g *grpcAuthAPI) CreateAPIKey(ctx context.Context, bearerToken, name string) (CreateAPIKeyResult, error) {
 	grpcCtx := bearerOutgoingContext(ctx, bearerToken)
 	resp, err := g.client.CreateAPIKey(grpcCtx, &pb.CreateAPIKeyRequest{Name: name})

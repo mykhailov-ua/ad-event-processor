@@ -31,6 +31,14 @@ func authUserToPB(user AuthUser) *pb.User {
 	}
 }
 
+func registerResultToPB(result RegisterResult) *pb.RegisterResponse {
+	return &pb.RegisterResponse{UserId: result.UserID.String()}
+}
+
+func verifyTokenResponseToPB(user AuthUser) *pb.VerifyTokenResponse {
+	return &pb.VerifyTokenResponse{User: authUserToPB(user)}
+}
+
 func refreshResultToPB(result RefreshResult) *pb.RefreshTokenResponse {
 	return &pb.RefreshTokenResponse{
 		AccessToken:  result.AccessToken,

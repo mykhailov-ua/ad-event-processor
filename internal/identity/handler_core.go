@@ -42,6 +42,18 @@ func (h *Handler) login(ctx context.Context, email, password string, durationHou
 	return loginResultFromDTO(dto), nil
 }
 
+func (h *Handler) register(ctx context.Context, email, password, role, customerID string) (RegisterResult, error) {
+	cid, err := parseOptionalCustomerID(customerID)
+	if err != nil {
+		return RegisterResult{}, err
+	}
+	id, err := h.registerUser(ctx, email, password, role, cid)
+	if err != nil {
+		return RegisterResult{}, err
+	}
+	return RegisterResult{UserID: id}, nil
+}
+
 func (h *Handler) registerUser(ctx context.Context, email, password, role string, customerID uuid.UUID) (uuid.UUID, error) {
 	if err := h.requireAdminKey(ctx); err != nil {
 		return uuid.Nil, err

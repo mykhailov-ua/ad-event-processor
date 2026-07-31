@@ -44,6 +44,7 @@ type CreateAPIKeyResult struct {
 
 type AuthAPI interface {
 	VerifyAPIKey(ctx context.Context, apiKey string) (AuthUser, error)
+	VerifyToken(ctx context.Context, accessToken string) (AuthUser, error)
 	CreateAPIKey(ctx context.Context, bearerToken, name string) (CreateAPIKeyResult, error)
 	Login(ctx context.Context, email, password string, durationHours int32) (LoginResult, error)
 	Register(ctx context.Context, adminAPIKey, email, password, role, customerID string) (RegisterResult, error)
@@ -73,6 +74,14 @@ func authUserFromDB(user db.User) AuthUser {
 
 func (a *authAPI) VerifyAPIKey(ctx context.Context, apiKey string) (AuthUser, error) {
 	user, err := a.h.verifyAPIKeyUser(ctx, apiKey)
+	if err != nil {
+		return AuthUser{}, grpcStatusToError(err)
+	}
+	return user, nil
+}
+
+func (a *authAPI) VerifyToken(ctx context.Context, accessToken string) (AuthUser, error) {
+	user, err := a.h.verifyTokenUser(ctx, accessToken)
 	if err != nil {
 		return AuthUser{}, grpcStatusToError(err)
 	}
@@ -110,15 +119,12 @@ func (a *authAPI) Register(ctx context.Context, adminAPIKey, email, password, ro
 	if adminAPIKey == "" || adminAPIKey != string(a.h.cfg.AdminAPIKey) {
 		return RegisterResult{}, ErrInvalidCredentials
 	}
-	cid, err := parseOptionalCustomerID(customerID)
+	ctx = metadata.NewIncomingContext(ctx, metadata.Pairs(adminAPIKeyMetadata, adminAPIKey))
+	result, err := a.h.register(ctx, email, password, role, customerID)
 	if err != nil {
 		return RegisterResult{}, grpcStatusToError(err)
 	}
-	id, err := a.h.registerUser(ctx, email, password, role, cid)
-	if err != nil {
-		return RegisterResult{}, grpcStatusToError(err)
-	}
-	return RegisterResult{UserID: id}, nil
+	return result, nil
 }
 
 func (a *authAPI) RefreshToken(ctx context.Context, refreshToken string) (RefreshResult, error) {
