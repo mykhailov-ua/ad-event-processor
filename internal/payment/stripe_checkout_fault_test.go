@@ -1,4 +1,4 @@
-package payment
+package payment_test
 
 import (
 	"context"
@@ -6,7 +6,9 @@ import (
 	"testing"
 
 	"espx/internal/config"
+	"espx/internal/payment"
 	"espx/internal/payment/db"
+	"espx/internal/payment/dbtest"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -18,11 +20,11 @@ func TestFault_StripeCheckoutSettlement(t *testing.T) {
 		t.Skip("requires testcontainers")
 	}
 
-	pool, cleanup := setupTestDB(t)
+	pool, cleanup := dbtest.SetupTestDB(t)
 	defer cleanup()
 
 	cfg := &config.Config{MaxRetries: 3}
-	svc := NewService(pool, NewMockProvider(), cfg)
+	svc := payment.NewService(pool, payment.NewMockProvider(), cfg)
 	ctx := context.Background()
 
 	customerID := uuid.New()
@@ -31,7 +33,7 @@ func TestFault_StripeCheckoutSettlement(t *testing.T) {
 	require.NoError(t, err)
 	providerRef := result.Intent.ProviderRef.String
 
-	stripeCents, err := MicroToStripeAmount(amountMicro)
+	stripeCents, err := payment.MicroToStripeAmount(amountMicro)
 	require.NoError(t, err)
 	eventID := "evt_fault_settle_" + uuid.New().String()
 	payload := fmt.Sprintf(`{"id":"%s","type":"payment_intent.succeeded","data":{"object":{"id":"%s","amount":%d}}}`, eventID, providerRef, stripeCents)

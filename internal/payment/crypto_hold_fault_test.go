@@ -1,4 +1,4 @@
-package payment
+package payment_test
 
 import (
 	"espx/pkg/faultproof"
@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"espx/internal/ingestion"
+	"espx/internal/payment"
+	"espx/internal/paymenttest"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -18,12 +20,12 @@ func TestFault_CryptoHold_DualWorkerRace(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupPaymentFaultInfra(t)
+	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
 	customerID := uuid.New()
-	seedCustomer(t, infra.Pool, customerID)
+	paymenttest.SeedCustomer(t, infra.Pool, customerID)
 
 	intentID := uuid.New()
 	holdID := uuid.New()
@@ -41,7 +43,7 @@ func TestFault_CryptoHold_DualWorkerRace(t *testing.T) {
 		ingestion.ToUUID(holdID), ingestion.ToUUID(intentID), ingestion.ToUUID(customerID))
 	require.NoError(t, err)
 
-	worker := NewCryptoHoldWorker(infra.Pool, infra.Cfg)
+	worker := payment.NewCryptoHoldWorker(infra.Pool, infra.Cfg)
 	const workers = 4
 	var wg sync.WaitGroup
 	wg.Add(workers)

@@ -237,7 +237,7 @@ Fresh clone / CI: `make proto` alone does not emit `*_grpc.pb.go`. Use `make pro
 
 Done when: no `Register*ServiceServer` / `New*ServiceClient` in production tree; `api/auth.proto` … `api/settlement.proto` removed or reduced to domain-only messages; `buf.gen.grpc.yaml` deleted.
 
-Pending: `internal/payment/*_fault*_test.go` import `controlplane` for settlement gRPC fixtures — blocks `go test ./internal/payment/` until tests move to `package payment_test` or use injected `domain.PaymentSettlement` mocks.
+Payment fault/integration tests: `package payment_test` + `internal/paymenttest` (settlement fixture) + `internal/payment/dbtest` (migrations); no `controlplane` import from `package payment`.
 
 
 10. split_control and standalone cmd/* deprecation

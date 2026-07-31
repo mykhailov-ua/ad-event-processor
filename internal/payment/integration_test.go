@@ -1,145 +1,37 @@
-package payment
+package payment_test
 
 import (
 	"context"
 	"fmt"
 	"net"
-	"os"
-	"path/filepath"
-	"runtime"
-	"sort"
-	"strings"
 	"testing"
 	"time"
 
 	"espx/internal/config"
-	"espx/internal/ingestion"
-	ads_db "espx/internal/domain/db"
 	"espx/internal/controlplane"
 	"espx/internal/controlplane/pb"
+	ads_db "espx/internal/domain/db"
+	"espx/internal/ingestion"
+	"espx/internal/payment"
 	"espx/internal/payment/db"
+	"espx/internal/payment/dbtest"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	rediscontainer "github.com/testcontainers/testcontainers-go/modules/redis"
-	"github.com/testcontainers/testcontainers-go/wait"
 	"google.golang.org/grpc"
 )
-
-func setupTestDB(t testing.TB) (*pgxpool.Pool, func()) {
-	t.Helper()
-	ctx := context.Background()
-
-	pgContainer, err := postgres.Run(ctx,
-		"postgres:16-alpine",
-		postgres.WithDatabase("payment_test_db"),
-		postgres.WithUsername("postgres"),
-		postgres.WithPassword("secure_password"),
-		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).
-				WithStartupTimeout(20*time.Second)),
-	)
-	if err != nil {
-		t.Fatalf("failed to start postgres container: %s", err)
-	}
-
-	connStr, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
-	if err != nil {
-		t.Fatalf("failed to get connection string: %s", err)
-	}
-
-	pool, err := pgxpool.New(ctx, connStr)
-	if err != nil {
-		t.Fatalf("failed to connect to db: %s", err)
-	}
-
-	_, filename, _, _ := runtime.Caller(0)
-	baseDir := filepath.Join(filepath.Dir(filename), "..", "..")
-
-	adsMigrationsDir := filepath.Join(baseDir, "internal/ingestion/migrations")
-	applyMigrations(t, pool, adsMigrationsDir)
-
-	paymentMigrationsDir := filepath.Join(baseDir, "internal/payment/migrations")
-	applyMigrations(t, pool, paymentMigrationsDir)
-
-	return pool, func() {
-		pool.Close()
-		_ = pgContainer.Terminate(ctx)
-	}
-}
-
-func applyMigrations(t testing.TB, pool *pgxpool.Pool, dir string) {
-	t.Helper()
-	ctx := context.Background()
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		t.Fatalf("failed to read migrations dir %s: %s", dir, err)
-	}
-
-	sort.Slice(entries, func(i, j int) bool {
-		return entries[i].Name() < entries[j].Name()
-	})
-
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sql") {
-			continue
-		}
-		sqlBytes, err := os.ReadFile(filepath.Join(dir, entry.Name()))
-		if err != nil {
-			t.Fatalf("failed to read migration %s: %s", entry.Name(), err)
-		}
-
-		sql := string(sqlBytes)
-		parts := strings.Split(sql, "-- +goose Down")
-		upPart := parts[0]
-		upPart = strings.ReplaceAll(upPart, "-- +goose Up", "")
-		upPart = strings.ReplaceAll(upPart, "-- +goose StatementBegin", "")
-		upPart = strings.ReplaceAll(upPart, "-- +goose StatementEnd", "")
-
-		if _, err := pool.Exec(ctx, upPart); err != nil {
-			t.Fatalf("failed to apply migration %s: %s", entry.Name(), err)
-		}
-	}
-}
-
-func setupTestRedis(t testing.TB) (redis.UniversalClient, func()) {
-	ctx := context.Background()
-
-	redisContainer, err := rediscontainer.Run(ctx, "redis:7-alpine")
-	if err != nil {
-		t.Fatalf("failed to start redis container: %s", err)
-	}
-
-	endpoint, err := redisContainer.Endpoint(ctx, "")
-	if err != nil {
-		t.Fatalf("failed to get redis endpoint: %s", err)
-	}
-
-	rdb := redis.NewUniversalClient(&redis.UniversalOptions{
-		Addrs: []string{endpoint},
-	})
-
-	return rdb, func() {
-		_ = rdb.Close()
-		_ = redisContainer.Terminate(ctx)
-	}
-}
 
 func TestPaymentService_Integration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping testcontainers integration test in short mode")
 	}
 
-	pool, cleanupDB := setupTestDB(t)
+	pool, cleanupDB := dbtest.SetupTestDB(t)
 	defer cleanupDB()
 
-	rdb, cleanupRedis := setupTestRedis(t)
+	rdb, cleanupRedis := dbtest.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
@@ -150,8 +42,8 @@ func TestPaymentService_Integration(t *testing.T) {
 	}
 	cfg.Lifecycle.ShutdownTimeoutMs = 1000
 
-	prov := NewMockProvider()
-	svc := NewService(pool, prov, cfg)
+	prov := payment.NewMockProvider()
+	svc := payment.NewService(pool, prov, cfg)
 
 	ctx := context.Background()
 
@@ -185,7 +77,7 @@ func TestPaymentService_Integration(t *testing.T) {
 	assert.Contains(t, err.Error(), "idempotency key conflict")
 
 	providerRef := intent.ProviderRef.String
-	stripeCents, err := MicroToStripeAmount(amountMicro)
+	stripeCents, err := payment.MicroToStripeAmount(amountMicro)
 	require.NoError(t, err)
 	stripePayload := fmt.Sprintf(`{
 		"id": "evt_stripe_test_999",
@@ -229,7 +121,7 @@ func TestPaymentService_Integration(t *testing.T) {
 	}()
 	defer grpcServer.Stop()
 
-	outboxWorker := NewOutboxWorker(pool, cfg)
+	outboxWorker := payment.NewOutboxWorker(pool, cfg)
 	ctxCancel, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -258,7 +150,7 @@ func TestPaymentService_Integration(t *testing.T) {
 
 	refundMicro := amountMicro / 2
 	refundID := "re_integration_" + uuid.New().String()
-	refundCents, err := MicroToStripeAmount(refundMicro)
+	refundCents, err := payment.MicroToStripeAmount(refundMicro)
 	require.NoError(t, err)
 	refundPayload := fmt.Sprintf(`{
 		"id": "evt_refund_integration",
@@ -278,7 +170,7 @@ func TestPaymentService_Integration(t *testing.T) {
 	refundOutbox, err := qPayment.GetPendingOutboxEventsForUpdate(ctx, 10)
 	require.NoError(t, err)
 	require.Len(t, refundOutbox, 1)
-	assert.Equal(t, OutboxEventReverseBalance, refundOutbox[0].EventType)
+	assert.Equal(t, payment.OutboxEventReverseBalance, refundOutbox[0].EventType)
 
 	n, err := outboxWorker.ProcessOutbox(ctx, 10)
 	require.NoError(t, err)

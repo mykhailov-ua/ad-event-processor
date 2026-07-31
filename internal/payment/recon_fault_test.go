@@ -1,4 +1,4 @@
-package payment
+package payment_test
 
 import (
 	"espx/pkg/faultproof"
@@ -10,15 +10,17 @@ import (
 
 	"espx/internal/ingestion"
 	"espx/internal/notifier"
+	"espx/internal/payment"
 	"espx/internal/payment/db"
+	"espx/internal/paymenttest"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 )
 
-func newReconForFault(infra *paymentFaultInfra) *ReconService {
-	return NewReconService(infra.Pool, NewSettlementLedgerClient(infra.Cfg), nil)
+func newReconForFault(infra *paymenttest.FaultInfra) *payment.ReconService {
+	return payment.NewReconService(infra.Pool, payment.NewSettlementLedgerClient(infra.Cfg), nil)
 }
 
 func countReconFindingsByKind(t *testing.T, pool *pgxpool.Pool, runID int64, kind db.PaymentFinancialFindingKind) int {
@@ -36,10 +38,10 @@ func TestFault_FinancialReconCleanSettlement(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupPaymentFaultInfra(t)
+	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
 	defer cleanup()
 
-	seedSettledIntent(t, infra, uuid.New(), 18_000_000, "fault-recon-clean-"+uuid.New().String())
+	paymenttest.SeedSettledIntent(t, infra, uuid.New(), 18_000_000, "fault-recon-clean-"+uuid.New().String())
 
 	recon := newReconForFault(infra)
 	end := time.Now().UTC()
@@ -51,7 +53,7 @@ func TestFault_FinancialReconCleanSettlement(t *testing.T) {
 	faultproof.Log(t, "financial_recon_clean_settlement", map[string]string{
 		"subsystem":       "payment_financial_recon",
 		"findings":        "0",
-		"intents_checked": itoaPaymentFault(summary.IntentsChecked),
+		"intents_checked": paymenttest.ItoaPaymentFault(summary.IntentsChecked),
 		"baseline_ok":     "true",
 		"fault_type":      "none",
 	})
@@ -62,10 +64,10 @@ func TestFault_FinancialReconMissingTopup(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupPaymentFaultInfra(t)
+	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
 	defer cleanup()
 
-	seedSucceededIntentWithOutbox(t, infra, uuid.New(), 12_000_000, "fault-recon-miss-"+uuid.New().String())
+	paymenttest.SeedSucceededIntentWithOutbox(t, infra, uuid.New(), 12_000_000, "fault-recon-miss-"+uuid.New().String())
 
 	recon := newReconForFault(infra)
 	end := time.Now().UTC()
@@ -76,8 +78,8 @@ func TestFault_FinancialReconMissingTopup(t *testing.T) {
 
 	faultproof.Log(t, "financial_recon_missing_topup", map[string]string{
 		"subsystem":     "payment_financial_recon",
-		"findings":      itoaPaymentFault(summary.FindingsCount),
-		"topup_missing": itoaPaymentFault(summary.TopupMissing),
+		"findings":      paymenttest.ItoaPaymentFault(summary.FindingsCount),
+		"topup_missing": paymenttest.ItoaPaymentFault(summary.TopupMissing),
 		"baseline_ok":   "true",
 		"fault_type":    "missing_topup",
 	})
@@ -88,19 +90,19 @@ func TestFault_FinancialReconDeadOutbox(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupPaymentFaultInfra(t)
+	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
 	customerID := uuid.New()
-	seed := seedSucceededIntentWithOutbox(t, infra, customerID, 9_000_000, "fault-recon-dead-"+uuid.New().String())
+	seed := paymenttest.SeedSucceededIntentWithOutbox(t, infra, customerID, 9_000_000, "fault-recon-dead-"+uuid.New().String())
 	_, err := infra.Pool.Exec(ctx, `DELETE FROM payment.payment_outbox WHERE event_type = 'SETTLE_BALANCE'`)
 	require.NoError(t, err)
 
-	svc := NewService(infra.Pool, NewMockProvider(), infra.Cfg)
-	processRefundWebhook(t, infra.Pool, svc, "evt_recon_dead_"+uuid.New().String(), seed.ProviderRef, "re_recon_dead_"+uuid.New().String(), 9_000_000)
+	svc := payment.NewService(infra.Pool, payment.NewMockProvider(), infra.Cfg)
+	paymenttest.ProcessRefundWebhook(t, infra.Pool, svc, "evt_recon_dead_"+uuid.New().String(), seed.ProviderRef, "re_recon_dead_"+uuid.New().String(), 9_000_000)
 
-	worker := newOutboxWorkerForFault(infra)
+	worker := paymenttest.NewOutboxWorkerForFault(infra)
 	n, err := worker.ProcessOutbox(ctx, 10)
 	require.NoError(t, err)
 	require.Equal(t, 0, n)
@@ -114,8 +116,8 @@ func TestFault_FinancialReconDeadOutbox(t *testing.T) {
 
 	faultproof.Log(t, "financial_recon_dead_outbox", map[string]string{
 		"subsystem":   "payment_financial_recon",
-		"dead_outbox": itoaPaymentFault(summary.DeadOutboxRows),
-		"findings":    itoaPaymentFault(summary.FindingsCount),
+		"dead_outbox": paymenttest.ItoaPaymentFault(summary.DeadOutboxRows),
+		"findings":    paymenttest.ItoaPaymentFault(summary.FindingsCount),
 		"baseline_ok": "true",
 		"fault_type":  "dead_outbox",
 	})
@@ -126,13 +128,13 @@ func TestFault_FinancialReconRefundDrift(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupPaymentFaultInfra(t)
+	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	customerID := uuid.New()
-	seed := seedSettledIntent(t, infra, customerID, 20_000_000, "fault-recon-drift-"+uuid.New().String())
-	svc := NewService(infra.Pool, NewMockProvider(), infra.Cfg)
-	processRefundWebhook(t, infra.Pool, svc, "evt_recon_drift_"+uuid.New().String(), seed.ProviderRef, "re_recon_drift_"+uuid.New().String(), 6_000_000)
+	seed := paymenttest.SeedSettledIntent(t, infra, customerID, 20_000_000, "fault-recon-drift-"+uuid.New().String())
+	svc := payment.NewService(infra.Pool, payment.NewMockProvider(), infra.Cfg)
+	paymenttest.ProcessRefundWebhook(t, infra.Pool, svc, "evt_recon_drift_"+uuid.New().String(), seed.ProviderRef, "re_recon_drift_"+uuid.New().String(), 6_000_000)
 
 	recon := newReconForFault(infra)
 	end := time.Now().UTC()
@@ -142,7 +144,7 @@ func TestFault_FinancialReconRefundDrift(t *testing.T) {
 
 	faultproof.Log(t, "financial_recon_refund_drift", map[string]string{
 		"subsystem":   "payment_financial_recon",
-		"findings":    itoaPaymentFault(summary.FindingsCount),
+		"findings":    paymenttest.ItoaPaymentFault(summary.FindingsCount),
 		"drift_kind":  "REFUND_LEDGER_DRIFT",
 		"baseline_ok": "true",
 		"fault_type":  "ledger_drift",
@@ -154,16 +156,16 @@ func TestFault_FinancialReconSettlementFailedIntent(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupPaymentFaultInfra(t)
+	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
 	customerID := uuid.New()
-	_ = seedSucceededIntentWithOutbox(t, infra, customerID, 9_000_000, "fault-recon-fail-"+uuid.New().String())
+	_ = paymenttest.SeedSucceededIntentWithOutbox(t, infra, customerID, 9_000_000, "fault-recon-fail-"+uuid.New().String())
 	_, err := infra.Pool.Exec(ctx, `DELETE FROM customers WHERE id = $1`, ingestion.ToUUID(customerID))
 	require.NoError(t, err)
 
-	worker := newOutboxWorkerForFault(infra)
+	worker := paymenttest.NewOutboxWorkerForFault(infra)
 	n, err := worker.ProcessOutbox(ctx, 10)
 	require.NoError(t, err)
 	require.Equal(t, 0, n)
@@ -177,8 +179,8 @@ func TestFault_FinancialReconSettlementFailedIntent(t *testing.T) {
 
 	faultproof.Log(t, "financial_recon_settlement_failed", map[string]string{
 		"subsystem":         "payment_financial_recon",
-		"settlement_failed": itoaPaymentFault(summary.SettlementFailed),
-		"findings":          itoaPaymentFault(summary.FindingsCount),
+		"settlement_failed": paymenttest.ItoaPaymentFault(summary.SettlementFailed),
+		"findings":          paymenttest.ItoaPaymentFault(summary.FindingsCount),
 		"baseline_ok":       "true",
 		"fault_type":        "settlement_failed",
 	})
@@ -189,10 +191,10 @@ func TestFault_FinancialReconConcurrentRuns(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupPaymentFaultInfra(t)
+	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
 	defer cleanup()
 
-	seedSettledIntent(t, infra, uuid.New(), 15_000_000, "fault-recon-conc-"+uuid.New().String())
+	paymenttest.SeedSettledIntent(t, infra, uuid.New(), 15_000_000, "fault-recon-conc-"+uuid.New().String())
 	recon := newReconForFault(infra)
 	end := time.Now().UTC()
 	start := end.Add(-time.Hour)
@@ -216,7 +218,7 @@ func TestFault_FinancialReconConcurrentRuns(t *testing.T) {
 	faultproof.Log(t, "financial_recon_concurrent_runs", map[string]string{
 		"subsystem":   "payment_financial_recon",
 		"workers":     "4",
-		"runs":        itoaPaymentFault(runCount),
+		"runs":        paymenttest.ItoaPaymentFault(runCount),
 		"baseline_ok": "true",
 		"fault_type":  "concurrency_stress",
 	})
@@ -227,16 +229,16 @@ func TestFault_FinancialReconOpsAlert(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupPaymentFaultInfra(t)
+	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
 	defer cleanup()
 
-	stub := &stubPaymentNotifierClient{}
-	cfg := testPaymentOpsConfig()
-	alerter := NewFinancialReconAlerter(&NotifierClient{api: notifier.NewGRPCNotifierAPI(stub)}, cfg)
+	stub := &paymenttest.StubNotifierClient{}
+	cfg := paymenttest.TestOpsConfig()
+	alerter := payment.NewFinancialReconAlerter(payment.NewInProcessNotifierClient(notifier.NewGRPCNotifierAPI(stub)), cfg)
 	require.NotNil(t, alerter)
 
-	seedSucceededIntentWithOutbox(t, infra, uuid.New(), 11_000_000, "fault-recon-ops-"+uuid.New().String())
-	recon := NewReconService(infra.Pool, NewSettlementLedgerClient(infra.Cfg), alerter)
+	paymenttest.SeedSucceededIntentWithOutbox(t, infra, uuid.New(), 11_000_000, "fault-recon-ops-"+uuid.New().String())
+	recon := payment.NewReconService(infra.Pool, payment.NewSettlementLedgerClient(infra.Cfg), alerter)
 
 	end := time.Now().UTC()
 	summary, err := recon.Run(context.Background(), end.Add(-time.Hour), end)
@@ -244,14 +246,14 @@ func TestFault_FinancialReconOpsAlert(t *testing.T) {
 	require.GreaterOrEqual(t, summary.FindingsCount, 1)
 
 	time.Sleep(200 * time.Millisecond)
-	requests := stub.snapshot()
+	requests := stub.Snapshot()
 	require.Len(t, requests, 1)
 	require.NotEmpty(t, requests[0].DedupKey)
 	require.Contains(t, requests[0].Body, "MISSING_LEDGER_TOPUP")
 
 	faultproof.Log(t, "financial_recon_ops_alert", map[string]string{
 		"subsystem":   "payment_financial_recon",
-		"findings":    itoaPaymentFault(summary.FindingsCount),
+		"findings":    paymenttest.ItoaPaymentFault(summary.FindingsCount),
 		"notified":    "true",
 		"baseline_ok": "true",
 		"fault_type":  "missing_topup",

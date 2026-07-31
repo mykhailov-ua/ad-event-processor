@@ -7,6 +7,7 @@ import (
 
 	"espx/internal/config"
 	"espx/internal/payment/db"
+	"espx/internal/payment/dbtest"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -18,7 +19,7 @@ func TestProcessStripeWebhook_noDoubleSettlement(t *testing.T) {
 		t.Skip("requires testcontainers")
 	}
 
-	pool, cleanup := setupTestDB(t)
+	pool, cleanup := dbtest.SetupTestDB(t)
 	defer cleanup()
 
 	cfg := &config.Config{MaxRetries: 3}
@@ -57,7 +58,7 @@ func TestProcessStripeWebhook_zeroAmountRejected(t *testing.T) {
 		t.Skip("requires testcontainers")
 	}
 
-	pool, cleanup := setupTestDB(t)
+	pool, cleanup := dbtest.SetupTestDB(t)
 	defer cleanup()
 
 	cfg := &config.Config{}
@@ -88,7 +89,7 @@ func TestProcessStripeWebhook_amountMismatch(t *testing.T) {
 		t.Skip("requires testcontainers")
 	}
 
-	pool, cleanup := setupTestDB(t)
+	pool, cleanup := dbtest.SetupTestDB(t)
 	defer cleanup()
 
 	cfg := &config.Config{}

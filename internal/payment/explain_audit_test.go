@@ -1,4 +1,4 @@
-package payment
+package payment_test
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"espx/internal/ingestion"
+	"espx/internal/paymenttest"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -20,7 +21,7 @@ func TestExplainAudit_PaymentIntentQueries(t *testing.T) {
 		t.Skip("set EXPLAIN_AUDIT=1 to run payment query plan audit")
 	}
 
-	infra, cleanup := setupPaymentFaultInfra(t)
+	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()

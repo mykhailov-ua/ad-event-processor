@@ -5,18 +5,44 @@ import (
 	"testing"
 	"time"
 
+	"espx/internal/ingestion"
+	ads_db "espx/internal/domain/db"
 	"espx/internal/payment/db"
+	"espx/internal/payment/dbtest"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 )
+
+func seedReconCustomer(t *testing.T, pool *pgxpool.Pool, customerID uuid.UUID) {
+	t.Helper()
+	ctx := context.Background()
+	_, err := ads_db.New(pool).CreateCustomer(ctx, ads_db.CreateCustomerParams{
+		ID:       ingestion.ToUUID(customerID),
+		Name:     "recon test customer",
+		Balance:  0,
+		Currency: "USD",
+	})
+	require.NoError(t, err)
+}
+
+func countReconFindingsByKind(t *testing.T, pool *pgxpool.Pool, runID int64, kind db.PaymentFinancialFindingKind) int {
+	t.Helper()
+	var n int
+	err := pool.QueryRow(context.Background(), `
+		SELECT COUNT(*) FROM payment.financial_recon_findings
+		WHERE run_id = $1 AND kind = $2`, runID, kind).Scan(&n)
+	require.NoError(t, err)
+	return n
+}
 
 func TestFinancialReconRun_persistsRunAndFindings(t *testing.T) {
 	if testing.Short() {
 		t.Skip("requires testcontainers")
 	}
 
-	pool, cleanup := setupTestDB(t)
+	pool, cleanup := dbtest.SetupTestDB(t)
 	defer cleanup()
 
 	recon := NewReconService(pool, nil, nil)
@@ -40,12 +66,12 @@ func TestFinancialReconRun_missingTopupAfterWebhook(t *testing.T) {
 		t.Skip("requires testcontainers")
 	}
 
-	pool, cleanup := setupTestDB(t)
+	pool, cleanup := dbtest.SetupTestDB(t)
 	defer cleanup()
 
 	ctx := context.Background()
 	customerID := uuid.New()
-	seedCustomer(t, pool, customerID)
+	seedReconCustomer(t, pool, customerID)
 
 	svc := NewService(pool, NewMockProvider(), nil)
 	result, err := svc.CreatePaymentIntent(ctx, customerID, 11_000_000, "USD", "recon-unit-"+uuid.New().String(), nil)

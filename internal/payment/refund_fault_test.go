@@ -1,4 +1,4 @@
-package payment
+package payment_test
 
 import (
 	"espx/pkg/faultproof"
@@ -11,7 +11,9 @@ import (
 	"time"
 
 	"espx/internal/ingestion"
+	"espx/internal/payment"
 	"espx/internal/payment/db"
+	"espx/internal/paymenttest"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -22,14 +24,14 @@ func TestFault_PaymentRefundConcurrentWebhookSameEventID(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupPaymentFaultInfra(t)
+	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
 	customerID := uuid.New()
-	seed := seedSettledIntent(t, infra, customerID, 20_000_000, "fault-ref-wh-"+uuid.New().String())
+	seed := paymenttest.SeedSettledIntent(t, infra, customerID, 20_000_000, "fault-ref-wh-"+uuid.New().String())
 
-	svc := NewService(infra.Pool, NewMockProvider(), infra.Cfg)
+	svc := payment.NewService(infra.Pool, payment.NewMockProvider(), infra.Cfg)
 	eventID := "evt_refund_concurrent_" + uuid.New().String()
 	refundID := "re_" + uuid.New().String()
 	refundAmount := int64(8_000_000)
@@ -39,7 +41,7 @@ func TestFault_PaymentRefundConcurrentWebhookSameEventID(t *testing.T) {
 	for i := 0; i < paymentFaultWorkers; i++ {
 		go func() {
 			defer wg.Done()
-			stripeCents, _ := MicroToStripeAmount(refundAmount)
+			stripeCents, _ := payment.MicroToStripeAmount(refundAmount)
 			payload := fmt.Sprintf(`{"id":"%s","type":"refund.created","data":{"object":{"id":"%s","amount":%d,"payment_intent":"%s","status":"succeeded"}}}`,
 				eventID, refundID, stripeCents, seed.ProviderRef)
 			_ = svc.ProcessStripeRefundWebhook(ctx, eventID, "refund.created", []byte(payload), refundID, seed.ProviderRef, refundAmount, "succeeded")
@@ -56,11 +58,11 @@ func TestFault_PaymentRefundConcurrentWebhookSameEventID(t *testing.T) {
 	outbox, err := db.New(infra.Pool).GetPendingOutboxEventsForUpdate(ctx, 10)
 	require.NoError(t, err)
 	require.Len(t, outbox, 1)
-	require.Equal(t, OutboxEventReverseBalance, outbox[0].EventType)
+	require.Equal(t, payment.OutboxEventReverseBalance, outbox[0].EventType)
 
 	faultproof.Log(t, "concurrent_refund_webhook_dedup", map[string]string{
 		"subsystem":    "payment_refund_webhook",
-		"workers":      itoaPaymentFault(paymentFaultWorkers),
+		"workers":      paymenttest.ItoaPaymentFault(paymentFaultWorkers),
 		"webhook_rows": "1",
 		"outbox_rows":  "1",
 		"baseline_ok":  "true",
@@ -73,16 +75,16 @@ func TestFault_PaymentRefundDualOutboxWorkerRace(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupPaymentFaultInfra(t)
+	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
 	customerID := uuid.New()
-	seed := seedSettledIntent(t, infra, customerID, 22_000_000, "fault-ref-race-"+uuid.New().String())
-	svc := NewService(infra.Pool, NewMockProvider(), infra.Cfg)
-	outboxID := processRefundWebhook(t, infra.Pool, svc, "evt_ref_race_"+uuid.New().String(), seed.ProviderRef, "re_race_"+uuid.New().String(), 10_000_000)
+	seed := paymenttest.SeedSettledIntent(t, infra, customerID, 22_000_000, "fault-ref-race-"+uuid.New().String())
+	svc := payment.NewService(infra.Pool, payment.NewMockProvider(), infra.Cfg)
+	outboxID := paymenttest.ProcessRefundWebhook(t, infra.Pool, svc, "evt_ref_race_"+uuid.New().String(), seed.ProviderRef, "re_race_"+uuid.New().String(), 10_000_000)
 
-	worker := newOutboxWorkerForFault(infra)
+	worker := paymenttest.NewOutboxWorkerForFault(infra)
 	const workers = 4
 	var wg sync.WaitGroup
 	var totalProcessed atomic.Int32
@@ -98,15 +100,15 @@ func TestFault_PaymentRefundDualOutboxWorkerRace(t *testing.T) {
 
 	wantBalance := seed.AmountMicro - 10_000_000
 	require.Eventually(t, func() bool {
-		return paymentOutboxStatus(t, infra.Pool, outboxID) == "PROCESSED" &&
-			ledgerRefundCountForIntent(t, infra.Pool, seed.IntentID) == 1
+		return paymenttest.PaymentOutboxStatus(t, infra.Pool, outboxID) == "PROCESSED" &&
+			paymenttest.LedgerRefundCountForIntent(t, infra.Pool, seed.IntentID) == 1
 	}, 10*time.Second, 50*time.Millisecond)
-	assertPaymentRefundInvariants(t, infra.Pool, seed, wantBalance, 1)
+	paymenttest.AssertPaymentRefundInvariants(t, infra.Pool, seed, wantBalance, 1)
 
 	faultproof.Log(t, "refund_outbox_worker_race", map[string]string{
 		"subsystem":   "payment_refund_outbox",
 		"workers":     "4",
-		"processed":   itoaPaymentFault(int(totalProcessed.Load())),
+		"processed":   paymenttest.ItoaPaymentFault(int(totalProcessed.Load())),
 		"ledger_rows": "1",
 		"baseline_ok": "true",
 		"fault_type":  "concurrency_stress",
@@ -118,44 +120,44 @@ func TestFault_PaymentRefundPostSettlementMarkGap(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupPaymentFaultInfra(t)
+	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
 	defer cleanup()
-	defer func() { PostSettlementMarkHook = nil }()
+	defer func() { payment.SetPostSettlementMarkHookForTest(nil) }()
 
 	ctx := context.Background()
 	customerID := uuid.New()
-	seed := seedSettledIntent(t, infra, customerID, 24_000_000, "fault-ref-gap-"+uuid.New().String())
-	svc := NewService(infra.Pool, NewMockProvider(), infra.Cfg)
-	outboxID := processRefundWebhook(t, infra.Pool, svc, "evt_ref_gap_"+uuid.New().String(), seed.ProviderRef, "re_gap_"+uuid.New().String(), 12_000_000)
+	seed := paymenttest.SeedSettledIntent(t, infra, customerID, 24_000_000, "fault-ref-gap-"+uuid.New().String())
+	svc := payment.NewService(infra.Pool, payment.NewMockProvider(), infra.Cfg)
+	outboxID := paymenttest.ProcessRefundWebhook(t, infra.Pool, svc, "evt_ref_gap_"+uuid.New().String(), seed.ProviderRef, "re_gap_"+uuid.New().String(), 12_000_000)
 
 	var hookCalls atomic.Int32
-	PostSettlementMarkHook = func(ctx context.Context, ev db.PaymentPaymentOutbox) error {
-		if ev.EventType == OutboxEventReverseBalance && hookCalls.Add(1) == 1 {
+	payment.SetPostSettlementMarkHookForTest(func(ctx context.Context, ev db.PaymentPaymentOutbox) error {
+		if ev.EventType == payment.OutboxEventReverseBalance && hookCalls.Add(1) == 1 {
 			return fmt.Errorf("injected post-refund mark failure")
 		}
 		return nil
-	}
+	})
 
-	worker := newOutboxWorkerForFault(infra)
+	worker := paymenttest.NewOutboxWorkerForFault(infra)
 	wantBalance := seed.AmountMicro - 12_000_000
 
 	n, err := worker.ProcessOutbox(ctx, 10)
 	require.NoError(t, err)
 	require.Equal(t, 0, n)
-	assertPaymentRefundInvariants(t, infra.Pool, seed, wantBalance, 1)
-	require.Equal(t, "PENDING", paymentOutboxStatus(t, infra.Pool, outboxID))
+	paymenttest.AssertPaymentRefundInvariants(t, infra.Pool, seed, wantBalance, 1)
+	require.Equal(t, "PENDING", paymenttest.PaymentOutboxStatus(t, infra.Pool, outboxID))
 
 	n, err = worker.ProcessOutbox(ctx, 10)
 	require.NoError(t, err)
 	require.Equal(t, 1, n)
-	assertPaymentRefundInvariants(t, infra.Pool, seed, wantBalance, 1)
-	require.Equal(t, "PROCESSED", paymentOutboxStatus(t, infra.Pool, outboxID))
+	paymenttest.AssertPaymentRefundInvariants(t, infra.Pool, seed, wantBalance, 1)
+	require.Equal(t, "PROCESSED", paymenttest.PaymentOutboxStatus(t, infra.Pool, outboxID))
 
 	faultproof.Log(t, "post_refund_mark_failed", map[string]string{
 		"subsystem":    "payment_refund_outbox",
 		"ledger_rows":  "1",
 		"double_debit": "false",
-		"hook_calls":   itoaPaymentFault(int(hookCalls.Load())),
+		"hook_calls":   paymenttest.ItoaPaymentFault(int(hookCalls.Load())),
 		"baseline_ok":  "true",
 		"fault_type":   "injected_timing_gap",
 	})
@@ -166,28 +168,28 @@ func TestFault_PaymentPartialRefundThenFull(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupPaymentFaultInfra(t)
+	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
 	customerID := uuid.New()
-	seed := seedSettledIntent(t, infra, customerID, 30_000_000, "fault-partial-"+uuid.New().String())
-	svc := NewService(infra.Pool, NewMockProvider(), infra.Cfg)
-	worker := newOutboxWorkerForFault(infra)
+	seed := paymenttest.SeedSettledIntent(t, infra, customerID, 30_000_000, "fault-partial-"+uuid.New().String())
+	svc := payment.NewService(infra.Pool, payment.NewMockProvider(), infra.Cfg)
+	worker := paymenttest.NewOutboxWorkerForFault(infra)
 
-	outbox1 := processRefundWebhook(t, infra.Pool, svc, "evt_partial_1_"+uuid.New().String(), seed.ProviderRef, "re_partial_1_"+uuid.New().String(), 10_000_000)
+	outbox1 := paymenttest.ProcessRefundWebhook(t, infra.Pool, svc, "evt_partial_1_"+uuid.New().String(), seed.ProviderRef, "re_partial_1_"+uuid.New().String(), 10_000_000)
 	n, err := worker.ProcessOutbox(ctx, 10)
 	require.NoError(t, err)
 	require.Equal(t, 1, n)
-	require.Equal(t, "PROCESSED", paymentOutboxStatus(t, infra.Pool, outbox1))
-	assertPaymentRefundInvariants(t, infra.Pool, seed, 20_000_000, 1)
+	require.Equal(t, "PROCESSED", paymenttest.PaymentOutboxStatus(t, infra.Pool, outbox1))
+	paymenttest.AssertPaymentRefundInvariants(t, infra.Pool, seed, 20_000_000, 1)
 
-	outbox2 := processRefundWebhook(t, infra.Pool, svc, "evt_partial_2_"+uuid.New().String(), seed.ProviderRef, "re_partial_2_"+uuid.New().String(), 20_000_000)
+	outbox2 := paymenttest.ProcessRefundWebhook(t, infra.Pool, svc, "evt_partial_2_"+uuid.New().String(), seed.ProviderRef, "re_partial_2_"+uuid.New().String(), 20_000_000)
 	n, err = worker.ProcessOutbox(ctx, 10)
 	require.NoError(t, err)
 	require.Equal(t, 1, n)
-	require.Equal(t, "PROCESSED", paymentOutboxStatus(t, infra.Pool, outbox2))
-	assertPaymentRefundInvariants(t, infra.Pool, seed, 0, 2)
+	require.Equal(t, "PROCESSED", paymenttest.PaymentOutboxStatus(t, infra.Pool, outbox2))
+	paymenttest.AssertPaymentRefundInvariants(t, infra.Pool, seed, 0, 2)
 
 	var intentStatus string
 	require.NoError(t, infra.Pool.QueryRow(ctx, `
@@ -209,14 +211,14 @@ func TestFault_PaymentRefundExceedsIntentIgnored(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupPaymentFaultInfra(t)
+	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	customerID := uuid.New()
-	seed := seedSettledIntent(t, infra, customerID, 10_000_000, "fault-ref-exceed-"+uuid.New().String())
-	svc := NewService(infra.Pool, NewMockProvider(), infra.Cfg)
+	seed := paymenttest.SeedSettledIntent(t, infra, customerID, 10_000_000, "fault-ref-exceed-"+uuid.New().String())
+	svc := payment.NewService(infra.Pool, payment.NewMockProvider(), infra.Cfg)
 
-	stripeCents, err := MicroToStripeAmount(15_000_000)
+	stripeCents, err := payment.MicroToStripeAmount(15_000_000)
 	require.NoError(t, err)
 	eventID := "evt_ref_exceed_" + uuid.New().String()
 	payload := fmt.Sprintf(`{"id":"%s","type":"refund.created","data":{"object":{"id":"re_exceed","amount":%d,"payment_intent":"%s","status":"succeeded"}}}`,
@@ -227,7 +229,7 @@ func TestFault_PaymentRefundExceedsIntentIgnored(t *testing.T) {
 	outbox, err := db.New(infra.Pool).GetPendingOutboxEventsForUpdate(context.Background(), 10)
 	require.NoError(t, err)
 	require.Empty(t, outbox)
-	assertPaymentFaultInvariants(t, infra.Pool, seed, seed.AmountMicro, 1)
+	paymenttest.AssertPaymentFaultInvariants(t, infra.Pool, seed, seed.AmountMicro, 1)
 
 	faultproof.Log(t, "refund_exceeds_intent_ignored", map[string]string{
 		"subsystem":   "payment_refund_webhook",
@@ -243,25 +245,25 @@ func TestFault_PaymentRefundWithoutTopupDead(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupPaymentFaultInfra(t)
+	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
 	customerID := uuid.New()
-	seed := seedSucceededIntentWithOutbox(t, infra, customerID, 9_000_000, "fault-ref-no-topup-"+uuid.New().String())
+	seed := paymenttest.SeedSucceededIntentWithOutbox(t, infra, customerID, 9_000_000, "fault-ref-no-topup-"+uuid.New().String())
 	_, err := infra.Pool.Exec(ctx, `DELETE FROM payment.payment_outbox WHERE event_type = 'SETTLE_BALANCE'`)
 	require.NoError(t, err)
 
-	svc := NewService(infra.Pool, NewMockProvider(), infra.Cfg)
-	outboxID := processRefundWebhook(t, infra.Pool, svc, "evt_ref_no_topup_"+uuid.New().String(), seed.ProviderRef, "re_no_topup_"+uuid.New().String(), 9_000_000)
+	svc := payment.NewService(infra.Pool, payment.NewMockProvider(), infra.Cfg)
+	outboxID := paymenttest.ProcessRefundWebhook(t, infra.Pool, svc, "evt_ref_no_topup_"+uuid.New().String(), seed.ProviderRef, "re_no_topup_"+uuid.New().String(), 9_000_000)
 
-	worker := newOutboxWorkerForFault(infra)
+	worker := paymenttest.NewOutboxWorkerForFault(infra)
 	n, err := worker.ProcessOutbox(ctx, 10)
 	require.NoError(t, err)
 	require.Equal(t, 0, n)
-	require.Equal(t, "DEAD", paymentOutboxStatus(t, infra.Pool, outboxID))
-	require.Equal(t, 0, ledgerRefundCountForIntent(t, infra.Pool, seed.IntentID))
-	assertPaymentFaultInvariants(t, infra.Pool, seed, 0, 0)
+	require.Equal(t, "DEAD", paymenttest.PaymentOutboxStatus(t, infra.Pool, outboxID))
+	require.Equal(t, 0, paymenttest.LedgerRefundCountForIntent(t, infra.Pool, seed.IntentID))
+	paymenttest.AssertPaymentFaultInvariants(t, infra.Pool, seed, 0, 0)
 
 	faultproof.Log(t, "refund_without_topup_dead", map[string]string{
 		"subsystem":     "payment_refund_outbox",

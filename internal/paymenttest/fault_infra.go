@@ -1,21 +1,21 @@
-package payment
+package paymenttest
 
 import (
 	"context"
 	"fmt"
 	"net"
-	"path/filepath"
-	"runtime"
 	"strconv"
 	"testing"
 	"time"
 
 	"espx/internal/config"
-	"espx/internal/ingestion"
-	ads_db "espx/internal/domain/db"
 	"espx/internal/controlplane"
 	mgmt_pb "espx/internal/controlplane/pb"
+	ads_db "espx/internal/domain/db"
+	"espx/internal/ingestion"
+	"espx/internal/payment"
 	"espx/internal/payment/db"
+	"espx/internal/payment/dbtest"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -30,7 +30,7 @@ import (
 
 const paymentContainerStopTimeout = 10 * time.Second
 
-type paymentFaultInfra struct {
+type FaultInfra struct {
 	Pool           *pgxpool.Pool
 	Redis          redis.UniversalClient
 	PGContainer    *postgres.PostgresContainer
@@ -41,7 +41,7 @@ type paymentFaultInfra struct {
 	SettlementGRPC *grpc.Server
 }
 
-type seededPayment struct {
+type SeededPayment struct {
 	CustomerID  uuid.UUID
 	IntentID    uuid.UUID
 	AmountMicro int64
@@ -49,7 +49,7 @@ type seededPayment struct {
 	OutboxID    int64
 }
 
-func setupPaymentFaultInfra(t *testing.T) (*paymentFaultInfra, func()) {
+func SetupPaymentFaultInfra(t *testing.T) (*FaultInfra, func()) {
 	t.Helper()
 	ctx := context.Background()
 
@@ -71,11 +71,8 @@ func setupPaymentFaultInfra(t *testing.T) (*paymentFaultInfra, func()) {
 	pool, err := pgxpool.New(ctx, connStr)
 	require.NoError(t, err)
 
-	_, filename, _, ok := runtime.Caller(0)
-	require.True(t, ok)
-	baseDir := filepath.Join(filepath.Dir(filename), "..", "..")
-	applyMigrations(t, pool, filepath.Join(baseDir, "internal/ingestion/migrations"))
-	applyMigrations(t, pool, filepath.Join(baseDir, "internal/payment/migrations"))
+	dbtest.ApplyMigrations(t, pool, filepathJoinMigrations("internal/ingestion/migrations"))
+	dbtest.ApplyMigrations(t, pool, filepathJoinMigrations("internal/payment/migrations"))
 
 	redisContainer, err := rediscontainer.Run(ctx, "redis:7-alpine")
 	require.NoError(t, err)
@@ -108,7 +105,7 @@ func setupPaymentFaultInfra(t *testing.T) (*paymentFaultInfra, func()) {
 	mgmt_pb.RegisterSettlementServiceServer(grpcServer, settleHandler)
 	go func() { _ = grpcServer.Serve(lis) }()
 
-	infra := &paymentFaultInfra{
+	infra := &FaultInfra{
 		Pool:           pool,
 		Redis:          rdb,
 		PGContainer:    pgContainer,
@@ -129,18 +126,22 @@ func setupPaymentFaultInfra(t *testing.T) (*paymentFaultInfra, func()) {
 	return infra, cleanup
 }
 
-func stopPaymentContainer(t *testing.T, c testcontainers.Container) {
+func filepathJoinMigrations(rel string) string {
+	return dbtest.RepoRootJoin(rel)
+}
+
+func StopPaymentContainer(t *testing.T, c testcontainers.Container) {
 	t.Helper()
 	timeout := paymentContainerStopTimeout
 	require.NoError(t, c.Stop(context.Background(), &timeout))
 }
 
-func startPaymentContainer(t *testing.T, c testcontainers.Container) {
+func StartPaymentContainer(t *testing.T, c testcontainers.Container) {
 	t.Helper()
 	require.NoError(t, c.Start(context.Background()))
 }
 
-func (infra *paymentFaultInfra) refreshPGPool(t *testing.T) {
+func (infra *FaultInfra) RefreshPGPool(t *testing.T) {
 	t.Helper()
 	ctx := context.Background()
 	infra.Pool.Close()
@@ -155,7 +156,7 @@ func (infra *paymentFaultInfra) refreshPGPool(t *testing.T) {
 	}, 30*time.Second, 200*time.Millisecond)
 }
 
-func (infra *paymentFaultInfra) restartSettlementGRPC(t *testing.T) {
+func (infra *FaultInfra) RestartSettlementGRPC(t *testing.T) {
 	t.Helper()
 	addr := infra.SettlementLis.Addr().String()
 	if infra.SettlementGRPC != nil {
@@ -181,12 +182,12 @@ func (infra *paymentFaultInfra) restartSettlementGRPC(t *testing.T) {
 	}, 5*time.Second, 50*time.Millisecond)
 }
 
-func requirePaymentFaultActive(t *testing.T, faultActive func() bool, msg string) {
+func RequirePaymentFaultActive(t *testing.T, faultActive func() bool, msg string) {
 	t.Helper()
 	require.Eventually(t, faultActive, 10*time.Second, 100*time.Millisecond, msg)
 }
 
-func seedCustomer(t *testing.T, pool *pgxpool.Pool, customerID uuid.UUID) {
+func SeedCustomer(t *testing.T, pool *pgxpool.Pool, customerID uuid.UUID) {
 	t.Helper()
 	ctx := context.Background()
 	_, err := ads_db.New(pool).CreateCustomer(ctx, ads_db.CreateCustomerParams{
@@ -198,12 +199,12 @@ func seedCustomer(t *testing.T, pool *pgxpool.Pool, customerID uuid.UUID) {
 	require.NoError(t, err)
 }
 
-func seedSucceededIntentWithOutbox(t *testing.T, infra *paymentFaultInfra, customerID uuid.UUID, amountMicro int64, idempotencyKey string) seededPayment {
+func SeedSucceededIntentWithOutbox(t *testing.T, infra *FaultInfra, customerID uuid.UUID, amountMicro int64, idempotencyKey string) SeededPayment {
 	t.Helper()
 	ctx := context.Background()
-	seedCustomer(t, infra.Pool, customerID)
+	SeedCustomer(t, infra.Pool, customerID)
 
-	svc := NewService(infra.Pool, NewMockProvider(), infra.Cfg)
+	svc := payment.NewService(infra.Pool, payment.NewMockProvider(), infra.Cfg)
 	result, err := svc.CreatePaymentIntent(ctx, customerID, amountMicro, "USD", idempotencyKey, nil)
 	require.NoError(t, err)
 	intent := result.Intent
@@ -218,7 +219,7 @@ func seedSucceededIntentWithOutbox(t *testing.T, infra *paymentFaultInfra, custo
 	require.NoError(t, err)
 	require.Len(t, outboxRows, 1)
 
-	return seededPayment{
+	return SeededPayment{
 		CustomerID:  customerID,
 		IntentID:    uuid.UUID(intent.ID.Bytes),
 		AmountMicro: amountMicro,
@@ -227,21 +228,21 @@ func seedSucceededIntentWithOutbox(t *testing.T, infra *paymentFaultInfra, custo
 	}
 }
 
-func seedSettledIntent(t *testing.T, infra *paymentFaultInfra, customerID uuid.UUID, amountMicro int64, idempotencyKey string) seededPayment {
+func SeedSettledIntent(t *testing.T, infra *FaultInfra, customerID uuid.UUID, amountMicro int64, idempotencyKey string) SeededPayment {
 	t.Helper()
-	seed := seedSucceededIntentWithOutbox(t, infra, customerID, amountMicro, idempotencyKey)
-	worker := newOutboxWorkerForFault(infra)
+	seed := SeedSucceededIntentWithOutbox(t, infra, customerID, amountMicro, idempotencyKey)
+	worker := NewOutboxWorkerForFault(infra)
 	n, err := worker.ProcessOutbox(context.Background(), 10)
 	require.NoError(t, err)
 	require.Equal(t, 1, n)
-	require.Equal(t, "PROCESSED", paymentOutboxStatus(t, infra.Pool, seed.OutboxID))
-	assertPaymentFaultInvariants(t, infra.Pool, seed, seed.AmountMicro, 1)
+	require.Equal(t, "PROCESSED", PaymentOutboxStatus(t, infra.Pool, seed.OutboxID))
+	AssertPaymentFaultInvariants(t, infra.Pool, seed, seed.AmountMicro, 1)
 	return seed
 }
 
-func processRefundWebhook(t *testing.T, pool *pgxpool.Pool, svc *Service, eventID string, providerRef string, refundID string, refundAmountMicro int64) int64 {
+func ProcessRefundWebhook(t *testing.T, pool *pgxpool.Pool, svc *payment.Service, eventID string, providerRef string, refundID string, refundAmountMicro int64) int64 {
 	t.Helper()
-	stripeCents, err := MicroToStripeAmount(refundAmountMicro)
+	stripeCents, err := payment.MicroToStripeAmount(refundAmountMicro)
 	require.NoError(t, err)
 	payload := fmt.Sprintf(`{"id":"%s","type":"refund.created","data":{"object":{"id":"%s","amount":%d,"payment_intent":"%s","status":"succeeded"}}}`,
 		eventID, refundID, stripeCents, providerRef)
@@ -252,11 +253,11 @@ func processRefundWebhook(t *testing.T, pool *pgxpool.Pool, svc *Service, eventI
 	require.NoError(t, pool.QueryRow(context.Background(), `
 		SELECT id FROM payment.payment_outbox
 		WHERE event_type = $1 AND status = 'PENDING'
-		ORDER BY created_at DESC LIMIT 1`, OutboxEventReverseBalance).Scan(&outboxID))
+		ORDER BY created_at DESC LIMIT 1`, payment.OutboxEventReverseBalance).Scan(&outboxID))
 	return outboxID
 }
 
-func ledgerRefundCountForIntent(t *testing.T, pool *pgxpool.Pool, intentID uuid.UUID) int {
+func LedgerRefundCountForIntent(t *testing.T, pool *pgxpool.Pool, intentID uuid.UUID) int {
 	t.Helper()
 	var n int
 	err := pool.QueryRow(context.Background(), `
@@ -266,15 +267,15 @@ func ledgerRefundCountForIntent(t *testing.T, pool *pgxpool.Pool, intentID uuid.
 	return n
 }
 
-func assertPaymentRefundInvariants(t *testing.T, pool *pgxpool.Pool, seed seededPayment, wantBalance int64, wantRefundRows int) {
+func AssertPaymentRefundInvariants(t *testing.T, pool *pgxpool.Pool, seed SeededPayment, wantBalance int64, wantRefundRows int) {
 	t.Helper()
-	require.Equal(t, wantBalance, customerBalance(t, pool, seed.CustomerID))
-	require.Equal(t, wantRefundRows, ledgerRefundCountForIntent(t, pool, seed.IntentID))
+	require.Equal(t, wantBalance, CustomerBalance(t, pool, seed.CustomerID))
+	require.Equal(t, wantRefundRows, LedgerRefundCountForIntent(t, pool, seed.IntentID))
 }
 
-func processDisputeWebhook(t *testing.T, pool *pgxpool.Pool, svc *Service, eventID, eventType, providerRef, disputeID string, amountMicro int64, stripeStatus string) {
+func ProcessDisputeWebhook(t *testing.T, pool *pgxpool.Pool, svc *payment.Service, eventID, eventType, providerRef, disputeID string, amountMicro int64, stripeStatus string) {
 	t.Helper()
-	stripeCents, err := MicroToStripeAmount(amountMicro)
+	stripeCents, err := payment.MicroToStripeAmount(amountMicro)
 	require.NoError(t, err)
 	payload := fmt.Sprintf(`{"id":"%s","type":"%s","data":{"object":{"id":"%s","amount":%d,"payment_intent":"%s","status":"%s"}}}`,
 		eventID, eventType, disputeID, stripeCents, providerRef, stripeStatus)
@@ -282,7 +283,7 @@ func processDisputeWebhook(t *testing.T, pool *pgxpool.Pool, svc *Service, event
 	require.NoError(t, err)
 }
 
-func latestOutboxIDByType(t *testing.T, pool *pgxpool.Pool, eventType string) int64 {
+func LatestOutboxIDByType(t *testing.T, pool *pgxpool.Pool, eventType string) int64 {
 	t.Helper()
 	var outboxID int64
 	err := pool.QueryRow(context.Background(), `
@@ -293,7 +294,7 @@ func latestOutboxIDByType(t *testing.T, pool *pgxpool.Pool, eventType string) in
 	return outboxID
 }
 
-func ledgerChargebackCountForIntent(t *testing.T, pool *pgxpool.Pool, intentID uuid.UUID) int {
+func LedgerChargebackCountForIntent(t *testing.T, pool *pgxpool.Pool, intentID uuid.UUID) int {
 	t.Helper()
 	var n int
 	err := pool.QueryRow(context.Background(), `
@@ -303,7 +304,7 @@ func ledgerChargebackCountForIntent(t *testing.T, pool *pgxpool.Pool, intentID u
 	return n
 }
 
-func ledgerChargebackReversalCountForIntent(t *testing.T, pool *pgxpool.Pool, intentID uuid.UUID) int {
+func LedgerChargebackReversalCountForIntent(t *testing.T, pool *pgxpool.Pool, intentID uuid.UUID) int {
 	t.Helper()
 	var n int
 	err := pool.QueryRow(context.Background(), `
@@ -313,14 +314,14 @@ func ledgerChargebackReversalCountForIntent(t *testing.T, pool *pgxpool.Pool, in
 	return n
 }
 
-func assertPaymentChargebackInvariants(t *testing.T, pool *pgxpool.Pool, seed seededPayment, wantBalance int64, wantChargebackRows, wantReversalRows int) {
+func AssertPaymentChargebackInvariants(t *testing.T, pool *pgxpool.Pool, seed SeededPayment, wantBalance int64, wantChargebackRows, wantReversalRows int) {
 	t.Helper()
-	require.Equal(t, wantBalance, customerBalance(t, pool, seed.CustomerID))
-	require.Equal(t, wantChargebackRows, ledgerChargebackCountForIntent(t, pool, seed.IntentID))
-	require.Equal(t, wantReversalRows, ledgerChargebackReversalCountForIntent(t, pool, seed.IntentID))
+	require.Equal(t, wantBalance, CustomerBalance(t, pool, seed.CustomerID))
+	require.Equal(t, wantChargebackRows, LedgerChargebackCountForIntent(t, pool, seed.IntentID))
+	require.Equal(t, wantReversalRows, LedgerChargebackReversalCountForIntent(t, pool, seed.IntentID))
 }
 
-func customerBalance(t *testing.T, pool *pgxpool.Pool, customerID uuid.UUID) int64 {
+func CustomerBalance(t *testing.T, pool *pgxpool.Pool, customerID uuid.UUID) int64 {
 	t.Helper()
 	ctx := context.Background()
 	cust, err := ads_db.New(pool).GetCustomerForUpdate(ctx, ingestion.ToUUID(customerID))
@@ -328,7 +329,7 @@ func customerBalance(t *testing.T, pool *pgxpool.Pool, customerID uuid.UUID) int
 	return cust.Balance
 }
 
-func ledgerCountForIntent(t *testing.T, pool *pgxpool.Pool, intentID uuid.UUID) int {
+func LedgerCountForIntent(t *testing.T, pool *pgxpool.Pool, intentID uuid.UUID) int {
 	t.Helper()
 	var n int
 	err := pool.QueryRow(context.Background(), `
@@ -338,7 +339,7 @@ func ledgerCountForIntent(t *testing.T, pool *pgxpool.Pool, intentID uuid.UUID) 
 	return n
 }
 
-func paymentOutboxStatus(t *testing.T, pool *pgxpool.Pool, outboxID int64) string {
+func PaymentOutboxStatus(t *testing.T, pool *pgxpool.Pool, outboxID int64) string {
 	t.Helper()
 	var status string
 	err := pool.QueryRow(context.Background(), `
@@ -347,16 +348,16 @@ func paymentOutboxStatus(t *testing.T, pool *pgxpool.Pool, outboxID int64) strin
 	return status
 }
 
-func assertPaymentFaultInvariants(t *testing.T, pool *pgxpool.Pool, seed seededPayment, wantBalance int64, wantLedgerRows int) {
+func AssertPaymentFaultInvariants(t *testing.T, pool *pgxpool.Pool, seed SeededPayment, wantBalance int64, wantLedgerRows int) {
 	t.Helper()
-	require.Equal(t, wantBalance, customerBalance(t, pool, seed.CustomerID))
-	require.Equal(t, wantLedgerRows, ledgerCountForIntent(t, pool, seed.IntentID))
+	require.Equal(t, wantBalance, CustomerBalance(t, pool, seed.CustomerID))
+	require.Equal(t, wantLedgerRows, LedgerCountForIntent(t, pool, seed.IntentID))
 }
 
-func itoaPaymentFault(n int) string {
+func ItoaPaymentFault(n int) string {
 	return strconv.Itoa(n)
 }
 
-func newOutboxWorkerForFault(infra *paymentFaultInfra) *OutboxWorker {
-	return NewOutboxWorker(infra.Pool, infra.Cfg)
+func NewOutboxWorkerForFault(infra *FaultInfra) *payment.OutboxWorker {
+	return payment.NewOutboxWorker(infra.Pool, infra.Cfg)
 }

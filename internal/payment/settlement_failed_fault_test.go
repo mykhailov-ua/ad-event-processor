@@ -1,4 +1,4 @@
-package payment
+package payment_test
 
 import (
 	"espx/pkg/faultproof"
@@ -10,7 +10,9 @@ import (
 
 	"espx/internal/ingestion"
 	"espx/internal/notifier"
+	"espx/internal/payment"
 	"espx/internal/payment/db"
+	"espx/internal/paymenttest"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -22,31 +24,31 @@ func TestFault_SettlementFailedNotifier(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupPaymentFaultInfra(t)
+	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
 	defer cleanup()
 
-	stub := &stubPaymentNotifierClient{}
-	cfg := testPaymentOpsConfig()
-	alerter := NewSettlementFailedAlerter(&NotifierClient{api: notifier.NewGRPCNotifierAPI(stub)}, cfg)
+	stub := &paymenttest.StubNotifierClient{}
+	cfg := paymenttest.TestOpsConfig()
+	alerter := payment.NewSettlementFailedAlerter(payment.NewInProcessNotifierClient(notifier.NewGRPCNotifierAPI(stub)), cfg)
 	require.NotNil(t, alerter)
 
 	ctx := context.Background()
 	customerID := uuid.New()
-	seed := seedSucceededIntentWithOutbox(t, infra, customerID, 9_000_000, "fault-settle-alert-"+uuid.New().String())
+	seed := paymenttest.SeedSucceededIntentWithOutbox(t, infra, customerID, 9_000_000, "fault-settle-alert-"+uuid.New().String())
 
 	_, err := infra.Pool.Exec(ctx, `DELETE FROM customers WHERE id = $1`, ingestion.ToUUID(customerID))
 	require.NoError(t, err)
 
-	worker := newOutboxWorkerForFault(infra)
+	worker := paymenttest.NewOutboxWorkerForFault(infra)
 	worker.SetSettlementFailedAlerter(alerter)
 
 	n, err := worker.ProcessOutbox(ctx, 10)
 	require.NoError(t, err)
 	require.Equal(t, 0, n)
-	require.Equal(t, "DEAD", paymentOutboxStatus(t, infra.Pool, seed.OutboxID))
+	require.Equal(t, "DEAD", paymenttest.PaymentOutboxStatus(t, infra.Pool, seed.OutboxID))
 
 	time.Sleep(200 * time.Millisecond)
-	requests := stub.snapshot()
+	requests := stub.Snapshot()
 	require.Len(t, requests, 1)
 	require.Equal(t, "payment-settlement-failed:"+seed.IntentID.String(), requests[0].DedupKey)
 	require.Contains(t, requests[0].Body, seed.IntentID.String())
@@ -56,7 +58,7 @@ func TestFault_SettlementFailedNotifier(t *testing.T) {
 		fmt.Errorf("customer not found"),
 	)
 	time.Sleep(100 * time.Millisecond)
-	require.Len(t, stub.snapshot(), 1, "cooldown should suppress duplicate alert for same intent")
+	require.Len(t, stub.Snapshot(), 1, "cooldown should suppress duplicate alert for same intent")
 
 	faultproof.Log(t, "settlement_failed_notifier", map[string]string{
 		"subsystem":   "payment_outbox",

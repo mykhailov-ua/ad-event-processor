@@ -1,4 +1,4 @@
-package payment
+package payment_test
 
 import (
 	"espx/pkg/faultproof"
@@ -8,7 +8,9 @@ import (
 	"sync"
 	"testing"
 
+	"espx/internal/payment"
 	"espx/internal/payment/db"
+	"espx/internal/paymenttest"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -19,7 +21,7 @@ func TestFault_CryptoWebhookStormIdempotent(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupPaymentFaultInfra(t)
+	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
@@ -28,7 +30,7 @@ func TestFault_CryptoWebhookStormIdempotent(t *testing.T) {
 	infra.Cfg.CryptoMinPaymentMicro = 10_000_000
 	infra.Cfg.CryptoConfirmationDepth = 12
 
-	svc := NewService(infra.Pool, NewProvider(infra.Cfg), infra.Cfg)
+	svc := payment.NewService(infra.Pool, payment.NewProvider(infra.Cfg), infra.Cfg)
 
 	customerID := uuid.New()
 	_, err := infra.Pool.Exec(ctx, `
@@ -46,7 +48,7 @@ func TestFault_CryptoWebhookStormIdempotent(t *testing.T) {
 	require.NoError(t, err)
 
 	eventID := "evt_crypto_storm_" + uuid.New().String()
-	evtPayload := cryptoEvent{
+	evtPayload := cryptoWebhookPayload{
 		ID:            eventID,
 		Type:          "payment.succeeded",
 		TxHash:        "0xabc123",
@@ -89,7 +91,7 @@ func TestFault_CryptoWebhookReplay(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupPaymentFaultInfra(t)
+	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
@@ -98,10 +100,10 @@ func TestFault_CryptoWebhookReplay(t *testing.T) {
 	infra.Cfg.CryptoMinPaymentMicro = 10_000_000
 	infra.Cfg.CryptoConfirmationDepth = 12
 
-	svc := NewService(infra.Pool, NewProvider(infra.Cfg), infra.Cfg)
+	svc := payment.NewService(infra.Pool, payment.NewProvider(infra.Cfg), infra.Cfg)
 
 	customerID := uuid.New()
-	seedCustomer(t, infra.Pool, customerID)
+	paymenttest.SeedCustomer(t, infra.Pool, customerID)
 
 	idempotencyKey := "crypto-replay-" + uuid.New().String()
 	amountMicro := int64(50_000_000)
@@ -114,7 +116,7 @@ func TestFault_CryptoWebhookReplay(t *testing.T) {
 	providerRef := res.Intent.ProviderRef.String
 
 	eventID := "evt_crypto_replay_" + uuid.New().String()
-	evtPayload := cryptoEvent{
+	evtPayload := cryptoWebhookPayload{
 		ID:            eventID,
 		Type:          "payment.succeeded",
 		TxHash:        "0xreplay123",
@@ -143,25 +145,25 @@ func TestFault_CryptoWebhookReplay(t *testing.T) {
 		WHERE payment_intent_id = $1`, res.Intent.ID)
 	require.NoError(t, err)
 
-	holdWorker := NewCryptoHoldWorker(infra.Pool, infra.Cfg)
+	holdWorker := payment.NewCryptoHoldWorker(infra.Pool, infra.Cfg)
 	require.NoError(t, holdWorker.ProcessHolds(ctx))
 
-	outboxWorker := newOutboxWorkerForFault(infra)
+	outboxWorker := paymenttest.NewOutboxWorkerForFault(infra)
 	for i := 0; i < replays; i++ {
 		_, _ = outboxWorker.ProcessOutbox(ctx, 10)
 	}
 
-	seed := seededPayment{
+	seed := paymenttest.SeededPayment{
 		CustomerID:  customerID,
 		IntentID:    intentID,
 		AmountMicro: amountMicro,
 		ProviderRef: providerRef,
 	}
-	assertPaymentFaultInvariants(t, infra.Pool, seed, amountMicro, 1)
+	paymenttest.AssertPaymentFaultInvariants(t, infra.Pool, seed, amountMicro, 1)
 
 	faultproof.Log(t, "crypto_webhook_replay", map[string]string{
 		"subsystem":     "payment_crypto_webhook",
-		"replays":       itoaPaymentFault(replays),
+		"replays":       paymenttest.ItoaPaymentFault(replays),
 		"proposal_rows": "1",
 		"ledger_rows":   "1",
 		"baseline_ok":   "true",

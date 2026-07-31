@@ -1,4 +1,4 @@
-package payment
+package payment_test
 
 import (
 	"context"
@@ -13,7 +13,9 @@ import (
 	"testing"
 	"time"
 
+	"espx/internal/payment"
 	"espx/internal/payment/db"
+	"espx/internal/paymenttest"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -24,7 +26,7 @@ func TestCryptoGateway_EndToEnd(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupPaymentFaultInfra(t)
+	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
@@ -33,7 +35,7 @@ func TestCryptoGateway_EndToEnd(t *testing.T) {
 	infra.Cfg.CryptoMinPaymentMicro = 10_000_000
 	infra.Cfg.CryptoConfirmationDepth = 12
 
-	svc := NewService(infra.Pool, NewProvider(infra.Cfg), infra.Cfg)
+	svc := payment.NewService(infra.Pool, payment.NewProvider(infra.Cfg), infra.Cfg)
 
 	customerID := uuid.New()
 
@@ -57,7 +59,7 @@ func TestCryptoGateway_EndToEnd(t *testing.T) {
 	require.NotEmpty(t, providerRef)
 
 	eventID := "evt_crypto_" + uuid.New().String()
-	evtPayload := cryptoEvent{
+	evtPayload := cryptoWebhookPayload{
 		ID:            eventID,
 		Type:          "payment.succeeded",
 		TxHash:        "0xabc123",
@@ -108,7 +110,7 @@ func TestCryptoGateway_EndToEnd(t *testing.T) {
 	`, intent.ID)
 	require.NoError(t, err)
 
-	holdWorker := NewCryptoHoldWorker(infra.Pool, infra.Cfg)
+	holdWorker := payment.NewCryptoHoldWorker(infra.Pool, infra.Cfg)
 	err = holdWorker.ProcessHolds(ctx)
 	require.NoError(t, err)
 
@@ -125,7 +127,7 @@ func TestCryptoGateway_EndToEnd(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, outboxCount)
 
-	outboxWorker := newOutboxWorkerForFault(infra)
+	outboxWorker := paymenttest.NewOutboxWorkerForFault(infra)
 	n, err := outboxWorker.ProcessOutbox(ctx, 10)
 	require.NoError(t, err)
 	require.Equal(t, 1, n)
@@ -141,7 +143,7 @@ func TestCryptoGateway_UnderpayRejected(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupPaymentFaultInfra(t)
+	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
@@ -150,7 +152,7 @@ func TestCryptoGateway_UnderpayRejected(t *testing.T) {
 	infra.Cfg.CryptoMinPaymentMicro = 10_000_000
 	infra.Cfg.CryptoConfirmationDepth = 12
 
-	svc := NewService(infra.Pool, NewProvider(infra.Cfg), infra.Cfg)
+	svc := payment.NewService(infra.Pool, payment.NewProvider(infra.Cfg), infra.Cfg)
 
 	customerID := uuid.New()
 	_, err := infra.Pool.Exec(ctx, `
@@ -168,7 +170,7 @@ func TestCryptoGateway_UnderpayRejected(t *testing.T) {
 	require.NoError(t, err)
 
 	eventID := "evt_crypto_" + uuid.New().String()
-	evtPayload := cryptoEvent{
+	evtPayload := cryptoWebhookPayload{
 		ID:            eventID,
 		Type:          "payment.succeeded",
 		TxHash:        "0xabc123",
@@ -198,7 +200,7 @@ func TestCryptoGateway_FraudGateBlocksRelease(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupPaymentFaultInfra(t)
+	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
@@ -207,7 +209,7 @@ func TestCryptoGateway_FraudGateBlocksRelease(t *testing.T) {
 	infra.Cfg.CryptoMinPaymentMicro = 10_000_000
 	infra.Cfg.CryptoConfirmationDepth = 12
 
-	svc := NewService(infra.Pool, NewProvider(infra.Cfg), infra.Cfg)
+	svc := payment.NewService(infra.Pool, payment.NewProvider(infra.Cfg), infra.Cfg)
 
 	customerID := uuid.New()
 	_, err := infra.Pool.Exec(ctx, `
@@ -225,7 +227,7 @@ func TestCryptoGateway_FraudGateBlocksRelease(t *testing.T) {
 	require.NoError(t, err)
 
 	eventID := "evt_crypto_" + uuid.New().String()
-	evtPayload := cryptoEvent{
+	evtPayload := cryptoWebhookPayload{
 		ID:            eventID,
 		Type:          "payment.succeeded",
 		TxHash:        "0xabc123",
@@ -252,7 +254,7 @@ func TestCryptoGateway_FraudGateBlocksRelease(t *testing.T) {
 	`, disputeID, res.Intent.ID, amountMicro)
 	require.NoError(t, err)
 
-	holdWorker := NewCryptoHoldWorker(infra.Pool, infra.Cfg)
+	holdWorker := payment.NewCryptoHoldWorker(infra.Pool, infra.Cfg)
 	err = holdWorker.ProcessHolds(ctx)
 	require.NoError(t, err)
 
@@ -276,15 +278,15 @@ func TestCryptoGateway_WebhookHTTPHandler(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupPaymentFaultInfra(t)
+	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	infra.Cfg.CryptoWebhookSecret = "crypto_test_secret"
 	infra.Cfg.CryptoMinPaymentMicro = 10_000_000
 	infra.Cfg.CryptoConfirmationDepth = 12
 
-	svc := NewService(infra.Pool, NewProvider(infra.Cfg), infra.Cfg)
-	handler := NewWebhookHandler(svc, infra.Cfg)
+	svc := payment.NewService(infra.Pool, payment.NewProvider(infra.Cfg), infra.Cfg)
+	handler := payment.NewWebhookHandler(svc, infra.Cfg)
 
 	customerID := uuid.New()
 	_, err := infra.Pool.Exec(context.Background(), `
@@ -299,7 +301,7 @@ func TestCryptoGateway_WebhookHTTPHandler(t *testing.T) {
 	require.NoError(t, err)
 
 	eventID := "evt_crypto_http"
-	evtPayload := cryptoEvent{
+	evtPayload := cryptoWebhookPayload{
 		ID:            eventID,
 		Type:          "payment.succeeded",
 		TxHash:        "0xabc123",
@@ -321,7 +323,7 @@ func TestCryptoGateway_WebhookHTTPHandler(t *testing.T) {
 	req.Header.Set("Crypto-Signature", sigHeader)
 
 	rr := httptest.NewRecorder()
-	handler.handleCryptoWebhook(rr, req)
+	handler.HandleCryptoWebhookForTest(rr, req)
 
 	require.Equal(t, http.StatusOK, rr.Code)
 	require.Equal(t, "OK", rr.Body.String())

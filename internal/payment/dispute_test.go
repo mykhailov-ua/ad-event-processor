@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"espx/internal/config"
+	"espx/internal/payment/dbtest"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +18,7 @@ func TestProcessStripeDisputeWebhook_noDoubleChargeback(t *testing.T) {
 		t.Skip("requires testcontainers")
 	}
 
-	pool, cleanup := setupTestDB(t)
+	pool, cleanup := dbtest.SetupTestDB(t)
 	defer cleanup()
 
 	cfg := &config.Config{MaxRetries: 3}
