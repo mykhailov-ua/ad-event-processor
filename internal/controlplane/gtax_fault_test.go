@@ -10,13 +10,11 @@ import (
 	"espx/internal/config"
 	"espx/internal/database"
 	"espx/internal/domain"
-	"espx/internal/controlplane/pb"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc/metadata"
 )
 
 func ensureBillingCTVProfileSchema(t *testing.T, pool *pgxpool.Pool) {
@@ -78,19 +76,12 @@ func TestFault_CTVGtaxSettlementReplay(t *testing.T) {
 	svc := NewService(pool, []redis.UniversalClient{rdb}, nil, cfg)
 	defer svc.Close()
 	handler := NewSettlementHandler(svc, cfg)
-	rpcCtx := metadata.NewIncomingContext(ctx, metadata.Pairs("x-internal-token", "gtax-test-token"))
 
 	settlementID := "ctv-settle-" + uuid.New().String()
-	req := &pb.ApplyCTVSettlementRequest{
-		SettlementId: settlementID,
-		CustomerId:   customerID.String(),
-		CampaignId:   campaignID.String(),
-		SpendMicro:   spendMicro,
-	}
 
-	var first *pb.ApplyCTVSettlementResponse
+	var first domain.CTVSettlementResult
 	for i := 0; i < 3; i++ {
-		resp, callErr := handler.ApplyCTVSettlement(rpcCtx, req)
+		resp, callErr := handler.applyCTVSettlement(ctx, settlementID, customerID, campaignID, spendMicro)
 		require.NoError(t, callErr)
 		if i == 0 {
 			first = resp
@@ -98,8 +89,8 @@ func TestFault_CTVGtaxSettlementReplay(t *testing.T) {
 			require.Equal(t, int64(50_000), resp.TaxMicro)
 		} else {
 			require.False(t, resp.Applied)
-			require.Equal(t, first.FeeLedgerId, resp.FeeLedgerId)
-			require.Equal(t, first.TaxLedgerId, resp.TaxLedgerId)
+			require.Equal(t, first.FeeLedgerID, resp.FeeLedgerID)
+			require.Equal(t, first.TaxLedgerID, resp.TaxLedgerID)
 		}
 	}
 
@@ -125,7 +116,7 @@ func TestFault_CTVGtaxSettlementReplay(t *testing.T) {
 		"fault":         "gtax_settlement_replay",
 		"proposal_rows": "1",
 		"settlement_id": settlementID,
-		"fee_ledger_id": strconv.FormatInt(first.FeeLedgerId, 10),
+		"fee_ledger_id": strconv.FormatInt(first.FeeLedgerID, 10),
 		"tax_micro":     strconv.FormatInt(first.TaxMicro, 10),
 	})
 }

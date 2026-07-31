@@ -6,10 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/notifier"
 	"espx/internal/payment/db"
-
-	notifierpb "espx/internal/notifier/pb"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -34,9 +31,9 @@ func TestSettlementFailedAlerter_CooldownDedupByIntent(t *testing.T) {
 }
 
 func TestSettlementFailedAlerter_AlertPermanentFailure_enqueues(t *testing.T) {
-	stub := &stubPaymentNotifierClient{}
+	stub := &stubNotifierAPI{}
 	cfg := testPaymentOpsConfig()
-	alerter := NewSettlementFailedAlerter(&NotifierClient{api: notifier.NewGRPCNotifierAPI(stub)}, cfg)
+	alerter := NewSettlementFailedAlerter(&NotifierClient{api: stub}, cfg)
 	require.NotNil(t, alerter)
 
 	intentID := uuid.New()
@@ -56,15 +53,15 @@ func TestSettlementFailedAlerter_AlertPermanentFailure_enqueues(t *testing.T) {
 
 	requests := stub.snapshot()
 	require.Len(t, requests, 1)
-	assert.Equal(t, notifierpb.DeliveryMode_DELIVERY_MODE_BROADCAST, requests[0].DeliveryMode)
+	assert.True(t, requests[0].Broadcast)
 	assert.Equal(t, "payment-settlement-failed:"+intentID.String(), requests[0].DedupKey)
 	assert.Contains(t, requests[0].Body, intentID.String())
 }
 
 func TestSettlementFailedAlerter_AlertPermanentFailure_dedupSecondCall(t *testing.T) {
-	stub := &stubPaymentNotifierClient{}
+	stub := &stubNotifierAPI{}
 	cfg := testPaymentOpsConfig()
-	alerter := NewSettlementFailedAlerter(&NotifierClient{api: notifier.NewGRPCNotifierAPI(stub)}, cfg)
+	alerter := NewSettlementFailedAlerter(&NotifierClient{api: stub}, cfg)
 	require.NotNil(t, alerter)
 
 	intentID := uuid.New()

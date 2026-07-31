@@ -4,25 +4,16 @@ import (
 	"context"
 	"testing"
 
-	"espx/internal/identity/pb"
 	"espx/internal/config"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 func TestHandler_RegisterRequiresAdminKey(t *testing.T) {
 	handler := NewHandler(nil, &config.Config{AdminAPIKey: "secret-admin-key"})
 
-	_, err := handler.Register(context.Background(), &pb.RegisterRequest{
-		Email:    "user@example.com",
-		Password: "Password123!",
-		Role:     "U",
-	})
+	_, err := handler.API().Register(context.Background(), "", "user@example.com", "Password123!", "U", "")
 	require.Error(t, err)
-	st, ok := status.FromError(err)
-	require.True(t, ok)
-	assert.Equal(t, codes.Unauthenticated, st.Code())
+	assert.Equal(t, ErrInvalidCredentials, err)
 }

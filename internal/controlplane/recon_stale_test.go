@@ -126,7 +126,7 @@ func TestReconcileWindow_autoAdjustsWithinChunk(t *testing.T) {
 }
 
 func TestAlertStaleUnresolvedDiscrepancies_notifiesOps(t *testing.T) {
-	stub := &stubNotifierGRPCClient{}
+	stub := &stubNotifierAPITest{}
 	cfg := testNotifierConfig()
 	cfg.Management.OpsAlertsEnabled = true
 	svc := &Service{alerter: NewOpsAlerter(testNotifierClient(stub), cfg)}
@@ -167,7 +167,7 @@ func TestFault_ReconStaleDiscrepancyOpsAlert(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	stub := &stubNotifierGRPCClient{}
+	stub := &stubNotifierAPITest{}
 	cfg := testNotifierConfig()
 	cfg.Management.OpsAlertsEnabled = true
 

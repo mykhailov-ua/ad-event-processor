@@ -26,7 +26,7 @@ Isolation is at schema and idempotency-key-prefix level, not separate Postgres c
 
 Control-plane binary
 
-`cmd/control`: Modular monolith — admin HTTP :8188, payment webhooks :8187, in-process auth/payment/billing/notifier/management (`CONTROL_ENABLE_*`). Optional settlement gRPC off by default (`SETTLEMENT_GRPC_ENABLED=0`).
+`cmd/control`: Modular monolith — admin HTTP :8188, payment webhooks :8187, in-process auth/payment/billing/notifier/management (`CONTROL_ENABLE_*`).
 
 Sidecar binaries (optional profiles):
 

@@ -137,13 +137,6 @@ safe_sync_proto_gen() {
 	[[ "$found" -eq 1 ]] || safe_die "api/gen has no internal/*/pb trees; check buf output"
 }
 
-safe_prune_service_grpc() {
-	local svc
-	for svc in identity billing payment notifier controlplane; do
-		rm -f "$ROOT/internal/$svc/pb/"*_grpc.pb.go
-	done
-}
-
 safe_prune_service_vtproto() {
 	local svc
 	for svc in identity billing payment notifier controlplane; do
@@ -156,6 +149,5 @@ safe_validate_codegen_configs() {
 	safe_validate_buf_gen_yml "$ROOT/api/buf.gen.yaml"
 	safe_validate_buf_gen_yml "$ROOT/api/buf.gen.nogrpc.yaml"
 	safe_validate_buf_gen_yml "$ROOT/api/buf.gen.vtproto.yaml"
-	safe_validate_buf_gen_yml "$ROOT/api/buf.gen.grpc.yaml"
 	safe_validate_sqlc_yml "$ROOT/sqlc.yaml"
 }

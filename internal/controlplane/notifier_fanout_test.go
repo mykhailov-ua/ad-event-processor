@@ -15,70 +15,68 @@ import (
 
 	"espx/internal/config"
 	"espx/internal/notifier"
-	notifierpb "espx/internal/notifier/pb"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
 )
 
-func testNotifierClient(stub notifierpb.NotifierServiceClient) *NotifierClient {
-	return &NotifierClient{
-		api: notifier.NewGRPCNotifierAPI(stub),
-	}
+func testNotifierClient(stub notifier.NotifierAPI) *NotifierClient {
+	return &NotifierClient{api: stub}
 }
 
-type stubNotifierGRPCClient struct {
-	mu       sync.Mutex
-	requests []*notifierpb.SendNotificationRequest
-	fail     bool
+type stubNotifierAPITest struct {
+	mu     sync.Mutex
+	inputs []notifier.NotificationInput
+	fail   bool
 }
 
-func (stub *stubNotifierGRPCClient) SendNotification(
+func (stub *stubNotifierAPITest) SendNotification(
 	ctx context.Context,
-	in *notifierpb.SendNotificationRequest,
-	opts ...grpc.CallOption,
-) (*notifierpb.SendNotificationResponse, error) {
+	provider, recipient, title, body string,
+) (notifier.SendNotificationResult, error) {
+	return stub.SendNotificationInput(ctx, notifier.NotificationInput{
+		Provider:  provider,
+		Recipient: recipient,
+		Title:     title,
+		Body:      body,
+	})
+}
+
+func (stub *stubNotifierAPITest) SendNotificationInput(
+	ctx context.Context,
+	input notifier.NotificationInput,
+) (notifier.SendNotificationResult, error) {
+	stub.mu.Lock()
+	defer stub.mu.Unlock()
+	if stub.fail {
+		return notifier.SendNotificationResult{}, fmt.Errorf("stub notifier unavailable")
+	}
+	stub.inputs = append(stub.inputs, input)
+	return notifier.SendNotificationResult{NotificationID: "stub-id"}, nil
+}
+
+func (stub *stubNotifierAPITest) SendNotificationBatch(
+	ctx context.Context,
+	inputs []notifier.NotificationInput,
+) ([]notifier.SendNotificationResult, error) {
 	stub.mu.Lock()
 	defer stub.mu.Unlock()
 	if stub.fail {
 		return nil, fmt.Errorf("stub notifier unavailable")
 	}
-	stub.requests = append(stub.requests, in)
-	return &notifierpb.SendNotificationResponse{NotificationId: "stub-id"}, nil
+	stub.inputs = append(stub.inputs, inputs...)
+	out := make([]notifier.SendNotificationResult, len(inputs))
+	for i := range inputs {
+		out[i] = notifier.SendNotificationResult{NotificationID: "stub-id"}
+	}
+	return out, nil
 }
 
-func (stub *stubNotifierGRPCClient) SendNotificationBatch(
-	ctx context.Context,
-	in *notifierpb.SendNotificationBatchRequest,
-	opts ...grpc.CallOption,
-) (*notifierpb.SendNotificationBatchResponse, error) {
+func (stub *stubNotifierAPITest) snapshot() []notifier.NotificationInput {
 	stub.mu.Lock()
 	defer stub.mu.Unlock()
-	if stub.fail {
-		return nil, fmt.Errorf("stub notifier unavailable")
-	}
-	responses := make([]*notifierpb.SendNotificationResponse, 0, len(in.Notifications))
-	for _, item := range in.Notifications {
-		stub.requests = append(stub.requests, item)
-		responses = append(responses, &notifierpb.SendNotificationResponse{NotificationId: "stub-id"})
-	}
-	return &notifierpb.SendNotificationBatchResponse{Notifications: responses}, nil
-}
-
-func (stub *stubNotifierGRPCClient) GetNotification(
-	ctx context.Context,
-	in *notifierpb.GetNotificationRequest,
-	opts ...grpc.CallOption,
-) (*notifierpb.GetNotificationResponse, error) {
-	return nil, nil
-}
-
-func (stub *stubNotifierGRPCClient) snapshot() []*notifierpb.SendNotificationRequest {
-	stub.mu.Lock()
-	defer stub.mu.Unlock()
-	out := make([]*notifierpb.SendNotificationRequest, len(stub.requests))
-	copy(out, stub.requests)
+	out := make([]notifier.NotificationInput, len(stub.inputs))
+	copy(out, stub.inputs)
 	return out
 }
 
@@ -120,7 +118,7 @@ func TestAlertSeverityBroadcast(t *testing.T) {
 }
 
 func TestAlertmanagerWebhook_CriticalUsesBroadcast(t *testing.T) {
-	stub := &stubNotifierGRPCClient{}
+	stub := &stubNotifierAPITest{}
 	cfg := testNotifierConfig()
 	cfg.Management.AlertmanagerWebhookEnabled = true
 
@@ -155,13 +153,13 @@ func TestAlertmanagerWebhook_CriticalUsesBroadcast(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	requests := stub.snapshot()
 	require.Len(t, requests, 1)
-	assert.Equal(t, notifierpb.DeliveryMode_DELIVERY_MODE_BROADCAST, requests[0].DeliveryMode)
+	assert.True(t, requests[0].Broadcast)
 	assert.Len(t, requests[0].BroadcastProviders, 3)
 	assert.Equal(t, "alertmanager:HighErrorRate:firing", requests[0].DedupKey)
 }
 
 func TestAlertmanagerWebhook_WarningUsesFallback(t *testing.T) {
-	stub := &stubNotifierGRPCClient{}
+	stub := &stubNotifierAPITest{}
 	cfg := testNotifierConfig()
 
 	h := &AlertmanagerWebhook{
@@ -192,12 +190,12 @@ func TestAlertmanagerWebhook_WarningUsesFallback(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	requests := stub.snapshot()
 	require.Len(t, requests, 1)
-	assert.Equal(t, notifierpb.DeliveryMode_DELIVERY_MODE_UNSPECIFIED, requests[0].DeliveryMode)
+	assert.False(t, requests[0].Broadcast)
 	assert.Empty(t, requests[0].BroadcastProviders)
 }
 
 func TestOpsAlerter_CriticalEventBroadcast(t *testing.T) {
-	stub := &stubNotifierGRPCClient{}
+	stub := &stubNotifierAPITest{}
 	cfg := testNotifierConfig()
 	cfg.Management.OpsAlertsEnabled = true
 
@@ -209,12 +207,12 @@ func TestOpsAlerter_CriticalEventBroadcast(t *testing.T) {
 
 	requests := stub.snapshot()
 	require.Len(t, requests, 1)
-	assert.Equal(t, notifierpb.DeliveryMode_DELIVERY_MODE_BROADCAST, requests[0].DeliveryMode)
+	assert.True(t, requests[0].Broadcast)
 	assert.Len(t, requests[0].BroadcastProviders, 3)
 }
 
 func TestOpsAlerter_WarningEventFallback(t *testing.T) {
-	stub := &stubNotifierGRPCClient{}
+	stub := &stubNotifierAPITest{}
 	cfg := testNotifierConfig()
 	cfg.Management.OpsAlertsEnabled = true
 
@@ -226,11 +224,11 @@ func TestOpsAlerter_WarningEventFallback(t *testing.T) {
 
 	requests := stub.snapshot()
 	require.Len(t, requests, 1)
-	assert.Equal(t, notifierpb.DeliveryMode_DELIVERY_MODE_UNSPECIFIED, requests[0].DeliveryMode)
+	assert.False(t, requests[0].Broadcast)
 }
 
 func TestFault_alertmanagerWebhookFanOut(t *testing.T) {
-	stub := &stubNotifierGRPCClient{}
+	stub := &stubNotifierAPITest{}
 	cfg := testNotifierConfig()
 	cfg.Management.AlertmanagerWebhookEnabled = true
 
@@ -267,7 +265,7 @@ func TestFault_alertmanagerWebhookFanOut(t *testing.T) {
 	requests := stub.snapshot()
 	require.Len(t, requests, alertCount)
 	for _, req := range requests {
-		assert.Equal(t, notifierpb.DeliveryMode_DELIVERY_MODE_BROADCAST, req.DeliveryMode)
+		assert.True(t, req.Broadcast)
 		assert.Len(t, req.BroadcastProviders, 3)
 	}
 
@@ -280,7 +278,7 @@ func TestFault_alertmanagerWebhookFanOut(t *testing.T) {
 }
 
 func TestFault_opsEventFanOut(t *testing.T) {
-	stub := &stubNotifierGRPCClient{}
+	stub := &stubNotifierAPITest{}
 	cfg := testNotifierConfig()
 	cfg.Management.OpsAlertsEnabled = true
 
@@ -300,7 +298,7 @@ func TestFault_opsEventFanOut(t *testing.T) {
 	broadcastCount := 0
 	fallbackCount := 0
 	for _, req := range requests {
-		if req.DeliveryMode == notifierpb.DeliveryMode_DELIVERY_MODE_BROADCAST {
+		if req.Broadcast {
 			broadcastCount++
 			assert.Len(t, req.BroadcastProviders, 3)
 			continue

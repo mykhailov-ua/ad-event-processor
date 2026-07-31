@@ -151,13 +151,12 @@ Pointers to .cursor/, REFACTORING.md, backlog in code
 Global done
 
 Zero internal/controlplane imports of internal/ingestion (prod + tests; `ingestion/pb` in budget delta consumer only).
-Monolith: payment→settlement via `SettlementHandler.PaymentSettlement()` (`domain.PaymentSettlement`); billing/payment→notifier in-process; no localhost dials for those hops.
+Monolith: payment→settlement via `SettlementHandler.PaymentSettlement()` (`domain.PaymentSettlement`); billing/payment→notifier in-process; no localhost gRPC between control-plane modules.
 `ServeOptions` uses `*AuthClient`, `*BillingClient`, `*PaymentClient`, `*NotifierClient` (not `pb.*ServiceClient`).
-ivt-detector/fraud-scorer use management HTTP (`/api/v1/ops/blacklist`, `/api/v1/ops/fraud-threat`); settlement gRPC optional via `SETTLEMENT_GRPC_ENABLED=0`.
-Split_control profile deprecated; still uses network gRPC until profile removal.
-Monolith profile (`cmd/control`): `SETTLEMENT_GRPC_ENABLED=0`; no localhost gRPC between control-plane modules.
-Standalone `Serve()` gRPC listeners gated by `*_GRPC_ENABLED` (default on; `0` skips TCP while keeping workers/HTTP).
-Settlement gRPC server in `controlplane.ServeWithOptions` gated by `SettlementGRPCEnabled` (compose `control` sets `SETTLEMENT_GRPC_ENABLED=0`).
+ivt-detector/fraud-scorer use management HTTP (`/api/v1/ops/blacklist`, `/api/v1/ops/fraud-threat`).
+`control.Run` wires modules via `buildServeOptions` whenever `CONTROL_ENABLE_*` flags are set; no standalone `identity.Serve()` / `billing.Serve()` goroutines.
+`OpenAPIOrDial` in identity/billing/payment/notifier always opens in-process modules; `grpc_api.go`, `handler_grpc.go`, `serve.go`, `*_service.proto`, and `buf.gen.grpc.yaml` removed.
+Payment webhook HTTP (`:8187`) started from `payment.Module.StartWorkers`.
 No *_bridge.go or host adapters.
 No nested domain packages under service roots.
 domain is only shared type package.
@@ -174,74 +173,23 @@ Create REFACTORING_*.md children.
 Move agent design docs into docs/.
 
 
-9. Protobuf codegen split (internal gRPC removal)
+9. Protobuf codegen (internal gRPC removed — done)
 
-Default `make proto` (`scripts/ci/gen.sh --proto`) generates messages + gRPC stubs:
+`make proto` (`scripts/ci/gen.sh --proto`) generates message protos only:
 
-1. `api/buf.gen.nogrpc.yaml` — `protocolbuffers/go` for `api/*.proto` except `*_service.proto` (messages only).
-2. `api/buf.gen.grpc.yaml` — `grpc/go` for `api/*_service.proto` only (split from message protos).
-3. `api/buf.gen.vtproto.yaml` — `go-vtproto` for `events.proto` and `vast.proto` only.
-4. `safe_prune_service_grpc` drops stale `*_grpc.pb.go` before `safe_sync_proto_gen`.
-5. `safe_sync_proto_gen` → `internal/*/pb/`.
-6. `safe_prune_service_vtproto` drops stale `*_vtproto.pb.go` under identity, billing, payment, notifier, controlplane.
-7. `cmd/patch-vtproto-hotpath` patches `internal/ingestion/pb/events_vtproto.pb.go`.
+1. `api/buf.gen.nogrpc.yaml` — `protocolbuffers/go` for all `api/*.proto`.
+2. `api/buf.gen.vtproto.yaml` — `go-vtproto` for `events.proto` and `vast.proto` only.
+3. `safe_sync_proto_gen` → `internal/*/pb/`.
+4. `safe_prune_service_vtproto` drops stale `*_vtproto.pb.go` under identity, billing, payment, notifier, controlplane.
+5. `cmd/patch-vtproto-hotpath` patches `internal/ingestion/pb/events_vtproto.pb.go`.
 
-Message protos: `auth.proto`, `billing.proto`, `payment.proto`, `notifier.proto`, `settlement.proto`.
+Message protos (keep): `auth.proto`, `billing.proto`, `payment.proto`, `notifier.proto`, `settlement.proto` — used for handler conversion and outbox payloads.
 
-gRPC-only protos (`grpc_api` dial boundary for resilience sidecars): `auth_service.proto`, `billing_service.proto`, `payment_service.proto`, `notifier_service.proto`, `settlement_service.proto`.
+Removed: `api/*_service.proto`, `api/buf.gen.grpc.yaml`, `*_grpc.pb.go` generation, `Register*ServiceServer` / `New*ServiceClient` in production, `*_GRPC_ENABLED` config fields.
 
-`make proto-grpc` is an alias of `make proto` (gRPC generation is always on).
+In-process: module `API()` + `OpenAPIOrDial` → `OpenModule`; settlement via `SettlementHandler.PaymentSettlement()` + `PaymentModule.SetSettlementAPI`.
 
-Templates:
-
-| File | Plugins | Scope |
-|------|---------|-------|
-| `buf.gen.nogrpc.yaml` | protobuf/go | all protos |
-| `buf.gen.vtproto.yaml` | go-vtproto | events, vast |
-| `buf.gen.grpc.yaml` | grpc/go | `*_service.proto` (opt-in via default `make proto`) |
-| `buf.gen.yaml` | protobuf/go | alias of nogrpc (direct `buf generate`) |
-
-Keep: `events.proto`, `vast.proto` with full vtproto (hot path).
-
-Remove next: `*_grpc.pb.go` and `*_service.proto` once split-deploy and handler layers drop gRPC types (messages stay in `*.proto`).
-
-gRPC server gating (done)
-
-| Env | Config field | Effect |
-|-----|--------------|--------|
-| `AUTH_GRPC_ENABLED` | `AuthGRPCEnabled` | Standalone `identity.Serve()` TCP listener (default on; `0` = workers/metrics only) |
-| `BILLING_GRPC_ENABLED` | `BillingGRPCEnabled` | Standalone `billing.Serve()` TCP listener |
-| `PAYMENT_GRPC_ENABLED` | `PaymentGRPCEnabled` | Standalone `payment.Serve()` TCP listener |
-| `NOTIFIER_GRPC_ENABLED` | `NotifierGRPCEnabled` | Standalone `notifier.Serve()` TCP listener |
-| `SETTLEMENT_GRPC_ENABLED` | `SettlementGRPCEnabled` | `controlplane.ServeWithOptions` settlement TCP listener |
-
-All flags: `SETTLEMENT_GRPC_ENABLED` opt-in (`== "1"`); other `*_GRPC_ENABLED` use `!= "0"` (unset = enabled). Monolith compose `control` sets `SETTLEMENT_GRPC_ENABLED=0` and `NOTIFIER_GRPC_ENABLED=0`; `.env.example` defaults settlement off.
-
-In-process module `API()` calls handler core methods directly; gRPC `handler_grpc.go` / `handler.go` are thin pb wrappers only. Settlement in-process via `SettlementHandler.PaymentSettlement()` + `PaymentModule.SetSettlementAPI`; no localhost dial when `SETTLEMENT_GRPC_ENABLED=0`.
-
-Split deploy: standalone `cmd/payment` + `cmd/management` keep settlement gRPC (`SETTLEMENT_GRPC_ENABLED` unset or `1` on management). `payment/outbox_worker.go` and `settlement_ledger_client.go` dial `SettlementServiceClient` when `SetSettlementAPI` is not injected.
-
-`local_client.go` / `Module.Client()` / `Module.GRPC()` removed from identity, billing, payment, notifier — monolith and split `Serve()` use `mod.API()` + gRPC adapters at dial boundary only.
-
-Blockers for deleting `api/auth.proto` (and siblings)
-
-`*_grpc.pb.go` is still required until split-deploy and handler layers drop gRPC types:
-
-| Generated type | Status | Remaining import sites |
-|----------------|--------|------------------------|
-| `AuthServiceClient` / `AuthServiceServer` | Monolith in-process via `identity.AuthAPI` (Login, Register, VerifyToken, API keys); `handler_types.go` | `identity/{handler_types,handler,handler_core,handler_grpc,auth_convert,apikey_types,apikey_convert,serve,grpc_api,resolve_api}.go`; `controlplane/auth_client.go` |
-| `BillingServiceClient` / `BillingServiceServer` | Monolith in-process via `billing.BillingAPI` (`Invoice`) | `billing/{handler_types,handler_auth,handler_errors,handler_core,handler_grpc,handler_validate,invoice_types,invoice_convert,serve,grpc_api,resolve_api}.go` |
-| `PaymentServiceClient` / `PaymentServiceServer` | Monolith in-process via `payment.PaymentAPI`; service returns `PaymentIntent` | `payment/{handler_types,handler_auth,handler_errors,handler_core,handler_grpc,intent_convert,serve,grpc_api,resolve_api}.go` |
-| `NotifierServiceClient` / `NotifierServiceServer` | Monolith in-process via `notifier.NotifierAPI`; service returns `Notification`; provider map keyed by `db.NotifierProvider` | `notifier/{handler_types,handler_errors,handler_grpc,notification_types,notification_convert,api,service_input,serve,grpc_api}.go`; `handler_convert.go` (gRPC pb mappers only) |
-| `SettlementServiceClient` / `SettlementServiceServer` | Monolith in-process via `SettlementHandler.PaymentSettlement()` (`domain.PaymentSettlement`); gRPC split `settlement_handler_{types,auth,convert,grpc}.go` | `controlplane/{settlement_handler,settlement_handler_types,settlement_handler_auth,settlement_handler_convert,settlement_handler_grpc,serve}.go`; `payment/{settlement_grpc_client,resolve_settlement,settlement_ledger_client,outbox_worker}.go` |
-
-Message types (`*.pb.go`) remain in use for handler request/response structs and outbox payloads — delete protos only after those call sites use `internal/domain` types.
-
-Fresh clone / CI: `make proto` emits `*.pb.go` and `*_service_grpc.pb.go` (pb gitignored; CI runs `gen.sh --proto`).
-
-Done when: no `Register*ServiceServer` / `New*ServiceClient` in production tree; `api/auth.proto` … `api/settlement.proto` removed or reduced to domain-only messages; `buf.gen.grpc.yaml` deleted.
-
-Payment fault/integration tests: `package payment_test` + `internal/paymenttest` (settlement fixture) + `internal/payment/dbtest` (migrations); no `controlplane` import from `package payment`.
+Payment fault/integration tests: `package payment_test` + `internal/paymenttest` (`SettlementFaultGate`) + `internal/payment/dbtest`.
 
 
 10. split_control and standalone cmd/* deprecation
@@ -256,8 +204,4 @@ Default deploy: `cmd/control` modular monolith. Compose profiles `single_vps`, `
 | compose/k8s auth, management, payment, billing, notifier deployments | `control` service / `deployment-control.yaml` |
 | Dockerfile `/auth`, `/management`, `/payment`, `/billing`, `/notifier` binaries | `/control` only |
 
-`SETTLEMENT_GRPC_ENABLED` defaults off; compose/k8s set `0`. Monolith uses in-process `SetSettlementAPI`.
-
-Removal (later): drop `*_service.proto` / gRPC codegen when no `New*ServiceClient` in production tree.
-
-Done when: no `Register*ServiceServer` / `New*ServiceClient` in production; `buf.gen.grpc.yaml` deleted.
+Monolith uses in-process `SetSettlementAPI`; no internal gRPC servers or `*_GRPC_ENABLED` env vars.

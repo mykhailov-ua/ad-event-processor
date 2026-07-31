@@ -3,13 +3,11 @@ package payment_test
 import (
 	"context"
 	"fmt"
-	"net"
 	"testing"
 	"time"
 
 	"espx/internal/config"
 	"espx/internal/controlplane"
-	"espx/internal/controlplane/pb"
 	ads_db "espx/internal/domain/db"
 	"espx/internal/ingestion"
 	"espx/internal/payment"
@@ -21,7 +19,6 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
 )
 
 func TestPaymentService_Integration(t *testing.T) {
@@ -110,21 +107,8 @@ func TestPaymentService_Integration(t *testing.T) {
 	mgmtSvc := controlplane.NewService(pool, rdbs, ingestion.NewStaticSlotSharder(len(rdbs)), cfg)
 	settleHandler := controlplane.NewSettlementHandler(mgmtSvc, cfg)
 
-	lis, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	_, portStr, err := net.SplitHostPort(lis.Addr().String())
-	require.NoError(t, err)
-	cfg.SettlementServerHost = "127.0.0.1"
-	cfg.SettlementServerPort = portStr
-
-	grpcServer := grpc.NewServer()
-	pb.RegisterSettlementServiceServer(grpcServer, settleHandler)
-	go func() {
-		_ = grpcServer.Serve(lis)
-	}()
-	defer grpcServer.Stop()
-
 	outboxWorker := payment.NewOutboxWorker(pool, cfg)
+	outboxWorker.SetSettlementAPI(settleHandler.PaymentSettlement())
 	ctxCancel, cancel := context.WithCancel(ctx)
 	defer cancel()
 

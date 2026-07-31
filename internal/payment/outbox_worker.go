@@ -6,24 +6,18 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"strings"
 	"sync"
 	"time"
 
 	"espx/internal/config"
 	"espx/internal/database"
 	"espx/internal/domain"
-	"espx/internal/controlplane/pb"
 	"espx/internal/payment/db"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/status"
 )
 
 var PostSettlementMarkHook func(ctx context.Context, outboxEvent db.PaymentPaymentOutbox) error
@@ -34,7 +28,6 @@ type OutboxWorker struct {
 
 	apiMu sync.Mutex
 	api   domain.PaymentSettlement
-	conn  *grpc.ClientConn
 
 	settlementAlerter *SettlementFailedAlerter
 
@@ -86,7 +79,6 @@ func (outboxWorker *OutboxWorker) Start(ctx context.Context, interval time.Durat
 	for {
 		select {
 		case <-ctx.Done():
-			outboxWorker.resetSettlementClient()
 			return
 		case <-recoveryTicker.C:
 			outboxWorker.reclaimStaleProcessing(ctx)
@@ -177,9 +169,6 @@ func (outboxWorker *OutboxWorker) ProcessOutbox(ctx context.Context, limit int32
 		if err := outboxWorker.handleOutboxEvent(ctx, outboxEvent); err != nil {
 			slog.Error("failed to handle outbox outboxEventent", "id", outboxEvent.ID, "error", err)
 			SettlementErrorsTotal.Inc()
-			if isSettlementTransientGRPC(err) {
-				outboxWorker.resetSettlementClient()
-			}
 			outboxWorker.markOutboxEventRetryable(ctx, outboxEvent, err)
 			batchErrs = append(batchErrs, fmt.Errorf("outbox event %d: %w", outboxEvent.ID, err))
 			continue
@@ -215,51 +204,13 @@ func (outboxWorker *OutboxWorker) ensureSettlementClient() error {
 	if outboxWorker.api != nil {
 		return nil
 	}
-	if outboxWorker.cfg != nil && !outboxWorker.cfg.SettlementGRPCEnabled {
-		return fmt.Errorf("settlement API not injected")
-	}
-	target := outboxWorker.cfg.SettlementServerHost + ":" + outboxWorker.cfg.SettlementServerPort
-	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return fmt.Errorf("gRPC client not connected to %s: %w", target, err)
-	}
-	outboxWorker.conn = conn
-	outboxWorker.api = newGRPCSettlementClient(pb.NewSettlementServiceClient(conn), string(outboxWorker.cfg.SettlementInternalToken))
-	return nil
-}
-
-func (outboxWorker *OutboxWorker) resetSettlementClient() {
-	outboxWorker.apiMu.Lock()
-	defer outboxWorker.apiMu.Unlock()
-
-	if outboxWorker.conn == nil {
-		return
-	}
-	_ = outboxWorker.conn.Close()
-	outboxWorker.conn = nil
-	outboxWorker.api = nil
+	return fmt.Errorf("settlement API not injected")
 }
 
 func (outboxWorker *OutboxWorker) getSettlementAPI() domain.PaymentSettlement {
 	outboxWorker.apiMu.Lock()
 	defer outboxWorker.apiMu.Unlock()
 	return outboxWorker.api
-}
-
-func isSettlementTransientGRPC(err error) bool {
-	if err == nil {
-		return false
-	}
-	if st, ok := status.FromError(err); ok {
-		switch st.Code() {
-		case codes.Unavailable, codes.DeadlineExceeded, codes.Aborted:
-			return true
-		}
-	}
-	msg := err.Error()
-	return strings.Contains(msg, "connection refused") ||
-		strings.Contains(msg, "connection reset") ||
-		strings.Contains(msg, "transport is closing")
 }
 
 func (outboxWorker *OutboxWorker) markOutboxProcessedWithRetry(ctx context.Context, outboxID int64) error {
@@ -283,12 +234,6 @@ func (outboxWorker *OutboxWorker) markOutboxEventRetryable(ctx context.Context, 
 	lastErrText.Valid = true
 
 	isFatal := domain.IsSettlementNotFound(cause)
-	if !isFatal {
-		st, ok := status.FromError(cause)
-		if ok && st.Code() == codes.NotFound {
-			isFatal = true
-		}
-	}
 
 	maxAttempts := int32(outboxWorker.cfg.MaxRetries)
 	if maxAttempts <= 0 {

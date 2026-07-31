@@ -1,9 +1,7 @@
 package payment
 
 import (
-	"context"
 	"fmt"
-	"sync"
 	"testing"
 	"time"
 
@@ -11,56 +9,10 @@ import (
 	"espx/internal/notifier"
 	"espx/internal/payment/db"
 
-	notifierpb "espx/internal/notifier/pb"
-
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
 )
-
-type stubPaymentNotifierClient struct {
-	mu       sync.Mutex
-	requests []*notifierpb.SendNotificationRequest
-}
-
-func (stub *stubPaymentNotifierClient) SendNotification(
-	_ context.Context,
-	in *notifierpb.SendNotificationRequest,
-	_ ...grpc.CallOption,
-) (*notifierpb.SendNotificationResponse, error) {
-	stub.mu.Lock()
-	defer stub.mu.Unlock()
-	stub.requests = append(stub.requests, in)
-	return &notifierpb.SendNotificationResponse{NotificationId: "stub-id"}, nil
-}
-
-func (stub *stubPaymentNotifierClient) SendNotificationBatch(
-	_ context.Context,
-	in *notifierpb.SendNotificationBatchRequest,
-	_ ...grpc.CallOption,
-) (*notifierpb.SendNotificationBatchResponse, error) {
-	stub.mu.Lock()
-	defer stub.mu.Unlock()
-	stub.requests = append(stub.requests, in.Notifications...)
-	return &notifierpb.SendNotificationBatchResponse{}, nil
-}
-
-func (stub *stubPaymentNotifierClient) GetNotification(
-	_ context.Context,
-	_ *notifierpb.GetNotificationRequest,
-	_ ...grpc.CallOption,
-) (*notifierpb.GetNotificationResponse, error) {
-	return nil, nil
-}
-
-func (stub *stubPaymentNotifierClient) snapshot() []*notifierpb.SendNotificationRequest {
-	stub.mu.Lock()
-	defer stub.mu.Unlock()
-	out := make([]*notifierpb.SendNotificationRequest, len(stub.requests))
-	copy(out, stub.requests)
-	return out
-}
 
 func testPaymentOpsConfig() *config.Config {
 	cfg := &config.Config{}
@@ -105,9 +57,9 @@ func TestFinancialReconAlerter_CooldownDedup(t *testing.T) {
 }
 
 func TestFinancialReconAlerter_AlertFindings_enqueuesWarnPlus(t *testing.T) {
-	stub := &stubPaymentNotifierClient{}
+	stub := &stubNotifierAPI{}
 	cfg := testPaymentOpsConfig()
-	alerter := NewFinancialReconAlerter(&NotifierClient{api: notifier.NewGRPCNotifierAPI(stub)}, cfg)
+	alerter := NewFinancialReconAlerter(&NotifierClient{api: stub}, cfg)
 	require.NotNil(t, alerter)
 
 	summary := FinancialReconSummary{RunID: 42, IntentsChecked: 3}
@@ -120,16 +72,16 @@ func TestFinancialReconAlerter_AlertFindings_enqueuesWarnPlus(t *testing.T) {
 
 	requests := stub.snapshot()
 	require.Len(t, requests, 1)
-	assert.Equal(t, notifierpb.Provider_PROVIDER_TELEGRAM, requests[0].Provider)
-	assert.Equal(t, notifierpb.DeliveryMode_DELIVERY_MODE_BROADCAST, requests[0].DeliveryMode)
+	assert.Equal(t, notifier.ProviderTelegram, requests[0].Provider)
+	assert.True(t, requests[0].Broadcast)
 	assert.Contains(t, requests[0].Body, "MISSING_LEDGER_TOPUP")
 	assert.Equal(t, "payment-financial-recon:run:42", requests[0].DedupKey)
 }
 
 func TestFinancialReconAlerter_AlertFindings_skipsCleanRun(t *testing.T) {
-	stub := &stubPaymentNotifierClient{}
+	stub := &stubNotifierAPI{}
 	cfg := testPaymentOpsConfig()
-	alerter := NewFinancialReconAlerter(&NotifierClient{api: notifier.NewGRPCNotifierAPI(stub)}, cfg)
+	alerter := NewFinancialReconAlerter(&NotifierClient{api: stub}, cfg)
 	require.NotNil(t, alerter)
 
 	alerter.AlertFindings(FinancialReconSummary{RunID: 1}, nil)

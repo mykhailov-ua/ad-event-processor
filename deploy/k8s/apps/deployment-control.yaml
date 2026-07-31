@@ -50,10 +50,6 @@ spec:
               value: "1"
             - name: CONTROL_ENABLE_COST_SYNC
               value: "1"
-            - name: SETTLEMENT_GRPC_ENABLED
-              value: "0"
-            - name: NOTIFIER_GRPC_ENABLED
-              value: "0"
           ports:
             - name: http
               containerPort: 8188

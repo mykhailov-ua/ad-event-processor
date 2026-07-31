@@ -3,14 +3,12 @@ package paymenttest
 import (
 	"context"
 	"fmt"
-	"net"
 	"strconv"
 	"testing"
 	"time"
 
 	"espx/internal/config"
 	"espx/internal/controlplane"
-	mgmt_pb "espx/internal/controlplane/pb"
 	ads_db "espx/internal/domain/db"
 	"espx/internal/ingestion"
 	"espx/internal/payment"
@@ -25,20 +23,18 @@ import (
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	rediscontainer "github.com/testcontainers/testcontainers-go/modules/redis"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"google.golang.org/grpc"
 )
 
 const paymentContainerStopTimeout = 10 * time.Second
 
 type FaultInfra struct {
-	Pool           *pgxpool.Pool
-	Redis          redis.UniversalClient
-	PGContainer    *postgres.PostgresContainer
-	RedisContainer testcontainers.Container
-	Cfg            *config.Config
-	MgmtSvc        *controlplane.Service
-	SettlementLis  net.Listener
-	SettlementGRPC *grpc.Server
+	Pool            *pgxpool.Pool
+	Redis           redis.UniversalClient
+	PGContainer     *postgres.PostgresContainer
+	RedisContainer  testcontainers.Container
+	Cfg             *config.Config
+	MgmtSvc         *controlplane.Service
+	SettlementGate  *SettlementFaultGate
 }
 
 type SeededPayment struct {
@@ -93,17 +89,7 @@ func SetupPaymentFaultInfra(t *testing.T) (*FaultInfra, func()) {
 	rdbs := []redis.UniversalClient{rdb}
 	mgmtSvc := controlplane.NewService(pool, rdbs, ingestion.NewStaticSlotSharder(len(rdbs)), cfg)
 	settleHandler := controlplane.NewSettlementHandler(mgmtSvc, cfg)
-
-	lis, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	_, portStr, err := net.SplitHostPort(lis.Addr().String())
-	require.NoError(t, err)
-	cfg.SettlementServerHost = "127.0.0.1"
-	cfg.SettlementServerPort = portStr
-
-	grpcServer := grpc.NewServer()
-	mgmt_pb.RegisterSettlementServiceServer(grpcServer, settleHandler)
-	go func() { _ = grpcServer.Serve(lis) }()
+	settlementGate := NewSettlementFaultGate(settleHandler.PaymentSettlement())
 
 	infra := &FaultInfra{
 		Pool:           pool,
@@ -112,12 +98,10 @@ func SetupPaymentFaultInfra(t *testing.T) (*FaultInfra, func()) {
 		RedisContainer: redisContainer,
 		Cfg:            cfg,
 		MgmtSvc:        mgmtSvc,
-		SettlementLis:  lis,
-		SettlementGRPC: grpcServer,
+		SettlementGate: settlementGate,
 	}
 
 	cleanup := func() {
-		grpcServer.Stop()
 		_ = rdb.Close()
 		pool.Close()
 		_ = redisContainer.Terminate(ctx)
@@ -156,30 +140,18 @@ func (infra *FaultInfra) RefreshPGPool(t *testing.T) {
 	}, 30*time.Second, 200*time.Millisecond)
 }
 
-func (infra *FaultInfra) RestartSettlementGRPC(t *testing.T) {
-	t.Helper()
-	addr := infra.SettlementLis.Addr().String()
-	if infra.SettlementGRPC != nil {
-		infra.SettlementGRPC.Stop()
-	}
-	lis, err := net.Listen("tcp", addr)
-	require.NoError(t, err)
-	infra.SettlementLis = lis
+func (infra *FaultInfra) SetSettlementDown() {
+	infra.SettlementGate.SetDown(true)
+}
 
-	settleHandler := controlplane.NewSettlementHandler(infra.MgmtSvc, infra.Cfg)
-	grpcServer := grpc.NewServer()
-	mgmt_pb.RegisterSettlementServiceServer(grpcServer, settleHandler)
-	go func() { _ = grpcServer.Serve(lis) }()
-	infra.SettlementGRPC = grpcServer
+func (infra *FaultInfra) SetSettlementUp() {
+	infra.SettlementGate.SetDown(false)
+}
 
-	require.Eventually(t, func() bool {
-		conn, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
-		if err != nil {
-			return false
-		}
-		_ = conn.Close()
-		return true
-	}, 5*time.Second, 50*time.Millisecond)
+func NewOutboxWorkerForFault(infra *FaultInfra) *payment.OutboxWorker {
+	worker := payment.NewOutboxWorker(infra.Pool, infra.Cfg)
+	worker.SetSettlementAPI(infra.SettlementGate)
+	return worker
 }
 
 func RequirePaymentFaultActive(t *testing.T, faultActive func() bool, msg string) {
@@ -359,8 +331,4 @@ func AssertPaymentFaultInvariants(t *testing.T, pool *pgxpool.Pool, seed SeededP
 
 func ItoaPaymentFault(n int) string {
 	return strconv.Itoa(n)
-}
-
-func NewOutboxWorkerForFault(infra *FaultInfra) *payment.OutboxWorker {
-	return payment.NewOutboxWorker(infra.Pool, infra.Cfg)
 }

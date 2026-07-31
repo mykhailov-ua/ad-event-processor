@@ -11,7 +11,7 @@ import (
 	"espx/internal/payment"
 )
 
-func monolithServeOptions(ctx context.Context, cfg *config.Config, opts Options) (controlplane.ServeOptions, []func(), error) {
+func buildServeOptions(ctx context.Context, cfg *config.Config, opts Options) (controlplane.ServeOptions, []func(), error) {
 	out := controlplane.ServeOptions{}
 	var cleanups []func()
 

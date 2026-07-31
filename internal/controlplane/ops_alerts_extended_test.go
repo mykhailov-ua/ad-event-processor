@@ -7,14 +7,12 @@ import (
 	"testing"
 	"time"
 
-	notifierpb "espx/internal/notifier/pb"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestOpsAlerter_AlertOutboxStuck(t *testing.T) {
-	stub := &stubNotifierGRPCClient{}
+	stub := &stubNotifierAPITest{}
 	cfg := testNotifierConfig()
 	cfg.Management.OpsAlertsEnabled = true
 
@@ -27,11 +25,11 @@ func TestOpsAlerter_AlertOutboxStuck(t *testing.T) {
 
 	requests := stub.snapshot()
 	require.Len(t, requests, 1)
-	assert.Equal(t, notifierpb.DeliveryMode_DELIVERY_MODE_BROADCAST, requests[0].DeliveryMode)
+	assert.True(t, requests[0].Broadcast)
 }
 
 func TestOpsAlerter_AlertCHEmergencyDrop(t *testing.T) {
-	stub := &stubNotifierGRPCClient{}
+	stub := &stubNotifierAPITest{}
 	cfg := testNotifierConfig()
 	cfg.Management.OpsAlertsEnabled = true
 
@@ -44,11 +42,11 @@ func TestOpsAlerter_AlertCHEmergencyDrop(t *testing.T) {
 	requests := stub.snapshot()
 	require.Len(t, requests, 1)
 	assert.Contains(t, requests[0].Body, "CH emergency drop")
-	assert.Equal(t, notifierpb.DeliveryMode_DELIVERY_MODE_BROADCAST, requests[0].DeliveryMode)
+	assert.True(t, requests[0].Broadcast)
 }
 
 func TestOpsAlerter_AlertBlacklistJanitorFailed(t *testing.T) {
-	stub := &stubNotifierGRPCClient{}
+	stub := &stubNotifierAPITest{}
 	cfg := testNotifierConfig()
 	cfg.Management.OpsAlertsEnabled = true
 
@@ -64,7 +62,7 @@ func TestOpsAlerter_AlertBlacklistJanitorFailed(t *testing.T) {
 }
 
 func TestOpsAlerter_AlertSlotMigrationError(t *testing.T) {
-	stub := &stubNotifierGRPCClient{}
+	stub := &stubNotifierAPITest{}
 	cfg := testNotifierConfig()
 	cfg.Management.OpsAlertsEnabled = true
 
@@ -80,7 +78,7 @@ func TestOpsAlerter_AlertSlotMigrationError(t *testing.T) {
 }
 
 func TestOutboxMetrics_AlertsWhenStale(t *testing.T) {
-	stub := &stubNotifierGRPCClient{}
+	stub := &stubNotifierAPITest{}
 	cfg := testNotifierConfig()
 	cfg.Management.OpsAlertsEnabled = true
 	cfg.Management.OpsAlertOutboxStuckSec = 60
@@ -97,7 +95,7 @@ func TestOutboxMetrics_AlertsWhenStale(t *testing.T) {
 }
 
 func TestOpsAlerter_EnqueueFailureMetaAlert(t *testing.T) {
-	stub := &stubNotifierGRPCClient{fail: true}
+	stub := &stubNotifierAPITest{fail: true}
 	cfg := testNotifierConfig()
 	cfg.Management.OpsAlertsEnabled = true
 
@@ -109,7 +107,7 @@ func TestOpsAlerter_EnqueueFailureMetaAlert(t *testing.T) {
 }
 
 func TestFault_opsAlertExtendedCoverage(t *testing.T) {
-	stub := &stubNotifierGRPCClient{}
+	stub := &stubNotifierAPITest{}
 	cfg := testNotifierConfig()
 	cfg.Management.OpsAlertsEnabled = true
 
@@ -124,7 +122,7 @@ func TestFault_opsAlertExtendedCoverage(t *testing.T) {
 	requests := stub.snapshot()
 	require.Len(t, requests, 3)
 	for _, req := range requests {
-		assert.Equal(t, notifierpb.DeliveryMode_DELIVERY_MODE_BROADCAST, req.DeliveryMode)
+		assert.True(t, req.Broadcast)
 	}
 
 	faultproof.Log(t, "ops_alert_extended", map[string]string{

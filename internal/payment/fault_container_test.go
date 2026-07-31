@@ -110,7 +110,7 @@ func TestFault_PaymentSettlementDownOutboxStaysPending(t *testing.T) {
 	seed := paymenttest.SeedSucceededIntentWithOutbox(t, infra, customerID, 14_000_000, "fault-grpc-stop-"+uuid.New().String())
 
 	worker := paymenttest.NewOutboxWorkerForFault(infra)
-	infra.SettlementGRPC.Stop()
+	infra.SetSettlementDown()
 
 	processed, err := worker.ProcessOutbox(ctx, 10)
 	require.NoError(t, err)
@@ -140,11 +140,11 @@ func TestFault_PaymentSettlementDownThenRecovery(t *testing.T) {
 	seed := paymenttest.SeedSucceededIntentWithOutbox(t, infra, customerID, 16_000_000, "fault-grpc-recovery-"+uuid.New().String())
 
 	worker := paymenttest.NewOutboxWorkerForFault(infra)
-	infra.SettlementGRPC.Stop()
+	infra.SetSettlementDown()
 	_, _ = worker.ProcessOutbox(ctx, 10)
 	require.Equal(t, "PENDING", paymenttest.PaymentOutboxStatus(t, infra.Pool, seed.OutboxID))
 
-	infra.RestartSettlementGRPC(t)
+	infra.SetSettlementUp()
 	recovered := false
 	require.Eventually(t, func() bool {
 		n, err := worker.ProcessOutbox(ctx, 10)

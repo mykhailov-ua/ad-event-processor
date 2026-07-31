@@ -8,13 +8,11 @@ import (
 	"espx/internal/database"
 	"espx/internal/domain"
 	ingestdb "espx/internal/domain/db"
-	"espx/internal/controlplane/pb"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc/metadata"
 )
 
 func TestSettlementHandler_GetLedgerEntry(t *testing.T) {
@@ -33,14 +31,13 @@ func TestSettlementHandler_GetLedgerEntry(t *testing.T) {
 	defer svc.Close()
 
 	handler := NewSettlementHandler(svc, cfg)
-	ctx := metadata.NewIncomingContext(context.Background(), metadata.Pairs("x-internal-token", "settlement-test-token"))
+	settlement := handler.PaymentSettlement()
+	ctx := context.Background()
 
 	missingIntentID := uuid.New()
-	missingResp, err := handler.GetLedgerEntry(ctx, &pb.GetLedgerEntryRequest{
-		PaymentIntentId: missingIntentID.String(),
-	})
+	missingEntry, err := settlement.GetLedgerEntry(ctx, missingIntentID)
 	require.NoError(t, err)
-	assert.False(t, missingResp.Found)
+	assert.False(t, missingEntry.Found)
 
 	customerID := uuid.New()
 	intentID := uuid.New()
@@ -66,15 +63,10 @@ func TestSettlementHandler_GetLedgerEntry(t *testing.T) {
 	require.True(t, applied)
 	require.NotZero(t, ledgerID)
 
-	foundResp, err := handler.GetLedgerEntry(ctx, &pb.GetLedgerEntryRequest{
-		PaymentIntentId: intentID.String(),
-	})
+	foundEntry, err := settlement.GetLedgerEntry(ctx, intentID)
 	require.NoError(t, err)
-	require.True(t, foundResp.Found)
-	require.NotNil(t, foundResp.Topup)
-	assert.Equal(t, ledgerID, foundResp.Topup.Id)
-	assert.Equal(t, customerID.String(), foundResp.Topup.CustomerId)
-	assert.Equal(t, int64(12_500_000), foundResp.Topup.AmountMicro)
-	assert.Equal(t, "PAYMENT_TOPUP", foundResp.Topup.Type)
-	assert.Zero(t, foundResp.RefundTotalMicro)
+	require.True(t, foundEntry.Found)
+	require.True(t, foundEntry.HasTopup)
+	assert.Equal(t, int64(12_500_000), foundEntry.TopupAmountMicro)
+	assert.Zero(t, foundEntry.RefundTotalMicro)
 }

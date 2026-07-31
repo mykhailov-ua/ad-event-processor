@@ -12,14 +12,12 @@ import (
 )
 
 type SettlementLedgerClient struct {
-	cfg     *config.Config
-	mu      sync.Mutex
-	closeFn func()
-	api     domain.PaymentSettlement
+	mu  sync.Mutex
+	api domain.PaymentSettlement
 }
 
 func NewSettlementLedgerClient(cfg *config.Config) *SettlementLedgerClient {
-	return &SettlementLedgerClient{cfg: cfg}
+	return &SettlementLedgerClient{}
 }
 
 func (c *SettlementLedgerClient) SetSettlementAPI(api domain.PaymentSettlement) {
@@ -59,10 +57,6 @@ func (c *SettlementLedgerClient) GetPaymentIntentLedger(ctx context.Context, int
 func (c *SettlementLedgerClient) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.closeFn != nil {
-		c.closeFn()
-		c.closeFn = nil
-	}
 	c.api = nil
 	return nil
 }
@@ -73,19 +67,7 @@ func (c *SettlementLedgerClient) ensureClient() error {
 	if c.api != nil {
 		return nil
 	}
-	if c.cfg != nil && !c.cfg.SettlementGRPCEnabled {
-		return fmt.Errorf("settlement API not injected")
-	}
-	api, closeFn, err := OpenSettlementAPIOrDial(context.Background(), c.cfg)
-	if err != nil {
-		return err
-	}
-	if api == nil {
-		return fmt.Errorf("settlement API not injected")
-	}
-	c.api = api
-	c.closeFn = closeFn
-	return nil
+	return fmt.Errorf("settlement API not injected")
 }
 
 func (c *SettlementLedgerClient) getAPI() domain.PaymentSettlement {

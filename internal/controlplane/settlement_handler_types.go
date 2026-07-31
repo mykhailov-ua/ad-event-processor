@@ -2,11 +2,9 @@ package controlplane
 
 import (
 	"espx/internal/config"
-	"espx/internal/controlplane/pb"
 )
 
 type SettlementHandler struct {
-	pb.UnimplementedSettlementServiceServer
 	service *Service
 	cfg     *config.Config
 }

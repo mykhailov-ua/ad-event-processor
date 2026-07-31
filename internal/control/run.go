@@ -7,17 +7,14 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/billing"
 	"espx/internal/config"
 	"espx/internal/costsync"
 	"espx/internal/database"
 	"espx/internal/ingestion"
 	db "espx/internal/domain/db"
 	"espx/internal/controlplane"
-	"espx/internal/identity"
 	"espx/internal/ledger"
 	"espx/internal/notifier"
-	"espx/internal/payment"
 )
 
 func Run(ctx context.Context, cfg *config.Config, opts Options) error {
@@ -25,12 +22,11 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 		return nil
 	}
 
-	monolith := opts.Management && opts.Auth && opts.Billing && opts.Payment && opts.Notifier
-
 	var serveOpts controlplane.ServeOptions
 	var closeModules func()
-	if monolith {
-		so, cleanups, err := monolithServeOptions(ctx, cfg, opts)
+	needsModules := opts.Auth || opts.Billing || opts.Payment || opts.Notifier
+	if needsModules {
+		so, cleanups, err := buildServeOptions(ctx, cfg, opts)
 		if err != nil {
 			return err
 		}
@@ -60,18 +56,6 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 		}()
 	}
 
-	if opts.Auth && !monolith {
-		start("auth", func(runCtx context.Context) error { return identity.Serve(runCtx, cfg) })
-	}
-	if opts.Billing && !monolith {
-		start("billing", func(runCtx context.Context) error { return billing.Serve(runCtx, cfg) })
-	}
-	if opts.Notifier && !monolith {
-		start("notifier", func(runCtx context.Context) error { return notifier.Serve(runCtx, cfg) })
-	}
-	if opts.Payment && !monolith {
-		start("payment", func(runCtx context.Context) error { return payment.Serve(runCtx, cfg) })
-	}
 	if opts.MarginGuard {
 		start("margin-guard", func(runCtx context.Context) error {
 			return serveMarginGuard(runCtx, cfg, serveOpts.Notifier)
@@ -82,14 +66,9 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 	}
 
 	if opts.Management {
-		if monolith {
-			slog.Info("control monolith: in-process module wiring enabled")
-			serveOpts.RtbBidShadeSim = ingestion.RunRtbBidShadeSim
-			return controlplane.ServeWithOptions(ctx, cfg, serveOpts)
-		}
-		return controlplane.ServeWithOptions(ctx, cfg, controlplane.ServeOptions{
-			RtbBidShadeSim: ingestion.RunRtbBidShadeSim,
-		})
+		slog.Info("control: in-process module wiring enabled")
+		serveOpts.RtbBidShadeSim = ingestion.RunRtbBidShadeSim
+		return controlplane.ServeWithOptions(ctx, cfg, serveOpts)
 	}
 
 	done := make(chan struct{})

@@ -1,19 +1,18 @@
-package paymenttest
+package payment
 
 import (
 	"context"
 	"sync"
 
-	"espx/internal/config"
 	"espx/internal/notifier"
 )
 
-type StubNotifierAPI struct {
+type stubNotifierAPI struct {
 	mu     sync.Mutex
 	inputs []notifier.NotificationInput
 }
 
-func (stub *StubNotifierAPI) SendNotification(
+func (stub *stubNotifierAPI) SendNotification(
 	_ context.Context,
 	provider, recipient, title, body string,
 ) (notifier.SendNotificationResult, error) {
@@ -25,7 +24,7 @@ func (stub *StubNotifierAPI) SendNotification(
 	})
 }
 
-func (stub *StubNotifierAPI) SendNotificationInput(
+func (stub *stubNotifierAPI) SendNotificationInput(
 	_ context.Context,
 	input notifier.NotificationInput,
 ) (notifier.SendNotificationResult, error) {
@@ -35,7 +34,7 @@ func (stub *StubNotifierAPI) SendNotificationInput(
 	return notifier.SendNotificationResult{NotificationID: "stub-id"}, nil
 }
 
-func (stub *StubNotifierAPI) SendNotificationBatch(
+func (stub *stubNotifierAPI) SendNotificationBatch(
 	_ context.Context,
 	inputs []notifier.NotificationInput,
 ) ([]notifier.SendNotificationResult, error) {
@@ -49,19 +48,10 @@ func (stub *StubNotifierAPI) SendNotificationBatch(
 	return out, nil
 }
 
-func (stub *StubNotifierAPI) Snapshot() []notifier.NotificationInput {
+func (stub *stubNotifierAPI) snapshot() []notifier.NotificationInput {
 	stub.mu.Lock()
 	defer stub.mu.Unlock()
 	out := make([]notifier.NotificationInput, len(stub.inputs))
 	copy(out, stub.inputs)
 	return out
-}
-
-func TestOpsConfig() *config.Config {
-	cfg := &config.Config{}
-	cfg.Management.OpsAlertsEnabled = true
-	cfg.Notifier.TelegramChatID = "-100123"
-	cfg.Notifier.ServerHost = "127.0.0.1"
-	cfg.Notifier.Port = "8085"
-	return cfg
 }

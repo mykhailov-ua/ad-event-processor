@@ -3,6 +3,7 @@ package payment
 import (
 	"context"
 	"log/slog"
+	"net/http"
 	"time"
 
 	"espx/internal/config"
@@ -84,6 +85,7 @@ func (m *Module) StartWorkers(ctx context.Context) {
 	}
 
 	m.outbox.SetSettlementFailedAlerter(NewSettlementFailedAlerter(notifierClient, m.cfg))
+	go m.startWebhookServer(workerCtx)
 	go m.outbox.Start(workerCtx, 100*time.Millisecond)
 	go m.cryptoHold.Start(workerCtx, 100*time.Millisecond)
 
@@ -127,4 +129,38 @@ func OpenModule(ctx context.Context, cfg *config.Config) (*Module, error) {
 		cryptoHold:       cryptoHoldWorker,
 		recon:            reconWorker,
 	}, nil
+}
+
+func (m *Module) startWebhookServer(ctx context.Context) {
+	if m == nil || m.svc == nil || m.cfg == nil {
+		return
+	}
+	mux := http.NewServeMux()
+	NewWebhookHandler(m.svc, m.cfg).RegisterRoutes(mux)
+	registerLegacyUIRoutes(mux)
+
+	httpServer := &http.Server{
+		Addr:              ":" + m.cfg.PaymentWebhookPort,
+		Handler:           mux,
+		ReadHeaderTimeout: time.Duration(m.cfg.HttpReadHeaderTimeoutMs) * time.Millisecond,
+		ReadTimeout:       time.Duration(m.cfg.HttpReadTimeoutMs) * time.Millisecond,
+		WriteTimeout:      time.Duration(m.cfg.HttpWriteTimeoutMs) * time.Millisecond,
+		IdleTimeout:       time.Duration(m.cfg.HttpIdleTimeoutMs) * time.Millisecond,
+	}
+
+	go func() {
+		slog.Info("starting payment webhook server", "port", m.cfg.PaymentWebhookPort)
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("payment webhook server failed", "error", err)
+		}
+	}()
+
+	go func() {
+		<-ctx.Done()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), time.Duration(m.cfg.Lifecycle.ShutdownTimeoutMs)*time.Millisecond)
+		defer cancel()
+		if err := httpServer.Shutdown(shutdownCtx); err != nil {
+			slog.Error("payment webhook server shutdown failed", "error", err)
+		}
+	}()
 }

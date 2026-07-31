@@ -232,9 +232,9 @@ func TestFault_FinancialReconOpsAlert(t *testing.T) {
 	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
 	defer cleanup()
 
-	stub := &paymenttest.StubNotifierClient{}
+	stub := &paymenttest.StubNotifierAPI{}
 	cfg := paymenttest.TestOpsConfig()
-	alerter := payment.NewFinancialReconAlerter(payment.NewInProcessNotifierClient(notifier.NewGRPCNotifierAPI(stub)), cfg)
+	alerter := payment.NewFinancialReconAlerter(payment.NewInProcessNotifierClient(stub), cfg)
 	require.NotNil(t, alerter)
 
 	paymenttest.SeedSucceededIntentWithOutbox(t, infra, uuid.New(), 11_000_000, "fault-recon-ops-"+uuid.New().String())

@@ -10,12 +10,10 @@ import (
 	"espx/internal/database"
 	"espx/internal/domain"
 	ingestdb "espx/internal/domain/db"
-	"espx/internal/controlplane/pb"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc/metadata"
 )
 
 func TestFault_BatchSettlementDrain(t *testing.T) {
@@ -34,7 +32,7 @@ func TestFault_BatchSettlementDrain(t *testing.T) {
 	defer svc.Close()
 
 	handler := NewSettlementHandler(svc, cfg)
-	ctx := metadata.NewIncomingContext(context.Background(), metadata.Pairs("x-internal-token", "settlement-test-token"))
+	ctx := context.Background()
 
 	customerID := uuid.New()
 	intentA := uuid.New()
@@ -48,32 +46,31 @@ func TestFault_BatchSettlementDrain(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	resp, err := handler.BatchApplySettlement(ctx, &pb.BatchApplySettlementRequest{
-		Credits: []*pb.ApplyPaymentCreditRequest{
+	result := handler.batchApplySettlement(ctx, settlementBatchParams{
+		Credits: []settlementCreditParams{
 			{
-				CustomerId:           customerID.String(),
+				CustomerID:           customerID,
 				AmountMicro:          5_000_000,
 				LedgerIdempotencyKey: "batch:credit:a",
-				PaymentIntentId:      intentA.String(),
+				PaymentIntentID:      intentA,
 				Provider:             "stripe",
 				ProviderRef:          "pi_batch_a",
 			},
 			{
-				CustomerId:           customerID.String(),
+				CustomerID:           customerID,
 				AmountMicro:          3_000_000,
 				LedgerIdempotencyKey: "batch:credit:b",
-				PaymentIntentId:      intentB.String(),
+				PaymentIntentID:      intentB,
 				Provider:             "stripe",
 				ProviderRef:          "pi_batch_b",
 			},
 		},
 	})
-	require.NoError(t, err)
-	require.Len(t, resp.CreditResults, 2)
-	require.True(t, resp.CreditResults[0].Applied)
-	require.True(t, resp.CreditResults[1].Applied)
-	require.Empty(t, resp.CreditResults[0].Error)
-	require.Empty(t, resp.CreditResults[1].Error)
+	require.Len(t, result.CreditResults, 2)
+	require.True(t, result.CreditResults[0].Applied)
+	require.True(t, result.CreditResults[1].Applied)
+	require.NoError(t, result.CreditResults[0].Err)
+	require.NoError(t, result.CreditResults[1].Err)
 
 	faultproof.Log(t, "batch_settlement_drain", map[string]string{
 		"subsystem": "settlement",

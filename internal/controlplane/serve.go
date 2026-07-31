@@ -4,14 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net"
 	"net/http"
 	"os"
 	"time"
 
 	"espx/internal/clickhouse/migrate"
 	"espx/internal/config"
-	pb "espx/internal/controlplane/pb"
 	"espx/internal/database"
 	"espx/internal/dedup"
 	"espx/internal/domain"
@@ -21,8 +19,6 @@ import (
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/redis/go-redis/v9"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 )
 
 func Serve(ctx context.Context, cfg *config.Config) error {
@@ -382,10 +378,8 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 	if paymentClient != nil {
 		if opts.Payment != nil {
 			slog.Info("payment in-process client enabled")
-		} else if cfg.PaymentGRPCEnabled {
-			slog.Info("payment gRPC client enabled", "target", cfg.PaymentServerHost+":"+cfg.PaymentServerPort)
 		} else {
-			slog.Info("payment in-process module client enabled", "env", "PAYMENT_GRPC_ENABLED=0")
+			slog.Info("payment module client enabled")
 		}
 	}
 
@@ -400,10 +394,8 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 	if billingClient != nil {
 		if opts.Billing != nil {
 			slog.Info("billing in-process client enabled")
-		} else if cfg.BillingGRPCEnabled {
-			slog.Info("billing gRPC client enabled", "target", cfg.Billing.ServerHost+":"+cfg.Billing.Port)
 		} else {
-			slog.Info("billing in-process module client enabled", "env", "BILLING_GRPC_ENABLED=0")
+			slog.Info("billing module client enabled")
 		}
 	}
 
@@ -418,10 +410,8 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 	if notifierClient != nil {
 		if opts.Notifier != nil {
 			slog.Info("notifier in-process client enabled")
-		} else if cfg.NotifierGRPCEnabled {
-			slog.Info("notifier gRPC client enabled", "target", cfg.Notifier.ServerHost+":"+cfg.Notifier.Port)
 		} else {
-			slog.Info("notifier in-process module client enabled", "env", "NOTIFIER_GRPC_ENABLED=0")
+			slog.Info("notifier module client enabled")
 		}
 	}
 	opsAlerter := NewOpsAlerter(notifierClient, cfg)
@@ -510,55 +500,13 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 		slog.Info("payment in-process settlement client enabled")
 	}
 
-	if cfg.SettlementGRPCEnabled {
-		settleLis, err := net.Listen("tcp", ":"+cfg.SettlementServerPort)
-		if err != nil {
-			slog.Error("failed to listen on settlement port", "port", cfg.SettlementServerPort, "error", err)
-			return err
-		}
-		settleGRPC := grpc.NewServer(grpc.UnaryInterceptor(SettlementGRPCMetricsInterceptor()))
-		pb.RegisterSettlementServiceServer(settleGRPC, settleHandler)
-		if cfg.Env != "production" {
-			reflection.Register(settleGRPC)
-		}
-		go func() {
-			slog.Info("starting settlement gRPC server", "port", cfg.SettlementServerPort)
-			if err := settleGRPC.Serve(settleLis); err != nil {
-				slog.Error("settlement gRPC server failed", "error", err)
-			}
-		}()
+	<-ctx.Done()
 
-		<-ctx.Done()
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), time.Duration(cfg.Lifecycle.ShutdownTimeoutMs)*time.Millisecond)
+	defer shutdownCancel()
 
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), time.Duration(cfg.Lifecycle.ShutdownTimeoutMs)*time.Millisecond)
-		defer shutdownCancel()
-
-		if err := server.Shutdown(shutdownCtx); err != nil {
-			slog.Error("management server shutdown failed", "error", err)
-		}
-
-		settleStopped := make(chan struct{})
-		go func() {
-			settleGRPC.GracefulStop()
-			close(settleStopped)
-		}()
-		select {
-		case <-settleStopped:
-			slog.Info("settlement gRPC server stopped cleanly")
-		case <-shutdownCtx.Done():
-			slog.Warn("settlement gRPC graceful shutdown timed out, force stopping")
-			settleGRPC.Stop()
-		}
-	} else {
-		slog.Info("settlement gRPC disabled", "env", "SETTLEMENT_GRPC_ENABLED=0")
-		<-ctx.Done()
-
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), time.Duration(cfg.Lifecycle.ShutdownTimeoutMs)*time.Millisecond)
-		defer shutdownCancel()
-
-		if err := server.Shutdown(shutdownCtx); err != nil {
-			slog.Error("management server shutdown failed", "error", err)
-		}
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		slog.Error("management server shutdown failed", "error", err)
 	}
 
 	svc.Close()

@@ -27,9 +27,9 @@ func TestFault_SettlementFailedNotifier(t *testing.T) {
 	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
 	defer cleanup()
 
-	stub := &paymenttest.StubNotifierClient{}
+	stub := &paymenttest.StubNotifierAPI{}
 	cfg := paymenttest.TestOpsConfig()
-	alerter := payment.NewSettlementFailedAlerter(payment.NewInProcessNotifierClient(notifier.NewGRPCNotifierAPI(stub)), cfg)
+	alerter := payment.NewSettlementFailedAlerter(payment.NewInProcessNotifierClient(stub), cfg)
 	require.NotNil(t, alerter)
 
 	ctx := context.Background()
