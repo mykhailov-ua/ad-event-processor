@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/notifier/pb"
+	"espx/internal/notifier/db"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,16 +26,16 @@ func TestFault_notifierConcurrentDelivery(t *testing.T) {
 
 	breaker := NewCircuitBreaker(100, 2, 10*time.Second)
 	mockProv := NewMockProvider(breaker)
-	providers := map[pb.Provider]Provider{
-		pb.Provider_PROVIDER_TELEGRAM: mockProv,
+	providers := map[db.NotifierProvider]Provider{
+		db.NotifierProviderTELEGRAM: mockProv,
 	}
 	svc := NewService(pool, providers)
 	ctx := context.Background()
 
 	const notifications = 5
 	for i := range notifications {
-		_, err := sendTestNotification(ctx, svc, &pb.SendNotificationRequest{
-			Provider:  pb.Provider_PROVIDER_TELEGRAM,
+		_, err := sendTestNotification(ctx, svc, NotificationInput{
+			Provider:  string(db.NotifierProviderTELEGRAM),
 			Recipient: fmt.Sprintf("chat-%d", i),
 			Title:     "Concurrent test",
 			Body:      fmt.Sprintf("body %d", i),

@@ -2,12 +2,10 @@ package notifier
 
 import (
 	"context"
-
-	"espx/internal/notifier/pb"
 )
 
-func sendTestNotification(ctx context.Context, svc *Service, req *pb.SendNotificationRequest) (SendNotificationResult, error) {
-	return svc.SendNotificationInput(ctx, NotificationInputFromPB(req))
+func sendTestNotification(ctx context.Context, svc *Service, input NotificationInput) (SendNotificationResult, error) {
+	return svc.SendNotificationInput(ctx, input)
 }
 
 func getTestNotification(ctx context.Context, svc *Service, notificationID string) (Notification, error) {

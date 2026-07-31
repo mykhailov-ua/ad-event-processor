@@ -232,7 +232,7 @@ Blockers for deleting `api/auth.proto` (and siblings)
 | `AuthServiceClient` / `AuthServiceServer` | Monolith in-process via `identity.AuthAPI` (Login, Register, VerifyToken, API keys); `handler_types.go` | `identity/{handler_types,handler,handler_core,handler_grpc,auth_convert,apikey_types,apikey_convert,serve,grpc_api,resolve_api}.go`; `controlplane/auth_client.go` |
 | `BillingServiceClient` / `BillingServiceServer` | Monolith in-process via `billing.BillingAPI` (`Invoice`) | `billing/{handler_types,handler_auth,handler_errors,handler_core,handler_grpc,handler_validate,invoice_types,invoice_convert,serve,grpc_api,resolve_api}.go` |
 | `PaymentServiceClient` / `PaymentServiceServer` | Monolith in-process via `payment.PaymentAPI`; service returns `PaymentIntent` | `payment/{handler_types,handler_auth,handler_errors,handler_core,handler_grpc,intent_convert,serve,grpc_api,resolve_api}.go` |
-| `NotifierServiceClient` / `NotifierServiceServer` | Monolith in-process via `notifier.NotifierAPI`; service returns `Notification` | `notifier/{handler_types,handler_errors,handler_grpc,notification_types,notification_convert,api,service_input,serve,grpc_api}.go` |
+| `NotifierServiceClient` / `NotifierServiceServer` | Monolith in-process via `notifier.NotifierAPI`; service returns `Notification`; provider map keyed by `db.NotifierProvider` | `notifier/{handler_types,handler_errors,handler_grpc,notification_types,notification_convert,api,service_input,serve,grpc_api}.go`; `handler_convert.go` (gRPC pb mappers only) |
 | `SettlementServiceClient` / `SettlementServiceServer` | Monolith in-process via `SettlementHandler.PaymentSettlement()` (`domain.PaymentSettlement`); gRPC split `settlement_handler_{types,auth,convert,grpc}.go` | `controlplane/{settlement_handler,settlement_handler_types,settlement_handler_auth,settlement_handler_convert,settlement_handler_grpc,serve}.go`; `payment/{settlement_grpc_client,resolve_settlement,settlement_ledger_client,outbox_worker}.go` |
 
 Message types (`*.pb.go`) remain in use for handler request/response structs and outbox payloads — delete protos only after those call sites use `internal/domain` types.
@@ -246,7 +246,7 @@ Payment fault/integration tests: `package payment_test` + `internal/paymenttest`
 
 10. split_control and standalone cmd/* deprecation
 
-Status: deprecation notices only — compose profile and standalone binaries remain until callers migrate.
+Status: `stack.sh full` runs `single_vps` monolith; `legacy-full` keeps deprecated `split_control` compose profile until profile removal.
 
 Default deploy: `cmd/control` modular monolith. Compose profiles `single_vps`, `ingest_only`, `network_operator` run one `control` container with in-process management, identity (auth), payment, billing, and notifier (`CONTROL_ENABLE_*`). Local entry: `scripts/dev/stack.sh single-vps`.
 
@@ -254,7 +254,7 @@ Deprecated:
 
 | Item | Replacement |
 |------|-------------|
-| Compose profile `split_control` (`scripts/dev/stack.sh full`) | `single_vps` or `network_operator` |
+| Compose profile `split_control` (`scripts/dev/stack.sh legacy-full`) | `single_vps` or `network_operator` |
 | `cmd/auth`, `cmd/management`, `cmd/payment`, `cmd/billing`, `cmd/notifier` | `cmd/control` with matching `CONTROL_ENABLE_*` |
 
 Monolith env: set `SETTLEMENT_GRPC_ENABLED=0` so payment→settlement uses in-process `domain.PaymentSettlement` (`SetSettlementAPI`); `OpenSettlementAPIOrDial` returns nil when gRPC off (no localhost dial). Compose `control` service sets this; bare-metal installs should set it in `.env` when running `cmd/control`.

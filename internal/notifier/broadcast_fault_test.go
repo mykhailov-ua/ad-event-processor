@@ -10,33 +10,33 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/notifier/pb"
+	"espx/internal/notifier/db"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func newBroadcastMockProviders(failProvider pb.Provider) map[pb.Provider]Provider {
+func newBroadcastMockProviders(failProvider db.NotifierProvider) map[db.NotifierProvider]Provider {
 	slackBreaker := NewCircuitBreaker(10, 2, 10*time.Second)
 	telegramBreaker := NewCircuitBreaker(10, 2, 10*time.Second)
 	smsBreaker := NewCircuitBreaker(10, 2, 10*time.Second)
 
 	mockSlack := NewMockProvider(slackBreaker)
 	mockSlack.ProviderName = "SLACK"
-	mockSlack.ShouldFail = failProvider == pb.Provider_PROVIDER_SLACK
+	mockSlack.ShouldFail = failProvider == db.NotifierProviderSLACK
 
 	mockTelegram := NewMockProvider(telegramBreaker)
 	mockTelegram.ProviderName = "TELEGRAM"
-	mockTelegram.ShouldFail = failProvider == pb.Provider_PROVIDER_TELEGRAM
+	mockTelegram.ShouldFail = failProvider == db.NotifierProviderTELEGRAM
 
 	mockSMS := NewMockProvider(smsBreaker)
 	mockSMS.ProviderName = "SMS"
-	mockSMS.ShouldFail = failProvider == pb.Provider_PROVIDER_SMS
+	mockSMS.ShouldFail = failProvider == db.NotifierProviderSMS
 
-	return map[pb.Provider]Provider{
-		pb.Provider_PROVIDER_SLACK:    mockSlack,
-		pb.Provider_PROVIDER_TELEGRAM: mockTelegram,
-		pb.Provider_PROVIDER_SMS:      mockSMS,
+	return map[db.NotifierProvider]Provider{
+		db.NotifierProviderSLACK:    mockSlack,
+		db.NotifierProviderTELEGRAM: mockTelegram,
+		db.NotifierProviderSMS:      mockSMS,
 	}
 }
 
@@ -48,16 +48,16 @@ func TestFault_notifierBroadcastPartialFailure(t *testing.T) {
 	pool, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	providers := newBroadcastMockProviders(pb.Provider_PROVIDER_SLACK)
+	providers := newBroadcastMockProviders(db.NotifierProviderSLACK)
 	svc := NewService(pool, providers)
 	ctx := context.Background()
 
-	result, err := sendTestNotification(ctx, svc, &pb.SendNotificationRequest{
-		Provider:     pb.Provider_PROVIDER_SLACK,
-		Recipient:    "https://hooks.slack.com/services/test",
-		Title:        "Critical incident",
-		Body:         "broadcast partial failure probe",
-		DeliveryMode: pb.DeliveryMode_DELIVERY_MODE_BROADCAST,
+	result, err := sendTestNotification(ctx, svc, NotificationInput{
+		Provider:  string(db.NotifierProviderSLACK),
+		Recipient: "https://hooks.slack.com/services/test",
+		Title:     "Critical incident",
+		Body:      "broadcast partial failure probe",
+		Broadcast: true,
 	})
 	require.NoError(t, err)
 
@@ -67,12 +67,12 @@ func TestFault_notifierBroadcastPartialFailure(t *testing.T) {
 
 	notification, err := getTestNotification(ctx, svc, result.NotificationID)
 	require.NoError(t, err)
-	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_SENT, notification.Status)
+	assert.Equal(t, db.NotifierNotificationStatusSENT, notification.Status)
 	assert.Contains(t, notification.ErrorMessage, "broadcast partial")
 
-	mockSlack := providers[pb.Provider_PROVIDER_SLACK].(*MockProvider)
-	mockTelegram := providers[pb.Provider_PROVIDER_TELEGRAM].(*MockProvider)
-	mockSMS := providers[pb.Provider_PROVIDER_SMS].(*MockProvider)
+	mockSlack := providers[db.NotifierProviderSLACK].(*MockProvider)
+	mockTelegram := providers[db.NotifierProviderTELEGRAM].(*MockProvider)
+	mockSMS := providers[db.NotifierProviderSMS].(*MockProvider)
 
 	assert.Len(t, mockSlack.Sent, 0)
 	assert.Len(t, mockTelegram.Sent, 1)
@@ -94,18 +94,18 @@ func TestFault_notifierBroadcastConcurrentDelivery(t *testing.T) {
 	pool, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	providers := newBroadcastMockProviders(pb.Provider_PROVIDER_UNSPECIFIED)
+	providers := newBroadcastMockProviders("")
 	svc := NewService(pool, providers)
 	ctx := context.Background()
 
 	const notifications = 4
 	for i := range notifications {
-		_, err := sendTestNotification(ctx, svc, &pb.SendNotificationRequest{
-			Provider:     pb.Provider_PROVIDER_TELEGRAM,
-			Recipient:    fmt.Sprintf("chat-%d", i),
-			Title:        "Broadcast concurrent",
-			Body:         fmt.Sprintf("body %d", i),
-			DeliveryMode: pb.DeliveryMode_DELIVERY_MODE_BROADCAST,
+		_, err := sendTestNotification(ctx, svc, NotificationInput{
+			Provider:  string(db.NotifierProviderTELEGRAM),
+			Recipient: fmt.Sprintf("chat-%d", i),
+			Title:     "Broadcast concurrent",
+			Body:      fmt.Sprintf("body %d", i),
+			Broadcast: true,
 		})
 		require.NoError(t, err)
 	}
@@ -134,9 +134,9 @@ func TestFault_notifierBroadcastConcurrentDelivery(t *testing.T) {
 	assert.Equal(t, int32(0), errs.Load())
 	assert.Equal(t, int32(notifications), processed.Load())
 
-	mockSlack := providers[pb.Provider_PROVIDER_SLACK].(*MockProvider)
-	mockTelegram := providers[pb.Provider_PROVIDER_TELEGRAM].(*MockProvider)
-	mockSMS := providers[pb.Provider_PROVIDER_SMS].(*MockProvider)
+	mockSlack := providers[db.NotifierProviderSLACK].(*MockProvider)
+	mockTelegram := providers[db.NotifierProviderTELEGRAM].(*MockProvider)
+	mockSMS := providers[db.NotifierProviderSMS].(*MockProvider)
 
 	assert.Len(t, mockSlack.Sent, notifications)
 	assert.Len(t, mockTelegram.Sent, notifications)
@@ -172,21 +172,21 @@ func TestFault_notifierBroadcastAllFailThenRetry(t *testing.T) {
 	mockSMS.ProviderName = "SMS"
 	mockSMS.ShouldFail = true
 
-	providers := map[pb.Provider]Provider{
-		pb.Provider_PROVIDER_SLACK:    mockSlack,
-		pb.Provider_PROVIDER_TELEGRAM: mockTelegram,
-		pb.Provider_PROVIDER_SMS:      mockSMS,
+	providers := map[db.NotifierProvider]Provider{
+		db.NotifierProviderSLACK:    mockSlack,
+		db.NotifierProviderTELEGRAM: mockTelegram,
+		db.NotifierProviderSMS:      mockSMS,
 	}
 
 	svc := NewService(pool, providers)
 	ctx := context.Background()
 
-	result, err := sendTestNotification(ctx, svc, &pb.SendNotificationRequest{
-		Provider:     pb.Provider_PROVIDER_TELEGRAM,
-		Recipient:    "chat-retry",
-		Title:        "Broadcast retry",
-		Body:         "all fail probe",
-		DeliveryMode: pb.DeliveryMode_DELIVERY_MODE_BROADCAST,
+	result, err := sendTestNotification(ctx, svc, NotificationInput{
+		Provider:  string(db.NotifierProviderTELEGRAM),
+		Recipient: "chat-retry",
+		Title:     "Broadcast retry",
+		Body:      "all fail probe",
+		Broadcast: true,
 	})
 	require.NoError(t, err)
 
@@ -196,7 +196,7 @@ func TestFault_notifierBroadcastAllFailThenRetry(t *testing.T) {
 
 	notification, err := getTestNotification(ctx, svc, result.NotificationID)
 	require.NoError(t, err)
-	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_PENDING, notification.Status)
+	assert.Equal(t, db.NotifierNotificationStatusPENDING, notification.Status)
 	assert.Equal(t, int32(1), notification.RetryCount)
 
 	processed, err = svc.ProcessPending(ctx, workerBatchSize)
@@ -217,7 +217,7 @@ func TestFault_notifierBroadcastAllFailThenRetry(t *testing.T) {
 
 	notification, err = getTestNotification(ctx, svc, result.NotificationID)
 	require.NoError(t, err)
-	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_SENT, notification.Status)
+	assert.Equal(t, db.NotifierNotificationStatusSENT, notification.Status)
 	assert.Contains(t, notification.ErrorMessage, "broadcast partial")
 
 	faultproof.Log(t, "notifier_broadcast_all_fail_retry", map[string]string{
@@ -238,23 +238,23 @@ func TestFault_notifierBroadcastCircuitOpen(t *testing.T) {
 	slackBreaker := NewCircuitBreaker(2, 2, 10*time.Second)
 	slackBreaker.trip()
 
-	providers := map[pb.Provider]Provider{
-		pb.Provider_PROVIDER_SLACK:    &MockProvider{breaker: slackBreaker, ProviderName: "SLACK"},
-		pb.Provider_PROVIDER_TELEGRAM: NewMockProvider(NewCircuitBreaker(10, 2, 10*time.Second)),
-		pb.Provider_PROVIDER_SMS:      NewMockProvider(NewCircuitBreaker(10, 2, 10*time.Second)),
+	providers := map[db.NotifierProvider]Provider{
+		db.NotifierProviderSLACK:    &MockProvider{breaker: slackBreaker, ProviderName: "SLACK"},
+		db.NotifierProviderTELEGRAM: NewMockProvider(NewCircuitBreaker(10, 2, 10*time.Second)),
+		db.NotifierProviderSMS:      NewMockProvider(NewCircuitBreaker(10, 2, 10*time.Second)),
 	}
-	providers[pb.Provider_PROVIDER_TELEGRAM].(*MockProvider).ProviderName = "TELEGRAM"
-	providers[pb.Provider_PROVIDER_SMS].(*MockProvider).ProviderName = "SMS"
+	providers[db.NotifierProviderTELEGRAM].(*MockProvider).ProviderName = "TELEGRAM"
+	providers[db.NotifierProviderSMS].(*MockProvider).ProviderName = "SMS"
 
 	svc := NewService(pool, providers)
 	ctx := context.Background()
 
-	result, err := sendTestNotification(ctx, svc, &pb.SendNotificationRequest{
-		Provider:     pb.Provider_PROVIDER_SLACK,
-		Recipient:    "https://hooks.slack.com/services/test",
-		Title:        "Circuit open probe",
-		Body:         "broadcast with open circuit",
-		DeliveryMode: pb.DeliveryMode_DELIVERY_MODE_BROADCAST,
+	result, err := sendTestNotification(ctx, svc, NotificationInput{
+		Provider:  string(db.NotifierProviderSLACK),
+		Recipient: "https://hooks.slack.com/services/test",
+		Title:     "Circuit open probe",
+		Body:      "broadcast with open circuit",
+		Broadcast: true,
 	})
 	require.NoError(t, err)
 
@@ -264,10 +264,10 @@ func TestFault_notifierBroadcastCircuitOpen(t *testing.T) {
 
 	notification, err := getTestNotification(ctx, svc, result.NotificationID)
 	require.NoError(t, err)
-	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_SENT, notification.Status)
+	assert.Equal(t, db.NotifierNotificationStatusSENT, notification.Status)
 
-	mockSlack := providers[pb.Provider_PROVIDER_SLACK].(*MockProvider)
-	mockTelegram := providers[pb.Provider_PROVIDER_TELEGRAM].(*MockProvider)
+	mockSlack := providers[db.NotifierProviderSLACK].(*MockProvider)
+	mockTelegram := providers[db.NotifierProviderTELEGRAM].(*MockProvider)
 	assert.Len(t, mockSlack.Sent, 0)
 	assert.Len(t, mockTelegram.Sent, 1)
 

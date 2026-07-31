@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"espx/internal/notifier/db"
-	"espx/internal/notifier/pb"
 )
 
 type broadcastResult struct {
@@ -33,7 +32,7 @@ func (service *Service) resolveBroadcastTargets(stored []db.NotifierProvider) []
 
 	targets := make([]db.NotifierProvider, 0, len(defaultBroadcastOrder))
 	for _, provider := range defaultBroadcastOrder {
-		if _, configured := service.providers[MapDBProviderToPB(provider)]; configured {
+		if _, configured := service.providers[provider]; configured {
 			targets = append(targets, provider)
 		}
 	}
@@ -119,8 +118,7 @@ func (service *Service) sendViaProvider(
 	target, primary db.NotifierProvider,
 	primaryRecipient, title, body string,
 ) error {
-	pbProvider := MapDBProviderToPB(target)
-	provider, exists := service.providers[pbProvider]
+	provider, exists := service.providers[target]
 	if !exists {
 		return fmt.Errorf("provider %s not configured", target)
 	}
@@ -158,8 +156,7 @@ func (service *Service) deliverFallback(
 	currentRecipient := startRecipient
 
 	for {
-		pbProvider := MapDBProviderToPB(currentProvider)
-		_, exists := service.providers[pbProvider]
+		_, exists := service.providers[currentProvider]
 		if !exists {
 			sendErr := fmt.Errorf("provider %s not configured", currentProvider)
 			nextProvider, fallbackFound := nextConfiguredFallback(service.providers, currentProvider)
@@ -202,7 +199,7 @@ func (service *Service) deliverFallback(
 	}
 }
 
-func nextConfiguredFallback(providers map[pb.Provider]Provider, current db.NotifierProvider) (db.NotifierProvider, bool) {
+func nextConfiguredFallback(providers map[db.NotifierProvider]Provider, current db.NotifierProvider) (db.NotifierProvider, bool) {
 	fallbackChain := map[db.NotifierProvider]db.NotifierProvider{
 		db.NotifierProviderSLACK:    db.NotifierProviderTELEGRAM,
 		db.NotifierProviderTELEGRAM: db.NotifierProviderSMS,
@@ -216,7 +213,7 @@ func nextConfiguredFallback(providers map[pb.Provider]Provider, current db.Notif
 		if !ok {
 			return "", false
 		}
-		if _, configured := providers[MapDBProviderToPB(nextProvider)]; configured {
+		if _, configured := providers[nextProvider]; configured {
 			return nextProvider, true
 		}
 	}

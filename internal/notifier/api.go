@@ -2,7 +2,6 @@ package notifier
 
 import (
 	"context"
-	"strings"
 
 	"espx/internal/notifier/db"
 	"espx/internal/notifier/pb"
@@ -44,21 +43,6 @@ func (m *Module) API() NotifierAPI {
 	return &notifierAPI{svc: m.svc}
 }
 
-func ParseProviderName(name string) (pb.Provider, error) {
-	trimmed := strings.TrimSpace(name)
-	if trimmed == "" {
-		return pb.Provider_PROVIDER_UNSPECIFIED, ErrUnsupportedProvider
-	}
-	upper := strings.ToUpper(trimmed)
-	if !strings.HasPrefix(upper, "PROVIDER_") {
-		upper = "PROVIDER_" + upper
-	}
-	if v, ok := pb.Provider_value[upper]; ok {
-		return pb.Provider(v), nil
-	}
-	return pb.Provider_PROVIDER_UNSPECIFIED, ErrUnsupportedProvider
-}
-
 func NotificationInputFromPB(req *pb.SendNotificationRequest) NotificationInput {
 	if req == nil {
 		return NotificationInput{}
@@ -87,7 +71,7 @@ func (input NotificationInput) toPB() (*pb.SendNotificationRequest, error) {
 		return nil, err
 	}
 	req := &pb.SendNotificationRequest{
-		Provider:      provider,
+		Provider:      MapDBProviderToPB(provider),
 		Recipient:     input.Recipient,
 		Title:         input.Title,
 		Body:          input.Body,
@@ -106,7 +90,7 @@ func (input NotificationInput) toPB() (*pb.SendNotificationRequest, error) {
 			if err != nil {
 				return nil, err
 			}
-			req.BroadcastProviders = append(req.BroadcastProviders, p)
+			req.BroadcastProviders = append(req.BroadcastProviders, MapDBProviderToPB(p))
 		}
 	}
 	return req, nil
@@ -139,4 +123,3 @@ func (a *notifierAPI) SendNotificationBatch(ctx context.Context, inputs []Notifi
 	}
 	return out, nil
 }
-

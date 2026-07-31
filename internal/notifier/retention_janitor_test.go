@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/notifier/pb"
+	"espx/internal/notifier/db"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,9 +20,9 @@ func TestRetentionJanitor_DeletesOldRows(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	svc := NewService(pool, map[pb.Provider]Provider{})
-	_, err := sendTestNotification(ctx, svc, &pb.SendNotificationRequest{
-		Provider:  pb.Provider_PROVIDER_TELEGRAM,
+	svc := NewService(pool, map[db.NotifierProvider]Provider{})
+	_, err := sendTestNotification(ctx, svc, NotificationInput{
+		Provider:  string(db.NotifierProviderTELEGRAM),
 		Recipient: "123",
 		Title:     "old",
 		Body:      "retention test",

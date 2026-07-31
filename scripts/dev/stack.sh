@@ -18,7 +18,11 @@ infra | up-infra)
 	docker compose up -d "${INFRA[@]}"
 	;;
 full | up-full)
-	echo "stack.sh: WARN split_control profile is deprecated; use single-vps (cmd/control monolith)" >&2
+	echo "stack.sh: full runs single-vps monolith (split_control: use legacy-full)" >&2
+	docker compose --profile single_vps up -d "${SINGLE_VPS[@]}"
+	;;
+legacy-full | up-legacy-full)
+	echo "stack.sh: WARN split_control profile is deprecated; use single-vps" >&2
 	docker compose --profile split_control up -d "${FULL[@]}"
 	;;
 single-vps | up-single-vps)
@@ -110,7 +114,7 @@ probe)
 	esac
 	;;
 *)
-	echo "usage: $0 {infra|full|single-vps|ingest-only|network-operator|analytics-ml|sentinel|multi-region|crypto|down|status|build|bpf|probe}" >&2
+	echo "usage: $0 {infra|full|legacy-full|single-vps|ingest-only|network-operator|analytics-ml|sentinel|multi-region|crypto|down|status|build|bpf|probe}" >&2
 	exit 2
 	;;
 esac

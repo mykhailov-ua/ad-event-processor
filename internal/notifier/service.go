@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"espx/internal/notifier/db"
-	"espx/internal/notifier/pb"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -17,17 +16,17 @@ import (
 type Service struct {
 	pool                *pgxpool.Pool
 	queries             *db.Queries
-	providers           map[pb.Provider]Provider
+	providers           map[db.NotifierProvider]Provider
 	options             ServiceOptions
 	rateLimiter         *recipientRateLimiter
 	deliveryRateLimiter *providerRateLimiter
 }
 
-func NewService(pool *pgxpool.Pool, providers map[pb.Provider]Provider) *Service {
+func NewService(pool *pgxpool.Pool, providers map[db.NotifierProvider]Provider) *Service {
 	return NewServiceWithOptions(pool, providers, defaultServiceOptions())
 }
 
-func NewServiceWithOptions(pool *pgxpool.Pool, providers map[pb.Provider]Provider, opts ServiceOptions) *Service {
+func NewServiceWithOptions(pool *pgxpool.Pool, providers map[db.NotifierProvider]Provider, opts ServiceOptions) *Service {
 	return &Service{
 		pool:                pool,
 		queries:             db.New(pool),

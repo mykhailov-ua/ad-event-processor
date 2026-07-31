@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/notifier/pb"
+	"espx/internal/notifier/db"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -107,15 +107,15 @@ func TestService_enqueueAndGet(t *testing.T) {
 
 	breaker := NewCircuitBreaker(3, 2, 10*time.Second)
 	mockProv := NewMockProvider(breaker)
-	providers := map[pb.Provider]Provider{
-		pb.Provider_PROVIDER_TELEGRAM: mockProv,
+	providers := map[db.NotifierProvider]Provider{
+		db.NotifierProviderTELEGRAM: mockProv,
 	}
 
 	svc := NewService(pool, providers)
 	ctx := context.Background()
 
-	req := &pb.SendNotificationRequest{
-		Provider:  pb.Provider_PROVIDER_TELEGRAM,
+	req := NotificationInput{
+		Provider:  string(db.NotifierProviderTELEGRAM),
 		Recipient: "12345678",
 		Title:     "Test Alert",
 		Body:      "This is a test notification",
@@ -124,16 +124,16 @@ func TestService_enqueueAndGet(t *testing.T) {
 	result, err := sendTestNotification(ctx, svc, req)
 	require.NoError(t, err)
 	assert.NotEmpty(t, result.NotificationID)
-	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_PENDING, result.Status)
+	assert.Equal(t, db.NotifierNotificationStatusPENDING, result.Status)
 
 	notification, err := getTestNotification(ctx, svc, result.NotificationID)
 	require.NoError(t, err)
 	assert.Equal(t, result.NotificationID, notification.ID)
-	assert.Equal(t, pb.Provider_PROVIDER_TELEGRAM, notification.Provider)
+	assert.Equal(t, string(db.NotifierProviderTELEGRAM), notification.Provider)
 	assert.Equal(t, "12345678", notification.Recipient)
 	assert.Equal(t, "Test Alert", notification.Title)
 	assert.Equal(t, "This is a test notification", notification.Body)
-	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_PENDING, notification.Status)
+	assert.Equal(t, db.NotifierNotificationStatusPENDING, notification.Status)
 	assert.NotNil(t, notification.CreatedAt)
 	assert.NotNil(t, notification.UpdatedAt)
 }
@@ -148,15 +148,15 @@ func TestService_processPending_success(t *testing.T) {
 
 	breaker := NewCircuitBreaker(3, 2, 10*time.Second)
 	mockProv := NewMockProvider(breaker)
-	providers := map[pb.Provider]Provider{
-		pb.Provider_PROVIDER_TELEGRAM: mockProv,
+	providers := map[db.NotifierProvider]Provider{
+		db.NotifierProviderTELEGRAM: mockProv,
 	}
 
 	svc := NewService(pool, providers)
 	ctx := context.Background()
 
-	req := &pb.SendNotificationRequest{
-		Provider:  pb.Provider_PROVIDER_TELEGRAM,
+	req := NotificationInput{
+		Provider:  string(db.NotifierProviderTELEGRAM),
 		Recipient: "12345678",
 		Title:     "Test Alert",
 		Body:      "This is a test notification",
@@ -175,7 +175,7 @@ func TestService_processPending_success(t *testing.T) {
 
 	notification, err := getTestNotification(ctx, svc, result.NotificationID)
 	require.NoError(t, err)
-	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_SENT, notification.Status)
+	assert.Equal(t, db.NotifierNotificationStatusSENT, notification.Status)
 	assert.Equal(t, int32(0), notification.RetryCount)
 }
 
@@ -189,15 +189,15 @@ func TestService_processPending_failureAndRetry(t *testing.T) {
 
 	breaker := NewCircuitBreaker(3, 2, 10*time.Second)
 	mockProv := NewMockProvider(breaker)
-	providers := map[pb.Provider]Provider{
-		pb.Provider_PROVIDER_TELEGRAM: mockProv,
+	providers := map[db.NotifierProvider]Provider{
+		db.NotifierProviderTELEGRAM: mockProv,
 	}
 
 	svc := NewService(pool, providers)
 	ctx := context.Background()
 
-	req := &pb.SendNotificationRequest{
-		Provider:  pb.Provider_PROVIDER_TELEGRAM,
+	req := NotificationInput{
+		Provider:  string(db.NotifierProviderTELEGRAM),
 		Recipient: "12345678",
 		Title:     "Test Alert",
 		Body:      "trigger_failure",
@@ -211,7 +211,7 @@ func TestService_processPending_failureAndRetry(t *testing.T) {
 
 	notification, err := getTestNotification(ctx, svc, result.NotificationID)
 	require.NoError(t, err)
-	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_PENDING, notification.Status)
+	assert.Equal(t, db.NotifierNotificationStatusPENDING, notification.Status)
 	assert.Equal(t, int32(1), notification.RetryCount)
 	assert.Contains(t, notification.ErrorMessage, "mock send failure triggered")
 }
@@ -226,15 +226,15 @@ func TestService_processPending_permanentFailure(t *testing.T) {
 
 	breaker := NewCircuitBreaker(10, 2, 10*time.Second)
 	mockProv := NewMockProvider(breaker)
-	providers := map[pb.Provider]Provider{
-		pb.Provider_PROVIDER_TELEGRAM: mockProv,
+	providers := map[db.NotifierProvider]Provider{
+		db.NotifierProviderTELEGRAM: mockProv,
 	}
 
 	svc := NewService(pool, providers)
 	ctx := context.Background()
 
-	req := &pb.SendNotificationRequest{
-		Provider:  pb.Provider_PROVIDER_TELEGRAM,
+	req := NotificationInput{
+		Provider:  string(db.NotifierProviderTELEGRAM),
 		Recipient: "12345678",
 		Title:     "Test Alert",
 		Body:      "trigger_failure",
@@ -253,7 +253,7 @@ func TestService_processPending_permanentFailure(t *testing.T) {
 
 	notification, err := getTestNotification(ctx, svc, result.NotificationID)
 	require.NoError(t, err)
-	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_FAILED, notification.Status)
+	assert.Equal(t, db.NotifierNotificationStatusFAILED, notification.Status)
 	assert.Equal(t, int32(maxDeliveryAttempts), notification.RetryCount)
 }
 
@@ -267,16 +267,16 @@ func TestService_processPending_circuitBreaker(t *testing.T) {
 
 	breaker := NewCircuitBreaker(2, 2, 10*time.Second)
 	mockProv := NewMockProvider(breaker)
-	providers := map[pb.Provider]Provider{
-		pb.Provider_PROVIDER_TELEGRAM: mockProv,
+	providers := map[db.NotifierProvider]Provider{
+		db.NotifierProviderTELEGRAM: mockProv,
 	}
 
 	svc := NewService(pool, providers)
 	ctx := context.Background()
 
 	for i := 0; i < 3; i++ {
-		_, err := sendTestNotification(ctx, svc, &pb.SendNotificationRequest{
-			Provider:  pb.Provider_PROVIDER_TELEGRAM,
+		_, err := sendTestNotification(ctx, svc, NotificationInput{
+			Provider:  string(db.NotifierProviderTELEGRAM),
 			Recipient: "12345678",
 			Title:     fmt.Sprintf("Test Alert %d", i),
 			Body:      "trigger_failure",
@@ -315,15 +315,15 @@ func TestService_processPending_exponentialBackoff(t *testing.T) {
 
 	breaker := NewCircuitBreaker(10, 2, 10*time.Second)
 	mockProv := NewMockProvider(breaker)
-	providers := map[pb.Provider]Provider{
-		pb.Provider_PROVIDER_TELEGRAM: mockProv,
+	providers := map[db.NotifierProvider]Provider{
+		db.NotifierProviderTELEGRAM: mockProv,
 	}
 
 	svc := NewService(pool, providers)
 	ctx := context.Background()
 
-	req := &pb.SendNotificationRequest{
-		Provider:  pb.Provider_PROVIDER_TELEGRAM,
+	req := NotificationInput{
+		Provider:  string(db.NotifierProviderTELEGRAM),
 		Recipient: "12345678",
 		Title:     "Test Alert",
 		Body:      "trigger_failure",
@@ -359,16 +359,16 @@ func TestService_processPending_deduplication(t *testing.T) {
 
 	breaker := NewCircuitBreaker(3, 2, 10*time.Second)
 	mockProv := NewMockProvider(breaker)
-	providers := map[pb.Provider]Provider{
-		pb.Provider_PROVIDER_TELEGRAM: mockProv,
+	providers := map[db.NotifierProvider]Provider{
+		db.NotifierProviderTELEGRAM: mockProv,
 	}
 
 	svc := NewService(pool, providers)
 	ctx := context.Background()
 
 	for i := 0; i < 5; i++ {
-		_, err := sendTestNotification(ctx, svc, &pb.SendNotificationRequest{
-			Provider:  pb.Provider_PROVIDER_TELEGRAM,
+		_, err := sendTestNotification(ctx, svc, NotificationInput{
+			Provider:  string(db.NotifierProviderTELEGRAM),
 			Recipient: "12345678",
 			Title:     "Deduplicated Alert",
 			Body:      fmt.Sprintf("Alert details for node %d", i),
@@ -409,16 +409,16 @@ func TestService_processPending_fallback(t *testing.T) {
 	mockSlack := NewMockProvider(slackBreaker)
 	mockTelegram := NewMockProvider(telegramBreaker)
 
-	providers := map[pb.Provider]Provider{
-		pb.Provider_PROVIDER_SLACK:    mockSlack,
-		pb.Provider_PROVIDER_TELEGRAM: mockTelegram,
+	providers := map[db.NotifierProvider]Provider{
+		db.NotifierProviderSLACK:    mockSlack,
+		db.NotifierProviderTELEGRAM: mockTelegram,
 	}
 
 	svc := NewService(pool, providers)
 	ctx := context.Background()
 
-	req := &pb.SendNotificationRequest{
-		Provider:  pb.Provider_PROVIDER_SLACK,
+	req := NotificationInput{
+		Provider:  string(db.NotifierProviderSLACK),
 		Recipient: "https://hooks.slack.com/services/test",
 		Title:     "Fallback Alert",
 		Body:      "This notification falls back",
@@ -439,8 +439,8 @@ func TestService_processPending_fallback(t *testing.T) {
 
 	notification, err := getTestNotification(ctx, svc, result.NotificationID)
 	require.NoError(t, err)
-	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_SENT, notification.Status)
-	assert.Equal(t, pb.Provider_PROVIDER_TELEGRAM, notification.Provider)
+	assert.Equal(t, db.NotifierNotificationStatusSENT, notification.Status)
+	assert.Equal(t, string(db.NotifierProviderTELEGRAM), notification.Provider)
 
 	faultproof.Log(t, "notifier_fallback", map[string]string{
 		"primary":  "SLACK",
@@ -457,19 +457,19 @@ func TestService_processPending_broadcast(t *testing.T) {
 	pool, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	providers := newBroadcastMockProviders(pb.Provider_PROVIDER_UNSPECIFIED)
+	providers := newBroadcastMockProviders("")
 	svc := NewService(pool, providers)
 	ctx := context.Background()
 
-	result, err := sendTestNotification(ctx, svc, &pb.SendNotificationRequest{
-		Provider:     pb.Provider_PROVIDER_TELEGRAM,
-		Recipient:    "12345678",
-		Title:        "Broadcast Alert",
-		Body:         "fan-out to all channels",
-		DeliveryMode: pb.DeliveryMode_DELIVERY_MODE_BROADCAST,
-		BroadcastProviders: []pb.Provider{
-			pb.Provider_PROVIDER_SLACK,
-			pb.Provider_PROVIDER_TELEGRAM,
+	result, err := sendTestNotification(ctx, svc, NotificationInput{
+		Provider:  string(db.NotifierProviderTELEGRAM),
+		Recipient: "12345678",
+		Title:     "Broadcast Alert",
+		Body:      "fan-out to all channels",
+		Broadcast: true,
+		BroadcastProviders: []string{
+			string(db.NotifierProviderSLACK),
+			string(db.NotifierProviderTELEGRAM),
 		},
 	})
 	require.NoError(t, err)
@@ -478,9 +478,9 @@ func TestService_processPending_broadcast(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, processed)
 
-	mockSlack := providers[pb.Provider_PROVIDER_SLACK].(*MockProvider)
-	mockTelegram := providers[pb.Provider_PROVIDER_TELEGRAM].(*MockProvider)
-	mockSMS := providers[pb.Provider_PROVIDER_SMS].(*MockProvider)
+	mockSlack := providers[db.NotifierProviderSLACK].(*MockProvider)
+	mockTelegram := providers[db.NotifierProviderTELEGRAM].(*MockProvider)
+	mockSMS := providers[db.NotifierProviderSMS].(*MockProvider)
 
 	assert.Len(t, mockSlack.Sent, 1)
 	assert.Len(t, mockTelegram.Sent, 1)
@@ -488,9 +488,9 @@ func TestService_processPending_broadcast(t *testing.T) {
 
 	notification, err := getTestNotification(ctx, svc, result.NotificationID)
 	require.NoError(t, err)
-	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_SENT, notification.Status)
-	assert.Equal(t, pb.DeliveryMode_DELIVERY_MODE_BROADCAST, notification.DeliveryMode)
-	assert.Equal(t, pb.Provider_PROVIDER_TELEGRAM, notification.Provider)
+	assert.Equal(t, db.NotifierNotificationStatusSENT, notification.Status)
+	assert.Equal(t, db.NotifierDeliveryModeBROADCAST, notification.DeliveryMode)
+	assert.Equal(t, string(db.NotifierProviderTELEGRAM), notification.Provider)
 }
 
 type mockRoundTripper func(req *http.Request) (*http.Response, error)

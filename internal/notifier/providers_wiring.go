@@ -5,19 +5,19 @@ import (
 	"time"
 
 	"espx/internal/config"
-	"espx/internal/notifier/pb"
+	"espx/internal/notifier/db"
 )
 
 type ProviderBundle struct {
-	Providers map[pb.Provider]Provider
-	Breakers  map[pb.Provider]*CircuitBreaker
+	Providers map[db.NotifierProvider]Provider
+	Breakers  map[db.NotifierProvider]*CircuitBreaker
 }
 
 func isProdEnv(env string) bool {
 	return env == "production" || env == "prod"
 }
 
-func NewProvidersFromConfig(cfg *config.Config) map[pb.Provider]Provider {
+func NewProvidersFromConfig(cfg *config.Config) map[db.NotifierProvider]Provider {
 	return NewProviderBundleFromConfig(cfg).Providers
 }
 
@@ -38,19 +38,19 @@ func NewProviderBundleFromConfig(cfg *config.Config) ProviderBundle {
 	smsBreaker := NewCircuitBreaker(failThreshold, successThreshold, openTimeout)
 
 	return ProviderBundle{
-		Providers: map[pb.Provider]Provider{
-			pb.Provider_PROVIDER_TELEGRAM: NewTelegramProvider(
+		Providers: map[db.NotifierProvider]Provider{
+			db.NotifierProviderTELEGRAM: NewTelegramProvider(
 				string(n.TelegramBotToken),
 				n.TelegramChatID,
 				telegramBreaker,
 				requireCredentials,
 			),
-			pb.Provider_PROVIDER_SLACK: NewSlackProvider(
+			db.NotifierProviderSLACK: NewSlackProvider(
 				string(n.SlackWebhookURL),
 				slackBreaker,
 				requireCredentials,
 			),
-			pb.Provider_PROVIDER_SMTP: NewSMTPProvider(
+			db.NotifierProviderSMTP: NewSMTPProvider(
 				n.SMTPHost,
 				n.SMTPPort,
 				n.SMTPUsername,
@@ -59,7 +59,7 @@ func NewProviderBundleFromConfig(cfg *config.Config) ProviderBundle {
 				smtpBreaker,
 				requireCredentials,
 			),
-			pb.Provider_PROVIDER_SMS: NewSMSProvider(
+			db.NotifierProviderSMS: NewSMSProvider(
 				n.SMSProviderURL,
 				string(n.SMSAPIToken),
 				n.SMSDefaultRecipient,
@@ -67,16 +67,16 @@ func NewProviderBundleFromConfig(cfg *config.Config) ProviderBundle {
 				requireCredentials,
 			),
 		},
-		Breakers: map[pb.Provider]*CircuitBreaker{
-			pb.Provider_PROVIDER_TELEGRAM: telegramBreaker,
-			pb.Provider_PROVIDER_SLACK:    slackBreaker,
-			pb.Provider_PROVIDER_SMTP:     smtpBreaker,
-			pb.Provider_PROVIDER_SMS:      smsBreaker,
+		Breakers: map[db.NotifierProvider]*CircuitBreaker{
+			db.NotifierProviderTELEGRAM: telegramBreaker,
+			db.NotifierProviderSLACK:    slackBreaker,
+			db.NotifierProviderSMTP:     smtpBreaker,
+			db.NotifierProviderSMS:      smsBreaker,
 		},
 	}
 }
 
-func StartCircuitBreakerMetricsScraper(ctx context.Context, breakers map[pb.Provider]*CircuitBreaker, interval time.Duration) {
+func StartCircuitBreakerMetricsScraper(ctx context.Context, breakers map[db.NotifierProvider]*CircuitBreaker, interval time.Duration) {
 	if len(breakers) == 0 {
 		return
 	}
@@ -89,7 +89,7 @@ func StartCircuitBreakerMetricsScraper(ctx context.Context, breakers map[pb.Prov
 			if breaker == nil {
 				continue
 			}
-			recordCircuitBreakerState(providerName(provider), breaker.State())
+			recordCircuitBreakerState(ProviderDisplayName(provider), breaker.State())
 		}
 	}
 
@@ -105,20 +105,5 @@ func StartCircuitBreakerMetricsScraper(ctx context.Context, breakers map[pb.Prov
 		case <-ticker.C:
 			scrape()
 		}
-	}
-}
-
-func providerName(provider pb.Provider) string {
-	switch provider {
-	case pb.Provider_PROVIDER_TELEGRAM:
-		return "TELEGRAM"
-	case pb.Provider_PROVIDER_SLACK:
-		return "SLACK"
-	case pb.Provider_PROVIDER_SMTP:
-		return "SMTP"
-	case pb.Provider_PROVIDER_SMS:
-		return "SMS"
-	default:
-		return "UNSPECIFIED"
 	}
 }

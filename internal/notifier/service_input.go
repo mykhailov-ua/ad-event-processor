@@ -20,11 +20,7 @@ func MapProviderNamesToDBStrings(names []string) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		dbProvider, err := MapPBProviderToDB(provider)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, string(dbProvider))
+		out = append(out, string(provider))
 	}
 	return out, nil
 }
@@ -71,10 +67,6 @@ func (service *Service) createNotificationFromInput(ctx context.Context, input N
 	if err != nil {
 		return db.NotifierNotification{}, err
 	}
-	dbProvider, err := MapPBProviderToDB(provider)
-	if err != nil {
-		return db.NotifierNotification{}, err
-	}
 
 	broadcastProviders, err := MapProviderNamesToDBStrings(input.BroadcastProviders)
 	if err != nil {
@@ -88,7 +80,7 @@ func (service *Service) createNotificationFromInput(ctx context.Context, input N
 
 	notification, err := service.queries.CreateNotification(ctx, db.CreateNotificationParams{
 		ID:                 pgtype.UUID{Bytes: id, Valid: true},
-		Provider:           dbProvider,
+		Provider:           provider,
 		Recipient:          input.Recipient,
 		Title:              pgtypeTextOptional(input.Title),
 		Body:               body,
