@@ -1,0 +1,262 @@
+package controlplane
+
+import (
+	"context"
+	"errors"
+	"log/slog"
+	"time"
+
+	"espx/internal/domain"
+	"espx/internal/metrics"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
+	redis "github.com/redis/go-redis/v9"
+)
+
+type ReconService struct {
+	mgmt *Service
+}
+
+func NewReconService(svc *Service) *ReconService {
+	return &ReconService{mgmt: svc}
+}
+
+func (reconService *ReconService) ReconcileWindow(ctx context.Context, start, end time.Time) error {
+	opCtx, cancel := workerContext(ctx, workerBatchTimeout)
+	defer cancel()
+
+	run, err := reconService.createRun(opCtx, start, end)
+	if err != nil {
+		slog.Error("failed to create recon run record", "error", err, "start", start, "end", end)
+		metrics.ReconRunsTotal.WithLabelValues("failed").Inc()
+		return err
+	}
+
+	ledgerRows, err := reconService.mgmt.GetPool().Query(opCtx, `
+		SELECT campaign_id, COALESCE(SUM(CASE WHEN amount < 0 THEN -amount ELSE 0 END), 0)::bigint
+		FROM balance_ledger
+		WHERE created_at >= $1 AND created_at < $2
+		  AND (type IN ('FEE', 'RECONCILIATION_ADJUST', 'REFUND'))
+		GROUP BY campaign_id
+	`, start, end)
+	if err != nil {
+		reconService.failRun(opCtx, run.ID, err)
+		metrics.ReconRunsTotal.WithLabelValues("failed").Inc()
+		return err
+	}
+	defer ledgerRows.Close()
+
+	ledgerMap := make(map[uuid.UUID]int64)
+	for ledgerRows.Next() {
+		var cid uuid.UUID
+		var spent int64
+		if err := ledgerRows.Scan(&cid, &spent); err != nil {
+			slog.Error("failed to scan ledger row in recon run", "run_id", run.ID, "error", err)
+			continue
+		}
+		ledgerMap[cid] = spent
+	}
+
+	discrepancies := 0
+	var totalDelta int64
+
+	for campID, ledgerSpent := range ledgerMap {
+		syncKey := domain.CampaignSyncKey(campID)
+		rdb := reconService.mgmt.getRDB(campID)
+		if rdb == nil {
+			slog.Error("no redis shard for campaign in recon", "campaign_id", campID)
+			metrics.ReconAdjustmentErrors.Inc()
+			continue
+		}
+
+		syncVal, err := rdb.Get(opCtx, syncKey).Int64()
+		if err != nil && !errors.Is(err, redis.Nil) {
+			slog.Error("failed to fetch campaign sync budget from Redis in recon", "campaign_id", campID, "error", err)
+			metrics.ReconAdjustmentErrors.Inc()
+			reconService.failRun(opCtx, run.ID, err)
+			metrics.ReconRunsTotal.WithLabelValues("failed").Inc()
+			return err
+		}
+
+		delta := syncVal - ledgerSpent
+		if delta == 0 {
+			continue
+		}
+
+		var customerID pgtype.UUID
+		err = reconService.mgmt.GetPool().QueryRow(opCtx, `SELECT customer_id FROM campaigns WHERE id = $1`, domain.ToUUID(campID)).Scan(&customerID)
+		if err != nil {
+			slog.Error("failed to resolve campaign customer in recon", "campaign_id", campID, "error", err)
+			metrics.ReconAdjustmentErrors.Inc()
+			continue
+		}
+
+		discrepancies++
+
+		_, err = reconService.mgmt.GetPool().Exec(opCtx, `
+			INSERT INTO recon_discrepancies (run_id, campaign_id, customer_id, expected_spend, actual_spend, delta, redis_adjusted)
+			VALUES ($1, $2, $3, $4, $5, $6, false)
+		`, run.ID, domain.ToUUID(campID), customerID, syncVal, ledgerSpent, delta)
+		if err != nil {
+			slog.Error("failed to record recon discrepancy to postgres", "run_id", run.ID, "campaign_id", campID, "error", err)
+			metrics.ReconAdjustmentErrors.Inc()
+			reconService.failRun(opCtx, run.ID, err)
+			metrics.ReconRunsTotal.WithLabelValues("failed").Inc()
+			return err
+		}
+
+		chunkMicro := reconService.autoAdjustChunkMicro()
+		if abs(delta) > chunkMicro {
+			slog.Warn("recon discrepancy exceeds auto-adjust chunk, leaving unresolved",
+				"run_id", run.ID,
+				"campaign_id", campID,
+				"delta", delta,
+				"chunk_micro", chunkMicro,
+			)
+			totalDelta += delta
+			continue
+		}
+
+		shardID := int16(reconService.mgmt.sharder.GetShard(campID))
+		custUUID, _ := uuid.FromBytes(customerID.Bytes[:])
+		if err := reconService.enqueueReconciliationAdjust(opCtx, run.ID, campID, custUUID, shardID, -delta, delta, "hourly_window_recon"); err != nil {
+			slog.Error("failed to enqueue recon adjustment", "campaign_id", campID, "delta", delta, "error", err)
+			metrics.ReconAdjustmentErrors.Inc()
+			continue
+		}
+		metrics.ReconCorrectionsTotal.Inc()
+		totalDelta += delta
+	}
+
+	_, err = reconService.mgmt.GetPool().Exec(opCtx, `
+		UPDATE recon_runs 
+		SET status = 'COMPLETED', total_delta = $1, campaigns_checked = $2, discrepancies_found = $3, completed_at = NOW()
+		WHERE id = $4
+	`, totalDelta, len(ledgerMap), discrepancies, run.ID)
+	if err != nil {
+		slog.Error("failed to finalize recon run in postgres", "run_id", run.ID, "error", err)
+		metrics.ReconRunsTotal.WithLabelValues("failed").Inc()
+		return err
+	}
+
+	metrics.ReconRunsTotal.WithLabelValues("success").Inc()
+	if discrepancies > 0 {
+		metrics.ReconDiscrepanciesTotal.Add(float64(discrepancies))
+	}
+	metrics.ReconTotalDelta.Add(float64(abs(totalDelta)))
+
+	slog.Info("reconciliation completed",
+		"period", start.Format(time.RFC3339)+"-"+end.Format(time.RFC3339),
+		"delta", totalDelta,
+		"discrepancies", discrepancies,
+	)
+	if discrepancies > 0 && reconService.mgmt.alerter != nil {
+		reconService.mgmt.alerter.AlertReconDiscrepancy(
+			run.ID,
+			discrepancies,
+			totalDelta,
+			start.Format(time.RFC3339)+"-"+end.Format(time.RFC3339),
+		)
+	}
+	return nil
+}
+
+func (reconService *ReconService) autoAdjustChunkMicro() int64 {
+	if reconService.mgmt.cfg != nil && reconService.mgmt.cfg.QuotaChunkSize > 0 {
+		return reconService.mgmt.cfg.QuotaChunkSize
+	}
+	return 5_000_000
+}
+
+func (reconService *ReconService) AlertStaleUnresolvedDiscrepancies(ctx context.Context) {
+	if reconService.mgmt.alerter == nil {
+		return
+	}
+	pool := reconService.mgmt.GetPool()
+	if pool == nil {
+		return
+	}
+
+	rows, err := pool.Query(ctx, `
+		SELECT d.run_id,
+		       COUNT(*)::int,
+		       COALESCE(SUM(ABS(d.delta)), 0)::bigint,
+		       MIN(d.created_at) AS oldest,
+		       r.period_start,
+		       r.period_end
+		FROM recon_discrepancies d
+		JOIN recon_runs r ON r.id = d.run_id
+		WHERE d.redis_adjusted = false
+		  AND d.created_at < NOW() - INTERVAL '1 hour'
+		GROUP BY d.run_id, r.period_start, r.period_end`)
+	if err != nil {
+		slog.Error("failed to query stale unresolved recon discrepancies", "error", err)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var runID int64
+		var unresolved int
+		var totalDelta int64
+		var oldest time.Time
+		var periodStart, periodEnd time.Time
+		if err := rows.Scan(&runID, &unresolved, &totalDelta, &oldest, &periodStart, &periodEnd); err != nil {
+			slog.Error("failed to scan stale recon discrepancy row", "error", err)
+			continue
+		}
+		period := periodStart.Format(time.RFC3339) + "-" + periodEnd.Format(time.RFC3339)
+		reconService.mgmt.alerter.AlertReconDiscrepancyUnresolved(runID, unresolved, totalDelta, period, oldest)
+	}
+}
+
+func (reconService *ReconService) adjustRedisBudgetAtomically(ctx context.Context, rdb redis.UniversalClient, campID uuid.UUID, delta int64) error {
+	script := `
+		local key = KEYS[1]
+		local delta = tonumber(ARGV[1])
+		local newVal = redis.call("INCRBY", key, delta)
+		if newVal <= 0 then
+			redis.call("DEL", key)
+			return 0
+		end
+		return newVal
+	`
+	_, err := rdb.Eval(ctx, script, []string{domain.CampaignSyncKey(campID)}, delta).Result()
+	return err
+}
+
+func (reconService *ReconService) createRun(ctx context.Context, start, end time.Time) (struct{ ID int64 }, error) {
+	var run struct{ ID int64 }
+	err := reconService.mgmt.GetPool().QueryRow(ctx, `
+		INSERT INTO recon_runs (period_start, period_end, status) VALUES ($1, $2, 'PENDING') RETURNING id
+	`, start, end).Scan(&run.ID)
+	return run, err
+}
+
+func (reconService *ReconService) enqueueReconciliationAdjust(
+	ctx context.Context,
+	runID int64,
+	campID, customerID uuid.UUID,
+	shardID int16,
+	ledgerAmt, redisDelta int64,
+	reason string,
+) error {
+	worker := &ReconWorker{svc: reconService.mgmt}
+	return worker.enqueueReconciliationAdjust(ctx, runID, campID, customerID, shardID, ledgerAmt, redisDelta, reason)
+}
+
+func (reconService *ReconService) failRun(ctx context.Context, id int64, err error) {
+	_, execErr := reconService.mgmt.GetPool().Exec(ctx, `UPDATE recon_runs SET status = 'FAILED' WHERE id = $1`, id)
+	if execErr != nil {
+		slog.Error("failed to mark recon run status as failed in postgres", "run_id", id, "error", execErr)
+	}
+	slog.Error("reconciliation run failed", "run_id", id, "error", err)
+}
+
+func abs(x int64) int64 {
+	if x < 0 {
+		return -x
+	}
+	return x
+}

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -19,7 +19,7 @@ type batchPoisonStore struct {
 	calls    int
 }
 
-func (s *batchPoisonStore) StoreBatch(ctx context.Context, events []*campaignmodel.Event) error {
+func (s *batchPoisonStore) StoreBatch(ctx context.Context, events []*domain.Event) error {
 	s.calls++
 	if len(events) == 0 {
 		return nil
@@ -41,14 +41,14 @@ func TestSplitStoreBatch_BinarySplitNotPerRow(t *testing.T) {
 	t.Parallel()
 
 	poison := uuid.New()
-	batch := make([]*campaignmodel.Event, 8)
+	batch := make([]*domain.Event, 8)
 	msgIDs := make([]string, 8)
 	for i := range batch {
 		id := uuid.New()
 		if i == 3 {
 			id = poison
 		}
-		batch[i] = &campaignmodel.Event{CampaignID: id, Type: "click"}
+		batch[i] = &domain.Event{CampaignID: id, Type: "click"}
 		msgIDs[i] = fmt.Sprintf("%d-0", i)
 	}
 

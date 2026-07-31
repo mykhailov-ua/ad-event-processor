@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/metrics"
 
 	redis "github.com/redis/go-redis/v9"
@@ -45,7 +45,7 @@ func (f *UnifiedFilter) PreloadScripts(ctx context.Context) error {
 	return f.openFilterEvalPins(ctx)
 }
 
-func (f *UnifiedFilter) evalScript(ctx context.Context, rdb redis.UniversalClient, shard int, evt *campaignmodel.Event, keyArgs [unifiedFilterKeyCount]any, args []any) (int64, error) {
+func (f *UnifiedFilter) evalScript(ctx context.Context, rdb redis.UniversalClient, shard int, evt *domain.Event, keyArgs [unifiedFilterKeyCount]any, args []any) (int64, error) {
 	res, err := f.evalShaPooled(ctx, rdb, shard, evt, f.scriptHashAny, keyArgs, args)
 	if err != nil && isNoScriptErr(err) {
 		incRedisLuaNoScript(f.luaNoScriptCounters, shard)

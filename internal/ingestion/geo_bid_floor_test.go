@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
@@ -75,7 +75,7 @@ func TestUnifiedFilter_GeoBidFloor(t *testing.T) {
 
 	ctx := context.Background()
 
-	evt1 := &campaignmodel.Event{
+	evt1 := &domain.Event{
 		CampaignID: campID,
 		IP:         "2.2.2.2",
 		Payload:    []byte(`{"bid_micro": 1000000}`),
@@ -84,7 +84,7 @@ func TestUnifiedFilter_GeoBidFloor(t *testing.T) {
 	err := f.Check(ctx, evt1)
 	assert.ErrorIs(t, err, ErrBidFloorNotMet)
 
-	evt2 := &campaignmodel.Event{
+	evt2 := &domain.Event{
 		CampaignID: campID,
 		IP:         "2.2.2.2",
 		Payload:    []byte(`{"bid_micro": 2000000}`),
@@ -93,7 +93,7 @@ func TestUnifiedFilter_GeoBidFloor(t *testing.T) {
 	err = f.Check(ctx, evt2)
 	assert.NotErrorIs(t, err, ErrBidFloorNotMet)
 
-	evt3 := &campaignmodel.Event{
+	evt3 := &domain.Event{
 		CampaignID: campID,
 		IP:         "4.4.4.4",
 		Payload:    []byte(`{"bid_micro": 100000}`),
@@ -103,7 +103,7 @@ func TestUnifiedFilter_GeoBidFloor(t *testing.T) {
 	err = f.Check(ctx, evt3)
 	assert.NotErrorIs(t, err, ErrBidFloorNotMet)
 
-	evtEmptyIP := &campaignmodel.Event{
+	evtEmptyIP := &domain.Event{
 		CampaignID: campID,
 		IP:         "",
 		Payload:    []byte(`{"bid_micro": 100000}`),
@@ -112,7 +112,7 @@ func TestUnifiedFilter_GeoBidFloor(t *testing.T) {
 	err = f.Check(ctx, evtEmptyIP)
 	assert.NotErrorIs(t, err, ErrBidFloorNotMet)
 
-	evtEmptyPayload := &campaignmodel.Event{
+	evtEmptyPayload := &domain.Event{
 		CampaignID: campID,
 		IP:         "2.2.2.2",
 		Payload:    nil,
@@ -121,7 +121,7 @@ func TestUnifiedFilter_GeoBidFloor(t *testing.T) {
 	err = f.Check(ctx, evtEmptyPayload)
 	assert.ErrorIs(t, err, ErrBidFloorNotMet)
 
-	evtMalformed := &campaignmodel.Event{
+	evtMalformed := &domain.Event{
 		CampaignID: campID,
 		IP:         "2.2.2.2",
 		Payload:    []byte(`{bid_micro: 1500000`),

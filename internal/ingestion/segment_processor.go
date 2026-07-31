@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"espx/internal/campaignmodel"
-	db "espx/internal/ingestion/sqlc"
+	"espx/internal/domain"
+	db "espx/internal/domain/db"
 	"espx/pkg/piihash"
 
 	"github.com/google/uuid"
@@ -16,7 +16,7 @@ import (
 const conversionEventType = "conversion"
 
 type segmentCampaignLoader interface {
-	GetByID(ctx context.Context, id uuid.UUID) (*campaignmodel.Campaign, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*domain.Campaign, error)
 }
 
 type SegmentConversionHandler struct {
@@ -35,7 +35,7 @@ func NewSegmentConversionHandler(repo segmentCampaignLoader, queries db.Querier,
 	}
 }
 
-func (h *SegmentConversionHandler) Handle(evt *campaignmodel.Event, _ string) {
+func (h *SegmentConversionHandler) Handle(evt *domain.Event, _ string) {
 	if h == nil || evt == nil || evt.Type != conversionEventType || evt.UserID == "" {
 		return
 	}

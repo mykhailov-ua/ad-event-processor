@@ -14,7 +14,7 @@ import (
 
 	"espx/internal/config"
 	"espx/internal/database"
-	"espx/internal/fraudscoring"
+	"espx/internal/fraud"
 	"espx/internal/ivtdetector"
 	"espx/pkg/lifecycle"
 
@@ -45,12 +45,12 @@ func main() {
 	if policySource == "" {
 		policySource = "auto"
 	}
-	policyCfg := fraudscoring.ResolvePolicyConfig(
-		fraudscoring.PolicyConfigFromEnv(),
+	policyCfg := fraud.ResolvePolicyConfig(
+		fraud.PolicyConfigFromEnv(),
 		metadataPath,
 		policySource,
 	)
-	fraudscoring.SetPolicyConfig(policyCfg)
+	fraud.SetPolicyConfig(policyCfg)
 	slog.Info("fraud policy loaded",
 		"source", policySource,
 		"ml_threshold", policyCfg.MLThreshold,
@@ -77,8 +77,8 @@ func main() {
 
 	go watchAndRegisterModels(ctx, pool)
 
-	var scorer fraudscoring.Scorer
-	scorer, err = fraudscoring.NewLGBMScorer(cfg.FraudScoring.ModelPath)
+	var scorer fraud.Scorer
+	scorer, err = fraud.NewLGBMScorer(cfg.FraudScoring.ModelPath)
 	if err != nil {
 		slog.Error("failed to initialize fraud scorer", "error", err, "path", cfg.FraudScoring.ModelPath)
 		os.Exit(1)
@@ -100,28 +100,12 @@ func main() {
 	}
 
 	var blocker ivtdetector.BlacklistBlocker
-	settlementTarget := cfg.SettlementServerHost + ":" + cfg.SettlementServerPort
-	if string(cfg.SettlementInternalToken) != "" {
-		grpcClient, conn, grpcErr := ivtdetector.NewGRPCManagementClient(settlementTarget, string(cfg.SettlementInternalToken))
-		if grpcErr != nil {
-			slog.Error("failed to connect to management settlement gRPC", "error", grpcErr)
-			os.Exit(1)
-		}
-		defer func() { _ = conn.Close() }()
-		blocker = grpcClient
-		slog.Info("fraud-scorer using settlement gRPC BlockIP", "target", settlementTarget)
-	} else {
-		managementURL := cfg.ManagementURL
-		if managementURL == "" {
-			managementURL = "http://127.0.0.1:" + cfg.ManagementPort
-		}
-		if string(cfg.AdminAPIKey) == "" {
-			slog.Error("SETTLEMENT_INTERNAL_TOKEN or ADMIN_API_KEY required for blacklist enqueue")
-			os.Exit(1)
-		}
-		blocker = ivtdetector.NewManagementClient(managementURL, string(cfg.AdminAPIKey), 10*time.Second)
-		slog.Warn("fraud-scorer using legacy HTTP blacklist; prefer SETTLEMENT_INTERNAL_TOKEN")
+	blocker, err = ivtdetector.ResolveManagementBlockerFromConfig(cfg.ManagementURL, cfg.ManagementPort, string(cfg.AdminAPIKey))
+	if err != nil {
+		slog.Error("failed to configure management client", "error", err)
+		os.Exit(1)
 	}
+	slog.Info("fraud-scorer using management HTTP API")
 
 	registry := ivtdetector.NewRuleRegistry()
 	chQuery := database.NewCHQuery(chConn, database.CHQueryConfigFromApp(cfg))

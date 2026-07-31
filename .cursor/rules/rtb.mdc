@@ -11,7 +11,7 @@ Agent: Apply when changing RTB auction, deals, or bid ingress on tracker.
 
 Real-Time Bidding
 
-In-process auction on `/track` before `FilterEngine.Check`. Hot path: `.cursor/rules/hot-path.mdc`. Budget authority: `.cursor/rules/data-layer.mdc` Part I. Open gaps: `.cursor/BACKLOG.md`.
+In-process auction on `/track` before `FilterEngine.Check`. Hot path: `.cursor/rules/hot-path.mdc`. Budget authority: `.cursor/rules/data-layer.mdc` Part I. Open work: `docs/DEVELOPMENT.md`.
 
 `RunAuction` p99: < 15 us
 Candidates scanned p99: < 500
@@ -29,7 +29,7 @@ Package layout
 
 Auction core: `internal/rtb/` — Registry, ranking, clearing, `BudgetStore`, snapshot
 Tracker glue: `internal/ingestion/rtb_*.go` — Catalog sync, track integration, OpenRTB parse
-Control plane: `internal/management/handler_rtb.go`, `service_rtb_deals.go`, `service_bid_floor.go` — Deals, lint, floors
+Control plane: `internal/controlplane/handler_rtb.go`, `service_rtb_deals.go`, `service_bid_floor.go` — Deals, lint, floors
 Configuration: `internal/config/rtb.go`, `env.go` — `RTB_MODE`, authority, targeting index
 
 Data flow
@@ -169,4 +169,4 @@ File reference
 `internal/ingestion/openrtb_parse.go`: Hot OpenRTB 3.0 parse
 `internal/ingestion/openrtb_validate.go`: Cold 2.6/3.0 lint
 
-Not on hot path today: `HybridBalancer.SelectAndShard` (built, uncalled). Open RTB exchange surface: `.cursor/BACKLOG.md`.
+Not on hot path today: `HybridBalancer.SelectAndShard` (built, uncalled). Open RTB exchange surface: deferred — see `docs/DEVELOPMENT.md`.

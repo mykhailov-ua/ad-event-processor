@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"time"
 
-	db "espx/internal/ingestion/sqlc"
+	db "espx/internal/domain/db"
 	"espx/internal/metrics"
 	"espx/internal/postback"
 

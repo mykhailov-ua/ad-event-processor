@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/metrics"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -19,7 +19,7 @@ type countingCampaignRepo struct {
 	getByIDCalls int
 }
 
-func (r *countingCampaignRepo) GetByID(ctx context.Context, id uuid.UUID) (*campaignmodel.Campaign, error) {
+func (r *countingCampaignRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.Campaign, error) {
 	r.getByIDCalls++
 	return r.slowCampaignRepo.GetByID(ctx, id)
 }
@@ -55,7 +55,7 @@ func TestUnifiedFilter_PGFallbackDisabled_NoGetByIDOnCacheMiss(t *testing.T) {
 	f.SetPGFallbackAllowed(false)
 
 	beforePG := testutil.ToFloat64(metrics.BudgetCacheMissPGTotal)
-	err := f.Check(context.Background(), &campaignmodel.Event{
+	err := f.Check(context.Background(), &domain.Event{
 		CampaignID: campID,
 		ClickID:    uuid.NewString(),
 		Type:       "click",

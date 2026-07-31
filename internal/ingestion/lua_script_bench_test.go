@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
@@ -14,11 +14,11 @@ import (
 
 type benchWorstRegistry struct {
 	customerID uuid.UUID
-	camp       *campaignmodel.Campaign
+	camp       *domain.Campaign
 }
 
 func (r *benchWorstRegistry) Exists(uuid.UUID) bool { return true }
-func (r *benchWorstRegistry) Add(uuid.UUID, uuid.UUID, *uuid.UUID, string, campaignmodel.PacingMode, int64, string, int32, int32, []string) {
+func (r *benchWorstRegistry) Add(uuid.UUID, uuid.UUID, *uuid.UUID, string, domain.PacingMode, int64, string, int32, int32, []string) {
 }
 func (r *benchWorstRegistry) GetCustomerID(uuid.UUID) (uuid.UUID, bool) {
 	if r.customerID == uuid.Nil {
@@ -26,15 +26,15 @@ func (r *benchWorstRegistry) GetCustomerID(uuid.UUID) (uuid.UUID, bool) {
 	}
 	return r.customerID, true
 }
-func (r *benchWorstRegistry) GetCampaign(id uuid.UUID) (*campaignmodel.Campaign, bool) {
+func (r *benchWorstRegistry) GetCampaign(id uuid.UUID) (*domain.Campaign, bool) {
 	if r.camp != nil && r.camp.ID == id {
 		return r.camp, true
 	}
 	custID, _ := r.GetCustomerID(id)
-	cp := &campaignmodel.Campaign{
+	cp := &domain.Campaign{
 		ID:               id,
 		CustomerID:       custID,
-		PacingMode:       campaignmodel.PacingModeEven,
+		PacingMode:       domain.PacingModeEven,
 		DailyBudgetMicro: 1_000_000_000_000,
 		FreqLimit:        100,
 		FreqWindow:       3600,
@@ -49,7 +49,7 @@ func (*benchWorstRegistry) StartSync(context.Context, time.Duration) {
 }
 func (*benchWorstRegistry) Wait(context.Context) error { return nil }
 
-func newLuaBenchFilter(b testing.TB, rdb redis.UniversalClient, reg campaignmodel.CampaignRegistry, rateLimit int) *UnifiedFilter {
+func newLuaBenchFilter(b testing.TB, rdb redis.UniversalClient, reg domain.CampaignRegistry, rateLimit int) *UnifiedFilter {
 	b.Helper()
 	f := NewUnifiedFilter(
 		[]redis.UniversalClient{rdb},
@@ -87,7 +87,7 @@ func BenchmarkLuaScript_Happy(b *testing.B) {
 	seedCampaignBudget(b, ctx, rdb, campID)
 
 	payload := []byte(`{"campaign_id":"00000000-0000-0000-0000-000000000001","type":"impression"}`)
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		Type:       "impression",
 		IP:         "203.0.113.210",
 		UserID:     "bench-happy",
@@ -142,7 +142,7 @@ func BenchmarkLuaScript_Worst(b *testing.B) {
 	requireNoError(rdb.Set(ctx, string(impKey), strconv.FormatInt(nowMs, 10), time.Hour).Err())
 
 	payload := []byte(`{"campaign_id":"00000000-0000-0000-0000-000000000001","type":"click"}`)
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		Type:       "click",
 		IP:         "203.0.113.211",
 		UserID:     "bench-worst",

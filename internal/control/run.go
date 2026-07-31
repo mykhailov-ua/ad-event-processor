@@ -7,15 +7,15 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/auth"
 	"espx/internal/billing"
 	"espx/internal/config"
 	"espx/internal/costsync"
 	"espx/internal/database"
 	"espx/internal/ingestion"
-	db "espx/internal/ingestion/sqlc"
-	"espx/internal/management"
-	"espx/internal/marginguard"
+	db "espx/internal/domain/db"
+	"espx/internal/controlplane"
+	"espx/internal/identity"
+	"espx/internal/ledger"
 	"espx/internal/notifier"
 	"espx/internal/payment"
 )
@@ -23,6 +23,24 @@ import (
 func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 	if cfg == nil {
 		return nil
+	}
+
+	monolith := opts.Management && opts.Auth && opts.Billing && opts.Payment && opts.Notifier
+
+	var serveOpts controlplane.ServeOptions
+	var closeModules func()
+	if monolith {
+		so, cleanups, err := monolithServeOptions(ctx, cfg, opts)
+		if err != nil {
+			return err
+		}
+		serveOpts = so
+		closeModules = func() {
+			for i := len(cleanups) - 1; i >= 0; i-- {
+				cleanups[i]()
+			}
+		}
+		defer closeModules()
 	}
 
 	var wg sync.WaitGroup
@@ -42,27 +60,36 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 		}()
 	}
 
-	if opts.Auth {
-		start("auth", func(runCtx context.Context) error { return auth.Serve(runCtx, cfg) })
+	if opts.Auth && !monolith {
+		start("auth", func(runCtx context.Context) error { return identity.Serve(runCtx, cfg) })
 	}
-	if opts.Billing {
+	if opts.Billing && !monolith {
 		start("billing", func(runCtx context.Context) error { return billing.Serve(runCtx, cfg) })
 	}
-	if opts.Notifier {
+	if opts.Notifier && !monolith {
 		start("notifier", func(runCtx context.Context) error { return notifier.Serve(runCtx, cfg) })
 	}
-	if opts.Payment {
+	if opts.Payment && !monolith {
 		start("payment", func(runCtx context.Context) error { return payment.Serve(runCtx, cfg) })
 	}
 	if opts.MarginGuard {
-		start("margin-guard", func(runCtx context.Context) error { return serveMarginGuard(runCtx, cfg) })
+		start("margin-guard", func(runCtx context.Context) error {
+			return serveMarginGuard(runCtx, cfg, serveOpts.Notifier)
+		})
 	}
 	if opts.CostSync {
 		start("cost-sync", func(runCtx context.Context) error { return serveCostSync(runCtx, cfg) })
 	}
 
 	if opts.Management {
-		return management.Serve(ctx, cfg)
+		if monolith {
+			slog.Info("control monolith: in-process module wiring enabled")
+			serveOpts.RtbBidShadeSim = ingestion.RunRtbBidShadeSim
+			return controlplane.ServeWithOptions(ctx, cfg, serveOpts)
+		}
+		return controlplane.ServeWithOptions(ctx, cfg, controlplane.ServeOptions{
+			RtbBidShadeSim: ingestion.RunRtbBidShadeSim,
+		})
 	}
 
 	done := make(chan struct{})
@@ -82,7 +109,7 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 	}
 }
 
-func serveMarginGuard(ctx context.Context, cfg *config.Config) error {
+func serveMarginGuard(ctx context.Context, cfg *config.Config, inProcess *controlplane.NotifierClient) error {
 	pool, err := database.Connect(ctx, string(cfg.DBDSN), 10, 2)
 	if err != nil {
 		return err
@@ -97,12 +124,18 @@ func serveMarginGuard(ctx context.Context, cfg *config.Config) error {
 	}
 	registry.StartSync(ctx, time.Duration(cfg.RegistrySyncIntervalMs)*time.Millisecond)
 
-	notifierClient, err := management.NewNotifierClient(cfg)
-	if err != nil {
-		slog.Warn("margin guard notifier client unavailable", "error", err)
-	}
-	if notifierClient != nil {
-		defer notifierClient.Close()
+	var notifierClient *controlplane.NotifierClient
+	var closeNotifier func()
+	if inProcess != nil {
+		notifierClient = inProcess
+	} else {
+		notifierClient, closeNotifier, err = controlplane.TryNotifierClient(ctx, cfg)
+		if err != nil {
+			slog.Warn("margin guard notifier client unavailable", "error", err)
+		}
+		if closeNotifier != nil {
+			defer closeNotifier()
+		}
 	}
 
 	if !cfg.ClickHouseEnabled() {
@@ -118,8 +151,8 @@ func serveMarginGuard(ctx context.Context, cfg *config.Config) error {
 	defer chRead.Close()
 
 	chQuery := database.NewCHQuery(chRead, database.CHQueryConfigFromApp(cfg))
-	worker := marginguard.NewWorker(pool, chQuery, cfg, registry, notifierClient)
-	worker.Start(ctx, marginguard.WorkerInterval(cfg))
+	worker := ledger.NewWorker(pool, chQuery, cfg, registry, notifierClient)
+	worker.Start(ctx, ledger.WorkerInterval(cfg))
 	<-ctx.Done()
 	return ctx.Err()
 }

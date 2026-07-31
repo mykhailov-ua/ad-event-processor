@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
@@ -42,7 +42,7 @@ func TestStreamConsumer_FlushBatch_XAckError(t *testing.T) {
 		writeTimeout: 10 * time.Second,
 	}
 
-	batch := []*campaignmodel.Event{{CampaignID: uuid.New(), Type: "click"}}
+	batch := []*domain.Event{{CampaignID: uuid.New(), Type: "click"}}
 	msgIDs := []string{"1-0"}
 
 	err := p.flushBatch(context.Background(), batch, msgIDs, "test-worker")

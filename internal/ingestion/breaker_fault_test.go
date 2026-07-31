@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
@@ -77,11 +77,11 @@ type FailingCampaignRepo struct {
 	failErr error
 }
 
-func (r *FailingCampaignRepo) GetByID(ctx context.Context, id uuid.UUID) (*campaignmodel.Campaign, error) {
+func (r *FailingCampaignRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.Campaign, error) {
 	return nil, r.failErr
 }
 
-func (r *FailingCampaignRepo) UpdateStatus(ctx context.Context, id uuid.UUID, status campaignmodel.CampaignStatus) error {
+func (r *FailingCampaignRepo) UpdateStatus(ctx context.Context, id uuid.UUID, status domain.CampaignStatus) error {
 	return r.failErr
 }
 
@@ -89,7 +89,7 @@ func (r *FailingCampaignRepo) UpdateSpend(ctx context.Context, id uuid.UUID, amo
 	return r.failErr
 }
 
-func (r *FailingCampaignRepo) ListActive(ctx context.Context) ([]*campaignmodel.Campaign, error) {
+func (r *FailingCampaignRepo) ListActive(ctx context.Context) ([]*domain.Campaign, error) {
 	return nil, r.failErr
 }
 
@@ -97,7 +97,7 @@ func TestFaultInjection_RedisTimeoutDuringIngestion(t *testing.T) {
 	geo := &MockGeoProvider{}
 	f := NewFraudFilter(geo)
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		Type:       "impression",
 		IP:         "1.1.1.1",
 		UserID:     "user123",

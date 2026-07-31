@@ -1,10 +1,8 @@
 ---
-description: Open backlog routing — canonical specs in .cursor/GAP_SPECS.md
+description: Open backlog routing — docs/DEVELOPMENT.md
 alwaysApply: false
 ---
 
-Agent: before implementation work, read `.cursor/GAP_SPECS.md` for the matching **P** number.
-
-Task index: `.cursor/BACKLOG.md`. Closed items: `docs/DEVELOPMENT.md`.
+Before implementation work, read `docs/DEVELOPMENT.md` for deferred gaps and the completed roadmap. Runbooks hold operational acceptance criteria and SQL plans.
 
 Do not duplicate backlog tables under `docs/`.

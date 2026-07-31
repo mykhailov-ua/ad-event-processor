@@ -12,7 +12,8 @@ import (
 
 	"espx/internal/config"
 	"espx/internal/database"
-	"espx/internal/management/pb"
+	"espx/internal/domain"
+	"espx/internal/controlplane/pb"
 	"espx/internal/payment/db"
 
 	"github.com/google/uuid"
@@ -22,7 +23,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -32,9 +32,9 @@ type OutboxWorker struct {
 	pool *pgxpool.Pool
 	cfg  *config.Config
 
-	clientMu sync.Mutex
-	client   pb.SettlementServiceClient
-	conn     *grpc.ClientConn
+	apiMu sync.Mutex
+	api   domain.PaymentSettlement
+	conn  *grpc.ClientConn
 
 	settlementAlerter *SettlementFailedAlerter
 
@@ -43,6 +43,12 @@ type OutboxWorker struct {
 
 func (outboxWorker *OutboxWorker) SetSettlementFailedAlerter(alerter *SettlementFailedAlerter) {
 	outboxWorker.settlementAlerter = alerter
+}
+
+func (outboxWorker *OutboxWorker) SetSettlementAPI(api domain.PaymentSettlement) {
+	outboxWorker.apiMu.Lock()
+	defer outboxWorker.apiMu.Unlock()
+	outboxWorker.api = api
 }
 
 func NewOutboxWorker(pool *pgxpool.Pool, cfg *config.Config) *OutboxWorker {
@@ -203,10 +209,10 @@ func (outboxWorker *OutboxWorker) ProcessOutbox(ctx context.Context, limit int32
 }
 
 func (outboxWorker *OutboxWorker) ensureSettlementClient() error {
-	outboxWorker.clientMu.Lock()
-	defer outboxWorker.clientMu.Unlock()
+	outboxWorker.apiMu.Lock()
+	defer outboxWorker.apiMu.Unlock()
 
-	if outboxWorker.client != nil {
+	if outboxWorker.api != nil {
 		return nil
 	}
 	target := outboxWorker.cfg.SettlementServerHost + ":" + outboxWorker.cfg.SettlementServerPort
@@ -215,25 +221,26 @@ func (outboxWorker *OutboxWorker) ensureSettlementClient() error {
 		return fmt.Errorf("gRPC client not connected to %s: %w", target, err)
 	}
 	outboxWorker.conn = conn
-	outboxWorker.client = pb.NewSettlementServiceClient(conn)
+	outboxWorker.api = newGRPCSettlementClient(pb.NewSettlementServiceClient(conn), string(outboxWorker.cfg.SettlementInternalToken))
 	return nil
 }
 
 func (outboxWorker *OutboxWorker) resetSettlementClient() {
-	outboxWorker.clientMu.Lock()
-	defer outboxWorker.clientMu.Unlock()
+	outboxWorker.apiMu.Lock()
+	defer outboxWorker.apiMu.Unlock()
 
-	if outboxWorker.conn != nil {
-		_ = outboxWorker.conn.Close()
+	if outboxWorker.conn == nil {
+		return
 	}
+	_ = outboxWorker.conn.Close()
 	outboxWorker.conn = nil
-	outboxWorker.client = nil
+	outboxWorker.api = nil
 }
 
-func (outboxWorker *OutboxWorker) getSettlementClient() pb.SettlementServiceClient {
-	outboxWorker.clientMu.Lock()
-	defer outboxWorker.clientMu.Unlock()
-	return outboxWorker.client
+func (outboxWorker *OutboxWorker) getSettlementAPI() domain.PaymentSettlement {
+	outboxWorker.apiMu.Lock()
+	defer outboxWorker.apiMu.Unlock()
+	return outboxWorker.api
 }
 
 func isSettlementTransientGRPC(err error) bool {
@@ -272,10 +279,12 @@ func (outboxWorker *OutboxWorker) markOutboxEventRetryable(ctx context.Context, 
 	lastErrText.String = cause.Error()
 	lastErrText.Valid = true
 
-	isFatal := false
-	st, ok := status.FromError(cause)
-	if ok && st.Code() == codes.NotFound {
-		isFatal = true
+	isFatal := domain.IsSettlementNotFound(cause)
+	if !isFatal {
+		st, ok := status.FromError(cause)
+		if ok && st.Code() == codes.NotFound {
+			isFatal = true
+		}
 	}
 
 	maxAttempts := int32(outboxWorker.cfg.MaxRetries)
@@ -355,21 +364,21 @@ func (outboxWorker *OutboxWorker) handleSettleBalance(ctx context.Context, outbo
 		return fmt.Errorf("failed to unmarshal outbox payload: %w", err)
 	}
 
-	client := outboxWorker.getSettlementClient()
-	if client == nil {
+	api := outboxWorker.getSettlementAPI()
+	if api == nil {
 		return fmt.Errorf("settlement client not connected")
 	}
 
-	grpcCtx := metadata.AppendToOutgoingContext(ctx, "x-internal-token", string(outboxWorker.cfg.SettlementInternalToken))
+	customerID, err := uuid.Parse(payload.CustomerID)
+	if err != nil {
+		return fmt.Errorf("invalid customer id: %w", err)
+	}
+	paymentIntentID, err := uuid.Parse(payload.PaymentIntentID)
+	if err != nil {
+		return fmt.Errorf("invalid payment intent id: %w", err)
+	}
 
-	_, err := client.ApplyPaymentCredit(grpcCtx, &pb.ApplyPaymentCreditRequest{
-		CustomerId:           payload.CustomerID,
-		AmountMicro:          payload.AmountMicro,
-		LedgerIdempotencyKey: payload.LedgerIdempotencyKey,
-		PaymentIntentId:      payload.PaymentIntentID,
-		Provider:             payload.Provider,
-		ProviderRef:          payload.ProviderRef,
-	})
+	_, _, err = api.ApplyPaymentCredit(ctx, customerID, payload.AmountMicro, payload.LedgerIdempotencyKey, paymentIntentID, payload.Provider, payload.ProviderRef)
 	if err != nil {
 		return fmt.Errorf("management SettlementService call failed: %w", err)
 	}
@@ -383,21 +392,21 @@ func (outboxWorker *OutboxWorker) handleReverseBalance(ctx context.Context, outb
 		return fmt.Errorf("failed to unmarshal reverse balance payload: %w", err)
 	}
 
-	client := outboxWorker.getSettlementClient()
-	if client == nil {
+	api := outboxWorker.getSettlementAPI()
+	if api == nil {
 		return fmt.Errorf("settlement client not connected")
 	}
 
-	grpcCtx := metadata.AppendToOutgoingContext(ctx, "x-internal-token", string(outboxWorker.cfg.SettlementInternalToken))
+	customerID, err := uuid.Parse(payload.CustomerID)
+	if err != nil {
+		return fmt.Errorf("invalid customer id: %w", err)
+	}
+	paymentIntentID, err := uuid.Parse(payload.PaymentIntentID)
+	if err != nil {
+		return fmt.Errorf("invalid payment intent id: %w", err)
+	}
 
-	_, err := client.ApplyPaymentRefund(grpcCtx, &pb.ApplyPaymentRefundRequest{
-		CustomerId:           payload.CustomerID,
-		AmountMicro:          payload.AmountMicro,
-		LedgerIdempotencyKey: payload.LedgerIdempotencyKey,
-		PaymentIntentId:      payload.PaymentIntentID,
-		Provider:             payload.Provider,
-		ProviderRefundId:     payload.ProviderRefundID,
-	})
+	_, _, err = api.ApplyPaymentRefund(ctx, customerID, payload.AmountMicro, payload.LedgerIdempotencyKey, paymentIntentID, payload.Provider, payload.ProviderRefundID)
 	if err != nil {
 		return fmt.Errorf("management SettlementService refund call failed: %w", err)
 	}
@@ -411,21 +420,21 @@ func (outboxWorker *OutboxWorker) handleApplyChargeback(ctx context.Context, out
 		return fmt.Errorf("failed to unmarshal apply chargeback payload: %w", err)
 	}
 
-	client := outboxWorker.getSettlementClient()
-	if client == nil {
+	api := outboxWorker.getSettlementAPI()
+	if api == nil {
 		return fmt.Errorf("settlement client not connected")
 	}
 
-	grpcCtx := metadata.AppendToOutgoingContext(ctx, "x-internal-token", string(outboxWorker.cfg.SettlementInternalToken))
+	customerID, err := uuid.Parse(payload.CustomerID)
+	if err != nil {
+		return fmt.Errorf("invalid customer id: %w", err)
+	}
+	paymentIntentID, err := uuid.Parse(payload.PaymentIntentID)
+	if err != nil {
+		return fmt.Errorf("invalid payment intent id: %w", err)
+	}
 
-	_, err := client.ApplyPaymentChargeback(grpcCtx, &pb.ApplyPaymentChargebackRequest{
-		CustomerId:           payload.CustomerID,
-		AmountMicro:          payload.AmountMicro,
-		LedgerIdempotencyKey: payload.LedgerIdempotencyKey,
-		PaymentIntentId:      payload.PaymentIntentID,
-		Provider:             payload.Provider,
-		ProviderDisputeId:    payload.ProviderDisputeID,
-	})
+	_, _, err = api.ApplyPaymentChargeback(ctx, customerID, payload.AmountMicro, payload.LedgerIdempotencyKey, paymentIntentID, payload.Provider, payload.ProviderDisputeID)
 	if err != nil {
 		return fmt.Errorf("management SettlementService chargeback call failed: %w", err)
 	}
@@ -438,21 +447,21 @@ func (outboxWorker *OutboxWorker) handleReverseChargeback(ctx context.Context, o
 		return fmt.Errorf("failed to unmarshal reverse chargeback payload: %w", err)
 	}
 
-	client := outboxWorker.getSettlementClient()
-	if client == nil {
+	api := outboxWorker.getSettlementAPI()
+	if api == nil {
 		return fmt.Errorf("settlement client not connected")
 	}
 
-	grpcCtx := metadata.AppendToOutgoingContext(ctx, "x-internal-token", string(outboxWorker.cfg.SettlementInternalToken))
+	customerID, err := uuid.Parse(payload.CustomerID)
+	if err != nil {
+		return fmt.Errorf("invalid customer id: %w", err)
+	}
+	paymentIntentID, err := uuid.Parse(payload.PaymentIntentID)
+	if err != nil {
+		return fmt.Errorf("invalid payment intent id: %w", err)
+	}
 
-	_, err := client.ApplyPaymentChargebackReversal(grpcCtx, &pb.ApplyPaymentChargebackReversalRequest{
-		CustomerId:           payload.CustomerID,
-		AmountMicro:          payload.AmountMicro,
-		LedgerIdempotencyKey: payload.LedgerIdempotencyKey,
-		PaymentIntentId:      payload.PaymentIntentID,
-		Provider:             payload.Provider,
-		ProviderDisputeId:    payload.ProviderDisputeID,
-	})
+	_, _, err = api.ApplyPaymentChargebackReversal(ctx, customerID, payload.AmountMicro, payload.LedgerIdempotencyKey, paymentIntentID, payload.Provider, payload.ProviderDisputeID)
 	if err != nil {
 		return fmt.Errorf("management SettlementService chargeback reversal call failed: %w", err)
 	}

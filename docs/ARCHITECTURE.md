@@ -168,7 +168,7 @@ In-process auction on `/track` before `FilterEngine.Check`. Not a standalone Ope
 | Candidates scanned p99 | < 500 |
 | Heap allocations | 0 per auction |
 
-Packages: `internal/rtb/`, `internal/ingestion/rtb_*.go`, `internal/management/handler_rtb.go`, `service_rtb_deals.go`.
+Packages: `internal/rtb/`, `internal/ingestion/rtb_*.go`, `internal/controlplane/handler_rtb.go`, `service_rtb_deals.go`.
 
 Cold path: `SyncRtbCatalog`, deal CRUD, `RELOAD_RTB_CATALOG` outbox, floor optimizer from CH.
 
@@ -213,7 +213,7 @@ Workers (sample): `OutboxWorker`, `ReconWorker`, `SyncWorker` x4, `PacingControl
 
 gRPC peers: `auth`, `payment`, `billing`, `notifier`. `processor` writes PG events and CH batches.
 
-JSON API: `internal/management/handler_api.go`, `handler_*.go`, and `internal/adminapi/` (reporting scaffolds). Contracts: `docs/openapi/openapi.yaml` plus handler godoc.
+JSON API: `internal/controlplane/handler_api.go`, `handler_*.go`, and `internal/controlplane/adminapi/` (reporting scaffolds). Contracts: `docs/openapi/openapi.yaml` plus handler godoc.
 
 ### Entitlements (three layers)
 
@@ -240,7 +240,7 @@ Ingress quotas: RPS (UDP epoch), RPD (calendar day, HTTP 429), events/month (ope
 - Analytical lane: adaptive /24 aggregation at >= 80% fill.
 - Consumer lag > `FRAUD_CONSUMER_LAG_SEC`: tracker widens aggregation (`aggregating=force`).
 
-`internal/ingestion` must not import `internal/fraudscoring`.
+`internal/ingestion` must not import `internal/fraud`.
 
 ---
 

@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/config"
 	"espx/internal/metrics"
 
@@ -94,7 +94,7 @@ func TestFault_FraudStreamRingOverflowSpike(t *testing.T) {
 	q.writeCursor = q.allocCursor
 
 	before := testutil.ToFloat64(metrics.FraudStreamDropTotal)
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		ClickID:     "fault-fraud",
 		CampaignID:  uuid.New(),
 		Type:        "click",

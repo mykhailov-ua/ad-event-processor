@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/ingestion/pb"
 	"espx/internal/metrics"
 	"espx/pkg/logger"
@@ -22,7 +22,7 @@ import (
 )
 
 type StreamConsumer struct {
-	store              campaignmodel.EventStore
+	store              domain.EventStore
 	rdb                redis.UniversalClient
 	streamName         string
 	groupName          string
@@ -45,7 +45,7 @@ type StreamConsumer struct {
 	auditLogSeq        atomic.Uint64
 	auditLogSampleMask uint64
 	dlqStreamName      string
-	onMessageProcessed func(evt *campaignmodel.Event, msgID string)
+	onMessageProcessed func(evt *domain.Event, msgID string)
 	weightCtrl         *ProcessorWeightController
 }
 
@@ -53,7 +53,7 @@ func (consumer *StreamConsumer) SetWeightController(w *ProcessorWeightController
 	consumer.weightCtrl = w
 }
 
-func (consumer *StreamConsumer) SetOnMessageProcessed(cb func(evt *campaignmodel.Event, msgID string)) {
+func (consumer *StreamConsumer) SetOnMessageProcessed(cb func(evt *domain.Event, msgID string)) {
 	consumer.onMessageProcessed = cb
 }
 
@@ -101,7 +101,7 @@ var adLogRecordPool = sync.Pool{
 }
 
 func NewStreamConsumer(
-	store campaignmodel.EventStore,
+	store domain.EventStore,
 	rdb redis.UniversalClient,
 	streamName, groupName, consumerID string,
 	batchSize int,
@@ -212,7 +212,7 @@ func (consumer *StreamConsumer) worker(ctx context.Context, workerIdx int) {
 	consumer.recoverPending(initCtx, workerID)
 	initCancel()
 
-	batch := make([]*campaignmodel.Event, 0, consumer.batchSize)
+	batch := make([]*domain.Event, 0, consumer.batchSize)
 	msgIDs := make([]string, 0, consumer.batchSize)
 
 	retryWait := consumer.retryInitWait
@@ -236,7 +236,7 @@ func (consumer *StreamConsumer) worker(ctx context.Context, workerIdx int) {
 			if len(batch) > 0 {
 				if err := consumer.flushBatch(drainCtx, batch, msgIDs, workerID); err == nil {
 					for _, e := range batch {
-						campaignmodel.EventPool.Put(e)
+						domain.EventPool.Put(e)
 					}
 				} else if !isRetriableStoreError(err) {
 					slog.Error("drain flush of existing batch failed, GC will reclaim objects", "error", err, "group", consumer.groupName, "worker", workerID)
@@ -362,7 +362,7 @@ func (consumer *StreamConsumer) recordCancellation(workerID string) {
 	metrics.CircuitBreakerState.WithLabelValues(consumer.groupName).Set(float64(consumer.cb.State()))
 }
 
-func (consumer *StreamConsumer) tryFlush(ctx context.Context, batch *[]*campaignmodel.Event, msgIDs *[]string, retryCount *int, workerID string, ticker *time.Ticker, retryWait *time.Duration) {
+func (consumer *StreamConsumer) tryFlush(ctx context.Context, batch *[]*domain.Event, msgIDs *[]string, retryCount *int, workerID string, ticker *time.Ticker, retryWait *time.Duration) {
 	if !consumer.cb.Allow() {
 		wait := consumer.cb.WaitDuration()
 		if wait <= 0 {
@@ -380,7 +380,7 @@ func (consumer *StreamConsumer) tryFlush(ctx context.Context, batch *[]*campaign
 		consumer.recordSuccess(workerID)
 		_ = consumer.rdb.HDel(ctx, "ad:events:retries", (*msgIDs)...).Err()
 		for _, e := range *batch {
-			campaignmodel.EventPool.Put(e)
+			domain.EventPool.Put(e)
 		}
 		*batch = (*batch)[:0]
 		*msgIDs = (*msgIDs)[:0]
@@ -454,7 +454,7 @@ func (consumer *StreamConsumer) tryFlush(ctx context.Context, batch *[]*campaign
 		}
 
 		if len(failedIndices) > 0 {
-			failedBatch := make([]*campaignmodel.Event, 0, len(failedIndices))
+			failedBatch := make([]*domain.Event, 0, len(failedIndices))
 			failedMsgIDs := make([]string, 0, len(failedIndices))
 			for _, i := range failedIndices {
 				failedBatch = append(failedBatch, (*batch)[i])
@@ -476,7 +476,7 @@ func (consumer *StreamConsumer) tryFlush(ctx context.Context, batch *[]*campaign
 					if fiIdx < len(failedIndices) && i == failedIndices[fiIdx] {
 						fiIdx++
 					} else {
-						campaignmodel.EventPool.Put(e)
+						domain.EventPool.Put(e)
 					}
 				}
 				*batch = newBatch
@@ -486,7 +486,7 @@ func (consumer *StreamConsumer) tryFlush(ctx context.Context, batch *[]*campaign
 		}
 
 		for _, e := range *batch {
-			campaignmodel.EventPool.Put(e)
+			domain.EventPool.Put(e)
 		}
 		*batch = (*batch)[:0]
 		*msgIDs = (*msgIDs)[:0]
@@ -523,7 +523,7 @@ var (
 	}
 )
 
-func (consumer *StreamConsumer) moveToDLQ(ctx context.Context, batch []*campaignmodel.Event, msgIDs []string, workerID string, retryCount int, err error) error {
+func (consumer *StreamConsumer) moveToDLQ(ctx context.Context, batch []*domain.Event, msgIDs []string, workerID string, retryCount int, err error) error {
 	errStr := err.Error()
 
 	pipeWrite := consumer.rdb.Pipeline()
@@ -658,11 +658,11 @@ func (consumer *StreamConsumer) moveToDLQ(ctx context.Context, batch []*campaign
 	return nil
 }
 
-func (consumer *StreamConsumer) ParseMessage(id string, values map[string]interface{}) *campaignmodel.Event {
+func (consumer *StreamConsumer) ParseMessage(id string, values map[string]interface{}) *domain.Event {
 	return consumer.parseMessage(id, values)
 }
 
-func (consumer *StreamConsumer) FlushBatch(ctx context.Context, batch []*campaignmodel.Event, msgIDs []string, workerID string) error {
+func (consumer *StreamConsumer) FlushBatch(ctx context.Context, batch []*domain.Event, msgIDs []string, workerID string) error {
 	return consumer.flushBatch(ctx, batch, msgIDs, workerID)
 }
 
@@ -679,8 +679,8 @@ func (consumer *StreamConsumer) StartMaintenance(ctx context.Context) {
 	}()
 }
 
-func (consumer *StreamConsumer) parseMessage(id string, values map[string]interface{}) *campaignmodel.Event {
-	event := campaignmodel.EventPool.Get().(*campaignmodel.Event)
+func (consumer *StreamConsumer) parseMessage(id string, values map[string]interface{}) *domain.Event {
+	event := domain.EventPool.Get().(*domain.Event)
 	event.Reset()
 
 	if rawBytesStr, ok := values["d"].(string); ok {
@@ -766,7 +766,7 @@ func firstN(ids []string, n int) []string {
 	return ids[:n]
 }
 
-func (consumer *StreamConsumer) flushBatch(ctx context.Context, batch []*campaignmodel.Event, msgIDs []string, workerID string) error {
+func (consumer *StreamConsumer) flushBatch(ctx context.Context, batch []*domain.Event, msgIDs []string, workerID string) error {
 	if len(batch) == 0 {
 		return nil
 	}
@@ -778,7 +778,7 @@ func (consumer *StreamConsumer) flushBatch(ctx context.Context, batch []*campaig
 	storeCtx, storeCancel := context.WithTimeout(ctx, consumer.writeTimeout)
 	if len(msgIDs) > 0 {
 		token := fmt.Sprintf("%s_%s_%d", msgIDs[0], msgIDs[len(msgIDs)-1], len(msgIDs))
-		storeCtx = context.WithValue(storeCtx, campaignmodel.DeduplicationTokenKey, token)
+		storeCtx = context.WithValue(storeCtx, domain.DeduplicationTokenKey, token)
 	}
 	defer storeCancel()
 
@@ -840,7 +840,7 @@ func (consumer *StreamConsumer) recoverPending(ctx context.Context, consumerID s
 				return
 			}
 
-			batch := make([]*campaignmodel.Event, 0, len(entries[0].Messages))
+			batch := make([]*domain.Event, 0, len(entries[0].Messages))
 			msgIDs := make([]string, 0, len(entries[0].Messages))
 
 			for _, msg := range entries[0].Messages {
@@ -854,7 +854,7 @@ func (consumer *StreamConsumer) recoverPending(ctx context.Context, consumerID s
 					if isRetriableStoreError(err) {
 						slog.Warn("recovery flush deferred, retaining PEL", "error", err, "group", consumer.groupName)
 						for _, e := range batch {
-							campaignmodel.EventPool.Put(e)
+							domain.EventPool.Put(e)
 						}
 						return
 					}
@@ -863,14 +863,14 @@ func (consumer *StreamConsumer) recoverPending(ctx context.Context, consumerID s
 					_ = consumer.rdb.HDel(ctx, "ad:events:retries", msgIDs...).Err()
 				}
 				for _, e := range batch {
-					campaignmodel.EventPool.Put(e)
+					domain.EventPool.Put(e)
 				}
 				return
 			}
 			consumer.recordSuccess(consumerID)
 			_ = consumer.rdb.HDel(ctx, "ad:events:retries", msgIDs...).Err()
 			for _, e := range batch {
-				campaignmodel.EventPool.Put(e)
+				domain.EventPool.Put(e)
 			}
 		}
 	}
@@ -902,7 +902,7 @@ func (consumer *StreamConsumer) drainNewMessages(ctx context.Context, consumerID
 				return
 			}
 
-			batch := make([]*campaignmodel.Event, 0, len(streams[0].Messages))
+			batch := make([]*domain.Event, 0, len(streams[0].Messages))
 			msgIDs := make([]string, 0, len(streams[0].Messages))
 
 			for _, msg := range streams[0].Messages {
@@ -919,13 +919,13 @@ func (consumer *StreamConsumer) drainNewMessages(ctx context.Context, consumerID
 					}
 				}
 				for _, e := range batch {
-					campaignmodel.EventPool.Put(e)
+					domain.EventPool.Put(e)
 				}
 				return
 			}
 
 			for _, e := range batch {
-				campaignmodel.EventPool.Put(e)
+				domain.EventPool.Put(e)
 			}
 		}
 	}
@@ -978,9 +978,9 @@ func (consumer *StreamConsumer) claimStuckMessages(ctx context.Context) {
 			}
 			_, _ = pipe.Exec(ctx)
 
-			batch := make([]*campaignmodel.Event, 0, len(entries))
+			batch := make([]*domain.Event, 0, len(entries))
 			msgIDs := make([]string, 0, len(entries))
-			var dlqBatch []*campaignmodel.Event
+			var dlqBatch []*domain.Event
 			var dlqMsgIDs []string
 			var delMsgIDs []string
 
@@ -1001,7 +1001,7 @@ func (consumer *StreamConsumer) claimStuckMessages(ctx context.Context) {
 				slog.Error("autoclaim retry limit exceeded, moving to DLQ", "group", consumer.groupName, "count", len(dlqBatch))
 				_ = consumer.moveToDLQ(ctx, dlqBatch, dlqMsgIDs, "janitor", consumer.maxRetries+1, errors.New("autoclaim delivery limit exceeded"))
 				for _, e := range dlqBatch {
-					campaignmodel.EventPool.Put(e)
+					domain.EventPool.Put(e)
 				}
 				if len(delMsgIDs) > 0 {
 					_ = consumer.rdb.HDel(ctx, "ad:events:retries", delMsgIDs...).Err()
@@ -1019,7 +1019,7 @@ func (consumer *StreamConsumer) claimStuckMessages(ctx context.Context) {
 					_ = consumer.rdb.HDel(ctx, "ad:events:retries", msgIDs...).Err()
 				}
 				for _, e := range batch {
-					campaignmodel.EventPool.Put(e)
+					domain.EventPool.Put(e)
 				}
 			}
 		}

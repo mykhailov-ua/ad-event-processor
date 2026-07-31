@@ -1,4 +1,4 @@
-"""16-dim feature vector; must match internal/fraudscoring/feature_spec.go."""
+"""16-dim feature vector; must match internal/fraud/feature_spec.go."""
 from __future__ import annotations
 
 FEATURE_NAMES: tuple[str, ...] = (

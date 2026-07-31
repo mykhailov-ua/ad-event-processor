@@ -128,7 +128,7 @@ notifier: 12/18 — Standalone
 ivt-detector: 7/18 — Standalone batch
 log-evacuator: 8/18 — Standalone utility
 
-Open product work: `.cursor/BACKLOG.md`.
+Open product work: `docs/DEVELOPMENT.md`.
 
 Related
 

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
 )
@@ -24,14 +24,14 @@ func (errGeoProvider) Close() error                        { return nil }
 
 func benchGeoFilterWithCountries(b *testing.B, geo GeoProvider) {
 	campID := uuid.New()
-	cachedMockCamp.Store(&campaignmodel.Campaign{
+	cachedMockCamp.Store(&domain.Campaign{
 		ID:              campID,
 		TargetCountries: map[string]struct{}{"US": {}},
 	})
 	b.Cleanup(func() { cachedMockCamp.Store(nil) })
 
 	f := NewGeoFilter(geo, &mockRegistry{})
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		IP:         "8.8.8.8",
 		CampaignID: campID,
 	}
@@ -67,7 +67,7 @@ func BenchmarkGeoFilter_MaxMindCountry(b *testing.B) {
 func BenchmarkFraudFilter_DC(b *testing.B) {
 	geo := &MockGeoProvider{}
 	f := NewFraudFilter(geo)
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		IP: "1.1.1.66",
 	}
 	ctx := context.Background()
@@ -82,7 +82,7 @@ func BenchmarkGeoFilter(b *testing.B) {
 	geo := &MockGeoProvider{}
 	registry := &mockRegistry{}
 	f := NewGeoFilter(geo, registry)
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		IP:         "1.1.1.1",
 		CampaignID: uuid.New(),
 	}
@@ -97,7 +97,7 @@ func BenchmarkGeoFilter(b *testing.B) {
 func BenchmarkIPRateLimiter_Check(b *testing.B) {
 	rdb := &mockRedisClient{}
 	l := NewIPRateLimiter(rdb, 100, 10*time.Minute)
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		IP: "192.168.1.1",
 	}
 	ctx := context.Background()
@@ -111,7 +111,7 @@ func BenchmarkIPRateLimiter_Check(b *testing.B) {
 func BenchmarkDuplicateEventFilter_Check(b *testing.B) {
 	rdb := &mockRedisClient{}
 	f := NewDuplicateEventFilter(rdb, 1*time.Hour)
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		Type:    "click",
 		ClickID: "click123",
 	}
@@ -124,7 +124,7 @@ func BenchmarkDuplicateEventFilter_Check(b *testing.B) {
 }
 
 func BenchmarkKeyFormatting_impTSKey(b *testing.B) {
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		UserID:     "user123",
 		CampaignID: uuid.New(),
 	}
@@ -143,7 +143,7 @@ func BenchmarkKeyFormatting_impTSKey(b *testing.B) {
 }
 
 func BenchmarkKeyFormatting_IPRateLimiter(b *testing.B) {
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		IP: "192.168.1.1",
 	}
 	b.ResetTimer()
@@ -159,7 +159,7 @@ func BenchmarkKeyFormatting_IPRateLimiter(b *testing.B) {
 }
 
 func BenchmarkKeyFormatting_DuplicateEventFilter(b *testing.B) {
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		Type:    "click",
 		ClickID: "click123",
 	}
@@ -197,7 +197,7 @@ func BenchmarkUnifiedFilter_Check(b *testing.B) {
 		10000,
 	)
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		Type:       "click",
 		IP:         "1.1.1.1",
 		UserID:     "user123",

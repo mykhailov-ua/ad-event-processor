@@ -6,7 +6,7 @@ cd "$ROOT"
 
 default_skip_prefixes=(
 	internal/ingestion/sqlc
-	internal/auth/db
+	internal/identity/db
 	internal/payment/db
 	internal/billing/db
 	internal/notifier/db
@@ -14,35 +14,23 @@ default_skip_prefixes=(
 
 skip_prefixes=()
 
-load_skip_prefixes_from_ci_gates() {
-	local gates="$ROOT/.cursor/CI_GATES.md"
-	[[ -f "$gates" ]] || return 0
+load_skip_prefixes_from_file() {
+	local list="$ROOT/scripts/ci/comment_linter_skip_prefixes.txt"
+	[[ -f "$list" ]] || return 0
 
-	local in_block=0
 	local line path
 	while IFS= read -r line || [[ -n "$line" ]]; do
-		case "$line" in
-		*'<!-- check-comments-skip-prefixes:start -->'*)
-			in_block=1
-			skip_prefixes=()
-			continue
-			;;
-		*'<!-- check-comments-skip-prefixes:end -->'*)
-			in_block=0
-			continue
-			;;
-		esac
-		if (( in_block )); then
-			path="${line#- }"
-			path="${path%/}"
-			[[ -n "$path" ]] || continue
-			skip_prefixes+=("$path")
-		fi
-	done <"$gates"
+		path="${line%%#*}"
+		path="${path#"${path%%[![:space:]]*}"}"
+		path="${path%"${path##*[![:space:]]}"}"
+		path="${path%/}"
+		[[ -n "$path" ]] || continue
+		skip_prefixes+=("$path")
+	done <"$list"
 }
 
 if ((${#skip_prefixes[@]} == 0)); then
-	load_skip_prefixes_from_ci_gates
+	load_skip_prefixes_from_file
 fi
 if ((${#skip_prefixes[@]} == 0)); then
 	skip_prefixes=("${default_skip_prefixes[@]}")

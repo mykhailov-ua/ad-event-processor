@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/pkg/piihash"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
@@ -36,7 +36,7 @@ func TestClickHouseStore_StoreBatch_hashesPII(t *testing.T) {
 
 	rawIP := "203.0.113.10"
 	rawUA := "Mozilla/5.0 test"
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		ClickID:    "click-pii",
 		CampaignID: uuid.New(),
 		Type:       "impression",
@@ -45,7 +45,7 @@ func TestClickHouseStore_StoreBatch_hashesPII(t *testing.T) {
 		CreatedAt:  time.Now(),
 	}
 
-	require.NoError(t, store.StoreBatch(context.Background(), []*campaignmodel.Event{evt}))
+	require.NoError(t, store.StoreBatch(context.Background(), []*domain.Event{evt}))
 	require.Len(t, captured, 1)
 
 	ipHash := hasher.HashIP(rawIP)
@@ -85,7 +85,7 @@ func TestClickHouseStore_StoreBatch_fraudEventUserIDHash(t *testing.T) {
 	store := NewClickHouseStore(connMock, 100*time.Millisecond, "", DefaultCHSpoolConfig(), nil)
 	store.SetPIIHasher(hasher)
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		ClickID:     "fraud-1",
 		CampaignID:  uuid.New(),
 		UserID:      "user-secret",
@@ -97,7 +97,7 @@ func TestClickHouseStore_StoreBatch_fraudEventUserIDHash(t *testing.T) {
 		CreatedAt:   time.Now(),
 	}
 
-	require.NoError(t, store.StoreBatch(context.Background(), []*campaignmodel.Event{evt}))
+	require.NoError(t, store.StoreBatch(context.Background(), []*domain.Event{evt}))
 	require.Len(t, captured, 1)
 	assert.Equal(t, piihash.FixedString16(hasher.HashUserID("user-secret")), captured[0][2])
 }

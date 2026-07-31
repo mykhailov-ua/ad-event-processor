@@ -4,7 +4,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/rtb"
 	"github.com/google/uuid"
 )
@@ -41,7 +41,7 @@ func rtbShadowDiffBucketIdx(now time.Time) int {
 	return now.UTC().Hour() % rtbShadowDiffBuckets
 }
 
-func recordRtbShadowDiff(catalog *RtbCatalog, evt *campaignmodel.Event, res rtb.AuctionResult, reason rtb.NoBidReason) {
+func recordRtbShadowDiff(catalog *RtbCatalog, evt *domain.Event, res rtb.AuctionResult, reason rtb.NoBidReason) {
 	if catalog == nil || evt == nil || evt.CampaignID == uuid.Nil {
 		return
 	}

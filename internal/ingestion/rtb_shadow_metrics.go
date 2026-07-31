@@ -3,7 +3,7 @@ package ingestion
 import (
 	"sync/atomic"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/metrics"
 	"espx/internal/rtb"
 	"github.com/google/uuid"
@@ -45,7 +45,7 @@ func init() {
 
 func recordRtbShadowAuction(
 	catalog *RtbCatalog,
-	evt *campaignmodel.Event,
+	evt *domain.Event,
 	res rtb.AuctionResult,
 	reason rtb.NoBidReason,
 	payloadBidMicro int64,

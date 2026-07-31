@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/metrics"
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
@@ -13,7 +13,7 @@ import (
 
 const budgetKeyTTL = 24 * time.Hour
 
-func RemainingBudgetMicro(c *campaignmodel.Campaign) int64 {
+func RemainingBudgetMicro(c *domain.Campaign) int64 {
 	if c == nil {
 		return 0
 	}
@@ -38,7 +38,7 @@ type budgetWarmItem struct {
 	val int64
 }
 
-func (w *BudgetCacheWarmer) Warm(ctx context.Context, campaigns []*campaignmodel.Campaign) (int, error) {
+func (w *BudgetCacheWarmer) Warm(ctx context.Context, campaigns []*domain.Campaign) (int, error) {
 	if w == nil || len(w.rdbs) == 0 || len(campaigns) == 0 {
 		return 0, nil
 	}
@@ -81,7 +81,7 @@ func (w *BudgetCacheWarmer) Warm(ctx context.Context, campaigns []*campaignmodel
 	return warmed, nil
 }
 
-func (w *BudgetCacheWarmer) WarmOne(ctx context.Context, camp *campaignmodel.Campaign) (bool, error) {
+func (w *BudgetCacheWarmer) WarmOne(ctx context.Context, camp *domain.Campaign) (bool, error) {
 	if w == nil || len(w.rdbs) == 0 || camp == nil || camp.BudgetCampaignKey == "" {
 		return false, nil
 	}
@@ -119,7 +119,7 @@ func warmBudgetKeyNX(ctx context.Context, rdb redis.UniversalClient, key string,
 func tryRecoverBudgetFromRegistry(
 	ctx context.Context,
 	rdb redis.UniversalClient,
-	registry campaignmodel.CampaignRegistry,
+	registry domain.CampaignRegistry,
 	campaignID uuid.UUID,
 	budgetKey string,
 ) (bool, error) {

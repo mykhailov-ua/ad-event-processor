@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/pkg/logger"
 
 	"github.com/google/uuid"
@@ -42,7 +42,7 @@ func TestWriteAuditLog_impressionSampling(t *testing.T) {
 	for i := 0; i < n; i++ {
 		evt := auditEventFromFields(time.Now().Unix(), campID, "click-id", "impression")
 		writeAuditLog(l, &seq, 127, 0, evt)
-		campaignmodel.EventPool.Put(evt)
+		domain.EventPool.Put(evt)
 	}
 	want := n / 128
 	got := l.Shards()[0].WriteCursor()
@@ -66,7 +66,7 @@ func TestWriteAuditLog_criticalNotSampled(t *testing.T) {
 	for i := 0; i < n; i++ {
 		evt := auditEventFromFields(time.Now().Unix(), campID, "click-id", "click")
 		writeAuditLog(l, &seq, 127, 0, evt)
-		campaignmodel.EventPool.Put(evt)
+		domain.EventPool.Put(evt)
 	}
 	got := l.Shards()[0].WriteCursor()
 	require.Equal(t, uint64(n), got)

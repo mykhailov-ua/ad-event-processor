@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,7 +18,7 @@ func TestCHSpool_TID05_PartialFlushRecovery(t *testing.T) {
 	spool1, err := OpenCHSpool(dir)
 	require.NoError(t, err)
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		ClickID:    "tid05-" + uuid.NewString(),
 		CampaignID: uuid.New(),
 		Type:       "click",
@@ -28,7 +28,7 @@ func TestCHSpool_TID05_PartialFlushRecovery(t *testing.T) {
 		CreatedAt:  time.Unix(1_700_000_500, 0).UTC(),
 	}
 	token := "tid05-token"
-	require.NoError(t, spool1.AppendDurably(token, []*campaignmodel.Event{evt}))
+	require.NoError(t, spool1.AppendDurably(token, []*domain.Event{evt}))
 	pos := spool1.WritePos()
 	require.NoError(t, spool1.Close())
 
@@ -54,13 +54,13 @@ func TestCHSpool_CorruptTailIgnored(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { _ = spool.Close() }()
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		ClickID:    "corrupt-" + uuid.NewString(),
 		CampaignID: uuid.New(),
 		Type:       "impression",
 		CreatedAt:  time.Now().UTC(),
 	}
-	require.NoError(t, spool.AppendDurably("tok", []*campaignmodel.Event{evt}))
+	require.NoError(t, spool.AppendDurably("tok", []*domain.Event{evt}))
 	pos := spool.WritePos()
 
 	path := filepath.Join(dir, "events.wal")

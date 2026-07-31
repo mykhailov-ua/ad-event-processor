@@ -30,8 +30,8 @@ Self-hosted: **keys and plaintext policy belong to the operator**. The vendor sh
 | :--- | :--- |
 | TLS termination at edge | Nginx/OpenResty (HTTPS/H2/H3 → tracker H1.1) |
 | Redis authentication | `requirepass` / ACL (compose reference) |
-| Operator auth | Argon2id passwords, PASETO sessions (`internal/auth`) |
-| Control-plane HMAC | `TCPControlHMACSecret` (`internal/management/tcp_control_server.go`) |
+| Operator auth | Argon2id passwords, PASETO sessions (`internal/identity`) |
+| Control-plane HMAC | `TCPControlHMACSecret` (`internal/controlplane/tcp_control_server.go`) |
 | Edge drop / rate limit | XDP, nginx Lua, optional tarpit (`CMP-DEF-*` in compliance matrix) |
 
 ### Data minimization and pseudonymization
@@ -253,4 +253,4 @@ Tracked in backlog as **GAP-DATA-02** and related items:
 | GAP-DATA-01 | PII hashing before ClickHouse insert — **shipped** |
 | GAP-DATA-02 | PG events retention, optional IP hashing, production TLS profile — **shipped** (P19) |
 
-Open backlog: `.cursor/BACKLOG.md`.
+Open work: [DEVELOPMENT.md](../DEVELOPMENT.md).

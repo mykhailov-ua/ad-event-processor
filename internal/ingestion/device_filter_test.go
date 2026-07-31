@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/config"
 
 	"github.com/google/uuid"
@@ -21,8 +21,8 @@ func TestDeviceFilter_signals(t *testing.T) {
 	})
 	f := NewDeviceFilter(sw)
 
-	evt := campaignmodel.EventPool.Get().(*campaignmodel.Event)
-	defer campaignmodel.EventPool.Put(evt)
+	evt := domain.EventPool.Get().(*domain.Event)
+	defer domain.EventPool.Put(evt)
 	evt.Reset()
 	acc := attachFraudAccumulator(evt)
 	defer releaseFraudAccumulator(evt, acc)
@@ -40,8 +40,8 @@ func TestDeviceFilter_pass_clean_client(t *testing.T) {
 	sw := NewSettingsWatcher(nil, &config.Config{})
 	f := NewDeviceFilter(sw)
 
-	evt := campaignmodel.EventPool.Get().(*campaignmodel.Event)
-	defer campaignmodel.EventPool.Put(evt)
+	evt := domain.EventPool.Get().(*domain.Event)
+	defer domain.EventPool.Put(evt)
 	evt.Reset()
 	acc := attachFraudAccumulator(evt)
 	defer releaseFraudAccumulator(evt, acc)
@@ -62,8 +62,8 @@ func TestFilterEngine_deviceFilter_before_lua(t *testing.T) {
 	engine := NewFilterEngine(0, deviceFilter)
 	engine.SetRegistry(registry)
 
-	evt := campaignmodel.EventPool.Get().(*campaignmodel.Event)
-	defer campaignmodel.EventPool.Put(evt)
+	evt := domain.EventPool.Get().(*domain.Event)
+	defer domain.EventPool.Put(evt)
 	evt.Reset()
 	evt.CampaignID = uuid.New()
 	evt.TLSHash = "badja3"

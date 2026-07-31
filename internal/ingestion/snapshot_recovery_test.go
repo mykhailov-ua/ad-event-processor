@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
@@ -68,13 +68,13 @@ func (m *MockPostgresDB) MarkEventIdempotent(ctx context.Context, clickID string
 
 type MockClickHouseDB struct {
 	mu     sync.RWMutex
-	events []*campaignmodel.Event
+	events []*domain.Event
 }
 
-func (m *MockClickHouseDB) QueryEventsSince(ctx context.Context, since time.Time) ([]*campaignmodel.Event, error) {
+func (m *MockClickHouseDB) QueryEventsSince(ctx context.Context, since time.Time) ([]*domain.Event, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	var res []*campaignmodel.Event
+	var res []*domain.Event
 	for _, e := range m.events {
 		if e.CreatedAt.After(since) {
 			res = append(res, e)
@@ -99,11 +99,11 @@ func (m *MockClickHouseDB) QueryAggregatedSpend(ctx context.Context, until time.
 	return res, nil
 }
 
-func (m *MockClickHouseDB) LogEvent(e *campaignmodel.Event) {
+func (m *MockClickHouseDB) LogEvent(e *domain.Event) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	eCopy := &campaignmodel.Event{
+	eCopy := &domain.Event{
 		ClickID:    e.ClickID,
 		CampaignID: e.CampaignID,
 		Type:       e.Type,
@@ -183,7 +183,7 @@ func TestSnapshotRecovery_DisasterStressReplay(t *testing.T) {
 					evtType = "impression"
 				}
 
-				evt := &campaignmodel.Event{
+				evt := &domain.Event{
 					CampaignID: campID,
 					ClickID:    fmt.Sprintf("clk_%d_%d", workerID, i),
 					IP:         "192.168.1.100",
@@ -221,7 +221,7 @@ func TestSnapshotRecovery_DisasterStressReplay(t *testing.T) {
 		go func(workerID int) {
 			defer postWg.Done()
 			for i := 0; i < 50; i++ {
-				evt := &campaignmodel.Event{
+				evt := &domain.Event{
 					CampaignID: campID,
 					ClickID:    fmt.Sprintf("post_clk_%d_%d", workerID, i),
 					IP:         "192.168.1.100",

@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/metrics"
 	"espx/pkg/logger"
 
@@ -22,7 +22,7 @@ import (
 const defaultSettlementLaneBuffer = 4096
 
 type laneMsg struct {
-	event *campaignmodel.Event
+	event *domain.Event
 	msgID string
 }
 
@@ -39,7 +39,7 @@ type SettlementWorker struct {
 }
 
 func NewSettlementWorker(
-	store campaignmodel.EventStore,
+	store domain.EventStore,
 	rdb redis.UniversalClient,
 	streamName, groupName, consumerID string,
 	lanes, batchSize int,
@@ -102,7 +102,7 @@ func (w *SettlementWorker) SetWeightController(ctrl *ProcessorWeightController) 
 	}
 }
 
-func (w *SettlementWorker) SetOnMessageProcessed(cb func(evt *campaignmodel.Event, msgID string)) {
+func (w *SettlementWorker) SetOnMessageProcessed(cb func(evt *domain.Event, msgID string)) {
 	if w != nil && w.consumer != nil {
 		w.consumer.SetOnMessageProcessed(cb)
 	}
@@ -238,7 +238,7 @@ func (w *SettlementWorker) readLoop(ctx context.Context) {
 func (w *SettlementWorker) runLane(ctx context.Context, laneIdx int) {
 	workerID := fmt.Sprintf("%s-lane-%d", w.consumerID, laneIdx)
 	laneLabel := strconv.Itoa(laneIdx)
-	batch := make([]*campaignmodel.Event, 0, w.batchSize)
+	batch := make([]*domain.Event, 0, w.batchSize)
 	msgIDs := make([]string, 0, w.batchSize)
 	lastFlush := time.Now()
 	ticker := time.NewTicker(w.flushInt)
@@ -257,12 +257,12 @@ func (w *SettlementWorker) runLane(ctx context.Context, laneIdx int) {
 				slog.Error("settlement lane flush failed", "lane", laneIdx, "error", err, "batch_size", len(batch))
 			}
 			for _, e := range batch {
-				campaignmodel.EventPool.Put(e)
+				domain.EventPool.Put(e)
 			}
 		} else {
 			w.consumer.recordSuccess(workerID)
 			for _, e := range batch {
-				campaignmodel.EventPool.Put(e)
+				domain.EventPool.Put(e)
 			}
 		}
 		batch = batch[:0]

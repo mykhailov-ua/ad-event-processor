@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/config"
 	"espx/internal/database"
-	db "espx/internal/ingestion/sqlc"
+	db "espx/internal/domain/db"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -524,8 +524,8 @@ func countFaultCampaignEvents(t *testing.T, pool *pgxpool.Pool, campaignID uuid.
 	return n
 }
 
-func faultDomainEventClick(campaignID uuid.UUID) *campaignmodel.Event {
-	return &campaignmodel.Event{
+func faultDomainEventClick(campaignID uuid.UUID) *domain.Event {
+	return &domain.Event{
 		CampaignID: campaignID,
 		Type:       "click",
 		ClickID:    uuid.NewString(),

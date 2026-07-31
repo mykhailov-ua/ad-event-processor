@@ -1,7 +1,7 @@
 package ingestion
 
 import (
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 
 	"github.com/google/uuid"
 )
@@ -478,7 +478,7 @@ func ParseOpenRTB3Ingress(dst *TrackRequest, data []byte) error {
 	return nil
 }
 
-func ApplyOpenRTB3ToEvent(evt *campaignmodel.Event, data []byte, parsed *OpenRTB3Parsed) bool {
+func ApplyOpenRTB3ToEvent(evt *domain.Event, data []byte, parsed *OpenRTB3Parsed) bool {
 	if evt == nil || parsed == nil || !parsed.OK {
 		return false
 	}

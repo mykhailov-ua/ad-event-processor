@@ -1,0 +1,7 @@
+version: v1
+plugins:
+  - name: go-vtproto
+    out: gen
+    opt:
+      - module=espx
+      - features=marshal+unmarshal+size+pool

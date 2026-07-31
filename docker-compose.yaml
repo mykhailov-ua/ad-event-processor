@@ -1,3 +1,7 @@
+# Compose deploy profiles (docker compose --profile <name>):
+#   single_vps, ingest_only, network_operator — cmd/control monolith (default; see docs/SELF_HOSTED.md)
+#   split_control — DEPRECATED: separate auth/management/payment/billing/notifier with localhost gRPC; use single_vps
+#   analytics_ml, resilience, crypto, multi-region, monitoring, tools, fraud-scorer — optional add-ons
 
 services:
   tracker-0:
@@ -425,6 +429,7 @@ services:
         max-file: "3"
 
 
+  # split_control (deprecated): standalone auth; use control service + single_vps profile instead.
   auth:
     build:
       context: .
@@ -432,7 +437,7 @@ services:
     entrypoint: ["/auth"]
     network_mode: "${NET_MODE:-host}"
     profiles:
-      - split_control
+      - split_control # deprecated: use single_vps / cmd/control
     env_file:
       - .env
     environment:
@@ -490,6 +495,8 @@ services:
       - CONTROL_ENABLE_NOTIFIER=${CONTROL_ENABLE_NOTIFIER:-1}
       - CONTROL_ENABLE_MARGIN_GUARD=${CONTROL_ENABLE_MARGIN_GUARD:-1}
       - CONTROL_ENABLE_COST_SYNC=${CONTROL_ENABLE_COST_SYNC:-1}
+      - SETTLEMENT_GRPC_ENABLED=0
+      - NOTIFIER_GRPC_ENABLED=0
       - MULTI_REGION_ENABLED=${MULTI_REGION_ENABLED:-0}
       - ESPX_REGION_CODE=${ESPX_REGION_CODE:-0}
     deploy:
@@ -515,6 +522,7 @@ services:
         max-file: "3"
 
 
+  # split_control (deprecated): standalone management; use control service + single_vps profile instead.
   management:
     build:
       context: .
@@ -522,7 +530,7 @@ services:
     entrypoint: ["/management"]
     network_mode: "${NET_MODE:-host}"
     profiles:
-      - split_control
+      - split_control # deprecated: use single_vps / cmd/control
       - resilience
       - fraud-scorer
     env_file:
@@ -565,6 +573,7 @@ services:
         max-file: "3"
 
 
+  # split_control (deprecated): standalone notifier; use control service + single_vps profile instead.
   notifier:
     build:
       context: .
@@ -572,7 +581,7 @@ services:
     entrypoint: ["/notifier"]
     network_mode: "${NET_MODE:-host}"
     profiles:
-      - split_control
+      - split_control # deprecated: use single_vps / cmd/control
       - resilience
     env_file:
       - .env
@@ -668,6 +677,7 @@ services:
         max-file: "3"
 
 
+  # split_control (deprecated): standalone payment; use control service + single_vps profile instead.
   payment:
     build:
       context: .
@@ -675,7 +685,7 @@ services:
     entrypoint: ["/payment"]
     network_mode: "${NET_MODE:-host}"
     profiles:
-      - split_control
+      - split_control # deprecated: use single_vps / cmd/control
       - resilience
       - crypto
     env_file:
@@ -704,6 +714,7 @@ services:
         max-file: "3"
 
 
+  # split_control (deprecated): standalone billing; use control service + single_vps profile instead.
   billing:
     build:
       context: .
@@ -711,7 +722,7 @@ services:
     entrypoint: ["/billing"]
     network_mode: "${NET_MODE:-host}"
     profiles:
-      - split_control
+      - split_control # deprecated: use single_vps / cmd/control
       - resilience
     env_file:
       - .env

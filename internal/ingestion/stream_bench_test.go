@@ -7,7 +7,7 @@ import (
 	"time"
 	"unsafe"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/ingestion/pb"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -26,7 +26,7 @@ func BenchmarkStreamWriteFlat(b *testing.B) {
 }
 
 func BenchmarkStreamWriteProto(b *testing.B) {
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		ClickID:    "c_12345_67890_abcdef",
 		CampaignID: uuid.New(),
 		UserID:     "u_12345",
@@ -95,7 +95,7 @@ func BenchmarkStreamReadFlat(b *testing.B) {
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
-		evt := campaignmodel.EventPool.Get().(*campaignmodel.Event)
+		evt := domain.EventPool.Get().(*domain.Event)
 		evt.Reset()
 
 		if v, ok := values["click_id"].(string); ok {
@@ -130,12 +130,12 @@ func BenchmarkStreamReadFlat(b *testing.B) {
 			}
 		}
 
-		campaignmodel.EventPool.Put(evt)
+		domain.EventPool.Put(evt)
 	}
 }
 
 func BenchmarkStreamReadProto(b *testing.B) {
-	evtSetup := &campaignmodel.Event{
+	evtSetup := &domain.Event{
 		ClickID:    "c_12345_67890_abcdef",
 		CampaignID: uuid.New(),
 		UserID:     "u_12345",
@@ -166,7 +166,7 @@ func BenchmarkStreamReadProto(b *testing.B) {
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
-		evt := campaignmodel.EventPool.Get().(*campaignmodel.Event)
+		evt := domain.EventPool.Get().(*domain.Event)
 		evt.Reset()
 
 		if rawBytesStr, ok := values["d"].(string); ok {
@@ -189,12 +189,12 @@ func BenchmarkStreamReadProto(b *testing.B) {
 			streamEventPool.Put(pbEvt)
 		}
 
-		campaignmodel.EventPool.Put(evt)
+		domain.EventPool.Put(evt)
 	}
 }
 
 func TestStreamPayloadSizeComparison(t *testing.T) {
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		ClickID:    "c_12345_67890_abcdef",
 		CampaignID: uuid.New(),
 		UserID:     "u_12345",
@@ -243,7 +243,7 @@ func BenchmarkDLQWriteFlat(b *testing.B) {
 }
 
 func BenchmarkDLQWriteProto(b *testing.B) {
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		ClickID:    "c_12345_67890_abcdef",
 		CampaignID: uuid.New(),
 		UserID:     "u_12345",
@@ -312,7 +312,7 @@ func BenchmarkDLQWriteProto(b *testing.B) {
 }
 
 func TestDLQPayloadSizeComparison(t *testing.T) {
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		ClickID:    "c_12345_67890_abcdef",
 		CampaignID: uuid.New(),
 		UserID:     "u_12345",

@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"espx/internal/database"
-	"espx/internal/fraudscoring"
+	"espx/internal/fraud"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/stretchr/testify/assert"
@@ -38,7 +38,7 @@ func TestFraudScoringRule_EmptyWindow(t *testing.T) {
 
 	ensureFraudScoringShadowTables(t, conn)
 
-	scorer, err := fraudscoring.NewLGBMScorer(testFraudModelPath(t))
+	scorer, err := fraud.NewLGBMScorer(testFraudModelPath(t))
 	require.NoError(t, err)
 
 	rule := NewFraudScoringRule(database.NewCHQuery(conn, database.CHQueryConfig{}), conn, nil, scorer, 100)
@@ -52,7 +52,7 @@ func TestFault_FraudClickHouseDown(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	scorer, err := fraudscoring.NewLGBMScorer(testFraudModelPath(t))
+	scorer, err := fraud.NewLGBMScorer(testFraudModelPath(t))
 	require.NoError(t, err)
 
 	rule := NewFraudScoringRule(database.NewCHQuery(&failingCHConn{queryErr: errors.New("clickhouse unavailable")}, database.CHQueryConfig{}), nil, nil, scorer, 100)

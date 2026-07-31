@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	db "espx/internal/ingestion/sqlc"
+	db "espx/internal/domain/db"
 	"espx/pkg/money"
 
 	"github.com/jackc/pgx/v5/pgtype"

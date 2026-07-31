@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +17,7 @@ func TestFraudFilter_DatacenterIP_ReturnsFraudDetected(t *testing.T) {
 	f := NewFraudFilter(geo)
 	registry := &mockRegistry{}
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		Type:         "click",
 		UserID:       "user1",
 		CampaignID:   uuid.New(),
@@ -52,7 +52,7 @@ func TestFraudFilter_DualL1_ReturnsFraudDetected(t *testing.T) {
 		10_000,
 	)
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		Type:         "click",
 		UserID:       "user1",
 		CampaignID:   uuid.New(),

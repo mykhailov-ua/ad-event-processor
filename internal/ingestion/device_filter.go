@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 )
 
 type DeviceFilter struct {
@@ -35,7 +35,7 @@ func (f *DeviceFilter) reloadBlocklist() {
 	f.mu.Unlock()
 }
 
-func (f *DeviceFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
+func (f *DeviceFilter) Check(ctx context.Context, evt *domain.Event) error {
 	if evt == nil {
 		return nil
 	}

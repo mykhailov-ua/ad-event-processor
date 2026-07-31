@@ -18,6 +18,7 @@ infra | up-infra)
 	docker compose up -d "${INFRA[@]}"
 	;;
 full | up-full)
+	echo "stack.sh: WARN split_control profile is deprecated; use single-vps (cmd/control monolith)" >&2
 	docker compose --profile split_control up -d "${FULL[@]}"
 	;;
 single-vps | up-single-vps)

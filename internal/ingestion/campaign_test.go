@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
-	db "espx/internal/ingestion/sqlc"
+	"espx/internal/domain"
+	db "espx/internal/domain/db"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -141,13 +141,13 @@ func TestCampaignFromDBRow_FraudConfig(t *testing.T) {
 		FraudThresholdIvt:     75,
 		FraudThresholdBlock:   95,
 		GhostIvtEnabled:       true,
-		BehaviorFlags:         int32(campaignmodel.BehaviorLowTTC | campaignmodel.BehaviorVelIP),
+		BehaviorFlags:         int32(domain.BehaviorLowTTC | domain.BehaviorVelIP),
 	}
-	camp := campaignFromDBRow(row)
+	camp := CampaignFromDBRow(row)
 	assert.Equal(t, uint8(25), camp.FraudThresholdPass)
 	assert.Equal(t, uint8(55), camp.FraudThresholdSuspect)
 	assert.Equal(t, uint8(75), camp.FraudThresholdIVT)
 	assert.Equal(t, uint8(95), camp.FraudThresholdBlock)
 	assert.True(t, camp.GhostIVTEnabled)
-	assert.Equal(t, campaignmodel.BehaviorLowTTC|campaignmodel.BehaviorVelIP, camp.BehaviorFlags)
+	assert.Equal(t, domain.BehaviorLowTTC|domain.BehaviorVelIP, camp.BehaviorFlags)
 }

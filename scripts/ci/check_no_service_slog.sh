@@ -5,8 +5,8 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
 mapfile -t hits < <(
-	rg -n 'slog\.' internal/management/service_*.go \
-		--glob '!internal/management/service.go' 2>/dev/null || true
+	rg -n 'slog\.' internal/controlplane/service_*.go \
+		--glob '!internal/controlplane/service.go' 2>/dev/null || true
 )
 
 if ((${#hits[@]})); then

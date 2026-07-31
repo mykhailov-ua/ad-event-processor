@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,8 +19,8 @@ func TestIPRateLimiter(t *testing.T) {
 	ctx := context.Background()
 	limiter := NewIPRateLimiter(rdb, 3, 2*time.Second)
 
-	evt1 := &campaignmodel.Event{IP: "192.168.1.1"}
-	evt2 := &campaignmodel.Event{IP: "192.168.1.2"}
+	evt1 := &domain.Event{IP: "192.168.1.1"}
+	evt2 := &domain.Event{IP: "192.168.1.2"}
 
 	assert.NoError(t, limiter.Check(ctx, evt1))
 	assert.NoError(t, limiter.Check(ctx, evt1))
@@ -43,15 +43,15 @@ func TestDuplicateEventFilter(t *testing.T) {
 	ctx := context.Background()
 	filter := NewDuplicateEventFilter(rdb, 1*time.Second)
 
-	evt := &campaignmodel.Event{ClickID: "click_abc_123"}
-	evtOther := &campaignmodel.Event{ClickID: "click_xyz_987"}
+	evt := &domain.Event{ClickID: "click_abc_123"}
+	evtOther := &domain.Event{ClickID: "click_xyz_987"}
 
 	assert.NoError(t, filter.Check(ctx, evt))
 	assert.NoError(t, filter.Check(ctx, evtOther))
 
 	assert.ErrorIs(t, filter.Check(ctx, evt), ErrDuplicateEvent)
 
-	evtEmpty := &campaignmodel.Event{ClickID: ""}
+	evtEmpty := &domain.Event{ClickID: ""}
 	assert.NoError(t, filter.Check(ctx, evtEmpty))
 	assert.NoError(t, filter.Check(ctx, evtEmpty))
 
@@ -72,9 +72,9 @@ func TestFilterEngine(t *testing.T) {
 
 	engine := NewFilterEngine(0, limiter, dupFilter)
 
-	evt1 := &campaignmodel.Event{IP: "10.0.0.1", ClickID: "c_1"}
-	evt2 := &campaignmodel.Event{IP: "10.0.0.1", ClickID: "c_2"}
-	evt3 := &campaignmodel.Event{IP: "10.0.0.1", ClickID: "c_3"}
+	evt1 := &domain.Event{IP: "10.0.0.1", ClickID: "c_1"}
+	evt2 := &domain.Event{IP: "10.0.0.1", ClickID: "c_2"}
+	evt3 := &domain.Event{IP: "10.0.0.1", ClickID: "c_3"}
 
 	assert.NoError(t, engine.Check(ctx, evt1))
 	assert.ErrorIs(t, engine.Check(ctx, evt1), ErrDuplicateEvent)

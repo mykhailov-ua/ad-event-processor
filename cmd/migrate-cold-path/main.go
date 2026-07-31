@@ -59,7 +59,7 @@ func applyColdPathMigrations(ctx context.Context, pool *pgxpool.Pool, only map[s
 			rel  string
 		}{
 			{name: "ads", rel: "internal/ingestion/migrations"},
-			{name: "auth", rel: "internal/auth/migrations"},
+			{name: "auth", rel: "internal/identity/migrations"},
 			{name: "billing", rel: "internal/billing/migrations"},
 		} {
 			if !run(item.name) {

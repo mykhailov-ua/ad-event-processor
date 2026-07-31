@@ -14,7 +14,7 @@ import (
 	"espx/internal/config"
 	"espx/internal/database"
 	"espx/internal/ingestion"
-	"espx/internal/ingestion/sqlc"
+	"espx/internal/domain/db"
 
 	"espx/internal/testutil"
 	"github.com/google/uuid"

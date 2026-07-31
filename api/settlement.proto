@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package settlement;
 
-option go_package = "espx/internal/management/pb;pb";
+option go_package = "espx/internal/controlplane/pb;pb";
 
 service SettlementService {
   rpc ApplyPaymentCredit(ApplyPaymentCreditRequest) returns (ApplyPaymentCreditResponse);

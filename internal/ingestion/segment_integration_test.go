@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/database"
 	"espx/pkg/piihash"
 
@@ -17,14 +17,14 @@ import (
 )
 
 type segmentTestRegistry struct {
-	camps map[uuid.UUID]*campaignmodel.Campaign
+	camps map[uuid.UUID]*domain.Campaign
 }
 
 func (r *segmentTestRegistry) Exists(uuid.UUID) bool { return true }
-func (r *segmentTestRegistry) Add(uuid.UUID, uuid.UUID, *uuid.UUID, string, campaignmodel.PacingMode, int64, string, int32, int32, []string) {
+func (r *segmentTestRegistry) Add(uuid.UUID, uuid.UUID, *uuid.UUID, string, domain.PacingMode, int64, string, int32, int32, []string) {
 }
 func (r *segmentTestRegistry) GetCustomerID(uuid.UUID) (uuid.UUID, bool) { return uuid.Nil, false }
-func (r *segmentTestRegistry) GetCampaign(id uuid.UUID) (*campaignmodel.Campaign, bool) {
+func (r *segmentTestRegistry) GetCampaign(id uuid.UUID) (*domain.Campaign, bool) {
 	if r.camps == nil {
 		return nil, false
 	}
@@ -36,10 +36,10 @@ func (r *segmentTestRegistry) StartSync(context.Context, time.Duration) {}
 func (r *segmentTestRegistry) Wait(context.Context) error               { return nil }
 
 type segmentTestRepo struct {
-	camp *campaignmodel.Campaign
+	camp *domain.Campaign
 }
 
-func (r *segmentTestRepo) GetByID(context.Context, uuid.UUID) (*campaignmodel.Campaign, error) {
+func (r *segmentTestRepo) GetByID(context.Context, uuid.UUID) (*domain.Campaign, error) {
 	return r.camp, nil
 }
 
@@ -61,14 +61,14 @@ func TestSegmentIntegration_conversionExcludeAndTTL(t *testing.T) {
 	srcCampID := uuid.New()
 	dstCampID := uuid.New()
 	repo := &segmentTestRepo{
-		camp: &campaignmodel.Campaign{
+		camp: &domain.Campaign{
 			ID:                srcCampID,
 			RetargetSegmentID: segmentID,
 			SegmentTTLHours:   1,
 		},
 	}
 	handler := NewSegmentConversionHandler(repo, nil, rdbs, hasher)
-	handler.Handle(&campaignmodel.Event{
+	handler.Handle(&domain.Event{
 		CampaignID: srcCampID,
 		Type:       conversionEventType,
 		UserID:     userID,
@@ -79,7 +79,7 @@ func TestSegmentIntegration_conversionExcludeAndTTL(t *testing.T) {
 	require.True(t, member)
 
 	reg := &segmentTestRegistry{
-		camps: map[uuid.UUID]*campaignmodel.Campaign{
+		camps: map[uuid.UUID]*domain.Campaign{
 			dstCampID: {
 				ID:               dstCampID,
 				SegmentExcludeID: segmentID,
@@ -87,7 +87,7 @@ func TestSegmentIntegration_conversionExcludeAndTTL(t *testing.T) {
 		},
 	}
 	filter := NewSegmentFilter(rdbs, reg, hasher)
-	evt := &campaignmodel.Event{CampaignID: dstCampID, UserID: userID}
+	evt := &domain.Event{CampaignID: dstCampID, UserID: userID}
 	require.ErrorIs(t, filter.Check(ctx, evt), ErrSegmentExcluded)
 
 	require.NoError(t, addSegmentMember(ctx, rdbs, segmentID, userHash, time.Second))
@@ -114,13 +114,13 @@ func (m *segmentGetMock) Get(ctx context.Context, key string) *redis.StringCmd {
 	return staticStringCmd
 }
 
-func setupSegmentFilterBench(t testing.TB, member bool) (*SegmentFilter, *campaignmodel.Event, context.Context) {
+func setupSegmentFilterBench(t testing.TB, member bool) (*SegmentFilter, *domain.Event, context.Context) {
 	t.Helper()
 	segmentID := uuid.MustParse("6ba7b810-9dad-11d1-80b4-00c04fd430c8")
 	campID := uuid.MustParse("550e8400-e29b-41d4-a716-446655440000")
 	rdbs := []redis.UniversalClient{&segmentGetMock{hit: member}}
 	reg := &segmentTestRegistry{
-		camps: map[uuid.UUID]*campaignmodel.Campaign{
+		camps: map[uuid.UUID]*domain.Campaign{
 			campID: {
 				ID:               campID,
 				SegmentExcludeID: segmentID,
@@ -128,7 +128,7 @@ func setupSegmentFilterBench(t testing.TB, member bool) (*SegmentFilter, *campai
 		},
 	}
 	f := NewSegmentFilter(rdbs, reg, piihash.TestHasher())
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		CampaignID: campID,
 		UserID:     "bench-user",
 	}

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/ingestion/pb"
 	"espx/internal/metrics"
 	"espx/internal/telemetry"
@@ -56,7 +56,7 @@ func NewStreamProducer(
 	}
 }
 
-func (p *StreamProducer) Process(evt *campaignmodel.Event) error {
+func (p *StreamProducer) Process(evt *domain.Event) error {
 	if evt.ClickID == "" {
 		id, err := uuid.NewV7()
 		if err != nil {

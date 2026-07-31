@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/ingestion"
-	"espx/internal/ingestion/sqlc"
+	"espx/internal/domain/db"
 	"espx/internal/testutil"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -52,7 +52,7 @@ func TestIntegration_BudgetFlow(t *testing.T) {
 	require.NoError(t, err)
 
 	filter := ingestion.NewBudgetFilter(budgetManager, registry, 100_000, 10_000)
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		ClickID:    uuid.NewString(),
 		CampaignID: campaignID,
 		Type:       "click",

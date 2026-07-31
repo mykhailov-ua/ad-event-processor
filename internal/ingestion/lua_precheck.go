@@ -3,7 +3,7 @@ package ingestion
 import (
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/licensing"
 
 	"github.com/google/uuid"
@@ -108,8 +108,8 @@ func appendCampaignIngressDayKey(dst []byte, campaignID uuid.UUID, regionCode ui
 }
 
 func (f *UnifiedFilter) fillLuaPrecheckKeys(
-	evt *campaignmodel.Event,
-	campInfo *campaignmodel.Campaign,
+	evt *domain.Event,
+	campInfo *domain.Campaign,
 	now time.Time,
 	scratch *luaPrecheckScratch,
 	kv []StringVal,

@@ -31,7 +31,7 @@ Stack
 
 Hot path: Go 1.25+, gnet/v2, pgx/v5 + sqlc, ClickHouse, 4 standalone Redis masters (production; StaticSlotSharder, not Cluster), embedded Lua, vtproto (`make proto`), MaxMind, Prometheus.
 
-Cold path: stdlib net/http, JSON `/api/v1`, gRPC (auth, payment, settlement, billing, notifier). Legacy HTMX fragments deprecated — see `docs/SELF_HOSTED.md`. Fraud scoring in `internal/fraudscoring` + `cmd/fraud-scorer` only - tracker must not import it.
+Cold path: stdlib net/http, JSON `/api/v1`, gRPC (auth, payment, settlement, billing, notifier). Legacy HTMX fragments deprecated — see `docs/SELF_HOSTED.md`. Fraud scoring in `internal/fraud` + `cmd/fraud-scorer` only - tracker must not import it.
 
 Layout
 
@@ -39,13 +39,13 @@ internal/campaignmodel: shared hot-path types - Campaign, Event, BudgetManager, 
 
 internal/ingestion: hot path - handler, track_core, FilterEngine, Lua scripts, StaticSlotSharder, stream processor, sqlc store (`internal/ingestion/sqlc`).
 
-internal/fraudscoring: LightGBM + Isolation Forest ensemble, microbatch, optional ONNX (`-tags fraudscoring_onnx`). Scores land in Redis `ml:score:boost:{campaign_id}` via processor or fraud-scorer outbox.
+internal/fraud: LightGBM + Isolation Forest ensemble, microbatch, optional ONNX (`-tags fraudscoring_onnx`). Scores land in Redis `ml:score:boost:{campaign_id}` via processor or fraud-scorer outbox.
 
 internal/clickhouse/migrate: ClickHouse analytics Data Definition Language only (do not confuse with `cmd/processor`).
 
-internal/management: single flat `package management` (one deployable). Navigate by filename tag: `blacklist_janitor.go`, `service_fraud.go`, `handler_delivery.go`. Only `pb/` subdir allowed.
+internal/controlplane: single flat `package controlplane` (one deployable). Navigate by filename tag: `blacklist_janitor.go`, `service_fraud.go`, `handler_delivery.go`. Only `pb/` subdir allowed.
 
-internal/management/api_*.go: cold-path JSON `/api/v1` - `api_billing_handlers.go`, `api_ops_handlers.go`, ...; wire via `api_register.go`. No subfolders.
+internal/controlplane/api_*.go: cold-path JSON `/api/v1` - `api_billing_handlers.go`, `api_ops_handlers.go`, ...; wire via `api_register.go`. No subfolders.
 
 pkg/coldpath: cold-path Hypertext Transfer Protocol/JavaScript Object Notation/pagination helpers for management, auth, payment.
 

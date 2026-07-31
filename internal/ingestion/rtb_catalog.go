@@ -3,7 +3,7 @@ package ingestion
 import (
 	"sync/atomic"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/rtb"
 
 	"github.com/google/uuid"
@@ -66,13 +66,13 @@ func (catalog *RtbCatalog) SetDealFloors(cache *DealFloorCache) {
 	catalog.dealFloors = cache
 }
 
-func (catalog *RtbCatalog) SyncActiveCampaigns(campaigns []*campaignmodel.Campaign, inputs map[uuid.UUID]RtbCampaignInput) {
+func (catalog *RtbCatalog) SyncActiveCampaigns(campaigns []*domain.Campaign, inputs map[uuid.UUID]RtbCampaignInput) {
 	rows := BuildRtbCatalogRows(campaigns, inputs)
 	catalog.registry.UpdateCampaigns(rows)
 	catalog.rebuildWinnerUUID(rows, campaigns)
 }
 
-func (catalog *RtbCatalog) rebuildWinnerUUID(rows []rtb.CampaignData, campaigns []*campaignmodel.Campaign) {
+func (catalog *RtbCatalog) rebuildWinnerUUID(rows []rtb.CampaignData, campaigns []*domain.Campaign) {
 	if len(rows) == 0 {
 		empty := make(map[rtb.CampaignID]uuid.UUID)
 		catalog.winnerUUID.Store(&empty)
@@ -97,7 +97,7 @@ func (catalog *RtbCatalog) UUIDForWinner(id rtb.CampaignID) (uuid.UUID, bool) {
 	return uid, ok
 }
 
-func (catalog *RtbCatalog) SyncCampaignRows(campaigns []*campaignmodel.Campaign, rows []rtb.CampaignData) {
+func (catalog *RtbCatalog) SyncCampaignRows(campaigns []*domain.Campaign, rows []rtb.CampaignData) {
 	catalog.registry.UpdateCampaigns(rows)
 	catalog.rebuildWinnerUUID(rows, campaigns)
 }
@@ -142,7 +142,7 @@ func (catalog *RtbCatalog) AllDeals() []rtb.DealData {
 	return catalog.dealIndex.All()
 }
 
-func (catalog *RtbCatalog) RunAuction(evt *campaignmodel.Event, targeting RtbTargetingInput) (rtb.AuctionResult, rtb.NoBidReason) {
+func (catalog *RtbCatalog) RunAuction(evt *domain.Event, targeting RtbTargetingInput) (rtb.AuctionResult, rtb.NoBidReason) {
 	if catalog.authority != BudgetAuthorityShadow {
 		if reason := rtbPrefilterReject(catalog.settingsWatcher, catalog, targeting); reason != rtb.NoBidNone {
 			return rtb.AuctionResult{}, reason

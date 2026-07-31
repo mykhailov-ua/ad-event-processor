@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/dedup"
 	"espx/internal/metrics"
 	"espx/pkg/broker/client"
@@ -16,22 +16,10 @@ import (
 	"espx/pkg/logger"
 )
 
-type BrokerConsumerConfig struct {
-	BrokerAddr string
-	RedisURL   string
-	Topic      string
-	Partition  uint16
-	Group      string
-	BatchSize  int
-	FlushInt   time.Duration
-	MaxBytes   uint32
-	Timeout    time.Duration
-	IdleWait   time.Duration
-	ShadowMode bool
-}
+type BrokerConsumerConfig = domain.BrokerConsumerConfig
 
 type BrokerStreamConsumer struct {
-	store        campaignmodel.EventStore
+	store        domain.EventStore
 	cfg          BrokerConsumerConfig
 	writeTimeout time.Duration
 	maxRetries   int
@@ -49,7 +37,7 @@ type BrokerStreamConsumer struct {
 }
 
 func NewBrokerStreamConsumer(
-	store campaignmodel.EventStore,
+	store domain.EventStore,
 	cfg BrokerConsumerConfig,
 	writeTimeout time.Duration,
 	retryInit, retryMax time.Duration,
@@ -146,7 +134,7 @@ func (b *BrokerStreamConsumer) run(ctx context.Context) {
 		return
 	}
 
-	batch := make([]*campaignmodel.Event, 0, b.cfg.BatchSize)
+	batch := make([]*domain.Event, 0, b.cfg.BatchSize)
 	lastFlush := time.Now()
 	var batchCommit uint64
 	var batchStartOffset uint64
@@ -239,7 +227,7 @@ func (b *BrokerStreamConsumer) run(ctx context.Context) {
 	}
 }
 
-func (b *BrokerStreamConsumer) drain(ctx context.Context, nextCommit uint64, batch []*campaignmodel.Event) {
+func (b *BrokerStreamConsumer) drain(ctx context.Context, nextCommit uint64, batch []*domain.Event) {
 	if len(batch) == 0 || nextCommit == 0 {
 		return
 	}
@@ -247,7 +235,7 @@ func (b *BrokerStreamConsumer) drain(ctx context.Context, nextCommit uint64, bat
 	_, _ = b.flushAndCommit(ctx, batch, startOffset, nextCommit)
 }
 
-func (b *BrokerStreamConsumer) flushAndCommit(ctx context.Context, batch []*campaignmodel.Event, offsetStart, nextCommit uint64) (uint64, error) {
+func (b *BrokerStreamConsumer) flushAndCommit(ctx context.Context, batch []*domain.Event, offsetStart, nextCommit uint64) (uint64, error) {
 	if len(batch) == 0 {
 		return nextCommit, nil
 	}
@@ -269,7 +257,7 @@ func (b *BrokerStreamConsumer) flushAndCommit(ctx context.Context, batch []*camp
 		metrics.BrokerShadowMessagesTotal.WithLabelValues(b.cfg.Topic, b.cfg.Group).Add(float64(len(batch)))
 		for _, evt := range batch {
 			b.writeAudit(evt)
-			campaignmodel.EventPool.Put(evt)
+			domain.EventPool.Put(evt)
 		}
 		b.cb.RecordSuccess(b.cfg.Group)
 	} else {
@@ -321,7 +309,7 @@ func (b *BrokerStreamConsumer) flushAndCommit(ctx context.Context, batch []*camp
 		b.cb.RecordSuccess(b.cfg.Group)
 		for _, evt := range batch {
 			b.writeAudit(evt)
-			campaignmodel.EventPool.Put(evt)
+			domain.EventPool.Put(evt)
 		}
 	}
 
@@ -335,7 +323,7 @@ commitOffset:
 	return stored, nil
 }
 
-func (b *BrokerStreamConsumer) storeWithRetry(ctx context.Context, batch []*campaignmodel.Event) error {
+func (b *BrokerStreamConsumer) storeWithRetry(ctx context.Context, batch []*domain.Event) error {
 	wait := b.retryInit
 	for attempt := 0; attempt <= b.maxRetries; attempt++ {
 		err := b.store.StoreBatch(ctx, batch)
@@ -363,7 +351,7 @@ func (b *BrokerStreamConsumer) storeWithRetry(ctx context.Context, batch []*camp
 	return errors.New("store retries exhausted")
 }
 
-func (b *BrokerStreamConsumer) writeAudit(evt *campaignmodel.Event) {
+func (b *BrokerStreamConsumer) writeAudit(evt *domain.Event) {
 	if b.logger == nil || evt == nil {
 		return
 	}

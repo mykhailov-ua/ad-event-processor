@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/config"
 	"espx/internal/ingestion/pb"
 	"github.com/google/uuid"
@@ -19,17 +19,17 @@ import (
 type mockRegistry struct{}
 
 func (m *mockRegistry) Exists(id uuid.UUID) bool { return true }
-func (m *mockRegistry) Add(id, customerID uuid.UUID, brandID *uuid.UUID, brandFcapKey string, pacingMode campaignmodel.PacingMode, dailyBudget int64, timezone string, freqLimit, freqWindow int32, targetCountries []string) {
+func (m *mockRegistry) Add(id, customerID uuid.UUID, brandID *uuid.UUID, brandFcapKey string, pacingMode domain.PacingMode, dailyBudget int64, timezone string, freqLimit, freqWindow int32, targetCountries []string) {
 }
 func (m *mockRegistry) GetCustomerID(id uuid.UUID) (uuid.UUID, bool) { return uuid.Nil, true }
 
 var (
 	staticCampaignMu sync.RWMutex
-	staticCampaign   = &campaignmodel.Campaign{CustomerID: uuid.Nil, Location: time.UTC}
-	cachedMockCamp   atomic.Pointer[campaignmodel.Campaign]
+	staticCampaign   = &domain.Campaign{CustomerID: uuid.Nil, Location: time.UTC}
+	cachedMockCamp   atomic.Pointer[domain.Campaign]
 )
 
-func enrichMockCampaign(cp *campaignmodel.Campaign) {
+func enrichMockCampaign(cp *domain.Campaign) {
 	if cp.Location == nil {
 		cp.Location = time.UTC
 	}
@@ -69,7 +69,7 @@ func enrichMockCampaign(cp *campaignmodel.Campaign) {
 	}
 }
 
-func (m *mockRegistry) GetCampaign(id uuid.UUID) (*campaignmodel.Campaign, bool) {
+func (m *mockRegistry) GetCampaign(id uuid.UUID) (*domain.Campaign, bool) {
 	if got := cachedMockCamp.Load(); got != nil && got.ID == id {
 		if got.BudgetCampaignKey == "" {
 			cp := *got

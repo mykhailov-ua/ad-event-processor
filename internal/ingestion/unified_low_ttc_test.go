@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/metrics"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -33,7 +33,7 @@ func TestUnifiedFilter_LowTTC_ReturnsFraudDetected(t *testing.T) {
 	impKey := "imp_ts:user1:" + campID.String()
 	require.NoError(t, rdb.Set(ctx, impKey, strconv.FormatInt(time.Now().Add(-50*time.Millisecond).UnixMilli(), 10), 10*time.Minute).Err())
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		Type:       "click",
 		UserID:     "user1",
 		CampaignID: campID,
@@ -62,7 +62,7 @@ func TestUnifiedFilter_impressionSetsImpTS_clickChecksTTC(t *testing.T) {
 	campID := uuid.New()
 	seedCampaignBudget(t, ctx, rdb, campID)
 
-	imp := &campaignmodel.Event{
+	imp := &domain.Event{
 		Type:       "impression",
 		IP:         "1.1.1.1",
 		UserID:     "user123",
@@ -73,7 +73,7 @@ func TestUnifiedFilter_impressionSetsImpTS_clickChecksTTC(t *testing.T) {
 
 	time.Sleep(60 * time.Millisecond)
 
-	click := &campaignmodel.Event{
+	click := &domain.Event{
 		Type:       "click",
 		IP:         "1.1.1.1",
 		UserID:     "user123",
@@ -99,7 +99,7 @@ func TestUnifiedFilter_failClosed_missingImpTS_realRedis(t *testing.T) {
 	campID := uuid.New()
 	seedCampaignBudget(t, ctx, rdb, campID)
 
-	click := &campaignmodel.Event{
+	click := &domain.Event{
 		Type:       "click",
 		UserID:     "user1",
 		CampaignID: campID,
@@ -129,7 +129,7 @@ func TestUnifiedFilter_lowTTC_mockRedis(t *testing.T) {
 	)
 	f.SetTTCMin(300 * time.Millisecond)
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		Type:         "click",
 		UserID:       "user1",
 		CampaignID:   uuid.New(),
@@ -161,7 +161,7 @@ func TestUnifiedFilter_failClosed_missingImpTS_mockRedis(t *testing.T) {
 	f.SetTTCMin(300 * time.Millisecond)
 	f.SetTTCFailClosed(true)
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		Type:         "click",
 		UserID:       "user1",
 		CampaignID:   uuid.New(),
@@ -193,7 +193,7 @@ func TestUnifiedFilter_ttcBypass_incrementsMetric(t *testing.T) {
 	)
 	f.SetTTCMin(300 * time.Millisecond)
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		Type:       "click",
 		UserID:     "user1",
 		CampaignID: uuid.New(),
@@ -267,7 +267,7 @@ func (ttcBypassRedis) Eval(ctx context.Context, script string, keys []string, ar
 	return cmd
 }
 
-func checkWithFraudScoring(ctx context.Context, f EventFilter, evt *campaignmodel.Event) error {
+func checkWithFraudScoring(ctx context.Context, f EventFilter, evt *domain.Event) error {
 	engine := NewFilterEngine(time.Second, f)
 	engine.SetRegistry(&mockRegistry{})
 	return engine.Check(ctx, evt)

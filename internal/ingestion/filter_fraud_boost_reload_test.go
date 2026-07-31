@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/config"
 
 	"github.com/google/uuid"
@@ -20,7 +20,7 @@ func TestFilterFraudBoost_ConcurrentReload(t *testing.T) {
 	engine.SetRegistry(&mockRegistry{})
 	engine.SetSettingsWatcher(sw)
 
-	cachedMockCamp.Store(&campaignmodel.Campaign{ID: campID})
+	cachedMockCamp.Store(&domain.Campaign{ID: campID})
 	t.Cleanup(func() { cachedMockCamp.Store(nil) })
 
 	var wg sync.WaitGroup
@@ -44,7 +44,7 @@ func TestFilterFraudBoost_ConcurrentReload(t *testing.T) {
 	for w := 0; w < 8; w++ {
 		go func() {
 			defer wg.Done()
-			evt := &campaignmodel.Event{
+			evt := &domain.Event{
 				CampaignID:   campID,
 				StringBuffer: make([]byte, 0, 64),
 			}

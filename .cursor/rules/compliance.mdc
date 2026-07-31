@@ -129,7 +129,7 @@ Air-gap: Failed POST -> log + drop; no impact on `/track`
 
 Allowed telemetry: aggregated `MemStats`, gnet p50/p99, Redis Lua duration, CH batch/lag, XDP drop ratios. Banned: anything identifying end users or customer business.
 
-Spec: `.cursor/BACKLOG.md` (GAP-ENG-03).
+Spec: `docs/DEVELOPMENT.md` (GAP-ENG-03 shipped).
 
 9. PII in ClickHouse (rolling hash)
 

@@ -3,14 +3,14 @@ package ingestion
 import (
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/ingestion/pb"
 
 	"github.com/google/uuid"
 )
 
-func ParseBrokerPayload(data []byte) (*campaignmodel.Event, error) {
-	evt := campaignmodel.EventPool.Get().(*campaignmodel.Event)
+func ParseBrokerPayload(data []byte) (*domain.Event, error) {
+	evt := domain.EventPool.Get().(*domain.Event)
 	evt.Reset()
 
 	pbEvt := streamEventPool.Get().(*pb.AdStreamEvent)
@@ -42,11 +42,11 @@ func ParseBrokerPayload(data []byte) (*campaignmodel.Event, error) {
 		rec.CampaignId = campIDSaved[:0]
 	}
 	adLogRecordPool.Put(rec)
-	campaignmodel.EventPool.Put(evt)
+	domain.EventPool.Put(evt)
 	return nil, ErrBrokerPayloadUnrecognized
 }
 
-func fillEventFromStreamProto(pbEvt *pb.AdStreamEvent, evt *campaignmodel.Event) {
+func fillEventFromStreamProto(pbEvt *pb.AdStreamEvent, evt *domain.Event) {
 	totalLen := len(pbEvt.ClickId) + len(pbEvt.EventType) + len(pbEvt.Ip) + len(pbEvt.Ua) + len(pbEvt.FraudReason)
 	if cap(evt.StringBuffer) < totalLen {
 		evt.StringBuffer = make([]byte, 0, totalLen+128)
@@ -84,7 +84,7 @@ func fillEventFromStreamProto(pbEvt *pb.AdStreamEvent, evt *campaignmodel.Event)
 	}
 }
 
-func fillEventFromLogRecord(rec *pb.AdLogRecord, evt *campaignmodel.Event) {
+func fillEventFromLogRecord(rec *pb.AdLogRecord, evt *domain.Event) {
 	if cap(evt.StringBuffer) < len(rec.ClickId)+len(rec.EventType) {
 		evt.StringBuffer = make([]byte, 0, len(rec.ClickId)+len(rec.EventType)+64)
 	} else {

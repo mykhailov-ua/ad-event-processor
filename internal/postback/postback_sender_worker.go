@@ -19,7 +19,7 @@ import (
 	"sync"
 	"time"
 
-	db "espx/internal/ingestion/sqlc"
+	db "espx/internal/domain/db"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"espx/internal/config"
+	"espx/internal/domain"
 	"espx/internal/rtb"
 	"espx/pkg/money"
 
@@ -389,8 +390,8 @@ func (sw *SettingsWatcher) parseConfig(version int64, data map[string]string) *D
 	updateString(&next.ASNCDNWhitelist, data["asn_cdn_whitelist"])
 	updateString(&next.ASNMobileWhitelist, data["asn_mobile_whitelist"])
 	updateString(&next.TLSHashBlocklist, data["tls_hash_blocklist"])
-	updateString(&next.RtbBudgetAuthority, data[systemSettingRtbBudgetAuthority])
-	updateString(&next.RtbMode, data[SystemSettingRtbMode])
+	updateString(&next.RtbBudgetAuthority, data[domain.SystemSettingRtbBudgetAuthority])
+	updateString(&next.RtbMode, data[domain.SystemSettingRtbMode])
 
 	return &next
 }

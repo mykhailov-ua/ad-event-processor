@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"espx/internal/auth"
-	authdb "espx/internal/auth/db"
-	ingestdb "espx/internal/ingestion/sqlc"
+	"espx/internal/identity"
+	authdb "espx/internal/identity/db"
+	ingestdb "espx/internal/domain/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/spf13/cobra"
@@ -29,7 +29,7 @@ var seedCmd = &cobra.Command{
 		}
 		defer pool.Close()
 
-		hasher, err := auth.NewPasswordHasher(
+		hasher, err := identity.NewPasswordHasher(
 			uint32(cfg.Argon2Memory),
 			uint32(cfg.Argon2Iterations),
 			uint8(cfg.Argon2Parallelism),

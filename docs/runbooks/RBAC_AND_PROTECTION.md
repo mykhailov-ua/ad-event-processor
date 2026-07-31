@@ -2,7 +2,7 @@
 
 How operators control access to sensitive ad-tech assets (creatives, URLs, sources) within a self-hosted install.
 
-Acceptance criteria: P04 in `.cursor/GAP_SPECS.md`.
+Operational acceptance criteria: this runbook (admin RBAC, GAP-PROD-11).
 
 Related: ARCHITECTURE.md, PROTECTION.md, CUSTOMER_ENTITY_MODEL.md.
 
@@ -85,12 +85,14 @@ Until shipped: SQL seed or JSON API.
 
 ## SQL plans
 
-SQL reference: `.cursor/GAP_SPECS.md` appendix (P04 / GAP-PROD-11).
+```sql
+SELECT p.permission FROM auth.user_roles ur
+JOIN auth.role_permissions rp ON rp.role_id = ur.role_id
+JOIN auth.permissions p ON p.id = rp.permission_id
+WHERE ur.user_id = $1;
+```
 
-| Query | Index target |
-| :--- | :--- |
-| User permissions join | `user_roles(user_id)` — nested loop < 1 ms |
-| Audit insert | PK insert < 5 ms |
+Index target: `user_roles(user_id)` — nested loop under 1 ms.
 
 ---
 

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/config"
 	"espx/internal/ingestion/pb"
 	"espx/internal/metrics"
@@ -68,7 +68,7 @@ var (
 type connContext struct {
 	pbReq    pb.AdEvent
 	trackReq TrackRequest
-	evt      campaignmodel.Event
+	evt      domain.Event
 	valSlice []any
 	resp     pb.TrackResponse
 	bufSlice []byte
@@ -150,7 +150,7 @@ type Pinger interface {
 	Ping(ctx context.Context) error
 }
 
-func NewRouter(cfg *config.Config, registry campaignmodel.CampaignRegistry, filterEngine *FilterEngine, pool Pinger, rdbs []redis.UniversalClient, sharder Sharder, fraudStream string, creativeStore *BrandCreativeStore) http.Handler {
+func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngine *FilterEngine, pool Pinger, rdbs []redis.UniversalClient, sharder Sharder, fraudStream string, creativeStore *BrandCreativeStore) http.Handler {
 	mux := http.NewServeMux()
 
 	trackDurationObserver := metrics.HttpRequestDuration.WithLabelValues("POST", "/track")
@@ -328,7 +328,7 @@ func NewRouter(cfg *config.Config, registry campaignmodel.CampaignRegistry, filt
 			clickID = requestIDStr
 		}
 
-		evt := campaignmodel.EventPool.Get().(*campaignmodel.Event)
+		evt := domain.EventPool.Get().(*domain.Event)
 		evt.Reset()
 		evt.ClickID = clickID
 		evt.CampaignID = campaignID
@@ -354,7 +354,7 @@ func NewRouter(cfg *config.Config, registry campaignmodel.CampaignRegistry, filt
 				recordHTTPFilterReject(outcome.RejectKind)
 				shard := sharder.GetShard(evt.CampaignID)
 				enqueueFraudReject(fraudWriter, shard, evt)
-				campaignmodel.EventPool.Put(evt)
+				domain.EventPool.Put(evt)
 				accept := ""
 				if accSlice := r.Header["Accept"]; len(accSlice) > 0 {
 					accept = accSlice[0]
@@ -363,7 +363,7 @@ func NewRouter(cfg *config.Config, registry campaignmodel.CampaignRegistry, filt
 				return
 			case trackStatusRejected:
 				spec := filterRejectSpecs[outcome.RejectKind]
-				campaignmodel.EventPool.Put(evt)
+				domain.EventPool.Put(evt)
 				recordHTTPFilterReject(outcome.RejectKind)
 				if outcome.RejectKind == filterRejectConsent {
 					w.WriteHeader(http.StatusNoContent)
@@ -378,7 +378,7 @@ func NewRouter(cfg *config.Config, registry campaignmodel.CampaignRegistry, filt
 				http.Error(w, spec.body, spec.status)
 				return
 			case trackStatusInternalError:
-				campaignmodel.EventPool.Put(evt)
+				domain.EventPool.Put(evt)
 				http.Error(w, "internal error", http.StatusInternalServerError)
 				return
 			case trackStatusAccepted:
@@ -388,7 +388,7 @@ func NewRouter(cfg *config.Config, registry campaignmodel.CampaignRegistry, filt
 			releaseOpenRTB3Scratch(evt)
 			landing = ResolveLandingURL(registry, creativeStore, evt)
 		}
-		campaignmodel.EventPool.Put(evt)
+		domain.EventPool.Put(evt)
 
 		accept := ""
 		if accSlice := r.Header["Accept"]; len(accSlice) > 0 {
@@ -522,7 +522,7 @@ type AdsPacketHandler struct {
 	*gnet.BuiltinEventEngine
 	eng                   *gnet.Engine
 	filterEngine          *FilterEngine
-	registry              campaignmodel.CampaignRegistry
+	registry              domain.CampaignRegistry
 	creativeStore         *BrandCreativeStore
 	cfg                   *config.Config
 	pool                  Pinger
@@ -586,7 +586,7 @@ func (h *AdsPacketHandler) write(c gnet.Conn, data []byte, ctx *connContext) {
 	}
 }
 
-func NewAdsPacketHandler(cfg *config.Config, registry campaignmodel.CampaignRegistry, filterEngine *FilterEngine, pool Pinger, rdbs []redis.UniversalClient, sharder Sharder, fraudStream string, creativeStore *BrandCreativeStore) *AdsPacketHandler {
+func NewAdsPacketHandler(cfg *config.Config, registry domain.CampaignRegistry, filterEngine *FilterEngine, pool Pinger, rdbs []redis.UniversalClient, sharder Sharder, fraudStream string, creativeStore *BrandCreativeStore) *AdsPacketHandler {
 	trackDurationObserver := metrics.HttpRequestDuration.WithLabelValues("POST", "/track")
 	var trackStatusCounters [600]prometheus.Counter
 	for i := 0; i < 600; i++ {
@@ -627,7 +627,7 @@ func NewAdsPacketHandler(cfg *config.Config, registry campaignmodel.CampaignRegi
 				trackReq: TrackRequest{
 					Payload: make([]byte, 0, 512),
 				},
-				evt: campaignmodel.Event{
+				evt: domain.Event{
 					Payload: make([]byte, 0, 1024),
 				},
 				valSlice: make([]any, 18),
@@ -1112,7 +1112,7 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 			trackReq: TrackRequest{
 				Payload: make([]byte, 0, 512),
 			},
-			evt: campaignmodel.Event{
+			evt: domain.Event{
 				Payload: make([]byte, 0, 1024),
 			},
 			valSlice: make([]any, 18),

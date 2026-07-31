@@ -3,7 +3,7 @@ package ingestion
 import (
 	"testing"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/rtb"
 
 	"github.com/google/uuid"
@@ -32,7 +32,7 @@ func TestOpenRTBIngest_LiveWithOpenRTBPayload(t *testing.T) {
 	winnerID := uuid.New()
 	geo := GeoHashFromCountry("US")
 	catalog.SyncActiveCampaigns(
-		[]*campaignmodel.Campaign{{ID: winnerID, BudgetLimit: 10_000_000_000, TargetCountries: map[string]struct{}{"US": {}}}},
+		[]*domain.Campaign{{ID: winnerID, BudgetLimit: 10_000_000_000, TargetCountries: map[string]struct{}{"US": {}}}},
 		map[uuid.UUID]RtbCampaignInput{
 			winnerID: {BidMicro: 2_000_000, DeviceMask: 1, CategoryMask: 1, GeoHash: geo, Weight: 1},
 		},
@@ -44,7 +44,7 @@ func TestOpenRTBIngest_LiveWithOpenRTBPayload(t *testing.T) {
 		ingestGeo:  &staticGeoProvider{country: "US"},
 	}
 	clientID := uuid.New()
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		CampaignID: clientID,
 		IP:         "8.8.8.8",
 		Payload:    []byte(`{"openrtb":{"ver":"3.0","item":[{"id":"1","flr":1.0}]}}`),

@@ -9,7 +9,7 @@ import (
 	"espx/internal/config"
 	"espx/internal/ingestion"
 	"espx/internal/ingestion/pb"
-	db "espx/internal/ingestion/sqlc"
+	db "espx/internal/domain/db"
 	"espx/internal/rtb"
 	"espx/internal/testutil"
 

@@ -7,14 +7,14 @@ import (
 	"math"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/metrics"
 )
 
 type ReconciliationWorker struct {
 	pgConn     PostgresConn
 	chConn     ClickHouseConn
-	repo       campaignmodel.CampaignRepository
+	repo       domain.CampaignRepository
 	driftLimit float64
 	lag        time.Duration
 	interval   time.Duration
@@ -23,7 +23,7 @@ type ReconciliationWorker struct {
 func NewReconciliationWorker(
 	pg PostgresConn,
 	ch ClickHouseConn,
-	repo campaignmodel.CampaignRepository,
+	repo domain.CampaignRepository,
 	driftLimit float64,
 	lag time.Duration,
 	interval time.Duration,

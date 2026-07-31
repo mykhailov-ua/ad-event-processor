@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
-	db "espx/internal/ingestion/sqlc"
+	"espx/internal/domain"
+	db "espx/internal/domain/db"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -53,7 +53,7 @@ func TestRegistry_StartWatch_IncrementalOnlyOneCampaign(t *testing.T) {
 	}
 
 	r := newTestRegistry(t, mock)
-	r.Add(campID, custID, nil, "", campaignmodel.PacingModeAsap, 1000, "UTC", 0, 0, nil)
+	r.Add(campID, custID, nil, "", domain.PacingModeAsap, 1000, "UTC", 0, 0, nil)
 
 	channel := "test:campaign:updates:hr-pub"
 	r.StartWatch(ctx, rdb, channel)

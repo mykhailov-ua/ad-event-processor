@@ -3,7 +3,7 @@ package ingestion
 import (
 	"testing"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/config"
 	"espx/internal/rtb"
 	"github.com/google/uuid"
@@ -20,7 +20,7 @@ func TestRtbShadowDiff_goldenParity(t *testing.T) {
 	clientID := uuid.MustParse("00000000-0000-4000-8000-000000000002")
 	geo := GeoHashFromCountry("US")
 	catalog.SyncActiveCampaigns(
-		[]*campaignmodel.Campaign{{ID: winnerID, BudgetLimit: 5000, TargetCountries: map[string]struct{}{"US": {}}}},
+		[]*domain.Campaign{{ID: winnerID, BudgetLimit: 5000, TargetCountries: map[string]struct{}{"US": {}}}},
 		map[uuid.UUID]RtbCampaignInput{
 			winnerID: {BidMicro: 100, DeviceMask: 1, CategoryMask: 1, GeoHash: geo, Weight: 1},
 		},
@@ -28,11 +28,11 @@ func TestRtbShadowDiff_goldenParity(t *testing.T) {
 
 	proc := trackProcessor{rtbCatalog: catalog, rtbMode: rtbModeShadow, ingestGeo: &staticGeoProvider{country: "US"}}
 
-	evtMatch := &campaignmodel.Event{CampaignID: winnerID, IP: "8.8.8.8"}
+	evtMatch := &domain.Event{CampaignID: winnerID, IP: "8.8.8.8"}
 	ensureIngestGeo(proc.ingestGeo, evtMatch)
 	_, _ = applyRtbAuction(proc, evtMatch, nil)
 
-	evtMismatch := &campaignmodel.Event{CampaignID: clientID, IP: "8.8.8.8"}
+	evtMismatch := &domain.Event{CampaignID: clientID, IP: "8.8.8.8"}
 	ensureIngestGeo(proc.ingestGeo, evtMismatch)
 	_, _ = applyRtbAuction(proc, evtMismatch, nil)
 

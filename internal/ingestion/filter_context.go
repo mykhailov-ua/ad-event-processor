@@ -6,7 +6,7 @@ import (
 	"time"
 	"unsafe"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 )
 
 type filterDeadlineKey struct{}
@@ -105,13 +105,13 @@ func attachFilterDeadline(ctx context.Context, timeout time.Duration) context.Co
 	return context.WithValue(ctx, filterDeadlineKey{}, deadlineMono)
 }
 
-func setFilterDeadlineOnEvent(evt *campaignmodel.Event, timeout time.Duration) {
+func setFilterDeadlineOnEvent(evt *domain.Event, timeout time.Duration) {
 	if evt != nil && timeout > 0 {
 		evt.FilterDeadlineMono = monotonicNano() + timeout.Nanoseconds()
 	}
 }
 
-func attachFraudAccumulator(evt *campaignmodel.Event) *fraudAccumulator {
+func attachFraudAccumulator(evt *domain.Event) *fraudAccumulator {
 	acc := fraudAccPool.Get().(*fraudAccumulator)
 	acc.reset()
 	if evt != nil {
@@ -120,7 +120,7 @@ func attachFraudAccumulator(evt *campaignmodel.Event) *fraudAccumulator {
 	return acc
 }
 
-func releaseFraudAccumulator(evt *campaignmodel.Event, acc *fraudAccumulator) {
+func releaseFraudAccumulator(evt *domain.Event, acc *fraudAccumulator) {
 	if acc == nil {
 		return
 	}
@@ -131,14 +131,14 @@ func releaseFraudAccumulator(evt *campaignmodel.Event, acc *fraudAccumulator) {
 	}
 }
 
-func fraudAccFromEvent(evt *campaignmodel.Event) (*fraudAccumulator, bool) {
+func fraudAccFromEvent(evt *domain.Event) (*fraudAccumulator, bool) {
 	if evt == nil || evt.Scratch == nil {
 		return nil, false
 	}
 	return (*fraudAccumulator)(evt.Scratch), true
 }
 
-func addFraudSignal(evt *campaignmodel.Event, id FraudReasonID) {
+func addFraudSignal(evt *domain.Event, id FraudReasonID) {
 	acc, ok := fraudAccFromEvent(evt)
 	if !ok {
 		return
@@ -148,9 +148,9 @@ func addFraudSignal(evt *campaignmodel.Event, id FraudReasonID) {
 
 func MapFraudTier(score uint8, pass, suspect, ivt, block uint8) FraudTier {
 	if pass == 0 && suspect == 0 && ivt == 0 {
-		pass = campaignmodel.DefaultFraudThresholdPass
-		suspect = campaignmodel.DefaultFraudThresholdSuspect
-		ivt = campaignmodel.DefaultFraudThresholdIVT
+		pass = domain.DefaultFraudThresholdPass
+		suspect = domain.DefaultFraudThresholdSuspect
+		ivt = domain.DefaultFraudThresholdIVT
 	}
 	if score <= pass {
 		return FraudTierPass
@@ -165,23 +165,23 @@ func MapFraudTier(score uint8, pass, suspect, ivt, block uint8) FraudTier {
 	return FraudTierBlock
 }
 
-func fraudThresholdsFromCampaign(camp *campaignmodel.Campaign) (pass, suspect, ivt, block uint8) {
+func fraudThresholdsFromCampaign(camp *domain.Campaign) (pass, suspect, ivt, block uint8) {
 	if camp == nil {
-		return campaignmodel.DefaultFraudThresholdPass, campaignmodel.DefaultFraudThresholdSuspect,
-			campaignmodel.DefaultFraudThresholdIVT, campaignmodel.DefaultFraudThresholdBlock
+		return domain.DefaultFraudThresholdPass, domain.DefaultFraudThresholdSuspect,
+			domain.DefaultFraudThresholdIVT, domain.DefaultFraudThresholdBlock
 	}
 	pass = camp.FraudThresholdPass
 	suspect = camp.FraudThresholdSuspect
 	ivt = camp.FraudThresholdIVT
 	block = camp.FraudThresholdBlock
 	if pass == 0 && suspect == 0 && ivt == 0 && block == 0 {
-		return campaignmodel.DefaultFraudThresholdPass, campaignmodel.DefaultFraudThresholdSuspect,
-			campaignmodel.DefaultFraudThresholdIVT, campaignmodel.DefaultFraudThresholdBlock
+		return domain.DefaultFraudThresholdPass, domain.DefaultFraudThresholdSuspect,
+			domain.DefaultFraudThresholdIVT, domain.DefaultFraudThresholdBlock
 	}
 	return pass, suspect, ivt, block
 }
 
-func applyFraudAccumulatorForCampaign(evt *campaignmodel.Event, acc *fraudAccumulator, camp *campaignmodel.Campaign) FraudTier {
+func applyFraudAccumulatorForCampaign(evt *domain.Event, acc *fraudAccumulator, camp *domain.Campaign) FraudTier {
 	if evt == nil || acc == nil || acc.count == 0 {
 		if evt != nil {
 			evt.FraudScore = 0
@@ -216,21 +216,21 @@ func applyFraudAccumulatorForCampaign(evt *campaignmodel.Event, acc *fraudAccumu
 	return MapFraudTier(uint8(acc.score), pass, suspect, ivt, block)
 }
 
-func filterDeadlineMonoEvt(evt *campaignmodel.Event, ctx context.Context) (int64, bool) {
+func filterDeadlineMonoEvt(evt *domain.Event, ctx context.Context) (int64, bool) {
 	if evt != nil && evt.FilterDeadlineMono > 0 {
 		return evt.FilterDeadlineMono, true
 	}
 	return filterDeadlineMonoFromContext(ctx)
 }
 
-func filterDeadlineExceededEvt(evt *campaignmodel.Event, ctx context.Context) bool {
+func filterDeadlineExceededEvt(evt *domain.Event, ctx context.Context) bool {
 	if d, ok := filterDeadlineMonoEvt(evt, ctx); ok {
 		return monotonicNano() > d
 	}
 	return false
 }
 
-func filterDeadlineRemainingEvt(evt *campaignmodel.Event, ctx context.Context) (time.Duration, bool) {
+func filterDeadlineRemainingEvt(evt *domain.Event, ctx context.Context) (time.Duration, bool) {
 	d, ok := filterDeadlineMonoEvt(evt, ctx)
 	if !ok {
 		return 0, false

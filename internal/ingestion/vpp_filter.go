@@ -3,26 +3,26 @@ package ingestion
 import (
 	"context"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 
 	"github.com/google/uuid"
 )
 
 type VPPFilter struct {
-	registry campaignmodel.CampaignRegistry
+	registry domain.CampaignRegistry
 	watcher  *SettingsWatcher
 }
 
-func NewVPPFilter(registry campaignmodel.CampaignRegistry, watcher *SettingsWatcher) *VPPFilter {
+func NewVPPFilter(registry domain.CampaignRegistry, watcher *SettingsWatcher) *VPPFilter {
 	return &VPPFilter{registry: registry, watcher: watcher}
 }
 
-func (f *VPPFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
+func (f *VPPFilter) Check(ctx context.Context, evt *domain.Event) error {
 	if evt == nil || f.registry == nil {
 		return nil
 	}
 	camp, ok := f.registry.GetCampaign(evt.CampaignID)
-	if !ok || camp.PacingMode != campaignmodel.PacingModeVpp {
+	if !ok || camp.PacingMode != domain.PacingModeVpp {
 		return nil
 	}
 	if f.watcher == nil {

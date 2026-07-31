@@ -4,13 +4,13 @@ import (
 	"context"
 	"testing"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/licensing"
 )
 
 func BenchmarkFilterLicense(b *testing.B) {
 	f := NewLicenseFilter(&stubLicenseRegistry{state: licensing.StateActive})
-	evt := &campaignmodel.Event{}
+	evt := &domain.Event{}
 	ctx := context.Background()
 
 	b.ReportAllocs()
@@ -22,7 +22,7 @@ func BenchmarkFilterLicense(b *testing.B) {
 
 func TestFilterLicense_zeroAllocs(t *testing.T) {
 	f := NewLicenseFilter(&stubLicenseRegistry{state: licensing.StateActive})
-	evt := &campaignmodel.Event{}
+	evt := &domain.Event{}
 	ctx := context.Background()
 
 	allocs := testing.AllocsPerRun(1000, func() {

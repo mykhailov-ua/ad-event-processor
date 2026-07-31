@@ -5,7 +5,7 @@ import (
 	"hash/crc32"
 	"unsafe"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/rtb"
 
 	"github.com/google/uuid"
@@ -81,7 +81,7 @@ func DeviceMaskFromType(deviceType []byte) uint8 {
 	return 1
 }
 
-func BidRequestFromEvent(evt *campaignmodel.Event, targeting RtbTargetingInput) rtb.BidRequest {
+func BidRequestFromEvent(evt *domain.Event, targeting RtbTargetingInput) rtb.BidRequest {
 	var fcapUserHash uint64
 	if evt != nil && evt.UserID != "" {
 		fcapUserHash = hashUserID(evt.UserID)
@@ -105,7 +105,7 @@ func hashUserID(userID string) uint64 {
 	return rtb.HashBytes64(unsafe.Slice(unsafe.StringData(userID), len(userID)))
 }
 
-func CampaignDataFromDomain(camp *campaignmodel.Campaign, input RtbCampaignInput) rtb.CampaignData {
+func CampaignDataFromDomain(camp *domain.Campaign, input RtbCampaignInput) rtb.CampaignData {
 	remaining := camp.BudgetLimit - camp.CurrentSpend
 	if remaining < 0 {
 		remaining = 0
@@ -143,7 +143,7 @@ func CampaignDataFromDomain(camp *campaignmodel.Campaign, input RtbCampaignInput
 	}
 }
 
-func scheduleFieldsFromCampaign(camp *campaignmodel.Campaign) (mask uint32, tzOffset int32, startUnix, endUnix int64) {
+func scheduleFieldsFromCampaign(camp *domain.Campaign) (mask uint32, tzOffset int32, startUnix, endUnix int64) {
 	if camp == nil {
 		return 0, 0, 0, 0
 	}
@@ -162,7 +162,7 @@ func scheduleFieldsFromCampaign(camp *campaignmodel.Campaign) (mask uint32, tzOf
 	return mask, tzOffset, startUnix, endUnix
 }
 
-func BuildRtbCatalogRows(campaigns []*campaignmodel.Campaign, inputs map[uuid.UUID]RtbCampaignInput) []rtb.CampaignData {
+func BuildRtbCatalogRows(campaigns []*domain.Campaign, inputs map[uuid.UUID]RtbCampaignInput) []rtb.CampaignData {
 	if len(campaigns) == 0 {
 		return nil
 	}

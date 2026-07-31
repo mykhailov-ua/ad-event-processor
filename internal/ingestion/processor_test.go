@@ -7,24 +7,24 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
 type MockEventStore struct {
 	mu      sync.Mutex
-	flushes [][]*campaignmodel.Event
+	flushes [][]*domain.Event
 	Err     error
 }
 
-func (m *MockEventStore) StoreBatch(ctx context.Context, events []*campaignmodel.Event) error {
+func (m *MockEventStore) StoreBatch(ctx context.Context, events []*domain.Event) error {
 	if m.Err != nil {
 		return m.Err
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	batchCopy := make([]*campaignmodel.Event, len(events))
+	batchCopy := make([]*domain.Event, len(events))
 	copy(batchCopy, events)
 	m.flushes = append(m.flushes, batchCopy)
 	return nil
@@ -43,7 +43,7 @@ func TestStreamConsumer_Ingestion(t *testing.T) {
 
 	producer := NewStreamProducer(rdb, "s1", 1000, 1*time.Second)
 
-	err := producer.Process(&campaignmodel.Event{CampaignID: uuid.New(), Type: "click"})
+	err := producer.Process(&domain.Event{CampaignID: uuid.New(), Type: "click"})
 	assert.NoError(t, err)
 }
 
@@ -62,7 +62,7 @@ func TestStreamConsumer_BatchFlushing(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	for i := 0; i < 3; i++ {
-		_ = producer.Process(&campaignmodel.Event{CampaignID: uuid.New(), Type: "click"})
+		_ = producer.Process(&domain.Event{CampaignID: uuid.New(), Type: "click"})
 	}
 
 	time.Sleep(200 * time.Millisecond)
@@ -96,7 +96,7 @@ func TestStreamConsumer_DLQ(t *testing.T) {
 	proc.Start(ctx)
 
 	for i := 0; i < 2; i++ {
-		_ = producer.Process(&campaignmodel.Event{CampaignID: uuid.New(), Type: "click"})
+		_ = producer.Process(&domain.Event{CampaignID: uuid.New(), Type: "click"})
 	}
 
 	assert.Eventually(t, func() bool {

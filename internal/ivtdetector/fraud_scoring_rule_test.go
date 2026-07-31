@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"espx/internal/database"
-	"espx/internal/fraudscoring"
+	"espx/internal/fraud"
 	"espx/pkg/piihash"
 
 	"github.com/google/uuid"
@@ -26,7 +26,7 @@ func testFraudModelPath(t *testing.T) string {
 	}
 	candidates := []string{
 		filepath.Join("..", "..", "var", "fraudscore", "artifacts", "model.txt"),
-		filepath.Join("..", "fraudscoring", "testdata", "model.txt"),
+		filepath.Join("..", "fraud", "testdata", "model.txt"),
 	}
 	for _, path := range candidates {
 		if _, err := os.Stat(path); err == nil {
@@ -62,7 +62,7 @@ func TestFraudScoringRule_Integration(t *testing.T) {
 	err = conn.Exec(ctx, insertQuery, now, piihash.FixedString16(h.HashIP("5.6.7.8")), campaignID, uint64(100), uint64(10), int64(10000000), int64(50000000), uint64(5), uint64(2))
 	require.NoError(t, err)
 
-	scorer, err := fraudscoring.NewLGBMScorer(testFraudModelPath(t))
+	scorer, err := fraud.NewLGBMScorer(testFraudModelPath(t))
 	require.NoError(t, err)
 
 	rule := NewFraudScoringRule(database.NewCHQuery(conn, database.CHQueryConfig{}), conn, nil, scorer, 100)
@@ -117,7 +117,7 @@ func TestFraudScoringRule_FraudScoresHigherThanControl(t *testing.T) {
 	require.NoError(t, conn.Exec(ctx, insertQuery, now, piihash.FixedString16(h.HashIP(controlIP)), campaignID, uint64(20), uint64(1), int64(1000000), int64(5000000), uint64(1), uint64(1)))
 	require.NoError(t, conn.Exec(ctx, insertQuery, now, piihash.FixedString16(h.HashIP(fraudIP)), campaignID, uint64(200), uint64(50), int64(10000000), int64(50000000), uint64(20), uint64(1)))
 
-	scorer, err := fraudscoring.NewLGBMScorer(testFraudModelPath(t))
+	scorer, err := fraud.NewLGBMScorer(testFraudModelPath(t))
 	require.NoError(t, err)
 
 	_, err = NewFraudScoringRule(database.NewCHQuery(conn, database.CHQueryConfig{}), conn, nil, scorer, 100).Find(ctx)
@@ -138,7 +138,7 @@ func (m *mockScorer) Name() string {
 	return "mock-scorer"
 }
 
-func (m *mockScorer) ScoreBatch(ctx context.Context, rows []fraudscoring.FeatureRow) ([]float64, error) {
+func (m *mockScorer) ScoreBatch(ctx context.Context, rows []fraud.FeatureRow) ([]float64, error) {
 	return m.scores, nil
 }
 

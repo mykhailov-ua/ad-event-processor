@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/rtb"
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
@@ -16,12 +16,12 @@ import (
 func TestSyncRTBBudgetState_fromRegistry(t *testing.T) {
 	store := rtb.NewBudgetStore()
 	customerID := uuid.New()
-	camp := &campaignmodel.Campaign{
+	camp := &domain.Campaign{
 		ID: uuid.New(), CustomerID: customerID,
 		BudgetLimit: 1000, CurrentSpend: 250,
 	}
 	pools := map[uuid.UUID]int64{customerID: 750}
-	SyncRTBBudgetState(context.Background(), store, []*campaignmodel.Campaign{camp}, pools, RtbBudgetSync{})
+	SyncRTBBudgetState(context.Background(), store, []*domain.Campaign{camp}, pools, RtbBudgetSync{})
 
 	assert.Equal(t, int64(750), store.GetBudget(CampaignIDFromUUID(camp.ID)))
 	slot, ok := store.CustomerSlot(CustomerIDFromCustomerUUID(customerID))
@@ -49,7 +49,7 @@ func TestSyncRTBBudgetState_fromRedis(t *testing.T) {
 	campCopy.BudgetLimit = 9_000_000
 	campCopy.CurrentSpend = 0
 
-	SyncRTBBudgetState(ctx, store, []*campaignmodel.Campaign{&campCopy}, nil, RtbBudgetSync{
+	SyncRTBBudgetState(ctx, store, []*domain.Campaign{&campCopy}, nil, RtbBudgetSync{
 		Authority: BudgetAuthorityRTB,
 		Redis:     []redis.UniversalClient{rdb},
 		Sharder:   NewJumpHashSharder(1),

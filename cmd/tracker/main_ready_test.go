@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/config"
 	"espx/internal/ingestion"
 
@@ -17,10 +17,10 @@ import (
 type stubCampaignRegistry struct{}
 
 func (stubCampaignRegistry) Exists(uuid.UUID) bool { return true }
-func (stubCampaignRegistry) Add(uuid.UUID, uuid.UUID, *uuid.UUID, string, campaignmodel.PacingMode, int64, string, int32, int32, []string) {
+func (stubCampaignRegistry) Add(uuid.UUID, uuid.UUID, *uuid.UUID, string, domain.PacingMode, int64, string, int32, int32, []string) {
 }
 func (stubCampaignRegistry) GetCustomerID(uuid.UUID) (uuid.UUID, bool) { return uuid.Nil, true }
-func (stubCampaignRegistry) GetCampaign(uuid.UUID) (*campaignmodel.Campaign, bool) {
+func (stubCampaignRegistry) GetCampaign(uuid.UUID) (*domain.Campaign, bool) {
 	return nil, false
 }
 func (stubCampaignRegistry) Sync(context.Context) (int, error)        { return 0, nil }

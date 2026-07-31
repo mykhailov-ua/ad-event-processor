@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"espx/internal/fraudscoring"
+	"espx/internal/fraud"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/stretchr/testify/assert"
@@ -52,7 +52,7 @@ func TestInsertShadowScores_UsesSinglePrepareBatch(t *testing.T) {
 		scorer:    &mockScorer{scores: []float64{0.1, 0.9}},
 	}
 
-	rows := []fraudscoring.FeatureRow{
+	rows := []fraud.FeatureRow{
 		{IPAddress: "1.2.3.4"},
 		{IPAddress: "5.6.7.8"},
 	}

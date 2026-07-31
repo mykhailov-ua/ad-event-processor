@@ -1,4 +1,4 @@
-.PHONY: fmt gen lint test test-fast test-unit test-integration test-fault test-int test-alloc-gate management-domain-coverage test-full test-resilience test-broker-fault-lab test-sentinel-resilience build release-build proto check-local tier-a fraud-modeling-check check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-bpf openapi-lint openapi-gen check-scripts-layout dev-preflight-smoke perf-gate-smoke edge-phase0
+.PHONY: fmt gen lint test test-fast test-unit test-integration test-fault test-int test-alloc-gate management-domain-coverage test-full test-resilience test-broker-fault-lab test-sentinel-resilience build release-build proto proto-grpc check-local tier-a fraud-modeling-check check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-bpf openapi-lint openapi-gen check-scripts-layout dev-preflight-smoke perf-gate-smoke edge-phase0
 
 fmt:
 	go fmt ./...
@@ -116,3 +116,6 @@ edge-phase0:
 
 proto:
 	bash scripts/ci/gen.sh --proto
+
+proto-grpc:
+	bash scripts/ci/gen.sh --proto --proto-with-grpc

@@ -13,7 +13,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/database"
 	"espx/internal/metrics"
 
@@ -134,8 +134,8 @@ type UnifiedFilter struct {
 	script                   *redis.Script
 	scriptHash               string
 	scriptHashAny            any
-	registry                 campaignmodel.CampaignRegistry
-	repo                     campaignmodel.CampaignRepository
+	registry                 domain.CampaignRegistry
+	repo                     domain.CampaignRepository
 	geo                      GeoProvider
 	geoFloors                sync.Map
 	rateLimit                int
@@ -291,8 +291,8 @@ func parseBidMicro(payload []byte) int64 {
 func NewUnifiedFilter(
 	rdbs []redis.UniversalClient,
 	sharder Sharder,
-	registry campaignmodel.CampaignRegistry,
-	repo campaignmodel.CampaignRepository,
+	registry domain.CampaignRegistry,
+	repo domain.CampaignRepository,
 	rateLimit int,
 	rateLimitWindow time.Duration,
 	dupTTL time.Duration,
@@ -473,7 +473,7 @@ func (f *UnifiedFilter) StartSLASentinel(ctx context.Context, interval time.Dura
 	}()
 }
 
-func (f *UnifiedFilter) checkGeoBidFloor(evt *campaignmodel.Event) error {
+func (f *UnifiedFilter) checkGeoBidFloor(evt *domain.Event) error {
 	country := evt.GeoCountry
 	if country == "" {
 		if evt.IngestGeoResolved {
@@ -499,7 +499,7 @@ func (f *UnifiedFilter) checkGeoBidFloor(evt *campaignmodel.Event) error {
 	return nil
 }
 
-func (f *UnifiedFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
+func (f *UnifiedFilter) Check(ctx context.Context, evt *domain.Event) error {
 	nowNano := monotonicNano()
 	if f.quotaMode == "live" && f.localQuotaCache.IsBlocked(evt.CampaignID, nowNano) {
 		metrics.TrackerLocalQuotaBlockTotal.Inc()
@@ -574,8 +574,8 @@ func (f *UnifiedFilter) Check(ctx context.Context, evt *campaignmodel.Event) err
 
 func (f *UnifiedFilter) runUnifiedLua(
 	ctx context.Context,
-	evt *campaignmodel.Event,
-	campInfo *campaignmodel.Campaign,
+	evt *domain.Event,
+	campInfo *domain.Campaign,
 	amount any,
 	rdb redis.UniversalClient,
 	shard int,
@@ -710,7 +710,7 @@ func (f *UnifiedFilter) runUnifiedLua(
 	}
 
 	isEven := zeroAny
-	if campInfo.PacingMode == campaignmodel.PacingModeEven {
+	if campInfo.PacingMode == domain.PacingModeEven {
 		isEven = oneAny
 	}
 

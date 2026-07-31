@@ -3,10 +3,10 @@ package ingestion
 import (
 	"hash/fnv"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 )
 
-func AssignCohortVariant(salt, subjectID string, variants []campaignmodel.CohortVariant) (variantID string, flags map[string]string) {
+func AssignCohortVariant(salt, subjectID string, variants []domain.CohortVariant) (variantID string, flags map[string]string) {
 	if len(variants) == 0 {
 		return "", nil
 	}

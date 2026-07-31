@@ -11,14 +11,15 @@ import (
 
 	"espx/internal/clickhouse/migrate"
 	"espx/internal/config"
+	"espx/internal/controlplane"
 	"espx/internal/database"
 	"espx/internal/dedup"
-	"espx/internal/fraudscoring"
+	"espx/internal/domain"
+	db "espx/internal/domain/db"
+	"espx/internal/fraud"
 	"espx/internal/health"
 	"espx/internal/ingestion"
-	db "espx/internal/ingestion/sqlc"
 	"espx/internal/licensing"
-	"espx/internal/management"
 	"espx/internal/metrics"
 	"espx/pkg/logger"
 	"espx/pkg/piihash"
@@ -131,14 +132,14 @@ func main() {
 		slog.Info("clickhouse consumer disabled", "ch_consumer", "disabled")
 	}
 
-	notifierClient, notifierErr := management.NewNotifierClient(cfg)
+	notifierClient, closeNotifier, notifierErr := controlplane.TryNotifierClient(ctx, cfg)
 	if notifierErr != nil {
 		slog.Warn("notifier client initialization failed", "error", notifierErr)
 	}
-	if notifierClient != nil {
-		defer notifierClient.Close()
+	if closeNotifier != nil {
+		defer closeNotifier()
 	}
-	opsAlerter := management.NewOpsAlerter(notifierClient, cfg)
+	opsAlerter := controlplane.NewOpsAlerter(notifierClient, cfg)
 	var onEmergencyDrop database.EmergencyDropAlerter
 	if chEnabled && opsAlerter != nil && cfg.CHEmergencyDropPercent > 0 {
 		threshold := cfg.CHEmergencyDropPercent
@@ -187,12 +188,12 @@ func main() {
 		}
 	}
 
-	var fraudScorer fraudscoring.Scorer
+	var fraudScorer fraud.Scorer
 	if cfg.FraudScoringEnabled() {
 		snap, snapErr := licensing.LoadDeploymentSnapshot(ctx, pool)
 		if snapErr == nil && snap.ModuleAllowed(func(f licensing.FeatureSet) bool { return f.MlFraudBoostEnabled() }) {
 			var err error
-			fraudScorer, err = fraudscoring.NewLGBMScorer(cfg.FraudScoring.ModelPath)
+			fraudScorer, err = fraud.NewLGBMScorer(cfg.FraudScoring.ModelPath)
 			if err != nil {
 				slog.Error("failed to initialize fraud scorer for processor micro-batching", "error", err, "path", cfg.FraudScoring.ModelPath)
 				os.Exit(1)
@@ -219,7 +220,7 @@ func main() {
 	var chConsumers []*ingestion.StreamConsumer
 	var brokerConsumers []*ingestion.BrokerStreamConsumer
 	var brokerReconcile *ingestion.BrokerReconcileWorker
-	var budgetDeltaConsumer *ingestion.BudgetDeltaConsumer
+	var budgetDeltaConsumer *controlplane.BudgetDeltaConsumer
 	var syncWorkers []*ingestion.SyncWorker
 
 	var spendSyncProducer *ingestion.SpendSyncProducer
@@ -307,7 +308,7 @@ func main() {
 			}
 
 			if fraudScorer != nil {
-				mb := fraudscoring.NewMicroBatcher(rdb, fraudScorer)
+				mb := fraud.NewMicroBatcher(rdb, fraudScorer)
 				go mb.Start(consumerCtx)
 				cc.SetOnMessageProcessed(mb.Enqueue)
 			}
@@ -425,9 +426,9 @@ func main() {
 		if brokerRedisURL == "" && len(cfg.RedisAddrs) > 0 {
 			brokerRedisURL = "redis://" + cfg.RedisAddrs[0] + "/0"
 		}
-		budgetDeltaConsumer = ingestion.NewBudgetDeltaConsumer(
-			ingestion.NewBudgetDeltaAggregator(),
-			ingestion.BrokerConsumerConfig{
+		budgetDeltaConsumer = controlplane.NewBudgetDeltaConsumer(
+			domain.NewBudgetDeltaAggregator(),
+			domain.BrokerConsumerConfig{
 				BrokerAddr: cfg.Broker.URL,
 				RedisURL:   brokerRedisURL,
 				Topic:      cfg.BudgetDeltaTopic,

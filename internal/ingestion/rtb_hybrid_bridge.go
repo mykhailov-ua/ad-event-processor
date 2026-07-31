@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"math"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/rtb"
 
 	"github.com/google/uuid"
@@ -62,7 +62,7 @@ func RtbCampaignInputFromHybrid(
 const CTRPPMUnit = 1_000_000
 
 func BuildRtbCatalogRowsFromHybrid(
-	campaigns []*campaignmodel.Campaign,
+	campaigns []*domain.Campaign,
 	metaByID map[uuid.UUID]*CampaignMeta,
 	inputs map[uuid.UUID]RtbCampaignInput,
 ) []rtb.CampaignData {

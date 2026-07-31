@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/database"
 
 	"github.com/google/uuid"
@@ -28,7 +28,7 @@ func TestUnifiedFilter_migrationFenceRejectsDebit(t *testing.T) {
 	seedCampaignBudget(t, ctx, rdb, campID)
 	require.NoError(t, rdb.Set(ctx, MigrationFenceRedisKey(campID), 1, 0).Err())
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		Type:       "click",
 		IP:         "203.0.113.50",
 		UserID:     "fence-u1",
@@ -59,7 +59,7 @@ func TestUnifiedFilter_budgetFrozenRejectsDebit(t *testing.T) {
 	seedCampaignBudget(t, ctx, rdb, campID)
 	require.NoError(t, SetBudgetFrozen(ctx, rdb, campID))
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		Type:       "click",
 		IP:         "203.0.113.51",
 		UserID:     "freeze-u1",
@@ -130,7 +130,7 @@ func TestFault_MigrationFenceConcurrentDebit(t *testing.T) {
 	for range workers {
 		go func() {
 			defer wg.Done()
-			evt := &campaignmodel.Event{
+			evt := &domain.Event{
 				Type:       "click",
 				IP:         "203.0.113.52",
 				UserID:     "fence-race",

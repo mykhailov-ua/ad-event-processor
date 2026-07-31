@@ -12,9 +12,9 @@ import (
 
 	"espx/internal/config"
 	"espx/internal/ingestion"
-	ads_db "espx/internal/ingestion/sqlc"
-	"espx/internal/management"
-	mgmt_pb "espx/internal/management/pb"
+	ads_db "espx/internal/domain/db"
+	"espx/internal/controlplane"
+	mgmt_pb "espx/internal/controlplane/pb"
 	"espx/internal/payment/db"
 
 	"github.com/google/uuid"
@@ -26,7 +26,6 @@ import (
 	rediscontainer "github.com/testcontainers/testcontainers-go/modules/redis"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 const paymentContainerStopTimeout = 10 * time.Second
@@ -37,7 +36,7 @@ type paymentFaultInfra struct {
 	PGContainer    *postgres.PostgresContainer
 	RedisContainer testcontainers.Container
 	Cfg            *config.Config
-	MgmtSvc        *management.Service
+	MgmtSvc        *controlplane.Service
 	SettlementLis  net.Listener
 	SettlementGRPC *grpc.Server
 }
@@ -95,8 +94,8 @@ func setupPaymentFaultInfra(t *testing.T) (*paymentFaultInfra, func()) {
 	}
 
 	rdbs := []redis.UniversalClient{rdb}
-	mgmtSvc := management.NewService(pool, rdbs, ingestion.NewStaticSlotSharder(len(rdbs)), cfg)
-	settleHandler := management.NewSettlementHandler(mgmtSvc, cfg)
+	mgmtSvc := controlplane.NewService(pool, rdbs, ingestion.NewStaticSlotSharder(len(rdbs)), cfg)
+	settleHandler := controlplane.NewSettlementHandler(mgmtSvc, cfg)
 
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
@@ -166,7 +165,7 @@ func (infra *paymentFaultInfra) restartSettlementGRPC(t *testing.T) {
 	require.NoError(t, err)
 	infra.SettlementLis = lis
 
-	settleHandler := management.NewSettlementHandler(infra.MgmtSvc, infra.Cfg)
+	settleHandler := controlplane.NewSettlementHandler(infra.MgmtSvc, infra.Cfg)
 	grpcServer := grpc.NewServer()
 	mgmt_pb.RegisterSettlementServiceServer(grpcServer, settleHandler)
 	go func() { _ = grpcServer.Serve(lis) }()
@@ -359,12 +358,5 @@ func itoaPaymentFault(n int) string {
 }
 
 func newOutboxWorkerForFault(infra *paymentFaultInfra) *OutboxWorker {
-	w := NewOutboxWorker(infra.Pool, infra.Cfg)
-	target := "127.0.0.1:" + infra.Cfg.SettlementServerPort
-	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err == nil {
-		w.conn = conn
-		w.client = mgmt_pb.NewSettlementServiceClient(conn)
-	}
-	return w
+	return NewOutboxWorker(infra.Pool, infra.Cfg)
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/rtb"
 )
 
@@ -20,10 +20,10 @@ func TestRtbCampaignInputFromHybrid_ctrPPM(t *testing.T) {
 
 func TestBuildRtbCatalogRowsFromHybrid_overridesBid(t *testing.T) {
 	id := uuid.New()
-	camp := &campaignmodel.Campaign{ID: id, BudgetLimit: 1000}
+	camp := &domain.Campaign{ID: id, BudgetLimit: 1000}
 	meta := &CampaignMeta{BidMicro: 250, CTR: 0.1}
 	rows := BuildRtbCatalogRowsFromHybrid(
-		[]*campaignmodel.Campaign{camp},
+		[]*domain.Campaign{camp},
 		map[uuid.UUID]*CampaignMeta{id: meta},
 		map[uuid.UUID]RtbCampaignInput{id: {GeoHash: 7, DeviceMask: 1, CategoryMask: 1, PacingOpen: 1}},
 	)

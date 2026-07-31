@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/adminapi"
+	"espx/internal/controlplane/adminapi"
 	"espx/internal/costsync"
 	"espx/internal/testutil"
 

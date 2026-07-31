@@ -1,7 +1,7 @@
 package ingestion
 
 import (
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/pkg/piihash"
 )
 
@@ -13,7 +13,7 @@ type chPIIFields struct {
 	saltVersion uint8
 }
 
-func hashEventPII(h *piihash.Hasher, e *campaignmodel.Event) chPIIFields {
+func hashEventPII(h *piihash.Hasher, e *domain.Event) chPIIFields {
 	if h == nil || e == nil {
 		return chPIIFields{}
 	}

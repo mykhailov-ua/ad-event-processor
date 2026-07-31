@@ -1,12 +1,12 @@
 # fraud_modeling
 
-Offline fraud ML: train artifacts, calibrate policy, run benchmarks. Production inference is Go (`cmd/fraud-scorer`, `internal/fraudscoring`).
+Offline fraud ML: train artifacts, calibrate policy, run benchmarks. Production inference is Go (`cmd/fraud-scorer`, `internal/fraud`).
 
 ## Modules
 
 | File | Purpose |
 |------|---------|
-| `feature_spec.py` | 16-dim vector; must match `internal/fraudscoring/feature_spec.go` |
+| `feature_spec.py` | 16-dim vector; must match `internal/fraud/feature_spec.go` |
 | `scoring_policy.py` | Post-ML heuristics and tier mapping |
 | `policy_config.py` | `FRAUD_POLICY_*` and `metadata.json` policy |
 | `policy_calibrate.py` | Policy grid search after bootstrap |
@@ -119,7 +119,7 @@ Feedback loop env: `DB_DSN` (export labels from PG), `FRAUD_MANUAL_LABELS` (fit 
 
 ## Feature contract change
 
-1. `feature_spec.py` + `internal/fraudscoring/feature_spec.go`
+1. `feature_spec.py` + `internal/fraud/feature_spec.go`
 2. `python3 fraud_modeling/artifact_bootstrap.py bootstrap && python3 fraud_modeling/fixture_generator.py`
 3. `python3 fraud_modeling/artifact_bootstrap.py validate --model var/fraudscore/artifacts/model.txt`
-4. `go test ./internal/fraudscoring/...`
+4. `go test ./internal/fraud/...`

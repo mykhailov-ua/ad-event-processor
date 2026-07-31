@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -39,14 +39,14 @@ func TestFault_ClickHouseOutage_SpoolsBeforeAck(t *testing.T) {
 	store := NewClickHouseStore(conn, time.Second, "", DefaultCHSpoolConfig(), nil)
 	store.SetSpool(spool)
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		ClickID:    "ch-outage-" + uuid.NewString(),
 		CampaignID: uuid.New(),
 		Type:       "click",
 		CreatedAt:  time.Now().UTC(),
 	}
-	ctx := context.WithValue(context.Background(), campaignmodel.DeduplicationTokenKey, "outage-token")
-	err = store.StoreBatch(ctx, []*campaignmodel.Event{evt})
+	ctx := context.WithValue(context.Background(), domain.DeduplicationTokenKey, "outage-token")
+	err = store.StoreBatch(ctx, []*domain.Event{evt})
 	require.NoError(t, err)
 
 	records, scanErr := spool.Scan()
@@ -66,18 +66,18 @@ func TestFault_ClickHouseOutage_PELBehavior(t *testing.T) {
 	store := NewClickHouseStore(failConn, 50*time.Millisecond, "", DefaultCHSpoolConfig(), nil)
 	store.SetSpool(spool)
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		ClickID:    "pel-" + uuid.NewString(),
 		CampaignID: uuid.New(),
 		Type:       "impression",
 		CreatedAt:  time.Now().UTC(),
 	}
 
-	err = store.StoreBatch(context.Background(), []*campaignmodel.Event{evt})
+	err = store.StoreBatch(context.Background(), []*domain.Event{evt})
 	require.NoError(t, err, "spool must make StoreBatch durable for XAck")
 
 	storeNoSpool := NewClickHouseStore(failConn, 50*time.Millisecond, "", DefaultCHSpoolConfig(), nil)
-	err = storeNoSpool.StoreBatch(context.Background(), []*campaignmodel.Event{evt})
+	err = storeNoSpool.StoreBatch(context.Background(), []*domain.Event{evt})
 	require.Error(t, err)
 	assert.True(t, strings.Contains(err.Error(), "clickhouse unavailable"))
 }
@@ -91,15 +91,15 @@ func TestClickHouseStore_RecoveryAfterOutage(t *testing.T) {
 	store := NewClickHouseStore(conn, time.Second, "", DefaultCHSpoolConfig(), nil)
 	store.SetSpool(spool)
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		ClickID:    "recover-" + uuid.NewString(),
 		CampaignID: uuid.New(),
 		Type:       "click",
 		CreatedAt:  time.Unix(1_700_001_000, 0).UTC(),
 	}
 	token := "recover-token"
-	ctx := context.WithValue(context.Background(), campaignmodel.DeduplicationTokenKey, token)
-	require.NoError(t, store.StoreBatch(ctx, []*campaignmodel.Event{evt}))
+	ctx := context.WithValue(context.Background(), domain.DeduplicationTokenKey, token)
+	require.NoError(t, store.StoreBatch(ctx, []*domain.Event{evt}))
 
 	var prepared []string
 	conn.prepareBatchFn = func(ctx context.Context, query string) (driver.Batch, error) {

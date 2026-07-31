@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -55,7 +55,7 @@ func (m *mockConn) Close() error {
 }
 
 func TestClickHouseStore_StoreBatch_DeduplicationTokenFromContext(t *testing.T) {
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		ClickID:    "click-100",
 		CampaignID: uuid.New(),
 		Type:       "impression",
@@ -73,8 +73,8 @@ func TestClickHouseStore_StoreBatch_DeduplicationTokenFromContext(t *testing.T) 
 
 	store := NewClickHouseStore(connMock, 100*time.Millisecond, "", DefaultCHSpoolConfig(), nil)
 
-	ctx := context.WithValue(context.Background(), campaignmodel.DeduplicationTokenKey, "my-custom-test-token")
-	err := store.StoreBatch(ctx, []*campaignmodel.Event{evt})
+	ctx := context.WithValue(context.Background(), domain.DeduplicationTokenKey, "my-custom-test-token")
+	err := store.StoreBatch(ctx, []*domain.Event{evt})
 	assert.NoError(t, err)
 
 	assert.Len(t, preparedQueries, 1)
@@ -83,13 +83,13 @@ func TestClickHouseStore_StoreBatch_DeduplicationTokenFromContext(t *testing.T) 
 }
 
 func TestClickHouseStore_StoreBatch_DeterministicTokenGeneration(t *testing.T) {
-	evt1 := &campaignmodel.Event{
+	evt1 := &domain.Event{
 		ClickID:    "click-101",
 		CampaignID: uuid.New(),
 		Type:       "impression",
 		CreatedAt:  time.Unix(1600000000, 0),
 	}
-	evt2 := &campaignmodel.Event{
+	evt2 := &domain.Event{
 		ClickID:    "click-102",
 		CampaignID: uuid.New(),
 		Type:       "click",
@@ -107,7 +107,7 @@ func TestClickHouseStore_StoreBatch_DeterministicTokenGeneration(t *testing.T) {
 
 	store := NewClickHouseStore(connMock, 100*time.Millisecond, "", DefaultCHSpoolConfig(), nil)
 
-	err := store.StoreBatch(context.Background(), []*campaignmodel.Event{evt1, evt2})
+	err := store.StoreBatch(context.Background(), []*domain.Event{evt1, evt2})
 	assert.NoError(t, err)
 
 	assert.Len(t, preparedQueries, 2)
@@ -118,7 +118,7 @@ func TestClickHouseStore_StoreBatch_DeterministicTokenGeneration(t *testing.T) {
 	assert.Contains(t, q2, "SETTINGS insert_deduplicate=1")
 
 	preparedQueries = nil
-	err = store.StoreBatch(context.Background(), []*campaignmodel.Event{evt1, evt2})
+	err = store.StoreBatch(context.Background(), []*domain.Event{evt1, evt2})
 	assert.NoError(t, err)
 
 	assert.Len(t, preparedQueries, 2)
@@ -127,13 +127,13 @@ func TestClickHouseStore_StoreBatch_DeterministicTokenGeneration(t *testing.T) {
 }
 
 func TestClickHouseStore_StoreBatch_PartialFailureRetry(t *testing.T) {
-	evt1 := &campaignmodel.Event{
+	evt1 := &domain.Event{
 		ClickID:    "click-201",
 		CampaignID: uuid.New(),
 		Type:       "impression",
 		CreatedAt:  time.Now(),
 	}
-	evt2 := &campaignmodel.Event{
+	evt2 := &domain.Event{
 		ClickID:    "click-202",
 		CampaignID: uuid.New(),
 		Type:       "click",
@@ -160,7 +160,7 @@ func TestClickHouseStore_StoreBatch_PartialFailureRetry(t *testing.T) {
 
 	store := NewClickHouseStore(connMock, 100*time.Millisecond, "", DefaultCHSpoolConfig(), nil)
 
-	err := store.StoreBatch(context.Background(), []*campaignmodel.Event{evt1, evt2})
+	err := store.StoreBatch(context.Background(), []*domain.Event{evt1, evt2})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "clickhouse connection refused on clicks")
 
@@ -170,7 +170,7 @@ func TestClickHouseStore_StoreBatch_PartialFailureRetry(t *testing.T) {
 	storeWithSpool := NewClickHouseStore(connMock, 100*time.Millisecond, "", DefaultCHSpoolConfig(), nil)
 	storeWithSpool.SetSpool(spool)
 
-	err = storeWithSpool.StoreBatch(context.Background(), []*campaignmodel.Event{evt1, evt2})
+	err = storeWithSpool.StoreBatch(context.Background(), []*domain.Event{evt1, evt2})
 	assert.NoError(t, err)
 
 	records, scanErr := spool.Scan()
@@ -179,7 +179,7 @@ func TestClickHouseStore_StoreBatch_PartialFailureRetry(t *testing.T) {
 }
 
 func TestClickHouseStore_StoreBatch_ContextCancellationDuringBackoff(t *testing.T) {
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		ClickID:    "click-301",
 		CampaignID: uuid.New(),
 		Type:       "impression",
@@ -197,7 +197,7 @@ func TestClickHouseStore_StoreBatch_ContextCancellationDuringBackoff(t *testing.
 
 	store := NewClickHouseStore(connMock, 100*time.Millisecond, "", DefaultCHSpoolConfig(), nil)
 
-	err := store.StoreBatch(ctx, []*campaignmodel.Event{evt})
+	err := store.StoreBatch(ctx, []*domain.Event{evt})
 	assert.Error(t, err)
 	assert.True(t, errors.Is(err, context.Canceled) || strings.Contains(err.Error(), "context canceled"))
 }

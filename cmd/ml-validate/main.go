@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"espx/internal/fraudscoring"
+	"espx/internal/fraud"
 )
 
 type featureFixture struct {
@@ -29,12 +29,12 @@ type fixtureRow struct {
 }
 
 func checkModel(modelPath string) error {
-	scorer, err := fraudscoring.NewLGBMScorer(modelPath)
+	scorer, err := fraud.NewLGBMScorer(modelPath)
 	if err != nil {
 		return fmt.Errorf("load model: %w", err)
 	}
-	if scorer.Dims() != fraudscoring.Dims() {
-		return fmt.Errorf("model NFeatures=%d want %d", scorer.Dims(), fraudscoring.Dims())
+	if scorer.Dims() != fraud.Dims() {
+		return fmt.Errorf("model NFeatures=%d want %d", scorer.Dims(), fraud.Dims())
 	}
 	return nil
 }
@@ -64,7 +64,7 @@ func validateFixtures(fixturesDir string) error {
 			continue
 		}
 
-		row := fraudscoring.FeatureRow{
+		row := fraud.FeatureRow{
 			Events:           fixture.Row.Events,
 			Clicks:           fixture.Row.Clicks,
 			SpendMicro:       fixture.Row.SpendMicro,
@@ -122,5 +122,5 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("ml-validate: OK model=%s dims=%d fixtures=%s\n", modelPath, fraudscoring.Dims(), fixturesDir)
+	fmt.Printf("ml-validate: OK model=%s dims=%d fixtures=%s\n", modelPath, fraud.Dims(), fixturesDir)
 }

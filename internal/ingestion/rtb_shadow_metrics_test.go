@@ -3,7 +3,7 @@ package ingestion
 import (
 	"testing"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/metrics"
 	"espx/internal/rtb"
 	"github.com/google/uuid"
@@ -19,14 +19,14 @@ func TestRecordRtbShadowAuction_winnerMismatch(t *testing.T) {
 	winnerID := uuid.New()
 	geo := GeoHashFromCountry("US")
 	catalog.SyncActiveCampaigns(
-		[]*campaignmodel.Campaign{{ID: winnerID, BudgetLimit: 5000, TargetCountries: map[string]struct{}{"US": {}}}},
+		[]*domain.Campaign{{ID: winnerID, BudgetLimit: 5000, TargetCountries: map[string]struct{}{"US": {}}}},
 		map[uuid.UUID]RtbCampaignInput{
 			winnerID: {BidMicro: 100, DeviceMask: 1, CategoryMask: 1, GeoHash: geo, Weight: 1},
 		},
 	)
 
 	clientID := uuid.New()
-	evt := &campaignmodel.Event{CampaignID: clientID, IP: "8.8.8.8"}
+	evt := &domain.Event{CampaignID: clientID, IP: "8.8.8.8"}
 	proc := trackProcessor{
 		rtbCatalog: catalog,
 		rtbMode:    rtbModeShadow,
@@ -48,13 +48,13 @@ func TestRecordRtbShadowAuction_winnerMatch(t *testing.T) {
 	winnerID := uuid.New()
 	geo := GeoHashFromCountry("US")
 	catalog.SyncActiveCampaigns(
-		[]*campaignmodel.Campaign{{ID: winnerID, BudgetLimit: 5000, TargetCountries: map[string]struct{}{"US": {}}}},
+		[]*domain.Campaign{{ID: winnerID, BudgetLimit: 5000, TargetCountries: map[string]struct{}{"US": {}}}},
 		map[uuid.UUID]RtbCampaignInput{
 			winnerID: {BidMicro: 100, DeviceMask: 1, CategoryMask: 1, GeoHash: geo, Weight: 1},
 		},
 	)
 
-	evt := &campaignmodel.Event{CampaignID: winnerID, IP: "8.8.8.8"}
+	evt := &domain.Event{CampaignID: winnerID, IP: "8.8.8.8"}
 	proc := trackProcessor{
 		rtbCatalog: catalog,
 		rtbMode:    rtbModeShadow,
@@ -73,7 +73,7 @@ func TestRecordRtbShadowAuction_noBid(t *testing.T) {
 	catalog := NewRtbCatalog(store, BudgetAuthorityShadow)
 	catalog.SyncActiveCampaigns(nil, nil)
 
-	evt := &campaignmodel.Event{CampaignID: uuid.New()}
+	evt := &domain.Event{CampaignID: uuid.New()}
 	proc := trackProcessor{rtbCatalog: catalog, rtbMode: rtbModeShadow}
 
 	before := testutil.ToFloat64(metrics.RtbShadowNoBidTotal.WithLabelValues(rtb.NoBidEmptyShard.String()))
@@ -88,7 +88,7 @@ func TestApplyRtbAuction_shadow_zeroAlloc(t *testing.T) {
 
 	id := uuid.New()
 	catalog.SyncActiveCampaigns(
-		[]*campaignmodel.Campaign{{ID: id, BudgetLimit: 5000}},
+		[]*domain.Campaign{{ID: id, BudgetLimit: 5000}},
 		map[uuid.UUID]RtbCampaignInput{
 			id: {BidMicro: 100, DeviceMask: 1, CategoryMask: 1, GeoHash: 0, Weight: 1},
 		},
@@ -98,7 +98,7 @@ func TestApplyRtbAuction_shadow_zeroAlloc(t *testing.T) {
 		rtbCatalog: catalog,
 		rtbMode:    rtbModeShadow,
 	}
-	evt := &campaignmodel.Event{CampaignID: id}
+	evt := &domain.Event{CampaignID: id}
 
 	for i := 0; i < 16; i++ {
 		_, _ = applyRtbAuction(proc, evt, nil)

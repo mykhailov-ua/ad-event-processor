@@ -8,13 +8,15 @@ import (
 	"syscall"
 
 	"espx/internal/config"
-	"espx/internal/management"
+	"espx/internal/controlplane"
+	"espx/internal/ingestion"
 	"espx/pkg/runtimeautotune"
 )
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
+	slog.Warn("standalone binary deprecated; use cmd/control monolith")
 
 	cfg, err := config.Load()
 	if err != nil {
@@ -26,7 +28,9 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	if err := management.Serve(ctx, cfg); err != nil && err != context.Canceled {
+	if err := controlplane.ServeWithOptions(ctx, cfg, controlplane.ServeOptions{
+		RtbBidShadeSim: ingestion.RunRtbBidShadeSim,
+	}); err != nil && err != context.Canceled {
 		slog.Error("management server stopped", "error", err)
 		os.Exit(1)
 	}

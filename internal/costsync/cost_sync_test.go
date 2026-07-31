@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	db "espx/internal/ingestion/sqlc"
+	db "espx/internal/domain/db"
 	"espx/internal/testutil"
 
 	"github.com/google/uuid"

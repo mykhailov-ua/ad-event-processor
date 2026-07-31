@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"testing"
 
-	"espx/internal/fraudscoring"
+	"espx/internal/fraud"
 
 	"github.com/stretchr/testify/require"
 )
@@ -31,7 +31,7 @@ func TestReplayFixturesCSV(t *testing.T) {
 	scorer, err := loadScorer(opts.modelPath)
 	require.NoError(t, err)
 
-	featureRows := make([]fraudscoring.FeatureRow, len(rows))
+	featureRows := make([]fraud.FeatureRow, len(rows))
 	for i := range rows {
 		featureRows[i] = rows[i].FeatureRow
 	}

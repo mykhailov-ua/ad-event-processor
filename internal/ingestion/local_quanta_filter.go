@@ -3,7 +3,7 @@ package ingestion
 import (
 	"context"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/metrics"
 
 	"github.com/google/uuid"
@@ -34,7 +34,7 @@ func (f *UnifiedFilter) localQuantaActive() bool {
 	return f.localQuotaMode == "shadow" || f.localQuotaMode == "live"
 }
 
-func (f *UnifiedFilter) localQuantaEligible(evt *campaignmodel.Event, campInfo *campaignmodel.Campaign) bool {
+func (f *UnifiedFilter) localQuantaEligible(evt *domain.Event, campInfo *domain.Campaign) bool {
 	if f.localQuantaLedger == nil || !f.localQuantaActive() {
 		return false
 	}
@@ -55,8 +55,8 @@ func (f *UnifiedFilter) localQuantaEligible(evt *campaignmodel.Event, campInfo *
 
 func (f *UnifiedFilter) checkLocalQuanta(
 	ctx context.Context,
-	evt *campaignmodel.Event,
-	campInfo *campaignmodel.Campaign,
+	evt *domain.Event,
+	campInfo *domain.Campaign,
 	amountMicro int64,
 ) (handled bool, err error) {
 	if !f.localQuantaEligible(evt, campInfo) {

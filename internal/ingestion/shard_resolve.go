@@ -1,13 +1,13 @@
 package ingestion
 
 import (
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/database"
 
 	"github.com/google/uuid"
 )
 
-func (f *UnifiedFilter) resolveDebitShard(campaignID uuid.UUID, userID string, campInfo *campaignmodel.Campaign) (int, error) {
+func (f *UnifiedFilter) resolveDebitShard(campaignID uuid.UUID, userID string, campInfo *domain.Campaign) (int, error) {
 	shard := f.sharder.GetShard(campaignID)
 	if campInfo != nil && campInfo.HasTriplet {
 		hash := ComputeCompositeHashUUID(campaignID, []byte(userID))

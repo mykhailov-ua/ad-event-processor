@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"espx/internal/billing"
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/ingestion"
-	db "espx/internal/ingestion/sqlc"
+	db "espx/internal/domain/db"
 	"espx/internal/licensing"
 	"espx/internal/testutil"
 
@@ -236,7 +236,7 @@ func TestIntegration_LicensingAndSubscriptions(t *testing.T) {
 		sharder := ingestion.NewStaticSlotSharder(1)
 		filter := ingestion.NewEntitlementsFilter(registry, sharder, []redis.UniversalClient{rdb})
 
-		evt := &campaignmodel.Event{
+		evt := &domain.Event{
 			CampaignID: campaignID,
 			Type:       "impression",
 		}

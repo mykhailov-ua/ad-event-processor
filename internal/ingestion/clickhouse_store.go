@@ -12,14 +12,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/metrics"
 	"espx/pkg/piihash"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 )
 
-func isFraudTelemetry(e *campaignmodel.Event) bool {
+func isFraudTelemetry(e *domain.Event) bool {
 	if e == nil {
 		return false
 	}
@@ -31,18 +31,18 @@ func isFraudTelemetry(e *campaignmodel.Event) bool {
 
 const fraudAggregateEventType = "fraud_aggregate"
 
-func isFraudAggregateSpike(e *campaignmodel.Event) bool {
+func isFraudAggregateSpike(e *domain.Event) bool {
 	return e != nil && e.Type == fraudAggregateEventType
 }
 
-func fraudGhostFlag(e *campaignmodel.Event) uint8 {
+func fraudGhostFlag(e *domain.Event) uint8 {
 	if e.GhostEvent {
 		return 1
 	}
 	return 0
 }
 
-func fraudAggregateFields(e *campaignmodel.Event) (uint64, uint32) {
+func fraudAggregateFields(e *domain.Event) (uint64, uint32) {
 	var count uint64
 	var windowMs uint32
 	if e.ClickID != "" {
@@ -60,7 +60,7 @@ func fraudAggregateFields(e *campaignmodel.Event) (uint64, uint32) {
 
 var slicePool = sync.Pool{
 	New: func() any {
-		s := make([]*campaignmodel.Event, 0, 20000)
+		s := make([]*domain.Event, 0, 20000)
 		return &s
 	},
 }
@@ -98,7 +98,7 @@ func NewClickHouseStore(conn driver.Conn, writeTimeout time.Duration, spoolDir s
 	return chStore
 }
 
-func (chStore *ClickHouseStore) StoreBatch(ctx context.Context, events []*campaignmodel.Event) error {
+func (chStore *ClickHouseStore) StoreBatch(ctx context.Context, events []*domain.Event) error {
 	if len(events) == 0 {
 		return nil
 	}
@@ -185,17 +185,17 @@ func (chStore *ClickHouseStore) replaySpoolOnce() {
 
 	rec := records[0]
 	ctx, cancel := context.WithTimeout(chStore.ctx, chStore.writeTimeout)
-	ctx = context.WithValue(ctx, campaignmodel.DeduplicationTokenKey, rec.DedupToken)
+	ctx = context.WithValue(ctx, domain.DeduplicationTokenKey, rec.DedupToken)
 	insertErr := chStore.insertToClickHouse(ctx, rec.Events)
 	cancel()
 	if insertErr != nil {
 		for _, e := range rec.Events {
-			campaignmodel.EventPool.Put(e)
+			domain.EventPool.Put(e)
 		}
 		return
 	}
 	for _, e := range rec.Events {
-		campaignmodel.EventPool.Put(e)
+		domain.EventPool.Put(e)
 	}
 	if err := chStore.spool.ReleaseRecord(rec); err != nil {
 		slog.Error("failed to release ch spool record", "error", err, "offset", rec.EndOffset)
@@ -218,17 +218,17 @@ func (chStore *ClickHouseStore) RecoverSpool(ctx context.Context) error {
 		}
 		rec := records[0]
 		replayCtx, cancel := context.WithTimeout(ctx, chStore.writeTimeout)
-		replayCtx = context.WithValue(replayCtx, campaignmodel.DeduplicationTokenKey, rec.DedupToken)
+		replayCtx = context.WithValue(replayCtx, domain.DeduplicationTokenKey, rec.DedupToken)
 		insertErr := chStore.insertToClickHouse(replayCtx, rec.Events)
 		cancel()
 		if insertErr != nil {
 			for _, e := range rec.Events {
-				campaignmodel.EventPool.Put(e)
+				domain.EventPool.Put(e)
 			}
 			return insertErr
 		}
 		for _, e := range rec.Events {
-			campaignmodel.EventPool.Put(e)
+			domain.EventPool.Put(e)
 		}
 		if err := chStore.spool.ReleaseRecord(rec); err != nil {
 			return err
@@ -237,8 +237,8 @@ func (chStore *ClickHouseStore) RecoverSpool(ctx context.Context) error {
 	}
 }
 
-func (chStore *ClickHouseStore) getDeduplicationToken(ctx context.Context, events []*campaignmodel.Event) string {
-	if token, ok := ctx.Value(campaignmodel.DeduplicationTokenKey).(string); ok && token != "" {
+func (chStore *ClickHouseStore) getDeduplicationToken(ctx context.Context, events []*domain.Event) string {
+	if token, ok := ctx.Value(domain.DeduplicationTokenKey).(string); ok && token != "" {
 		return token
 	}
 	if len(events) == 0 {
@@ -254,7 +254,7 @@ func (chStore *ClickHouseStore) getDeduplicationToken(ctx context.Context, event
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, evts []*campaignmodel.Event, isFraud bool) error {
+func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, evts []*domain.Event, isFraud bool) error {
 	start := time.Now()
 
 	token := chStore.getDeduplicationToken(ctx, evts)
@@ -333,14 +333,14 @@ func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, e
 	return nil
 }
 
-func (chStore *ClickHouseStore) insertToClickHouse(ctx context.Context, events []*campaignmodel.Event) error {
+func (chStore *ClickHouseStore) insertToClickHouse(ctx context.Context, events []*domain.Event) error {
 	start := time.Now()
 
-	pImps := slicePool.Get().(*[]*campaignmodel.Event)
-	pClicks := slicePool.Get().(*[]*campaignmodel.Event)
-	pConvs := slicePool.Get().(*[]*campaignmodel.Event)
-	pFraud := slicePool.Get().(*[]*campaignmodel.Event)
-	pAgg := slicePool.Get().(*[]*campaignmodel.Event)
+	pImps := slicePool.Get().(*[]*domain.Event)
+	pClicks := slicePool.Get().(*[]*domain.Event)
+	pConvs := slicePool.Get().(*[]*domain.Event)
+	pFraud := slicePool.Get().(*[]*domain.Event)
+	pAgg := slicePool.Get().(*[]*domain.Event)
 
 	defer func() {
 		for i := range *pImps {
@@ -414,7 +414,7 @@ func (chStore *ClickHouseStore) insertToClickHouse(ctx context.Context, events [
 
 	*pImps, *pClicks, *pConvs, *pFraud, *pAgg = imps, clicks, convs, fraud, agg
 
-	insert := func(table string, evts []*campaignmodel.Event, isFraud bool) error {
+	insert := func(table string, evts []*domain.Event, isFraud bool) error {
 		if len(evts) == 0 {
 			return nil
 		}

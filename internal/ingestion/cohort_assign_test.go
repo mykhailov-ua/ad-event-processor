@@ -3,12 +3,12 @@ package ingestion
 import (
 	"testing"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 )
 
 func TestAssignCohortVariant_Stable(t *testing.T) {
 	t.Parallel()
-	variants := []campaignmodel.CohortVariant{
+	variants := []domain.CohortVariant{
 		{ID: "control", Weight: 50},
 		{ID: "treatment", Weight: 50},
 	}

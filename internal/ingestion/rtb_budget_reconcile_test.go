@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"espx/internal/campaignmodel"
-	"espx/internal/ingestion/sqlc"
+	"espx/internal/domain"
+	"espx/internal/domain/db"
 	"espx/internal/metrics"
 	"espx/internal/rtb"
 	"github.com/google/uuid"
@@ -82,7 +82,7 @@ func TestApplyRtbAuction_pacingNoBidRejectKind(t *testing.T) {
 	id := uuid.New()
 	geo := GeoHashFromCountry("US")
 	catalog.SyncActiveCampaigns(
-		[]*campaignmodel.Campaign{{ID: id, BudgetLimit: 5000}},
+		[]*domain.Campaign{{ID: id, BudgetLimit: 5000}},
 		map[uuid.UUID]RtbCampaignInput{
 			id: {
 				BidMicro: 100, DeviceMask: 1, CategoryMask: 1, GeoHash: geo, Weight: 1,
@@ -92,7 +92,7 @@ func TestApplyRtbAuction_pacingNoBidRejectKind(t *testing.T) {
 	)
 
 	proc := trackProcessor{rtbCatalog: catalog, rtbMode: rtbModeLive, ingestGeo: &staticGeoProvider{country: "US"}}
-	evt := &campaignmodel.Event{CampaignID: uuid.New(), IP: "8.8.8.8"}
+	evt := &domain.Event{CampaignID: uuid.New(), IP: "8.8.8.8"}
 	ensureIngestGeo(proc.ingestGeo, evt)
 
 	out, handled := applyRtbAuction(proc, evt, nil)

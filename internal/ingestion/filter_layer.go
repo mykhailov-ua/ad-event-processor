@@ -3,7 +3,7 @@ package ingestion
 import (
 	"context"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 
 	redis "github.com/redis/go-redis/v9"
 )
@@ -38,7 +38,7 @@ func decideFraudLayer(acc *fraudAccumulator, tier FraudTier) FraudLayer {
 	return FraudLayerNone
 }
 
-func applyFraudLayerDecision(evt *campaignmodel.Event, acc *fraudAccumulator, camp *campaignmodel.Campaign, boost uint8) (FraudLayer, error) {
+func applyFraudLayerDecision(evt *domain.Event, acc *fraudAccumulator, camp *domain.Campaign, boost uint8) (FraudLayer, error) {
 	if evt == nil {
 		return FraudLayerNone, nil
 	}
@@ -83,7 +83,7 @@ func NewFraudBlacklistFilter(rdbs []redis.UniversalClient) *FraudBlacklistFilter
 	return &FraudBlacklistFilter{rdbs: rdbs}
 }
 
-func (f *FraudBlacklistFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
+func (f *FraudBlacklistFilter) Check(ctx context.Context, evt *domain.Event) error {
 	if f == nil || evt == nil || evt.IP == "" {
 		return nil
 	}

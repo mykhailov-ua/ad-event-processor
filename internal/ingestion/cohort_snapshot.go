@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"espx/internal/campaignmodel"
-	db "espx/internal/ingestion/sqlc"
+	"espx/internal/domain"
+	db "espx/internal/domain/db"
 
 	"github.com/google/uuid"
 )
@@ -19,7 +19,7 @@ type cohortVariantDTO struct {
 }
 
 type cohortRegistrySnapshot struct {
-	byID map[uuid.UUID]campaignmodel.ExperimentCohort
+	byID map[uuid.UUID]domain.ExperimentCohort
 }
 
 func (r *Registry) SyncCohorts(ctx context.Context) error {
@@ -36,7 +36,7 @@ func (r *Registry) SyncCohorts(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	byID := make(map[uuid.UUID]campaignmodel.ExperimentCohort, len(rows))
+	byID := make(map[uuid.UUID]domain.ExperimentCohort, len(rows))
 	for _, row := range rows {
 		cohort, convErr := experimentCohortFromRow(row)
 		if convErr != nil {
@@ -49,30 +49,30 @@ func (r *Registry) SyncCohorts(ctx context.Context) error {
 	return nil
 }
 
-func experimentCohortFromRow(row db.ExperimentCohort) (campaignmodel.ExperimentCohort, error) {
+func experimentCohortFromRow(row db.ExperimentCohort) (domain.ExperimentCohort, error) {
 	id := uuid.UUID(row.ID.Bytes)
 	var variants []cohortVariantDTO
 	if err := json.Unmarshal(row.Variants, &variants); err != nil {
-		return campaignmodel.ExperimentCohort{}, fmt.Errorf("decode variants: %w", err)
+		return domain.ExperimentCohort{}, fmt.Errorf("decode variants: %w", err)
 	}
-	out := campaignmodel.ExperimentCohort{
+	out := domain.ExperimentCohort{
 		ID:       id,
 		Name:     row.Name,
 		Salt:     row.Salt,
-		Variants: make([]campaignmodel.CohortVariant, 0, len(variants)),
+		Variants: make([]domain.CohortVariant, 0, len(variants)),
 	}
 	for _, v := range variants {
 		if v.ID == "" || v.Weight == 0 {
 			continue
 		}
-		out.Variants = append(out.Variants, campaignmodel.CohortVariant{
+		out.Variants = append(out.Variants, domain.CohortVariant{
 			ID:     v.ID,
 			Weight: v.Weight,
 			Flags:  v.Flags,
 		})
 	}
 	if len(out.Variants) == 0 {
-		return campaignmodel.ExperimentCohort{}, fmt.Errorf("no valid variants")
+		return domain.ExperimentCohort{}, fmt.Errorf("no valid variants")
 	}
 	return out, nil
 }

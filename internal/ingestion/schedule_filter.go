@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
@@ -99,14 +99,14 @@ func (s *BrandCreativeStore) SelectLandingURL(brandID uuid.UUID, userID string) 
 }
 
 type ScheduleFilter struct {
-	registry campaignmodel.CampaignRegistry
+	registry domain.CampaignRegistry
 }
 
-func NewScheduleFilter(registry campaignmodel.CampaignRegistry) *ScheduleFilter {
+func NewScheduleFilter(registry domain.CampaignRegistry) *ScheduleFilter {
 	return &ScheduleFilter{registry: registry}
 }
 
-func (f *ScheduleFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
+func (f *ScheduleFilter) Check(ctx context.Context, evt *domain.Event) error {
 	camp, ok := f.registry.GetCampaign(evt.CampaignID)
 	if !ok {
 		if reg, ok := f.registry.(*Registry); ok && reg.IsStaleMode() {

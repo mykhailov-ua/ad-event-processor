@@ -5,10 +5,8 @@ import (
 	"testing"
 	"time"
 
-	billingpb "espx/internal/billing/pb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestService_invoicePDFURL_usesAdminAPIPath(t *testing.T) {
@@ -23,10 +21,10 @@ func TestService_invoicePDFURL_usesAdminAPIPath(t *testing.T) {
 func TestRenderInvoicePDF_nonEmpty(t *testing.T) {
 	t.Parallel()
 	month := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
-	pdf := RenderInvoicePDF(&billingpb.Invoice{
-		Id:            "inv-1",
-		CustomerId:    "cust-1",
-		BillingMonth:  timestamppb.New(month),
+	pdf := RenderInvoicePDF(&Invoice{
+		ID:            "inv-1",
+		CustomerID:    "cust-1",
+		BillingMonth:  month,
 		SubtotalMicro: 2_500_000,
 		TaxMicro:      250_000,
 		TotalMicro:    2_750_000,

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
@@ -55,7 +55,7 @@ func TestUnifiedFilter_quotaDebit(t *testing.T) {
 	campID := uuid.New()
 	seedCampaignQuota(t, ctx, rdb, campID, 500_000)
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		Type:       "click",
 		IP:         "203.0.113.10",
 		UserID:     "quota-u1",
@@ -87,7 +87,7 @@ func TestUnifiedFilter_quotaDualRead_legacyFallback(t *testing.T) {
 	require.True(t, ok)
 	require.NoError(t, rdb.Set(ctx, camp.BudgetCampaignKey, 300_000, 0).Err())
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		Type:       "click",
 		IP:         "203.0.113.11",
 		UserID:     "quota-u2",
@@ -119,7 +119,7 @@ func TestUnifiedFilter_quotaExhausted_returns3(t *testing.T) {
 	campID := uuid.New()
 	seedCampaignQuota(t, ctx, rdb, campID, 50_000)
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		Type:       "click",
 		IP:         "203.0.113.12",
 		UserID:     "quota-u3",
@@ -150,7 +150,7 @@ func TestUnifiedFilter_quotaRefill_thunderingHerd(t *testing.T) {
 	for i := range workers {
 		go func(i int) {
 			defer wg.Done()
-			evt := &campaignmodel.Event{
+			evt := &domain.Event{
 				Type:       "click",
 				IP:         "203.0.113.13",
 				UserID:     fmt.Sprintf("quota-herd-%d", i),
@@ -183,7 +183,7 @@ func TestUnifiedFilter_quotaOff_legacyPathUnchanged(t *testing.T) {
 	campID := uuid.New()
 	seedCampaignBudget(t, ctx, rdb, campID)
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		Type:       "click",
 		IP:         "203.0.113.14",
 		UserID:     "quota-off",
@@ -215,7 +215,7 @@ func TestUnifiedFilter_QuotaMode_LatencyProfile(t *testing.T) {
 	const iterations = 300
 	latencies := make([]time.Duration, 0, iterations)
 	for i := range iterations {
-		evt := &campaignmodel.Event{
+		evt := &domain.Event{
 			Type:       "click",
 			IP:         "203.0.113.15",
 			UserID:     fmt.Sprintf("quota-bench-%d", i),
@@ -275,7 +275,7 @@ func BenchmarkUnifiedFilter_Check_QuotaMode(b *testing.B) {
 	campID := uuid.New()
 	seedCampaignQuota(b, ctx, rdb, campID, 900_000_000_000)
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		Type:       "click",
 		IP:         "203.0.113.16",
 		UserID:     "quota-bench",

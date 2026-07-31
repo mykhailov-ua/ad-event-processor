@@ -9,7 +9,7 @@ import (
 	"espx/internal/config"
 	"espx/internal/database"
 	"espx/internal/ingestion"
-	db "espx/internal/ingestion/sqlc"
+	db "espx/internal/domain/db"
 	"espx/pkg/lifecycle"
 
 	"github.com/panjf2000/gnet/v2"

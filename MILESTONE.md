@@ -1,3 +1,3 @@
 # Engineering backlog
 
-See `.cursor/BACKLOG.md` (task index) and `.cursor/GAP_SPECS.md` (acceptance criteria).
+See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for open work and the completed roadmap.

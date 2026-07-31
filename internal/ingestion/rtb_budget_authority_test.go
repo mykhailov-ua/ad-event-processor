@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,7 +28,7 @@ func TestUnifiedFilter_skipBudgetDebit_preservesRedisBalance(t *testing.T) {
 	before, err := rdb.Get(ctx, "budget:campaign:"+campID.String()).Int64()
 	require.NoError(t, err)
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		Type:       "click",
 		CampaignID: campID,
 		IP:         "1.1.1.1",

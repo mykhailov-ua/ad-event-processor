@@ -39,7 +39,7 @@ func TestFault_MLWorkerDown(t *testing.T) {
 	out, err := runAtModuleRoot(t, "go", "list", "-deps", "./cmd/tracker")
 	require.NoError(t, err, string(out))
 	deps := string(out)
-	assert.NotContains(t, deps, "espx/internal/fraudscoring")
+	assert.NotContains(t, deps, "espx/internal/fraud")
 	assert.NotContains(t, deps, "github.com/zhongdai/go-lgbm")
 
 	ctx := context.Background()

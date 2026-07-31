@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 
 	"github.com/redis/go-redis/v9"
 	rediscontainer "github.com/testcontainers/testcontainers-go/modules/redis"
@@ -143,7 +143,7 @@ type errFilter struct {
 	err error
 }
 
-func (f *errFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
+func (f *errFilter) Check(ctx context.Context, evt *domain.Event) error {
 	return f.err
 }
 
@@ -151,7 +151,7 @@ type slowFilter struct {
 	delay time.Duration
 }
 
-func (f *slowFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
+func (f *slowFilter) Check(ctx context.Context, evt *domain.Event) error {
 	delay := f.delay
 	if rem, ok := filterDeadlineRemainingEvt(evt, ctx); ok && rem < delay {
 		delay = rem
@@ -177,7 +177,7 @@ type countingFilter struct {
 	err   error
 }
 
-func (f *countingFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
+func (f *countingFilter) Check(ctx context.Context, evt *domain.Event) error {
 	f.calls++
 	return f.err
 }
@@ -186,7 +186,7 @@ type deadlineProbeFilter struct {
 	seen *bool
 }
 
-func (f *deadlineProbeFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
+func (f *deadlineProbeFilter) Check(ctx context.Context, evt *domain.Event) error {
 	if evt != nil && evt.FilterDeadlineMono > 0 {
 		*f.seen = true
 		return nil

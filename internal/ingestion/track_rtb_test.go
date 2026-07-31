@@ -3,7 +3,7 @@ package ingestion
 import (
 	"testing"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/rtb"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +17,7 @@ func TestProcessTrack_rtbLiveSelectsWinner(t *testing.T) {
 	winnerID := uuid.New()
 	geo := GeoHashFromCountry("US")
 	catalog.SyncActiveCampaigns(
-		[]*campaignmodel.Campaign{{ID: winnerID, BudgetLimit: 5000, TargetCountries: map[string]struct{}{"US": {}}}},
+		[]*domain.Campaign{{ID: winnerID, BudgetLimit: 5000, TargetCountries: map[string]struct{}{"US": {}}}},
 		map[uuid.UUID]RtbCampaignInput{
 			winnerID: {BidMicro: 100, DeviceMask: 1, CategoryMask: 1, GeoHash: geo, Weight: 1},
 		},
@@ -28,7 +28,7 @@ func TestProcessTrack_rtbLiveSelectsWinner(t *testing.T) {
 		rtbMode:    rtbModeLive,
 		ingestGeo:  &staticGeoProvider{country: "US"},
 	}
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		CampaignID: uuid.New(),
 		IP:         "8.8.8.8",
 		Type:       "click",
@@ -48,7 +48,7 @@ func TestProcessTrack_rtbLiveNoBidRejects(t *testing.T) {
 		rtbCatalog: catalog,
 		rtbMode:    rtbModeLive,
 	}
-	evt := &campaignmodel.Event{CampaignID: uuid.New(), Type: "click"}
+	evt := &domain.Event{CampaignID: uuid.New(), Type: "click"}
 
 	out := processTrack(proc, evt, nil)
 	require.Equal(t, trackStatusRejected, out.Status)
@@ -62,7 +62,7 @@ func TestProcessTrack_rtbShadowKeepsClientCampaign(t *testing.T) {
 	id := uuid.New()
 	geo := GeoHashFromCountry("US")
 	catalog.SyncActiveCampaigns(
-		[]*campaignmodel.Campaign{{ID: id, BudgetLimit: 5000}},
+		[]*domain.Campaign{{ID: id, BudgetLimit: 5000}},
 		map[uuid.UUID]RtbCampaignInput{
 			id: {BidMicro: 100, DeviceMask: 1, CategoryMask: 1, GeoHash: geo, Weight: 1},
 		},
@@ -74,7 +74,7 @@ func TestProcessTrack_rtbShadowKeepsClientCampaign(t *testing.T) {
 		rtbMode:    rtbModeShadow,
 		ingestGeo:  &staticGeoProvider{country: "US"},
 	}
-	evt := &campaignmodel.Event{CampaignID: clientID, IP: "8.8.8.8", Type: "click"}
+	evt := &domain.Event{CampaignID: clientID, IP: "8.8.8.8", Type: "click"}
 
 	out := processTrack(proc, evt, nil)
 	assert.Equal(t, trackStatusAccepted, out.Status)

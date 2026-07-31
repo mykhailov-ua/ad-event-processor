@@ -3,15 +3,15 @@ package piihash_test
 import (
 	"testing"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/pkg/piihash"
 )
 
 func BenchmarkPIIHash_batch1000(b *testing.B) {
 	h := piihash.TestHasher()
-	events := make([]*campaignmodel.Event, 1000)
+	events := make([]*domain.Event, 1000)
 	for i := range events {
-		events[i] = &campaignmodel.Event{
+		events[i] = &domain.Event{
 			IP:     "203.0.113.42",
 			UA:     "Mozilla/5.0 (bench)",
 			UserID: "user-bench",

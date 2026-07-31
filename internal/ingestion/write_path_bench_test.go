@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"github.com/google/uuid"
 )
 
-func benchWritePathEvent() *campaignmodel.Event {
-	return &campaignmodel.Event{
+func benchWritePathEvent() *domain.Event {
+	return &domain.Event{
 		ClickID:    "bench-click",
 		CampaignID: uuid.New(),
 		Type:       "click",
@@ -32,7 +32,7 @@ func BenchmarkCHSpoolAppendDurably(b *testing.B) {
 	defer func() { _ = spool.Close() }()
 
 	evt := benchWritePathEvent()
-	events := []*campaignmodel.Event{evt}
+	events := []*domain.Event{evt}
 	token := "bench-dedup-token"
 
 	b.ResetTimer()
@@ -46,7 +46,7 @@ func BenchmarkCHSpoolAppendDurably(b *testing.B) {
 
 func BenchmarkCHSpoolMarshalPayload(b *testing.B) {
 	evt := benchWritePathEvent()
-	events := []*campaignmodel.Event{evt}
+	events := []*domain.Event{evt}
 	token := "bench-dedup-token"
 
 	b.ResetTimer()
@@ -61,7 +61,7 @@ func BenchmarkCHSpoolMarshalPayload(b *testing.B) {
 func BenchmarkPostgresStoreBatch_Mock(b *testing.B) {
 	store := &MockEventStore{}
 	evt := benchWritePathEvent()
-	events := []*campaignmodel.Event{evt}
+	events := []*domain.Event{evt}
 	ctx := context.Background()
 
 	b.ResetTimer()
@@ -86,8 +86,8 @@ func BenchmarkClickHouseStoreBatch_Spooled(b *testing.B) {
 	store.SetSpool(spool)
 
 	evt := benchWritePathEvent()
-	events := []*campaignmodel.Event{evt}
-	ctx := context.WithValue(context.Background(), campaignmodel.DeduplicationTokenKey, "bench-ch-spool")
+	events := []*domain.Event{evt}
+	ctx := context.WithValue(context.Background(), domain.DeduplicationTokenKey, "bench-ch-spool")
 
 	b.ResetTimer()
 	b.ReportAllocs()

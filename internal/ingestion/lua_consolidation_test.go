@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/licensing"
 	"espx/internal/metrics"
 
@@ -72,7 +72,7 @@ func TestUnifiedFilter_LuaConsolidatedPrechecks(t *testing.T) {
 	require.NoError(t, rdb.HSet(ctx, PlacementBlacklistKey(campID), "zone-bad", "1").Err())
 	require.NoError(t, rdb.SAdd(ctx, fraudBlacklistKey, "203.0.113.66").Err())
 
-	placementEvt := &campaignmodel.Event{
+	placementEvt := &domain.Event{
 		Type:        "impression",
 		CampaignID:  campID,
 		ClickID:     uuid.NewString(),
@@ -81,7 +81,7 @@ func TestUnifiedFilter_LuaConsolidatedPrechecks(t *testing.T) {
 	}
 	require.ErrorIs(t, f.Check(ctx, placementEvt), ErrPlacementBlocked)
 
-	fraudEvt := &campaignmodel.Event{
+	fraudEvt := &domain.Event{
 		Type:       "impression",
 		CampaignID: campID,
 		ClickID:    uuid.NewString(),
@@ -94,7 +94,7 @@ func TestUnifiedFilter_LuaConsolidatedPrechecks(t *testing.T) {
 		maxRPD:           1,
 	}
 	f.registry = quotaReg
-	quotaEvt := &campaignmodel.Event{
+	quotaEvt := &domain.Event{
 		Type:       "impression",
 		CampaignID: campID,
 		ClickID:    uuid.NewString(),
@@ -106,7 +106,7 @@ func TestUnifiedFilter_LuaConsolidatedPrechecks(t *testing.T) {
 }
 
 type entitlementsTestRegistry struct {
-	campaignmodel.CampaignRegistry
+	domain.CampaignRegistry
 	maxRPD uint64
 }
 
@@ -137,7 +137,7 @@ func TestUnifiedFilter_NoIPRateLimitKeys(t *testing.T) {
 	rlKey = append(rlKey, "rl:ip:203.0.113.50"...)
 	require.NoError(t, rdb.Set(ctx, string(rlKey), 0, 0).Err())
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		Type:       "click",
 		IP:         "203.0.113.50",
 		UserID:     "u-rl",
@@ -174,7 +174,7 @@ func TestUnifiedFilter_TierDegradationNearDeadline(t *testing.T) {
 
 	before := testutil.ToFloat64(metrics.FilterTierDegradedTotal)
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		Type:       "click",
 		IP:         "203.0.113.88",
 		UserID:     "degrade-user",

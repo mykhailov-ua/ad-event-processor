@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/metrics"
 
 	"github.com/google/uuid"
@@ -56,7 +56,7 @@ func TestVerify_1a_RedisSpec_EvalShaAfterScriptLoad(t *testing.T) {
 	campID := uuid.New()
 	seedCampaignBudget(t, ctx, rdb, campID)
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		Type:       "click",
 		IP:         "203.0.113.1",
 		UserID:     "u1",
@@ -87,7 +87,7 @@ func TestEvalScript_NOSCRIPTFallbackAfterScriptFlush(t *testing.T) {
 
 	campID := uuid.New()
 	seedCampaignBudget(t, ctx, rdb, campID)
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		Type:       "click",
 		IP:         "203.0.113.2",
 		UserID:     "u2",
@@ -148,7 +148,7 @@ func TestVerify_1d_RealRedisLatencyProfile(t *testing.T) {
 	seedCampaignBudget(t, ctx, rdb, campID)
 
 	for i := 0; i < iterations; i++ {
-		evt := &campaignmodel.Event{
+		evt := &domain.Event{
 			Type:       "click",
 			IP:         "203.0.113.3",
 			UserID:     fmt.Sprintf("u-%d", i),
@@ -201,7 +201,7 @@ func BenchmarkUnifiedFilter_Check_RealRedis(b *testing.B) {
 	campID := uuid.New()
 	seedCampaignBudget(b, ctx, rdb, campID)
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		Type:       "click",
 		IP:         "203.0.113.4",
 		UserID:     "bench",

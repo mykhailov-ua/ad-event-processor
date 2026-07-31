@@ -1,0 +1,22 @@
+package ingestion
+
+import "espx/internal/domain"
+
+type Sharder = domain.Sharder
+type StaticSlotSharder = domain.StaticSlotSharder
+type JumpHashSharder = domain.JumpHashSharder
+type SlotMapSnapshot = domain.SlotMapSnapshot
+
+func NewStaticSlotSharder(numBuckets int) *StaticSlotSharder {
+	return domain.NewStaticSlotSharder(numBuckets)
+}
+
+func NewJumpHashSharder(numBuckets int) *JumpHashSharder {
+	return domain.NewJumpHashSharder(numBuckets)
+}
+
+type slotTable = domain.SlotTable
+
+func buildSlotTable(numBuckets int) *slotTable {
+	return domain.BuildSlotTable(numBuckets)
+}

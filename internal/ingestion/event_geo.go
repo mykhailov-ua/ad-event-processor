@@ -1,10 +1,10 @@
 package ingestion
 
 import (
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 )
 
-func ensureIngestGeo(geo GeoProvider, evt *campaignmodel.Event) {
+func ensureIngestGeo(geo GeoProvider, evt *domain.Event) {
 	if geo == nil || evt == nil || evt.IP == "" || evt.IngestGeoResolved {
 		return
 	}

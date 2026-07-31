@@ -6,23 +6,21 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"espx/internal/billing/pb"
 )
 
-func RenderInvoicePDF(inv *pb.Invoice) []byte {
+func RenderInvoicePDF(inv *Invoice) []byte {
 	if inv == nil {
 		return nil
 	}
 
 	month := ""
-	if inv.BillingMonth != nil {
-		month = inv.BillingMonth.AsTime().UTC().Format("2006-01")
+	if !inv.BillingMonth.IsZero() {
+		month = inv.BillingMonth.UTC().Format("2006-01")
 	}
 
 	var lines strings.Builder
-	lines.WriteString(fmt.Sprintf("Invoice %s\n", inv.Id))
-	lines.WriteString(fmt.Sprintf("Customer %s\n", inv.CustomerId))
+	lines.WriteString(fmt.Sprintf("Invoice %s\n", inv.ID))
+	lines.WriteString(fmt.Sprintf("Customer %s\n", inv.CustomerID))
 	lines.WriteString(fmt.Sprintf("Period %s\n", month))
 	lines.WriteString(fmt.Sprintf("Currency %s\n", inv.Currency))
 	lines.WriteString(fmt.Sprintf("Subtotal %s\n", formatPDFMicro(inv.SubtotalMicro)))

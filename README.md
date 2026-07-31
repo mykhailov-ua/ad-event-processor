@@ -2,7 +2,7 @@
 
 Ad event ingestion, atomic budget enforcement, async settlement (self-hosted ad stack).
 
-Each `/track` request is accepted and debited, or rejected with an explicit cause. PostgreSQL holds financial truth; Redis holds hot state; ClickHouse holds telemetry. The tracker hot path does not import `internal/fraudscoring`.
+Each `/track` request is accepted and debited, or rejected with an explicit cause. PostgreSQL holds financial truth; Redis holds hot state; ClickHouse holds telemetry. The tracker hot path does not import `internal/fraud`.
 
 ---
 
@@ -71,7 +71,7 @@ Auction uses in-memory catalog, PMP deals, geo index, ML fraud boost in ranking,
 
 Hot path: incremental fraud accumulator, tier thresholds (`Pass` / `Suspect` / `IVT` / `Block`), and `GetFraudScoreBoosts()` snapshot (~93 ns/op, 0 allocs). Critical signals (L1 reject, L3 blocklist) go to a dedicated 512-slot fraud ring; analytical signals use a 3584-slot ring with /24 aggregation at ≥80% fill (M11).
 
-Cold path: `ivt-detector` (ClickHouse batch rules) and `fraud-scorer` (LightGBM + Isolation Forest) write to management outbox → Redis (`ML_SCORE_BOOST`, `ML_GHOST_IVT`, `ML_BLACKLIST_ADD`). Tracker never imports `internal/fraudscoring`.
+Cold path: `ivt-detector` (ClickHouse batch rules) and `fraud-scorer` (LightGBM + Isolation Forest) write to management outbox → Redis (`ML_SCORE_BOOST`, `ML_GHOST_IVT`, `ML_BLACKLIST_ADD`). Tracker never imports `internal/fraud`.
 
 ### Ingress quotas
 
@@ -275,7 +275,7 @@ Request path: parse → geo → [RTB if `RTB_MODE≠off`] → `FilterEngine.Chec
 | `edge-xdp`, `edge-bpf-sync` | — | XDP L4 SYN cookies, autoban, passive IVT fingerprints |
 | `broker`, `log-shipper`, … | — | Optional mmap log pipeline; `budget-deltas` topic for M8 recon |
 
-Libraries: `internal/adminapi`, `internal/licensing`, `internal/rtb`, `internal/ingestion`.
+Libraries: `internal/controlplane/adminapi`, `internal/licensing`, `internal/rtb`, `internal/ingestion`.
 
 ---
 
@@ -295,7 +295,7 @@ Self-hosted UI policy: [docs/SELF_HOSTED.md](docs/SELF_HOSTED.md#ui-no-server-si
 
 Protection (license, operator data, egress trust): [docs/PROTECTION.md](docs/PROTECTION.md).
 
-RBAC permissions gate routes (`campaigns:read`, `customers:write`, `shards:read`, `audit:read`, etc.). Contracts are godoc on handlers and DTOs in `internal/adminapi`, not OpenAPI.
+RBAC permissions gate routes (`campaigns:read`, `customers:write`, `shards:read`, `audit:read`, etc.). Contracts are godoc on handlers and DTOs in `internal/controlplane/adminapi`, not OpenAPI.
 
 ### Reporting and dashboards
 
@@ -349,7 +349,7 @@ Additional operator APIs: postback config/DLQ (`/api/v1/postbacks/*`), cost-sync
 | `LedgerInvariantWorker` | Ledger drift scan |
 | `ivt-detector` / `fraud-scorer` | CH batch → outbox → Redis blacklists and ML snapshots |
 
-Outbox event types include: `CREATE_CAMPAIGN`, `PAUSE_CAMPAIGN`, `RESUME_CAMPAIGN`, `CANCEL_CAMPAIGN`, `UPDATE_CAMPAIGN_PACING`, `UPDATE_CAMPAIGN_FRAUD`, `UPDATE_BLACKLIST`, `UPDATE_SETTINGS`, `RECONCILIATION_ADJUST`, `ML_SCORE_BOOST`, `ML_GHOST_IVT`, `ML_BLACKLIST_ADD`, `RELOAD_RTB_CATALOG`, `PAUSE_PLACEMENT`, `PURGE_USER_DATA`, and others. Full dispatch: `internal/management/outbox_handlers.go`.
+Outbox event types include: `CREATE_CAMPAIGN`, `PAUSE_CAMPAIGN`, `RESUME_CAMPAIGN`, `CANCEL_CAMPAIGN`, `UPDATE_CAMPAIGN_PACING`, `UPDATE_CAMPAIGN_FRAUD`, `UPDATE_BLACKLIST`, `UPDATE_SETTINGS`, `RECONCILIATION_ADJUST`, `ML_SCORE_BOOST`, `ML_GHOST_IVT`, `ML_BLACKLIST_ADD`, `RELOAD_RTB_CATALOG`, `PAUSE_PLACEMENT`, `PURGE_USER_DATA`, and others. Full dispatch: `internal/controlplane/outbox_handlers.go`.
 
 ### Entitlements
 

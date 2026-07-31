@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
@@ -90,7 +90,7 @@ func TestUnifiedFilter_LatencySLA(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 	assert.False(t, f.slaPenaltyActive.Load(), "SLA penalty should be inactive initially")
 
-	evt1 := &campaignmodel.Event{
+	evt1 := &domain.Event{
 		CampaignID: campID,
 		ClickID:    uuid.NewString(),
 		IP:         "1.1.1.1",
@@ -113,7 +113,7 @@ func TestUnifiedFilter_LatencySLA(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, redisVal, "Redis key should be active")
 
-	evt2 := &campaignmodel.Event{
+	evt2 := &domain.Event{
 		CampaignID: campID,
 		ClickID:    uuid.NewString(),
 		IP:         "1.1.1.1",
@@ -135,7 +135,7 @@ func TestUnifiedFilter_LatencySLA(t *testing.T) {
 	_, err = rdb.Get(ctx, "sla:penalty:active").Bool()
 	assert.ErrorIs(t, err, redis.Nil, "Redis key should be cleared after recovery")
 
-	evt3 := &campaignmodel.Event{
+	evt3 := &domain.Event{
 		CampaignID: campID,
 		ClickID:    uuid.NewString(),
 		IP:         "1.1.1.1",

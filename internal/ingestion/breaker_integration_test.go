@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,20 +16,20 @@ import (
 
 type FailingEventStore struct {
 	mu      sync.Mutex
-	flushes [][]*campaignmodel.Event
+	flushes [][]*domain.Event
 	calls   atomic.Int64
 	failErr error
 	healed  atomic.Bool
 }
 
-func (m *FailingEventStore) StoreBatch(ctx context.Context, events []*campaignmodel.Event) error {
+func (m *FailingEventStore) StoreBatch(ctx context.Context, events []*domain.Event) error {
 	m.calls.Add(1)
 	if !m.healed.Load() {
 		return m.failErr
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	batchCopy := make([]*campaignmodel.Event, len(events))
+	batchCopy := make([]*domain.Event, len(events))
 	copy(batchCopy, events)
 	m.flushes = append(m.flushes, batchCopy)
 	return nil
@@ -68,7 +68,7 @@ func TestStreamConsumer_CircuitBreakerStopsReads(t *testing.T) {
 	defer cancel()
 
 	for i := 0; i < 5; i++ {
-		err := producer.Process(&campaignmodel.Event{CampaignID: uuid.New(), Type: "click"})
+		err := producer.Process(&domain.Event{CampaignID: uuid.New(), Type: "click"})
 		require.NoError(t, err)
 	}
 

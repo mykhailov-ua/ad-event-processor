@@ -1,10 +1,10 @@
 package ingestion
 
 import (
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 )
 
-func ResolveLandingURL(registry campaignmodel.CampaignRegistry, store *BrandCreativeStore, evt *campaignmodel.Event) string {
+func ResolveLandingURL(registry domain.CampaignRegistry, store *BrandCreativeStore, evt *domain.Event) string {
 	if store == nil || registry == nil || evt.Type != "click" {
 		return ""
 	}

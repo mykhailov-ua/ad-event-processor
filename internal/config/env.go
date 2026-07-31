@@ -33,6 +33,8 @@ type Config struct {
 	CHEnabled                       bool
 	AuthServerPort                  string
 	AuthMetricsPort                 string
+	AuthGRPCEnabled                 bool
+	BillingGRPCEnabled              bool
 	Env                             string
 	TrustedProxies                  []string
 	TokenSymmetricKey               Secret
@@ -131,8 +133,11 @@ type Config struct {
 	PaymentServerHost               string
 	PaymentMetricsPort              string
 	PaymentWebhookPort              string
+	PaymentGRPCEnabled              bool
+	NotifierGRPCEnabled             bool
 	SettlementServerPort            string
 	SettlementServerHost            string
+	SettlementGRPCEnabled           bool
 	PaymentInternalToken            Secret
 	SettlementInternalToken         Secret
 	StripeSecretKey                 Secret
@@ -545,6 +550,7 @@ func Load() (*Config, error) {
 		PIISaltVersion:                  uint8(getEnvInt("PII_SALT_VERSION", 1)),
 		PIISaltHex:                      Secret(os.Getenv("PII_SALT_HEX")),
 		AuthServerPort:                  os.Getenv("AUTH_SERVER_PORT"),
+		AuthGRPCEnabled:                 os.Getenv("AUTH_GRPC_ENABLED") != "0",
 		TokenSymmetricKey:               Secret(os.Getenv("TOKEN_SYMMETRIC_KEY")),
 		PartitionPreCreateDays:          getEnvInt("PARTITION_PRECREATE_DAYS", 2),
 		RegistrySyncIntervalMs:          getEnvInt("REGISTRY_SYNC_INTERVAL_MS", 60000),
@@ -619,8 +625,12 @@ func Load() (*Config, error) {
 		PaymentServerHost:               os.Getenv("PAYMENT_SERVER_HOST"),
 		PaymentMetricsPort:              os.Getenv("PAYMENT_METRICS_PORT"),
 		PaymentWebhookPort:              os.Getenv("PAYMENT_WEBHOOK_PORT"),
+		PaymentGRPCEnabled:              os.Getenv("PAYMENT_GRPC_ENABLED") != "0",
 		SettlementServerPort:            os.Getenv("SETTLEMENT_SERVER_PORT"),
 		SettlementServerHost:            os.Getenv("SETTLEMENT_SERVER_HOST"),
+		SettlementGRPCEnabled:           os.Getenv("SETTLEMENT_GRPC_ENABLED") != "0",
+		BillingGRPCEnabled:              os.Getenv("BILLING_GRPC_ENABLED") != "0",
+		NotifierGRPCEnabled:             os.Getenv("NOTIFIER_GRPC_ENABLED") != "0",
 		PaymentInternalToken:            Secret(os.Getenv("PAYMENT_INTERNAL_TOKEN")),
 		SettlementInternalToken:         Secret(os.Getenv("SETTLEMENT_INTERNAL_TOKEN")),
 		StripeSecretKey:                 Secret(os.Getenv("STRIPE_SECRET_KEY")),

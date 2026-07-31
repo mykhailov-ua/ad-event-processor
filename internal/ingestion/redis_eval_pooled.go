@@ -6,7 +6,7 @@ import (
 	"time"
 	"unsafe"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 
 	redis "github.com/redis/go-redis/v9"
 )
@@ -78,7 +78,7 @@ func fillEvalShaWire(dst []any, sha1 any, keyArgs [unifiedFilterKeyCount]any, sc
 	return dst
 }
 
-func (f *UnifiedFilter) evalShaPooled(ctx context.Context, c redis.UniversalClient, shard int, evt *campaignmodel.Event, sha1 any, keyArgs [unifiedFilterKeyCount]any, scriptArgs []any) (int64, error) {
+func (f *UnifiedFilter) evalShaPooled(ctx context.Context, c redis.UniversalClient, shard int, evt *domain.Event, sha1 any, keyArgs [unifiedFilterKeyCount]any, scriptArgs []any) (int64, error) {
 	wirePtr := evalWirePool.Get().(*[]any)
 	wire := fillEvalShaWire(*wirePtr, sha1, keyArgs, scriptArgs)
 	*wirePtr = wire
@@ -98,11 +98,11 @@ func (f *UnifiedFilter) evalShaPooled(ctx context.Context, c redis.UniversalClie
 	return val, nil
 }
 
-func (f *UnifiedFilter) evalPooled(ctx context.Context, c redis.UniversalClient, shard int, evt *campaignmodel.Event, script any, keyArgs [unifiedFilterKeyCount]any, scriptArgs []any) (int64, error) {
+func (f *UnifiedFilter) evalPooled(ctx context.Context, c redis.UniversalClient, shard int, evt *domain.Event, script any, keyArgs [unifiedFilterKeyCount]any, scriptArgs []any) (int64, error) {
 	return f.evalPooledN(ctx, c, shard, evt, script, keyArgs[:], scriptArgs, unifiedFilterKeyCount)
 }
 
-func (f *UnifiedFilter) evalShaPooledN(ctx context.Context, c redis.UniversalClient, shard int, evt *campaignmodel.Event, sha1 any, keyArgs []any, scriptArgs []any, numKeys int) (int64, error) {
+func (f *UnifiedFilter) evalShaPooledN(ctx context.Context, c redis.UniversalClient, shard int, evt *domain.Event, sha1 any, keyArgs []any, scriptArgs []any, numKeys int) (int64, error) {
 	wirePtr := evalWirePool.Get().(*[]any)
 	wire := fillEvalShaWireN(*wirePtr, sha1, keyArgs, scriptArgs, numKeys)
 	*wirePtr = wire
@@ -122,7 +122,7 @@ func (f *UnifiedFilter) evalShaPooledN(ctx context.Context, c redis.UniversalCli
 	return val, nil
 }
 
-func (f *UnifiedFilter) evalPooledN(ctx context.Context, c redis.UniversalClient, shard int, evt *campaignmodel.Event, script any, keyArgs []any, scriptArgs []any, numKeys int) (int64, error) {
+func (f *UnifiedFilter) evalPooledN(ctx context.Context, c redis.UniversalClient, shard int, evt *domain.Event, script any, keyArgs []any, scriptArgs []any, numKeys int) (int64, error) {
 	wirePtr := evalWirePool.Get().(*[]any)
 	wire := fillEvalWireN(*wirePtr, script, keyArgs, scriptArgs, numKeys)
 	*wirePtr = wire

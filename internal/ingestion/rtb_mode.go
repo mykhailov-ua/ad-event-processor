@@ -1,27 +1,19 @@
 package ingestion
 
 import (
-	"errors"
 	"strings"
 
 	"espx/internal/config"
+
+	"espx/internal/domain"
 )
 
-var ErrInvalidRtbMode = errors.New("rtb_mode must be off, shadow, or live")
+const SystemSettingRtbMode = domain.SystemSettingRtbMode
 
-const SystemSettingRtbMode = "rtb_mode"
+var ErrInvalidRtbMode = domain.ErrInvalidRtbMode
 
 func NormalizeRtbModeSetting(v string) (string, error) {
-	switch config.ParseRtbMode(strings.TrimSpace(v)) {
-	case config.RtbModeOff:
-		return "off", nil
-	case config.RtbModeShadow:
-		return "shadow", nil
-	case config.RtbModeLive:
-		return "live", nil
-	default:
-		return "", ErrInvalidRtbMode
-	}
+	return domain.NormalizeRtbModeSetting(v)
 }
 
 func RtbModeFromSetting(setting string, cfg *config.Config) uint8 {

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -165,7 +165,7 @@ func TestClockDrift_filterDeadlineSurvivesWallShift(t *testing.T) {
 	time.Sleep(30 * time.Millisecond)
 	assert.False(t, filterDeadlineExceeded(ctx))
 
-	evt := &campaignmodel.Event{}
+	evt := &domain.Event{}
 	engine := NewFilterEngine(clockDriftFilterTimeout, &countingFilter{})
 	err = engine.Check(ctx, evt)
 	assert.NoError(t, err)

@@ -5,7 +5,7 @@ import (
 	_ "embed"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 
 	redis "github.com/redis/go-redis/v9"
 )
@@ -41,7 +41,7 @@ func NewIPRateLimiter(rdb redis.UniversalClient, limit int, window time.Duration
 	return l
 }
 
-func (l *IPRateLimiter) Check(ctx context.Context, evt *campaignmodel.Event) error {
+func (l *IPRateLimiter) Check(ctx context.Context, evt *domain.Event) error {
 	if evt.IP == "" {
 		return nil
 	}

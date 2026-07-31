@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
@@ -16,15 +16,15 @@ type mockCampaignRepo struct {
 	mock.Mock
 }
 
-func (m *mockCampaignRepo) GetByID(ctx context.Context, id uuid.UUID) (*campaignmodel.Campaign, error) {
+func (m *mockCampaignRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.Campaign, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*campaignmodel.Campaign), args.Error(1)
+	return args.Get(0).(*domain.Campaign), args.Error(1)
 }
 
-func (m *mockCampaignRepo) UpdateStatus(ctx context.Context, id uuid.UUID, status campaignmodel.CampaignStatus) error {
+func (m *mockCampaignRepo) UpdateStatus(ctx context.Context, id uuid.UUID, status domain.CampaignStatus) error {
 	args := m.Called(ctx, id, status)
 	return args.Error(0)
 }
@@ -34,9 +34,9 @@ func (m *mockCampaignRepo) UpdateSpend(ctx context.Context, id uuid.UUID, amount
 	return args.Error(0)
 }
 
-func (m *mockCampaignRepo) ListActive(ctx context.Context) ([]*campaignmodel.Campaign, error) {
+func (m *mockCampaignRepo) ListActive(ctx context.Context) ([]*domain.Campaign, error) {
 	args := m.Called(ctx)
-	return args.Get(0).([]*campaignmodel.Campaign), args.Error(1)
+	return args.Get(0).([]*domain.Campaign), args.Error(1)
 }
 
 func TestMultiShardBudgetSync(t *testing.T) {

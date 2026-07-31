@@ -3,7 +3,7 @@ package ingestion
 import (
 	"testing"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -11,7 +11,7 @@ import (
 
 func TestEnsureIngestGeo_cachesForGeoFilter(t *testing.T) {
 	geo := &countingGeoProvider{country: "US"}
-	evt := &campaignmodel.Event{IP: "8.8.8.8"}
+	evt := &domain.Event{IP: "8.8.8.8"}
 
 	ensureIngestGeo(geo, evt)
 	require.True(t, evt.IngestGeoResolved)

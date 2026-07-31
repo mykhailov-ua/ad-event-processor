@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/adminapi"
-	db "espx/internal/ingestion/sqlc"
+	"espx/internal/controlplane/adminapi"
+	db "espx/internal/domain/db"
 	"espx/internal/testutil"
 
 	"github.com/google/uuid"

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 
 	"github.com/google/uuid"
 )
@@ -16,18 +16,18 @@ type MockCampaignRegistry struct{}
 
 func (m *MockCampaignRegistry) Exists(id uuid.UUID) bool { return true }
 
-func (m *MockCampaignRegistry) Add(id, customerID uuid.UUID, brandID *uuid.UUID, brandFcapKey string, pacingMode campaignmodel.PacingMode, dailyBudget int64, timezone string, freqLimit, freqWindow int32, targetCountries []string) {
+func (m *MockCampaignRegistry) Add(id, customerID uuid.UUID, brandID *uuid.UUID, brandFcapKey string, pacingMode domain.PacingMode, dailyBudget int64, timezone string, freqLimit, freqWindow int32, targetCountries []string) {
 }
 
 func (m *MockCampaignRegistry) GetCustomerID(id uuid.UUID) (uuid.UUID, bool) { return uuid.Nil, true }
 
 var (
 	mockCampaignTemplateMu sync.RWMutex
-	mockCampaignTemplate   = &campaignmodel.Campaign{CustomerID: uuid.Nil, Location: time.UTC}
-	mockCampaignCache      atomic.Pointer[campaignmodel.Campaign]
+	mockCampaignTemplate   = &domain.Campaign{CustomerID: uuid.Nil, Location: time.UTC}
+	mockCampaignCache      atomic.Pointer[domain.Campaign]
 )
 
-func (m *MockCampaignRegistry) GetCampaign(id uuid.UUID) (*campaignmodel.Campaign, bool) {
+func (m *MockCampaignRegistry) GetCampaign(id uuid.UUID) (*domain.Campaign, bool) {
 	if got := mockCampaignCache.Load(); got != nil && got.ID == id {
 		return got, true
 	}
@@ -64,13 +64,13 @@ func (m *MockCampaignRegistry) StartSync(ctx context.Context, interval time.Dura
 
 func (m *MockCampaignRegistry) Wait(ctx context.Context) error { return nil }
 
-func SetMockCampaign(t testing.TB, c *campaignmodel.Campaign) {
+func SetMockCampaign(t testing.TB, c *domain.Campaign) {
 	t.Helper()
 	mockCampaignCache.Store(c)
 	t.Cleanup(func() { mockCampaignCache.Store(nil) })
 }
 
-func StoreMockCampaign(c *campaignmodel.Campaign) {
+func StoreMockCampaign(c *domain.Campaign) {
 	mockCampaignCache.Store(c)
 }
 
@@ -78,7 +78,7 @@ func ClearMockCampaign() {
 	mockCampaignCache.Store(nil)
 }
 
-func PatchMockCampaignTemplate(fn func(*campaignmodel.Campaign)) {
+func PatchMockCampaignTemplate(fn func(*domain.Campaign)) {
 	mockCampaignTemplateMu.Lock()
 	defer mockCampaignTemplateMu.Unlock()
 	fn(mockCampaignTemplate)

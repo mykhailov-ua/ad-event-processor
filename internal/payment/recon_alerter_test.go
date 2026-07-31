@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"espx/internal/config"
+	"espx/internal/notifier"
 	"espx/internal/payment/db"
 
 	notifierpb "espx/internal/notifier/pb"
@@ -106,7 +107,7 @@ func TestFinancialReconAlerter_CooldownDedup(t *testing.T) {
 func TestFinancialReconAlerter_AlertFindings_enqueuesWarnPlus(t *testing.T) {
 	stub := &stubPaymentNotifierClient{}
 	cfg := testPaymentOpsConfig()
-	alerter := NewFinancialReconAlerter(&NotifierClient{client: stub}, cfg)
+	alerter := NewFinancialReconAlerter(&NotifierClient{api: notifier.NewGRPCNotifierAPI(stub)}, cfg)
 	require.NotNil(t, alerter)
 
 	summary := FinancialReconSummary{RunID: 42, IntentsChecked: 3}
@@ -128,7 +129,7 @@ func TestFinancialReconAlerter_AlertFindings_enqueuesWarnPlus(t *testing.T) {
 func TestFinancialReconAlerter_AlertFindings_skipsCleanRun(t *testing.T) {
 	stub := &stubPaymentNotifierClient{}
 	cfg := testPaymentOpsConfig()
-	alerter := NewFinancialReconAlerter(&NotifierClient{client: stub}, cfg)
+	alerter := NewFinancialReconAlerter(&NotifierClient{api: notifier.NewGRPCNotifierAPI(stub)}, cfg)
 	require.NotNil(t, alerter)
 
 	alerter.AlertFindings(FinancialReconSummary{RunID: 1}, nil)

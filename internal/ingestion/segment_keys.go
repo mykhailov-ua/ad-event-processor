@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/pkg/piihash"
 
 	"github.com/google/uuid"
@@ -13,7 +13,7 @@ import (
 )
 
 func applyCampaignSegmentFields(
-	camp *campaignmodel.Campaign,
+	camp *domain.Campaign,
 	retarget, include, exclude pgtype.UUID,
 	ttlHours int32,
 ) {
@@ -95,7 +95,7 @@ func addSegmentMember(ctx context.Context, rdbs []redis.UniversalClient, segment
 	return err
 }
 
-func segmentUserHash(hasher *piihash.Hasher, evt *campaignmodel.Event) ([16]byte, bool) {
+func segmentUserHash(hasher *piihash.Hasher, evt *domain.Event) ([16]byte, bool) {
 	if evt == nil || evt.UserID == "" {
 		return [16]byte{}, false
 	}

@@ -7,7 +7,7 @@ import (
 	"io"
 	"strings"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 
 	redis "github.com/redis/go-redis/v9"
 )
@@ -55,7 +55,7 @@ func (f *UnifiedFilter) FilterEvalPinWorkers() int {
 	return f.evalPinWorkers
 }
 
-func (f *UnifiedFilter) evalPinConn(evt *campaignmodel.Event, shard int) *redis.Conn {
+func (f *UnifiedFilter) evalPinConn(evt *domain.Event, shard int) *redis.Conn {
 	if f == nil || f.evalPins == nil || evt == nil || evt.FilterWorkerIdx < 0 {
 		return nil
 	}
@@ -81,7 +81,7 @@ func isStickyConnRetryable(err error) bool {
 		strings.Contains(s, "reset by peer")
 }
 
-func (f *UnifiedFilter) processFilterEval(ctx context.Context, c redis.UniversalClient, shard int, evt *campaignmodel.Event, cmd redis.Cmder) error {
+func (f *UnifiedFilter) processFilterEval(ctx context.Context, c redis.UniversalClient, shard int, evt *domain.Event, cmd redis.Cmder) error {
 	pin := f.evalPinConn(evt, shard)
 	err := processRedisCmd(ctx, c, pin, cmd)
 	if err == nil || pin == nil || evt == nil || evt.FilterWorkerIdx < 0 {

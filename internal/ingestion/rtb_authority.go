@@ -1,15 +1,14 @@
 package ingestion
 
 import (
-	"errors"
 	"strings"
 
 	"espx/internal/config"
+
+	"espx/internal/domain"
 )
 
-var ErrInvalidRtbBudgetAuthority = errors.New("rtb_budget_authority must be rtb or lua")
-
-const systemSettingRtbBudgetAuthority = "rtb_budget_authority"
+var ErrInvalidRtbBudgetAuthority = domain.ErrInvalidRtbBudgetAuthority
 
 func BudgetAuthorityFromSettings(cfg *config.Config, setting string) BudgetAuthority {
 	if cfg == nil || !cfg.RtbEnabled() {
@@ -37,14 +36,5 @@ func RtbSkipLuaBudgetDebit(cfg *config.Config, setting string) bool {
 }
 
 func NormalizeRtbBudgetAuthoritySetting(v string) (string, error) {
-	switch strings.ToLower(strings.TrimSpace(v)) {
-	case "rtb":
-		return "rtb", nil
-	case "lua", "redis":
-		return "lua", nil
-	case "":
-		return "", nil
-	default:
-		return "", ErrInvalidRtbBudgetAuthority
-	}
+	return domain.NormalizeRtbBudgetAuthoritySetting(v)
 }

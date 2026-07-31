@@ -15,7 +15,7 @@ import (
 
 	"espx/internal/config"
 	"espx/internal/database"
-	"espx/internal/fraudscoring"
+	"espx/internal/fraud"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 )
@@ -50,16 +50,16 @@ type replayRow struct {
 	WindowStart string
 	IPHash      string
 	CampaignID  string
-	FeatureRow  fraudscoring.FeatureRow
+	FeatureRow  fraud.FeatureRow
 }
 
-func loadScorer(modelPath string) (*fraudscoring.LGBMScorer, error) {
-	scorer, err := fraudscoring.NewLGBMScorer(modelPath)
+func loadScorer(modelPath string) (*fraud.LGBMScorer, error) {
+	scorer, err := fraud.NewLGBMScorer(modelPath)
 	if err != nil {
 		return nil, fmt.Errorf("load model: %w", err)
 	}
-	if scorer.Dims() != fraudscoring.Dims() {
-		return nil, fmt.Errorf("model NFeatures=%d want %d", scorer.Dims(), fraudscoring.Dims())
+	if scorer.Dims() != fraud.Dims() {
+		return nil, fmt.Errorf("model NFeatures=%d want %d", scorer.Dims(), fraud.Dims())
 	}
 	return scorer, nil
 }
@@ -92,7 +92,7 @@ func loadFixtureRows(fixturesDir string) ([]replayRow, error) {
 		}
 		rows = append(rows, replayRow{
 			Source: id,
-			FeatureRow: fraudscoring.FeatureRow{
+			FeatureRow: fraud.FeatureRow{
 				Events:           fixture.Row.Events,
 				Clicks:           fixture.Row.Clicks,
 				SpendMicro:       fixture.Row.SpendMicro,
@@ -133,7 +133,7 @@ LIMIT ?`
 
 	var out []replayRow
 	for rows.Next() {
-		var fr fraudscoring.FeatureRow
+		var fr fraud.FeatureRow
 		var campaignID string
 		var ipHash []byte
 		if err := rows.Scan(
@@ -172,14 +172,14 @@ func writeReplayCSV(w io.Writer, rows []replayRow, scores []float64) error {
 		return err
 	}
 
-	pass := uint8(fraudscoring.FraudTierPassMax)
-	suspect := uint8(fraudscoring.FraudTierSuspectMax)
-	ivt := uint8(fraudscoring.FraudTierIVTMax)
+	pass := uint8(fraud.FraudTierPassMax)
+	suspect := uint8(fraud.FraudTierSuspectMax)
+	ivt := uint8(fraud.FraudTierIVTMax)
 	block := uint8(100)
 
 	for i, row := range rows {
 		mlScore := scores[i]
-		decision := fraudscoring.DecideWithCampaign(row.FeatureRow, mlScore, pass, suspect, ivt, block)
+		decision := fraud.DecideWithCampaign(row.FeatureRow, mlScore, pass, suspect, ivt, block)
 		action := shadowAction(decision.Tier, true)
 		if err := cw.Write([]string{
 			row.Source,
@@ -204,15 +204,15 @@ func writeReplayCSV(w io.Writer, rows []replayRow, scores []float64) error {
 	return cw.Error()
 }
 
-func shadowAction(tier fraudscoring.FraudTier, ghostEnabled bool) string {
+func shadowAction(tier fraud.FraudTier, ghostEnabled bool) string {
 	switch tier {
-	case fraudscoring.FraudTierSuspect:
+	case fraud.FraudTierSuspect:
 		return "boost"
-	case fraudscoring.FraudTierIVT:
+	case fraud.FraudTierIVT:
 		if ghostEnabled {
 			return "ghost"
 		}
-	case fraudscoring.FraudTierBlock:
+	case fraud.FraudTierBlock:
 		return "blacklist"
 	}
 	return ""
@@ -258,7 +258,7 @@ func runReplay(ctx context.Context, opts replayOptions) error {
 		return fmt.Errorf("no rows to score")
 	}
 
-	featureRows := make([]fraudscoring.FeatureRow, len(rows))
+	featureRows := make([]fraud.FeatureRow, len(rows))
 	for i := range rows {
 		featureRows[i] = rows[i].FeatureRow
 	}

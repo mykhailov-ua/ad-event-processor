@@ -3,7 +3,7 @@ package ingestion
 import (
 	"testing"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/rtb"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -32,12 +32,12 @@ func TestDeviceMaskFromType(t *testing.T) {
 
 func TestBuildRtbCatalogRows_remainingBudget(t *testing.T) {
 	id := uuid.New()
-	camp := &campaignmodel.Campaign{
+	camp := &domain.Campaign{
 		ID:           id,
 		BudgetLimit:  1000,
 		CurrentSpend: 250,
 	}
-	rows := BuildRtbCatalogRows([]*campaignmodel.Campaign{camp}, map[uuid.UUID]RtbCampaignInput{
+	rows := BuildRtbCatalogRows([]*domain.Campaign{camp}, map[uuid.UUID]RtbCampaignInput{
 		id: {BidMicro: 100, DeviceMask: 1, CategoryMask: 1, GeoHash: 7, Weight: 1},
 	})
 	require.Len(t, rows, 1)
@@ -50,13 +50,13 @@ func TestRtbCatalog_shadowDoesNotSpend(t *testing.T) {
 	catalog := NewRtbCatalog(store, BudgetAuthorityShadow)
 
 	id := uuid.New()
-	camp := &campaignmodel.Campaign{ID: id, BudgetLimit: 1000, CurrentSpend: 0}
+	camp := &domain.Campaign{ID: id, BudgetLimit: 1000, CurrentSpend: 0}
 	inputs := map[uuid.UUID]RtbCampaignInput{
 		id: {BidMicro: 100, DeviceMask: 1, CategoryMask: 1, GeoHash: 7, Weight: 1},
 	}
-	catalog.SyncActiveCampaigns([]*campaignmodel.Campaign{camp}, inputs)
+	catalog.SyncActiveCampaigns([]*domain.Campaign{camp}, inputs)
 
-	evt := &campaignmodel.Event{}
+	evt := &domain.Event{}
 	res, reason := catalog.RunAuction(evt, RtbTargetingInput{
 		GeoHash:             7,
 		DeviceType:          1,
@@ -73,13 +73,13 @@ func TestRtbCatalog_liveSpend(t *testing.T) {
 	catalog := NewRtbCatalog(store, BudgetAuthorityRTB)
 
 	id := uuid.New()
-	camp := &campaignmodel.Campaign{ID: id, BudgetLimit: 1000, CurrentSpend: 0}
+	camp := &domain.Campaign{ID: id, BudgetLimit: 1000, CurrentSpend: 0}
 	inputs := map[uuid.UUID]RtbCampaignInput{
 		id: {BidMicro: 100, DeviceMask: 1, CategoryMask: 1, GeoHash: 7, Weight: 1},
 	}
-	catalog.SyncActiveCampaigns([]*campaignmodel.Campaign{camp}, inputs)
+	catalog.SyncActiveCampaigns([]*domain.Campaign{camp}, inputs)
 
-	evt := &campaignmodel.Event{}
+	evt := &domain.Event{}
 	_, reason := catalog.RunAuction(evt, RtbTargetingInput{
 		GeoHash:             7,
 		DeviceType:          1,

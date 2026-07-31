@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/database"
 
 	"github.com/google/uuid"
@@ -32,14 +32,14 @@ func TestVPPIntegration_snapshotSyncAndFilter(t *testing.T) {
 	require.Equal(t, float32(0.0), sw.GetVPPRatio(campID))
 
 	reg := NewRegistry(nil)
-	reg.Add(campID, uuid.New(), nil, "", campaignmodel.PacingModeVpp, 10_000_000, "UTC", 0, 0, nil)
+	reg.Add(campID, uuid.New(), nil, "", domain.PacingModeVpp, 10_000_000, "UTC", 0, 0, nil)
 
 	filter := NewVPPFilter(reg, sw)
-	err := filter.Check(ctx, &campaignmodel.Event{CampaignID: campID})
+	err := filter.Check(ctx, &domain.Event{CampaignID: campID})
 	require.ErrorIs(t, err, ErrPacingExhausted)
 
 	require.NoError(t, rdb.Set(ctx, key, "1.0", 0).Err())
 	sw.syncVPPRatios(ctx)
 	require.Equal(t, float32(1.0), sw.GetVPPRatio(campID))
-	require.NoError(t, filter.Check(ctx, &campaignmodel.Event{CampaignID: campID}))
+	require.NoError(t, filter.Check(ctx, &domain.Event{CampaignID: campID}))
 }

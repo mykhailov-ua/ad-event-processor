@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
@@ -37,7 +37,7 @@ func (f *EntitlementsFilter) getRDB(id uuid.UUID) redis.UniversalClient {
 	return f.rdbs[shard]
 }
 
-func (f *EntitlementsFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
+func (f *EntitlementsFilter) Check(ctx context.Context, evt *domain.Event) error {
 	campInfo, ok := f.registry.GetCampaign(evt.CampaignID)
 	if !ok {
 		return ErrCampaignNotFound

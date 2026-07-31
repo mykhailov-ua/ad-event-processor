@@ -3,7 +3,7 @@ package ingestion
 import (
 	"testing"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/rtb"
 
 	"github.com/stretchr/testify/assert"
@@ -11,7 +11,7 @@ import (
 )
 
 func TestFanOutRtbCatalogRows_multiCountry(t *testing.T) {
-	camp := &campaignmodel.Campaign{
+	camp := &domain.Campaign{
 		TargetCountries: map[string]struct{}{"US": {}, "DE": {}, "FR": {}},
 		BudgetLimit:     1_000_000,
 	}

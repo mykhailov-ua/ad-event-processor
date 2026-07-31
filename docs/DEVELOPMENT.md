@@ -49,6 +49,8 @@ bash scripts/ci/compliance.sh
 
 Resilience steady-state: `/track` p99 < 80 ms; error rate < 0.1% (excluding valid rejects).
 
+Tier A hygiene (`make tier-a`): `scripts/ci/tier_a.sh` — docs layout, milestone refs in comments, no HTMX success HTML, error-handling checks, optional obvious-comment scan. Comment linter skip paths: `scripts/ci/comment_linter_skip_prefixes.txt`. Lint job order: tier A → comments → openapi → golangci-lint (8 min budget on CI).
+
 ---
 
 ## Code style
@@ -65,7 +67,7 @@ Flat `package` per service (R1). File name tags act as modules (R2): `handler_*.
 | R9 | Comments explain non-obvious business logic; no decorative prefixes |
 | R10 | PR gates: lint, alloc-gate, fault when write path changes |
 
-New cold-path JSON: `api_` prefix in `internal/management/api_*.go`; wire via `api_register.go` where used.
+New cold-path JSON: `api_` prefix in `internal/controlplane/api_*.go`; wire via `api_register.go` where used.
 
 sqlc output: `internal/ingestion/sqlc/` for tracker; `internal/<svc>/db/` for other services.
 
@@ -328,7 +330,8 @@ Full list: `.env.example`.
 | `LOCAL_QUOTA_MODE` | `live` for local quanta |
 | `ELASTIC_SHARDING_ENABLED` | `false` steady-state default |
 | `CONTROL_FAIL_OPEN` | `0` (default): edge uses conservative routing when control epochs are stale — equal tracker weights, drain frozen. Set `1` for AWS GA-style fail-open (keep last epoch weights). Edge only; see [.cursor/MULTI_REGION.md](../.cursor/MULTI_REGION.md) H4. |
-| `CONTROL_ENABLE_*` | Modular monolith (`cmd/control`): set `0` to disable auth, management, payment, billing, notifier, margin-guard, or cost-sync in-process. See `.env.example`. |
+| `CONTROL_ENABLE_*` | Modular monolith (`cmd/control`, default deploy): set `0` to disable auth, management, payment, billing, notifier, margin-guard, or cost-sync in-process. See `.env.example`. |
+| `SETTLEMENT_GRPC_ENABLED` | Set `0` when running `cmd/control` so payment→settlement is in-process (default in compose `control` service). Leave enabled only for deprecated `split_control` / standalone `cmd/management` + `cmd/payment`. |
 | `NODE_WARMUP_SEC` | Tracker/management warmup before `/ready` and scorer drain (default `300`) |
 | `NODE_WEIGHTS_SYNC_INTERVAL_SEC` | Edge poll interval for `/ops/node-weights` (default `10`) |
 
@@ -339,11 +342,11 @@ Full list: `.env.example`.
 Local stacks use compose profiles; see [SELF_HOSTED.md § Deploy profiles](./SELF_HOSTED.md#deploy-profiles).
 
 ```bash
-scripts/dev/stack.sh single-vps      # tracker + processor + control
+scripts/dev/stack.sh single-vps      # default: tracker + processor + control monolith
 scripts/dev/stack.sh ingest-only     # control without payment/billing
 scripts/dev/stack.sh network-operator
 scripts/dev/stack.sh analytics-ml    # + fraud-scorer, ivt-detector
-scripts/dev/stack.sh full            # legacy split_control containers
+scripts/dev/stack.sh full            # DEPRECATED: split_control multi-container stack
 ```
 
 `ingest_only` smoke: payment/billing containers absent; no `clickhouse` service; `control` and `tracker` healthy.
@@ -485,7 +488,7 @@ Fault proof: `fault_proof fault=crypto_webhook_replay proposal_rows=1`. Sandbox 
 
 ### OpenAPI contract (GAP-PROD-03)
 
-Machine-readable spec for all implemented `/api/v1` JSON routes (`docs/openapi/openapi.yaml`). HTTP 501 stubs (`internal/adminapi/stub_routes.go`) and `/admin/*` HTMX HTML routes are excluded.
+Machine-readable spec for all implemented `/api/v1` JSON routes (`docs/openapi/openapi.yaml`). HTTP 501 stubs (`internal/controlplane/adminapi/stub_routes.go`) and `/admin/*` HTMX HTML routes are excluded.
 
 ```bash
 make openapi-lint          # contract tests + drift check
@@ -543,7 +546,7 @@ Hot-path change: `make test-alloc-gate`; run fault if write path changed.
 
 ```bash
 EXPLAIN_AUDIT=1 go test ./internal/database/... -run TestExplainAudit_AllApplicationQueries -v
-go test ./internal/management/... -run 'Explain|OutboxExplain' -count=1
+go test ./internal/controlplane/... -run 'Explain|OutboxExplain' -count=1
 go test ./internal/billing/... -run TestM3ExplainQueryPlans -count=1
 ```
 
@@ -559,24 +562,35 @@ Actions logged in `audit_logs`.
 
 ---
 
+## Open work
+
+Backlog P01–P48 is complete. Deferred (not in the priority table):
+
+- **GAP-PROD-01** — OpenAPI contract for buyer/finance reporting (`GET /api/v1/campaigns/{id}/stats`, customer balance, forecast).
+- **GAP-OPS-04** — `ch_spool_segments` (or equivalent) on `GET /api/v1/ops/dashboard/summary`.
+
+Self-hosted control plane stays JSON `/api/v1` + OpenAPI only — no bundled operator UI.
+
+Operator-run git history rewrites (P43/P45): see Git history section below.
+
 ## Completed roadmap
 
-Open work: `.cursor/BACKLOG.md`. Recently completed items (legacy gap IDs):
+Recently completed items (legacy gap IDs):
 
 | ID | Summary | Evidence |
 | :--- | :--- | :--- |
-| GAP-GEO-02 | Automated Postgres failover (coordinator, fencing, regional DSN push) | `internal/management/pg_failover.go`, `TestFault_PostgresMasterFailover` |
-| GAP-RTB-12 | Cross-region spend sync (`GlobalSpendReconciler`, idempotent ledger debits) | `internal/management/global_spend_*.go`, `AssertBudgetInvariant` at load |
+| GAP-GEO-02 | Automated Postgres failover (coordinator, fencing, regional DSN push) | `internal/controlplane/pg_failover.go`, `TestFault_PostgresMasterFailover` |
+| GAP-RTB-12 | Cross-region spend sync (`GlobalSpendReconciler`, idempotent ledger debits) | `internal/controlplane/global_spend_*.go`, `AssertBudgetInvariant` at load |
 | GAP-RTB-10 | VAST 4.2 + creative-level auction (0-alloc hot path) | `internal/rtb/`, `make test-alloc-gate` |
 | GAP-MR-03 | Operation quorum when Postgres is down (2-of-3 Redis ACK) | `operation_lease_quorum_redis.go`, `TestFault_QuorumBook_WithPGDown` |
 | GAP-DATA-01 | PII hashing before ClickHouse insert (versioned salt) | `pkg/piihash/`, migration `00010_pii_hash_columns.sql` |
 | GAP-DATA-02 | PG events retention, production TLS profile, operator MVSS checklist | [runbooks/DATA_SECURITY.md](./runbooks/DATA_SECURITY.md) |
 | GAP-DB-01/02 | Disk group-commit, `iogate` `fsyncSem`, WAL alignment, BPF `writev` | [GAP-DB-01-02-report.md](./GAP-DB-01-02-report.md) |
-| GAP-ENG-01 | `internal/management` domain registry, DTO boundaries, coverage gate | [GAP-ENG-01-report.md](./GAP-ENG-01-report.md), `make management-domain-coverage` |
+| GAP-ENG-01 | `internal/controlplane` domain registry, DTO boundaries, coverage gate | [GAP-ENG-01-report.md](./GAP-ENG-01-report.md), `make management-domain-coverage` |
 | GAP-OPS-03 | ClickHouse query governance (`CHQuery` gate, timeout, CI allowlist) | `internal/database/chquery.go`, `scripts/ci/ch_direct.sh` |
 | GAP-ENG-02 | Broker and region-proxy in local compose (`multi-region` profile) | `docker-compose.yaml`, `scripts/dev/stack.sh multi-region up` |
 | GAP-DB-03 | Weighted processor gates (multi-instance stream cadence) | `internal/ingestion/processor_weight.go`, `GET /ops/processor-weights` |
-| GAP-CMP-01 | Edge tarpit + compliance matrix | `.cursor/COMPLIANCE_MATRIX.md`, `deploy/nginx/lua/tests/tarpit_test.lua` |
+| GAP-CMP-01 | Edge tarpit + compliance matrix | [.cursor/COMPLIANCE_MATRIX.md](../.cursor/COMPLIANCE_MATRIX.md), `deploy/nginx/lua/tests/tarpit_test.lua` |
 | GAP-ENG-03 | Vendor telemetry probes | `pkg/vendorprobe/`, `ad_vendor_probe_*` metrics |
 | GAP-PAY-01 | Cryptocurrency payment gateway | `internal/payment/provider_crypto.go`, `TestFault_CryptoWebhookReplay`, `deploy/payment/crypto-sandbox.env` |
 | GAP-PROD-03 | OpenAPI 3 `/api/v1` contract | `docs/openapi/openapi.yaml`, `make openapi-lint`, `tests/contract/openapi_test.go` |
@@ -584,13 +598,13 @@ Open work: `.cursor/BACKLOG.md`. Recently completed items (legacy gap IDs):
 | GAP-RTB-12b | Admin dry-run preview | `ParseDryRun`, `dry_run_test.go` |
 | GAP-RTB-12c | A/B cohorts | `experiment_cohorts`, `cohort_snapshot.go`, `cohort_test.go` |
 
-Deferred API contract work (not in P-table): GAP-PROD-01, GAP-OPS-04. Self-hosted installs use JSON `/api/v1` only; legacy HTMX removed (P06 / GAP-HYG-04). Bundled operator UI cancelled (GAP-PROD-02).
+Deferred API contract work: GAP-PROD-01, GAP-OPS-04 (see Open work above). Self-hosted installs use JSON `/api/v1` only; legacy HTMX removed. Bundled operator UI cancelled.
 
 ---
 
 ## Postgres DR
 
-**Automated failover (default):** `internal/management/pg_failover.go` — coordinator election via Redis (`pkg/broker/server/coord.go`), replica promotion, fencing tokens, DSN push to regional management cells. Validated by `TestFault_PostgresMasterFailover`.
+**Automated failover (default):** `internal/controlplane/pg_failover.go` — coordinator election via Redis (`pkg/broker/server/coord.go`), replica promotion, fencing tokens, DSN push to regional management cells. Validated by `TestFault_PostgresMasterFailover`.
 
 **Manual fallback** (when automation is disabled or for resilience drills):
 

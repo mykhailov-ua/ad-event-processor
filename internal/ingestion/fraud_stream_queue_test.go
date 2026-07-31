@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/metrics"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -48,7 +48,7 @@ func TestFraudStreamWriter_enqueueAndFlush(t *testing.T) {
 	require.NotNil(t, q)
 	defer q.Stop()
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		ClickID:     "click-1",
 		CampaignID:  uuid.New(),
 		UserID:      "user-1",
@@ -77,7 +77,7 @@ func TestFraudStreamWriter_ringFullIncrementsDropMetric(t *testing.T) {
 	q.writeCursor = fraudRingUsable
 
 	before := testutil.ToFloat64(metrics.FraudStreamDropTotal)
-	evt := &campaignmodel.Event{ClickID: "c1", CampaignID: uuid.New(), Type: "click"}
+	evt := &domain.Event{ClickID: "c1", CampaignID: uuid.New(), Type: "click"}
 	enqueueFraudReject(q, 0, evt)
 	assert.Equal(t, before+1, testutil.ToFloat64(metrics.FraudStreamDropTotal))
 }
@@ -96,7 +96,7 @@ func TestFraudStreamWriter_concurrentEnqueue(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for i := 0; i < perProducer; i++ {
-				evt := &campaignmodel.Event{
+				evt := &domain.Event{
 					ClickID:    "click",
 					CampaignID: uuid.New(),
 					Type:       "click",
@@ -116,7 +116,7 @@ func BenchmarkFraudStreamWriter_Enqueue(b *testing.B) {
 	if q == nil {
 		q = &FraudStreamWriter{stream: "fraud-stream", stopCh: make(chan struct{})}
 	}
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		ClickID:    "click-1",
 		CampaignID: uuid.New(),
 		UserID:     "user-1",

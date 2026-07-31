@@ -7,12 +7,14 @@ cd "$ROOT"
 safe_validate_codegen_configs
 
 RUN_PROTO=0
+PROTO_WITH_GRPC=0
 RUN_TEMPL=0
 RUN_BPF=0
 
 for arg in "$@"; do
 	case "$arg" in
 	--proto) RUN_PROTO=1 ;;
+	--proto-with-grpc) RUN_PROTO=1; PROTO_WITH_GRPC=1 ;;
 	--templ) RUN_TEMPL=1 ;;
 	--bpf) RUN_BPF=1 ;;
 	--all)
@@ -36,11 +38,20 @@ if [[ "$RUN_TEMPL" -eq 1 ]]; then
 fi
 
 if [[ "$RUN_PROTO" -eq 1 ]]; then
-	echo "gen: buf..."
+	echo "gen: buf (messages)..."
 	safe_rm_rf "$ROOT/api/gen"
 	mkdir -p "$ROOT/api/gen"
-	( cd "$ROOT/api" && go run github.com/bufbuild/buf/cmd/buf@latest generate --template buf.gen.yaml . )
+	( cd "$ROOT/api" && go run github.com/bufbuild/buf/cmd/buf@latest generate --template buf.gen.nogrpc.yaml . )
+	echo "gen: buf (vtproto: events, vast)..."
+	( cd "$ROOT/api" && go run github.com/bufbuild/buf/cmd/buf@latest generate --template buf.gen.vtproto.yaml --path events.proto --path vast.proto )
+	if [[ "$PROTO_WITH_GRPC" -eq 1 ]]; then
+		echo "gen: buf (grpc: internal services)..."
+		( cd "$ROOT/api" && go run github.com/bufbuild/buf/cmd/buf@latest generate --template buf.gen.grpc.yaml \
+			--path auth.proto --path billing.proto --path payment.proto \
+			--path notifier.proto --path settlement.proto )
+	fi
 	safe_sync_proto_gen
+	safe_prune_service_vtproto
 	echo "gen: patch vtproto hot path..."
 	( cd "$ROOT" && go run ./cmd/patch-vtproto-hotpath )
 fi

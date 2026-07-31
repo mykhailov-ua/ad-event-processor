@@ -71,31 +71,34 @@ Hot path reads the merged snapshot via `Registry.SyncEntitlements`. Vendor caps 
 
 ---
 
-## Administrative microservices (re-profiled, not removed)
+## Administrative microservices (monolith default)
 
-Services stay separate **binaries** for blast radius and the legacy `split_control` compose profile. On a single VPS, run **`cmd/control`** — one process that embeds management, auth, payment, billing, and notifier with env-gated components (`CONTROL_ENABLE_*`).
+**Default:** run **`cmd/control`** on a single VPS — one process that embeds management, auth, payment, billing, and notifier with env-gated components (`CONTROL_ENABLE_*`). Set **`SETTLEMENT_GRPC_ENABLED=0`** so payment→settlement stays in-process (compose `control` service sets this).
+
+Standalone binaries (`cmd/management`, `cmd/auth`, `cmd/payment`, `cmd/billing`, `cmd/notifier`) and the compose profile **`split_control`** are **deprecated** — kept for transitional multi-container dev only. Prefer `scripts/dev/stack.sh single-vps` or `network-operator`.
 
 Cold-path workers (margin-guard, cost-sync, volume meter, recon, ledger invariant) run **only** in control/management — never in tracker replicas.
 
-### `cmd/control` — modular monolith (recommended for single VPS)
+### `cmd/control` — modular monolith (default)
 
 - Compose profiles: `single_vps`, `ingest_only`, `network_operator`.
 - `scripts/dev/stack.sh single-vps` — tracker + processor + control.
 - `ingest_only` disables payment/billing/notifier and margin-guard/cost-sync via `CONTROL_ENABLE_*=0`.
+- `SETTLEMENT_GRPC_ENABLED=0` — required for monolith; disables localhost settlement gRPC (payment uses in-process bridge).
 - Health: `http://127.0.0.1:8188/health` (management HTTP inside control).
 
-### `cmd/management` — operator control plane (split deploy)
+### `cmd/management` — operator control plane (deprecated split deploy)
 
 - Campaign CRUD, outbox, settlement gRPC, recon, workers.
-- `/api/v1/*` JSON API (+ `internal/adminapi` when wired).
+- `/api/v1/*` JSON API (`internal/controlplane` + `internal/controlplane/adminapi`).
 - `/api/v1/selfserve/*` — **advertiser API** (optional); not vendor onboarding.
 - ClickHouse: **analytics only** (charts, forecast, IVT); never billing authority.
 
-### `cmd/auth`
+### `cmd/auth` (deprecated standalone)
 
-Sessions, PASETO, API keys for operator staff and advertiser automation. Unchanged role.
+Sessions, PASETO, API keys for operator staff and advertiser automation. Use `cmd/control` with `CONTROL_ENABLE_AUTH=1`.
 
-### `cmd/payment` — operator wallet rail
+### `cmd/payment` — operator wallet rail (deprecated standalone)
 
 | Concern | Self-hosted policy |
 | :--- | :--- |
@@ -106,15 +109,16 @@ Sessions, PASETO, API keys for operator staff and advertiser automation. Unchang
 
 Keep: gRPC intents, crypto hold worker, financial recon, chargeback paths.
 
-### `cmd/billing` — operator invoicing
+### `cmd/billing` — operator invoicing (deprecated standalone)
 
 - `GenerateInvoice` — operator bills **advertisers** from `balance_ledger` + optional internal plan fee/overage.
 - `usage_meters` — fed from **PG** (accepted events), closed periods, idempotent hourly keys.
 - Invoice worker, notifier delivery, ledger drift alerter — remain operator-facing.
+- Use `cmd/control` with `CONTROL_ENABLE_BILLING=1`.
 
-### `cmd/notifier`
+### `cmd/notifier` (deprecated standalone)
 
-Operator ops alerts. Credentials belong to the install owner.
+Operator ops alerts. Credentials belong to the install owner. Use `cmd/control` with `CONTROL_ENABLE_NOTIFIER=1`.
 
 ---
 
@@ -148,7 +152,7 @@ Default migration seeds for `subscription_plans` are **examples** for the operat
 
 ## Deploy profiles
 
-Typical bare-metal layout (see MULTI_REGION.md section on modular monolith):
+Typical bare-metal layout (see `.cursor/MULTI_REGION.md` section on modular monolith):
 
 | Unit | Binaries | Required |
 | :--- | :--- | :--- |
@@ -243,11 +247,11 @@ Compose profiles gate which containers start. Use `scripts/dev/stack.sh` or `doc
 
 | Profile | Command | Binaries / services | Audience |
 | :--- | :--- | :--- | :--- |
-| `single_vps` | `stack.sh single-vps` | `tracker`, `processor`, `control` (all cold path in one process) | Default bare-metal / 1–2 CPU |
+| `single_vps` | `stack.sh single-vps` | `tracker`, `processor`, `control` (all cold path in one process) | **Default** bare-metal / 1–2 CPU |
 | `ingest_only` | `stack.sh ingest-only` | Same; `CONTROL_ENABLE_PAYMENT/BILLING/NOTIFIER/MARGIN_GUARD/COST_SYNC=0` | Arbitrage / buy-side |
 | `network_operator` | `stack.sh network-operator` | `control` with payment + billing + notifier enabled | Ad network with wallet |
 | `analytics_ml` | `stack.sh analytics-ml` | + `clickhouse`, `fraud-scorer`, `ivt-detector` | Optional ML cold path |
-| `split_control` | `stack.sh full` | Separate `auth`, `management`, `payment`, `billing`, `notifier` containers | Legacy / multi-container dev |
+| `split_control` | `stack.sh full` (**deprecated**) | Separate `auth`, `management`, `payment`, `billing`, `notifier` containers | Transitional only; use `single_vps` |
 
 ClickHouse is **optional**: `ingest_only` sets `CH_ENABLED=0` and omits the CH container; settlement and billing remain on PostgreSQL. Enable CH via `single_vps` / `network_operator` profiles or add `analytics_ml` for ML modules.
 

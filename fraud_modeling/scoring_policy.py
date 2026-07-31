@@ -1,4 +1,4 @@
-"""Post-ML heuristics; mirrors internal/fraudscoring/scoring_policy.go."""
+"""Post-ML heuristics; mirrors internal/fraud/scoring_policy.go."""
 from __future__ import annotations
 
 from dataclasses import dataclass

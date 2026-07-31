@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"espx/internal/ingestion"
-	ingestdb "espx/internal/ingestion/sqlc"
+	ingestdb "espx/internal/domain/db"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"

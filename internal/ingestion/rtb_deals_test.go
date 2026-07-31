@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"espx/internal/database"
-	"espx/internal/ingestion/sqlc"
+	"espx/internal/domain/db"
 	"espx/internal/rtb"
 
 	"github.com/google/uuid"

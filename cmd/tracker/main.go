@@ -13,7 +13,7 @@ import (
 	"espx/internal/database"
 	"espx/internal/health"
 	"espx/internal/ingestion"
-	db "espx/internal/ingestion/sqlc"
+	db "espx/internal/domain/db"
 	"espx/internal/metrics"
 	"espx/internal/rtb"
 	"espx/pkg/logger"

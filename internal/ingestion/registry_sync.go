@@ -5,8 +5,6 @@ import (
 	"log/slog"
 )
 
-const RegistryFullSyncPayload = "*"
-
 func (r *Registry) ReloadFullSnapshot(ctx context.Context) (int, error) {
 	count, err := r.Sync(ctx)
 	if err != nil {
@@ -27,8 +25,4 @@ func (r *Registry) ReloadFullSnapshot(ctx context.Context) (int, error) {
 
 	slog.Info("campaign registry full sync", "campaigns", count)
 	return count, nil
-}
-
-func IsRegistryFullSyncPayload(payload string) bool {
-	return payload == RegistryFullSyncPayload
 }

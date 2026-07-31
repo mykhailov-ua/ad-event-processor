@@ -1,7 +1,3 @@
-# Engineering backlog
+# Milestone history
 
-The milestone table moved to `.cursor/BACKLOG.md`.
-
-Acceptance criteria for each **P** number: `.cursor/GAP_SPECS.md`.
-
-Closed work: `docs/DEVELOPMENT.md` (Completed roadmap).
+Backlog P01–P48 is complete. Open and deferred work: `docs/DEVELOPMENT.md`. Completed roadmap with legacy gap IDs: same file, Completed roadmap section.

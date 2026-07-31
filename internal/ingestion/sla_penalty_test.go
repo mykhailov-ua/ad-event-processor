@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
@@ -62,7 +62,7 @@ func TestUnifiedFilter_SLAPenalty_Discount(t *testing.T) {
 		10000,
 	)
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		CampaignID: campID,
 		ClickID:    uuid.NewString(),
 		IP:         "1.1.1.1",
@@ -81,7 +81,7 @@ func TestUnifiedFilter_SLAPenalty_Discount(t *testing.T) {
 
 	f.slaPenaltyActive.Store(true)
 
-	evt2 := &campaignmodel.Event{
+	evt2 := &domain.Event{
 		CampaignID: campID,
 		ClickID:    uuid.NewString(),
 		IP:         "1.1.1.1",

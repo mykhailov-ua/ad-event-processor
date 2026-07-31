@@ -3,7 +3,7 @@ package ingestion
 import (
 	"testing"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -20,7 +20,7 @@ func TestFraudAccumulator_scoreAndReason(t *testing.T) {
 	acc.add(FraudReasonLowTTC)
 	assert.Equal(t, uint32(90), acc.score)
 
-	evt := &campaignmodel.Event{StringBuffer: make([]byte, 0, 64)}
+	evt := &domain.Event{StringBuffer: make([]byte, 0, 64)}
 	tier := applyFraudAccumulatorForCampaign(evt, acc, nil)
 	assert.Equal(t, FraudTierBlock, tier)
 	assert.Equal(t, uint32(90), evt.FraudScore)
@@ -36,7 +36,7 @@ func TestFraudAccumulator_dedupesSignals(t *testing.T) {
 }
 
 func TestMapFraudTier_campaignThresholds(t *testing.T) {
-	camp := &campaignmodel.Campaign{
+	camp := &domain.Campaign{
 		FraudThresholdPass:    20,
 		FraudThresholdSuspect: 40,
 		FraudThresholdIVT:     60,

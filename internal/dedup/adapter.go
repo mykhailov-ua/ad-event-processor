@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	db "espx/internal/ingestion/sqlc"
+	db "espx/internal/domain/db"
 	"espx/internal/metrics"
 	"espx/pkg/dedupkey"
 

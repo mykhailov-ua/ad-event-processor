@@ -2,7 +2,7 @@
 
 How eSPX ensures financial truth in a distributed system with asynchronous settlement.
 
-Acceptance criteria: P02 in `.cursor/GAP_SPECS.md`.
+Operational acceptance criteria: this runbook (settlement reconciliation, GAP-HYG-30).
 
 Related: ARCHITECTURE.md, DATA_SECURITY.md, PROTECTION.md.
 
@@ -99,14 +99,34 @@ LedgerInvariantWorker (24 h) ── customers.balance vs ledger sum
 
 ## SQL plans
 
-SQL reference: `.cursor/GAP_SPECS.md` appendix (P02 / GAP-HYG-30).
+**Volume meter:**
 
-| Query | Purpose | Index |
-| :--- | :--- | :--- |
-| `UpsertUsageMeter` | PG volume meter (replaces CH worker) | `events(created_at, status)` |
-| Ledger invariant | Detect balance drift | `balance_ledger(customer_id)` |
-| `sync_idempotency` insert | Prevent double debit | `UNIQUE(event_id, campaign_id)` |
-| Campaign stats drift | PG vs CH compare input | `campaign_stats(campaign_id, date)` |
+```sql
+INSERT INTO billing.usage_meters (customer_id, meter, period, value)
+SELECT customer_id, 'accepted_events', date_trunc('month', created_at)::date, COUNT(*)::bigint
+FROM events
+WHERE created_at >= $1 AND created_at < $2 AND status = 'accepted'
+GROUP BY customer_id, date_trunc('month', created_at)::date
+ON CONFLICT (customer_id, meter, period) DO UPDATE SET value = EXCLUDED.value;
+```
+
+**Ledger invariant:**
+
+```sql
+SELECT c.id FROM customers c
+LEFT JOIN balance_ledger l ON l.customer_id = c.id
+GROUP BY c.id, c.balance
+HAVING c.balance <> COALESCE(SUM(l.amount_micro), 0);
+```
+
+**Idempotency:**
+
+```sql
+INSERT INTO sync_idempotency (event_id, campaign_id, processed_at)
+VALUES ($1, $2, NOW()) ON CONFLICT DO NOTHING RETURNING event_id;
+```
+
+Index targets: `events(created_at) WHERE status='accepted'`; `balance_ledger(customer_id)`; `campaign_stats(campaign_id, date)`.
 
 ---
 

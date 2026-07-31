@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 
 	rediscontainer "github.com/testcontainers/testcontainers-go/modules/redis"
 
@@ -27,8 +27,8 @@ func edgePinFilter(t testing.TB, rdb redis.UniversalClient, pinWorkers int) *Uni
 	return f
 }
 
-func edgeImpressionEvt(campID uuid.UUID, worker int8) *campaignmodel.Event {
-	evt := &campaignmodel.Event{
+func edgeImpressionEvt(campID uuid.UUID, worker int8) *domain.Event {
+	evt := &domain.Event{
 		Type:       "impression",
 		IP:         "203.0.113.50",
 		UserID:     "edge-user",
@@ -188,7 +188,7 @@ func TestEdgePin_DeadlineStringNearDegradeThreshold(t *testing.T) {
 	campID := uuid.New()
 	seedCampaignBudget(t, ctx, rdb, campID)
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		Type:       "click",
 		IP:         "203.0.113.55",
 		UserID:     "edge-degrade",

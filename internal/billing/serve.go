@@ -8,6 +8,7 @@ import (
 	"espx/internal/billing/pb"
 	"espx/internal/config"
 	"espx/internal/database"
+	"espx/internal/notifier"
 	notifierpb "espx/internal/notifier/pb"
 	"espx/pkg/lifecycle"
 
@@ -40,10 +41,11 @@ func Serve(ctx context.Context, cfg *config.Config) error {
 	if notifierClient != nil {
 		providerName, recipient := ResolveInvoiceNotifierTarget(cfg)
 		if providerName != notifierpb.Provider_PROVIDER_UNSPECIFIED && recipient != "" {
+			notifierAPI := notifier.NewGRPCNotifierAPI(notifierClient)
 			svc.SetInvoiceDeliverer(NewNotifierInvoiceDeliverer(
-				notifierClient, providerName, recipient, cfg.Notifier.AdminBaseURL,
+				notifierAPI, providerName, recipient, cfg.Notifier.AdminBaseURL,
 			), cfg.Notifier.AdminBaseURL)
-			svc.SetDriftAlerter(NewNotifierDriftAlerter(notifierClient, providerName, recipient))
+			svc.SetDriftAlerter(NewNotifierDriftAlerter(notifierAPI, providerName, recipient))
 			slog.Info("billing notifier delivery enabled", "recipient", recipient)
 		}
 	}
@@ -56,26 +58,32 @@ func Serve(ctx context.Context, cfg *config.Config) error {
 	}
 
 	grpcHandler := NewHandler(svc, cfg)
-	lis, err := net.Listen("tcp", ":"+cfg.Billing.Port)
-	if err != nil {
-		workerCancel()
-		return err
-	}
-
-	grpcServer := google_grpc.NewServer()
-	pb.RegisterBillingServiceServer(grpcServer, grpcHandler)
-	if cfg.Env != "production" {
-		reflection.Register(grpcServer)
-	}
 
 	timeouts := lifecycle.TimeoutsFromConfig(cfg)
 	metricsSrv := lifecycle.StartMetrics(":" + cfg.Billing.MetricsPort)
 
+	var grpcServer *google_grpc.Server
 	serveErr := make(chan error, 1)
-	go func() {
-		slog.Info("starting billing gRPC server", "port", cfg.Billing.Port)
-		serveErr <- grpcServer.Serve(lis)
-	}()
+	if cfg.BillingGRPCEnabled {
+		lis, err := net.Listen("tcp", ":"+cfg.Billing.Port)
+		if err != nil {
+			workerCancel()
+			return err
+		}
+
+		grpcServer = google_grpc.NewServer()
+		pb.RegisterBillingServiceServer(grpcServer, grpcHandler)
+		if cfg.Env != "production" {
+			reflection.Register(grpcServer)
+		}
+
+		go func() {
+			slog.Info("starting billing gRPC server", "port", cfg.Billing.Port)
+			serveErr <- grpcServer.Serve(lis)
+		}()
+	} else {
+		slog.Info("billing gRPC disabled", "env", "BILLING_GRPC_ENABLED=0")
+	}
 
 	select {
 	case <-ctx.Done():
@@ -87,7 +95,9 @@ func Serve(ctx context.Context, cfg *config.Config) error {
 	}
 
 	workerCancel()
-	lifecycle.ShutdownGRPC(grpcServer, timeouts.Shutdown)
+	if grpcServer != nil {
+		lifecycle.ShutdownGRPC(grpcServer, timeouts.Shutdown)
+	}
 	if err := metricsSrv.Shutdown(timeouts.Shutdown); err != nil {
 		slog.Error("billing metrics server shutdown failed", "error", err)
 	}

@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/config"
 	"espx/internal/rtb"
 
@@ -25,7 +25,7 @@ func newOpenRTB26FaultHandler(t *testing.T) *AdsPacketHandler {
 	winnerID := uuid.New()
 	geo := GeoHashFromCountry("US")
 	catalog.SyncActiveCampaigns(
-		[]*campaignmodel.Campaign{{ID: winnerID, BudgetLimit: 50_000_000, TargetCountries: map[string]struct{}{"US": {}}}},
+		[]*domain.Campaign{{ID: winnerID, BudgetLimit: 50_000_000, TargetCountries: map[string]struct{}{"US": {}}}},
 		map[uuid.UUID]RtbCampaignInput{
 			winnerID: {BidMicro: 2_000_000, DeviceMask: 7, CategoryMask: 3, GeoHash: geo, Weight: 1},
 		},

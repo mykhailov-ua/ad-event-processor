@@ -18,7 +18,7 @@ echo ""
 
 go test -count=1 -v -timeout 25m \
 	-run 'TestFault_(Score|OperationLease|Region|Proxy|Disk|Global|Quorum)' \
-	./internal/management/... \
+	./internal/controlplane/... \
 	2>&1 | tee "$LOG"
 
 MR_PROOFS="$(grep -c 'fault_proof fault=mr_' "$LOG" || true)"

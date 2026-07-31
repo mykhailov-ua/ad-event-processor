@@ -14,9 +14,9 @@ import (
 
 	"espx/internal/config"
 	"espx/internal/ingestion"
-	ads_db "espx/internal/ingestion/sqlc"
-	"espx/internal/management"
-	"espx/internal/management/pb"
+	ads_db "espx/internal/domain/db"
+	"espx/internal/controlplane"
+	"espx/internal/controlplane/pb"
 	"espx/internal/payment/db"
 
 	"github.com/google/uuid"
@@ -212,8 +212,8 @@ func TestPaymentService_Integration(t *testing.T) {
 	assert.Equal(t, "SETTLE_BALANCE", outboxEvents[0].EventType)
 
 	rdbs := []redis.UniversalClient{rdb}
-	mgmtSvc := management.NewService(pool, rdbs, ingestion.NewStaticSlotSharder(len(rdbs)), cfg)
-	settleHandler := management.NewSettlementHandler(mgmtSvc, cfg)
+	mgmtSvc := controlplane.NewService(pool, rdbs, ingestion.NewStaticSlotSharder(len(rdbs)), cfg)
+	settleHandler := controlplane.NewSettlementHandler(mgmtSvc, cfg)
 
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)

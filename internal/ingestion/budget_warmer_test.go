@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
-	db "espx/internal/ingestion/sqlc"
+	"espx/internal/domain"
+	db "espx/internal/domain/db"
 	"espx/internal/metrics"
 
 	"github.com/google/uuid"
@@ -48,11 +48,11 @@ func (m *budgetMissOnceRedis) Process(ctx context.Context, cmd redis.Cmder) erro
 
 type panicCampaignRepo struct{}
 
-func (panicCampaignRepo) GetByID(context.Context, uuid.UUID) (*campaignmodel.Campaign, error) {
+func (panicCampaignRepo) GetByID(context.Context, uuid.UUID) (*domain.Campaign, error) {
 	panic("PG must not be called when registry has budget snapshot")
 }
 
-func (panicCampaignRepo) UpdateStatus(context.Context, uuid.UUID, campaignmodel.CampaignStatus) error {
+func (panicCampaignRepo) UpdateStatus(context.Context, uuid.UUID, domain.CampaignStatus) error {
 	return nil
 }
 
@@ -60,14 +60,14 @@ func (panicCampaignRepo) UpdateSpend(context.Context, uuid.UUID, int64, string) 
 	return nil
 }
 
-func (panicCampaignRepo) ListActive(context.Context) ([]*campaignmodel.Campaign, error) {
+func (panicCampaignRepo) ListActive(context.Context) ([]*domain.Campaign, error) {
 	return nil, nil
 }
 
 func TestRemainingBudgetMicro(t *testing.T) {
 	assert.Equal(t, int64(0), RemainingBudgetMicro(nil))
-	assert.Equal(t, int64(700), RemainingBudgetMicro(&campaignmodel.Campaign{BudgetLimit: 1000, CurrentSpend: 300}))
-	assert.Equal(t, int64(0), RemainingBudgetMicro(&campaignmodel.Campaign{BudgetLimit: 100, CurrentSpend: 500}))
+	assert.Equal(t, int64(700), RemainingBudgetMicro(&domain.Campaign{BudgetLimit: 1000, CurrentSpend: 300}))
+	assert.Equal(t, int64(0), RemainingBudgetMicro(&domain.Campaign{BudgetLimit: 100, CurrentSpend: 500}))
 }
 
 func TestBudgetCacheWarmer_SetNXDoesNotOverwrite(t *testing.T) {
@@ -89,7 +89,7 @@ func TestBudgetCacheWarmer_SetNXDoesNotOverwrite(t *testing.T) {
 	require.NoError(t, rdb.Set(ctx, camp.BudgetCampaignKey, 42, 0).Err())
 
 	w := NewBudgetCacheWarmer([]redis.UniversalClient{rdb}, NewJumpHashSharder(1))
-	warmed, err := w.Warm(ctx, []*campaignmodel.Campaign{camp})
+	warmed, err := w.Warm(ctx, []*domain.Campaign{camp})
 	require.NoError(t, err)
 	assert.Equal(t, 0, warmed)
 
@@ -115,7 +115,7 @@ func TestBudgetCacheWarmer_insertsMissingKeys(t *testing.T) {
 	cachedMockCamp.Store(camp)
 
 	w := NewBudgetCacheWarmer([]redis.UniversalClient{rdb}, NewJumpHashSharder(1))
-	warmed, err := w.Warm(ctx, []*campaignmodel.Campaign{camp})
+	warmed, err := w.Warm(ctx, []*domain.Campaign{camp})
 	require.NoError(t, err)
 	assert.Equal(t, 1, warmed)
 
@@ -127,7 +127,7 @@ func TestBudgetCacheWarmer_insertsMissingKeys(t *testing.T) {
 func TestUnifiedFilter_budgetMiss_recoversFromRegistryWithoutPG(t *testing.T) {
 	campID := uuid.New()
 	custID := uuid.New()
-	cachedMockCamp.Store(&campaignmodel.Campaign{
+	cachedMockCamp.Store(&domain.Campaign{
 		ID:           campID,
 		CustomerID:   custID,
 		BudgetLimit:  10_000_000,
@@ -154,7 +154,7 @@ func TestUnifiedFilter_budgetMiss_recoversFromRegistryWithoutPG(t *testing.T) {
 	beforePG := testutil.ToFloat64(metrics.BudgetCacheMissPGTotal)
 	beforeRecover := testutil.ToFloat64(metrics.BudgetCacheRegistryRecoverTotal)
 
-	err := f.Check(context.Background(), &campaignmodel.Event{
+	err := f.Check(context.Background(), &domain.Event{
 		CampaignID: campID,
 		ClickID:    uuid.NewString(),
 		Type:       "click",
@@ -178,7 +178,7 @@ func TestBudgetCacheWarmer_WarmOne_Incremental(t *testing.T) {
 	defer cleanup()
 
 	campID := uuid.New()
-	camp := &campaignmodel.Campaign{
+	camp := &domain.Campaign{
 		ID:                campID,
 		BudgetLimit:       2_000_000,
 		CurrentSpend:      500_000,
@@ -227,7 +227,7 @@ func TestCampaignRegistry_UpdateAndWarmCampaign_Incremental(t *testing.T) {
 	w := NewBudgetCacheWarmer([]redis.UniversalClient{rdb}, NewJumpHashSharder(1))
 	r.SetBudgetWarmer(w)
 
-	r.Add(campID, custID, nil, "", campaignmodel.PacingModeAsap, 1000, "UTC", 0, 0, nil)
+	r.Add(campID, custID, nil, "", domain.PacingModeAsap, 1000, "UTC", 0, 0, nil)
 
 	campBefore, ok := r.GetCampaign(campID)
 	require.True(t, ok)
@@ -275,7 +275,7 @@ func TestCampaignRegistry_StartWatch_IncrementalWarm(t *testing.T) {
 	w := NewBudgetCacheWarmer([]redis.UniversalClient{rdb}, NewJumpHashSharder(1))
 	r.SetBudgetWarmer(w)
 
-	r.Add(campID, custID, nil, "", campaignmodel.PacingModeAsap, 1000, "UTC", 0, 0, nil)
+	r.Add(campID, custID, nil, "", domain.PacingModeAsap, 1000, "UTC", 0, 0, nil)
 
 	channel := "test:campaign:updates:incremental"
 	r.StartWatch(ctx, rdb, channel)
@@ -330,7 +330,7 @@ func BenchmarkBudgetCacheWarmer_WarmOne(b *testing.B) {
 	rdb := &benchmarkRedisClient{}
 	w := NewBudgetCacheWarmer([]redis.UniversalClient{rdb}, NewJumpHashSharder(1))
 	campID := uuid.New()
-	camp := &campaignmodel.Campaign{
+	camp := &domain.Campaign{
 		ID:                campID,
 		BudgetLimit:       1000,
 		CurrentSpend:      100,
@@ -347,10 +347,10 @@ func BenchmarkBudgetCacheWarmer_Warm(b *testing.B) {
 	ctx := context.Background()
 	rdb := &benchmarkRedisClient{}
 	w := NewBudgetCacheWarmer([]redis.UniversalClient{rdb}, NewJumpHashSharder(1))
-	campaigns := make([]*campaignmodel.Campaign, 10)
+	campaigns := make([]*domain.Campaign, 10)
 	for i := 0; i < 10; i++ {
 		campID := uuid.New()
-		campaigns[i] = &campaignmodel.Campaign{
+		campaigns[i] = &domain.Campaign{
 			ID:                campID,
 			BudgetLimit:       1000,
 			CurrentSpend:      100,

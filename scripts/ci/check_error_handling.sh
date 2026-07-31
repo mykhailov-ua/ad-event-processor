@@ -18,15 +18,15 @@ scan() {
 
 while IFS= read -r -d '' file; do
 	scan "$file"
-done < <(find internal/management -name 'outbox_*.go' ! -name '*_test.go' -print0 2>/dev/null || true)
+done < <(find internal/controlplane -name 'outbox_*.go' ! -name '*_test.go' -print0 2>/dev/null || true)
 
 while IFS= read -r -d '' file; do
 	scan "$file"
-done < <(find internal/management -name 'handler_*.go' ! -name '*_test.go' -print0 2>/dev/null || true)
+done < <(find internal/controlplane -name 'handler_*.go' ! -name '*_test.go' -print0 2>/dev/null || true)
 
 while IFS= read -r -d '' file; do
 	scan "$file"
-done < <(find internal/adminapi -name '*_handlers.go' ! -name '*_test.go' -print0 2>/dev/null || true)
+done < <(find internal/controlplane/adminapi -name '*_handlers.go' ! -name '*_test.go' -print0 2>/dev/null || true)
 
 if [[ "$fail" -ne 0 ]]; then
 	exit 1

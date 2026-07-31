@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/metrics"
 )
 
-func (consumer *StreamConsumer) splitStoreBatch(ctx context.Context, batch []*campaignmodel.Event, msgIDs []string, baseIdx int) (successIdx, failIdx []int) {
+func (consumer *StreamConsumer) splitStoreBatch(ctx context.Context, batch []*domain.Event, msgIDs []string, baseIdx int) (successIdx, failIdx []int) {
 	if len(batch) == 0 {
 		return nil, nil
 	}
@@ -16,7 +16,7 @@ func (consumer *StreamConsumer) splitStoreBatch(ctx context.Context, batch []*ca
 	storeCtx, cancel := context.WithTimeout(ctx, consumer.writeTimeout)
 	if len(msgIDs) > 0 {
 		token := fmt.Sprintf("%s_%s_%d", msgIDs[0], msgIDs[len(msgIDs)-1], len(msgIDs))
-		storeCtx = context.WithValue(storeCtx, campaignmodel.DeduplicationTokenKey, token)
+		storeCtx = context.WithValue(storeCtx, domain.DeduplicationTokenKey, token)
 	}
 	err := consumer.store.StoreBatch(storeCtx, batch)
 	cancel()

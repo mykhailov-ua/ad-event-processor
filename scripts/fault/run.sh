@@ -13,16 +13,16 @@ go fmt ./...
 
 go test -count=1 -v -run 'Fault' -timeout 20m \
 	./tests/... \
-	./internal/auth/... \
+	./internal/identity/... \
 	./internal/ingestion/... \
 	./internal/payment/... \
 	./internal/billing/... \
 	./internal/licensing/... \
 	./internal/notifier/... \
 	./internal/ivtdetector/... \
-	./internal/fraudscoring/... \
+	./internal/fraud/... \
 	./pkg/broker/server/... \
-	./internal/management/... \
+	./internal/controlplane/... \
 	./internal/edge/perimeter/... \
 	./internal/rtb/... \
 	./internal/logevacuator/... \

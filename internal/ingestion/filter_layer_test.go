@@ -3,7 +3,7 @@ package ingestion
 import (
 	"testing"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -48,7 +48,7 @@ func TestFraudAccumulator_shortCircuitBudget(t *testing.T) {
 }
 
 func TestApplyFraudScoreBoost(t *testing.T) {
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		CampaignID: uuid.New(),
 	}
 	acc := &fraudAccumulator{}
@@ -68,7 +68,7 @@ func TestApplyFraudScoreBoost(t *testing.T) {
 }
 
 func TestFraudScoreBoost_suspectTierIntegration(t *testing.T) {
-	evt := &campaignmodel.Event{CampaignID: uuid.New()}
+	evt := &domain.Event{CampaignID: uuid.New()}
 	acc := &fraudAccumulator{
 		score:   25,
 		count:   1,

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"espx/internal/ingestion"
+	"espx/internal/notifier"
 	"espx/internal/payment/db"
 
 	"github.com/google/uuid"
@@ -26,7 +27,7 @@ func TestFault_SettlementFailedNotifier(t *testing.T) {
 
 	stub := &stubPaymentNotifierClient{}
 	cfg := testPaymentOpsConfig()
-	alerter := NewSettlementFailedAlerter(&NotifierClient{client: stub}, cfg)
+	alerter := NewSettlementFailedAlerter(&NotifierClient{api: notifier.NewGRPCNotifierAPI(stub)}, cfg)
 	require.NotNil(t, alerter)
 
 	ctx := context.Background()

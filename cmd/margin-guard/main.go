@@ -11,9 +11,9 @@ import (
 	"espx/internal/config"
 	"espx/internal/database"
 	"espx/internal/ingestion"
-	db "espx/internal/ingestion/sqlc"
-	"espx/internal/management"
-	"espx/internal/marginguard"
+	db "espx/internal/domain/db"
+	"espx/internal/controlplane"
+	"espx/internal/ledger"
 )
 
 func main() {
@@ -44,12 +44,12 @@ func main() {
 	}
 	registry.StartSync(ctx, time.Duration(cfg.RegistrySyncIntervalMs)*time.Millisecond)
 
-	notifier, err := management.NewNotifierClient(cfg)
+	notifier, closeNotifier, err := controlplane.TryNotifierClient(ctx, cfg)
 	if err != nil {
 		slog.Warn("notifier client initialization failed", "error", err)
 	}
-	if notifier != nil {
-		defer notifier.Close()
+	if closeNotifier != nil {
+		defer closeNotifier()
 	}
 
 	chRead, err := database.ConnectCHReadonly(ctx, string(cfg.CHReadonlyDSN))
@@ -61,9 +61,9 @@ func main() {
 
 	chQuery := database.NewCHQuery(chRead, database.CHQueryConfigFromApp(cfg))
 
-	worker := marginguard.NewWorker(pool, chQuery, cfg, registry, notifier)
+	worker := ledger.NewWorker(pool, chQuery, cfg, registry, notifier)
 
-	go worker.Start(ctx, marginguard.WorkerInterval(cfg))
+	go worker.Start(ctx, ledger.WorkerInterval(cfg))
 
 	slog.Info("margin guard binary started")
 

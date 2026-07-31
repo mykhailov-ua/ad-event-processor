@@ -3,7 +3,7 @@ package ingestion
 import (
 	"errors"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/ingestion/pb"
 	"espx/internal/metrics"
 
@@ -79,7 +79,7 @@ func (h *AdsPacketHandler) allocConnContext(c gnet.Conn) *connContext {
 		trackReq: TrackRequest{
 			Payload: make([]byte, 0, 512),
 		},
-		evt: campaignmodel.Event{
+		evt: domain.Event{
 			Payload: make([]byte, 0, 1024),
 		},
 		valSlice: make([]any, 18),

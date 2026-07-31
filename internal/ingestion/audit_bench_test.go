@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/pkg/logger"
 
 	"github.com/google/uuid"
@@ -25,7 +25,7 @@ func BenchmarkHandler_auditLog_impression_sampled(b *testing.B) {
 	var seq atomic.Uint64
 	campID := uuid.New()
 	evt := auditEventFromFields(time.Now().Unix(), campID, "bench-click", "impression")
-	defer campaignmodel.EventPool.Put(evt)
+	defer domain.EventPool.Put(evt)
 
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -48,7 +48,7 @@ func BenchmarkHandler_auditLog_click_always(b *testing.B) {
 	var seq atomic.Uint64
 	campID := uuid.New()
 	evt := auditEventFromFields(time.Now().Unix(), campID, "bench-click", "click")
-	defer campaignmodel.EventPool.Put(evt)
+	defer domain.EventPool.Put(evt)
 
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -71,7 +71,7 @@ func BenchmarkHandler_auditLog_impression_unsampled(b *testing.B) {
 	var seq atomic.Uint64
 	campID := uuid.New()
 	evt := auditEventFromFields(time.Now().Unix(), campID, "bench-click", "impression")
-	defer campaignmodel.EventPool.Put(evt)
+	defer domain.EventPool.Put(evt)
 
 	b.ReportAllocs()
 	b.ResetTimer()

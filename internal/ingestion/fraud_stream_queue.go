@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/ingestion/pb"
 	"espx/internal/metrics"
 
@@ -136,7 +136,7 @@ func copyFraudField(dst []byte, s string) int {
 	return n
 }
 
-func fillFraudSlot(slot *fraudStreamSlot, shard int, evt *campaignmodel.Event) {
+func fillFraudSlot(slot *fraudStreamSlot, shard int, evt *domain.Event) {
 	slot.ready.Store(0)
 	slot.shard = uint8(shard)
 	slot.campaignID = evt.CampaignID
@@ -153,7 +153,7 @@ func fillFraudSlot(slot *fraudStreamSlot, shard int, evt *campaignmodel.Event) {
 	slot.ready.Store(1)
 }
 
-func (q *FraudStreamWriter) Enqueue(shard int, evt *campaignmodel.Event) bool {
+func (q *FraudStreamWriter) Enqueue(shard int, evt *domain.Event) bool {
 	if q == nil || evt == nil {
 		return true
 	}
@@ -200,7 +200,7 @@ func (q *FraudStreamWriter) publishRingGauges(fill uint64) {
 	metrics.FraudStreamPending.Set(float64(q.Pending()))
 }
 
-func (q *FraudStreamWriter) enqueueCritical(shard int, evt *campaignmodel.Event) bool {
+func (q *FraudStreamWriter) enqueueCritical(shard int, evt *domain.Event) bool {
 	for {
 		alloc := atomic.LoadUint64(&q.critAlloc)
 		read := atomic.LoadUint64(&q.critRead)
@@ -235,11 +235,11 @@ func (q *FraudStreamWriter) enqueueCritical(shard int, evt *campaignmodel.Event)
 	}
 }
 
-func (q *FraudStreamWriter) enqueueAnalytical(shard int, evt *campaignmodel.Event) bool {
+func (q *FraudStreamWriter) enqueueAnalytical(shard int, evt *domain.Event) bool {
 	return q.enqueueRing(shard, evt)
 }
 
-func (q *FraudStreamWriter) enqueueRing(shard int, evt *campaignmodel.Event) bool {
+func (q *FraudStreamWriter) enqueueRing(shard int, evt *domain.Event) bool {
 	for {
 		alloc := atomic.LoadUint64(&q.allocCursor)
 		read := atomic.LoadUint64(&q.readCursor)
@@ -461,7 +461,7 @@ func marshalFraudStreamSlot(slot *fraudStreamSlot) ([]byte, *ByteSliceValue, *[]
 	return data, wrap, bufPtr
 }
 
-func enqueueFraudReject(writer *FraudStreamWriter, shard int, evt *campaignmodel.Event) {
+func enqueueFraudReject(writer *FraudStreamWriter, shard int, evt *domain.Event) {
 	if writer == nil {
 		return
 	}

@@ -7,7 +7,7 @@ import (
 	"time"
 	"unsafe"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/ingestion/traceprobe"
 
 	"github.com/google/uuid"
@@ -20,13 +20,13 @@ var (
 	ErrBudgetExhausted        = errors.New("budget exhausted")
 	ErrCampaignNotFound       = errors.New("campaign not found in registry")
 	ErrPacingExhausted        = errors.New("pacing exhausted")
-	ErrFreqLimitExceeded      = errors.New("frequency limit exceeded")
+	ErrFreqLimitExceeded      = domain.ErrFreqLimitExceeded
 	ErrGeoBlocked             = errors.New("geo-targeting blocked")
 	ErrScheduleBlocked        = errors.New("outside delivery schedule")
 	ErrFraudDetected          = errors.New("fraud detected")
-	ErrEmergencyBreakerActive = errors.New("service temporarily unavailable (emergency breaker active)")
+	ErrEmergencyBreakerActive = domain.ErrEmergencyBreakerActive
 	ErrBidFloorNotMet         = errors.New("bid floor not met")
-	ErrMigrationFenced        = errors.New("campaign debit fenced")
+	ErrMigrationFenced        = domain.ErrMigrationFenced
 	ErrLicenseExpired         = errors.New("license expired")
 	ErrDailyQuotaExceeded     = errors.New("daily quota exceeded")
 	ErrRegistryStale          = errors.New("registry stale: campaign unknown while control plane unreachable")
@@ -90,7 +90,7 @@ func NewFraudFilter(geo GeoProvider) *FraudFilter {
 	}
 }
 
-func (f *FraudFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
+func (f *FraudFilter) Check(ctx context.Context, evt *domain.Event) error {
 	isAnon, err := f.geo.IsAnonymous(evt.IP)
 	if err == nil && isAnon {
 		addFraudSignal(evt, FraudReasonDatacenterIP)
@@ -100,24 +100,24 @@ func (f *FraudFilter) Check(ctx context.Context, evt *campaignmodel.Event) error
 
 type GeoFilter struct {
 	geo      GeoProvider
-	registry campaignmodel.CampaignRegistry
+	registry domain.CampaignRegistry
 }
 
-func NewGeoFilter(geo GeoProvider, registry campaignmodel.CampaignRegistry) *GeoFilter {
+func NewGeoFilter(geo GeoProvider, registry domain.CampaignRegistry) *GeoFilter {
 	return &GeoFilter{
 		geo:      geo,
 		registry: registry,
 	}
 }
 
-func (f *GeoFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
+func (f *GeoFilter) Check(ctx context.Context, evt *domain.Event) error {
 	start := monotonicNano()
 	err := f.checkGeo(evt)
 	observeHistogramSampled(&geoMetricsSeq, luaMetricsSampleMask, filterGeoDuration, start)
 	return err
 }
 
-func (f *GeoFilter) checkGeo(evt *campaignmodel.Event) error {
+func (f *GeoFilter) checkGeo(evt *domain.Event) error {
 	camp, ok := f.registry.GetCampaign(evt.CampaignID)
 	if !ok {
 		if reg, ok := f.registry.(*Registry); ok && reg.IsStaleMode() {
@@ -154,13 +154,13 @@ func (f *GeoFilter) checkGeo(evt *campaignmodel.Event) error {
 }
 
 type BudgetFilter struct {
-	manager          campaignmodel.BudgetManager
-	registry         campaignmodel.CampaignRegistry
+	manager          domain.BudgetManager
+	registry         domain.CampaignRegistry
 	clickAmount      int64
 	impressionAmount int64
 }
 
-func NewBudgetFilter(manager campaignmodel.BudgetManager, registry campaignmodel.CampaignRegistry, clickAmount, impressionAmount int64) *BudgetFilter {
+func NewBudgetFilter(manager domain.BudgetManager, registry domain.CampaignRegistry, clickAmount, impressionAmount int64) *BudgetFilter {
 	return &BudgetFilter{
 		manager:          manager,
 		registry:         registry,
@@ -169,7 +169,7 @@ func NewBudgetFilter(manager campaignmodel.BudgetManager, registry campaignmodel
 	}
 }
 
-func (f *BudgetFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
+func (f *BudgetFilter) Check(ctx context.Context, evt *domain.Event) error {
 	customerID, ok := f.registry.GetCustomerID(evt.CampaignID)
 	if !ok {
 		return ErrCampaignNotFound
@@ -191,13 +191,13 @@ func (f *BudgetFilter) Check(ctx context.Context, evt *campaignmodel.Event) erro
 }
 
 type EventFilter interface {
-	Check(ctx context.Context, evt *campaignmodel.Event) error
+	Check(ctx context.Context, evt *domain.Event) error
 }
 
 type FilterEngine struct {
 	filters  []EventFilter
 	timeout  time.Duration
-	registry campaignmodel.CampaignRegistry
+	registry domain.CampaignRegistry
 	watcher  *SettingsWatcher
 }
 
@@ -205,7 +205,7 @@ func NewFilterEngine(timeout time.Duration, filters ...EventFilter) *FilterEngin
 	return &FilterEngine{filters: filters, timeout: timeout}
 }
 
-func (e *FilterEngine) SetRegistry(registry campaignmodel.CampaignRegistry) {
+func (e *FilterEngine) SetRegistry(registry domain.CampaignRegistry) {
 	e.registry = registry
 }
 
@@ -213,7 +213,7 @@ func (e *FilterEngine) SetSettingsWatcher(watcher *SettingsWatcher) {
 	e.watcher = watcher
 }
 
-func (e *FilterEngine) Check(ctx context.Context, evt *campaignmodel.Event) error {
+func (e *FilterEngine) Check(ctx context.Context, evt *domain.Event) error {
 	slot := uint32(0)
 	if evt != nil {
 		slot = uint32(CampaignSlotIndex(evt.CampaignID))
@@ -224,7 +224,7 @@ func (e *FilterEngine) Check(ctx context.Context, evt *campaignmodel.Event) erro
 	return err
 }
 
-func (e *FilterEngine) checkInner(ctx context.Context, evt *campaignmodel.Event) error {
+func (e *FilterEngine) checkInner(ctx context.Context, evt *domain.Event) error {
 	if e.timeout > 0 && evt != nil {
 		evt.FilterDeadlineMono = monotonicNano() + e.timeout.Nanoseconds()
 	}
@@ -245,7 +245,7 @@ func (e *FilterEngine) checkInner(ctx context.Context, evt *campaignmodel.Event)
 			break
 		}
 		if _, ok := f.(*UnifiedFilter); ok && acc.shouldShortCircuitFraudBudget() {
-			var camp *campaignmodel.Campaign
+			var camp *domain.Campaign
 			if e.registry != nil && evt != nil {
 				camp, _ = e.registry.GetCampaign(evt.CampaignID)
 			}
@@ -270,7 +270,7 @@ func (e *FilterEngine) checkInner(ctx context.Context, evt *campaignmodel.Event)
 	}
 
 	if retErr == nil {
-		var camp *campaignmodel.Campaign
+		var camp *domain.Campaign
 		if e.registry != nil && evt != nil {
 			camp, _ = e.registry.GetCampaign(evt.CampaignID)
 		}
@@ -301,7 +301,7 @@ func NewDuplicateEventFilter(rdb redis.Cmdable, ttl time.Duration) *DuplicateEve
 	}
 }
 
-func (f *DuplicateEventFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
+func (f *DuplicateEventFilter) Check(ctx context.Context, evt *domain.Event) error {
 	if evt.ClickID == "" {
 		return nil
 	}
@@ -336,7 +336,7 @@ func NewEmergencyBreakerFilter(watcher *SettingsWatcher) *EmergencyBreakerFilter
 	return &EmergencyBreakerFilter{watcher: watcher}
 }
 
-func (f *EmergencyBreakerFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
+func (f *EmergencyBreakerFilter) Check(ctx context.Context, evt *domain.Event) error {
 	if f.watcher != nil && f.watcher.Get().EmergencyBreaker {
 		return ErrEmergencyBreakerActive
 	}
@@ -351,7 +351,7 @@ func NewPlacementBlacklistFilter(rdbs []redis.UniversalClient) *PlacementBlackli
 	return &PlacementBlacklistFilter{rdbs: rdbs}
 }
 
-func (f *PlacementBlacklistFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
+func (f *PlacementBlacklistFilter) Check(ctx context.Context, evt *domain.Event) error {
 	if evt == nil || evt.PlacementID == "" {
 		return nil
 	}

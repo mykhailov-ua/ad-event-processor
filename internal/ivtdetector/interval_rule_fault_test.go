@@ -10,7 +10,7 @@ import (
 
 	"espx/internal/database"
 	"espx/internal/ingestion"
-	"espx/internal/management"
+	"espx/internal/controlplane"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
@@ -18,7 +18,7 @@ import (
 )
 
 type managementServiceBlocker struct {
-	svc *management.Service
+	svc *controlplane.Service
 }
 
 func (b *managementServiceBlocker) BlockIP(ctx context.Context, ip string) error {
@@ -74,7 +74,7 @@ func TestFault_ivtIntervalAutoblock(t *testing.T) {
 	require.True(t, foundProtected, "expected protected timer bot in candidates")
 	require.True(t, foundBot, "expected open timer bot in candidates")
 
-	svc := management.NewService(pool, []redis.UniversalClient{rdb}, ingestion.NewJumpHashSharder(1), nil)
+	svc := controlplane.NewService(pool, []redis.UniversalClient{rdb}, ingestion.NewJumpHashSharder(1), nil)
 	defer svc.Close()
 
 	err = svc.BlockIP(ctx, protectedIP, "fraud")

@@ -1,0 +1,42 @@
+package domain
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
+)
+
+const BudgetKeyTTL = 24 * time.Hour
+
+func RewarmCampaignBudgetKeys(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	dst redis.Cmdable,
+	campaignIDs []uuid.UUID,
+) error {
+	if pool == nil || dst == nil || len(campaignIDs) == 0 {
+		return nil
+	}
+	for _, id := range campaignIDs {
+		var budgetLimit, currentSpend int64
+		err := pool.QueryRow(ctx,
+			`SELECT budget_limit, current_spend FROM campaigns WHERE id = $1`, ToUUID(id),
+		).Scan(&budgetLimit, &currentSpend)
+		if err != nil {
+			return fmt.Errorf("rewarm read campaign %s: %w", id, err)
+		}
+		remaining := budgetLimit - currentSpend
+		if remaining < 0 {
+			remaining = 0
+		}
+		key := budgetCampaignKey(id)
+		if err := dst.Set(ctx, key, remaining, BudgetKeyTTL).Err(); err != nil {
+			return fmt.Errorf("rewarm set %q: %w", key, err)
+		}
+	}
+	return nil
+}

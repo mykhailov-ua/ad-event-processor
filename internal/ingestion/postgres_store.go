@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/campaignmodel"
-	"espx/internal/ingestion/sqlc"
+	"espx/internal/domain"
+	"espx/internal/domain/db"
 	"espx/internal/metrics"
 	"espx/pkg/piihash"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -65,7 +65,7 @@ func NewPostgresStoreWithGate(queries db.Querier, writeTimeout time.Duration, ga
 	}
 }
 
-func (s *PostgresStore) StoreBatch(ctx context.Context, events []*campaignmodel.Event) error {
+func (s *PostgresStore) StoreBatch(ctx context.Context, events []*domain.Event) error {
 	if len(events) == 0 {
 		return nil
 	}

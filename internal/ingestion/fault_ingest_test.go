@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/config"
 	"espx/internal/metrics"
 
@@ -28,7 +28,7 @@ var infraFilterNetErr = &net.OpError{
 	Err: syscall.ECONNREFUSED,
 }
 
-func (infraErrFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
+func (infraErrFilter) Check(ctx context.Context, evt *domain.Event) error {
 	return infraFilterNetErr
 }
 
@@ -75,7 +75,7 @@ type slowCampaignRepo struct {
 	delay time.Duration
 }
 
-func (r *slowCampaignRepo) GetByID(ctx context.Context, id uuid.UUID) (*campaignmodel.Campaign, error) {
+func (r *slowCampaignRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.Campaign, error) {
 	timer := time.NewTimer(r.delay)
 	defer timer.Stop()
 	select {
@@ -83,14 +83,14 @@ func (r *slowCampaignRepo) GetByID(ctx context.Context, id uuid.UUID) (*campaign
 		return nil, ctx.Err()
 	case <-timer.C:
 	}
-	return &campaignmodel.Campaign{
+	return &domain.Campaign{
 		ID:           id,
 		BudgetLimit:  10_000_000,
 		CurrentSpend: 0,
 	}, nil
 }
 
-func (r *slowCampaignRepo) UpdateStatus(ctx context.Context, id uuid.UUID, status campaignmodel.CampaignStatus) error {
+func (r *slowCampaignRepo) UpdateStatus(ctx context.Context, id uuid.UUID, status domain.CampaignStatus) error {
 	return nil
 }
 
@@ -98,7 +98,7 @@ func (r *slowCampaignRepo) UpdateSpend(ctx context.Context, id uuid.UUID, amount
 	return nil
 }
 
-func (r *slowCampaignRepo) ListActive(ctx context.Context) ([]*campaignmodel.Campaign, error) {
+func (r *slowCampaignRepo) ListActive(ctx context.Context) ([]*domain.Campaign, error) {
 	return nil, nil
 }
 
@@ -199,7 +199,7 @@ func TestUnifiedFilter_budgetMiss_respectsDBLookupTimeout(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	err := f.Check(ctx, &campaignmodel.Event{
+	err := f.Check(ctx, &domain.Event{
 		CampaignID: campID,
 		ClickID:    uuid.NewString(),
 		Type:       "click",
@@ -240,7 +240,7 @@ func TestFilterEngine_budgetMissRespectsEngineDeadline(t *testing.T) {
 
 	engine := NewFilterEngine(50*time.Millisecond, uf)
 	start := time.Now()
-	err := engine.Check(context.Background(), &campaignmodel.Event{
+	err := engine.Check(context.Background(), &domain.Event{
 		CampaignID: campID,
 		ClickID:    uuid.NewString(),
 		Type:       "click",

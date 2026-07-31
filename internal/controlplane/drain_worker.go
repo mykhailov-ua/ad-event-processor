@@ -1,0 +1,90 @@
+package controlplane
+
+import (
+	"context"
+	"log/slog"
+	"time"
+
+	"espx/internal/database"
+	db "espx/internal/domain/db"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+)
+
+type CampaignDrainWorker struct {
+	svc *Service
+}
+
+func NewCampaignDrainWorker(svc *Service) *CampaignDrainWorker {
+	return &CampaignDrainWorker{svc: svc}
+}
+
+func (w *CampaignDrainWorker) Start(ctx context.Context, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if err := w.svc.withPgHigh(ctx, func(runCtx context.Context) error {
+				return w.ProcessDraining(runCtx)
+			}); err != nil {
+				if database.IsShutdownError(err) {
+					return
+				}
+				slog.Error("failed to process draining campaigns", "err", err)
+			}
+		}
+	}
+}
+
+func (w *CampaignDrainWorker) ProcessDraining(ctx context.Context) error {
+	opCtx, cancel := workerContext(ctx, workerDrainTimeout)
+	defer cancel()
+
+	waitTimeoutMs := int64(100)
+	if w.svc.cfg != nil && w.svc.cfg.Lifecycle.WaitTimeoutMs > 0 {
+		waitTimeoutMs = int64(w.svc.cfg.Lifecycle.WaitTimeoutMs)
+	}
+	threshold := time.Now().Add(-time.Duration(waitTimeoutMs) * time.Millisecond)
+
+	for i := 0; i < 100; i++ {
+		finalized, err := w.finalizeNextDraining(opCtx, threshold)
+		if err != nil {
+			return err
+		}
+		if !finalized {
+			return nil
+		}
+	}
+	return nil
+}
+
+func (w *CampaignDrainWorker) finalizeNextDraining(ctx context.Context, threshold time.Time) (bool, error) {
+	finalized := false
+	err := pgx.BeginFunc(ctx, w.svc.GetPool(), func(tx pgx.Tx) error {
+		q := db.New(tx)
+		camps, err := q.GetDrainingCampaignsForUpdate(ctx, db.GetDrainingCampaignsForUpdateParams{
+			UpdatedAt: pgtype.Timestamptz{Time: threshold, Valid: true},
+			Limit:     1,
+		})
+		if err != nil {
+			return err
+		}
+		if len(camps) == 0 {
+			return nil
+		}
+		camp := camps[0]
+		campaignID := uuid.UUID(camp.ID.Bytes)
+		if err := w.svc.finalizeDrainingCampaign(ctx, q, campaignID, camp, "Finalized"); err != nil {
+			return err
+		}
+		finalized = true
+		return nil
+	})
+	return finalized, err
+}

@@ -78,5 +78,45 @@ func (client *ManagementClient) BlockIP(ctx context.Context, ip string) error {
 }
 
 func (client *ManagementClient) EnqueueFraudThreat(ctx context.Context, action string, ip string, campaignID string, score float64, boost int32, ttlSeconds int64) error {
-	return fmt.Errorf("EnqueueFraudThreat not implemented on HTTP client; use gRPC client")
+	if client == nil {
+		return fmt.Errorf("management client: nil receiver")
+	}
+	if action == "" || campaignID == "" {
+		return fmt.Errorf("invalid fraud threat request")
+	}
+
+	body, err := json.Marshal(map[string]any{
+		"action":      action,
+		"ip":          ip,
+		"campaign_id": campaignID,
+		"score":       score,
+		"boost":       boost,
+		"ttl_seconds": ttlSeconds,
+	})
+	if err != nil {
+		return fmt.Errorf("marshal fraud threat request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, client.baseURL+"/api/v1/ops/fraud-threat", bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("build fraud threat request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Admin-API-Key", client.apiKey)
+
+	resp, err := client.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("%w: %v", ErrManagementUnavailable, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode == http.StatusOK {
+		return nil
+	}
+
+	payload, readErr := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	if readErr != nil {
+		return fmt.Errorf("%w: status=%d read body: %v", ErrManagementUnavailable, resp.StatusCode, readErr)
+	}
+	return fmt.Errorf("%w: status=%d body=%s", ErrManagementUnavailable, resp.StatusCode, strings.TrimSpace(string(payload)))
 }

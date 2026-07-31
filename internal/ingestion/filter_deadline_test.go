@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -23,7 +23,7 @@ func TestFilterEngine_deadlineBetweenFilters(t *testing.T) {
 	fast := &countingFilter{}
 	engine := NewFilterEngine(30*time.Millisecond, slow, fast)
 
-	err := engine.Check(context.Background(), &campaignmodel.Event{})
+	err := engine.Check(context.Background(), &domain.Event{})
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, ErrFilterTimeout))
 	assert.Equal(t, 0, fast.calls)
@@ -34,7 +34,7 @@ func TestFilterEngine_noTimeoutRunsAll(t *testing.T) {
 	second := &countingFilter{}
 	engine := NewFilterEngine(0, first, second)
 
-	err := engine.Check(context.Background(), &campaignmodel.Event{})
+	err := engine.Check(context.Background(), &domain.Event{})
 	require.NoError(t, err)
 	assert.Equal(t, 1, first.calls)
 	assert.Equal(t, 1, second.calls)
@@ -45,7 +45,7 @@ func TestFilterEngine_deadlineAttachedToContext(t *testing.T) {
 	checker := &countingFilter{}
 	engine := NewFilterEngine(50*time.Millisecond, &deadlineProbeFilter{&gotDeadline})
 
-	err := engine.Check(context.Background(), &campaignmodel.Event{})
+	err := engine.Check(context.Background(), &domain.Event{})
 	require.NoError(t, err)
 	assert.True(t, gotDeadline)
 	_ = checker
@@ -69,7 +69,7 @@ func TestCachedTimeIn_nonUTC(t *testing.T) {
 
 func BenchmarkFilterEngine_Check_noTimeout(b *testing.B) {
 	engine := NewFilterEngine(0, &countingFilter{})
-	evt := &campaignmodel.Event{}
+	evt := &domain.Event{}
 	ctx := context.Background()
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -80,7 +80,7 @@ func BenchmarkFilterEngine_Check_noTimeout(b *testing.B) {
 
 func BenchmarkFilterEngine_Check_withDeadline(b *testing.B) {
 	engine := NewFilterEngine(5*time.Second, &countingFilter{})
-	evt := &campaignmodel.Event{}
+	evt := &domain.Event{}
 	ctx := context.Background()
 	b.ReportAllocs()
 	b.ResetTimer()

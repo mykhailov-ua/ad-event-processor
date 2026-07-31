@@ -7,5 +7,5 @@ internal/ingestion/clickhouse_store.go
 internal/ingestion/rtb_deal_outcomes_writer.go
 internal/logcompactor/cold_clickhouse.go
 internal/costsync/clickhouse.go
-internal/management/service_erasure.go
+internal/controlplane/service_erasure.go
 internal/ivtdetector/fraud_scoring_rule.go

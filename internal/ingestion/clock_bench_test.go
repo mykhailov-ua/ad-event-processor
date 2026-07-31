@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/config"
 	"espx/internal/ingestion/pb"
 	"github.com/google/uuid"
@@ -64,7 +64,7 @@ func BenchmarkHotPath_filterEngineDeadlineCheck(b *testing.B) {
 
 func BenchmarkHotPath_filterEngineCheck_noTimeout(b *testing.B) {
 	engine := NewFilterEngine(0, &countingFilter{})
-	evt := &campaignmodel.Event{}
+	evt := &domain.Event{}
 	ctx := context.Background()
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -75,7 +75,7 @@ func BenchmarkHotPath_filterEngineCheck_noTimeout(b *testing.B) {
 
 func BenchmarkHotPath_filterEngineCheck_withDeadline(b *testing.B) {
 	engine := NewFilterEngine(5*time.Second, &countingFilter{})
-	evt := &campaignmodel.Event{}
+	evt := &domain.Event{}
 	ctx := context.Background()
 	b.ReportAllocs()
 	b.ResetTimer()

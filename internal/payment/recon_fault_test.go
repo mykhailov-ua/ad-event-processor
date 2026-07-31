@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"espx/internal/ingestion"
+	"espx/internal/notifier"
 	"espx/internal/payment/db"
 
 	"github.com/google/uuid"
@@ -231,7 +232,7 @@ func TestFault_FinancialReconOpsAlert(t *testing.T) {
 
 	stub := &stubPaymentNotifierClient{}
 	cfg := testPaymentOpsConfig()
-	alerter := NewFinancialReconAlerter(&NotifierClient{client: stub}, cfg)
+	alerter := NewFinancialReconAlerter(&NotifierClient{api: notifier.NewGRPCNotifierAPI(stub)}, cfg)
 	require.NotNil(t, alerter)
 
 	seedSucceededIntentWithOutbox(t, infra, uuid.New(), 11_000_000, "fault-recon-ops-"+uuid.New().String())

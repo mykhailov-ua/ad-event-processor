@@ -1,4 +1,4 @@
-"""FRAUD_POLICY_* env + metadata.json; mirrors internal/fraudscoring/policy_config.go."""
+"""FRAUD_POLICY_* env + metadata.json; mirrors internal/fraud/policy_config.go."""
 from __future__ import annotations
 
 import json

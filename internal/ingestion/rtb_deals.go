@@ -6,42 +6,11 @@ import (
 	"time"
 
 	"espx/internal/config"
-	db "espx/internal/ingestion/sqlc"
-	"espx/internal/rtb"
+	"espx/internal/domain"
+	db "espx/internal/domain/db"
 
-	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
-
-const defaultRtbCatalogReloadChannel = "rtb:catalog:reload"
-
-func rtbDealRowToData(row db.RtbDeal) rtb.DealData {
-	return rtb.DealData{
-		DealID:     row.DealID,
-		FloorMicro: row.FloorMicro,
-		GeoMask:    uint64(row.GeoMask),
-		CatMask:    uint64(row.CatMask),
-		PacingOpen: rtb.DealPacingOpen(row.Pacing),
-		Seats:      row.Seats,
-		CustomerID: CustomerIDFromCustomerUUID(uuid.UUID(row.CustomerID.Bytes)),
-	}
-}
-
-func ReloadRtbDeals(ctx context.Context, q *db.Queries, catalog *RtbCatalog) error {
-	if catalog == nil {
-		return nil
-	}
-	rows, err := q.ListRtbDeals(ctx)
-	if err != nil {
-		return err
-	}
-	deals := make([]rtb.DealData, 0, len(rows))
-	for _, row := range rows {
-		deals = append(deals, rtbDealRowToData(row))
-	}
-	catalog.UpdateDeals(deals)
-	return nil
-}
 
 func ReloadRtbCatalog(
 	ctx context.Context,
@@ -53,7 +22,7 @@ func ReloadRtbCatalog(
 	budgetSync RtbBudgetSync,
 	watcher *SettingsWatcher,
 ) error {
-	if err := ReloadRtbDeals(ctx, q, catalog); err != nil {
+	if err := domain.ReloadRtbDeals(ctx, q, catalog); err != nil {
 		return err
 	}
 	if registry != nil && catalog != nil && cfg != nil && cfg.RtbEnabled() {
@@ -81,7 +50,7 @@ func StartRtbCatalogReloadWatch(
 		return
 	}
 	if channel == "" {
-		channel = defaultRtbCatalogReloadChannel
+		channel = domain.DefaultRtbCatalogReloadChannel
 	}
 
 	reload := func() {
@@ -131,11 +100,4 @@ func StartRtbCatalogReloadWatch(
 			}
 		}
 	}()
-}
-
-func RtbCatalogReloadChannel(cfg *config.Config) string {
-	if cfg != nil && cfg.RtbCatalogReloadChannel != "" {
-		return cfg.RtbCatalogReloadChannel
-	}
-	return defaultRtbCatalogReloadChannel
 }

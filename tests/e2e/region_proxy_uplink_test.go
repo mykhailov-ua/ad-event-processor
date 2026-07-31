@@ -10,7 +10,7 @@ import (
 	"espx/internal/config"
 	"espx/internal/database"
 	"espx/internal/ingestion"
-	"espx/internal/management"
+	"espx/internal/controlplane"
 	"espx/pkg/dedupkey"
 	"espx/pkg/iogate"
 	"espx/pkg/regionproxy/keygen"
@@ -41,9 +41,9 @@ func TestE2E_RegionProxyUplink(t *testing.T) {
 		RegionCode:         0,
 		AdminAPIKey:        "e2e-uplink-key",
 	}
-	svc := management.NewService(pool, nil, ingestion.NewStaticSlotSharder(1), cfg)
+	svc := controlplane.NewService(pool, nil, ingestion.NewStaticSlotSharder(1), cfg)
 	t.Cleanup(func() { svc.Close() })
-	handler := management.NewHandler(svc, cfg, nil, nil, nil, nil)
+	handler := controlplane.NewHandler(svc, cfg, nil, nil, nil, nil)
 	mux := http.NewServeMux()
 	handler.RegisterRoutes(mux)
 	globalSrv := httptest.NewServer(mux)

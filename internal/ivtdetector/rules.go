@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"espx/internal/database"
-	"espx/internal/fraudscoring"
+	"espx/internal/fraud"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -203,7 +203,7 @@ func hasIPPrefix(ip, prefix string) bool {
 	return false
 }
 
-func NewAnalyzerRegistry(q *database.CHQuery, writeConn driver.Conn, pool *pgxpool.Pool, cfg AnalyzerConfig, asn ASNClassifier, scorer fraudscoring.Scorer, fraudScoringBatchSize int, rdb redis.Cmdable) *RuleRegistry {
+func NewAnalyzerRegistry(q *database.CHQuery, writeConn driver.Conn, pool *pgxpool.Pool, cfg AnalyzerConfig, asn ASNClassifier, scorer fraud.Scorer, fraudScoringBatchSize int, rdb redis.Cmdable) *RuleRegistry {
 	analyzer := NewAnalyzer(q, cfg)
 	reg := NewRuleRegistry()
 	reg.Register(&highCTRRule{analyzer: analyzer})

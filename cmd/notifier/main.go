@@ -14,6 +14,7 @@ import (
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
+	slog.Warn("standalone binary deprecated; use cmd/control monolith")
 
 	cfg, err := config.Load()
 	if err != nil {

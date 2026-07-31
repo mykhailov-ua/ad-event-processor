@@ -14,15 +14,15 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/database"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func faultTestEvent(clickID string) *campaignmodel.Event {
-	return &campaignmodel.Event{
+func faultTestEvent(clickID string) *domain.Event {
+	return &domain.Event{
 		ClickID:    clickID,
 		CampaignID: uuid.New(),
 		Type:       "click",
@@ -87,7 +87,7 @@ func TestFault_ProcessorPgGate_Overflow(t *testing.T) {
 		go func(n int) {
 			defer wg.Done()
 			evt := faultTestEvent("pg-gate-" + uuid.NewString())
-			err := store.StoreBatch(ctx, []*campaignmodel.Event{evt})
+			err := store.StoreBatch(ctx, []*domain.Event{evt})
 			assert.NoError(t, err)
 		}(i)
 	}
@@ -192,7 +192,7 @@ func TestFault_CHSpool_Rotation(t *testing.T) {
 	for i := 0; i < 40; i++ {
 		evt := faultTestEvent("ch-rotate-" + strconv.Itoa(i))
 		evt.Payload = bigPayload
-		if err := store.StoreBatch(context.Background(), []*campaignmodel.Event{evt}); err != nil {
+		if err := store.StoreBatch(context.Background(), []*domain.Event{evt}); err != nil {
 			break
 		}
 	}
@@ -237,7 +237,7 @@ func TestFault_CHSpool_MaxSegments(t *testing.T) {
 	for i := 0; i < 30; i++ {
 		evt := faultTestEvent("ch-maxseg-" + strconv.Itoa(i))
 		evt.Payload = bigPayload
-		lastErr = store.StoreBatch(context.Background(), []*campaignmodel.Event{evt})
+		lastErr = store.StoreBatch(context.Background(), []*domain.Event{evt})
 		if lastErr != nil {
 			break
 		}
@@ -277,7 +277,7 @@ func TestFault_CHSpool_FdRelease(t *testing.T) {
 	for i := 0; i < 25; i++ {
 		evt := faultTestEvent("ch-fd-" + strconv.Itoa(i))
 		evt.Payload = payload
-		require.NoError(t, store.StoreBatch(context.Background(), []*campaignmodel.Event{evt}))
+		require.NoError(t, store.StoreBatch(context.Background(), []*domain.Event{evt}))
 	}
 	afterRotate := countLinuxFDs(t)
 

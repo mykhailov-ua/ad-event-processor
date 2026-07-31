@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"time"
 
-	"espx/internal/fraudscoring"
+	"espx/internal/fraud"
 	"espx/pkg/piihash"
 )
 
-func (r *fraudScoringRule) insertShadowScores(ctx context.Context, featureRows []fraudscoring.FeatureRow, scores []float64) error {
+func (r *fraudScoringRule) insertShadowScores(ctx context.Context, featureRows []fraud.FeatureRow, scores []float64) error {
 	if r.writeConn == nil || len(scores) == 0 {
 		return nil
 	}

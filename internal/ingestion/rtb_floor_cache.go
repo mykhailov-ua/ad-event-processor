@@ -7,10 +7,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"espx/internal/domain"
+
 	"github.com/redis/go-redis/v9"
 )
-
-const RtbFloorRedisKeyPrefix = "rtb:floor:"
 
 type DealFloorCache struct {
 	rdb  redis.UniversalClient
@@ -42,7 +42,7 @@ func (c *DealFloorCache) Refresh(ctx context.Context, dealIDs []string) {
 	}
 	keys := make([]string, len(dealIDs))
 	for i, id := range dealIDs {
-		keys[i] = RtbFloorRedisKeyPrefix + id
+		keys[i] = domain.RtbFloorRedisKeyPrefix + id
 	}
 	vals, err := c.rdb.MGet(ctx, keys...).Result()
 	if err != nil {

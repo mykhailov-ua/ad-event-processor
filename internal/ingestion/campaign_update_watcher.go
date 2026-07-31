@@ -2,17 +2,15 @@ package ingestion
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"os"
 	"time"
 
+	"espx/internal/domain"
 	"espx/pkg/broker/client"
 
 	"github.com/google/uuid"
 )
-
-const DefaultCampaignUpdateBrokerTopic = "campaigns:update"
 
 type CampaignUpdateWatcherConfig struct {
 	Registry       *Registry
@@ -29,7 +27,7 @@ type CampaignUpdateWatcher struct {
 
 func NewCampaignUpdateWatcher(cfg CampaignUpdateWatcherConfig) *CampaignUpdateWatcher {
 	if cfg.BrokerTopic == "" {
-		cfg.BrokerTopic = DefaultCampaignUpdateBrokerTopic
+		cfg.BrokerTopic = domain.DefaultCampaignUpdateBrokerTopic
 	}
 	if cfg.BrokerTimeout <= 0 {
 		cfg.BrokerTimeout = 3 * time.Second
@@ -99,7 +97,7 @@ func (w *CampaignUpdateWatcher) consumeOnce(ctx context.Context) error {
 		for iter.Next() {
 			got = true
 			payload := iter.Payload
-			if IsRegistryFullSyncPayload(string(payload)) {
+			if domain.IsRegistryFullSyncPayload(string(payload)) {
 				if _, err := w.cfg.Registry.ReloadFullSnapshot(ctx); err != nil {
 					slog.Error("campaign update broker full reload failed", "error", err)
 				} else {
@@ -137,29 +135,4 @@ func (w *CampaignUpdateWatcher) consumeOnce(ctx context.Context) error {
 		case <-time.After(500 * time.Millisecond):
 		}
 	}
-}
-
-func PublishCampaignUpdateBroker(brokerURL, brokerRedisURL, topic string, timeout time.Duration, campaignID string) error {
-	if brokerURL == "" || campaignID == "" {
-		return nil
-	}
-	if topic == "" {
-		topic = DefaultCampaignUpdateBrokerTopic
-	}
-	if timeout <= 0 {
-		timeout = 3 * time.Second
-	}
-	cli := client.NewClient(brokerURL, timeout)
-	if brokerRedisURL != "" {
-		cli.SetRedisURL(brokerRedisURL)
-	}
-	if err := cli.Connect(); err != nil {
-		return fmt.Errorf("campaign update broker connect: %w", err)
-	}
-	defer cli.Close()
-	_, err := cli.Produce(topic, 0, []byte(campaignID))
-	if err != nil {
-		return fmt.Errorf("campaign update broker produce: %w", err)
-	}
-	return nil
 }

@@ -51,34 +51,34 @@ WHERE shard_id = $1 AND campaign_id = $2`, args: []any{int16(0), campID, int64(1
 UPDATE campaigns SET current_spend = current_spend + $2, updated_at = NOW() WHERE id = $1`, args: []any{campID, int64(1000)}},
 		{name: "budget.ListActiveCampaigns", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 SELECT id, customer_id, budget_limit, current_spend, status FROM campaigns WHERE status = 'ACTIVE' AND deleted_at IS NULL`},
-		{name: "management.GetCampaignFull", hotPath: true, sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+		{name: "controlplane.GetCampaignFull", hotPath: true, sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 SELECT c.*, sa.primary_a_shard, sa.primary_b_shard, sa.reserve_shard, sa.h_ema, sa.c_ema
 FROM campaigns c LEFT JOIN campaign_shard_assignment sa ON c.id = sa.campaign_id WHERE c.id = $1`, args: []any{campID}},
-		{name: "management.GetCustomerForUpdate", hotPath: true, sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+		{name: "controlplane.GetCustomerForUpdate", hotPath: true, sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 SELECT * FROM customers WHERE id = $1 FOR UPDATE`, args: []any{custID}},
-		{name: "management.CreateLedgerEntry", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+		{name: "controlplane.CreateLedgerEntry", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 INSERT INTO balance_ledger (customer_id, campaign_id, amount, type, idempotency_hash)
 VALUES ($1, $2, $3, 'FEE', $4) RETURNING id`, args: []any{custID, campID, int64(500), hash + "-new"}},
-		{name: "management.GetLedgerByHash", hotPath: true, sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+		{name: "controlplane.GetLedgerByHash", hotPath: true, sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 SELECT * FROM balance_ledger WHERE idempotency_hash = $1`, args: []any{hash}},
-		{name: "management.GetPendingOutboxEventsForUpdate", hotPath: true, sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+		{name: "controlplane.GetPendingOutboxEventsForUpdate", hotPath: true, sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 SELECT * FROM outbox_events WHERE status = 'PENDING'
 ORDER BY CASE event_type WHEN 'UPDATE_BLACKLIST' THEN 0 WHEN 'PAUSE_CAMPAIGN' THEN 0 ELSE 1 END, created_at ASC
 LIMIT 100 FOR UPDATE SKIP LOCKED`},
-		{name: "management.GetDrainingCampaignsForUpdate", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+		{name: "controlplane.GetDrainingCampaignsForUpdate", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 SELECT * FROM campaigns WHERE status = 'DRAINING' AND updated_at < $1 ORDER BY updated_at ASC LIMIT 50 FOR UPDATE SKIP LOCKED`,
 			args: []any{time.Now()}},
-		{name: "management.ListCustomersForScoring", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+		{name: "controlplane.ListCustomersForScoring", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 SELECT c.id, COALESCE(FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - c.created_at)) / 86400), 0)::integer AS age_days,
 COALESCE(SUM(l.amount), 0)::bigint AS topup_sum_30d
 FROM customers c LEFT JOIN balance_ledger l ON l.customer_id = c.id AND (l.type = 'TOPUP' OR l.type = 'PAYMENT_TOPUP') AND l.created_at >= CURRENT_TIMESTAMP - INTERVAL '30 days'
 GROUP BY c.id`},
-		{name: "management.GetCampaignsWithStats", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+		{name: "controlplane.GetCampaignsWithStats", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 SELECT c.id, c.name, c.status, c.budget_limit, c.created_at, c.updated_at, c.customer_id, c.current_spend, c.deleted_at, c.pacing_mode, c.daily_budget, c.timezone, c.freq_limit, c.freq_window, c.target_countries, c.brand_id, c.brand_fcap_key,
 COALESCE(SUM(s.impressions_count), 0)::bigint, COALESCE(SUM(s.clicks_count), 0)::bigint, COALESCE(SUM(s.conversions_count), 0)::bigint
 FROM campaigns c LEFT JOIN campaign_stats s ON c.id = s.campaign_id
 WHERE c.customer_id = $1 AND c.status = 'ACTIVE' GROUP BY c.id`, args: []any{custID}},
-		{name: "management.GetAllActiveCampaignsWithStats", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+		{name: "controlplane.GetAllActiveCampaignsWithStats", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 SELECT c.id, c.name, c.status, c.budget_limit, c.created_at, c.updated_at, c.customer_id, c.current_spend, c.deleted_at, c.pacing_mode, c.daily_budget, c.timezone, c.freq_limit, c.freq_window, c.target_countries, c.brand_id, c.brand_fcap_key,
 COALESCE(SUM(s.impressions_count), 0)::bigint, COALESCE(SUM(s.clicks_count), 0)::bigint, COALESCE(SUM(s.conversions_count), 0)::bigint
 FROM campaigns c LEFT JOIN campaign_stats s ON c.id = s.campaign_id WHERE c.status = 'ACTIVE' GROUP BY c.id`},
@@ -93,15 +93,15 @@ ORDER BY created_at DESC LIMIT 50`, args: []any{custID}},
 		{name: "partial.idx_campaigns_draining_updated", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 SELECT * FROM campaigns WHERE status = 'DRAINING' AND updated_at < $1 ORDER BY updated_at ASC LIMIT 50 FOR UPDATE SKIP LOCKED`,
 			args: []any{time.Now()}},
-		{name: "management.ListAuditPaginated", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+		{name: "controlplane.ListAuditPaginated", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 SELECT * FROM admin_audit_log ORDER BY created_at DESC LIMIT 50 OFFSET 0`},
-		{name: "management.CountAuditLogs", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT) SELECT COUNT(*) FROM admin_audit_log`},
-		{name: "management.ListCustomerLedger", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+		{name: "controlplane.CountAuditLogs", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT) SELECT COUNT(*) FROM admin_audit_log`},
+		{name: "controlplane.ListCustomerLedger", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 SELECT * FROM balance_ledger WHERE customer_id = $1 ORDER BY created_at DESC LIMIT 50 OFFSET 0`, args: []any{custID}},
-		{name: "management.ListCampaigns", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+		{name: "controlplane.ListCampaigns", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 SELECT * FROM campaigns WHERE customer_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 50 OFFSET 0`, args: []any{custID}},
-		{name: "management.GetAllBlacklist", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT) SELECT ip, reason FROM ip_blacklist`},
-		{name: "management.SumCampaignStatsInRange", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+		{name: "controlplane.GetAllBlacklist", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT) SELECT ip, reason FROM ip_blacklist`},
+		{name: "controlplane.SumCampaignStatsInRange", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 SELECT COALESCE(SUM(impressions_count),0)::bigint, COALESCE(SUM(clicks_count),0)::bigint, COALESCE(SUM(conversions_count),0)::bigint
 FROM campaign_stats WHERE campaign_id = $1 AND date >= $2::date AND date < $3::date`,
 			args: []any{campID, time.Now().Add(-7 * 24 * time.Hour), time.Now()}},

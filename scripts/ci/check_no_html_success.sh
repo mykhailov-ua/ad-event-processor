@@ -25,12 +25,12 @@ check_dir() {
   done < <(find "$dir" -name '*.go' -print0)
 }
 
-check_dir internal/management
+check_dir internal/controlplane
 check_dir internal/payment
 
-if rg -n 'text/template' internal/management internal/payment --glob '*.go' --glob '!*_test.go' >/dev/null 2>&1; then
+if rg -n 'text/template' internal/controlplane internal/payment --glob '*.go' --glob '!*_test.go' >/dev/null 2>&1; then
   echo "check_no_html_success: text/template import in management/payment"
-  rg -n 'text/template' internal/management internal/payment --glob '*.go' --glob '!*_test.go' || true
+  rg -n 'text/template' internal/controlplane internal/payment --glob '*.go' --glob '!*_test.go' || true
   fail=1
 fi
 

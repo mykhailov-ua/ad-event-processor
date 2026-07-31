@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
@@ -16,10 +16,10 @@ import (
 )
 
 type MockCampaignRepository struct {
-	campaigns []*campaignmodel.Campaign
+	campaigns []*domain.Campaign
 }
 
-func (m *MockCampaignRepository) GetByID(ctx context.Context, id uuid.UUID) (*campaignmodel.Campaign, error) {
+func (m *MockCampaignRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Campaign, error) {
 	for _, c := range m.campaigns {
 		if c.ID == id {
 			return c, nil
@@ -28,7 +28,7 @@ func (m *MockCampaignRepository) GetByID(ctx context.Context, id uuid.UUID) (*ca
 	return nil, errors.New("not found")
 }
 
-func (m *MockCampaignRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status campaignmodel.CampaignStatus) error {
+func (m *MockCampaignRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status domain.CampaignStatus) error {
 	return nil
 }
 
@@ -36,7 +36,7 @@ func (m *MockCampaignRepository) UpdateSpend(ctx context.Context, id uuid.UUID, 
 	return nil
 }
 
-func (m *MockCampaignRepository) ListActive(ctx context.Context) ([]*campaignmodel.Campaign, error) {
+func (m *MockCampaignRepository) ListActive(ctx context.Context) ([]*domain.Campaign, error) {
 	return m.campaigns, nil
 }
 
@@ -47,9 +47,9 @@ func TestReconciliationWorker_DataDriftDetection(t *testing.T) {
 	campID2 := uuid.New()
 
 	repo := &MockCampaignRepository{
-		campaigns: []*campaignmodel.Campaign{
-			{ID: campID1, Status: campaignmodel.CampaignStatusActive},
-			{ID: campID2, Status: campaignmodel.CampaignStatusActive},
+		campaigns: []*domain.Campaign{
+			{ID: campID1, Status: domain.CampaignStatusActive},
+			{ID: campID2, Status: domain.CampaignStatusActive},
 		},
 	}
 
@@ -66,13 +66,13 @@ func TestReconciliationWorker_DataDriftDetection(t *testing.T) {
 	logTime := time.Now().Add(-10 * time.Minute)
 
 	for i := 0; i < 9; i++ {
-		ch.LogEvent(&campaignmodel.Event{
+		ch.LogEvent(&domain.Event{
 			CampaignID: campID1,
 			ClickID:    uuid.NewString(),
 			Type:       "click",
 			CreatedAt:  logTime,
 		})
-		ch.LogEvent(&campaignmodel.Event{
+		ch.LogEvent(&domain.Event{
 			CampaignID: campID1,
 			ClickID:    uuid.NewString(),
 			Type:       "impression",
@@ -81,7 +81,7 @@ func TestReconciliationWorker_DataDriftDetection(t *testing.T) {
 	}
 
 	for i := 0; i < 18; i++ {
-		ch.LogEvent(&campaignmodel.Event{
+		ch.LogEvent(&domain.Event{
 			CampaignID: campID2,
 			ClickID:    uuid.NewString(),
 			Type:       "click",
@@ -89,7 +89,7 @@ func TestReconciliationWorker_DataDriftDetection(t *testing.T) {
 		})
 	}
 	for i := 0; i < 20; i++ {
-		ch.LogEvent(&campaignmodel.Event{
+		ch.LogEvent(&domain.Event{
 			CampaignID: campID2,
 			ClickID:    uuid.NewString(),
 			Type:       "impression",

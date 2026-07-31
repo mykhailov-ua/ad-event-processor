@@ -1,7 +1,7 @@
 package ingestion
 
 import (
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/rtb"
 
 	"github.com/google/uuid"
@@ -118,7 +118,7 @@ func runOpenRTBBid(proc trackProcessor, body []byte, bidID []byte, clientIP stri
 		return OpenRTBBidOutcome{NoBid: rtb.NoBidInvalidRequest}
 	}
 
-	evt := &campaignmodel.Event{Payload: body, IP: clientIP}
+	evt := &domain.Event{Payload: body, IP: clientIP}
 	ensureIngestGeo(proc.ingestGeo, evt)
 
 	targeting := RtbTargetingInput{

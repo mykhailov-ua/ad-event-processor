@@ -11,7 +11,13 @@ fail() {
 
 for forbidden in docs/MULTI_REGION.md docs/COMPLIANCE_MATRIX.md; do
 	if [[ -f "$forbidden" ]]; then
-		fail "$forbidden must not exist (moved to .cursor/)"
+		fail "$forbidden must not exist (agent doc lives in .cursor/)"
+	fi
+done
+
+for forbidden in .cursor/BACKLOG.md .cursor/GAP_SPECS.md .cursor/CI_GATES.md; do
+	if [[ -f "$forbidden" ]]; then
+		fail "$forbidden must not exist (removed; see docs/DEVELOPMENT.md)"
 	fi
 done
 
@@ -21,8 +27,8 @@ for required in .cursor/MULTI_REGION.md .cursor/COMPLIANCE_MATRIX.md docs/MILEST
 	fi
 done
 
-if ! grep -q '.cursor/BACKLOG.md' docs/MILESTONE.md; then
-	fail 'docs/MILESTONE.md must redirect to .cursor/BACKLOG.md'
+if ! grep -q 'docs/DEVELOPMENT.md' docs/MILESTONE.md; then
+	fail 'docs/MILESTONE.md must redirect to docs/DEVELOPMENT.md'
 fi
 
 allowed_root=(

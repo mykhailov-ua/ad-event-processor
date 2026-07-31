@@ -3,11 +3,11 @@ package ingestion
 import (
 	"sort"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/rtb"
 )
 
-func sortedTargetCountries(camp *campaignmodel.Campaign) []string {
+func sortedTargetCountries(camp *domain.Campaign) []string {
 	if camp == nil || len(camp.TargetCountries) == 0 {
 		return nil
 	}
@@ -19,7 +19,7 @@ func sortedTargetCountries(camp *campaignmodel.Campaign) []string {
 	return out
 }
 
-func fanOutRtbCatalogRows(camp *campaignmodel.Campaign, base RtbCampaignInput) []rtb.CampaignData {
+func fanOutRtbCatalogRows(camp *domain.Campaign, base RtbCampaignInput) []rtb.CampaignData {
 	countries := sortedTargetCountries(camp)
 	if len(countries) == 0 {
 		return []rtb.CampaignData{CampaignDataFromDomain(camp, base)}

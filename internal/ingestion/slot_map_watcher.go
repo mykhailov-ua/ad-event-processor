@@ -2,13 +2,14 @@ package ingestion
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"os"
 	"sync"
 	"time"
 
 	"espx/pkg/broker/client"
+
+	"espx/internal/domain"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -34,7 +35,7 @@ func NewSlotMapWatcher(cfg SlotMapWatcherConfig) *SlotMapWatcher {
 		cfg.PollInterval = 10 * time.Second
 	}
 	if cfg.BrokerTopic == "" {
-		cfg.BrokerTopic = DefaultSlotMapReloadTopic
+		cfg.BrokerTopic = domain.DefaultSlotMapReloadTopic
 	}
 	if cfg.BrokerTimeout <= 0 {
 		cfg.BrokerTimeout = 3 * time.Second
@@ -167,7 +168,7 @@ func (w *SlotMapWatcher) consumeBrokerOnce(ctx context.Context) error {
 }
 
 func (w *SlotMapWatcher) tryReload(ctx context.Context, source string) {
-	version, changed, err := ReloadStaticSlotMapIfChanged(ctx, w.cfg.Pool, w.cfg.Sharder, w.cfg.NumShards)
+	version, changed, err := domain.ReloadStaticSlotMapIfChanged(ctx, w.cfg.Pool, w.cfg.Sharder, w.cfg.NumShards)
 	if err != nil {
 		slog.Warn("slot map reload failed", "source", source, "error", err)
 		return
@@ -175,33 +176,4 @@ func (w *SlotMapWatcher) tryReload(ctx context.Context, source string) {
 	if changed {
 		slog.Info("slot map reloaded", "source", source, "version", version)
 	}
-}
-
-func PublishSlotMapReload(brokerURL, brokerRedisURL, topic string, timeout time.Duration, version int32, routingEpoch int64) error {
-	if brokerURL == "" {
-		return nil
-	}
-	if topic == "" {
-		topic = DefaultSlotMapReloadTopic
-	}
-	if timeout <= 0 {
-		timeout = 3 * time.Second
-	}
-	payload, err := EncodeSlotMapReloadMessage(version, routingEpoch)
-	if err != nil {
-		return err
-	}
-	cli := client.NewClient(brokerURL, timeout)
-	if brokerRedisURL != "" {
-		cli.SetRedisURL(brokerRedisURL)
-	}
-	if err := cli.Connect(); err != nil {
-		return fmt.Errorf("slot map reload publish connect: %w", err)
-	}
-	defer cli.Close()
-	if _, err := cli.Produce(topic, 0, payload); err != nil {
-		return fmt.Errorf("slot map reload publish: %w", err)
-	}
-	slog.Info("published slot map reload", "topic", topic, "version", version)
-	return nil
 }

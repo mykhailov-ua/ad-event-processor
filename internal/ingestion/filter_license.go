@@ -3,7 +3,7 @@ package ingestion
 import (
 	"context"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/licensing"
 )
 
@@ -19,7 +19,7 @@ func NewLicenseFilter(registry licenseStateReader) *LicenseFilter {
 	return &LicenseFilter{registry: registry}
 }
 
-func (f *LicenseFilter) Check(_ context.Context, _ *campaignmodel.Event) error {
+func (f *LicenseFilter) Check(_ context.Context, _ *domain.Event) error {
 	if f == nil || f.registry == nil {
 		return nil
 	}

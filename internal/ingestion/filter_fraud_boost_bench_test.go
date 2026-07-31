@@ -8,13 +8,13 @@ import (
 	"strings"
 	"testing"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/config"
 
 	"github.com/google/uuid"
 )
 
-func setupFilterFraudBoostBench(t testing.TB) (*FilterEngine, *campaignmodel.Event, context.Context) {
+func setupFilterFraudBoostBench(t testing.TB) (*FilterEngine, *domain.Event, context.Context) {
 	t.Helper()
 	cfg := &config.Config{}
 	sw := NewSettingsWatcher(nil, cfg)
@@ -27,10 +27,10 @@ func setupFilterFraudBoostBench(t testing.TB) (*FilterEngine, *campaignmodel.Eve
 	engine.SetRegistry(&mockRegistry{})
 	engine.SetSettingsWatcher(sw)
 
-	cachedMockCamp.Store(&campaignmodel.Campaign{ID: campID})
+	cachedMockCamp.Store(&domain.Campaign{ID: campID})
 	t.Cleanup(func() { cachedMockCamp.Store(nil) })
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		CampaignID:   campID,
 		StringBuffer: make([]byte, 0, 64),
 	}

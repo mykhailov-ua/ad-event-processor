@@ -7,7 +7,7 @@ import (
 	"espx/internal/config"
 	"espx/internal/database"
 	"espx/internal/ingestion"
-	"espx/internal/management"
+	"espx/internal/controlplane"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -37,11 +37,11 @@ func TestMLGhostAndBlacklist_EndToEnd(t *testing.T) {
 
 	cfg := &config.Config{}
 	sharder := ingestion.NewStaticSlotSharder(1)
-	svc := management.NewService(pool, []redis.UniversalClient{rdb}, sharder, cfg)
+	svc := controlplane.NewService(pool, []redis.UniversalClient{rdb}, sharder, cfg)
 
-	worker := management.NewOutboxWorker(svc)
+	worker := controlplane.NewOutboxWorker(svc)
 
-	err = svc.EnqueueFraudThreat(ctx, management.FraudThreatPayload{
+	err = svc.EnqueueFraudThreat(ctx, controlplane.FraudThreatPayload{
 		Action:     "ghost",
 		CampaignID: campaignID.String(),
 		IP:         "1.1.1.1",
@@ -57,7 +57,7 @@ func TestMLGhostAndBlacklist_EndToEnd(t *testing.T) {
 	_, err = pool.Exec(ctx, "UPDATE campaigns SET ghost_ivt_enabled = FALSE WHERE id = $1", campaignID)
 	require.NoError(t, err)
 
-	err = svc.EnqueueFraudThreat(ctx, management.FraudThreatPayload{
+	err = svc.EnqueueFraudThreat(ctx, controlplane.FraudThreatPayload{
 		Action:     "ghost",
 		CampaignID: campaignID.String(),
 		IP:         "1.1.1.1",
@@ -75,7 +75,7 @@ func TestMLGhostAndBlacklist_EndToEnd(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, ghostEnabled)
 
-	err = svc.EnqueueFraudThreat(ctx, management.FraudThreatPayload{
+	err = svc.EnqueueFraudThreat(ctx, controlplane.FraudThreatPayload{
 		Action:     "blacklist",
 		CampaignID: campaignID.String(),
 		IP:         "9.9.9.9",
@@ -93,7 +93,7 @@ func TestMLGhostAndBlacklist_EndToEnd(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, exists)
 
-	err = svc.ApplyFraudScoringOverride(ctx, management.FraudScoringOverrideRequest{
+	err = svc.ApplyFraudScoringOverride(ctx, controlplane.FraudScoringOverrideRequest{
 		CampaignID: ptr(campaignID.String()),
 	})
 	require.NoError(t, err)
@@ -102,7 +102,7 @@ func TestMLGhostAndBlacklist_EndToEnd(t *testing.T) {
 	require.NoError(t, err)
 	assert.Greater(t, processed, 0)
 
-	err = svc.ApplyFraudScoringOverride(ctx, management.FraudScoringOverrideRequest{
+	err = svc.ApplyFraudScoringOverride(ctx, controlplane.FraudScoringOverrideRequest{
 		IP: ptr("9.9.9.9"),
 	})
 	require.NoError(t, err)

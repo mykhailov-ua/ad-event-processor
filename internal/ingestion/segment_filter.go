@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/pkg/piihash"
 
 	"github.com/google/uuid"
@@ -18,11 +18,11 @@ var (
 
 type SegmentFilter struct {
 	rdbs     []redis.UniversalClient
-	registry campaignmodel.CampaignRegistry
+	registry domain.CampaignRegistry
 	hasher   *piihash.Hasher
 }
 
-func NewSegmentFilter(rdbs []redis.UniversalClient, registry campaignmodel.CampaignRegistry, hasher *piihash.Hasher) *SegmentFilter {
+func NewSegmentFilter(rdbs []redis.UniversalClient, registry domain.CampaignRegistry, hasher *piihash.Hasher) *SegmentFilter {
 	return &SegmentFilter{
 		rdbs:     rdbs,
 		registry: registry,
@@ -30,7 +30,7 @@ func NewSegmentFilter(rdbs []redis.UniversalClient, registry campaignmodel.Campa
 	}
 }
 
-func (f *SegmentFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
+func (f *SegmentFilter) Check(ctx context.Context, evt *domain.Event) error {
 	if evt == nil || f.registry == nil {
 		return nil
 	}

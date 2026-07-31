@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"espx/internal/database"
-	"espx/internal/ingestion/sqlc"
+	"espx/internal/domain/db"
 
 	"github.com/stretchr/testify/require"
 )

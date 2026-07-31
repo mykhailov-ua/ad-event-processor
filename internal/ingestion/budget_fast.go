@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/metrics"
 	"espx/internal/telemetry"
 
@@ -51,8 +51,8 @@ var budgetFastScratchPool = sync.Pool{
 
 func (f *UnifiedFilter) runBudgetFastLua(
 	ctx context.Context,
-	evt *campaignmodel.Event,
-	campInfo *campaignmodel.Campaign,
+	evt *domain.Event,
+	campInfo *domain.Campaign,
 	amount any,
 	rdb redis.UniversalClient,
 	shard int,
@@ -174,8 +174,8 @@ func (f *UnifiedFilter) runBudgetFastLua(
 
 func (f *UnifiedFilter) handleLuaResult(
 	ctx context.Context,
-	evt *campaignmodel.Event,
-	campInfo *campaignmodel.Campaign,
+	evt *domain.Event,
+	campInfo *domain.Campaign,
 	amount any,
 	rdb redis.UniversalClient,
 	budgetSourceKey string,
@@ -241,7 +241,7 @@ func (f *UnifiedFilter) handleLuaResult(
 	}
 }
 
-func (f *UnifiedFilter) evalFastScript(ctx context.Context, rdb redis.UniversalClient, shard int, evt *campaignmodel.Event, keyArgs [budgetFastKeyCount]any, args []any) (int64, error) {
+func (f *UnifiedFilter) evalFastScript(ctx context.Context, rdb redis.UniversalClient, shard int, evt *domain.Event, keyArgs [budgetFastKeyCount]any, args []any) (int64, error) {
 	res, err := f.evalShaPooledN(ctx, rdb, shard, evt, f.fastScriptHashAny, keyArgs[:], args, budgetFastKeyCount)
 	if err != nil && isNoScriptErr(err) {
 		incRedisLuaNoScript(f.luaNoScriptCounters, shard)
@@ -252,7 +252,7 @@ func (f *UnifiedFilter) evalFastScript(ctx context.Context, rdb redis.UniversalC
 
 func (f *UnifiedFilter) recoverBudgetAfterMiss(
 	ctx context.Context,
-	evt *campaignmodel.Event,
+	evt *domain.Event,
 	rdb redis.UniversalClient,
 	budgetSourceKey string,
 	attempt int,

@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/config"
-	db "espx/internal/ingestion/sqlc"
+	db "espx/internal/domain/db"
 	"espx/internal/rtb"
 
 	"github.com/google/uuid"
@@ -17,13 +17,13 @@ import (
 func TestBuildRtbInputsFromRegistry_customerPoolAndHybridBid(t *testing.T) {
 	cfg := &config.Config{ClickAmount: 50}
 	customerID := uuid.New()
-	campA := &campaignmodel.Campaign{
-		ID: uuid.New(), CustomerID: customerID, Status: campaignmodel.CampaignStatusActive,
+	campA := &domain.Campaign{
+		ID: uuid.New(), CustomerID: customerID, Status: domain.CampaignStatusActive,
 		BudgetLimit: 1000, CurrentSpend: 200,
 		TargetCountries: map[string]struct{}{"US": {}},
 	}
-	campB := &campaignmodel.Campaign{
-		ID: uuid.New(), CustomerID: customerID, Status: campaignmodel.CampaignStatusActive,
+	campB := &domain.Campaign{
+		ID: uuid.New(), CustomerID: customerID, Status: domain.CampaignStatusActive,
 		BudgetLimit: 500, CurrentSpend: 100,
 		TargetCountries: map[string]struct{}{"US": {}},
 	}
@@ -36,7 +36,7 @@ func TestBuildRtbInputsFromRegistry_customerPoolAndHybridBid(t *testing.T) {
 	metaByID := map[uuid.UUID]*CampaignMeta{
 		campA.ID: {ID: campA.ID, BidMicro: 300, CTR: 0.1, RemainingBudget: 800, TotalBudget: 1000},
 	}
-	pools := buildCustomerBudgetPools([]*campaignmodel.Campaign{campA, campB})
+	pools := buildCustomerBudgetPools([]*domain.Campaign{campA, campB})
 	assert.Equal(t, int64(1200), pools[customerID])
 
 	inputs := BuildRtbInputsFromRegistry(registry, cfg, metaByID, pools, nil, nil)
@@ -53,8 +53,8 @@ func TestSyncRtbCatalog_hybridOverridesBid(t *testing.T) {
 	hybrid := NewHybridBalancer(6, 1000)
 
 	id := uuid.New()
-	camp := &campaignmodel.Campaign{
-		ID: id, Status: campaignmodel.CampaignStatusActive,
+	camp := &domain.Campaign{
+		ID: id, Status: domain.CampaignStatusActive,
 		BudgetLimit: 5000, TargetCountries: map[string]struct{}{"US": {}},
 	}
 	registry := &Registry{}
@@ -65,7 +65,7 @@ func TestSyncRtbCatalog_hybridOverridesBid(t *testing.T) {
 	SyncRtbCatalog(context.Background(), registry, catalog, cfg, hybrid, RtbBudgetSync{}, nil)
 
 	geo := GeoHashFromCountry("US")
-	res, reason := catalog.RunAuction(&campaignmodel.Event{}, RtbTargetingInput{
+	res, reason := catalog.RunAuction(&domain.Event{}, RtbTargetingInput{
 		GeoHash: geo, DeviceType: 1, CategoryMask: 1, PublisherFloorMicro: 50,
 	})
 	require.True(t, reason.OK())

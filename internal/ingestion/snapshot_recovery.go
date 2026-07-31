@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
 )
@@ -18,7 +18,7 @@ type Snapshot struct {
 }
 
 type ClickHouseConn interface {
-	QueryEventsSince(ctx context.Context, since time.Time) ([]*campaignmodel.Event, error)
+	QueryEventsSince(ctx context.Context, since time.Time) ([]*domain.Event, error)
 	QueryAggregatedSpend(ctx context.Context, until time.Time) (map[uuid.UUID]int64, error)
 }
 

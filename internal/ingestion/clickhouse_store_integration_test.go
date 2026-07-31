@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/pkg/piihash"
 
 	chgo "github.com/ClickHouse/clickhouse-go/v2"
@@ -91,7 +91,7 @@ func TestClickHouseStore_InsertDeduplicate_RealCH(t *testing.T) {
 	clickID := "ch-dedup-" + uuid.NewString()
 	campID := uuid.New()
 	createdAt := time.Unix(1_700_000_000, 0).UTC()
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		ClickID:    clickID,
 		CampaignID: campID,
 		Type:       "impression",
@@ -102,10 +102,10 @@ func TestClickHouseStore_InsertDeduplicate_RealCH(t *testing.T) {
 	}
 
 	const token = "fault-ch-dedup-token-explicit"
-	ctx := context.WithValue(context.Background(), campaignmodel.DeduplicationTokenKey, token)
+	ctx := context.WithValue(context.Background(), domain.DeduplicationTokenKey, token)
 
-	require.NoError(t, store.StoreBatch(ctx, []*campaignmodel.Event{evt}))
-	require.NoError(t, store.StoreBatch(ctx, []*campaignmodel.Event{evt}))
+	require.NoError(t, store.StoreBatch(ctx, []*domain.Event{evt}))
+	require.NoError(t, store.StoreBatch(ctx, []*domain.Event{evt}))
 
 	require.Equal(t, uint64(1), countClickHouseRows(t, conn, "impressions", clickID),
 		"duplicate insert with same dedup token must yield one row")
@@ -122,7 +122,7 @@ func TestClickHouseStore_InsertDeduplicate_DeterministicToken_RealCH(t *testing.
 	clickID := "ch-dedup-det-" + uuid.NewString()
 	campID := uuid.New()
 	createdAt := time.Unix(1_700_000_100, 0).UTC()
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		ClickID:    clickID,
 		CampaignID: campID,
 		Type:       "click",
@@ -133,8 +133,8 @@ func TestClickHouseStore_InsertDeduplicate_DeterministicToken_RealCH(t *testing.
 	}
 
 	ctx := context.Background()
-	require.NoError(t, store.StoreBatch(ctx, []*campaignmodel.Event{evt}))
-	require.NoError(t, store.StoreBatch(ctx, []*campaignmodel.Event{evt}))
+	require.NoError(t, store.StoreBatch(ctx, []*domain.Event{evt}))
+	require.NoError(t, store.StoreBatch(ctx, []*domain.Event{evt}))
 
 	require.Equal(t, uint64(1), countClickHouseRows(t, conn, "clicks", clickID),
 		"deterministic dedup token from event batch must collapse duplicate inserts")

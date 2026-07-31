@@ -11,8 +11,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/internal/campaignmodel"
-	db "espx/internal/ingestion/sqlc"
+	"espx/internal/domain"
+	db "espx/internal/domain/db"
 	"espx/internal/licensing"
 	"espx/internal/metrics"
 
@@ -23,7 +23,7 @@ import (
 )
 
 type campaignInfo struct {
-	campaign *campaignmodel.Campaign
+	campaign *domain.Campaign
 	status   db.CampaignStatusType
 }
 
@@ -40,22 +40,22 @@ func (r *Registry) campaignMapSnapshot() *campaignMapSnapshot {
 }
 
 type campaignReplicaDTO struct {
-	ID               uuid.UUID                    `json:"id"`
-	CustomerID       uuid.UUID                    `json:"customer_id"`
-	BrandID          *uuid.UUID                   `json:"brand_id,omitempty"`
-	BrandFcapKey     string                       `json:"brand_fcap_key,omitempty"`
-	Name             string                       `json:"name"`
-	BudgetLimit      int64                        `json:"budget_limit"`
-	CurrentSpend     int64                        `json:"current_spend"`
-	Status           campaignmodel.CampaignStatus `json:"status"`
-	PacingMode       campaignmodel.PacingMode     `json:"pacing_mode"`
-	DailyBudget      int64                        `json:"daily_budget"`
-	DailyBudgetMicro int64                        `json:"daily_budget_micro"`
-	Timezone         string                       `json:"timezone"`
-	FreqLimit        int32                        `json:"freq_limit"`
-	FreqWindow       int32                        `json:"freq_window"`
-	TargetCountries  []string                     `json:"target_countries,omitempty"`
-	RegistryStatus   string                       `json:"registry_status"`
+	ID               uuid.UUID             `json:"id"`
+	CustomerID       uuid.UUID             `json:"customer_id"`
+	BrandID          *uuid.UUID            `json:"brand_id,omitempty"`
+	BrandFcapKey     string                `json:"brand_fcap_key,omitempty"`
+	Name             string                `json:"name"`
+	BudgetLimit      int64                 `json:"budget_limit"`
+	CurrentSpend     int64                 `json:"current_spend"`
+	Status           domain.CampaignStatus `json:"status"`
+	PacingMode       domain.PacingMode     `json:"pacing_mode"`
+	DailyBudget      int64                 `json:"daily_budget"`
+	DailyBudgetMicro int64                 `json:"daily_budget_micro"`
+	Timezone         string                `json:"timezone"`
+	FreqLimit        int32                 `json:"freq_limit"`
+	FreqWindow       int32                 `json:"freq_window"`
+	TargetCountries  []string              `json:"target_countries,omitempty"`
+	RegistryStatus   string                `json:"registry_status"`
 }
 
 type entitlementsSnapshot struct {
@@ -92,7 +92,7 @@ func NewRegistry(repo db.Querier) *Registry {
 		byCustomerID: make(map[uuid.UUID]licensing.Entitlements),
 		licenseState: licensing.StateExpired,
 	})
-	r.cohorts.Store(&cohortRegistrySnapshot{byID: make(map[uuid.UUID]campaignmodel.ExperimentCohort)})
+	r.cohorts.Store(&cohortRegistrySnapshot{byID: make(map[uuid.UUID]domain.ExperimentCohort)})
 	return r
 }
 
@@ -131,7 +131,7 @@ func (r *Registry) UpdateAndWarmCampaign(ctx context.Context, id uuid.UUID) erro
 			}
 		}
 		newMap[id] = campaignInfo{
-			campaign: campaignFromGetCampaignFullRow(row),
+			campaign: domain.CampaignFromGetCampaignFullRow(row),
 			status:   row.Status,
 		}
 	} else {
@@ -145,7 +145,7 @@ func (r *Registry) UpdateAndWarmCampaign(ctx context.Context, id uuid.UUID) erro
 	if row.Status != db.CampaignStatusTypeACTIVE || w == nil {
 		return nil
 	}
-	camp := campaignFromGetCampaignFullRow(row)
+	camp := domain.CampaignFromGetCampaignFullRow(row)
 	_, err = w.WarmOne(ctx, camp)
 	return err
 }
@@ -169,7 +169,7 @@ func (r *Registry) GetCustomerID(campaignID uuid.UUID) (uuid.UUID, bool) {
 	return info.campaign.CustomerID, true
 }
 
-func (r *Registry) GetCampaign(id uuid.UUID) (*campaignmodel.Campaign, bool) {
+func (r *Registry) GetCampaign(id uuid.UUID) (*domain.Campaign, bool) {
 	info, ok := r.campaignMapSnapshot().byID[id]
 	if !ok {
 		return nil, false
@@ -177,12 +177,12 @@ func (r *Registry) GetCampaign(id uuid.UUID) (*campaignmodel.Campaign, bool) {
 	return info.campaign, true
 }
 
-func (r *Registry) ActiveCampaigns() []*campaignmodel.Campaign {
+func (r *Registry) ActiveCampaigns() []*domain.Campaign {
 	m := r.campaignMapSnapshot().byID
 	if len(m) == 0 {
 		return nil
 	}
-	out := make([]*campaignmodel.Campaign, 0, len(m))
+	out := make([]*domain.Campaign, 0, len(m))
 	for _, info := range m {
 		if info.status != db.CampaignStatusTypeACTIVE || info.campaign == nil {
 			continue
@@ -192,7 +192,7 @@ func (r *Registry) ActiveCampaigns() []*campaignmodel.Campaign {
 	return out
 }
 
-func (r *Registry) Add(id, customerID uuid.UUID, brandID *uuid.UUID, brandFcapKey string, pacingMode campaignmodel.PacingMode, dailyBudget int64, timezone string, freqLimit, freqWindow int32, targetCountries []string) {
+func (r *Registry) Add(id, customerID uuid.UUID, brandID *uuid.UUID, brandFcapKey string, pacingMode domain.PacingMode, dailyBudget int64, timezone string, freqLimit, freqWindow int32, targetCountries []string) {
 	loc, err := time.LoadLocation(timezone)
 	if err != nil {
 		slog.Error("invalid timezone in registry Add", "timezone", timezone, "error", err)
@@ -214,7 +214,7 @@ func (r *Registry) Add(id, customerID uuid.UUID, brandID *uuid.UUID, brandFcapKe
 	fcapPrefix := fcapKeyPrefix(id, brandFcapKey)
 
 	info := campaignInfo{
-		campaign: &campaignmodel.Campaign{
+		campaign: &domain.Campaign{
 			ID:                  id,
 			IDStr:               idStr,
 			IDStrAny:            idStr,
@@ -234,7 +234,7 @@ func (r *Registry) Add(id, customerID uuid.UUID, brandID *uuid.UUID, brandFcapKe
 			FreqWindow:          freqWindow,
 			FreqWindowAny:       freqWindow,
 			TargetCountries:     countries,
-			Status:              campaignmodel.CampaignStatusActive,
+			Status:              domain.CampaignStatusActive,
 			BudgetCampaignKey:   budgetCampaignKey(id),
 			CampaignSyncKey:     campaignSyncKey(id),
 			CustomerSyncKey:     customerSyncKey(id, customerID),
@@ -300,7 +300,7 @@ func (r *Registry) Sync(ctx context.Context) (int, error) {
 		}
 
 		fresh[id] = campaignInfo{
-			campaign: campaignFromListActiveCampaignsRow(row),
+			campaign: domain.CampaignFromListActiveCampaignsRow(row),
 			status:   row.Status,
 		}
 	}
@@ -430,7 +430,7 @@ func (r *Registry) loadReplica() (*campaignMapSnapshot, error) {
 		fcapPrefix := fcapKeyPrefix(dto.ID, dto.BrandFcapKey)
 
 		m[dto.ID] = campaignInfo{
-			campaign: &campaignmodel.Campaign{
+			campaign: &domain.Campaign{
 				ID:                  dto.ID,
 				IDStr:               idStr,
 				IDStrAny:            idStr,
@@ -515,7 +515,7 @@ func (r *Registry) watchPubSubOnce(ctx context.Context, rdb redis.UniversalClien
 			if !ok {
 				return errPubSubClosed
 			}
-			if IsRegistryFullSyncPayload(msg.Payload) {
+			if domain.IsRegistryFullSyncPayload(msg.Payload) {
 				if _, err := r.ReloadFullSnapshot(ctx); err != nil {
 					slog.Error("full campaign registry reload failed", "error", err)
 					continue

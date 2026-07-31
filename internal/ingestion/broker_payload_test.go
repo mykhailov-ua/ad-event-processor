@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/ingestion/pb"
 	"github.com/google/uuid"
 )
@@ -44,7 +44,7 @@ func TestParseBrokerPayload_AdLogRecord(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer campaignmodel.EventPool.Put(evt)
+	defer domain.EventPool.Put(evt)
 
 	if evt.ClickID != "click-1" || evt.Type != "impression" {
 		t.Fatalf("unexpected event: %+v", evt)
@@ -70,7 +70,7 @@ func TestParseBrokerPayload_AdStreamEvent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer campaignmodel.EventPool.Put(evt)
+	defer domain.EventPool.Put(evt)
 
 	if evt.ClickID != "click-2" || evt.IP != "1.2.3.4" || evt.FraudScore != 10 {
 		t.Fatalf("unexpected event: %+v", evt)

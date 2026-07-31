@@ -16,7 +16,7 @@ import (
 
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/ingestion/pb"
 	"espx/internal/metrics"
 )
@@ -261,7 +261,7 @@ func bytesEqual4(a, b []byte) bool {
 	return len(a) >= 4 && len(b) >= 4 && a[0] == b[0] && a[1] == b[1] && a[2] == b[2] && a[3] == b[3]
 }
 
-func (s *CHSpool) AppendDurably(dedupToken string, events []*campaignmodel.Event) error {
+func (s *CHSpool) AppendDurably(dedupToken string, events []*domain.Event) error {
 	if len(events) == 0 {
 		return nil
 	}
@@ -341,7 +341,7 @@ func (s *CHSpool) rotateLocked() error {
 	return nil
 }
 
-func marshalCHSpoolPayload(dedupToken string, events []*campaignmodel.Event) ([]byte, error) {
+func marshalCHSpoolPayload(dedupToken string, events []*domain.Event) ([]byte, error) {
 	tokenBytes := []byte(dedupToken)
 	if len(tokenBytes) > 0xffff {
 		return nil, fmt.Errorf("dedup token too long")
@@ -383,7 +383,7 @@ func marshalCHSpoolPayload(dedupToken string, events []*campaignmodel.Event) ([]
 	return buf, nil
 }
 
-func eventToStreamPB(e *campaignmodel.Event) *pb.AdStreamEvent {
+func eventToStreamPB(e *domain.Event) *pb.AdStreamEvent {
 	pbEvt := streamEventPool.Get().(*pb.AdStreamEvent)
 	DeepResetAdStreamEvent(pbEvt)
 	pbEvt.ClickId = append(pbEvt.ClickId[:0], e.ClickID...)
@@ -403,7 +403,7 @@ func eventToStreamPB(e *campaignmodel.Event) *pb.AdStreamEvent {
 
 type CHSpoolRecord struct {
 	DedupToken    string
-	Events        []*campaignmodel.Event
+	Events        []*domain.Event
 	SegmentPath   string
 	EndOffset     int64
 	LastInSegment bool
@@ -472,7 +472,7 @@ func (s *CHSpool) scanPathLocked(path string) ([]CHSpoolRecord, error) {
 	return out, nil
 }
 
-func unmarshalCHSpoolPayload(payload []byte) (string, []*campaignmodel.Event, error) {
+func unmarshalCHSpoolPayload(payload []byte) (string, []*domain.Event, error) {
 	if len(payload) < 6 {
 		return "", nil, errCHSpoolCorrupt
 	}
@@ -485,7 +485,7 @@ func unmarshalCHSpoolPayload(payload []byte) (string, []*campaignmodel.Event, er
 	count := int(binary.BigEndian.Uint32(payload[off : off+4]))
 	off += 4
 
-	events := make([]*campaignmodel.Event, 0, count)
+	events := make([]*domain.Event, 0, count)
 	for i := 0; i < count; i++ {
 		if off+4 > len(payload) {
 			return "", nil, errCHSpoolCorrupt
@@ -503,7 +503,7 @@ func unmarshalCHSpoolPayload(payload []byte) (string, []*campaignmodel.Event, er
 			return "", nil, err
 		}
 		off += n
-		evt := campaignmodel.EventPool.Get().(*campaignmodel.Event)
+		evt := domain.EventPool.Get().(*domain.Event)
 		evt.Reset()
 		evt.ClickID = string(append([]byte(nil), pbEvt.ClickId...))
 		_ = ParseUUID(pbEvt.CampaignId, &evt.CampaignID)

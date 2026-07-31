@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/metrics"
 	"espx/internal/rtb"
 	redis "github.com/redis/go-redis/v9"
@@ -154,7 +154,7 @@ func ReconcileCampaignBudget(
 	store *rtb.BudgetStore,
 	rdbs []redis.UniversalClient,
 	sharder Sharder,
-	camp *campaignmodel.Campaign,
+	camp *domain.Campaign,
 ) (redisRem int64, rtbRem int64, ok bool) {
 	if store == nil || camp == nil || len(rdbs) == 0 || sharder == nil {
 		return 0, 0, false

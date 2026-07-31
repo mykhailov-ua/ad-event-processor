@@ -10,7 +10,7 @@ import (
 	"espx/internal/config"
 	"espx/internal/database"
 	"espx/internal/edge"
-	"espx/internal/fraudscoring"
+	"espx/internal/fraud"
 	"espx/internal/ivtdetector"
 	"espx/internal/licensing"
 	"espx/pkg/lifecycle"
@@ -77,37 +77,21 @@ func main() {
 	}
 
 	var blocker ivtdetector.BlacklistBlocker
-	settlementTarget := cfg.SettlementServerHost + ":" + cfg.SettlementServerPort
-	if string(cfg.SettlementInternalToken) != "" {
-		grpcClient, conn, grpcErr := ivtdetector.NewGRPCManagementClient(settlementTarget, string(cfg.SettlementInternalToken))
-		if grpcErr != nil {
-			slog.Error("failed to connect to management settlement gRPC", "error", grpcErr)
-			os.Exit(1)
-		}
-		defer func() { _ = conn.Close() }()
-		blocker = grpcClient
-		slog.Info("ivt detector using settlement gRPC BlockIP", "target", settlementTarget)
-	} else {
-		managementURL := cfg.ManagementURL
-		if managementURL == "" {
-			managementURL = "http://127.0.0.1:" + cfg.ManagementPort
-		}
-		if string(cfg.AdminAPIKey) == "" {
-			slog.Error("SETTLEMENT_INTERNAL_TOKEN or ADMIN_API_KEY required for blacklist enqueue")
-			os.Exit(1)
-		}
-		blocker = ivtdetector.NewManagementClient(managementURL, string(cfg.AdminAPIKey), 10*time.Second)
-		slog.Warn("ivt detector using legacy HTTP blacklist; prefer SETTLEMENT_INTERNAL_TOKEN")
+	blocker, err = ivtdetector.ResolveManagementBlockerFromConfig(cfg.ManagementURL, cfg.ManagementPort, string(cfg.AdminAPIKey))
+	if err != nil {
+		slog.Error("failed to configure management client", "error", err)
+		os.Exit(1)
 	}
+	slog.Info("ivt detector using management HTTP API")
 
 	asn := &ivtdetector.StaticASNClassifier{
 		DatacenterPrefixes: strings.Split(os.Getenv("IVT_DATACENTER_PREFIXES"), ","),
 	}
 
-	var scorer fraudscoring.Scorer
+	var scorer fraud.Scorer
 	if cfg.FraudScoringEnabled() && !cfg.FraudScorerStandalone() {
 		var err error
-		scorer, err = fraudscoring.NewLGBMScorer(cfg.FraudScoring.ModelPath)
+		scorer, err = fraud.NewLGBMScorer(cfg.FraudScoring.ModelPath)
 		if err != nil {
 			slog.Error("failed to initialize fraud scorer", "error", err, "path", cfg.FraudScoring.ModelPath)
 			os.Exit(1)

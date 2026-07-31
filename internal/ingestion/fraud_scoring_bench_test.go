@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"github.com/google/uuid"
 )
 
@@ -14,7 +14,7 @@ type fraudSignalsFilter struct {
 	second FraudReasonID
 }
 
-func (f *fraudSignalsFilter) Check(_ context.Context, evt *campaignmodel.Event) error {
+func (f *fraudSignalsFilter) Check(_ context.Context, evt *domain.Event) error {
 	if f.first != FraudReasonNone {
 		addFraudSignal(evt, f.first)
 	}
@@ -24,16 +24,16 @@ func (f *fraudSignalsFilter) Check(_ context.Context, evt *campaignmodel.Event) 
 	return nil
 }
 
-func benchFilterEngineFraudScoring(b *testing.B, filters ...EventFilter) (*FilterEngine, *campaignmodel.Event, context.Context) {
+func benchFilterEngineFraudScoring(b *testing.B, filters ...EventFilter) (*FilterEngine, *domain.Event, context.Context) {
 	b.Helper()
 	engine := NewFilterEngine(0, filters...)
 	engine.SetRegistry(&mockRegistry{})
 
 	campID := uuid.New()
-	cachedMockCamp.Store(&campaignmodel.Campaign{ID: campID})
+	cachedMockCamp.Store(&domain.Campaign{ID: campID})
 	b.Cleanup(func() { cachedMockCamp.Store(nil) })
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		CampaignID:   campID,
 		StringBuffer: make([]byte, 0, 64),
 	}
@@ -49,7 +49,7 @@ func benchFilterEngineFraudScoring(b *testing.B, filters ...EventFilter) (*Filte
 	return engine, evt, ctx
 }
 
-func resetFraudBenchEvent(evt *campaignmodel.Event) {
+func resetFraudBenchEvent(evt *domain.Event) {
 	evt.ShadowEvent = false
 	evt.FraudScore = 0
 	evt.FraudReason = ""
@@ -102,10 +102,10 @@ func TestFilterEngine_Check_zeroAlloc_fraudScoring(t *testing.T) {
 	}
 	ctx := context.Background()
 	campID := uuid.New()
-	cachedMockCamp.Store(&campaignmodel.Campaign{ID: campID})
+	cachedMockCamp.Store(&domain.Campaign{ID: campID})
 	t.Cleanup(func() { cachedMockCamp.Store(nil) })
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		CampaignID:   campID,
 		StringBuffer: make([]byte, 0, 64),
 	}
@@ -137,10 +137,10 @@ func TestFilterEngine_FraudScoring_LatencySLA(t *testing.T) {
 
 	ctx := context.Background()
 	campID := uuid.New()
-	cachedMockCamp.Store(&campaignmodel.Campaign{ID: campID})
+	cachedMockCamp.Store(&domain.Campaign{ID: campID})
 	t.Cleanup(func() { cachedMockCamp.Store(nil) })
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		CampaignID:   campID,
 		StringBuffer: make([]byte, 0, 64),
 	}

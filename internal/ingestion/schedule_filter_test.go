@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -31,7 +31,7 @@ func TestScheduleFilter_BlocksOutsideDaypart(t *testing.T) {
 	registry := NewRegistry(nil)
 	campID := uuid.New()
 	custID := uuid.New()
-	registry.Add(campID, custID, nil, "", campaignmodel.PacingModeAsap, 0, "UTC", 0, 86400, nil)
+	registry.Add(campID, custID, nil, "", domain.PacingModeAsap, 0, "UTC", 0, 86400, nil)
 
 	snap := registry.campaignMapSnapshot()
 	newMap := make(map[uuid.UUID]campaignInfo, len(snap.byID))
@@ -44,7 +44,7 @@ func TestScheduleFilter_BlocksOutsideDaypart(t *testing.T) {
 	registry.data.Store(&campaignMapSnapshot{byID: newMap})
 
 	filter := NewScheduleFilter(registry)
-	evt := &campaignmodel.Event{CampaignID: campID, Type: "click"}
+	evt := &domain.Event{CampaignID: campID, Type: "click"}
 	err := filter.Check(context.Background(), evt)
 	assert.ErrorIs(t, err, ErrScheduleBlocked)
 }

@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 )
 
 type trackIngestFields struct {
@@ -98,7 +98,7 @@ func (h *AdsPacketHandler) parseTrackIngest(
 	return fields, nil, 0, true
 }
 
-func fillTrackEvent(evt *campaignmodel.Event, fields trackIngestFields, ip, ua string) {
+func fillTrackEvent(evt *domain.Event, fields trackIngestFields, ip, ua string) {
 	evt.Reset()
 	evt.ClickID = fields.clickID
 	evt.CampaignID = fields.campaignID
@@ -117,7 +117,7 @@ func (h *AdsPacketHandler) deliverGnetTrack(
 	ctx *connContext,
 	req parsedHTTPRequest,
 	c gnet.Conn,
-	evt *campaignmodel.Event,
+	evt *domain.Event,
 	startMono int64,
 	wReqID *bufWrapper,
 	requestIDStr string,

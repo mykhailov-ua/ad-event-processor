@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/metrics"
 
 	redis "github.com/redis/go-redis/v9"
@@ -40,7 +40,7 @@ var fraudAggFlushPool = sync.Pool{
 	},
 }
 
-func fraudAggregateExempt(evt *campaignmodel.Event) bool {
+func fraudAggregateExempt(evt *domain.Event) bool {
 	if evt == nil || evt.FraudReason == "" {
 		return false
 	}
@@ -170,7 +170,7 @@ func (q *FraudStreamWriter) aggTableFillRatio() float64 {
 	return float64(occ) / float64(fraudAggTableSize)
 }
 
-func (q *FraudStreamWriter) aggregateEvent(evt *campaignmodel.Event) bool {
+func (q *FraudStreamWriter) aggregateEvent(evt *domain.Event) bool {
 	subnet, ok := ipv4Subnet24Prefix(evt.IP)
 	if !ok {
 		return false

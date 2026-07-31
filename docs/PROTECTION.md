@@ -247,7 +247,7 @@ Full operator steps: [runbooks/DATA_SECURITY.md § Incident response](./runbooks
 
 ## 11. Engineering backlog (protection-related)
 
-Acceptance criteria: `.cursor/GAP_SPECS.md`.
+Acceptance criteria and SQL plans: this runbook and [RECONCILIATION_AND_SETTLEMENT.md](./runbooks/RECONCILIATION_AND_SETTLEMENT.md).
 
 | ID | Topic |
 | :---: | :--- |

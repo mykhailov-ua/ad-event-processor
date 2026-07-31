@@ -37,10 +37,10 @@ func TestSpendSyncProducer_FlushToRegionProxy(t *testing.T) {
 	campID := uuid.New()
 
 	for i := 0; i < 2; i++ {
-		entry := pendingRollup{
-			amountMicro: 1_000,
-			txID:        "sync-txn-" + string(rune('a'+i)),
-			idStr:       campID.String(),
+		entry := PendingRollup{
+			AmountMicro: 1_000,
+			TxID:        "sync-txn-" + string(rune('a'+i)),
+			IdStr:       campID.String(),
 		}
 		require.NoError(t, producer.EnqueueRollup(ctx, nil, campID, entry))
 	}

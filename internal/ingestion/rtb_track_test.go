@@ -3,7 +3,7 @@ package ingestion
 import (
 	"testing"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/config"
 	"espx/internal/rtb"
 
@@ -33,7 +33,7 @@ func TestApplyRtbAuction_liveSelectsWinner(t *testing.T) {
 	winnerID := uuid.New()
 	geo := GeoHashFromCountry("US")
 	catalog.SyncActiveCampaigns(
-		[]*campaignmodel.Campaign{{ID: winnerID, BudgetLimit: 5000, TargetCountries: map[string]struct{}{"US": {}}}},
+		[]*domain.Campaign{{ID: winnerID, BudgetLimit: 5000, TargetCountries: map[string]struct{}{"US": {}}}},
 		map[uuid.UUID]RtbCampaignInput{
 			winnerID: {BidMicro: 100, DeviceMask: 1, CategoryMask: 1, GeoHash: geo, Weight: 1},
 		},
@@ -45,7 +45,7 @@ func TestApplyRtbAuction_liveSelectsWinner(t *testing.T) {
 		ingestGeo:  &staticGeoProvider{country: "US"},
 	}
 	clientID := uuid.New()
-	evt := &campaignmodel.Event{CampaignID: clientID, IP: "8.8.8.8"}
+	evt := &domain.Event{CampaignID: clientID, IP: "8.8.8.8"}
 	ensureIngestGeo(proc.ingestGeo, evt)
 
 	out, handled := applyRtbAuction(proc, evt, []byte("desktop"))
@@ -61,14 +61,14 @@ func TestApplyRtbAuction_shadowKeepsClientCampaign(t *testing.T) {
 	id := uuid.New()
 	geo := GeoHashFromCountry("US")
 	catalog.SyncActiveCampaigns(
-		[]*campaignmodel.Campaign{{ID: id, BudgetLimit: 5000}},
+		[]*domain.Campaign{{ID: id, BudgetLimit: 5000}},
 		map[uuid.UUID]RtbCampaignInput{
 			id: {BidMicro: 100, DeviceMask: 1, CategoryMask: 1, GeoHash: geo, Weight: 1},
 		},
 	)
 
 	clientID := uuid.New()
-	evt := &campaignmodel.Event{CampaignID: clientID, IP: "8.8.8.8"}
+	evt := &domain.Event{CampaignID: clientID, IP: "8.8.8.8"}
 	proc := trackProcessor{
 		rtbCatalog: catalog,
 		rtbMode:    rtbModeShadow,
@@ -87,7 +87,7 @@ func TestApplyRtbAuction_liveNoBidRejects(t *testing.T) {
 	catalog.SyncActiveCampaigns(nil, nil)
 
 	proc := trackProcessor{rtbCatalog: catalog, rtbMode: rtbModeLive}
-	evt := &campaignmodel.Event{CampaignID: uuid.New()}
+	evt := &domain.Event{CampaignID: uuid.New()}
 
 	out, handled := applyRtbAuction(proc, evt, nil)
 	require.True(t, handled)
@@ -129,7 +129,7 @@ func TestBuildRtbTargeting_OpenRTB3AndLegacy(t *testing.T) {
   "category_mask": 8
 }`)
 
-	evtOpenRTB := &campaignmodel.Event{
+	evtOpenRTB := &domain.Event{
 		Payload:           openrtbPayload,
 		IngestGeoResolved: true,
 		GeoHash:           12345,
@@ -142,7 +142,7 @@ func TestBuildRtbTargeting_OpenRTB3AndLegacy(t *testing.T) {
 	assert.Equal(t, int64(1500000), targetingOpenRTB.PublisherFloorMicro)
 
 	legacyPayload := []byte(`{"category_mask":4,"bid_micro":100}`)
-	evtLegacy := &campaignmodel.Event{
+	evtLegacy := &domain.Event{
 		Payload:           legacyPayload,
 		IngestGeoResolved: true,
 		GeoHash:           12345,
@@ -183,7 +183,7 @@ func BenchmarkBuildRtbTargeting_OpenRTB3(b *testing.B) {
   },
   "category_mask": 8
 }`)
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		Payload:           openrtbPayload,
 		IngestGeoResolved: true,
 		GeoHash:           12345,
@@ -201,7 +201,7 @@ func BenchmarkBuildRtbTargeting_OpenRTB3(b *testing.B) {
 
 func BenchmarkBuildRtbTargeting_Legacy(b *testing.B) {
 	legacyPayload := []byte(`{"category_mask":4,"bid_micro":100}`)
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		Payload:           legacyPayload,
 		IngestGeoResolved: true,
 		GeoHash:           12345,

@@ -3,7 +3,7 @@ package ingestion
 import (
 	"testing"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/config"
 	"espx/internal/rtb"
 
@@ -12,11 +12,11 @@ import (
 )
 
 func TestRtbSync_reserveMicro(t *testing.T) {
-	camp := &campaignmodel.Campaign{
+	camp := &domain.Campaign{
 		ID:           uuid.New(),
 		BudgetLimit:  10_000,
 		ReserveMicro: 50_000,
-		Status:       campaignmodel.CampaignStatusActive,
+		Status:       domain.CampaignStatusActive,
 	}
 	cfg := &config.Config{ClickAmount: 100}
 	input := rtbInputForCampaign(camp, cfg, nil, 0, nil, nil)

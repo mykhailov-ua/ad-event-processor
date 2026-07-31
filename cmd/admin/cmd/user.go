@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"espx/internal/auth"
-	authdb "espx/internal/auth/db"
+	"espx/internal/identity"
+	authdb "espx/internal/identity/db"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -40,7 +40,7 @@ var createTokenCmd = &cobra.Command{
 			if autoCreate {
 				fmt.Printf("User %s not found. Auto-creating...\n", email)
 
-				hasher, err := auth.NewPasswordHasher(
+				hasher, err := identity.NewPasswordHasher(
 					uint32(cfg.Argon2Memory),
 					uint32(cfg.Argon2Iterations),
 					uint8(cfg.Argon2Parallelism),
@@ -75,7 +75,7 @@ var createTokenCmd = &cobra.Command{
 			}
 		}
 
-		tokenMaker, err := auth.NewPasetoMaker(string(cfg.TokenSymmetricKey))
+		tokenMaker, err := identity.NewPasetoMaker(string(cfg.TokenSymmetricKey))
 		if err != nil {
 			return err
 		}
@@ -189,7 +189,7 @@ var createUserCmd = &cobra.Command{
 
 		repo := authdb.NewStore(pool)
 
-		hasher, err := auth.NewPasswordHasher(
+		hasher, err := identity.NewPasswordHasher(
 			uint32(cfg.Argon2Memory),
 			uint32(cfg.Argon2Iterations),
 			uint8(cfg.Argon2Parallelism),

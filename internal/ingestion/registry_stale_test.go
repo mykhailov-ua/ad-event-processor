@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/database"
 
 	"github.com/google/uuid"
@@ -44,7 +44,7 @@ func TestResolveDebitShard_RerouteToReserve(t *testing.T) {
 		}
 	}
 
-	camp := &campaignmodel.Campaign{
+	camp := &domain.Campaign{
 		HasTriplet:    true,
 		PrimaryAShard: 0,
 		PrimaryBShard: 1,
@@ -73,6 +73,6 @@ func TestResolveDebitShard_UnavailableWithoutTriplet(t *testing.T) {
 		}
 	}
 
-	_, err := f.resolveDebitShard(campID, "user", &campaignmodel.Campaign{})
+	_, err := f.resolveDebitShard(campID, "user", &domain.Campaign{})
 	require.ErrorIs(t, err, ErrShardUnavailable)
 }

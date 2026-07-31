@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"espx/internal/notifier"
 	"espx/internal/payment/db"
 
 	notifierpb "espx/internal/notifier/pb"
@@ -35,7 +36,7 @@ func TestSettlementFailedAlerter_CooldownDedupByIntent(t *testing.T) {
 func TestSettlementFailedAlerter_AlertPermanentFailure_enqueues(t *testing.T) {
 	stub := &stubPaymentNotifierClient{}
 	cfg := testPaymentOpsConfig()
-	alerter := NewSettlementFailedAlerter(&NotifierClient{client: stub}, cfg)
+	alerter := NewSettlementFailedAlerter(&NotifierClient{api: notifier.NewGRPCNotifierAPI(stub)}, cfg)
 	require.NotNil(t, alerter)
 
 	intentID := uuid.New()
@@ -63,7 +64,7 @@ func TestSettlementFailedAlerter_AlertPermanentFailure_enqueues(t *testing.T) {
 func TestSettlementFailedAlerter_AlertPermanentFailure_dedupSecondCall(t *testing.T) {
 	stub := &stubPaymentNotifierClient{}
 	cfg := testPaymentOpsConfig()
-	alerter := NewSettlementFailedAlerter(&NotifierClient{client: stub}, cfg)
+	alerter := NewSettlementFailedAlerter(&NotifierClient{api: notifier.NewGRPCNotifierAPI(stub)}, cfg)
 	require.NotNil(t, alerter)
 
 	intentID := uuid.New()

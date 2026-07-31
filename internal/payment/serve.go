@@ -85,22 +85,27 @@ func Serve(ctx context.Context, cfg *config.Config) error {
 		}
 	}()
 
-	lis, err := net.Listen("tcp", ":"+cfg.PaymentServerPort)
-	if err != nil {
-		return err
-	}
-
-	grpcServer := google_grpc.NewServer()
-	pb.RegisterPaymentServiceServer(grpcServer, grpcHandler)
-	if cfg.Env != "production" {
-		reflection.Register(grpcServer)
-	}
-
+	var grpcServer *google_grpc.Server
 	serveErr := make(chan error, 1)
-	go func() {
-		slog.Info("starting payment gRPC server", "port", cfg.PaymentServerPort)
-		serveErr <- grpcServer.Serve(lis)
-	}()
+	if cfg.PaymentGRPCEnabled {
+		lis, err := net.Listen("tcp", ":"+cfg.PaymentServerPort)
+		if err != nil {
+			return err
+		}
+
+		grpcServer = google_grpc.NewServer()
+		pb.RegisterPaymentServiceServer(grpcServer, grpcHandler)
+		if cfg.Env != "production" {
+			reflection.Register(grpcServer)
+		}
+
+		go func() {
+			slog.Info("starting payment gRPC server", "port", cfg.PaymentServerPort)
+			serveErr <- grpcServer.Serve(lis)
+		}()
+	} else {
+		slog.Info("payment gRPC disabled", "env", "PAYMENT_GRPC_ENABLED=0")
+	}
 
 	select {
 	case <-ctx.Done():
@@ -121,15 +126,17 @@ func Serve(ctx context.Context, cfg *config.Config) error {
 		reconWorker.Wait()
 	}
 
-	stopped := make(chan struct{})
-	go func() {
-		grpcServer.GracefulStop()
-		close(stopped)
-	}()
-	select {
-	case <-stopped:
-	case <-shutdownCtx.Done():
-		grpcServer.Stop()
+	if grpcServer != nil {
+		stopped := make(chan struct{})
+		go func() {
+			grpcServer.GracefulStop()
+			close(stopped)
+		}()
+		select {
+		case <-stopped:
+		case <-shutdownCtx.Done():
+			grpcServer.Stop()
+		}
 	}
 	return ctx.Err()
 }

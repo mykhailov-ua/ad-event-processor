@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"espx/internal/database"
-	"espx/internal/fraudscoring"
+	"espx/internal/fraud"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/google/uuid"
@@ -29,7 +29,7 @@ type fraudScoringRule struct {
 	q         *database.CHQuery
 	writeConn driver.Conn
 	pool      *pgxpool.Pool
-	scorer    fraudscoring.Scorer
+	scorer    fraud.Scorer
 	batchSize int
 
 	campaignMu      sync.Mutex
@@ -37,7 +37,7 @@ type fraudScoringRule struct {
 	campaignExpiry  time.Time
 }
 
-func NewFraudScoringRule(q *database.CHQuery, writeConn driver.Conn, pool *pgxpool.Pool, scorer fraudscoring.Scorer, batchSize int) Rule {
+func NewFraudScoringRule(q *database.CHQuery, writeConn driver.Conn, pool *pgxpool.Pool, scorer fraud.Scorer, batchSize int) Rule {
 	return &fraudScoringRule{
 		q:         q,
 		writeConn: writeConn,
@@ -132,9 +132,9 @@ LIMIT ?`
 	}
 	defer rows.Close()
 
-	var featureRows []fraudscoring.FeatureRow
+	var featureRows []fraud.FeatureRow
 	for rows.Next() {
-		var fr fraudscoring.FeatureRow
+		var fr fraud.FeatureRow
 		var campaignID string
 		var ipHash []byte
 		if err := rows.Scan(
@@ -200,12 +200,12 @@ LIMIT ?`
 			}
 		}
 
-		decision := fraudscoring.DecideWithCampaign(featureRows[i], score, pass, suspect, ivt, block)
+		decision := fraud.DecideWithCampaign(featureRows[i], score, pass, suspect, ivt, block)
 		fraudScore := decision.Score
 		var action string
 
 		switch decision.Tier {
-		case fraudscoring.FraudTierSuspect:
+		case fraud.FraudTierSuspect:
 			action = "boost"
 			out = append(out, SuspiciousIP{
 				IP:         ip,
@@ -216,7 +216,7 @@ LIMIT ?`
 				Boost:      int32(fraudScore),
 				TTLSeconds: 300,
 			})
-		case fraudscoring.FraudTierIVT:
+		case fraud.FraudTierIVT:
 			if ghostEnabled {
 				action = "ghost"
 				out = append(out, SuspiciousIP{
@@ -229,7 +229,7 @@ LIMIT ?`
 					TTLSeconds: 300,
 				})
 			}
-		case fraudscoring.FraudTierBlock:
+		case fraud.FraudTierBlock:
 			action = "blacklist"
 			out = append(out, SuspiciousIP{
 				IP:         ip,

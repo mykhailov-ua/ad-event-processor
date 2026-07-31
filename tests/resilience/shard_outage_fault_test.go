@@ -10,8 +10,8 @@ import (
 	"espx/internal/config"
 	"espx/internal/database"
 	"espx/internal/ingestion"
-	db "espx/internal/ingestion/sqlc"
-	"espx/internal/management"
+	db "espx/internal/domain/db"
+	"espx/internal/controlplane"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -106,7 +106,7 @@ func TestFault_Shard0Outage(t *testing.T) {
 	statusBaseline, baselineLatency := postClickCampaign(t, handler, campaignIDs[1], uuid.NewString())
 	require.Equal(t, http.StatusAccepted, statusBaseline)
 
-	svc := management.NewService(pool, rdbs, sharder, cfg)
+	svc := controlplane.NewService(pool, rdbs, sharder, cfg)
 	defer svc.Close()
 
 	testutil.StopRedisShardContainer(t, shardInfra.Containers[0])
@@ -146,7 +146,7 @@ func TestFault_Shard0Outage(t *testing.T) {
 	require.NoError(t, svc.UpdateSettings(ctx, map[string]string{"rate_limit_per_min": "199"}))
 	eventID := latestOutboxEventID(t, pool, "UPDATE_SETTINGS")
 
-	outboxWorker := management.NewOutboxWorker(svc)
+	outboxWorker := controlplane.NewOutboxWorker(svc)
 	processed, err := outboxWorker.ProcessOutboxWithCount(ctx, 10)
 	require.Error(t, err)
 	require.Equal(t, 0, processed)

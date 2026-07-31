@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -12,8 +12,8 @@ import (
 
 func TestUnifiedFilter_needsFullLuaPath(t *testing.T) {
 	f := NewUnifiedFilter(nil, nil, &mockRegistry{}, nil, 0, time.Minute, time.Hour, time.Hour, 100, 10, "events", 1000)
-	camp := &campaignmodel.Campaign{PacingMode: campaignmodel.PacingModeAsap}
-	evt := &campaignmodel.Event{Type: "impression", CampaignID: uuid.New(), UserID: "u1"}
+	camp := &domain.Campaign{PacingMode: domain.PacingModeAsap}
+	evt := &domain.Event{Type: "impression", CampaignID: uuid.New(), UserID: "u1"}
 
 	f.SetLuaFastPathEnabled(true)
 	require.False(t, f.needsFullLuaPath(evt, camp))
@@ -34,7 +34,7 @@ func TestUnifiedFilter_needsFullLuaPath(t *testing.T) {
 	require.True(t, f.needsFullLuaPath(evt, camp))
 	camp.FreqLimit = 0
 
-	camp.PacingMode = campaignmodel.PacingModeEven
+	camp.PacingMode = domain.PacingModeEven
 	require.True(t, f.needsFullLuaPath(evt, camp))
 }
 
@@ -58,7 +58,7 @@ func TestUnifiedFilter_fastPathDebitMatchesFull(t *testing.T) {
 	campID := uuid.New()
 	seedCampaignBudget(t, ctx, rdb, campID)
 
-	evtFast := &campaignmodel.Event{
+	evtFast := &domain.Event{
 		Type:       "impression",
 		IP:         "203.0.113.90",
 		UserID:     "fast",
@@ -67,7 +67,7 @@ func TestUnifiedFilter_fastPathDebitMatchesFull(t *testing.T) {
 	}
 	require.NoError(t, fFast.Check(ctx, evtFast))
 
-	evtFull := &campaignmodel.Event{
+	evtFull := &domain.Event{
 		Type:       "impression",
 		IP:         "203.0.113.91",
 		UserID:     "full",

@@ -8,7 +8,7 @@ import (
 	"sync"
 	"testing"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
@@ -21,7 +21,7 @@ func TestRegistry_LockFreeReadsStress(t *testing.T) {
 
 	id1 := uuid.New()
 	customerID1 := uuid.New()
-	r.Add(id1, customerID1, nil, "", campaignmodel.PacingModeAsap, 1000, "UTC", 0, 0, nil)
+	r.Add(id1, customerID1, nil, "", domain.PacingModeAsap, 1000, "UTC", 0, 0, nil)
 
 	var wg sync.WaitGroup
 
@@ -42,7 +42,7 @@ func TestRegistry_LockFreeReadsStress(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for j := 0; j < 10; j++ {
-				r.Add(uuid.New(), uuid.New(), nil, "", campaignmodel.PacingModeAsap, 1000, "UTC", 0, 0, nil)
+				r.Add(uuid.New(), uuid.New(), nil, "", domain.PacingModeAsap, 1000, "UTC", 0, 0, nil)
 			}
 		}()
 	}

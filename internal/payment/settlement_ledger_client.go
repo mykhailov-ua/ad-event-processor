@@ -6,23 +6,29 @@ import (
 	"sync"
 
 	"espx/internal/config"
-	mgmtpb "espx/internal/management/pb"
+	"espx/internal/controlplane/pb"
+	"espx/internal/domain"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/metadata"
 )
 
 type SettlementLedgerClient struct {
-	cfg    *config.Config
-	mu     sync.Mutex
-	conn   *grpc.ClientConn
-	client mgmtpb.SettlementServiceClient
+	cfg  *config.Config
+	mu   sync.Mutex
+	conn *grpc.ClientConn
+	api  domain.PaymentSettlement
 }
 
 func NewSettlementLedgerClient(cfg *config.Config) *SettlementLedgerClient {
 	return &SettlementLedgerClient{cfg: cfg}
+}
+
+func (c *SettlementLedgerClient) SetSettlementAPI(api domain.PaymentSettlement) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.api = api
 }
 
 type PaymentIntentLedger struct {
@@ -37,21 +43,18 @@ func (c *SettlementLedgerClient) GetPaymentIntentLedger(ctx context.Context, int
 	if err := c.ensureClient(); err != nil {
 		return PaymentIntentLedger{}, err
 	}
-	grpcCtx := metadata.AppendToOutgoingContext(ctx, "x-internal-token", string(c.cfg.SettlementInternalToken))
-	resp, err := c.getClient().GetLedgerEntry(grpcCtx, &mgmtpb.GetLedgerEntryRequest{
-		PaymentIntentId: intentID.String(),
-	})
+	entry, err := c.getAPI().GetLedgerEntry(ctx, intentID)
 	if err != nil {
 		return PaymentIntentLedger{}, fmt.Errorf("settlement GetLedgerEntry: %w", err)
 	}
 	out := PaymentIntentLedger{
-		RefundMicro:             resp.GetRefundTotalMicro(),
-		ChargebackMicro:         resp.GetChargebackTotalMicro(),
-		ChargebackReversalMicro: resp.GetChargebackReversalTotalMicro(),
+		RefundMicro:             entry.RefundTotalMicro,
+		ChargebackMicro:         entry.ChargebackTotalMicro,
+		ChargebackReversalMicro: entry.ChargebackReversalTotalMicro,
 	}
-	if resp.GetFound() && resp.GetTopup() != nil {
+	if entry.Found && entry.HasTopup {
 		out.HasTopup = true
-		out.TopupMicro = resp.GetTopup().GetAmountMicro()
+		out.TopupMicro = entry.TopupAmountMicro
 	}
 	return out, nil
 }
@@ -62,7 +65,7 @@ func (c *SettlementLedgerClient) Close() error {
 	if c.conn != nil {
 		err := c.conn.Close()
 		c.conn = nil
-		c.client = nil
+		c.api = nil
 		return err
 	}
 	return nil
@@ -71,7 +74,7 @@ func (c *SettlementLedgerClient) Close() error {
 func (c *SettlementLedgerClient) ensureClient() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.client != nil {
+	if c.api != nil {
 		return nil
 	}
 	target := c.cfg.SettlementServerHost + ":" + c.cfg.SettlementServerPort
@@ -80,12 +83,12 @@ func (c *SettlementLedgerClient) ensureClient() error {
 		return fmt.Errorf("dial settlement %s: %w", target, err)
 	}
 	c.conn = conn
-	c.client = mgmtpb.NewSettlementServiceClient(conn)
+	c.api = newGRPCSettlementClient(pb.NewSettlementServiceClient(conn), string(c.cfg.SettlementInternalToken))
 	return nil
 }
 
-func (c *SettlementLedgerClient) getClient() mgmtpb.SettlementServiceClient {
+func (c *SettlementLedgerClient) getAPI() domain.PaymentSettlement {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.client
+	return c.api
 }

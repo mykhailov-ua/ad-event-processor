@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
@@ -65,11 +65,11 @@ return 1
 
 type RedisBudgetManager struct {
 	rdb            redis.Cmdable
-	campaignRepo   campaignmodel.CampaignRepository
+	campaignRepo   domain.CampaignRepository
 	idempotencyTTL time.Duration
 }
 
-func NewRedisBudgetManager(rdb redis.Cmdable, repo campaignmodel.CampaignRepository, idempotencyTTL time.Duration) *RedisBudgetManager {
+func NewRedisBudgetManager(rdb redis.Cmdable, repo domain.CampaignRepository, idempotencyTTL time.Duration) *RedisBudgetManager {
 	return &RedisBudgetManager{
 		rdb:            rdb,
 		campaignRepo:   repo,

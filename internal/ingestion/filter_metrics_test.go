@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/metrics"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -14,14 +14,14 @@ import (
 func TestGeoFilter_lookupErrorIncrementsCounter(t *testing.T) {
 	before := testutil.ToFloat64(filterGeoLookupErrors)
 	campID := uuid.New()
-	cachedMockCamp.Store(&campaignmodel.Campaign{
+	cachedMockCamp.Store(&domain.Campaign{
 		ID:              campID,
 		TargetCountries: map[string]struct{}{"US": {}},
 	})
 	t.Cleanup(func() { cachedMockCamp.Store(nil) })
 
 	f := NewGeoFilter(errGeoProvider{}, &mockRegistry{})
-	err := f.Check(context.Background(), &campaignmodel.Event{IP: "8.8.8.8", CampaignID: campID})
+	err := f.Check(context.Background(), &domain.Event{IP: "8.8.8.8", CampaignID: campID})
 	require.NoError(t, err)
 	require.Equal(t, before+1, testutil.ToFloat64(filterGeoLookupErrors))
 }

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/metrics"
 
 	"github.com/google/uuid"
@@ -57,7 +57,7 @@ func TestFault_LuaFastPathP99(t *testing.T) {
 	beforeFast := testutil.ToFloat64(metrics.RedisLuaFastPathTotal.WithLabelValues("0"))
 
 	for i := 0; i < iterations; i++ {
-		evt := &campaignmodel.Event{
+		evt := &domain.Event{
 			Type:       "impression",
 			CampaignID: campaignID,
 			ClickID:    fmt.Sprintf("fast-%d", i),
@@ -118,7 +118,7 @@ func BenchmarkUnifiedFilter_Check_FastPath_RealRedis(b *testing.B) {
 	campID := uuid.New()
 	seedCampaignBudget(b, ctx, rdb, campID)
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		Type:       "impression",
 		IP:         "203.0.113.210",
 		CampaignID: campID,

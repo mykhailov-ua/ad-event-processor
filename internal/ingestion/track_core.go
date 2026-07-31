@@ -3,7 +3,7 @@ package ingestion
 import (
 	"context"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/ingestion/traceprobe"
 )
 
@@ -24,7 +24,7 @@ type trackOutcome struct {
 
 type trackProcessor struct {
 	filterEngine    *FilterEngine
-	registry        campaignmodel.CampaignRegistry
+	registry        domain.CampaignRegistry
 	creativeStore   *BrandCreativeStore
 	rtbCatalog      *RtbCatalog
 	rtbMode         uint8
@@ -32,7 +32,7 @@ type trackProcessor struct {
 	ingestGeo       GeoProvider
 }
 
-func newTrackProcessor(filterEngine *FilterEngine, registry campaignmodel.CampaignRegistry, creativeStore *BrandCreativeStore) trackProcessor {
+func newTrackProcessor(filterEngine *FilterEngine, registry domain.CampaignRegistry, creativeStore *BrandCreativeStore) trackProcessor {
 	if filterEngine != nil {
 		filterEngine.SetRegistry(registry)
 	}
@@ -43,7 +43,7 @@ func newTrackProcessor(filterEngine *FilterEngine, registry campaignmodel.Campai
 	}
 }
 
-func processTrack(p trackProcessor, evt *campaignmodel.Event, deviceType []byte) trackOutcome {
+func processTrack(p trackProcessor, evt *domain.Event, deviceType []byte) trackOutcome {
 	slot := uint32(0)
 	if evt != nil {
 		slot = uint32(CampaignSlotIndex(evt.CampaignID))
@@ -54,7 +54,7 @@ func processTrack(p trackProcessor, evt *campaignmodel.Event, deviceType []byte)
 	return out
 }
 
-func processTrackInner(p trackProcessor, evt *campaignmodel.Event, deviceType []byte) trackOutcome {
+func processTrackInner(p trackProcessor, evt *domain.Event, deviceType []byte) trackOutcome {
 	ensureIngestGeo(p.ingestGeo, evt)
 	if out, handled := applyRtbAuction(p, evt, deviceType); handled {
 		releaseOpenRTB3Scratch(evt)

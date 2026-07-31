@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"espx/internal/domain"
 	"espx/internal/metrics"
 	"espx/pkg/dedupkey"
 	rpclient "espx/pkg/regionproxy/client"
@@ -21,9 +22,9 @@ type SpendSyncProducer struct {
 }
 
 type pendingSpendSync struct {
-	worker *SyncWorker
+	worker *domain.SyncWorker
 	id     uuid.UUID
-	rollup pendingRollup
+	rollup domain.PendingRollup
 }
 
 func NewSpendSyncProducer(client *rpclient.Client, minBatch int) *SpendSyncProducer {
@@ -45,11 +46,11 @@ func (p *SpendSyncProducer) PendingCount() int {
 	return len(p.pending)
 }
 
-func (p *SpendSyncProducer) EnqueueRollup(ctx context.Context, w *SyncWorker, id uuid.UUID, entry pendingRollup) error {
+func (p *SpendSyncProducer) EnqueueRollup(ctx context.Context, w *domain.SyncWorker, id uuid.UUID, entry domain.PendingRollup) error {
 	if p == nil || p.client == nil {
 		return fmt.Errorf("spend sync producer: unavailable")
 	}
-	if entry.amountMicro <= 0 || entry.txID == "" {
+	if entry.AmountMicro <= 0 || entry.TxID == "" {
 		return nil
 	}
 
@@ -85,8 +86,8 @@ func (p *SpendSyncProducer) Flush(ctx context.Context) error {
 	for _, item := range items {
 		txns = append(txns, dedupkey.SpendSyncTxn{
 			CampaignID:  item.id,
-			AmountMicro: item.rollup.amountMicro,
-			TxnID:       item.rollup.txID,
+			AmountMicro: item.rollup.AmountMicro,
+			TxnID:       item.rollup.TxID,
 		})
 	}
 
@@ -110,7 +111,7 @@ func (p *SpendSyncProducer) Flush(ctx context.Context) error {
 	metrics.RegionSpendSyncTxnsTotal.Add(float64(len(txns)))
 	for _, item := range items {
 		if item.worker != nil {
-			item.worker.commitRollupRedis(ctx, item.rollup)
+			item.worker.CommitRollupRedis(ctx, item.rollup)
 		}
 	}
 	return nil

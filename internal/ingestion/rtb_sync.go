@@ -5,7 +5,7 @@ import (
 	"sort"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/config"
 
 	"github.com/google/uuid"
@@ -18,7 +18,7 @@ const (
 	defaultCategoryMask uint64 = 1
 )
 
-func BuildCampaignMetaList(campaigns []*campaignmodel.Campaign, cfg *config.Config) []*CampaignMeta {
+func BuildCampaignMetaList(campaigns []*domain.Campaign, cfg *config.Config) []*CampaignMeta {
 	if len(campaigns) == 0 || cfg == nil {
 		return nil
 	}
@@ -68,7 +68,7 @@ func campaignMetaByID(metas []*CampaignMeta) map[uuid.UUID]*CampaignMeta {
 	return out
 }
 
-func buildCustomerBudgetPools(campaigns []*campaignmodel.Campaign) map[uuid.UUID]int64 {
+func buildCustomerBudgetPools(campaigns []*domain.Campaign) map[uuid.UUID]int64 {
 	if len(campaigns) == 0 {
 		return nil
 	}
@@ -108,7 +108,7 @@ func BuildRtbInputsFromRegistry(
 }
 
 func rtbInputForCampaign(
-	camp *campaignmodel.Campaign,
+	camp *domain.Campaign,
 	cfg *config.Config,
 	meta *CampaignMeta,
 	customerBudget int64,
@@ -116,7 +116,7 @@ func rtbInputForCampaign(
 	boosts *FraudScoreBoostSnapshot,
 ) RtbCampaignInput {
 	geo := firstTargetCountryGeo(camp)
-	pacing := PacingOpenFromManagement(camp.Status == campaignmodel.CampaignStatusActive)
+	pacing := PacingOpenFromManagement(camp.Status == domain.CampaignStatusActive)
 	customerID := CustomerIDFromCustomerUUID(camp.CustomerID)
 	dailyMicro := camp.DailyBudgetMicro
 	if dailyMicro <= 0 {
@@ -164,7 +164,7 @@ func rtbInputForCampaign(
 	}
 }
 
-func firstTargetCountryGeo(camp *campaignmodel.Campaign) uint32 {
+func firstTargetCountryGeo(camp *domain.Campaign) uint32 {
 	if camp == nil || len(camp.TargetCountries) == 0 {
 		return 0
 	}

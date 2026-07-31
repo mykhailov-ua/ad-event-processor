@@ -112,7 +112,7 @@ Each deployable domain area must reside as a single flat Go package under `inter
 
 1. Package name matches the directory: `package ingestion`, `package payment`.
 2. All `.go` files reside in the directory root, in a single `package`.
-3. Reference directory structures: `internal/ingestion/`, `internal/payment/`, `internal/management/`, `internal/auth/`.
+3. Reference directory structures: `internal/ingestion/`, `internal/payment/`, `internal/controlplane/`, `internal/identity/`.
 
 Allowed Subdirectories (only generated code or schemas - no business logic, no additional domain packages):
 1. `db/` - sqlc output (`package db`).
@@ -122,23 +122,23 @@ Allowed Subdirectories (only generated code or schemas - no business logic, no a
 
 Non-Go resources bound to the service (e.g., `unified-filter.lua` in ingestion) must remain in the service root.
 
-Banned: nested domain packages under service roots such as `internal/ingestion/filter/`, `internal/rtb/ (nested packages forbidden)`, `internal/management/fraud/`. `internal/management/` is one flat package - navigate by filename prefix (`blacklist_*`, `service_fraud.go`), not subfolders. Only `pb/` (generated) is allowed under `management/`.
+Banned: nested domain packages under service roots such as `internal/ingestion/filter/`, `internal/rtb/ (nested packages forbidden)`, `internal/controlplane/fraud/`. `internal/controlplane/` is one flat package - navigate by filename prefix (`blacklist_*`, `service_fraud.go`), not subfolders. Only `pb/` (generated) is allowed under `management/`.
 
 R1b. Cold-path JSON API
 
-JSON `/api/v1` lives in `internal/management/` (`handler_api.go`, `handler_*.go`, `api_*.go`) and `internal/adminapi/` (reporting scaffolds). Wire routes from `cmd/management`.
+JSON `/api/v1` lives in `internal/controlplane/` (`handler_api.go`, `handler_*.go`, `api_*.go`, `adminapi/`). Wire routes from `cmd/management`.
 
 1. Tag = first `_` segment - `api_billing_handlers.go`, `handler_rtb.go`, `billing_handlers.go`.
 2. Single flat package per directory; no nested domain packages.
 3. sqlc - tracker queries in `internal/ingestion/sqlc/`; other services in `internal/<svc>/db/`.
 
 Anti-patterns (reject in review):
-- Nested packages under `internal/ingestion/filter/`, `internal/management/fraud/`.
+- Nested packages under `internal/ingestion/filter/`, `internal/controlplane/fraud/`.
 - Names like `api`, `http`, `common`, `utils` as filename tags.
 
-R1c. `internal/management` - flat package, tag navigation
+R1c. `internal/controlplane` - flat package, tag navigation
 
-`cmd/management` = one Go package (`package management`). No theme subfolders (`management/fraud/` forbidden).
+`cmd/management` = one Go package (`package controlplane`). No theme subfolders (`management/fraud/` forbidden).
 
 Grouping key for humans/IDE: first `_` segment of the filename (or second for `service_<theme>_*.go` / `handler_<theme>_*.go`):
 
@@ -148,7 +148,7 @@ Grouping key for humans/IDE: first `_` segment of the filename (or second for `s
 
 Cross-cutting: `service.go`, `handler.go`, `workers.go`, `middleware.go`, `ops.go`, `errors.go`.
 
-Extract as sibling only when shared across binaries (`internal/licensing/`) or separate HTTP surface (`internal/adminapi/`). ClickHouse connect + query helpers stay in `internal/database/` - no extra `chquery/` or `clickhouse/` subpackages for connection code.
+Extract as sibling only when shared across binaries (`internal/licensing/`). ClickHouse connect + query helpers stay in `internal/database/` - no extra `chquery/` or `clickhouse/` subpackages for connection code.
 
 Legacy `handler_*` / `service_*` pairs are deprecated - colocate on touch (`fraud_config.go`), do not extract subpackages.
 
@@ -257,7 +257,7 @@ These rules supplement R7 (blank identifier `_`). On the hot path, performance c
 R8.1. Hot-Path and Cold-Path Boundaries
 
 Hot-path: `internal/ingestion` ingest, `FilterEngine.Check`, `processTrack`, `internal/rtb` auction, gnet scanner — `/track`, OpenRTB bid
-Cold-path: `internal/management`, `internal/payment`, `internal/auth`, `internal/billing`, workers, outbox — Admin HTTP, gRPC, webhooks
+Cold-path: `internal/controlplane`, `internal/payment`, `internal/identity`, `internal/billing`, workers, outbox — Admin HTTP, gRPC, webhooks
 
 Hot-path: rejecting a request is an expected outcome (budget, geo, no-bid), not a control flow exception. Cold-path: an error is a signal for the caller, retry, or HTTP code.
 
@@ -367,7 +367,7 @@ Forbidden in all hand-written Go, Lua, SQL under `internal/`, `cmd/`, `pkg/`, `t
    - Milestone tags: `M1`, `M5.6`, `M14-01`, `MR-03`, etc.
    - Words: `milestone`, `chaos` (use `fault` / `resilience` in identifiers and test names)
    - Phase labels: `Phase A`, `Phase B`, backlog status, or roadmap stage names
-3. **Cross-references to planning or agent docs** from code or docstrings (`MILESTONE.md`, `GAP_SPECS.md`, `.cursor/BACKLOG.md`, `.cursor/rules/`, scenario catalogs). Link in markdown README/docs only.
+3. **Cross-references to planning or agent docs** from code or docstrings (`MILESTONE.md`, `docs/DEVELOPMENT.md`, `.cursor/rules/`, scenario catalogs). Link in markdown README/docs only.
 
 R9.3a. Python docstrings (`fraud_modeling/`)
 
@@ -375,12 +375,12 @@ Docstrings are the specification layer: dry, grammatically correct English. One 
 
 Forbidden in docstrings: narrative, marketing tone, emoji, Unicode dashes (use `-`), references to gaps/milestones/backlog, and pointers to `.cursor/` files.
 
-Permitted: stable code paths (`internal/fraudscoring/feature_spec.go`), env var names, table/column names, and artifact filenames.
+Permitted: stable code paths (`internal/fraud/feature_spec.go`), env var names, table/column names, and artifact filenames.
 
 Example (module):
 
 ```python
-"""16-dim feature vector aligned with internal/fraudscoring/feature_spec.go."""
+"""16-dim feature vector aligned with internal/fraud/feature_spec.go."""
 ```
 
 Example (function):
@@ -396,7 +396,7 @@ CI (`go run ./cmd/check-comments` via `scripts/ci/comments.sh`):
 - Always fails on backlog metadata in comments (GAP, P##, M*, milestone, chaos).
 - With `STRICT_NO_COMMENTS=1`, fails on any comment that is not `//go:` or `//nolint:`.
 
-Gap IDs and `P##` order live in `.cursor/GAP_SPECS.md` and `.cursor/BACKLOG.md` only.
+Gap IDs and legacy `P##` order live in `docs/DEVELOPMENT.md` and runbooks only — not in source.
 
 Tone
 
@@ -540,7 +540,7 @@ errcheck on non-test:
    - `*_test.go`;
    - generated code `*/pb/`, `*/db/`;
    - intentional `Close`/`Write` on the shutdown path (with `//nolint:errcheck` and a reason).
-3. Banned: globally disabling errcheck for all of `internal/management` or `internal/ingestion`.
+3. Banned: globally disabling errcheck for all of `internal/controlplane` or `internal/ingestion`.
 
 R11.3. Benchmark Baseline in CI
 

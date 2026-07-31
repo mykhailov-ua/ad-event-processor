@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"espx/internal/adminapi"
+	"espx/internal/controlplane/adminapi"
 	"espx/internal/openapi"
 
 	"github.com/stretchr/testify/require"

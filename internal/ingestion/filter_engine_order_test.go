@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -18,7 +18,7 @@ type traceFilter struct {
 	fail  error
 }
 
-func (f *traceFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
+func (f *traceFilter) Check(ctx context.Context, evt *domain.Event) error {
 	*f.trace = append(*f.trace, f.name)
 	return f.fail
 }
@@ -31,7 +31,7 @@ func TestFilterEngine_ProductionOrder(t *testing.T) {
 	unified := &traceFilter{name: "unified", trace: &order, fail: ErrRateLimitExceeded}
 
 	engine := NewFilterEngine(time.Second, emergency, geo, schedule, unified)
-	evt := &campaignmodel.Event{CampaignID: uuid.New()}
+	evt := &domain.Event{CampaignID: uuid.New()}
 
 	err := engine.Check(context.Background(), evt)
 	require.ErrorIs(t, err, ErrRateLimitExceeded)
@@ -45,7 +45,7 @@ func TestFilterEngine_DeadlineShortCircuit(t *testing.T) {
 		&slowFilter{delay: 20 * time.Millisecond},
 		&traceFilter{name: "never", trace: &order, fail: ErrBudgetExhausted},
 	)
-	evt := &campaignmodel.Event{CampaignID: uuid.New()}
+	evt := &domain.Event{CampaignID: uuid.New()}
 	err := engine.Check(context.Background(), evt)
 	require.ErrorIs(t, err, ErrFilterTimeout)
 	assert.Equal(t, []string{"fast"}, order)

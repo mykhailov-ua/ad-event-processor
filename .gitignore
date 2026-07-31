@@ -35,7 +35,7 @@ internal/*/db/*.sql.go
 internal/*/db/db.go
 internal/*/db/models.go
 internal/*/db/querier.go
-internal/ingestion/sqlc/
+internal/domain/db/
 
 # protobuf / vtproto (api/*.proto → internal/*/pb/)
 internal/*/pb/*.pb.go

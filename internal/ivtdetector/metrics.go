@@ -1,7 +1,7 @@
 package ivtdetector
 
 import (
-	"espx/internal/fraudscoring"
+	"espx/internal/fraud"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -61,7 +61,7 @@ var (
 	}, []string{"action"})
 )
 
-func recordShadowMetrics(mlScore float64, tier fraudscoring.FraudTier, action string) {
+func recordShadowMetrics(mlScore float64, tier fraud.FraudTier, action string) {
 	mlShadowScore.Observe(mlScore)
 	mlShadowTierTotal.WithLabelValues(string(tier)).Inc()
 	if action != "" {

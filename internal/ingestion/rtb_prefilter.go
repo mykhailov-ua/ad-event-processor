@@ -1,7 +1,7 @@
 package ingestion
 
 import (
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/rtb"
 )
 
@@ -22,7 +22,7 @@ func rtbPrefilterReject(watcher *SettingsWatcher, catalog *RtbCatalog, targeting
 	return rtb.NoBidNone
 }
 
-func rtbPrebidIVTReject(enabled bool, geo GeoProvider, evt *campaignmodel.Event) rtb.NoBidReason {
+func rtbPrebidIVTReject(enabled bool, geo GeoProvider, evt *domain.Event) rtb.NoBidReason {
 	if !enabled || evt == nil || geo == nil || evt.IP == "" {
 		return rtb.NoBidNone
 	}

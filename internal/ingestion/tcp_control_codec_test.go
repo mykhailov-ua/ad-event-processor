@@ -3,7 +3,7 @@ package ingestion
 import (
 	"testing"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 
 	"github.com/stretchr/testify/require"
 )
@@ -58,7 +58,7 @@ func TestTCPAckPayload_roundtrip(t *testing.T) {
 }
 
 func TestCampaign_LuaRoutingEpoch(t *testing.T) {
-	c := &campaignmodel.Campaign{RoutingEpoch: 0, MigrationGen: 5}
+	c := &domain.Campaign{RoutingEpoch: 0, MigrationGen: 5}
 	require.Equal(t, int64(5), c.LuaRoutingEpoch())
 	c.RoutingEpoch = 8
 	require.Equal(t, int64(8), c.LuaRoutingEpoch())

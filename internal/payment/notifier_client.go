@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"espx/internal/config"
+	"espx/internal/notifier"
 	notifierpb "espx/internal/notifier/pb"
 
 	"google.golang.org/grpc"
@@ -12,8 +13,15 @@ import (
 )
 
 type NotifierClient struct {
-	conn   *grpc.ClientConn
-	client notifierpb.NotifierServiceClient
+	conn *grpc.ClientConn
+	api  notifier.NotifierAPI
+}
+
+func NewInProcessNotifierClient(api notifier.NotifierAPI) *NotifierClient {
+	if api == nil {
+		return nil
+	}
+	return &NotifierClient{api: api}
 }
 
 func NewNotifierClient(cfg *config.Config) (*NotifierClient, error) {
@@ -28,8 +36,8 @@ func NewNotifierClient(cfg *config.Config) (*NotifierClient, error) {
 	}
 
 	return &NotifierClient{
-		conn:   conn,
-		client: notifierpb.NewNotifierServiceClient(conn),
+		conn: conn,
+		api:  notifier.NewGRPCNotifierAPI(notifierpb.NewNotifierServiceClient(conn)),
 	}, nil
 }
 
@@ -41,8 +49,15 @@ func (client *NotifierClient) Close() error {
 }
 
 func (client *NotifierClient) SendNotification(ctx context.Context, req *notifierpb.SendNotificationRequest) (*notifierpb.SendNotificationResponse, error) {
-	if client == nil || client.client == nil {
+	if client == nil || client.api == nil {
 		return nil, fmt.Errorf("notifier client not configured")
 	}
-	return client.client.SendNotification(ctx, req)
+	result, err := client.api.SendNotificationInput(ctx, notifier.NotificationInputFromPB(req))
+	if err != nil {
+		return nil, err
+	}
+	return &notifierpb.SendNotificationResponse{
+		NotificationId: result.NotificationID,
+		Deduplicated:   result.Deduplicated,
+	}, nil
 }

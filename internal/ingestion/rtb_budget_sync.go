@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/rtb"
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
@@ -19,7 +19,7 @@ type RtbBudgetSync struct {
 func SyncRTBBudgetState(
 	ctx context.Context,
 	store *rtb.BudgetStore,
-	campaigns []*campaignmodel.Campaign,
+	campaigns []*domain.Campaign,
 	customerPools map[uuid.UUID]int64,
 	sync RtbBudgetSync,
 ) {
@@ -62,7 +62,7 @@ func loadRedisCampaignBudget(
 	ctx context.Context,
 	rdbs []redis.UniversalClient,
 	sharder Sharder,
-	camp *campaignmodel.Campaign,
+	camp *domain.Campaign,
 ) (int64, bool) {
 	shard := sharder.GetShard(camp.ID)
 	if shard < 0 || shard >= len(rdbs) {
@@ -82,7 +82,7 @@ func loadRedisDailySpend(
 	ctx context.Context,
 	rdbs []redis.UniversalClient,
 	sharder Sharder,
-	camp *campaignmodel.Campaign,
+	camp *domain.Campaign,
 ) (int64, bool) {
 	shard := sharder.GetShard(camp.ID)
 	if shard < 0 || shard >= len(rdbs) {

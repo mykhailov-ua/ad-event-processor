@@ -12,7 +12,7 @@ Agent: Apply when changing Redis keys, PG schema, streams, or ClickHouse analyti
 
 Data Layer
 
-Redis (hot state), PostgreSQL (ledger, config), ClickHouse (telemetry). Architecture: `docs/ARCHITECTURE.md`. Open backlog: `.cursor/BACKLOG.md`.
+Redis (hot state), PostgreSQL (ledger, config), ClickHouse (telemetry). Architecture: `docs/ARCHITECTURE.md`. Open work: `docs/DEVELOPMENT.md`.
 
 Part I - Redis
 
@@ -117,7 +117,7 @@ TCP cutover (GAP-SHARD-05): management `TCP_MGMT_BIND_ADDR` (:8192) publishes HM
 `TCP_CONTROL_HMAC_SECRET`: - — Required when TCP enabled
 
 ```bash
-go test ./internal/management/... -run 'SO_|TCP_Snapshot' -short
+go test ./internal/controlplane/... -run 'SO_|TCP_Snapshot' -short
 ```
 
 Fault: `TestFault_ShardOrchestrator_NoFalseMigrate`, `TestFault_ShardOrchestrator_CampaignRoutingMigration`, `TestFault_TCP_SnapshotHMACACK`.
@@ -252,4 +252,4 @@ Write-path mechanisms:
 - `SyncWorker` sole `UpdateCampaignSpend` writer; `syncMu` serializes flushes
 - `TRACKER_PG_FALLBACK=0` in production
 
-Multi-region and extended DR: `.cursor/MULTI_REGION.md`, `.cursor/BACKLOG.md`, `docs/DEVELOPMENT.md`.
+Multi-region and extended DR: `.cursor/MULTI_REGION.md`, `docs/DEVELOPMENT.md`.

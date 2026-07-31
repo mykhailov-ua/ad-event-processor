@@ -4,21 +4,21 @@ import (
 	"context"
 	"errors"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 )
 
 var ErrConsentDenied = errors.New("consent not granted")
 
 type ConsentFilter struct {
-	registry campaignmodel.CampaignRegistry
-	store    *ConsentStore
+	registry domain.CampaignRegistry
+	store    *domain.ConsentStore
 }
 
-func NewConsentFilter(registry campaignmodel.CampaignRegistry, store *ConsentStore) *ConsentFilter {
+func NewConsentFilter(registry domain.CampaignRegistry, store *domain.ConsentStore) *ConsentFilter {
 	return &ConsentFilter{registry: registry, store: store}
 }
 
-func (f *ConsentFilter) Check(ctx context.Context, evt *campaignmodel.Event) error {
+func (f *ConsentFilter) Check(ctx context.Context, evt *domain.Event) error {
 	if f == nil || f.store == nil || evt == nil {
 		return nil
 	}

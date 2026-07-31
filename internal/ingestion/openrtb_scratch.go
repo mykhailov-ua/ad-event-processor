@@ -4,7 +4,7 @@ import (
 	"sync"
 	"unsafe"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 )
 
 const openRTBScratchMagic = 0x4f525442335f01
@@ -69,7 +69,7 @@ func parseOpenRTB3FSMInto(out *OpenRTB3Parsed, payload []byte) bool {
 	return out.OK
 }
 
-func attachOpenRTB3Scratch(evt *campaignmodel.Event, slot *openRTBScratchSlot) {
+func attachOpenRTB3Scratch(evt *domain.Event, slot *openRTBScratchSlot) {
 	if evt == nil || slot == nil {
 		return
 	}
@@ -77,7 +77,7 @@ func attachOpenRTB3Scratch(evt *campaignmodel.Event, slot *openRTBScratchSlot) {
 	evt.Scratch = unsafe.Pointer(slot)
 }
 
-func openRTB3ParsedFromScratch(evt *campaignmodel.Event) (*OpenRTB3Parsed, bool) {
+func openRTB3ParsedFromScratch(evt *domain.Event) (*OpenRTB3Parsed, bool) {
 	if evt == nil || evt.Scratch == nil {
 		return nil, false
 	}
@@ -91,7 +91,7 @@ func openRTB3ParsedFromScratch(evt *campaignmodel.Event) (*OpenRTB3Parsed, bool)
 	return &slot.parsed, true
 }
 
-func releaseOpenRTB3Scratch(evt *campaignmodel.Event) {
+func releaseOpenRTB3Scratch(evt *domain.Event) {
 	if evt == nil || evt.Scratch == nil {
 		return
 	}

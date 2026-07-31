@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/metrics"
 
 	"github.com/google/uuid"
@@ -25,19 +25,19 @@ func Test_ipv4Subnet24Prefix(t *testing.T) {
 }
 
 func Test_fraudAggregateExempt_L3(t *testing.T) {
-	evt := &campaignmodel.Event{FraudReason: FraudReasonCodeL3Blocklist}
+	evt := &domain.Event{FraudReason: FraudReasonCodeL3Blocklist}
 	assert.True(t, fraudAggregateExempt(evt))
 }
 
 func Test_fraudAggregateExempt_dualL1(t *testing.T) {
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		FraudReason: FraudReasonCodeDatacenterIP + "," + FraudReasonCodeLowTTC,
 	}
 	assert.True(t, fraudAggregateExempt(evt))
 }
 
 func Test_fraudAggregateExempt_singleL2(t *testing.T) {
-	evt := &campaignmodel.Event{FraudReason: FraudReasonCodeMissingImpTS}
+	evt := &domain.Event{FraudReason: FraudReasonCodeMissingImpTS}
 	assert.False(t, fraudAggregateExempt(evt))
 }
 
@@ -70,7 +70,7 @@ func TestFraudStreamWriter_aggregateIncrementsWithoutRing(t *testing.T) {
 	primeFraudRingAggPressure(q)
 
 	beforeAgg := testutil.ToFloat64(metrics.FraudStreamAggregatedTotal)
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		IP:          "10.20.30.40",
 		FraudReason: FraudReasonCodeLowTTC,
 		Type:        "click",
@@ -89,7 +89,7 @@ func TestFraudStreamWriter_L3NeverAggregated(t *testing.T) {
 	}
 	primeFraudRingAggPressure(q)
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		ClickID:     "l3-click",
 		CampaignID:  uuid.New(),
 		IP:          "10.0.0.1",
@@ -112,14 +112,14 @@ func TestFault_FraudStreamL3NeverAggregated(t *testing.T) {
 	beforePending := q.Pending()
 	beforeAgg := testutil.ToFloat64(metrics.FraudStreamAggregatedTotal)
 
-	l3 := &campaignmodel.Event{
+	l3 := &domain.Event{
 		ClickID:     "l3",
 		CampaignID:  uuid.New(),
 		IP:          "198.18.1.1",
 		FraudReason: FraudReasonCodeL3Blocklist,
 		Type:        "click",
 	}
-	l2 := &campaignmodel.Event{
+	l2 := &domain.Event{
 		IP:          "198.18.1.2",
 		FraudReason: FraudReasonCodeMissingImpTS,
 		Type:        "click",
@@ -150,7 +150,7 @@ func TestFault_FraudStreamCriticalLaneAnalyticalFull(t *testing.T) {
 	beforeCritDrop := testutil.ToFloat64(metrics.FraudStreamCriticalDropTotal)
 	beforeAgg := testutil.ToFloat64(metrics.FraudStreamAggregatedTotal)
 
-	l3 := &campaignmodel.Event{
+	l3 := &domain.Event{
 		ClickID:     "crit-l3",
 		CampaignID:  uuid.New(),
 		IP:          "203.0.113.9",
@@ -188,7 +188,7 @@ func TestFraudStreamWriter_aggregateFlushToStream(t *testing.T) {
 	}
 	primeFraudRingAggPressure(q)
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		IP:          "192.168.10.20",
 		FraudReason: FraudReasonCodeLowTTC,
 	}
@@ -208,7 +208,7 @@ func TestFraudStreamWriter_spike50kZeroRingDrops(t *testing.T) {
 
 	beforeRingDrop := testutil.ToFloat64(metrics.FraudStreamDropTotal)
 	beforeAgg := testutil.ToFloat64(metrics.FraudStreamAggregatedTotal)
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		IP:          "10.1.2.3",
 		FraudReason: FraudReasonCodeMissingImpTS,
 		Type:        "click",
@@ -245,7 +245,7 @@ func TestFraudStreamWriter_aggregateTableOverflowIncrementsDropped(t *testing.T)
 	metrics.FraudStreamAggTableFill.Set(1)
 
 	before := testutil.ToFloat64(metrics.FraudStreamAggregatedDropTotal)
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		IP:          "10.99.1.1",
 		FraudReason: FraudReasonCodeLowTTC,
 	}
@@ -318,7 +318,7 @@ func BenchmarkFraudAggregate(b *testing.B) {
 	q := &FraudStreamWriter{stopCh: make(chan struct{})}
 	atomic.StoreUint32(&q.aggregating, 1)
 
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		IP:          "203.0.113.10",
 		FraudReason: FraudReasonCodeLowTTC,
 		Type:        "click",
@@ -333,7 +333,7 @@ func BenchmarkFraudAggregate(b *testing.B) {
 func TestFraudAggregate_ZeroAlloc(t *testing.T) {
 	q := &FraudStreamWriter{stopCh: make(chan struct{})}
 	atomic.StoreUint32(&q.aggregating, 1)
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		IP:          "203.0.113.10",
 		FraudReason: FraudReasonCodeLowTTC,
 	}

@@ -1,7 +1,7 @@
 package ingestion
 
 import (
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 
 	"github.com/google/uuid"
 )
@@ -24,7 +24,7 @@ func ttcEnabled(ttcMinMsAny any) bool {
 	}
 }
 
-func (f *UnifiedFilter) needsFullLuaPath(evt *campaignmodel.Event, campInfo *campaignmodel.Campaign) bool {
+func (f *UnifiedFilter) needsFullLuaPath(evt *domain.Event, campInfo *domain.Campaign) bool {
 	if evt.Type != "impression" {
 		return true
 	}
@@ -34,7 +34,7 @@ func (f *UnifiedFilter) needsFullLuaPath(evt *campaignmodel.Event, campInfo *cam
 	if campInfo.FreqLimit > 0 && evt.UserID != "" {
 		return true
 	}
-	if campInfo.PacingMode == campaignmodel.PacingModeEven {
+	if campInfo.PacingMode == domain.PacingModeEven {
 		return true
 	}
 	if ttcEnabled(f.ttcMinMsAny) {

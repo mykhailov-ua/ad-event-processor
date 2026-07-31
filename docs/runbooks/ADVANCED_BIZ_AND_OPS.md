@@ -2,7 +2,7 @@
 
 Concepts to scale eSPX (Model 2/3) and reduce DevOps burden on self-hosted operators.
 
-Acceptance criteria: `.cursor/GAP_SPECS.md` (P08, P13–P17, P26).
+Operational acceptance criteria: this runbook and [DEVELOPMENT.md](../DEVELOPMENT.md) completed roadmap (P08, P13–P17, P26).
 
 ---
 

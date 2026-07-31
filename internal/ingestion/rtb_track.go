@@ -1,7 +1,7 @@
 package ingestion
 
 import (
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/config"
 )
 
@@ -74,7 +74,7 @@ func (h *AdsPacketHandler) ConfigureIngestGeo(geo GeoProvider) {
 	ConfigureIngestGeo(&h.trackProc, geo)
 }
 
-func buildRtbTargeting(evt *campaignmodel.Event, deviceType []byte, floorMicro int64, catalog *RtbCatalog) RtbTargetingInput {
+func buildRtbTargeting(evt *domain.Event, deviceType []byte, floorMicro int64, catalog *RtbCatalog) RtbTargetingInput {
 	geoHash := uint32(0)
 	if evt != nil && evt.IngestGeoResolved {
 		geoHash = evt.GeoHash
@@ -146,7 +146,7 @@ func catalogDealFloors(catalog *RtbCatalog) *DealFloorCache {
 	return catalog.dealFloors
 }
 
-func applyRtbAuction(proc trackProcessor, evt *campaignmodel.Event, deviceType []byte) (trackOutcome, bool) {
+func applyRtbAuction(proc trackProcessor, evt *domain.Event, deviceType []byte) (trackOutcome, bool) {
 	if proc.rtbCatalog == nil || proc.rtbMode == rtbModeOff || evt == nil {
 		return trackOutcome{}, false
 	}

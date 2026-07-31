@@ -27,10 +27,10 @@ func TestH1_UpdateSpendSingleWriter(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		if !strings.HasPrefix(rel, "internal/management/") {
+		if !strings.HasPrefix(rel, "internal/controlplane/") {
 			return nil
 		}
-		if rel == "internal/management/recon_adjust.go" {
+		if rel == "internal/controlplane/recon_adjust.go" {
 			return nil
 		}
 		data, err := os.ReadFile(path)

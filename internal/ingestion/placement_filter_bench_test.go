@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
@@ -22,12 +22,12 @@ func (m *placementHExistsMock) HExists(ctx context.Context, key string, field st
 	return staticBoolCmd
 }
 
-func setupPlacementBlacklistBench(t testing.TB, blacklisted bool) (*PlacementBlacklistFilter, *campaignmodel.Event, context.Context) {
+func setupPlacementBlacklistBench(t testing.TB, blacklisted bool) (*PlacementBlacklistFilter, *domain.Event, context.Context) {
 	t.Helper()
 	rdbs := []redis.UniversalClient{&placementHExistsMock{hit: blacklisted}}
 	f := NewPlacementBlacklistFilter(rdbs)
 	campID := uuid.MustParse("550e8400-e29b-41d4-a716-446655440000")
-	evt := &campaignmodel.Event{
+	evt := &domain.Event{
 		CampaignID:  campID,
 		PlacementID: "zone-42",
 	}

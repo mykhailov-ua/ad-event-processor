@@ -7,13 +7,14 @@ import (
 	"os/signal"
 	"syscall"
 
-	"espx/internal/auth"
+	"espx/internal/identity"
 	"espx/internal/config"
 )
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
+	slog.Warn("standalone binary deprecated; use cmd/control monolith")
 
 	cfg, err := config.Load()
 	if err != nil {
@@ -24,7 +25,7 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	if err := auth.Serve(ctx, cfg); err != nil && err != context.Canceled {
+	if err := identity.Serve(ctx, cfg); err != nil && err != context.Canceled {
 		slog.Error("auth server stopped", "error", err)
 		os.Exit(1)
 	}

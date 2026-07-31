@@ -4,7 +4,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/internal/campaignmodel"
+	"espx/internal/domain"
 	"espx/internal/ingestion/pb"
 	"espx/internal/metrics"
 	"espx/pkg/logger"
@@ -32,7 +32,7 @@ func writeAuditLog(
 	seq *atomic.Uint64,
 	sampleMask uint64,
 	shardID int,
-	evt *campaignmodel.Event,
+	evt *domain.Event,
 ) {
 	if l == nil || evt == nil {
 		return
@@ -84,8 +84,8 @@ func writeAuditLog(
 	streamEventPool.Put(pbEvt)
 }
 
-func auditEventFromFields(ts int64, campaignID uuid.UUID, clickID, eventType string) *campaignmodel.Event {
-	evt := campaignmodel.EventPool.Get().(*campaignmodel.Event)
+func auditEventFromFields(ts int64, campaignID uuid.UUID, clickID, eventType string) *domain.Event {
+	evt := domain.EventPool.Get().(*domain.Event)
 	evt.Reset()
 	evt.ClickID = clickID
 	evt.CampaignID = campaignID
