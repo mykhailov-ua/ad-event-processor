@@ -90,9 +90,9 @@ func loginResultFromPB(resp pb.LoginResponse) LoginResult {
 }
 
 func (a *authAPI) VerifyAPIKey(ctx context.Context, apiKey string) (AuthUser, error) {
-	user, err := a.h.service.VerifyAPIKey(ctx, apiKey)
+	user, err := a.h.verifyAPIKeyUser(ctx, apiKey)
 	if err != nil {
-		return AuthUser{}, err
+		return AuthUser{}, grpcStatusToError(err)
 	}
 	return authUserFromDB(user), nil
 }
@@ -121,18 +121,11 @@ func (a *authAPI) CreateAPIKey(ctx context.Context, bearerToken, name string) (C
 }
 
 func (a *authAPI) Login(ctx context.Context, email, password string, durationHours int32) (LoginResult, error) {
-	resp, err := a.h.Login(ctx, &pb.LoginRequest{
-		Email:         email,
-		Password:      password,
-		DurationHours: durationHours,
-	})
+	resp, err := a.h.login(ctx, email, password, durationHours)
 	if err != nil {
 		return LoginResult{}, grpcStatusToError(err)
 	}
-	if resp == nil {
-		return LoginResult{}, nil
-	}
-	return loginResultFromPB(*resp), nil
+	return loginResultFromPB(resp), nil
 }
 
 func (a *authAPI) Register(ctx context.Context, adminAPIKey, email, password, role, customerID string) (RegisterResult, error) {
@@ -142,35 +135,21 @@ func (a *authAPI) Register(ctx context.Context, adminAPIKey, email, password, ro
 	if adminAPIKey == "" || adminAPIKey != string(a.h.cfg.AdminAPIKey) {
 		return RegisterResult{}, ErrInvalidCredentials
 	}
-	var cid uuid.UUID
-	var err error
-	if customerID != "" {
-		cid, err = uuid.Parse(customerID)
-		if err != nil {
-			return RegisterResult{}, ErrValidation
-		}
-	}
-	id, err := a.h.service.Register(ctx, RegisterDTO{
-		Email:      email,
-		Password:   password,
-		Role:       role,
-		CustomerID: cid,
-	})
+	cid, err := parseOptionalCustomerID(customerID)
 	if err != nil {
-		return RegisterResult{}, err
+		return RegisterResult{}, grpcStatusToError(err)
+	}
+	id, err := a.h.registerUser(ctx, email, password, role, cid)
+	if err != nil {
+		return RegisterResult{}, grpcStatusToError(err)
 	}
 	return RegisterResult{UserID: id}, nil
 }
 
 func (a *authAPI) RefreshToken(ctx context.Context, refreshToken string) (RefreshResult, error) {
-	durationHrs := int32(1)
-	if a.h.cfg != nil && a.h.cfg.DefaultTokenDurationHrs > 0 {
-		durationHrs = int32(a.h.cfg.DefaultTokenDurationHrs)
-	}
-	duration := time.Duration(durationHrs) * time.Hour
-	accessToken, newRefresh, err := a.h.service.RefreshToken(ctx, refreshToken, duration)
+	accessToken, newRefresh, err := a.h.refreshSession(ctx, refreshToken)
 	if err != nil {
-		return RefreshResult{}, err
+		return RefreshResult{}, grpcStatusToError(err)
 	}
 	return RefreshResult{
 		AccessToken:  accessToken,
@@ -179,7 +158,10 @@ func (a *authAPI) RefreshToken(ctx context.Context, refreshToken string) (Refres
 }
 
 func (a *authAPI) RevokeToken(ctx context.Context, refreshToken string) error {
-	return a.h.service.RevokeToken(ctx, refreshToken)
+	if err := a.h.revokeSession(ctx, refreshToken); err != nil {
+		return grpcStatusToError(err)
+	}
+	return nil
 }
 
 func grpcStatusToError(err error) error {

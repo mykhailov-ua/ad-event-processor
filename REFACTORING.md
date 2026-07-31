@@ -225,9 +225,9 @@ Blockers for deleting `api/auth.proto` (and siblings)
 
 | Generated type | Status | Remaining import sites |
 |----------------|--------|------------------------|
-| `AuthServiceClient` / `AuthServiceServer` | Monolith in-process via `identity.AuthAPI` | `identity/{handler,serve,grpc_api,resolve_api}.go`; `controlplane/auth_client.go` (thin wrapper) |
-| `BillingServiceClient` / `BillingServiceServer` | Monolith in-process via `billing.BillingAPI` | `billing/{handler,serve,grpc_api,resolve_api}.go`; `controlplane/billing_client.go` |
-| `PaymentServiceClient` / `PaymentServiceServer` | Monolith in-process via `payment.PaymentAPI` | `payment/{handler,serve,grpc_api,resolve_api}.go`; `controlplane/payment_client.go` |
+| `AuthServiceClient` / `AuthServiceServer` | Monolith in-process via `identity.AuthAPI` | `identity/{handler,handler_core,handler_grpc,serve,grpc_api,resolve_api}.go`; `controlplane/auth_client.go` |
+| `BillingServiceClient` / `BillingServiceServer` | Monolith in-process via `billing.BillingAPI` | `billing/{handler,handler_core,serve,grpc_api,resolve_api}.go`; `controlplane/billing_client.go` |
+| `PaymentServiceClient` / `PaymentServiceServer` | Monolith in-process via `payment.PaymentAPI` | `payment/{handler,handler_core,handler_grpc,serve,grpc_api,resolve_api}.go`; `controlplane/payment_client.go` |
 | `NotifierServiceClient` / `NotifierServiceServer` | Monolith in-process via `notifier.NotifierAPI` | `notifier/{handler,serve,grpc_api}.go`; `billing/notifier_client.go`, `payment/notifier_client.go`; `controlplane/notifier_client.go` (split dial / `TryNotifierClient`). Ops/billing alert routing uses plain provider strings (`notifier.OpsAlertTarget`, `MapConfigProviderName`). |
 | `SettlementServiceClient` / `SettlementServiceServer` | Monolith in-process via `SettlementHandler.PaymentSettlement()` (`domain.PaymentSettlement`) | `controlplane/{settlement_handler,serve}.go`; `payment/{settlement_grpc_client,resolve_settlement,settlement_ledger_client,outbox_worker}.go` |
 
@@ -236,6 +236,8 @@ Message types (`*.pb.go`) remain in use for handler request/response structs and
 Fresh clone / CI: `make proto` alone does not emit `*_grpc.pb.go`. Use `make proto-grpc` until blockers above are cleared (or keep committed/stale grpc outputs during transition).
 
 Done when: no `Register*ServiceServer` / `New*ServiceClient` in production tree; `api/auth.proto` … `api/settlement.proto` removed or reduced to domain-only messages; `buf.gen.grpc.yaml` deleted.
+
+Pending: `internal/payment/*_fault*_test.go` import `controlplane` for settlement gRPC fixtures — blocks `go test ./internal/payment/` until tests move to `package payment_test` or use injected `domain.PaymentSettlement` mocks.
 
 
 10. split_control and standalone cmd/* deprecation

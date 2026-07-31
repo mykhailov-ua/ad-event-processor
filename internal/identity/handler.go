@@ -3,21 +3,18 @@ package identity
 import (
 	"context"
 	"errors"
-	"espx/internal/identity/db"
-	"espx/internal/identity/pb"
-	"espx/internal/config"
-	"espx/pkg/coldpath"
 	"net"
 	"strings"
-	"time"
 
-	"github.com/google/uuid"
+	"espx/internal/config"
+	"espx/internal/identity/db"
+	"espx/internal/identity/pb"
+
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const adminAPIKeyMetadata = "x-admin-api-key"
@@ -60,11 +57,9 @@ func (h *Handler) extractClientIP(ctx context.Context) string {
 
 	if isTrusted {
 		if md, ok := metadata.FromIncomingContext(ctx); ok {
-
 			if xri := md.Get("x-real-ip"); len(xri) > 0 && xri[0] != "" {
 				return strings.TrimSpace(xri[0])
 			}
-
 			if xff := md.Get("x-forwarded-for"); len(xff) > 0 {
 				ips := strings.Split(xff[0], ",")
 				if len(ips) > 0 {
@@ -122,171 +117,6 @@ func (h *Handler) requireAuthUser(ctx context.Context) (db.User, error) {
 		return db.User{}, mapError(err)
 	}
 	return user, nil
-}
-
-func (h *Handler) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
-	if err := h.requireAdminKey(ctx); err != nil {
-		return nil, err
-	}
-
-	var customerID uuid.UUID
-	var err error
-	if req.CustomerId != "" {
-		customerID, err = uuid.Parse(req.CustomerId)
-		if err != nil {
-			return nil, status.Error(codes.InvalidArgument, "invalid customer id")
-		}
-	}
-	id, err := h.service.Register(ctx, RegisterDTO{
-		Email:      req.Email,
-		Password:   req.Password,
-		Role:       req.Role,
-		CustomerID: customerID,
-	})
-	if err != nil {
-		return nil, mapError(err)
-	}
-
-	return &pb.RegisterResponse{
-		UserId: id.String(),
-	}, nil
-}
-
-func (h *Handler) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginResponse, error) {
-	duration := time.Duration(req.DurationHours) * time.Hour
-	if duration <= 0 {
-		duration = time.Duration(h.cfg.DefaultTokenDurationHrs) * time.Hour
-	} else if duration > 24*time.Hour {
-		duration = 24 * time.Hour
-	}
-
-	clientIP := h.extractClientIP(ctx)
-	userAgent := h.extractUserAgent(ctx)
-
-	resp, err := h.service.Login(ctx, req.Email, req.Password, userAgent, clientIP, duration)
-	if err != nil {
-		return nil, mapError(err)
-	}
-
-	return &resp, nil
-}
-
-func (h *Handler) VerifyToken(ctx context.Context, req *pb.VerifyTokenRequest) (*pb.VerifyTokenResponse, error) {
-	user, err := h.service.VerifyToken(ctx, req.AccessToken)
-	if err != nil {
-		return nil, mapError(err)
-	}
-
-	return &pb.VerifyTokenResponse{
-		User: userToPB(user),
-	}, nil
-}
-
-func (h *Handler) RefreshToken(ctx context.Context, req *pb.RefreshTokenRequest) (*pb.RefreshTokenResponse, error) {
-	duration := time.Duration(h.cfg.DefaultTokenDurationHrs) * time.Hour
-	accessToken, refreshToken, err := h.service.RefreshToken(ctx, req.RefreshToken, duration)
-	if err != nil {
-		return nil, mapError(err)
-	}
-	return &pb.RefreshTokenResponse{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-	}, nil
-}
-
-func (h *Handler) RevokeToken(ctx context.Context, req *pb.RevokeTokenRequest) (*pb.RevokeTokenResponse, error) {
-	err := h.service.RevokeToken(ctx, req.RefreshToken)
-	if err != nil {
-		return nil, mapError(err)
-	}
-	return &pb.RevokeTokenResponse{}, nil
-}
-
-func (h *Handler) CreateAPIKey(ctx context.Context, req *pb.CreateAPIKeyRequest) (*pb.CreateAPIKeyResponse, error) {
-	user, err := h.requireAuthUser(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var expiresAt *time.Time
-	if req.ExpiresAt != nil {
-		t := req.ExpiresAt.AsTime()
-		expiresAt = &t
-	}
-
-	userID := uuidFromPg(user.ID)
-	id, rawKey, err := h.service.CreateAPIKey(ctx, userID, req.Name, expiresAt)
-	if err != nil {
-		return nil, mapError(err)
-	}
-
-	resp := &pb.CreateAPIKeyResponse{
-		Id:     id.String(),
-		Name:   req.Name,
-		RawKey: rawKey,
-	}
-	if expiresAt != nil {
-		resp.ExpiresAt = timestamppb.New(*expiresAt)
-	}
-	return resp, nil
-}
-
-func (h *Handler) VerifyAPIKey(ctx context.Context, req *pb.VerifyAPIKeyRequest) (*pb.VerifyAPIKeyResponse, error) {
-	user, err := h.service.VerifyAPIKey(ctx, req.GetApiKey())
-	if err != nil {
-		return nil, mapError(err)
-	}
-	return &pb.VerifyAPIKeyResponse{User: userToPB(user)}, nil
-}
-
-func (h *Handler) ListAPIKeys(ctx context.Context, _ *pb.ListAPIKeysRequest) (*pb.ListAPIKeysResponse, error) {
-	user, err := h.requireAuthUser(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	rows, err := h.service.ListUserAPIKeys(ctx, uuidFromPg(user.ID))
-	if err != nil {
-		return nil, mapError(err)
-	}
-
-	return &pb.ListAPIKeysResponse{Keys: coldpath.MapSlice(rows, apiKeyRowToPB)}, nil
-}
-
-func (h *Handler) ChangePassword(ctx context.Context, req *pb.ChangePasswordRequest) (*pb.ChangePasswordResponse, error) {
-	user, err := h.requireAuthUser(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	clientIP := h.extractClientIP(ctx)
-	userAgent := h.extractUserAgent(ctx)
-	err = h.service.ChangePassword(ctx, uuidFromPg(user.ID), req.OldPassword, req.NewPassword, clientIP, userAgent)
-	if err != nil {
-		return nil, mapError(err)
-	}
-	return &pb.ChangePasswordResponse{}, nil
-}
-
-func (h *Handler) RequestEmailVerification(ctx context.Context, _ *pb.RequestEmailVerificationRequest) (*pb.RequestEmailVerificationResponse, error) {
-	user, err := h.requireAuthUser(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	token, err := h.service.RequestEmailVerification(ctx, uuidFromPg(user.ID))
-	if err != nil {
-		return nil, mapError(err)
-	}
-	return &pb.RequestEmailVerificationResponse{VerificationToken: token}, nil
-}
-
-func (h *Handler) ConfirmEmailVerification(ctx context.Context, req *pb.ConfirmEmailVerificationRequest) (*pb.ConfirmEmailVerificationResponse, error) {
-	_, err := h.service.ConfirmEmailVerification(ctx, req.VerificationToken)
-	if err != nil {
-		return nil, mapError(err)
-	}
-	return &pb.ConfirmEmailVerificationResponse{}, nil
 }
 
 func mapError(err error) error {
