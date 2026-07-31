@@ -6,7 +6,6 @@ import (
 
 	"espx/internal/config"
 	"espx/internal/database"
-	"espx/internal/notifier/pb"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -34,17 +33,6 @@ func (m *Module) Close() {
 	if m.pool != nil {
 		m.pool.Close()
 	}
-}
-
-func (m *Module) GRPC() pb.NotifierServiceServer {
-	if m == nil {
-		return nil
-	}
-	return m.Handler
-}
-
-func (m *Module) Client() pb.NotifierServiceClient {
-	return NewLocalGRPCClient(m.GRPC())
 }
 
 func (m *Module) StartWorkers(ctx context.Context) {

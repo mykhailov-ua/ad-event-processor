@@ -4,7 +4,6 @@ import (
 	"context"
 	"log/slog"
 
-	"espx/internal/billing/pb"
 	"espx/internal/config"
 	"espx/internal/database"
 	"espx/internal/notifier"
@@ -31,17 +30,6 @@ func (m *Module) Close() {
 	if m.pool != nil {
 		m.pool.Close()
 	}
-}
-
-func (m *Module) GRPC() pb.BillingServiceServer {
-	if m == nil {
-		return nil
-	}
-	return m.Handler
-}
-
-func (m *Module) Client(token string) pb.BillingServiceClient {
-	return NewLocalGRPCClient(m.GRPC(), token)
 }
 
 func (m *Module) ConfigureNotifier(api notifier.NotifierAPI) {

@@ -9,7 +9,6 @@ import (
 	"espx/internal/database"
 	"espx/internal/domain"
 	"espx/internal/notifier"
-	"espx/internal/payment/pb"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -46,17 +45,6 @@ func (m *Module) Close() {
 	if m.pool != nil {
 		m.pool.Close()
 	}
-}
-
-func (m *Module) GRPC() pb.PaymentServiceServer {
-	if m == nil {
-		return nil
-	}
-	return m.Handler
-}
-
-func (m *Module) Client(token string) pb.PaymentServiceClient {
-	return NewLocalGRPCClient(m.GRPC(), token)
 }
 
 func (m *Module) SetNotifierAPI(api notifier.NotifierAPI) {

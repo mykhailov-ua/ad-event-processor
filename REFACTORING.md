@@ -213,11 +213,9 @@ gRPC server gating (done)
 
 All flags: `os.Getenv(...) != "0"` (unset = enabled). Monolith compose `control` sets `SETTLEMENT_GRPC_ENABLED=0` and `NOTIFIER_GRPC_ENABLED=0`; `.env.example` defaults settlement off.
 
-`cmd/control` monolith never calls `Serve()` for auth/billing/payment/notifier — only `OpenModule` + `*API()` / `ServeOptions` clients. Settlement in-process via `settlementBridge` + `PaymentModule.SetSettlementAPI`; no localhost dial when `SETTLEMENT_GRPC_ENABLED=0`.
+Settlement in-process via `SettlementHandler.PaymentSettlement()` + `PaymentModule.SetSettlementAPI`; no localhost dial when `SETTLEMENT_GRPC_ENABLED=0`.
 
-Split deploy: standalone `cmd/payment` + `cmd/management` keep settlement gRPC (`SETTLEMENT_GRPC_ENABLED` unset or `1` on management). `payment/outbox_worker.go` and `settlement_ledger_client.go` dial `SettlementServiceClient` when `SetSettlementAPI` is not injected.
-
-`local_client.go` / `Module.Client()`: **zero production callers** (grep confirms; not used by monolith or split `Serve()`). Monolith uses `mod.API()` + `controlplane.New*ClientFromAPI` only. Kept for transitional split compat until proto removal — do not delete until `*_grpc.pb.go` blockers cleared.
+`local_client.go` / `Module.Client()` / `Module.GRPC()` removed from identity, billing, payment, notifier — monolith and split `Serve()` use `mod.API()` + gRPC adapters at dial boundary only.
 
 Blockers for deleting `api/auth.proto` (and siblings)
 
@@ -225,17 +223,17 @@ Blockers for deleting `api/auth.proto` (and siblings)
 
 | Generated type | Status | Remaining import sites |
 |----------------|--------|------------------------|
-| `AuthServiceClient` / `AuthServiceServer` | Monolith in-process via `identity.AuthAPI` | `identity/{handler,serve,local_client}.go`; `controlplane/{auth_client,serve}.go` (split dial when `opts.Auth` nil) |
-| `BillingServiceClient` / `BillingServiceServer` | Monolith in-process via `billing.BillingAPI` | `billing/{handler,serve,local_client}.go`; `controlplane/billing_client.go` (split dial) |
-| `PaymentServiceClient` / `PaymentServiceServer` | Monolith in-process via `payment.PaymentAPI` | `payment/{handler,serve,local_client}.go`; `controlplane/payment_client.go` (split dial) |
-| `NotifierServiceClient` / `NotifierServiceServer` | Monolith in-process via `notifier.NotifierAPI` | `notifier/{handler,serve,local_client,grpc_api}.go`; `billing/notifier_client.go`, `payment/notifier_client.go`; `controlplane/notifier_client.go` (split dial / `TryNotifierClient`) |
+| `AuthServiceClient` / `AuthServiceServer` | Monolith in-process via `identity.AuthAPI` | `identity/{handler,serve}.go`; `controlplane/{auth_client,serve}.go` (split dial when `opts.Auth` nil) |
+| `BillingServiceClient` / `BillingServiceServer` | Monolith in-process via `billing.BillingAPI` | `billing/{handler,serve}.go`; `controlplane/billing_client.go` (split dial) |
+| `PaymentServiceClient` / `PaymentServiceServer` | Monolith in-process via `payment.PaymentAPI` | `payment/{handler,serve}.go`; `controlplane/payment_client.go` (split dial) |
+| `NotifierServiceClient` / `NotifierServiceServer` | Monolith in-process via `notifier.NotifierAPI` | `notifier/{handler,serve,grpc_api}.go`; `billing/notifier_client.go`, `payment/notifier_client.go`; `controlplane/notifier_client.go` (split dial / `TryNotifierClient`) |
 | `SettlementServiceClient` / `SettlementServiceServer` | Monolith in-process via `SettlementHandler.PaymentSettlement()` (`domain.PaymentSettlement`) | `controlplane/{settlement_handler,serve}.go` (split gRPC server when `SettlementGRPCEnabled`; thin pb wrappers over domain/core methods); `payment/{settlement_grpc_client,settlement_ledger_client,outbox_worker}.go` (split client dial) |
 
 Message types (`*.pb.go`) remain in use for handler request/response structs and outbox payloads — delete protos only after those call sites use `internal/domain` types.
 
 Fresh clone / CI: `make proto` alone does not emit `*_grpc.pb.go`. Use `make proto-grpc` until blockers above are cleared (or keep committed/stale grpc outputs during transition).
 
-Done when: no `Register*ServiceServer` / `New*ServiceClient` in production tree; `api/auth.proto` … `api/settlement.proto` removed or reduced to domain-only messages; `buf.gen.grpc.yaml` deleted; `local_client.go` removed with `Module.Client()`.
+Done when: no `Register*ServiceServer` / `New*ServiceClient` in production tree; `api/auth.proto` … `api/settlement.proto` removed or reduced to domain-only messages; `buf.gen.grpc.yaml` deleted.
 
 
 10. split_control and standalone cmd/* deprecation

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"espx/internal/identity/db"
-	"espx/internal/identity/pb"
 	"espx/internal/config"
 	"espx/internal/database"
 
@@ -39,17 +38,6 @@ func (m *Module) Close() {
 			_ = rdb.Close()
 		}
 	}
-}
-
-func (m *Module) GRPC() pb.AuthServiceServer {
-	if m == nil {
-		return nil
-	}
-	return m.Handler
-}
-
-func (m *Module) Client() pb.AuthServiceClient {
-	return NewLocalGRPCClient(m.GRPC())
 }
 
 func (m *Module) API() AuthAPI {
