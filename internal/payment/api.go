@@ -4,11 +4,11 @@ import (
 	"context"
 	"time"
 
+	"espx/internal/payment/db"
 	"espx/internal/payment/pb"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type PaymentIntent struct {
@@ -109,11 +109,31 @@ func (a *paymentAPI) ListPaymentIntents(ctx context.Context, customerID string, 
 	}
 	out.Intents = make([]PaymentIntent, 0, len(intents))
 	for _, intent := range intents {
-		if parsed := PaymentIntentFromPB(intentToPB(intent)); parsed != nil {
-			out.Intents = append(out.Intents, *parsed)
-		}
+		out.Intents = append(out.Intents, paymentIntentFromDB(intent))
 	}
 	return out, nil
+}
+
+func paymentIntentFromDB(intent db.PaymentPaymentIntent) PaymentIntent {
+	out := PaymentIntent{
+		ID:             uuid.UUID(intent.ID.Bytes).String(),
+		CustomerID:     uuid.UUID(intent.CustomerID.Bytes).String(),
+		AmountMicro:    intent.AmountMicro,
+		Currency:       intent.Currency,
+		Status:         intentStatusString(intent.Status),
+		Provider:       intent.Provider,
+		IdempotencyKey: intent.IdempotencyKey,
+	}
+	if intent.ProviderRef.Valid {
+		out.ProviderRef = intent.ProviderRef.String
+	}
+	if intent.CreatedAt.Valid {
+		out.CreatedAt = intent.CreatedAt.Time.UTC()
+	}
+	if intent.UpdatedAt.Valid {
+		out.UpdatedAt = intent.UpdatedAt.Time.UTC()
+	}
+	return out
 }
 
 func (a *paymentAPI) ListDisputes(ctx context.Context, customerID string, limit, offset int32) (ListDisputesResult, error) {
@@ -135,21 +155,23 @@ func (a *paymentAPI) ListDisputes(ctx context.Context, customerID string, limit,
 	}
 	out.Disputes = make([]Dispute, 0, len(items))
 	for _, item := range items {
-		rec := &pb.DisputeRecord{
-			IntentId:          uuid.UUID(item.Intent.ID.Bytes).String(),
-			CustomerId:        uuid.UUID(item.Intent.CustomerID.Bytes).String(),
-			AmountMicro:       item.Intent.AmountMicro,
-			Currency:          item.Intent.Currency,
-			ProviderDisputeId: item.ProviderDisputeID,
-		}
-		if item.Intent.UpdatedAt.Valid {
-			rec.UpdatedAt = timestamppb.New(item.Intent.UpdatedAt.Time)
-		}
-		if parsed := DisputeFromPB(rec); parsed != nil {
-			out.Disputes = append(out.Disputes, *parsed)
-		}
+		out.Disputes = append(out.Disputes, disputeFromListItem(item))
 	}
 	return out, nil
+}
+
+func disputeFromListItem(item DisputeListItem) Dispute {
+	out := Dispute{
+		IntentID:          uuid.UUID(item.Intent.ID.Bytes).String(),
+		CustomerID:        uuid.UUID(item.Intent.CustomerID.Bytes).String(),
+		AmountMicro:       item.Intent.AmountMicro,
+		Currency:          item.Intent.Currency,
+		ProviderDisputeID: item.ProviderDisputeID,
+	}
+	if item.Intent.UpdatedAt.Valid {
+		out.UpdatedAt = item.Intent.UpdatedAt.Time.UTC()
+	}
+	return out
 }
 
 func (a *paymentAPI) ReplayWebhook(ctx context.Context, provider, providerEventID string) (string, error) {

@@ -39,37 +39,14 @@ func NewServiceWithOptions(pool *pgxpool.Pool, providers map[pb.Provider]Provide
 }
 
 func (service *Service) SendNotification(ctx context.Context, req *pb.SendNotificationRequest) (*pb.SendNotificationResponse, error) {
-	if req.Recipient == "" {
-		return nil, ErrRecipientRequired
-	}
-	body, err := service.resolveNotificationBody(ctx, req)
+	result, err := service.SendNotificationInput(ctx, NotificationInputFromPB(req))
 	if err != nil {
 		return nil, err
 	}
-	if service.rateLimiter != nil && !service.rateLimiter.allow(req.Recipient) {
-		return nil, ErrRateLimited
-	}
-
-	if req.DedupKey != "" {
-		if existing, ok, err := service.findActiveByDedupKey(ctx, req.DedupKey); err != nil {
-			return nil, err
-		} else if ok {
-			return &pb.SendNotificationResponse{
-				NotificationId: uuidString(existing.ID),
-				Status:         MapDBStatusToPB(existing.Status),
-				Deduplicated:   true,
-			}, nil
-		}
-	}
-
-	notification, err := service.createNotification(ctx, req, body)
-	if err != nil {
-		return nil, err
-	}
-
 	return &pb.SendNotificationResponse{
-		NotificationId: uuidString(notification.ID),
-		Status:         MapDBStatusToPB(notification.Status),
+		NotificationId: result.NotificationID,
+		Status:         MapDBStatusToPB(result.Status),
+		Deduplicated:   result.Deduplicated,
 	}, nil
 }
 
@@ -120,62 +97,6 @@ func (service *Service) findActiveByDedupKey(ctx context.Context, dedupKey strin
 		return db.NotifierNotification{}, false, fmt.Errorf("find active notification by dedup key: %w", err)
 	}
 	return existing, true, nil
-}
-
-func (service *Service) createNotification(ctx context.Context, req *pb.SendNotificationRequest, body string) (db.NotifierNotification, error) {
-	dbProvider, err := MapPBProviderToDB(req.Provider)
-	if err != nil {
-		return db.NotifierNotification{}, err
-	}
-
-	broadcastProviders, err := MapPBProvidersToDBStrings(req.BroadcastProviders)
-	if err != nil {
-		return db.NotifierNotification{}, err
-	}
-
-	id, err := uuid.NewV7()
-	if err != nil {
-		return db.NotifierNotification{}, fmt.Errorf("generate notification id: %w", err)
-	}
-
-	var title pgtype.Text
-	if req.Title != "" {
-		title = pgtype.Text{String: req.Title, Valid: true}
-	}
-	var dedupKey pgtype.Text
-	if req.DedupKey != "" {
-		dedupKey = pgtype.Text{String: req.DedupKey, Valid: true}
-	}
-	var templateID pgtype.Text
-	if req.TemplateId != "" {
-		templateID = pgtype.Text{String: req.TemplateId, Valid: true}
-	}
-	var attachmentURL pgtype.Text
-	if req.AttachmentUrl != "" {
-		attachmentURL = pgtype.Text{String: req.AttachmentUrl, Valid: true}
-	}
-	templateVars, err := marshalTemplateVarsJSON(req.TemplateVars)
-	if err != nil {
-		return db.NotifierNotification{}, err
-	}
-
-	notification, err := service.queries.CreateNotification(ctx, db.CreateNotificationParams{
-		ID:                 pgtype.UUID{Bytes: id, Valid: true},
-		Provider:           dbProvider,
-		Recipient:          req.Recipient,
-		Title:              title,
-		Body:               body,
-		DeliveryMode:       MapPBDeliveryModeToDB(req.DeliveryMode),
-		BroadcastProviders: broadcastProviders,
-		DedupKey:           dedupKey,
-		TemplateID:         templateID,
-		TemplateVars:       templateVars,
-		AttachmentUrl:      attachmentURL,
-	})
-	if err != nil {
-		return db.NotifierNotification{}, fmt.Errorf("enqueue notification: %w", err)
-	}
-	return notification, nil
 }
 
 func uuidString(id pgtype.UUID) string {

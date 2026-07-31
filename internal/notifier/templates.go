@@ -17,39 +17,6 @@ func RenderTemplate(body string, vars map[string]string) string {
 	return out
 }
 
-func (service *Service) resolveNotificationBody(ctx context.Context, req *pb.SendNotificationRequest) (string, error) {
-	if req == nil {
-		return "", ErrBodyRequired
-	}
-	if req.TemplateId == "" {
-		if req.Body == "" {
-			return "", ErrBodyRequired
-		}
-		return req.Body, nil
-	}
-
-	tmpl, err := service.queries.GetTemplate(ctx, req.TemplateId)
-	if err != nil {
-		return "", fmt.Errorf("load template %s: %w", req.TemplateId, err)
-	}
-
-	vars := make(map[string]string, len(req.TemplateVars)+2)
-	for k, v := range req.TemplateVars {
-		vars[k] = v
-	}
-	if req.AttachmentUrl != "" {
-		vars["attachment_url"] = req.AttachmentUrl
-	}
-	if req.Title != "" {
-		vars["title"] = req.Title
-	}
-	body := RenderTemplate(tmpl.Body, vars)
-	if body == "" {
-		return "", ErrBodyRequired
-	}
-	return body, nil
-}
-
 func (service *Service) RetryNotification(ctx context.Context, notificationID string) (*pb.Notification, error) {
 	id, err := pgUUIDFromString(notificationID)
 	if err != nil {

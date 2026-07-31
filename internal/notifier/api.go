@@ -4,12 +4,14 @@ import (
 	"context"
 	"strings"
 
+	"espx/internal/notifier/db"
 	"espx/internal/notifier/pb"
 )
 
 type SendNotificationResult struct {
 	NotificationID string
 	Deduplicated   bool
+	Status         db.NotifierNotificationStatus
 }
 
 type NotificationInput struct {
@@ -120,46 +122,21 @@ func (a *notifierAPI) SendNotification(ctx context.Context, provider, recipient,
 }
 
 func (a *notifierAPI) SendNotificationInput(ctx context.Context, input NotificationInput) (SendNotificationResult, error) {
-	req, err := input.toPB()
-	if err != nil {
-		return SendNotificationResult{}, err
-	}
-	resp, err := a.svc.SendNotification(ctx, req)
-	if err != nil {
-		return SendNotificationResult{}, err
-	}
-	return sendResultFromPB(resp), nil
+	return a.svc.SendNotificationInput(ctx, input)
 }
 
 func (a *notifierAPI) SendNotificationBatch(ctx context.Context, inputs []NotificationInput) ([]SendNotificationResult, error) {
 	if len(inputs) == 0 {
 		return nil, nil
 	}
-	reqs := make([]*pb.SendNotificationRequest, 0, len(inputs))
+	out := make([]SendNotificationResult, 0, len(inputs))
 	for _, item := range inputs {
-		req, err := item.toPB()
+		result, err := a.svc.SendNotificationInput(ctx, item)
 		if err != nil {
 			return nil, err
 		}
-		reqs = append(reqs, req)
-	}
-	resp, err := a.svc.SendNotificationBatch(ctx, &pb.SendNotificationBatchRequest{Notifications: reqs})
-	if err != nil {
-		return nil, err
-	}
-	out := make([]SendNotificationResult, 0, len(resp.Notifications))
-	for _, item := range resp.Notifications {
-		out = append(out, sendResultFromPB(item))
+		out = append(out, result)
 	}
 	return out, nil
 }
 
-func sendResultFromPB(resp *pb.SendNotificationResponse) SendNotificationResult {
-	if resp == nil {
-		return SendNotificationResult{}
-	}
-	return SendNotificationResult{
-		NotificationID: resp.NotificationId,
-		Deduplicated:   resp.Deduplicated,
-	}
-}

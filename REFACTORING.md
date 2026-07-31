@@ -226,9 +226,9 @@ Blockers for deleting `api/auth.proto` (and siblings)
 | Generated type | Status | Remaining import sites |
 |----------------|--------|------------------------|
 | `AuthServiceClient` / `AuthServiceServer` | Monolith in-process via `identity.AuthAPI` | `identity/{handler,handler_core,handler_grpc,serve,grpc_api,resolve_api}.go`; `controlplane/auth_client.go` |
-| `BillingServiceClient` / `BillingServiceServer` | Monolith in-process via `billing.BillingAPI` | `billing/{handler,handler_core,serve,grpc_api,resolve_api}.go`; `controlplane/billing_client.go` |
+| `BillingServiceClient` / `BillingServiceServer` | Monolith in-process via `billing.BillingAPI` | `billing/{handler,handler_core,handler_grpc,serve,grpc_api,resolve_api}.go`; `controlplane/billing_client.go` |
 | `PaymentServiceClient` / `PaymentServiceServer` | Monolith in-process via `payment.PaymentAPI` | `payment/{handler,handler_core,handler_grpc,serve,grpc_api,resolve_api}.go`; `controlplane/payment_client.go` |
-| `NotifierServiceClient` / `NotifierServiceServer` | Monolith in-process via `notifier.NotifierAPI` | `notifier/{handler,handler_grpc,api,serve,grpc_api}.go`; `controlplane/notifier_client.go` |
+| `NotifierServiceClient` / `NotifierServiceServer` | Monolith in-process via `notifier.NotifierAPI` | `notifier/{handler,handler_grpc,api,service_input,serve,grpc_api}.go`; `controlplane/notifier_client.go` |
 | `SettlementServiceClient` / `SettlementServiceServer` | Monolith in-process via `SettlementHandler.PaymentSettlement()` (`domain.PaymentSettlement`) | `controlplane/{settlement_handler,settlement_handler_grpc,serve}.go`; `payment/{settlement_grpc_client,resolve_settlement,settlement_ledger_client,outbox_worker}.go` |
 
 Message types (`*.pb.go`) remain in use for handler request/response structs and outbox payloads — delete protos only after those call sites use `internal/domain` types.
