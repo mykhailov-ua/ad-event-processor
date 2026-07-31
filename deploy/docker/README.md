@@ -10,7 +10,7 @@ Dockerfiles live at the repo root and under `deploy/`. Default compose builds us
 | `Dockerfile.log-compactor` | Log compaction worker | log-compactor | distroless static | `tools` profile |
 | `Dockerfile.log-evacuator` | Tracker log archive | log-evacuator | distroless static | `tools` profile |
 | `deploy/edge/xdp/Dockerfile` | Edge XDP filter + BPF sync | edge-xdp, edge-bpf-sync | debian bookworm-slim | Manual / host ingress (not default compose) |
-| `deploy/ml/Dockerfile` | Fraud model bootstrap CronJob | `ml/train.py` | python 3.12-slim | k8s / manual |
+| `deploy/ml/Dockerfile` | Fraud model bootstrap CronJob | `artifact_bootstrap.py fit-validate` | python 3.12-slim | k8s / manual |
 
 ### Main image (`Dockerfile`)
 

@@ -72,7 +72,54 @@ spec:
             - name: retrain
               image: espx-ml-bootstrap:latest
               imagePullPolicy: IfNotPresent
-              args: ["bootstrap"]
+              args: ["fit-validate"]
+              envFrom:
+                - configMapRef:
+                    name: espx-env
+                - secretRef:
+                    name: espx-secrets
+              env:
+                - name: FRAUD_TRAIN_DATASET
+                  value: "/var/fraudscore/training/labeled.parquet"
+              volumeMounts:
+                - name: ml-artifacts
+                  mountPath: /var/fraudscore/artifacts
+          restartPolicy: OnFailure
+          volumes:
+            - name: ml-artifacts
+              persistentVolumeClaim:
+                claimName: ml-artifacts-pvc
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: fraud-shadow-eval
+  namespace: espx
+  labels:
+    app.kubernetes.io/name: fraud-shadow-eval
+    app.kubernetes.io/component: cold-path
+    app.kubernetes.io/part-of: espx
+spec:
+  schedule: "0 6 * * 1"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: eval
+              image: espx-ml-bootstrap:latest
+              imagePullPolicy: IfNotPresent
+              command: ["python3", "fraud_modeling/evaluate.py"]
+              args:
+                - "--format"
+                - "both"
+                - "--output"
+                - "/var/fraudscore/shadow_eval_report"
+                - "--allow-offline"
               envFrom:
                 - configMapRef:
                     name: espx-env
@@ -80,7 +127,7 @@ spec:
                     name: espx-secrets
               volumeMounts:
                 - name: ml-artifacts
-                  mountPath: /var/fraudscore/artifacts
+                  mountPath: /var/fraudscore
           restartPolicy: OnFailure
           volumes:
             - name: ml-artifacts
