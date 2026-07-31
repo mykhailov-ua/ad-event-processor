@@ -1,7 +1,6 @@
 package notifier
 
 import (
-	"context"
 	"errors"
 
 	"espx/internal/notifier/pb"
@@ -18,21 +17,6 @@ type Handler struct {
 
 func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
-}
-
-func (handler *Handler) SendNotification(ctx context.Context, req *pb.SendNotificationRequest) (*pb.SendNotificationResponse, error) {
-	resp, err := handler.service.SendNotification(ctx, req)
-	return resp, mapRPCError(err)
-}
-
-func (handler *Handler) SendNotificationBatch(ctx context.Context, req *pb.SendNotificationBatchRequest) (*pb.SendNotificationBatchResponse, error) {
-	resp, err := handler.service.SendNotificationBatch(ctx, req)
-	return resp, mapRPCError(err)
-}
-
-func (handler *Handler) GetNotification(ctx context.Context, req *pb.GetNotificationRequest) (*pb.GetNotificationResponse, error) {
-	resp, err := handler.service.GetNotification(ctx, req)
-	return resp, mapRPCError(err)
 }
 
 func mapRPCError(err error) error {

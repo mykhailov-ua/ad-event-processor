@@ -32,14 +32,14 @@ type NotifierAPI interface {
 }
 
 type notifierAPI struct {
-	h *Handler
+	svc *Service
 }
 
 func (m *Module) API() NotifierAPI {
-	if m == nil || m.Handler == nil {
+	if m == nil || m.svc == nil {
 		return nil
 	}
-	return &notifierAPI{h: m.Handler}
+	return &notifierAPI{svc: m.svc}
 }
 
 func ParseProviderName(name string) (pb.Provider, error) {
@@ -124,14 +124,11 @@ func (a *notifierAPI) SendNotificationInput(ctx context.Context, input Notificat
 	if err != nil {
 		return SendNotificationResult{}, err
 	}
-	resp, err := a.h.SendNotification(ctx, req)
+	resp, err := a.svc.SendNotification(ctx, req)
 	if err != nil {
 		return SendNotificationResult{}, err
 	}
-	return SendNotificationResult{
-		NotificationID: resp.NotificationId,
-		Deduplicated:   resp.Deduplicated,
-	}, nil
+	return sendResultFromPB(resp), nil
 }
 
 func (a *notifierAPI) SendNotificationBatch(ctx context.Context, inputs []NotificationInput) ([]SendNotificationResult, error) {
@@ -146,16 +143,23 @@ func (a *notifierAPI) SendNotificationBatch(ctx context.Context, inputs []Notifi
 		}
 		reqs = append(reqs, req)
 	}
-	resp, err := a.h.SendNotificationBatch(ctx, &pb.SendNotificationBatchRequest{Notifications: reqs})
+	resp, err := a.svc.SendNotificationBatch(ctx, &pb.SendNotificationBatchRequest{Notifications: reqs})
 	if err != nil {
 		return nil, err
 	}
 	out := make([]SendNotificationResult, 0, len(resp.Notifications))
 	for _, item := range resp.Notifications {
-		out = append(out, SendNotificationResult{
-			NotificationID: item.NotificationId,
-			Deduplicated:   item.Deduplicated,
-		})
+		out = append(out, sendResultFromPB(item))
 	}
 	return out, nil
+}
+
+func sendResultFromPB(resp *pb.SendNotificationResponse) SendNotificationResult {
+	if resp == nil {
+		return SendNotificationResult{}
+	}
+	return SendNotificationResult{
+		NotificationID: resp.NotificationId,
+		Deduplicated:   resp.Deduplicated,
+	}
 }
