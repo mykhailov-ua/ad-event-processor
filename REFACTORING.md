@@ -153,7 +153,7 @@ Pointers to .cursor/, REFACTORING.md, backlog in code
 Global done
 
 Zero internal/controlplane imports of internal/ingestion (prod + tests; `ingestion/pb` in budget delta consumer only).
-Monolith: payment→settlement via `domain.PaymentSettlement` bridge; billing/payment→notifier in-process; no localhost dials for those hops.
+Monolith: payment→settlement via `SettlementHandler.PaymentSettlement()` (`domain.PaymentSettlement`); billing/payment→notifier in-process; no localhost dials for those hops.
 `ServeOptions` uses `*AuthClient`, `*BillingClient`, `*PaymentClient`, `*NotifierClient` (not `pb.*ServiceClient`).
 ivt-detector/fraud-scorer use management HTTP (`/api/v1/ops/blacklist`, `/api/v1/ops/fraud-threat`); settlement gRPC optional via `SETTLEMENT_GRPC_ENABLED=0`.
 Split_control profile deprecated; still uses network gRPC until profile removal.
@@ -231,7 +231,7 @@ Blockers for deleting `api/auth.proto` (and siblings)
 | `BillingServiceClient` / `BillingServiceServer` | Monolith in-process via `billing.BillingAPI` | `billing/{handler,serve,local_client}.go`; `controlplane/billing_client.go` (split dial) |
 | `PaymentServiceClient` / `PaymentServiceServer` | Monolith in-process via `payment.PaymentAPI` | `payment/{handler,serve,local_client}.go`; `controlplane/payment_client.go` (split dial) |
 | `NotifierServiceClient` / `NotifierServiceServer` | Monolith in-process via `notifier.NotifierAPI` | `notifier/{handler,serve,local_client,grpc_api}.go`; `billing/notifier_client.go`, `payment/notifier_client.go`; `controlplane/notifier_client.go` (split dial / `TryNotifierClient`) |
-| `SettlementServiceClient` / `SettlementServiceServer` | Monolith in-process via `domain.PaymentSettlement` | `controlplane/{settlement_handler,serve}.go` (split server when `SettlementGRPCEnabled`); `payment/{settlement_grpc_client,settlement_ledger_client,outbox_worker}.go` (split client dial) |
+| `SettlementServiceClient` / `SettlementServiceServer` | Monolith in-process via `SettlementHandler.PaymentSettlement()` (`domain.PaymentSettlement`) | `controlplane/{settlement_handler,serve}.go` (split gRPC server when `SettlementGRPCEnabled`; thin pb wrappers over domain/core methods); `payment/{settlement_grpc_client,settlement_ledger_client,outbox_worker}.go` (split client dial) |
 
 Message types (`*.pb.go`) remain in use for handler request/response structs and outbox payloads — delete protos only after those call sites use `internal/domain` types.
 

@@ -6,6 +6,8 @@ import (
 	"errors"
 	"espx/internal/config"
 	"espx/internal/controlplane/pb"
+	"espx/internal/domain"
+	db "espx/internal/domain/db"
 	"time"
 
 	"github.com/google/uuid"
@@ -27,104 +29,196 @@ func NewSettlementHandler(service *Service, cfg *config.Config) *SettlementHandl
 	}
 }
 
+func (h *SettlementHandler) PaymentSettlement() domain.PaymentSettlement {
+	return handlerPaymentSettlement{h: h}
+}
+
+type handlerPaymentSettlement struct {
+	h *SettlementHandler
+}
+
+func (a handlerPaymentSettlement) ApplyPaymentCredit(ctx context.Context, customerID uuid.UUID, amountMicro int64, ledgerIdempotencyKey string, paymentIntentID uuid.UUID, provider string, providerRef string) (bool, int64, error) {
+	applied, ledgerEntryID, err := a.h.applyPaymentCredit(ctx, customerID, amountMicro, ledgerIdempotencyKey, paymentIntentID, provider, providerRef)
+	return applied, ledgerEntryID, mapSettlementDomainError(err)
+}
+
+func (a handlerPaymentSettlement) ApplyPaymentRefund(ctx context.Context, customerID uuid.UUID, amountMicro int64, ledgerIdempotencyKey string, paymentIntentID uuid.UUID, provider string, providerRefundID string) (bool, int64, error) {
+	applied, ledgerEntryID, err := a.h.applyPaymentRefund(ctx, customerID, amountMicro, ledgerIdempotencyKey, paymentIntentID, provider, providerRefundID)
+	return applied, ledgerEntryID, mapSettlementDomainError(err)
+}
+
+func (a handlerPaymentSettlement) ApplyPaymentChargeback(ctx context.Context, customerID uuid.UUID, amountMicro int64, ledgerIdempotencyKey string, paymentIntentID uuid.UUID, provider string, providerDisputeID string) (bool, int64, error) {
+	applied, ledgerEntryID, err := a.h.applyPaymentChargeback(ctx, customerID, amountMicro, ledgerIdempotencyKey, paymentIntentID, provider, providerDisputeID)
+	return applied, ledgerEntryID, mapSettlementDomainError(err)
+}
+
+func (a handlerPaymentSettlement) ApplyPaymentChargebackReversal(ctx context.Context, customerID uuid.UUID, amountMicro int64, ledgerIdempotencyKey string, paymentIntentID uuid.UUID, provider string, providerDisputeID string) (bool, int64, error) {
+	applied, ledgerEntryID, err := a.h.applyPaymentChargebackReversal(ctx, customerID, amountMicro, ledgerIdempotencyKey, paymentIntentID, provider, providerDisputeID)
+	return applied, ledgerEntryID, mapSettlementDomainError(err)
+}
+
+func (a handlerPaymentSettlement) GetLedgerEntry(ctx context.Context, paymentIntentID uuid.UUID) (domain.PaymentLedgerEntry, error) {
+	entry, _, err := a.h.ledgerEntry(ctx, paymentIntentID)
+	return entry, err
+}
+
+type settlementCreditParams struct {
+	CustomerID           uuid.UUID
+	AmountMicro          int64
+	LedgerIdempotencyKey string
+	PaymentIntentID      uuid.UUID
+	Provider             string
+	ProviderRef          string
+}
+
+type settlementRefundParams struct {
+	CustomerID           uuid.UUID
+	AmountMicro          int64
+	LedgerIdempotencyKey string
+	PaymentIntentID      uuid.UUID
+	Provider             string
+	ProviderRefundID     string
+}
+
+type settlementChargebackParams struct {
+	CustomerID           uuid.UUID
+	AmountMicro          int64
+	LedgerIdempotencyKey string
+	PaymentIntentID      uuid.UUID
+	Provider             string
+	ProviderDisputeID    string
+}
+
+type settlementBatchParams struct {
+	Credits             []settlementCreditParams
+	Refunds             []settlementRefundParams
+	Chargebacks         []settlementChargebackParams
+	ChargebackReversals []settlementChargebackParams
+}
+
+type settlementBatchItemResult struct {
+	Applied       bool
+	LedgerEntryID int64
+	Err           error
+}
+
+type settlementBatchResult struct {
+	CreditResults             []settlementBatchItemResult
+	RefundResults             []settlementBatchItemResult
+	ChargebackResults         []settlementBatchItemResult
+	ChargebackReversalResults []settlementBatchItemResult
+}
+
+func (h *SettlementHandler) applyPaymentCredit(ctx context.Context, customerID uuid.UUID, amountMicro int64, ledgerIdempotencyKey string, paymentIntentID uuid.UUID, provider string, providerRef string) (bool, int64, error) {
+	return h.service.ApplyPaymentCredit(ctx, customerID, amountMicro, ledgerIdempotencyKey, paymentIntentID, provider, providerRef)
+}
+
+func (h *SettlementHandler) applyPaymentRefund(ctx context.Context, customerID uuid.UUID, amountMicro int64, ledgerIdempotencyKey string, paymentIntentID uuid.UUID, provider string, providerRefundID string) (bool, int64, error) {
+	return h.service.ApplyPaymentRefund(ctx, customerID, amountMicro, ledgerIdempotencyKey, paymentIntentID, provider, providerRefundID)
+}
+
+func (h *SettlementHandler) applyPaymentChargeback(ctx context.Context, customerID uuid.UUID, amountMicro int64, ledgerIdempotencyKey string, paymentIntentID uuid.UUID, provider string, providerDisputeID string) (bool, int64, error) {
+	return h.service.ApplyPaymentChargeback(ctx, customerID, amountMicro, ledgerIdempotencyKey, paymentIntentID, provider, providerDisputeID)
+}
+
+func (h *SettlementHandler) applyPaymentChargebackReversal(ctx context.Context, customerID uuid.UUID, amountMicro int64, ledgerIdempotencyKey string, paymentIntentID uuid.UUID, provider string, providerDisputeID string) (bool, int64, error) {
+	return h.service.ApplyPaymentChargebackReversal(ctx, customerID, amountMicro, ledgerIdempotencyKey, paymentIntentID, provider, providerDisputeID)
+}
+
+func (h *SettlementHandler) ledgerEntry(ctx context.Context, paymentIntentID uuid.UUID) (domain.PaymentLedgerEntry, db.BalanceLedger, error) {
+	found, entry, refundTotal, chargebackTotal, reversalTotal, err := h.service.GetLedgerEntry(ctx, paymentIntentID)
+	if err != nil {
+		return domain.PaymentLedgerEntry{}, db.BalanceLedger{}, err
+	}
+	out := domain.PaymentLedgerEntry{
+		Found:                        found,
+		RefundTotalMicro:             refundTotal,
+		ChargebackTotalMicro:         chargebackTotal,
+		ChargebackReversalTotalMicro: reversalTotal,
+	}
+	if found {
+		out.HasTopup = true
+		out.TopupAmountMicro = entry.Amount
+	}
+	return out, entry, nil
+}
+
+func (h *SettlementHandler) blockIP(ctx context.Context, ip, source string) error {
+	return h.service.BlockIP(ctx, ip, source)
+}
+
+func (h *SettlementHandler) enqueueFraudThreat(ctx context.Context, payload FraudThreatPayload) error {
+	return h.service.EnqueueFraudThreat(ctx, payload)
+}
+
+func (h *SettlementHandler) applyCTVSettlement(ctx context.Context, settlementID string, customerID, campaignID uuid.UUID, spendMicro int64) (domain.CTVSettlementResult, error) {
+	return h.service.ApplyCTVSettlement(ctx, settlementID, customerID, campaignID, spendMicro)
+}
+
+const batchSettlementMaxItems = 500
+
+func (h *SettlementHandler) batchApplySettlement(ctx context.Context, batch settlementBatchParams) settlementBatchResult {
+	var out settlementBatchResult
+	for _, item := range batch.Credits {
+		applied, ledgerEntryID, err := h.applyPaymentCredit(ctx, item.CustomerID, item.AmountMicro, item.LedgerIdempotencyKey, item.PaymentIntentID, item.Provider, item.ProviderRef)
+		out.CreditResults = append(out.CreditResults, settlementBatchItemResult{Applied: applied, LedgerEntryID: ledgerEntryID, Err: err})
+	}
+	for _, item := range batch.Refunds {
+		applied, ledgerEntryID, err := h.applyPaymentRefund(ctx, item.CustomerID, item.AmountMicro, item.LedgerIdempotencyKey, item.PaymentIntentID, item.Provider, item.ProviderRefundID)
+		out.RefundResults = append(out.RefundResults, settlementBatchItemResult{Applied: applied, LedgerEntryID: ledgerEntryID, Err: err})
+	}
+	for _, item := range batch.Chargebacks {
+		applied, ledgerEntryID, err := h.applyPaymentChargeback(ctx, item.CustomerID, item.AmountMicro, item.LedgerIdempotencyKey, item.PaymentIntentID, item.Provider, item.ProviderDisputeID)
+		out.ChargebackResults = append(out.ChargebackResults, settlementBatchItemResult{Applied: applied, LedgerEntryID: ledgerEntryID, Err: err})
+	}
+	for _, item := range batch.ChargebackReversals {
+		applied, ledgerEntryID, err := h.applyPaymentChargebackReversal(ctx, item.CustomerID, item.AmountMicro, item.LedgerIdempotencyKey, item.PaymentIntentID, item.Provider, item.ProviderDisputeID)
+		out.ChargebackReversalResults = append(out.ChargebackReversalResults, settlementBatchItemResult{Applied: applied, LedgerEntryID: ledgerEntryID, Err: err})
+	}
+	return out
+}
+
 func (h *SettlementHandler) ApplyPaymentCredit(ctx context.Context, req *pb.ApplyPaymentCreditRequest) (*pb.ApplyPaymentCreditResponse, error) {
 	if err := h.requireSettlementToken(ctx); err != nil {
 		return nil, err
 	}
-
-	customerID, err := uuid.Parse(req.CustomerId)
+	params, err := settlementCreditParamsFromPB(req)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid customer id")
+		return nil, err
 	}
-	paymentIntentID, err := uuid.Parse(req.PaymentIntentId)
+	applied, ledgerEntryID, err := h.applyPaymentCredit(ctx, params.CustomerID, params.AmountMicro, params.LedgerIdempotencyKey, params.PaymentIntentID, params.Provider, params.ProviderRef)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid payment intent id")
+		return nil, mapPaymentCreditGRPCError(err)
 	}
-
-	applied, ledgerEntryID, err := h.service.ApplyPaymentCredit(
-		ctx,
-		customerID,
-		req.AmountMicro,
-		req.LedgerIdempotencyKey,
-		paymentIntentID,
-		req.Provider,
-		req.ProviderRef,
-	)
-	if err != nil {
-		if errors.Is(err, ErrCustomerNotFound) {
-			return nil, status.Error(codes.NotFound, "customer not found")
-		}
-		return nil, status.Errorf(codes.Internal, "failed to apply payment credit: %v", err)
-	}
-
-	return &pb.ApplyPaymentCreditResponse{
-		Applied:       applied,
-		LedgerEntryId: ledgerEntryID,
-	}, nil
+	return &pb.ApplyPaymentCreditResponse{Applied: applied, LedgerEntryId: ledgerEntryID}, nil
 }
 
 func (h *SettlementHandler) ApplyPaymentRefund(ctx context.Context, req *pb.ApplyPaymentRefundRequest) (*pb.ApplyPaymentRefundResponse, error) {
 	if err := h.requireSettlementToken(ctx); err != nil {
 		return nil, err
 	}
-
-	customerID, err := uuid.Parse(req.CustomerId)
+	params, err := settlementRefundParamsFromPB(req)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid customer id")
+		return nil, err
 	}
-	paymentIntentID, err := uuid.Parse(req.PaymentIntentId)
+	applied, ledgerEntryID, err := h.applyPaymentRefund(ctx, params.CustomerID, params.AmountMicro, params.LedgerIdempotencyKey, params.PaymentIntentID, params.Provider, params.ProviderRefundID)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid payment intent id")
+		return nil, mapPaymentRefundGRPCError(err)
 	}
-	if req.AmountMicro <= 0 {
-		return nil, status.Error(codes.InvalidArgument, "amount_micro must be positive")
-	}
-
-	applied, ledgerEntryID, err := h.service.ApplyPaymentRefund(
-		ctx,
-		customerID,
-		req.AmountMicro,
-		req.LedgerIdempotencyKey,
-		paymentIntentID,
-		req.Provider,
-		req.ProviderRefundId,
-	)
-	if err != nil {
-		if errors.Is(err, ErrCustomerNotFound) {
-			return nil, status.Error(codes.NotFound, "customer not found")
-		}
-		if errors.Is(err, ErrPaymentTopupNotFound) {
-			return nil, status.Error(codes.NotFound, "payment topup not found")
-		}
-		if errors.Is(err, ErrRefundExceedsTopup) {
-			return nil, status.Error(codes.FailedPrecondition, "refund exceeds settled topup")
-		}
-		return nil, status.Errorf(codes.Internal, "failed to apply payment refund: %v", err)
-	}
-
-	return &pb.ApplyPaymentRefundResponse{
-		Applied:       applied,
-		LedgerEntryId: ledgerEntryID,
-	}, nil
+	return &pb.ApplyPaymentRefundResponse{Applied: applied, LedgerEntryId: ledgerEntryID}, nil
 }
 
 func (h *SettlementHandler) ApplyPaymentChargeback(ctx context.Context, req *pb.ApplyPaymentChargebackRequest) (*pb.ApplyPaymentChargebackResponse, error) {
 	if err := h.requireSettlementToken(ctx); err != nil {
 		return nil, err
 	}
-	customerID, paymentIntentID, err := parseSettlementCustomerAndIntent(req.GetCustomerId(), req.GetPaymentIntentId())
+	params, err := settlementChargebackParamsFromPB(req.GetCustomerId(), req.GetPaymentIntentId(), req.GetAmountMicro(), req.GetLedgerIdempotencyKey(), req.GetProvider(), req.GetProviderDisputeId())
 	if err != nil {
 		return nil, err
 	}
-	if req.AmountMicro <= 0 {
-		return nil, status.Error(codes.InvalidArgument, "amount_micro must be positive")
-	}
-
-	applied, ledgerEntryID, err := h.service.ApplyPaymentChargeback(
-		ctx, customerID, req.AmountMicro, req.LedgerIdempotencyKey, paymentIntentID, req.Provider, req.ProviderDisputeId,
-	)
+	applied, ledgerEntryID, err := h.applyPaymentChargeback(ctx, params.CustomerID, params.AmountMicro, params.LedgerIdempotencyKey, params.PaymentIntentID, params.Provider, params.ProviderDisputeID)
 	if err != nil {
-		return nil, h.mapChargebackError(err)
+		return nil, mapChargebackGRPCError(err)
 	}
 	return &pb.ApplyPaymentChargebackResponse{Applied: applied, LedgerEntryId: ledgerEntryID}, nil
 }
@@ -133,19 +227,13 @@ func (h *SettlementHandler) ApplyPaymentChargebackReversal(ctx context.Context, 
 	if err := h.requireSettlementToken(ctx); err != nil {
 		return nil, err
 	}
-	customerID, paymentIntentID, err := parseSettlementCustomerAndIntent(req.GetCustomerId(), req.GetPaymentIntentId())
+	params, err := settlementChargebackParamsFromPB(req.GetCustomerId(), req.GetPaymentIntentId(), req.GetAmountMicro(), req.GetLedgerIdempotencyKey(), req.GetProvider(), req.GetProviderDisputeId())
 	if err != nil {
 		return nil, err
 	}
-	if req.AmountMicro <= 0 {
-		return nil, status.Error(codes.InvalidArgument, "amount_micro must be positive")
-	}
-
-	applied, ledgerEntryID, err := h.service.ApplyPaymentChargebackReversal(
-		ctx, customerID, req.AmountMicro, req.LedgerIdempotencyKey, paymentIntentID, req.Provider, req.ProviderDisputeId,
-	)
+	applied, ledgerEntryID, err := h.applyPaymentChargebackReversal(ctx, params.CustomerID, params.AmountMicro, params.LedgerIdempotencyKey, params.PaymentIntentID, params.Provider, params.ProviderDisputeID)
 	if err != nil {
-		return nil, h.mapChargebackError(err)
+		return nil, mapChargebackGRPCError(err)
 	}
 	return &pb.ApplyPaymentChargebackReversalResponse{Applied: applied, LedgerEntryId: ledgerEntryID}, nil
 }
@@ -158,36 +246,21 @@ func (h *SettlementHandler) GetLedgerEntry(ctx context.Context, req *pb.GetLedge
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid payment intent id")
 	}
-
-	found, entry, refundTotal, chargebackTotal, reversalTotal, err := h.service.GetLedgerEntry(ctx, paymentIntentID)
+	entry, topupRow, err := h.ledgerEntry(ctx, paymentIntentID)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to load ledger entry: %v", err)
 	}
-
 	resp := &pb.GetLedgerEntryResponse{
-		Found:                        found,
-		RefundTotalMicro:             refundTotal,
-		ChargebackTotalMicro:         chargebackTotal,
-		ChargebackReversalTotalMicro: reversalTotal,
+		Found:                        entry.Found,
+		RefundTotalMicro:             entry.RefundTotalMicro,
+		ChargebackTotalMicro:         entry.ChargebackTotalMicro,
+		ChargebackReversalTotalMicro: entry.ChargebackReversalTotalMicro,
 	}
-	if found {
-		campID := ""
-		if entry.CampaignID.Valid {
-			campID = uuid.UUID(entry.CampaignID.Bytes).String()
-		}
-		resp.Topup = &pb.LedgerEntry{
-			Id:          entry.ID,
-			CustomerId:  uuid.UUID(entry.CustomerID.Bytes).String(),
-			CampaignId:  campID,
-			AmountMicro: entry.Amount,
-			Type:        string(entry.Type),
-			CreatedAt:   entry.CreatedAt.Time.UTC().Format(time.RFC3339),
-		}
+	if entry.Found {
+		resp.Topup = ledgerEntryToPB(topupRow)
 	}
 	return resp, nil
 }
-
-const batchSettlementMaxItems = 500
 
 func (h *SettlementHandler) BlockIP(ctx context.Context, req *pb.BlockIPRequest) (*pb.BlockIPResponse, error) {
 	if err := h.requireSettlementToken(ctx); err != nil {
@@ -200,7 +273,7 @@ func (h *SettlementHandler) BlockIP(ctx context.Context, req *pb.BlockIPRequest)
 	if source == "" {
 		source = "fraud"
 	}
-	if err := h.service.BlockIP(ctx, req.GetIp(), source); err != nil {
+	if err := h.blockIP(ctx, req.GetIp(), source); err != nil {
 		return nil, status.Errorf(codes.Internal, "block ip: %v", err)
 	}
 	return &pb.BlockIPResponse{Enqueued: true}, nil
@@ -216,7 +289,6 @@ func (h *SettlementHandler) EnqueueFraudThreat(ctx context.Context, req *pb.Enqu
 	if req.GetCampaignId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "campaign_id required")
 	}
-
 	payload := FraudThreatPayload{
 		Action:     req.GetAction(),
 		IP:         req.GetIp(),
@@ -225,8 +297,7 @@ func (h *SettlementHandler) EnqueueFraudThreat(ctx context.Context, req *pb.Enqu
 		Boost:      req.GetBoost(),
 		TTLSeconds: req.GetTtlSeconds(),
 	}
-
-	if err := h.service.EnqueueFraudThreat(ctx, payload); err != nil {
+	if err := h.enqueueFraudThreat(ctx, payload); err != nil {
 		return nil, status.Errorf(codes.Internal, "enqueue ml threat: %v", err)
 	}
 	return &pb.EnqueueFraudThreatResponse{Enqueued: true}, nil
@@ -239,37 +310,12 @@ func (h *SettlementHandler) BatchApplySettlement(ctx context.Context, req *pb.Ba
 	if req == nil {
 		return nil, status.Error(codes.InvalidArgument, "request required")
 	}
-	total := len(req.Credits) + len(req.Refunds) + len(req.Chargebacks) + len(req.ChargebackReversals)
-	if total == 0 {
-		return nil, status.Error(codes.InvalidArgument, "batch empty")
+	batch, err := settlementBatchParamsFromPB(req)
+	if err != nil {
+		return nil, err
 	}
-	if total > batchSettlementMaxItems {
-		return nil, status.Errorf(codes.InvalidArgument, "batch exceeds %d items", batchSettlementMaxItems)
-	}
-
-	resp := &pb.BatchApplySettlementResponse{}
-	for _, item := range req.Credits {
-		creditResp, err := h.ApplyPaymentCredit(ctx, item)
-		resp.CreditResults = append(resp.CreditResults, batchItemFromCredit(creditResp, err))
-	}
-	for _, item := range req.Refunds {
-		refundResp, err := h.ApplyPaymentRefund(ctx, item)
-		resp.RefundResults = append(resp.RefundResults, batchItemFromRefund(refundResp, err))
-	}
-	for _, item := range req.Chargebacks {
-		cbResp, err := h.ApplyPaymentChargeback(ctx, item)
-		resp.ChargebackResults = append(resp.ChargebackResults, batchItemFromChargeback(cbResp, err))
-	}
-	for _, item := range req.ChargebackReversals {
-		revResp, err := h.ApplyPaymentChargebackReversal(ctx, item)
-		resp.ChargebackReversalResults = append(resp.ChargebackReversalResults, batchItemFromChargebackReversal(revResp, err))
-	}
-	return &pb.BatchApplySettlementResponse{
-		CreditResults:             resp.CreditResults,
-		RefundResults:             resp.RefundResults,
-		ChargebackResults:         resp.ChargebackResults,
-		ChargebackReversalResults: resp.ChargebackReversalResults,
-	}, nil
+	result := h.batchApplySettlement(ctx, batch)
+	return settlementBatchResultToPB(result), nil
 }
 
 func (h *SettlementHandler) ApplyCTVSettlement(ctx context.Context, req *pb.ApplyCTVSettlementRequest) (*pb.ApplyCTVSettlementResponse, error) {
@@ -287,8 +333,7 @@ func (h *SettlementHandler) ApplyCTVSettlement(ctx context.Context, req *pb.Appl
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid campaign id")
 	}
-
-	result, err := h.service.ApplyCTVSettlement(ctx, req.GetSettlementId(), customerID, campaignID, req.GetSpendMicro())
+	result, err := h.applyCTVSettlement(ctx, req.GetSettlementId(), customerID, campaignID, req.GetSpendMicro())
 	if err != nil {
 		if errors.Is(err, ErrCampaignNotFound) {
 			return nil, status.Error(codes.NotFound, "campaign not found")
@@ -303,32 +348,181 @@ func (h *SettlementHandler) ApplyCTVSettlement(ctx context.Context, req *pb.Appl
 	}, nil
 }
 
-func batchItemFromCredit(resp *pb.ApplyPaymentCreditResponse, err error) *pb.BatchSettlementItemResult {
-	if err != nil {
-		return &pb.BatchSettlementItemResult{Error: err.Error()}
+func settlementCreditParamsFromPB(req *pb.ApplyPaymentCreditRequest) (settlementCreditParams, error) {
+	if req == nil {
+		return settlementCreditParams{}, status.Error(codes.InvalidArgument, "request required")
 	}
-	return &pb.BatchSettlementItemResult{Applied: resp.GetApplied(), LedgerEntryId: resp.GetLedgerEntryId()}
+	customerID, err := uuid.Parse(req.CustomerId)
+	if err != nil {
+		return settlementCreditParams{}, status.Error(codes.InvalidArgument, "invalid customer id")
+	}
+	paymentIntentID, err := uuid.Parse(req.PaymentIntentId)
+	if err != nil {
+		return settlementCreditParams{}, status.Error(codes.InvalidArgument, "invalid payment intent id")
+	}
+	return settlementCreditParams{
+		CustomerID:           customerID,
+		AmountMicro:          req.AmountMicro,
+		LedgerIdempotencyKey: req.LedgerIdempotencyKey,
+		PaymentIntentID:      paymentIntentID,
+		Provider:             req.Provider,
+		ProviderRef:          req.ProviderRef,
+	}, nil
 }
 
-func batchItemFromRefund(resp *pb.ApplyPaymentRefundResponse, err error) *pb.BatchSettlementItemResult {
-	if err != nil {
-		return &pb.BatchSettlementItemResult{Error: err.Error()}
+func settlementRefundParamsFromPB(req *pb.ApplyPaymentRefundRequest) (settlementRefundParams, error) {
+	if req == nil {
+		return settlementRefundParams{}, status.Error(codes.InvalidArgument, "request required")
 	}
-	return &pb.BatchSettlementItemResult{Applied: resp.GetApplied(), LedgerEntryId: resp.GetLedgerEntryId()}
+	customerID, err := uuid.Parse(req.CustomerId)
+	if err != nil {
+		return settlementRefundParams{}, status.Error(codes.InvalidArgument, "invalid customer id")
+	}
+	paymentIntentID, err := uuid.Parse(req.PaymentIntentId)
+	if err != nil {
+		return settlementRefundParams{}, status.Error(codes.InvalidArgument, "invalid payment intent id")
+	}
+	if req.AmountMicro <= 0 {
+		return settlementRefundParams{}, status.Error(codes.InvalidArgument, "amount_micro must be positive")
+	}
+	return settlementRefundParams{
+		CustomerID:           customerID,
+		AmountMicro:          req.AmountMicro,
+		LedgerIdempotencyKey: req.LedgerIdempotencyKey,
+		PaymentIntentID:      paymentIntentID,
+		Provider:             req.Provider,
+		ProviderRefundID:     req.ProviderRefundId,
+	}, nil
 }
 
-func batchItemFromChargeback(resp *pb.ApplyPaymentChargebackResponse, err error) *pb.BatchSettlementItemResult {
+func settlementChargebackParamsFromPB(customerIDStr, intentIDStr string, amountMicro int64, ledgerIdempotencyKey, provider, providerDisputeID string) (settlementChargebackParams, error) {
+	customerID, paymentIntentID, err := parseSettlementCustomerAndIntent(customerIDStr, intentIDStr)
 	if err != nil {
-		return &pb.BatchSettlementItemResult{Error: err.Error()}
+		return settlementChargebackParams{}, err
 	}
-	return &pb.BatchSettlementItemResult{Applied: resp.GetApplied(), LedgerEntryId: resp.GetLedgerEntryId()}
+	if amountMicro <= 0 {
+		return settlementChargebackParams{}, status.Error(codes.InvalidArgument, "amount_micro must be positive")
+	}
+	return settlementChargebackParams{
+		CustomerID:           customerID,
+		AmountMicro:          amountMicro,
+		LedgerIdempotencyKey: ledgerIdempotencyKey,
+		PaymentIntentID:      paymentIntentID,
+		Provider:             provider,
+		ProviderDisputeID:    providerDisputeID,
+	}, nil
 }
 
-func batchItemFromChargebackReversal(resp *pb.ApplyPaymentChargebackReversalResponse, err error) *pb.BatchSettlementItemResult {
-	if err != nil {
-		return &pb.BatchSettlementItemResult{Error: err.Error()}
+func settlementBatchParamsFromPB(req *pb.BatchApplySettlementRequest) (settlementBatchParams, error) {
+	total := len(req.Credits) + len(req.Refunds) + len(req.Chargebacks) + len(req.ChargebackReversals)
+	if total == 0 {
+		return settlementBatchParams{}, status.Error(codes.InvalidArgument, "batch empty")
 	}
-	return &pb.BatchSettlementItemResult{Applied: resp.GetApplied(), LedgerEntryId: resp.GetLedgerEntryId()}
+	if total > batchSettlementMaxItems {
+		return settlementBatchParams{}, status.Errorf(codes.InvalidArgument, "batch exceeds %d items", batchSettlementMaxItems)
+	}
+	var batch settlementBatchParams
+	for _, item := range req.Credits {
+		params, err := settlementCreditParamsFromPB(item)
+		if err != nil {
+			return settlementBatchParams{}, err
+		}
+		batch.Credits = append(batch.Credits, params)
+	}
+	for _, item := range req.Refunds {
+		params, err := settlementRefundParamsFromPB(item)
+		if err != nil {
+			return settlementBatchParams{}, err
+		}
+		batch.Refunds = append(batch.Refunds, params)
+	}
+	for _, item := range req.Chargebacks {
+		params, err := settlementChargebackParamsFromPB(item.GetCustomerId(), item.GetPaymentIntentId(), item.GetAmountMicro(), item.GetLedgerIdempotencyKey(), item.GetProvider(), item.GetProviderDisputeId())
+		if err != nil {
+			return settlementBatchParams{}, err
+		}
+		batch.Chargebacks = append(batch.Chargebacks, params)
+	}
+	for _, item := range req.ChargebackReversals {
+		params, err := settlementChargebackParamsFromPB(item.GetCustomerId(), item.GetPaymentIntentId(), item.GetAmountMicro(), item.GetLedgerIdempotencyKey(), item.GetProvider(), item.GetProviderDisputeId())
+		if err != nil {
+			return settlementBatchParams{}, err
+		}
+		batch.ChargebackReversals = append(batch.ChargebackReversals, params)
+	}
+	return batch, nil
+}
+
+func ledgerEntryToPB(entry db.BalanceLedger) *pb.LedgerEntry {
+	campID := ""
+	if entry.CampaignID.Valid {
+		campID = uuid.UUID(entry.CampaignID.Bytes).String()
+	}
+	return &pb.LedgerEntry{
+		Id:          entry.ID,
+		CustomerId:  uuid.UUID(entry.CustomerID.Bytes).String(),
+		CampaignId:  campID,
+		AmountMicro: entry.Amount,
+		Type:        string(entry.Type),
+		CreatedAt:   entry.CreatedAt.Time.UTC().Format(time.RFC3339),
+	}
+}
+
+func settlementBatchResultToPB(result settlementBatchResult) *pb.BatchApplySettlementResponse {
+	return &pb.BatchApplySettlementResponse{
+		CreditResults:             settlementBatchItemsToPB(result.CreditResults),
+		RefundResults:             settlementBatchItemsToPB(result.RefundResults),
+		ChargebackResults:         settlementBatchItemsToPB(result.ChargebackResults),
+		ChargebackReversalResults: settlementBatchItemsToPB(result.ChargebackReversalResults),
+	}
+}
+
+func settlementBatchItemsToPB(items []settlementBatchItemResult) []*pb.BatchSettlementItemResult {
+	out := make([]*pb.BatchSettlementItemResult, 0, len(items))
+	for _, item := range items {
+		out = append(out, settlementBatchItemToPB(item))
+	}
+	return out
+}
+
+func settlementBatchItemToPB(item settlementBatchItemResult) *pb.BatchSettlementItemResult {
+	if item.Err != nil {
+		return &pb.BatchSettlementItemResult{Error: mapBatchItemGRPCError(item.Err)}
+	}
+	return &pb.BatchSettlementItemResult{Applied: item.Applied, LedgerEntryId: item.LedgerEntryID}
+}
+
+func mapBatchItemGRPCError(err error) string {
+	if st, ok := status.FromError(err); ok {
+		return st.Message()
+	}
+	switch {
+	case errors.Is(err, ErrCustomerNotFound):
+		return "customer not found"
+	case errors.Is(err, ErrPaymentTopupNotFound):
+		return "payment topup not found"
+	case errors.Is(err, ErrRefundExceedsTopup):
+		return "refund exceeds settled topup"
+	case errors.Is(err, ErrChargebackExceedsTopup):
+		return "chargeback exceeds settled topup"
+	case errors.Is(err, ErrChargebackReversalExceedsWithdrawn):
+		return "chargeback reversal exceeds withdrawn amount"
+	default:
+		return err.Error()
+	}
+}
+
+func mapSettlementDomainError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, ErrCustomerNotFound) {
+		return domain.ErrSettlementCustomerNotFound
+	}
+	if errors.Is(err, ErrPaymentTopupNotFound) {
+		return domain.ErrSettlementTopupNotFound
+	}
+	return err
 }
 
 func (h *SettlementHandler) requireSettlementToken(ctx context.Context) error {
@@ -359,7 +553,27 @@ func parseSettlementCustomerAndIntent(customerIDStr, intentIDStr string) (uuid.U
 	return customerID, paymentIntentID, nil
 }
 
-func (h *SettlementHandler) mapChargebackError(err error) error {
+func mapPaymentCreditGRPCError(err error) error {
+	if errors.Is(err, ErrCustomerNotFound) {
+		return status.Error(codes.NotFound, "customer not found")
+	}
+	return status.Errorf(codes.Internal, "failed to apply payment credit: %v", err)
+}
+
+func mapPaymentRefundGRPCError(err error) error {
+	if errors.Is(err, ErrCustomerNotFound) {
+		return status.Error(codes.NotFound, "customer not found")
+	}
+	if errors.Is(err, ErrPaymentTopupNotFound) {
+		return status.Error(codes.NotFound, "payment topup not found")
+	}
+	if errors.Is(err, ErrRefundExceedsTopup) {
+		return status.Error(codes.FailedPrecondition, "refund exceeds settled topup")
+	}
+	return status.Errorf(codes.Internal, "failed to apply payment refund: %v", err)
+}
+
+func mapChargebackGRPCError(err error) error {
 	if errors.Is(err, ErrCustomerNotFound) {
 		return status.Error(codes.NotFound, "customer not found")
 	}

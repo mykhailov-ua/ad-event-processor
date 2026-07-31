@@ -491,7 +491,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 		slog.Info("billing in-process workers enabled")
 	}
 	if opts.PaymentModule != nil {
-		opts.PaymentModule.SetSettlementAPI(settlementBridge{svc: svc})
+		opts.PaymentModule.SetSettlementAPI(settleHandler.PaymentSettlement())
 		if opts.Notifier != nil {
 			opts.PaymentModule.SetNotifierAPI(opts.Notifier.API())
 		}
