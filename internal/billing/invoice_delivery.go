@@ -48,9 +48,9 @@ func (d *NotifierInvoiceDeliverer) DeliverInvoice(
 
 	title := fmt.Sprintf("Invoice %s", month)
 	_, err := d.api.SendNotificationInput(ctx, notifier.NotificationInput{
-		Provider:  d.provider,
-		Recipient: d.recipient,
-		Title:     title,
+		Provider:   d.provider,
+		Recipient:  d.recipient,
+		Title:      title,
 		TemplateID: "invoice_monthly",
 		TemplateVars: map[string]string{
 			"customer_id":   customerID,

@@ -17,13 +17,11 @@ import (
 	"espx/internal/domain"
 	db "espx/internal/domain/db"
 	"espx/internal/identity"
-	auth_pb "espx/internal/identity/pb"
 	"espx/internal/licensing"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -69,20 +67,21 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 	}
 
 	var mgmtAuthClient *AuthClient
-	var authConn *grpc.ClientConn
+	var closeAuth func()
 	if opts.Auth != nil {
 		mgmtAuthClient = opts.Auth
+		closeAuth = func() {}
 	} else {
-		conn, err := grpc.NewClient(authTarget, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		client, closeFn, err := TryAuthClient(ctx, cfg)
 		if err != nil {
-			slog.Error("failed to connect to auth gRPC server", "target", authTarget, "error", err)
+			slog.Error("failed to open auth client", "error", err)
 			return err
 		}
-		authConn = conn
-		mgmtAuthClient = NewAuthClient(auth_pb.NewAuthServiceClient(conn))
+		mgmtAuthClient = client
+		closeAuth = closeFn
 	}
-	if authConn != nil {
-		defer authConn.Close()
+	if closeAuth != nil {
+		defer closeAuth()
 	}
 	tokenMaker, err := identity.NewPasetoMaker(string(cfg.TokenSymmetricKey))
 	if err != nil {
@@ -372,45 +371,57 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 		slog.Info("started audit export worker", "path", cfg.Management.AuditExportPath, "retention_days", cfg.Management.AuditExportRetentionDays)
 	}
 
-	paymentClient, err := openPaymentClient(cfg, opts)
+	paymentClient, closePayment, err := openPaymentClient(ctx, cfg, opts)
 	if err != nil {
-		slog.Error("failed to connect to payment gRPC server", "error", err)
+		slog.Error("failed to open payment client", "error", err)
 		return err
+	}
+	if closePayment != nil {
+		defer closePayment()
 	}
 	if paymentClient != nil {
-		defer paymentClient.Close()
 		if opts.Payment != nil {
 			slog.Info("payment in-process client enabled")
-		} else {
+		} else if cfg.PaymentGRPCEnabled {
 			slog.Info("payment gRPC client enabled", "target", cfg.PaymentServerHost+":"+cfg.PaymentServerPort)
+		} else {
+			slog.Info("payment in-process module client enabled", "env", "PAYMENT_GRPC_ENABLED=0")
 		}
 	}
 
-	billingClient, err := openBillingClient(cfg, opts)
+	billingClient, closeBilling, err := openBillingClient(ctx, cfg, opts)
 	if err != nil {
-		slog.Error("failed to connect to billing gRPC server", "error", err)
+		slog.Error("failed to open billing client", "error", err)
 		return err
+	}
+	if closeBilling != nil {
+		defer closeBilling()
 	}
 	if billingClient != nil {
-		defer billingClient.Close()
 		if opts.Billing != nil {
 			slog.Info("billing in-process client enabled")
-		} else {
+		} else if cfg.BillingGRPCEnabled {
 			slog.Info("billing gRPC client enabled", "target", cfg.Billing.ServerHost+":"+cfg.Billing.Port)
+		} else {
+			slog.Info("billing in-process module client enabled", "env", "BILLING_GRPC_ENABLED=0")
 		}
 	}
 
-	notifierClient, err := openNotifierClient(cfg, opts)
+	notifierClient, closeNotifier, err := openNotifierClient(ctx, cfg, opts)
 	if err != nil {
-		slog.Error("failed to connect to notifier gRPC server", "error", err)
+		slog.Error("failed to open notifier client", "error", err)
 		return err
 	}
+	if closeNotifier != nil {
+		defer closeNotifier()
+	}
 	if notifierClient != nil {
-		defer notifierClient.Close()
 		if opts.Notifier != nil {
 			slog.Info("notifier in-process client enabled")
-		} else {
+		} else if cfg.NotifierGRPCEnabled {
 			slog.Info("notifier gRPC client enabled", "target", cfg.Notifier.ServerHost+":"+cfg.Notifier.Port)
+		} else {
+			slog.Info("notifier in-process module client enabled", "env", "NOTIFIER_GRPC_ENABLED=0")
 		}
 	}
 	opsAlerter := NewOpsAlerter(notifierClient, cfg)

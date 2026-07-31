@@ -72,17 +72,3 @@ func (client *NotifierClient) Close() error {
 	}
 	return client.conn.Close()
 }
-
-func (client *NotifierClient) SendNotification(ctx context.Context, req *notifierpb.SendNotificationRequest) (*notifierpb.SendNotificationResponse, error) {
-	if client == nil || client.api == nil {
-		return nil, fmt.Errorf("notifier client not configured")
-	}
-	result, err := client.api.SendNotificationInput(ctx, notifier.NotificationInputFromPB(req))
-	if err != nil {
-		return nil, err
-	}
-	return &notifierpb.SendNotificationResponse{
-		NotificationId: result.NotificationID,
-		Deduplicated:   result.Deduplicated,
-	}, nil
-}

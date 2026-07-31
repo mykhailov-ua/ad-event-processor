@@ -1,7 +1,6 @@
 package controlplane
 
 import (
-	"context"
 	"fmt"
 
 	"espx/internal/config"
@@ -54,65 +53,4 @@ func (client *NotifierClient) Close() error {
 		return nil
 	}
 	return client.conn.Close()
-}
-
-func (client *NotifierClient) SendNotification(ctx context.Context, provider, recipient, title, body string) (*notifierpb.SendNotificationResponse, error) {
-	if client == nil || client.api == nil {
-		return nil, fmt.Errorf("notifier client not configured")
-	}
-	result, err := client.api.SendNotification(ctx, provider, recipient, title, body)
-	if err != nil {
-		return nil, err
-	}
-	return &notifierpb.SendNotificationResponse{
-		NotificationId: result.NotificationID,
-		Deduplicated:   result.Deduplicated,
-	}, nil
-}
-
-func (client *NotifierClient) SendNotificationBatch(ctx context.Context, notifications []*notifierpb.SendNotificationRequest) (*notifierpb.SendNotificationBatchResponse, error) {
-	if client == nil || client.api == nil {
-		return nil, fmt.Errorf("notifier client not configured")
-	}
-	inputs := make([]notifier.NotificationInput, 0, len(notifications))
-	for _, item := range notifications {
-		inputs = append(inputs, notifier.NotificationInputFromPB(item))
-	}
-	results, err := client.api.SendNotificationBatch(ctx, inputs)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]*notifierpb.SendNotificationResponse, 0, len(results))
-	for _, item := range results {
-		out = append(out, &notifierpb.SendNotificationResponse{
-			NotificationId: item.NotificationID,
-			Deduplicated:   item.Deduplicated,
-		})
-	}
-	return &notifierpb.SendNotificationBatchResponse{Notifications: out}, nil
-}
-
-func (client *NotifierClient) SendBroadcastNotification(
-	ctx context.Context,
-	provider, recipient, title, body string,
-	broadcastProviders []string,
-) (*notifierpb.SendNotificationResponse, error) {
-	if client == nil || client.api == nil {
-		return nil, fmt.Errorf("notifier client not configured")
-	}
-	result, err := client.api.SendNotificationInput(ctx, notifier.NotificationInput{
-		Provider:           provider,
-		Recipient:          recipient,
-		Title:              title,
-		Body:               body,
-		Broadcast:          true,
-		BroadcastProviders: broadcastProviders,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return &notifierpb.SendNotificationResponse{
-		NotificationId: result.NotificationID,
-		Deduplicated:   result.Deduplicated,
-	}, nil
 }
