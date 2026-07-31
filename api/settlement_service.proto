@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package settlement;
+
+import "settlement.proto";
+
+option go_package = "espx/internal/controlplane/pb;pb";
+
+service SettlementService {
+  rpc ApplyPaymentCredit(ApplyPaymentCreditRequest) returns (ApplyPaymentCreditResponse);
+
+  rpc ApplyPaymentRefund(ApplyPaymentRefundRequest) returns (ApplyPaymentRefundResponse);
+
+  rpc ApplyPaymentChargeback(ApplyPaymentChargebackRequest) returns (ApplyPaymentChargebackResponse);
+
+  rpc ApplyPaymentChargebackReversal(ApplyPaymentChargebackReversalRequest) returns (ApplyPaymentChargebackReversalResponse);
+
+  rpc GetLedgerEntry(GetLedgerEntryRequest) returns (GetLedgerEntryResponse);
+
+  rpc BlockIP(BlockIPRequest) returns (BlockIPResponse);
+
+  rpc EnqueueFraudThreat(EnqueueFraudThreatRequest) returns (EnqueueFraudThreatResponse);
+
+  rpc BatchApplySettlement(BatchApplySettlementRequest) returns (BatchApplySettlementResponse);
+
+  rpc ApplyCTVSettlement(ApplyCTVSettlementRequest) returns (ApplyCTVSettlementResponse);
+}

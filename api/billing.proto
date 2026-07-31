@@ -2,17 +2,9 @@ syntax = "proto3";
 
 package billing;
 
-option go_package = "espx/internal/billing/pb;pb";
-
 import "google/protobuf/timestamp.proto";
 
-service BillingService {
-  rpc GenerateInvoice(GenerateInvoiceRequest) returns (Invoice);
-
-  rpc GetInvoice(GetInvoiceRequest) returns (Invoice);
-
-  rpc ListInvoices(ListInvoicesRequest) returns (ListInvoicesResponse);
-}
+option go_package = "espx/internal/billing/pb;pb";
 
 message GenerateInvoiceRequest {
   string customer_id = 1;

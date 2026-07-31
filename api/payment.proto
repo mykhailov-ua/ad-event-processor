@@ -2,21 +2,9 @@ syntax = "proto3";
 
 package payment;
 
-option go_package = "espx/internal/payment/pb;pb";
-
 import "google/protobuf/timestamp.proto";
 
-service PaymentService {
-  rpc CreatePaymentIntent(CreatePaymentIntentRequest) returns (CreatePaymentIntentResponse);
-
-  rpc GetPaymentIntent(GetPaymentIntentRequest) returns (PaymentIntent);
-
-  rpc ListPaymentIntents(ListPaymentIntentsRequest) returns (ListPaymentIntentsResponse);
-
-  rpc ListDisputes(ListDisputesRequest) returns (ListDisputesResponse);
-
-  rpc ReplayWebhook(ReplayWebhookRequest) returns (ReplayWebhookResponse);
-}
+option go_package = "espx/internal/payment/pb;pb";
 
 message CreatePaymentIntentRequest {
   string customer_id = 1;

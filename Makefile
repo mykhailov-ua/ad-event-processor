@@ -118,4 +118,4 @@ proto:
 	bash scripts/ci/gen.sh --proto
 
 proto-grpc:
-	bash scripts/ci/gen.sh --proto --proto-with-grpc
+	bash scripts/ci/gen.sh --proto

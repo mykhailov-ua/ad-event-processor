@@ -13,7 +13,7 @@ RUN_BPF=0
 
 for arg in "$@"; do
 	case "$arg" in
-	--proto) RUN_PROTO=1 ;;
+	--proto) RUN_PROTO=1; PROTO_WITH_GRPC=1 ;;
 	--proto-with-grpc) RUN_PROTO=1; PROTO_WITH_GRPC=1 ;;
 	--templ) RUN_TEMPL=1 ;;
 	--bpf) RUN_BPF=1 ;;
@@ -41,15 +41,22 @@ if [[ "$RUN_PROTO" -eq 1 ]]; then
 	echo "gen: buf (messages)..."
 	safe_rm_rf "$ROOT/api/gen"
 	mkdir -p "$ROOT/api/gen"
-	( cd "$ROOT/api" && go run github.com/bufbuild/buf/cmd/buf@latest generate --template buf.gen.nogrpc.yaml . )
+	( cd "$ROOT/api" && go run github.com/bufbuild/buf/cmd/buf@latest generate --template buf.gen.nogrpc.yaml \
+		--exclude-path auth_service.proto \
+		--exclude-path billing_service.proto \
+		--exclude-path payment_service.proto \
+		--exclude-path notifier_service.proto \
+		--exclude-path settlement_service.proto \
+		. )
 	echo "gen: buf (vtproto: events, vast)..."
 	( cd "$ROOT/api" && go run github.com/bufbuild/buf/cmd/buf@latest generate --template buf.gen.vtproto.yaml --path events.proto --path vast.proto )
 	if [[ "$PROTO_WITH_GRPC" -eq 1 ]]; then
 		echo "gen: buf (grpc: internal services)..."
 		( cd "$ROOT/api" && go run github.com/bufbuild/buf/cmd/buf@latest generate --template buf.gen.grpc.yaml \
-			--path auth.proto --path billing.proto --path payment.proto \
-			--path notifier.proto --path settlement.proto )
+			--path auth_service.proto --path billing_service.proto --path payment_service.proto \
+			--path notifier_service.proto --path settlement_service.proto )
 	fi
+	safe_prune_service_grpc
 	safe_sync_proto_gen
 	safe_prune_service_vtproto
 	echo "gen: patch vtproto hot path..."

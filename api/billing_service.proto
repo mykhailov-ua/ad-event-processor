@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package billing;
+
+import "billing.proto";
+
+option go_package = "espx/internal/billing/pb;pb";
+
+service BillingService {
+  rpc GenerateInvoice(GenerateInvoiceRequest) returns (Invoice);
+
+  rpc GetInvoice(GetInvoiceRequest) returns (Invoice);
+
+  rpc ListInvoices(ListInvoicesRequest) returns (ListInvoicesResponse);
+}

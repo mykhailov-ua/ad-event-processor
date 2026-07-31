@@ -176,17 +176,21 @@ Move agent design docs into docs/.
 
 9. Protobuf codegen split (internal gRPC removal)
 
-Default `make proto` (`scripts/ci/gen.sh --proto`):
+Default `make proto` (`scripts/ci/gen.sh --proto`) generates messages + gRPC stubs:
 
-1. `api/buf.gen.nogrpc.yaml` — `protocolbuffers/go` for all `api/*.proto` (messages only).
-2. `api/buf.gen.vtproto.yaml` — `go-vtproto` for `events.proto` and `vast.proto` only.
-3. `safe_sync_proto_gen` → `internal/*/pb/`.
-4. `safe_prune_service_vtproto` drops stale `*_vtproto.pb.go` under identity, billing, payment, notifier, controlplane.
-5. `cmd/patch-vtproto-hotpath` patches `internal/ingestion/pb/events_vtproto.pb.go`.
+1. `api/buf.gen.nogrpc.yaml` — `protocolbuffers/go` for `api/*.proto` except `*_service.proto` (messages only).
+2. `api/buf.gen.grpc.yaml` — `grpc/go` for `api/*_service.proto` only (split from message protos).
+3. `api/buf.gen.vtproto.yaml` — `go-vtproto` for `events.proto` and `vast.proto` only.
+4. `safe_prune_service_grpc` drops stale `*_grpc.pb.go` before `safe_sync_proto_gen`.
+5. `safe_sync_proto_gen` → `internal/*/pb/`.
+6. `safe_prune_service_vtproto` drops stale `*_vtproto.pb.go` under identity, billing, payment, notifier, controlplane.
+7. `cmd/patch-vtproto-hotpath` patches `internal/ingestion/pb/events_vtproto.pb.go`.
 
-Transitional gRPC (split_control / localhost clients until in-process migration finishes):
+Message protos: `auth.proto`, `billing.proto`, `payment.proto`, `notifier.proto`, `settlement.proto`.
 
-`make proto-grpc` or `scripts/ci/gen.sh --proto --proto-with-grpc` adds `api/buf.gen.grpc.yaml` for auth, billing, payment, notifier, settlement.
+gRPC-only protos (split_control / `grpc_api` dial boundary): `auth_service.proto`, `billing_service.proto`, `payment_service.proto`, `notifier_service.proto`, `settlement_service.proto`.
+
+`make proto-grpc` is an alias of `make proto` (gRPC generation is always on).
 
 Templates:
 
@@ -194,12 +198,12 @@ Templates:
 |------|---------|-------|
 | `buf.gen.nogrpc.yaml` | protobuf/go | all protos |
 | `buf.gen.vtproto.yaml` | go-vtproto | events, vast |
-| `buf.gen.grpc.yaml` | grpc/go | five service protos (opt-in) |
+| `buf.gen.grpc.yaml` | grpc/go | `*_service.proto` (opt-in via default `make proto`) |
 | `buf.gen.yaml` | protobuf/go | alias of nogrpc (direct `buf generate`) |
 
 Keep: `events.proto`, `vast.proto` with full vtproto (hot path).
 
-Remove next: `*_grpc.pb.go` and `service` blocks in auth, billing, payment, notifier, settlement protos once callers use Go interfaces.
+Remove next: `*_grpc.pb.go` and `*_service.proto` once split-deploy and handler layers drop gRPC types (messages stay in `*.proto`).
 
 gRPC server gating (done)
 
@@ -233,7 +237,7 @@ Blockers for deleting `api/auth.proto` (and siblings)
 
 Message types (`*.pb.go`) remain in use for handler request/response structs and outbox payloads — delete protos only after those call sites use `internal/domain` types.
 
-Fresh clone / CI: `make proto` alone does not emit `*_grpc.pb.go`. Use `make proto-grpc` until blockers above are cleared (or keep committed/stale grpc outputs during transition).
+Fresh clone / CI: `make proto` emits `*.pb.go` and `*_service_grpc.pb.go` (pb gitignored; CI runs `gen.sh --proto`).
 
 Done when: no `Register*ServiceServer` / `New*ServiceClient` in production tree; `api/auth.proto` … `api/settlement.proto` removed or reduced to domain-only messages; `buf.gen.grpc.yaml` deleted.
 

@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package payment;
+
+import "payment.proto";
+
+option go_package = "espx/internal/payment/pb;pb";
+
+service PaymentService {
+  rpc CreatePaymentIntent(CreatePaymentIntentRequest) returns (CreatePaymentIntentResponse);
+
+  rpc GetPaymentIntent(GetPaymentIntentRequest) returns (PaymentIntent);
+
+  rpc ListPaymentIntents(ListPaymentIntentsRequest) returns (ListPaymentIntentsResponse);
+
+  rpc ListDisputes(ListDisputesRequest) returns (ListDisputesResponse);
+
+  rpc ReplayWebhook(ReplayWebhookRequest) returns (ReplayWebhookResponse);
+}

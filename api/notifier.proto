@@ -2,17 +2,9 @@ syntax = "proto3";
 
 package notifier;
 
-option go_package = "espx/internal/notifier/pb;pb";
-
 import "google/protobuf/timestamp.proto";
 
-service NotifierService {
-  rpc SendNotification(SendNotificationRequest) returns (SendNotificationResponse);
-
-  rpc SendNotificationBatch(SendNotificationBatchRequest) returns (SendNotificationBatchResponse);
-
-  rpc GetNotification(GetNotificationRequest) returns (GetNotificationResponse);
-}
+option go_package = "espx/internal/notifier/pb;pb";
 
 enum Provider {
   PROVIDER_UNSPECIFIED = 0;
