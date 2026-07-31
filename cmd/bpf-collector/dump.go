@@ -271,7 +271,9 @@ func (r *probeRun) aggregateSyscalls() ([]dumpedSyscall, error) {
 	var rows []dumpedSyscall
 	for k, a := range merged {
 		var pid, sysID uint32
-		fmt.Sscanf(k, "%d:%d", &pid, &sysID)
+		if _, err := fmt.Sscanf(k, "%d:%d", &pid, &sysID); err != nil {
+			continue
+		}
 		avgUs := float64(0)
 		if a.hist.Count > 0 {
 			avgUs = float64(a.hist.SumNs/a.hist.Count) / 1000

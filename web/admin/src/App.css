@@ -1,0 +1,165 @@
+:root {
+  color: #e8ecf1;
+  background: #0f1419;
+  font-family: system-ui, sans-serif;
+  line-height: 1.5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+a {
+  color: #7eb6ff;
+}
+
+.app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.loading {
+  padding: 3rem;
+  text-align: center;
+}
+
+.topbar {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.topbar nav {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.topbar a {
+  text-decoration: none;
+  color: #9aa7b5;
+}
+
+.topbar a.active {
+  color: #fff;
+  font-weight: 600;
+}
+
+.panel {
+  background: #171d25;
+  border: 1px solid #2a3441;
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+
+.login-panel {
+  max-width: 420px;
+  margin: 2rem auto;
+}
+
+form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+}
+
+input,
+select,
+textarea,
+button {
+  font: inherit;
+}
+
+input,
+select,
+textarea {
+  padding: 0.5rem 0.65rem;
+  border-radius: 6px;
+  border: 1px solid #3a4654;
+  background: #0f1419;
+  color: inherit;
+}
+
+button {
+  padding: 0.55rem 0.9rem;
+  border-radius: 6px;
+  border: 0;
+  background: #3d7eff;
+  color: #fff;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.muted {
+  color: #9aa7b5;
+}
+
+.error {
+  color: #ff8f8f;
+}
+
+.success {
+  color: #8fd49a;
+}
+
+.banner-error {
+  text-align: center;
+}
+
+.license-banner {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  border: 1px solid #5a4a1f;
+  background: #2a2414;
+}
+
+.license-banner.severity-warning {
+  border-color: #5a4a1f;
+  background: #2a2414;
+}
+
+.license-banner.severity-critical {
+  border-color: #6b2323;
+  background: #2a1414;
+}
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+}
+
+.meta-grid dt {
+  font-size: 0.75rem;
+  color: #9aa7b5;
+}
+
+.meta-grid dd {
+  margin: 0;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}

@@ -17,6 +17,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 | `dev/` | Local compose stack and preflight | `bash scripts/dev/stack.sh full` |
 | `local-dev/` | Stable aliases for docs/CI smoke | `bash scripts/local-dev/dev_preflight.sh` |
 | `load/` | Loadgen, BPF sessions, drills | `make load-test-bpf` |
+| `load/broker.sh` | Broker throughput bench (`pkg/broker/server`) | `bash scripts/load/broker.sh` |
 | `perf/` | Benchmark gates and nightly jobs | `bash scripts/perf/gate_run.sh` |
 | `perf-gate/` | Stable alias for perf smoke | `PERF_GATE_STRICT=false bash scripts/perf-gate/perf_gate_run.sh` |
 | `fault/` | Fault injection and resilience proofs | `make test-resilience` |
@@ -32,6 +33,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 | :--- | :--- |
 | `make gen` | `ci/gen.sh` |
 | `make check-local` | `ci/local_check.sh` |
+| `make tier-a` | `ci/tier_a.sh` |
 | `make test-full` | `ci/full_test.sh` |
 | `make test-resilience` | `fault/run.sh` |
 | `make test-broker-fault-lab` | `fault/broker_fault_lab.sh` |

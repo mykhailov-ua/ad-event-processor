@@ -30,7 +30,7 @@ func (w *AutoscaleBudgetWorker) Start(ctx context.Context, interval time.Duratio
 			return
 		case <-ticker.C:
 			if err := w.svc.AutoscaleBudgets(ctx, w.syncWorkers); err != nil {
-				slog.Error("autoscale budgets run failed", "error", err)
+				slog.Error("autoscale budgets run failed", "err", err)
 			}
 		}
 	}

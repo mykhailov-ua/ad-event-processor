@@ -2,9 +2,9 @@
 
 How eSPX ensures financial truth in a distributed system with asynchronous settlement.
 
-**GAP:** GAP-HYG-30 — full acceptance criteria: [.cursor/GAP_SPECS.md](../../.cursor/GAP_SPECS.md#gap-hyg-30--pg-volume-meter--drift-audit--pinned-settlement).
+Acceptance criteria: P02 in `.cursor/GAP_SPECS.md`.
 
-Related: [ARCHITECTURE.md](../ARCHITECTURE.md), [DATA_SECURITY.md](./DATA_SECURITY.md), [PROTECTION.md](../PROTECTION.md).
+Related: ARCHITECTURE.md, DATA_SECURITY.md, PROTECTION.md.
 
 ---
 
@@ -99,7 +99,7 @@ LedgerInvariantWorker (24 h) ── customers.balance vs ledger sum
 
 ## SQL plans
 
-Detail and EXPLAIN targets: [GAP_SPECS § SQL — GAP-HYG-30](../../.cursor/GAP_SPECS.md#sql--gap-hyg-30).
+SQL reference: `.cursor/GAP_SPECS.md` appendix (P02 / GAP-HYG-30).
 
 | Query | Purpose | Index |
 | :--- | :--- | :--- |

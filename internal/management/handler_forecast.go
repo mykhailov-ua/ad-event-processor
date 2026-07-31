@@ -29,7 +29,7 @@ func writeForecastError(w http.ResponseWriter, err error) {
 	writeServiceError(w, err)
 }
 
-func (h *Handler) resolveForecastCustomerID(r *http.Request, bodyCustomerID *uuid.UUID) (*uuid.UUID, error) {
+func (handler *Handler) resolveForecastCustomerID(r *http.Request, bodyCustomerID *uuid.UUID) (*uuid.UUID, error) {
 	u, ok := GetUser(r.Context())
 	if !ok {
 		return nil, errForbidden

@@ -6,14 +6,14 @@ import (
 	"github.com/google/uuid"
 )
 
-func (h *Handler) selfServePerm(next http.HandlerFunc, permission string) http.HandlerFunc {
-	if h.authMiddleware != nil {
-		return h.authMiddleware.RequireSelfServe(permission)(next)
+func (handler *Handler) selfServePerm(next http.HandlerFunc, permission string) http.HandlerFunc {
+	if handler.authMiddleware != nil {
+		return handler.authMiddleware.RequireSelfServe(permission)(next)
 	}
-	return h.perm(next, permission)
+	return handler.perm(next, permission)
 }
 
-func (h *Handler) resolveSelfServeCustomerID(r *http.Request, bodyCustomerID *uuid.UUID) (uuid.UUID, error) {
+func (handler *Handler) resolveSelfServeCustomerID(r *http.Request, bodyCustomerID *uuid.UUID) (uuid.UUID, error) {
 	u, ok := GetUser(r.Context())
 	if !ok {
 		return uuid.Nil, errForbidden

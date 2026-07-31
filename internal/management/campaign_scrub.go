@@ -34,15 +34,3 @@ func scrubCampaignDTO(ctx context.Context, dto CampaignDTO) CampaignDTO {
 	}
 	return dto
 }
-
-func scrubCampaignDTOs(ctx context.Context, dtos []CampaignDTO) []CampaignDTO {
-	snap, ok := authz.SnapshotFromContext(ctx)
-	if !ok || snap.Mask == authz.MaskFull {
-		return dtos
-	}
-	out := make([]CampaignDTO, len(dtos))
-	for i, d := range dtos {
-		out[i] = d.Scrub(snap.Mask)
-	}
-	return out
-}

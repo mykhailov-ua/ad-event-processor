@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"espx/internal/billing/db"
+	"espx/internal/config"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -19,23 +20,22 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// registryFullSyncPayload must match ingestion.RegistryFullSyncPayload.
 const registryFullSyncPayload = "*"
 
 type LicenseWatcher struct {
 	pool        *pgxpool.Pool
 	rdb         redis.UniversalClient
 	controlRdbs []redis.UniversalClient
-	client     *LicenseClient
-	mode       string
-	path       string
-	spoolDir   string
-	serverURL  string
-	licenseKey string
-	interval   time.Duration
-	timeout    time.Duration
-	policy     HeartbeatPolicy
-	spool      *LicenseSpool
+	client      *LicenseClient
+	mode        string
+	path        string
+	spoolDir    string
+	serverURL   string
+	licenseKey  string
+	interval    time.Duration
+	timeout     time.Duration
+	policy      HeartbeatPolicy
+	spool       *LicenseSpool
 
 	mu               sync.RWMutex
 	currentClaims    *LicenseClaims
@@ -47,31 +47,28 @@ type LicenseWatcher struct {
 }
 
 func NewLicenseWatcher(pool *pgxpool.Pool, rdb redis.UniversalClient, pubKey ed25519.PublicKey) *LicenseWatcher {
-	mode := os.Getenv("ESPX_LICENSE_MODE")
+	mode := config.LicenseEnv("MODE")
 	if mode == "" {
 		mode = "file"
 	}
-	path := os.Getenv("ESPX_LICENSE_PATH")
+	path := config.LicenseEnv("PATH")
 	if path == "" {
 		path = "license.jwt"
 	}
-	spoolDir := os.Getenv("ESPX_LICENSE_SPOOL_DIR")
+	spoolDir := config.LicenseEnv("SPOOL_DIR")
 	if spoolDir == "" {
 		spoolDir = filepath.Join(filepath.Dir(path), ".license-spool")
 	}
-	serverURL := os.Getenv("ESPX_LICENSE_SERVER")
-	if serverURL == "" {
-		serverURL = "https://license.espx.io"
-	}
-	licenseKey := os.Getenv("ESPX_LICENSE_KEY")
+	serverURL := config.LicenseEnv("SERVER")
+	licenseKey := config.LicenseEnv("KEY")
 
-	refreshStr := os.Getenv("ESPX_LICENSE_REFRESH_INTERVAL")
+	refreshStr := config.LicenseEnv("REFRESH_INTERVAL")
 	interval := 24 * time.Hour
 	if d, err := time.ParseDuration(refreshStr); err == nil {
 		interval = d
 	}
 
-	timeoutStr := os.Getenv("ESPX_LICENSE_HEARTBEAT_TIMEOUT")
+	timeoutStr := config.LicenseEnv("HEARTBEAT_TIMEOUT")
 	timeout := 5 * time.Second
 	if d, err := time.ParseDuration(timeoutStr); err == nil {
 		timeout = d
@@ -144,6 +141,13 @@ func (w *LicenseWatcher) Start(ctx context.Context) error {
 	if err := w.verifyAndReload(ctx); err != nil {
 		slog.Error("Initial license verification failed", "error", err)
 	}
+
+	slog.Info("license watcher started",
+		"mode", w.mode,
+		"server", w.serverURL,
+		"refresh_interval", w.interval.String(),
+		"online", w.mode == "online" && w.licenseKey != "",
+	)
 
 	go func() {
 		ticker := time.NewTicker(w.interval)

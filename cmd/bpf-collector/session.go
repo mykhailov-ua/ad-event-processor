@@ -59,11 +59,6 @@ func (s *session) writeMeta() error {
 	return os.WriteFile(path, data, 0o644)
 }
 
-func (s *session) appendTarget(t targetEntry) error {
-	s.Meta.Targets = append(s.Meta.Targets, t)
-	return s.writeMeta()
-}
-
 func (s *session) Targets() []targetEntry {
 	return s.Meta.Targets
 }

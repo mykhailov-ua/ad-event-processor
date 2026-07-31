@@ -95,7 +95,7 @@ Target model:
 3. Cross-region delivery via `outbox_region_delivery` (at-least-once).
 4. No cross-region Redis replication.
 
-Full design (regional proxy, disk gate, capacity scoring, sliding-window fallbacks): `docs/MULTI_REGION.md`.
+Full design (regional proxy, disk gate, capacity scoring, sliding-window fallbacks): `.cursor/MULTI_REGION.md`.
 
 5. Entitlements
 

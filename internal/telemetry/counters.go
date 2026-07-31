@@ -62,7 +62,6 @@ func SnapshotAndReset() WindowSnapshot {
 	return snap
 }
 
-// ResetForTest clears install counters (tests only).
 func ResetForTest() {
 	acceptedEvents.Store(0)
 	rejectedEvents.Store(0)

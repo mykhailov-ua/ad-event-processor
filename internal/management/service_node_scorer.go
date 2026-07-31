@@ -3,7 +3,6 @@ package management
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -37,32 +36,6 @@ func NewNodeCapacityScorer(svc *Service) *NodeCapacityScorer {
 		pool:   svc.GetPool(),
 		region: region,
 		cfg:    cfg,
-	}
-}
-
-func (s *NodeCapacityScorer) Start(ctx context.Context) {
-	if s == nil || s.pool == nil {
-		return
-	}
-	interval := 10 * time.Second
-	if s.svc != nil && s.svc.cfg != nil && s.svc.cfg.UDPSyncIntervalMs > 0 {
-		interval = time.Duration(s.svc.cfg.UDPSyncIntervalMs) * time.Millisecond
-	}
-	slog.Info("node capacity scorer starting", "region", s.region, "interval", interval)
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-	if err := s.Tick(ctx, time.Now().UTC()); err != nil {
-		slog.Error("node capacity scorer tick failed", "error", err)
-	}
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			if err := s.Tick(ctx, time.Now().UTC()); err != nil {
-				slog.Error("node capacity scorer tick failed", "error", err)
-			}
-		}
 	}
 }
 

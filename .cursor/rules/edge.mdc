@@ -58,7 +58,7 @@ When `EDGE_TARPIT_ENABLED=true`, `edge-tarpit.lua` slows or drops requests that 
 
 Tracker wire parsers (optional)
 
-`HTTP/1.1 FSM`: Yes (edge -> H1.1 upstream) — `http1_fsm.go`
+`HTTP/1.1 FSM`: Yes (edge -> H1.1 upstream) — `handler_http1_fsm.go`
 `h2c on gnet`: Evaluation only — `handler_http2.go`, `http2_*.go`
 `HTTP/3 sidecar`: Evaluation only — `cmd/tracker-quic`
 

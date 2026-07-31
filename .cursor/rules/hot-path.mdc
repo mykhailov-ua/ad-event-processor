@@ -27,7 +27,7 @@ Production: `FILTER_TIMEOUT_MS` <= 100.
 gnet and PinnedWorkerPool
 
 - Event loop: `epoll`; ~2 threads per CPU core.
-- HTTP/1.1: table FSM (`http1_fsm.go`); incremental parse from ring buffer.
+- HTTP/1.1: table FSM (`handler_http1_fsm.go`); incremental parse from ring buffer.
 - `PinnedWorkerPool`: dispatch by `campaign_id` hash; 64-byte queue padding against false sharing.
 - `LocalQuantaLedger`: per-campaign hash; `TrySpendLocal` ~13 ns/op; refill on cold goroutines.
 
@@ -213,4 +213,4 @@ PR checklist
 4. BCE: explicit length check before indexed loop
 5. New write paths: fault proof per `.cursor/rules/fault-resilience.mdc` R10
 
-Files: `ingress_quota.go`, `fraud_stream_queue.go`, `unified_filter.go`, `http1_fsm.go`.
+Files: `ingress_quota.go`, `fraud_stream_queue.go`, `unified_filter.go`, `handler_http1_fsm.go`.

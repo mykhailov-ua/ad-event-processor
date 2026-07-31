@@ -131,7 +131,7 @@ func ApplyCTVSettlement(
 		_, err = q.InsertCTVGtaxSettlement(ctx, db.InsertCTVGtaxSettlementParams{
 			SettlementID: settlementID,
 			CustomerID:   budget.CustomerID,
-			CampaignID: ToUUID(campaignID),
+			CampaignID:   ToUUID(campaignID),
 			SpendMicro:   spendMicro,
 			TaxMicro:     taxMicro,
 			FeeLedgerID:  feeRow.ID,

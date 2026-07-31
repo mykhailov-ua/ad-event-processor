@@ -148,7 +148,7 @@ Budget invariant: `current_spend <= budget_limit` in Postgres (+-1 micro-unit).
 3. Cross-region via `outbox_region_delivery` (at-least-once).
 4. No cross-region Redis replication.
 
-Detail: regional proxies, disk gate, node scoring with sliding-window fallbacks — [MULTI_REGION.md](./MULTI_REGION.md).
+Detail: regional proxies, disk gate, node scoring with sliding-window fallbacks — [.cursor/MULTI_REGION.md](../.cursor/MULTI_REGION.md).
 
 ---
 
@@ -174,7 +174,7 @@ Cold path: `SyncRtbCatalog`, deal CRUD, `RELOAD_RTB_CATALOG` outbox, floor optim
 
 Hot path: `RunAuction` scans presorted SoA buckets; budget debit via CAS in `BudgetStore` or Redis Lua depending on `RTB_BUDGET_AUTHORITY`.
 
-Открытые задачи (Open gaps): GAP-RTB-11, оставшийся scope GAP-RTB-12 ([DEVELOPMENT.md](./DEVELOPMENT.md)).
+Open RTB gaps: GAP-RTB-11, remaining GAP-RTB-12 scope (see DEVELOPMENT.md completed roadmap).
 
 ---
 

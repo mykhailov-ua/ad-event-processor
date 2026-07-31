@@ -3,14 +3,8 @@ description: Open backlog routing — canonical specs in .cursor/GAP_SPECS.md
 alwaysApply: false
 ---
 
-Agent: before planning implementation work, read `.cursor/GAP_SPECS.md` for the relevant `GAP-*` DoD.
+Agent: before implementation work, read `.cursor/GAP_SPECS.md` for the matching **P** number.
 
-Index (P-table, CI map, PR slices): `.cursor/BACKLOG.md`.
+Task index: `.cursor/BACKLOG.md`. Closed items: `docs/DEVELOPMENT.md`.
 
-Closed items: `docs/DEVELOPMENT.md` (Completed roadmap).
-
-Architecture rationale (not backlog): `.cursor/RESTRUCTURE_PLAN.md`.
-
-Fault/resilience catalog: `.cursor/rules/fault-resilience.mdc`.
-
-Do not use duplicate backlog tables in `docs/` — open work index is `.cursor/BACKLOG.md`; DoD is `.cursor/GAP_SPECS.md` (same P numbers).
+Do not duplicate backlog tables under `docs/`.

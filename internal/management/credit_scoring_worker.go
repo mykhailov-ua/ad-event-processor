@@ -28,7 +28,7 @@ func (w *CreditScoringWorker) Start(ctx context.Context, interval time.Duration)
 			return
 		case <-ticker.C:
 			if err := w.EvaluateAll(ctx); err != nil {
-				slog.Error("credit scoring evaluation failed", "error", err)
+				slog.Error("credit scoring evaluation failed", "err", err)
 			}
 		}
 	}
@@ -48,13 +48,13 @@ func (w *CreditScoringWorker) EvaluateAll(ctx context.Context) error {
 		customerID := uuid.UUID(r.ID.Bytes)
 		reconLag, err := queries.MaxCustomerReconLagMicro(opCtx, r.ID)
 		if err != nil {
-			slog.Error("failed to read recon lag for customer", "customer_id", customerID, "error", err)
+			slog.Error("failed to read recon lag for customer", "customer_id", customerID, "err", err)
 			reconLag = 0
 		}
 		overdraft := w.calculateOverdraft(float64(r.AgeDays), r.TopupSum30d, reconLag)
 
 		if err := w.svc.UpdateOverdraft(opCtx, customerID, overdraft); err != nil {
-			slog.Error("failed to update overdraft for customer", "customer_id", customerID, "error", err)
+			slog.Error("failed to update overdraft for customer", "customer_id", customerID, "err", err)
 		}
 	}
 

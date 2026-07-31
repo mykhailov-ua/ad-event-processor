@@ -30,7 +30,7 @@ func (w *ScheduleWorker) Start(ctx context.Context) {
 				if database.IsShutdownError(err) {
 					return
 				}
-				slog.Error("schedule worker tick failed", "error", err)
+				slog.Error("schedule worker tick failed", "err", err)
 			}
 		}
 	}

@@ -172,12 +172,40 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			AuthorizeCampaignAccess: authCampaign,
 			WriteServiceError:       writeErr,
 		},
+		SupportHTTP: &adminapi.SupportHTTPHandlers{
+			Feedback: supportFeedbackAdapter{svc: svc},
+			SupportBundle: supportBundleWriter{
+				pool:   pool,
+				logDir: h.cfg.Logger.Dir,
+			},
+			ApplyRateLimit:    limit,
+			RequireAuth:       h.adminRequireAuth(),
+			WriteServiceError: writeErr,
+		},
+		MetaHTTP: &adminapi.MetaHTTPHandlers{
+			ApplyRateLimit: limit,
+			Enrich:         h.metaEnricher(),
+			WriteError:     writeErr,
+		},
+		StubHTTP: &adminapi.StubHTTPHandlers{
+			ApplyRateLimit:    limit,
+			RequirePermission: perm,
+		},
 	}
 }
 
 func (h *Handler) adminRequirePermission() func(string, http.HandlerFunc) http.HandlerFunc {
 	return func(permission string, next http.HandlerFunc) http.HandlerFunc {
 		return h.perm(next, permission)
+	}
+}
+
+func (h *Handler) adminRequireAuth() func(http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		if h.authMiddleware != nil {
+			return h.authMiddleware.RequireAuth(RoleAdmin, RoleManager, RoleUser, RoleBuyer, RoleSupport)(next)
+		}
+		return h.authFallback(next)
 	}
 }
 

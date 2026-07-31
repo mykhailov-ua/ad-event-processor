@@ -106,7 +106,7 @@ func TestManagementAPI_Robustness(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			svc.RunSystemStateSyncer(ctx)
+			NewSystemStateWorker(svc).Start(ctx)
 		}()
 
 		time.Sleep(50 * time.Millisecond)

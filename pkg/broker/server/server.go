@@ -207,6 +207,7 @@ func (s *Server) Start() error {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", s.handleHealthz)
+	mux.HandleFunc("/health", s.handleHealthz)
 	mux.HandleFunc("/leaderz", s.handleLeaderz)
 	mux.Handle("/metrics", promhttp.Handler())
 	s.httpSrv = &http.Server{

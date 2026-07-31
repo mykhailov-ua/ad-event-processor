@@ -30,10 +30,6 @@ func hashIPForCH(ip string) [16]byte {
 	return chPIIHasher().HashIP(ip)
 }
 
-func hashUAForCH(ua string) [16]byte {
-	return chPIIHasher().HashUA(ua)
-}
-
 func ipHashHex(ip string) string {
 	h := hashIPForCH(ip)
 	return hex.EncodeToString(h[:])

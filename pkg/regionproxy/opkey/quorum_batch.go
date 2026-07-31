@@ -40,10 +40,6 @@ func (c *BatchCommitter) PrepareForward(ctx context.Context, slot *Slot) (bool, 
 		}
 		return slot.TryClaimExecuting(), nil
 	}
-	replicaCount := len(c.replicas)
-	if replicaCount == 0 {
-		replicaCount = 1
-	}
 	st, err := quorum.Book(ctx, c.rdb, slot.OpID, c.replicas, c.nodeID)
 	if err != nil {
 		return false, err

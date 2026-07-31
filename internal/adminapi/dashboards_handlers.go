@@ -17,12 +17,12 @@ type DashboardsHTTPHandlers struct {
 	XDPStatsReader    func(context.Context) (xdpstats.Snapshot, error)
 }
 
-func (h *DashboardsHTTPHandlers) Register(mux *http.ServeMux) {
-	if h == nil {
+func (dashboards *DashboardsHTTPHandlers) Register(mux *http.ServeMux) {
+	if dashboards == nil {
 		return
 	}
-	limit := h.ApplyRateLimit
-	perm := h.RequirePermission
+	limit := dashboards.ApplyRateLimit
+	perm := dashboards.RequirePermission
 	if limit == nil {
 		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
 	}
@@ -30,16 +30,16 @@ func (h *DashboardsHTTPHandlers) Register(mux *http.ServeMux) {
 		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 
-	mux.HandleFunc("GET /api/v1/dashboards/buyer", limit(perm("campaigns:read", h.notImplemented)))
-	mux.HandleFunc("GET /api/v1/dashboards/adops", limit(perm("campaigns:read", h.notImplemented)))
-	mux.HandleFunc("GET /api/v1/dashboards/accountant", limit(perm("customers:read", h.notImplemented)))
-	mux.HandleFunc("GET /api/v1/dashboards/cfo", limit(perm("customers:read", h.notImplemented)))
-	mux.HandleFunc("GET /api/v1/dashboards/fraud", limit(perm("audit:read", h.notImplemented)))
-	mux.HandleFunc("GET /api/v1/dashboards/operator", limit(perm("shards:read", h.getOperatorDashboard)))
-	mux.HandleFunc("GET /api/v1/dashboards/campaign/{id}", limit(perm("campaigns:read", h.getCampaignDashboard)))
+	mux.HandleFunc("GET /api/v1/dashboards/buyer", limit(perm("campaigns:read", dashboards.notImplemented)))
+	mux.HandleFunc("GET /api/v1/dashboards/adops", limit(perm("campaigns:read", dashboards.notImplemented)))
+	mux.HandleFunc("GET /api/v1/dashboards/accountant", limit(perm("customers:read", dashboards.notImplemented)))
+	mux.HandleFunc("GET /api/v1/dashboards/cfo", limit(perm("customers:read", dashboards.notImplemented)))
+	mux.HandleFunc("GET /api/v1/dashboards/fraud", limit(perm("audit:read", dashboards.notImplemented)))
+	mux.HandleFunc("GET /api/v1/dashboards/operator", limit(perm("shards:read", dashboards.getOperatorDashboard)))
+	mux.HandleFunc("GET /api/v1/dashboards/campaign/{id}", limit(perm("campaigns:read", dashboards.getCampaignDashboard)))
 }
 
-func (h *DashboardsHTTPHandlers) getCampaignDashboard(w http.ResponseWriter, r *http.Request) {
+func (dashboards *DashboardsHTTPHandlers) getCampaignDashboard(w http.ResponseWriter, r *http.Request) {
 	campaignIDStr := r.PathValue("id")
 	campaignID, err := uuid.Parse(campaignIDStr)
 	if err != nil {
@@ -74,15 +74,15 @@ func (h *DashboardsHTTPHandlers) getCampaignDashboard(w http.ResponseWriter, r *
 	httpresponse.JSON(w, http.StatusOK, resp)
 }
 
-func (h *DashboardsHTTPHandlers) getOperatorDashboard(w http.ResponseWriter, r *http.Request) {
+func (dashboards *DashboardsHTTPHandlers) getOperatorDashboard(w http.ResponseWriter, r *http.Request) {
 	resp := OperatorDashboardDTO{
 		Period: PeriodDTO{
 			From: time.Now().UTC().Add(-24 * time.Hour).Format(time.RFC3339),
 			To:   time.Now().UTC().Format(time.RFC3339),
 		},
 	}
-	if h != nil && h.XDPStatsReader != nil {
-		if snap, err := h.XDPStatsReader(r.Context()); err == nil {
+	if dashboards != nil && dashboards.XDPStatsReader != nil {
+		if snap, err := dashboards.XDPStatsReader(r.Context()); err == nil {
 			resp.XDP = XDPPanelDTO{
 				UpdatedAt:     snap.UpdatedAt.UTC().Format(time.RFC3339),
 				Pass:          snap.Pass,
@@ -95,6 +95,6 @@ func (h *DashboardsHTTPHandlers) getOperatorDashboard(w http.ResponseWriter, r *
 	httpresponse.JSON(w, http.StatusOK, resp)
 }
 
-func (h *DashboardsHTTPHandlers) notImplemented(w http.ResponseWriter, _ *http.Request) {
+func (dashboards *DashboardsHTTPHandlers) notImplemented(w http.ResponseWriter, _ *http.Request) {
 	httpresponse.Error(w, http.StatusNotImplemented, "NOT_IMPLEMENTED", "dashboard stub; UI deferred — docs/DEVELOPMENT.md")
 }

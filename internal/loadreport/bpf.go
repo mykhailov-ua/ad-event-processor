@@ -15,53 +15,53 @@ import (
 var ErrNoBPFSummary = errors.New("loadreport: bpf/maps/summary.json not found")
 
 type bpfSummary struct {
-	DurationSec    float64          `json:"duration_sec"`
-	PIDStats       []pidStat        `json:"pid_stats"`
-	ProcSamples    []procSample     `json:"proc_samples"`
-	CgroupSamples  []cgroupSample   `json:"cgroup_samples"`
-	HotSyscalls    []syscallStat    `json:"hot_syscalls"`
-	Markers        []markerStat     `json:"markers"`
-	Syscalls       []syscallStat    `json:"syscalls"`
-	Network        []networkStat    `json:"network"`
+	DurationSec   float64        `json:"duration_sec"`
+	PIDStats      []pidStat      `json:"pid_stats"`
+	ProcSamples   []procSample   `json:"proc_samples"`
+	CgroupSamples []cgroupSample `json:"cgroup_samples"`
+	HotSyscalls   []syscallStat  `json:"hot_syscalls"`
+	Markers       []markerStat   `json:"markers"`
+	Syscalls      []syscallStat  `json:"syscalls"`
+	Network       []networkStat  `json:"network"`
 }
 
 type pidStat struct {
-	PID               int     `json:"pid"`
-	Name              string  `json:"name"`
-	Role              string  `json:"role"`
-	CtxSwitchPerSec   float64 `json:"ctx_switch_per_sec"`
-	VoluntaryCtx      int64   `json:"voluntary_ctx"`
-	InvoluntaryCtx    int64   `json:"involuntary_ctx"`
-	OnCPUPct          float64 `json:"oncpu_pct"`
-	OnCPUNs           int64   `json:"oncpu_ns"`
-	RunqueueAvgUs     float64 `json:"runqueue_avg_us"`
-	RunqueueP99Us     float64 `json:"runqueue_p99_us"`
-	MinorFaults       int64   `json:"minor_faults"`
-	MajorFaults       int64   `json:"major_faults"`
-	FDOpenPerSec      float64 `json:"fd_open_per_sec"`
-	FDClosePerSec     float64 `json:"fd_close_per_sec"`
-	SocketOpen        int64   `json:"socket_open"`
-	SocketAccept      int64   `json:"socket_accept"`
-	NetFDEstimate     int64   `json:"net_fd_estimate"`
-	ThreadFork        int64   `json:"thread_fork"`
-	ThreadExit        int64   `json:"thread_exit"`
+	PID             int     `json:"pid"`
+	Name            string  `json:"name"`
+	Role            string  `json:"role"`
+	CtxSwitchPerSec float64 `json:"ctx_switch_per_sec"`
+	VoluntaryCtx    int64   `json:"voluntary_ctx"`
+	InvoluntaryCtx  int64   `json:"involuntary_ctx"`
+	OnCPUPct        float64 `json:"oncpu_pct"`
+	OnCPUNs         int64   `json:"oncpu_ns"`
+	RunqueueAvgUs   float64 `json:"runqueue_avg_us"`
+	RunqueueP99Us   float64 `json:"runqueue_p99_us"`
+	MinorFaults     int64   `json:"minor_faults"`
+	MajorFaults     int64   `json:"major_faults"`
+	FDOpenPerSec    float64 `json:"fd_open_per_sec"`
+	FDClosePerSec   float64 `json:"fd_close_per_sec"`
+	SocketOpen      int64   `json:"socket_open"`
+	SocketAccept    int64   `json:"socket_accept"`
+	NetFDEstimate   int64   `json:"net_fd_estimate"`
+	ThreadFork      int64   `json:"thread_fork"`
+	ThreadExit      int64   `json:"thread_exit"`
 }
 
 type procSample struct {
-	PID             int    `json:"pid"`
-	Name            string `json:"name"`
-	Role            string `json:"role"`
-	PeakOpenFDs     int64  `json:"peak_open_fds"`
-	PeakSocketFDs   int64  `json:"peak_socket_fds"`
-	FDDelta         int64  `json:"fd_delta"`
-	FDOpenPerSec    float64 `json:"fd_open_per_sec"`
-	FDClosePerSec   float64 `json:"fd_close_per_sec"`
-	SocketOpen      int64  `json:"socket_open"`
-	SocketAccept    int64  `json:"socket_accept"`
-	PeakThreads     int64  `json:"peak_threads"`
-	ThreadDelta     int64  `json:"thread_delta"`
-	ThreadFork      int64  `json:"thread_fork"`
-	ThreadExit      int64  `json:"thread_exit"`
+	PID           int     `json:"pid"`
+	Name          string  `json:"name"`
+	Role          string  `json:"role"`
+	PeakOpenFDs   int64   `json:"peak_open_fds"`
+	PeakSocketFDs int64   `json:"peak_socket_fds"`
+	FDDelta       int64   `json:"fd_delta"`
+	FDOpenPerSec  float64 `json:"fd_open_per_sec"`
+	FDClosePerSec float64 `json:"fd_close_per_sec"`
+	SocketOpen    int64   `json:"socket_open"`
+	SocketAccept  int64   `json:"socket_accept"`
+	PeakThreads   int64   `json:"peak_threads"`
+	ThreadDelta   int64   `json:"thread_delta"`
+	ThreadFork    int64   `json:"thread_fork"`
+	ThreadExit    int64   `json:"thread_exit"`
 }
 
 type cgroupSample struct {
@@ -78,14 +78,14 @@ type cgroupSample struct {
 }
 
 type syscallStat struct {
-	PID      int     `json:"pid"`
-	Role     string  `json:"role"`
-	Syscall  string  `json:"syscall"`
-	Count    int64   `json:"count"`
-	AvgUs    float64 `json:"avg_us"`
-	P99Us    float64 `json:"p99_us"`
-	MaxUs    float64 `json:"max_us"`
-	WallPct  float64 `json:"wall_pct"`
+	PID     int     `json:"pid"`
+	Role    string  `json:"role"`
+	Syscall string  `json:"syscall"`
+	Count   int64   `json:"count"`
+	AvgUs   float64 `json:"avg_us"`
+	P99Us   float64 `json:"p99_us"`
+	MaxUs   float64 `json:"max_us"`
+	WallPct float64 `json:"wall_pct"`
 }
 
 type markerStat struct {
@@ -99,11 +99,11 @@ type markerStat struct {
 }
 
 type networkStat struct {
-	Name          string  `json:"name"`
-	Role          string  `json:"role"`
-	ConnectAvgUs  float64 `json:"connect_avg_us"`
-	Connects      int64   `json:"connects"`
-	Retrans       int64   `json:"retrans"`
+	Name         string  `json:"name"`
+	Role         string  `json:"role"`
+	ConnectAvgUs float64 `json:"connect_avg_us"`
+	Connects     int64   `json:"connects"`
+	Retrans      int64   `json:"retrans"`
 }
 
 type bpfTimeline struct {

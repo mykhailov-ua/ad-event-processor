@@ -11,6 +11,7 @@ import (
 	"espx/internal/config"
 	"espx/internal/metrics"
 	notifierpb "espx/internal/notifier/pb"
+	"espx/pkg/branding"
 )
 
 type FinancialReconAlerter struct {
@@ -83,7 +84,7 @@ func (a *FinancialReconAlerter) AlertFindings(summary FinancialReconSummary, fin
 		return
 	}
 
-	title := "BidShard: payment financial recon findings"
+	title := branding.AlertTitle("payment financial recon findings")
 	body := formatFinancialReconAlertBody(summary, alertable)
 
 	a.sendAsync(key, title, body, hasCritical)

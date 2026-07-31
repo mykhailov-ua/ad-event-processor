@@ -36,7 +36,6 @@ var (
 	staticStatusCmd = redis.NewStatusCmd(context.Background())
 	staticStringCmd = redis.NewStringCmd(context.Background())
 	staticBoolCmd   = redis.NewBoolCmd(context.Background())
-	staticIntCmd    = redis.NewIntCmd(context.Background())
 )
 
 type mockRedisClient struct {

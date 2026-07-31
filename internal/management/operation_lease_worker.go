@@ -91,7 +91,7 @@ func NewOperationLeaseWorker(svc *Service) *OperationLeaseWorker {
 	}
 	fencing, err := NewLeaseFencingRegistry(fencingDir)
 	if err != nil {
-		slog.Warn("operation lease fencing registry init failed", "dir", fencingDir, "error", err)
+		slog.Warn("operation lease fencing registry init failed", "dir", fencingDir, "err", err)
 	}
 	return &OperationLeaseWorker{
 		svc:            svc,
@@ -498,7 +498,7 @@ func (w *OperationLeaseWorker) ProcessBooked(ctx context.Context) error {
 				slog.Warn("operation lease stale fencing", "op_id", opID)
 				continue
 			}
-			slog.Warn("operation lease execute failed", "op_id", opID, "error", err)
+			slog.Warn("operation lease execute failed", "op_id", opID, "err", err)
 		}
 	}
 	return nil
@@ -526,11 +526,11 @@ func (w *OperationLeaseWorker) Start(ctx context.Context) {
 			return
 		case <-pollTicker.C:
 			if err := w.ProcessBooked(ctx); err != nil && ctx.Err() == nil {
-				slog.Error("operation lease poll failed", "node_id", w.nodeID, "error", err)
+				slog.Error("operation lease poll failed", "node_id", w.nodeID, "err", err)
 			}
 		case <-janitorTicker.C:
 			if _, err := w.RunJanitor(ctx); err != nil && ctx.Err() == nil {
-				slog.Error("operation lease janitor failed", "node_id", w.nodeID, "error", err)
+				slog.Error("operation lease janitor failed", "node_id", w.nodeID, "err", err)
 			}
 		}
 	}

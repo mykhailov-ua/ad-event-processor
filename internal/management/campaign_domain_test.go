@@ -30,6 +30,19 @@ func TestCampaign_resolveScheduleStatus(t *testing.T) {
 	start := now.Add(-time.Hour)
 	end := now.Add(time.Hour)
 	assert.Equal(t, db.CampaignStatusTypeACTIVE, resolveScheduleStatus(now, &start, &end))
+
+	futureStart := now.Add(time.Hour)
+	assert.Equal(t, db.CampaignStatusTypePAUSED, resolveScheduleStatus(now, &futureStart, nil))
+
+	pastEnd := now.Add(-time.Hour)
+	pastStart := now.Add(-2 * time.Hour)
+	assert.Equal(t, db.CampaignStatusTypePAUSED, resolveScheduleStatus(now, &pastStart, &pastEnd))
+}
+
+func TestCampaign_countriesOrEmpty(t *testing.T) {
+	t.Parallel()
+	assert.Equal(t, []string{}, countriesOrEmpty(nil))
+	assert.Equal(t, []string{"US"}, countriesOrEmpty([]string{"US"}))
 }
 
 func TestCampaign_DomainMapped(t *testing.T) {

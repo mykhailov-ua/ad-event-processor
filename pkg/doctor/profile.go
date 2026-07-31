@@ -23,15 +23,15 @@ var knownDeployProfiles = map[string]struct{}{
 }
 
 type profileComposeExpect struct {
-	mustInclude    []string
-	mustNotInclude []string
+	mustInclude     []string
+	mustNotInclude  []string
 	composeProfiles []string
 }
 
 var profileComposeSpecs = map[string]profileComposeExpect{
 	ProfileIngestOnly: {
-		mustInclude:    []string{"control", "processor", "tracker-0", "db"},
-		mustNotInclude: []string{"clickhouse", "payment", "billing", "ivt-detector", "fraud-scorer"},
+		mustInclude:     []string{"control", "processor", "tracker-0", "db"},
+		mustNotInclude:  []string{"clickhouse", "payment", "billing", "ivt-detector", "fraud-scorer"},
 		composeProfiles: []string{"ingest_only"},
 	},
 	ProfileNetworkOperator: {

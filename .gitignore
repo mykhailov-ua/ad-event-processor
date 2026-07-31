@@ -4,7 +4,26 @@
 
 # Build output & vendored deps
 bin/
+dist/release/
 vendor/
+
+# Root-level binaries (go build -o ./<name> — use bin/ instead)
+/*.exe
+/*-xdp
+/tracker
+/processor
+/control
+/management
+/auth
+/payment
+/billing
+/notifier
+/ivt-detector
+/fraud-scorer
+/broker
+/region-proxy
+/log-shipper
+/edge-xdp
 !deploy/vendor/
 
 # Generated code (make gen / make proto — repo keeps sources only)

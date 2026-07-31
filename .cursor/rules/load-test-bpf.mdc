@@ -19,7 +19,7 @@ Validate with both reports in `var/load-test/<UTC-ts>/`:
 1. Prometheus — `bottleneck-report.md`: handler p95/p99, `ad_worker_pool_reject_total` (0), fraud stream drops, Redis Lua p99 < 10 ms/shard.
 2. BPF — `bpf-report.md`: loadgen on-CPU share, cgroup throttle %, tracker `epoll_wait`/`read`/`futex` p99, peak FDs.
 
-Preflight: `prepare_constrained_stack.sh` → `make bpf-dev` → `sudo ESPX_BPF_PROBE=1 bash scripts/load/malformed.sh business`.
+Preflight: `bash scripts/load/prepare_constrained_stack.sh` → `make bpf-dev` → `sudo ESPX_BPF_PROBE=1 bash scripts/load/malformed.sh business`.
 
 After code change: `make test-alloc-gate`; re-run load+BPF when touching filter order, parse, worker pool, or Lua args.
 
@@ -86,8 +86,8 @@ Artifacts:
 ```text
 var/load-test/<UTC-timestamp>/
   k6.log
-  bottleneck-report.md    # Prometheus (analyze_bottlenecks.sh)
-  bpf-report.md           # kernel session (analyze_bpf.sh)
+  bottleneck-report.md    # Prometheus (go run ./cmd/load-report prom)
+  bpf-report.md           # kernel session (go run ./cmd/load-report bpf)
   bpf/
     targets.json
     maps/summary.json
@@ -98,7 +98,7 @@ var/load-test/<UTC-timestamp>/
 
 Environment variables
 
-`ESPX_BPF_PROBE`, default `0`: Set `1` in `run_malformed_traffic.sh` / `run_spike_load.sh` to enable session
+`ESPX_BPF_PROBE`, default `0`: Set `1` in `scripts/load/malformed.sh` / `scripts/load/spike.sh` to enable session
 `ESPX_BPF_SAMPLE_RATE`, default `1`: Syscall sample rate (`10` = 1/10 events; use on laptops)
 `ESPX_BPF_SLOW_US`, default `10000`: Ringbuf slow-syscall threshold (µs)
 `ESPX_BPF_TARGETS`, default `tracker,nginx,redis,processor`: Roles resolved from compose
@@ -157,7 +157,7 @@ Slow syscall events: `events.ndjson` — tail latency outliers
 Network (connect latency & TCP retrans): connect avg µs + retrans per role
 Interpretation: heuristics — numbered checklist in report
 
-`analyze_bottlenecks.sh` appends a link to `bpf-report.md` and the k6 on-CPU line when the file exists.
+`go run ./cmd/load-report all` writes both reports; prom output links to `bpf-report.md` when present.
 
 Interpreting a laptop run
 
@@ -187,11 +187,11 @@ Related scripts
 `scripts/dev/bpf_session.sh`: Standalone start/stop/status/report (no k6)
 `scripts/dev/build_tracker_bpf_trace.sh`: Build `bin/tracker-bpf-trace` with uprobes markers
 `make bpf-dev` / `make bpf-session-start` / `make bpf-session-stop` / `make load-test-bpf`: Makefile wrappers
-`prepare_constrained_stack.sh`: Migrations, registry full snapshot, CH truncate — run before `business` mode
-`run_malformed_traffic.sh`: Orchestrates k6 + optional BPF + `analyze_bottlenecks.sh`
-`run_spike_load.sh`: Spike profile; same `ESPX_BPF_PROBE=1` hook
-`sync_tracker_registry.sh`: Full `campaigns:update` snapshot if 404 `campaign_not_found`
-`reconcile_ingestion_migrations.sh`: Fix partial PG schema drift on load-test DB
+`scripts/load/prepare_constrained_stack.sh`: Migrations, registry full snapshot, CH truncate — run before `business` mode
+`scripts/load/malformed.sh`: Loadgen + optional BPF + `go run ./cmd/load-report all`
+`scripts/load/spike.sh`: Spike profile; same `ESPX_BPF_PROBE=1` hook
+`scripts/load/sync_tracker_registry.sh`: Full `campaigns:update` snapshot if 404 `campaign_not_found`
+`scripts/load/reconcile_ingestion_migrations.sh`: Fix partial PG schema drift on load-test DB
 
 Boundaries
 

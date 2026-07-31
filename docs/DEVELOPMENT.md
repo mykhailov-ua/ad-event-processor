@@ -92,7 +92,7 @@ PR checklist:
 4. BCE: length check before indexed loop
 5. Fault proof if new write path (see Fault injection and resilience)
 
-Reference files: `ingress_quota.go`, `fraud_stream_queue.go`, `unified_filter.go`, `http1_fsm.go`, `requests_parse_opt.go`.
+Reference files: `ingress_quota.go`, `fraud_stream_queue.go`, `unified_filter.go`, `handler_http1_fsm.go`, `requests_parse_opt.go`.
 
 ---
 
@@ -141,11 +141,11 @@ Measure baseline before fault injection. Abort if steady state degrades beyond l
 
 Proof logs: `fault_proof fault=<name>` in test output. Update `RESILIENCE_MIN_PROOFS` when new CI proofs land.
 
-Multi-region proofs use the `mr_` prefix. `test_resilience.sh` enforces `RESILIENCE_MIN_PROOFS_MR=12` (see [MULTI_REGION.md](./MULTI_REGION.md) M7).
+Multi-region proofs use the `mr_` prefix. `test_resilience.sh` enforces `RESILIENCE_MIN_PROOFS_MR=12` (see [.cursor/MULTI_REGION.md](../.cursor/MULTI_REGION.md) multi-region section).
 
 ---
 
-## Multi-region resilience drill (M7.4)
+## Multi-region resilience drill
 
 **Calendar:** quarterly dry-run (first Tuesday of Jan / Apr / Jul / Oct, 09:00 UTC).
 
@@ -327,7 +327,7 @@ Full list: `.env.example`.
 | `CH_SPOOL_SEGMENT_MB` | CH outage spool |
 | `LOCAL_QUOTA_MODE` | `live` for local quanta |
 | `ELASTIC_SHARDING_ENABLED` | `false` steady-state default |
-| `CONTROL_FAIL_OPEN` | `0` (default): edge uses conservative routing when control epochs are stale — equal tracker weights, drain frozen. Set `1` for AWS GA-style fail-open (keep last epoch weights). Edge only; see [MULTI_REGION.md](./MULTI_REGION.md) H4. |
+| `CONTROL_FAIL_OPEN` | `0` (default): edge uses conservative routing when control epochs are stale — equal tracker weights, drain frozen. Set `1` for AWS GA-style fail-open (keep last epoch weights). Edge only; see [.cursor/MULTI_REGION.md](../.cursor/MULTI_REGION.md) H4. |
 | `CONTROL_ENABLE_*` | Modular monolith (`cmd/control`): set `0` to disable auth, management, payment, billing, notifier, margin-guard, or cost-sync in-process. See `.env.example`. |
 | `NODE_WARMUP_SEC` | Tracker/management warmup before `/ready` and scorer drain (default `300`) |
 | `NODE_WEIGHTS_SYNC_INTERVAL_SEC` | Edge poll interval for `/ops/node-weights` (default `10`) |
@@ -457,7 +457,7 @@ bash scripts/test/tarpit_test.sh      # offline + optional live smoke
 EDGE_TARPIT_ENABLED=1 bash scripts/test/tarpit_test.sh  # fault_proof
 ```
 
-Control mapping: [COMPLIANCE_MATRIX.md](./COMPLIANCE_MATRIX.md). CI: `scripts/ci/compliance.sh`.
+Control mapping: [.cursor/COMPLIANCE_MATRIX.md](../.cursor/COMPLIANCE_MATRIX.md). CI: `scripts/ci/compliance.sh`.
 
 ### Vendor telemetry (GAP-ENG-03)
 
@@ -485,7 +485,7 @@ Fault proof: `fault_proof fault=crypto_webhook_replay proposal_rows=1`. Sandbox 
 
 ### OpenAPI contract (GAP-PROD-03)
 
-Machine-readable spec for all implemented `/api/v1` JSON routes (`docs/openapi/openapi.yaml`). HTTP 501 stubs and `/admin/*` HTMX HTML routes are excluded.
+Machine-readable spec for all implemented `/api/v1` JSON routes (`docs/openapi/openapi.yaml`). HTTP 501 stubs (`internal/adminapi/stub_routes.go`) and `/admin/*` HTMX HTML routes are excluded.
 
 ```bash
 make openapi-lint          # contract tests + drift check
@@ -496,7 +496,7 @@ Security schemes: `X-Admin-API-Key`, session cookie `accessToken`, `X-Consent-Si
 
 ---
 
-## Multi-region edge routing (M5)
+## Multi-region edge routing
 
 Weighted tracker pick uses `edge-node-weights.lua` (synced from management `GET /ops/node-weights`). Shard affinity still follows `edge-slot-map.lua` (crc32 Castagnoli + 1024 slot table — same formula as Go `StaticSlotSharder`).
 
@@ -511,7 +511,7 @@ Weighted tracker pick uses `edge-node-weights.lua` (synced from management `GET 
 
 ## mmap fsync contract (region-proxy / broker)
 
-Cold-path durability uses **append-only segment logs** on mmap — not btree-on-mmap (see [MULTI_REGION.md](./MULTI_REGION.md) H5).
+Cold-path durability uses **append-only segment logs** on mmap — not btree-on-mmap (see [.cursor/MULTI_REGION.md](../.cursor/MULTI_REGION.md) H5).
 
 | Component | Location | Contract |
 | :--- | :--- | :--- |
@@ -561,7 +561,7 @@ Actions logged in `audit_logs`.
 
 ## Completed roadmap
 
-Open and closed backlog index: [`.cursor/BACKLOG.md`](../.cursor/BACKLOG.md) (single table P01→P49). Recently completed items:
+Open work: `.cursor/BACKLOG.md`. Recently completed items (legacy gap IDs):
 
 | ID | Summary | Evidence |
 | :--- | :--- | :--- |
@@ -576,7 +576,7 @@ Open and closed backlog index: [`.cursor/BACKLOG.md`](../.cursor/BACKLOG.md) (si
 | GAP-OPS-03 | ClickHouse query governance (`CHQuery` gate, timeout, CI allowlist) | `internal/database/chquery.go`, `scripts/ci/ch_direct.sh` |
 | GAP-ENG-02 | Broker and region-proxy in local compose (`multi-region` profile) | `docker-compose.yaml`, `scripts/dev/stack.sh multi-region up` |
 | GAP-DB-03 | Weighted processor gates (multi-instance stream cadence) | `internal/ingestion/processor_weight.go`, `GET /ops/processor-weights` |
-| GAP-CMP-01 | Edge tarpit + compliance matrix | `docs/COMPLIANCE_MATRIX.md`, `deploy/nginx/lua/tests/tarpit_test.lua` |
+| GAP-CMP-01 | Edge tarpit + compliance matrix | `.cursor/COMPLIANCE_MATRIX.md`, `deploy/nginx/lua/tests/tarpit_test.lua` |
 | GAP-ENG-03 | Vendor telemetry probes | `pkg/vendorprobe/`, `ad_vendor_probe_*` metrics |
 | GAP-PAY-01 | Cryptocurrency payment gateway | `internal/payment/provider_crypto.go`, `TestFault_CryptoWebhookReplay`, `deploy/payment/crypto-sandbox.env` |
 | GAP-PROD-03 | OpenAPI 3 `/api/v1` contract | `docs/openapi/openapi.yaml`, `make openapi-lint`, `tests/contract/openapi_test.go` |
@@ -584,15 +584,7 @@ Open and closed backlog index: [`.cursor/BACKLOG.md`](../.cursor/BACKLOG.md) (si
 | GAP-RTB-12b | Admin dry-run preview | `ParseDryRun`, `dry_run_test.go` |
 | GAP-RTB-12c | A/B cohorts | `experiment_cohorts`, `cohort_snapshot.go`, `cohort_test.go` |
 
-Engineering backlog: [`.cursor/BACKLOG.md`](../.cursor/BACKLOG.md) — one P01→P49 table; deferred UI only GAP-PROD-01, GAP-OPS-04.
-
----
-
-## Open backlog
-
-Engineering gaps (non-UI): [.cursor/GAP_SPECS.md](../.cursor/GAP_SPECS.md) (canonical DoD, SLA, SQL, patterns, fault tests). Summary index: [.cursor/BACKLOG.md](../.cursor/BACKLOG.md).
-
-Deferred UI work (not in GAP_SPECS): GAP-PROD-01 buyer/finance dashboards, GAP-OPS-04 queue monitoring dashboard. Self-hosted installs use JSON `/api/v1` only; legacy HTMX (`/admin/*`, payment HTML fragments) is deprecated — see [SELF_HOSTED.md](./SELF_HOSTED.md#ui-no-server-side-htmx). Removal tracked as GAP-HYG-04.
+Deferred UI (not in backlog table): GAP-PROD-01 buyer/finance dashboards, GAP-OPS-04 queue monitoring. Self-hosted installs use JSON `/api/v1` only; legacy HTMX is deprecated (removed in P06 / GAP-HYG-04).
 
 ---
 
@@ -608,7 +600,7 @@ Deferred UI work (not in GAP_SPECS): GAP-PROD-01 buyer/finance dashboards, GAP-O
 4. Verify `AssertBudgetInvariant` and outbox drain
 5. Run `scripts/fault/run.sh` subset after cutover
 
-Multi-region topology: [MULTI_REGION.md](./MULTI_REGION.md).
+Multi-region topology: [.cursor/MULTI_REGION.md](../.cursor/MULTI_REGION.md).
 
 ---
 
@@ -638,4 +630,55 @@ See [Shard-0 outage](#shard-0-outage). Shards 1-3 continue ingest; shard-0-homed
 
 ## Payment
 
-Вебхуки Stripe приходят на сервис `payment` (:8187). События для расчетов (settlement) передаются в `management` через outbox. Сверка выполняется через суммы в `balance_ledger` и gRPC-маршруты для споров (disputes). Криптовалютный шлюз (USDT): `POST /webhooks/crypto`, профиль compose `crypto` — см. [Cryptocurrency payment gateway (GAP-PAY-01)](#cryptocurrency-payment-gateway-gap-pay-01).
+Stripe webhooks hit `payment` (:8187). Settlement events flow to `management` via outbox. Reconciliation uses `balance_ledger` totals and gRPC dispute routes. Crypto (USDT): `POST /webhooks/crypto`, compose profile `crypto` — see Cryptocurrency payment gateway (GAP-PAY-01) below.
+
+---
+
+## Repository history maintenance
+
+Destructive git operations require maintainer approval, an archive branch, and contributor notice. **Do not** run `git filter-repo` or history squash on `main` without completing the checklist below.
+
+### Binary purge from history (GAP-HYG-11 / P43)
+
+Root-level binaries (`processor`, `payment`, `ivt-detector`, `edge-xdp`, …) must not be committed. Build into `bin/` or `dist/release/`; `.gitignore` blocks accidental root artifacts.
+
+When purging blobs already in history:
+
+1. **Archive first** — push `archive/pre-filter-repo` from current `main` tip (or `archive/pre-filter-repo-YYYYMMDD` if multiple attempts).
+2. **Notify** — announce forced rewrite; all clones must re-clone or `git fetch --all && git reset --hard origin/main`.
+3. **Rewrite** — `git filter-repo` (or BFG) with path globs for root binaries only; never rewrite without the archive branch on the remote.
+4. **Verify** — `git rev-list --objects --all | rg 'processor$'` shows no multi-MB blob at repo root.
+5. **Force-push** — `main` only after archive branch is reachable on origin.
+
+Example (maintainers only):
+
+```bash
+git branch archive/pre-filter-repo
+git push origin archive/pre-filter-repo
+git filter-repo --path processor --path payment --path ivt-detector --path edge-xdp --invert-paths
+# coordinate force-push with team
+```
+
+### Optional linear history squash (GAP-HYG-17 / P45)
+
+Squashing entire repository history is **optional** and requires an **explicit written product decision** (issue, ADR, or vendor sign-off). Portfolio value and audit trail often outweigh a clean graph; default is **no squash**.
+
+If approved:
+
+1. Create `archive/pre-squash-YYYYMMDD` from current `main`.
+2. Export bundle: `git bundle create espx-pre-squash-YYYYMMDD.bundle archive/pre-squash-YYYYMMDD`.
+3. Store bundle off-repo (vendor object storage); document hash in the decision record.
+4. Squash or orphan-branch only after archive push + bundle verify (`git bundle verify`).
+5. Contributors re-clone; document the cutoff date in release notes.
+
+Until that decision exists, treat linear history as out of scope.
+
+### Pro release binaries (GAP-PROD-10 / P44)
+
+Vendor ships stripped binaries, not public source for ingest/RTB/antifraud. Policy: [LICENSE_COMMERCE.md § Distribution](./LICENSE_COMMERCE.md#layer-6--distribution-model-gap-prod-10--p44).
+
+```bash
+make release-build   # dist/release/<cmd>-linux-{amd64,arm64}
+```
+
+Not part of CI merge gates; vendor pipeline signs artifacts after SKU QA.

@@ -49,7 +49,7 @@ func (w *LedgerInvariantWorker) Start(ctx context.Context) {
 			return
 		case <-ticker.C:
 			if err := w.scanAll(ctx); err != nil {
-				slog.Error("ledger invariant scan failed", "error", err)
+				slog.Error("ledger invariant scan failed", "err", err)
 			}
 		}
 	}
@@ -70,7 +70,7 @@ func (w *LedgerInvariantWorker) scanAll(ctx context.Context) error {
 		}
 		if err := billing.CheckLedgerBalanceInvariant(ctx, w.pool, customerID); err != nil {
 			mismatches++
-			slog.Error("ledger invariant mismatch", "customer_id", customerID, "error", err)
+			slog.Error("ledger invariant mismatch", "customer_id", customerID, "err", err)
 			if w.notifier != nil {
 				w.notifier.AlertLedgerDrift(ctx, customerID.String(), err)
 			}

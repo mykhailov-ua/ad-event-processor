@@ -47,13 +47,7 @@ func NewLicenseClient(serverURL, licenseKey string, timeout time.Duration) *Lice
 func (c *LicenseClient) IsTripped() bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.tripped {
-		if time.Since(c.lastFailedAt) >= 1*time.Minute {
-			return false
-		}
-		return true
-	}
-	return false
+	return c.tripped && time.Since(c.lastFailedAt) < 1*time.Minute
 }
 
 func (c *LicenseClient) recordSuccess() {

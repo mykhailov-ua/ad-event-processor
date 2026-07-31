@@ -3,7 +3,6 @@ package management
 import (
 	"context"
 	"fmt"
-	"log/slog"
 
 	"espx/internal/ingestion"
 	db "espx/internal/ingestion/sqlc"
@@ -214,9 +213,7 @@ func (s *Service) afterSlotMapActivated(ctx context.Context, version int32) {
 		version = row.ActiveVersion
 	}
 	if ss, ok := s.sharder.(*ingestion.StaticSlotSharder); ok {
-		if _, err := ingestion.LoadActiveSlotMap(ctx, s.GetPool(), ss, len(s.rdbs)); err != nil {
-			slog.Warn("management slot map reload after activate failed", "error", err)
-		}
+		_, _ = ingestion.LoadActiveSlotMap(ctx, s.GetPool(), ss, len(s.rdbs))
 	}
 	s.publishRoutingCutover(ctx, routingEpoch, version)
 }

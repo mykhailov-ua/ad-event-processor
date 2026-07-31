@@ -3,56 +3,9 @@ package management
 import (
 	"net/http"
 	"strconv"
-	"time"
 
 	"espx/pkg/coldpath"
 )
-
-const maxStatsRange = 90 * 24 * time.Hour
-
-func (h *Handler) permAny(next http.HandlerFunc, permissions ...string) http.HandlerFunc {
-	if h.authMiddleware != nil {
-		return h.authMiddleware.RequireAnyPermission(permissions...)(next)
-	}
-	return h.authFallback(next)
-}
-
-func parseStatsQuery(r *http.Request) (from, to time.Time, granularity string, err error) {
-	granularity = r.URL.Query().Get("granularity")
-	if granularity == "" {
-		granularity = "hour"
-	}
-	if granularity != "hour" {
-		return time.Time{}, time.Time{}, "", errInvalidQuery("granularity must be hour")
-	}
-
-	now := time.Now().UTC().Truncate(time.Hour)
-	to = now
-	from = now.Add(-7 * 24 * time.Hour)
-
-	if toStr := r.URL.Query().Get("to"); toStr != "" {
-		to, err = time.Parse(time.RFC3339, toStr)
-		if err != nil {
-			return time.Time{}, time.Time{}, "", errInvalidQuery("invalid to timestamp")
-		}
-		to = to.UTC()
-	}
-	if fromStr := r.URL.Query().Get("from"); fromStr != "" {
-		from, err = time.Parse(time.RFC3339, fromStr)
-		if err != nil {
-			return time.Time{}, time.Time{}, "", errInvalidQuery("invalid from timestamp")
-		}
-		from = from.UTC()
-	}
-
-	if !to.After(from) {
-		return time.Time{}, time.Time{}, "", errInvalidQuery("to must be after from")
-	}
-	if to.Sub(from) > maxStatsRange {
-		return time.Time{}, time.Time{}, "", errInvalidQuery("time range exceeds 90 days")
-	}
-	return from, to, granularity, nil
-}
 
 type invalidQueryError string
 

@@ -33,7 +33,7 @@ func (h *OpsHTTPHandlers) reloadRoles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.RolesReloader.ReloadRoles(); err != nil {
-		slog.Error("roles reload failed", "error", err)
+		slog.Error("roles reload failed", "err", err)
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL", "failed to reload roles")
 		return
 	}

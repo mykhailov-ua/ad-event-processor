@@ -3,7 +3,6 @@ package management
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"strconv"
 	"strings"
 
@@ -88,7 +87,6 @@ func (s *Service) AutoscaleShards(ctx context.Context, provider ShardMetricsProv
 	for i := int16(0); i < numShards; i++ {
 		m, err := provider.GetMetrics(ctx, i, s.rdbs[i])
 		if err != nil {
-			slog.Warn("failed to fetch metrics for shard", "shard_id", i, "error", err)
 			continue
 		}
 		shardMetrics[i] = m
@@ -137,13 +135,6 @@ func (s *Service) AutoscaleShards(ctx context.Context, provider ShardMetricsProv
 		return 0, nil
 	}
 
-	slog.Info("autoscaling: detected overloaded shard, initiating slot rebalancing",
-		"source_shard", maxShard,
-		"target_shard", minShard,
-		"source_load_score", maxLoadScore,
-		"target_load_score", minLoadScore,
-	)
-
 	mapRepo := ingestion.NewSlotMapRepo(s.GetPool())
 	activeVer, err := mapRepo.GetActiveVersion(ctx)
 	if err != nil {
@@ -166,7 +157,6 @@ func (s *Service) AutoscaleShards(ctx context.Context, provider ShardMetricsProv
 	}
 
 	if len(selectedSlots) == 0 {
-		slog.Warn("autoscaling: no active slots found on overloaded shard to migrate", "shard_id", maxShard)
 		return 0, nil
 	}
 
@@ -195,16 +185,7 @@ func (s *Service) AutoscaleShards(ctx context.Context, provider ShardMetricsProv
 		return 0, fmt.Errorf("failed to activate new slot map version: %w", err)
 	}
 
-	err = s.DrainMigratingSlots(ctx, draftVer)
-	if err != nil {
-		slog.Warn("failed to drain migrating slots, old keys will be cleaned up asynchronously", "version", draftVer, "error", err)
-	}
-
-	slog.Info("autoscaling: successfully rebalanced slots and activated new slot map version",
-		"old_version", activeVer,
-		"new_version", draftVer,
-		"migrated_slots_count", len(selectedSlots),
-	)
+	_ = s.DrainMigratingSlots(ctx, draftVer)
 
 	return draftVer, nil
 }

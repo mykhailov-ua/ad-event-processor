@@ -17,10 +17,10 @@ import (
 )
 
 const (
-	meterBillableEvents   = "events"
-	meterAcceptedEvents   = "accepted_events"
-	volumeMeterSourcePG   = "pg"
-	volumeMeterSourceCH   = "ch"
+	meterBillableEvents = "events"
+	meterAcceptedEvents = "accepted_events"
+	volumeMeterSourcePG = "pg"
+	volumeMeterSourceCH = "ch"
 )
 
 type VolumeMeterWorker struct {
@@ -59,7 +59,7 @@ func (w *VolumeMeterWorker) Start(ctx context.Context) {
 			return
 		case <-ticker.C:
 			if err := w.RunHour(ctx, time.Now().UTC()); err != nil {
-				slog.Error("volume meter rollup failed", "error", err)
+				slog.Error("volume meter rollup failed", "err", err)
 			}
 		}
 	}

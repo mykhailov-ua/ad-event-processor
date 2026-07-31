@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
-	"espx/pkg/coldpath"
 )
 
 func (s *Service) ExportSupplyFiles(ctx context.Context) error {
@@ -37,7 +35,7 @@ func (s *Service) ExportSupplyFiles(ctx context.Context) error {
 	return nil
 }
 
-func (w *OutboxWorker) handleUpdateSupplyFiles(ctx context.Context, payload []byte) error {
-	_ = coldpath.UnmarshalLenient[SupplyFilesPayload](payload)
-	return w.svc.ExportSupplyFiles(ctx)
+func (worker *OutboxWorker) handleUpdateSupplyFiles(ctx context.Context, payload []byte) error {
+	_ = payload
+	return worker.svc.ExportSupplyFiles(ctx)
 }

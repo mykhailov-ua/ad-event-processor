@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 
+	"espx/pkg/branding"
+
 	"gopkg.in/yaml.v3"
 )
 
@@ -16,7 +18,7 @@ func RunConfigure(interactive bool) error {
 	}
 
 	if interactive {
-		fmt.Println("BidShard setup")
+		fmt.Println(branding.ProductName(), "setup")
 		fmt.Println("-------------------------")
 
 		fmt.Print("Choose profile (single_vps, compose_dev, k8s_k3s) [compose_dev]: ")

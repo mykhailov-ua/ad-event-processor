@@ -7,7 +7,7 @@ cd "$ROOT"
 LOG="${MR_RESILIENCE_DRILL_LOG:-/tmp/espx-mr-resilience-drill.log}"
 MIN_MR_PROOFS="${RESILIENCE_MIN_PROOFS_MR:-12}"
 
-echo "=== M7 Multi-Region Resilience Drill Drill ==="
+echo "=== Multi-region resilience drill ==="
 echo "SLA targets:"
 echo "  - Regional proxy failover RTO < 120 s"
 echo "  - AssertBudgetInvariant after lease partition heal"

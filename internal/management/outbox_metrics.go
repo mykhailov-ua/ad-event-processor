@@ -7,8 +7,8 @@ import (
 	"espx/internal/metrics"
 )
 
-func (w *OutboxWorker) recordOutboxLagMetrics(ctx context.Context) {
-	if w.svc == nil || w.svc.GetPool() == nil {
+func (worker *OutboxWorker) recordOutboxLagMetrics(ctx context.Context) {
+	if worker.svc == nil || worker.svc.GetPool() == nil {
 		return
 	}
 	opCtx, cancel := workerContext(ctx, workerOutboxTimeout)
@@ -16,7 +16,7 @@ func (w *OutboxWorker) recordOutboxLagMetrics(ctx context.Context) {
 
 	var pending int64
 	var oldestSeconds float64
-	err := w.svc.GetPool().QueryRow(opCtx, `
+	err := worker.svc.GetPool().QueryRow(opCtx, `
 		SELECT COUNT(*)::bigint,
 		       COALESCE(EXTRACT(EPOCH FROM (NOW() - MIN(created_at))), 0)::float8
 		FROM outbox_events
@@ -30,21 +30,21 @@ func (w *OutboxWorker) recordOutboxLagMetrics(ctx context.Context) {
 	metrics.ManagementOutboxPendingTotal.Set(float64(pending))
 	metrics.ManagementOutboxOldestPendingSeconds.Set(oldestSeconds)
 
-	if w.svc != nil && w.svc.alerter != nil && pending > 0 {
-		threshold := float64(w.svc.alerter.OutboxStuckThresholdSec())
+	if worker.svc != nil && worker.svc.alerter != nil && pending > 0 {
+		threshold := float64(worker.svc.alerter.OutboxStuckThresholdSec())
 		if oldestSeconds >= threshold {
-			w.svc.alerter.AlertOutboxStuck(pending, oldestSeconds)
+			worker.svc.alerter.AlertOutboxStuck(pending, oldestSeconds)
 		}
 	}
 }
 
-func (w *OutboxWorker) recordOutboxLagFromValues(pending int64, oldestSeconds float64) {
+func (worker *OutboxWorker) recordOutboxLagFromValues(pending int64, oldestSeconds float64) {
 	metrics.ManagementOutboxPendingTotal.Set(float64(pending))
 	metrics.ManagementOutboxOldestPendingSeconds.Set(oldestSeconds)
-	if w.svc != nil && w.svc.alerter != nil && pending > 0 {
-		threshold := float64(w.svc.alerter.OutboxStuckThresholdSec())
+	if worker.svc != nil && worker.svc.alerter != nil && pending > 0 {
+		threshold := float64(worker.svc.alerter.OutboxStuckThresholdSec())
 		if oldestSeconds >= threshold {
-			w.svc.alerter.AlertOutboxStuck(pending, oldestSeconds)
+			worker.svc.alerter.AlertOutboxStuck(pending, oldestSeconds)
 		}
 	}
 }

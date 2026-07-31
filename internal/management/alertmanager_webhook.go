@@ -12,6 +12,7 @@ import (
 	"espx/internal/config"
 	"espx/internal/metrics"
 	notifierpb "espx/internal/notifier/pb"
+	"espx/pkg/branding"
 	"espx/pkg/coldpath"
 )
 
@@ -153,7 +154,7 @@ func FormatAlertmanagerAlert(alert AlertmanagerAlert) (title, body string) {
 		description = "—"
 	}
 
-	title = fmt.Sprintf("BidShard: %s", alertName)
+	title = fmt.Sprintf("%s: %s", branding.ProductName(), alertName)
 	body = fmt.Sprintf(
 		"<b>%s</b>\n\n<b>Alert:</b> %s\n<b>Severity:</b> <code>%s</code>\n<b>Description:</b> %s\n<b>Time:</b> <code>%s</code>",
 		statusText,

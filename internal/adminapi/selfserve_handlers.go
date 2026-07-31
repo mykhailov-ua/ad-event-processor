@@ -27,12 +27,12 @@ type SelfServeHTTPHandlers struct {
 	WriteServiceError          func(http.ResponseWriter, error)
 }
 
-func (h *SelfServeHTTPHandlers) Register(mux *http.ServeMux) {
-	if h == nil {
+func (selfServe *SelfServeHTTPHandlers) Register(mux *http.ServeMux) {
+	if selfServe == nil {
 		return
 	}
-	limit := h.ApplyRateLimit
-	perm := h.RequireSelfServePermission
+	limit := selfServe.ApplyRateLimit
+	perm := selfServe.RequireSelfServePermission
 	if limit == nil {
 		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
 	}
@@ -40,15 +40,15 @@ func (h *SelfServeHTTPHandlers) Register(mux *http.ServeMux) {
 		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 
-	mux.HandleFunc("POST /api/v1/selfserve/campaigns", limit(perm("campaigns:write", h.createCampaign)))
-	mux.HandleFunc("POST /api/v1/selfserve/campaigns/{id}/pause", limit(perm("campaigns:write", h.pauseCampaign)))
-	mux.HandleFunc("POST /api/v1/selfserve/campaigns/{id}/resume", limit(perm("campaigns:write", h.resumeCampaign)))
-	mux.HandleFunc("POST /api/v1/selfserve/payment-intents", limit(perm("customers:read", h.createPaymentIntent)))
-	mux.HandleFunc("GET /api/v1/selfserve/invoices", limit(perm("customers:read", h.listInvoices)))
-	mux.HandleFunc("POST /api/v1/selfserve/api-keys", limit(perm("campaigns:write", h.createAPIKey)))
+	mux.HandleFunc("POST /api/v1/selfserve/campaigns", limit(perm("campaigns:write", selfServe.createCampaign)))
+	mux.HandleFunc("POST /api/v1/selfserve/campaigns/{id}/pause", limit(perm("campaigns:write", selfServe.pauseCampaign)))
+	mux.HandleFunc("POST /api/v1/selfserve/campaigns/{id}/resume", limit(perm("campaigns:write", selfServe.resumeCampaign)))
+	mux.HandleFunc("POST /api/v1/selfserve/payment-intents", limit(perm("customers:read", selfServe.createPaymentIntent)))
+	mux.HandleFunc("GET /api/v1/selfserve/invoices", limit(perm("customers:read", selfServe.listInvoices)))
+	mux.HandleFunc("POST /api/v1/selfserve/api-keys", limit(perm("campaigns:write", selfServe.createAPIKey)))
 }
 
-func (h *SelfServeHTTPHandlers) createCampaign(w http.ResponseWriter, r *http.Request) {
+func (selfServe *SelfServeHTTPHandlers) createCampaign(w http.ResponseWriter, r *http.Request) {
 	body, err := coldpath.ReadLimitedBody(w, r, coldpath.DefaultMaxBody)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "failed to read request body")
@@ -81,9 +81,9 @@ func (h *SelfServeHTTPHandlers) createCampaign(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	customerID, err := h.resolveCustomerID(r, req.CustomerID)
+	customerID, err := selfServe.resolveCustomerID(r, req.CustomerID)
 	if err != nil {
-		h.writeServiceError(w, err)
+		selfServe.writeServiceError(w, err)
 		return
 	}
 
@@ -126,22 +126,22 @@ func (h *SelfServeHTTPHandlers) createCampaign(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	if h.Campaigns == nil {
+	if selfServe.Campaigns == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "campaign service not configured")
 		return
 	}
-	if err := h.Campaigns.EnforceSelfServeCreateLimits(r.Context(), customerID, budgetLimitMicro); err != nil {
-		h.writeServiceError(w, err)
+	if err := selfServe.Campaigns.EnforceSelfServeCreateLimits(r.Context(), customerID, budgetLimitMicro); err != nil {
+		selfServe.writeServiceError(w, err)
 		return
 	}
 
-	hash, err := h.Campaigns.GenerateIdempotencyHash(customerID, append(body, []byte(idempotencyKey)...))
+	hash, err := selfServe.Campaigns.GenerateIdempotencyHash(customerID, append(body, []byte(idempotencyKey)...))
 	if err != nil {
-		h.writeServiceError(w, err, slog.String("customer_id", customerID.String()))
+		selfServe.writeServiceError(w, err, slog.String("customer_id", customerID.String()))
 		return
 	}
 
-	id, err := h.Campaigns.CreateCampaign(r.Context(), CreateCampaignInput{
+	id, err := selfServe.Campaigns.CreateCampaign(r.Context(), CreateCampaignInput{
 		CustomerID:       customerID,
 		BrandID:          req.BrandID,
 		Name:             req.Name,
@@ -158,20 +158,20 @@ func (h *SelfServeHTTPHandlers) createCampaign(w http.ResponseWriter, r *http.Re
 		IdempotencyKey:   hash,
 	})
 	if err != nil {
-		h.writeServiceError(w, err, slog.String("customer_id", customerID.String()))
+		selfServe.writeServiceError(w, err, slog.String("customer_id", customerID.String()))
 		return
 	}
 	httpresponse.JSON(w, http.StatusCreated, map[string]any{"id": id})
 }
 
-func (h *SelfServeHTTPHandlers) pauseCampaign(w http.ResponseWriter, r *http.Request) {
+func (selfServe *SelfServeHTTPHandlers) pauseCampaign(w http.ResponseWriter, r *http.Request) {
 	campaignID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign id")
 		return
 	}
-	if err := h.authorizeCampaign(r, campaignID); err != nil {
-		h.writeServiceError(w, err)
+	if err := selfServe.authorizeCampaign(r, campaignID); err != nil {
+		selfServe.writeServiceError(w, err)
 		return
 	}
 	req, err := coldpath.DecodeRequest[struct {
@@ -180,25 +180,25 @@ func (h *SelfServeHTTPHandlers) pauseCampaign(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		slog.Warn("failed to decode pause campaign request", "error", err)
 	}
-	if h.Campaigns == nil {
+	if selfServe.Campaigns == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "campaign service not configured")
 		return
 	}
-	if err := h.Campaigns.PauseCampaign(r.Context(), campaignID, req.Reason); err != nil {
-		h.writeServiceError(w, err, slog.String("campaign_id", campaignID.String()))
+	if err := selfServe.Campaigns.PauseCampaign(r.Context(), campaignID, req.Reason); err != nil {
+		selfServe.writeServiceError(w, err, slog.String("campaign_id", campaignID.String()))
 		return
 	}
 	w.WriteHeader(http.StatusAccepted)
 }
 
-func (h *SelfServeHTTPHandlers) resumeCampaign(w http.ResponseWriter, r *http.Request) {
+func (selfServe *SelfServeHTTPHandlers) resumeCampaign(w http.ResponseWriter, r *http.Request) {
 	campaignID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign id")
 		return
 	}
-	if err := h.authorizeCampaign(r, campaignID); err != nil {
-		h.writeServiceError(w, err)
+	if err := selfServe.authorizeCampaign(r, campaignID); err != nil {
+		selfServe.writeServiceError(w, err)
 		return
 	}
 	req, err := coldpath.DecodeRequest[struct {
@@ -207,18 +207,18 @@ func (h *SelfServeHTTPHandlers) resumeCampaign(w http.ResponseWriter, r *http.Re
 	if err != nil {
 		slog.Warn("failed to decode resume campaign request", "error", err)
 	}
-	if h.Campaigns == nil {
+	if selfServe.Campaigns == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "campaign service not configured")
 		return
 	}
-	if err := h.Campaigns.ResumeCampaign(r.Context(), campaignID, req.Reason); err != nil {
-		h.writeServiceError(w, err, slog.String("campaign_id", campaignID.String()))
+	if err := selfServe.Campaigns.ResumeCampaign(r.Context(), campaignID, req.Reason); err != nil {
+		selfServe.writeServiceError(w, err, slog.String("campaign_id", campaignID.String()))
 		return
 	}
 	w.WriteHeader(http.StatusAccepted)
 }
 
-func (h *SelfServeHTTPHandlers) createPaymentIntent(w http.ResponseWriter, r *http.Request) {
+func (selfServe *SelfServeHTTPHandlers) createPaymentIntent(w http.ResponseWriter, r *http.Request) {
 	body, err := coldpath.ReadLimitedBody(w, r, 16*1024)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
@@ -245,14 +245,14 @@ func (h *SelfServeHTTPHandlers) createPaymentIntent(w http.ResponseWriter, r *ht
 		return
 	}
 
-	if h.PaymentIntents == nil {
+	if selfServe.PaymentIntents == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "PAYMENT_UNAVAILABLE", "payment service not configured")
 		return
 	}
 
-	customerID, err := h.resolveCustomerID(r, req.CustomerID)
+	customerID, err := selfServe.resolveCustomerID(r, req.CustomerID)
 	if err != nil {
-		h.writeServiceError(w, err)
+		selfServe.writeServiceError(w, err)
 		return
 	}
 
@@ -266,7 +266,7 @@ func (h *SelfServeHTTPHandlers) createPaymentIntent(w http.ResponseWriter, r *ht
 		"source":      "selfserve",
 	}
 
-	resp, err := h.PaymentIntents.CreatePaymentIntent(r.Context(), customerID.String(), req.AmountMicro, currency, idempotencyKey, meta)
+	resp, err := selfServe.PaymentIntents.CreatePaymentIntent(r.Context(), customerID.String(), req.AmountMicro, currency, idempotencyKey, meta)
 	if err != nil {
 		if st, ok := status.FromError(err); ok {
 			switch st.Code() {
@@ -293,8 +293,8 @@ func (h *SelfServeHTTPHandlers) createPaymentIntent(w http.ResponseWriter, r *ht
 	})
 }
 
-func (h *SelfServeHTTPHandlers) listInvoices(w http.ResponseWriter, r *http.Request) {
-	if h.Invoices == nil {
+func (selfServe *SelfServeHTTPHandlers) listInvoices(w http.ResponseWriter, r *http.Request) {
+	if selfServe.Invoices == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "BILLING_UNAVAILABLE", "billing service not configured")
 		return
 	}
@@ -309,9 +309,9 @@ func (h *SelfServeHTTPHandlers) listInvoices(w http.ResponseWriter, r *http.Requ
 		bodyCustomerID = &parsed
 	}
 
-	customerID, err := h.resolveCustomerID(r, bodyCustomerID)
+	customerID, err := selfServe.resolveCustomerID(r, bodyCustomerID)
 	if err != nil {
-		h.writeServiceError(w, err)
+		selfServe.writeServiceError(w, err)
 		return
 	}
 
@@ -331,7 +331,7 @@ func (h *SelfServeHTTPHandlers) listInvoices(w http.ResponseWriter, r *http.Requ
 		limit = 100
 	}
 
-	resp, err := h.Invoices.ListInvoices(r.Context(), customerID.String(), limit, offset)
+	resp, err := selfServe.Invoices.ListInvoices(r.Context(), customerID.String(), limit, offset)
 	if err != nil {
 		WriteBillingGRPCError(w, err)
 		return
@@ -347,8 +347,8 @@ func (h *SelfServeHTTPHandlers) listInvoices(w http.ResponseWriter, r *http.Requ
 	})
 }
 
-func (h *SelfServeHTTPHandlers) createAPIKey(w http.ResponseWriter, r *http.Request) {
-	if h.APIKeys == nil {
+func (selfServe *SelfServeHTTPHandlers) createAPIKey(w http.ResponseWriter, r *http.Request) {
+	if selfServe.APIKeys == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "AUTH_UNAVAILABLE", "auth service not configured")
 		return
 	}
@@ -370,7 +370,7 @@ func (h *SelfServeHTTPHandlers) createAPIKey(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	resp, err := h.APIKeys.CreateAPIKey(r.Context(), cookie.Value, req.Name)
+	resp, err := selfServe.APIKeys.CreateAPIKey(r.Context(), cookie.Value, req.Name)
 	if err != nil {
 		if st, ok := status.FromError(err); ok {
 			switch st.Code() {
@@ -397,23 +397,23 @@ func (h *SelfServeHTTPHandlers) createAPIKey(w http.ResponseWriter, r *http.Requ
 	httpresponse.JSON(w, http.StatusCreated, out)
 }
 
-func (h *SelfServeHTTPHandlers) resolveCustomerID(r *http.Request, bodyCustomerID *uuid.UUID) (uuid.UUID, error) {
-	if h.ResolveSelfServeCustomerID == nil {
+func (selfServe *SelfServeHTTPHandlers) resolveCustomerID(r *http.Request, bodyCustomerID *uuid.UUID) (uuid.UUID, error) {
+	if selfServe.ResolveSelfServeCustomerID == nil {
 		return uuid.Nil, ErrForbidden
 	}
-	return h.ResolveSelfServeCustomerID(r, bodyCustomerID)
+	return selfServe.ResolveSelfServeCustomerID(r, bodyCustomerID)
 }
 
-func (h *SelfServeHTTPHandlers) authorizeCampaign(r *http.Request, campaignID uuid.UUID) error {
-	if h.AuthorizeCampaignAccess == nil {
+func (selfServe *SelfServeHTTPHandlers) authorizeCampaign(r *http.Request, campaignID uuid.UUID) error {
+	if selfServe.AuthorizeCampaignAccess == nil {
 		return ErrForbidden
 	}
-	return h.AuthorizeCampaignAccess(r, campaignID)
+	return selfServe.AuthorizeCampaignAccess(r, campaignID)
 }
 
-func (h *SelfServeHTTPHandlers) writeServiceError(w http.ResponseWriter, err error, logAttrs ...any) {
-	if h.WriteServiceError != nil {
-		h.WriteServiceError(w, err)
+func (selfServe *SelfServeHTTPHandlers) writeServiceError(w http.ResponseWriter, err error, logAttrs ...any) {
+	if selfServe.WriteServiceError != nil {
+		selfServe.WriteServiceError(w, err)
 		return
 	}
 	_ = logAttrs

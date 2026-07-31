@@ -1,0 +1,29 @@
+{
+  "id": "zero_budget",
+  "feature_names": [
+    "events",
+    "clicks",
+    "ctr",
+    "spend_norm",
+    "spend_ratio",
+    "unique_users",
+    "unique_uas"
+  ],
+  "row": {
+    "events": 50,
+    "clicks": 5,
+    "spend_micro": 2000000,
+    "budget_limit_micro": 0,
+    "unique_users": 3,
+    "unique_uas": 2
+  },
+  "vector": [
+    50.0,
+    5.0,
+    0.1,
+    2.0,
+    0.0,
+    3.0,
+    2.0
+  ]
+}

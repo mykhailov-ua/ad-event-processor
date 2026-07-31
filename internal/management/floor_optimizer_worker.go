@@ -49,7 +49,7 @@ func (w *FloorOptimizerWorker) Start(ctx context.Context) {
 func (w *FloorOptimizerWorker) tick(ctx context.Context) {
 	n, err := w.svc.RunFloorOptimizer(ctx)
 	if err != nil {
-		slog.Error("floor optimizer tick failed", "error", err)
+		slog.Error("floor optimizer tick failed", "err", err)
 		return
 	}
 	slog.Info("floor optimizer tick complete", "placements", n)

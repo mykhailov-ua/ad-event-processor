@@ -7,7 +7,6 @@ import (
 	db "espx/internal/ingestion/sqlc"
 	"espx/pkg/coldpath"
 	"fmt"
-	"log/slog"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -47,7 +46,7 @@ func (s *Service) ProcessPrivacyErasureTick(ctx context.Context) error {
 	}
 	for _, row := range rows {
 		if err := s.advanceErasurePG(opCtx, row); err != nil {
-			slog.Error("erasure PG step failed", "request_id", uuid.UUID(row.ID.Bytes), "error", err)
+			_ = s.failErasure(opCtx, row.ID, err)
 		}
 	}
 
@@ -60,7 +59,7 @@ func (s *Service) ProcessPrivacyErasureTick(ctx context.Context) error {
 	}
 	for _, row := range rows {
 		if err := s.enqueueErasureRedisPurge(opCtx, row); err != nil {
-			slog.Error("erasure redis enqueue failed", "request_id", uuid.UUID(row.ID.Bytes), "error", err)
+			_ = s.failErasure(opCtx, row.ID, err)
 		}
 	}
 
@@ -73,7 +72,7 @@ func (s *Service) ProcessPrivacyErasureTick(ctx context.Context) error {
 	}
 	for _, row := range rows {
 		if err := s.advanceErasureCH(opCtx, row); err != nil {
-			slog.Error("erasure CH step failed", "request_id", uuid.UUID(row.ID.Bytes), "error", err)
+			_ = s.failErasure(opCtx, row.ID, err)
 		}
 	}
 	return nil

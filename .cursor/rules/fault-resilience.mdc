@@ -201,7 +201,7 @@ Hypothesis: CH gate backpressure; mmap spool absorbs; no unbounded memory; lag d
 
 Multi-region (M7)
 
-Catalog: `docs/MULTI_REGION.md` §13. Minimum proofs: `RESILIENCE_MIN_PROOFS_MR=12`.
+Catalog: `.cursor/MULTI_REGION.md` section 13. Minimum proofs: `RESILIENCE_MIN_PROOFS_MR=12`.
 
 CH-MR-01 (New node during `NODE_WARMUP_SEC`): weight capped; `provenance=neighbor_median`
 CH-MR-02 (Scrape blackhole 3 epochs): no drain without hard signal; neighbor fallback

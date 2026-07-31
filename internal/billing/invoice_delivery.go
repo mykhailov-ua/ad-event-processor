@@ -7,6 +7,7 @@ import (
 
 	"espx/internal/billing/pb"
 	notifierpb "espx/internal/notifier/pb"
+	"espx/pkg/branding"
 )
 
 type InvoiceDeliverer interface {
@@ -86,7 +87,7 @@ func (a *NotifierDriftAlerter) AlertLedgerDrift(ctx context.Context, customerID 
 	if a == nil || a.deliverer == nil || driftErr == nil {
 		return
 	}
-	title := "BidShard: billing ledger drift"
+	title := branding.AlertTitle("billing ledger drift")
 	body := fmt.Sprintf("<b>Ledger invariant failed</b>\nCustomer: %s\nError: %v", customerID, driftErr)
 	_, err := a.deliverer.client.SendNotification(ctx, &notifierpb.SendNotificationRequest{
 		Provider:  a.deliverer.provider,

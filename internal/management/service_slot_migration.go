@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 
 	"espx/internal/ingestion"
 	db "espx/internal/ingestion/sqlc"
@@ -192,8 +191,7 @@ func (s *Service) CopyAllMigratingSlots(ctx context.Context, draftVersion int32)
 	}
 	for _, row := range migrating {
 		if err := s.CopySlotMigrationData(ctx, draftVersion, row.Slot); err != nil {
-			slog.Error("slot migration copy failed", "version", draftVersion, "slot", row.Slot, "error", err)
-			return err
+			return fmt.Errorf("slot migration copy version=%d slot=%d: %w", draftVersion, row.Slot, err)
 		}
 	}
 	return nil
@@ -441,8 +439,6 @@ func (s *Service) CatchUpDualWriteSlots(ctx context.Context, draftVersion int32)
 			}
 			_ = ingestion.DisableSlotMigrationDualWrite(ctx, src)
 			metrics.SlotMigrationCutoverBlockedTotal.WithLabelValues("lag_threshold").Inc()
-			slog.Warn("slot migration dual-write lag exceeded threshold; fence fallback",
-				"version", job.Version, "slot", job.Slot, "lag", lag, "threshold", cfg.LagThreshold)
 		}
 	}
 	return nil

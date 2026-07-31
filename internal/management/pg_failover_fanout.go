@@ -36,4 +36,3 @@ func (reader *pgFailoverShardReader) activeDSN(ctx context.Context) (string, uin
 	}
 	return "", 0, nil
 }
-

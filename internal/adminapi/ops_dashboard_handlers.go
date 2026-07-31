@@ -7,32 +7,32 @@ import (
 	"espx/pkg/httpresponse"
 )
 
-func (h *OpsHTTPHandlers) registerDashboardRoutes(mux *http.ServeMux) {
-	if h == nil || h.OpsReader == nil {
+func (ops *OpsHTTPHandlers) registerDashboardRoutes(mux *http.ServeMux) {
+	if ops == nil || ops.OpsReader == nil {
 		return
 	}
-	limit := h.ApplyRateLimit
-	perm := h.RequirePermission
+	limit := ops.ApplyRateLimit
+	perm := ops.RequirePermission
 	if limit == nil {
 		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 	if perm == nil {
 		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
-	mux.HandleFunc("GET /api/v1/ops/dashboard/summary", limit(perm("shards:read", h.getDashboardSummary)))
-	mux.HandleFunc("GET /api/v1/ops/dashboard/metrics", limit(perm("shards:read", h.getDashboardMetrics)))
+	mux.HandleFunc("GET /api/v1/ops/dashboard/summary", limit(perm("shards:read", ops.getDashboardSummary)))
+	mux.HandleFunc("GET /api/v1/ops/dashboard/metrics", limit(perm("shards:read", ops.getDashboardMetrics)))
 }
 
-func (h *OpsHTTPHandlers) getDashboardSummary(w http.ResponseWriter, r *http.Request) {
-	summary, err := h.OpsReader.GetDashboardSummary(r.Context())
+func (ops *OpsHTTPHandlers) getDashboardSummary(w http.ResponseWriter, r *http.Request) {
+	summary, err := ops.OpsReader.GetDashboardSummary(r.Context())
 	if err != nil {
-		h.writeServiceError(w, err)
+		ops.writeServiceError(w, err)
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, summary)
 }
 
-func (h *OpsHTTPHandlers) getDashboardMetrics(w http.ResponseWriter, r *http.Request) {
+func (ops *OpsHTTPHandlers) getDashboardMetrics(w http.ResponseWriter, r *http.Request) {
 	rangeHours := 24
 	if raw := r.URL.Query().Get("range"); raw != "" {
 		if len(raw) >= 2 && raw[len(raw)-1] == 'h' {
@@ -42,9 +42,9 @@ func (h *OpsHTTPHandlers) getDashboardMetrics(w http.ResponseWriter, r *http.Req
 		}
 	}
 	metricName := r.URL.Query().Get("name")
-	metrics, err := h.OpsReader.GetDashboardMetrics(r.Context(), rangeHours, metricName)
+	metrics, err := ops.OpsReader.GetDashboardMetrics(r.Context(), rangeHours, metricName)
 	if err != nil {
-		h.writeServiceError(w, err)
+		ops.writeServiceError(w, err)
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, metrics)

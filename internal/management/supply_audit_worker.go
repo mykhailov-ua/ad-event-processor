@@ -43,7 +43,7 @@ func (w *SupplyAuditWorker) tick(ctx context.Context) {
 		if database.IsShutdownError(err) {
 			return
 		}
-		slog.Error("supply audit failed", "error", err)
+		slog.Error("supply audit failed", "err", err)
 		return
 	}
 	if report.Issues > 0 {

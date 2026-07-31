@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"go/parser"
 	"go/token"
@@ -12,17 +13,20 @@ import (
 )
 
 var (
-	bannedWord       = regexp.MustCompile(`(?i)\b(simple|elegant|clean|obviously|just|simply|nice|obvious|trivial|minimal|leverage|delve|seamless|seamlessly|moreover|furthermore|additionally|holistic|navigate|testament|harness|effortlessly|notably|essentially|basically)\b`)
-	unicodeDash      = regexp.MustCompile(`[—–]`)
-	gapID            = regexp.MustCompile(`(?i)\bGAP-[A-Z]+-\d+\b`)
-	priorityLabel    = regexp.MustCompile(`\bP\d{2}\b`)
-	milestoneTag     = regexp.MustCompile(`\bM\d+([-.][0-9A-Za-z]+)?\b`)
-	milestoneWord    = regexp.MustCompile(`(?i)\bmilestone\b`)
-	bannedChaosWord  = regexp.MustCompile(`(?i)\bchaos\b`)
+	bannedWord      = regexp.MustCompile(`(?i)\b(simple|elegant|clean|obviously|just|simply|nice|obvious|trivial|minimal|leverage|delve|seamless|seamlessly|moreover|furthermore|additionally|holistic|navigate|testament|harness|effortlessly|notably|essentially|basically)\b`)
+	unicodeDash     = regexp.MustCompile(`[—–]`)
+	gapID           = regexp.MustCompile(`(?i)\bGAP-[A-Z]+-\d+\b`)
+	priorityLabel   = regexp.MustCompile(`\bP\d{2}\b`)
+	milestoneTag    = regexp.MustCompile(`\bM\d+([-.][0-9A-Za-z]+)?\b`)
+	milestoneWord   = regexp.MustCompile(`(?i)\bmilestone\b`)
+	bannedChaosWord = regexp.MustCompile(`(?i)\bchaos\b`)
 	strictNoComments = os.Getenv("STRICT_NO_COMMENTS") == "1"
+	skipPrefixes    []string
 )
 
 func main() {
+	skipPrefixes = loadSkipPrefixes(os.Getenv("CHECK_COMMENTS_SKIP_PREFIXES"))
+
 	roots := []string{"internal", "pkg", "cmd", "tests", "scripts"}
 	var failed bool
 
@@ -35,21 +39,26 @@ func main() {
 				return err
 			}
 			if d.IsDir() {
-				base := filepath.Base(path)
-				if base == "db" || base == "sqlc" {
+				if shouldSkipDir(path) {
 					return filepath.SkipDir
 				}
 				return nil
 			}
-			if !strings.HasSuffix(path, ".go") {
+			if strings.HasSuffix(path, ".go") {
+				if skipGeneratedGo(path) {
+					return nil
+				}
+				for _, v := range scanGoFile(path) {
+					failed = true
+					fmt.Fprintf(os.Stderr, "%s:%d: %s\n", path, v.line, v.msg)
+				}
 				return nil
 			}
-			if skipGeneratedGo(path) {
-				return nil
-			}
-			for _, v := range scanFile(path) {
-				failed = true
-				fmt.Fprintf(os.Stderr, "%s:%d: %s\n", path, v.line, v.msg)
+			if isHandwrittenQuerySQL(path) {
+				for _, v := range scanSQLFile(path) {
+					failed = true
+					fmt.Fprintf(os.Stderr, "%s:%d: %s\n", path, v.line, v.msg)
+				}
 			}
 			return nil
 		})
@@ -66,7 +75,52 @@ type violation struct {
 	msg  string
 }
 
-func scanFile(path string) []violation {
+func loadSkipPrefixes(raw string) []string {
+	if raw == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ":")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(strings.TrimSuffix(p, "/"))
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+func shouldSkipDir(path string) bool {
+	base := filepath.Base(path)
+	if base == "db" || base == "sqlc" {
+		return true
+	}
+	return hasSkipPrefix(path)
+}
+
+func hasSkipPrefix(path string) bool {
+	clean := filepath.ToSlash(path)
+	for _, prefix := range skipPrefixes {
+		p := filepath.ToSlash(prefix)
+		if clean == p || strings.HasPrefix(clean, p+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+func isHandwrittenQuerySQL(path string) bool {
+	if !strings.HasSuffix(path, ".sql") {
+		return false
+	}
+	clean := filepath.ToSlash(path)
+	if !strings.Contains(clean, "/queries/") {
+		return false
+	}
+	return !hasSkipPrefix(path)
+}
+
+func scanGoFile(path string) []violation {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
 	if err != nil {
@@ -91,6 +145,47 @@ func scanFile(path string) []violation {
 		}
 	}
 	return out
+}
+
+func scanSQLFile(path string) []violation {
+	f, err := os.Open(path)
+	if err != nil {
+		return []violation{{line: 1, msg: "read error: " + err.Error()}}
+	}
+	defer f.Close()
+
+	var out []violation
+	sc := bufio.NewScanner(f)
+	lineNo := 0
+	for sc.Scan() {
+		lineNo++
+		text := sqlCommentBody(sc.Text())
+		if text == "" {
+			continue
+		}
+		if v := checkCommentText(text); v != "" {
+			out = append(out, violation{line: lineNo, msg: v})
+		}
+	}
+	if err := sc.Err(); err != nil {
+		return []violation{{line: 1, msg: "read error: " + err.Error()}}
+	}
+	return out
+}
+
+func sqlCommentBody(line string) string {
+	idx := strings.Index(line, "--")
+	if idx < 0 {
+		return ""
+	}
+	text := strings.TrimSpace(line[idx+2:])
+	if text == "" {
+		return ""
+	}
+	if strings.HasPrefix(text, "name:") {
+		return ""
+	}
+	return text
 }
 
 func commentBody(raw string) string {

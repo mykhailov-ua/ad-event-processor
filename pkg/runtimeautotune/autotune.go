@@ -11,7 +11,6 @@ import (
 	"espx/internal/config"
 )
 
-// Apply sets process limits from host capacity when operators did not configure them.
 func Apply(cfg *config.Config) {
 	if _, ok := os.LookupEnv("GOMEMLIMIT"); !ok {
 		if mem, err := systemMemoryBytes(); err == nil && mem > 0 {

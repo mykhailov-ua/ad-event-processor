@@ -8,15 +8,17 @@ jobs:
   lint:
     name: Lint and comment style
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25.12'
           cache: true
-      - name: Comment style (R9.1)
-        run: bash scripts/ci/comments.sh
+      - name: Tier A hygiene gates
+        run: bash scripts/ci/tier_a.sh
+      - name: Comment style (R9.1, P38)
+        run: STRICT_NO_COMMENTS=1 bash scripts/ci/comments.sh
       - name: No chaos terminology in diff
         run: bash scripts/ci/check_no_chaos_refs.sh
       - name: OpenAPI contract (GAP-PROD-03)

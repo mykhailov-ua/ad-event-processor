@@ -143,17 +143,3 @@ func seedJitteredClicks(t *testing.T, conn driver.Conn, ip, userAgent string, de
 		ts = ts.Add(delta)
 	}
 }
-
-func seedClickHouseClickWithTLS(t *testing.T, conn driver.Conn, ip, userAgent, tlsHash string) {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	h := testPIIHasher()
-	require.NoError(t, conn.Exec(ctx, `
-		INSERT INTO ad_event_processor.clicks
-		(click_id, campaign_id, ip_hash, ua_hash, pii_salt_version, tls_hash, payload, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, '', ?)`,
-		"tls-"+ip, uuid.New(), piihash.FixedString16(h.HashIP(ip)), piihash.FixedString16(h.HashUA(userAgent)), h.Version(), tlsHash, time.Now().UTC(),
-	))
-}

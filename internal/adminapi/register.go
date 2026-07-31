@@ -16,9 +16,11 @@ type RouteRegistry struct {
 	MarginGuardHTTP *MarginGuardHTTPHandlers
 	RtbFloorsHTTP   *RtbFloorsHTTPHandlers
 	CampaignsHTTP   *CampaignsHTTPHandlers
+	SupportHTTP     *SupportHTTPHandlers
+	MetaHTTP        *MetaHTTPHandlers
+	StubHTTP        *StubHTTPHandlers
 }
 
-// Catalog returns the canonical /api/v1 route list owned by adminapi (for OpenAPI discovery).
 func Catalog() []Route {
 	return append([]Route(nil), routeCatalog...)
 }
@@ -79,6 +81,7 @@ var routeCatalog = []Route{
 	{Method: "GET", Path: "/api/v1/disputes"},
 	{Method: "POST", Path: "/api/v1/forecast/campaign"},
 	{Method: "GET", Path: "/api/v1/license/status"},
+	{Method: "GET", Path: "/api/v1/meta"},
 	{Method: "GET", Path: "/api/v1/margin-guard/activity"},
 	{Method: "GET", Path: "/api/v1/margin-guard/policies"},
 	{Method: "POST", Path: "/api/v1/margin-guard/policies"},
@@ -126,6 +129,8 @@ var routeCatalog = []Route{
 	{Method: "GET", Path: "/api/v1/selfserve/invoices"},
 	{Method: "POST", Path: "/api/v1/selfserve/payment-intents"},
 	{Method: "GET", Path: "/api/v1/selfserve/usage"},
+	{Method: "GET", Path: "/api/v1/support/feedback/meta"},
+	{Method: "POST", Path: "/api/v1/support/feedback"},
 	{Method: "GET", Path: "/api/v1/views"},
 	{Method: "POST", Path: "/api/v1/views"},
 	{Method: "GET", Path: "/api/v1/views/{id}"},
@@ -172,5 +177,14 @@ func RegisterRoutes(mux *http.ServeMux, routes RouteRegistry) {
 	}
 	if routes.CampaignsHTTP != nil {
 		routes.CampaignsHTTP.Register(mux)
+	}
+	if routes.SupportHTTP != nil {
+		routes.SupportHTTP.Register(mux)
+	}
+	if routes.MetaHTTP != nil {
+		routes.MetaHTTP.Register(mux)
+	}
+	if routes.StubHTTP != nil {
+		routes.StubHTTP.Register(mux)
 	}
 }

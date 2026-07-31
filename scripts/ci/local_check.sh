@@ -5,6 +5,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
 bash "$SCRIPTS/ci/validate_configs.sh"
+bash "$SCRIPTS/ci/tier_a.sh"
 bash "$SCRIPTS/ci/check_scripts_layout.sh"
 bash "$SCRIPTS/ci/check_no_chaos_refs.sh"
 bash "$SCRIPTS/ci/comments.sh"

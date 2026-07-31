@@ -36,7 +36,7 @@ C. Network tarpitting (in-line slow response)
 
 Action: Delay HTTP response to suspected bots (e.g. hold connection 5-10s) within HTTP semantics; resource pacing on your server.
 Legal: Server may allocate its own CPU/socket budget; not an attack on client infrastructure.
-eSPX status: **Active** at nginx edge when `EDGE_TARPIT_ENABLED=true`. Capped `EDGE_TARPIT_MAX_SEC` (hard max 15s); metrics `espx_edge_tarpit_*` via `edge-metrics.lua`; never on billing/settlement paths. Matrix: `docs/COMPLIANCE_MATRIX.md` (CMP-DEF-03).
+eSPX status: **Active** at nginx edge when `EDGE_TARPIT_ENABLED=true`. Capped `EDGE_TARPIT_MAX_SEC` (hard max 15s); metrics `espx_edge_tarpit_*` via `edge-metrics.lua`; never on billing/settlement paths. Matrix: `.cursor/COMPLIANCE_MATRIX.md` (CMP-DEF-03).
 
 2. Offensive measures (forbidden)
 
@@ -98,7 +98,7 @@ A XDP drop: `edge_filter.c`, `cmd/edge-xdp`, `cmd/edge-bpf-sync`, `allowlist.IsP
 B TLS/JA3 class: `DeviceFilter`, nginx TLS hash header, `TLSImpersonationWorker` — Active
 C Tarpit: `deploy/nginx/lua/edge-tarpit.lua`, `edge-metrics.lua` — Active (opt-in)
 Audit: `admin_audit_log`, `edge_block_audit` — Active
-Matrix: `docs/COMPLIANCE_MATRIX.md` — Active
+Matrix: `.cursor/COMPLIANCE_MATRIX.md` — Active
 
 Library: `https://github.com/cilium/ebpf` - official map API only; no raw kernel memory.
 
@@ -111,7 +111,7 @@ Library: `https://github.com/cilium/ebpf` - official map API only; no raw kernel
 - [ ] Block path calls `allowlist.IsProtected` before persist/BPF sync.
 - [ ] No `cilium/ebpf` import in `management` / `tracker`.
 - [ ] `scripts/ci/compliance.sh` green.
-- [ ] Update `docs/COMPLIANCE_MATRIX.md` if compliance surface changes.
+- [ ] Update `.cursor/COMPLIANCE_MATRIX.md` if compliance surface changes.
 
 7. Operator statement
 
@@ -129,7 +129,7 @@ Air-gap: Failed POST -> log + drop; no impact on `/track`
 
 Allowed telemetry: aggregated `MemStats`, gnet p50/p99, Redis Lua duration, CH batch/lag, XDP drop ratios. Banned: anything identifying end users or customer business.
 
-Spec: `docs/MILESTONE.md` GAP-ENG-03.
+Spec: `.cursor/BACKLOG.md` (GAP-ENG-03).
 
 9. PII in ClickHouse (rolling hash)
 

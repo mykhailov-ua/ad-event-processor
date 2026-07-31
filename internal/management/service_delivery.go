@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"time"
 
 	"espx/internal/ingestion"
@@ -682,7 +681,7 @@ func (s *Service) processNextScheduledCampaign(ctx context.Context) (done bool, 
 		opErr = s.PauseCampaign(ctx, campID, "schedule_auto_pause")
 	}
 	if opErr != nil {
-		slog.Warn("schedule tick skipped campaign", "campaign_id", campID, "error", opErr)
+		return false, nil
 	}
 	return false, nil
 }

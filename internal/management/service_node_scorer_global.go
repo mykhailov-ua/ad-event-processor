@@ -3,7 +3,6 @@ package management
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -30,35 +29,6 @@ func NewGlobalRegionTrafficScorer(svc *Service) *GlobalRegionTrafficScorer {
 		svc:  svc,
 		pool: svc.GetPool(),
 		cfg:  cfg,
-	}
-}
-
-func (g *GlobalRegionTrafficScorer) Start(ctx context.Context) {
-	if g == nil || g.pool == nil {
-		return
-	}
-	if g.svc == nil || g.svc.cfg == nil || !g.svc.cfg.MultiRegionGlobal() {
-		return
-	}
-	interval := 10 * time.Second
-	if g.svc.cfg.UDPSyncIntervalMs > 0 {
-		interval = time.Duration(g.svc.cfg.UDPSyncIntervalMs) * time.Millisecond
-	}
-	slog.Info("global region traffic scorer starting", "interval", interval)
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-	if err := g.Tick(ctx, time.Now().UTC()); err != nil {
-		slog.Error("global region traffic scorer tick failed", "error", err)
-	}
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			if err := g.Tick(ctx, time.Now().UTC()); err != nil {
-				slog.Error("global region traffic scorer tick failed", "error", err)
-			}
-		}
 	}
 }
 

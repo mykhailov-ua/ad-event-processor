@@ -1,9 +1,10 @@
 package licensing
 
 import (
-	"os"
 	"strconv"
 	"time"
+
+	"espx/internal/config"
 )
 
 type HeartbeatPolicy struct {
@@ -16,12 +17,12 @@ func LoadHeartbeatPolicyFromEnv() HeartbeatPolicy {
 		OfflineGraceDays: 14,
 		RenewBeforeDays:  7,
 	}
-	if v := os.Getenv("ESPX_LICENSE_OFFLINE_GRACE_DAYS"); v != "" {
+	if v := config.LicenseEnv("OFFLINE_GRACE_DAYS"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			p.OfflineGraceDays = n
 		}
 	}
-	if v := os.Getenv("ESPX_LICENSE_RENEW_BEFORE_DAYS"); v != "" {
+	if v := config.LicenseEnv("RENEW_BEFORE_DAYS"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			p.RenewBeforeDays = n
 		}

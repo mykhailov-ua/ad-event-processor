@@ -16,17 +16,3 @@ func registerAdminGoneRoutes(mux *http.ServeMux) {
 	}
 }
 
-func registerRootHandler(mux *http.ServeMux) {
-	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" {
-			http.NotFound(w, r)
-			return
-		}
-		httpresponse.JSON(w, http.StatusNotFound, map[string]any{
-			"error": map[string]string{
-				"code":    "NOT_FOUND",
-				"message": "no UI at /; use JSON /api/v1 or bundle the admin SPA (see docs/SELF_HOSTED.md#ui-no-server-side-htmx)",
-			},
-		})
-	})
-}

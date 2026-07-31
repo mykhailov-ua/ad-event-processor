@@ -23,7 +23,7 @@ Unified policy for **vendor IP protection**, **operator data protection**, and *
 ```text
 ┌─────────────────────┐   ┌─────────────────────┐   ┌─────────────────────┐
 │ A. Vendor IP        │   │ B. Operator data    │   │ C. Mutual trust     │
-│ License, binary,    │   │ Events, ledger,     │   │ No связки leak;     │
+│ License, binary,    │   │ Events, ledger,     │   │ No traffic-bundle leak;     │
 │ models, updates     │   │ keys on their disk  │   │ auditable egress    │
 └─────────────────────┘   └─────────────────────┘   └─────────────────────┘
      LICENSE_COMMERCE          DATA_SECURITY           TELEMETRY_AND_TRUST
@@ -41,7 +41,7 @@ Optimizing only (A) increases operator fear. Optimizing only (B) without (A) inv
 | Stolen disk / backup | Operator | LUKS, encrypted backups, PG retention |
 | Network sniffing | Operator | TLS edge + internal TLS (`sslmode=verify-full`) |
 | Insider abuse | Operator | RBAC, `admin_audit_log`, least privilege |
-| Vendor steals связки | Operator | Separate egress schemas; telemetry **opt-in off** by default; allowlist |
+| Vendor steals traffic bundles | Operator | Separate egress schemas; telemetry **opt-in off** by default; allowlist |
 | Competitor copies traffic intel | Operator | Threat intel: hashes only, no raw events in channel 3 |
 | CH analytics dump | Operator | `pkg/piihash` — no raw IP/UA in CH (GAP-DATA-01) |
 | PG events dump | Operator | Plaintext IP/UA today; encrypted disk + retention (GAP-DATA-02) |
@@ -131,7 +131,7 @@ The vendor **does not host** operator traffic. Protection on customer metal is *
 
 ---
 
-## 5. Mutual trust — protecting against связки leak
+## 5. Mutual trust — protecting against traffic-bundle leaks
 
 Operators fear that a **closed binary** exfiltrates campaigns, domains, or sources. Technical response:
 
@@ -174,7 +174,7 @@ Without operator traffic on vendor servers, **fleet-wide ML** requires opt-in ch
 | Hashed signal classes (not raw clicks) | `ml:score:boost` model packs via outbox |
 | No campaigns or URLs | Anomaly bulletins (aggregated) |
 
-**Sales line:** immunization for the tracker, not surveillance of связки.
+**Sales line:** immunization for the tracker, not surveillance of traffic bundles.
 
 Participation is **not** required for base monthly license.
 
@@ -247,7 +247,7 @@ Full operator steps: [runbooks/DATA_SECURITY.md § Incident response](./runbooks
 
 ## 11. Engineering backlog (protection-related)
 
-Full specs: [.cursor/GAP_SPECS.md](../.cursor/GAP_SPECS.md).
+Acceptance criteria: `.cursor/GAP_SPECS.md`.
 
 | ID | Topic |
 | :---: | :--- |
@@ -272,7 +272,7 @@ No. CH analytics uses hashed PII; PG events store IP/UA in plaintext today. Disk
 Only if the operator opts into channel 2. Marketing aggregates use opted-in installs only.
 
 **Is closed source safe for us?**  
-Safe for data on disk if operator follows DATA_SECURITY. Safe from vendor связки leak if telemetry is off and egress is audited.
+Safe for data on disk if operator follows DATA_SECURITY. Safe from vendor traffic-bundle leak if telemetry is off and egress is audited.
 
 **Why monthly license if we run on our hardware?**  
 Payment for software **features, updates, and support** — not for hosting or metering your traffic.

@@ -41,12 +41,12 @@ if grep -rnEi "dial.*visitor_ip|http.*Get.*visitor_ip|dial.*blocked_ip" ./intern
 fi
 echo "CMP-DEF-04: OK"
 
-echo "Checking M10-C3: no fingerprint-only XDP_DROP..."
+echo "Checking CMP-XDP-03: no fingerprint-only XDP_DROP..."
 if grep -E 'if.*tcp_hash.*XDP_DROP|fingerprint_block' deploy/edge/xdp/bpf/edge_filter.c 2>/dev/null; then
-    echo "COMPLIANCE FAILURE: fingerprint may gate XDP_DROP (M10-C3)"
+    echo "COMPLIANCE FAILURE: fingerprint may gate XDP_DROP (CMP-XDP-03)"
     exit 1
 fi
-echo "M10-C3: OK"
+echo "CMP-XDP-03: OK"
 
 echo "Checking static_slot_only (no SelectAndShard in prod): no SelectAndShard outside jumphash-tagged sources..."
 if rg 'SelectAndShard' --glob '*.go' --glob '!*_test.go' --glob '!*jumphash*' . 2>/dev/null; then
@@ -56,8 +56,8 @@ fi
 echo "static_slot_only: OK"
 
 echo "Checking GAP-CMP-01: COMPLIANCE_MATRIX.md..."
-if [[ ! -f docs/COMPLIANCE_MATRIX.md ]]; then
-    echo "COMPLIANCE FAILURE: docs/COMPLIANCE_MATRIX.md missing"
+if [[ ! -f .cursor/COMPLIANCE_MATRIX.md ]]; then
+    echo "COMPLIANCE FAILURE: .cursor/COMPLIANCE_MATRIX.md missing"
     exit 1
 fi
 echo "GAP-CMP-01 matrix: OK"

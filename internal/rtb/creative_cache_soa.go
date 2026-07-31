@@ -12,26 +12,6 @@ type creativeCacheSoA struct {
 	VASTWire    [][]byte
 }
 
-func (soa *creativeCacheSoA) len() int {
-	if soa == nil {
-		return 0
-	}
-	return len(soa.CreativeIDs)
-}
-
-func (soa *creativeCacheSoA) slicesValid(end int) bool {
-	if soa == nil || end < 0 || end > len(soa.CreativeIDs) {
-		return false
-	}
-	return end <= len(soa.CampaignIdx) &&
-		end <= len(soa.Bids) &&
-		end <= len(soa.CTRPPM) &&
-		end <= len(soa.Weights) &&
-		end <= len(soa.MediaTypes) &&
-		end <= len(soa.DurationSec) &&
-		end <= len(soa.VASTWire)
-}
-
 func resetCreativeCacheSoA(soa *creativeCacheSoA) {
 	if soa == nil {
 		return

@@ -37,12 +37,12 @@ type BillingHTTPHandlers struct {
 	ResolveDisputeCustomerFilter func(*http.Request) (string, error)
 }
 
-func (h *BillingHTTPHandlers) Register(mux *http.ServeMux) {
-	if h == nil {
+func (billHandlers *BillingHTTPHandlers) Register(mux *http.ServeMux) {
+	if billHandlers == nil {
 		return
 	}
-	limit := h.ApplyRateLimit
-	perm := h.RequirePermission
+	limit := billHandlers.ApplyRateLimit
+	perm := billHandlers.RequirePermission
 	if limit == nil {
 		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
 	}
@@ -50,65 +50,65 @@ func (h *BillingHTTPHandlers) Register(mux *http.ServeMux) {
 		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 
-	mux.HandleFunc("GET /api/v1/billing/invoices", limit(perm("customers:read", h.listInvoices)))
-	mux.HandleFunc("GET /api/v1/billing/invoices/{id}", limit(perm("customers:read", h.getInvoice)))
-	mux.HandleFunc("GET /api/v1/billing/invoices/{id}/pdf", limit(perm("customers:read", h.getInvoicePDF)))
-	mux.HandleFunc("GET /api/v1/customers/{id}/billing/statement", limit(perm("customers:read", h.getStatement)))
-	mux.HandleFunc("GET /api/v1/billing/invoices/{id}/ledger-lines", limit(perm("customers:read", h.getLedgerLines)))
-	mux.HandleFunc("POST /api/v1/billing/invoices/preview", limit(perm("customers:read", h.previewInvoice)))
-	mux.HandleFunc("GET /api/v1/customers/{id}/wallet", limit(perm("customers:read", h.getWallet)))
-	mux.HandleFunc("GET /api/v1/billing/invoices/{id}/deliveries", limit(perm("customers:read", h.listDeliveries)))
-	mux.HandleFunc("POST /api/v1/billing/invoices/{id}/deliveries/retry", limit(perm("customers:write", h.retryDelivery)))
-	mux.HandleFunc("GET /api/v1/billing/invariant", limit(perm("customers:read", h.getInvariant)))
-	mux.HandleFunc("GET /api/v1/billing/summary", limit(perm("shards:read", h.getSummary)))
-	mux.HandleFunc("GET /api/v1/customers/{id}/tax-profile", limit(perm("customers:read", h.getTaxProfile)))
-	mux.HandleFunc("PUT /api/v1/customers/{id}/tax-profile", limit(perm("customers:write", h.putTaxProfile)))
-	mux.HandleFunc("POST /api/v1/billing/invoices/{id}/void", limit(perm("customers:write", h.voidInvoice)))
-	mux.HandleFunc("GET /api/v1/customers/{id}/billing/forecast", limit(perm("customers:read", h.getForecast)))
+	mux.HandleFunc("GET /api/v1/billing/invoices", limit(perm("customers:read", billHandlers.listInvoices)))
+	mux.HandleFunc("GET /api/v1/billing/invoices/{id}", limit(perm("customers:read", billHandlers.getInvoice)))
+	mux.HandleFunc("GET /api/v1/billing/invoices/{id}/pdf", limit(perm("customers:read", billHandlers.getInvoicePDF)))
+	mux.HandleFunc("GET /api/v1/customers/{id}/billing/statement", limit(perm("customers:read", billHandlers.getStatement)))
+	mux.HandleFunc("GET /api/v1/billing/invoices/{id}/ledger-lines", limit(perm("customers:read", billHandlers.getLedgerLines)))
+	mux.HandleFunc("POST /api/v1/billing/invoices/preview", limit(perm("customers:read", billHandlers.previewInvoice)))
+	mux.HandleFunc("GET /api/v1/customers/{id}/wallet", limit(perm("customers:read", billHandlers.getWallet)))
+	mux.HandleFunc("GET /api/v1/billing/invoices/{id}/deliveries", limit(perm("customers:read", billHandlers.listDeliveries)))
+	mux.HandleFunc("POST /api/v1/billing/invoices/{id}/deliveries/retry", limit(perm("customers:write", billHandlers.retryDelivery)))
+	mux.HandleFunc("GET /api/v1/billing/invariant", limit(perm("customers:read", billHandlers.getInvariant)))
+	mux.HandleFunc("GET /api/v1/billing/summary", limit(perm("shards:read", billHandlers.getSummary)))
+	mux.HandleFunc("GET /api/v1/customers/{id}/tax-profile", limit(perm("customers:read", billHandlers.getTaxProfile)))
+	mux.HandleFunc("PUT /api/v1/customers/{id}/tax-profile", limit(perm("customers:write", billHandlers.putTaxProfile)))
+	mux.HandleFunc("POST /api/v1/billing/invoices/{id}/void", limit(perm("customers:write", billHandlers.voidInvoice)))
+	mux.HandleFunc("GET /api/v1/customers/{id}/billing/forecast", limit(perm("customers:read", billHandlers.getForecast)))
 
-	if h.RequireSelfServePermission != nil && h.ResolveSelfServeCustomerID != nil {
-		ssLimit := h.ApplySelfServeRateLimit
+	if billHandlers.RequireSelfServePermission != nil && billHandlers.ResolveSelfServeCustomerID != nil {
+		ssLimit := billHandlers.ApplySelfServeRateLimit
 		if ssLimit == nil {
 			ssLimit = limit
 		}
-		mux.HandleFunc("GET /api/v1/selfserve/billing/statement", ssLimit(h.RequireSelfServePermission("customers:read", h.getSelfServeStatement)))
+		mux.HandleFunc("GET /api/v1/selfserve/billing/statement", ssLimit(billHandlers.RequireSelfServePermission("customers:read", billHandlers.getSelfServeStatement)))
 	}
 
-	h.registerBalanceRoutes(mux)
-	h.registerDisputeRoutes(mux)
+	billHandlers.registerBalanceRoutes(mux)
+	billHandlers.registerDisputeRoutes(mux)
 }
 
-func (h *BillingHTTPHandlers) listInvoices(w http.ResponseWriter, r *http.Request) {
-	if h.InvoiceGRPC == nil {
+func (billHandlers *BillingHTTPHandlers) listInvoices(w http.ResponseWriter, r *http.Request) {
+	if billHandlers.InvoiceGRPC == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "BILLING_UNAVAILABLE", "billing service not configured")
 		return
 	}
 
 	customerRaw := r.URL.Query().Get("customer_id")
-	adminList := h.RequestIsFromAdmin != nil && h.RequestIsFromAdmin(r) && customerRaw == ""
+	adminList := billHandlers.RequestIsFromAdmin != nil && billHandlers.RequestIsFromAdmin(r) && customerRaw == ""
 	if !adminList {
 		if customerRaw == "" {
 			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "customer_id is required")
 			return
 		}
-		if err := h.authorizeCustomerAccess(r, customerRaw); err != nil {
-			h.writeServiceError(w, err)
+		if err := billHandlers.authorizeCustomerAccess(r, customerRaw); err != nil {
+			billHandlers.writeServiceError(w, err)
 			return
 		}
 	} else if customerRaw != "" {
-		if err := h.authorizeCustomerAccess(r, customerRaw); err != nil {
-			h.writeServiceError(w, err)
+		if err := billHandlers.authorizeCustomerAccess(r, customerRaw); err != nil {
+			billHandlers.writeServiceError(w, err)
 			return
 		}
 	}
 
 	limit, offset := parsePagination(r)
 	if adminList {
-		h.listInvoicesAdmin(w, r, limit, offset)
+		billHandlers.listInvoicesAdmin(w, r, limit, offset)
 		return
 	}
 
-	resp, err := h.InvoiceGRPC.ListInvoices(r.Context(), customerRaw, limit, offset)
+	resp, err := billHandlers.InvoiceGRPC.ListInvoices(r.Context(), customerRaw, limit, offset)
 	if err != nil {
 		WriteBillingGRPCError(w, err)
 		return
@@ -125,8 +125,8 @@ func (h *BillingHTTPHandlers) listInvoices(w http.ResponseWriter, r *http.Reques
 	})
 }
 
-func (h *BillingHTTPHandlers) listInvoicesAdmin(w http.ResponseWriter, r *http.Request, limit, offset int32) {
-	if h.CompositeReads == nil {
+func (billHandlers *BillingHTTPHandlers) listInvoicesAdmin(w http.ResponseWriter, r *http.Request, limit, offset int32) {
+	if billHandlers.CompositeReads == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "BILLING_UNAVAILABLE", "billing composite reads not configured")
 		return
 	}
@@ -156,16 +156,16 @@ func (h *BillingHTTPHandlers) listInvoicesAdmin(w http.ResponseWriter, r *http.R
 		}
 		filters.MinTotal = n
 	}
-	result, err := h.CompositeReads.ListInvoicesAdmin(r.Context(), filters, limit, offset)
+	result, err := billHandlers.CompositeReads.ListInvoicesAdmin(r.Context(), filters, limit, offset)
 	if err != nil {
-		h.writeServiceError(w, err)
+		billHandlers.writeServiceError(w, err)
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, result)
 }
 
-func (h *BillingHTTPHandlers) getForecast(w http.ResponseWriter, r *http.Request) {
-	if h.CompositeReads == nil {
+func (billHandlers *BillingHTTPHandlers) getForecast(w http.ResponseWriter, r *http.Request) {
+	if billHandlers.CompositeReads == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "BILLING_UNAVAILABLE", "billing composite reads not configured")
 		return
 	}
@@ -174,26 +174,26 @@ func (h *BillingHTTPHandlers) getForecast(w http.ResponseWriter, r *http.Request
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer id")
 		return
 	}
-	if err := h.authorizeCustomerAccess(r, customerID.String()); err != nil {
-		h.writeServiceError(w, err)
+	if err := billHandlers.authorizeCustomerAccess(r, customerID.String()); err != nil {
+		billHandlers.writeServiceError(w, err)
 		return
 	}
-	forecast, err := h.CompositeReads.BuildForecast(r.Context(), customerID)
+	forecast, err := billHandlers.CompositeReads.BuildForecast(r.Context(), customerID)
 	if err != nil {
-		h.writeServiceError(w, err)
+		billHandlers.writeServiceError(w, err)
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, forecast)
 }
 
-func (h *BillingHTTPHandlers) getSelfServeStatement(w http.ResponseWriter, r *http.Request) {
-	if h.CompositeReads == nil || h.ResolveSelfServeCustomerID == nil {
+func (billHandlers *BillingHTTPHandlers) getSelfServeStatement(w http.ResponseWriter, r *http.Request) {
+	if billHandlers.CompositeReads == nil || billHandlers.ResolveSelfServeCustomerID == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "BILLING_UNAVAILABLE", "billing not configured")
 		return
 	}
-	customerID, err := h.ResolveSelfServeCustomerID(r)
+	customerID, err := billHandlers.ResolveSelfServeCustomerID(r)
 	if err != nil {
-		h.writeServiceError(w, err)
+		billHandlers.writeServiceError(w, err)
 		return
 	}
 	from, to, err := ParseStatementPeriod(r.URL.Query().Get("from"), r.URL.Query().Get("to"), r.URL.Query().Get("month"))
@@ -201,16 +201,16 @@ func (h *BillingHTTPHandlers) getSelfServeStatement(w http.ResponseWriter, r *ht
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
 		return
 	}
-	stmt, err := h.CompositeReads.BuildStatement(r.Context(), customerID, from, to)
+	stmt, err := billHandlers.CompositeReads.BuildStatement(r.Context(), customerID, from, to)
 	if err != nil {
-		h.writeServiceError(w, err)
+		billHandlers.writeServiceError(w, err)
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, stmt)
 }
 
-func (h *BillingHTTPHandlers) getInvoice(w http.ResponseWriter, r *http.Request) {
-	if h.InvoiceGRPC == nil {
+func (billHandlers *BillingHTTPHandlers) getInvoice(w http.ResponseWriter, r *http.Request) {
+	if billHandlers.InvoiceGRPC == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "BILLING_UNAVAILABLE", "billing service not configured")
 		return
 	}
@@ -219,13 +219,13 @@ func (h *BillingHTTPHandlers) getInvoice(w http.ResponseWriter, r *http.Request)
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid invoice id")
 		return
 	}
-	invoice, err := h.InvoiceGRPC.GetInvoice(r.Context(), invoiceID)
+	invoice, err := billHandlers.InvoiceGRPC.GetInvoice(r.Context(), invoiceID)
 	if err != nil {
 		WriteBillingGRPCError(w, err)
 		return
 	}
-	if err := h.authorizeCustomerAccess(r, invoice.CustomerId); err != nil {
-		h.writeServiceError(w, err)
+	if err := billHandlers.authorizeCustomerAccess(r, invoice.CustomerId); err != nil {
+		billHandlers.writeServiceError(w, err)
 		return
 	}
 	body := invoiceToJSON(invoice)
@@ -233,8 +233,8 @@ func (h *BillingHTTPHandlers) getInvoice(w http.ResponseWriter, r *http.Request)
 	httpresponse.JSON(w, http.StatusOK, body)
 }
 
-func (h *BillingHTTPHandlers) getInvoicePDF(w http.ResponseWriter, r *http.Request) {
-	if h.InvoiceGRPC == nil {
+func (billHandlers *BillingHTTPHandlers) getInvoicePDF(w http.ResponseWriter, r *http.Request) {
+	if billHandlers.InvoiceGRPC == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "BILLING_UNAVAILABLE", "billing service not configured")
 		return
 	}
@@ -243,13 +243,13 @@ func (h *BillingHTTPHandlers) getInvoicePDF(w http.ResponseWriter, r *http.Reque
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid invoice id")
 		return
 	}
-	invoice, err := h.InvoiceGRPC.GetInvoice(r.Context(), invoiceID)
+	invoice, err := billHandlers.InvoiceGRPC.GetInvoice(r.Context(), invoiceID)
 	if err != nil {
 		WriteBillingGRPCError(w, err)
 		return
 	}
-	if err := h.authorizeCustomerAccess(r, invoice.CustomerId); err != nil {
-		h.writeServiceError(w, err)
+	if err := billHandlers.authorizeCustomerAccess(r, invoice.CustomerId); err != nil {
+		billHandlers.writeServiceError(w, err)
 		return
 	}
 	pdf := billing.RenderInvoicePDF(invoice)
@@ -259,11 +259,13 @@ func (h *BillingHTTPHandlers) getInvoicePDF(w http.ResponseWriter, r *http.Reque
 	}
 	w.Header().Set("Content-Type", "application/pdf")
 	w.Header().Set("Cache-Control", "no-store")
-	_, _ = w.Write(pdf)
+	if _, err := w.Write(pdf); err != nil {
+		return
+	}
 }
 
-func (h *BillingHTTPHandlers) getStatement(w http.ResponseWriter, r *http.Request) {
-	if h.CompositeReads == nil {
+func (billHandlers *BillingHTTPHandlers) getStatement(w http.ResponseWriter, r *http.Request) {
+	if billHandlers.CompositeReads == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "BILLING_UNAVAILABLE", "billing composite reads not configured")
 		return
 	}
@@ -272,8 +274,8 @@ func (h *BillingHTTPHandlers) getStatement(w http.ResponseWriter, r *http.Reques
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer id")
 		return
 	}
-	if err := h.authorizeCustomerAccess(r, customerID.String()); err != nil {
-		h.writeServiceError(w, err)
+	if err := billHandlers.authorizeCustomerAccess(r, customerID.String()); err != nil {
+		billHandlers.writeServiceError(w, err)
 		return
 	}
 	from, to, err := ParseStatementPeriod(r.URL.Query().Get("from"), r.URL.Query().Get("to"), r.URL.Query().Get("month"))
@@ -281,27 +283,27 @@ func (h *BillingHTTPHandlers) getStatement(w http.ResponseWriter, r *http.Reques
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
 		return
 	}
-	stmt, err := h.CompositeReads.BuildStatement(r.Context(), customerID, from, to)
+	stmt, err := billHandlers.CompositeReads.BuildStatement(r.Context(), customerID, from, to)
 	if err != nil {
-		h.writeServiceError(w, err)
+		billHandlers.writeServiceError(w, err)
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, stmt)
 }
 
-func (h *BillingHTTPHandlers) getLedgerLines(w http.ResponseWriter, r *http.Request) {
-	if h.CompositeReads == nil || h.InvoiceGRPC == nil {
+func (billHandlers *BillingHTTPHandlers) getLedgerLines(w http.ResponseWriter, r *http.Request) {
+	if billHandlers.CompositeReads == nil || billHandlers.InvoiceGRPC == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "BILLING_UNAVAILABLE", "billing not configured")
 		return
 	}
 	invoiceID := r.PathValue("id")
-	invoice, err := h.InvoiceGRPC.GetInvoice(r.Context(), invoiceID)
+	invoice, err := billHandlers.InvoiceGRPC.GetInvoice(r.Context(), invoiceID)
 	if err != nil {
 		WriteBillingGRPCError(w, err)
 		return
 	}
-	if err := h.authorizeCustomerAccess(r, invoice.CustomerId); err != nil {
-		h.writeServiceError(w, err)
+	if err := billHandlers.authorizeCustomerAccess(r, invoice.CustomerId); err != nil {
+		billHandlers.writeServiceError(w, err)
 		return
 	}
 	customerID, _ := uuid.Parse(invoice.CustomerId)
@@ -314,9 +316,9 @@ func (h *BillingHTTPHandlers) getLedgerLines(w http.ResponseWriter, r *http.Requ
 		cursorID, _ = strconv.ParseInt(c, 10, 64)
 	}
 	limit, _ := parsePagination(r)
-	lines, nextCursor, total, err := h.CompositeReads.ListLedgerLines(r.Context(), customerID, month, cursorID, limit)
+	lines, nextCursor, total, err := billHandlers.CompositeReads.ListLedgerLines(r.Context(), customerID, month, cursorID, limit)
 	if err != nil {
-		h.writeServiceError(w, err)
+		billHandlers.writeServiceError(w, err)
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, map[string]any{
@@ -332,8 +334,8 @@ type previewRequest struct {
 	BillingMonth string `json:"billing_month"`
 }
 
-func (h *BillingHTTPHandlers) previewInvoice(w http.ResponseWriter, r *http.Request) {
-	if h.InProcessInvoices == nil {
+func (billHandlers *BillingHTTPHandlers) previewInvoice(w http.ResponseWriter, r *http.Request) {
+	if billHandlers.InProcessInvoices == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "BILLING_UNAVAILABLE", "billing service not configured")
 		return
 	}
@@ -350,8 +352,8 @@ func (h *BillingHTTPHandlers) previewInvoice(w http.ResponseWriter, r *http.Requ
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "customer_id is required")
 		return
 	}
-	if err := h.authorizeCustomerAccess(r, req.CustomerID); err != nil {
-		h.writeServiceError(w, err)
+	if err := billHandlers.authorizeCustomerAccess(r, req.CustomerID); err != nil {
+		billHandlers.writeServiceError(w, err)
 		return
 	}
 	customerID, err := uuid.Parse(req.CustomerID)
@@ -364,7 +366,7 @@ func (h *BillingHTTPHandlers) previewInvoice(w http.ResponseWriter, r *http.Requ
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "billing_month must be YYYY-MM")
 		return
 	}
-	preview, err := h.InProcessInvoices.PreviewInvoice(r.Context(), customerID, month)
+	preview, err := billHandlers.InProcessInvoices.PreviewInvoice(r.Context(), customerID, month)
 	if err != nil {
 		writeBillingLocalError(w, err)
 		return
@@ -372,8 +374,8 @@ func (h *BillingHTTPHandlers) previewInvoice(w http.ResponseWriter, r *http.Requ
 	httpresponse.JSON(w, http.StatusOK, preview)
 }
 
-func (h *BillingHTTPHandlers) getWallet(w http.ResponseWriter, r *http.Request) {
-	if h.CompositeReads == nil {
+func (billHandlers *BillingHTTPHandlers) getWallet(w http.ResponseWriter, r *http.Request) {
+	if billHandlers.CompositeReads == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "BILLING_UNAVAILABLE", "billing composite reads not configured")
 		return
 	}
@@ -382,11 +384,11 @@ func (h *BillingHTTPHandlers) getWallet(w http.ResponseWriter, r *http.Request) 
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer id")
 		return
 	}
-	if err := h.authorizeCustomerAccess(r, customerID.String()); err != nil {
-		h.writeServiceError(w, err)
+	if err := billHandlers.authorizeCustomerAccess(r, customerID.String()); err != nil {
+		billHandlers.writeServiceError(w, err)
 		return
 	}
-	wallet, err := h.CompositeReads.GetWallet(r.Context(), customerID)
+	wallet, err := billHandlers.CompositeReads.GetWallet(r.Context(), customerID)
 	if err != nil {
 		writeBillingLocalError(w, err)
 		return
@@ -394,31 +396,31 @@ func (h *BillingHTTPHandlers) getWallet(w http.ResponseWriter, r *http.Request) 
 	httpresponse.JSON(w, http.StatusOK, wallet)
 }
 
-func (h *BillingHTTPHandlers) listDeliveries(w http.ResponseWriter, r *http.Request) {
-	if h.CompositeReads == nil || h.InvoiceGRPC == nil {
+func (billHandlers *BillingHTTPHandlers) listDeliveries(w http.ResponseWriter, r *http.Request) {
+	if billHandlers.CompositeReads == nil || billHandlers.InvoiceGRPC == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "BILLING_UNAVAILABLE", "billing not configured")
 		return
 	}
 	invoiceID := r.PathValue("id")
-	invoice, err := h.InvoiceGRPC.GetInvoice(r.Context(), invoiceID)
+	invoice, err := billHandlers.InvoiceGRPC.GetInvoice(r.Context(), invoiceID)
 	if err != nil {
 		WriteBillingGRPCError(w, err)
 		return
 	}
-	if err := h.authorizeCustomerAccess(r, invoice.CustomerId); err != nil {
-		h.writeServiceError(w, err)
+	if err := billHandlers.authorizeCustomerAccess(r, invoice.CustomerId); err != nil {
+		billHandlers.writeServiceError(w, err)
 		return
 	}
-	rows, err := h.CompositeReads.ListDeliveries(r.Context(), invoiceID)
+	rows, err := billHandlers.CompositeReads.ListDeliveries(r.Context(), invoiceID)
 	if err != nil {
-		h.writeServiceError(w, err)
+		billHandlers.writeServiceError(w, err)
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, map[string]any{"items": rows})
 }
 
-func (h *BillingHTTPHandlers) retryDelivery(w http.ResponseWriter, r *http.Request) {
-	if h.InvoiceGRPC == nil || h.InvoiceDelivery == nil {
+func (billHandlers *BillingHTTPHandlers) retryDelivery(w http.ResponseWriter, r *http.Request) {
+	if billHandlers.InvoiceGRPC == nil || billHandlers.InvoiceDelivery == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "BILLING_UNAVAILABLE", "invoice retry not configured")
 		return
 	}
@@ -428,31 +430,31 @@ func (h *BillingHTTPHandlers) retryDelivery(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	invoiceID := r.PathValue("id")
-	invoice, err := h.InvoiceGRPC.GetInvoice(r.Context(), invoiceID)
+	invoice, err := billHandlers.InvoiceGRPC.GetInvoice(r.Context(), invoiceID)
 	if err != nil {
 		WriteBillingGRPCError(w, err)
 		return
 	}
-	if err := h.authorizeCustomerAccess(r, invoice.CustomerId); err != nil {
-		h.writeServiceError(w, err)
+	if err := billHandlers.authorizeCustomerAccess(r, invoice.CustomerId); err != nil {
+		billHandlers.writeServiceError(w, err)
 		return
 	}
-	if err := h.InvoiceDelivery.RetryInvoiceDelivery(r.Context(), invoice, idempotencyKey); err != nil {
-		h.writeServiceError(w, err)
+	if err := billHandlers.InvoiceDelivery.RetryInvoiceDelivery(r.Context(), invoice, idempotencyKey); err != nil {
+		billHandlers.writeServiceError(w, err)
 		return
 	}
 	w.WriteHeader(http.StatusAccepted)
 }
 
-func (h *BillingHTTPHandlers) getInvariant(w http.ResponseWriter, r *http.Request) {
-	if h.CompositeReads == nil {
+func (billHandlers *BillingHTTPHandlers) getInvariant(w http.ResponseWriter, r *http.Request) {
+	if billHandlers.CompositeReads == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "BILLING_UNAVAILABLE", "billing composite reads not configured")
 		return
 	}
 	var customerID *uuid.UUID
 	if raw := r.URL.Query().Get("customer_id"); raw != "" {
-		if err := h.authorizeCustomerAccess(r, raw); err != nil {
-			h.writeServiceError(w, err)
+		if err := billHandlers.authorizeCustomerAccess(r, raw); err != nil {
+			billHandlers.writeServiceError(w, err)
 			return
 		}
 		id, err := uuid.Parse(raw)
@@ -461,37 +463,37 @@ func (h *BillingHTTPHandlers) getInvariant(w http.ResponseWriter, r *http.Reques
 			return
 		}
 		customerID = &id
-	} else if h.RequestIsFromAdmin == nil || !h.RequestIsFromAdmin(r) {
+	} else if billHandlers.RequestIsFromAdmin == nil || !billHandlers.RequestIsFromAdmin(r) {
 		httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "customer_id required for tenant users")
 		return
 	}
-	result, err := h.CompositeReads.GetInvariant(r.Context(), customerID)
+	result, err := billHandlers.CompositeReads.GetInvariant(r.Context(), customerID)
 	if err != nil {
-		h.writeServiceError(w, err)
+		billHandlers.writeServiceError(w, err)
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, result)
 }
 
-func (h *BillingHTTPHandlers) getSummary(w http.ResponseWriter, r *http.Request) {
-	if h.CompositeReads == nil {
+func (billHandlers *BillingHTTPHandlers) getSummary(w http.ResponseWriter, r *http.Request) {
+	if billHandlers.CompositeReads == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "BILLING_UNAVAILABLE", "billing composite reads not configured")
 		return
 	}
-	if h.RequestIsFromAdmin != nil && !h.RequestIsFromAdmin(r) {
+	if billHandlers.RequestIsFromAdmin != nil && !billHandlers.RequestIsFromAdmin(r) {
 		httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "admin only")
 		return
 	}
-	summary, err := h.CompositeReads.GetSummary(r.Context())
+	summary, err := billHandlers.CompositeReads.GetSummary(r.Context())
 	if err != nil {
-		h.writeServiceError(w, err)
+		billHandlers.writeServiceError(w, err)
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, summary)
 }
 
-func (h *BillingHTTPHandlers) getTaxProfile(w http.ResponseWriter, r *http.Request) {
-	if h.CompositeReads == nil {
+func (billHandlers *BillingHTTPHandlers) getTaxProfile(w http.ResponseWriter, r *http.Request) {
+	if billHandlers.CompositeReads == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "BILLING_UNAVAILABLE", "billing composite reads not configured")
 		return
 	}
@@ -500,20 +502,20 @@ func (h *BillingHTTPHandlers) getTaxProfile(w http.ResponseWriter, r *http.Reque
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer id")
 		return
 	}
-	if err := h.authorizeCustomerAccess(r, customerID.String()); err != nil {
-		h.writeServiceError(w, err)
+	if err := billHandlers.authorizeCustomerAccess(r, customerID.String()); err != nil {
+		billHandlers.writeServiceError(w, err)
 		return
 	}
-	profile, err := h.CompositeReads.GetTaxProfile(r.Context(), customerID)
+	profile, err := billHandlers.CompositeReads.GetTaxProfile(r.Context(), customerID)
 	if err != nil {
-		h.writeServiceError(w, err)
+		billHandlers.writeServiceError(w, err)
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, profile)
 }
 
-func (h *BillingHTTPHandlers) putTaxProfile(w http.ResponseWriter, r *http.Request) {
-	if h.CompositeReads == nil {
+func (billHandlers *BillingHTTPHandlers) putTaxProfile(w http.ResponseWriter, r *http.Request) {
+	if billHandlers.CompositeReads == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "BILLING_UNAVAILABLE", "billing composite reads not configured")
 		return
 	}
@@ -522,8 +524,8 @@ func (h *BillingHTTPHandlers) putTaxProfile(w http.ResponseWriter, r *http.Reque
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer id")
 		return
 	}
-	if err := h.authorizeCustomerAccess(r, customerID.String()); err != nil {
-		h.writeServiceError(w, err)
+	if err := billHandlers.authorizeCustomerAccess(r, customerID.String()); err != nil {
+		billHandlers.writeServiceError(w, err)
 		return
 	}
 	body, err := coldpath.ReadLimitedBody(w, r, coldpath.DefaultMaxBody)
@@ -535,16 +537,16 @@ func (h *BillingHTTPHandlers) putTaxProfile(w http.ResponseWriter, r *http.Reque
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
 		return
 	}
-	profile, err := h.CompositeReads.UpsertTaxProfile(r.Context(), customerID, dto)
+	profile, err := billHandlers.CompositeReads.UpsertTaxProfile(r.Context(), customerID, dto)
 	if err != nil {
-		h.writeServiceError(w, err)
+		billHandlers.writeServiceError(w, err)
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, profile)
 }
 
-func (h *BillingHTTPHandlers) voidInvoice(w http.ResponseWriter, r *http.Request) {
-	if h.InProcessInvoices == nil {
+func (billHandlers *BillingHTTPHandlers) voidInvoice(w http.ResponseWriter, r *http.Request) {
+	if billHandlers.InProcessInvoices == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "BILLING_UNAVAILABLE", "billing service not configured")
 		return
 	}
@@ -554,33 +556,33 @@ func (h *BillingHTTPHandlers) voidInvoice(w http.ResponseWriter, r *http.Request
 		return
 	}
 	var customerID string
-	if h.InvoiceGRPC != nil {
-		if inv, gerr := h.InvoiceGRPC.GetInvoice(r.Context(), invoiceID.String()); gerr == nil {
+	if billHandlers.InvoiceGRPC != nil {
+		if inv, gerr := billHandlers.InvoiceGRPC.GetInvoice(r.Context(), invoiceID.String()); gerr == nil {
 			customerID = inv.CustomerId
-			if err := h.authorizeCustomerAccess(r, customerID); err != nil {
-				h.writeServiceError(w, err)
+			if err := billHandlers.authorizeCustomerAccess(r, customerID); err != nil {
+				billHandlers.writeServiceError(w, err)
 				return
 			}
 		}
 	}
-	if err := h.InProcessInvoices.VoidInvoice(r.Context(), invoiceID); err != nil {
+	if err := billHandlers.InProcessInvoices.VoidInvoice(r.Context(), invoiceID); err != nil {
 		writeBillingLocalError(w, err)
 		return
 	}
-	if h.VoidAuditor != nil && customerID != "" {
-		_ = h.VoidAuditor.AuditInvoiceVoid(r.Context(), invoiceID.String(), customerID)
+	if billHandlers.VoidAuditor != nil && customerID != "" {
+		_ = billHandlers.VoidAuditor.AuditInvoiceVoid(r.Context(), invoiceID.String(), customerID)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *BillingHTTPHandlers) authorizeCustomerAccess(r *http.Request, customerID string) error {
-	if h.AuthorizeCustomerAccess == nil {
+func (billHandlers *BillingHTTPHandlers) authorizeCustomerAccess(r *http.Request, customerID string) error {
+	if billHandlers.AuthorizeCustomerAccess == nil {
 		return nil
 	}
-	return h.AuthorizeCustomerAccess(r, customerID)
+	return billHandlers.AuthorizeCustomerAccess(r, customerID)
 }
 
-func (h *BillingHTTPHandlers) writeServiceError(w http.ResponseWriter, err error) {
+func (billHandlers *BillingHTTPHandlers) writeServiceError(w http.ResponseWriter, err error) {
 	var cur invalidExportCursorError
 	if errors.As(err, &cur) {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", string(cur))
@@ -590,8 +592,8 @@ func (h *BillingHTTPHandlers) writeServiceError(w http.ResponseWriter, err error
 		httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "forbidden")
 		return
 	}
-	if h.WriteServiceError != nil {
-		h.WriteServiceError(w, err)
+	if billHandlers.WriteServiceError != nil {
+		billHandlers.WriteServiceError(w, err)
 		return
 	}
 	httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL", "request failed")

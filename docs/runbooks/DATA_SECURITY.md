@@ -4,7 +4,7 @@ How operators protect ad event data, credentials, and backups on **their own bar
 
 **Protection overview (vendor IP + operator data + trust):** [PROTECTION.md](../PROTECTION.md).
 
-Related: [SELF_HOSTED.md](../SELF_HOSTED.md), [TELEMETRY_AND_TRUST.md](../TELEMETRY_AND_TRUST.md), [LICENSE_COMMERCE.md](../LICENSE_COMMERCE.md), [ARCHITECTURE.md](../ARCHITECTURE.md), [COMPLIANCE_MATRIX.md](../COMPLIANCE_MATRIX.md).
+Related: [SELF_HOSTED.md](../SELF_HOSTED.md), [TELEMETRY_AND_TRUST.md](../TELEMETRY_AND_TRUST.md), [LICENSE_COMMERCE.md](../LICENSE_COMMERCE.md), [ARCHITECTURE.md](../ARCHITECTURE.md), [.cursor/COMPLIANCE_MATRIX.md](../../.cursor/COMPLIANCE_MATRIX.md).
 
 ---
 
@@ -16,7 +16,7 @@ Related: [SELF_HOSTED.md](../SELF_HOSTED.md), [TELEMETRY_AND_TRUST.md](../TELEME
 | **Disk / backup** | Stolen VPS, `pg_dump`, CH spool mmap | LUKS, encrypted backups |
 | **Insider** | Admin, contractor with SSH | RBAC, audit log, least privilege |
 | **Process compromise** | RCE in management, leaked `.env` | Vault, non-root, segmentation |
-| **Vendor egress** | Fear of связки leak via binary | Telemetry opt-in off, schema audit, allowlist — [TELEMETRY_AND_TRUST.md](../TELEMETRY_AND_TRUST.md) |
+| **Vendor egress** | Fear of traffic-bundle leak via binary | Telemetry opt-in off, schema audit, allowlist — TELEMETRY_AND_TRUST.md |
 
 Self-hosted: **keys and plaintext policy belong to the operator**. The vendor ships mechanisms and this runbook; the operator owns the threat model for their jurisdiction and traffic.
 
@@ -253,4 +253,4 @@ Tracked in backlog as **GAP-DATA-02** and related items:
 | GAP-DATA-01 | PII hashing before ClickHouse insert — **shipped** |
 | GAP-DATA-02 | PG events retention, optional IP hashing, production TLS profile — **shipped** (P19) |
 
-See [.cursor/BACKLOG.md](../../.cursor/BACKLOG.md).
+Open backlog: `.cursor/BACKLOG.md`.

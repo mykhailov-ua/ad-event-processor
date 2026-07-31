@@ -25,11 +25,11 @@ type PlansFile struct {
 }
 
 type PlanDefinition struct {
-	Code          string         `yaml:"code"`
-	DisplayName   string         `yaml:"display_name"`
-	BaseFeeMicro  int64          `yaml:"base_fee_micro"`
-	Limits        lic.Limits     `yaml:"limits"`
-	Features      lic.FeatureSet `yaml:"features"`
+	Code         string         `yaml:"code"`
+	DisplayName  string         `yaml:"display_name"`
+	BaseFeeMicro int64          `yaml:"base_fee_micro"`
+	Limits       lic.Limits     `yaml:"limits"`
+	Features     lic.FeatureSet `yaml:"features"`
 }
 
 type AssignmentDefinition struct {
@@ -45,10 +45,10 @@ type AssignmentDefinition struct {
 }
 
 type ReloadReport struct {
-	Path            string `json:"path"`
-	DryRun          bool   `json:"dry_run"`
-	PlansUpserted   int    `json:"plans_upserted"`
-	Assignments     int    `json:"assignments_upserted"`
+	Path          string `json:"path"`
+	DryRun        bool   `json:"dry_run"`
+	PlansUpserted int    `json:"plans_upserted"`
+	Assignments   int    `json:"assignments_upserted"`
 }
 
 func DefaultPlansPath() string {
@@ -131,11 +131,11 @@ func Reload(ctx context.Context, pool *pgxpool.Pool, path string, dryRun bool, f
 				return err
 			}
 			if _, err := q.UpsertSubscriptionPlan(ctx, billingdb.UpsertSubscriptionPlanParams{
-				Code:          plan.Code,
-				DisplayName:   plan.DisplayName,
-				LimitsJson:    limitsJSON,
-				FeaturesJson:  featuresJSON,
-				BaseFeeMicro:  plan.BaseFeeMicro,
+				Code:         plan.Code,
+				DisplayName:  plan.DisplayName,
+				LimitsJson:   limitsJSON,
+				FeaturesJson: featuresJSON,
+				BaseFeeMicro: plan.BaseFeeMicro,
 			}); err != nil {
 				return err
 			}

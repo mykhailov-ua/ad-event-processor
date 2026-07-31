@@ -3,7 +3,6 @@ package management
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"time"
 
 	"espx/internal/edge/allowlist"
@@ -310,26 +309,7 @@ func (s *Service) SyncSystemState(ctx context.Context) error {
 		}
 	}
 
-	slog.Info("system state synchronized with redis successfully", "blacklist_items", len(bl), "settings_items", len(st))
 	return nil
-}
-
-func (s *Service) RunSystemStateSyncer(ctx context.Context) {
-	ticker := time.NewTicker(time.Minute)
-	defer ticker.Stop()
-
-	_ = s.SyncSystemState(ctx)
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			if err := s.SyncSystemState(ctx); err != nil {
-				slog.Error("failed to sync system state", "error", err)
-			}
-		}
-	}
 }
 
 func (s *Service) ToggleEmergencyBreaker(ctx context.Context, active bool, reason string) error {

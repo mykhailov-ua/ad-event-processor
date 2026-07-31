@@ -36,7 +36,7 @@ func (w *NodeMetricsSnapshotWorker) Start(ctx context.Context) {
 	now := time.Now().UTC()
 	if !now.Before(todaySnapshotRunAt(now)) {
 		if err := w.RunOnce(ctx, snapshotDayFor(now)); err != nil {
-			slog.Error("node metrics snapshot catch-up failed", "error", err)
+			slog.Error("node metrics snapshot catch-up failed", "err", err)
 		}
 	}
 
@@ -51,7 +51,7 @@ func (w *NodeMetricsSnapshotWorker) Start(ctx context.Context) {
 		case <-timer.C:
 			day := snapshotDayFor(time.Now().UTC())
 			if err := w.RunOnce(ctx, day); err != nil {
-				slog.Error("node metrics snapshot failed", "day", day.Format("2006-01-02"), "error", err)
+				slog.Error("node metrics snapshot failed", "day", day.Format("2006-01-02"), "err", err)
 			}
 		}
 	}

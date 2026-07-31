@@ -36,7 +36,7 @@ func (w *CampaignDrainWorker) Start(ctx context.Context, interval time.Duration)
 				if database.IsShutdownError(err) {
 					return
 				}
-				slog.Error("failed to process draining campaigns", "error", err)
+				slog.Error("failed to process draining campaigns", "err", err)
 			}
 		}
 	}

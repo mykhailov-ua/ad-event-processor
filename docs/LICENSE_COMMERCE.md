@@ -55,6 +55,8 @@ skus:
 
 **Signing pipeline:** vendor tool reads SKU + sale record → `vendor.licenses` row → Ed25519 JWT → customer download or heartbeat response.
 
+Implementation: [`bidshard-license`](../../bidshard-license) repository (`cmd/license-server`, `cmd/commerce`).
+
 ---
 
 ## Vendor admin (existing schema direction)
@@ -134,21 +136,69 @@ Static file-only license with 1-year JWT is crackable once; **rotation** forces 
 | Anti-pattern | Why |
 | :--- | :--- |
 | **Mandatory** phone-home traffic metrics | Violates self-hosted trust; customers disable or fork |
-| Mixing telemetry into license heartbeat without schema | Conflates billing trust with analytics; triggers связки fear |
+| Mixing telemetry into license heartbeat without schema | Conflates billing trust with analytics; triggers traffic-bundle leak fears |
 | Obfuscation-only protection | Reversible; wastes engineering |
 | GPL/fully open **Pro** core in gray niche | Fork without paying; funnel collapses |
 | Per-event **vendor** license enforcement | Contradicts unlimited volume on customer hardware |
 
 Opt-in product telemetry and threat intel are allowed — see [TELEMETRY_AND_TRUST.md](./TELEMETRY_AND_TRUST.md).
 
-### Layer 6 — Distribution model (recommended)
+### Layer 6 — Distribution model (GAP-PROD-10 / P44)
 
-```text
-Public:  docs, OpenAPI, integration guides
-Binary:  stripped binaries per OS/arch (no source)
-Source:  separate enterprise escrow / audit — not public GitHub for core tracker
-Models:  download from vendor CDN with license cookie (ML SKUs)
+Policy for the transition from public portfolio repo to commercial Pro delivery.
+
+#### Community (public repository)
+
+| Artifact | In scope | Out of scope |
+| :--- | :--- | :--- |
+| Docs | Architecture, self-hosted policy, OpenAPI, runbooks, integration guides | Pro-only operator playbooks under NDA |
+| Code | Demos, contract tests, cold-path stubs where useful for integration | Full ingest hot path, RTB live, antifraud scoring, edge XDP sources |
+| Binaries | None shipped from public CI | Stripped Pro builds |
+
+Public GitHub remains acceptable during contractor / portfolio stage. When the first paying self-hosted customer signs, **freeze** new Pro ingest commits on `main` and ship Pro from a private fork or release artifacts only — do not delete public history in panic ([TELEMETRY_AND_TRUST.md § GitHub](./TELEMETRY_AND_TRUST.md#github-public-repo-vs-future-commercial-product)).
+
+#### Pro (closed binary + license)
+
+| Artifact | Delivery |
+| :--- | :--- |
+| Service binaries | Stripped `linux/amd64` and `linux/arm64` per SKU; no source in customer hands |
+| ML model packs | Vendor CDN; `GET` requires valid license cookie or short-lived signed URL tied to `license_key` |
+| Threat intel feed | Same license gate; opt-in SKU only |
+| Source audit | Escrow or read-only audit under NDA — not a public fork |
+
+Build locally or in vendor CI:
+
+```bash
+make release-build   # → dist/release/<cmd>-linux-<arch>
 ```
+
+Flags match production Docker images: `CGO_ENABLED=0`, `-tags timetzdata`, `-ldflags="-s -w"`. CI in this repo does **not** publish Pro binaries; vendor release pipeline signs and uploads artifacts after SKU matrix QA.
+
+#### Capability split (reference)
+
+| Capability | Community (public) | Pro (licensed binary) |
+| :--- | :---: | :---: |
+| Core `/track` + Lua budget | partial / demo | full |
+| RTB live | no | license-gated (`rtb_live`) |
+| eBPF / XDP edge | no | license-gated (`ebpf_xdp_edge`) |
+| IVT / ML cold path | no | license-gated (`ivt_ml_detector`, `ml_fraud_boost`) |
+| Operator payment / billing | docs only | full (`network_operator` profile) |
+| Multi-region | no | license-gated (`multi_region`) |
+| Threat intel feed | no | opt-in SKU |
+| Support | community | monthly license + heartbeat |
+
+Exact SKU boundaries live in vendor YAML (`deploy/vendor/sku.yaml` reference); JWT `features` and `limits` are the runtime authority on customer hardware.
+
+#### Models CDN (license-gated)
+
+ML artifacts (`models/lightgbm/`, Isolation Forest bundles, ONNX when enabled) are **not** committed to the public repo. Pro installs download from vendor CDN:
+
+1. Management or `fraud-scorer` requests model version from `ml_model_versions`.
+2. Client presents `ESPX_LICENSE_KEY` (or heartbeat session token) to CDN edge.
+3. CDN returns `403` without active SKU containing `ml_fraud_boost` or `ivt_ml_detector`.
+4. Checksum + version recorded in PG before `SYNCING` → `ACTIVE` promotion.
+
+Community operators may run training scripts under `ml/` against local fixtures; production model packs are Pro-only.
 
 **Funnel trade-off:** binary + trial license lowers friction vs source; serious buyers get audit under NDA. Gray operators who never paid are not the ICP — optimize for networks that need support and updates.
 

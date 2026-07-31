@@ -61,7 +61,7 @@ func (w *EventsRetentionWorker) runOnce(ctx context.Context) int64 {
 			BatchLimit: eventsRetentionBatchSize,
 		})
 		if err != nil {
-			slog.Error("events retention batch failed", "error", err, "cutoff", cutoff)
+			slog.Error("events retention batch failed", "err", err, "cutoff", cutoff)
 			break
 		}
 		if deleted > 0 {

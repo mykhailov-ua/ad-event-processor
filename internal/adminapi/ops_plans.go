@@ -38,7 +38,7 @@ func (h *OpsHTTPHandlers) reloadPlans(w http.ResponseWriter, r *http.Request) {
 	dryRun := r.URL.Query().Get("dry_run") == "1" || r.Header.Get("X-Dry-Run") == "1"
 	report, err := h.PlansReloader.ReloadPlans(r.Context(), dryRun)
 	if err != nil {
-		slog.Error("plans reload failed", "error", err)
+		slog.Error("plans reload failed", "err", err)
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
 		return
 	}

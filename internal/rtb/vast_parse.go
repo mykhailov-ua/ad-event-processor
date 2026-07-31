@@ -308,10 +308,6 @@ func (p *vastParser) advancePastTag() {
 	}
 }
 
-func (p *vastParser) skipToNextTag() {
-	p.advancePastTag()
-}
-
 func parseVASTDuration(b []byte) uint32 {
 	if len(b) == 0 {
 		return 0

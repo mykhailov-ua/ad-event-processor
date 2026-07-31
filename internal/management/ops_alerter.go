@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"espx/internal/config"
+	"espx/pkg/branding"
 	"espx/internal/metrics"
 	notifierpb "espx/internal/notifier/pb"
 )
@@ -78,7 +79,7 @@ func (a *OpsAlerter) sendAsync(key, title, body string, broadcast bool) {
 			metrics.ManagementOpsAlertEnqueueFailuresTotal.Inc()
 			slog.Warn("ops alert enqueue failed", "key", key, "error", err, "consecutive_failures", failures)
 			if failures == 1 || failures%5 == 0 {
-				metaTitle := "BidShard: ops alert enqueue failing"
+				metaTitle := branding.AlertTitle("ops alert enqueue failing")
 				metaBody := fmt.Sprintf(
 					"<b>Notifier enqueue failures</b>\nConsecutive failures: %d\nLast key: %s\nError: %v",
 					failures, key, err,
@@ -112,7 +113,7 @@ func (a *OpsAlerter) AlertReconDiscrepancy(runID int64, discrepancies int, total
 		return
 	}
 	key := fmt.Sprintf("recon:run:%d", runID)
-	title := "BidShard: recon discrepancy"
+	title := branding.AlertTitle("recon discrepancy")
 	body := fmt.Sprintf(
 		"<b>Recon discrepancy</b>\nPeriod: %s\nRun #%d\nCampaigns adjusted: %d\nTotal delta (micro): %d",
 		period, runID, discrepancies, totalDelta,
@@ -125,7 +126,7 @@ func (a *OpsAlerter) AlertReconDiscrepancyUnresolved(runID int64, unresolved int
 		return
 	}
 	key := fmt.Sprintf("recon:unresolved:%d", runID)
-	title := "BidShard: unreconciled budget drift"
+	title := branding.AlertTitle("unreconciled budget drift")
 	body := fmt.Sprintf(
 		"<b>Unresolved recon discrepancy</b>\nPeriod: %s\nRun #%d\nUnresolved campaigns: %d\nTotal |delta| (micro): %d\nOldest since: %s",
 		period, runID, unresolved, totalDelta, oldest.UTC().Format(time.RFC3339),
@@ -138,7 +139,7 @@ func (a *OpsAlerter) AlertRedisShardUnhealthy(shardIdx int, err error) {
 		return
 	}
 	key := fmt.Sprintf("redis:shard:%d", shardIdx)
-	title := fmt.Sprintf("BidShard: Redis shard %d unreachable", shardIdx)
+	title := fmt.Sprintf("%s: Redis shard %d unreachable", branding.ProductName(), shardIdx)
 	body := fmt.Sprintf(
 		"<b>Redis shard unhealthy</b>\nShard: %d\nError: %v\nStuck quota reservations were released.",
 		shardIdx, err,
@@ -151,7 +152,7 @@ func (a *OpsAlerter) AlertSlotMapMigrating(version int32, slots []int16, targetS
 		return
 	}
 	key := fmt.Sprintf("migration:mark:%d:%d:%s", version, targetShard, formatSlotIDs(slots))
-	title := "BidShard: slot map migration started"
+	title := branding.AlertTitle("slot map migration started")
 	body := fmt.Sprintf(
 		"<b>Slot map migration</b>\nVersion: %d\nTarget shard: %d\nSlots (%d): %s\nNext: copy data, then activate.",
 		version, targetShard, len(slots), formatSlotIDs(slots),
@@ -164,7 +165,7 @@ func (a *OpsAlerter) AlertDrainStuck(version int32, slot int16, state, lastError
 		return
 	}
 	key := fmt.Sprintf("drain:%d:%d:%s", version, slot, state)
-	title := "BidShard: slot migration drain stuck"
+	title := branding.AlertTitle("slot migration drain stuck")
 	body := fmt.Sprintf(
 		"<b>Drain stuck</b>\nVersion: %d\nSlot: %d\nState: %s\nSince: %s\nError: %s",
 		version, slot, state, updatedAt.UTC().Format(time.RFC3339), lastError,
@@ -177,7 +178,7 @@ func (a *OpsAlerter) AlertBlacklistJanitorFailed(err error) {
 		return
 	}
 	key := "blacklist:janitor:scan"
-	title := "BidShard: blacklist janitor failed"
+	title := branding.AlertTitle("blacklist janitor failed")
 	body := fmt.Sprintf("<b>Blacklist janitor scan failed</b>\nError: %v", err)
 	a.sendAsync(key, title, body, true)
 }
@@ -187,7 +188,7 @@ func (a *OpsAlerter) AlertOutboxStuck(pending int64, oldestSeconds float64) {
 		return
 	}
 	key := fmt.Sprintf("outbox:stuck:%d", int64(oldestSeconds)/60)
-	title := "BidShard: outbox backlog stale"
+	title := branding.AlertTitle("outbox backlog stale")
 	body := fmt.Sprintf(
 		"<b>Outbox backlog stale</b>\nPending events: %d\nOldest pending age (s): %.0f\nHot-path Redis may drift from Postgres.",
 		pending, oldestSeconds,
@@ -207,7 +208,7 @@ func (a *OpsAlerter) AlertSlotMigrationComplete(version int32) {
 		return
 	}
 	key := fmt.Sprintf("migration:complete:%d", version)
-	title := "BidShard: slot migration cutover complete"
+	title := branding.AlertTitle("slot migration cutover complete")
 	body := fmt.Sprintf("<b>Slot migration complete</b>\nActive version: %d\nPost-cutover R5 verification passed.", version)
 	a.sendAsync(key, title, body, false)
 }
@@ -217,7 +218,7 @@ func (a *OpsAlerter) AlertLedgerDrift(customerID string, driftErr error) {
 		return
 	}
 	key := fmt.Sprintf("billing:drift:%s", customerID)
-	title := "BidShard: billing ledger drift"
+	title := branding.AlertTitle("billing ledger drift")
 	body := fmt.Sprintf("<b>Ledger invariant failed</b>\nCustomer: %s\nError: %v", customerID, driftErr)
 	a.sendAsync(key, title, body, true)
 }
@@ -227,7 +228,7 @@ func (a *OpsAlerter) AlertCHEmergencyDrop(table, partition string, diskUsedPct f
 		return
 	}
 	key := fmt.Sprintf("ch:emergency:%s:%s", table, partition)
-	title := "BidShard: ClickHouse emergency partition drop"
+	title := branding.AlertTitle("ClickHouse emergency partition drop")
 	body := fmt.Sprintf(
 		"<b>CH emergency drop</b>\nTable: %s\nPartition: %s\nDisk used: %.1f%%\nThreshold: %d%%\nReview retention and ingest volume.",
 		table, partition, diskUsedPct, thresholdPct,
@@ -240,7 +241,7 @@ func (a *OpsAlerter) AlertSlotMigrationError(stage string, err error) {
 		return
 	}
 	key := fmt.Sprintf("migration:tick:%s", stage)
-	title := fmt.Sprintf("BidShard: slot migration %s failed", stage)
+	title := fmt.Sprintf("%s: slot migration %s failed", branding.ProductName(), stage)
 	body := fmt.Sprintf("<b>Slot migration error</b>\nStage: %s\nError: %v", stage, err)
 	a.sendAsync(key, title, body, true)
 }

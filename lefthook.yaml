@@ -1,5 +1,8 @@
 pre-commit:
   commands:
+    tier-a:
+      tags: hygiene
+      run: bash scripts/ci/tier_a.sh
     lint:
       tags: backend
       run: make lint

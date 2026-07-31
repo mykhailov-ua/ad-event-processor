@@ -118,7 +118,7 @@ func NewService(pool *pgxpool.Pool, rdbs []redis.UniversalClient, sharder ingest
 				return
 			case <-ticker.C:
 				if _, err := adapter.RejectStaleProposals(ctx); err != nil && ctx.Err() == nil {
-					slog.Warn("dedup proposal janitor failed", "error", err)
+					slog.Warn("dedup proposal janitor failed", "err", err)
 				}
 			}
 		}
@@ -138,7 +138,7 @@ func NewService(pool *pgxpool.Pool, rdbs []redis.UniversalClient, sharder ingest
 		})
 		store, err := NewScoringWeightsStore(ctx, pool, cfg)
 		if err != nil {
-			slog.Error("scoring weights config invalid", "error", err)
+			slog.Error("scoring weights config invalid", "err", err)
 			cancel()
 			return nil
 		}
@@ -153,15 +153,15 @@ func NewService(pool *pgxpool.Pool, rdbs []redis.UniversalClient, sharder ingest
 		})
 	}
 	if cfg != nil && cfg.MultiRegionCell() {
-		scorer := NewNodeCapacityScorer(s)
+		scorerWorker := NewNodeCapacityScorerWorker(s)
 		s.startWorker(func() {
-			scorer.Start(ctx)
+			scorerWorker.Start(ctx)
 		})
 	}
 	if cfg != nil && cfg.MultiRegionGlobal() {
-		globalScorer := NewGlobalRegionTrafficScorer(s)
+		globalScorerWorker := NewGlobalRegionTrafficScorerWorker(s)
 		s.startWorker(func() {
-			globalScorer.Start(ctx)
+			globalScorerWorker.Start(ctx)
 		})
 	}
 	s.startWorker(func() {
@@ -177,7 +177,7 @@ func NewService(pool *pgxpool.Pool, rdbs []redis.UniversalClient, sharder ingest
 		NewTLSImpersonationWorker(s).Start(ctx, 1*time.Hour)
 	})
 	s.startWorker(func() {
-		s.RunSystemStateSyncer(ctx)
+		NewSystemStateWorker(s).Start(ctx)
 	})
 	return s
 }
@@ -740,12 +740,12 @@ func (s *Service) publishCampaignUpdate(ctx context.Context, campaignID string) 
 			timeout,
 			campaignID,
 		); err != nil {
-			slog.Warn("campaign update broker fallback publish failed", "error", err, "campaign_id", campaignID)
+			slog.Warn("campaign update broker fallback publish failed", "err", err, "campaign_id", campaignID)
 			if pubErr != nil {
 				return fmt.Errorf("redis pubsub: %w; broker: %v", pubErr, err)
 			}
 		} else if pubErr != nil {
-			slog.Warn("campaign update redis pubsub failed; broker fallback ok", "error", pubErr, "campaign_id", campaignID)
+			slog.Warn("campaign update redis pubsub failed; broker fallback ok", "err", pubErr, "campaign_id", campaignID)
 			return nil
 		}
 	}
@@ -950,7 +950,7 @@ func (s *Service) publishRoutingCutover(ctx context.Context, routingEpoch int64,
 			slotVersion,
 			routingEpoch,
 		); err != nil {
-			slog.Warn("elastic routing broker publish failed", "error", err)
+			slog.Warn("elastic routing broker publish failed", "err", err)
 		}
 	}
 	metrics.ElasticRoutingCutoverTotal.Inc()

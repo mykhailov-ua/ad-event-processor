@@ -11,7 +11,7 @@ Agent: Apply when changing RTB auction, deals, or bid ingress on tracker.
 
 Real-Time Bidding
 
-In-process auction on `/track` before `FilterEngine.Check`. Hot path: `.cursor/rules/hot-path.mdc`. Budget authority: `.cursor/rules/data-layer.mdc` Part I. Open gaps: `docs/MILESTONE.md`.
+In-process auction on `/track` before `FilterEngine.Check`. Hot path: `.cursor/rules/hot-path.mdc`. Budget authority: `.cursor/rules/data-layer.mdc` Part I. Open gaps: `.cursor/BACKLOG.md`.
 
 `RunAuction` p99: < 15 us
 Candidates scanned p99: < 500
@@ -169,4 +169,4 @@ File reference
 `internal/ingestion/openrtb_parse.go`: Hot OpenRTB 3.0 parse
 `internal/ingestion/openrtb_validate.go`: Cold 2.6/3.0 lint
 
-Not on hot path today: `HybridBalancer.SelectAndShard` (built, uncalled). Open RTB exchange surface and live production gates: `docs/MILESTONE.md`.
+Not on hot path today: `HybridBalancer.SelectAndShard` (built, uncalled). Open RTB exchange surface: `.cursor/BACKLOG.md`.

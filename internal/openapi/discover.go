@@ -34,6 +34,13 @@ func DiscoverAPIV1Routes(repoRoot string) ([]Route, error) {
 			return nil, err
 		}
 	}
+	for key := range StubRoutes {
+		parts := strings.SplitN(key, " ", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		addRoute(seen, parts[0], parts[1])
+	}
 	out := make([]Route, 0, len(seen))
 	for _, r := range seen {
 		out = append(out, r)

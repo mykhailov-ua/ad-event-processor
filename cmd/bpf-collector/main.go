@@ -19,6 +19,7 @@ import (
 	"github.com/cilium/ebpf/rlimit"
 
 	"espx/cmd/bpf-collector/bpfprobe"
+	"espx/internal/config"
 )
 
 const (
@@ -55,7 +56,7 @@ func main() {
 	}
 	comms := *loadgenComms
 	if comms == "" {
-		comms = os.Getenv("ESPX_BPF_LOADGEN_COMM")
+		comms = config.BPFEnv("LOADGEN_COMM")
 	}
 
 	if err := rlimit.RemoveMemlock(); err != nil {

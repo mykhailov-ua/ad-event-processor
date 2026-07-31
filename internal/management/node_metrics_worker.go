@@ -111,7 +111,7 @@ func (w *NodeMetricsWorker) Start(ctx context.Context) {
 			return
 		case <-ticker.C:
 			if err := w.Flush(ctx, time.Now().UTC()); err != nil {
-				slog.Error("node metrics flush failed", "node_id", w.nodeID, "error", err)
+				slog.Error("node metrics flush failed", "node_id", w.nodeID, "err", err)
 			}
 		}
 	}

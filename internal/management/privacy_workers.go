@@ -23,7 +23,7 @@ func (w *ErasureWorker) Start(ctx context.Context, interval time.Duration) {
 			return
 		case <-ticker.C:
 			if err := w.svc.ProcessPrivacyErasureTick(ctx); err != nil {
-				slog.Error("privacy erasure tick failed", "error", err)
+				slog.Error("privacy erasure tick failed", "err", err)
 			}
 		}
 	}
@@ -46,7 +46,7 @@ func (w *ConsentRetentionWorker) Start(ctx context.Context) {
 			return
 		case <-ticker.C:
 			if err := w.svc.CleanupConsentEvents(ctx); err != nil {
-				slog.Error("consent retention cleanup failed", "error", err)
+				slog.Error("consent retention cleanup failed", "err", err)
 			}
 		}
 	}

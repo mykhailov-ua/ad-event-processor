@@ -33,7 +33,7 @@ func (nginxWorker *NginxConfigWorker) Start(ctx context.Context, interval time.D
 			return
 		case <-ticker.C:
 			if err := nginxWorker.ExportAndReload(ctx); err != nil {
-				slog.Error("nginx export failed", "error", err)
+				slog.Error("nginx export failed", "err", err)
 			}
 		}
 	}

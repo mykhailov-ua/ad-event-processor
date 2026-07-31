@@ -21,7 +21,7 @@ services:
     command:
       - /app/espx-broker
       - -addr
-      - 127.0.0.1:9093
+      - 127.0.0.1:19093
       - -health-addr
       - 127.0.0.1:8081
       - -data-dir
@@ -30,10 +30,6 @@ services:
       - broker-1
       - -redis-url
       - redis://127.0.0.1:6379/0
-      - -leader-lease-ttl
-      - 15s
-      - -coord-interval
-      - 3s
     volumes:
       - ${ESPX_BROKER_BIN:-./deploy/broker/bin/espx-broker}:/app/espx-broker:ro
       - broker-1-data:/data
@@ -46,7 +42,7 @@ services:
     command:
       - /app/espx-broker
       - -addr
-      - 127.0.0.1:9094
+      - 127.0.0.1:19094
       - -health-addr
       - 127.0.0.1:8082
       - -data-dir
@@ -55,10 +51,6 @@ services:
       - broker-2
       - -redis-url
       - redis://127.0.0.1:6379/0
-      - -leader-lease-ttl
-      - 15s
-      - -coord-interval
-      - 3s
     volumes:
       - ${ESPX_BROKER_BIN:-./deploy/broker/bin/espx-broker}:/app/espx-broker:ro
       - broker-2-data:/data

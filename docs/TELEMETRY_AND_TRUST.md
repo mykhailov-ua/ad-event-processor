@@ -25,9 +25,9 @@ Recommended monthly UX: heartbeat attempts refresh **5–7 days before** `valid_
 
 ---
 
-## Why operators fear "слив связок"
+## Why operators fear traffic-bundle leaks
 
-In ad-tech, a **связка** is the profitable combination of traffic source, geo, creative, landing, and payout. Leakage means competitors copy or cut the source.
+In ad-tech, a **traffic bundle** (Russian: *svyazka*) is the profitable combination of traffic source, geo, creative, landing, and payout. Leakage means competitors copy or cut the source.
 
 Closed-source self-hosted amplifies paranoia: the operator cannot diff the binary, so any outbound call is suspect.
 
@@ -141,7 +141,7 @@ Pull or push via license server / outbox:
 
 ### Sales pitch (operator-facing)
 
-> You do not send связки or creatives. You send install-wide reject statistics and anonymized bot signal classes. In return you receive blocklists and model packs trained from the same opt-in pool — immunization for your tracker without vendor access to your traffic.
+> You do not send traffic bundles or creatives. You send install-wide reject statistics and anonymized bot signal classes. In return you receive blocklists and model packs trained from the same opt-in pool — immunization for your tracker without vendor access to your traffic.
 
 **License:** threat intel participation is **not** required for base monthly license.
 
@@ -166,7 +166,7 @@ Self-hosted binary without opt-in telemetry means the vendor sells an **engine**
 
 | Source | Use |
 | :--- | :--- |
-| **In-product feedback form** (bundled SPA) | Bugs, feature votes, severity — no campaign logs |
+| **In-product feedback API** (GAP-PROD-09) | Bugs, feature votes, severity — no campaign logs |
 | **Opt-in diagnostic bundle** | On-demand support pack: versions, redacted config, 1h aggregate reject rates |
 | **Pilot customers under NDA** | Explicit threat-sharing agreement for first intel feed |
 | **Public IVT / bot benchmarks** | Rules and models shipped in **releases** |
@@ -179,12 +179,13 @@ Do not claim network-wide ML training until opt-in threat intel pool exists.
 
 ## In-product feedback (GAP-PROD-09)
 
-Bundled SPA should include:
+**Backend (P27):** JSON API only — no UI in this phase.
 
-- type: bug | feature | support
-- fields: contact email, `deployment_id`, `binary_version`, `sku` (auto-filled)
-- optional: attach opt-in diagnostic bundle
-- no free-text campaign URLs required
+- `GET /api/v1/support/feedback/meta` — auto-fill: `deployment_id`, `binary_version`, `sku`
+- `POST /api/v1/support/feedback` — `type` (bug | feature | support), contact email, message, optional attach diagnostic bundle (GAP-SUP-01)
+- No free-text campaign URLs required
+
+**UI (P49):** Bundled SPA feedback form consumes the API above. Implement after all backend backlog tasks (P48), not before.
 
 Vendor uses this for roadmap until telemetry cohort is large enough.
 
@@ -241,7 +242,7 @@ Exact boundary TBD at first sale; document in vendor SKU YAML.
 
 | Risk | Mitigation |
 | :--- | :--- |
-| "You steal связки" | Three channels, schemas, opt-in, allowlist |
+| "You steal traffic bundles" | Three channels, schemas, opt-in, allowlist |
 | **SRE overhead (PG+Redis+CH+6 binaries)** | Deploy profiles `ingest_only`, optional CH (GAP-PROD-05); [DATA_SECURITY runbook](./runbooks/DATA_SECURITY.md) MVSS |
 | No UI | Bundled SPA (GAP-PROD-02) |
 | Gray market cracks | Layered license + **updates worth paying for** (intel, models) |
@@ -255,7 +256,7 @@ Exact boundary TBD at first sale; document in vendor SKU YAML.
 | ID | Task |
 | :--- | :--- |
 | **GAP-PROD-08** | Opt-in product telemetry: local counters, hourly pulse, `ESPX_TELEMETRY_OPT_IN`, published schema |
-| **GAP-PROD-09** | SPA feedback form + optional diagnostic bundle |
+| **GAP-PROD-09** | Support feedback API (P27) + SPA form (P49) |
 | **GAP-PROD-10** | Community vs Pro repo/binary split policy doc + release process |
 | **GAP-PROD-04** | Monthly license heartbeat, offline grace Y, SPA warnings |
 | **GAP-PROD-06** | Fingerprint bind, activation limits |

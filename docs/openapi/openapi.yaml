@@ -5,7 +5,7 @@ info:
   description: |
     Machine-readable contract for `/api/v1` JSON routes served by `cmd/management`
     (`internal/management` + `internal/adminapi`). HTMX `/admin/*` HTML routes are excluded.
-    HTTP 501 stub routes (deferred dashboards/reports) are excluded — see `internal/openapi/stubs.go`.
+    HTTP 501 stub routes (deferred dashboards/reports) are excluded — see `internal/adminapi/stub_routes.go` and `internal/openapi/stubs.go`.
 servers:
   - url: http://127.0.0.1:8188
     description: Local management (default SERVER_PORT)
@@ -1171,6 +1171,42 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /api/v1/ops/dashboard/metrics:
+    get:
+      tags: [Operations]
+      summary: GET /api/v1/ops/dashboard/metrics
+      operationId: get_ops_dashboard_metrics
+      security:
+        - AdminAPIKey: []
+        - SessionCookie: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/ops/dashboard/summary:
+    get:
+      tags: [Operations]
+      summary: GET /api/v1/ops/dashboard/summary
+      operationId: get_ops_dashboard_summary
+      security:
+        - AdminAPIKey: []
+        - SessionCookie: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /api/v1/ops/dlq:
     get:
       tags: [Operations]
@@ -1284,6 +1320,24 @@ paths:
       tags: [Operations]
       summary: GET /api/v1/ops/shards
       operationId: get_ops_shards
+      security:
+        - AdminAPIKey: []
+        - SessionCookie: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/ops/support/bundle:
+    post:
+      tags: [Operations]
+      summary: POST /api/v1/ops/support/bundle
+      operationId: post_ops_support_bundle
       security:
         - AdminAPIKey: []
         - SessionCookie: []
@@ -1440,6 +1494,24 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /api/v1/rtb/floors/apply:
+    post:
+      tags: [Management]
+      summary: POST /api/v1/rtb/floors/apply
+      operationId: post_rtb_floors_apply
+      security:
+        - AdminAPIKey: []
+        - SessionCookie: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /api/v1/selfserve/api-keys:
     post:
       tags: [Customers]
@@ -1571,6 +1643,42 @@ paths:
       tags: [Customers]
       summary: GET /api/v1/selfserve/usage
       operationId: get_selfserve_usage
+      security:
+        - AdminAPIKey: []
+        - SessionCookie: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/support/feedback:
+    post:
+      tags: [Management]
+      summary: POST /api/v1/support/feedback
+      operationId: post_support_feedback
+      security:
+        - AdminAPIKey: []
+        - SessionCookie: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/support/feedback/meta:
+    get:
+      tags: [Management]
+      summary: GET /api/v1/support/feedback/meta
+      operationId: get_support_feedback_meta
       security:
         - AdminAPIKey: []
         - SessionCookie: []

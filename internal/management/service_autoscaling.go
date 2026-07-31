@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 
 	"espx/internal/ingestion"
 	db "espx/internal/ingestion/sqlc"
@@ -146,11 +145,6 @@ func (s *Service) autoscaleBudgetsTx(ctx context.Context, tx pgx.Tx, merge deliv
 		newBestLimit := bestLimit + shiftAmount
 
 		if newWorstLimit < worstLocked.CurrentSpend {
-			slog.Debug("autoscale skipped: shift would put budget below current spend",
-				"campaign_id", worstID,
-				"current_spend", worstLocked.CurrentSpend,
-				"new_limit", newWorstLimit,
-			)
 			continue
 		}
 		if newWorstLimit <= 0 {
@@ -267,15 +261,6 @@ func (s *Service) autoscaleBudgetsTx(ctx context.Context, tx pgx.Tx, merge deliv
 				return fmt.Errorf("failed to create outbox event for best campaign: %w", err)
 			}
 		}
-
-		slog.Info("autoscaled budgets by rule",
-			"customer_id", custID,
-			"decreased_campaign", worstID,
-			"decreased_ctr", worstCTR,
-			"increased_campaign", bestID,
-			"increased_ctr", bestCTR,
-			"shift_amount", shiftAmount,
-		)
 	}
 
 	return nil

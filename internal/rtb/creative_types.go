@@ -9,8 +9,6 @@ const (
 	MediaTypeVideo
 )
 
-const invalidCreativeIdx = ^uint32(0)
-
 type CreativeData struct {
 	ID          CreativeID
 	CampaignID  CampaignID

@@ -39,12 +39,12 @@ type LicensingHTTPHandlers struct {
 	ResolveSelfServeCustomerID func(*http.Request) (uuid.UUID, error)
 }
 
-func (h *LicensingHTTPHandlers) Register(mux *http.ServeMux) {
-	if h == nil || h.Pool == nil {
+func (licensing *LicensingHTTPHandlers) Register(mux *http.ServeMux) {
+	if licensing == nil || licensing.Pool == nil {
 		return
 	}
-	limit := h.ApplyRateLimit
-	perm := h.RequirePermission
+	limit := licensing.ApplyRateLimit
+	perm := licensing.RequirePermission
 	if limit == nil {
 		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
 	}
@@ -52,31 +52,31 @@ func (h *LicensingHTTPHandlers) Register(mux *http.ServeMux) {
 		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 
-	mux.HandleFunc("GET /api/v1/customers/{id}/subscription", limit(perm("customers:read", h.getCustomerSubscription)))
-	mux.HandleFunc("GET /api/v1/customers/{id}/usage", limit(perm("customers:read", h.getCustomerUsage)))
-	mux.HandleFunc("GET /api/v1/customers/{id}/usage/daily", limit(perm("customers:read", h.getCustomerUsageDaily)))
-	mux.HandleFunc("GET /api/v1/customers/{id}/quota-status", limit(perm("customers:read", h.getCustomerQuotaStatus)))
-	mux.HandleFunc("GET /api/v1/license/status", limit(perm("customers:read", h.getLicenseStatus)))
-	mux.HandleFunc("POST /api/v1/customers/{id}/subscription", limit(perm("customers:write", h.postCustomerSubscription)))
-	mux.HandleFunc("POST /api/v1/customers/{id}/quota-bump", limit(perm("customers:write", h.postCustomerQuotaBump)))
+	mux.HandleFunc("GET /api/v1/customers/{id}/subscription", limit(perm("customers:read", licensing.getCustomerSubscription)))
+	mux.HandleFunc("GET /api/v1/customers/{id}/usage", limit(perm("customers:read", licensing.getCustomerUsage)))
+	mux.HandleFunc("GET /api/v1/customers/{id}/usage/daily", limit(perm("customers:read", licensing.getCustomerUsageDaily)))
+	mux.HandleFunc("GET /api/v1/customers/{id}/quota-status", limit(perm("customers:read", licensing.getCustomerQuotaStatus)))
+	mux.HandleFunc("GET /api/v1/license/status", limit(perm("customers:read", licensing.getLicenseStatus)))
+	mux.HandleFunc("POST /api/v1/customers/{id}/subscription", limit(perm("customers:write", licensing.postCustomerSubscription)))
+	mux.HandleFunc("POST /api/v1/customers/{id}/quota-bump", limit(perm("customers:write", licensing.postCustomerQuotaBump)))
 
-	if h.RequireSelfServePermission != nil && h.ResolveSelfServeCustomerID != nil {
-		ssLimit := h.ApplySelfServeRateLimit
+	if licensing.RequireSelfServePermission != nil && licensing.ResolveSelfServeCustomerID != nil {
+		ssLimit := licensing.ApplySelfServeRateLimit
 		if ssLimit == nil {
 			ssLimit = limit
 		}
-		mux.HandleFunc("GET /api/v1/selfserve/usage", ssLimit(h.RequireSelfServePermission("customers:read", h.getSelfServeUsage)))
+		mux.HandleFunc("GET /api/v1/selfserve/usage", ssLimit(licensing.RequireSelfServePermission("customers:read", licensing.getSelfServeUsage)))
 	}
 }
 
-func (h *LicensingHTTPHandlers) getCustomerSubscription(w http.ResponseWriter, r *http.Request) {
+func (licensing *LicensingHTTPHandlers) getCustomerSubscription(w http.ResponseWriter, r *http.Request) {
 	custID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer id")
 		return
 	}
 
-	q := db.New(h.Pool)
+	q := db.New(licensing.Pool)
 	sub, err := q.GetCustomerSubscription(r.Context(), ingestion.ToUUID(custID))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -89,13 +89,21 @@ func (h *LicensingHTTPHandlers) getCustomerSubscription(w http.ResponseWriter, r
 
 	licEnt := defaultLicenseEntitlements()
 	if licRow, err := q.GetLicenseStatus(r.Context()); err == nil {
-		_ = json.Unmarshal(licRow.EntitlementsJson, &licEnt)
+		if err := json.Unmarshal(licRow.EntitlementsJson, &licEnt); err != nil {
+			licEnt = defaultLicenseEntitlements()
+		}
 	}
 
 	var limits lic.Limits
-	_ = json.Unmarshal(sub.LimitsJson, &limits)
+	if err := json.Unmarshal(sub.LimitsJson, &limits); err != nil {
+		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "invalid subscription limits")
+		return
+	}
 	var features lic.FeatureSet
-	_ = json.Unmarshal(sub.FeaturesJson, &features)
+	if err := json.Unmarshal(sub.FeaturesJson, &features); err != nil {
+		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "invalid subscription features")
+		return
+	}
 	applySubscriptionOverrides(sub.OverridesJson, &limits, &features)
 
 	eff := lic.Effective(licEnt, lic.Entitlements{Limits: limits, Features: features})
@@ -143,14 +151,14 @@ func (h *LicensingHTTPHandlers) getCustomerSubscription(w http.ResponseWriter, r
 	})
 }
 
-func (h *LicensingHTTPHandlers) getCustomerUsage(w http.ResponseWriter, r *http.Request) {
+func (licensing *LicensingHTTPHandlers) getCustomerUsage(w http.ResponseWriter, r *http.Request) {
 	custID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer id")
 		return
 	}
 	periodDate := time.Date(time.Now().UTC().Year(), time.Now().UTC().Month(), 1, 0, 0, 0, 0, time.UTC)
-	q := db.New(h.Pool)
+	q := db.New(licensing.Pool)
 	meters, err := q.ListUsageMeters(r.Context(), db.ListUsageMetersParams{
 		CustomerID: ingestion.ToUUID(custID),
 		Period:     pgtype.Date{Time: periodDate, Valid: true},
@@ -170,7 +178,7 @@ func (h *LicensingHTTPHandlers) getCustomerUsage(w http.ResponseWriter, r *http.
 	httpresponse.JSON(w, http.StatusOK, usageDTOs)
 }
 
-func (h *LicensingHTTPHandlers) getCustomerUsageDaily(w http.ResponseWriter, r *http.Request) {
+func (licensing *LicensingHTTPHandlers) getCustomerUsageDaily(w http.ResponseWriter, r *http.Request) {
 	custID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer id")
@@ -189,7 +197,7 @@ func (h *LicensingHTTPHandlers) getCustomerUsageDaily(w http.ResponseWriter, r *
 	} else {
 		end = time.Now().UTC()
 	}
-	q := db.New(h.Pool)
+	q := db.New(licensing.Pool)
 	rows, err := q.ListUsageDaily(r.Context(), db.ListUsageDailyParams{
 		CustomerID:  ingestion.ToUUID(custID),
 		UsageDate:   pgtype.Date{Time: start, Valid: true},
@@ -211,20 +219,23 @@ func (h *LicensingHTTPHandlers) getCustomerUsageDaily(w http.ResponseWriter, r *
 	httpresponse.JSON(w, http.StatusOK, dtos)
 }
 
-func (h *LicensingHTTPHandlers) getCustomerQuotaStatus(w http.ResponseWriter, r *http.Request) {
+func (licensing *LicensingHTTPHandlers) getCustomerQuotaStatus(w http.ResponseWriter, r *http.Request) {
 	custID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer id")
 		return
 	}
-	q := db.New(h.Pool)
+	q := db.New(licensing.Pool)
 	sub, err := q.GetCustomerSubscription(r.Context(), ingestion.ToUUID(custID))
 	if err != nil {
 		httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "subscription not found")
 		return
 	}
 	var limits lic.Limits
-	_ = json.Unmarshal(sub.LimitsJson, &limits)
+	if err := json.Unmarshal(sub.LimitsJson, &limits); err != nil {
+		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "invalid subscription limits")
+		return
+	}
 	if len(sub.OverridesJson) > 0 {
 		var overrides struct {
 			Limits *lic.Limits `json:"limits,omitempty"`
@@ -244,8 +255,8 @@ func (h *LicensingHTTPHandlers) getCustomerQuotaStatus(w http.ResponseWriter, r 
 	dateStr := time.Now().In(loc).Format("20060102")
 	redisKey := fmt.Sprintf("ingress:day:%s:%s", custID.String(), dateStr)
 	var val int64
-	if h.RedisForCustomer != nil {
-		if rdb := h.RedisForCustomer(custID); rdb != nil {
+	if licensing.RedisForCustomer != nil {
+		if rdb := licensing.RedisForCustomer(custID); rdb != nil {
 			val, _ = rdb.Get(r.Context(), redisKey).Int64()
 		}
 	}
@@ -262,14 +273,14 @@ func (h *LicensingHTTPHandlers) getCustomerQuotaStatus(w http.ResponseWriter, r 
 	})
 }
 
-func (h *LicensingHTTPHandlers) getSelfServeUsage(w http.ResponseWriter, r *http.Request) {
-	custID, err := h.ResolveSelfServeCustomerID(r)
+func (licensing *LicensingHTTPHandlers) getSelfServeUsage(w http.ResponseWriter, r *http.Request) {
+	custID, err := licensing.ResolveSelfServeCustomerID(r)
 	if err != nil {
 		httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "access denied or not tenant-scoped")
 		return
 	}
 	periodDate := time.Date(time.Now().UTC().Year(), time.Now().UTC().Month(), 1, 0, 0, 0, 0, time.UTC)
-	q := db.New(h.Pool)
+	q := db.New(licensing.Pool)
 
 	sub, err := q.GetCustomerSubscription(r.Context(), ingestion.ToUUID(custID))
 	if err != nil {
@@ -304,8 +315,8 @@ func (h *LicensingHTTPHandlers) getSelfServeUsage(w http.ResponseWriter, r *http
 	httpresponse.JSON(w, http.StatusOK, usageDTOs)
 }
 
-func (h *LicensingHTTPHandlers) getLicenseStatus(w http.ResponseWriter, r *http.Request) {
-	q := db.New(h.Pool)
+func (licensing *LicensingHTTPHandlers) getLicenseStatus(w http.ResponseWriter, r *http.Request) {
+	q := db.New(licensing.Pool)
 	licRow, err := q.GetLicenseStatus(r.Context())
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -316,7 +327,10 @@ func (h *LicensingHTTPHandlers) getLicenseStatus(w http.ResponseWriter, r *http.
 		return
 	}
 	var entitlements lic.Entitlements
-	_ = json.Unmarshal(licRow.EntitlementsJson, &entitlements)
+	if err := json.Unmarshal(licRow.EntitlementsJson, &entitlements); err != nil {
+		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "invalid license entitlements")
+		return
+	}
 	refreshMode := os.Getenv("ESPX_LICENSE_MODE")
 	if refreshMode == "" {
 		refreshMode = "file"
@@ -342,7 +356,7 @@ func (h *LicensingHTTPHandlers) getLicenseStatus(w http.ResponseWriter, r *http.
 	})
 }
 
-func (h *LicensingHTTPHandlers) postCustomerSubscription(w http.ResponseWriter, r *http.Request) {
+func (licensing *LicensingHTTPHandlers) postCustomerSubscription(w http.ResponseWriter, r *http.Request) {
 	custID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer id")
@@ -364,7 +378,7 @@ func (h *LicensingHTTPHandlers) postCustomerSubscription(w http.ResponseWriter, 
 			pEnd = pgtype.Date{Time: t, Valid: true}
 		}
 	}
-	err = pgx.BeginFunc(r.Context(), h.Pool, func(tx pgx.Tx) error {
+	err = pgx.BeginFunc(r.Context(), licensing.Pool, func(tx pgx.Tx) error {
 		q := db.New(tx)
 		plan, err := q.GetSubscriptionPlan(r.Context(), req.PlanCode)
 		if err != nil {
@@ -372,9 +386,13 @@ func (h *LicensingHTTPHandlers) postCustomerSubscription(w http.ResponseWriter, 
 		}
 		if licRow, err := q.GetLicenseStatus(r.Context()); err == nil {
 			var licEnt lic.Entitlements
-			_ = json.Unmarshal(licRow.EntitlementsJson, &licEnt)
+			if err := json.Unmarshal(licRow.EntitlementsJson, &licEnt); err != nil {
+				return fmt.Errorf("invalid license entitlements: %w", err)
+			}
 			var limits lic.Limits
-			_ = json.Unmarshal(plan.LimitsJson, &limits)
+			if err := json.Unmarshal(plan.LimitsJson, &limits); err != nil {
+				return fmt.Errorf("invalid plan limits: %w", err)
+			}
 			if len(req.OverridesJSON) > 0 {
 				var overrides struct {
 					Limits *lic.Limits `json:"limits,omitempty"`
@@ -421,7 +439,7 @@ func (h *LicensingHTTPHandlers) postCustomerSubscription(w http.ResponseWriter, 
 	httpresponse.JSON(w, http.StatusOK, map[string]string{"status": "updated"})
 }
 
-func (h *LicensingHTTPHandlers) postCustomerQuotaBump(w http.ResponseWriter, r *http.Request) {
+func (licensing *LicensingHTTPHandlers) postCustomerQuotaBump(w http.ResponseWriter, r *http.Request) {
 	custID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer id")
@@ -432,7 +450,7 @@ func (h *LicensingHTTPHandlers) postCustomerQuotaBump(w http.ResponseWriter, r *
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "failed to decode json")
 		return
 	}
-	q := db.New(h.Pool)
+	q := db.New(licensing.Pool)
 	sub, err := q.GetCustomerSubscription(r.Context(), ingestion.ToUUID(custID))
 	if err != nil {
 		httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "subscription not found")
@@ -443,19 +461,25 @@ func (h *LicensingHTTPHandlers) postCustomerQuotaBump(w http.ResponseWriter, r *
 		Features *lic.FeatureSet `json:"features,omitempty"`
 	}
 	if len(sub.OverridesJson) > 0 {
-		_ = json.Unmarshal(sub.OverridesJson, &overrides)
+		if err := json.Unmarshal(sub.OverridesJson, &overrides); err != nil {
+			httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "invalid subscription overrides")
+			return
+		}
 	}
 	if overrides.Limits == nil {
 		overrides.Limits = &lic.Limits{}
 	}
 	var planLimits lic.Limits
-	_ = json.Unmarshal(sub.LimitsJson, &planLimits)
+	if err := json.Unmarshal(sub.LimitsJson, &planLimits); err != nil {
+		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "invalid subscription limits")
+		return
+	}
 	if overrides.Limits.MaxRequestsPerDay == 0 {
 		overrides.Limits.MaxRequestsPerDay = planLimits.MaxRequestsPerDay
 	}
 	overrides.Limits.MaxRequestsPerDay += uint64(req.BonusRequests)
 	overridesBytes, _ := json.Marshal(overrides)
-	err = pgx.BeginFunc(r.Context(), h.Pool, func(tx pgx.Tx) error {
+	err = pgx.BeginFunc(r.Context(), licensing.Pool, func(tx pgx.Tx) error {
 		txq := db.New(tx)
 		if _, txerr := txq.UpsertCustomerSubscription(r.Context(), db.UpsertCustomerSubscriptionParams{
 			CustomerID:    ingestion.ToUUID(custID),

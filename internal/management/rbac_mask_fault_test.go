@@ -57,7 +57,6 @@ func TestFault_RBACMaskEnforced(t *testing.T) {
 	buyerID := uuid.New()
 	req, _ := http.NewRequest(http.MethodGet, "/api/v1/campaigns/"+campID.String(), nil)
 	withSessionUser(req, tokenMaker, RoleBuyer, custID)
-	// overwrite user id in token - recreate with buyer id
 	token, err := tokenMaker.CreateToken(buyerID, uuid.New(), RoleBuyer, custID, time.Hour)
 	require.NoError(t, err)
 	req.AddCookie(&http.Cookie{Name: "accessToken", Value: token})

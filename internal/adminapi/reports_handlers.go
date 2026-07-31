@@ -32,30 +32,30 @@ type ReportsHTTPHandlers struct {
 	WriteServiceError         func(http.ResponseWriter, error)
 }
 
-func (h *ReportsHTTPHandlers) Register(mux *http.ServeMux) {
-	if h == nil {
+func (reports *ReportsHTTPHandlers) Register(mux *http.ServeMux) {
+	if reports == nil {
 		return
 	}
-	if h.ApplyRateLimit == nil {
-		h.ApplyRateLimit = func(next http.HandlerFunc) http.HandlerFunc { return next }
+	if reports.ApplyRateLimit == nil {
+		reports.ApplyRateLimit = func(next http.HandlerFunc) http.HandlerFunc { return next }
 	}
-	if h.RequirePermission == nil {
-		h.RequirePermission = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
+	if reports.RequirePermission == nil {
+		reports.RequirePermission = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 
-	h.registerCampaignStats(mux)
-	h.registerCampaignForecast(mux)
-	h.registerScaffoldReports(mux)
+	reports.registerCampaignStats(mux)
+	reports.registerCampaignForecast(mux)
+	reports.registerScaffoldReports(mux)
 
-	limit := h.ApplyRateLimit
-	perm := h.RequirePermission
-	mux.HandleFunc("GET /api/v1/reports/placements", limit(perm("campaigns:read", h.getPlacementsReport)))
-	mux.HandleFunc("GET /api/v1/reports/keywords", limit(perm("campaigns:read", h.getKeywordsReport)))
+	limit := reports.ApplyRateLimit
+	perm := reports.RequirePermission
+	mux.HandleFunc("GET /api/v1/reports/placements", limit(perm("campaigns:read", reports.getPlacementsReport)))
+	mux.HandleFunc("GET /api/v1/reports/keywords", limit(perm("campaigns:read", reports.getKeywordsReport)))
 }
 
-func (h *ReportsHTTPHandlers) registerScaffoldReports(mux *http.ServeMux) {
-	limit := h.ApplyRateLimit
-	perm := h.RequirePermission
+func (reports *ReportsHTTPHandlers) registerScaffoldReports(mux *http.ServeMux) {
+	limit := reports.ApplyRateLimit
+	perm := reports.RequirePermission
 
 	routes := []struct {
 		path       string
@@ -77,16 +77,16 @@ func (h *ReportsHTTPHandlers) registerScaffoldReports(mux *http.ServeMux) {
 		{"GET /api/v1/reports/customer-portfolio", "customers:read"},
 	}
 	for _, route := range routes {
-		mux.HandleFunc(route.path, limit(perm(route.permission, h.notImplemented)))
+		mux.HandleFunc(route.path, limit(perm(route.permission, reports.notImplemented)))
 	}
-	mux.HandleFunc("POST /api/v1/reports/jobs", limit(perm("customers:read", h.notImplemented)))
+	mux.HandleFunc("POST /api/v1/reports/jobs", limit(perm("customers:read", reports.notImplemented)))
 }
 
-func (h *ReportsHTTPHandlers) notImplemented(w http.ResponseWriter, _ *http.Request) {
+func (reports *ReportsHTTPHandlers) notImplemented(w http.ResponseWriter, _ *http.Request) {
 	httpresponse.Error(w, http.StatusNotImplemented, "NOT_IMPLEMENTED", "report stub; UI deferred — docs/DEVELOPMENT.md")
 }
 
-func (h *ReportsHTTPHandlers) writeServiceError(w http.ResponseWriter, err error) {
+func (reports *ReportsHTTPHandlers) writeServiceError(w http.ResponseWriter, err error) {
 	var q invalidQueryError
 	if errors.As(err, &q) {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", string(q))
@@ -96,18 +96,18 @@ func (h *ReportsHTTPHandlers) writeServiceError(w http.ResponseWriter, err error
 		httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "forbidden")
 		return
 	}
-	if h.WriteServiceError != nil {
-		h.WriteServiceError(w, err)
+	if reports.WriteServiceError != nil {
+		reports.WriteServiceError(w, err)
 		return
 	}
 	httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error")
 }
 
-func (h *ReportsHTTPHandlers) checkTierGate(r *http.Request, customerID uuid.UUID) (bool, error) {
-	if h.Pool == nil {
+func (reports *ReportsHTTPHandlers) checkTierGate(r *http.Request, customerID uuid.UUID) (bool, error) {
+	if reports.Pool == nil {
 		return true, nil
 	}
-	q := db.New(h.Pool)
+	q := db.New(reports.Pool)
 	sub, err := q.GetCustomerSubscription(r.Context(), pgtype.UUID{Bytes: customerID, Valid: true})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -118,16 +118,16 @@ func (h *ReportsHTTPHandlers) checkTierGate(r *http.Request, customerID uuid.UUI
 	return sub.PlanCode == "pro" || sub.PlanCode == "enterprise", nil
 }
 
-func (h *ReportsHTTPHandlers) reportFreshness(ctx context.Context) DataFreshnessDTO {
+func (reports *ReportsHTTPHandlers) reportFreshness(ctx context.Context) DataFreshnessDTO {
 	dto := DataFreshnessDTO{
 		AsOf:        time.Now().UTC().Format(time.RFC3339),
 		Consistency: "eventual",
 	}
-	if h == nil || h.CHQuery == nil {
+	if reports == nil || reports.CHQuery == nil {
 		dto.Stale = true
 		return dto
 	}
-	lag, err := h.CHQuery.IngestionLag(ctx)
+	lag, err := reports.CHQuery.IngestionLag(ctx)
 	if err != nil {
 		dto.Stale = true
 		return dto
@@ -136,7 +136,7 @@ func (h *ReportsHTTPHandlers) reportFreshness(ctx context.Context) DataFreshness
 	return dto
 }
 
-func (h *ReportsHTTPHandlers) getPlacementsReport(w http.ResponseWriter, r *http.Request) {
+func (reports *ReportsHTTPHandlers) getPlacementsReport(w http.ResponseWriter, r *http.Request) {
 	var customerID uuid.UUID
 	if custIDStr := r.URL.Query().Get("customer_id"); custIDStr != "" {
 		var err error
@@ -146,8 +146,8 @@ func (h *ReportsHTTPHandlers) getPlacementsReport(w http.ResponseWriter, r *http
 			return
 		}
 	} else {
-		if h.ResolveForecastCustomerID != nil {
-			resolved, err := h.ResolveForecastCustomerID(r, nil)
+		if reports.ResolveForecastCustomerID != nil {
+			resolved, err := reports.ResolveForecastCustomerID(r, nil)
 			if err == nil && resolved != nil {
 				customerID = *resolved
 			}
@@ -158,9 +158,9 @@ func (h *ReportsHTTPHandlers) getPlacementsReport(w http.ResponseWriter, r *http
 		customerID = uuid.MustParse("00000000-0000-0000-0000-000000000001")
 	}
 
-	allowed, err := h.checkTierGate(r, customerID)
+	allowed, err := reports.checkTierGate(r, customerID)
 	if err != nil {
-		h.writeServiceError(w, err)
+		reports.writeServiceError(w, err)
 		return
 	}
 	if !allowed {
@@ -221,7 +221,7 @@ func (h *ReportsHTTPHandlers) getPlacementsReport(w http.ResponseWriter, r *http
 
 	paginatedRows, total, err := coldpath.PaginatedList(countFn, listFn, mapFn)
 	if err != nil {
-		h.writeServiceError(w, err)
+		reports.writeServiceError(w, err)
 		return
 	}
 
@@ -232,14 +232,14 @@ func (h *ReportsHTTPHandlers) getPlacementsReport(w http.ResponseWriter, r *http
 
 	resp := PlacementReportResponse{
 		Rows:       paginatedRows,
-		Freshness:  h.reportFreshness(r.Context()),
+		Freshness:  reports.reportFreshness(r.Context()),
 		NextCursor: nextCursor,
 	}
 
 	httpresponse.JSON(w, http.StatusOK, resp)
 }
 
-func (h *ReportsHTTPHandlers) getKeywordsReport(w http.ResponseWriter, r *http.Request) {
+func (reports *ReportsHTTPHandlers) getKeywordsReport(w http.ResponseWriter, r *http.Request) {
 	var customerID uuid.UUID
 	if custIDStr := r.URL.Query().Get("customer_id"); custIDStr != "" {
 		var err error
@@ -249,8 +249,8 @@ func (h *ReportsHTTPHandlers) getKeywordsReport(w http.ResponseWriter, r *http.R
 			return
 		}
 	} else {
-		if h.ResolveForecastCustomerID != nil {
-			resolved, err := h.ResolveForecastCustomerID(r, nil)
+		if reports.ResolveForecastCustomerID != nil {
+			resolved, err := reports.ResolveForecastCustomerID(r, nil)
 			if err == nil && resolved != nil {
 				customerID = *resolved
 			}
@@ -261,9 +261,9 @@ func (h *ReportsHTTPHandlers) getKeywordsReport(w http.ResponseWriter, r *http.R
 		customerID = uuid.MustParse("00000000-0000-0000-0000-000000000001")
 	}
 
-	allowed, err := h.checkTierGate(r, customerID)
+	allowed, err := reports.checkTierGate(r, customerID)
 	if err != nil {
-		h.writeServiceError(w, err)
+		reports.writeServiceError(w, err)
 		return
 	}
 	if !allowed {
@@ -325,7 +325,7 @@ func (h *ReportsHTTPHandlers) getKeywordsReport(w http.ResponseWriter, r *http.R
 
 	paginatedRows, total, err := coldpath.PaginatedList(countFn, listFn, mapFn)
 	if err != nil {
-		h.writeServiceError(w, err)
+		reports.writeServiceError(w, err)
 		return
 	}
 
@@ -336,7 +336,7 @@ func (h *ReportsHTTPHandlers) getKeywordsReport(w http.ResponseWriter, r *http.R
 
 	resp := KeywordReportResponse{
 		Rows:       paginatedRows,
-		Freshness:  h.reportFreshness(r.Context()),
+		Freshness:  reports.reportFreshness(r.Context()),
 		NextCursor: nextCursor,
 	}
 

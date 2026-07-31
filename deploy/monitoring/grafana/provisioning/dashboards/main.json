@@ -1029,7 +1029,7 @@
           "refId": "D"
         }
       ],
-      "title": "Fraud Stream Backlog (M14)",
+      "title": "Fraud Stream Backlog",
       "description": "Заполнение аналитического кольца, глубина очереди, возраст PEL на шард, частота сброса критических данных (GAP-OPS-04).",
       "type": "timeseries"
     }

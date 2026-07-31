@@ -289,7 +289,7 @@ Administrative traffic does not share the tracker event loop. Mutations that aff
 | :--- | :--- | :--- |
 | `/api/v1/*` | Operators, automation | Campaign stats, balance, recon, billing, ops |
 | `/api/v1/selfserve/*` | Advertiser API keys | Create/pause/resume campaigns, payment intents, invoices |
-| `/admin/*` | **Deprecated** legacy HTMX | Use JSON `/api/v1` only; removal [GAP-HYG-04](.cursor/BACKLOG.md) |
+| `/admin/*` | **Deprecated** legacy HTMX | Use JSON `/api/v1` only; removed in P06 |
 
 Self-hosted UI policy: [docs/SELF_HOSTED.md](docs/SELF_HOSTED.md#ui-no-server-side-htmx). No server-side HTMX SSR required for production installs.
 
@@ -560,4 +560,4 @@ CI gates: `scripts/perf/`, `scripts/fault/run.sh`.
 
 ## Licensing
 
-Product license (JWT per deployment) and tenant subscriptions merge in `internal/licensing/`. Binary: `cmd/license-server`. Detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §5–6 and [Management and administration](#management-and-administration) above.
+Product license (JWT per deployment) and tenant subscriptions merge in `internal/licensing/`. Vendor license server: separate repo [`bidshard-license`](../bidshard-license). Customer installs poll it every `ESPX_LICENSE_REFRESH_INTERVAL` (default `24h`). Detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §5–6.

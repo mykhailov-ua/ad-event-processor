@@ -492,10 +492,10 @@ func Load() (*Config, error) {
 		VendorTelemetryEnabled:          vendorTelemetryEnabled(appEnv),
 		VendorTelemetryIntervalSec:      getEnvInt("VENDOR_TELEMETRY_INTERVAL_SEC", 60),
 		VendorTelemetryTimeoutSec:       getEnvInt("VENDOR_TELEMETRY_TIMEOUT_SEC", 5),
-		TelemetryOptIn:                  telemetryOptInFromEnv(),
-		TelemetryURL:                    Secret(strings.TrimSpace(os.Getenv("ESPX_TELEMETRY_URL"))),
-		TelemetryIntervalSec:            getEnvInt("ESPX_TELEMETRY_INTERVAL_SEC", 3600),
-		TelemetryHTTPTimeoutSec:         getEnvInt("ESPX_TELEMETRY_TIMEOUT_SEC", 5),
+		TelemetryOptIn:                  TelemetryOptInFromEnvDual(),
+		TelemetryURL:                    Secret(strings.TrimSpace(TelemetryURLFromEnv())),
+		TelemetryIntervalSec:            TelemetryIntervalSecFromEnv(),
+		TelemetryHTTPTimeoutSec:         TelemetryHTTPTimeoutSecFromEnv(),
 		SyncWorkerMaxConcurrency:        getEnvInt("SYNC_WORKER_MAX_CONCURRENCY", 32),
 		LogRetentionDays:                getEnvInt("LOG_RETENTION_DAYS", 7),
 		DBTrackerMaxConns:               getEnvInt("DB_TRACKER_MAX_CONNS", 4),
@@ -677,14 +677,15 @@ func Load() (*Config, error) {
 		cfg.RtbBudgetAuthority = "redis"
 	}
 
-	cfg.IngressSchema = os.Getenv("TRACKER_INGRESS_SCHEMA")
-	if cfg.IngressSchema == "" {
-		cfg.IngressSchema = IngressSchemaOpenRTB3
+	rawIngress := os.Getenv("TRACKER_INGRESS_SCHEMA")
+	if rawIngress == "" {
+		rawIngress = IngressSchemaOpenRTB3
 	}
+	cfg.IngressSchema = NormalizeIngressSchema(rawIngress)
 	switch cfg.IngressSchema {
-	case IngressSchemaOpenRTB3, IngressSchemaESPXNative:
+	case IngressSchemaOpenRTB3, IngressSchemaNativeV1:
 	default:
-		return nil, fmt.Errorf("invalid TRACKER_INGRESS_SCHEMA %q (want openrtb_3 or espx_native)", cfg.IngressSchema)
+		return nil, fmt.Errorf("invalid TRACKER_INGRESS_SCHEMA %q (want openrtb_3 or native_v1)", cfg.IngressSchema)
 	}
 
 	cfg.QuotaMode = os.Getenv("QUOTA_MODE")
@@ -755,7 +756,7 @@ func Load() (*Config, error) {
 	cfg.UDPTrackerID = uint32(getEnvInt("UDP_TRACKER_ID", 1))
 	cfg.UDPSyncIntervalMs = getEnvInt("UDP_SYNC_INTERVAL_MS", 10000)
 	cfg.UDPDefaultShardRPS = uint64(getEnvInt64("UDP_DEFAULT_SHARD_RPS", 50_000))
-	cfg.RegionCode = uint8(getEnvInt("ESPX_REGION_CODE", 0))
+	cfg.RegionCode = uint8(RegionCodeFromEnv())
 	cfg.MultiRegionEnabled = getEnvBool("MULTI_REGION_ENABLED", false)
 	cfg.NodeID = os.Getenv("NODE_ID")
 	cfg.NodeRole = os.Getenv("NODE_ROLE")
@@ -1160,16 +1161,7 @@ func clickHouseEnabledFromEnv() bool {
 }
 
 func telemetryOptInFromEnv() bool {
-	raw, ok := os.LookupEnv("ESPX_TELEMETRY_OPT_IN")
-	if !ok {
-		return false
-	}
-	switch strings.ToLower(strings.TrimSpace(raw)) {
-	case "1", "true", "yes", "on":
-		return true
-	default:
-		return false
-	}
+	return TelemetryOptInFromEnvDual()
 }
 
 func (c *Config) TelemetryInterval() time.Duration {

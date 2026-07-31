@@ -35,7 +35,7 @@ func (w *UsageDailyFlushWorker) Start(ctx context.Context) {
 			return
 		case <-ticker.C:
 			if err := w.Flush(ctx, time.Now().UTC()); err != nil {
-				slog.Error("usage daily flush failed", "error", err)
+				slog.Error("usage daily flush failed", "err", err)
 			}
 		}
 	}

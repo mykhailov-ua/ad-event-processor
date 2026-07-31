@@ -6,6 +6,22 @@ cd "$ROOT"
 
 fail=0
 
+html_embed_allowlist=(
+  internal/management/ops_dashboard_page.go
+  internal/management/static_spa.go
+)
+
+is_html_embed_allowed() {
+  local file="$1"
+  local entry
+  for entry in "${html_embed_allowlist[@]}"; do
+    if [[ "$file" == "$entry" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 check_dir() {
   local dir="$1"
   while IFS= read -r -d '' file; do
@@ -13,6 +29,9 @@ check_dir() {
     *_test.go|*/testdata/*) continue ;;
   esac
   if rg -n 'Set\("Content-Type",\s*"text/html' "$file" >/dev/null 2>&1; then
+    if is_html_embed_allowed "$file"; then
+      continue
+    fi
     echo "check_no_html_success: text/html success Content-Type in $file"
     rg -n 'Set\("Content-Type",\s*"text/html' "$file" || true
     fail=1

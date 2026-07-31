@@ -2,9 +2,9 @@
 
 How operators control access to sensitive ad-tech assets (creatives, URLs, sources) within a self-hosted install.
 
-**GAP:** GAP-PROD-11 — full acceptance criteria: [.cursor/GAP_SPECS.md](../../.cursor/GAP_SPECS.md#gap-prod-11--rbac--field-masking).
+Acceptance criteria: P04 in `.cursor/GAP_SPECS.md`.
 
-Related: [ARCHITECTURE.md](../ARCHITECTURE.md), [PROTECTION.md](../PROTECTION.md), [CUSTOMER_ENTITY_MODEL.md](./CUSTOMER_ENTITY_MODEL.md).
+Related: ARCHITECTURE.md, PROTECTION.md, CUSTOMER_ENTITY_MODEL.md.
 
 ---
 
@@ -85,7 +85,7 @@ Until shipped: SQL seed or JSON API.
 
 ## SQL plans
 
-Detail: [GAP_SPECS § SQL — GAP-PROD-11](../../.cursor/GAP_SPECS.md#sql--gap-prod-11).
+SQL reference: `.cursor/GAP_SPECS.md` appendix (P04 / GAP-PROD-11).
 
 | Query | Index target |
 | :--- | :--- |

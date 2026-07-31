@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	DefaultMaxBytes   = 50 << 20
-	DefaultTimeout    = 30 * time.Second
+	DefaultMaxBytes    = 50 << 20
+	DefaultTimeout     = 30 * time.Second
 	defaultMaxLogLines = 10_000
 )
 
@@ -84,13 +84,13 @@ func writeVersionJSON(ctx context.Context, tw *tar.Writer, meta Meta) error {
 		return err
 	}
 	v := map[string]string{
-		"go_version":       runtime.Version(),
-		"go_os":            runtime.GOOS,
-		"go_arch":          runtime.GOARCH,
-		"built_at":         time.Now().UTC().Format(time.RFC3339),
-		"deployment_id":    meta.DeploymentID,
-		"license_state":    meta.LicenseState,
-		"binary_version":   meta.BinaryVersion,
+		"go_version":     runtime.Version(),
+		"go_os":          runtime.GOOS,
+		"go_arch":        runtime.GOARCH,
+		"built_at":       time.Now().UTC().Format(time.RFC3339),
+		"deployment_id":  meta.DeploymentID,
+		"license_state":  meta.LicenseState,
+		"binary_version": meta.BinaryVersion,
 	}
 	if v["binary_version"] == "" {
 		v["binary_version"] = readBuildVersion()

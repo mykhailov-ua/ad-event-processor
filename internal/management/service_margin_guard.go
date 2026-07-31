@@ -68,16 +68,16 @@ func (s *Service) GetCampaignMargin(ctx context.Context, campaignID uuid.UUID) (
 	}
 	limitMicro := marginguard.CostOverRevenueLimitMicro(sums.AdvertiserSpendMicro, thresholdBps)
 	return map[string]any{
-		"campaign_id":              campaignID.String(),
-		"window_start":             windowStart.UTC().Format(time.RFC3339),
-		"window_hours":             1,
-		"advertiser_spend_micro":   sums.AdvertiserSpendMicro,
-		"rtb_cost_micro":           sums.RtbCostMicro,
-		"operator_margin_micro":    sums.OperatorMarginMicro,
-		"publisher_payout_micro":   sums.PublisherPayoutMicro,
-		"cost_over_revenue_limit":  limitMicro,
-		"threshold_bps":            thresholdBps,
-		"margin_breach":            sums.RtbCostMicro > limitMicro && sums.AdvertiserSpendMicro > 0,
+		"campaign_id":             campaignID.String(),
+		"window_start":            windowStart.UTC().Format(time.RFC3339),
+		"window_hours":            1,
+		"advertiser_spend_micro":  sums.AdvertiserSpendMicro,
+		"rtb_cost_micro":          sums.RtbCostMicro,
+		"operator_margin_micro":   sums.OperatorMarginMicro,
+		"publisher_payout_micro":  sums.PublisherPayoutMicro,
+		"cost_over_revenue_limit": limitMicro,
+		"threshold_bps":           thresholdBps,
+		"margin_breach":           sums.RtbCostMicro > limitMicro && sums.AdvertiserSpendMicro > 0,
 	}, nil
 }
 

@@ -134,10 +134,6 @@ func explainFailoverLedgerScale() int {
 	return 50_000
 }
 
-func seedPgFailoverExplainData(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
-	seedPgFailoverExplainDataWithScale(t, ctx, pool, explainFailoverLedgerScale())
-}
-
 func seedPgFailoverExplainDataWithScale(t *testing.T, ctx context.Context, pool *pgxpool.Pool, ledgerRows int) {
 	t.Helper()
 	exec := func(sql string, args ...any) {

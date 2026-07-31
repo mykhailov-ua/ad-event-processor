@@ -13,13 +13,20 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 import shutil
+import subprocess
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
+from feature_spec import FEATURE_DIMS, FEATURE_NAMES, row_to_vector
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
 ARTIFACT_DIR = os.environ.get("FRAUD_ARTIFACT_DIR", "var/fraudscore/artifacts")
 TESTDATA_MODEL = "internal/fraudscoring/testdata/model.txt"
+FIXTURES_DIR = REPO_ROOT / "testdata" / "ml"
 
 
 def sha256_file(path: str) -> str:
@@ -126,6 +133,93 @@ def cmd_export(_: argparse.Namespace) -> int:
     return 0
 
 
+def _validate_fixtures_python(model_path: Path) -> int:
+    if FEATURE_DIMS != 7:
+        print(f"ml/train validate: FEATURE_DIMS={FEATURE_DIMS} want 7", file=sys.stderr)
+        return 1
+    if not FIXTURES_DIR.is_dir():
+        print(f"ml/train validate: missing {FIXTURES_DIR}", file=sys.stderr)
+        return 1
+
+    try:
+        import lightgbm as lgb
+    except ImportError:
+        print("ml/train validate: lightgbm unavailable, falling back to go ml-validate", file=sys.stderr)
+        return _validate_fixtures_go(model_path)
+
+    booster = lgb.Booster(model_file=str(model_path))
+    if booster.num_feature() != FEATURE_DIMS:
+        print(
+            f"ml/train validate: model num_feature={booster.num_feature()} want {FEATURE_DIMS}",
+            file=sys.stderr,
+        )
+        return 1
+
+    scored = 0
+    for path in sorted(FIXTURES_DIR.glob("features_*.json")):
+        with open(path, encoding="utf-8") as handle:
+            payload = json.load(handle)
+        if payload.get("feature_names") != list(FEATURE_NAMES):
+            print(f"ml/train validate: {path.name}: feature_names mismatch", file=sys.stderr)
+            return 1
+        row = payload.get("row", {})
+        expected_vec = payload.get("vector")
+        actual_vec = row_to_vector(row)
+        if expected_vec is None or len(actual_vec) != len(expected_vec):
+            print(f"ml/train validate: {path.name}: vector length mismatch", file=sys.stderr)
+            return 1
+        for idx, (got, want) in enumerate(zip(actual_vec, expected_vec)):
+            if not math.isclose(got, want, rel_tol=0.0, abs_tol=1e-9):
+                print(
+                    f"ml/train validate: {path.name}: vector[{idx}] got {got} want {want}",
+                    file=sys.stderr,
+                )
+                return 1
+        expected_score = payload.get("score")
+        if expected_score is None:
+            continue
+        import numpy as np
+
+        pred = float(booster.predict(np.array([actual_vec], dtype=np.float64))[0])
+        if not math.isclose(pred, float(expected_score), rel_tol=0.0, abs_tol=1e-4):
+            print(
+                f"ml/train validate: {path.name}: score got {pred:.5f} want {expected_score}",
+                file=sys.stderr,
+            )
+            return 1
+        scored += 1
+
+    if scored == 0:
+        print("ml/train validate: no scored fixtures", file=sys.stderr)
+        return 1
+    print(f"ml/train validate: OK model={model_path} scored_fixtures={scored}")
+    return 0
+
+
+def _validate_fixtures_go(model_path: Path) -> int:
+    cmd = [
+        "go",
+        "run",
+        "./cmd/ml-validate",
+        "-model",
+        str(model_path),
+        "-fixtures",
+        str(FIXTURES_DIR),
+    ]
+    proc = subprocess.run(cmd, cwd=REPO_ROOT, check=False)
+    return proc.returncode
+
+
+def cmd_validate(args: argparse.Namespace) -> int:
+    model_path = Path(args.model)
+    if not model_path.is_file():
+        model_path = REPO_ROOT / args.model
+    if not model_path.is_file():
+        print(f"ml/train validate: model not found: {args.model}", file=sys.stderr)
+        return 1
+    return _validate_fixtures_python(model_path)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Fraud model artifact bootstrap")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -133,6 +227,13 @@ def main() -> int:
     p_boot.set_defaults(func=cmd_bootstrap)
     p_exp = sub.add_parser("export", help="refresh metadata.json from existing artifacts")
     p_exp.set_defaults(func=cmd_export)
+    p_val = sub.add_parser("validate", help="check model feature dims and score fixtures")
+    p_val.add_argument(
+        "--model",
+        default=TESTDATA_MODEL,
+        help="LightGBM model.txt path (default: internal/fraudscoring/testdata/model.txt)",
+    )
+    p_val.set_defaults(func=cmd_validate)
     args = parser.parse_args()
     return args.func(args)
 

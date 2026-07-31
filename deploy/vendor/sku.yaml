@@ -1,5 +1,6 @@
 # Vendor SKU catalog (Layer V). Not shipped inside customer binaries.
-# Sign with: go run ./cmd/espx-license --sku ingest_pro --customer-name "Acme" --deployment-id <uuid>
+# Sign offline: use bidshard-license repo CLI
+# go run ./cmd/bidshard-license --sku ingest_pro --customer-name "Acme" --deployment-id <uuid>
 #
 # Schema:
 #   skus[].code              — JWT sku/plan claim (required, unique)

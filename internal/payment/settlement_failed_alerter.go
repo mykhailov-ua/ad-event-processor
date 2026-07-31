@@ -11,6 +11,7 @@ import (
 	"espx/internal/config"
 	"espx/internal/metrics"
 	"espx/internal/payment/db"
+	"espx/pkg/branding"
 
 	notifierpb "espx/internal/notifier/pb"
 )
@@ -72,7 +73,7 @@ func (a *SettlementFailedAlerter) AlertPermanentFailure(outboxEvent db.PaymentPa
 	}
 
 	dedupKey := fmt.Sprintf("payment-settlement-failed:%s", intentID)
-	title := "BidShard: payment settlement failed"
+	title := branding.AlertTitle("payment settlement failed")
 	body := formatSettlementFailedAlertBody(outboxEvent, intentID, cause)
 
 	go func() {

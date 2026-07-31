@@ -48,6 +48,6 @@ func (w *DeliveryOptimizerWorker) tick(ctx context.Context) {
 	}
 
 	if err := w.svc.RunDeliveryOptimizerTick(ctx, w.syncWorkers, runMAB); err != nil {
-		slog.Error("delivery optimizer tick failed", "error", err, "run_mab", runMAB)
+		slog.Error("delivery optimizer tick failed", "err", err, "run_mab", runMAB)
 	}
 }

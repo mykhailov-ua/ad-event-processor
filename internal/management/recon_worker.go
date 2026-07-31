@@ -75,7 +75,7 @@ func (w *ReconWorker) Start(ctx context.Context) {
 				w.ReconcileBudgetSnapshot(runCtx)
 				return nil
 			}); err != nil && !errors.Is(err, ErrMgmtPgGateRejected) {
-				slog.Error("budget snapshot recon failed", "error", err)
+				slog.Error("budget snapshot recon failed", "err", err)
 			}
 		case <-ticker.C:
 			end := time.Now().Truncate(time.Hour).Add(-2 * time.Hour)
@@ -83,7 +83,7 @@ func (w *ReconWorker) Start(ctx context.Context) {
 			if err := w.svc.withPgLow(ctx, func(runCtx context.Context) error {
 				return reconSvc.ReconcileWindow(runCtx, start, end)
 			}); err != nil && !errors.Is(err, ErrMgmtPgGateRejected) {
-				slog.Error("recon worker iteration failed", "error", err, "window", start)
+				slog.Error("recon worker iteration failed", "err", err, "window", start)
 			}
 		case <-quotaTicker.C:
 			if w.svc.cfg != nil && (w.svc.cfg.QuotaMode == "shadow" || w.svc.cfg.QuotaMode == "live") {
@@ -91,7 +91,7 @@ func (w *ReconWorker) Start(ctx context.Context) {
 					w.ReconcileQuotas(runCtx)
 					return nil
 				}); err != nil && !errors.Is(err, ErrMgmtPgGateRejected) {
-					slog.Error("quota recon failed", "error", err)
+					slog.Error("quota recon failed", "err", err)
 				}
 			}
 		case <-drainCheckTicker.C:

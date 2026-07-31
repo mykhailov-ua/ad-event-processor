@@ -29,18 +29,18 @@ type cgroupSampleRow struct {
 }
 
 type cgroupSamplePeak struct {
-	PID                 uint32  `json:"pid"`
-	Name                string  `json:"name"`
-	Role                string  `json:"role"`
-	PeakMemoryCurrent   uint64  `json:"peak_memory_current"`
-	PeakMemoryAnon      uint64  `json:"peak_memory_anon"`
-	PeakThrottledUsec   uint64  `json:"peak_cpu_throttled_usec"`
-	TotalThrottledUsec  uint64  `json:"total_cpu_throttled_usec"`
-	ThrottlePct         float64 `json:"cpu_throttle_pct"`
-	MemoryMaxEvents     uint64  `json:"memory_max_events"`
-	IOReadBytes         uint64  `json:"io_read_bytes"`
-	IOWriteBytes        uint64  `json:"io_write_bytes"`
-	SampleCount         uint64  `json:"sample_count"`
+	PID                uint32  `json:"pid"`
+	Name               string  `json:"name"`
+	Role               string  `json:"role"`
+	PeakMemoryCurrent  uint64  `json:"peak_memory_current"`
+	PeakMemoryAnon     uint64  `json:"peak_memory_anon"`
+	PeakThrottledUsec  uint64  `json:"peak_cpu_throttled_usec"`
+	TotalThrottledUsec uint64  `json:"total_cpu_throttled_usec"`
+	ThrottlePct        float64 `json:"cpu_throttle_pct"`
+	MemoryMaxEvents    uint64  `json:"memory_max_events"`
+	IOReadBytes        uint64  `json:"io_read_bytes"`
+	IOWriteBytes       uint64  `json:"io_write_bytes"`
+	SampleCount        uint64  `json:"sample_count"`
 }
 
 func (r *probeRun) cgroupSampleLoop(ctx context.Context) {
@@ -220,21 +220,21 @@ func aggregateCgroupSamples(sessionDir string) ([]cgroupSamplePeak, error) {
 	}
 
 	type acc struct {
-		name, role       string
-		peakMem          uint64
-		peakAnon         uint64
-		peakThrottled    uint64
-		firstUsage       uint64
-		lastUsage        uint64
-		firstThrottled   uint64
-		lastThrottled    uint64
-		memMaxEvents     uint64
-		firstIORead      uint64
-		lastIORead       uint64
-		firstIOWrite     uint64
-		lastIOWrite      uint64
-		count            uint64
-		seenFirst        bool
+		name, role     string
+		peakMem        uint64
+		peakAnon       uint64
+		peakThrottled  uint64
+		firstUsage     uint64
+		lastUsage      uint64
+		firstThrottled uint64
+		lastThrottled  uint64
+		memMaxEvents   uint64
+		firstIORead    uint64
+		lastIORead     uint64
+		firstIOWrite   uint64
+		lastIOWrite    uint64
+		count          uint64
+		seenFirst      bool
 	}
 	byPID := map[uint32]*acc{}
 

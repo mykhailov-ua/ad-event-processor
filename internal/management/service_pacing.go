@@ -3,7 +3,6 @@ package management
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"time"
 
 	"espx/internal/ingestion"
@@ -130,14 +129,6 @@ func (s *Service) closedLoopPacingControllerTx(ctx context.Context, tx pgx.Tx, m
 				return fmt.Errorf("failed to create outbox event for pacing: %w", err)
 			}
 		}
-
-		slog.Info("closed-loop pacing controller adjusted pacing",
-			"campaign_id", campID,
-			"old_pacing", camp.PacingMode,
-			"new_pacing", targetPacing,
-			"actual_spend", actualSpendStr,
-			"expected_spend", expectedSpendStr,
-		)
 	}
 
 	return nil

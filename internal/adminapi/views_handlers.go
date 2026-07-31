@@ -21,12 +21,12 @@ type ViewsHTTPHandlers struct {
 	RequirePermission func(string, http.HandlerFunc) http.HandlerFunc
 }
 
-func (h *ViewsHTTPHandlers) Register(mux *http.ServeMux) {
-	if h == nil {
+func (viewHandlers *ViewsHTTPHandlers) Register(mux *http.ServeMux) {
+	if viewHandlers == nil {
 		return
 	}
-	limit := h.ApplyRateLimit
-	perm := h.RequirePermission
+	limit := viewHandlers.ApplyRateLimit
+	perm := viewHandlers.RequirePermission
 	if limit == nil {
 		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
 	}
@@ -34,18 +34,18 @@ func (h *ViewsHTTPHandlers) Register(mux *http.ServeMux) {
 		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 
-	mux.HandleFunc("GET /api/v1/views", limit(perm("campaigns:read", h.listViews)))
-	mux.HandleFunc("POST /api/v1/views", limit(perm("campaigns:write", h.createView)))
-	mux.HandleFunc("GET /api/v1/views/{id}", limit(perm("campaigns:read", h.getView)))
-	mux.HandleFunc("PUT /api/v1/views/{id}", limit(perm("campaigns:write", h.updateView)))
-	mux.HandleFunc("DELETE /api/v1/views/{id}", limit(perm("campaigns:write", h.deleteView)))
+	mux.HandleFunc("GET /api/v1/views", limit(perm("campaigns:read", viewHandlers.listViews)))
+	mux.HandleFunc("POST /api/v1/views", limit(perm("campaigns:write", viewHandlers.createView)))
+	mux.HandleFunc("GET /api/v1/views/{id}", limit(perm("campaigns:read", viewHandlers.getView)))
+	mux.HandleFunc("PUT /api/v1/views/{id}", limit(perm("campaigns:write", viewHandlers.updateView)))
+	mux.HandleFunc("DELETE /api/v1/views/{id}", limit(perm("campaigns:write", viewHandlers.deleteView)))
 }
 
-func (h *ViewsHTTPHandlers) checkTierGate(r *http.Request, customerID uuid.UUID) (bool, error) {
-	if h.Pool == nil {
+func (viewHandlers *ViewsHTTPHandlers) checkTierGate(r *http.Request, customerID uuid.UUID) (bool, error) {
+	if viewHandlers.Pool == nil {
 		return true, nil
 	}
-	q := db.New(h.Pool)
+	q := db.New(viewHandlers.Pool)
 	sub, err := q.GetCustomerSubscription(r.Context(), pgtype.UUID{Bytes: customerID, Valid: true})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -56,7 +56,7 @@ func (h *ViewsHTTPHandlers) checkTierGate(r *http.Request, customerID uuid.UUID)
 	return sub.PlanCode == "enterprise", nil
 }
 
-func (h *ViewsHTTPHandlers) createView(w http.ResponseWriter, r *http.Request) {
+func (viewHandlers *ViewsHTTPHandlers) createView(w http.ResponseWriter, r *http.Request) {
 	req, err := coldpath.DecodeRequest[CreateViewRequest](w, r, coldpath.DefaultMaxBody)
 	if err != nil {
 		return
@@ -68,7 +68,7 @@ func (h *ViewsHTTPHandlers) createView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	allowed, err := h.checkTierGate(r, customerID)
+	allowed, err := viewHandlers.checkTierGate(r, customerID)
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
@@ -78,17 +78,17 @@ func (h *ViewsHTTPHandlers) createView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.Service == nil {
+	if viewHandlers.Service == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "views service not configured")
 		return
 	}
 
 	ownerID := "system"
-	view := h.Service.CreateView(req, ownerID)
+	view := viewHandlers.Service.CreateView(req, ownerID)
 	httpresponse.JSON(w, http.StatusCreated, view)
 }
 
-func (h *ViewsHTTPHandlers) listViews(w http.ResponseWriter, r *http.Request) {
+func (viewHandlers *ViewsHTTPHandlers) listViews(w http.ResponseWriter, r *http.Request) {
 	custIDStr := r.URL.Query().Get("customer_id")
 	if custIDStr == "" {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "customer_id query parameter is required")
@@ -101,7 +101,7 @@ func (h *ViewsHTTPHandlers) listViews(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	allowed, err := h.checkTierGate(r, customerID)
+	allowed, err := viewHandlers.checkTierGate(r, customerID)
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
@@ -111,28 +111,28 @@ func (h *ViewsHTTPHandlers) listViews(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.Service == nil {
+	if viewHandlers.Service == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "views service not configured")
 		return
 	}
 
-	views := h.Service.ListView(custIDStr)
+	views := viewHandlers.Service.ListView(custIDStr)
 	httpresponse.JSON(w, http.StatusOK, views)
 }
 
-func (h *ViewsHTTPHandlers) getView(w http.ResponseWriter, r *http.Request) {
+func (viewHandlers *ViewsHTTPHandlers) getView(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "missing view id")
 		return
 	}
 
-	if h.Service == nil {
+	if viewHandlers.Service == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "views service not configured")
 		return
 	}
 
-	view, err := h.Service.GetView(id)
+	view, err := viewHandlers.Service.GetView(id)
 	if err != nil {
 		if errors.Is(err, ErrViewNotFound) {
 			httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "view not found")
@@ -143,7 +143,7 @@ func (h *ViewsHTTPHandlers) getView(w http.ResponseWriter, r *http.Request) {
 	}
 
 	customerID, _ := uuid.Parse(view.CustomerID)
-	allowed, err := h.checkTierGate(r, customerID)
+	allowed, err := viewHandlers.checkTierGate(r, customerID)
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
@@ -156,7 +156,7 @@ func (h *ViewsHTTPHandlers) getView(w http.ResponseWriter, r *http.Request) {
 	httpresponse.JSON(w, http.StatusOK, view)
 }
 
-func (h *ViewsHTTPHandlers) updateView(w http.ResponseWriter, r *http.Request) {
+func (viewHandlers *ViewsHTTPHandlers) updateView(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "missing view id")
@@ -168,12 +168,12 @@ func (h *ViewsHTTPHandlers) updateView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.Service == nil {
+	if viewHandlers.Service == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "views service not configured")
 		return
 	}
 
-	existing, err := h.Service.GetView(id)
+	existing, err := viewHandlers.Service.GetView(id)
 	if err != nil {
 		if errors.Is(err, ErrViewNotFound) {
 			httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "view not found")
@@ -184,7 +184,7 @@ func (h *ViewsHTTPHandlers) updateView(w http.ResponseWriter, r *http.Request) {
 	}
 
 	customerID, _ := uuid.Parse(existing.CustomerID)
-	allowed, err := h.checkTierGate(r, customerID)
+	allowed, err := viewHandlers.checkTierGate(r, customerID)
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
@@ -194,7 +194,7 @@ func (h *ViewsHTTPHandlers) updateView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updated, err := h.Service.UpdateView(id, req)
+	updated, err := viewHandlers.Service.UpdateView(id, req)
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
@@ -203,19 +203,19 @@ func (h *ViewsHTTPHandlers) updateView(w http.ResponseWriter, r *http.Request) {
 	httpresponse.JSON(w, http.StatusOK, updated)
 }
 
-func (h *ViewsHTTPHandlers) deleteView(w http.ResponseWriter, r *http.Request) {
+func (viewHandlers *ViewsHTTPHandlers) deleteView(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "missing view id")
 		return
 	}
 
-	if h.Service == nil {
+	if viewHandlers.Service == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "views service not configured")
 		return
 	}
 
-	existing, err := h.Service.GetView(id)
+	existing, err := viewHandlers.Service.GetView(id)
 	if err != nil {
 		if errors.Is(err, ErrViewNotFound) {
 			httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "view not found")
@@ -226,7 +226,7 @@ func (h *ViewsHTTPHandlers) deleteView(w http.ResponseWriter, r *http.Request) {
 	}
 
 	customerID, _ := uuid.Parse(existing.CustomerID)
-	allowed, err := h.checkTierGate(r, customerID)
+	allowed, err := viewHandlers.checkTierGate(r, customerID)
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
@@ -236,7 +236,7 @@ func (h *ViewsHTTPHandlers) deleteView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.Service.DeleteView(id)
+	err = viewHandlers.Service.DeleteView(id)
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return

@@ -1,4 +1,14 @@
-.PHONY: fmt gen lint test test-fast test-unit test-integration test-fault test-int test-alloc-gate management-domain-coverage test-full test-resilience test-broker-fault-lab test-sentinel-resilience build proto check-local check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-bpf openapi-lint openapi-gen check-scripts-layout dev-preflight-smoke perf-gate-smoke edge-phase0
+.PHONY: fmt gen lint test test-fast test-unit test-integration test-fault test-int test-alloc-gate management-domain-coverage test-full test-resilience test-broker-fault-lab test-sentinel-resilience build release-build proto check-local tier-a check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-bpf openapi-lint openapi-gen check-scripts-layout dev-preflight-smoke perf-gate-smoke edge-phase0 ui-build ui-install
+
+UI_DIR := web/admin
+UI_DIST := internal/management/static/dist
+
+ui-install:
+	cd $(UI_DIR) && npm install
+
+ui-build: ui-install
+	cd $(UI_DIR) && npm run build
+	test -f $(UI_DIST)/index.html
 
 fmt:
 	go fmt ./...
@@ -53,6 +63,9 @@ test-full: fmt
 check-local:
 	bash scripts/ci/local_check.sh
 
+tier-a:
+	bash scripts/ci/tier_a.sh
+
 check-vuln:
 	bash scripts/ci/govulncheck.sh
 
@@ -64,6 +77,25 @@ openapi-gen:
 
 build: gen fmt
 	docker build -t ad-event-processor:latest .
+
+# Stripped linux/amd64 + linux/arm64 service binaries → dist/release/ (GAP-PROD-10 / P44).
+# Not run in CI; vendor release pipeline or local smoke before shipping Pro builds.
+RELEASE_DIR := dist/release
+RELEASE_LDFLAGS := -ldflags="-s -w"
+RELEASE_PLATFORMS := linux/amd64 linux/arm64
+RELEASE_CMDS := tracker processor control management auth payment billing notifier ivt-detector fraud-scorer region-proxy broker
+
+release-build: gen fmt
+	@mkdir -p $(RELEASE_DIR)
+	@set -e; \
+	for platform in $(RELEASE_PLATFORMS); do \
+	  GOOS=$${platform%/*}; GOARCH=$${platform#*/}; \
+	  for cmd in $(RELEASE_CMDS); do \
+	    echo "release-build: $$cmd $$GOOS/$$GOARCH"; \
+	    CGO_ENABLED=0 GOOS=$$GOOS GOARCH=$$GOARCH go build -tags timetzdata $(RELEASE_LDFLAGS) \
+	      -o $(RELEASE_DIR)/$${cmd}-$${GOOS}-$${GOARCH} ./cmd/$${cmd}; \
+	  done; \
+	done
 
 bpf-dev:
 	bash scripts/dev/bpf_setup.sh

@@ -2,7 +2,7 @@
 
 eSPX ships as **binaries the customer runs on their own bare metal** (or VM). The vendor (eSPX) sells a **deployment license**; the customer operates an **ad network** for their advertisers. This document is the canonical policy for layers, services, billing, licensing, and UI.
 
-Related: [ARCHITECTURE.md](./ARCHITECTURE.md), [DEVELOPMENT.md](./DEVELOPMENT.md), [MULTI_REGION.md](./MULTI_REGION.md).
+Related: [ARCHITECTURE.md](./ARCHITECTURE.md), [DEVELOPMENT.md](./DEVELOPMENT.md), [.cursor/MULTI_REGION.md](../.cursor/MULTI_REGION.md).
 
 ---
 
@@ -148,7 +148,7 @@ Default migration seeds for `subscription_plans` are **examples** for the operat
 
 ## Deploy profiles
 
-Typical bare-metal layout (see also [RESTRUCTURE_PLAN §16](../.cursor/RESTRUCTURE_PLAN.md#16-модульный-монолит-для-self-hosted-и-multi-region)):
+Typical bare-metal layout (see MULTI_REGION.md section on modular monolith):
 
 | Unit | Binaries | Required |
 | :--- | :--- | :--- |
@@ -188,7 +188,7 @@ Payment and billing **gRPC/JSON APIs** remain; only HTML fragment UIs were remov
 
 ## Multi-region
 
-Licensed enterprise option (`features.multi_region`), not the default single-cell bare-metal story. Global PostgreSQL for finance in MR is documented in [MULTI_REGION.md](./MULTI_REGION.md).
+Licensed enterprise option (`features.multi_region`), not the default single-cell bare-metal story. Global PostgreSQL for finance in MR is documented in [.cursor/MULTI_REGION.md](../.cursor/MULTI_REGION.md).
 
 ---
 
@@ -276,7 +276,7 @@ CI validates profile wiring: `scripts/ci/compose_profile_check.sh`.
 
 **Who invoices whom?** Vendor invoices operator **outside** the stack (monthly). Operator invoices advertisers **inside** via `billing` + `payment` when enabled.
 
-**Will the vendor steal связки (traffic sources)?** Heartbeat and telemetry schemas exclude campaign IDs, domains, and URLs. Operators can allowlist the license host and disable telemetry. Threat intel opt-in sends only install-wide reject aggregates and signal hashes.
+**Will the vendor steal traffic bundles (traffic sources)?** Heartbeat and telemetry schemas exclude campaign IDs, domains, and URLs. Operators can allowlist the license host and disable telemetry. Threat intel opt-in sends only install-wide reject aggregates and signal hashes.
 
 **Public GitHub vs commercial binary?** See [TELEMETRY_AND_TRUST.md § GitHub](./TELEMETRY_AND_TRUST.md#github-public-repo-vs-future-commercial-product) — portfolio today; Pro binary split when product sales start.
 

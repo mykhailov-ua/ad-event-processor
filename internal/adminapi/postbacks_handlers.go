@@ -24,12 +24,12 @@ type PostbackHTTPHandlers struct {
 	RequirePermission func(string, http.HandlerFunc) http.HandlerFunc
 }
 
-func (h *PostbackHTTPHandlers) Register(mux *http.ServeMux) {
-	if h == nil {
+func (postbacks *PostbackHTTPHandlers) Register(mux *http.ServeMux) {
+	if postbacks == nil {
 		return
 	}
-	limit := h.ApplyRateLimit
-	perm := h.RequirePermission
+	limit := postbacks.ApplyRateLimit
+	perm := postbacks.RequirePermission
 	if limit == nil {
 		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
 	}
@@ -37,18 +37,18 @@ func (h *PostbackHTTPHandlers) Register(mux *http.ServeMux) {
 		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 
-	mux.HandleFunc("GET /api/v1/postbacks/config", limit(perm("campaigns:read", h.getPostbacksConfig)))
-	mux.HandleFunc("PUT /api/v1/postbacks/config/{campaign_id}", limit(perm("campaigns:write", h.updatePostbackConfig)))
-	mux.HandleFunc("GET /api/v1/postbacks/dlq", limit(perm("campaigns:read", h.getDLQ)))
-	mux.HandleFunc("POST /api/v1/postbacks/dlq/{id}/retry", limit(perm("campaigns:write", h.retryDLQ)))
+	mux.HandleFunc("GET /api/v1/postbacks/config", limit(perm("campaigns:read", postbacks.getPostbacksConfig)))
+	mux.HandleFunc("PUT /api/v1/postbacks/config/{campaign_id}", limit(perm("campaigns:write", postbacks.updatePostbackConfig)))
+	mux.HandleFunc("GET /api/v1/postbacks/dlq", limit(perm("campaigns:read", postbacks.getDLQ)))
+	mux.HandleFunc("POST /api/v1/postbacks/dlq/{id}/retry", limit(perm("campaigns:write", postbacks.retryDLQ)))
 }
 
-func (h *PostbackHTTPHandlers) checkTierGate(r *http.Request, customerID uuid.UUID) (bool, error) {
-	if h.Pool == nil {
+func (postbacks *PostbackHTTPHandlers) checkTierGate(r *http.Request, customerID uuid.UUID) (bool, error) {
+	if postbacks.Pool == nil {
 		return true, nil
 	}
 	var planCode string
-	err := h.Pool.QueryRow(r.Context(), "SELECT plan_code FROM billing.customer_subscriptions WHERE customer_id = $1", customerID).Scan(&planCode)
+	err := postbacks.Pool.QueryRow(r.Context(), "SELECT plan_code FROM billing.customer_subscriptions WHERE customer_id = $1", customerID).Scan(&planCode)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return false, nil
@@ -65,10 +65,10 @@ type PostbackConfigDTO struct {
 	TargetEvent string `json:"target_event"`
 }
 
-func (h *PostbackHTTPHandlers) getPostbacksConfig(w http.ResponseWriter, r *http.Request) {
+func (postbacks *PostbackHTTPHandlers) getPostbacksConfig(w http.ResponseWriter, r *http.Request) {
 	if custIDStr := r.URL.Query().Get("customer_id"); custIDStr != "" {
 		if custID, err := uuid.Parse(custIDStr); err == nil {
-			allowed, err := h.checkTierGate(r, custID)
+			allowed, err := postbacks.checkTierGate(r, custID)
 			if err != nil {
 				httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 				return
@@ -80,7 +80,7 @@ func (h *PostbackHTTPHandlers) getPostbacksConfig(w http.ResponseWriter, r *http
 		}
 	}
 
-	q := db.New(h.Pool)
+	q := db.New(postbacks.Pool)
 	configs, err := q.ListPostbackConfigs(r.Context())
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
@@ -111,7 +111,7 @@ type UpdatePostbackConfigRequest struct {
 	TargetEvent string `json:"target_event"`
 }
 
-func (h *PostbackHTTPHandlers) updatePostbackConfig(w http.ResponseWriter, r *http.Request) {
+func (postbacks *PostbackHTTPHandlers) updatePostbackConfig(w http.ResponseWriter, r *http.Request) {
 	campaignIDStr := r.PathValue("campaign_id")
 	if campaignIDStr == "" {
 		campaignIDStr = r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:]
@@ -128,13 +128,13 @@ func (h *PostbackHTTPHandlers) updatePostbackConfig(w http.ResponseWriter, r *ht
 		return
 	}
 
-	q := db.New(h.Pool)
+	q := db.New(postbacks.Pool)
 	campaign, err := q.GetCampaign(r.Context(), pgtype.UUID{Bytes: campaignID, Valid: true})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			if customerIDStr := r.URL.Query().Get("customer_id"); customerIDStr != "" {
 				if custID, parseErr := uuid.Parse(customerIDStr); parseErr == nil {
-					allowed, gateErr := h.checkTierGate(r, custID)
+					allowed, gateErr := postbacks.checkTierGate(r, custID)
 					if gateErr != nil {
 						httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", gateErr.Error())
 						return
@@ -160,7 +160,7 @@ skipCheck:
 	}
 
 	if custID != uuid.Nil {
-		allowed, err := h.checkTierGate(r, custID)
+		allowed, err := postbacks.checkTierGate(r, custID)
 		if err != nil {
 			httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 			return
@@ -176,7 +176,7 @@ skipCheck:
 
 	var encryptedToken []byte
 	if req.ApiToken != "" {
-		key := h.EncryptionKey
+		key := postbacks.EncryptionKey
 		if len(key) == 0 {
 			key = []byte("postback-encryption-secret-key32")
 		}
@@ -219,8 +219,8 @@ type PostbackDlqDTO struct {
 	Status        string          `json:"status"`
 }
 
-func (h *PostbackHTTPHandlers) getDLQ(w http.ResponseWriter, r *http.Request) {
-	q := db.New(h.Pool)
+func (postbacks *PostbackHTTPHandlers) getDLQ(w http.ResponseWriter, r *http.Request) {
+	q := db.New(postbacks.Pool)
 	dlqs, err := q.ListPostbackDLQ(r.Context())
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
@@ -245,7 +245,7 @@ func (h *PostbackHTTPHandlers) getDLQ(w http.ResponseWriter, r *http.Request) {
 	httpresponse.JSON(w, http.StatusOK, dtos)
 }
 
-func (h *PostbackHTTPHandlers) retryDLQ(w http.ResponseWriter, r *http.Request) {
+func (postbacks *PostbackHTTPHandlers) retryDLQ(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	if idStr == "" {
 		idStr = r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:]
@@ -262,7 +262,7 @@ func (h *PostbackHTTPHandlers) retryDLQ(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	tx, err := h.Pool.Begin(r.Context())
+	tx, err := postbacks.Pool.Begin(r.Context())
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return

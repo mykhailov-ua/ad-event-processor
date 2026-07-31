@@ -25,12 +25,12 @@ type CostSyncHTTPHandlers struct {
 	RequirePermission func(string, http.HandlerFunc) http.HandlerFunc
 }
 
-func (h *CostSyncHTTPHandlers) Register(mux *http.ServeMux) {
-	if h == nil {
+func (costSync *CostSyncHTTPHandlers) Register(mux *http.ServeMux) {
+	if costSync == nil {
 		return
 	}
-	limit := h.ApplyRateLimit
-	perm := h.RequirePermission
+	limit := costSync.ApplyRateLimit
+	perm := costSync.RequirePermission
 	if limit == nil {
 		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
 	}
@@ -38,11 +38,11 @@ func (h *CostSyncHTTPHandlers) Register(mux *http.ServeMux) {
 		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 
-	mux.HandleFunc("GET /api/v1/cost-sync/credentials", limit(perm("campaigns:read", h.listCredentials)))
-	mux.HandleFunc("PUT /api/v1/cost-sync/credentials/{network}", limit(perm("campaigns:write", h.upsertCredential)))
-	mux.HandleFunc("DELETE /api/v1/cost-sync/credentials/{network}", limit(perm("campaigns:write", h.deleteCredential)))
-	mux.HandleFunc("POST /api/v1/cost-sync/run", limit(perm("campaigns:write", h.runSync)))
-	mux.HandleFunc("GET /api/v1/cost-sync/history", limit(perm("campaigns:read", h.listHistory)))
+	mux.HandleFunc("GET /api/v1/cost-sync/credentials", limit(perm("campaigns:read", costSync.listCredentials)))
+	mux.HandleFunc("PUT /api/v1/cost-sync/credentials/{network}", limit(perm("campaigns:write", costSync.upsertCredential)))
+	mux.HandleFunc("DELETE /api/v1/cost-sync/credentials/{network}", limit(perm("campaigns:write", costSync.deleteCredential)))
+	mux.HandleFunc("POST /api/v1/cost-sync/run", limit(perm("campaigns:write", costSync.runSync)))
+	mux.HandleFunc("GET /api/v1/cost-sync/history", limit(perm("campaigns:read", costSync.listHistory)))
 }
 
 type CostSyncCredentialDTO struct {
@@ -84,8 +84,8 @@ type CostSyncRunDTO struct {
 	CompletedAt         *time.Time `json:"completed_at,omitempty"`
 }
 
-func (h *CostSyncHTTPHandlers) listCredentials(w http.ResponseWriter, r *http.Request) {
-	q := db.New(h.Pool)
+func (costSync *CostSyncHTTPHandlers) listCredentials(w http.ResponseWriter, r *http.Request) {
+	q := db.New(costSync.Pool)
 	var rows []db.CostSyncCredential
 	var err error
 
@@ -113,7 +113,10 @@ func (h *CostSyncHTTPHandlers) listCredentials(w http.ResponseWriter, r *http.Re
 			UpdatedAt:  row.UpdatedAt.Time,
 		}
 		if len(row.ExtraConfig) > 0 {
-			_ = json.Unmarshal(row.ExtraConfig, &dto.Extra)
+			if err := json.Unmarshal(row.ExtraConfig, &dto.Extra); err != nil {
+				httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "invalid cost sync extra config")
+				return
+			}
 		}
 		if row.TokenExpiresAt.Valid {
 			t := row.TokenExpiresAt.Time
@@ -124,7 +127,7 @@ func (h *CostSyncHTTPHandlers) listCredentials(w http.ResponseWriter, r *http.Re
 	httpresponse.JSON(w, http.StatusOK, dtos)
 }
 
-func (h *CostSyncHTTPHandlers) upsertCredential(w http.ResponseWriter, r *http.Request) {
+func (costSync *CostSyncHTTPHandlers) upsertCredential(w http.ResponseWriter, r *http.Request) {
 	network := r.PathValue("network")
 	if network == "" {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "missing network")
@@ -142,7 +145,7 @@ func (h *CostSyncHTTPHandlers) upsertCredential(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	allowed, err := h.checkProTier(r, custID)
+	allowed, err := costSync.checkProTier(r, custID)
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
@@ -152,14 +155,14 @@ func (h *CostSyncHTTPHandlers) upsertCredential(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	accessEnc, refreshEnc, apiEnc, err := costsync.EncryptCredentialFields(h.EncryptionKey, req.AccessToken, req.RefreshToken, req.APIKey)
+	accessEnc, refreshEnc, apiEnc, err := costsync.EncryptCredentialFields(costSync.EncryptionKey, req.AccessToken, req.RefreshToken, req.APIKey)
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}
 
 	extraRaw, _ := json.Marshal(req.ExtraConfig)
-	row, err := db.New(h.Pool).UpsertCostSyncCredential(r.Context(), db.UpsertCostSyncCredentialParams{
+	row, err := db.New(costSync.Pool).UpsertCostSyncCredential(r.Context(), db.UpsertCostSyncCredentialParams{
 		CustomerID:            pgtype.UUID{Bytes: custID, Valid: true},
 		Network:               network,
 		AccountID:             req.AccountID,
@@ -181,7 +184,7 @@ func (h *CostSyncHTTPHandlers) upsertCredential(w http.ResponseWriter, r *http.R
 	})
 }
 
-func (h *CostSyncHTTPHandlers) deleteCredential(w http.ResponseWriter, r *http.Request) {
+func (costSync *CostSyncHTTPHandlers) deleteCredential(w http.ResponseWriter, r *http.Request) {
 	network := r.PathValue("network")
 	custStr := r.URL.Query().Get("customer_id")
 	custID, err := uuid.Parse(custStr)
@@ -190,7 +193,7 @@ func (h *CostSyncHTTPHandlers) deleteCredential(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	err = db.New(h.Pool).DeleteCostSyncCredential(r.Context(), db.DeleteCostSyncCredentialParams{
+	err = db.New(costSync.Pool).DeleteCostSyncCredential(r.Context(), db.DeleteCostSyncCredentialParams{
 		CustomerID: pgtype.UUID{Bytes: custID, Valid: true},
 		Network:    network,
 	})
@@ -201,8 +204,8 @@ func (h *CostSyncHTTPHandlers) deleteCredential(w http.ResponseWriter, r *http.R
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *CostSyncHTTPHandlers) runSync(w http.ResponseWriter, r *http.Request) {
-	if h.Worker == nil {
+func (costSync *CostSyncHTTPHandlers) runSync(w http.ResponseWriter, r *http.Request) {
+	if costSync.Worker == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "cost-sync worker not configured")
 		return
 	}
@@ -242,14 +245,14 @@ func (h *CostSyncHTTPHandlers) runSync(w http.ResponseWriter, r *http.Request) {
 		to = parsed
 	}
 
-	if err := h.Worker.RunManual(r.Context(), custFilter, req.Network, from, to); err != nil {
+	if err := costSync.Worker.RunManual(r.Context(), custFilter, req.Network, from, to); err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}
 	httpresponse.JSON(w, http.StatusAccepted, map[string]string{"status": "accepted"})
 }
 
-func (h *CostSyncHTTPHandlers) listHistory(w http.ResponseWriter, r *http.Request) {
+func (costSync *CostSyncHTTPHandlers) listHistory(w http.ResponseWriter, r *http.Request) {
 	var cust pgtype.UUID
 	if custStr := r.URL.Query().Get("customer_id"); custStr != "" {
 		cid, err := uuid.Parse(custStr)
@@ -262,7 +265,7 @@ func (h *CostSyncHTTPHandlers) listHistory(w http.ResponseWriter, r *http.Reques
 
 	limit := int32(50)
 	offset := int32(0)
-	rows, err := db.New(h.Pool).ListCostSyncRuns(r.Context(), db.ListCostSyncRunsParams{
+	rows, err := db.New(costSync.Pool).ListCostSyncRuns(r.Context(), db.ListCostSyncRunsParams{
 		Column1: cust,
 		Limit:   limit,
 		Offset:  offset,
@@ -297,12 +300,12 @@ func (h *CostSyncHTTPHandlers) listHistory(w http.ResponseWriter, r *http.Reques
 	httpresponse.JSON(w, http.StatusOK, dtos)
 }
 
-func (h *CostSyncHTTPHandlers) checkProTier(r *http.Request, customerID uuid.UUID) (bool, error) {
-	if h.Pool == nil {
+func (costSync *CostSyncHTTPHandlers) checkProTier(r *http.Request, customerID uuid.UUID) (bool, error) {
+	if costSync.Pool == nil {
 		return true, nil
 	}
 	var planCode string
-	err := h.Pool.QueryRow(r.Context(), "SELECT plan_code FROM billing.customer_subscriptions WHERE customer_id = $1", customerID).Scan(&planCode)
+	err := costSync.Pool.QueryRow(r.Context(), "SELECT plan_code FROM billing.customer_subscriptions WHERE customer_id = $1", customerID).Scan(&planCode)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return false, nil

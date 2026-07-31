@@ -90,6 +90,10 @@ func conflictMessage(err error) string {
 
 func badRequestMessage(err error) (string, bool) {
 	switch {
+	case errors.Is(err, ErrFeedbackInvalidType),
+		errors.Is(err, ErrFeedbackInvalidEmail),
+		errors.Is(err, ErrFeedbackEmptyMessage):
+		return err.Error(), true
 	case errors.Is(err, ErrInsufficientBalance):
 		return ErrInsufficientBalance.Error(), true
 	case errors.Is(err, ErrSelfServeActiveCampaignLimit),
@@ -130,7 +134,7 @@ func badRequestMessage(err error) (string, bool) {
 func writeServiceError(w http.ResponseWriter, err error, logAttrs ...any) {
 	status, code, message := mapServiceError(err)
 	if status >= http.StatusInternalServerError {
-		attrs := append([]any{slog.String("error", err.Error())}, logAttrs...)
+		attrs := append([]any{slog.Any("err", err)}, logAttrs...)
 		slog.Error("management request failed", attrs...)
 	}
 	httpresponse.Error(w, status, code, message)

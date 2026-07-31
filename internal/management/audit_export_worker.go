@@ -37,10 +37,10 @@ func NewAuditExportWorker(svc *Service, exportPath string, retentionDays int) *A
 
 func (w *AuditExportWorker) Start(ctx context.Context, interval time.Duration) {
 	if err := w.ExportDaily(ctx, time.Now().UTC()); err != nil {
-		slog.Error("audit export failed", "error", err)
+		slog.Error("audit export failed", "err", err)
 	}
 	if err := w.cleanupOldExports(time.Now().UTC()); err != nil {
-		slog.Error("audit export retention cleanup failed", "error", err)
+		slog.Error("audit export retention cleanup failed", "err", err)
 	}
 
 	ticker := time.NewTicker(interval)
@@ -53,10 +53,10 @@ func (w *AuditExportWorker) Start(ctx context.Context, interval time.Duration) {
 		case <-ticker.C:
 			now := time.Now().UTC()
 			if err := w.ExportDaily(ctx, now); err != nil {
-				slog.Error("audit export failed", "error", err)
+				slog.Error("audit export failed", "err", err)
 			}
 			if err := w.cleanupOldExports(now); err != nil {
-				slog.Error("audit export retention cleanup failed", "error", err)
+				slog.Error("audit export retention cleanup failed", "err", err)
 			}
 		}
 	}

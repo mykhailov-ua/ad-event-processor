@@ -3,7 +3,6 @@ package management
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"strconv"
 	"time"
 
@@ -225,7 +224,6 @@ func (s *Service) RunFloorOptimizer(ctx context.Context) (int, error) {
 		}
 		written++
 	}
-	slog.Info("floor optimizer computed suggestions", "placements", written)
 	return written, nil
 }
 
