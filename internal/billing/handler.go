@@ -8,7 +8,6 @@ import (
 	"espx/internal/billing/pb"
 	"espx/internal/config"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -23,49 +22,6 @@ type Handler struct {
 
 func NewHandler(service *Service, cfg *config.Config) *Handler {
 	return &Handler{service: service, cfg: cfg}
-}
-
-func (handler *Handler) GenerateInvoice(ctx context.Context, req *pb.GenerateInvoiceRequest) (*pb.Invoice, error) {
-	if err := handler.requireInternalToken(ctx); err != nil {
-		return nil, err
-	}
-	customerID, err := uuid.Parse(req.CustomerId)
-	if err != nil || customerID == uuid.Nil {
-		return nil, status.Error(codes.InvalidArgument, ErrInvalidCustomerID.Error())
-	}
-	if req.BillingMonth == nil {
-		return nil, status.Error(codes.InvalidArgument, ErrInvalidBillingMonth.Error())
-	}
-	billingMonth := req.BillingMonth.AsTime().UTC()
-	inv, err := handler.service.GenerateInvoice(ctx, customerID, billingMonth)
-	return inv, mapRPCError(err)
-}
-
-func (handler *Handler) GetInvoice(ctx context.Context, req *pb.GetInvoiceRequest) (*pb.Invoice, error) {
-	if err := handler.requireInternalToken(ctx); err != nil {
-		return nil, err
-	}
-	invoiceID, err := uuid.Parse(req.InvoiceId)
-	if err != nil || invoiceID == uuid.Nil {
-		return nil, status.Error(codes.InvalidArgument, ErrInvalidInvoiceID.Error())
-	}
-	inv, err := handler.service.GetInvoice(ctx, invoiceID)
-	return inv, mapRPCError(err)
-}
-
-func (handler *Handler) ListInvoices(ctx context.Context, req *pb.ListInvoicesRequest) (*pb.ListInvoicesResponse, error) {
-	if err := handler.requireInternalToken(ctx); err != nil {
-		return nil, err
-	}
-	customerID, err := uuid.Parse(req.CustomerId)
-	if err != nil || customerID == uuid.Nil {
-		return nil, status.Error(codes.InvalidArgument, ErrInvalidCustomerID.Error())
-	}
-	invoices, total, err := handler.service.ListInvoices(ctx, customerID, req.Limit, req.Offset)
-	if err != nil {
-		return nil, mapRPCError(err)
-	}
-	return &pb.ListInvoicesResponse{Invoices: invoices, Total: total}, nil
 }
 
 func (handler *Handler) requireInternalToken(ctx context.Context) error {
@@ -105,4 +61,35 @@ func mapRPCError(err error) error {
 	default:
 		return status.Error(codes.Internal, "internal server error")
 	}
+}
+
+func (handler *Handler) GenerateInvoice(ctx context.Context, req *pb.GenerateInvoiceRequest) (*pb.Invoice, error) {
+	customerID, err := parseCustomerID(req.CustomerId)
+	if err != nil {
+		return nil, err
+	}
+	if req.BillingMonth == nil {
+		return nil, status.Error(codes.InvalidArgument, ErrInvalidBillingMonth.Error())
+	}
+	return handler.generateInvoice(ctx, customerID, req.BillingMonth.AsTime())
+}
+
+func (handler *Handler) GetInvoice(ctx context.Context, req *pb.GetInvoiceRequest) (*pb.Invoice, error) {
+	invoiceID, err := parseInvoiceID(req.InvoiceId)
+	if err != nil {
+		return nil, err
+	}
+	return handler.getInvoice(ctx, invoiceID)
+}
+
+func (handler *Handler) ListInvoices(ctx context.Context, req *pb.ListInvoicesRequest) (*pb.ListInvoicesResponse, error) {
+	customerID, err := parseCustomerID(req.CustomerId)
+	if err != nil {
+		return nil, err
+	}
+	invoices, total, err := handler.listInvoices(ctx, customerID, req.Limit, req.Offset)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.ListInvoicesResponse{Invoices: invoices, Total: total}, nil
 }

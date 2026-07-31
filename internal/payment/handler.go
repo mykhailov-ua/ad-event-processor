@@ -3,10 +3,10 @@ package payment
 import (
 	"context"
 	"crypto/subtle"
+
 	"espx/internal/config"
 	"espx/internal/payment/db"
 	"espx/internal/payment/pb"
-	"espx/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -69,6 +69,10 @@ func mapStatusToPB(s db.PaymentPaymentIntentStatus) pb.PaymentIntentStatus {
 	}
 }
 
+func intentStatusString(s db.PaymentPaymentIntentStatus) string {
+	return mapStatusToPB(s).String()
+}
+
 func intentToPB(intent db.PaymentPaymentIntent) *pb.PaymentIntent {
 	return &pb.PaymentIntent{
 		Id:             uuid.UUID(intent.ID.Bytes).String(),
@@ -82,134 +86,4 @@ func intentToPB(intent db.PaymentPaymentIntent) *pb.PaymentIntent {
 		CreatedAt:      timestamppb.New(intent.CreatedAt.Time),
 		UpdatedAt:      timestamppb.New(intent.UpdatedAt.Time),
 	}
-}
-
-func (handler *Handler) CreatePaymentIntent(ctx context.Context, req *pb.CreatePaymentIntentRequest) (*pb.CreatePaymentIntentResponse, error) {
-	if err := handler.requireInternalToken(ctx); err != nil {
-		return nil, err
-	}
-
-	customerID, err := uuid.Parse(req.CustomerId)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid customer id")
-	}
-	if req.AmountMicro <= 0 {
-		return nil, status.Error(codes.InvalidArgument, "amount_micro must be greater than zero")
-	}
-	if req.IdempotencyKey == "" {
-		return nil, status.Error(codes.InvalidArgument, "idempotency_key is required")
-	}
-
-	currency := req.Currency
-	if currency == "" {
-		currency = "USD"
-	}
-
-	result, err := handler.service.CreatePaymentIntent(ctx, customerID, req.AmountMicro, currency, req.IdempotencyKey, req.Metadata)
-	if err != nil {
-		return nil, mapPaymentGRPCError(err)
-	}
-
-	intent := result.Intent
-
-	return &pb.CreatePaymentIntentResponse{
-		IntentId:    uuid.UUID(intent.ID.Bytes).String(),
-		Status:      mapStatusToPB(intent.Status),
-		CheckoutUrl: result.CheckoutURL,
-		ProviderRef: intent.ProviderRef.String,
-	}, nil
-}
-
-func (handler *Handler) GetPaymentIntent(ctx context.Context, req *pb.GetPaymentIntentRequest) (*pb.PaymentIntent, error) {
-	if err := handler.requireInternalToken(ctx); err != nil {
-		return nil, err
-	}
-
-	intentID, err := uuid.Parse(req.IntentId)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid intent id")
-	}
-
-	intent, err := handler.service.GetPaymentIntent(ctx, intentID)
-	if err != nil {
-		return nil, mapPaymentGRPCError(err)
-	}
-
-	return intentToPB(intent), nil
-}
-
-func (handler *Handler) ListPaymentIntents(ctx context.Context, req *pb.ListPaymentIntentsRequest) (*pb.ListPaymentIntentsResponse, error) {
-	if err := handler.requireInternalToken(ctx); err != nil {
-		return nil, err
-	}
-
-	customerID, err := uuid.Parse(req.CustomerId)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid customer id")
-	}
-
-	limit, offset := coldpath.ClampLimitOffset(req.Limit, req.Offset, 10, 100)
-
-	intents, total, err := handler.service.ListPaymentIntents(ctx, customerID, limit, offset)
-	if err != nil {
-		return nil, mapPaymentGRPCError(err)
-	}
-
-	return &pb.ListPaymentIntentsResponse{
-		Intents: coldpath.MapSlice(intents, intentToPB),
-		Total:   total,
-	}, nil
-}
-
-func (handler *Handler) ListDisputes(ctx context.Context, req *pb.ListDisputesRequest) (*pb.ListDisputesResponse, error) {
-	if err := handler.requireInternalToken(ctx); err != nil {
-		return nil, err
-	}
-
-	var customerID *uuid.UUID
-	if req.CustomerId != "" {
-		parsed, err := uuid.Parse(req.CustomerId)
-		if err != nil {
-			return nil, status.Error(codes.InvalidArgument, "invalid customer id")
-		}
-		customerID = &parsed
-	}
-
-	limit, offset := coldpath.ClampLimitOffset(req.Limit, req.Offset, 10, 100)
-	items, total, err := handler.service.ListDisputes(ctx, customerID, limit, offset)
-	if err != nil {
-		return nil, mapPaymentGRPCError(err)
-	}
-
-	disputes := make([]*pb.DisputeRecord, 0, len(items))
-	for _, item := range items {
-		rec := &pb.DisputeRecord{
-			IntentId:          uuid.UUID(item.Intent.ID.Bytes).String(),
-			CustomerId:        uuid.UUID(item.Intent.CustomerID.Bytes).String(),
-			AmountMicro:       item.Intent.AmountMicro,
-			Currency:          item.Intent.Currency,
-			ProviderDisputeId: item.ProviderDisputeID,
-		}
-		if item.Intent.UpdatedAt.Valid {
-			rec.UpdatedAt = timestamppb.New(item.Intent.UpdatedAt.Time)
-		}
-		disputes = append(disputes, rec)
-	}
-
-	return &pb.ListDisputesResponse{Disputes: disputes, Total: total}, nil
-}
-
-func (handler *Handler) ReplayWebhook(ctx context.Context, req *pb.ReplayWebhookRequest) (*pb.ReplayWebhookResponse, error) {
-	if err := handler.requireInternalToken(ctx); err != nil {
-		return nil, err
-	}
-	if req.Provider == "" || req.ProviderEventId == "" {
-		return nil, status.Error(codes.InvalidArgument, "provider and provider_event_id are required")
-	}
-
-	statusText, err := handler.service.ReplayWebhook(ctx, req.Provider, req.ProviderEventId)
-	if err != nil {
-		return nil, mapPaymentGRPCError(err)
-	}
-	return &pb.ReplayWebhookResponse{Status: statusText}, nil
 }

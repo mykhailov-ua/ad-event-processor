@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
@@ -71,7 +72,7 @@ func TestFormatSlotIDs_TruncatesLongLists(t *testing.T) {
 }
 
 func TestNewNotifierClient_DisabledByDefault(t *testing.T) {
-	client, err := NewNotifierClient(&config.Config{})
+	client, err := NewNotifierClient(context.Background(), &config.Config{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

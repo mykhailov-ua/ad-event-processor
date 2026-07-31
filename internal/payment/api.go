@@ -6,7 +6,9 @@ import (
 
 	"espx/internal/payment/pb"
 
+	"github.com/google/uuid"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type PaymentIntent struct {
@@ -75,55 +77,83 @@ func (a *paymentAPI) incoming(ctx context.Context) context.Context {
 }
 
 func (a *paymentAPI) CreatePaymentIntent(ctx context.Context, customerID string, amountMicro int64, currency, idempotencyKey string, meta map[string]string) (*CreatePaymentIntentResult, error) {
-	resp, err := a.h.CreatePaymentIntent(a.incoming(ctx), &pb.CreatePaymentIntentRequest{
-		CustomerId:     customerID,
-		AmountMicro:    amountMicro,
-		Currency:       currency,
-		IdempotencyKey: idempotencyKey,
-		Metadata:       meta,
-	})
+	customerUUID, err := uuid.Parse(customerID)
 	if err != nil {
 		return nil, err
 	}
-	return CreatePaymentIntentResultFromPB(resp), nil
+	result, err := a.h.createPaymentIntent(a.incoming(ctx), customerUUID, amountMicro, currency, idempotencyKey, meta)
+	if err != nil {
+		return nil, err
+	}
+	intent := result.Intent
+	return &CreatePaymentIntentResult{
+		IntentID:    uuid.UUID(intent.ID.Bytes).String(),
+		Status:      intentStatusString(intent.Status),
+		CheckoutURL: result.CheckoutURL,
+		ProviderRef: intent.ProviderRef.String,
+	}, nil
 }
 
 func (a *paymentAPI) ListPaymentIntents(ctx context.Context, customerID string, limit, offset int32) (ListPaymentIntentsResult, error) {
-	resp, err := a.h.ListPaymentIntents(a.incoming(ctx), &pb.ListPaymentIntentsRequest{
-		CustomerId: customerID,
-		Limit:      limit,
-		Offset:     offset,
-	})
+	customerUUID, err := uuid.Parse(customerID)
 	if err != nil {
 		return ListPaymentIntentsResult{}, err
 	}
-	return ListPaymentIntentsResultFromPB(resp), nil
+	intents, total, err := a.h.listPaymentIntents(a.incoming(ctx), customerUUID, limit, offset)
+	if err != nil {
+		return ListPaymentIntentsResult{}, err
+	}
+	out := ListPaymentIntentsResult{Total: total}
+	if len(intents) == 0 {
+		return out, nil
+	}
+	out.Intents = make([]PaymentIntent, 0, len(intents))
+	for _, intent := range intents {
+		if parsed := PaymentIntentFromPB(intentToPB(intent)); parsed != nil {
+			out.Intents = append(out.Intents, *parsed)
+		}
+	}
+	return out, nil
 }
 
 func (a *paymentAPI) ListDisputes(ctx context.Context, customerID string, limit, offset int32) (ListDisputesResult, error) {
-	resp, err := a.h.ListDisputes(a.incoming(ctx), &pb.ListDisputesRequest{
-		CustomerId: customerID,
-		Limit:      limit,
-		Offset:     offset,
-	})
+	var customerUUID *uuid.UUID
+	if customerID != "" {
+		parsed, err := uuid.Parse(customerID)
+		if err != nil {
+			return ListDisputesResult{}, err
+		}
+		customerUUID = &parsed
+	}
+	items, total, err := a.h.listDisputes(a.incoming(ctx), customerUUID, limit, offset)
 	if err != nil {
 		return ListDisputesResult{}, err
 	}
-	return ListDisputesResultFromPB(resp), nil
+	out := ListDisputesResult{Total: total}
+	if len(items) == 0 {
+		return out, nil
+	}
+	out.Disputes = make([]Dispute, 0, len(items))
+	for _, item := range items {
+		rec := &pb.DisputeRecord{
+			IntentId:          uuid.UUID(item.Intent.ID.Bytes).String(),
+			CustomerId:        uuid.UUID(item.Intent.CustomerID.Bytes).String(),
+			AmountMicro:       item.Intent.AmountMicro,
+			Currency:          item.Intent.Currency,
+			ProviderDisputeId: item.ProviderDisputeID,
+		}
+		if item.Intent.UpdatedAt.Valid {
+			rec.UpdatedAt = timestamppb.New(item.Intent.UpdatedAt.Time)
+		}
+		if parsed := DisputeFromPB(rec); parsed != nil {
+			out.Disputes = append(out.Disputes, *parsed)
+		}
+	}
+	return out, nil
 }
 
 func (a *paymentAPI) ReplayWebhook(ctx context.Context, provider, providerEventID string) (string, error) {
-	resp, err := a.h.ReplayWebhook(a.incoming(ctx), &pb.ReplayWebhookRequest{
-		Provider:        provider,
-		ProviderEventId: providerEventID,
-	})
-	if err != nil {
-		return "", err
-	}
-	if resp == nil {
-		return "", nil
-	}
-	return resp.Status, nil
+	return a.h.replayWebhook(a.incoming(ctx), provider, providerEventID)
 }
 
 func PaymentIntentFromPB(in *pb.PaymentIntent) *PaymentIntent {

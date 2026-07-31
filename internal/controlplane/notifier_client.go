@@ -1,19 +1,15 @@
 package controlplane
 
 import (
-	"fmt"
+	"context"
 
 	"espx/internal/config"
 	"espx/internal/notifier"
-	notifierpb "espx/internal/notifier/pb"
-
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 type NotifierClient struct {
-	conn *grpc.ClientConn
-	api  notifier.NotifierAPI
+	closeFn func()
+	api     notifier.NotifierAPI
 }
 
 func NewNotifierClientFromAPI(api notifier.NotifierAPI) *NotifierClient {
@@ -23,22 +19,18 @@ func NewNotifierClientFromAPI(api notifier.NotifierAPI) *NotifierClient {
 	return &NotifierClient{api: api}
 }
 
-func NewNotifierClient(cfg *config.Config) (*NotifierClient, error) {
+func NewNotifierClient(ctx context.Context, cfg *config.Config) (*NotifierClient, error) {
 	if cfg == nil || !cfg.NotifierDialEnabled() {
 		return nil, nil
 	}
-
-	target := cfg.Notifier.ServerHost + ":" + cfg.Notifier.Port
-	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	api, closeFn, err := notifier.OpenAPIOrDial(ctx, cfg)
 	if err != nil {
-		return nil, fmt.Errorf("notifier gRPC dial %s: %w", target, err)
+		return nil, err
 	}
-
-	pbClient := notifierpb.NewNotifierServiceClient(conn)
-	return &NotifierClient{
-		conn: conn,
-		api:  notifier.NewGRPCNotifierAPI(pbClient),
-	}, nil
+	if api == nil {
+		return nil, nil
+	}
+	return &NotifierClient{api: api, closeFn: closeFn}, nil
 }
 
 func (client *NotifierClient) API() notifier.NotifierAPI {
@@ -49,8 +41,10 @@ func (client *NotifierClient) API() notifier.NotifierAPI {
 }
 
 func (client *NotifierClient) Close() error {
-	if client == nil || client.conn == nil {
+	if client == nil || client.closeFn == nil {
 		return nil
 	}
-	return client.conn.Close()
+	client.closeFn()
+	client.closeFn = nil
+	return nil
 }

@@ -6,8 +6,8 @@ import (
 
 	"espx/internal/billing/pb"
 
+	"github.com/google/uuid"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type InvoiceLine struct {
@@ -61,19 +61,33 @@ func (a *billingAPI) incoming(ctx context.Context) context.Context {
 }
 
 func (a *billingAPI) ListInvoices(ctx context.Context, customerID string, limit, offset int32) (ListInvoicesResult, error) {
-	resp, err := a.h.ListInvoices(a.incoming(ctx), &pb.ListInvoicesRequest{
-		CustomerId: customerID,
-		Limit:      limit,
-		Offset:     offset,
-	})
+	customerUUID, err := uuid.Parse(customerID)
+	if err != nil || customerUUID == uuid.Nil {
+		return ListInvoicesResult{}, ErrInvalidCustomerID
+	}
+	invoices, total, err := a.h.listInvoices(a.incoming(ctx), customerUUID, limit, offset)
 	if err != nil {
 		return ListInvoicesResult{}, err
 	}
-	return ListInvoicesResultFromPB(resp), nil
+	out := ListInvoicesResult{Total: total}
+	if len(invoices) == 0 {
+		return out, nil
+	}
+	out.Invoices = make([]Invoice, 0, len(invoices))
+	for _, inv := range invoices {
+		if parsed := InvoiceFromPB(inv); parsed != nil {
+			out.Invoices = append(out.Invoices, *parsed)
+		}
+	}
+	return out, nil
 }
 
 func (a *billingAPI) GetInvoice(ctx context.Context, invoiceID string) (*Invoice, error) {
-	inv, err := a.h.GetInvoice(a.incoming(ctx), &pb.GetInvoiceRequest{InvoiceId: invoiceID})
+	invoiceUUID, err := uuid.Parse(invoiceID)
+	if err != nil || invoiceUUID == uuid.Nil {
+		return nil, ErrInvalidInvoiceID
+	}
+	inv, err := a.h.getInvoice(a.incoming(ctx), invoiceUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -81,11 +95,12 @@ func (a *billingAPI) GetInvoice(ctx context.Context, invoiceID string) (*Invoice
 }
 
 func (a *billingAPI) GenerateInvoice(ctx context.Context, customerID string, billingMonth time.Time) (*Invoice, error) {
+	customerUUID, err := uuid.Parse(customerID)
+	if err != nil || customerUUID == uuid.Nil {
+		return nil, ErrInvalidCustomerID
+	}
 	month := time.Date(billingMonth.Year(), billingMonth.Month(), 1, 0, 0, 0, 0, time.UTC)
-	inv, err := a.h.GenerateInvoice(a.incoming(ctx), &pb.GenerateInvoiceRequest{
-		CustomerId:   customerID,
-		BillingMonth: timestamppb.New(month),
-	})
+	inv, err := a.h.generateInvoice(a.incoming(ctx), customerUUID, month)
 	if err != nil {
 		return nil, err
 	}
