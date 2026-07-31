@@ -2,33 +2,33 @@
 WITH
     shadow AS (
         SELECT
-            ip_address,
+            ip_hash,
             max(score) AS ml_score
         FROM ml_shadow_scores
         WHERE created_at >= now() - INTERVAL 24 HOUR
-        GROUP BY ip_address
+        GROUP BY ip_hash
     ),
     positives AS (
-        SELECT DISTINCT ip_address
+        SELECT DISTINCT ip_hash
         FROM fraud_events
         WHERE created_at >= now() - INTERVAL 24 HOUR
           AND fraud_reason != ''
     ),
     negatives AS (
-        SELECT DISTINCT ip_address
-        FROM impressions
-        WHERE created_at >= now() - INTERVAL 24 HOUR
-          AND ip_address NOT IN (SELECT ip_address FROM positives)
+        SELECT DISTINCT i.ip_hash
+        FROM impressions AS i
+        WHERE i.created_at >= now() - INTERVAL 24 HOUR
+          AND i.ip_hash NOT IN (SELECT ip_hash FROM positives)
         LIMIT 10000
     ),
     labeled AS (
-        SELECT s.ip_address, s.ml_score, 1 AS label
-        FROM shadow s
-        INNER JOIN positives p USING (ip_address)
+        SELECT s.ip_hash, s.ml_score, toUInt8(1) AS label
+        FROM shadow AS s
+        INNER JOIN positives AS p USING (ip_hash)
         UNION ALL
-        SELECT s.ip_address, s.ml_score, 0 AS label
-        FROM shadow s
-        INNER JOIN negatives n USING (ip_address)
+        SELECT s.ip_hash, s.ml_score, toUInt8(0) AS label
+        FROM shadow AS s
+        INNER JOIN negatives AS n USING (ip_hash)
     )
 SELECT
     countIf(label = 1 AND ml_score >= 0.6) AS tp,

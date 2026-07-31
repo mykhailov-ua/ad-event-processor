@@ -584,7 +584,7 @@ Open work: `.cursor/BACKLOG.md`. Recently completed items (legacy gap IDs):
 | GAP-RTB-12b | Admin dry-run preview | `ParseDryRun`, `dry_run_test.go` |
 | GAP-RTB-12c | A/B cohorts | `experiment_cohorts`, `cohort_snapshot.go`, `cohort_test.go` |
 
-Deferred UI (not in backlog table): GAP-PROD-01 buyer/finance dashboards, GAP-OPS-04 queue monitoring. Self-hosted installs use JSON `/api/v1` only; legacy HTMX is deprecated (removed in P06 / GAP-HYG-04).
+Deferred API contract work (not in P-table): GAP-PROD-01, GAP-OPS-04. Self-hosted installs use JSON `/api/v1` only; legacy HTMX removed (P06 / GAP-HYG-04). Bundled operator UI cancelled (GAP-PROD-02).
 
 ---
 
