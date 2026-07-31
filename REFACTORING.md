@@ -47,9 +47,7 @@ campaignmodel → domain (removed `internal/campaignmodel`)
 internal/auth → identity (`internal/identity`, `package identity`)
 internal/marginguard → ledger (`internal/ledger`, `package ledger`)
 internal/fraudscoring → fraud (`internal/fraud`, `package fraud`)
-
-Pending:
-adminapi → merge into controlplane — done (`internal/controlplane/adminapi`)
+adminapi → controlplane/adminapi (removed `internal/adminapi`)
 
 Banned: ml, ai, utils, common, helpers, core, base, shared, internal2, management, mgr, svc, service. No nested theme folders (ingestion/filter/).
 

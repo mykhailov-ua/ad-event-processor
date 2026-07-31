@@ -25,8 +25,7 @@ var (
 
 func DiscoverAPIV1Routes(repoRoot string) ([]Route, error) {
 	dirs := []string{
-		filepath.Join(repoRoot, "internal", "management"),
-		filepath.Join(repoRoot, "internal", "adminapi"),
+		filepath.Join(repoRoot, "internal", "controlplane"),
 	}
 	seen := make(map[string]Route)
 	for _, dir := range dirs {
