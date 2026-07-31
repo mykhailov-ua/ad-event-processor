@@ -12,7 +12,7 @@ Backlog: `.cursor/BACKLOG.md` (index), `.cursor/GAP_SPECS.md` (acceptance criter
 Agent rules: `.cursor/rules/*.mdc` — start at `guidelines-index.mdc`.
 
 `espx.mdc`: Always — SLA, layout, hot-path summary
-`code-style.mdc`: Go, Lua, SQL structure and PR gates
+`code-style.mdc`: Go, Lua, SQL, Python (`fraud_modeling/`) structure, comments, PR gates
 `hot-path.mdc`: `internal/ingestion`, tracker ingest
 `load-test-bpf.mdc`: Perf validation: BPF + Prometheus, load tests
 `data-layer.mdc`: Redis, Postgres, ClickHouse, migrations
