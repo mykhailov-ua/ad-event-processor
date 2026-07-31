@@ -59,14 +59,17 @@ func TestScanAndRegister(t *testing.T) {
 	require.NoError(t, err)
 
 	var id, status, artifactHash string
-	var metrics map[string]interface{}
-	err = pool.QueryRow(ctx, "SELECT id, status, artifact_hash, metrics_json FROM ml_model_versions WHERE id = 'vTest123'").Scan(&id, &status, &artifactHash, &metrics)
+	var metadata map[string]interface{}
+	err = pool.QueryRow(ctx, "SELECT id, status, artifact_hash, metrics_json FROM ml_model_versions WHERE id = 'vTest123'").Scan(&id, &status, &artifactHash, &metadata)
 	require.NoError(t, err)
 
 	assert.Equal(t, "vTest123", id)
 	assert.Equal(t, "SYNCING", status)
 	assert.NotEmpty(t, artifactHash)
-	assert.Equal(t, 0.99, metrics["accuracy"])
+	assert.Equal(t, "vTest123", metadata["version"])
+	nestedMetrics, ok := metadata["metrics"].(map[string]interface{})
+	require.True(t, ok)
+	assert.Equal(t, 0.99, nestedMetrics["accuracy"])
 
 	err = scanAndRegister(ctx, pool)
 	require.NoError(t, err)

@@ -36,6 +36,28 @@ func main() {
 		os.Exit(1)
 	}
 
+	artifactDir := os.Getenv("FRAUD_ARTIFACT_DIR")
+	if artifactDir == "" {
+		artifactDir = "var/fraudscore/artifacts"
+	}
+	metadataPath := filepath.Join(artifactDir, "metadata.json")
+	policySource := os.Getenv("FRAUD_POLICY_SOURCE")
+	if policySource == "" {
+		policySource = "auto"
+	}
+	policyCfg := fraudscoring.ResolvePolicyConfig(
+		fraudscoring.PolicyConfigFromEnv(),
+		metadataPath,
+		policySource,
+	)
+	fraudscoring.SetPolicyConfig(policyCfg)
+	slog.Info("fraud policy loaded",
+		"source", policySource,
+		"ml_threshold", policyCfg.MLThreshold,
+		"proxy_floor", policyCfg.ResidentialProxyFloor,
+		"fp_guard_cap", policyCfg.FPGuardCap,
+	)
+
 	ctx, stop := lifecycle.NotifyContext(context.Background())
 	defer stop()
 
@@ -174,11 +196,9 @@ func scanAndRegister(ctx context.Context, pool *pgxpool.Pool) error {
 				Metrics json.RawMessage `json:"metrics"`
 			}
 			if err := json.Unmarshal(data, &meta); err == nil {
+				metricsJSON = data // Use full metadata as metricsJSON
 				if meta.Version != "" {
 					version = meta.Version
-				}
-				if meta.Metrics != nil {
-					metricsJSON = meta.Metrics
 				}
 			}
 		}

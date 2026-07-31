@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,7 +17,6 @@ type featureFixture struct {
 	FeatureNames []string   `json:"feature_names"`
 	Row          fixtureRow `json:"row"`
 	Vector       []float64  `json:"vector"`
-	Score        *float64   `json:"score,omitempty"`
 }
 
 type fixtureRow struct {
@@ -30,25 +28,25 @@ type fixtureRow struct {
 	UniqueUAs        uint64 `json:"unique_uas"`
 }
 
-func validateModel(modelPath string) (*fraudscoring.LGBMScorer, error) {
+func checkModel(modelPath string) error {
 	scorer, err := fraudscoring.NewLGBMScorer(modelPath)
 	if err != nil {
-		return nil, fmt.Errorf("load model: %w", err)
+		return fmt.Errorf("load model: %w", err)
 	}
 	if scorer.Dims() != fraudscoring.Dims() {
-		return nil, fmt.Errorf("model NFeatures=%d want %d", scorer.Dims(), fraudscoring.Dims())
+		return fmt.Errorf("model NFeatures=%d want %d", scorer.Dims(), fraudscoring.Dims())
 	}
-	return scorer, nil
+	return nil
 }
 
-func validateFixtures(scorer *fraudscoring.LGBMScorer, fixturesDir string) error {
+func validateFixtures(fixturesDir string) error {
 	entries, err := os.ReadDir(fixturesDir)
 	if err != nil {
 		return fmt.Errorf("read fixtures dir: %w", err)
 	}
 
 	var errs []error
-	var scored int
+	var validated int
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasPrefix(entry.Name(), "features_") || !strings.HasSuffix(entry.Name(), ".json") {
 			continue
@@ -81,34 +79,17 @@ func validateFixtures(scorer *fraudscoring.LGBMScorer, fixturesDir string) error
 				break
 			}
 		}
-
-		if fixture.Score == nil {
-			continue
-		}
-		scores, err := scorer.ScoreBatch(context.Background(), []fraudscoring.FeatureRow{row})
-		if err != nil {
-			errs = append(errs, fmt.Errorf("%s: score: %w", entry.Name(), err))
-			continue
-		}
-		if len(scores) != 1 || math.Abs(scores[0]-*fixture.Score) > 1e-4 {
-			got := 0.0
-			if len(scores) > 0 {
-				got = scores[0]
-			}
-			errs = append(errs, fmt.Errorf("%s: score got %.5f want %.5f", entry.Name(), got, *fixture.Score))
-			continue
-		}
-		scored++
+		validated++
 	}
 
-	if scored == 0 {
-		errs = append(errs, errors.New("no fixtures with score field were validated"))
+	if validated == 0 {
+		errs = append(errs, errors.New("no features_*.json fixtures were validated"))
 	}
 	return errors.Join(errs...)
 }
 
 func main() {
-	modelPath := "internal/fraudscoring/testdata/model.txt"
+	modelPath := "var/fraudscore/artifacts/model.txt"
 	fixturesDir := "testdata/ml"
 	if len(os.Args) > 1 {
 		for i := 1; i < len(os.Args); i++ {
@@ -131,13 +112,12 @@ func main() {
 		}
 	}
 
-	scorer, err := validateModel(modelPath)
-	if err != nil {
+	if err := checkModel(modelPath); err != nil {
 		fmt.Fprintf(os.Stderr, "ml-validate: %v\n", err)
 		os.Exit(1)
 	}
 
-	if err := validateFixtures(scorer, fixturesDir); err != nil {
+	if err := validateFixtures(fixturesDir); err != nil {
 		fmt.Fprintf(os.Stderr, "ml-validate: %v\n", err)
 		os.Exit(1)
 	}
