@@ -6,19 +6,16 @@ import (
 	"sync"
 
 	"espx/internal/config"
-	"espx/internal/controlplane/pb"
 	"espx/internal/domain"
 
 	"github.com/google/uuid"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 type SettlementLedgerClient struct {
-	cfg  *config.Config
-	mu   sync.Mutex
-	conn *grpc.ClientConn
-	api  domain.PaymentSettlement
+	cfg     *config.Config
+	mu      sync.Mutex
+	closeFn func()
+	api     domain.PaymentSettlement
 }
 
 func NewSettlementLedgerClient(cfg *config.Config) *SettlementLedgerClient {
@@ -62,12 +59,11 @@ func (c *SettlementLedgerClient) GetPaymentIntentLedger(ctx context.Context, int
 func (c *SettlementLedgerClient) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.conn != nil {
-		err := c.conn.Close()
-		c.conn = nil
-		c.api = nil
-		return err
+	if c.closeFn != nil {
+		c.closeFn()
+		c.closeFn = nil
 	}
+	c.api = nil
 	return nil
 }
 
@@ -77,16 +73,15 @@ func (c *SettlementLedgerClient) ensureClient() error {
 	if c.api != nil {
 		return nil
 	}
-	if c.cfg != nil && !c.cfg.SettlementGRPCEnabled {
-		return fmt.Errorf("settlement API not configured and SETTLEMENT_GRPC_ENABLED=0")
-	}
-	target := c.cfg.SettlementServerHost + ":" + c.cfg.SettlementServerPort
-	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	api, closeFn, err := OpenSettlementAPIOrDial(context.Background(), c.cfg)
 	if err != nil {
-		return fmt.Errorf("dial settlement %s: %w", target, err)
+		return err
 	}
-	c.conn = conn
-	c.api = newGRPCSettlementClient(pb.NewSettlementServiceClient(conn), string(c.cfg.SettlementInternalToken))
+	if api == nil {
+		return fmt.Errorf("settlement client not configured")
+	}
+	c.api = api
+	c.closeFn = closeFn
 	return nil
 }
 

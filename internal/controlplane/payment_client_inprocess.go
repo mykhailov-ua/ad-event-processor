@@ -12,25 +12,16 @@ func NewPaymentClientInProcess(api payment.PaymentAPI, token string) *PaymentCli
 }
 
 func openPaymentClient(ctx context.Context, cfg *config.Config, opts ServeOptions) (*PaymentClient, func(), error) {
-	noop := func() {}
 	if opts.Payment != nil {
-		return opts.Payment, noop, nil
+		return opts.Payment, func() {}, nil
 	}
-	if cfg != nil && !cfg.PaymentGRPCEnabled {
-		mod, err := payment.OpenModule(ctx, cfg)
-		if err != nil {
-			return nil, noop, err
-		}
-		if mod == nil {
-			return nil, noop, nil
-		}
-		token := string(cfg.PaymentInternalToken)
-		return NewPaymentClientFromAPI(mod.API(token), token), mod.Close, nil
+	token := ""
+	if cfg != nil {
+		token = string(cfg.PaymentInternalToken)
 	}
-	client, err := NewPaymentClient(cfg)
-	closeFn := noop
-	if client != nil {
-		closeFn = func() { _ = client.Close() }
+	api, closeFn, err := payment.OpenAPIOrDial(ctx, cfg)
+	if err != nil || api == nil {
+		return nil, closeFn, err
 	}
-	return client, closeFn, err
+	return NewPaymentClientFromAPI(api, token), closeFn, nil
 }

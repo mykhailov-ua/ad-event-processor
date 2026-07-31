@@ -225,11 +225,11 @@ Blockers for deleting `api/auth.proto` (and siblings)
 
 | Generated type | Status | Remaining import sites |
 |----------------|--------|------------------------|
-| `AuthServiceClient` / `AuthServiceServer` | Monolith in-process via `identity.AuthAPI` | `identity/{handler,serve}.go`; `controlplane/{auth_client,serve}.go` (split dial when `opts.Auth` nil) |
-| `BillingServiceClient` / `BillingServiceServer` | Monolith in-process via `billing.BillingAPI` | `billing/{handler,serve}.go`; `controlplane/billing_client.go` (split dial) |
-| `PaymentServiceClient` / `PaymentServiceServer` | Monolith in-process via `payment.PaymentAPI` | `payment/{handler,serve}.go`; `controlplane/payment_client.go` (split dial) |
+| `AuthServiceClient` / `AuthServiceServer` | Monolith in-process via `identity.AuthAPI` | `identity/{handler,serve,grpc_api,resolve_api}.go`; `controlplane/auth_client.go` (thin wrapper) |
+| `BillingServiceClient` / `BillingServiceServer` | Monolith in-process via `billing.BillingAPI` | `billing/{handler,serve,grpc_api,resolve_api}.go`; `controlplane/billing_client.go` |
+| `PaymentServiceClient` / `PaymentServiceServer` | Monolith in-process via `payment.PaymentAPI` | `payment/{handler,serve,grpc_api,resolve_api}.go`; `controlplane/payment_client.go` |
 | `NotifierServiceClient` / `NotifierServiceServer` | Monolith in-process via `notifier.NotifierAPI` | `notifier/{handler,serve,grpc_api}.go`; `billing/notifier_client.go`, `payment/notifier_client.go`; `controlplane/notifier_client.go` (split dial / `TryNotifierClient`). Ops/billing alert routing uses plain provider strings (`notifier.OpsAlertTarget`, `MapConfigProviderName`). |
-| `SettlementServiceClient` / `SettlementServiceServer` | Monolith in-process via `SettlementHandler.PaymentSettlement()` (`domain.PaymentSettlement`) | `controlplane/{settlement_handler,serve}.go` (split gRPC server when `SettlementGRPCEnabled`; thin pb wrappers over domain/core methods); `payment/{settlement_grpc_client,settlement_ledger_client,outbox_worker}.go` (split client dial) |
+| `SettlementServiceClient` / `SettlementServiceServer` | Monolith in-process via `SettlementHandler.PaymentSettlement()` (`domain.PaymentSettlement`) | `controlplane/{settlement_handler,serve}.go`; `payment/{settlement_grpc_client,resolve_settlement,settlement_ledger_client,outbox_worker}.go` |
 
 Message types (`*.pb.go`) remain in use for handler request/response structs and outbox payloads — delete protos only after those call sites use `internal/domain` types.
 
