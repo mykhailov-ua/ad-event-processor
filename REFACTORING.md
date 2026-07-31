@@ -213,7 +213,9 @@ gRPC server gating (done)
 
 All flags: `os.Getenv(...) != "0"` (unset = enabled). Monolith compose `control` sets `SETTLEMENT_GRPC_ENABLED=0` and `NOTIFIER_GRPC_ENABLED=0`; `.env.example` defaults settlement off.
 
-Settlement in-process via `SettlementHandler.PaymentSettlement()` + `PaymentModule.SetSettlementAPI`; no localhost dial when `SETTLEMENT_GRPC_ENABLED=0`.
+`cmd/control` monolith never calls `Serve()` for auth/billing/payment/notifier — only `OpenModule` + `*API()` / `ServeOptions` clients. Settlement in-process via `SettlementHandler.PaymentSettlement()` + `PaymentModule.SetSettlementAPI`; no localhost dial when `SETTLEMENT_GRPC_ENABLED=0`.
+
+Split deploy: standalone `cmd/payment` + `cmd/management` keep settlement gRPC (`SETTLEMENT_GRPC_ENABLED` unset or `1` on management). `payment/outbox_worker.go` and `settlement_ledger_client.go` dial `SettlementServiceClient` when `SetSettlementAPI` is not injected.
 
 `local_client.go` / `Module.Client()` / `Module.GRPC()` removed from identity, billing, payment, notifier — monolith and split `Serve()` use `mod.API()` + gRPC adapters at dial boundary only.
 
