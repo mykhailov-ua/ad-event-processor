@@ -331,7 +331,7 @@ Full list: `.env.example`.
 | `ELASTIC_SHARDING_ENABLED` | `false` steady-state default |
 | `CONTROL_FAIL_OPEN` | `0` (default): edge uses conservative routing when control epochs are stale — equal tracker weights, drain frozen. Set `1` for AWS GA-style fail-open (keep last epoch weights). Edge only; see [.cursor/MULTI_REGION.md](../.cursor/MULTI_REGION.md) H4. |
 | `CONTROL_ENABLE_*` | Modular monolith (`cmd/control`, default deploy): set `0` to disable auth, management, payment, billing, notifier, margin-guard, or cost-sync in-process. See `.env.example`. |
-| `SETTLEMENT_GRPC_ENABLED` | Set `0` when running `cmd/control` so payment→settlement is in-process (default in compose `control` service). Leave enabled only for deprecated `split_control` / standalone `cmd/management` + `cmd/payment`. |
+| `SETTLEMENT_GRPC_ENABLED` | Set `0` when running `cmd/control` so payment→settlement is in-process (default in compose `control` service). Leave enabled only for standalone `cmd/management` + `cmd/payment` resilience sidecars. |
 | `NODE_WARMUP_SEC` | Tracker/management warmup before `/ready` and scorer drain (default `300`) |
 | `NODE_WEIGHTS_SYNC_INTERVAL_SEC` | Edge poll interval for `/ops/node-weights` (default `10`) |
 
@@ -346,7 +346,7 @@ scripts/dev/stack.sh single-vps      # default: tracker + processor + control mo
 scripts/dev/stack.sh ingest-only     # control without payment/billing
 scripts/dev/stack.sh network-operator
 scripts/dev/stack.sh analytics-ml    # + fraud-scorer, ivt-detector
-scripts/dev/stack.sh full            # DEPRECATED: split_control multi-container stack
+scripts/dev/stack.sh full            # alias for single-vps monolith
 ```
 
 `ingest_only` smoke: payment/billing containers absent; no `clickhouse` service; `control` and `tracker` healthy.

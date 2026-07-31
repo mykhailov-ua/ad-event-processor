@@ -1,21 +1,20 @@
 package main
 
 import (
-	"context"
 	"log/slog"
 	"os"
-	"os/signal"
-	"syscall"
 
 	"espx/internal/config"
-	"espx/internal/controlplane"
-	"espx/internal/ingestion"
+	"espx/internal/control"
 	"espx/pkg/runtimeautotune"
 )
 
 func main() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	slog.SetDefault(logger)
+	if control.ProbeHealth(os.Args) {
+		return
+	}
+
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 	slog.Warn("standalone binary deprecated; use cmd/control monolith")
 
 	cfg, err := config.Load()
@@ -24,14 +23,5 @@ func main() {
 		os.Exit(1)
 	}
 	runtimeautotune.Apply(cfg)
-
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer cancel()
-
-	if err := controlplane.ServeWithOptions(ctx, cfg, controlplane.ServeOptions{
-		RtbBidShadeSim: ingestion.RunRtbBidShadeSim,
-	}); err != nil && err != context.Canceled {
-		slog.Error("management server stopped", "error", err)
-		os.Exit(1)
-	}
+	control.RunLoaded(cfg, control.OptionsManagementOnly())
 }

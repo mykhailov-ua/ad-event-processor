@@ -1,6 +1,5 @@
 # Compose deploy profiles (docker compose --profile <name>):
 #   single_vps, ingest_only, network_operator — cmd/control monolith (default; see docs/SELF_HOSTED.md)
-#   split_control — DEPRECATED: separate auth/management/payment/billing/notifier with localhost gRPC; use single_vps
 #   analytics_ml, resilience, crypto, multi-region, monitoring, tools, fraud-scorer — optional add-ons
 
 services:
@@ -429,38 +428,6 @@ services:
         max-file: "3"
 
 
-  # split_control (deprecated): standalone auth; use control service + single_vps profile instead.
-  auth:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    entrypoint: ["/auth"]
-    network_mode: "${NET_MODE:-host}"
-    profiles:
-      - split_control # deprecated: use single_vps / cmd/control
-    env_file:
-      - .env
-    environment:
-      - AUTH_SERVER_PORT=51051
-      - DB_DSN=${DB_DSN}
-      - REDIS_ADDRS=127.0.0.1:6479
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-    restart: always
-    depends_on:
-      db:
-        condition: service_healthy
-      redis-0:
-        condition: service_healthy
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "100m"
-        max-file: "3"
-
-
   control:
     build:
       context: .
@@ -522,7 +489,6 @@ services:
         max-file: "3"
 
 
-  # split_control (deprecated): standalone management; use control service + single_vps profile instead.
   management:
     build:
       context: .
@@ -530,7 +496,6 @@ services:
     entrypoint: ["/management"]
     network_mode: "${NET_MODE:-host}"
     profiles:
-      - split_control # deprecated: use single_vps / cmd/control
       - resilience
       - fraud-scorer
     env_file:
@@ -573,7 +538,6 @@ services:
         max-file: "3"
 
 
-  # split_control (deprecated): standalone notifier; use control service + single_vps profile instead.
   notifier:
     build:
       context: .
@@ -581,7 +545,6 @@ services:
     entrypoint: ["/notifier"]
     network_mode: "${NET_MODE:-host}"
     profiles:
-      - split_control # deprecated: use single_vps / cmd/control
       - resilience
     env_file:
       - .env
@@ -614,7 +577,6 @@ services:
     network_mode: "${NET_MODE:-host}"
     profiles:
       - analytics_ml
-      - split_control
       - resilience
     env_file:
       - .env
@@ -677,7 +639,6 @@ services:
         max-file: "3"
 
 
-  # split_control (deprecated): standalone payment; use control service + single_vps profile instead.
   payment:
     build:
       context: .
@@ -685,7 +646,6 @@ services:
     entrypoint: ["/payment"]
     network_mode: "${NET_MODE:-host}"
     profiles:
-      - split_control # deprecated: use single_vps / cmd/control
       - resilience
       - crypto
     env_file:
@@ -714,7 +674,6 @@ services:
         max-file: "3"
 
 
-  # split_control (deprecated): standalone billing; use control service + single_vps profile instead.
   billing:
     build:
       context: .
@@ -722,7 +681,6 @@ services:
     entrypoint: ["/billing"]
     network_mode: "${NET_MODE:-host}"
     profiles:
-      - split_control # deprecated: use single_vps / cmd/control
       - resilience
     env_file:
       - .env
@@ -779,7 +737,6 @@ services:
   db-payment:
     image: postgres:${POSTGRES_VERSION}
     profiles:
-      - split_control
       - network_operator
       - crypto
       - resilience
@@ -957,7 +914,6 @@ services:
       - single_vps
       - network_operator
       - analytics_ml
-      - split_control
       - resilience
       - fraud-scorer
       - multi-region
@@ -1008,7 +964,6 @@ services:
       - monitoring
       - single_vps
       - network_operator
-      - split_control
     command: ["--config.file=/etc/prometheus/prometheus.yaml", "--web.listen-address=:9190"]
     volumes:
       - ./deploy/monitoring/prometheus.yaml:/etc/prometheus/prometheus.yaml:ro
@@ -1030,7 +985,6 @@ services:
       - monitoring
       - single_vps
       - network_operator
-      - split_control
     volumes:
       - ./deploy/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
     environment:
@@ -1054,7 +1008,6 @@ services:
       - monitoring
       - single_vps
       - network_operator
-      - split_control
     command: ["--config.file=/etc/alertmanager/alertmanager.yaml", "--web.listen-address=:9093"]
     volumes:
       - ./deploy/monitoring/alertmanager.yaml:/etc/alertmanager/alertmanager.yaml:ro
@@ -1078,7 +1031,6 @@ services:
       - monitoring
       - single_vps
       - network_operator
-      - split_control
     environment:
       - PROXY_PORT=8222
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-YOUR_TELEGRAM_BOT_TOKEN_PLACEHOLDER}

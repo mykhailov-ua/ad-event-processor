@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log/slog"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,12 +12,8 @@ import (
 )
 
 func main() {
-	if len(os.Args) > 2 && os.Args[1] == "--health-probe" {
-		resp, err := http.Get(os.Args[2])
-		if err != nil || resp.StatusCode != 200 {
-			os.Exit(1)
-		}
-		os.Exit(0)
+	if control.ProbeHealth(os.Args) {
+		return
 	}
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))

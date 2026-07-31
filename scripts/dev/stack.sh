@@ -7,7 +7,6 @@ cd "$ROOT"
 CMD="${1:-status}"
 
 INFRA=(db db-payment redis-0 redis-1 redis-2 redis-3 clickhouse)
-FULL=(db db-payment redis-0 redis-1 redis-2 redis-3 clickhouse processor tracker-0 auth management payment billing notifier ivt-detector)
 SINGLE_VPS=(db redis-0 redis-1 redis-2 redis-3 clickhouse processor tracker-0 control)
 INGEST_ONLY=(db redis-0 redis-1 redis-2 redis-3 processor tracker-0 control)
 NETWORK_OPERATOR=(db db-payment redis-0 redis-1 redis-2 redis-3 clickhouse processor tracker-0 control)
@@ -18,12 +17,12 @@ infra | up-infra)
 	docker compose up -d "${INFRA[@]}"
 	;;
 full | up-full)
-	echo "stack.sh: full runs single-vps monolith (split_control: use legacy-full)" >&2
+	echo "stack.sh: full runs single-vps monolith" >&2
 	docker compose --profile single_vps up -d "${SINGLE_VPS[@]}"
 	;;
 legacy-full | up-legacy-full)
-	echo "stack.sh: WARN split_control profile is deprecated; use single-vps" >&2
-	docker compose --profile split_control up -d "${FULL[@]}"
+	echo "stack.sh: legacy-full removed; use single-vps or network-operator" >&2
+	exit 1
 	;;
 single-vps | up-single-vps)
 	docker compose --profile single_vps up -d "${SINGLE_VPS[@]}"

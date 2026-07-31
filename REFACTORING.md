@@ -188,7 +188,7 @@ Default `make proto` (`scripts/ci/gen.sh --proto`) generates messages + gRPC stu
 
 Message protos: `auth.proto`, `billing.proto`, `payment.proto`, `notifier.proto`, `settlement.proto`.
 
-gRPC-only protos (split_control / `grpc_api` dial boundary): `auth_service.proto`, `billing_service.proto`, `payment_service.proto`, `notifier_service.proto`, `settlement_service.proto`.
+gRPC-only protos (`grpc_api` dial boundary for resilience sidecars): `auth_service.proto`, `billing_service.proto`, `payment_service.proto`, `notifier_service.proto`, `settlement_service.proto`.
 
 `make proto-grpc` is an alias of `make proto` (gRPC generation is always on).
 
@@ -246,7 +246,7 @@ Payment fault/integration tests: `package payment_test` + `internal/paymenttest`
 
 10. split_control and standalone cmd/* deprecation
 
-Status: `stack.sh full` runs `single_vps` monolith; `legacy-full` keeps deprecated `split_control` compose profile until profile removal.
+Status: `split_control` compose profile removed; `stack.sh full` runs `single_vps`. Standalone `cmd/auth`, `cmd/management`, `cmd/payment`, `cmd/billing`, `cmd/notifier` are thin wrappers around `internal/control.Run` / `RunCLI`.
 
 Default deploy: `cmd/control` modular monolith. Compose profiles `single_vps`, `ingest_only`, `network_operator` run one `control` container with in-process management, identity (auth), payment, billing, and notifier (`CONTROL_ENABLE_*`). Local entry: `scripts/dev/stack.sh single-vps`.
 
@@ -254,15 +254,16 @@ Deprecated:
 
 | Item | Replacement |
 |------|-------------|
-| Compose profile `split_control` (`scripts/dev/stack.sh legacy-full`) | `single_vps` or `network_operator` |
-| `cmd/auth`, `cmd/management`, `cmd/payment`, `cmd/billing`, `cmd/notifier` | `cmd/control` with matching `CONTROL_ENABLE_*` |
+| `stack.sh legacy-full` | `single_vps` or `network_operator` |
+| Standalone compose service `auth` | removed; use `control` |
+| `cmd/auth`, `cmd/management`, `cmd/payment`, `cmd/billing`, `cmd/notifier` | thin `control.RunCLI` wrappers; use `cmd/control` |
 
 Monolith env: set `SETTLEMENT_GRPC_ENABLED=0` so payment→settlement uses in-process `domain.PaymentSettlement` (`SetSettlementAPI`); `OpenSettlementAPIOrDial` returns nil when gRPC off (no localhost dial). Compose `control` service sets this; bare-metal installs should set it in `.env` when running `cmd/control`.
 
-Standalone `Serve()` gRPC listeners (deprecated `cmd/auth`, `cmd/billing`, `cmd/payment`, `cmd/notifier`) are gated by `AUTH_GRPC_ENABLED`, `BILLING_GRPC_ENABLED`, `PAYMENT_GRPC_ENABLED`, `NOTIFIER_GRPC_ENABLED` (default on; set `0` to run HTTP sidecars and workers only). Monolith (`cmd/control`) uses `OpenModule` only — it never calls `Serve()` for those modules.
+Standalone `Serve()` gRPC listeners (deprecated wrappers) are gated by `AUTH_GRPC_ENABLED`, `BILLING_GRPC_ENABLED`, `PAYMENT_GRPC_ENABLED`, `NOTIFIER_GRPC_ENABLED` (default on; set `0` to run HTTP sidecars and workers only). Monolith (`cmd/control`) uses `OpenModule` only — it never calls `Serve()` for those modules.
 
-Split_control keeps network gRPC between containers (`AUTH_SERVER_HOST`, `PAYMENT_SERVER_HOST`, etc.) until the profile is removed.
+`management`, `payment`, `billing`, `notifier` compose services remain for `resilience` / `crypto` profiles only.
 
-Removal (later): delete `split_control` profile and standalone `cmd/*` entrypoints; drop `make proto-grpc` requirement for default self-hosted; `SETTLEMENT_GRPC_ENABLED` defaults to off.
+Removal (later): delete standalone `cmd/*` wrappers and compose sidecars when resilience profile uses monolith; `SETTLEMENT_GRPC_ENABLED` defaults to off globally.
 
-Done when: no docs or compose paths reference `split_control`; standalone control-plane binaries removed or thin wrappers only.
+Done when: standalone control-plane binaries removed; resilience/crypto profiles use `control` only.

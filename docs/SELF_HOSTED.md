@@ -75,7 +75,7 @@ Hot path reads the merged snapshot via `Registry.SyncEntitlements`. Vendor caps 
 
 **Default:** run **`cmd/control`** on a single VPS — one process that embeds management, auth, payment, billing, and notifier with env-gated components (`CONTROL_ENABLE_*`). Set **`SETTLEMENT_GRPC_ENABLED=0`** so payment→settlement stays in-process (compose `control` service sets this).
 
-Standalone binaries (`cmd/management`, `cmd/auth`, `cmd/payment`, `cmd/billing`, `cmd/notifier`) and the compose profile **`split_control`** are **deprecated** — kept for transitional multi-container dev only. Prefer `scripts/dev/stack.sh single-vps` or `network-operator`.
+Standalone binaries (`cmd/management`, `cmd/auth`, `cmd/payment`, `cmd/billing`, `cmd/notifier`) are thin wrappers around `cmd/control` — use **`cmd/control`** or `scripts/dev/stack.sh single-vps`.
 
 Cold-path workers (margin-guard, cost-sync, volume meter, recon, ledger invariant) run **only** in control/management — never in tracker replicas.
 
@@ -247,11 +247,10 @@ Compose profiles gate which containers start. Use `scripts/dev/stack.sh` or `doc
 
 | Profile | Command | Binaries / services | Audience |
 | :--- | :--- | :--- | :--- |
-| `single_vps` | `stack.sh single-vps` | `tracker`, `processor`, `control` (all cold path in one process) | **Default** bare-metal / 1–2 CPU |
+| `single_vps` | `stack.sh single-vps` or `stack.sh full` | `tracker`, `processor`, `control` (all cold path in one process) | **Default** bare-metal / 1–2 CPU |
 | `ingest_only` | `stack.sh ingest-only` | Same; `CONTROL_ENABLE_PAYMENT/BILLING/NOTIFIER/MARGIN_GUARD/COST_SYNC=0` | Arbitrage / buy-side |
 | `network_operator` | `stack.sh network-operator` | `control` with payment + billing + notifier enabled | Ad network with wallet |
 | `analytics_ml` | `stack.sh analytics-ml` | + `clickhouse`, `fraud-scorer`, `ivt-detector` | Optional ML cold path |
-| `split_control` | `stack.sh full` (**deprecated**) | Separate `auth`, `management`, `payment`, `billing`, `notifier` containers | Transitional only; use `single_vps` |
 
 ClickHouse is **optional**: `ingest_only` sets `CH_ENABLED=0` and omits the CH container; settlement and billing remain on PostgreSQL. Enable CH via `single_vps` / `network_operator` profiles or add `analytics_ml` for ML modules.
 
