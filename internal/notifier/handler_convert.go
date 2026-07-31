@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type contextKey string
@@ -121,33 +120,6 @@ func MapDBStatusToPB(s db.NotifierNotificationStatus) pb.NotificationStatus {
 	default:
 		return pb.NotificationStatus_NOTIFICATION_STATUS_UNSPECIFIED
 	}
-}
-
-func notificationToProto(n db.NotifierNotification) *pb.Notification {
-	out := &pb.Notification{
-		Id:                 uuid.UUID(n.ID.Bytes).String(),
-		Provider:           MapDBProviderToPB(n.Provider),
-		Recipient:          n.Recipient,
-		Body:               n.Body,
-		Status:             MapDBStatusToPB(n.Status),
-		RetryCount:         n.RetryCount,
-		ErrorMessage:       n.ErrorMessage.String,
-		DeliveryMode:       MapDBDeliveryModeToPB(n.DeliveryMode),
-		BroadcastProviders: MapDBProvidersToPB(n.BroadcastProviders),
-	}
-	if n.Title.Valid {
-		out.Title = n.Title.String
-	}
-	if n.DedupKey.Valid {
-		out.DedupKey = n.DedupKey.String
-	}
-	if n.CreatedAt.Valid {
-		out.CreatedAt = timestamppb.New(n.CreatedAt.Time)
-	}
-	if n.UpdatedAt.Valid {
-		out.UpdatedAt = timestamppb.New(n.UpdatedAt.Time)
-	}
-	return out
 }
 
 func pgUUIDFromString(id string) (pgtype.UUID, error) {

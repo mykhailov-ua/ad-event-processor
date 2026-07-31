@@ -34,7 +34,7 @@ func TestFault_notifierConcurrentDelivery(t *testing.T) {
 
 	const notifications = 5
 	for i := range notifications {
-		_, err := svc.SendNotification(ctx, &pb.SendNotificationRequest{
+		_, err := sendTestNotification(ctx, svc, &pb.SendNotificationRequest{
 			Provider:  pb.Provider_PROVIDER_TELEGRAM,
 			Recipient: fmt.Sprintf("chat-%d", i),
 			Title:     "Concurrent test",

@@ -38,51 +38,21 @@ func NewServiceWithOptions(pool *pgxpool.Pool, providers map[pb.Provider]Provide
 	}
 }
 
-func (service *Service) SendNotification(ctx context.Context, req *pb.SendNotificationRequest) (*pb.SendNotificationResponse, error) {
-	result, err := service.SendNotificationInput(ctx, NotificationInputFromPB(req))
+func (service *Service) GetNotification(ctx context.Context, notificationID string) (Notification, error) {
+	id, err := pgUUIDFromString(notificationID)
 	if err != nil {
-		return nil, err
-	}
-	return &pb.SendNotificationResponse{
-		NotificationId: result.NotificationID,
-		Status:         MapDBStatusToPB(result.Status),
-		Deduplicated:   result.Deduplicated,
-	}, nil
-}
-
-func (service *Service) SendNotificationBatch(ctx context.Context, req *pb.SendNotificationBatchRequest) (*pb.SendNotificationBatchResponse, error) {
-	if req == nil || len(req.Notifications) == 0 {
-		return nil, ErrBatchEmpty
+		return Notification{}, err
 	}
 
-	out := make([]*pb.SendNotificationResponse, 0, len(req.Notifications))
-	for _, item := range req.Notifications {
-		resp, err := service.SendNotification(ctx, item)
-		if err != nil {
-			return nil, fmt.Errorf("batch item failed: %w", err)
-		}
-		out = append(out, resp)
-	}
-	return &pb.SendNotificationBatchResponse{Notifications: out}, nil
-}
-
-func (service *Service) GetNotification(ctx context.Context, req *pb.GetNotificationRequest) (*pb.GetNotificationResponse, error) {
-	id, err := pgUUIDFromString(req.NotificationId)
-	if err != nil {
-		return nil, err
-	}
-
-	notification, err := service.queries.GetNotification(ctx, id)
+	row, err := service.queries.GetNotification(ctx, id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrNotificationNotFound
+			return Notification{}, ErrNotificationNotFound
 		}
-		return nil, fmt.Errorf("query notification: %w", err)
+		return Notification{}, fmt.Errorf("query notification: %w", err)
 	}
 
-	return &pb.GetNotificationResponse{
-		Notification: notificationToProto(notification),
-	}, nil
+	return notificationFromDB(row), nil
 }
 
 func (service *Service) findActiveByDedupKey(ctx context.Context, dedupKey string) (db.NotifierNotification, bool, error) {

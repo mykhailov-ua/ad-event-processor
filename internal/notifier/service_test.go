@@ -121,21 +121,21 @@ func TestService_enqueueAndGet(t *testing.T) {
 		Body:      "This is a test notification",
 	}
 
-	resp, err := svc.SendNotification(ctx, req)
+	result, err := sendTestNotification(ctx, svc, req)
 	require.NoError(t, err)
-	assert.NotEmpty(t, resp.NotificationId)
-	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_PENDING, resp.Status)
+	assert.NotEmpty(t, result.NotificationID)
+	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_PENDING, result.Status)
 
-	getResp, err := svc.GetNotification(ctx, &pb.GetNotificationRequest{NotificationId: resp.NotificationId})
+	notification, err := getTestNotification(ctx, svc, result.NotificationID)
 	require.NoError(t, err)
-	assert.Equal(t, resp.NotificationId, getResp.Notification.Id)
-	assert.Equal(t, pb.Provider_PROVIDER_TELEGRAM, getResp.Notification.Provider)
-	assert.Equal(t, "12345678", getResp.Notification.Recipient)
-	assert.Equal(t, "Test Alert", getResp.Notification.Title)
-	assert.Equal(t, "This is a test notification", getResp.Notification.Body)
-	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_PENDING, getResp.Notification.Status)
-	assert.NotNil(t, getResp.Notification.CreatedAt)
-	assert.NotNil(t, getResp.Notification.UpdatedAt)
+	assert.Equal(t, result.NotificationID, notification.ID)
+	assert.Equal(t, pb.Provider_PROVIDER_TELEGRAM, notification.Provider)
+	assert.Equal(t, "12345678", notification.Recipient)
+	assert.Equal(t, "Test Alert", notification.Title)
+	assert.Equal(t, "This is a test notification", notification.Body)
+	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_PENDING, notification.Status)
+	assert.NotNil(t, notification.CreatedAt)
+	assert.NotNil(t, notification.UpdatedAt)
 }
 
 func TestService_processPending_success(t *testing.T) {
@@ -161,7 +161,7 @@ func TestService_processPending_success(t *testing.T) {
 		Title:     "Test Alert",
 		Body:      "This is a test notification",
 	}
-	resp, err := svc.SendNotification(ctx, req)
+	result, err := sendTestNotification(ctx, svc, req)
 	require.NoError(t, err)
 
 	processed, err := svc.ProcessPending(ctx, workerBatchSize)
@@ -173,10 +173,10 @@ func TestService_processPending_success(t *testing.T) {
 	assert.Equal(t, "Test Alert", mockProv.Sent[0].Title)
 	assert.Equal(t, "This is a test notification", mockProv.Sent[0].Body)
 
-	getResp, err := svc.GetNotification(ctx, &pb.GetNotificationRequest{NotificationId: resp.NotificationId})
+	notification, err := getTestNotification(ctx, svc, result.NotificationID)
 	require.NoError(t, err)
-	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_SENT, getResp.Notification.Status)
-	assert.Equal(t, int32(0), getResp.Notification.RetryCount)
+	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_SENT, notification.Status)
+	assert.Equal(t, int32(0), notification.RetryCount)
 }
 
 func TestService_processPending_failureAndRetry(t *testing.T) {
@@ -202,18 +202,18 @@ func TestService_processPending_failureAndRetry(t *testing.T) {
 		Title:     "Test Alert",
 		Body:      "trigger_failure",
 	}
-	resp, err := svc.SendNotification(ctx, req)
+	result, err := sendTestNotification(ctx, svc, req)
 	require.NoError(t, err)
 
 	processed, err := svc.ProcessPending(ctx, workerBatchSize)
 	require.NoError(t, err)
 	assert.Equal(t, 1, processed)
 
-	getResp, err := svc.GetNotification(ctx, &pb.GetNotificationRequest{NotificationId: resp.NotificationId})
+	notification, err := getTestNotification(ctx, svc, result.NotificationID)
 	require.NoError(t, err)
-	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_PENDING, getResp.Notification.Status)
-	assert.Equal(t, int32(1), getResp.Notification.RetryCount)
-	assert.Contains(t, getResp.Notification.ErrorMessage, "mock send failure triggered")
+	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_PENDING, notification.Status)
+	assert.Equal(t, int32(1), notification.RetryCount)
+	assert.Contains(t, notification.ErrorMessage, "mock send failure triggered")
 }
 
 func TestService_processPending_permanentFailure(t *testing.T) {
@@ -239,10 +239,10 @@ func TestService_processPending_permanentFailure(t *testing.T) {
 		Title:     "Test Alert",
 		Body:      "trigger_failure",
 	}
-	resp, err := svc.SendNotification(ctx, req)
+	result, err := sendTestNotification(ctx, svc, req)
 	require.NoError(t, err)
 
-	id, err := uuid.Parse(resp.NotificationId)
+	id, err := uuid.Parse(result.NotificationID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, "UPDATE notifier.notifications SET retry_count = 4, updated_at = now() - interval '60 seconds' WHERE id = $1", pgtype.UUID{Bytes: id, Valid: true})
 	require.NoError(t, err)
@@ -251,10 +251,10 @@ func TestService_processPending_permanentFailure(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, processed)
 
-	getResp, err := svc.GetNotification(ctx, &pb.GetNotificationRequest{NotificationId: resp.NotificationId})
+	notification, err := getTestNotification(ctx, svc, result.NotificationID)
 	require.NoError(t, err)
-	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_FAILED, getResp.Notification.Status)
-	assert.Equal(t, int32(maxDeliveryAttempts), getResp.Notification.RetryCount)
+	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_FAILED, notification.Status)
+	assert.Equal(t, int32(maxDeliveryAttempts), notification.RetryCount)
 }
 
 func TestService_processPending_circuitBreaker(t *testing.T) {
@@ -275,7 +275,7 @@ func TestService_processPending_circuitBreaker(t *testing.T) {
 	ctx := context.Background()
 
 	for i := 0; i < 3; i++ {
-		_, err := svc.SendNotification(ctx, &pb.SendNotificationRequest{
+		_, err := sendTestNotification(ctx, svc, &pb.SendNotificationRequest{
 			Provider:  pb.Provider_PROVIDER_TELEGRAM,
 			Recipient: "12345678",
 			Title:     fmt.Sprintf("Test Alert %d", i),
@@ -328,7 +328,7 @@ func TestService_processPending_exponentialBackoff(t *testing.T) {
 		Title:     "Test Alert",
 		Body:      "trigger_failure",
 	}
-	resp, err := svc.SendNotification(ctx, req)
+	result, err := sendTestNotification(ctx, svc, req)
 	require.NoError(t, err)
 
 	processed, err := svc.ProcessPending(ctx, workerBatchSize)
@@ -339,7 +339,7 @@ func TestService_processPending_exponentialBackoff(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 0, processed, "expected notification to be skipped due to exponential backoff")
 
-	id, err := uuid.Parse(resp.NotificationId)
+	id, err := uuid.Parse(result.NotificationID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, "UPDATE notifier.notifications SET updated_at = now() - interval '10 seconds' WHERE id = $1", pgtype.UUID{Bytes: id, Valid: true})
 	require.NoError(t, err)
@@ -367,7 +367,7 @@ func TestService_processPending_deduplication(t *testing.T) {
 	ctx := context.Background()
 
 	for i := 0; i < 5; i++ {
-		_, err := svc.SendNotification(ctx, &pb.SendNotificationRequest{
+		_, err := sendTestNotification(ctx, svc, &pb.SendNotificationRequest{
 			Provider:  pb.Provider_PROVIDER_TELEGRAM,
 			Recipient: "12345678",
 			Title:     "Deduplicated Alert",
@@ -424,7 +424,7 @@ func TestService_processPending_fallback(t *testing.T) {
 		Body:      "This notification falls back",
 	}
 
-	resp, err := svc.SendNotification(ctx, req)
+	result, err := sendTestNotification(ctx, svc, req)
 	require.NoError(t, err)
 
 	processed, err := svc.ProcessPending(ctx, workerBatchSize)
@@ -437,10 +437,10 @@ func TestService_processPending_fallback(t *testing.T) {
 	assert.Equal(t, "Fallback Alert", mockTelegram.Sent[0].Title)
 	assert.Equal(t, "This notification falls back", mockTelegram.Sent[0].Body)
 
-	getResp, err := svc.GetNotification(ctx, &pb.GetNotificationRequest{NotificationId: resp.NotificationId})
+	notification, err := getTestNotification(ctx, svc, result.NotificationID)
 	require.NoError(t, err)
-	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_SENT, getResp.Notification.Status)
-	assert.Equal(t, pb.Provider_PROVIDER_TELEGRAM, getResp.Notification.Provider)
+	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_SENT, notification.Status)
+	assert.Equal(t, pb.Provider_PROVIDER_TELEGRAM, notification.Provider)
 
 	faultproof.Log(t, "notifier_fallback", map[string]string{
 		"primary":  "SLACK",
@@ -461,7 +461,7 @@ func TestService_processPending_broadcast(t *testing.T) {
 	svc := NewService(pool, providers)
 	ctx := context.Background()
 
-	resp, err := svc.SendNotification(ctx, &pb.SendNotificationRequest{
+	result, err := sendTestNotification(ctx, svc, &pb.SendNotificationRequest{
 		Provider:     pb.Provider_PROVIDER_TELEGRAM,
 		Recipient:    "12345678",
 		Title:        "Broadcast Alert",
@@ -486,11 +486,11 @@ func TestService_processPending_broadcast(t *testing.T) {
 	assert.Len(t, mockTelegram.Sent, 1)
 	assert.Len(t, mockSMS.Sent, 0, "SMS not in broadcast_providers subset")
 
-	getResp, err := svc.GetNotification(ctx, &pb.GetNotificationRequest{NotificationId: resp.NotificationId})
+	notification, err := getTestNotification(ctx, svc, result.NotificationID)
 	require.NoError(t, err)
-	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_SENT, getResp.Notification.Status)
-	assert.Equal(t, pb.DeliveryMode_DELIVERY_MODE_BROADCAST, getResp.Notification.DeliveryMode)
-	assert.Equal(t, pb.Provider_PROVIDER_TELEGRAM, getResp.Notification.Provider)
+	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_SENT, notification.Status)
+	assert.Equal(t, pb.DeliveryMode_DELIVERY_MODE_BROADCAST, notification.DeliveryMode)
+	assert.Equal(t, pb.Provider_PROVIDER_TELEGRAM, notification.Provider)
 }
 
 type mockRoundTripper func(req *http.Request) (*http.Response, error)

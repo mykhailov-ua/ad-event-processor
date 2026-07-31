@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-
-	"espx/internal/notifier/pb"
 )
 
 func RenderTemplate(body string, vars map[string]string) string {
@@ -17,16 +15,16 @@ func RenderTemplate(body string, vars map[string]string) string {
 	return out
 }
 
-func (service *Service) RetryNotification(ctx context.Context, notificationID string) (*pb.Notification, error) {
+func (service *Service) RetryNotification(ctx context.Context, notificationID string) (Notification, error) {
 	id, err := pgUUIDFromString(notificationID)
 	if err != nil {
-		return nil, err
+		return Notification{}, err
 	}
 	row, err := service.queries.RetryNotification(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("retry notification: %w", err)
+		return Notification{}, fmt.Errorf("retry notification: %w", err)
 	}
-	return notificationToProto(row), nil
+	return notificationFromDB(row), nil
 }
 
 func marshalTemplateVarsJSON(vars map[string]string) ([]byte, error) {

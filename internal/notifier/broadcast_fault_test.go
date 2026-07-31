@@ -52,7 +52,7 @@ func TestFault_notifierBroadcastPartialFailure(t *testing.T) {
 	svc := NewService(pool, providers)
 	ctx := context.Background()
 
-	resp, err := svc.SendNotification(ctx, &pb.SendNotificationRequest{
+	result, err := sendTestNotification(ctx, svc, &pb.SendNotificationRequest{
 		Provider:     pb.Provider_PROVIDER_SLACK,
 		Recipient:    "https://hooks.slack.com/services/test",
 		Title:        "Critical incident",
@@ -65,10 +65,10 @@ func TestFault_notifierBroadcastPartialFailure(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, processed)
 
-	getResp, err := svc.GetNotification(ctx, &pb.GetNotificationRequest{NotificationId: resp.NotificationId})
+	notification, err := getTestNotification(ctx, svc, result.NotificationID)
 	require.NoError(t, err)
-	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_SENT, getResp.Notification.Status)
-	assert.Contains(t, getResp.Notification.ErrorMessage, "broadcast partial")
+	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_SENT, notification.Status)
+	assert.Contains(t, notification.ErrorMessage, "broadcast partial")
 
 	mockSlack := providers[pb.Provider_PROVIDER_SLACK].(*MockProvider)
 	mockTelegram := providers[pb.Provider_PROVIDER_TELEGRAM].(*MockProvider)
@@ -100,7 +100,7 @@ func TestFault_notifierBroadcastConcurrentDelivery(t *testing.T) {
 
 	const notifications = 4
 	for i := range notifications {
-		_, err := svc.SendNotification(ctx, &pb.SendNotificationRequest{
+		_, err := sendTestNotification(ctx, svc, &pb.SendNotificationRequest{
 			Provider:     pb.Provider_PROVIDER_TELEGRAM,
 			Recipient:    fmt.Sprintf("chat-%d", i),
 			Title:        "Broadcast concurrent",
@@ -181,7 +181,7 @@ func TestFault_notifierBroadcastAllFailThenRetry(t *testing.T) {
 	svc := NewService(pool, providers)
 	ctx := context.Background()
 
-	resp, err := svc.SendNotification(ctx, &pb.SendNotificationRequest{
+	result, err := sendTestNotification(ctx, svc, &pb.SendNotificationRequest{
 		Provider:     pb.Provider_PROVIDER_TELEGRAM,
 		Recipient:    "chat-retry",
 		Title:        "Broadcast retry",
@@ -194,10 +194,10 @@ func TestFault_notifierBroadcastAllFailThenRetry(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, processed)
 
-	getResp, err := svc.GetNotification(ctx, &pb.GetNotificationRequest{NotificationId: resp.NotificationId})
+	notification, err := getTestNotification(ctx, svc, result.NotificationID)
 	require.NoError(t, err)
-	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_PENDING, getResp.Notification.Status)
-	assert.Equal(t, int32(1), getResp.Notification.RetryCount)
+	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_PENDING, notification.Status)
+	assert.Equal(t, int32(1), notification.RetryCount)
 
 	processed, err = svc.ProcessPending(ctx, workerBatchSize)
 	require.NoError(t, err)
@@ -206,7 +206,7 @@ func TestFault_notifierBroadcastAllFailThenRetry(t *testing.T) {
 	mockTelegram.ShouldFail = false
 	mockSMS.ShouldFail = false
 
-	id, err := pgUUIDFromString(resp.NotificationId)
+	id, err := pgUUIDFromString(result.NotificationID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, "UPDATE notifier.notifications SET updated_at = now() - interval '10 seconds' WHERE id = $1", id)
 	require.NoError(t, err)
@@ -215,10 +215,10 @@ func TestFault_notifierBroadcastAllFailThenRetry(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, processed)
 
-	getResp, err = svc.GetNotification(ctx, &pb.GetNotificationRequest{NotificationId: resp.NotificationId})
+	notification, err = getTestNotification(ctx, svc, result.NotificationID)
 	require.NoError(t, err)
-	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_SENT, getResp.Notification.Status)
-	assert.Contains(t, getResp.Notification.ErrorMessage, "broadcast partial")
+	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_SENT, notification.Status)
+	assert.Contains(t, notification.ErrorMessage, "broadcast partial")
 
 	faultproof.Log(t, "notifier_broadcast_all_fail_retry", map[string]string{
 		"initial_status": "PENDING",
@@ -249,7 +249,7 @@ func TestFault_notifierBroadcastCircuitOpen(t *testing.T) {
 	svc := NewService(pool, providers)
 	ctx := context.Background()
 
-	resp, err := svc.SendNotification(ctx, &pb.SendNotificationRequest{
+	result, err := sendTestNotification(ctx, svc, &pb.SendNotificationRequest{
 		Provider:     pb.Provider_PROVIDER_SLACK,
 		Recipient:    "https://hooks.slack.com/services/test",
 		Title:        "Circuit open probe",
@@ -262,9 +262,9 @@ func TestFault_notifierBroadcastCircuitOpen(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, processed)
 
-	getResp, err := svc.GetNotification(ctx, &pb.GetNotificationRequest{NotificationId: resp.NotificationId})
+	notification, err := getTestNotification(ctx, svc, result.NotificationID)
 	require.NoError(t, err)
-	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_SENT, getResp.Notification.Status)
+	assert.Equal(t, pb.NotificationStatus_NOTIFICATION_STATUS_SENT, notification.Status)
 
 	mockSlack := providers[pb.Provider_PROVIDER_SLACK].(*MockProvider)
 	mockTelegram := providers[pb.Provider_PROVIDER_TELEGRAM].(*MockProvider)

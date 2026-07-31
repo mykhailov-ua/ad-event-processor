@@ -21,7 +21,7 @@ func TestRetentionJanitor_DeletesOldRows(t *testing.T) {
 
 	ctx := context.Background()
 	svc := NewService(pool, map[pb.Provider]Provider{})
-	_, err := svc.SendNotification(ctx, &pb.SendNotificationRequest{
+	_, err := sendTestNotification(ctx, svc, &pb.SendNotificationRequest{
 		Provider:  pb.Provider_PROVIDER_TELEGRAM,
 		Recipient: "123",
 		Title:     "old",
