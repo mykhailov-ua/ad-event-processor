@@ -2,16 +2,38 @@ package fraudscoring
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
+
+func benchModelPath(b *testing.B) string {
+	b.Helper()
+	if path := os.Getenv("FRAUD_TEST_MODEL"); path != "" {
+		if _, err := os.Stat(path); err == nil {
+			return path
+		}
+	}
+	candidates := []string{
+		filepath.Join("..", "..", "var", "fraudscore", "artifacts", "model.txt"),
+		filepath.Join("testdata", "model.txt"),
+	}
+	for _, path := range candidates {
+		if _, err := os.Stat(path); err == nil {
+			return path
+		}
+	}
+	b.Skip("fraud model not found; run make fraud-modeling-check locally")
+	return ""
+}
 
 func BenchmarkLGBMScorer_ScoreBatch10k(b *testing.B) {
 	if testing.Short() {
 		b.Skip("skipped in -short; run manually: go test -bench=BenchmarkLGBMScorer_ScoreBatch10k -benchtime=1x ./internal/fraudscoring")
 	}
 
-	scorer, err := NewLGBMScorer("testdata/model.txt")
+	scorer, err := NewLGBMScorer(benchModelPath(b))
 	if err != nil {
 		b.Fatalf("load scorer: %v", err)
 	}
@@ -50,7 +72,7 @@ func TestLGBMScorer_ScoreBatch10k_under2s(t *testing.T) {
 		t.Skip("skipped in -short; manual gate: go test -run TestLGBMScorer_ScoreBatch10k_under2s ./internal/fraudscoring")
 	}
 
-	scorer, err := NewLGBMScorer("testdata/model.txt")
+	scorer, err := NewLGBMScorer(testModelPath(t))
 	requireNoError(t, err)
 
 	rows := make([]FeatureRow, 10_000)

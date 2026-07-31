@@ -85,11 +85,12 @@ func TestMapProbabilityTier_boundaries(t *testing.T) {
 }
 
 func TestEnsemble_averageWeights(t *testing.T) {
-	left, err := NewLGBMScorer("testdata/model.txt")
+	modelPath := testModelPath(t)
+	left, err := NewLGBMScorer(modelPath)
 	if err != nil {
 		t.Fatalf("load left scorer: %v", err)
 	}
-	right, err := NewLGBMScorer("testdata/model.txt")
+	right, err := NewLGBMScorer(modelPath)
 	if err != nil {
 		t.Fatalf("load right scorer: %v", err)
 	}

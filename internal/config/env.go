@@ -868,7 +868,7 @@ func Load() (*Config, error) {
 	cfg.FraudScoring.BatchSize = getEnvInt("FRAUD_SCORING_BATCH_SIZE", 1000)
 	cfg.FraudScoring.ModelPath = os.Getenv("FRAUD_SCORING_MODEL_PATH")
 	if cfg.FraudScoring.ModelPath == "" {
-		cfg.FraudScoring.ModelPath = "testdata/model.txt"
+		cfg.FraudScoring.ModelPath = "var/fraudscore/artifacts/model.txt"
 	}
 	cfg.FraudScoring.Standalone = getEnvBool("FRAUD_SCORER_STANDALONE", false)
 

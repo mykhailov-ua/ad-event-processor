@@ -2,6 +2,8 @@ package fraudscoring
 
 import "time"
 
+const featureVectorDims = 16
+
 type FeatureRow struct {
 	WindowStart      time.Time
 	IPAddress        string
@@ -14,23 +16,43 @@ type FeatureRow struct {
 	UniqueUAs        uint64
 }
 
-func (featureRow *FeatureRow) ToVector() []float64 {
-	ctr := 0.0
-	if featureRow.Events > 0 {
-		ctr = float64(featureRow.Clicks) / float64(featureRow.Events)
+func safeRatio(numerator, denominator float64) float64 {
+	if denominator <= 0 {
+		return 0
 	}
+	return numerator / denominator
+}
+
+func (featureRow *FeatureRow) ToVectorInto(buf []float64) {
+	events := float64(featureRow.Events)
+	clicks := float64(featureRow.Clicks)
+	uniqueUsers := float64(featureRow.UniqueUsers)
+	uniqueUAs := float64(featureRow.UniqueUAs)
 	spendNorm := float64(featureRow.SpendMicro) / 1e6
-	spendRatio := 0.0
-	if featureRow.BudgetLimitMicro > 0 {
-		spendRatio = float64(featureRow.SpendMicro) / float64(featureRow.BudgetLimitMicro)
-	}
-	return []float64{
-		float64(featureRow.Events),
-		float64(featureRow.Clicks),
-		ctr,
-		spendNorm,
-		spendRatio,
-		float64(featureRow.UniqueUsers),
-		float64(featureRow.UniqueUAs),
-	}
+
+	ctr := safeRatio(clicks, events)
+	spendRatio := safeRatio(float64(featureRow.SpendMicro), float64(featureRow.BudgetLimitMicro))
+
+	buf[0] = events
+	buf[1] = clicks
+	buf[2] = ctr
+	buf[3] = spendNorm
+	buf[4] = spendRatio
+	buf[5] = uniqueUsers
+	buf[6] = uniqueUAs
+	buf[7] = safeRatio(events, uniqueUAs)
+	buf[8] = safeRatio(clicks, uniqueUAs)
+	buf[9] = safeRatio(uniqueUsers, uniqueUAs)
+	buf[10] = safeRatio(clicks, uniqueUsers)
+	buf[11] = safeRatio(spendNorm, clicks)
+	buf[12] = safeRatio(uniqueUAs, events)
+	buf[13] = safeRatio(events, uniqueUsers)
+	buf[14] = safeRatio(events, clicks+1)
+	buf[15] = safeRatio(uniqueUsers, clicks+1)
+}
+
+func (featureRow *FeatureRow) ToVector() []float64 {
+	buf := make([]float64, featureVectorDims)
+	featureRow.ToVectorInto(buf)
+	return buf
 }

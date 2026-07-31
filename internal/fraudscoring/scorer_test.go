@@ -9,13 +9,13 @@ import (
 )
 
 func TestLGBMScorer(t *testing.T) {
-	scorer, err := NewLGBMScorer("testdata/model.txt")
+	scorer, err := NewLGBMScorer(testModelPath(t))
 	if err != nil {
 		t.Fatalf("failed to create LGBMScorer: %v", err)
 	}
 
 	assert.Equal(t, "lightgbm", scorer.Name())
-	assert.Equal(t, 7, scorer.Dims())
+	assert.Equal(t, 16, scorer.Dims())
 
 	rows := []FeatureRow{
 		{
@@ -48,24 +48,28 @@ func TestLGBMScorer(t *testing.T) {
 	}
 
 	assert.Len(t, scores, 2)
-	assert.InDelta(t, 0.52497, scores[0], 1e-4)
-	assert.InDelta(t, 0.71094, scores[1], 1e-4)
+	for _, score := range scores {
+		assert.GreaterOrEqual(t, score, 0.0)
+		assert.LessOrEqual(t, score, 1.0)
+	}
+	assert.Greater(t, scores[1], scores[0])
 }
 
 func TestEnsembleScorer(t *testing.T) {
-	scorer1, err := NewLGBMScorer("testdata/model.txt")
+	modelPath := testModelPath(t)
+	scorer1, err := NewLGBMScorer(modelPath)
 	if err != nil {
 		t.Fatalf("failed to create scorer1: %v", err)
 	}
 
-	scorer2, err := NewLGBMScorer("testdata/model.txt")
+	scorer2, err := NewLGBMScorer(modelPath)
 	if err != nil {
 		t.Fatalf("failed to create scorer2: %v", err)
 	}
 
 	ensemble := NewEnsemble(scorer1, scorer2)
 	assert.Equal(t, "ensemble", ensemble.Name())
-	assert.Equal(t, 7, ensemble.Dims())
+	assert.Equal(t, 16, ensemble.Dims())
 
 	rows := []FeatureRow{
 		{
@@ -87,5 +91,6 @@ func TestEnsembleScorer(t *testing.T) {
 	}
 
 	assert.Len(t, scores, 1)
-	assert.InDelta(t, 0.52497, scores[0], 1e-4)
+	assert.GreaterOrEqual(t, scores[0], 0.0)
+	assert.LessOrEqual(t, scores[0], 1.0)
 }

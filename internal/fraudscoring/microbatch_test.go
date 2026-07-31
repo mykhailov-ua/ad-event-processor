@@ -26,7 +26,7 @@ func TestMicroBatch_AggregationAndScoring(t *testing.T) {
 	defer cleanupRedis()
 
 	ctx := context.Background()
-	scorer, err := NewLGBMScorer("testdata/model.txt")
+	scorer, err := NewLGBMScorer(testModelPath(t))
 	require.NoError(t, err)
 
 	mb := NewMicroBatcher(rdb, scorer)
