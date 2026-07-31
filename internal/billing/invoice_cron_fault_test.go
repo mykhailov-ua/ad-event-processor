@@ -32,12 +32,12 @@ func TestFault_InvoiceCronIdempotent(t *testing.T) {
 	worker.RunInvoiceMonthForTest(ctx, month)
 	second, err := svc.GenerateInvoice(ctx, customerID, month)
 	require.NoError(t, err)
-	require.Equal(t, first.Id, second.Id)
+	require.Equal(t, first.ID, second.ID)
 
 	faultproof.Log(t, "invoice_cron_idempotent", map[string]string{
 		"subsystem":   "billing",
 		"customer_id": customerID.String(),
-		"invoice_id":  first.Id,
+		"invoice_id":  first.ID,
 		"idempotent":  "true",
 	})
 }

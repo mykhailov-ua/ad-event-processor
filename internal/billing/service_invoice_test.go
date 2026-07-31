@@ -27,15 +27,15 @@ func TestService_GenerateInvoice(t *testing.T) {
 
 	invoice, err := svc.GenerateInvoice(ctx, customerID, month)
 	require.NoError(t, err)
-	require.NotNil(t, invoice)
-	assert.Equal(t, customerID.String(), invoice.CustomerId)
+	assert.NotEmpty(t, invoice.ID)
+	assert.Equal(t, customerID.String(), invoice.CustomerID)
 	assert.Equal(t, int64(2_500_000), invoice.SubtotalMicro)
 	assert.Greater(t, invoice.TaxMicro, int64(0))
 	assert.Equal(t, invoice.SubtotalMicro+invoice.TaxMicro, invoice.TotalMicro)
 
 	again, err := svc.GenerateInvoice(ctx, customerID, month)
 	require.NoError(t, err)
-	assert.Equal(t, invoice.Id, again.Id)
+	assert.Equal(t, invoice.ID, again.ID)
 }
 
 func TestService_GenerateInvoiceConcurrent(t *testing.T) {
@@ -64,9 +64,9 @@ func TestService_GenerateInvoiceConcurrent(t *testing.T) {
 			defer wg.Done()
 			<-start
 			inv, err := svc.GenerateInvoice(ctx, customerID, month)
-			if err == nil && inv != nil {
+			if err == nil {
 				success.Add(1)
-				ids <- inv.Id
+				ids <- inv.ID
 			}
 		}()
 	}

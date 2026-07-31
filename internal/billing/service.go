@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"espx/internal/billing/db"
-	"espx/internal/billing/pb"
 	"espx/internal/licensing"
 
 	"github.com/google/uuid"
@@ -16,7 +15,6 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -71,9 +69,9 @@ func (service *Service) ListCustomerIDs(ctx context.Context, limit, offset int32
 	return out, nil
 }
 
-func (service *Service) GenerateInvoice(ctx context.Context, customerID uuid.UUID, billingMonth time.Time) (*pb.Invoice, error) {
+func (service *Service) GenerateInvoice(ctx context.Context, customerID uuid.UUID, billingMonth time.Time) (Invoice, error) {
 	if err := validateBillingMonth(billingMonth); err != nil {
-		return nil, err
+		return Invoice{}, err
 	}
 	if err := CheckLedgerBalanceInvariant(ctx, service.pool, customerID); err != nil {
 		LedgerDriftTotal.Inc()
@@ -82,7 +80,7 @@ func (service *Service) GenerateInvoice(ctx context.Context, customerID uuid.UUI
 		if service.driftAlerter != nil {
 			service.driftAlerter.AlertLedgerDrift(ctx, customerID.String(), err)
 		}
-		return nil, err
+		return Invoice{}, err
 	}
 
 	monthStart := truncateMonthUTC(billingMonth)
@@ -93,15 +91,15 @@ func (service *Service) GenerateInvoice(ctx context.Context, customerID uuid.UUI
 		BillingMonth: pgtype.Date{Time: monthStart, Valid: true},
 	})
 	if err == nil {
-		return service.invoiceToProto(ctx, existing)
+		return service.invoiceFromDB(ctx, existing)
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
-		return nil, fmt.Errorf("lookup invoice: %w", err)
+		return Invoice{}, fmt.Errorf("lookup invoice: %w", err)
 	}
 
 	tx, err := service.pool.Begin(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("begin transaction: %w", err)
+		return Invoice{}, fmt.Errorf("begin transaction: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
@@ -110,17 +108,17 @@ func (service *Service) GenerateInvoice(ctx context.Context, customerID uuid.UUI
 	cust, err := qtx.GetCustomerBalance(ctx, pgtype.UUID{Bytes: customerID, Valid: true})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrCustomerNotFound
+			return Invoice{}, ErrCustomerNotFound
 		}
-		return nil, fmt.Errorf("load customer: %w", err)
+		return Invoice{}, fmt.Errorf("load customer: %w", err)
 	}
 
 	ledgerSum, err := qtx.SumCustomerLedgerTotal(ctx, pgtype.UUID{Bytes: customerID, Valid: true})
 	if err != nil {
-		return nil, fmt.Errorf("sum ledger: %w", err)
+		return Invoice{}, fmt.Errorf("sum ledger: %w", err)
 	}
 	if diff := cust.Balance - ledgerSum; diff < -ledgerInvariantToleranceMicro || diff > ledgerInvariantToleranceMicro {
-		return nil, fmt.Errorf("%w: balance=%d ledger_sum=%d diff=%d", ErrLedgerDrift, cust.Balance, ledgerSum, diff)
+		return Invoice{}, fmt.Errorf("%w: balance=%d ledger_sum=%d diff=%d", ErrLedgerDrift, cust.Balance, ledgerSum, diff)
 	}
 
 	var subscriptionFeeCharged int64 = 0
@@ -214,7 +212,7 @@ func (service *Service) GenerateInvoice(ctx context.Context, customerID uuid.UUI
 		CreatedAt_2: pgTimestamp(monthEnd),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("sum spend window: %w", err)
+		return Invoice{}, fmt.Errorf("sum spend window: %w", err)
 	}
 
 	lines, err := qtx.SumCustomerLedgerByTypeInWindow(ctx, db.SumCustomerLedgerByTypeInWindowParams{
@@ -223,7 +221,7 @@ func (service *Service) GenerateInvoice(ctx context.Context, customerID uuid.UUI
 		CreatedAt_2: pgTimestamp(monthEnd),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("aggregate ledger lines: %w", err)
+		return Invoice{}, fmt.Errorf("aggregate ledger lines: %w", err)
 	}
 
 	profile := service.resolveTaxProfile(ctx, qtx, customerID, cust.Currency)
@@ -232,12 +230,12 @@ func (service *Service) GenerateInvoice(ctx context.Context, customerID uuid.UUI
 
 	if spendMicro == 0 {
 		_ = tx.Rollback(ctx)
-		return nil, ErrNoSpend
+		return Invoice{}, ErrNoSpend
 	}
 
 	invoiceID, err := uuid.NewV7()
 	if err != nil {
-		return nil, fmt.Errorf("generate invoice id: %w", err)
+		return Invoice{}, fmt.Errorf("generate invoice id: %w", err)
 	}
 
 	invoice, err := qtx.CreateInvoice(ctx, db.CreateInvoiceParams{
@@ -261,10 +259,10 @@ func (service *Service) GenerateInvoice(ctx context.Context, customerID uuid.UUI
 				BillingMonth: pgtype.Date{Time: monthStart, Valid: true},
 			})
 			if lookupErr == nil {
-				return service.invoiceToProto(ctx, existing)
+				return service.invoiceFromDB(ctx, existing)
 			}
 		}
-		return nil, fmt.Errorf("insert invoice: %w", err)
+		return Invoice{}, fmt.Errorf("insert invoice: %w", err)
 	}
 
 	for _, line := range lines {
@@ -274,16 +272,16 @@ func (service *Service) GenerateInvoice(ctx context.Context, customerID uuid.UUI
 			AmountMicro: line.AmountMicro,
 			EntryCount:  line.EntryCount,
 		}); err != nil {
-			return nil, fmt.Errorf("insert invoice line: %w", err)
+			return Invoice{}, fmt.Errorf("insert invoice line: %w", err)
 		}
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("commit invoice: %w", err)
+		return Invoice{}, fmt.Errorf("commit invoice: %w", err)
 	}
 
 	InvoicesGeneratedTotal.Inc()
-	return service.invoiceToProto(ctx, invoice)
+	return service.invoiceFromDB(ctx, invoice)
 }
 
 func (service *Service) resolveTaxProfile(ctx context.Context, q *db.Queries, customerID uuid.UUID, currency string) TaxProfile {
@@ -297,18 +295,18 @@ func (service *Service) resolveTaxProfile(ctx context.Context, q *db.Queries, cu
 	return service.tax.DefaultProfile("US", currency)
 }
 
-func (service *Service) GetInvoice(ctx context.Context, invoiceID uuid.UUID) (*pb.Invoice, error) {
+func (service *Service) GetInvoice(ctx context.Context, invoiceID uuid.UUID) (Invoice, error) {
 	invoice, err := service.queries.GetInvoice(ctx, pgtype.UUID{Bytes: invoiceID, Valid: true})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrInvoiceNotFound
+			return Invoice{}, ErrInvoiceNotFound
 		}
-		return nil, fmt.Errorf("get invoice: %w", err)
+		return Invoice{}, fmt.Errorf("get invoice: %w", err)
 	}
-	return service.invoiceToProto(ctx, invoice)
+	return service.invoiceFromDB(ctx, invoice)
 }
 
-func (service *Service) ListInvoices(ctx context.Context, customerID uuid.UUID, limit, offset int32) ([]*pb.Invoice, int64, error) {
+func (service *Service) ListInvoices(ctx context.Context, customerID uuid.UUID, limit, offset int32) ([]Invoice, int64, error) {
 	if limit <= 0 {
 		limit = 20
 	}
@@ -330,46 +328,15 @@ func (service *Service) ListInvoices(ctx context.Context, customerID uuid.UUID, 
 		return nil, 0, fmt.Errorf("list invoices: %w", err)
 	}
 
-	invoices := make([]*pb.Invoice, 0, len(rows))
+	invoices := make([]Invoice, 0, len(rows))
 	for _, row := range rows {
-		inv, err := service.invoiceToProto(ctx, row)
+		inv, err := service.invoiceFromDB(ctx, row)
 		if err != nil {
 			return nil, 0, err
 		}
 		invoices = append(invoices, inv)
 	}
 	return invoices, total, nil
-}
-
-func (service *Service) invoiceToProto(ctx context.Context, invoice db.BillingInvoice) (*pb.Invoice, error) {
-	lineRows, err := service.queries.ListInvoiceLines(ctx, invoice.ID)
-	if err != nil {
-		return nil, fmt.Errorf("list invoice lines: %w", err)
-	}
-
-	lines := make([]*pb.InvoiceLine, 0, len(lineRows))
-	for _, line := range lineRows {
-		lines = append(lines, &pb.InvoiceLine{
-			LedgerType:  line.LedgerType,
-			AmountMicro: line.AmountMicro,
-			EntryCount:  line.EntryCount,
-		})
-	}
-
-	monthTime := invoice.BillingMonth.Time.UTC()
-	return &pb.Invoice{
-		Id:            uuid.UUID(invoice.ID.Bytes).String(),
-		CustomerId:    uuid.UUID(invoice.CustomerID.Bytes).String(),
-		BillingMonth:  timestamppb.New(time.Date(monthTime.Year(), monthTime.Month(), 1, 0, 0, 0, 0, time.UTC)),
-		SubtotalMicro: invoice.SubtotalMicro,
-		TaxMicro:      invoice.TaxMicro,
-		TotalMicro:    invoice.TotalMicro,
-		Currency:      invoice.Currency,
-		TaxScheme:     string(MapSchemeFromDB(invoice.TaxScheme)),
-		TaxRateBps:    invoice.TaxRateBps,
-		Lines:         lines,
-		CreatedAt:     timestamppb.New(invoice.CreatedAt.Time),
-	}, nil
 }
 
 func validateBillingMonth(month time.Time) error {

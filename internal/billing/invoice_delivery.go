@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 
-	"espx/internal/billing/pb"
 	"espx/internal/notifier"
 	"espx/pkg/branding"
 )
@@ -100,16 +99,13 @@ func (a *NotifierDriftAlerter) AlertLedgerDrift(ctx context.Context, customerID 
 	}
 }
 
-func (s *Service) DeliverInvoice(ctx context.Context, inv *pb.Invoice) error {
-	if s == nil || inv == nil || s.deliverer == nil {
+func (s *Service) DeliverInvoice(ctx context.Context, inv Invoice) error {
+	if s == nil || s.deliverer == nil {
 		return nil
 	}
-	month := ""
-	if inv.BillingMonth != nil {
-		month = inv.BillingMonth.AsTime().UTC().Format("2006-01")
-	}
-	pdfURL := s.invoicePDFURL(inv.Id)
-	return s.deliverer.DeliverInvoice(ctx, inv.CustomerId, inv.Id, month, inv.Currency, inv.TotalMicro, pdfURL)
+	month := inv.BillingMonth.UTC().Format("2006-01")
+	pdfURL := s.invoicePDFURL(inv.ID)
+	return s.deliverer.DeliverInvoice(ctx, inv.CustomerID, inv.ID, month, inv.Currency, inv.TotalMicro, pdfURL)
 }
 
 func (s *Service) invoicePDFURL(invoiceID string) string {

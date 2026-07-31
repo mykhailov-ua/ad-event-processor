@@ -10,37 +10,6 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-type InvoiceLine struct {
-	LedgerType  string
-	AmountMicro int64
-	EntryCount  int32
-}
-
-type Invoice struct {
-	ID            string
-	CustomerID    string
-	BillingMonth  time.Time
-	SubtotalMicro int64
-	TaxMicro      int64
-	TotalMicro    int64
-	Currency      string
-	TaxScheme     string
-	TaxRateBps    int32
-	Lines         []InvoiceLine
-	CreatedAt     time.Time
-}
-
-type ListInvoicesResult struct {
-	Invoices []Invoice
-	Total    int64
-}
-
-type BillingAPI interface {
-	ListInvoices(ctx context.Context, customerID string, limit, offset int32) (ListInvoicesResult, error)
-	GetInvoice(ctx context.Context, invoiceID string) (*Invoice, error)
-	GenerateInvoice(ctx context.Context, customerID string, billingMonth time.Time) (*Invoice, error)
-}
-
 type billingAPI struct {
 	h     *Handler
 	token string
@@ -69,17 +38,7 @@ func (a *billingAPI) ListInvoices(ctx context.Context, customerID string, limit,
 	if err != nil {
 		return ListInvoicesResult{}, err
 	}
-	out := ListInvoicesResult{Total: total}
-	if len(invoices) == 0 {
-		return out, nil
-	}
-	out.Invoices = make([]Invoice, 0, len(invoices))
-	for _, inv := range invoices {
-		if parsed := InvoiceFromPB(inv); parsed != nil {
-			out.Invoices = append(out.Invoices, *parsed)
-		}
-	}
-	return out, nil
+	return ListInvoicesResult{Invoices: invoices, Total: total}, nil
 }
 
 func (a *billingAPI) GetInvoice(ctx context.Context, invoiceID string) (*Invoice, error) {
@@ -91,7 +50,8 @@ func (a *billingAPI) GetInvoice(ctx context.Context, invoiceID string) (*Invoice
 	if err != nil {
 		return nil, err
 	}
-	return InvoiceFromPB(inv), nil
+	out := inv
+	return &out, nil
 }
 
 func (a *billingAPI) GenerateInvoice(ctx context.Context, customerID string, billingMonth time.Time) (*Invoice, error) {
@@ -104,7 +64,8 @@ func (a *billingAPI) GenerateInvoice(ctx context.Context, customerID string, bil
 	if err != nil {
 		return nil, err
 	}
-	return InvoiceFromPB(inv), nil
+	out := inv
+	return &out, nil
 }
 
 func InvoiceFromPB(inv *pb.Invoice) *Invoice {

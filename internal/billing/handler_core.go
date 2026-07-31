@@ -4,47 +4,33 @@ import (
 	"context"
 	"time"
 
-	"espx/internal/billing/pb"
-
 	"github.com/google/uuid"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
-func parseCustomerID(raw string) (uuid.UUID, error) {
-	customerID, err := uuid.Parse(raw)
-	if err != nil || customerID == uuid.Nil {
-		return uuid.Nil, status.Error(codes.InvalidArgument, ErrInvalidCustomerID.Error())
-	}
-	return customerID, nil
-}
-
-func parseInvoiceID(raw string) (uuid.UUID, error) {
-	invoiceID, err := uuid.Parse(raw)
-	if err != nil || invoiceID == uuid.Nil {
-		return uuid.Nil, status.Error(codes.InvalidArgument, ErrInvalidInvoiceID.Error())
-	}
-	return invoiceID, nil
-}
-
-func (handler *Handler) generateInvoice(ctx context.Context, customerID uuid.UUID, billingMonth time.Time) (*pb.Invoice, error) {
+func (handler *Handler) generateInvoice(ctx context.Context, customerID uuid.UUID, billingMonth time.Time) (Invoice, error) {
 	if err := handler.requireInternalToken(ctx); err != nil {
-		return nil, err
+		return Invoice{}, err
 	}
 	billingMonth = billingMonth.UTC()
 	inv, err := handler.service.GenerateInvoice(ctx, customerID, billingMonth)
-	return inv, mapRPCError(err)
+	if err != nil {
+		return Invoice{}, mapRPCError(err)
+	}
+	return inv, nil
 }
 
-func (handler *Handler) getInvoice(ctx context.Context, invoiceID uuid.UUID) (*pb.Invoice, error) {
+func (handler *Handler) getInvoice(ctx context.Context, invoiceID uuid.UUID) (Invoice, error) {
 	if err := handler.requireInternalToken(ctx); err != nil {
-		return nil, err
+		return Invoice{}, err
 	}
 	inv, err := handler.service.GetInvoice(ctx, invoiceID)
-	return inv, mapRPCError(err)
+	if err != nil {
+		return Invoice{}, mapRPCError(err)
+	}
+	return inv, nil
 }
 
-func (handler *Handler) listInvoices(ctx context.Context, customerID uuid.UUID, limit, offset int32) ([]*pb.Invoice, int64, error) {
+func (handler *Handler) listInvoices(ctx context.Context, customerID uuid.UUID, limit, offset int32) ([]Invoice, int64, error) {
 	if err := handler.requireInternalToken(ctx); err != nil {
 		return nil, 0, err
 	}

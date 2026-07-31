@@ -12,7 +12,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type InvoicePreview struct {
@@ -112,17 +111,17 @@ func (service *Service) PreviewInvoiceProto(ctx context.Context, customerID uuid
 		return nil, true, nil
 	}
 	month, _ := time.Parse("2006-01", preview.BillingMonth)
-	lines := make([]*pb.InvoiceLine, 0, len(preview.Lines))
+	lines := make([]InvoiceLine, 0, len(preview.Lines))
 	for _, l := range preview.Lines {
-		lines = append(lines, &pb.InvoiceLine{
+		lines = append(lines, InvoiceLine{
 			LedgerType:  l.LedgerType,
 			AmountMicro: l.AmountMicro,
 			EntryCount:  l.EntryCount,
 		})
 	}
-	return &pb.Invoice{
-		CustomerId:    preview.CustomerID,
-		BillingMonth:  timestamppb.New(month),
+	inv := Invoice{
+		CustomerID:    preview.CustomerID,
+		BillingMonth:  month,
 		SubtotalMicro: preview.SubtotalMicro,
 		TaxMicro:      preview.TaxMicro,
 		TotalMicro:    preview.TotalMicro,
@@ -130,7 +129,8 @@ func (service *Service) PreviewInvoiceProto(ctx context.Context, customerID uuid
 		TaxScheme:     preview.TaxScheme,
 		TaxRateBps:    preview.TaxRateBps,
 		Lines:         lines,
-	}, false, nil
+	}
+	return InvoiceToPB(inv), false, nil
 }
 
 func (service *Service) VoidInvoice(ctx context.Context, invoiceID uuid.UUID) error {

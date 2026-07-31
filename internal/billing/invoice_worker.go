@@ -108,7 +108,7 @@ func (service *Service) releaseInvoiceCronLock(ctx context.Context) {
 func (service *Service) GenerateInvoiceForCustomers(ctx context.Context, customerIDs []uuid.UUID, month time.Time) {
 	for _, id := range customerIDs {
 		inv, err := service.GenerateInvoice(ctx, id, month)
-		if err == nil && inv != nil {
+		if err == nil {
 			_ = service.DeliverInvoice(ctx, inv)
 		}
 	}
