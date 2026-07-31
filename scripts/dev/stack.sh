@@ -71,10 +71,10 @@ crypto | up-crypto)
 			source deploy/payment/crypto-sandbox.env
 			set +a
 		fi
-		docker compose --profile crypto up -d db-payment payment
+		docker compose --profile crypto up -d db-payment control
 		;;
 	down)
-		docker compose --profile crypto stop payment 2>/dev/null || true
+		docker compose --profile crypto stop control 2>/dev/null || true
 		;;
 	status)
 		docker compose --profile crypto ps

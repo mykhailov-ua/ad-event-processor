@@ -215,7 +215,7 @@ gRPC server gating (done)
 | `NOTIFIER_GRPC_ENABLED` | `NotifierGRPCEnabled` | Standalone `notifier.Serve()` TCP listener |
 | `SETTLEMENT_GRPC_ENABLED` | `SettlementGRPCEnabled` | `controlplane.ServeWithOptions` settlement TCP listener |
 
-All flags: `os.Getenv(...) != "0"` (unset = enabled). Monolith compose `control` sets `SETTLEMENT_GRPC_ENABLED=0` and `NOTIFIER_GRPC_ENABLED=0`; `.env.example` defaults settlement off.
+All flags: `SETTLEMENT_GRPC_ENABLED` opt-in (`== "1"`); other `*_GRPC_ENABLED` use `!= "0"` (unset = enabled). Monolith compose `control` sets `SETTLEMENT_GRPC_ENABLED=0` and `NOTIFIER_GRPC_ENABLED=0`; `.env.example` defaults settlement off.
 
 In-process module `API()` calls handler core methods directly; gRPC `handler_grpc.go` / `handler.go` are thin pb wrappers only. Settlement in-process via `SettlementHandler.PaymentSettlement()` + `PaymentModule.SetSettlementAPI`; no localhost dial when `SETTLEMENT_GRPC_ENABLED=0`.
 
@@ -262,8 +262,10 @@ Monolith env: set `SETTLEMENT_GRPC_ENABLED=0` so payment→settlement uses in-pr
 
 Standalone `Serve()` gRPC listeners (deprecated wrappers) are gated by `AUTH_GRPC_ENABLED`, `BILLING_GRPC_ENABLED`, `PAYMENT_GRPC_ENABLED`, `NOTIFIER_GRPC_ENABLED` (default on; set `0` to run HTTP sidecars and workers only). Monolith (`cmd/control`) uses `OpenModule` only — it never calls `Serve()` for those modules.
 
-`management`, `payment`, `billing`, `notifier` compose services remain for `resilience` / `crypto` profiles only.
+`management`, `payment`, `billing`, `notifier` compose sidecars removed; `resilience`, `crypto`, and `fraud-scorer` profiles use `control`.
 
-Removal (later): delete standalone `cmd/*` wrappers and compose sidecars when resilience profile uses monolith; `SETTLEMENT_GRPC_ENABLED` defaults to off globally.
+`SETTLEMENT_GRPC_ENABLED` defaults off (`unset` or `0`); set `1` only for legacy split payment→management gRPC.
 
-Done when: standalone control-plane binaries removed; resilience/crypto profiles use `control` only.
+Removal (later): delete standalone `cmd/*` wrappers when k8s manifests use `control` only.
+
+Done when: standalone control-plane binaries removed; k8s uses `control` entrypoint only.

@@ -21,6 +21,24 @@ fi
 echo "compose profile config: network_operator"
 docker compose --profile network_operator config >/dev/null
 
+echo "compose profile config: resilience"
+docker compose --profile resilience config >/dev/null
+if ! docker compose --profile resilience config --services | grep -qx control; then
+	echo "resilience profile must include control" >&2
+	exit 1
+fi
+if docker compose --profile resilience config --services | grep -qxE 'management|payment|billing|notifier'; then
+	echo "resilience profile must not include legacy sidecars" >&2
+	exit 1
+fi
+
+echo "compose profile config: crypto"
+docker compose --profile crypto config >/dev/null
+if ! docker compose --profile crypto config --services | grep -qx control; then
+	echo "crypto profile must include control" >&2
+	exit 1
+fi
+
 echo "compose profile config: analytics_ml"
 docker compose --profile analytics_ml --profile fraud-scorer config >/dev/null
 if ! docker compose --profile analytics_ml --profile fraud-scorer config --services | grep -qx clickhouse; then

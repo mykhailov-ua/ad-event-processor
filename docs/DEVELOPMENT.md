@@ -331,7 +331,7 @@ Full list: `.env.example`.
 | `ELASTIC_SHARDING_ENABLED` | `false` steady-state default |
 | `CONTROL_FAIL_OPEN` | `0` (default): edge uses conservative routing when control epochs are stale — equal tracker weights, drain frozen. Set `1` for AWS GA-style fail-open (keep last epoch weights). Edge only; see [.cursor/MULTI_REGION.md](../.cursor/MULTI_REGION.md) H4. |
 | `CONTROL_ENABLE_*` | Modular monolith (`cmd/control`, default deploy): set `0` to disable auth, management, payment, billing, notifier, margin-guard, or cost-sync in-process. See `.env.example`. |
-| `SETTLEMENT_GRPC_ENABLED` | Set `0` when running `cmd/control` so payment→settlement is in-process (default in compose `control` service). Leave enabled only for standalone `cmd/management` + `cmd/payment` resilience sidecars. |
+| `SETTLEMENT_GRPC_ENABLED` | Default off (`0` or unset). Set `1` only for legacy split `cmd/payment` + `cmd/management` with network settlement gRPC. `cmd/control` uses in-process settlement (compose sets `0`). |
 | `NODE_WARMUP_SEC` | Tracker/management warmup before `/ready` and scorer drain (default `300`) |
 | `NODE_WEIGHTS_SYNC_INTERVAL_SEC` | Edge poll interval for `/ops/node-weights` (default `10`) |
 

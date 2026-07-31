@@ -626,7 +626,7 @@ func Load() (*Config, error) {
 		PaymentGRPCEnabled:              os.Getenv("PAYMENT_GRPC_ENABLED") != "0",
 		SettlementServerPort:            os.Getenv("SETTLEMENT_SERVER_PORT"),
 		SettlementServerHost:            os.Getenv("SETTLEMENT_SERVER_HOST"),
-		SettlementGRPCEnabled:           os.Getenv("SETTLEMENT_GRPC_ENABLED") != "0",
+		SettlementGRPCEnabled:           os.Getenv("SETTLEMENT_GRPC_ENABLED") == "1",
 		BillingGRPCEnabled:              os.Getenv("BILLING_GRPC_ENABLED") != "0",
 		NotifierGRPCEnabled:             os.Getenv("NOTIFIER_GRPC_ENABLED") != "0",
 		PaymentInternalToken:            Secret(os.Getenv("PAYMENT_INTERNAL_TOKEN")),
