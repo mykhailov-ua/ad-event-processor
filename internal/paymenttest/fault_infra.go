@@ -209,7 +209,7 @@ func SeedSucceededIntentWithOutbox(t *testing.T, infra *FaultInfra, customerID u
 	require.NoError(t, err)
 	intent := result.Intent
 
-	providerRef := intent.ProviderRef.String
+	providerRef := intent.ProviderRef
 	payload := fmt.Sprintf(`{"id":"evt_%s","type":"payment_intent.succeeded","data":{"object":{"id":"%s","amount":%d}}}`,
 		idempotencyKey, providerRef, amountMicro)
 	err = svc.ProcessStripeWebhook(ctx, "evt_"+idempotencyKey, "payment_intent.succeeded", []byte(payload), providerRef, amountMicro, payload)
@@ -219,9 +219,12 @@ func SeedSucceededIntentWithOutbox(t *testing.T, infra *FaultInfra, customerID u
 	require.NoError(t, err)
 	require.Len(t, outboxRows, 1)
 
+	intentID, err := uuid.Parse(intent.ID)
+	require.NoError(t, err)
+
 	return SeededPayment{
 		CustomerID:  customerID,
-		IntentID:    uuid.UUID(intent.ID.Bytes),
+		IntentID:    intentID,
 		AmountMicro: amountMicro,
 		ProviderRef: providerRef,
 		OutboxID:    outboxRows[0].ID,

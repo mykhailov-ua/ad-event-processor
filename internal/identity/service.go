@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"espx/internal/identity/db"
+	"espx/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -679,17 +680,16 @@ func (service *Service) ChangePassword(ctx context.Context, userID uuid.UUID, ol
 	return nil
 }
 
-func (service *Service) CreateAPIKey(ctx context.Context, userID uuid.UUID, name string, expiresAt *time.Time) (id uuid.UUID, rawKey string, err error) {
-
+func (service *Service) CreateAPIKey(ctx context.Context, userID uuid.UUID, name string, expiresAt *time.Time) (CreateAPIKeyResult, error) {
 	raw := make([]byte, 32)
 	if _, err := rand.Read(raw); err != nil {
-		return uuid.Nil, "", err
+		return CreateAPIKeyResult{}, err
 	}
-	rawKey = base64.RawURLEncoding.EncodeToString(raw)
+	rawKey := base64.RawURLEncoding.EncodeToString(raw)
 
 	keyHash, err := service.hasher.HashPassword(rawKey)
 	if err != nil {
-		return uuid.Nil, "", err
+		return CreateAPIKeyResult{}, err
 	}
 
 	var exp pgtype.Timestamptz
@@ -705,17 +705,30 @@ func (service *Service) CreateAPIKey(ctx context.Context, userID uuid.UUID, name
 		ExpiresAt: exp,
 	})
 	if err != nil {
-		return uuid.Nil, "", err
+		return CreateAPIKeyResult{}, err
 	}
 
-	id = uuid.UUID(row.ID.Bytes)
+	id := uuidFromPg(row.ID)
+	result := CreateAPIKeyResult{
+		ID:     id.String(),
+		Name:   row.Name,
+		RawKey: rawKey,
+	}
+	if row.ExpiresAt.Valid {
+		t := row.ExpiresAt.Time
+		result.ExpiresAt = &t
+	}
 	service.AuditLog(ctx, userID, "API_KEY_CREATED", "api_key", id.String(), "", "",
 		map[string]any{"name": name, "expires_at": expiresAt}, nil)
-	return id, rawKey, nil
+	return result, nil
 }
 
-func (service *Service) ListUserAPIKeys(ctx context.Context, userID uuid.UUID) ([]db.ListUserAPIKeysRow, error) {
-	return service.repo.ListUserAPIKeys(ctx, pgtype.UUID{Bytes: userID, Valid: true})
+func (service *Service) ListUserAPIKeys(ctx context.Context, userID uuid.UUID) ([]APIKey, error) {
+	rows, err := service.repo.ListUserAPIKeys(ctx, pgtype.UUID{Bytes: userID, Valid: true})
+	if err != nil {
+		return nil, err
+	}
+	return coldpath.MapSlice(rows, apiKeyFromListRow), nil
 }
 
 func (service *Service) VerifyAPIKey(ctx context.Context, rawKey string) (db.User, error) {

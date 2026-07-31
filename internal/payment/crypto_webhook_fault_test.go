@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"espx/internal/payment"
-	"espx/internal/payment/db"
+	"espx/internal/payment/pb"
 	"espx/internal/paymenttest"
 
 	"github.com/google/uuid"
@@ -55,7 +55,7 @@ func TestFault_CryptoWebhookStormIdempotent(t *testing.T) {
 		AmountMicro:   amountMicro,
 		Currency:      "USDT",
 		Confirmations: 12,
-		ProviderRef:   res.Intent.ProviderRef.String,
+		ProviderRef:   res.Intent.ProviderRef,
 	}
 	bodyBytes, err := json.Marshal(evtPayload)
 	require.NoError(t, err)
@@ -67,19 +67,20 @@ func TestFault_CryptoWebhookStormIdempotent(t *testing.T) {
 	for i := 0; i < stormSize; i++ {
 		go func() {
 			defer wg.Done()
-			_ = svc.ProcessCryptoWebhook(ctx, eventID, "payment.succeeded", bodyBytes, res.Intent.ProviderRef.String, amountMicro, "0xabc123", 12)
+			_ = svc.ProcessCryptoWebhook(ctx, eventID, "payment.succeeded", bodyBytes, res.Intent.ProviderRef, amountMicro, "0xabc123", 12)
 		}()
 	}
 	wg.Wait()
 
-	intent, err := svc.GetPaymentIntent(ctx, uuid.UUID(res.Intent.ID.Bytes))
+	intentID := uuid.MustParse(res.Intent.ID)
+	intent, err := svc.GetPaymentIntent(ctx, intentID)
 	require.NoError(t, err)
-	require.Equal(t, db.PaymentPaymentIntentStatusSUCCEEDED, intent.Status)
+	require.Equal(t, pb.PaymentIntentStatus_PAYMENT_INTENT_STATUS_SUCCEEDED.String(), intent.Status)
 
 	var holdCount int
 	err = infra.Pool.QueryRow(ctx, `
 		SELECT COUNT(*) FROM payment.crypto_holds WHERE payment_intent_id = $1
-	`, intent.ID).Scan(&holdCount)
+	`, intentID).Scan(&holdCount)
 	require.NoError(t, err)
 	require.Equal(t, 1, holdCount, "exactly one hold must be created despite the webhook storm")
 
@@ -112,8 +113,8 @@ func TestFault_CryptoWebhookReplay(t *testing.T) {
 		"provider": "crypto",
 	})
 	require.NoError(t, err)
-	intentID := uuid.UUID(res.Intent.ID.Bytes)
-	providerRef := res.Intent.ProviderRef.String
+	intentID := uuid.MustParse(res.Intent.ID)
+	providerRef := res.Intent.ProviderRef
 
 	eventID := "evt_crypto_replay_" + uuid.New().String()
 	evtPayload := cryptoWebhookPayload{
@@ -142,7 +143,7 @@ func TestFault_CryptoWebhookReplay(t *testing.T) {
 
 	_, err = infra.Pool.Exec(ctx, `
 		UPDATE payment.crypto_holds SET release_at = now() - interval '1 second'
-		WHERE payment_intent_id = $1`, res.Intent.ID)
+		WHERE payment_intent_id = $1`, intentID)
 	require.NoError(t, err)
 
 	holdWorker := payment.NewCryptoHoldWorker(infra.Pool, infra.Cfg)

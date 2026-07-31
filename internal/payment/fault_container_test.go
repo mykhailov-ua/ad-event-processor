@@ -182,7 +182,7 @@ func TestFault_PaymentPGTerminateDuringWebhook(t *testing.T) {
 	result, err := svc.CreatePaymentIntent(ctx, customerID, 7_000_000, "USD", "fault-wh-pg-"+uuid.New().String(), nil)
 	require.NoError(t, err)
 	intent := result.Intent
-	providerRef := intent.ProviderRef.String
+	providerRef := intent.ProviderRef
 	eventID := "evt_pg_kill_" + uuid.New().String()
 	payload := fmt.Sprintf(`{"id":"%s","type":"payment_intent.succeeded","data":{"object":{"id":"%s","amount":7000000}}}`,
 		eventID, providerRef)

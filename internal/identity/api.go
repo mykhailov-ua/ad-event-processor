@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -86,19 +87,12 @@ func (a *authAPI) CreateAPIKey(ctx context.Context, bearerToken, name string) (C
 	if !ok {
 		return CreateAPIKeyResult{}, ErrInvalidToken
 	}
-	user, err := a.h.service.VerifyToken(ctx, accessToken)
+	ctx = metadata.NewIncomingContext(ctx, metadata.Pairs(authorizationHeaderKey, authorizationTypeBearer+" "+accessToken))
+	result, err := a.h.createAPIKey(ctx, name, nil)
 	if err != nil {
-		return CreateAPIKeyResult{}, err
+		return CreateAPIKeyResult{}, grpcStatusToError(err)
 	}
-	id, rawKey, err := a.h.service.CreateAPIKey(ctx, uuidFromPg(user.ID), name, nil)
-	if err != nil {
-		return CreateAPIKeyResult{}, err
-	}
-	return CreateAPIKeyResult{
-		ID:     id.String(),
-		Name:   name,
-		RawKey: rawKey,
-	}, nil
+	return result, nil
 }
 
 func (a *authAPI) Login(ctx context.Context, email, password string, durationHours int32) (LoginResult, error) {

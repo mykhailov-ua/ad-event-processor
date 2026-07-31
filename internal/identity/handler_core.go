@@ -68,6 +68,30 @@ func (h *Handler) verifyAPIKeyUser(ctx context.Context, apiKey string) (db.User,
 	return user, nil
 }
 
+func (h *Handler) createAPIKey(ctx context.Context, name string, expiresAt *time.Time) (CreateAPIKeyResult, error) {
+	user, err := h.requireAuthUser(ctx)
+	if err != nil {
+		return CreateAPIKeyResult{}, err
+	}
+	result, err := h.service.CreateAPIKey(ctx, uuidFromPg(user.ID), name, expiresAt)
+	if err != nil {
+		return CreateAPIKeyResult{}, mapError(err)
+	}
+	return result, nil
+}
+
+func (h *Handler) listAPIKeys(ctx context.Context) ([]APIKey, error) {
+	user, err := h.requireAuthUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	keys, err := h.service.ListUserAPIKeys(ctx, uuidFromPg(user.ID))
+	if err != nil {
+		return nil, mapError(err)
+	}
+	return keys, nil
+}
+
 func (h *Handler) refreshSession(ctx context.Context, refreshToken string) (string, string, error) {
 	duration := time.Duration(h.cfg.DefaultTokenDurationHrs) * time.Hour
 	accessToken, newRefresh, err := h.service.RefreshToken(ctx, refreshToken, duration)

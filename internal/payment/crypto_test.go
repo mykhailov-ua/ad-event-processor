@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"espx/internal/payment"
-	"espx/internal/payment/db"
+	"espx/internal/payment/pb"
 	"espx/internal/paymenttest"
 
 	"github.com/google/uuid"
@@ -53,9 +53,9 @@ func TestCryptoGateway_EndToEnd(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, "crypto", res.Intent.Provider)
-	require.Equal(t, db.PaymentPaymentIntentStatusPENDINGPROVIDER, res.Intent.Status)
+	require.Equal(t, pb.PaymentIntentStatus_PAYMENT_INTENT_STATUS_PENDING_PROVIDER.String(), res.Intent.Status)
 
-	providerRef := res.Intent.ProviderRef.String
+	providerRef := res.Intent.ProviderRef
 	require.NotEmpty(t, providerRef)
 
 	eventID := "evt_crypto_" + uuid.New().String()
@@ -74,12 +74,13 @@ func TestCryptoGateway_EndToEnd(t *testing.T) {
 	err = svc.ProcessCryptoWebhook(ctx, eventID, "payment.succeeded", bodyBytes, providerRef, amountMicro, "0xabc123", 5)
 	require.NoError(t, err)
 
-	intent, err := svc.GetPaymentIntent(ctx, uuid.UUID(res.Intent.ID.Bytes))
+	intentID := uuid.MustParse(res.Intent.ID)
+	intent, err := svc.GetPaymentIntent(ctx, intentID)
 	require.NoError(t, err)
-	require.Equal(t, db.PaymentPaymentIntentStatusPROCESSING, intent.Status)
+	require.Equal(t, pb.PaymentIntentStatus_PAYMENT_INTENT_STATUS_PROCESSING.String(), intent.Status)
 
 	var holdCount int
-	err = infra.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM payment.crypto_holds WHERE payment_intent_id = $1`, intent.ID).Scan(&holdCount)
+	err = infra.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM payment.crypto_holds WHERE payment_intent_id = $1`, intentID).Scan(&holdCount)
 	require.NoError(t, err)
 	require.Equal(t, 0, holdCount)
 
@@ -92,22 +93,22 @@ func TestCryptoGateway_EndToEnd(t *testing.T) {
 	err = svc.ProcessCryptoWebhook(ctx, eventID2, "payment.succeeded", bodyBytes2, providerRef, amountMicro, "0xabc123", 12)
 	require.NoError(t, err)
 
-	intent, err = svc.GetPaymentIntent(ctx, uuid.UUID(res.Intent.ID.Bytes))
+	intent, err = svc.GetPaymentIntent(ctx, intentID)
 	require.NoError(t, err)
-	require.Equal(t, db.PaymentPaymentIntentStatusSUCCEEDED, intent.Status)
+	require.Equal(t, pb.PaymentIntentStatus_PAYMENT_INTENT_STATUS_SUCCEEDED.String(), intent.Status)
 
 	var holdStatus string
 	var holdReleaseAt time.Time
 	err = infra.Pool.QueryRow(ctx, `
 		SELECT status, release_at FROM payment.crypto_holds WHERE payment_intent_id = $1
-	`, intent.ID).Scan(&holdStatus, &holdReleaseAt)
+	`, intentID).Scan(&holdStatus, &holdReleaseAt)
 	require.NoError(t, err)
 	require.Equal(t, "HELD", holdStatus)
 	require.True(t, holdReleaseAt.After(time.Now()))
 
 	_, err = infra.Pool.Exec(ctx, `
 		UPDATE payment.crypto_holds SET release_at = now() - interval '1 second' WHERE payment_intent_id = $1
-	`, intent.ID)
+	`, intentID)
 	require.NoError(t, err)
 
 	holdWorker := payment.NewCryptoHoldWorker(infra.Pool, infra.Cfg)
@@ -116,7 +117,7 @@ func TestCryptoGateway_EndToEnd(t *testing.T) {
 
 	err = infra.Pool.QueryRow(ctx, `
 		SELECT status FROM payment.crypto_holds WHERE payment_intent_id = $1
-	`, intent.ID).Scan(&holdStatus)
+	`, intentID).Scan(&holdStatus)
 	require.NoError(t, err)
 	require.Equal(t, "RELEASED", holdStatus)
 
@@ -177,20 +178,20 @@ func TestCryptoGateway_UnderpayRejected(t *testing.T) {
 		AmountMicro:   40_000_000,
 		Currency:      "USDT",
 		Confirmations: 12,
-		ProviderRef:   res.Intent.ProviderRef.String,
+		ProviderRef:   res.Intent.ProviderRef,
 	}
 	bodyBytes, err := json.Marshal(evtPayload)
 	require.NoError(t, err)
 
-	err = svc.ProcessCryptoWebhook(ctx, eventID, "payment.succeeded", bodyBytes, res.Intent.ProviderRef.String, 40_000_000, "0xabc123", 12)
+	err = svc.ProcessCryptoWebhook(ctx, eventID, "payment.succeeded", bodyBytes, res.Intent.ProviderRef, 40_000_000, "0xabc123", 12)
 	require.NoError(t, err)
 
-	intent, err := svc.GetPaymentIntent(ctx, uuid.UUID(res.Intent.ID.Bytes))
+	intent, err := svc.GetPaymentIntent(ctx, uuid.MustParse(res.Intent.ID))
 	require.NoError(t, err)
-	require.Equal(t, db.PaymentPaymentIntentStatusFAILED, intent.Status)
+	require.Equal(t, pb.PaymentIntentStatus_PAYMENT_INTENT_STATUS_FAILED.String(), intent.Status)
 
 	var holdCount int
-	err = infra.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM payment.crypto_holds WHERE payment_intent_id = $1`, intent.ID).Scan(&holdCount)
+	err = infra.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM payment.crypto_holds WHERE payment_intent_id = $1`, uuid.MustParse(res.Intent.ID)).Scan(&holdCount)
 	require.NoError(t, err)
 	require.Equal(t, 0, holdCount)
 }
@@ -234,24 +235,24 @@ func TestCryptoGateway_FraudGateBlocksRelease(t *testing.T) {
 		AmountMicro:   amountMicro,
 		Currency:      "USDT",
 		Confirmations: 12,
-		ProviderRef:   res.Intent.ProviderRef.String,
+		ProviderRef:   res.Intent.ProviderRef,
 	}
 	bodyBytes, err := json.Marshal(evtPayload)
 	require.NoError(t, err)
 
-	err = svc.ProcessCryptoWebhook(ctx, eventID, "payment.succeeded", bodyBytes, res.Intent.ProviderRef.String, amountMicro, "0xabc123", 12)
+	err = svc.ProcessCryptoWebhook(ctx, eventID, "payment.succeeded", bodyBytes, res.Intent.ProviderRef, amountMicro, "0xabc123", 12)
 	require.NoError(t, err)
 
 	_, err = infra.Pool.Exec(ctx, `
 		UPDATE payment.crypto_holds SET release_at = now() - interval '1 second' WHERE payment_intent_id = $1
-	`, res.Intent.ID)
+	`, uuid.MustParse(res.Intent.ID))
 	require.NoError(t, err)
 
 	disputeID := uuid.New()
 	_, err = infra.Pool.Exec(ctx, `
 		INSERT INTO payment.payment_disputes (id, payment_intent_id, provider, provider_dispute_id, amount_micro, status)
 		VALUES ($1, $2, 'crypto', 'disp_crypto_123', $3, 'OPEN')
-	`, disputeID, res.Intent.ID, amountMicro)
+	`, disputeID, uuid.MustParse(res.Intent.ID), amountMicro)
 	require.NoError(t, err)
 
 	holdWorker := payment.NewCryptoHoldWorker(infra.Pool, infra.Cfg)
@@ -261,7 +262,7 @@ func TestCryptoGateway_FraudGateBlocksRelease(t *testing.T) {
 	var holdStatus string
 	err = infra.Pool.QueryRow(ctx, `
 		SELECT status FROM payment.crypto_holds WHERE payment_intent_id = $1
-	`, res.Intent.ID).Scan(&holdStatus)
+	`, uuid.MustParse(res.Intent.ID)).Scan(&holdStatus)
 	require.NoError(t, err)
 	require.Equal(t, "FRAUD_BLOCKED", holdStatus)
 
@@ -308,7 +309,7 @@ func TestCryptoGateway_WebhookHTTPHandler(t *testing.T) {
 		AmountMicro:   50_000_000,
 		Currency:      "USDT",
 		Confirmations: 12,
-		ProviderRef:   res.Intent.ProviderRef.String,
+		ProviderRef:   res.Intent.ProviderRef,
 	}
 	bodyBytes, err := json.Marshal(evtPayload)
 	require.NoError(t, err)

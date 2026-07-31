@@ -161,7 +161,12 @@ func (m *owaspMockRepo) ListAuthAuditLogsByUser(ctx context.Context, arg db.List
 }
 
 func (m *owaspMockRepo) CreateAPIKey(ctx context.Context, arg db.CreateAPIKeyParams) (db.CreateAPIKeyRow, error) {
-	return db.CreateAPIKeyRow{ID: pgtype.UUID{Bytes: uuid.New(), Valid: true}}, nil
+	return db.CreateAPIKeyRow{
+		ID:        pgtype.UUID{Bytes: uuid.New(), Valid: true},
+		Name:      arg.Name,
+		ExpiresAt: arg.ExpiresAt,
+		CreatedAt: pgtype.Timestamptz{Time: time.Now().UTC(), Valid: true},
+	}, nil
 }
 
 func (m *owaspMockRepo) CreatePasswordHistoryEntry(ctx context.Context, arg db.CreatePasswordHistoryEntryParams) error {

@@ -37,7 +37,7 @@ func (h *Handler) createPaymentIntent(
 		return createPaymentIntentResult{}, mapPaymentGRPCError(err)
 	}
 	return createPaymentIntentResult{
-		Intent:      paymentIntentFromDB(result.Intent),
+		Intent:      result.Intent,
 		CheckoutURL: result.CheckoutURL,
 	}, nil
 }
@@ -53,7 +53,7 @@ func (h *Handler) getPaymentIntent(ctx context.Context, intentID uuid.UUID) (Pay
 	if err != nil {
 		return PaymentIntent{}, mapPaymentGRPCError(err)
 	}
-	return paymentIntentFromDB(intent), nil
+	return intent, nil
 }
 
 func (h *Handler) listPaymentIntents(ctx context.Context, customerID uuid.UUID, limit, offset int32) ([]PaymentIntent, int64, error) {
@@ -68,14 +68,7 @@ func (h *Handler) listPaymentIntents(ctx context.Context, customerID uuid.UUID, 
 	if err != nil {
 		return nil, 0, mapPaymentGRPCError(err)
 	}
-	if len(intents) == 0 {
-		return nil, total, nil
-	}
-	out := make([]PaymentIntent, 0, len(intents))
-	for _, intent := range intents {
-		out = append(out, paymentIntentFromDB(intent))
-	}
-	return out, total, nil
+	return intents, total, nil
 }
 
 func (h *Handler) listDisputes(ctx context.Context, customerID *uuid.UUID, limit, offset int32) ([]Dispute, int64, error) {

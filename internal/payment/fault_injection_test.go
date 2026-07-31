@@ -124,7 +124,7 @@ func TestFault_PaymentConcurrentWebhookSameEventID(t *testing.T) {
 	result, err := svc.CreatePaymentIntent(ctx, customerID, 8_000_000, "USD", "fault-wh-"+uuid.New().String(), nil)
 	require.NoError(t, err)
 	intent := result.Intent
-	providerRef := intent.ProviderRef.String
+	providerRef := intent.ProviderRef
 	eventID := "evt_concurrent_" + uuid.New().String()
 	payload := fmt.Sprintf(`{"id":"%s","type":"payment_intent.succeeded","data":{"object":{"id":"%s","amount":8000000}}}`,
 		eventID, providerRef)

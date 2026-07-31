@@ -105,7 +105,12 @@ func (m *mockRepo) ListAuthAuditLogsByUser(ctx context.Context, arg db.ListAuthA
 }
 
 func (m *mockRepo) CreateAPIKey(ctx context.Context, arg db.CreateAPIKeyParams) (db.CreateAPIKeyRow, error) {
-	return db.CreateAPIKeyRow{ID: pgtype.UUID{Bytes: uuid.New(), Valid: true}}, nil
+	return db.CreateAPIKeyRow{
+		ID:        pgtype.UUID{Bytes: uuid.New(), Valid: true},
+		Name:      arg.Name,
+		ExpiresAt: arg.ExpiresAt,
+		CreatedAt: pgtype.Timestamptz{Time: time.Now().UTC(), Valid: true},
+	}, nil
 }
 
 type mockTokenMaker struct {

@@ -29,7 +29,7 @@ func TestProcessStripeRefundWebhook_noDoubleDebit(t *testing.T) {
 	amountMicro := int64(20_000_000)
 	result, err := svc.CreatePaymentIntent(ctx, customerID, amountMicro, "USD", "refund-double-"+uuid.New().String(), nil)
 	require.NoError(t, err)
-	providerRef := result.Intent.ProviderRef.String
+	providerRef := result.Intent.ProviderRef
 
 	stripeCents, err := MicroToStripeAmount(amountMicro)
 	require.NoError(t, err)

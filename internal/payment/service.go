@@ -40,7 +40,7 @@ func NewService(pool *pgxpool.Pool, prov Provider, cfg *config.Config) *Service 
 }
 
 type CreateIntentResult struct {
-	Intent      db.PaymentPaymentIntent
+	Intent      PaymentIntent
 	CheckoutURL string
 }
 
@@ -75,7 +75,7 @@ func (service *Service) CreatePaymentIntent(ctx context.Context, customerID uuid
 	}
 
 	IntentsTotal.WithLabelValues(string(finalized.Status)).Inc()
-	return CreateIntentResult{Intent: finalized, CheckoutURL: checkoutURL}, nil
+	return CreateIntentResult{Intent: paymentIntentFromDB(finalized), CheckoutURL: checkoutURL}, nil
 }
 
 func (service *Service) claimPaymentIntent(
@@ -225,18 +225,18 @@ func reconcileIdempotentIntent(existing db.PaymentPaymentIntent, customerID uuid
 	if existCust != customerID || existing.AmountMicro != amountMicro || existing.Currency != currency {
 		return CreateIntentResult{}, fmt.Errorf("%w: existing intent has customer=%s amount=%d currency=%s", ErrIdempotencyConflict, existCust, existing.AmountMicro, existing.Currency)
 	}
-	return CreateIntentResult{Intent: existing, CheckoutURL: checkoutURLFromIntent(existing)}, nil
+	return CreateIntentResult{Intent: paymentIntentFromDB(existing), CheckoutURL: checkoutURLFromIntent(existing)}, nil
 }
 
-func (s *Service) GetPaymentIntent(ctx context.Context, intentID uuid.UUID) (db.PaymentPaymentIntent, error) {
+func (s *Service) GetPaymentIntent(ctx context.Context, intentID uuid.UUID) (PaymentIntent, error) {
 	intent, err := db.New(s.pool).GetPaymentIntent(ctx, pgtype.UUID{Bytes: intentID, Valid: true})
 	if err != nil {
-		return db.PaymentPaymentIntent{}, mapNotFound(err, ErrPaymentIntentNotFound)
+		return PaymentIntent{}, mapNotFound(err, ErrPaymentIntentNotFound)
 	}
-	return intent, nil
+	return paymentIntentFromDB(intent), nil
 }
 
-func (s *Service) ListPaymentIntents(ctx context.Context, customerID uuid.UUID, limit, offset int32) ([]db.PaymentPaymentIntent, int64, error) {
+func (s *Service) ListPaymentIntents(ctx context.Context, customerID uuid.UUID, limit, offset int32) ([]PaymentIntent, int64, error) {
 	q := db.New(s.pool)
 	custUUID := pgtype.UUID{Bytes: customerID, Valid: true}
 	listParams := db.ListPaymentIntentsParams{
@@ -244,10 +244,21 @@ func (s *Service) ListPaymentIntents(ctx context.Context, customerID uuid.UUID, 
 		Limit:      limit,
 		Offset:     offset,
 	}
-	return coldpath.PaginatedQuery(
+	rows, total, err := coldpath.PaginatedQuery(
 		func() (int64, error) { return q.CountPaymentIntents(ctx, custUUID) },
 		func() ([]db.PaymentPaymentIntent, error) { return q.ListPaymentIntents(ctx, listParams) },
 	)
+	if err != nil {
+		return nil, 0, err
+	}
+	if len(rows) == 0 {
+		return nil, total, nil
+	}
+	out := make([]PaymentIntent, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, paymentIntentFromDB(row))
+	}
+	return out, total, nil
 }
 
 func isValidTransition(oldStatus, newStatus db.PaymentPaymentIntentStatus) bool {

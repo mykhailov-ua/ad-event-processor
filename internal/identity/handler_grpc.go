@@ -6,8 +6,6 @@ import (
 
 	"espx/internal/identity/pb"
 	"espx/pkg/coldpath"
-
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func (h *Handler) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
@@ -57,29 +55,16 @@ func (h *Handler) RevokeToken(ctx context.Context, req *pb.RevokeTokenRequest) (
 }
 
 func (h *Handler) CreateAPIKey(ctx context.Context, req *pb.CreateAPIKeyRequest) (*pb.CreateAPIKeyResponse, error) {
-	user, err := h.requireAuthUser(ctx)
-	if err != nil {
-		return nil, err
-	}
 	var expiresAt *time.Time
 	if req.ExpiresAt != nil {
 		t := req.ExpiresAt.AsTime()
 		expiresAt = &t
 	}
-	userID := uuidFromPg(user.ID)
-	id, rawKey, err := h.service.CreateAPIKey(ctx, userID, req.Name, expiresAt)
+	result, err := h.createAPIKey(ctx, req.Name, expiresAt)
 	if err != nil {
-		return nil, mapError(err)
+		return nil, err
 	}
-	resp := &pb.CreateAPIKeyResponse{
-		Id:     id.String(),
-		Name:   req.Name,
-		RawKey: rawKey,
-	}
-	if expiresAt != nil {
-		resp.ExpiresAt = timestamppb.New(*expiresAt)
-	}
-	return resp, nil
+	return createAPIKeyResultToPB(result), nil
 }
 
 func (h *Handler) VerifyAPIKey(ctx context.Context, req *pb.VerifyAPIKeyRequest) (*pb.VerifyAPIKeyResponse, error) {
@@ -91,15 +76,11 @@ func (h *Handler) VerifyAPIKey(ctx context.Context, req *pb.VerifyAPIKeyRequest)
 }
 
 func (h *Handler) ListAPIKeys(ctx context.Context, _ *pb.ListAPIKeysRequest) (*pb.ListAPIKeysResponse, error) {
-	user, err := h.requireAuthUser(ctx)
+	keys, err := h.listAPIKeys(ctx)
 	if err != nil {
 		return nil, err
 	}
-	rows, err := h.service.ListUserAPIKeys(ctx, uuidFromPg(user.ID))
-	if err != nil {
-		return nil, mapError(err)
-	}
-	return &pb.ListAPIKeysResponse{Keys: coldpath.MapSlice(rows, apiKeyRowToPB)}, nil
+	return &pb.ListAPIKeysResponse{Keys: coldpath.MapSlice(keys, APIKeyToPB)}, nil
 }
 
 func (h *Handler) ChangePassword(ctx context.Context, req *pb.ChangePasswordRequest) (*pb.ChangePasswordResponse, error) {

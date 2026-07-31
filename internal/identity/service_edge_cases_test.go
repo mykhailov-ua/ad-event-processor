@@ -58,10 +58,11 @@ func TestCreateAPIKey_Secrecy(t *testing.T) {
 	userID := uuid.New()
 	repo.err = nil
 
-	id, raw, err := service.CreateAPIKey(context.Background(), userID, "ci-cd", nil)
+	result, err := service.CreateAPIKey(context.Background(), userID, "ci-cd", nil)
 	require.NoError(t, err)
-	assert.NotEmpty(t, raw)
-	assert.NotEqual(t, uuid.Nil, id)
+	assert.NotEmpty(t, result.RawKey)
+	assert.NotEmpty(t, result.ID)
+	raw := result.RawKey
 
 	assert.GreaterOrEqual(t, len(raw), 40)
 

@@ -29,7 +29,7 @@ func TestProcessStripeDisputeWebhook_noDoubleChargeback(t *testing.T) {
 	amountMicro := int64(16_000_000)
 	result, err := svc.CreatePaymentIntent(ctx, customerID, amountMicro, "USD", "dispute-double-"+uuid.New().String(), nil)
 	require.NoError(t, err)
-	providerRef := result.Intent.ProviderRef.String
+	providerRef := result.Intent.ProviderRef
 
 	stripeCents, err := MicroToStripeAmount(amountMicro)
 	require.NoError(t, err)

@@ -23,14 +23,3 @@ func userToPB(user db.User) *pb.User {
 	}
 }
 
-func apiKeyRowToPB(row db.ListUserAPIKeysRow) *pb.APIKey {
-	key := &pb.APIKey{
-		Id:        uuidFromPg(row.ID).String(),
-		Name:      row.Name,
-		CreatedAt: timestamppb.New(row.CreatedAt.Time),
-	}
-	if row.ExpiresAt.Valid {
-		key.ExpiresAt = timestamppb.New(row.ExpiresAt.Time)
-	}
-	return key
-}

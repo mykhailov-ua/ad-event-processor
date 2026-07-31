@@ -76,7 +76,7 @@ func TestFinancialReconRun_missingTopupAfterWebhook(t *testing.T) {
 	svc := NewService(pool, NewMockProvider(), nil)
 	result, err := svc.CreatePaymentIntent(ctx, customerID, 11_000_000, "USD", "recon-unit-"+uuid.New().String(), nil)
 	require.NoError(t, err)
-	providerRef := result.Intent.ProviderRef.String
+	providerRef := result.Intent.ProviderRef
 	payload := `{"id":"evt_recon_unit","type":"payment_intent.succeeded","data":{"object":{"id":"` + providerRef + `","amount":11000000}}}`
 	err = svc.ProcessStripeWebhook(ctx, "evt_recon_unit", "payment_intent.succeeded", []byte(payload), providerRef, 11_000_000, payload)
 	require.NoError(t, err)

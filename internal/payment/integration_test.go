@@ -15,6 +15,7 @@ import (
 	"espx/internal/payment"
 	"espx/internal/payment/db"
 	"espx/internal/payment/dbtest"
+	paymentpb "espx/internal/payment/pb"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -63,7 +64,7 @@ func TestPaymentService_Integration(t *testing.T) {
 	result, err := svc.CreatePaymentIntent(ctx, customerID, amountMicro, "USD", idempotencyKey, map[string]string{"foo": "bar"})
 	require.NoError(t, err)
 	intent := result.Intent
-	assert.Equal(t, db.PaymentPaymentIntentStatusPENDINGPROVIDER, intent.Status)
+	assert.Equal(t, paymentpb.PaymentIntentStatus_PAYMENT_INTENT_STATUS_PENDING_PROVIDER.String(), intent.Status)
 	assert.Equal(t, amountMicro, intent.AmountMicro)
 	assert.NotEmpty(t, result.CheckoutURL)
 
@@ -76,7 +77,7 @@ func TestPaymentService_Integration(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "idempotency key conflict")
 
-	providerRef := intent.ProviderRef.String
+	providerRef := intent.ProviderRef
 	stripeCents, err := payment.MicroToStripeAmount(amountMicro)
 	require.NoError(t, err)
 	stripePayload := fmt.Sprintf(`{
@@ -93,9 +94,11 @@ func TestPaymentService_Integration(t *testing.T) {
 	err = svc.ProcessStripeWebhook(ctx, "evt_stripe_test_999", "payment_intent.succeeded", []byte(stripePayload), providerRef, amountMicro, stripePayload)
 	require.NoError(t, err)
 
-	intentUpdated, err := svc.GetPaymentIntent(ctx, uuid.UUID(intent.ID.Bytes))
+	intentID, err := uuid.Parse(intent.ID)
 	require.NoError(t, err)
-	assert.Equal(t, db.PaymentPaymentIntentStatusSUCCEEDED, intentUpdated.Status)
+	intentUpdated, err := svc.GetPaymentIntent(ctx, intentID)
+	require.NoError(t, err)
+	assert.Equal(t, paymentpb.PaymentIntentStatus_PAYMENT_INTENT_STATUS_SUCCEEDED.String(), intentUpdated.Status)
 
 	qPayment := db.New(pool)
 	outboxEvents, err := qPayment.GetPendingOutboxEventsForUpdate(ctx, 10)
@@ -145,8 +148,8 @@ func TestPaymentService_Integration(t *testing.T) {
 	require.Len(t, ledgerRows, 1)
 	assert.Equal(t, amountMicro, ledgerRows[0].Amount)
 	assert.Equal(t, ads_db.LedgerType("PAYMENT_TOPUP"), ledgerRows[0].Type)
-	assert.Equal(t, "payment:"+uuid.UUID(intent.ID.Bytes).String(), ledgerRows[0].IdempotencyHash.String)
-	assert.Equal(t, ingestion.ToUUID(uuid.UUID(intent.ID.Bytes)), ledgerRows[0].PaymentIntentID)
+	assert.Equal(t, "payment:"+intentID.String(), ledgerRows[0].IdempotencyHash.String)
+	assert.Equal(t, ingestion.ToUUID(intentID), ledgerRows[0].PaymentIntentID)
 
 	refundMicro := amountMicro / 2
 	refundID := "re_integration_" + uuid.New().String()
