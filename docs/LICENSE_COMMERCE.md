@@ -198,7 +198,7 @@ ML artifacts (`models/lightgbm/`, Isolation Forest bundles, ONNX when enabled) a
 3. CDN returns `403` without active SKU containing `ml_fraud_boost` or `ivt_ml_detector`.
 4. Checksum + version recorded in PG before `SYNCING` → `ACTIVE` promotion.
 
-Community operators may run training scripts under `ml/` against local fixtures; production model packs are Pro-only.
+Community operators may run training scripts under `fraud_modeling/` against local fixtures; production model packs are Pro-only.
 
 **Funnel trade-off:** binary + trial license lowers friction vs source; serious buyers get audit under NDA. Gray operators who never paid are not the ICP — optimize for networks that need support and updates.
 

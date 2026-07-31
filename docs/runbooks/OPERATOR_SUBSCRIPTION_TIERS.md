@@ -81,9 +81,9 @@ Until GAP-PROD-03 ships, use SQL or management JSON API (`adminapi` licensing ha
 
 ---
 
-## Option C: bundled SPA (GAP-PROD-02)
+## Option C: external operator UI
 
-Operator admin UI (`//go:embed`) will expose plan CRUD and advertiser assignment. API backing: `/api/v1/...` (plans + subscriptions).
+Plan CRUD and advertiser assignment via `/api/v1/...` (plans + subscriptions). Operator ships their own SPA or scripts against JSON API.
 
 ---
 

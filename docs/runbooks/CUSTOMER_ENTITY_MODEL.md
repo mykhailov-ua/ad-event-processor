@@ -134,7 +134,7 @@ Self-serve routes enforce `customer_id` from session/API key — advertiser cann
 - [ ] Plan templates in `subscription_plans`
 - [ ] Per-advertiser `customer_subscriptions`
 - [ ] Payment webhooks on operator domain
-- [ ] Bundled SPA or external UI on `/api/v1`
+- [ ] External operator UI on `/api/v1`
 
 ---
 

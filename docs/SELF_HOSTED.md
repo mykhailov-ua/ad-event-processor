@@ -169,7 +169,6 @@ Self-hosted installs do **not** use server-rendered HTMX admin. The supported op
 
 1. **JSON** `/api/v1/*` (and OpenAPI in `docs/openapi/openapi.yaml`).
 2. **External SPA** (operator-built or packaged separately) against that API.
-3. Optional `//go:embed` static in `management` for a bundled SPA (GAP-PROD-02) — not SSR fragments.
 
 ### Removed in GAP-HYG-04
 
@@ -180,7 +179,7 @@ Self-hosted installs do **not** use server-rendered HTMX admin. The supported op
 | `internal/payment/http_htmx.go`, `htmx_*.go` | Deleted; `/ui/payment/*` returns `410 Gone` |
 | `pkg/httpresponse/htmx_error.go` | Deleted; errors use `pkg/httpresponse` JSON envelope |
 
-`GET /` returns JSON `404` with a link to this section until the bundled SPA ships.
+`GET /` returns JSON `404` with a link to this section.
 
 Payment and billing **gRPC/JSON APIs** remain; only HTML fragment UIs were removed.
 
@@ -212,7 +211,7 @@ Canonical product choices for self-hosted sales and engineering backlog.
 
 | Decision | Detail |
 | :--- | :--- |
-| **Bundled SPA** | Single operator UI via `//go:embed` in `cmd/management` (GAP-PROD-02) |
+| **No bundled SPA** | Operator UI is external JSON client or custom SPA against `/api/v1` |
 | **No HTMX SSR** | Legacy HTML removal: GAP-HYG-04 |
 
 ### Vendor license (Layer V)

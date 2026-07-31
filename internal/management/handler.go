@@ -45,10 +45,7 @@ func (handler *Handler) RegisterRoutes(mux *http.ServeMux) {
 	}
 
 	registerAdminGoneRoutes(mux)
-	registerSPARoutes(mux)
-	registerOpsDashboardRoute(mux, func(next http.HandlerFunc) http.HandlerFunc {
-		return handler.perm(next, "shards:read")
-	})
+	registerRootRoute(mux)
 	handler.registerRegionIngestRoutes(mux)
 }
 

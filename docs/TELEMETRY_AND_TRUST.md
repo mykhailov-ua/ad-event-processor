@@ -57,7 +57,7 @@ Closed-source self-hosted amplifies paranoia: the operator cannot diff the binar
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-Operators can firewall so that **only (1)** is allowed. (2) and (3) are independent toggles in bundled SPA settings.
+Operators can firewall so that **only (1)** is allowed. (2) and (3) are independent toggles via env / operator config (no bundled UI).
 
 **Auditable:** publish JSON Schema for each channel; operator can log outbound bodies at their proxy.
 
@@ -185,7 +185,7 @@ Do not claim network-wide ML training until opt-in threat intel pool exists.
 - `POST /api/v1/support/feedback` — `type` (bug | feature | support), contact email, message, optional attach diagnostic bundle (GAP-SUP-01)
 - No free-text campaign URLs required
 
-**UI (P49):** Bundled SPA feedback form consumes the API above. Implement after all backend backlog tasks (P48), not before.
+**UI (P49):** External operator UI consumes `GET/POST /api/v1/support/feedback` (no bundled frontend).
 
 Vendor uses this for roadmap until telemetry cohort is large enough.
 
@@ -244,7 +244,7 @@ Exact boundary TBD at first sale; document in vendor SKU YAML.
 | :--- | :--- |
 | "You steal traffic bundles" | Three channels, schemas, opt-in, allowlist |
 | **SRE overhead (PG+Redis+CH+6 binaries)** | Deploy profiles `ingest_only`, optional CH (GAP-PROD-05); [DATA_SECURITY runbook](./runbooks/DATA_SECURITY.md) MVSS |
-| No UI | Bundled SPA (GAP-PROD-02) |
+| No UI | JSON `/api/v1` + external SPA; see [SELF_HOSTED.md](./SELF_HOSTED.md) |
 | Gray market cracks | Layered license + **updates worth paying for** (intel, models) |
 | Zero vendor data | Honest positioning; feedback + opt-in intel path |
 | Monthly license outage | Long Y grace + pre-expiry warnings |
@@ -256,9 +256,9 @@ Exact boundary TBD at first sale; document in vendor SKU YAML.
 | ID | Task |
 | :--- | :--- |
 | **GAP-PROD-08** | Opt-in product telemetry: local counters, hourly pulse, `ESPX_TELEMETRY_OPT_IN`, published schema |
-| **GAP-PROD-09** | Support feedback API (P27) + SPA form (P49) |
+| **GAP-PROD-09** | Support feedback API (P27); external UI consumes JSON |
 | **GAP-PROD-10** | Community vs Pro repo/binary split policy doc + release process |
-| **GAP-PROD-04** | Monthly license heartbeat, offline grace Y, SPA warnings |
+| **GAP-PROD-04** | Monthly license heartbeat, offline grace Y, operator warnings (API/metrics) |
 | **GAP-PROD-06** | Fingerprint bind, activation limits |
 
 ---

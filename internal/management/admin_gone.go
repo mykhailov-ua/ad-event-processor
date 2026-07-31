@@ -16,3 +16,9 @@ func registerAdminGoneRoutes(mux *http.ServeMux) {
 	}
 }
 
+func registerRootRoute(mux *http.ServeMux) {
+	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
+		httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND",
+			"no bundled UI; use /api/v1 JSON API (see docs/SELF_HOSTED.md)")
+	})
+}
