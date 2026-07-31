@@ -18,8 +18,8 @@ var ManagementDomains = []Domain{
 		"service.go", "handler.go", "middleware.go", "workers.go",
 		"errors.go", "rbac.go", "ratelimit.go", "permissions.go", "pgerrors.go",
 		"auth_principal.go", "ops.go", "mgmt_pg_gate.go", "domains.go",
-		"serve.go", "admin_gone.go", "handler_access.go", "static_spa.go", "meta_enricher.go",
-	}, LogicFiles: []string{"rbac.go", "errors.go"}, TestPrefixes: []string{"service_test", "handler_test", "middleware_test", "workers_test", "rbac_test", "core_domain_test", "domains_test", "static_spa"}},
+		"serve.go", "admin_gone.go", "handler_access.go", "meta_enricher.go",
+	}, LogicFiles: []string{"rbac.go", "errors.go"}, TestPrefixes: []string{"service_test", "handler_test", "middleware_test", "workers_test", "rbac_test", "core_domain_test", "domains_test", "admin_gone"}},
 	{ID: "billing", Prefixes: []string{"handler_billing", "handler_api_balance", "service_customer", "billing_"}, Files: []string{"billing_money.go", "ledger_invariant_worker.go"}, LogicFiles: []string{"billing_money.go"}, TestPrefixes: []string{"handler_api_balance_test", "handler_billing", "billing_domain_test", "service_customer", "ledger_invariant"}},
 	{ID: "campaign", Prefixes: []string{
 		"service_campaign", "handler_campaign", "pacing_", "schedule_", "brand_",

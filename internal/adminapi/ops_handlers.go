@@ -58,6 +58,7 @@ func (ops *OpsHTTPHandlers) Register(mux *http.ServeMux) {
 	ops.registerBlacklistRoutes(mux)
 	ops.registerDashboardRoutes(mux)
 	ops.registerSupportBundleRoutes(mux)
+	ops.registerMLModelRoutes(mux)
 }
 
 func (ops *OpsHTTPHandlers) getIncidents(w http.ResponseWriter, r *http.Request) {

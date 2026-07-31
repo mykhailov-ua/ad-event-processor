@@ -16,4 +16,7 @@ type ManagementOpsReader interface {
 	ListReconRuns(ctx context.Context, service string, limit, offset int32) ([]ReconRunDTO, int64, error)
 	GetDashboardSummary(ctx context.Context) (DashboardSummaryDTO, error)
 	GetDashboardMetrics(ctx context.Context, rangeHours int, metricName string) (DashboardMetricsDTO, error)
+	GetMLModelStatus(ctx context.Context) (MLModelStatusDTO, error)
+	AddMLManualLabel(ctx context.Context, ipHash string, label int, reason string) error
+	ListMLManualLabels(ctx context.Context) ([]MLManualLabelDTO, error)
 }
