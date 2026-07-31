@@ -22,6 +22,22 @@ func loginDTOToPB(dto LoginDTO) *pb.LoginResponse {
 	}
 }
 
+func authUserToPB(user AuthUser) *pb.User {
+	return &pb.User{
+		Id:         user.ID.String(),
+		Email:      user.Email,
+		Role:       user.Role,
+		CustomerId: user.CustomerID.String(),
+	}
+}
+
+func refreshResultToPB(result RefreshResult) *pb.RefreshTokenResponse {
+	return &pb.RefreshTokenResponse{
+		AccessToken:  result.AccessToken,
+		RefreshToken: result.RefreshToken,
+	}
+}
+
 func loginResultFromPB(resp pb.LoginResponse) LoginResult {
 	out := LoginResult{
 		AccessToken:  resp.AccessToken,

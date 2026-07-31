@@ -29,22 +29,19 @@ func (h *Handler) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRes
 }
 
 func (h *Handler) VerifyToken(ctx context.Context, req *pb.VerifyTokenRequest) (*pb.VerifyTokenResponse, error) {
-	user, err := h.service.VerifyToken(ctx, req.AccessToken)
-	if err != nil {
-		return nil, mapError(err)
-	}
-	return &pb.VerifyTokenResponse{User: userToPB(user)}, nil
-}
-
-func (h *Handler) RefreshToken(ctx context.Context, req *pb.RefreshTokenRequest) (*pb.RefreshTokenResponse, error) {
-	accessToken, refreshToken, err := h.refreshSession(ctx, req.RefreshToken)
+	user, err := h.verifyTokenUser(ctx, req.AccessToken)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.RefreshTokenResponse{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-	}, nil
+	return &pb.VerifyTokenResponse{User: authUserToPB(user)}, nil
+}
+
+func (h *Handler) RefreshToken(ctx context.Context, req *pb.RefreshTokenRequest) (*pb.RefreshTokenResponse, error) {
+	result, err := h.refreshSession(ctx, req.RefreshToken)
+	if err != nil {
+		return nil, err
+	}
+	return refreshResultToPB(result), nil
 }
 
 func (h *Handler) RevokeToken(ctx context.Context, req *pb.RevokeTokenRequest) (*pb.RevokeTokenResponse, error) {
@@ -72,7 +69,7 @@ func (h *Handler) VerifyAPIKey(ctx context.Context, req *pb.VerifyAPIKeyRequest)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.VerifyAPIKeyResponse{User: userToPB(user)}, nil
+	return &pb.VerifyAPIKeyResponse{User: authUserToPB(user)}, nil
 }
 
 func (h *Handler) ListAPIKeys(ctx context.Context, _ *pb.ListAPIKeysRequest) (*pb.ListAPIKeysResponse, error) {

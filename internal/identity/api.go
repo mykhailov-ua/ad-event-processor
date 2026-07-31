@@ -76,7 +76,7 @@ func (a *authAPI) VerifyAPIKey(ctx context.Context, apiKey string) (AuthUser, er
 	if err != nil {
 		return AuthUser{}, grpcStatusToError(err)
 	}
-	return authUserFromDB(user), nil
+	return user, nil
 }
 
 func (a *authAPI) CreateAPIKey(ctx context.Context, bearerToken, name string) (CreateAPIKeyResult, error) {
@@ -122,14 +122,11 @@ func (a *authAPI) Register(ctx context.Context, adminAPIKey, email, password, ro
 }
 
 func (a *authAPI) RefreshToken(ctx context.Context, refreshToken string) (RefreshResult, error) {
-	accessToken, newRefresh, err := a.h.refreshSession(ctx, refreshToken)
+	result, err := a.h.refreshSession(ctx, refreshToken)
 	if err != nil {
 		return RefreshResult{}, grpcStatusToError(err)
 	}
-	return RefreshResult{
-		AccessToken:  accessToken,
-		RefreshToken: newRefresh,
-	}, nil
+	return result, nil
 }
 
 func (a *authAPI) RevokeToken(ctx context.Context, refreshToken string) error {

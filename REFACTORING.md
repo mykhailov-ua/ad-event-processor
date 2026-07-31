@@ -139,7 +139,7 @@ Pointers to .cursor/, REFACTORING.md, backlog in code
 4. Fold finance and identity into modules: internal/ledger, internal/identity.
 5. Rename management → controlplane — done (`internal/controlplane`).
 6. Delete internal-only protobuf and gRPC codegen. — in progress (see §9)
-7. Split internal/config/env.go: config.go, ingest.go, database.go, etc.
+7. Split internal/config/env.go: config.go, ingest.go, database.go, etc. Partial: `env_controlplane.go` (`loadControlplaneModules`, `applyControlplaneDefaults` for notifier/billing/payment/settlement defaults).
 8. Consolidate sqlc output paths: internal/<module>/db/. — identity paths updated in sqlc.yaml
 9. Merge legacy handler + service pairs.
 10. Rename files per naming rules.
@@ -225,11 +225,11 @@ Blockers for deleting `api/auth.proto` (and siblings)
 
 | Generated type | Status | Remaining import sites |
 |----------------|--------|------------------------|
-| `AuthServiceClient` / `AuthServiceServer` | Monolith in-process via `identity.AuthAPI`; `Login`/`APIKey` domain types | `identity/{handler,handler_core,handler_grpc,auth_convert,apikey_types,apikey_convert,serve,grpc_api,resolve_api}.go`; `controlplane/auth_client.go` |
+| `AuthServiceClient` / `AuthServiceServer` | Monolith in-process via `identity.AuthAPI`; domain `LoginResult`, `AuthUser`, `RefreshResult`, `APIKey` | `identity/{handler,handler_core,handler_grpc,auth_convert,apikey_types,apikey_convert,serve,grpc_api,resolve_api}.go`; `controlplane/auth_client.go` |
 | `BillingServiceClient` / `BillingServiceServer` | Monolith in-process via `billing.BillingAPI` (`Invoice`, not `pb.Invoice`) | `billing/{handler,handler_core,handler_grpc,handler_validate,invoice_types,invoice_convert,serve,grpc_api,resolve_api}.go`; `controlplane/billing_client.go` |
 | `PaymentServiceClient` / `PaymentServiceServer` | Monolith in-process via `payment.PaymentAPI`; service returns `PaymentIntent` | `payment/{handler,handler_core,handler_grpc,intent_convert,serve,grpc_api,resolve_api}.go`; `controlplane/payment_client.go` |
 | `NotifierServiceClient` / `NotifierServiceServer` | Monolith in-process via `notifier.NotifierAPI`; service returns `Notification` (not `pb.Notification`) | `notifier/{handler,handler_grpc,notification_types,notification_convert,api,service_input,serve,grpc_api}.go`; `controlplane/notifier_client.go` |
-| `SettlementServiceClient` / `SettlementServiceServer` | Monolith in-process via `SettlementHandler.PaymentSettlement()` (`domain.PaymentSettlement`) | `controlplane/{settlement_handler,settlement_handler_grpc,serve}.go`; `payment/{settlement_grpc_client,resolve_settlement,settlement_ledger_client,outbox_worker}.go` |
+| `SettlementServiceClient` / `SettlementServiceServer` | Monolith in-process via `SettlementHandler.PaymentSettlement()` (`domain.PaymentSettlement`); gRPC split `settlement_handler_{types,auth,convert,grpc}.go` | `controlplane/{settlement_handler,settlement_handler_types,settlement_handler_auth,settlement_handler_convert,settlement_handler_grpc,serve}.go`; `payment/{settlement_grpc_client,resolve_settlement,settlement_ledger_client,outbox_worker}.go` |
 
 Message types (`*.pb.go`) remain in use for handler request/response structs and outbox payloads — delete protos only after those call sites use `internal/domain` types.
 

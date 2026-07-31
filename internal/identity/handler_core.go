@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	"espx/internal/identity/db"
-
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -60,12 +58,20 @@ func (h *Handler) registerUser(ctx context.Context, email, password, role string
 	return id, nil
 }
 
-func (h *Handler) verifyAPIKeyUser(ctx context.Context, apiKey string) (db.User, error) {
+func (h *Handler) verifyTokenUser(ctx context.Context, accessToken string) (AuthUser, error) {
+	user, err := h.service.VerifyToken(ctx, accessToken)
+	if err != nil {
+		return AuthUser{}, mapError(err)
+	}
+	return authUserFromDB(user), nil
+}
+
+func (h *Handler) verifyAPIKeyUser(ctx context.Context, apiKey string) (AuthUser, error) {
 	user, err := h.service.VerifyAPIKey(ctx, apiKey)
 	if err != nil {
-		return db.User{}, mapError(err)
+		return AuthUser{}, mapError(err)
 	}
-	return user, nil
+	return authUserFromDB(user), nil
 }
 
 func (h *Handler) createAPIKey(ctx context.Context, name string, expiresAt *time.Time) (CreateAPIKeyResult, error) {
@@ -92,13 +98,16 @@ func (h *Handler) listAPIKeys(ctx context.Context) ([]APIKey, error) {
 	return keys, nil
 }
 
-func (h *Handler) refreshSession(ctx context.Context, refreshToken string) (string, string, error) {
+func (h *Handler) refreshSession(ctx context.Context, refreshToken string) (RefreshResult, error) {
 	duration := time.Duration(h.cfg.DefaultTokenDurationHrs) * time.Hour
 	accessToken, newRefresh, err := h.service.RefreshToken(ctx, refreshToken, duration)
 	if err != nil {
-		return "", "", mapError(err)
+		return RefreshResult{}, mapError(err)
 	}
-	return accessToken, newRefresh, nil
+	return RefreshResult{
+		AccessToken:  accessToken,
+		RefreshToken: newRefresh,
+	}, nil
 }
 
 func (h *Handler) revokeSession(ctx context.Context, refreshToken string) error {
