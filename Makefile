@@ -1,14 +1,4 @@
-.PHONY: fmt gen lint test test-fast test-unit test-integration test-fault test-int test-alloc-gate management-domain-coverage test-full test-resilience test-broker-fault-lab test-sentinel-resilience build release-build proto check-local tier-a check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-bpf openapi-lint openapi-gen check-scripts-layout dev-preflight-smoke perf-gate-smoke edge-phase0 ui-build ui-install
-
-UI_DIR := web/admin
-UI_DIST := internal/management/static/dist
-
-ui-install:
-	cd $(UI_DIR) && npm install
-
-ui-build: ui-install
-	cd $(UI_DIR) && npm run build
-	test -f $(UI_DIST)/index.html
+.PHONY: fmt gen lint test test-fast test-unit test-integration test-fault test-int test-alloc-gate management-domain-coverage test-full test-resilience test-broker-fault-lab test-sentinel-resilience build release-build proto check-local tier-a fraud-modeling-check check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-bpf openapi-lint openapi-gen check-scripts-layout dev-preflight-smoke perf-gate-smoke edge-phase0
 
 fmt:
 	go fmt ./...
@@ -62,6 +52,9 @@ test-full: fmt
 
 check-local:
 	bash scripts/ci/local_check.sh
+
+fraud-modeling-check:
+	bash scripts/ci/fraud_modeling.sh
 
 tier-a:
 	bash scripts/ci/tier_a.sh

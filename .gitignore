@@ -77,11 +77,17 @@ coverage.out
 *.prof
 *.test
 
-# Python (ml/train bootstrap artifacts)
+# Python (fraud_modeling/artifact_bootstrap artifacts)
 __pycache__/
 *.py[cod]
 .venv/
 venv/
+.venv-ml/
+fraud_modeling/.ruff_cache/
+
+# Generated ML artifacts (bootstrap locally via make fraud-modeling-check)
+testdata/ml/features_*.json
+/ml-replay
 
 # Perf gate & benchmark reports (local / CI scratch)
 .ci-baselines/

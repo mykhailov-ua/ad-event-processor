@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
+"""Write testdata/ml/features_*.json for cmd/ml-validate and bootstrap validate."""
 from __future__ import annotations
 
 import json
 import os
-import sys
 from pathlib import Path
 
-from feature_spec import FEATURE_DIMS, FEATURE_NAMES, row_to_vector
+from feature_spec import FEATURE_NAMES, row_to_vector
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 OUT_DIR = REPO_ROOT / "testdata" / "ml"
-MODEL_PATH = REPO_ROOT / "internal" / "fraudscoring" / "testdata" / "model.txt"
 
 FIXTURE_ROWS: list[tuple[str, dict[str, int]]] = [
     (
@@ -57,34 +56,34 @@ FIXTURE_ROWS: list[tuple[str, dict[str, int]]] = [
             "unique_uas": 2,
         },
     ),
+    (
+        "bot_single_ua",
+        {
+            "events": 200,
+            "clicks": 180,
+            "spend_micro": 50_000_000,
+            "budget_limit_micro": 60_000_000,
+            "unique_users": 2,
+            "unique_uas": 1,
+        },
+    ),
+    (
+        "residential_proxy",
+        {
+            "events": 275,
+            "clicks": 4,
+            "spend_micro": 6_130_354,
+            "budget_limit_micro": 22_060_077,
+            "unique_users": 32,
+            "unique_uas": 11,
+        },
+    ),
 ]
-
-KNOWN_SCORES: dict[str, float] = {
-    "basic": 0.52497,
-    "high_volume": 0.71094,
-}
-
-
-def score_vectors(vectors: list[list[float]]) -> list[float] | None:
-    try:
-        import lightgbm as lgb
-    except ImportError:
-        return None
-    if not MODEL_PATH.is_file():
-        return None
-    booster = lgb.Booster(model_file=str(MODEL_PATH))
-    if booster.num_feature() != FEATURE_DIMS:
-        raise SystemExit(f"model num_feature={booster.num_feature()} want {FEATURE_DIMS}")
-    import numpy as np
-
-    matrix = np.array(vectors, dtype=np.float64)
-    return [float(x) for x in booster.predict(matrix)]
 
 
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     vectors = [row_to_vector(row) for _, row in FIXTURE_ROWS]
-    scores = score_vectors(vectors)
 
     for idx, (fixture_id, row) in enumerate(FIXTURE_ROWS):
         payload: dict[str, object] = {
@@ -93,10 +92,6 @@ def main() -> int:
             "row": row,
             "vector": vectors[idx],
         }
-        if scores is not None:
-            payload["score"] = scores[idx]
-        elif fixture_id in KNOWN_SCORES:
-            payload["score"] = KNOWN_SCORES[fixture_id]
 
         out_path = OUT_DIR / f"features_{fixture_id}.json"
         with open(out_path, "w", encoding="utf-8") as handle:
