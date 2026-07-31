@@ -215,6 +215,9 @@ func (outboxWorker *OutboxWorker) ensureSettlementClient() error {
 	if outboxWorker.api != nil {
 		return nil
 	}
+	if outboxWorker.cfg != nil && !outboxWorker.cfg.SettlementGRPCEnabled {
+		return fmt.Errorf("settlement API not injected")
+	}
 	target := outboxWorker.cfg.SettlementServerHost + ":" + outboxWorker.cfg.SettlementServerPort
 	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {

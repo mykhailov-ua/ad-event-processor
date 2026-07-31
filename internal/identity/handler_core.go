@@ -117,6 +117,36 @@ func (h *Handler) revokeSession(ctx context.Context, refreshToken string) error 
 	return nil
 }
 
+func (h *Handler) changePassword(ctx context.Context, oldPassword, newPassword string) error {
+	user, err := h.requireAuthUser(ctx)
+	if err != nil {
+		return err
+	}
+	if err := h.service.ChangePassword(ctx, uuidFromPg(user.ID), oldPassword, newPassword, h.extractClientIP(ctx), h.extractUserAgent(ctx)); err != nil {
+		return mapError(err)
+	}
+	return nil
+}
+
+func (h *Handler) requestEmailVerification(ctx context.Context) (string, error) {
+	user, err := h.requireAuthUser(ctx)
+	if err != nil {
+		return "", err
+	}
+	token, err := h.service.RequestEmailVerification(ctx, uuidFromPg(user.ID))
+	if err != nil {
+		return "", mapError(err)
+	}
+	return token, nil
+}
+
+func (h *Handler) confirmEmailVerification(ctx context.Context, verificationToken string) error {
+	if _, err := h.service.ConfirmEmailVerification(ctx, verificationToken); err != nil {
+		return mapError(err)
+	}
+	return nil
+}
+
 func parseOptionalCustomerID(raw string) (uuid.UUID, error) {
 	if raw == "" {
 		return uuid.UUID{}, nil

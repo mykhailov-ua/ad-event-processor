@@ -18,7 +18,7 @@ func OpenSettlementAPIOrDial(ctx context.Context, cfg *config.Config) (domain.Pa
 		return nil, noop, nil
 	}
 	if !cfg.SettlementGRPCEnabled {
-		return nil, noop, fmt.Errorf("settlement API not configured and SETTLEMENT_GRPC_ENABLED=0")
+		return nil, noop, nil
 	}
 	target := cfg.SettlementServerHost + ":" + cfg.SettlementServerPort
 	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))

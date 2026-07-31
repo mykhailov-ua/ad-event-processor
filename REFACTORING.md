@@ -139,7 +139,7 @@ Pointers to .cursor/, REFACTORING.md, backlog in code
 4. Fold finance and identity into modules: internal/ledger, internal/identity.
 5. Rename management → controlplane — done (`internal/controlplane`).
 6. Delete internal-only protobuf and gRPC codegen. — in progress (see §9)
-7. Split internal/config/env.go: config.go, ingest.go, database.go, etc. Partial: `env_controlplane.go` (`loadControlplaneModules`, `applyControlplaneDefaults` for notifier/billing/payment/settlement defaults).
+7. Split internal/config/env.go: config.go, ingest.go, database.go, etc. Partial: `env_controlplane.go`, `env_ingest.go` (`loadIngestModules`), `env_database.go` (`loadDatabaseModules`).
 8. Consolidate sqlc output paths: internal/<module>/db/. — identity paths updated in sqlc.yaml
 9. Merge legacy handler + service pairs.
 10. Rename files per naming rules.
@@ -253,7 +253,7 @@ Deprecated:
 | Compose profile `split_control` (`scripts/dev/stack.sh full`) | `single_vps` or `network_operator` |
 | `cmd/auth`, `cmd/management`, `cmd/payment`, `cmd/billing`, `cmd/notifier` | `cmd/control` with matching `CONTROL_ENABLE_*` |
 
-Monolith env: set `SETTLEMENT_GRPC_ENABLED=0` so payment→settlement uses in-process `domain.PaymentSettlement` instead of localhost settlement gRPC. Compose `control` service sets this; bare-metal installs should set it in `.env` when running `cmd/control`.
+Monolith env: set `SETTLEMENT_GRPC_ENABLED=0` so payment→settlement uses in-process `domain.PaymentSettlement` (`SetSettlementAPI`); `OpenSettlementAPIOrDial` returns nil when gRPC off (no localhost dial). Compose `control` service sets this; bare-metal installs should set it in `.env` when running `cmd/control`.
 
 Standalone `Serve()` gRPC listeners (deprecated `cmd/auth`, `cmd/billing`, `cmd/payment`, `cmd/notifier`) are gated by `AUTH_GRPC_ENABLED`, `BILLING_GRPC_ENABLED`, `PAYMENT_GRPC_ENABLED`, `NOTIFIER_GRPC_ENABLED` (default on; set `0` to run HTTP sidecars and workers only). Monolith (`cmd/control`) uses `OpenModule` only — it never calls `Serve()` for those modules.
 

@@ -73,12 +73,15 @@ func (c *SettlementLedgerClient) ensureClient() error {
 	if c.api != nil {
 		return nil
 	}
+	if c.cfg != nil && !c.cfg.SettlementGRPCEnabled {
+		return fmt.Errorf("settlement API not injected")
+	}
 	api, closeFn, err := OpenSettlementAPIOrDial(context.Background(), c.cfg)
 	if err != nil {
 		return err
 	}
 	if api == nil {
-		return fmt.Errorf("settlement client not configured")
+		return fmt.Errorf("settlement API not injected")
 	}
 	c.api = api
 	c.closeFn = closeFn

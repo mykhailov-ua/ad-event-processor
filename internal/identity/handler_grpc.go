@@ -81,33 +81,23 @@ func (h *Handler) ListAPIKeys(ctx context.Context, _ *pb.ListAPIKeysRequest) (*p
 }
 
 func (h *Handler) ChangePassword(ctx context.Context, req *pb.ChangePasswordRequest) (*pb.ChangePasswordResponse, error) {
-	user, err := h.requireAuthUser(ctx)
-	if err != nil {
+	if err := h.changePassword(ctx, req.OldPassword, req.NewPassword); err != nil {
 		return nil, err
-	}
-	err = h.service.ChangePassword(ctx, uuidFromPg(user.ID), req.OldPassword, req.NewPassword, h.extractClientIP(ctx), h.extractUserAgent(ctx))
-	if err != nil {
-		return nil, mapError(err)
 	}
 	return &pb.ChangePasswordResponse{}, nil
 }
 
 func (h *Handler) RequestEmailVerification(ctx context.Context, _ *pb.RequestEmailVerificationRequest) (*pb.RequestEmailVerificationResponse, error) {
-	user, err := h.requireAuthUser(ctx)
+	token, err := h.requestEmailVerification(ctx)
 	if err != nil {
 		return nil, err
-	}
-	token, err := h.service.RequestEmailVerification(ctx, uuidFromPg(user.ID))
-	if err != nil {
-		return nil, mapError(err)
 	}
 	return &pb.RequestEmailVerificationResponse{VerificationToken: token}, nil
 }
 
 func (h *Handler) ConfirmEmailVerification(ctx context.Context, req *pb.ConfirmEmailVerificationRequest) (*pb.ConfirmEmailVerificationResponse, error) {
-	_, err := h.service.ConfirmEmailVerification(ctx, req.VerificationToken)
-	if err != nil {
-		return nil, mapError(err)
+	if err := h.confirmEmailVerification(ctx, req.VerificationToken); err != nil {
+		return nil, err
 	}
 	return &pb.ConfirmEmailVerificationResponse{}, nil
 }
