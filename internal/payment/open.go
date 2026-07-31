@@ -89,7 +89,7 @@ func (m *Module) StartWorkers(ctx context.Context) {
 		notifierClient = NewInProcessNotifierClient(m.notifierAPI)
 	} else if m.cfg.OpsAlertsEnabled() {
 		var err error
-		notifierClient, err = NewNotifierClient(m.cfg)
+		notifierClient, _, err = ResolveNotifierClient(workerCtx, m.cfg)
 		if err != nil {
 			slog.Error("payment module notifier client failed", "error", err)
 		}

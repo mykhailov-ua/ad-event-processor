@@ -8,7 +8,6 @@ import (
 	"espx/internal/billing/pb"
 	"espx/internal/config"
 	"espx/internal/database"
-	"espx/internal/notifier"
 	notifierpb "espx/internal/notifier/pb"
 	"espx/pkg/lifecycle"
 
@@ -31,17 +30,16 @@ func Serve(ctx context.Context, cfg *config.Config) error {
 	provider := NewPaymentProvider(cfg.Billing.PaymentProvider, string(cfg.Billing.PaymentProviderKey))
 	slog.Info("billing payment provider configured", "provider", provider.Name(), "configured", provider.Configured())
 
-	notifierClient, closeNotifier, err := NewNotifierClient(cfg)
+	notifierAPI, closeNotifier, err := NewNotifierAPI(ctx, cfg)
 	if err != nil {
 		return err
 	}
 	if closeNotifier != nil {
-		defer func() { _ = closeNotifier() }()
+		defer closeNotifier()
 	}
-	if notifierClient != nil {
+	if notifierAPI != nil {
 		providerName, recipient := ResolveInvoiceNotifierTarget(cfg)
 		if providerName != notifierpb.Provider_PROVIDER_UNSPECIFIED && recipient != "" {
-			notifierAPI := notifier.NewGRPCNotifierAPI(notifierClient)
 			svc.SetInvoiceDeliverer(NewNotifierInvoiceDeliverer(
 				notifierAPI, providerName, recipient, cfg.Notifier.AdminBaseURL,
 			), cfg.Notifier.AdminBaseURL)

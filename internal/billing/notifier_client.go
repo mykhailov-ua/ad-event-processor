@@ -1,30 +1,23 @@
 package billing
 
 import (
-	"fmt"
+	"context"
 
 	"espx/internal/config"
+	"espx/internal/notifier"
 	notifierpb "espx/internal/notifier/pb"
 	"strings"
-
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
-func NewNotifierClient(cfg *config.Config) (notifierpb.NotifierServiceClient, func() error, error) {
+func NewNotifierAPI(ctx context.Context, cfg *config.Config) (notifier.NotifierAPI, func(), error) {
 	if cfg == nil {
-		return nil, func() error { return nil }, nil
+		return nil, func() {}, nil
 	}
 	_, recipient := ResolveInvoiceNotifierTarget(cfg)
 	if recipient == "" {
-		return nil, func() error { return nil }, nil
+		return nil, func() {}, nil
 	}
-	target := cfg.Notifier.ServerHost + ":" + cfg.Notifier.Port
-	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return nil, nil, fmt.Errorf("notifier gRPC dial %s: %w", target, err)
-	}
-	return notifierpb.NewNotifierServiceClient(conn), conn.Close, nil
+	return notifier.OpenAPIOrDial(ctx, cfg)
 }
 
 func ResolveInvoiceNotifierTarget(cfg *config.Config) (notifierpb.Provider, string) {

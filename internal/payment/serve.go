@@ -38,13 +38,20 @@ func Serve(ctx context.Context, cfg *config.Config) error {
 
 	var notifierClient *NotifierClient
 	if cfg.OpsAlertsEnabled() {
-		notifierClient, err = NewNotifierClient(cfg)
+		var closeNotifier func()
+		notifierClient, closeNotifier, err = ResolveNotifierClient(ctx, cfg)
 		if err != nil {
 			return err
 		}
+		if closeNotifier != nil {
+			defer closeNotifier()
+		}
 		if notifierClient != nil {
-			defer notifierClient.Close()
-			slog.Info("notifier gRPC client enabled for payment ops alerts", "target", cfg.Notifier.ServerHost+":"+cfg.Notifier.Port)
+			if cfg.NotifierGRPCEnabled {
+				slog.Info("notifier gRPC client enabled for payment ops alerts", "target", cfg.Notifier.ServerHost+":"+cfg.Notifier.Port)
+			} else {
+				slog.Info("notifier in-process client enabled for payment ops alerts")
+			}
 		}
 	}
 

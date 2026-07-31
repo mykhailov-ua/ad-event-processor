@@ -41,6 +41,31 @@ func NewNotifierClient(cfg *config.Config) (*NotifierClient, error) {
 	}, nil
 }
 
+func ResolveNotifierClient(ctx context.Context, cfg *config.Config) (*NotifierClient, func(), error) {
+	if cfg == nil || !cfg.OpsAlertsEnabled() {
+		return nil, func() {}, nil
+	}
+	if !cfg.NotifierGRPCEnabled {
+		mod, err := notifier.OpenModule(ctx, cfg)
+		if err != nil {
+			return nil, func() {}, err
+		}
+		if mod == nil {
+			return nil, func() {}, nil
+		}
+		return NewInProcessNotifierClient(mod.API()), mod.Close, nil
+	}
+	client, err := NewNotifierClient(cfg)
+	if err != nil {
+		return nil, func() {}, err
+	}
+	closeFn := func() {}
+	if client != nil {
+		closeFn = func() { _ = client.Close() }
+	}
+	return client, closeFn, nil
+}
+
 func (client *NotifierClient) Close() error {
 	if client == nil || client.conn == nil {
 		return nil

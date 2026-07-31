@@ -219,7 +219,7 @@ All flags: `os.Getenv(...) != "0"` (unset = enabled). Monolith compose `control`
 
 Split deploy: standalone `cmd/payment` + `cmd/management` keep settlement gRPC (`SETTLEMENT_GRPC_ENABLED` unset or `1` on management). `payment/outbox_worker.go` and `settlement_ledger_client.go` dial `SettlementServiceClient` when `SetSettlementAPI` is not injected.
 
-`local_client.go` / `Module.Client()`: unused in monolith (`monolithServeOptions` calls `mod.API()` only). Kept for transitional split compat and handler tests — do not delete until proto removal.
+`local_client.go` / `Module.Client()`: **zero production callers** (grep confirms; not used by monolith or split `Serve()`). Monolith uses `mod.API()` + `controlplane.New*ClientFromAPI` only. Kept for transitional split compat until proto removal — do not delete until `*_grpc.pb.go` blockers cleared.
 
 Blockers for deleting `api/auth.proto` (and siblings)
 
