@@ -246,26 +246,18 @@ Payment fault/integration tests: `package payment_test` + `internal/paymenttest`
 
 10. split_control and standalone cmd/* deprecation
 
-Status: `split_control` compose profile removed; `stack.sh full` runs `single_vps`. Standalone `cmd/auth`, `cmd/management`, `cmd/payment`, `cmd/billing`, `cmd/notifier` are thin wrappers around `internal/control.Run` / `RunCLI`.
+Status: standalone `cmd/auth` … `cmd/notifier` removed; compose and k8s use `deployment-control.yaml` (`/control` entrypoint).
 
-Default deploy: `cmd/control` modular monolith. Compose profiles `single_vps`, `ingest_only`, `network_operator` run one `control` container with in-process management, identity (auth), payment, billing, and notifier (`CONTROL_ENABLE_*`). Local entry: `scripts/dev/stack.sh single-vps`.
+Default deploy: `cmd/control` modular monolith. Compose profiles `single_vps`, `ingest_only`, `network_operator`, `resilience`, `crypto`, `fraud-scorer` run one `control` container (`CONTROL_ENABLE_*`). Local entry: `scripts/dev/stack.sh single-vps`.
 
-Deprecated:
-
-| Item | Replacement |
-|------|-------------|
+| Removed | Replacement |
+|---------|-------------|
 | `stack.sh legacy-full` | `single_vps` or `network_operator` |
-| Standalone compose service `auth` | removed; use `control` |
-| `cmd/auth`, `cmd/management`, `cmd/payment`, `cmd/billing`, `cmd/notifier` | thin `control.RunCLI` wrappers; use `cmd/control` |
+| compose/k8s auth, management, payment, billing, notifier deployments | `control` service / `deployment-control.yaml` |
+| Dockerfile `/auth`, `/management`, `/payment`, `/billing`, `/notifier` binaries | `/control` only |
 
-Monolith env: set `SETTLEMENT_GRPC_ENABLED=0` so payment→settlement uses in-process `domain.PaymentSettlement` (`SetSettlementAPI`); `OpenSettlementAPIOrDial` returns nil when gRPC off (no localhost dial). Compose `control` service sets this; bare-metal installs should set it in `.env` when running `cmd/control`.
+`SETTLEMENT_GRPC_ENABLED` defaults off; compose/k8s set `0`. Monolith uses in-process `SetSettlementAPI`.
 
-Standalone `Serve()` gRPC listeners (deprecated wrappers) are gated by `AUTH_GRPC_ENABLED`, `BILLING_GRPC_ENABLED`, `PAYMENT_GRPC_ENABLED`, `NOTIFIER_GRPC_ENABLED` (default on; set `0` to run HTTP sidecars and workers only). Monolith (`cmd/control`) uses `OpenModule` only — it never calls `Serve()` for those modules.
+Removal (later): drop `*_service.proto` / gRPC codegen when no `New*ServiceClient` in production tree.
 
-`management`, `payment`, `billing`, `notifier` compose sidecars removed; `resilience`, `crypto`, and `fraud-scorer` profiles use `control`.
-
-`SETTLEMENT_GRPC_ENABLED` defaults off (`unset` or `0`); set `1` only for legacy split payment→management gRPC.
-
-Removal (later): delete standalone `cmd/*` wrappers when k8s manifests use `control` only.
-
-Done when: standalone control-plane binaries removed; k8s uses `control` entrypoint only.
+Done when: no `Register*ServiceServer` / `New*ServiceClient` in production; `buf.gen.grpc.yaml` deleted.

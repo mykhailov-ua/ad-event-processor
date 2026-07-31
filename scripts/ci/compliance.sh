@@ -7,7 +7,7 @@ cd "$ROOT"
 echo "Checking regulatory compliance..."
 
 echo "Checking CMP-FORB-04: No ebpf in management/tracker..."
-if go list -f '{{.Imports}}' ./internal/controlplane/... ./cmd/management/... ./cmd/tracker/... 2>/dev/null | grep -q "github.com/cilium/ebpf"; then
+if go list -f '{{.Imports}}' ./internal/controlplane/... ./cmd/control/... ./cmd/tracker/... 2>/dev/null | grep -q "github.com/cilium/ebpf"; then
     echo "COMPLIANCE FAILURE: github.com/cilium/ebpf imported in management or tracker!"
     exit 1
 fi
@@ -35,7 +35,7 @@ fi
 echo "CMP-FORB-03: OK"
 
 echo "Checking CMP-DEF-04: No outbound connections to visitor/source IPs from management..."
-if grep -rnEi "dial.*visitor_ip|http.*Get.*visitor_ip|dial.*blocked_ip" ./internal/controlplane/ ./cmd/management/ 2>/dev/null; then
+if grep -rnEi "dial.*visitor_ip|http.*Get.*visitor_ip|dial.*blocked_ip" ./internal/controlplane/ ./cmd/control/ 2>/dev/null; then
     echo "COMPLIANCE FAILURE: Found potential outbound dial to visitor/blocked IP from management!"
     exit 1
 fi

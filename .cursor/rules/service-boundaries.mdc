@@ -24,17 +24,16 @@ Control-plane services share one Postgres instance in compose (default DB name `
 
 Isolation is at schema and idempotency-key-prefix level, not separate Postgres containers by default.
 
-Control-plane binaries
+Control-plane binary
 
-`cmd/management`: Admin HTTP, settlement gRPC, outbox/recon/pacing workers — :8188, :51053
-`cmd/auth`: Auth gRPC — :51051
-`cmd/payment`: Payment gRPC, Stripe webhooks, optional legacy HTMX checkout (deprecated) — :51052, :8187
-`cmd/billing`: Invoice gRPC — :51054
-`cmd/notifier`: Notification gRPC + delivery worker — :8085
+`cmd/control`: Modular monolith — admin HTTP :8188, payment webhooks :8187, in-process auth/payment/billing/notifier/management (`CONTROL_ENABLE_*`). Optional settlement gRPC off by default (`SETTLEMENT_GRPC_ENABLED=0`).
+
+Sidecar binaries (optional profiles):
+
 `cmd/ivt-detector`: ClickHouse batch analyzer -> management blacklist API — batch job
 `cmd/log-evacuator`: Local tracker log archive (compose `tools` profile) — none
 
-Settlement gRPC runs inside `management` (no standalone `cmd/settlement`).
+Settlement runs in-process inside `cmd/control` (no standalone `cmd/settlement`).
 
 Scaling levels when adding services
 
@@ -114,7 +113,7 @@ New standalone checklist
 Monolith package checklist
 
 1. Package under `internal/<domain>/`
-2. Worker in `cmd/management/main.go` or `cmd/processor/main.go`
+2. Worker in `internal/control/run.go` (`cmd/control`) or `cmd/processor/main.go`
 3. Reuse host pool or strict private pool limit
 4. No gRPC/HTTP unless external systems require it
 

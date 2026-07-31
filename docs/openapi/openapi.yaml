@@ -3,7 +3,7 @@ info:
   title: eSPX Management JSON API
   version: 1.0.0
   description: |
-    Machine-readable contract for `/api/v1` JSON routes served by `cmd/management`
+    Machine-readable contract for `/api/v1` JSON routes served by `cmd/control`
     (`internal/controlplane` + `internal/controlplane/adminapi`). HTMX `/admin/*` HTML routes are excluded.
     HTTP 501 stub routes (deferred dashboards/reports) are excluded — see `internal/controlplane/adminapi/stub_routes.go` and `internal/openapi/stubs.go`.
 servers:

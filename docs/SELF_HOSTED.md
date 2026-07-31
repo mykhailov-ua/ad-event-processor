@@ -73,52 +73,17 @@ Hot path reads the merged snapshot via `Registry.SyncEntitlements`. Vendor caps 
 
 ## Administrative microservices (monolith default)
 
-**Default:** run **`cmd/control`** on a single VPS — one process that embeds management, auth, payment, billing, and notifier with env-gated components (`CONTROL_ENABLE_*`). Set **`SETTLEMENT_GRPC_ENABLED=0`** so payment→settlement stays in-process (compose `control` service sets this).
+Run **`cmd/control`** — one process with management, auth, payment, billing, and notifier (`CONTROL_ENABLE_*`). Set **`SETTLEMENT_GRPC_ENABLED=0`** for in-process settlement (compose `control` sets this). Local stack: `scripts/dev/stack.sh single-vps`.
 
-Standalone binaries (`cmd/management`, `cmd/auth`, `cmd/payment`, `cmd/billing`, `cmd/notifier`) are thin wrappers around `cmd/control` — use **`cmd/control`** or `scripts/dev/stack.sh single-vps`.
-
-Cold-path workers (margin-guard, cost-sync, volume meter, recon, ledger invariant) run **only** in control/management — never in tracker replicas.
+Cold-path workers (margin-guard, cost-sync, volume meter, recon, ledger invariant) run **only** in `cmd/control` — never in tracker replicas.
 
 ### `cmd/control` — modular monolith (default)
 
-- Compose profiles: `single_vps`, `ingest_only`, `network_operator`.
-- `scripts/dev/stack.sh single-vps` — tracker + processor + control.
+- Compose profiles: `single_vps`, `ingest_only`, `network_operator`, `resilience`, `crypto`, `fraud-scorer`.
 - `ingest_only` disables payment/billing/notifier and margin-guard/cost-sync via `CONTROL_ENABLE_*=0`.
-- `SETTLEMENT_GRPC_ENABLED=0` — required for monolith; disables localhost settlement gRPC (payment uses in-process bridge).
-- Health: `http://127.0.0.1:8188/health` (management HTTP inside control).
-
-### `cmd/management` — operator control plane (deprecated split deploy)
-
-- Campaign CRUD, outbox, settlement gRPC, recon, workers.
-- `/api/v1/*` JSON API (`internal/controlplane` + `internal/controlplane/adminapi`).
-- `/api/v1/selfserve/*` — **advertiser API** (optional); not vendor onboarding.
-- ClickHouse: **analytics only** (charts, forecast, IVT); never billing authority.
-
-### `cmd/auth` (deprecated standalone)
-
-Sessions, PASETO, API keys for operator staff and advertiser automation. Use `cmd/control` with `CONTROL_ENABLE_AUTH=1`.
-
-### `cmd/payment` — operator wallet rail (deprecated standalone)
-
-| Concern | Self-hosted policy |
-| :--- | :--- |
-| Stripe / crypto keys | **Operator's** env on their host |
-| Webhooks | Operator domain (`PAYMENT_WEBHOOK_HOST`) |
-| Settlement | Outbox → management → `balance_ledger` TOPUP (unchanged) |
-| HTMX checkout fragments | **Legacy / dev-only** — see [UI](#ui-no-server-side-htmx) |
-
-Keep: gRPC intents, crypto hold worker, financial recon, chargeback paths.
-
-### `cmd/billing` — operator invoicing (deprecated standalone)
-
-- `GenerateInvoice` — operator bills **advertisers** from `balance_ledger` + optional internal plan fee/overage.
-- `usage_meters` — fed from **PG** (accepted events), closed periods, idempotent hourly keys.
-- Invoice worker, notifier delivery, ledger drift alerter — remain operator-facing.
-- Use `cmd/control` with `CONTROL_ENABLE_BILLING=1`.
-
-### `cmd/notifier` (deprecated standalone)
-
-Operator ops alerts. Credentials belong to the install owner. Use `cmd/control` with `CONTROL_ENABLE_NOTIFIER=1`.
+- `/api/v1/*` JSON API (`internal/controlplane` + `adminapi`); `/api/v1/selfserve/*` advertiser API (optional).
+- Payment webhooks on `:8187`; operator admin HTTP on `:8188`.
+- Health: `http://127.0.0.1:8188/health`.
 
 ---
 

@@ -9,11 +9,6 @@ WORKDIR /src
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/tracker ./cmd/tracker
 RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/processor ./cmd/processor
-RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/auth ./cmd/auth
-RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/management ./cmd/management
-RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/payment ./cmd/payment
-RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/billing ./cmd/billing
-RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/notifier ./cmd/notifier
 RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/ivt-detector ./cmd/ivt-detector
 RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/fraud-scorer ./cmd/fraud-scorer
 RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/broker ./cmd/broker
@@ -25,11 +20,6 @@ RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/
 FROM gcr.io/distroless/static-debian12
 COPY --from=builder /bin/tracker /tracker
 COPY --from=builder /bin/processor /processor
-COPY --from=builder /bin/auth /auth
-COPY --from=builder /bin/management /management
-COPY --from=builder /bin/payment /payment
-COPY --from=builder /bin/billing /billing
-COPY --from=builder /bin/notifier /notifier
 COPY --from=builder /bin/ivt-detector /ivt-detector
 COPY --from=builder /bin/fraud-scorer /fraud-scorer
 COPY --from=builder /bin/broker /broker

@@ -2,7 +2,7 @@
 description: Management workers, outbox, admin mutations, cold-path APIs
 globs:
   - internal/controlplane/**
-  - cmd/management/**
+  - cmd/control/**
 alwaysApply: false
 ---
 

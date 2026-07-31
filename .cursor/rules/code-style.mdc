@@ -126,7 +126,7 @@ Banned: nested domain packages under service roots such as `internal/ingestion/f
 
 R1b. Cold-path JSON API
 
-JSON `/api/v1` lives in `internal/controlplane/` (`handler_api.go`, `handler_*.go`, `api_*.go`, `adminapi/`). Wire routes from `cmd/management`.
+JSON `/api/v1` lives in `internal/controlplane/` (`handler_api.go`, `handler_*.go`, `api_*.go`, `adminapi/`). Wire routes from `cmd/control` via `controlplane.ServeWithOptions`.
 
 1. Tag = first `_` segment - `api_billing_handlers.go`, `handler_rtb.go`, `billing_handlers.go`.
 2. Single flat package per directory; no nested domain packages.
@@ -138,7 +138,7 @@ Anti-patterns (reject in review):
 
 R1c. `internal/controlplane` - flat package, tag navigation
 
-`cmd/management` = one Go package (`package controlplane`). No theme subfolders (`management/fraud/` forbidden).
+`cmd/control` runs `controlplane.ServeWithOptions` in-process. No theme subfolders (`management/fraud/` forbidden).
 
 Grouping key for humans/IDE: first `_` segment of the filename (or second for `service_<theme>_*.go` / `handler_<theme>_*.go`):
 

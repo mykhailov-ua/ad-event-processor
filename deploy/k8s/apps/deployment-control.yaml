@@ -1,29 +1,29 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: management
+  name: control
   namespace: espx
   labels:
-    app.kubernetes.io/name: management
+    app.kubernetes.io/name: control
     app.kubernetes.io/component: cold-path
     app.kubernetes.io/part-of: espx
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: management
+      app.kubernetes.io/name: control
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: management
+        app.kubernetes.io/name: control
         app.kubernetes.io/component: cold-path
         app.kubernetes.io/part-of: espx
     spec:
       containers:
-        - name: management
+        - name: control
           image: ad-event-processor:latest
           imagePullPolicy: IfNotPresent
-          command: ["/management"]
+          command: ["/control"]
           envFrom:
             - configMapRef:
                 name: espx-env
@@ -31,14 +31,34 @@ spec:
                 name: espx-secrets
           env:
             - name: GOMEMLIMIT
-              value: "600MiB"
-            - name: SERVER_PORT
+              value: "1400MiB"
+            - name: MANAGEMENT_PORT
               value: "8188"
+            - name: PAYMENT_WEBHOOK_PORT
+              value: "8187"
+            - name: CONTROL_ENABLE_AUTH
+              value: "1"
+            - name: CONTROL_ENABLE_MANAGEMENT
+              value: "1"
+            - name: CONTROL_ENABLE_PAYMENT
+              value: "1"
+            - name: CONTROL_ENABLE_BILLING
+              value: "1"
+            - name: CONTROL_ENABLE_NOTIFIER
+              value: "1"
+            - name: CONTROL_ENABLE_MARGIN_GUARD
+              value: "1"
+            - name: CONTROL_ENABLE_COST_SYNC
+              value: "1"
+            - name: SETTLEMENT_GRPC_ENABLED
+              value: "0"
+            - name: NOTIFIER_GRPC_ENABLED
+              value: "0"
           ports:
             - name: http
               containerPort: 8188
-            - name: settlement-grpc
-              containerPort: 51053
+            - name: webhook
+              containerPort: 8187
             - name: udp-control
               containerPort: 8190
               protocol: UDP
@@ -52,11 +72,11 @@ spec:
             httpGet:
               path: /readyz
               port: http
-            initialDelaySeconds: 10
+            initialDelaySeconds: 15
             periodSeconds: 10
           resources:
             requests:
-              memory: 128Mi
-              cpu: 100m
+              memory: 256Mi
+              cpu: 200m
             limits:
-              memory: 768Mi
+              memory: 1536Mi

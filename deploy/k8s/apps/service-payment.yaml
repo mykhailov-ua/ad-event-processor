@@ -8,11 +8,8 @@ metadata:
     app.kubernetes.io/part-of: espx
 spec:
   selector:
-    app.kubernetes.io/name: payment
+    app.kubernetes.io/name: control
   ports:
-    - name: grpc
-      port: 51052
-      targetPort: grpc
     - name: webhook
       port: 8187
       targetPort: webhook

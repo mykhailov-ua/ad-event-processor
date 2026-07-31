@@ -9,7 +9,7 @@ metadata:
 spec:
   type: NodePort
   selector:
-    app.kubernetes.io/name: management
+    app.kubernetes.io/name: control
   ports:
     - name: http
       port: 8188
