@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"espx/internal/config"
-	notifierpb "espx/internal/notifier/pb"
+	"espx/internal/notifier"
 )
 
 func TestResolveOpsAlertTarget_TelegramPreferred(t *testing.T) {
@@ -18,7 +18,7 @@ func TestResolveOpsAlertTarget_TelegramPreferred(t *testing.T) {
 	if !ok {
 		t.Fatal("expected target")
 	}
-	if provider != notifierpb.Provider_PROVIDER_TELEGRAM {
+	if provider != notifier.ProviderTelegram {
 		t.Fatalf("provider: got %v want TELEGRAM", provider)
 	}
 	if recipient != "-100123" {

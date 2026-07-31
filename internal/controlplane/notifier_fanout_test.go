@@ -94,17 +94,17 @@ func testNotifierConfig() *config.Config {
 func TestResolveOpsAlertTargets_MultiChannel(t *testing.T) {
 	targets := resolveOpsAlertTargets(testNotifierConfig())
 	require.Len(t, targets, 3)
-	assert.Equal(t, notifierpb.Provider_PROVIDER_TELEGRAM, targets[0].Provider)
-	assert.Equal(t, notifierpb.Provider_PROVIDER_SLACK, targets[1].Provider)
-	assert.Equal(t, notifierpb.Provider_PROVIDER_SMS, targets[2].Provider)
+	assert.Equal(t, notifier.ProviderTelegram, targets[0].Provider)
+	assert.Equal(t, notifier.ProviderSlack, targets[1].Provider)
+	assert.Equal(t, notifier.ProviderSMS, targets[2].Provider)
 }
 
 func TestResolveBroadcastProviders_AllConfigured(t *testing.T) {
 	providers := resolveBroadcastProviders(testNotifierConfig())
 	require.Len(t, providers, 3)
-	assert.Equal(t, notifierpb.Provider_PROVIDER_TELEGRAM, providers[0])
-	assert.Equal(t, notifierpb.Provider_PROVIDER_SLACK, providers[1])
-	assert.Equal(t, notifierpb.Provider_PROVIDER_SMS, providers[2])
+	assert.Equal(t, notifier.ProviderTelegram, providers[0])
+	assert.Equal(t, notifier.ProviderSlack, providers[1])
+	assert.Equal(t, notifier.ProviderSMS, providers[2])
 }
 
 func TestAlertSeverityBroadcast(t *testing.T) {
@@ -126,7 +126,7 @@ func TestAlertmanagerWebhook_CriticalUsesBroadcast(t *testing.T) {
 
 	h := &AlertmanagerWebhook{
 		client:             testNotifierClient(stub),
-		provider:           notifierpb.Provider_PROVIDER_TELEGRAM,
+		provider:           notifier.ProviderTelegram,
 		recipient:          cfg.Notifier.TelegramChatID,
 		broadcastProviders: resolveBroadcastProviders(cfg),
 	}
@@ -166,7 +166,7 @@ func TestAlertmanagerWebhook_WarningUsesFallback(t *testing.T) {
 
 	h := &AlertmanagerWebhook{
 		client:             testNotifierClient(stub),
-		provider:           notifierpb.Provider_PROVIDER_TELEGRAM,
+		provider:           notifier.ProviderTelegram,
 		recipient:          cfg.Notifier.TelegramChatID,
 		broadcastProviders: resolveBroadcastProviders(cfg),
 	}
@@ -236,7 +236,7 @@ func TestFault_alertmanagerWebhookFanOut(t *testing.T) {
 
 	h := &AlertmanagerWebhook{
 		client:             testNotifierClient(stub),
-		provider:           notifierpb.Provider_PROVIDER_TELEGRAM,
+		provider:           notifier.ProviderTelegram,
 		recipient:          cfg.Notifier.TelegramChatID,
 		broadcastProviders: resolveBroadcastProviders(cfg),
 	}

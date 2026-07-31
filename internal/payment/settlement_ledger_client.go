@@ -77,6 +77,9 @@ func (c *SettlementLedgerClient) ensureClient() error {
 	if c.api != nil {
 		return nil
 	}
+	if c.cfg != nil && !c.cfg.SettlementGRPCEnabled {
+		return fmt.Errorf("settlement API not configured and SETTLEMENT_GRPC_ENABLED=0")
+	}
 	target := c.cfg.SettlementServerHost + ":" + c.cfg.SettlementServerPort
 	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {

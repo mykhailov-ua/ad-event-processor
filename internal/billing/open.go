@@ -7,7 +7,6 @@ import (
 	"espx/internal/config"
 	"espx/internal/database"
 	"espx/internal/notifier"
-	notifierpb "espx/internal/notifier/pb"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -37,7 +36,7 @@ func (m *Module) ConfigureNotifier(api notifier.NotifierAPI) {
 		return
 	}
 	providerName, recipient := ResolveInvoiceNotifierTarget(m.cfg)
-	if providerName != notifierpb.Provider_PROVIDER_UNSPECIFIED && recipient != "" {
+	if providerName != "" && recipient != "" {
 		m.svc.SetInvoiceDeliverer(NewNotifierInvoiceDeliverer(
 			api, providerName, recipient, m.cfg.Notifier.AdminBaseURL,
 		), m.cfg.Notifier.AdminBaseURL)

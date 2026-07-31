@@ -11,7 +11,7 @@ import (
 
 	"espx/internal/config"
 	"espx/internal/metrics"
-	notifierpb "espx/internal/notifier/pb"
+	"espx/internal/notifier"
 	"espx/pkg/branding"
 	"espx/pkg/coldpath"
 )
@@ -36,9 +36,9 @@ type AlertmanagerPayload struct {
 
 type AlertmanagerWebhook struct {
 	client             *NotifierClient
-	provider           notifierpb.Provider
+	provider           string
 	recipient          string
-	broadcastProviders []notifierpb.Provider
+	broadcastProviders []string
 	token              string
 	dryRun             bool
 }
@@ -103,7 +103,7 @@ func (h *AlertmanagerWebhook) handle(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		batchItems = append(batchItems, opsNotificationItem{
-			Target:             opsAlertTarget{Provider: h.provider, Recipient: h.recipient},
+			Target:             notifier.OpsAlertTarget{Provider: h.provider, Recipient: h.recipient},
 			Title:              title,
 			Body:               message,
 			DedupKey:           alertmanagerDedupKey(alert),

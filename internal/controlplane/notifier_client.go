@@ -56,11 +56,11 @@ func (client *NotifierClient) Close() error {
 	return client.conn.Close()
 }
 
-func (client *NotifierClient) SendNotification(ctx context.Context, provider notifierpb.Provider, recipient, title, body string) (*notifierpb.SendNotificationResponse, error) {
+func (client *NotifierClient) SendNotification(ctx context.Context, provider, recipient, title, body string) (*notifierpb.SendNotificationResponse, error) {
 	if client == nil || client.api == nil {
 		return nil, fmt.Errorf("notifier client not configured")
 	}
-	result, err := client.api.SendNotification(ctx, provider.String(), recipient, title, body)
+	result, err := client.api.SendNotification(ctx, provider, recipient, title, body)
 	if err != nil {
 		return nil, err
 	}
@@ -94,24 +94,19 @@ func (client *NotifierClient) SendNotificationBatch(ctx context.Context, notific
 
 func (client *NotifierClient) SendBroadcastNotification(
 	ctx context.Context,
-	provider notifierpb.Provider,
-	recipient, title, body string,
-	broadcastProviders []notifierpb.Provider,
+	provider, recipient, title, body string,
+	broadcastProviders []string,
 ) (*notifierpb.SendNotificationResponse, error) {
 	if client == nil || client.api == nil {
 		return nil, fmt.Errorf("notifier client not configured")
 	}
-	broadcastProviderNames := make([]string, 0, len(broadcastProviders))
-	for _, p := range broadcastProviders {
-		broadcastProviderNames = append(broadcastProviderNames, p.String())
-	}
 	result, err := client.api.SendNotificationInput(ctx, notifier.NotificationInput{
-		Provider:           provider.String(),
+		Provider:           provider,
 		Recipient:          recipient,
 		Title:              title,
 		Body:               body,
 		Broadcast:          true,
-		BroadcastProviders: broadcastProviderNames,
+		BroadcastProviders: broadcastProviders,
 	})
 	if err != nil {
 		return nil, err

@@ -12,15 +12,15 @@ import (
 
 	"espx/internal/config"
 	"espx/internal/metrics"
-	notifierpb "espx/internal/notifier/pb"
+	"espx/internal/notifier"
 	"espx/pkg/branding"
 )
 
 type OpsAlerter struct {
 	client             *NotifierClient
-	provider           notifierpb.Provider
+	provider           string
 	recipient          string
-	broadcastProviders []notifierpb.Provider
+	broadcastProviders []string
 	cooldown           time.Duration
 	outboxStuckSec     int
 	lastSent           sync.Map
@@ -100,7 +100,7 @@ func (a *OpsAlerter) dispatch(ctx context.Context, key, title, body string, broa
 	if a == nil {
 		return fmt.Errorf("ops alerter not configured")
 	}
-	target := opsAlertTarget{Provider: a.provider, Recipient: a.recipient}
+	target := notifier.OpsAlertTarget{Provider: a.provider, Recipient: a.recipient}
 	return enqueueOpsNotification(ctx, a.client, target, title, body, key, broadcast, a.broadcastProviders)
 }
 

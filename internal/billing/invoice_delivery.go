@@ -7,7 +7,6 @@ import (
 
 	"espx/internal/billing/pb"
 	"espx/internal/notifier"
-	notifierpb "espx/internal/notifier/pb"
 	"espx/pkg/branding"
 )
 
@@ -24,15 +23,14 @@ type NotifierInvoiceDeliverer struct {
 
 func NewNotifierInvoiceDeliverer(
 	api notifier.NotifierAPI,
-	provider notifierpb.Provider,
-	recipient, baseURL string,
+	provider, recipient, baseURL string,
 ) *NotifierInvoiceDeliverer {
 	if api == nil || recipient == "" {
 		return nil
 	}
 	return &NotifierInvoiceDeliverer{
 		api:       api,
-		provider:  provider.String(),
+		provider:  provider,
 		recipient: recipient,
 		baseURL:   baseURL,
 	}
@@ -75,12 +73,12 @@ type NotifierDriftAlerter struct {
 	deliverer *NotifierInvoiceDeliverer
 }
 
-func NewNotifierDriftAlerter(api notifier.NotifierAPI, provider notifierpb.Provider, recipient string) *NotifierDriftAlerter {
+func NewNotifierDriftAlerter(api notifier.NotifierAPI, provider, recipient string) *NotifierDriftAlerter {
 	if api == nil || recipient == "" {
 		return nil
 	}
 	return &NotifierDriftAlerter{
-		deliverer: &NotifierInvoiceDeliverer{api: api, provider: provider.String(), recipient: recipient},
+		deliverer: &NotifierInvoiceDeliverer{api: api, provider: provider, recipient: recipient},
 	}
 }
 

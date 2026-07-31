@@ -8,7 +8,6 @@ import (
 	"espx/internal/billing/pb"
 	"espx/internal/config"
 	"espx/internal/database"
-	notifierpb "espx/internal/notifier/pb"
 	"espx/pkg/lifecycle"
 
 	google_grpc "google.golang.org/grpc"
@@ -39,7 +38,7 @@ func Serve(ctx context.Context, cfg *config.Config) error {
 	}
 	if notifierAPI != nil {
 		providerName, recipient := ResolveInvoiceNotifierTarget(cfg)
-		if providerName != notifierpb.Provider_PROVIDER_UNSPECIFIED && recipient != "" {
+		if providerName != "" && recipient != "" {
 			svc.SetInvoiceDeliverer(NewNotifierInvoiceDeliverer(
 				notifierAPI, providerName, recipient, cfg.Notifier.AdminBaseURL,
 			), cfg.Notifier.AdminBaseURL)

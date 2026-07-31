@@ -5,70 +5,38 @@ import (
 	"fmt"
 
 	"espx/internal/config"
-	notifierpb "espx/internal/notifier/pb"
+	"espx/internal/notifier"
 )
 
-func resolveOpsAlertTarget(cfg *config.Config) (notifierpb.Provider, string, bool) {
-	if cfg == nil {
-		return notifierpb.Provider_PROVIDER_UNSPECIFIED, "", false
-	}
-	if cfg.Notifier.TelegramChatID != "" {
-		return notifierpb.Provider_PROVIDER_TELEGRAM, cfg.Notifier.TelegramChatID, true
-	}
-	if cfg.Notifier.SlackWebhookURL != "" {
-		return notifierpb.Provider_PROVIDER_SLACK, string(cfg.Notifier.SlackWebhookURL), true
-	}
-	if cfg.Notifier.SMSDefaultRecipient != "" {
-		return notifierpb.Provider_PROVIDER_SMS, cfg.Notifier.SMSDefaultRecipient, true
-	}
-	if cfg.Notifier.SMTPSender != "" {
-		return notifierpb.Provider_PROVIDER_SMTP, cfg.Notifier.SMTPSender, true
-	}
-	return notifierpb.Provider_PROVIDER_UNSPECIFIED, "", false
+func resolveOpsAlertTarget(cfg *config.Config) (string, string, bool) {
+	return notifier.ResolveOpsAlertTarget(cfg)
 }
 
-func resolveBroadcastProviders(cfg *config.Config) []notifierpb.Provider {
-	if cfg == nil {
-		return nil
-	}
-	var providers []notifierpb.Provider
-	if cfg.Notifier.TelegramChatID != "" {
-		providers = append(providers, notifierpb.Provider_PROVIDER_TELEGRAM)
-	}
-	if cfg.Notifier.SlackWebhookURL != "" {
-		providers = append(providers, notifierpb.Provider_PROVIDER_SLACK)
-	}
-	if cfg.Notifier.SMSDefaultRecipient != "" {
-		providers = append(providers, notifierpb.Provider_PROVIDER_SMS)
-	}
-	if cfg.Notifier.SMTPSender != "" {
-		providers = append(providers, notifierpb.Provider_PROVIDER_SMTP)
-	}
-	return providers
+func resolveBroadcastProviders(cfg *config.Config) []string {
+	return notifier.ResolveBroadcastProviders(cfg)
 }
 
 func enqueueOpsNotification(
 	ctx context.Context,
 	client *NotifierClient,
-	provider notifierpb.Provider,
-	recipient, title, body, dedupKey string,
+	provider, recipient, title, body, dedupKey string,
 	broadcast bool,
-	broadcastProviders []notifierpb.Provider,
+	broadcastProviders []string,
 ) error {
-	if client == nil {
+	if client == nil || client.api == nil {
 		return fmt.Errorf("notifier client not configured")
 	}
-	req := &notifierpb.SendNotificationRequest{
+	input := notifier.NotificationInput{
 		Provider:  provider,
 		Recipient: recipient,
 		Title:     title,
 		Body:      body,
 		DedupKey:  dedupKey,
+		Broadcast: broadcast,
 	}
 	if broadcast {
-		req.DeliveryMode = notifierpb.DeliveryMode_DELIVERY_MODE_BROADCAST
-		req.BroadcastProviders = broadcastProviders
+		input.BroadcastProviders = broadcastProviders
 	}
-	_, err := client.SendNotification(ctx, req)
+	_, err := client.api.SendNotificationInput(ctx, input)
 	return err
 }

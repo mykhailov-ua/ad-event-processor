@@ -10,15 +10,14 @@ import (
 
 	"espx/internal/config"
 	"espx/internal/metrics"
-	notifierpb "espx/internal/notifier/pb"
 	"espx/pkg/branding"
 )
 
 type FinancialReconAlerter struct {
 	client             *NotifierClient
-	provider           notifierpb.Provider
+	provider           string
 	recipient          string
-	broadcastProviders []notifierpb.Provider
+	broadcastProviders []string
 	cooldown           time.Duration
 	lastSent           sync.Map
 }

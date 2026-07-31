@@ -12,15 +12,13 @@ import (
 	"espx/internal/metrics"
 	"espx/internal/payment/db"
 	"espx/pkg/branding"
-
-	notifierpb "espx/internal/notifier/pb"
 )
 
 type SettlementFailedAlerter struct {
 	client             *NotifierClient
-	provider           notifierpb.Provider
+	provider           string
 	recipient          string
-	broadcastProviders []notifierpb.Provider
+	broadcastProviders []string
 	cooldown           time.Duration
 	lastSent           sync.Map
 }
