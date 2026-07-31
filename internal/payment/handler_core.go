@@ -3,7 +3,6 @@ package payment
 import (
 	"context"
 
-	"espx/internal/payment/db"
 	"espx/pkg/coldpath"
 
 	"github.com/google/uuid"
@@ -17,44 +16,47 @@ func (h *Handler) createPaymentIntent(
 	amountMicro int64,
 	currency, idempotencyKey string,
 	metadata map[string]string,
-) (CreateIntentResult, error) {
+) (createPaymentIntentResult, error) {
 	if err := h.requireInternalToken(ctx); err != nil {
-		return CreateIntentResult{}, err
+		return createPaymentIntentResult{}, err
 	}
 	if customerID == uuid.Nil {
-		return CreateIntentResult{}, status.Error(codes.InvalidArgument, "invalid customer id")
+		return createPaymentIntentResult{}, status.Error(codes.InvalidArgument, "invalid customer id")
 	}
 	if amountMicro <= 0 {
-		return CreateIntentResult{}, status.Error(codes.InvalidArgument, "amount_micro must be greater than zero")
+		return createPaymentIntentResult{}, status.Error(codes.InvalidArgument, "amount_micro must be greater than zero")
 	}
 	if idempotencyKey == "" {
-		return CreateIntentResult{}, status.Error(codes.InvalidArgument, "idempotency_key is required")
+		return createPaymentIntentResult{}, status.Error(codes.InvalidArgument, "idempotency_key is required")
 	}
 	if currency == "" {
 		currency = "USD"
 	}
 	result, err := h.service.CreatePaymentIntent(ctx, customerID, amountMicro, currency, idempotencyKey, metadata)
 	if err != nil {
-		return CreateIntentResult{}, mapPaymentGRPCError(err)
+		return createPaymentIntentResult{}, mapPaymentGRPCError(err)
 	}
-	return result, nil
+	return createPaymentIntentResult{
+		Intent:      paymentIntentFromDB(result.Intent),
+		CheckoutURL: result.CheckoutURL,
+	}, nil
 }
 
-func (h *Handler) getPaymentIntent(ctx context.Context, intentID uuid.UUID) (db.PaymentPaymentIntent, error) {
+func (h *Handler) getPaymentIntent(ctx context.Context, intentID uuid.UUID) (PaymentIntent, error) {
 	if err := h.requireInternalToken(ctx); err != nil {
-		return db.PaymentPaymentIntent{}, err
+		return PaymentIntent{}, err
 	}
 	if intentID == uuid.Nil {
-		return db.PaymentPaymentIntent{}, status.Error(codes.InvalidArgument, "invalid intent id")
+		return PaymentIntent{}, status.Error(codes.InvalidArgument, "invalid intent id")
 	}
 	intent, err := h.service.GetPaymentIntent(ctx, intentID)
 	if err != nil {
-		return db.PaymentPaymentIntent{}, mapPaymentGRPCError(err)
+		return PaymentIntent{}, mapPaymentGRPCError(err)
 	}
-	return intent, nil
+	return paymentIntentFromDB(intent), nil
 }
 
-func (h *Handler) listPaymentIntents(ctx context.Context, customerID uuid.UUID, limit, offset int32) ([]db.PaymentPaymentIntent, int64, error) {
+func (h *Handler) listPaymentIntents(ctx context.Context, customerID uuid.UUID, limit, offset int32) ([]PaymentIntent, int64, error) {
 	if err := h.requireInternalToken(ctx); err != nil {
 		return nil, 0, err
 	}
@@ -66,10 +68,17 @@ func (h *Handler) listPaymentIntents(ctx context.Context, customerID uuid.UUID, 
 	if err != nil {
 		return nil, 0, mapPaymentGRPCError(err)
 	}
-	return intents, total, nil
+	if len(intents) == 0 {
+		return nil, total, nil
+	}
+	out := make([]PaymentIntent, 0, len(intents))
+	for _, intent := range intents {
+		out = append(out, paymentIntentFromDB(intent))
+	}
+	return out, total, nil
 }
 
-func (h *Handler) listDisputes(ctx context.Context, customerID *uuid.UUID, limit, offset int32) ([]DisputeListItem, int64, error) {
+func (h *Handler) listDisputes(ctx context.Context, customerID *uuid.UUID, limit, offset int32) ([]Dispute, int64, error) {
 	if err := h.requireInternalToken(ctx); err != nil {
 		return nil, 0, err
 	}
@@ -78,7 +87,14 @@ func (h *Handler) listDisputes(ctx context.Context, customerID *uuid.UUID, limit
 	if err != nil {
 		return nil, 0, mapPaymentGRPCError(err)
 	}
-	return items, total, nil
+	if len(items) == 0 {
+		return nil, total, nil
+	}
+	out := make([]Dispute, 0, len(items))
+	for _, item := range items {
+		out = append(out, disputeFromListItem(item))
+	}
+	return out, total, nil
 }
 
 func (h *Handler) replayWebhook(ctx context.Context, provider, providerEventID string) (string, error) {

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"espx/internal/identity/db"
-	"espx/internal/identity/pb"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -22,8 +21,8 @@ func (h *Handler) loginDuration(durationHours int32) time.Duration {
 	return duration
 }
 
-func (h *Handler) login(ctx context.Context, email, password string, durationHours int32) (pb.LoginResponse, error) {
-	resp, err := h.service.Login(
+func (h *Handler) loginDTO(ctx context.Context, email, password string, durationHours int32) (LoginDTO, error) {
+	dto, err := h.service.Login(
 		ctx,
 		email,
 		password,
@@ -32,9 +31,17 @@ func (h *Handler) login(ctx context.Context, email, password string, durationHou
 		h.loginDuration(durationHours),
 	)
 	if err != nil {
-		return pb.LoginResponse{}, mapError(err)
+		return LoginDTO{}, mapError(err)
 	}
-	return resp, nil
+	return dto, nil
+}
+
+func (h *Handler) login(ctx context.Context, email, password string, durationHours int32) (LoginResult, error) {
+	dto, err := h.loginDTO(ctx, email, password, durationHours)
+	if err != nil {
+		return LoginResult{}, err
+	}
+	return loginResultFromDTO(dto), nil
 }
 
 func (h *Handler) registerUser(ctx context.Context, email, password, role string, customerID uuid.UUID) (uuid.UUID, error) {

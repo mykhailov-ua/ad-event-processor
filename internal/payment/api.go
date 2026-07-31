@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"espx/internal/payment/db"
 	"espx/internal/payment/pb"
 
 	"github.com/google/uuid"
@@ -85,12 +84,11 @@ func (a *paymentAPI) CreatePaymentIntent(ctx context.Context, customerID string,
 	if err != nil {
 		return nil, err
 	}
-	intent := result.Intent
 	return &CreatePaymentIntentResult{
-		IntentID:    uuid.UUID(intent.ID.Bytes).String(),
-		Status:      intentStatusString(intent.Status),
+		IntentID:    result.Intent.ID,
+		Status:      result.Intent.Status,
 		CheckoutURL: result.CheckoutURL,
-		ProviderRef: intent.ProviderRef.String,
+		ProviderRef: result.Intent.ProviderRef,
 	}, nil
 }
 
@@ -103,37 +101,7 @@ func (a *paymentAPI) ListPaymentIntents(ctx context.Context, customerID string, 
 	if err != nil {
 		return ListPaymentIntentsResult{}, err
 	}
-	out := ListPaymentIntentsResult{Total: total}
-	if len(intents) == 0 {
-		return out, nil
-	}
-	out.Intents = make([]PaymentIntent, 0, len(intents))
-	for _, intent := range intents {
-		out.Intents = append(out.Intents, paymentIntentFromDB(intent))
-	}
-	return out, nil
-}
-
-func paymentIntentFromDB(intent db.PaymentPaymentIntent) PaymentIntent {
-	out := PaymentIntent{
-		ID:             uuid.UUID(intent.ID.Bytes).String(),
-		CustomerID:     uuid.UUID(intent.CustomerID.Bytes).String(),
-		AmountMicro:    intent.AmountMicro,
-		Currency:       intent.Currency,
-		Status:         intentStatusString(intent.Status),
-		Provider:       intent.Provider,
-		IdempotencyKey: intent.IdempotencyKey,
-	}
-	if intent.ProviderRef.Valid {
-		out.ProviderRef = intent.ProviderRef.String
-	}
-	if intent.CreatedAt.Valid {
-		out.CreatedAt = intent.CreatedAt.Time.UTC()
-	}
-	if intent.UpdatedAt.Valid {
-		out.UpdatedAt = intent.UpdatedAt.Time.UTC()
-	}
-	return out
+	return ListPaymentIntentsResult{Intents: intents, Total: total}, nil
 }
 
 func (a *paymentAPI) ListDisputes(ctx context.Context, customerID string, limit, offset int32) (ListDisputesResult, error) {
@@ -145,33 +113,11 @@ func (a *paymentAPI) ListDisputes(ctx context.Context, customerID string, limit,
 		}
 		customerUUID = &parsed
 	}
-	items, total, err := a.h.listDisputes(a.incoming(ctx), customerUUID, limit, offset)
+	disputes, total, err := a.h.listDisputes(a.incoming(ctx), customerUUID, limit, offset)
 	if err != nil {
 		return ListDisputesResult{}, err
 	}
-	out := ListDisputesResult{Total: total}
-	if len(items) == 0 {
-		return out, nil
-	}
-	out.Disputes = make([]Dispute, 0, len(items))
-	for _, item := range items {
-		out.Disputes = append(out.Disputes, disputeFromListItem(item))
-	}
-	return out, nil
-}
-
-func disputeFromListItem(item DisputeListItem) Dispute {
-	out := Dispute{
-		IntentID:          uuid.UUID(item.Intent.ID.Bytes).String(),
-		CustomerID:        uuid.UUID(item.Intent.CustomerID.Bytes).String(),
-		AmountMicro:       item.Intent.AmountMicro,
-		Currency:          item.Intent.Currency,
-		ProviderDisputeID: item.ProviderDisputeID,
-	}
-	if item.Intent.UpdatedAt.Valid {
-		out.UpdatedAt = item.Intent.UpdatedAt.Time.UTC()
-	}
-	return out
+	return ListDisputesResult{Disputes: disputes, Total: total}, nil
 }
 
 func (a *paymentAPI) ReplayWebhook(ctx context.Context, provider, providerEventID string) (string, error) {

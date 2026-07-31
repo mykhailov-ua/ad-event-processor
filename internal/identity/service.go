@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"espx/internal/identity/db"
-	"espx/internal/identity/pb"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -21,7 +20,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/redis/go-redis/v9"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var (
@@ -200,11 +198,11 @@ type LoginDTO struct {
 	User         db.User
 }
 
-func (service *Service) Login(ctx context.Context, email, password, userAgent, clientIP string, duration time.Duration) (pb.LoginResponse, error) {
+func (service *Service) Login(ctx context.Context, email, password, userAgent, clientIP string, duration time.Duration) (LoginDTO, error) {
 	email = strings.ToLower(strings.TrimSpace(email))
 	if !emailRegex.MatchString(email) {
 		slog.Warn("login failed", slog.String("reason", "invalid email format"), slog.String("email", email), slog.String("ip", clientIP))
-		return pb.LoginResponse{}, ErrValidation
+		return LoginDTO{}, ErrValidation
 	}
 
 	if service.lockout != nil {
@@ -212,19 +210,19 @@ func (service *Service) Login(ctx context.Context, email, password, userAgent, c
 		if errIP != nil {
 			AuthLoginAttempts.WithLabelValues("failure", "lockout_check_failed").Inc()
 			slog.Error("failed to check ip rate limit in redis (fail-closed)", slog.String("ip", clientIP), slog.String("email", email), slog.Any("error", errIP))
-			return pb.LoginResponse{}, ErrSessionBlocked
+			return LoginDTO{}, ErrSessionBlocked
 		}
 		if !allowedIP {
 			AuthLoginAttempts.WithLabelValues("failure", "ratelimit").Inc()
 			slog.Warn("security_audit_event", slog.String("event", "auth_failure"), slog.String("ip", clientIP), slog.String("email", email), slog.String("reason", "ip rate limit exceeded"))
-			return pb.LoginResponse{}, ErrRateLimitExceeded
+			return LoginDTO{}, ErrRateLimitExceeded
 		}
 
 		allowed, err := service.lockout.Allow(ctx, clientIP, email, 5, 15*time.Minute, 10*time.Minute)
 		if err != nil {
 			AuthLoginAttempts.WithLabelValues("failure", "lockout_check_failed").Inc()
 			slog.Error("failed to check lockout in redis (fail-closed)", slog.String("ip", clientIP), slog.String("email", email), slog.Any("error", err))
-			return pb.LoginResponse{}, ErrSessionBlocked
+			return LoginDTO{}, ErrSessionBlocked
 		}
 		if allowed == 0 {
 			AuthLoginAttempts.WithLabelValues("failure", "locked").Inc()
@@ -234,7 +232,7 @@ func (service *Service) Login(ctx context.Context, email, password, userAgent, c
 					slog.Error("failed to send account locked notification", slog.String("email", email), slog.Any("error", mailErr))
 				}
 			}
-			return pb.LoginResponse{}, ErrAccountLocked
+			return LoginDTO{}, ErrAccountLocked
 		}
 		if allowed == -1 {
 			AuthLoginAttempts.WithLabelValues("failure", "global_locked").Inc()
@@ -245,7 +243,7 @@ func (service *Service) Login(ctx context.Context, email, password, userAgent, c
 				}
 			}
 
-			return pb.LoginResponse{}, ErrAccountLocked
+			return LoginDTO{}, ErrAccountLocked
 		}
 		defer func() {
 			cleanupCtx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
@@ -273,11 +271,11 @@ func (service *Service) Login(ctx context.Context, email, password, userAgent, c
 	select {
 	case service.cryptoSem <- struct{}{}:
 	case <-ctx.Done():
-		return pb.LoginResponse{}, ctx.Err()
+		return LoginDTO{}, ctx.Err()
 	default:
 		AuthLoginAttempts.WithLabelValues("failure", "ratelimit").Inc()
 		slog.Warn("security_audit_event", slog.String("event", "auth_failure"), slog.String("ip", clientIP), slog.String("email", email), slog.String("reason", "server crypto load limit exceeded"))
-		return pb.LoginResponse{}, ErrRateLimitExceeded
+		return LoginDTO{}, ErrRateLimitExceeded
 	}
 	defer func() { <-service.cryptoSem }()
 
@@ -295,7 +293,7 @@ func (service *Service) Login(ctx context.Context, email, password, userAgent, c
 				slog.Warn("security_audit_event", slog.String("event", "global_lockout_increment"), slog.String("ip", clientIP), slog.String("email", email), slog.String("reason", "global lockout increment reached limit"))
 			}
 		}
-		return pb.LoginResponse{}, ErrInvalidCredentials
+		return LoginDTO{}, ErrInvalidCredentials
 	}
 
 	if errors.Is(verifyErr, ErrInsecureHashParameters) {
@@ -345,11 +343,11 @@ func (service *Service) Login(ctx context.Context, email, password, userAgent, c
 	}
 
 	if user.IsBlocked {
-		return pb.LoginResponse{}, ErrSessionBlocked
+		return LoginDTO{}, ErrSessionBlocked
 	}
 	if !user.EmailVerified {
 		AuthLoginAttempts.WithLabelValues("failure", "email_not_verified").Inc()
-		return pb.LoginResponse{}, ErrEmailNotVerified
+		return LoginDTO{}, ErrEmailNotVerified
 	}
 
 	refreshTokenId := uuid.Must(uuid.NewV7())
@@ -363,7 +361,7 @@ func (service *Service) Login(ctx context.Context, email, password, userAgent, c
 	)
 	if err != nil {
 		AuthLoginAttempts.WithLabelValues("failure", "error").Inc()
-		return pb.LoginResponse{}, err
+		return LoginDTO{}, err
 	}
 
 	AuthLoginAttempts.WithLabelValues("success", "").Inc()
@@ -388,21 +386,15 @@ func (service *Service) Login(ctx context.Context, email, password, userAgent, c
 
 	if err != nil {
 		slog.Error("failed to create session", slog.String("email", user.Email), slog.Any("error", err))
-		return pb.LoginResponse{}, err
+		return LoginDTO{}, err
 	}
 
 	service.notifyNewIPLogin(ctx, user, clientIP, userAgent)
 
-	return pb.LoginResponse{
+	return LoginDTO{
 		AccessToken:  accessToken,
 		RefreshToken: refreshTokenStr,
-		User: &pb.User{
-			Id:         uuid.UUID(user.ID.Bytes).String(),
-			Email:      user.Email,
-			Role:       user.Role,
-			CustomerId: uuid.UUID(user.CustomerID.Bytes).String(),
-			CreatedAt:  timestamppb.New(user.CreatedAt.Time),
-		},
+		User:         user,
 	}, nil
 }
 

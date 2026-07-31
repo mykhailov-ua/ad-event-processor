@@ -23,11 +23,11 @@ func (h *Handler) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.Re
 }
 
 func (h *Handler) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginResponse, error) {
-	resp, err := h.login(ctx, req.Email, req.Password, req.DurationHours)
+	dto, err := h.loginDTO(ctx, req.Email, req.Password, req.DurationHours)
 	if err != nil {
 		return nil, err
 	}
-	return &resp, nil
+	return loginDTOToPB(dto), nil
 }
 
 func (h *Handler) VerifyToken(ctx context.Context, req *pb.VerifyTokenRequest) (*pb.VerifyTokenResponse, error) {

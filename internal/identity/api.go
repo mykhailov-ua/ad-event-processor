@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"espx/internal/identity/db"
-	"espx/internal/identity/pb"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -71,24 +70,6 @@ func authUserFromDB(user db.User) AuthUser {
 	}
 }
 
-func loginResultFromPB(resp pb.LoginResponse) LoginResult {
-	out := LoginResult{
-		AccessToken:  resp.AccessToken,
-		RefreshToken: resp.RefreshToken,
-	}
-	if resp.User != nil {
-		uid, _ := uuid.Parse(resp.User.Id)
-		cid, _ := uuid.Parse(resp.User.CustomerId)
-		out.User = AuthUser{
-			ID:         uid,
-			Email:      resp.User.Email,
-			Role:       resp.User.Role,
-			CustomerID: cid,
-		}
-	}
-	return out
-}
-
 func (a *authAPI) VerifyAPIKey(ctx context.Context, apiKey string) (AuthUser, error) {
 	user, err := a.h.verifyAPIKeyUser(ctx, apiKey)
 	if err != nil {
@@ -121,11 +102,11 @@ func (a *authAPI) CreateAPIKey(ctx context.Context, bearerToken, name string) (C
 }
 
 func (a *authAPI) Login(ctx context.Context, email, password string, durationHours int32) (LoginResult, error) {
-	resp, err := a.h.login(ctx, email, password, durationHours)
+	result, err := a.h.login(ctx, email, password, durationHours)
 	if err != nil {
 		return LoginResult{}, grpcStatusToError(err)
 	}
-	return loginResultFromPB(resp), nil
+	return result, nil
 }
 
 func (a *authAPI) Register(ctx context.Context, adminAPIKey, email, password, role, customerID string) (RegisterResult, error) {

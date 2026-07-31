@@ -225,9 +225,9 @@ Blockers for deleting `api/auth.proto` (and siblings)
 
 | Generated type | Status | Remaining import sites |
 |----------------|--------|------------------------|
-| `AuthServiceClient` / `AuthServiceServer` | Monolith in-process via `identity.AuthAPI` | `identity/{handler,handler_core,handler_grpc,serve,grpc_api,resolve_api}.go`; `controlplane/auth_client.go` |
+| `AuthServiceClient` / `AuthServiceServer` | Monolith in-process via `identity.AuthAPI`; `Login` returns `LoginResult` (service `LoginDTO`) | `identity/{handler,handler_core,handler_grpc,auth_convert,serve,grpc_api,resolve_api}.go`; `controlplane/auth_client.go` |
 | `BillingServiceClient` / `BillingServiceServer` | Monolith in-process via `billing.BillingAPI` (`Invoice`, not `pb.Invoice`) | `billing/{handler,handler_core,handler_grpc,handler_validate,invoice_types,invoice_convert,serve,grpc_api,resolve_api}.go`; `controlplane/billing_client.go` |
-| `PaymentServiceClient` / `PaymentServiceServer` | Monolith in-process via `payment.PaymentAPI` | `payment/{handler,handler_auth,handler_convert,handler_core,handler_grpc,serve,grpc_api,resolve_api}.go`; `controlplane/payment_client.go` |
+| `PaymentServiceClient` / `PaymentServiceServer` | Monolith in-process via `payment.PaymentAPI`; handler uses `PaymentIntent` (service still `db` internally) | `payment/{handler,handler_core,handler_grpc,intent_convert,serve,grpc_api,resolve_api}.go`; `controlplane/payment_client.go` |
 | `NotifierServiceClient` / `NotifierServiceServer` | Monolith in-process via `notifier.NotifierAPI`; service returns `Notification` (not `pb.Notification`) | `notifier/{handler,handler_grpc,notification_types,notification_convert,api,service_input,serve,grpc_api}.go`; `controlplane/notifier_client.go` |
 | `SettlementServiceClient` / `SettlementServiceServer` | Monolith in-process via `SettlementHandler.PaymentSettlement()` (`domain.PaymentSettlement`) | `controlplane/{settlement_handler,settlement_handler_grpc,serve}.go`; `payment/{settlement_grpc_client,resolve_settlement,settlement_ledger_client,outbox_worker}.go` |
 
