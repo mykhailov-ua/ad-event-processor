@@ -10,25 +10,21 @@ import (
 	"espx/internal/config"
 	"espx/internal/database"
 	"espx/internal/ingestion"
-	notifierpb "espx/internal/notifier/pb"
+	"espx/internal/notifier"
 	"espx/pkg/money"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
-
-type Notifier interface {
-	SendNotification(ctx context.Context, provider notifierpb.Provider, recipient, title, body string) (*notifierpb.SendNotificationResponse, error)
-}
 
 type Worker struct {
 	pool     *pgxpool.Pool
 	ch       *database.CHQuery
 	cfg      *config.Config
 	registry *ingestion.Registry
-	notifier Notifier
+	notifier notifier.NotifierAPI
 }
 
-func NewWorker(pool *pgxpool.Pool, ch *database.CHQuery, cfg *config.Config, registry *ingestion.Registry, notifier Notifier) *Worker {
+func NewWorker(pool *pgxpool.Pool, ch *database.CHQuery, cfg *config.Config, registry *ingestion.Registry, notifier notifier.NotifierAPI) *Worker {
 	return &Worker{
 		pool:     pool,
 		ch:       ch,
@@ -195,7 +191,7 @@ func (w *Worker) applyDecision(ctx context.Context, d *Decision) error {
 				money.FormatDecimal(d.Metrics["revenue_micro"].(int64)),
 				d.Metrics["clicks"], d.Metrics["conversions"])
 
-			_, alertErr := w.notifier.SendNotification(ctx, notifierpb.Provider_PROVIDER_TELEGRAM, "admin", title, body)
+			_, alertErr := w.notifier.SendNotification(ctx, "TELEGRAM", "admin", title, body)
 			if alertErr != nil {
 				slog.Error("failed to send margin guard notification", "error", alertErr)
 			}

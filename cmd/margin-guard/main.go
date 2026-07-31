@@ -9,11 +9,12 @@ import (
 	"time"
 
 	"espx/internal/config"
-	"espx/internal/database"
-	"espx/internal/ingestion"
-	db "espx/internal/domain/db"
 	"espx/internal/controlplane"
+	"espx/internal/database"
+	db "espx/internal/domain/db"
+	"espx/internal/ingestion"
 	"espx/internal/ledger"
+	"espx/internal/notifier"
 )
 
 func main() {
@@ -44,7 +45,7 @@ func main() {
 	}
 	registry.StartSync(ctx, time.Duration(cfg.RegistrySyncIntervalMs)*time.Millisecond)
 
-	notifier, closeNotifier, err := controlplane.TryNotifierClient(ctx, cfg)
+	notifierClient, closeNotifier, err := controlplane.TryNotifierClient(ctx, cfg)
 	if err != nil {
 		slog.Warn("notifier client initialization failed", "error", err)
 	}
@@ -61,7 +62,11 @@ func main() {
 
 	chQuery := database.NewCHQuery(chRead, database.CHQueryConfigFromApp(cfg))
 
-	worker := ledger.NewWorker(pool, chQuery, cfg, registry, notifier)
+	var notifierAPI notifier.NotifierAPI
+	if notifierClient != nil {
+		notifierAPI = notifierClient.API()
+	}
+	worker := ledger.NewWorker(pool, chQuery, cfg, registry, notifierAPI)
 
 	go worker.Start(ctx, ledger.WorkerInterval(cfg))
 

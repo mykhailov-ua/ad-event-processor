@@ -151,7 +151,11 @@ func serveMarginGuard(ctx context.Context, cfg *config.Config, inProcess *contro
 	defer chRead.Close()
 
 	chQuery := database.NewCHQuery(chRead, database.CHQueryConfigFromApp(cfg))
-	worker := ledger.NewWorker(pool, chQuery, cfg, registry, notifierClient)
+	var notifierAPI notifier.NotifierAPI
+	if notifierClient != nil {
+		notifierAPI = notifierClient.API()
+	}
+	worker := ledger.NewWorker(pool, chQuery, cfg, registry, notifierAPI)
 	worker.Start(ctx, ledger.WorkerInterval(cfg))
 	<-ctx.Done()
 	return ctx.Err()
