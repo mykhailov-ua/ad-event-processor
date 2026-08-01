@@ -212,7 +212,7 @@ func NewNotifierClientFromAPI(api notifier.NotifierAPI) *NotifierClient {
 }
 
 func NewNotifierClient(ctx context.Context, cfg *config.Config) (*NotifierClient, error) {
-	if cfg == nil || !cfg.NotifierDialEnabled() {
+	if cfg == nil || !cfg.NotifierAPIEnabled() {
 		return nil, nil
 	}
 	api, closeFn, err := notifier.OpenAPI(ctx, cfg)
@@ -230,7 +230,7 @@ func NewNotifierClientInProcess(api notifier.NotifierAPI) *NotifierClient {
 }
 
 func TryNotifierClient(ctx context.Context, cfg *config.Config) (*NotifierClient, func(), error) {
-	if cfg == nil || !cfg.NotifierDialEnabled() {
+	if cfg == nil || !cfg.NotifierAPIEnabled() {
 		return nil, func() {}, nil
 	}
 	api, closeFn, err := notifier.OpenAPI(ctx, cfg)

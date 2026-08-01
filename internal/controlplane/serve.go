@@ -16,10 +16,41 @@ import (
 	db "espx/internal/domain/db"
 	"espx/internal/identity"
 	"espx/internal/licensing"
+	"espx/internal/notifier"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/redis/go-redis/v9"
 )
+
+type InProcessPaymentModule interface {
+	SetSettlementAPI(api domain.PaymentSettlement)
+	SetNotifierAPI(api notifier.NotifierAPI)
+	StartWorkers(ctx context.Context)
+}
+
+type InProcessBillingModule interface {
+	ConfigureNotifier(api notifier.NotifierAPI)
+	StartWorkers(ctx context.Context)
+}
+
+type InProcessNotifierModule interface {
+	StartWorkers(ctx context.Context)
+}
+
+type ServeOptions struct {
+	Auth           *AuthClient
+	Billing        *BillingClient
+	Payment        *PaymentClient
+	Notifier       *NotifierClient
+	BillingModule  InProcessBillingModule
+	PaymentModule  InProcessPaymentModule
+	NotifierModule InProcessNotifierModule
+	RtbBidShadeSim RtbBidShadeSimulator
+}
+
+func (o ServeOptions) Monolith() bool {
+	return o.Auth != nil && o.Billing != nil && o.Payment != nil && o.Notifier != nil
+}
 
 func Serve(ctx context.Context, cfg *config.Config) error {
 	return ServeWithOptions(ctx, cfg, ServeOptions{})

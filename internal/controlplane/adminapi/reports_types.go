@@ -91,3 +91,57 @@ type ReportJobSpec struct {
 	Filters    map[string]any `json:"filters,omitempty"`
 	Format     string         `json:"format"`
 }
+
+type CampaignMetricsDTO struct {
+	Impressions int64 `json:"impressions"`
+	Clicks      int64 `json:"clicks"`
+	Conversions int64 `json:"conversions"`
+}
+
+type CampaignHourlyBucketDTO struct {
+	Hour        string `json:"hour"`
+	Impressions int64  `json:"impressions"`
+	Clicks      int64  `json:"clicks"`
+	Conversions int64  `json:"conversions"`
+}
+
+type CampaignStatsDTO struct {
+	CampaignID   string                    `json:"campaign_id"`
+	CurrentSpend string                    `json:"current_spend"`
+	Metrics      CampaignMetricsDTO        `json:"metrics"`
+	Hourly       []CampaignHourlyBucketDTO `json:"hourly"`
+	Granularity  string                    `json:"granularity"`
+	From         string                    `json:"from"`
+	To           string                    `json:"to"`
+	Stale        bool                      `json:"stale"`
+	Source       string                    `json:"source"`
+	Consistency  string                    `json:"consistency"`
+}
+
+const (
+	MetricSpendMicro     = "spend_micro"
+	MetricRevenueMicro   = "revenue_micro"
+	MetricProfitMicro    = "profit_micro"
+	MetricROIPct         = "roi_pct"
+	MetricCPAMicro       = "cpa_micro"
+	MetricCPCMicro       = "cpc_micro"
+	MetricCPMMicro       = "cpm_micro"
+	MetricCTR            = "ctr"
+	MetricEPCMicro       = "epc_micro"
+	MetricIVTRate        = "ivt_rate"
+	MetricUtilizationPct = "utilization_pct"
+	MetricAvailableMicro = "available_micro"
+	MetricPacingDriftPct = "pacing_drift_pct"
+)
+
+var MetricFormulas = map[string]string{
+	MetricSpendMicro:     "SUM(ledger debits) or CH cost",
+	MetricRevenueMicro:   "SUM(postback payout)",
+	MetricProfitMicro:    "revenue_micro - spend_micro",
+	MetricROIPct:         "profit_micro / spend_micro * 100",
+	MetricCPAMicro:       "spend_micro / conversions",
+	MetricIVTRate:        "ivt / clicks",
+	MetricUtilizationPct: "current_spend / budget_limit",
+	MetricAvailableMicro: "balance + overdraft - reserved",
+	MetricPacingDriftPct: "(actual - planned) / planned",
+}

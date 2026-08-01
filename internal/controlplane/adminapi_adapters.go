@@ -8,9 +8,12 @@ import (
 
 	"espx/internal/controlplane/adminapi"
 	db "espx/internal/domain/db"
+	"espx/pkg/supportbundle"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -293,5 +296,66 @@ func (a fraudThreatAdapter) EnqueueFraudThreat(ctx context.Context, action, ip, 
 		Score:      score,
 		Boost:      boost,
 		TTLSeconds: ttlSeconds,
+	})
+}
+
+type supportBundleWriter struct {
+	pool   *pgxpool.Pool
+	logDir string
+}
+
+func (w supportBundleWriter) WriteSupportBundle(ctx context.Context, out io.Writer) error {
+	meta := supportbundle.Meta{}
+	if w.pool != nil {
+		var dep uuid.UUID
+		var state string
+		err := w.pool.QueryRow(ctx, `
+			SELECT deployment_id, state
+			FROM billing.license_status
+			LIMIT 1`).Scan(&dep, &state)
+		if err != nil && err != pgx.ErrNoRows {
+			return err
+		}
+		if err == nil {
+			if dep != uuid.Nil {
+				meta.DeploymentID = dep.String()
+			}
+			meta.LicenseState = state
+		}
+	}
+	return supportbundle.Write(ctx, out, supportbundle.Options{
+		Meta:     meta,
+		LogDir:   w.logDir,
+		MaxBytes: supportbundle.DefaultMaxBytes,
+	})
+}
+
+type supportFeedbackAdapter struct {
+	svc *Service
+}
+
+func (a supportFeedbackAdapter) SupportFeedbackMeta(ctx context.Context) (adminapi.SupportFeedbackMeta, error) {
+	meta, err := a.svc.SupportFeedbackMeta(ctx)
+	if err != nil {
+		return adminapi.SupportFeedbackMeta{}, err
+	}
+	return adminapi.SupportFeedbackMeta{
+		DeploymentID:  meta.DeploymentID,
+		BinaryVersion: meta.BinaryVersion,
+		SKU:           meta.SKU,
+	}, nil
+}
+
+func (a supportFeedbackAdapter) RecordSupportFeedback(ctx context.Context, in adminapi.SupportFeedbackRecord) (uuid.UUID, error) {
+	return a.svc.RecordSupportFeedback(ctx, SupportFeedbackInput{
+		Type:          in.Type,
+		ContactEmail:  in.ContactEmail,
+		Message:       in.Message,
+		AttachBundle:  in.AttachBundle,
+		BundleGzip:    in.BundleGzip,
+		SubmitterID:   in.SubmitterID,
+		DeploymentID:  in.DeploymentID,
+		BinaryVersion: in.BinaryVersion,
+		SKU:           in.SKU,
 	})
 }

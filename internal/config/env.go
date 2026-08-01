@@ -661,7 +661,7 @@ func (c *Config) AlertmanagerWebhookEnabled() bool {
 	return c.opsAlertRecipient() != ""
 }
 
-func (c *Config) NotifierDialEnabled() bool {
+func (c *Config) NotifierAPIEnabled() bool {
 	return c.OpsAlertsEnabled() || c.AlertmanagerWebhookEnabled()
 }
 
