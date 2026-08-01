@@ -17,7 +17,6 @@ const (
 	rtbOutcomeRingUsable   = rtbOutcomeRingCapacity - 1
 	rtbOutcomeFlushBatch   = 128
 	rtbOutcomeDealIDMax    = 64
-	rtbOutcomeFlushEvery   = 5 * time.Second
 )
 
 type rtbOutcomeSlot struct {
@@ -49,7 +48,8 @@ type RtbDealOutcomeWriter struct {
 	_           [64]byte
 	slots       [rtbOutcomeRingCapacity]rtbOutcomeSlot
 
-	conn driver.Conn
+	conn       driver.Conn
+	flushEvery time.Duration
 
 	stopCh chan struct{}
 	wg     sync.WaitGroup
@@ -61,13 +61,17 @@ func SetRtbDealOutcomeWriter(w *RtbDealOutcomeWriter) {
 	globalRtbOutcomeWriter.Store(w)
 }
 
-func NewRtbDealOutcomeWriter(conn driver.Conn) *RtbDealOutcomeWriter {
+func NewRtbDealOutcomeWriter(conn driver.Conn, flushEvery time.Duration) *RtbDealOutcomeWriter {
 	if conn == nil {
 		return nil
 	}
+	if flushEvery <= 0 {
+		flushEvery = 5 * time.Second
+	}
 	w := &RtbDealOutcomeWriter{
-		conn:   conn,
-		stopCh: make(chan struct{}),
+		conn:       conn,
+		flushEvery: flushEvery,
+		stopCh:     make(chan struct{}),
 	}
 	w.wg.Add(1)
 	go w.worker()
@@ -145,7 +149,7 @@ func recordRtbDealOutcomeBytes(dealID []byte, dealLen uint8, floorMicro int64, r
 
 func (w *RtbDealOutcomeWriter) worker() {
 	defer w.wg.Done()
-	ticker := time.NewTicker(rtbOutcomeFlushEvery)
+	ticker := time.NewTicker(w.flushEvery)
 	defer ticker.Stop()
 	batch := make([]rtbOutcomeRow, 0, rtbOutcomeFlushBatch)
 	for {

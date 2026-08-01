@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"espx/internal/clickhouse/migrate"
 	"espx/internal/config"
 	"espx/internal/database"
 	db "espx/internal/domain/db"
@@ -373,6 +374,31 @@ func main() {
 			"budget_authority", cfg.RtbBudgetAuthority,
 			"targeting_index", cfg.RtbTargetingIndexEnabled(),
 		)
+		if cfg.ClickHouseEnabled() {
+			chCtx, chCancel := context.WithTimeout(ctx, 15*time.Second)
+			chConn, chErr := database.ConnectClickHouse(chCtx, string(cfg.CHDSN))
+			chCancel()
+			if chErr != nil {
+				slog.Warn("rtb clickhouse writers disabled", "error", chErr)
+			} else {
+				migCtx, migCancel := context.WithTimeout(ctx, 30*time.Second)
+				if migErr := migrate.ApplyClickHouseMigrations(migCtx, chConn); migErr != nil {
+					slog.Warn("rtb clickhouse migrate failed", "error", migErr)
+				}
+				migCancel()
+				flush := time.Duration(cfg.RtbDealOutcomeFlushMs) * time.Millisecond
+				dealWriter := ingestion.NewRtbDealOutcomeWriter(chConn, flush)
+				exchangeWriter := ingestion.NewRtbExchangeLogWriter(chConn, flush)
+				ingestion.SetRtbDealOutcomeWriter(dealWriter)
+				ingestion.SetRtbExchangeLogWriter(exchangeWriter)
+				defer func() {
+					dealWriter.Close()
+					exchangeWriter.Close()
+					chConn.Close()
+				}()
+				slog.Info("rtb clickhouse writers enabled", "flush_ms", cfg.RtbDealOutcomeFlushMs)
+			}
+		}
 	}
 
 	gnetHandler := ingestion.NewAdsPacketHandler(cfg, registry, filterEngine, pool, rdbs, sharder, cfg.FraudStreamName, creativeStore)

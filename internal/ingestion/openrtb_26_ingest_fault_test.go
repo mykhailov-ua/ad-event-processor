@@ -25,12 +25,12 @@ func newOpenRTB26FaultHandler(t *testing.T) *AdsPacketHandler {
 	winnerID := uuid.New()
 	geo := GeoHashFromCountry("US")
 	catalog.SyncActiveCampaigns(
-		[]*domain.Campaign{{ID: winnerID, BudgetLimit: 50_000_000, TargetCountries: map[string]struct{}{"US": {}}}},
+		[]*domain.Campaign{{ID: winnerID, BudgetLimit: 50_000_000}},
 		map[uuid.UUID]RtbCampaignInput{
 			winnerID: {BidMicro: 2_000_000, DeviceMask: 7, CategoryMask: 3, GeoHash: geo, Weight: 1},
 		},
 	)
-	cfg := &config.Config{MaxRequestBodySize: 1 << 20}
+	cfg := &config.Config{MaxRequestBodySize: 1 << 20, RtbExchangeMultiImpMax: 10}
 	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud", nil)
 	h.trackProc.rtbCatalog = catalog
 	h.trackProc.rtbMode = rtbModeLive
@@ -40,7 +40,8 @@ func newOpenRTB26FaultHandler(t *testing.T) *AdsPacketHandler {
 
 func postOpenRTB26Gnet(h *AdsPacketHandler, body []byte) (int, []byte) {
 	wire := BuildGnetHTTP("POST", "/openrtb/bid", map[string]string{
-		"Content-Type": "application/json",
+		"Content-Type":   "application/json",
+		"Content-Length": itoa(len(body)),
 	}, body)
 	_, conn := ServeGnetHarness(h, wire)
 	return ParseGnetHTTPStatus(conn.Written()), conn.Written()
@@ -48,6 +49,7 @@ func postOpenRTB26Gnet(h *AdsPacketHandler, body []byte) (int, []byte) {
 
 func TestFault_OpenRTB26_TruncatedGnetCorpus(t *testing.T) {
 	h := newOpenRTB26FaultHandler(t)
+	valid := validExchangeBody()
 
 	cases := []struct {
 		name       string
@@ -56,7 +58,7 @@ func TestFault_OpenRTB26_TruncatedGnetCorpus(t *testing.T) {
 	}{
 		{
 			name:       "missing_imp_array",
-			body:       []byte(`{"id":"b1","tmax":300,"device":{"devicetype":2}}`),
+			body:       []byte(`{"id":"b1","tmax":300,"site":{"page":"x"},"device":{"ip":"1.1.1.1","ua":"x"}}`),
 			wantStatus: http.StatusNoContent,
 		},
 		{
@@ -76,12 +78,12 @@ func TestFault_OpenRTB26_TruncatedGnetCorpus(t *testing.T) {
 		},
 		{
 			name:       "valid_single_imp",
-			body:       []byte(`{"id":"b1","tmax":300,"imp":[{"id":"1","bidfloor":0.5}],"device":{"devicetype":2}}`),
+			body:       valid,
 			wantStatus: http.StatusOK,
 		},
 		{
-			name:       "multi_imp",
-			body:       []byte(`{"id":"b2","tmax":300,"imp":[{"id":"1","bidfloor":0.5},{"id":"2","bidfloor":1.0}],"device":{"devicetype":2}}`),
+			name:       "multi_imp_bid",
+			body:       []byte(`{"id":"b2","tmax":300,"imp":[{"id":"1","bidfloor":0.5,"banner":{"w":1,"h":1}},{"id":"2","bidfloor":1.0,"banner":{"w":1,"h":1}}],"site":{"page":"x"},"device":{"ip":"1.1.1.1","ua":"Mozilla/5.0","devicetype":2}}`),
 			wantStatus: http.StatusOK,
 		},
 	}
@@ -96,9 +98,10 @@ func TestFault_OpenRTB26_TruncatedGnetCorpus(t *testing.T) {
 			case http.StatusOK:
 				bid++
 				assert.Contains(t, string(resp), "seatbid")
+				assert.Contains(t, string(resp), "x-openrtb-version: 2.6")
 			case http.StatusNoContent:
 				nobid++
-				assert.Contains(t, string(resp), "nbr")
+				assert.NotContains(t, string(resp), "seatbid")
 			default:
 				other++
 			}
@@ -116,7 +119,7 @@ func TestFault_OpenRTB26_TruncatedGnetCorpus(t *testing.T) {
 func TestFault_OpenRTB26_ConcurrentGnetBid(t *testing.T) {
 	h := newOpenRTB26FaultHandler(t)
 
-	valid := []byte(`{"id":"b1","tmax":300,"imp":[{"id":"1","bidfloor":0.5}],"device":{"devicetype":2}}`)
+	valid := validExchangeBody()
 	truncated := []byte(`{"id":"x","imp":[{`)
 
 	const (

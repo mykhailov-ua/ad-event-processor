@@ -45,14 +45,14 @@ func TestFault_ClickHouseOutage_SpoolsBeforeAck(t *testing.T) {
 		Type:       "click",
 		CreatedAt:  time.Now().UTC(),
 	}
-	ctx := context.WithValue(context.Background(), domain.DeduplicationTokenKey, "outage-token")
+	ctx := context.WithValue(context.Background(), domain.DeduplicationTokenKey, "deadbeefdeadbeefdeadbeefdeadbeef")
 	err = store.StoreBatch(ctx, []*domain.Event{evt})
 	require.NoError(t, err)
 
 	records, scanErr := spool.Scan()
 	require.NoError(t, scanErr)
 	require.Len(t, records, 1)
-	assert.Equal(t, "outage-token", records[0].DedupToken)
+	assert.Equal(t, "deadbeefdeadbeefdeadbeefdeadbeef", records[0].DedupToken)
 
 	t.Logf("fault_proof fault=clickhouse_outage pg_ledger_ok=true ch_catchup=true spooled=1")
 }
@@ -97,7 +97,7 @@ func TestClickHouseStore_RecoveryAfterOutage(t *testing.T) {
 		Type:       "click",
 		CreatedAt:  time.Unix(1_700_001_000, 0).UTC(),
 	}
-	token := "recover-token"
+	token := "cafebabecafebabecafebabecafebabe"
 	ctx := context.WithValue(context.Background(), domain.DeduplicationTokenKey, token)
 	require.NoError(t, store.StoreBatch(ctx, []*domain.Event{evt}))
 
@@ -109,7 +109,7 @@ func TestClickHouseStore_RecoveryAfterOutage(t *testing.T) {
 
 	require.NoError(t, store.RecoverSpool(context.Background()))
 	assert.NotEmpty(t, prepared)
-	assert.Contains(t, prepared[0], "insert_deduplication_token='recover-token'")
+	assert.Contains(t, prepared[0], "insert_deduplication_token='"+token+"'")
 	records, _ := spool.Scan()
 	assert.Empty(t, records)
 }

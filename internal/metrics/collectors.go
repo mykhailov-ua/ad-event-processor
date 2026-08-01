@@ -592,6 +592,23 @@ var (
 		Name: "ad_rtb_budget_reconcile_samples_total",
 		Help: "Campaign budget reconcile samples completed",
 	})
+	RtbExchangeRequestTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_rtb_exchange_request_total",
+		Help: "OpenRTB 2.6 exchange bid requests handled",
+	})
+	RtbExchangeDuration = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name:    "ad_rtb_exchange_duration_seconds",
+		Help:    "OpenRTB 2.6 exchange end-to-end handler latency",
+		Buckets: prometheus.DefBuckets,
+	})
+	RtbExchangeValidateErrors = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_rtb_exchange_validate_errors_total",
+		Help: "OpenRTB 2.6 exchange bid request validation failures",
+	})
+	RtbExchangeThrottleTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_rtb_exchange_throttle_total",
+		Help: "OpenRTB 2.6 exchange requests rejected by QPS cap",
+	})
 	GlobalSpendBatchesTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_global_spend_batches_total",
 		Help: "Cross-region spend sync batches applied on the global cell",

@@ -98,7 +98,7 @@ Wire DFA benchmarks
 `BenchmarkHTTP3DFA_Happy` (QUIC varint): ~2.2 — 0
 `BenchmarkHTTP3DFA_Worst` (H3 HEADERS + DATA): ~50 — 0
 
-Registered in `scripts/perf/gate_bench.sh`.
+Registered in `scripts/test/gate_bench.sh`.
 
 Ingress hardening
 
@@ -214,3 +214,112 @@ PR checklist
 5. New write paths: fault proof per `.cursor/rules/fault-resilience.mdc` R10
 
 Files: `ingress_quota.go`, `fraud_stream_queue.go`, `unified_filter.go`, `handler_http1_fsm.go`.
+
+---
+
+HFT verification checklist (mandatory before merge on hot path)
+
+Run in order. Any FAIL blocks merge unless explicitly waived in PR with measured reason.
+
+### 1. Allocation gate
+
+```bash
+make test-alloc-gate
+go test -run='^$' -bench=. -benchmem ./internal/ingestion/... ./internal/rtb/...
+```
+
+- Target: **0 B/op, 0 allocs/op** on touched request-path benchmarks.
+- If > 0: identify source with `go test -gcflags='-m' ./path/... 2>&1 | rg 'escapes to heap'` on the hot function.
+
+### 2. ASM / instruction audit
+
+```bash
+go test -c -o /tmp/tracker ./cmd/tracker/
+go tool objdump -s 'package\.FuncName' /tmp/tracker | less
+```
+
+Reject in loop body / per-request path:
+
+| Pattern | Meaning |
+|---------|---------|
+| `CALL runtime.panicIndex` | Missing BCE on slice/string index |
+| `CALL runtime.morestack` | Frame too large; split cold path or shrink locals |
+| `CALL runtime.newobject` | Heap escape in hot loop |
+| `CALL runtime.makeslice` | Dynamic slice growth on request path |
+| `CALL encoding/json` | JSON stdlib on hot path — use DFA / append encoder |
+| `CALL runtime.concatstring` | String `+` or `fmt` — use `append` into `[]byte` |
+| `CALL runtime.convT` / `convTstring` | Interface boxing (`any`, error iface, map lookup) |
+
+Branch audit in asm:
+
+- Prefer **2–3 predictable branches** per 64-byte cache line of hot code.
+- `Jcc` to error/defer paths must be **out of line** (`//go:noinline` cold helpers).
+- No switch on string in hot path; use length switch, packed `uint32` compare, or bitmask.
+
+### 3. Cache / memory hierarchy (RAM is expensive)
+
+Rules:
+
+1. **Sequential access** — SoA scans, forward-only `[]byte` DFA; no pointer chasing (`*T` chains, `[]*T`).
+2. **Working set per request** — Keep hot structs **< 4 cache lines (256 B)** on stack; spill cold fields to cold struct.
+3. **No false sharing** — Pad atomics (`cpu.CacheLinePad`, `_ [56]byte`); one writer per cache line.
+4. **Locality** — Co-locate fields read together (bid + mask + weight in same bucket row); avoid interleaving cold strings between hot ints.
+5. **No "spread across RAM"** — Forbidden: `[]string`, `[]*Imp`, `map[string]T`, linked lists, slice of interfaces on hot path. Use fixed `[N]byte` + `uint8 len`, `uint64` flags, flat arrays.
+6. **Prefetch-friendly** — Presorted buckets; early `break` on score floor; load `GeoHash` / `DeviceMask` once before candidate loop.
+7. **TLB** — Reuse `connContext` / per-connection buffers; no per-request `make([]byte, n)` for bodies > 1 KiB without pool.
+
+### 4. Pointer hell
+
+Forbidden on hot path:
+
+- `new(T)`, `&T{}` in request loop (heap)
+- JSON `Unmarshal` into pointer graph (`*Site`, `*User`, …)
+- Returning pointers to heap objects from parse helpers
+- `interface{}` / `any` boxing (forces `convT` + indirect load)
+
+Allowed:
+
+- `unsafe.String` / `unsafe.Slice` **only** when lifetime ≤ gnet read frame; copy before async
+- Stack arrays `[N]byte` passed as `buf[:ln]` slices
+- `atomic.Pointer` snapshot swap on cold rebuild only
+
+### 5. Allocation root causes (grep before commit)
+
+| Cause | Fix |
+|-------|-----|
+| String `+`, `fmt.Sprintf`, `strings.Join` | Pre-sized `append(dst, …)` |
+| `[]byte` → `string` | Defer `string()` to wire boundary; use `[]byte` in core |
+| `json.Marshal` / `Unmarshal` | DFA parse in; append JSON encoder out |
+| `defer` in handler | Split `fooCore()` without defer |
+| Closures in loops | Named cold function |
+| `strings.TrimSpace`, `ToLower` | Byte-scan trim / ASCII fold on `[]byte` |
+| `uuid.String()`, `.String()` on IDs | `appendUUID` into stack buffer |
+| `float64` price parse | `parseDecimalMicro` → `int64` micro-units |
+| `strconv.Format*` per request | `appendUint` / `appendMicroPrice` into `dst` |
+| `bytes.Buffer`, `strings.Builder` | Fixed `[N]byte` + `append` |
+| `map` lookup on hot path | Switch, sorted slice, or bitmask |
+| Range over `[]T` with pointer elements | Index `slice[i]` on flat `[]T` or SoA |
+| Returning `[]byte` from function building stack buf | Build into caller-provided `dst` (`Append*` API) |
+
+### 6. OpenRTB exchange hot path (reference)
+
+```
+POST /openrtb/bid:
+  ExchangeBodyPrecheck → ParseOpenRTB26 (DFA, 0 allocs)
+  → mapParsedToTargeting (micro-units, DealIDBuf only — no DealID string)
+  → RunAuction
+  → WriteBidHTTPResponse (fixed 129 B header + JSON in-place, no body memcpy)
+```
+
+- Decode `BidRequest` (pointer graph): **admin / validate only**
+- `EncodeBid` (`json.Marshal`): **tests / cold only**; production uses `AppendBidResponse`
+
+### 7. PR attestation (copy into PR description)
+
+```
+[ ] make test-alloc-gate PASS
+[ ] benchmem 0 allocs on touched hot benchmarks
+[ ] objdump: no panicIndex / newobject / json.* in hot loop
+[ ] no new string+ / interface{} / json.Unmarshal on exchange or /track path
+[ ] cache: hot struct fits stack; no pointer chains added
+```

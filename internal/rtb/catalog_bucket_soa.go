@@ -48,7 +48,13 @@ func (soa *candidateBucketSoA) slicesValid(end int) bool {
 		end <= len(soa.MediaTypes) &&
 		end <= len(soa.DurationSec) &&
 		end <= len(soa.BudgetIndices) &&
-		end <= len(soa.CustomerBudgetIndices)
+		end <= len(soa.CustomerBudgetIndices) &&
+		end <= len(soa.DaypartMasks) &&
+		end <= len(soa.TZOffsetSec) &&
+		end <= len(soa.ScheduleStart) &&
+		end <= len(soa.ScheduleEnd) &&
+		end <= len(soa.FreqLimits) &&
+		end <= len(soa.FcapPrefixHash)
 }
 
 func resetBucketSoA(soa *candidateBucketSoA) {
@@ -102,6 +108,9 @@ func appendBucketRow(
 	duration uint32,
 ) {
 	i := int(catalogIdx)
+	if media == 0 {
+		media = uint8(MediaTypeDisplay)
+	}
 	soa.CatalogIdx = append(soa.CatalogIdx, catalogIdx)
 	soa.CreativeIDs = append(soa.CreativeIDs, creativeID)
 	soa.Bids = append(soa.Bids, bid)

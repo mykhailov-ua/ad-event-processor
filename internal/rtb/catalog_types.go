@@ -15,6 +15,7 @@ type BidRequest struct {
 	DealBlock      NoBidReason
 	NowUnix        int64
 	FcapUserHash   uint64
+	BlockedCatMask uint64
 }
 
 type AuctionResult struct {

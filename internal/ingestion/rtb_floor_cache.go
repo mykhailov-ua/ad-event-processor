@@ -100,14 +100,22 @@ func StartDealFloorRefresh(ctx context.Context, cache *DealFloorCache, catalog *
 }
 
 func EffectiveDealFloor(catalog *RtbCatalog, floors *DealFloorCache, dealID string, publisherFloor int64) int64 {
+	return EffectiveDealFloorBytes(catalog, floors, []byte(dealID), publisherFloor)
+}
+
+func EffectiveDealFloorBytes(catalog *RtbCatalog, floors *DealFloorCache, dealID []byte, publisherFloor int64) int64 {
 	floor := publisherFloor
-	if catalog != nil && dealID != "" {
-		if deal, ok := catalog.LookupDeal(dealID); ok && deal.FloorMicro > floor {
+	if len(dealID) == 0 {
+		return floor
+	}
+	if catalog != nil {
+		if deal, ok := catalog.LookupDealBytes(dealID); ok && deal.FloorMicro > floor {
 			floor = deal.FloorMicro
 		}
 	}
-	if floors != nil && dealID != "" {
-		if optimized, ok := floors.Get(dealID); ok && optimized > floor {
+	if floors != nil {
+		key := UnsafeString(dealID)
+		if optimized, ok := floors.Get(key); ok && optimized > floor {
 			floor = optimized
 		}
 	}

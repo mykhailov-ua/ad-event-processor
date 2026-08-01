@@ -100,7 +100,8 @@ func (registry *Registry) rankCandidates(
 	maxDuration := req.MaxDurationSec
 	minBid := req.MinBid
 	store := registry.store
-	winnerPos := -1
+	winnerBid := int64(-1)
+	winnerWeight := uint32(0)
 	deadline := req.DeadlineMono
 	hasDeadline := deadline > 0
 	nowUnix := req.NowUnix
@@ -112,6 +113,7 @@ func (registry *Registry) rankCandidates(
 		_ = catalogIdx[n-1]
 		_ = creativeIDs[n-1]
 		_ = bids[n-1]
+		_ = weights[n-1]
 	}
 
 	for pos := 0; pos < n; pos++ {
@@ -119,19 +121,19 @@ func (registry *Registry) rankCandidates(
 			return -1, 0, -1, scanned, NoBidTimeout
 		}
 
-		start := sliceAtI64(scheduleStarts, pos)
+		start := scheduleStarts[pos]
 		if start > 0 && nowUnix < start {
 			daypartBlocked = true
 			continue
 		}
-		end := sliceAtI64(scheduleEnds, pos)
+		end := scheduleEnds[pos]
 		if end > 0 && nowUnix >= end {
 			daypartBlocked = true
 			continue
 		}
-		mask := sliceAtU32(daypartMasks, pos)
+		mask := daypartMasks[pos]
 		if mask != 0 {
-			tzOff := sliceAtI32(tzOffsets, pos)
+			tzOff := tzOffsets[pos]
 			local := nowUnix + int64(tzOff)
 			sec := local % 86400
 			if sec < 0 {
@@ -144,34 +146,13 @@ func (registry *Registry) rankCandidates(
 			}
 		}
 
-		freqLimit := sliceAtU32(freqLimits, pos)
+		freqLimit := freqLimits[pos]
 		if freqLimit > 0 && fcapUserHash != 0 && fcapSnap != nil {
-			prefixHash := sliceAtU64(fcapPrefixHashes, pos)
+			prefixHash := fcapPrefixHashes[pos]
 			if prefixHash != 0 {
-				lookup := FcapLookupKey(prefixHash, fcapUserHash)
-				snapMask := fcapSnap.Mask
-				snapKeys := fcapSnap.Keys
-				snapVals := fcapSnap.Values
-				if len(snapKeys) > 0 {
-					p := lookup & snapMask
-					found := false
-					for {
-						k := snapKeys[p]
-						if k == lookup {
-							if snapVals[p] >= freqLimit {
-								freqBlocked = true
-								found = true
-							}
-							break
-						}
-						if k == 0 {
-							break
-						}
-						p = (p + 1) & snapMask
-					}
-					if found {
-						continue
-					}
+				if cnt, ok := fcapSnap.FcapCount(prefixHash, fcapUserHash); ok && FreqCapExceeded(freqLimit, cnt) {
+					freqBlocked = true
+					continue
 				}
 			}
 		}
@@ -196,14 +177,11 @@ func (registry *Registry) rankCandidates(
 		if (categoryMasks[pos] & categoryMask) == 0 {
 			continue
 		}
-		if mediaMask != 0 {
-			mt := mediaTypes[pos]
-			if mt == 0 {
-				mt = uint8(MediaTypeDisplay)
-			}
-			if mt&mediaMask == 0 {
-				continue
-			}
+		if blocked := req.BlockedCatMask; blocked != 0 && (categoryMasks[pos]&blocked) != 0 {
+			continue
+		}
+		if mediaMask != 0 && mediaTypes[pos]&mediaMask == 0 {
+			continue
 		}
 		if maxDuration > 0 {
 			dur := durationSec[pos]
@@ -240,17 +218,19 @@ func (registry *Registry) rankCandidates(
 		}
 		if score > maxScore {
 			if winnerIdx >= 0 {
-				secondBid = bids[winnerPos]
+				secondBid = winnerBid
 			}
 			maxScore = score
 			winnerIdx = i
-			winnerPos = pos
+			winnerBid = bid
+			winnerWeight = weights[pos]
 			winnerCreative = creativeIDs[pos]
 		} else if score == maxScore && winnerIdx >= 0 {
-			if weights[pos] > weights[winnerPos] {
-				secondBid = bids[winnerPos]
+			if weights[pos] > winnerWeight {
+				secondBid = winnerBid
 				winnerIdx = i
-				winnerPos = pos
+				winnerBid = bid
+				winnerWeight = weights[pos]
 				winnerCreative = creativeIDs[pos]
 			}
 			if bid > secondBid {

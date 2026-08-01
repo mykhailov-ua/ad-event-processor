@@ -203,16 +203,18 @@ func parseOrtbObject(data []byte, i, n int, out *OpenRTB3Parsed, stack *[ortbMax
 						*depth++
 						stack[*depth] = ortbFrame{parent: ortbKeyItem, inArray: true, itemIdx: itemIdx}
 						var ok bool
+						prev := i
 						i, ok = parseOrtbObject(data, i, n, out, stack, depth)
 						*depth--
-						if !ok {
+						if !ok || i == prev {
 							return i, false
 						}
 						itemIdx++
 					} else {
+						prev := i
 						var err bool
 						i, err = skipJSONValueAt(data, i, n)
-						if err {
+						if err || i == prev {
 							return i, false
 						}
 					}

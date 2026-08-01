@@ -88,6 +88,13 @@ func (catalog *RtbCatalog) rebuildWinnerUUID(rows []rtb.CampaignData, campaigns 
 	catalog.winnerUUID.Store(&m)
 }
 
+func (catalog *RtbCatalog) LookupCreativeADM(geoHash uint32, campaignID rtb.CampaignID, creativeID rtb.CreativeID) ([]byte, uint8, bool) {
+	if catalog == nil || catalog.registry == nil {
+		return nil, 0, false
+	}
+	return catalog.registry.LookupCreativeWire(geoHash, campaignID, creativeID)
+}
+
 func (catalog *RtbCatalog) UUIDForWinner(id rtb.CampaignID) (uuid.UUID, bool) {
 	ptr := catalog.winnerUUID.Load()
 	if ptr == nil {
@@ -142,6 +149,21 @@ func (catalog *RtbCatalog) AllDeals() []rtb.DealData {
 	return catalog.dealIndex.All()
 }
 
+func (catalog *RtbCatalog) EvaluateAuction(evt *domain.Event, targeting RtbTargetingInput) (rtb.AuctionResult, rtb.NoBidReason) {
+	if catalog == nil || catalog.registry == nil {
+		return rtb.AuctionResult{}, rtb.NoBidInvalidRequest
+	}
+	if reason := rtbPrefilterReject(catalog.settingsWatcher, catalog, targeting); reason != rtb.NoBidNone {
+		return rtb.AuctionResult{}, reason
+	}
+	targeting = catalog.enrichTargetingDeal(targeting)
+	if catalog.settingsWatcher != nil {
+		catalog.registry.SetFcapSnapshot(catalog.settingsWatcher.GetFcapRtbSnapshot())
+	}
+	req := BidRequestFromEvent(evt, targeting)
+	return catalog.registry.RunAuctionEval(&req)
+}
+
 func (catalog *RtbCatalog) RunAuction(evt *domain.Event, targeting RtbTargetingInput) (rtb.AuctionResult, rtb.NoBidReason) {
 	if catalog.authority != BudgetAuthorityShadow {
 		if reason := rtbPrefilterReject(catalog.settingsWatcher, catalog, targeting); reason != rtb.NoBidNone {
@@ -182,8 +204,6 @@ func (catalog *RtbCatalog) enrichTargetingDeal(targeting RtbTargetingInput) RtbT
 	var ok bool
 	if targeting.DealIDLen > 0 {
 		deal, ok = catalog.dealIndex.LookupBytes(targeting.DealIDBuf[:targeting.DealIDLen])
-	} else if targeting.DealID != "" {
-		deal, ok = catalog.LookupDeal(targeting.DealID)
 	}
 	if !ok {
 		return targeting

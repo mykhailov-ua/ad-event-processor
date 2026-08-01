@@ -2,6 +2,7 @@ package ingestion
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -84,6 +85,30 @@ func TestParseOpenRTB3Ingress_RejectsESPXNative(t *testing.T) {
 	payload := []byte(`{"campaign_id":"550e8400-e29b-41d4-a716-446655440000","type":"click"}`)
 	var req TrackRequest
 	require.Error(t, ParseOpenRTB3Ingress(&req, payload))
+}
+
+func TestParseOpenRTB3FSM_MalformedItemArrayNoHang(t *testing.T) {
+	// Fuzz corpus e4970d7581126610: malformed item[] must not spin in skipJSONValueAt.
+	payload := []byte(`{"rtb":{"ver":"","item":["id":"a","flr":1.5},{"id":"b","fr":1.l`)
+	done := make(chan struct{})
+	go func() {
+		var out OpenRTB3Parsed
+		_ = parseOpenRTB3FSMInto(&out, payload)
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("parseOpenRTB3FSMInto hung on malformed item array")
+	}
+}
+
+func TestParseSchainNodesAt_negativeIndex(t *testing.T) {
+	var nodes SchainNodes
+	fuzzNoPanic(t, "parseSchainNodesAt", func() {
+		nodes = parseSchainNodesAt([]byte(`{"schain":{"nodes":[]}}`), -1)
+	})
+	assert.Equal(t, uint8(0), nodes.Count)
 }
 
 func BenchmarkParseOpenRTB3FSM(b *testing.B) {

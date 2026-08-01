@@ -654,7 +654,7 @@ func writeBPFInterpretation(b *strings.Builder) {
 	b.WriteString("## Interpretation\n\n")
 	b.WriteString("1. **loadgen on-CPU > 15%** — load generator competes with tracker; lower RATE or run generator on another host.\n")
 	b.WriteString("2. **tracker epoll_wait / read wall %** — gnet poll vs Redis RTT; compare with Prometheus redis_lua p99.\n")
-	b.WriteString("3. **involuntary ctx >> voluntary** — CPU oversubscription (GOMAXPROCS, compose CPU limits).\n")
+	b.WriteString("3. **involuntary ctx >> voluntary** - CPU oversubscription (GOMAXPROCS, compose CPU limits).\n")
 	b.WriteString("4. **cpu throttle % > 5%** — cgroup CPU limit is biting; raise compose cpus or lower RATE.\n")
 	b.WriteString("5. **memory max events > 0** — container hit memory.max; risk of OOM kill.\n")
 	b.WriteString("6. **tracker epoll_wait p99 high** — poll wait dominates; check connection count and Redis RTT.\n")

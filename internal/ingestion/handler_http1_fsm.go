@@ -426,9 +426,10 @@ func http1AssignHeader(req *parsedHTTPRequest, key, val []byte, hFlags *uint8, c
 				req.ClientIP = val
 			}
 		case 0x65636361:
-			if foldKeyU64(key, 4) == 0x75676e616c2d7470 && httpFold[key[12]] == 'a' &&
-				httpFold[key[13]] == 'g' && httpFold[key[14]] == 'e' {
+			if key[6] == '-' && httpFold[key[7]] == 'l' {
 				req.AcceptLang = val
+			} else if key[6] == '-' && httpFold[key[7]] == 'e' {
+				req.AcceptEncoding = val
 			}
 		}
 	case 17:

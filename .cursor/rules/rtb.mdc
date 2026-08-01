@@ -1,7 +1,8 @@
 ---
-description: In-process RTB auction, catalog, budget authority, OpenRTB ingress
+description: In-process RTB auction, catalog, budget authority, OpenRTB 2.6 exchange
 globs:
   - internal/rtb/**
+  - internal/openrtb/**
   - internal/ingestion/rtb*.go
   - internal/ingestion/openrtb*.go
 alwaysApply: false
@@ -11,7 +12,7 @@ Agent: Apply when changing RTB auction, deals, or bid ingress on tracker.
 
 Real-Time Bidding
 
-In-process auction on `/track` before `FilterEngine.Check`. Hot path: `.cursor/rules/hot-path.mdc`. Budget authority: `.cursor/rules/data-layer.mdc` Part I. Open work: `docs/DEVELOPMENT.md`.
+In-process auction on `/track` and `POST /openrtb/bid` before `FilterEngine.Check`. Hot path: `.cursor/rules/hot-path.mdc`. Budget authority: `.cursor/rules/data-layer.mdc` Part I. Open work: `docs/DEVELOPMENT.md`. Production runbook: `docs/RTB_PRODUCTION_RUNBOOK.md`.
 
 `RunAuction` p99: < 15 us
 Candidates scanned p99: < 500
@@ -19,23 +20,26 @@ Heap allocations: 0 per auction
 
 Architecture
 
-RTB is not a standalone OpenRTB exchange endpoint. It runs inside `processTrack()`:
+Two ingress paths share `RunAuction`:
 
-Ingest (`/track`) -> ensureIngestGeo -> applyRtbAuction (`off` skip | `shadow` eval | `live` debit + replace `campaign_id`) -> FilterEngine -> settlement stream.
+1. **`/track`** — `processTrack()` → `applyRtbAuction` (`off` | `shadow` | `live`).
+2. **`POST /openrtb/bid`** — `openrtb_exchange.go` → DFA parse → `RunAuction` → `WriteBidHTTPResponse` (fixed 129 B header + JSON in-place, 0 allocs).
 
 Pre-auction gates (before `rankCandidates` scan budget): daypart bitmask + schedule bounds per candidate; frequency-cap snapshot lookup (fail-open when key missing). Rejects: `NoBidDaypartClosed`, `NoBidFreqCapExceeded`.
 
 Package layout
 
 Auction core: `internal/rtb/` — Registry, ranking, clearing, `BudgetStore`, snapshot
-Tracker glue: `internal/ingestion/rtb_*.go` — Catalog sync, track integration, OpenRTB parse
-Control plane: `internal/controlplane/handler_rtb.go`, `service_rtb.go`, `service_bid_floor.go` — Deals, lint, floors
-Configuration: `internal/config/rtb.go`, `env.go` — `RTB_MODE`, authority, targeting index
+OpenRTB 2.6 codec: `internal/openrtb/` — wire types, decode, validate, encode, macros (no import of `ingestion`/`rtb`)
+Tracker glue: `internal/ingestion/openrtb_exchange.go`, `openrtb_map.go`, `rtb_*.go`
+Control plane: `internal/controlplane/adminapi/rtb_handlers.go`, `service_rtb.go`, `service_bid_floor.go`
+Configuration: `internal/config/env_ingest.go` — `RTB_MODE`, exchange knobs, CH retention
 
 Data flow
 
 `Cold`: `SyncRtbCatalog`, `ReloadRtbDeals`, `UpdateCampaigns` — Rebuild geo shards, SoA buckets, targeting index, presort
 `Hot`: `RunAuction` -> `rankCandidates` — Scan materialized SoA in O(window); CAS budget debit
+`CH`: `rtb_deal_outcomes`, `rtb_exchange_log` — async ring-buffer writers on tracker when `CH_DSN` set
 
 `Registry.catalog` is `atomic.Pointer[catalogSnapshot]` swapped on rebuild; readers never take writer locks.
 
@@ -52,22 +56,18 @@ Shadow: `RunAuctionEval` without spend (`RTB_MODE=shadow`)
 Snapshot: `SaveSnapshot` / `LoadSnapshot` wire v4 at `RTB_SNAPSHOT_PATH`
 Deals: `DealIndex` atomic swap; floors enforced on hot path
 
-Tracker integration
+OpenRTB 2.6 exchange
 
-Modes: `off`, `shadow`, `live` via `RTB_MODE`
-OpenRTB 3.0 parse: Substring scan in `openrtb_parse.go`; 0 allocs
-Deal floors: Max of publisher floor, Postgres deal, Redis `rtb:floor:{id}`
-Catalog sync: Hybrid metadata -> bid/CTR; periodic registry rebuild
-Budget authority: `redis`: Lua debit; `rtb`: in-process budget, skip Lua debit
-Reconcile: Periodic Redis vs RTB divergence sampler
-Pubsub reload: `rtb:catalog:reload` triggers deals + catalog rebuild
+Endpoint: `POST /openrtb/bid` on tracker (gnet handler)
+Headers: `x-openrtb-version: 2.6`; no-bid per `RTB_EXCHANGE_NO_BID_MODE` (`204` or `nbr`)
+QPS: `RTB_EXCHANGE_MAX_QPS` token bucket in `openrtb_exchange.go`
+Metrics: `ad_rtb_exchange_request_total`, `ad_rtb_exchange_duration_seconds`, `ad_rtb_exchange_validate_errors_total`, `ad_rtb_exchange_throttle_total`
+Reconcile: `GET /api/v1/rtb/reconcile/export?window=&request_id=` reads `rtb_exchange_log` in CH
 
-Control plane
+Control plane (`/api/v1/rtb`)
 
-PMP deals: `/admin/rtb/deals`
-Bid request lint: `POST /admin/rtb/validate-bid-request` (cold path)
-Shadow diff: `GET /admin/rtb/shadow-diff`
-Floor optimizer: ClickHouse outcomes -> Redis `rtb:floor:*`
+validate-bid-request, integration-profile, shadow-diff, reconcile/export, deals CRUD
+RBAC: `rtb:read`, `rtb:write`
 Outbox: `RELOAD_RTB_CATALOG` -> Redis pubsub
 
 Observability
@@ -77,22 +77,15 @@ Observability
 `ad_rtb_auction_no_bid_total{reason}`: Pre-bound labels
 `ad_rtb_shadow_winner_mismatch_total`: Shadow divergence
 `ad_rtb_budget_reconcile_high`: Budget divergence gate
+Doctor: `rtb_config` probe in `pkg/doctor/rtb_config.go`
 
-Environment knobs
+Environment knobs (exchange P0)
 
-`RTB_MODE`, default `off`: `shadow` = eval + metrics; `live` replaces `campaign_id`
-`RTB_BUDGET_AUTHORITY`, default `redis`: `rtb` spends in `CheckAndSpend`; Lua skips budget debit
-`RTB_CLEARING_MODE`, default second-price: `first` for first-price
-`RTB_TARGETING_INDEX`, default `true`: Geo + device + category inverted index
-`RTB_SNAPSHOT_PATH`, default -: Budget/catalog snapshot file
-`RTB_CATALOG_RELOAD_CHANNEL`, default `rtb:catalog:reload`: Pubsub reload
-`RTB_RECONCILE_INTERVAL_MS`, default `30000`: Divergence sampler interval
-`RTB_BUDGET_DIVERGENCE_THRESHOLD_MICRO`, default `1000`: Reconcile alert threshold
-`RTB_RECONCILE_SAMPLE_SIZE`, default `32`: Campaigns per tick
-`RTB_HYBRID_MAX_RPS_PER_NODE`, default `5000`: Hybrid balancer metadata
-`RTB_PREBID_IVT`, default `false`: Pre-bid datacenter/proxy gate (R17)
-
-System setting `rtb_budget_authority` in `system_settings` can override via `RtbAuthorityController`.
+`RTB_EXCHANGE_MAX_QPS`, `RTB_EXCHANGE_MAX_BODY_BYTES`, `RTB_EXCHANGE_NO_BID_MODE`, `RTB_EXCHANGE_MULTI_IMP_MAX` (default 1)
+`RTB_REGS_POLICY`, `RTB_BLOCKLIST_ENFORCE`, `RTB_PREBID_IVT`
+`RTB_DEAL_OUTCOME_FLUSH_MS`, `CH_JANITOR_ENABLED`, `CH_JANITOR_INTERVAL_H`
+`CH_RETENTION_DAYS_RTB_DEAL_OUTCOMES`, `CH_RETENTION_DAYS_RTB_EXCHANGE_LOG`
+See `deploy/rtb/env.example`
 
 Hot-path engineering
 
@@ -139,6 +132,8 @@ Verification
 go test -bench=BenchmarkAuction -benchmem ./internal/rtb/
 go test -gcflags="-m" ./internal/rtb/ 2>&1 | rg 'does not escape'
 go test -run TestFault ./internal/rtb/...
+go test ./internal/openrtb/... ./internal/ingestion/... -run 'OpenRTB|openrtb'
+make openrtb-fuzz-smoke   # 5s fuzz per DFA/codec target
 ```
 
 Allocations: 0 B/op on `BenchmarkAuction`
@@ -149,24 +144,15 @@ Strings: No `+` concat per request in parse/rank
 
 File reference
 
+`internal/openrtb/wire26.go`: BidRequest/BidResponse types
+`internal/openrtb/decode.go`, `validate.go`, `encode.go` (cold `EncodeBid` + hot `AppendBidResponse`), `macros.go`
+`internal/ingestion/openrtb_exchange.go`: gnet `/openrtb/bid` handler
+`internal/ingestion/openrtb_map.go`: wire → targeting (single mapper)
 `internal/rtb/auction.go`: `RunAuction`, `RunAuctionEval`, clearing
 `internal/rtb/auction_rank.go`: `rankCandidates`, BCE window
-`internal/rtb/auction_ranking.go`: `effectiveScore`, CTR PPM
-`internal/rtb/auction_clearing.go`: First/second price, reserve
-`internal/rtb/catalog_registry.go`: Shard rebuild, atomic publish
-`internal/rtb/catalog_bucket_soa.go`: Bucket materialization
-`internal/rtb/catalog_bucket_sort.go`: Presort
-`internal/rtb/catalog_geo_index.go`: Geo bucket build
-`internal/rtb/catalog_targeting_index.go`: Inverted index
-`internal/rtb/budget_store.go`: Aligned slots
-`internal/rtb/budget_spend.go`: CAS debit, rollback
-`internal/rtb/metrics.go`: Sampled metrics
-`internal/rtb/persistence.go`: Snapshot v4
-`internal/rtb/deal_index.go`: PMP deal snapshot
 `internal/ingestion/rtb_track.go`: Track integration
 `internal/ingestion/rtb_catalog.go`: `RtbCatalog` facade
-`internal/ingestion/rtb_sync.go`: Catalog sync
-`internal/ingestion/openrtb_parse.go`: Hot OpenRTB 3.0 parse
-`internal/ingestion/openrtb_validate.go`: Cold 2.6/3.0 lint
+`internal/ingestion/rtb_deal_outcomes_writer.go`, `rtb_exchange_log_writer.go`: CH async writers
+`internal/controlplane/adminapi/rtb_handlers.go`: JSON `/api/v1/rtb/*`
 
-Not on hot path today: `HybridBalancer.SelectAndShard` (built, uncalled). Open RTB exchange surface: deferred — see `docs/DEVELOPMENT.md`.
+Deferred (not P0): OpenRTB 3.0 hot parse on `/track` (`openrtb_parse.go`) — exchange is **2.6 only**; see `OPENRTB-FULL.md` §12 for Tier-1 backlog.

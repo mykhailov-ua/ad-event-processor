@@ -101,11 +101,7 @@ func buildRtbTargeting(evt *domain.Event, deviceType []byte, floorMicro int64, c
 				src := ortbSlice(evt.Payload, parsed.DealIDOff, parsed.DealIDLen)
 				copy(out.DealIDBuf[:], src)
 			}
-			dealStr := ""
-			if out.DealIDLen > 0 {
-				dealStr = UnsafeString(out.DealIDBuf[:out.DealIDLen])
-			}
-			floorMicro = EffectiveDealFloor(catalog, catalogDealFloors(catalog), dealStr, floorMicro)
+			floorMicro = EffectiveDealFloorBytes(catalog, catalogDealFloors(catalog), out.DealIDBuf[:out.DealIDLen], floorMicro)
 			out.DeviceType = parsed.DeviceType
 			out.CategoryMask = parsed.CategoryMask
 			out.PublisherFloorMicro = floorMicro
@@ -128,11 +124,9 @@ func buildRtbTargeting(evt *domain.Event, deviceType []byte, floorMicro int64, c
 			out.DealIDLen = uint8(n)
 		}
 	}
-	dealStr := ""
 	if out.DealIDLen > 0 {
-		dealStr = UnsafeString(out.DealIDBuf[:out.DealIDLen])
+		floorMicro = EffectiveDealFloorBytes(catalog, catalogDealFloors(catalog), out.DealIDBuf[:out.DealIDLen], floorMicro)
 	}
-	floorMicro = EffectiveDealFloor(catalog, catalogDealFloors(catalog), dealStr, floorMicro)
 	out.DeviceType = DeviceMaskFromType(deviceType)
 	out.CategoryMask = categoryMask
 	out.PublisherFloorMicro = floorMicro

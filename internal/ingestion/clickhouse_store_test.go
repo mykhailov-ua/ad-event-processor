@@ -73,13 +73,13 @@ func TestClickHouseStore_StoreBatch_DeduplicationTokenFromContext(t *testing.T) 
 
 	store := NewClickHouseStore(connMock, 100*time.Millisecond, "", DefaultCHSpoolConfig(), nil)
 
-	ctx := context.WithValue(context.Background(), domain.DeduplicationTokenKey, "my-custom-test-token")
+	ctx := context.WithValue(context.Background(), domain.DeduplicationTokenKey, "0123456789abcdef0123456789abcdef")
 	err := store.StoreBatch(ctx, []*domain.Event{evt})
 	assert.NoError(t, err)
 
 	assert.Len(t, preparedQueries, 1)
 	assert.Contains(t, preparedQueries[0], "SETTINGS insert_deduplicate=1")
-	assert.Contains(t, preparedQueries[0], "insert_deduplication_token='my-custom-test-token'")
+	assert.Contains(t, preparedQueries[0], "insert_deduplication_token='0123456789abcdef0123456789abcdef'")
 }
 
 func TestClickHouseStore_StoreBatch_DeterministicTokenGeneration(t *testing.T) {

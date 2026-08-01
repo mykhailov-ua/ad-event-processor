@@ -66,20 +66,23 @@ var (
 )
 
 type connContext struct {
-	pbReq       pb.AdEvent
-	trackReq    TrackRequest
-	evt         domain.Event
-	valSlice    []any
-	resp        pb.TrackResponse
-	bufSlice    []byte
-	extraBuf    []byte
-	clickParsed clickQueryParsed
-	wReqID      bufWrapper
-	wCamp       bufWrapper
-	wTime       bufWrapper
-	remoteIP    string
-	shardID     int
-	workerID    int
+	pbReq           pb.AdEvent
+	trackReq        TrackRequest
+	evt             domain.Event
+	valSlice        []any
+	resp            pb.TrackResponse
+	bufSlice        []byte
+	extraBuf        []byte
+	openrtbADM      [512]byte
+	openrtbMultiADM [openrtb26ImpMax][512]byte
+	openrtbParsed   OpenRTB26Parsed
+	clickParsed     clickQueryParsed
+	wReqID          bufWrapper
+	wCamp           bufWrapper
+	wTime           bufWrapper
+	remoteIP        string
+	shardID         int
+	workerID        int
 
 	offloadConn   gnet.Conn
 	offloadReqBuf *[]byte
@@ -650,6 +653,8 @@ func NewAdsPacketHandler(cfg *config.Config, registry domain.CampaignRegistry, f
 		},
 	}
 
+	configureOpenRTBExchangeLimiter(cfg)
+
 	return h
 }
 
@@ -1084,6 +1089,7 @@ type parsedHTTPRequest struct {
 	ClientIP         []byte
 	UserAgent        []byte
 	Accept           []byte
+	AcceptEncoding   []byte
 	TLSHash          []byte
 	SecCHUA          []byte
 	AcceptLang       []byte

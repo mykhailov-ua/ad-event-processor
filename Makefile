@@ -16,7 +16,7 @@ lint: gen fmt
 	$$GOPATH/bin/golangci-lint run
 
 test-fast: gen fmt
-	go test -short -count=1 ./internal/... ./pkg/...
+	go test -short -count=1 -timeout=120s ./internal/... ./pkg/...
 
 test-unit: test-fast
 
@@ -27,8 +27,9 @@ test-fault: gen fmt
 	go test -count=1 -timeout 30m -run 'Fault' ./...
 
 test-alloc-gate: gen fmt
-	go test -short -count=1 -run 'ZeroAlloc|zeroAlloc_fraudScoring|FraudScoring_LatencySLA|ApplyRtbAuction_shadow_zeroAlloc|RecordRtbShadow|HTTP1Parse' ./internal/ingestion/...
-	go test -run='^$$' -bench='Benchmark(HTTP1Parse$$|TrackRequest_ParseJSONOpt$$|Auction$$)' -benchmem -count=1 ./internal/ingestion/... ./internal/rtb/
+	go test -short -count=1 -run 'ZeroAlloc|zeroAlloc_fraudScoring|FraudScoring_LatencySLA|ApplyRtbAuction_shadow_zeroAlloc|RecordRtbShadow|HTTP1Parse|OpenRTB26_Exchange' ./internal/ingestion/...
+	go test -run='^$$' -bench='Benchmark(HTTP1Parse$$|TrackRequest_ParseJSONOpt$$|Auction$$|ParseOpenRTB26Split_hotOnly$$|RunOpenRTBExchangeParsed$$)' -benchmem -count=1 ./internal/ingestion/... ./internal/rtb/
+	bash scripts/test/openrtb_fuzz_smoke.sh
 
 management-domain-coverage:
 	bash scripts/ci/management_domain_coverage.sh
@@ -102,6 +103,9 @@ dev-preflight-smoke:
 
 perf-gate-smoke:
 	PERF_GATE_STRICT=false bash scripts/test/gate_run.sh
+
+openrtb-fuzz-smoke:
+	bash scripts/test/openrtb_fuzz_smoke.sh
 
 edge-phase0:
 	bash scripts/ops/phase0.sh

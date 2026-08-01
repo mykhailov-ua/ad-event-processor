@@ -39,7 +39,6 @@ type RtbTargetingInput struct {
 	DeviceType          uint8
 	CategoryMask        uint64
 	PublisherFloorMicro int64
-	DealID              string
 	DealIDLen           uint8
 	DealIDBuf           [64]byte
 	SeatCount           uint8
@@ -47,6 +46,12 @@ type RtbTargetingInput struct {
 	DealBlock           rtb.NoBidReason
 	Schain              SchainNodes
 	SchainCount         uint8
+	FcapUserHash        uint64
+	ConnectionType      uint8
+	ViewabilityPPM      uint32
+	PMPPrivate          uint8
+	DeviceLMT           uint8
+	BlockedCatMask      uint64
 }
 
 func CampaignIDFromUUID(id uuid.UUID) rtb.CampaignID {
@@ -58,6 +63,13 @@ func GeoHashFromCountry(country string) uint32 {
 		return 0
 	}
 	return crc32.ChecksumIEEE([]byte(country))
+}
+
+func GeoHashFromCountryBytes(country []byte) uint32 {
+	if len(country) == 0 {
+		return 0
+	}
+	return crc32.ChecksumIEEE(country)
 }
 
 func DeviceMaskFromType(deviceType []byte) uint8 {
@@ -82,19 +94,20 @@ func DeviceMaskFromType(deviceType []byte) uint8 {
 }
 
 func BidRequestFromEvent(evt *domain.Event, targeting RtbTargetingInput) rtb.BidRequest {
-	var fcapUserHash uint64
-	if evt != nil && evt.UserID != "" {
+	fcapUserHash := targeting.FcapUserHash
+	if fcapUserHash == 0 && evt != nil && evt.UserID != "" {
 		fcapUserHash = hashUserID(evt.UserID)
 	}
 	return rtb.BidRequest{
-		CategoryMask: targeting.CategoryMask,
-		MinBid:       targeting.PublisherFloorMicro,
-		GeoHash:      targeting.GeoHash,
-		DeviceType:   targeting.DeviceType,
-		DeadlineMono: targeting.DeadlineMono,
-		DealBlock:    targeting.DealBlock,
-		NowUnix:      CachedTimeUTC().Unix(),
-		FcapUserHash: fcapUserHash,
+		CategoryMask:   targeting.CategoryMask,
+		MinBid:         targeting.PublisherFloorMicro,
+		GeoHash:        targeting.GeoHash,
+		DeviceType:     targeting.DeviceType,
+		DeadlineMono:   targeting.DeadlineMono,
+		DealBlock:      targeting.DealBlock,
+		NowUnix:        CachedTimeUTC().Unix(),
+		FcapUserHash:   fcapUserHash,
+		BlockedCatMask: targeting.BlockedCatMask,
 	}
 }
 
@@ -103,6 +116,13 @@ func hashUserID(userID string) uint64 {
 		return 0
 	}
 	return rtb.HashBytes64(unsafe.Slice(unsafe.StringData(userID), len(userID)))
+}
+
+func hashUserIDBytes(userID []byte) uint64 {
+	if len(userID) == 0 {
+		return 0
+	}
+	return rtb.HashBytes64(userID)
 }
 
 func CampaignDataFromDomain(camp *domain.Campaign, input RtbCampaignInput) rtb.CampaignData {

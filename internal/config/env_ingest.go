@@ -42,6 +42,34 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 	cfg.RtbReconcileSampleSize = getEnvInt("RTB_RECONCILE_SAMPLE_SIZE", 32)
 	cfg.RtbTargetingIndex = getEnvBool("RTB_TARGETING_INDEX", true)
 	cfg.RtbPrebidIVT = getEnvBool("RTB_PREBID_IVT", false)
+	cfg.RtbExchangeMaxQPS = getEnvInt("RTB_EXCHANGE_MAX_QPS", 0)
+	cfg.RtbExchangeMaxBodyBytes = getEnvInt64("RTB_EXCHANGE_MAX_BODY_BYTES", 1<<20)
+	cfg.RtbExchangeNoBidMode = os.Getenv("RTB_EXCHANGE_NO_BID_MODE")
+	if cfg.RtbExchangeNoBidMode == "" {
+		cfg.RtbExchangeNoBidMode = "204"
+	}
+	cfg.RtbExchangeMultiImpMax = getEnvInt("RTB_EXCHANGE_MULTI_IMP_MAX", 1)
+	cfg.RtbExchangeGzip = getEnvBool("RTB_EXCHANGE_GZIP", true)
+	cfg.RtbExchangeDelivery = os.Getenv("RTB_EXCHANGE_DELIVERY")
+	if cfg.RtbExchangeDelivery == "" {
+		cfg.RtbExchangeDelivery = "adm"
+	}
+	cfg.RtbExchangeNURLTemplate = os.Getenv("RTB_EXCHANGE_NURL_TEMPLATE")
+	cfg.RtbExchangeSeatID = os.Getenv("RTB_EXCHANGE_SEAT_ID")
+	if cfg.RtbExchangeSeatID == "" {
+		cfg.RtbExchangeSeatID = "1"
+	}
+	cfg.RtbRegsPolicy = os.Getenv("RTB_REGS_POLICY")
+	if cfg.RtbRegsPolicy == "" {
+		cfg.RtbRegsPolicy = "flag"
+	}
+	cfg.RtbCoppaPolicy = os.Getenv("RTB_COPPA_POLICY")
+	if cfg.RtbCoppaPolicy == "" {
+		cfg.RtbCoppaPolicy = "flag"
+	}
+	cfg.RtbBlocklistEnforce = getEnvBool("RTB_BLOCKLIST_ENFORCE", true)
+	cfg.RtbCatalogReloadSLOMs = getEnvInt("RTB_CATALOG_RELOAD_SLO_MS", 5000)
+	cfg.RtbDealOutcomeFlushMs = getEnvInt("RTB_DEAL_OUTCOME_FLUSH_MS", 5000)
 	if cfg.RtbBudgetAuthority == "" {
 		cfg.RtbBudgetAuthority = "redis"
 	}

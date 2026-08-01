@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("{\"rtb\":{\"ver\":\"\",\"item\":[\"id\":\"a\",\"flr\":1.5},{\"id\":\"b\",\"fr\":1.l")

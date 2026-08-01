@@ -14,6 +14,7 @@ import (
 )
 
 type mixConfig struct {
+	pctOpenRTB int
 	pctValid   int
 	pctFraud   int
 	pctInvalid int
@@ -29,20 +30,21 @@ func defaultMix(mode string, pctBroken, pctGray int) mixConfig {
 		if pctGray <= 0 {
 			pctGray = 20
 		}
-		clean := 100 - pctBroken - pctGray
+		clean := 100 - pctBroken - pctGray - 5
 		if clean < 0 {
 			clean = 0
 		}
 		return mixConfig{
+			pctOpenRTB: 5,
 			pctValid:   clean,
 			pctFraud:   pctGray,
 			pctInvalid: pctBroken / 2,
 			pctDDoS:    pctBroken - pctBroken/2,
 		}
 	case "smoke":
-		return mixConfig{pctValid: 50, pctFraud: 10, pctInvalid: 20, pctDDoS: 15}
+		return mixConfig{pctOpenRTB: 15, pctValid: 35, pctFraud: 10, pctInvalid: 20, pctDDoS: 15}
 	default:
-		return mixConfig{pctValid: 35, pctFraud: 15, pctInvalid: 20, pctDDoS: 15}
+		return mixConfig{pctOpenRTB: 10, pctValid: 30, pctFraud: 15, pctInvalid: 20, pctDDoS: 15}
 	}
 }
 
@@ -85,12 +87,15 @@ func (r *runner) doOnce() {
 	roll := rand.Intn(100)
 	base := r.trackers[iter%uint64(len(r.trackers))]
 
-	validEnd := r.mix.pctValid
+	openrtbEnd := r.mix.pctOpenRTB
+	validEnd := openrtbEnd + r.mix.pctValid
 	fraudEnd := validEnd + r.mix.pctFraud
 	invalidEnd := fraudEnd + r.mix.pctInvalid
 	ddosEnd := invalidEnd + r.mix.pctDDoS
 
 	switch {
+	case roll < openrtbEnd:
+		r.postOpenRTBBid(base, iter)
 	case roll < validEnd:
 		body := validBody(iter)
 		r.post(base+"/track", "application/json", body, nil)
@@ -106,6 +111,20 @@ func (r *runner) doOnce() {
 	default:
 		r.edgeTraffic(base, iter)
 	}
+}
+
+func openrtbBidBody(iter uint64) []byte {
+	id := iter % 100000
+	return []byte(`{"id":"load-` + strconv.FormatUint(id, 10) + `","tmax":300,"imp":[{"id":"1","bidfloor":0.5,"banner":{"w":300,"h":250}}],"site":{"page":"https://example.com"},"device":{"ip":"8.8.8.8","ua":"Mozilla/5.0","devicetype":2,"geo":{"country":"US"}}}`)
+}
+
+func (r *runner) postOpenRTBBid(base string, iter uint64) {
+	body := openrtbBidBody(iter)
+	req, _ := http.NewRequest(http.MethodPost, base+"/openrtb/bid", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-openrtb-version", "2.6")
+	req.Header.Set("Connection", "keep-alive")
+	r.exec(req)
 }
 
 func validBody(iter uint64) []byte {

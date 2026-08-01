@@ -34,8 +34,11 @@ func TestEnrichTargetingDeal_pmp(t *testing.T) {
 		PacingOpen: rtb.PacingOpen,
 		Seats:      2,
 	}})
+	var dealBuf [64]byte
+	copy(dealBuf[:], "deal-x")
 	targeting := catalog.enrichTargetingDeal(RtbTargetingInput{
-		DealID:       "deal-x",
+		DealIDLen:    6,
+		DealIDBuf:    dealBuf,
 		GeoHash:      GeoHashFromCountry("US"),
 		CategoryMask: 1,
 		SeatCount:    2,

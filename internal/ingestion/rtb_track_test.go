@@ -13,7 +13,8 @@ import (
 )
 
 type staticGeoProvider struct {
-	country string
+	country   string
+	anonymous bool
 }
 
 func (s *staticGeoProvider) GetCountry(ip string) (string, error) {
@@ -21,7 +22,7 @@ func (s *staticGeoProvider) GetCountry(ip string) (string, error) {
 }
 
 func (s *staticGeoProvider) IsAnonymous(ip string) (bool, error) {
-	return false, nil
+	return s.anonymous, nil
 }
 
 func (s *staticGeoProvider) Close() error { return nil }

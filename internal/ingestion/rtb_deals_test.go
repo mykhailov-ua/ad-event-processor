@@ -2,8 +2,11 @@ package ingestion
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
+	"espx/internal/config"
 	"espx/internal/database"
 	"espx/internal/domain/db"
 	"espx/internal/rtb"
@@ -43,4 +46,37 @@ func TestReloadRtbDeals_buildsDealIndex(t *testing.T) {
 
 func TestRtbCatalogReloadChannel_default(t *testing.T) {
 	assert.Equal(t, "rtb:catalog:reload", RtbCatalogReloadChannel(nil))
+}
+
+func TestReloadRtbCatalog_withinSLO(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+	pool, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	customerID := uuid.New()
+	_, err := pool.Exec(ctx, `INSERT INTO customers (id, name) VALUES ($1, 'slo-test')`, customerID)
+	require.NoError(t, err)
+	for i := 0; i < 8; i++ {
+		_, err = pool.Exec(ctx, `
+			INSERT INTO rtb_deals (deal_id, floor_micro, geo_mask, cat_mask, pacing, customer_id, seats)
+			VALUES ($1, 100000, 15, 7, 1, $2, 1)`, fmt.Sprintf("slo-deal-%d", i), customerID)
+		require.NoError(t, err)
+	}
+
+	cfg := &config.Config{
+		RtbMode:               "live",
+		RtbCatalogReloadSLOMs: 5000,
+	}
+	registry := NewRegistry(db.New(pool))
+	catalog := NewRtbCatalog(rtb.NewBudgetStore(), BudgetAuthorityShadow)
+
+	start := time.Now()
+	require.NoError(t, ReloadRtbCatalog(ctx, db.New(pool), registry, catalog, cfg, nil, RtbBudgetSync{}, nil))
+	elapsed := time.Since(start)
+	slo := time.Duration(cfg.RtbCatalogReloadSLOMs) * time.Millisecond
+	require.Less(t, elapsed, slo, "reload took %s, slo=%s", elapsed, slo)
+	assert.Equal(t, 8, catalog.DealCount())
 }

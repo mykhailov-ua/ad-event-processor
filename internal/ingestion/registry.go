@@ -560,16 +560,14 @@ func (r *Registry) SyncEntitlements(ctx context.Context) error {
 		return nil
 	}
 
-	var planCode string
 	var stateStr string
 	var entitlementsBytes []byte
-	var validUntil time.Time
 
 	var licEnt licensing.Entitlements
 	var licState licensing.LicenseState = licensing.StateActive
 
-	row := r.pool.QueryRow(ctx, "SELECT plan_code, state, entitlements_json, valid_until FROM billing.license_status LIMIT 1")
-	err := row.Scan(&planCode, &stateStr, &entitlementsBytes, &validUntil)
+	row := r.pool.QueryRow(ctx, "SELECT state, entitlements_json FROM billing.license_status LIMIT 1")
+	err := row.Scan(&stateStr, &entitlementsBytes)
 	if err == nil {
 		licState = licensing.LicenseState(stateStr)
 		_ = json.Unmarshal(entitlementsBytes, &licEnt)
@@ -584,60 +582,8 @@ func (r *Registry) SyncEntitlements(ctx context.Context) error {
 		licEnt.Features.SlotMigration = true
 	}
 
-	custRows, err := r.pool.Query(ctx, `
-		SELECT s.customer_id, s.plan_code, s.status, p.limits_json, p.features_json, s.overrides_json
-		FROM billing.customer_subscriptions s
-		JOIN billing.subscription_plans p ON s.plan_code = p.code
-	`)
-
-	byCust := make(map[uuid.UUID]licensing.Entitlements)
-	if err == nil {
-		defer custRows.Close()
-		for custRows.Next() {
-			var custID uuid.UUID
-			var planCode string
-			var status string
-			var limitsBytes []byte
-			var featuresBytes []byte
-			var overridesBytes []byte
-
-			err := custRows.Scan(&custID, &planCode, &status, &limitsBytes, &featuresBytes, &overridesBytes)
-			if err != nil {
-				continue
-			}
-
-			var limits licensing.Limits
-			_ = json.Unmarshal(limitsBytes, &limits)
-
-			var features licensing.FeatureSet
-			_ = json.Unmarshal(featuresBytes, &features)
-
-			if len(overridesBytes) > 0 {
-				var overrides struct {
-					Limits   *licensing.Limits     `json:"limits,omitempty"`
-					Features *licensing.FeatureSet `json:"features,omitempty"`
-				}
-				if json.Unmarshal(overridesBytes, &overrides) == nil {
-					if overrides.Limits != nil {
-						mergeLimits(&limits, *overrides.Limits)
-					}
-					if overrides.Features != nil {
-						mergeFeatures(&features, *overrides.Features)
-					}
-				}
-			}
-
-			custEnt := licensing.Entitlements{
-				Limits:   limits,
-				Features: features,
-			}
-
-			byCust[custID] = licensing.Effective(licEnt, custEnt)
-		}
-	}
-
 	r.entitlements.Store(&entitlementsSnapshot{
-		byCustomerID: byCust,
+		byCustomerID: nil,
 		license:      licEnt,
 		licenseState: licState,
 	})
@@ -650,8 +596,7 @@ func (r *Registry) GetEntitlements(customerID uuid.UUID) (licensing.Entitlements
 	if !ok || snap == nil {
 		return licensing.Entitlements{}, false
 	}
-	ent, ok := snap.byCustomerID[customerID]
-	return ent, ok
+	return snap.license, true
 }
 
 func (r *Registry) GetLicenseState() (licensing.LicenseState, licensing.Entitlements) {
@@ -660,38 +605,4 @@ func (r *Registry) GetLicenseState() (licensing.LicenseState, licensing.Entitlem
 		return licensing.StateExpired, licensing.Entitlements{}
 	}
 	return snap.licenseState, snap.license
-}
-
-func mergeLimits(dst *licensing.Limits, src licensing.Limits) {
-	if src.MaxRPS != 0 {
-		dst.MaxRPS = src.MaxRPS
-	}
-	if src.MaxRequestsPerDay != 0 {
-		dst.MaxRequestsPerDay = src.MaxRequestsPerDay
-	}
-	if src.MaxActiveCampaigns != 0 {
-		dst.MaxActiveCampaigns = src.MaxActiveCampaigns
-	}
-	if src.MaxRegions != 0 {
-		dst.MaxRegions = src.MaxRegions
-	}
-	if src.MaxTenants != 0 {
-		dst.MaxTenants = src.MaxTenants
-	}
-	if src.MaxEventsPerMonth != 0 {
-		dst.MaxEventsPerMonth = src.MaxEventsPerMonth
-	}
-	if src.MaxAPIKeys != 0 {
-		dst.MaxAPIKeys = src.MaxAPIKeys
-	}
-	if src.MaxExportChunkBytes != 0 {
-		dst.MaxExportChunkBytes = src.MaxExportChunkBytes
-	}
-	if src.QuotaResetTimezone != "" {
-		dst.QuotaResetTimezone = src.QuotaResetTimezone
-	}
-}
-
-func mergeFeatures(dst *licensing.FeatureSet, src licensing.FeatureSet) {
-	licensing.MergeFeatures(dst, src)
 }

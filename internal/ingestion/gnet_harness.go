@@ -158,6 +158,16 @@ func ParseGnetHTTPBody(resp []byte) []byte {
 	return resp[idx+4:]
 }
 
+func PostOpenRTBBidGnet(h *AdsPacketHandler, body []byte) (int, []byte) {
+	headers := map[string]string{
+		"Content-Type":   "application/json",
+		"Content-Length": strconv.Itoa(len(body)),
+		"Connection":     "keep-alive",
+	}
+	_, conn := ServeGnetHarness(h, BuildGnetHTTP("POST", "/openrtb/bid", headers, body))
+	return ParseGnetHTTPStatus(conn.Written()), conn.Written()
+}
+
 func PostTrackGnet(h *AdsPacketHandler, body []byte, contentType, accept string) (int, []byte) {
 	headers := map[string]string{
 		"Content-Type": contentType,
