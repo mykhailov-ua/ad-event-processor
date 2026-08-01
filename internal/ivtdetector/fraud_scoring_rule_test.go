@@ -34,6 +34,7 @@ func testFraudModelPath(t *testing.T) string {
 		}
 	}
 	t.Skip("fraud model not found; run make fraud-modeling-check locally")
+	return ""
 }
 
 func TestFraudScoringRule_Integration(t *testing.T) {

@@ -52,7 +52,7 @@ func validateAndApplyDefaults(cfg *Config) error {
 		if hostname == "" {
 			hostname = "unknown"
 		}
-		cfg.		RedisConsumerID = hostname + ":" + strconv.Itoa(os.Getpid())
+		cfg.RedisConsumerID = hostname + ":" + strconv.Itoa(os.Getpid())
 	}
 
 	applyControlplaneDefaults(cfg)

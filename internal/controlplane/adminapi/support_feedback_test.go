@@ -93,7 +93,7 @@ func TestSupportFeedbackPost_handler(t *testing.T) {
 func TestSupportFeedbackPost_bundleRedaction(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	raw, err := os.ReadFile(filepath.Join("..", "..", "pkg", "supportbundle", "testdata", "bundle_sample.jsonl"))
+	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "pkg", "supportbundle", "testdata", "bundle_sample.jsonl"))
 	if err != nil {
 		t.Fatal(err)
 	}

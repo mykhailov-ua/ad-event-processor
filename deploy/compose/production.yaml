@@ -2,6 +2,7 @@
 #
 # Usage:
 #   docker compose -f docker-compose.yaml -f deploy/compose/production.yaml up -d
+#   (root docker-compose.yaml includes deploy/compose/docker-compose.yaml)
 #
 # Prerequisites:
 #   - DB_DSN with sslmode=verify-full and sslrootcert=${PG_SSL_ROOT_CERT}

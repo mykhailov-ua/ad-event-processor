@@ -22,6 +22,8 @@ var (
 		"Makefile",
 		"docker-compose.yaml",
 		"docker-compose.load-test.yaml",
+		"deploy/compose/docker-compose.yaml",
+		"deploy/compose/docker-compose.load-test.yaml",
 		"sqlc.yaml",
 		".golangci.yaml",
 		"lefthook.yaml",
@@ -257,7 +259,7 @@ func isAllowedDirective(text string) bool {
 }
 
 func discoverRootDockerfiles() []string {
-	matches, err := filepath.Glob("Dockerfile*")
+	matches, err := filepath.Glob("deploy/docker/Dockerfile*")
 	if err != nil {
 		return nil
 	}

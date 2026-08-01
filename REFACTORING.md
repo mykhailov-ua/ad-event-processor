@@ -145,7 +145,7 @@ Pointers to .cursor/, REFACTORING.md, backlog in code
 10. Rename files per naming rules.
 11. Remove dead localhost clients and env vars. — done (gRPC server ports/hosts removed from config and compose)
 12. Re-add sparse “why” comments on cold path (post-refactor only; see §7).
-13. Repository root and deploy/scripts consolidation. — scripts alias dirs removed (`local-dev`, `perf-gate`, `edge-tuning`, `redis`); smoke moved to `scripts/dev/`
+13. Repository root and deploy/scripts consolidation. — scripts alias dirs removed; smoke in `scripts/dev/`; Dockerfiles in `deploy/docker/`; compose in `deploy/compose/` (root `docker-compose.yaml` includes)
 
 
 Global done
@@ -159,6 +159,7 @@ ivt-detector/fraud-scorer use management HTTP (`/api/v1/ops/blacklist`, `/api/v1
 Payment webhook HTTP (`:8187`) started from `payment.Module.StartWorkers`.
 Removed gRPC-only config: `AUTH_SERVER_*`, `PAYMENT_SERVER_*`, `SETTLEMENT_SERVER_*`, `BILLING_SERVER_*`, `NOTIFIER_PORT` / `NOTIFIER_SERVER_HOST` (in-process modules only).
 Scripts: profile smoke under `scripts/dev/`; deleted `local-dev/`, `perf-gate/`, `edge-tuning/`, `redis/` alias dirs.
+Deploy: `deploy/docker/Dockerfile*` (platform + log workers); `deploy/compose/docker-compose.yaml` + load-test overlay; root compose stubs `include` those files.
 No *_bridge.go or host adapters.
 No nested domain packages under service roots.
 domain is only shared type package.
