@@ -45,7 +45,7 @@ func (s *UDPControlServer) Start(ctx context.Context) error {
 	if s == nil || s.cfg == nil || !s.cfg.UDPControlEnabled {
 		return nil
 	}
-	addr, err := net.ResolveUDPAddr("udp", s.cfg.UDPMgmtBindAddr)
+	addr, err := net.ResolveUDPAddr("udp", s.cfg.UDPControlBindAddr)
 	if err != nil {
 		return err
 	}

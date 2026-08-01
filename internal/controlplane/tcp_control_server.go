@@ -36,7 +36,7 @@ func (s *TCPControlServer) Start(ctx context.Context) error {
 	if s == nil || s.cfg == nil || !s.cfg.TCPControlEnabled {
 		return nil
 	}
-	bind := s.cfg.TCPMgmtBindAddr
+	bind := s.cfg.TCPControlBindAddr
 	if bind == "" {
 		bind = ":8192"
 	}

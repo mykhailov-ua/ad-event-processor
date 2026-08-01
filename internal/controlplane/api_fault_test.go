@@ -206,11 +206,11 @@ func TestFault_APIChLagStaleOK(t *testing.T) {
 	require.NoError(t, json.NewDecoder(respFresh.Body).Decode(&freshReport))
 	require.False(t, freshReport.Stale, "fresh CH ingest must clear stale flag")
 
-	stopMgmtContainer(t, chContainer)
-	requireMgmtFaultActive(t, func() bool {
+	stopFaultContainer(t, chContainer)
+	requireFaultActive(t, func() bool {
 		return conn.Ping(ctx) != nil
 	}, "clickhouse must be unreachable after container stop")
-	startMgmtContainer(t, chContainer)
+	startFaultContainer(t, chContainer)
 
 	faultproof.Log(t, "api_ch_lag_stale_ok", map[string]string{
 		"subsystem":      "management_api",

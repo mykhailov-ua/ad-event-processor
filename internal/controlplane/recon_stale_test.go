@@ -158,7 +158,7 @@ func TestAlertStaleUnresolvedDiscrepancies_notifiesOps(t *testing.T) {
 	requests := stub.snapshot()
 	require.Len(t, requests, 1)
 	assert.Contains(t, requests[0].Body, "Unresolved recon discrepancy")
-	assert.Equal(t, "recon:unresolved:"+itoaMgmtFault(int(runID)), requests[0].DedupKey)
+	assert.Equal(t, "recon:unresolved:"+itoaFault(int(runID)), requests[0].DedupKey)
 }
 
 func TestFault_ReconStaleDiscrepancyOpsAlert(t *testing.T) {
@@ -199,7 +199,7 @@ func TestFault_ReconStaleDiscrepancyOpsAlert(t *testing.T) {
 
 	faultproof.Log(t, "recon_stale_discrepancy_ops_alert", map[string]string{
 		"subsystem":   "management_recon",
-		"run_id":      itoaMgmtFault(int(runID)),
+		"run_id":      itoaFault(int(runID)),
 		"notified":    "true",
 		"baseline_ok": "true",
 		"fault_type":  "stale_unresolved",

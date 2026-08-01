@@ -9,19 +9,19 @@ import (
 	"espx/internal/metrics"
 )
 
-var ErrMgmtPgGateRejected = errors.New("mgmt pg gate rejected")
+var ErrPostgresGateRejected = errors.New("postgres gate rejected")
 
-const mgmtPgReserve = 1
+const postgresGateReserve = 1
 
-type MgmtPgGate struct {
+type PostgresGate struct {
 	sem      chan struct{}
 	capacity int
 	lowSlots chan struct{}
 	inFlight atomic.Int32
 }
 
-func NewMgmtPgGate(maxConns int) *MgmtPgGate {
-	capacity := maxConns - mgmtPgReserve
+func NewPostgresGate(maxConns int) *PostgresGate {
+	capacity := maxConns - postgresGateReserve
 	if capacity < 2 {
 		capacity = 2
 	}
@@ -29,14 +29,14 @@ func NewMgmtPgGate(maxConns int) *MgmtPgGate {
 	if lowCap < 1 {
 		lowCap = 1
 	}
-	return &MgmtPgGate{
+	return &PostgresGate{
 		sem:      make(chan struct{}, capacity),
 		capacity: capacity,
 		lowSlots: make(chan struct{}, lowCap),
 	}
 }
 
-func (g *MgmtPgGate) AcquireHigh(ctx context.Context) error {
+func (g *PostgresGate) AcquireHigh(ctx context.Context) error {
 	if g == nil {
 		return nil
 	}
@@ -44,7 +44,7 @@ func (g *MgmtPgGate) AcquireHigh(ctx context.Context) error {
 	select {
 	case g.sem <- struct{}{}:
 		if wait := time.Since(start); wait > 0 {
-			metrics.MgmtPgGateAcquireWaitSeconds.WithLabelValues("high").Observe(wait.Seconds())
+			metrics.PostgresGateAcquireWaitSeconds.WithLabelValues("high").Observe(wait.Seconds())
 		}
 		g.inFlight.Add(1)
 		return nil
@@ -53,7 +53,7 @@ func (g *MgmtPgGate) AcquireHigh(ctx context.Context) error {
 	}
 }
 
-func (g *MgmtPgGate) ReleaseHigh() {
+func (g *PostgresGate) ReleaseHigh() {
 	if g == nil {
 		return
 	}
@@ -61,7 +61,7 @@ func (g *MgmtPgGate) ReleaseHigh() {
 	<-g.sem
 }
 
-func (g *MgmtPgGate) AcquireLow(ctx context.Context) error {
+func (g *PostgresGate) AcquireLow(ctx context.Context) error {
 	if g == nil {
 		return nil
 	}
@@ -70,15 +70,15 @@ func (g *MgmtPgGate) AcquireLow(ctx context.Context) error {
 	case <-ctx.Done():
 		return ctx.Err()
 	default:
-		metrics.MgmtPgGateRejectedTotal.WithLabelValues("low").Inc()
-		return ErrMgmtPgGateRejected
+		metrics.PostgresGateRejectedTotal.WithLabelValues("low").Inc()
+		return ErrPostgresGateRejected
 	}
 
 	start := time.Now()
 	select {
 	case g.sem <- struct{}{}:
 		if wait := time.Since(start); wait > 0 {
-			metrics.MgmtPgGateAcquireWaitSeconds.WithLabelValues("low").Observe(wait.Seconds())
+			metrics.PostgresGateAcquireWaitSeconds.WithLabelValues("low").Observe(wait.Seconds())
 		}
 		g.inFlight.Add(1)
 		return nil
@@ -88,7 +88,7 @@ func (g *MgmtPgGate) AcquireLow(ctx context.Context) error {
 	}
 }
 
-func (g *MgmtPgGate) ReleaseLow() {
+func (g *PostgresGate) ReleaseLow() {
 	if g == nil {
 		return
 	}
@@ -97,7 +97,7 @@ func (g *MgmtPgGate) ReleaseLow() {
 	<-g.lowSlots
 }
 
-func (g *MgmtPgGate) InFlight() int {
+func (g *PostgresGate) InFlight() int {
 	if g == nil {
 		return 0
 	}

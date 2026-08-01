@@ -219,7 +219,7 @@ func TestFault_PostgresMasterFailover(t *testing.T) {
 
 	syncPgFailoverSnapshot(t, infra.PrimaryPool, infra.StandbyPool)
 	failoverStart := time.Now()
-	stopMgmtContainer(t, infra.PrimaryPG)
+	stopFaultContainer(t, infra.PrimaryPG)
 	require.Eventually(t, func() bool {
 		return infra.PrimaryPool.Ping(ctx) != nil
 	}, 15*time.Second, 100*time.Millisecond)

@@ -40,7 +40,7 @@ type UDPControl struct {
 	trackerID          uint32
 	bindAddr           string
 	syncInterval       time.Duration
-	mgmtAddr           *net.UDPAddr
+	controlAddr        *net.UDPAddr
 	snapshot           atomic.Pointer[ingressSnapshot]
 	quotaMap           atomic.Pointer[ingressQuotaMap]
 	numWorkers         int
@@ -58,7 +58,7 @@ type UDPControlConfig struct {
 	FailClosed   bool
 	TrackerID    uint32
 	BindAddr     string
-	MgmtAddr     string
+	ControlAddr  string
 	SyncInterval time.Duration
 	NumShards    int
 	NumWorkers   int
@@ -83,9 +83,9 @@ func NewUDPControl(cfg UDPControlConfig) *UDPControl {
 	if cfg.SyncInterval <= 0 {
 		c.syncInterval = 10 * time.Second
 	}
-	if cfg.MgmtAddr != "" {
-		if addr, err := net.ResolveUDPAddr("udp", cfg.MgmtAddr); err == nil {
-			c.mgmtAddr = addr
+	if cfg.ControlAddr != "" {
+		if addr, err := net.ResolveUDPAddr("udp", cfg.ControlAddr); err == nil {
+			c.controlAddr = addr
 		}
 	}
 	if cfg.Enabled && cfg.NumShards > 0 {
@@ -121,7 +121,7 @@ func NewUDPControlFromConfig(cfg *config.Config, numShards int) *UDPControl {
 		FailClosed:   cfg.UDPFailClosed,
 		TrackerID:    cfg.UDPTrackerID,
 		BindAddr:     cfg.UDPTrackerBindAddr,
-		MgmtAddr:     cfg.UDPMgmtAddr,
+		ControlAddr:  cfg.UDPControlAddr,
 		SyncInterval: time.Duration(cfg.UDPSyncIntervalMs) * time.Millisecond,
 		NumShards:    numShards,
 		NumWorkers:   cfg.MaxWorkers,
@@ -148,13 +148,13 @@ func (c *UDPControl) Start(ctx context.Context) error {
 	_ = conn.SetReadBuffer(1 << 20)
 	c.conn = conn
 
-	reqConn, err := net.DialUDP("udp", nil, c.mgmtAddr)
+	reqConn, err := net.DialUDP("udp", nil, c.controlAddr)
 	if err == nil {
 		c.requestConn = reqConn
 	}
 	go c.recvLoop(ctx)
 	go c.staleLoop(ctx)
-	slog.Info("udp control plane started", "bind", addr.String(), "mgmt", c.mgmtAddr)
+	slog.Info("udp control plane started", "bind", addr.String(), "control_addr", c.controlAddr)
 	return nil
 }
 
@@ -449,7 +449,7 @@ func (c *UDPControl) tightenCanaryFloor() {
 }
 
 func (c *UDPControl) sendConfigRequest() {
-	if c.requestConn == nil || c.mgmtAddr == nil {
+	if c.requestConn == nil || c.controlAddr == nil {
 		return
 	}
 	snap := c.snapshot.Load()

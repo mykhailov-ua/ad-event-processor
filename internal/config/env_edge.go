@@ -11,13 +11,19 @@ func loadEdgeModules(cfg *Config) {
 	cfg.ShardOrchestratorIntervalMs = getEnvInt("SHARD_ORCHESTRATOR_INTERVAL_MS", 10000)
 	cfg.TCPControlEnabled = getEnvBool("TCP_CONTROL_ENABLED", false)
 	cfg.TCPControlHMACSecret = Secret(os.Getenv("TCP_CONTROL_HMAC_SECRET"))
-	cfg.TCPMgmtBindAddr = os.Getenv("TCP_MGMT_BIND_ADDR")
-	if cfg.TCPMgmtBindAddr == "" {
-		cfg.TCPMgmtBindAddr = ":8192"
+	cfg.TCPControlBindAddr = os.Getenv("TCP_CONTROL_BIND_ADDR")
+	if cfg.TCPControlBindAddr == "" {
+		cfg.TCPControlBindAddr = os.Getenv("TCP_MGMT_BIND_ADDR")
 	}
-	cfg.TCPMgmtAddr = os.Getenv("TCP_MGMT_ADDR")
-	if cfg.TCPMgmtAddr == "" {
-		cfg.TCPMgmtAddr = "127.0.0.1:8192"
+	if cfg.TCPControlBindAddr == "" {
+		cfg.TCPControlBindAddr = ":8192"
+	}
+	cfg.TCPControlAddr = os.Getenv("TCP_CONTROL_ADDR")
+	if cfg.TCPControlAddr == "" {
+		cfg.TCPControlAddr = os.Getenv("TCP_MGMT_ADDR")
+	}
+	if cfg.TCPControlAddr == "" {
+		cfg.TCPControlAddr = "127.0.0.1:8192"
 	}
 	if addrs := os.Getenv("TCP_TRACKER_ADDRS"); addrs != "" {
 		cfg.TCPTrackerAddrs = strings.Split(addrs, ",")
@@ -25,17 +31,23 @@ func loadEdgeModules(cfg *Config) {
 	cfg.LuaFastPathEnabled = getEnvBool("LUA_FAST_PATH_ENABLED", true)
 	cfg.UDPControlEnabled = getEnvBool("UDP_CONTROL_ENABLED", false)
 	cfg.UDPFailClosed = getEnvBool("UDP_FAIL_CLOSED", true)
-	cfg.UDPMgmtBindAddr = os.Getenv("UDP_MGMT_BIND_ADDR")
-	if cfg.UDPMgmtBindAddr == "" {
-		cfg.UDPMgmtBindAddr = ":8190"
+	cfg.UDPControlBindAddr = os.Getenv("UDP_CONTROL_BIND_ADDR")
+	if cfg.UDPControlBindAddr == "" {
+		cfg.UDPControlBindAddr = os.Getenv("UDP_MGMT_BIND_ADDR")
+	}
+	if cfg.UDPControlBindAddr == "" {
+		cfg.UDPControlBindAddr = ":8190"
 	}
 	cfg.UDPTrackerBindAddr = os.Getenv("UDP_TRACKER_BIND_ADDR")
 	if cfg.UDPTrackerBindAddr == "" {
 		cfg.UDPTrackerBindAddr = ":8191"
 	}
-	cfg.UDPMgmtAddr = os.Getenv("UDP_MGMT_ADDR")
-	if cfg.UDPMgmtAddr == "" {
-		cfg.UDPMgmtAddr = "127.0.0.1:8190"
+	cfg.UDPControlAddr = os.Getenv("UDP_CONTROL_ADDR")
+	if cfg.UDPControlAddr == "" {
+		cfg.UDPControlAddr = os.Getenv("UDP_MGMT_ADDR")
+	}
+	if cfg.UDPControlAddr == "" {
+		cfg.UDPControlAddr = "127.0.0.1:8190"
 	}
 	if addrs := os.Getenv("UDP_TRACKER_ADDRS"); addrs != "" {
 		cfg.UDPTrackerAddrs = strings.Split(addrs, ",")

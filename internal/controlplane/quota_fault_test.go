@@ -103,7 +103,7 @@ func TestFault_QuotaDeadShardRelease(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupMgmtFaultInfra(t)
+	infra, cleanup := setupControlFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
@@ -128,8 +128,8 @@ func TestFault_QuotaDeadShardRelease(t *testing.T) {
 	worker := NewReconWorkerWithQuorum(svc, time.Hour, quorumDur)
 	worker.Quorum().SetBreakerPctFunc(func(context.Context, int) float64 { return 1.0 })
 
-	stopMgmtContainer(t, infra.RedisContainer)
-	requireMgmtFaultActive(t, func() bool {
+	stopFaultContainer(t, infra.RedisContainer)
+	requireFaultActive(t, func() bool {
 		return infra.Redis.Ping(ctx).Err() != nil
 	}, "redis ping must fail after stop")
 

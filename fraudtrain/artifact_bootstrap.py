@@ -45,7 +45,7 @@ _CALIB_HOLDOUT_DEFAULT = 3000
 _FIT_VAL_FRACTION_DEFAULT = 0.2
 _FIT_BOOST_ROUNDS_DEFAULT = 200
 _FIT_MIN_ROWS_DEFAULT = 500
-_LOG = "fraud_modeling/artifact_bootstrap"
+_LOG = "fraudtrain/artifact_bootstrap"
 
 
 def _env_bool(key: str, default: bool) -> bool:

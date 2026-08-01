@@ -15,7 +15,7 @@ type TCPControlClient struct {
 	enabled    bool
 	secret     []byte
 	trackerID  uint32
-	mgmtAddr   string
+	controlAddr   string
 	dialTO     time.Duration
 	sharder    *StaticSlotSharder
 	udpControl *UDPControl
@@ -26,7 +26,7 @@ type TCPControlClientConfig struct {
 	Enabled   bool
 	Secret    []byte
 	TrackerID uint32
-	MgmtAddr  string
+	ControlAddr string
 	DialTO    time.Duration
 	Sharder   *StaticSlotSharder
 	UDP       *UDPControl
@@ -40,7 +40,7 @@ func NewTCPControlClient(cfg TCPControlClientConfig) *TCPControlClient {
 		enabled:    cfg.Enabled,
 		secret:     cfg.Secret,
 		trackerID:  cfg.TrackerID,
-		mgmtAddr:   cfg.MgmtAddr,
+		controlAddr:   cfg.ControlAddr,
 		dialTO:     cfg.DialTO,
 		sharder:    cfg.Sharder,
 		udpControl: cfg.UDP,
@@ -48,11 +48,11 @@ func NewTCPControlClient(cfg TCPControlClientConfig) *TCPControlClient {
 }
 
 func (c *TCPControlClient) RequestSnapshot(ctx context.Context) error {
-	if c == nil || !c.enabled || c.mgmtAddr == "" {
+	if c == nil || !c.enabled || c.controlAddr == "" {
 		return nil
 	}
 	dialer := net.Dialer{Timeout: c.dialTO}
-	conn, err := dialer.DialContext(ctx, "tcp", c.mgmtAddr)
+	conn, err := dialer.DialContext(ctx, "tcp", c.controlAddr)
 	if err != nil {
 		metrics.TCPControlSnapshotErrorsTotal.Inc()
 		return err

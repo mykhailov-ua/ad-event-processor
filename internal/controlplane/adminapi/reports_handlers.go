@@ -20,6 +20,319 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+var (
+	ErrForecastClickHouseTimeout = errors.New("forecast clickhouse query timed out")
+	ErrForecastUnavailable       = errors.New("forecast service unavailable")
+	ErrClickHouseNotConfigured   = errors.New("clickhouse not configured")
+)
+
+type CampaignForecastInput struct {
+	CustomerID       *uuid.UUID
+	BudgetLimitMicro int64
+	TargetCountries  []string
+	DaypartHours     []int16
+	StartAt          time.Time
+	EndAt            time.Time
+	PacingMode       string
+	Timezone         string
+}
+
+type SpendCurvePoint struct {
+	Hour        string `json:"hour"`
+	SpendMicro  int64  `json:"spend_micro"`
+	Impressions int64  `json:"impressions"`
+}
+
+type ForecastAdvisory struct {
+	Code            string `json:"code"`
+	Message         string `json:"message"`
+	SuggestedPacing string `json:"suggested_pacing"`
+}
+
+type CampaignForecastDTO struct {
+	ImpressionsP50 int64             `json:"impressions_p50"`
+	ImpressionsP90 int64             `json:"impressions_p90"`
+	SpendCurve     []SpendCurvePoint `json:"spend_curve"`
+	LowConfidence  bool              `json:"low_confidence"`
+	Advisory       *ForecastAdvisory `json:"advisory,omitempty"`
+}
+
+type TableDTO struct {
+	Columns    []ColumnDTO      `json:"columns"`
+	Rows       []map[string]any `json:"rows"`
+	Totals     map[string]any   `json:"totals,omitempty"`
+	Freshness  DataFreshnessDTO `json:"freshness"`
+	NextCursor string           `json:"next_cursor,omitempty"`
+}
+
+type PlacementReportRowDTO struct {
+	PlacementID  string  `json:"placement_id"`
+	CampaignID   string  `json:"campaign_id"`
+	Impressions  int64   `json:"impressions"`
+	Clicks       int64   `json:"clicks"`
+	Conversions  int64   `json:"conversions"`
+	SpendMicro   int64   `json:"spend_micro"`
+	RevenueMicro int64   `json:"revenue_micro"`
+	ProfitMicro  int64   `json:"profit_micro"`
+	ROIPct       float64 `json:"roi_pct"`
+	CPAMicro     int64   `json:"cpa_micro"`
+}
+
+type PlacementReportResponse struct {
+	Rows       []PlacementReportRowDTO `json:"rows"`
+	Freshness  DataFreshnessDTO        `json:"freshness"`
+	NextCursor string                  `json:"next_cursor,omitempty"`
+}
+
+type KeywordReportRowDTO struct {
+	Keyword      string  `json:"keyword"`
+	CampaignID   string  `json:"campaign_id"`
+	Impressions  int64   `json:"impressions"`
+	Clicks       int64   `json:"clicks"`
+	Conversions  int64   `json:"conversions"`
+	SpendMicro   int64   `json:"spend_micro"`
+	RevenueMicro int64   `json:"revenue_micro"`
+	ProfitMicro  int64   `json:"profit_micro"`
+	ROIPct       float64 `json:"roi_pct"`
+}
+
+type KeywordReportResponse struct {
+	Rows       []KeywordReportRowDTO `json:"rows"`
+	Freshness  DataFreshnessDTO      `json:"freshness"`
+	NextCursor string                `json:"next_cursor,omitempty"`
+}
+
+type ColumnDTO struct {
+	Key   string `json:"key"`
+	Label string `json:"label"`
+	Type  string `json:"type,omitempty"`
+}
+
+type UnitEconomicsRowDTO struct {
+	CampaignID   string  `json:"campaign_id"`
+	SpendMicro   int64   `json:"spend_micro"`
+	RevenueMicro int64   `json:"revenue_micro"`
+	ProfitMicro  int64   `json:"profit_micro"`
+	Conversions  int64   `json:"conversions"`
+	CPAMicro     int64   `json:"cpa_micro"`
+	CPCMicro     int64   `json:"cpc_micro"`
+	CPMMicro     int64   `json:"cpm_micro"`
+	ROIPct       float64 `json:"roi_pct"`
+	EPCMicro     int64   `json:"epc_micro"`
+}
+
+type PivotTableDTO struct {
+	RowDim string    `json:"row_dim"`
+	ColDim string    `json:"col_dim"`
+	Rows   []string  `json:"rows"`
+	Cols   []string  `json:"cols"`
+	Cells  [][][]any `json:"cells"`
+}
+
+type PostbackReconRowDTO struct {
+	ClickID             string `json:"click_id"`
+	CampaignID          string `json:"campaign_id"`
+	ExpectedPayoutMicro int64  `json:"expected_payout_micro"`
+	RecordedPayoutMicro int64  `json:"recorded_payout_micro"`
+	DeltaPayoutMicro    int64  `json:"delta_payout_micro"`
+	AttributionLagSec   int64  `json:"attribution_lag_sec"`
+	Status              string `json:"status"`
+}
+
+type ReportJobSpec struct {
+	ReportKey  string         `json:"report_key"`
+	CustomerID string         `json:"customer_id"`
+	Period     PeriodDTO      `json:"period"`
+	Compare    *PeriodDTO     `json:"compare,omitempty"`
+	GroupBy    []string       `json:"group_by,omitempty"`
+	Filters    map[string]any `json:"filters,omitempty"`
+	Format     string         `json:"format"`
+}
+
+type CampaignMetricsDTO struct {
+	Impressions int64 `json:"impressions"`
+	Clicks      int64 `json:"clicks"`
+	Conversions int64 `json:"conversions"`
+}
+
+type CampaignHourlyBucketDTO struct {
+	Hour        string `json:"hour"`
+	Impressions int64  `json:"impressions"`
+	Clicks      int64  `json:"clicks"`
+	Conversions int64  `json:"conversions"`
+}
+
+type CampaignStatsDTO struct {
+	CampaignID   string                    `json:"campaign_id"`
+	CurrentSpend string                    `json:"current_spend"`
+	Metrics      CampaignMetricsDTO        `json:"metrics"`
+	Hourly       []CampaignHourlyBucketDTO `json:"hourly"`
+	Granularity  string                    `json:"granularity"`
+	From         string                    `json:"from"`
+	To           string                    `json:"to"`
+	Stale        bool                      `json:"stale"`
+	Source       string                    `json:"source"`
+	Consistency  string                    `json:"consistency"`
+}
+
+const (
+	MetricSpendMicro     = "spend_micro"
+	MetricRevenueMicro   = "revenue_micro"
+	MetricProfitMicro    = "profit_micro"
+	MetricROIPct         = "roi_pct"
+	MetricCPAMicro       = "cpa_micro"
+	MetricCPCMicro       = "cpc_micro"
+	MetricCPMMicro       = "cpm_micro"
+	MetricCTR            = "ctr"
+	MetricEPCMicro       = "epc_micro"
+	MetricIVTRate        = "ivt_rate"
+	MetricUtilizationPct = "utilization_pct"
+	MetricAvailableMicro = "available_micro"
+	MetricPacingDriftPct = "pacing_drift_pct"
+)
+
+var MetricFormulas = map[string]string{
+	MetricSpendMicro:     "SUM(ledger debits) or CH cost",
+	MetricRevenueMicro:   "SUM(postback payout)",
+	MetricProfitMicro:    "revenue_micro - spend_micro",
+	MetricROIPct:         "profit_micro / spend_micro * 100",
+	MetricCPAMicro:       "spend_micro / conversions",
+	MetricIVTRate:        "ivt / clicks",
+	MetricUtilizationPct: "current_spend / budget_limit",
+	MetricAvailableMicro: "balance + overdraft - reserved",
+	MetricPacingDriftPct: "(actual - planned) / planned",
+}
+
+type CampaignStatsReader interface {
+	GetCampaignStats(ctx context.Context, campaignID uuid.UUID, from, to time.Time, granularity string) (CampaignStatsDTO, error)
+}
+
+type CampaignForecaster interface {
+	ForecastCampaign(ctx context.Context, in CampaignForecastInput) (CampaignForecastDTO, error)
+}
+
+const maxStatsRange = 90 * 24 * time.Hour
+
+type invalidQueryError string
+
+func errInvalidQuery(msg string) error {
+	return invalidQueryError(msg)
+}
+
+func (e invalidQueryError) Error() string { return string(e) }
+
+func parseStatsQuery(r *http.Request) (from, to time.Time, granularity string, err error) {
+	granularity = r.URL.Query().Get("granularity")
+	if granularity == "" {
+		granularity = "hour"
+	}
+	if granularity != "hour" {
+		return time.Time{}, time.Time{}, "", errInvalidQuery("granularity must be hour")
+	}
+
+	now := time.Now().UTC().Truncate(time.Hour)
+	to = now
+	from = now.Add(-7 * 24 * time.Hour)
+
+	if toStr := r.URL.Query().Get("to"); toStr != "" {
+		to, err = time.Parse(time.RFC3339, toStr)
+		if err != nil {
+			return time.Time{}, time.Time{}, "", errInvalidQuery("invalid to timestamp")
+		}
+		to = to.UTC()
+	}
+	if fromStr := r.URL.Query().Get("from"); fromStr != "" {
+		from, err = time.Parse(time.RFC3339, fromStr)
+		if err != nil {
+			return time.Time{}, time.Time{}, "", errInvalidQuery("invalid from timestamp")
+		}
+		from = from.UTC()
+	}
+
+	if !to.After(from) {
+		return time.Time{}, time.Time{}, "", errInvalidQuery("to must be after from")
+	}
+	if to.Sub(from) > maxStatsRange {
+		return time.Time{}, time.Time{}, "", errInvalidQuery("time range exceeds 90 days")
+	}
+	return from, to, granularity, nil
+}
+
+func parseAPIPagination(r *http.Request) (int32, int32) {
+	limit := int32(50)
+	if l, err := strconv.ParseInt(r.URL.Query().Get("limit"), 10, 32); err == nil && l > 0 {
+		limit = int32(l)
+	}
+	offset := int32(0)
+	if o, err := strconv.ParseInt(r.URL.Query().Get("offset"), 10, 32); err == nil && o > 0 {
+		offset = int32(o)
+	}
+	return coldpath.ClampLimitOffset(limit, offset, 50, 1000)
+}
+
+type placementReportCHRow struct {
+	PlacementID  string
+	CampaignID   string
+	Impressions  int64
+	Clicks       int64
+	Conversions  int64
+	SpendMicro   int64
+	RevenueMicro int64
+}
+
+type keywordReportCHRow struct {
+	Keyword      string
+	CampaignID   string
+	Impressions  int64
+	Clicks       int64
+	Conversions  int64
+	SpendMicro   int64
+	RevenueMicro int64
+}
+
+func toPlacementReportRowDTO(row placementReportCHRow) PlacementReportRowDTO {
+	profit := row.RevenueMicro - row.SpendMicro
+	var roi float64
+	if row.SpendMicro > 0 {
+		roi = float64(profit) / float64(row.SpendMicro) * 100
+	}
+	var cpa int64
+	if row.Conversions > 0 {
+		cpa = row.SpendMicro / row.Conversions
+	}
+	return PlacementReportRowDTO{
+		PlacementID:  row.PlacementID,
+		CampaignID:   row.CampaignID,
+		Impressions:  row.Impressions,
+		Clicks:       row.Clicks,
+		Conversions:  row.Conversions,
+		SpendMicro:   row.SpendMicro,
+		RevenueMicro: row.RevenueMicro,
+		ProfitMicro:  profit,
+		ROIPct:       roi,
+		CPAMicro:     cpa,
+	}
+}
+
+func toKeywordReportRowDTO(row keywordReportCHRow) KeywordReportRowDTO {
+	profit := row.RevenueMicro - row.SpendMicro
+	var roi float64
+	if row.SpendMicro > 0 {
+		roi = float64(profit) / float64(row.SpendMicro) * 100
+	}
+	return KeywordReportRowDTO{
+		Keyword:      row.Keyword,
+		CampaignID:   row.CampaignID,
+		Impressions:  row.Impressions,
+		Clicks:       row.Clicks,
+		Conversions:  row.Conversions,
+		SpendMicro:   row.SpendMicro,
+		RevenueMicro: row.RevenueMicro,
+		ProfitMicro:  profit,
+		ROIPct:       roi,
+	}
+}
+
 type ReportsHTTPHandlers struct {
 	CampaignStats             CampaignStatsReader
 	CampaignForecaster        CampaignForecaster

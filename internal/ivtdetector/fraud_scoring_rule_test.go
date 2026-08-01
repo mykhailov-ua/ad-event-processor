@@ -33,7 +33,7 @@ func testFraudModelPath(t *testing.T) string {
 			return path
 		}
 	}
-	t.Skip("fraud model not found; run make fraud-modeling-check locally")
+	t.Skip("fraud model not found; run make fraudtrain-check locally")
 	return ""
 }
 

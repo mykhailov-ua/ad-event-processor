@@ -2,7 +2,7 @@
 
 Weekly proxy-label evaluation for the cold-path ML shadow scorer (`ivt-detector` / `fraud-scorer`).
 
-Related: `fraud_modeling/README.md`, `docs/sql/explain/fraud_shadow_precision_report.sql`.
+Related: `fraudtrain/README.md`, `docs/sql/explain/fraud_shadow_precision_report.sql`.
 
 ---
 
@@ -31,14 +31,14 @@ export FRAUD_POLICY_ML_THRESHOLD=0.35   # optional; default from policy
 export FRAUD_EVAL_HOURS=168             # 7-day window
 ```
 
-4. Python deps: `pip install -r fraud_modeling/requirements.txt`
+4. Python deps: `pip install -r fraudtrain/requirements.txt`
 
 ---
 
 ## Run evaluation
 
 ```bash
-python3 fraud_modeling/evaluate.py --format both
+python3 fraudtrain/evaluate.py --format both
 ```
 
 Outputs:
@@ -51,7 +51,7 @@ Outputs:
 Custom window / threshold:
 
 ```bash
-python3 fraud_modeling/evaluate.py \
+python3 fraudtrain/evaluate.py \
   --hours 24 \
   --threshold 0.6 \
   --output /tmp/shadow_report \
@@ -61,7 +61,7 @@ python3 fraud_modeling/evaluate.py \
 Enforce minimum sample size (fail for alerting):
 
 ```bash
-python3 fraud_modeling/evaluate.py --min-labeled-rows 100
+python3 fraudtrain/evaluate.py --min-labeled-rows 100
 ```
 
 ---

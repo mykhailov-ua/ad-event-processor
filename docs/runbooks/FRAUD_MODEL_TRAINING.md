@@ -2,7 +2,7 @@
 
 Production model training when operator labels exist. Synthetic `bootstrap` is for dev only.
 
-Related: `fraud_modeling/LABELS.md`, `fraud_modeling/README.md`, `docs/runbooks/FRAUD_SHADOW_PRECISION.md`.
+Related: `fraudtrain/LABELS.md`, `fraudtrain/README.md`, `docs/runbooks/FRAUD_SHADOW_PRECISION.md`.
 
 ---
 
@@ -10,10 +10,10 @@ Related: `fraud_modeling/LABELS.md`, `fraud_modeling/README.md`, `docs/runbooks/
 
 | Step | Command |
 | :--- | :--- |
-| 1. Export features | `python3 fraud_modeling/features_export.py --output /var/fraudscore/training/features.parquet --format parquet` |
+| 1. Export features | `python3 fraudtrain/features_export.py --output /var/fraudscore/training/features.parquet --format parquet` |
 | 2. Join labels | See `LABELS.md` — add `label`, `label_source` |
-| 3. Train | `python3 fraud_modeling/artifact_bootstrap.py fit` |
-| 4. Smoke artifacts | `python3 fraud_modeling/artifact_bootstrap.py validate-artifacts` |
+| 3. Train | `python3 fraudtrain/artifact_bootstrap.py fit` |
+| 4. Smoke artifacts | `python3 fraudtrain/artifact_bootstrap.py validate-artifacts` |
 | 5. Fixture contract | `go run ./cmd/ml-validate` |
 | 6. Promote | Insert `ml_model_versions` with artifact hash → `SYNCING` |
 
@@ -41,7 +41,7 @@ Never use random row shuffle for train/val. Default: earliest 80% of `window_sta
 Explicit boundaries:
 
 ```bash
-python3 fraud_modeling/artifact_bootstrap.py fit \
+python3 fraudtrain/artifact_bootstrap.py fit \
   --train-until 2026-03-01T00:00:00Z \
   --val-from 2026-03-01T00:00:00Z
 ```
@@ -63,9 +63,9 @@ python3 fraud_modeling/artifact_bootstrap.py fit \
 ## Verification before promotion
 
 ```bash
-python3 fraud_modeling/artifact_bootstrap.py validate-artifacts
+python3 fraudtrain/artifact_bootstrap.py validate-artifacts
 go run ./cmd/ml-validate
-python3 fraud_modeling/evaluate.py --format both --min-labeled-rows 50
+python3 fraudtrain/evaluate.py --format both --min-labeled-rows 50
 ```
 
 Hold promotion if shadow precision drops > 10 pp week-over-week (see shadow precision runbook).

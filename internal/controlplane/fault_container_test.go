@@ -14,15 +14,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFault_MgmtRedisTerminateOutboxStaysPending(t *testing.T) {
+func TestFault_ControlRedisTerminateOutboxStaysPending(t *testing.T) {
 	if testing.Short() {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupMgmtFaultInfra(t)
+	infra, cleanup := setupControlFaultInfra(t)
 	defer cleanup()
 
-	cfg := &config.Config{CampaignUpdateChannel: "campaigns:mgmt-redis-kill"}
+	cfg := &config.Config{CampaignUpdateChannel: "campaigns:control-redis-kill"}
 	svc := newBareService(t, infra.Pool, []redis.UniversalClient{infra.Redis}, cfg)
 	ctx := context.Background()
 
@@ -31,7 +31,7 @@ func TestFault_MgmtRedisTerminateOutboxStaysPending(t *testing.T) {
 
 	worker := NewOutboxWorker(svc)
 	require.NoError(t, infra.RedisContainer.Terminate(ctx))
-	requireMgmtFaultActive(t, func() bool {
+	requireFaultActive(t, func() bool {
 		return infra.Redis.Ping(ctx).Err() != nil
 	}, "redis ping must fail after terminate")
 
@@ -52,15 +52,15 @@ func TestFault_MgmtRedisTerminateOutboxStaysPending(t *testing.T) {
 	})
 }
 
-func TestFault_MgmtRedisStopStartOutboxRecovery(t *testing.T) {
+func TestFault_ControlRedisStopStartOutboxRecovery(t *testing.T) {
 	if testing.Short() {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupMgmtFaultInfra(t)
+	infra, cleanup := setupControlFaultInfra(t)
 	defer cleanup()
 
-	cfg := &config.Config{CampaignUpdateChannel: "campaigns:mgmt-redis-recovery"}
+	cfg := &config.Config{CampaignUpdateChannel: "campaigns:control-redis-recovery"}
 	svc := newBareService(t, infra.Pool, []redis.UniversalClient{infra.Redis}, cfg)
 	ctx := context.Background()
 
@@ -69,8 +69,8 @@ func TestFault_MgmtRedisStopStartOutboxRecovery(t *testing.T) {
 
 	worker := NewOutboxWorker(svc)
 
-	stopMgmtContainer(t, infra.RedisContainer)
-	requireMgmtFaultActive(t, func() bool {
+	stopFaultContainer(t, infra.RedisContainer)
+	requireFaultActive(t, func() bool {
 		return infra.Redis.Ping(ctx).Err() != nil
 	}, "redis ping must fail after stop")
 
@@ -79,7 +79,7 @@ func TestFault_MgmtRedisStopStartOutboxRecovery(t *testing.T) {
 	require.Equal(t, 0, processed)
 	require.Equal(t, "PENDING", outboxStatus(t, infra.Pool, eventID))
 
-	startMgmtContainer(t, infra.RedisContainer)
+	startFaultContainer(t, infra.RedisContainer)
 	infra.refreshRedisClient(t)
 	rebindBareService(svc, infra)
 
@@ -106,15 +106,15 @@ func TestFault_MgmtRedisStopStartOutboxRecovery(t *testing.T) {
 	})
 }
 
-func TestFault_MgmtPGStopOutboxClaimBlocked(t *testing.T) {
+func TestFault_ControlPGStopOutboxClaimBlocked(t *testing.T) {
 	if testing.Short() {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupMgmtFaultInfra(t)
+	infra, cleanup := setupControlFaultInfra(t)
 	defer cleanup()
 
-	cfg := &config.Config{CampaignUpdateChannel: "campaigns:mgmt-pg-stop"}
+	cfg := &config.Config{CampaignUpdateChannel: "campaigns:control-pg-stop"}
 	svc := newBareService(t, infra.Pool, []redis.UniversalClient{infra.Redis}, cfg)
 	ctx := context.Background()
 
@@ -123,8 +123,8 @@ func TestFault_MgmtPGStopOutboxClaimBlocked(t *testing.T) {
 
 	worker := NewOutboxWorker(svc)
 
-	stopMgmtContainer(t, infra.PGContainer)
-	requireMgmtFaultActive(t, func() bool {
+	stopFaultContainer(t, infra.PGContainer)
+	requireFaultActive(t, func() bool {
 		return infra.Pool.Ping(ctx) != nil
 	}, "pg ping must fail after stop")
 
@@ -132,7 +132,7 @@ func TestFault_MgmtPGStopOutboxClaimBlocked(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, 0, processed)
 
-	startMgmtContainer(t, infra.PGContainer)
+	startFaultContainer(t, infra.PGContainer)
 	infra.refreshPGPool(t)
 	rebindBareService(svc, infra)
 	require.Equal(t, "PENDING", outboxStatus(t, infra.Pool, eventID))
@@ -147,15 +147,15 @@ func TestFault_MgmtPGStopOutboxClaimBlocked(t *testing.T) {
 	})
 }
 
-func TestFault_MgmtPGStopStartOutboxRecovery(t *testing.T) {
+func TestFault_ControlPGStopStartOutboxRecovery(t *testing.T) {
 	if testing.Short() {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupMgmtFaultInfra(t)
+	infra, cleanup := setupControlFaultInfra(t)
 	defer cleanup()
 
-	cfg := &config.Config{CampaignUpdateChannel: "campaigns:mgmt-pg-recovery"}
+	cfg := &config.Config{CampaignUpdateChannel: "campaigns:control-pg-recovery"}
 	svc := newBareService(t, infra.Pool, []redis.UniversalClient{infra.Redis}, cfg)
 	ctx := context.Background()
 
@@ -164,12 +164,12 @@ func TestFault_MgmtPGStopStartOutboxRecovery(t *testing.T) {
 
 	worker := NewOutboxWorker(svc)
 
-	stopMgmtContainer(t, infra.PGContainer)
-	requireMgmtFaultActive(t, func() bool {
+	stopFaultContainer(t, infra.PGContainer)
+	requireFaultActive(t, func() bool {
 		return infra.Pool.Ping(ctx) != nil
 	}, "pg ping must fail after stop")
 
-	startMgmtContainer(t, infra.PGContainer)
+	startFaultContainer(t, infra.PGContainer)
 	infra.refreshPGPool(t)
 	rebindBareService(svc, infra)
 

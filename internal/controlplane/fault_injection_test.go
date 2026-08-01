@@ -442,10 +442,10 @@ func TestFault_DualOutboxWorkerManyEvents(t *testing.T) {
 
 	faultproof.Log(t, "outbox_worker_many_events", map[string]string{
 		"subsystem":   "management_outbox",
-		"events":      itoaMgmtFault(eventCount),
+		"events":      itoaFault(eventCount),
 		"workers":     "3",
 		"pending":     "0",
-		"processed":   itoaMgmtFault(processed),
+		"processed":   itoaFault(processed),
 		"baseline_ok": "true",
 		"fault_type":  "concurrency_stress",
 	})

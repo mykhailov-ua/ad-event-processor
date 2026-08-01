@@ -34,7 +34,7 @@ type Service struct {
 	rdbs            []redis.UniversalClient
 	sharder         domain.Sharder
 	cfg             *config.Config
-	pgGate          *MgmtPgGate
+	pgGate          *PostgresGate
 	alerter         *OpsAlerter
 	chWrite         driver.Conn
 	chQuery         *database.CHQuery
@@ -98,7 +98,7 @@ func NewService(pool *pgxpool.Pool, rdbs []redis.UniversalClient, sharder domain
 		cancel:  cancel,
 	}
 	if cfg != nil {
-		s.pgGate = NewMgmtPgGate(cfg.DBTrackerMaxConns)
+		s.pgGate = NewPostgresGate(cfg.DBTrackerMaxConns)
 	}
 	s.startWorker(func() {
 		if cfg == nil {
@@ -233,7 +233,7 @@ func (s *Service) GetPool() *pgxpool.Pool {
 	return s.pool
 }
 
-func (s *Service) PgGate() *MgmtPgGate {
+func (s *Service) PgGate() *PostgresGate {
 	if s == nil {
 		return nil
 	}

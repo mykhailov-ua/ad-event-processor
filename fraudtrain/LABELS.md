@@ -44,7 +44,7 @@ Production `fit` reads parquet or CSV produced from ClickHouse features plus ope
 
 ```bash
 export DB_DSN=postgres://user:pass@127.0.0.1:5432/ad_event_processor
-python3 fraud_modeling/features_export.py \
+python3 fraudtrain/features_export.py \
   --since 2026-01-01T00:00:00Z \
   --output var/fraudscore/training/features.parquet \
   --format parquet
@@ -57,7 +57,7 @@ When `DB_DSN` is set, `features_export.py` LEFT JOINs `ml_manual_labels` on `ip_
 ```bash
 export DB_DSN=postgres://user:pass@127.0.0.1:5432/ad_event_processor
 export FRAUD_MANUAL_LABELS=var/fraudscore/training/manual_labels.csv
-python3 fraud_modeling/manual_labels_export.py
+python3 fraudtrain/manual_labels_export.py
 ```
 
 3. Add `label` and `label_source` columns if not already present; write `labeled.parquet`.
@@ -66,8 +66,8 @@ python3 fraud_modeling/manual_labels_export.py
 
 ```bash
 export FRAUD_TRAIN_DATASET=var/fraudscore/training/labeled.parquet
-python3 fraud_modeling/artifact_bootstrap.py fit
-python3 fraud_modeling/artifact_bootstrap.py validate-artifacts
+python3 fraudtrain/artifact_bootstrap.py fit
+python3 fraudtrain/artifact_bootstrap.py validate-artifacts
 ```
 
 ## Time split rules

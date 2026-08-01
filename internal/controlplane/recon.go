@@ -116,11 +116,11 @@ func pgUUID(id uuid.UUID) pgtype.UUID {
 }
 
 type ReconService struct {
-	mgmt *Service
+	svc *Service
 }
 
-func NewReconService(svc *Service) *ReconService {
-	return &ReconService{mgmt: svc}
+func NewReconService(s *Service) *ReconService {
+	return &ReconService{svc: s}
 }
 
 func (reconService *ReconService) ReconcileWindow(ctx context.Context, start, end time.Time) error {
@@ -134,7 +134,7 @@ func (reconService *ReconService) ReconcileWindow(ctx context.Context, start, en
 		return err
 	}
 
-	ledgerRows, err := reconService.mgmt.GetPool().Query(opCtx, `
+	ledgerRows, err := reconService.svc.GetPool().Query(opCtx, `
 		SELECT campaign_id, COALESCE(SUM(CASE WHEN amount < 0 THEN -amount ELSE 0 END), 0)::bigint
 		FROM balance_ledger
 		WHERE created_at >= $1 AND created_at < $2
@@ -164,7 +164,7 @@ func (reconService *ReconService) ReconcileWindow(ctx context.Context, start, en
 
 	for campID, ledgerSpent := range ledgerMap {
 		syncKey := domain.CampaignSyncKey(campID)
-		rdb := reconService.mgmt.getRDB(campID)
+		rdb := reconService.svc.getRDB(campID)
 		if rdb == nil {
 			slog.Error("no redis shard for campaign in recon", "campaign_id", campID)
 			metrics.ReconAdjustmentErrors.Inc()
@@ -186,7 +186,7 @@ func (reconService *ReconService) ReconcileWindow(ctx context.Context, start, en
 		}
 
 		var customerID pgtype.UUID
-		err = reconService.mgmt.GetPool().QueryRow(opCtx, `SELECT customer_id FROM campaigns WHERE id = $1`, domain.ToUUID(campID)).Scan(&customerID)
+		err = reconService.svc.GetPool().QueryRow(opCtx, `SELECT customer_id FROM campaigns WHERE id = $1`, domain.ToUUID(campID)).Scan(&customerID)
 		if err != nil {
 			slog.Error("failed to resolve campaign customer in recon", "campaign_id", campID, "error", err)
 			metrics.ReconAdjustmentErrors.Inc()
@@ -195,7 +195,7 @@ func (reconService *ReconService) ReconcileWindow(ctx context.Context, start, en
 
 		discrepancies++
 
-		_, err = reconService.mgmt.GetPool().Exec(opCtx, `
+		_, err = reconService.svc.GetPool().Exec(opCtx, `
 			INSERT INTO recon_discrepancies (run_id, campaign_id, customer_id, expected_spend, actual_spend, delta, redis_adjusted)
 			VALUES ($1, $2, $3, $4, $5, $6, false)
 		`, run.ID, domain.ToUUID(campID), customerID, syncVal, ledgerSpent, delta)
@@ -219,7 +219,7 @@ func (reconService *ReconService) ReconcileWindow(ctx context.Context, start, en
 			continue
 		}
 
-		shardID := int16(reconService.mgmt.sharder.GetShard(campID))
+		shardID := int16(reconService.svc.sharder.GetShard(campID))
 		custUUID, _ := uuid.FromBytes(customerID.Bytes[:])
 		if err := reconService.enqueueReconciliationAdjust(opCtx, run.ID, campID, custUUID, shardID, -delta, delta, "hourly_window_recon"); err != nil {
 			slog.Error("failed to enqueue recon adjustment", "campaign_id", campID, "delta", delta, "error", err)
@@ -230,7 +230,7 @@ func (reconService *ReconService) ReconcileWindow(ctx context.Context, start, en
 		totalDelta += delta
 	}
 
-	_, err = reconService.mgmt.GetPool().Exec(opCtx, `
+	_, err = reconService.svc.GetPool().Exec(opCtx, `
 		UPDATE recon_runs 
 		SET status = 'COMPLETED', total_delta = $1, campaigns_checked = $2, discrepancies_found = $3, completed_at = NOW()
 		WHERE id = $4
@@ -252,8 +252,8 @@ func (reconService *ReconService) ReconcileWindow(ctx context.Context, start, en
 		"delta", totalDelta,
 		"discrepancies", discrepancies,
 	)
-	if discrepancies > 0 && reconService.mgmt.alerter != nil {
-		reconService.mgmt.alerter.AlertReconDiscrepancy(
+	if discrepancies > 0 && reconService.svc.alerter != nil {
+		reconService.svc.alerter.AlertReconDiscrepancy(
 			run.ID,
 			discrepancies,
 			totalDelta,
@@ -264,17 +264,17 @@ func (reconService *ReconService) ReconcileWindow(ctx context.Context, start, en
 }
 
 func (reconService *ReconService) autoAdjustChunkMicro() int64 {
-	if reconService.mgmt.cfg != nil && reconService.mgmt.cfg.QuotaChunkSize > 0 {
-		return reconService.mgmt.cfg.QuotaChunkSize
+	if reconService.svc.cfg != nil && reconService.svc.cfg.QuotaChunkSize > 0 {
+		return reconService.svc.cfg.QuotaChunkSize
 	}
 	return 5_000_000
 }
 
 func (reconService *ReconService) AlertStaleUnresolvedDiscrepancies(ctx context.Context) {
-	if reconService.mgmt.alerter == nil {
+	if reconService.svc.alerter == nil {
 		return
 	}
-	pool := reconService.mgmt.GetPool()
+	pool := reconService.svc.GetPool()
 	if pool == nil {
 		return
 	}
@@ -308,7 +308,7 @@ func (reconService *ReconService) AlertStaleUnresolvedDiscrepancies(ctx context.
 			continue
 		}
 		period := periodStart.Format(time.RFC3339) + "-" + periodEnd.Format(time.RFC3339)
-		reconService.mgmt.alerter.AlertReconDiscrepancyUnresolved(runID, unresolved, totalDelta, period, oldest)
+		reconService.svc.alerter.AlertReconDiscrepancyUnresolved(runID, unresolved, totalDelta, period, oldest)
 	}
 }
 
@@ -329,7 +329,7 @@ func (reconService *ReconService) adjustRedisBudgetAtomically(ctx context.Contex
 
 func (reconService *ReconService) createRun(ctx context.Context, start, end time.Time) (struct{ ID int64 }, error) {
 	var run struct{ ID int64 }
-	err := reconService.mgmt.GetPool().QueryRow(ctx, `
+	err := reconService.svc.GetPool().QueryRow(ctx, `
 		INSERT INTO recon_runs (period_start, period_end, status) VALUES ($1, $2, 'PENDING') RETURNING id
 	`, start, end).Scan(&run.ID)
 	return run, err
@@ -343,12 +343,12 @@ func (reconService *ReconService) enqueueReconciliationAdjust(
 	ledgerAmt, redisDelta int64,
 	reason string,
 ) error {
-	worker := &ReconWorker{svc: reconService.mgmt}
+	worker := &ReconWorker{svc: reconService.svc}
 	return worker.enqueueReconciliationAdjust(ctx, runID, campID, customerID, shardID, ledgerAmt, redisDelta, reason)
 }
 
 func (reconService *ReconService) failRun(ctx context.Context, id int64, err error) {
-	_, execErr := reconService.mgmt.GetPool().Exec(ctx, `UPDATE recon_runs SET status = 'FAILED' WHERE id = $1`, id)
+	_, execErr := reconService.svc.GetPool().Exec(ctx, `UPDATE recon_runs SET status = 'FAILED' WHERE id = $1`, id)
 	if execErr != nil {
 		slog.Error("failed to mark recon run status as failed in postgres", "run_id", id, "error", execErr)
 	}
@@ -379,7 +379,7 @@ func (w *ReconWorker) runHYG30Audits(ctx context.Context) {
 		w.auditPGCHStats(runCtx)
 		w.auditLedgerInvariantSample(runCtx, pool)
 		return nil
-	}); err != nil && !errors.Is(err, ErrMgmtPgGateRejected) {
+	}); err != nil && !errors.Is(err, ErrPostgresGateRejected) {
 		slog.Error("hyg30 recon audits failed", "error", err)
 	}
 	slog.Debug("hyg30 recon audits completed", "duration_ms", time.Since(start).Milliseconds())
@@ -816,7 +816,7 @@ func reconToleranceMicro(budgetLimit int64) int64 {
 func (reconService *ReconService) createSnapshotRun(ctx context.Context) (int64, error) {
 	now := time.Now().UTC()
 	var id int64
-	err := reconService.mgmt.GetPool().QueryRow(ctx, `
+	err := reconService.svc.GetPool().QueryRow(ctx, `
 		INSERT INTO recon_runs (period_start, period_end, status) VALUES ($1, $2, 'SNAPSHOT') RETURNING id`,
 		now, now,
 	).Scan(&id)

@@ -89,10 +89,10 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 
 	sharder := domain.NewStaticSlotSharder(len(rdbs))
 
-	var mgmtAuthClient *AuthClient
+	var controlAuthClient *AuthClient
 	var closeAuth func()
 	if opts.Auth != nil {
-		mgmtAuthClient = opts.Auth
+		controlAuthClient = opts.Auth
 		closeAuth = func() {}
 	} else {
 		client, closeFn, err := TryAuthClient(ctx, cfg)
@@ -100,7 +100,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 			slog.Error("failed to open auth client", "error", err)
 			return err
 		}
-		mgmtAuthClient = client
+		controlAuthClient = client
 		closeAuth = closeFn
 	}
 	if closeAuth != nil {
@@ -112,12 +112,12 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 		return err
 	}
 
-	authMiddleware := NewAuthMiddleware(tokenMaker, PickHealthyControlShard(rdbs), cfg, mgmtAuthClient)
+	authMiddleware := NewAuthMiddleware(tokenMaker, PickHealthyControlShard(rdbs), cfg, controlAuthClient)
 	authMiddleware.SetControlRedisShards(rdbs)
 	policyStore := InitPolicyStore()
 	authMiddleware.SetPolicyStore(policyStore)
 	authMiddleware.SetPool(pool)
-	authHandler := NewAuthHandler(mgmtAuthClient, tokenMaker, PickHealthyControlShard(rdbs), cfg, authMiddleware)
+	authHandler := NewAuthHandler(controlAuthClient, tokenMaker, PickHealthyControlShard(rdbs), cfg, authMiddleware)
 
 	if cfg.UDPControlEnabled {
 		udpSrv := NewUDPControlServer(cfg, pool, sharder, len(rdbs))
@@ -296,7 +296,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 			BrokerAddr: cfg.Broker.URL,
 			RedisURL:   brokerRedisURL,
 			Topic:      cfg.BudgetDeltaTopic,
-			Group:      cfg.RedisGroupName + "_mgmt_budget_delta",
+			Group:      cfg.RedisGroupName + "_control_budget_delta",
 			MaxBytes:   uint32(cfg.Broker.MaxBytes),
 			Timeout:    time.Duration(cfg.Broker.TimeoutMs) * time.Millisecond,
 		})
@@ -467,7 +467,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 		slog.Info("started shard orchestrator", "interval", interval)
 	}
 
-	mgmtHandler := NewHandler(svc, cfg, authMiddleware, mgmtAuthClient, paymentClient, billingClient)
+	controlHandler := NewHandler(svc, cfg, authMiddleware, controlAuthClient, paymentClient, billingClient)
 
 	mux := http.NewServeMux()
 	RegisterOpsRoutes(mux, pool, rdbs, cfg)
@@ -483,7 +483,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 	slog.Info("ops metric scraper enabled", "url", scrapeURL)
 
 	authHandler.RegisterRoutes(mux)
-	mgmtHandler.RegisterRoutes(mux)
+	controlHandler.RegisterRoutes(mux)
 
 	corsMdl := NewCORSMiddleware(cfg.AllowedOrigins)
 	csrfMdl := NewCSRFMiddleware(string(cfg.AdminAPIKey))

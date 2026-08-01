@@ -33,7 +33,7 @@ type FaultInfra struct {
 	PGContainer     *postgres.PostgresContainer
 	RedisContainer  testcontainers.Container
 	Cfg             *config.Config
-	MgmtSvc         *controlplane.Service
+	ControlplaneSvc *controlplane.Service
 	SettlementGate  *SettlementFaultGate
 }
 
@@ -97,7 +97,7 @@ func SetupPaymentFaultInfra(t *testing.T) (*FaultInfra, func()) {
 		PGContainer:    pgContainer,
 		RedisContainer: redisContainer,
 		Cfg:            cfg,
-		MgmtSvc:        mgmtSvc,
+		ControlplaneSvc: mgmtSvc,
 		SettlementGate: settlementGate,
 	}
 
@@ -134,7 +134,7 @@ func (infra *FaultInfra) RefreshPGPool(t *testing.T) {
 	pool, err := pgxpool.New(ctx, connStr)
 	require.NoError(t, err)
 	infra.Pool = pool
-	infra.MgmtSvc.SetPool(pool)
+	infra.ControlplaneSvc.SetPool(pool)
 	require.Eventually(t, func() bool {
 		return pool.Ping(ctx) == nil
 	}, 30*time.Second, 200*time.Millisecond)

@@ -907,13 +907,13 @@ var (
 		Help:    "Outbox worker idle poll interval in milliseconds (coefficient backoff)",
 		Buckets: []float64{20, 40, 80, 160, 250},
 	})
-	MgmtPgGateRejectedTotal = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "ad_mgmt_pg_gate_rejected_total",
-		Help: "Management Postgres gate rejections when LOW tier budget is exhausted",
+	PostgresGateRejectedTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_postgres_gate_rejected_total",
+		Help: "Postgres gate rejections when LOW tier budget is exhausted",
 	}, []string{"tier"})
-	MgmtPgGateAcquireWaitSeconds = promauto.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "ad_mgmt_pg_gate_acquire_wait_seconds",
-		Help:    "Wait time acquiring a management Postgres gate slot",
+	PostgresGateAcquireWaitSeconds = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "ad_postgres_gate_acquire_wait_seconds",
+		Help:    "Wait time acquiring a Postgres gate slot",
 		Buckets: prometheus.DefBuckets,
 	}, []string{"tier"})
 

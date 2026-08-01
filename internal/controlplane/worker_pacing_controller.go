@@ -29,10 +29,10 @@ func (w *PacingControllerWorker) Start(ctx context.Context, interval time.Durati
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if err := w.svc.ClosedLoopPacingController(ctx, w.syncWorkers); err != nil && !errors.Is(err, ErrMgmtPgGateRejected) {
+			if err := w.svc.ClosedLoopPacingController(ctx, w.syncWorkers); err != nil && !errors.Is(err, ErrPostgresGateRejected) {
 				slog.Error("closed-loop pacing controller run failed", "err", err)
 			}
-			if err := w.svc.RunVPPPacingController(ctx); err != nil && !errors.Is(err, ErrMgmtPgGateRejected) {
+			if err := w.svc.RunVPPPacingController(ctx); err != nil && !errors.Is(err, ErrPostgresGateRejected) {
 				slog.Error("vpp pacing controller run failed", "err", err)
 			}
 		}

@@ -1,17 +1,28 @@
 package adminapi
 
 import (
+	"bytes"
+	"context"
 	"errors"
-	"espx/internal/billing"
+	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
 
+	"espx/internal/billing"
+	billingdb "espx/internal/billing/db"
+	"espx/internal/config"
+	"espx/internal/database"
 	"espx/pkg/coldpath"
-
 	"espx/pkg/httpresponse"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type BillingHTTPHandlers struct {
@@ -34,6 +45,99 @@ type BillingHTTPHandlers struct {
 	Disputes                     DisputeLister
 	LimitExportByCustomer        func(http.HandlerFunc) http.HandlerFunc
 	ResolveDisputeCustomerFilter func(*http.Request) (string, error)
+}
+
+type BalanceLedgerDTO struct {
+	ID              int64  `json:"id"`
+	CustomerID      string `json:"customer_id"`
+	CampaignID      string `json:"campaign_id,omitempty"`
+	Amount          string `json:"amount"`
+	Type            string `json:"type"`
+	IdempotencyHash string `json:"idempotency_hash,omitempty"`
+	CreatedAt       string `json:"created_at"`
+}
+
+type CustomerBalanceDTO struct {
+	CustomerID string             `json:"customer_id"`
+	Balance    string             `json:"balance"`
+	Currency   string             `json:"currency"`
+	Ledger     []BalanceLedgerDTO `json:"ledger"`
+}
+
+type LedgerExportResult struct {
+	NextCursor int64
+	Truncated  bool
+	Bytes      int
+}
+
+type CustomerBalanceReader interface {
+	GetCustomerBalance(ctx context.Context, customerID uuid.UUID) (CustomerBalanceDTO, error)
+	ExportCustomerLedgerCSV(ctx context.Context, customerID uuid.UUID, cursor int64, w io.Writer) (LedgerExportResult, error)
+}
+
+type DisputeRowDTO struct {
+	IntentID                 string  `json:"intent_id"`
+	CustomerID               string  `json:"customer_id"`
+	AmountMicro              int64   `json:"amount_micro"`
+	Currency                 string  `json:"currency"`
+	ProviderDisputeID        string  `json:"provider_dispute_id"`
+	UpdatedAt                string  `json:"updated_at,omitempty"`
+	ChargebackLedgerEntryIDs []int64 `json:"chargeback_ledger_entry_ids"`
+}
+
+type DisputeListResult struct {
+	Disputes []DisputeRowDTO `json:"disputes"`
+	Total    int64           `json:"total"`
+}
+
+type DisputeLister interface {
+	ListDisputes(ctx context.Context, customerFilter string, limit, offset int32) (DisputeListResult, error)
+}
+
+type InProcessInvoiceService interface {
+	PreviewInvoice(ctx context.Context, customerID uuid.UUID, billingMonth time.Time) (*billing.InvoicePreview, error)
+	VoidInvoice(ctx context.Context, invoiceID uuid.UUID) error
+}
+
+type InvoiceRetryer interface {
+	RetryInvoiceDelivery(ctx context.Context, invoice *billing.Invoice, idempotencyKey string) error
+}
+
+type VoidAuditor interface {
+	AuditInvoiceVoid(ctx context.Context, invoiceID, customerID string) error
+}
+
+type AdminInvoiceFilters struct {
+	CustomerID *uuid.UUID
+	Month      *time.Time
+	Status     string
+	MinTotal   int64
+}
+
+type AdminInvoiceListResult struct {
+	Items  []InvoiceSummaryDTO `json:"items"`
+	Total  int64               `json:"total"`
+	Limit  int32               `json:"limit"`
+	Offset int32               `json:"offset"`
+}
+
+const billingForecastCHTimeout = 1500 * time.Millisecond
+
+type ForecastDTO struct {
+	CustomerID               string          `json:"customer_id"`
+	Month                    string          `json:"month"`
+	LedgerMTDMicro           int64           `json:"ledger_mtd_micro"`
+	LedgerRunRateMicroPerDay int64           `json:"ledger_run_rate_micro_per_day"`
+	CHHourlyImpressions      []CHHourlyPoint `json:"ch_hourly_impressions,omitempty"`
+	ProjectedMonthEndMicro   int64           `json:"projected_month_end_micro"`
+	DaysRemaining            int             `json:"days_remaining"`
+	LowConfidence            bool            `json:"low_confidence"`
+	CHUnavailable            bool            `json:"ch_unavailable,omitempty"`
+}
+
+type CHHourlyPoint struct {
+	Hour        string `json:"hour"`
+	Impressions int64  `json:"impressions"`
 }
 
 func (billHandlers *BillingHTTPHandlers) Register(mux *http.ServeMux) {
@@ -665,4 +769,987 @@ func writeBillingLocalError(w http.ResponseWriter, err error) {
 		return
 	}
 	WriteBillingError(w, err)
+}
+
+func (s *CompositeReadService) ListInvoicesAdmin(ctx context.Context, filters AdminInvoiceFilters, limit, offset int32) (AdminInvoiceListResult, error) {
+	if s == nil || s.queries == nil {
+		return AdminInvoiceListResult{}, fmt.Errorf("composite read service not configured")
+	}
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 1000 {
+		limit = 1000
+	}
+
+	var customer pgtype.UUID
+	if filters.CustomerID != nil {
+		customer = pgtype.UUID{Bytes: *filters.CustomerID, Valid: true}
+	}
+	var month pgtype.Date
+	if filters.Month != nil {
+		m := filters.Month.UTC()
+		month = pgtype.Date{Time: time.Date(m.Year(), m.Month(), m.Day(), 0, 0, 0, 0, time.UTC), Valid: true}
+	}
+
+	params := billingdb.ListInvoicesAdminParams{
+		Column1: customer,
+		Column2: month,
+		Column3: filters.Status,
+		Column4: filters.MinTotal,
+		Limit:   limit,
+		Offset:  offset,
+	}
+	rows, err := s.queries.ListInvoicesAdmin(ctx, params)
+	if err != nil {
+		return AdminInvoiceListResult{}, err
+	}
+	total, err := s.queries.CountInvoicesAdmin(ctx, billingdb.CountInvoicesAdminParams{
+		Column1: customer,
+		Column2: month,
+		Column3: filters.Status,
+		Column4: filters.MinTotal,
+	})
+	if err != nil {
+		return AdminInvoiceListResult{}, err
+	}
+
+	items := make([]InvoiceSummaryDTO, 0, len(rows))
+	for _, inv := range rows {
+		monthStr := ""
+		if inv.BillingMonth.Valid {
+			monthStr = inv.BillingMonth.Time.UTC().Format("2006-01")
+		}
+		items = append(items, InvoiceSummaryDTO{
+			ID:            uuidString(inv.ID),
+			CustomerID:    uuidString(inv.CustomerID),
+			BillingMonth:  monthStr,
+			SubtotalMicro: inv.SubtotalMicro,
+			TaxMicro:      inv.TaxMicro,
+			TotalMicro:    inv.TotalMicro,
+			Status:        string(inv.Status),
+			Currency:      inv.Currency,
+		})
+	}
+	return AdminInvoiceListResult{
+		Items:  items,
+		Total:  total,
+		Limit:  limit,
+		Offset: offset,
+	}, nil
+}
+
+func (s *CompositeReadService) WithCHQuery(q *database.CHQuery) *CompositeReadService {
+	if s == nil {
+		return nil
+	}
+	s.chQuery = q
+	return s
+}
+
+func (s *CompositeReadService) BuildForecast(ctx context.Context, customerID uuid.UUID) (ForecastDTO, error) {
+	if s == nil || s.pool == nil {
+		return ForecastDTO{}, fmt.Errorf("composite read service not configured")
+	}
+
+	now := time.Now().UTC()
+	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+	monthEnd := monthStart.AddDate(0, 1, 0)
+	daysRemaining := int(monthEnd.Sub(now).Hours()/24) + 1
+	if daysRemaining < 0 {
+		daysRemaining = 0
+	}
+
+	pgCustomer := pgtype.UUID{Bytes: customerID, Valid: true}
+	mtd, err := s.queries.SumCustomerSpendInWindow(ctx, billingdb.SumCustomerSpendInWindowParams{
+		CustomerID:  pgCustomer,
+		CreatedAt:   pgTimestamp(monthStart),
+		CreatedAt_2: pgTimestamp(now),
+	})
+	if err != nil {
+		return ForecastDTO{}, err
+	}
+
+	spend7d, err := s.queries.SumCustomerSpendLast7Days(ctx, pgCustomer)
+	if err != nil {
+		return ForecastDTO{}, err
+	}
+	runRate := spend7d / 7
+	if runRate < 0 {
+		runRate = 0
+	}
+
+	out := ForecastDTO{
+		CustomerID:               customerID.String(),
+		Month:                    monthStart.Format("2006-01"),
+		LedgerMTDMicro:           mtd,
+		LedgerRunRateMicroPerDay: runRate,
+		DaysRemaining:            daysRemaining,
+		ProjectedMonthEndMicro:   mtd + runRate*int64(daysRemaining),
+	}
+
+	if s.chQuery == nil {
+		out.LowConfidence = true
+		out.CHUnavailable = true
+		return out, nil
+	}
+
+	campaignIDs, err := s.customerCampaignIDs(ctx, customerID)
+	if err != nil {
+		return ForecastDTO{}, err
+	}
+	if len(campaignIDs) == 0 {
+		out.LowConfidence = true
+		return out, nil
+	}
+
+	chCtx, cancel := context.WithTimeout(ctx, billingForecastCHTimeout)
+	defer cancel()
+
+	lookback := now.Add(-7 * 24 * time.Hour)
+	points, chErr := s.queryCHHourlyImpressions(chCtx, lookback, now, campaignIDs)
+	if chErr != nil {
+		out.LowConfidence = true
+		out.CHUnavailable = true
+		return out, nil
+	}
+	out.CHHourlyImpressions = points
+	if len(points) == 0 {
+		out.LowConfidence = true
+	}
+	return out, nil
+}
+
+func (s *CompositeReadService) customerCampaignIDs(ctx context.Context, customerID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id FROM campaigns
+		WHERE customer_id = $1 AND deleted_at IS NULL`, customerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []uuid.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, uuid.UUID(id.Bytes))
+	}
+	return ids, rows.Err()
+}
+
+func (s *CompositeReadService) queryCHHourlyImpressions(ctx context.Context, from, to time.Time, campaignIDs []uuid.UUID) ([]CHHourlyPoint, error) {
+	if s.chQuery == nil {
+		return nil, fmt.Errorf("clickhouse not configured")
+	}
+	query := `
+SELECT toStartOfHour(hour) AS hr, sum(impression_count) AS impressions
+FROM mv_campaign_hourly_impressions
+WHERE hour >= ? AND hour < ? AND campaign_id IN (?)
+GROUP BY hr
+ORDER BY hr`
+	rows, err := s.chQuery.Query(ctx, query, from, to, campaignIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make([]CHHourlyPoint, 0, 168)
+	for rows.Next() {
+		var hr time.Time
+		var impressions uint64
+		if err := rows.Scan(&hr, &impressions); err != nil {
+			return nil, err
+		}
+		out = append(out, CHHourlyPoint{
+			Hour:        hr.UTC().Format(time.RFC3339),
+			Impressions: int64(impressions),
+		})
+	}
+	return out, rows.Err()
+}
+
+func (h *BillingHTTPHandlers) registerBalanceRoutes(mux *http.ServeMux) {
+	if h.CustomerBalance == nil {
+		return
+	}
+	limit := h.ApplyRateLimit
+	perm := h.RequirePermission
+	exportLimit := h.LimitExportByCustomer
+	if exportLimit == nil {
+		exportLimit = limit
+	}
+	mux.HandleFunc("GET /api/v1/customers/{id}/balance", limit(perm("customers:read", h.getCustomerBalance)))
+	mux.HandleFunc("GET /api/v1/customers/{id}/balance/export", limit(exportLimit(perm("customers:read", h.exportCustomerBalance))))
+}
+
+func (h *BillingHTTPHandlers) getCustomerBalance(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	customerID, err := uuid.Parse(idStr)
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer id")
+		return
+	}
+	if err := h.authorizeCustomer(r, idStr); err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+
+	report, err := h.CustomerBalance.GetCustomerBalance(r.Context(), customerID)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, report)
+}
+
+func (h *BillingHTTPHandlers) exportCustomerBalance(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Get("format") != "csv" {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "format must be csv")
+		return
+	}
+
+	idStr := r.PathValue("id")
+	customerID, err := uuid.Parse(idStr)
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer id")
+		return
+	}
+	if err := h.authorizeCustomer(r, idStr); err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+
+	cursor, err := parseExportCursor(r)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+
+	var buf bytes.Buffer
+	result, err := h.CustomerBalance.ExportCustomerLedgerCSV(r.Context(), customerID, cursor, &buf)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+
+	if result.Truncated {
+		w.Header().Set("X-Export-Truncated", "true")
+		w.Header().Set("X-Next-Cursor", strconv.FormatInt(result.NextCursor, 10))
+	}
+	w.Header().Set("X-Export-Bytes", strconv.Itoa(result.Bytes))
+	_, _ = w.Write(buf.Bytes())
+}
+
+func (h *BillingHTTPHandlers) authorizeCustomer(r *http.Request, customerID string) error {
+	if h.AuthorizeCustomerAccess == nil {
+		return nil
+	}
+	return h.AuthorizeCustomerAccess(r, customerID)
+}
+
+type invalidExportCursorError string
+
+func errInvalidExportCursor(msg string) error {
+	return invalidExportCursorError(msg)
+}
+
+func (e invalidExportCursorError) Error() string { return string(e) }
+
+func parseExportCursor(r *http.Request) (int64, error) {
+	cursorStr := r.URL.Query().Get("cursor")
+	if cursorStr == "" {
+		return 0, nil
+	}
+	cursor, err := strconv.ParseInt(cursorStr, 10, 64)
+	if err != nil || cursor < 0 {
+		return 0, errInvalidExportCursor("invalid cursor")
+	}
+	return cursor, nil
+}
+
+func (h *BillingHTTPHandlers) registerDisputeRoutes(mux *http.ServeMux) {
+	if h.Disputes == nil {
+		return
+	}
+	limit := h.ApplyRateLimit
+	perm := h.RequirePermission
+	mux.HandleFunc("GET /api/v1/disputes", limit(perm("customers:read", h.listDisputes)))
+}
+
+func (h *BillingHTTPHandlers) listDisputes(w http.ResponseWriter, r *http.Request) {
+	customerFilter := r.URL.Query().Get("customer_id")
+	if h.ResolveDisputeCustomerFilter != nil {
+		filter, err := h.ResolveDisputeCustomerFilter(r)
+		if err != nil {
+			h.writeServiceError(w, err)
+			return
+		}
+		customerFilter = filter
+	}
+
+	limit := int32(20)
+	offset := int32(0)
+	if v := r.URL.Query().Get("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			limit = int32(n)
+		}
+	}
+	if v := r.URL.Query().Get("offset"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			offset = int32(n)
+		}
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	result, err := h.Disputes.ListDisputes(r.Context(), customerFilter, limit, offset)
+	if err != nil {
+		if st, ok := status.FromError(err); ok && st.Code() == codes.InvalidArgument {
+			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", st.Message())
+			return
+		}
+		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL", "failed to list disputes")
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, result)
+}
+const ledgerInvariantToleranceMicro = int64(1)
+
+type CompositeReadService struct {
+	pool     *pgxpool.Pool
+	cfg      *config.Config
+	provider billing.PaymentProvider
+	queries  *billingdb.Queries
+	chQuery  *database.CHQuery
+}
+
+func NewCompositeReadService(pool *pgxpool.Pool, cfg *config.Config, provider billing.PaymentProvider) *CompositeReadService {
+	if pool == nil {
+		return nil
+	}
+	return &CompositeReadService{
+		pool:     pool,
+		cfg:      cfg,
+		provider: provider,
+		queries:  billingdb.New(pool),
+	}
+}
+
+func (c *CompositeReadService) SetCHQuery(q *database.CHQuery) {
+	if c != nil {
+		c.chQuery = q
+	}
+}
+
+type PeriodBounds struct {
+	From time.Time `json:"from"`
+	To   time.Time `json:"to"`
+}
+
+type StatementDTO struct {
+	CustomerID          string                   `json:"customer_id"`
+	Period              PeriodBounds             `json:"period"`
+	OpeningBalanceMicro int64                    `json:"opening_balance_micro"`
+	ClosingBalanceMicro int64                    `json:"closing_balance_micro"`
+	Lines               []billing.InvoiceLineDTO `json:"lines"`
+	Invoices            []InvoiceSummaryDTO      `json:"invoices"`
+	Payments            []PaymentSummaryDTO      `json:"payments"`
+	TaxBreakdown        TaxBreakdownDTO          `json:"tax_breakdown"`
+	Reconciliation      ReconciliationDTO        `json:"reconciliation"`
+	Currency            string                   `json:"currency"`
+}
+
+type InvoiceSummaryDTO struct {
+	ID            string `json:"id"`
+	CustomerID    string `json:"customer_id,omitempty"`
+	BillingMonth  string `json:"billing_month"`
+	SubtotalMicro int64  `json:"subtotal_micro"`
+	TaxMicro      int64  `json:"tax_micro"`
+	TotalMicro    int64  `json:"total_micro"`
+	Status        string `json:"status"`
+	Currency      string `json:"currency"`
+}
+
+type PaymentSummaryDTO struct {
+	LedgerID        int64  `json:"ledger_id"`
+	AmountMicro     int64  `json:"amount_micro"`
+	PaymentIntentID string `json:"payment_intent_id,omitempty"`
+	CreatedAt       string `json:"created_at"`
+}
+
+type TaxBreakdownDTO struct {
+	Scheme   string `json:"scheme"`
+	RateBps  int32  `json:"rate_bps"`
+	TaxMicro int64  `json:"tax_micro"`
+}
+
+type ReconciliationDTO struct {
+	InvoiceTotalMicro int64 `json:"invoice_total_micro"`
+	LedgerSumMicro    int64 `json:"ledger_sum_micro"`
+	DeltaMicro        int64 `json:"delta_micro"`
+}
+
+type WalletDTO struct {
+	CustomerID                string `json:"customer_id"`
+	BalanceMicro              int64  `json:"balance_micro"`
+	Currency                  string `json:"currency"`
+	AllowedOverdraftMicro     int64  `json:"allowed_overdraft_micro"`
+	LowBalanceThresholdMicro  int64  `json:"low_balance_threshold_micro"`
+	BurnDaysEstimate          *int   `json:"burn_days_estimate,omitempty"`
+	LastInvoiceAt             string `json:"last_invoice_at,omitempty"`
+	PaymentProvider           string `json:"payment_provider"`
+	PaymentProviderConfigured bool   `json:"payment_provider_configured"`
+}
+
+type InvariantDTO struct {
+	OK             bool   `json:"ok"`
+	CustomerID     string `json:"customer_id,omitempty"`
+	BalanceMicro   int64  `json:"balance_micro,omitempty"`
+	LedgerSumMicro int64  `json:"ledger_sum_micro,omitempty"`
+	DiffMicro      int64  `json:"diff_micro,omitempty"`
+}
+
+type SummaryDTO struct {
+	InvoicedMTDMicro                int64 `json:"invoiced_mtd_micro"`
+	InvoiceCountMTD                 int64 `json:"invoice_count_mtd"`
+	UndeliveredInvoiceNotifications int64 `json:"undelivered_invoice_notifications"`
+	CustomersWithSpendInMonth       int64 `json:"customers_with_spend_in_month"`
+}
+
+type DeliveryDTO struct {
+	ID           string `json:"id"`
+	Status       string `json:"status"`
+	Provider     string `json:"provider"`
+	Recipient    string `json:"recipient"`
+	TemplateID   string `json:"template_id"`
+	ErrorMessage string `json:"error_message,omitempty"`
+	RetryCount   int32  `json:"retry_count"`
+	CreatedAt    string `json:"created_at"`
+	UpdatedAt    string `json:"updated_at"`
+}
+
+type LedgerLineDTO struct {
+	ID          int64  `json:"id"`
+	AmountMicro int64  `json:"amount_micro"`
+	LedgerType  string `json:"ledger_type"`
+	CreatedAt   string `json:"created_at"`
+}
+
+type TaxProfileDTO struct {
+	CustomerID  string `json:"customer_id"`
+	CountryCode string `json:"country_code"`
+	TaxRegion   string `json:"tax_region,omitempty"`
+	TaxScheme   string `json:"tax_scheme"`
+	TaxRateBps  int32  `json:"tax_rate_bps"`
+}
+
+func (s *CompositeReadService) BuildStatement(ctx context.Context, customerID uuid.UUID, from, to time.Time) (StatementDTO, error) {
+	if s == nil || s.pool == nil {
+		return StatementDTO{}, fmt.Errorf("composite read service not configured")
+	}
+	from = from.UTC()
+	to = to.UTC()
+	if !to.After(from) {
+		return StatementDTO{}, fmt.Errorf("invalid period: to must be after from")
+	}
+
+	pgCustomer := pgtype.UUID{Bytes: customerID, Valid: true}
+	opening, err := s.queries.SumCustomerLedgerBefore(ctx, billingdb.SumCustomerLedgerBeforeParams{
+		CustomerID: pgCustomer,
+		CreatedAt:  pgTimestamp(from),
+	})
+	if err != nil {
+		return StatementDTO{}, err
+	}
+
+	lines, err := s.queries.SumCustomerLedgerByTypeInWindow(ctx, billingdb.SumCustomerLedgerByTypeInWindowParams{
+		CustomerID:  pgCustomer,
+		CreatedAt:   pgTimestamp(from),
+		CreatedAt_2: pgTimestamp(to),
+	})
+	if err != nil {
+		return StatementDTO{}, err
+	}
+
+	var periodSum int64
+	outLines := make([]billing.InvoiceLineDTO, 0, len(lines))
+	for _, line := range lines {
+		periodSum += line.AmountMicro
+		outLines = append(outLines, billing.InvoiceLineDTO{
+			LedgerType:  line.LedgerType,
+			AmountMicro: line.AmountMicro,
+			EntryCount:  line.EntryCount,
+		})
+	}
+	closing := opening + periodSum
+
+	invoices, err := s.queries.ListCustomerInvoicesInWindow(ctx, billingdb.ListCustomerInvoicesInWindowParams{
+		CustomerID: pgCustomer,
+		Column2:    pgDate(from),
+		Column3:    pgDate(to),
+	})
+	if err != nil {
+		return StatementDTO{}, err
+	}
+
+	invoiceDTOs := make([]InvoiceSummaryDTO, 0, len(invoices))
+	var invoiceTotal int64
+	for _, inv := range invoices {
+		month := ""
+		if inv.BillingMonth.Valid {
+			month = inv.BillingMonth.Time.UTC().Format("2006-01")
+		}
+		invoiceDTOs = append(invoiceDTOs, InvoiceSummaryDTO{
+			ID:            uuidString(inv.ID),
+			BillingMonth:  month,
+			SubtotalMicro: inv.SubtotalMicro,
+			TaxMicro:      inv.TaxMicro,
+			TotalMicro:    inv.TotalMicro,
+			Status:        string(inv.Status),
+			Currency:      inv.Currency,
+		})
+		if inv.Status == billingdb.BillingInvoiceStatusFINALIZED {
+			invoiceTotal += inv.TotalMicro
+		}
+	}
+
+	payments, err := s.queries.ListCustomerPaymentTopupsInWindow(ctx, billingdb.ListCustomerPaymentTopupsInWindowParams{
+		CustomerID:  pgCustomer,
+		CreatedAt:   pgTimestamp(from),
+		CreatedAt_2: pgTimestamp(to),
+		Limit:       100,
+	})
+	if err != nil {
+		return StatementDTO{}, err
+	}
+	paymentDTOs := make([]PaymentSummaryDTO, 0, len(payments))
+	for _, p := range payments {
+		intentID := ""
+		if p.PaymentIntentID.Valid {
+			intentID = uuid.UUID(p.PaymentIntentID.Bytes).String()
+		}
+		createdAt := ""
+		if p.CreatedAt.Valid {
+			createdAt = p.CreatedAt.Time.UTC().Format(time.RFC3339)
+		}
+		paymentDTOs = append(paymentDTOs, PaymentSummaryDTO{
+			LedgerID:        p.ID,
+			AmountMicro:     p.Amount,
+			PaymentIntentID: intentID,
+			CreatedAt:       createdAt,
+		})
+	}
+
+	cust, err := s.queries.GetCustomerBalance(ctx, pgCustomer)
+	if err != nil {
+		return StatementDTO{}, err
+	}
+	profile := billing.ProfileFromDB(billingdb.BillingCustomerTaxProfile{})
+	if row, perr := s.queries.GetCustomerTaxProfile(ctx, pgCustomer); perr == nil {
+		profile = billing.ProfileFromDB(row)
+	} else if !errors.Is(perr, pgx.ErrNoRows) {
+		return StatementDTO{}, perr
+	}
+	spendMicro, err := s.queries.SumCustomerSpendInWindow(ctx, billingdb.SumCustomerSpendInWindowParams{
+		CustomerID:  pgCustomer,
+		CreatedAt:   pgTimestamp(from),
+		CreatedAt_2: pgTimestamp(to),
+	})
+	if err != nil {
+		return StatementDTO{}, err
+	}
+	taxMicro, rateBPS := billing.NewTaxCalculator().Compute(spendMicro, profile)
+
+	return StatementDTO{
+		CustomerID:          customerID.String(),
+		Period:              PeriodBounds{From: from, To: to},
+		OpeningBalanceMicro: opening,
+		ClosingBalanceMicro: closing,
+		Lines:               outLines,
+		Invoices:            invoiceDTOs,
+		Payments:            paymentDTOs,
+		TaxBreakdown: TaxBreakdownDTO{
+			Scheme:   string(profile.Scheme),
+			RateBps:  rateBPS,
+			TaxMicro: taxMicro,
+		},
+		Reconciliation: ReconciliationDTO{
+			InvoiceTotalMicro: invoiceTotal,
+			LedgerSumMicro:    periodSum,
+			DeltaMicro:        invoiceTotal - periodSum,
+		},
+		Currency: cust.Currency,
+	}, nil
+}
+
+func (s *CompositeReadService) GetWallet(ctx context.Context, customerID uuid.UUID) (WalletDTO, error) {
+	if s == nil || s.pool == nil {
+		return WalletDTO{}, fmt.Errorf("composite read service not configured")
+	}
+	pgCustomer := pgtype.UUID{Bytes: customerID, Valid: true}
+	row, err := s.queries.GetCustomerWalletRow(ctx, pgCustomer)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return WalletDTO{}, billing.ErrCustomerNotFound
+		}
+		return WalletDTO{}, err
+	}
+
+	wallet := WalletDTO{
+		CustomerID:            customerID.String(),
+		BalanceMicro:          row.Balance,
+		Currency:              row.Currency,
+		AllowedOverdraftMicro: row.AllowedOverdraft,
+		PaymentProvider:       "placeholder",
+	}
+	if s.provider != nil {
+		wallet.PaymentProvider = s.provider.Name()
+		wallet.PaymentProviderConfigured = s.provider.Configured()
+	}
+	if s.cfg != nil {
+		wallet.LowBalanceThresholdMicro = s.cfg.Management.LowBalanceThresholdMicro
+	}
+
+	lastAt, err := s.queries.GetCustomerLastInvoiceAt(ctx, pgCustomer)
+	if err == nil && lastAt.Valid && lastAt.Time.Year() > 1970 {
+		wallet.LastInvoiceAt = lastAt.Time.UTC().Format(time.RFC3339)
+	}
+
+	spend7d, err := s.queries.SumCustomerSpendLast7Days(ctx, pgCustomer)
+	if err == nil && spend7d > 0 && row.Balance > 0 {
+		daily := spend7d / 7
+		if daily > 0 {
+			days := int(row.Balance / daily)
+			wallet.BurnDaysEstimate = &days
+		}
+	}
+	return wallet, nil
+}
+
+func (s *CompositeReadService) ListLedgerLines(ctx context.Context, customerID uuid.UUID, month time.Time, cursorID int64, limit int32) ([]LedgerLineDTO, string, int64, error) {
+	if s == nil || s.pool == nil {
+		return nil, "", 0, fmt.Errorf("composite read service not configured")
+	}
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 1000 {
+		limit = 1000
+	}
+	monthStart := time.Date(month.Year(), month.Month(), 1, 0, 0, 0, 0, time.UTC)
+	monthEnd := monthStart.AddDate(0, 1, 0)
+
+	pgCustomer := pgtype.UUID{Bytes: customerID, Valid: true}
+	total, err := s.queries.CountCustomerLedgerInWindow(ctx, billingdb.CountCustomerLedgerInWindowParams{
+		CustomerID:  pgCustomer,
+		CreatedAt:   pgTimestamp(monthStart),
+		CreatedAt_2: pgTimestamp(monthEnd),
+	})
+	if err != nil {
+		return nil, "", 0, err
+	}
+
+	rows, err := s.queries.ListCustomerLedgerInWindow(ctx, billingdb.ListCustomerLedgerInWindowParams{
+		CustomerID:  pgCustomer,
+		CreatedAt:   pgTimestamp(monthStart),
+		CreatedAt_2: pgTimestamp(monthEnd),
+		Column4:     cursorID,
+		Limit:       limit,
+	})
+	if err != nil {
+		return nil, "", 0, err
+	}
+
+	out := make([]LedgerLineDTO, 0, len(rows))
+	var lastID int64
+	for _, row := range rows {
+		lastID = row.ID
+		createdAt := ""
+		if row.CreatedAt.Valid {
+			createdAt = row.CreatedAt.Time.UTC().Format(time.RFC3339)
+		}
+		out = append(out, LedgerLineDTO{
+			ID:          row.ID,
+			AmountMicro: row.Amount,
+			LedgerType:  string(row.Type),
+			CreatedAt:   createdAt,
+		})
+	}
+	nextCursor := ""
+	if int32(len(out)) == limit && lastID > 0 {
+		nextCursor = fmt.Sprintf("%d", lastID)
+	}
+	return out, nextCursor, total, nil
+}
+
+func (s *CompositeReadService) ListLedgerLinesInWindow(ctx context.Context, customerID uuid.UUID, from, to time.Time, cursorID int64, limit int32) ([]LedgerLineDTO, string, error) {
+	if s == nil || s.pool == nil {
+		return nil, "", fmt.Errorf("composite read service not configured")
+	}
+	if limit <= 0 {
+		limit = 1000
+	}
+	pgCustomer := pgtype.UUID{Bytes: customerID, Valid: true}
+	rows, err := s.queries.ListCustomerLedgerInWindow(ctx, billingdb.ListCustomerLedgerInWindowParams{
+		CustomerID:  pgCustomer,
+		CreatedAt:   pgTimestamp(from),
+		CreatedAt_2: pgTimestamp(to),
+		Column4:     cursorID,
+		Limit:       limit,
+	})
+	if err != nil {
+		return nil, "", err
+	}
+	out := make([]LedgerLineDTO, 0, len(rows))
+	var lastID int64
+	for _, row := range rows {
+		lastID = row.ID
+		createdAt := ""
+		if row.CreatedAt.Valid {
+			createdAt = row.CreatedAt.Time.UTC().Format(time.RFC3339)
+		}
+		out = append(out, LedgerLineDTO{
+			ID:          row.ID,
+			AmountMicro: row.Amount,
+			LedgerType:  string(row.Type),
+			CreatedAt:   createdAt,
+		})
+	}
+	next := ""
+	if int32(len(out)) == limit && lastID > 0 {
+		next = fmt.Sprintf("%d", lastID)
+	}
+	return out, next, nil
+}
+
+func (s *CompositeReadService) GetInvariant(ctx context.Context, customerID *uuid.UUID) (InvariantDTO, error) {
+	if s == nil || s.pool == nil {
+		return InvariantDTO{}, fmt.Errorf("composite read service not configured")
+	}
+	if customerID != nil {
+		snap, err := billing.ReadLedgerInvariant(ctx, s.pool, *customerID)
+		if err != nil {
+			return InvariantDTO{}, err
+		}
+		diff := snap.BalanceMicro - snap.LedgerSumMicro
+		ok := diff >= -ledgerInvariantToleranceMicro && diff <= ledgerInvariantToleranceMicro
+		return InvariantDTO{
+			OK:             ok,
+			CustomerID:     customerID.String(),
+			BalanceMicro:   snap.BalanceMicro,
+			LedgerSumMicro: snap.LedgerSumMicro,
+			DiffMicro:      diff,
+		}, nil
+	}
+
+	rows, err := s.pool.Query(ctx, `SELECT id FROM customers ORDER BY id LIMIT 500`)
+	if err != nil {
+		return InvariantDTO{}, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return InvariantDTO{}, err
+		}
+		cid := uuid.UUID(id.Bytes)
+		snap, err := billing.ReadLedgerInvariant(ctx, s.pool, cid)
+		if err != nil {
+			return InvariantDTO{}, err
+		}
+		diff := snap.BalanceMicro - snap.LedgerSumMicro
+		if diff < -ledgerInvariantToleranceMicro || diff > ledgerInvariantToleranceMicro {
+			return InvariantDTO{
+				OK:             false,
+				CustomerID:     cid.String(),
+				BalanceMicro:   snap.BalanceMicro,
+				LedgerSumMicro: snap.LedgerSumMicro,
+				DiffMicro:      diff,
+			}, nil
+		}
+	}
+	return InvariantDTO{OK: true}, rows.Err()
+}
+
+func (s *CompositeReadService) GetSummary(ctx context.Context) (SummaryDTO, error) {
+	if s == nil || s.pool == nil {
+		return SummaryDTO{}, fmt.Errorf("composite read service not configured")
+	}
+	mtd, err := s.queries.SumInvoicesMTD(ctx)
+	if err != nil {
+		return SummaryDTO{}, err
+	}
+
+	monthStart := time.Date(time.Now().UTC().Year(), time.Now().UTC().Month(), 1, 0, 0, 0, 0, time.UTC)
+	monthEnd := monthStart.AddDate(0, 1, 0)
+	customersSpend, err := s.queries.CountCustomersWithFeeSpendInWindow(ctx, billingdb.CountCustomersWithFeeSpendInWindowParams{
+		CreatedAt:   pgTimestamp(monthStart),
+		CreatedAt_2: pgTimestamp(monthEnd),
+	})
+	if err != nil {
+		return SummaryDTO{}, err
+	}
+
+	var undelivered int64
+	err = s.pool.QueryRow(ctx, `
+		SELECT COUNT(*)::bigint
+		FROM notifier.notifications
+		WHERE template_id = 'invoice_monthly' AND status NOT IN ('SENT')`).Scan(&undelivered)
+	if err != nil {
+		return SummaryDTO{}, err
+	}
+
+	return SummaryDTO{
+		InvoicedMTDMicro:                mtd.Column1,
+		InvoiceCountMTD:                 mtd.Column2,
+		UndeliveredInvoiceNotifications: undelivered,
+		CustomersWithSpendInMonth:       customersSpend,
+	}, nil
+}
+
+func (s *CompositeReadService) ListDeliveries(ctx context.Context, invoiceID string) ([]DeliveryDTO, error) {
+	if s == nil || s.pool == nil {
+		return nil, fmt.Errorf("composite read service not configured")
+	}
+	dedupKey := "invoice:" + invoiceID
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, status::text, provider::text, recipient, template_id, error_message, retry_count, created_at, updated_at
+		FROM notifier.notifications
+		WHERE dedup_key = $1
+		ORDER BY created_at DESC`, dedupKey)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make([]DeliveryDTO, 0, 4)
+	for rows.Next() {
+		var (
+			id, status, provider, recipient, templateID string
+			errorMessage                                pgtype.Text
+			retryCount                                  int32
+			createdAt, updatedAt                        time.Time
+		)
+		if err := rows.Scan(&id, &status, &provider, &recipient, &templateID, &errorMessage, &retryCount, &createdAt, &updatedAt); err != nil {
+			return nil, err
+		}
+		dto := DeliveryDTO{
+			ID:         id,
+			Status:     status,
+			Provider:   provider,
+			Recipient:  recipient,
+			TemplateID: templateID,
+			RetryCount: retryCount,
+			CreatedAt:  createdAt.UTC().Format(time.RFC3339),
+			UpdatedAt:  updatedAt.UTC().Format(time.RFC3339),
+		}
+		if errorMessage.Valid {
+			dto.ErrorMessage = errorMessage.String
+		}
+		out = append(out, dto)
+	}
+	return out, rows.Err()
+}
+
+func (s *CompositeReadService) GetTaxProfile(ctx context.Context, customerID uuid.UUID) (TaxProfileDTO, error) {
+	if s == nil || s.queries == nil {
+		return TaxProfileDTO{}, fmt.Errorf("composite read service not configured")
+	}
+	row, err := s.queries.GetCustomerTaxProfile(ctx, pgtype.UUID{Bytes: customerID, Valid: true})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			calc := billing.NewTaxCalculator()
+			def := calc.DefaultProfile("", "")
+			return TaxProfileDTO{
+				CustomerID:  customerID.String(),
+				CountryCode: def.CountryCode,
+				TaxScheme:   string(def.Scheme),
+				TaxRateBps:  def.RateBPS,
+			}, nil
+		}
+		return TaxProfileDTO{}, err
+	}
+	dto := TaxProfileDTO{
+		CustomerID:  customerID.String(),
+		CountryCode: row.CountryCode,
+		TaxScheme:   string(row.TaxScheme),
+		TaxRateBps:  row.TaxRateBps,
+	}
+	if row.TaxRegion.Valid {
+		dto.TaxRegion = row.TaxRegion.String
+	}
+	return dto, nil
+}
+
+func (s *CompositeReadService) UpsertTaxProfile(ctx context.Context, customerID uuid.UUID, dto TaxProfileDTO) (TaxProfileDTO, error) {
+	if s == nil || s.queries == nil {
+		return TaxProfileDTO{}, fmt.Errorf("composite read service not configured")
+	}
+	row, err := s.queries.UpsertCustomerTaxProfile(ctx, billingdb.UpsertCustomerTaxProfileParams{
+		CustomerID:  pgtype.UUID{Bytes: customerID, Valid: true},
+		CountryCode: dto.CountryCode,
+		TaxRegion:   pgtype.Text{String: dto.TaxRegion, Valid: dto.TaxRegion != ""},
+		TaxScheme:   billingdb.BillingTaxScheme(dto.TaxScheme),
+		TaxRateBps:  dto.TaxRateBps,
+	})
+	if err != nil {
+		return TaxProfileDTO{}, err
+	}
+	out := TaxProfileDTO{
+		CustomerID:  customerID.String(),
+		CountryCode: row.CountryCode,
+		TaxScheme:   string(row.TaxScheme),
+		TaxRateBps:  row.TaxRateBps,
+	}
+	if row.TaxRegion.Valid {
+		out.TaxRegion = row.TaxRegion.String
+	}
+	return out, nil
+}
+
+func ParseStatementPeriod(fromRaw, toRaw, monthRaw string) (time.Time, time.Time, error) {
+	if monthRaw != "" {
+		month, err := time.Parse("2006-01", monthRaw)
+		if err != nil {
+			return time.Time{}, time.Time{}, fmt.Errorf("invalid month")
+		}
+		start := time.Date(month.Year(), month.Month(), 1, 0, 0, 0, 0, time.UTC)
+		return start, start.AddDate(0, 1, 0), nil
+	}
+	if fromRaw == "" || toRaw == "" {
+		now := time.Now().UTC()
+		start := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+		return start, start.AddDate(0, 1, 0), nil
+	}
+	from, err := time.Parse(time.RFC3339, fromRaw)
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("invalid from")
+	}
+	to, err := time.Parse(time.RFC3339, toRaw)
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("invalid to")
+	}
+	return from.UTC(), to.UTC(), nil
+}
+
+func pgTimestamp(t time.Time) pgtype.Timestamp {
+	return pgtype.Timestamp{Time: t.UTC(), Valid: true}
+}
+
+func pgDate(t time.Time) pgtype.Date {
+	return pgtype.Date{Time: time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC), Valid: true}
+}
+
+func uuidString(id pgtype.UUID) string {
+	if !id.Valid {
+		return ""
+	}
+	return uuid.UUID(id.Bytes).String()
 }

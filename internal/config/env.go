@@ -291,8 +291,8 @@ type Config struct {
 	ShardOrchestratorIntervalMs   int
 	TCPControlEnabled             bool
 	TCPControlHMACSecret          Secret
-	TCPMgmtBindAddr               string
-	TCPMgmtAddr                   string
+	TCPControlBindAddr            string
+	TCPControlAddr                string
 	TCPTrackerAddrs               []string
 	ManagementURL                 string
 
@@ -300,9 +300,9 @@ type Config struct {
 
 	UDPControlEnabled  bool
 	UDPFailClosed      bool
-	UDPMgmtBindAddr    string
+	UDPControlBindAddr string
 	UDPTrackerBindAddr string
-	UDPMgmtAddr        string
+	UDPControlAddr     string
 	UDPTrackerAddrs    []string
 	UDPTrackerID       uint32
 	UDPSyncIntervalMs  int

@@ -28,10 +28,10 @@ type VolumeMeterWorker struct {
 	ch       *database.CHQuery
 	source   string
 	interval time.Duration
-	pgGate   *MgmtPgGate
+	pgGate   *PostgresGate
 }
 
-func NewVolumeMeterWorker(pool *pgxpool.Pool, ch *database.CHQuery, source string, interval time.Duration, pgGate *MgmtPgGate) *VolumeMeterWorker {
+func NewVolumeMeterWorker(pool *pgxpool.Pool, ch *database.CHQuery, source string, interval time.Duration, pgGate *PostgresGate) *VolumeMeterWorker {
 	if interval <= 0 {
 		interval = time.Hour
 	}

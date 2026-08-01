@@ -96,7 +96,7 @@ func TestFault_QuotaDeadShardTransientBlip(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := setupMgmtFaultInfra(t)
+	infra, cleanup := setupControlFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
@@ -120,9 +120,9 @@ func TestFault_QuotaDeadShardTransientBlip(t *testing.T) {
 	worker := NewReconWorkerWithQuorum(svc, time.Hour, 200*time.Millisecond)
 	worker.Quorum().SetBreakerPctFunc(func(context.Context, int) float64 { return 1.0 })
 
-	stopMgmtContainer(t, infra.RedisContainer)
+	stopFaultContainer(t, infra.RedisContainer)
 	time.Sleep(50 * time.Millisecond)
-	startMgmtContainer(t, infra.RedisContainer)
+	startFaultContainer(t, infra.RedisContainer)
 	infra.refreshRedisClient(t)
 
 	worker.ReconcileQuotas(ctx)

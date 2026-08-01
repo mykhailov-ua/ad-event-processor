@@ -74,7 +74,7 @@ func (w *ReconWorker) Start(ctx context.Context) {
 			if err := w.svc.withPgLow(ctx, func(runCtx context.Context) error {
 				w.ReconcileBudgetSnapshot(runCtx)
 				return nil
-			}); err != nil && !errors.Is(err, ErrMgmtPgGateRejected) {
+			}); err != nil && !errors.Is(err, ErrPostgresGateRejected) {
 				slog.Error("budget snapshot recon failed", "err", err)
 			}
 		case <-ticker.C:
@@ -82,7 +82,7 @@ func (w *ReconWorker) Start(ctx context.Context) {
 			start := end.Add(-time.Hour)
 			if err := w.svc.withPgLow(ctx, func(runCtx context.Context) error {
 				return reconSvc.ReconcileWindow(runCtx, start, end)
-			}); err != nil && !errors.Is(err, ErrMgmtPgGateRejected) {
+			}); err != nil && !errors.Is(err, ErrPostgresGateRejected) {
 				slog.Error("recon worker iteration failed", "err", err, "window", start)
 			}
 		case <-quotaTicker.C:
@@ -90,7 +90,7 @@ func (w *ReconWorker) Start(ctx context.Context) {
 				if err := w.svc.withPgLow(ctx, func(runCtx context.Context) error {
 					w.ReconcileQuotas(runCtx)
 					return nil
-				}); err != nil && !errors.Is(err, ErrMgmtPgGateRejected) {
+				}); err != nil && !errors.Is(err, ErrPostgresGateRejected) {
 					slog.Error("quota recon failed", "err", err)
 				}
 			}

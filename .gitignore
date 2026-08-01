@@ -77,13 +77,13 @@ coverage.out
 *.prof
 *.test
 
-# Python (fraud_modeling/artifact_bootstrap artifacts)
+# Python (fraudtrain/artifact_bootstrap artifacts)
 __pycache__/
 *.py[cod]
 .venv/
 venv/
 .venv-ml/
-fraud_modeling/.ruff_cache/
+fraudtrain/.ruff_cache/
 
 # Generated ML artifacts (bootstrap locally via make fraud-modeling-check)
 testdata/ml/features_*.json

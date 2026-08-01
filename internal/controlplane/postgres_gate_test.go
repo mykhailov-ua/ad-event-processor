@@ -7,17 +7,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMgmtPgGate_LowRejectedWhenBudgetExhausted(t *testing.T) {
-	gate := NewMgmtPgGate(3)
+func TestPostgresGate_LowRejectedWhenBudgetExhausted(t *testing.T) {
+	gate := NewPostgresGate(3)
 	ctx := context.Background()
 
 	require.NoError(t, gate.AcquireLow(ctx))
-	require.ErrorIs(t, gate.AcquireLow(ctx), ErrMgmtPgGateRejected)
+	require.ErrorIs(t, gate.AcquireLow(ctx), ErrPostgresGateRejected)
 	gate.ReleaseLow()
 }
 
-func TestMgmtPgGate_HighUsesReservedSlot(t *testing.T) {
-	gate := NewMgmtPgGate(3)
+func TestPostgresGate_HighUsesReservedSlot(t *testing.T) {
+	gate := NewPostgresGate(3)
 	ctx := context.Background()
 
 	require.NoError(t, gate.AcquireLow(ctx))

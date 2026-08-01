@@ -399,7 +399,7 @@ func main() {
 			Enabled:   true,
 			Secret:    []byte(cfg.TCPControlHMACSecret),
 			TrackerID: cfg.UDPTrackerID,
-			MgmtAddr:  cfg.TCPMgmtAddr,
+			ControlAddr: cfg.TCPControlAddr,
 			Sharder:   sharder,
 		})
 		go func() {
@@ -416,7 +416,7 @@ func main() {
 				}
 			}
 		}()
-		slog.Info("tcp routing snapshot client enabled", "mgmt", cfg.TCPMgmtAddr)
+		slog.Info("tcp routing snapshot client enabled", "control_addr", cfg.TCPControlAddr)
 	}
 	gnetHandler.ConfigureIngestGeo(geoProvider)
 	if rtbCatalog != nil {

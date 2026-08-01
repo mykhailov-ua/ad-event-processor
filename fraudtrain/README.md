@@ -1,4 +1,4 @@
-# fraud_modeling
+# fraudtrain
 
 Offline fraud ML: train artifacts, calibrate policy, run benchmarks. Production inference is Go (`cmd/fraud-scorer`, `internal/fraud`).
 
@@ -27,23 +27,23 @@ Output directory: `var/fraudscore/artifacts/` (`FRAUD_ARTIFACT_DIR`). `model.txt
 ## Commands
 
 ```bash
-pip install -r fraud_modeling/requirements.txt
+pip install -r fraudtrain/requirements.txt
 
 # Dev / no labels
-python3 fraud_modeling/artifact_bootstrap.py bootstrap
-python3 fraud_modeling/artifact_bootstrap.py bootstrap-validate
+python3 fraudtrain/artifact_bootstrap.py bootstrap
+python3 fraudtrain/artifact_bootstrap.py bootstrap-validate
 
 # Production training (labeled parquet)
 export FRAUD_TRAIN_DATASET=var/fraudscore/training/labeled.parquet
-python3 fraud_modeling/artifact_bootstrap.py fit
-python3 fraud_modeling/artifact_bootstrap.py fit-validate   # CronJob default
+python3 fraudtrain/artifact_bootstrap.py fit
+python3 fraudtrain/artifact_bootstrap.py fit-validate   # CronJob default
 
-python3 fraud_modeling/artifact_bootstrap.py bootstrap
-python3 fraud_modeling/fixture_generator.py
-python3 fraud_modeling/artifact_bootstrap.py validate --model var/fraudscore/artifacts/model.txt
+python3 fraudtrain/artifact_bootstrap.py bootstrap
+python3 fraudtrain/fixture_generator.py
+python3 fraudtrain/artifact_bootstrap.py validate --model var/fraudscore/artifacts/model.txt
 go run ./cmd/ml-validate -model var/fraudscore/artifacts/model.txt
 
-make fraud-modeling-check   # optional local; not in main CI
+make fraudtrain-check   # optional local; not in main CI
 ```
 
 Docker: `docker build -f deploy/ml/Dockerfile -t espx-ml-bootstrap:latest .`
@@ -55,7 +55,7 @@ Docker: `docker build -f deploy/ml/Dockerfile -t espx-ml-bootstrap:latest .`
 3. Time-based split (no random shuffle across `window_start`).
 
 ```bash
-python3 fraud_modeling/artifact_bootstrap.py fit \
+python3 fraudtrain/artifact_bootstrap.py fit \
   --dataset var/fraudscore/training/labeled.parquet \
   --val-fraction 0.2
 ```
@@ -87,7 +87,7 @@ When `DB_DSN` is set, `features_export.py` adds `label` and `label_source` from 
 
 ```bash
 export FRAUD_EVAL_HOURS=168
-python3 fraud_modeling/evaluate.py --format both --min-labeled-rows 100
+python3 fraudtrain/evaluate.py --format both --min-labeled-rows 100
 ```
 
 ## Policy
@@ -112,7 +112,7 @@ go run ./cmd/ml-replay -fixtures testdata/ml
 go run ./cmd/ml-replay -clickhouse -limit 500 -minutes 60 -output /tmp/replay.csv
 
 # Shadow eval report (feeds ops API drift fields)
-python3 fraud_modeling/evaluate.py --format both
+python3 fraudtrain/evaluate.py --format both
 ```
 
 Feedback loop env: `DB_DSN` (export labels from PG), `FRAUD_MANUAL_LABELS` (fit overrides), `FRAUD_EVAL_REPORT_PATH` (ops API drift).
@@ -120,6 +120,6 @@ Feedback loop env: `DB_DSN` (export labels from PG), `FRAUD_MANUAL_LABELS` (fit 
 ## Feature contract change
 
 1. `feature_spec.py` + `internal/fraud/feature_spec.go`
-2. `python3 fraud_modeling/artifact_bootstrap.py bootstrap && python3 fraud_modeling/fixture_generator.py`
-3. `python3 fraud_modeling/artifact_bootstrap.py validate --model var/fraudscore/artifacts/model.txt`
+2. `python3 fraudtrain/artifact_bootstrap.py bootstrap && python3 fraudtrain/fixture_generator.py`
+3. `python3 fraudtrain/artifact_bootstrap.py validate --model var/fraudscore/artifacts/model.txt`
 4. `go test ./internal/fraud/...`
