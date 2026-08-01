@@ -7,6 +7,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"espx/internal/domain"
+	"espx/internal/domain/db"
+	"espx/internal/edge/allowlist"
+	"espx/internal/ledger"
+	"espx/pkg/coldpath"
 	"fmt"
 	"math"
 	"net"
@@ -15,11 +20,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"espx/internal/domain"
-	"espx/internal/domain/db"
-	"espx/internal/edge/allowlist"
-	"espx/internal/ledger"
-	"espx/pkg/coldpath"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -469,7 +470,7 @@ func (s *Service) RetryNotification(ctx context.Context, notificationID string) 
 		return fmt.Errorf("invalid notification id: %w", err)
 	}
 	tag, err := s.GetPool().Exec(ctx, `
-		UPDATE notifier.notifications
+		UPDATE notify.notifications
 		SET status = 'PENDING',
 		    retry_count = 0,
 		    error_message = NULL,

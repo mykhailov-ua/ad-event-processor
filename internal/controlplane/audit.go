@@ -2,9 +2,9 @@ package controlplane
 
 import (
 	"context"
+	"espx/internal/controlplane/authz"
 	"espx/internal/domain"
 	"espx/internal/domain/db"
-	"espx/internal/controlplane/authz"
 	"log/slog"
 	"time"
 

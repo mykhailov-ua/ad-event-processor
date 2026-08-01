@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"espx/internal/config"
-	"espx/internal/ingestion"
-	"espx/internal/domain/db"
 	"espx/internal/controlplane"
+	"espx/internal/domain/db"
+	"espx/internal/ingestion"
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"

@@ -11,7 +11,6 @@ import (
 	"espx/internal/database"
 	"espx/internal/edge"
 	"espx/internal/fraud"
-	"espx/internal/ivtdetector"
 	"espx/internal/licensing"
 	"espx/pkg/lifecycle"
 	"espx/pkg/piihash"
@@ -39,7 +38,7 @@ func main() {
 		slog.Error("failed to initialize PII hasher", "error", piiErr)
 		os.Exit(1)
 	}
-	ivtdetector.SetPIIHasher(piiHasher)
+	fraud.SetPIIHasher(piiHasher)
 
 	ctx, stop := lifecycle.NotifyContext(context.Background())
 	defer stop()
@@ -60,7 +59,7 @@ func main() {
 
 	chQuery := database.NewCHQuery(chRead, database.CHQueryConfigFromApp(cfg))
 
-	analyzerCfg := ivtdetector.AnalyzerConfig{
+	analyzerCfg := fraud.AnalyzerConfig{
 		Window:               time.Duration(cfg.IVT.WindowSec) * time.Second,
 		MinClicks:            cfg.IVT.MinClicks,
 		MinImpressions:       cfg.IVT.MinImpressions,
@@ -70,21 +69,21 @@ func main() {
 		IntervalMinIntervals: cfg.IVT.IntervalMinIntervals,
 		IntervalMaxVariance:  cfg.IVT.IntervalMaxVariance,
 	}
-	detectorCfg := ivtdetector.DetectorConfig{
+	detectorCfg := fraud.DetectorConfig{
 		ScanInterval:       time.Duration(cfg.IVT.ScanIntervalMs) * time.Millisecond,
 		OutboxPendingLimit: cfg.IVT.OutboxPendingLimit,
 		Analyzer:           analyzerCfg,
 	}
 
-	var blocker ivtdetector.BlacklistBlocker
-	blocker, err = ivtdetector.ResolveManagementBlockerFromConfig(cfg.ManagementURL, cfg.ManagementPort, string(cfg.AdminAPIKey))
+	var blocker fraud.BlacklistBlocker
+	blocker, err = fraud.ResolveManagementBlockerFromConfig(cfg.ManagementURL, cfg.ManagementPort, string(cfg.AdminAPIKey))
 	if err != nil {
 		slog.Error("failed to configure management client", "error", err)
 		os.Exit(1)
 	}
 	slog.Info("ivt detector using management HTTP API")
 
-	asn := &ivtdetector.StaticASNClassifier{
+	asn := &fraud.StaticASNClassifier{
 		DatacenterPrefixes: strings.Split(os.Getenv("IVT_DATACENTER_PREFIXES"), ","),
 	}
 
@@ -119,11 +118,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	registry := ivtdetector.NewAnalyzerRegistry(chQuery, chWrite, pool, analyzerCfg, asn, scorer, cfg.FraudScoring.BatchSize, newRedisShard0(cfg))
+	registry := fraud.NewAnalyzerRegistry(chQuery, chWrite, pool, analyzerCfg, asn, scorer, cfg.FraudScoring.BatchSize, newRedisShard0(cfg))
 
-	detector := ivtdetector.NewDetector(
+	detector := fraud.NewDetector(
 		registry,
-		ivtdetector.NewIdempotencyStore(pool),
+		fraud.NewIdempotencyStore(pool),
 		blocker,
 		pool,
 		detectorCfg,

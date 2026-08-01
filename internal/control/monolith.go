@@ -3,11 +3,11 @@ package control
 import (
 	"context"
 
-	"espx/internal/billing"
 	"espx/internal/config"
 	"espx/internal/controlplane"
 	"espx/internal/identity"
-	"espx/internal/notifier"
+	"espx/internal/ledger"
+	"espx/internal/notify"
 	"espx/internal/payment"
 )
 
@@ -26,7 +26,7 @@ func buildServeOptions(ctx context.Context, cfg *config.Config, opts Options) (c
 		}
 	}
 	if opts.Billing {
-		mod, err := billing.OpenModule(ctx, cfg)
+		mod, err := ledger.OpenModule(ctx, cfg)
 		if err != nil {
 			return out, cleanups, err
 		}
@@ -48,7 +48,7 @@ func buildServeOptions(ctx context.Context, cfg *config.Config, opts Options) (c
 		}
 	}
 	if opts.Notifier {
-		mod, err := notifier.OpenModule(ctx, cfg)
+		mod, err := notify.OpenModule(ctx, cfg)
 		if err != nil {
 			return out, cleanups, err
 		}

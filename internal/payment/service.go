@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"espx/internal/config"
+	"espx/internal/domain"
 	"espx/internal/payment/db"
 	"espx/pkg/coldpath"
 
@@ -40,7 +41,7 @@ func NewService(pool *pgxpool.Pool, prov Provider, cfg *config.Config) *Service 
 }
 
 type CreateIntentResult struct {
-	Intent      PaymentIntent
+	Intent      domain.PaymentIntent
 	CheckoutURL string
 }
 
@@ -228,15 +229,15 @@ func reconcileIdempotentIntent(existing db.PaymentPaymentIntent, customerID uuid
 	return CreateIntentResult{Intent: paymentIntentFromDB(existing), CheckoutURL: checkoutURLFromIntent(existing)}, nil
 }
 
-func (s *Service) GetPaymentIntent(ctx context.Context, intentID uuid.UUID) (PaymentIntent, error) {
+func (s *Service) GetPaymentIntent(ctx context.Context, intentID uuid.UUID) (domain.PaymentIntent, error) {
 	intent, err := db.New(s.pool).GetPaymentIntent(ctx, pgtype.UUID{Bytes: intentID, Valid: true})
 	if err != nil {
-		return PaymentIntent{}, mapNotFound(err, ErrPaymentIntentNotFound)
+		return domain.PaymentIntent{}, mapNotFound(err, ErrPaymentIntentNotFound)
 	}
 	return paymentIntentFromDB(intent), nil
 }
 
-func (s *Service) ListPaymentIntents(ctx context.Context, customerID uuid.UUID, limit, offset int32) ([]PaymentIntent, int64, error) {
+func (s *Service) ListPaymentIntents(ctx context.Context, customerID uuid.UUID, limit, offset int32) ([]domain.PaymentIntent, int64, error) {
 	q := db.New(s.pool)
 	custUUID := pgtype.UUID{Bytes: customerID, Valid: true}
 	listParams := db.ListPaymentIntentsParams{
@@ -254,7 +255,7 @@ func (s *Service) ListPaymentIntents(ctx context.Context, customerID uuid.UUID, 
 	if len(rows) == 0 {
 		return nil, total, nil
 	}
-	out := make([]PaymentIntent, 0, len(rows))
+	out := make([]domain.PaymentIntent, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, paymentIntentFromDB(row))
 	}

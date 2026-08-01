@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"time"
 
-	"espx/internal/billing"
 	"espx/internal/config"
+	"espx/internal/domain"
 	"espx/internal/identity"
-	"espx/internal/notifier"
+	"espx/internal/ledger"
+	"espx/internal/notify"
 	"espx/internal/payment"
 )
 
@@ -76,21 +77,21 @@ func TryAuthClient(ctx context.Context, cfg *config.Config) (*AuthClient, func()
 	return NewAuthClientFromAPI(api), closeFn, nil
 }
 
-var _ billing.BillingAPI = (*BillingClient)(nil)
+var _ domain.BillingAPI = (*BillingClient)(nil)
 
 type BillingClient struct {
-	api   billing.BillingAPI
+	api   domain.BillingAPI
 	token string
 }
 
-func NewBillingClientFromAPI(api billing.BillingAPI, token string) *BillingClient {
+func NewBillingClientFromAPI(api domain.BillingAPI, token string) *BillingClient {
 	if api == nil || token == "" {
 		return nil
 	}
 	return &BillingClient{api: api, token: token}
 }
 
-func NewBillingClientInProcess(api billing.BillingAPI, token string) *BillingClient {
+func NewBillingClientInProcess(api domain.BillingAPI, token string) *BillingClient {
 	return NewBillingClientFromAPI(api, token)
 }
 
@@ -102,7 +103,7 @@ func openBillingClient(ctx context.Context, cfg *config.Config, opts ServeOption
 	if cfg != nil {
 		token = string(cfg.BillingInternalToken)
 	}
-	api, closeFn, err := billing.OpenAPI(ctx, cfg)
+	api, closeFn, err := ledger.OpenAPI(ctx, cfg)
 	if err != nil || api == nil {
 		return nil, closeFn, err
 	}
@@ -113,42 +114,42 @@ func (client *BillingClient) Close() error {
 	return nil
 }
 
-func (client *BillingClient) GenerateInvoice(ctx context.Context, customerID string, billingMonth time.Time) (*billing.Invoice, error) {
+func (client *BillingClient) GenerateInvoice(ctx context.Context, customerID string, billingMonth time.Time) (*domain.Invoice, error) {
 	if client == nil || client.api == nil {
 		return nil, fmt.Errorf("billing client not configured")
 	}
 	return client.api.GenerateInvoice(ctx, customerID, billingMonth)
 }
 
-func (client *BillingClient) GetInvoice(ctx context.Context, invoiceID string) (*billing.Invoice, error) {
+func (client *BillingClient) GetInvoice(ctx context.Context, invoiceID string) (*domain.Invoice, error) {
 	if client == nil || client.api == nil {
 		return nil, fmt.Errorf("billing client not configured")
 	}
 	return client.api.GetInvoice(ctx, invoiceID)
 }
 
-func (client *BillingClient) ListInvoices(ctx context.Context, customerID string, limit, offset int32) (billing.ListInvoicesResult, error) {
+func (client *BillingClient) ListInvoices(ctx context.Context, customerID string, limit, offset int32) (domain.ListInvoicesResult, error) {
 	if client == nil || client.api == nil {
-		return billing.ListInvoicesResult{}, fmt.Errorf("billing client not configured")
+		return domain.ListInvoicesResult{}, fmt.Errorf("billing client not configured")
 	}
 	return client.api.ListInvoices(ctx, customerID, limit, offset)
 }
 
-var _ payment.PaymentAPI = (*PaymentClient)(nil)
+var _ domain.PaymentAPI = (*PaymentClient)(nil)
 
 type PaymentClient struct {
-	api   payment.PaymentAPI
+	api   domain.PaymentAPI
 	token string
 }
 
-func NewPaymentClientFromAPI(api payment.PaymentAPI, token string) *PaymentClient {
+func NewPaymentClientFromAPI(api domain.PaymentAPI, token string) *PaymentClient {
 	if api == nil || token == "" {
 		return nil
 	}
 	return &PaymentClient{api: api, token: token}
 }
 
-func NewPaymentClientInProcess(api payment.PaymentAPI, token string) *PaymentClient {
+func NewPaymentClientInProcess(api domain.PaymentAPI, token string) *PaymentClient {
 	return NewPaymentClientFromAPI(api, token)
 }
 
@@ -171,23 +172,23 @@ func (c *PaymentClient) Close() error {
 	return nil
 }
 
-func (c *PaymentClient) CreatePaymentIntent(ctx context.Context, customerID string, amountMicro int64, currency, idempotencyKey string, meta map[string]string) (*payment.CreatePaymentIntentResult, error) {
+func (c *PaymentClient) CreatePaymentIntent(ctx context.Context, customerID string, amountMicro int64, currency, idempotencyKey string, meta map[string]string) (*domain.CreatePaymentIntentResult, error) {
 	if c == nil || c.api == nil {
 		return nil, fmt.Errorf("payment client not configured")
 	}
 	return c.api.CreatePaymentIntent(ctx, customerID, amountMicro, currency, idempotencyKey, meta)
 }
 
-func (c *PaymentClient) ListPaymentIntents(ctx context.Context, customerID string, limit, offset int32) (payment.ListPaymentIntentsResult, error) {
+func (c *PaymentClient) ListPaymentIntents(ctx context.Context, customerID string, limit, offset int32) (domain.ListPaymentIntentsResult, error) {
 	if c == nil || c.api == nil {
-		return payment.ListPaymentIntentsResult{}, fmt.Errorf("payment client not configured")
+		return domain.ListPaymentIntentsResult{}, fmt.Errorf("payment client not configured")
 	}
 	return c.api.ListPaymentIntents(ctx, customerID, limit, offset)
 }
 
-func (c *PaymentClient) ListDisputes(ctx context.Context, customerID string, limit, offset int32) (payment.ListDisputesResult, error) {
+func (c *PaymentClient) ListDisputes(ctx context.Context, customerID string, limit, offset int32) (domain.ListDisputesResult, error) {
 	if c == nil || c.api == nil {
-		return payment.ListDisputesResult{}, fmt.Errorf("payment client not configured")
+		return domain.ListDisputesResult{}, fmt.Errorf("payment client not configured")
 	}
 	return c.api.ListDisputes(ctx, customerID, limit, offset)
 }
@@ -201,10 +202,10 @@ func (c *PaymentClient) ReplayWebhook(ctx context.Context, provider, providerEve
 
 type NotifierClient struct {
 	closeFn func()
-	api     notifier.NotifierAPI
+	api     notify.NotifierAPI
 }
 
-func NewNotifierClientFromAPI(api notifier.NotifierAPI) *NotifierClient {
+func NewNotifierClientFromAPI(api notify.NotifierAPI) *NotifierClient {
 	if api == nil {
 		return nil
 	}
@@ -215,7 +216,7 @@ func NewNotifierClient(ctx context.Context, cfg *config.Config) (*NotifierClient
 	if cfg == nil || !cfg.NotifierAPIEnabled() {
 		return nil, nil
 	}
-	api, closeFn, err := notifier.OpenAPI(ctx, cfg)
+	api, closeFn, err := notify.OpenAPI(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +226,7 @@ func NewNotifierClient(ctx context.Context, cfg *config.Config) (*NotifierClient
 	return &NotifierClient{api: api, closeFn: closeFn}, nil
 }
 
-func NewNotifierClientInProcess(api notifier.NotifierAPI) *NotifierClient {
+func NewNotifierClientInProcess(api notify.NotifierAPI) *NotifierClient {
 	return NewNotifierClientFromAPI(api)
 }
 
@@ -233,7 +234,7 @@ func TryNotifierClient(ctx context.Context, cfg *config.Config) (*NotifierClient
 	if cfg == nil || !cfg.NotifierAPIEnabled() {
 		return nil, func() {}, nil
 	}
-	api, closeFn, err := notifier.OpenAPI(ctx, cfg)
+	api, closeFn, err := notify.OpenAPI(ctx, cfg)
 	if err != nil {
 		return nil, func() {}, err
 	}
@@ -250,7 +251,7 @@ func openNotifierClient(ctx context.Context, cfg *config.Config, opts ServeOptio
 	return TryNotifierClient(ctx, cfg)
 }
 
-func (client *NotifierClient) API() notifier.NotifierAPI {
+func (client *NotifierClient) API() notify.NotifierAPI {
 	if client == nil {
 		return nil
 	}

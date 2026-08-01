@@ -3,6 +3,7 @@ package payment
 import (
 	"context"
 
+	"espx/internal/domain"
 	"espx/pkg/coldpath"
 
 	"github.com/google/uuid"
@@ -42,21 +43,21 @@ func (h *Handler) createPaymentIntent(
 	}, nil
 }
 
-func (h *Handler) getPaymentIntent(ctx context.Context, intentID uuid.UUID) (PaymentIntent, error) {
+func (h *Handler) getPaymentIntent(ctx context.Context, intentID uuid.UUID) (domain.PaymentIntent, error) {
 	if err := h.requireInternalToken(ctx); err != nil {
-		return PaymentIntent{}, err
+		return domain.PaymentIntent{}, err
 	}
 	if intentID == uuid.Nil {
-		return PaymentIntent{}, status.Error(codes.InvalidArgument, "invalid intent id")
+		return domain.PaymentIntent{}, status.Error(codes.InvalidArgument, "invalid intent id")
 	}
 	intent, err := h.service.GetPaymentIntent(ctx, intentID)
 	if err != nil {
-		return PaymentIntent{}, mapPaymentGRPCError(err)
+		return domain.PaymentIntent{}, mapPaymentGRPCError(err)
 	}
 	return intent, nil
 }
 
-func (h *Handler) listPaymentIntents(ctx context.Context, customerID uuid.UUID, limit, offset int32) ([]PaymentIntent, int64, error) {
+func (h *Handler) listPaymentIntents(ctx context.Context, customerID uuid.UUID, limit, offset int32) ([]domain.PaymentIntent, int64, error) {
 	if err := h.requireInternalToken(ctx); err != nil {
 		return nil, 0, err
 	}
@@ -71,7 +72,7 @@ func (h *Handler) listPaymentIntents(ctx context.Context, customerID uuid.UUID, 
 	return intents, total, nil
 }
 
-func (h *Handler) listDisputes(ctx context.Context, customerID *uuid.UUID, limit, offset int32) ([]Dispute, int64, error) {
+func (h *Handler) listDisputes(ctx context.Context, customerID *uuid.UUID, limit, offset int32) ([]domain.Dispute, int64, error) {
 	if err := h.requireInternalToken(ctx); err != nil {
 		return nil, 0, err
 	}
@@ -83,7 +84,7 @@ func (h *Handler) listDisputes(ctx context.Context, customerID *uuid.UUID, limit
 	if len(items) == 0 {
 		return nil, total, nil
 	}
-	out := make([]Dispute, 0, len(items))
+	out := make([]domain.Dispute, 0, len(items))
 	for _, item := range items {
 		out = append(out, disputeFromListItem(item))
 	}

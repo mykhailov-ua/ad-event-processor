@@ -167,11 +167,6 @@ func (dashboards *DashboardsHTTPHandlers) Register(mux *http.ServeMux) {
 		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 
-	mux.HandleFunc("GET /api/v1/dashboards/buyer", limit(perm("campaigns:read", dashboards.notImplemented)))
-	mux.HandleFunc("GET /api/v1/dashboards/adops", limit(perm("campaigns:read", dashboards.notImplemented)))
-	mux.HandleFunc("GET /api/v1/dashboards/accountant", limit(perm("customers:read", dashboards.notImplemented)))
-	mux.HandleFunc("GET /api/v1/dashboards/cfo", limit(perm("customers:read", dashboards.notImplemented)))
-	mux.HandleFunc("GET /api/v1/dashboards/fraud", limit(perm("audit:read", dashboards.notImplemented)))
 	mux.HandleFunc("GET /api/v1/dashboards/operator", limit(perm("shards:read", dashboards.getOperatorDashboard)))
 	mux.HandleFunc("GET /api/v1/dashboards/campaign/{id}", limit(perm("campaigns:read", dashboards.getCampaignDashboard)))
 }
@@ -232,6 +227,3 @@ func (dashboards *DashboardsHTTPHandlers) getOperatorDashboard(w http.ResponseWr
 	httpresponse.JSON(w, http.StatusOK, resp)
 }
 
-func (dashboards *DashboardsHTTPHandlers) notImplemented(w http.ResponseWriter, _ *http.Request) {
-	httpresponse.Error(w, http.StatusNotImplemented, "NOT_IMPLEMENTED", "dashboard stub; UI deferred — docs/DEVELOPMENT.md")
-}

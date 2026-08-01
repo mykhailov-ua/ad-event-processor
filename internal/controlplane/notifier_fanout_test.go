@@ -14,27 +14,27 @@ import (
 	"time"
 
 	"espx/internal/config"
-	"espx/internal/notifier"
+	"espx/internal/notify"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func testNotifierClient(stub notifier.NotifierAPI) *NotifierClient {
+func testNotifierClient(stub notify.NotifierAPI) *NotifierClient {
 	return &NotifierClient{api: stub}
 }
 
 type stubNotifierAPITest struct {
 	mu     sync.Mutex
-	inputs []notifier.NotificationInput
+	inputs []notify.NotificationInput
 	fail   bool
 }
 
 func (stub *stubNotifierAPITest) SendNotification(
 	ctx context.Context,
 	provider, recipient, title, body string,
-) (notifier.SendNotificationResult, error) {
-	return stub.SendNotificationInput(ctx, notifier.NotificationInput{
+) (notify.SendNotificationResult, error) {
+	return stub.SendNotificationInput(ctx, notify.NotificationInput{
 		Provider:  provider,
 		Recipient: recipient,
 		Title:     title,
@@ -44,38 +44,38 @@ func (stub *stubNotifierAPITest) SendNotification(
 
 func (stub *stubNotifierAPITest) SendNotificationInput(
 	ctx context.Context,
-	input notifier.NotificationInput,
-) (notifier.SendNotificationResult, error) {
+	input notify.NotificationInput,
+) (notify.SendNotificationResult, error) {
 	stub.mu.Lock()
 	defer stub.mu.Unlock()
 	if stub.fail {
-		return notifier.SendNotificationResult{}, fmt.Errorf("stub notifier unavailable")
+		return notify.SendNotificationResult{}, fmt.Errorf("stub notifier unavailable")
 	}
 	stub.inputs = append(stub.inputs, input)
-	return notifier.SendNotificationResult{NotificationID: "stub-id"}, nil
+	return notify.SendNotificationResult{NotificationID: "stub-id"}, nil
 }
 
 func (stub *stubNotifierAPITest) SendNotificationBatch(
 	ctx context.Context,
-	inputs []notifier.NotificationInput,
-) ([]notifier.SendNotificationResult, error) {
+	inputs []notify.NotificationInput,
+) ([]notify.SendNotificationResult, error) {
 	stub.mu.Lock()
 	defer stub.mu.Unlock()
 	if stub.fail {
 		return nil, fmt.Errorf("stub notifier unavailable")
 	}
 	stub.inputs = append(stub.inputs, inputs...)
-	out := make([]notifier.SendNotificationResult, len(inputs))
+	out := make([]notify.SendNotificationResult, len(inputs))
 	for i := range inputs {
-		out[i] = notifier.SendNotificationResult{NotificationID: "stub-id"}
+		out[i] = notify.SendNotificationResult{NotificationID: "stub-id"}
 	}
 	return out, nil
 }
 
-func (stub *stubNotifierAPITest) snapshot() []notifier.NotificationInput {
+func (stub *stubNotifierAPITest) snapshot() []notify.NotificationInput {
 	stub.mu.Lock()
 	defer stub.mu.Unlock()
-	out := make([]notifier.NotificationInput, len(stub.inputs))
+	out := make([]notify.NotificationInput, len(stub.inputs))
 	copy(out, stub.inputs)
 	return out
 }
@@ -92,17 +92,17 @@ func testNotifierConfig() *config.Config {
 func TestResolveOpsAlertTargets_MultiChannel(t *testing.T) {
 	targets := resolveOpsAlertTargets(testNotifierConfig())
 	require.Len(t, targets, 3)
-	assert.Equal(t, notifier.ProviderTelegram, targets[0].Provider)
-	assert.Equal(t, notifier.ProviderSlack, targets[1].Provider)
-	assert.Equal(t, notifier.ProviderSMS, targets[2].Provider)
+	assert.Equal(t, notify.ProviderTelegram, targets[0].Provider)
+	assert.Equal(t, notify.ProviderSlack, targets[1].Provider)
+	assert.Equal(t, notify.ProviderSMS, targets[2].Provider)
 }
 
 func TestResolveBroadcastProviders_AllConfigured(t *testing.T) {
 	providers := resolveBroadcastProviders(testNotifierConfig())
 	require.Len(t, providers, 3)
-	assert.Equal(t, notifier.ProviderTelegram, providers[0])
-	assert.Equal(t, notifier.ProviderSlack, providers[1])
-	assert.Equal(t, notifier.ProviderSMS, providers[2])
+	assert.Equal(t, notify.ProviderTelegram, providers[0])
+	assert.Equal(t, notify.ProviderSlack, providers[1])
+	assert.Equal(t, notify.ProviderSMS, providers[2])
 }
 
 func TestAlertSeverityBroadcast(t *testing.T) {
@@ -124,7 +124,7 @@ func TestAlertmanagerWebhook_CriticalUsesBroadcast(t *testing.T) {
 
 	h := &AlertmanagerWebhook{
 		client:             testNotifierClient(stub),
-		provider:           notifier.ProviderTelegram,
+		provider:           notify.ProviderTelegram,
 		recipient:          cfg.Notifier.TelegramChatID,
 		broadcastProviders: resolveBroadcastProviders(cfg),
 	}
@@ -164,7 +164,7 @@ func TestAlertmanagerWebhook_WarningUsesFallback(t *testing.T) {
 
 	h := &AlertmanagerWebhook{
 		client:             testNotifierClient(stub),
-		provider:           notifier.ProviderTelegram,
+		provider:           notify.ProviderTelegram,
 		recipient:          cfg.Notifier.TelegramChatID,
 		broadcastProviders: resolveBroadcastProviders(cfg),
 	}
@@ -234,7 +234,7 @@ func TestFault_alertmanagerWebhookFanOut(t *testing.T) {
 
 	h := &AlertmanagerWebhook{
 		client:             testNotifierClient(stub),
-		provider:           notifier.ProviderTelegram,
+		provider:           notify.ProviderTelegram,
 		recipient:          cfg.Notifier.TelegramChatID,
 		broadcastProviders: resolveBroadcastProviders(cfg),
 	}

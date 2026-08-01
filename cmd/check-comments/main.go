@@ -13,15 +13,15 @@ import (
 )
 
 var (
-	bannedWord      = regexp.MustCompile(`(?i)\b(simple|elegant|clean|obviously|just|simply|nice|obvious|trivial|minimal|leverage|delve|seamless|seamlessly|moreover|furthermore|additionally|holistic|navigate|testament|harness|effortlessly|notably|essentially|basically)\b`)
-	unicodeDash     = regexp.MustCompile(`[—–]`)
-	gapID           = regexp.MustCompile(`(?i)\bGAP-[A-Z]+-\d+\b`)
-	priorityLabel   = regexp.MustCompile(`\bP\d{2}\b`)
-	milestoneTag    = regexp.MustCompile(`\bM\d+([-.][0-9A-Za-z]+)?\b`)
-	milestoneWord   = regexp.MustCompile(`(?i)\bmilestone\b`)
-	bannedChaosWord = regexp.MustCompile(`(?i)\bchaos\b`)
+	bannedWord       = regexp.MustCompile(`(?i)\b(simple|elegant|clean|obviously|just|simply|nice|obvious|trivial|minimal|leverage|delve|seamless|seamlessly|moreover|furthermore|additionally|holistic|navigate|testament|harness|effortlessly|notably|essentially|basically)\b`)
+	unicodeDash      = regexp.MustCompile(`[—–]`)
+	gapID            = regexp.MustCompile(`(?i)\bGAP-[A-Z]+-\d+\b`)
+	priorityLabel    = regexp.MustCompile(`\bP\d{2}\b`)
+	milestoneTag     = regexp.MustCompile(`\bM\d+([-.][0-9A-Za-z]+)?\b`)
+	milestoneWord    = regexp.MustCompile(`(?i)\bmilestone\b`)
+	bannedChaosWord  = regexp.MustCompile(`(?i)\bchaos\b`)
 	strictNoComments = os.Getenv("STRICT_NO_COMMENTS") == "1"
-	skipPrefixes    []string
+	skipPrefixes     []string
 )
 
 func main() {

@@ -92,13 +92,13 @@ func SetupPaymentFaultInfra(t *testing.T) (*FaultInfra, func()) {
 	settlementGate := NewSettlementFaultGate(settleHandler.PaymentSettlement())
 
 	infra := &FaultInfra{
-		Pool:           pool,
-		Redis:          rdb,
-		PGContainer:    pgContainer,
-		RedisContainer: redisContainer,
-		Cfg:            cfg,
+		Pool:            pool,
+		Redis:           rdb,
+		PGContainer:     pgContainer,
+		RedisContainer:  redisContainer,
+		Cfg:             cfg,
 		ControlplaneSvc: mgmtSvc,
-		SettlementGate: settlementGate,
+		SettlementGate:  settlementGate,
 	}
 
 	cleanup := func() {

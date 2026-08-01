@@ -1,18 +1,19 @@
 package payment
 
 import (
+	"espx/internal/domain"
 	"espx/internal/payment/db"
 
 	"github.com/google/uuid"
 )
 
 type createPaymentIntentResult struct {
-	Intent      PaymentIntent
+	Intent      domain.PaymentIntent
 	CheckoutURL string
 }
 
-func paymentIntentFromDB(intent db.PaymentPaymentIntent) PaymentIntent {
-	out := PaymentIntent{
+func paymentIntentFromDB(intent db.PaymentPaymentIntent) domain.PaymentIntent {
+	out := domain.PaymentIntent{
 		ID:             uuid.UUID(intent.ID.Bytes).String(),
 		CustomerID:     uuid.UUID(intent.CustomerID.Bytes).String(),
 		AmountMicro:    intent.AmountMicro,
@@ -33,8 +34,8 @@ func paymentIntentFromDB(intent db.PaymentPaymentIntent) PaymentIntent {
 	return out
 }
 
-func disputeFromListItem(item DisputeListItem) Dispute {
-	out := Dispute{
+func disputeFromListItem(item DisputeListItem) domain.Dispute {
+	out := domain.Dispute{
 		IntentID:          uuid.UUID(item.Intent.ID.Bytes).String(),
 		CustomerID:        uuid.UUID(item.Intent.CustomerID.Bytes).String(),
 		AmountMicro:       item.Intent.AmountMicro,

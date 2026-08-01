@@ -8,7 +8,7 @@ import (
 
 	"espx/internal/config"
 	"espx/internal/database"
-	"espx/internal/logcompactor"
+	"espx/internal/logpipeline"
 	"espx/pkg/lifecycle"
 	"espx/pkg/logger"
 )
@@ -40,7 +40,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	logcompactor.RegisterMetrics()
+	logpipeline.RegisterMetrics()
 
 	var decryptKey []byte
 	if passphrase := os.Getenv("LOG_ENCRYPTION_KEY"); passphrase != "" {
@@ -48,20 +48,20 @@ func main() {
 	}
 
 	hotMinAge := time.Duration(cfg.HotMinAgeHours) * time.Hour
-	localStore, _ := store.(*logcompactor.LocalTierStore)
+	localStore, _ := store.(*logpipeline.LocalTierStore)
 	if localStore == nil {
-		if s3Store, ok := store.(*logcompactor.S3TierStore); ok {
+		if s3Store, ok := store.(*logpipeline.S3TierStore); ok {
 			localStore = s3Store.LocalScratch()
 		}
 	}
-	checkpoint := logcompactor.NewCheckpointStore(cfg.CheckpointPath)
+	checkpoint := logpipeline.NewCheckpointStore(cfg.CheckpointPath)
 
-	var compactorOpts []logcompactor.CompactorOption
+	var compactorOpts []logpipeline.CompactorOption
 	if cfg.LeaderElection {
-		compactorOpts = append(compactorOpts, logcompactor.WithLeaderLock(logcompactor.NewFileLeaderLock(cfg.LeaderLockPath)))
+		compactorOpts = append(compactorOpts, logpipeline.WithLeaderLock(logpipeline.NewFileLeaderLock(cfg.LeaderLockPath)))
 	}
 
-	compactor := logcompactor.NewCompactor(logcompactor.Config{
+	compactor := logpipeline.NewCompactor(logpipeline.CompactorConfig{
 		HotMinAge:                hotMinAge,
 		SampleRate:               uint64(cfg.SampleRate),
 		DeleteSourceAfterCompact: cfg.DeleteSourceAfterCompact,
@@ -100,13 +100,13 @@ func main() {
 		}
 		defer conn.Close()
 
-		coldCheckpoint := logcompactor.NewCheckpointStore(cfg.ColdCheckpointPath)
-		coldRolluper := logcompactor.NewColdRolluper(logcompactor.ColdConfig{
+		coldCheckpoint := logpipeline.NewCheckpointStore(cfg.ColdCheckpointPath)
+		coldRolluper := logpipeline.NewColdRolluper(logpipeline.ColdConfig{
 			WarmMinAge:            time.Duration(cfg.ColdWarmMinAgeDays) * 24 * time.Hour,
 			WorkInterval:          time.Duration(cfg.ColdWorkIntervalHours) * time.Hour,
 			WarmDir:               localStore.WarmDir,
 			DeleteWarmAfterRollup: cfg.DeleteWarmAfterCold,
-		}, localStore, coldCheckpoint, logcompactor.NewClickHouseRollupInserter(conn))
+		}, localStore, coldCheckpoint, logpipeline.NewClickHouseRollupInserter(conn))
 
 		workers++
 		go func() {
@@ -129,10 +129,10 @@ func main() {
 	slog.Info("log compactor shutdown complete")
 }
 
-func newTierStore(ctx context.Context, cfg config.LogCompactor) (logcompactor.TierStore, error) {
+func newTierStore(ctx context.Context, cfg config.LogCompactor) (logpipeline.TierStore, error) {
 	switch cfg.Backend {
 	case "s3":
-		return logcompactor.NewS3TierStore(ctx, logcompactor.S3Config{
+		return logpipeline.NewS3TierStore(ctx, logpipeline.S3Config{
 			Region:         cfg.S3Region,
 			Bucket:         cfg.S3Bucket,
 			HotPrefix:      cfg.S3HotPrefix,
@@ -142,6 +142,6 @@ func newTierStore(ctx context.Context, cfg config.LogCompactor) (logcompactor.Ti
 			ForcePathStyle: cfg.S3ForcePathStyle,
 		})
 	default:
-		return logcompactor.NewLocalTierStore(cfg.SourceDir, cfg.WarmDir), nil
+		return logpipeline.NewLocalTierStore(cfg.SourceDir, cfg.WarmDir), nil
 	}
 }

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"io"
 
-	"espx/internal/billing/plansyaml"
+	"espx/internal/ledger/plansyaml"
 )
 
 type DLQRetryPayload struct {

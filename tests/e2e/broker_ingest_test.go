@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"espx/internal/database"
+	db "espx/internal/domain/db"
 	"espx/internal/ingestion"
 	"espx/internal/ingestion/pb"
-	db "espx/internal/domain/db"
 	"espx/internal/testutil"
 	"espx/pkg/broker/client"
 	bserver "espx/pkg/broker/server"

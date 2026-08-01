@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"espx/internal/config"
+	"espx/internal/controlplane"
 	"espx/internal/database"
 	"espx/internal/ingestion"
-	"espx/internal/controlplane"
 	"espx/pkg/dedupkey"
 	"espx/pkg/iogate"
 	"espx/pkg/regionproxy/keygen"

@@ -5,9 +5,9 @@ import (
 
 	"espx/internal/ingestion"
 
+	db "espx/internal/domain/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-	db "espx/internal/domain/db"
 )
 
 type CohortRegistry interface {

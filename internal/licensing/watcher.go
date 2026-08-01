@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/billing/db"
 	"espx/internal/config"
+	"espx/internal/ledger/db"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"

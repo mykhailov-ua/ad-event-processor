@@ -4,15 +4,15 @@ import (
 	"context"
 
 	"espx/internal/config"
-	"espx/internal/notifier"
+	"espx/internal/notify"
 )
 
 type NotifierClient struct {
 	closeFn func()
-	api     notifier.NotifierAPI
+	api     notify.NotifierAPI
 }
 
-func NewInProcessNotifierClient(api notifier.NotifierAPI) *NotifierClient {
+func NewInProcessNotifierClient(api notify.NotifierAPI) *NotifierClient {
 	if api == nil {
 		return nil
 	}
@@ -23,7 +23,7 @@ func ResolveNotifierClient(ctx context.Context, cfg *config.Config) (*NotifierCl
 	if cfg == nil || !cfg.OpsAlertsEnabled() {
 		return nil, func() {}, nil
 	}
-	api, closeFn, err := notifier.OpenAPI(ctx, cfg)
+	api, closeFn, err := notify.OpenAPI(ctx, cfg)
 	if err != nil {
 		return nil, func() {}, err
 	}

@@ -5,15 +5,15 @@ import (
 	"fmt"
 
 	"espx/internal/config"
-	"espx/internal/notifier"
+	"espx/internal/notify"
 )
 
 func resolveOpsAlertTarget(cfg *config.Config) (string, string, bool) {
-	return notifier.ResolveOpsAlertTarget(cfg)
+	return notify.ResolveOpsAlertTarget(cfg)
 }
 
 func resolveBroadcastProviders(cfg *config.Config) []string {
-	return notifier.ResolveBroadcastProviders(cfg)
+	return notify.ResolveBroadcastProviders(cfg)
 }
 
 func enqueueOpsNotification(
@@ -26,7 +26,7 @@ func enqueueOpsNotification(
 	if client == nil || client.api == nil {
 		return fmt.Errorf("notifier client not configured")
 	}
-	input := notifier.NotificationInput{
+	input := notify.NotificationInput{
 		Provider:  provider,
 		Recipient: recipient,
 		Title:     title,

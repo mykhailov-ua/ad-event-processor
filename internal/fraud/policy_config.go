@@ -31,7 +31,7 @@ type PolicyConfig struct {
 	StructuralHighCTR          float64 `json:"structural_high_ctr"`
 	StructuralMaxUsers         float64 `json:"structural_max_users"`
 	StructuralMinEvents        float64 `json:"structural_min_events"`
-	StructuralMinEventsPerUA     float64 `json:"structural_min_events_per_ua"`
+	StructuralMinEventsPerUA   float64 `json:"structural_min_events_per_ua"`
 	StructuralMinClicksPerUser float64 `json:"structural_min_clicks_per_user"`
 	StructuralSpendRatio       float64 `json:"structural_spend_ratio"`
 	StructuralSpendMinCTR      float64 `json:"structural_spend_min_ctr"`
@@ -44,27 +44,27 @@ func DefaultPolicyConfig() PolicyConfig {
 		TierIVT:     domain.DefaultFraudThresholdIVT,
 		TierBlock:   domain.DefaultFraudThresholdBlock,
 
-		MLThreshold:          0.50,
+		MLThreshold:           0.50,
 		ResidentialProxyFloor: 0.62,
 		ResidentialProxyMaxML: 0.45,
-		FPGuardCap:           0.79,
+		FPGuardCap:            0.79,
 
-		ProxyMinEvents:            80,
-		ProxyMaxCTR:               0.05,
-		ProxyMinUsers:             20,
-		ProxyMinUserClickGap:      5.0,
-		ProxyMinEventsPerUser:     5.0,
+		ProxyMinEvents:             80,
+		ProxyMaxCTR:                0.05,
+		ProxyMinUsers:              20,
+		ProxyMinUserClickGap:       5.0,
+		ProxyMinEventsPerUser:      5.0,
 		ProxyMinImpressionPressure: 12.0,
-		ProxyMinUsersPerUA:        2.5,
-		ProxyMinClicks:            2,
+		ProxyMinUsersPerUA:         2.5,
+		ProxyMinClicks:             2,
 
-		StructuralHighCTR:        0.45,
-		StructuralMaxUsers:       5,
-		StructuralMinEvents:      50,
-		StructuralMinEventsPerUA: 80,
+		StructuralHighCTR:          0.45,
+		StructuralMaxUsers:         5,
+		StructuralMinEvents:        50,
+		StructuralMinEventsPerUA:   80,
 		StructuralMinClicksPerUser: 15,
-		StructuralSpendRatio:     0.9,
-		StructuralSpendMinCTR:    0.4,
+		StructuralSpendRatio:       0.9,
+		StructuralSpendMinCTR:      0.4,
 	}
 }
 

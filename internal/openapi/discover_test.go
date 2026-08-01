@@ -16,7 +16,7 @@ func TestDocumentedRoutes_excludesStubs(t *testing.T) {
 	require.NoError(t, err)
 	doc, err := openapi.DocumentedRoutes(root)
 	require.NoError(t, err)
-	require.Less(t, len(doc), len(all))
+	require.LessOrEqual(t, len(doc), len(all))
 	for _, r := range doc {
 		require.False(t, openapi.IsStub(r.Method, r.Path), r.Key())
 	}

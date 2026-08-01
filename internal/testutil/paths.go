@@ -23,5 +23,5 @@ func PaymentMigrationsDir() string {
 }
 
 func BillingMigrationsDir() string {
-	return filepath.Join(ModuleRoot(), "internal", "billing", "migrations")
+	return filepath.Join(ModuleRoot(), "internal", "ledger", "migrations")
 }

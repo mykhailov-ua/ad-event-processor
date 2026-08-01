@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"espx/internal/billing"
+	"espx/internal/ledger"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -56,6 +56,6 @@ func TestMarginSettlement_MultiLegPreservesInvariants(t *testing.T) {
 	assert.Equal(t, 1, feeCount)
 	assert.Equal(t, 3, econCount)
 
-	billing.AssertLedgerBalanceInvariant(t, ctx, infra.Pool, customerID)
+	ledger.AssertLedgerBalanceInvariant(t, ctx, infra.Pool, customerID)
 	AssertBudgetInvariant(t, ctx, infra.Pool, infra.Redis, campaignID)
 }

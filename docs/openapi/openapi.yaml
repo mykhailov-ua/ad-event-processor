@@ -1351,6 +1351,94 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /api/v1/meta:
+    get:
+      tags: [Operations]
+      summary: GET /api/v1/meta
+      operationId: get_meta
+      security:
+        - AdminAPIKey: []
+        - SessionCookie: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/ops/fraud-threat:
+    post:
+      tags: [Operations]
+      summary: POST /api/v1/ops/fraud-threat
+      operationId: post_ops_fraud_threat
+      security:
+        - AdminAPIKey: []
+        - SessionCookie: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/ops/ml-model:
+    get:
+      tags: [Operations]
+      summary: GET /api/v1/ops/ml-model
+      operationId: get_ops_ml_model
+      security:
+        - AdminAPIKey: []
+        - SessionCookie: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/ops/ml-model/labels:
+    get:
+      tags: [Operations]
+      summary: GET /api/v1/ops/ml-model/labels
+      operationId: get_ops_ml_model_labels
+      security:
+        - AdminAPIKey: []
+        - SessionCookie: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Operations]
+      summary: POST /api/v1/ops/ml-model/labels
+      operationId: post_ops_ml_model_labels
+      security:
+        - AdminAPIKey: []
+        - SessionCookie: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /api/v1/postbacks/config:
     get:
       tags: [Integrations]

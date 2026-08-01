@@ -1,8 +1,8 @@
 package ingestion
 
 import (
-	"espx/internal/domain"
 	"espx/internal/database"
+	"espx/internal/domain"
 
 	"github.com/google/uuid"
 )

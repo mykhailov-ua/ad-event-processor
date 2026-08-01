@@ -16,7 +16,7 @@ import (
 	db "espx/internal/domain/db"
 	"espx/internal/identity"
 	"espx/internal/licensing"
-	"espx/internal/notifier"
+	"espx/internal/notify"
 	"espx/pkg/httpresponse"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
@@ -25,12 +25,12 @@ import (
 
 type InProcessPaymentModule interface {
 	SetSettlementAPI(api domain.PaymentSettlement)
-	SetNotifierAPI(api notifier.NotifierAPI)
+	SetNotifierAPI(api notify.NotifierAPI)
 	StartWorkers(ctx context.Context)
 }
 
 type InProcessBillingModule interface {
-	ConfigureNotifier(api notifier.NotifierAPI)
+	ConfigureNotifier(api notify.NotifierAPI)
 	StartWorkers(ctx context.Context)
 }
 

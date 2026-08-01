@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"espx/internal/domain"
-	"espx/internal/ingestion"
 	"espx/internal/domain/db"
+	"espx/internal/ingestion"
 	"espx/internal/testutil"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

@@ -13,8 +13,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"espx/internal/domain"
 	"espx/internal/database"
+	"espx/internal/domain"
 	"espx/internal/metrics"
 
 	"github.com/prometheus/client_golang/prometheus"

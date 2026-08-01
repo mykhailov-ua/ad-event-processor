@@ -14,7 +14,7 @@ import (
 	db "espx/internal/domain/db"
 	"espx/internal/ingestion"
 	"espx/internal/ledger"
-	"espx/internal/notifier"
+	"espx/internal/notify"
 )
 
 func main() {
@@ -62,7 +62,7 @@ func main() {
 
 	chQuery := database.NewCHQuery(chRead, database.CHQueryConfigFromApp(cfg))
 
-	var notifierAPI notifier.NotifierAPI
+	var notifierAPI notify.NotifierAPI
 	if notifierClient != nil {
 		notifierAPI = notifierClient.API()
 	}

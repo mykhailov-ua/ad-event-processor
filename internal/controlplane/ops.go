@@ -16,7 +16,7 @@ import (
 	"espx/internal/database"
 	"espx/internal/domain"
 	db "espx/internal/domain/db"
-	"espx/internal/health"
+	"espx/pkg/lifecycle"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
@@ -58,8 +58,8 @@ var defaultProcessorPeerOrder = []string{"processor", "processor-1"}
 var defaultTrackerPeerOrder = []string{"tracker-1", "tracker-2", "tracker-3", "tracker-4"}
 
 func RegisterOpsRoutes(mux *http.ServeMux, pool *pgxpool.Pool, rdbs []redis.UniversalClient, cfg *config.Config) {
-	live := &health.Liveness{}
-	ready := &health.ReadinessProbe{}
+	live := &lifecycle.Liveness{}
+	ready := &lifecycle.ReadinessProbe{}
 	ready.StartBackground(context.Background(), 2*time.Second, func(ctx context.Context) bool {
 		if err := pool.Ping(ctx); err != nil {
 			return false
@@ -71,7 +71,7 @@ func RegisterOpsRoutes(mux *http.ServeMux, pool *pgxpool.Pool, rdbs []redis.Univ
 		}
 		return true
 	})
-	health.Register(mux, live, ready)
+	lifecycle.Register(mux, live, ready)
 	prometheus.MustRegister(database.NewPgTableStatsCollector(pool))
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		ready.ServeReadyz(w, r)

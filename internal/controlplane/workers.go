@@ -16,13 +16,13 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/billing"
-	billingdb "espx/internal/billing/db"
 	"espx/internal/config"
 	"espx/internal/database"
 	"espx/internal/dedup"
 	"espx/internal/domain"
 	db "espx/internal/domain/db"
+	"espx/internal/ledger"
+	billingdb "espx/internal/ledger/db"
 	"espx/internal/licensing"
 	"espx/internal/metrics"
 	"espx/pkg/coldpath"
@@ -81,6 +81,7 @@ func (w *TLSImpersonationWorker) Start(ctx context.Context, interval time.Durati
 func (w *TLSImpersonationWorker) AnalyzeMismatches(ctx context.Context) {
 	slog.Debug("TLSImpersonationWorker: analyzed TLS/UA mismatch metrics")
 }
+
 type AutoscaleBudgetWorker struct {
 	svc         *Service
 	syncWorkers []*domain.SyncWorker
@@ -108,6 +109,7 @@ func (w *AutoscaleBudgetWorker) Start(ctx context.Context, interval time.Duratio
 		}
 	}
 }
+
 type ScheduleWorker struct {
 	svc      *Service
 	interval time.Duration
@@ -135,6 +137,7 @@ func (w *ScheduleWorker) Start(ctx context.Context) {
 		}
 	}
 }
+
 type PacingControllerWorker struct {
 	svc         *Service
 	syncWorkers []*domain.SyncWorker
@@ -165,6 +168,7 @@ func (w *PacingControllerWorker) Start(ctx context.Context, interval time.Durati
 		}
 	}
 }
+
 type SystemStateWorker struct {
 	svc *Service
 }
@@ -197,6 +201,7 @@ func (w *SystemStateWorker) Start(ctx context.Context) {
 		}
 	}
 }
+
 type NodeCapacityScorerWorker struct {
 	scorer *NodeCapacityScorer
 }
@@ -230,6 +235,7 @@ func (w *NodeCapacityScorerWorker) Start(ctx context.Context) {
 		}
 	}
 }
+
 type GlobalRegionTrafficScorerWorker struct {
 	scorer *GlobalRegionTrafficScorer
 }
@@ -266,6 +272,7 @@ func (w *GlobalRegionTrafficScorerWorker) Start(ctx context.Context) {
 		}
 	}
 }
+
 type DeliveryOptimizerWorker struct {
 	svc         *Service
 	syncWorkers []*domain.SyncWorker
@@ -309,6 +316,7 @@ func (w *DeliveryOptimizerWorker) tick(ctx context.Context) {
 		slog.Error("delivery optimizer tick failed", "err", err, "run_mab", runMAB)
 	}
 }
+
 type ErasureWorker struct {
 	svc *Service
 }
@@ -354,6 +362,7 @@ func (w *ConsentRetentionWorker) Start(ctx context.Context) {
 		}
 	}
 }
+
 type FloorOptimizerWorker struct {
 	svc      *Service
 	interval time.Duration
@@ -402,6 +411,7 @@ func (w *FloorOptimizerWorker) tick(ctx context.Context) {
 	}
 	slog.Info("floor optimizer tick complete", "placements", n)
 }
+
 const blacklistJanitorBatchSize = 200
 
 type BlacklistJanitor struct {
@@ -470,6 +480,7 @@ func (j *BlacklistJanitor) runOnce(ctx context.Context) {
 		"removed", removed,
 	)
 }
+
 type UsageDailyFlushWorker struct {
 	pool     *pgxpool.Pool
 	interval time.Duration
@@ -539,6 +550,7 @@ func (w *UsageDailyFlushWorker) Flush(ctx context.Context, now time.Time) error 
 	}
 	return rows.Err()
 }
+
 type LedgerInvariantWorker struct {
 	pool     *pgxpool.Pool
 	interval time.Duration
@@ -594,7 +606,7 @@ func (w *LedgerInvariantWorker) scanAll(ctx context.Context) error {
 		if err := rows.Scan(&customerID); err != nil {
 			continue
 		}
-		if err := billing.CheckLedgerBalanceInvariant(ctx, w.pool, customerID); err != nil {
+		if err := ledger.CheckLedgerBalanceInvariant(ctx, w.pool, customerID); err != nil {
 			mismatches++
 			slog.Error("ledger invariant mismatch", "customer_id", customerID, "err", err)
 			if w.notifier != nil {
@@ -607,6 +619,7 @@ func (w *LedgerInvariantWorker) scanAll(ctx context.Context) error {
 	}
 	return rows.Err()
 }
+
 const (
 	eventsRetentionBatchSize = 10_000
 	eventsRetentionBatchWait = 100 * time.Millisecond
@@ -680,6 +693,7 @@ func (w *EventsRetentionWorker) runOnce(ctx context.Context) int64 {
 	}
 	return total
 }
+
 type CampaignDrainWorker struct {
 	svc *Service
 }
@@ -755,6 +769,7 @@ func (w *CampaignDrainWorker) finalizeNextDraining(ctx context.Context, threshol
 	})
 	return finalized, err
 }
+
 type CreditScoringWorker struct {
 	svc *Service
 }
@@ -837,6 +852,7 @@ func (w *CreditScoringWorker) calculateOverdraft(ageDays float64, topupSum int64
 
 	return overdraft
 }
+
 const supplyAuditInterval = 6 * time.Hour
 
 type SupplyAuditWorker struct {
@@ -923,6 +939,7 @@ func (s *Service) AuditSupplyCompliance(ctx context.Context) (SupplyAuditReport,
 	}
 	return out, nil
 }
+
 type ReconWorker struct {
 	svc      *Service
 	interval time.Duration
@@ -1040,6 +1057,7 @@ func reconSnapshotInterval(cfg *config.Config) time.Duration {
 	}
 	return time.Duration(ms) * time.Millisecond
 }
+
 type NginxConfigWorker struct {
 	svc        *Service
 	exportPath string
@@ -1168,6 +1186,7 @@ func (nginxWorker *NginxConfigWorker) writeDenyFile(filename string, ips []strin
 
 	return nil
 }
+
 const snapshotRunHourUTC = 0
 const snapshotRunMinuteUTC = 15
 
@@ -1297,6 +1316,7 @@ func aggregateFloat(v interface{}) float64 {
 		return 0
 	}
 }
+
 const auditExportBatchSize = 1000
 
 type AuditExportWorker struct {
@@ -1483,6 +1503,7 @@ func (w *AuditExportWorker) cleanupOldExports(now time.Time) error {
 	}
 	return nil
 }
+
 const (
 	defaultNodeMetricsInterval = 10 * time.Second
 	defaultNodeMetricsTTL      = 24 * time.Hour
@@ -1674,6 +1695,7 @@ func percentile(sorted []float64, q float64) float64 {
 	frac := pos - float64(lo)
 	return sorted[lo]*(1-frac) + sorted[hi]*frac
 }
+
 const (
 	meterBillableEvents = "events"
 	meterAcceptedEvents = "accepted_events"
@@ -1909,6 +1931,7 @@ func ComputeWeightedUnitsFromRows(rows []rollupRow, campaignCustomers map[uuid.U
 	}
 	return customerUnits
 }
+
 type FraudModelVersionPayload struct {
 	ModelVersion string `json:"model_version"`
 	Hash         string `json:"hash"`
@@ -2170,6 +2193,7 @@ func (o *FraudModelSyncOrchestrator) runCanaryCheck(ctx context.Context, shardID
 
 	return true, nil
 }
+
 type OutboxWorker struct {
 	svc *Service
 }
@@ -2451,6 +2475,7 @@ func (worker *OutboxWorker) syncBrandCreativesToRedis(ctx context.Context, brand
 	}
 	return nil
 }
+
 const (
 	defaultOpLeaseJanitorPeriod = 5 * time.Second
 	defaultOpLeasePollInterval  = 200 * time.Millisecond

@@ -37,13 +37,13 @@ test-int: gen fmt
 	go test -v ./tests/...
 
 test-resilience:
-	bash scripts/fault/run.sh
+	bash scripts/test/run_resilience.sh
 
 test-broker-fault-lab:
-	bash scripts/fault/broker_fault_lab.sh
+	bash scripts/test/broker_fault_lab.sh
 
 test-sentinel-resilience:
-	bash scripts/fault/sentinel.sh
+	bash scripts/test/sentinel.sh
 
 test: test-fast test-int
 
@@ -100,7 +100,7 @@ bpf-session-stop:
 	sudo bash scripts/dev/bpf_session.sh stop
 
 load-test-bpf: bpf-dev
-	sudo ESPX_BPF_PROBE=1 ESPX_BPF_SAMPLE_RATE=$${ESPX_BPF_SAMPLE_RATE:-10} bash scripts/load/malformed.sh business
+	sudo ESPX_BPF_PROBE=1 ESPX_BPF_SAMPLE_RATE=$${ESPX_BPF_SAMPLE_RATE:-10} bash scripts/test/malformed.sh business
 
 check-scripts-layout:
 	bash scripts/ci/check_scripts_layout.sh
@@ -109,10 +109,10 @@ dev-preflight-smoke:
 	bash scripts/dev/preflight.sh
 
 perf-gate-smoke:
-	PERF_GATE_STRICT=false bash scripts/perf/gate_run.sh
+	PERF_GATE_STRICT=false bash scripts/test/gate_run.sh
 
 edge-phase0:
-	bash scripts/edge/phase0.sh
+	bash scripts/ops/phase0.sh
 
 proto:
 	bash scripts/ci/gen.sh --proto

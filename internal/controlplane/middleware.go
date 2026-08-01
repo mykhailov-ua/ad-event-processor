@@ -10,9 +10,9 @@ import (
 	"net/http"
 	"strings"
 
-	"espx/internal/identity"
 	"espx/internal/config"
 	"espx/internal/controlplane/authz"
+	"espx/internal/identity"
 	"espx/pkg/httpresponse"
 
 	"github.com/google/uuid"

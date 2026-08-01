@@ -15,11 +15,11 @@ required=(
 	scripts/dev/smoke_ingest_only.sh
 	scripts/dev/smoke_network_operator.sh
 	scripts/dev/smoke_analytics_ml.sh
-	scripts/perf/gate_run.sh
-	scripts/edge/phase0.sh
-	scripts/deploy/verify_redis_topology.sh
-	scripts/fault/run.sh
-	scripts/fault/test_resilience.sh
+	scripts/test/gate_run.sh
+	scripts/ops/phase0.sh
+	scripts/ops/verify_redis_topology.sh
+	scripts/test/run_resilience.sh
+	scripts/test/test_resilience.sh
 )
 
 fail=0

@@ -1,8 +1,8 @@
 package ingestion
 
 import (
-	"espx/internal/domain"
 	"espx/internal/config"
+	"espx/internal/domain"
 )
 
 const (

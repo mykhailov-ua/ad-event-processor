@@ -36,13 +36,13 @@ sql:
         emit_prepared_queries: false
         emit_interface: true
         emit_exact_table_names: false
-  - schema: "internal/notifier/migrations"
-    queries: "internal/notifier/queries"
+  - schema: "internal/notify/migrations"
+    queries: "internal/notify/queries"
     engine: "postgresql"
     gen:
       go:
         package: "db"
-        out: "internal/notifier/db"
+        out: "internal/notify/db"
         sql_package: "pgx/v5"
         emit_json_tags: true
         emit_prepared_queries: false
@@ -50,13 +50,13 @@ sql:
         emit_exact_table_names: false
   - schema:
       - "internal/ingestion/migrations"
-      - "internal/billing/migrations"
-    queries: "internal/billing/queries"
+      - "internal/ledger/migrations"
+    queries: "internal/ledger/queries"
     engine: "postgresql"
     gen:
       go:
         package: "db"
-        out: "internal/billing/db"
+        out: "internal/ledger/db"
         sql_package: "pgx/v5"
         emit_json_tags: true
         emit_prepared_queries: false

@@ -18,8 +18,8 @@ import (
 	"unicode"
 
 	"espx/internal/config"
+	"espx/internal/domain"
 	"espx/internal/metrics"
-	"espx/internal/payment"
 	"espx/pkg/coldpath"
 	"espx/pkg/httpresponse"
 	"espx/pkg/supportbundle"
@@ -27,7 +27,7 @@ import (
 
 type OpsHTTPHandlers struct {
 	OpsReader               ManagementOpsReader
-	PaymentIntents          payment.PaymentAPI
+	PaymentIntents          domain.PaymentAPI
 	ConsentRecorder         ConsentRecorder
 	ConsentVerifier         ConsentVerifier
 	AuditLister             AuditLister

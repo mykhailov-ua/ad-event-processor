@@ -6,19 +6,19 @@ import (
 	"strings"
 
 	"espx/internal/config"
-	"espx/internal/notifier"
+	"espx/internal/notify"
 )
 
 func resolveOpsAlertTarget(cfg *config.Config) (string, string, bool) {
-	return notifier.ResolveOpsAlertTarget(cfg)
+	return notify.ResolveOpsAlertTarget(cfg)
 }
 
-func resolveOpsAlertTargets(cfg *config.Config) []notifier.OpsAlertTarget {
-	return notifier.ResolveOpsAlertTargets(cfg)
+func resolveOpsAlertTargets(cfg *config.Config) []notify.OpsAlertTarget {
+	return notify.ResolveOpsAlertTargets(cfg)
 }
 
 func resolveBroadcastProviders(cfg *config.Config) []string {
-	return notifier.ResolveBroadcastProviders(cfg)
+	return notify.ResolveBroadcastProviders(cfg)
 }
 
 func alertSeverityBroadcast(alert AlertmanagerAlert) bool {
@@ -29,7 +29,7 @@ func alertSeverityBroadcast(alert AlertmanagerAlert) bool {
 func enqueueOpsNotification(
 	ctx context.Context,
 	client *NotifierClient,
-	target notifier.OpsAlertTarget,
+	target notify.OpsAlertTarget,
 	title, body, dedupKey string,
 	broadcast bool,
 	broadcastProviders []string,
@@ -38,7 +38,7 @@ func enqueueOpsNotification(
 		return fmt.Errorf("notifier client not configured")
 	}
 
-	input := notifier.NotificationInput{
+	input := notify.NotificationInput{
 		Provider:  target.Provider,
 		Recipient: target.Recipient,
 		Title:     title,
@@ -65,9 +65,9 @@ func enqueueOpsNotificationBatch(
 		return nil
 	}
 
-	inputs := make([]notifier.NotificationInput, 0, len(items))
+	inputs := make([]notify.NotificationInput, 0, len(items))
 	for _, item := range items {
-		input := notifier.NotificationInput{
+		input := notify.NotificationInput{
 			Provider:  item.Target.Provider,
 			Recipient: item.Target.Recipient,
 			Title:     item.Title,
@@ -86,7 +86,7 @@ func enqueueOpsNotificationBatch(
 }
 
 type opsNotificationItem struct {
-	Target             notifier.OpsAlertTarget
+	Target             notify.OpsAlertTarget
 	Title              string
 	Body               string
 	DedupKey           string

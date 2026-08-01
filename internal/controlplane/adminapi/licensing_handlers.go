@@ -9,9 +9,9 @@ import (
 	"os"
 	"time"
 
-	"espx/internal/billing/db"
 	"espx/internal/domain"
 	ingestdb "espx/internal/domain/db"
+	"espx/internal/ledger/db"
 	lic "espx/internal/licensing"
 
 	"espx/pkg/httpresponse"
@@ -28,15 +28,15 @@ import (
 )
 
 type SubscriptionDTO struct {
-	CustomerID  string                  `json:"customer_id"`
-	PlanCode    string                  `json:"plan_code"`
-	Status      string                  `json:"status"`
-	PeriodStart string                  `json:"period_start"`
-	PeriodEnd   string                  `json:"period_end,omitempty"`
+	CustomerID  string            `json:"customer_id"`
+	PlanCode    string            `json:"plan_code"`
+	Status      string            `json:"status"`
+	PeriodStart string            `json:"period_start"`
+	PeriodEnd   string            `json:"period_end,omitempty"`
 	Limits      lic.LimitsDTO     `json:"limits"`
 	Features    lic.FeatureSetDTO `json:"features"`
 	Effective   lic.LimitsDTO     `json:"effective_limits"`
-	Usage       []UsageMeterDTO         `json:"usage"`
+	Usage       []UsageMeterDTO   `json:"usage"`
 }
 
 type UsageMeterDTO struct {

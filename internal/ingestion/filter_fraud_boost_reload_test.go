@@ -5,8 +5,8 @@ import (
 	"sync"
 	"testing"
 
-	"espx/internal/domain"
 	"espx/internal/config"
+	"espx/internal/domain"
 
 	"github.com/google/uuid"
 )

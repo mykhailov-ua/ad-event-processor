@@ -9,10 +9,10 @@ import (
 	"math"
 	"time"
 
-	"espx/internal/billing"
 	"espx/internal/config"
 	"espx/internal/domain"
 	db "espx/internal/domain/db"
+	"espx/internal/ledger"
 	"espx/internal/metrics"
 
 	"github.com/google/uuid"
@@ -510,7 +510,7 @@ func (w *ReconWorker) auditLedgerInvariantSample(ctx context.Context, pool *pgxp
 		if err := rows.Scan(&customerID); err != nil {
 			continue
 		}
-		if err := billing.CheckLedgerBalanceInvariant(ctx, pool, customerID); err != nil {
+		if err := ledger.CheckLedgerBalanceInvariant(ctx, pool, customerID); err != nil {
 			slog.Error("ledger invariant failed for customer", "customer_id", customerID, "error", err)
 			w.enqueueForcePauseCustomer(ctx, customerID, err.Error())
 		}

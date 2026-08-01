@@ -13,8 +13,8 @@ var (
 )
 
 const (
-	SystemSettingRtbMode              = "rtb_mode"
-	SystemSettingRtbBudgetAuthority   = "rtb_budget_authority"
+	SystemSettingRtbMode            = "rtb_mode"
+	SystemSettingRtbBudgetAuthority = "rtb_budget_authority"
 )
 
 func NormalizeRtbModeSetting(v string) (string, error) {

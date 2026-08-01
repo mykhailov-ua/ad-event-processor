@@ -46,4 +46,4 @@ tasks:
     env:
       BASELINE_WORKTREE: ../baseline-local
     cmds:
-      - bash scripts/perf/gate_run.sh
+      - bash scripts/test/gate_run.sh

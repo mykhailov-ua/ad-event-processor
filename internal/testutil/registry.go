@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"espx/internal/ingestion"
 	"espx/internal/domain/db"
+	"espx/internal/ingestion"
 )
 
 func NewAdsRegistry(t testing.TB, repo db.Querier) *ingestion.Registry {

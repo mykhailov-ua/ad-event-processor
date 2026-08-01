@@ -26,12 +26,12 @@ var ManagementDomains = []Domain{
 		"campaign_", "service_brands", "handler_warm", "service_warm", "drain_",
 		"service_pacing", "vpp_",
 	}, Files: []string{"delivery_types.go", "service_campaign.go", "vpp_controller.go", "vpp_pacing.go"}, LogicFiles: []string{"campaign_validate.go"}, TestPrefixes: []string{"campaign_domain_test", "campaign_pacing_test", "brand_fcap_test", "api_campaigns", "delivery_test", "pacing_controller_test", "cohort_", "vpp_"}},
-	{ID: "outbox", Prefixes: []string{"outbox_"}, TestPrefixes: []string{"outbox_"}},
+	{ID: "outbox", Prefixes: []string{"outbox_"}, Files: []string{"outbox.go"}, TestPrefixes: []string{"outbox_"}},
 	{ID: "operation", Prefixes: []string{"operation_", "api_region_ingest"}, Files: []string{"dedup.go"}, TestPrefixes: []string{"operation_", "api_region", "dedup_", "operation_domain_test"}},
-	{ID: "recon", Prefixes: []string{"recon_", "global_spend_", "service_recon"}, LogicFiles: []string{"recon.go"}, TestPrefixes: []string{"recon_", "global_spend_", "recon_domain_test"}},
+	{ID: "recon", Prefixes: []string{"recon_", "global_spend_", "service_recon"}, Files: []string{"recon.go"}, LogicFiles: []string{"recon.go"}, TestPrefixes: []string{"recon_", "global_spend_", "recon_domain_test"}},
 	{ID: "fraud", Prefixes: []string{"service_fraud", "blacklist_", "worker_blacklist_", "fraud_"}, TestPrefixes: []string{"service_fraud", "blacklist_", "fraud_"}},
-	{ID: "node", Prefixes: []string{"node_", "service_node_"}, Files: []string{"workers.go"}, TestPrefixes: []string{"node_", "service_node_", "node_domain_test", "global_region_"}},
-	{ID: "rtb", Prefixes: []string{"service_rtb", "service_bid", "rtb_", "floor_optimizer_"}, Files: []string{"workers.go"}, TestPrefixes: []string{"service_rtb", "api_rtb", "service_bid", "rtb_", "floor_optimizer"}},
+	{ID: "node", Prefixes: []string{"node_", "service_node_"}, Files: []string{"workers.go", "service_node.go"}, TestPrefixes: []string{"node_", "service_node_", "node_domain_test", "global_region_"}},
+	{ID: "rtb", Prefixes: []string{"service_rtb", "service_bid", "rtb_", "floor_optimizer_"}, Files: []string{"workers.go", "budget_delta_consumer.go"}, TestPrefixes: []string{"service_rtb", "api_rtb", "service_bid", "rtb_", "floor_optimizer"}},
 	{ID: "shard", Prefixes: []string{"shard_", "slot_", "service_slot_"}, Files: []string{"shard_control.go"}, TestPrefixes: []string{"shard_", "slot_", "service_slot"}},
 	{ID: "settlement", Prefixes: []string{"settlement_"}, Files: []string{"settlement.go", "service_gtax.go"}, TestPrefixes: []string{"settlement_", "gtax_"}},
 	{ID: "region", Prefixes: []string{"region_"}, TestPrefixes: []string{"region_"}},
@@ -42,14 +42,6 @@ var ManagementDomains = []Domain{
 	{ID: "http", Prefixes: []string{"http_"}, TestPrefixes: []string{"http_"}},
 	{ID: "ops", Prefixes: []string{"ops_"}, Files: []string{"ops_readers.go"}, TestPrefixes: []string{"ops_"}},
 	{ID: "audit", Prefixes: []string{"audit"}, TestPrefixes: []string{"audit"}},
-	{ID: "api", Prefixes: []string{"api", "api_"}, Files: []string{
-		"adminapi_wire.go",
-		"dry_run.go",
-	}, TestPrefixes: []string{"api", "api_", "dry_run", "support_bundle", "support_feedback"}},
-	{ID: "selfserve", Prefixes: []string{"api_selfserve", "service_selfserve", "selfserve_"}, TestPrefixes: []string{"api_selfserve", "selfserve_"}},
-	{ID: "integration", Files: []string{
-		"client_integration.go", "notifier_routing.go", "alertmanager_webhook.go",
-	}, TestPrefixes: []string{"client_integration", "client_auth", "client_billing", "client_payment", "notifier_", "alertmanager_"}},
 	{ID: "platform", Prefixes: []string{
 		"service_system", "service_autoscaling", "service_margin", "service_mab",
 		"service_erasure", "service_notifications", "service_consent", "service_audit",
@@ -66,6 +58,14 @@ var ManagementDomains = []Domain{
 		"credit_", "consent_", "emergency_", "platform_", "pg_failover",
 		"support_feedback", "events_retention", "system_state",
 	}},
+	{ID: "api", Prefixes: []string{"api", "api_"}, Files: []string{
+		"adminapi_wire.go",
+		"dry_run.go",
+	}, TestPrefixes: []string{"api", "api_", "dry_run", "support_bundle", "support_feedback"}},
+	{ID: "selfserve", Prefixes: []string{"api_selfserve", "service_selfserve", "selfserve_"}, TestPrefixes: []string{"api_selfserve", "selfserve_"}},
+	{ID: "integration", Files: []string{
+		"client_integration.go", "notifier_routing.go", "alertmanager_webhook.go",
+	}, TestPrefixes: []string{"client_integration", "client_auth", "client_billing", "client_payment", "notifier_", "alertmanager_"}},
 }
 
 const domainBusinessLogicCoverageMin = 0.80

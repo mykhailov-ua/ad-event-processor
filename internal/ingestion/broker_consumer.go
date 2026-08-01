@@ -8,8 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/internal/domain"
 	"espx/internal/dedup"
+	"espx/internal/domain"
 	"espx/internal/metrics"
 	"espx/pkg/broker/client"
 	"espx/pkg/dedupkey"

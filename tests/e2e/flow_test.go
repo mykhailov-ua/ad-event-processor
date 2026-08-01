@@ -9,9 +9,9 @@ import (
 
 	"espx/internal/config"
 	"espx/internal/database"
+	db "espx/internal/domain/db"
 	"espx/internal/ingestion"
 	"espx/internal/ingestion/pb"
-	db "espx/internal/domain/db"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"

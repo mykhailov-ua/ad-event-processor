@@ -17,10 +17,10 @@ import (
 	"espx/internal/domain"
 	db "espx/internal/domain/db"
 	"espx/internal/fraud"
-	"espx/internal/health"
 	"espx/internal/ingestion"
 	"espx/internal/licensing"
 	"espx/internal/metrics"
+	"espx/pkg/lifecycle"
 	"espx/pkg/logger"
 	"espx/pkg/piihash"
 	rpclient "espx/pkg/regionproxy/client"
@@ -453,8 +453,8 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /metrics", promhttp.Handler())
-	live := &health.Liveness{}
-	ready := &health.ReadinessProbe{}
+	live := &lifecycle.Liveness{}
+	ready := &lifecycle.ReadinessProbe{}
 	ready.StartBackground(ctx, 2*time.Second, func(probeCtx context.Context) bool {
 		if err := pool.Ping(probeCtx); err != nil {
 			return false
@@ -488,7 +488,7 @@ func main() {
 		}
 		return true
 	})
-	health.Register(mux, live, ready)
+	lifecycle.Register(mux, live, ready)
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		ready.ServeReadyz(w, r)
 	})

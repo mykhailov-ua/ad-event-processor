@@ -9,7 +9,7 @@ import (
 	"espx/internal/config"
 	"espx/internal/database"
 	"espx/internal/domain"
-	"espx/internal/notifier"
+	"espx/internal/notify"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -24,7 +24,7 @@ type Module struct {
 	cryptoHold       *CryptoHoldWorker
 	recon            *ReconService
 	cancel           context.CancelFunc
-	notifierAPI      notifier.NotifierAPI
+	notifierAPI      notify.NotifierAPI
 }
 
 func (m *Module) Close() {
@@ -48,7 +48,7 @@ func (m *Module) Close() {
 	}
 }
 
-func (m *Module) SetNotifierAPI(api notifier.NotifierAPI) {
+func (m *Module) SetNotifierAPI(api notify.NotifierAPI) {
 	if m != nil {
 		m.notifierAPI = api
 	}
@@ -97,7 +97,7 @@ func (m *Module) StartWorkers(ctx context.Context) {
 	}
 }
 
-func OpenAPI(ctx context.Context, cfg *config.Config) (PaymentAPI, func(), error) {
+func OpenAPI(ctx context.Context, cfg *config.Config) (domain.PaymentAPI, func(), error) {
 	noop := func() {}
 	if cfg == nil || string(cfg.PaymentInternalToken) == "" {
 		return nil, noop, nil

@@ -2,15 +2,16 @@ package controlplane
 
 import (
 	"context"
+	"espx/internal/domain"
+	"espx/internal/domain/db"
+	"espx/internal/metrics"
 	"fmt"
 	"log/slog"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
-	"espx/internal/domain"
-	"espx/internal/domain/db"
-	"espx/internal/metrics"
+
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )

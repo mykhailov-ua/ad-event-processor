@@ -8,13 +8,13 @@ import (
 	"time"
 
 	"espx/internal/config"
+	"espx/internal/controlplane"
 	"espx/internal/costsync"
 	"espx/internal/database"
-	"espx/internal/ingestion"
 	db "espx/internal/domain/db"
-	"espx/internal/controlplane"
+	"espx/internal/ingestion"
 	"espx/internal/ledger"
-	"espx/internal/notifier"
+	"espx/internal/notify"
 )
 
 func Run(ctx context.Context, cfg *config.Config, opts Options) error {
@@ -130,7 +130,7 @@ func serveMarginGuard(ctx context.Context, cfg *config.Config, inProcess *contro
 	defer chRead.Close()
 
 	chQuery := database.NewCHQuery(chRead, database.CHQueryConfigFromApp(cfg))
-	var notifierAPI notifier.NotifierAPI
+	var notifierAPI notify.NotifierAPI
 	if notifierClient != nil {
 		notifierAPI = notifierClient.API()
 	}

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"espx/internal/config"
-	"espx/internal/notifier"
+	"espx/internal/notify"
 	"espx/internal/payment/db"
 
 	"github.com/google/uuid"
@@ -70,7 +70,7 @@ func TestFinancialReconAlerter_AlertFindings_enqueuesWarnPlus(t *testing.T) {
 
 	requests := stub.snapshot()
 	require.Len(t, requests, 1)
-	assert.Equal(t, notifier.ProviderTelegram, requests[0].Provider)
+	assert.Equal(t, notify.ProviderTelegram, requests[0].Provider)
 	assert.True(t, requests[0].Broadcast)
 	assert.Contains(t, requests[0].Body, "MISSING_LEDGER_TOPUP")
 	assert.Equal(t, "payment-financial-recon:run:42", requests[0].DedupKey)

@@ -130,7 +130,7 @@ func domainSourceDir(t *testing.T) string {
 	if filepath.Base(wd) == "management" {
 		return wd
 	}
-	return filepath.Join(repoRoot(t), "internal", "management")
+	return filepath.Join(repoRoot(t), "internal", "controlplane")
 }
 
 func repoRoot(t *testing.T) string {

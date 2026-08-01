@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/domain"
 	"espx/internal/config"
+	"espx/internal/domain"
 	"espx/internal/ingestion"
 
 	"github.com/google/uuid"

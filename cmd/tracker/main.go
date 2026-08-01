@@ -11,11 +11,11 @@ import (
 
 	"espx/internal/config"
 	"espx/internal/database"
-	"espx/internal/health"
-	"espx/internal/ingestion"
 	db "espx/internal/domain/db"
+	"espx/internal/ingestion"
 	"espx/internal/metrics"
 	"espx/internal/rtb"
+	"espx/pkg/lifecycle"
 	"espx/pkg/logger"
 	"espx/pkg/piihash"
 	"espx/pkg/runtimeautotune"
@@ -396,11 +396,11 @@ func main() {
 	}
 	if cfg.TCPControlEnabled {
 		tcpClient := ingestion.NewTCPControlClient(ingestion.TCPControlClientConfig{
-			Enabled:   true,
-			Secret:    []byte(cfg.TCPControlHMACSecret),
-			TrackerID: cfg.UDPTrackerID,
+			Enabled:     true,
+			Secret:      []byte(cfg.TCPControlHMACSecret),
+			TrackerID:   cfg.UDPTrackerID,
 			ControlAddr: cfg.TCPControlAddr,
-			Sharder:   sharder,
+			Sharder:     sharder,
 		})
 		go func() {
 			ticker := time.NewTicker(time.Duration(cfg.SlotMapPollIntervalMs) * time.Millisecond)
@@ -445,19 +445,19 @@ func main() {
 	}()
 
 	metricsMux := http.NewServeMux()
-	live := &health.Liveness{}
-	ready := &health.ReadinessProbe{}
+	live := &lifecycle.Liveness{}
+	ready := &lifecycle.ReadinessProbe{}
 	ready.StartBackground(ctx, 2*time.Second, func(probeCtx context.Context) bool {
 		return gnetHandler.WarmReady()
 	})
-	health.Register(metricsMux, live, ready)
+	lifecycle.Register(metricsMux, live, ready)
 	metricsMux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		health.ServeHealthz(live, w, r)
+		lifecycle.ServeHealthz(live, w, r)
 	})
 	metricsMux.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {
 		if gnetHandler.WarmReady() {
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(health.BodyOK()))
+			_, _ = w.Write([]byte(lifecycle.BodyOK()))
 			return
 		}
 		http.Error(w, "not ready", http.StatusServiceUnavailable)

@@ -9,8 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"espx/internal/billing"
-	"espx/internal/payment"
+	"espx/internal/domain"
 	"espx/pkg/coldpath"
 	"espx/pkg/httpresponse"
 	"espx/pkg/money"
@@ -45,7 +44,7 @@ type CampaignAdmin interface {
 	ResumeCampaign(ctx context.Context, campaignID uuid.UUID, reason string) error
 }
 
-type PaymentIntents = payment.PaymentAPI
+type PaymentIntents = domain.PaymentAPI
 
 type APIKeyResult struct {
 	ID         string
@@ -59,7 +58,7 @@ type APIKeyCreator interface {
 	CreateAPIKey(ctx context.Context, accessToken, name string) (APIKeyResult, error)
 }
 
-type InvoiceLister = billing.BillingAPI
+type InvoiceLister = domain.BillingAPI
 
 func parseMoneyMicro(micro *int64, legacy float64, hasLegacy bool, field string) (int64, error) {
 	if micro != nil {

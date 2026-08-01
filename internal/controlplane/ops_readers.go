@@ -19,9 +19,9 @@ import (
 
 	"espx/internal/config"
 	"espx/internal/controlplane/adminapi"
-	"espx/internal/metrics"
-	"espx/internal/notifier"
 	db "espx/internal/domain/db"
+	"espx/internal/metrics"
+	"espx/internal/notify"
 	"espx/pkg/branding"
 
 	"github.com/jackc/pgx/v5"
@@ -120,7 +120,7 @@ func (a *OpsAlerter) dispatch(ctx context.Context, key, title, body string, broa
 	if a == nil {
 		return fmt.Errorf("ops alerter not configured")
 	}
-	target := notifier.OpsAlertTarget{Provider: a.provider, Recipient: a.recipient}
+	target := notify.OpsAlertTarget{Provider: a.provider, Recipient: a.recipient}
 	return enqueueOpsNotification(ctx, a.client, target, title, body, key, broadcast, a.broadcastProviders)
 }
 

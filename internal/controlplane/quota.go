@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"espx/internal/domain"
+	"espx/internal/domain/db"
+	"espx/internal/metrics"
 	"fmt"
 	"log/slog"
 	"math"
 	"time"
-	"espx/internal/domain"
-	"espx/internal/domain/db"
-	"espx/internal/metrics"
+
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )

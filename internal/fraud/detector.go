@@ -1,0 +1,268 @@
+package fraud
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+type DetectorConfig struct {
+	ScanInterval       time.Duration
+	OutboxPendingLimit int64
+	ManagementTimeout  time.Duration
+	Analyzer           AnalyzerConfig
+}
+
+func DefaultDetectorConfig() DetectorConfig {
+	return DetectorConfig{
+		ScanInterval:       5 * time.Minute,
+		OutboxPendingLimit: 500,
+		ManagementTimeout:  10 * time.Second,
+		Analyzer:           DefaultAnalyzerConfig(),
+	}
+}
+
+type RunResult struct {
+	Candidates int
+	Enqueued   int
+	Skipped    int
+	Backlogged bool
+}
+
+type suspiciousFinder = SuspiciousFinder
+
+type Detector struct {
+	analyzer   suspiciousFinder
+	idem       *IdempotencyStore
+	management BlacklistBlocker
+	pool       *pgxpool.Pool
+	cfg        DetectorConfig
+}
+
+func NewDetector(
+	analyzer suspiciousFinder,
+	idem *IdempotencyStore,
+	management BlacklistBlocker,
+	pool *pgxpool.Pool,
+	cfg DetectorConfig,
+) *Detector {
+	return &Detector{
+		analyzer:   analyzer,
+		idem:       idem,
+		management: management,
+		pool:       pool,
+		cfg:        cfg,
+	}
+}
+
+func (detector *Detector) Run(ctx context.Context) (RunResult, error) {
+	var result RunResult
+	if detector == nil {
+		return result, fmt.Errorf("detector: nil receiver")
+	}
+
+	backlogged, err := detector.outboxBacklogged(ctx)
+	if err != nil {
+		return result, err
+	}
+	if backlogged {
+		result.Backlogged = true
+		ivtBackpressureDropsTotal.Inc()
+		return result, ErrOutboxBackpressure
+	}
+
+	candidates, err := detector.analyzer.FindSuspiciousIPs(ctx)
+	if err != nil {
+		return result, err
+	}
+	result.Candidates = len(candidates)
+
+	for _, candidate := range candidates {
+		switch candidate.Action {
+		case "boost":
+			claimed, claimErr := detector.idem.TryClaimFraudEnforcement(ctx, candidate.IP, candidate.Reason, "boost")
+			if claimErr != nil {
+				return result, claimErr
+			}
+			if !claimed {
+				result.Skipped++
+				continue
+			}
+
+			err := detector.management.EnqueueFraudThreat(
+				ctx,
+				"boost",
+				candidate.IP,
+				candidate.CampaignID,
+				candidate.Score,
+				candidate.Boost,
+				candidate.TTLSeconds,
+			)
+			if err != nil {
+				if releaseErr := detector.idem.ReleaseFraudEnforcement(ctx, candidate.IP, candidate.Reason, "boost"); releaseErr != nil {
+					slog.Error("failed to release ml idempotency claim after management error",
+						"ip", candidate.IP,
+						"enqueue_error", err,
+						"release_error", releaseErr,
+					)
+				}
+				return result, err
+			}
+
+			result.Enqueued++
+			fraudEnforcementEnqueuedTotal.WithLabelValues("boost").Inc()
+			slog.Info("ivt detector enqueued ml score boost",
+				"ip", candidate.IP,
+				"campaign_id", candidate.CampaignID,
+				"score", candidate.Score,
+				"boost", candidate.Boost,
+			)
+		case "ghost":
+			claimed, claimErr := detector.idem.TryClaimFraudEnforcement(ctx, candidate.IP, candidate.Reason, "ghost")
+			if claimErr != nil {
+				return result, claimErr
+			}
+			if !claimed {
+				result.Skipped++
+				continue
+			}
+
+			err := detector.management.EnqueueFraudThreat(
+				ctx,
+				"ghost",
+				candidate.IP,
+				candidate.CampaignID,
+				candidate.Score,
+				0,
+				candidate.TTLSeconds,
+			)
+			if err != nil {
+				if releaseErr := detector.idem.ReleaseFraudEnforcement(ctx, candidate.IP, candidate.Reason, "ghost"); releaseErr != nil {
+					slog.Error("failed to release ghost idempotency claim after management error",
+						"ip", candidate.IP,
+						"enqueue_error", err,
+						"release_error", releaseErr,
+					)
+				}
+				return result, err
+			}
+
+			result.Enqueued++
+			fraudEnforcementEnqueuedTotal.WithLabelValues("ghost").Inc()
+			slog.Info("ivt detector enqueued ml ghost ivt",
+				"ip", candidate.IP,
+				"campaign_id", candidate.CampaignID,
+				"signal", candidate.Reason,
+				"score", candidate.Score,
+			)
+		default:
+			claimed, claimErr := detector.idem.TryClaim(ctx, candidate.IP)
+			if claimErr != nil {
+				return result, claimErr
+			}
+			if !claimed {
+				result.Skipped++
+				continue
+			}
+
+			blockErr := detector.management.BlockIP(ctx, candidate.IP)
+			if blockErr != nil {
+				if releaseErr := detector.idem.Release(ctx, candidate.IP); releaseErr != nil {
+					slog.Error("failed to release idempotency claim after management error",
+						"ip", candidate.IP,
+						"block_error", blockErr,
+						"release_error", releaseErr,
+					)
+				}
+				return result, blockErr
+			}
+
+			result.Enqueued++
+			ivtEnqueuedTotal.Inc()
+			slog.Info("ivt detector enqueued fraud blacklist",
+				"ip", candidate.IP,
+				"signal", candidate.Reason,
+				"score", candidate.Score,
+			)
+		}
+	}
+
+	return result, nil
+}
+
+func (detector *Detector) RunLoop(ctx context.Context) error {
+	if detector == nil {
+		return fmt.Errorf("detector: nil receiver")
+	}
+
+	interval := detector.cfg.ScanInterval
+	if interval <= 0 {
+		interval = 5 * time.Minute
+	}
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	if _, err := detector.Run(ctx); err != nil && err != ErrOutboxBackpressure && ctx.Err() == nil {
+		slog.Error("ivt detector initial cycle failed", "error", err)
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+			result, err := detector.Run(ctx)
+			if err == ErrOutboxBackpressure {
+				slog.Warn("ivt detector paused for outbox backpressure",
+					"candidates", result.Candidates,
+					"pending_limit", detector.cfg.OutboxPendingLimit,
+				)
+				continue
+			}
+			if err != nil && ctx.Err() == nil {
+				slog.Error("ivt detector cycle failed", "error", err)
+				continue
+			}
+			if result.Enqueued > 0 || result.Candidates > 0 {
+				slog.Info("ivt detector cycle complete",
+					"candidates", result.Candidates,
+					"enqueued", result.Enqueued,
+					"skipped", result.Skipped,
+				)
+			}
+		}
+	}
+}
+
+func (detector *Detector) outboxBacklogged(ctx context.Context) (bool, error) {
+	if detector.pool == nil || detector.cfg.OutboxPendingLimit <= 0 {
+		return false, nil
+	}
+
+	var pending int64
+	err := detector.pool.QueryRow(ctx,
+		"SELECT COUNT(*) FROM outbox_events WHERE status = 'PENDING'",
+	).Scan(&pending)
+	if err != nil {
+		return false, fmt.Errorf("count pending outbox events: %w", err)
+	}
+	return pending >= detector.cfg.OutboxPendingLimit, nil
+}
+
+func (detector *Detector) PendingOutboxCount(ctx context.Context) (int64, error) {
+	if detector.pool == nil {
+		return 0, fmt.Errorf("detector: nil pool")
+	}
+	var pending int64
+	err := detector.pool.QueryRow(ctx,
+		"SELECT COUNT(*) FROM outbox_events WHERE status = 'PENDING'",
+	).Scan(&pending)
+	if err != nil {
+		return 0, fmt.Errorf("count pending outbox events: %w", err)
+	}
+	return pending, nil
+}

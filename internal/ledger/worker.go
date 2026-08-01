@@ -9,22 +9,29 @@ import (
 
 	"espx/internal/config"
 	"espx/internal/database"
-	"espx/internal/ingestion"
-	"espx/internal/notifier"
+	"espx/internal/domain"
+	"espx/internal/licensing"
+	"espx/internal/notify"
 	"espx/pkg/money"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+type CampaignEntitlementRegistry interface {
+	GetCampaign(id uuid.UUID) (*domain.Campaign, bool)
+	GetEntitlements(customerID uuid.UUID) (licensing.Entitlements, bool)
+}
 
 type Worker struct {
 	pool     *pgxpool.Pool
 	ch       *database.CHQuery
 	cfg      *config.Config
-	registry *ingestion.Registry
-	notifier notifier.NotifierAPI
+	registry CampaignEntitlementRegistry
+	notifier notify.NotifierAPI
 }
 
-func NewWorker(pool *pgxpool.Pool, ch *database.CHQuery, cfg *config.Config, registry *ingestion.Registry, notifier notifier.NotifierAPI) *Worker {
+func NewWorker(pool *pgxpool.Pool, ch *database.CHQuery, cfg *config.Config, registry CampaignEntitlementRegistry, notifier notify.NotifierAPI) *Worker {
 	return &Worker{
 		pool:     pool,
 		ch:       ch,

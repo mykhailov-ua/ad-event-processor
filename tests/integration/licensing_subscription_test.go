@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/billing"
 	"espx/internal/domain"
-	"espx/internal/ingestion"
 	db "espx/internal/domain/db"
+	"espx/internal/ingestion"
+	"espx/internal/ledger"
 	"espx/internal/licensing"
 	"espx/internal/testutil"
 
@@ -188,7 +188,7 @@ func TestIntegration_LicensingAndSubscriptions(t *testing.T) {
 		`, customerID, int64(-5_000_000), "ad-spend-test")
 		require.NoError(t, err)
 
-		billingSvc := billing.NewService(dbPool)
+		billingSvc := ledger.NewService(dbPool)
 		inv, err := billingSvc.GenerateInvoice(ctx, customerID, monthStart)
 		require.NoError(t, err)
 

@@ -12,24 +12,24 @@ import (
 )
 
 type TCPControlClient struct {
-	enabled    bool
-	secret     []byte
-	trackerID  uint32
-	controlAddr   string
-	dialTO     time.Duration
-	sharder    *StaticSlotSharder
-	udpControl *UDPControl
-	lastEpoch  atomic.Int64
+	enabled     bool
+	secret      []byte
+	trackerID   uint32
+	controlAddr string
+	dialTO      time.Duration
+	sharder     *StaticSlotSharder
+	udpControl  *UDPControl
+	lastEpoch   atomic.Int64
 }
 
 type TCPControlClientConfig struct {
-	Enabled   bool
-	Secret    []byte
-	TrackerID uint32
+	Enabled     bool
+	Secret      []byte
+	TrackerID   uint32
 	ControlAddr string
-	DialTO    time.Duration
-	Sharder   *StaticSlotSharder
-	UDP       *UDPControl
+	DialTO      time.Duration
+	Sharder     *StaticSlotSharder
+	UDP         *UDPControl
 }
 
 func NewTCPControlClient(cfg TCPControlClientConfig) *TCPControlClient {
@@ -37,13 +37,13 @@ func NewTCPControlClient(cfg TCPControlClientConfig) *TCPControlClient {
 		cfg.DialTO = 3 * time.Second
 	}
 	return &TCPControlClient{
-		enabled:    cfg.Enabled,
-		secret:     cfg.Secret,
-		trackerID:  cfg.TrackerID,
-		controlAddr:   cfg.ControlAddr,
-		dialTO:     cfg.DialTO,
-		sharder:    cfg.Sharder,
-		udpControl: cfg.UDP,
+		enabled:     cfg.Enabled,
+		secret:      cfg.Secret,
+		trackerID:   cfg.TrackerID,
+		controlAddr: cfg.ControlAddr,
+		dialTO:      cfg.DialTO,
+		sharder:     cfg.Sharder,
+		udpControl:  cfg.UDP,
 	}
 }
 

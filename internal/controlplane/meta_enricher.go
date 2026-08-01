@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"espx/internal/controlplane/adminapi"
-	billingdb "espx/internal/billing/db"
+	billingdb "espx/internal/ledger/db"
 	"espx/internal/licensing"
 
 	"github.com/jackc/pgx/v5"

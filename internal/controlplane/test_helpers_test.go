@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/identity"
 	"espx/internal/config"
 	"espx/internal/domain"
+	"espx/internal/identity"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"

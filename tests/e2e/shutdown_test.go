@@ -13,8 +13,8 @@ import (
 
 	"espx/internal/config"
 	"espx/internal/database"
-	"espx/internal/ingestion"
 	"espx/internal/domain/db"
+	"espx/internal/ingestion"
 
 	"espx/internal/testutil"
 	"github.com/google/uuid"

@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"espx/internal/database"
-	"espx/internal/notifier"
+	"espx/internal/notify"
 	"espx/pkg/coldpath"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -75,7 +75,7 @@ func applyColdPathMigrations(ctx context.Context, pool *pgxpool.Pool, only map[s
 
 	if run("notifier") {
 		slog.Info("applying notifier schema migrations")
-		if err := notifier.ApplyMigrations(ctx, pool); err != nil {
+		if err := notify.ApplyMigrations(ctx, pool); err != nil {
 			return err
 		}
 	}

@@ -10,10 +10,11 @@ import (
 	"strconv"
 	"time"
 
-	"espx/internal/billing"
-	billingdb "espx/internal/billing/db"
 	"espx/internal/config"
 	"espx/internal/database"
+	"espx/internal/domain"
+	"espx/internal/ledger"
+	billingdb "espx/internal/ledger/db"
 	"espx/pkg/coldpath"
 	"espx/pkg/httpresponse"
 
@@ -26,7 +27,7 @@ import (
 )
 
 type BillingHTTPHandlers struct {
-	Billing                 billing.BillingAPI
+	Billing                 domain.BillingAPI
 	InProcessInvoices       InProcessInvoiceService
 	CompositeReads          *CompositeReadService
 	InvoiceDelivery         InvoiceRetryer
@@ -95,12 +96,12 @@ type DisputeLister interface {
 }
 
 type InProcessInvoiceService interface {
-	PreviewInvoice(ctx context.Context, customerID uuid.UUID, billingMonth time.Time) (*billing.InvoicePreview, error)
+	PreviewInvoice(ctx context.Context, customerID uuid.UUID, billingMonth time.Time) (*ledger.InvoicePreview, error)
 	VoidInvoice(ctx context.Context, invoiceID uuid.UUID) error
 }
 
 type InvoiceRetryer interface {
-	RetryInvoiceDelivery(ctx context.Context, invoice *billing.Invoice, idempotencyKey string) error
+	RetryInvoiceDelivery(ctx context.Context, invoice *domain.Invoice, idempotencyKey string) error
 }
 
 type VoidAuditor interface {
@@ -355,7 +356,7 @@ func (billHandlers *BillingHTTPHandlers) getInvoicePDF(w http.ResponseWriter, r 
 		billHandlers.writeServiceError(w, err)
 		return
 	}
-	pdf := billing.RenderInvoicePDF(invoice)
+	pdf := ledger.RenderInvoicePDF(invoice)
 	if len(pdf) == 0 {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL", "failed to render invoice pdf")
 		return
@@ -706,11 +707,11 @@ func invoicePDFPath(invoiceID string) string {
 	return "/api/v1/billing/invoices/" + invoiceID + "/pdf"
 }
 
-func InvoiceToJSON(invoice *billing.Invoice) map[string]any {
+func InvoiceToJSON(invoice *domain.Invoice) map[string]any {
 	return invoiceToJSON(invoice)
 }
 
-func invoiceToJSON(invoice *billing.Invoice) map[string]any {
+func invoiceToJSON(invoice *domain.Invoice) map[string]any {
 	if invoice == nil {
 		return nil
 	}
@@ -760,11 +761,11 @@ func parsePagination(r *http.Request) (int32, int32) {
 }
 
 func writeBillingLocalError(w http.ResponseWriter, err error) {
-	if errors.Is(err, billing.ErrCustomerNotFound) || errors.Is(err, billing.ErrInvoiceNotFound) {
+	if errors.Is(err, ledger.ErrCustomerNotFound) || errors.Is(err, ledger.ErrInvoiceNotFound) {
 		httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", err.Error())
 		return
 	}
-	if errors.Is(err, billing.ErrLedgerDrift) {
+	if errors.Is(err, ledger.ErrLedgerDrift) {
 		httpresponse.Error(w, http.StatusConflict, "LEDGER_DRIFT", err.Error())
 		return
 	}
@@ -1120,17 +1121,18 @@ func (h *BillingHTTPHandlers) listDisputes(w http.ResponseWriter, r *http.Reques
 	}
 	httpresponse.JSON(w, http.StatusOK, result)
 }
+
 const ledgerInvariantToleranceMicro = int64(1)
 
 type CompositeReadService struct {
 	pool     *pgxpool.Pool
 	cfg      *config.Config
-	provider billing.PaymentProvider
+	provider ledger.PaymentProvider
 	queries  *billingdb.Queries
 	chQuery  *database.CHQuery
 }
 
-func NewCompositeReadService(pool *pgxpool.Pool, cfg *config.Config, provider billing.PaymentProvider) *CompositeReadService {
+func NewCompositeReadService(pool *pgxpool.Pool, cfg *config.Config, provider ledger.PaymentProvider) *CompositeReadService {
 	if pool == nil {
 		return nil
 	}
@@ -1154,16 +1156,16 @@ type PeriodBounds struct {
 }
 
 type StatementDTO struct {
-	CustomerID          string                   `json:"customer_id"`
-	Period              PeriodBounds             `json:"period"`
-	OpeningBalanceMicro int64                    `json:"opening_balance_micro"`
-	ClosingBalanceMicro int64                    `json:"closing_balance_micro"`
-	Lines               []billing.InvoiceLineDTO `json:"lines"`
-	Invoices            []InvoiceSummaryDTO      `json:"invoices"`
-	Payments            []PaymentSummaryDTO      `json:"payments"`
-	TaxBreakdown        TaxBreakdownDTO          `json:"tax_breakdown"`
-	Reconciliation      ReconciliationDTO        `json:"reconciliation"`
-	Currency            string                   `json:"currency"`
+	CustomerID          string                  `json:"customer_id"`
+	Period              PeriodBounds            `json:"period"`
+	OpeningBalanceMicro int64                   `json:"opening_balance_micro"`
+	ClosingBalanceMicro int64                   `json:"closing_balance_micro"`
+	Lines               []ledger.InvoiceLineDTO `json:"lines"`
+	Invoices            []InvoiceSummaryDTO     `json:"invoices"`
+	Payments            []PaymentSummaryDTO     `json:"payments"`
+	TaxBreakdown        TaxBreakdownDTO         `json:"tax_breakdown"`
+	Reconciliation      ReconciliationDTO       `json:"reconciliation"`
+	Currency            string                  `json:"currency"`
 }
 
 type InvoiceSummaryDTO struct {
@@ -1279,10 +1281,10 @@ func (s *CompositeReadService) BuildStatement(ctx context.Context, customerID uu
 	}
 
 	var periodSum int64
-	outLines := make([]billing.InvoiceLineDTO, 0, len(lines))
+	outLines := make([]ledger.InvoiceLineDTO, 0, len(lines))
 	for _, line := range lines {
 		periodSum += line.AmountMicro
-		outLines = append(outLines, billing.InvoiceLineDTO{
+		outLines = append(outLines, ledger.InvoiceLineDTO{
 			LedgerType:  line.LedgerType,
 			AmountMicro: line.AmountMicro,
 			EntryCount:  line.EntryCount,
@@ -1351,9 +1353,9 @@ func (s *CompositeReadService) BuildStatement(ctx context.Context, customerID uu
 	if err != nil {
 		return StatementDTO{}, err
 	}
-	profile := billing.ProfileFromDB(billingdb.BillingCustomerTaxProfile{})
+	profile := ledger.ProfileFromDB(billingdb.BillingCustomerTaxProfile{})
 	if row, perr := s.queries.GetCustomerTaxProfile(ctx, pgCustomer); perr == nil {
-		profile = billing.ProfileFromDB(row)
+		profile = ledger.ProfileFromDB(row)
 	} else if !errors.Is(perr, pgx.ErrNoRows) {
 		return StatementDTO{}, perr
 	}
@@ -1365,7 +1367,7 @@ func (s *CompositeReadService) BuildStatement(ctx context.Context, customerID uu
 	if err != nil {
 		return StatementDTO{}, err
 	}
-	taxMicro, rateBPS := billing.NewTaxCalculator().Compute(spendMicro, profile)
+	taxMicro, rateBPS := ledger.NewTaxCalculator().Compute(spendMicro, profile)
 
 	return StatementDTO{
 		CustomerID:          customerID.String(),
@@ -1397,7 +1399,7 @@ func (s *CompositeReadService) GetWallet(ctx context.Context, customerID uuid.UU
 	row, err := s.queries.GetCustomerWalletRow(ctx, pgCustomer)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return WalletDTO{}, billing.ErrCustomerNotFound
+			return WalletDTO{}, ledger.ErrCustomerNotFound
 		}
 		return WalletDTO{}, err
 	}
@@ -1534,7 +1536,7 @@ func (s *CompositeReadService) GetInvariant(ctx context.Context, customerID *uui
 		return InvariantDTO{}, fmt.Errorf("composite read service not configured")
 	}
 	if customerID != nil {
-		snap, err := billing.ReadLedgerInvariant(ctx, s.pool, *customerID)
+		snap, err := ledger.ReadLedgerInvariant(ctx, s.pool, *customerID)
 		if err != nil {
 			return InvariantDTO{}, err
 		}
@@ -1560,7 +1562,7 @@ func (s *CompositeReadService) GetInvariant(ctx context.Context, customerID *uui
 			return InvariantDTO{}, err
 		}
 		cid := uuid.UUID(id.Bytes)
-		snap, err := billing.ReadLedgerInvariant(ctx, s.pool, cid)
+		snap, err := ledger.ReadLedgerInvariant(ctx, s.pool, cid)
 		if err != nil {
 			return InvariantDTO{}, err
 		}
@@ -1600,7 +1602,7 @@ func (s *CompositeReadService) GetSummary(ctx context.Context) (SummaryDTO, erro
 	var undelivered int64
 	err = s.pool.QueryRow(ctx, `
 		SELECT COUNT(*)::bigint
-		FROM notifier.notifications
+		FROM notify.notifications
 		WHERE template_id = 'invoice_monthly' AND status NOT IN ('SENT')`).Scan(&undelivered)
 	if err != nil {
 		return SummaryDTO{}, err
@@ -1621,7 +1623,7 @@ func (s *CompositeReadService) ListDeliveries(ctx context.Context, invoiceID str
 	dedupKey := "invoice:" + invoiceID
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, status::text, provider::text, recipient, template_id, error_message, retry_count, created_at, updated_at
-		FROM notifier.notifications
+		FROM notify.notifications
 		WHERE dedup_key = $1
 		ORDER BY created_at DESC`, dedupKey)
 	if err != nil {
@@ -1665,7 +1667,7 @@ func (s *CompositeReadService) GetTaxProfile(ctx context.Context, customerID uui
 	row, err := s.queries.GetCustomerTaxProfile(ctx, pgtype.UUID{Bytes: customerID, Valid: true})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			calc := billing.NewTaxCalculator()
+			calc := ledger.NewTaxCalculator()
 			def := calc.DefaultProfile("", "")
 			return TaxProfileDTO{
 				CustomerID:  customerID.String(),

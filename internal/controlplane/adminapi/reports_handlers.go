@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	"espx/internal/billing/db"
 	"espx/internal/database"
+	"espx/internal/ledger/db"
 	"espx/pkg/coldpath"
 	"espx/pkg/httpresponse"
 	"espx/pkg/money"
@@ -359,7 +359,6 @@ func (reports *ReportsHTTPHandlers) Register(mux *http.ServeMux) {
 
 	reports.registerCampaignStats(mux)
 	reports.registerCampaignForecast(mux)
-	reports.registerScaffoldReports(mux)
 
 	limit := reports.ApplyRateLimit
 	perm := reports.RequirePermission
@@ -367,38 +366,6 @@ func (reports *ReportsHTTPHandlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/reports/keywords", limit(perm("campaigns:read", reports.getKeywordsReport)))
 }
 
-func (reports *ReportsHTTPHandlers) registerScaffoldReports(mux *http.ServeMux) {
-	limit := reports.ApplyRateLimit
-	perm := reports.RequirePermission
-
-	routes := []struct {
-		path       string
-		permission string
-	}{
-		{"GET /api/v1/reports/campaign-unit-economics", "campaigns:read"},
-		{"GET /api/v1/reports/source-margin", "campaigns:read"},
-		{"GET /api/v1/reports/traffic-sources", "campaigns:read"},
-		{"GET /api/v1/reports/source-quality", "campaigns:read"},
-		{"GET /api/v1/reports/spend-velocity", "campaigns:read"},
-		{"GET /api/v1/reports/campaign-geo-device", "campaigns:read"},
-		{"GET /api/v1/reports/geo-roi", "campaigns:read"},
-		{"GET /api/v1/reports/daypart-heatmap", "campaigns:read"},
-		{"GET /api/v1/reports/pacing-drift", "campaigns:read"},
-		{"GET /api/v1/reports/postback-reconciliation", "customers:read"},
-		{"GET /api/v1/reports/ivt-by-source", "audit:read"},
-		{"GET /api/v1/reports/discrepancy-buy-sell", "customers:read"},
-		{"GET /api/v1/reports/campaign-overview", "campaigns:read"},
-		{"GET /api/v1/reports/customer-portfolio", "customers:read"},
-	}
-	for _, route := range routes {
-		mux.HandleFunc(route.path, limit(perm(route.permission, reports.notImplemented)))
-	}
-	mux.HandleFunc("POST /api/v1/reports/jobs", limit(perm("customers:read", reports.notImplemented)))
-}
-
-func (reports *ReportsHTTPHandlers) notImplemented(w http.ResponseWriter, _ *http.Request) {
-	httpresponse.Error(w, http.StatusNotImplemented, "NOT_IMPLEMENTED", "report stub; UI deferred — docs/DEVELOPMENT.md")
-}
 
 func (reports *ReportsHTTPHandlers) writeServiceError(w http.ResponseWriter, err error) {
 	var q invalidQueryError

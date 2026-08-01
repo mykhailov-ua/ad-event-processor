@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"espx/internal/config"
-	"espx/internal/logevacuator"
+	"espx/internal/logpipeline"
 	"espx/pkg/lifecycle"
 )
 
@@ -24,7 +24,7 @@ func main() {
 	ctx, stop := lifecycle.NotifyContext(context.Background())
 	defer stop()
 
-	store, err := logevacuator.NewS3Store(ctx, logevacuator.S3Config{
+	store, err := logpipeline.NewS3Store(ctx, logpipeline.EvacuatorS3Config{
 		Region:             cfg.S3Region,
 		Bucket:             cfg.S3Bucket,
 		Prefix:             cfg.S3Prefix,
@@ -37,7 +37,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	evac, err := logevacuator.NewEvacuator(logevacuator.Config{
+	evac, err := logpipeline.NewEvacuator(logpipeline.EvacuatorConfig{
 		LogDir:                 cfg.LogDir,
 		CheckpointPath:         cfg.CheckpointPath,
 		ScanInterval:           time.Duration(cfg.ScanIntervalMs) * time.Millisecond,

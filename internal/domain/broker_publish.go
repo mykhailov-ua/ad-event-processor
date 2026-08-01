@@ -42,7 +42,7 @@ func PublishCampaignUpdateBroker(brokerURL, brokerRedisURL, topic string, timeou
 func PublishSlotMapReload(brokerURL, brokerRedisURL, topic string, timeout time.Duration, version int32, routingEpoch int64) error {
 	if brokerURL == "" {
 		return nil
-}
+	}
 	if topic == "" {
 		topic = DefaultSlotMapReloadTopic
 	}

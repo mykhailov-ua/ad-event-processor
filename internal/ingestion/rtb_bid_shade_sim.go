@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"espx/internal/config"
-	db "espx/internal/domain/db"
 	"espx/internal/domain"
+	db "espx/internal/domain/db"
 	"espx/internal/rtb"
 
 	"github.com/jackc/pgx/v5/pgxpool"

@@ -15,7 +15,6 @@ import (
 	"espx/internal/config"
 	"espx/internal/database"
 	"espx/internal/fraud"
-	"espx/internal/ivtdetector"
 	"espx/pkg/lifecycle"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -85,7 +84,7 @@ func main() {
 	}
 	slog.Info("initialized fraud scorer", "path", cfg.FraudScoring.ModelPath)
 
-	analyzerCfg := ivtdetector.AnalyzerConfig{
+	analyzerCfg := fraud.AnalyzerConfig{
 		Window:          time.Duration(cfg.IVT.WindowSec) * time.Second,
 		MinClicks:       cfg.IVT.MinClicks,
 		MinImpressions:  cfg.IVT.MinImpressions,
@@ -93,27 +92,27 @@ func main() {
 		MinIPsPerUA:     cfg.IVT.MinIPsPerUA,
 		MinEventsPerIP:  cfg.IVT.MinClicks,
 	}
-	detectorCfg := ivtdetector.DetectorConfig{
+	detectorCfg := fraud.DetectorConfig{
 		ScanInterval:       time.Duration(cfg.FraudScoring.ScanIntervalMs) * time.Millisecond,
 		OutboxPendingLimit: cfg.IVT.OutboxPendingLimit,
 		Analyzer:           analyzerCfg,
 	}
 
-	var blocker ivtdetector.BlacklistBlocker
-	blocker, err = ivtdetector.ResolveManagementBlockerFromConfig(cfg.ManagementURL, cfg.ManagementPort, string(cfg.AdminAPIKey))
+	var blocker fraud.BlacklistBlocker
+	blocker, err = fraud.ResolveManagementBlockerFromConfig(cfg.ManagementURL, cfg.ManagementPort, string(cfg.AdminAPIKey))
 	if err != nil {
 		slog.Error("failed to configure management client", "error", err)
 		os.Exit(1)
 	}
 	slog.Info("fraud-scorer using management HTTP API")
 
-	registry := ivtdetector.NewRuleRegistry()
+	registry := fraud.NewRuleRegistry()
 	chQuery := database.NewCHQuery(chConn, database.CHQueryConfigFromApp(cfg))
-	registry.Register(ivtdetector.NewFraudScoringRule(chQuery, chConn, pool, scorer, cfg.FraudScoring.BatchSize))
+	registry.Register(fraud.NewFraudScoringRule(chQuery, chConn, pool, scorer, cfg.FraudScoring.BatchSize))
 
-	detector := ivtdetector.NewDetector(
+	detector := fraud.NewDetector(
 		registry,
-		ivtdetector.NewIdempotencyStore(pool),
+		fraud.NewIdempotencyStore(pool),
 		blocker,
 		pool,
 		detectorCfg,

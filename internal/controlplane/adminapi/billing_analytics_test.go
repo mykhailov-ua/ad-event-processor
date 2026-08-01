@@ -1,10 +1,9 @@
 package adminapi
 
 import (
+	"espx/internal/ledger"
 	"testing"
 	"time"
-
-	"espx/internal/billing"
 
 	"github.com/stretchr/testify/assert"
 
@@ -13,7 +12,7 @@ import (
 
 func TestPlaceholderProvider_walletFields(t *testing.T) {
 	t.Parallel()
-	p := billing.NewPaymentProvider("placeholder", "placeholder_dev")
+	p := ledger.NewPaymentProvider("placeholder", "placeholder_dev")
 	require.NotNil(t, p)
 	assert.Equal(t, "placeholder", p.Name())
 	assert.False(t, p.Configured())
