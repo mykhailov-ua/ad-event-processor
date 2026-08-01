@@ -23,7 +23,7 @@ func ResolveNotifierClient(ctx context.Context, cfg *config.Config) (*NotifierCl
 	if cfg == nil || !cfg.OpsAlertsEnabled() {
 		return nil, func() {}, nil
 	}
-	api, closeFn, err := notifier.OpenAPIOrDial(ctx, cfg)
+	api, closeFn, err := notifier.OpenAPI(ctx, cfg)
 	if err != nil {
 		return nil, func() {}, err
 	}

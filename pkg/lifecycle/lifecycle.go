@@ -2,7 +2,6 @@ package lifecycle
 
 import (
 	"context"
-	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -10,8 +9,6 @@ import (
 	"time"
 
 	"espx/internal/config"
-
-	google_grpc "google.golang.org/grpc"
 )
 
 type Timeouts struct {
@@ -52,28 +49,6 @@ func ShutdownHTTPServer(srv *http.Server, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	return srv.Shutdown(ctx)
-}
-
-func ShutdownGRPC(srv *google_grpc.Server, timeout time.Duration) {
-	if srv == nil {
-		return
-	}
-	stopped := make(chan struct{})
-	go func() {
-		srv.GracefulStop()
-		close(stopped)
-	}()
-
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	select {
-	case <-stopped:
-		slog.Info("gRPC server stopped cleanly")
-	case <-ctx.Done():
-		slog.Warn("gRPC graceful shutdown timed out, force stopping")
-		srv.Stop()
-	}
 }
 
 func Wait(timeout time.Duration, fn func()) error {

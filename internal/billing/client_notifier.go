@@ -15,7 +15,7 @@ func NewNotifierAPI(ctx context.Context, cfg *config.Config) (notifier.NotifierA
 	if recipient == "" {
 		return nil, func() {}, nil
 	}
-	return notifier.OpenAPIOrDial(ctx, cfg)
+	return notifier.OpenAPI(ctx, cfg)
 }
 
 func ResolveInvoiceNotifierTarget(cfg *config.Config) (string, string) {

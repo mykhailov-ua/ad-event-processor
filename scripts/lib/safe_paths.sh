@@ -138,10 +138,7 @@ safe_sync_proto_gen() {
 }
 
 safe_prune_service_vtproto() {
-	local svc
-	for svc in identity billing payment notifier controlplane; do
-		rm -f "$ROOT/internal/$svc/pb/"*_vtproto.pb.go
-	done
+	: # cold-path service protos removed; vtproto only for ingestion/rtb
 }
 
 safe_validate_codegen_configs() {

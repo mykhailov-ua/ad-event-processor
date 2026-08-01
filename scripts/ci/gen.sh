@@ -13,7 +13,6 @@ RUN_BPF=0
 for arg in "$@"; do
 	case "$arg" in
 	--proto) RUN_PROTO=1 ;;
-	--proto-with-grpc) RUN_PROTO=1 ;;
 	--templ) RUN_TEMPL=1 ;;
 	--bpf) RUN_BPF=1 ;;
 	--all)

@@ -141,8 +141,8 @@ Pointers to .cursor/, REFACTORING.md, backlog in code
 6. Delete internal-only protobuf and gRPC codegen. — done (see §9)
 7. Split internal/config/env.go: done across `env_controlplane.go`, …
 8. Consolidate sqlc output paths: internal/<module>/db/. — identity paths updated in sqlc.yaml
-9. Merge legacy handler + service pairs. — partial: module API/handler splits folded; dead gRPC `*FromPB`/`*ToPB` conversion removed from billing/payment/notifier API paths
-10. Rename files per naming rules.
+9. Merge legacy handler + service pairs. — done for module API surface; dead settlement pb convert removed
+10. Rename files per naming rules. — partial: billing/payment/identity/notifier/controlplane §6 renames (handler→api, worker_*, client_*, settlement.go); controlplane clients merged to `client_integration.go`
 11. Remove dead localhost clients and env vars. — done (gRPC server ports/hosts removed from config and compose)
 12. Re-add sparse “why” comments on cold path (post-refactor only; see §7).
 13. Repository root and deploy/scripts consolidation. — scripts alias dirs removed; smoke in `scripts/dev/`; Dockerfiles in `deploy/docker/`; compose in `deploy/compose/` (root `docker-compose.yaml` includes)
@@ -155,12 +155,12 @@ Monolith: payment→settlement via `SettlementHandler.PaymentSettlement()` (`dom
 `ServeOptions` uses `*AuthClient`, `*BillingClient`, `*PaymentClient`, `*NotifierClient` (not `pb.*ServiceClient`).
 ivt-detector/fraud-scorer use management HTTP (`/api/v1/ops/blacklist`, `/api/v1/ops/fraud-threat`).
 `control.Run` wires modules via `buildServeOptions` whenever `CONTROL_ENABLE_*` flags are set; no standalone `identity.Serve()` / `billing.Serve()` goroutines.
-`OpenAPIOrDial` in identity/billing/payment/notifier always opens in-process modules; `grpc_api.go`, `handler_grpc.go`, `serve.go`, `*_service.proto`, and `buf.gen.grpc.yaml` removed.
+`OpenAPI` in identity/billing/payment/notifier always opens in-process modules; `grpc_api.go`, `handler_grpc.go`, `serve.go`, `*_service.proto`, and `buf.gen.grpc.yaml` removed.
 Payment webhook HTTP (`:8187`) started from `payment.Module.StartWorkers`.
 Removed gRPC-only config: `AUTH_SERVER_*`, `PAYMENT_SERVER_*`, `SETTLEMENT_SERVER_*`, `BILLING_SERVER_*`, `NOTIFIER_PORT` / `NOTIFIER_SERVER_HOST` (in-process modules only).
 Scripts: profile smoke under `scripts/dev/`; deleted `local-dev/`, `perf-gate/`, `edge-tuning/`, `redis/` alias dirs.
 Deploy: `deploy/docker/Dockerfile*` (platform + log workers); `deploy/compose/docker-compose.yaml` + load-test overlay; root compose stubs `include` those files.
-Module API surface: `Handler` + `OpenAPIOrDial` live in `api.go`/`open.go` per module (billing, payment, identity, notifier); deleted thin `handler_types.go` and `resolve_api.go` splits.
+Module API surface: `Handler` + `OpenAPI` live in `api.go`/`open.go` per module (billing, payment, identity, notifier); deleted thin `handler_types.go` and `resolve_api.go` splits.
 Cold-path module APIs use domain/DB types directly; legacy protobuf round-trip helpers removed from `api.go` where gRPC transport is gone (`paymentIntentStatusString` replaces pb enum `.String()` in production).
 No *_bridge.go or host adapters.
 No nested domain packages under service roots.
@@ -178,21 +178,20 @@ Create REFACTORING_*.md children.
 Move agent design docs into docs/.
 
 
-9. Protobuf codegen (internal gRPC removed — done)
+9. Protobuf codegen (hot path only)
 
-`make proto` (`scripts/ci/gen.sh --proto`) generates message protos only:
+`make proto` (`scripts/ci/gen.sh --proto`) generates:
 
-1. `api/buf.gen.nogrpc.yaml` — `protocolbuffers/go` for all `api/*.proto`.
-2. `api/buf.gen.vtproto.yaml` — `go-vtproto` for `events.proto` and `vast.proto` only.
-3. `safe_sync_proto_gen` → `internal/*/pb/`.
-4. `safe_prune_service_vtproto` drops stale `*_vtproto.pb.go` under identity, billing, payment, notifier, controlplane.
-5. `cmd/patch-vtproto-hotpath` patches `internal/ingestion/pb/events_vtproto.pb.go`.
+1. `api/buf.gen.nogrpc.yaml` — `protocolbuffers/go` for `api/events.proto` and `api/vast.proto`.
+2. `api/buf.gen.vtproto.yaml` — `go-vtproto` for `events.proto` and `vast.proto`.
+3. `safe_sync_proto_gen` → `internal/ingestion/pb`, `internal/rtb/pb`.
+4. `cmd/patch-vtproto-hotpath` patches `internal/ingestion/pb/events_vtproto.pb.go`.
 
-Message protos (keep): `auth.proto`, `billing.proto`, `payment.proto`, `notifier.proto`, `settlement.proto` — used for handler conversion and outbox payloads.
+Removed cold-path message protos: `auth.proto`, `billing.proto`, `payment.proto`, `notifier.proto`, `settlement.proto` and `internal/{billing,payment,identity,notifier,controlplane}/pb/`.
 
-Removed: `api/*_service.proto`, `api/buf.gen.grpc.yaml`, `*_grpc.pb.go` generation, `Register*ServiceServer` / `New*ServiceClient` in production, `*_GRPC_ENABLED` config fields.
+Removed: `api/*_service.proto`, `api/buf.gen.grpc.yaml`, `*_grpc.pb.go` generation, `Register*ServiceServer` / `New*ServiceClient` in production, `*_GRPC_ENABLED` config fields, `pkg/lifecycle.ShutdownGRPC`.
 
-In-process: module `API()` + `OpenAPIOrDial` → `OpenModule`; settlement via `SettlementHandler.PaymentSettlement()` + `PaymentModule.SetSettlementAPI`.
+In-process: module `API()` + `OpenAPI` → `OpenModule`; settlement via `SettlementHandler.PaymentSettlement()` + `PaymentModule.SetSettlementAPI`.
 
 Payment fault/integration tests: `package payment_test` + `internal/paymenttest` (`SettlementFaultGate`) + `internal/payment/dbtest`.
 

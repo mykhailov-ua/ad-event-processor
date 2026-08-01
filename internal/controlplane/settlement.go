@@ -136,14 +136,6 @@ func (h *SettlementHandler) ledgerEntry(ctx context.Context, paymentIntentID uui
 	return out, entry, nil
 }
 
-func (h *SettlementHandler) blockIP(ctx context.Context, ip, source string) error {
-	return h.service.BlockIP(ctx, ip, source)
-}
-
-func (h *SettlementHandler) enqueueFraudThreat(ctx context.Context, payload FraudThreatPayload) error {
-	return h.service.EnqueueFraudThreat(ctx, payload)
-}
-
 func (h *SettlementHandler) applyCTVSettlement(ctx context.Context, settlementID string, customerID, campaignID uuid.UUID, spendMicro int64) (domain.CTVSettlementResult, error) {
 	return h.service.ApplyCTVSettlement(ctx, settlementID, customerID, campaignID, spendMicro)
 }

@@ -84,7 +84,7 @@ func OpenModule(ctx context.Context, cfg *config.Config) (*Module, error) {
 	}, nil
 }
 
-func OpenAPIOrDial(ctx context.Context, cfg *config.Config) (NotifierAPI, func(), error) {
+func OpenAPI(ctx context.Context, cfg *config.Config) (NotifierAPI, func(), error) {
 	noop := func() {}
 	if cfg == nil {
 		return nil, noop, nil

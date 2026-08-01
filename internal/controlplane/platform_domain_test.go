@@ -99,5 +99,5 @@ func TestPlatform_errValidation(t *testing.T) {
 
 func TestPlatform_DomainMapped(t *testing.T) {
 	t.Parallel()
-	assert.Equal(t, "platform", FileDomain("handler_errors.go"))
+	assert.Equal(t, "platform", FileDomain("api_errors.go"))
 }

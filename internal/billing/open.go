@@ -54,7 +54,7 @@ func (m *Module) StartWorkers(ctx context.Context) {
 	slog.Info("billing invoice worker enabled", "schedule", "1st of month 00:15 UTC")
 }
 
-func OpenAPIOrDial(ctx context.Context, cfg *config.Config) (BillingAPI, func(), error) {
+func OpenAPI(ctx context.Context, cfg *config.Config) (BillingAPI, func(), error) {
 	noop := func() {}
 	if cfg == nil || string(cfg.BillingInternalToken) == "" {
 		return nil, noop, nil

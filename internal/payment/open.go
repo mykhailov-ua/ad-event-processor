@@ -97,7 +97,7 @@ func (m *Module) StartWorkers(ctx context.Context) {
 	}
 }
 
-func OpenAPIOrDial(ctx context.Context, cfg *config.Config) (PaymentAPI, func(), error) {
+func OpenAPI(ctx context.Context, cfg *config.Config) (PaymentAPI, func(), error) {
 	noop := func() {}
 	if cfg == nil || string(cfg.PaymentInternalToken) == "" {
 		return nil, noop, nil
