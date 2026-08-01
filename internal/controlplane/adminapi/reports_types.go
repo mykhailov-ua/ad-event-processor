@@ -1,5 +1,50 @@
 package adminapi
 
+import (
+	"context"
+	"errors"
+	"time"
+
+	"github.com/google/uuid"
+)
+
+var (
+	ErrForecastClickHouseTimeout = errors.New("forecast clickhouse query timed out")
+	ErrForecastUnavailable       = errors.New("forecast service unavailable")
+	ErrClickHouseNotConfigured   = errors.New("clickhouse not configured")
+)
+
+type CampaignForecastInput struct {
+	CustomerID       *uuid.UUID
+	BudgetLimitMicro int64
+	TargetCountries  []string
+	DaypartHours     []int16
+	StartAt          time.Time
+	EndAt            time.Time
+	PacingMode       string
+	Timezone         string
+}
+
+type SpendCurvePoint struct {
+	Hour        string `json:"hour"`
+	SpendMicro  int64  `json:"spend_micro"`
+	Impressions int64  `json:"impressions"`
+}
+
+type ForecastAdvisory struct {
+	Code            string `json:"code"`
+	Message         string `json:"message"`
+	SuggestedPacing string `json:"suggested_pacing"`
+}
+
+type CampaignForecastDTO struct {
+	ImpressionsP50 int64             `json:"impressions_p50"`
+	ImpressionsP90 int64             `json:"impressions_p90"`
+	SpendCurve     []SpendCurvePoint `json:"spend_curve"`
+	LowConfidence  bool              `json:"low_confidence"`
+	Advisory       *ForecastAdvisory `json:"advisory,omitempty"`
+}
+
 type TableDTO struct {
 	Columns    []ColumnDTO      `json:"columns"`
 	Rows       []map[string]any `json:"rows"`
@@ -144,4 +189,12 @@ var MetricFormulas = map[string]string{
 	MetricUtilizationPct: "current_spend / budget_limit",
 	MetricAvailableMicro: "balance + overdraft - reserved",
 	MetricPacingDriftPct: "(actual - planned) / planned",
+}
+
+type CampaignStatsReader interface {
+	GetCampaignStats(ctx context.Context, campaignID uuid.UUID, from, to time.Time, granularity string) (CampaignStatsDTO, error)
+}
+
+type CampaignForecaster interface {
+	ForecastCampaign(ctx context.Context, in CampaignForecastInput) (CampaignForecastDTO, error)
 }

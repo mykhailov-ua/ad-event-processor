@@ -2,7 +2,10 @@ package adminapi
 
 import (
 	"context"
+	"encoding/json"
 	"io"
+
+	"espx/internal/billing/plansyaml"
 )
 
 type DLQRetryPayload struct {
@@ -119,4 +122,133 @@ type ManagementOpsReader interface {
 	GetMLModelStatus(ctx context.Context) (MLModelStatusDTO, error)
 	AddMLManualLabel(ctx context.Context, ipHash string, label int, reason string) error
 	ListMLManualLabels(ctx context.Context) ([]MLManualLabelDTO, error)
+}
+
+type AuditLister interface {
+	ListAuditLogs(ctx context.Context, limit, offset int32, redactPII bool) (any, int64, error)
+}
+
+type ConsentRecord struct {
+	UserID    string `json:"user_id"`
+	Purposes  int16  `json:"purposes"`
+	Source    string `json:"source"`
+	Timestamp string `json:"timestamp,omitempty"`
+}
+
+type ConsentRecorder interface {
+	RecordConsent(ctx context.Context, in ConsentRecord) error
+}
+
+type ConsentVerifier interface {
+	Verify(body []byte, signature string) error
+}
+
+type RolesReloader interface {
+	ReloadRoles() error
+	RolesPath() string
+}
+
+type PlansReloader interface {
+	ReloadPlans(ctx context.Context, dryRun bool) (plansyaml.ReloadReport, error)
+	PlansPath() string
+}
+
+type FraudThreatEnqueuer interface {
+	EnqueueFraudThreat(ctx context.Context, action, ip, campaignID string, score float64, boost int32, ttlSeconds int64) error
+}
+
+type BlacklistAdmin interface {
+	BlockIPWithTTL(ctx context.Context, ip, source string, ttlSeconds *int64) error
+	PreviewBlockIP(ctx context.Context, ip, source string, ttlSeconds *int64) (any, error)
+	UnblockIP(ctx context.Context, ip, source string) error
+	ListBlacklist(ctx context.Context, limit, offset int32) (any, int64, error)
+}
+
+type DashboardServiceCard struct {
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Status string `json:"status"`
+	Detail string `json:"detail,omitempty"`
+}
+
+type DashboardSummaryDTO struct {
+	GeneratedAt      string                 `json:"generated_at"`
+	Services         []DashboardServiceCard `json:"services"`
+	DriftMicroMax    float64                `json:"drift_micro_max"`
+	DriftAlert       bool                   `json:"drift_alert"`
+	RPSEstimate      float64                `json:"rps_estimate"`
+	OutboxPending    int64                  `json:"outbox_pending"`
+	EmergencyBreaker string                 `json:"emergency_breaker"`
+}
+
+type DashboardMetricPoint struct {
+	Name       string  `json:"name"`
+	LabelsHash string  `json:"labels_hash,omitempty"`
+	Timestamp  string  `json:"ts"`
+	Value      float64 `json:"value"`
+}
+
+type DashboardMetricsDTO struct {
+	Range       string                 `json:"range"`
+	BucketSec   int                    `json:"bucket_sec"`
+	Points      []DashboardMetricPoint `json:"points"`
+	GeneratedAt string                 `json:"generated_at"`
+}
+
+type MLModelVersionDTO struct {
+	ID               string          `json:"id"`
+	ArtifactHash     string          `json:"artifact_hash"`
+	Status           string          `json:"status"`
+	CreatedAt        string          `json:"created_at"`
+	ArtifactMetadata json.RawMessage `json:"artifact_metadata,omitempty"`
+}
+
+type MLModelRedisDTO struct {
+	VersionID        string `json:"version_id,omitempty"`
+	Hash             string `json:"hash,omitempty"`
+	AppliedAt        string `json:"applied_at,omitempty"`
+	ShardsReporting  int    `json:"shards_reporting"`
+	ShardsConsistent bool   `json:"shards_consistent"`
+}
+
+type MLShardSyncDTO struct {
+	ShardID      int    `json:"shard_id"`
+	ModelVersion string `json:"model_version"`
+	Phase        string `json:"phase"`
+	StartedAt    string `json:"started_at"`
+}
+
+type MLFeatureImportanceDTO struct {
+	Name  string  `json:"name"`
+	Value float64 `json:"value"`
+}
+
+type MLModelStatusDTO struct {
+	ActiveVersion  *MLModelVersionDTO       `json:"active_version,omitempty"`
+	SyncingVersion *MLModelVersionDTO       `json:"syncing_version,omitempty"`
+	Redis          MLModelRedisDTO          `json:"redis"`
+	ShardSync      []MLShardSyncDTO         `json:"shard_sync"`
+	Drift          json.RawMessage          `json:"drift,omitempty"`
+	DriftDetected  bool                     `json:"drift_detected"`
+	Precision      float64                  `json:"precision,omitempty"`
+	Recall         float64                  `json:"recall,omitempty"`
+	Importance     []MLFeatureImportanceDTO `json:"importance,omitempty"`
+}
+
+type MLManualLabelRequest struct {
+	IPHash string `json:"ip_hash"`
+	Label  int    `json:"label"`
+	Reason string `json:"reason"`
+}
+
+type MLManualLabelDTO struct {
+	IPHash    string `json:"ip_hash"`
+	Label     int    `json:"label"`
+	Reason    string `json:"reason"`
+	Source    string `json:"source"`
+	CreatedAt string `json:"created_at"`
+}
+
+type SupportBundleWriter interface {
+	WriteSupportBundle(ctx context.Context, w io.Writer) error
 }

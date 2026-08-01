@@ -2,17 +2,22 @@ package adminapi
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
+	"io"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"espx/internal/payment"
 	"espx/pkg/coldpath"
-
 	"espx/pkg/httpresponse"
+	"espx/pkg/supportbundle"
 )
 
 type OpsHTTPHandlers struct {
@@ -321,4 +326,406 @@ func parseDLQEntryIDFromRoute(dlqID string) string {
 		return ""
 	}
 	return rest[dash+1:]
+}
+
+func (h *OpsHTTPHandlers) registerReconRoutes(mux *http.ServeMux) {
+	if h.OpsReader == nil {
+		return
+	}
+	limit := h.ApplyRateLimit
+	perm := h.RequirePermission
+	mux.HandleFunc("GET /api/v1/recon/runs", limit(perm("audit:read", h.listReconRuns)))
+}
+
+func (h *OpsHTTPHandlers) listReconRuns(w http.ResponseWriter, r *http.Request) {
+	service := r.URL.Query().Get("service")
+	limit, offset := parseAPIPagination(r)
+
+	runs, total, err := h.OpsReader.ListReconRuns(r.Context(), service, limit, offset)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+
+	coldpath.WritePaginatedJSON(w, runs, total)
+}
+
+func (h *OpsHTTPHandlers) registerAuditRoutes(mux *http.ServeMux) {
+	if h.AuditLister == nil {
+		return
+	}
+	limit := h.ApplyRateLimit
+	perm := h.RequirePermission
+	if limit == nil {
+		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
+	}
+	if perm == nil {
+		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
+	}
+	mux.HandleFunc("GET /api/v1/audit", limit(perm("audit:read", h.listAudit)))
+}
+
+func (h *OpsHTTPHandlers) listAudit(w http.ResponseWriter, r *http.Request) {
+	limit, offset := parseAPIPagination(r)
+	redact := r.URL.Query().Get("redact_pii") == "true"
+	logs, total, err := h.AuditLister.ListAuditLogs(r.Context(), limit, offset, redact)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	w.Header().Set("X-Total-Count", strconv.FormatInt(total, 10))
+	httpresponse.JSON(w, http.StatusOK, logs)
+}
+
+func (h *OpsHTTPHandlers) registerConsentRoutes(mux *http.ServeMux) {
+	if h.ConsentRecorder == nil || h.ConsentVerifier == nil {
+		return
+	}
+	limit := h.ApplyRateLimit
+	mux.HandleFunc("POST /api/v1/consent", limit(h.postConsent))
+}
+
+func (h *OpsHTTPHandlers) postConsent(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(io.LimitReader(r.Body, 64*1024))
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid body")
+		return
+	}
+	sig := r.Header.Get("X-Consent-Signature")
+	if err := h.ConsentVerifier.Verify(body, sig); err != nil {
+		httpresponse.Error(w, http.StatusUnauthorized, "INVALID_SIGNATURE", "consent signature invalid")
+		return
+	}
+	var in ConsentRecord
+	if err := json.Unmarshal(body, &in); err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid json")
+		return
+	}
+	if err := h.ConsentRecorder.RecordConsent(r.Context(), in); err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *OpsHTTPHandlers) registerRolesRoutes(mux *http.ServeMux) {
+	if h.RolesReloader == nil {
+		return
+	}
+	limit := h.ApplyRateLimit
+	perm := h.RequirePermission
+	if limit == nil {
+		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
+	}
+	if perm == nil {
+		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
+	}
+	mux.HandleFunc("POST /api/v1/ops/roles/reload", limit(perm("settings:write", h.reloadRoles)))
+}
+
+func (h *OpsHTTPHandlers) reloadRoles(w http.ResponseWriter, r *http.Request) {
+	if h.RolesReloader == nil {
+		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "roles reloader not configured")
+		return
+	}
+	if err := h.RolesReloader.ReloadRoles(); err != nil {
+		slog.Error("roles reload failed", "err", err)
+		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL", "failed to reload roles")
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, map[string]string{"status": "reloaded", "path": h.RolesReloader.RolesPath()})
+}
+
+func (h *OpsHTTPHandlers) registerPlansRoutes(mux *http.ServeMux) {
+	if h.PlansReloader == nil {
+		return
+	}
+	limit := h.ApplyRateLimit
+	perm := h.RequirePermission
+	if limit == nil {
+		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
+	}
+	if perm == nil {
+		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
+	}
+	mux.HandleFunc("POST /api/v1/ops/plans/reload", limit(perm("ops:write", h.reloadPlans)))
+}
+
+func (h *OpsHTTPHandlers) reloadPlans(w http.ResponseWriter, r *http.Request) {
+	if h.PlansReloader == nil {
+		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "plans reloader not configured")
+		return
+	}
+	dryRun := r.URL.Query().Get("dry_run") == "1" || r.Header.Get("X-Dry-Run") == "1"
+	report, err := h.PlansReloader.ReloadPlans(r.Context(), dryRun)
+	if err != nil {
+		slog.Error("plans reload failed", "err", err)
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, report)
+}
+
+func (h *OpsHTTPHandlers) registerFraudThreatRoutes(mux *http.ServeMux) {
+	if h.FraudThreat == nil {
+		return
+	}
+	limit := h.ApplyRateLimit
+	perm := h.RequirePermission
+	if limit == nil {
+		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
+	}
+	if perm == nil {
+		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
+	}
+	mux.HandleFunc("POST /api/v1/ops/fraud-threat", limit(perm("shards:write", h.enqueueFraudThreat)))
+}
+
+func (h *OpsHTTPHandlers) enqueueFraudThreat(w http.ResponseWriter, r *http.Request) {
+	req, err := coldpath.DecodeRequest[struct {
+		Action     string  `json:"action"`
+		IP         string  `json:"ip"`
+		CampaignID string  `json:"campaign_id"`
+		Score      float64 `json:"score"`
+		Boost      int32   `json:"boost"`
+		TTLSeconds int64   `json:"ttl_seconds"`
+	}](w, r, coldpath.DefaultMaxBody)
+	if err != nil || req.Action == "" || req.CampaignID == "" {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
+		return
+	}
+	if err := h.FraudThreat.EnqueueFraudThreat(r.Context(), req.Action, req.IP, req.CampaignID, req.Score, req.Boost, req.TTLSeconds); err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, map[string]bool{"enqueued": true})
+}
+
+func (h *OpsHTTPHandlers) registerBlacklistRoutes(mux *http.ServeMux) {
+	if h.Blacklist == nil {
+		return
+	}
+	limit := h.ApplyRateLimit
+	perm := h.RequirePermission
+	if limit == nil {
+		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
+	}
+	if perm == nil {
+		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
+	}
+	mux.HandleFunc("POST /api/v1/ops/blacklist", limit(perm("blacklist:write", h.blockIP)))
+	mux.HandleFunc("DELETE /api/v1/ops/blacklist", limit(perm("blacklist:write", h.unblockIP)))
+	mux.HandleFunc("GET /api/v1/ops/blacklist", limit(perm("blacklist:read", h.listBlacklist)))
+}
+
+func (h *OpsHTTPHandlers) blockIP(w http.ResponseWriter, r *http.Request) {
+	req, err := coldpath.DecodeRequest[struct {
+		IP         string `json:"ip"`
+		Source     string `json:"source"`
+		TTLSeconds *int64 `json:"ttl_seconds,omitempty"`
+	}](w, r, coldpath.DefaultMaxBody)
+	if err != nil || req.IP == "" {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
+		return
+	}
+	if r.Header.Get("X-Dry-Run") == "1" || r.URL.Query().Get("dry_run") == "1" {
+		preview, err := h.Blacklist.PreviewBlockIP(r.Context(), req.IP, req.Source, req.TTLSeconds)
+		if err != nil {
+			h.writeServiceError(w, err)
+			return
+		}
+		httpresponse.JSON(w, http.StatusOK, preview)
+		return
+	}
+	if err := h.Blacklist.BlockIPWithTTL(r.Context(), req.IP, req.Source, req.TTLSeconds); err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+}
+
+func (h *OpsHTTPHandlers) unblockIP(w http.ResponseWriter, r *http.Request) {
+	req, err := coldpath.DecodeRequest[struct {
+		IP     string `json:"ip"`
+		Source string `json:"source"`
+	}](w, r, coldpath.DefaultMaxBody)
+	if err != nil || req.IP == "" {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
+		return
+	}
+	if err := h.Blacklist.UnblockIP(r.Context(), req.IP, req.Source); err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *OpsHTTPHandlers) listBlacklist(w http.ResponseWriter, r *http.Request) {
+	limit, offset := parseAPIPagination(r)
+	items, total, err := h.Blacklist.ListBlacklist(r.Context(), limit, offset)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	w.Header().Set("X-Total-Count", strconv.FormatInt(total, 10))
+	httpresponse.JSON(w, http.StatusOK, items)
+}
+
+func (ops *OpsHTTPHandlers) registerDashboardRoutes(mux *http.ServeMux) {
+	if ops == nil || ops.OpsReader == nil {
+		return
+	}
+	limit := ops.ApplyRateLimit
+	perm := ops.RequirePermission
+	if limit == nil {
+		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
+	}
+	if perm == nil {
+		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
+	}
+	mux.HandleFunc("GET /api/v1/ops/dashboard/summary", limit(perm("shards:read", ops.getDashboardSummary)))
+	mux.HandleFunc("GET /api/v1/ops/dashboard/metrics", limit(perm("shards:read", ops.getDashboardMetrics)))
+}
+
+func (ops *OpsHTTPHandlers) getDashboardSummary(w http.ResponseWriter, r *http.Request) {
+	summary, err := ops.OpsReader.GetDashboardSummary(r.Context())
+	if err != nil {
+		ops.writeServiceError(w, err)
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, summary)
+}
+
+func (ops *OpsHTTPHandlers) getDashboardMetrics(w http.ResponseWriter, r *http.Request) {
+	rangeHours := 24
+	if raw := r.URL.Query().Get("range"); raw != "" {
+		if len(raw) >= 2 && raw[len(raw)-1] == 'h' {
+			if n, err := strconv.Atoi(raw[:len(raw)-1]); err == nil && n > 0 {
+				rangeHours = n
+			}
+		}
+	}
+	metricName := r.URL.Query().Get("name")
+	metrics, err := ops.OpsReader.GetDashboardMetrics(r.Context(), rangeHours, metricName)
+	if err != nil {
+		ops.writeServiceError(w, err)
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, metrics)
+}
+
+func (ops *OpsHTTPHandlers) registerMLModelRoutes(mux *http.ServeMux) {
+	if ops == nil || ops.OpsReader == nil {
+		return
+	}
+	limit := ops.ApplyRateLimit
+	perm := ops.RequirePermission
+	if limit == nil {
+		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
+	}
+	if perm == nil {
+		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
+	}
+	mux.HandleFunc("GET /api/v1/ops/ml-model", limit(perm("shards:read", ops.getMLModelStatus)))
+	mux.HandleFunc("GET /api/v1/ops/ml-model/labels", limit(perm("shards:read", ops.listMLManualLabels)))
+	mux.HandleFunc("POST /api/v1/ops/ml-model/labels", limit(perm("shards:write", ops.postMLManualLabel)))
+}
+
+func (ops *OpsHTTPHandlers) getMLModelStatus(w http.ResponseWriter, r *http.Request) {
+	status, err := ops.OpsReader.GetMLModelStatus(r.Context())
+	if err != nil {
+		ops.writeServiceError(w, err)
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, status)
+}
+
+func (ops *OpsHTTPHandlers) listMLManualLabels(w http.ResponseWriter, r *http.Request) {
+	labels, err := ops.OpsReader.ListMLManualLabels(r.Context())
+	if err != nil {
+		ops.writeServiceError(w, err)
+		return
+	}
+	if labels == nil {
+		labels = []MLManualLabelDTO{}
+	}
+	httpresponse.JSON(w, http.StatusOK, labels)
+}
+
+func (ops *OpsHTTPHandlers) postMLManualLabel(w http.ResponseWriter, r *http.Request) {
+	body, err := coldpath.ReadLimitedBody(w, r, coldpath.DefaultMaxBody)
+	if err != nil {
+		return
+	}
+	req, err := coldpath.DecodeBody[MLManualLabelRequest](body)
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
+		return
+	}
+	if req.IPHash == "" {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "ip_hash required")
+		return
+	}
+	if !validMLIPHashHex(req.IPHash) {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "ip_hash must be 32 hex characters")
+		return
+	}
+	if req.Label != 0 && req.Label != 1 {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "label must be 0 or 1")
+		return
+	}
+	if err := ops.OpsReader.AddMLManualLabel(r.Context(), req.IPHash, req.Label, req.Reason); err != nil {
+		ops.writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusAccepted)
+}
+
+func validMLIPHashHex(s string) bool {
+	if len(s) != 32 {
+		return false
+	}
+	for _, c := range s {
+		if unicode.IsDigit(c) {
+			continue
+		}
+		if (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F') {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func (h *OpsHTTPHandlers) registerSupportBundleRoutes(mux *http.ServeMux) {
+	if h == nil || h.SupportBundle == nil {
+		return
+	}
+	limit := h.ApplyRateLimit
+	perm := h.RequirePermission
+	if limit == nil {
+		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
+	}
+	if perm == nil {
+		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
+	}
+	mux.HandleFunc("POST /api/v1/ops/support/bundle", limit(perm("ops:write", h.postSupportBundle)))
+}
+
+func (h *OpsHTTPHandlers) postSupportBundle(w http.ResponseWriter, r *http.Request) {
+	if h.SupportBundle == nil {
+		httpresponse.Error(w, http.StatusServiceUnavailable, "BUNDLE_UNAVAILABLE", "support bundle not configured")
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), supportbundle.DefaultTimeout)
+	defer cancel()
+
+	w.Header().Set("Content-Type", "application/gzip")
+	w.Header().Set("Content-Disposition", `attachment; filename="espx-support-bundle.tar.gz"`)
+	w.Header().Set("Cache-Control", "no-store")
+
+	if err := h.SupportBundle.WriteSupportBundle(ctx, w); err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
 }

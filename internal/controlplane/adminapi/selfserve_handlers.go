@@ -1,19 +1,99 @@
 package adminapi
 
 import (
-	"espx/pkg/coldpath"
+	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
+	"espx/internal/billing"
+	"espx/internal/payment"
+	"espx/pkg/coldpath"
 	"espx/pkg/httpresponse"
+	"espx/pkg/money"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+type CreateCampaignInput struct {
+	CustomerID       uuid.UUID
+	BrandID          *uuid.UUID
+	Name             string
+	BudgetLimitMicro int64
+	PacingMode       string
+	DailyBudgetMicro int64
+	Timezone         string
+	FreqLimit        int32
+	FreqWindow       int32
+	TargetCountries  []string
+	StartAt          *time.Time
+	EndAt            *time.Time
+	DaypartHours     []int16
+	IdempotencyKey   string
+}
+
+type CampaignAdmin interface {
+	EnforceSelfServeCreateLimits(ctx context.Context, customerID uuid.UUID, budgetMicro int64) error
+	GenerateIdempotencyHash(customerID uuid.UUID, payload []byte) (string, error)
+	CreateCampaign(ctx context.Context, spec CreateCampaignInput) (uuid.UUID, error)
+	PauseCampaign(ctx context.Context, campaignID uuid.UUID, reason string) error
+	ResumeCampaign(ctx context.Context, campaignID uuid.UUID, reason string) error
+}
+
+type PaymentIntents = payment.PaymentAPI
+
+type APIKeyResult struct {
+	ID         string
+	Name       string
+	RawKey     string
+	ExpiresAt  string
+	HasExpires bool
+}
+
+type APIKeyCreator interface {
+	CreateAPIKey(ctx context.Context, accessToken, name string) (APIKeyResult, error)
+}
+
+type InvoiceLister = billing.BillingAPI
+
+func parseMoneyMicro(micro *int64, legacy float64, hasLegacy bool, field string) (int64, error) {
+	if micro != nil {
+		if *micro < 0 {
+			return 0, fmt.Errorf("invalid %s", field)
+		}
+		return *micro, nil
+	}
+	if hasLegacy {
+		v, err := money.LegacyFloatToMicro(legacy)
+		if err != nil {
+			return 0, fmt.Errorf("invalid %s", field)
+		}
+		return v, nil
+	}
+	return 0, nil
+}
+
+func parseBudgetMicro(micro *int64, legacy float64, hasLegacy bool) (int64, error) {
+	if micro != nil {
+		if *micro <= 0 {
+			return 0, fmt.Errorf("budget must be positive")
+		}
+		return *micro, nil
+	}
+	if hasLegacy {
+		v, err := money.LegacyFloatToMicro(legacy)
+		if err != nil || v <= 0 {
+			return 0, fmt.Errorf("budget must be positive")
+		}
+		return v, nil
+	}
+	return 0, fmt.Errorf("budget is required")
+}
 
 type SelfServeHTTPHandlers struct {
 	Campaigns                  CampaignAdmin

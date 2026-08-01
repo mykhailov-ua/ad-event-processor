@@ -8,13 +8,20 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/identity"
 	"espx/internal/config"
+	"espx/internal/identity"
 	"espx/pkg/coldpath"
 	"espx/pkg/httpresponse"
 
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
+
+var adminAPIKeyNamespace = uuid.MustParse("6ba7b810-9dad-11d1-80b4-00c04fd430c8")
+
+func apiKeyPrincipalID(apiKey string) uuid.UUID {
+	return uuid.NewSHA1(adminAPIKeyNamespace, []byte(apiKey))
+}
 
 var bufferPool = sync.Pool{
 	New: func() any { return new(bytes.Buffer) },
