@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"espx/internal/payment"
-	"espx/internal/payment/pb"
 	"espx/internal/paymenttest"
 
 	"github.com/google/uuid"
@@ -53,7 +52,7 @@ func TestCryptoGateway_EndToEnd(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, "crypto", res.Intent.Provider)
-	require.Equal(t, pb.PaymentIntentStatus_PAYMENT_INTENT_STATUS_PENDING_PROVIDER.String(), res.Intent.Status)
+	require.Equal(t, "PAYMENT_INTENT_STATUS_PENDING_PROVIDER", res.Intent.Status)
 
 	providerRef := res.Intent.ProviderRef
 	require.NotEmpty(t, providerRef)
@@ -77,7 +76,7 @@ func TestCryptoGateway_EndToEnd(t *testing.T) {
 	intentID := uuid.MustParse(res.Intent.ID)
 	intent, err := svc.GetPaymentIntent(ctx, intentID)
 	require.NoError(t, err)
-	require.Equal(t, pb.PaymentIntentStatus_PAYMENT_INTENT_STATUS_PROCESSING.String(), intent.Status)
+	require.Equal(t, "PAYMENT_INTENT_STATUS_PROCESSING", intent.Status)
 
 	var holdCount int
 	err = infra.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM payment.crypto_holds WHERE payment_intent_id = $1`, intentID).Scan(&holdCount)
@@ -95,7 +94,7 @@ func TestCryptoGateway_EndToEnd(t *testing.T) {
 
 	intent, err = svc.GetPaymentIntent(ctx, intentID)
 	require.NoError(t, err)
-	require.Equal(t, pb.PaymentIntentStatus_PAYMENT_INTENT_STATUS_SUCCEEDED.String(), intent.Status)
+	require.Equal(t, "PAYMENT_INTENT_STATUS_SUCCEEDED", intent.Status)
 
 	var holdStatus string
 	var holdReleaseAt time.Time
@@ -188,7 +187,7 @@ func TestCryptoGateway_UnderpayRejected(t *testing.T) {
 
 	intent, err := svc.GetPaymentIntent(ctx, uuid.MustParse(res.Intent.ID))
 	require.NoError(t, err)
-	require.Equal(t, pb.PaymentIntentStatus_PAYMENT_INTENT_STATUS_FAILED.String(), intent.Status)
+	require.Equal(t, "PAYMENT_INTENT_STATUS_FAILED", intent.Status)
 
 	var holdCount int
 	err = infra.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM payment.crypto_holds WHERE payment_intent_id = $1`, uuid.MustParse(res.Intent.ID)).Scan(&holdCount)

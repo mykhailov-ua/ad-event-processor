@@ -141,7 +141,7 @@ Pointers to .cursor/, REFACTORING.md, backlog in code
 6. Delete internal-only protobuf and gRPC codegen. — done (see §9)
 7. Split internal/config/env.go: done across `env_controlplane.go`, …
 8. Consolidate sqlc output paths: internal/<module>/db/. — identity paths updated in sqlc.yaml
-9. Merge legacy handler + service pairs. — partial: `handler_types`/`resolve_api` folded into `api.go`/`open.go`; identity `handler.go` into `handler_core.go`; settlement handler types merged; controlplane billing/payment client wiring consolidated
+9. Merge legacy handler + service pairs. — partial: module API/handler splits folded; dead gRPC `*FromPB`/`*ToPB` conversion removed from billing/payment/notifier API paths
 10. Rename files per naming rules.
 11. Remove dead localhost clients and env vars. — done (gRPC server ports/hosts removed from config and compose)
 12. Re-add sparse “why” comments on cold path (post-refactor only; see §7).
@@ -161,6 +161,7 @@ Removed gRPC-only config: `AUTH_SERVER_*`, `PAYMENT_SERVER_*`, `SETTLEMENT_SERVE
 Scripts: profile smoke under `scripts/dev/`; deleted `local-dev/`, `perf-gate/`, `edge-tuning/`, `redis/` alias dirs.
 Deploy: `deploy/docker/Dockerfile*` (platform + log workers); `deploy/compose/docker-compose.yaml` + load-test overlay; root compose stubs `include` those files.
 Module API surface: `Handler` + `OpenAPIOrDial` live in `api.go`/`open.go` per module (billing, payment, identity, notifier); deleted thin `handler_types.go` and `resolve_api.go` splits.
+Cold-path module APIs use domain/DB types directly; legacy protobuf round-trip helpers removed from `api.go` where gRPC transport is gone (`paymentIntentStatusString` replaces pb enum `.String()` in production).
 No *_bridge.go or host adapters.
 No nested domain packages under service roots.
 domain is only shared type package.

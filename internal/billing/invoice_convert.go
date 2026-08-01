@@ -6,10 +6,8 @@ import (
 	"time"
 
 	"espx/internal/billing/db"
-	"espx/internal/billing/pb"
 
 	"github.com/google/uuid"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func (service *Service) invoiceFromDB(ctx context.Context, invoice db.BillingInvoice) (Invoice, error) {
@@ -41,42 +39,4 @@ func (service *Service) invoiceFromDB(ctx context.Context, invoice db.BillingInv
 		Lines:         lines,
 		CreatedAt:     invoice.CreatedAt.Time.UTC(),
 	}, nil
-}
-
-func InvoiceToPB(inv Invoice) *pb.Invoice {
-	lines := make([]*pb.InvoiceLine, 0, len(inv.Lines))
-	for _, line := range inv.Lines {
-		lines = append(lines, &pb.InvoiceLine{
-			LedgerType:  line.LedgerType,
-			AmountMicro: line.AmountMicro,
-			EntryCount:  line.EntryCount,
-		})
-	}
-	out := &pb.Invoice{
-		Id:            inv.ID,
-		CustomerId:    inv.CustomerID,
-		BillingMonth:  timestamppb.New(inv.BillingMonth),
-		SubtotalMicro: inv.SubtotalMicro,
-		TaxMicro:      inv.TaxMicro,
-		TotalMicro:    inv.TotalMicro,
-		Currency:      inv.Currency,
-		TaxScheme:     inv.TaxScheme,
-		TaxRateBps:    inv.TaxRateBps,
-		Lines:         lines,
-	}
-	if !inv.CreatedAt.IsZero() {
-		out.CreatedAt = timestamppb.New(inv.CreatedAt)
-	}
-	return out
-}
-
-func InvoicesToPB(invoices []Invoice) []*pb.Invoice {
-	if len(invoices) == 0 {
-		return nil
-	}
-	out := make([]*pb.Invoice, 0, len(invoices))
-	for _, inv := range invoices {
-		out = append(out, InvoiceToPB(inv))
-	}
-	return out
 }

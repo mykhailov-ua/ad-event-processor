@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"espx/internal/config"
 	"espx/internal/identity"
 )
 
@@ -60,4 +61,12 @@ func (c *AuthClient) RevokeToken(ctx context.Context, refreshToken string) error
 		return errAuthUnavailable
 	}
 	return c.api.RevokeToken(ctx, refreshToken)
+}
+
+func TryAuthClient(ctx context.Context, cfg *config.Config) (*AuthClient, func(), error) {
+	api, closeFn, err := identity.OpenAPIOrDial(ctx, cfg)
+	if err != nil || api == nil {
+		return nil, closeFn, err
+	}
+	return NewAuthClientFromAPI(api), closeFn, nil
 }

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"espx/internal/billing/db"
-	"espx/internal/billing/pb"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -100,37 +99,6 @@ func (service *Service) PreviewInvoice(ctx context.Context, customerID uuid.UUID
 		})
 	}
 	return out, nil
-}
-
-func (service *Service) PreviewInvoiceProto(ctx context.Context, customerID uuid.UUID, billingMonth time.Time) (*pb.Invoice, bool, error) {
-	preview, err := service.PreviewInvoice(ctx, customerID, billingMonth)
-	if err != nil {
-		return nil, false, err
-	}
-	if preview.WouldSkip {
-		return nil, true, nil
-	}
-	month, _ := time.Parse("2006-01", preview.BillingMonth)
-	lines := make([]InvoiceLine, 0, len(preview.Lines))
-	for _, l := range preview.Lines {
-		lines = append(lines, InvoiceLine{
-			LedgerType:  l.LedgerType,
-			AmountMicro: l.AmountMicro,
-			EntryCount:  l.EntryCount,
-		})
-	}
-	inv := Invoice{
-		CustomerID:    preview.CustomerID,
-		BillingMonth:  month,
-		SubtotalMicro: preview.SubtotalMicro,
-		TaxMicro:      preview.TaxMicro,
-		TotalMicro:    preview.TotalMicro,
-		Currency:      preview.Currency,
-		TaxScheme:     preview.TaxScheme,
-		TaxRateBps:    preview.TaxRateBps,
-		Lines:         lines,
-	}
-	return InvoiceToPB(inv), false, nil
 }
 
 func (service *Service) VoidInvoice(ctx context.Context, invoiceID uuid.UUID) error {

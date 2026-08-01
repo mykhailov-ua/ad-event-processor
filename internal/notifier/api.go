@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"espx/internal/notifier/db"
-	"espx/internal/notifier/pb"
 )
 
 type Handler struct {
@@ -51,59 +50,6 @@ func (m *Module) API() NotifierAPI {
 		return nil
 	}
 	return &notifierAPI{svc: m.svc}
-}
-
-func NotificationInputFromPB(req *pb.SendNotificationRequest) NotificationInput {
-	if req == nil {
-		return NotificationInput{}
-	}
-	broadcastProviders := make([]string, 0, len(req.BroadcastProviders))
-	for _, p := range req.BroadcastProviders {
-		broadcastProviders = append(broadcastProviders, p.String())
-	}
-	return NotificationInput{
-		Provider:           req.Provider.String(),
-		Recipient:          req.Recipient,
-		Title:              req.Title,
-		Body:               req.Body,
-		DedupKey:           req.DedupKey,
-		TemplateID:         req.TemplateId,
-		TemplateVars:       req.TemplateVars,
-		AttachmentURL:      req.AttachmentUrl,
-		Broadcast:          req.DeliveryMode == pb.DeliveryMode_DELIVERY_MODE_BROADCAST,
-		BroadcastProviders: broadcastProviders,
-	}
-}
-
-func (input NotificationInput) toPB() (*pb.SendNotificationRequest, error) {
-	provider, err := ParseProviderName(input.Provider)
-	if err != nil {
-		return nil, err
-	}
-	req := &pb.SendNotificationRequest{
-		Provider:      MapDBProviderToPB(provider),
-		Recipient:     input.Recipient,
-		Title:         input.Title,
-		Body:          input.Body,
-		DedupKey:      input.DedupKey,
-		TemplateId:    input.TemplateID,
-		TemplateVars:  input.TemplateVars,
-		AttachmentUrl: input.AttachmentURL,
-	}
-	if input.Broadcast {
-		req.DeliveryMode = pb.DeliveryMode_DELIVERY_MODE_BROADCAST
-	}
-	if len(input.BroadcastProviders) > 0 {
-		req.BroadcastProviders = make([]pb.Provider, 0, len(input.BroadcastProviders))
-		for _, name := range input.BroadcastProviders {
-			p, err := ParseProviderName(name)
-			if err != nil {
-				return nil, err
-			}
-			req.BroadcastProviders = append(req.BroadcastProviders, MapDBProviderToPB(p))
-		}
-	}
-	return req, nil
 }
 
 func (a *notifierAPI) SendNotification(ctx context.Context, provider, recipient, title, body string) (SendNotificationResult, error) {

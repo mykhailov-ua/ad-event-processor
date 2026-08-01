@@ -4,8 +4,6 @@ import (
 	"errors"
 	"testing"
 
-	"espx/internal/notifier/pb"
-
 	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -78,7 +76,7 @@ func TestMapRPCError_nil(t *testing.T) {
 	require.NoError(t, mapRPCError(nil))
 }
 
-func TestMapPBProviderToDB_unspecified(t *testing.T) {
-	_, err := MapPBProviderToDB(pb.Provider_PROVIDER_UNSPECIFIED)
+func TestParseProviderName_unspecified(t *testing.T) {
+	_, err := ParseProviderName("PROVIDER_UNSPECIFIED")
 	require.ErrorIs(t, err, ErrUnsupportedProvider)
 }

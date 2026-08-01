@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"espx/internal/payment"
-	"espx/internal/payment/pb"
 	"espx/internal/paymenttest"
 
 	"github.com/google/uuid"
@@ -75,7 +74,7 @@ func TestFault_CryptoWebhookStormIdempotent(t *testing.T) {
 	intentID := uuid.MustParse(res.Intent.ID)
 	intent, err := svc.GetPaymentIntent(ctx, intentID)
 	require.NoError(t, err)
-	require.Equal(t, pb.PaymentIntentStatus_PAYMENT_INTENT_STATUS_SUCCEEDED.String(), intent.Status)
+	require.Equal(t, "PAYMENT_INTENT_STATUS_SUCCEEDED", intent.Status)
 
 	var holdCount int
 	err = infra.Pool.QueryRow(ctx, `

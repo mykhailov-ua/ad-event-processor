@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"espx/internal/billing/pb"
 	"espx/internal/config"
 
 	"github.com/google/uuid"
@@ -79,57 +78,4 @@ func (a *billingAPI) GenerateInvoice(ctx context.Context, customerID string, bil
 	}
 	out := inv
 	return &out, nil
-}
-
-func InvoiceFromPB(inv *pb.Invoice) *Invoice {
-	if inv == nil {
-		return nil
-	}
-	out := &Invoice{
-		ID:            inv.Id,
-		CustomerID:    inv.CustomerId,
-		SubtotalMicro: inv.SubtotalMicro,
-		TaxMicro:      inv.TaxMicro,
-		TotalMicro:    inv.TotalMicro,
-		Currency:      inv.Currency,
-		TaxScheme:     inv.TaxScheme,
-		TaxRateBps:    inv.TaxRateBps,
-	}
-	if inv.BillingMonth != nil {
-		out.BillingMonth = inv.BillingMonth.AsTime().UTC()
-	}
-	if inv.CreatedAt != nil {
-		out.CreatedAt = inv.CreatedAt.AsTime().UTC()
-	}
-	if len(inv.Lines) > 0 {
-		out.Lines = make([]InvoiceLine, 0, len(inv.Lines))
-		for _, line := range inv.Lines {
-			if line == nil {
-				continue
-			}
-			out.Lines = append(out.Lines, InvoiceLine{
-				LedgerType:  line.LedgerType,
-				AmountMicro: line.AmountMicro,
-				EntryCount:  line.EntryCount,
-			})
-		}
-	}
-	return out
-}
-
-func ListInvoicesResultFromPB(resp *pb.ListInvoicesResponse) ListInvoicesResult {
-	if resp == nil {
-		return ListInvoicesResult{}
-	}
-	out := ListInvoicesResult{Total: resp.Total}
-	if len(resp.Invoices) == 0 {
-		return out
-	}
-	out.Invoices = make([]Invoice, 0, len(resp.Invoices))
-	for _, inv := range resp.Invoices {
-		if parsed := InvoiceFromPB(inv); parsed != nil {
-			out.Invoices = append(out.Invoices, *parsed)
-		}
-	}
-	return out
 }
