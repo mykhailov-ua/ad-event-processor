@@ -18,8 +18,6 @@ func testPaymentOpsConfig() *config.Config {
 	cfg := &config.Config{}
 	cfg.Management.OpsAlertsEnabled = true
 	cfg.Notifier.TelegramChatID = "-100123"
-	cfg.Notifier.ServerHost = "127.0.0.1"
-	cfg.Notifier.Port = "8085"
 	return cfg
 }
 

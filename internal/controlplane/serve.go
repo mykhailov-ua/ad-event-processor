@@ -57,11 +57,6 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 
 	sharder := domain.NewStaticSlotSharder(len(rdbs))
 
-	authTarget := "127.0.0.1:" + cfg.AuthServerPort
-	if host := os.Getenv("AUTH_SERVER_HOST"); host != "" {
-		authTarget = host + ":" + cfg.AuthServerPort
-	}
-
 	var mgmtAuthClient *AuthClient
 	var closeAuth func()
 	if opts.Auth != nil {
@@ -462,7 +457,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 	csrfMdl := NewCSRFMiddleware(string(cfg.AdminAPIKey))
 	gatewayHandler := corsMdl(csrfMdl(mux))
 
-	slog.Info("starting management gateway server", "port", cfg.ManagementPort, "auth_target", authTarget)
+	slog.Info("starting management gateway server", "port", cfg.ManagementPort)
 
 	server := &http.Server{
 		Addr:              ":" + cfg.ManagementPort,

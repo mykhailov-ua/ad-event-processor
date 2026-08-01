@@ -52,15 +52,9 @@ func validateAndApplyDefaults(cfg *Config) error {
 		if hostname == "" {
 			hostname = "unknown"
 		}
-		cfg.RedisConsumerID = hostname + ":" + strconv.Itoa(os.Getpid())
+		cfg.		RedisConsumerID = hostname + ":" + strconv.Itoa(os.Getpid())
 	}
 
-	if cfg.AuthServerPort == "" {
-		cfg.AuthServerPort = "51051"
-	}
-	if cfg.AuthMetricsPort == "" {
-		cfg.AuthMetricsPort = "9091"
-	}
 	applyControlplaneDefaults(cfg)
 	if cfg.Env == "" {
 		cfg.Env = "development"

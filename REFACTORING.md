@@ -76,12 +76,12 @@ Consolidate the 14+ folders.
 
 Target scripts/:
 scripts/ci/ — CI/CD gates and checks
-scripts/dev/ — local setup, stack management, db seeds
+scripts/dev/ — local setup, stack management, profile smoke, db seeds
 scripts/test/ — load, perf, fault, and e2e test runners
 scripts/ops/ — deployment, tuning, maintenance
 scripts/lib/ — shared shell functions
 
-Delete: scripts/local-dev/, scripts/perf-gate/, scripts/edge-tuning/, scripts/redis/.
+Removed alias dirs: `local-dev/`, `perf-gate/`, `edge-tuning/`, `redis/` (use `dev/`, `perf/`, `edge/`, `deploy/`).
 
 
 5. Target Architecture: modular monolith
@@ -138,14 +138,14 @@ Pointers to .cursor/, REFACTORING.md, backlog in code
 3. Single control binary as default deploy: One process in compose.
 4. Fold finance and identity into modules: internal/ledger, internal/identity.
 5. Rename management → controlplane — done (`internal/controlplane`).
-6. Delete internal-only protobuf and gRPC codegen. — in progress (see §9)
-7. Split internal/config/env.go: done across `env_controlplane.go`, `env_ingest.go`, `env_database.go`, `env_management.go`, `env_edge.go`, `env_validate.go`; `Load()` is struct literal + module loaders + `validateAndApplyDefaults`.
+6. Delete internal-only protobuf and gRPC codegen. — done (see §9)
+7. Split internal/config/env.go: done across `env_controlplane.go`, …
 8. Consolidate sqlc output paths: internal/<module>/db/. — identity paths updated in sqlc.yaml
 9. Merge legacy handler + service pairs.
 10. Rename files per naming rules.
-11. Remove dead localhost clients and env vars.
+11. Remove dead localhost clients and env vars. — done (gRPC server ports/hosts removed from config and compose)
 12. Re-add sparse “why” comments on cold path (post-refactor only; see §7).
-13. Repository root and deploy/scripts consolidation.
+13. Repository root and deploy/scripts consolidation. — scripts alias dirs removed (`local-dev`, `perf-gate`, `edge-tuning`, `redis`); smoke moved to `scripts/dev/`
 
 
 Global done
@@ -157,6 +157,8 @@ ivt-detector/fraud-scorer use management HTTP (`/api/v1/ops/blacklist`, `/api/v1
 `control.Run` wires modules via `buildServeOptions` whenever `CONTROL_ENABLE_*` flags are set; no standalone `identity.Serve()` / `billing.Serve()` goroutines.
 `OpenAPIOrDial` in identity/billing/payment/notifier always opens in-process modules; `grpc_api.go`, `handler_grpc.go`, `serve.go`, `*_service.proto`, and `buf.gen.grpc.yaml` removed.
 Payment webhook HTTP (`:8187`) started from `payment.Module.StartWorkers`.
+Removed gRPC-only config: `AUTH_SERVER_*`, `PAYMENT_SERVER_*`, `SETTLEMENT_SERVER_*`, `BILLING_SERVER_*`, `NOTIFIER_PORT` / `NOTIFIER_SERVER_HOST` (in-process modules only).
+Scripts: profile smoke under `scripts/dev/`; deleted `local-dev/`, `perf-gate/`, `edge-tuning/`, `redis/` alias dirs.
 No *_bridge.go or host adapters.
 No nested domain packages under service roots.
 domain is only shared type package.

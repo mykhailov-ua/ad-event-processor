@@ -12,15 +12,11 @@ required=(
 	scripts/ci/validate_configs.sh
 	scripts/dev/preflight.sh
 	scripts/dev/stack.sh
+	scripts/dev/smoke_ingest_only.sh
+	scripts/dev/smoke_network_operator.sh
+	scripts/dev/smoke_analytics_ml.sh
 	scripts/perf/gate_run.sh
 	scripts/edge/phase0.sh
-	scripts/local-dev/dev_preflight.sh
-	scripts/local-dev/smoke_ingest_only.sh
-	scripts/local-dev/smoke_network_operator.sh
-	scripts/local-dev/smoke_analytics_ml.sh
-	scripts/perf-gate/perf_gate_run.sh
-	scripts/edge-tuning/edge_phase0.sh
-	scripts/redis/verify_topology.sh
 	scripts/deploy/verify_redis_topology.sh
 	scripts/fault/run.sh
 	scripts/fault/test_resilience.sh

@@ -106,13 +106,13 @@ check-scripts-layout:
 	bash scripts/ci/check_scripts_layout.sh
 
 dev-preflight-smoke:
-	bash scripts/local-dev/dev_preflight.sh
+	bash scripts/dev/preflight.sh
 
 perf-gate-smoke:
-	bash scripts/perf-gate/perf_gate_run.sh
+	PERF_GATE_STRICT=false bash scripts/perf/gate_run.sh
 
 edge-phase0:
-	bash scripts/edge-tuning/edge_phase0.sh
+	bash scripts/edge/phase0.sh
 
 proto:
 	bash scripts/ci/gen.sh --proto

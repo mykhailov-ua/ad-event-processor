@@ -533,7 +533,7 @@ Compose profiles gate optional containers (`ingest_only`, `network_operator`, `a
 
 Validate wiring: `bash scripts/ci/compose_profile_check.sh` or `go run ./cmd/espx doctor --profile <name>`.
 
-Local smoke (compose config + doctor, no full `up`): `scripts/local-dev/smoke_ingest_only.sh`, `smoke_network_operator.sh`, `smoke_analytics_ml.sh`.
+Local smoke (compose config + doctor, no full `up`): `scripts/dev/smoke_ingest_only.sh`, `smoke_network_operator.sh`, `smoke_analytics_ml.sh`.
 
 ---
 

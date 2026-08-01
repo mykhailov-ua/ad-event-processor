@@ -65,7 +65,7 @@ func renderTemplates(profile *InstallProfile, dryRun bool) error {
 
 	switch profile.Type {
 	case ProfileComposeDev:
-		script := filepath.Join(repoRoot(), "scripts", "local-dev", "dev_stack.sh")
+		script := filepath.Join(repoRoot(), "scripts", "dev", "stack.sh")
 		if dryRun {
 			fmt.Printf("[Dry-Run] Would invoke %s\n", script)
 		}

@@ -29,8 +29,6 @@ type Config struct {
 	RedisConsumerID                 string
 	CHDSN                           Secret
 	CHEnabled                       bool
-	AuthServerPort                  string
-	AuthMetricsPort                 string
 	Env                             string
 	TrustedProxies                  []string
 	TokenSymmetricKey               Secret
@@ -125,12 +123,7 @@ type Config struct {
 	RedisBreakerOpenTimeoutMs       int
 	AdminAPIKey                     Secret
 	AllowedOrigins                  []string
-	PaymentServerPort               string
-	PaymentServerHost               string
-	PaymentMetricsPort              string
 	PaymentWebhookPort              string
-	SettlementServerHost            string
-	SettlementServerPort            string
 	PaymentInternalToken            Secret
 	SettlementInternalToken         Secret
 	StripeSecretKey                 Secret
@@ -352,8 +345,6 @@ type Config struct {
 	QuotaAutoRepair bool
 
 	Notifier struct {
-		ServerHost                 string
-		Port                       string
 		WorkerIntervalMs           int
 		WorkerBatchSize            int
 		BreakerFailThreshold       int
@@ -370,7 +361,6 @@ type Config struct {
 		SMTPUsername               string
 		SMTPPassword               Secret
 		SMTPSender                 string
-		MetricsPort                string
 		RetentionSentDays          int
 		RetentionFailedDays        int
 		RetentionIntervalHours     int
@@ -417,9 +407,6 @@ type Config struct {
 	}
 
 	Billing struct {
-		Port                 string
-		ServerHost           string
-		MetricsPort          string
 		InvoiceWorkerEnabled bool
 		PaymentProvider      string
 		PaymentProviderKey   Secret
@@ -542,7 +529,6 @@ func Load() (*Config, error) {
 		CHFlushIntervalMs:               getEnvInt("CH_FLUSH_INTERVAL_MS", 10000),
 		PIISaltVersion:                  uint8(getEnvInt("PII_SALT_VERSION", 1)),
 		PIISaltHex:                      Secret(os.Getenv("PII_SALT_HEX")),
-		AuthServerPort:                  os.Getenv("AUTH_SERVER_PORT"),
 		TokenSymmetricKey:               Secret(os.Getenv("TOKEN_SYMMETRIC_KEY")),
 		PartitionPreCreateDays:          getEnvInt("PARTITION_PRECREATE_DAYS", 2),
 		RegistrySyncIntervalMs:          getEnvInt("REGISTRY_SYNC_INTERVAL_MS", 60000),
@@ -571,7 +557,6 @@ func Load() (*Config, error) {
 		AllowedOrigins:                  strings.Split(os.Getenv("ALLOWED_ORIGINS"), ","),
 		TrustedProxies:                  strings.Split(os.Getenv("TRUSTED_PROXIES"), ","),
 		Env:                             appEnv,
-		AuthMetricsPort:                 os.Getenv("AUTH_METRICS_PORT"),
 		CampaignUpdateChannel:           os.Getenv("CAMPAIGN_UPDATE_CHANNEL"),
 		RtbCatalogReloadChannel:         os.Getenv("RTB_CATALOG_RELOAD_CHANNEL"),
 		RegistryStaleTTLSec:             getEnvInt("REGISTRY_STALE_TTL", 30),
@@ -613,12 +598,7 @@ func Load() (*Config, error) {
 		ErasureWorkerIntervalMs:         getEnvInt("ERASURE_WORKER_INTERVAL_MS", 60_000),
 		EventsRetentionDays:             getEnvInt("EVENTS_RETENTION_DAYS", 90),
 		EventsHashIPAtInsert:            getEnvBool("EVENTS_HASH_IP_AT_INSERT", false),
-		PaymentServerPort:               os.Getenv("PAYMENT_SERVER_PORT"),
-		PaymentServerHost:               os.Getenv("PAYMENT_SERVER_HOST"),
-		PaymentMetricsPort:              os.Getenv("PAYMENT_METRICS_PORT"),
 		PaymentWebhookPort:              os.Getenv("PAYMENT_WEBHOOK_PORT"),
-		SettlementServerHost:            os.Getenv("SETTLEMENT_SERVER_HOST"),
-		SettlementServerPort:            os.Getenv("SETTLEMENT_SERVER_PORT"),
 		PaymentInternalToken:            Secret(os.Getenv("PAYMENT_INTERNAL_TOKEN")),
 		SettlementInternalToken:         Secret(os.Getenv("SETTLEMENT_INTERNAL_TOKEN")),
 		StripeSecretKey:                 Secret(os.Getenv("STRIPE_SECRET_KEY")),

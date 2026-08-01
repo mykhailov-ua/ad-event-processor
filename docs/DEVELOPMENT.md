@@ -267,7 +267,8 @@ Hot path: hostNetwork trackers + nginx. Cold path: separate namespace.
 | `scripts/perf/gate_run.sh` | Benchmark gate |
 | `scripts/fault/run.sh` | Fault injection |
 | `scripts/edge/nic_tune.sh` | NIC tuning |
-| `scripts/redis/` | Shard topology verify, campaign migration |
+| `scripts/deploy/verify_redis_topology.sh` | Redis shard topology verify |
+| `scripts/deploy/migrate_campaign.sh` | Redis campaign migration |
 | `scripts/load/` | Load tests; optional `ESPX_BPF_PROBE=1` for kernel probes (see [LOAD_TEST_BPF](.cursor/rules/load-test-bpf.mdc)) |
 
 ### Load tests and BPF analytics

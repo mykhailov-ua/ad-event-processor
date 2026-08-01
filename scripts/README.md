@@ -14,16 +14,12 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 | :--- | :--- | :--- |
 | `lib/` | Shared `ROOT`/`SCRIPTS` helpers | `source scripts/lib/paths.sh` |
 | `ci/` | Merge gates, codegen, layout checks | `bash scripts/ci/local_check.sh` |
-| `dev/` | Local compose stack and preflight | `bash scripts/dev/stack.sh full` |
-| `local-dev/` | Stable aliases for docs/CI smoke | `bash scripts/local-dev/dev_preflight.sh` |
+| `dev/` | Local compose stack, preflight, profile smoke | `bash scripts/dev/stack.sh single-vps` |
 | `load/` | Loadgen, BPF sessions, drills | `make load-test-bpf` |
 | `load/broker.sh` | Broker throughput bench (`pkg/broker/server`) | `bash scripts/load/broker.sh` |
 | `perf/` | Benchmark gates and nightly jobs | `bash scripts/perf/gate_run.sh` |
-| `perf-gate/` | Stable alias for perf smoke | `PERF_GATE_STRICT=false bash scripts/perf-gate/perf_gate_run.sh` |
 | `fault/` | Fault injection and resilience proofs | `make test-resilience` |
 | `edge/` | Ingress sysctl/NIC tuning and rollout | `bash scripts/edge/phase0.sh` |
-| `edge-tuning/` | Stable alias for edge Phase 0 | `bash scripts/edge-tuning/edge_phase0.sh` |
-| `redis/` | Shard topology and campaign migration wrappers | `bash scripts/redis/verify_topology.sh .env` |
 | `deploy/` | k8s, cold/hot path, post-deploy reconcile | `bash scripts/deploy/hot_path_up.sh` |
 | `test/` | Script self-tests (not CI entrypoints) | `bash scripts/test/parse_dfa_test.sh` |
 
@@ -43,18 +39,19 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 | `make load-test-bpf` | `load/malformed.sh business` |
 | `make openapi-lint` | `ci/openapi.sh` |
 | `make check-scripts-layout` | `ci/check_scripts_layout.sh` |
-| `make dev-preflight-smoke` | `local-dev/dev_preflight.sh` |
-| `make perf-gate-smoke` | `perf-gate/perf_gate_run.sh` |
-| `make edge-phase0` | `edge-tuning/edge_phase0.sh` |
+| `make dev-preflight-smoke` | `dev/preflight.sh` (PREFLIGHT_SMOKE=1) |
+| `make perf-gate-smoke` | `perf/gate_run.sh` |
+| `make edge-phase0` | `edge/phase0.sh` |
 
 ## P09 smoke (clean clone, no stack)
 
 These exit 0 without a running compose stack:
 
 ```bash
-bash scripts/local-dev/dev_preflight.sh          # configs only (PREFLIGHT_SMOKE=1)
-PERF_GATE_STRICT=false bash scripts/perf-gate/perf_gate_run.sh
-bash scripts/edge-tuning/edge_phase0.sh          # non-STRICT: warns on sysctl/NIC/nginx
+PREFLIGHT_SMOKE=1 bash scripts/dev/preflight.sh
+PERF_GATE_STRICT=false bash scripts/perf/gate_run.sh
+bash scripts/edge/phase0.sh
+bash scripts/dev/smoke_ingest_only.sh
 ```
 
 Full dependency check (requires PG/Redis/CH):
@@ -73,7 +70,7 @@ bash scripts/dev/smoke_local.sh
 | `edge/sysctl.sh apply`, `edge/nic_tune.sh apply` | kernel / NIC — root |
 | `perf/stabilize_cpu.sh` | CPU governor — whole machine |
 | `ci/prepare_test.sh`, `load/prepare_constrained_stack.sh` | TRUNCATE PG/CH |
-| `deploy/migrate_campaign.sh`, `redis/migrate_campaign.sh` | Redis DUMP/RESTORE |
+| `deploy/migrate_campaign.sh` | Redis DUMP/RESTORE |
 | `fault/sentinel.sh` | `docker kill` Redis |
 | `deploy/install_k3s.sh` | installs k3s |
 | `load/malformed.sh`, `load/spike.sh` | high RPS; BPF needs root |
