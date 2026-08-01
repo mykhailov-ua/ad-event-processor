@@ -57,6 +57,7 @@ deploy/nginx/certs/*.crt
 # IDE
 # Cursor agent rules (engineering guidelines for LLM) — track rules, ignore other IDE state
 .cursor/*
+!.cursor/.commits
 !.cursor/rules/
 !.cursor/rules/**
 .idea/
