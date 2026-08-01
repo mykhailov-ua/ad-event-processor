@@ -149,7 +149,7 @@ func (r *probeRun) aggregatePIDStats(durationSec float64) ([]dumpedPIDStats, err
 	}
 
 	var out []dumpedPIDStats
-	var k6OnCPU, trackedOnCPU uint64
+	var loadgenOnCPU, trackedOnCPU uint64
 
 	var key uint32
 	var perCPU []bpfprobe.PIDStats
@@ -208,15 +208,15 @@ func (r *probeRun) aggregatePIDStats(durationSec float64) ([]dumpedPIDStats, err
 		out = append(out, row)
 		trackedOnCPU += agg.OnCPUNs
 		if role == roleLoadgen {
-			k6OnCPU += agg.OnCPUNs
+			loadgenOnCPU += agg.OnCPUNs
 		}
 	}
 	if err := iter.Err(); err != nil {
 		return nil, err
 	}
 	r.enrichRunqueueP99(out)
-	if trackedOnCPU > 0 && k6OnCPU > 0 {
-		pct := float64(k6OnCPU) / float64(trackedOnCPU) * 100
+	if trackedOnCPU > 0 && loadgenOnCPU > 0 {
+		pct := float64(loadgenOnCPU) / float64(trackedOnCPU) * 100
 		for i := range out {
 			if out[i].Role == "loadgen" {
 				out[i].LoadgenOverheadPct = pct

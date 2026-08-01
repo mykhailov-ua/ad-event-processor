@@ -10,6 +10,8 @@ import (
 	"regexp"
 	"strings"
 	"unicode"
+
+	"espx/pkg/commentkeep"
 )
 
 var (
@@ -233,8 +235,7 @@ func checkCommentText(text string) string {
 }
 
 func isAllowedDirective(text string) bool {
-	t := strings.TrimSpace(text)
-	return strings.HasPrefix(t, "go:") || strings.HasPrefix(t, "nolint:")
+	return commentkeep.Keep(text)
 }
 
 func skipGeneratedGo(path string) bool {

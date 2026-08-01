@@ -1,9 +1,9 @@
 ---
-description: eSPX project conventions, SLA budgets, hot-path constraints, and layout
+description: BidShard project conventions, SLA budgets, hot-path constraints, and layout
 alwaysApply: true
 ---
 
-eSPX
+BidShard
 
 High-requests-per-second Advertising Technology tracker and billing. Stateless ingestion (gnet), Redis-backed filters, async settlement to Postgres and ClickHouse, JSON admin API in management (legacy HTMX deprecated for self-hosted).
 
@@ -31,7 +31,7 @@ Stack
 
 Hot path: Go 1.25+, gnet/v2, pgx/v5 + sqlc, ClickHouse, 4 standalone Redis masters (production; StaticSlotSharder, not Cluster), embedded Lua, vtproto (`make proto`), MaxMind, Prometheus.
 
-Cold path: stdlib net/http, JSON `/api/v1`, in-process modules in `cmd/control` (identity, payment, ledger, notify). Legacy HTMX fragments deprecated — see `docs/SELF_HOSTED.md`. Fraud scoring in `internal/fraud` + `cmd/fraud-scorer` only - tracker must not import it.
+Cold path: stdlib net/http, JSON `/api/v1`, in-process modules in `cmd/control` (identity, payment, ledger, notify). Legacy HTMX fragments deprecated — JSON `/api/v1` only (`docs/DEVELOPMENT.md`). Fraud scoring in `internal/fraud` + `cmd/fraud-scorer` only - tracker must not import it.
 
 Layout
 

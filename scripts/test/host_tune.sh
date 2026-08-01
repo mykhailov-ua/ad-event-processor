@@ -87,7 +87,7 @@ report_ptrace() {
 }
 
 report_status() {
-	log "=== eSPX load-test host preflight ==="
+	log "=== load-test host preflight ==="
 	log "edge sysctl: $EDGE_CONF"
 	check_file "$EDGE_CONF" "edge" || true
 	log "load-test sysctl: $LOADTEST_CONF"
@@ -131,7 +131,7 @@ apply_tuning() {
 	if [[ "$nr" -lt 100000 ]]; then
 		warn "current shell ulimit -n=$nr; add '* soft nofile 1048576' to /etc/security/limits.d/99-espx-loadtest.conf and re-login"
 	fi
-	log "apply: done — run: bash scripts/load/host_tune.sh verify"
+	log "apply: done — run: bash scripts/test/host_tune.sh verify"
 }
 
 case "$MODE" in

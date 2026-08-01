@@ -18,9 +18,6 @@ func GenerateSecureToken(length int) (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-// NewCSRFMiddleware protects state-mutating endpoints with the double-submit
-// cookie pattern. PATCH is now included alongside POST/PUT/DELETE.
-// The admin API-key bypass uses constant-time comparison to prevent timing attacks.
 func NewCSRFMiddleware(adminAPIKey string) func(http.Handler) http.Handler {
 	adminKeyBytes := []byte(adminAPIKey)
 	return func(next http.Handler) http.Handler {
@@ -37,7 +34,6 @@ func NewCSRFMiddleware(adminAPIKey string) func(http.Handler) http.Handler {
 					return
 				}
 
-				// FIX [1.3]: constant-time compare for admin API key.
 				if len(adminKeyBytes) > 0 {
 					if key := r.Header.Get("X-Admin-API-Key"); len(key) > 0 &&
 						subtle.ConstantTimeCompare([]byte(key), adminKeyBytes) == 1 {

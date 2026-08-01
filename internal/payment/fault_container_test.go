@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"espx/internal/payment"
-	"espx/internal/paymenttest"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -21,17 +20,17 @@ func TestFault_PaymentPGStopOutboxClaimBlocked(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
+	infra, cleanup := SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
 	customerID := uuid.New()
-	seed := paymenttest.SeedSucceededIntentWithOutbox(t, infra, customerID, 11_000_000, "fault-pg-stop-"+uuid.New().String())
-	paymenttest.AssertPaymentFaultInvariants(t, infra.Pool, seed, 0, 0)
+	seed := SeedSucceededIntentWithOutbox(t, infra, customerID, 11_000_000, "fault-pg-stop-"+uuid.New().String())
+	AssertPaymentFaultInvariants(t, infra.Pool, seed, 0, 0)
 
-	worker := paymenttest.NewOutboxWorkerForFault(infra)
-	paymenttest.StopPaymentContainer(t, infra.PGContainer)
-	paymenttest.RequirePaymentFaultActive(t, func() bool {
+	worker := NewOutboxWorkerForFault(infra)
+	StopPaymentContainer(t, infra.PGContainer)
+	RequirePaymentFaultActive(t, func() bool {
 		return infra.Pool.Ping(ctx) != nil
 	}, "pg ping must fail after stop")
 
@@ -39,10 +38,10 @@ func TestFault_PaymentPGStopOutboxClaimBlocked(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, 0, processed)
 
-	paymenttest.StartPaymentContainer(t, infra.PGContainer)
+	StartPaymentContainer(t, infra.PGContainer)
 	infra.RefreshPGPool(t)
-	require.Equal(t, "PENDING", paymenttest.PaymentOutboxStatus(t, infra.Pool, seed.OutboxID))
-	paymenttest.AssertPaymentFaultInvariants(t, infra.Pool, seed, 0, 0)
+	require.Equal(t, "PENDING", PaymentOutboxStatus(t, infra.Pool, seed.OutboxID))
+	AssertPaymentFaultInvariants(t, infra.Pool, seed, 0, 0)
 
 	faultproof.Log(t, "postgres_container_stop", map[string]string{
 		"subsystem":    "payment_outbox",
@@ -59,20 +58,20 @@ func TestFault_PaymentPGStopStartOutboxRecovery(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
+	infra, cleanup := SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
 	customerID := uuid.New()
-	seed := paymenttest.SeedSucceededIntentWithOutbox(t, infra, customerID, 13_000_000, "fault-pg-recovery-"+uuid.New().String())
+	seed := SeedSucceededIntentWithOutbox(t, infra, customerID, 13_000_000, "fault-pg-recovery-"+uuid.New().String())
 
-	worker := paymenttest.NewOutboxWorkerForFault(infra)
-	paymenttest.StopPaymentContainer(t, infra.PGContainer)
-	paymenttest.RequirePaymentFaultActive(t, func() bool {
+	worker := NewOutboxWorkerForFault(infra)
+	StopPaymentContainer(t, infra.PGContainer)
+	RequirePaymentFaultActive(t, func() bool {
 		return infra.Pool.Ping(ctx) != nil
 	}, "pg ping must fail after stop")
 
-	paymenttest.StartPaymentContainer(t, infra.PGContainer)
+	StartPaymentContainer(t, infra.PGContainer)
 	infra.RefreshPGPool(t)
 	worker.ReplacePoolForTest(infra.Pool)
 
@@ -82,11 +81,11 @@ func TestFault_PaymentPGStopStartOutboxRecovery(t *testing.T) {
 		if err != nil || n != 1 {
 			return false
 		}
-		recovered = paymenttest.PaymentOutboxStatus(t, infra.Pool, seed.OutboxID) == "PROCESSED"
+		recovered = PaymentOutboxStatus(t, infra.Pool, seed.OutboxID) == "PROCESSED"
 		return recovered
 	}, 30*time.Second, 200*time.Millisecond)
 
-	paymenttest.AssertPaymentFaultInvariants(t, infra.Pool, seed, seed.AmountMicro, 1)
+	AssertPaymentFaultInvariants(t, infra.Pool, seed, seed.AmountMicro, 1)
 
 	faultproof.Log(t, "postgres_stop_start_recovery", map[string]string{
 		"subsystem":    "payment_outbox",
@@ -102,21 +101,21 @@ func TestFault_PaymentSettlementDownOutboxStaysPending(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
+	infra, cleanup := SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
 	customerID := uuid.New()
-	seed := paymenttest.SeedSucceededIntentWithOutbox(t, infra, customerID, 14_000_000, "fault-grpc-stop-"+uuid.New().String())
+	seed := SeedSucceededIntentWithOutbox(t, infra, customerID, 14_000_000, "fault-grpc-stop-"+uuid.New().String())
 
-	worker := paymenttest.NewOutboxWorkerForFault(infra)
+	worker := NewOutboxWorkerForFault(infra)
 	infra.SetSettlementDown()
 
 	processed, err := worker.ProcessOutbox(ctx, 10)
 	require.NoError(t, err)
 	require.Equal(t, 0, processed)
-	require.Equal(t, "PENDING", paymenttest.PaymentOutboxStatus(t, infra.Pool, seed.OutboxID))
-	paymenttest.AssertPaymentFaultInvariants(t, infra.Pool, seed, 0, 0)
+	require.Equal(t, "PENDING", PaymentOutboxStatus(t, infra.Pool, seed.OutboxID))
+	AssertPaymentFaultInvariants(t, infra.Pool, seed, 0, 0)
 
 	faultproof.Log(t, "settlement_grpc_stop", map[string]string{
 		"subsystem":     "payment_outbox",
@@ -132,17 +131,17 @@ func TestFault_PaymentSettlementDownThenRecovery(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
+	infra, cleanup := SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
 	customerID := uuid.New()
-	seed := paymenttest.SeedSucceededIntentWithOutbox(t, infra, customerID, 16_000_000, "fault-grpc-recovery-"+uuid.New().String())
+	seed := SeedSucceededIntentWithOutbox(t, infra, customerID, 16_000_000, "fault-grpc-recovery-"+uuid.New().String())
 
-	worker := paymenttest.NewOutboxWorkerForFault(infra)
+	worker := NewOutboxWorkerForFault(infra)
 	infra.SetSettlementDown()
 	_, _ = worker.ProcessOutbox(ctx, 10)
-	require.Equal(t, "PENDING", paymenttest.PaymentOutboxStatus(t, infra.Pool, seed.OutboxID))
+	require.Equal(t, "PENDING", PaymentOutboxStatus(t, infra.Pool, seed.OutboxID))
 
 	infra.SetSettlementUp()
 	recovered := false
@@ -151,11 +150,11 @@ func TestFault_PaymentSettlementDownThenRecovery(t *testing.T) {
 		if err != nil || n != 1 {
 			return false
 		}
-		recovered = paymenttest.PaymentOutboxStatus(t, infra.Pool, seed.OutboxID) == "PROCESSED"
+		recovered = PaymentOutboxStatus(t, infra.Pool, seed.OutboxID) == "PROCESSED"
 		return recovered
 	}, 30*time.Second, 200*time.Millisecond)
 
-	paymenttest.AssertPaymentFaultInvariants(t, infra.Pool, seed, seed.AmountMicro, 1)
+	AssertPaymentFaultInvariants(t, infra.Pool, seed, seed.AmountMicro, 1)
 
 	faultproof.Log(t, "settlement_grpc_stop_start_recovery", map[string]string{
 		"subsystem":    "payment_outbox",
@@ -171,12 +170,12 @@ func TestFault_PaymentPGTerminateDuringWebhook(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
+	infra, cleanup := SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
 	customerID := uuid.New()
-	paymenttest.SeedCustomer(t, infra.Pool, customerID)
+	SeedCustomer(t, infra.Pool, customerID)
 
 	svc := payment.NewService(infra.Pool, infra.Cfg)
 	result, err := svc.CreatePaymentIntent(ctx, customerID, 7_000_000, "USD", "fault-wh-pg-"+uuid.New().String(), nil)
@@ -188,7 +187,7 @@ func TestFault_PaymentPGTerminateDuringWebhook(t *testing.T) {
 		eventID, providerRef)
 
 	require.NoError(t, infra.PGContainer.Terminate(ctx))
-	paymenttest.RequirePaymentFaultActive(t, func() bool {
+	RequirePaymentFaultActive(t, func() bool {
 		return infra.Pool.Ping(ctx) != nil
 	}, "pg ping must fail after terminate")
 

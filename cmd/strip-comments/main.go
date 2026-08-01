@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"espx/pkg/commentkeep"
 )
 
 var (
@@ -30,7 +32,6 @@ var (
 		"buf.yaml",
 		"Taskfile.yaml",
 		".env.example",
-		"docs/openapi/openapi.yaml",
 	}
 )
 
@@ -254,8 +255,7 @@ func commentBody(raw string) string {
 }
 
 func isAllowedDirective(text string) bool {
-	t := strings.TrimSpace(text)
-	return strings.HasPrefix(t, "go:") || strings.HasPrefix(t, "nolint:")
+	return commentkeep.Keep(text)
 }
 
 func discoverRootDockerfiles() []string {

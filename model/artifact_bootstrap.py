@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ARTIFACT_DIR = str(REPO_ROOT / os.environ.get("FRAUD_ARTIFACT_DIR", "var/fraudscore/artifacts"))
 DEFAULT_ARTIFACT_MODEL = os.path.join(ARTIFACT_DIR, "model.txt")
-FIXTURES_DIR = REPO_ROOT / "testdata" / "ml"
+FIXTURES_DIR = REPO_ROOT / "var" / "fraudscore" / "fixtures"
 ONNX_TARGET_OPSET = {"": 12, "ai.onnx.ml": 3}
 SYNTHETIC_ROW_COUNT = 12_000
 SYNTHETIC_VAL_FRACTION = 0.2
@@ -45,7 +45,7 @@ _CALIB_HOLDOUT_DEFAULT = 3000
 _FIT_VAL_FRACTION_DEFAULT = 0.2
 _FIT_BOOST_ROUNDS_DEFAULT = 200
 _FIT_MIN_ROWS_DEFAULT = 500
-_LOG = "fraudtrain/artifact_bootstrap"
+_LOG = "model/artifact_bootstrap"
 
 
 def _env_bool(key: str, default: bool) -> bool:

@@ -71,8 +71,8 @@ func TestWorker_uploadsPulse(t *testing.T) {
 func TestWorker_rejectsSameURLAsLicenseServer(t *testing.T) {
 	w := NewWorker(Config{
 		OptIn:            true,
-		URL:              "https://license.espx.io/v1/pulse",
-		LicenseServerURL: "https://license.espx.io",
+		URL:              "https://license.bidshard.com/v1/pulse",
+		LicenseServerURL: "https://license.bidshard.com",
 	})
 	require.Error(t, w.validateEndpoints())
 }

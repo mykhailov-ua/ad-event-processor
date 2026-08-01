@@ -19,7 +19,7 @@ Cold-path packages (`notify`, `payment`, `ledger`, `costsync`, `controlplane`, `
 
 Architectural Approach
 
-eSPX does not use clean or hexagonal architecture. There are no package trees like `entity/`, `usecase/`, `repository/`, `ports/`, or `adapters/`. There are no parallel struct families for a single database table (e.g., database model, domain entity, and API representation). There are no mapper registries or reflection-based mapping solutions.
+BidShard does not use clean or hexagonal architecture. There are no package trees like `entity/`, `usecase/`, `repository/`, `ports/`, or `adapters/`. There are no parallel struct families for a single database table (e.g., database model, domain entity, and API representation). There are no mapper registries or reflection-based mapping solutions.
 
 These patterns increase heap churn and lead to out-of-sync fields where Postgres rows, Redis replicas, registry snapshots, and dashboard JSON must remain strictly consistent. We use one flat Go package per service, files acting as modules (R2), struct names and tags explicitly declaring their transport role, and mapping strictly at I/O boundaries (in a single step/hop).
 
@@ -357,7 +357,7 @@ Comments record constraints the code cannot express: invariants, failure modes, 
 
 R9.3. Zero comments and no backlog metadata in source
 
-Forbidden in all hand-written Go, Lua, SQL under `internal/`, `cmd/`, `pkg/`, `tests/`, and Python under `fraudtrain/`:
+Forbidden in all hand-written Go, Lua, SQL under `internal/`, `cmd/`, `pkg/`, `tests/`, and Python under `model/`:
 
 1. **Any comment or godoc** except:
    - `//go:` directives (`//go:embed`, `//go:noinline`, `//go:build`, …)
@@ -371,7 +371,7 @@ Forbidden in all hand-written Go, Lua, SQL under `internal/`, `cmd/`, `pkg/`, `t
    - Phase labels: `Phase A`, `Phase B`, backlog status, or roadmap stage names
 3. **Cross-references to planning or agent docs** from code or docstrings (`MILESTONE.md`, `docs/DEVELOPMENT.md`, `.cursor/rules/`, scenario catalogs). Link in markdown README/docs only.
 
-R9.3a. Python docstrings (`fraudtrain/`)
+R9.3a. Python docstrings (`model/`)
 
 Docstrings are the specification layer: dry, grammatically correct English. One or two sentences. State contract, inputs, outputs, and invariants the names do not carry.
 

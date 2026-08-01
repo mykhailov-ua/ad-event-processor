@@ -32,7 +32,7 @@ def _load_booster(model_path: Path):
         import lightgbm as lgb
     except ImportError as exc:
         raise SystemExit(
-            "evaluate: lightgbm required — pip install -r fraudtrain/requirements.txt"
+            "evaluate: lightgbm required — pip install -r model/requirements.txt"
         ) from exc
     booster = lgb.Booster(model_file=str(model_path))
     if booster.num_feature() != FEATURE_DIMS:

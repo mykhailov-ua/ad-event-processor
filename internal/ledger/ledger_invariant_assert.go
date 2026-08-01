@@ -59,7 +59,6 @@ func AssertLedgerBalanceInvariant(t testing.TB, ctx context.Context, pool *pgxpo
 	}
 }
 
-// ListLedgerInvariantMismatchesForIDs checks only the given customer IDs (single query).
 func ListLedgerInvariantMismatchesForIDs(ctx context.Context, pool *pgxpool.Pool, customerIDs []uuid.UUID) ([]uuid.UUID, error) {
 	if len(customerIDs) == 0 {
 		return nil, nil
@@ -88,7 +87,6 @@ func ListLedgerInvariantMismatchesForIDs(ctx context.Context, pool *pgxpool.Pool
 	return ids, rows.Err()
 }
 
-// ListLedgerInvariantMismatches returns customer IDs whose balance diverges from ledger sum.
 func ListLedgerInvariantMismatches(ctx context.Context, pool *pgxpool.Pool) ([]uuid.UUID, error) {
 	rows, err := pool.Query(ctx, `
 		SELECT c.id

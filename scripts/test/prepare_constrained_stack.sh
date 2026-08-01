@@ -32,7 +32,7 @@ until docker exec espx-db-1 pg_isready -p "$DB_PORT" -U ad_event_processor_user 
 done
 
 log "reconciling partial migration state (load-test DB drift)"
-bash "$SCRIPTS/load/reconcile_ingestion_migrations.sh"
+bash "$SCRIPTS/test/reconcile_ingestion_migrations.sh"
 
 log "applying postgres migrations (ads, auth, billing)"
 export DB_DSN
@@ -41,8 +41,8 @@ if ! go run ./cmd/migrate-cold-path --only=ads,auth,billing; then
 fi
 
 log "repairing schema drift after migrations"
-bash "$SCRIPTS/load/reconcile_ingestion_migrations.sh"
-bash "$SCRIPTS/load/verify_load_test_schema.sh"
+bash "$SCRIPTS/test/reconcile_ingestion_migrations.sh"
+bash "$SCRIPTS/test/verify_load_test_schema.sh"
 
 log "resetting clickhouse analytics (deterministic cold-path baseline)"
 docker exec -i espx-clickhouse-1 clickhouse-client --multiquery -u default --password "${CLICKHOUSE_PASSWORD:-secure_ch_pass}" -d ad_event_processor -q "
@@ -105,9 +105,9 @@ for port in 8181 8182; do
 done
 
 log "full registry snapshot (campaigns:update *)"
-bash "$SCRIPTS/load/sync_tracker_registry.sh"
+bash "$SCRIPTS/test/sync_tracker_registry.sh"
 
-bash "$SCRIPTS/load/seed_load_test_limits.sh"
+bash "$SCRIPTS/test/seed_load_test_limits.sh"
 
 log "active campaigns:"
 docker exec espx-db-1 psql -h localhost -p "$DB_PORT" -U ad_event_processor_user -d ad_event_processor \

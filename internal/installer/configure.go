@@ -19,7 +19,6 @@ func RunConfigure(interactive bool) error {
 
 	if interactive {
 		fmt.Println(branding.ProductName(), "setup")
-		fmt.Println("-------------------------")
 
 		fmt.Print("Choose profile (single_vps, compose_dev, k8s_k3s) [compose_dev]: ")
 		var pStr string
@@ -33,7 +32,7 @@ func RunConfigure(interactive bool) error {
 		_, _ = fmt.Scanln(&xdp)
 		profile.EdgeXDP = strings.ToLower(xdp) == "y"
 
-		fmt.Print("Use legacy eSPX track schema (JSON/protobuf)? (y/N) [N = OpenRTB 3.0 default]: ")
+		fmt.Print("Use legacy track schema (JSON/protobuf)? (y/N) [N = OpenRTB 3.0 default]: ")
 		var legacy string
 		_, _ = fmt.Scanln(&legacy)
 		if strings.ToLower(legacy) == "y" {

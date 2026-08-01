@@ -78,6 +78,6 @@ Key files: `deploy/edge/xdp/bpf/edge_filter.c`, `internal/edge/bpf/`, `internal/
 
 Open: tier D (CO-RE portability, hardware offload), lab-only XDP fault injector.
 
-Dev load-test BPF (not XDP): `deploy/dev/bpf/loadtest_probe.o` and `cmd/bpf-collector` — tracepoints during k6 runs when `ESPX_BPF_PROBE=1`. See `.cursor/rules/load-test-bpf.mdc`.
+Dev load-test BPF (not XDP): `deploy/dev/bpf/loadtest_probe.o` and `cmd/bpf-collector` — tracepoints during `cmd/loadgen` runs when `ESPX_BPF_PROBE=1`. See `.cursor/rules/load-test-bpf.mdc`.
 
 Links: `.cursor/rules/compliance.mdc`, `docs/ARCHITECTURE.md`.

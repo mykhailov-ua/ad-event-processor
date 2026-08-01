@@ -164,7 +164,7 @@ func WriteBPFReport(outDir string) (string, error) {
 }
 
 func writeBPFReport(b *strings.Builder, bpfDir string, data *bpfSummary, timeline *bpfTimeline) {
-	fmt.Fprintf(b, "# eSPX BPF Load-Test Report\n\n")
+	fmt.Fprintf(b, "# BPF Load-Test Report\n\n")
 	fmt.Fprintf(b, "Generated: %s\n", time.Now().UTC().Format(time.RFC3339))
 	fmt.Fprintf(b, "Session dir: `%s`\n", bpfDir)
 	fmt.Fprintf(b, "Duration: %.1fs\n", data.DurationSec)
@@ -256,7 +256,7 @@ func writeBPFReport(b *strings.Builder, bpfDir string, data *bpfSummary, timelin
 func loadgenGroup(stats []pidStat) []pidStat {
 	var out []pidStat
 	for _, s := range stats {
-		if s.Role == "loadgen" || s.Role == "k6" {
+		if s.Role == "loadgen" {
 			out = append(out, s)
 		}
 	}
@@ -264,7 +264,7 @@ func loadgenGroup(stats []pidStat) []pidStat {
 }
 
 func isLoadgenRole(role string) bool {
-	return role == "loadgen" || role == "k6"
+	return role == "loadgen"
 }
 
 func filterServicePIDStats(stats []pidStat) []pidStat {

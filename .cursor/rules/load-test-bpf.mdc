@@ -6,7 +6,7 @@ globs:
   - deploy/nginx/lua/**
   - deploy/dev/bpf/**
   - cmd/bpf-collector/**
-  - scripts/load/**
+  - scripts/test/**
 alwaysApply: false
 ---
 
@@ -19,7 +19,7 @@ Validate with both reports in `var/load-test/<UTC-ts>/`:
 1. Prometheus — `bottleneck-report.md`: handler p95/p99, `ad_worker_pool_reject_total` (0), fraud stream drops, Redis Lua p99 < 10 ms/shard.
 2. BPF — `bpf-report.md`: loadgen on-CPU share, cgroup throttle %, tracker `epoll_wait`/`read`/`futex` p99, peak FDs.
 
-Preflight: `bash scripts/load/prepare_constrained_stack.sh` → `make bpf-dev` → `sudo ESPX_BPF_PROBE=1 bash scripts/load/malformed.sh business`.
+Preflight: `bash scripts/test/prepare_constrained_stack.sh` → `make bpf-dev` → `sudo ESPX_BPF_PROBE=1 bash scripts/test/malformed.sh business`.
 
 After code change: `make test-alloc-gate`; re-run load+BPF when touching filter order, parse, worker pool, or Lua args.
 
@@ -40,14 +40,14 @@ Use both reports from the same run directory: `var/load-test/<timestamp>/`.
 Architecture
 
 ```text
-scripts/load/malformed.sh | spike.sh
+scripts/test/malformed.sh | spike.sh
   ├─ cmd/loadgen → nginx → tracker
   └─ bpf_probe_session.sh start
         └─ bpf_probe_session.sh stop
               └─ go run ./cmd/load-report bpf|prom|all
 ```
 
-`scripts/load/bpf_probe_session.sh`: Start/stop collector around loadgen
+`scripts/test/bpf_probe_session.sh`: Start/stop collector around loadgen
 `go run ./cmd/load-report bpf`: Render `bpf-report.md` from `bpf/maps/summary.json`
 `go run ./cmd/load-report prom`: Prometheus `bottleneck-report.md` (+ status histogram)
 
@@ -57,14 +57,14 @@ Quick start
 # One-time build (also: make bpf-dev, dev_stack.sh bpf, or dev_stack.sh build)
 bash scripts/dev/bpf_setup.sh
 # equivalent:
-bash scripts/load/bpf_build.sh
+bash scripts/test/bpf_build.sh
 go build -o bin/bpf-collector ./cmd/bpf-collector
 
 # Constrained stack + business mix (prepares DB/registry, 2m, 50/20/30 traffic)
-sudo ESPX_BPF_PROBE=1 bash scripts/load/malformed.sh business
+sudo ESPX_BPF_PROBE=1 bash scripts/test/malformed.sh business
 
 # Smoke with lighter syscall sampling on laptops
-sudo ESPX_BPF_PROBE=1 ESPX_BPF_SAMPLE_RATE=10 bash scripts/load/malformed.sh smoke
+sudo ESPX_BPF_PROBE=1 ESPX_BPF_SAMPLE_RATE=10 bash scripts/test/malformed.sh smoke
 ```
 
 Standalone session (no loadgen — staging traffic, curl):
@@ -85,7 +85,7 @@ Artifacts:
 
 ```text
 var/load-test/<UTC-timestamp>/
-  k6.log
+  loadgen.log
   bottleneck-report.md    # Prometheus (go run ./cmd/load-report prom)
   bpf-report.md           # kernel session (go run ./cmd/load-report bpf)
   bpf/
@@ -98,14 +98,13 @@ var/load-test/<UTC-timestamp>/
 
 Environment variables
 
-`ESPX_BPF_PROBE`, default `0`: Set `1` in `scripts/load/malformed.sh` / `scripts/load/spike.sh` to enable session
+`ESPX_BPF_PROBE`, default `0`: Set `1` in `scripts/test/malformed.sh` / `scripts/test/spike.sh` to enable session
 `ESPX_BPF_SAMPLE_RATE`, default `1`: Syscall sample rate (`10` = 1/10 events; use on laptops)
 `ESPX_BPF_SLOW_US`, default `10000`: Ringbuf slow-syscall threshold (µs)
 `ESPX_BPF_TARGETS`, default `tracker,nginx,redis,processor`: Roles resolved from compose
 `ESPX_BPF_NATIVE`, default `0` (`1` in standalone session): Also resolve host PIDs via `pgrep` (`ESPX_BPF_NATIVE_PATTERNS`)
 `ESPX_BPF_EXTRA_TARGETS`: Manual targets `pid:role:name` (comma-separated)
-`ESPX_BPF_TRACK_K6`, default `1`: Discover k6 load-generator PIDs on host
-`ESPX_BPF_TRACK_LOADGEN`, default `1` in k6 runs / `0` in standalone: Watch load-generator comm names
+`ESPX_BPF_TRACK_LOADGEN`, default `1` in loadgen runs / `0` in standalone: Watch load-generator comm names
 `ESPX_BPF_LOADGEN_COMM`, default `loadgen`: Comma-separated `/proc/comm` names for loadgen role
 `ESPX_BPF_DUMP_INTERVAL`, default `0` (`30` in standalone): Periodic `bpf/maps/summary.json` writes (seconds)
 `ESPX_BPF_REFRESH_TARGETS`, default `0` (`30` in standalone): Re-run `bpf_resolve_targets.sh` interval (seconds)
@@ -132,7 +131,7 @@ Userspace collector
 
 `cmd/bpf-collector` responsibilities:
 
-1. Load `targets.json` (roles: tracker, nginx, redis, processor, k6/loadgen; PID + optional `cgroup_id`)
+1. Load `targets.json` (roles: tracker, nginx, redis, processor, loadgen; PID + optional `cgroup_id`)
 2. Attach `loadtest_probe.o` links; refresh targets / loadgen PIDs when configured
 3. Optional uprobes on `process_track` / `filter_check` when `ESPX_BPF_TRACKER_BINARY` is set
 4. Poll BPF maps every 2s; merge into `summary.json` on shutdown (or periodic dump)
@@ -144,7 +143,7 @@ Roles map to Prometheus-style interpretation in `bpf-report.md` (not exported to
 
 Report sections (`bpf-report.md`)
 
-Load generator overhead: k6 `pid_stats` + RSS delta — Separate host saturation from tracker work
+Load generator overhead: loadgen `pid_stats` + RSS delta — Separate host saturation from tracker work
 Scheduler / context switches: `pid_stats` — involuntary >> voluntary ⇒ CPU oversubscription
 Cgroup limits: `cgroup_samples` — throttle %, memory.max events, IO
 Hot syscalls: always-traced set — gnet vs Redis path on tracker
@@ -163,11 +162,11 @@ Interpreting a laptop run
 
 Typical healthy constrained run (2k–4k RPS, registry warm):
 
-1. k6 on-CPU 50–85% on a 4-core laptop is normal — capacity ceiling is often the generator, not tracker Lua.
+1. loadgen on-CPU 50–85% on a 4-core laptop is normal — capacity ceiling is often the generator, not tracker Lua.
 2. tracker throttle 0% — compose CPU limits not clipping (raise `cpus:` in `docker-compose.load-test.yaml` if >5%).
 3. Redis read/write p99 < 10 µs on loopback — Redis is not the bottleneck.
-4. tracker p99 (Prometheus) 10–50 ms with high k6 on-CPU — queueing at edge/k6, not hot-path bug.
-5. Compare with abort rule: handler p99 > 80 ms for 30 s (`scripts/load/malformed.sh`).
+4. tracker p99 (Prometheus) 10–50 ms with high loadgen on-CPU — queueing at edge/loadgen, not hot-path bug.
+5. Compare with abort rule: handler p99 > 80 ms for 30 s (`scripts/test/malformed.sh`).
 
 When BPF and Prometheus disagree, trust BPF for host scheduling and Prometheus for application SLOs.
 
@@ -179,19 +178,19 @@ BTF (`/sys/kernel/btf/vmlinux`): recommended; warn-only if missing
 `cilium/ebpf` (Go): vendored via `go.mod` in `bpf-collector`
 root / CAP_BPF: attach and memlock (`rlimit.RemoveMemlock`)
 
-Run `bash scripts/load/bpf_requirements.sh` before first session.
+Run `bash scripts/test/bpf_requirements.sh` before first session.
 
 Related scripts
 
 `scripts/dev/bpf_setup.sh`: Standard dev build: preflight + `.o` + `bpf-collector`
-`scripts/dev/bpf_session.sh`: Standalone start/stop/status/report (no k6)
+`scripts/dev/bpf_session.sh`: Standalone start/stop/status/report (no loadgen)
 `scripts/dev/build_tracker_bpf_trace.sh`: Build `bin/tracker-bpf-trace` with uprobes markers
 `make bpf-dev` / `make bpf-session-start` / `make bpf-session-stop` / `make load-test-bpf`: Makefile wrappers
-`scripts/load/prepare_constrained_stack.sh`: Migrations, registry full snapshot, CH truncate — run before `business` mode
-`scripts/load/malformed.sh`: Loadgen + optional BPF + `go run ./cmd/load-report all`
-`scripts/load/spike.sh`: Spike profile; same `ESPX_BPF_PROBE=1` hook
-`scripts/load/sync_tracker_registry.sh`: Full `campaigns:update` snapshot if 404 `campaign_not_found`
-`scripts/load/reconcile_ingestion_migrations.sh`: Fix partial PG schema drift on load-test DB
+`scripts/test/prepare_constrained_stack.sh`: Migrations, registry full snapshot, CH truncate — run before `business` mode
+`scripts/test/malformed.sh`: Loadgen + optional BPF + `go run ./cmd/load-report all`
+`scripts/test/spike.sh`: Spike profile; same `ESPX_BPF_PROBE=1` hook
+`scripts/test/sync_tracker_registry.sh`: Full `campaigns:update` snapshot if 404 `campaign_not_found`
+`scripts/test/reconcile_ingestion_migrations.sh`: Fix partial PG schema drift on load-test DB
 
 Boundaries
 

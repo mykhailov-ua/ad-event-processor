@@ -47,15 +47,10 @@ func (h *AuthHandler) RegisterRoutes(mux *http.ServeMux) {
 	if h.authMiddleware != nil {
 		mux.HandleFunc("POST /api/v1/auth/register", h.authMiddleware.RequirePermission(PermUsersWrite)(h.register))
 	} else {
-		// FIX [1.6]: authMiddleware nil means the service is not fully wired
-		// (e.g. installer mode). Fall back to requiring the static admin API key
-		// so the endpoint is never truly open.
 		mux.HandleFunc("POST /api/v1/auth/register", h.requireAdminKeyFallback(h.register))
 	}
 }
 
-// requireAdminKeyFallback guards a handler with a constant-time admin-key check
-// when the full auth middleware is unavailable.
 func (h *AuthHandler) requireAdminKeyFallback(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if h.cfg == nil || len(h.cfg.AdminAPIKey) == 0 {
@@ -109,7 +104,6 @@ type RegisterResponse struct {
 }
 
 func (h *AuthHandler) login(w http.ResponseWriter, r *http.Request) {
-	// FIX [1.9]: cap body at 64 KB to prevent memory exhaustion.
 	body, err := coldpath.ReadLimitedBody(w, r, coldpath.DefaultMaxBody)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "failed to read request body")
@@ -246,7 +240,6 @@ type RegisterRequest struct {
 }
 
 func (h *AuthHandler) register(w http.ResponseWriter, r *http.Request) {
-	// FIX [1.9]: cap body at 64 KB.
 	body, err := coldpath.ReadLimitedBody(w, r, coldpath.DefaultMaxBody)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "failed to read request body")

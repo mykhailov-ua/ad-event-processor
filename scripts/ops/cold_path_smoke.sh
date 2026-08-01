@@ -30,7 +30,7 @@ if [[ -z "$NODE_IP" ]]; then
 	exit 1
 fi
 
-echo "eSPX k3s cold-path smoke (node=${NODE_IP})"
+echo "BidShard k3s cold-path smoke (node=${NODE_IP})"
 
 not_ready="$(kubectl get pods -n espx --field-selector=status.phase!=Running -o name 2>/dev/null | wc -l)"
 terminating="$(kubectl get pods -n espx --field-selector=status.phase=Running -o jsonpath='{range .items[?(@.metadata.deletionTimestamp)]}{.metadata.name}{"\n"}{end}' 2>/dev/null | wc -l)"

@@ -33,11 +33,10 @@ start)
 	mkdir -p "$OUT"
 	export ESPX_BPF_NATIVE="${ESPX_BPF_NATIVE:-1}"
 	export ESPX_BPF_TRACK_LOADGEN="${ESPX_BPF_TRACK_LOADGEN:-0}"
-	export ESPX_BPF_TRACK_K6="${ESPX_BPF_TRACK_K6:-$ESPX_BPF_TRACK_LOADGEN}"
 	export ESPX_BPF_DUMP_INTERVAL="${ESPX_BPF_DUMP_INTERVAL:-30}"
 	export ESPX_BPF_REFRESH_TARGETS="${ESPX_BPF_REFRESH_TARGETS:-30}"
 	export ESPX_BPF_METRICS_ADDR="${ESPX_BPF_METRICS_ADDR:-:9464}"
-	bash "$SCRIPTS/load/bpf_probe_session.sh" start "$OUT"
+	bash "$SCRIPTS/test/bpf_probe_session.sh" start "$OUT"
 	mkdir -p "$SESSION_ROOT"
 	ln -sfn "$(basename "$OUT")" "$CURRENT_LINK"
 	printf '%s\n' "$OUT" >"$CURRENT_PATH_FILE"
@@ -51,7 +50,7 @@ stop)
 	if [[ -f "$OUT/bpf/collector.pid" ]]; then
 		PID="$(cat "$OUT/bpf/collector.pid")"
 	fi
-	bash "$SCRIPTS/load/bpf_probe_session.sh" stop "$OUT" "$PID"
+	bash "$SCRIPTS/test/bpf_probe_session.sh" stop "$OUT" "$PID"
 	log "session stopped: $OUT"
 	;;
 status)

@@ -7,5 +7,4 @@ ALTER TYPE ledger_type ADD VALUE IF NOT EXISTS 'rtb_cost';
 
 -- +goose Down
 -- +goose StatementBegin
--- PostgreSQL cannot remove enum values; no-op down migration.
 -- +goose StatementEnd

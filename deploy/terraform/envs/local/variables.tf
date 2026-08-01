@@ -6,7 +6,7 @@ variable "kubeconfig_path" {
 
 variable "namespace" {
   type        = string
-  description = "Kubernetes namespace for eSPX cold-path workloads."
+  description = "Kubernetes namespace for cold-path workloads."
   default     = "espx"
 }
 
@@ -18,7 +18,7 @@ variable "k8s_manifests_path" {
 
 variable "container_image" {
   type        = string
-  description = "eSPX distroless image tag imported into k3s containerd."
+  description = "BidShard distroless image tag imported into k3s containerd."
   default     = "ad-event-processor:latest"
 }
 

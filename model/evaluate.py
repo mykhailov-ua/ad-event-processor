@@ -14,7 +14,7 @@ from shadow_precision import format_markdown, run_drift_analysis, run_shadow_pre
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ARTIFACT_DIR = os.environ.get("FRAUD_ARTIFACT_DIR", str(REPO_ROOT / "var" / "fraudscore" / "artifacts"))
 DEFAULT_OUT_DIR = REPO_ROOT / "var" / "fraudscore"
-_LOG = "fraudtrain/evaluate"
+_LOG = "model/evaluate"
 
 
 def _default_threshold() -> float:

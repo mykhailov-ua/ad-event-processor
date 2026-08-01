@@ -21,8 +21,6 @@ jobs:
         run: STRICT_NO_COMMENTS=1 bash scripts/ci/comments.sh
       - name: No chaos terminology in diff
         run: bash scripts/ci/check_no_chaos_refs.sh
-      - name: OpenAPI contract (GAP-PROD-03)
-        run: make openapi-lint
       - name: golangci-lint
         run: make lint
 

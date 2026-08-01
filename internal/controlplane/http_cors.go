@@ -5,10 +5,6 @@ import (
 	"strings"
 )
 
-// NewCORSMiddleware returns a CORS middleware.
-// FIX [1.1]: wildcard "*" is no longer combined with Access-Control-Allow-Credentials:true.
-// When the effective origin is "*" we reflect the request origin but omit the credentials header,
-// preventing the RFC 6454-forbidden combination that some non-browser clients exploit.
 func NewCORSMiddleware(allowedOrigins []string) func(http.Handler) http.Handler {
 	originsMap := make(map[string]bool)
 	hasWildcard := false
@@ -30,15 +26,12 @@ func NewCORSMiddleware(allowedOrigins []string) func(http.Handler) http.Handler 
 				wildcardMatch := hasWildcard && !explicitMatch
 
 				if explicitMatch {
-					// Explicit allowlist: credentials are safe.
 					w.Header().Set("Access-Control-Allow-Origin", origin)
 					w.Header().Set("Access-Control-Allow-Credentials", "true")
 					w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 					w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-CSRF-Token, X-Admin-API-Key")
 				} else if wildcardMatch {
 					// Wildcard: reflect origin but do NOT set Allow-Credentials.
-					// This satisfies open CORS (e.g. public read APIs) without the
-					// credentials leak: browsers will refuse cookies/auth on this path.
 					w.Header().Set("Access-Control-Allow-Origin", origin)
 					w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 					w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-CSRF-Token, X-Admin-API-Key")

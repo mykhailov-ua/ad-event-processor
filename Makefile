@@ -1,4 +1,4 @@
-.PHONY: fmt gen lint test test-fast test-unit test-integration test-fault test-int test-alloc-gate management-domain-coverage test-full test-resilience test-broker-fault-lab test-sentinel-resilience build release-build proto proto-grpc check-local tier-a fraudtrain-check check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-bpf openapi-lint openapi-gen check-scripts-layout dev-preflight-smoke perf-gate-smoke edge-phase0
+.PHONY: fmt gen lint test test-fast test-unit test-integration test-fault test-int test-alloc-gate management-domain-coverage test-full test-resilience test-broker-fault-lab test-sentinel-resilience build release-build proto proto-grpc check-local tier-a fraudtrain-check check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-bpf check-scripts-layout dev-preflight-smoke perf-gate-smoke edge-phase0
 
 fmt:
 	go fmt ./...
@@ -62,17 +62,9 @@ tier-a:
 check-vuln:
 	bash scripts/ci/govulncheck.sh
 
-openapi-lint:
-	bash scripts/ci/openapi.sh
-
-openapi-gen:
-	go run ./cmd/openapi-gen
-
 build: gen fmt
 	docker build -t ad-event-processor:latest .
 
-# Stripped linux/amd64 + linux/arm64 service binaries → dist/release/ (GAP-PROD-10 / P44).
-# Not run in CI; vendor release pipeline or local smoke before shipping Pro builds.
 RELEASE_DIR := dist/release
 RELEASE_LDFLAGS := -ldflags="-s -w"
 RELEASE_PLATFORMS := linux/amd64 linux/arm64
@@ -82,7 +74,7 @@ release-build: gen fmt
 	@mkdir -p $(RELEASE_DIR)
 	@set -e; \
 	for platform in $(RELEASE_PLATFORMS); do \
-	  GOOS=$${platform%/*}; GOARCH=$${platform#*/}; \
+	  GOOS=$${platform%/*}; GOARCH=$${platform
 	  for cmd in $(RELEASE_CMDS); do \
 	    echo "release-build: $$cmd $$GOOS/$$GOARCH"; \
 	    CGO_ENABLED=0 GOOS=$$GOOS GOARCH=$$GOARCH go build -tags timetzdata $(RELEASE_LDFLAGS) \

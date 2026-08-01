@@ -1,14 +1,6 @@
 # Production TLS overlay for docker compose.
-#
-# Usage:
-#   docker compose -f docker-compose.yaml -f deploy/compose/production.yaml up -d
-#   (root docker-compose.yaml includes deploy/compose/docker-compose.yaml)
-#
-# Prerequisites:
-#   - DB_DSN with sslmode=verify-full and sslrootcert=${PG_SSL_ROOT_CERT}
 #   - Postgres server cert/key under ${PG_TLS_CERT_DIR} (mounted below)
 #   - Redis TLS certs under ${REDIS_TLS_CERT_DIR}; apps use REDIS_TLS_* client paths
-#   - ESPX_PROFILE=production for MVSS doctor checks
 #   - Unique PII_SALT_HEX and REDIS_PASSWORD (not .env.example placeholders)
 
 services:

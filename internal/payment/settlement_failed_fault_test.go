@@ -11,7 +11,6 @@ import (
 	"espx/internal/ingestion"
 	"espx/internal/payment"
 	"espx/internal/payment/db"
-	"espx/internal/paymenttest"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -23,28 +22,28 @@ func TestFault_SettlementFailedNotifier(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
+	infra, cleanup := SetupPaymentFaultInfra(t)
 	defer cleanup()
 
-	stub := &paymenttest.StubNotifierAPI{}
-	cfg := paymenttest.TestOpsConfig()
+	stub := &StubNotifierAPI{}
+	cfg := faultTestOpsConfig()
 	alerter := payment.NewSettlementFailedAlerter(payment.NewInProcessNotifierClient(stub), cfg)
 	require.NotNil(t, alerter)
 
 	ctx := context.Background()
 	customerID := uuid.New()
-	seed := paymenttest.SeedSucceededIntentWithOutbox(t, infra, customerID, 9_000_000, "fault-settle-alert-"+uuid.New().String())
+	seed := SeedSucceededIntentWithOutbox(t, infra, customerID, 9_000_000, "fault-settle-alert-"+uuid.New().String())
 
 	_, err := infra.Pool.Exec(ctx, `DELETE FROM customers WHERE id = $1`, ingestion.ToUUID(customerID))
 	require.NoError(t, err)
 
-	worker := paymenttest.NewOutboxWorkerForFault(infra)
+	worker := NewOutboxWorkerForFault(infra)
 	worker.SetSettlementFailedAlerter(alerter)
 
 	n, err := worker.ProcessOutbox(ctx, 10)
 	require.NoError(t, err)
 	require.Equal(t, 0, n)
-	require.Equal(t, "DEAD", paymenttest.PaymentOutboxStatus(t, infra.Pool, seed.OutboxID))
+	require.Equal(t, "DEAD", PaymentOutboxStatus(t, infra.Pool, seed.OutboxID))
 
 	time.Sleep(200 * time.Millisecond)
 	requests := stub.Snapshot()

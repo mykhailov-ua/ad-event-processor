@@ -43,15 +43,15 @@ check)
 	;;
 spike)
 	log "=== spike load ==="
-	bash scripts/load/spike.sh 2>&1 | tee -a "$LOG"
+	bash scripts/test/spike.sh 2>&1 | tee -a "$LOG"
 	;;
 malformed)
 	log "=== malformed traffic soak ==="
-	bash scripts/load/malformed.sh smoke 2>&1 | tee -a "$LOG"
+	bash scripts/test/malformed.sh smoke 2>&1 | tee -a "$LOG"
 	;;
 legacy-dirty|dirty)
 	log "=== malformed traffic soak (legacy mode name: dirty) ==="
-	bash scripts/load/malformed.sh smoke 2>&1 | tee -a "$LOG"
+	bash scripts/test/malformed.sh smoke 2>&1 | tee -a "$LOG"
 	;;
 all)
 	bash "$0" check

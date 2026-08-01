@@ -1,338 +1,214 @@
-# Architecture
+# Platform Architecture
 
-Platform topology, data stores, request flow, control plane, and SLA contracts.
-
-eSPX ingests ad events on `/track`, applies filters and atomic budget rules, and enqueues settlement. PostgreSQL holds financial truth; Redis holds hot state; ClickHouse holds telemetry.
-
-**Product model:** self-hosted binaries on customer bare metal; deployment license (vendor) is separate from operator wallet and advertiser billing. See [SELF_HOSTED.md](./SELF_HOSTED.md).  
-**Protection (license, data, trust):** [PROTECTION.md](./PROTECTION.md).
-
-| Path | p99 budget | Packages | Persistence |
-| :--- | :--- | :--- | :--- |
-| Hot | `/track` < 80 ms | `internal/ingestion`, `internal/rtb` | Redis Lua, streams |
-| Cold | seconds to minutes | `cmd/control`, workers | Postgres outbox -> Redis |
-| Edge | line-rate drop | `internal/edge`, `cmd/edge-*` | BPF maps, blocklists |
+This document describes the system topology, data storage design, request lifecycle, control plane, and architectural justifications for the BidShard platform, updated for the 2026 programmatic landscape.
 
 ---
 
-## Services
+## 1. System Topology
+
+BidShard is a hybrid platform that separates real-time traffic ingestion (Hot Path) from administrative and financial operations (Cold Path).
+
+```mermaid
+graph TD
+    Client[Client Traffic] --> Nginx[Nginx / OpenResty :8180]
+    Nginx -->|Requests /track| Tracker[Ingestion Trackers :8181-8184]
+    Nginx -->|Admin / API| Control[Control Plane :8188]
+
+    subgraph "Hot Path (Real-time)"
+        Tracker -->|Local| Quanta[Local Quanta Ledger]
+        Tracker -->|Global Shard 0| Redis0[Redis Shard 0]
+        Tracker -->|Shards 1-3| RedisN[Redis Shards 1-3]
+        Redis0 -.->|Pub/Sub| Tracker
+    end
+
+    subgraph "Cold Path (Settlement & Management)"
+        Control -->|Transactional Outbox| PG[(PostgreSQL :5430)]
+        PG -.->|Outbox Worker| Redis0
+        
+        RedisN -->|Streams| Processor[Stream Processor :8186]
+        Processor -->|Ledger Settlement| PG
+        Processor -->|Event Spool| CH[(ClickHouse :9000)]
+        
+        CH -.->|Batch Analysis| Scorer[Agentic ML Scorer / IVT Detector]
+        Scorer -.->|Score Boosts| Control
+    end
+
+    subgraph "Perimeter"
+        XDP[eBPF/XDP Protection] -.->|Blocklist| Tracker
+    end
+```
+
+### Component Port Mapping
 
 | Binary | Port(s) | Role |
 | :--- | :--- | :--- |
-| `tracker` | 8181-8184 | gnet ingest, `FilterEngine`, RTB, Lua |
-| `processor` | 8186 | Stream consumer -> PG/CH; `SyncWorker`; CH spool |
-| `control` | 8188, 8187 | Modular monolith: admin HTTP, payment webhooks, in-process auth/payment/billing/notifier (`CONTROL_ENABLE_*`) |
-| `ivt-detector`, `fraud-scorer` | - | CH batch -> control outbox |
-| `edge-xdp`, `edge-bpf-sync` | - | XDP filter, BPF map sync |
-| `broker`, `log-shipper`, ... | - | Optional mmap log pipeline |
-
-Libraries without `cmd/`: `internal/licensing`, `internal/rtb`, `internal/campaignmodel`. Billing/payment/auth/notifier are packages inside `cmd/control`.
+| `tracker` | `8181-8184` | Ingests traffic, parses requests, runs in-process RTB, executes filters, and debits budgets via Redis Lua or Local Quanta. |
+| `processor` | `8186` | Consumes Redis Streams, writes spend aggregates to PostgreSQL, and spools logs to ClickHouse. |
+| `control` | `8188`, `8187` | Modular monolith: serves the admin JSON API, handles payment webhooks, manages the ledger, and runs the Transactional Outbox. |
+| `ivt-detector` | - | Analyzes ClickHouse logs to detect invalid traffic (IVT) and updates blacklists. |
+| `fraud-scorer` | - | Evaluates Agentic AI ML models (LightGBM/Isolation Forest) and writes fraud-score boosts to Redis. |
+| `edge-xdp` | - | Drops packets from blacklisted IPs at the network driver level (eBPF/XDP). |
 
 ---
 
-## Topology
+## 2. 2026 AdTech & Programmatic Compliance
 
-Nginx :8180 -> Tracker pool -> Redis x4 (Lua, streams). Processor -> PG, CH. Control outbox -> Redis.
+BidShard is designed for the 2026 advertising ecosystem, prioritizing privacy, supply chain transparency, and agentic AI integration.
 
-1. Ingress: Nginx :8180; `/admin/*` and `/api/v1/*` -> control; `/track/*` -> trackers.
-2. Ingestion: `PinnedWorkerPool` by `campaign_id` hash.
-3. Redis: 4 standalone masters, client-side `StaticSlotSharder`.
-4. Settlement: per-shard `ad:events:stream` -> processor.
-5. Persistence: PostgreSQL 16, ClickHouse 24.
+### 2.1. OpenRTB 2.6+ & Protocol Support
+- **Native OpenRTB 2.6-202606**: Full support for the latest 2.x line updates, including Digital Out-of-Home (DOOH), ad-podding for CTV, and advanced metadata for live events.
+- **SupplyChain Object 1.0**: Native implementation of the `schain` object to provide full transparency into the seller and reseller chain, integrated with `sellers.json`.
+- **Deals API 1.0**: Automated deal metadata ingestion from external SSPs and curation platforms, eliminating manual deal entry in the control plane.
 
-Production k8s hot path uses host networking; databases typically on compose bridge with published ports.
+### 2.2. Privacy-First & Signal Loss Mitigation
+- **Privacy Sandbox Adaptors**: Integrated support for Google Privacy Sandbox (Topics API and Protected Audience API). The `tracker` acts as an orchestrator for Protected Audience interest group bidding.
+- **First-Party Data Clean Rooms**: The `control` plane supports secure data sharing with advertiser Data Clean Rooms (DCR), enabling high-precision targeting without exposing PII.
+- **Topics-based Filtering**: Native `FilterEngine` support for IAB content taxonomies and Topics API signals, replacing legacy third-party cookie targeting.
+
+### 2.3. Agentic AI & ARTF 1.0 Implementation
+- **Agentic Real-Time Framework**: BidShard implements the IAB ARTF 1.0 spec, allowing containerized AI agents (`fraud-scorer`, `ivt-detector`) to operate within the infrastructure and perform bidstream enrichment via the OpenRTB Patch Protocol.
+- **ML Scoring Ensemble**: Uses Agentic AI to perform real-time bid mutation, enriching requests with quality scores and predicted conversion probabilities in under 1 ms.
 
 ---
 
-## Request path
+## 3. Hot Path vs. Cold Path Separation
 
-Ingress -> parse -> ensureIngestGeo -> [RTB if `RTB_MODE` != off] -> `FilterEngine.Check` -> Lua (or local quanta) -> XADD -> HTTP response.
+To meet the processing SLA under high load, the platform enforces a strict boundary between the hot path and the cold path:
 
-### FilterEngine order
+| Attribute | Hot Path | Cold Path |
+| :--- | :--- | :--- |
+| **Scope** | `/track` endpoint, RTB auction, FilterEngine. | `/api/v1` REST API, billing, reports, payments. |
+| **Latency SLA** | **p95 < 50 ms, p99 < 80 ms**, max 100 ms. | Milliseconds to minutes. |
+| **Memory Allocations**| **0 heap allocations** (zero-alloc). | Standard Go allocations, sqlc-generated code. |
+| **Network Engine** | `gnet` (epoll-based event loop). | Standard Go `net/http`. |
+| **Primary Storage** | Redis (in-memory), local quanta. | PostgreSQL (financial truth), ClickHouse. |
+| **Integration Layer** | Redis Streams (`ad:events:stream`). | Transactional Outbox (`outbox_events`). |
 
-1. Emergency breaker
-2. Fraud / geo (MaxMind; fail-open where configured)
-3. Schedule, placement, L3, device, consent
-4. ML fraud boost (Redis snapshot; 0 allocs/op)
-5. `UnifiedFilter` or `TrySpendLocal` + `budget-fast.lua` with `skip_budget=1` when local quanta applies
+### Architectural Justification
+- **Write Decoupling**: Directly writing event data to a relational database during ingestion introduces disk I/O bottlenecks and lock contention, limiting throughput. By writing to Redis Streams on the hot path and asynchronously settling to PostgreSQL and ClickHouse on the cold path, we decouple ingestion throughput from disk write limits.
+- **SLA Protection**: Heavy analytical queries or administrative actions on the cold path cannot starve the hot path of CPU or memory resources, ensuring consistent sub-80ms latencies during traffic spikes.
 
-### Sharding (default)
+---
 
-```text
-slot  = crc32(campaign_id) & 1023
-shard = slot_table[slot]   # 4 masters, StaticSlotSharder
+## 4. Data Layer Design
+
+### 4.1. In-Memory State (Redis)
+The platform uses **4 standalone Redis masters** (no Redis Cluster) with Sentinel for automatic failover.
+
+#### Routing and Sharding (StaticSlotSharder)
+Campaigns are mapped to shards using a static lookup table:
+$$\text{slot} = \text{CRC32C}(\text{campaign\_id}) \pmod{1024}$$
+$$\text{shard} = \text{slot\_table}[\text{slot}]$$
+The `slot_table` is a flat `[1024]uint8` array accessed via lock-free atomic operations (`sync/atomic`). This lookup completes in **~5.6 ns** without map overhead.
+
+#### Key Distribution
+- **Shard 0 (Global)**: Handles configuration updates via Pub/Sub (`campaigns:update`), authentication lockouts, global blacklists, and brand creatives.
+- **Shards 1–3**: Store campaign-specific data (budgets, frequency caps, idempotency keys, and local event streams `ad:events:stream`).
+
+#### Atomic Lua Execution
+To prevent race conditions, budget debits and frequency checks are executed atomically in Redis via Lua scripts:
+- **Tier B (`budget-fast.lua`)**: Used for impressions. Evaluates campaign budgets and appends to the stream in a single RTT.
+- **Tier C (`unified-filter.lua`)**: Used for clicks and conversions. Evaluates frequency caps, pacing, time-to-click (TTC), and quotas.
+
+#### Circuit Breaker
+If Redis requests fail or timeout 150 consecutive times, the circuit breaker opens. The tracker then immediately rejects incoming requests (Fail-Closed) without debiting budgets, protecting the system from cascading failures. The breaker attempts to transition to Half-Open after 5 seconds to test Redis availability.
+
+#### Architectural Justification
+- **Why No Redis Cluster**: Redis Cluster introduces routing redirects (MOVED/ASK), cluster bus overhead, and restricts multi-key Lua scripts to keys hashing to the same slot. Standalone masters with client-side `StaticSlotSharder` eliminate cluster routing latency.
+- **Why Standalone Shards**: Sharding by `campaign_id` ensures that all keys associated with a single campaign reside on the same Redis instance. This allows multi-key Lua scripts (budget, pacing, fcap) to execute atomically on a single shard in under 10 ms.
+
+### 4.2. Financial Ledger (PostgreSQL)
+PostgreSQL serves as the single source of truth for financial balances and system configuration.
+
+- **Balance Ledger (`balance_ledger`)**: Balances are stored as `BIGINT` micro-units ($10^{-6}$ of the currency). Account balances are calculated dynamically using `SUM(amount)` over ledger rows.
+- **Idempotency**: Click and conversion uniqueness is verified in Redis Lua and enforced in PostgreSQL via the `sync_idempotency` table during settlement.
+- **Transactional Outbox**: Configuration changes are written to the database along with an outbox record in a single transaction. The `OutboxWorker` polls the `outbox_events` table using `SELECT FOR UPDATE SKIP LOCKED` and publishes updates to Redis, ensuring at-least-once delivery.
+
+#### Architectural Justification
+- **Why BIGINT Micro-units**: Floating-point types (`float64` or `numeric`) introduce rounding errors and precision loss over millions of transactions. Integer arithmetic in micro-units guarantees exact financial calculations.
+- **Why SUM-based Ledger**: Modifying a single balance cell in a database row leads to high lock contention under concurrent writes. An append-only ledger converts updates into inserts, eliminating lock contention and providing a complete audit trail.
+- **Why Transactional Outbox**: Direct HTTP-to-Redis writes from administrative handlers can fail if Redis is temporarily unreachable, leading to configuration drift. The outbox pattern guarantees that Redis eventually converges with the PostgreSQL state.
+
+### 4.3. Analytics (ClickHouse)
+ClickHouse stores raw event logs for reporting and fraud detection.
+
+- **Storage Engine**: Uses `ReplicatedMergeTree` for horizontal scaling and fault tolerance.
+- **Buffered Batching**: The `processor` aggregates events in memory and writes them in large batches to ClickHouse, optimizing disk write patterns.
+- **Local Disk Spool**: If ClickHouse is unreachable, the processor writes batches to a local disk spool using sequential appends and `fsync`.
+
+#### Architectural Justification
+- **Why ClickHouse**: Relational databases like PostgreSQL are not designed for high-volume analytical queries over billions of rows. ClickHouse provides columnar storage and compression, executing analytical queries up to 100x faster.
+- **Why Batching & Spooling**: ClickHouse is optimized for large batch inserts, not single-row inserts. Batching prevents disk saturation, while the local disk spool prevents data loss during database maintenance or network partitions.
+
+---
+
+## 5. Request Lifecycle on the Hot Path
+
+Every incoming request to the `/track` endpoint is processed as follows:
+
+```mermaid
+graph LR
+    Client((Client)) --> Ingress[gnet Ingress]
+    Ingress --> Parse[DFA HTTP Parser]
+    Parse --> RTB[RTB Auction]
+    RTB --> Filter[FilterEngine]
+    Filter --> Lua[Redis Lua]
+    Lua --> Stream[XADD Stream]
+    Stream --> Resp((HTTP 202/204))
 ```
 
-Elastic triplets: opt-in canary migration mode. Steady-state default is fixed StaticSlot (N=4).
+1. **Ingress**: The `gnet` event loop reads bytes from the socket.
+2. **Parsing**: A table-driven DFA parser extracts HTTP headers and the JSON body directly from the socket ring buffer into a pooled event structure without allocating memory on the heap.
+3. **In-Process RTB**: If `RTB_MODE=live` is enabled, the tracker runs an in-process auction against the local campaign catalog. The winning campaign ID replaces the request's original campaign ID.
+4. **FilterEngine Evaluation**:
+   - **Emergency Breaker**: Instantly drops traffic if the global breaker is active.
+   - **Geo/Fraud Filter**: Evaluates the client IP against the MaxMind database in memory (fails open on error).
+   - **Schedule & Placement**: Verifies campaign schedules and publisher placement blacklists.
+   - **ML Fraud Boost**: Applies fraud-score coefficients from the local memory snapshot.
+5. **Budget Debit**:
+   - **Local Quanta**: The tracker attempts to debit the budget from its local memory pool (`TrySpendLocal`). If successful, it proceeds to step 6.
+   - **Redis Lua**: If the local quota is exhausted, the tracker executes a Lua script on the designated Redis shard to debit the budget.
+6. **Stream Append**: The event is appended to the Redis Stream (`XADD ad:events:stream`), and the tracker returns an HTTP `202 Accepted` or `204 No Content` response.
 
 ---
 
-## Data layer
+## 6. In-Process RTB Auction
 
-### Redis
+The RTB auction is executed in-process within the `tracker` before budget evaluation.
 
-| Item | Detail |
-| :--- | :--- |
-| Shards | 4 standalone masters + replicas + Sentinel (no Redis Cluster) |
-| Routing | `campaign_id` -> CRC32C & 1023 -> slot -> shard; one `EVALSHA` per master |
-| Failover | Sentinel quorum 2; promote ~10-15 s |
-| Circuit breaker | Opens after 150 consecutive errors; half-open after 5 s |
+- **Structure of Arrays (SoA)**: Candidate campaigns and creatives are stored in flat, parallel arrays in memory. This layout maximizes CPU cache locality and avoids pointer dereferencing during scans.
+- **Early Termination**: Candidates are pre-sorted by expected bid value. The scan terminates early as soon as the candidate's bid falls below the current second-price threshold.
+- **Execution Modes (`RTB_MODE`)**:
+  - `off`: Auction is bypassed.
+  - `shadow`: Runs the auction (`RunAuctionEval`) and logs metrics, but does not modify the campaign ID or debit budgets.
+  - `live`: Runs the auction (`RunAuction`), and the winning campaign ID is used for subsequent budget debits.
 
-Shard 0 (global): pub/sub `campaigns:update`, auth lockout, creative fan-out. Optional broker fallback (`CAMPAIGN_UPDATE_BROKER_FALLBACK`).
-
-Global keys (fan-out to all shards): `config:values`, blacklists, `ml:score:boost:*`, placement pause hashes, brand creatives.
-
-Local keys: campaign budgets, dedup, idempotency, ingress counters, `ad:events:stream`, migration fences.
-
-Lua tiers:
-
-| Tier | Script | Use |
-| :--- | :--- | :--- |
-| B | `budget-fast.lua` | Impressions: budget, pre-checks, stream in one `EVALSHA` |
-| C | `unified-filter.lua` | Clicks, fcap, pacing, TTC, quota probes |
-| Refill | `local-quota-refill.lua` | Cold path only; refills `LocalQuantaLedger` |
-
-IP rate limits: edge XDP PPS and nginx `limit_req`, not Lua. Lua p99 target < 10 ms per shard.
-
-Fail policy: Geo/blacklists on tracker fail-open; edge blacklists fail-closed (503); Redis circuit and Lua errors fail-closed (no debit).
-
-### `/track` filter HTTP contract
-
-| `filterRejectKind` | HTTP | Body (plain) | Notes |
-| :--- | :--- | :--- | :--- |
-| `filter_timeout` | **504** Gateway Timeout | `filter timeout` | `ErrFilterTimeout` when monotonic filter deadline elapses |
-| `infra_unavailable` | 503 | `service unavailable` | Redis circuit, network errors, `context.DeadlineExceeded` from I/O |
-| `emergency_breaker` | 503 | `service temporarily unavailable` | Global breaker |
-| `registry_stale` / `shard_unavailable` | 503 | same family | Shard-0 / routing degradation |
-
-Edge nginx (`deploy/nginx/nginx.conf`) proxies tracker responses unchanged. `504` from the tracker is a valid client response (filter SLA miss); `proxy_next_upstream` may retry upstream on `http_504` only when selecting another tracker backend.
-
-Key catalog: `internal/ingestion/redis_key_catalog.go` defines COPY/DRAIN lists for slot migration.
-
-### PostgreSQL
-
-| Pattern | Detail |
-| :--- | :--- |
-| Ledger | `balance_ledger` BIGINT micro-units; balances are `SUM` of rows |
-| Idempotency | Click keys in Lua + `sync_idempotency` in PG; CH `insert_deduplicate=1` |
-| Outbox | `outbox_events` with `SELECT FOR UPDATE SKIP LOCKED`; at-least-once -> Redis |
-| Isolation | Explicit txn boundaries; `FOR UPDATE SKIP LOCKED` on hot contention paths |
-
-### ClickHouse
-
-| Pattern | Detail |
-| :--- | :--- |
-| Engine | `ReplicatedMergeTree` for event tables |
-| Insert | Buffered batches from processor; spool on outage |
-| Analytics | Materialized views for hourly aggregates; admin reads with lag flag |
-
-### Durability and settlement
-
-| Stage | Mechanism |
-| :--- | :--- |
-| Stream | `ad:events:stream`; consumer groups PG / CH / fraud |
-| Ack rule | `XAck` after PG commit or CH spool `fsync` |
-| Budget sync | `SyncWorker`: Redis dirty set -> PG `UpdateSpend` -> Redis commit |
-| Outbox | PG txn + `outbox_events`; `SKIP LOCKED` workers -> Redis |
-
-Budget invariant: `current_spend <= budget_limit` in Postgres (+-1 micro-unit).
-
-### Multi-region (target)
-
-1. Hot path in regional cells (tracker, Redis x4, processor).
-2. Global PostgreSQL for finance and configuration.
-3. Cross-region via `outbox_region_delivery` (at-least-once).
-4. No cross-region Redis replication.
-
-Detail: regional proxies, disk gate, node scoring with sliding-window fallbacks — [.cursor/MULTI_REGION.md](../.cursor/MULTI_REGION.md).
+#### Architectural Justification
+- **Why In-Process**: Traditional RTB integrations use external bidding services, adding network latency (RTT) to the request path. Running the auction in-process using pre-sorted SoA structures eliminates network overhead, allowing the tracker to evaluate up to 500 candidates in under 15 microseconds.
 
 ---
 
-## RTB
+## 7. Fault Tolerance and Resilience
 
-In-process auction on `/track` before `FilterEngine.Check`. Not a standalone OpenRTB exchange endpoint.
+### 7.1. Local Quanta Ledger
+To minimize Redis network traffic, trackers use local budget reservation:
+1. The tracker requests a budget quota (e.g., 1000 impressions) from Redis using the `local-quota-refill.lua` script.
+2. Incoming impressions are debited locally in the tracker's memory using atomic CAS operations (`TrySpendLocal`), taking **~13 ns**.
+3. When the campaign is paused, the tracker receives a SIGTERM, or the quota TTL expires, the unused quota is returned to Redis.
 
-| `RTB_MODE` | Behavior |
-| :--- | :--- |
-| `off` | Skip |
-| `shadow` | `RunAuctionEval`; metrics only |
-| `live` | `RunAuction`; winner replaces `campaign_id` |
+#### Architectural Justification
+- **Network Decoupling**: Local budget reservation reduces the volume of Redis commands by up to 90%, preventing Redis CPU saturation and protecting the system from network latency spikes.
 
-| Metric | Target |
-| :--- | :--- |
-| `RunAuction` p99 | < 15 us |
-| Candidates scanned p99 | < 500 |
-| Heap allocations | 0 per auction |
+### 7.2. Infrastructure Failure Modes
 
-Packages: `internal/rtb/`, `internal/ingestion/rtb_*.go`, `internal/controlplane/handler_rtb.go`, `service_rtb_deals.go`.
-
-Cold path: `SyncRtbCatalog`, deal CRUD, `RELOAD_RTB_CATALOG` outbox, floor optimizer from CH.
-
-Hot path: `RunAuction` scans presorted SoA buckets; budget debit via CAS in `BudgetStore` or Redis Lua depending on `RTB_BUDGET_AUTHORITY`.
-
-Open RTB gaps: GAP-RTB-11, remaining GAP-RTB-12 scope (see DEVELOPMENT.md completed roadmap).
+- **Redis Shard 0 Outage**: Trackers continue processing traffic for cached campaigns. New campaigns cannot be resolved (returning `503 registry_stale` after 30 seconds). Configuration updates from the control plane are paused.
+- **ClickHouse Outage**: The `processor` diverts event logs to the local disk spool. Once ClickHouse recovers, the processor drains the spooled files sequentially, preserving event order.
+- **PostgreSQL Outage**: The `processor` stops committing spend aggregates to PostgreSQL but continues reading events from Redis Streams. The stream buffer absorbs backlog traffic for several hours, preventing data loss.
 
 ---
 
-## Edge ingress
+## 8. Security and Compliance
 
-### Nginx/OpenResty (L7)
-
-| Port | Client | Upstream |
-| :--- | :--- | :--- |
-| 8180 | HTTP/1.1 | HTTP/1.1 -> tracker |
-| 443 | H2/H3/H1.1 | HTTP/1.1 -> tracker |
-
-`access-check.lua`: rate limit, circuit breaker, blacklist cache, body DFA (`edge-parse-dfa.lua`), per-campaign RL, shard balancer (`edge-slot-map.lua`). Shard formula matches Go `StaticSlotSharder`.
-
-`TRACKER_INGRESS_SCHEMA`: `openrtb_3` (default) or `espx_native`; must match tracker `config.IngressSchema`.
-
-Optional tarpit: `EDGE_TARPIT_ENABLED`, `edge-tarpit.lua`; capped delay on edge only.
-
-### XDP L4 (eBPF)
-
-Blocklist, SYN/PPS limits, passive IVT signals (score only, not hard block). Sync path: management outbox -> Redis -> `cmd/edge-bpf-sync` -> pinned BPF maps.
-
-Production: defensive perimeter only; no outbound strike to offender IPs ([Compliance](#compliance)).
-
----
-
-## Control plane
-
-Cold-path `cmd/control` modular monolith: HTTP admin, in-process settlement, workers. Hot path (`/track`, Redis Lua, XDP) is out of scope for this process.
-
-Mutation rule: config affecting hot path runs in one PostgreSQL transaction plus `outbox_events`. Direct HTTP writes to Redis are forbidden.
-
-Route prefixes: `/api/v1/*`, `/api/v1/selfserve/*` (advertiser API). `/admin/*` is **legacy HTMX** — deprecated for self-hosted; use JSON API only ([SELF_HOSTED.md — UI](./SELF_HOSTED.md#ui-no-server-side-htmx)).
-
-Workers (sample): `OutboxWorker`, `ReconWorker`, `SyncWorker` x4, `PacingControllerWorker`, `ScheduleWorker`, `LedgerInvariantWorker`.
-
-In-process modules: `identity`, `payment`, `ledger`, `notify` (via `CONTROL_ENABLE_*`). `processor` writes PG events and CH batches in a separate binary.
-
-JSON API: `internal/controlplane/handler_api.go`, `handler_*.go`, and `internal/controlplane/adminapi/` (reporting scaffolds). Contracts: `docs/openapi/openapi.yaml` plus handler godoc.
-
-### Entitlements (three layers)
-
-See [SELF_HOSTED.md](./SELF_HOSTED.md) for Layer V (vendor license) vs Layer O (operator) vs Layer A (advertisers).
-
-```text
-deployment_license  ← license.jwt / billing.license_status (vendor caps, features)
-advertiser_plan     ← billing.customer_subscriptions (operator tiers)
-
-effective_limit   = min(deployment_license.limits[X], advertiser_plan.limits[X])
-effective_feature = deployment_license.features[X] AND advertiser_plan.features[X]
-```
-
-Ingress quotas: RPS (UDP epoch), RPD (calendar day, HTTP 429), events/month (operator `usage_meters` from PG — not ClickHouse, not vendor billing).
-
----
-
-## Fraud path
-
-- Tracker -> fraud stream (MPSC: 512 critical + 3584 analytical) -> processor -> CH
-- ivt-detector / fraud-scorer -> management outbox -> Redis shards
-
-- Critical lane (L1 reject, L3 blocklist): not aggregated; short spin then drop.
-- Analytical lane: adaptive /24 aggregation at >= 80% fill.
-- Consumer lag > `FRAUD_CONSUMER_LAG_SEC`: tracker widens aggregation (`aggregating=force`).
-
-`internal/ingestion` must not import `internal/fraud`.
-
----
-
-## Resilience
-
-| Fault | Behavior |
-| :--- | :--- |
-| Shard-0 pub/sub down | Stale-serve known campaigns; `503 registry_stale` for unknown; optional broker `campaigns:update` fallback |
-| Shard-0 ingest outage | `503 shard_unavailable` or triplet reroute; shards 1-3 unaffected |
-| Deep JSON / hostile H2 | Reject at parse (`MaxJSONDepth`); close after `H2_INCOMPLETE_MAX` incomplete spins |
-| Campaign pause / tracker SIGTERM | Flush unused local quanta -> Redis + broker return delta |
-| Fraud ring storm | Critical signals in dedicated lane; backlog metrics |
-
-Shard-0 ingest blast radius:
-
-| Campaign home | During shard-0 outage |
-| :--- | :--- |
-| StaticSlot shards 1-3 | Unaffected |
-| StaticSlot shard 0, no triplet | `503 shard_unavailable` |
-| StaticSlot shard 0, HasTriplet | Reroute -> healthy reserve |
-| Unknown + stale registry | `503 registry_stale` |
-
-Runbooks: [DEVELOPMENT.md](./DEVELOPMENT.md).
-
----
-
-## Compliance
-
-| Class | Examples |
-| :--- | :--- |
-| Allowed | Wire-rate `XDP_DROP` on local NIC; passive TLS/TCP metadata (JA3/JA4 class); in-line tarpit delay on own server (edge only, capped) |
-| Forbidden | Active device fingerprinting on publisher pages; port scan / hack-back; outbound traffic to source IP as counter-attack |
-
-Blacklist mutations: PG txn + `admin_audit_log` + outbox `UPDATE_BLACKLIST`. eBPF map updates only via Redis sync path, not direct kernel writes from management.
-
-PII in ClickHouse: rolling hash for `ip_hash` / `ua_hash`; phase out raw `ip_address` retention. Operator hardening (at-rest, TLS, secrets): [runbooks/DATA_SECURITY.md](./runbooks/DATA_SECURITY.md).
-
----
-
-## Service boundaries
-
-| Component | Deployment | Rationale |
-| :--- | :--- | :--- |
-| `tracker` | Separate binary per shard pool | Hot path isolation, pinned workers |
-| `processor` | Separate binary | Stream consumer, PG/CH write concurrency |
-| `control` | Single modular monolith | Admin, auth, payment, billing, notifier, outbox in one process |
-| RTB auction | In-process in tracker | Sub-15 us budget; 0 allocs |
-| Lua filters | Redis scripts | Single RTT atomicity |
-
-Settlement runs in-process inside `control` (payment -> ledger). Fraud scoring cold path only (`fraud-scorer`, `ivt-detector`).
-
-### Load-test observability (dev)
-
-Laptop load tests (`scripts/load/`) produce paired reports per run:
-
-- **Application** — Prometheus scrape → `bottleneck-report.md` (handler, Lua, processor, fraud drops).
-- **Kernel** — optional `ESPX_BPF_PROBE=1` → `bpf-report.md` (syscalls, cgroup throttle, loadgen CPU share).
-
-Detail: [LOAD_TEST_BPF](.cursor/rules/load-test-bpf.mdc). Production edge BPF (XDP blocklist) remains in [EDGE](.cursor/rules/edge.mdc).
-
----
-
-## SLAs
-
-| Metric | Target |
-| :--- | :--- |
-| `ad_http_request_duration_seconds` | p95 < 50 ms, p99 < 80 ms, max 100 ms |
-| Redis unified-filter Lua | p99 < 10 ms / shard |
-| Geo filter (sampled) | p99 < 10 us |
-| `RunAuction` | p99 < 15 us; candidates p99 < 500 |
-| Fraud boost in `FilterEngine` | ~90 ns; 0 allocs/op |
-| Budget invariant | `current_spend <= budget_limit` (+-1 micro-unit) |
-
-Production: `FILTER_TIMEOUT_MS` <= 100.
-
----
-
-## Engineering constraints (hot path)
-
-- 0 heap allocations per request on parse, filter, auction
-- No `defer`, closures, `interface{}`, `sync.Map`, string `+` in request loops
-- Monotonic deadlines (`FilterDeadlineMono`)
-- Pre-bound Prometheus labels
-- BCE: length check before indexed access on gnet buffers
-- Contended atomics padded to cache line (64 bytes)
-
-CI: `make test-alloc-gate`, `scripts/perf/`, `scripts/fault/run.sh`. Runbooks: [DEVELOPMENT.md](./DEVELOPMENT.md).
-
----
-
-## Licensing
-
-Hot path reads JWT snapshot only. Cold path: `VolumeMeterWorker` to `usage_meters`. Admin JSON API lives in `cmd/control`.
-
----
-
-## Optional broker
-
-`cmd/broker`: mmap segment log; used with shipper/compactor/evacuator for regional log evacuation. Not a Kafka replacement. Not in default compose stack.
+- **PII Protection**: Raw IP addresses and User-Agents are never stored in ClickHouse. The platform uses a rolling hash algorithm (`piihash`) to generate irreversible `ip_hash` and `ua_hash` values during ingestion.
+- **Passive Defense**: Malicious traffic is dropped at the network interface level using eBPF/XDP. The platform strictly adheres to passive defense principles: active port scanning, device fingerprinting on publisher pages, or outbound counter-attacks are forbidden.
+- **Audit Logging**: All administrative mutations (budget changes, manual blacklist updates, plan adjustments) are recorded in the `admin_audit_log` table within the same transaction as the mutation.

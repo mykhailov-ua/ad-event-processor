@@ -13,7 +13,6 @@ import (
 	"espx/internal/ingestion"
 	"espx/internal/payment"
 	"espx/internal/payment/db"
-	"espx/internal/paymenttest"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -26,15 +25,15 @@ func TestFault_PaymentDualOutboxWorkerRace(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
+	infra, cleanup := SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
 	customerID := uuid.New()
-	seed := paymenttest.SeedSucceededIntentWithOutbox(t, infra, customerID, 25_000_000, "fault-race-"+uuid.New().String())
-	paymenttest.AssertPaymentFaultInvariants(t, infra.Pool, seed, 0, 0)
+	seed := SeedSucceededIntentWithOutbox(t, infra, customerID, 25_000_000, "fault-race-"+uuid.New().String())
+	AssertPaymentFaultInvariants(t, infra.Pool, seed, 0, 0)
 
-	worker := paymenttest.NewOutboxWorkerForFault(infra)
+	worker := NewOutboxWorkerForFault(infra)
 	const workers = 4
 	var wg sync.WaitGroup
 	var totalProcessed atomic.Int32
@@ -49,15 +48,15 @@ func TestFault_PaymentDualOutboxWorkerRace(t *testing.T) {
 	wg.Wait()
 
 	require.Eventually(t, func() bool {
-		return paymenttest.PaymentOutboxStatus(t, infra.Pool, seed.OutboxID) == "PROCESSED" &&
-			paymenttest.LedgerCountForIntent(t, infra.Pool, seed.IntentID) == 1
+		return PaymentOutboxStatus(t, infra.Pool, seed.OutboxID) == "PROCESSED" &&
+			LedgerCountForIntent(t, infra.Pool, seed.IntentID) == 1
 	}, 10*time.Second, 50*time.Millisecond)
-	paymenttest.AssertPaymentFaultInvariants(t, infra.Pool, seed, seed.AmountMicro, 1)
+	AssertPaymentFaultInvariants(t, infra.Pool, seed, seed.AmountMicro, 1)
 
 	faultproof.Log(t, "outbox_worker_race", map[string]string{
 		"subsystem":   "payment_outbox",
 		"workers":     "4",
-		"processed":   paymenttest.ItoaPaymentFault(int(totalProcessed.Load())),
+		"processed":   ItoaPaymentFault(int(totalProcessed.Load())),
 		"ledger_rows": "1",
 		"baseline_ok": "true",
 		"fault_type":  "concurrency_stress",
@@ -69,12 +68,12 @@ func TestFault_PaymentConcurrentCreateIdempotencyKey(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
+	infra, cleanup := SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
 	customerID := uuid.New()
-	paymenttest.SeedCustomer(t, infra.Pool, customerID)
+	SeedCustomer(t, infra.Pool, customerID)
 
 	svc := payment.NewService(infra.Pool, infra.Cfg)
 	key := "fault-idem-" + uuid.New().String()
@@ -98,7 +97,7 @@ func TestFault_PaymentConcurrentCreateIdempotencyKey(t *testing.T) {
 
 	faultproof.Log(t, "concurrent_idempotency_create", map[string]string{
 		"subsystem":      "payment_intent",
-		"workers":        paymenttest.ItoaPaymentFault(paymentFaultWorkers),
+		"workers":        ItoaPaymentFault(paymentFaultWorkers),
 		"intents":        "1",
 		"provider_calls": "1",
 		"baseline_ok":    "true",
@@ -111,12 +110,12 @@ func TestFault_PaymentConcurrentWebhookSameEventID(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
+	infra, cleanup := SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
 	customerID := uuid.New()
-	paymenttest.SeedCustomer(t, infra.Pool, customerID)
+	SeedCustomer(t, infra.Pool, customerID)
 
 	svc := payment.NewService(infra.Pool, infra.Cfg)
 	result, err := svc.CreatePaymentIntent(ctx, customerID, 8_000_000, "USD", "fault-wh-"+uuid.New().String(), nil)
@@ -149,7 +148,7 @@ func TestFault_PaymentConcurrentWebhookSameEventID(t *testing.T) {
 
 	faultproof.Log(t, "concurrent_webhook_dedup", map[string]string{
 		"subsystem":    "payment_webhook",
-		"workers":      paymenttest.ItoaPaymentFault(paymentFaultWorkers),
+		"workers":      ItoaPaymentFault(paymentFaultWorkers),
 		"webhook_rows": "1",
 		"outbox_rows":  "1",
 		"baseline_ok":  "true",
@@ -162,12 +161,12 @@ func TestFault_PaymentStaleLeaseReclaim(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
+	infra, cleanup := SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
 	customerID := uuid.New()
-	seed := paymenttest.SeedSucceededIntentWithOutbox(t, infra, customerID, 15_000_000, "fault-lease-"+uuid.New().String())
+	seed := SeedSucceededIntentWithOutbox(t, infra, customerID, 15_000_000, "fault-lease-"+uuid.New().String())
 
 	_, err := infra.Pool.Exec(ctx, `
 		UPDATE payment.payment_outbox
@@ -175,14 +174,14 @@ func TestFault_PaymentStaleLeaseReclaim(t *testing.T) {
 		WHERE id = $1`, seed.OutboxID)
 	require.NoError(t, err)
 
-	worker := paymenttest.NewOutboxWorkerForFault(infra)
+	worker := NewOutboxWorkerForFault(infra)
 	worker.ReclaimStaleProcessingForTest(ctx)
-	require.Equal(t, "PENDING", paymenttest.PaymentOutboxStatus(t, infra.Pool, seed.OutboxID))
+	require.Equal(t, "PENDING", PaymentOutboxStatus(t, infra.Pool, seed.OutboxID))
 
 	n, err := worker.ProcessOutbox(ctx, 10)
 	require.NoError(t, err)
 	require.Equal(t, 1, n)
-	paymenttest.AssertPaymentFaultInvariants(t, infra.Pool, seed, seed.AmountMicro, 1)
+	AssertPaymentFaultInvariants(t, infra.Pool, seed, seed.AmountMicro, 1)
 
 	faultproof.Log(t, "stale_lease_reclaim", map[string]string{
 		"subsystem":   "payment_outbox",
@@ -198,13 +197,13 @@ func TestFault_PaymentPostSettlementMarkGap(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
+	infra, cleanup := SetupPaymentFaultInfra(t)
 	defer cleanup()
 	defer func() { payment.SetPostSettlementMarkHookForTest(nil) }()
 
 	ctx := context.Background()
 	customerID := uuid.New()
-	seed := paymenttest.SeedSucceededIntentWithOutbox(t, infra, customerID, 18_000_000, "fault-gap-"+uuid.New().String())
+	seed := SeedSucceededIntentWithOutbox(t, infra, customerID, 18_000_000, "fault-gap-"+uuid.New().String())
 
 	var hookCalls atomic.Int32
 	payment.SetPostSettlementMarkHookForTest(func(ctx context.Context, ev db.PaymentPaymentOutbox) error {
@@ -214,24 +213,24 @@ func TestFault_PaymentPostSettlementMarkGap(t *testing.T) {
 		return nil
 	})
 
-	worker := paymenttest.NewOutboxWorkerForFault(infra)
+	worker := NewOutboxWorkerForFault(infra)
 	n, err := worker.ProcessOutbox(ctx, 10)
 	require.NoError(t, err)
 	require.Equal(t, 0, n)
-	paymenttest.AssertPaymentFaultInvariants(t, infra.Pool, seed, seed.AmountMicro, 1)
-	require.Equal(t, "PENDING", paymenttest.PaymentOutboxStatus(t, infra.Pool, seed.OutboxID))
+	AssertPaymentFaultInvariants(t, infra.Pool, seed, seed.AmountMicro, 1)
+	require.Equal(t, "PENDING", PaymentOutboxStatus(t, infra.Pool, seed.OutboxID))
 
 	n, err = worker.ProcessOutbox(ctx, 10)
 	require.NoError(t, err)
 	require.Equal(t, 1, n)
-	paymenttest.AssertPaymentFaultInvariants(t, infra.Pool, seed, seed.AmountMicro, 1)
-	require.Equal(t, "PROCESSED", paymenttest.PaymentOutboxStatus(t, infra.Pool, seed.OutboxID))
+	AssertPaymentFaultInvariants(t, infra.Pool, seed, seed.AmountMicro, 1)
+	require.Equal(t, "PROCESSED", PaymentOutboxStatus(t, infra.Pool, seed.OutboxID))
 
 	faultproof.Log(t, "post_settlement_mark_failed", map[string]string{
 		"subsystem":     "payment_outbox",
 		"ledger_rows":   "1",
 		"double_credit": "false",
-		"hook_calls":    paymenttest.ItoaPaymentFault(int(hookCalls.Load())),
+		"hook_calls":    ItoaPaymentFault(int(hookCalls.Load())),
 		"baseline_ok":   "true",
 		"fault_type":    "injected_timing_gap",
 	})
@@ -242,24 +241,24 @@ func TestFault_PaymentMissingCustomerSettlementDead(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
+	infra, cleanup := SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
 	customerID := uuid.New()
-	seed := paymenttest.SeedSucceededIntentWithOutbox(t, infra, customerID, 9_000_000, "fault-orphan-"+uuid.New().String())
+	seed := SeedSucceededIntentWithOutbox(t, infra, customerID, 9_000_000, "fault-orphan-"+uuid.New().String())
 
 	_, err := infra.Pool.Exec(ctx, `DELETE FROM customers WHERE id = $1`, ingestion.ToUUID(customerID))
 	require.NoError(t, err)
 
-	worker := paymenttest.NewOutboxWorkerForFault(infra)
+	worker := NewOutboxWorkerForFault(infra)
 	n, err := worker.ProcessOutbox(ctx, 10)
 	require.NoError(t, err)
 	require.Equal(t, 0, n)
 
-	status := paymenttest.PaymentOutboxStatus(t, infra.Pool, seed.OutboxID)
+	status := PaymentOutboxStatus(t, infra.Pool, seed.OutboxID)
 	require.Equal(t, "DEAD", status)
-	require.Equal(t, 0, paymenttest.LedgerCountForIntent(t, infra.Pool, seed.IntentID))
+	require.Equal(t, 0, LedgerCountForIntent(t, infra.Pool, seed.IntentID))
 
 	var intentStatus string
 	require.NoError(t, infra.Pool.QueryRow(ctx, `

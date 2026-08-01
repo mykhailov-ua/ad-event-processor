@@ -307,9 +307,6 @@ func (s *Service) GetCampaignStats(ctx context.Context, campaignID uuid.UUID, fr
 		return report, nil
 	}
 
-	// FIX [3.1]: bound the CH path with an explicit timeout so slow CH queries
-	// do not hold the request goroutine indefinitely (unlike forecastCampaign
-	// which already had a 2s timeout, this path had none).
 	const chStatsTimeout = 10 * time.Second
 	chCtx, cancel := context.WithTimeout(ctx, chStatsTimeout)
 	defer cancel()
@@ -392,9 +389,7 @@ ORDER BY hour`
 	return buckets, lag, nil
 }
 
-// chLagCache caches the ClickHouse ingestion lag to avoid a max() aggregation
-// query on every /campaigns/{id}/stats call.
-// FIX [5.2]: amortize the lag probe to at most once per cacheTTL.
+// chLagCache caches ClickHouse ingestion lag for campaign stats.
 type chLagCache struct {
 	mu      sync.Mutex
 	lag     time.Duration

@@ -74,12 +74,12 @@ kill_collector() {
 case "$CMD" in
 start)
 	mkdir -p "$BPF_DIR"
-	if ! bash "$SCRIPTS/load/bpf_requirements.sh"; then
+	if ! bash "$SCRIPTS/test/bpf_requirements.sh"; then
 		log "preflight failed — set ESPX_BPF_PROBE=0 to skip"
 		exit 1
 	fi
-	bash "$SCRIPTS/load/bpf_build.sh"
-	bash "$SCRIPTS/load/bpf_resolve_targets.sh" "$TARGETS_JSON" "${ESPX_BPF_TARGETS:-tracker,nginx,redis,processor}"
+	bash "$SCRIPTS/test/bpf_build.sh"
+	bash "$SCRIPTS/test/bpf_resolve_targets.sh" "$TARGETS_JSON" "${ESPX_BPF_TARGETS:-tracker,nginx,redis,processor}"
 
 	build_collector
 
@@ -87,7 +87,7 @@ start)
 	SLOW_US="${ESPX_BPF_SLOW_US:-10000}"
 	BPF_OBJ="${ESPX_BPF_OBJECT:-$ROOT/deploy/dev/bpf/loadtest_probe.o}"
 	DISCOVER_LOADGEN=0
-	if [[ "${ESPX_BPF_TRACK_LOADGEN:-${ESPX_BPF_TRACK_K6:-1}}" == "1" ]]; then
+	if [[ "${ESPX_BPF_TRACK_LOADGEN:-1}" == "1" ]]; then
 		DISCOVER_LOADGEN=1
 	fi
 	DUMP_INTERVAL="${ESPX_BPF_DUMP_INTERVAL:-0}"

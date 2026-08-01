@@ -12,10 +12,6 @@ globs:
   - pkg/coldpath/**
   - cmd/control/**
   - cmd/admin/**
-  - cmd/cost-sync/**
-  - cmd/billing/**
-  - cmd/payment/**
-  - cmd/notifier/**
 alwaysApply: false
 ---
 
@@ -129,7 +125,7 @@ Before submitting cold-path changes:
 - Hot-path zero-alloc rules (`hot-path.mdc`, `espx.mdc`).
 - `internal/campaignmodel` shared types — do not add cold-path DTOs there.
 - Existing worker tickers at module bootstrap (`StartWorkers`, outbox interval) — do not remove unless replacing with equivalent processing.
-- Test-only `httptest` servers and fault-injection harnesses in `*_test.go` / `paymenttest/`.
+- Test-only `httptest` servers and fault-injection harnesses in `*_test.go`.
 
 8. Useless tests (delete, do not add)
 
@@ -147,7 +143,7 @@ Cut tests that do not exercise project logic or contracts:
 | Static meta smoke | handler 200 + `NotEmpty` on compile-time constants |
 | Duplicate | same behavior as sibling test with trivial variation |
 
-Keep: OpenAPI/stub route contracts (`stub_routes_test.go`), fault injection, pagination/audit integration, real parsers (`parseMoneyMicro`, `ParseStatementPeriod`), fanout/worker behavior.
+Keep: stub route contracts (`stub_routes_test.go`), fault injection, pagination/audit integration, real parsers (`parseMoneyMicro`, `ParseStatementPeriod`), fanout/worker behavior.
 
 9. Zero mapping layer (no intermediate DTOs)
 

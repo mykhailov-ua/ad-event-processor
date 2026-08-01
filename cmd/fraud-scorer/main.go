@@ -179,7 +179,7 @@ func scanAndRegister(ctx context.Context, pool *pgxpool.Pool) error {
 				Metrics json.RawMessage `json:"metrics"`
 			}
 			if err := json.Unmarshal(data, &meta); err == nil {
-				metricsJSON = data // Use full metadata as metricsJSON
+				metricsJSON = data
 				if meta.Version != "" {
 					version = meta.Version
 				}

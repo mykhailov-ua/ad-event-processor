@@ -7,10 +7,10 @@ import (
 )
 
 const (
-	defaultProductName  = "eSPX"
-	defaultVendorName   = "eSPX"
-	defaultSiteURL      = "https://espx.io"
-	defaultSupportEmail = "support@espx.io"
+	defaultProductName  = "BidShard"
+	defaultVendorName   = "BidShard"
+	defaultSiteURL      = "https://bidshard.com"
+	defaultSupportEmail = "support@bidshard.com"
 )
 
 var (

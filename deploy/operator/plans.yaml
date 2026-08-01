@@ -1,5 +1,3 @@
-# Operator advertiser tiers (Layer O). Reload: POST /api/v1/ops/plans/reload
-# Override path: OPERATOR_PLANS_YAML
 
 plans:
   - code: network_pro

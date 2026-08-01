@@ -47,7 +47,7 @@ fi
 if [[ "$PREPARE" == "1" ]]; then
 	if [[ "$CONSTRAINED" == "1" ]]; then
 		log "preparing constrained stack"
-		bash "$SCRIPTS/load/prepare_constrained_stack.sh" 2>&1 | tee -a "$OUT/compose.log"
+		bash "$SCRIPTS/test/prepare_constrained_stack.sh" 2>&1 | tee -a "$OUT/compose.log"
 	else
 		export RATE_LIMIT_PER_MIN=1000000
 		bash "$SCRIPTS/ci/prepare_test.sh"
@@ -56,7 +56,7 @@ else
 	"${COMPOSE[@]}" up -d --remove-orphans "${LOAD_SERVICES[@]}" 2>&1 | tee -a "$OUT/compose.log"
 	if [[ "$CONSTRAINED" == "1" ]]; then
 		"${COMPOSE[@]}" stop tracker-2 tracker-3 2>/dev/null || true
-		bash "$SCRIPTS/load/seed_load_test_limits.sh" || log "WARN: seed limits failed"
+		bash "$SCRIPTS/test/seed_load_test_limits.sh" || log "WARN: seed limits failed"
 		"${COMPOSE[@]}" up -d nginx 2>&1 | tee -a "$OUT/compose.log" || true
 		sleep 2
 	fi
@@ -68,12 +68,12 @@ fi
 } >"$OUT/profile.txt"
 
 SNAP_PID=""
-[[ "${SNAPSHOT_RUNTIME:-1}" == "1" ]] && bash "$SCRIPTS/load/snapshot_runtime.sh" "$OUT/runtime-pre" 5 &
+[[ "${SNAPSHOT_RUNTIME:-1}" == "1" ]] && bash "$SCRIPTS/test/snapshot_runtime.sh" "$OUT/runtime-pre" 5 &
 SNAP_PID=$!
 
 BPF_PID=""
 if [[ "${ESPX_BPF_PROBE:-0}" == "1" ]]; then
-	bash "$SCRIPTS/load/bpf_probe_session.sh" start "$OUT" || log "WARN: BPF start failed"
+	bash "$SCRIPTS/test/bpf_probe_session.sh" start "$OUT" || log "WARN: BPF start failed"
 	[[ -f "$OUT/bpf/collector.pid" ]] && BPF_PID="$(cat "$OUT/bpf/collector.pid")"
 fi
 
@@ -87,8 +87,8 @@ log "starting loadgen (${MODE})"
 go run ./cmd/loadgen "${LG_ARGS[@]}" 2>&1 | tee "$OUT/loadgen.log"
 
 [[ -n "$SNAP_PID" ]] && wait "$SNAP_PID" 2>/dev/null || true
-[[ -n "$BPF_PID" ]] && bash "$SCRIPTS/load/bpf_probe_session.sh" stop "$OUT" "$BPF_PID" || true
-bash "$SCRIPTS/load/snapshot_runtime.sh" "$OUT/runtime-post" 10
+[[ -n "$BPF_PID" ]] && bash "$SCRIPTS/test/bpf_probe_session.sh" stop "$OUT" "$BPF_PID" || true
+bash "$SCRIPTS/test/snapshot_runtime.sh" "$OUT/runtime-post" 10
 
 go run ./cmd/load-report all "$OUT"
 log "done — $OUT"

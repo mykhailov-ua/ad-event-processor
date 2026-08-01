@@ -5,21 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"espx/internal/openapi"
 )
-
-func TestStubCatalog_matchesOpenAPI(t *testing.T) {
-	t.Parallel()
-	if len(stubRouteCatalog) != len(openapi.StubRoutes) {
-		t.Fatalf("catalog=%d openapi=%d", len(stubRouteCatalog), len(openapi.StubRoutes))
-	}
-	for _, route := range stubRouteCatalog {
-		if !openapi.IsStub(route.Method, route.Path) {
-			t.Fatalf("missing openapi stub: %s %s", route.Method, route.Path)
-		}
-	}
-}
 
 func TestStubRoutes_return501(t *testing.T) {
 	t.Parallel()

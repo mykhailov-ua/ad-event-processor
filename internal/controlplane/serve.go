@@ -540,7 +540,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 func registerAdminGoneRoutes(mux *http.ServeMux) {
 	gone := func(w http.ResponseWriter, r *http.Request) {
 		httpresponse.Error(w, http.StatusGone, "GONE",
-			"legacy /admin HTMX routes removed; use /api/v1 JSON API (see docs/SELF_HOSTED.md)")
+			"legacy /admin HTMX routes removed; use /api/v1 JSON API (see docs/DEVELOPMENT.md)")
 	}
 	for _, method := range []string{"GET", "POST", "PUT", "DELETE", "PATCH"} {
 		mux.HandleFunc(method+" /admin/{path...}", gone)
@@ -550,6 +550,6 @@ func registerAdminGoneRoutes(mux *http.ServeMux) {
 func registerRootRoute(mux *http.ServeMux) {
 	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND",
-			"no bundled UI; use /api/v1 JSON API (see docs/SELF_HOSTED.md)")
+			"no bundled UI; use /api/v1 JSON API (see docs/DEVELOPMENT.md)")
 	})
 }

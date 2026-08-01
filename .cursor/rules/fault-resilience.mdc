@@ -19,7 +19,7 @@ Principles
 
 Each experiment follows: define steady state -> hypothesize stability -> inject fault -> compare metrics -> abort on breach.
 
-eSPX steady state defaults:
+BidShard steady state defaults:
 
 - `/track` RPS stable without unexplained drops
 - Latency p95 < 50 ms, p99 < 80 ms, hard ceiling 100 ms

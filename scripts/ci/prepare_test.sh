@@ -85,8 +85,8 @@ export DB_DSN="${DB_DSN:-postgres://${DB_USER:-ad_event_processor_user}:${DB_PAS
 go run ./cmd/migrate-cold-path --only=ads,auth,billing
 
 echo "Repairing schema drift after migrations"
-DB_PORT="$DB_PORT" bash scripts/load/reconcile_ingestion_migrations.sh
-DB_PORT="$DB_PORT" bash scripts/load/verify_load_test_schema.sh
+DB_PORT="$DB_PORT" bash scripts/test/reconcile_ingestion_migrations.sh
+DB_PORT="$DB_PORT" bash scripts/test/verify_load_test_schema.sh
 
 echo "Restarting trackers and processor to recreate consumer groups"
 docker compose up -d --build --force-recreate processor tracker-0 tracker-1 tracker-2 tracker-3

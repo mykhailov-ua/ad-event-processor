@@ -231,8 +231,6 @@ type OpsAlerter struct {
 	outboxStuckSec     int
 	lastSent           sync.Map
 	enqueueFailures    atomic.Int64
-	// FIX [3.2]: track in-flight alert goroutines so Drain() can wait for them
-	// before shutdown, preventing orphaned goroutines.
 	wg                 sync.WaitGroup
 }
 
@@ -280,8 +278,6 @@ func (a *OpsAlerter) sendAsync(key, title, body string, broadcast bool) {
 	if a == nil || !a.shouldSend(key) {
 		return
 	}
-	// FIX [3.2]: track goroutine lifetime so Drain() can wait for all in-flight
-	// alerts to finish before process exit.
 	a.wg.Add(1)
 	go func() {
 		defer a.wg.Done()
@@ -602,10 +598,6 @@ func (w *OpsMetricScraper) scrapeAndStore(ctx context.Context, now time.Time) er
 		return nil
 	}
 
-	// FIX [2.4]: replace N sequential INSERTs with a single pgx.Batch.
-	// At the default 15s scrape interval, a typical Prometheus endpoint exposes
-	// 1000-5000 samples. Sequential inserts caused connection pool pressure;
-	// a single batch pipeline eliminates all but one server round-trip.
 	const insertSQL = `INSERT INTO ops.metric_samples (name, labels_hash, ts, value)
 		VALUES ($1, $2, $3, $4)
 		ON CONFLICT (name, labels_hash, ts) DO UPDATE SET value = EXCLUDED.value`

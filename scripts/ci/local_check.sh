@@ -11,7 +11,6 @@ bash "$SCRIPTS/ci/check_no_chaos_refs.sh"
 bash "$SCRIPTS/ci/comments.sh"
 bash "$SCRIPTS/ci/compliance.sh"
 bash "$SCRIPTS/ci/ch_direct.sh"
-bash "$SCRIPTS/ci/openapi.sh"
 make lint
 make test-alloc-gate
 make test

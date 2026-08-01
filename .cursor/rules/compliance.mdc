@@ -23,24 +23,24 @@ A. Wire-rate packet dropping (eBPF/XDP)
 Action: `XDP_DROP` for malformed, abusive, or rate-exceeded traffic on the local NIC (`deploy/edge/xdp/bpf/edge_filter.c`: blocklist, SYN/PPS limits).
 Art. 361 UK: Refusing to process packets on your interface; not altering a remote system.
 US CFAA: Defending your own boundary; no unauthorized access to others' computers.
-eSPX rule: Auto-blocks enter BPF maps only after local breach (rate limit, operator RBAC block, fraud outbox). TTL in map value; immutable allowlist before deny (`CMP-EBPF-*`). Sync: `management` -> Redis -> `cmd/edge-bpf-sync` -> pinned maps. No direct kernel writes from management.
+BidShard rule: Auto-blocks enter BPF maps only after local breach (rate limit, operator RBAC block, fraud outbox). TTL in map value; immutable allowlist before deny (`CMP-EBPF-*`). Sync: `management` -> Redis -> `cmd/edge-bpf-sync` -> pinned maps. No direct kernel writes from management.
 
 B. Passive network signaling (JA3/JA4, TCP metadata)
 
 Action: Parse protocol metadata the client sent to open a session: TLS ClientHello (JA3/JA4 class), TCP window/TTL where available, HTTP headers (`User-Agent`, `Sec-CH-UA*`).
 GDPR / ePrivacy: No covert device probes; no non-disclosed hardware reads. Metadata is voluntarily transmitted for the handshake.
 EU AI Act (2026): Standard statistical anti-fraud: structural/machine signals, not prediction of personal human traits or biometric categorization.
-eSPX rule: Edge/nginx exposes TLS hash -> `DeviceFilter` (`internal/ingestion/device_filter.go`): fraud signals; hard block only via operator list or policy. Cold path: `TLSImpersonationWorker` for JA3xUA mismatch analytics. No JS injection on publisher pages.
+BidShard rule: Edge/nginx exposes TLS hash -> `DeviceFilter` (`internal/ingestion/device_filter.go`): fraud signals; hard block only via operator list or policy. Cold path: `TLSImpersonationWorker` for JA3xUA mismatch analytics. No JS injection on publisher pages.
 
 C. Network tarpitting (in-line slow response)
 
 Action: Delay HTTP response to suspected bots (e.g. hold connection 5-10s) within HTTP semantics; resource pacing on your server.
 Legal: Server may allocate its own CPU/socket budget; not an attack on client infrastructure.
-eSPX status: **Active** at nginx edge when `EDGE_TARPIT_ENABLED=true`. Capped `EDGE_TARPIT_MAX_SEC` (hard max 15s); metrics `espx_edge_tarpit_*` via `edge-metrics.lua`; never on billing/settlement paths. Matrix: `.cursor/COMPLIANCE_MATRIX.md` (CMP-DEF-03).
+BidShard status: **Active** at nginx edge when `EDGE_TARPIT_ENABLED=true`. Capped `EDGE_TARPIT_MAX_SEC` (hard max 15s); metrics `espx_edge_tarpit_*` via `edge-metrics.lua`; never on billing/settlement paths. Matrix: `.cursor/COMPLIANCE_MATRIX.md` (CMP-DEF-03).
 
 2. Offensive measures (forbidden)
 
-Do not ship in code, docs, marketing, or operator runbooks as eSPX features.
+Do not ship in code, docs, marketing, or operator runbooks as features.
 
 A. Active device fingerprinting and DOM probing
 
@@ -48,20 +48,20 @@ Action: Hidden JS: Canvas, WebGL, audio APIs, font enumeration, cross-site ident
 GDPR / ePrivacy: Treated like illegal tracking; fines up to EUR20M or 4% global turnover.
 EU AI Act: Prohibited / high-risk when used for covert behavioral or biometric categorization.
 Art. 361 UK: Risk of unauthorized code execution on a foreign system (malware-like).
-eSPX rule: Banned. CI `scripts/ci/compliance.sh` fails on fingerprint SDK patterns. Server-side AdTech only.
+BidShard rule: Banned. CI `scripts/ci/compliance.sh` fails on fingerprint SDK patterns. Server-side AdTech only.
 
 B. Active counter-attacks (hack back / strike back)
 
 Action: Reverse DDoS, exploit payloads, flood-ping origin IPs detected in eBPF maps.
 Art. 361 / 361-1 UK: Criminal unauthorized destructive network operations against external IPs.
 US CFAA: Federal offense: intentional damage/transmission to external protected computers.
-eSPX rule: `management`, `tracker`, `processor`, edge workers do not open outbound streams to source IPs being blocked or scored. Only local map/DB/redis mutations. No `SYN`/`UDP` flood helpers in repo.
+BidShard rule: `management`, `tracker`, `processor`, edge workers do not open outbound streams to source IPs being blocked or scored. Only local map/DB/redis mutations. No `SYN`/`UDP` flood helpers in repo.
 
 C. Unsanctioned threat-intel scanning
 
 Action: Auto `nmap`, reverse port scan, proxy probe, OS detection against visitor IPs.
 Legal: Active scanning of foreign networks without authorization -> unauthorized access claims globally.
-eSPX rule: No integrated port scanner. Geo/ASN from passive MaxMind DB only. IVT uses ClickHouse aggregates on data already ingested; no live probing of visitor hosts.
+BidShard rule: No integrated port scanner. Geo/ASN from passive MaxMind DB only. IVT uses ClickHouse aggregates on data already ingested; no live probing of visitor hosts.
 
 3. Art. 361 UK - condensed risk map (Ukraine operators)
 

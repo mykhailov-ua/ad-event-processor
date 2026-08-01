@@ -4,18 +4,19 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
+MODEL_DIR="${ROOT}/model"
 ARTIFACT_DIR="${FRAUD_ARTIFACT_DIR:-var/fraudscore/artifacts}"
 MODEL_PATH="${ARTIFACT_DIR}/model.txt"
-FIXTURES_DIR="testdata/ml"
+FIXTURES_DIR="${FRAUD_FIXTURES_DIR:-var/fraudscore/fixtures}"
 
-mkdir -p "${ARTIFACT_DIR}"
+mkdir -p "${ARTIFACT_DIR}" "${FIXTURES_DIR}"
 
 echo "fraudtrain: bootstrap artifacts (ephemeral)"
 if python3 -c "import lightgbm" 2>/dev/null; then
-  python3 fraudtrain/artifact_bootstrap.py bootstrap
-  python3 fraudtrain/fixture_generator.py
+  python3 "${MODEL_DIR}/artifact_bootstrap.py" bootstrap
+  python3 "${MODEL_DIR}/fixture_generator.py"
 else
-  python3 fraudtrain/artifact_bootstrap.py bootstrap
+  python3 "${MODEL_DIR}/artifact_bootstrap.py" bootstrap
   echo "fraudtrain: skip fixture_generator (lightgbm not installed)"
 fi
 
@@ -34,37 +35,37 @@ go run ./cmd/ml-replay -model "${MODEL_PATH}" -fixtures "${FIXTURES_DIR}" > /dev
 
 if python3 -c "import lightgbm" 2>/dev/null; then
   echo "fraudtrain: Python artifact validate"
-  python3 fraudtrain/artifact_bootstrap.py validate --model "${MODEL_PATH}"
+  python3 "${MODEL_DIR}/artifact_bootstrap.py" validate --model "${MODEL_PATH}"
   echo "fraudtrain: fit smoke"
   python3 -c "
 from pathlib import Path
 import sys
-sys.path.insert(0, 'fraudtrain')
+sys.path.insert(0, '${MODEL_DIR}')
 from labeled_dataset import write_synthetic_dataset
 write_synthetic_dataset(Path('var/fraudscore/training/fit_smoke.csv'), count=1500)
 "
-  python3 fraudtrain/manual_labels_export.py || true
+  python3 "${MODEL_DIR}/manual_labels_export.py" || true
 
   FRAUD_TRAIN_DATASET=var/fraudscore/training/fit_smoke.csv \
     FRAUD_FIT_MIN_ROWS=500 \
     FRAUD_FIT_BOOST_ROUNDS=30 \
-    python3 fraudtrain/artifact_bootstrap.py fit-validate
+    python3 "${MODEL_DIR}/artifact_bootstrap.py" fit-validate
 else
-  echo "fraudtrain: skip Python validate (pip install -r fraudtrain/requirements.txt)"
+  echo "fraudtrain: skip Python validate (pip install -r model/requirements.txt)"
 fi
 
 if python3 -c "import clickhouse_connect" 2>/dev/null; then
   echo "fraudtrain: features_export smoke"
-  python3 fraudtrain/features_export.py --smoke --allow-offline
+  python3 "${MODEL_DIR}/features_export.py" --smoke --allow-offline
 else
   echo "fraudtrain: skip CH export smoke (clickhouse-connect not installed)"
 fi
 
 echo "fraudtrain: evaluate smoke"
-python3 fraudtrain/evaluate.py --allow-offline --format json --hours 1
+python3 "${MODEL_DIR}/evaluate.py" --allow-offline --format json --hours 1
 
 if command -v ruff >/dev/null 2>&1; then
-  ruff check fraudtrain/
+  ruff check "${MODEL_DIR}/"
 fi
 
 echo "fraudtrain: OK"

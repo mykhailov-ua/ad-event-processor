@@ -7,49 +7,38 @@ cd "$ROOT"
 fail_on_hit="${FIND_OBVIOUS_COMMENTS_FAIL:-1}"
 fail=0
 
-# 1. Check docs layout
 echo "tier_a: check docs layout..."
-for forbidden in docs/MULTI_REGION.md docs/COMPLIANCE_MATRIX.md; do
+for forbidden in docs/MULTI_REGION.md docs/COMPLIANCE_MATRIX.md docs/MILESTONE.md docs/SELF_HOSTED.md docs/PROTECTION.md; do
 	if [[ -f "$forbidden" ]]; then
-		echo "docs layout: $forbidden must not exist (agent doc lives in .cursor/)" >&2
+		echo "docs layout: $forbidden must not exist" >&2
 		fail=1
 	fi
 done
 
 for forbidden in .cursor/BACKLOG.md .cursor/GAP_SPECS.md .cursor/CI_GATES.md; do
 	if [[ -f "$forbidden" ]]; then
-		echo "docs layout: $forbidden must not exist (removed; see docs/DEVELOPMENT.md)" >&2
+		echo "docs layout: $forbidden must not exist (see docs/DEVELOPMENT.md)" >&2
 		fail=1
 	fi
 done
 
-for required in .cursor/MULTI_REGION.md .cursor/COMPLIANCE_MATRIX.md docs/MILESTONE.md; do
+for required in .cursor/MULTI_REGION.md .cursor/COMPLIANCE_MATRIX.md docs/ARCHITECTURE.md docs/DEVELOPMENT.md; do
 	if [[ ! -f "$required" ]]; then
 		echo "docs layout: missing $required" >&2
 		fail=1
 	fi
 done
 
-if ! grep -q 'docs/DEVELOPMENT.md' docs/MILESTONE.md 2>/dev/null; then
-	echo "docs layout: docs/MILESTONE.md must redirect to docs/DEVELOPMENT.md" >&2
-	fail=1
-fi
-
-allowed_root=(
+allowed_docs=(
 	ARCHITECTURE.md
 	DEVELOPMENT.md
-	MILESTONE.md
-	SELF_HOSTED.md
-	PROTECTION.md
-	LICENSE_COMMERCE.md
-	TELEMETRY_AND_TRUST.md
 )
 
 for path in docs/*.md; do
 	[[ -e "$path" ]] || continue
 	base="$(basename "$path")"
 	ok=0
-	for name in "${allowed_root[@]}"; do
+	for name in "${allowed_docs[@]}"; do
 		if [[ "$base" == "$name" ]]; then
 			ok=1
 			break
@@ -61,18 +50,26 @@ for path in docs/*.md; do
 	fi
 done
 
-if ! [[ -d docs/openapi ]]; then
-	echo "docs layout: missing docs/openapi/" >&2
+if [[ -d docs/runbooks ]]; then
+	echo "docs layout: docs/runbooks/ must not exist (content in ARCHITECTURE.md / DEVELOPMENT.md)" >&2
 	fail=1
 fi
 
-if ! [[ -d docs/runbooks ]]; then
-	echo "docs layout: missing docs/runbooks/" >&2
+if [[ -d fraudtrain ]]; then
+	echo "docs layout: fraudtrain/ at repo root must not exist" >&2
 	fail=1
 fi
 
+if [[ -d examples ]] || [[ -d examples/fraudtrain ]]; then
+	echo "docs layout: examples/ must not exist (use model/)" >&2
+	fail=1
+fi
 
-# 2. Check no milestone references
+if [[ -d testdata ]]; then
+	echo "docs layout: testdata/ at repo root must not exist (generate via make fraudtrain-check)" >&2
+	fail=1
+fi
+
 echo "tier_a: check no milestone references..."
 pattern_milestone='\bM[0-9]+'
 scan_milestone() {
@@ -116,8 +113,6 @@ if git rev-parse --verify "$BASE" >/dev/null 2>&1; then
 	fi
 fi
 
-
-# 3. Check no HTML success Content-Type or HTMX
 echo "tier_a: check no HTML/HTMX in controlplane/payment..."
 check_html_dir() {
 	local dir="$1"
@@ -148,8 +143,6 @@ if rg -n 'text/template' internal/controlplane internal/payment --glob '*.go' --
 	fail=1
 fi
 
-
-# 4. Check no service slog
 echo "tier_a: check no slog in service files..."
 mapfile -t slog_hits < <(
 	rg -n 'slog\.' internal/controlplane/service_*.go \
@@ -162,8 +155,6 @@ if ((${#slog_hits[@]})); then
 	fail=1
 fi
 
-
-# 5. Check error handling in outbox/handlers
 echo "tier_a: check error handling in outbox/handlers..."
 pattern_err='_ = (json\.Unmarshal|w\.Write)'
 scan_err() {
@@ -189,8 +180,6 @@ if [[ -d internal/controlplane/adminapi ]]; then
 	done < <(find internal/controlplane/adminapi -name '*_handlers.go' ! -name '*_test.go' -print0 2>/dev/null || true)
 fi
 
-
-# 6. Check brand boundary
 echo "tier_a: check brand boundary..."
 pattern_brand='BidShard|bidshard\.com'
 scan_brand() {
@@ -218,8 +207,6 @@ if rg -n "$pattern_brand" pkg --glob '*.go' --glob '!pkg/branding/*' >/dev/null 
 	fail=1
 fi
 
-
-# 7. Find obvious comments
 echo "tier_a: find obvious comments..."
 mapfile -t comment_hits < <(
 	rg -n -i \
@@ -240,7 +227,6 @@ if (( count > 0 )); then
 		fail=1
 	fi
 fi
-
 
 if [[ "$fail" -ne 0 ]]; then
 	echo "tier_a: FAILED"

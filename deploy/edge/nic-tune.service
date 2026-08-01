@@ -1,5 +1,5 @@
 [Unit]
-Description=eSPX ingress NIC RX ring and IRQ tuning
+Description=BidShard ingress NIC RX ring and IRQ tuning
 After=network-online.target
 Wants=network-online.target
 

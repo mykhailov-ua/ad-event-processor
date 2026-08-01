@@ -1,698 +1,189 @@
-# Development
+# Development Guide
 
-Local environment, CI gates, operational runbooks, and open gaps.
-
-**Agent engineering rules** (LLM): `.cursor/rules/*.mdc` — start at `guidelines-index.mdc`. Client-facing docs remain below.
+This document describes the local environment setup, code generation, CI merge gates, coding standards, testing procedures, and operational runbooks for the BidShard platform.
 
 ---
 
-## Requirements
+## 1. System Requirements
 
-- Go 1.25+
-- Docker Compose
-- `buf` (or `make proto`)
+To develop and test BidShard locally, ensure your environment meets the following specifications:
+- **Go**: Version 1.25+
+- **Docker & Docker Compose**: For running local infrastructure.
+- **Build Tools**: `make`, `clang`, `llvm` (required for compiling eBPF/XDP programs).
+- **Operating System**: Linux (Kernel 5.8+ required for eBPF/XDP and tracepoint probes).
 
 ---
 
-## Quick start
+## 2. Code Generation (Codegen)
+
+Generated code is excluded from Git via `.gitignore`. Run the following commands after cloning the repository or when modifying SQL queries, Protobuf schemas, or BPF source files:
+
+```bash
+make gen          # Generates sqlc code for all services
+make proto        # Generates vtproto structures and applies memory patches
+make gen bpf-dev  # Compiles BPF programs for development probes (requires clang)
+```
+
+### Codegen Map
+
+| Source File / Directory | Command | Output Directory |
+| :--- | :--- | :--- |
+| `internal/*/queries/*.sql`, migrations | `make gen` | `internal/<svc>/db/*.sql.go` |
+| `api/*.proto` | `make proto` | `internal/*/pb/*.pb.go`, `*_vtproto.pb.go` |
+| `deploy/edge-xdp/bpf/*.c` | `make gen bpf-dev` | `internal/edge/bpf/edge_bpf*.go` |
+
+### vtproto Memory Patch
+Running `make proto` automatically executes the `patch-vtproto-hotpath` utility (`cmd/patch-vtproto-hotpath/main.go`). This tool replaces standard `make+copy` slices with the optimized `appendReuseBytes` helper for repeated Protobuf fields (`EventMetadata.ExtraKeys` / `ExtraValues`). This optimization is mandatory to maintain zero heap allocations on the hot path.
+
+---
+
+## 3. Local Stack and Compose Profiles
+
+Manage the local development stack using the `scripts/dev/stack.sh` script:
 
 ```bash
 cp .env.example .env
-bash scripts/dev/stack.sh build   # compose images + bpf-dev artifacts
-make bpf-dev                                # or: bash scripts/dev/bpf_setup.sh
-bash scripts/dev/stack.sh full
-bash scripts/dev/preflight.sh
+bash scripts/dev/stack.sh build   # Builds Docker images and BPF components
+bash scripts/dev/stack.sh full    # Starts the full development stack
+bash scripts/dev/preflight.sh     # Verifies service health
 ```
 
-| `dev_stack.sh` mode | Contents |
-| :--- | :--- |
-| `infra` | Postgres, Redis x6, ClickHouse |
-| `full` | All services |
-| `sentinel` | Redis Sentinel |
-| `bpf` | Build `loadtest_probe.o` + `bin/bpf-collector` (dev load-test probes) |
+### Compose Profiles
 
-Hot-path changes: run constrained load with BPF — `make load-test-bpf` or `sudo ESPX_BPF_PROBE=1 bash scripts/load/malformed.sh business`. See [LOAD_TEST_BPF](.cursor/rules/load-test-bpf.mdc).
-
----
-
-## CI merge gates
-
-```bash
-go test ./... -short
-make lint
-bash scripts/ci/comments.sh
-bash scripts/fault/run.sh
-bash scripts/perf/gate_run.sh    # when ingestion/rtb touched
-make test-alloc-gate
-bash scripts/ci/compliance.sh
-```
-
-Resilience steady-state: `/track` p99 < 80 ms; error rate < 0.1% (excluding valid rejects).
-
-Tier A hygiene (`make tier-a`): `scripts/ci/tier_a.sh` — docs layout, milestone refs in comments, no HTMX success HTML, error-handling checks, optional obvious-comment scan. Comment linter skip paths: `scripts/ci/comment_linter_skip_prefixes.txt`. Lint job order: tier A → comments → openapi → golangci-lint (8 min budget on CI).
-
----
-
-## Code style
-
-Flat `package` per service (R1). File name tags act as modules (R2): `handler_*.go`, `service_*.go`, `api_*.go`, `*_worker.go`.
-
-| Rule | Detail |
-| :--- | :--- |
-| R1 | No nested packages inside `internal/<service>/`; allowed subdirs: `db/`, `queries/`, `migrations/`, `pb/` |
-| R2 | Group by file prefix, not sub-package |
-| R3 | DTO suffix for admin JSON; `Replica` for pub/sub payloads; hot models in `internal/campaignmodel` without json tags |
-| R4 | `cmd/*/main.go`: config and wiring only |
-| R8 | Hot path: sentinel errors, no wrapped errors in loops; cold path: wrap with context |
-| R9 | Comments explain non-obvious business logic; no decorative prefixes |
-| R10 | PR gates: lint, alloc-gate, fault when write path changes |
-
-New cold-path JSON: `api_` prefix in `internal/controlplane/api_*.go`; wire via `api_register.go` where used.
-
-sqlc output: `internal/ingestion/sqlc/` for tracker; `internal/<svc>/db/` for other services.
-
----
-
-## Hot-path rules
-
-Applies to `internal/ingestion`, hot paths in `pkg/broker`, edge Lua DFA.
-
-| Rule | Detail |
-| :--- | :--- |
-| Alloc | 0 allocs/op on parse, filter, respond |
-| Time | `FilterDeadlineMono` monotonic nanoseconds; no `time.Now()` per request |
-| Strings | No `+` on strings in loops; `append` into reused buffers |
-| Types | No `interface{}`, closures, `defer` in request loops |
-| Maps | No `sync.Map` on hot path; `StaticSlotSharder` flat `[1024]uint8` table |
-| Pools | `connContext` per gnet connection; vtproto pools; `Put` on all exit paths |
-
-PR checklist:
-
-1. `make test-alloc-gate` on touched packages
-2. Benchmark delta for perf-critical changes
-3. No new `interface{}` on `/track`
-4. BCE: length check before indexed loop
-5. Fault proof if new write path (see Fault injection and resilience)
-
-Reference files: `ingress_quota.go`, `fraud_stream_queue.go`, `unified_filter.go`, `handler_http1_fsm.go`, `requests_parse_opt.go`.
-
----
-
-## Fault injection and resilience
-
-Runner: `scripts/fault/run.sh`. CI: `.github/workflows/sentinel-resilience.yaml`.
-
-### Steady-state (R1)
-
-| Metric | Target |
-| :--- | :--- |
-| `/track` RPS | Stable without unexplained drops |
-| Latency | p95 < 50 ms, p99 < 80 ms, max 100 ms |
-| Error rate | < 0.1% (excluding valid 202/204 filter rejects) |
-| Budget drift | Redis + sync deltas ~= PG within 1 h (`ReconWorker`) |
-
-Measure baseline before fault injection. Abort if steady state degrades beyond limits.
-
-### Fault classes
-
-| Class | eSPX examples |
-| :--- | :--- |
-| Instance kill | Redis/Postgres container SIGKILL, tracker/processor recovery |
-| Latency | Slow Redis, filter timeouts, circuit breakers |
-| Shard outage | Shard 0 failure, single Redis master down |
-| Region outage | Manual drill only; not automated full compose stop in CI |
-| Config drift | `verify_redis_topology.sh`, shard count vs `REDIS_ADDRS` |
-
-### Invariants (R4)
-
-- Idempotency on all write paths (Lua keys + PG `sync_idempotency`)
-- Hot-path timeouts use monotonic time
-- Fencing via routing epochs and migration generations
-- Crash-recovery model; validate payloads at edge before gnet parse
-
-### Scenarios (sample)
-
-| ID | Fault | Expected |
+| Profile | Description | Active Services |
 | :--- | :--- | :--- |
-| A | Shard-0 pub/sub down | Stale-serve; `503 registry_stale` for unknown |
-| B | Redis master failover | Sentinel promote ~10-15 s; circuit breaker |
-| C | PG unavailable | Processor spool; no silent budget loss |
-| D | CH unavailable | CH spool `fsync`; stream ack after spool |
-| E | Slot migration mid-traffic | Fence code 11; PG re-warm; rollback playbook |
-| F | RTB live + budget stress | No overspend; reconcile within band |
-
-Proof logs: `fault_proof fault=<name>` in test output. Update `RESILIENCE_MIN_PROOFS` when new CI proofs land.
-
-Multi-region proofs use the `mr_` prefix. `test_resilience.sh` enforces `RESILIENCE_MIN_PROOFS_MR=12` (see [.cursor/MULTI_REGION.md](../.cursor/MULTI_REGION.md) multi-region section).
+| `single-vps` (or `full`) | Standard monolithic deployment | `tracker`, `processor`, `control`, PostgreSQL, Redis x4, ClickHouse. |
+| `infra` | Database infrastructure only | PostgreSQL, Redis x6 (with Sentinel), ClickHouse. |
+| `ingest-only` | Lightweight stack without billing | `tracker`, `processor`, `control` (billing disabled), PostgreSQL, Redis x4. ClickHouse is disabled. |
+| `network-operator` | Operator deployment mode | `control` with the payment gRPC server enabled on port 51052. |
+| `analytics-ml` | Analytics and machine learning stack | Adds `fraud-scorer` and `ivt-detector` to the active services. |
+| `multi-region` | Multi-region local testbed | Adds `region-proxy` and `broker` services. |
 
 ---
 
-## Multi-region resilience drill
+## 4. Coding Standards (Code Style)
 
-**Calendar:** quarterly dry-run (first Tuesday of Jan / Apr / Jul / Oct, 09:00 UTC).
+BidShard avoids complex architectural patterns (such as Clean or Hexagonal architecture, Factory/Provider/Repository patterns, or parallel model layers).
 
-**SLA:** regional proxy failover RTO < 120 s; `AssertBudgetInvariant` after heal; zero duplicate global apply.
+### R1. Flat Service Packages
+Each deployable service must be implemented as a single flat package under `internal/<service>/`.
+- All `.go` files must reside in the root of the service directory and belong to the same package (`package ingestion`, `package payment`).
+- Only the following subdirectories are permitted for generated code or schemas: `db/` (sqlc), `queries/` (SQL), `migrations/` (goose), and `pb/` (protobuf).
+- Nested domain packages (e.g., `internal/ingestion/filter/`) are forbidden.
 
-**Runner:** `bash scripts/fault/mr_resilience_drill.sh`
+### R2. Files as Modules
+Group code by file name prefix within the flat package, not by directory:
+- `service.go` — Constructor, main struct, and service lifecycle.
+- `service_<domain>.go` — Core business logic for a specific domain (e.g., `service_campaigns.go`).
+- `handler.go` — Transport entry point and route registration.
+- `handler_<area>.go` — HTTP handlers for a specific route group (e.g., `handler_billing.go`).
+- `*_worker.go` — Background polling loops and workers (e.g., `outbox_worker.go`).
 
-### 90-minute operator checklist
+### R3. Type Roles and Boundary Mapping
+Each struct must have a single, defined role:
+1. **Hot-Path Model** (`internal/campaignmodel`): Used on the hot path. Struct tags (including `json` and `db`) are forbidden.
+2. **SQL Row** (`internal/<svc>/db`): Generated by sqlc.
+3. **Admin DTO** (`internal/controlplane/adminapi`): Used for the external REST API. Must have the `DTO` suffix and `json:"snake_case"` tags.
+4. **Replica / PubSub Payload**: Used for inter-shard communication. Must have the `Replica` suffix or `replica` prefix.
 
-| Min | Step | Action | Pass criteria |
-| :--- | :--- | :--- | :--- |
-| 0–10 | Baseline | `dev_preflight.sh`; note tracker p99 and `ad_node_weight` | p99 < 80 ms; weights stable |
-| 10–20 | MR fault CI | `bash scripts/fault/mr_resilience_drill.sh` | ≥12 `fault_proof fault=mr_*` lines |
-| 20–35 | Quorum book | Simulate 1-of-3 proxy ACK (`mr_quorum_book`) | No global apply until 2-of-3 |
-| 35–50 | Lease partition | `TestFault_OperationLease_PGStopDuringExecuting` or stop regional PG | Lease `expired`; `budget_ok=true` |
-| 50–65 | Proxy failover | Stop one regional-proxy replica; fail over uplink | RTO < 120 s; WAL replays once |
-| 65–75 | Global PG blip | Pause global management PG ≤60 s | Hot path OK; uplink spools; heal drains |
-| 75–85 | Invariants | `AssertBudgetInvariant` on sample campaigns | Redis + PG within ±1 micro-unit |
-| 85–90 | Close | File incident notes; restore compose/k8s | All pods healthy; outbox drained |
+Type mapping must occur in a single step at the I/O boundary (e.g., `toCampaignDTO` next to the DTO struct). Reflection-based mapping libraries are forbidden.
 
-Escalation: if tracker p99 > 80 ms for 30 s during drill, abort and roll back traffic shifts.
-
----
-
-## Slot migration
-
-### Default path
-
-1. COPY - `CampaignKeyMigrator` DUMP/RESTORE per `CampaignRedisKeyCatalog`
-2. Fence - `MIGRATION_FENCE_ENABLED=true` -> Lua code `11`
-3. PG re-warm - `RewarmCampaignBudgetKeys` on target
-4. EXISTS gate - reject activation if required keys missing on target
-5. Epoch bump - `ActivateSlotMapVersionWithMigration`; broker reload
-6. Drain - delete keys on source shard
-
-### Dual-write (opt-in)
-
-`SLOT_MIGRATION_DUAL_WRITE_ENABLED=true`: COPY -> `dual_writing` -> `slot_migration:delta` stream -> lag catch-up -> cutover when `ad_slot_migration_lag_messages <= SLOT_MIGRATION_LAG_EPSILON`.
-
-| Env | Default |
-| :--- | :--- |
-| `SLOT_MIGRATION_LAG_EPSILON` | `0` |
-| `SLOT_MIGRATION_LAG_THRESHOLD` | `1000` |
-
-### Rollback
-
-1. `RollbackSlotMapVersion(ctx, adminID, previousVersion)`
-2. Optional `DrainCampaignKeys` on failed target
-3. PG re-warm source if drained
-4. `VerifySlotMigrationR5`, `AssertBudgetInvariant`
-5. Clear `budget:migration_fence:{uuid}`
-
-Fault: `TestFault_SlotMigrationRollbackAfterActivate`, `TestFault_SlotMigrationPGRewarmCutover`, `TestFault_DebitFencedDuringSlotCopy`.
-
-Elastic sharding: opt-in triplet routing via `campaign_routing` and `routing_epoch`; enable only during controlled migration windows.
+### R4. Binary Entry Points (`cmd/`)
+Files under `cmd/<binary>/main.go` must only contain configuration parsing, pool initialization, and dependency injection. No business logic is permitted in `main.go`.
 
 ---
 
-## Shard-0 outage
+## 5. Hot Path Engineering Constraints
 
-Shard 0 holds `campaigns:update` pub/sub, auth lockout, and default outbox notify target. Shards 1-3 hold ~75% of campaign debit keys.
+These constraints apply to `internal/ingestion`, hot paths in `pkg/broker`, and OpenResty Lua scripts.
 
-### Expected behavior while redis-0 is down
-
-| Surface | Behavior |
-| :--- | :--- |
-| Track shards 1-3 | Continue; p99 within SLA |
-| Track shard-0 campaigns | `503 shard_unavailable` or triplet reroute when triplet present |
-| Unknown campaign IDs | After `REGISTRY_STALE_TTL` (default 30 s): `503 registry_stale` |
-| Global keys | Fan-out copies on all masters; tracker reads local copy |
-| Management outbox | Shard-0 events stay `PENDING` until recovery |
-| Alerts | `ad_registry_stale_mode`, `ad_shard0_pubsub_unreachable` |
-
-### Operator steps
-
-1. Confirm Sentinel: `redis-cli -p <sentinel> SENTINEL masters`
-2. Watch `ad_redis_breaker_state{shard="0"}` and `ad_registry_stale_mode`
-3. After master up: outbox drains; shard-0 track returns 202
-4. Optional: `CAMPAIGN_UPDATE_BROKER_FALLBACK=true` for broker topic `campaigns:update`
-
-| Env | Default | Purpose |
-| :--- | :--- | :--- |
-| `REGISTRY_STALE_TTL` | `30` | Pub/sub quiet to stale-serve |
-| `CAMPAIGN_UPDATE_BROKER_FALLBACK` | `false` | Broker secondary notify |
-| `CAMPAIGN_UPDATE_BROKER_TOPIC` | `campaigns:update` | Broker topic name |
-
-Fault: `TestFault_Shard0Outage`, `scripts/fault/shard0_outage_drill.sh`.
+1. **Zero Heap Allocations**: No heap allocations are permitted during request parsing, filtering, auction execution, or response generation. All event structures must be returned to their respective pools (vtproto pools or `sync.Pool`) on all exit paths.
+2. **Banned Constructs**: Do not use `defer`, closures (`func()`), interfaces (`interface{}` / `any`), `sync.Map`, string concatenation via `+`, or dynamic Prometheus labels (`WithLabelValues(uuid.String())`) in request loops.
+3. **Monotonic Time**: Use monotonic nanoseconds for filter deadlines (`FilterDeadlineMono = monotonicNano() + timeout`). Do not call `time.Now()` per request.
+4. **Bounds Check Elimination (BCE)**: Prevent the compiler from emitting slice boundary checks (`runtime.panicIndex`) by using explicit hints before loops:
+   ```go
+   if len(buf) <= i { return ErrMalformed }
+   _ = buf[len(buf)-1] // BCE hint
+   ```
+5. **Atomic Padding (False Sharing)**: Pad highly contended atomic fields to match the CPU cache line (64 bytes) to prevent cache invalidation across cores:
+   ```go
+   type IngressQuotaCell struct {
+       maxAllowed uint64
+       _          [56]byte // Cache line padding (64 - 8)
+       currentOps atomic.Uint64
+       _          [56]byte
+   }
+   ```
+6. **unsafe.String Lifetime**: The lifetime of strings created via `unsafe.String` must not exceed the gnet read frame. Copy values to `evt.StringBuffer` if they are needed for asynchronous processing.
 
 ---
 
-## Kubernetes
+## 6. CI Merge Gates
+
+All code changes must pass the following verification checks before being merged into `main`:
 
 ```bash
-bash scripts/deploy/install_k3s.sh
-bash scripts/deploy/cold_path_up.sh
-bash scripts/deploy/hot_path_up.sh
+go test ./... -short             # Runs fast unit tests
+make lint                        # Runs golangci-lint (SA9003, SA4017, errcheck)
+make test-alloc-gate             # Verifies zero allocations on the hot path
+bash scripts/ci/comments.sh      # Verifies comment standards and checks for AI slop
+bash scripts/fault/run.sh        # Executes fault injection tests
+bash scripts/perf/gate_run.sh    # Compares benchmarks against the baseline
 ```
 
-Hot path: hostNetwork trackers + nginx. Cold path: separate namespace.
+### Comment Verification (`comments.sh`)
+BidShard enforces a self-documenting code standard. The comment linter will fail if:
+- Comments contain non-ASCII characters or emojis.
+- Comments use AI-slop vocabulary (e.g., *seamlessly, leverage, delve, robust, comprehensive*).
+- Comments contain planning tokens, task IDs, or roadmap references (e.g., *GAP-*, *MILESTONE*, *Phase*, *P##*).
 
 ---
 
-## Code generation
+## 7. Fault Injection and Resilience
 
-| Command | Output |
-| :--- | :--- |
-| `make proto` | vtproto in `internal/*/pb/` |
-| `make gen` | sqlc in `internal/*/sqlc/` and `internal/<svc>/db/` |
+Fault injection scenarios are executed via `scripts/fault/run.sh`. The system verifies that financial invariants are preserved under the following conditions:
 
----
+- **Instance Kill**: Sends `SIGKILL` to Redis, PostgreSQL, or ClickHouse containers under load.
+- **Network Latency**: Simulates Redis network degradation to verify that the circuit breaker opens and transitions to Fail-Closed.
+- **Shard 0 Outage**: Verifies that trackers continue processing traffic for cached campaigns and return `503 registry_stale` for unresolved campaigns.
+- **ClickHouse Outage**: Verifies that the processor diverts events to the local disk spool and drains them once ClickHouse is restored.
 
-## Scripts
-
-| Path | Purpose |
-| :--- | :--- |
-| `scripts/dev/stack.sh` | Compose lifecycle |
-| `scripts/perf/gate_run.sh` | Benchmark gate |
-| `scripts/fault/run.sh` | Fault injection |
-| `scripts/edge/nic_tune.sh` | NIC tuning |
-| `scripts/deploy/verify_redis_topology.sh` | Redis shard topology verify |
-| `scripts/deploy/migrate_campaign.sh` | Redis campaign migration |
-| `scripts/load/` | Load tests; optional `ESPX_BPF_PROBE=1` for kernel probes (see [LOAD_TEST_BPF](.cursor/rules/load-test-bpf.mdc)) |
-
-### Load tests and BPF analytics
-
-Dirty/spike runs write under `var/load-test/<UTC-timestamp>/`:
-
-| Artifact | Producer | Content |
-| :--- | :--- | :--- |
-| `bottleneck-report.md` | `go run ./cmd/load-report prom` | Prometheus: handler p99, Redis Lua, PG/CH, status histogram |
-| `bpf-report.md` | `go run ./cmd/load-report bpf` | Kernel: syscalls, cgroup throttle, FDs, loadgen on-CPU |
-| `loadgen.log` | `cmd/loadgen` | Generator run log |
-
-**Constrained profile** (`docker-compose.load-test.yaml`): 2 trackers, capped CPUs/RAM, `TRACKER_INGRESS_SCHEMA=espx_native`. Business mix:
-
-```bash
-bash scripts/load/prepare_constrained_stack.sh   # optional; business mode runs PREPARE=1
-sudo ESPX_BPF_PROBE=1 bash scripts/load/malformed.sh business
-```
-
-Full BPF workflow, env vars, and interpretation: [LOAD_TEST_BPF](.cursor/rules/load-test-bpf.mdc).
-
-Standalone BPF session (no loadgen): `make bpf-session-start` → traffic → `make bpf-session-stop` → `go run ./cmd/load-report bpf $OUT`.
-
-```bash
-bash scripts/load/bpf_build.sh
-go build -o bin/bpf-collector ./cmd/bpf-collector
-sudo ESPX_BPF_PROBE=1 ESPX_BPF_SAMPLE_RATE=10 bash scripts/load/malformed.sh smoke
-```
-
-Does not run in CI or production.
+Successful scenarios output a `fault_proof fault=<name>` log line, which is verified by the CI runner.
 
 ---
 
-## Ports
+## 8. Multi-Region Resilience Drill
 
-| Service | Port |
-| :--- | :--- |
-| Nginx | 8180 |
-| Tracker | 8181-8184 |
-| Processor | 8186 |
-| Control (admin HTTP / payment webhooks) | 8188 / 8187 |
-| UDP control | 8190 -> 8191 |
-| Redis shards | 6479-6482 |
-| PostgreSQL / ClickHouse | 5430 / 9000 |
+Multi-region drills are executed quarterly to verify distributed fault tolerance.
 
----
+### Region-Proxy WAL Architecture
+Regional processors write events to an append-only Write-Ahead Log (WAL) built on `mmap` segments (`pkg/regionproxy/wal/`).
+- **Group Commit**: Write operations are sequential. A `fsyncSem` semaphore with a capacity of **1** serializes `fsync` calls, allowing concurrent appends to share a single sync operation.
+- **Crash Recovery**: On startup, `Recover()` scans the log tail, discards torn records, and remaps the segment before accepting network traffic.
 
-## Key environment variables
+### 90-Minute Operator Checklist
+Drill runner: `bash scripts/fault/mr_resilience_drill.sh`
 
-Full list: `.env.example`.
-
-| Variable | Role |
-| :--- | :--- |
-| `FILTER_TIMEOUT_MS` | Filter deadline (<= 100 prod) |
-| `TRACKER_PG_FALLBACK` | `0` in production |
-| `RTB_MODE` | `off` / `shadow` / `live` |
-| `PROCESSOR_PG_GATE_SLOTS` | PG write concurrency |
-| `CH_SPOOL_SEGMENT_MB` | CH outage spool |
-| `LOCAL_QUOTA_MODE` | `live` for local quanta |
-| `ELASTIC_SHARDING_ENABLED` | `false` steady-state default |
-| `CONTROL_FAIL_OPEN` | `0` (default): edge uses conservative routing when control epochs are stale — equal tracker weights, drain frozen. Set `1` for AWS GA-style fail-open (keep last epoch weights). Edge only; see [.cursor/MULTI_REGION.md](../.cursor/MULTI_REGION.md) H4. |
-| `CONTROL_ENABLE_*` | Modular monolith (`cmd/control`): set `0` to disable auth, management, payment, billing, notifier, margin-guard, or cost-sync in-process. See `.env.example`. |
-| `CONTROL_URL` / `MANAGEMENT_URL` | Base URL for control admin API (`:8188`); edge slot-map and processor weights polls |
-| `NODE_WARMUP_SEC` | Tracker/control warmup before `/ready` and scorer drain (default `300`) |
-| `NODE_WEIGHTS_SYNC_INTERVAL_SEC` | Edge poll interval for `/ops/node-weights` (default `10`) |
+1. **Min 0–10 (Baseline)**: Verify baseline latency (p99 < 80 ms) and node weights.
+2. **Min 10–20 (Fault Injection)**: Execute the multi-region fault suite (verify at least 12 `mr_*` proofs).
+3. **Min 20–35 (Quorum Check)**: Simulate a network partition where only 1 of 3 regional proxies is active. Verify that global updates are blocked.
+4. **Min 35–50 (Lease Partition)**: Stop the regional PostgreSQL instance. Verify that the operation lease expires and local budget spending continues.
+5. **Min 50–65 (Proxy Failover)**: Terminate a `region-proxy` replica. Verify that failover completes with an RTO of **< 120 seconds**.
+6. **Min 65–75 (Global DB Outage)**: Pause the global PostgreSQL instance for 60 seconds. Verify that trackers remain online and regional proxies spool WAL segments.
+7. **Min 75–85 (Invariants)**: Execute `AssertBudgetInvariant` to verify that Redis and PostgreSQL balances match within $\pm 1$ micro-unit.
+8. **Min 85–90 (Teardown)**: Collect logs, restore original configurations, and verify that all outboxes have drained.
 
 ---
 
-## Compose deploy profiles (GAP-HYG-28)
-
-Local stacks use compose profiles; see [SELF_HOSTED.md § Deploy profiles](./SELF_HOSTED.md#deploy-profiles).
-
-```bash
-scripts/dev/stack.sh single-vps      # default: tracker + processor + control monolith
-scripts/dev/stack.sh ingest-only     # control without payment/billing
-scripts/dev/stack.sh network-operator
-scripts/dev/stack.sh analytics-ml    # + fraud-scorer, ivt-detector
-scripts/dev/stack.sh full            # alias for single-vps monolith
-```
-
-`ingest_only` smoke: payment/billing containers absent; no `clickhouse` service; `control` and `tracker` healthy.
-
-```bash
-docker compose --profile ingest_only config --services | rg '^(payment|billing|clickhouse)$' && exit 1 || true
-docker compose --profile ingest_only up -d
-curl -sf http://127.0.0.1:8188/health && curl -sf http://127.0.0.1:8181/health
-```
-
-`network_operator` smoke: payment gRPC inside control (port 51052).
-
-```bash
-docker compose --profile network_operator up -d
-curl -sf http://127.0.0.1:8188/health
-```
-
----
-
-## Multi-region local lab
-
-Optional `multi-region` compose profile adds `region-proxy` (and optional `broker`) without changing the default stack.
-
-```bash
-scripts/dev/stack.sh build
-scripts/dev/stack.sh infra
-scripts/dev/stack.sh multi-region up
-curl -s http://127.0.0.1:8083/health
-scripts/dev/stack.sh status   # includes multi-region profile section
-```
-
-Equivalent direct compose:
-
-```bash
-docker compose --profile multi-region up -d region-proxy
-```
-
-Optional broker (mmap log ingest, not required for region-proxy uplink):
-
-```bash
-scripts/dev/stack.sh multi-region broker
-curl -s http://127.0.0.1:8084/health
-```
-
-### Env matrix: global vs regional cell
-
-| Cell | `MULTI_REGION_ENABLED` | `ESPX_REGION_CODE` | Required services | Key variables |
-| :--- | :---: | :---: | :--- | :--- |
-| Single VPS (default) | `0` | `0` | `control`, `tracker`, `processor` | `CONTROL_ENABLE_*` per profile |
-| Ingest-only | `0` | `0` | `control` (no payment), `tracker`, `processor` | `CONTROL_ENABLE_PAYMENT=0`, … |
-| Global management | `1` | `0` | `control` or `management` + `auth`; no regional processor spend | `GLOBAL_SPEND_BATCH_MIN`, `GLOBAL_SPEND_FLUSH_INTERVAL_MS`, `GLOBAL_SPEND_MAX_CONCURRENCY` |
-| Regional processor | `1` | `>0` | `processor` only (no control on regional cell) | `REGION_PROXY_ADDR`, `REGION_PROXY_REDIS_URL` |
-| Region-proxy | n/a | `>0` | `region-proxy` uplink to global | `GLOBAL_INGEST_URL`, `GLOBAL_INGEST_API_KEY` (defaults to `ADMIN_API_KEY`) |
-
-Example regional processor with proxy:
-
-```bash
-MULTI_REGION_ENABLED=1 ESPX_REGION_CODE=1 \
-  docker compose up -d processor
-docker compose --profile multi-region up -d region-proxy
-```
-
-Example global management cell:
-
-```bash
-MULTI_REGION_ENABLED=1 ESPX_REGION_CODE=0 docker compose --profile single_vps up -d control
-```
-
-### Ports
-
-| Service | TCP | Health HTTP |
-| :--- | :--- | :--- |
-| region-proxy | `127.0.0.1:9093` | `127.0.0.1:8083` |
-| broker (profile, optional) | `127.0.0.1:9092` | `127.0.0.1:8084` |
-
-The standalone HA broker lab under `deploy/broker/` binds broker nodes on `9093` — do not run it alongside the compose `region-proxy` on the same host.
-
-### E2E tests
-
-In-process region-proxy tests (no compose required):
-
-```bash
-go test ./tests/e2e/... -run RegionProxy -count=1
-```
-
-With compose profile running, verify health endpoints above before uplink tests that hit a live global management cell.
-
-### Weighted processor replicas (GAP-DB-03)
-
-Enable on additional processor instances (not the default single replica):
-
-```bash
-PROCESSOR_WEIGHT_ENABLED=1 NODE_ID=processor-1 MANAGEMENT_URL=http://127.0.0.1:8188 \
-  docker compose --profile multi-region up -d processor-1
-```
-
-Weights are published by management `NodeCapacityScorer` to `node_capacity_scores` and exposed at `GET /ops/processor-weights`. Each processor polls on `UDP_SYNC_INTERVAL_MS` (default 10 s) and scales `XREADGROUP` batch size + inter-read throttle by local weight. PG gate wait EMA above `PROCESSOR_WEIGHT_DRAIN_PG_WAIT_MS` (default 50 ms) drains the instance to `PROCESSOR_WEIGHT_FLOOR`.
-
-Metrics: `ad_processor_weight{instance}`, `ad_processor_stream_lag_seconds{instance}`.
-
-Fault proof: `go test ./internal/ingestion/... -run TestFault_ProcessorWeightDrain -count=1`
-
-EXPLAIN audit (processor weights query): `EXPLAIN_AUDIT=1 go test ./internal/database/... -run TestExplainAudit -count=1`
-
-### Edge tarpit and compliance (GAP-CMP-01)
-
-Tarpit is **off** in dev (`.env.example`). Production edge: source `deploy/nginx/edge-production.env` before starting OpenResty.
-
-```bash
-bash scripts/test/tarpit_test.sh      # offline + optional live smoke
-EDGE_TARPIT_ENABLED=1 bash scripts/test/tarpit_test.sh  # fault_proof
-```
-
-Control mapping: [.cursor/COMPLIANCE_MATRIX.md](../.cursor/COMPLIANCE_MATRIX.md). CI: `scripts/ci/compliance.sh`.
-
-### Vendor telemetry (GAP-ENG-03)
-
-Cold-path probes run inside **management** only (`VENDOR_TELEMETRY_ENABLED`). Vendors: `maxmind` (local DB file), `stripe` (balance API), `telegram` (getMe), `smtp` (TCP dial).
-
-```bash
-go test ./pkg/vendorprobe/... -count=1
-```
-
-Metrics: `ad_vendor_probe_success{vendor}`, `ad_vendor_probe_latency_seconds{vendor}`, `ad_vendor_probe_errors_total{vendor}`.
-
-Production profile: `deploy/management/production.env` (`VENDOR_TELEMETRY_ENABLED=true`, 60s interval, 5s timeout).
-
-### Cryptocurrency payment gateway (GAP-PAY-01)
-
-Crypto checkout uses metadata `provider=crypto` on `CreatePaymentIntent`. Webhooks: `POST /webhooks/crypto` with `Crypto-Signature` HMAC (Stripe-style `t=...,v1=...`). Funds sit in `payment.crypto_holds` for 14 days before `SETTLE_BALANCE` outbox delivery to management.
-
-```bash
-go test ./internal/payment/... -run Crypto -count=1
-go test ./internal/payment/... -run TestFault_CryptoWebhookReplay -count=1
-bash scripts/dev/stack.sh crypto up   # compose profile crypto + sandbox env
-```
-
-Fault proof: `fault_proof fault=crypto_webhook_replay proposal_rows=1`. Sandbox env: `deploy/payment/crypto-sandbox.env`.
-
-### OpenAPI contract (GAP-PROD-03)
-
-Machine-readable spec for all implemented `/api/v1` JSON routes (`docs/openapi/openapi.yaml`). HTTP 501 stubs (`internal/controlplane/adminapi/stub_routes.go`) and `/admin/*` HTMX HTML routes are excluded.
-
-```bash
-make openapi-lint          # contract tests + drift check
-make openapi-gen           # regenerate paths after adding handlers
-```
-
-Security schemes: `X-Admin-API-Key`, session cookie `accessToken`, `X-Consent-Signature` (consent webhook).
-
----
-
-## Multi-region edge routing
-
-Weighted tracker pick uses `edge-node-weights.lua` (synced from management `GET /ops/node-weights`). Shard affinity still follows `edge-slot-map.lua` (crc32 Castagnoli + 1024 slot table — same formula as Go `StaticSlotSharder`).
-
-| Policy | `CONTROL_FAIL_OPEN` | Stale epoch / sync gap | Edge behavior |
-| :--- | :---: | :--- | :--- |
-| **Conservative** (default) | `0` | yes | Equal peer weights; drain frozen (§6 Phase E) |
-| **Fail-open** | `1` | yes | Keep last published weights (AWS GA-style) |
-
-`balancer_by_lua` applies weights only to **new** upstream connections (H6); established TCP is not moved.
-
----
-
-## mmap fsync contract (region-proxy / broker)
-
-Cold-path durability uses **append-only segment logs** on mmap — not btree-on-mmap (see [.cursor/MULTI_REGION.md](../.cursor/MULTI_REGION.md) H5).
-
-| Component | Location | Contract |
-| :--- | :--- | :--- |
-| Disk gate | `pkg/iogate/disk_gate.go` | `fsyncSem` capacity **1** serializes fsync; `appendSem` caps concurrent mmap appends; EMA latency drives `disk_degraded` |
-| Region-proxy WAL | `pkg/regionproxy/wal/wal.go` | Append-only records; `Recover()` scans the tail, truncates torn records after crash/SIGKILL, remaps segment |
-| Broker log | `pkg/broker/log/log.go` | Segment `Recover()` replays index + data tail; monotonic offsets preserved |
-
-Operator notes:
-
-1. Do not place B-tree or random-write indexes on mmap segments — append + truncate only.
-2. On restart, call `Recover()` before accepting ingress; torn tails are discarded.
-3. Watch `ad_disk_gate_degraded` and `ad_disk_gate_append_wait_seconds`; shed Low-tier ingress when fsync p99 exceeds `DISK_LATENCY_BUDGET_MS`.
-4. `fsyncSem=1` is intentional: group-commit batches share one fsync slot (RocksDB WAL pattern).
-
----
-
-## Testing
-
-```bash
-go test ./... -short
-go test ./internal/ingestion/ -run 'TestFault_' -timeout 15m
-go test ./tests/e2e/... -count=1
-EXPLAIN_AUDIT=1 go test ./internal/database/... -run TestExplainAudit
-```
-
-Hot-path change: `make test-alloc-gate`; run fault if write path changed.
-
-### Database verification
-
-```bash
-EXPLAIN_AUDIT=1 go test ./internal/database/... -run TestExplainAudit_AllApplicationQueries -v
-go test ./internal/controlplane/... -run 'Explain|OutboxExplain' -count=1
-go test ./internal/billing/... -run TestM3ExplainQueryPlans -count=1
-```
-
----
-
-## Anti-fraud operations
-
-- Disable ML workers: `FRAUD_SCORING_ENABLED=false`; restart `fraud-scorer`, `ivt-detector`
-- Reset boost: management API -> `ML_SCORE_BOOST` outbox
-- Unblock IP: remove `ip_blacklist` + `UPDATE_BLACKLIST` outbox
-
-Actions logged in `audit_logs`.
-
----
-
-## Open work
-
-Backlog P01–P48 is complete. Deferred (not in the priority table):
-
-- **GAP-PROD-01** — OpenAPI contract for buyer/finance reporting (`GET /api/v1/campaigns/{id}/stats`, customer balance, forecast).
-- **GAP-OPS-04** — `ch_spool_segments` (or equivalent) on `GET /api/v1/ops/dashboard/summary`.
-
-Self-hosted control plane stays JSON `/api/v1` + OpenAPI only — no bundled operator UI.
-
-Operator-run git history rewrites (P43/P45): see Git history section below.
-
-## Completed roadmap
-
-Recently completed items (legacy gap IDs):
-
-| ID | Summary | Evidence |
-| :--- | :--- | :--- |
-| GAP-GEO-02 | Automated Postgres failover (coordinator, fencing, regional DSN push) | `internal/controlplane/pg_failover.go`, `TestFault_PostgresMasterFailover` |
-| GAP-RTB-12 | Cross-region spend sync (`GlobalSpendReconciler`, idempotent ledger debits) | `internal/controlplane/global_spend_*.go`, `AssertBudgetInvariant` at load |
-| GAP-RTB-10 | VAST 4.2 + creative-level auction (0-alloc hot path) | `internal/rtb/`, `make test-alloc-gate` |
-| GAP-MR-03 | Operation quorum when Postgres is down (2-of-3 Redis ACK) | `operation_lease_quorum_redis.go`, `TestFault_QuorumBook_WithPGDown` |
-| GAP-DATA-01 | PII hashing before ClickHouse insert (versioned salt) | `pkg/piihash/`, migration `00010_pii_hash_columns.sql` |
-| GAP-DATA-02 | PG events retention, production TLS profile, operator MVSS checklist | [runbooks/DATA_SECURITY.md](./runbooks/DATA_SECURITY.md) |
-| GAP-DB-01/02 | Disk group-commit, `iogate` `fsyncSem`, WAL alignment, BPF `writev` | [GAP-DB-01-02-report.md](./GAP-DB-01-02-report.md) |
-| GAP-ENG-01 | `internal/controlplane` domain registry, DTO boundaries, coverage gate | [GAP-ENG-01-report.md](./GAP-ENG-01-report.md), `make management-domain-coverage` |
-| GAP-OPS-03 | ClickHouse query governance (`CHQuery` gate, timeout, CI allowlist) | `internal/database/chquery.go`, `scripts/ci/ch_direct.sh` |
-| GAP-ENG-02 | Broker and region-proxy in local compose (`multi-region` profile) | `docker-compose.yaml`, `scripts/dev/stack.sh multi-region up` |
-| GAP-DB-03 | Weighted processor gates (multi-instance stream cadence) | `internal/ingestion/processor_weight.go`, `GET /ops/processor-weights` |
-| GAP-CMP-01 | Edge tarpit + compliance matrix | [.cursor/COMPLIANCE_MATRIX.md](../.cursor/COMPLIANCE_MATRIX.md), `deploy/nginx/lua/tests/tarpit_test.lua` |
-| GAP-ENG-03 | Vendor telemetry probes | `pkg/vendorprobe/`, `ad_vendor_probe_*` metrics |
-| GAP-PAY-01 | Cryptocurrency payment gateway | `internal/payment/provider_crypto.go`, `TestFault_CryptoWebhookReplay`, `deploy/payment/crypto-sandbox.env` |
-| GAP-PROD-03 | OpenAPI 3 `/api/v1` contract | `docs/openapi/openapi.yaml`, `make openapi-lint`, `tests/contract/openapi_test.go` |
-| GAP-RTB-12a | CTV gtax settlement | `ApplyCTVSettlement`, `TestFault_CTVGtaxSettlementReplay` |
-| GAP-RTB-12b | Admin dry-run preview | `ParseDryRun`, `dry_run_test.go` |
-| GAP-RTB-12c | A/B cohorts | `experiment_cohorts`, `cohort_snapshot.go`, `cohort_test.go` |
-
-Deferred API contract work: GAP-PROD-01, GAP-OPS-04 (see Open work above). Self-hosted installs use JSON `/api/v1` only; legacy HTMX removed. Bundled operator UI cancelled.
-
----
-
-## Postgres DR
-
-**Automated failover (default):** `internal/controlplane/pg_failover.go` — coordinator election via Redis (`pkg/broker/server/coord.go`), replica promotion, fencing tokens, DSN push to regional management cells. Validated by `TestFault_PostgresMasterFailover`.
-
-**Manual fallback** (when automation is disabled or for resilience drills):
-
-1. Confirm replica lag and health
-2. Promote sync/async standby per runbook
-3. Update connection strings in compose/k8s secrets
-4. Verify `AssertBudgetInvariant` and outbox drain
-5. Run `scripts/fault/run.sh` subset after cutover
-
-Multi-region topology: [.cursor/MULTI_REGION.md](../.cursor/MULTI_REGION.md).
-
----
-
-## Redis restart runbook
-
-1. Confirm Sentinel quorum and replica lag before restart.
-2. Restart one Redis instance at a time; wait for `master_link_status=up` on replicas.
-3. Watch `ad_redis_breaker_state` per shard; trackers should recover without config change.
-4. After all masters healthy: verify outbox drain and `AssertBudgetInvariant` on sample campaigns.
-
----
-
-## Post-deploy Redis reconciliation
-
-1. Run `scripts/deploy/verify_redis_topology.sh`.
-2. Compare slot map epoch across trackers, edge Lua, and management outbox version.
-3. Pause affected campaigns before `redis_migrate_campaign.sh`; resume after EXISTS gate passes.
-4. Run `scripts/deploy/reconcile_post_deploy.sh` when deploy changes Lua scripts or key catalog.
-
----
-
-## Shard-down blast radius
-
-See [Shard-0 outage](#shard-0-outage). Shards 1-3 continue ingest; shard-0-homed campaigns return `503 shard_unavailable` unless triplet reroute applies.
-
----
-
-## Payment
-
-Stripe webhooks hit `payment` (:8187). Settlement events flow to `management` via outbox. Reconciliation uses `balance_ledger` totals and gRPC dispute routes. Crypto (USDT): `POST /webhooks/crypto`, compose profile `crypto` — see Cryptocurrency payment gateway (GAP-PAY-01) below.
-
----
-
-## Repository history maintenance
-
-Destructive git operations require maintainer approval, an archive branch, and contributor notice. **Do not** run `git filter-repo` or history squash on `main` without completing the checklist below.
-
-### Binary purge from history (GAP-HYG-11 / P43)
-
-Root-level binaries (`processor`, `payment`, `ivt-detector`, `edge-xdp`, …) must not be committed. Build into `bin/` or `dist/release/`; `.gitignore` blocks accidental root artifacts.
-
-When purging blobs already in history:
-
-1. **Archive first** — push `archive/pre-filter-repo` from current `main` tip (or `archive/pre-filter-repo-YYYYMMDD` if multiple attempts).
-2. **Notify** — announce forced rewrite; all clones must re-clone or `git fetch --all && git reset --hard origin/main`.
-3. **Rewrite** — `git filter-repo` (or BFG) with path globs for root binaries only; never rewrite without the archive branch on the remote.
-4. **Verify** — `git rev-list --objects --all | rg 'processor$'` shows no multi-MB blob at repo root.
-5. **Force-push** — `main` only after archive branch is reachable on origin.
-
-Example (maintainers only):
-
-```bash
-git branch archive/pre-filter-repo
-git push origin archive/pre-filter-repo
-git filter-repo --path processor --path payment --path ivt-detector --path edge-xdp --invert-paths
-# coordinate force-push with team
-```
-
-### Optional linear history squash (GAP-HYG-17 / P45)
-
-Squashing entire repository history is **optional** and requires an **explicit written product decision** (issue, ADR, or vendor sign-off). Portfolio value and audit trail often outweigh a clean graph; default is **no squash**.
-
-If approved:
-
-1. Create `archive/pre-squash-YYYYMMDD` from current `main`.
-2. Export bundle: `git bundle create espx-pre-squash-YYYYMMDD.bundle archive/pre-squash-YYYYMMDD`.
-3. Store bundle off-repo (vendor object storage); document hash in the decision record.
-4. Squash or orphan-branch only after archive push + bundle verify (`git bundle verify`).
-5. Contributors re-clone; document the cutoff date in release notes.
-
-Until that decision exists, treat linear history as out of scope.
-
-### Pro release binaries (GAP-PROD-10 / P44)
-
-Vendor ships stripped binaries, not public source for ingest/RTB/antifraud. Policy: [LICENSE_COMMERCE.md § Distribution](./LICENSE_COMMERCE.md#layer-6--distribution-model-gap-prod-10--p44).
-
-```bash
-make release-build   # dist/release/<cmd>-linux-{amd64,arm64}
-```
-
-Not part of CI merge gates; vendor pipeline signs artifacts after SKU QA.
+## 9. Slot Migration and Redis Maintenance
+
+### Campaign Slot Migration Procedure
+Migrate campaign keys between Redis shards using the following sequence:
+1. **COPY**: Copy campaign keys using `CampaignKeyMigrator` (DUMP/RESTORE) based on the `CampaignRedisKeyCatalog`.
+2. **FENCE**: Enable the migration fence (`MIGRATION_FENCE_ENABLED=true`), forcing the source shard's Lua scripts to return error code `11`.
+3. **RE-WARM**: Warm up campaign budgets on the target shard (`RewarmCampaignBudgetKeys`).
+4. **EXISTS**: Verify that all migrated keys exist on the target shard.
+5. **EPOCH BUMP**: Atomically update the slot map version (`ActivateSlotMapVersionWithMigration`) and notify the broker.
+6. **DRAIN**: Delete campaign keys from the source shard.
+
+If `SLOT_MIGRATION_DUAL_WRITE_ENABLED=true` is enabled, updates are written to a delta stream and synced before the final cutover.

@@ -5,7 +5,7 @@ variable "kubeconfig_path" {
 
 variable "namespace" {
   type        = string
-  description = "Kubernetes namespace for eSPX cold-path workloads."
+  description = "Kubernetes namespace for cold-path workloads."
   default     = "espx"
 }
 

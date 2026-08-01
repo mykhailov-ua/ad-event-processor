@@ -6,9 +6,7 @@ alwaysApply: false
 Agent: choose human-facing `docs/` vs scoped `.cursor/rules/*.mdc`.
 
 - System behavior, SLAs, topology — `docs/ARCHITECTURE.md`
-- Self-hosted product — `docs/SELF_HOSTED.md`
-- Protection and trust — `docs/PROTECTION.md`, `docs/TELEMETRY_AND_TRUST.md`
-- Data security — `docs/runbooks/DATA_SECURITY.md`
+- Product docs — `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`
 - Local dev, CI, open work — `docs/DEVELOPMENT.md`
 - Multi-region design — `.cursor/MULTI_REGION.md`
 - Compliance control matrix — `.cursor/COMPLIANCE_MATRIX.md`

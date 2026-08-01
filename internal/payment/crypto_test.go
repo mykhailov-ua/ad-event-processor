@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"espx/internal/payment"
-	"espx/internal/paymenttest"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -25,7 +24,7 @@ func TestCryptoGateway_EndToEnd(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
+	infra, cleanup := SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
@@ -127,7 +126,7 @@ func TestCryptoGateway_EndToEnd(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, outboxCount)
 
-	outboxWorker := paymenttest.NewOutboxWorkerForFault(infra)
+	outboxWorker := NewOutboxWorkerForFault(infra)
 	n, err := outboxWorker.ProcessOutbox(ctx, 10)
 	require.NoError(t, err)
 	require.Equal(t, 1, n)
@@ -143,7 +142,7 @@ func TestCryptoGateway_UnderpayRejected(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
+	infra, cleanup := SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
@@ -200,7 +199,7 @@ func TestCryptoGateway_FraudGateBlocksRelease(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
+	infra, cleanup := SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
@@ -278,7 +277,7 @@ func TestCryptoGateway_WebhookHTTPHandler(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
+	infra, cleanup := SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	infra.Cfg.CryptoWebhookSecret = "crypto_test_secret"

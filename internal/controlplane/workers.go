@@ -523,7 +523,6 @@ func (w *UsageDailyFlushWorker) Flush(ctx context.Context, now time.Time) error 
 		return err
 	}
 
-	// FIX [2.1]: collect all rows first so the cursor is closed before the batch.
 	type entry struct {
 		custID uuid.UUID
 		meter  string
@@ -546,7 +545,6 @@ func (w *UsageDailyFlushWorker) Flush(ctx context.Context, now time.Time) error 
 		return nil
 	}
 
-	// Single batch instead of N sequential Exec round-trips.
 	const upsertSQL = `
 		INSERT INTO billing.usage_daily (customer_id, usage_date, meter, value)
 		VALUES ($1, $2, $3, $4)

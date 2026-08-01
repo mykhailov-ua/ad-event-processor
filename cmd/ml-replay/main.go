@@ -291,7 +291,7 @@ func runReplay(ctx context.Context, opts replayOptions) error {
 func parseOptions(args []string) (replayOptions, error) {
 	opts := replayOptions{
 		modelPath:   "var/fraudscore/artifacts/model.txt",
-		fixturesDir: "testdata/ml",
+		fixturesDir: "var/fraudscore/fixtures",
 		limit:       1000,
 		minutes:     5,
 	}

@@ -9,7 +9,6 @@ import (
 
 	"espx/internal/ingestion"
 	"espx/internal/payment"
-	"espx/internal/paymenttest"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -20,12 +19,12 @@ func TestFault_CryptoHold_DualWorkerRace(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
+	infra, cleanup := SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
 	customerID := uuid.New()
-	paymenttest.SeedCustomer(t, infra.Pool, customerID)
+	SeedCustomer(t, infra.Pool, customerID)
 
 	intentID := uuid.New()
 	holdID := uuid.New()

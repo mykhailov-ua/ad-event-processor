@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"espx/internal/payment"
-	"espx/internal/paymenttest"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -20,7 +19,7 @@ func TestFault_CryptoWebhookStormIdempotent(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
+	infra, cleanup := SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
@@ -91,7 +90,7 @@ func TestFault_CryptoWebhookReplay(t *testing.T) {
 		t.Skip("fault integration test")
 	}
 
-	infra, cleanup := paymenttest.SetupPaymentFaultInfra(t)
+	infra, cleanup := SetupPaymentFaultInfra(t)
 	defer cleanup()
 
 	ctx := context.Background()
@@ -103,7 +102,7 @@ func TestFault_CryptoWebhookReplay(t *testing.T) {
 	svc := payment.NewService(infra.Pool, infra.Cfg)
 
 	customerID := uuid.New()
-	paymenttest.SeedCustomer(t, infra.Pool, customerID)
+	SeedCustomer(t, infra.Pool, customerID)
 
 	idempotencyKey := "crypto-replay-" + uuid.New().String()
 	amountMicro := int64(50_000_000)
@@ -148,22 +147,22 @@ func TestFault_CryptoWebhookReplay(t *testing.T) {
 	holdWorker := payment.NewCryptoHoldWorker(infra.Pool, infra.Cfg)
 	require.NoError(t, holdWorker.ProcessHolds(ctx))
 
-	outboxWorker := paymenttest.NewOutboxWorkerForFault(infra)
+	outboxWorker := NewOutboxWorkerForFault(infra)
 	for i := 0; i < replays; i++ {
 		_, _ = outboxWorker.ProcessOutbox(ctx, 10)
 	}
 
-	seed := paymenttest.SeededPayment{
+	seed := SeededPayment{
 		CustomerID:  customerID,
 		IntentID:    intentID,
 		AmountMicro: amountMicro,
 		ProviderRef: providerRef,
 	}
-	paymenttest.AssertPaymentFaultInvariants(t, infra.Pool, seed, amountMicro, 1)
+	AssertPaymentFaultInvariants(t, infra.Pool, seed, amountMicro, 1)
 
 	faultproof.Log(t, "crypto_webhook_replay", map[string]string{
 		"subsystem":     "payment_crypto_webhook",
-		"replays":       paymenttest.ItoaPaymentFault(replays),
+		"replays":       ItoaPaymentFault(replays),
 		"proposal_rows": "1",
 		"ledger_rows":   "1",
 		"baseline_ok":   "true",

@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"espx/pkg/commentkeep"
 )
 
 type textLang int
@@ -76,6 +78,12 @@ func stripOneLine(line []byte, lang textLang) ([]byte, int, bool) {
 	if idx < 0 {
 		return line, 0, false
 	}
+	if lang == langShell {
+		first := bytes.IndexFunc(line, func(r rune) bool { return r != ' ' && r != '\t' })
+		if first >= 0 && idx != first {
+			return line, 0, false
+		}
+	}
 
 	body := commentLineBody(line[idx:], lang)
 	if keepTextComment(body, lang) {
@@ -117,6 +125,9 @@ func commentLineBody(line []byte, lang textLang) string {
 }
 
 func keepTextComment(body string, lang textLang) bool {
+	if commentkeep.Keep(body) {
+		return true
+	}
 	switch lang {
 	case langSQL:
 		if strings.HasPrefix(body, "+goose") {

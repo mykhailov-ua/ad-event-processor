@@ -92,7 +92,7 @@ func rollbackUnitPath(service string) string {
 
 func renderRollbackUnit(service string) []byte {
 	return []byte(fmt.Sprintf(`[Unit]
-Description=eSPX rollback %s after crash loop
+Description=BidShard rollback %s after crash loop
 After=network.target
 
 [Service]

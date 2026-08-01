@@ -1,4 +1,4 @@
-package paymenttest
+package payment_test
 
 import (
 	"context"
@@ -57,7 +57,7 @@ func (stub *StubNotifierAPI) Snapshot() []notify.NotificationInput {
 	return out
 }
 
-func TestOpsConfig() *config.Config {
+func faultTestOpsConfig() *config.Config {
 	cfg := &config.Config{}
 	cfg.Management.OpsAlertsEnabled = true
 	cfg.Notifier.TelegramChatID = "-100123"

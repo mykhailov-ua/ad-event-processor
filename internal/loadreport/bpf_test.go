@@ -12,7 +12,11 @@ import (
 )
 
 func TestWriteBPFReport_diskGateFixture(t *testing.T) {
-	fixture := filepath.Join(moduleRoot(t), "testdata", "bpf_disk_gate")
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	fixture := filepath.Join(filepath.Dir(file), "testdata", "bpf_disk_gate")
 	out := t.TempDir()
 	if err := copyDir(filepath.Join(fixture, "bpf"), filepath.Join(out, "bpf")); err != nil {
 		t.Fatal(err)
@@ -36,15 +40,6 @@ func TestWriteBPFReport_diskGateFixture(t *testing.T) {
 			t.Fatalf("report missing %q\n%s", want, text)
 		}
 	}
-}
-
-func moduleRoot(t *testing.T) string {
-	t.Helper()
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller failed")
-	}
-	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
 }
 
 func copyDir(src, dst string) error {

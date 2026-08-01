@@ -5,7 +5,6 @@ import (
 	"strings"
 )
 
-// SecurityHeadersMiddleware adds baseline browser hardening headers for the JSON API.
 func SecurityHeadersMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Frame-Options", "DENY")

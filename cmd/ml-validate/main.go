@@ -90,7 +90,7 @@ func validateFixtures(fixturesDir string) error {
 
 func main() {
 	modelPath := "var/fraudscore/artifacts/model.txt"
-	fixturesDir := "testdata/ml"
+	fixturesDir := "var/fraudscore/fixtures"
 	if len(os.Args) > 1 {
 		for i := 1; i < len(os.Args); i++ {
 			switch os.Args[i] {

@@ -141,7 +141,7 @@ func WritePromReports(outDir, promURL string) (string, error) {
 }
 
 func writeBottleneckReport(b *strings.Builder, outDir, promURL string, prom *promClient) {
-	fmt.Fprintf(b, "# eSPX Dirty Load Bottleneck Report\n\n")
+	fmt.Fprintf(b, "# Dirty Load Bottleneck Report\n\n")
 	fmt.Fprintf(b, "Generated: %s\n", time.Now().UTC().Format("2006-01-02T15:04:05Z"))
 	fmt.Fprintf(b, "Prometheus: %s\n", promURL)
 	b.WriteString("Grafana: http://127.0.0.1:3100\n\n")
@@ -229,7 +229,7 @@ func writeBottleneckReport(b *strings.Builder, outDir, promURL string, prom *pro
 	b.WriteString("1. **Redis Lua p99 > 15ms** — kernel TCP/epoll or Redis single-threaded shard saturation; check `ad_redis_ops_total` per shard.\n")
 	b.WriteString("2. **clickhouse p99 >> postgres** — async_insert batching or LSM merge pressure; check CH `system.parts` and processor `ad_db_write_errors{type=clickhouse}`.\n")
 	b.WriteString("3. **pgx p99 spikes** — Postgres WAL/fsync or pool exhaustion (`DB_PROCESSOR_MAX_CONNS`); strace shows `write`/`fsync`/`epoll_wait` dominance.\n")
-	b.WriteString("4. **gnet connections near ulimit** — raise `worker_rlimit_nofile` / container ulimits; k6 keep-alive reduces FD churn.\n")
+	b.WriteString("4. **gnet connections near ulimit** — raise `worker_rlimit_nofile` / container ulimits; loadgen keep-alive reduces FD churn.\n")
 	b.WriteString("5. **fraud_stream_drop > 0** — fraud ring (4096) overflow; hot path lossy by design under malformed traffic.\n")
 	b.WriteString("6. **worker_pool_reject** — pinned worker queue full; ingestion exceeds parse+filter capacity.\n")
 
@@ -245,8 +245,7 @@ func writeBottleneckReport(b *strings.Builder, outDir, promURL string, prom *pro
 		b.WriteString("\n## BPF probe (dev)\n\n")
 		b.WriteString("Kernel/session detail: [bpf-report.md](bpf-report.md).\n")
 		for _, line := range strings.Split(string(bpfData), "\n") {
-			if strings.Contains(line, "loadgen share of tracked on-CPU") ||
-				strings.Contains(line, "k6 share of tracked on-CPU") {
+			if strings.Contains(line, "loadgen share of tracked on-CPU") {
 				b.WriteString("- " + strings.TrimSpace(line) + "\n")
 				break
 			}
@@ -313,23 +312,16 @@ func writeStraceSection(b *strings.Builder, outDir string) {
 }
 
 func readStatusHistogram(outDir string) (*statusHistogramFile, string) {
-	for _, name := range []string{"status-histogram.json", "k6-status-histogram.json"} {
-		path := filepath.Join(outDir, name)
-		data, err := os.ReadFile(path)
-		if err != nil {
-			continue
-		}
-		var hist statusHistogramFile
-		if json.Unmarshal(data, &hist) != nil {
-			continue
-		}
-		label := "loadgen"
-		if name == "k6-status-histogram.json" {
-			label = "k6"
-		}
-		return &hist, label
+	path := filepath.Join(outDir, "status-histogram.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, ""
 	}
-	return nil, ""
+	var hist statusHistogramFile
+	if json.Unmarshal(data, &hist) != nil {
+		return nil, ""
+	}
+	return &hist, "loadgen"
 }
 
 func writeStatusHistogramSection(b *strings.Builder, hist *statusHistogramFile, label string) {
@@ -423,7 +415,7 @@ func write5xxSection(b *strings.Builder, outDir, promURL string, prom *promClien
 			fmt.Fprintf(b, "- `%s` / `%s`: %d\n", row.Status, row.Error, row.Count)
 		}
 	} else {
-		b.WriteString("_No status-histogram.json or k6-status-histogram.json in session dir._\n")
+		b.WriteString("_No status-histogram.json in session dir._\n")
 	}
 
 	b.WriteString("\n### Tracker Prometheus (`ad_http_requests_total`, increase 15m)\n\n")

@@ -35,7 +35,7 @@ http_code() {
   curl -sf -o /dev/null -w '%{http_code}' "$1"
 }
 
-echo "eSPX local smoke"
+echo "BidShard local smoke"
 
 check "tracker /health (${TRACKER_PORT})" test "$(http_code "http://127.0.0.1:${TRACKER_PORT}/health")" = "200"
 check "processor /health (${PROCESSOR_PORT})" test "$(http_code "http://127.0.0.1:${PROCESSOR_PORT}/health")" = "200"

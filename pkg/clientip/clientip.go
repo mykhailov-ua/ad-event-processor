@@ -6,13 +6,11 @@ import (
 	"strings"
 )
 
-// Trusted holds parsed trusted-proxy entries (exact IPs and CIDR nets).
 type Trusted struct {
 	exact map[string]bool
 	nets  []*net.IPNet
 }
 
-// ParseTrusted builds a Trusted list from config strings (IPs or CIDRs).
 func ParseTrusted(entries []string) Trusted {
 	t := Trusted{exact: make(map[string]bool)}
 	for _, raw := range entries {
@@ -31,7 +29,6 @@ func ParseTrusted(entries []string) Trusted {
 	return t
 }
 
-// Contains reports whether ip is a configured trusted proxy.
 func (t Trusted) Contains(ip net.IP) bool {
 	if ip == nil {
 		return false
@@ -66,8 +63,6 @@ func publicClientIP(ipStr string) (string, bool) {
 	return parsed.String(), true
 }
 
-// FromRequest returns the client IP for rate limiting and auth lockout.
-// X-Forwarded-For / X-Real-IP are honored only when the direct peer is trusted.
 func FromRequest(r *http.Request, trusted Trusted) string {
 	if r == nil {
 		return ""
@@ -91,7 +86,6 @@ func FromRequest(r *http.Request, trusted Trusted) string {
 	return remoteIP
 }
 
-// FromProxyPeer extracts the client IP when the peer is already known to be trusted.
 func FromProxyPeer(peerIP string, xff, xRealIP string, trusted Trusted) string {
 	parsedPeer := net.ParseIP(peerIP)
 	if !trusted.Contains(parsedPeer) {

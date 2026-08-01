@@ -18,7 +18,7 @@ var (
 
 var rootCmd = &cobra.Command{
 	Use:   "espx",
-	Short: "eSPX operator CLI",
+	Short: "BidShard operator CLI",
 	Long:  "Operator-facing CLI for health checks, MVSS checklist, and support bundles.",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		return loadEnvFile(envPath)

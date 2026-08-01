@@ -309,15 +309,12 @@ func (service *Service) Login(ctx context.Context, email, password, userAgent, c
 				go func(plainPwd, userEmail string) {
 					defer func() {
 						<-service.rehashSem
-						// FIX [3.3]: use a bounded timeout for the Redis DEL so
-						// this goroutine doesn't run indefinitely on Redis issues.
 						cleanupCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 						if errDel := service.rdb.Del(cleanupCtx, lockKey).Err(); errDel != nil {
 							slog.Error("failed to release rehash lock", slog.String("email", userEmail), slog.Any("error", errDel))
 						}
 						cancel()
 					}()
-					// FIX [3.3]: bounded context for both hash computation and DB write.
 					rehashCtx, rehashCancel := context.WithTimeout(context.Background(), 30*time.Second)
 					defer rehashCancel()
 					newHash, errHash := service.hasher.HashPassword(plainPwd)
@@ -566,9 +563,6 @@ func (service *Service) RevokeToken(ctx context.Context, refreshTokenStr string)
 
 		shards := service.controlRedis()
 		if len(shards) > 0 {
-			// FIX [3.4]: fan-out SET calls to all shards concurrently instead of
-			// sequential blocking calls. With N shards the old code took N * RTT;
-			// now it takes max(RTT) which is typically < 1ms extra.
 			var wg sync.WaitGroup
 			key := "revoked:session:" + sessionID
 			for i, rdb := range shards {

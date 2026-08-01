@@ -5,5 +5,4 @@ ROOT="$ESPX_REPO_ROOT"
 SCRIPTS="$ESPX_SCRIPTS_ROOT"
 export ROOT SCRIPTS ESPX_SCRIPTS_ROOT ESPX_REPO_ROOT
 
-# shellcheck source=safe_paths.sh
 source "$ESPX_SCRIPTS_ROOT/lib/safe_paths.sh"

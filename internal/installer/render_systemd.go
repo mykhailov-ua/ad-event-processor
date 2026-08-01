@@ -7,7 +7,7 @@ import (
 )
 
 const trackerUnitTemplate = `[Unit]
-Description=eSPX Tracker
+Description=BidShard Tracker
 After=network-online.target
 Wants=network-online.target
 StartLimitIntervalSec=10

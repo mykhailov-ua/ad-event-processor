@@ -28,7 +28,7 @@ if [[ -z "$NODE_IP" ]]; then
 	exit 1
 fi
 
-echo "eSPX k3s hot-path smoke (node=${NODE_IP})"
+echo "BidShard k3s hot-path smoke (node=${NODE_IP})"
 
 ready_count="$(kubectl get pods -n espx-edge -o jsonpath='{range .items[*]}{.status.containerStatuses[0].ready}{"\n"}{end}' 2>/dev/null | grep -c true || true)"
 total_count="$(kubectl get pods -n espx-edge --no-headers 2>/dev/null | wc -l)"

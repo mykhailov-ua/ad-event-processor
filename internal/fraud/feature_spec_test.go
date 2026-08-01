@@ -68,7 +68,7 @@ func TestFeatureSpecGoldenFixtures(t *testing.T) {
 		loaded++
 	}
 	if loaded == 0 {
-		t.Skip("no features_*.json fixtures under testdata/ml; run make fraud-modeling-check locally")
+		t.Skip("no features_*.json fixtures under var/fraudscore/fixtures; run make fraudtrain-check locally")
 	}
 }
 

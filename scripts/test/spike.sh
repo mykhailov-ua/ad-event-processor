@@ -18,11 +18,11 @@ log() { printf 'load-spike: %s\n' "$*"; }
 log "ensuring stack (constrained=${CONSTRAINED})"
 "${COMPOSE[@]}" up -d --remove-orphans db redis-0 redis-1 redis-2 redis-3 processor tracker-0 tracker-1 nginx prometheus grafana 2>&1 | tee "$OUT/compose.log"
 
-bash "$SCRIPTS/load/snapshot_runtime.sh" "$OUT/runtime-pre" || true
+bash "$SCRIPTS/test/snapshot_runtime.sh" "$OUT/runtime-pre" || true
 
 BPF_PID=""
 if [[ "${ESPX_BPF_PROBE:-0}" == "1" ]]; then
-	bash "$SCRIPTS/load/bpf_probe_session.sh" start "$OUT" || log "WARN: BPF start failed"
+	bash "$SCRIPTS/test/bpf_probe_session.sh" start "$OUT" || log "WARN: BPF start failed"
 	[[ -f "$OUT/bpf/collector.pid" ]] && BPF_PID="$(cat "$OUT/bpf/collector.pid")"
 fi
 
@@ -42,8 +42,8 @@ go run ./cmd/loadgen \
 	-trackers "$TRACKER_BASES" \
 	2>&1 | tee "$OUT/loadgen.log"
 
-bash "$SCRIPTS/load/snapshot_runtime.sh" "$OUT/runtime-post" || true
-[[ -n "$BPF_PID" ]] && bash "$SCRIPTS/load/bpf_probe_session.sh" stop "$OUT" "$BPF_PID" || true
+bash "$SCRIPTS/test/snapshot_runtime.sh" "$OUT/runtime-post" || true
+[[ -n "$BPF_PID" ]] && bash "$SCRIPTS/test/bpf_probe_session.sh" stop "$OUT" "$BPF_PID" || true
 
 go run ./cmd/load-report prom "$OUT"
 log "done — $OUT/bottleneck-report.md"

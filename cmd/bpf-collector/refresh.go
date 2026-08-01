@@ -31,7 +31,7 @@ func (r *probeRun) refreshTargetsFromScript() error {
 	if roles == "" {
 		roles = "tracker,nginx,redis,processor"
 	}
-	script := filepath.Join(repoRoot(), "scripts", "load-test", "bpf_resolve_targets.sh")
+	script := filepath.Join(repoRoot(), "scripts", "test", "bpf_resolve_targets.sh")
 	cmd := exec.CommandContext(context.Background(), "bash", script, targetsPath, roles)
 	cmd.Env = os.Environ()
 	cmd.Dir = repoRoot()

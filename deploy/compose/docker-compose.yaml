@@ -1,6 +1,3 @@
-# Compose deploy profiles (docker compose --profile <name>):
-#   single_vps, ingest_only, network_operator — cmd/control monolith (default; see docs/SELF_HOSTED.md)
-#   analytics_ml, resilience, crypto, multi-region, monitoring, tools, fraud-scorer — optional add-ons
 
 services:
   tracker-0:

@@ -113,7 +113,7 @@ spec:
             - name: eval
               image: espx-ml-bootstrap:latest
               imagePullPolicy: IfNotPresent
-              command: ["python3", "fraudtrain/evaluate.py"]
+              command: ["python3", "model/evaluate.py"]
               args:
                 - "--format"
                 - "both"

@@ -20,7 +20,7 @@ func main() {
 	indexInterval := flag.Int64("index-interval", 4096, "Index interval in bytes")
 	flag.Parse()
 
-	slog.Info("Starting ESPX Broker", "node_id", *nodeID, "addr", *addr, "health_addr", *healthAddr)
+	slog.Info("Starting BidShard broker", "node_id", *nodeID, "addr", *addr, "health_addr", *healthAddr)
 
 	srv := server.NewServer(*addr, *dataDir, *maxSegSize, *indexInterval)
 	srv.SetHealthAddr(*healthAddr)
@@ -41,11 +41,11 @@ func main() {
 	srv.SetCoordinator(coord)
 	coord.Start()
 
-	slog.Info("ESPX Broker running")
+	slog.Info("BidShard broker running")
 	sig := lifecycle.WaitSignal()
 	slog.Info("received shutdown signal", "signal", sig.String(), "node_id", *nodeID)
 
-	slog.Info("Shutting down ESPX Broker...")
+	slog.Info("Shutting down BidShard broker...")
 	srv.Stop()
 	coord.Stop()
 	slog.Info("Shutdown complete.")

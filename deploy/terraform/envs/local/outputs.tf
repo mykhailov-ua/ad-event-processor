@@ -10,7 +10,7 @@ output "kubeconfig_path" {
 
 output "namespace" {
   value       = var.namespace
-  description = "eSPX cold-path namespace."
+  description = "BidShard cold-path namespace."
 }
 
 output "cold_path_services" {

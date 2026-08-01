@@ -137,7 +137,6 @@ func syncGlobalSetReplaceToAllShards(ctx context.Context, rdbs []redis.Universal
 	return nil
 }
 
-// syncMLModelMetaOnShard sets ML model metadata keys in one pipeline round-trip.
 func syncMLModelMetaOnShard(ctx context.Context, rdb redis.UniversalClient, versionID, hash string, appliedAt int64) error {
 	if rdb == nil {
 		return nil
@@ -151,7 +150,6 @@ func syncMLModelMetaOnShard(ctx context.Context, rdb redis.UniversalClient, vers
 	return err
 }
 
-// syncKeyToAllShards writes the same key/value to every shard.
 func syncKeyToAllShards(ctx context.Context, rdbs []redis.UniversalClient, key string, value interface{}, ttl time.Duration) error {
 	if len(rdbs) == 0 {
 		return fmt.Errorf("no redis client available")

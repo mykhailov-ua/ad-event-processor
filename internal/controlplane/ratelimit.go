@@ -13,7 +13,6 @@ import (
 
 var trustedProxies clientip.Trusted
 
-// SetTrustedProxies configures proxy trust for per-IP rate limiting.
 func SetTrustedProxies(entries []string) {
 	trustedProxies = clientip.ParseTrusted(entries)
 }
@@ -22,7 +21,6 @@ func clientIP(r *http.Request) string {
 	return clientip.FromRequest(r, trustedProxies)
 }
 
-// rateLimiterEntry wraps a Limiter with a last-access timestamp for eviction.
 type rateLimiterEntry struct {
 	lim      *rate.Limiter
 	lastSeen time.Time
@@ -72,7 +70,6 @@ func (l *ipRateLimiter) allow(key string) bool {
 	return e.lim.Allow()
 }
 
-// evictStaleLocked removes entries not accessed within rateLimiterEvictAfter.
 // Must be called with the limiter mutex held.
 func evictStaleLocked(entries map[string]*rateLimiterEntry, now time.Time) {
 	for k, e := range entries {

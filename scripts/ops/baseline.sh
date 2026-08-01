@@ -73,7 +73,7 @@ write_snapshot() {
 	mkdir -p "$BASELINE_DIR"
 	file="$BASELINE_DIR/baseline-${ts}.txt"
 	{
-		echo "# eSPX edge Phase 0.3 minimal baseline (not a 24h soak)"
+		echo "# edge Phase 0.3 minimal baseline (not a 24h soak)"
 		echo "captured_at_utc=$ts"
 		echo "prometheus_url=$PROMETHEUS_URL"
 		echo "tracker_p95_ms=${TRACKER_P95_MS:-na}"

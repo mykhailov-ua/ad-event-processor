@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Write testdata/ml/features_*.json for cmd/ml-validate and bootstrap validate."""
+"""Write var/fraudscore/fixtures/features_*.json for cmd/ml-validate."""
 from __future__ import annotations
 
 import json
@@ -9,7 +9,7 @@ from pathlib import Path
 from feature_spec import FEATURE_NAMES, row_to_vector
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-OUT_DIR = REPO_ROOT / "testdata" / "ml"
+OUT_DIR = REPO_ROOT / "var" / "fraudscore" / "fixtures"
 
 FIXTURE_ROWS: list[tuple[str, dict[str, int]]] = [
     (

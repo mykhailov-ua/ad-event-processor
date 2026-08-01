@@ -22,12 +22,10 @@ func ValidClickHouseIdentifier(name string) bool {
 	return true
 }
 
-// ValidGAQLDate validates YYYY-MM-DD for Google Ads Query Language date literals.
 func ValidGAQLDate(date string) bool {
 	return gaqlDateRE.MatchString(date)
 }
 
-// ValidCHHexToken allows hex deduplication tokens embedded in SETTINGS clauses.
 func ValidCHHexToken(token string) bool {
 	if token == "" || len(token) > 128 {
 		return false
@@ -35,7 +33,6 @@ func ValidCHHexToken(token string) bool {
 	return hexTokenRE.MatchString(token)
 }
 
-// ClampCHLookbackHours bounds hour lookbacks for subtractHours(now(), ?) queries.
 func ClampCHLookbackHours(hours int) int {
 	if hours < 1 {
 		return 1
@@ -46,7 +43,6 @@ func ClampCHLookbackHours(hours int) int {
 	return hours
 }
 
-// ClampCHWindowSeconds bounds second intervals for toIntervalSecond(?) queries.
 func ClampCHWindowSeconds(sec int64) int64 {
 	if sec <= 0 {
 		return 3600
@@ -57,7 +53,6 @@ func ClampCHWindowSeconds(sec int64) int64 {
 	return sec
 }
 
-// ClampCHBucketMicro bounds bucket divisors for intDiv(floor_micro, ?) queries.
 func ClampCHBucketMicro(micro int64) int64 {
 	if micro <= 0 {
 		return 10_000
