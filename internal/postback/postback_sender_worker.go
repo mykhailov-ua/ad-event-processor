@@ -21,7 +21,6 @@ import (
 
 	db "espx/internal/domain/db"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -29,7 +28,6 @@ import (
 )
 
 var (
-	ErrNotProTier     = errors.New("pro or enterprise plan required")
 	ErrDuplicateEvent = errors.New("duplicate postback event ignored")
 )
 
@@ -139,11 +137,7 @@ func (w *PostbackWorker) ProcessBatch(ctx context.Context) error {
 		err := w.ProcessEvent(ctx, ev)
 		if err != nil {
 			slog.Warn("Failed to process postback event", "id", ev.ID, "error", err)
-			if errors.Is(err, ErrNotProTier) || errors.Is(err, ErrDuplicateEvent) {
-				_, _ = w.pool.Exec(ctx, "UPDATE outbox_events SET status = 'FAILED', processing_started_at = NULL WHERE id = $1", ev.ID)
-			} else {
-				_, _ = w.pool.Exec(ctx, "UPDATE outbox_events SET status = 'FAILED', processing_started_at = NULL WHERE id = $1", ev.ID)
-			}
+			_, _ = w.pool.Exec(ctx, "UPDATE outbox_events SET status = 'FAILED', processing_started_at = NULL WHERE id = $1", ev.ID)
 		} else {
 			_, _ = w.pool.Exec(ctx, "UPDATE outbox_events SET status = 'PROCESSED', processing_started_at = NULL WHERE id = $1", ev.ID)
 		}
@@ -158,20 +152,12 @@ func (w *PostbackWorker) ProcessEvent(ctx context.Context, ev db.OutboxEvent) er
 		return fmt.Errorf("failed to unmarshal payload: %w", err)
 	}
 
-	allowed, err := w.checkProTier(ctx, payload.CustomerID)
-	if err != nil {
-		return fmt.Errorf("failed to check subscription: %w", err)
-	}
-	if !allowed {
-		return ErrNotProTier
-	}
-
 	idempotencyStr := fmt.Sprintf("%s|%s|%s", payload.CustomerID, payload.ClickID, payload.EventType)
 	hashBytes := sha256.Sum256([]byte(idempotencyStr))
 	idempotencyHash := hex.EncodeToString(hashBytes[:])
 
 	var isDuplicate bool
-	err = w.pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM postback_dispatches WHERE idempotency_hash = $1)", idempotencyHash).Scan(&isDuplicate)
+	err := w.pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM postback_dispatches WHERE idempotency_hash = $1)", idempotencyHash).Scan(&isDuplicate)
 	if err != nil {
 		return fmt.Errorf("failed to check idempotency: %w", err)
 	}
@@ -275,18 +261,6 @@ func (w *PostbackWorker) dispatchWithRetry(ctx context.Context, adapter Postback
 	}
 
 	return fmt.Errorf("failed after %d attempts: %w", maxRetries, lastErr)
-}
-
-func (w *PostbackWorker) checkProTier(ctx context.Context, customerID uuid.UUID) (bool, error) {
-	var planCode string
-	err := w.pool.QueryRow(ctx, "SELECT plan_code FROM billing.customer_subscriptions WHERE customer_id = $1", customerID).Scan(&planCode)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return false, nil
-		}
-		return false, err
-	}
-	return strings.ToLower(planCode) == "pro" || strings.ToLower(planCode) == "enterprise", nil
 }
 
 func (w *PostbackWorker) getLimiter(targetURL string, provider string) *rate.Limiter {

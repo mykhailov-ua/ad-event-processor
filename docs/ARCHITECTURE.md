@@ -55,17 +55,29 @@ graph TD
 
 BidShard is designed for the 2026 advertising ecosystem, prioritizing privacy, supply chain transparency, and agentic AI integration.
 
-### 2.1. OpenRTB 2.6+ & Protocol Support
-- **Native OpenRTB 2.6-202606**: Full support for the latest 2.x line updates, including Digital Out-of-Home (DOOH), ad-podding for CTV, and advanced metadata for live events.
-- **SupplyChain Object 1.0**: Native implementation of the `schain` object to provide full transparency into the seller and reseller chain, integrated with `sellers.json`.
-- **Deals API 1.0**: Automated deal metadata ingestion from external SSPs and curation platforms, eliminating manual deal entry in the control plane.
+### 2.1. OpenRTB 2.6 exchange (SMB scope)
 
-### 2.2. Privacy-First & Signal Loss Mitigation
+Production SSP integration uses **OpenRTB 2.6** only:
+
+- **Endpoint**: `POST /openrtb/bid` on tracker (`internal/ingestion/openrtb_exchange.go`).
+- **Codec**: `internal/openrtb/` — decode, validate (integration profile §0.2), encode bid/no-bid.
+- **Auction**: Same in-process `RunAuction` as `/track`; no external bidder service.
+- **Ops**: Control plane `/api/v1/rtb/*` — validate, deals, shadow-diff, reconcile export (CH `rtb_exchange_log`).
+- **Not in P0**: OpenRTB 3.0, CTV ad pods, DOOH, full macro table — see `OPENRTB-FULL.md` §12.
+
+Runbook: [RTB_PRODUCTION_RUNBOOK.md](RTB_PRODUCTION_RUNBOOK.md).
+
+### 2.2. Supply chain and deals
+
+- **SupplyChain (`schain`)**: Tolerant parse on exchange path; optional allowlist from Postgres.
+- **PMP deals**: Postgres `rtb_deals` → hot `DealIndex`; floors in Redis `rtb:floor:{id}`.
+
+### 2.3. Privacy-First & Signal Loss Mitigation
 - **Privacy Sandbox Adaptors**: Integrated support for Google Privacy Sandbox (Topics API and Protected Audience API). The `tracker` acts as an orchestrator for Protected Audience interest group bidding.
 - **First-Party Data Clean Rooms**: The `control` plane supports secure data sharing with advertiser Data Clean Rooms (DCR), enabling high-precision targeting without exposing PII.
 - **Topics-based Filtering**: Native `FilterEngine` support for IAB content taxonomies and Topics API signals, replacing legacy third-party cookie targeting.
 
-### 2.3. Agentic AI & ARTF 1.0 Implementation
+### 2.4. Agentic AI & ARTF 1.0 Implementation
 - **Agentic Real-Time Framework**: BidShard implements the IAB ARTF 1.0 spec, allowing containerized AI agents (`fraud-scorer`, `ivt-detector`) to operate within the infrastructure and perform bidstream enrichment via the OpenRTB Patch Protocol.
 - **ML Scoring Ensemble**: Uses Agentic AI to perform real-time bid mutation, enriching requests with quality scores and predicted conversion probabilities in under 1 ms.
 
@@ -77,7 +89,7 @@ To meet the processing SLA under high load, the platform enforces a strict bound
 
 | Attribute | Hot Path | Cold Path |
 | :--- | :--- | :--- |
-| **Scope** | `/track`, `/click`, RTB auction, FilterEngine. | `/api/v1` REST API, billing, reports, payments. |
+| **Scope** | `/track`, `/click`, `/openrtb/bid`, RTB auction, FilterEngine. | `/api/v1` REST API, billing, reports, payments. |
 | **Latency SLA** | **p95 < 50 ms, p99 < 80 ms**, max 100 ms. | Milliseconds to minutes. |
 | **Memory Allocations**| **0 heap allocations** (zero-alloc). | Standard Go allocations, sqlc-generated code. |
 | **Network Engine** | `gnet` (epoll-based event loop). | Standard Go `net/http`. |
@@ -103,7 +115,7 @@ The `slot_table` is a flat `[1024]uint8` array accessed via lock-free atomic ope
 
 #### Key Distribution
 - **Shard 0 (Global)**: Handles configuration updates via Pub/Sub (`campaigns:update`), authentication lockouts, global blacklists, and brand creatives.
-- **Shards 1–3**: Store campaign-specific data (budgets, frequency caps, idempotency keys, and local event streams `ad:events:stream`).
+- **Shards 1-3**: Store campaign-specific data (budgets, frequency caps, idempotency keys, and local event streams `ad:events:stream`).
 
 #### Atomic Lua Execution
 To prevent race conditions, budget debits and frequency checks are executed atomically in Redis via Lua scripts:
@@ -196,7 +208,7 @@ GET /click?campaign_id=<uuid>&type=click&click_id=<optional>&user_id=<optional>&
 | `type` | No | Event type; defaults to `click`. |
 | `click_id` | No | External click ID; generated if omitted. |
 | `user_id` | No | Visitor / sub-ID for frequency cap and creative stickiness. |
-| `sub1`–`sub5` | No | Arbitrage sub-IDs; available as landing URL macros. |
+| `sub1`-`sub5` | No | Arbitrage sub-IDs; available as landing URL macros. |
 | Other query keys | No | Passthrough (e.g. `gclid`, `ttclid`, UTM) appended to the `Location` URL. |
 
 **Landing URL macros** (configured on brand creatives in the control plane):
@@ -229,7 +241,7 @@ GET /click?campaign_id=<uuid>&type=click&click_id=<optional>&user_id=<optional>&
 
 ## 6. In-Process RTB Auction
 
-The RTB auction is executed in-process within the `tracker` before budget evaluation.
+The RTB auction runs in-process on tracker for `/track` and `POST /openrtb/bid` (OpenRTB 2.6 exchange).
 
 - **Structure of Arrays (SoA)**: Candidate campaigns and creatives are stored in flat, parallel arrays in memory. This layout maximizes CPU cache locality and avoids pointer dereferencing during scans.
 - **Early Termination**: Candidates are pre-sorted by expected bid value. The scan terminates early as soon as the candidate's bid falls below the current second-price threshold.

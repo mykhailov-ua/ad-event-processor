@@ -9,6 +9,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const DefaultSKUCode = "license"
+
 type SKUFile struct {
 	SKUs []SKUDefinition `yaml:"skus"`
 }
@@ -66,12 +68,19 @@ func LoadSKUFile(path string) (*SKUFile, error) {
 
 func (f *SKUFile) GetSKU(code string) (*SKUDefinition, error) {
 	code = strings.TrimSpace(code)
+	if code == "" {
+		code = DefaultSKUCode
+	}
 	for i := range f.SKUs {
 		if f.SKUs[i].Code == code {
 			return &f.SKUs[i], nil
 		}
 	}
 	return nil, fmt.Errorf("sku %q not found", code)
+}
+
+func (f *SKUFile) DefaultSKU() (*SKUDefinition, error) {
+	return f.GetSKU(DefaultSKUCode)
 }
 
 type IssueLicenseInput struct {

@@ -87,7 +87,7 @@ func licenseStatus() error {
 	}
 
 	state := licensing.DetermineState(claims, time.Now(), false)
-	fmt.Printf("License status: %s (deployment_id=%s plan=%s valid_until=%s)\n",
-		state, claims.DeploymentID, claims.Plan, claims.ValidUntil.Format(time.RFC3339))
+	fmt.Printf("License status: %s (deployment_id=%s valid_until=%s)\n",
+		state, claims.DeploymentID, claims.ValidUntil.Format(time.RFC3339))
 	return nil
 }

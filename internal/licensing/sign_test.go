@@ -18,8 +18,8 @@ func TestSignJWT_roundTrip(t *testing.T) {
 		Issuer:       "espx-license",
 		Subject:      "lic-1",
 		CustomerName: "Acme",
-		Plan:         "ingest_pro",
-		SKU:          "ingest_pro",
+		Plan:         DefaultSKUCode,
+		SKU:          DefaultSKUCode,
 		ValidFrom:    time.Now().UTC(),
 		ValidUntil:   time.Now().UTC().Add(24 * time.Hour),
 		GraceDays:    7,
@@ -31,7 +31,7 @@ func TestSignJWT_roundTrip(t *testing.T) {
 
 	parsed, err := VerifyJWT(token, pub)
 	require.NoError(t, err)
-	require.Equal(t, "ingest_pro", parsed.SKU)
+	require.Equal(t, DefaultSKUCode, parsed.SKU)
 	require.Equal(t, uint64(1000), parsed.Limits.MaxRPS)
 }
 
@@ -50,7 +50,7 @@ func TestSignJWT_ed25519DeterministicVector(t *testing.T) {
 		Subject:      "vector-subject",
 		DeploymentID: "dep-vector",
 		CustomerName: "Vector Co",
-		Plan:         "ingest_pro",
+		Plan:         DefaultSKUCode,
 		ValidFrom:    validFrom,
 		ValidUntil:   validUntil,
 		GraceDays:    7,
@@ -71,21 +71,32 @@ func TestSignJWT_ed25519DeterministicVector(t *testing.T) {
 func TestLoadSKUFile(t *testing.T) {
 	doc, err := LoadSKUFile(filepath.Join("..", "..", "deploy", "vendor", "sku.yaml"))
 	require.NoError(t, err)
-	sku, err := doc.GetSKU("ingest_pro")
+	sku, err := doc.GetSKU(DefaultSKUCode)
 	require.NoError(t, err)
-	require.Equal(t, "Ingest + Antifraud Pro", sku.DisplayName)
+	require.Equal(t, DefaultSKUCode, sku.Code)
+	require.True(t, sku.Features.RtbLive)
+	require.True(t, sku.Features.MarginGuard)
 }
 
 func TestSKUBuildClaims(t *testing.T) {
 	doc, err := LoadSKUFile(filepath.Join("..", "..", "deploy", "vendor", "sku.yaml"))
 	require.NoError(t, err)
-	sku, err := doc.GetSKU("network_enterprise")
+	sku, err := doc.DefaultSKU()
 	require.NoError(t, err)
 	claims := sku.BuildClaims(IssueLicenseInput{
 		CustomerName: "Buyer",
 		DeploymentID: "dep-1",
 		LicenseID:    "lic-1",
 	})
-	require.Equal(t, "network_enterprise", claims.SKU)
+	require.Equal(t, DefaultSKUCode, claims.SKU)
 	require.True(t, claims.Features.RtbLive)
+	require.True(t, claims.Features.MultiRegion)
+}
+
+func TestGetSKU_emptyDefaultsToLicense(t *testing.T) {
+	doc, err := LoadSKUFile(filepath.Join("..", "..", "deploy", "vendor", "sku.yaml"))
+	require.NoError(t, err)
+	sku, err := doc.GetSKU("")
+	require.NoError(t, err)
+	require.Equal(t, DefaultSKUCode, sku.Code)
 }

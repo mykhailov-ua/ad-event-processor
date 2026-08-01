@@ -1,0 +1,6 @@
+profile: single_vps
+ingress_schema: espx_native
+telemetry_enabled: true
+edge_xdp: false
+multi_region: false
+interface: eth0

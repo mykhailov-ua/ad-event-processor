@@ -122,6 +122,7 @@ type Config struct {
 	RedisBreakerHalfOpen            int
 	RedisBreakerOpenTimeoutMs       int
 	AdminAPIKey                     Secret
+	InstallBootstrapToken           Secret
 	AllowedOrigins                  []string
 	PaymentWebhookPort              string
 	PaymentInternalToken            Secret
@@ -254,16 +255,33 @@ type Config struct {
 		DivergenceThreshold uint64
 	}
 
-	RtbMode                  string
-	RtbBudgetAuthority       string
-	RtbClearingMode          string
-	RtbSnapshotPath          string
-	RtbHybridMaxRpsPerNode   int
-	RtbReconcileIntervalMs   int
-	RtbBudgetDivergenceMicro int64
-	RtbReconcileSampleSize   int
-	RtbTargetingIndex        bool
-	RtbPrebidIVT             bool
+	RtbMode                        string
+	RtbBudgetAuthority             string
+	RtbClearingMode                string
+	RtbSnapshotPath                string
+	RtbHybridMaxRpsPerNode         int
+	RtbReconcileIntervalMs         int
+	RtbBudgetDivergenceMicro       int64
+	RtbReconcileSampleSize         int
+	RtbTargetingIndex              bool
+	RtbPrebidIVT                   bool
+	RtbExchangeMaxQPS              int
+	RtbExchangeMaxBodyBytes        int64
+	RtbExchangeNoBidMode           string
+	RtbExchangeMultiImpMax         int
+	RtbExchangeGzip                bool
+	RtbExchangeDelivery            string
+	RtbExchangeNURLTemplate        string
+	RtbExchangeSeatID              string
+	RtbRegsPolicy                  string
+	RtbCoppaPolicy                 string
+	RtbBlocklistEnforce            bool
+	RtbCatalogReloadSLOMs          int
+	RtbDealOutcomeFlushMs          int
+	CHJanitorEnabled               bool
+	CHJanitorIntervalH             int
+	CHRetentionDaysRtbDealOutcomes int
+	CHRetentionDaysRtbExchangeLog  int
 
 	IngressSchema string
 
@@ -504,6 +522,10 @@ func Load() (*Config, error) {
 		CHSpoolMaxSegments:              getEnvInt("CH_SPOOL_MAX_SEGMENTS", 8),
 		CHReadonlyDSN:                   Secret(envOrDefault("CH_READONLY_DSN", os.Getenv("CH_DSN"))),
 		CHRawRetentionDays:              getEnvInt("CH_RAW_RETENTION_DAYS", 180),
+		CHJanitorEnabled:                getEnvBool("CH_JANITOR_ENABLED", true),
+		CHJanitorIntervalH:              getEnvInt("CH_JANITOR_INTERVAL_H", 24),
+		CHRetentionDaysRtbDealOutcomes:  getEnvInt("CH_RETENTION_DAYS_RTB_DEAL_OUTCOMES", 90),
+		CHRetentionDaysRtbExchangeLog:   getEnvInt("CH_RETENTION_DAYS_RTB_EXCHANGE_LOG", 30),
 		CHEmergencyDropPercent:          getEnvInt("CH_EMERGENCY_DROP_PERCENT", 0),
 		CHRecompressPartsThreshold:      getEnvInt("CH_RECOMPRESS_PARTS_THRESHOLD", 8),
 		CHRecompressOffPeakStartUTC:     getEnvInt("CH_RECOMPRESS_OFFPEAK_START_UTC", 2),
@@ -554,6 +576,7 @@ func Load() (*Config, error) {
 		RedisBreakerHalfOpen:            getEnvInt("REDIS_BREAKER_HALF_OPEN", 10),
 		RedisBreakerOpenTimeoutMs:       getEnvInt("REDIS_BREAKER_OPEN_TIMEOUT_MS", 5000),
 		AdminAPIKey:                     Secret(os.Getenv("ADMIN_API_KEY")),
+		InstallBootstrapToken:           Secret(os.Getenv("INSTALL_BOOTSTRAP_TOKEN")),
 		AllowedOrigins:                  strings.Split(os.Getenv("ALLOWED_ORIGINS"), ","),
 		TrustedProxies:                  strings.Split(os.Getenv("TRUSTED_PROXIES"), ","),
 		Env:                             appEnv,

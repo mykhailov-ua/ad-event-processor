@@ -6,65 +6,83 @@ import (
 	"strings"
 
 	"espx/pkg/branding"
+	"espx/pkg/platformconfig"
 
 	"gopkg.in/yaml.v3"
 )
 
 func RunConfigure(interactive bool) error {
-	profile := &InstallProfile{
-		Type:             ProfileComposeDev,
-		IngressSchema:    IngressSchemaOpenRTB3,
-		TelemetryEnabled: true,
-	}
+	cfg := platformconfig.Default()
+	cfg.Profile = platformconfig.ProfileSingleVPS
+	cfg.IngressSchema = platformconfig.IngressESPXNative
 
 	if interactive {
-		fmt.Println(branding.ProductName(), "setup")
+		fmt.Println(branding.ProductName() + " setup (single_vps)")
 
-		fmt.Print("Choose profile (single_vps, compose_dev, k8s_k3s) [compose_dev]: ")
-		var pStr string
-		_, _ = fmt.Scanln(&pStr)
-		if pStr != "" {
-			profile.Type = Profile(pStr)
+		fmt.Print("Tracking domain (e.g. trk.example.com): ")
+		var trackingDomain string
+		_, _ = fmt.Scanln(&trackingDomain)
+		cfg.TrackingDomain = strings.TrimSpace(trackingDomain)
+
+		fmt.Print("Default currency [USD]: ")
+		var currency string
+		_, _ = fmt.Scanln(&currency)
+		if strings.TrimSpace(currency) != "" {
+			cfg.DefaultCurrency = strings.ToUpper(strings.TrimSpace(currency))
 		}
 
-		fmt.Print("Enable Edge XDP? (y/N): ")
-		var xdp string
-		_, _ = fmt.Scanln(&xdp)
-		profile.EdgeXDP = strings.ToLower(xdp) == "y"
-
-		fmt.Print("Use legacy track schema (JSON/protobuf)? (y/N) [N = OpenRTB 3.0 default]: ")
-		var legacy string
-		_, _ = fmt.Scanln(&legacy)
-		if strings.ToLower(legacy) == "y" {
-			profile.IngressSchema = IngressSchemaESPXNative
-		} else {
-			profile.IngressSchema = IngressSchemaOpenRTB3
+		fmt.Print("Timezone [UTC]: ")
+		var timezone string
+		_, _ = fmt.Scanln(&timezone)
+		if strings.TrimSpace(timezone) != "" {
+			cfg.Timezone = strings.TrimSpace(timezone)
 		}
 
-		fmt.Print("Network interface [eth0]: ")
-		var iface string
-		_, _ = fmt.Scanln(&iface)
-		if iface == "" {
-			profile.Interface = "eth0"
-		} else {
-			profile.Interface = iface
+		fmt.Print("Enable telemetry? (Y/n): ")
+		var telemetry string
+		_, _ = fmt.Scanln(&telemetry)
+		if strings.EqualFold(strings.TrimSpace(telemetry), "n") {
+			cfg.TelemetryEnabled = false
+		}
+
+		fmt.Print("Enable Stripe payments? (y/N): ")
+		var stripeYN string
+		_, _ = fmt.Scanln(&stripeYN)
+		if strings.EqualFold(strings.TrimSpace(stripeYN), "y") {
+			cfg.Stripe.Enabled = true
+			fmt.Print("Stripe secret key: ")
+			var secretKey string
+			_, _ = fmt.Scanln(&secretKey)
+			cfg.Stripe.SecretKey = strings.TrimSpace(secretKey)
+			fmt.Print("Stripe webhook secret: ")
+			var webhookSecret string
+			_, _ = fmt.Scanln(&webhookSecret)
+			cfg.Stripe.WebhookSecret = strings.TrimSpace(webhookSecret)
 		}
 	}
 
-	if err := profile.Validate(); err != nil {
+	cfg = platformconfig.MergeDefaults(cfg)
+	if err := cfg.Validate(); err != nil {
 		return fmt.Errorf("configuration validation failed: %w", err)
 	}
 
-	data, err := yaml.Marshal(profile)
+	profile := installProfileFromConfig(cfg)
+	if err := profile.Validate(); err != nil {
+		return fmt.Errorf("profile validation failed: %w", err)
+	}
+
+	yamlData, err := yaml.Marshal(&profile)
 	if err != nil {
 		return err
 	}
-
-	err = os.WriteFile("install.yaml", data, 0644)
-	if err != nil {
+	if err := os.WriteFile("install.yaml", yamlData, 0644); err != nil {
 		return err
 	}
 
-	fmt.Println("Configuration saved to install.yaml")
+	if err := WritePlatformConfigJSON(platformConfigJSONPath(), cfg); err != nil {
+		return err
+	}
+
+	fmt.Println("Configuration saved to install.yaml and platform_config.json")
 	return nil
 }

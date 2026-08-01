@@ -72,81 +72,11 @@ func setupPostgresInfra(t *testing.T) (*pgxpool.Pool, func()) {
 		require.NoError(t, err, "migration %s failed", entry.Name())
 	}
 
-	_, err = pool.Exec(ctx, `
-		CREATE SCHEMA IF NOT EXISTS billing;
-		CREATE TABLE IF NOT EXISTS billing.customer_subscriptions (
-			customer_id UUID PRIMARY KEY,
-			plan_code TEXT NOT NULL,
-			status TEXT NOT NULL DEFAULT 'active',
-			period_start TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-			period_end TIMESTAMPTZ,
-			overrides_json JSONB NOT NULL DEFAULT '{}',
-			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-		);
-	`)
-	require.NoError(t, err)
-
 	cleanup := func() {
 		pool.Close()
 		_ = pgContainer.Terminate(ctx)
 	}
 	return pool, cleanup
-}
-
-func TestPostbackIntegration_ProTierGate(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
-	}
-
-	pool, cleanup := setupPostgresInfra(t)
-	defer cleanup()
-
-	ctx := context.Background()
-	customerID := uuid.New()
-	campaignID := uuid.New()
-
-	_, err := pool.Exec(ctx, `
-		INSERT INTO billing.customer_subscriptions (customer_id, plan_code)
-		VALUES ($1, 'basic')`, customerID)
-	require.NoError(t, err)
-
-	key := []byte("postback-encryption-secret-key32")
-	encryptedToken, err := EncryptAESGCM([]byte("fb-token-123"), key)
-	require.NoError(t, err)
-
-	q := db.New(pool)
-	err = q.UpsertPostbackConfig(ctx, db.UpsertPostbackConfigParams{
-		CampaignID:        pgtype.UUID{Bytes: campaignID, Valid: true},
-		Provider:          "facebook",
-		UrlTemplate:       "https://graph.facebook.com/v19.0/pixel123/events",
-		ApiTokenEncrypted: encryptedToken,
-		TargetEvent:       "conversion",
-	})
-	require.NoError(t, err)
-
-	payload := PostbackPayload{
-		CustomerID: customerID,
-		CampaignID: campaignID,
-		ClickID:    "click_basic_test",
-		EventType:  "conversion",
-		Email:      "test@example.com",
-	}
-	payloadBytes, err := json.Marshal(payload)
-	require.NoError(t, err)
-
-	outboxEv, err := q.CreateOutboxEvent(ctx, db.CreateOutboxEventParams{
-		EventType: "SEND_POSTBACK",
-		Payload:   payloadBytes,
-	})
-	require.NoError(t, err)
-
-	worker := NewPostbackWorker(pool, key)
-	err = worker.ProcessEvent(ctx, db.OutboxEvent{
-		ID:      outboxEv.ID,
-		Payload: payloadBytes,
-	})
-
-	require.ErrorIs(t, err, ErrNotProTier)
 }
 
 func TestPostbackIntegration_IdempotencyAndEgress(t *testing.T) {
@@ -160,11 +90,6 @@ func TestPostbackIntegration_IdempotencyAndEgress(t *testing.T) {
 	ctx := context.Background()
 	customerID := uuid.New()
 	campaignID := uuid.New()
-
-	_, err := pool.Exec(ctx, `
-		INSERT INTO billing.customer_subscriptions (customer_id, plan_code)
-		VALUES ($1, 'pro')`, customerID)
-	require.NoError(t, err)
 
 	var requestCount int32
 	var lastRequestBody []byte
@@ -253,11 +178,6 @@ func TestPostbackIntegration_DLQMovement(t *testing.T) {
 	ctx := context.Background()
 	customerID := uuid.New()
 	campaignID := uuid.New()
-
-	_, err := pool.Exec(ctx, `
-		INSERT INTO billing.customer_subscriptions (customer_id, plan_code)
-		VALUES ($1, 'enterprise')`, customerID)
-	require.NoError(t, err)
 
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)

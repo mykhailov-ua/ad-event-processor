@@ -2,14 +2,12 @@ package ledger
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
 	"espx/internal/domain"
 	"espx/internal/ledger/db"
-	"espx/internal/licensing"
 	"espx/internal/notify"
 
 	"github.com/google/uuid"
@@ -17,11 +15,6 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-)
-
-const (
-	meterAcceptedEvents = "accepted_events"
-	meterBillableEvents = "events"
 )
 
 type Service struct {
@@ -108,96 +101,6 @@ func (service *Service) GenerateInvoice(ctx context.Context, customerID uuid.UUI
 	if diff := cust.Balance - ledgerSum; diff < -ledgerInvariantToleranceMicro || diff > ledgerInvariantToleranceMicro {
 		return domain.Invoice{}, fmt.Errorf("%w: balance=%d ledger_sum=%d diff=%d", ErrLedgerDrift, cust.Balance, ledgerSum, diff)
 	}
-
-	var subscriptionFeeCharged int64 = 0
-	var overageFeeCharged int64 = 0
-
-	sub, err := qtx.GetCustomerSubscription(ctx, pgtype.UUID{Bytes: customerID, Valid: true})
-	if err == nil {
-		plan, err := qtx.GetSubscriptionPlan(ctx, sub.PlanCode)
-		if err == nil {
-			var limits licensing.Limits
-			if err := json.Unmarshal(plan.LimitsJson, &limits); err != nil {
-				return domain.Invoice{}, fmt.Errorf("parse plan limits: %w", err)
-			}
-
-			if len(sub.OverridesJson) > 0 {
-				var overrides struct {
-					Limits *licensing.Limits `json:"limits,omitempty"`
-				}
-				if err := json.Unmarshal(sub.OverridesJson, &overrides); err != nil {
-					return domain.Invoice{}, fmt.Errorf("parse subscription overrides: %w", err)
-				}
-				if overrides.Limits != nil {
-					if overrides.Limits.MaxEventsPerMonth != 0 {
-						limits.MaxEventsPerMonth = overrides.Limits.MaxEventsPerMonth
-					}
-				}
-			}
-
-			baseFee := plan.BaseFeeMicro
-			baseHash := fmt.Sprintf("subscription:base:%s:%s", customerID.String(), monthStart.Format("2006-01"))
-
-			res, execErr := tx.Exec(ctx, `
-				INSERT INTO public.balance_ledger (customer_id, amount, type, idempotency_hash, created_at)
-				VALUES ($1, $2, 'FEE', $3, $4)
-				ON CONFLICT (idempotency_hash) DO NOTHING
-			`, customerID, -baseFee, baseHash, monthStart)
-			if execErr == nil && res.RowsAffected() > 0 {
-				subscriptionFeeCharged += baseFee
-				_, _ = tx.Exec(ctx, `
-					UPDATE public.customers SET balance = balance - $1 WHERE id = $2
-				`, baseFee, customerID)
-			}
-
-			limitEvents := int64(limits.MaxEventsPerMonth)
-			if limitEvents > 0 {
-				var currentEvents int64 = 0
-				meterName := meterAcceptedEvents
-				meter, err := qtx.GetUsageMeter(ctx, db.GetUsageMeterParams{
-					CustomerID: pgtype.UUID{Bytes: customerID, Valid: true},
-					Meter:      meterName,
-					Period:     pgtype.Date{Time: monthStart, Valid: true},
-				})
-				if err != nil {
-					meter, err = qtx.GetUsageMeter(ctx, db.GetUsageMeterParams{
-						CustomerID: pgtype.UUID{Bytes: customerID, Valid: true},
-						Meter:      meterBillableEvents,
-						Period:     pgtype.Date{Time: monthStart, Valid: true},
-					})
-				}
-				if err == nil {
-					currentEvents = meter.Value
-				}
-
-				overageEvents := currentEvents - limitEvents
-				if overageEvents > 0 {
-					var ratePerEvent int64 = 50
-					if sub.PlanCode == "basic" {
-						ratePerEvent = 100
-					} else if sub.PlanCode == "enterprise" {
-						ratePerEvent = 20
-					}
-					overageFee := overageEvents * ratePerEvent
-					overageHash := fmt.Sprintf("subscription:overage:%s:%s", customerID.String(), monthStart.Format("2006-01"))
-
-					res, execErr = tx.Exec(ctx, `
-						INSERT INTO public.balance_ledger (customer_id, amount, type, idempotency_hash, created_at)
-						VALUES ($1, $2, 'FEE', $3, $4)
-						ON CONFLICT (idempotency_hash) DO NOTHING
-					`, customerID, -overageFee, overageHash, monthStart)
-					if execErr == nil && res.RowsAffected() > 0 {
-						overageFeeCharged += overageFee
-						_, _ = tx.Exec(ctx, `
-							UPDATE public.customers SET balance = balance - $1 WHERE id = $2
-						`, overageFee, customerID)
-					}
-				}
-			}
-		}
-	}
-
-	ledgerSum = ledgerSum - subscriptionFeeCharged - overageFeeCharged
 
 	spendMicro, err := qtx.SumCustomerSpendInWindow(ctx, db.SumCustomerSpendInWindowParams{
 		CustomerID:  pgtype.UUID{Bytes: customerID, Valid: true},

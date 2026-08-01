@@ -3,6 +3,8 @@ package installer
 import (
 	"fmt"
 	"path/filepath"
+
+	"espx/pkg/branding"
 )
 
 const (
@@ -92,13 +94,13 @@ func rollbackUnitPath(service string) string {
 
 func renderRollbackUnit(service string) []byte {
 	return []byte(fmt.Sprintf(`[Unit]
-Description=BidShard rollback %s after crash loop
+Description=%s rollback %s after crash loop
 After=network.target
 
 [Service]
 Type=oneshot
 ExecStart=/usr/local/bin/espx-install rollback %s
-`, service, service))
+`, branding.ProductName(), service, service))
 }
 
 func writeRollbackUnits(profile *InstallProfile, dryRun bool) error {

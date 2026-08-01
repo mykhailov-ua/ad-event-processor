@@ -3,8 +3,9 @@ package installer
 import (
 	"fmt"
 	"os"
-
-	"gopkg.in/yaml.v3"
+	"os/exec"
+	"path/filepath"
+	"strings"
 )
 
 type CLI struct {
@@ -55,6 +56,12 @@ func (c *CLI) Run() error {
 		}
 		return RunConfigure(interactive)
 
+	case "up":
+		return RunUp()
+
+	case "bootstrap":
+		return RunBootstrap()
+
 	case "apply":
 		dryRun := false
 		for _, arg := range c.Args[2:] {
@@ -98,6 +105,8 @@ func (c *CLI) PrintUsage() {
 	fmt.Println("  preflight [--strict] [--json]")
 	fmt.Println("  provision [--yes]")
 	fmt.Println("  configure [--interactive]")
+	fmt.Println("  up")
+	fmt.Println("  bootstrap")
 	fmt.Println("  apply     [--dry-run]")
 	fmt.Println("  rollback  <tracker|processor>")
 	fmt.Println("  doctor    [--json]")
@@ -105,19 +114,62 @@ func (c *CLI) PrintUsage() {
 }
 
 func (c *CLI) RunApply(dryRun bool) error {
-	data, err := os.ReadFile("install.yaml")
-	if err != nil {
-		return fmt.Errorf("failed to read install.yaml: %w", err)
-	}
+	root := repoRoot()
+	loadDotEnv(root)
 
-	var profile InstallProfile
-	if err := yaml.Unmarshal(data, &profile); err != nil {
-		return fmt.Errorf("failed to parse install.yaml: %w", err)
+	baseURL := managementBaseURL()
+	adminKey := strings.TrimSpace(os.Getenv("ADMIN_API_KEY"))
+
+	cfg, profile, err := loadConfigForApply(baseURL, adminKey)
+	if err != nil {
+		return err
 	}
 
 	if err := profile.Validate(); err != nil {
 		return err
 	}
 
-	return renderTemplates(&profile, dryRun)
+	if err := writeInstallComposeEnv(cfg, dryRun); err != nil {
+		return err
+	}
+
+	if err := renderTemplates(&profile, dryRun); err != nil {
+		return err
+	}
+
+	if profile.Type == ProfileSingleVPS || profile.Type == ProfileComposeDev {
+		if err := runDockerComposeUp(root, profile.Type, dryRun); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func runDockerComposeUp(root string, profile Profile, dryRun bool) error {
+	envPath := filepath.Join(root, ".env")
+	composeEnv := composeEnvPath()
+	args := []string{
+		"compose",
+		"--env-file", envPath,
+		"--env-file", composeEnv,
+	}
+	if profile == ProfileSingleVPS {
+		args = append(args, "--profile", "single_vps")
+	}
+	args = append(args, "up", "-d")
+
+	if dryRun {
+		fmt.Printf("[Dry-Run] Would run docker %s\n", strings.Join(args, " "))
+		return nil
+	}
+
+	cmd := exec.Command("docker", args...)
+	cmd.Dir = root
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("docker compose up: %w", err)
+	}
+	return nil
 }

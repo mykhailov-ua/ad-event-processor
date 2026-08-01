@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"text/template"
+
+	"espx/pkg/branding"
 )
 
 const trackerUnitTemplate = `[Unit]
-Description=BidShard Tracker
+Description={{.ProductName}} Tracker
 After=network-online.target
 Wants=network-online.target
 StartLimitIntervalSec=10
@@ -36,6 +38,7 @@ func renderSystemdUnit(profile *InstallProfile) ([]byte, error) {
 
 	var buf bytes.Buffer
 	data := map[string]string{
+		"ProductName":   branding.ProductName(),
 		"Interface":     profile.Interface,
 		"Profile":       string(profile.Type),
 		"IngressSchema": string(profile.IngressSchema),

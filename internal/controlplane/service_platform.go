@@ -547,11 +547,10 @@ func (s *Service) SupportFeedbackMeta(ctx context.Context) (SupportFeedbackMeta,
 		return meta, nil
 	}
 	var deploymentID uuid.UUID
-	var planCode string
 	err := s.GetPool().QueryRow(ctx, `
-		SELECT deployment_id, plan_code
+		SELECT deployment_id
 		FROM billing.license_status
-		LIMIT 1`).Scan(&deploymentID, &planCode)
+		LIMIT 1`).Scan(&deploymentID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return meta, nil
@@ -561,7 +560,6 @@ func (s *Service) SupportFeedbackMeta(ctx context.Context) (SupportFeedbackMeta,
 	if deploymentID != uuid.Nil {
 		meta.DeploymentID = deploymentID.String()
 	}
-	meta.SKU = planCode
 	return meta, nil
 }
 
@@ -603,7 +601,7 @@ func (s *Service) RecordSupportFeedback(ctx context.Context, in SupportFeedbackR
 		Message:       message,
 		DeploymentID:  in.DeploymentID,
 		BinaryVersion: in.BinaryVersion,
-		Sku:           in.SKU,
+		Sku:           "",
 		AttachBundle:  in.AttachBundle,
 		BundleGzip:    in.BundleGzip,
 		SubmitterID:   submitter,

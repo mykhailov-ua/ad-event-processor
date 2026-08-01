@@ -8,7 +8,7 @@ type LicenseClaims struct {
 	KeyID        string     `json:"kid"`
 	DeploymentID string     `json:"deployment_id"`
 	CustomerName string     `json:"customer_name"`
-	Plan         string     `json:"plan"`
+	Plan         string     `json:"plan,omitempty"`
 	SKU          string     `json:"sku,omitempty"`
 	VolumeBand   VolumeBand `json:"volume_band"`
 	ValidFrom    time.Time  `json:"valid_from"`
@@ -20,7 +20,7 @@ type LicenseClaims struct {
 		Mode        string `json:"mode"`
 		Fingerprint string `json:"fingerprint"`
 	} `json:"bind"`
-	SupportTier string `json:"support_tier"`
+	SupportTier string `json:"support_tier,omitempty"`
 }
 
 type LicenseState string

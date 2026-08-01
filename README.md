@@ -11,13 +11,13 @@ BidShard is a private, high-performance alternative to expensive SaaS trackers a
 ### For Media Buying (Arbitrage) Teams
 - **Server-Side Click Redirects**: Use `GET /click` on your tracking domain for one-hop `302` redirects to landers. Filters, budget, and fraud run before the redirect; `gclid`, `ttclid`, and custom sub-IDs pass through to the offer URL.
 - **Zero-Latency Tracking**: Slow redirects kill conversions. BidShard processes tracking requests in under 80 milliseconds (p99), ensuring your users reach landers instantly without traffic loss.
-- **Real-Time Budget Protection**: Traditional trackers suffer from budget "afterburn"—continuing to spend money minutes after a campaign is paused. BidShard uses atomic Redis locks to stop campaign spending instantly the millisecond a budget limit is reached.
+- **Real-Time Budget Protection**: Traditional trackers suffer from budget "afterburn" - continuing to spend money minutes after a campaign is paused. BidShard uses atomic Redis locks to stop campaign spending instantly the millisecond a budget limit is reached.
 - **Privacy Sandbox & Cookie-less Readiness**: Native adaptors for Google Privacy Sandbox (Topics API, Protected Audience API) and first-party signal enrichment. Track conversions accurately without third-party cookies.
 - **Advanced Bot & Fraud Filtering**: Filter out non-human traffic, residential proxies, and search crawlers before they hit your landing pages. Save your budget for real users.
 - **100% Spy-Proof Data Privacy**: SaaS trackers can spy on your profitable campaign angles, landers, and offers. With a self-hosted instance, your campaign data is entirely private and secure.
 
 ### For Ad Networks & Publishers
-- **OpenRTB 2.6+ Native Support**: Stay compliant with the latest 2026 programmatic standards, including CTV ad-podding, DOOH, and SupplyChain transparency.
+- **OpenRTB 2.6 exchange**: `POST /openrtb/bid` on tracker for SSP partners (display + video, PMP deals, shadow→live). See [RTB production runbook](docs/RTB_PRODUCTION_RUNBOOK.md).
 - **Agentic AI Bidding**: Leverage the Agentic Real-Time Framework (ARTF 1.0) to run containerized AI agents that enrich and mutate bidstreams in real-time, achieving sub-millisecond ML-driven decisioning.
 - **Supply Path Optimization (SPO)**: Integrated `sellers.json` and SupplyChain object support to provide full transparency to buyers and attract premium demand.
 - **CTV & Live Event Handling**: Optimized for high-concurrency environments, supporting Concurrent Streams API for large-scale live events.
@@ -34,7 +34,7 @@ BidShard is a private, high-performance alternative to expensive SaaS trackers a
 | **Data Privacy** | **100% Private** (hosted on your own servers) | **Shared** (SaaS providers can view your setups) |
 | **Budget Protection** | **Instant (Atomic)** (zero overspend) | **Delayed** (leads to budget overruns) |
 | **2026 Privacy Compliance** | **Full (Sandbox/DCR)** | **Limited / Third-party dependent** |
-| **RTB Support** | **Built-in (OpenRTB 2.6+)** | **None / Basic** |
+| **RTB Support** | **Built-in (OpenRTB 2.6 exchange + in-process auction)** | **None / Basic** |
 | **Click Redirect (`GET /click`)** | **Built-in (302, macro + passthrough)** | **Volume-priced add-on** |
 
 ---
@@ -42,7 +42,7 @@ BidShard is a private, high-performance alternative to expensive SaaS trackers a
 ## Core Features
 
 - **High-Volume Ingestion**: Built on a custom epoll-based network engine (`gnet`) to handle hundreds of thousands of requests per second without breaking a sweat.
-- **Click Redirect (`GET /click`)**: Server-side `302` redirects for arbitrage and affiliate traffic. Runs the same `FilterEngine` as `POST /track`, resolves brand creative landing URLs with macros (`{click_id}`, `{sub1}`–`{sub5}`, `{user_id}`), and forwards attribution query parameters (`gclid`, `ttclid`, UTM) to the destination.
+- **Click Redirect (`GET /click`)**: Server-side `302` redirects for arbitrage and affiliate traffic. Runs the same `FilterEngine` as `POST /track`, resolves brand creative landing URLs with macros (`{click_id}`, `{sub1}`-`{sub5}`, `{user_id}`), and forwards attribution query parameters (`gclid`, `ttclid`, UTM) to the destination.
 - **Atomic Budgeting**: Real-time budget tracking, frequency capping, and pacing executed directly inside Redis memory.
 - **eBPF/XDP Network Protection**: Block malicious bots and DDoS attacks directly at the network card level, saving CPU resources for clean traffic.
 - **Transactional Ledger**: A double-entry accounting system stores all advertiser balances in micro-units, preventing rounding errors and financial discrepancies.
@@ -54,5 +54,7 @@ BidShard is a private, high-performance alternative to expensive SaaS trackers a
 
 If you are a developer, system administrator, or DevOps engineer looking to deploy, configure, or modify BidShard, please refer to our technical documentation:
 
+- **[Quick Start (single VPS install)](docs/QUICKSTART.md)**: Interactive installer script, platform config bootstrap, and Doctor API.
+- **[RTB production runbook](docs/RTB_PRODUCTION_RUNBOOK.md)**: OpenRTB 2.6 shadow→live, reconcile export, CH retention.
 - **[System Architecture & Data Flow](docs/ARCHITECTURE.md)**: Deep dive into the network topology, Redis sharding, PostgreSQL ledger, ClickHouse spooling, and the request lifecycle.
 - **[Development & Deployment Guide](docs/DEVELOPMENT.md)**: Step-by-step instructions for local environment setup, code generation, Docker Compose profiles, testing, and multi-region deployment.
