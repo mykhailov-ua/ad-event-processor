@@ -226,7 +226,8 @@ func http1IngressValid(method, path []byte) bool {
 			bytesEqual(path, "/healthz") ||
 			bytesEqual(path, "/ready") ||
 			bytesEqual(path, "/readyz") ||
-			bytesEqual(path, "/metrics")
+			bytesEqual(path, "/metrics") ||
+			httpPathHasPrefix(path, "/click")
 	}
 	return false
 }

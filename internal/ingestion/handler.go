@@ -66,19 +66,20 @@ var (
 )
 
 type connContext struct {
-	pbReq    pb.AdEvent
-	trackReq TrackRequest
-	evt      domain.Event
-	valSlice []any
-	resp     pb.TrackResponse
-	bufSlice []byte
-	extraBuf []byte
-	wReqID   bufWrapper
-	wCamp    bufWrapper
-	wTime    bufWrapper
-	remoteIP string
-	shardID  int
-	workerID int
+	pbReq       pb.AdEvent
+	trackReq    TrackRequest
+	evt         domain.Event
+	valSlice    []any
+	resp        pb.TrackResponse
+	bufSlice    []byte
+	extraBuf    []byte
+	clickParsed clickQueryParsed
+	wReqID      bufWrapper
+	wCamp       bufWrapper
+	wTime       bufWrapper
+	remoteIP    string
+	shardID     int
+	workerID    int
 
 	offloadConn   gnet.Conn
 	offloadReqBuf *[]byte
@@ -516,6 +517,9 @@ var (
 	respHealthzOK          = []byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: keep-alive\r\n\r\nOK")
 	respReadyzOK           = []byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: keep-alive\r\n\r\nOK")
 	respReadyz503          = []byte("HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nContent-Length: 9\r\nConnection: keep-alive\r\n\r\nnot ready")
+	respClickBadRequest    = []byte("HTTP/1.1 400 Bad Request\r\nContent-Type: text/plain\r\nContent-Length: 20\r\nConnection: keep-alive\r\n\r\ninvalid click query")
+	respClickBadLanding    = []byte("HTTP/1.1 400 Bad Request\r\nContent-Type: text/plain\r\nContent-Length: 21\r\nConnection: keep-alive\r\n\r\ninvalid landing url")
+	respClickNoLanding     = []byte("HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\nContent-Length: 15\r\nConnection: keep-alive\r\n\r\nno landing url")
 )
 
 type AdsPacketHandler struct {
@@ -1117,12 +1121,13 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 			},
 			valSlice: make([]any, 18),
 			resp:     pb.TrackResponse{},
-			bufSlice: make([]byte, 4096),
+			bufSlice: make([]byte, 0, 4096),
+			extraBuf: make([]byte, 0, clickQueryScratchCap),
 			wReqID: bufWrapper{
 				buf: make([]byte, 0, 128),
 			},
 			wCamp: bufWrapper{
-				buf: make([]byte, 0, 128),
+				buf: make([]byte, 0, clickQueryScratchCap),
 			},
 			wTime: bufWrapper{
 				buf: make([]byte, 0, 128),
@@ -1151,6 +1156,9 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 		if bytes.Equal(req.Path, []byte("/metrics")) {
 			h.write(c, respNotFound, ctx)
 			return gnet.None
+		}
+		if httpPathHasPrefix(req.Path, "/click") {
+			return h.reactClickRedirect(req, c, ctx)
 		}
 		h.write(c, respMethodNotAllowed, ctx)
 		return gnet.None

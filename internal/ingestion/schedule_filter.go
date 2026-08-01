@@ -15,9 +15,19 @@ import (
 )
 
 type brandCreativeEntry struct {
-	ID     string `json:"id"`
-	URL    string `json:"url"`
-	Weight int32  `json:"weight"`
+	ID       string `json:"id"`
+	URL      string `json:"url"`
+	Weight   int32  `json:"weight"`
+	urlBytes []byte
+}
+
+func brandCreativeEntriesReady(entries []brandCreativeEntry) []brandCreativeEntry {
+	for i := range entries {
+		if entries[i].URL != "" && len(entries[i].urlBytes) == 0 {
+			entries[i].urlBytes = []byte(entries[i].URL)
+		}
+	}
+	return entries
 }
 
 type brandCreativeMapSnapshot struct {
@@ -57,6 +67,7 @@ func (s *BrandCreativeStore) LoadFromRedis(ctx context.Context, brandID uuid.UUI
 		slog.Warn("brand creative replica corrupt", "brand_id", brandID, "error", err)
 		return
 	}
+	entries = brandCreativeEntriesReady(entries)
 	current := s.brandCreativeSnapshot().byBrand
 	next := make(map[uuid.UUID][]brandCreativeEntry, len(current)+1)
 	for k, v := range current {
@@ -67,12 +78,34 @@ func (s *BrandCreativeStore) LoadFromRedis(ctx context.Context, brandID uuid.UUI
 }
 
 func (s *BrandCreativeStore) SelectLandingURL(brandID uuid.UUID, userID string) string {
-	entries := s.brandCreativeSnapshot().byBrand[brandID]
-	if len(entries) == 0 {
+	e, ok := s.selectCreative(brandID, userID)
+	if !ok {
 		return ""
 	}
+	return e.URL
+}
+
+func (s *BrandCreativeStore) SelectLandingURLBytes(brandID uuid.UUID, userID string) []byte {
+	e, ok := s.selectCreative(brandID, userID)
+	if !ok {
+		return nil
+	}
+	if len(e.urlBytes) > 0 {
+		return e.urlBytes
+	}
+	if e.URL == "" {
+		return nil
+	}
+	return UnsafeBytes(e.URL)
+}
+
+func (s *BrandCreativeStore) selectCreative(brandID uuid.UUID, userID string) (brandCreativeEntry, bool) {
+	entries := s.brandCreativeSnapshot().byBrand[brandID]
+	if len(entries) == 0 {
+		return brandCreativeEntry{}, false
+	}
 	if len(entries) == 1 {
-		return entries[0].URL
+		return entries[0], true
 	}
 
 	total := int32(0)
@@ -80,7 +113,7 @@ func (s *BrandCreativeStore) SelectLandingURL(brandID uuid.UUID, userID string) 
 		total += e.Weight
 	}
 	if total <= 0 {
-		return entries[0].URL
+		return entries[0], true
 	}
 
 	h := fnv.New32a()
@@ -92,10 +125,10 @@ func (s *BrandCreativeStore) SelectLandingURL(brandID uuid.UUID, userID string) 
 	for _, e := range entries {
 		acc += e.Weight
 		if bucket < acc {
-			return e.URL
+			return e, true
 		}
 	}
-	return entries[len(entries)-1].URL
+	return entries[len(entries)-1], true
 }
 
 type ScheduleFilter struct {
