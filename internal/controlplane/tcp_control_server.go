@@ -20,7 +20,10 @@ type TCPControlServer struct {
 	secret    []byte
 	numShards int
 	ln        net.Listener
+	connSem   chan struct{}
 }
+
+const tcpControlMaxConcurrent = 64
 
 func NewTCPControlServer(cfg *config.Config, pool *pgxpool.Pool, sharder domain.Sharder, numShards int) *TCPControlServer {
 	return &TCPControlServer{
@@ -45,6 +48,7 @@ func (s *TCPControlServer) Start(ctx context.Context) error {
 		return err
 	}
 	s.ln = ln
+	s.connSem = make(chan struct{}, tcpControlMaxConcurrent)
 	slog.Info("management tcp control started", "bind", bind)
 	go func() {
 		<-ctx.Done()
@@ -81,7 +85,19 @@ func (s *TCPControlServer) acceptLoop(ctx context.Context) {
 			}
 			continue
 		}
-		go s.handleConn(ctx, conn)
+		select {
+		case s.connSem <- struct{}{}:
+			go func() {
+				defer func() { <-s.connSem }()
+				s.handleConn(ctx, conn)
+			}()
+		case <-ctx.Done():
+			_ = conn.Close()
+			return
+		default:
+			metrics.TCPControlSnapshotErrorsTotal.Inc()
+			_ = conn.Close()
+		}
 	}
 }
 

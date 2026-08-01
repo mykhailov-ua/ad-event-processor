@@ -457,36 +457,88 @@ func (w *ReconWorker) auditPGCHStats(ctx context.Context) {
 	}
 	defer rows.Close()
 
+	type pgStat struct {
+		campID  uuid.UUID
+		day     time.Time
+		pgTotal int64
+	}
+	var pgStats []pgStat
+	var campaignIDs []uuid.UUID
+	seenCamp := make(map[uuid.UUID]struct{})
+	var minDay, maxDay time.Time
+
 	for rows.Next() {
+		var s pgStat
+		if err := rows.Scan(&s.campID, &s.day, &s.pgTotal); err != nil {
+			continue
+		}
+		if s.pgTotal == 0 {
+			continue
+		}
+		pgStats = append(pgStats, s)
+		if _, ok := seenCamp[s.campID]; !ok {
+			seenCamp[s.campID] = struct{}{}
+			campaignIDs = append(campaignIDs, s.campID)
+		}
+		if minDay.IsZero() || s.day.Before(minDay) {
+			minDay = s.day
+		}
+		if maxDay.IsZero() || s.day.After(maxDay) {
+			maxDay = s.day
+		}
+	}
+	if err := rows.Err(); err != nil {
+		slog.Error("hyg30 audit B pg scan failed", "error", err)
+		return
+	}
+	if len(pgStats) == 0 || len(campaignIDs) == 0 {
+		return
+	}
+
+	chCtx, cancel := chQueryContext(ctx)
+	defer cancel()
+
+	chRows, err := ch.Query(chCtx, `
+		SELECT campaign_id, toDate(timestamp) AS day, count() AS ch_total
+		FROM ad_event_processor.events_analytics
+		WHERE campaign_id IN (?)
+		  AND toDate(timestamp) >= ?
+		  AND toDate(timestamp) <= ?
+		GROUP BY campaign_id, day`, campaignIDs, minDay, maxDay)
+	if err != nil {
+		slog.Error("hyg30 audit B ch batch query failed", "error", err)
+		return
+	}
+	defer chRows.Close()
+
+	chTotals := make(map[string]uint64, len(pgStats))
+	for chRows.Next() {
 		var campID uuid.UUID
 		var day time.Time
-		var pgTotal int64
-		if err := rows.Scan(&campID, &day, &pgTotal); err != nil {
-			continue
-		}
-		if pgTotal == 0 {
-			continue
-		}
 		var chTotal uint64
-		chRows, err := ch.Query(ctx, `
-			SELECT count() FROM ad_event_processor.events_analytics
-			WHERE campaign_id = ? AND toDate(timestamp) = ?`, campID, day)
-		if err != nil {
+		if err := chRows.Scan(&campID, &day, &chTotal); err != nil {
 			continue
 		}
-		if chRows.Next() {
-			_ = chRows.Scan(&chTotal)
-		}
-		chRows.Close()
+		key := campID.String() + "|" + day.Format("2006-01-02")
+		chTotals[key] = chTotal
+	}
+	if err := chRows.Err(); err != nil {
+		slog.Error("hyg30 audit B ch scan failed", "error", err)
+		return
+	}
+
+	for _, s := range pgStats {
+		key := s.campID.String() + "|" + s.day.Format("2006-01-02")
+		chTotal := chTotals[key]
 		if chTotal == 0 {
 			continue
 		}
-		diff := math.Abs(float64(int64(chTotal)-pgTotal)) / float64(pgTotal)
+		diff := math.Abs(float64(int64(chTotal)-s.pgTotal)) / float64(s.pgTotal)
 		if diff > hyg30CHStatsTolerancePct {
 			slog.Warn("campaign stats stale vs clickhouse",
-				"campaign_id", campID,
-				"date", day.Format("2006-01-02"),
-				"pg_total", pgTotal,
+				"campaign_id", s.campID,
+				"date", s.day.Format("2006-01-02"),
+				"pg_total", s.pgTotal,
 				"ch_total", chTotal,
 				"diff_pct", diff,
 			)
@@ -498,22 +550,35 @@ func (w *ReconWorker) auditLedgerInvariantSample(ctx context.Context, pool *pgxp
 	if pool == nil {
 		return
 	}
-	rows, err := pool.Query(ctx, `SELECT id FROM customers ORDER BY RANDOM() LIMIT $1`, hyg30LedgerSampleSize)
+	rows, err := pool.Query(ctx, `
+		SELECT id FROM customers TABLESAMPLE BERNOULLI (5) REPEATABLE (42)
+		LIMIT $1`, hyg30LedgerSampleSize)
 	if err != nil {
 		slog.Error("hyg30 audit C sample failed", "error", err)
 		return
 	}
 	defer rows.Close()
 
+	var sampleIDs []uuid.UUID
 	for rows.Next() {
 		var customerID uuid.UUID
 		if err := rows.Scan(&customerID); err != nil {
 			continue
 		}
-		if err := ledger.CheckLedgerBalanceInvariant(ctx, pool, customerID); err != nil {
-			slog.Error("ledger invariant failed for customer", "customer_id", customerID, "error", err)
-			w.enqueueForcePauseCustomer(ctx, customerID, err.Error())
-		}
+		sampleIDs = append(sampleIDs, customerID)
+	}
+	if err := rows.Err(); err != nil {
+		slog.Error("hyg30 audit C sample scan failed", "error", err)
+		return
+	}
+	mismatches, err := ledger.ListLedgerInvariantMismatchesForIDs(ctx, pool, sampleIDs)
+	if err != nil {
+		slog.Error("hyg30 audit C invariant batch failed", "error", err)
+		return
+	}
+	for _, customerID := range mismatches {
+		slog.Error("ledger invariant failed for customer", "customer_id", customerID)
+		w.enqueueForcePauseCustomer(ctx, customerID, ledger.ErrLedgerDrift.Error())
 	}
 }
 
@@ -528,23 +593,42 @@ func (w *ReconWorker) enqueueForcePauseCustomer(ctx context.Context, customerID 
 	}
 	defer camps.Close()
 
-	q := db.New(w.svc.GetPool())
+	var campIDs []uuid.UUID
 	for camps.Next() {
 		var campID uuid.UUID
 		if err := camps.Scan(&campID); err != nil {
 			continue
 		}
-		payload, _ := json.Marshal(map[string]string{
+		campIDs = append(campIDs, campID)
+	}
+	if err := camps.Err(); err != nil {
+		return
+	}
+	if len(campIDs) == 0 {
+		return
+	}
+
+	batch := &pgx.Batch{}
+	for _, campID := range campIDs {
+		payload, err := json.Marshal(map[string]string{
 			"campaign_id": campID.String(),
 			"reason":      "FORCE_PAUSE: " + reason,
 		})
-		_, err = q.CreateOutboxEvent(ctx, db.CreateOutboxEventParams{
-			EventType: "PAUSE_CAMPAIGN",
-			Payload:   payload,
-		})
 		if err != nil {
-			slog.Error("failed to enqueue FORCE_PAUSE", "campaign_id", campID, "error", err)
+			continue
 		}
+		batch.Queue(`INSERT INTO outbox_events (event_type, payload) VALUES ($1, $2)`, "PAUSE_CAMPAIGN", payload)
+	}
+	br := w.svc.GetPool().SendBatch(ctx, batch)
+	for range campIDs {
+		if _, err := br.Exec(); err != nil {
+			slog.Error("failed to enqueue FORCE_PAUSE batch", "error", err)
+			br.Close()
+			return
+		}
+	}
+	if err := br.Close(); err != nil {
+		slog.Error("failed to close FORCE_PAUSE batch", "error", err)
 	}
 }
 

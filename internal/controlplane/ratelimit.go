@@ -1,67 +1,25 @@
 package controlplane
 
 import (
-	"net"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
+	"espx/pkg/clientip"
 	"espx/pkg/httpresponse"
 
 	"golang.org/x/time/rate"
 )
 
-// trustedProxyRanges holds CIDRs of load-balancers / proxies that we trust to
-// forward the real client IP via X-Forwarded-For. Zero-length means untrusted.
-// Override via config or tests; left as a package-level variable for simplicity.
-// IMPORTANT: for production, set this to the actual proxy CIDR list.
-var trustedProxyRanges []*net.IPNet
+var trustedProxies clientip.Trusted
 
-// clientIP returns the real client IP.
-//
-// FIX [1.4]: XFF[0] was blindly trusted, allowing attackers to spoof any IP
-// and bypass rate-limiting / account lockout. We now only trust XFF when the
-// direct peer (r.RemoteAddr) falls within a configured trusted-proxy CIDR.
-// Absent trust, we fall back to r.RemoteAddr.
-func clientIP(r *http.Request) string {
-	peerHost, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		peerHost = r.RemoteAddr
-	}
-
-	peerIP := net.ParseIP(peerHost)
-	if isTrustedProxy(peerIP) {
-		// Trusted proxy: use rightmost XFF entry we can see (the last hop the
-		// proxy appended) rather than the client-controlled leftmost value.
-		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-			parts := strings.Split(xff, ",")
-			// Take the rightmost non-empty part added by the trusted proxy.
-			for i := len(parts) - 1; i >= 0; i-- {
-				ip := strings.TrimSpace(parts[i])
-				if ip != "" {
-					return ip
-				}
-			}
-		}
-		if xri := r.Header.Get("X-Real-IP"); xri != "" {
-			return strings.TrimSpace(xri)
-		}
-	}
-
-	return peerHost
+// SetTrustedProxies configures proxy trust for per-IP rate limiting.
+func SetTrustedProxies(entries []string) {
+	trustedProxies = clientip.ParseTrusted(entries)
 }
 
-func isTrustedProxy(ip net.IP) bool {
-	if ip == nil {
-		return false
-	}
-	for _, cidr := range trustedProxyRanges {
-		if cidr.Contains(ip) {
-			return true
-		}
-	}
-	return false
+func clientIP(r *http.Request) string {
+	return clientip.FromRequest(r, trustedProxies)
 }
 
 // rateLimiterEntry wraps a Limiter with a last-access timestamp for eviction.
@@ -69,8 +27,6 @@ type rateLimiterEntry struct {
 	lim      *rate.Limiter
 	lastSeen time.Time
 }
-
-// --- ipRateLimiter -----------------------------------------------------------
 
 const rateLimiterMaxEntries = 50_000
 const rateLimiterEvictAfter = 10 * time.Minute
@@ -96,19 +52,21 @@ func newIPRateLimiter(rps float64, burst int) *ipRateLimiter {
 	}
 }
 
-func (l *ipRateLimiter) allow(ip string) bool {
+func (l *ipRateLimiter) allow(key string) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
 	now := time.Now()
-	e, ok := l.entries[ip]
+	e, ok := l.entries[key]
 	if !ok {
-		// FIX [4.1]: evict stale entries before inserting a new one to bound memory.
 		if len(l.entries) >= rateLimiterMaxEntries {
 			evictStaleLocked(l.entries, now)
+			if len(l.entries) >= rateLimiterMaxEntries {
+				return false
+			}
 		}
 		e = &rateLimiterEntry{lim: rate.NewLimiter(l.limit, l.burst), lastSeen: now}
-		l.entries[ip] = e
+		l.entries[key] = e
 	}
 	e.lastSeen = now
 	return e.lim.Allow()
@@ -140,8 +98,6 @@ const customerExportBurst = 3
 const defaultAPIKeyRPS = 30.0
 const defaultAPIKeyBurst = 60
 
-// --- apiKeyRateLimiter -------------------------------------------------------
-
 type apiKeyRateLimiter struct {
 	mu      sync.Mutex
 	limit   rate.Limit
@@ -171,6 +127,9 @@ func (l *apiKeyRateLimiter) allow(keyDigest string) bool {
 	if !ok {
 		if len(l.entries) >= rateLimiterMaxEntries {
 			evictStaleLocked(l.entries, now)
+			if len(l.entries) >= rateLimiterMaxEntries {
+				return false
+			}
 		}
 		e = &rateLimiterEntry{lim: rate.NewLimiter(l.limit, l.burst), lastSeen: now}
 		l.entries[keyDigest] = e
@@ -178,8 +137,6 @@ func (l *apiKeyRateLimiter) allow(keyDigest string) bool {
 	e.lastSeen = now
 	return e.lim.Allow()
 }
-
-// --- customerRateLimiter -----------------------------------------------------
 
 type customerRateLimiter struct {
 	mu      sync.Mutex
@@ -204,6 +161,9 @@ func (l *customerRateLimiter) allow(customerID string) bool {
 	if !ok {
 		if len(l.entries) >= rateLimiterMaxEntries {
 			evictStaleLocked(l.entries, now)
+			if len(l.entries) >= rateLimiterMaxEntries {
+				return false
+			}
 		}
 		e = &rateLimiterEntry{lim: rate.NewLimiter(l.limit, l.burst), lastSeen: now}
 		l.entries[customerID] = e

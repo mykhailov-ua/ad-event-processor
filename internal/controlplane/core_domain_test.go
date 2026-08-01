@@ -27,8 +27,9 @@ func TestCore_HasPermission(t *testing.T) {
 func TestCore_clientIP(t *testing.T) {
 	t.Parallel()
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	r.RemoteAddr = "203.0.113.5:1234"
 	r.Header.Set("X-Forwarded-For", "203.0.113.1, 198.51.100.2")
-	assert.Equal(t, "203.0.113.1", clientIP(r))
+	assert.Equal(t, "203.0.113.5", clientIP(r))
 
 	r = httptest.NewRequest(http.MethodGet, "/", nil)
 	r.RemoteAddr = "192.0.2.1:1234"

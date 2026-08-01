@@ -3,7 +3,6 @@ package adminapi
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -317,7 +316,8 @@ func (reports *ReportsHTTPHandlers) getPlacementsReport(w http.ResponseWriter, r
 	}
 
 	if customerID == uuid.Nil {
-		customerID = uuid.MustParse("00000000-0000-0000-0000-000000000001")
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "customer_id required")
+		return
 	}
 
 	allowed, err := reports.checkTierGate(r, customerID)
@@ -327,6 +327,17 @@ func (reports *ReportsHTTPHandlers) getPlacementsReport(w http.ResponseWriter, r
 	}
 	if !allowed {
 		httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "Pro or Enterprise plan required")
+		return
+	}
+
+	if reports.CHQuery == nil {
+		httpresponse.Error(w, http.StatusServiceUnavailable, "CLICKHOUSE_UNAVAILABLE", "clickhouse not configured")
+		return
+	}
+
+	from, to, err := parseReportRange(r)
+	if err != nil {
+		reports.writeServiceError(w, err)
 		return
 	}
 
@@ -344,49 +355,54 @@ func (reports *ReportsHTTPHandlers) getPlacementsReport(w http.ResponseWriter, r
 	offset := page.Offset
 	limit = int32(page.Limit)
 
-	campaignID := r.URL.Query().Get("campaign_id")
-	if campaignID == "" {
-		campaignID = uuid.New().String()
-	}
-
-	totalRows := int64(25)
-	mockRows := make([]PlacementReportRowDTO, 0, totalRows)
-	for i := int64(0); i < totalRows; i++ {
-		mockRows = append(mockRows, toPlacementReportRowDTO(placementReportCHRow{
-			PlacementID:  fmt.Sprintf("zone_%d", 1000+i),
-			CampaignID:   campaignID,
-			Impressions:  10000 + i*500,
-			Clicks:       500 + i*20,
-			Conversions:  10 + i,
-			SpendMicro:   50000000 + i*2000000,
-			RevenueMicro: 60000000 + i*3000000,
-		}))
-	}
-
-	total := totalRows
-	start := int64(offset)
-	var paginatedRows []PlacementReportRowDTO
-	if start >= totalRows {
-		paginatedRows = []PlacementReportRowDTO{}
-	} else {
-		end := start + int64(limit)
-		if end > totalRows {
-			end = totalRows
+	var campaignIDs []uuid.UUID
+	if campaignIDStr := r.URL.Query().Get("campaign_id"); campaignIDStr != "" {
+		campaignID, err := uuid.Parse(campaignIDStr)
+		if err != nil {
+			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign_id")
+			return
 		}
-		paginatedRows = mockRows[start:end]
+		campaignIDs = []uuid.UUID{campaignID}
+	} else if reports.Pool != nil {
+		campaignIDs, err = listCustomerCampaignIDs(r.Context(), reports.Pool, customerID)
+		if err != nil {
+			reports.writeServiceError(w, err)
+			return
+		}
+	}
+	if len(campaignIDs) == 0 {
+		httpresponse.JSON(w, http.StatusOK, PlacementReportResponse{
+			Rows:       []PlacementReportRowDTO{},
+			Freshness:  reports.reportFreshness(r.Context()),
+			NextCursor: "",
+		})
+		return
+	}
+
+	chCtx, cancel := context.WithTimeout(r.Context(), reportCHQueryTimeout)
+	defer cancel()
+
+	chRows, total, err := queryPlacementReportRows(chCtx, reports.CHQuery, campaignIDs, from, to, int(limit), offset)
+	if err != nil {
+		reports.writeServiceError(w, err)
+		return
+	}
+
+	rows := make([]PlacementReportRowDTO, 0, len(chRows))
+	for _, row := range chRows {
+		rows = append(rows, toPlacementReportRowDTO(row))
 	}
 
 	var nextCursor string
-	if start+int64(limit) < total {
+	if int64(offset)+int64(len(rows)) < total {
 		nextCursor = coldpath.EncodeCursor(offset + int(limit))
 	}
 
 	resp := PlacementReportResponse{
-		Rows:       paginatedRows,
+		Rows:       rows,
 		Freshness:  reports.reportFreshness(r.Context()),
 		NextCursor: nextCursor,
 	}
-
 	httpresponse.JSON(w, http.StatusOK, resp)
 }
 
@@ -409,7 +425,8 @@ func (reports *ReportsHTTPHandlers) getKeywordsReport(w http.ResponseWriter, r *
 	}
 
 	if customerID == uuid.Nil {
-		customerID = uuid.MustParse("00000000-0000-0000-0000-000000000001")
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "customer_id required")
+		return
 	}
 
 	allowed, err := reports.checkTierGate(r, customerID)
@@ -419,6 +436,17 @@ func (reports *ReportsHTTPHandlers) getKeywordsReport(w http.ResponseWriter, r *
 	}
 	if !allowed {
 		httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "Pro or Enterprise plan required")
+		return
+	}
+
+	if reports.CHQuery == nil {
+		httpresponse.Error(w, http.StatusServiceUnavailable, "CLICKHOUSE_UNAVAILABLE", "clickhouse not configured")
+		return
+	}
+
+	from, to, err := parseReportRange(r)
+	if err != nil {
+		reports.writeServiceError(w, err)
 		return
 	}
 
@@ -436,50 +464,54 @@ func (reports *ReportsHTTPHandlers) getKeywordsReport(w http.ResponseWriter, r *
 	offset := page.Offset
 	limit = int32(page.Limit)
 
-	campaignID := r.URL.Query().Get("campaign_id")
-	if campaignID == "" {
-		campaignID = uuid.New().String()
-	}
-
-	totalRows := int64(15)
-	mockRows := make([]KeywordReportRowDTO, 0, totalRows)
-	keywords := []string{"insurance", "loans", "credit card", "mortgage", "attorney", "lawyer", "donate", "conference", "degree", "hosting", "claim", "software", "recovery", "transfer", "gas"}
-	for i := int64(0); i < totalRows; i++ {
-		mockRows = append(mockRows, toKeywordReportRowDTO(keywordReportCHRow{
-			Keyword:      keywords[i],
-			CampaignID:   campaignID,
-			Impressions:  5000 + i*200,
-			Clicks:       200 + i*10,
-			Conversions:  5 + i,
-			SpendMicro:   25000000 + i*1000000,
-			RevenueMicro: 30000000 + i*1500000,
-		}))
-	}
-
-	total := totalRows
-	start := int64(offset)
-	var paginatedRows []KeywordReportRowDTO
-	if start >= totalRows {
-		paginatedRows = []KeywordReportRowDTO{}
-	} else {
-		end := start + int64(limit)
-		if end > totalRows {
-			end = totalRows
+	var campaignIDs []uuid.UUID
+	if campaignIDStr := r.URL.Query().Get("campaign_id"); campaignIDStr != "" {
+		campaignID, err := uuid.Parse(campaignIDStr)
+		if err != nil {
+			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign_id")
+			return
 		}
-		paginatedRows = mockRows[start:end]
+		campaignIDs = []uuid.UUID{campaignID}
+	} else if reports.Pool != nil {
+		campaignIDs, err = listCustomerCampaignIDs(r.Context(), reports.Pool, customerID)
+		if err != nil {
+			reports.writeServiceError(w, err)
+			return
+		}
+	}
+	if len(campaignIDs) == 0 {
+		httpresponse.JSON(w, http.StatusOK, KeywordReportResponse{
+			Rows:       []KeywordReportRowDTO{},
+			Freshness:  reports.reportFreshness(r.Context()),
+			NextCursor: "",
+		})
+		return
+	}
+
+	chCtx, cancel := context.WithTimeout(r.Context(), reportCHQueryTimeout)
+	defer cancel()
+
+	chRows, total, err := queryKeywordReportRows(chCtx, reports.CHQuery, campaignIDs, from, to, int(limit), offset)
+	if err != nil {
+		reports.writeServiceError(w, err)
+		return
+	}
+
+	rows := make([]KeywordReportRowDTO, 0, len(chRows))
+	for _, row := range chRows {
+		rows = append(rows, toKeywordReportRowDTO(row))
 	}
 
 	var nextCursor string
-	if start+int64(limit) < total {
+	if int64(offset)+int64(len(rows)) < total {
 		nextCursor = coldpath.EncodeCursor(offset + int(limit))
 	}
 
 	resp := KeywordReportResponse{
-		Rows:       paginatedRows,
+		Rows:       rows,
 		Freshness:  reports.reportFreshness(r.Context()),
 		NextCursor: nextCursor,
 	}
-
 	httpresponse.JSON(w, http.StatusOK, resp)
 }
 

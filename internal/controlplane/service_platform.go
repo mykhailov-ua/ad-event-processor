@@ -768,7 +768,9 @@ func (s *Service) optimizeBrandCreativeMABTx(ctx context.Context, tx pgx.Tx) ([]
 
 	lookbackEnd := time.Now().UTC()
 	lookbackStart := lookbackEnd.Add(-time.Duration(lookbackDays) * 24 * time.Hour)
-	chStats, err := s.queryMABCreativeStats(ctx, lookbackStart, lookbackEnd)
+	chCtx, cancel := chQueryContext(ctx)
+	defer cancel()
+	chStats, err := s.queryMABCreativeStats(chCtx, lookbackStart, lookbackEnd)
 	if err != nil {
 		return nil, err
 	}
@@ -1344,6 +1346,57 @@ func (s *Service) EnqueueFraudThreat(ctx context.Context, action, ip, campaignID
 	})
 }
 
+func (s *Service) UnblockExpiredBlacklist(ctx context.Context, rows []db.ListExpiredBlacklistIPsRow) (int, error) {
+	if len(rows) == 0 {
+		return 0, nil
+	}
+	ips := make([]string, len(rows))
+	for i, row := range rows {
+		ips[i] = row.Ip
+	}
+	var removed int
+	err := pgx.BeginFunc(ctx, s.GetPool(), func(tx pgx.Tx) error {
+		tag, err := tx.Exec(ctx, `DELETE FROM ip_blacklist WHERE ip = ANY($1)`, ips)
+		if err != nil {
+			return err
+		}
+		removed = int(tag.RowsAffected())
+
+		q := db.New(tx)
+		var uid uuid.UUID
+		if u, ok := GetUser(ctx); ok {
+			uid = u.UserID
+		}
+		s.AuditLog(ctx, q, uid, "BLACKLIST_JANITOR", "system", nil, map[string]any{
+			"count": removed,
+			"ips":   ips,
+		}, nil)
+
+		batch := &pgx.Batch{}
+		for _, row := range rows {
+			reason := normalizeBlacklistReason(row.Reason)
+			payload, err := coldpath.MarshalJSON(BlacklistPayload{Action: "remove", IP: row.Ip, Reason: reason})
+			if err != nil {
+				return fmt.Errorf("marshal blacklist outbox payload: %w", err)
+			}
+			batch.Queue(
+				`INSERT INTO outbox_events (event_type, payload) VALUES ($1, $2)`,
+				"UPDATE_BLACKLIST",
+				payload,
+			)
+		}
+		br := tx.SendBatch(ctx, batch)
+		for range rows {
+			if _, err := br.Exec(); err != nil {
+				br.Close()
+				return err
+			}
+		}
+		return br.Close()
+	})
+	return removed, err
+}
+
 func (s *Service) UnblockIP(ctx context.Context, ip string, source string) error {
 	reason := normalizeBlacklistReason(source)
 
@@ -1493,15 +1546,8 @@ func (s *Service) SyncSystemState(ctx context.Context) error {
 
 	for reason, ips := range reasonIPs {
 		key := "blacklist:" + reason
-		for _, rdb := range s.rdbs {
-			if err := rdb.Del(ctx, key).Err(); err != nil {
-				return fmt.Errorf("failed to reset blacklist key %s: %w", key, err)
-			}
-			if len(ips) > 0 {
-				if err := rdb.SAdd(ctx, key, ips...).Err(); err != nil {
-					return fmt.Errorf("failed to sync blacklist key %s: %w", key, err)
-				}
-			}
+		if err := syncGlobalSetReplaceToAllShards(ctx, s.rdbs, key, ips); err != nil {
+			return fmt.Errorf("failed to sync blacklist key %s: %w", key, err)
 		}
 	}
 

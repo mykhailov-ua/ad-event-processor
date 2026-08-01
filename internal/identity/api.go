@@ -2,13 +2,14 @@ package identity
 
 import (
 	"context"
+	"crypto/subtle"
 	"errors"
 	"net"
-	"strings"
 	"time"
 
 	"espx/internal/config"
 	"espx/internal/identity/db"
+	"espx/pkg/clientip"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -135,7 +136,8 @@ func (a *authAPI) Register(ctx context.Context, adminAPIKey, email, password, ro
 	if a.h.cfg == nil || a.h.cfg.AdminAPIKey == "" {
 		return RegisterResult{}, ErrValidation
 	}
-	if adminAPIKey == "" || adminAPIKey != string(a.h.cfg.AdminAPIKey) {
+	cfgKey := string(a.h.cfg.AdminAPIKey)
+	if adminAPIKey == "" || subtle.ConstantTimeCompare([]byte(adminAPIKey), []byte(cfgKey)) != 1 {
 		return RegisterResult{}, ErrInvalidCredentials
 	}
 	ctx = metadata.NewIncomingContext(ctx, metadata.Pairs(adminAPIKeyMetadata, adminAPIKey))
@@ -321,6 +323,10 @@ func parseOptionalCustomerID(raw string) (uuid.UUID, error) {
 }
 
 func (h *Handler) extractClientIP(ctx context.Context) string {
+	if r, ok := httpRequestFromContext(ctx); ok {
+		return clientip.FromRequest(r, clientip.ParseTrusted(h.cfg.TrustedProxies))
+	}
+
 	peerIP := "unknown"
 	if p, ok := peer.FromContext(ctx); ok {
 		host, _, err := net.SplitHostPort(p.Addr.String())
@@ -331,36 +337,21 @@ func (h *Handler) extractClientIP(ctx context.Context) string {
 		}
 	}
 
-	isTrusted := false
-	for _, tp := range h.cfg.TrustedProxies {
-		if tp != "" && peerIP == tp {
-			isTrusted = true
-			break
-		}
-	}
-
+	trusted := clientip.ParseTrusted(h.cfg.TrustedProxies)
 	if peerIP == "127.0.0.1" || peerIP == "::1" || peerIP == "bufconn" {
-		isTrusted = true
+		trusted = clientip.ParseTrusted(append(h.cfg.TrustedProxies, peerIP))
 	}
 
-	if isTrusted {
-		if md, ok := metadata.FromIncomingContext(ctx); ok {
-			if xri := md.Get("x-real-ip"); len(xri) > 0 && xri[0] != "" {
-				return strings.TrimSpace(xri[0])
-			}
-			if xff := md.Get("x-forwarded-for"); len(xff) > 0 {
-				ips := strings.Split(xff[0], ",")
-				if len(ips) > 0 {
-					val := strings.TrimSpace(ips[len(ips)-1])
-					if val != "" {
-						return val
-					}
-				}
-			}
+	var xff, xReal string
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		if vals := md.Get("x-real-ip"); len(vals) > 0 {
+			xReal = vals[0]
+		}
+		if vals := md.Get("x-forwarded-for"); len(vals) > 0 {
+			xff = vals[0]
 		}
 	}
-
-	return peerIP
+	return clientip.FromProxyPeer(peerIP, xff, xReal, trusted)
 }
 
 func (h *Handler) extractUserAgent(ctx context.Context) string {
@@ -381,7 +372,11 @@ func (h *Handler) requireAdminKey(ctx context.Context) error {
 		return status.Error(codes.Unauthenticated, "missing credentials")
 	}
 	keys := md.Get(adminAPIKeyMetadata)
-	if len(keys) == 0 || keys[0] == "" || keys[0] != string(h.cfg.AdminAPIKey) {
+	if len(keys) == 0 || keys[0] == "" {
+		return status.Error(codes.PermissionDenied, "admin credentials required")
+	}
+	cfgKey := string(h.cfg.AdminAPIKey)
+	if subtle.ConstantTimeCompare([]byte(keys[0]), []byte(cfgKey)) != 1 {
 		return status.Error(codes.PermissionDenied, "admin credentials required")
 	}
 	return nil

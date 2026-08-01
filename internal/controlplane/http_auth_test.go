@@ -16,6 +16,7 @@ import (
 	"espx/internal/identity"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -276,7 +277,7 @@ func TestAuthHandler_MeRedisOutage(t *testing.T) {
 	token, err := tokenMaker.CreateToken(userID, uuid.New(), RoleAdmin, customerID, time.Hour)
 	require.NoError(t, err)
 
-	h := NewAuthHandler(nil, tokenMaker, rdb, cfg, nil)
+	h := NewAuthHandler(nil, tokenMaker, []redis.UniversalClient{rdb}, cfg, nil)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 

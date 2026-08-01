@@ -14,6 +14,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestNodeMetricDailyP99(t *testing.T) {
+	t.Parallel()
+
+	p99 := nodeMetricDailyP99(float64(30))
+	assert.Equal(t, pgtype.Float8{Float64: 30, Valid: true}, p99)
+
+	pg := nodeMetricDailyP99(pgtype.Float8{Float64: 42, Valid: true})
+	assert.Equal(t, pgtype.Float8{Float64: 42, Valid: true}, pg)
+
+	assert.False(t, nodeMetricDailyP99("bad").Valid)
+}
+
 func TestNodeMetricsSnapshotWorker_RunOnce(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {

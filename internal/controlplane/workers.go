@@ -467,17 +467,10 @@ func (j *BlacklistJanitor) runOnce(ctx context.Context) {
 		return
 	}
 
-	var removed int
-	for _, row := range rows {
-		if err := j.svc.UnblockIP(opCtx, row.Ip, row.Reason); err != nil {
-			slog.Warn("blacklist janitor unblock failed",
-				"ip", row.Ip,
-				"reason", row.Reason,
-				"error", err,
-			)
-			continue
-		}
-		removed++
+	removed, err := j.svc.UnblockExpiredBlacklist(opCtx, rows)
+	if err != nil {
+		slog.Warn("blacklist janitor batch unblock failed", "error", err)
+		return
 	}
 
 	slog.Info("blacklist janitor cycle complete",
@@ -580,7 +573,6 @@ func (w *UsageDailyFlushWorker) Flush(ctx context.Context, now time.Time) error 
 	return nil
 }
 
-
 type LedgerInvariantWorker struct {
 	pool     *pgxpool.Pool
 	interval time.Duration
@@ -624,30 +616,20 @@ func (w *LedgerInvariantWorker) Start(ctx context.Context) {
 }
 
 func (w *LedgerInvariantWorker) scanAll(ctx context.Context) error {
-	rows, err := w.pool.Query(ctx, `SELECT id FROM customers`)
+	mismatches, err := ledger.ListLedgerInvariantMismatches(ctx, w.pool)
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
-
-	var mismatches int
-	for rows.Next() {
-		var customerID uuid.UUID
-		if err := rows.Scan(&customerID); err != nil {
-			continue
-		}
-		if err := ledger.CheckLedgerBalanceInvariant(ctx, w.pool, customerID); err != nil {
-			mismatches++
-			slog.Error("ledger invariant mismatch", "customer_id", customerID, "err", err)
-			if w.notifier != nil {
-				w.notifier.AlertLedgerDrift(ctx, customerID.String(), err)
-			}
+	for _, customerID := range mismatches {
+		slog.Error("ledger invariant mismatch", "customer_id", customerID)
+		if w.notifier != nil {
+			w.notifier.AlertLedgerDrift(ctx, customerID.String(), ledger.ErrLedgerDrift)
 		}
 	}
-	if mismatches > 0 {
+	if len(mismatches) > 0 {
 		return errors.New("ledger invariant mismatches detected")
 	}
-	return rows.Err()
+	return nil
 }
 
 const (
@@ -1121,25 +1103,22 @@ func (nginxWorker *NginxConfigWorker) ExportAndReload(ctx context.Context) error
 		return fmt.Errorf("no redis client available")
 	}
 
-	var manual []string
-	for _, rdb := range nginxWorker.svc.rdbs {
-		m, err := rdb.SMembers(ctx, "blacklist:manual").Result()
-		if err != nil {
-			return fmt.Errorf("failed to fetch manual blacklist from shard: %w", err)
-		}
-		manual = append(manual, m...)
+	rdb := PickHealthyControlShard(nginxWorker.svc.rdbs)
+	if rdb == nil {
+		return fmt.Errorf("no healthy redis shard")
+	}
+
+	manual, err := rdb.SMembers(ctx, "blacklist:manual").Result()
+	if err != nil {
+		return fmt.Errorf("failed to fetch manual blacklist: %w", err)
 	}
 	if err := nginxWorker.writeDenyFile("manual.conf", manual); err != nil {
 		return err
 	}
 
-	var auto []string
-	for _, rdb := range nginxWorker.svc.rdbs {
-		a, err := rdb.SMembers(ctx, "blacklist:auto").Result()
-		if err != nil {
-			return fmt.Errorf("failed to fetch auto blacklist from shard: %w", err)
-		}
-		auto = append(auto, a...)
+	auto, err := rdb.SMembers(ctx, "blacklist:auto").Result()
+	if err != nil {
+		return fmt.Errorf("failed to fetch auto blacklist: %w", err)
 	}
 	if err := nginxWorker.writeDenyFile("auto.conf", auto); err != nil {
 		return err
@@ -1291,14 +1270,13 @@ func (w *NodeMetricsSnapshotWorker) snapshotDay(ctx context.Context, day time.Ti
 
 	dayParam := pgtype.Date{Time: day, Valid: true}
 	for _, row := range rows {
-		p99 := aggregateFloat(row.ValueP99)
 		if err := q.UpsertNodeMetricDailySnapshot(ctx, db.UpsertNodeMetricDailySnapshotParams{
 			Day:         dayParam,
 			RegionCode:  row.RegionCode,
 			Role:        row.Role,
 			Metric:      row.Metric,
 			ValueP50:    pgtype.Float8{Float64: row.ValueP50, Valid: true},
-			ValueP99:    pgtype.Float8{Float64: p99, Valid: true},
+			ValueP99:    nodeMetricDailyP99(row.ValueP99),
 			ValueMean:   pgtype.Float8{Float64: row.ValueMean, Valid: true},
 			SampleCount: row.SampleCount,
 		}); err != nil {
@@ -1332,22 +1310,18 @@ func nextSnapshotRunUTC(now time.Time) time.Time {
 	return runAt
 }
 
-func aggregateFloat(v interface{}) float64 {
+const auditExportBatchSize = 1000
+
+func nodeMetricDailyP99(v interface{}) pgtype.Float8 {
 	switch x := v.(type) {
 	case float64:
+		return pgtype.Float8{Float64: x, Valid: true}
+	case pgtype.Float8:
 		return x
-	case float32:
-		return float64(x)
-	case int64:
-		return float64(x)
-	case int32:
-		return float64(x)
 	default:
-		return 0
+		return pgtype.Float8{}
 	}
 }
-
-const auditExportBatchSize = 1000
 
 type AuditExportWorker struct {
 	svc           *Service
@@ -2095,9 +2069,9 @@ func (o *FraudModelSyncOrchestrator) Tick(ctx context.Context) error {
 
 			rdb := o.svc.rdbs[activeSyncShard]
 			if rdb != nil {
-				rdb.Set(ctx, "ml:model:version", versionID, 0)
-				rdb.Set(ctx, "ml:model:hash", artifactHash, 0)
-				rdb.Set(ctx, "ml:model:applied_at", time.Now().Unix(), 0)
+				if err := syncMLModelMetaOnShard(ctx, rdb, versionID, artifactHash, time.Now().Unix()); err != nil {
+					return fmt.Errorf("failed to set ml model keys: %w", err)
+				}
 			}
 		} else {
 			slog.Warn("fraud model sync canary failed (high FP rate), rolling back", "shard_id", activeSyncShard, "version", versionID)
@@ -2179,9 +2153,9 @@ func (o *FraudModelSyncOrchestrator) rollbackShard(ctx context.Context, shardID 
 
 	rdb := o.svc.rdbs[shardID]
 	if rdb != nil {
-		rdb.Set(ctx, "ml:model:version", prevVersionID, 0)
-		rdb.Set(ctx, "ml:model:hash", prevHash, 0)
-		rdb.Set(ctx, "ml:model:applied_at", time.Now().Unix(), 0)
+		if err := syncMLModelMetaOnShard(ctx, rdb, prevVersionID, prevHash, time.Now().Unix()); err != nil {
+			return fmt.Errorf("rollback ml model keys: %w", err)
+		}
 	}
 
 	return nil
@@ -2192,13 +2166,16 @@ func (o *FraudModelSyncOrchestrator) runCanaryCheck(ctx context.Context, shardID
 		return true, nil
 	}
 
+	chCtx, cancel := chQueryContext(ctx)
+	defer cancel()
+
 	query := `
 		SELECT window_start, ip_address, campaign_id, events, clicks, spend_micro, budget_limit_micro, unique_users, unique_uas
 		FROM ad_event_processor.ml_features_1m
 		WHERE window_start >= subtractHours(now(), 1)
 		LIMIT 1000`
 
-	rows, err := o.svc.chQuery.Query(ctx, query)
+	rows, err := o.svc.chQuery.Query(chCtx, query)
 	if err != nil {
 		return false, fmt.Errorf("clickhouse query failed: %w", err)
 	}
@@ -2380,7 +2357,30 @@ func (worker *OutboxWorker) ProcessOutboxWithCount(ctx context.Context, limit in
 	revertIDs := make([]int64, 0, len(events))
 	var batchErrs []error
 
+	blacklistEvents := make([]db.OutboxEvent, 0)
+	otherEvents := make([]db.OutboxEvent, 0, len(events))
 	for _, ev := range events {
+		if ev.EventType == "UPDATE_BLACKLIST" {
+			blacklistEvents = append(blacklistEvents, ev)
+		} else {
+			otherEvents = append(otherEvents, ev)
+		}
+	}
+
+	if len(blacklistEvents) > 0 {
+		if err := worker.applyBlacklistPayloadsBatch(opCtx, blacklistEvents); err != nil {
+			for _, ev := range blacklistEvents {
+				revertIDs = append(revertIDs, ev.ID)
+				batchErrs = append(batchErrs, fmt.Errorf("outbox event %d: %w", ev.ID, err))
+			}
+		} else {
+			for _, ev := range blacklistEvents {
+				processedIDs = append(processedIDs, ev.ID)
+			}
+		}
+	}
+
+	for _, ev := range otherEvents {
 		if err := worker.handleOutboxEvent(opCtx, ctx, ev); err != nil {
 			slog.Warn("redis outbox processing failed for event, marking for revert", "id", ev.ID, "err", err)
 			revertIDs = append(revertIDs, ev.ID)
@@ -2454,6 +2454,83 @@ func ToUUID(u uuid.UUID) pgtype.UUID {
 const fraudQuarantineChannel = "fraud:quarantine"
 const blacklistUpdateChannel = "blacklist:update"
 
+func (worker *OutboxWorker) applyBlacklistPayloadsBatch(ctx context.Context, events []db.OutboxEvent) error {
+	type reasonBatch struct {
+		adds    []string
+		removes []string
+	}
+	byReason := make(map[string]*reasonBatch)
+	var maxQueued time.Time
+
+	for _, ev := range events {
+		p, err := coldpath.UnmarshalStrict[BlacklistPayload](ev.Payload)
+		if err != nil {
+			return err
+		}
+		reason := normalizeBlacklistReason(p.Reason)
+		batch, ok := byReason[reason]
+		if !ok {
+			batch = &reasonBatch{}
+			byReason[reason] = batch
+		}
+		if p.Action == "add" {
+			batch.adds = append(batch.adds, p.IP)
+		} else if p.Action == "remove" {
+			batch.removes = append(batch.removes, p.IP)
+		} else {
+			return fmt.Errorf("unknown blacklist action: %s", p.Action)
+		}
+		if ev.CreatedAt.Valid && ev.CreatedAt.Time.After(maxQueued) {
+			maxQueued = ev.CreatedAt.Time
+		}
+	}
+
+	if len(worker.svc.rdbs) == 0 {
+		return fmt.Errorf("no redis client available")
+	}
+
+	for reason, batch := range byReason {
+		key := "blacklist:" + reason
+		for i, rdb := range worker.svc.rdbs {
+			if rdb == nil {
+				return fmt.Errorf("redis shard %d is nil", i)
+			}
+			_, err := rdb.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+				for _, ip := range batch.removes {
+					pipe.SRem(ctx, key, ip)
+				}
+				if len(batch.adds) > 0 {
+					addMembers := make([]interface{}, len(batch.adds))
+					for j, ip := range batch.adds {
+						addMembers[j] = ip
+					}
+					pipe.SAdd(ctx, key, addMembers...)
+				}
+				return nil
+			})
+			if err != nil {
+				return fmt.Errorf("blacklist batch sync shard %d: %w", i, err)
+			}
+		}
+		if reason == "fraud" && len(batch.adds) > 0 {
+			for _, ip := range batch.adds {
+				_ = publishControlChannelToAllShards(ctx, worker.svc.rdbs, fraudQuarantineChannel, ip)
+			}
+		}
+		for _, ip := range append(batch.adds, batch.removes...) {
+			_ = publishControlChannelToAllShards(ctx, worker.svc.rdbs, blacklistUpdateChannel, ip+":"+reason)
+		}
+	}
+
+	if !maxQueued.IsZero() {
+		lag := time.Since(maxQueued).Seconds()
+		if lag >= 0 {
+			metrics.BlacklistReplicationLag.Observe(lag)
+		}
+	}
+	return nil
+}
+
 func (worker *OutboxWorker) applyBlacklistPayload(ctx context.Context, p BlacklistPayload, queuedAt time.Time) error {
 	if len(worker.svc.rdbs) == 0 {
 		return fmt.Errorf("no redis client available")
@@ -2510,12 +2587,7 @@ func (worker *OutboxWorker) syncBrandCreativesToRedis(ctx context.Context, brand
 		return fmt.Errorf("no redis client")
 	}
 	key := "brand:creatives:" + brandIDStr
-	for _, rdb := range worker.svc.rdbs {
-		if err := rdb.Set(ctx, key, payload, 0).Err(); err != nil {
-			return err
-		}
-	}
-	return nil
+	return syncKeyToAllShards(ctx, worker.svc.rdbs, key, payload, 0)
 }
 
 const (

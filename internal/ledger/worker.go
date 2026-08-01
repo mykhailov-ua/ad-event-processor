@@ -95,9 +95,11 @@ func (w *Worker) RunCycle(ctx context.Context) error {
 	}
 
 	var lag int64
-	err := w.ch.QueryRow(ctx, "SELECT dateDiff('second', max(hour), now()) FROM placement_stats_hourly").Scan(&lag)
+	chCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	err := w.ch.QueryRow(chCtx, "SELECT dateDiff('second', max(hour), now()) FROM placement_stats_hourly").Scan(&lag)
 	if err != nil {
-		_ = w.ch.QueryRow(ctx, "SELECT dateDiff('second', max(snapshot_hour), now()) FROM cost_snapshots").Scan(&lag)
+		_ = w.ch.QueryRow(chCtx, "SELECT dateDiff('second', max(snapshot_hour), now()) FROM cost_snapshots").Scan(&lag)
 	}
 
 	if lag > 300 {
@@ -187,7 +189,9 @@ func (w *Worker) queryPlacementStatsBatch(ctx context.Context, campaignIDs []uui
 	if len(campaignIDs) == 0 {
 		return out, nil
 	}
-	rows, err := w.ch.Query(ctx, marginGuardPlacementStatsQuery, campaignIDs)
+	chCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	rows, err := w.ch.Query(chCtx, marginGuardPlacementStatsQuery, campaignIDs)
 	if err != nil {
 		return nil, err
 	}

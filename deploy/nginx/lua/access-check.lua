@@ -30,8 +30,7 @@ local function circuit_breaker_open(bucket_curr, bucket_prev)
 end
 
 local function client_asn()
-    local headers = ngx.req.get_headers()
-    return headers["X-Client-ASN"] or headers["x-client-asn"]
+    return ngx.var.http_x_client_asn
 end
 
 local function phase1_blacklist(client_ip)

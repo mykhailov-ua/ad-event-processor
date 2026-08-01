@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -387,7 +388,13 @@ func (exportHandlers *ExportHTTPHandlers) downloadExport(w http.ResponseWriter, 
 		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 	}
 	w.Header().Set("Content-Disposition", "attachment; filename=\"billing-export-"+jobID+"."+status.Format+"\"")
-	_, _ = io.Copy(w, f)
+	maxBytes := status.Bytes
+	if maxBytes <= 0 {
+		maxBytes = 256 << 20
+	}
+	if _, err := io.Copy(w, io.LimitReader(f, maxBytes)); err != nil {
+		slog.Warn("export download interrupted", "job_id", jobID, "error", err)
+	}
 }
 
 func (exportHandlers *ExportHTTPHandlers) writeServiceError(w http.ResponseWriter, err error) {

@@ -59,6 +59,60 @@ func AssertLedgerBalanceInvariant(t testing.TB, ctx context.Context, pool *pgxpo
 	}
 }
 
+// ListLedgerInvariantMismatchesForIDs checks only the given customer IDs (single query).
+func ListLedgerInvariantMismatchesForIDs(ctx context.Context, pool *pgxpool.Pool, customerIDs []uuid.UUID) ([]uuid.UUID, error) {
+	if len(customerIDs) == 0 {
+		return nil, nil
+	}
+	rows, err := pool.Query(ctx, `
+		SELECT c.id
+		FROM customers c
+		LEFT JOIN balance_ledger bl ON bl.customer_id = c.id
+			AND bl.type NOT IN ('rtb_cost', 'operator_margin', 'publisher_payout')
+		WHERE c.id = ANY($1)
+		GROUP BY c.id, c.balance
+		HAVING abs(c.balance - COALESCE(SUM(bl.amount), 0)) > $2`, customerIDs, ledgerInvariantToleranceMicro)
+	if err != nil {
+		return nil, fmt.Errorf("scan ledger invariant sample: %w", err)
+	}
+	defer rows.Close()
+
+	var ids []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan ledger invariant row: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+// ListLedgerInvariantMismatches returns customer IDs whose balance diverges from ledger sum.
+func ListLedgerInvariantMismatches(ctx context.Context, pool *pgxpool.Pool) ([]uuid.UUID, error) {
+	rows, err := pool.Query(ctx, `
+		SELECT c.id
+		FROM customers c
+		LEFT JOIN balance_ledger bl ON bl.customer_id = c.id
+			AND bl.type NOT IN ('rtb_cost', 'operator_margin', 'publisher_payout')
+		GROUP BY c.id, c.balance
+		HAVING abs(c.balance - COALESCE(SUM(bl.amount), 0)) > $1`, ledgerInvariantToleranceMicro)
+	if err != nil {
+		return nil, fmt.Errorf("scan ledger invariant: %w", err)
+	}
+	defer rows.Close()
+
+	var ids []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan ledger invariant row: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
 func CheckLedgerBalanceInvariant(ctx context.Context, pool *pgxpool.Pool, customerID uuid.UUID) error {
 	snap, err := ReadLedgerInvariant(ctx, pool, customerID)
 	if err != nil {

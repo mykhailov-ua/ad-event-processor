@@ -9,6 +9,7 @@ import (
 
 	"espx/internal/costsync"
 	db "espx/internal/domain/db"
+	"espx/pkg/coldpath"
 	"espx/pkg/httpresponse"
 
 	"github.com/google/uuid"
@@ -134,8 +135,12 @@ func (costSync *CostSyncHTTPHandlers) upsertCredential(w http.ResponseWriter, r 
 		return
 	}
 
+	body, err := coldpath.ReadLimitedBody(w, r, coldpath.DefaultMaxBody)
+	if err != nil {
+		return
+	}
 	var req UpsertCostSyncCredentialRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid json body")
 		return
 	}
@@ -210,8 +215,12 @@ func (costSync *CostSyncHTTPHandlers) runSync(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	body, err := coldpath.ReadLimitedBody(w, r, coldpath.DefaultMaxBody)
+	if err != nil {
+		return
+	}
 	var req RunCostSyncRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid json body")
 		return
 	}

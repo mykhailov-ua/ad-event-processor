@@ -67,6 +67,34 @@ func ClearUserRevocation(ctx context.Context, rdb redis.UniversalClient, userID 
 	return rdb.Del(ctx, "revoked:user:"+userID.String()).Err()
 }
 
+// RevokeTokenSession marks access token and session revoked on a Redis client.
+func RevokeTokenSession(ctx context.Context, rdb redis.UniversalClient, tokenID, sessionID uuid.UUID, ttl time.Duration) error {
+	if rdb == nil || ttl <= 0 {
+		return nil
+	}
+	pipe := rdb.Pipeline()
+	pipe.Set(ctx, "revoked:token:"+tokenID.String(), "true", ttl)
+	pipe.Set(ctx, "revoked:session:"+sessionID.String(), "true", ttl)
+	_, err := pipe.Exec(ctx)
+	return err
+}
+
+// RevokeTokenSessionShards marks revocation on every control-plane Redis shard.
+func RevokeTokenSessionShards(ctx context.Context, rdbs []redis.UniversalClient, tokenID, sessionID uuid.UUID, ttl time.Duration) error {
+	if len(rdbs) == 0 || ttl <= 0 {
+		return nil
+	}
+	for i, rdb := range rdbs {
+		if rdb == nil {
+			continue
+		}
+		if err := RevokeTokenSession(ctx, rdb, tokenID, sessionID, ttl); err != nil {
+			return fmt.Errorf("shard %d: %w", i, err)
+		}
+	}
+	return nil
+}
+
 func checkTokenRevocationShards(ctx context.Context, rdbs []redis.UniversalClient, payload *Payload) (bool, error) {
 	if payload == nil || len(rdbs) == 0 {
 		return false, nil

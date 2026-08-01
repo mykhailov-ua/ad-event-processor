@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"espx/internal/ledger"
+	"espx/pkg/coldpath"
 	"espx/pkg/httpresponse"
 
 	"github.com/google/uuid"
@@ -59,8 +60,12 @@ func (marginGuard *MarginGuardHTTPHandlers) listPolicies(w http.ResponseWriter, 
 }
 
 func (marginGuard *MarginGuardHTTPHandlers) createPolicy(w http.ResponseWriter, r *http.Request) {
+	body, err := coldpath.ReadLimitedBody(w, r, coldpath.DefaultMaxBody)
+	if err != nil {
+		return
+	}
 	var p ledger.Policy
-	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
+	if err := json.Unmarshal(body, &p); err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
 		return
 	}
@@ -89,11 +94,15 @@ func (marginGuard *MarginGuardHTTPHandlers) listActivity(w http.ResponseWriter, 
 }
 
 func (marginGuard *MarginGuardHTTPHandlers) removeOverride(w http.ResponseWriter, r *http.Request) {
+	body, err := coldpath.ReadLimitedBody(w, r, coldpath.DefaultMaxBody)
+	if err != nil {
+		return
+	}
 	var req struct {
 		CampaignID  string `json:"campaign_id"`
 		PlacementID string `json:"placement_id"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
 		return
 	}

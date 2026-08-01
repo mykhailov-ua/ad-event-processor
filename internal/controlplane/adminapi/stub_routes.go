@@ -6,7 +6,7 @@ import (
 	"espx/pkg/httpresponse"
 )
 
-const stubNotImplementedMessage = "not implemented"
+const stubNotImplementedMessage = "planned API surface; not implemented — use /api/v1/reports/placements or /api/v1/reports/keywords"
 
 type stubRoute struct {
 	Method     string
@@ -62,5 +62,6 @@ func (h *StubHTTPHandlers) Register(mux *http.ServeMux) {
 }
 
 func writeStubNotImplemented(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("X-API-Stub", "true")
 	httpresponse.Error(w, http.StatusNotImplemented, "NOT_IMPLEMENTED", stubNotImplementedMessage)
 }

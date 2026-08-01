@@ -21,21 +21,19 @@ func apiKeyPrincipalID(apiKey string) uuid.UUID {
 	return uuid.NewSHA1(adminAPIKeyNamespace, []byte(apiKey))
 }
 
-
-
 type AuthHandler struct {
 	authClient     *AuthClient
 	tokenMaker     identity.Maker
-	rdb            redis.UniversalClient
+	rdbs           []redis.UniversalClient
 	cfg            *config.Config
 	authMiddleware *AuthMiddleware
 }
 
-func NewAuthHandler(authClient *AuthClient, tokenMaker identity.Maker, rdb redis.UniversalClient, cfg *config.Config, authMiddleware *AuthMiddleware) *AuthHandler {
+func NewAuthHandler(authClient *AuthClient, tokenMaker identity.Maker, rdbs []redis.UniversalClient, cfg *config.Config, authMiddleware *AuthMiddleware) *AuthHandler {
 	return &AuthHandler{
 		authClient:     authClient,
 		tokenMaker:     tokenMaker,
-		rdb:            rdb,
+		rdbs:           rdbs,
 		cfg:            cfg,
 		authMiddleware: authMiddleware,
 	}
@@ -124,7 +122,7 @@ func (h *AuthHandler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.authClient.Login(r.Context(), req.Email, req.Password, 1)
+	resp, err := h.authClient.Login(identity.WithHTTPRequest(r.Context(), r), req.Email, req.Password, 1)
 	if err != nil {
 		slog.Warn("login failed", "email", req.Email, "error", err)
 		httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "invalid credentials")
@@ -165,15 +163,12 @@ func (h *AuthHandler) logout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	accessCookie, err := r.Cookie("accessToken")
-	if err == nil && accessCookie.Value != "" && h.rdb != nil {
+	if err == nil && accessCookie.Value != "" {
 		payload, errPayload := h.tokenMaker.VerifyToken(accessCookie.Value)
 		if errPayload == nil {
-			pipe := h.rdb.Pipeline()
 			ttl := time.Until(payload.ExpiredAt)
-			pipe.Set(r.Context(), "revoked:token:"+payload.ID.String(), "true", ttl)
-			pipe.Set(r.Context(), "revoked:session:"+payload.SessionID.String(), "true", ttl)
-			if _, errExec := pipe.Exec(r.Context()); errExec != nil {
-				slog.Error("failed to execute pipeline during logout token revocation", "error", errExec)
+			if errRev := identity.RevokeTokenSessionShards(r.Context(), h.rdbs, payload.ID, payload.SessionID, ttl); errRev != nil {
+				slog.Error("failed to revoke tokens on logout", "error", errRev)
 			}
 		}
 	}
@@ -217,16 +212,19 @@ func (h *AuthHandler) me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.rdb != nil {
-		revoked, errRev := identity.CheckTokenRevocation(r.Context(), h.rdb, payload)
-		if errRev != nil {
-			slog.Error("redis revocation check failed on /me, blocking request", "error", errRev)
-			httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized: security check failed")
-			return
-		}
-		if revoked {
-			httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized: token revoked")
-			return
+	if len(h.rdbs) > 0 {
+		rdb := PickHealthyControlShard(h.rdbs)
+		if rdb != nil {
+			revoked, errRev := identity.CheckTokenRevocation(r.Context(), rdb, payload)
+			if errRev != nil {
+				slog.Error("redis revocation check failed on /me, blocking request", "error", errRev)
+				httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized: security check failed")
+				return
+			}
+			if revoked {
+				httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized: token revoked")
+				return
+			}
 		}
 	}
 

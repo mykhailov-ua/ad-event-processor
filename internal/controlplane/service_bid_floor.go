@@ -110,7 +110,9 @@ func (s *Service) queryClickHouseDealWinRates(ctx context.Context, lookbackHours
 	}
 	lookbackHours = database.ClampCHLookbackHours(lookbackHours)
 
-	rows, err := s.chQuery.Query(ctx, chDealWinRatesQuery, lookbackHours)
+	chCtx, cancel := chQueryContext(ctx)
+	defer cancel()
+	rows, err := s.chQuery.Query(chCtx, chDealWinRatesQuery, lookbackHours)
 	if err != nil {
 		return nil, fmt.Errorf("clickhouse deal win rates: %w", err)
 	}
@@ -146,7 +148,9 @@ func (s *Service) queryClickHousePlacementFloorBuckets(ctx context.Context, look
 	lookbackHours = database.ClampCHLookbackHours(lookbackHours)
 	bucketMicro = database.ClampCHBucketMicro(bucketMicro)
 
-	rows, err := s.chQuery.Query(ctx, chPlacementFloorBucketsQuery, bucketMicro, bucketMicro, lookbackHours)
+	chCtx, cancel := chQueryContext(ctx)
+	defer cancel()
+	rows, err := s.chQuery.Query(chCtx, chPlacementFloorBucketsQuery, bucketMicro, bucketMicro, lookbackHours)
 	if err != nil {
 		return nil, fmt.Errorf("clickhouse placement floor buckets: %w", err)
 	}

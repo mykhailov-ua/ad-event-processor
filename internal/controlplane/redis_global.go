@@ -114,6 +114,59 @@ func syncGlobalSetMemberToAllShards(ctx context.Context, rdbs []redis.UniversalC
 	return nil
 }
 
+// syncGlobalSetReplaceToAllShards replaces a Redis set key on every shard via pipeline.
+func syncGlobalSetReplaceToAllShards(ctx context.Context, rdbs []redis.UniversalClient, key string, members []interface{}) error {
+	if len(rdbs) == 0 {
+		return fmt.Errorf("no redis client available")
+	}
+	for i, rdb := range rdbs {
+		if rdb == nil {
+			return fmt.Errorf("redis shard %d is nil", i)
+		}
+		_, err := rdb.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+			pipe.Del(ctx, key)
+			if len(members) > 0 {
+				pipe.SAdd(ctx, key, members...)
+			}
+			return nil
+		})
+		if err != nil {
+			return fmt.Errorf("replace set on shard %d key %s: %w", i, key, err)
+		}
+	}
+	return nil
+}
+
+// syncMLModelMetaOnShard sets ML model metadata keys in one pipeline round-trip.
+func syncMLModelMetaOnShard(ctx context.Context, rdb redis.UniversalClient, versionID, hash string, appliedAt int64) error {
+	if rdb == nil {
+		return nil
+	}
+	_, err := rdb.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+		pipe.Set(ctx, "ml:model:version", versionID, 0)
+		pipe.Set(ctx, "ml:model:hash", hash, 0)
+		pipe.Set(ctx, "ml:model:applied_at", appliedAt, 0)
+		return nil
+	})
+	return err
+}
+
+// syncKeyToAllShards writes the same key/value to every shard.
+func syncKeyToAllShards(ctx context.Context, rdbs []redis.UniversalClient, key string, value interface{}, ttl time.Duration) error {
+	if len(rdbs) == 0 {
+		return fmt.Errorf("no redis client available")
+	}
+	for i, rdb := range rdbs {
+		if rdb == nil {
+			return fmt.Errorf("redis shard %d is nil", i)
+		}
+		if err := rdb.Set(ctx, key, value, ttl).Err(); err != nil {
+			return fmt.Errorf("set %s on shard %d: %w", key, i, err)
+		}
+	}
+	return nil
+}
+
 func syncGlobalHashFieldToAllShards(ctx context.Context, rdbs []redis.UniversalClient, key, field, value string, del bool) error {
 	if len(rdbs) == 0 {
 		return fmt.Errorf("no redis client available")

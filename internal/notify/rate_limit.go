@@ -5,6 +5,11 @@ import (
 	"time"
 )
 
+const (
+	notifyRateLimiterMaxEntries = 50_000
+	notifyRateLimiterEvictAfter = 10 * time.Minute
+)
+
 type recipientRateLimiter struct {
 	mu      sync.Mutex
 	limit   int
@@ -30,6 +35,13 @@ func (limiter *recipientRateLimiter) allow(recipient string) bool {
 	limiter.mu.Lock()
 	bucket, ok := limiter.buckets[recipient]
 	if !ok {
+		if len(limiter.buckets) >= notifyRateLimiterMaxEntries {
+			evictNotifyBuckets(limiter.buckets, now)
+			if len(limiter.buckets) >= notifyRateLimiterMaxEntries {
+				limiter.mu.Unlock()
+				return false
+			}
+		}
 		bucket = newTokenBucket(limiter.limit)
 		limiter.buckets[recipient] = bucket
 	}
@@ -84,6 +96,13 @@ func (limiter *providerRateLimiter) Allow(provider, recipient string) bool {
 	limiter.mu.Lock()
 	bucket, ok := limiter.buckets[key]
 	if !ok {
+		if len(limiter.buckets) >= notifyRateLimiterMaxEntries {
+			evictNotifyBuckets(limiter.buckets, now)
+			if len(limiter.buckets) >= notifyRateLimiterMaxEntries {
+				limiter.mu.Unlock()
+				return false
+			}
+		}
 		bucket = newTokenBucket(limit)
 		limiter.buckets[key] = bucket
 	}
@@ -103,11 +122,22 @@ func (limiter *providerRateLimiter) Backoff(provider, recipient string, d time.D
 	limiter.mu.Lock()
 	bucket, ok := limiter.buckets[key]
 	if !ok {
+		if len(limiter.buckets) >= notifyRateLimiterMaxEntries {
+			evictNotifyBuckets(limiter.buckets, time.Now())
+		}
 		bucket = newTokenBucket(limiter.limits[provider])
 		limiter.buckets[key] = bucket
 	}
 	limiter.mu.Unlock()
 	bucket.backoff(d)
+}
+
+func evictNotifyBuckets(buckets map[string]*tokenBucket, now time.Time) {
+	for k, b := range buckets {
+		if b != nil && now.Sub(b.lastSeen()) > notifyRateLimiterEvictAfter {
+			delete(buckets, k)
+		}
+	}
 }
 
 func deliveryRateLimitsFromOptions(opts ServiceOptions) map[string]int {

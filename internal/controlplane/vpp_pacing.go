@@ -20,7 +20,9 @@ FROM mv_campaign_hourly_impressions
 WHERE hour >= ? AND hour < ? AND campaign_id = ?
 GROUP BY hr
 ORDER BY hr`
-	rows, err := s.chQuery.Query(ctx, query, from, to, campaignID)
+	chCtx, cancel := chQueryContext(ctx)
+	defer cancel()
+	rows, err := s.chQuery.Query(chCtx, query, from, to, campaignID)
 	if err != nil {
 		return nil, err
 	}

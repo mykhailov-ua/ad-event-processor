@@ -311,48 +311,80 @@ func (w *Worker) reconcileCampaigns(ctx context.Context, lines []CostLine, date 
 		}
 		seen[line.CampaignID] = struct{}{}
 	}
+	if len(seen) == 0 {
+		return nil
+	}
 
-	q := db.New(w.pool)
+	campaignIDs := make([]uuid.UUID, 0, len(seen))
 	for campID := range seen {
-		apiSpend, err := q.SumCampaignCostsUSDForDate(ctx, db.SumCampaignCostsUSDForDateParams{
-			CampaignID: pgtype.UUID{Bytes: campID, Valid: true},
-			CostDate:   pgtype.Date{Time: date, Valid: true},
-		})
-		if err != nil {
-			return err
-		}
-		trackerSpend, err := q.SumTrackerEstimatedSpendForDate(ctx, db.SumTrackerEstimatedSpendForDateParams{
-			CampaignID: pgtype.UUID{Bytes: campID, Valid: true},
-			Column2:    pgtype.Date{Time: date, Valid: true},
-		})
-		if err != nil {
-			return err
-		}
+		campaignIDs = append(campaignIDs, campID)
+	}
 
+	rows, err := w.pool.Query(ctx, `
+		SELECT
+			c.id,
+			c.customer_id,
+			COALESCE(cc.api_spend, 0) AS api_spend,
+			COALESCE(tr.tracker_spend, 0) AS tracker_spend
+		FROM campaigns c
+		LEFT JOIN (
+			SELECT campaign_id, SUM(amount_usd_micro)::bigint AS api_spend
+			FROM campaign_costs
+			WHERE cost_date = $1 AND line_type = 'spend'
+			GROUP BY campaign_id
+		) cc ON cc.campaign_id = c.id
+		LEFT JOIN (
+			SELECT campaign_id,
+				COALESCE(SUM(CASE WHEN amount < 0 THEN -amount ELSE 0 END), 0)::bigint AS tracker_spend
+			FROM balance_ledger
+			WHERE created_at >= $1::date
+			  AND created_at < ($1::date + INTERVAL '1 day')
+			  AND type IN ('FEE', 'RECONCILIATION_ADJUST', 'REFUND')
+			GROUP BY campaign_id
+		) tr ON tr.campaign_id = c.id
+		WHERE c.id = ANY($2)
+		  AND COALESCE(cc.api_spend, 0) != COALESCE(tr.tracker_spend, 0)`, date, campaignIDs)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	batch := &pgx.Batch{}
+	var adjustments int
+	for rows.Next() {
+		var campID, customerID uuid.UUID
+		var apiSpend, trackerSpend int64
+		if err := rows.Scan(&campID, &customerID, &apiSpend, &trackerSpend); err != nil {
+			return err
+		}
 		delta := apiSpend - trackerSpend
-		if delta == 0 {
-			continue
-		}
-
-		var customerID pgtype.UUID
-		err = w.pool.QueryRow(ctx, `SELECT customer_id FROM campaigns WHERE id = $1`, campID).Scan(&customerID)
-		if err != nil {
-			return err
-		}
-
-		hash := reconciliationHash(customerID.Bytes, campID, date)
-		_, err = w.pool.Exec(ctx, `
+		hash := reconciliationHash(customerID, campID, date)
+		batch.Queue(`
 			INSERT INTO balance_ledger (customer_id, campaign_id, amount, type, idempotency_hash)
 			VALUES ($1, $2, $3, 'RECONCILIATION_ADJUST', $4)
 			ON CONFLICT (idempotency_hash) DO NOTHING`,
-			customerID, campID, -delta, hash,
+			pgtype.UUID{Bytes: customerID, Valid: true},
+			pgtype.UUID{Bytes: campID, Valid: true},
+			-delta,
+			hash,
 		)
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			return err
-		}
+		adjustments++
 		metrics.CostSyncReconciliationDelta.Add(float64(abs64(delta)))
 	}
-	return nil
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if batch.Len() == 0 {
+		return nil
+	}
+	br := w.pool.SendBatch(ctx, batch)
+	for i := 0; i < adjustments; i++ {
+		if _, err := br.Exec(); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			br.Close()
+			return err
+		}
+	}
+	return br.Close()
 }
 
 func reconciliationHash(customerID, campaignID uuid.UUID, date time.Time) string {
@@ -389,7 +421,9 @@ func (w *Worker) decryptCredential(row db.CostSyncCredential) (Credential, error
 		cred.APIKey = string(b)
 	}
 	if len(row.ExtraConfig) > 0 {
-		_ = json.Unmarshal(row.ExtraConfig, &cred.ExtraConfig)
+		if err := json.Unmarshal(row.ExtraConfig, &cred.ExtraConfig); err != nil {
+			return cred, fmt.Errorf("parse extra_config for network=%s account=%s: %w", row.Network, row.AccountID, err)
+		}
 	}
 	if row.TokenExpiresAt.Valid {
 		cred.ExpiresAt = row.TokenExpiresAt.Time

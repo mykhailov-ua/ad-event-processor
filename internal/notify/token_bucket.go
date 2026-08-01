@@ -11,6 +11,7 @@ type tokenBucket struct {
 	maxTokens    float64
 	refillPerSec float64
 	lastRefill   time.Time
+	lastSeenAt   time.Time
 	blockedUntil time.Time
 }
 
@@ -24,7 +25,17 @@ func newTokenBucket(perMinute int) *tokenBucket {
 		maxTokens:    float64(perMinute),
 		refillPerSec: rate,
 		lastRefill:   time.Now(),
+		lastSeenAt:   time.Now(),
 	}
+}
+
+func (bucket *tokenBucket) lastSeen() time.Time {
+	if bucket == nil {
+		return time.Time{}
+	}
+	bucket.mu.Lock()
+	defer bucket.mu.Unlock()
+	return bucket.lastSeenAt
 }
 
 func (bucket *tokenBucket) allow(now time.Time) bool {
@@ -34,6 +45,8 @@ func (bucket *tokenBucket) allow(now time.Time) bool {
 
 	bucket.mu.Lock()
 	defer bucket.mu.Unlock()
+
+	bucket.lastSeenAt = now
 
 	if now.Before(bucket.blockedUntil) {
 		return false

@@ -150,7 +150,10 @@ func (licensing *LicensingHTTPHandlers) getCustomerSubscription(w http.ResponseW
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "invalid subscription features")
 		return
 	}
-	applySubscriptionOverrides(sub.OverridesJson, &limits, &features)
+	if err := applySubscriptionOverrides(sub.OverridesJson, &limits, &features); err != nil {
+		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "invalid subscription overrides")
+		return
+	}
 
 	eff := lic.Effective(licEnt, lic.Entitlements{Limits: limits, Features: features})
 
@@ -568,16 +571,16 @@ func defaultLicenseEntitlements() lic.Entitlements {
 	}
 }
 
-func applySubscriptionOverrides(raw []byte, limits *lic.Limits, features *lic.FeatureSet) {
+func applySubscriptionOverrides(raw []byte, limits *lic.Limits, features *lic.FeatureSet) error {
 	if len(raw) == 0 {
-		return
+		return nil
 	}
 	var overrides struct {
 		Limits   *lic.Limits     `json:"limits,omitempty"`
 		Features *lic.FeatureSet `json:"features,omitempty"`
 	}
-	if json.Unmarshal(raw, &overrides) != nil {
-		return
+	if err := json.Unmarshal(raw, &overrides); err != nil {
+		return err
 	}
 	if overrides.Limits != nil {
 		lic.MergeLimits(limits, *overrides.Limits)
@@ -585,4 +588,5 @@ func applySubscriptionOverrides(raw []byte, limits *lic.Limits, features *lic.Fe
 	if overrides.Features != nil {
 		lic.MergeFeatures(features, *overrides.Features)
 	}
+	return nil
 }

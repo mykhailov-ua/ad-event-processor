@@ -96,12 +96,14 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 		return err
 	}
 
+	SetTrustedProxies(cfg.TrustedProxies)
+
 	authMiddleware := NewAuthMiddleware(tokenMaker, PickHealthyControlShard(rdbs), cfg, controlAuthClient)
 	authMiddleware.SetControlRedisShards(rdbs)
 	policyStore := InitPolicyStore()
 	authMiddleware.SetPolicyStore(policyStore)
 	authMiddleware.SetPool(pool)
-	authHandler := NewAuthHandler(controlAuthClient, tokenMaker, PickHealthyControlShard(rdbs), cfg, authMiddleware)
+	authHandler := NewAuthHandler(controlAuthClient, tokenMaker, rdbs, cfg, authMiddleware)
 
 	if cfg.UDPControlEnabled {
 		udpSrv := NewUDPControlServer(cfg, pool, sharder, len(rdbs))
@@ -471,7 +473,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 
 	corsMdl := NewCORSMiddleware(cfg.AllowedOrigins)
 	csrfMdl := NewCSRFMiddleware(string(cfg.AdminAPIKey))
-	gatewayHandler := corsMdl(csrfMdl(mux))
+	gatewayHandler := SecurityHeadersMiddleware(corsMdl(csrfMdl(mux)))
 
 	slog.Info("starting management gateway server", "port", cfg.ManagementPort)
 
@@ -518,6 +520,10 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		slog.Error("management server shutdown failed", "error", err)
+	}
+
+	if opsAlerter != nil {
+		opsAlerter.Drain()
 	}
 
 	svc.Close()

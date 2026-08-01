@@ -68,7 +68,12 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 	if opts.Management {
 		slog.Info("control: in-process module wiring enabled")
 		serveOpts.RtbBidShadeSim = ingestion.RunRtbBidShadeSim
-		return controlplane.ServeWithOptions(ctx, cfg, serveOpts)
+		err := controlplane.ServeWithOptions(ctx, cfg, serveOpts)
+		wg.Wait()
+		if err != nil {
+			return err
+		}
+		return nil
 	}
 
 	done := make(chan struct{})
@@ -164,7 +169,6 @@ func serveCostSync(ctx context.Context, cfg *config.Config) error {
 	}
 
 	worker := costsync.NewWorker(pool, key, workerOpts...)
-	go worker.Start(ctx)
-	<-ctx.Done()
+	worker.Start(ctx)
 	return ctx.Err()
 }

@@ -37,14 +37,18 @@ end
 local EDGE_MAX_BODY = tonumber(config_string("max_body_bytes", "EDGE_MAX_BODY_BYTES", tostring(MAX_SCAN_BYTES)))
 local INGRESS_SCHEMA = config_string("ingress_schema", "TRACKER_INGRESS_SCHEMA", "openrtb_3")
 
+local request_headers
+
+local function refresh_request_headers()
+    request_headers = ngx.req.get_headers()
+end
+
 local function content_length()
-    local headers = ngx.req.get_headers()
-    return tonumber(headers["content-length"] or headers["Content-Length"])
+    return tonumber(request_headers["content-length"] or request_headers["Content-Length"])
 end
 
 local function header_value(name)
-    local headers = ngx.req.get_headers()
-    return headers[name] or headers[string.lower(name)]
+    return request_headers[name] or request_headers[string.lower(name)]
 end
 
 local function fraud_score_from_headers()
@@ -141,6 +145,7 @@ local function read_bounded_body(cl)
 end
 
 function _M.run_full()
+    refresh_request_headers()
     local cl = require_content_length()
     local body, _ = read_bounded_body(cl)
     local fraud_score = fraud_score_from_headers()
@@ -156,6 +161,7 @@ function _M.run_full()
 end
 
 function _M.run_stream()
+    refresh_request_headers()
     local cl = require_content_length()
     check_edge_limits(cl)
     local fraud_score = fraud_score_from_headers()
@@ -169,6 +175,7 @@ function _M.run_stream()
 end
 
 function _M.run_peek()
+    refresh_request_headers()
     local cl = require_content_length()
     check_edge_limits(cl)
 

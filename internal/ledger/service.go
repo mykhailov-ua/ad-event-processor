@@ -117,13 +117,18 @@ func (service *Service) GenerateInvoice(ctx context.Context, customerID uuid.UUI
 		plan, err := qtx.GetSubscriptionPlan(ctx, sub.PlanCode)
 		if err == nil {
 			var limits licensing.Limits
-			_ = json.Unmarshal(plan.LimitsJson, &limits)
+			if err := json.Unmarshal(plan.LimitsJson, &limits); err != nil {
+				return domain.Invoice{}, fmt.Errorf("parse plan limits: %w", err)
+			}
 
 			if len(sub.OverridesJson) > 0 {
 				var overrides struct {
 					Limits *licensing.Limits `json:"limits,omitempty"`
 				}
-				if json.Unmarshal(sub.OverridesJson, &overrides) == nil && overrides.Limits != nil {
+				if err := json.Unmarshal(sub.OverridesJson, &overrides); err != nil {
+					return domain.Invoice{}, fmt.Errorf("parse subscription overrides: %w", err)
+				}
+				if overrides.Limits != nil {
 					if overrides.Limits.MaxEventsPerMonth != 0 {
 						limits.MaxEventsPerMonth = overrides.Limits.MaxEventsPerMonth
 					}

@@ -9,6 +9,7 @@ import (
 
 	db "espx/internal/domain/db"
 	"espx/internal/postback"
+	"espx/pkg/coldpath"
 	"espx/pkg/httpresponse"
 
 	"github.com/google/uuid"
@@ -122,8 +123,12 @@ func (postbacks *PostbackHTTPHandlers) updatePostbackConfig(w http.ResponseWrite
 		return
 	}
 
+	body, err := coldpath.ReadLimitedBody(w, r, coldpath.DefaultMaxBody)
+	if err != nil {
+		return
+	}
 	var req UpdatePostbackConfigRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid json body")
 		return
 	}

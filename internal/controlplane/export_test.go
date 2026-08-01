@@ -16,9 +16,15 @@ func ExportedClientIP(r *http.Request) string {
 	return clientIP(r)
 }
 
-// SetTrustedProxyRanges allows tests to override the package-level proxy CIDR list.
+// SetTrustedProxyRanges allows tests to override trusted proxies (IPs or CIDR strings).
 func SetTrustedProxyRanges(cidrs []*net.IPNet) {
-	trustedProxyRanges = cidrs
+	entries := make([]string, 0, len(cidrs))
+	for _, cidr := range cidrs {
+		if cidr != nil {
+			entries = append(entries, cidr.String())
+		}
+	}
+	SetTrustedProxies(entries)
 }
 
 // ExportedRateLimiterEntry exposes the entry type for eviction tests.

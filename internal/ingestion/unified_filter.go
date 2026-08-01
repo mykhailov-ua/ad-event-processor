@@ -137,7 +137,7 @@ type UnifiedFilter struct {
 	registry                 domain.CampaignRegistry
 	repo                     domain.CampaignRepository
 	geo                      GeoProvider
-	geoFloors                sync.Map
+	geoFloors                atomic.Pointer[map[string]int64]
 	rateLimit                int
 	rateLimitWindow          time.Duration
 	dupTTL                   time.Duration
@@ -241,7 +241,19 @@ func (f *UnifiedFilter) SetGeoProvider(geo GeoProvider) {
 }
 
 func (f *UnifiedFilter) SetGeoBidFloor(country string, floor int64) {
-	f.geoFloors.Store(country, floor)
+	old := f.geoFloors.Load()
+	capHint := 1
+	if old != nil {
+		capHint = len(*old) + 1
+	}
+	next := make(map[string]int64, capHint)
+	if old != nil {
+		for k, v := range *old {
+			next[k] = v
+		}
+	}
+	next[country] = floor
+	f.geoFloors.Store(&next)
 }
 
 func parseBidMicro(payload []byte) int64 {
@@ -304,7 +316,8 @@ func NewUnifiedFilter(
 ) *UnifiedFilter {
 	script := redis.NewScript(unifiedFilterLua)
 	fastScript := redis.NewScript(budgetFastLua)
-	return &UnifiedFilter{
+	emptyGeoFloors := make(map[string]int64)
+	f := &UnifiedFilter{
 		rdbs:                         rdbs,
 		sharder:                      sharder,
 		script:                       script,
@@ -348,6 +361,8 @@ func NewUnifiedFilter(
 		dbLookupTimeout:              2 * time.Second,
 		pgFallbackAllowed:            true,
 	}
+	f.geoFloors.Store(&emptyGeoFloors)
+	return f
 }
 
 func (f *UnifiedFilter) SetMetricsSampleMask(mask int) {
@@ -485,11 +500,14 @@ func (f *UnifiedFilter) checkGeoBidFloor(evt *domain.Event) error {
 			return nil
 		}
 	}
-	floorVal, ok := f.geoFloors.Load(country)
+	floorPtr := f.geoFloors.Load()
+	if floorPtr == nil {
+		return nil
+	}
+	floor, ok := (*floorPtr)[country]
 	if !ok {
 		return nil
 	}
-	floor := floorVal.(int64)
 	if floor <= 0 {
 		return nil
 	}
