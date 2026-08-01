@@ -55,16 +55,9 @@ deploy/nginx/certs/*.key
 deploy/nginx/certs/*.crt
 
 # IDE
-# Cursor agent rules (engineering guidelines for LLM) — track rules, ignore other IDE state
-.cursor/*
-!.cursor/.commits
-!.cursor/rules/
-!.cursor/rules/**
+.cursor/
 .idea/
 .vscode/
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
 
 # Local runtime state
 campaigns_replica.json

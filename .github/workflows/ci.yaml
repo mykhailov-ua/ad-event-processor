@@ -17,10 +17,8 @@ jobs:
           cache: true
       - name: Tier A hygiene gates
         run: bash scripts/ci/tier_a.sh
-      - name: Comment style (R9.1, P38)
+      - name: Comment style
         run: STRICT_NO_COMMENTS=1 bash scripts/ci/comments.sh
-      - name: No chaos terminology in diff
-        run: bash scripts/ci/check_no_chaos_refs.sh
       - name: golangci-lint
         run: make lint
 

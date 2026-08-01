@@ -15,14 +15,7 @@ for forbidden in docs/MULTI_REGION.md docs/COMPLIANCE_MATRIX.md docs/MILESTONE.m
 	fi
 done
 
-for forbidden in .cursor/BACKLOG.md .cursor/GAP_SPECS.md .cursor/CI_GATES.md; do
-	if [[ -f "$forbidden" ]]; then
-		echo "docs layout: $forbidden must not exist (see docs/DEVELOPMENT.md)" >&2
-		fail=1
-	fi
-done
-
-for required in .cursor/MULTI_REGION.md .cursor/COMPLIANCE_MATRIX.md docs/ARCHITECTURE.md docs/DEVELOPMENT.md; do
+for required in docs/ARCHITECTURE.md docs/DEVELOPMENT.md; do
 	if [[ ! -f "$required" ]]; then
 		echo "docs layout: missing $required" >&2
 		fail=1
@@ -96,10 +89,6 @@ done < <(find internal cmd pkg tests -name '*.go' -print0 2>/dev/null || true)
 while IFS= read -r -d '' file; do
 	scan_milestone "$file"
 done < <(find scripts -name '*.sh' -print0 2>/dev/null || true)
-
-if [[ -f .cursor/COMPLIANCE_MATRIX.md ]]; then
-	scan_milestone .cursor/COMPLIANCE_MATRIX.md
-fi
 
 BASE="${1:-origin/main}"
 if git rev-parse --verify "$BASE" >/dev/null 2>&1; then

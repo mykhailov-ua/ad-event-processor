@@ -1,8 +1,0 @@
----
-description: Open backlog routing — docs/DEVELOPMENT.md
-alwaysApply: false
----
-
-Before implementation work, read `docs/DEVELOPMENT.md` for deferred gaps and the completed roadmap. Runbooks hold operational acceptance criteria and SQL plans.
-
-Do not duplicate backlog tables under `docs/`.
