@@ -142,7 +142,7 @@ Pointers to .cursor/, REFACTORING.md, backlog in code
 7. Split internal/config/env.go: done across `env_controlplane.go`, …
 8. Consolidate sqlc output paths: internal/<module>/db/. — identity paths updated in sqlc.yaml
 9. Merge legacy handler + service pairs. — done for module API surface; dead settlement pb convert removed
-10. Rename files per naming rules. — done for billing/payment/identity/notifier/controlplane cold path (`handler→api`, `worker_*`, `client_*`); adminapi ops/reports/selfserve consolidated into `ops_types.go`/`ops_handlers.go`, `reports_types.go`/`reports_handlers.go`, `selfserve_handlers.go`; optional controlplane `service_*` stem splits remain
+10. Rename files per naming rules. — done for billing/payment/identity/notifier/controlplane cold path (`handler→api`, `worker_*`, `client_*`); adminapi ops/reports/selfserve consolidated; controlplane `service_*` merged by stem (`service_rtb`, `service_node`, `service_shard`, fraud/pacing/customers/campaigns/delivery)
 11. Remove dead localhost clients and env vars. — done (gRPC server ports/hosts removed from config and compose)
 12. Re-add sparse “why” comments on cold path (post-refactor only; see §7).
 13. Repository root and deploy/scripts consolidation. — scripts alias dirs removed; smoke in `scripts/dev/`; Dockerfiles in `deploy/docker/`; compose in `deploy/compose/` (root `docker-compose.yaml` includes)
@@ -164,6 +164,7 @@ Module API surface: `Handler` + `OpenAPI` live in `api.go`/`open.go` per module 
 Cold-path module APIs use domain/DB types directly; legacy protobuf round-trip helpers removed from `api.go` where gRPC transport is gone (`paymentIntentStatusString` replaces pb enum `.String()` in production).
 Controlplane core: `permissions.go` → `rbac.go`; `auth_principal.go` → `http_auth.go`; `pgerrors.go` → `errors.go`; `admin_gone.go` → `serve.go`.
 Adminapi: deleted `ops_audit`, `ops_consent`, `ops_roles`, `ops_plans`, `ops_fraud_threat`, `ops_blacklist`, `ops_recon`, `ops_dashboard_*`, `ops_ml_model`, `ops_bundle`, `reports_campaign_*`, `reports_types_forecast`, `selfserve_types`, `selfserve_money` — merged into `ops_types.go`, `ops_handlers.go`, `reports_types.go`, `reports_handlers.go`, `selfserve_handlers.go`.
+Controlplane `service_*` stems: `service_rtb.go` (deals/mode/bid-shade), `service_node.go` (capacity + global region scorers), `service_shard.go` (health + autoscaling); fraud/model-sync, pacing/smart, customers/balance, campaigns/stats, delivery/optimizer merged into parent stem files.
 No *_bridge.go or host adapters.
 No nested domain packages under service roots.
 domain is only shared type package.

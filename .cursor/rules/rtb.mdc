@@ -29,7 +29,7 @@ Package layout
 
 Auction core: `internal/rtb/` — Registry, ranking, clearing, `BudgetStore`, snapshot
 Tracker glue: `internal/ingestion/rtb_*.go` — Catalog sync, track integration, OpenRTB parse
-Control plane: `internal/controlplane/handler_rtb.go`, `service_rtb_deals.go`, `service_bid_floor.go` — Deals, lint, floors
+Control plane: `internal/controlplane/handler_rtb.go`, `service_rtb.go`, `service_bid_floor.go` — Deals, lint, floors
 Configuration: `internal/config/rtb.go`, `env.go` — `RTB_MODE`, authority, targeting index
 
 Data flow
