@@ -3,7 +3,7 @@ local _M = {}
 
 local dict = ngx.shared.slot_map
 
-local MANAGEMENT_URL = os.getenv("MANAGEMENT_URL") or "http://127.0.0.1:8188"
+local CONTROL_URL = os.getenv("CONTROL_URL") or os.getenv("MANAGEMENT_URL") or "http://127.0.0.1:8188"
 
 local crc32c_table = {
     0x00000000, 0xF26B8303, 0xE13B70F7, 0x1350F3F4, 0xC79A971F, 0x35F1141C, 0x26A1E7E8, 0xD4CA64EB,
@@ -137,7 +137,7 @@ function _M.get_shard(campaign_id)
 end
 
 function _M.sync()
-    local url = MANAGEMENT_URL .. "/ops/shards/slot-map"
+    local url = CONTROL_URL .. "/ops/shards/slot-map"
     local doc, err = http_get_json(url)
     if not doc then
         ngx.log(ngx.WARN, "edge slot map sync failed: ", err or "unknown")

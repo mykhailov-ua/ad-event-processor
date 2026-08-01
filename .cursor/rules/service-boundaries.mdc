@@ -61,7 +61,7 @@ Use when adding a domain or splitting/merging `cmd/*` binaries.
 Workload classification
 
 Hot-path: Tracker parse/filter, stream ingest — Never split; never mix domains
-Control-plane: Auth, payment, billing, admin REST — Standalone if score >= 11
+Control-plane: Auth, payment, billing, admin REST — in-process in `cmd/control` (modular monolith)
 Batch/cron: IVT scans, partition janitors, recon — Library + worker in existing cold binary
 Node utility: Log evacuator, local backups — Standalone near data; no network API
 
@@ -74,7 +74,7 @@ E: External network (webhooks, OAuth, public gateways)
 S: Secret/compliance isolation (PCI, gateway keys)
 F: Failure blast radius (retry storms, OOM on admin)
 L: Load profile mismatch (polling, bursty webhooks)
-C: Caller count (multiple independent gRPC clients)
+C: Caller count (multiple independent deployables)
 D: Data ownership (dedicated schema + migrations)
 O: Operational independence (optional in compose)
 T: Team/lifecycle separation
@@ -115,16 +115,12 @@ Monolith package checklist
 1. Package under `internal/<domain>/`
 2. Worker in `internal/control/run.go` (`cmd/control`) or `cmd/processor/main.go`
 3. Reuse host pool or strict private pool limit
-4. No gRPC/HTTP unless external systems require it
+4. No cross-process RPC unless external systems require it
 
-Classification summary (reference scores)
+Classification summary (legacy split-service scores — default deploy is `cmd/control` monolith)
 
-management: 10/18 — Hub; settlement gRPC co-located
-auth: 14/18 — Standalone
-payment: 16/18 — Standalone
-billing: 11/18 — Standalone
-notifier: 12/18 — Standalone
-ivt-detector: 7/18 — Standalone batch
+control: 10/18 — Hub; in-process settlement and domain modules
+ivt-detector: 7/18 — Standalone batch sidecar
 log-evacuator: 8/18 — Standalone utility
 
 Open product work: `docs/DEVELOPMENT.md`.

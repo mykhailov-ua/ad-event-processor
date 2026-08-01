@@ -199,7 +199,7 @@ Production: defensive perimeter only; no outbound strike to offender IPs ([Compl
 
 ## Control plane
 
-Cold-path `management` binary: HTTP admin, gRPC settlement, workers. Hot path (`/track`, Redis Lua, XDP) is out of scope for this process.
+Cold-path `cmd/control` modular monolith: HTTP admin, in-process settlement, workers. Hot path (`/track`, Redis Lua, XDP) is out of scope for this process.
 
 Mutation rule: config affecting hot path runs in one PostgreSQL transaction plus `outbox_events`. Direct HTTP writes to Redis are forbidden.
 
@@ -207,7 +207,7 @@ Route prefixes: `/api/v1/*`, `/api/v1/selfserve/*` (advertiser API). `/admin/*` 
 
 Workers (sample): `OutboxWorker`, `ReconWorker`, `SyncWorker` x4, `PacingControllerWorker`, `ScheduleWorker`, `LedgerInvariantWorker`.
 
-gRPC peers: `auth`, `payment`, `billing`, `notifier`. `processor` writes PG events and CH batches.
+In-process modules: `identity`, `payment`, `ledger`, `notify` (via `CONTROL_ENABLE_*`). `processor` writes PG events and CH batches in a separate binary.
 
 JSON API: `internal/controlplane/handler_api.go`, `handler_*.go`, and `internal/controlplane/adminapi/` (reporting scaffolds). Contracts: `docs/openapi/openapi.yaml` plus handler godoc.
 
@@ -329,7 +329,7 @@ CI: `make test-alloc-gate`, `scripts/perf/`, `scripts/fault/run.sh`. Runbooks: [
 
 ## Licensing
 
-Hot path reads JWT snapshot only. Cold path: `VolumeMeterWorker` to `usage_meters`. Admin UI and gRPC APIs live in `management`.
+Hot path reads JWT snapshot only. Cold path: `VolumeMeterWorker` to `usage_meters`. Admin JSON API lives in `cmd/control`.
 
 ---
 

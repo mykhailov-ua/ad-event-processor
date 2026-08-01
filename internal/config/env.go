@@ -621,7 +621,10 @@ func Load() (*Config, error) {
 	}
 	loadEdgeModules(cfg)
 	loadDatabaseModules(cfg)
-	cfg.ManagementURL = os.Getenv("MANAGEMENT_URL")
+	cfg.ManagementURL = os.Getenv("CONTROL_URL")
+	if cfg.ManagementURL == "" {
+		cfg.ManagementURL = os.Getenv("MANAGEMENT_URL")
+	}
 	if cfg.ManagementURL == "" && cfg.ManagementPort != "" {
 		cfg.ManagementURL = "http://127.0.0.1:" + cfg.ManagementPort
 	}

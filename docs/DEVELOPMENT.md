@@ -330,7 +330,8 @@ Full list: `.env.example`.
 | `LOCAL_QUOTA_MODE` | `live` for local quanta |
 | `ELASTIC_SHARDING_ENABLED` | `false` steady-state default |
 | `CONTROL_FAIL_OPEN` | `0` (default): edge uses conservative routing when control epochs are stale — equal tracker weights, drain frozen. Set `1` for AWS GA-style fail-open (keep last epoch weights). Edge only; see [.cursor/MULTI_REGION.md](../.cursor/MULTI_REGION.md) H4. |
-| `CONTROL_ENABLE_*` | Modular monolith (`cmd/control`, default deploy): set `0` to disable auth, management, payment, billing, notifier, margin-guard, or cost-sync in-process. See `.env.example`. |
+| `CONTROL_ENABLE_*` | Modular monolith (`cmd/control`): set `0` to disable auth, management, payment, billing, notifier, margin-guard, or cost-sync in-process. See `.env.example`. |
+| `CONTROL_URL` / `MANAGEMENT_URL` | Base URL for control admin API (`:8188`); edge slot-map and processor weights polls |
 | `NODE_WARMUP_SEC` | Tracker/control warmup before `/ready` and scorer drain (default `300`) |
 | `NODE_WEIGHTS_SYNC_INTERVAL_SEC` | Edge poll interval for `/ops/node-weights` (default `10`) |
 

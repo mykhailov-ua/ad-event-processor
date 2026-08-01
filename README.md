@@ -311,7 +311,7 @@ RBAC permissions gate routes (`campaigns:read`, `customers:write`, `shards:read`
 | Invoices | `/api/v1/billing/invoices/*` | PDF, void, preview, ledger lines, delivery retry |
 | Wallet / statement | `/api/v1/customers/{id}/wallet`, `/billing/statement` | Composite PG + CH read |
 | Tax profile | `GET/PUT /api/v1/customers/{id}/tax-profile` | Per-customer tax config |
-| Disputes | `GET /api/v1/disputes` | Payment gRPC proxy |
+| Disputes | `GET /api/v1/disputes` | Payment module (in-process) |
 | Exports | `POST /api/v1/billing/exports` | Async job + download |
 | Self-serve | `/api/v1/selfserve/payment-intents`, `/invoices` | Stripe via `payment` service |
 

@@ -29,9 +29,9 @@ sudo ./espx-install apply
 
 ## Profiles
 
-- `single_vps` — bare-metal / single VPS with systemd units
+- `single_vps` — bare-metal / single VPS with systemd units (**default production path**)
 - `compose_dev` — local compose stack via `scripts/dev/stack.sh`
-- `k8s_k3s` — k3s install via `scripts/deploy/install_k3s.sh` (requires cgroup v2)
+- `k8s_k3s` — optional: installs k3s and applies `deploy/k8s` via Terraform (`scripts/k8s/install_k3s.sh`); requires cgroup v2. Not required for self-hosted installs that use systemd or compose.
 
 Feature flags:
 

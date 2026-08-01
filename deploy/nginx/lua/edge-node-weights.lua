@@ -6,7 +6,7 @@ local peers = require "edge-tracker-peers"
 
 local getenv = os.getenv
 
-local MANAGEMENT_URL = os.getenv("MANAGEMENT_URL") or "http://127.0.0.1:8188"
+local CONTROL_URL = os.getenv("CONTROL_URL") or os.getenv("MANAGEMENT_URL") or "http://127.0.0.1:8188"
 local SYNC_INTERVAL_SEC = tonumber(os.getenv("NODE_WEIGHTS_SYNC_INTERVAL_SEC") or "") or 10
 local STALE_EPOCH_LAG = 2
 local WEIGHT_SCALE = 1000000
@@ -144,7 +144,7 @@ end
 
 function _M.sync()
     dict:set("sync_interval", SYNC_INTERVAL_SEC)
-    local url = MANAGEMENT_URL .. "/ops/node-weights"
+    local url = CONTROL_URL .. "/ops/node-weights"
     local doc, err = http_get_json(url)
     if not doc then
         ngx.log(ngx.WARN, "edge node weights sync failed: ", err or "unknown")
