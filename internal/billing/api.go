@@ -5,10 +5,23 @@ import (
 	"time"
 
 	"espx/internal/billing/pb"
+	"espx/internal/config"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/metadata"
 )
+
+type Handler struct {
+	service *Service
+	cfg     *config.Config
+}
+
+func NewHandler(service *Service, cfg *config.Config) *Handler {
+	return &Handler{
+		service: service,
+		cfg:     cfg,
+	}
+}
 
 type billingAPI struct {
 	h     *Handler

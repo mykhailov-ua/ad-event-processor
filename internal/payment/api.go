@@ -4,11 +4,24 @@ import (
 	"context"
 	"time"
 
+	"espx/internal/config"
 	"espx/internal/payment/pb"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/metadata"
 )
+
+type Handler struct {
+	service *Service
+	cfg     *config.Config
+}
+
+func NewHandler(service *Service, cfg *config.Config) *Handler {
+	return &Handler{
+		service: service,
+		cfg:     cfg,
+	}
+}
 
 type PaymentIntent struct {
 	ID             string

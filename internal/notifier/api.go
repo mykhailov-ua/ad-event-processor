@@ -7,6 +7,16 @@ import (
 	"espx/internal/notifier/pb"
 )
 
+type Handler struct {
+	service *Service
+}
+
+func NewHandler(service *Service) *Handler {
+	return &Handler{
+		service: service,
+	}
+}
+
 type SendNotificationResult struct {
 	NotificationID string
 	Deduplicated   bool

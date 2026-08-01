@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"espx/internal/config"
 	"espx/internal/identity/db"
 
 	"github.com/google/uuid"
@@ -12,6 +13,18 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
+
+type Handler struct {
+	service *Service
+	cfg     *config.Config
+}
+
+func NewHandler(service *Service, cfg *config.Config) *Handler {
+	return &Handler{
+		service: service,
+		cfg:     cfg,
+	}
+}
 
 type AuthUser struct {
 	ID         uuid.UUID
