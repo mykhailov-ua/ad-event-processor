@@ -11,7 +11,7 @@ BidShard is a hybrid platform that separates real-time traffic ingestion (Hot Pa
 ```mermaid
 graph TD
     Client[Client Traffic] --> Nginx[Nginx / OpenResty :8180]
-    Nginx -->|Requests /track| Tracker[Ingestion Trackers :8181-8184]
+    Nginx -->|/track, /click| Tracker[Ingestion Trackers :8181-8184]
     Nginx -->|Admin / API| Control[Control Plane :8188]
 
     subgraph "Hot Path (Real-time)"
@@ -42,7 +42,7 @@ graph TD
 
 | Binary | Port(s) | Role |
 | :--- | :--- | :--- |
-| `tracker` | `8181-8184` | Ingests traffic, parses requests, runs in-process RTB, executes filters, and debits budgets via Redis Lua or Local Quanta. |
+| `tracker` | `8181-8184` | Ingests traffic via `POST /track` and `GET /click`, runs in-process RTB, executes filters, and debits budgets via Redis Lua or Local Quanta. |
 | `processor` | `8186` | Consumes Redis Streams, writes spend aggregates to PostgreSQL, and spools logs to ClickHouse. |
 | `control` | `8188`, `8187` | Modular monolith: serves the admin JSON API, handles payment webhooks, manages the ledger, and runs the Transactional Outbox. |
 | `ivt-detector` | - | Analyzes ClickHouse logs to detect invalid traffic (IVT) and updates blacklists. |
@@ -77,7 +77,7 @@ To meet the processing SLA under high load, the platform enforces a strict bound
 
 | Attribute | Hot Path | Cold Path |
 | :--- | :--- | :--- |
-| **Scope** | `/track` endpoint, RTB auction, FilterEngine. | `/api/v1` REST API, billing, reports, payments. |
+| **Scope** | `/track`, `/click`, RTB auction, FilterEngine. | `/api/v1` REST API, billing, reports, payments. |
 | **Latency SLA** | **p95 < 50 ms, p99 < 80 ms**, max 100 ms. | Milliseconds to minutes. |
 | **Memory Allocations**| **0 heap allocations** (zero-alloc). | Standard Go allocations, sqlc-generated code. |
 | **Network Engine** | `gnet` (epoll-based event loop). | Standard Go `net/http`. |
@@ -169,6 +169,61 @@ graph LR
    - **Local Quanta**: The tracker attempts to debit the budget from its local memory pool (`TrySpendLocal`). If successful, it proceeds to step 6.
    - **Redis Lua**: If the local quota is exhausted, the tracker executes a Lua script on the designated Redis shard to debit the budget.
 6. **Stream Append**: The event is appended to the Redis Stream (`XADD ad:events:stream`), and the tracker returns an HTTP `202 Accepted` or `204 No Content` response.
+
+### 5.1. Click Redirect (`GET /click`)
+
+Arbitrage and affiliate workflows often require a server-side redirect: the ad link points at the tracker, the click is logged and filtered, and the browser receives a single `302` to the offer.
+
+```mermaid
+graph LR
+    Browser((Browser)) --> Ingress[gnet GET /click]
+    Ingress --> Parse[Query Parser]
+    Parse --> Filter[FilterEngine]
+    Filter --> Landing[Creative MAB URL]
+    Landing --> Macro[Macro Expand]
+    Macro --> Resp((HTTP 302 Location))
+```
+
+**Request shape**
+
+```http
+GET /click?campaign_id=<uuid>&type=click&click_id=<optional>&user_id=<optional>&sub1=...&gclid=... HTTP/1.1
+```
+
+| Parameter | Required | Role |
+| :--- | :---: | :--- |
+| `campaign_id` | Yes | Campaign UUID (same as `POST /track` JSON). |
+| `type` | No | Event type; defaults to `click`. |
+| `click_id` | No | External click ID; generated if omitted. |
+| `user_id` | No | Visitor / sub-ID for frequency cap and creative stickiness. |
+| `sub1`–`sub5` | No | Arbitrage sub-IDs; available as landing URL macros. |
+| Other query keys | No | Passthrough (e.g. `gclid`, `ttclid`, UTM) appended to the `Location` URL. |
+
+**Landing URL macros** (configured on brand creatives in the control plane):
+
+| Macro | Substituted with |
+| :--- | :--- |
+| `{click_id}` | Resolved click ID |
+| `{user_id}` | `user_id` query param |
+| `{sub1}` … `{sub5}` | Matching `subN` query param |
+
+**Responses**
+
+| Status | When |
+| :--- | :--- |
+| `302 Found` | Filters passed; `Location` set to expanded landing URL + passthrough query. |
+| `204 No Content` | Fraud ghost accept (same semantics as silent `POST /track` accept). |
+| `4xx` / `5xx` | Filter reject, missing landing URL, or infrastructure fault (same codes as `/track`). |
+
+**Hot-path properties**
+
+- Query parsing, macro expansion, and URL assembly run on the gnet path with **0 heap allocations** when scratch buffers are pre-sized on the connection context.
+- Landing URLs are cached as `[]byte` in the brand creative snapshot (cold reload) to avoid per-request string conversions.
+- Implementation: `internal/ingestion/click_redirect.go`.
+
+**Alternative: API redirect**
+
+`POST /track` with JSON body still returns `202` with optional `landing_url` in the response body for client-side redirects (mobile SDK, S2S). Use `GET /click` when the traffic source expects an HTTP redirect (display, native, affiliate networks).
 
 ---
 

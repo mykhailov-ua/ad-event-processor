@@ -9,6 +9,7 @@ BidShard is a private, high-performance alternative to expensive SaaS trackers a
 ## Why BidShard in 2026?
 
 ### For Media Buying (Arbitrage) Teams
+- **Server-Side Click Redirects**: Use `GET /click` on your tracking domain for one-hop `302` redirects to landers. Filters, budget, and fraud run before the redirect; `gclid`, `ttclid`, and custom sub-IDs pass through to the offer URL.
 - **Zero-Latency Tracking**: Slow redirects kill conversions. BidShard processes tracking requests in under 80 milliseconds (p99), ensuring your users reach landers instantly without traffic loss.
 - **Real-Time Budget Protection**: Traditional trackers suffer from budget "afterburn"—continuing to spend money minutes after a campaign is paused. BidShard uses atomic Redis locks to stop campaign spending instantly the millisecond a budget limit is reached.
 - **Privacy Sandbox & Cookie-less Readiness**: Native adaptors for Google Privacy Sandbox (Topics API, Protected Audience API) and first-party signal enrichment. Track conversions accurately without third-party cookies.
@@ -34,12 +35,14 @@ BidShard is a private, high-performance alternative to expensive SaaS trackers a
 | **Budget Protection** | **Instant (Atomic)** (zero overspend) | **Delayed** (leads to budget overruns) |
 | **2026 Privacy Compliance** | **Full (Sandbox/DCR)** | **Limited / Third-party dependent** |
 | **RTB Support** | **Built-in (OpenRTB 2.6+)** | **None / Basic** |
+| **Click Redirect (`GET /click`)** | **Built-in (302, macro + passthrough)** | **Volume-priced add-on** |
 
 ---
 
 ## Core Features
 
 - **High-Volume Ingestion**: Built on a custom epoll-based network engine (`gnet`) to handle hundreds of thousands of requests per second without breaking a sweat.
+- **Click Redirect (`GET /click`)**: Server-side `302` redirects for arbitrage and affiliate traffic. Runs the same `FilterEngine` as `POST /track`, resolves brand creative landing URLs with macros (`{click_id}`, `{sub1}`–`{sub5}`, `{user_id}`), and forwards attribution query parameters (`gclid`, `ttclid`, UTM) to the destination.
 - **Atomic Budgeting**: Real-time budget tracking, frequency capping, and pacing executed directly inside Redis memory.
 - **eBPF/XDP Network Protection**: Block malicious bots and DDoS attacks directly at the network card level, saving CPU resources for clean traffic.
 - **Transactional Ledger**: A double-entry accounting system stores all advertiser balances in micro-units, preventing rounding errors and financial discrepancies.

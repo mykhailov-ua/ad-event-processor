@@ -187,3 +187,33 @@ Migrate campaign keys between Redis shards using the following sequence:
 6. **DRAIN**: Delete campaign keys from the source shard.
 
 If `SLOT_MIGRATION_DUAL_WRITE_ENABLED=true` is enabled, updates are written to a delta stream and synced before the final cutover.
+
+---
+
+## 10. Click Redirect (`GET /click`)
+
+Server-side `302` redirects for arbitrage and affiliate traffic. See [ARCHITECTURE.md](./ARCHITECTURE.md) section 5.1 for the full lifecycle.
+
+### Example click URL
+
+```text
+https://trk.example.com/click?campaign_id=550e8400-e29b-41d4-a716-446655440000&user_id=u1&sub1=fb&gclid=GCLID123
+```
+
+Configure the brand creative landing URL in the control plane (e.g. `https://offer.example/lp?cid={click_id}&src={sub1}`). Unknown query parameters are forwarded to the destination.
+
+### Local smoke test
+
+```bash
+curl -sI "http://127.0.0.1:8181/click?campaign_id=<uuid>&type=click&user_id=test&gclid=G1" | rg -i '^HTTP|^Location:'
+```
+
+Expect `HTTP/1.1 302 Found` and a `Location` header with expanded macros and `gclid=G1`.
+
+### Benchmarks
+
+```bash
+go test ./internal/ingestion/ -run='^$' -bench='BenchmarkParseClickQuery|BenchmarkClickRedirectGnet_E2E' -benchmem
+```
+
+Hot-path parse and macro expansion target **0 allocs/op** with pre-sized connection buffers.
