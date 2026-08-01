@@ -602,32 +602,3 @@ groups:
           summary: "Payment financial recon: dead outbox rows"
           description: "Payment outbox rows stuck without settlement path (e.g. refund before topup). See payment.financial_recon_findings."
           runbook_url: "https://github.com/mykhailov-ua/espx/blob/main/docs/DEVELOPMENT.md#payment"
-
-  - name: settlement-grpc-alerts
-    rules:
-      - alert: SettlementGRPCErrors
-        expr: sum(rate(settlement_grpc_errors_total[5m])) by (method, code) > 0
-        for: 2m
-        labels:
-          severity: warning
-        annotations:
-          summary: "Settlement gRPC errors on {{ $labels.method }}"
-          description: "Payment settlement RPCs are failing with code {{ $labels.code }}. Check management logs and payment outbox backlog."
-
-      - alert: SettlementGRPCLatencyHigh
-        expr: histogram_quantile(0.99, sum by (le) (rate(settlement_grpc_request_duration_seconds_bucket[5m]))) > 0.5
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: "Settlement gRPC p99 latency above 500ms"
-          description: "Ledger credit path from payment outbox is slow; investigate Postgres lock contention or management pool saturation."
-
-      - alert: SettlementGRPCErrorsCritical
-        expr: sum(rate(settlement_grpc_errors_total{code=~"Internal|Unavailable|DeadlineExceeded"}[5m])) > 0.1
-        for: 2m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Settlement gRPC infrastructure errors"
-          description: "Sustained {{ $labels.code }} responses on settlement RPCs; payment webhooks may backlog."

@@ -76,7 +76,7 @@ build: gen fmt
 RELEASE_DIR := dist/release
 RELEASE_LDFLAGS := -ldflags="-s -w"
 RELEASE_PLATFORMS := linux/amd64 linux/arm64
-RELEASE_CMDS := tracker processor control management auth payment billing notifier ivt-detector fraud-scorer region-proxy broker
+RELEASE_CMDS := tracker processor control ivt-detector fraud-scorer region-proxy broker
 
 release-build: gen fmt
 	@mkdir -p $(RELEASE_DIR)

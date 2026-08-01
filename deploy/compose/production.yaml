@@ -60,7 +60,7 @@ services:
     volumes:
       - ${REDIS_TLS_CERT_DIR:-./deploy/tls/redis}:/tls:ro
 
-  management:
+  control:
     environment:
       - ESPX_PROFILE=production
       - EVENTS_RETENTION_DAYS=${EVENTS_RETENTION_DAYS:-90}

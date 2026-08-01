@@ -30,29 +30,29 @@ Control-plane binary
 
 Sidecar binaries (optional profiles):
 
-`cmd/ivt-detector`: ClickHouse batch analyzer -> management blacklist API — batch job
+`cmd/ivt-detector`: ClickHouse batch analyzer -> control admin API — batch job
 `cmd/log-evacuator`: Local tracker log archive (compose `tools` profile) — none
 
-Settlement runs in-process inside `cmd/control` (no standalone `cmd/settlement`).
+Settlement runs in-process inside `cmd/control` (no standalone settlement binary).
 
-Scaling levels when adding services
+Scaling levels when adding domains
 
-1. New domain: `CREATE SCHEMA <svc>`, migrations under `internal/<svc>/migrations/`, shared `DB_DSN`, gRPC + optional `x-internal-token`.
-2. Connection pool limits per service in compose and config.
+1. New domain: `CREATE SCHEMA <svc>`, migrations under `internal/<svc>/migrations/`, shared `DB_DSN`, wire into `cmd/control` via `OpenModule`.
+2. Connection pool limits per module in compose and config.
 3. Read-heavy analytics: indexes on shared Postgres; ClickHouse for IVT/recon.
 4. Compliance blast radius: separate Postgres container (e.g. payments only) as last resort.
 
-Per-service notes
+Per-module notes (all in-process in `cmd/control` by default)
 
-`internal/ivtdetector` - ClickHouse analytics -> idempotency claims -> blacklist via management HTTP. Separate binary from admin process.
+`internal/ivtdetector` - ClickHouse analytics -> idempotency claims -> blacklist via control HTTP API. Separate binary from control process.
 
-`internal/notifier` - gRPC queue -> `notifier.notifications` -> background delivery. Standalone `:8085`.
+`internal/notifier` - PG queue -> `notifier.notifications` -> background delivery workers inside control.
 
 `internal/logevacuator` - Rotated tracker segments `*.log.zst.ready` -> local archive with checkpoint file. Node-local I/O; no RPC. Same host as tracker logs only.
 
-`internal/payment` - Isolated webhook port, Stripe credentials, outbox -> management settlement -> `balance_ledger`. Keep separate: webhook storms and provider outages isolated from admin.
+`internal/payment` - Webhook port :8187 in control; Stripe credentials; outbox -> in-process ledger settlement -> `balance_ledger`.
 
-`internal/billing` - Month-end invoice generation from `balance_ledger`; schema `billing`. Keep separate: read-heavy batch profile.
+`internal/ledger` (billing) - Month-end invoice generation from `balance_ledger`; schema `billing`.
 
 Part 2 - Decision Framework
 

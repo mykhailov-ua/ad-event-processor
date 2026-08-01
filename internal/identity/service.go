@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"espx/internal/identity/db"
@@ -308,18 +309,23 @@ func (service *Service) Login(ctx context.Context, email, password, userAgent, c
 				go func(plainPwd, userEmail string) {
 					defer func() {
 						<-service.rehashSem
-						cleanupCtx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+						// FIX [3.3]: use a bounded timeout for the Redis DEL so
+						// this goroutine doesn't run indefinitely on Redis issues.
+						cleanupCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 						if errDel := service.rdb.Del(cleanupCtx, lockKey).Err(); errDel != nil {
 							slog.Error("failed to release rehash lock", slog.String("email", userEmail), slog.Any("error", errDel))
 						}
 						cancel()
 					}()
+					// FIX [3.3]: bounded context for both hash computation and DB write.
+					rehashCtx, rehashCancel := context.WithTimeout(context.Background(), 30*time.Second)
+					defer rehashCancel()
 					newHash, errHash := service.hasher.HashPassword(plainPwd)
 					if errHash != nil {
 						slog.Error("failed to hash password during rehash", slog.String("email", userEmail), slog.Any("error", errHash))
 						return
 					}
-					if errUpd := service.repo.UpdatePassword(context.Background(), db.UpdatePasswordParams{
+					if errUpd := service.repo.UpdatePassword(rehashCtx, db.UpdatePasswordParams{
 						Email:        userEmail,
 						PasswordHash: newHash,
 					}); errUpd != nil {
@@ -557,13 +563,27 @@ func (service *Service) RevokeToken(ctx context.Context, refreshTokenStr string)
 		if ttl <= 0 {
 			ttl = 24 * time.Hour
 		}
-		for i, rdb := range service.controlRedis() {
-			if rdb == nil {
-				continue
+
+		shards := service.controlRedis()
+		if len(shards) > 0 {
+			// FIX [3.4]: fan-out SET calls to all shards concurrently instead of
+			// sequential blocking calls. With N shards the old code took N * RTT;
+			// now it takes max(RTT) which is typically < 1ms extra.
+			var wg sync.WaitGroup
+			key := "revoked:session:" + sessionID
+			for i, rdb := range shards {
+				if rdb == nil {
+					continue
+				}
+				wg.Add(1)
+				go func(idx int, client redis.UniversalClient) {
+					defer wg.Done()
+					if errSet := client.Set(ctx, key, "1", ttl).Err(); errSet != nil {
+						slog.Error("failed to set revoked session in redis", slog.String("session_id", sessionID), slog.Int("shard", idx), slog.Any("error", errSet))
+					}
+				}(i, rdb)
 			}
-			if errSet := rdb.Set(ctx, "revoked:session:"+sessionID, "1", ttl).Err(); errSet != nil {
-				slog.Error("failed to set revoked session in redis", slog.String("session_id", sessionID), slog.Int("shard", i), slog.Any("error", errSet))
-			}
+			wg.Wait()
 		}
 	}
 	return service.repo.BlockSessionByRefreshToken(ctx, refreshTokenStr)

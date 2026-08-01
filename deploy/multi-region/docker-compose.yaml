@@ -8,7 +8,7 @@ services:
       - REGION_PROXY_REDIS_URL=${REGION_PROXY_REDIS_URL:-redis://127.0.0.1:6479/0}
       - GLOBAL_SPEND_BATCH_MIN=${GLOBAL_SPEND_BATCH_MIN:-100}
 
-  management:
+  control:
     environment:
       - MULTI_REGION_ENABLED=${MULTI_REGION_ENABLED:-0}
       - ESPX_REGION_CODE=${ESPX_REGION_CODE:-0}

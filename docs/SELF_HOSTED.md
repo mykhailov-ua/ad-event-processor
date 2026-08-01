@@ -66,14 +66,14 @@ Hot path reads the merged snapshot via `Registry.SyncEntitlements`. Vendor caps 
 | :--- | :--- |
 | Weighted PU / dedup-reject metering | Not billed; dedup remains a **delivery** control only |
 | CH → `usage_meters` (`VolumeMeterWorker`) | Replace with **PG** rollup (`campaign_stats` / `events`) for operator metering |
-| Vendor overage invoice | Out of scope; operator invoices advertisers via `cmd/billing` |
+| Vendor overage invoice | Out of scope; operator invoices advertisers via `control` billing module (`internal/ledger`) |
 | PU pricing tables in `licensing/volume.go` | Sales reference only; not runtime vendor billing |
 
 ---
 
-## Administrative microservices (monolith default)
+## Control plane (modular monolith)
 
-Run **`cmd/control`** — one process with management, auth, payment, billing, and notifier (`CONTROL_ENABLE_*`). Set **`SETTLEMENT_GRPC_ENABLED=0`** for in-process settlement (compose `control` sets this). Local stack: `scripts/dev/stack.sh single-vps`.
+Run **`cmd/control`** — one process with management, auth, payment, billing, and notifier (`CONTROL_ENABLE_*`). Settlement is always in-process inside `control`. Local stack: `scripts/dev/stack.sh single-vps`.
 
 Cold-path workers (margin-guard, cost-sync, volume meter, recon, ledger invariant) run **only** in `cmd/control` — never in tracker replicas.
 

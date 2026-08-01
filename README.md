@@ -266,16 +266,12 @@ Request path: parse → geo → [RTB if `RTB_MODE≠off`] → `FilterEngine.Chec
 | :--- | :--- | :--- |
 | `tracker` | 8181–8184 | gnet ingest, `FilterEngine`, RTB, Lua; optional UDP ingress quota `:8191` |
 | `processor` | 8186 | Redis streams → PG / CH; budget sync |
-| `management` | 8188, 51053 | Admin HTTP (`/api/v1`, legacy `/admin`), outbox, recon, settlement gRPC |
-| `auth` | 51051 | gRPC: PASETO, API keys |
-| `payment` | 51052, 8187 | Stripe webhooks |
-| `billing` | 51054 | Invoices from `balance_ledger` |
-| `notifier` | 8085 | Alerts |
-| `ivt-detector`, `fraud-scorer` | — | CH batch → management outbox → Redis |
+| `control` | 8188, 8187 | Modular monolith: admin HTTP (`/api/v1`), auth, payment webhooks, billing, notifier, outbox, recon (in-process via `CONTROL_ENABLE_*`) |
+| `ivt-detector`, `fraud-scorer` | — | CH batch → control outbox → Redis |
 | `edge-xdp`, `edge-bpf-sync` | — | XDP L4 SYN cookies, autoban, passive IVT fingerprints |
 | `broker`, `log-shipper`, … | — | Optional mmap log pipeline; `budget-deltas` topic for M8 recon |
 
-Libraries: `internal/controlplane/adminapi`, `internal/licensing`, `internal/rtb`, `internal/ingestion`.
+Libraries: `internal/controlplane` (+ `adminapi`), `internal/licensing`, `internal/rtb`, `internal/ingestion`. Domain modules (`identity`, `payment`, `ledger`, `notify`) load inside `cmd/control`, not as separate deployables.
 
 ---
 

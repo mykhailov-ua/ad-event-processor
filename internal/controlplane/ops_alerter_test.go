@@ -1,7 +1,6 @@
 package controlplane
 
 import (
-	"context"
 	"strings"
 	"testing"
 	"time"
@@ -68,15 +67,5 @@ func TestFormatSlotIDs_TruncatesLongLists(t *testing.T) {
 	got := formatSlotIDs(slots)
 	if !strings.Contains(got, "+8 more") {
 		t.Fatalf("expected truncation, got %q", got)
-	}
-}
-
-func TestNewNotifierClient_DisabledByDefault(t *testing.T) {
-	client, err := NewNotifierClient(context.Background(), &config.Config{})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if client != nil {
-		t.Fatal("expected nil client when ops alerts disabled")
 	}
 }

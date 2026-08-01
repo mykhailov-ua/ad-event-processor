@@ -89,23 +89,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 
 	sharder := domain.NewStaticSlotSharder(len(rdbs))
 
-	var controlAuthClient *AuthClient
-	var closeAuth func()
-	if opts.Auth != nil {
-		controlAuthClient = opts.Auth
-		closeAuth = func() {}
-	} else {
-		client, closeFn, err := TryAuthClient(ctx, cfg)
-		if err != nil {
-			slog.Error("failed to open auth client", "error", err)
-			return err
-		}
-		controlAuthClient = client
-		closeAuth = closeFn
-	}
-	if closeAuth != nil {
-		defer closeAuth()
-	}
+	controlAuthClient := opts.Auth
 	tokenMaker, err := identity.NewPasetoMaker(string(cfg.TokenSymmetricKey))
 	if err != nil {
 		slog.Error("failed to create token maker", "error", err)

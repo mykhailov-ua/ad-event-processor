@@ -9,9 +9,7 @@ import (
 	"espx/internal/config"
 	"espx/internal/domain"
 	"espx/internal/identity"
-	"espx/internal/ledger"
 	"espx/internal/notify"
-	"espx/internal/payment"
 )
 
 var errAuthUnavailable = errors.New("auth service not configured")
@@ -69,14 +67,6 @@ func (c *AuthClient) RevokeToken(ctx context.Context, refreshToken string) error
 	return c.api.RevokeToken(ctx, refreshToken)
 }
 
-func TryAuthClient(ctx context.Context, cfg *config.Config) (*AuthClient, func(), error) {
-	api, closeFn, err := identity.OpenAPI(ctx, cfg)
-	if err != nil || api == nil {
-		return nil, closeFn, err
-	}
-	return NewAuthClientFromAPI(api), closeFn, nil
-}
-
 var _ domain.BillingAPI = (*BillingClient)(nil)
 
 type BillingClient struct {
@@ -95,19 +85,11 @@ func NewBillingClientInProcess(api domain.BillingAPI, token string) *BillingClie
 	return NewBillingClientFromAPI(api, token)
 }
 
-func openBillingClient(ctx context.Context, cfg *config.Config, opts ServeOptions) (*BillingClient, func(), error) {
+func openBillingClient(_ context.Context, _ *config.Config, opts ServeOptions) (*BillingClient, func(), error) {
 	if opts.Billing != nil {
 		return opts.Billing, func() {}, nil
 	}
-	token := ""
-	if cfg != nil {
-		token = string(cfg.BillingInternalToken)
-	}
-	api, closeFn, err := ledger.OpenAPI(ctx, cfg)
-	if err != nil || api == nil {
-		return nil, closeFn, err
-	}
-	return NewBillingClientFromAPI(api, token), closeFn, nil
+	return nil, func() {}, nil
 }
 
 func (client *BillingClient) Close() error {
@@ -153,19 +135,11 @@ func NewPaymentClientInProcess(api domain.PaymentAPI, token string) *PaymentClie
 	return NewPaymentClientFromAPI(api, token)
 }
 
-func openPaymentClient(ctx context.Context, cfg *config.Config, opts ServeOptions) (*PaymentClient, func(), error) {
+func openPaymentClient(_ context.Context, _ *config.Config, opts ServeOptions) (*PaymentClient, func(), error) {
 	if opts.Payment != nil {
 		return opts.Payment, func() {}, nil
 	}
-	token := ""
-	if cfg != nil {
-		token = string(cfg.PaymentInternalToken)
-	}
-	api, closeFn, err := payment.OpenAPI(ctx, cfg)
-	if err != nil || api == nil {
-		return nil, closeFn, err
-	}
-	return NewPaymentClientFromAPI(api, token), closeFn, nil
+	return nil, func() {}, nil
 }
 
 func (c *PaymentClient) Close() error {
@@ -212,43 +186,15 @@ func NewNotifierClientFromAPI(api notify.NotifierAPI) *NotifierClient {
 	return &NotifierClient{api: api}
 }
 
-func NewNotifierClient(ctx context.Context, cfg *config.Config) (*NotifierClient, error) {
-	if cfg == nil || !cfg.NotifierAPIEnabled() {
-		return nil, nil
-	}
-	api, closeFn, err := notify.OpenAPI(ctx, cfg)
-	if err != nil {
-		return nil, err
-	}
-	if api == nil {
-		return nil, nil
-	}
-	return &NotifierClient{api: api, closeFn: closeFn}, nil
-}
-
 func NewNotifierClientInProcess(api notify.NotifierAPI) *NotifierClient {
 	return NewNotifierClientFromAPI(api)
 }
 
-func TryNotifierClient(ctx context.Context, cfg *config.Config) (*NotifierClient, func(), error) {
-	if cfg == nil || !cfg.NotifierAPIEnabled() {
-		return nil, func() {}, nil
-	}
-	api, closeFn, err := notify.OpenAPI(ctx, cfg)
-	if err != nil {
-		return nil, func() {}, err
-	}
-	if api == nil {
-		return nil, func() {}, nil
-	}
-	return NewNotifierClientFromAPI(api), closeFn, nil
-}
-
-func openNotifierClient(ctx context.Context, cfg *config.Config, opts ServeOptions) (*NotifierClient, func(), error) {
+func openNotifierClient(_ context.Context, _ *config.Config, opts ServeOptions) (*NotifierClient, func(), error) {
 	if opts.Notifier != nil {
 		return opts.Notifier, func() {}, nil
 	}
-	return TryNotifierClient(ctx, cfg)
+	return nil, func() {}, nil
 }
 
 func (client *NotifierClient) API() notify.NotifierAPI {

@@ -103,19 +103,7 @@ func serveMarginGuard(ctx context.Context, cfg *config.Config, inProcess *contro
 	}
 	registry.StartSync(ctx, time.Duration(cfg.RegistrySyncIntervalMs)*time.Millisecond)
 
-	var notifierClient *controlplane.NotifierClient
-	var closeNotifier func()
-	if inProcess != nil {
-		notifierClient = inProcess
-	} else {
-		notifierClient, closeNotifier, err = controlplane.TryNotifierClient(ctx, cfg)
-		if err != nil {
-			slog.Warn("margin guard notifier client unavailable", "error", err)
-		}
-		if closeNotifier != nil {
-			defer closeNotifier()
-		}
-	}
+	notifierClient := inProcess
 
 	if !cfg.ClickHouseEnabled() {
 		slog.Warn("margin guard disabled: clickhouse not configured")

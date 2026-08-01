@@ -13,6 +13,7 @@ import (
 	"espx/internal/config"
 	"espx/internal/controlplane"
 	"espx/internal/database"
+	"espx/internal/notify"
 	"espx/internal/dedup"
 	"espx/internal/domain"
 	db "espx/internal/domain/db"
@@ -132,12 +133,17 @@ func main() {
 		slog.Info("clickhouse consumer disabled", "ch_consumer", "disabled")
 	}
 
-	notifierClient, closeNotifier, notifierErr := controlplane.TryNotifierClient(ctx, cfg)
-	if notifierErr != nil {
-		slog.Warn("notifier client initialization failed", "error", notifierErr)
-	}
-	if closeNotifier != nil {
-		defer closeNotifier()
+	var notifierClient *controlplane.NotifierClient
+	if cfg.NotifierAPIEnabled() {
+		api, closeNotifier, notifierErr := notify.OpenAPI(ctx, cfg)
+		if notifierErr != nil {
+			slog.Warn("notifier module unavailable for ops alerts", "error", notifierErr)
+		} else if api != nil {
+			notifierClient = controlplane.NewNotifierClientFromAPI(api)
+			if closeNotifier != nil {
+				defer closeNotifier()
+			}
+		}
 	}
 	opsAlerter := controlplane.NewOpsAlerter(notifierClient, cfg)
 	var onEmergencyDrop database.EmergencyDropAlerter

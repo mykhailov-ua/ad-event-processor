@@ -309,9 +309,8 @@ Does not run in CI or production.
 | Nginx | 8180 |
 | Tracker | 8181-8184 |
 | Processor | 8186 |
-| Management HTTP / gRPC | 8188 / 51053 |
+| Control (admin HTTP / payment webhooks) | 8188 / 8187 |
 | UDP control | 8190 -> 8191 |
-| Auth / Payment / Billing | 51051 / 51052, 8187 / 51054 |
 | Redis shards | 6479-6482 |
 | PostgreSQL / ClickHouse | 5430 / 9000 |
 
@@ -332,8 +331,7 @@ Full list: `.env.example`.
 | `ELASTIC_SHARDING_ENABLED` | `false` steady-state default |
 | `CONTROL_FAIL_OPEN` | `0` (default): edge uses conservative routing when control epochs are stale — equal tracker weights, drain frozen. Set `1` for AWS GA-style fail-open (keep last epoch weights). Edge only; see [.cursor/MULTI_REGION.md](../.cursor/MULTI_REGION.md) H4. |
 | `CONTROL_ENABLE_*` | Modular monolith (`cmd/control`, default deploy): set `0` to disable auth, management, payment, billing, notifier, margin-guard, or cost-sync in-process. See `.env.example`. |
-| `SETTLEMENT_GRPC_ENABLED` | Default off (`0` or unset). Set `1` only for legacy split `cmd/payment` + `cmd/management` with network settlement gRPC. `cmd/control` uses in-process settlement (compose sets `0`). |
-| `NODE_WARMUP_SEC` | Tracker/management warmup before `/ready` and scorer drain (default `300`) |
+| `NODE_WARMUP_SEC` | Tracker/control warmup before `/ready` and scorer drain (default `300`) |
 | `NODE_WEIGHTS_SYNC_INTERVAL_SEC` | Edge poll interval for `/ops/node-weights` (default `10`) |
 
 ---

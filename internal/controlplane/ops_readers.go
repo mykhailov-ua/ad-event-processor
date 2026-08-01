@@ -231,6 +231,9 @@ type OpsAlerter struct {
 	outboxStuckSec     int
 	lastSent           sync.Map
 	enqueueFailures    atomic.Int64
+	// FIX [3.2]: track in-flight alert goroutines so Drain() can wait for them
+	// before shutdown, preventing orphaned goroutines.
+	wg                 sync.WaitGroup
 }
 
 func NewOpsAlerter(client *NotifierClient, cfg *config.Config) *OpsAlerter {
@@ -277,7 +280,11 @@ func (a *OpsAlerter) sendAsync(key, title, body string, broadcast bool) {
 	if a == nil || !a.shouldSend(key) {
 		return
 	}
+	// FIX [3.2]: track goroutine lifetime so Drain() can wait for all in-flight
+	// alerts to finish before process exit.
+	a.wg.Add(1)
 	go func() {
+		defer a.wg.Done()
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := a.dispatch(ctx, key, title, body, broadcast); err != nil {
@@ -300,6 +307,14 @@ func (a *OpsAlerter) sendAsync(key, title, body string, broadcast bool) {
 		}
 		a.enqueueFailures.Store(0)
 	}()
+}
+
+// Drain waits for all in-flight async alert goroutines to finish.
+// Call this during graceful shutdown before closing notifier connections.
+func (a *OpsAlerter) Drain() {
+	if a != nil {
+		a.wg.Wait()
+	}
 }
 
 func (a *OpsAlerter) dispatch(ctx context.Context, key, title, body string, broadcast bool) error {
@@ -586,19 +601,30 @@ func (w *OpsMetricScraper) scrapeAndStore(ctx context.Context, now time.Time) er
 	if len(samples) == 0 {
 		return nil
 	}
+
+	// FIX [2.4]: replace N sequential INSERTs with a single pgx.Batch.
+	// At the default 15s scrape interval, a typical Prometheus endpoint exposes
+	// 1000-5000 samples. Sequential inserts caused connection pool pressure;
+	// a single batch pipeline eliminates all but one server round-trip.
+	const insertSQL = `INSERT INTO ops.metric_samples (name, labels_hash, ts, value)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (name, labels_hash, ts) DO UPDATE SET value = EXCLUDED.value`
 	ts := pgtype.Timestamptz{Time: now, Valid: true}
 	batch := &pgx.Batch{}
 	for _, sample := range samples {
-		batch.Queue(insertOpsMetricSampleSQL, sample.Name, sample.LabelsHash, ts, sample.Value)
+		batch.Queue(insertSQL, sample.Name, sample.LabelsHash, ts, sample.Value)
 	}
 	br := w.pool.SendBatch(ctx, batch)
-	defer br.Close()
-	for i := 0; i < batch.Len(); i++ {
-		if _, err := br.Exec(); err != nil {
-			return fmt.Errorf("insert metric sample batch item %d: %w", i, err)
+	var batchErr error
+	for range samples {
+		if _, err := br.Exec(); err != nil && batchErr == nil {
+			batchErr = fmt.Errorf("insert metric sample batch: %w", err)
 		}
 	}
-	return nil
+	if closeErr := br.Close(); closeErr != nil && batchErr == nil {
+		batchErr = fmt.Errorf("close metric batch: %w", closeErr)
+	}
+	return batchErr
 }
 
 func (w *OpsMetricScraper) expireSamples(ctx context.Context, now time.Time) error {

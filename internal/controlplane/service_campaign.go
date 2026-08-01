@@ -307,7 +307,14 @@ func (s *Service) GetCampaignStats(ctx context.Context, campaignID uuid.UUID, fr
 		return report, nil
 	}
 
-	hourly, lag, err := s.queryClickHouseHourly(ctx, campaignID, from, to)
+	// FIX [3.1]: bound the CH path with an explicit timeout so slow CH queries
+	// do not hold the request goroutine indefinitely (unlike forecastCampaign
+	// which already had a 2s timeout, this path had none).
+	const chStatsTimeout = 10 * time.Second
+	chCtx, cancel := context.WithTimeout(ctx, chStatsTimeout)
+	defer cancel()
+
+	hourly, lag, err := s.queryClickHouseHourly(chCtx, campaignID, from, to)
 	if err != nil {
 		return CampaignStatsDTO{}, err
 	}
@@ -385,10 +392,32 @@ ORDER BY hour`
 	return buckets, lag, nil
 }
 
+// chLagCache caches the ClickHouse ingestion lag to avoid a max() aggregation
+// query on every /campaigns/{id}/stats call.
+// FIX [5.2]: amortize the lag probe to at most once per cacheTTL.
+type chLagCache struct {
+	mu      sync.Mutex
+	lag     time.Duration
+	updated time.Time
+}
+
+const chLagCacheTTL = 30 * time.Second
+
+var globalCHLagCache chLagCache
+
 func (s *Service) clickHouseIngestionLag(ctx context.Context) (time.Duration, error) {
 	if s.chQuery == nil {
 		return 0, nil
 	}
+
+	globalCHLagCache.mu.Lock()
+	if time.Since(globalCHLagCache.updated) < chLagCacheTTL {
+		lag := globalCHLagCache.lag
+		globalCHLagCache.mu.Unlock()
+		return lag, nil
+	}
+	globalCHLagCache.mu.Unlock()
+
 	var latest time.Time
 	err := s.chQuery.QueryRow(ctx, `
 SELECT max(latest) FROM (
@@ -401,10 +430,19 @@ SELECT max(latest) FROM (
 	if err != nil {
 		return 0, fmt.Errorf("clickhouse lag probe: %w", err)
 	}
+	var lag time.Duration
 	if latest.IsZero() {
-		return clickHouseStaleThreshold + time.Second, nil
+		lag = clickHouseStaleThreshold + time.Second
+	} else {
+		lag = time.Since(latest.UTC())
 	}
-	return time.Since(latest.UTC()), nil
+
+	globalCHLagCache.mu.Lock()
+	globalCHLagCache.lag = lag
+	globalCHLagCache.updated = time.Now()
+	globalCHLagCache.mu.Unlock()
+
+	return lag, nil
 }
 
 type BrandDTO struct {

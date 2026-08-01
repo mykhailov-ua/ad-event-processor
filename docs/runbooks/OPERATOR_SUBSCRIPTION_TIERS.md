@@ -99,7 +99,7 @@ Plan CRUD and advertiser assignment via `/api/v1/...` (plans + subscriptions). O
 
 | Mechanism | When |
 | :--- | :--- |
-| `base_fee_micro` | Monthly invoice line via `cmd/billing` `GenerateInvoice` |
+| `base_fee_micro` | Monthly invoice line via control billing module (`ledger.GenerateInvoice`) |
 | `usage_meters` | Overage on accepted events (PG rollup, not CH) |
 | `balance_ledger` | Prepaid spend; self-serve top-up via `payment` |
 

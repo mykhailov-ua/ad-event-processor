@@ -10,7 +10,7 @@ eSPX ingests ad events on `/track`, applies filters and atomic budget rules, and
 | Path | p99 budget | Packages | Persistence |
 | :--- | :--- | :--- | :--- |
 | Hot | `/track` < 80 ms | `internal/ingestion`, `internal/rtb` | Redis Lua, streams |
-| Cold | seconds to minutes | `management`, workers | Postgres outbox -> Redis |
+| Cold | seconds to minutes | `cmd/control`, workers | Postgres outbox -> Redis |
 | Edge | line-rate drop | `internal/edge`, `cmd/edge-*` | BPF maps, blocklists |
 
 ---
@@ -21,24 +21,20 @@ eSPX ingests ad events on `/track`, applies filters and atomic budget rules, and
 | :--- | :--- | :--- |
 | `tracker` | 8181-8184 | gnet ingest, `FilterEngine`, RTB, Lua |
 | `processor` | 8186 | Stream consumer -> PG/CH; `SyncWorker`; CH spool |
-| `management` | 8188, 51053 | Admin HTTP, settlement gRPC, outbox, recon |
-| `auth` | 51051 | gRPC: Argon2id, PASETO, API keys |
-| `payment` | 51052, 8187 | Stripe webhooks, settlement outbox |
-| `billing` | 51054 | Invoices from `balance_ledger` |
-| `notifier` | 8085 | Alerts |
-| `ivt-detector`, `fraud-scorer` | - | CH batch -> management outbox |
+| `control` | 8188, 8187 | Modular monolith: admin HTTP, payment webhooks, in-process auth/payment/billing/notifier (`CONTROL_ENABLE_*`) |
+| `ivt-detector`, `fraud-scorer` | - | CH batch -> control outbox |
 | `edge-xdp`, `edge-bpf-sync` | - | XDP filter, BPF map sync |
 | `broker`, `log-shipper`, ... | - | Optional mmap log pipeline |
 
-Libraries without `cmd/`: `internal/licensing`, `internal/billing`, `internal/rtb`, `internal/campaignmodel`.
+Libraries without `cmd/`: `internal/licensing`, `internal/rtb`, `internal/campaignmodel`. Billing/payment/auth/notifier are packages inside `cmd/control`.
 
 ---
 
 ## Topology
 
-Nginx :8180 -> Tracker pool -> Redis x4 (Lua, streams). Processor -> PG, CH. Management outbox -> Redis.
+Nginx :8180 -> Tracker pool -> Redis x4 (Lua, streams). Processor -> PG, CH. Control outbox -> Redis.
 
-1. Ingress: Nginx :8180; `/admin/*` -> management; `/track/*` -> trackers.
+1. Ingress: Nginx :8180; `/admin/*` and `/api/v1/*` -> control; `/track/*` -> trackers.
 2. Ingestion: `PinnedWorkerPool` by `campaign_id` hash.
 3. Redis: 4 standalone masters, client-side `StaticSlotSharder`.
 4. Settlement: per-shard `ad:events:stream` -> processor.
@@ -286,12 +282,11 @@ PII in ClickHouse: rolling hash for `ip_hash` / `ua_hash`; phase out raw `ip_add
 | :--- | :--- | :--- |
 | `tracker` | Separate binary per shard pool | Hot path isolation, pinned workers |
 | `processor` | Separate binary | Stream consumer, PG/CH write concurrency |
-| `management` | Single cold-path binary | Outbox, admin, settlement gRPC |
-| `auth`, `payment`, `billing`, `notifier` | Separate gRPC services | DB isolation, blast radius |
+| `control` | Single modular monolith | Admin, auth, payment, billing, notifier, outbox in one process |
 | RTB auction | In-process in tracker | Sub-15 us budget; 0 allocs |
 | Lua filters | Redis scripts | Single RTT atomicity |
 
-Settlement remains in management (not a separate settlement service). Fraud scoring cold path only (`fraud-scorer`, `ivt-detector`).
+Settlement runs in-process inside `control` (payment -> ledger). Fraud scoring cold path only (`fraud-scorer`, `ivt-detector`).
 
 ### Load-test observability (dev)
 
