@@ -153,16 +153,32 @@ func main() {
 			opsAlerter.AlertCHEmergencyDrop(table, partition, diskPct, threshold)
 		}
 	}
-	if chEnabled && chConn != nil {
+	if chEnabled && chConn != nil && cfg.CHJanitorEnabled {
+		intervalH := cfg.CHJanitorIntervalH
+		if intervalH <= 0 {
+			intervalH = 24
+		}
+		dealDays := cfg.CHRetentionDaysRtbDealOutcomes
+		if dealDays <= 0 {
+			dealDays = 90
+		}
+		exchangeDays := cfg.CHRetentionDaysRtbExchangeLog
+		if exchangeDays <= 0 {
+			exchangeDays = 30
+		}
 		chJanitor = database.NewCHPartitionJanitor(chConn, database.CHJanitorOptions{
-			RetentionDays:            cfg.CHRawRetentionDays,
+			RetentionDays: cfg.CHRawRetentionDays,
+			ExtraTables: []database.CHTableRetention{
+				{Table: "rtb_deal_outcomes", Days: dealDays},
+				{Table: "rtb_exchange_log", Days: exchangeDays},
+			},
 			EmergencyDropPercent:     cfg.CHEmergencyDropPercent,
 			RecompressPartsThreshold: cfg.CHRecompressPartsThreshold,
 			OffPeakStartHourUTC:      cfg.CHRecompressOffPeakStartUTC,
 			OffPeakEndHourUTC:        cfg.CHRecompressOffPeakEndUTC,
 			OnEmergencyDrop:          onEmergencyDrop,
 		})
-		chJanitor.StartBackground(ctx, 24*time.Hour)
+		chJanitor.StartBackground(ctx, time.Duration(intervalH)*time.Hour)
 	}
 
 	var rdbs []redis.UniversalClient

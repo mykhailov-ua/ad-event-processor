@@ -15,8 +15,14 @@ import (
 
 type EmergencyDropAlerter func(table, partition string, diskUsedPct float64)
 
+type CHTableRetention struct {
+	Table string
+	Days  int
+}
+
 type CHJanitorOptions struct {
 	RetentionDays            int
+	ExtraTables              []CHTableRetention
 	EmergencyDropPercent     int
 	RecompressPartsThreshold int
 	OffPeakStartHourUTC      int
@@ -29,6 +35,7 @@ type CHJanitorOptions struct {
 type CHPartitionJanitor struct {
 	conn                     driver.Conn
 	retentionDays            int
+	extraTables              []CHTableRetention
 	emergencyDropPercent     int
 	recompressPartsThreshold int
 	offPeakStartHourUTC      int
@@ -64,6 +71,7 @@ func NewCHPartitionJanitor(conn driver.Conn, opts CHJanitorOptions) *CHPartition
 	return &CHPartitionJanitor{
 		conn:                     conn,
 		retentionDays:            retention,
+		extraTables:              opts.ExtraTables,
 		emergencyDropPercent:     opts.EmergencyDropPercent,
 		recompressPartsThreshold: partsThreshold,
 		offPeakStartHourUTC:      startHour,
@@ -107,13 +115,31 @@ func (j *CHPartitionJanitor) Run(ctx context.Context) error {
 }
 
 func (j *CHPartitionJanitor) runRetentionDrop(ctx context.Context) error {
-	cutoff := j.now().UTC().AddDate(0, 0, -j.retentionDays)
+	if err := j.dropTableRetention(ctx, j.tables, j.retentionDays); err != nil {
+		return err
+	}
+	for _, tr := range j.extraTables {
+		if tr.Table == "" || tr.Days <= 0 {
+			continue
+		}
+		if err := j.dropTableRetention(ctx, []string{tr.Table}, tr.Days); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (j *CHPartitionJanitor) dropTableRetention(ctx context.Context, tables []string, retentionDays int) error {
+	if retentionDays <= 0 {
+		return nil
+	}
+	cutoff := j.now().UTC().AddDate(0, 0, -retentionDays)
 	cutoffPart, err := strconv.Atoi(cutoff.Format("200601"))
 	if err != nil {
 		return err
 	}
 
-	for _, table := range j.tables {
+	for _, table := range tables {
 		rows, err := j.conn.Query(ctx, `
 SELECT partition
 FROM system.parts

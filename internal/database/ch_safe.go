@@ -2,6 +2,7 @@ package database
 
 import (
 	"regexp"
+	"time"
 	"unicode"
 )
 
@@ -23,7 +24,11 @@ func ValidClickHouseIdentifier(name string) bool {
 }
 
 func ValidGAQLDate(date string) bool {
-	return gaqlDateRE.MatchString(date)
+	if !gaqlDateRE.MatchString(date) {
+		return false
+	}
+	_, err := time.Parse("2006-01-02", date)
+	return err == nil
 }
 
 func ValidCHHexToken(token string) bool {

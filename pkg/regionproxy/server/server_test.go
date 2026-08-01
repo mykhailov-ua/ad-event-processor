@@ -18,7 +18,7 @@ import (
 )
 
 func TestRegionProxy_ProduceBatchIngress(t *testing.T) {
-	srv, err := NewServer("127.0.0.1:0", t.TempDir(), iogate.NewDiskWriteGate(iogate.Config{AppendCapacity: 8, GroupCommitRecords: 1}))
+	srv, err := NewServer("127.0.0.1:0", t.TempDir(), iogate.NewDiskWriteGate(iogate.TestGateConfig()))
 	require.NoError(t, err)
 	require.NoError(t, srv.Start())
 	defer srv.Stop()
@@ -66,7 +66,7 @@ func TestRegionProxy_ProduceBatchIngress(t *testing.T) {
 }
 
 func TestRegionProxy_BackpressureWhenDegraded(t *testing.T) {
-	srv, err := NewServer("127.0.0.1:0", t.TempDir(), iogate.NewDiskWriteGate(iogate.Config{AppendCapacity: 8}))
+	srv, err := NewServer("127.0.0.1:0", t.TempDir(), iogate.NewDiskWriteGate(iogate.TestGateConfig()))
 	require.NoError(t, err)
 	srv.Gate().SetDegraded(true)
 	require.NoError(t, srv.Start())

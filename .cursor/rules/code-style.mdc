@@ -547,13 +547,13 @@ errcheck on non-test:
 R11.3. Benchmark Baseline in CI
 
 1. Documentation - `docs/hot_path_baseline.md` (summary) + `docs/hot_path_baseline_ads_raw.txt`, `docs/hot_path_baseline_rtb_raw.txt` (raw, 5 runs).
-2. Local Gate - `bash scripts/perf/gate_run.sh` or `task perf-gate`:
-   - smoke: `scripts/perf/gate.go` verifies 0 allocs on gated benches;
+2. Local Gate - `bash scripts/test/gate_run.sh` or `task perf-gate`:
+   - smoke: gated benches verify 0 allocs on hot paths;
    - strict (self-hosted): benchstat vs baseline worktree `main`.
 3. CI Workflow - `.github/workflows/perf-gate.yaml`:
-   - trigger on push to `main` and path-filter (`internal/ingestion/`, `internal/rtb/`, `api/`, `scripts/perf/`);
+   - trigger on push to `main` and path-filter (`internal/ingestion/`, `internal/rtb/`, `api/`, `scripts/test/`);
    - artifacts: `pr_bench.txt`, `baseline_bench.txt`, `gate_report.txt`.
-4. Gated Benches - list in `scripts/perf/gate_bench.sh` (E2E accept/reject/infra, filter micro, RTB auction). A new hot-path bench must be added to the gate when a critical path is introduced.
+4. Gated Benches - list in `scripts/test/gate_bench.sh` (E2E accept/reject/infra, filter micro, RTB auction). A new hot-path bench must be added to the gate when a critical path is introduced.
 5. Baseline Update - upon intentional performance improvements, merge the PR with updated `docs/hot_path_baseline*.md/txt` in the same commit.
 
 R11.4. Other Codegen Hooks
@@ -612,7 +612,7 @@ Adding a Hot-Path Optimization
 2. Verify the path adheres to R8.3 (sentinels, pre-built responses) and R8.7 (metrics, snapshots, Lua).
 3. Add or update `*_bench_test.go`; for E2E paths, add a bench in `perf_gate_bench.sh`.
 4. On protobuf ingest changes, update `patch_vtproto_hotpath` if needed (R11.1).
-5. Run `bash scripts/perf/gate_run.sh` locally when modifying `internal/ingestion` / `internal/rtb`.
+5. Run `bash scripts/test/gate_run.sh` locally when modifying `internal/ingestion` / `internal/rtb`.
 
 Writing Comments
 

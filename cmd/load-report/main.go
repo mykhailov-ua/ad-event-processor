@@ -60,6 +60,23 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
+		if err := runSLA(sessionDir, promURL); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			if os.Getenv("LOAD_SLA_GATE") == "1" {
+				os.Exit(1)
+			}
+		}
+	case "sla":
+		sessionDir, promURL, err := parseSessionFlags(os.Args[2:])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			usage()
+			os.Exit(1)
+		}
+		if err := runSLA(sessionDir, promURL); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	default:
 		fmt.Fprintf(os.Stderr, "load-report: unknown subcommand %q\n", cmd)
 		usage()
@@ -110,12 +127,23 @@ func runProm(sessionDir, promURL string) error {
 	return nil
 }
 
+func runSLA(sessionDir, promURL string) error {
+	path, err := loadreport.WriteSLAReport(sessionDir, promURL)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("load-report sla: wrote %s\n", path)
+	return nil
+}
+
 func usage() {
 	fmt.Fprintf(os.Stderr, `Usage:
   load-report prom <session-dir> [--prom URL]
   load-report bpf <session-dir>
+  load-report sla <session-dir> [--prom URL]
   load-report all <session-dir> [--prom URL]
 
 Default Prometheus URL: %s (override with PROMETHEUS_URL or --prom)
+Set LOAD_SLA_GATE=1 to fail load-report all on SLA breach.
 `, defaultPromURL)
 }

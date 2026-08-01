@@ -18,7 +18,6 @@ const defaultPulseTimeout = 5 * time.Second
 type Metadata struct {
 	DeploymentID  string `json:"deployment_id"`
 	BinaryVersion string `json:"binary_version"`
-	SKU           string `json:"sku,omitempty"`
 	DCRegion      string `json:"dc_region,omitempty"`
 }
 
@@ -28,7 +27,6 @@ type PulsePayload struct {
 	SchemaVersion  int    `json:"schema_version"`
 	DeploymentID   string `json:"deployment_id"`
 	BinaryVersion  string `json:"binary_version"`
-	SKU            string `json:"sku,omitempty"`
 	WindowSec      int    `json:"window_sec"`
 	AcceptedEvents uint64 `json:"accepted_events"`
 	RejectedEvents uint64 `json:"rejected_events"`
@@ -109,7 +107,6 @@ func (w *Worker) tick(ctx context.Context) {
 		SchemaVersion:  1,
 		DeploymentID:   meta.DeploymentID,
 		BinaryVersion:  meta.BinaryVersion,
-		SKU:            meta.SKU,
 		WindowSec:      w.cfg.WindowSec,
 		AcceptedEvents: snap.AcceptedEvents,
 		RejectedEvents: snap.RejectedEvents,

@@ -2,6 +2,7 @@
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
+source "$SCRIPTS/lib/bpf_collector.sh"
 cd "$ROOT"
 
 CMD="${1:-status}"
@@ -37,6 +38,10 @@ start)
 	export ESPX_BPF_REFRESH_TARGETS="${ESPX_BPF_REFRESH_TARGETS:-30}"
 	export ESPX_BPF_METRICS_ADDR="${ESPX_BPF_METRICS_ADDR:-:9464}"
 	bash "$SCRIPTS/test/bpf_probe_session.sh" start "$OUT"
+	if [[ ! -f "$OUT/bpf/collector.ready" ]]; then
+		log "ERROR: bpf collector did not start — see $OUT/bpf/collector.log"
+		exit 1
+	fi
 	mkdir -p "$SESSION_ROOT"
 	ln -sfn "$(basename "$OUT")" "$CURRENT_LINK"
 	printf '%s\n' "$OUT" >"$CURRENT_PATH_FILE"
@@ -58,17 +63,28 @@ status)
 		OUT="$(cat "$CURRENT_PATH_FILE")"
 		log "current session: $OUT"
 		if [[ -f "$OUT/bpf/collector.pid" ]]; then
-			log "collector pid: $(cat "$OUT/bpf/collector.pid")"
+			PID="$(cat "$OUT/bpf/collector.pid")"
+			if bpf_collector_pid_alive "$PID" && [[ -f "$OUT/bpf/collector.ready" ]]; then
+				log "collector: running pid=$PID"
+			elif bpf_collector_pid_alive "$PID"; then
+				log "collector: pid=$PID (not ready — see $OUT/bpf/collector.log)"
+			else
+				log "collector: dead (stale pid=$PID — see $OUT/bpf/collector.log)"
+			fi
 		else
 			log "collector: not running"
 		fi
 	else
-		log "no active session (run: bpf_session.sh start)"
+		log "no active session (run: sudo bash scripts/dev/bpf_session.sh start)"
 	fi
 	;;
 report)
 	OUT="$(resolve_out_dir "${2:-}")"
-	go run ./cmd/load-report bpf "$OUT"
+	source "$SCRIPTS/lib/go.sh"
+	if ! espx_go_run ./cmd/load-report bpf "$OUT"; then
+		log "ERROR: report failed (go missing or no bpf/maps/summary.json)"
+		exit 1
+	fi
 	log "report: $OUT/bpf-report.md"
 	;;
 *)

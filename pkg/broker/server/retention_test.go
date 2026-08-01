@@ -4,11 +4,15 @@ import (
 	"testing"
 
 	"espx/pkg/broker/log"
+	"espx/pkg/iogate"
 )
 
 func TestServerRetentionPass_StandaloneEvictsByBytes(t *testing.T) {
 	dir := t.TempDir()
 	s := NewServer("127.0.0.1:0", dir, 256, 4096)
+	gateCfg := iogate.TestGateConfig()
+	gateCfg.DiskWritable = func() bool { return true }
+	s.SetDiskGate(iogate.NewDiskWriteGate(gateCfg))
 	s.SetRetentionPolicy(log.RetentionPolicy{
 		MaxBytes:       400,
 		SafetyMessages: 0,

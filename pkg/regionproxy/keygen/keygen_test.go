@@ -15,13 +15,17 @@ import (
 
 func TestKeyGen_10kRecordsDedupReady(t *testing.T) {
 	dir := t.TempDir()
-	gate := iogate.NewDiskWriteGate(iogate.Config{AppendCapacity: 16, GroupCommitRecords: 1})
+	gate := iogate.NewDiskWriteGate(iogate.TestGateConfig())
 	w, err := wal.Open(dir, gate)
 	require.NoError(t, err)
 	defer w.Close()
 
 	payload := []byte(`{"click":"evt"}`)
-	for i := 0; i < 10000; i++ {
+	records := 10000
+	if testing.Short() {
+		records = 2000
+	}
+	for i := 0; i < records; i++ {
 		_, err := w.Append(payload)
 		require.NoError(t, err)
 	}
@@ -39,8 +43,8 @@ func TestKeyGen_10kRecordsDedupReady(t *testing.T) {
 	defer cancel()
 	require.NoError(t, w.WaitKeyGenReady(ctx, time.Millisecond))
 
-	seen := make(map[[32]byte]struct{}, 10000)
-	for seq := uint64(0); seq < 10000; seq++ {
+	seen := make(map[[32]byte]struct{}, records)
+	for seq := uint64(0); seq < uint64(records); seq++ {
 		hdr, _, err := w.ReadRecord(seq)
 		require.NoError(t, err)
 		assert.True(t, hdr.Has(wal.WalFlagDedupReady), "seq=%d", seq)
@@ -54,6 +58,6 @@ func TestKeyGen_10kRecordsDedupReady(t *testing.T) {
 
 		seen[hdr.FactorU] = struct{}{}
 	}
-	assert.Len(t, seen, 10000)
-	assert.Equal(t, uint64(10000), kg.Processed())
+	assert.Len(t, seen, records)
+	assert.Equal(t, uint64(records), kg.Processed())
 }

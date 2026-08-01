@@ -21,6 +21,13 @@ import (
 	"espx/pkg/broker/protocol"
 )
 
+func skipBrokerHeavyTest(t *testing.T) {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("skipping heavy broker test under -short")
+	}
+}
+
 func TestBrokerIntegration(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "broker-test-*")
 	if err != nil {
@@ -286,6 +293,7 @@ func TestENOSPC_IndexWriteFails(t *testing.T) {
 }
 
 func TestSlowloris_DoesNotBlockOtherClients(t *testing.T) {
+	skipBrokerHeavyTest(t)
 	dir, err := os.MkdirTemp("", "slowloris-*")
 	if err != nil {
 		t.Fatal(err)
@@ -337,6 +345,7 @@ func TestSlowloris_DoesNotBlockOtherClients(t *testing.T) {
 }
 
 func TestFDExhaustion_ServerHandlesGracefully(t *testing.T) {
+	skipBrokerHeavyTest(t)
 	if runtime.GOOS != "linux" {
 		t.Skip("FD exhaustion test requires Linux RLIMIT_NOFILE control")
 	}
@@ -407,6 +416,7 @@ func TestFDExhaustion_ServerHandlesGracefully(t *testing.T) {
 }
 
 func TestSplitBrain_IsolatedLogsNoCorruption(t *testing.T) {
+	skipBrokerHeavyTest(t)
 	dirA, err := os.MkdirTemp("", "splitbrain-A-*")
 	if err != nil {
 		t.Fatal(err)
@@ -645,6 +655,7 @@ func TestSegmentRoll_CrossSegmentFetch(t *testing.T) {
 }
 
 func TestMalformedFrames_ServerDoesNotPanic(t *testing.T) {
+	skipBrokerHeavyTest(t)
 	dir, err := os.MkdirTemp("", "malformed-*")
 	if err != nil {
 		t.Fatal(err)
@@ -937,6 +948,7 @@ func TestHealthz_NoSyscallUnderLoad(t *testing.T) {
 }
 
 func TestConcurrentRollFetchHealth_NoDataRace(t *testing.T) {
+	skipBrokerHeavyTest(t)
 	dir, err := os.MkdirTemp("", "fix-stress-*")
 	if err != nil {
 		t.Fatal(err)

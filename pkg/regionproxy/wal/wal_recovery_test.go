@@ -12,7 +12,7 @@ import (
 
 func TestWAL_RecoverTruncatesTornTail(t *testing.T) {
 	dir := t.TempDir()
-	gate := iogate.NewDiskWriteGate(iogate.Config{AppendCapacity: 8, GroupCommitRecords: 64})
+	gate := iogate.NewDiskWriteGate(iogate.TestGateConfig())
 
 	w, err := Open(dir, gate)
 	require.NoError(t, err)

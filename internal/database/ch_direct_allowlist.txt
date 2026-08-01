@@ -5,6 +5,7 @@ internal/database/ch_partition_janitor.go
 internal/clickhouse/migrate/chmigrate.go
 internal/ingestion/clickhouse_store.go
 internal/ingestion/rtb_deal_outcomes_writer.go
+internal/ingestion/rtb_exchange_log_writer.go
 internal/logcompactor/cold_clickhouse.go
 internal/costsync/clickhouse.go
 internal/controlplane/service_erasure.go

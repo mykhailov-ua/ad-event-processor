@@ -32,6 +32,8 @@ done
 allowed_docs=(
 	ARCHITECTURE.md
 	DEVELOPMENT.md
+	QUICKSTART.md
+	RTB_PRODUCTION_RUNBOOK.md
 )
 
 for path in docs/*.md; do

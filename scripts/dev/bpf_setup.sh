@@ -2,6 +2,7 @@
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
+source "$SCRIPTS/lib/go.sh"
 cd "$ROOT"
 
 CHECK_ONLY=0
@@ -25,7 +26,10 @@ bash "$SCRIPTS/test/bpf_build.sh"
 
 log "building bpf-collector"
 mkdir -p "$ROOT/bin"
-go build -o "$ROOT/bin/bpf-collector" ./cmd/bpf-collector
+if ! espx_go_build -o "$ROOT/bin/bpf-collector" ./cmd/bpf-collector; then
+	log "ERROR: bpf-collector build failed — set ESPX_GO_BIN=/path/to/go"
+	exit 1
+fi
 
 log "ready: deploy/dev/bpf/loadtest_probe.o bin/bpf-collector"
 log "standalone session: sudo make bpf-session-start"

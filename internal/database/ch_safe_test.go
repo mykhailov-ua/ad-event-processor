@@ -36,7 +36,7 @@ func TestClampCHWindowSeconds(t *testing.T) {
 	if got := ClampCHWindowSeconds(0); got != 3600 {
 		t.Fatalf("zero=%d", got)
 	}
-	if got := ClampCHWindowSeconds(48*3600); got != 24*3600 {
+	if got := ClampCHWindowSeconds(48 * 3600); got != 24*3600 {
 		t.Fatalf("max=%d", got)
 	}
 }

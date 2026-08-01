@@ -128,7 +128,7 @@ make lint                        # Runs golangci-lint (SA9003, SA4017, errcheck)
 make test-alloc-gate             # Verifies zero allocations on the hot path
 bash scripts/ci/comments.sh      # Verifies comment standards and checks for AI slop
 bash scripts/fault/run.sh        # Executes fault injection tests
-bash scripts/perf/gate_run.sh    # Compares benchmarks against the baseline
+bash scripts/test/gate_run.sh    # Compares benchmarks against the baseline
 ```
 
 ### Comment Verification (`comments.sh`)

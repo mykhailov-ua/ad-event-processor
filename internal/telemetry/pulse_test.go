@@ -61,7 +61,7 @@ func TestWorker_uploadsPulse(t *testing.T) {
 		WindowSec:  3600,
 		HTTPClient: srv.Client(),
 		Metadata: func(context.Context) (Metadata, error) {
-			return Metadata{DeploymentID: "dep-1", BinaryVersion: "9.9.9", SKU: "ingest_pro"}, nil
+			return Metadata{DeploymentID: "dep-1", BinaryVersion: "9.9.9"}, nil
 		},
 	})
 	require.NoError(t, w.validateEndpoints())
@@ -78,7 +78,7 @@ func TestWorker_rejectsSameURLAsLicenseServer(t *testing.T) {
 }
 
 func TestPulsePayload_matchesSchemaV1(t *testing.T) {
-	root := filepath.Join("..", "..", "docs", "telemetry", "schema_v1.json")
+	root := filepath.Join("testdata", "schema_v1.json")
 	rawSchema, err := os.ReadFile(root)
 	require.NoError(t, err)
 

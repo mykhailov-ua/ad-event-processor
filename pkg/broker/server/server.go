@@ -163,6 +163,12 @@ func (s *Server) DiskGate() *iogate.DiskWriteGate {
 	return s.diskGate
 }
 
+func (s *Server) SetDiskGate(g *iogate.DiskWriteGate) {
+	if g != nil {
+		s.diskGate = g
+	}
+}
+
 func (s *Server) Start() error {
 	store, err := protocol.NewFileRegistryStore(s.dataDir)
 	if err != nil {

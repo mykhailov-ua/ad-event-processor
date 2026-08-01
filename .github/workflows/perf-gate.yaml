@@ -12,7 +12,7 @@ on:
       - 'pkg/broker/**'
       - 'deploy/nginx/lua/**'
       - 'api/**'
-      - 'scripts/perf/**'
+      - 'scripts/test/**'
 
 jobs:
   performance-gate:
@@ -49,7 +49,7 @@ jobs:
         run: bash scripts/perf/stabilize_cpu.sh
 
       - name: Run performance gate
-        run: bash scripts/perf/gate_run.sh
+        run: bash scripts/test/gate_run.sh
 
       - name: Upload Benchmark Artifacts
         if: always() && env.PERF_GATE_STRICT == 'true'

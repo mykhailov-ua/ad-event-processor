@@ -11,7 +11,7 @@ import (
 
 func TestWAL_AppendRecoverRoundTrip(t *testing.T) {
 	dir := t.TempDir()
-	gate := iogate.NewDiskWriteGate(iogate.Config{AppendCapacity: 8, GroupCommitRecords: 1})
+	gate := iogate.NewDiskWriteGate(iogate.TestGateConfig())
 
 	w, err := Open(dir, gate)
 	require.NoError(t, err)

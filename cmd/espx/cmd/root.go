@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"espx/internal/config"
+	"espx/pkg/branding"
 
 	"github.com/spf13/cobra"
 )
@@ -18,7 +19,7 @@ var (
 
 var rootCmd = &cobra.Command{
 	Use:   "espx",
-	Short: "BidShard operator CLI",
+	Short: branding.ProductName() + " operator CLI",
 	Long:  "Operator-facing CLI for health checks, MVSS checklist, and support bundles.",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		return loadEnvFile(envPath)

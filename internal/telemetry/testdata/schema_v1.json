@@ -1,0 +1,22 @@
+{
+  "type": "object",
+  "required": [
+    "schema_version",
+    "deployment_id",
+    "binary_version",
+    "window_sec",
+    "accepted_events",
+    "rejected_events",
+    "peak_rps"
+  ],
+  "properties": {
+    "schema_version": { "type": "integer" },
+    "deployment_id": { "type": "string" },
+    "binary_version": { "type": "string" },
+    "window_sec": { "type": "integer" },
+    "accepted_events": { "type": "integer" },
+    "rejected_events": { "type": "integer" },
+    "peak_rps": { "type": "integer" },
+    "dc_region": { "type": "string" }
+  }
+}

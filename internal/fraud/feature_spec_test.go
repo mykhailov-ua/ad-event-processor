@@ -36,6 +36,9 @@ func TestFeatureSpecDims(t *testing.T) {
 func TestFeatureSpecGoldenFixtures(t *testing.T) {
 	root := repoRoot(t)
 	fixturesDir := filepath.Join(root, "testdata", "ml")
+	if _, err := os.Stat(fixturesDir); os.IsNotExist(err) {
+		t.Skip("testdata/ml fixtures not present; run make fraudtrain-check locally")
+	}
 	entries, err := os.ReadDir(fixturesDir)
 	require.NoError(t, err)
 

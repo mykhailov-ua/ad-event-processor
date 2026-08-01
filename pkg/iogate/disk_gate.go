@@ -46,6 +46,16 @@ func DefaultConfig() Config {
 	}
 }
 
+// TestGateConfig returns relaxed limits for WAL/region-proxy unit tests under parallel -short.
+func TestGateConfig() Config {
+	return Config{
+		AppendCapacity:      256,
+		DiskLatencyBudget:   time.Hour,
+		GroupCommitRecords:  64,
+		GroupCommitInterval: 25 * time.Millisecond,
+	}
+}
+
 func diskLatencyBudgetFromEnv() time.Duration {
 	raw := os.Getenv(envDiskLatencyBudgetMS)
 	if raw == "" {
