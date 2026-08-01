@@ -99,12 +99,12 @@ func TestSupplyAPI_CRUDAndExport(t *testing.T) {
 	customerID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, customerID, "Supply Co", 200_000_000, "USD"))
 	campID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
-		CustomerID:     customerID,
-		Name:           "Chain Camp",
-		BudgetLimitMicro:    10_000_000,
-		PacingMode:     "ASAP",
-		Timezone:       "UTC",
-		IdempotencyKey: "supply-chain-test",
+		CustomerID:       customerID,
+		Name:             "Chain Camp",
+		BudgetLimitMicro: 10_000_000,
+		PacingMode:       "ASAP",
+		Timezone:         "UTC",
+		IdempotencyKey:   "supply-chain-test",
 	})
 	require.NoError(t, err)
 

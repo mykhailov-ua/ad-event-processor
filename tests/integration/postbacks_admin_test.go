@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"testing"
-	"time"
 
 	"espx/internal/controlplane/adminapi"
 	db "espx/internal/domain/db"
@@ -30,60 +29,16 @@ func TestPostbacksAdminAPIIntegration(t *testing.T) {
 	dbPool, cleanupDB := testutil.SetupPostgres(t, cfgPostgres)
 	defer cleanupDB()
 
-	limitsRaw := `{"max_active_campaigns": 50, "max_rps": 10000, "max_requests_per_day": 500000, "max_events_per_month": 10000, "max_regions": 1, "max_api_keys": 2, "max_export_chunk_bytes": 1048576, "quota_reset_timezone": "UTC"}`
-	featuresRaw := `{"rtb_live": false, "ml_fraud_boost": false, "multi_region": false, "slot_migration": false}`
-
-	_, err := dbPool.Exec(ctx, `
-		INSERT INTO billing.subscription_plans (code, display_name, limits_json, features_json, base_fee_micro)
-		VALUES 
-			('basic', 'Basic Plan', $1, $2, 10000000),
-			('pro', 'Pro Plan', $1, $2, 50000000)
-		ON CONFLICT (code) DO UPDATE SET
-			display_name = EXCLUDED.display_name,
-			limits_json = EXCLUDED.limits_json,
-			features_json = EXCLUDED.features_json,
-			base_fee_micro = EXCLUDED.base_fee_micro
-	`, []byte(limitsRaw), []byte(featuresRaw))
+	customerID := uuid.New()
+	_, err := dbPool.Exec(ctx, "INSERT INTO customers (id, name, balance, currency) VALUES ($1, $2, 0, 'USD')", customerID, "Customer")
 	require.NoError(t, err)
 
-	customerBasic := uuid.New()
-	customerPro := uuid.New()
-
-	customers := []struct {
-		id   uuid.UUID
-		name string
-		plan string
-	}{
-		{customerBasic, "Basic Customer", "basic"},
-		{customerPro, "Pro Customer", "pro"},
-	}
-
-	for _, c := range customers {
-		_, err = dbPool.Exec(ctx, "INSERT INTO customers (id, name, balance, currency) VALUES ($1, $2, 0, 'USD')", c.id, c.name)
-		require.NoError(t, err)
-
-		_, err = dbPool.Exec(ctx, `
-			INSERT INTO billing.customer_subscriptions (customer_id, plan_code, status, period_start)
-			VALUES ($1, $2, 'active', $3)
-		`, c.id, c.plan, time.Now().Add(-2*time.Hour))
-		require.NoError(t, err)
-	}
-
-	campaignBasicID := uuid.New()
+	campaignID := uuid.New()
 	_, err = dbPool.Exec(ctx, `
 		INSERT INTO campaigns (id, name, status, customer_id)
-		VALUES ($1, 'Basic Campaign', 'ACTIVE', $2)`,
-		campaignBasicID,
-		customerBasic,
-	)
-	require.NoError(t, err)
-
-	campaignProID := uuid.New()
-	_, err = dbPool.Exec(ctx, `
-		INSERT INTO campaigns (id, name, status, customer_id)
-		VALUES ($1, 'Pro Campaign', 'ACTIVE', $2)`,
-		campaignProID,
-		customerPro,
+		VALUES ($1, 'Campaign', 'ACTIVE', $2)`,
+		campaignID,
+		customerID,
 	)
 	require.NoError(t, err)
 
@@ -105,18 +60,13 @@ func TestPostbacksAdminAPIIntegration(t *testing.T) {
 	bodyBytes, err := json.Marshal(configReq)
 	require.NoError(t, err)
 
-	req := httptest.NewRequest("PUT", "/api/v1/postbacks/config/"+campaignBasicID.String(), bytes.NewReader(bodyBytes))
+	req := httptest.NewRequest("PUT", "/api/v1/postbacks/config/"+campaignID.String(), bytes.NewReader(bodyBytes))
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, req)
-	require.Equal(t, http.StatusForbidden, rec.Code)
-
-	req = httptest.NewRequest("PUT", "/api/v1/postbacks/config/"+campaignProID.String(), bytes.NewReader(bodyBytes))
-	rec = httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
 
 	q := db.New(dbPool)
-	configEntry, err := q.GetPostbackConfig(ctx, pgtype.UUID{Bytes: campaignProID, Valid: true})
+	configEntry, err := q.GetPostbackConfig(ctx, pgtype.UUID{Bytes: campaignID, Valid: true})
 	require.NoError(t, err)
 	require.Equal(t, "facebook", configEntry.Provider)
 	require.Equal(t, "https://mock.com", configEntry.UrlTemplate)
@@ -130,11 +80,11 @@ func TestPostbacksAdminAPIIntegration(t *testing.T) {
 	err = json.NewDecoder(rec.Body).Decode(&configs)
 	require.NoError(t, err)
 	require.Len(t, configs, 1)
-	require.Equal(t, campaignProID.String(), configs[0].CampaignID)
+	require.Equal(t, campaignID.String(), configs[0].CampaignID)
 
 	_, err = q.InsertPostbackDLQ(ctx, db.InsertPostbackDLQParams{
 		OutboxEventID: 1001,
-		CampaignID:    pgtype.UUID{Bytes: campaignProID, Valid: true},
+		CampaignID:    pgtype.UUID{Bytes: campaignID, Valid: true},
 		ClickID:       "click_dlq_abc",
 		EventType:     "conversion",
 		Payload:       []byte(`{"click_id": "click_dlq_abc"}`),

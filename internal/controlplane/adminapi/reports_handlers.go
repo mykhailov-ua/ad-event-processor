@@ -8,14 +8,11 @@ import (
 	"time"
 
 	"espx/internal/database"
-	"espx/internal/ledger/db"
 	"espx/pkg/coldpath"
 	"espx/pkg/httpresponse"
 	"espx/pkg/money"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -264,21 +261,6 @@ func (reports *ReportsHTTPHandlers) writeServiceError(w http.ResponseWriter, err
 	httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error")
 }
 
-func (reports *ReportsHTTPHandlers) checkTierGate(r *http.Request, customerID uuid.UUID) (bool, error) {
-	if reports.Pool == nil {
-		return true, nil
-	}
-	q := db.New(reports.Pool)
-	sub, err := q.GetCustomerSubscription(r.Context(), pgtype.UUID{Bytes: customerID, Valid: true})
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return false, nil
-		}
-		return false, err
-	}
-	return sub.PlanCode == "pro" || sub.PlanCode == "enterprise", nil
-}
-
 func (reports *ReportsHTTPHandlers) reportFreshness(ctx context.Context) DataFreshnessDTO {
 	dto := DataFreshnessDTO{
 		AsOf:        time.Now().UTC().Format(time.RFC3339),
@@ -317,16 +299,6 @@ func (reports *ReportsHTTPHandlers) getPlacementsReport(w http.ResponseWriter, r
 
 	if customerID == uuid.Nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "customer_id required")
-		return
-	}
-
-	allowed, err := reports.checkTierGate(r, customerID)
-	if err != nil {
-		reports.writeServiceError(w, err)
-		return
-	}
-	if !allowed {
-		httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "Pro or Enterprise plan required")
 		return
 	}
 
@@ -429,16 +401,6 @@ func (reports *ReportsHTTPHandlers) getKeywordsReport(w http.ResponseWriter, r *
 		return
 	}
 
-	allowed, err := reports.checkTierGate(r, customerID)
-	if err != nil {
-		reports.writeServiceError(w, err)
-		return
-	}
-	if !allowed {
-		httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "Pro or Enterprise plan required")
-		return
-	}
-
 	if reports.CHQuery == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "CLICKHOUSE_UNAVAILABLE", "clickhouse not configured")
 		return
@@ -452,7 +414,7 @@ func (reports *ReportsHTTPHandlers) getKeywordsReport(w http.ResponseWriter, r *
 
 	limit := int32(10)
 	if lStr := r.URL.Query().Get("limit"); lStr != "" {
-		if l, err := strconv.Atoi(lStr); err == nil && l > 0 {
+		if l, parseErr := strconv.Atoi(lStr); parseErr == nil && l > 0 {
 			limit = int32(l)
 		}
 	}
@@ -466,8 +428,8 @@ func (reports *ReportsHTTPHandlers) getKeywordsReport(w http.ResponseWriter, r *
 
 	var campaignIDs []uuid.UUID
 	if campaignIDStr := r.URL.Query().Get("campaign_id"); campaignIDStr != "" {
-		campaignID, err := uuid.Parse(campaignIDStr)
-		if err != nil {
+		campaignID, parseErr := uuid.Parse(campaignIDStr)
+		if parseErr != nil {
 			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign_id")
 			return
 		}

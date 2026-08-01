@@ -62,12 +62,12 @@ func TestFault_APITenantIsolation(t *testing.T) {
 	attackerID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, victimID, "Victim", apiFaultVictimBalance, "USD"))
 	campID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
-		CustomerID:     victimID,
-		Name:           "Secret",
-		BudgetLimitMicro:    99_000_000,
-		PacingMode:     "ASAP",
-		Timezone:       "UTC",
-		IdempotencyKey: "fault-tenant-camp",
+		CustomerID:       victimID,
+		Name:             "Secret",
+		BudgetLimitMicro: 99_000_000,
+		PacingMode:       "ASAP",
+		Timezone:         "UTC",
+		IdempotencyKey:   "fault-tenant-camp",
 	})
 	require.NoError(t, err)
 
@@ -152,12 +152,12 @@ func TestFault_APIChLagStaleOK(t *testing.T) {
 	custID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, custID, "CH lag", 500_000_000, "USD"))
 	campID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
-		CustomerID:     custID,
-		Name:           "Lag Camp",
-		BudgetLimitMicro:    100_000_000,
-		PacingMode:     "ASAP",
-		Timezone:       "UTC",
-		IdempotencyKey: "fault-ch-lag",
+		CustomerID:       custID,
+		Name:             "Lag Camp",
+		BudgetLimitMicro: 100_000_000,
+		PacingMode:       "ASAP",
+		Timezone:         "UTC",
+		IdempotencyKey:   "fault-ch-lag",
 	})
 	require.NoError(t, err)
 

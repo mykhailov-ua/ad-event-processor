@@ -226,4 +226,3 @@ func (dashboards *DashboardsHTTPHandlers) getOperatorDashboard(w http.ResponseWr
 	}
 	httpresponse.JSON(w, http.StatusOK, resp)
 }
-

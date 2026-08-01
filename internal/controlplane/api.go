@@ -316,6 +316,9 @@ func mapServiceError(err error) (status int, code, message string) {
 	if errors.Is(err, errForbidden) {
 		return http.StatusForbidden, "FORBIDDEN", "forbidden"
 	}
+	if errors.Is(err, ErrInstallTokenInvalid) {
+		return http.StatusUnauthorized, "UNAUTHORIZED", ErrInstallTokenInvalid.Error()
+	}
 
 	if errors.Is(err, ErrSelfServeActiveCampaignLimit) || errors.Is(err, ErrSelfServeDailyCreateLimit) {
 		return http.StatusTooManyRequests, "LIMIT_EXCEEDED", err.Error()
@@ -366,7 +369,9 @@ func isNotFoundError(err error) bool {
 }
 
 func isConflictError(err error) bool {
-	return errors.Is(err, ErrSlotMigrationNotReady) || errors.Is(err, domain.ErrSlotMapAlreadyActive)
+	return errors.Is(err, ErrSlotMigrationNotReady) ||
+		errors.Is(err, domain.ErrSlotMapAlreadyActive) ||
+		errors.Is(err, ErrPlatformConfigBootstrapped)
 }
 
 func conflictMessage(err error) string {
@@ -416,7 +421,8 @@ func badRequestMessage(err error) (string, bool) {
 		errors.Is(err, errExportLimit),
 		errors.Is(err, domain.ErrSlotMapIncomplete),
 		errors.Is(err, domain.ErrSlotMapInvalidSlot),
-		errors.Is(err, domain.ErrSlotMapInvalidShard):
+		errors.Is(err, domain.ErrSlotMapInvalidShard),
+		errors.Is(err, ErrPlatformConfigNotBootstrapped):
 		return err.Error(), true
 	default:
 		return "", false

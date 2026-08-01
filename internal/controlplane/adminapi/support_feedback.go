@@ -17,7 +17,6 @@ import (
 type SupportFeedbackMeta struct {
 	DeploymentID  string `json:"deployment_id"`
 	BinaryVersion string `json:"binary_version"`
-	SKU           string `json:"sku"`
 }
 
 type SupportFeedbackRecorder interface {
@@ -34,7 +33,6 @@ type SupportFeedbackRecord struct {
 	SubmitterID   uuid.UUID
 	DeploymentID  string
 	BinaryVersion string
-	SKU           string
 }
 
 type SupportHTTPHandlers struct {
@@ -105,7 +103,6 @@ func (h *SupportHTTPHandlers) postSupportFeedback(w http.ResponseWriter, r *http
 		AttachBundle:  req.AttachBundle,
 		DeploymentID:  meta.DeploymentID,
 		BinaryVersion: meta.BinaryVersion,
-		SKU:           meta.SKU,
 	}
 	if req.AttachBundle {
 		if h.SupportBundle == nil {

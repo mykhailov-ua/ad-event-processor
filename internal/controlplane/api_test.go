@@ -44,12 +44,12 @@ func TestAPI_GetCampaignStats_PostgresOnly(t *testing.T) {
 	custID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(context.Background(), custID, "API Stats", 500_000_000, "USD"))
 	campID, err := svc.CreateCampaign(context.Background(), CampaignCreateSpec{
-		CustomerID:     custID,
-		Name:           "Stats Camp",
-		BudgetLimitMicro:    100_000_000,
-		PacingMode:     "ASAP",
-		Timezone:       "UTC",
-		IdempotencyKey: "stats-camp-1",
+		CustomerID:       custID,
+		Name:             "Stats Camp",
+		BudgetLimitMicro: 100_000_000,
+		PacingMode:       "ASAP",
+		Timezone:         "UTC",
+		IdempotencyKey:   "stats-camp-1",
 	})
 	require.NoError(t, err)
 
@@ -108,12 +108,12 @@ func TestAPI_GetCampaignStats_TenantIsolation(t *testing.T) {
 	otherID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(context.Background(), ownerID, "Owner", 500_000_000, "USD"))
 	campID, err := svc.CreateCampaign(context.Background(), CampaignCreateSpec{
-		CustomerID:     ownerID,
-		Name:           "Private",
-		BudgetLimitMicro:    50_000_000,
-		PacingMode:     "ASAP",
-		Timezone:       "UTC",
-		IdempotencyKey: "stats-camp-iso",
+		CustomerID:       ownerID,
+		Name:             "Private",
+		BudgetLimitMicro: 50_000_000,
+		PacingMode:       "ASAP",
+		Timezone:         "UTC",
+		IdempotencyKey:   "stats-camp-iso",
 	})
 	require.NoError(t, err)
 
@@ -153,12 +153,12 @@ func TestAPI_GetCampaignStats_ClickHouseStaleOK(t *testing.T) {
 	custID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(context.Background(), custID, "CH Stats", 500_000_000, "USD"))
 	campID, err := svc.CreateCampaign(context.Background(), CampaignCreateSpec{
-		CustomerID:     custID,
-		Name:           "CH Camp",
-		BudgetLimitMicro:    100_000_000,
-		PacingMode:     "ASAP",
-		Timezone:       "UTC",
-		IdempotencyKey: "stats-ch-1",
+		CustomerID:       custID,
+		Name:             "CH Camp",
+		BudgetLimitMicro: 100_000_000,
+		PacingMode:       "ASAP",
+		Timezone:         "UTC",
+		IdempotencyKey:   "stats-ch-1",
 	})
 	require.NoError(t, err)
 

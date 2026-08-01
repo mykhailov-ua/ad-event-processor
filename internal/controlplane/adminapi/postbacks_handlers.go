@@ -44,21 +44,6 @@ func (postbacks *PostbackHTTPHandlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/postbacks/dlq/{id}/retry", limit(perm("campaigns:write", postbacks.retryDLQ)))
 }
 
-func (postbacks *PostbackHTTPHandlers) checkTierGate(r *http.Request, customerID uuid.UUID) (bool, error) {
-	if postbacks.Pool == nil {
-		return true, nil
-	}
-	var planCode string
-	err := postbacks.Pool.QueryRow(r.Context(), "SELECT plan_code FROM billing.customer_subscriptions WHERE customer_id = $1", customerID).Scan(&planCode)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return false, nil
-		}
-		return false, err
-	}
-	return strings.ToLower(planCode) == "pro" || strings.ToLower(planCode) == "enterprise", nil
-}
-
 type PostbackConfigDTO struct {
 	CampaignID  string `json:"campaign_id"`
 	Provider    string `json:"provider"`
@@ -67,20 +52,6 @@ type PostbackConfigDTO struct {
 }
 
 func (postbacks *PostbackHTTPHandlers) getPostbacksConfig(w http.ResponseWriter, r *http.Request) {
-	if custIDStr := r.URL.Query().Get("customer_id"); custIDStr != "" {
-		if custID, err := uuid.Parse(custIDStr); err == nil {
-			allowed, err := postbacks.checkTierGate(r, custID)
-			if err != nil {
-				httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
-				return
-			}
-			if !allowed {
-				httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "Pro or Enterprise plan required")
-				return
-			}
-		}
-	}
-
 	q := db.New(postbacks.Pool)
 	configs, err := q.ListPostbackConfigs(r.Context())
 	if err != nil {
@@ -134,49 +105,14 @@ func (postbacks *PostbackHTTPHandlers) updatePostbackConfig(w http.ResponseWrite
 	}
 
 	q := db.New(postbacks.Pool)
-	campaign, err := q.GetCampaign(r.Context(), pgtype.UUID{Bytes: campaignID, Valid: true})
+	_, err = q.GetCampaign(r.Context(), pgtype.UUID{Bytes: campaignID, Valid: true})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			if customerIDStr := r.URL.Query().Get("customer_id"); customerIDStr != "" {
-				if custID, parseErr := uuid.Parse(customerIDStr); parseErr == nil {
-					allowed, gateErr := postbacks.checkTierGate(r, custID)
-					if gateErr != nil {
-						httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", gateErr.Error())
-						return
-					}
-					if allowed {
-						goto skipCheck
-					}
-				}
-			}
 			httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "campaign not found")
 			return
 		}
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
-	}
-skipCheck:
-
-	var custID uuid.UUID
-	if campaign.CustomerID.Valid {
-		custID = campaign.CustomerID.Bytes
-	} else if r.URL.Query().Get("customer_id") != "" {
-		custID, _ = uuid.Parse(r.URL.Query().Get("customer_id"))
-	}
-
-	if custID != uuid.Nil {
-		allowed, err := postbacks.checkTierGate(r, custID)
-		if err != nil {
-			httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
-			return
-		}
-		if !allowed {
-			httpcall := r.URL.Query().Get("customer_id_bypass")
-			if httpcall == "" {
-				httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "Pro or Enterprise plan required")
-				return
-			}
-		}
 	}
 
 	var encryptedToken []byte

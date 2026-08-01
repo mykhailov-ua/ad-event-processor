@@ -24,11 +24,10 @@ type MetaResponseDTO struct {
 	Version        string          `json:"version"`
 	IngressSchemas []string        `json:"ingress_schemas"`
 	DeploymentID   string          `json:"deployment_id,omitempty"`
-	SKU            string          `json:"sku,omitempty"`
 	License        *MetaLicenseDTO `json:"license,omitempty"`
 }
 
-type MetaEnricher func(ctx context.Context) (deploymentID, sku string, license *MetaLicenseDTO, err error)
+type MetaEnricher func(ctx context.Context) (deploymentID string, license *MetaLicenseDTO, err error)
 
 type MetaHTTPHandlers struct {
 	ApplyRateLimit func(http.HandlerFunc) http.HandlerFunc
@@ -56,7 +55,7 @@ func (h *MetaHTTPHandlers) getMeta(w http.ResponseWriter, r *http.Request) {
 		IngressSchemas: config.SupportedIngressSchemas(),
 	}
 	if h.Enrich != nil {
-		deploymentID, sku, license, err := h.Enrich(r.Context())
+		deploymentID, license, err := h.Enrich(r.Context())
 		if err != nil {
 			if h.WriteError != nil {
 				h.WriteError(w, err)
@@ -66,7 +65,6 @@ func (h *MetaHTTPHandlers) getMeta(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		resp.DeploymentID = deploymentID
-		resp.SKU = sku
 		resp.License = license
 	}
 	httpresponse.JSON(w, http.StatusOK, resp)

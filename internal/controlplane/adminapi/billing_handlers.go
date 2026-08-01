@@ -994,7 +994,9 @@ func (h *BillingHTTPHandlers) exportCustomerBalance(w http.ResponseWriter, r *ht
 		w.Header().Set("X-Next-Cursor", strconv.FormatInt(result.NextCursor, 10))
 	}
 	w.Header().Set("X-Export-Bytes", strconv.Itoa(result.Bytes))
-	_, _ = w.Write(buf.Bytes())
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		return
+	}
 }
 
 func (h *BillingHTTPHandlers) authorizeCustomer(r *http.Request, customerID string) error {

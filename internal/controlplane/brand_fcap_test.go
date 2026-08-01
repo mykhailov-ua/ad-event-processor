@@ -68,32 +68,32 @@ func TestBrandFrequencyCapping(t *testing.T) {
 	assert.Equal(t, int64(1), outboxCount)
 
 	campAID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
-		CustomerID:      custID,
-		BrandID:         &brandID,
-		Name:            "Air Max Run",
-		BudgetLimitMicro:     100_000_000,
-		DailyBudgetMicro:     10_000_000,
-		PacingMode:      string(db.PacingModeTypeASAP),
-		Timezone:        "UTC",
-		FreqLimit:       2,
-		FreqWindow:      3600,
-		TargetCountries: []string{"US"},
-		IdempotencyKey:  "brand-fcap-camp-a",
+		CustomerID:       custID,
+		BrandID:          &brandID,
+		Name:             "Air Max Run",
+		BudgetLimitMicro: 100_000_000,
+		DailyBudgetMicro: 10_000_000,
+		PacingMode:       string(db.PacingModeTypeASAP),
+		Timezone:         "UTC",
+		FreqLimit:        2,
+		FreqWindow:       3600,
+		TargetCountries:  []string{"US"},
+		IdempotencyKey:   "brand-fcap-camp-a",
 	})
 	require.NoError(t, err)
 
 	campBID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
-		CustomerID:      custID,
-		BrandID:         &brandID,
-		Name:            "Air Max Walk",
-		BudgetLimitMicro:     150_000_000,
-		DailyBudgetMicro:     15_000_000,
-		PacingMode:      string(db.PacingModeTypeASAP),
-		Timezone:        "UTC",
-		FreqLimit:       2,
-		FreqWindow:      3600,
-		TargetCountries: []string{"US"},
-		IdempotencyKey:  "brand-fcap-camp-b",
+		CustomerID:       custID,
+		BrandID:          &brandID,
+		Name:             "Air Max Walk",
+		BudgetLimitMicro: 150_000_000,
+		DailyBudgetMicro: 15_000_000,
+		PacingMode:       string(db.PacingModeTypeASAP),
+		Timezone:         "UTC",
+		FreqLimit:        2,
+		FreqWindow:       3600,
+		TargetCountries:  []string{"US"},
+		IdempotencyKey:   "brand-fcap-camp-b",
 	})
 	require.NoError(t, err)
 

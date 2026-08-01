@@ -41,7 +41,6 @@ func TestSupportFeedbackMeta_handler(t *testing.T) {
 		meta: SupportFeedbackMeta{
 			DeploymentID:  "dep-1",
 			BinaryVersion: "1.2.3",
-			SKU:           "pro",
 		},
 	}
 	h := &SupportHTTPHandlers{Feedback: rec}
@@ -59,7 +58,7 @@ func TestSupportFeedbackMeta_handler(t *testing.T) {
 	if err := json.Unmarshal(recorder.Body.Bytes(), &got); err != nil {
 		t.Fatal(err)
 	}
-	if got.DeploymentID != "dep-1" || got.BinaryVersion != "1.2.3" || got.SKU != "pro" {
+	if got.DeploymentID != "dep-1" || got.BinaryVersion != "1.2.3" {
 		t.Fatalf("meta=%+v", got)
 	}
 }

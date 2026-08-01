@@ -7,14 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/ledger/db"
 	"espx/pkg/coldpath"
 	"espx/pkg/httpresponse"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type SavedViewDTO struct {
@@ -136,7 +132,6 @@ func (s *Service) DeleteView(id string) error {
 
 type ViewsHTTPHandlers struct {
 	Service           *Service
-	Pool              *pgxpool.Pool
 	ApplyRateLimit    func(http.HandlerFunc) http.HandlerFunc
 	RequirePermission func(string, http.HandlerFunc) http.HandlerFunc
 }
@@ -161,40 +156,14 @@ func (viewHandlers *ViewsHTTPHandlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/v1/views/{id}", limit(perm("campaigns:write", viewHandlers.deleteView)))
 }
 
-func (viewHandlers *ViewsHTTPHandlers) checkTierGate(r *http.Request, customerID uuid.UUID) (bool, error) {
-	if viewHandlers.Pool == nil {
-		return true, nil
-	}
-	q := db.New(viewHandlers.Pool)
-	sub, err := q.GetCustomerSubscription(r.Context(), pgtype.UUID{Bytes: customerID, Valid: true})
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return false, nil
-		}
-		return false, err
-	}
-	return sub.PlanCode == "enterprise", nil
-}
-
 func (viewHandlers *ViewsHTTPHandlers) createView(w http.ResponseWriter, r *http.Request) {
 	req, err := coldpath.DecodeRequest[CreateViewRequest](w, r, coldpath.DefaultMaxBody)
 	if err != nil {
 		return
 	}
 
-	customerID, err := uuid.Parse(req.CustomerID)
-	if err != nil {
+	if _, err := uuid.Parse(req.CustomerID); err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer_id")
-		return
-	}
-
-	allowed, err := viewHandlers.checkTierGate(r, customerID)
-	if err != nil {
-		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
-		return
-	}
-	if !allowed {
-		httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "Enterprise plan required")
 		return
 	}
 
@@ -215,19 +184,8 @@ func (viewHandlers *ViewsHTTPHandlers) listViews(w http.ResponseWriter, r *http.
 		return
 	}
 
-	customerID, err := uuid.Parse(custIDStr)
-	if err != nil {
+	if _, err := uuid.Parse(custIDStr); err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer_id")
-		return
-	}
-
-	allowed, err := viewHandlers.checkTierGate(r, customerID)
-	if err != nil {
-		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
-		return
-	}
-	if !allowed {
-		httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "Enterprise plan required")
 		return
 	}
 
@@ -262,17 +220,6 @@ func (viewHandlers *ViewsHTTPHandlers) getView(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	customerID, _ := uuid.Parse(view.CustomerID)
-	allowed, err := viewHandlers.checkTierGate(r, customerID)
-	if err != nil {
-		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
-		return
-	}
-	if !allowed {
-		httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "Enterprise plan required")
-		return
-	}
-
 	httpresponse.JSON(w, http.StatusOK, view)
 }
 
@@ -293,24 +240,12 @@ func (viewHandlers *ViewsHTTPHandlers) updateView(w http.ResponseWriter, r *http
 		return
 	}
 
-	existing, err := viewHandlers.Service.GetView(id)
-	if err != nil {
+	if _, err := viewHandlers.Service.GetView(id); err != nil {
 		if errors.Is(err, ErrViewNotFound) {
 			httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "view not found")
 			return
 		}
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
-		return
-	}
-
-	customerID, _ := uuid.Parse(existing.CustomerID)
-	allowed, err := viewHandlers.checkTierGate(r, customerID)
-	if err != nil {
-		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
-		return
-	}
-	if !allowed {
-		httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "Enterprise plan required")
 		return
 	}
 
@@ -335,8 +270,7 @@ func (viewHandlers *ViewsHTTPHandlers) deleteView(w http.ResponseWriter, r *http
 		return
 	}
 
-	existing, err := viewHandlers.Service.GetView(id)
-	if err != nil {
+	if _, err := viewHandlers.Service.GetView(id); err != nil {
 		if errors.Is(err, ErrViewNotFound) {
 			httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "view not found")
 			return
@@ -345,19 +279,7 @@ func (viewHandlers *ViewsHTTPHandlers) deleteView(w http.ResponseWriter, r *http
 		return
 	}
 
-	customerID, _ := uuid.Parse(existing.CustomerID)
-	allowed, err := viewHandlers.checkTierGate(r, customerID)
-	if err != nil {
-		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
-		return
-	}
-	if !allowed {
-		httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "Enterprise plan required")
-		return
-	}
-
-	err = viewHandlers.Service.DeleteView(id)
-	if err != nil {
+	if err := viewHandlers.Service.DeleteView(id); err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}

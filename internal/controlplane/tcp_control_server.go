@@ -32,6 +32,7 @@ func NewTCPControlServer(cfg *config.Config, pool *pgxpool.Pool, sharder domain.
 		sharder:   sharder,
 		secret:    []byte(cfg.TCPControlHMACSecret),
 		numShards: numShards,
+		connSem:   make(chan struct{}, tcpControlMaxConcurrent),
 	}
 }
 

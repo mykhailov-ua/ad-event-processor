@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-
-	"espx/internal/ledger/plansyaml"
 )
 
 type DLQRetryPayload struct {
@@ -146,11 +144,6 @@ type ConsentVerifier interface {
 type RolesReloader interface {
 	ReloadRoles() error
 	RolesPath() string
-}
-
-type PlansReloader interface {
-	ReloadPlans(ctx context.Context, dryRun bool) (plansyaml.ReloadReport, error)
-	PlansPath() string
 }
 
 type FraudThreatEnqueuer interface {

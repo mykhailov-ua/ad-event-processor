@@ -32,7 +32,6 @@ type OpsHTTPHandlers struct {
 	ConsentVerifier         ConsentVerifier
 	AuditLister             AuditLister
 	RolesReloader           RolesReloader
-	PlansReloader           PlansReloader
 	Blacklist               BlacklistAdmin
 	FraudThreat             FraudThreatEnqueuer
 	ApplyRateLimit          func(http.HandlerFunc) http.HandlerFunc
@@ -66,7 +65,6 @@ func (ops *OpsHTTPHandlers) Register(mux *http.ServeMux) {
 	ops.registerConsentRoutes(mux)
 	ops.registerAuditRoutes(mux)
 	ops.registerRolesRoutes(mux)
-	ops.registerPlansRoutes(mux)
 	ops.registerBlacklistRoutes(mux)
 	ops.registerFraudThreatRoutes(mux)
 	ops.registerDashboardRoutes(mux)
@@ -439,36 +437,6 @@ func (h *OpsHTTPHandlers) reloadRoles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, map[string]string{"status": "reloaded", "path": h.RolesReloader.RolesPath()})
-}
-
-func (h *OpsHTTPHandlers) registerPlansRoutes(mux *http.ServeMux) {
-	if h.PlansReloader == nil {
-		return
-	}
-	limit := h.ApplyRateLimit
-	perm := h.RequirePermission
-	if limit == nil {
-		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
-	}
-	if perm == nil {
-		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
-	}
-	mux.HandleFunc("POST /api/v1/ops/plans/reload", limit(perm("ops:write", h.reloadPlans)))
-}
-
-func (h *OpsHTTPHandlers) reloadPlans(w http.ResponseWriter, r *http.Request) {
-	if h.PlansReloader == nil {
-		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "plans reloader not configured")
-		return
-	}
-	dryRun := r.URL.Query().Get("dry_run") == "1" || r.Header.Get("X-Dry-Run") == "1"
-	report, err := h.PlansReloader.ReloadPlans(r.Context(), dryRun)
-	if err != nil {
-		slog.Error("plans reload failed", "err", err)
-		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
-		return
-	}
-	httpresponse.JSON(w, http.StatusOK, report)
 }
 
 func (h *OpsHTTPHandlers) registerFraudThreatRoutes(mux *http.ServeMux) {

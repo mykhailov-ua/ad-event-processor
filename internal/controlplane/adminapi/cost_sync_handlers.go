@@ -2,9 +2,7 @@ package adminapi
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
-	"strings"
 	"time"
 
 	"espx/internal/costsync"
@@ -13,7 +11,6 @@ import (
 	"espx/pkg/httpresponse"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -147,16 +144,6 @@ func (costSync *CostSyncHTTPHandlers) upsertCredential(w http.ResponseWriter, r 
 	custID, err := uuid.Parse(req.CustomerID)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer_id")
-		return
-	}
-
-	allowed, err := costSync.checkProTier(r, custID)
-	if err != nil {
-		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
-		return
-	}
-	if !allowed {
-		httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "Pro or Enterprise plan required")
 		return
 	}
 
@@ -307,19 +294,4 @@ func (costSync *CostSyncHTTPHandlers) listHistory(w http.ResponseWriter, r *http
 		dtos = append(dtos, dto)
 	}
 	httpresponse.JSON(w, http.StatusOK, dtos)
-}
-
-func (costSync *CostSyncHTTPHandlers) checkProTier(r *http.Request, customerID uuid.UUID) (bool, error) {
-	if costSync.Pool == nil {
-		return true, nil
-	}
-	var planCode string
-	err := costSync.Pool.QueryRow(r.Context(), "SELECT plan_code FROM billing.customer_subscriptions WHERE customer_id = $1", customerID).Scan(&planCode)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return false, nil
-		}
-		return false, err
-	}
-	return strings.ToLower(planCode) == "pro" || strings.ToLower(planCode) == "enterprise", nil
 }

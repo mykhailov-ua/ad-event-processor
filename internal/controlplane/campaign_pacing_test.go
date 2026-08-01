@@ -48,16 +48,16 @@ func TestManagementAPI_CampaignPacing(t *testing.T) {
 	require.NoError(t, err)
 
 	campID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
-		CustomerID:      custID,
-		Name:            "Spring Sale Pacing",
-		BudgetLimitMicro:     100_000_000,
-		PacingMode:      string(db.PacingModeTypeEVEN),
-		DailyBudgetMicro:     10_000_000,
-		Timezone:        "UTC",
-		FreqLimit:       5,
-		FreqWindow:      3600,
-		TargetCountries: []string{"US", "GB"},
-		IdempotencyKey:  "idemp-camp-pacing-1",
+		CustomerID:       custID,
+		Name:             "Spring Sale Pacing",
+		BudgetLimitMicro: 100_000_000,
+		PacingMode:       string(db.PacingModeTypeEVEN),
+		DailyBudgetMicro: 10_000_000,
+		Timezone:         "UTC",
+		FreqLimit:        5,
+		FreqWindow:       3600,
+		TargetCountries:  []string{"US", "GB"},
+		IdempotencyKey:   "idemp-camp-pacing-1",
 	})
 	require.NoError(t, err)
 

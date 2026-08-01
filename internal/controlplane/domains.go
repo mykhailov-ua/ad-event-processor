@@ -52,7 +52,8 @@ var ManagementDomains = []Domain{
 		"repository_", "registry_", "platform_", "supply_export",
 	}, Files: []string{
 		"policy_init.go", "telemetry_pulse.go", "vendor_telemetry.go",
-		"control_fanout.go", "service_platform.go", "workers.go",
+		"control_fanout.go", "service_platform.go", "service_platform_config.go",
+		"ch_query_context.go", "workers.go",
 	}, LogicFiles: []string{"api_errors.go"}, TestPrefixes: []string{
 		"service_platform", "service_system", "service_autoscaling", "api_errors",
 		"credit_", "consent_", "emergency_", "platform_", "pg_failover",

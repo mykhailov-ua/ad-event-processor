@@ -39,14 +39,14 @@ func TestRunVPPPacingController_writesRedisRatio(t *testing.T) {
 	require.NoError(t, svc.CreateCustomer(ctx, customerID, "VPP Customer", 1_000_000_000, "USD"))
 
 	campaignID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
-		CustomerID:     customerID,
-		Name:           "VPP Campaign",
-		BudgetLimitMicro:    100_000_000,
-		PacingMode:     string(db.PacingModeTypeVPP),
-		DailyBudgetMicro:    100_000_000,
-		Timezone:       "UTC",
-		FreqWindow:     86400,
-		IdempotencyKey: "vpp-controller-idem",
+		CustomerID:       customerID,
+		Name:             "VPP Campaign",
+		BudgetLimitMicro: 100_000_000,
+		PacingMode:       string(db.PacingModeTypeVPP),
+		DailyBudgetMicro: 100_000_000,
+		Timezone:         "UTC",
+		FreqWindow:       86400,
+		IdempotencyKey:   "vpp-controller-idem",
 	})
 	require.NoError(t, err)
 
@@ -86,14 +86,14 @@ func TestRunVPPPacingController_onPaceWritesFullRatio(t *testing.T) {
 	require.NoError(t, svc.CreateCustomer(ctx, customerID, "VPP On-pace", 1_000_000_000, "USD"))
 
 	campaignID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
-		CustomerID:     customerID,
-		Name:           "VPP On Pace",
-		BudgetLimitMicro:    100_000_000,
-		PacingMode:     string(db.PacingModeTypeVPP),
-		DailyBudgetMicro:    100_000_000,
-		Timezone:       "UTC",
-		FreqWindow:     86400,
-		IdempotencyKey: "vpp-onpace-idem",
+		CustomerID:       customerID,
+		Name:             "VPP On Pace",
+		BudgetLimitMicro: 100_000_000,
+		PacingMode:       string(db.PacingModeTypeVPP),
+		DailyBudgetMicro: 100_000_000,
+		Timezone:         "UTC",
+		FreqWindow:       86400,
+		IdempotencyKey:   "vpp-onpace-idem",
 	})
 	require.NoError(t, err)
 
@@ -131,14 +131,14 @@ func TestRunVPPPacingController_skipsNonVPP(t *testing.T) {
 	require.NoError(t, svc.CreateCustomer(ctx, customerID, "EVEN Customer", 1_000_000_000, "USD"))
 
 	campaignID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
-		CustomerID:     customerID,
-		Name:           "EVEN Campaign",
-		BudgetLimitMicro:    100_000_000,
-		PacingMode:     string(db.PacingModeTypeEVEN),
-		DailyBudgetMicro:    100_000_000,
-		Timezone:       "UTC",
-		FreqWindow:     86400,
-		IdempotencyKey: "vpp-skip-idem",
+		CustomerID:       customerID,
+		Name:             "EVEN Campaign",
+		BudgetLimitMicro: 100_000_000,
+		PacingMode:       string(db.PacingModeTypeEVEN),
+		DailyBudgetMicro: 100_000_000,
+		Timezone:         "UTC",
+		FreqWindow:       86400,
+		IdempotencyKey:   "vpp-skip-idem",
 	})
 	require.NoError(t, err)
 

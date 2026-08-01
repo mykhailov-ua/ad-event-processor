@@ -4,11 +4,13 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+
+	"espx/pkg/branding"
 )
 
 var (
 	adminBaseURLMu sync.RWMutex
-	adminBaseURL   = "https://admin.bidshard.com"
+	adminBaseURL   = branding.AdminConsoleURL()
 	ipAddressRegex = regexp.MustCompile(`\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b`)
 )
 
@@ -17,7 +19,7 @@ func SetAdminBaseURL(baseURL string) {
 	defer adminBaseURLMu.Unlock()
 	baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
 	if baseURL == "" {
-		adminBaseURL = "https://admin.bidshard.com"
+		adminBaseURL = branding.AdminConsoleURL()
 		return
 	}
 	adminBaseURL = baseURL

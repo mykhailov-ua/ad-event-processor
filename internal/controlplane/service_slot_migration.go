@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"time"
 
 	"espx/internal/domain"
@@ -49,7 +48,6 @@ func (o *SlotMigrationOrchestrator) tick(ctx context.Context) {
 	migRepo := domain.NewSlotMigrationRepo(o.svc.GetPool())
 	draft, err := migRepo.GetMaxDraftVersionWithMigrating(ctx)
 	if err != nil {
-		slog.Error("slot migration: draft version lookup failed", "err", err)
 		if o.svc.alerter != nil {
 			o.svc.alerter.AlertSlotMigrationError("draft_lookup", err)
 		}
@@ -57,13 +55,11 @@ func (o *SlotMigrationOrchestrator) tick(ctx context.Context) {
 	}
 	if draft > 0 {
 		if err := o.svc.CatchUpDualWriteSlots(ctx, draft); err != nil {
-			slog.Warn("slot migration dual-write catch-up", "version", draft, "err", err)
 			if o.svc.alerter != nil {
 				o.svc.alerter.AlertSlotMigrationError("dual_write_catchup", err)
 			}
 		}
 		if err := o.svc.CopyAllMigratingSlots(ctx, draft); err != nil {
-			slog.Warn("slot migration copy tick", "version", draft, "err", err)
 			if o.svc.alerter != nil {
 				o.svc.alerter.AlertSlotMigrationError("copy", err)
 			}
@@ -73,14 +69,12 @@ func (o *SlotMigrationOrchestrator) tick(ctx context.Context) {
 	mapRepo := domain.NewSlotMapRepo(o.svc.GetPool())
 	active, err := mapRepo.GetActiveVersion(ctx)
 	if err != nil {
-		slog.Error("slot migration: active version lookup failed", "err", err)
 		if o.svc.alerter != nil {
 			o.svc.alerter.AlertSlotMigrationError("active_lookup", err)
 		}
 		return
 	}
 	if err := o.svc.DrainMigratingSlots(ctx, active); err != nil {
-		slog.Warn("slot migration drain tick", "version", active, "err", err)
 		if o.svc.alerter != nil {
 			o.svc.alerter.AlertSlotMigrationError("drain", err)
 		}
@@ -96,8 +90,8 @@ func (o *SlotMigrationOrchestrator) tick(ctx context.Context) {
 }
 
 func (o *SlotMigrationOrchestrator) bumpPendingMigrationFences(ctx context.Context) {
-	if err := o.svc.BumpFencesForPendingMigrations(ctx); err != nil {
-		slog.Warn("slot migration: bump pending fences on start failed", "err", err)
+	if err := o.svc.BumpFencesForPendingMigrations(ctx); err != nil && o.svc.alerter != nil {
+		o.svc.alerter.AlertSlotMigrationError("bump_fences", err)
 	}
 }
 

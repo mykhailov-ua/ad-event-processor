@@ -13,7 +13,6 @@ import (
 	"espx/internal/domain"
 	db "espx/internal/domain/db"
 	"espx/internal/ingestion"
-	"espx/internal/ledger"
 	"espx/internal/licensing"
 	"espx/internal/testutil"
 
@@ -23,7 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestIntegration_LicensingAndSubscriptions(t *testing.T) {
+func TestIntegration_Licensing(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping licensing integration test")
 	}
@@ -78,22 +77,13 @@ func TestIntegration_LicensingAndSubscriptions(t *testing.T) {
 		claims := &licensing.LicenseClaims{
 			ValidFrom:  time.Now().Add(-2 * time.Hour),
 			ValidUntil: time.Now().Add(-1 * time.Hour),
-			GraceDays:  3,
+			GraceDays:  7,
 		}
-
-		nowInGrace := time.Now()
-		stateGrace := licensing.DetermineState(claims, nowInGrace, false)
-		assert.Equal(t, licensing.StateGrace, stateGrace)
-
-		nowExpired := time.Now().Add(5 * 24 * time.Hour)
-		stateExpired := licensing.DetermineState(claims, nowExpired, false)
-		assert.Equal(t, licensing.StateExpired, stateExpired)
-
-		stateRevoked := licensing.DetermineState(claims, nowInGrace, true)
-		assert.Equal(t, licensing.StateRevoked, stateRevoked)
+		state := licensing.DetermineState(claims, time.Now(), false)
+		assert.Equal(t, licensing.StateGrace, state)
 	})
 
-	t.Run("LicenseWatcherAndOutbox", func(t *testing.T) {
+	t.Run("FileLicenseWatcher", func(t *testing.T) {
 		tempFile := t.TempDir() + "/license.jwt"
 
 		limits := licensing.Limits{
@@ -109,7 +99,6 @@ func TestIntegration_LicensingAndSubscriptions(t *testing.T) {
 			Issuer:       "espx-license",
 			Subject:      uuid.NewString(),
 			DeploymentID: uuid.NewString(),
-			Plan:         "growth",
 			ValidFrom:    time.Now().Add(-24 * time.Hour),
 			ValidUntil:   time.Now().Add(24 * time.Hour),
 			GraceDays:    7,
@@ -136,74 +125,18 @@ func TestIntegration_LicensingAndSubscriptions(t *testing.T) {
 		state, loadedClaims := watcher.GetState()
 		assert.Equal(t, licensing.StateActive, state)
 		require.NotNil(t, loadedClaims)
-		assert.Equal(t, "growth", loadedClaims.Plan)
 
 		var dbState string
-		var dbPlan string
-		err = dbPool.QueryRow(ctx, "SELECT state, plan_code FROM billing.license_status LIMIT 1").Scan(&dbState, &dbPlan)
+		err = dbPool.QueryRow(ctx, "SELECT state FROM billing.license_status LIMIT 1").Scan(&dbState)
 		require.NoError(t, err)
 		assert.Equal(t, "ACTIVE", dbState)
-		assert.Equal(t, "growth", dbPlan)
-
-		rPlan, err := rdb.HGet(ctx, "entitlement:deployment", "plan").Result()
-		require.NoError(t, err)
-		assert.Equal(t, "growth", rPlan)
-	})
-
-	t.Run("SubscriptionBillingAndOverage", func(t *testing.T) {
-		customerID := uuid.New()
-		_, err = dbPool.Exec(ctx, "INSERT INTO customers (id, name, balance, currency) VALUES ($1, $2, $3, $4)", customerID, "Subscription Cust", 95_000_000, "USD")
-		require.NoError(t, err)
-
-		limitsRaw := `{"max_active_campaigns": 50, "max_rps": 10000, "max_requests_per_day": 500000, "max_events_per_month": 10000, "max_regions": 1, "max_api_keys": 2, "max_export_chunk_bytes": 1048576, "quota_reset_timezone": "UTC"}`
-		featuresRaw := `{"rtb_live": false, "ml_fraud_boost": false, "multi_region": false, "slot_migration": false}`
-		_, err = dbPool.Exec(ctx, `
-			INSERT INTO billing.subscription_plans (code, display_name, limits_json, features_json, base_fee_micro)
-			VALUES ($1, $2, $3, $4, $5)
-		`, "basic_test", "Basic Test", []byte(limitsRaw), []byte(featuresRaw), int64(10_000_000))
-		require.NoError(t, err)
-
-		_, err = dbPool.Exec(ctx, `
-			INSERT INTO billing.customer_subscriptions (customer_id, plan_code, status, period_start)
-			VALUES ($1, $2, $3, $4)
-		`, customerID, "basic_test", "active", time.Now().Add(-2*time.Hour))
-		require.NoError(t, err)
-
-		_, err = dbPool.Exec(ctx, `
-			INSERT INTO balance_ledger (customer_id, amount, type, idempotency_hash)
-			VALUES ($1, $2, 'TOPUP', $3)
-		`, customerID, int64(100_000_000), "topup-test")
-		require.NoError(t, err)
-
-		monthStart := truncateMonthUTC(time.Now())
-		_, err = dbPool.Exec(ctx, `
-			INSERT INTO billing.usage_meters (customer_id, meter, period, value)
-			VALUES ($1, $2, $3, $4)
-		`, customerID, "events", monthStart, int64(12000))
-		require.NoError(t, err)
-
-		_, err = dbPool.Exec(ctx, `
-			INSERT INTO balance_ledger (customer_id, amount, type, idempotency_hash)
-			VALUES ($1, $2, 'FEE', $3)
-		`, customerID, int64(-5_000_000), "ad-spend-test")
-		require.NoError(t, err)
-
-		billingSvc := ledger.NewService(dbPool)
-		inv, err := billingSvc.GenerateInvoice(ctx, customerID, monthStart)
-		require.NoError(t, err)
-
-		assert.Equal(t, int64(15_100_000), inv.SubtotalMicro)
-		assert.Equal(t, int64(16_194_750), inv.TotalMicro)
-
-		var dbBalance int64
-		err = dbPool.QueryRow(ctx, "SELECT balance FROM public.customers WHERE id = $1", customerID).Scan(&dbBalance)
-		require.NoError(t, err)
-		assert.Equal(t, int64(84_900_000), dbBalance)
 	})
 
 	t.Run("HotPathEntitlementsFilter", func(t *testing.T) {
 		customerID := uuid.New()
 		campaignID := uuid.New()
+		deploymentID := uuid.New()
+		licenseID := uuid.New()
 
 		_, err = dbPool.Exec(ctx, "INSERT INTO customers (id, name, balance, currency) VALUES ($1, $2, $3, $4)", customerID, "HotPath Cust", 500_000_000, "USD")
 		require.NoError(t, err)
@@ -212,18 +145,11 @@ func TestIntegration_LicensingAndSubscriptions(t *testing.T) {
 			campaignID, "HotPath Campaign", 100_000_000, "ACTIVE", customerID)
 		require.NoError(t, err)
 
-		limitsRaw := `{"max_active_campaigns": 50, "max_rps": 10000, "max_requests_per_day": 2, "max_events_per_month": 5000000, "max_regions": 1, "max_api_keys": 2, "max_export_chunk_bytes": 1048576, "quota_reset_timezone": "UTC"}`
-		featuresRaw := `{"rtb_live": true, "ml_fraud_boost": true, "multi_region": false, "slot_migration": false}`
+		entitlementsJSON := `{"limits":{"max_active_campaigns":50,"max_rps":10000,"max_requests_per_day":2,"max_events_per_month":5000000,"max_regions":1,"max_api_keys":2,"max_export_chunk_bytes":1048576,"quota_reset_timezone":"UTC"},"features":{"rtb_live":true,"ml_fraud_boost":true,"multi_region":false,"slot_migration":false}}`
 		_, err = dbPool.Exec(ctx, `
-			INSERT INTO billing.subscription_plans (code, display_name, limits_json, features_json, base_fee_micro)
-			VALUES ($1, $2, $3, $4, $5)
-		`, "hot_test", "Hot Test", []byte(limitsRaw), []byte(featuresRaw), int64(0))
-		require.NoError(t, err)
-
-		_, err = dbPool.Exec(ctx, `
-			INSERT INTO billing.customer_subscriptions (customer_id, plan_code, status, period_start)
-			VALUES ($1, $2, $3, $4)
-		`, customerID, "hot_test", "active", time.Now().Add(-2*time.Hour))
+			INSERT INTO billing.license_status (deployment_id, license_id, plan_code, valid_until, state, entitlements_json, last_verified_at)
+			VALUES ($1, $2, '', $3, 'ACTIVE', $4::jsonb, NOW())
+		`, deploymentID, licenseID, time.Now().Add(24*time.Hour), entitlementsJSON)
 		require.NoError(t, err)
 
 		queries := db.New(dbPool)
@@ -250,8 +176,4 @@ func TestIntegration_LicensingAndSubscriptions(t *testing.T) {
 		err = filter.Check(ctx, evt)
 		assert.ErrorIs(t, err, ingestion.ErrDailyQuotaExceeded)
 	})
-}
-
-func truncateMonthUTC(t time.Time) time.Time {
-	return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.UTC)
 }

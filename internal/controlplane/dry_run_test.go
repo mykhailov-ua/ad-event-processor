@@ -32,12 +32,12 @@ func TestDryRun_PauseCampaignNoSideEffects(t *testing.T) {
 	customerID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, customerID, "dry-run-advertiser", 5_000_000, "USD"))
 	campID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
-		CustomerID:  customerID,
-		Name:        "dry-run-pause",
+		CustomerID:       customerID,
+		Name:             "dry-run-pause",
 		BudgetLimitMicro: 5_000_000,
-		PacingMode:  "ASAP",
-		Timezone:    "UTC",
-		FreqWindow:  86400,
+		PacingMode:       "ASAP",
+		Timezone:         "UTC",
+		FreqWindow:       86400,
 	})
 	require.NoError(t, err)
 

@@ -12,27 +12,26 @@ import (
 )
 
 func (h *Handler) metaEnricher() adminapi.MetaEnricher {
-	return func(ctx context.Context) (string, string, *adminapi.MetaLicenseDTO, error) {
+	return func(ctx context.Context) (string, *adminapi.MetaLicenseDTO, error) {
 		if h == nil || h.svc == nil {
-			return "", "", nil, nil
+			return "", nil, nil
 		}
-		var deploymentID, sku string
+		var deploymentID string
 		if fbMeta, err := h.svc.SupportFeedbackMeta(ctx); err != nil {
-			return "", "", nil, err
+			return "", nil, err
 		} else {
 			deploymentID = fbMeta.DeploymentID
-			sku = fbMeta.SKU
 		}
 		pool := h.svc.GetPool()
 		if pool == nil {
-			return deploymentID, sku, nil, nil
+			return deploymentID, nil, nil
 		}
 		licRow, err := billingdb.New(pool).GetLicenseStatus(ctx)
 		if err == pgx.ErrNoRows {
-			return deploymentID, sku, nil, nil
+			return deploymentID, nil, nil
 		}
 		if err != nil {
-			return "", "", nil, err
+			return "", nil, err
 		}
 		var validUntil time.Time
 		hasValidUntil := licRow.ValidUntil.Valid
@@ -45,6 +44,6 @@ func (h *Handler) metaEnricher() adminapi.MetaEnricher {
 			validUntil,
 			hasValidUntil,
 		)
-		return deploymentID, sku, license, nil
+		return deploymentID, license, nil
 	}
 }

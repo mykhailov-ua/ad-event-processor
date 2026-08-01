@@ -7,11 +7,14 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"espx/internal/controlplane/adminapi"
 	"espx/internal/controlplane/authz"
 	"espx/internal/costsync"
-	"espx/internal/ledger/plansyaml"
+	"espx/internal/openrtb"
+	"espx/pkg/doctor"
+	"espx/pkg/platformconfig"
 	"espx/pkg/supportbundle"
 
 	"github.com/google/uuid"
@@ -68,21 +71,17 @@ func (r rolesReloader) ReloadRoles() error {
 
 func (r rolesReloader) RolesPath() string { return authz.DefaultRolesPath() }
 
-type plansReloader struct {
-	pool *pgxpool.Pool
-	svc  *Service
+type platformAuthAdapter struct {
+	client *AuthClient
 }
 
-func (p plansReloader) ReloadPlans(ctx context.Context, dryRun bool) (plansyaml.ReloadReport, error) {
-	return plansyaml.Reload(ctx, p.pool, plansyaml.DefaultPlansPath(), dryRun, func(ctx context.Context) error {
-		if dryRun || p.svc == nil {
-			return nil
-		}
-		return p.svc.publishRegistryFullSync(ctx)
-	})
+func (a platformAuthAdapter) Register(ctx context.Context, adminAPIKey, email, password, role, customerID string) error {
+	if a.client == nil {
+		return errAuthUnavailable
+	}
+	_, err := a.client.Register(ctx, adminAPIKey, email, password, role, customerID)
+	return err
 }
-
-func (p plansReloader) PlansPath() string { return plansyaml.DefaultPlansPath() }
 
 func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.UniversalClient) adminapi.RouteRegistry {
 	if h == nil || h.svc == nil || pool == nil {
@@ -153,6 +152,25 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			LimitExportByCustomer:        h.limitExportByCustomer,
 			ResolveDisputeCustomerFilter: h.resolveDisputeCustomerFilter,
 		},
+		DoctorHTTP: &adminapi.DoctorHTTPHandlers{
+			Config: h.cfg,
+			PlatformConfig: func(ctx context.Context) (platformconfig.Config, error) {
+				cfg, _, err := svc.GetPlatformConfig(ctx)
+				return cfg, err
+			},
+			ProbeDeps: doctor.ProbeDeps{
+				Config: h.cfg,
+				Redis: func(ctx context.Context) ([]redis.UniversalClient, error) {
+					return svc.RedisShards(), nil
+				},
+				PGPool: func(ctx context.Context) (*pgxpool.Pool, error) {
+					return svc.GetPool(), nil
+				},
+			},
+			ApplyRateLimit:    limit,
+			RequirePermission: perm,
+			WriteServiceError: writeErr,
+		},
 		OpsHTTP: &adminapi.OpsHTTPHandlers{
 			OpsReader:               opsReader,
 			PaymentIntents:          h.payment,
@@ -160,7 +178,6 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			ConsentVerifier:         consentVerifierAdapter{secret: []byte(h.cfg.ConsentHMACSecret)},
 			AuditLister:             svc,
 			RolesReloader:           rolesReloader{mw: h.authMiddleware},
-			PlansReloader:           plansReloader{pool: pool, svc: svc},
 			Blacklist:               svc,
 			FraudThreat:             svc,
 			ApplyRateLimit:          limit,
@@ -174,13 +191,9 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 		},
 		ExportHTTP: exportHTTP,
 		LicensingHTTP: &adminapi.LicensingHTTPHandlers{
-			Pool:                       pool,
-			RedisForCustomer:           func(id uuid.UUID) redis.UniversalClient { return svc.getRDB(id) },
-			ApplyRateLimit:             limit,
-			RequirePermission:          perm,
-			ApplySelfServeRateLimit:    limit,
-			RequireSelfServePermission: selfServePerm,
-			ResolveSelfServeCustomerID: h.resolveSelfServeCustomerIDForBilling,
+			Pool:              pool,
+			ApplyRateLimit:    limit,
+			RequirePermission: perm,
 		},
 		ReportsHTTP: &adminapi.ReportsHTTPHandlers{
 			CampaignStats:             svc,
@@ -236,6 +249,25 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			RequirePermission: perm,
 			WriteServiceError: writeErr,
 		},
+		RtbHTTP: &adminapi.RtbHTTPHandlers{
+			Service:           &rtbAdminService{svc: svc},
+			ApplyRateLimit:    limit,
+			RequirePermission: perm,
+			WriteServiceError: writeErr,
+			ExchangeConfig: openrtb.ExchangeConfig{
+				NoBidMode:   h.cfg.RtbExchangeNoBidMode,
+				MultiImpMax: h.cfg.RtbExchangeMultiImpMax,
+				RegsPolicy:  h.cfg.RtbRegsPolicy,
+				Blocklist:   h.cfg.RtbBlocklistEnforce,
+			},
+			ReconcileCH: func(ctx context.Context, requestID string, window time.Duration) (uint64, uint64, int64, bool) {
+				stats, ok := svc.RtbReconcileCHStats(ctx, requestID, window)
+				if !ok {
+					return 0, 0, 0, false
+				}
+				return stats.Bids, stats.Wins, stats.SpendMicro, true
+			},
+		},
 		CampaignsHTTP: &adminapi.CampaignsHTTPHandlers{
 			Campaigns:               svc,
 			ApplyRateLimit:          limit,
@@ -257,6 +289,14 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			ApplyRateLimit: limit,
 			Enrich:         h.metaEnricher(),
 			WriteError:     writeErr,
+		},
+		PlatformHTTP: &adminapi.PlatformHTTPHandlers{
+			Service:           svc,
+			AuthClient:        platformAuthAdapter{client: h.authClient},
+			Cfg:               h.cfg,
+			ApplyRateLimit:    limit,
+			RequirePermission: perm,
+			WriteServiceError: writeErr,
 		},
 		StubHTTP: &adminapi.StubHTTPHandlers{
 			ApplyRateLimit:    limit,

@@ -5,6 +5,7 @@ import "net/http"
 type RouteRegistry struct {
 	BillingHTTP     *BillingHTTPHandlers
 	OpsHTTP         *OpsHTTPHandlers
+	DoctorHTTP      *DoctorHTTPHandlers
 	ExportHTTP      *ExportHTTPHandlers
 	LicensingHTTP   *LicensingHTTPHandlers
 	ReportsHTTP     *ReportsHTTPHandlers
@@ -15,9 +16,11 @@ type RouteRegistry struct {
 	CostSyncHTTP    *CostSyncHTTPHandlers
 	MarginGuardHTTP *MarginGuardHTTPHandlers
 	RtbFloorsHTTP   *RtbFloorsHTTPHandlers
+	RtbHTTP         *RtbHTTPHandlers
 	CampaignsHTTP   *CampaignsHTTPHandlers
 	SupportHTTP     *SupportHTTPHandlers
 	MetaHTTP        *MetaHTTPHandlers
+	PlatformHTTP    *PlatformHTTPHandlers
 	StubHTTP        *StubHTTPHandlers
 }
 
@@ -62,14 +65,8 @@ var routeCatalog = []Route{
 	{Method: "GET", Path: "/api/v1/customers/{id}/billing/forecast"},
 	{Method: "GET", Path: "/api/v1/customers/{id}/billing/statement"},
 	{Method: "GET", Path: "/api/v1/customers/{id}/payments"},
-	{Method: "GET", Path: "/api/v1/customers/{id}/quota-status"},
-	{Method: "GET", Path: "/api/v1/customers/{id}/subscription"},
-	{Method: "POST", Path: "/api/v1/customers/{id}/subscription"},
-	{Method: "POST", Path: "/api/v1/customers/{id}/quota-bump"},
 	{Method: "GET", Path: "/api/v1/customers/{id}/tax-profile"},
 	{Method: "PUT", Path: "/api/v1/customers/{id}/tax-profile"},
-	{Method: "GET", Path: "/api/v1/customers/{id}/usage"},
-	{Method: "GET", Path: "/api/v1/customers/{id}/usage/daily"},
 	{Method: "GET", Path: "/api/v1/customers/{id}/wallet"},
 	{Method: "GET", Path: "/api/v1/dashboards/adops"},
 	{Method: "GET", Path: "/api/v1/dashboards/accountant"},
@@ -82,6 +79,10 @@ var routeCatalog = []Route{
 	{Method: "POST", Path: "/api/v1/forecast/campaign"},
 	{Method: "GET", Path: "/api/v1/license/status"},
 	{Method: "GET", Path: "/api/v1/meta"},
+	{Method: "GET", Path: "/api/v1/settings/platform"},
+	{Method: "PATCH", Path: "/api/v1/settings/platform"},
+	{Method: "POST", Path: "/api/v1/settings/platform/bootstrap"},
+	{Method: "POST", Path: "/api/v1/settings/platform/apply"},
 	{Method: "GET", Path: "/api/v1/margin-guard/activity"},
 	{Method: "GET", Path: "/api/v1/margin-guard/policies"},
 	{Method: "POST", Path: "/api/v1/margin-guard/policies"},
@@ -91,18 +92,27 @@ var routeCatalog = []Route{
 	{Method: "DELETE", Path: "/api/v1/ops/blacklist"},
 	{Method: "GET", Path: "/api/v1/ops/dashboard/metrics"},
 	{Method: "GET", Path: "/api/v1/ops/dashboard/summary"},
+	{Method: "GET", Path: "/api/v1/ops/doctor"},
 	{Method: "GET", Path: "/api/v1/ops/dlq"},
 	{Method: "POST", Path: "/api/v1/ops/dlq/{id}/retry"},
 	{Method: "GET", Path: "/api/v1/ops/incidents"},
 	{Method: "GET", Path: "/api/v1/ops/outbox"},
 	{Method: "POST", Path: "/api/v1/ops/roles/reload"},
-	{Method: "POST", Path: "/api/v1/ops/plans/reload"},
 	{Method: "GET", Path: "/api/v1/ops/shards"},
 	{Method: "GET", Path: "/api/v1/postbacks/config"},
 	{Method: "PUT", Path: "/api/v1/postbacks/config/{campaign_id}"},
 	{Method: "GET", Path: "/api/v1/postbacks/dlq"},
 	{Method: "POST", Path: "/api/v1/postbacks/dlq/{id}/retry"},
 	{Method: "POST", Path: "/api/v1/rtb/floors/apply"},
+	{Method: "POST", Path: "/api/v1/rtb/validate-bid-request"},
+	{Method: "GET", Path: "/api/v1/rtb/integration-profile"},
+	{Method: "GET", Path: "/api/v1/rtb/shadow-diff"},
+	{Method: "GET", Path: "/api/v1/rtb/reconcile/export"},
+	{Method: "GET", Path: "/api/v1/rtb/deals"},
+	{Method: "GET", Path: "/api/v1/rtb/deals/{id}"},
+	{Method: "POST", Path: "/api/v1/rtb/deals"},
+	{Method: "PATCH", Path: "/api/v1/rtb/deals/{id}"},
+	{Method: "DELETE", Path: "/api/v1/rtb/deals/{id}"},
 	{Method: "GET", Path: "/api/v1/recon/runs"},
 	{Method: "GET", Path: "/api/v1/reports/campaign-geo-device"},
 	{Method: "GET", Path: "/api/v1/reports/campaign-overview"},
@@ -128,7 +138,6 @@ var routeCatalog = []Route{
 	{Method: "POST", Path: "/api/v1/selfserve/campaigns/{id}/resume"},
 	{Method: "GET", Path: "/api/v1/selfserve/invoices"},
 	{Method: "POST", Path: "/api/v1/selfserve/payment-intents"},
-	{Method: "GET", Path: "/api/v1/selfserve/usage"},
 	{Method: "GET", Path: "/api/v1/support/feedback/meta"},
 	{Method: "POST", Path: "/api/v1/support/feedback"},
 	{Method: "GET", Path: "/api/v1/views"},
@@ -144,6 +153,9 @@ func RegisterRoutes(mux *http.ServeMux, routes RouteRegistry) {
 	}
 	if routes.OpsHTTP != nil {
 		routes.OpsHTTP.Register(mux)
+	}
+	if routes.DoctorHTTP != nil {
+		routes.DoctorHTTP.Register(mux)
 	}
 	if routes.ExportHTTP != nil {
 		routes.ExportHTTP.Register(mux)
@@ -175,6 +187,9 @@ func RegisterRoutes(mux *http.ServeMux, routes RouteRegistry) {
 	if routes.RtbFloorsHTTP != nil {
 		routes.RtbFloorsHTTP.Register(mux)
 	}
+	if routes.RtbHTTP != nil {
+		routes.RtbHTTP.Register(mux)
+	}
 	if routes.CampaignsHTTP != nil {
 		routes.CampaignsHTTP.Register(mux)
 	}
@@ -183,6 +198,9 @@ func RegisterRoutes(mux *http.ServeMux, routes RouteRegistry) {
 	}
 	if routes.MetaHTTP != nil {
 		routes.MetaHTTP.Register(mux)
+	}
+	if routes.PlatformHTTP != nil {
+		routes.PlatformHTTP.Register(mux)
 	}
 	if routes.StubHTTP != nil {
 		routes.StubHTTP.Register(mux)

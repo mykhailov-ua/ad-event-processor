@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"espx/internal/controlplane/adminapi"
 	"espx/internal/costsync"
@@ -29,11 +28,7 @@ func TestCostSyncAdminAPIIntegration(t *testing.T) {
 	defer cleanup()
 
 	customerID := uuid.New()
-	_, err := pool.Exec(ctx, `INSERT INTO customers (id, name, balance, currency) VALUES ($1, 'pro', 0, 'USD')`, customerID)
-	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `
-		INSERT INTO billing.customer_subscriptions (customer_id, plan_code, status, period_start)
-		VALUES ($1, 'pro', 'active', $2)`, customerID, time.Now().Add(-time.Hour))
+	_, err := pool.Exec(ctx, `INSERT INTO customers (id, name, balance, currency) VALUES ($1, 'cust', 0, 'USD')`, customerID)
 	require.NoError(t, err)
 
 	key := []byte("postback-encryption-secret-key32")

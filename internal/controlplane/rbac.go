@@ -21,6 +21,8 @@ const (
 	PermShardsRead           = "shards:read"
 	PermShardsWrite          = "shards:write"
 	PermOpsWrite             = "ops:write"
+	PermRtbRead              = "rtb:read"
+	PermRtbWrite             = "rtb:write"
 )
 
 const (
@@ -41,6 +43,7 @@ var rolePermissions = map[string][]string{
 		"audit:read",
 		"users:write",
 		"shards:write", "shards:read",
+		"rtb:write", "rtb:read",
 	},
 	RoleManager: {
 		"customers:write", "customers:read",

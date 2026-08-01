@@ -17,15 +17,15 @@ import (
 
 func testCampaignSpec(customerID uuid.UUID, name string, budgetMicro int64, idem string) CampaignCreateSpec {
 	return CampaignCreateSpec{
-		CustomerID:     customerID,
-		Name:           name,
-		BudgetLimitMicro:    budgetMicro,
-		PacingMode:     string(db.PacingModeTypeASAP),
-		DailyBudgetMicro:    0,
-		Timezone:       "UTC",
-		FreqWindow:     86400,
-		DaypartHours:   []int16{},
-		IdempotencyKey: idem,
+		CustomerID:       customerID,
+		Name:             name,
+		BudgetLimitMicro: budgetMicro,
+		PacingMode:       string(db.PacingModeTypeASAP),
+		DailyBudgetMicro: 0,
+		Timezone:         "UTC",
+		FreqWindow:       86400,
+		DaypartHours:     []int16{},
+		IdempotencyKey:   idem,
 	}
 }
 
