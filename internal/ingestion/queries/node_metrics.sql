@@ -94,6 +94,12 @@ FROM node_capacity_scores
 WHERE region_code = $1
   AND role = $2;
 
+-- name: ListNodeCapacityScoresByRole :many
+SELECT node_id, region_code, role, score, weight, provenance, epoch_id, updated_at
+FROM node_capacity_scores
+WHERE role = $1
+ORDER BY region_code, node_id;
+
 -- name: ListNodeCapacityScoresByRegion :many
 SELECT node_id, region_code, role, score, weight, provenance, epoch_id, updated_at
 FROM node_capacity_scores

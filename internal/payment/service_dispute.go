@@ -188,9 +188,9 @@ func (service *Service) ProcessStripeDisputeWebhook(
 					return err
 				}
 			}
-			outboxPayload, err := coldpath.MarshalJSON(applyChargebackPayload(
+			outboxPayload, err := marshalApplyChargebackOutbox(
 				uuid.UUID(intent.ID.Bytes), uuid.UUID(intent.CustomerID.Bytes), delta, providerDisputeID,
-			))
+			)
 			if err != nil {
 				return fmt.Errorf("marshal apply chargeback outbox payload: %w", err)
 			}
@@ -221,9 +221,9 @@ func (service *Service) ProcessStripeDisputeWebhook(
 			if err != nil {
 				return err
 			}
-			outboxPayload, err := coldpath.MarshalJSON(reverseChargebackPayload(
+			outboxPayload, err := marshalReverseChargebackOutbox(
 				uuid.UUID(intent.ID.Bytes), uuid.UUID(intent.CustomerID.Bytes), delta, providerDisputeID,
-			))
+			)
 			if err != nil {
 				return fmt.Errorf("marshal reverse chargeback outbox payload: %w", err)
 			}

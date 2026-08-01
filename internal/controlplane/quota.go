@@ -471,10 +471,10 @@ func (w *ReconWorker) releaseDeadShardReservations(ctx context.Context) {
 		adminID := uuid.MustParse(quotaRepairSystemAdmin)
 		q := db.New(tx)
 		w.svc.AuditLog(ctx, q, adminID, "QUOTA_DEAD_SHARD_RELEASE", "redis_shard",
-			nil, map[string]any{
-				"shard_id":      shardIdx,
-				"rows_released": tag.RowsAffected(),
-			}, map[string]any{"tx_source": "recon_worker"})
+			nil, auditQuotaDeadShardRelease{
+				ShardID:      shardIdx,
+				RowsReleased: tag.RowsAffected(),
+			}, auditTxSourceMeta{TxSource: "recon_worker"})
 		if err := tx.Commit(ctx); err != nil {
 			slog.Error("dead shard quota release commit failed", "shard", shardIdx, "error", err)
 			continue
@@ -540,10 +540,10 @@ func (w *OutboxWorker) ApplyQuotaRepair(ctx context.Context, eventID int64, payl
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	adminID := uuid.MustParse(quotaRepairSystemAdmin)
-	auditMeta := map[string]any{
-		"outbox_event_id": eventID,
-		"reason":          p.Reason,
-		"repair_micro":    p.RepairMicro,
+	auditMeta := auditQuotaRepairMeta{
+		OutboxEventID: eventID,
+		Reason:        p.Reason,
+		RepairMicro:   p.RepairMicro,
 	}
 
 	switch QuotaRepairAction(p.Action) {

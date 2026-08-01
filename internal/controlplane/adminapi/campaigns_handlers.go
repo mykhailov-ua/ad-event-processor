@@ -11,8 +11,8 @@ import (
 )
 
 type CampaignReader interface {
-	GetCampaign(ctx context.Context, campaignID uuid.UUID) (any, error)
-	GetCampaignMargin(ctx context.Context, campaignID uuid.UUID) (any, error)
+	GetCampaign(ctx context.Context, campaignID uuid.UUID) (CampaignDTO, error)
+	GetCampaignMargin(ctx context.Context, campaignID uuid.UUID) (CampaignMarginDTO, error)
 }
 
 type CampaignsHTTPHandlers struct {

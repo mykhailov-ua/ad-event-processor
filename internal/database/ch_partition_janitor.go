@@ -218,7 +218,11 @@ LIMIT 1`, j.recompressPartsThreshold)
 		return err
 	}
 
-	stmt := fmt.Sprintf("OPTIMIZE TABLE %s PARTITION '%s' FINAL", table, part)
+	if !ValidClickHouseIdentifier(table) || !ValidClickHouseIdentifier(part) {
+		return fmt.Errorf("invalid clickhouse identifier table=%q partition=%q", table, part)
+	}
+
+	stmt := "OPTIMIZE TABLE " + table + " PARTITION '" + part + "' FINAL"
 	if err := j.conn.Exec(ctx, stmt); err != nil {
 		return fmt.Errorf("recompress %s.%s: %w", table, part, err)
 	}
@@ -232,7 +236,10 @@ LIMIT 1`, j.recompressPartsThreshold)
 }
 
 func (j *CHPartitionJanitor) dropPartition(ctx context.Context, table, part, reason string) error {
-	stmt := fmt.Sprintf("ALTER TABLE %s DROP PARTITION '%s'", table, part)
+	if !ValidClickHouseIdentifier(table) || !ValidClickHouseIdentifier(part) {
+		return fmt.Errorf("invalid clickhouse identifier table=%q partition=%q", table, part)
+	}
+	stmt := "ALTER TABLE " + table + " DROP PARTITION '" + part + "'"
 	if err := j.conn.Exec(ctx, stmt); err != nil {
 		return fmt.Errorf("drop partition %s.%s (%s): %w", table, part, reason, err)
 	}

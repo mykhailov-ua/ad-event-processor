@@ -34,7 +34,7 @@ func TestDryRun_PauseCampaignNoSideEffects(t *testing.T) {
 	campID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
 		CustomerID:  customerID,
 		Name:        "dry-run-pause",
-		BudgetLimit: 5_000_000,
+		BudgetLimitMicro: 5_000_000,
 		PacingMode:  "ASAP",
 		Timezone:    "UTC",
 		FreqWindow:  86400,
@@ -49,7 +49,7 @@ func TestDryRun_PauseCampaignNoSideEffects(t *testing.T) {
 	assert.True(t, preview.DryRun)
 	assert.Equal(t, "PAUSE_CAMPAIGN", preview.Action)
 
-	camp, err := svc.GetCampaign(ctx, campID)
+	camp, err := svc.GetCampaignRow(ctx, campID)
 	require.NoError(t, err)
 	assert.Equal(t, db.CampaignStatusTypeACTIVE, camp.Status)
 

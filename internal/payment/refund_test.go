@@ -22,7 +22,7 @@ func TestProcessStripeRefundWebhook_noDoubleDebit(t *testing.T) {
 	defer cleanup()
 
 	cfg := &config.Config{MaxRetries: 3}
-	svc := NewService(pool, NewMockProvider(), cfg)
+	svc := NewService(pool, cfg)
 	ctx := context.Background()
 
 	customerID := uuid.New()

@@ -10,21 +10,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func MapProviderNamesToDBStrings(names []string) ([]string, error) {
-	if len(names) == 0 {
-		return nil, nil
-	}
-	out := make([]string, 0, len(names))
-	for _, name := range names {
-		provider, err := ParseProviderName(name)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, string(provider))
-	}
-	return out, nil
-}
-
 func deliveryModeFromInput(input NotificationInput) db.NotifierDeliveryMode {
 	if input.Broadcast {
 		return db.NotifierDeliveryModeBROADCAST
@@ -68,9 +53,13 @@ func (service *Service) createNotificationFromInput(ctx context.Context, input N
 		return db.NotifierNotification{}, err
 	}
 
-	broadcastProviders, err := MapProviderNamesToDBStrings(input.BroadcastProviders)
-	if err != nil {
-		return db.NotifierNotification{}, err
+	broadcastProviders := make([]string, 0, len(input.BroadcastProviders))
+	for _, name := range input.BroadcastProviders {
+		provider, err := ParseProviderName(name)
+		if err != nil {
+			return db.NotifierNotification{}, err
+		}
+		broadcastProviders = append(broadcastProviders, string(provider))
 	}
 
 	id, err := uuid.NewV7()

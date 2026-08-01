@@ -12,15 +12,9 @@ import (
 
 	"github.com/google/uuid"
 
+	"espx/internal/database"
 	"espx/pkg/money"
 )
-
-type FacebookProvider struct {
-	BaseURL string
-	Client  *http.Client
-}
-
-func (p *FacebookProvider) Network() string { return "facebook" }
 
 type fbInsightsResponse struct {
 	Data []struct {
@@ -33,12 +27,11 @@ type fbInsightsResponse struct {
 	} `json:"data"`
 }
 
-func (p *FacebookProvider) Fetch(ctx context.Context, cred Credential, date time.Time) ([]CostLine, error) {
-	base := p.BaseURL
+func fetchFacebookCosts(ctx context.Context, client *http.Client, baseURL string, cred Credential, date time.Time) ([]CostLine, error) {
+	base := baseURL
 	if base == "" {
 		base = "https://graph.facebook.com/v19.0"
 	}
-	client := p.Client
 	if client == nil {
 		client = &http.Client{Timeout: 60 * time.Second}
 	}
@@ -56,7 +49,11 @@ func (p *FacebookProvider) Fetch(ctx context.Context, cred Credential, date time
 
 	q := url.Values{}
 	q.Set("fields", "campaign_id,adset_id,ad_id,spend,date_start")
-	q.Set("time_range", fmt.Sprintf(`{"since":"%s","until":"%s"}`, date.Format("2006-01-02"), date.Format("2006-01-02")))
+	dateStr := date.UTC().Format("2006-01-02")
+	if !database.ValidGAQLDate(dateStr) {
+		return nil, fmt.Errorf("facebook: invalid date %q", dateStr)
+	}
+	q.Set("time_range", `{"since":"`+dateStr+`","until":"`+dateStr+`"}`)
 	q.Set("level", "ad")
 	q.Set("limit", "500")
 	q.Set("access_token", cred.AccessToken)
@@ -96,7 +93,7 @@ func (p *FacebookProvider) Fetch(ctx context.Context, cred Credential, date time
 			CustomerID:  cred.CustomerID,
 			CampaignID:  campID,
 			Date:        date,
-			Network:     p.Network(),
+			Network:     "facebook",
 			PlacementID: row.AdID,
 			AdsetID:     row.AdsetID,
 			AdID:        row.AdID,

@@ -11,7 +11,7 @@ func TestRecordSupportFeedback_validation(t *testing.T) {
 	svc := &Service{}
 	ctx := context.Background()
 
-	_, err := svc.RecordSupportFeedback(ctx, SupportFeedbackInput{
+	_, err := svc.RecordSupportFeedback(ctx, SupportFeedbackRecord{
 		Type:         "invalid",
 		ContactEmail: "ops@example.com",
 		Message:      "hello",
@@ -20,7 +20,7 @@ func TestRecordSupportFeedback_validation(t *testing.T) {
 		t.Fatalf("type err=%v", err)
 	}
 
-	_, err = svc.RecordSupportFeedback(ctx, SupportFeedbackInput{
+	_, err = svc.RecordSupportFeedback(ctx, SupportFeedbackRecord{
 		Type:         "bug",
 		ContactEmail: "not-an-email",
 		Message:      "hello",
@@ -29,7 +29,7 @@ func TestRecordSupportFeedback_validation(t *testing.T) {
 		t.Fatalf("email err=%v", err)
 	}
 
-	_, err = svc.RecordSupportFeedback(ctx, SupportFeedbackInput{
+	_, err = svc.RecordSupportFeedback(ctx, SupportFeedbackRecord{
 		Type:         "bug",
 		ContactEmail: "ops@example.com",
 		Message:      "   ",

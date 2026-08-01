@@ -9,41 +9,36 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewProvider_mockByDefault(t *testing.T) {
-	p := NewProvider(&config.Config{})
-	_, ok := p.(*MockProvider)
-	assert.True(t, ok)
+func TestCreateCheckout_mockByDefault(t *testing.T) {
+	cfg := &config.Config{}
+	ref, url, err := CreateCheckout(t.Context(), cfg, "stripe", 10_000_000, "USD", nil, "idem-1")
+	require.NoError(t, err)
+	assert.Equal(t, "pi_mock_idem-1", ref)
+	assert.Contains(t, url, "idem-1")
 }
 
-func TestNewProvider_stripeWhenKeySet(t *testing.T) {
-	p := NewProvider(&config.Config{StripeSecretKey: "sk_test_x"})
-	_, ok := p.(*StripeProvider)
-	assert.True(t, ok)
-}
-
-func TestStripeProvider_CreateCheckout_unalignedAmount(t *testing.T) {
-	p := NewStripeProvider(&config.Config{StripeSecretKey: "sk_test_x"})
-	_, _, err := p.CreateCheckout(t.Context(), 10_001, "USD", nil, "idem-1")
-	require.Error(t, err)
-}
-
-func TestStripeProvider_CreateCheckout_notWired(t *testing.T) {
-	p := NewStripeProvider(&config.Config{StripeSecretKey: "sk_test_x"})
-	_, _, err := p.CreateCheckout(t.Context(), 10_000_000, "USD", nil, "idem-1")
+func TestCreateCheckout_stripeWhenKeySet(t *testing.T) {
+	cfg := &config.Config{StripeSecretKey: "sk_test_x"}
+	_, _, err := CreateCheckout(t.Context(), cfg, "stripe", 10_000_000, "USD", nil, "idem-1")
 	require.ErrorIs(t, err, ErrProviderNotConfigured)
 }
 
-func TestCryptoProvider_CreateCheckout_belowMinimum(t *testing.T) {
-	p := NewCryptoProvider(12, 10_000_000, "whsec_test")
-	_, _, err := p.CreateCheckout(t.Context(), 5_000_000, "USDT", nil, "idem-crypto-1")
+func TestCreateCheckout_stripeUnalignedAmount(t *testing.T) {
+	cfg := &config.Config{StripeSecretKey: "sk_test_x"}
+	_, _, err := CreateCheckout(t.Context(), cfg, "stripe", 10_001, "USD", nil, "idem-1")
 	require.Error(t, err)
 }
 
-func TestCryptoProvider_CreateCheckout_ok(t *testing.T) {
-	p := NewCryptoProvider(12, 10_000_000, "whsec_test")
-	ref, url, err := p.CreateCheckout(t.Context(), 50_000_000, "USDT", nil, "idem-crypto-2")
+func TestCreateCheckout_crypto_belowMinimum(t *testing.T) {
+	cfg := &config.Config{CryptoMinPaymentMicro: 10_000_000}
+	_, _, err := CreateCheckout(t.Context(), cfg, "crypto", 5_000_000, "USDT", nil, "idem-crypto-1")
+	require.Error(t, err)
+}
+
+func TestCreateCheckout_crypto_ok(t *testing.T) {
+	cfg := &config.Config{CryptoMinPaymentMicro: 10_000_000}
+	ref, url, err := CreateCheckout(t.Context(), cfg, "crypto", 50_000_000, "USDT", nil, "idem-crypto-2")
 	require.NoError(t, err)
-	assert.Equal(t, "crypto", p.Name())
 	assert.Equal(t, "tx_crypto_idem-crypto-2", ref)
 	assert.Contains(t, url, "idem-crypto-2")
 }

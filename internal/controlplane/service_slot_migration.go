@@ -127,7 +127,19 @@ func (s *Service) GetSlotMigrations(ctx context.Context, version int32) ([]SlotM
 	}
 	out := make([]SlotMigrationDTO, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, slotMigrationToDTO(row))
+		dto := SlotMigrationDTO{
+			Version:         row.Version,
+			Slot:            row.Slot,
+			SourceShard:     row.SourceShard,
+			TargetShard:     row.TargetShard,
+			State:           string(row.State),
+			CampaignsTotal:  row.CampaignsTotal,
+			CampaignsCopied: row.CampaignsCopied,
+		}
+		if row.LastError.Valid {
+			dto.LastError = row.LastError.String
+		}
+		out = append(out, dto)
 	}
 	return out, nil
 }
@@ -389,10 +401,10 @@ func (s *Service) ActivateSlotMapVersionWithMigration(ctx context.Context, admin
 		return err
 	}
 
-	s.AuditLog(ctx, q, adminID, "SLOT_MAP_ACTIVATED", "redis_slot_map", nil, map[string]any{
-		"version":           version,
-		"migrated_slots":    len(migrating),
-		"migration_cutover": true,
+	s.AuditLog(ctx, q, adminID, "SLOT_MAP_ACTIVATED", "redis_slot_map", nil, auditSlotMapActivated{
+		Version:          version,
+		MigratedSlots:    len(migrating),
+		MigrationCutover: true,
 	}, nil)
 
 	if err := tx.Commit(ctx); err != nil {
@@ -479,9 +491,9 @@ func (s *Service) RollbackSlotMapVersion(ctx context.Context, adminID uuid.UUID,
 	if err := q.SetSlotMapActiveVersion(ctx, previousVersion); err != nil {
 		return err
 	}
-	s.AuditLog(ctx, q, adminID, "SLOT_MAP_ROLLBACK", "redis_slot_map", nil, map[string]any{
-		"from_version": meta.ActiveVersion,
-		"to_version":   previousVersion,
+	s.AuditLog(ctx, q, adminID, "SLOT_MAP_ROLLBACK", "redis_slot_map", nil, auditSlotMapRollback{
+		FromVersion: meta.ActiveVersion,
+		ToVersion:   previousVersion,
 	}, nil)
 	if err := tx.Commit(ctx); err != nil {
 		return err
@@ -661,22 +673,6 @@ func (s *Service) listActiveCampaignUUIDs(ctx context.Context) ([]uuid.UUID, err
 		out = append(out, uuid.UUID(row.Bytes))
 	}
 	return out, nil
-}
-
-func slotMigrationToDTO(row db.RedisSlotMigration) SlotMigrationDTO {
-	dto := SlotMigrationDTO{
-		Version:         row.Version,
-		Slot:            row.Slot,
-		SourceShard:     row.SourceShard,
-		TargetShard:     row.TargetShard,
-		State:           string(row.State),
-		CampaignsTotal:  row.CampaignsTotal,
-		CampaignsCopied: row.CampaignsCopied,
-	}
-	if row.LastError.Valid {
-		dto.LastError = row.LastError.String
-	}
-	return dto
 }
 
 func (s *Service) VerifySlotMigrationR5(ctx context.Context) error {

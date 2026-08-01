@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"espx/internal/controlplane/adminapi"
+	"espx/internal/controlplane/authz"
 	"espx/internal/database"
 	"espx/internal/domain"
 	db "espx/internal/domain/db"
@@ -21,28 +23,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type CampaignDTO struct {
-	ID              string          `json:"id"`
-	Name            string          `json:"name"`
-	Status          string          `json:"status"`
-	BudgetLimit     string          `json:"budget_limit"`
-	CurrentSpend    string          `json:"current_spend"`
-	CustomerID      string          `json:"customer_id"`
-	PacingMode      string          `json:"pacing_mode"`
-	DailyBudget     string          `json:"daily_budget"`
-	Timezone        string          `json:"timezone"`
-	FreqLimit       int32           `json:"freq_limit"`
-	FreqWindow      int32           `json:"freq_window"`
-	TargetCountries []string        `json:"target_countries"`
-	TargetURL       string          `json:"target_url,omitempty"`
-	CreativePayload json.RawMessage `json:"creative_payload,omitempty"`
-	ReferrerFilter  string          `json:"referrer_filter,omitempty"`
-	StartAt         string          `json:"start_at,omitempty"`
-	EndAt           string          `json:"end_at,omitempty"`
-	DaypartHours    []int16         `json:"daypart_hours"`
-	CreatedAt       string          `json:"created_at"`
-	UpdatedAt       string          `json:"updated_at"`
-}
+type CampaignDTO = adminapi.CampaignDTO
 
 type StatusHistoryDTO struct {
 	ID         int64  `json:"id"`
@@ -51,51 +32,6 @@ type StatusHistoryDTO struct {
 	NewStatus  string `json:"new_status"`
 	Reason     string `json:"reason,omitempty"`
 	CreatedAt  string `json:"created_at"`
-}
-
-func statusHistoryToDTO(r db.CampaignStatusHistory) StatusHistoryDTO {
-	var oldStatus string
-	if r.OldStatus.Valid {
-		oldStatus = string(r.OldStatus.CampaignStatusType)
-	}
-	return StatusHistoryDTO{
-		ID:         r.ID,
-		CampaignID: uuid.UUID(r.CampaignID.Bytes).String(),
-		OldStatus:  oldStatus,
-		NewStatus:  string(r.NewStatus),
-		Reason:     r.Reason.String,
-		CreatedAt:  r.CreatedAt.Time.Format(time.RFC3339),
-	}
-}
-
-func toCampaignDTO(c db.Campaign) CampaignDTO {
-	countries := c.TargetCountries
-	if countries == nil {
-		countries = []string{}
-	}
-
-	return CampaignDTO{
-		ID:              uuid.UUID(c.ID.Bytes).String(),
-		Name:            c.Name,
-		Status:          string(c.Status),
-		BudgetLimit:     formatMicro(c.BudgetLimit),
-		CurrentSpend:    formatMicro(c.CurrentSpend),
-		CustomerID:      uuid.UUID(c.CustomerID.Bytes).String(),
-		PacingMode:      string(c.PacingMode),
-		DailyBudget:     formatMicro(c.DailyBudget),
-		Timezone:        c.Timezone,
-		FreqLimit:       c.FreqLimit.Int32,
-		FreqWindow:      c.FreqWindow.Int32,
-		TargetCountries: countries,
-		TargetURL:       c.TargetUrl,
-		CreativePayload: json.RawMessage(c.CreativePayload),
-		ReferrerFilter:  c.ReferrerFilter,
-		StartAt:         formatOptionalTime(c.StartAt),
-		EndAt:           formatOptionalTime(c.EndAt),
-		DaypartHours:    daypartOrEmpty(c.DaypartHours),
-		CreatedAt:       c.CreatedAt.Time.Format(time.RFC3339),
-		UpdatedAt:       c.UpdatedAt.Time.Format(time.RFC3339),
-	}
 }
 
 func formatOptionalTime(t pgtype.Timestamptz) string {
@@ -136,20 +72,31 @@ func (s *Service) ListCampaigns(ctx context.Context, customerID uuid.UUID, statu
 		Status:     st,
 	}
 
-	return coldpath.PaginatedList(
-		func() (int64, error) { return q.CountCampaigns(ctx, countParams) },
-		func() ([]db.Campaign, error) { return q.ListCampaigns(ctx, listParams) },
-		func(c db.Campaign) CampaignDTO { return scrubCampaignDTO(ctx, toCampaignDTO(c)) },
-	)
+	total, err := q.CountCampaigns(ctx, countParams)
+	if err != nil {
+		return nil, 0, err
+	}
+	if total == 0 {
+		return []CampaignDTO{}, 0, nil
+	}
+	rows, err := q.ListCampaigns(ctx, listParams)
+	if err != nil {
+		return nil, 0, err
+	}
+	out := make([]CampaignDTO, 0, len(rows))
+	for _, c := range rows {
+		out = append(out, scrubCampaignDTO(ctx, c))
+	}
+	return out, total, nil
 }
 
-func (s *Service) GetCampaignDTO(ctx context.Context, id uuid.UUID) (CampaignDTO, error) {
+func (s *Service) GetCampaign(ctx context.Context, id uuid.UUID) (CampaignDTO, error) {
 	q := db.New(s.GetPool())
 	c, err := q.GetCampaign(ctx, domain.ToUUID(id))
 	if err != nil {
 		return CampaignDTO{}, mapNotFound(err, ErrCampaignNotFound)
 	}
-	return scrubCampaignDTO(ctx, toCampaignDTO(c)), nil
+	return scrubCampaignDTO(ctx, c), nil
 }
 
 func (s *Service) ListStatusHistory(ctx context.Context, campaignID uuid.UUID, limit, offset int32) ([]StatusHistoryDTO, int64, error) {
@@ -161,11 +108,33 @@ func (s *Service) ListStatusHistory(ctx context.Context, campaignID uuid.UUID, l
 		Limit:      limit,
 		Offset:     offset,
 	}
-	return coldpath.PaginatedList(
-		func() (int64, error) { return q.CountStatusHistory(ctx, cid) },
-		func() ([]db.CampaignStatusHistory, error) { return q.ListStatusHistory(ctx, listParams) },
-		statusHistoryToDTO,
-	)
+	total, err := q.CountStatusHistory(ctx, cid)
+	if err != nil {
+		return nil, 0, err
+	}
+	if total == 0 {
+		return []StatusHistoryDTO{}, 0, nil
+	}
+	historyRows, err := q.ListStatusHistory(ctx, listParams)
+	if err != nil {
+		return nil, 0, err
+	}
+	out := make([]StatusHistoryDTO, 0, len(historyRows))
+	for _, r := range historyRows {
+		var oldStatus string
+		if r.OldStatus.Valid {
+			oldStatus = string(r.OldStatus.CampaignStatusType)
+		}
+		out = append(out, StatusHistoryDTO{
+			ID:         r.ID,
+			CampaignID: uuid.UUID(r.CampaignID.Bytes).String(),
+			OldStatus:  oldStatus,
+			NewStatus:  string(r.NewStatus),
+			Reason:     r.Reason.String,
+			CreatedAt:  r.CreatedAt.Time.Format(time.RFC3339),
+		})
+	}
+	return out, total, nil
 }
 
 func (s *Service) UpdateCampaignPacing(ctx context.Context, campaignID uuid.UUID, newMode string) (CampaignDTO, error) {
@@ -203,14 +172,14 @@ func (s *Service) UpdateCampaignPacing(ctx context.Context, campaignID uuid.UUID
 			uid = u.UserID
 		}
 
-		s.AuditLog(ctx, q, uid, "UPDATE_CAMPAIGN_PACING", "campaign", &campaignID, map[string]any{
-			"old_pacing_mode": string(camp.PacingMode),
-			"new_pacing_mode": string(pacing),
+		s.AuditLog(ctx, q, uid, "UPDATE_CAMPAIGN_PACING", "campaign", &campaignID, auditPacingChange{
+			OldPacingMode: string(camp.PacingMode),
+			NewPacingMode: string(pacing),
 		}, nil)
 
-		payloadBytes, err := coldpath.MarshalJSON(map[string]any{
-			"campaign_id": campaignID.String(),
-			"pacing_mode": string(pacing),
+		payloadBytes, err := coldpath.MarshalJSON(campaignPacingPayload{
+			CampaignID: campaignID.String(),
+			PacingMode: string(pacing),
 		})
 		if err != nil {
 			return fmt.Errorf("marshal update campaign pacing outbox payload: %w", err)
@@ -231,35 +200,57 @@ func (s *Service) UpdateCampaignPacing(ctx context.Context, campaignID uuid.UUID
 		return CampaignDTO{}, err
 	}
 
-	return toCampaignDTO(updatedCamp), nil
+	return scrubCampaignDTO(ctx, updatedCamp), nil
 }
 
 const clickHouseStaleThreshold = 5 * time.Minute
 
-type CampaignMetricsDTO struct {
-	Impressions int64 `json:"impressions"`
-	Clicks      int64 `json:"clicks"`
-	Conversions int64 `json:"conversions"`
+type CampaignMetricsDTO = adminapi.CampaignMetricsDTO
+type CampaignHourlyBucketDTO = adminapi.CampaignHourlyBucketDTO
+type CampaignStatsDTO = adminapi.CampaignStatsDTO
+
+func scrubCampaignFields(c CampaignDTO, level authz.MaskLevel) CampaignDTO {
+	if level == authz.MaskFull {
+		return c
+	}
+	out := c
+	out.TargetURL = ""
+	out.CreativePayload = nil
+	out.ReferrerFilter = ""
+	return out
 }
 
-type CampaignHourlyBucketDTO struct {
-	Hour        string `json:"hour"`
-	Impressions int64  `json:"impressions"`
-	Clicks      int64  `json:"clicks"`
-	Conversions int64  `json:"conversions"`
-}
-
-type CampaignStatsDTO struct {
-	CampaignID   string                    `json:"campaign_id"`
-	CurrentSpend string                    `json:"current_spend"`
-	Metrics      CampaignMetricsDTO        `json:"metrics"`
-	Hourly       []CampaignHourlyBucketDTO `json:"hourly"`
-	Granularity  string                    `json:"granularity"`
-	From         string                    `json:"from"`
-	To           string                    `json:"to"`
-	Stale        bool                      `json:"stale"`
-	Source       string                    `json:"source"`
-	Consistency  string                    `json:"consistency"`
+func scrubCampaignDTO(ctx context.Context, c db.Campaign) CampaignDTO {
+	countries := c.TargetCountries
+	if countries == nil {
+		countries = []string{}
+	}
+	dto := CampaignDTO{
+		ID:              uuid.UUID(c.ID.Bytes).String(),
+		Name:            c.Name,
+		Status:          string(c.Status),
+		BudgetLimit:     formatMicro(c.BudgetLimit),
+		CurrentSpend:    formatMicro(c.CurrentSpend),
+		CustomerID:      uuid.UUID(c.CustomerID.Bytes).String(),
+		PacingMode:      string(c.PacingMode),
+		DailyBudget:     formatMicro(c.DailyBudget),
+		Timezone:        c.Timezone,
+		FreqLimit:       c.FreqLimit.Int32,
+		FreqWindow:      c.FreqWindow.Int32,
+		TargetCountries: countries,
+		TargetURL:       c.TargetUrl,
+		CreativePayload: json.RawMessage(c.CreativePayload),
+		ReferrerFilter:  c.ReferrerFilter,
+		StartAt:         formatOptionalTime(c.StartAt),
+		EndAt:           formatOptionalTime(c.EndAt),
+		DaypartHours:    daypartOrEmpty(c.DaypartHours),
+		CreatedAt:       c.CreatedAt.Time.Format(time.RFC3339),
+		UpdatedAt:       c.UpdatedAt.Time.Format(time.RFC3339),
+	}
+	if snap, ok := authz.SnapshotFromContext(ctx); ok {
+		return scrubCampaignFields(dto, snap.Mask)
+	}
+	return dto
 }
 
 func (s *Service) SetClickHouse(conn driver.Conn, cfg database.CHQueryConfig) {
@@ -426,18 +417,6 @@ type BrandDTO struct {
 	FreqWindow int32  `json:"freq_window"`
 }
 
-func toBrandDTO(b db.AdvertiserBrand) BrandDTO {
-	return BrandDTO{
-		ID:         uuid.UUID(b.ID.Bytes).String(),
-		CustomerID: uuid.UUID(b.CustomerID.Bytes).String(),
-		Name:       b.Name,
-		CreatedAt:  b.CreatedAt.Time.Format(time.RFC3339),
-		UpdatedAt:  b.UpdatedAt.Time.Format(time.RFC3339),
-		FreqLimit:  b.FreqLimit,
-		FreqWindow: b.FreqWindow,
-	}
-}
-
 func (s *Service) CreateBrand(ctx context.Context, customerID uuid.UUID, name string) (uuid.UUID, error) {
 	brandID, err := uuid.NewV7()
 	if err != nil {
@@ -468,7 +447,15 @@ func (s *Service) GetBrandDTO(ctx context.Context, id uuid.UUID) (BrandDTO, erro
 	if err != nil {
 		return BrandDTO{}, mapNotFound(err, ErrBrandNotFound)
 	}
-	return toBrandDTO(b), nil
+	return BrandDTO{
+		ID:         uuid.UUID(b.ID.Bytes).String(),
+		CustomerID: uuid.UUID(b.CustomerID.Bytes).String(),
+		Name:       b.Name,
+		CreatedAt:  b.CreatedAt.Time.Format(time.RFC3339),
+		UpdatedAt:  b.UpdatedAt.Time.Format(time.RFC3339),
+		FreqLimit:  b.FreqLimit,
+		FreqWindow: b.FreqWindow,
+	}, nil
 }
 
 func (s *Service) ListBrandsByCustomer(ctx context.Context, customerID uuid.UUID) ([]BrandDTO, error) {
@@ -477,8 +464,19 @@ func (s *Service) ListBrandsByCustomer(ctx context.Context, customerID uuid.UUID
 	if err != nil {
 		return nil, err
 	}
-
-	return coldpath.MapSlice(rows, toBrandDTO), nil
+	out := make([]BrandDTO, len(rows))
+	for i, b := range rows {
+		out[i] = BrandDTO{
+			ID:         uuid.UUID(b.ID.Bytes).String(),
+			CustomerID: uuid.UUID(b.CustomerID.Bytes).String(),
+			Name:       b.Name,
+			CreatedAt:  b.CreatedAt.Time.Format(time.RFC3339),
+			UpdatedAt:  b.UpdatedAt.Time.Format(time.RFC3339),
+			FreqLimit:  b.FreqLimit,
+			FreqWindow: b.FreqWindow,
+		}
+	}
+	return out, nil
 }
 
 func (s *Service) ConfigureBrandFcap(ctx context.Context, brandID uuid.UUID, limit, window int32) error {
@@ -499,10 +497,10 @@ func (s *Service) ConfigureBrandFcap(ctx context.Context, brandID uuid.UUID, lim
 			return fmt.Errorf("failed to update brand fcap limits: %w", err)
 		}
 
-		payloadBytes, err := coldpath.MarshalJSON(map[string]any{
-			"brand_id":    brandID.String(),
-			"freq_limit":  limit,
-			"freq_window": window,
+		payloadBytes, err := coldpath.MarshalJSON(brandFcapOutboxPayload{
+			BrandID:    brandID.String(),
+			FreqLimit:  limit,
+			FreqWindow: window,
 		})
 		if err != nil {
 			return fmt.Errorf("marshal configure brand fcap outbox payload: %w", err)
@@ -516,11 +514,11 @@ func (s *Service) ConfigureBrandFcap(ctx context.Context, brandID uuid.UUID, lim
 			return fmt.Errorf("failed to create outbox event: %w", err)
 		}
 
-		s.AuditLog(ctx, q, uuid.Nil, "CONFIGURE_BRAND_FCAP", "brand", &brandID, map[string]any{
-			"old_freq_limit":  brand.FreqLimit,
-			"old_freq_window": brand.FreqWindow,
-			"new_freq_limit":  limit,
-			"new_freq_window": window,
+		s.AuditLog(ctx, q, uuid.Nil, "CONFIGURE_BRAND_FCAP", "brand", &brandID, auditBrandFcapChange{
+			OldFreqLimit:  brand.FreqLimit,
+			OldFreqWindow: brand.FreqWindow,
+			NewFreqLimit:  limit,
+			NewFreqWindow: window,
 		}, nil)
 
 		return nil
@@ -627,32 +625,6 @@ type sellersJSONCache struct {
 
 var sellersCache sellersJSONCache
 
-func sellerToDTO(r db.Seller) SellerDTO {
-	return SellerDTO{
-		ID:             r.ID,
-		SellerID:       r.SellerID,
-		Domain:         r.Domain,
-		SellerType:     r.SellerType,
-		Name:           r.Name,
-		IsConfidential: r.IsConfidential,
-		CreatedAt:      r.CreatedAt.Time.Format(time.RFC3339),
-		UpdatedAt:      r.UpdatedAt.Time.Format(time.RFC3339),
-	}
-}
-
-func adsTxtToDTO(r db.AdsTxtEntry) AdsTxtEntryDTO {
-	return AdsTxtEntryDTO{
-		ID:                 r.ID,
-		Domain:             r.Domain,
-		PublisherAccountID: r.PublisherAccountID,
-		Relationship:       r.Relationship,
-		CertAuthorityID:    r.CertAuthorityID,
-		SortOrder:          r.SortOrder,
-		CreatedAt:          r.CreatedAt.Time.Format(time.RFC3339),
-		UpdatedAt:          r.UpdatedAt.Time.Format(time.RFC3339),
-	}
-}
-
 func normalizeSellerType(v string) (string, error) {
 	v = strings.ToUpper(strings.TrimSpace(v))
 	switch v {
@@ -712,7 +684,20 @@ func (s *Service) ListSellers(ctx context.Context) ([]SellerDTO, error) {
 	if err != nil {
 		return nil, err
 	}
-	return coldpath.MapSlice(rows, sellerToDTO), nil
+	out := make([]SellerDTO, len(rows))
+	for i, r := range rows {
+		out[i] = SellerDTO{
+			ID:             r.ID,
+			SellerID:       r.SellerID,
+			Domain:         r.Domain,
+			SellerType:     r.SellerType,
+			Name:           r.Name,
+			IsConfidential: r.IsConfidential,
+			CreatedAt:      r.CreatedAt.Time.Format(time.RFC3339),
+			UpdatedAt:      r.UpdatedAt.Time.Format(time.RFC3339),
+		}
+	}
+	return out, nil
 }
 
 func (s *Service) GetSeller(ctx context.Context, id int64) (SellerDTO, error) {
@@ -720,7 +705,16 @@ func (s *Service) GetSeller(ctx context.Context, id int64) (SellerDTO, error) {
 	if err != nil {
 		return SellerDTO{}, ErrSellerNotFound
 	}
-	return sellerToDTO(row), nil
+	return SellerDTO{
+		ID:             row.ID,
+		SellerID:       row.SellerID,
+		Domain:         row.Domain,
+		SellerType:     row.SellerType,
+		Name:           row.Name,
+		IsConfidential: row.IsConfidential,
+		CreatedAt:      row.CreatedAt.Time.Format(time.RFC3339),
+		UpdatedAt:      row.UpdatedAt.Time.Format(time.RFC3339),
+	}, nil
 }
 
 func (s *Service) CreateSeller(ctx context.Context, spec SellerCreateSpec) (SellerDTO, error) {
@@ -750,15 +744,24 @@ func (s *Service) CreateSeller(ctx context.Context, spec SellerCreateSpec) (Sell
 		if u, ok := GetUser(ctx); ok {
 			uid = u.UserID
 		}
-		s.AuditLog(ctx, q, uid, "CREATE_SELLER", "supply", nil, map[string]any{
-			"seller_id": row.SellerID,
-			"domain":    row.Domain,
+		s.AuditLog(ctx, q, uid, "CREATE_SELLER", "supply", nil, auditSellerCreateChange{
+			SellerID: row.SellerID,
+			Domain:   row.Domain,
 		}, nil)
 
 		if err := s.enqueueSupplyFilesUpdate(ctx, q, "create_seller"); err != nil {
 			return err
 		}
-		out = sellerToDTO(row)
+		out = SellerDTO{
+			ID:             row.ID,
+			SellerID:       row.SellerID,
+			Domain:         row.Domain,
+			SellerType:     row.SellerType,
+			Name:           row.Name,
+			IsConfidential: row.IsConfidential,
+			CreatedAt:      row.CreatedAt.Time.Format(time.RFC3339),
+			UpdatedAt:      row.UpdatedAt.Time.Format(time.RFC3339),
+		}
 		return nil
 	})
 	return out, err
@@ -792,15 +795,24 @@ func (s *Service) UpdateSeller(ctx context.Context, id int64, spec SellerUpdateS
 		if u, ok := GetUser(ctx); ok {
 			uid = u.UserID
 		}
-		s.AuditLog(ctx, q, uid, "UPDATE_SELLER", "supply", nil, map[string]any{
-			"id":        id,
-			"seller_id": row.SellerID,
+		s.AuditLog(ctx, q, uid, "UPDATE_SELLER", "supply", nil, auditSellerUpdateChange{
+			ID:       id,
+			SellerID: row.SellerID,
 		}, nil)
 
 		if err := s.enqueueSupplyFilesUpdate(ctx, q, "update_seller"); err != nil {
 			return err
 		}
-		out = sellerToDTO(row)
+		out = SellerDTO{
+			ID:             row.ID,
+			SellerID:       row.SellerID,
+			Domain:         row.Domain,
+			SellerType:     row.SellerType,
+			Name:           row.Name,
+			IsConfidential: row.IsConfidential,
+			CreatedAt:      row.CreatedAt.Time.Format(time.RFC3339),
+			UpdatedAt:      row.UpdatedAt.Time.Format(time.RFC3339),
+		}
 		return nil
 	})
 	return out, err
@@ -820,7 +832,7 @@ func (s *Service) DeleteSeller(ctx context.Context, id int64) error {
 		if u, ok := GetUser(ctx); ok {
 			uid = u.UserID
 		}
-		s.AuditLog(ctx, q, uid, "DELETE_SELLER", "supply", nil, map[string]any{"id": id}, nil)
+		s.AuditLog(ctx, q, uid, "DELETE_SELLER", "supply", nil, auditIdChange{ID: id}, nil)
 		return s.enqueueSupplyFilesUpdate(ctx, q, "delete_seller")
 	})
 }
@@ -830,7 +842,20 @@ func (s *Service) ListAdsTxtEntries(ctx context.Context) ([]AdsTxtEntryDTO, erro
 	if err != nil {
 		return nil, err
 	}
-	return coldpath.MapSlice(rows, adsTxtToDTO), nil
+	out := make([]AdsTxtEntryDTO, len(rows))
+	for i, r := range rows {
+		out[i] = AdsTxtEntryDTO{
+			ID:                 r.ID,
+			Domain:             r.Domain,
+			PublisherAccountID: r.PublisherAccountID,
+			Relationship:       r.Relationship,
+			CertAuthorityID:    r.CertAuthorityID,
+			SortOrder:          r.SortOrder,
+			CreatedAt:          r.CreatedAt.Time.Format(time.RFC3339),
+			UpdatedAt:          r.UpdatedAt.Time.Format(time.RFC3339),
+		}
+	}
+	return out, nil
 }
 
 func (s *Service) GetAdsTxtEntry(ctx context.Context, id int64) (AdsTxtEntryDTO, error) {
@@ -838,7 +863,16 @@ func (s *Service) GetAdsTxtEntry(ctx context.Context, id int64) (AdsTxtEntryDTO,
 	if err != nil {
 		return AdsTxtEntryDTO{}, ErrAdsTxtEntryNotFound
 	}
-	return adsTxtToDTO(row), nil
+	return AdsTxtEntryDTO{
+		ID:                 row.ID,
+		Domain:             row.Domain,
+		PublisherAccountID: row.PublisherAccountID,
+		Relationship:       row.Relationship,
+		CertAuthorityID:    row.CertAuthorityID,
+		SortOrder:          row.SortOrder,
+		CreatedAt:          row.CreatedAt.Time.Format(time.RFC3339),
+		UpdatedAt:          row.UpdatedAt.Time.Format(time.RFC3339),
+	}, nil
 }
 
 func (s *Service) CreateAdsTxtEntry(ctx context.Context, spec AdsTxtEntryCreateSpec) (AdsTxtEntryDTO, error) {
@@ -868,14 +902,23 @@ func (s *Service) CreateAdsTxtEntry(ctx context.Context, spec AdsTxtEntryCreateS
 		if u, ok := GetUser(ctx); ok {
 			uid = u.UserID
 		}
-		s.AuditLog(ctx, q, uid, "CREATE_ADS_TXT", "supply", nil, map[string]any{
-			"domain": spec.Domain,
+		s.AuditLog(ctx, q, uid, "CREATE_ADS_TXT", "supply", nil, auditAdsTxtDomainChange{
+			Domain: spec.Domain,
 		}, nil)
 
 		if err := s.enqueueSupplyFilesUpdate(ctx, q, "create_ads_txt"); err != nil {
 			return err
 		}
-		out = adsTxtToDTO(row)
+		out = AdsTxtEntryDTO{
+			ID:                 row.ID,
+			Domain:             row.Domain,
+			PublisherAccountID: row.PublisherAccountID,
+			Relationship:       row.Relationship,
+			CertAuthorityID:    row.CertAuthorityID,
+			SortOrder:          row.SortOrder,
+			CreatedAt:          row.CreatedAt.Time.Format(time.RFC3339),
+			UpdatedAt:          row.UpdatedAt.Time.Format(time.RFC3339),
+		}
 		return nil
 	})
 	return out, err
@@ -909,12 +952,21 @@ func (s *Service) UpdateAdsTxtEntry(ctx context.Context, id int64, spec AdsTxtEn
 		if u, ok := GetUser(ctx); ok {
 			uid = u.UserID
 		}
-		s.AuditLog(ctx, q, uid, "UPDATE_ADS_TXT", "supply", nil, map[string]any{"id": id}, nil)
+		s.AuditLog(ctx, q, uid, "UPDATE_ADS_TXT", "supply", nil, auditIdChange{ID: id}, nil)
 
 		if err := s.enqueueSupplyFilesUpdate(ctx, q, "update_ads_txt"); err != nil {
 			return err
 		}
-		out = adsTxtToDTO(row)
+		out = AdsTxtEntryDTO{
+			ID:                 row.ID,
+			Domain:             row.Domain,
+			PublisherAccountID: row.PublisherAccountID,
+			Relationship:       row.Relationship,
+			CertAuthorityID:    row.CertAuthorityID,
+			SortOrder:          row.SortOrder,
+			CreatedAt:          row.CreatedAt.Time.Format(time.RFC3339),
+			UpdatedAt:          row.UpdatedAt.Time.Format(time.RFC3339),
+		}
 		return nil
 	})
 	return out, err
@@ -934,7 +986,7 @@ func (s *Service) DeleteAdsTxtEntry(ctx context.Context, id int64) error {
 		if u, ok := GetUser(ctx); ok {
 			uid = u.UserID
 		}
-		s.AuditLog(ctx, q, uid, "DELETE_ADS_TXT", "supply", nil, map[string]any{"id": id}, nil)
+		s.AuditLog(ctx, q, uid, "DELETE_ADS_TXT", "supply", nil, auditIdChange{ID: id}, nil)
 		return s.enqueueSupplyFilesUpdate(ctx, q, "delete_ads_txt")
 	})
 }
@@ -973,6 +1025,10 @@ func (s *Service) UpdateCampaignSupplyChain(ctx context.Context, campaignID uuid
 		}
 
 		oldNodes, _ := parseSupplyChainNodes(locked.SupplyChainNodes)
+		oldNodesJSON, err := coldpath.MarshalJSON(oldNodes)
+		if err != nil {
+			return err
+		}
 
 		updated, err := q.UpdateCampaignSupplyChain(ctx, db.UpdateCampaignSupplyChainParams{
 			ID:               domain.ToUUID(campaignID),
@@ -986,9 +1042,9 @@ func (s *Service) UpdateCampaignSupplyChain(ctx context.Context, campaignID uuid
 		if u, ok := GetUser(ctx); ok {
 			uid = u.UserID
 		}
-		s.AuditLog(ctx, q, uid, "UPDATE_CAMPAIGN_SUPPLY_CHAIN", "campaign", &campaignID, map[string]any{
-			"old_nodes": oldNodes,
-			"new_nodes": nodes,
+		s.AuditLog(ctx, q, uid, "UPDATE_CAMPAIGN_SUPPLY_CHAIN", "campaign", &campaignID, auditSupplyChainChange{
+			OldNodes: oldNodesJSON,
+			NewNodes: nodesJSON,
 		}, nil)
 
 		parsed, err := parseSupplyChainNodes(updated.SupplyChainNodes)
@@ -1058,7 +1114,10 @@ func (s *Service) BuildSellersJSON(ctx context.Context) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	settingsMap := coldpath.KeyByValue(settings, func(r db.GetAllSystemSettingsRow) string { return r.Key }, func(r db.GetAllSystemSettingsRow) string { return r.Value })
+	settingsMap := make(map[string]string, len(settings))
+	for _, r := range settings {
+		settingsMap[r.Key] = r.Value
+	}
 
 	doc := iabSellersJSON{
 		Version: sellersJSONVersion,
@@ -1118,7 +1177,10 @@ func (s *Service) BuildAdsTxt(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	settingsMap := coldpath.KeyByValue(settings, func(r db.GetAllSystemSettingsRow) string { return r.Key }, func(r db.GetAllSystemSettingsRow) string { return r.Value })
+	settingsMap := make(map[string]string, len(settings))
+	for _, r := range settings {
+		settingsMap[r.Key] = r.Value
+	}
 
 	var b strings.Builder
 	if owner := strings.TrimSpace(settingsMap[supplySettingOwner]); owner != "" {
@@ -1164,6 +1226,10 @@ func (s *Service) CreateCampaign(ctx context.Context, spec CampaignCreateSpec) (
 	if err := validateSchedule(spec.StartAt, spec.EndAt); err != nil {
 		return uuid.Nil, err
 	}
+	pacing := db.PacingModeTypeASAP
+	if spec.PacingMode != "" {
+		pacing = db.PacingModeType(spec.PacingMode)
+	}
 
 	campaignID, err := uuid.NewV7()
 	if err != nil {
@@ -1189,7 +1255,7 @@ func (s *Service) CreateCampaign(ctx context.Context, spec CampaignCreateSpec) (
 		if err != nil {
 			return mapNotFound(err, ErrCustomerNotFound)
 		}
-		if cust.Balance+cust.AllowedOverdraft < spec.BudgetLimit {
+		if cust.Balance+cust.AllowedOverdraft < spec.BudgetLimitMicro {
 			return ErrInsufficientBalance
 		}
 
@@ -1214,7 +1280,7 @@ func (s *Service) CreateCampaign(ctx context.Context, spec CampaignCreateSpec) (
 
 		if _, err = q.UpdateCustomerBalanceManagement(ctx, db.UpdateCustomerBalanceManagementParams{
 			ID:      domain.ToUUID(spec.CustomerID),
-			Balance: -spec.BudgetLimit,
+			Balance: -spec.BudgetLimitMicro,
 		}); err != nil {
 			return err
 		}
@@ -1222,11 +1288,11 @@ func (s *Service) CreateCampaign(ctx context.Context, spec CampaignCreateSpec) (
 		_, err = q.CreateCampaign(ctx, db.CreateCampaignParams{
 			ID:              domain.ToUUID(campaignID),
 			Name:            spec.Name,
-			BudgetLimit:     spec.BudgetLimit,
+			BudgetLimit:     spec.BudgetLimitMicro,
 			Status:          initialStatus,
 			CustomerID:      domain.ToUUID(spec.CustomerID),
-			PacingMode:      spec.PacingMode,
-			DailyBudget:     spec.DailyBudget,
+			PacingMode:      pacing,
+			DailyBudget:     spec.DailyBudgetMicro,
 			Timezone:        spec.Timezone,
 			FreqLimit:       pgtype.Int4{Int32: spec.FreqLimit, Valid: true},
 			FreqWindow:      pgtype.Int4{Int32: spec.FreqWindow, Valid: true},
@@ -1245,7 +1311,7 @@ func (s *Service) CreateCampaign(ctx context.Context, spec CampaignCreateSpec) (
 		_, err = q.CreateLedgerEntry(ctx, db.CreateLedgerEntryParams{
 			CustomerID:      domain.ToUUID(spec.CustomerID),
 			CampaignID:      domain.ToUUID(campaignID),
-			Amount:          spec.BudgetLimit,
+			Amount:          spec.BudgetLimitMicro,
 			Type:            db.LedgerTypeFREEZE,
 			IdempotencyHash: pgtype.Text{String: spec.IdempotencyKey, Valid: true},
 			PaymentIntentID: pgtype.UUID{},
@@ -1263,16 +1329,16 @@ func (s *Service) CreateCampaign(ctx context.Context, spec CampaignCreateSpec) (
 			return err
 		}
 
-		s.AuditLog(ctx, q, uuid.Nil, "CREATE_CAMPAIGN", "campaign", &campaignID, map[string]any{
-			"name":          spec.Name,
-			"budget_limit":  spec.BudgetLimit,
-			"status":        initialStatus,
-			"start_at":      spec.StartAt,
-			"end_at":        spec.EndAt,
-			"daypart_hours": spec.DaypartHours,
-		}, map[string]any{"idempotency_key": spec.IdempotencyKey})
+		s.AuditLog(ctx, q, uuid.Nil, "CREATE_CAMPAIGN", "campaign", &campaignID, auditCreateCampaignChange{
+			Name:         spec.Name,
+			BudgetLimit:  spec.BudgetLimitMicro,
+			Status:       initialStatus,
+			StartAt:      spec.StartAt,
+			EndAt:        spec.EndAt,
+			DaypartHours: spec.DaypartHours,
+		}, auditIdempotencyMeta{IdempotencyKey: spec.IdempotencyKey})
 
-		return s.emitCampaignLifecycleOutbox(ctx, q, campaignID, initialStatus, spec.BudgetLimit)
+		return s.emitCampaignLifecycleOutbox(ctx, q, campaignID, initialStatus, spec.BudgetLimitMicro)
 	})
 	return campaignID, err
 }
@@ -1342,7 +1408,7 @@ func (s *Service) pauseCampaign(ctx context.Context, campaignID uuid.UUID, reaso
 		if u, ok := GetUser(ctx); ok {
 			uid = u.UserID
 		}
-		s.AuditLog(ctx, q, uid, "PAUSE_CAMPAIGN", "campaign", &campaignID, map[string]any{"reason": reason}, nil)
+		s.AuditLog(ctx, q, uid, "PAUSE_CAMPAIGN", "campaign", &campaignID, auditReasonChange{Reason: reason}, nil)
 
 		payload, err := coldpath.MarshalJSON(CampaignPayload{CampaignID: campaignID.String()})
 		if err != nil {
@@ -1360,30 +1426,22 @@ func (s *Service) previewPauseCampaign(ctx context.Context, campaignID uuid.UUID
 		return MutationPreview{}, mapNotFound(err, ErrCampaignNotFound)
 	}
 	if camp.Status == db.CampaignStatusTypePAUSED {
-		return MutationPreview{
-			DryRun: true,
-			Action: "PAUSE_CAMPAIGN",
-			WouldChange: map[string]any{
-				"campaign_id": campaignID.String(),
-				"status":      string(camp.Status),
-				"noop":        true,
-			},
-		}, nil
+		return newMutationPreview("PAUSE_CAMPAIGN", PauseCampaignWouldChange{
+			CampaignID: campaignID.String(),
+			Status:     string(camp.Status),
+			Noop:       true,
+		})
 	}
 	if camp.Status != db.CampaignStatusTypeACTIVE {
 		return MutationPreview{}, fmt.Errorf("%w in status %s", ErrCampaignCannotBePaused, camp.Status)
 	}
-	return MutationPreview{
-		DryRun: true,
-		Action: "PAUSE_CAMPAIGN",
-		WouldChange: map[string]any{
-			"campaign_id":  campaignID.String(),
-			"status_from":  string(camp.Status),
-			"status_to":    string(db.CampaignStatusTypePAUSED),
-			"outbox_event": "PAUSE_CAMPAIGN",
-			"reason":       reason,
-		},
-	}, nil
+	return newMutationPreview("PAUSE_CAMPAIGN", PauseCampaignWouldChange{
+		CampaignID:  campaignID.String(),
+		StatusFrom:  string(camp.Status),
+		StatusTo:    string(db.CampaignStatusTypePAUSED),
+		OutboxEvent: "PAUSE_CAMPAIGN",
+		Reason:      reason,
+	})
 }
 
 func (s *Service) ResumeCampaign(ctx context.Context, campaignID uuid.UUID, reason string) error {
@@ -1439,7 +1497,7 @@ func (s *Service) resumeCampaign(ctx context.Context, campaignID uuid.UUID, reas
 		if u, ok := GetUser(ctx); ok {
 			uid = u.UserID
 		}
-		s.AuditLog(ctx, q, uid, "RESUME_CAMPAIGN", "campaign", &campaignID, map[string]any{"reason": reason}, nil)
+		s.AuditLog(ctx, q, uid, "RESUME_CAMPAIGN", "campaign", &campaignID, auditReasonChange{Reason: reason}, nil)
 
 		payload, err := coldpath.MarshalJSON(CampaignPayload{CampaignID: campaignID.String(), BudgetLimit: camp.BudgetLimit})
 		if err != nil {
@@ -1470,17 +1528,13 @@ func (s *Service) previewResumeCampaign(ctx context.Context, campaignID uuid.UUI
 	if resolveScheduleStatus(now, startAt, endAt) != db.CampaignStatusTypeACTIVE {
 		return MutationPreview{}, ErrCampaignOutsideSchedule
 	}
-	return MutationPreview{
-		DryRun: true,
-		Action: "RESUME_CAMPAIGN",
-		WouldChange: map[string]any{
-			"campaign_id":  campaignID.String(),
-			"status_from":  string(camp.Status),
-			"status_to":    string(db.CampaignStatusTypeACTIVE),
-			"outbox_event": "RESUME_CAMPAIGN",
-			"reason":       reason,
-		},
-	}, nil
+	return newMutationPreview("RESUME_CAMPAIGN", ResumeCampaignWouldChange{
+		CampaignID:  campaignID.String(),
+		StatusFrom:  string(camp.Status),
+		StatusTo:    string(db.CampaignStatusTypeACTIVE),
+		OutboxEvent: "RESUME_CAMPAIGN",
+		Reason:      reason,
+	})
 }
 
 func (s *Service) UpdateCampaignSchedule(ctx context.Context, campaignID uuid.UUID, startAt, endAt *time.Time, daypartHours []int16) error {
@@ -1511,15 +1565,17 @@ func (s *Service) UpdateCampaignSchedule(ctx context.Context, campaignID uuid.UU
 		if u, ok := GetUser(ctx); ok {
 			uid = u.UserID
 		}
-		s.AuditLog(ctx, q, uid, "UPDATE_CAMPAIGN_SCHEDULE", "campaign", &campaignID, map[string]any{
-			"start_at": startAt, "end_at": endAt, "daypart_hours": daypartHours,
+		s.AuditLog(ctx, q, uid, "UPDATE_CAMPAIGN_SCHEDULE", "campaign", &campaignID, auditCampaignScheduleChange{
+			StartAt:      startAt,
+			EndAt:        endAt,
+			DaypartHours: daypartHours,
 		}, nil)
 
-		payload, err := coldpath.MarshalJSON(map[string]any{
-			"campaign_id":   campaignID.String(),
-			"start_at":      startAt,
-			"end_at":        endAt,
-			"daypart_hours": daypartHours,
+		payload, err := coldpath.MarshalJSON(campaignScheduleOutboxPayload{
+			CampaignID:   campaignID.String(),
+			StartAt:      startAt,
+			EndAt:        endAt,
+			DaypartHours: daypartHours,
 		})
 		if err != nil {
 			return fmt.Errorf("marshal update campaign schedule outbox payload: %w", err)
@@ -1599,11 +1655,49 @@ func (s *Service) ListCampaignTemplates(ctx context.Context, customerID uuid.UUI
 		Limit:      limit,
 		Offset:     offset,
 	}
-	return coldpath.PaginatedList(
-		func() (int64, error) { return q.CountCampaignTemplates(ctx, cid) },
-		func() ([]db.CampaignTemplate, error) { return q.ListCampaignTemplates(ctx, listParams) },
-		templateToDTO,
-	)
+	total, err := q.CountCampaignTemplates(ctx, cid)
+	if err != nil {
+		return nil, 0, err
+	}
+	if total == 0 {
+		return []CampaignTemplateDTO{}, 0, nil
+	}
+	templateRows, err := q.ListCampaignTemplates(ctx, listParams)
+	if err != nil {
+		return nil, 0, err
+	}
+	out := make([]CampaignTemplateDTO, 0, len(templateRows))
+	for _, t := range templateRows {
+		countries := t.TargetCountries
+		if countries == nil {
+			countries = []string{}
+		}
+		hours := t.DaypartHours
+		if hours == nil {
+			hours = []int16{}
+		}
+		var brandID string
+		if t.BrandID.Valid {
+			brandID = uuid.UUID(t.BrandID.Bytes).String()
+		}
+		out = append(out, CampaignTemplateDTO{
+			ID:              uuid.UUID(t.ID.Bytes).String(),
+			CustomerID:      uuid.UUID(t.CustomerID.Bytes).String(),
+			Name:            t.Name,
+			BudgetLimit:     formatMicro(t.BudgetLimit),
+			PacingMode:      string(t.PacingMode),
+			DailyBudget:     formatMicro(t.DailyBudget),
+			Timezone:        t.Timezone,
+			FreqLimit:       t.FreqLimit,
+			FreqWindow:      t.FreqWindow,
+			TargetCountries: countries,
+			BrandID:         brandID,
+			DaypartHours:    hours,
+			CreatedAt:       t.CreatedAt.Time.Format(time.RFC3339),
+			UpdatedAt:       t.UpdatedAt.Time.Format(time.RFC3339),
+		})
+	}
+	return out, total, nil
 }
 
 func (s *Service) CreateCampaignFromTemplate(ctx context.Context, templateID uuid.UUID, customerID uuid.UUID, name string, budgetLimit *int64, idempotencyKey string) (uuid.UUID, error) {
@@ -1630,24 +1724,24 @@ func (s *Service) CreateCampaignFromTemplate(ctx context.Context, templateID uui
 	}
 
 	return s.CreateCampaign(ctx, CampaignCreateSpec{
-		CustomerID:      customerID,
-		BrandID:         brandID,
-		Name:            name,
-		BudgetLimit:     limit,
-		PacingMode:      tmpl.PacingMode,
-		DailyBudget:     tmpl.DailyBudget,
-		Timezone:        tmpl.Timezone,
-		FreqLimit:       tmpl.FreqLimit,
-		FreqWindow:      tmpl.FreqWindow,
-		TargetCountries: tmpl.TargetCountries,
-		DaypartHours:    tmpl.DaypartHours,
-		TemplateID:      &templateID,
-		IdempotencyKey:  idempotencyKey,
+		CustomerID:       customerID,
+		BrandID:          brandID,
+		Name:             name,
+		BudgetLimitMicro: limit,
+		PacingMode:       string(tmpl.PacingMode),
+		DailyBudgetMicro: tmpl.DailyBudget,
+		Timezone:         tmpl.Timezone,
+		FreqLimit:        tmpl.FreqLimit,
+		FreqWindow:       tmpl.FreqWindow,
+		TargetCountries:  tmpl.TargetCountries,
+		DaypartHours:     tmpl.DaypartHours,
+		TemplateID:       &templateID,
+		IdempotencyKey:   idempotencyKey,
 	})
 }
 
 func (s *Service) SaveCampaignAsTemplate(ctx context.Context, campaignID uuid.UUID, templateName string) (uuid.UUID, error) {
-	camp, err := s.GetCampaign(ctx, campaignID)
+	camp, err := s.GetCampaignRow(ctx, campaignID)
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -1720,7 +1814,20 @@ func (s *Service) ListBrandCreatives(ctx context.Context, brandID uuid.UUID) ([]
 	if err != nil {
 		return nil, err
 	}
-	return coldpath.MapSlice(rows, creativeToDTO), nil
+	out := make([]BrandCreativeDTO, len(rows))
+	for i, c := range rows {
+		out[i] = BrandCreativeDTO{
+			ID:         uuid.UUID(c.ID.Bytes).String(),
+			BrandID:    uuid.UUID(c.BrandID.Bytes).String(),
+			Name:       c.Name,
+			LandingURL: c.LandingUrl,
+			Weight:     c.Weight,
+			Status:     c.Status,
+			CreatedAt:  c.CreatedAt.Time.Format(time.RFC3339),
+			UpdatedAt:  c.UpdatedAt.Time.Format(time.RFC3339),
+		}
+	}
+	return out, nil
 }
 
 func (s *Service) UpdateBrandCreative(ctx context.Context, creativeID uuid.UUID, name, landingURL string, weight int32, status string) error {
@@ -1759,7 +1866,7 @@ func (s *Service) DeleteBrandCreative(ctx context.Context, creativeID uuid.UUID)
 }
 
 func (s *Service) emitBrandCreativesOutbox(ctx context.Context, q db.Querier, brandID uuid.UUID) error {
-	payload, err := coldpath.MarshalJSON(map[string]string{"brand_id": brandID.String()})
+	payload, err := coldpath.MarshalJSON(brandIDPayload{BrandID: brandID.String()})
 	if err != nil {
 		return fmt.Errorf("marshal sync brand creatives outbox payload: %w", err)
 	}
@@ -2008,17 +2115,17 @@ func (s *Service) closedLoopPacingControllerTx(ctx context.Context, tx pgx.Tx, m
 		actualSpendStr := money.FormatDecimal(actualSpendMicro)
 		expectedSpendStr := money.FormatDecimal(expectedSpendMicro)
 
-		s.AuditLog(ctx, q, uuid.Nil, "PACING_LOOP_ADJUSTMENT", "campaign", &campID, map[string]any{
-			"old_pacing": string(camp.PacingMode),
-			"new_pacing": string(targetPacing),
-			"spend":      actualSpendStr,
-			"expected":   expectedSpendStr,
-			"curve":      "daypart_weighted",
+		s.AuditLog(ctx, q, uuid.Nil, "PACING_LOOP_ADJUSTMENT", "campaign", &campID, auditPacingLoopAdjustment{
+			OldPacing: string(camp.PacingMode),
+			NewPacing: string(targetPacing),
+			Spend:     actualSpendStr,
+			Expected:  expectedSpendStr,
+			Curve:     "daypart_weighted",
 		}, nil)
 
-		payloadBytes, err := coldpath.MarshalJSON(map[string]any{
-			"campaign_id": campID.String(),
-			"pacing_mode": string(targetPacing),
+		payloadBytes, err := coldpath.MarshalJSON(campaignPacingPayload{
+			CampaignID: campID.String(),
+			PacingMode: string(targetPacing),
 		})
 		if err != nil {
 			return fmt.Errorf("failed to marshal pacing outbox payload: %w", err)
@@ -2178,11 +2285,11 @@ func (s *Service) UpsertExperimentCohort(ctx context.Context, spec ExperimentCoh
 		if err != nil {
 			return err
 		}
-		s.AuditLog(ctx, q, uuid.Nil, "UPDATE_COHORT_SNAPSHOT", "experiment", &spec.ID, map[string]any{
-			"name":     spec.Name,
-			"active":   spec.Active,
-			"variants": len(spec.Variants),
-		}, map[string]any{"outbox_event_id": ev.ID})
+		s.AuditLog(ctx, q, uuid.Nil, "UPDATE_COHORT_SNAPSHOT", "experiment", &spec.ID, auditCohortSnapshotChange{
+			Name:     spec.Name,
+			Active:   spec.Active,
+			Variants: len(spec.Variants),
+		}, auditOutboxEventMeta{OutboxEventID: ev.ID})
 		return nil
 	})
 }

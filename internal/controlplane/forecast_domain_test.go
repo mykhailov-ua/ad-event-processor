@@ -94,8 +94,3 @@ func TestForecast_buildSpendCurve_emptyHours(t *testing.T) {
 	t.Parallel()
 	assert.Empty(t, buildSpendCurve(nil, 1_000_000, "EVEN", 1000))
 }
-
-func TestForecast_DomainMapped(t *testing.T) {
-	t.Parallel()
-	assert.Equal(t, "forecast", FileDomain("forecast_plan.go"))
-}

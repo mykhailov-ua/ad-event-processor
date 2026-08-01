@@ -44,8 +44,3 @@ func TestCampaign_countriesOrEmpty(t *testing.T) {
 	assert.Equal(t, []string{}, countriesOrEmpty(nil))
 	assert.Equal(t, []string{"US"}, countriesOrEmpty([]string{"US"}))
 }
-
-func TestCampaign_DomainMapped(t *testing.T) {
-	t.Parallel()
-	assert.Equal(t, "campaign", FileDomain("campaign_validate.go"))
-}

@@ -23,20 +23,20 @@ import (
 
 const costSyncAdvisoryLockKey = int64(0x657370785f636f73)
 
-type Worker struct {
-	pool          *pgxpool.Pool
-	converter     *CurrencyConverter
-	providers     map[string]Provider
-	oauth         map[string]OAuthRefresher
-	chInserter    snapshotInserter
-	encryptionKey []byte
-	httpClient    *http.Client
-
-	onSyncComplete func(network string, duration time.Duration)
+type OAuthConfig struct {
+	MetaAppID, MetaAppSecret           string
+	GoogleClientID, GoogleClientSecret string
 }
 
-type snapshotInserter interface {
-	InsertSnapshots(ctx context.Context, lines []CostLine, usdMicro []int64) error
+type Worker struct {
+	pool            *pgxpool.Pool
+	converter       *CurrencyConverter
+	encryptionKey   []byte
+	httpClient      *http.Client
+	networkBaseURL  map[string]string
+	oauth           OAuthConfig
+	insertSnapshots func(context.Context, []CostLine, []int64) error
+	onSyncComplete  func(network string, duration time.Duration)
 }
 
 type WorkerOption func(*Worker)
@@ -44,26 +44,35 @@ type WorkerOption func(*Worker)
 func WithClickHouse(inserter *ClickHouseInserter) WorkerOption {
 	return func(w *Worker) {
 		if inserter != nil {
-			w.chInserter = inserter
+			w.insertSnapshots = inserter.InsertSnapshots
 		}
 	}
 }
 
 func WithMemorySnapshots(m *MemorySnapshotInserter) WorkerOption {
 	return func(w *Worker) {
-		w.chInserter = m
+		if m != nil {
+			w.insertSnapshots = m.InsertSnapshots
+		}
 	}
 }
 
-func WithOAuthRefresher(network string, refresher OAuthRefresher) WorkerOption {
+func WithOAuth(cfg OAuthConfig) WorkerOption {
 	return func(w *Worker) {
-		w.oauth[network] = refresher
+		if cfg.MetaAppID != "" {
+			w.oauth.MetaAppID = cfg.MetaAppID
+			w.oauth.MetaAppSecret = cfg.MetaAppSecret
+		}
+		if cfg.GoogleClientID != "" {
+			w.oauth.GoogleClientID = cfg.GoogleClientID
+			w.oauth.GoogleClientSecret = cfg.GoogleClientSecret
+		}
 	}
 }
 
-func WithProvider(p Provider) WorkerOption {
+func WithNetworkBaseURL(network, baseURL string) WorkerOption {
 	return func(w *Worker) {
-		w.providers[p.Network()] = p
+		w.networkBaseURL[network] = baseURL
 	}
 }
 
@@ -78,19 +87,11 @@ func NewWorker(pool *pgxpool.Pool, encryptionKey []byte, opts ...WorkerOption) *
 	client := &http.Client{Timeout: 90 * time.Second}
 
 	w := &Worker{
-		pool:          pool,
-		converter:     NewCurrencyConverter(pool, client),
-		encryptionKey: key,
-		httpClient:    client,
-		providers: map[string]Provider{
-			"facebook":     &FacebookProvider{Client: client},
-			"taboola":      &TaboolaProvider{Client: client},
-			"outbrain":     &OutbrainProvider{Client: client},
-			"google":       &GoogleAdsProvider{Client: client},
-			"tonic_rsoc":   &TonicRSOCProvider{Client: client},
-			"system1_rsoc": &System1RSOCProvider{Client: client},
-		},
-		oauth: make(map[string]OAuthRefresher),
+		pool:           pool,
+		converter:      NewCurrencyConverter(pool, client),
+		encryptionKey:  key,
+		httpClient:     client,
+		networkBaseURL: make(map[string]string),
 	}
 	for _, opt := range opts {
 		opt(w)
@@ -189,10 +190,6 @@ func (w *Worker) syncDay(ctx context.Context, filterCustomer *uuid.UUID, filterN
 func (w *Worker) syncCredential(ctx context.Context, credRow db.CostSyncCredential, date time.Time, trigger string) error {
 	start := time.Now()
 	network := credRow.Network
-	provider, ok := w.providers[network]
-	if !ok {
-		return fmt.Errorf("unsupported network: %s", network)
-	}
 
 	run, err := db.New(w.pool).InsertCostSyncRun(ctx, db.InsertCostSyncRunParams{
 		CustomerID:    credRow.CustomerID,
@@ -216,7 +213,7 @@ func (w *Worker) syncCredential(ctx context.Context, credRow db.CostSyncCredenti
 		return err
 	}
 
-	lines, err := provider.Fetch(ctx, cred, date)
+	lines, err := fetchNetworkCosts(ctx, w.httpClient, network, w.networkBaseURL[network], cred, date)
 	if err != nil {
 		w.completeRun(ctx, run.ID, "FAILED", 0, 0, err.Error())
 		metrics.CostSyncRunsTotal.WithLabelValues("failed").Inc()
@@ -296,8 +293,8 @@ func (w *Worker) persistLines(ctx context.Context, lines []CostLine, date time.T
 		return imported, totalUSD, err
 	}
 
-	if w.chInserter != nil {
-		if err := w.chInserter.InsertSnapshots(ctx, lines, usdAmounts); err != nil {
+	if w.insertSnapshots != nil {
+		if err := w.insertSnapshots(ctx, lines, usdAmounts); err != nil {
 			slog.Warn("cost-sync clickhouse insert failed", "error", err)
 			metrics.CostSyncCHErrors.Inc()
 		}
@@ -401,15 +398,29 @@ func (w *Worker) decryptCredential(row db.CostSyncCredential) (Credential, error
 }
 
 func (w *Worker) maybeRefreshToken(ctx context.Context, network string, row db.CostSyncCredential, cred *Credential) error {
-	refresher, ok := w.oauth[network]
-	if !ok {
-		return nil
-	}
 	if !cred.ExpiresAt.IsZero() && time.Until(cred.ExpiresAt) > 5*time.Minute {
 		return nil
 	}
 
-	token, expires, err := refresher.Refresh(ctx, *cred)
+	var (
+		token   string
+		expires time.Time
+		err     error
+	)
+	switch network {
+	case "facebook":
+		if w.oauth.MetaAppID == "" || w.oauth.MetaAppSecret == "" {
+			return nil
+		}
+		token, expires, err = refreshMetaOAuth(ctx, w.httpClient, w.oauth.MetaAppID, w.oauth.MetaAppSecret, *cred)
+	case "google":
+		if w.oauth.GoogleClientID == "" || w.oauth.GoogleClientSecret == "" {
+			return nil
+		}
+		token, expires, err = refreshGoogleOAuth(ctx, w.httpClient, w.oauth.GoogleClientID, w.oauth.GoogleClientSecret, *cred)
+	default:
+		return nil
+	}
 	if err != nil {
 		return err
 	}

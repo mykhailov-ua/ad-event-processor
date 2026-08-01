@@ -20,51 +20,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var (
-	ErrForecastClickHouseTimeout = errors.New("forecast clickhouse query timed out")
-	ErrForecastUnavailable       = errors.New("forecast service unavailable")
-	ErrClickHouseNotConfigured   = errors.New("clickhouse not configured")
-)
-
-type CampaignForecastInput struct {
-	CustomerID       *uuid.UUID
-	BudgetLimitMicro int64
-	TargetCountries  []string
-	DaypartHours     []int16
-	StartAt          time.Time
-	EndAt            time.Time
-	PacingMode       string
-	Timezone         string
-}
-
-type SpendCurvePoint struct {
-	Hour        string `json:"hour"`
-	SpendMicro  int64  `json:"spend_micro"`
-	Impressions int64  `json:"impressions"`
-}
-
-type ForecastAdvisory struct {
-	Code            string `json:"code"`
-	Message         string `json:"message"`
-	SuggestedPacing string `json:"suggested_pacing"`
-}
-
-type CampaignForecastDTO struct {
-	ImpressionsP50 int64             `json:"impressions_p50"`
-	ImpressionsP90 int64             `json:"impressions_p90"`
-	SpendCurve     []SpendCurvePoint `json:"spend_curve"`
-	LowConfidence  bool              `json:"low_confidence"`
-	Advisory       *ForecastAdvisory `json:"advisory,omitempty"`
-}
-
-type TableDTO struct {
-	Columns    []ColumnDTO      `json:"columns"`
-	Rows       []map[string]any `json:"rows"`
-	Totals     map[string]any   `json:"totals,omitempty"`
-	Freshness  DataFreshnessDTO `json:"freshness"`
-	NextCursor string           `json:"next_cursor,omitempty"`
-}
-
 type PlacementReportRowDTO struct {
 	PlacementID  string  `json:"placement_id"`
 	CampaignID   string  `json:"campaign_id"`
@@ -100,79 +55,6 @@ type KeywordReportResponse struct {
 	Rows       []KeywordReportRowDTO `json:"rows"`
 	Freshness  DataFreshnessDTO      `json:"freshness"`
 	NextCursor string                `json:"next_cursor,omitempty"`
-}
-
-type ColumnDTO struct {
-	Key   string `json:"key"`
-	Label string `json:"label"`
-	Type  string `json:"type,omitempty"`
-}
-
-type UnitEconomicsRowDTO struct {
-	CampaignID   string  `json:"campaign_id"`
-	SpendMicro   int64   `json:"spend_micro"`
-	RevenueMicro int64   `json:"revenue_micro"`
-	ProfitMicro  int64   `json:"profit_micro"`
-	Conversions  int64   `json:"conversions"`
-	CPAMicro     int64   `json:"cpa_micro"`
-	CPCMicro     int64   `json:"cpc_micro"`
-	CPMMicro     int64   `json:"cpm_micro"`
-	ROIPct       float64 `json:"roi_pct"`
-	EPCMicro     int64   `json:"epc_micro"`
-}
-
-type PivotTableDTO struct {
-	RowDim string    `json:"row_dim"`
-	ColDim string    `json:"col_dim"`
-	Rows   []string  `json:"rows"`
-	Cols   []string  `json:"cols"`
-	Cells  [][][]any `json:"cells"`
-}
-
-type PostbackReconRowDTO struct {
-	ClickID             string `json:"click_id"`
-	CampaignID          string `json:"campaign_id"`
-	ExpectedPayoutMicro int64  `json:"expected_payout_micro"`
-	RecordedPayoutMicro int64  `json:"recorded_payout_micro"`
-	DeltaPayoutMicro    int64  `json:"delta_payout_micro"`
-	AttributionLagSec   int64  `json:"attribution_lag_sec"`
-	Status              string `json:"status"`
-}
-
-type ReportJobSpec struct {
-	ReportKey  string         `json:"report_key"`
-	CustomerID string         `json:"customer_id"`
-	Period     PeriodDTO      `json:"period"`
-	Compare    *PeriodDTO     `json:"compare,omitempty"`
-	GroupBy    []string       `json:"group_by,omitempty"`
-	Filters    map[string]any `json:"filters,omitempty"`
-	Format     string         `json:"format"`
-}
-
-type CampaignMetricsDTO struct {
-	Impressions int64 `json:"impressions"`
-	Clicks      int64 `json:"clicks"`
-	Conversions int64 `json:"conversions"`
-}
-
-type CampaignHourlyBucketDTO struct {
-	Hour        string `json:"hour"`
-	Impressions int64  `json:"impressions"`
-	Clicks      int64  `json:"clicks"`
-	Conversions int64  `json:"conversions"`
-}
-
-type CampaignStatsDTO struct {
-	CampaignID   string                    `json:"campaign_id"`
-	CurrentSpend string                    `json:"current_spend"`
-	Metrics      CampaignMetricsDTO        `json:"metrics"`
-	Hourly       []CampaignHourlyBucketDTO `json:"hourly"`
-	Granularity  string                    `json:"granularity"`
-	From         string                    `json:"from"`
-	To           string                    `json:"to"`
-	Stale        bool                      `json:"stale"`
-	Source       string                    `json:"source"`
-	Consistency  string                    `json:"consistency"`
 }
 
 const (
@@ -366,7 +248,6 @@ func (reports *ReportsHTTPHandlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/reports/keywords", limit(perm("campaigns:read", reports.getKeywordsReport)))
 }
 
-
 func (reports *ReportsHTTPHandlers) writeServiceError(w http.ResponseWriter, err error) {
 	var q invalidQueryError
 	if errors.As(err, &q) {
@@ -482,32 +363,21 @@ func (reports *ReportsHTTPHandlers) getPlacementsReport(w http.ResponseWriter, r
 		}))
 	}
 
-	countFn := func() (int64, error) {
-		return totalRows, nil
-	}
-	listFn := func() ([]PlacementReportRowDTO, error) {
-		start := int64(offset)
-		if start >= totalRows {
-			return []PlacementReportRowDTO{}, nil
-		}
+	total := totalRows
+	start := int64(offset)
+	var paginatedRows []PlacementReportRowDTO
+	if start >= totalRows {
+		paginatedRows = []PlacementReportRowDTO{}
+	} else {
 		end := start + int64(limit)
 		if end > totalRows {
 			end = totalRows
 		}
-		return mockRows[start:end], nil
-	}
-	mapFn := func(row PlacementReportRowDTO) PlacementReportRowDTO {
-		return row
-	}
-
-	paginatedRows, total, err := coldpath.PaginatedList(countFn, listFn, mapFn)
-	if err != nil {
-		reports.writeServiceError(w, err)
-		return
+		paginatedRows = mockRows[start:end]
 	}
 
 	var nextCursor string
-	if int64(offset)+int64(limit) < total {
+	if start+int64(limit) < total {
 		nextCursor = coldpath.EncodeCursor(offset + int(limit))
 	}
 
@@ -586,32 +456,21 @@ func (reports *ReportsHTTPHandlers) getKeywordsReport(w http.ResponseWriter, r *
 		}))
 	}
 
-	countFn := func() (int64, error) {
-		return totalRows, nil
-	}
-	listFn := func() ([]KeywordReportRowDTO, error) {
-		start := int64(offset)
-		if start >= totalRows {
-			return []KeywordReportRowDTO{}, nil
-		}
+	total := totalRows
+	start := int64(offset)
+	var paginatedRows []KeywordReportRowDTO
+	if start >= totalRows {
+		paginatedRows = []KeywordReportRowDTO{}
+	} else {
 		end := start + int64(limit)
 		if end > totalRows {
 			end = totalRows
 		}
-		return mockRows[start:end], nil
-	}
-	mapFn := func(row KeywordReportRowDTO) KeywordReportRowDTO {
-		return row
-	}
-
-	paginatedRows, total, err := coldpath.PaginatedList(countFn, listFn, mapFn)
-	if err != nil {
-		reports.writeServiceError(w, err)
-		return
+		paginatedRows = mockRows[start:end]
 	}
 
 	var nextCursor string
-	if int64(offset)+int64(limit) < total {
+	if start+int64(limit) < total {
 		nextCursor = coldpath.EncodeCursor(offset + int(limit))
 	}
 
@@ -625,13 +484,8 @@ func (reports *ReportsHTTPHandlers) getKeywordsReport(w http.ResponseWriter, r *
 }
 
 const (
-	forecastHandlerTimeout       = 2 * time.Second
-	forecastDefaultRetryAfterSec = 30
+	forecastHandlerTimeout = 2 * time.Second
 )
-
-func ForecastRetryAfterSec() int {
-	return forecastDefaultRetryAfterSec
-}
 
 func (h *ReportsHTTPHandlers) registerCampaignStats(mux *http.ServeMux) {
 	if h.CampaignStats == nil {
@@ -785,15 +639,25 @@ func forecastParseBudgetMicro(micro *int64, legacy float64, hasLegacy bool) (int
 	return 0, errInvalidQuery("budget is required")
 }
 
+type ForecastUnavailableResponse struct {
+	Error      ForecastErrorDetail `json:"error"`
+	RetryAfter int                 `json:"retry_after"`
+}
+
+type ForecastErrorDetail struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
 func WriteForecastError(w http.ResponseWriter, err error) {
 	if errors.Is(err, ErrForecastClickHouseTimeout) || errors.Is(err, ErrForecastUnavailable) {
 		w.Header().Set("Retry-After", strconv.Itoa(ForecastRetryAfterSec()))
-		httpresponse.JSON(w, http.StatusServiceUnavailable, map[string]any{
-			"error": map[string]string{
-				"code":    "FORECAST_UNAVAILABLE",
-				"message": err.Error(),
+		httpresponse.JSON(w, http.StatusServiceUnavailable, ForecastUnavailableResponse{
+			Error: ForecastErrorDetail{
+				Code:    "FORECAST_UNAVAILABLE",
+				Message: err.Error(),
 			},
-			"retry_after": ForecastRetryAfterSec(),
+			RetryAfter: ForecastRetryAfterSec(),
 		})
 		return
 	}

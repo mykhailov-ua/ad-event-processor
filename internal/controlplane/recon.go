@@ -102,7 +102,7 @@ func (w *OutboxWorker) ApplyReconciliationAdjust(ctx context.Context, eventID in
 
 	adminID := uuid.MustParse(quotaRepairSystemAdmin)
 	w.svc.AuditLog(ctx, q, adminID, "RECONCILIATION_ADJUST", "campaign",
-		&campID, p, map[string]any{"outbox_event_id": eventID})
+		&campID, p, auditOutboxEventMeta{OutboxEventID: eventID})
 
 	if err := tx.Commit(ctx); err != nil {
 		return err

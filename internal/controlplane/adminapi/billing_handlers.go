@@ -48,27 +48,16 @@ type BillingHTTPHandlers struct {
 	ResolveDisputeCustomerFilter func(*http.Request) (string, error)
 }
 
-type BalanceLedgerDTO struct {
-	ID              int64  `json:"id"`
-	CustomerID      string `json:"customer_id"`
-	CampaignID      string `json:"campaign_id,omitempty"`
-	Amount          string `json:"amount"`
-	Type            string `json:"type"`
-	IdempotencyHash string `json:"idempotency_hash,omitempty"`
-	CreatedAt       string `json:"created_at"`
+type InvoiceListResponse struct {
+	Items  []domain.Invoice `json:"items"`
+	Total  int64            `json:"total"`
+	Limit  int32            `json:"limit"`
+	Offset int32            `json:"offset"`
 }
 
-type CustomerBalanceDTO struct {
-	CustomerID string             `json:"customer_id"`
-	Balance    string             `json:"balance"`
-	Currency   string             `json:"currency"`
-	Ledger     []BalanceLedgerDTO `json:"ledger"`
-}
-
-type LedgerExportResult struct {
-	NextCursor int64
-	Truncated  bool
-	Bytes      int
+type SelfServeInvoiceListResponse struct {
+	Invoices []domain.Invoice `json:"invoices"`
+	Total    int64            `json:"total"`
 }
 
 type CustomerBalanceReader interface {
@@ -116,10 +105,10 @@ type AdminInvoiceFilters struct {
 }
 
 type AdminInvoiceListResult struct {
-	Items  []InvoiceSummaryDTO `json:"items"`
-	Total  int64               `json:"total"`
-	Limit  int32               `json:"limit"`
-	Offset int32               `json:"offset"`
+	Items  []domain.InvoiceSummary `json:"items"`
+	Total  int64                   `json:"total"`
+	Limit  int32                   `json:"limit"`
+	Offset int32                   `json:"offset"`
 }
 
 const billingForecastCHTimeout = 1500 * time.Millisecond
@@ -217,15 +206,11 @@ func (billHandlers *BillingHTTPHandlers) listInvoices(w http.ResponseWriter, r *
 		WriteBillingError(w, err)
 		return
 	}
-	items := make([]map[string]any, 0, len(resp.Invoices))
-	for i := range resp.Invoices {
-		items = append(items, invoiceToJSON(&resp.Invoices[i]))
-	}
-	httpresponse.JSON(w, http.StatusOK, map[string]any{
-		"items":  items,
-		"total":  resp.Total,
-		"limit":  limit,
-		"offset": offset,
+	httpresponse.JSON(w, http.StatusOK, InvoiceListResponse{
+		Items:  resp.Invoices,
+		Total:  resp.Total,
+		Limit:  limit,
+		Offset: offset,
 	})
 }
 
@@ -332,9 +317,8 @@ func (billHandlers *BillingHTTPHandlers) getInvoice(w http.ResponseWriter, r *ht
 		billHandlers.writeServiceError(w, err)
 		return
 	}
-	body := invoiceToJSON(invoice)
-	body["pdf_url"] = invoicePDFPath(invoiceID)
-	httpresponse.JSON(w, http.StatusOK, body)
+	invoice.PDFURL = invoicePDFPath(invoiceID)
+	httpresponse.JSON(w, http.StatusOK, invoice)
 }
 
 func (billHandlers *BillingHTTPHandlers) getInvoicePDF(w http.ResponseWriter, r *http.Request) {
@@ -425,11 +409,11 @@ func (billHandlers *BillingHTTPHandlers) getLedgerLines(w http.ResponseWriter, r
 		billHandlers.writeServiceError(w, err)
 		return
 	}
-	httpresponse.JSON(w, http.StatusOK, map[string]any{
-		"items":       lines,
-		"total":       total,
-		"next_cursor": nextCursor,
-		"limit":       limit,
+	httpresponse.JSON(w, http.StatusOK, LedgerLinesListResponse{
+		Items:      lines,
+		Total:      total,
+		NextCursor: nextCursor,
+		Limit:      limit,
 	})
 }
 
@@ -520,7 +504,7 @@ func (billHandlers *BillingHTTPHandlers) listDeliveries(w http.ResponseWriter, r
 		billHandlers.writeServiceError(w, err)
 		return
 	}
-	httpresponse.JSON(w, http.StatusOK, map[string]any{"items": rows})
+	httpresponse.JSON(w, http.StatusOK, DeliveryListResponse{Items: rows})
 }
 
 func (billHandlers *BillingHTTPHandlers) retryDelivery(w http.ResponseWriter, r *http.Request) {
@@ -707,40 +691,6 @@ func invoicePDFPath(invoiceID string) string {
 	return "/api/v1/billing/invoices/" + invoiceID + "/pdf"
 }
 
-func InvoiceToJSON(invoice *domain.Invoice) map[string]any {
-	return invoiceToJSON(invoice)
-}
-
-func invoiceToJSON(invoice *domain.Invoice) map[string]any {
-	if invoice == nil {
-		return nil
-	}
-	month := ""
-	if !invoice.BillingMonth.IsZero() {
-		month = invoice.BillingMonth.UTC().Format("2006-01")
-	}
-	lines := make([]map[string]any, 0, len(invoice.Lines))
-	for _, line := range invoice.Lines {
-		lines = append(lines, map[string]any{
-			"ledger_type":  line.LedgerType,
-			"amount_micro": line.AmountMicro,
-			"entry_count":  line.EntryCount,
-		})
-	}
-	return map[string]any{
-		"id":             invoice.ID,
-		"customer_id":    invoice.CustomerID,
-		"billing_month":  month,
-		"subtotal_micro": invoice.SubtotalMicro,
-		"tax_micro":      invoice.TaxMicro,
-		"total_micro":    invoice.TotalMicro,
-		"currency":       invoice.Currency,
-		"tax_scheme":     invoice.TaxScheme,
-		"tax_rate_bps":   invoice.TaxRateBps,
-		"lines":          lines,
-	}
-}
-
 func parsePagination(r *http.Request) (int32, int32) {
 	limit := int32(50)
 	offset := int32(0)
@@ -815,13 +765,13 @@ func (s *CompositeReadService) ListInvoicesAdmin(ctx context.Context, filters Ad
 		return AdminInvoiceListResult{}, err
 	}
 
-	items := make([]InvoiceSummaryDTO, 0, len(rows))
+	items := make([]domain.InvoiceSummary, 0, len(rows))
 	for _, inv := range rows {
 		monthStr := ""
 		if inv.BillingMonth.Valid {
 			monthStr = inv.BillingMonth.Time.UTC().Format("2006-01")
 		}
-		items = append(items, InvoiceSummaryDTO{
+		items = append(items, domain.InvoiceSummary{
 			ID:            uuidString(inv.ID),
 			CustomerID:    uuidString(inv.CustomerID),
 			BillingMonth:  monthStr,
@@ -1125,22 +1075,26 @@ func (h *BillingHTTPHandlers) listDisputes(w http.ResponseWriter, r *http.Reques
 const ledgerInvariantToleranceMicro = int64(1)
 
 type CompositeReadService struct {
-	pool     *pgxpool.Pool
-	cfg      *config.Config
-	provider ledger.PaymentProvider
-	queries  *billingdb.Queries
-	chQuery  *database.CHQuery
+	pool                *pgxpool.Pool
+	cfg                 *config.Config
+	paymentProviderName string
+	queries             *billingdb.Queries
+	chQuery             *database.CHQuery
 }
 
-func NewCompositeReadService(pool *pgxpool.Pool, cfg *config.Config, provider ledger.PaymentProvider) *CompositeReadService {
+func NewCompositeReadService(pool *pgxpool.Pool, cfg *config.Config) *CompositeReadService {
 	if pool == nil {
 		return nil
 	}
+	providerName := "placeholder"
+	if cfg != nil && cfg.Billing.PaymentProvider != "" {
+		providerName = cfg.Billing.PaymentProvider
+	}
 	return &CompositeReadService{
-		pool:     pool,
-		cfg:      cfg,
-		provider: provider,
-		queries:  billingdb.New(pool),
+		pool:                pool,
+		cfg:                 cfg,
+		paymentProviderName: providerName,
+		queries:             billingdb.New(pool),
 	}
 }
 
@@ -1161,29 +1115,11 @@ type StatementDTO struct {
 	OpeningBalanceMicro int64                   `json:"opening_balance_micro"`
 	ClosingBalanceMicro int64                   `json:"closing_balance_micro"`
 	Lines               []ledger.InvoiceLineDTO `json:"lines"`
-	Invoices            []InvoiceSummaryDTO     `json:"invoices"`
-	Payments            []PaymentSummaryDTO     `json:"payments"`
+	Invoices            []domain.InvoiceSummary `json:"invoices"`
+	Payments            []domain.PaymentSummary `json:"payments"`
 	TaxBreakdown        TaxBreakdownDTO         `json:"tax_breakdown"`
 	Reconciliation      ReconciliationDTO       `json:"reconciliation"`
 	Currency            string                  `json:"currency"`
-}
-
-type InvoiceSummaryDTO struct {
-	ID            string `json:"id"`
-	CustomerID    string `json:"customer_id,omitempty"`
-	BillingMonth  string `json:"billing_month"`
-	SubtotalMicro int64  `json:"subtotal_micro"`
-	TaxMicro      int64  `json:"tax_micro"`
-	TotalMicro    int64  `json:"total_micro"`
-	Status        string `json:"status"`
-	Currency      string `json:"currency"`
-}
-
-type PaymentSummaryDTO struct {
-	LedgerID        int64  `json:"ledger_id"`
-	AmountMicro     int64  `json:"amount_micro"`
-	PaymentIntentID string `json:"payment_intent_id,omitempty"`
-	CreatedAt       string `json:"created_at"`
 }
 
 type TaxBreakdownDTO struct {
@@ -1301,14 +1237,14 @@ func (s *CompositeReadService) BuildStatement(ctx context.Context, customerID uu
 		return StatementDTO{}, err
 	}
 
-	invoiceDTOs := make([]InvoiceSummaryDTO, 0, len(invoices))
+	invoiceDTOs := make([]domain.InvoiceSummary, 0, len(invoices))
 	var invoiceTotal int64
 	for _, inv := range invoices {
 		month := ""
 		if inv.BillingMonth.Valid {
 			month = inv.BillingMonth.Time.UTC().Format("2006-01")
 		}
-		invoiceDTOs = append(invoiceDTOs, InvoiceSummaryDTO{
+		invoiceDTOs = append(invoiceDTOs, domain.InvoiceSummary{
 			ID:            uuidString(inv.ID),
 			BillingMonth:  month,
 			SubtotalMicro: inv.SubtotalMicro,
@@ -1331,7 +1267,7 @@ func (s *CompositeReadService) BuildStatement(ctx context.Context, customerID uu
 	if err != nil {
 		return StatementDTO{}, err
 	}
-	paymentDTOs := make([]PaymentSummaryDTO, 0, len(payments))
+	paymentDTOs := make([]domain.PaymentSummary, 0, len(payments))
 	for _, p := range payments {
 		intentID := ""
 		if p.PaymentIntentID.Valid {
@@ -1341,7 +1277,7 @@ func (s *CompositeReadService) BuildStatement(ctx context.Context, customerID uu
 		if p.CreatedAt.Valid {
 			createdAt = p.CreatedAt.Time.UTC().Format(time.RFC3339)
 		}
-		paymentDTOs = append(paymentDTOs, PaymentSummaryDTO{
+		paymentDTOs = append(paymentDTOs, domain.PaymentSummary{
 			LedgerID:        p.ID,
 			AmountMicro:     p.Amount,
 			PaymentIntentID: intentID,
@@ -1405,15 +1341,12 @@ func (s *CompositeReadService) GetWallet(ctx context.Context, customerID uuid.UU
 	}
 
 	wallet := WalletDTO{
-		CustomerID:            customerID.String(),
-		BalanceMicro:          row.Balance,
-		Currency:              row.Currency,
-		AllowedOverdraftMicro: row.AllowedOverdraft,
-		PaymentProvider:       "placeholder",
-	}
-	if s.provider != nil {
-		wallet.PaymentProvider = s.provider.Name()
-		wallet.PaymentProviderConfigured = s.provider.Configured()
+		CustomerID:                customerID.String(),
+		BalanceMicro:              row.Balance,
+		Currency:                  row.Currency,
+		AllowedOverdraftMicro:     row.AllowedOverdraft,
+		PaymentProvider:           s.paymentProviderName,
+		PaymentProviderConfigured: false,
 	}
 	if s.cfg != nil {
 		wallet.LowBalanceThresholdMicro = s.cfg.Management.LowBalanceThresholdMicro

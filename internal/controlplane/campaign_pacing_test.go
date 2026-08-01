@@ -50,9 +50,9 @@ func TestManagementAPI_CampaignPacing(t *testing.T) {
 	campID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
 		CustomerID:      custID,
 		Name:            "Spring Sale Pacing",
-		BudgetLimit:     100_000_000,
-		PacingMode:      db.PacingModeTypeEVEN,
-		DailyBudget:     10_000_000,
+		BudgetLimitMicro:     100_000_000,
+		PacingMode:      string(db.PacingModeTypeEVEN),
+		DailyBudgetMicro:     10_000_000,
 		Timezone:        "UTC",
 		FreqLimit:       5,
 		FreqWindow:      3600,

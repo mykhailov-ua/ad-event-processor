@@ -98,7 +98,7 @@ func TestFault_FinancialReconDeadOutbox(t *testing.T) {
 	_, err := infra.Pool.Exec(ctx, `DELETE FROM payment.payment_outbox WHERE event_type = 'SETTLE_BALANCE'`)
 	require.NoError(t, err)
 
-	svc := payment.NewService(infra.Pool, payment.NewMockProvider(), infra.Cfg)
+	svc := payment.NewService(infra.Pool, infra.Cfg)
 	paymenttest.ProcessRefundWebhook(t, infra.Pool, svc, "evt_recon_dead_"+uuid.New().String(), seed.ProviderRef, "re_recon_dead_"+uuid.New().String(), 9_000_000)
 
 	worker := paymenttest.NewOutboxWorkerForFault(infra)
@@ -132,7 +132,7 @@ func TestFault_FinancialReconRefundDrift(t *testing.T) {
 
 	customerID := uuid.New()
 	seed := paymenttest.SeedSettledIntent(t, infra, customerID, 20_000_000, "fault-recon-drift-"+uuid.New().String())
-	svc := payment.NewService(infra.Pool, payment.NewMockProvider(), infra.Cfg)
+	svc := payment.NewService(infra.Pool, infra.Cfg)
 	paymenttest.ProcessRefundWebhook(t, infra.Pool, svc, "evt_recon_drift_"+uuid.New().String(), seed.ProviderRef, "re_recon_drift_"+uuid.New().String(), 6_000_000)
 
 	recon := newReconForFault(infra)

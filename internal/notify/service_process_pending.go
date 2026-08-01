@@ -100,7 +100,14 @@ func (service *Service) finalizeGroup(ctx context.Context, group notificationGro
 	var deliveryNote string
 
 	if lead.DeliveryMode == db.NotifierDeliveryModeBROADCAST {
-		targets := service.resolveBroadcastTargets(MapDBProviderStringsToDB(lead.BroadcastProviders))
+		var targets []db.NotifierProvider
+		if len(lead.BroadcastProviders) > 0 {
+			targets = make([]db.NotifierProvider, 0, len(lead.BroadcastProviders))
+			for _, provider := range lead.BroadcastProviders {
+				targets = append(targets, db.NotifierProvider(provider))
+			}
+		}
+		targets = service.resolveBroadcastTargets(targets)
 		result := service.deliverBroadcast(ctx, leadID, lead.Provider, lead.Recipient, targets, lead.Title.String, finalBody)
 		sendErr = result.err
 		sentProvider = result.sentProvider

@@ -125,9 +125,8 @@ func OpenModule(ctx context.Context, cfg *config.Config) (*Module, error) {
 		pool.Close()
 		return nil, err
 	}
-	prov := NewProvider(cfg)
 	LogProviderMode(cfg)
-	svc := NewService(pool, prov, cfg)
+	svc := NewService(pool, cfg)
 	outboxWorker := NewOutboxWorker(pool, cfg)
 	settlementLedger := NewSettlementLedgerClient(cfg)
 	cryptoHoldWorker := NewCryptoHoldWorker(pool, cfg)

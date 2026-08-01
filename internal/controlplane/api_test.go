@@ -46,7 +46,7 @@ func TestAPI_GetCampaignStats_PostgresOnly(t *testing.T) {
 	campID, err := svc.CreateCampaign(context.Background(), CampaignCreateSpec{
 		CustomerID:     custID,
 		Name:           "Stats Camp",
-		BudgetLimit:    100_000_000,
+		BudgetLimitMicro:    100_000_000,
 		PacingMode:     "ASAP",
 		Timezone:       "UTC",
 		IdempotencyKey: "stats-camp-1",
@@ -110,7 +110,7 @@ func TestAPI_GetCampaignStats_TenantIsolation(t *testing.T) {
 	campID, err := svc.CreateCampaign(context.Background(), CampaignCreateSpec{
 		CustomerID:     ownerID,
 		Name:           "Private",
-		BudgetLimit:    50_000_000,
+		BudgetLimitMicro:    50_000_000,
 		PacingMode:     "ASAP",
 		Timezone:       "UTC",
 		IdempotencyKey: "stats-camp-iso",
@@ -155,7 +155,7 @@ func TestAPI_GetCampaignStats_ClickHouseStaleOK(t *testing.T) {
 	campID, err := svc.CreateCampaign(context.Background(), CampaignCreateSpec{
 		CustomerID:     custID,
 		Name:           "CH Camp",
-		BudgetLimit:    100_000_000,
+		BudgetLimitMicro:    100_000_000,
 		PacingMode:     "ASAP",
 		Timezone:       "UTC",
 		IdempotencyKey: "stats-ch-1",

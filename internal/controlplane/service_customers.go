@@ -8,13 +8,15 @@ import (
 	"strconv"
 	"time"
 
+	"espx/internal/controlplane/adminapi"
 	"espx/internal/domain"
 	"espx/internal/domain/db"
-	"espx/pkg/coldpath"
 	"espx/pkg/money"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type CustomerDTO struct {
@@ -28,49 +30,16 @@ type CustomerDTO struct {
 	UpdatedAt       string `json:"updated_at"`
 }
 
-type LedgerDTO struct {
-	ID              int64  `json:"id"`
-	CustomerID      string `json:"customer_id"`
-	CampaignID      string `json:"campaign_id,omitempty"`
-	Amount          string `json:"amount"`
-	Type            string `json:"type"`
-	IdempotencyHash string `json:"idempotency_hash,omitempty"`
-	CreatedAt       string `json:"created_at"`
-}
+type LedgerDTO = adminapi.BalanceLedgerDTO
+
+type CustomerBalanceDTO = adminapi.CustomerBalanceDTO
+
+type LedgerExportResult = adminapi.LedgerExportResult
 
 const (
 	ledgerExportMaxBytes   = 10 * 1024 * 1024
 	ledgerExportBatchLimit = 500
 )
-
-type CustomerBalanceDTO struct {
-	CustomerID string      `json:"customer_id"`
-	Balance    string      `json:"balance"`
-	Currency   string      `json:"currency"`
-	Ledger     []LedgerDTO `json:"ledger"`
-}
-
-type LedgerExportResult struct {
-	NextCursor int64
-	Truncated  bool
-	Bytes      int
-}
-
-func ledgerToDTO(r db.BalanceLedger) LedgerDTO {
-	var campID string
-	if r.CampaignID.Valid {
-		campID = uuid.UUID(r.CampaignID.Bytes).String()
-	}
-	return LedgerDTO{
-		ID:              r.ID,
-		CustomerID:      uuid.UUID(r.CustomerID.Bytes).String(),
-		CampaignID:      campID,
-		Amount:          formatMicro(r.Amount),
-		Type:            string(r.Type),
-		IdempotencyHash: r.IdempotencyHash.String,
-		CreatedAt:       r.CreatedAt.Time.Format(time.RFC3339),
-	}
-}
 
 func formatMicro(m int64) string {
 	return money.FormatFixed2(m)
@@ -101,17 +70,18 @@ func (s *Service) ListCustomers(ctx context.Context, limit, offset int32) ([]Cus
 		return nil, 0, err
 	}
 
-	statsMap := coldpath.KeyBy(stats, func(st db.GetCustomerStatsRow) (uuid.UUID, bool) {
+	statsMap := make(map[uuid.UUID]db.GetCustomerStatsRow, len(stats))
+	for _, st := range stats {
 		if st.CustomerID.Valid {
-			return uuid.UUID(st.CustomerID.Bytes), true
+			statsMap[uuid.UUID(st.CustomerID.Bytes)] = st
 		}
-		return uuid.Nil, false
-	})
+	}
 
-	return coldpath.MapSlice(rows, func(r db.Customer) CustomerDTO {
+	out := make([]CustomerDTO, 0, len(rows))
+	for _, r := range rows {
 		uid := uuid.UUID(r.ID.Bytes)
 		st := statsMap[uid]
-		return CustomerDTO{
+		out = append(out, CustomerDTO{
 			ID:              uid.String(),
 			Name:            r.Name,
 			Balance:         formatMicro(r.Balance),
@@ -120,8 +90,9 @@ func (s *Service) ListCustomers(ctx context.Context, limit, offset int32) ([]Cus
 			TotalSpend:      formatMicro(st.TotalSpend),
 			CreatedAt:       r.CreatedAt.Time.Format(time.RFC3339),
 			UpdatedAt:       r.UpdatedAt.Time.Format(time.RFC3339),
-		}
-	}), total, nil
+		})
+	}
+	return out, total, nil
 }
 
 func (s *Service) GetCustomerDTO(ctx context.Context, id uuid.UUID) (CustomerDTO, error) {
@@ -161,11 +132,34 @@ func (s *Service) ListCustomerLedger(ctx context.Context, customerID uuid.UUID, 
 		Limit:      limit,
 		Offset:     offset,
 	}
-	return coldpath.PaginatedList(
-		func() (int64, error) { return q.CountCustomerLedger(ctx, tid) },
-		func() ([]db.BalanceLedger, error) { return q.ListCustomerLedger(ctx, listParams) },
-		ledgerToDTO,
-	)
+	total, err := q.CountCustomerLedger(ctx, tid)
+	if err != nil {
+		return nil, 0, err
+	}
+	if total == 0 {
+		return []LedgerDTO{}, 0, nil
+	}
+	ledgerRows, err := q.ListCustomerLedger(ctx, listParams)
+	if err != nil {
+		return nil, 0, err
+	}
+	out := make([]LedgerDTO, 0, len(ledgerRows))
+	for _, r := range ledgerRows {
+		var campID string
+		if r.CampaignID.Valid {
+			campID = uuid.UUID(r.CampaignID.Bytes).String()
+		}
+		out = append(out, LedgerDTO{
+			ID:              r.ID,
+			CustomerID:      uuid.UUID(r.CustomerID.Bytes).String(),
+			CampaignID:      campID,
+			Amount:          formatMicro(r.Amount),
+			Type:            string(r.Type),
+			IdempotencyHash: r.IdempotencyHash.String,
+			CreatedAt:       r.CreatedAt.Time.Format(time.RFC3339),
+		})
+	}
+	return out, total, nil
 }
 
 func (s *Service) GetCustomerBalance(ctx context.Context, customerID uuid.UUID) (CustomerBalanceDTO, error) {
@@ -182,7 +176,19 @@ func (s *Service) GetCustomerBalance(ctx context.Context, customerID uuid.UUID) 
 
 	ledger := make([]LedgerDTO, 0, len(rows))
 	for _, row := range rows {
-		ledger = append(ledger, ledgerToDTO(row))
+		var campID string
+		if row.CampaignID.Valid {
+			campID = uuid.UUID(row.CampaignID.Bytes).String()
+		}
+		ledger = append(ledger, LedgerDTO{
+			ID:              row.ID,
+			CustomerID:      uuid.UUID(row.CustomerID.Bytes).String(),
+			CampaignID:      campID,
+			Amount:          formatMicro(row.Amount),
+			Type:            string(row.Type),
+			IdempotencyHash: row.IdempotencyHash.String,
+			CreatedAt:       row.CreatedAt.Time.Format(time.RFC3339),
+		})
 	}
 
 	return CustomerBalanceDTO{
@@ -280,6 +286,58 @@ done:
 		result.NextCursor = lastID
 	}
 	return result, nil
+}
+
+func (s *Service) ListDisputes(ctx context.Context, customerFilter string, limit, offset int32) (adminapi.DisputeListResult, error) {
+	if s.payment == nil {
+		return adminapi.DisputeListResult{}, status.Error(codes.Unavailable, "payment service not configured")
+	}
+	resp, err := s.payment.ListDisputes(ctx, customerFilter, limit, offset)
+	if err != nil {
+		return adminapi.DisputeListResult{}, err
+	}
+	q := db.New(s.GetPool())
+	intentIDs := make([]pgtype.UUID, 0, len(resp.Disputes))
+	for _, d := range resp.Disputes {
+		intentID, parseErr := uuid.Parse(d.IntentID)
+		if parseErr == nil {
+			intentIDs = append(intentIDs, domain.ToUUID(intentID))
+		}
+	}
+	chargebacksByIntent := make(map[uuid.UUID][]int64)
+	if len(intentIDs) > 0 {
+		ledgerRows, lerr := q.ListLedgerChargebackEntryIDsByIntents(ctx, intentIDs)
+		if lerr == nil {
+			for _, row := range ledgerRows {
+				intentID := uuid.UUID(row.PaymentIntentID.Bytes)
+				chargebacksByIntent[intentID] = append(chargebacksByIntent[intentID], row.ID)
+			}
+		}
+	}
+
+	rows := make([]adminapi.DisputeRowDTO, 0, len(resp.Disputes))
+	for _, d := range resp.Disputes {
+		item := adminapi.DisputeRowDTO{
+			IntentID:          d.IntentID,
+			CustomerID:        d.CustomerID,
+			AmountMicro:       d.AmountMicro,
+			Currency:          d.Currency,
+			ProviderDisputeID: d.ProviderDisputeID,
+		}
+		if !d.UpdatedAt.IsZero() {
+			item.UpdatedAt = d.UpdatedAt.UTC().Format(time.RFC3339)
+		}
+		intentID, parseErr := uuid.Parse(d.IntentID)
+		if parseErr == nil {
+			if ledgerIDs, ok := chargebacksByIntent[intentID]; ok && len(ledgerIDs) > 0 {
+				item.ChargebackLedgerEntryIDs = ledgerIDs
+			} else {
+				item.ChargebackLedgerEntryIDs = []int64{}
+			}
+		}
+		rows = append(rows, item)
+	}
+	return adminapi.DisputeListResult{Disputes: rows, Total: resp.Total}, nil
 }
 
 type limitedWriter struct {

@@ -38,10 +38,7 @@ func (m *Module) ConfigureNotifier(api notify.NotifierAPI) {
 	}
 	providerName, recipient := ResolveInvoiceNotifierTarget(m.cfg)
 	if providerName != "" && recipient != "" {
-		m.svc.SetInvoiceDeliverer(NewNotifierInvoiceDeliverer(
-			api, providerName, recipient, m.cfg.Notifier.AdminBaseURL,
-		), m.cfg.Notifier.AdminBaseURL)
-		m.svc.SetDriftAlerter(NewNotifierDriftAlerter(api, providerName, recipient))
+		m.svc.SetNotifier(api, providerName, recipient, m.cfg.Notifier.AdminBaseURL)
 	}
 }
 
@@ -80,8 +77,11 @@ func OpenModule(ctx context.Context, cfg *config.Config) (*Module, error) {
 		return nil, err
 	}
 	svc := NewService(pool)
-	provider := NewPaymentProvider(cfg.Billing.PaymentProvider, string(cfg.Billing.PaymentProviderKey))
-	slog.Info("billing payment provider configured", "provider", provider.Name(), "configured", provider.Configured())
+	providerName := cfg.Billing.PaymentProvider
+	if providerName == "" {
+		providerName = "placeholder"
+	}
+	slog.Info("billing payment provider configured", "provider", providerName, "configured", false)
 	return &Module{
 		Handler: NewHandler(svc, cfg),
 		pool:    pool,

@@ -44,7 +44,7 @@ func TestFault_ConsentWebhookReplay(t *testing.T) {
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 
-	body, _ := json.Marshal(ConsentRecordInput{
+	body, _ := json.Marshal(ConsentRecord{
 		UserID:   "replay-user",
 		Purposes: domain.ConsentPurposeAdStorage,
 		Source:   "cmp",
@@ -86,7 +86,7 @@ func TestFault_ConsentReadYourWrites(t *testing.T) {
 	store.StartWatch(ctx, rdb, cfg.ConsentUpdateChannel)
 	worker := NewOutboxWorker(svc)
 
-	require.NoError(t, svc.RecordConsent(ctx, ConsentRecordInput{
+	require.NoError(t, svc.RecordConsent(ctx, ConsentRecord{
 		UserID:   "ryw-user",
 		Purposes: domain.ConsentPurposeAdStorage | domain.ConsentPurposeAnalytics,
 		Source:   "web",

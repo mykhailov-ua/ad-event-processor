@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"espx/internal/controlplane/adminapi"
 	"espx/internal/dedup"
 	"espx/internal/domain"
 	db "espx/internal/domain/db"
@@ -83,7 +84,7 @@ func (h *Handler) ensureCampaignAccess(r *http.Request, campaignID uuid.UUID) er
 	if !ok || !u.IsUser() {
 		return nil
 	}
-	camp, err := h.svc.GetCampaign(r.Context(), campaignID)
+	camp, err := h.svc.GetCampaignRow(r.Context(), campaignID)
 	if err != nil {
 		return err
 	}
@@ -109,18 +110,18 @@ func (h *Handler) ensureCustomerAccess(r *http.Request, customerID string) error
 }
 
 func writeForecastError(w http.ResponseWriter, err error) {
-	if errors.Is(err, ErrForecastClickHouseTimeout) || errors.Is(err, ErrForecastUnavailable) {
-		w.Header().Set("Retry-After", strconv.Itoa(ForecastRetryAfterSec()))
-		httpresponse.JSON(w, http.StatusServiceUnavailable, map[string]any{
-			"error": map[string]string{
-				"code":    "FORECAST_UNAVAILABLE",
-				"message": err.Error(),
+	if errors.Is(err, adminapi.ErrForecastClickHouseTimeout) || errors.Is(err, adminapi.ErrForecastUnavailable) {
+		w.Header().Set("Retry-After", strconv.Itoa(adminapi.ForecastRetryAfterSec()))
+		httpresponse.JSON(w, http.StatusServiceUnavailable, adminapi.ForecastUnavailableResponse{
+			Error: adminapi.ForecastErrorDetail{
+				Code:    "FORECAST_UNAVAILABLE",
+				Message: err.Error(),
 			},
-			"retry_after": ForecastRetryAfterSec(),
+			RetryAfter: adminapi.ForecastRetryAfterSec(),
 		})
 		return
 	}
-	if errors.Is(err, ErrClickHouseNotConfigured) {
+	if errors.Is(err, adminapi.ErrClickHouseNotConfigured) {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "CLICKHOUSE_UNAVAILABLE", "clickhouse not configured")
 		return
 	}

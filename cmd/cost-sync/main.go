@@ -50,15 +50,15 @@ func main() {
 	}
 
 	if os.Getenv("META_APP_ID") != "" && os.Getenv("META_APP_SECRET") != "" {
-		workerOpts = append(workerOpts, costsync.WithOAuthRefresher("facebook", &costsync.MetaOAuthRefresher{
-			AppID:     os.Getenv("META_APP_ID"),
-			AppSecret: os.Getenv("META_APP_SECRET"),
+		workerOpts = append(workerOpts, costsync.WithOAuth(costsync.OAuthConfig{
+			MetaAppID:     os.Getenv("META_APP_ID"),
+			MetaAppSecret: os.Getenv("META_APP_SECRET"),
 		}))
 	}
 	if os.Getenv("GOOGLE_OAUTH_CLIENT_ID") != "" && os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET") != "" {
-		workerOpts = append(workerOpts, costsync.WithOAuthRefresher("google", &costsync.GoogleOAuthRefresher{
-			ClientID:     os.Getenv("GOOGLE_OAUTH_CLIENT_ID"),
-			ClientSecret: os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET"),
+		workerOpts = append(workerOpts, costsync.WithOAuth(costsync.OAuthConfig{
+			GoogleClientID:     os.Getenv("GOOGLE_OAUTH_CLIENT_ID"),
+			GoogleClientSecret: os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET"),
 		}))
 	}
 

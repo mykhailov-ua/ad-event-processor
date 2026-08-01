@@ -146,7 +146,7 @@ func TestIntegration_ReportsDashboardsViews_TierGates(t *testing.T) {
 			CustomerID: customerBasic.String(),
 			Name:       "Basic View",
 			ReportKey:  "placements",
-			Spec:       map[string]any{},
+			Spec:       json.RawMessage(`{}`),
 		}
 		body, _ := json.Marshal(createReq)
 		req := httptest.NewRequest("POST", "/api/v1/views", bytes.NewReader(body))

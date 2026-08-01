@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"espx/internal/identity/db"
-	"espx/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -728,7 +727,20 @@ func (service *Service) ListUserAPIKeys(ctx context.Context, userID uuid.UUID) (
 	if err != nil {
 		return nil, err
 	}
-	return coldpath.MapSlice(rows, apiKeyFromListRow), nil
+	out := make([]APIKey, 0, len(rows))
+	for _, row := range rows {
+		key := APIKey{
+			ID:        uuidFromPg(row.ID).String(),
+			Name:      row.Name,
+			CreatedAt: row.CreatedAt.Time,
+		}
+		if row.ExpiresAt.Valid {
+			t := row.ExpiresAt.Time
+			key.ExpiresAt = &t
+		}
+		out = append(out, key)
+	}
+	return out, nil
 }
 
 func (service *Service) VerifyAPIKey(ctx context.Context, rawKey string) (db.User, error) {

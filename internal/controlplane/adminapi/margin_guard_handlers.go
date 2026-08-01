@@ -14,7 +14,7 @@ import (
 type MarginGuardService interface {
 	ListMarginGuardPolicies(ctx context.Context, campaignID uuid.UUID) ([]*ledger.Policy, error)
 	CreateMarginGuardPolicy(ctx context.Context, p *ledger.Policy) error
-	GetMarginGuardActivity(ctx context.Context, campaignID uuid.UUID) ([]map[string]any, error)
+	GetMarginGuardActivity(ctx context.Context, campaignID uuid.UUID) ([]MarginGuardActivityRow, error)
 	RemovePlacementOverride(ctx context.Context, campaignID uuid.UUID, placementID string) error
 }
 

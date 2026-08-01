@@ -91,9 +91,29 @@ SELECT * FROM brand_creatives
 WHERE brand_id = $1 AND status = 'ACTIVE'
 ORDER BY created_at ASC;
 
+-- name: ListAllActiveBrandCreatives :many
+SELECT * FROM brand_creatives
+WHERE status = 'ACTIVE'
+ORDER BY brand_id, created_at ASC;
+
 -- name: ListDistinctBrandsWithActiveCreatives :many
 SELECT DISTINCT brand_id FROM brand_creatives WHERE status = 'ACTIVE';
 
 -- name: ListCampaignIDsByBrand :many
 SELECT id FROM campaigns
 WHERE brand_id = $1 AND deleted_at IS NULL AND status IN ('ACTIVE', 'PAUSED');
+
+-- name: ListCampaignIDsForActiveBrands :many
+SELECT brand_id, id FROM campaigns c
+WHERE c.deleted_at IS NULL
+  AND c.status IN ('ACTIVE', 'PAUSED')
+  AND EXISTS (
+    SELECT 1 FROM brand_creatives bc
+    WHERE bc.brand_id = c.brand_id AND bc.status = 'ACTIVE'
+  )
+ORDER BY c.brand_id, c.id;
+
+-- name: UpdateBrandCreativeWeight :exec
+UPDATE brand_creatives
+SET weight = $2, updated_at = CURRENT_TIMESTAMP
+WHERE id = $1;

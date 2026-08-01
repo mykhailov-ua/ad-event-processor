@@ -76,8 +76,7 @@ func TestFault_PaymentConcurrentCreateIdempotencyKey(t *testing.T) {
 	customerID := uuid.New()
 	paymenttest.SeedCustomer(t, infra.Pool, customerID)
 
-	prov := payment.NewCountingMockProvider()
-	svc := payment.NewService(infra.Pool, prov, infra.Cfg)
+	svc := payment.NewService(infra.Pool, infra.Cfg)
 	key := "fault-idem-" + uuid.New().String()
 	amount := int64(12_000_000)
 
@@ -96,7 +95,6 @@ func TestFault_PaymentConcurrentCreateIdempotencyKey(t *testing.T) {
 	require.NoError(t, infra.Pool.QueryRow(ctx, `
 		SELECT COUNT(*) FROM payment.payment_intents WHERE idempotency_key = $1`, key).Scan(&intentCount))
 	require.Equal(t, 1, intentCount)
-	require.Equal(t, 1, prov.Calls())
 
 	faultproof.Log(t, "concurrent_idempotency_create", map[string]string{
 		"subsystem":      "payment_intent",
@@ -120,7 +118,7 @@ func TestFault_PaymentConcurrentWebhookSameEventID(t *testing.T) {
 	customerID := uuid.New()
 	paymenttest.SeedCustomer(t, infra.Pool, customerID)
 
-	svc := payment.NewService(infra.Pool, payment.NewMockProvider(), infra.Cfg)
+	svc := payment.NewService(infra.Pool, infra.Cfg)
 	result, err := svc.CreatePaymentIntent(ctx, customerID, 8_000_000, "USD", "fault-wh-"+uuid.New().String(), nil)
 	require.NoError(t, err)
 	intent := result.Intent

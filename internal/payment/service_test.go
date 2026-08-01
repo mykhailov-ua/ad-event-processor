@@ -23,7 +23,7 @@ func TestProcessStripeWebhook_noDoubleSettlement(t *testing.T) {
 	defer cleanup()
 
 	cfg := &config.Config{MaxRetries: 3}
-	svc := NewService(pool, NewMockProvider(), cfg)
+	svc := NewService(pool, cfg)
 	ctx := context.Background()
 
 	customerID := uuid.New()
@@ -62,7 +62,7 @@ func TestProcessStripeWebhook_zeroAmountRejected(t *testing.T) {
 	defer cleanup()
 
 	cfg := &config.Config{}
-	svc := NewService(pool, NewMockProvider(), cfg)
+	svc := NewService(pool, cfg)
 	ctx := context.Background()
 
 	customerID := uuid.New()
@@ -93,7 +93,7 @@ func TestProcessStripeWebhook_amountMismatch(t *testing.T) {
 	defer cleanup()
 
 	cfg := &config.Config{}
-	svc := NewService(pool, NewMockProvider(), cfg)
+	svc := NewService(pool, cfg)
 	ctx := context.Background()
 
 	customerID := uuid.New()

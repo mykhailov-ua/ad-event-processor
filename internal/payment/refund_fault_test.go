@@ -31,7 +31,7 @@ func TestFault_PaymentRefundConcurrentWebhookSameEventID(t *testing.T) {
 	customerID := uuid.New()
 	seed := paymenttest.SeedSettledIntent(t, infra, customerID, 20_000_000, "fault-ref-wh-"+uuid.New().String())
 
-	svc := payment.NewService(infra.Pool, payment.NewMockProvider(), infra.Cfg)
+	svc := payment.NewService(infra.Pool, infra.Cfg)
 	eventID := "evt_refund_concurrent_" + uuid.New().String()
 	refundID := "re_" + uuid.New().String()
 	refundAmount := int64(8_000_000)
@@ -81,7 +81,7 @@ func TestFault_PaymentRefundDualOutboxWorkerRace(t *testing.T) {
 	ctx := context.Background()
 	customerID := uuid.New()
 	seed := paymenttest.SeedSettledIntent(t, infra, customerID, 22_000_000, "fault-ref-race-"+uuid.New().String())
-	svc := payment.NewService(infra.Pool, payment.NewMockProvider(), infra.Cfg)
+	svc := payment.NewService(infra.Pool, infra.Cfg)
 	outboxID := paymenttest.ProcessRefundWebhook(t, infra.Pool, svc, "evt_ref_race_"+uuid.New().String(), seed.ProviderRef, "re_race_"+uuid.New().String(), 10_000_000)
 
 	worker := paymenttest.NewOutboxWorkerForFault(infra)
@@ -127,7 +127,7 @@ func TestFault_PaymentRefundPostSettlementMarkGap(t *testing.T) {
 	ctx := context.Background()
 	customerID := uuid.New()
 	seed := paymenttest.SeedSettledIntent(t, infra, customerID, 24_000_000, "fault-ref-gap-"+uuid.New().String())
-	svc := payment.NewService(infra.Pool, payment.NewMockProvider(), infra.Cfg)
+	svc := payment.NewService(infra.Pool, infra.Cfg)
 	outboxID := paymenttest.ProcessRefundWebhook(t, infra.Pool, svc, "evt_ref_gap_"+uuid.New().String(), seed.ProviderRef, "re_gap_"+uuid.New().String(), 12_000_000)
 
 	var hookCalls atomic.Int32
@@ -174,7 +174,7 @@ func TestFault_PaymentPartialRefundThenFull(t *testing.T) {
 	ctx := context.Background()
 	customerID := uuid.New()
 	seed := paymenttest.SeedSettledIntent(t, infra, customerID, 30_000_000, "fault-partial-"+uuid.New().String())
-	svc := payment.NewService(infra.Pool, payment.NewMockProvider(), infra.Cfg)
+	svc := payment.NewService(infra.Pool, infra.Cfg)
 	worker := paymenttest.NewOutboxWorkerForFault(infra)
 
 	outbox1 := paymenttest.ProcessRefundWebhook(t, infra.Pool, svc, "evt_partial_1_"+uuid.New().String(), seed.ProviderRef, "re_partial_1_"+uuid.New().String(), 10_000_000)
@@ -216,7 +216,7 @@ func TestFault_PaymentRefundExceedsIntentIgnored(t *testing.T) {
 
 	customerID := uuid.New()
 	seed := paymenttest.SeedSettledIntent(t, infra, customerID, 10_000_000, "fault-ref-exceed-"+uuid.New().String())
-	svc := payment.NewService(infra.Pool, payment.NewMockProvider(), infra.Cfg)
+	svc := payment.NewService(infra.Pool, infra.Cfg)
 
 	stripeCents, err := payment.MicroToStripeAmount(15_000_000)
 	require.NoError(t, err)
@@ -254,7 +254,7 @@ func TestFault_PaymentRefundWithoutTopupDead(t *testing.T) {
 	_, err := infra.Pool.Exec(ctx, `DELETE FROM payment.payment_outbox WHERE event_type = 'SETTLE_BALANCE'`)
 	require.NoError(t, err)
 
-	svc := payment.NewService(infra.Pool, payment.NewMockProvider(), infra.Cfg)
+	svc := payment.NewService(infra.Pool, infra.Cfg)
 	outboxID := paymenttest.ProcessRefundWebhook(t, infra.Pool, svc, "evt_ref_no_topup_"+uuid.New().String(), seed.ProviderRef, "re_no_topup_"+uuid.New().String(), 9_000_000)
 
 	worker := paymenttest.NewOutboxWorkerForFault(infra)

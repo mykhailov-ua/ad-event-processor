@@ -96,8 +96,3 @@ func TestPlatform_errValidation(t *testing.T) {
 	var ve validationError
 	require.ErrorAs(t, err, &ve)
 }
-
-func TestPlatform_DomainMapped(t *testing.T) {
-	t.Parallel()
-	assert.Equal(t, "platform", FileDomain("api_errors.go"))
-}

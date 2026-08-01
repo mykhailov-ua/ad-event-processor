@@ -10,6 +10,7 @@ import (
 	"espx/internal/domain"
 	"espx/internal/ledger/db"
 	"espx/internal/licensing"
+	"espx/internal/notify"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -24,12 +25,13 @@ const (
 )
 
 type Service struct {
-	pool           *pgxpool.Pool
-	queries        *db.Queries
-	tax            *TaxCalculator
-	deliverer      InvoiceDeliverer
-	driftAlerter   DriftAlerter
-	invoiceBaseURL string
+	pool            *pgxpool.Pool
+	queries         *db.Queries
+	tax             *TaxCalculator
+	notifier        notify.NotifierAPI
+	notifyProvider  string
+	notifyRecipient string
+	invoiceBaseURL  string
 }
 
 func NewService(pool *pgxpool.Pool) *Service {
@@ -38,21 +40,6 @@ func NewService(pool *pgxpool.Pool) *Service {
 		queries: db.New(pool),
 		tax:     NewTaxCalculator(),
 	}
-}
-
-func (service *Service) SetInvoiceDeliverer(deliverer InvoiceDeliverer, baseURL string) {
-	if service == nil {
-		return
-	}
-	service.deliverer = deliverer
-	service.invoiceBaseURL = baseURL
-}
-
-func (service *Service) SetDriftAlerter(alerter DriftAlerter) {
-	if service == nil {
-		return
-	}
-	service.driftAlerter = alerter
 }
 
 func (service *Service) ListCustomerIDs(ctx context.Context, limit, offset int32) ([]uuid.UUID, error) {
@@ -78,8 +65,8 @@ func (service *Service) GenerateInvoice(ctx context.Context, customerID uuid.UUI
 		LedgerDriftTotal.Inc()
 		LedgerInvariantFailuresTotal.Inc()
 		InvoiceErrorsTotal.WithLabelValues("ledger_drift").Inc()
-		if service.driftAlerter != nil {
-			service.driftAlerter.AlertLedgerDrift(ctx, customerID.String(), err)
+		if service.notifier != nil {
+			service.alertLedgerDrift(ctx, customerID.String(), err)
 		}
 		return domain.Invoice{}, err
 	}

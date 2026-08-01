@@ -2,6 +2,7 @@ package controlplane
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"espx/internal/domain"
@@ -55,7 +56,11 @@ func (s *Service) GetSlotMap(ctx context.Context, version *int32, includeSlots b
 	if includeSlots {
 		dto.Slots = make([]SlotMapDTO, 0, len(rows))
 		for _, row := range rows {
-			dto.Slots = append(dto.Slots, slotRowToDTO(row))
+			dto.Slots = append(dto.Slots, SlotMapDTO{
+				Slot:    row.Slot,
+				ShardID: row.ShardID,
+				State:   string(row.State),
+			})
 		}
 	}
 	return dto, nil
@@ -135,10 +140,14 @@ func (s *Service) CreateSlotMapVersion(ctx context.Context, adminID uuid.UUID, b
 		return 0, domain.ErrSlotMapIncomplete
 	}
 
-	s.AuditLog(ctx, q, adminID, "SLOT_MAP_VERSION_CREATED", "redis_slot_map", nil, map[string]any{
-		"base_version": base,
-		"new_version":  newVersion,
-		"overrides":    overrides,
+	overridesJSON, err := json.Marshal(overrides)
+	if err != nil {
+		return 0, err
+	}
+	s.AuditLog(ctx, q, adminID, "SLOT_MAP_VERSION_CREATED", "redis_slot_map", nil, auditSlotMapVersionCreated{
+		BaseVersion: base,
+		NewVersion:  newVersion,
+		Overrides:   overridesJSON,
 	}, nil)
 
 	if err := tx.Commit(ctx); err != nil {
@@ -187,10 +196,14 @@ func (s *Service) MarkSlotMapMigrating(ctx context.Context, adminID uuid.UUID, v
 		}
 	}
 
-	s.AuditLog(ctx, q, adminID, "SLOT_MAP_MARK_MIGRATING", "redis_slot_map", nil, map[string]any{
-		"version":      version,
-		"slots":        slots,
-		"target_shard": targetShard,
+	slotsJSON, err := json.Marshal(slots)
+	if err != nil {
+		return err
+	}
+	s.AuditLog(ctx, q, adminID, "SLOT_MAP_MARK_MIGRATING", "redis_slot_map", nil, auditSlotMapMarkMigrating{
+		Version:     version,
+		Slots:       slotsJSON,
+		TargetShard: targetShard,
 	}, nil)
 
 	if err := tx.Commit(ctx); err != nil {
@@ -216,12 +229,4 @@ func (s *Service) afterSlotMapActivated(ctx context.Context, version int32) {
 		_, _ = domain.LoadActiveSlotMap(ctx, s.GetPool(), ss, len(s.rdbs))
 	}
 	s.publishRoutingCutover(ctx, routingEpoch, version)
-}
-
-func slotRowToDTO(row db.RedisSlotMap) SlotMapDTO {
-	return SlotMapDTO{
-		Slot:    row.Slot,
-		ShardID: row.ShardID,
-		State:   string(row.State),
-	}
 }

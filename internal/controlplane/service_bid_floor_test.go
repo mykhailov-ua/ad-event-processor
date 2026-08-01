@@ -1,47 +1,18 @@
 package controlplane
 
-import (
-	"testing"
+import "testing"
 
-	"espx/internal/config"
-
-	"github.com/stretchr/testify/assert"
-)
-
-func TestComputeRecommendedFloor_lowWinRateDecreases(t *testing.T) {
-	cfg := &config.Config{
-		BidFloorWinRateLow:  0.05,
-		BidFloorWinRateHigh: 0.25,
-		BidFloorAdjustPct:   10,
-		BidFloorMinMicro:    1000,
+func TestBestFloorBucketByPlacement(t *testing.T) {
+	buckets := []PlacementFloorBucket{
+		{PlacementID: "a", FloorBucketMicro: 10_000, SampleN: 5, WinRate: 0.5},
+		{PlacementID: "a", FloorBucketMicro: 20_000, SampleN: 12, WinRate: 0.4},
+		{PlacementID: "b", FloorBucketMicro: 30_000, SampleN: 15, WinRate: 0.6},
 	}
-	out := computeRecommendedFloor(100_000, 0.02, 100, cfg)
-	assert.Equal(t, int64(90_000), out)
-}
-
-func TestComputeRecommendedFloor_highWinRateIncreases(t *testing.T) {
-	cfg := &config.Config{
-		BidFloorWinRateLow:  0.05,
-		BidFloorWinRateHigh: 0.25,
-		BidFloorAdjustPct:   10,
-		BidFloorMinMicro:    1000,
+	got := bestFloorBucketByPlacement(buckets)
+	if got["a"] != 20_000 {
+		t.Fatalf("a=%d want 20000", got["a"])
 	}
-	out := computeRecommendedFloor(100_000, 0.40, 200, cfg)
-	assert.Equal(t, int64(110_000), out)
-}
-
-func TestComputeRecommendedFloor_noSampleKeepsBase(t *testing.T) {
-	cfg := &config.Config{BidFloorAdjustPct: 10}
-	out := computeRecommendedFloor(50_000, 0.0, 0, cfg)
-	assert.Equal(t, int64(50_000), out)
-}
-
-func TestComputeRecommendedFloor_respectsMinMicro(t *testing.T) {
-	cfg := &config.Config{
-		BidFloorWinRateLow: 0.05,
-		BidFloorAdjustPct:  90,
-		BidFloorMinMicro:   5000,
+	if got["b"] != 30_000 {
+		t.Fatalf("b=%d want 30000", got["b"])
 	}
-	out := computeRecommendedFloor(10_000, 0.01, 50, cfg)
-	assert.Equal(t, int64(5000), out)
 }

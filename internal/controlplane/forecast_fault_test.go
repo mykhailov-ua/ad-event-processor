@@ -11,6 +11,7 @@ import (
 
 	"espx/internal/clickhouse/migrate"
 	"espx/internal/config"
+	"espx/internal/controlplane/adminapi"
 	"espx/internal/database"
 
 	"github.com/google/uuid"
@@ -82,7 +83,7 @@ func TestFault_ForecastDeterministic(t *testing.T) {
 func TestFault_ForecastCHTimeout(t *testing.T) {
 	t.Parallel()
 	rec := httptest.NewRecorder()
-	writeForecastError(rec, ErrForecastClickHouseTimeout)
+	writeForecastError(rec, adminapi.ErrForecastClickHouseTimeout)
 	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
 	assert.Equal(t, "30", rec.Header().Get("Retry-After"))
 	var resp map[string]any

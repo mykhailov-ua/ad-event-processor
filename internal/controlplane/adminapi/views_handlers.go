@@ -1,6 +1,7 @@
 package adminapi
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"sync"
@@ -17,30 +18,30 @@ import (
 )
 
 type SavedViewDTO struct {
-	ID         string         `json:"id"`
-	OwnerID    string         `json:"owner_id"`
-	CustomerID string         `json:"customer_id"`
-	Name       string         `json:"name"`
-	ReportKey  string         `json:"report_key"`
-	Spec       map[string]any `json:"spec"`
-	IsShared   bool           `json:"is_shared"`
-	CreatedAt  string         `json:"created_at"`
-	UpdatedAt  string         `json:"updated_at"`
+	ID         string          `json:"id"`
+	OwnerID    string          `json:"owner_id"`
+	CustomerID string          `json:"customer_id"`
+	Name       string          `json:"name"`
+	ReportKey  string          `json:"report_key"`
+	Spec       json.RawMessage `json:"spec"`
+	IsShared   bool            `json:"is_shared"`
+	CreatedAt  string          `json:"created_at"`
+	UpdatedAt  string          `json:"updated_at"`
 }
 
 type CreateViewRequest struct {
-	CustomerID string         `json:"customer_id"`
-	Name       string         `json:"name"`
-	ReportKey  string         `json:"report_key"`
-	Spec       map[string]any `json:"spec"`
-	IsShared   bool           `json:"is_shared"`
+	CustomerID string          `json:"customer_id"`
+	Name       string          `json:"name"`
+	ReportKey  string          `json:"report_key"`
+	Spec       json.RawMessage `json:"spec"`
+	IsShared   bool            `json:"is_shared"`
 }
 
 type UpdateViewRequest struct {
-	Name      string         `json:"name"`
-	ReportKey string         `json:"report_key"`
-	Spec      map[string]any `json:"spec"`
-	IsShared  bool           `json:"is_shared"`
+	Name      string          `json:"name"`
+	ReportKey string          `json:"report_key"`
+	Spec      json.RawMessage `json:"spec"`
+	IsShared  bool            `json:"is_shared"`
 }
 
 var (

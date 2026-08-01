@@ -1,6 +1,7 @@
 package payment
 
 import (
+	"encoding/json"
 	"time"
 
 	"espx/internal/payment/db"
@@ -28,5 +29,28 @@ type FinancialReconFinding struct {
 	PaymentAmountMicro int64
 	LedgerAmountMicro  int64
 	DeltaMicro         int64
-	Detail             map[string]any
+	Detail             json.RawMessage
+}
+
+type reconDetailStatus struct {
+	Status string `json:"status"`
+}
+
+type reconDetailOrphanTopup struct {
+	OrphanTopupMicro int64 `json:"orphan_topup_micro"`
+}
+
+type reconDetailDeadOutbox struct {
+	OutboxID  int64  `json:"outbox_id"`
+	EventType string `json:"event_type"`
+	LastError string `json:"last_error"`
+	Attempts  int32  `json:"attempts"`
+}
+
+func marshalReconDetail(v any) json.RawMessage {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return nil
+	}
+	return b
 }

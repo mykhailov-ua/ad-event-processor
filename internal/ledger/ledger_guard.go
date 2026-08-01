@@ -74,13 +74,21 @@ func (w *Worker) evaluateLedgerMargin(ctx context.Context, policy *Policy) error
 		"FORCE_PAUSE: rtb_cost %d exceeds revenue %d with threshold %d bps (limit %d)",
 		sums.RtbCostMicro, sums.AdvertiserSpendMicro, thresholdBps, limitMicro,
 	)
-	metricsJSON, err := json.Marshal(map[string]any{
-		"advertiser_spend_micro": sums.AdvertiserSpendMicro,
-		"rtb_cost_micro":         sums.RtbCostMicro,
-		"operator_margin_micro":  sums.OperatorMarginMicro,
-		"publisher_payout_micro": sums.PublisherPayoutMicro,
-		"threshold_bps":          thresholdBps,
-		"window_start":           windowStart.UTC().Format(time.RFC3339),
+	type forcePauseMetrics struct {
+		AdvertiserSpendMicro int64  `json:"advertiser_spend_micro"`
+		RtbCostMicro         int64  `json:"rtb_cost_micro"`
+		OperatorMarginMicro  int64  `json:"operator_margin_micro"`
+		PublisherPayoutMicro int64  `json:"publisher_payout_micro"`
+		ThresholdBps         int    `json:"threshold_bps"`
+		WindowStart          string `json:"window_start"`
+	}
+	metricsJSON, err := json.Marshal(forcePauseMetrics{
+		AdvertiserSpendMicro: sums.AdvertiserSpendMicro,
+		RtbCostMicro:         sums.RtbCostMicro,
+		OperatorMarginMicro:  sums.OperatorMarginMicro,
+		PublisherPayoutMicro: sums.PublisherPayoutMicro,
+		ThresholdBps:         thresholdBps,
+		WindowStart:          windowStart.UTC().Format(time.RFC3339),
 	})
 	if err != nil {
 		return fmt.Errorf("marshal margin metrics: %w", err)

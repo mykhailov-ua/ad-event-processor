@@ -211,7 +211,7 @@ func TestFault_ScheduleTickRace(t *testing.T) {
 	campID, err := svc.CreateCampaign(ctx, spec)
 	require.NoError(t, err)
 
-	camp, err := svc.GetCampaign(ctx, campID)
+	camp, err := svc.GetCampaignRow(ctx, campID)
 	require.NoError(t, err)
 	assert.Equal(t, db.CampaignStatusTypePAUSED, camp.Status)
 
@@ -226,7 +226,7 @@ func TestFault_ScheduleTickRace(t *testing.T) {
 	}
 	wg.Wait()
 
-	camp, err = svc.GetCampaign(ctx, campID)
+	camp, err = svc.GetCampaignRow(ctx, campID)
 	require.NoError(t, err)
 	assert.Equal(t, db.CampaignStatusTypePAUSED, camp.Status)
 
@@ -270,14 +270,14 @@ func TestFault_ConcurrentBalanceDepletion(t *testing.T) {
 		go func(idx int) {
 			defer wg.Done()
 			_, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
-				CustomerID:     customerID,
-				Name:           "Camp",
-				BudgetLimit:    campaignBudget,
-				PacingMode:     db.PacingModeTypeASAP,
-				Timezone:       "UTC",
-				FreqWindow:     86400,
-				DaypartHours:   []int16{},
-				IdempotencyKey: fmt.Sprintf("idem-%d", idx),
+				CustomerID:       customerID,
+				Name:             "Camp",
+				BudgetLimitMicro: campaignBudget,
+				PacingMode:       string(db.PacingModeTypeASAP),
+				Timezone:         "UTC",
+				FreqWindow:       86400,
+				DaypartHours:     []int16{},
+				IdempotencyKey:   fmt.Sprintf("idem-%d", idx),
 			})
 			results <- err
 		}(i)

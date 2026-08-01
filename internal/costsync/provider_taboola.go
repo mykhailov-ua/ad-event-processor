@@ -14,13 +14,6 @@ import (
 	"espx/pkg/money"
 )
 
-type TaboolaProvider struct {
-	BaseURL string
-	Client  *http.Client
-}
-
-func (p *TaboolaProvider) Network() string { return "taboola" }
-
 type taboolaReportResponse struct {
 	Results []struct {
 		CampaignID   int64   `json:"campaign"`
@@ -31,12 +24,11 @@ type taboolaReportResponse struct {
 	} `json:"results"`
 }
 
-func (p *TaboolaProvider) Fetch(ctx context.Context, cred Credential, date time.Time) ([]CostLine, error) {
-	base := p.BaseURL
+func fetchTaboolaCosts(ctx context.Context, client *http.Client, baseURL string, cred Credential, date time.Time) ([]CostLine, error) {
+	base := baseURL
 	if base == "" {
 		base = "https://backstage.taboola.com/backstage/api/1.0"
 	}
-	client := p.Client
 	if client == nil {
 		client = &http.Client{Timeout: 60 * time.Second}
 	}
@@ -88,7 +80,7 @@ func (p *TaboolaProvider) Fetch(ctx context.Context, cred Credential, date time.
 			CustomerID:  cred.CustomerID,
 			CampaignID:  uuid.NewSHA1(cred.CustomerID, []byte("taboola:"+campKey)),
 			Date:        date,
-			Network:     p.Network(),
+			Network:     "taboola",
 			PlacementID: row.Placement,
 			LineType:    LineTypeSpend,
 			AmountMicro: spendMicro,
@@ -97,13 +89,6 @@ func (p *TaboolaProvider) Fetch(ctx context.Context, cred Credential, date time.
 	}
 	return lines, nil
 }
-
-type OutbrainProvider struct {
-	BaseURL string
-	Client  *http.Client
-}
-
-func (p *OutbrainProvider) Network() string { return "outbrain" }
 
 type outbrainReportResponse struct {
 	CampaignResults []struct {
@@ -124,12 +109,11 @@ type outbrainReportResponse struct {
 	} `json:"campaignResults"`
 }
 
-func (p *OutbrainProvider) Fetch(ctx context.Context, cred Credential, date time.Time) ([]CostLine, error) {
-	base := p.BaseURL
+func fetchOutbrainCosts(ctx context.Context, client *http.Client, baseURL string, cred Credential, date time.Time) ([]CostLine, error) {
+	base := baseURL
 	if base == "" {
 		base = "https://api.outbrain.com/amplify/v0.1"
 	}
-	client := p.Client
 	if client == nil {
 		client = &http.Client{Timeout: 60 * time.Second}
 	}
@@ -172,7 +156,7 @@ func (p *OutbrainProvider) Fetch(ctx context.Context, cred Credential, date time
 				CustomerID:  cred.CustomerID,
 				CampaignID:  uuid.NewSHA1(cred.CustomerID, []byte("outbrain:"+campKey)),
 				Date:        date,
-				Network:     p.Network(),
+				Network:     "outbrain",
 				PlacementID: fmt.Sprintf("%d", sec.Metadata.ID),
 				LineType:    LineTypeSpend,
 				AmountMicro: spendMicro,

@@ -79,6 +79,12 @@ SELECT id FROM balance_ledger
 WHERE payment_intent_id = $1 AND type = 'PAYMENT_CHARGEBACK'
 ORDER BY id;
 
+-- name: ListLedgerChargebackEntryIDsByIntents :many
+SELECT payment_intent_id, id FROM balance_ledger
+WHERE type = 'PAYMENT_CHARGEBACK'
+  AND payment_intent_id = ANY($1::uuid[])
+ORDER BY payment_intent_id, id;
+
 -- name: CreateStatusHistory :exec
 INSERT INTO campaign_status_history (campaign_id, old_status, new_status, reason)
 VALUES ($1, $2, $3, $4);

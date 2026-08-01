@@ -15,6 +15,7 @@ import (
 	"espx/pkg/money"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -45,6 +46,28 @@ type PausePlacementPayload struct {
 	CampaignID  string `json:"campaign_id"`
 	PlacementID string `json:"placement_id"`
 }
+
+const (
+	marginGuardPlacementStatsQuery = `
+SELECT
+    campaign_id,
+    placement_id,
+    sum(spend_micro) AS spend,
+    sum(revenue_micro) AS revenue,
+    sum(click_count) AS clicks,
+    sum(conversion_count) AS conversions
+FROM placement_stats_hourly
+WHERE campaign_id IN (?)
+  AND hour >= subtractHours(now(), 24)
+GROUP BY campaign_id, placement_id`
+
+	marginGuardActivityInsertSQL = `
+INSERT INTO margin_guard_activity (policy_id, campaign_id, placement_id, action, reason, metrics)
+VALUES ($1, $2, $3, $4, $5, $6)`
+
+	marginGuardOutboxInsertSQL = `
+INSERT INTO outbox_events (event_type, payload) VALUES ($1, $2)`
+)
 
 func (w *Worker) Start(ctx context.Context, interval time.Duration) {
 	slog.Info("margin guard worker starting", "interval", interval)
@@ -87,13 +110,7 @@ func (w *Worker) RunCycle(ctx context.Context) error {
 		return fmt.Errorf("fetch policies: %w", err)
 	}
 
-	for _, policy := range policies {
-		if err := w.evaluatePolicy(ctx, policy); err != nil {
-			slog.Error("failed to evaluate policy", "policy_id", policy.ID, "campaign_id", policy.CampaignID, "error", err)
-		}
-	}
-
-	return nil
+	return w.evaluatePoliciesBatch(ctx, policies)
 }
 
 func (w *Worker) fetchActivePolicies(ctx context.Context) ([]*Policy, error) {
@@ -111,100 +128,184 @@ func (w *Worker) fetchActivePolicies(ctx context.Context) ([]*Policy, error) {
 		}
 		policies = append(policies, p)
 	}
-	return policies, nil
+	return policies, rows.Err()
 }
 
-func (w *Worker) evaluatePolicy(ctx context.Context, policy *Policy) error {
-	if w.registry != nil {
-		camp, ok := w.registry.GetCampaign(policy.CampaignID)
-		if ok {
-			ent, ok := w.registry.GetEntitlements(camp.CustomerID)
-			if ok && !ent.Features.MarginGuard {
-				slog.Warn("skipping policy evaluation: customer not entitled to margin guard", "customer_id", camp.CustomerID, "policy_id", policy.ID)
-				return nil
+func (w *Worker) policyEntitled(policy *Policy) bool {
+	if w.registry == nil {
+		return true
+	}
+	camp, ok := w.registry.GetCampaign(policy.CampaignID)
+	if !ok {
+		return true
+	}
+	ent, ok := w.registry.GetEntitlements(camp.CustomerID)
+	if !ok {
+		return true
+	}
+	return ent.Features.MarginGuard
+}
+
+func (w *Worker) evaluatePoliciesBatch(ctx context.Context, policies []*Policy) error {
+	eligible := make([]*Policy, 0, len(policies))
+	campaignIDs := make([]uuid.UUID, 0, len(policies))
+	seenCampaign := make(map[uuid.UUID]struct{}, len(policies))
+	for _, policy := range policies {
+		if !w.policyEntitled(policy) {
+			slog.Warn("skipping policy evaluation: customer not entitled to margin guard",
+				"policy_id", policy.ID, "campaign_id", policy.CampaignID)
+			continue
+		}
+		eligible = append(eligible, policy)
+		if _, ok := seenCampaign[policy.CampaignID]; !ok {
+			seenCampaign[policy.CampaignID] = struct{}{}
+			campaignIDs = append(campaignIDs, policy.CampaignID)
+		}
+	}
+	if len(eligible) == 0 {
+		return nil
+	}
+
+	statsByCampaign, err := w.queryPlacementStatsBatch(ctx, campaignIDs)
+	if err != nil {
+		return err
+	}
+
+	decisions := make([]*Decision, 0)
+	for _, policy := range eligible {
+		for _, stats := range statsByCampaign[policy.CampaignID] {
+			if decision, trigger := Evaluate(policy, &stats); trigger {
+				decisions = append(decisions, decision)
 			}
 		}
 	}
+	return w.applyDecisionsBatch(ctx, decisions)
+}
 
-	query := `
-		SELECT 
-			placement_id, 
-			sum(spend_micro) as spend, 
-			sum(revenue_micro) as revenue,
-			sum(click_count) as clicks,
-			sum(conversion_count) as conversions
-		FROM placement_stats_hourly
-		WHERE campaign_id = ?
-		  AND hour >= now() - INTERVAL 24 HOUR
-		GROUP BY placement_id
-	`
-
-	rows, err := w.ch.Query(ctx, query, policy.CampaignID)
+func (w *Worker) queryPlacementStatsBatch(ctx context.Context, campaignIDs []uuid.UUID) (map[uuid.UUID][]PlacementStats, error) {
+	out := make(map[uuid.UUID][]PlacementStats)
+	if len(campaignIDs) == 0 {
+		return out, nil
+	}
+	rows, err := w.ch.Query(ctx, marginGuardPlacementStatsQuery, campaignIDs)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		var stats PlacementStats
-		stats.CampaignID = policy.CampaignID
-		if err := rows.Scan(&stats.PlacementID, &stats.SpendMicro, &stats.RevenueMicro, &stats.Clicks, &stats.Conversions); err != nil {
-			return err
+		if err := rows.Scan(&stats.CampaignID, &stats.PlacementID, &stats.SpendMicro, &stats.RevenueMicro, &stats.Clicks, &stats.Conversions); err != nil {
+			return nil, err
 		}
-
-		if decision, trigger := Evaluate(policy, &stats); trigger {
-			if err := w.applyDecision(ctx, decision); err != nil {
-				return err
-			}
-		}
+		out[stats.CampaignID] = append(out[stats.CampaignID], stats)
 	}
-	return nil
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
-func (w *Worker) applyDecision(ctx context.Context, d *Decision) error {
-	var exists bool
-	err := w.pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM margin_guard_activity WHERE campaign_id = $1 AND placement_id = $2 AND action = 'pause' AND created_at > now() - INTERVAL '1 day')", d.CampaignID, d.PlacementID).Scan(&exists)
-	if err != nil {
-		return err
-	}
-	if exists {
+type marginGuardPauseKey struct {
+	campaignID uuid.UUID
+	placement  string
+}
+
+func (w *Worker) applyDecisionsBatch(ctx context.Context, decisions []*Decision) error {
+	if len(decisions) == 0 {
 		return nil
 	}
 
-	metricsJSON, _ := json.Marshal(d.Metrics)
-	_, err = w.pool.Exec(ctx, `
-		INSERT INTO margin_guard_activity (policy_id, campaign_id, placement_id, action, reason, metrics)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`, d.PolicyID, d.CampaignID, d.PlacementID, d.Action, d.Reason, metricsJSON)
+	pauseDecisions := make([]*Decision, 0, len(decisions))
+	campaignIDSet := make(map[uuid.UUID]struct{})
+	for _, d := range decisions {
+		if d.Action != ActionPause {
+			continue
+		}
+		pauseDecisions = append(pauseDecisions, d)
+		campaignIDSet[d.CampaignID] = struct{}{}
+	}
+	if len(pauseDecisions) == 0 {
+		return nil
+	}
+
+	campaignIDs := make([]uuid.UUID, 0, len(campaignIDSet))
+	for id := range campaignIDSet {
+		campaignIDs = append(campaignIDs, id)
+	}
+
+	existing := make(map[marginGuardPauseKey]struct{})
+	rows, err := w.pool.Query(ctx, `
+SELECT campaign_id, placement_id FROM margin_guard_activity
+WHERE action = 'pause' AND created_at > now() - interval '1 day'
+  AND campaign_id = ANY($1)`, campaignIDs)
 	if err != nil {
 		return err
 	}
+	defer rows.Close()
+	for rows.Next() {
+		var campaignID uuid.UUID
+		var placementID string
+		if err := rows.Scan(&campaignID, &placementID); err != nil {
+			return err
+		}
+		existing[marginGuardPauseKey{campaignID: campaignID, placement: placementID}] = struct{}{}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
 
-	if d.Action == ActionPause {
+	batch := &pgx.Batch{}
+	notify := make([]*Decision, 0, len(pauseDecisions))
+	for _, d := range pauseDecisions {
+		key := marginGuardPauseKey{campaignID: d.CampaignID, placement: d.PlacementID}
+		if _, ok := existing[key]; ok {
+			continue
+		}
+		metricsJSON, _ := json.Marshal(d.Metrics)
+		batch.Queue(marginGuardActivityInsertSQL, d.PolicyID, d.CampaignID, d.PlacementID, d.Action, d.Reason, metricsJSON)
 		payload, _ := json.Marshal(PausePlacementPayload{
 			CampaignID:  d.CampaignID.String(),
 			PlacementID: d.PlacementID,
 		})
-		_, err = w.pool.Exec(ctx, "INSERT INTO outbox_events (event_type, payload) VALUES ($1, $2)", "PAUSE_PLACEMENT", payload)
-		if err != nil {
-			return err
-		}
+		batch.Queue(marginGuardOutboxInsertSQL, "PAUSE_PLACEMENT", payload)
+		notify = append(notify, d)
+	}
+	if batch.Len() == 0 {
+		return nil
+	}
 
-		if w.notifier != nil {
-			title := fmt.Sprintf("Margin Guard: Placement Paused (%s)", d.PlacementID)
-			body := fmt.Sprintf("Campaign: %s\nPlacement: %s\nReason: %s\nROI: %.2f%%\nSpend: %s USD\nRevenue: %s USD\nClicks: %d\nConversions: %d",
-				d.CampaignID, d.PlacementID, d.Reason, d.Metrics["roi_pct"],
-				money.FormatDecimal(d.Metrics["spend_micro"].(int64)),
-				money.FormatDecimal(d.Metrics["revenue_micro"].(int64)),
-				d.Metrics["clicks"], d.Metrics["conversions"])
-
-			_, alertErr := w.notifier.SendNotification(ctx, "TELEGRAM", "admin", title, body)
-			if alertErr != nil {
-				slog.Error("failed to send margin guard notification", "error", alertErr)
-			}
+	br := w.pool.SendBatch(ctx, batch)
+	defer br.Close()
+	for i := 0; i < batch.Len(); i++ {
+		if _, err := br.Exec(); err != nil {
+			return fmt.Errorf("margin guard batch item %d: %w", i, err)
 		}
 	}
 
-	slog.Info("margin guard applied decision", "campaign_id", d.CampaignID, "placement_id", d.PlacementID, "action", d.Action, "reason", d.Reason)
+	for _, d := range notify {
+		w.notifyMarginGuardPause(ctx, d)
+		slog.Info("margin guard applied decision",
+			"campaign_id", d.CampaignID,
+			"placement_id", d.PlacementID,
+			"action", d.Action,
+			"reason", d.Reason,
+		)
+	}
 	return nil
+}
+
+func (w *Worker) notifyMarginGuardPause(ctx context.Context, d *Decision) {
+	if w.notifier == nil {
+		return
+	}
+	title := fmt.Sprintf("Margin Guard: Placement Paused (%s)", d.PlacementID)
+	body := fmt.Sprintf("Campaign: %s\nPlacement: %s\nReason: %s\nROI: %.2f%%\nSpend: %s USD\nRevenue: %s USD\nClicks: %d\nConversions: %d",
+		d.CampaignID, d.PlacementID, d.Reason, d.Metrics.RoiPct,
+		money.FormatDecimal(d.Metrics.SpendMicro),
+		money.FormatDecimal(d.Metrics.RevenueMicro),
+		d.Metrics.Clicks, d.Metrics.Conversions)
+	if _, err := w.notifier.SendNotification(ctx, "TELEGRAM", "admin", title, body); err != nil {
+		slog.Error("failed to send margin guard notification", "error", err)
+	}
 }

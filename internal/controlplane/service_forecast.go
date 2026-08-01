@@ -8,6 +8,7 @@ import (
 	"sort"
 	"time"
 
+	"espx/internal/controlplane/adminapi"
 	db "espx/internal/domain/db"
 
 	"github.com/google/uuid"
@@ -20,49 +21,11 @@ const (
 	forecastMaxSpendCurvePoints  = 2160
 	forecastCHQueryTimeout       = 1500 * time.Millisecond
 	forecastMinSampleImpressions = int64(1000)
-	forecastDefaultRetryAfterSec = 30
-)
-
-var (
-	ErrForecastClickHouseTimeout = errors.New("forecast clickhouse query timed out")
-	ErrForecastUnavailable       = errors.New("forecast service unavailable")
-	ErrClickHouseNotConfigured   = errors.New("clickhouse not configured")
 )
 
 type forecastHourlySample struct {
 	hourOfDay   int
 	impressions uint64
-}
-
-type CampaignForecastInput struct {
-	CustomerID       *uuid.UUID
-	BudgetLimitMicro int64
-	TargetCountries  []string
-	DaypartHours     []int16
-	StartAt          time.Time
-	EndAt            time.Time
-	PacingMode       string
-	Timezone         string
-}
-
-type SpendCurvePoint struct {
-	Hour        string `json:"hour"`
-	SpendMicro  int64  `json:"spend_micro"`
-	Impressions int64  `json:"impressions"`
-}
-
-type ForecastAdvisory struct {
-	Code            string `json:"code"`
-	Message         string `json:"message"`
-	SuggestedPacing string `json:"suggested_pacing"`
-}
-
-type CampaignForecastDTO struct {
-	ImpressionsP50 int64             `json:"impressions_p50"`
-	ImpressionsP90 int64             `json:"impressions_p90"`
-	SpendCurve     []SpendCurvePoint `json:"spend_curve"`
-	LowConfidence  bool              `json:"low_confidence"`
-	Advisory       *ForecastAdvisory `json:"advisory,omitempty"`
 }
 
 func normalizeForecastPacing(mode string) string {
@@ -180,11 +143,11 @@ func impliedCPMMicro(budgetMicro, impressions int64) int64 {
 	return budgetMicro / impressions
 }
 
-func buildSpendCurve(activeHours []time.Time, budgetMicro int64, pacing string, cpmMicro int64) []SpendCurvePoint {
+func buildSpendCurve(activeHours []time.Time, budgetMicro int64, pacing string, cpmMicro int64) []adminapi.SpendCurvePoint {
 	if len(activeHours) == 0 {
-		return []SpendCurvePoint{}
+		return []adminapi.SpendCurvePoint{}
 	}
-	curve := make([]SpendCurvePoint, 0, len(activeHours))
+	curve := make([]adminapi.SpendCurvePoint, 0, len(activeHours))
 	if pacing == "EVEN" {
 		perHourSpend := budgetMicro / int64(len(activeHours))
 		perHourImps := int64(0)
@@ -192,7 +155,7 @@ func buildSpendCurve(activeHours []time.Time, budgetMicro int64, pacing string, 
 			perHourImps = perHourSpend / cpmMicro
 		}
 		for _, h := range activeHours {
-			curve = append(curve, SpendCurvePoint{
+			curve = append(curve, adminapi.SpendCurvePoint{
 				Hour:        h.Format(time.RFC3339),
 				SpendMicro:  perHourSpend,
 				Impressions: perHourImps,
@@ -222,7 +185,7 @@ func buildSpendCurve(activeHours []time.Time, budgetMicro int64, pacing string, 
 		if cpmMicro > 0 {
 			imps = spend / cpmMicro
 		}
-		curve = append(curve, SpendCurvePoint{
+		curve = append(curve, adminapi.SpendCurvePoint{
 			Hour:        h.Format(time.RFC3339),
 			SpendMicro:  spend,
 			Impressions: imps,
@@ -231,7 +194,7 @@ func buildSpendCurve(activeHours []time.Time, budgetMicro int64, pacing string, 
 	return curve
 }
 
-func evenPacingAdvisory(pacing string, budgetMicro, impressionsP50, cpmMicro int64) *ForecastAdvisory {
+func evenPacingAdvisory(pacing string, budgetMicro, impressionsP50, cpmMicro int64) *adminapi.ForecastAdvisory {
 	if pacing != "EVEN" || budgetMicro <= 0 || impressionsP50 <= 0 || cpmMicro <= 0 {
 		return nil
 	}
@@ -243,22 +206,22 @@ func evenPacingAdvisory(pacing string, budgetMicro, impressionsP50, cpmMicro int
 	if underfill <= forecastUnderfillAdvisoryPct {
 		return nil
 	}
-	return &ForecastAdvisory{
+	return &adminapi.ForecastAdvisory{
 		Code:            "PACING_UNDERFILL",
 		Message:         fmt.Sprintf("EVEN pacing may under-deliver by %.0f%% of budget; consider ASAP for full spend in the flight window", underfill*100),
 		SuggestedPacing: "ASAP",
 	}
 }
 
-func (s *Service) ForecastCampaign(ctx context.Context, in CampaignForecastInput) (CampaignForecastDTO, error) {
+func (s *Service) ForecastCampaign(ctx context.Context, in adminapi.CampaignForecastInput) (adminapi.CampaignForecastDTO, error) {
 	if s.chQuery == nil {
-		return CampaignForecastDTO{}, ErrClickHouseNotConfigured
+		return adminapi.CampaignForecastDTO{}, adminapi.ErrClickHouseNotConfigured
 	}
 	if in.BudgetLimitMicro <= 0 {
-		return CampaignForecastDTO{}, errValidation("budget_limit_micro must be greater than zero")
+		return adminapi.CampaignForecastDTO{}, errValidation("budget_limit_micro must be greater than zero")
 	}
 	if !in.EndAt.After(in.StartAt) {
-		return CampaignForecastDTO{}, ErrInvalidTimeRange
+		return adminapi.CampaignForecastDTO{}, ErrInvalidTimeRange
 	}
 	pacing := normalizeForecastPacing(in.PacingMode)
 
@@ -270,15 +233,15 @@ func (s *Service) ForecastCampaign(ctx context.Context, in CampaignForecastInput
 
 	campaignIDs, err := s.forecastCampaignIDs(chCtx, in.CustomerID)
 	if err != nil {
-		return CampaignForecastDTO{}, err
+		return adminapi.CampaignForecastDTO{}, err
 	}
 
 	totalSample, hourlySamples, err := s.queryForecastHourlySamples(chCtx, lookbackStart, lookbackEnd, campaignIDs)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(chCtx.Err(), context.DeadlineExceeded) {
-			return CampaignForecastDTO{}, ErrForecastClickHouseTimeout
+			return adminapi.CampaignForecastDTO{}, adminapi.ErrForecastClickHouseTimeout
 		}
-		return CampaignForecastDTO{}, fmt.Errorf("%w: %w", ErrForecastUnavailable, err)
+		return adminapi.CampaignForecastDTO{}, fmt.Errorf("%w: %w", adminapi.ErrForecastUnavailable, err)
 	}
 
 	lowConfidence := int64(totalSample) < forecastMinSampleImpressions
@@ -291,7 +254,7 @@ func (s *Service) ForecastCampaign(ctx context.Context, in CampaignForecastInput
 	cpmMicro := impliedCPMMicro(in.BudgetLimitMicro, flightImpressions)
 	spendCurve := buildSpendCurve(activeHours, in.BudgetLimitMicro, pacing, cpmMicro)
 
-	out := CampaignForecastDTO{
+	out := adminapi.CampaignForecastDTO{
 		ImpressionsP50: p50,
 		ImpressionsP90: p90,
 		SpendCurve:     spendCurve,
@@ -367,8 +330,4 @@ ORDER BY hr`
 		return 0, nil, err
 	}
 	return total, samples, nil
-}
-
-func ForecastRetryAfterSec() int {
-	return forecastDefaultRetryAfterSec
 }

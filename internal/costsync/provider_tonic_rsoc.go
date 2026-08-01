@@ -14,13 +14,6 @@ import (
 	"espx/pkg/money"
 )
 
-type TonicRSOCProvider struct {
-	BaseURL string
-	Client  *http.Client
-}
-
-func (p *TonicRSOCProvider) Network() string { return "tonic_rsoc" }
-
 type tonicEPCResponse struct {
 	Data []struct {
 		CampaignID string  `json:"campaign_id"`
@@ -39,43 +32,29 @@ type tonicStatsResponse struct {
 	} `json:"data"`
 }
 
-func (p *TonicRSOCProvider) Fetch(ctx context.Context, cred Credential, date time.Time) ([]CostLine, error) {
-	base := p.BaseURL
+func fetchTonicRSOCCosts(ctx context.Context, client *http.Client, baseURL string, cred Credential, date time.Time) ([]CostLine, error) {
+	base := baseURL
 	if base == "" {
 		base = "https://api.tonic.com/v4"
 	}
-	client := p.Client
 	if client == nil {
 		client = &http.Client{Timeout: 60 * time.Second}
 	}
 
 	dateStr := date.Format("2006-01-02")
-	useFinal := time.Since(date) >= 10*24*time.Hour
-
-	var lines []CostLine
-	if useFinal {
-		finalLines, err := p.fetchStatsByCountry(ctx, client, base, cred, dateStr)
-		if err != nil {
-			return nil, err
-		}
-		lines = finalLines
-	} else {
-		epcLines, err := p.fetchEPCDaily(ctx, client, base, cred, dateStr)
-		if err != nil {
-			return nil, err
-		}
-		lines = epcLines
+	if time.Since(date) >= 10*24*time.Hour {
+		return tonicFetchStatsByCountry(ctx, client, base, cred, dateStr)
 	}
-	return lines, nil
+	return tonicFetchEPCDaily(ctx, client, base, cred, dateStr)
 }
 
-func (p *TonicRSOCProvider) fetchEPCDaily(ctx context.Context, client *http.Client, base string, cred Credential, date string) ([]CostLine, error) {
+func tonicFetchEPCDaily(ctx context.Context, client *http.Client, base string, cred Credential, date string) ([]CostLine, error) {
 	endpoint := fmt.Sprintf("%s/epc/daily?date=%s", strings.TrimRight(base, "/"), date)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, err
 	}
-	p.setAuth(req, cred)
+	tonicSetAuth(req, cred)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -103,7 +82,7 @@ func (p *TonicRSOCProvider) fetchEPCDaily(ctx context.Context, client *http.Clie
 			CustomerID:  cred.CustomerID,
 			CampaignID:  uuid.NewSHA1(cred.CustomerID, []byte("tonic:"+row.CampaignID)),
 			Date:        d,
-			Network:     p.Network(),
+			Network:     "tonic_rsoc",
 			PlacementID: row.Country,
 			LineType:    LineTypeRevenue,
 			AmountMicro: revenueMicro,
@@ -127,13 +106,13 @@ func tonicRevenueMicro(revenue, epc float64, clicks int64) (int64, error) {
 	return money.MulMicro(epcMicro, clicks), nil
 }
 
-func (p *TonicRSOCProvider) fetchStatsByCountry(ctx context.Context, client *http.Client, base string, cred Credential, date string) ([]CostLine, error) {
+func tonicFetchStatsByCountry(ctx context.Context, client *http.Client, base string, cred Credential, date string) ([]CostLine, error) {
 	endpoint := fmt.Sprintf("%s/rsoc/stats_by_country?date=%s", strings.TrimRight(base, "/"), date)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, err
 	}
-	p.setAuth(req, cred)
+	tonicSetAuth(req, cred)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -161,7 +140,7 @@ func (p *TonicRSOCProvider) fetchStatsByCountry(ctx context.Context, client *htt
 			CustomerID:  cred.CustomerID,
 			CampaignID:  uuid.NewSHA1(cred.CustomerID, []byte("tonic:"+row.CampaignID)),
 			Date:        d,
-			Network:     p.Network(),
+			Network:     "tonic_rsoc",
 			PlacementID: row.Country,
 			LineType:    LineTypeRevenue,
 			AmountMicro: revenueMicro,
@@ -171,20 +150,13 @@ func (p *TonicRSOCProvider) fetchStatsByCountry(ctx context.Context, client *htt
 	return lines, nil
 }
 
-func (p *TonicRSOCProvider) setAuth(req *http.Request, cred Credential) {
+func tonicSetAuth(req *http.Request, cred Credential) {
 	if cred.APIKey != "" && cred.ExtraConfig["secret"] != "" {
 		req.SetBasicAuth(cred.APIKey, cred.ExtraConfig["secret"])
 	} else if cred.AccessToken != "" {
 		req.Header.Set("Authorization", "Bearer "+cred.AccessToken)
 	}
 }
-
-type System1RSOCProvider struct {
-	BaseURL string
-	Client  *http.Client
-}
-
-func (p *System1RSOCProvider) Network() string { return "system1_rsoc" }
 
 type system1HourlyResponse struct {
 	Rows []struct {
@@ -195,19 +167,17 @@ type system1HourlyResponse struct {
 	} `json:"rows"`
 }
 
-func (p *System1RSOCProvider) Fetch(ctx context.Context, cred Credential, date time.Time) ([]CostLine, error) {
-	base := p.BaseURL
+func fetchSystem1RSOCCosts(ctx context.Context, client *http.Client, baseURL string, cred Credential, date time.Time) ([]CostLine, error) {
+	base := baseURL
 	if base == "" {
 		base = "https://api.system1.com/partner/v1"
 	}
-	client := p.Client
 	if client == nil {
 		client = &http.Client{Timeout: 60 * time.Second}
 	}
 
-	useFinal := time.Since(date) >= 10*24*time.Hour
 	mode := "hourly"
-	if useFinal {
+	if time.Since(date) >= 10*24*time.Hour {
 		mode = "final"
 	}
 
@@ -243,7 +213,7 @@ func (p *System1RSOCProvider) Fetch(ctx context.Context, cred Credential, date t
 			CustomerID:  cred.CustomerID,
 			CampaignID:  uuid.NewSHA1(cred.CustomerID, []byte("system1:"+row.CampaignID)),
 			Date:        date,
-			Network:     p.Network(),
+			Network:     "system1_rsoc",
 			PlacementID: row.SubID,
 			LineType:    LineTypeRevenue,
 			AmountMicro: revenueMicro,

@@ -22,7 +22,6 @@ import (
 	"espx/internal/domain"
 	db "espx/internal/domain/db"
 	"espx/internal/ledger"
-	billingdb "espx/internal/ledger/db"
 	"espx/internal/licensing"
 	"espx/internal/metrics"
 	"espx/pkg/coldpath"
@@ -39,6 +38,12 @@ const (
 	workerBatchTimeout  = 2 * time.Minute
 	workerDrainTimeout  = 30 * time.Second
 	workerOutboxTimeout = 30 * time.Second
+
+	incrementUsageMeterSQL = `
+INSERT INTO billing.usage_meters (customer_id, meter, period, value)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (customer_id, meter, period) DO UPDATE
+SET value = billing.usage_meters.value + EXCLUDED.value`
 )
 
 func workerContext(parent context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
@@ -524,32 +529,57 @@ func (w *UsageDailyFlushWorker) Flush(ctx context.Context, now time.Time) error 
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
 
-	var flushed int
+	// FIX [2.1]: collect all rows first so the cursor is closed before the batch.
+	type entry struct {
+		custID uuid.UUID
+		meter  string
+		value  int64
+	}
+	var entries []entry
 	for rows.Next() {
-		var custID uuid.UUID
-		var meter string
-		var value int64
-		if err := rows.Scan(&custID, &meter, &value); err != nil {
+		var e entry
+		if err := rows.Scan(&e.custID, &e.meter, &e.value); err != nil {
+			rows.Close()
 			return err
 		}
-		_, err := w.pool.Exec(ctx, `
-			INSERT INTO billing.usage_daily (customer_id, usage_date, meter, value)
-			VALUES ($1, $2, $3, $4)
-			ON CONFLICT (customer_id, usage_date, meter) DO UPDATE
-			SET value = EXCLUDED.value`,
-			custID, usageDate, meter, value)
-		if err != nil {
-			return err
+		entries = append(entries, e)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if len(entries) == 0 {
+		return nil
+	}
+
+	// Single batch instead of N sequential Exec round-trips.
+	const upsertSQL = `
+		INSERT INTO billing.usage_daily (customer_id, usage_date, meter, value)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (customer_id, usage_date, meter) DO UPDATE
+		SET value = EXCLUDED.value`
+	batch := &pgx.Batch{}
+	for _, e := range entries {
+		batch.Queue(upsertSQL, e.custID, usageDate, e.meter, e.value)
+	}
+	br := w.pool.SendBatch(ctx, batch)
+	var batchErr error
+	for range entries {
+		if _, err := br.Exec(); err != nil && batchErr == nil {
+			batchErr = err
 		}
-		flushed++
 	}
-	if flushed > 0 {
-		slog.Info("usage daily flush complete", "date", usageDate.Format("2006-01-02"), "rows", flushed)
+	if closeErr := br.Close(); closeErr != nil && batchErr == nil {
+		batchErr = closeErr
 	}
-	return rows.Err()
+	if batchErr != nil {
+		return batchErr
+	}
+	slog.Info("usage daily flush complete", "date", usageDate.Format("2006-01-02"), "rows", len(entries))
+	return nil
 }
+
 
 type LedgerInvariantWorker struct {
 	pool     *pgxpool.Pool
@@ -1786,28 +1816,51 @@ func (w *VolumeMeterWorker) runPGHour(ctx context.Context, hourStart, hourEnd, p
 		return nil
 	}
 
-	q := billingdb.New(w.pool)
-	var customers int
-	for _, row := range rows {
-		if row.Count <= 0 {
-			continue
-		}
-		if _, err := q.IncrementUsageMeter(ctx, billingdb.IncrementUsageMeterParams{
-			CustomerID: pgtype.UUID{Bytes: row.CustomerID, Valid: true},
-			Meter:      meterAcceptedEvents,
-			Period:     pgtype.Date{Time: period, Valid: true},
-			Value:      row.Count,
-		}); err != nil {
-			return fmt.Errorf("increment usage meter customer=%s: %w", row.CustomerID, err)
-		}
-		customers++
+	units := mapFromPGMeterRows(rows)
+	if err := batchIncrementUsageMeters(ctx, w.pool, meterAcceptedEvents, period, units); err != nil {
+		return err
 	}
 	metrics.VolumeMeterRowsTotal.Add(float64(len(rows)))
 	slog.Info("volume meter pg rollup complete",
 		"hour", hourStart.Format(time.RFC3339),
-		"customers", customers,
+		"customers", len(units),
 		"rows", len(rows),
 	)
+	return nil
+}
+
+func mapFromPGMeterRows(rows []pgMeterRow) map[uuid.UUID]int64 {
+	out := make(map[uuid.UUID]int64, len(rows))
+	for _, row := range rows {
+		if row.Count > 0 {
+			out[row.CustomerID] = row.Count
+		}
+	}
+	return out
+}
+
+func batchIncrementUsageMeters(ctx context.Context, pool *pgxpool.Pool, meter string, period time.Time, units map[uuid.UUID]int64) error {
+	if len(units) == 0 {
+		return nil
+	}
+	pgPeriod := pgtype.Date{Time: period, Valid: true}
+	batch := &pgx.Batch{}
+	for custID, value := range units {
+		if value <= 0 {
+			continue
+		}
+		batch.Queue(incrementUsageMeterSQL, pgtype.UUID{Bytes: custID, Valid: true}, meter, pgPeriod, value)
+	}
+	if batch.Len() == 0 {
+		return nil
+	}
+	br := pool.SendBatch(ctx, batch)
+	defer br.Close()
+	for i := 0; i < batch.Len(); i++ {
+		if _, err := br.Exec(); err != nil {
+			return fmt.Errorf("increment usage meter batch item %d: %w", i, err)
+		}
+	}
 	return nil
 }
 
@@ -1851,19 +1904,8 @@ func (w *VolumeMeterWorker) runCHHour(ctx context.Context, hourStart, hourEnd, p
 	}
 
 	customerUnits := ComputeWeightedUnitsFromRows(rows, campaignCustomers)
-	q := billingdb.New(w.pool)
-	for custID, units := range customerUnits {
-		if units <= 0 {
-			continue
-		}
-		if _, err := q.IncrementUsageMeter(ctx, billingdb.IncrementUsageMeterParams{
-			CustomerID: pgtype.UUID{Bytes: custID, Valid: true},
-			Meter:      meterBillableEvents,
-			Period:     pgtype.Date{Time: period, Valid: true},
-			Value:      units,
-		}); err != nil {
-			return fmt.Errorf("increment usage meter customer=%s: %w", custID, err)
-		}
+	if err := batchIncrementUsageMeters(ctx, w.pool, meterBillableEvents, period, customerUnits); err != nil {
+		return err
 	}
 	metrics.VolumeMeterRowsTotal.Add(float64(len(customerUnits)))
 	slog.Info("volume meter ch rollup complete",
@@ -2153,7 +2195,7 @@ func (o *FraudModelSyncOrchestrator) runCanaryCheck(ctx context.Context, shardID
 	query := `
 		SELECT window_start, ip_address, campaign_id, events, clicks, spend_micro, budget_limit_micro, unique_users, unique_uas
 		FROM ad_event_processor.ml_features_1m
-		WHERE window_start >= now() - INTERVAL 1 HOUR
+		WHERE window_start >= subtractHours(now(), 1)
 		LIMIT 1000`
 
 	rows, err := o.svc.chQuery.Query(ctx, query)

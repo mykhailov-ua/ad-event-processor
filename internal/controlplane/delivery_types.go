@@ -3,29 +3,13 @@ package controlplane
 import (
 	"time"
 
-	db "espx/internal/domain/db"
+	"espx/internal/controlplane/adminapi"
+	"espx/internal/controlplane/authz"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type CampaignCreateSpec struct {
-	CustomerID      uuid.UUID
-	BrandID         *uuid.UUID
-	Name            string
-	BudgetLimit     int64
-	PacingMode      db.PacingModeType
-	DailyBudget     int64
-	Timezone        string
-	FreqLimit       int32
-	FreqWindow      int32
-	TargetCountries []string
-	StartAt         *time.Time
-	EndAt           *time.Time
-	DaypartHours    []int16
-	TemplateID      *uuid.UUID
-	IdempotencyKey  string
-}
+type CampaignCreateSpec = adminapi.CreateCampaignInput
 
 type CampaignTemplateDTO struct {
 	ID              string   `json:"id"`
@@ -55,53 +39,18 @@ type BrandCreativeDTO struct {
 	UpdatedAt  string `json:"updated_at"`
 }
 
+func (c BrandCreativeDTO) Scrub(level authz.MaskLevel) BrandCreativeDTO {
+	if level == authz.MaskFull {
+		return c
+	}
+	out := c
+	out.LandingURL = ""
+	return out
+}
+
 func toTimestamptz(t *time.Time) pgtype.Timestamptz {
 	if t == nil {
 		return pgtype.Timestamptz{}
 	}
 	return pgtype.Timestamptz{Time: *t, Valid: true}
-}
-
-func templateToDTO(t db.CampaignTemplate) CampaignTemplateDTO {
-	countries := t.TargetCountries
-	if countries == nil {
-		countries = []string{}
-	}
-	hours := t.DaypartHours
-	if hours == nil {
-		hours = []int16{}
-	}
-	var brandID string
-	if t.BrandID.Valid {
-		brandID = uuid.UUID(t.BrandID.Bytes).String()
-	}
-	return CampaignTemplateDTO{
-		ID:              uuid.UUID(t.ID.Bytes).String(),
-		CustomerID:      uuid.UUID(t.CustomerID.Bytes).String(),
-		Name:            t.Name,
-		BudgetLimit:     formatMicro(t.BudgetLimit),
-		PacingMode:      string(t.PacingMode),
-		DailyBudget:     formatMicro(t.DailyBudget),
-		Timezone:        t.Timezone,
-		FreqLimit:       t.FreqLimit,
-		FreqWindow:      t.FreqWindow,
-		TargetCountries: countries,
-		BrandID:         brandID,
-		DaypartHours:    hours,
-		CreatedAt:       t.CreatedAt.Time.Format(time.RFC3339),
-		UpdatedAt:       t.UpdatedAt.Time.Format(time.RFC3339),
-	}
-}
-
-func creativeToDTO(c db.BrandCreative) BrandCreativeDTO {
-	return BrandCreativeDTO{
-		ID:         uuid.UUID(c.ID.Bytes).String(),
-		BrandID:    uuid.UUID(c.BrandID.Bytes).String(),
-		Name:       c.Name,
-		LandingURL: c.LandingUrl,
-		Weight:     c.Weight,
-		Status:     c.Status,
-		CreatedAt:  c.CreatedAt.Time.Format(time.RFC3339),
-		UpdatedAt:  c.UpdatedAt.Time.Format(time.RFC3339),
-	}
 }

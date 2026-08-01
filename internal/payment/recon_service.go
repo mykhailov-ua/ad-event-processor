@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"espx/internal/payment/db"
-	"espx/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -81,10 +80,7 @@ func (recon *ReconService) Run(ctx context.Context, periodStart, periodEnd time.
 	err = pgx.BeginFunc(ctx, recon.paymentPool, func(tx pgx.Tx) error {
 		q := db.New(tx)
 		for _, f := range findings {
-			detailBytes, err := coldpath.MarshalJSON(f.Detail)
-			if err != nil {
-				return fmt.Errorf("marshal recon finding detail: %w", err)
-			}
+			detailBytes := f.Detail
 			var intentUUID pgtype.UUID
 			if f.PaymentIntentID != uuid.Nil {
 				intentUUID = pgtype.UUID{Bytes: f.PaymentIntentID, Valid: true}
@@ -214,7 +210,7 @@ func (recon *ReconService) collectFindings(ctx context.Context) ([]FinancialReco
 				PaymentIntentID:    intentID,
 				CustomerID:         customerID,
 				PaymentAmountMicro: intent.AmountMicro,
-				Detail:             map[string]any{"status": string(intent.Status)},
+				Detail:             marshalReconDetail(reconDetailStatus{Status: string(intent.Status)}),
 			})
 			continue
 		}
@@ -286,7 +282,7 @@ func (recon *ReconService) collectFindings(ctx context.Context) ([]FinancialReco
 				PaymentIntentID:   intentID,
 				LedgerAmountMicro: topupMicro,
 				DeltaMicro:        topupMicro,
-				Detail:            map[string]any{"orphan_topup_micro": topupMicro},
+				Detail:            marshalReconDetail(reconDetailOrphanTopup{OrphanTopupMicro: topupMicro}),
 			})
 		}
 	}
@@ -299,12 +295,12 @@ func (recon *ReconService) collectFindings(ctx context.Context) ([]FinancialReco
 		findings = append(findings, FinancialReconFinding{
 			Kind:               db.PaymentFinancialFindingKindDEADOUTBOX,
 			PaymentAmountMicro: 0,
-			Detail: map[string]any{
-				"outbox_id":  row.ID,
-				"event_type": row.EventType,
-				"last_error": row.LastError.String,
-				"attempts":   row.Attempts,
-			},
+			Detail: marshalReconDetail(reconDetailDeadOutbox{
+				OutboxID:  row.ID,
+				EventType: row.EventType,
+				LastError: row.LastError.String,
+				Attempts:  row.Attempts,
+			}),
 		})
 	}
 

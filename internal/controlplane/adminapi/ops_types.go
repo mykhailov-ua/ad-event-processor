@@ -125,7 +125,7 @@ type ManagementOpsReader interface {
 }
 
 type AuditLister interface {
-	ListAuditLogs(ctx context.Context, limit, offset int32, redactPII bool) (any, int64, error)
+	ListAuditLogs(ctx context.Context, limit, offset int32, redactPII bool) ([]AuditLogDTO, int64, error)
 }
 
 type ConsentRecord struct {
@@ -159,9 +159,9 @@ type FraudThreatEnqueuer interface {
 
 type BlacklistAdmin interface {
 	BlockIPWithTTL(ctx context.Context, ip, source string, ttlSeconds *int64) error
-	PreviewBlockIP(ctx context.Context, ip, source string, ttlSeconds *int64) (any, error)
+	PreviewBlockIP(ctx context.Context, ip, source string, ttlSeconds *int64) (MutationPreviewDTO, error)
 	UnblockIP(ctx context.Context, ip, source string) error
-	ListBlacklist(ctx context.Context, limit, offset int32) (any, int64, error)
+	ListBlacklist(ctx context.Context, limit, offset int32) ([]BlacklistDTO, int64, error)
 }
 
 type DashboardServiceCard struct {

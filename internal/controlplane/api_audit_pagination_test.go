@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"espx/internal/config"
+	"espx/internal/controlplane/adminapi"
 	"espx/internal/database"
 
 	"github.com/google/uuid"
@@ -15,6 +16,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type auditPaginationMarker struct {
+	I int `json:"i"`
+}
 
 func TestHandlerAudit_pagination(t *testing.T) {
 	if testing.Short() {
@@ -34,7 +39,7 @@ func TestHandlerAudit_pagination(t *testing.T) {
 	ctx := context.Background()
 	adminID := uuid.New()
 	for i := 0; i < 55; i++ {
-		svc.AuditLog(ctx, nil, adminID, "PAGINATION_TEST", "system", nil, map[string]int{"i": i}, nil)
+		svc.AuditLog(ctx, nil, adminID, "PAGINATION_TEST", "system", nil, auditPaginationMarker{I: i}, nil)
 	}
 
 	h := NewHandler(svc, cfg, nil, nil, nil, nil)
@@ -50,7 +55,7 @@ func TestHandlerAudit_pagination(t *testing.T) {
 		require.Equal(t, http.StatusOK, resp.Code)
 		assert.Equal(t, "55", resp.Header().Get("X-Total-Count"))
 
-		var items []map[string]any
+		var items []adminapi.AuditLogDTO
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&items))
 		assert.Len(t, items, 50)
 	})
@@ -64,7 +69,7 @@ func TestHandlerAudit_pagination(t *testing.T) {
 		require.Equal(t, http.StatusOK, resp.Code)
 		assert.Equal(t, "55", resp.Header().Get("X-Total-Count"))
 
-		var items []map[string]any
+		var items []adminapi.AuditLogDTO
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&items))
 		assert.Len(t, items, 5)
 	})
@@ -77,7 +82,7 @@ func TestHandlerAudit_pagination(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, resp.Code)
 
-		var items []map[string]any
+		var items []adminapi.AuditLogDTO
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&items))
 		assert.Len(t, items, 55)
 	})

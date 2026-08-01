@@ -3,14 +3,15 @@ package controlplane
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	"espx/internal/config"
 	"espx/internal/controlplane/adminapi"
+	"espx/internal/database"
 	"espx/internal/domain"
 	db "espx/internal/domain/db"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -39,6 +40,39 @@ type BidFloorRecommendationDTO struct {
 }
 
 const defaultBidFloorBucketMicro = int64(10_000)
+
+const upsertRtbFloorSuggestionSQL = `
+INSERT INTO rtb_floor_suggestions (
+    placement_id, deal_id, current_floor_micro, suggested_floor_micro,
+    win_rate, sample_n, floor_bucket_micro, computed_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+ON CONFLICT (placement_id) DO UPDATE SET
+    deal_id = EXCLUDED.deal_id,
+    current_floor_micro = EXCLUDED.current_floor_micro,
+    suggested_floor_micro = EXCLUDED.suggested_floor_micro,
+    win_rate = EXCLUDED.win_rate,
+    sample_n = EXCLUDED.sample_n,
+    floor_bucket_micro = EXCLUDED.floor_bucket_micro,
+    computed_at = EXCLUDED.computed_at`
+
+const chDealWinRatesQuery = `
+SELECT
+    deal_id,
+    countIf(outcome = 1) AS wins,
+    countIf(outcome = 0) AS losses
+FROM rtb_deal_outcomes
+WHERE created_at >= subtractHours(now(), ?)
+GROUP BY deal_id`
+
+const chPlacementFloorBucketsQuery = `
+SELECT
+    deal_id,
+    intDiv(floor_micro, ?) * ? AS floor_bucket_micro,
+    countIf(outcome = 1) AS wins,
+    count() AS sample_n
+FROM rtb_deal_outcomes
+WHERE created_at >= subtractHours(now(), ?)
+GROUP BY deal_id, floor_bucket_micro`
 
 func bidFloorBucketMicro(cfg *config.Config) int64 {
 	if cfg == nil || cfg.BidFloorBucketMicro <= 0 {
@@ -74,20 +108,9 @@ func (s *Service) queryClickHouseDealWinRates(ctx context.Context, lookbackHours
 	if s.chQuery == nil {
 		return nil, nil
 	}
-	if lookbackHours < 1 {
-		lookbackHours = 24
-	}
+	lookbackHours = database.ClampCHLookbackHours(lookbackHours)
 
-	query := fmt.Sprintf(`
-SELECT
-    deal_id,
-    countIf(outcome = 1) AS wins,
-    countIf(outcome = 0) AS losses
-FROM rtb_deal_outcomes
-WHERE created_at >= now() - INTERVAL %d HOUR
-GROUP BY deal_id`, lookbackHours)
-
-	rows, err := s.chQuery.Query(ctx, query)
+	rows, err := s.chQuery.Query(ctx, chDealWinRatesQuery, lookbackHours)
 	if err != nil {
 		return nil, fmt.Errorf("clickhouse deal win rates: %w", err)
 	}
@@ -120,24 +143,10 @@ func (s *Service) queryClickHousePlacementFloorBuckets(ctx context.Context, look
 	if s.chQuery == nil {
 		return nil, nil
 	}
-	if lookbackHours < 1 {
-		lookbackHours = 24
-	}
-	if bucketMicro <= 0 {
-		bucketMicro = defaultBidFloorBucketMicro
-	}
+	lookbackHours = database.ClampCHLookbackHours(lookbackHours)
+	bucketMicro = database.ClampCHBucketMicro(bucketMicro)
 
-	query := fmt.Sprintf(`
-SELECT
-    deal_id,
-    intDiv(floor_micro, %d) * %d AS floor_bucket_micro,
-    countIf(outcome = 1) AS wins,
-    count() AS sample_n
-FROM rtb_deal_outcomes
-WHERE created_at >= now() - INTERVAL %d HOUR
-GROUP BY deal_id, floor_bucket_micro`, bucketMicro, bucketMicro, lookbackHours)
-
-	rows, err := s.chQuery.Query(ctx, query)
+	rows, err := s.chQuery.Query(ctx, chPlacementFloorBucketsQuery, bucketMicro, bucketMicro, lookbackHours)
 	if err != nil {
 		return nil, fmt.Errorf("clickhouse placement floor buckets: %w", err)
 	}
@@ -160,20 +169,22 @@ GROUP BY deal_id, floor_bucket_micro`, bucketMicro, bucketMicro, lookbackHours)
 	return out, rows.Err()
 }
 
-func bestFloorBucket(buckets []PlacementFloorBucket, placementID string) int64 {
-	var best PlacementFloorBucket
+func bestFloorBucketByPlacement(buckets []PlacementFloorBucket) map[string]int64 {
+	best := make(map[string]PlacementFloorBucket)
 	for _, b := range buckets {
-		if b.PlacementID != placementID {
-			continue
-		}
 		if b.SampleN < 10 {
 			continue
 		}
-		if b.SampleN > best.SampleN || (b.SampleN == best.SampleN && b.WinRate > best.WinRate) {
-			best = b
+		cur, ok := best[b.PlacementID]
+		if !ok || b.SampleN > cur.SampleN || (b.SampleN == cur.SampleN && b.WinRate > cur.WinRate) {
+			best[b.PlacementID] = b
 		}
 	}
-	return best.FloorBucketMicro
+	out := make(map[string]int64, len(best))
+	for id, b := range best {
+		out[id] = b.FloorBucketMicro
+	}
+	return out
 }
 
 func (s *Service) RunFloorOptimizer(ctx context.Context) (int, error) {
@@ -197,34 +208,44 @@ func (s *Service) RunFloorOptimizer(ctx context.Context) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	bucketByDeal := bestFloorBucketByPlacement(buckets)
 
 	deals, err := db.New(s.GetPool()).ListRtbDeals(ctx)
 	if err != nil {
 		return 0, err
 	}
+	if len(deals) == 0 {
+		return 0, nil
+	}
 
 	now := time.Now().UTC()
-	q := db.New(s.GetPool())
-	written := 0
+	computedAt := pgtype.Timestamptz{Time: now, Valid: true}
+	batch := &pgx.Batch{}
 	for _, deal := range deals {
 		stats := rates[deal.DealID]
 		suggested := computeRecommendedFloor(deal.FloorMicro, stats.WinRate, stats.SampleN, s.cfg)
-		bucketMicro := bestFloorBucket(buckets, deal.DealID)
-		if err := q.UpsertRtbFloorSuggestion(ctx, db.UpsertRtbFloorSuggestionParams{
-			PlacementID:         deal.DealID,
-			DealID:              deal.DealID,
-			CurrentFloorMicro:   deal.FloorMicro,
-			SuggestedFloorMicro: suggested,
-			WinRate:             stats.WinRate,
-			SampleN:             int64(stats.SampleN),
-			FloorBucketMicro:    bucketMicro,
-			ComputedAt:          pgtype.Timestamptz{Time: now, Valid: true},
-		}); err != nil {
-			return written, fmt.Errorf("upsert floor suggestion placement=%s: %w", deal.DealID, err)
-		}
-		written++
+		bucketMicro := bucketByDeal[deal.DealID]
+		batch.Queue(
+			upsertRtbFloorSuggestionSQL,
+			deal.DealID,
+			deal.DealID,
+			deal.FloorMicro,
+			suggested,
+			stats.WinRate,
+			int64(stats.SampleN),
+			bucketMicro,
+			computedAt,
+		)
 	}
-	return written, nil
+
+	br := s.GetPool().SendBatch(ctx, batch)
+	defer br.Close()
+	for i := 0; i < batch.Len(); i++ {
+		if _, err := br.Exec(); err != nil {
+			return i, fmt.Errorf("upsert floor suggestion batch item %d: %w", i, err)
+		}
+	}
+	return batch.Len(), nil
 }
 
 func (s *Service) listFloorSuggestions(ctx context.Context, placementIDs []string) ([]db.RtbFloorSuggestion, error) {
@@ -235,7 +256,7 @@ func (s *Service) listFloorSuggestions(ctx context.Context, placementIDs []strin
 	return q.ListRtbFloorSuggestionsByPlacementIDs(ctx, placementIDs)
 }
 
-func toRtbFloorSuggestionDTO(row db.RtbFloorSuggestion) adminapi.RtbFloorSuggestionDTO {
+func rtbFloorSuggestionDTO(row db.RtbFloorSuggestion) adminapi.RtbFloorSuggestionDTO {
 	computedAt := ""
 	if row.ComputedAt.Valid {
 		computedAt = row.ComputedAt.Time.UTC().Format(time.RFC3339)
@@ -267,28 +288,29 @@ func (s *Service) ApplyRtbFloorSuggestions(ctx context.Context, dryRun bool, pla
 
 	result := adminapi.RtbFloorsApplyResult{
 		DryRun:      dryRun,
-		Suggestions: make([]adminapi.RtbFloorSuggestionDTO, 0, len(rows)),
+		Suggestions: make([]adminapi.RtbFloorSuggestionDTO, len(rows)),
 	}
-	for _, row := range rows {
-		result.Suggestions = append(result.Suggestions, toRtbFloorSuggestionDTO(row))
+	for i, row := range rows {
+		result.Suggestions[i] = rtbFloorSuggestionDTO(row)
 	}
 	if dryRun {
 		return result, nil
 	}
 
-	for _, row := range rows {
-		val := strconv.FormatInt(row.SuggestedFloorMicro, 10)
-		key := domain.RtbFloorRedisKeyPrefix + row.DealID
-		for _, rdb := range s.rdbs {
-			if rdb == nil {
-				continue
-			}
-			if err := rdb.Set(ctx, key, val, 0).Err(); err != nil {
-				return result, fmt.Errorf("write %s: %w", key, err)
-			}
+	for _, rdb := range s.rdbs {
+		if rdb == nil {
+			continue
 		}
-		result.Applied++
+		pipe := rdb.Pipeline()
+		for _, row := range rows {
+			key := domain.RtbFloorRedisKeyPrefix + row.DealID
+			pipe.Set(ctx, key, row.SuggestedFloorMicro, 0)
+		}
+		if _, err := pipe.Exec(ctx); err != nil {
+			return result, fmt.Errorf("redis pipeline floor write: %w", err)
+		}
 	}
+	result.Applied = len(rows)
 
 	if result.Applied > 0 {
 		if err := s.enqueueRtbCatalogReload(ctx, db.New(s.GetPool()), "floor_optimizer"); err != nil {
@@ -307,15 +329,15 @@ func (s *Service) OptimizeBidFloors(ctx context.Context) ([]BidFloorRecommendati
 	if err != nil {
 		return nil, err
 	}
-	recs := make([]BidFloorRecommendationDTO, 0, len(rows))
-	for _, row := range rows {
-		recs = append(recs, BidFloorRecommendationDTO{
+	recs := make([]BidFloorRecommendationDTO, len(rows))
+	for i, row := range rows {
+		recs[i] = BidFloorRecommendationDTO{
 			DealID:           row.DealID,
 			BaseFloorMicro:   row.CurrentFloorMicro,
 			RecommendedMicro: row.SuggestedFloorMicro,
 			WinRate:          row.WinRate,
 			SampleN:          uint64(row.SampleN),
-		})
+		}
 	}
 	return recs, nil
 }

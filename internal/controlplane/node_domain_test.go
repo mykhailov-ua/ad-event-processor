@@ -61,8 +61,3 @@ func TestNode_NormalizeMetricHealth_utilization(t *testing.T) {
 	score := NormalizeMetricHealth(0.45, defs[0])
 	assert.InDelta(t, 0.5, score, 0.01)
 }
-
-func TestNode_DomainMapped(t *testing.T) {
-	t.Parallel()
-	assert.Equal(t, "node", FileDomain("node_scorer.go"))
-}

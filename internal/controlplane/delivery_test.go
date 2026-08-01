@@ -19,9 +19,9 @@ func testCampaignSpec(customerID uuid.UUID, name string, budgetMicro int64, idem
 	return CampaignCreateSpec{
 		CustomerID:     customerID,
 		Name:           name,
-		BudgetLimit:    budgetMicro,
-		PacingMode:     db.PacingModeTypeASAP,
-		DailyBudget:    0,
+		BudgetLimitMicro:    budgetMicro,
+		PacingMode:     string(db.PacingModeTypeASAP),
+		DailyBudgetMicro:    0,
 		Timezone:       "UTC",
 		FreqWindow:     86400,
 		DaypartHours:   []int16{},
@@ -61,19 +61,19 @@ func TestCampaignTemplateCloneAndPauseResume(t *testing.T) {
 	campID, err := svc.CreateCampaignFromTemplate(context.Background(), tplID, custID, "Cloned", nil, "clone-idem")
 	require.NoError(t, err)
 
-	camp, err := svc.GetCampaign(context.Background(), campID)
+	camp, err := svc.GetCampaignRow(context.Background(), campID)
 	require.NoError(t, err)
 	assert.Equal(t, db.PacingModeTypeEVEN, camp.PacingMode)
 	assert.Equal(t, []string{"US"}, camp.TargetCountries)
 	assert.Equal(t, []int16{9, 10, 11}, camp.DaypartHours)
 
 	require.NoError(t, svc.PauseCampaign(context.Background(), campID, "manual"))
-	camp, err = svc.GetCampaign(context.Background(), campID)
+	camp, err = svc.GetCampaignRow(context.Background(), campID)
 	require.NoError(t, err)
 	assert.Equal(t, db.CampaignStatusTypePAUSED, camp.Status)
 
 	require.NoError(t, svc.ResumeCampaign(context.Background(), campID, "manual"))
-	camp, err = svc.GetCampaign(context.Background(), campID)
+	camp, err = svc.GetCampaignRow(context.Background(), campID)
 	require.NoError(t, err)
 	assert.Equal(t, db.CampaignStatusTypeACTIVE, camp.Status)
 }
@@ -93,13 +93,13 @@ func TestScheduledCampaignStartsPaused(t *testing.T) {
 
 	start := time.Now().Add(2 * time.Hour)
 	id, err := svc.CreateCampaign(context.Background(), CampaignCreateSpec{
-		CustomerID: custID, Name: "Future", BudgetLimit: 50_000_000,
-		PacingMode: db.PacingModeTypeASAP, Timezone: "UTC", FreqWindow: 86400,
+		CustomerID: custID, Name: "Future", BudgetLimitMicro: 50_000_000,
+		PacingMode: string(db.PacingModeTypeASAP), Timezone: "UTC", FreqWindow: 86400,
 		StartAt: &start, IdempotencyKey: "sched-idem",
 	})
 	require.NoError(t, err)
 
-	camp, err := svc.GetCampaign(context.Background(), id)
+	camp, err := svc.GetCampaignRow(context.Background(), id)
 	require.NoError(t, err)
 	assert.Equal(t, db.CampaignStatusTypePAUSED, camp.Status)
 }

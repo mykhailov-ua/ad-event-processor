@@ -24,7 +24,7 @@ func TestFault_StripeCheckoutSettlement(t *testing.T) {
 	defer cleanup()
 
 	cfg := &config.Config{MaxRetries: 3}
-	svc := payment.NewService(pool, payment.NewMockProvider(), cfg)
+	svc := payment.NewService(pool, cfg)
 	ctx := context.Background()
 
 	customerID := uuid.New()

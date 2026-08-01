@@ -64,7 +64,7 @@ func TestFault_APITenantIsolation(t *testing.T) {
 	campID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
 		CustomerID:     victimID,
 		Name:           "Secret",
-		BudgetLimit:    99_000_000,
+		BudgetLimitMicro:    99_000_000,
 		PacingMode:     "ASAP",
 		Timezone:       "UTC",
 		IdempotencyKey: "fault-tenant-camp",
@@ -154,7 +154,7 @@ func TestFault_APIChLagStaleOK(t *testing.T) {
 	campID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
 		CustomerID:     custID,
 		Name:           "Lag Camp",
-		BudgetLimit:    100_000_000,
+		BudgetLimitMicro:    100_000_000,
 		PacingMode:     "ASAP",
 		Timezone:       "UTC",
 		IdempotencyKey: "fault-ch-lag",

@@ -1,7 +1,6 @@
 package notify
 
 import (
-	"net/http"
 	"testing"
 	"time"
 
@@ -45,14 +44,12 @@ func TestProviderRateLimiter_backoff(t *testing.T) {
 func TestParseTelegramRetryAfter_body(t *testing.T) {
 	t.Parallel()
 	body := []byte(`{"ok":false,"error_code":429,"parameters":{"retry_after":7}}`)
-	got := parseTelegramRetryAfter(nil, body)
+	got := parseTelegramRetryAfter(body)
 	require.Equal(t, 7*time.Second, got)
 }
 
-func TestParseTelegramRetryAfter_header(t *testing.T) {
+func TestParseTelegramRetryAfter_default(t *testing.T) {
 	t.Parallel()
-	resp := &http.Response{Header: make(http.Header)}
-	resp.Header.Set("Retry-After", "12")
-	got := parseTelegramRetryAfter(resp, nil)
-	require.Equal(t, 12*time.Second, got)
+	got := parseTelegramRetryAfter(nil)
+	require.Equal(t, 30*time.Second, got)
 }

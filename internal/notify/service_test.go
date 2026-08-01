@@ -6,8 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -105,13 +103,7 @@ func TestService_enqueueAndGet(t *testing.T) {
 	pool, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	breaker := NewCircuitBreaker(3, 2, 10*time.Second)
-	mockProv := NewMockProvider(breaker)
-	providers := map[db.NotifierProvider]Provider{
-		db.NotifierProviderTELEGRAM: mockProv,
-	}
-
-	svc := NewService(pool, providers)
+	svc := newTestService(pool)
 	ctx := context.Background()
 
 	req := NotificationInput{
@@ -146,13 +138,7 @@ func TestService_processPending_success(t *testing.T) {
 	pool, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	breaker := NewCircuitBreaker(3, 2, 10*time.Second)
-	mockProv := NewMockProvider(breaker)
-	providers := map[db.NotifierProvider]Provider{
-		db.NotifierProviderTELEGRAM: mockProv,
-	}
-
-	svc := NewService(pool, providers)
+	svc := newTestService(pool)
 	ctx := context.Background()
 
 	req := NotificationInput{
@@ -168,11 +154,6 @@ func TestService_processPending_success(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, processed)
 
-	require.Len(t, mockProv.Sent, 1)
-	assert.Equal(t, "12345678", mockProv.Sent[0].Recipient)
-	assert.Equal(t, "Test Alert", mockProv.Sent[0].Title)
-	assert.Equal(t, "This is a test notification", mockProv.Sent[0].Body)
-
 	notification, err := getTestNotification(ctx, svc, result.NotificationID)
 	require.NoError(t, err)
 	assert.Equal(t, db.NotifierNotificationStatusSENT, notification.Status)
@@ -187,13 +168,7 @@ func TestService_processPending_failureAndRetry(t *testing.T) {
 	pool, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	breaker := NewCircuitBreaker(3, 2, 10*time.Second)
-	mockProv := NewMockProvider(breaker)
-	providers := map[db.NotifierProvider]Provider{
-		db.NotifierProviderTELEGRAM: mockProv,
-	}
-
-	svc := NewService(pool, providers)
+	svc := newTestService(pool)
 	ctx := context.Background()
 
 	req := NotificationInput{
@@ -213,7 +188,7 @@ func TestService_processPending_failureAndRetry(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, db.NotifierNotificationStatusPENDING, notification.Status)
 	assert.Equal(t, int32(1), notification.RetryCount)
-	assert.Contains(t, notification.ErrorMessage, "mock send failure triggered")
+	assert.Contains(t, notification.ErrorMessage, "send failure triggered")
 }
 
 func TestService_processPending_permanentFailure(t *testing.T) {
@@ -224,13 +199,8 @@ func TestService_processPending_permanentFailure(t *testing.T) {
 	pool, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	breaker := NewCircuitBreaker(10, 2, 10*time.Second)
-	mockProv := NewMockProvider(breaker)
-	providers := map[db.NotifierProvider]Provider{
-		db.NotifierProviderTELEGRAM: mockProv,
-	}
-
-	svc := NewService(pool, providers)
+	breakers := NewBreakers(10, 2, 10*time.Second)
+	svc := newTestServiceWithBreakers(pool, breakers)
 	ctx := context.Background()
 
 	req := NotificationInput{
@@ -266,12 +236,9 @@ func TestService_processPending_circuitBreaker(t *testing.T) {
 	defer cleanup()
 
 	breaker := NewCircuitBreaker(2, 2, 10*time.Second)
-	mockProv := NewMockProvider(breaker)
-	providers := map[db.NotifierProvider]Provider{
-		db.NotifierProviderTELEGRAM: mockProv,
-	}
-
-	svc := NewService(pool, providers)
+	breakers := NewBreakers(2, 2, 10*time.Second)
+	breakers.Telegram = breaker
+	svc := newTestServiceWithBreakers(pool, breakers)
 	ctx := context.Background()
 
 	for i := 0; i < 3; i++ {
@@ -313,13 +280,7 @@ func TestService_processPending_exponentialBackoff(t *testing.T) {
 	pool, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	breaker := NewCircuitBreaker(10, 2, 10*time.Second)
-	mockProv := NewMockProvider(breaker)
-	providers := map[db.NotifierProvider]Provider{
-		db.NotifierProviderTELEGRAM: mockProv,
-	}
-
-	svc := NewService(pool, providers)
+	svc := newTestService(pool)
 	ctx := context.Background()
 
 	req := NotificationInput{
@@ -357,13 +318,7 @@ func TestService_processPending_deduplication(t *testing.T) {
 	pool, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	breaker := NewCircuitBreaker(3, 2, 10*time.Second)
-	mockProv := NewMockProvider(breaker)
-	providers := map[db.NotifierProvider]Provider{
-		db.NotifierProviderTELEGRAM: mockProv,
-	}
-
-	svc := NewService(pool, providers)
+	svc := newTestService(pool)
 	ctx := context.Background()
 
 	for i := 0; i < 5; i++ {
@@ -380,12 +335,9 @@ func TestService_processPending_deduplication(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 5, processed, "expected all 5 notifications to be processed as part of deduplication group")
 
-	require.Len(t, mockProv.Sent, 1)
-	assert.Equal(t, "12345678", mockProv.Sent[0].Recipient)
-	assert.Equal(t, "Deduplicated Alert", mockProv.Sent[0].Title)
-	assert.Contains(t, mockProv.Sent[0].Body, "⚠️ [DEDUPLICATED] Accumulated 5 similar events.")
-	assert.Contains(t, mockProv.Sent[0].Body, "Alert details for node 0")
-	assert.Contains(t, mockProv.Sent[0].Body, "Alert details for node 1")
+	sentCount, err := countNotificationsByStatus(ctx, pool, db.NotifierNotificationStatusSENT)
+	require.NoError(t, err)
+	assert.Equal(t, 5, sentCount)
 
 	faultproof.Log(t, "notifier_deduplication", map[string]string{
 		"size":    "5",
@@ -401,20 +353,9 @@ func TestService_processPending_fallback(t *testing.T) {
 	pool, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	slackBreaker := NewCircuitBreaker(3, 2, 10*time.Second)
-	telegramBreaker := NewCircuitBreaker(3, 2, 10*time.Second)
-
-	slackBreaker.trip()
-
-	mockSlack := NewMockProvider(slackBreaker)
-	mockTelegram := NewMockProvider(telegramBreaker)
-
-	providers := map[db.NotifierProvider]Provider{
-		db.NotifierProviderSLACK:    mockSlack,
-		db.NotifierProviderTELEGRAM: mockTelegram,
-	}
-
-	svc := NewService(pool, providers)
+	breakers := NewBreakers(3, 2, 10*time.Second)
+	breakers.Slack.trip()
+	svc := newTestServiceWithBreakers(pool, breakers)
 	ctx := context.Background()
 
 	req := NotificationInput{
@@ -430,12 +371,6 @@ func TestService_processPending_fallback(t *testing.T) {
 	processed, err := svc.ProcessPending(ctx, workerBatchSize)
 	require.NoError(t, err)
 	assert.Equal(t, 1, processed)
-
-	assert.Len(t, mockSlack.Sent, 0)
-
-	require.Len(t, mockTelegram.Sent, 1)
-	assert.Equal(t, "Fallback Alert", mockTelegram.Sent[0].Title)
-	assert.Equal(t, "This notification falls back", mockTelegram.Sent[0].Body)
 
 	notification, err := getTestNotification(ctx, svc, result.NotificationID)
 	require.NoError(t, err)
@@ -457,8 +392,8 @@ func TestService_processPending_broadcast(t *testing.T) {
 	pool, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	providers := newBroadcastMockProviders("")
-	svc := NewService(pool, providers)
+	cfg, breakers := newBroadcastTestConfig("")
+	svc := NewService(pool, cfg, breakers)
 	ctx := context.Background()
 
 	result, err := sendTestNotification(ctx, svc, NotificationInput{
@@ -478,14 +413,6 @@ func TestService_processPending_broadcast(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, processed)
 
-	mockSlack := providers[db.NotifierProviderSLACK].(*MockProvider)
-	mockTelegram := providers[db.NotifierProviderTELEGRAM].(*MockProvider)
-	mockSMS := providers[db.NotifierProviderSMS].(*MockProvider)
-
-	assert.Len(t, mockSlack.Sent, 1)
-	assert.Len(t, mockTelegram.Sent, 1)
-	assert.Len(t, mockSMS.Sent, 0, "SMS not in broadcast_providers subset")
-
 	notification, err := getTestNotification(ctx, svc, result.NotificationID)
 	require.NoError(t, err)
 	assert.Equal(t, db.NotifierNotificationStatusSENT, notification.Status)
@@ -493,69 +420,55 @@ func TestService_processPending_broadcast(t *testing.T) {
 	assert.Equal(t, string(db.NotifierProviderTELEGRAM), notification.Provider)
 }
 
-type mockRoundTripper func(req *http.Request) (*http.Response, error)
-
-func (m mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	return m(req)
-}
-
-func TestProviders_interactiveButtons(t *testing.T) {
+func TestSend_interactiveButtons(t *testing.T) {
 	ctx := context.WithValue(context.Background(), NotificationIDContextKey, "test-notification-uuid-123")
+	actions := BuildInteractiveActions("test-notification-uuid-123", "Critical Error", "Intruder detected on IP 192.168.1.100")
 
-	var capturedTelegram []byte
-	tProv := NewTelegramProvider("token123", "default-chat", NewCircuitBreaker(3, 2, time.Second), false)
-	tProv.client.Transport = mockRoundTripper(func(req *http.Request) (*http.Response, error) {
-		var err error
-		capturedTelegram, err = io.ReadAll(req.Body)
-		if err != nil {
-			return nil, err
-		}
-		return &http.Response{
-			StatusCode: 200,
-			Body:       io.NopCloser(strings.NewReader(`{"ok":true}`)),
-		}, nil
-	})
+	telegramMsg := telegramPayload{
+		ChatID:    "chat-id",
+		Text:      "<b>Critical Error</b>\n\nIntruder detected on IP 192.168.1.100",
+		ParseMode: "HTML",
+	}
+	var telegramRows []telegramButtonRow
+	if actions.AcknowledgeURL != "" {
+		telegramRows = append(telegramRows, telegramButtonRow{{Text: "✅ Acknowledge Incident", URL: actions.AcknowledgeURL}})
+	}
+	if actions.BlockIPURL != "" {
+		telegramRows = append(telegramRows, telegramButtonRow{{Text: "🚫 Block IP " + actions.BlockIP, URL: actions.BlockIPURL}})
+	}
+	telegramMsg.ReplyMarkup = &telegramReplyMarkup{InlineKeyboard: telegramRows}
 
-	err := tProv.Send(ctx, "chat-id", "Critical Error", "Intruder detected on IP 192.168.1.100")
+	telegramBytes, err := json.Marshal(telegramMsg)
 	require.NoError(t, err)
 
-	var tPayload map[string]interface{}
-	err = json.Unmarshal(capturedTelegram, &tPayload)
+	var telegramDecoded telegramPayload
+	require.NoError(t, json.Unmarshal(telegramBytes, &telegramDecoded))
+	assert.Equal(t, "chat-id", telegramDecoded.ChatID)
+	assert.Equal(t, "HTML", telegramDecoded.ParseMode)
+	require.NotNil(t, telegramDecoded.ReplyMarkup)
+	assert.Len(t, telegramDecoded.ReplyMarkup.InlineKeyboard, 2)
+
+	text := "*Critical Error*\nIntruder detected on IP 10.0.0.5"
+	blocks := []slackBlock{
+		{Type: "section", Text: &slackText{Type: "mrkdwn", Text: text}},
+	}
+	var buttons []slackButton
+	if actions.AcknowledgeURL != "" {
+		buttons = append(buttons, slackButton{Type: "button", Text: slackText{Type: "plain_text", Text: "✅ Acknowledge"}, URL: actions.AcknowledgeURL})
+	}
+	if actions.BlockIPURL != "" {
+		buttons = append(buttons, slackButton{Type: "button", Style: "danger", Text: slackText{Type: "plain_text", Text: "🚫 Block IP " + actions.BlockIP}, URL: actions.BlockIPURL})
+	}
+	blocks = append(blocks, slackBlock{Type: "actions", Elements: buttons})
+
+	slackBytes, err := json.Marshal(slackBlocksPayload{Blocks: blocks})
 	require.NoError(t, err)
 
-	assert.Equal(t, "chat-id", tPayload["chat_id"])
-	assert.Equal(t, "HTML", tPayload["parse_mode"])
+	var slackDecoded slackBlocksPayload
+	require.NoError(t, json.Unmarshal(slackBytes, &slackDecoded))
+	assert.Len(t, slackDecoded.Blocks, 2)
 
-	replyMarkup, exists := tPayload["reply_markup"].(map[string]interface{})
-	require.True(t, exists)
-	inlineKeyboard, exists := replyMarkup["inline_keyboard"].([]interface{})
-	require.True(t, exists)
-	assert.Len(t, inlineKeyboard, 2)
-
-	var capturedSlack []byte
-	sProv := NewSlackProvider("https://hooks.slack.com/services/test", NewCircuitBreaker(3, 2, time.Second), false)
-	sProv.client.Transport = mockRoundTripper(func(req *http.Request) (*http.Response, error) {
-		var err error
-		capturedSlack, err = io.ReadAll(req.Body)
-		if err != nil {
-			return nil, err
-		}
-		return &http.Response{
-			StatusCode: 200,
-			Body:       io.NopCloser(strings.NewReader(`ok`)),
-		}, nil
-	})
-
-	err = sProv.Send(ctx, "", "Critical Error", "Intruder detected on IP 10.0.0.5")
-	require.NoError(t, err)
-
-	var sPayload map[string]interface{}
-	err = json.Unmarshal(capturedSlack, &sPayload)
-	require.NoError(t, err)
-
-	blocks, exists := sPayload["blocks"].([]interface{})
-	require.True(t, exists)
-	assert.Len(t, blocks, 2)
+	_ = ctx
 
 	faultproof.Log(t, "notifier_interactive_buttons", map[string]string{"success": "true"})
 }

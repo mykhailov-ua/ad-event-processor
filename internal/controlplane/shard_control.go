@@ -2,6 +2,7 @@ package controlplane
 
 import (
 	"context"
+	"espx/internal/controlplane/adminapi"
 	"espx/internal/domain"
 	"espx/internal/domain/db"
 	"espx/internal/metrics"
@@ -359,27 +360,11 @@ func heldFor(since time.Time, now time.Time, d time.Duration) bool {
 	return !since.IsZero() && now.Sub(since) >= d
 }
 
-type OutboxHealthSummary struct {
-	Pending              int64   `json:"pending"`
-	OldestPendingSeconds float64 `json:"oldest_pending_seconds"`
-	LastProcessedEventID int64   `json:"last_processed_event_id"`
-}
+type OutboxHealthSummary = adminapi.OutboxHealthSummary
 
-type ShardHealthStatus struct {
-	ShardID             int     `json:"shard_id"`
-	PingOK              bool    `json:"ping_ok"`
-	PingError           string  `json:"ping_error,omitempty"`
-	PingLatencyMs       float64 `json:"ping_latency_ms,omitempty"`
-	ConfigVersion       *int64  `json:"config_version,omitempty"`
-	ConfigVersionLag    int64   `json:"config_version_lag"`
-	ConfigVersionSynced bool    `json:"config_version_synced"`
-}
+type ShardHealthStatus = adminapi.ShardHealthStatus
 
-type ShardHealthReport struct {
-	EmergencyBreaker string              `json:"emergency_breaker"`
-	Outbox           OutboxHealthSummary `json:"outbox"`
-	Shards           []ShardHealthStatus `json:"shards"`
-}
+type ShardHealthReport = adminapi.ShardHealthReport
 
 func (s *Service) GetShardHealth(ctx context.Context) (ShardHealthReport, error) {
 	var report ShardHealthReport

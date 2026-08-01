@@ -42,8 +42,8 @@ func TestClosedLoopPacingController(t *testing.T) {
 	require.NoError(t, err)
 
 	campaignID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
-		CustomerID: customerID, Name: "Pacing Test", BudgetLimit: 100_000_000,
-		PacingMode: db.PacingModeTypeEVEN, DailyBudget: 100_000_000, Timezone: "UTC", FreqWindow: 86400, IdempotencyKey: "pacing-idem",
+		CustomerID: customerID, Name: "Pacing Test", BudgetLimitMicro: 100_000_000,
+		PacingMode: string(db.PacingModeTypeEVEN), DailyBudgetMicro: 100_000_000, Timezone: "UTC", FreqWindow: 86400, IdempotencyKey: "pacing-idem",
 	})
 	require.NoError(t, err)
 
@@ -114,14 +114,14 @@ func TestClosedLoopPacingController_EdgeCases(t *testing.T) {
 	require.NoError(t, err)
 
 	campaignID1, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
-		CustomerID: customerID, Name: "Pacing Timezone Edge", BudgetLimit: 100_000_000,
-		PacingMode: db.PacingModeTypeEVEN, DailyBudget: 100_000_000, Timezone: "Invalid/Zone", FreqWindow: 86400, IdempotencyKey: "pacing-idem-1",
+		CustomerID: customerID, Name: "Pacing Timezone Edge", BudgetLimitMicro: 100_000_000,
+		PacingMode: string(db.PacingModeTypeEVEN), DailyBudgetMicro: 100_000_000, Timezone: "Invalid/Zone", FreqWindow: 86400, IdempotencyKey: "pacing-idem-1",
 	})
 	require.NoError(t, err)
 
 	campaignID2, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
-		CustomerID: customerID, Name: "Pacing Zero Budget Edge", BudgetLimit: 0,
-		PacingMode: db.PacingModeTypeEVEN, DailyBudget: 0, Timezone: "UTC", FreqWindow: 86400, IdempotencyKey: "pacing-idem-2",
+		CustomerID: customerID, Name: "Pacing Zero Budget Edge", BudgetLimitMicro: 0,
+		PacingMode: string(db.PacingModeTypeEVEN), DailyBudgetMicro: 0, Timezone: "UTC", FreqWindow: 86400, IdempotencyKey: "pacing-idem-2",
 	})
 	require.NoError(t, err)
 
@@ -179,8 +179,8 @@ func BenchmarkClosedLoopPacingController(b *testing.B) {
 
 	for i := 0; i < 10; i++ {
 		_, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
-			CustomerID: customerID, Name: uuid.New().String(), BudgetLimit: 100_000_000,
-			PacingMode: db.PacingModeTypeEVEN, DailyBudget: 100_000_000, Timezone: "UTC", FreqWindow: 86400, IdempotencyKey: uuid.New().String(),
+			CustomerID: customerID, Name: uuid.New().String(), BudgetLimitMicro: 100_000_000,
+			PacingMode: string(db.PacingModeTypeEVEN), DailyBudgetMicro: 100_000_000, Timezone: "UTC", FreqWindow: 86400, IdempotencyKey: uuid.New().String(),
 		})
 		if err != nil {
 			b.Fatal(err)

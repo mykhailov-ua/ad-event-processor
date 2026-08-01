@@ -11,25 +11,18 @@ import (
 	"time"
 )
 
-type MetaOAuthRefresher struct {
-	AppID     string
-	AppSecret string
-	Client    *http.Client
-}
-
-func (r *MetaOAuthRefresher) Refresh(ctx context.Context, cred Credential) (string, time.Time, error) {
+func refreshMetaOAuth(ctx context.Context, client *http.Client, appID, appSecret string, cred Credential) (string, time.Time, error) {
 	if cred.RefreshToken == "" {
 		return "", time.Time{}, fmt.Errorf("meta oauth: missing refresh token")
 	}
-	client := r.Client
 	if client == nil {
 		client = &http.Client{Timeout: 15 * time.Second}
 	}
 
 	q := url.Values{}
 	q.Set("grant_type", "fb_exchange_token")
-	q.Set("client_id", r.AppID)
-	q.Set("client_secret", r.AppSecret)
+	q.Set("client_id", appID)
+	q.Set("client_secret", appSecret)
 	q.Set("fb_exchange_token", cred.RefreshToken)
 
 	endpoint := "https://graph.facebook.com/v19.0/oauth/access_token?" + q.Encode()
@@ -58,17 +51,10 @@ func (r *MetaOAuthRefresher) Refresh(ctx context.Context, cred Credential) (stri
 	return parsed.AccessToken, expires, nil
 }
 
-type GoogleOAuthRefresher struct {
-	ClientID     string
-	ClientSecret string
-	Client       *http.Client
-}
-
-func (r *GoogleOAuthRefresher) Refresh(ctx context.Context, cred Credential) (string, time.Time, error) {
+func refreshGoogleOAuth(ctx context.Context, client *http.Client, clientID, clientSecret string, cred Credential) (string, time.Time, error) {
 	if cred.RefreshToken == "" {
 		return "", time.Time{}, fmt.Errorf("google oauth: missing refresh token")
 	}
-	client := r.Client
 	if client == nil {
 		client = &http.Client{Timeout: 15 * time.Second}
 	}
@@ -76,8 +62,8 @@ func (r *GoogleOAuthRefresher) Refresh(ctx context.Context, cred Credential) (st
 	form := url.Values{}
 	form.Set("grant_type", "refresh_token")
 	form.Set("refresh_token", cred.RefreshToken)
-	form.Set("client_id", r.ClientID)
-	form.Set("client_secret", r.ClientSecret)
+	form.Set("client_id", clientID)
+	form.Set("client_secret", clientSecret)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://oauth2.googleapis.com/token", strings.NewReader(form.Encode()))
 	if err != nil {

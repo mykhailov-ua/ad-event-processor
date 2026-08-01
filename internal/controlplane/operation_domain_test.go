@@ -59,8 +59,3 @@ func TestOperation_ProxyBatchOpIDFromBytes(t *testing.T) {
 	copy(raw[:], id[:])
 	assert.Equal(t, id, ProxyBatchOpIDFromBytes(raw))
 }
-
-func TestOperation_DomainMapped(t *testing.T) {
-	t.Parallel()
-	assert.Equal(t, "operation", FileDomain("operation_lease_paths.go"))
-}

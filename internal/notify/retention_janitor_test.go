@@ -20,7 +20,7 @@ func TestRetentionJanitor_DeletesOldRows(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	svc := NewService(pool, map[db.NotifierProvider]Provider{})
+	svc := newTestService(pool)
 	_, err := sendTestNotification(ctx, svc, NotificationInput{
 		Provider:  string(db.NotifierProviderTELEGRAM),
 		Recipient: "123",

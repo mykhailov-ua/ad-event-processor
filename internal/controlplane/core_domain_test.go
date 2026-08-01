@@ -57,8 +57,3 @@ func TestCore_ipRateLimiter(t *testing.T) {
 	lim := newIPRateLimiter(100, 10)
 	require.True(t, lim.allow("1.2.3.4"))
 }
-
-func TestCore_DomainMapped(t *testing.T) {
-	t.Parallel()
-	assert.Equal(t, "core", FileDomain("rbac.go"))
-}

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"espx/internal/domain"
+	"espx/internal/identity"
 	"espx/pkg/coldpath"
 	"espx/pkg/httpresponse"
 	"espx/pkg/money"
@@ -33,6 +34,7 @@ type CreateCampaignInput struct {
 	StartAt          *time.Time
 	EndAt            *time.Time
 	DaypartHours     []int16
+	TemplateID       *uuid.UUID
 	IdempotencyKey   string
 }
 
@@ -46,16 +48,8 @@ type CampaignAdmin interface {
 
 type PaymentIntents = domain.PaymentAPI
 
-type APIKeyResult struct {
-	ID         string
-	Name       string
-	RawKey     string
-	ExpiresAt  string
-	HasExpires bool
-}
-
 type APIKeyCreator interface {
-	CreateAPIKey(ctx context.Context, accessToken, name string) (APIKeyResult, error)
+	CreateAPIKey(ctx context.Context, accessToken, name string) (identity.CreateAPIKeyResult, error)
 }
 
 type InvoiceLister = domain.BillingAPI
@@ -240,7 +234,7 @@ func (selfServe *SelfServeHTTPHandlers) createCampaign(w http.ResponseWriter, r 
 		selfServe.writeServiceError(w, err, slog.String("customer_id", customerID.String()))
 		return
 	}
-	httpresponse.JSON(w, http.StatusCreated, map[string]any{"id": id})
+	httpresponse.JSON(w, http.StatusCreated, IDCreatedResponse{ID: id.String()})
 }
 
 func (selfServe *SelfServeHTTPHandlers) pauseCampaign(w http.ResponseWriter, r *http.Request) {
@@ -368,11 +362,11 @@ func (selfServe *SelfServeHTTPHandlers) createPaymentIntent(w http.ResponseWrite
 		return
 	}
 
-	httpresponse.JSON(w, http.StatusOK, map[string]any{
-		"intent_id":    resp.IntentID,
-		"status":       resp.Status,
-		"checkout_url": resp.CheckoutURL,
-		"provider_ref": resp.ProviderRef,
+	httpresponse.JSON(w, http.StatusOK, PaymentIntentCreatedResponse{
+		IntentID:    resp.IntentID,
+		Status:      resp.Status,
+		CheckoutURL: resp.CheckoutURL,
+		ProviderRef: resp.ProviderRef,
 	})
 }
 
@@ -420,13 +414,9 @@ func (selfServe *SelfServeHTTPHandlers) listInvoices(w http.ResponseWriter, r *h
 		return
 	}
 
-	invoices := make([]map[string]any, 0, len(resp.Invoices))
-	for i := range resp.Invoices {
-		invoices = append(invoices, InvoiceToJSON(&resp.Invoices[i]))
-	}
-	httpresponse.JSON(w, http.StatusOK, map[string]any{
-		"invoices": invoices,
-		"total":    resp.Total,
+	httpresponse.JSON(w, http.StatusOK, SelfServeInvoiceListResponse{
+		Invoices: resp.Invoices,
+		Total:    resp.Total,
 	})
 }
 
@@ -469,13 +459,13 @@ func (selfServe *SelfServeHTTPHandlers) createAPIKey(w http.ResponseWriter, r *h
 		return
 	}
 
-	out := map[string]any{
-		"id":      resp.ID,
-		"name":    resp.Name,
-		"raw_key": resp.RawKey,
+	out := APIKeyCreatedResponse{
+		ID:     resp.ID,
+		Name:   resp.Name,
+		RawKey: resp.RawKey,
 	}
-	if resp.HasExpires {
-		out["expires_at"] = resp.ExpiresAt
+	if resp.ExpiresAt != nil {
+		out.ExpiresAt = resp.ExpiresAt.UTC().Format(time.RFC3339)
 	}
 	httpresponse.JSON(w, http.StatusCreated, out)
 }

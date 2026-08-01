@@ -35,18 +35,6 @@ type CampaignFraudConfigUpdate struct {
 	BehaviorFlags         *uint32 `json:"behavior_flags,omitempty"`
 }
 
-func campaignFraudConfigFromRow(id uuid.UUID, row db.Campaign) CampaignFraudConfigDTO {
-	return CampaignFraudConfigDTO{
-		CampaignID:            id.String(),
-		FraudThresholdPass:    uint8(row.FraudThresholdPass),
-		FraudThresholdSuspect: uint8(row.FraudThresholdSuspect),
-		FraudThresholdIVT:     uint8(row.FraudThresholdIvt),
-		FraudThresholdBlock:   uint8(row.FraudThresholdBlock),
-		GhostIVTEnabled:       row.GhostIvtEnabled,
-		BehaviorFlags:         uint32(row.BehaviorFlags),
-	}
-}
-
 func validateFraudThresholds(pass, suspect, ivt, block uint8) error {
 	if pass > 100 || suspect > 100 || ivt > 100 || block > 100 {
 		return errValidation("fraud thresholds must be between 0 and 100")
@@ -62,7 +50,15 @@ func (s *Service) GetCampaignFraudConfig(ctx context.Context, campaignID uuid.UU
 	if err != nil {
 		return CampaignFraudConfigDTO{}, mapNotFound(err, ErrCampaignNotFound)
 	}
-	return campaignFraudConfigFromRow(campaignID, row), nil
+	return CampaignFraudConfigDTO{
+		CampaignID:            campaignID.String(),
+		FraudThresholdPass:    uint8(row.FraudThresholdPass),
+		FraudThresholdSuspect: uint8(row.FraudThresholdSuspect),
+		FraudThresholdIVT:     uint8(row.FraudThresholdIvt),
+		FraudThresholdBlock:   uint8(row.FraudThresholdBlock),
+		GhostIVTEnabled:       row.GhostIvtEnabled,
+		BehaviorFlags:         uint32(row.BehaviorFlags),
+	}, nil
 }
 
 func (s *Service) UpdateCampaignFraudConfig(ctx context.Context, campaignID uuid.UUID, upd CampaignFraudConfigUpdate) (CampaignFraudConfigDTO, error) {
@@ -122,16 +118,16 @@ func (s *Service) UpdateCampaignFraudConfig(ctx context.Context, campaignID uuid
 		if u, ok := GetUser(ctx); ok {
 			uid = u.UserID
 		}
-		s.AuditLog(ctx, q, uid, "UPDATE_CAMPAIGN_FRAUD", "campaign", &campaignID, map[string]any{
-			"fraud_threshold_pass":    pass,
-			"fraud_threshold_suspect": suspect,
-			"fraud_threshold_ivt":     ivt,
-			"fraud_threshold_block":   block,
-			"ghost_ivt_enabled":       ghost,
-			"behavior_flags":          flags,
+		s.AuditLog(ctx, q, uid, "UPDATE_CAMPAIGN_FRAUD", "campaign", &campaignID, auditCampaignFraudChange{
+			FraudThresholdPass:    pass,
+			FraudThresholdSuspect: suspect,
+			FraudThresholdIVT:     ivt,
+			FraudThresholdBlock:   block,
+			GhostIVTEnabled:       ghost,
+			BehaviorFlags:         flags,
 		}, nil)
 
-		payload, err := coldpath.MarshalJSON(map[string]string{"campaign_id": campaignID.String()})
+		payload, err := coldpath.MarshalJSON(campaignIDPayload{CampaignID: campaignID.String()})
 		if err != nil {
 			return fmt.Errorf("marshal update campaign fraud outbox payload: %w", err)
 		}
@@ -143,7 +139,15 @@ func (s *Service) UpdateCampaignFraudConfig(ctx context.Context, campaignID uuid
 			return err
 		}
 
-		out = campaignFraudConfigFromRow(campaignID, updated)
+		out = CampaignFraudConfigDTO{
+			CampaignID:            campaignID.String(),
+			FraudThresholdPass:    uint8(updated.FraudThresholdPass),
+			FraudThresholdSuspect: uint8(updated.FraudThresholdSuspect),
+			FraudThresholdIVT:     uint8(updated.FraudThresholdIvt),
+			FraudThresholdBlock:   uint8(updated.FraudThresholdBlock),
+			GhostIVTEnabled:       updated.GhostIvtEnabled,
+			BehaviorFlags:         uint32(updated.BehaviorFlags),
+		}
 		return nil
 	})
 	if err != nil {

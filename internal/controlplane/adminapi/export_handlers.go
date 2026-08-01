@@ -338,7 +338,7 @@ func (exportHandlers *ExportHTTPHandlers) createExport(w http.ResponseWriter, r 
 		return
 	}
 	w.Header().Set("Location", "/api/v1/billing/exports/"+jobID)
-	httpresponse.JSON(w, http.StatusAccepted, map[string]any{"job_id": jobID})
+	httpresponse.JSON(w, http.StatusAccepted, ExportJobCreatedResponse{JobID: jobID})
 }
 
 func (exportHandlers *ExportHTTPHandlers) getExport(w http.ResponseWriter, r *http.Request) {

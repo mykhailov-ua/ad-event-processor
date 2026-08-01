@@ -34,7 +34,7 @@ func TestCryptoGateway_EndToEnd(t *testing.T) {
 	infra.Cfg.CryptoMinPaymentMicro = 10_000_000
 	infra.Cfg.CryptoConfirmationDepth = 12
 
-	svc := payment.NewService(infra.Pool, payment.NewProvider(infra.Cfg), infra.Cfg)
+	svc := payment.NewService(infra.Pool, infra.Cfg)
 
 	customerID := uuid.New()
 
@@ -152,7 +152,7 @@ func TestCryptoGateway_UnderpayRejected(t *testing.T) {
 	infra.Cfg.CryptoMinPaymentMicro = 10_000_000
 	infra.Cfg.CryptoConfirmationDepth = 12
 
-	svc := payment.NewService(infra.Pool, payment.NewProvider(infra.Cfg), infra.Cfg)
+	svc := payment.NewService(infra.Pool, infra.Cfg)
 
 	customerID := uuid.New()
 	_, err := infra.Pool.Exec(ctx, `
@@ -209,7 +209,7 @@ func TestCryptoGateway_FraudGateBlocksRelease(t *testing.T) {
 	infra.Cfg.CryptoMinPaymentMicro = 10_000_000
 	infra.Cfg.CryptoConfirmationDepth = 12
 
-	svc := payment.NewService(infra.Pool, payment.NewProvider(infra.Cfg), infra.Cfg)
+	svc := payment.NewService(infra.Pool, infra.Cfg)
 
 	customerID := uuid.New()
 	_, err := infra.Pool.Exec(ctx, `
@@ -285,7 +285,7 @@ func TestCryptoGateway_WebhookHTTPHandler(t *testing.T) {
 	infra.Cfg.CryptoMinPaymentMicro = 10_000_000
 	infra.Cfg.CryptoConfirmationDepth = 12
 
-	svc := payment.NewService(infra.Pool, payment.NewProvider(infra.Cfg), infra.Cfg)
+	svc := payment.NewService(infra.Pool, infra.Cfg)
 	handler := payment.NewWebhookHandler(svc, infra.Cfg)
 
 	customerID := uuid.New()

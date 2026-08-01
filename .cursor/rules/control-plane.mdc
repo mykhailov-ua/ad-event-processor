@@ -12,6 +12,8 @@ Control Plane
 
 Cold-path control plane: HTTP admin, gRPC settlement, background workers, licensing. Hot path (`/track`, Redis Lua, XDP) is out of scope.
 
+**Cold-path rules:** `.cursor/rules/cold-path.mdc` — mandatory for admin/billing/payment/notifier/costsync edits (no Provider interfaces, no `map[string]any` payloads, minimal LoC).
+
 `.cursor/rules/data-layer.mdc` . `docs/ARCHITECTURE.md` . `.cursor/rules/code-style.mdc` . `.cursor/rules/service-boundaries.mdc`
 
 1. Topology

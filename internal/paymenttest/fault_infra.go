@@ -176,7 +176,7 @@ func SeedSucceededIntentWithOutbox(t *testing.T, infra *FaultInfra, customerID u
 	ctx := context.Background()
 	SeedCustomer(t, infra.Pool, customerID)
 
-	svc := payment.NewService(infra.Pool, payment.NewMockProvider(), infra.Cfg)
+	svc := payment.NewService(infra.Pool, infra.Cfg)
 	result, err := svc.CreatePaymentIntent(ctx, customerID, amountMicro, "USD", idempotencyKey, nil)
 	require.NoError(t, err)
 	intent := result.Intent

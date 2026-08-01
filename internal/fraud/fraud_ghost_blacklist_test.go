@@ -41,13 +41,7 @@ func TestMLGhostAndBlacklist_EndToEnd(t *testing.T) {
 
 	worker := controlplane.NewOutboxWorker(svc)
 
-	err = svc.EnqueueFraudThreat(ctx, controlplane.FraudThreatPayload{
-		Action:     "ghost",
-		CampaignID: campaignID.String(),
-		IP:         "1.1.1.1",
-		Score:      75.0,
-		TTLSeconds: 300,
-	})
+	err = svc.EnqueueFraudThreat(ctx, "ghost", "1.1.1.1", campaignID.String(), 75.0, 0, 300)
 	require.NoError(t, err)
 
 	processed, err := worker.ProcessOutboxWithCount(ctx, 10)
@@ -57,13 +51,7 @@ func TestMLGhostAndBlacklist_EndToEnd(t *testing.T) {
 	_, err = pool.Exec(ctx, "UPDATE campaigns SET ghost_ivt_enabled = FALSE WHERE id = $1", campaignID)
 	require.NoError(t, err)
 
-	err = svc.EnqueueFraudThreat(ctx, controlplane.FraudThreatPayload{
-		Action:     "ghost",
-		CampaignID: campaignID.String(),
-		IP:         "1.1.1.1",
-		Score:      75.0,
-		TTLSeconds: 300,
-	})
+	err = svc.EnqueueFraudThreat(ctx, "ghost", "1.1.1.1", campaignID.String(), 75.0, 0, 300)
 	require.NoError(t, err)
 
 	processed, err = worker.ProcessOutboxWithCount(ctx, 10)
@@ -75,13 +63,7 @@ func TestMLGhostAndBlacklist_EndToEnd(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, ghostEnabled)
 
-	err = svc.EnqueueFraudThreat(ctx, controlplane.FraudThreatPayload{
-		Action:     "blacklist",
-		CampaignID: campaignID.String(),
-		IP:         "9.9.9.9",
-		Score:      95.0,
-		TTLSeconds: 3600,
-	})
+	err = svc.EnqueueFraudThreat(ctx, "blacklist", "9.9.9.9", campaignID.String(), 95.0, 0, 3600)
 	require.NoError(t, err)
 
 	processed, err = worker.ProcessOutboxWithCount(ctx, 10)

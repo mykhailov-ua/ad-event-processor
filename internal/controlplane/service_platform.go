@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"espx/internal/controlplane/adminapi"
 	"espx/internal/domain"
 	"espx/internal/domain/db"
 	"espx/internal/edge/allowlist"
@@ -29,55 +30,41 @@ import (
 
 var emailPIIPattern = regexp.MustCompile(`(?i)[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}`)
 
-type AuditLogDTO struct {
-	ID         int64           `json:"id"`
-	AdminID    string          `json:"admin_id,omitempty"`
-	Action     string          `json:"action"`
-	TargetType string          `json:"target_type"`
-	TargetID   string          `json:"target_id,omitempty"`
-	Changes    json.RawMessage `json:"changes"`
-	Metadata   json.RawMessage `json:"metadata"`
-	IsMasked   bool            `json:"is_masked"`
-	CreatedAt  string          `json:"created_at"`
-}
+type AuditLogDTO = adminapi.AuditLogDTO
 
-func (s *Service) ListAuditLogsRedacted(ctx context.Context, limit, offset int32, redactPII bool) ([]AuditLogDTO, int64, error) {
-	rows, total, err := s.ListAuditLogs(ctx, limit, offset)
+func (s *Service) ListAuditLogs(ctx context.Context, limit, offset int32, redactPII bool) ([]adminapi.AuditLogDTO, int64, error) {
+	rows, total, err := s.ListAuditLogRows(ctx, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}
 	out := make([]AuditLogDTO, len(rows))
 	for i, row := range rows {
-		out[i] = auditRowToDTO(row, redactPII)
+		changes := row.Changes
+		metadata := row.Metadata
+		if redactPII {
+			changes = redactJSONPII(changes)
+			metadata = redactJSONPII(metadata)
+		}
+		dto := adminapi.AuditLogDTO{
+			ID:         row.ID,
+			Action:     row.Action,
+			TargetType: row.TargetType,
+			Changes:    changes,
+			Metadata:   metadata,
+			IsMasked:   row.IsMasked,
+		}
+		if row.AdminID.Valid {
+			dto.AdminID = uuid.UUID(row.AdminID.Bytes).String()
+		}
+		if row.TargetID.Valid {
+			dto.TargetID = uuid.UUID(row.TargetID.Bytes).String()
+		}
+		if row.CreatedAt.Valid {
+			dto.CreatedAt = row.CreatedAt.Time.UTC().Format("2006-01-02T15:04:05Z")
+		}
+		out[i] = dto
 	}
 	return out, total, nil
-}
-
-func auditRowToDTO(row db.AdminAuditLog, redactPII bool) AuditLogDTO {
-	changes := row.Changes
-	metadata := row.Metadata
-	if redactPII {
-		changes = redactJSONPII(changes)
-		metadata = redactJSONPII(metadata)
-	}
-	dto := AuditLogDTO{
-		ID:         row.ID,
-		Action:     row.Action,
-		TargetType: row.TargetType,
-		Changes:    changes,
-		Metadata:   metadata,
-		IsMasked:   row.IsMasked,
-	}
-	if row.AdminID.Valid {
-		dto.AdminID = uuid.UUID(row.AdminID.Bytes).String()
-	}
-	if row.TargetID.Valid {
-		dto.TargetID = uuid.UUID(row.TargetID.Bytes).String()
-	}
-	if row.CreatedAt.Valid {
-		dto.CreatedAt = row.CreatedAt.Time.UTC().Format("2006-01-02T15:04:05Z")
-	}
-	return dto
 }
 
 func redactJSONPII(raw []byte) []byte {
@@ -136,14 +123,9 @@ var (
 	ErrConsentInvalidPayload   = errors.New("invalid consent payload")
 )
 
-type ConsentRecordInput struct {
-	UserID    string `json:"user_id"`
-	Purposes  int16  `json:"purposes"`
-	Source    string `json:"source"`
-	Timestamp string `json:"timestamp,omitempty"`
-}
+type ConsentRecord = adminapi.ConsentRecord
 
-func (s *Service) RecordConsent(ctx context.Context, in ConsentRecordInput) error {
+func (s *Service) RecordConsent(ctx context.Context, in ConsentRecord) error {
 	if in.UserID == "" {
 		return errValidation("user_id is required")
 	}
@@ -174,9 +156,9 @@ func (s *Service) RecordConsent(ctx context.Context, in ConsentRecordInput) erro
 		}); err != nil {
 			return fmt.Errorf("upsert consent state: %w", err)
 		}
-		payload, err := coldpath.MarshalJSON(map[string]any{
-			"user_id_hash": hex.EncodeToString(hash),
-			"purposes":     in.Purposes,
+		payload, err := coldpath.MarshalJSON(userConsentOutboxPayload{
+			UserIDHash: hex.EncodeToString(hash),
+			Purposes:   in.Purposes,
 		})
 		if err != nil {
 			return fmt.Errorf("marshal consent outbox payload: %w", err)
@@ -218,7 +200,7 @@ func (s *Service) UpdateCampaignConsentRequirements(ctx context.Context, campaig
 		}); err != nil {
 			return mapNotFound(err, ErrCampaignNotFound)
 		}
-		payload, err := coldpath.MarshalJSON(map[string]string{"campaign_id": campaignID.String()})
+		payload, err := coldpath.MarshalJSON(campaignIDPayload{CampaignID: campaignID.String()})
 		if err != nil {
 			return err
 		}
@@ -342,10 +324,10 @@ func (s *Service) enqueueErasureRedisPurge(ctx context.Context, row db.PrivacyEr
 		if locked.LastError.Valid && locked.LastError.String == "purge_enqueued" {
 			return nil
 		}
-		payload, err := coldpath.MarshalJSON(map[string]string{
-			"erasure_id":      uuid.UUID(locked.ID.Bytes).String(),
-			"user_id_hash":    hex.EncodeToString(locked.UserIDHash),
-			"subject_user_id": locked.SubjectUserID,
+		payload, err := coldpath.MarshalJSON(purgeUserDataPayload{
+			ErasureID:     uuid.UUID(locked.ID.Bytes).String(),
+			UserIDHash:    hex.EncodeToString(locked.UserIDHash),
+			SubjectUserID: locked.SubjectUserID,
 		})
 		if err != nil {
 			return err
@@ -550,23 +532,9 @@ var (
 	ErrFeedbackEmptyMessage = errors.New("message is required")
 )
 
-type SupportFeedbackInput struct {
-	Type          string
-	ContactEmail  string
-	Message       string
-	AttachBundle  bool
-	BundleGzip    []byte
-	SubmitterID   uuid.UUID
-	DeploymentID  string
-	BinaryVersion string
-	SKU           string
-}
+type SupportFeedbackRecord = adminapi.SupportFeedbackRecord
 
-type SupportFeedbackMeta struct {
-	DeploymentID  string `json:"deployment_id"`
-	BinaryVersion string `json:"binary_version"`
-	SKU           string `json:"sku"`
-}
+type SupportFeedbackMeta = adminapi.SupportFeedbackMeta
 
 func (s *Service) SupportFeedbackMeta(ctx context.Context) (SupportFeedbackMeta, error) {
 	meta := SupportFeedbackMeta{
@@ -597,7 +565,7 @@ func (s *Service) SupportFeedbackMeta(ctx context.Context) (SupportFeedbackMeta,
 	return meta, nil
 }
 
-func (s *Service) RecordSupportFeedback(ctx context.Context, in SupportFeedbackInput) (uuid.UUID, error) {
+func (s *Service) RecordSupportFeedback(ctx context.Context, in SupportFeedbackRecord) (uuid.UUID, error) {
 	feedbackType := strings.ToLower(strings.TrimSpace(in.Type))
 	if feedbackType != "bug" && feedbackType != "feature" && feedbackType != "support" {
 		return uuid.Nil, ErrFeedbackInvalidType
@@ -677,9 +645,9 @@ func (s *Service) ListMarginGuardPolicies(ctx context.Context, campaignID uuid.U
 	return policies, nil
 }
 
-func (s *Service) GetCampaignMargin(ctx context.Context, campaignID uuid.UUID) (map[string]any, error) {
+func (s *Service) GetCampaignMargin(ctx context.Context, campaignID uuid.UUID) (adminapi.CampaignMarginDTO, error) {
 	if s == nil || s.pool == nil {
-		return nil, fmt.Errorf("service unavailable")
+		return adminapi.CampaignMarginDTO{}, fmt.Errorf("service unavailable")
 	}
 	windowStart := time.Now().Add(-1 * time.Hour)
 	q := db.New(s.pool)
@@ -688,32 +656,32 @@ func (s *Service) GetCampaignMargin(ctx context.Context, campaignID uuid.UUID) (
 		CreatedAt:  pgtype.Timestamp{Time: windowStart, Valid: true},
 	})
 	if err != nil {
-		return nil, err
+		return adminapi.CampaignMarginDTO{}, err
 	}
 	thresholdBps := ledger.CostOverRevenueThresholdBps(nil, s.cfg)
 	policies, err := s.ListMarginGuardPolicies(ctx, campaignID)
 	if err != nil {
-		return nil, err
+		return adminapi.CampaignMarginDTO{}, err
 	}
 	if len(policies) > 0 {
 		thresholdBps = ledger.CostOverRevenueThresholdBps(policies[0], s.cfg)
 	}
 	limitMicro := ledger.CostOverRevenueLimitMicro(sums.AdvertiserSpendMicro, thresholdBps)
-	return map[string]any{
-		"campaign_id":             campaignID.String(),
-		"window_start":            windowStart.UTC().Format(time.RFC3339),
-		"window_hours":            1,
-		"advertiser_spend_micro":  sums.AdvertiserSpendMicro,
-		"rtb_cost_micro":          sums.RtbCostMicro,
-		"operator_margin_micro":   sums.OperatorMarginMicro,
-		"publisher_payout_micro":  sums.PublisherPayoutMicro,
-		"cost_over_revenue_limit": limitMicro,
-		"threshold_bps":           thresholdBps,
-		"margin_breach":           sums.RtbCostMicro > limitMicro && sums.AdvertiserSpendMicro > 0,
+	return adminapi.CampaignMarginDTO{
+		CampaignID:           campaignID.String(),
+		WindowStart:          windowStart.UTC().Format(time.RFC3339),
+		WindowHours:          1,
+		AdvertiserSpendMicro: sums.AdvertiserSpendMicro,
+		RtbCostMicro:         sums.RtbCostMicro,
+		OperatorMarginMicro:  sums.OperatorMarginMicro,
+		PublisherPayoutMicro: sums.PublisherPayoutMicro,
+		CostOverRevenueLimit: limitMicro,
+		ThresholdBps:         thresholdBps,
+		MarginBreach:         sums.RtbCostMicro > limitMicro && sums.AdvertiserSpendMicro > 0,
 	}, nil
 }
 
-func (s *Service) GetMarginGuardActivity(ctx context.Context, campaignID uuid.UUID) ([]map[string]any, error) {
+func (s *Service) GetMarginGuardActivity(ctx context.Context, campaignID uuid.UUID) ([]adminapi.MarginGuardActivityRow, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, policy_id, campaign_id, placement_id, action, reason, metrics, created_at
 		FROM margin_guard_activity
@@ -726,25 +694,19 @@ func (s *Service) GetMarginGuardActivity(ctx context.Context, campaignID uuid.UU
 	}
 	defer rows.Close()
 
-	var activities []map[string]any
+	var activities []adminapi.MarginGuardActivityRow
 	for rows.Next() {
-		var id, policyID, campID uuid.UUID
-		var placementID, action, reason string
-		var metrics map[string]any
-		var createdAt interface{}
-		if err := rows.Scan(&id, &policyID, &campID, &placementID, &action, &reason, &metrics, &createdAt); err != nil {
+		var row adminapi.MarginGuardActivityRow
+		var metrics []byte
+		var createdAt time.Time
+		if err := rows.Scan(&row.ID, &row.PolicyID, &row.CampaignID, &row.PlacementID, &row.Action, &row.Reason, &metrics, &createdAt); err != nil {
 			return nil, err
 		}
-		activities = append(activities, map[string]any{
-			"id":           id,
-			"policy_id":    policyID,
-			"campaign_id":  campID,
-			"placement_id": placementID,
-			"action":       action,
-			"reason":       reason,
-			"metrics":      metrics,
-			"created_at":   createdAt,
-		})
+		if len(metrics) > 0 {
+			row.Metrics = metrics
+		}
+		row.CreatedAt = createdAt
+		activities = append(activities, row)
 	}
 	return activities, nil
 }
@@ -783,12 +745,25 @@ func (s *Service) optimizeBrandCreativeMABTx(ctx context.Context, tx pgx.Tx) ([]
 	}
 
 	q := db.New(tx)
-	brandRows, err := q.ListDistinctBrandsWithActiveCreatives(ctx)
+	allCreatives, err := q.ListAllActiveBrandCreatives(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("list brands for mab: %w", err)
+		return nil, fmt.Errorf("list active brand creatives: %w", err)
 	}
-	if len(brandRows) == 0 {
+	if len(allCreatives) == 0 {
 		return nil, nil
+	}
+	campaignRows, err := q.ListCampaignIDsForActiveBrands(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list campaigns for active brands: %w", err)
+	}
+
+	creativesByBrand := make(map[pgtype.UUID][]db.BrandCreative)
+	for _, cr := range allCreatives {
+		creativesByBrand[cr.BrandID] = append(creativesByBrand[cr.BrandID], cr)
+	}
+	campaignsByBrand := make(map[pgtype.UUID][]pgtype.UUID)
+	for _, row := range campaignRows {
+		campaignsByBrand[row.BrandID] = append(campaignsByBrand[row.BrandID], row.ID)
 	}
 
 	lookbackEnd := time.Now().UTC()
@@ -799,22 +774,13 @@ func (s *Service) optimizeBrandCreativeMABTx(ctx context.Context, tx pgx.Tx) ([]
 	}
 
 	var updatedBrands []uuid.UUID
-	for _, brandRow := range brandRows {
-		brandID := uuid.UUID(brandRow.Bytes)
-		creatives, err := q.ListActiveBrandCreatives(ctx, brandRow)
-		if err != nil {
-			return nil, err
-		}
+	weightBatch := &pgx.Batch{}
+	for brandID, creatives := range creativesByBrand {
 		if len(creatives) < 2 {
 			continue
 		}
 
-		campaignRows, err := q.ListCampaignIDsByBrand(ctx, brandRow)
-		if err != nil {
-			return nil, err
-		}
-
-		attributed := attributeMABStats(creatives, campaignRows, chStats, minImps)
+		attributed := attributeMABStats(creatives, campaignsByBrand[brandID], chStats, minImps)
 		if !attributed.anyEligible {
 			continue
 		}
@@ -827,20 +793,24 @@ func (s *Service) optimizeBrandCreativeMABTx(ctx context.Context, tx pgx.Tx) ([]
 			if !ok || newWeight == cr.Weight {
 				continue
 			}
-			_, err := q.UpdateBrandCreative(ctx, db.UpdateBrandCreativeParams{
-				ID:         cr.ID,
-				Name:       cr.Name,
-				LandingUrl: cr.LandingUrl,
-				Weight:     newWeight,
-				Status:     cr.Status,
-			})
-			if err != nil {
-				return nil, fmt.Errorf("update creative weight %s: %w", creativeID, err)
-			}
+			weightBatch.Queue(
+				`UPDATE brand_creatives SET weight = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+				cr.ID,
+				newWeight,
+			)
 			brandChanged = true
 		}
 		if brandChanged {
-			updatedBrands = append(updatedBrands, brandID)
+			updatedBrands = append(updatedBrands, uuid.UUID(brandID.Bytes))
+		}
+	}
+	if weightBatch.Len() > 0 {
+		br := tx.SendBatch(ctx, weightBatch)
+		defer br.Close()
+		for i := 0; i < weightBatch.Len(); i++ {
+			if _, err := br.Exec(); err != nil {
+				return nil, fmt.Errorf("update creative weight batch item %d: %w", i, err)
+			}
 		}
 	}
 	return updatedBrands, nil
@@ -924,83 +894,57 @@ func computeMABWeights(stats map[uuid.UUID]mabCreativeStat) map[uuid.UUID]int32 
 }
 
 func (s *Service) queryMABCreativeStats(ctx context.Context, from, to time.Time) (map[uuid.UUID]mabCreativeStat, error) {
+	const query = `
+SELECT
+    campaign_id,
+    creative_id,
+    sum(impressions) AS impressions,
+    sum(clicks) AS clicks
+FROM (
+    SELECT
+        toString(campaign_id) AS campaign_id,
+        nullIf(JSONExtractString(payload, 'creative_id'), '') AS creative_id,
+        count() AS impressions,
+        toUInt64(0) AS clicks
+    FROM impressions
+    WHERE created_at >= ? AND created_at < ?
+    GROUP BY campaign_id, creative_id
+    UNION ALL
+    SELECT
+        toString(campaign_id),
+        nullIf(JSONExtractString(payload, 'creative_id'), ''),
+        toUInt64(0),
+        count() AS clicks
+    FROM clicks
+    WHERE created_at >= ? AND created_at < ?
+    GROUP BY campaign_id, creative_id
+)
+GROUP BY campaign_id, creative_id`
+
+	rows, err := s.chQuery.Query(ctx, query, from, to, from, to)
+	if err != nil {
+		return nil, fmt.Errorf("mab creative stats query: %w", err)
+	}
+	defer rows.Close()
+
 	out := make(map[uuid.UUID]mabCreativeStat)
-
-	impQuery := `
-SELECT
-    toString(campaign_id) AS campaign_id,
-    nullIf(JSONExtractString(payload, 'creative_id'), '') AS creative_id,
-    count() AS impressions
-FROM impressions
-WHERE created_at >= ? AND created_at < ?
-GROUP BY campaign_id, creative_id`
-
-	impRows, err := s.chQuery.Query(ctx, impQuery, from, to)
-	if err != nil {
-		return nil, fmt.Errorf("mab impressions query: %w", err)
-	}
-	defer impRows.Close()
-
-	type key struct {
-		campaignID string
-		creativeID string
-	}
-	imps := make(map[key]int64)
-	for impRows.Next() {
+	for rows.Next() {
 		var campaignID, creativeID string
-		var impressions uint64
-		if err := impRows.Scan(&campaignID, &creativeID, &impressions); err != nil {
+		var impressions, clicks uint64
+		if err := rows.Scan(&campaignID, &creativeID, &impressions, &clicks); err != nil {
 			return nil, err
 		}
-		imps[key{campaignID: campaignID, creativeID: creativeID}] = int64(impressions)
-	}
-	if err := impRows.Err(); err != nil {
-		return nil, err
-	}
-
-	clickQuery := `
-SELECT
-    toString(campaign_id) AS campaign_id,
-    nullIf(JSONExtractString(payload, 'creative_id'), '') AS creative_id,
-    count() AS clicks
-FROM clicks
-WHERE created_at >= ? AND created_at < ?
-GROUP BY campaign_id, creative_id`
-
-	clickRows, err := s.chQuery.Query(ctx, clickQuery, from, to)
-	if err != nil {
-		return nil, fmt.Errorf("mab clicks query: %w", err)
-	}
-	defer clickRows.Close()
-
-	for clickRows.Next() {
-		var campaignID, creativeID string
-		var clicks uint64
-		if err := clickRows.Scan(&campaignID, &creativeID, &clicks); err != nil {
-			return nil, err
-		}
-		k := key{campaignID: campaignID, creativeID: creativeID}
 		statKey, err := mabStatKey(campaignID, creativeID)
 		if err != nil {
 			continue
 		}
-		stat := out[statKey]
-		stat.clicks = int64(clicks)
-		stat.impressions = imps[k]
-		out[statKey] = stat
+		out[statKey] = mabCreativeStat{
+			impressions: int64(impressions),
+			clicks:      int64(clicks),
+		}
 	}
-	if err := clickRows.Err(); err != nil {
+	if err := rows.Err(); err != nil {
 		return nil, err
-	}
-
-	for k, impCount := range imps {
-		statKey, err := mabStatKey(k.campaignID, k.creativeID)
-		if err != nil {
-			continue
-		}
-		if _, ok := out[statKey]; !ok {
-			out[statKey] = mabCreativeStat{impressions: impCount}
-		}
 	}
 	return out, nil
 }
@@ -1210,18 +1154,18 @@ func (s *Service) autoscaleBudgetsTx(ctx context.Context, tx pgx.Tx, merge deliv
 		bestLimitStr := fmt.Sprintf("%.2f", float64(bestLimit)/1_000_000.0)
 		newBestLimitStr := fmt.Sprintf("%.2f", float64(newBestLimit)/1_000_000.0)
 
-		s.AuditLog(ctx, q, uuid.Nil, "AUTOSCALE_BUDGET_TRANSFER", "campaign", &worstID, map[string]any{
-			"old_budget": worstLimitStr,
-			"new_budget": newWorstLimitStr,
-			"ctr":        worstCTR,
-			"target":     bestID.String(),
+		s.AuditLog(ctx, q, uuid.Nil, "AUTOSCALE_BUDGET_TRANSFER", "campaign", &worstID, auditAutoscaleBudgetTransfer{
+			OldBudget: worstLimitStr,
+			NewBudget: newWorstLimitStr,
+			CTR:       worstCTR,
+			Target:    bestID.String(),
 		}, nil)
 
-		s.AuditLog(ctx, q, uuid.Nil, "AUTOSCALE_BUDGET_TRANSFER", "campaign", &bestID, map[string]any{
-			"old_budget": bestLimitStr,
-			"new_budget": newBestLimitStr,
-			"ctr":        bestCTR,
-			"source":     worstID.String(),
+		s.AuditLog(ctx, q, uuid.Nil, "AUTOSCALE_BUDGET_TRANSFER", "campaign", &bestID, auditAutoscaleBudgetTransfer{
+			OldBudget: bestLimitStr,
+			NewBudget: newBestLimitStr,
+			CTR:       bestCTR,
+			Source:    worstID.String(),
 		}, nil)
 
 		worstPayload, err := coldpath.MarshalJSON(CampaignPayload{
@@ -1276,13 +1220,7 @@ func autoscaleTransferKey(
 	)
 }
 
-type BlacklistDTO struct {
-	ID        int64  `json:"id"`
-	IP        string `json:"ip"`
-	Reason    string `json:"reason"`
-	CreatedAt string `json:"created_at"`
-	ExpiresAt string `json:"expires_at,omitempty"`
-}
+type BlacklistDTO = adminapi.BlacklistDTO
 
 func (s *Service) BlockIP(ctx context.Context, ip string, source string) error {
 	return s.BlockIPWithTTL(ctx, ip, source, nil)
@@ -1306,20 +1244,16 @@ func (s *Service) blockIPWithTTL(ctx context.Context, ip string, source string, 
 	expiresAt := resolveBlacklistExpiry(reason, ttlSeconds, blacklistTTLFromConfig(s.cfg))
 
 	if dryRun {
-		preview := MutationPreview{
-			DryRun: true,
-			Action: "BLOCK_IP",
-			WouldChange: map[string]any{
-				"ip":           ip,
-				"reason":       reason,
-				"outbox_event": "UPDATE_BLACKLIST",
-				"action":       "add",
-			},
+		change := BlockIPWouldChange{
+			IP:          ip,
+			Reason:      reason,
+			OutboxEvent: "UPDATE_BLACKLIST",
+			Action:      "add",
 		}
 		if expiresAt.Valid {
-			preview.WouldChange["expires_at"] = expiresAt.Time.UTC().Format(time.RFC3339)
+			change.ExpiresAt = expiresAt.Time.UTC().Format(time.RFC3339)
 		}
-		return preview, nil
+		return newMutationPreview("BLOCK_IP", change)
 	}
 
 	err := pgx.BeginFunc(ctx, s.GetPool(), func(tx pgx.Tx) error {
@@ -1370,7 +1304,15 @@ func (s *Service) blockIPWithTTL(ctx context.Context, ip string, source string, 
 	return MutationPreview{}, err
 }
 
-func (s *Service) EnqueueFraudThreat(ctx context.Context, p FraudThreatPayload) error {
+func (s *Service) EnqueueFraudThreat(ctx context.Context, action, ip, campaignID string, score float64, boost int32, ttlSeconds int64) error {
+	p := FraudThreatPayload{
+		Action:     action,
+		IP:         ip,
+		CampaignID: campaignID,
+		Score:      score,
+		Boost:      boost,
+		TTLSeconds: ttlSeconds,
+	}
 	if _, err := uuid.Parse(p.CampaignID); err != nil {
 		return fmt.Errorf("invalid campaign id: %w", err)
 	}
@@ -1491,24 +1433,31 @@ func normalizeSystemSettings(settings map[string]string) (map[string]string, err
 func (s *Service) ListBlacklist(ctx context.Context, limit, offset int32) ([]BlacklistDTO, int64, error) {
 	q := db.New(s.GetPool())
 	listParams := db.ListBlacklistParams{Limit: limit, Offset: offset}
-	return coldpath.PaginatedList(
-		func() (int64, error) { return q.CountBlacklist(ctx) },
-		func() ([]db.IpBlacklist, error) { return q.ListBlacklist(ctx, listParams) },
-		blacklistToDTO,
-	)
-}
-
-func blacklistToDTO(r db.IpBlacklist) BlacklistDTO {
-	dto := BlacklistDTO{
-		ID:        r.ID,
-		IP:        r.Ip,
-		Reason:    r.Reason,
-		CreatedAt: r.CreatedAt.Time.Format(time.RFC3339),
+	total, err := q.CountBlacklist(ctx)
+	if err != nil {
+		return nil, 0, err
 	}
-	if r.ExpiresAt.Valid {
-		dto.ExpiresAt = r.ExpiresAt.Time.UTC().Format(time.RFC3339)
+	if total == 0 {
+		return []BlacklistDTO{}, 0, nil
 	}
-	return dto
+	blacklistRows, err := q.ListBlacklist(ctx, listParams)
+	if err != nil {
+		return nil, 0, err
+	}
+	out := make([]BlacklistDTO, 0, len(blacklistRows))
+	for _, r := range blacklistRows {
+		dto := BlacklistDTO{
+			ID:        r.ID,
+			IP:        r.Ip,
+			Reason:    r.Reason,
+			CreatedAt: r.CreatedAt.Time.Format(time.RFC3339),
+		}
+		if r.ExpiresAt.Valid {
+			dto.ExpiresAt = r.ExpiresAt.Time.UTC().Format(time.RFC3339)
+		}
+		out = append(out, dto)
+	}
+	return out, total, nil
 }
 
 func (s *Service) GetSettings(ctx context.Context) (map[string]string, error) {
@@ -1517,7 +1466,11 @@ func (s *Service) GetSettings(ctx context.Context) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return coldpath.KeyByValue(rows, func(r db.GetAllSystemSettingsRow) string { return r.Key }, func(r db.GetAllSystemSettingsRow) string { return r.Value }), nil
+	out := make(map[string]string, len(rows))
+	for _, r := range rows {
+		out[r.Key] = r.Value
+	}
+	return out, nil
 }
 
 func (s *Service) SyncSystemState(ctx context.Context) error {
@@ -1594,9 +1547,9 @@ func (s *Service) ToggleEmergencyBreaker(ctx context.Context, active bool, reaso
 			uid = u.UserID
 		}
 
-		s.AuditLog(ctx, q, uid, "EMERGENCY_BREAKER_TOGGLED", "system", nil, map[string]any{
-			"active": active,
-			"reason": reason,
+		s.AuditLog(ctx, q, uid, "EMERGENCY_BREAKER_TOGGLED", "system", nil, auditEmergencyBreakerChange{
+			Active: active,
+			Reason: reason,
 		}, nil)
 
 		settings := map[string]string{

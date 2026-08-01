@@ -273,11 +273,11 @@ func (ops *OpsHTTPHandlers) listCustomerPayments(w http.ResponseWriter, r *http.
 		rows = append(rows, row)
 	}
 
-	httpresponse.JSON(w, http.StatusOK, map[string]any{
-		"items":  rows,
-		"total":  resp.Total,
-		"limit":  limit,
-		"offset": offset,
+	httpresponse.JSON(w, http.StatusOK, PaymentIntentListResponse{
+		Items:  rows,
+		Total:  resp.Total,
+		Limit:  limit,
+		Offset: offset,
 	})
 }
 
@@ -573,7 +573,7 @@ func (h *OpsHTTPHandlers) listBlacklist(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	w.Header().Set("X-Total-Count", strconv.FormatInt(total, 10))
-	httpresponse.JSON(w, http.StatusOK, items)
+	httpresponse.JSON(w, http.StatusOK, BlacklistListResponse{Items: items, Total: total})
 }
 
 func (ops *OpsHTTPHandlers) registerDashboardRoutes(mux *http.ServeMux) {

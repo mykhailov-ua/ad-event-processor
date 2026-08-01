@@ -91,7 +91,7 @@ func TestManagementAPI_DeliveryRoutes(t *testing.T) {
 		end := time.Now().Add(72 * time.Hour)
 		require.NoError(t, svc.UpdateCampaignSchedule(ctx, campID, &start, &end, []int16{8, 9}))
 
-		camp, err := svc.GetCampaign(ctx, campID)
+		camp, err := svc.GetCampaignRow(ctx, campID)
 		require.NoError(t, err)
 		assert.Equal(t, db.CampaignStatusTypePAUSED, camp.Status)
 	})

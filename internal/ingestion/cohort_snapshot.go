@@ -3,7 +3,6 @@ package ingestion
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 
 	"espx/internal/domain"
@@ -38,43 +37,36 @@ func (r *Registry) SyncCohorts(ctx context.Context) error {
 	}
 	byID := make(map[uuid.UUID]domain.ExperimentCohort, len(rows))
 	for _, row := range rows {
-		cohort, convErr := experimentCohortFromRow(row)
-		if convErr != nil {
-			slog.Warn("skip invalid experiment cohort row", "id", uuid.UUID(row.ID.Bytes), "error", convErr)
+		id := uuid.UUID(row.ID.Bytes)
+		var variants []cohortVariantDTO
+		if err := json.Unmarshal(row.Variants, &variants); err != nil {
+			slog.Warn("skip invalid experiment cohort row", "id", id, "error", err)
+			continue
+		}
+		cohort := domain.ExperimentCohort{
+			ID:       id,
+			Name:     row.Name,
+			Salt:     row.Salt,
+			Variants: make([]domain.CohortVariant, 0, len(variants)),
+		}
+		for _, v := range variants {
+			if v.ID == "" || v.Weight == 0 {
+				continue
+			}
+			cohort.Variants = append(cohort.Variants, domain.CohortVariant{
+				ID:     v.ID,
+				Weight: v.Weight,
+				Flags:  v.Flags,
+			})
+		}
+		if len(cohort.Variants) == 0 {
+			slog.Warn("skip invalid experiment cohort row", "id", id, "error", "no valid variants")
 			continue
 		}
 		byID[cohort.ID] = cohort
 	}
 	r.cohorts.Store(&cohortRegistrySnapshot{byID: byID})
 	return nil
-}
-
-func experimentCohortFromRow(row db.ExperimentCohort) (domain.ExperimentCohort, error) {
-	id := uuid.UUID(row.ID.Bytes)
-	var variants []cohortVariantDTO
-	if err := json.Unmarshal(row.Variants, &variants); err != nil {
-		return domain.ExperimentCohort{}, fmt.Errorf("decode variants: %w", err)
-	}
-	out := domain.ExperimentCohort{
-		ID:       id,
-		Name:     row.Name,
-		Salt:     row.Salt,
-		Variants: make([]domain.CohortVariant, 0, len(variants)),
-	}
-	for _, v := range variants {
-		if v.ID == "" || v.Weight == 0 {
-			continue
-		}
-		out.Variants = append(out.Variants, domain.CohortVariant{
-			ID:     v.ID,
-			Weight: v.Weight,
-			Flags:  v.Flags,
-		})
-	}
-	if len(out.Variants) == 0 {
-		return domain.ExperimentCohort{}, fmt.Errorf("no valid variants")
-	}
-	return out, nil
 }
 
 func (r *Registry) cohortSnapshot() *cohortRegistrySnapshot {

@@ -101,7 +101,7 @@ func TestSupplyAPI_CRUDAndExport(t *testing.T) {
 	campID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
 		CustomerID:     customerID,
 		Name:           "Chain Camp",
-		BudgetLimit:    10_000_000,
+		BudgetLimitMicro:    10_000_000,
 		PacingMode:     "ASAP",
 		Timezone:       "UTC",
 		IdempotencyKey: "supply-chain-test",

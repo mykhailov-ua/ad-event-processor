@@ -71,9 +71,12 @@ func TestOAuthRefresh_Meta(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	refresher := &MetaOAuthRefresher{AppID: "app", AppSecret: "secret", Client: srv.Client()}
-	_ = refresher
-	t.Log("oauth refresh path covered via MetaOAuthRefresher unit")
+	token, expires, err := refreshMetaOAuth(context.Background(), &http.Client{
+		Transport: roundTripRewriteHost(srv.URL, nil),
+	}, "app", "secret", Credential{RefreshToken: "rt"})
+	require.NoError(t, err)
+	require.Equal(t, "new-token", token)
+	require.True(t, expires.After(time.Now()))
 }
 
 func TestOAuthRefresh_GoogleHttptest(t *testing.T) {
@@ -88,15 +91,9 @@ func TestOAuthRefresh_GoogleHttptest(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	refresher := &GoogleOAuthRefresher{
-		ClientID:     "cid",
-		ClientSecret: "sec",
-		Client: &http.Client{
-			Transport: roundTripRewriteHost(srv.URL, nil),
-		},
-	}
-
-	token, expires, err := refresher.Refresh(context.Background(), Credential{RefreshToken: "rt"})
+	token, expires, err := refreshGoogleOAuth(context.Background(), &http.Client{
+		Transport: roundTripRewriteHost(srv.URL, nil),
+	}, "cid", "sec", Credential{RefreshToken: "rt"})
 	require.NoError(t, err)
 	require.Equal(t, "google-new", token)
 	require.True(t, expires.After(time.Now()))
@@ -124,26 +121,22 @@ func TestIdempotency_DuplicateImport(t *testing.T) {
 	customerID, campaignID := seedCustomerCampaign(t, pool)
 
 	memCH := &MemorySnapshotInserter{}
-	provider := &mockProvider{network: "facebook", lines: []CostLine{{
+	worker := NewWorker(pool, []byte("postback-encryption-secret-key32"), WithMemorySnapshots(memCH))
+
+	date := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+	lines := []CostLine{{
 		CustomerID:  customerID,
 		CampaignID:  campaignID,
-		Date:        time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC),
+		Date:        date,
 		Network:     "facebook",
 		PlacementID: "ad-1",
 		LineType:    LineTypeSpend,
 		AmountMicro: 5_000_000,
 		Currency:    "USD",
-	}}}
-
-	worker := NewWorker(pool, []byte("postback-encryption-secret-key32"),
-		WithProvider(provider),
-		WithMemorySnapshots(memCH),
-	)
-
-	date := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
-	_, _, err := worker.persistLines(ctx, provider.lines, date)
+	}}
+	_, _, err := worker.persistLines(ctx, lines, date)
 	require.NoError(t, err)
-	_, _, err = worker.persistLines(ctx, provider.lines, date)
+	_, _, err = worker.persistLines(ctx, lines, date)
 	require.NoError(t, err)
 
 	var count int
@@ -213,8 +206,7 @@ func TestRSOC_TonicGoldenFixture(t *testing.T) {
 	defer srv.Close()
 
 	customerID := uuid.New()
-	provider := &TonicRSOCProvider{BaseURL: srv.URL, Client: srv.Client()}
-	lines, err := provider.Fetch(context.Background(), Credential{CustomerID: customerID}, time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC))
+	lines, err := fetchTonicRSOCCosts(context.Background(), srv.Client(), srv.URL, Credential{CustomerID: customerID}, time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC))
 	require.NoError(t, err)
 	require.Len(t, lines, 1)
 	require.Equal(t, LineTypeRevenue, lines[0].LineType)
@@ -235,8 +227,7 @@ func TestRSOC_System1GoldenFixture(t *testing.T) {
 	defer srv.Close()
 
 	customerID := uuid.New()
-	provider := &System1RSOCProvider{BaseURL: srv.URL, Client: srv.Client()}
-	lines, err := provider.Fetch(context.Background(), Credential{CustomerID: customerID, APIKey: "k"}, time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC))
+	lines, err := fetchSystem1RSOCCosts(context.Background(), srv.Client(), srv.URL, Credential{CustomerID: customerID, APIKey: "k"}, time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC))
 	require.NoError(t, err)
 	require.Len(t, lines, 1)
 	require.Equal(t, int64(8_750_000), lines[0].AmountMicro)
@@ -258,8 +249,7 @@ func TestFacebookProvider_Httptest(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	p := &FacebookProvider{BaseURL: srv.URL, Client: srv.Client()}
-	lines, err := p.Fetch(context.Background(), Credential{
+	lines, err := fetchFacebookCosts(context.Background(), srv.Client(), srv.URL, Credential{
 		CustomerID:  customerID,
 		AccessToken: "tok",
 		AccountID:   "act_123",
@@ -331,14 +321,4 @@ func TestUpsertCredential_EncryptionRoundTrip(t *testing.T) {
 	require.Equal(t, "access", cred.AccessToken)
 	require.Equal(t, "refresh", cred.RefreshToken)
 	require.Equal(t, "apikey", cred.APIKey)
-}
-
-type mockProvider struct {
-	network string
-	lines   []CostLine
-}
-
-func (m *mockProvider) Network() string { return m.network }
-func (m *mockProvider) Fetch(_ context.Context, _ Credential, _ time.Time) ([]CostLine, error) {
-	return m.lines, nil
 }

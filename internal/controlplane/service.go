@@ -39,6 +39,7 @@ type Service struct {
 	chWrite         driver.Conn
 	chQuery         *database.CHQuery
 	paymentPool     *pgxpool.Pool
+	payment         domain.PaymentAPI
 	ctx             context.Context
 	cancel          context.CancelFunc
 	wg              sync.WaitGroup
@@ -244,6 +245,16 @@ func (s *Service) SetPool(pool *pgxpool.Pool) {
 	s.pool = pool
 }
 
+func (s *Service) SetPaymentPool(pool *pgxpool.Pool) {
+	s.paymentPool = pool
+}
+
+func (s *Service) SetPayment(api domain.PaymentAPI) {
+	if s != nil {
+		s.payment = api
+	}
+}
+
 func (s *Service) SetOpsAlerter(alerter *OpsAlerter) {
 	s.alerter = alerter
 }
@@ -274,7 +285,7 @@ func (s *Service) StartDeliveryOptimizerWorker(syncWorkers []*domain.SyncWorker,
 	})
 }
 
-func (s *Service) GetCampaign(ctx context.Context, id uuid.UUID) (db.Campaign, error) {
+func (s *Service) GetCampaignRow(ctx context.Context, id uuid.UUID) (db.Campaign, error) {
 	return db.New(s.pool).GetCampaign(ctx, domain.ToUUID(id))
 }
 
@@ -286,19 +297,18 @@ func (s *Service) CreateCustomer(ctx context.Context, id uuid.UUID, name string,
 		Currency: currency,
 	})
 	if err == nil {
-		s.AuditLog(ctx, nil, uuid.Nil, "CREATE_CUSTOMER", "customer", &id, map[string]any{"name": name, "balance": balance}, nil)
+		s.AuditLog(ctx, nil, uuid.Nil, "CREATE_CUSTOMER", "customer", &id, auditCreateCustomerChange{
+			Name:    name,
+			Balance: balance,
+		}, nil)
 	}
 	return err
 }
 
-func (s *Service) GenerateIdempotencyHash(customerID uuid.UUID, params any) (string, error) {
-	b, err := coldpath.MarshalJSON(params)
-	if err != nil {
-		return "", fmt.Errorf("idempotency hash params: %w", err)
-	}
+func (s *Service) GenerateIdempotencyHash(customerID uuid.UUID, payload []byte) (string, error) {
 	h := sha256.New()
 	h.Write([]byte(customerID.String()))
-	h.Write(b)
+	h.Write(payload)
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
@@ -328,7 +338,7 @@ func (s *Service) TopUpBalance(ctx context.Context, customerID uuid.UUID, amount
 		})
 		if err == nil {
 			metrics.BalanceTopupsTotal.WithLabelValues("USD").Add(money.APIValueFloat(amount))
-			s.AuditLog(ctx, q, uuid.Nil, "TOPUP_BALANCE", "customer", &customerID, map[string]any{"amount": amount}, map[string]any{"idempotency_key": idempotencyKey})
+			s.AuditLog(ctx, q, uuid.Nil, "TOPUP_BALANCE", "customer", &customerID, auditAmountChange{Amount: amount}, auditIdempotencyMeta{IdempotencyKey: idempotencyKey})
 		}
 		return err
 	})
@@ -399,7 +409,12 @@ func (s *Service) ApplyPaymentCredit(ctx context.Context, customerID uuid.UUID, 
 		applied = true
 
 		metrics.BalanceTopupsTotal.WithLabelValues("USD").Add(money.APIValueFloat(amount))
-		s.AuditLog(ctx, q, uuid.Nil, "PAYMENT_SETTLEMENT", "customer", &customerID, map[string]any{"amount": amount, "payment_intent_id": paymentIntentID.String(), "provider": provider, "provider_ref": providerRef}, map[string]any{"idempotency_key": ledgerIdempotencyKey})
+		s.AuditLog(ctx, q, uuid.Nil, "PAYMENT_SETTLEMENT", "customer", &customerID, auditPaymentSettlementChange{
+			Amount:          amount,
+			PaymentIntentID: paymentIntentID.String(),
+			Provider:        provider,
+			ProviderRef:     providerRef,
+		}, auditIdempotencyMeta{IdempotencyKey: ledgerIdempotencyKey})
 		return nil
 	})
 
@@ -477,8 +492,13 @@ func (s *Service) ApplyPaymentRefund(ctx context.Context, customerID uuid.UUID, 
 		applied = true
 
 		s.AuditLog(ctx, q, uuid.Nil, "PAYMENT_REFUND", "customer", &customerID,
-			map[string]any{"amount": amountMicro, "payment_intent_id": paymentIntentID.String(), "provider": provider, "provider_refund_id": providerRefundID},
-			map[string]any{"idempotency_key": ledgerIdempotencyKey})
+			auditPaymentRefundChange{
+				Amount:           amountMicro,
+				PaymentIntentID:  paymentIntentID.String(),
+				Provider:         provider,
+				ProviderRefundID: providerRefundID,
+			},
+			auditIdempotencyMeta{IdempotencyKey: ledgerIdempotencyKey})
 		return nil
 	})
 
@@ -598,8 +618,13 @@ func (s *Service) applyPaymentChargebackMovement(
 			action = "PAYMENT_CHARGEBACK_REVERSAL"
 		}
 		s.AuditLog(ctx, q, uuid.Nil, action, "customer", &customerID,
-			map[string]any{"amount": amountMicro, "payment_intent_id": paymentIntentID.String(), "provider": provider, "provider_dispute_id": providerDisputeID},
-			map[string]any{"idempotency_key": ledgerIdempotencyKey})
+			auditPaymentDisputeChange{
+				Amount:            amountMicro,
+				PaymentIntentID:   paymentIntentID.String(),
+				Provider:          provider,
+				ProviderDisputeID: providerDisputeID,
+			},
+			auditIdempotencyMeta{IdempotencyKey: ledgerIdempotencyKey})
 		return nil
 	})
 
@@ -715,7 +740,7 @@ func (s *Service) finalizeDrainingCampaign(ctx context.Context, q db.Querier, ca
 	}); err != nil {
 		return err
 	}
-	s.AuditLog(ctx, q, uuid.Nil, "CANCEL_CAMPAIGN", "campaign", &campaignID, map[string]any{"reason": reason}, nil)
+	s.AuditLog(ctx, q, uuid.Nil, "CANCEL_CAMPAIGN", "campaign", &campaignID, auditReasonChange{Reason: reason}, nil)
 	return nil
 }
 
@@ -771,7 +796,7 @@ func (s *Service) getRDB(campaignID uuid.UUID) redis.UniversalClient {
 	return s.rdbs[idx%len(s.rdbs)]
 }
 
-func (s *Service) ListAuditLogs(ctx context.Context, limit, offset int32) ([]db.AdminAuditLog, int64, error) {
+func (s *Service) ListAuditLogRows(ctx context.Context, limit, offset int32) ([]db.AdminAuditLog, int64, error) {
 	q := db.New(s.pool)
 	return coldpath.PaginatedQuery(
 		func() (int64, error) { return q.CountAuditLogs(ctx) },
@@ -911,7 +936,7 @@ func (s *Service) UpdateOverdraft(ctx context.Context, id uuid.UUID, newOverdraf
 					}
 
 					campID := uuid.UUID(locked.ID.Bytes)
-					s.AuditLog(ctx, q, uuid.Nil, "SUSPEND_CAMPAIGN", "campaign", &campID, map[string]any{"reason": "overdraft_reduced"}, nil)
+					s.AuditLog(ctx, q, uuid.Nil, "SUSPEND_CAMPAIGN", "campaign", &campID, auditReasonChange{Reason: "overdraft_reduced"}, nil)
 				}
 			}
 		}
@@ -924,9 +949,9 @@ func (s *Service) UpdateOverdraft(ctx context.Context, id uuid.UUID, newOverdraf
 			return err
 		}
 
-		s.AuditLog(ctx, q, uuid.Nil, "UPDATE_CUSTOMER_OVERDRAFT", "customer", &id, map[string]any{
-			"old_overdraft": money.FormatDecimal(prevOverdraft),
-			"new_overdraft": money.FormatDecimal(newOverdraft),
+		s.AuditLog(ctx, q, uuid.Nil, "UPDATE_CUSTOMER_OVERDRAFT", "customer", &id, auditOverdraftChange{
+			OldOverdraft: money.FormatDecimal(prevOverdraft),
+			NewOverdraft: money.FormatDecimal(newOverdraft),
 		}, nil)
 		return nil
 	})

@@ -63,21 +63,6 @@ type RtbCatalogReloadPayload struct {
 	Trigger string `json:"trigger"`
 }
 
-func toRtbDealDTO(r db.RtbDeal) RtbDealDTO {
-	return RtbDealDTO{
-		ID:         r.ID,
-		DealID:     r.DealID,
-		FloorMicro: r.FloorMicro,
-		GeoMask:    r.GeoMask,
-		CatMask:    r.CatMask,
-		Pacing:     rtb.DealPacingLabel(r.Pacing),
-		Seats:      r.Seats,
-		CustomerID: uuid.UUID(r.CustomerID.Bytes).String(),
-		CreatedAt:  r.CreatedAt.Time.Format(time.RFC3339),
-		UpdatedAt:  r.UpdatedAt.Time.Format(time.RFC3339),
-	}
-}
-
 func parseDealCustomerID(raw string) (uuid.UUID, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -122,7 +107,22 @@ func (s *Service) ListRtbDeals(ctx context.Context) ([]RtbDealDTO, error) {
 	if err != nil {
 		return nil, err
 	}
-	return coldpath.MapSlice(rows, toRtbDealDTO), nil
+	out := make([]RtbDealDTO, len(rows))
+	for i, row := range rows {
+		out[i] = RtbDealDTO{
+			ID:         row.ID,
+			DealID:     row.DealID,
+			FloorMicro: row.FloorMicro,
+			GeoMask:    row.GeoMask,
+			CatMask:    row.CatMask,
+			Pacing:     rtb.DealPacingLabel(row.Pacing),
+			Seats:      row.Seats,
+			CustomerID: uuid.UUID(row.CustomerID.Bytes).String(),
+			CreatedAt:  row.CreatedAt.Time.Format(time.RFC3339),
+			UpdatedAt:  row.UpdatedAt.Time.Format(time.RFC3339),
+		}
+	}
+	return out, nil
 }
 
 func (s *Service) GetRtbDeal(ctx context.Context, id int64) (RtbDealDTO, error) {
@@ -133,7 +133,18 @@ func (s *Service) GetRtbDeal(ctx context.Context, id int64) (RtbDealDTO, error) 
 		}
 		return RtbDealDTO{}, err
 	}
-	return toRtbDealDTO(row), nil
+	return RtbDealDTO{
+		ID:         row.ID,
+		DealID:     row.DealID,
+		FloorMicro: row.FloorMicro,
+		GeoMask:    row.GeoMask,
+		CatMask:    row.CatMask,
+		Pacing:     rtb.DealPacingLabel(row.Pacing),
+		Seats:      row.Seats,
+		CustomerID: uuid.UUID(row.CustomerID.Bytes).String(),
+		CreatedAt:  row.CreatedAt.Time.Format(time.RFC3339),
+		UpdatedAt:  row.UpdatedAt.Time.Format(time.RFC3339),
+	}, nil
 }
 
 func (s *Service) CreateRtbDeal(ctx context.Context, spec RtbDealCreateSpec) (RtbDealDTO, error) {
@@ -182,14 +193,25 @@ func (s *Service) CreateRtbDeal(ctx context.Context, spec RtbDealCreateSpec) (Rt
 		if u, ok := GetUser(ctx); ok {
 			uid = u.UserID
 		}
-		s.AuditLog(ctx, q, uid, "CREATE_RTB_DEAL", "rtb", nil, map[string]any{
-			"deal_id": row.DealID,
+		s.AuditLog(ctx, q, uid, "CREATE_RTB_DEAL", "rtb", nil, auditRtbDealCreateChange{
+			DealID: row.DealID,
 		}, nil)
 
 		if err := s.enqueueRtbCatalogReload(ctx, q, "create_rtb_deal"); err != nil {
 			return err
 		}
-		out = toRtbDealDTO(row)
+		out = RtbDealDTO{
+			ID:         row.ID,
+			DealID:     row.DealID,
+			FloorMicro: row.FloorMicro,
+			GeoMask:    row.GeoMask,
+			CatMask:    row.CatMask,
+			Pacing:     rtb.DealPacingLabel(row.Pacing),
+			Seats:      row.Seats,
+			CustomerID: uuid.UUID(row.CustomerID.Bytes).String(),
+			CreatedAt:  row.CreatedAt.Time.Format(time.RFC3339),
+			UpdatedAt:  row.UpdatedAt.Time.Format(time.RFC3339),
+		}
 		return nil
 	})
 	return out, err
@@ -245,15 +267,26 @@ func (s *Service) UpdateRtbDeal(ctx context.Context, id int64, spec RtbDealUpdat
 		if u, ok := GetUser(ctx); ok {
 			uid = u.UserID
 		}
-		s.AuditLog(ctx, q, uid, "UPDATE_RTB_DEAL", "rtb", nil, map[string]any{
-			"id":      id,
-			"deal_id": row.DealID,
+		s.AuditLog(ctx, q, uid, "UPDATE_RTB_DEAL", "rtb", nil, auditRtbDealUpdateChange{
+			ID:     id,
+			DealID: row.DealID,
 		}, nil)
 
 		if err := s.enqueueRtbCatalogReload(ctx, q, "update_rtb_deal"); err != nil {
 			return err
 		}
-		out = toRtbDealDTO(row)
+		out = RtbDealDTO{
+			ID:         row.ID,
+			DealID:     row.DealID,
+			FloorMicro: row.FloorMicro,
+			GeoMask:    row.GeoMask,
+			CatMask:    row.CatMask,
+			Pacing:     rtb.DealPacingLabel(row.Pacing),
+			Seats:      row.Seats,
+			CustomerID: uuid.UUID(row.CustomerID.Bytes).String(),
+			CreatedAt:  row.CreatedAt.Time.Format(time.RFC3339),
+			UpdatedAt:  row.UpdatedAt.Time.Format(time.RFC3339),
+		}
 		return nil
 	})
 	return out, err
@@ -277,9 +310,9 @@ func (s *Service) DeleteRtbDeal(ctx context.Context, id int64) error {
 		if u, ok := GetUser(ctx); ok {
 			uid = u.UserID
 		}
-		s.AuditLog(ctx, q, uid, "DELETE_RTB_DEAL", "rtb", nil, map[string]any{
-			"id":      id,
-			"deal_id": row.DealID,
+		s.AuditLog(ctx, q, uid, "DELETE_RTB_DEAL", "rtb", nil, auditRtbDealDeleteChange{
+			ID:     id,
+			DealID: row.DealID,
 		}, nil)
 		return s.enqueueRtbCatalogReload(ctx, q, "delete_rtb_deal")
 	})

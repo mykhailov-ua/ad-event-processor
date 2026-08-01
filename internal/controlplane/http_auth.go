@@ -1,11 +1,9 @@
 package controlplane
 
 import (
-	"bytes"
-	"io"
+	"crypto/subtle"
 	"log/slog"
 	"net/http"
-	"sync"
 	"time"
 
 	"espx/internal/config"
@@ -23,17 +21,7 @@ func apiKeyPrincipalID(apiKey string) uuid.UUID {
 	return uuid.NewSHA1(adminAPIKeyNamespace, []byte(apiKey))
 }
 
-var bufferPool = sync.Pool{
-	New: func() any { return new(bytes.Buffer) },
-}
 
-func putBuffer(buf *bytes.Buffer) {
-	if buf == nil || buf.Cap() > 64*1024 {
-		return
-	}
-	buf.Reset()
-	bufferPool.Put(buf)
-}
 
 type AuthHandler struct {
 	authClient     *AuthClient
@@ -61,7 +49,27 @@ func (h *AuthHandler) RegisterRoutes(mux *http.ServeMux) {
 	if h.authMiddleware != nil {
 		mux.HandleFunc("POST /api/v1/auth/register", h.authMiddleware.RequirePermission(PermUsersWrite)(h.register))
 	} else {
-		mux.HandleFunc("POST /api/v1/auth/register", h.register)
+		// FIX [1.6]: authMiddleware nil means the service is not fully wired
+		// (e.g. installer mode). Fall back to requiring the static admin API key
+		// so the endpoint is never truly open.
+		mux.HandleFunc("POST /api/v1/auth/register", h.requireAdminKeyFallback(h.register))
+	}
+}
+
+// requireAdminKeyFallback guards a handler with a constant-time admin-key check
+// when the full auth middleware is unavailable.
+func (h *AuthHandler) requireAdminKeyFallback(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if h.cfg == nil || len(h.cfg.AdminAPIKey) == 0 {
+			httpresponse.Error(w, http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", "auth not configured")
+			return
+		}
+		key := r.Header.Get("X-Admin-API-Key")
+		if subtle.ConstantTimeCompare([]byte(key), []byte(h.cfg.AdminAPIKey)) != 1 {
+			httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
+			return
+		}
+		next(w, r)
 	}
 }
 
@@ -90,17 +98,27 @@ type UserDTO struct {
 	Permissions []string `json:"permissions,omitempty"`
 }
 
-func (h *AuthHandler) login(w http.ResponseWriter, r *http.Request) {
-	buf := bufferPool.Get().(*bytes.Buffer)
-	buf.Reset()
-	defer putBuffer(buf)
+type LoginResponse struct {
+	User UserDTO `json:"user"`
+}
 
-	if _, err := io.Copy(buf, r.Body); err != nil {
+type RefreshResponse struct {
+	Status string `json:"status"`
+}
+
+type RegisterResponse struct {
+	UserID string `json:"user_id"`
+}
+
+func (h *AuthHandler) login(w http.ResponseWriter, r *http.Request) {
+	// FIX [1.9]: cap body at 64 KB to prevent memory exhaustion.
+	body, err := coldpath.ReadLimitedBody(w, r, coldpath.DefaultMaxBody)
+	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "failed to read request body")
 		return
 	}
 
-	req, err := coldpath.DecodeBody[LoginRequest](buf.Bytes())
+	req, err := coldpath.DecodeBody[LoginRequest](body)
 	if err != nil || req.Email == "" || req.Password == "" {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid login request")
 		return
@@ -135,7 +153,7 @@ func (h *AuthHandler) login(w http.ResponseWriter, r *http.Request) {
 		h.authMiddleware.policy.RefreshUser(resp.User.ID, userDTO.Role)
 	}
 
-	httpresponse.JSON(w, http.StatusOK, map[string]any{"user": userDTO})
+	httpresponse.JSON(w, http.StatusOK, LoginResponse{User: userDTO})
 }
 
 func (h *AuthHandler) logout(w http.ResponseWriter, r *http.Request) {
@@ -183,7 +201,7 @@ func (h *AuthHandler) refresh(w http.ResponseWriter, r *http.Request) {
 	setCookie(w, "accessToken", resp.AccessToken, "/", 3600, true)
 	setCookie(w, "refreshToken", resp.RefreshToken, "/api/v1/auth", 30*24*3600, true)
 
-	httpresponse.JSON(w, http.StatusOK, map[string]string{"status": "refreshed"})
+	httpresponse.JSON(w, http.StatusOK, RefreshResponse{Status: "refreshed"})
 }
 
 func (h *AuthHandler) me(w http.ResponseWriter, r *http.Request) {
@@ -230,16 +248,14 @@ type RegisterRequest struct {
 }
 
 func (h *AuthHandler) register(w http.ResponseWriter, r *http.Request) {
-	buf := bufferPool.Get().(*bytes.Buffer)
-	buf.Reset()
-	defer putBuffer(buf)
-
-	if _, err := io.Copy(buf, r.Body); err != nil {
+	// FIX [1.9]: cap body at 64 KB.
+	body, err := coldpath.ReadLimitedBody(w, r, coldpath.DefaultMaxBody)
+	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "failed to read request body")
 		return
 	}
 
-	req, err := coldpath.DecodeBody[RegisterRequest](buf.Bytes())
+	req, err := coldpath.DecodeBody[RegisterRequest](body)
 	if err != nil || req.Email == "" || req.Password == "" || req.Role == "" {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid register request")
 		return
@@ -262,5 +278,5 @@ func (h *AuthHandler) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpresponse.JSON(w, http.StatusCreated, map[string]any{"user_id": resp.UserID.String()})
+	httpresponse.JSON(w, http.StatusCreated, RegisterResponse{UserID: resp.UserID.String()})
 }

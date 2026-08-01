@@ -27,7 +27,7 @@ func NewHandler(svc *Service, cfg *config.Config, authMiddleware *AuthMiddleware
 		rps = cfg.Management.RateLimitRPS
 		burst = cfg.Management.RateLimitBurst
 	}
-	return &Handler{
+	h := &Handler{
 		svc:             svc,
 		cfg:             cfg,
 		ipLimiter:       newIPRateLimiter(rps, burst),
@@ -37,6 +37,10 @@ func NewHandler(svc *Service, cfg *config.Config, authMiddleware *AuthMiddleware
 		payment:         paymentClient,
 		billing:         billingClient,
 	}
+	if paymentClient != nil {
+		svc.SetPayment(paymentClient)
+	}
+	return h
 }
 
 func (handler *Handler) RegisterRoutes(mux *http.ServeMux) {

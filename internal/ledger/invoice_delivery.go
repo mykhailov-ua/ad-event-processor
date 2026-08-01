@@ -10,46 +10,24 @@ import (
 	"espx/pkg/branding"
 )
 
-type InvoiceDeliverer interface {
-	DeliverInvoice(ctx context.Context, customerID, invoiceID, month, currency string, totalMicro int64, pdfURL string) error
-}
-
-type NotifierInvoiceDeliverer struct {
-	api       notify.NotifierAPI
-	provider  string
-	recipient string
-	baseURL   string
-}
-
-func NewNotifierInvoiceDeliverer(
-	api notify.NotifierAPI,
-	provider, recipient, baseURL string,
-) *NotifierInvoiceDeliverer {
-	if api == nil || recipient == "" {
-		return nil
+func (s *Service) SetNotifier(api notify.NotifierAPI, provider, recipient, baseURL string) {
+	if s == nil {
+		return
 	}
-	return &NotifierInvoiceDeliverer{
-		api:       api,
-		provider:  provider,
-		recipient: recipient,
-		baseURL:   baseURL,
-	}
+	s.notifier = api
+	s.notifyProvider = provider
+	s.notifyRecipient = recipient
+	s.invoiceBaseURL = baseURL
 }
 
-func (d *NotifierInvoiceDeliverer) DeliverInvoice(
-	ctx context.Context,
-	customerID, invoiceID, month, currency string,
-	totalMicro int64,
-	pdfURL string,
-) error {
-	if d == nil || d.api == nil {
+func (s *Service) deliverInvoiceNotification(ctx context.Context, customerID, invoiceID, month, currency string, totalMicro int64, pdfURL string) error {
+	if s == nil || s.notifier == nil || s.notifyRecipient == "" {
 		return fmt.Errorf("notifier deliverer not configured")
 	}
-
 	title := fmt.Sprintf("domain.Invoice %s", month)
-	_, err := d.api.SendNotificationInput(ctx, notify.NotificationInput{
-		Provider:   d.provider,
-		Recipient:  d.recipient,
+	_, err := s.notifier.SendNotificationInput(ctx, notify.NotificationInput{
+		Provider:   s.notifyProvider,
+		Recipient:  s.notifyRecipient,
 		Title:      title,
 		TemplateID: "invoice_monthly",
 		TemplateVars: map[string]string{
@@ -65,32 +43,15 @@ func (d *NotifierInvoiceDeliverer) DeliverInvoice(
 	return err
 }
 
-type DriftAlerter interface {
-	AlertLedgerDrift(ctx context.Context, customerID string, err error)
-}
-
-type NotifierDriftAlerter struct {
-	deliverer *NotifierInvoiceDeliverer
-}
-
-func NewNotifierDriftAlerter(api notify.NotifierAPI, provider, recipient string) *NotifierDriftAlerter {
-	if api == nil || recipient == "" {
-		return nil
-	}
-	return &NotifierDriftAlerter{
-		deliverer: &NotifierInvoiceDeliverer{api: api, provider: provider, recipient: recipient},
-	}
-}
-
-func (a *NotifierDriftAlerter) AlertLedgerDrift(ctx context.Context, customerID string, driftErr error) {
-	if a == nil || a.deliverer == nil || driftErr == nil {
+func (s *Service) alertLedgerDrift(ctx context.Context, customerID string, driftErr error) {
+	if s == nil || s.notifier == nil || s.notifyRecipient == "" || driftErr == nil {
 		return
 	}
 	title := branding.AlertTitle("billing ledger drift")
 	body := fmt.Sprintf("<b>Ledger invariant failed</b>\nCustomer: %s\nError: %v", customerID, driftErr)
-	_, err := a.deliverer.api.SendNotificationInput(ctx, notify.NotificationInput{
-		Provider:  a.deliverer.provider,
-		Recipient: a.deliverer.recipient,
+	_, err := s.notifier.SendNotificationInput(ctx, notify.NotificationInput{
+		Provider:  s.notifyProvider,
+		Recipient: s.notifyRecipient,
 		Title:     title,
 		Body:      body,
 		DedupKey:  fmt.Sprintf("billing:drift:%s", customerID),
@@ -101,12 +62,12 @@ func (a *NotifierDriftAlerter) AlertLedgerDrift(ctx context.Context, customerID 
 }
 
 func (s *Service) DeliverInvoice(ctx context.Context, inv domain.Invoice) error {
-	if s == nil || s.deliverer == nil {
+	if s == nil || s.notifier == nil {
 		return nil
 	}
 	month := inv.BillingMonth.UTC().Format("2006-01")
 	pdfURL := s.invoicePDFURL(inv.ID)
-	return s.deliverer.DeliverInvoice(ctx, inv.CustomerID, inv.ID, month, inv.Currency, inv.TotalMicro, pdfURL)
+	return s.deliverInvoiceNotification(ctx, inv.CustomerID, inv.ID, month, inv.Currency, inv.TotalMicro, pdfURL)
 }
 
 func (s *Service) invoicePDFURL(invoiceID string) string {

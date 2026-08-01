@@ -10,15 +10,10 @@ import (
 	"strings"
 	"time"
 
+	"espx/internal/database"
+
 	"github.com/google/uuid"
 )
-
-type GoogleAdsProvider struct {
-	BaseURL string
-	Client  *http.Client
-}
-
-func (p *GoogleAdsProvider) Network() string { return "google" }
 
 type googleAdsReportResponse struct {
 	Results []struct {
@@ -37,12 +32,11 @@ type googleAdsReportResponse struct {
 	} `json:"results"`
 }
 
-func (p *GoogleAdsProvider) Fetch(ctx context.Context, cred Credential, date time.Time) ([]CostLine, error) {
-	base := p.BaseURL
+func fetchGoogleCosts(ctx context.Context, client *http.Client, baseURL string, cred Credential, date time.Time) ([]CostLine, error) {
+	base := baseURL
 	if base == "" {
 		base = "https://googleads.googleapis.com/v16"
 	}
-	client := p.Client
 	if client == nil {
 		client = &http.Client{Timeout: 60 * time.Second}
 	}
@@ -55,7 +49,11 @@ func (p *GoogleAdsProvider) Fetch(ctx context.Context, cred Credential, date tim
 		return nil, fmt.Errorf("google ads: missing customer id")
 	}
 
-	query := fmt.Sprintf(`SELECT campaign.id, ad_group.id, metrics.cost_micros, segments.date FROM ad_group WHERE segments.date = '%s'`, date.Format("2006-01-02"))
+	dateStr := date.UTC().Format("2006-01-02")
+	if !database.ValidGAQLDate(dateStr) {
+		return nil, fmt.Errorf("google ads: invalid date %q", dateStr)
+	}
+	query := "SELECT campaign.id, ad_group.id, metrics.cost_micros, segments.date FROM ad_group WHERE segments.date = '" + dateStr + "'"
 	payload := map[string]string{"query": query}
 	bodyBytes, _ := json.Marshal(payload)
 
@@ -87,8 +85,7 @@ func (p *GoogleAdsProvider) Fetch(ctx context.Context, cred Credential, date tim
 
 	lines := make([]CostLine, 0, len(parsed.Results))
 	for _, row := range parsed.Results {
-		var costMicro int64
-		costMicro, err = strconv.ParseInt(row.Metrics.CostMicros, 10, 64)
+		costMicro, err := strconv.ParseInt(row.Metrics.CostMicros, 10, 64)
 		if err != nil || costMicro == 0 {
 			continue
 		}
@@ -96,7 +93,7 @@ func (p *GoogleAdsProvider) Fetch(ctx context.Context, cred Credential, date tim
 			CustomerID:  cred.CustomerID,
 			CampaignID:  uuid.NewSHA1(cred.CustomerID, []byte("google:"+row.Campaign.ID)),
 			Date:        date,
-			Network:     p.Network(),
+			Network:     "google",
 			PlacementID: row.AdGroup.ID,
 			AdsetID:     row.AdGroup.ID,
 			LineType:    LineTypeSpend,

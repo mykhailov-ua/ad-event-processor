@@ -73,7 +73,7 @@ func TestFinancialReconRun_missingTopupAfterWebhook(t *testing.T) {
 	customerID := uuid.New()
 	seedReconCustomer(t, pool, customerID)
 
-	svc := NewService(pool, NewMockProvider(), nil)
+	svc := NewService(pool, nil)
 	result, err := svc.CreatePaymentIntent(ctx, customerID, 11_000_000, "USD", "recon-unit-"+uuid.New().String(), nil)
 	require.NoError(t, err)
 	providerRef := result.Intent.ProviderRef

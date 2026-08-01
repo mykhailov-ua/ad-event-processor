@@ -8,7 +8,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	"espx/internal/notify/db"
 
@@ -24,12 +23,7 @@ func TestFault_notifierConcurrentDelivery(t *testing.T) {
 	pool, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	breaker := NewCircuitBreaker(100, 2, 10*time.Second)
-	mockProv := NewMockProvider(breaker)
-	providers := map[db.NotifierProvider]Provider{
-		db.NotifierProviderTELEGRAM: mockProv,
-	}
-	svc := NewService(pool, providers)
+	svc := newTestService(pool)
 	ctx := context.Background()
 
 	const notifications = 5
@@ -66,12 +60,15 @@ func TestFault_notifierConcurrentDelivery(t *testing.T) {
 
 	assert.Equal(t, int32(0), errs.Load())
 	assert.Equal(t, int32(notifications), processed.Load())
-	assert.Len(t, mockProv.Sent, notifications)
+
+	sentCount, err := countNotificationsByStatus(ctx, pool, db.NotifierNotificationStatusSENT)
+	require.NoError(t, err)
+	assert.Equal(t, notifications, sentCount)
 
 	faultproof.Log(t, "notifier_concurrent_delivery", map[string]string{
 		"workers":       fmt.Sprintf("%d", workerCount),
 		"notifications": fmt.Sprintf("%d", notifications),
-		"sent_total":    fmt.Sprintf("%d", len(mockProv.Sent)),
+		"sent_total":    fmt.Sprintf("%d", sentCount),
 		"double_send":   "false",
 	})
 }

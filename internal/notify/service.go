@@ -16,21 +16,23 @@ import (
 type Service struct {
 	pool                *pgxpool.Pool
 	queries             *db.Queries
-	providers           map[db.NotifierProvider]Provider
+	cfg                 Config
+	breakers            Breakers
 	options             ServiceOptions
 	rateLimiter         *recipientRateLimiter
 	deliveryRateLimiter *providerRateLimiter
 }
 
-func NewService(pool *pgxpool.Pool, providers map[db.NotifierProvider]Provider) *Service {
-	return NewServiceWithOptions(pool, providers, defaultServiceOptions())
+func NewService(pool *pgxpool.Pool, cfg Config, breakers Breakers) *Service {
+	return NewServiceWithOptions(pool, cfg, breakers, defaultServiceOptions())
 }
 
-func NewServiceWithOptions(pool *pgxpool.Pool, providers map[db.NotifierProvider]Provider, opts ServiceOptions) *Service {
+func NewServiceWithOptions(pool *pgxpool.Pool, cfg Config, breakers Breakers, opts ServiceOptions) *Service {
 	return &Service{
 		pool:                pool,
 		queries:             db.New(pool),
-		providers:           providers,
+		cfg:                 cfg,
+		breakers:            breakers,
 		options:             opts,
 		rateLimiter:         newRecipientRateLimiter(opts.RateLimitPerMinute),
 		deliveryRateLimiter: newProviderRateLimiter(deliveryRateLimitsFromOptions(opts)),

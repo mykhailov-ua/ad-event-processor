@@ -64,10 +64,7 @@ func (pm *PartitionManager) createPartition(ctx context.Context, date time.Time)
 
 	safeTableName := pgx.Identifier{tableName}.Sanitize()
 
-	query := fmt.Sprintf(`
-		CREATE TABLE IF NOT EXISTS %s PARTITION OF events
-		FOR VALUES FROM ('%s') TO ('%s');
-	`, safeTableName, startDate, endDate)
+	query := "CREATE TABLE IF NOT EXISTS " + safeTableName + " PARTITION OF events FOR VALUES FROM ('" + startDate + "') TO ('" + endDate + "');"
 
 	_, err := pm.pool.Exec(ctx, query)
 	return err
@@ -115,7 +112,7 @@ func (pm *PartitionManager) dropPartitions(ctx context.Context, now time.Time, o
 	for _, p := range partitionsToDrop {
 		slog.Info("dropping partition", "partition", p)
 		safeTableName := pgx.Identifier{p}.Sanitize()
-		dropQuery := fmt.Sprintf("DROP TABLE IF EXISTS %s;", safeTableName)
+		dropQuery := "DROP TABLE IF EXISTS " + safeTableName + ";"
 		if _, err := pm.pool.Exec(ctx, dropQuery); err != nil {
 			slog.Error("failed to drop partition", "partition", p, "error", err)
 			dropErr = errors.Join(dropErr, fmt.Errorf("drop %s: %w", p, err))

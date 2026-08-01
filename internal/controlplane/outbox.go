@@ -24,6 +24,19 @@ type brandIDPayload struct {
 	BrandID string `json:"brand_id"`
 }
 
+type brandFcapOutboxPayload struct {
+	BrandID    string `json:"brand_id"`
+	FreqLimit  int32  `json:"freq_limit"`
+	FreqWindow int32  `json:"freq_window"`
+}
+
+type campaignScheduleOutboxPayload struct {
+	CampaignID   string     `json:"campaign_id"`
+	StartAt      *time.Time `json:"start_at,omitempty"`
+	EndAt        *time.Time `json:"end_at,omitempty"`
+	DaypartHours []int16    `json:"daypart_hours,omitempty"`
+}
+
 type campaignPacingPayload struct {
 	CampaignID string `json:"campaign_id"`
 	PacingMode string `json:"pacing_mode"`
@@ -240,7 +253,7 @@ func (worker *OutboxWorker) handleUpdateBlacklist(ctx context.Context, payload [
 }
 
 func (worker *OutboxWorker) handleConfigureBrandFcap(ctx context.Context, payload []byte) error {
-	p, err := coldpath.UnmarshalStrict[brandIDPayload](payload)
+	p, err := coldpath.UnmarshalStrict[brandFcapOutboxPayload](payload)
 	if err != nil {
 		return err
 	}

@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"espx/internal/database"
 	"espx/internal/domain"
 	"espx/internal/metrics"
 	"espx/pkg/piihash"
@@ -255,12 +256,18 @@ func (chStore *ClickHouseStore) getDeduplicationToken(ctx context.Context, event
 }
 
 func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, evts []*domain.Event, isFraud bool) error {
+	if !database.ValidClickHouseIdentifier(table) {
+		return fmt.Errorf("invalid clickhouse table name: %q", table)
+	}
 	start := time.Now()
 
 	token := chStore.getDeduplicationToken(ctx, evts)
-	query := fmt.Sprintf("INSERT INTO %s", table)
+	query := "INSERT INTO " + table
 	if token != "" {
-		query = fmt.Sprintf("INSERT INTO %s SETTINGS insert_deduplicate=1, insert_deduplication_token='%s'", table, token)
+		if !database.ValidCHHexToken(token) {
+			return fmt.Errorf("invalid clickhouse deduplication token")
+		}
+		query = query + " SETTINGS insert_deduplicate=1, insert_deduplication_token='" + token + "'"
 	}
 
 	batch, err := chStore.conn.PrepareBatch(ctx, query)

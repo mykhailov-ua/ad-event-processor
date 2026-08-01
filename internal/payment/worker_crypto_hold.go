@@ -10,7 +10,6 @@ import (
 
 	"espx/internal/config"
 	"espx/internal/payment/db"
-	"espx/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -118,15 +117,7 @@ func (w *CryptoHoldWorker) ProcessHolds(ctx context.Context) error {
 				return fmt.Errorf("update hold status: %w", err)
 			}
 
-			outboxPayload := map[string]any{
-				"customer_id":            hold.CustomerID.String(),
-				"amount_micro":           hold.AmountMicro,
-				"ledger_idempotency_key": ledgerIdempotencyKey(hold.PaymentIntentID),
-				"payment_intent_id":      hold.PaymentIntentID.String(),
-				"provider":               "crypto",
-				"provider_ref":           "tx_crypto_" + hold.PaymentIntentID.String(),
-			}
-			payloadJSON, err := coldpath.MarshalJSON(outboxPayload)
+			payloadJSON, err := marshalSettleBalanceOutbox(hold.CustomerID, hold.AmountMicro, hold.PaymentIntentID, "crypto", "tx_crypto_"+hold.PaymentIntentID.String())
 			if err != nil {
 				return fmt.Errorf("marshal settle balance outbox payload: %w", err)
 			}

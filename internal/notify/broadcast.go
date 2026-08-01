@@ -32,7 +32,7 @@ func (service *Service) resolveBroadcastTargets(stored []db.NotifierProvider) []
 
 	targets := make([]db.NotifierProvider, 0, len(defaultBroadcastOrder))
 	for _, provider := range defaultBroadcastOrder {
-		if _, configured := service.providers[provider]; configured {
+		if service.cfg.providerConfigured(provider) {
 			targets = append(targets, provider)
 		}
 	}
@@ -118,8 +118,7 @@ func (service *Service) sendViaProvider(
 	target, primary db.NotifierProvider,
 	primaryRecipient, title, body string,
 ) error {
-	provider, exists := service.providers[target]
-	if !exists {
+	if !service.cfg.providerConfigured(target) {
 		return fmt.Errorf("provider %s not configured", target)
 	}
 
@@ -135,7 +134,7 @@ func (service *Service) sendViaProvider(
 	}
 
 	start := time.Now()
-	err := provider.Send(ctx, recipient, title, body)
+	err := sendProvider(ctx, service.cfg, service.breakers, target, recipient, title, body)
 	if err != nil {
 		var rateErr *ProviderRateLimitedError
 		if errors.As(err, &rateErr) {
@@ -156,10 +155,9 @@ func (service *Service) deliverFallback(
 	currentRecipient := startRecipient
 
 	for {
-		_, exists := service.providers[currentProvider]
-		if !exists {
+		if !service.cfg.providerConfigured(currentProvider) {
 			sendErr := fmt.Errorf("provider %s not configured", currentProvider)
-			nextProvider, fallbackFound := nextConfiguredFallback(service.providers, currentProvider)
+			nextProvider, fallbackFound := nextConfiguredFallback(service.cfg, currentProvider)
 			if !fallbackFound {
 				return currentProvider, sendErr
 			}
@@ -180,7 +178,7 @@ func (service *Service) deliverFallback(
 			return currentProvider, nil
 		}
 
-		nextProvider, fallbackFound := nextConfiguredFallback(service.providers, currentProvider)
+		nextProvider, fallbackFound := nextConfiguredFallback(service.cfg, currentProvider)
 		if !fallbackFound {
 			return currentProvider, sendErr
 		}
@@ -199,7 +197,7 @@ func (service *Service) deliverFallback(
 	}
 }
 
-func nextConfiguredFallback(providers map[db.NotifierProvider]Provider, current db.NotifierProvider) (db.NotifierProvider, bool) {
+func nextConfiguredFallback(cfg Config, current db.NotifierProvider) (db.NotifierProvider, bool) {
 	fallbackChain := map[db.NotifierProvider]db.NotifierProvider{
 		db.NotifierProviderSLACK:    db.NotifierProviderTELEGRAM,
 		db.NotifierProviderTELEGRAM: db.NotifierProviderSMS,
@@ -213,7 +211,7 @@ func nextConfiguredFallback(providers map[db.NotifierProvider]Provider, current 
 		if !ok {
 			return "", false
 		}
-		if _, configured := providers[nextProvider]; configured {
+		if cfg.providerConfigured(nextProvider) {
 			return nextProvider, true
 		}
 	}

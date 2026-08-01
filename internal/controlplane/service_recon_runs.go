@@ -7,32 +7,14 @@ import (
 	"strings"
 	"time"
 
+	"espx/internal/controlplane/adminapi"
 	"espx/internal/domain/db"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type ReconRunDTO struct {
-	Service            string `json:"service"`
-	ID                 int64  `json:"id"`
-	PeriodStart        string `json:"period_start"`
-	PeriodEnd          string `json:"period_end"`
-	Status             string `json:"status"`
-	TotalDelta         *int64 `json:"total_delta,omitempty"`
-	CampaignsChecked   *int32 `json:"campaigns_checked,omitempty"`
-	DiscrepanciesFound *int32 `json:"discrepancies_found,omitempty"`
-	FindingsCount      *int32 `json:"findings_count,omitempty"`
-	IntentsChecked     *int32 `json:"intents_checked,omitempty"`
-	ErrorMessage       string `json:"error_message,omitempty"`
-	CreatedAt          string `json:"created_at"`
-	CompletedAt        string `json:"completed_at,omitempty"`
-}
-
-func (s *Service) SetPaymentPool(pool *pgxpool.Pool) {
-	s.paymentPool = pool
-}
+type ReconRunDTO = adminapi.ReconRunDTO
 
 func (s *Service) ListReconRuns(ctx context.Context, service string, limit, offset int32) ([]ReconRunDTO, int64, error) {
 	switch service {
@@ -60,7 +42,24 @@ func (s *Service) ListReconRuns(ctx context.Context, service string, limit, offs
 			return nil, 0, err
 		}
 		for _, row := range rows {
-			runs = append(runs, managementReconToDTO(row))
+			totalDelta := row.TotalDelta
+			campaignsChecked := row.CampaignsChecked
+			discrepanciesFound := row.DiscrepanciesFound
+			dto := ReconRunDTO{
+				Service:            "management",
+				ID:                 row.ID,
+				PeriodStart:        row.PeriodStart.Time.UTC().Format(time.RFC3339),
+				PeriodEnd:          row.PeriodEnd.Time.UTC().Format(time.RFC3339),
+				Status:             row.Status,
+				TotalDelta:         &totalDelta,
+				CampaignsChecked:   &campaignsChecked,
+				DiscrepanciesFound: &discrepanciesFound,
+				CreatedAt:          row.CreatedAt.Time.UTC().Format(time.RFC3339),
+			}
+			if row.CompletedAt.Valid {
+				dto.CompletedAt = row.CompletedAt.Time.UTC().Format(time.RFC3339)
+			}
+			runs = append(runs, dto)
 		}
 		total += count
 	}
@@ -84,27 +83,6 @@ func (s *Service) ListReconRuns(ctx context.Context, service string, limit, offs
 	}
 
 	return runs, total, nil
-}
-
-func managementReconToDTO(row db.ReconRun) ReconRunDTO {
-	totalDelta := row.TotalDelta
-	campaignsChecked := row.CampaignsChecked
-	discrepanciesFound := row.DiscrepanciesFound
-	dto := ReconRunDTO{
-		Service:            "management",
-		ID:                 row.ID,
-		PeriodStart:        row.PeriodStart.Time.UTC().Format(time.RFC3339),
-		PeriodEnd:          row.PeriodEnd.Time.UTC().Format(time.RFC3339),
-		Status:             row.Status,
-		TotalDelta:         &totalDelta,
-		CampaignsChecked:   &campaignsChecked,
-		DiscrepanciesFound: &discrepanciesFound,
-		CreatedAt:          row.CreatedAt.Time.UTC().Format(time.RFC3339),
-	}
-	if row.CompletedAt.Valid {
-		dto.CompletedAt = row.CompletedAt.Time.UTC().Format(time.RFC3339)
-	}
-	return dto
 }
 
 func (s *Service) listPaymentReconRuns(ctx context.Context, limit, offset int32) ([]ReconRunDTO, int64, error) {

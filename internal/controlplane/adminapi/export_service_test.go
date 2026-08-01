@@ -1,8 +1,6 @@
 package adminapi
 
 import (
-	"github.com/stretchr/testify/assert"
-
 	"testing"
 	"time"
 
@@ -19,13 +17,6 @@ func TestJobRunner_CreateJob_invalidCustomer(t *testing.T) {
 		Format:     "csv",
 	})
 	require.Error(t, err)
-}
-
-func TestJobRunner_GetJob_missing(t *testing.T) {
-	t.Parallel()
-	runner := NewJobRunner(&CompositeReadService{}, t.TempDir())
-	_, ok := runner.GetJob("missing")
-	assert.False(t, ok)
 }
 
 func TestJobSpec_formatValidation(t *testing.T) {

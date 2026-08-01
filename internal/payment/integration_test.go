@@ -39,8 +39,7 @@ func TestPaymentService_Integration(t *testing.T) {
 	}
 	cfg.Lifecycle.ShutdownTimeoutMs = 1000
 
-	prov := payment.NewMockProvider()
-	svc := payment.NewService(pool, prov, cfg)
+	svc := payment.NewService(pool, cfg)
 
 	ctx := context.Background()
 

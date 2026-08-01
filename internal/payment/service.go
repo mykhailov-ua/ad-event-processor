@@ -20,24 +20,12 @@ import (
 )
 
 type Service struct {
-	pool      *pgxpool.Pool
-	provider  Provider
-	providers map[string]Provider
-	cfg       *config.Config
+	pool *pgxpool.Pool
+	cfg  *config.Config
 }
 
-func NewService(pool *pgxpool.Pool, prov Provider, cfg *config.Config) *Service {
-	providers := make(map[string]Provider)
-	providers[prov.Name()] = prov
-	cryptoProv := NewCryptoProvider(cfg.CryptoConfirmationDepth, cfg.CryptoMinPaymentMicro, string(cfg.CryptoWebhookSecret))
-	providers[cryptoProv.Name()] = cryptoProv
-
-	return &Service{
-		pool:      pool,
-		provider:  prov,
-		providers: providers,
-		cfg:       cfg,
-	}
+func NewService(pool *pgxpool.Pool, cfg *config.Config) *Service {
+	return &Service{pool: pool, cfg: cfg}
 }
 
 type CreateIntentResult struct {
@@ -46,14 +34,14 @@ type CreateIntentResult struct {
 }
 
 func (service *Service) CreatePaymentIntent(ctx context.Context, customerID uuid.UUID, amountMicro int64, currency string, idempotencyKey string, metadata map[string]string) (CreateIntentResult, error) {
-	prov := service.provider
-	if pName, ok := metadata["provider"]; ok {
-		if p, exists := service.providers[pName]; exists {
-			prov = p
+	providerName := DefaultCheckoutProvider(service.cfg)
+	if metadata != nil {
+		if pName := metadata["provider"]; pName != "" {
+			providerName = pName
 		}
 	}
 
-	intent, claimed, err := service.claimPaymentIntent(ctx, customerID, amountMicro, currency, idempotencyKey, metadata, prov.Name())
+	intent, claimed, err := service.claimPaymentIntent(ctx, customerID, amountMicro, currency, idempotencyKey, metadata, providerName)
 	if err != nil {
 		return CreateIntentResult{}, err
 	}
@@ -61,7 +49,7 @@ func (service *Service) CreatePaymentIntent(ctx context.Context, customerID uuid
 		return service.awaitFinalizedIntent(ctx, intent, customerID, amountMicro, currency)
 	}
 
-	provRef, checkoutURL, err := prov.CreateCheckout(ctx, amountMicro, currency, metadata, idempotencyKey)
+	provRef, checkoutURL, err := CreateCheckout(ctx, service.cfg, providerName, amountMicro, currency, metadata, idempotencyKey)
 	if err != nil {
 		_ = service.markIntentFailed(ctx, intent.ID)
 		if errors.Is(err, ErrProviderNotConfigured) {
@@ -394,15 +382,7 @@ func (service *Service) ProcessStripeWebhook(ctx context.Context, eventID string
 
 		if targetStatus == db.PaymentPaymentIntentStatusSUCCEEDED && !alreadySettled {
 			intentUUID := uuid.UUID(intent.ID.Bytes)
-			outboxPayload := map[string]any{
-				"customer_id":            uuid.UUID(intent.CustomerID.Bytes).String(),
-				"amount_micro":           intent.AmountMicro,
-				"ledger_idempotency_key": ledgerIdempotencyKey(intentUUID),
-				"payment_intent_id":      intentUUID.String(),
-				"provider":               "stripe",
-				"provider_ref":           providerRef,
-			}
-			payloadJSON, err := coldpath.MarshalJSON(outboxPayload)
+			payloadJSON, err := marshalSettleBalanceOutbox(uuid.UUID(intent.CustomerID.Bytes), intent.AmountMicro, intentUUID, "stripe", providerRef)
 			if err != nil {
 				return fmt.Errorf("marshal settle balance outbox payload: %w", err)
 			}
@@ -699,7 +679,7 @@ func (service *Service) ProcessStripeRefundWebhook(ctx context.Context, eventID 
 
 		intentUUID := uuid.UUID(intent.ID.Bytes)
 		customerUUID := uuid.UUID(intent.CustomerID.Bytes)
-		outboxPayload, err := coldpath.MarshalJSON(reverseBalancePayload(intentUUID, customerUUID, refundAmountMicro, providerRefundID))
+		outboxPayload, err := marshalReverseBalanceOutbox(intentUUID, customerUUID, refundAmountMicro, providerRefundID)
 		if err != nil {
 			return fmt.Errorf("marshal reverse balance outbox payload: %w", err)
 		}

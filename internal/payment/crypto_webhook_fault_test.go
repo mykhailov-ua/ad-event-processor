@@ -29,7 +29,7 @@ func TestFault_CryptoWebhookStormIdempotent(t *testing.T) {
 	infra.Cfg.CryptoMinPaymentMicro = 10_000_000
 	infra.Cfg.CryptoConfirmationDepth = 12
 
-	svc := payment.NewService(infra.Pool, payment.NewProvider(infra.Cfg), infra.Cfg)
+	svc := payment.NewService(infra.Pool, infra.Cfg)
 
 	customerID := uuid.New()
 	_, err := infra.Pool.Exec(ctx, `
@@ -100,7 +100,7 @@ func TestFault_CryptoWebhookReplay(t *testing.T) {
 	infra.Cfg.CryptoMinPaymentMicro = 10_000_000
 	infra.Cfg.CryptoConfirmationDepth = 12
 
-	svc := payment.NewService(infra.Pool, payment.NewProvider(infra.Cfg), infra.Cfg)
+	svc := payment.NewService(infra.Pool, infra.Cfg)
 
 	customerID := uuid.New()
 	paymenttest.SeedCustomer(t, infra.Pool, customerID)

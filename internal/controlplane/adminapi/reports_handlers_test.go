@@ -156,7 +156,7 @@ func TestViews_CRUD(t *testing.T) {
 		CustomerID: customerID,
 		Name:       "My Placement View",
 		ReportKey:  "placements",
-		Spec:       map[string]any{"limit": 10},
+		Spec:       json.RawMessage(`{"limit":10}`),
 		IsShared:   true,
 	}
 	body, _ := json.Marshal(createReq)
@@ -202,7 +202,7 @@ func TestViews_CRUD(t *testing.T) {
 	updateReq := UpdateViewRequest{
 		Name:      "Updated View Name",
 		ReportKey: "placements",
-		Spec:      map[string]any{"limit": 20},
+		Spec:      json.RawMessage(`{"limit":20}`),
 		IsShared:  false,
 	}
 	updateBody, _ := json.Marshal(updateReq)

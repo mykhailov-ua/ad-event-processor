@@ -119,11 +119,11 @@ SELECT
     unique_users,
     unique_uas
 FROM ml_features_1m
-WHERE window_start >= now() - INTERVAL 5 MINUTE
+WHERE window_start >= subtractMinutes(now(), ?)
 ORDER BY window_start DESC
 LIMIT ?`
 
-	rows, err := r.q.Query(ctx, query, r.batchSize)
+	rows, err := r.q.Query(ctx, query, 5, r.batchSize)
 	if err != nil {
 		fraudScoringErrorsTotal.Inc()
 		slog.Warn("fraud shadow scoring skipped: clickhouse query failed", "error", err)

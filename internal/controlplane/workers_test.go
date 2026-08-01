@@ -41,13 +41,13 @@ func TestProcessScheduleTickSkipsAlreadyAligned(t *testing.T) {
 	campID, err := svc.CreateCampaign(ctx, spec)
 	require.NoError(t, err)
 
-	camp, err := svc.GetCampaign(ctx, campID)
+	camp, err := svc.GetCampaignRow(ctx, campID)
 	require.NoError(t, err)
 	assert.Equal(t, db.CampaignStatusTypeACTIVE, camp.Status)
 
 	require.NoError(t, svc.ProcessScheduleTick(ctx))
 
-	camp, err = svc.GetCampaign(ctx, campID)
+	camp, err = svc.GetCampaignRow(ctx, campID)
 	require.NoError(t, err)
 	assert.Equal(t, db.CampaignStatusTypeACTIVE, camp.Status)
 }

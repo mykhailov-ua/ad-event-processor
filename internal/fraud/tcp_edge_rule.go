@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"strings"
 	"time"
 
 	"espx/internal/database"
@@ -13,6 +12,16 @@ import (
 
 	"github.com/redis/go-redis/v9"
 )
+
+const tcpEdgeCorrelationQuery = `
+SELECT
+    ip_hash,
+    any(tls_hash) AS ja3,
+    any(toString(campaign_id)) AS campaign_id
+FROM clicks
+WHERE created_at >= now() - toIntervalSecond(?)
+  AND ip_hash IN (?)
+GROUP BY ip_hash`
 
 type tcpEdgeCorrelationRule struct {
 	q   *database.CHQuery
@@ -35,7 +44,7 @@ func (r *tcpEdgeCorrelationRule) Find(ctx context.Context) ([]SuspiciousIP, erro
 	}
 
 	ips := make([]string, 0, len(entries))
-	hashedIPs := make([][16]byte, 0, len(entries))
+	hashArgs := make([]string, 0, len(entries))
 	seenIP := make(map[string]struct{}, len(entries))
 	for _, e := range entries {
 		if e.IP == "" {
@@ -46,45 +55,26 @@ func (r *tcpEdgeCorrelationRule) Find(ctx context.Context) ([]SuspiciousIP, erro
 		}
 		seenIP[e.IP] = struct{}{}
 		ips = append(ips, e.IP)
-		hashedIPs = append(hashedIPs, hashIPForCH(e.IP))
+		hashArgs = append(hashArgs, piihash.FixedString16(hashIPForCH(e.IP)))
 	}
-	if len(hashedIPs) == 0 {
+	if len(hashArgs) == 0 {
 		return nil, nil
 	}
 
-	windowSec := int64(r.cfg.Window / time.Second)
-	if windowSec <= 0 {
-		windowSec = 3600
-	}
+	windowSec := database.ClampCHWindowSeconds(int64(r.cfg.Window / time.Second))
 
-	placeholders := strings.TrimRight(strings.Repeat("?,", len(hashedIPs)), ",")
-	query := fmt.Sprintf(`
-SELECT
-    ip_hash,
-    any(tls_hash) AS ja3,
-    any(toString(campaign_id)) AS campaign_id
-FROM clicks
-WHERE created_at >= now() - toIntervalSecond(?)
-  AND ip_hash IN (%s)
-GROUP BY ip_hash`, placeholders)
-
-	args := make([]any, 0, 1+len(hashedIPs))
-	args = append(args, windowSec)
-	for _, h := range hashedIPs {
-		args = append(args, piihash.FixedString16(h))
-	}
-
-	rows, err := r.q.Query(ctx, query, args...)
+	rows, err := r.q.Query(ctx, tcpEdgeCorrelationQuery, windowSec, hashArgs)
 	if err != nil {
 		return nil, fmt.Errorf("tcp edge correlation query: %w", err)
 	}
 	defer rows.Close()
 
-	var out []SuspiciousIP
 	ipByHash := make(map[string]string, len(ips))
 	for i, ip := range ips {
-		ipByHash[hex.EncodeToString(hashedIPs[i][:])] = ip
+		ipByHash[hashArgs[i]] = ip
 	}
+
+	var out []SuspiciousIP
 	for rows.Next() {
 		var ipHash []byte
 		var ja3, campaignID string

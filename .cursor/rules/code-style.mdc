@@ -15,6 +15,8 @@ Repository layout and review rules. Hot path overrides: `.cursor/rules/hot-path.
 
 Tactical Architecture
 
+Cold-path packages (`notify`, `payment`, `ledger`, `costsync`, `controlplane`, `identity`) follow `.cursor/rules/cold-path.mdc`: flat functions, no Provider/Factory interfaces, no `map[string]any` JSON builders, minimum LoC.
+
 Architectural Approach
 
 eSPX does not use clean or hexagonal architecture. There are no package trees like `entity/`, `usecase/`, `repository/`, `ports/`, or `adapters/`. There are no parallel struct families for a single database table (e.g., database model, domain entity, and API representation). There are no mapper registries or reflection-based mapping solutions.

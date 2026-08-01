@@ -12,6 +12,6 @@ Agent: choose human-facing `docs/` vs scoped `.cursor/rules/*.mdc`.
 - Local dev, CI, open work — `docs/DEVELOPMENT.md`
 - Multi-region design — `.cursor/MULTI_REGION.md`
 - Compliance control matrix — `.cursor/COMPLIANCE_MATRIX.md`
-- Engineering rules — `.cursor/rules/guidelines-index.mdc` + scoped `*.mdc`
+- Engineering rules — `.cursor/rules/guidelines-index.mdc` + scoped `*.mdc` (cold path: `cold-path.mdc`)
 
 Do not duplicate agent rules into `docs/`.

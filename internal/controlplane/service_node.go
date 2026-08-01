@@ -9,9 +9,34 @@ import (
 
 	db "espx/internal/domain/db"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+const upsertNodeCapacityScoreSQL = `
+INSERT INTO node_capacity_scores (
+    node_id, region_code, role, score, weight, provenance, epoch_id, updated_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+ON CONFLICT (node_id, region_code, role) DO UPDATE SET
+    score = EXCLUDED.score,
+    weight = EXCLUDED.weight,
+    provenance = EXCLUDED.provenance,
+    epoch_id = EXCLUDED.epoch_id,
+    updated_at = NOW()
+`
+
+const upsertRegionTrafficDialSQL = `
+INSERT INTO region_traffic_dial (
+    region_code, score, weight, provenance, epoch_id, updated_at
+) VALUES ($1, $2, $3, $4, $5, NOW())
+ON CONFLICT (region_code) DO UPDATE SET
+    score = EXCLUDED.score,
+    weight = EXCLUDED.weight,
+    provenance = EXCLUDED.provenance,
+    epoch_id = EXCLUDED.epoch_id,
+    updated_at = NOW()
+`
 
 var regionalScorerRoles = []string{RoleTracker, RoleRegionProxy, RoleProcessor}
 
@@ -141,17 +166,24 @@ func (s *NodeCapacityScorer) scoreRole(ctx context.Context, role string, now tim
 	}
 	normWeights = NormalizePeerWeights(normWeights, s.cfg.WeightMin, s.cfg.WeightMax)
 
+	batch := &pgx.Batch{}
 	for i, res := range results {
-		if err := q.UpsertNodeCapacityScore(ctx, db.UpsertNodeCapacityScoreParams{
-			NodeID:     res.nodeID,
-			RegionCode: s.region,
-			Role:       role,
-			Score:      res.score,
-			Weight:     normWeights[i],
-			Provenance: res.provenance,
-			EpochID:    epoch,
-		}); err != nil {
-			return fmt.Errorf("upsert node capacity score node=%s: %w", res.nodeID, err)
+		batch.Queue(
+			upsertNodeCapacityScoreSQL,
+			res.nodeID,
+			s.region,
+			role,
+			res.score,
+			normWeights[i],
+			res.provenance,
+			epoch,
+		)
+	}
+	br := s.pool.SendBatch(ctx, batch)
+	defer br.Close()
+	for i := 0; i < batch.Len(); i++ {
+		if _, err := br.Exec(); err != nil {
+			return fmt.Errorf("upsert node capacity score batch item %d: %w", i, err)
 		}
 	}
 	return nil
@@ -260,17 +292,33 @@ func buildNeighborMediansByNode(
 			}
 		}
 	}
+	type metricPeer struct {
+		nodeID string
+		value  float64
+	}
+	metricPeers := make(map[string][]metricPeer, len(defs))
+	for nodeID, metrics := range nodeRaw {
+		for name, v := range metrics {
+			metricPeers[name] = append(metricPeers[name], metricPeer{nodeID: nodeID, value: v})
+		}
+	}
+
 	out := make(map[string]map[string][]float64, len(nodeBuckets))
 	for nodeID := range nodeBuckets {
 		lanes := make(map[string][]float64, len(defs))
 		for _, def := range defs {
-			for peerID, peerMetrics := range nodeRaw {
-				if peerID == nodeID {
-					continue
+			peers := metricPeers[def.Name]
+			if len(peers) <= 1 {
+				continue
+			}
+			lane := make([]float64, 0, len(peers)-1)
+			for _, peer := range peers {
+				if peer.nodeID != nodeID {
+					lane = append(lane, peer.value)
 				}
-				if v, ok := peerMetrics[def.Name]; ok {
-					lanes[def.Name] = append(lanes[def.Name], v)
-				}
+			}
+			if len(lane) > 0 {
+				lanes[def.Name] = lane
 			}
 		}
 		out[nodeID] = lanes
@@ -416,16 +464,19 @@ func (g *GlobalRegionTrafficScorer) tick(ctx context.Context, now time.Time, epo
 		return nil
 	}
 
+	trackerScores, err := q.ListNodeCapacityScoresByRole(ctx, RoleTracker)
+	if err != nil {
+		return fmt.Errorf("list node capacity scores role=%s: %w", RoleTracker, err)
+	}
+	nodesByRegion := make(map[int16][]db.NodeCapacityScore, len(regions))
+	for _, row := range trackerScores {
+		nodesByRegion[row.RegionCode] = append(nodesByRegion[row.RegionCode], row)
+	}
+
 	prevWeights := g.loadPreviousDialWeights(ctx, q)
 	inputs := make([]RegionDialInput, 0, len(regions))
 	for _, region := range regions {
-		nodes, err := q.ListNodeCapacityScoresByRegionRole(ctx, db.ListNodeCapacityScoresByRegionRoleParams{
-			RegionCode: region,
-			Role:       RoleTracker,
-		})
-		if err != nil {
-			return fmt.Errorf("list node capacity scores region=%d: %w", region, err)
-		}
+		nodes := nodesByRegion[region]
 		if len(nodes) == 0 {
 			continue
 		}
@@ -445,16 +496,26 @@ func (g *GlobalRegionTrafficScorer) tick(ctx context.Context, now time.Time, epo
 	}
 
 	results := ComputeRegionDialResults(inputs, g.cfg)
+	if len(results) == 0 {
+		return nil
+	}
+	batch := &pgx.Batch{}
 	for _, res := range results {
 		g.states.Store(res.RegionCode, res.State)
-		if err := q.UpsertRegionTrafficDial(ctx, db.UpsertRegionTrafficDialParams{
-			RegionCode: res.RegionCode,
-			Score:      res.Score,
-			Weight:     res.Weight,
-			Provenance: res.Provenance,
-			EpochID:    epoch,
-		}); err != nil {
-			return fmt.Errorf("upsert region traffic dial region=%d: %w", res.RegionCode, err)
+		batch.Queue(
+			upsertRegionTrafficDialSQL,
+			res.RegionCode,
+			res.Score,
+			res.Weight,
+			res.Provenance,
+			epoch,
+		)
+	}
+	br := g.pool.SendBatch(ctx, batch)
+	defer br.Close()
+	for i := 0; i < batch.Len(); i++ {
+		if _, err := br.Exec(); err != nil {
+			return fmt.Errorf("upsert region traffic dial batch item %d: %w", i, err)
 		}
 	}
 	return nil

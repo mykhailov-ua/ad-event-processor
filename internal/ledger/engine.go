@@ -39,7 +39,15 @@ type Decision struct {
 	PlacementID string
 	Action      Action
 	Reason      string
-	Metrics     map[string]any
+	Metrics     marginGuardMetrics
+}
+
+type marginGuardMetrics struct {
+	SpendMicro   int64   `json:"spend_micro"`
+	RevenueMicro int64   `json:"revenue_micro"`
+	Clicks       int64   `json:"clicks"`
+	Conversions  int64   `json:"conversions"`
+	RoiPct       float64 `json:"roi_pct"`
 }
 
 func Evaluate(policy *Policy, stats *PlacementStats) (*Decision, bool) {
@@ -59,12 +67,12 @@ func Evaluate(policy *Policy, stats *PlacementStats) (*Decision, bool) {
 		roi = 100.0
 	}
 
-	metrics := map[string]any{
-		"spend_micro":   stats.SpendMicro,
-		"revenue_micro": stats.RevenueMicro,
-		"clicks":        stats.Clicks,
-		"conversions":   stats.Conversions,
-		"roi_pct":       roi,
+	metrics := marginGuardMetrics{
+		SpendMicro:   stats.SpendMicro,
+		RevenueMicro: stats.RevenueMicro,
+		Clicks:       stats.Clicks,
+		Conversions:  stats.Conversions,
+		RoiPct:       roi,
 	}
 
 	if roi < policy.RoiFloorPct {

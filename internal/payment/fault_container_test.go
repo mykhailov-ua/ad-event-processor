@@ -178,7 +178,7 @@ func TestFault_PaymentPGTerminateDuringWebhook(t *testing.T) {
 	customerID := uuid.New()
 	paymenttest.SeedCustomer(t, infra.Pool, customerID)
 
-	svc := payment.NewService(infra.Pool, payment.NewMockProvider(), infra.Cfg)
+	svc := payment.NewService(infra.Pool, infra.Cfg)
 	result, err := svc.CreatePaymentIntent(ctx, customerID, 7_000_000, "USD", "fault-wh-pg-"+uuid.New().String(), nil)
 	require.NoError(t, err)
 	intent := result.Intent

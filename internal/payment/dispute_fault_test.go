@@ -30,7 +30,7 @@ func TestFault_PaymentDisputeConcurrentWebhookSameEventID(t *testing.T) {
 	ctx := context.Background()
 	customerID := uuid.New()
 	seed := paymenttest.SeedSettledIntent(t, infra, customerID, 18_000_000, "fault-dp-wh-"+uuid.New().String())
-	svc := payment.NewService(infra.Pool, payment.NewMockProvider(), infra.Cfg)
+	svc := payment.NewService(infra.Pool, infra.Cfg)
 
 	eventID := "evt_dispute_concurrent_" + uuid.New().String()
 	disputeID := "dp_" + uuid.New().String()
@@ -80,7 +80,7 @@ func TestFault_PaymentChargebackDualOutboxWorkerRace(t *testing.T) {
 	ctx := context.Background()
 	customerID := uuid.New()
 	seed := paymenttest.SeedSettledIntent(t, infra, customerID, 26_000_000, "fault-cb-race-"+uuid.New().String())
-	svc := payment.NewService(infra.Pool, payment.NewMockProvider(), infra.Cfg)
+	svc := payment.NewService(infra.Pool, infra.Cfg)
 	disputeID := "dp_race_" + uuid.New().String()
 	paymenttest.ProcessDisputeWebhook(t, infra.Pool, svc, "evt_cb_race_"+uuid.New().String(), "charge.dispute.funds_withdrawn", seed.ProviderRef, disputeID, 11_000_000, "needs_response")
 	outboxID := paymenttest.LatestOutboxIDByType(t, infra.Pool, payment.OutboxEventApplyChargeback)
@@ -127,7 +127,7 @@ func TestFault_PaymentChargebackPostSettlementMarkGap(t *testing.T) {
 	ctx := context.Background()
 	customerID := uuid.New()
 	seed := paymenttest.SeedSettledIntent(t, infra, customerID, 28_000_000, "fault-cb-gap-"+uuid.New().String())
-	svc := payment.NewService(infra.Pool, payment.NewMockProvider(), infra.Cfg)
+	svc := payment.NewService(infra.Pool, infra.Cfg)
 	disputeID := "dp_gap_" + uuid.New().String()
 	paymenttest.ProcessDisputeWebhook(t, infra.Pool, svc, "evt_cb_gap_"+uuid.New().String(), "charge.dispute.funds_withdrawn", seed.ProviderRef, disputeID, 14_000_000, "under_review")
 	outboxID := paymenttest.LatestOutboxIDByType(t, infra.Pool, payment.OutboxEventApplyChargeback)
@@ -176,7 +176,7 @@ func TestFault_PaymentDisputeWithdrawnThenReinstated(t *testing.T) {
 	ctx := context.Background()
 	customerID := uuid.New()
 	seed := paymenttest.SeedSettledIntent(t, infra, customerID, 32_000_000, "fault-dp-cycle-"+uuid.New().String())
-	svc := payment.NewService(infra.Pool, payment.NewMockProvider(), infra.Cfg)
+	svc := payment.NewService(infra.Pool, infra.Cfg)
 	worker := paymenttest.NewOutboxWorkerForFault(infra)
 	disputeID := "dp_cycle_" + uuid.New().String()
 
@@ -226,7 +226,7 @@ func TestFault_PaymentChargebackExceedsIntentIgnored(t *testing.T) {
 
 	customerID := uuid.New()
 	seed := paymenttest.SeedSettledIntent(t, infra, customerID, 10_000_000, "fault-cb-exceed-"+uuid.New().String())
-	svc := payment.NewService(infra.Pool, payment.NewMockProvider(), infra.Cfg)
+	svc := payment.NewService(infra.Pool, infra.Cfg)
 
 	paymenttest.ProcessDisputeWebhook(t, infra.Pool, svc, "evt_cb_exceed_"+uuid.New().String(), "charge.dispute.funds_withdrawn", seed.ProviderRef, "dp_exceed", 15_000_000, "needs_response")
 
@@ -257,7 +257,7 @@ func TestFault_PaymentChargebackWithoutTopupDead(t *testing.T) {
 	_, err := infra.Pool.Exec(ctx, `DELETE FROM payment.payment_outbox WHERE event_type = 'SETTLE_BALANCE'`)
 	require.NoError(t, err)
 
-	svc := payment.NewService(infra.Pool, payment.NewMockProvider(), infra.Cfg)
+	svc := payment.NewService(infra.Pool, infra.Cfg)
 	paymenttest.ProcessDisputeWebhook(t, infra.Pool, svc, "evt_cb_no_topup_"+uuid.New().String(), "charge.dispute.funds_withdrawn", seed.ProviderRef, "dp_no_topup", 9_000_000, "needs_response")
 	outboxID := paymenttest.LatestOutboxIDByType(t, infra.Pool, payment.OutboxEventApplyChargeback)
 

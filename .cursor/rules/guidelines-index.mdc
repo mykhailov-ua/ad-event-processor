@@ -16,6 +16,7 @@ eSPX agent rules index
 - `espx.mdc` — SLA, layout, hot-path summary (always)
 - `code-style.mdc` — Go, Lua, SQL, Python structure and PR gates
 - `hot-path.mdc` — `internal/ingestion`, tracker ingest
+- `cold-path.mdc` — notify, payment, ledger, costsync, controlplane, admin (no GoF/SOLID)
 - `load-test-bpf.mdc` — BPF + Prometheus perf validation
 - `data-layer.mdc` — Redis, Postgres, ClickHouse
 - `control-plane.mdc` — management, outbox, admin APIs
@@ -27,6 +28,6 @@ eSPX agent rules index
 - `open-gaps.mdc` — routes to `docs/DEVELOPMENT.md`
 - `capabilities.mdc` — client vs agent doc routing
 
-**Precedence:** `espx.mdc` on `/track` SLA and allocs; `code-style.mdc` on structure; `service-boundaries.mdc` on imports; `load-test-bpf.mdc` before perf claims.
+**Precedence:** `espx.mdc` on `/track` SLA and allocs; `hot-path.mdc` on ingestion; `cold-path.mdc` on notify/payment/ledger/costsync/controlplane (bans Provider/Factory/mock layers); `code-style.mdc` on structure; `service-boundaries.mdc` on imports; `load-test-bpf.mdc` before perf claims.
 
 Do not duplicate agent rules into `docs/` — maintain `.cursor/rules/` only.

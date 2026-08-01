@@ -15,7 +15,6 @@ type Module struct {
 	pool    *pgxpool.Pool
 	svc     *Service
 	cfg     *config.Config
-	bundle  ProviderBundle
 	worker  *Worker
 	cancel  context.CancelFunc
 }
@@ -42,9 +41,6 @@ func (m *Module) StartWorkers(ctx context.Context) {
 	workerCtx, cancel := context.WithCancel(ctx)
 	m.cancel = cancel
 	go StartQueueMetricsScraper(workerCtx, m.pool, 15*time.Second)
-	if m.bundle.Breakers != nil {
-		go StartCircuitBreakerMetricsScraper(workerCtx, m.bundle.Breakers, 15*time.Second)
-	}
 	if m.cfg.Notifier.RetentionIntervalHours > 0 {
 		retentionInterval := time.Duration(m.cfg.Notifier.RetentionIntervalHours) * time.Hour
 		go NewRetentionJanitor(
@@ -73,14 +69,14 @@ func OpenModule(ctx context.Context, cfg *config.Config) (*Module, error) {
 	}
 	RegisterMetrics()
 	SetAdminBaseURL(cfg.Notifier.AdminBaseURL)
-	bundle := NewProviderBundleFromConfig(cfg)
-	svc := NewServiceWithOptions(pool, bundle.Providers, ServiceOptionsFromConfig(cfg))
+	deliveryCfg := ConfigFromApp(cfg)
+	breakers := BreakersFromApp(cfg)
+	svc := NewServiceWithOptions(pool, deliveryCfg, breakers, ServiceOptionsFromConfig(cfg))
 	return &Module{
 		Handler: NewHandler(svc),
 		pool:    pool,
 		svc:     svc,
 		cfg:     cfg,
-		bundle:  bundle,
 	}, nil
 }
 
