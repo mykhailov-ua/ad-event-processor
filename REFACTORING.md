@@ -165,6 +165,7 @@ Cold-path module APIs use domain/DB types directly; legacy protobuf round-trip h
 Controlplane core: `permissions.go` → `rbac.go`; `auth_principal.go` → `http_auth.go`; `pgerrors.go` → `errors.go`; `admin_gone.go` → `serve.go`.
 Adminapi: deleted `ops_audit`, `ops_consent`, `ops_roles`, `ops_plans`, `ops_fraud_threat`, `ops_blacklist`, `ops_recon`, `ops_dashboard_*`, `ops_ml_model`, `ops_bundle`, `reports_campaign_*`, `reports_types_forecast`, `selfserve_types`, `selfserve_money` — merged into `ops_types.go`, `ops_handlers.go`, `reports_types.go`, `reports_handlers.go`, `selfserve_handlers.go`.
 Controlplane `service_*` stems: `service_rtb.go` (deals/mode/bid-shade), `service_node.go` (capacity + global region scorers), `service_shard.go` (health + autoscaling); fraud/model-sync, pacing/smart, customers/balance, campaigns/stats, delivery/optimizer merged into parent stem files.
+Controlplane file consolidation: `operation_lease.go` (8 files), `outbox.go`, `recon.go`, `api.go` (7 api_* handlers), `node_scorer.go` (+5 siblings), `ops.go`/`ops_readers.go`, forecast/global_spend/region/slot_migration stems; adminapi dashboards/views/licensing/export/ops_fanout merged.
 No *_bridge.go or host adapters.
 No nested domain packages under service roots.
 domain is only shared type package.

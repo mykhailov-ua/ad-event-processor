@@ -216,6 +216,20 @@ func (r *GlobalSpendReconciler) shardIndex(campaignID uuid.UUID) int {
 	return int(r.sharder.GetShard(campaignID))
 }
 
+func (s *Service) applyRegionSpendSyncBatch(ctx context.Context, batchDedupKey string, payload []byte) error {
+	if s == nil || s.globalSpend == nil {
+		return nil
+	}
+	if !dedupkey.IsSpendSyncPayload(payload) {
+		return nil
+	}
+	txns, err := dedupkey.DecodeSpendSyncPayload(payload)
+	if err != nil {
+		return err
+	}
+	return s.globalSpend.ApplyBatch(ctx, batchDedupKey, txns)
+}
+
 func (r *GlobalSpendReconciler) StartFlushWorker(ctx context.Context, interval time.Duration) {
 	if r == nil {
 		return

@@ -6,8 +6,10 @@ import (
 	"strconv"
 	"time"
 
+	"espx/internal/database"
 	"espx/internal/domain"
 	db "espx/internal/domain/db"
+	"espx/internal/metrics"
 	"espx/pkg/coldpath"
 
 	"github.com/google/uuid"
@@ -480,4 +482,82 @@ func (worker *OutboxWorker) handleUpdateEntitlements(ctx context.Context) error 
 		return fmt.Errorf("service unavailable")
 	}
 	return worker.svc.publishRegistryFullSync(ctx)
+}
+
+func (worker *OutboxWorker) handleReloadRtbCatalog(ctx context.Context, payload []byte) error {
+	_ = payload
+	return worker.svc.PublishRtbCatalogReload(ctx)
+}
+
+const (
+	outboxPollActiveInterval = 20 * time.Millisecond
+	outboxPollIdleMax        = 250 * time.Millisecond
+)
+
+type outboxPollBackoff struct {
+	idle time.Duration
+}
+
+func newOutboxPollBackoff() *outboxPollBackoff {
+	return &outboxPollBackoff{idle: outboxPollActiveInterval}
+}
+
+func (b *outboxPollBackoff) next(processed int) time.Duration {
+	if processed > 0 {
+		b.idle = outboxPollActiveInterval
+		metrics.OutboxPollIntervalMs.Observe(float64(outboxPollActiveInterval) / float64(time.Millisecond))
+		return 0
+	}
+	if b.idle < outboxPollActiveInterval {
+		b.idle = outboxPollActiveInterval
+	}
+	next := b.idle * 2
+	if next > outboxPollIdleMax {
+		next = outboxPollIdleMax
+	}
+	b.idle = next
+	metrics.OutboxPollIntervalMs.Observe(float64(next) / float64(time.Millisecond))
+	return next
+}
+
+func (worker *OutboxWorker) recordOutboxLagMetrics(ctx context.Context) {
+	if worker.svc == nil || worker.svc.GetPool() == nil {
+		return
+	}
+	opCtx, cancel := workerContext(ctx, workerOutboxTimeout)
+	defer cancel()
+
+	var pending int64
+	var oldestSeconds float64
+	err := worker.svc.GetPool().QueryRow(opCtx, `
+		SELECT COUNT(*)::bigint,
+		       COALESCE(EXTRACT(EPOCH FROM (NOW() - MIN(created_at))), 0)::float8
+		FROM outbox_events
+		WHERE status = 'PENDING'`).Scan(&pending, &oldestSeconds)
+	if err != nil {
+		if ctx.Err() != nil || database.IsShutdownError(err) {
+			return
+		}
+		return
+	}
+	metrics.ManagementOutboxPendingTotal.Set(float64(pending))
+	metrics.ManagementOutboxOldestPendingSeconds.Set(oldestSeconds)
+
+	if worker.svc != nil && worker.svc.alerter != nil && pending > 0 {
+		threshold := float64(worker.svc.alerter.OutboxStuckThresholdSec())
+		if oldestSeconds >= threshold {
+			worker.svc.alerter.AlertOutboxStuck(pending, oldestSeconds)
+		}
+	}
+}
+
+func (worker *OutboxWorker) recordOutboxLagFromValues(pending int64, oldestSeconds float64) {
+	metrics.ManagementOutboxPendingTotal.Set(float64(pending))
+	metrics.ManagementOutboxOldestPendingSeconds.Set(oldestSeconds)
+	if worker.svc != nil && worker.svc.alerter != nil && pending > 0 {
+		threshold := float64(worker.svc.alerter.OutboxStuckThresholdSec())
+		if oldestSeconds >= threshold {
+			worker.svc.alerter.AlertOutboxStuck(pending, oldestSeconds)
+		}
+	}
 }

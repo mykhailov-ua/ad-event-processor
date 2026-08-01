@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"time"
 
 	"espx/internal/domain"
 	db "espx/internal/domain/db"
@@ -12,6 +14,92 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+const slotMigrationR5SamplePerShard = 3
+
+type SlotMigrationOrchestrator struct {
+	svc      *Service
+	interval time.Duration
+}
+
+func NewSlotMigrationOrchestrator(svc *Service, interval time.Duration) *SlotMigrationOrchestrator {
+	if interval <= 0 {
+		interval = 30 * time.Second
+	}
+	return &SlotMigrationOrchestrator{svc: svc, interval: interval}
+}
+
+func (o *SlotMigrationOrchestrator) Start(ctx context.Context) {
+	o.bumpPendingMigrationFences(ctx)
+
+	ticker := time.NewTicker(o.interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			o.tick(ctx)
+		}
+	}
+}
+
+func (o *SlotMigrationOrchestrator) tick(ctx context.Context) {
+	migRepo := domain.NewSlotMigrationRepo(o.svc.GetPool())
+	draft, err := migRepo.GetMaxDraftVersionWithMigrating(ctx)
+	if err != nil {
+		slog.Error("slot migration: draft version lookup failed", "err", err)
+		if o.svc.alerter != nil {
+			o.svc.alerter.AlertSlotMigrationError("draft_lookup", err)
+		}
+		return
+	}
+	if draft > 0 {
+		if err := o.svc.CatchUpDualWriteSlots(ctx, draft); err != nil {
+			slog.Warn("slot migration dual-write catch-up", "version", draft, "err", err)
+			if o.svc.alerter != nil {
+				o.svc.alerter.AlertSlotMigrationError("dual_write_catchup", err)
+			}
+		}
+		if err := o.svc.CopyAllMigratingSlots(ctx, draft); err != nil {
+			slog.Warn("slot migration copy tick", "version", draft, "err", err)
+			if o.svc.alerter != nil {
+				o.svc.alerter.AlertSlotMigrationError("copy", err)
+			}
+		}
+	}
+
+	mapRepo := domain.NewSlotMapRepo(o.svc.GetPool())
+	active, err := mapRepo.GetActiveVersion(ctx)
+	if err != nil {
+		slog.Error("slot migration: active version lookup failed", "err", err)
+		if o.svc.alerter != nil {
+			o.svc.alerter.AlertSlotMigrationError("active_lookup", err)
+		}
+		return
+	}
+	if err := o.svc.DrainMigratingSlots(ctx, active); err != nil {
+		slog.Warn("slot migration drain tick", "version", active, "err", err)
+		if o.svc.alerter != nil {
+			o.svc.alerter.AlertSlotMigrationError("drain", err)
+		}
+	} else {
+		pending, pendErr := o.svc.HasPendingSlotDrain(ctx)
+		if pendErr == nil && !pending {
+			if r5Err := o.svc.VerifySlotMigrationR5(ctx); r5Err != nil && o.svc.alerter != nil {
+				o.svc.alerter.AlertSlotMigrationError("r5_verify", r5Err)
+			}
+		}
+	}
+	o.svc.CheckStuckDrainJobs(ctx)
+}
+
+func (o *SlotMigrationOrchestrator) bumpPendingMigrationFences(ctx context.Context) {
+	if err := o.svc.BumpFencesForPendingMigrations(ctx); err != nil {
+		slog.Warn("slot migration: bump pending fences on start failed", "err", err)
+	}
+}
 
 var (
 	ErrSlotMigrationNotReady       = errors.New("slot migration copy not complete for all MIGRATING slots")
@@ -589,6 +677,58 @@ func slotMigrationToDTO(row db.RedisSlotMigration) SlotMigrationDTO {
 		dto.LastError = row.LastError.String
 	}
 	return dto
+}
+
+func (s *Service) VerifySlotMigrationR5(ctx context.Context) error {
+	if len(s.rdbs) == 0 {
+		return fmt.Errorf("no redis shards configured")
+	}
+	campaignIDs, err := s.listActiveCampaignUUIDs(ctx)
+	if err != nil {
+		return err
+	}
+	if len(campaignIDs) == 0 {
+		return nil
+	}
+
+	sharder := domain.NewStaticSlotSharder(len(s.rdbs))
+	perShard := make(map[int][]uuid.UUID)
+	for _, id := range campaignIDs {
+		shard := sharder.GetShard(id)
+		if len(perShard[shard]) < slotMigrationR5SamplePerShard {
+			perShard[shard] = append(perShard[shard], id)
+		}
+	}
+
+	for shard, ids := range perShard {
+		if shard < 0 || shard >= len(s.rdbs) {
+			continue
+		}
+		rdb := s.rdbs[shard]
+		for _, campID := range ids {
+			snap, err := domain.ReadBudgetInvariant(ctx, s.GetPool(), rdb, campID)
+			if err != nil {
+				return fmt.Errorf("r5 read shard %d campaign %s: %w", shard, campID, err)
+			}
+			spend := snap.BudgetLimit - snap.RedisRemaining
+			expected := snap.PGCurrentSpend + snap.SyncDelta
+			diff := spend - expected
+			if diff < -1 || diff > 1 {
+				return fmt.Errorf("r5 violated shard %d campaign %s: spend=%d expected=%d diff=%d",
+					shard, campID, spend, expected, diff)
+			}
+		}
+	}
+	return nil
+}
+
+func (s *Service) HasPendingSlotDrain(ctx context.Context) (bool, error) {
+	migRepo := domain.NewSlotMigrationRepo(s.GetPool())
+	jobs, err := migRepo.ListDraining(ctx)
+	if err != nil {
+		return false, err
+	}
+	return len(jobs) > 0, nil
 }
 
 func mapRepoUpdateSlotState(ctx context.Context, pool *pgxpool.Pool, version int32, slot, shard int16, state db.RedisSlotState) error {

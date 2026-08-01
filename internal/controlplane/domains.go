@@ -28,7 +28,7 @@ var ManagementDomains = []Domain{
 	}, Files: []string{"delivery_types.go", "service_cohorts.go", "vpp_controller.go", "vpp_pacing.go"}, LogicFiles: []string{"campaign_validate.go"}, TestPrefixes: []string{"campaign_domain_test", "campaign_pacing_test", "brand_fcap_test", "api_campaigns", "delivery_test", "pacing_controller_test", "cohort_", "vpp_"}},
 	{ID: "outbox", Prefixes: []string{"outbox_"}, TestPrefixes: []string{"outbox_"}},
 	{ID: "operation", Prefixes: []string{"operation_", "api_region_ingest"}, Files: []string{"dedup.go"}, TestPrefixes: []string{"operation_", "api_region", "dedup_", "operation_domain_test"}},
-	{ID: "recon", Prefixes: []string{"recon_", "global_spend_", "service_recon"}, LogicFiles: []string{"recon_payload.go"}, TestPrefixes: []string{"recon_", "global_spend_", "recon_domain_test"}},
+	{ID: "recon", Prefixes: []string{"recon_", "global_spend_", "service_recon"}, LogicFiles: []string{"recon.go"}, TestPrefixes: []string{"recon_", "global_spend_", "recon_domain_test"}},
 	{ID: "fraud", Prefixes: []string{"service_fraud", "blacklist_", "worker_blacklist_", "fraud_"}, TestPrefixes: []string{"service_fraud", "blacklist_", "fraud_"}},
 	{ID: "node", Prefixes: []string{"node_", "service_node_"}, Files: []string{"worker_global_region_scorer.go", "worker_node_capacity_scorer.go"}, TestPrefixes: []string{"node_", "service_node_", "node_domain_test", "global_region_"}},
 	{ID: "rtb", Prefixes: []string{"service_rtb", "service_bid", "rtb_", "floor_optimizer_"}, Files: []string{"worker_floor_optimizer.go"}, TestPrefixes: []string{"service_rtb", "api_rtb", "service_bid", "rtb_", "floor_optimizer"}},

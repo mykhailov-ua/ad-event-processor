@@ -4,16 +4,21 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 
+	"espx/internal/config"
+	"espx/internal/metrics"
 	"espx/internal/payment"
 	"espx/pkg/coldpath"
 	"espx/pkg/httpresponse"
@@ -728,4 +733,151 @@ func (h *OpsHTTPHandlers) postSupportBundle(w http.ResponseWriter, r *http.Reque
 		h.writeServiceError(w, err)
 		return
 	}
+}
+
+const (
+	defaultFanOutMaxConcurrency = 8
+	defaultFanOutPerSourceTO    = 2 * time.Second
+)
+
+type FanOutSourceError struct {
+	Source string `json:"source"`
+	Code   string `json:"code"`
+}
+
+type FanOutResult[T any] struct {
+	Items      []T                 `json:"items"`
+	Partial    bool                `json:"partial"`
+	Errors     []FanOutSourceError `json:"errors,omitempty"`
+	NextCursor string              `json:"next_cursor,omitempty"`
+}
+
+type FanOutSource[T any] struct {
+	ID   string
+	Poll func(ctx context.Context) ([]T, error)
+}
+
+type FanOutCollector struct {
+	maxConcurrency int
+	perSourceTO    time.Duration
+	route          string
+}
+
+func NewFanOutCollector(cfg *config.Config, route string) *FanOutCollector {
+	max := defaultFanOutMaxConcurrency
+	if cfg != nil && cfg.Management.AdminFanoutMaxConcurrency > 0 {
+		max = cfg.Management.AdminFanoutMaxConcurrency
+	}
+	return &FanOutCollector{
+		maxConcurrency: max,
+		perSourceTO:    defaultFanOutPerSourceTO,
+		route:          route,
+	}
+}
+
+type fanOutResultSlot[T any] struct {
+	sourceID string
+	items    []T
+	err      error
+}
+
+func CollectFanOut[T any](ctx context.Context, c *FanOutCollector, sources []FanOutSource[T]) FanOutResult[T] {
+	start := time.Now()
+	defer func() {
+		if c != nil && c.route != "" {
+			metrics.AdminFanoutLatencySeconds.WithLabelValues(c.route).Observe(time.Since(start).Seconds())
+		}
+	}()
+
+	if len(sources) == 0 {
+		return FanOutResult[T]{Items: []T{}}
+	}
+	if c == nil {
+		c = NewFanOutCollector(nil, "")
+	}
+
+	sem := make(chan struct{}, c.maxConcurrency)
+	slots := make([]fanOutResultSlot[T], len(sources))
+	var wg sync.WaitGroup
+
+	for i, src := range sources {
+		wg.Add(1)
+		go func(idx int, source FanOutSource[T]) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			srcCtx, cancel := context.WithTimeout(ctx, c.perSourceTO)
+			defer cancel()
+
+			items, err := source.Poll(srcCtx)
+			slots[idx] = fanOutResultSlot[T]{sourceID: source.ID, items: items, err: err}
+		}(i, src)
+	}
+	wg.Wait()
+
+	var (
+		out    FanOutResult[T]
+		ok     int
+		failed int
+	)
+	for _, slot := range slots {
+		if slot.err != nil {
+			failed++
+			code := "SOURCE_UNAVAILABLE"
+			if slot.err == context.DeadlineExceeded || slot.err == context.Canceled {
+				code = "TIMEOUT"
+			}
+			out.Errors = append(out.Errors, FanOutSourceError{Source: slot.sourceID, Code: code})
+			continue
+		}
+		ok++
+		if len(slot.items) > 0 {
+			out.Items = append(out.Items, slot.items...)
+		}
+	}
+
+	if failed > 0 && ok > 0 {
+		out.Partial = true
+	}
+	if c.route != "" {
+		metrics.AdminFanoutSourcesTotal.WithLabelValues(c.route).Add(float64(len(sources)))
+		if out.Partial {
+			metrics.AdminFanoutPartialTotal.WithLabelValues(c.route).Inc()
+		}
+	}
+	return out
+}
+
+type fanOutCursorState struct {
+	Sources map[string]string `json:"sources"`
+}
+
+func EncodeFanOutCursor(state map[string]string) (string, error) {
+	if len(state) == 0 {
+		return "", nil
+	}
+	raw, err := json.Marshal(fanOutCursorState{Sources: state})
+	if err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(raw), nil
+}
+
+func DecodeFanOutCursor(raw string) (map[string]string, error) {
+	if raw == "" {
+		return map[string]string{}, nil
+	}
+	decoded, err := base64.RawURLEncoding.DecodeString(raw)
+	if err != nil {
+		return nil, fmt.Errorf("invalid cursor")
+	}
+	var state fanOutCursorState
+	if err := json.Unmarshal(decoded, &state); err != nil {
+		return nil, fmt.Errorf("invalid cursor")
+	}
+	if state.Sources == nil {
+		state.Sources = map[string]string{}
+	}
+	return state.Sources, nil
 }
