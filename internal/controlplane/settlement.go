@@ -140,8 +140,6 @@ func (h *SettlementHandler) applyCTVSettlement(ctx context.Context, settlementID
 	return h.service.ApplyCTVSettlement(ctx, settlementID, customerID, campaignID, spendMicro)
 }
 
-const batchSettlementMaxItems = 500
-
 func (h *SettlementHandler) batchApplySettlement(ctx context.Context, batch settlementBatchParams) settlementBatchResult {
 	var out settlementBatchResult
 	for _, item := range batch.Credits {

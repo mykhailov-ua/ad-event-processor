@@ -615,9 +615,7 @@ func ParseProviderName(name string) (db.NotifierProvider, error) {
 		return "", ErrUnsupportedProvider
 	}
 	upper := strings.ToUpper(trimmed)
-	if strings.HasPrefix(upper, "PROVIDER_") {
-		upper = strings.TrimPrefix(upper, "PROVIDER_")
-	}
+	upper = strings.TrimPrefix(upper, "PROVIDER_")
 	switch upper {
 	case "TELEGRAM":
 		return db.NotifierProviderTELEGRAM, nil

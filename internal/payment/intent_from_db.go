@@ -7,10 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type createPaymentIntentResult struct {
-	Intent      domain.PaymentIntent
-	CheckoutURL string
-}
+type createPaymentIntentResult = CreateIntentResult
 
 func paymentIntentFromDB(intent db.PaymentPaymentIntent) domain.PaymentIntent {
 	out := domain.PaymentIntent{

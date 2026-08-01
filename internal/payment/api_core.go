@@ -37,24 +37,7 @@ func (h *Handler) createPaymentIntent(
 	if err != nil {
 		return createPaymentIntentResult{}, mapPaymentGRPCError(err)
 	}
-	return createPaymentIntentResult{
-		Intent:      result.Intent,
-		CheckoutURL: result.CheckoutURL,
-	}, nil
-}
-
-func (h *Handler) getPaymentIntent(ctx context.Context, intentID uuid.UUID) (domain.PaymentIntent, error) {
-	if err := h.requireInternalToken(ctx); err != nil {
-		return domain.PaymentIntent{}, err
-	}
-	if intentID == uuid.Nil {
-		return domain.PaymentIntent{}, status.Error(codes.InvalidArgument, "invalid intent id")
-	}
-	intent, err := h.service.GetPaymentIntent(ctx, intentID)
-	if err != nil {
-		return domain.PaymentIntent{}, mapPaymentGRPCError(err)
-	}
-	return intent, nil
+	return createPaymentIntentResult(result), nil
 }
 
 func (h *Handler) listPaymentIntents(ctx context.Context, customerID uuid.UUID, limit, offset int32) ([]domain.PaymentIntent, int64, error) {

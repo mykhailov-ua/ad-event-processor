@@ -57,7 +57,7 @@ func setupTestDB(t testing.TB) (*pgxpool.Pool, func()) {
 
 	_, filename, _, _ := runtime.Caller(0)
 	baseDir := filepath.Join(filepath.Dir(filename), "..", "..")
-	notifierMigrationsDir := filepath.Join(baseDir, "internal/notifier/migrations")
+	notifierMigrationsDir := filepath.Join(baseDir, "internal/notify/migrations")
 	applyMigrations(t, pool, notifierMigrationsDir)
 
 	return pool, func() {

@@ -290,18 +290,6 @@ func (h *Handler) createAPIKey(ctx context.Context, name string, expiresAt *time
 	return result, nil
 }
 
-func (h *Handler) listAPIKeys(ctx context.Context) ([]APIKey, error) {
-	user, err := h.requireAuthUser(ctx)
-	if err != nil {
-		return nil, err
-	}
-	keys, err := h.service.ListUserAPIKeys(ctx, uuidFromPg(user.ID))
-	if err != nil {
-		return nil, mapError(err)
-	}
-	return keys, nil
-}
-
 func (h *Handler) refreshSession(ctx context.Context, refreshToken string) (RefreshResult, error) {
 	duration := time.Duration(h.cfg.DefaultTokenDurationHrs) * time.Hour
 	accessToken, newRefresh, err := h.service.RefreshToken(ctx, refreshToken, duration)
@@ -316,36 +304,6 @@ func (h *Handler) refreshSession(ctx context.Context, refreshToken string) (Refr
 
 func (h *Handler) revokeSession(ctx context.Context, refreshToken string) error {
 	if err := h.service.RevokeToken(ctx, refreshToken); err != nil {
-		return mapError(err)
-	}
-	return nil
-}
-
-func (h *Handler) changePassword(ctx context.Context, oldPassword, newPassword string) error {
-	user, err := h.requireAuthUser(ctx)
-	if err != nil {
-		return err
-	}
-	if err := h.service.ChangePassword(ctx, uuidFromPg(user.ID), oldPassword, newPassword, h.extractClientIP(ctx), h.extractUserAgent(ctx)); err != nil {
-		return mapError(err)
-	}
-	return nil
-}
-
-func (h *Handler) requestEmailVerification(ctx context.Context) (string, error) {
-	user, err := h.requireAuthUser(ctx)
-	if err != nil {
-		return "", err
-	}
-	token, err := h.service.RequestEmailVerification(ctx, uuidFromPg(user.ID))
-	if err != nil {
-		return "", mapError(err)
-	}
-	return token, nil
-}
-
-func (h *Handler) confirmEmailVerification(ctx context.Context, verificationToken string) error {
-	if _, err := h.service.ConfirmEmailVerification(ctx, verificationToken); err != nil {
 		return mapError(err)
 	}
 	return nil
