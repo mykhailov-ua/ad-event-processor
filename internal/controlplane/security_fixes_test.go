@@ -128,7 +128,6 @@ func TestAdminKeyWrongKeyRejected(t *testing.T) {
 	}
 }
 
-// Pre-fix: io.Copy consumed the entire body into a sync.Pool buffer.
 func TestLoginBodySizeLimit(t *testing.T) {
 	huge := strings.NewReader(strings.Repeat("x", 1024*1024))
 	r := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", huge)
@@ -166,8 +165,6 @@ func TestRateLimiterEviction(t *testing.T) {
 		t.Fatalf("expected 10 entries after eviction, got %d", len(entries))
 	}
 }
-
-// clickHouseIngestionLag within the TTL window do not each run the CH query.
 
 func TestCHLagCacheHit(t *testing.T) {
 	calls := 0

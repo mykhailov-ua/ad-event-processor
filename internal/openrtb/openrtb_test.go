@@ -95,7 +95,7 @@ func TestWriteBidHTTPResponse_singlePass(t *testing.T) {
 	assert.Contains(t, resp, "Content-Length:")
 	assert.Contains(t, resp, `"id":"b1"`)
 	assert.Contains(t, resp, `"price":2.000000`)
-	// JSON starts immediately after fixed header - no gap, no second copy.
+
 	assert.Equal(t, byte('{'), buf[BidHTTPHdrSize])
 }
 

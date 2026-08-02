@@ -49,7 +49,7 @@ func (handler *Handler) RegisterRoutes(mux *http.ServeMux) {
 	}
 
 	registerAdminGoneRoutes(mux)
-	registerRootRoute(mux)
+	registerRootRoute(mux, NewAdminUIGate(handler.authMiddleware))
 	handler.registerRegionIngestRoutes(mux)
 }
 

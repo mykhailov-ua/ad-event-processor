@@ -54,7 +54,6 @@ func TestE2E_OpenRTB26LiveBudget(t *testing.T) {
 	_, err = registry.Sync(ctx)
 	require.NoError(t, err)
 
-	// Redis remaining must match PG (budget_limit - current_spend) for AssertBudgetInvariant.
 	const redisBudgetMicro = int64(100_000_000)
 	camp, ok := registry.GetCampaign(campaignID)
 	require.True(t, ok)

@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func (c Config) Validate() error {
+func (c *Config) Validate() error {
 	if dom := strings.TrimSpace(c.TrackingDomain); dom != "" {
 		dom = strings.TrimPrefix(strings.ToLower(dom), "https://")
 		dom = strings.TrimPrefix(dom, "http://")

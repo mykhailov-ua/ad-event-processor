@@ -16,9 +16,9 @@ go test -count=1 -v -run 'Fault' -timeout 20m \
 	./internal/identity/... \
 	./internal/ingestion/... \
 	./internal/payment/... \
-	./internal/billing/... \
+	./internal/ledger/... \
 	./internal/licensing/... \
-	./internal/notifier/... \
+	./internal/notify/... \
 	./internal/ivtdetector/... \
 	./internal/fraud/... \
 	./pkg/broker/server/... \

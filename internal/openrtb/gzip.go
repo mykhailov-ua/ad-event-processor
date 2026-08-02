@@ -6,7 +6,6 @@ import (
 	"sync"
 )
 
-// HTTPWriteOpts controls optional gzip on OpenRTB HTTP responses (T5).
 type HTTPWriteOpts struct {
 	Gzip bool
 }
@@ -59,7 +58,6 @@ func gzipCompressInto(dst, src []byte) (int, error) {
 	return sw.n, nil
 }
 
-// gzipMinBody is the minimum JSON body size to prefer gzip on the exchange path.
 const gzipMinBody = 64
 
 func shouldGzipBody(bodyLen int, opts HTTPWriteOpts) bool {

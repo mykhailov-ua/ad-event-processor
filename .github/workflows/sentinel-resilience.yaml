@@ -2,8 +2,12 @@ name: Sentinel Resilience
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
+
+concurrency:
+  group: sentinel-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   sentinel-failover:
@@ -22,4 +26,12 @@ jobs:
         run: bash scripts/fault/sentinel_failover_env.sh
 
       - name: Sentinel failover resilience test
-        run: bash scripts/fault/sentinel.sh
+        run: bash scripts/fault/sentinel.sh 2>&1 | tee sentinel.log
+
+      - name: Upload sentinel log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sentinel-log
+          path: sentinel.log
+          retention-days: 7

@@ -1,0 +1,12 @@
+import { el } from '../lib/dom.js';
+import { renderStatusBadge } from './status_badge.js';
+
+/** Campaign status legend for list pages. */
+export function renderCampaignStatusLegend() {
+  return el('div', { className: 'status-legend', 'aria-label': 'Status legend' },
+    el('span', { className: 'status-legend__label' }, 'Status'),
+    renderStatusBadge('ACTIVE'),
+    renderStatusBadge('PAUSED'),
+    renderStatusBadge('ARCHIVED'),
+  );
+}

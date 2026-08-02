@@ -46,7 +46,6 @@ func DefaultConfig() Config {
 	}
 }
 
-// TestGateConfig returns relaxed limits for WAL/region-proxy unit tests under parallel -short.
 func TestGateConfig() Config {
 	return Config{
 		AppendCapacity:      256,

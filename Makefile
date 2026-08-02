@@ -1,4 +1,4 @@
-.PHONY: fmt gen lint test test-fast test-unit test-integration test-fault test-int test-alloc-gate management-domain-coverage test-full test-resilience test-broker-fault-lab test-sentinel-resilience build release-build proto proto-grpc check-local tier-a fraudtrain-check check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-bpf check-scripts-layout dev-preflight-smoke perf-gate-smoke edge-phase0
+.PHONY: fmt gen lint test test-fast test-unit test-integration test-fault test-int test-alloc-gate management-domain-coverage test-full test-resilience test-broker-fault-lab test-sentinel-resilience build release-build proto proto-grpc check-local pr-fast tier-a fraudtrain-check check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-bpf check-scripts-layout dev-preflight-smoke perf-gate-smoke edge-phase0 openrtb-fuzz-smoke
 
 fmt:
 	go fmt ./...
@@ -54,6 +54,9 @@ test-full: fmt
 check-local:
 	bash scripts/ci/local_check.sh
 
+pr-fast:
+	bash scripts/ci/pr_fast.sh
+
 fraudtrain-check:
 	bash scripts/ci/fraudtrain.sh
 
@@ -100,6 +103,9 @@ check-scripts-layout:
 
 dev-preflight-smoke:
 	bash scripts/dev/preflight.sh
+
+seed-admin:
+	bash scripts/dev/seed_admin.sh
 
 perf-gate-smoke:
 	PERF_GATE_STRICT=false bash scripts/test/gate_run.sh

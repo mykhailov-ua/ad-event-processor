@@ -1,6 +1,0 @@
-# Paths skipped by scripts/ci/check_comments.sh (generated sqlc / db output).
-internal/ingestion/sqlc
-internal/identity/db
-internal/payment/db
-internal/billing/db
-internal/notifier/db

@@ -67,7 +67,6 @@ func ClearUserRevocation(ctx context.Context, rdb redis.UniversalClient, userID 
 	return rdb.Del(ctx, "revoked:user:"+userID.String()).Err()
 }
 
-// RevokeTokenSession marks access token and session revoked on a Redis client.
 func RevokeTokenSession(ctx context.Context, rdb redis.UniversalClient, tokenID, sessionID uuid.UUID, ttl time.Duration) error {
 	if rdb == nil || ttl <= 0 {
 		return nil
@@ -79,7 +78,6 @@ func RevokeTokenSession(ctx context.Context, rdb redis.UniversalClient, tokenID,
 	return err
 }
 
-// RevokeTokenSessionShards marks revocation on every control-plane Redis shard.
 func RevokeTokenSessionShards(ctx context.Context, rdbs []redis.UniversalClient, tokenID, sessionID uuid.UUID, ttl time.Duration) error {
 	if len(rdbs) == 0 || ttl <= 0 {
 		return nil

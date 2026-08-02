@@ -4,6 +4,7 @@ import (
 	"crypto/subtle"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"espx/internal/config"
@@ -66,14 +67,21 @@ func (h *AuthHandler) requireAdminKeyFallback(next http.HandlerFunc) http.Handle
 	}
 }
 
-func setCookie(w http.ResponseWriter, name, value, path string, maxAge int, httpOnly bool) {
+func requestIsSecure(r *http.Request) bool {
+	if r == nil {
+		return false
+	}
+	return r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
+}
+
+func setCookie(w http.ResponseWriter, r *http.Request, name, value, path string, maxAge int, httpOnly bool) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
 		Value:    value,
 		Path:     path,
 		MaxAge:   maxAge,
 		HttpOnly: httpOnly,
-		Secure:   true,
+		Secure:   requestIsSecure(r),
 		SameSite: http.SameSiteStrictMode,
 	})
 }
@@ -123,15 +131,15 @@ func (h *AuthHandler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	setCookie(w, "accessToken", resp.AccessToken, "/", 3600, true)
-	setCookie(w, "refreshToken", resp.RefreshToken, "/api/v1/auth", 30*24*3600, true)
+	setCookie(w, r, "accessToken", resp.AccessToken, "/", 3600, true)
+	setCookie(w, r, "refreshToken", resp.RefreshToken, "/api/v1/auth", 30*24*3600, true)
 	csrf, err := GenerateSecureToken(32)
 	if err != nil {
 		slog.Error("failed to generate secure csrf token due to entropy starvation", "error", err)
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", "internal system failure")
 		return
 	}
-	setCookie(w, "csrfToken", csrf, "/", 3600, false)
+	setCookie(w, r, "csrfToken", csrf, "/", 3600, false)
 	w.Header().Set("X-CSRF-Token", csrf)
 
 	userDTO := UserDTO{
@@ -167,9 +175,9 @@ func (h *AuthHandler) logout(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	setCookie(w, "accessToken", "", "/", -1, true)
-	setCookie(w, "refreshToken", "", "/api/v1/auth", -1, true)
-	setCookie(w, "csrfToken", "", "/", -1, false)
+	setCookie(w, r, "accessToken", "", "/", -1, true)
+	setCookie(w, r, "refreshToken", "", "/api/v1/auth", -1, true)
+	setCookie(w, r, "csrfToken", "", "/", -1, false)
 	httpresponse.JSON(w, http.StatusNoContent, nil)
 }
 
@@ -187,8 +195,8 @@ func (h *AuthHandler) refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	setCookie(w, "accessToken", resp.AccessToken, "/", 3600, true)
-	setCookie(w, "refreshToken", resp.RefreshToken, "/api/v1/auth", 30*24*3600, true)
+	setCookie(w, r, "accessToken", resp.AccessToken, "/", 3600, true)
+	setCookie(w, r, "refreshToken", resp.RefreshToken, "/api/v1/auth", 30*24*3600, true)
 
 	httpresponse.JSON(w, http.StatusOK, RefreshResponse{Status: "refreshed"})
 }
@@ -211,11 +219,14 @@ func (h *AuthHandler) me(w http.ResponseWriter, r *http.Request) {
 		if rdb != nil {
 			revoked, errRev := identity.CheckTokenRevocation(r.Context(), rdb, payload)
 			if errRev != nil {
-				slog.Error("redis revocation check failed on /me, blocking request", "error", errRev)
-				httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized: security check failed")
-				return
-			}
-			if revoked {
+				if h.cfg != nil && h.cfg.Env == "development" {
+					slog.Warn("redis revocation check failed in development, allowing /me", "error", errRev)
+				} else {
+					slog.Error("redis revocation check failed on /me, blocking request", "error", errRev)
+					httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized: security check failed")
+					return
+				}
+			} else if revoked {
 				httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized: token revoked")
 				return
 			}

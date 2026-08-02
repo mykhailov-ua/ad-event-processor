@@ -265,6 +265,35 @@ func (m *AuthMiddleware) authenticateAPIKey(w http.ResponseWriter, r *http.Reque
 	}, true
 }
 
+func (m *AuthMiddleware) SessionFromRequest(r *http.Request) (AuthenticatedUser, bool) {
+	if m == nil || m.tokenMaker == nil {
+		return AuthenticatedUser{}, false
+	}
+	cookie, err := r.Cookie("accessToken")
+	if err != nil || cookie.Value == "" {
+		return AuthenticatedUser{}, false
+	}
+
+	payload, err := m.tokenMaker.VerifyToken(cookie.Value)
+	if err != nil {
+		return AuthenticatedUser{}, false
+	}
+
+	if rdbs := m.controlRedis(); len(rdbs) > 0 {
+		revoked, errRev := m.checkTokenRevocation(r.Context(), rdbs, payload)
+		if errRev != nil || revoked {
+			return AuthenticatedUser{}, false
+		}
+	}
+
+	return AuthenticatedUser{
+		UserID:     payload.UserID,
+		Role:       NormalizeRole(payload.Role),
+		CustomerID: payload.CustomerID,
+		AuthSource: "session",
+	}, true
+}
+
 func (m *AuthMiddleware) authenticate(w http.ResponseWriter, r *http.Request) (AuthenticatedUser, bool) {
 	if key := r.Header.Get("X-Admin-API-Key"); key != "" && m.cfg != nil && key == string(m.cfg.AdminAPIKey) {
 		return AuthenticatedUser{
@@ -316,6 +345,11 @@ func (m *AuthMiddleware) checkTokenRevocation(ctx context.Context, rdbs []redis.
 		}
 		revoked, err := identity.CheckTokenRevocation(ctx, rdb, payload)
 		if err != nil {
+			if m.cfg != nil && m.cfg.Env == "development" {
+				slog.Warn("redis revocation check failed in development, allowing session",
+					"shard", i, "error", err)
+				return false, nil
+			}
 			return false, fmt.Errorf("shard %d: %w", i, err)
 		}
 		if revoked {

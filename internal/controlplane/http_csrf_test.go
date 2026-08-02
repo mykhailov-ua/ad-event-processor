@@ -81,6 +81,15 @@ func TestCSRFMiddleware(t *testing.T) {
 		assert.Equal(t, http.StatusOK, resp.Code)
 	})
 
+	t.Run("POST_PlatformBootstrap_AllowedWithoutCSRF", func(t *testing.T) {
+		req, _ := http.NewRequest("POST", "/api/v1/settings/platform/bootstrap", nil)
+		resp := httptest.NewRecorder()
+
+		handler.ServeHTTP(resp, req)
+
+		assert.Equal(t, http.StatusOK, resp.Code)
+	})
+
 	t.Run("POST_AdminAPIKey_SkipsCSRF", func(t *testing.T) {
 		mdl := NewCSRFMiddleware("secret-key")
 		handler := mdl(dummyHandler)

@@ -111,21 +111,21 @@ func TestAuthHandler_Login(t *testing.T) {
 			if strings.HasPrefix(c, "accessToken=") {
 				accessSet = true
 				assert.Contains(t, c, "HttpOnly")
-				assert.Contains(t, c, "Secure")
+				assert.NotContains(t, c, "Secure")
 				assert.Contains(t, c, "SameSite=Strict")
 				assert.Contains(t, c, "Max-Age=3600")
 			}
 			if strings.HasPrefix(c, "refreshToken=") {
 				refreshSet = true
 				assert.Contains(t, c, "HttpOnly")
-				assert.Contains(t, c, "Secure")
+				assert.NotContains(t, c, "Secure")
 				assert.Contains(t, c, "SameSite=Strict")
 				assert.Contains(t, c, "Max-Age=2592000")
 			}
 			if strings.HasPrefix(c, "csrfToken=") {
 				csrfSet = true
 				assert.NotContains(t, c, "HttpOnly")
-				assert.Contains(t, c, "Secure")
+				assert.NotContains(t, c, "Secure")
 				assert.Contains(t, c, "SameSite=Strict")
 				assert.Contains(t, c, "Max-Age=3600")
 			}

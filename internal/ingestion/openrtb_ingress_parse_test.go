@@ -88,7 +88,7 @@ func TestParseOpenRTB3Ingress_RejectsESPXNative(t *testing.T) {
 }
 
 func TestParseOpenRTB3FSM_MalformedItemArrayNoHang(t *testing.T) {
-	// Fuzz corpus e4970d7581126610: malformed item[] must not spin in skipJSONValueAt.
+
 	payload := []byte(`{"rtb":{"ver":"","item":["id":"a","flr":1.5},{"id":"b","fr":1.l`)
 	done := make(chan struct{})
 	go func() {

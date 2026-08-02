@@ -1,6 +1,5 @@
 package openrtb
 
-// MacroWire is the zero-alloc macro substitution view. All fields are caller-owned []byte.
 type MacroWire struct {
 	AuctionPrice []byte
 	AuctionID    []byte
@@ -9,7 +8,6 @@ type MacroWire struct {
 	SeatID       []byte
 }
 
-// MacroContext is the cold-path string view (admin/tests). Prefer MacroWire on exchange glue.
 type MacroContext struct {
 	AuctionPrice string
 	AuctionID    string
@@ -26,7 +24,6 @@ var (
 	macroAuctionID     = []byte("${AUCTION_ID}")
 )
 
-// AppendApplyMacros expands P0 OpenRTB macros into dst without heap allocation when cap(dst) suffices.
 func AppendApplyMacros(dst, template []byte, ctx MacroWire) []byte {
 	if len(template) == 0 {
 		return dst
@@ -56,7 +53,6 @@ func AppendApplyMacros(dst, template []byte, ctx MacroWire) []byte {
 	return dst
 }
 
-// ApplyMacros is cold-path JSON/admin helper. Hot exchange uses AppendApplyMacros.
 func ApplyMacros(template string, ctx MacroContext) string {
 	if template == "" {
 		return ""
@@ -75,23 +71,19 @@ func ApplyMacros(template string, ctx MacroContext) string {
 	return string(out)
 }
 
-// AppendAuctionPrice writes micro-unit price as decimal (same layout as bid JSON price).
 func AppendAuctionPrice(dst []byte, micro int64) []byte {
 	return appendMicroPrice(dst, micro)
 }
 
-// FormatAuctionPrice is cold-path helper; exchange encode uses appendMicroPrice inline.
 func FormatAuctionPrice(micro int64) string {
 	var buf [32]byte
 	return string(appendMicroPrice(buf[:0], micro))
 }
 
-// AppendCreativeID writes decimal creative id into dst.
 func AppendCreativeID(dst []byte, id uint64) []byte {
 	return appendUint(dst, id)
 }
 
-// FormatCreativeID is cold-path helper.
 func FormatCreativeID(id uint64) string {
 	var buf [24]byte
 	return string(appendUint(buf[:0], id))

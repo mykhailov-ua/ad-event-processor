@@ -9,7 +9,6 @@ import (
 var gaqlDateRE = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
 var hexTokenRE = regexp.MustCompile(`^[0-9a-f]+$`)
 
-// ValidClickHouseIdentifier rejects identifiers that could break out of SQL quoting.
 func ValidClickHouseIdentifier(name string) bool {
 	if name == "" || len(name) > 128 {
 		return false

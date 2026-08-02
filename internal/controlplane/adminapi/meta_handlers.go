@@ -18,16 +18,23 @@ type MetaLicenseDTO struct {
 }
 
 type MetaResponseDTO struct {
-	ProductName    string          `json:"product_name"`
-	VendorName     string          `json:"vendor_name"`
-	SiteURL        string          `json:"site_url"`
-	Version        string          `json:"version"`
-	IngressSchemas []string        `json:"ingress_schemas"`
-	DeploymentID   string          `json:"deployment_id,omitempty"`
-	License        *MetaLicenseDTO `json:"license,omitempty"`
+	ProductName       string          `json:"product_name"`
+	VendorName        string          `json:"vendor_name"`
+	SiteURL           string          `json:"site_url"`
+	Version           string          `json:"version"`
+	IngressSchemas    []string        `json:"ingress_schemas"`
+	DeploymentID      string          `json:"deployment_id,omitempty"`
+	BootstrapComplete bool            `json:"bootstrap_complete"`
+	License           *MetaLicenseDTO `json:"license,omitempty"`
 }
 
-type MetaEnricher func(ctx context.Context) (deploymentID string, license *MetaLicenseDTO, err error)
+type MetaEnrichOut struct {
+	DeploymentID      string
+	License           *MetaLicenseDTO
+	BootstrapComplete bool
+}
+
+type MetaEnricher func(ctx context.Context) (MetaEnrichOut, error)
 
 type MetaHTTPHandlers struct {
 	ApplyRateLimit func(http.HandlerFunc) http.HandlerFunc
@@ -55,7 +62,7 @@ func (h *MetaHTTPHandlers) getMeta(w http.ResponseWriter, r *http.Request) {
 		IngressSchemas: config.SupportedIngressSchemas(),
 	}
 	if h.Enrich != nil {
-		deploymentID, license, err := h.Enrich(r.Context())
+		out, err := h.Enrich(r.Context())
 		if err != nil {
 			if h.WriteError != nil {
 				h.WriteError(w, err)
@@ -64,8 +71,9 @@ func (h *MetaHTTPHandlers) getMeta(w http.ResponseWriter, r *http.Request) {
 			httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error")
 			return
 		}
-		resp.DeploymentID = deploymentID
-		resp.License = license
+		resp.DeploymentID = out.DeploymentID
+		resp.License = out.License
+		resp.BootstrapComplete = out.BootstrapComplete
 	}
 	httpresponse.JSON(w, http.StatusOK, resp)
 }

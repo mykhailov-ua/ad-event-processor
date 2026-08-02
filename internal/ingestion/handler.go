@@ -73,7 +73,6 @@ type connContext struct {
 	resp            pb.TrackResponse
 	bufSlice        []byte
 	extraBuf        []byte
-	openrtbADM      [512]byte
 	openrtbMultiADM [openrtb26ImpMax][512]byte
 	openrtbParsed   OpenRTB26Parsed
 	clickParsed     clickQueryParsed

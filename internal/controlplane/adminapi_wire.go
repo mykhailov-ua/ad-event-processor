@@ -273,6 +273,14 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			ApplyRateLimit:          limit,
 			RequireAnyPermission:    permAny,
 			AuthorizeCampaignAccess: authCampaign,
+			ResolveCustomerID:       h.resolveCampaignsCustomerID,
+			WriteServiceError:       writeErr,
+		},
+		CustomersHTTP: &adminapi.CustomersHTTPHandlers{
+			Customers:               svc,
+			ApplyRateLimit:          limit,
+			RequirePermission:       perm,
+			AuthorizeCustomerAccess: authCustomer,
 			WriteServiceError:       writeErr,
 		},
 		SupportHTTP: &adminapi.SupportHTTPHandlers{
@@ -364,4 +372,21 @@ func (h *Handler) resolveDisputeCustomerFilter(r *http.Request) (string, error) 
 		return u.CustomerID.String(), nil
 	}
 	return customerFilter, nil
+}
+
+func (h *Handler) resolveCampaignsCustomerID(r *http.Request, bodyCustomerID *uuid.UUID) (uuid.UUID, error) {
+	u, ok := GetUser(r.Context())
+	if !ok {
+		return uuid.Nil, errForbidden
+	}
+	if u.IsUser() {
+		if bodyCustomerID != nil && *bodyCustomerID != uuid.Nil && *bodyCustomerID != u.CustomerID {
+			return uuid.Nil, errForbidden
+		}
+		return u.CustomerID, nil
+	}
+	if bodyCustomerID == nil || *bodyCustomerID == uuid.Nil {
+		return uuid.Nil, nil
+	}
+	return *bodyCustomerID, nil
 }

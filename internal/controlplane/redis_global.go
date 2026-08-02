@@ -114,7 +114,6 @@ func syncGlobalSetMemberToAllShards(ctx context.Context, rdbs []redis.UniversalC
 	return nil
 }
 
-// syncGlobalSetReplaceToAllShards replaces a Redis set key on every shard via pipeline.
 func syncGlobalSetReplaceToAllShards(ctx context.Context, rdbs []redis.UniversalClient, key string, members []interface{}) error {
 	if len(rdbs) == 0 {
 		return fmt.Errorf("no redis client available")

@@ -19,16 +19,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type CustomerDTO struct {
-	ID              string `json:"id"`
-	Name            string `json:"name"`
-	Balance         string `json:"balance"`
-	Currency        string `json:"currency"`
-	ActiveCampaigns int64  `json:"active_campaigns"`
-	TotalSpend      string `json:"total_spend"`
-	CreatedAt       string `json:"created_at"`
-	UpdatedAt       string `json:"updated_at"`
-}
+type CustomerDTO = adminapi.CustomerDTO
 
 type LedgerDTO = adminapi.BalanceLedgerDTO
 

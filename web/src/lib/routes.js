@@ -1,0 +1,25 @@
+/** @type {import('./router.js').RouteDef[]} */
+export const APP_ROUTES = [
+  {
+    path: '/bootstrap',
+    shell: false,
+    load: () => import('../views/bootstrap.js'),
+  },
+  { path: '/', load: () => import('../views/overview.js') },
+  { path: '/customers', load: () => import('../views/customers.js') },
+  { path: '/customers/:id', load: () => import('../views/customer_detail.js') },
+  { path: '/campaigns', load: () => import('../views/campaigns.js') },
+  { path: '/campaigns/:id', load: () => import('../views/campaign_detail.js') },
+  { path: '/billing', load: () => import('../views/billing.js') },
+  { path: '/billing/invoices/:id', load: () => import('../views/invoice_detail.js') },
+  { path: '/reports/placements', load: () => import('../views/reports_placements.js') },
+  { path: '/reports/keywords', load: () => import('../views/reports_keywords.js') },
+  { path: '/reports/:reportKey', load: () => import('../views/report_stub.js') },
+  { path: '/rtb/deals', load: () => import('../views/placeholder.js') },
+  { path: '/ops', load: () => import('../views/ops_home.js') },
+  { path: '/ops/shards', load: () => import('../views/ops_shards.js') },
+  { path: '/ops/blacklist', load: () => import('../views/placeholder.js') },
+  { path: '/audit', load: () => import('../views/placeholder.js') },
+  { path: '/settings', load: () => import('../views/settings.js') },
+  { path: '/dev/components', load: () => import('../ui/dev_components.js') },
+];

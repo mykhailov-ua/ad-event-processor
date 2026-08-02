@@ -10,9 +10,15 @@ import (
 	"github.com/google/uuid"
 )
 
+type CampaignListResponse struct {
+	Items []CampaignDTO `json:"items"`
+	Total int64         `json:"total"`
+}
+
 type CampaignReader interface {
 	GetCampaign(ctx context.Context, campaignID uuid.UUID) (CampaignDTO, error)
 	GetCampaignMargin(ctx context.Context, campaignID uuid.UUID) (CampaignMarginDTO, error)
+	ListCampaigns(ctx context.Context, customerID uuid.UUID, status string, limit, offset int32) ([]CampaignDTO, int64, error)
 }
 
 type CampaignsHTTPHandlers struct {
@@ -20,6 +26,7 @@ type CampaignsHTTPHandlers struct {
 	ApplyRateLimit          func(http.HandlerFunc) http.HandlerFunc
 	RequireAnyPermission    func([]string, http.HandlerFunc) http.HandlerFunc
 	AuthorizeCampaignAccess func(*http.Request, uuid.UUID) error
+	ResolveCustomerID       func(*http.Request, *uuid.UUID) (uuid.UUID, error)
 	WriteServiceError       func(http.ResponseWriter, error)
 }
 
@@ -35,8 +42,42 @@ func (campaigns *CampaignsHTTPHandlers) Register(mux *http.ServeMux) {
 	if perm == nil {
 		perm = func(_ []string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
+	mux.HandleFunc("GET /api/v1/campaigns", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, campaigns.listCampaigns)))
 	mux.HandleFunc("GET /api/v1/campaigns/{id}", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, campaigns.getCampaign)))
 	mux.HandleFunc("GET /api/v1/campaigns/{id}/margin", limit(perm([]string{"campaigns:read"}, campaigns.getCampaignMargin)))
+}
+
+func (campaigns *CampaignsHTTPHandlers) listCampaigns(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+
+	var customerID uuid.UUID
+	if custStr := q.Get("customer_id"); custStr != "" {
+		id, err := uuid.Parse(custStr)
+		if err != nil {
+			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer_id")
+			return
+		}
+		customerID = id
+	}
+
+	if campaigns.ResolveCustomerID != nil {
+		resolved, err := campaigns.ResolveCustomerID(r, nonNilUUID(customerID))
+		if err != nil {
+			campaigns.writeServiceError(w, err)
+			return
+		}
+		customerID = resolved
+	}
+
+	status := q.Get("status")
+	limit, offset := parseAPIPagination(r)
+
+	items, total, err := campaigns.Campaigns.ListCampaigns(r.Context(), customerID, status, limit, offset)
+	if err != nil {
+		campaigns.writeServiceError(w, err)
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, CampaignListResponse{Items: items, Total: total})
 }
 
 func (campaigns *CampaignsHTTPHandlers) getCampaign(w http.ResponseWriter, r *http.Request) {
@@ -86,4 +127,11 @@ func (campaigns *CampaignsHTTPHandlers) writeServiceError(w http.ResponseWriter,
 		return
 	}
 	httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL", "internal error")
+}
+
+func nonNilUUID(id uuid.UUID) *uuid.UUID {
+	if id == uuid.Nil {
+		return nil
+	}
+	return &id
 }

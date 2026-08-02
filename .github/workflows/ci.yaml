@@ -2,42 +2,57 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  lint:
-    name: Lint and comment style
+  paths:
+    name: Path filter
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    outputs:
+      terraform: ${{ steps.filter.outputs.terraform }}
+      openrtb: ${{ steps.filter.outputs.openrtb }}
+      model: ${{ steps.filter.outputs.model }}
+      go: ${{ steps.filter.outputs.go }}
+      integration: ${{ steps.filter.outputs.integration }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: dorny/paths-filter@v3
+        id: filter
         with:
-          go-version: '1.25.12'
-          cache: true
-      - name: Tier A hygiene gates
-        run: bash scripts/ci/tier_a.sh
-      - name: Comment style
-        run: STRICT_NO_COMMENTS=1 bash scripts/ci/comments.sh
-      - name: golangci-lint
-        run: make lint
+          filters: |
+            terraform:
+              - 'deploy/terraform/**'
+            openrtb:
+              - 'internal/openrtb/**'
+              - 'internal/ingestion/openrtb*.go'
+              - 'scripts/test/openrtb_fuzz_smoke.sh'
+            model:
+              - 'model/**'
+            go:
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+              - 'api/**'
+              - 'internal/**/queries/**'
+            integration:
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+              - 'scripts/**'
+              - 'tests/**'
+              - 'deploy/**'
+              - 'docker-compose*.yaml'
+              - 'Dockerfile*'
 
-  full-test:
-    name: Full test suite (no -short)
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.25.12'
-          cache: true
-
-      - name: Run full test suite
-        run: bash scripts/ci/full_test.sh
-
-  resilience:
-    name: Container resilience tests
+  fast:
+    name: Fast gate
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -46,12 +61,124 @@ jobs:
         with:
           go-version: '1.25.12'
           cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+      - name: PR fast checks
+        run: bash scripts/ci/pr_fast.sh
 
+  govulncheck:
+    name: govulncheck
+    needs: paths
+    if: needs.paths.outputs.go == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.12'
+          cache: true
+      - name: Run govulncheck
+        run: bash scripts/ci/govulncheck.sh
+
+  openrtb-fuzz:
+    name: OpenRTB fuzz smoke
+    needs: paths
+    if: needs.paths.outputs.openrtb == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.12'
+          cache: true
+      - name: Fuzz smoke (5s per target)
+        run: make openrtb-fuzz-smoke
+
+  fraudtrain:
+    name: Fraud model smoke
+    needs: paths
+    if: needs.paths.outputs.model == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.12'
+          cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install model dependencies
+        run: pip install -r model/requirements.txt
+      - name: fraudtrain-check (bootstrap + ml-validate)
+        run: bash scripts/ci/fraudtrain.sh
+
+  full-test:
+    name: Full test suite (no -short)
+    needs: [fast, paths]
+    if: |
+      always() && needs.fast.result == 'success' && (
+        github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.paths.outputs.integration == 'true')
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.12'
+          cache: true
+      - name: Run full test suite
+        run: bash scripts/ci/full_test.sh 2>&1 | tee full_test.log
+      - name: Upload full-test log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-test-log
+          path: full_test.log
+          retention-days: 7
+
+  resilience:
+    name: Container resilience tests
+    needs: fast
+    if: |
+      always() && needs.fast.result == 'success' && (
+        github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'push' && github.ref == 'refs/heads/main')
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      RESILIENCE_MIN_PROOFS: '52'
+      RESILIENCE_MIN_PROOFS_MR: '12'
+      RESILIENCE_LOG: resilience.log
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.12'
+          cache: true
       - name: Run resilience suite
         run: bash scripts/fault/run.sh
+      - name: Upload resilience log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resilience-log
+          path: resilience.log
+          retention-days: 7
 
   terraform-validate:
-    name: Terraform validate (local + staging)
+    name: Terraform validate
+    needs: paths
+    if: needs.paths.outputs.terraform == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -59,13 +186,11 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: '1.9.8'
-
       - name: Validate local env
         run: |
           cd deploy/terraform/envs/local
           terraform init -backend=false
           terraform validate
-
       - name: Validate staging env
         run: |
           cd deploy/terraform/envs/staging

@@ -10,7 +10,7 @@ import (
 func TestRootReturnsJSONNotFound(t *testing.T) {
 	t.Parallel()
 	mux := http.NewServeMux()
-	registerRootRoute(mux)
+	registerRootRoute(mux, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()

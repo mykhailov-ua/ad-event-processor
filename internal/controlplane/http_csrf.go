@@ -29,7 +29,8 @@ func NewCSRFMiddleware(adminAPIKey string) func(http.Handler) http.Handler {
 					return
 				}
 
-				if r.URL.Path == "/api/v1/auth/login" || r.URL.Path == "/api/v1/auth/refresh" || r.URL.Path == "/api/v1/auth/logout" {
+				if r.URL.Path == "/api/v1/auth/login" || r.URL.Path == "/api/v1/auth/refresh" || r.URL.Path == "/api/v1/auth/logout" ||
+					r.URL.Path == "/api/v1/settings/platform/bootstrap" {
 					next.ServeHTTP(w, r)
 					return
 				}

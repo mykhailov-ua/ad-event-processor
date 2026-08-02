@@ -389,7 +389,6 @@ ORDER BY hour`
 	return buckets, lag, nil
 }
 
-// chLagCache caches ClickHouse ingestion lag for campaign stats.
 type chLagCache struct {
 	mu      sync.Mutex
 	lag     time.Duration

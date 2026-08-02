@@ -5,8 +5,6 @@ import (
 	"math"
 )
 
-// BidWire is the zero-alloc exchange encode view. All []byte fields are caller-owned
-// (stack arrays or gnet frame); no heap required when dst has capacity.
 type BidWire struct {
 	RequestID  []byte
 	BidID      []byte
@@ -14,14 +12,13 @@ type BidWire struct {
 	PriceMicro int64
 	CurUSD     bool
 	AdM        []byte
-	NURL       []byte // win-notice template; adm omitted when set
-	CampaignID []byte // 36-byte UUID text
+	NURL       []byte
+	CampaignID []byte
 	CreativeID uint64
-	DealID     []byte // optional
-	SeatID     []byte // default "1" when empty
+	DealID     []byte
+	SeatID     []byte
 }
 
-// BidResponseWire is the multi-bid encode view (P0.1 multi-imp).
 type BidResponseWire struct {
 	RequestID []byte
 	BidID     []byte
@@ -30,7 +27,6 @@ type BidResponseWire struct {
 	Bids      []BidWire
 }
 
-// AppendBidResponse writes OpenRTB 2.6 bid JSON with a single bid.
 func AppendBidResponse(dst []byte, p BidWire) ([]byte, error) {
 	return AppendBidResponseWire(dst, BidResponseWire{
 		RequestID: p.RequestID,
@@ -41,7 +37,6 @@ func AppendBidResponse(dst []byte, p BidWire) ([]byte, error) {
 	})
 }
 
-// AppendBidResponseWire writes OpenRTB 2.6 bid JSON with one or more bids in seatbid[0].bid[].
 func AppendBidResponseWire(dst []byte, w BidResponseWire) ([]byte, error) {
 	if len(w.RequestID) == 0 || len(w.BidID) == 0 || len(w.Bids) == 0 {
 		return dst, ErrInvalidJSON
@@ -118,7 +113,6 @@ func appendBidObject(dst []byte, p BidWire, defaultBidID []byte) []byte {
 	return dst
 }
 
-// AppendNoBidResponse writes {"id":"...","nbr":N} without json.Marshal.
 func AppendNoBidResponse(dst []byte, requestID []byte, nbr int) []byte {
 	dst = append(dst, `{"id":`...)
 	if len(requestID) > 0 {
@@ -132,12 +126,10 @@ func AppendNoBidResponse(dst []byte, requestID []byte, nbr int) []byte {
 	return dst
 }
 
-// EncodeBid is cold-path JSON (admin/tests). Hot exchange uses AppendBidResponse.
 func EncodeBid(resp BidResponse) ([]byte, error) {
 	return json.Marshal(resp)
 }
 
-// EncodeNoBid is cold-path JSON (admin/tests). Hot exchange uses AppendNoBidResponse.
 func EncodeNoBid(requestID string, nbr int) ([]byte, error) {
 	return json.Marshal(BidResponse{ID: requestID, NBR: nbr})
 }

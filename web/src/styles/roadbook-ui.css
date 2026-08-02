@@ -1,0 +1,245 @@
+/* Roadbook / Diia UI — flat graphite tiles, inverted primary, segmented controls */
+
+[data-theme-palette="neutral"] .page-header__title {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+[data-theme-palette="neutral"] .page-header__subtitle,
+[data-theme-palette="neutral"] .text-muted {
+  font-size: 13px;
+}
+
+[data-theme-palette="neutral"] .metric-card,
+[data-theme-palette="neutral"] .table-wrapper,
+[data-theme-palette="neutral"] .settings-panel,
+[data-theme-palette="neutral"] .settings-summary__item,
+[data-theme-palette="neutral"] .settings-actions,
+[data-theme-palette="neutral"] .empty-state {
+  background: var(--tile-bg);
+  box-shadow: none;
+}
+
+[data-theme-palette="neutral"] .metric-card__label {
+  text-transform: none;
+  font-size: 13px;
+  letter-spacing: 0;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+[data-theme-palette="neutral"] .metric-card__value {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+[data-theme-palette="neutral"] .btn {
+  box-shadow: none;
+  border-radius: var(--radius-lg);
+  font-weight: 600;
+}
+
+[data-theme-palette="neutral"] .btn--sm {
+  min-height: var(--control-height-sm);
+  padding: 6px 12px;
+  font-size: var(--control-font-size-sm);
+}
+
+[data-theme-palette="neutral"] .btn:not(.btn--sm):not(.btn--xs) {
+  min-height: 46px;
+  padding: 14px 16px;
+  font-size: 15px;
+}
+
+[data-theme-palette="neutral"] .btn--primary {
+  background: var(--accent);
+  color: var(--accent-foreground);
+  border-color: var(--accent);
+  box-shadow: none;
+}
+
+[data-theme-palette="neutral"] .btn--primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+[data-theme-palette="neutral"] .btn--primary:active:not(:disabled) {
+  opacity: 0.85;
+}
+
+[data-theme-palette="neutral"] .btn--secondary {
+  background: var(--chip-bg);
+  color: var(--text-primary);
+  border: none;
+}
+
+[data-theme-palette="neutral"] .btn--secondary:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+[data-theme-palette="neutral"] .btn--secondary:active:not(:disabled) {
+  opacity: 0.85;
+}
+
+[data-theme-palette="neutral"] .tab-bar {
+  background: var(--chip-bg);
+  border: 1px solid var(--border-solid);
+  border-radius: var(--radius-lg);
+  padding: 5px;
+  gap: 0;
+}
+
+[data-theme-palette="neutral"] .tab-bar__item {
+  flex: 1;
+  text-align: center;
+  border-radius: calc(var(--radius-lg) - 5px);
+  color: var(--text-secondary);
+  margin-bottom: 0;
+}
+
+[data-theme-palette="neutral"] .tab-bar__item:hover {
+  color: var(--text-primary);
+  background: transparent;
+}
+
+[data-theme-palette="neutral"] .tab-bar__item--active {
+  background: var(--chip-selected);
+  color: var(--chip-selected-text);
+}
+
+[data-theme-palette="neutral"] .date-presets {
+  background: var(--chip-bg);
+  border: 1px solid var(--border-solid);
+  border-radius: var(--radius-lg);
+  padding: 5px;
+  gap: 0;
+}
+
+[data-theme-palette="neutral"] .date-presets__label {
+  padding: 0 8px;
+  margin-right: 0;
+  text-transform: none;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+[data-theme-palette="neutral"] .date-preset {
+  flex: 1;
+  text-align: center;
+  background: transparent;
+  box-shadow: none;
+  border-radius: calc(var(--radius-lg) - 5px);
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+[data-theme-palette="neutral"] .date-preset:hover {
+  color: var(--text-primary);
+  background: transparent;
+}
+
+[data-theme-palette="neutral"] .date-preset--active {
+  background: var(--chip-selected);
+  color: var(--chip-selected-text);
+}
+
+[data-theme-palette="neutral"] .form-input,
+[data-theme-palette="neutral"] .select__trigger {
+  background: var(--tile-bg);
+  border: 1px solid var(--border-solid);
+  box-shadow: none;
+  border-radius: var(--radius-lg);
+}
+
+[data-theme-palette="neutral"] .form-input:focus,
+[data-theme-palette="neutral"] .select__trigger:focus-visible,
+[data-theme-palette="neutral"] .select--open .select__trigger {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border-solid));
+  box-shadow: none;
+}
+
+[data-theme-palette="neutral"] .select__list {
+  background: var(--tile-bg);
+  border: 1px solid var(--border-solid);
+  box-shadow: var(--shadow-md);
+}
+
+[data-theme-palette="neutral"] .sidebar__link--active {
+  background: var(--chip-selected);
+  color: var(--chip-selected-text);
+  box-shadow: none;
+}
+
+[data-theme-palette="neutral"] .sidebar__link--active .sidebar__link-icon {
+  color: var(--chip-selected-text);
+  opacity: 1;
+}
+
+[data-theme-palette="neutral"] .sidebar__action-btn,
+[data-theme-palette="neutral"] .hamburger {
+  background: var(--chip-bg);
+  box-shadow: none;
+  border: 1px solid var(--border-solid);
+}
+
+[data-theme-palette="neutral"] .sidebar__action-btn:hover {
+  background: var(--surface-hover);
+}
+
+[data-theme-palette="neutral"] .chip {
+  border-radius: var(--radius-lg);
+  border-color: var(--border-solid);
+}
+
+[data-theme-palette="neutral"] .chip--selected {
+  border-color: var(--chip-selected);
+}
+
+[data-theme-palette="neutral"] .recent-chip {
+  background: var(--chip-bg);
+  border: 1px solid var(--border-solid);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+}
+
+[data-theme-palette="neutral"] .recent-chip:hover {
+  background: var(--surface-hover);
+}
+
+[data-theme-palette="neutral"] .check__box {
+  background: var(--tile-bg);
+  border: 1px solid var(--border-solid);
+  box-shadow: none;
+}
+
+[data-theme-palette="neutral"] .cmd-palette__input-wrap {
+  background: var(--tile-bg);
+  border: 1px solid var(--border-solid);
+  border-radius: var(--radius-lg);
+}
+
+[data-theme-palette="neutral"] .login-box {
+  background: var(--tile-bg);
+  box-shadow: var(--shadow-md);
+}
+
+[data-theme-palette="neutral"] .toast,
+[data-theme-palette="neutral"] .modal,
+[data-theme-palette="neutral"] .cmd-palette {
+  box-shadow: var(--shadow-md);
+}
+
+[data-theme-palette="neutral"] .alert-banner,
+[data-theme-palette="neutral"] .stub-banner,
+[data-theme-palette="neutral"] .license-banner {
+  background: var(--tile-bg);
+  border: 1px solid var(--border-solid);
+}
+
+[data-theme-palette="neutral"] .doctor-stack__row:hover {
+  background: var(--accent-soft);
+}

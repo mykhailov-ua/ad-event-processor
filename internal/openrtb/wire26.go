@@ -1,9 +1,5 @@
 package openrtb
 
-// BidRequest and nested pointer types are cold-path JSON wire shapes only
-// (admin validate-bid-request, integration tests). Exchange POST /openrtb/bid
-// uses ingestion.ParseOpenRTB26: flat structs, uint64 flags, micro-units, no heap.
-
 type BidRequest struct {
 	ID     string   `json:"id"`
 	Imp    []Imp    `json:"imp"`
@@ -165,7 +161,7 @@ type ExchangeConfig struct {
 	RegsPolicy   string
 	CoppaPolicy  string
 	Blocklist    bool
-	Delivery     string // adm (default) or nurl
-	NURLTemplate []byte // used when Delivery == nurl
-	SeatID       []byte // buyer seat in seatbid[].seat (default "1")
+	Delivery     string
+	NURLTemplate []byte
+	SeatID       []byte
 }

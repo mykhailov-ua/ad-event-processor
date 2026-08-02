@@ -274,29 +274,3 @@ func normalizeCountry(code string) string {
 	}
 	return code
 }
-
-func checkBlocklists(req openrtb.BidRequest, blocklistEnforce bool) bool {
-	if !blocklistEnforce {
-		return false
-	}
-	_ = req.BCat
-	_ = req.BAdv
-	_ = req.BApp
-	return false
-}
-
-func checkRegsPolicy(req openrtb.BidRequest, policy string) bool {
-	if policy == "off" || req.Regs == nil || req.Regs.Ext == nil {
-		return false
-	}
-	ext := req.Regs.Ext
-	if policy == "reject" {
-		if ext.GDPR != nil && *ext.GDPR == 1 {
-			return true
-		}
-		if strings.HasPrefix(strings.TrimSpace(ext.USPrivacy), "Y") {
-			return true
-		}
-	}
-	return false
-}

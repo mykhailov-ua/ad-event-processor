@@ -4,7 +4,6 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
-fail_on_hit="${FIND_OBVIOUS_COMMENTS_FAIL:-1}"
 fail=0
 
 echo "tier_a: check docs layout..."
@@ -78,7 +77,7 @@ scan_milestone() {
 
 while IFS= read -r -d '' file; do
 	case "$file" in
-		*/pb/*|*/sqlc/*|*_test.go|*/testdata/*|cmd/check-comments/*) continue ;;
+		*/pb/*|*/sqlc/*|*_test.go|*/testdata/*) continue ;;
 	esac
 	case "$(basename "$file")" in
 		*.pb.go|*_grpc.pb.go|*_vtproto.pb.go|*_bpfel.go|*_bpfeb.go) continue ;;
@@ -196,27 +195,6 @@ if rg -n "$pattern_brand" pkg --glob '*.go' --glob '!pkg/branding/*' >/dev/null 
 	echo "check_brand_boundary: hardcoded brand outside pkg/branding:"
 	rg -n "$pattern_brand" pkg --glob '*.go' --glob '!pkg/branding/*' || true
 	fail=1
-fi
-
-echo "tier_a: find obvious comments..."
-mapfile -t comment_hits < <(
-	rg -n -i \
-		'^\s*//\s*(this function|this method|this struct|this (file|package)|returns the|return the|gets the|sets the|handles the|creates the|initializes the|loops through|check if the|iterate over|step [0-9]|first,|then,|next,|finally,)' \
-		internal cmd pkg tests \
-		--glob '*.go' \
-		--glob '!**/pb/**' \
-		--glob '!**/sqlc/**' \
-		--glob '!**/*.pb.go' \
-		--glob '!**/*_test.go' 2>/dev/null || true
-)
-
-count="${#comment_hits[@]}"
-if (( count > 0 )); then
-	echo "find_obvious_comments: ${count} hit(s)"
-	printf '  %s\n' "${comment_hits[@]}"
-	if [[ "$fail_on_hit" == "1" ]]; then
-		fail=1
-	fi
 fi
 
 if [[ "$fail" -ne 0 ]]; then

@@ -12,38 +12,43 @@ import (
 )
 
 func (h *Handler) metaEnricher() adminapi.MetaEnricher {
-	return func(ctx context.Context) (string, *adminapi.MetaLicenseDTO, error) {
+	return func(ctx context.Context) (adminapi.MetaEnrichOut, error) {
+		out := adminapi.MetaEnrichOut{}
 		if h == nil || h.svc == nil {
-			return "", nil, nil
+			return out, nil
 		}
-		var deploymentID string
 		if fbMeta, err := h.svc.SupportFeedbackMeta(ctx); err != nil {
-			return "", nil, err
+			return out, err
 		} else {
-			deploymentID = fbMeta.DeploymentID
+			out.DeploymentID = fbMeta.DeploymentID
 		}
+		_, bootstrapped, err := h.svc.GetPlatformConfig(ctx)
+		if err != nil {
+			return out, err
+		}
+		out.BootstrapComplete = bootstrapped
 		pool := h.svc.GetPool()
 		if pool == nil {
-			return deploymentID, nil, nil
+			return out, nil
 		}
 		licRow, err := billingdb.New(pool).GetLicenseStatus(ctx)
 		if err == pgx.ErrNoRows {
-			return deploymentID, nil, nil
+			return out, nil
 		}
 		if err != nil {
-			return "", nil, err
+			return out, err
 		}
 		var validUntil time.Time
 		hasValidUntil := licRow.ValidUntil.Valid
 		if hasValidUntil {
 			validUntil = licRow.ValidUntil.Time
 		}
-		license := adminapi.BuildMetaLicense(
+		out.License = adminapi.BuildMetaLicense(
 			licRow.State,
 			licensing.BannerSeverity(licensing.LicenseState(licRow.State)),
 			validUntil,
 			hasValidUntil,
 		)
-		return deploymentID, license, nil
+		return out, nil
 	}
 }

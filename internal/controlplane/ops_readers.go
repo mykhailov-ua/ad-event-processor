@@ -39,11 +39,9 @@ const (
 	defaultOpsMetricScrapeTimeout  = 5 * time.Second
 )
 
-const insertOpsMetricSampleSQL = `
-INSERT INTO ops.metric_samples (name, labels_hash, ts, value)
-VALUES ($1, $2, $3, $4)
-ON CONFLICT (name, labels_hash, ts) DO UPDATE SET value = EXCLUDED.value
-`
+const insertOpsMetricSampleSQL = `INSERT INTO ops.metric_samples (name, labels_hash, ts, value)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (name, labels_hash, ts) DO UPDATE SET value = EXCLUDED.value`
 
 type opsReader struct {
 	svc *Service
@@ -305,8 +303,6 @@ func (a *OpsAlerter) sendAsync(key, title, body string, broadcast bool) {
 	}()
 }
 
-// Drain waits for all in-flight async alert goroutines to finish.
-// Call this during graceful shutdown before closing notifier connections.
 func (a *OpsAlerter) Drain() {
 	if a != nil {
 		a.wg.Wait()
@@ -598,9 +594,7 @@ func (w *OpsMetricScraper) scrapeAndStore(ctx context.Context, now time.Time) er
 		return nil
 	}
 
-	const insertSQL = `INSERT INTO ops.metric_samples (name, labels_hash, ts, value)
-		VALUES ($1, $2, $3, $4)
-		ON CONFLICT (name, labels_hash, ts) DO UPDATE SET value = EXCLUDED.value`
+	const insertSQL = insertOpsMetricSampleSQL
 	ts := pgtype.Timestamptz{Time: now, Valid: true}
 	batch := &pgx.Batch{}
 	for _, sample := range samples {

@@ -10,6 +10,10 @@ required=(
 	scripts/ci/deps.sh
 	scripts/ci/management_domain_coverage.sh
 	scripts/ci/validate_configs.sh
+	scripts/ci/pr_fast.sh
+	scripts/ci/admin_web.sh
+	scripts/ci/admin_release_gate.sh
+	scripts/ci/confirm_registry_audit.sh
 	scripts/dev/preflight.sh
 	scripts/dev/stack.sh
 	scripts/dev/smoke_ingest_only.sh
@@ -20,6 +24,10 @@ required=(
 	scripts/ops/verify_redis_topology.sh
 	scripts/test/run_resilience.sh
 	scripts/test/test_resilience.sh
+	scripts/fault/run.sh
+	scripts/fault/test_resilience.sh
+	scripts/fault/sentinel_failover_env.sh
+	scripts/fault/sentinel.sh
 )
 
 fail=0

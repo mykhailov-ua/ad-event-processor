@@ -2,7 +2,7 @@ name: Performance Gate
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
       - 'internal/ingestion/**'
       - 'internal/rtb/**'
@@ -13,6 +13,23 @@ on:
       - 'deploy/nginx/lua/**'
       - 'api/**'
       - 'scripts/test/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'internal/ingestion/**'
+      - 'internal/rtb/**'
+      - 'internal/config/**'
+      - 'internal/database/redis*.go'
+      - 'pkg/logger/**'
+      - 'pkg/broker/**'
+      - 'deploy/nginx/lua/**'
+      - 'api/**'
+      - 'scripts/test/**'
+  workflow_dispatch:
+
+concurrency:
+  group: perf-gate-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   performance-gate:
@@ -49,7 +66,7 @@ jobs:
         run: bash scripts/perf/stabilize_cpu.sh
 
       - name: Run performance gate
-        run: bash scripts/test/gate_run.sh
+        run: bash scripts/test/gate_run.sh 2>&1 | tee gate_run.log
 
       - name: Upload Benchmark Artifacts
         if: always() && env.PERF_GATE_STRICT == 'true'
@@ -60,10 +77,26 @@ jobs:
             pr_bench.txt
             baseline_bench.txt
             gate_report.txt
+            gate_run.log
+          retention-days: 14
 
       - name: Upload smoke bench artifact
         if: always() && env.PERF_GATE_STRICT != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: perf-gate-smoke
-          path: pr_bench.txt
+          path: |
+            pr_bench.txt
+            gate_run.log
+          retention-days: 7
+
+      - name: Upload gate report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-gate-failure
+          path: |
+            gate_run.log
+            gate_report.txt
+          retention-days: 7
+          if-no-files-found: ignore

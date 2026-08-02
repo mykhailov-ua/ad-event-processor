@@ -29,7 +29,6 @@ const (
 	impSlotFlagSecure
 )
 
-// OpenRTB26ImpSlot holds per-imp auction fields (multi-imp P0.1).
 type OpenRTB26ImpSlot struct {
 	ImpID             [openrtb26ImpIDMax]byte
 	ImpIDLen          uint8
@@ -48,8 +47,6 @@ type OpenRTB26ImpSlot struct {
 	WSeatCount        uint8
 }
 
-// OpenRTB26Hot: auction / validate / wire response (~224 B stack).
-// OpenRTB26Cold: CH logging + schain rebuild (~1.3 KiB, lives in connContext).
 type OpenRTB26Hot struct {
 	Flags             uint64
 	BidFloorMicro     int64
@@ -130,7 +127,6 @@ type OpenRTB26Cold struct {
 	Schain          SchainNodes
 }
 
-// OpenRTB26Parsed composes hot+cold for tests and admin; production exchange passes &Hot / &Cold separately.
 type OpenRTB26Parsed struct {
 	OpenRTB26Hot
 	OpenRTB26Cold

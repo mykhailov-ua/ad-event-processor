@@ -18,6 +18,7 @@ type RouteRegistry struct {
 	RtbFloorsHTTP   *RtbFloorsHTTPHandlers
 	RtbHTTP         *RtbHTTPHandlers
 	CampaignsHTTP   *CampaignsHTTPHandlers
+	CustomersHTTP   *CustomersHTTPHandlers
 	SupportHTTP     *SupportHTTPHandlers
 	MetaHTTP        *MetaHTTPHandlers
 	PlatformHTTP    *PlatformHTTPHandlers
@@ -51,6 +52,9 @@ var routeCatalog = []Route{
 	{Method: "POST", Path: "/api/v1/billing/invoices/preview"},
 	{Method: "POST", Path: "/api/v1/billing/invoices/{id}/void"},
 	{Method: "GET", Path: "/api/v1/billing/summary"},
+	{Method: "GET", Path: "/api/v1/customers"},
+	{Method: "GET", Path: "/api/v1/customers/{id}"},
+	{Method: "GET", Path: "/api/v1/campaigns"},
 	{Method: "GET", Path: "/api/v1/campaigns/{id}"},
 	{Method: "GET", Path: "/api/v1/campaigns/{id}/margin"},
 	{Method: "GET", Path: "/api/v1/campaigns/{id}/stats"},
@@ -192,6 +196,9 @@ func RegisterRoutes(mux *http.ServeMux, routes RouteRegistry) {
 	}
 	if routes.CampaignsHTTP != nil {
 		routes.CampaignsHTTP.Register(mux)
+	}
+	if routes.CustomersHTTP != nil {
+		routes.CustomersHTTP.Register(mux)
 	}
 	if routes.SupportHTTP != nil {
 		routes.SupportHTTP.Register(mux)

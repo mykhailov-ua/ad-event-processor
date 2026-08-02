@@ -55,7 +55,7 @@ func (p RtbConfigProbe) Run(ctx context.Context) Result {
 	return Result{
 		Name:    "rtb_config",
 		Status:  StatusWarn,
-		Detail:  fmt.Sprintf("%s", issues[0]),
+		Detail:  issues[0],
 		Latency: latency(),
 	}
 }

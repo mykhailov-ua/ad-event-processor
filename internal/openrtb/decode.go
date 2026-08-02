@@ -36,12 +36,10 @@ func isOpenRTB30Shape(body []byte) bool {
 		bytes.Contains(body, []byte(`"request"`))
 }
 
-// IsOpenRTB30Shape reports OpenRTB 3.0 envelope JSON (rejected on exchange).
 func IsOpenRTB30Shape(body []byte) bool {
 	return isOpenRTB30Shape(body)
 }
 
-// ExchangeBodyPrecheck rejects empty body, invalid JSON, and 3.0 without json.Unmarshal.
 func ExchangeBodyPrecheck(body []byte) ValidationResult {
 	body = trimBody(body)
 	if len(body) == 0 {

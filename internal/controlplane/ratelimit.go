@@ -70,7 +70,6 @@ func (l *ipRateLimiter) allow(key string) bool {
 	return e.lim.Allow()
 }
 
-// Must be called with the limiter mutex held.
 func evictStaleLocked(entries map[string]*rateLimiterEntry, now time.Time) {
 	for k, e := range entries {
 		if now.Sub(e.lastSeen) > rateLimiterEvictAfter {

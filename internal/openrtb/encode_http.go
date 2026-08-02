@@ -1,11 +1,10 @@
 package openrtb
 
 const (
-	// BidHTTPHdrSize is the fixed HTTP/1.1 200 header before JSON body (Content-Length patched in place).
 	BidHTTPHdrSize          = 129
 	bidHTTPContentLenOff    = 89
 	bidHTTPContentLenDigits = 12
-	// bidHTTPJSONReserve is the max header size so JSON can be encoded before gzip/header rewrite.
+
 	bidHTTPJSONReserve = 192
 )
 
@@ -15,10 +14,8 @@ var (
 	bidHTTPGzipPrefix = []byte("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nx-openrtb-version: 2.6\r\nContent-Encoding: gzip\r\nContent-Length: ")
 )
 
-// BidJSONHdrReserve is deprecated; use BidHTTPHdrSize for single-pass encode layout.
 const BidJSONHdrReserve = BidHTTPHdrSize
 
-// WriteBidHTTPResponse writes HTTP headers + OpenRTB bid JSON into buf.
 func WriteBidHTTPResponse(buf []byte, p BidWire, opts HTTPWriteOpts) (int, error) {
 	return WriteBidsHTTPResponse(buf, BidResponseWire{
 		RequestID: p.RequestID,
@@ -29,7 +26,6 @@ func WriteBidHTTPResponse(buf []byte, p BidWire, opts HTTPWriteOpts) (int, error
 	}, opts)
 }
 
-// WriteBidsHTTPResponse writes HTTP headers + multi-bid OpenRTB JSON into buf.
 func WriteBidsHTTPResponse(buf []byte, w BidResponseWire, opts HTTPWriteOpts) (int, error) {
 	if !opts.Gzip {
 		if len(buf) < BidHTTPHdrSize+32 {
@@ -55,7 +51,6 @@ func WriteBidsHTTPResponse(buf []byte, w BidResponseWire, opts HTTPWriteOpts) (i
 	return writeHTTP200JSONGzip(buf, jsonEnd)
 }
 
-// WriteNoBidHTTPResponse writes HTTP 200 + {"id":...,"nbr":N}.
 func WriteNoBidHTTPResponse(buf []byte, requestID []byte, nbr int, opts HTTPWriteOpts) (int, error) {
 	if !opts.Gzip {
 		if len(buf) < BidHTTPHdrSize+16 {
@@ -103,7 +98,6 @@ func writeHTTP200JSONGzip(buf, jsonBody []byte) (int, error) {
 	return bodyOff + compLen, nil
 }
 
-// WriteJSONHTTPResponse writes HTTP 200 + raw JSON body with optional gzip.
 func WriteJSONHTTPResponse(buf []byte, body []byte, opts HTTPWriteOpts) (int, error) {
 	return writeHTTP200JSON(buf, body, opts)
 }

@@ -59,6 +59,83 @@ bash scripts/dev/preflight.sh     # Verifies service health
 | `analytics-ml` | Analytics and machine learning stack | Adds `fraud-scorer` and `ivt-detector` to the active services. |
 | `multi-region` | Multi-region local testbed | Adds `region-proxy` and `broker` services. |
 
+### Admin web UI (`web/`)
+
+Build the embedded admin UI before `go build` on `cmd/control` when you need the full SPA in the binary. Stub HTML in `web/dist/` allows Go compile without npm; production bundles require:
+
+```bash
+cd web && npm ci && npm run build
+go build ./cmd/control
+```
+
+Mock Playwright specs (route interception) run against the static preview server (`node scripts/preview.mjs`, port 4173):
+
+```bash
+cd web && npm ci && npm run build && npm run test:e2e
+```
+
+Local dev uses esbuild watch + a small Node static server with API proxy (`npm run dev`, port 5173).
+
+Stack e2e runs Playwright against a live control plane on port 8188 (real API, no mocks):
+
+```bash
+# One-shot dev admin (writes .env defaults, starts ingest-only if needed, bootstraps):
+bash scripts/dev/seed_admin.sh
+
+# Or manually — .env (or export):
+#   INSTALL_BOOTSTRAP_TOKEN   — required when bootstrap_complete is false
+#   ADMIN_BOOTSTRAP_EMAIL     — admin email for bootstrap / login
+#   ADMIN_BOOTSTRAP_PASSWORD  — admin password
+#   CONTROL_URL               — optional, default http://127.0.0.1:8188
+bash scripts/dev/stack.sh ingest-only
+bash scripts/test/admin_stack_e2e.sh
+```
+
+The runner (`scripts/test/admin_stack_e2e.sh`) waits for control health, bootstraps the platform when needed, builds `web/dist`, then runs `e2e/stack.spec.js` with `ADMIN_STACK_E2E=1`. Specs cover login, overview, settings GET, customers list, and campaign detail against the live API.
+
+Nightly CI: workflow `.github/workflows/admin-stack-e2e.yaml` (`workflow_dispatch` or Monday 03:00 UTC).
+
+First-time install: open `/login` or `/bootstrap` on the control URL. If `bootstrap_complete` is false, the login page redirects to bootstrap. Set `ADMIN_BOOTSTRAP_EMAIL` and `ADMIN_BOOTSTRAP_PASSWORD` in `.env` for the bootstrap admin user.
+
+#### Operator troubleshooting (admin UI)
+
+| Symptom | Likely cause | What to do |
+|---------|----------------|------------|
+| `401` on `/api/v1/*` after idle | Session expired | Re-login at `/login`; check cookie domain / HTTPS |
+| `403` on write | Missing permission | Confirm `permissions[]` from `/api/v1/auth/me`; server gate still applies |
+| `403` + CSRF message | Missing or stale CSRF token | Reload page; ensure `/api/v1/auth/me` succeeded before mutations |
+| Yellow **restart required** banner | Config change needs process restart | Apply settings, then restart `control` (or full stack) as documented for that field |
+| Ledger void / billing action blocked | Business rule or idempotency | Read API error `code`; use support bundle below before retrying |
+| Blank UI / stale assets after upgrade | Old JS bundle cached | Hard reload; version banner shows server bump — click Reload |
+| CSP console errors in browser | Inline script blocked | Production uses hashed bundles only; do not inject third-party scripts into `index.html` |
+
+**Support bundle**: use the control-plane support-bundle API or export from ops UI when available; otherwise collect control logs, `GET /api/v1/ops/health`, and `GET /api/v1/platform/settings` (secrets are masked in the view).
+
+**Build order for production binary** (UI must be built before `go build` so `embed` picks up fresh `web/dist/`):
+
+```bash
+cd web && npm ci && npm run build && cd ..
+go build -o bin/control ./cmd/control
+```
+
+**CSP smoke** (after deploy): open admin in browser, confirm no `unsafe-inline` violations in devtools console on `/campaigns`.
+
+**Perf checklist**: `bash scripts/ci/admin_lighthouse_checklist.sh` after `npm run build`; target INP p95 &lt; 200 ms on staging. Checklist artifact: `artifacts/lighthouse-inp-checklist.txt`.
+
+#### Admin UI release gate (pre-tag `admin-ui-ga`)
+
+Before tagging a production admin UI release:
+
+```bash
+cd web && npm ci && npm run build && cd ..
+go test ./internal/controlplane/ -run TestAdminStaticRoutes -count=1
+bash scripts/ci/admin_web.sh          # mock Playwright + Vitest
+bash scripts/ci/admin_release_gate.sh # confirm audit + security literals + govulncheck
+bash scripts/test/admin_stack_e2e.sh  # optional: live stack on :8188
+```
+
+Attach Lighthouse INP results to the release PR (see `artifacts/lighthouse-inp-checklist.txt`).
+
 ---
 
 ## 4. Coding Standards (Code Style)
@@ -120,28 +197,54 @@ These constraints apply to `internal/ingestion`, hot paths in `pkg/broker`, and 
 
 ## 6. CI Merge Gates
 
-All code changes must pass the following verification checks before being merged into `main`:
+GitHub Actions (`.github/workflows/ci.yaml`) runs on **pull requests** and **pushes to `main`**. Use `bash scripts/ci/pr_fast.sh` locally before opening a PR — it matches the **Fast gate** job.
+
+### Required checks (branch protection)
+
+Mark only these as required in GitHub **Settings → Branches → main**:
+
+| Check | Job | Blocks merge |
+| :--- | :--- | :--- |
+| **Fast gate** | `fast` | Yes |
+| govulncheck | `govulncheck` | Optional (runs when Go sources change) |
+| OpenRTB fuzz smoke | `openrtb-fuzz` | Optional (path: `internal/openrtb/**`) |
+| Fraud model smoke | `fraudtrain` | Optional (path: `model/**`) |
+| Full test suite | `full-test` | No on PR — **main push only** |
+| Container resilience | `resilience` | No on PR — **main push** or `workflow_dispatch` |
+| Terraform validate | `terraform-validate` | Optional (path: `deploy/terraform/**`) |
+
+Perf gate (`.github/workflows/perf-gate.yaml`): smoke zero-alloc on PR when hot-path paths change; strict benchstat needs self-hosted runner (`PERF_RUNNER_LABEL` repo variable).
+
+Sentinel failover (`.github/workflows/sentinel-resilience.yaml`): **main push** and manual `workflow_dispatch` only.
+
+### Local commands
 
 ```bash
-go test ./... -short             # Runs fast unit tests
-make lint                        # Runs golangci-lint (SA9003, SA4017, errcheck)
-make test-alloc-gate             # Verifies zero allocations on the hot path
-bash scripts/ci/comments.sh      # Verifies comment standards and checks for AI slop
-bash scripts/fault/run.sh        # Executes fault injection tests
-bash scripts/test/gate_run.sh    # Compares benchmarks against the baseline
+bash scripts/ci/pr_fast.sh          # PR merge gate (lint, alloc-gate, test -short)
+make check-local                    # pr_fast + docker image build
+bash scripts/ci/full_test.sh        # integration + fault (main / pre-release)
+bash scripts/fault/run.sh           # fault injection + fault_proof count
+bash scripts/test/gate_run.sh       # perf gate (set PERF_GATE_STRICT=false for smoke)
+bash scripts/fault/sentinel.sh      # Redis Sentinel failover drill
 ```
 
-### Comment Verification (`comments.sh`)
-BidShard enforces a self-documenting code standard. The comment linter will fail if:
-- Comments contain non-ASCII characters or emojis.
-- Comments use AI-slop vocabulary (e.g., *seamlessly, leverage, delve, robust, comprehensive*).
-- Comments contain planning tokens, task IDs, or roadmap references (e.g., *GAP-*, *MILESTONE*, *Phase*, *P##*).
+Concurrency: overlapping runs on the same branch cancel in-progress jobs (`cancel-in-progress: true`).
+
+Failed CI uploads logs: `full-test-log`, `resilience-log`, `perf-gate-failure`, `sentinel-log` artifacts.
+
+### Dependencies
+
+- **Dependabot** (`.github/dependabot.yml`): one grouped PR/month for Go **patch+minor** only; major bumps are manual.
+- **govulncheck** CI job: run on Go changes; fix or ignore with documented reason.
+- **GitHub Actions** (`actions/*` pins): update manually when editing workflows — not via Dependabot.
+
+To silence existing Dependabot PRs: close them; new ones appear at most monthly. To disable version PRs entirely, delete `.github/dependabot.yml` and rely on govulncheck + manual `go get -u`.
 
 ---
 
 ## 7. Fault Injection and Resilience
 
-Fault injection scenarios are executed via `scripts/fault/run.sh`. The system verifies that financial invariants are preserved under the following conditions:
+Fault injection scenarios are executed via `scripts/fault/run.sh` (wrapper over `scripts/test/run_resilience.sh`). The system verifies that financial invariants are preserved under the following conditions:
 
 - **Instance Kill**: Sends `SIGKILL` to Redis, PostgreSQL, or ClickHouse containers under load.
 - **Network Latency**: Simulates Redis network degradation to verify that the circuit breaker opens and transitions to Fail-Closed.

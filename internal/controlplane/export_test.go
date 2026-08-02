@@ -1,4 +1,3 @@
-// This file is compiled ONLY during `go test`; it never ships to production.
 package controlplane
 
 import (

@@ -1,0 +1,29 @@
+name: Admin stack e2e
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 1'
+
+concurrency:
+  group: admin-stack-e2e
+  cancel-in-progress: true
+
+jobs:
+  stack-e2e:
+    name: Admin stack e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.12'
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+      - name: Run admin stack e2e
+        run: bash scripts/test/admin_stack_e2e.sh
