@@ -17,16 +17,19 @@ import (
 )
 
 type PlacementReportRowDTO struct {
-	PlacementID  string  `json:"placement_id"`
-	CampaignID   string  `json:"campaign_id"`
-	Impressions  int64   `json:"impressions"`
-	Clicks       int64   `json:"clicks"`
-	Conversions  int64   `json:"conversions"`
-	SpendMicro   int64   `json:"spend_micro"`
-	RevenueMicro int64   `json:"revenue_micro"`
-	ProfitMicro  int64   `json:"profit_micro"`
-	ROIPct       float64 `json:"roi_pct"`
-	CPAMicro     int64   `json:"cpa_micro"`
+	PlacementID  string               `json:"placement_id"`
+	CampaignID   string               `json:"campaign_id"`
+	Impressions  int64                `json:"impressions"`
+	Clicks       int64                `json:"clicks"`
+	Conversions  int64                `json:"conversions"`
+	SpendMicro   int64                `json:"spend_micro"`
+	RevenueMicro int64                `json:"revenue_micro"`
+	ProfitMicro  int64                `json:"profit_micro"`
+	ROIPct       float64              `json:"roi_pct"`
+	CPAMicro     int64                `json:"cpa_micro"`
+	CTR          float64              `json:"ctr,omitempty"`
+	IVTRate      float64              `json:"ivt_rate,omitempty"`
+	Compare      *ReportCompareDeltas `json:"compare,omitempty"`
 }
 
 type PlacementReportResponse struct {
@@ -36,15 +39,19 @@ type PlacementReportResponse struct {
 }
 
 type KeywordReportRowDTO struct {
-	Keyword      string  `json:"keyword"`
-	CampaignID   string  `json:"campaign_id"`
-	Impressions  int64   `json:"impressions"`
-	Clicks       int64   `json:"clicks"`
-	Conversions  int64   `json:"conversions"`
-	SpendMicro   int64   `json:"spend_micro"`
-	RevenueMicro int64   `json:"revenue_micro"`
-	ProfitMicro  int64   `json:"profit_micro"`
-	ROIPct       float64 `json:"roi_pct"`
+	Keyword      string               `json:"keyword"`
+	CampaignID   string               `json:"campaign_id"`
+	Impressions  int64                `json:"impressions"`
+	Clicks       int64                `json:"clicks"`
+	Conversions  int64                `json:"conversions"`
+	SpendMicro   int64                `json:"spend_micro"`
+	RevenueMicro int64                `json:"revenue_micro"`
+	ProfitMicro  int64                `json:"profit_micro"`
+	ROIPct       float64              `json:"roi_pct"`
+	CPAMicro     int64                `json:"cpa_micro,omitempty"`
+	CTR          float64              `json:"ctr,omitempty"`
+	IVTRate      float64              `json:"ivt_rate,omitempty"`
+	Compare      *ReportCompareDeltas `json:"compare,omitempty"`
 }
 
 type KeywordReportResponse struct {
@@ -168,16 +175,8 @@ type keywordReportCHRow struct {
 	RevenueMicro int64
 }
 
-func toPlacementReportRowDTO(row placementReportCHRow) PlacementReportRowDTO {
+func toPlacementReportRowDTO(row placementReportCHRow, ivtRate float64) PlacementReportRowDTO {
 	profit := row.RevenueMicro - row.SpendMicro
-	var roi float64
-	if row.SpendMicro > 0 {
-		roi = float64(profit) / float64(row.SpendMicro) * 100
-	}
-	var cpa int64
-	if row.Conversions > 0 {
-		cpa = row.SpendMicro / row.Conversions
-	}
 	return PlacementReportRowDTO{
 		PlacementID:  row.PlacementID,
 		CampaignID:   row.CampaignID,
@@ -187,17 +186,15 @@ func toPlacementReportRowDTO(row placementReportCHRow) PlacementReportRowDTO {
 		SpendMicro:   row.SpendMicro,
 		RevenueMicro: row.RevenueMicro,
 		ProfitMicro:  profit,
-		ROIPct:       roi,
-		CPAMicro:     cpa,
+		ROIPct:       calcROIPct(profit, row.SpendMicro),
+		CPAMicro:     calcCPAMicro(row.SpendMicro, row.Conversions),
+		CTR:          calcCTR(row.Clicks, row.Impressions),
+		IVTRate:      ivtRate,
 	}
 }
 
-func toKeywordReportRowDTO(row keywordReportCHRow) KeywordReportRowDTO {
+func toKeywordReportRowDTO(row keywordReportCHRow, ivtRate float64) KeywordReportRowDTO {
 	profit := row.RevenueMicro - row.SpendMicro
-	var roi float64
-	if row.SpendMicro > 0 {
-		roi = float64(profit) / float64(row.SpendMicro) * 100
-	}
 	return KeywordReportRowDTO{
 		Keyword:      row.Keyword,
 		CampaignID:   row.CampaignID,
@@ -207,19 +204,24 @@ func toKeywordReportRowDTO(row keywordReportCHRow) KeywordReportRowDTO {
 		SpendMicro:   row.SpendMicro,
 		RevenueMicro: row.RevenueMicro,
 		ProfitMicro:  profit,
-		ROIPct:       roi,
+		ROIPct:       calcROIPct(profit, row.SpendMicro),
+		CPAMicro:     calcCPAMicro(row.SpendMicro, row.Conversions),
+		CTR:          calcCTR(row.Clicks, row.Impressions),
+		IVTRate:      ivtRate,
 	}
 }
 
 type ReportsHTTPHandlers struct {
 	CampaignStats             CampaignStatsReader
 	CampaignForecaster        CampaignForecaster
+	ReportJobs                *ReportJobRunner
 	Pool                      *pgxpool.Pool
 	CHQuery                   *database.CHQuery
 	ApplyRateLimit            func(http.HandlerFunc) http.HandlerFunc
 	RequirePermission         func(string, http.HandlerFunc) http.HandlerFunc
 	RequireAnyPermission      func([]string, http.HandlerFunc) http.HandlerFunc
 	AuthorizeCampaignAccess   func(*http.Request, uuid.UUID) error
+	AuthorizeCustomerAccess   func(*http.Request, string) error
 	ResolveForecastCustomerID func(*http.Request, *uuid.UUID) (*uuid.UUID, error)
 	WriteServiceError         func(http.ResponseWriter, error)
 }
@@ -239,9 +241,17 @@ func (reports *ReportsHTTPHandlers) Register(mux *http.ServeMux) {
 	reports.registerCampaignForecast(mux)
 
 	limit := reports.ApplyRateLimit
-	perm := reports.RequirePermission
-	mux.HandleFunc("GET /api/v1/reports/placements", limit(perm("campaigns:read", reports.getPlacementsReport)))
-	mux.HandleFunc("GET /api/v1/reports/keywords", limit(perm("campaigns:read", reports.getKeywordsReport)))
+	permAny := reports.RequireAnyPermission
+	if permAny == nil {
+		permAny = func(_ []string, next http.HandlerFunc) http.HandlerFunc { return next }
+	}
+	readCampaigns := []string{"campaigns:read", "campaigns:read:masked"}
+	mux.HandleFunc("GET /api/v1/reports/placements", limit(permAny(readCampaigns, reports.getPlacementsReport)))
+	mux.HandleFunc("GET /api/v1/reports/keywords", limit(permAny(readCampaigns, reports.getKeywordsReport)))
+	reports.registerIVTBySource(mux)
+	reports.registerTrafficSources(mux)
+	reports.registerGeoROI(mux)
+	reports.registerReportJobs(mux)
 }
 
 func (reports *ReportsHTTPHandlers) writeServiceError(w http.ResponseWriter, err error) {
@@ -280,25 +290,8 @@ func (reports *ReportsHTTPHandlers) reportFreshness(ctx context.Context) DataFre
 }
 
 func (reports *ReportsHTTPHandlers) getPlacementsReport(w http.ResponseWriter, r *http.Request) {
-	var customerID uuid.UUID
-	if custIDStr := r.URL.Query().Get("customer_id"); custIDStr != "" {
-		var err error
-		customerID, err = uuid.Parse(custIDStr)
-		if err != nil {
-			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer_id")
-			return
-		}
-	} else {
-		if reports.ResolveForecastCustomerID != nil {
-			resolved, err := reports.ResolveForecastCustomerID(r, nil)
-			if err == nil && resolved != nil {
-				customerID = *resolved
-			}
-		}
-	}
-
-	if customerID == uuid.Nil {
-		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "customer_id required")
+	customerID, ok := reports.resolveReportCustomerID(w, r)
+	if !ok {
 		return
 	}
 
@@ -334,6 +327,9 @@ func (reports *ReportsHTTPHandlers) getPlacementsReport(w http.ResponseWriter, r
 			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign_id")
 			return
 		}
+		if !reports.authorizeReportCampaign(w, r, campaignID) {
+			return
+		}
 		campaignIDs = []uuid.UUID{campaignID}
 	} else if reports.Pool != nil {
 		campaignIDs, err = listCustomerCampaignIDs(r.Context(), reports.Pool, customerID)
@@ -360,9 +356,26 @@ func (reports *ReportsHTTPHandlers) getPlacementsReport(w http.ResponseWriter, r
 		return
 	}
 
+	ivtRates, err := queryPlacementIVTRates(chCtx, reports.CHQuery, campaignIDs, from, to)
+	if err != nil {
+		reports.writeServiceError(w, err)
+		return
+	}
+
 	rows := make([]PlacementReportRowDTO, 0, len(chRows))
 	for _, row := range chRows {
-		rows = append(rows, toPlacementReportRowDTO(row))
+		ivt := ivtRates[placementRowKey(row.PlacementID, row.CampaignID)]
+		rows = append(rows, toPlacementReportRowDTO(row, ivt))
+	}
+
+	if parseComparePrevious(r) {
+		prevFrom, prevTo := previousReportRange(from, to)
+		prevRows, _, perr := queryPlacementReportRows(chCtx, reports.CHQuery, campaignIDs, prevFrom, prevTo, int(limit), offset)
+		if perr != nil {
+			reports.writeServiceError(w, perr)
+			return
+		}
+		attachPlacementCompareDeltas(rows, prevRows)
 	}
 
 	var nextCursor string
@@ -379,25 +392,8 @@ func (reports *ReportsHTTPHandlers) getPlacementsReport(w http.ResponseWriter, r
 }
 
 func (reports *ReportsHTTPHandlers) getKeywordsReport(w http.ResponseWriter, r *http.Request) {
-	var customerID uuid.UUID
-	if custIDStr := r.URL.Query().Get("customer_id"); custIDStr != "" {
-		var err error
-		customerID, err = uuid.Parse(custIDStr)
-		if err != nil {
-			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer_id")
-			return
-		}
-	} else {
-		if reports.ResolveForecastCustomerID != nil {
-			resolved, err := reports.ResolveForecastCustomerID(r, nil)
-			if err == nil && resolved != nil {
-				customerID = *resolved
-			}
-		}
-	}
-
-	if customerID == uuid.Nil {
-		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "customer_id required")
+	customerID, ok := reports.resolveReportCustomerID(w, r)
+	if !ok {
 		return
 	}
 
@@ -433,6 +429,9 @@ func (reports *ReportsHTTPHandlers) getKeywordsReport(w http.ResponseWriter, r *
 			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign_id")
 			return
 		}
+		if !reports.authorizeReportCampaign(w, r, campaignID) {
+			return
+		}
 		campaignIDs = []uuid.UUID{campaignID}
 	} else if reports.Pool != nil {
 		campaignIDs, err = listCustomerCampaignIDs(r.Context(), reports.Pool, customerID)
@@ -459,9 +458,26 @@ func (reports *ReportsHTTPHandlers) getKeywordsReport(w http.ResponseWriter, r *
 		return
 	}
 
+	ivtRates, err := queryKeywordIVTRates(chCtx, reports.CHQuery, campaignIDs, from, to)
+	if err != nil {
+		reports.writeServiceError(w, err)
+		return
+	}
+
 	rows := make([]KeywordReportRowDTO, 0, len(chRows))
 	for _, row := range chRows {
-		rows = append(rows, toKeywordReportRowDTO(row))
+		ivt := ivtRates[keywordRowKey(row.Keyword, row.CampaignID)]
+		rows = append(rows, toKeywordReportRowDTO(row, ivt))
+	}
+
+	if parseComparePrevious(r) {
+		prevFrom, prevTo := previousReportRange(from, to)
+		prevRows, _, perr := queryKeywordReportRows(chCtx, reports.CHQuery, campaignIDs, prevFrom, prevTo, int(limit), offset)
+		if perr != nil {
+			reports.writeServiceError(w, perr)
+			return
+		}
+		attachKeywordCompareDeltas(rows, prevRows)
 	}
 
 	var nextCursor string

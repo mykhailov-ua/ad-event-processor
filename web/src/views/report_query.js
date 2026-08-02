@@ -5,10 +5,11 @@ import { renderErrorBlock } from '../ui/error_block.js';
 import { renderStubBanner } from '../ui/stub_banner.js';
 import { surfaceServiceErrorToast } from '../helpers/service_error_toast.js';
 import * as auth from '../helpers/auth.js';
-import { isTenantUser } from '../helpers/permissions.js';
+import { hasBoundCustomer, boundCustomerId } from '../helpers/buyer_session.js';
 import { api } from '../helpers/api_client.js';
 import { formatAmountMicro } from '../helpers/money.js';
-import { mergeReportRows } from '../helpers/report_rows.js';
+import { mergeReportRows, visibleReportRows, MAX_REPORT_ROWS } from '../helpers/report_rows.js';
+import { canShowReportFinancials } from '../helpers/report_mask.js';
 import { validateReportRange, validateCustomerIdField } from '../helpers/validators.js';
 import { touchCustomerContext } from '../helpers/customer_context.js';
 import { REPORT_DATE_PRESETS } from '../helpers/date_presets.js';
@@ -20,26 +21,31 @@ import {
   isPageBlockingError,
   mapServiceError,
 } from '../helpers/service_error.js';
-
-const ROW_WORKER_THRESHOLD = 500;
+import { t } from '../helpers/i18n.js';
 
 /**
+ * Mount a report query view with date presets and cursor pagination.
+ *
  * @param {HTMLElement} container
  * @param {import('../lib/router.js').RouteContext} ctx
  * @param {{ endpoint: 'placements'|'keywords', title: string, rowKey: (row: object) => string }} opts
+ * @returns {import('../lib/router.js').ViewHandle}
  */
 export function mountReportQuery(container, ctx, opts) {
   let destroyed = false;
   const user = auth.getUser();
-  const tenant = isTenantUser(user?.role);
+  const sessionScoped = hasBoundCustomer(user?.role);
+  const permissions = user?.permissions ?? [];
+  const showFinancials = canShowReportFinancials(permissions);
   const savedRange = storage.getReportRange();
 
-  let customerInput = tenant ? (user?.customer_id ?? '') : '';
+  let customerInput = sessionScoped ? boundCustomerId(user) : '';
   let from = savedRange?.from ?? defaultFrom();
   let rangeTo = savedRange?.to ?? defaultTo();
   let rangeError = null;
   let customerError = null;
   let activePreset = '';
+  let comparePeriod = false;
   /** @type {object[]} */
   let rows = [];
   let freshness = null;
@@ -47,11 +53,14 @@ export function mountReportQuery(container, ctx, opts) {
   let loading = false;
   let fetchError = null;
   let lastFetchError = null;
+  const fetchGuard = createGenerationGuard();
+  /** @type {AbortController|null} */
+  let fetchAbort = null;
 
-  const customerId = () => tenant ? (user?.customer_id ?? '') : customerInput.trim();
+  const customerId = () => (sessionScoped ? boundCustomerId(user) : customerInput.trim());
 
   async function fetchReport(cursor = '') {
-    customerError = tenant ? null : validateCustomerIdField(customerInput);
+    customerError = sessionScoped ? null : validateCustomerIdField(customerInput);
     const rangeErr = validateReportRange(from, rangeTo);
     if (rangeErr) {
       rangeError = rangeErr;
@@ -64,10 +73,14 @@ export function mountReportQuery(container, ctx, opts) {
       return;
     }
     rangeError = null;
+    const opGen = fetchGuard.next();
+    if (fetchAbort) fetchAbort.abort();
+    const ctrl = new AbortController();
+    fetchAbort = ctrl;
     loading = true;
     fetchError = null;
     storage.setReportRange({ from, to: rangeTo });
-    if (!tenant) touchCustomerContext(customerInput.trim());
+    if (!sessionScoped) touchCustomerContext(customerInput.trim());
     render();
 
     const params = new URLSearchParams({
@@ -77,34 +90,28 @@ export function mountReportQuery(container, ctx, opts) {
       limit: '50',
     });
     if (cursor) params.set('cursor', cursor);
+    if (comparePeriod && !cursor) params.set('compare', 'previous');
 
-    const [apiRes, apiErr] = await to(api(`/api/v1/reports/${opts.endpoint}?${params.toString()}`));
+    const [apiRes, apiErr] = await to(api(`/api/v1/reports/${opts.endpoint}?${params.toString()}`, {
+      signal: ctrl.signal,
+    }));
+    if (!shouldCommitAsyncResult(opGen, fetchGuard.current(), destroyed)) return;
     if (apiErr) {
+      if (apiErr.name === 'AbortError') return;
       fetchError = apiErr;
     } else {
       const data = apiRes?.data;
       const batch = data?.rows ?? [];
-      let merged = batch;
-      if (cursor) {
-        const [mergedRows, mergeErr] = await to(mergeReportRows(rows, batch));
-        if (mergeErr) {
-          fetchError = mergeErr;
-        } else {
-          merged = mergedRows;
-        }
-      }
-      if (!fetchError && merged.length > ROW_WORKER_THRESHOLD) {
-        const [workerMerged, workerErr] = await to(mergeReportRows([], merged));
-        if (workerErr) {
-          fetchError = workerErr;
-        } else {
-          merged = workerMerged;
-        }
-      }
-      if (!fetchError) {
-        rows = merged;
+      const [mergedRows, mergeErr] = await to(
+        cursor ? mergeReportRows(rows, batch) : mergeReportRows([], batch),
+      );
+      if (!shouldCommitAsyncResult(opGen, fetchGuard.current(), destroyed)) return;
+      if (mergeErr) {
+        fetchError = mergeErr;
+      } else {
+        rows = mergedRows;
         freshness = data?.freshness;
-        nextCursor = data?.next_cursor ?? '';
+        nextCursor = rows.length >= MAX_REPORT_ROWS ? '' : (data?.next_cursor ?? '');
       }
     }
     loading = false;
@@ -168,6 +175,7 @@ export function mountReportQuery(container, ctx, opts) {
     }
 
     const isPlacements = opts.endpoint === 'placements';
+    const { visible: tableRows, truncated } = visibleReportRows(rows);
 
     replaceChildren(container,
       el('div', { className: 'page-header' },
@@ -186,7 +194,7 @@ export function mountReportQuery(container, ctx, opts) {
         onSubmit: handleSearch,
         className: 'mb-4',
       },
-        !tenant
+        !sessionScoped
           ? renderFormField({
             label: 'Customer ID',
             htmlFor: 'report-customer-id',
@@ -204,13 +212,22 @@ export function mountReportQuery(container, ctx, opts) {
             }),
           })
           : null,
-        tenant && customerId()
+        sessionScoped && customerId()
           ? el('p', { className: 'text-muted', style: { fontSize: 13, marginBottom: 12 } },
             'Customer: ',
             el('span', { className: 'font-mono' }, customerId()),
           )
           : null,
         renderDatePresets(),
+        el('label', { className: 'form-checkbox', style: { display: 'block', marginBottom: 12 } },
+          el('input', {
+            type: 'checkbox',
+            checked: comparePeriod,
+            onChange: (e) => { comparePeriod = e.target.checked; },
+          }),
+          ' ',
+          t('report.compare', 'Compare with previous period'),
+        ),
         el('div', { className: 'form-row' },
           renderFormField({
             label: 'From (ISO)',
@@ -254,14 +271,14 @@ export function mountReportQuery(container, ctx, opts) {
         ),
       ),
       loading && rows.length === 0
-        ? el('div', { className: 'table-wrapper' },
+        ? el('div', { className: 'table-wrapper elevation-raised' },
           el('table', { className: 'data-table' },
             el('tbody', null, tableSkeletonRows(8, 6)),
           ),
         )
         : null,
       rows.length > 0
-        ? el('div', { className: 'table-wrapper' },
+        ? el('div', { className: 'table-wrapper elevation-raised' },
           el('table', { className: 'data-table' },
             el('thead', null,
               el('tr', null,
@@ -270,14 +287,21 @@ export function mountReportQuery(container, ctx, opts) {
                 el('th', { scope: 'col' }, 'Impr.'),
                 el('th', { scope: 'col' }, 'Clicks'),
                 el('th', { scope: 'col' }, 'Conv.'),
-                el('th', { scope: 'col' }, 'Spend'),
-                el('th', { scope: 'col' }, 'Revenue'),
-                el('th', { scope: 'col' }, 'ROI %'),
+                showFinancials ? el('th', { scope: 'col' }, 'Spend') : null,
+                showFinancials ? el('th', { scope: 'col' }, 'Revenue') : null,
+                showFinancials ? el('th', { scope: 'col' }, 'ROI %') : null,
+                el('th', { scope: 'col' }, 'CTR %'),
+                showFinancials ? el('th', { scope: 'col' }, 'CPA') : null,
+                el('th', { scope: 'col' }, 'IVT %'),
+                comparePeriod ? el('th', { scope: 'col' }, 'Δ spend') : null,
               ),
             ),
             el('tbody', null,
-              rows.map((row) =>
-                el('tr', null,
+              tableRows.map((row) => {
+                const spendDelta = comparePeriod && showFinancials
+                  ? row.compare?.spend_micro_delta
+                  : null;
+                return el('tr', null,
                   el('td', { className: 'font-mono' },
                     isPlacements ? row.placement_id : row.keyword,
                   ),
@@ -285,22 +309,38 @@ export function mountReportQuery(container, ctx, opts) {
                   el('td', null, String(row.impressions)),
                   el('td', null, String(row.clicks)),
                   el('td', null, String(row.conversions)),
-                  el('td', { className: 'font-mono' },
-                    formatAmountMicro(row.spend_micro ?? 0),
-                  ),
-                  el('td', { className: 'font-mono' },
-                    formatAmountMicro(row.revenue_micro ?? 0),
-                  ),
-                  el('td', null,
-                    row.roi_pct != null ? row.roi_pct.toFixed(2) : '—',
-                  ),
-                ),
-              ),
+                  showFinancials
+                    ? el('td', { className: 'font-mono' },
+                      formatAmountMicro(row.spend_micro ?? 0),
+                    )
+                    : null,
+                  showFinancials
+                    ? el('td', { className: 'font-mono' },
+                      formatAmountMicro(row.revenue_micro ?? 0),
+                    )
+                    : null,
+                  showFinancials
+                    ? el('td', null,
+                      row.roi_pct != null ? row.roi_pct.toFixed(2) : '—',
+                    )
+                    : null,
+                  el('td', null, row.ctr != null ? (row.ctr * 100).toFixed(2) : '—'),
+                  showFinancials
+                    ? el('td', { className: 'font-mono' },
+                      row.cpa_micro != null ? formatAmountMicro(row.cpa_micro) : '—',
+                    )
+                    : null,
+                  el('td', null, row.ivt_rate != null ? (row.ivt_rate * 100).toFixed(2) : '—'),
+                  comparePeriod && spendDelta != null
+                    ? el('td', { className: 'font-mono' }, formatAmountMicro(spendDelta))
+                    : (comparePeriod ? el('td', null, '—') : null),
+                );
+              }),
             ),
           ),
         )
         : null,
-      nextCursor
+      nextCursor && rows.length < MAX_REPORT_ROWS
         ? el('button', {
           type: 'button',
           className: 'btn btn--secondary btn--sm mt-4',
@@ -316,14 +356,26 @@ export function mountReportQuery(container, ctx, opts) {
   return {
     destroy() {
       destroyed = true;
+      fetchGuard.invalidate();
+      fetchAbort?.abort();
     },
   };
 }
 
+/**
+ * Return the default report range end timestamp.
+ *
+ * @returns {string}
+ */
 function defaultTo() {
   return new Date().toISOString();
 }
 
+/**
+ * Return the default report range start timestamp seven days ago.
+ *
+ * @returns {string}
+ */
 function defaultFrom() {
   const d = new Date();
   d.setDate(d.getDate() - 7);

@@ -1,8 +1,8 @@
 import { el } from '../lib/dom.js';
 
 /**
- * Renders a SectionCard component (port of DiiaCard layout).
- * 
+ * Render a raised section surface with optional urgency border.
+ *
  * @param {{ title?: string|Node, desc?: string, urgent?: 'normal'|'warning'|'danger', children?: Array<HTMLElement|null|false>|HTMLElement, className?: string }} props
  * @returns {HTMLElement}
  */

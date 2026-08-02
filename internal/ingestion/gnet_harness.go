@@ -13,11 +13,12 @@ var gnetHarnessRemoteAddr = &net.TCPAddr{IP: net.IPv4(1, 1, 1, 1), Port: 1234}
 
 type GnetHarnessConn struct {
 	gnet.Conn
-	inbound   []byte
-	written   []byte
-	responses [][]byte
-	ctx       any
-	addr      net.Addr
+	inbound        []byte
+	written        []byte
+	responses      [][]byte
+	ctx            any
+	addr           net.Addr
+	benchZeroAlloc bool
 }
 
 func NewGnetHarnessConn(inbound []byte) *GnetHarnessConn {
@@ -28,11 +29,21 @@ func NewGnetHarnessConn(inbound []byte) *GnetHarnessConn {
 	}
 }
 
+// NewGnetBenchConn is like NewGnetHarnessConn but Write does not heap-allocate (E2E alloc gates).
+func NewGnetBenchConn(inbound []byte) *GnetHarnessConn {
+	c := NewGnetHarnessConn(inbound)
+	c.benchZeroAlloc = true
+	return c
+}
+
 func (c *GnetHarnessConn) Context() any     { return c.ctx }
 func (c *GnetHarnessConn) SetContext(v any) { c.ctx = v }
 
 func (c *GnetHarnessConn) Write(b []byte) (int, error) {
 	c.written = append(c.written[:0], b...)
+	if c.benchZeroAlloc {
+		return len(b), nil
+	}
 	cp := make([]byte, len(b))
 	copy(cp, b)
 	c.responses = append(c.responses, cp)

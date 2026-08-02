@@ -19,7 +19,10 @@ import { renderIcon } from './icon.js';
 import { installShellStatus } from './shell_status.js';
 
 /**
+ * Mount the application shell with sidebar, banners, and main outlet.
+ *
  * @param {{ outlet: HTMLElement }} opts
+ * @returns {{ node: HTMLElement, destroy: () => void }}
  */
 export function mountShell(opts) {
   const shell = el('div', { className: 'shell' });
@@ -193,12 +196,6 @@ export function mountShell(opts) {
     renderFooter();
   }
 
-  function togglePalette() {
-    const current = storage.getThemePalette();
-    storage.setThemePalette(current === 'neutral' ? 'default' : 'neutral');
-    renderFooter();
-  }
-
   function toggleCollapsed() {
     applyCollapsed(!sidebarCollapsed);
   }
@@ -245,7 +242,6 @@ export function mountShell(opts) {
     if (!footer) return;
     const user = auth.getUser();
     const theme = storage.getTheme();
-    const palette = storage.getThemePalette();
     const themeIcon = theme === 'dark' ? 'sun' : 'moon';
     const collapseIcon = sidebarCollapsed ? 'panel-left-open' : 'panel-left-close';
 
@@ -277,15 +273,6 @@ export function mountShell(opts) {
         },
           renderIcon(themeIcon, { size: 15 }),
           el('span', { className: 'sidebar__action-label' }, theme === 'dark' ? 'Light' : 'Dark'),
-        ),
-        el('button', {
-          type: 'button',
-          className: 'sidebar__action-btn',
-          onClick: togglePalette,
-          title: 'Toggle accent palette',
-        },
-          renderIcon('palette', { size: 15 }),
-          el('span', { className: 'sidebar__action-label' }, palette === 'neutral' ? 'Blue accent' : 'Monochrome'),
         ),
         el('button', {
           type: 'button',

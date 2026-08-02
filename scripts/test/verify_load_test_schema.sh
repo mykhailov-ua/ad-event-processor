@@ -10,15 +10,15 @@ if [[ -f "$ROOT/.env" ]]; then
 fi
 
 DB_PORT="${DB_PORT:-5430}"
-DB_CONTAINER="${DB_CONTAINER:-espx-db-1}"
 DB_USER="${DB_USER:-ad_event_processor_user}"
 DB_NAME="${DB_NAME:-ad_event_processor}"
+COMPOSE=(docker compose -f docker-compose.yaml -f docker-compose.load-test.yaml)
 
 log() { printf 'verify-load-test-schema: %s\n' "$*"; }
 die() { printf 'verify-load-test-schema: ERROR: %s\n' "$*" >&2; exit 1; }
 
 missing="$(
-	docker exec -i "$DB_CONTAINER" psql -h localhost -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -At -v ON_ERROR_STOP=1 <<'SQL'
+	"${COMPOSE[@]}" exec -T db psql -h localhost -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -At -v ON_ERROR_STOP=1 <<'SQL'
 SELECT string_agg(req.column_name, ', ')
 FROM (
     VALUES

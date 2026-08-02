@@ -16,6 +16,8 @@ import { ApiError, AuthError, NetworkError } from './api_client.js';
  */
 
 /**
+ * Map an API or network error to a UI-facing service error view.
+ *
  * @param {unknown} err
  * @returns {ServiceErrorView}
  */
@@ -166,6 +168,8 @@ export function mapServiceError(err) {
 }
 
 /**
+ * Extract a partial 503 error message from an ApiError payload.
+ *
  * @param {ApiError} err
  * @returns {string|null}
  */
@@ -178,6 +182,8 @@ function partial503Message(err) {
 }
 
 /**
+ * Parse a Retry-After header into seconds.
+ *
  * @param {string|null|undefined} header
  * @returns {number|undefined}
  */
@@ -188,6 +194,8 @@ function parseRetryAfter(header) {
 }
 
 /**
+ * Test whether a service error view should block the entire page.
+ *
  * @param {ServiceErrorView} view
  * @returns {boolean}
  */

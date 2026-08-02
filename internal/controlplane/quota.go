@@ -2,11 +2,11 @@ package controlplane
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"espx/internal/domain"
 	"espx/internal/domain/db"
 	"espx/internal/metrics"
+	"espx/pkg/coldpath"
 	"fmt"
 	"log/slog"
 	"math"
@@ -399,7 +399,7 @@ func (w *ReconWorker) enqueueQuotaRepair(
 	redisExpected, repairMicro int64,
 	reason string,
 ) error {
-	payload, err := json.Marshal(QuotaRepairPayload{
+	payload, err := coldpath.MarshalOutbox(QuotaRepairPayload{
 		CampaignID:    r.campaignID.String(),
 		ShardID:       r.shardID,
 		Action:        string(action),
@@ -581,8 +581,8 @@ func (w *OutboxWorker) ApplyQuotaRepair(ctx context.Context, eventID int64, payl
 }
 
 func parseQuotaRepairPayload(payload []byte) (QuotaRepairPayload, error) {
-	var p QuotaRepairPayload
-	if err := json.Unmarshal(payload, &p); err != nil {
+	p, err := coldpath.UnmarshalStrict[QuotaRepairPayload](payload)
+	if err != nil {
 		return p, err
 	}
 	if p.CampaignID == "" || p.RepairMicro <= 0 {

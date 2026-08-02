@@ -2,8 +2,8 @@ import { el } from '../lib/dom.js';
 import { renderIcon } from './icon.js';
 
 /**
- * Renders a StatusHint widget (inline persistent feedback).
- * 
+ * Render inline persistent feedback with tone-specific styling.
+ *
  * @param {{ tone: 'info'|'error'|'success', message: string|Node, icon?: string, className?: string }} props
  * @returns {HTMLElement}
  */

@@ -1,4 +1,8 @@
 import { el } from './dom.js';
+import * as auth from '../helpers/auth.js';
+import { canAccessRoute } from '../helpers/route_guard.js';
+import { probeRouteChange } from '../helpers/perf_probe.js';
+import { memoryWatchOnRouteLeave } from '../helpers/memory_watch.js';
 
 /** @typedef {{ path: string, shell?: boolean, load: () => Promise<{ mount: (el: HTMLElement, ctx: RouteContext) => ViewHandle }> }} RouteDef */
 
@@ -73,6 +77,7 @@ export function navigate(path) {
  */
 export async function renderCurrent(pathname = window.location.pathname) {
   if (!outlet) return;
+  memoryWatchOnRouteLeave();
   const matched = matchRoute(pathname);
   const route = matched?.route;
   if (!route) {
@@ -89,6 +94,18 @@ export async function renderCurrent(pathname = window.location.pathname) {
   }
 
   const query = new URLSearchParams(window.location.search);
+  const user = auth.getUser();
+  const permissions = user?.permissions ?? [];
+  const role = user?.role ?? '';
+  if (!canAccessRoute(pathname, permissions, role)) {
+    const mod = await import('../views/forbidden.js');
+    if (activeView?.destroy) activeView.destroy();
+    activeView = null;
+    outlet.replaceChildren();
+    activeView = mod.mount(outlet, { params: {}, query, navigate }) ?? null;
+    return;
+  }
+
   const ctx = {
     params: matched.params,
     query,
@@ -103,6 +120,7 @@ export async function renderCurrent(pathname = window.location.pathname) {
     activeView = null;
     outlet.replaceChildren();
     activeView = mod.mount(outlet, ctx) ?? null;
+    probeRouteChange(pathname.split('?')[0] || '/');
   } catch (err) {
     replaceOutlet(
       el('div', { className: 'error-page' },

@@ -60,8 +60,19 @@ func TestAPI_GetCustomerBalance(t *testing.T) {
 	var report CustomerBalanceDTO
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&report))
 	assert.Equal(t, "250.00", report.Balance)
-	assert.Len(t, report.Ledger, 3)
-	assert.Equal(t, "3.00", report.Ledger[0].Amount)
+	assert.Empty(t, report.Ledger)
+
+	ledgerReq, _ := http.NewRequest("GET", "/api/v1/customers/"+custID.String()+"/ledger?limit=50&offset=0", nil)
+	withSessionUser(ledgerReq, tokenMaker, RoleUser, custID)
+	ledgerResp := httptest.NewRecorder()
+	mux.ServeHTTP(ledgerResp, ledgerReq)
+
+	require.Equal(t, http.StatusOK, ledgerResp.Code)
+	var ledgerPage LedgerListResponse
+	require.NoError(t, json.NewDecoder(ledgerResp.Body).Decode(&ledgerPage))
+	assert.Equal(t, int64(3), ledgerPage.Total)
+	assert.Len(t, ledgerPage.Items, 3)
+	assert.Equal(t, "3.00", ledgerPage.Items[0].Amount)
 }
 
 func TestAPI_GetCustomerBalance_TenantIsolation(t *testing.T) {

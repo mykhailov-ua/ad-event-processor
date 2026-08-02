@@ -1,4 +1,6 @@
 /**
+ * Resolve a promise to a [data, err] tuple.
+ *
  * @template T
  * @param {Promise<T>} promise
  * @returns {Promise<[T, null]|[null, Error]>}

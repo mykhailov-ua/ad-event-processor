@@ -210,6 +210,12 @@ func main() {
 		}
 	}
 
+	settleStore := domain.EventStore(pgStore)
+	if chStore != nil {
+		settleStore = ingestion.NewSettlementStore(pgStore, true)
+		slog.Info("postgres settlement stats-only mode enabled (clickhouse-first)")
+	}
+
 	var fraudScorer fraud.Scorer
 	if cfg.FraudScoringEnabled() {
 		snap, snapErr := licensing.LoadDeploymentSnapshot(ctx, pool)
@@ -281,7 +287,7 @@ func main() {
 
 		settleFlush := time.Duration(cfg.SettlementFlushMs) * time.Millisecond
 		settleW := ingestion.NewSettlementWorker(
-			pgStore,
+			settleStore,
 			rdb,
 			cfg.RedisStreamName,
 			cfg.RedisGroupName+"_pg",

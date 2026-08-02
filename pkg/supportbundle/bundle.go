@@ -33,6 +33,7 @@ type Options struct {
 	LogDir      string
 	MaxBytes    int64
 	MaxLogLines int
+	ExtraJSON   map[string]any
 }
 
 func Write(ctx context.Context, w io.Writer, opts Options) error {
@@ -57,6 +58,11 @@ func Write(ctx context.Context, w io.Writer, opts Options) error {
 
 	if err := writeVersionJSON(ctx, tw, opts.Meta); err != nil {
 		return err
+	}
+	for name, payload := range opts.ExtraJSON {
+		if err := writeTarJSON(tw, name, payload); err != nil {
+			return err
+		}
 	}
 	if err := writeSanitizedEnv(tw); err != nil {
 		return err

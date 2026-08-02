@@ -53,7 +53,7 @@ type replayRow struct {
 	FeatureRow  fraud.FeatureRow
 }
 
-func loadScorer(modelPath string) (*fraud.LGBMScorer, error) {
+func loadScorer(modelPath string) (fraud.Scorer, error) {
 	scorer, err := fraud.NewLGBMScorer(modelPath)
 	if err != nil {
 		return nil, fmt.Errorf("load model: %w", err)

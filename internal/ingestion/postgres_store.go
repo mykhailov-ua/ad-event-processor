@@ -9,6 +9,7 @@ import (
 	"espx/internal/domain/db"
 	"espx/internal/metrics"
 	"espx/pkg/piihash"
+
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -222,6 +223,60 @@ func (s *PostgresStore) StoreBatch(ctx context.Context, events []*domain.Event) 
 	}
 
 	metrics.DbWriteErrors.WithLabelValues("postgres").Inc()
+	return err
+}
+
+func (s *PostgresStore) StoreStatsBatch(ctx context.Context, events []*domain.Event) error {
+	rollup := rollupCampaignStats(events)
+	if len(rollup) == 0 {
+		return nil
+	}
+
+	if s.pgGate != nil {
+		if err := s.pgGate.Acquire(ctx); err != nil {
+			return err
+		}
+		defer s.pgGate.Release()
+	}
+
+	campaignIDs, impressions, clicks, conversions := campaignStatRollupArrays(rollup)
+
+	var err error
+	waitTime := InitialWait
+	for i := 0; i <= MaxRetries; i++ {
+		dbCtx, cancel := context.WithTimeout(ctx, s.writeTimeout)
+		start := time.Now()
+		err = s.queries.UpdateCampaignStatsBatch(dbCtx, db.UpdateCampaignStatsBatchParams{
+			CampaignIds: campaignIDs,
+			Impressions: impressions,
+			Clicks:      clicks,
+			Conversions: conversions,
+		})
+		duration := time.Since(start).Seconds()
+		cancel()
+
+		if err == nil {
+			metrics.DbWriteDuration.WithLabelValues("postgres_stats").Observe(duration)
+			metrics.SettlementStatsCampaignsFlushed.Add(float64(len(campaignIDs)))
+			return nil
+		}
+
+		if i < MaxRetries {
+			timer := time.NewTimer(waitTime)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return ctx.Err()
+			case <-timer.C:
+				waitTime *= 2
+				if waitTime > MaxWait {
+					waitTime = MaxWait
+				}
+			}
+		}
+	}
+
+	metrics.DbWriteErrors.WithLabelValues("postgres_stats").Inc()
 	return err
 }
 

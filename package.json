@@ -1,12 +1,11 @@
 {
   "name": "bidshard",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "npm --prefix web run dev",
-    "build": "npm --prefix web run build",
-    "preview": "npm --prefix web run preview",
-    "lint": "npm --prefix web run lint",
-    "test": "npm --prefix web run test",
-    "test:e2e": "npm --prefix web run test:e2e"
+    "dev": "node web/scripts/dev.mjs",
+    "build": "node web/scripts/build.mjs",
+    "preview": "node web/scripts/preview.mjs",
+    "test:web": "node --test web/src/lib/async_guard.test.js web/src/models/buyer.test.js web/src/helpers/api_timing.test.js"
   }
 }

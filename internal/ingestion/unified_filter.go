@@ -183,6 +183,8 @@ type UnifiedFilter struct {
 	localQuantaStrict            *LocalQuantaStrict
 	localQuantaRefill            *QuotaRefillWorker
 	localQuantaPublisher         *BudgetDeltaPublisher
+	localQuantaStream            *LocalQuantaStreamPublisher
+	localClickIdem               *LocalClickIdemCache
 	dbLookupTimeout              time.Duration
 	pgFallbackAllowed            bool
 	luaMetricsSeq                atomic.Uint64

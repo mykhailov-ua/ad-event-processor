@@ -8,7 +8,10 @@ const TITLE_MAP = {
 };
 
 /**
+ * Mount a placeholder page for routes under development.
+ *
  * @param {HTMLElement} container
+ * @returns {import('../lib/router.js').ViewHandle}
  */
 export function mount(container) {
   const path = window.location.pathname.replace(/\/$/, '') || '/';

@@ -15,6 +15,11 @@ import (
 const defaultReportLookback = 7 * 24 * time.Hour
 const reportCHQueryTimeout = 10 * time.Second
 
+// ReportCHQueryTimeout returns the ClickHouse query timeout for report handlers.
+func ReportCHQueryTimeout() time.Duration {
+	return reportCHQueryTimeout
+}
+
 const placementReportQuery = `
 SELECT
     placement_id,
@@ -170,7 +175,7 @@ func parseReportRange(r *http.Request) (from, to time.Time, err error) {
 }
 
 func listCustomerCampaignIDs(ctx context.Context, pool *pgxpool.Pool, customerID uuid.UUID) ([]uuid.UUID, error) {
-	rows, err := pool.Query(ctx, `SELECT id FROM campaigns WHERE customer_id = $1`, customerID)
+	rows, err := pool.Query(ctx, `SELECT id FROM campaigns WHERE customer_id = $1 AND deleted_at IS NULL`, customerID)
 	if err != nil {
 		return nil, err
 	}
@@ -185,6 +190,11 @@ func listCustomerCampaignIDs(ctx context.Context, pool *pgxpool.Pool, customerID
 		ids = append(ids, id)
 	}
 	return ids, rows.Err()
+}
+
+// ListCustomerCampaignIDs returns active campaign IDs for a customer.
+func ListCustomerCampaignIDs(ctx context.Context, pool *pgxpool.Pool, customerID uuid.UUID) ([]uuid.UUID, error) {
+	return listCustomerCampaignIDs(ctx, pool, customerID)
 }
 
 func queryPlacementReportRows(
@@ -291,4 +301,138 @@ func queryKeywordReportRows(
 	}
 
 	return out, int64(total), nil
+}
+
+const placementIVTQuery = `
+SELECT
+    c.placement_id,
+    c.campaign_id,
+    count() AS clicks,
+    uniqIf(c.click_id, f.click_id != '') AS ivt_events
+FROM clicks AS c
+LEFT JOIN fraud_events AS f
+    ON c.click_id = f.click_id AND c.campaign_id = f.campaign_id
+WHERE c.campaign_id IN (?)
+  AND c.created_at >= ?
+  AND c.created_at < ?
+GROUP BY c.placement_id, c.campaign_id`
+
+const keywordIVTQuery = `
+SELECT
+    nullIf(JSONExtractString(c.payload, 'keyword'), '') AS keyword,
+    c.campaign_id,
+    count() AS clicks,
+    uniqIf(c.click_id, f.click_id != '') AS ivt_events
+FROM clicks AS c
+LEFT JOIN fraud_events AS f
+    ON c.click_id = f.click_id AND c.campaign_id = f.campaign_id
+WHERE c.campaign_id IN (?)
+  AND c.created_at >= ?
+  AND c.created_at < ?
+GROUP BY keyword, c.campaign_id
+HAVING keyword != ''`
+
+const campaignEconomicsQuery = `
+SELECT
+    sum(spend_micro) AS spend_micro,
+    sum(revenue_micro) AS revenue_micro,
+    sum(click_count) AS clicks,
+    sum(conversion_count) AS conversions
+FROM placement_stats_hourly
+WHERE campaign_id = ?
+  AND hour >= ?
+  AND hour < ?`
+
+type placementIVTRow struct {
+	PlacementID string
+	CampaignID  string
+	Clicks      int64
+	IVTEvents   int64
+}
+
+type keywordIVTRow struct {
+	Keyword    string
+	CampaignID string
+	Clicks     int64
+	IVTEvents  int64
+}
+
+type CampaignEconomicsCH struct {
+	SpendMicro   int64
+	RevenueMicro int64
+	Clicks       int64
+	Conversions  int64
+}
+
+func queryPlacementIVTRates(
+	ctx context.Context,
+	chQuery *database.CHQuery,
+	campaignIDs []uuid.UUID,
+	from, to time.Time,
+) (map[string]float64, error) {
+	if chQuery == nil || len(campaignIDs) == 0 {
+		return map[string]float64{}, nil
+	}
+	rows, err := chQuery.Query(ctx, placementIVTQuery, campaignIDs, from, to)
+	if err != nil {
+		return nil, fmt.Errorf("placement ivt query: %w", err)
+	}
+	defer rows.Close()
+	out := make(map[string]float64)
+	for rows.Next() {
+		var row placementIVTRow
+		var campaignID uuid.UUID
+		if err := rows.Scan(&row.PlacementID, &campaignID, &row.Clicks, &row.IVTEvents); err != nil {
+			return nil, err
+		}
+		row.CampaignID = campaignID.String()
+		out[placementRowKey(row.PlacementID, row.CampaignID)] = calcIVTRate(row.IVTEvents, row.Clicks)
+	}
+	return out, rows.Err()
+}
+
+func queryKeywordIVTRates(
+	ctx context.Context,
+	chQuery *database.CHQuery,
+	campaignIDs []uuid.UUID,
+	from, to time.Time,
+) (map[string]float64, error) {
+	if chQuery == nil || len(campaignIDs) == 0 {
+		return map[string]float64{}, nil
+	}
+	rows, err := chQuery.Query(ctx, keywordIVTQuery, campaignIDs, from, to)
+	if err != nil {
+		return nil, fmt.Errorf("keyword ivt query: %w", err)
+	}
+	defer rows.Close()
+	out := make(map[string]float64)
+	for rows.Next() {
+		var row keywordIVTRow
+		var campaignID uuid.UUID
+		if err := rows.Scan(&row.Keyword, &campaignID, &row.Clicks, &row.IVTEvents); err != nil {
+			return nil, err
+		}
+		row.CampaignID = campaignID.String()
+		out[keywordRowKey(row.Keyword, row.CampaignID)] = calcIVTRate(row.IVTEvents, row.Clicks)
+	}
+	return out, rows.Err()
+}
+
+func QueryCampaignEconomicsCH(
+	ctx context.Context,
+	chQuery *database.CHQuery,
+	campaignID uuid.UUID,
+	from, to time.Time,
+) (CampaignEconomicsCH, error) {
+	if chQuery == nil {
+		return CampaignEconomicsCH{}, nil
+	}
+	var out CampaignEconomicsCH
+	err := chQuery.QueryRow(ctx, campaignEconomicsQuery, campaignID, from, to).Scan(
+		&out.SpendMicro, &out.RevenueMicro, &out.Clicks, &out.Conversions,
+	)
+	if err != nil {
+		return CampaignEconomicsCH{}, fmt.Errorf("campaign economics query: %w", err)
+	}
+	return out, nil
 }

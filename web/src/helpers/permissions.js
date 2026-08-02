@@ -1,4 +1,6 @@
 /**
+ * Test whether the permission list includes a specific capability.
+ *
  * @param {string[]} permissions
  * @param {string} perm
  * @returns {boolean}
@@ -8,6 +10,8 @@ export function can(permissions, perm) {
 }
 
 /**
+ * Test whether the role is a tenant-scoped user.
+ *
  * @param {string} role
  * @returns {boolean}
  */
@@ -16,6 +20,8 @@ export function isTenantUser(role) {
 }
 
 /**
+ * Test whether the role is a buyer.
+ *
  * @param {string} role
  * @returns {boolean}
  */
@@ -24,6 +30,8 @@ export function isBuyer(role) {
 }
 
 /**
+ * Test whether the role is support staff.
+ *
  * @param {string} role
  * @returns {boolean}
  */
@@ -36,6 +44,8 @@ export function isSupport(role) {
  */
 
 /**
+ * Resolve campaign read masking level from permissions.
+ *
  * @param {string[]} permissions
  * @returns {MaskLevelValue}
  */

@@ -11,11 +11,8 @@ import { installConfirmHost } from '../ui/confirm_host.js';
 import { installToastStack } from '../ui/toast_stack.js';
 import { mountShell } from '../ui/shell.js';
 import { installCommandPalette } from '../ui/command_palette.js';
-import '../styles/tokens.css';
-import '../styles/scrollbars.css';
-import '../styles/layout.css';
-import '../styles/soft-ui.css';
-import '../styles/roadbook-ui.css';
+import { startRUMCollector } from '../helpers/rum_collector.js';
+import { renderIdempotencyRecoveryBanner } from '../ui/idempotency_banner.js';
 
 /**
  * @param {HTMLElement} root
@@ -27,7 +24,6 @@ export async function bootApp(root) {
   }
 
   document.documentElement.setAttribute('data-theme', storage.getTheme());
-  document.documentElement.setAttribute('data-theme-palette', storage.getThemePalette());
   installErrorSurface(root);
   installConfirmHost(root);
   const toast = installToastStack(root);
@@ -60,15 +56,19 @@ export async function bootApp(root) {
   const outlet = el('div', { id: 'app-outlet' });
   const shell = mountShell({ outlet });
   root.appendChild(shell.node);
+  const idemBanner = renderIdempotencyRecoveryBanner();
+  if (idemBanner) shell.node.insertBefore(idemBanner, outlet);
 
   configureRoutes(APP_ROUTES);
   setOutlet(outlet);
   startRouter(outlet);
 
   const cmdPalette = installCommandPalette();
+  const rum = startRUMCollector();
 
   return {
     destroy() {
+      rum.stop();
       cmdPalette.destroy();
       toast.destroy();
       shell.destroy();
@@ -81,7 +81,6 @@ export async function bootApp(root) {
  */
 export async function bootLogin(root) {
   document.documentElement.setAttribute('data-theme', storage.getTheme());
-  document.documentElement.setAttribute('data-theme-palette', storage.getThemePalette());
 
   const [metaRes, metaErr] = await to(fetch('/api/v1/meta', { credentials: 'same-origin' }).then(async (res) => {
     if (!res.ok) throw new Error('meta unavailable');
@@ -108,7 +107,6 @@ export async function bootLogin(root) {
  */
 export async function bootStandalone(root) {
   document.documentElement.setAttribute('data-theme', storage.getTheme());
-  document.documentElement.setAttribute('data-theme-palette', storage.getThemePalette());
   installErrorSurface(root);
   installConfirmHost(root);
   installToastStack(root);

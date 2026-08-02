@@ -76,6 +76,7 @@ type connContext struct {
 	openrtbMultiADM [openrtb26ImpMax][512]byte
 	openrtbParsed   OpenRTB26Parsed
 	clickParsed     clickQueryParsed
+	tgClickParsed   tgQueryParsed
 	wReqID          bufWrapper
 	wCamp           bufWrapper
 	wTime           bufWrapper
@@ -83,9 +84,17 @@ type connContext struct {
 	shardID         int
 	workerID        int
 
-	offloadConn   gnet.Conn
-	offloadReqBuf *[]byte
-	offloadReqLen int
+	offloadConn     gnet.Conn
+	offloadReqBuf   *[]byte
+	offloadReqSlice []byte
+	offloadReqLen   int
+	offloadReq      parsedHTTPRequest
+	offloadReqPin   bool
+	offloadHTTPPin  []byte
+
+	offloadArenaWorker int
+	offloadArenaSlot   int
+	offloadRelease     func()
 
 	offloadOnEnter func()
 	offloadBlock   <-chan struct{}
@@ -639,12 +648,14 @@ func NewAdsPacketHandler(cfg *config.Config, registry domain.CampaignRegistry, f
 				valSlice: make([]any, 18),
 				resp:     pb.TrackResponse{},
 				bufSlice: make([]byte, 4096),
+				extraBuf: make([]byte, 0, clickQueryScratchCap),
 				wReqID: bufWrapper{
 					buf: make([]byte, 0, 128),
 				},
 				wCamp: bufWrapper{
 					buf: make([]byte, 0, 128),
 				},
+				offloadHTTPPin: make([]byte, 0, 2048),
 				wTime: bufWrapper{
 					buf: make([]byte, 0, 128),
 				},
@@ -1008,18 +1019,7 @@ func (h *AdsPacketHandler) OnTraffic(c gnet.Conn) (action gnet.Action) {
 		}
 
 		if h.workerPool != nil {
-			reqBufPtr := requestBufferPool.Get().(*[]byte)
-			reqBytes := *reqBufPtr
-			if cap(reqBytes) < reqLen {
-				reqBytes = make([]byte, reqLen)
-				*reqBufPtr = reqBytes
-			} else {
-				reqBytes = reqBytes[:reqLen]
-			}
-			copy(reqBytes, buf[:reqLen])
-
 			if _, err := c.Discard(reqLen); err != nil {
-				requestBufferPool.Put(reqBufPtr)
 				return gnet.Close
 			}
 
@@ -1028,15 +1028,18 @@ func (h *AdsPacketHandler) OnTraffic(c gnet.Conn) (action gnet.Action) {
 				ctx.shardID = int(h.loggerShardCounter.Add(1) % uint64(len(h.logger.Shards())))
 			}
 			ctx.offloadConn = c
-			ctx.offloadReqBuf = reqBufPtr
+			ctx.offloadReqBuf = nil
+			ctx.offloadReqSlice = nil
+			ctx.offloadRelease = nil
 			ctx.offloadReqLen = reqLen
+			ctx.offloadReq = pinParsedHTTPRequest(ctx, req)
+			ctx.offloadReqPin = true
 			ctx.offloadOnEnter = nil
 			ctx.offloadBlock = nil
 			ctx.offloadWG = nil
 
-			submitted := h.workerPool.SubmitOffload(ctx)
+			submitted := h.workerPool.SubmitOffload(ctx, buf[:reqLen])
 			if !submitted {
-				requestBufferPool.Put(reqBufPtr)
 				h.contextPool.Put(ctx)
 				metrics.WorkerPoolRejectTotal.Inc()
 				h.write(c, respWorkerPoolOverload, nil)
@@ -1060,11 +1063,20 @@ func (h *AdsPacketHandler) runOffloadedRequest(workerID int, ctx *connContext) {
 	if ctx == nil {
 		return
 	}
-	if ctx.offloadReqBuf == nil {
+	if ctx.offloadReqSlice == nil && ctx.offloadReqBuf == nil {
 		finishOffloadCtx(ctx)
 		return
 	}
-	defer requestBufferPool.Put(ctx.offloadReqBuf)
+	defer func() {
+		if ctx.offloadRelease != nil {
+			ctx.offloadRelease()
+			ctx.offloadRelease = nil
+			ctx.offloadReqSlice = nil
+		} else if ctx.offloadReqBuf != nil {
+			requestBufferPool.Put(ctx.offloadReqBuf)
+			ctx.offloadReqBuf = nil
+		}
+	}()
 
 	ctx.workerID = workerID
 	c := ctx.offloadConn
@@ -1072,11 +1084,23 @@ func (h *AdsPacketHandler) runOffloadedRequest(workerID int, ctx *connContext) {
 		return
 	}
 	c.SetContext(ctx)
-	reqBytes := (*ctx.offloadReqBuf)[:ctx.offloadReqLen:ctx.offloadReqLen]
-	_, reqParsed, err := h.parseHTTP(reqBytes, ctx.chunkScratch)
-	if err != nil {
-		h.write(c, respBadRequestClose, ctx)
-		return
+	var reqParsed parsedHTTPRequest
+	if ctx.offloadReqPin {
+		reqParsed = ctx.offloadReq
+		ctx.offloadReqPin = false
+	} else {
+		var reqBytes []byte
+		if len(ctx.offloadReqSlice) > 0 {
+			reqBytes = ctx.offloadReqSlice[:ctx.offloadReqLen:ctx.offloadReqLen]
+		} else {
+			reqBytes = (*ctx.offloadReqBuf)[:ctx.offloadReqLen:ctx.offloadReqLen]
+		}
+		var err error
+		_, reqParsed, err = h.parseHTTP(reqBytes, ctx.chunkScratch)
+		if err != nil {
+			h.write(c, respBadRequestClose, ctx)
+			return
+		}
 	}
 	_ = h.React(reqParsed, c)
 }
@@ -1134,6 +1158,7 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 			wCamp: bufWrapper{
 				buf: make([]byte, 0, clickQueryScratchCap),
 			},
+			offloadHTTPPin: make([]byte, 0, 2048),
 			wTime: bufWrapper{
 				buf: make([]byte, 0, 128),
 			},
@@ -1165,6 +1190,12 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 		if httpPathHasPrefix(req.Path, "/click") {
 			return h.reactClickRedirect(req, c, ctx)
 		}
+		if httpPathHasPrefix(req.Path, tgPathClick) {
+			return h.reactTgClick(req, c, ctx)
+		}
+		if httpPathHasPrefix(req.Path, tgPathImpression) {
+			return h.reactTgImpression(req, c, ctx)
+		}
 		h.write(c, respMethodNotAllowed, ctx)
 		return gnet.None
 	}
@@ -1182,6 +1213,13 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 				return gnet.Close
 			}
 			return h.reactOpenRTBBid(req, c, ctx)
+		}
+		if bytes.Equal(req.Path, []byte("/tg/bid")) {
+			if !req.HasContentLength {
+				h.write(c, respBadRequestClose, ctx)
+				return gnet.Close
+			}
+			return h.reactTgBid(req, c, ctx)
 		}
 		h.write(c, respNotFound, ctx)
 		return gnet.None

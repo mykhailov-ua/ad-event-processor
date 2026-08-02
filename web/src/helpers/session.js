@@ -4,7 +4,10 @@ import { to } from '../lib/to.js';
 const LOGIN_PATH = '/login';
 
 /**
+ * Clear local auth state and redirect to the login page.
+ *
  * @param {string} [reason]
+ * @returns {void}
  */
 export function redirectToLogin(reason = 'session') {
   auth.logoutLocal();
@@ -14,7 +17,9 @@ export function redirectToLogin(reason = 'session') {
 }
 
 /**
- * @returns {Promise<boolean>}
+ * Attempt to refresh the session via auth refresh and me endpoints.
+ *
+ * @returns {Promise<boolean>} true when the session was restored
  */
 export async function tryRefreshSession() {
   const [refreshRes, refreshErr] = await to(fetch('/api/v1/auth/refresh', {
@@ -49,6 +54,8 @@ export async function tryRefreshSession() {
 }
 
 /**
+ * Test whether a path is an auth mutation that must not trigger session refresh.
+ *
  * @param {string} path
  * @returns {boolean}
  */

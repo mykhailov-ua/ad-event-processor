@@ -6,17 +6,17 @@ cd "$ROOT"
 
 bash "$SCRIPTS/ci/admin_bundle_gate.sh"
 
-ARTIFACT_DIR="${ADMIN_LIGHTHOUSE_ARTIFACT_DIR:-$ROOT/artifacts}"
+ARTIFACT_DIR="${ADMIN_LIGHTHOUSE_ARTIFACT_DIR:-$ROOT/var/ci}"
 mkdir -p "$ARTIFACT_DIR"
 CHECKLIST="$ARTIFACT_DIR/lighthouse-inp-checklist.txt"
 
 cat >"$CHECKLIST" <<'EOF'
 Lighthouse INP checklist (admin UI release)
 
-1. Build production bundle: cd web && npm ci && npm run build
+1. Build production bundle: node web/scripts/build.mjs
 2. Start control or preview with fresh dist embedded
-3. Log in as admin; open /campaigns
-4. Run Lighthouse (mobile) on /campaigns
+3. Log in as admin; open /campaigns and /reports/placements
+4. Run Lighthouse (mobile) on /campaigns and /reports/placements
 5. Target: INP p95 < 200 ms on staging or local preview
 
 Record in release PR:

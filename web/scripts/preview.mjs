@@ -1,16 +1,20 @@
+#!/usr/bin/env node
+/**
+ * Serve production dist/ for Playwright or manual smoke tests.
+ */
 import { createServer } from 'node:http';
-import { readFileSync, existsSync } from 'node:fs';
-import { resolve, extname } from 'node:path';
-import { ROOT_DIR } from './esbuild-shared.mjs';
+import { existsSync, readFileSync } from 'node:fs';
+import { extname, resolve, dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const DIST = join(ROOT, 'dist');
 const PORT = Number(process.env.ADMIN_PREVIEW_PORT ?? 4173);
-const distDir = resolve(ROOT_DIR, 'dist');
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.svg': 'image/svg+xml',
+  '.mjs': 'text/javascript; charset=utf-8',
 };
 
 function serveFile(res, filePath) {
@@ -29,7 +33,7 @@ function serveFile(res, filePath) {
 
 function isSpaPath(path) {
   if (path.startsWith('/api/')) return false;
-  if (path.startsWith('/assets/')) return false;
+  if (path.startsWith('/src/')) return false;
   if (path.includes('.')) return false;
   return true;
 }
@@ -38,17 +42,17 @@ createServer((req, res) => {
   const path = req.url?.split('?')[0] ?? '/';
 
   if (path === '/login' || path === '/login.html') {
-    serveFile(res, resolve(distDir, 'login.html'));
+    serveFile(res, join(DIST, 'login.html'));
     return;
   }
 
   if (path === '/' || path === '/index.html' || isSpaPath(path)) {
-    serveFile(res, resolve(distDir, 'index.html'));
+    serveFile(res, join(DIST, 'index.html'));
     return;
   }
 
   const rel = path.replace(/^\//, '');
-  serveFile(res, resolve(distDir, rel));
+  serveFile(res, resolve(DIST, rel));
 }).listen(PORT, () => {
   console.log(`Admin preview: http://127.0.0.1:${PORT}`);
 });

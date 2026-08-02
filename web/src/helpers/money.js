@@ -6,6 +6,8 @@ const MICRO = 1_000_000;
 const MAX_FRAC_DIGITS = 6;
 
 /**
+ * Parse a decimal string into integer micro-units.
+ *
  * @param {string} s
  * @returns {MoneyMicro}
  * @throws {Error} if invalid
@@ -33,8 +35,10 @@ export function ParseDecimal(s) {
 }
 
 /**
+ * Format micro-units as a dollar amount with two decimal places.
+ *
  * @param {MoneyMicro} micro
- * @returns {string} formatted to 2 decimal places
+ * @returns {string}
  */
 export function formatMicro(micro) {
   const abs = Math.abs(micro);
@@ -45,8 +49,10 @@ export function formatMicro(micro) {
 }
 
 /**
+ * Format micro-units as a dollar amount with six decimal places.
+ *
  * @param {MoneyMicro} micro
- * @returns {string} formatted to 6 decimal places
+ * @returns {string}
  */
 export function formatMicroFull(micro) {
   const abs = Math.abs(micro);
@@ -57,6 +63,8 @@ export function formatMicroFull(micro) {
 }
 
 /**
+ * Format micro-units with an optional currency suffix.
+ *
  * @param {number} micro
  * @param {string} [currency]
  * @returns {string}
@@ -67,6 +75,8 @@ export function formatAmountMicro(micro, currency = '') {
 }
 
 /**
+ * Format a decimal string for display, using an em dash when empty.
+ *
  * @param {string} decimal
  * @returns {string}
  */
@@ -76,6 +86,8 @@ export function formatDecimalDisplay(decimal) {
 }
 
 /**
+ * Format a USD decimal field for display.
+ *
  * @param {string | number | null | undefined} decimal
  * @returns {string}
  */

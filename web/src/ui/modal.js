@@ -1,6 +1,8 @@
 import { el, appendChildren } from '../lib/dom.js';
 
 /**
+ * Mount a modal dialog overlay with focus trap and escape handling.
+ *
  * @param {{
  *   title: string,
  *   description?: string,
@@ -8,7 +10,9 @@ import { el, appendChildren } from '../lib/dom.js';
  *   body?: (Node|string|null|false|undefined)[],
  *   actions?: (Node|string|null|false|undefined)[],
  *   titleId?: string,
+ *   footerClass?: string,
  * }} opts
+ * @returns {{ destroy: () => void }}
  */
 export function mountModal(opts) {
   const titleId = opts.titleId ?? `modal-title-${Math.random().toString(36).slice(2, 9)}`;

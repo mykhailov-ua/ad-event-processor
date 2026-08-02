@@ -2,8 +2,11 @@ package controlplane
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"espx/internal/database"
@@ -13,6 +16,7 @@ import (
 	"espx/pkg/coldpath"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -98,6 +102,8 @@ func (worker *OutboxWorker) handleOutboxEvent(opCtx, ctx context.Context, ev db.
 		return worker.handleUpdateEntitlements(ctx)
 	case "APPLY_GTV_SETTLEMENT":
 		return worker.handleApplyGTVSettlement(ctx, ev.Payload)
+	case "TELEGRAM_EVENT":
+		return worker.handleTelegramEvent(ctx, ev.Payload)
 	default:
 		return fmt.Errorf("unknown outbox event type: %s", ev.EventType)
 	}
@@ -573,4 +579,91 @@ func (worker *OutboxWorker) recordOutboxLagFromValues(pending int64, oldestSecon
 			worker.svc.alerter.AlertOutboxStuck(pending, oldestSeconds)
 		}
 	}
+}
+
+type telegramEventPayload struct {
+	CampaignID uuid.UUID `json:"campaign_id"`
+	BotID      int64     `json:"bot_id"`
+	Payload    []byte    `json:"payload"`
+}
+
+func (worker *OutboxWorker) handleTelegramEvent(ctx context.Context, payload []byte) error {
+	p, err := coldpath.UnmarshalStrict[telegramEventPayload](payload)
+	if err != nil {
+		return err
+	}
+
+	var update struct {
+		UpdateID int64 `json:"update_id"`
+		Message  *struct {
+			Chat struct {
+				ID   int64  `json:"id"`
+				Type string `json:"type"`
+			} `json:"chat"`
+			Text string `json:"text"`
+			From *struct {
+				ID        int64 `json:"id"`
+				IsPremium bool  `json:"is_premium"`
+			} `json:"from"`
+		} `json:"message"`
+	}
+	if err := json.Unmarshal(p.Payload, &update); err != nil {
+		return err
+	}
+
+	if update.Message == nil || update.Message.Text == "" {
+		return nil
+	}
+
+	text := strings.TrimSpace(update.Message.Text)
+	if !strings.HasPrefix(text, "/start ") {
+		return nil
+	}
+	token := strings.TrimSpace(strings.TrimPrefix(text, "/start"))
+
+	if token == "" {
+		return nil
+	}
+
+	q := db.New(worker.svc.GetPool())
+	deeplink, err := q.GetTelegramDeeplink(ctx, token)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		return err
+	}
+
+	if time.Now().After(deeplink.ExpiresAt.Time) {
+		_ = q.DeleteTelegramDeeplink(ctx, token)
+		return nil
+	}
+
+	bot, err := q.GetTelegramBotByBotID(ctx, p.BotID)
+	if err != nil {
+		return err
+	}
+
+	isGroup := update.Message.Chat.Type == "group" || update.Message.Chat.Type == "supergroup" || update.Message.Chat.Type == "channel"
+
+	tgSvc := NewTelegramService(worker.svc, worker.svc.GetPool(), worker.svc.RedisShards())
+	err = tgSvc.limiter.Wait(ctx, update.Message.Chat.ID, isGroup)
+	if err != nil {
+		return err
+	}
+
+	welcomeMsg := fmt.Sprintf("Welcome! Click here to start the app: %s", bot.WebhookUrl)
+
+	err = tgSvc.sendBotMessage(ctx, bot.BotToken, update.Message.Chat.ID, welcomeMsg)
+	if err != nil {
+		var apiErr *tgAPIError
+		if errors.As(err, &apiErr) && apiErr.StatusCode == 429 {
+			if apiErr.RetryAfter > 0 {
+				tgSvc.limiter.BackoffChat(update.Message.Chat.ID, time.Duration(apiErr.RetryAfter)*time.Second)
+			}
+		}
+		return err
+	}
+
+	return nil
 }

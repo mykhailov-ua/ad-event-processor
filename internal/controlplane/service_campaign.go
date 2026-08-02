@@ -177,7 +177,7 @@ func (s *Service) UpdateCampaignPacing(ctx context.Context, campaignID uuid.UUID
 			NewPacingMode: string(pacing),
 		}, nil)
 
-		payloadBytes, err := coldpath.MarshalJSON(campaignPacingPayload{
+		payloadBytes, err := coldpath.MarshalOutbox(campaignPacingPayload{
 			CampaignID: campaignID.String(),
 			PacingMode: string(pacing),
 		})
@@ -529,7 +529,7 @@ func (s *Service) ConfigureBrandFcap(ctx context.Context, brandID uuid.UUID, lim
 			return fmt.Errorf("failed to update brand fcap limits: %w", err)
 		}
 
-		payloadBytes, err := coldpath.MarshalJSON(brandFcapOutboxPayload{
+		payloadBytes, err := coldpath.MarshalOutbox(brandFcapOutboxPayload{
 			BrandID:    brandID.String(),
 			FreqLimit:  limit,
 			FreqWindow: window,
@@ -694,7 +694,7 @@ func validateSupplyChainNodes(nodes []SupplyChainNode) error {
 
 func (s *Service) enqueueSupplyFilesUpdate(ctx context.Context, q db.Querier, trigger string) error {
 	invalidateSellersJSONCache()
-	payload, err := coldpath.MarshalJSON(SupplyFilesPayload{Trigger: trigger})
+	payload, err := coldpath.MarshalOutbox(SupplyFilesPayload{Trigger: trigger})
 	if err != nil {
 		return err
 	}
@@ -1378,14 +1378,14 @@ func (s *Service) CreateCampaign(ctx context.Context, spec CampaignCreateSpec) (
 func (s *Service) emitCampaignLifecycleOutbox(ctx context.Context, q db.Querier, campaignID uuid.UUID, status db.CampaignStatusType, budgetLimit int64) error {
 	switch status {
 	case db.CampaignStatusTypeACTIVE:
-		payload, err := coldpath.MarshalJSON(CampaignPayload{CampaignID: campaignID.String(), BudgetLimit: budgetLimit})
+		payload, err := coldpath.MarshalOutbox(CampaignPayload{CampaignID: campaignID.String(), BudgetLimit: budgetLimit})
 		if err != nil {
 			return fmt.Errorf("marshal create campaign outbox payload: %w", err)
 		}
 		_, err = q.CreateOutboxEvent(ctx, db.CreateOutboxEventParams{EventType: "CREATE_CAMPAIGN", Payload: payload})
 		return err
 	case db.CampaignStatusTypePAUSED:
-		payload, err := coldpath.MarshalJSON(CampaignPayload{CampaignID: campaignID.String()})
+		payload, err := coldpath.MarshalOutbox(CampaignPayload{CampaignID: campaignID.String()})
 		if err != nil {
 			return fmt.Errorf("marshal pause campaign outbox payload: %w", err)
 		}
@@ -1442,7 +1442,7 @@ func (s *Service) pauseCampaign(ctx context.Context, campaignID uuid.UUID, reaso
 		}
 		s.AuditLog(ctx, q, uid, "PAUSE_CAMPAIGN", "campaign", &campaignID, auditReasonChange{Reason: reason}, nil)
 
-		payload, err := coldpath.MarshalJSON(CampaignPayload{CampaignID: campaignID.String()})
+		payload, err := coldpath.MarshalOutbox(CampaignPayload{CampaignID: campaignID.String()})
 		if err != nil {
 			return fmt.Errorf("marshal pause campaign outbox payload: %w", err)
 		}
@@ -1531,7 +1531,7 @@ func (s *Service) resumeCampaign(ctx context.Context, campaignID uuid.UUID, reas
 		}
 		s.AuditLog(ctx, q, uid, "RESUME_CAMPAIGN", "campaign", &campaignID, auditReasonChange{Reason: reason}, nil)
 
-		payload, err := coldpath.MarshalJSON(CampaignPayload{CampaignID: campaignID.String(), BudgetLimit: camp.BudgetLimit})
+		payload, err := coldpath.MarshalOutbox(CampaignPayload{CampaignID: campaignID.String(), BudgetLimit: camp.BudgetLimit})
 		if err != nil {
 			return fmt.Errorf("marshal resume campaign outbox payload: %w", err)
 		}
@@ -1603,7 +1603,7 @@ func (s *Service) UpdateCampaignSchedule(ctx context.Context, campaignID uuid.UU
 			DaypartHours: daypartHours,
 		}, nil)
 
-		payload, err := coldpath.MarshalJSON(campaignScheduleOutboxPayload{
+		payload, err := coldpath.MarshalOutbox(campaignScheduleOutboxPayload{
 			CampaignID:   campaignID.String(),
 			StartAt:      startAt,
 			EndAt:        endAt,
@@ -1898,7 +1898,7 @@ func (s *Service) DeleteBrandCreative(ctx context.Context, creativeID uuid.UUID)
 }
 
 func (s *Service) emitBrandCreativesOutbox(ctx context.Context, q db.Querier, brandID uuid.UUID) error {
-	payload, err := coldpath.MarshalJSON(brandIDPayload{BrandID: brandID.String()})
+	payload, err := coldpath.MarshalOutbox(brandIDPayload{BrandID: brandID.String()})
 	if err != nil {
 		return fmt.Errorf("marshal sync brand creatives outbox payload: %w", err)
 	}
@@ -2155,7 +2155,7 @@ func (s *Service) closedLoopPacingControllerTx(ctx context.Context, tx pgx.Tx, m
 			Curve:     "daypart_weighted",
 		}, nil)
 
-		payloadBytes, err := coldpath.MarshalJSON(campaignPacingPayload{
+		payloadBytes, err := coldpath.MarshalOutbox(campaignPacingPayload{
 			CampaignID: campID.String(),
 			PacingMode: string(targetPacing),
 		})
@@ -2306,7 +2306,7 @@ func (s *Service) UpsertExperimentCohort(ctx context.Context, spec ExperimentCoh
 			return err
 		}
 
-		payloadBytes, err := json.Marshal(cohortSnapshotPayload{Version: 1})
+		payloadBytes, err := coldpath.MarshalOutbox(cohortSnapshotPayload{Version: 1})
 		if err != nil {
 			return err
 		}

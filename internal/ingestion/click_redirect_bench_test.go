@@ -74,7 +74,7 @@ func BenchmarkClickRedirectGnet_E2E(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	conn := NewGnetHarnessConn(inbound)
+	conn := NewGnetBenchConn(inbound)
 	h.React(req, conn)
 	b.ReportAllocs()
 	b.SetBytes(int64(len(inbound)))

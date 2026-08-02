@@ -663,6 +663,26 @@ var (
 		Name: "ad_local_quota_flush_total",
 		Help: "Local quanta returned to Redis on pause/shutdown/strict",
 	}, []string{"reason"})
+	LocalQuotaFullSkipTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_local_quota_full_skip_total",
+		Help: "Hot-path accepts that skipped Redis Lua via local quanta full-skip",
+	})
+	RedisLuaSkippedTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_redis_lua_skipped_total",
+		Help: "Redis Lua EVAL calls avoided on the ingestion hot path",
+	})
+	LocalQuotaStreamFlushTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_local_quota_stream_flush_total",
+		Help: "Async event stream writes flushed from local quanta ring buffer",
+	})
+	LocalQuotaStreamDropTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_local_quota_stream_drop_total",
+		Help: "Events dropped because local quanta stream ring buffer was full",
+	})
+	LocalQuotaStreamWriteErrorTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_local_quota_stream_write_error_total",
+		Help: "Async local quanta stream marshal/write failures",
+	})
 	FilterLuaBranchTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "filter_lua_branch_total",
 		Help: "Unified/budget-fast Lua return-code branch tags",
@@ -800,6 +820,14 @@ var (
 		Name: "ad_settlement_lane_depth",
 		Help: "Buffered events awaiting settlement per pinned lane",
 	}, []string{"lane"})
+	SettlementBatchCompactDropped = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_settlement_batch_compact_dropped_total",
+		Help: "Duplicate events removed from a settlement flush batch before PG write",
+	})
+	SettlementStatsCampaignsFlushed = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_settlement_stats_campaigns_flushed_total",
+		Help: "Campaign rows written via stats-only PG settlement (ClickHouse-first mode)",
+	})
 	VolumeMeterRowsTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_volume_meter_rows_total",
 		Help: "Total customer-hour rows rolled into billing.usage_meters",

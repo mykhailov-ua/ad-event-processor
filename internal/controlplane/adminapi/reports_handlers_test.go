@@ -3,6 +3,7 @@ package adminapi
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -188,6 +189,61 @@ func TestViews_CRUD(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, wGet2.Code)
 }
 
+func TestViews_CustomerAccessDenied(t *testing.T) {
+	t.Parallel()
+
+	customerID := uuid.New().String()
+	otherCustomer := uuid.New().String()
+
+	h := &ViewsHTTPHandlers{
+		Service: NewService(),
+		AuthorizeCustomerAccess: func(_ *http.Request, custID string) error {
+			if custID != customerID {
+				return ErrForbidden
+			}
+			return nil
+		},
+		WriteServiceError: func(w http.ResponseWriter, err error) {
+			if errors.Is(err, ErrForbidden) {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		},
+	}
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	createReq := CreateViewRequest{
+		CustomerID: otherCustomer,
+		Name:       "blocked",
+		ReportKey:  "placements",
+		Spec:       json.RawMessage(`{}`),
+	}
+	body, _ := json.Marshal(createReq)
+	req := httptest.NewRequest("POST", "/api/v1/views", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+	require.Equal(t, http.StatusForbidden, w.Code)
+
+	reqList := httptest.NewRequest("GET", "/api/v1/views?customer_id="+otherCustomer, nil)
+	wList := httptest.NewRecorder()
+	mux.ServeHTTP(wList, reqList)
+	require.Equal(t, http.StatusForbidden, wList.Code)
+
+	allowed := CreateViewRequest{
+		CustomerID: customerID,
+		Name:       "allowed",
+		ReportKey:  "placements",
+		Spec:       json.RawMessage(`{}`),
+	}
+	allowedBody, _ := json.Marshal(allowed)
+	reqOK := httptest.NewRequest("POST", "/api/v1/views", bytes.NewReader(allowedBody))
+	wOK := httptest.NewRecorder()
+	mux.ServeHTTP(wOK, reqOK)
+	require.Equal(t, http.StatusCreated, wOK.Code)
+}
+
 func TestToPlacementReportRowDTO(t *testing.T) {
 	t.Parallel()
 
@@ -218,6 +274,7 @@ func TestToPlacementReportRowDTO(t *testing.T) {
 				ProfitMicro:  10_000_000,
 				ROIPct:       20,
 				CPAMicro:     5_000_000,
+				CTR:          0.05,
 			},
 		},
 		{
@@ -235,7 +292,7 @@ func TestToPlacementReportRowDTO(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := toPlacementReportRowDTO(tt.row)
+			got := toPlacementReportRowDTO(tt.row, 0)
 			assert.Equal(t, tt.want, got)
 		})
 	}
@@ -270,13 +327,15 @@ func TestToKeywordReportRowDTO(t *testing.T) {
 				RevenueMicro: 30_000_000,
 				ProfitMicro:  5_000_000,
 				ROIPct:       20,
+				CPAMicro:     5_000_000,
+				CTR:          0.04,
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := toKeywordReportRowDTO(tt.row)
+			got := toKeywordReportRowDTO(tt.row, 0)
 			assert.Equal(t, tt.want, got)
 		})
 	}

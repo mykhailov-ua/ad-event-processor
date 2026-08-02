@@ -23,7 +23,7 @@ func TestPinnedWorkerPool(t *testing.T) {
 				atomic.AddInt64(&counter, 1)
 			},
 		}
-		submitted := pool.SubmitOffload(ctx)
+		submitted := pool.SubmitOffload(ctx, nil)
 		if !submitted {
 			wg.Done()
 			t.Errorf("failed to submit task %d", i)
@@ -44,7 +44,7 @@ func TestPinnedWorkerPool_ZeroAlloc(t *testing.T) {
 	ctxs := make([]connContext, 1000)
 	allocs := testing.AllocsPerRun(1, func() {
 		for i := range ctxs {
-			if !pool.SubmitOffload(&ctxs[i]) {
+			if !pool.SubmitOffload(&ctxs[i], nil) {
 				t.Fatal("submit failed")
 			}
 		}
@@ -76,7 +76,7 @@ func BenchmarkPinnedWorkerPool(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				ctx := &ctxs[i%ring]
-				for !pool.SubmitOffload(ctx) {
+				for !pool.SubmitOffload(ctx, nil) {
 					runtime.Gosched()
 				}
 			}

@@ -5,8 +5,11 @@ import { ConfirmCancelledError } from '../helpers/confirm_ui.js';
 import { mapServiceError } from '../helpers/service_error.js';
 
 /**
+ * Mount the platform bootstrap registration form.
+ *
  * @param {HTMLElement} container
  * @param {{ navigate: (path: string) => void }} _ctx
+ * @returns {import('../lib/router.js').ViewHandle}
  */
 export function mount(container, _ctx) {
   let destroyed = false;

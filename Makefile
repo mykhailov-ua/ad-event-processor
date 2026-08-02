@@ -30,6 +30,7 @@ test-alloc-gate: gen fmt
 	go test -short -count=1 -run 'ZeroAlloc|zeroAlloc_fraudScoring|FraudScoring_LatencySLA|ApplyRtbAuction_shadow_zeroAlloc|RecordRtbShadow|HTTP1Parse|OpenRTB26_Exchange' ./internal/ingestion/...
 	go test -run='^$$' -bench='Benchmark(HTTP1Parse$$|TrackRequest_ParseJSONOpt$$|Auction$$|ParseOpenRTB26Split_hotOnly$$|RunOpenRTBExchangeParsed$$)' -benchmem -count=1 ./internal/ingestion/... ./internal/rtb/
 	bash scripts/test/openrtb_fuzz_smoke.sh
+	bash scripts/test/telegram_fuzz_smoke.sh
 
 management-domain-coverage:
 	bash scripts/ci/management_domain_coverage.sh
@@ -112,6 +113,12 @@ perf-gate-smoke:
 
 openrtb-fuzz-smoke:
 	bash scripts/test/openrtb_fuzz_smoke.sh
+
+telegram-fuzz-smoke:
+	bash scripts/test/telegram_fuzz_smoke.sh
+
+tg-hotpath-soak:
+	bash scripts/test/tg_hotpath_soak.sh
 
 edge-phase0:
 	bash scripts/ops/phase0.sh

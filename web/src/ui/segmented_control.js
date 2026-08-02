@@ -1,8 +1,8 @@
 import { el } from '../lib/dom.js';
 
 /**
- * Mounts a SegmentedControl component inside container.
- * 
+ * Mount a segmented control with animated pill selection.
+ *
  * @param {HTMLElement} container
  * @param {{ items: Array<{ value: string, label: string }|string>, selected: string, onChange: (value: string) => void }} props
  * @returns {{ destroy: () => void, update: (newProps: { selected: string }) => void }}

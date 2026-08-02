@@ -422,6 +422,19 @@ WHERE campaign_id = @campaign_id
   AND date >= @from_date::date
   AND date <= @to_date::date;
 
+-- name: SumCustomerCampaignStatsInRange :many
+SELECT
+    cs.campaign_id,
+    COALESCE(SUM(cs.impressions_count), 0)::bigint AS impressions,
+    COALESCE(SUM(cs.clicks_count), 0)::bigint AS clicks,
+    COALESCE(SUM(cs.conversions_count), 0)::bigint AS conversions
+FROM campaign_stats cs
+INNER JOIN campaigns c ON c.id = cs.campaign_id
+WHERE c.customer_id = @customer_id
+  AND cs.date >= @from_date::date
+  AND cs.date <= @to_date::date
+GROUP BY cs.campaign_id;
+
 -- name: ListSellers :many
 SELECT * FROM sellers ORDER BY seller_id;
 

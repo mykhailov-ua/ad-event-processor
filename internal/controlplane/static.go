@@ -28,6 +28,11 @@ func RegisterAdminStaticRoutes(mux *http.ServeMux, gate *AdminUIGate) {
 
 	fileServer := http.FileServer(staticFS)
 
+	mux.HandleFunc("GET /src/{path...}", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		fileServer.ServeHTTP(w, r)
+	})
+
 	mux.HandleFunc("GET /assets/{path...}", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 		fileServer.ServeHTTP(w, r)

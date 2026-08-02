@@ -14,9 +14,16 @@ import { renderAlertBanner } from '../ui/alert_banner.js';
 import { renderDoctorPanel } from '../ui/doctor_panel.js';
 import { renderStatusBadge } from '../ui/status_badge.js';
 import { renderIcon } from '../ui/icon.js';
+import { createGenerationGuard, createInFlightGuard, shouldCommitAsyncResult } from '../lib/async_guard.js';
+import { apiTimingReport } from '../helpers/api_timing.js';
+import { flushRUMNow } from '../helpers/rum_collector.js';
+import { renderEdgePanel, renderXDPPanel } from '../ui/edge_panel.js';
 
 /**
+ * Mount the operations home view with doctor, outbox, and shard summary.
+ *
  * @param {HTMLElement} container
+ * @returns {import('../lib/router.js').ViewHandle}
  */
 export function mount(container) {
   let destroyed = false;
@@ -25,6 +32,8 @@ export function mount(container) {
   let outboxItems = [];
   let outboxCursor = '';
   let outboxLoading = false;
+  const outboxGuard = createGenerationGuard();
+  const bundleGate = createInFlightGuard();
 
   const state = {
     loading: true,
@@ -34,6 +43,9 @@ export function mount(container) {
     partialErrors: [],
     partialDismissed: false,
     blockError: null,
+    rumEvents: 0,
+    slowApiPaths: [],
+    operatorDash: null,
   };
 
   const user = auth.getUser();
@@ -64,6 +76,7 @@ export function mount(container) {
               type: 'button',
               className: 'btn btn--secondary btn--sm',
               style: { marginLeft: 'auto' },
+              disabled: bundleGate.busy(),
               onClick: downloadBundle,
             },
               renderIcon('download', { size: 14 }),
@@ -133,6 +146,28 @@ export function mount(container) {
           loading: false,
         })
         : null,
+      tab === 'overview' && (state.slowApiPaths.length > 0 || state.rumEvents > 0)
+        ? el('div', { style: { marginTop: 24 }, 'data-testid': 'client-telemetry-panel' },
+          el('h2', { style: { fontSize: 14, fontWeight: 600 } }, 'Client telemetry'),
+          state.slowApiPaths.length > 0
+            ? renderStatusHint({
+              tone: 'warning',
+              message: `Slow API (p95 ≥ 500 ms): ${state.slowApiPaths.join(', ')}`,
+            })
+            : null,
+          state.rumEvents > 0
+            ? el('p', { className: 'text-muted', style: { fontSize: 13 } },
+              `${state.rumEvents} RUM sample(s) stored server-side`,
+            )
+            : null,
+        )
+        : null,
+      tab === 'overview' && state.operatorDash
+        ? el('div', { style: { marginTop: 24 } },
+          renderEdgePanel(state.operatorDash.edge),
+          renderXDPPanel(state.operatorDash.xdp),
+        )
+        : null,
       tab === 'overview' && shardSnippet.length > 0
         ? el('div', { style: { marginTop: 24 } },
           el('div', { className: 'flex items-center gap-2 mb-4' },
@@ -143,7 +178,7 @@ export function mount(container) {
               style: { fontSize: 12 },
             }, 'All shards →'),
           ),
-          el('div', { className: 'table-wrapper' },
+          el('div', { className: 'table-wrapper elevation-raised' },
             el('table', { className: 'data-table' },
               el('thead', null,
                 el('tr', null,
@@ -190,7 +225,7 @@ export function mount(container) {
           outboxLoading && outboxItems.length === 0
             ? el('span', { className: 'text-muted' }, 'Loading…')
             : null,
-          el('div', { className: 'table-wrapper' },
+          el('div', { className: 'table-wrapper elevation-raised' },
             el('table', { className: 'data-table' },
               el('thead', null,
                 el('tr', null,
@@ -228,6 +263,7 @@ export function mount(container) {
   }
 
   async function loadOutbox() {
+    const opGen = outboxGuard.next();
     outboxLoading = true;
     outboxItems = [];
     outboxCursor = '';
@@ -235,7 +271,7 @@ export function mount(container) {
     const params = new URLSearchParams();
     if (outboxStatus) params.set('status', outboxStatus);
     const [outboxRes, outboxErr] = await to(api(`/api/v1/ops/outbox?${params.toString()}`));
-    if (destroyed) return;
+    if (!shouldCommitAsyncResult(opGen, outboxGuard.current(), destroyed)) return;
     if (outboxErr) {
       const view = mapServiceError(outboxErr);
       pushToastMessage({ title: view.title, message: view.message, code: view.code });
@@ -248,13 +284,19 @@ export function mount(container) {
   }
 
   async function loadMoreOutbox() {
-    if (!outboxCursor) return;
+    if (!outboxCursor || outboxLoading) return;
+    const opGen = outboxGuard.current();
+    const cursorAtStart = outboxCursor;
     outboxLoading = true;
     render();
     const params = new URLSearchParams({ cursor: outboxCursor });
     if (outboxStatus) params.set('status', outboxStatus);
     const [outboxRes, outboxErr] = await to(api(`/api/v1/ops/outbox?${params.toString()}`));
-    if (destroyed) return;
+    if (!shouldCommitAsyncResult(opGen, outboxGuard.current(), destroyed)
+      || cursorAtStart !== outboxCursor) {
+      outboxLoading = false;
+      return;
+    }
     if (outboxErr) {
       const view = mapServiceError(outboxErr);
       pushToastMessage({ title: view.title, message: view.message, code: view.code });
@@ -267,10 +309,16 @@ export function mount(container) {
   }
 
   async function downloadBundle() {
+    if (!bundleGate.tryAcquire()) return;
+    render();
+    await flushRUMNow();
     const [blob, blobErr] = await to(apiBlob('/api/v1/ops/support/bundle', { method: 'POST' }));
+    bundleGate.release();
+    if (destroyed) return;
     if (blobErr) {
       const view = mapServiceError(blobErr);
       pushToastMessage({ title: view.title, message: view.message, code: view.code });
+      render();
       return;
     }
     const url = URL.createObjectURL(blob);
@@ -279,6 +327,7 @@ export function mount(container) {
     a.download = 'espx-support-bundle.tar.gz';
     a.click();
     URL.revokeObjectURL(url);
+    render();
   }
 
   async function loadOpsData() {
@@ -289,6 +338,8 @@ export function mount(container) {
       () => api('/api/v1/ops/doctor'),
       () => api('/api/v1/ops/incidents').catch((e) => ({ error: e })),
       () => api('/api/v1/ops/dashboard/summary'),
+      () => api('/api/v1/ops/rum').catch(() => ({ data: { events: [] } })),
+      () => api('/api/v1/dashboards/operator').catch(() => ({ data: null })),
     ], 3));
 
     if (destroyed) return;
@@ -300,9 +351,12 @@ export function mount(container) {
       return;
     }
 
-    const [docRes, incRes, sumRes] = results;
+    const [docRes, incRes, sumRes, rumRes, opDashRes] = results;
     if (docRes?.data) state.doctor = docRes.data;
     if (sumRes?.data) state.summary = sumRes.data;
+    state.operatorDash = opDashRes?.data ?? null;
+    state.rumEvents = rumRes?.data?.events?.length ?? 0;
+    state.slowApiPaths = apiTimingReport().slowPaths;
 
     const errors = [];
     if (incRes?.error) {
@@ -334,6 +388,8 @@ export function mount(container) {
   return {
     destroy() {
       destroyed = true;
+      outboxGuard.invalidate();
+      bundleGate.release();
     },
   };
 }

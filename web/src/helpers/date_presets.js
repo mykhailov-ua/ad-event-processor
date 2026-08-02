@@ -1,4 +1,6 @@
 /**
+ * Return the current instant as an ISO-8601 string.
+ *
  * @returns {string}
  */
 export function toIsoNow() {
@@ -6,7 +8,10 @@ export function toIsoNow() {
 }
 
 /**
+ * Return an ISO-8601 timestamp for midnight N days ago.
+ *
  * @param {number} days
+ * @returns {string}
  */
 export function isoDaysAgo(days) {
   const d = new Date();
@@ -15,6 +20,8 @@ export function isoDaysAgo(days) {
 }
 
 /**
+ * Return an ISO-8601 timestamp for the start of the current month.
+ *
  * @returns {string}
  */
 export function isoMonthStart() {

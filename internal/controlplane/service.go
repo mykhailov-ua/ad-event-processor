@@ -655,7 +655,7 @@ func (s *Service) CancelCampaign(ctx context.Context, campaignID uuid.UUID, reas
 			Reason:     pgtype.Text{String: reason, Valid: true},
 		})
 		if err == nil {
-			payloadBytes, marshalErr := coldpath.MarshalJSON(CampaignPayload{CampaignID: campaignID.String()})
+			payloadBytes, marshalErr := coldpath.MarshalOutbox(CampaignPayload{CampaignID: campaignID.String()})
 			if marshalErr != nil {
 				return fmt.Errorf("marshal cancel campaign outbox payload: %w", marshalErr)
 			}
@@ -923,7 +923,7 @@ func (s *Service) UpdateOverdraft(ctx context.Context, id uuid.UUID, newOverdraf
 						availableLimit = availableLimit + remaining
 					}
 
-					payloadBytes, marshalErr := coldpath.MarshalJSON(CampaignPayload{CampaignID: uuid.UUID(locked.ID.Bytes).String()})
+					payloadBytes, marshalErr := coldpath.MarshalOutbox(CampaignPayload{CampaignID: uuid.UUID(locked.ID.Bytes).String()})
 					if marshalErr != nil {
 						return fmt.Errorf("marshal pause campaign outbox payload: %w", marshalErr)
 					}

@@ -1,5 +1,8 @@
 /**
+ * Check whether an alert banner was dismissed for this session.
+ *
  * @param {string} key
+ * @returns {boolean}
  */
 export function isAlertDismissed(key) {
   try {
@@ -10,7 +13,10 @@ export function isAlertDismissed(key) {
 }
 
 /**
+ * Persist alert dismissal for the current browser session.
+ *
  * @param {string} key
+ * @returns {void}
  */
 export function dismissAlert(key) {
   try {

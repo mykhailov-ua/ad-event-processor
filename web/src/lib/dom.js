@@ -46,3 +46,12 @@ export function replaceChildren(node, ...children) {
   node.replaceChildren();
   appendChildren(node, children);
 }
+
+/**
+ * @param {string} text
+ * @param {Record<string, unknown>} [props]
+ * @returns {HTMLElement}
+ */
+export function monoEl(text, props = {}) {
+  return el('span', { className: 'font-mono', ...props }, text);
+}

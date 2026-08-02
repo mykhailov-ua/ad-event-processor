@@ -1,0 +1,36 @@
+package ingestion
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
+
+func TestParseTgBidRequest(t *testing.T) {
+	t.Parallel()
+	body := []byte(`{"ip":"1.2.3.4","user_agent":"Mozilla/5.0","publisher_id":"pub123","widget_id":"widget456","bid_floor":0.005,"premium":true,"motivated":false,"width":300,"height":250,"production":true}`)
+	var parsed tgBidRequest
+	ok := parseTgBidRequest(body, &parsed)
+	require.True(t, ok)
+	require.Equal(t, "1.2.3.4", string(parsed.ip))
+	require.Equal(t, "Mozilla/5.0", string(parsed.ua))
+	require.Equal(t, "pub123", string(parsed.publisherID))
+	require.Equal(t, "widget456", string(parsed.widgetID))
+	require.InDelta(t, 0.005, parsed.bidFloor, 0.000001)
+	require.True(t, parsed.premium)
+	require.False(t, parsed.motivated)
+	require.Equal(t, int32(300), parsed.width)
+	require.Equal(t, int32(250), parsed.height)
+	require.True(t, parsed.production)
+}
+
+func BenchmarkParseTgBidRequest_ZeroAlloc(b *testing.B) {
+	body := []byte(`{"ip":"1.2.3.4","user_agent":"Mozilla/5.0","publisher_id":"pub123","widget_id":"widget456","bid_floor":0.005,"premium":true,"motivated":false,"width":300,"height":250,"production":true}`)
+	var parsed tgBidRequest
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = parseTgBidRequest(body, &parsed)
+	}
+}

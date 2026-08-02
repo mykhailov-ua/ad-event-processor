@@ -2,10 +2,10 @@ import { mapServiceError } from './service_error.js';
 import { pushToastMessage } from './toast_ui.js';
 
 /**
- * Surfaces API errors per mapServiceError (toast / conflict / retry / inline).
- * Page-level errors should use renderErrorBlock instead.
+ * Surface a service error as a toast when appropriate for transient failures.
  *
  * @param {unknown} error
+ * @returns {void}
  */
 export function surfaceServiceErrorToast(error) {
   if (!error) return;

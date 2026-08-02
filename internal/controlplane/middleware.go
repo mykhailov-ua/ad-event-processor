@@ -38,6 +38,14 @@ func (u AuthenticatedUser) IsUser() bool {
 	return u.Role == RoleUser
 }
 
+func (u AuthenticatedUser) IsBuyer() bool {
+	return u.Role == RoleBuyer
+}
+
+func (u AuthenticatedUser) HasBoundCustomer() bool {
+	return u.IsUser() || u.IsBuyer()
+}
+
 func GetUser(ctx context.Context) (AuthenticatedUser, bool) {
 	u, ok := ctx.Value(UserContextKey).(AuthenticatedUser)
 	return u, ok

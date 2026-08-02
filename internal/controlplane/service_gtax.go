@@ -45,7 +45,7 @@ func (s *Service) ApplyCTVSettlement(
 	}
 
 	if result.Applied {
-		payload, marshalErr := coldpath.MarshalJSON(ctvGtaxSettlementPayload{
+		payload, marshalErr := coldpath.MarshalOutbox(ctvGtaxSettlementPayload{
 			SettlementID: settlementID,
 			CustomerID:   customerID.String(),
 			CampaignID:   campaignID.String(),

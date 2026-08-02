@@ -1,6 +1,8 @@
 import { el } from '../lib/dom.js';
 
 /**
+ * Render a custom-styled checkbox with an optional label.
+ *
  * @param {{
  *   checked: boolean,
  *   disabled?: boolean,
@@ -9,6 +11,7 @@ import { el } from '../lib/dom.js';
  *   id?: string,
  *   className?: string,
  * }} opts
+ * @returns {HTMLLabelElement}
  */
 export function renderCheckbox(opts) {
   const id = opts.id ?? `check-${Math.random().toString(36).slice(2, 9)}`;

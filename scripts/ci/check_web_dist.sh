@@ -6,13 +6,13 @@ cd "$ROOT"
 
 DIST="web/dist"
 
-if [ ! -d "$DIST/assets" ]; then
-  echo "Error: $DIST/assets missing. Run npm run build in web/."
+if [ ! -d "$DIST/src" ]; then
+  echo "Error: $DIST/src missing. Run: node web/scripts/build.mjs"
   exit 1
 fi
 
-if find "$DIST/assets" -name '*.map' -print -quit | grep -q .; then
-  echo "Error: sourcemap files found in production dist/assets."
+if [ ! -f "$DIST/index.html" ] || [ ! -f "$DIST/login.html" ]; then
+  echo "Error: dist HTML entry files missing"
   exit 1
 fi
 

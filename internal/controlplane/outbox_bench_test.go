@@ -2,7 +2,6 @@ package controlplane
 
 import (
 	"context"
-	"encoding/json"
 	"sync"
 	"testing"
 	"time"
@@ -11,6 +10,7 @@ import (
 	"espx/internal/database"
 	"espx/internal/domain"
 	"espx/internal/domain/db"
+	"espx/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -119,13 +119,13 @@ func seedEvents(t *testing.T, pool *pgxpool.Pool, count int) {
 			BudgetLimit: 100_500_000,
 		}
 		var err error
-		payloads[i], err = json.Marshal(payload)
+		payloads[i], err = coldpath.MarshalOutbox(payload)
 		require.NoError(t, err)
 	}
 
 	_, err := pool.Exec(ctx, `
 		INSERT INTO outbox_events (event_type, payload)
-		SELECT 'CREATE_CAMPAIGN', unnest($1::jsonb[])
+		SELECT 'CREATE_CAMPAIGN', unnest($1::bytea[])
 	`, payloads)
 	require.NoError(t, err)
 }
@@ -210,12 +210,12 @@ func seedEventsForBench(pool *pgxpool.Pool, count int) {
 				CampaignID:  uuid.New().String(),
 				BudgetLimit: 100_500_000,
 			}
-			payloads[j], _ = json.Marshal(payload)
+			payloads[j], _ = coldpath.MarshalOutbox(payload)
 		}
 
 		_, err := pool.Exec(ctx, `
 			INSERT INTO outbox_events (event_type, payload)
-			SELECT 'CREATE_CAMPAIGN', unnest($1::jsonb[])
+			SELECT 'CREATE_CAMPAIGN', unnest($1::bytea[])
 		`, payloads)
 		if err != nil {
 			panic(err)

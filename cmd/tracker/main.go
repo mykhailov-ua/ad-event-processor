@@ -217,6 +217,7 @@ func main() {
 	var quotaRefillWorker *ingestion.QuotaRefillWorker
 	var budgetDeltaPublisher *ingestion.BudgetDeltaPublisher
 	var localQuantaFlusher *ingestion.LocalQuantaFlusher
+	var localQuantaStream *ingestion.LocalQuantaStreamPublisher
 	if cfg.LocalQuotaMode == "shadow" || cfg.LocalQuotaMode == "live" {
 		localQuantaLedger = ingestion.NewLocalQuantaLedger()
 		localQuantaStrict := ingestion.NewLocalQuantaStrict(cfg.QuotaStrictThresholdMicro, cfg.QuotaStrictExitMicro)
@@ -249,6 +250,14 @@ func main() {
 			Timeout:    time.Duration(cfg.Broker.TimeoutMs) * time.Millisecond,
 		})
 		localQuantaFlusher = ingestion.NewLocalQuantaFlusher(localQuantaLedger, rdbs, sharder, budgetDeltaPublisher)
+		idemCache := ingestion.NewLocalClickIdemCache(time.Duration(cfg.IdempotencyTTLHrs) * time.Hour)
+		localQuantaStream = ingestion.NewLocalQuantaStreamPublisher(ingestion.LocalQuantaStreamPublisherConfig{
+			Rdbs:           rdbs,
+			StreamName:     cfg.RedisStreamName,
+			MaxLen:         cfg.StreamMaxLen,
+			IdempotencyTTL: time.Duration(cfg.IdempotencyTTLHrs) * time.Hour,
+			IdemCache:      idemCache,
+		})
 		quotaRefillWorker.SetStrictMode(localQuantaStrict, localQuantaFlusher)
 		ingestion.SetRegistryQuantaFlushHook(func(id uuid.UUID) {
 			flushCtx, flushCancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -277,6 +286,7 @@ func main() {
 			Strict:    localQuantaStrict,
 			Refill:    quotaRefillWorker,
 			Publisher: budgetDeltaPublisher,
+			Stream:    localQuantaStream,
 		})
 		unifiedFilter.SetLocalQuantaMode(cfg.LocalQuotaMode)
 		slog.Info("local quanta enabled",
@@ -552,6 +562,9 @@ func main() {
 	}
 	if budgetDeltaPublisher != nil {
 		budgetDeltaPublisher.Close()
+	}
+	if localQuantaStream != nil {
+		localQuantaStream.Close()
 	}
 
 	registryWaitCtx, registryWaitCancel := context.WithTimeout(context.Background(), time.Duration(cfg.Lifecycle.WaitTimeoutMs)*time.Millisecond)

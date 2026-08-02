@@ -25,7 +25,7 @@ func ttcEnabled(ttcMinMsAny any) bool {
 }
 
 func (f *UnifiedFilter) needsFullLuaPath(evt *domain.Event, campInfo *domain.Campaign) bool {
-	if evt.Type != "impression" {
+	if evt.Type != "impression" && evt.Type != "click" {
 		return true
 	}
 	if !f.fastPathEnabled.Load() {
@@ -38,9 +38,7 @@ func (f *UnifiedFilter) needsFullLuaPath(evt *domain.Event, campInfo *domain.Cam
 		return true
 	}
 	if ttcEnabled(f.ttcMinMsAny) {
-		if evt.Type == "click" || evt.Type == "impression" {
-			return true
-		}
+		return true
 	}
 	if f.quotaEnabledAny == oneAny && quotaRefillSample(evt.CampaignID) {
 		return true

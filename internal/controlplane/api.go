@@ -81,7 +81,7 @@ func parseAPIPagination(r *http.Request) (int32, int32) {
 
 func (h *Handler) ensureCampaignAccess(r *http.Request, campaignID uuid.UUID) error {
 	u, ok := GetUser(r.Context())
-	if !ok || !u.IsUser() {
+	if !ok || !u.HasBoundCustomer() {
 		return nil
 	}
 	camp, err := h.svc.GetCampaignRow(r.Context(), campaignID)
@@ -96,7 +96,7 @@ func (h *Handler) ensureCampaignAccess(r *http.Request, campaignID uuid.UUID) er
 
 func (h *Handler) ensureCustomerAccess(r *http.Request, customerID string) error {
 	u, ok := GetUser(r.Context())
-	if !ok || !u.IsUser() {
+	if !ok || !u.HasBoundCustomer() {
 		return nil
 	}
 	cid, err := uuid.Parse(customerID)
@@ -133,7 +133,7 @@ func (handler *Handler) resolveForecastCustomerID(r *http.Request, bodyCustomerI
 	if !ok {
 		return nil, errForbidden
 	}
-	if u.IsUser() {
+	if u.HasBoundCustomer() {
 		if bodyCustomerID != nil && *bodyCustomerID != uuid.Nil && *bodyCustomerID != u.CustomerID {
 			return nil, errForbidden
 		}
@@ -158,7 +158,7 @@ func (handler *Handler) resolveSelfServeCustomerID(r *http.Request, bodyCustomer
 	if !ok {
 		return uuid.Nil, errForbidden
 	}
-	if u.IsUser() {
+	if u.HasBoundCustomer() {
 		if bodyCustomerID != nil && *bodyCustomerID != uuid.Nil && *bodyCustomerID != u.CustomerID {
 			return uuid.Nil, errForbidden
 		}

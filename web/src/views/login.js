@@ -8,8 +8,11 @@ const REASON_MESSAGES = {
 };
 
 /**
+ * Mount the login form and handle credential submission.
+ *
  * @param {HTMLElement} container
  * @param {{ query: URLSearchParams, navigate: (path: string) => void }} ctx
+ * @returns {import('../lib/router.js').ViewHandle}
  */
 export function mount(container, ctx) {
   let destroyed = false;

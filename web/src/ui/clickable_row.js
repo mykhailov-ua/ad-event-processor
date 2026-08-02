@@ -1,7 +1,10 @@
 import { el } from '../lib/dom.js';
 
 /**
+ * Render a keyboard-accessible table row that activates on click or Enter.
+ *
  * @param {{ onActivate: () => void, id?: string, className?: string, cells: HTMLElement[] }} opts
+ * @returns {HTMLTableRowElement}
  */
 export function clickableRow(opts) {
   const row = el('tr', {

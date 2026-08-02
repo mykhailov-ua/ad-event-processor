@@ -2,6 +2,8 @@ import * as auth from './auth.js';
 import { ApiError } from './api_client.js';
 
 /**
+ * Fetch a binary response from the API with CSRF on mutations.
+ *
  * @param {string} path
  * @param {RequestInit} [init]
  * @returns {Promise<Blob>}

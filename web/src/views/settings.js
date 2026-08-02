@@ -23,7 +23,10 @@ const INGRESS_OPTIONS = ['espx_native', 'openrtb_3'];
 const PROFILE_OPTIONS = ['single_vps', 'compose_dev', 'k8s_k3s'];
 
 /**
+ * Mount the platform settings view with save and apply actions.
+ *
  * @param {HTMLElement} container
+ * @returns {import('../lib/router.js').ViewHandle}
  */
 export function mount(container) {
   let destroyed = false;

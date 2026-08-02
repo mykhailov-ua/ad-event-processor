@@ -79,16 +79,16 @@ fi
 bootstrap_if_needed
 
 log "building admin UI"
-cd "$ROOT/web"
-npm ci
-npm run build
+node "$ROOT/web/scripts/build.mjs"
 
 log "running stack playwright specs"
 export ADMIN_STACK_E2E=1
 export PLAYWRIGHT_BASE_URL="${CONTROL_URL}"
 export ADMIN_STACK_E2E_EMAIL
 export ADMIN_STACK_E2E_PASSWORD
+cd "$ROOT/web/e2e"
+if [ -f package-lock.json ]; then npm ci; else npm install; fi
 npx playwright install chromium
-npm run test:e2e -- e2e/stack.spec.js
+npm run test:e2e -- stack.spec.js
 
 log "admin stack e2e PASSED"

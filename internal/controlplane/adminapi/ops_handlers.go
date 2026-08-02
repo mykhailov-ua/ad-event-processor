@@ -39,6 +39,7 @@ type OpsHTTPHandlers struct {
 	WriteServiceError       func(http.ResponseWriter, error)
 	AuthorizeCustomerAccess func(*http.Request, string) error
 	SupportBundle           SupportBundleWriter
+	RUMStore                RUMStore
 }
 
 func (ops *OpsHTTPHandlers) Register(mux *http.ServeMux) {
@@ -69,6 +70,7 @@ func (ops *OpsHTTPHandlers) Register(mux *http.ServeMux) {
 	ops.registerFraudThreatRoutes(mux)
 	ops.registerDashboardRoutes(mux)
 	ops.registerSupportBundleRoutes(mux)
+	ops.registerRUMRoutes(mux)
 	ops.registerMLModelRoutes(mux)
 }
 

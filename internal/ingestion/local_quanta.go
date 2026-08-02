@@ -78,6 +78,17 @@ func (l *LocalQuantaLedger) ChunkSize(id uuid.UUID) int64 {
 	return cell.chunkSize
 }
 
+func (l *LocalQuantaLedger) Refund(id uuid.UUID, amountMicro int64) {
+	if amountMicro <= 0 {
+		return
+	}
+	cell, h := l.cellFor(id)
+	if cell.campaignHash != h {
+		return
+	}
+	cell.remaining.Add(amountMicro)
+}
+
 func (l *LocalQuantaLedger) TrySpendLocal(id uuid.UUID, amountMicro int64) bool {
 	if amountMicro <= 0 {
 		return true

@@ -23,6 +23,7 @@ type RouteRegistry struct {
 	MetaHTTP        *MetaHTTPHandlers
 	PlatformHTTP    *PlatformHTTPHandlers
 	StubHTTP        *StubHTTPHandlers
+	TelegramHTTP    *TelegramHTTPHandlers
 }
 
 func Catalog() []Route {
@@ -65,6 +66,7 @@ var routeCatalog = []Route{
 	{Method: "GET", Path: "/api/v1/cost-sync/history"},
 	{Method: "POST", Path: "/api/v1/cost-sync/run"},
 	{Method: "GET", Path: "/api/v1/customers/{id}/balance"},
+	{Method: "GET", Path: "/api/v1/customers/{id}/ledger"},
 	{Method: "GET", Path: "/api/v1/customers/{id}/balance/export"},
 	{Method: "GET", Path: "/api/v1/customers/{id}/billing/forecast"},
 	{Method: "GET", Path: "/api/v1/customers/{id}/billing/statement"},
@@ -101,6 +103,8 @@ var routeCatalog = []Route{
 	{Method: "POST", Path: "/api/v1/ops/dlq/{id}/retry"},
 	{Method: "GET", Path: "/api/v1/ops/incidents"},
 	{Method: "GET", Path: "/api/v1/ops/outbox"},
+	{Method: "POST", Path: "/api/v1/ops/rum"},
+	{Method: "GET", Path: "/api/v1/ops/rum"},
 	{Method: "POST", Path: "/api/v1/ops/roles/reload"},
 	{Method: "GET", Path: "/api/v1/ops/shards"},
 	{Method: "GET", Path: "/api/v1/postbacks/config"},
@@ -131,6 +135,8 @@ var routeCatalog = []Route{
 	{Method: "GET", Path: "/api/v1/reports/placements"},
 	{Method: "GET", Path: "/api/v1/reports/postback-reconciliation"},
 	{Method: "POST", Path: "/api/v1/reports/jobs"},
+	{Method: "GET", Path: "/api/v1/reports/jobs/{id}"},
+	{Method: "GET", Path: "/api/v1/reports/jobs/{id}/download"},
 	{Method: "GET", Path: "/api/v1/reports/source-margin"},
 	{Method: "GET", Path: "/api/v1/reports/source-quality"},
 	{Method: "GET", Path: "/api/v1/reports/spend-velocity"},
@@ -149,6 +155,19 @@ var routeCatalog = []Route{
 	{Method: "GET", Path: "/api/v1/views/{id}"},
 	{Method: "PUT", Path: "/api/v1/views/{id}"},
 	{Method: "DELETE", Path: "/api/v1/views/{id}"},
+	{Method: "POST", Path: "/api/v1/telegram/validate"},
+	{Method: "POST", Path: "/api/v1/telegram/clicks"},
+	{Method: "POST", Path: "/api/v1/telegram/webhook/{bot_id}"},
+	{Method: "POST", Path: "/api/v1/telegram/deeplink-tokens"},
+	{Method: "GET", Path: "/api/v1/telegram/deeplink-tokens/{token}"},
+	{Method: "GET", Path: "/api/v1/telegram/bots"},
+	{Method: "GET", Path: "/api/v1/telegram/bots/{id}"},
+	{Method: "PUT", Path: "/api/v1/telegram/bots/{id}"},
+	{Method: "POST", Path: "/api/v1/telegram/postbacks"},
+	{Method: "PUT", Path: "/api/v1/telegram/postbacks/{id}"},
+	{Method: "DELETE", Path: "/api/v1/telegram/postbacks/{id}"},
+	{Method: "POST", Path: "/api/v1/telegram/postbacks/{id}/test"},
+	{Method: "GET", Path: "/api/v1/reports/telegram"},
 }
 
 func RegisterRoutes(mux *http.ServeMux, routes RouteRegistry) {
@@ -211,5 +230,8 @@ func RegisterRoutes(mux *http.ServeMux, routes RouteRegistry) {
 	}
 	if routes.StubHTTP != nil {
 		routes.StubHTTP.Register(mux)
+	}
+	if routes.TelegramHTTP != nil {
+		routes.TelegramHTTP.Register(mux)
 	}
 }

@@ -1,8 +1,9 @@
+# Development and CI task automation for eSPX.
 version: '3'
 
 vars:
-  GO: 'go'
-  PATH_WITH_GO: 'PATH=$PATH:/usr/local/go/bin:$(go env GOPATH)/bin'
+  GO: go
+  PATH_WITH_GO: PATH=$PATH:/usr/local/go/bin:$(go env GOPATH)/bin
 
 tasks:
   default:
@@ -11,38 +12,38 @@ tasks:
       - task --list
 
   gen:
-    desc: Run sqlc, templ, and protoc code generation
+    desc: Generate SQL, templ, and gRPC code
     cmds:
       - bash scripts/ci/gen.sh --all
 
   docker-up:
-    desc: Start infrastructure containers (PostgreSQL, sharded Redis, ClickHouse) in detached mode
+    desc: Start required service containers
     cmds:
       - bash scripts/dev/stack.sh infra
 
   docker-down:
-    desc: Stop and remove all infrastructure containers
+    desc: Stop and remove service containers
     cmds:
       - bash scripts/dev/stack.sh down
 
   check-deps:
-    desc: Run dependency healthcheck script to verify all databases and migrations are functional
+    desc: Verify database and migration status
     cmds:
       - bash scripts/ci/deps.sh
 
   dev-preflight:
-    desc: check-deps then smoke-local HTTP/redis health
+    desc: Short HTTP and Redis healthcheck for local development
     cmds:
       - bash scripts/dev/preflight.sh
 
   test-full:
-    desc: Run all unit and integration tests with the Go race detector enabled
+    desc: Run all Go tests with race detector
     cmds:
       - echo "Running full test suite with race detector..."
       - go test -v -race ./...
 
   perf-gate:
-    desc: Run performance gate analysis locally against main branch
+    desc: Local performance regression analysis
     env:
       BASELINE_WORKTREE: ../baseline-local
     cmds:

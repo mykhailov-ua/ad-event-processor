@@ -131,9 +131,31 @@ func (s *Service) DeleteView(id string) error {
 }
 
 type ViewsHTTPHandlers struct {
-	Service           *Service
-	ApplyRateLimit    func(http.HandlerFunc) http.HandlerFunc
-	RequirePermission func(string, http.HandlerFunc) http.HandlerFunc
+	Service                 *Service
+	ApplyRateLimit          func(http.HandlerFunc) http.HandlerFunc
+	RequirePermission       func(string, http.HandlerFunc) http.HandlerFunc
+	RequireAnyPermission    func([]string, http.HandlerFunc) http.HandlerFunc
+	AuthorizeCustomerAccess func(*http.Request, string) error
+	WriteServiceError       func(http.ResponseWriter, error)
+}
+
+func (viewHandlers *ViewsHTTPHandlers) authorizeViewCustomer(w http.ResponseWriter, r *http.Request, customerID string) bool {
+	if viewHandlers == nil || viewHandlers.AuthorizeCustomerAccess == nil {
+		return true
+	}
+	if err := viewHandlers.AuthorizeCustomerAccess(r, customerID); err != nil {
+		viewHandlers.writeServiceError(w, err)
+		return false
+	}
+	return true
+}
+
+func (viewHandlers *ViewsHTTPHandlers) writeServiceError(w http.ResponseWriter, err error) {
+	if viewHandlers != nil && viewHandlers.WriteServiceError != nil {
+		viewHandlers.WriteServiceError(w, err)
+		return
+	}
+	httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 }
 
 func (viewHandlers *ViewsHTTPHandlers) Register(mux *http.ServeMux) {
@@ -142,16 +164,23 @@ func (viewHandlers *ViewsHTTPHandlers) Register(mux *http.ServeMux) {
 	}
 	limit := viewHandlers.ApplyRateLimit
 	perm := viewHandlers.RequirePermission
+	permAny := viewHandlers.RequireAnyPermission
 	if limit == nil {
 		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 	if perm == nil {
 		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
+	if permAny == nil {
+		permAny = func(perms []string, next http.HandlerFunc) http.HandlerFunc {
+			return perm(perms[0], next)
+		}
+	}
 
-	mux.HandleFunc("GET /api/v1/views", limit(perm("campaigns:read", viewHandlers.listViews)))
+	readPerms := []string{"campaigns:read", "campaigns:read:masked"}
+	mux.HandleFunc("GET /api/v1/views", limit(permAny(readPerms, viewHandlers.listViews)))
+	mux.HandleFunc("GET /api/v1/views/{id}", limit(permAny(readPerms, viewHandlers.getView)))
 	mux.HandleFunc("POST /api/v1/views", limit(perm("campaigns:write", viewHandlers.createView)))
-	mux.HandleFunc("GET /api/v1/views/{id}", limit(perm("campaigns:read", viewHandlers.getView)))
 	mux.HandleFunc("PUT /api/v1/views/{id}", limit(perm("campaigns:write", viewHandlers.updateView)))
 	mux.HandleFunc("DELETE /api/v1/views/{id}", limit(perm("campaigns:write", viewHandlers.deleteView)))
 }
@@ -164,6 +193,9 @@ func (viewHandlers *ViewsHTTPHandlers) createView(w http.ResponseWriter, r *http
 
 	if _, err := uuid.Parse(req.CustomerID); err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer_id")
+		return
+	}
+	if !viewHandlers.authorizeViewCustomer(w, r, req.CustomerID) {
 		return
 	}
 
@@ -186,6 +218,9 @@ func (viewHandlers *ViewsHTTPHandlers) listViews(w http.ResponseWriter, r *http.
 
 	if _, err := uuid.Parse(custIDStr); err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer_id")
+		return
+	}
+	if !viewHandlers.authorizeViewCustomer(w, r, custIDStr) {
 		return
 	}
 
@@ -219,6 +254,9 @@ func (viewHandlers *ViewsHTTPHandlers) getView(w http.ResponseWriter, r *http.Re
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}
+	if !viewHandlers.authorizeViewCustomer(w, r, view.CustomerID) {
+		return
+	}
 
 	httpresponse.JSON(w, http.StatusOK, view)
 }
@@ -240,12 +278,16 @@ func (viewHandlers *ViewsHTTPHandlers) updateView(w http.ResponseWriter, r *http
 		return
 	}
 
-	if _, err := viewHandlers.Service.GetView(id); err != nil {
+	existing, err := viewHandlers.Service.GetView(id)
+	if err != nil {
 		if errors.Is(err, ErrViewNotFound) {
 			httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "view not found")
 			return
 		}
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		return
+	}
+	if !viewHandlers.authorizeViewCustomer(w, r, existing.CustomerID) {
 		return
 	}
 
@@ -270,12 +312,16 @@ func (viewHandlers *ViewsHTTPHandlers) deleteView(w http.ResponseWriter, r *http
 		return
 	}
 
-	if _, err := viewHandlers.Service.GetView(id); err != nil {
+	existing, err := viewHandlers.Service.GetView(id)
+	if err != nil {
 		if errors.Is(err, ErrViewNotFound) {
 			httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "view not found")
 			return
 		}
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		return
+	}
+	if !viewHandlers.authorizeViewCustomer(w, r, existing.CustomerID) {
 		return
 	}
 

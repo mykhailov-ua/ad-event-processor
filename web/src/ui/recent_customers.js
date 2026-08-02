@@ -3,7 +3,10 @@ import * as storage from '../helpers/storage.js';
 import { shortCustomerId } from '../helpers/customer_context.js';
 
 /**
+ * Render recent customer quick links from navigation storage.
+ *
  * @param {{ tenant?: boolean }} opts
+ * @returns {HTMLElement|null}
  */
 export function renderRecentCustomers(opts = {}) {
   if (opts.tenant) return null;

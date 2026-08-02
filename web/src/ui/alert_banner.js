@@ -3,12 +3,15 @@ import { isAlertDismissed, dismissAlert } from '../helpers/alert_dismiss.js';
 import { renderIcon } from './icon.js';
 
 /**
+ * Render a dismissible alert banner for warnings, errors, or info.
+ *
  * @param {{
  *   variant?: 'warning'|'error'|'info',
  *   message: string,
  *   dismissKey?: string,
  *   onDismiss?: () => void,
  * }} opts
+ * @returns {HTMLElement|null}
  */
 export function renderAlertBanner(opts) {
   if (opts.dismissKey && isAlertDismissed(opts.dismissKey)) return null;

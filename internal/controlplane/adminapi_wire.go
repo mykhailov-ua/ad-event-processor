@@ -12,6 +12,7 @@ import (
 	"espx/internal/controlplane/adminapi"
 	"espx/internal/controlplane/authz"
 	"espx/internal/costsync"
+	"espx/internal/edge/xdpstats"
 	"espx/internal/openrtb"
 	"espx/pkg/doctor"
 	"espx/pkg/platformconfig"
@@ -57,6 +58,9 @@ func (w supportBundleWriter) WriteSupportBundle(ctx context.Context, out io.Writ
 		Meta:     meta,
 		LogDir:   w.logDir,
 		MaxBytes: supportbundle.DefaultMaxBytes,
+		ExtraJSON: map[string]any{
+			"client_rum.json": snapshotRUMEvents(),
+		},
 	})
 }
 
@@ -134,6 +138,10 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 	}
 
 	opsReader := newOpsReader(svc)
+	reportJobs := adminapi.NewReportJobRunner(filepath.Join(".", "data", "report-exports"), adminapi.ReportExportDeps{
+		Pool:    pool,
+		CHQuery: svc.CHQuery(),
+	})
 
 	return adminapi.RouteRegistry{
 		BillingHTTP: &adminapi.BillingHTTPHandlers{
@@ -188,6 +196,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 				pool:   pool,
 				logDir: h.cfg.Logger.Dir,
 			},
+			RUMStore: rumStoreAdapter{},
 		},
 		ExportHTTP: exportHTTP,
 		LicensingHTTP: &adminapi.LicensingHTTPHandlers{
@@ -198,21 +207,43 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 		ReportsHTTP: &adminapi.ReportsHTTPHandlers{
 			CampaignStats:             svc,
 			CampaignForecaster:        svc,
+			ReportJobs:                reportJobs,
 			Pool:                      pool,
 			CHQuery:                   svc.CHQuery(),
 			ApplyRateLimit:            limit,
 			RequirePermission:         perm,
 			RequireAnyPermission:      permAny,
 			AuthorizeCampaignAccess:   authCampaign,
+			AuthorizeCustomerAccess:   authCustomer,
 			ResolveForecastCustomerID: h.resolveForecastCustomerID,
 			WriteServiceError:         writeErr,
 		},
 		DashboardsHTTP: &adminapi.DashboardsHTTPHandlers{
-			ApplyRateLimit:    limit,
-			RequirePermission: perm,
+			BuyerPortfolio:       svc,
+			CampaignDashboard:    svc,
+			RoleDashboards:       svc,
+			ReportJobs:           reportJobs,
+			ApplyRateLimit:       limit,
+			RequirePermission:    perm,
+			RequireAnyPermission: permAny,
+			ResolveCustomerID:    h.resolveCampaignsCustomerID,
+			WriteServiceError:    writeErr,
+			EdgeMetricsReader:    FetchEdgeMetrics,
+			XDPStatsReader: func(ctx context.Context) (xdpstats.Snapshot, error) {
+				shards := svc.RedisShards()
+				if len(shards) == 0 {
+					return xdpstats.Snapshot{}, fmt.Errorf("redis unavailable")
+				}
+				return xdpstats.ReadRedis(ctx, shards[0])
+			},
 		},
 		ViewsHTTP: &adminapi.ViewsHTTPHandlers{
-			Service: adminapi.NewService(),
+			Service:                 adminapi.NewService(),
+			ApplyRateLimit:          limit,
+			RequirePermission:       perm,
+			RequireAnyPermission:    permAny,
+			AuthorizeCustomerAccess: authCustomer,
+			WriteServiceError:       writeErr,
 		},
 		SelfServeHTTP: &adminapi.SelfServeHTTPHandlers{
 			Campaigns:                  svc,
@@ -221,6 +252,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			APIKeys:                    h.authClient,
 			ApplyRateLimit:             limit,
 			RequireSelfServePermission: selfServePerm,
+			RequireAnyPermission:       permAny,
 			ResolveSelfServeCustomerID: h.resolveSelfServeCustomerIDForSelfServe,
 			AuthorizeCampaignAccess:    authCampaign,
 			WriteServiceError:          writeErr,
@@ -310,6 +342,12 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
 		},
+		TelegramHTTP: &adminapi.TelegramHTTPHandlers{
+			Telegram:             NewTelegramService(svc, pool, rdbs),
+			ApplyRateLimit:       limit,
+			RequireAnyPermission: permAny,
+			WriteServiceError:    writeErr,
+		},
 	}
 }
 
@@ -379,7 +417,7 @@ func (h *Handler) resolveCampaignsCustomerID(r *http.Request, bodyCustomerID *uu
 	if !ok {
 		return uuid.Nil, errForbidden
 	}
-	if u.IsUser() {
+	if u.HasBoundCustomer() {
 		if bodyCustomerID != nil && *bodyCustomerID != uuid.Nil && *bodyCustomerID != u.CustomerID {
 			return uuid.Nil, errForbidden
 		}

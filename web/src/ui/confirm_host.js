@@ -2,7 +2,10 @@ import { setConfirmHandler } from '../helpers/confirm_ui.js';
 import { mountConfirmDialog } from './confirm_dialog.js';
 
 /**
+ * Wire the global confirm handler to mount confirm dialogs.
+ *
  * @param {HTMLElement} _root
+ * @returns {void}
  */
 export function installConfirmHost(_root) {
   setConfirmHandler((req) => {

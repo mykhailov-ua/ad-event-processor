@@ -2,8 +2,11 @@ import { el } from '../lib/dom.js';
 import { statusClassFor } from '../helpers/status.js';
 
 /**
+ * Render a colored status badge for a domain-specific status value.
+ *
  * @param {string} status
  * @param {{ kind?: 'campaign'|'service'|'invoice', label?: string }} [opts]
+ * @returns {HTMLElement}
  */
 export function renderStatusBadge(status, opts = {}) {
   const kind = opts.kind ?? 'campaign';

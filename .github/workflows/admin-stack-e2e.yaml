@@ -24,6 +24,6 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: web/e2e/package-lock.json
       - name: Run admin stack e2e
         run: bash scripts/test/admin_stack_e2e.sh

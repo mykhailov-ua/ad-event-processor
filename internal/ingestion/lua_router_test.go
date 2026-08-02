@@ -27,7 +27,7 @@ func TestUnifiedFilter_needsFullLuaPath(t *testing.T) {
 
 	f.SetLuaFastPathEnabled(true)
 	evt.Type = "click"
-	require.True(t, f.needsFullLuaPath(evt, camp))
+	require.False(t, f.needsFullLuaPath(evt, camp))
 	evt.Type = "impression"
 
 	camp.FreqLimit = 3

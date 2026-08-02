@@ -19,8 +19,11 @@ import { renderStatusBadge } from '../ui/status_badge.js';
 import { renderIcon } from '../ui/icon.js';
 
 /**
+ * Mount the invoice detail view with void action.
+ *
  * @param {HTMLElement} container
  * @param {{ params: Record<string, string> }} ctx
+ * @returns {import('../lib/router.js').ViewHandle}
  */
 export function mount(container, ctx) {
   let destroyed = false;
@@ -149,7 +152,7 @@ export function mount(container, ctx) {
         ),
       ),
       invoice.lines?.length > 0
-        ? el('div', { className: 'table-wrapper mt-4' },
+        ? el('div', { className: 'table-wrapper elevation-raised mt-4' },
           el('table', { className: 'data-table' },
             el('thead', null,
               el('tr', null,

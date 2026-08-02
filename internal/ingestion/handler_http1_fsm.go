@@ -219,7 +219,7 @@ func httpPathValid(b []byte) bool {
 
 func http1IngressValid(method, path []byte) bool {
 	if len(method) == 4 && method[0] == 'P' && method[1] == 'O' && method[2] == 'S' && method[3] == 'T' {
-		return httpPathHasPrefix(path, "/track") || httpPathHasPrefix(path, "/openrtb/bid")
+		return httpPathHasPrefix(path, "/track") || httpPathHasPrefix(path, "/openrtb/bid") || httpPathHasPrefix(path, "/tg/bid")
 	}
 	if len(method) == 3 && method[0] == 'G' && method[1] == 'E' && method[2] == 'T' {
 		return bytesEqual(path, "/health") ||
@@ -227,23 +227,28 @@ func http1IngressValid(method, path []byte) bool {
 			bytesEqual(path, "/ready") ||
 			bytesEqual(path, "/readyz") ||
 			bytesEqual(path, "/metrics") ||
-			httpPathHasPrefix(path, "/click")
+			httpPathHasPrefix(path, "/click") ||
+			httpPathHasPrefix(path, tgPathClick) ||
+			httpPathHasPrefix(path, tgPathImpression)
 	}
 	return false
 }
 
 func httpPathHasPrefix(path []byte, prefix string) bool {
 	p := []byte(prefix)
-	if len(path) < len(p) {
+	pl := len(p)
+	pn := len(path)
+	if pn < pl {
 		return false
 	}
-	if !bytesEqual(path[:len(p)], prefix) {
+	_ = path[pn-1]
+	if !bytesEqual(path[:pl], prefix) {
 		return false
 	}
-	if len(path) == len(p) {
+	if pn == pl {
 		return true
 	}
-	switch path[len(p)] {
+	switch path[pl] {
 	case '?', '/':
 		return true
 	default:
@@ -264,16 +269,21 @@ func bytesEqual(b []byte, s string) bool {
 }
 
 func teValueHasChunked(val []byte) bool {
+	vn := len(val)
+	if vn == 0 {
+		return false
+	}
+	_ = val[vn-1]
 	i := 0
-	for i < len(val) {
-		for i < len(val) && (val[i] == ' ' || val[i] == '\t' || val[i] == ',') {
+	for i < vn {
+		for i < vn && (val[i] == ' ' || val[i] == '\t' || val[i] == ',') {
 			i++
 		}
-		if i >= len(val) {
+		if i >= vn {
 			break
 		}
 		start := i
-		for i < len(val) && val[i] != ',' {
+		for i < vn && val[i] != ',' {
 			i++
 		}
 		token := val[start:i]
@@ -351,6 +361,7 @@ func trimHTTPVal(b []byte) []byte {
 }
 
 func foldKeyU32(key []byte, off int) uint32 {
+	_ = key[off+3] // BCE: callers pass off with len(key) >= off+4
 	return uint32(httpFold[key[off]]) |
 		uint32(httpFold[key[off+1]])<<8 |
 		uint32(httpFold[key[off+2]])<<16 |
@@ -358,6 +369,7 @@ func foldKeyU32(key []byte, off int) uint32 {
 }
 
 func foldKeyU64(key []byte, off int) uint64 {
+	_ = key[off+7] // BCE: callers pass off with len(key) >= off+8
 	return uint64(foldKeyU32(key, off)) |
 		uint64(foldKeyU32(key, off+4))<<32
 }

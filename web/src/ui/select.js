@@ -5,6 +5,8 @@ import { el, appendChildren } from '../lib/dom.js';
  */
 
 /**
+ * Normalize string or option objects into select options.
+ *
  * @param {string[] | SelectOption[]} options
  * @returns {SelectOption[]}
  */
@@ -15,6 +17,8 @@ function normalizeOptions(options) {
 }
 
 /**
+ * Render a custom dropdown select with keyboard navigation.
+ *
  * @param {{
  *   value: string,
  *   options: string[] | SelectOption[],
@@ -25,6 +29,7 @@ function normalizeOptions(options) {
  *   style?: Record<string, string>,
  *   'aria-label'?: string,
  * }} opts
+ * @returns {HTMLElement}
  */
 export function renderSelect(opts) {
   const options = normalizeOptions(opts.options);

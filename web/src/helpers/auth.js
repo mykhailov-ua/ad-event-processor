@@ -14,6 +14,8 @@ let _user = null;
 let _csrf = null;
 
 /**
+ * Hydrate auth state from the boot script and CSRF cookie.
+ *
  * @param {string} scriptId
  * @returns {AuthUser|null}
  */
@@ -34,6 +36,8 @@ export function hydrateFromBoot(scriptId = '__BOOT__') {
 }
 
 /**
+ * Load CSRF from cookie when boot JSON is absent or invalid.
+ *
  * @returns {AuthUser|null}
  */
 function hydrateCsrfFromCookie() {
@@ -43,6 +47,8 @@ function hydrateCsrfFromCookie() {
 }
 
 /**
+ * Parse the csrfToken cookie value.
+ *
  * @returns {string|null}
  */
 function readCsrfCookie() {
@@ -58,13 +64,18 @@ function readCsrfCookie() {
 }
 
 /**
+ * Replace the in-memory authenticated user.
+ *
  * @param {AuthUser} user
+ * @returns {void}
  */
 export function setUser(user) {
   _user = user;
 }
 
 /**
+ * Return the current authenticated user, if any.
+ *
  * @returns {AuthUser|null}
  */
 export function getUser() {
@@ -72,13 +83,18 @@ export function getUser() {
 }
 
 /**
+ * Store CSRF token from a login response header.
+ *
  * @param {string} header
+ * @returns {void}
  */
 export function setCsrfFromLoginResponse(header) {
   _csrf = header;
 }
 
 /**
+ * Return the in-memory or cookie-backed CSRF token.
+ *
  * @returns {string|null}
  */
 export function getCsrfToken() {
@@ -87,6 +103,8 @@ export function getCsrfToken() {
 }
 
 /**
+ * Clear auth, CSRF, and idempotency state on logout.
+ *
  * @returns {void}
  */
 export function logoutLocal() {

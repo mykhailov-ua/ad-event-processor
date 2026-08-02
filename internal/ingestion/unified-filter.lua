@@ -171,12 +171,22 @@ if not degraded and evt_type == "impression" then
     redis.call("SET", KEYS[12], now_ms, "EX", imp_ts_ttl)
 end
 
+local payload = ARGV[11] or ""
+local campaign_id = ARGV[6] or ""
+local click_id = ARGV[9] or ""
+if campaign_id ~= "" and click_id ~= "" then
+    local tg_meta = redis.call("GET", "{" .. campaign_id .. "}tg:click:" .. click_id)
+    if tg_meta then
+        payload = tg_meta
+    end
+end
+
 redis.call("XADD", KEYS[9], "MAXLEN", "~", ARGV[8], "*",
-    "click_id", ARGV[9],
-    "campaign_id", ARGV[6],
+    "click_id", click_id,
+    "campaign_id", campaign_id,
     "user_id", user_id,
     "type", evt_type,
-    "payload", ARGV[11],
+    "payload", payload,
     "ip", ARGV[12],
     "ua", ARGV[13]
 )

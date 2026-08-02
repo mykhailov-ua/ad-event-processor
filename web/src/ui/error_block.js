@@ -3,8 +3,11 @@ import { mapServiceError } from '../helpers/service_error.js';
 import { renderIcon } from './icon.js';
 
 /**
+ * Render a centered page-level error block from an API or network error.
+ *
  * @param {unknown} error
  * @param {string} [fallbackTitle]
+ * @returns {HTMLElement}
  */
 export function renderErrorBlock(error, fallbackTitle = 'Error') {
   if (!error) return el('div');

@@ -127,7 +127,7 @@ func (s *Service) UpdateCampaignFraudConfig(ctx context.Context, campaignID uuid
 			BehaviorFlags:         flags,
 		}, nil)
 
-		payload, err := coldpath.MarshalJSON(campaignIDPayload{CampaignID: campaignID.String()})
+		payload, err := coldpath.MarshalOutbox(campaignIDPayload{CampaignID: campaignID.String()})
 		if err != nil {
 			return fmt.Errorf("marshal update campaign fraud outbox payload: %w", err)
 		}
@@ -185,7 +185,7 @@ func (s *Service) ApplyFraudScoringOverride(ctx context.Context, req FraudScorin
 
 			s.AuditLog(ctx, q, uid, "FRAUD_CLEAR_BOOST", "campaign", &campUUID, map[string]string{"campaign_id": *req.CampaignID}, nil)
 
-			payload, err := coldpath.MarshalJSON(FraudThreatPayload{
+			payload, err := coldpath.MarshalOutbox(FraudThreatPayload{
 				Action:     "boost",
 				CampaignID: *req.CampaignID,
 				Boost:      0,
@@ -211,7 +211,7 @@ func (s *Service) ApplyFraudScoringOverride(ctx context.Context, req FraudScorin
 
 			s.AuditLog(ctx, q, uid, "FRAUD_REMOVE_FALSE_POSITIVE", "system", nil, map[string]string{"ip": *req.IP}, nil)
 
-			payload, err := coldpath.MarshalJSON(BlacklistPayload{Action: "remove", IP: *req.IP, Reason: "fraud"})
+			payload, err := coldpath.MarshalOutbox(BlacklistPayload{Action: "remove", IP: *req.IP, Reason: "fraud"})
 			if err != nil {
 				return fmt.Errorf("marshal blacklist outbox payload: %w", err)
 			}

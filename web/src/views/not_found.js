@@ -1,7 +1,10 @@
 import { el, replaceChildren } from '../lib/dom.js';
 
 /**
+ * Mount the 404 not-found page.
+ *
  * @param {HTMLElement} container
+ * @returns {import('../lib/router.js').ViewHandle}
  */
 export function mount(container) {
   replaceChildren(container,

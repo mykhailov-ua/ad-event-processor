@@ -1,4 +1,6 @@
 /**
+ * Encode a numeric offset as a base64 cursor token.
+ *
  * @param {number} offset
  * @returns {string}
  */
@@ -13,8 +15,11 @@ export function encodeCursor(offset) {
 }
 
 /**
+ * Decode a base64 cursor token back to a non-negative offset.
+ *
  * @param {string} cursor
  * @returns {number}
+ * @throws {Error} when the cursor is invalid
  */
 export function decodeCursor(cursor) {
   if (!cursor) return 0;

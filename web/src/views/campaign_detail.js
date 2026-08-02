@@ -16,11 +16,21 @@ import { renderStatusBadge } from '../ui/status_badge.js';
 import { formatUsdDecimal } from '../helpers/money.js';
 import { renderBreadcrumbs } from '../ui/breadcrumbs.js';
 import { shortCustomerId, touchCustomerContext } from '../helpers/customer_context.js';
+import { renderPacingPanel } from './pacing_panel.js';
+import { estimateDeliveryPct } from '../models/buyer.js';
+import { openForecastModal } from '../ui/forecast_modal.js';
+import { isoDaysAgo, toIsoNow } from '../helpers/date_presets.js';
+import { createInFlightGuard } from '../lib/async_guard.js';
+import { renderCommercialMetrics } from '../ui/commercial_metrics.js';
+import { api } from '../helpers/api_client.js';
 
 import { renderIcon } from '../ui/icon.js';
 
 /**
+ * Render a two-column label/value config grid.
+ *
  * @param {Array<[string, string]>} rows
+ * @returns {HTMLElement}
  */
 function configGrid(rows) {
   return el('div', {
@@ -39,8 +49,11 @@ function configGrid(rows) {
 }
 
 /**
+ * Mount the campaign detail view with pause/resume and stats tabs.
+ *
  * @param {HTMLElement} container
  * @param {{ params: Record<string, string> }} ctx
+ * @returns {import('../lib/router.js').ViewHandle}
  */
 export function mount(container, ctx) {
   let destroyed = false;
@@ -60,6 +73,21 @@ export function mount(container, ctx) {
 
   const campaignState = { data: null, loading: true, error: null };
   const statsState = { data: null, loading: false, error: null };
+  const dashboardState = { data: null, loading: true, error: null };
+  const actionGate = createInFlightGuard();
+
+  function statsUrl() {
+    const params = new URLSearchParams({ granularity: 'hour' });
+    if (masked) {
+      params.set('from', isoDaysAgo(7));
+      params.set('to', toIsoNow());
+    }
+    return `/api/v1/campaigns/${id}/stats?${params.toString()}`;
+  }
+
+  function overviewImpressions7d() {
+    return Number(statsState.data?.metrics?.impressions ?? 0);
+  }
 
   function tabs() {
     const list = [
@@ -86,54 +114,78 @@ export function mount(container, ctx) {
   }
 
   async function handlePause() {
+    if (!actionGate.tryAcquire()) return;
     actionLoading = true;
     actionError = null;
     render();
     const [, pauseErr] = await to(pauseCampaign(id));
+    if (destroyed) {
+      actionGate.release();
+      return;
+    }
     if (pauseErr) {
       if (pauseErr instanceof ConfirmCancelledError) {
         actionLoading = false;
+        actionGate.release();
         render();
         return;
       }
       actionError = pauseErr.message || 'Failed to pause campaign';
       actionLoading = false;
+      actionGate.release();
       render();
       return;
     }
     const [, pollErr] = await to(pollCampaignStatus(id, 'PAUSED'));
+    if (destroyed) {
+      actionGate.release();
+      return;
+    }
     if (pollErr) {
       actionError = pollErr.message || 'Failed to pause campaign';
     } else {
       campaignResource.reload();
     }
     actionLoading = false;
+    actionGate.release();
     render();
   }
 
   async function handleResume() {
+    if (!actionGate.tryAcquire()) return;
     actionLoading = true;
     actionError = null;
     render();
     const [, resumeErr] = await to(resumeCampaign(id));
+    if (destroyed) {
+      actionGate.release();
+      return;
+    }
     if (resumeErr) {
       if (resumeErr instanceof ConfirmCancelledError) {
         actionLoading = false;
+        actionGate.release();
         render();
         return;
       }
       actionError = resumeErr.message || 'Failed to resume campaign';
       actionLoading = false;
+      actionGate.release();
       render();
       return;
     }
     const [, pollErr] = await to(pollCampaignStatus(id, 'ACTIVE'));
+    if (destroyed) {
+      actionGate.release();
+      return;
+    }
     if (pollErr) {
       actionError = pollErr.message || 'Failed to resume campaign';
     } else {
       campaignResource.reload();
     }
     actionLoading = false;
+    actionGate.release();
     render();
   }
 
@@ -232,29 +284,58 @@ export function mount(container, ctx) {
         render();
       } }),
       tab === 'overview'
-        ? el('div', { className: 'grid-stats', style: { marginTop: 24 } },
-          el('div', { className: 'metric-card' },
-            el('div', { className: 'metric-card__label' }, 'Budget limit'),
-            el('div', { className: 'metric-card__value font-mono' },
-              formatUsdDecimal(campaign.budget_limit ?? '0.00'),
+        ? el('div', { style: { marginTop: 24 } },
+          dashboardState.loading
+            ? el('span', { className: 'text-muted' }, 'Loading economics…')
+            : renderCommercialMetrics(dashboardState.data?.kpis, { masked }),
+          !masked && campaign
+            ? el('button', {
+              type: 'button',
+              className: 'btn btn--secondary btn--sm',
+              style: { marginTop: 12 },
+              onClick: () => openForecastModal({
+                campaignId: id,
+                customerId: campaign.customer_id,
+                budgetMicro: Math.round(Number(campaign.budget_limit ?? 0) * 1_000_000),
+                startAt: isoDaysAgo(0),
+                endAt: toIsoNow(),
+              }),
+            }, 'Forecast delivery')
+            : null,
+          masked
+            ? renderPacingPanel({
+              status: campaign.status,
+              pacingMode: campaign.pacing_mode,
+              impressions7d: overviewImpressions7d(),
+              deliveryPct: estimateDeliveryPct(
+                overviewImpressions7d(),
+                campaign.status,
+              ),
+            })
+            : el('div', { className: 'grid-stats' },
+              el('div', { className: 'metric-card' },
+                el('div', { className: 'metric-card__label' }, 'Budget limit'),
+                el('div', { className: 'metric-card__value font-mono' },
+                  formatUsdDecimal(campaign.budget_limit ?? '0.00'),
+                ),
+              ),
+              el('div', { className: 'metric-card' },
+                el('div', { className: 'metric-card__label' }, 'Current spend'),
+                el('div', { className: 'metric-card__value font-mono' },
+                  formatUsdDecimal(campaign.current_spend ?? '0.00'),
+                ),
+              ),
+              el('div', { className: 'metric-card' },
+                el('div', { className: 'metric-card__label' }, 'Daily budget'),
+                el('div', { className: 'metric-card__value font-mono' },
+                  formatUsdDecimal(campaign.daily_budget ?? '0.00'),
+                ),
+              ),
+              el('div', { className: 'metric-card' },
+                el('div', { className: 'metric-card__label' }, 'Pacing'),
+                el('div', { className: 'metric-card__value' }, campaign.pacing_mode ?? '—'),
+              ),
             ),
-          ),
-          el('div', { className: 'metric-card' },
-            el('div', { className: 'metric-card__label' }, 'Current spend'),
-            el('div', { className: 'metric-card__value font-mono' },
-              formatUsdDecimal(campaign.current_spend ?? '0.00'),
-            ),
-          ),
-          el('div', { className: 'metric-card' },
-            el('div', { className: 'metric-card__label' }, 'Daily budget'),
-            el('div', { className: 'metric-card__value font-mono' },
-              formatUsdDecimal(campaign.daily_budget ?? '0.00'),
-            ),
-          ),
-          el('div', { className: 'metric-card' },
-            el('div', { className: 'metric-card__label' }, 'Pacing'),
-            el('div', { className: 'metric-card__value' }, campaign.pacing_mode ?? '—'),
-          ),
         )
         : null,
       tab === 'stats'
@@ -293,7 +374,7 @@ export function mount(container, ctx) {
                 el('div', { className: 'metric-card' },
                   el('div', { className: 'metric-card__label' }, 'Spend (API)'),
                   el('div', { className: 'metric-card__value font-mono' },
-                    formatUsdDecimal(statsState.data.current_spend ?? '0.00'),
+                    masked ? '—' : formatUsdDecimal(statsState.data.current_spend ?? '0.00'),
                   ),
                 ),
               ),
@@ -363,9 +444,9 @@ export function mount(container, ctx) {
   );
 
   const statsResource = createResource(
-    () => `/api/v1/campaigns/${id}/stats?granularity=hour`,
+    () => statsUrl(),
     {
-      skip: () => tab !== 'stats',
+      skip: () => !masked && tab !== 'stats',
       onUpdate: (s) => {
         Object.assign(statsState, s);
         render();
@@ -373,11 +454,27 @@ export function mount(container, ctx) {
     },
   );
 
+  async function loadDashboard() {
+    dashboardState.loading = true;
+    render();
+    const [res, err] = await to(api(`/api/v1/dashboards/campaign/${id}`));
+    if (destroyed) return;
+    dashboardState.loading = false;
+    if (err) {
+      dashboardState.error = err;
+    } else {
+      dashboardState.data = res.data;
+    }
+    render();
+  }
+
+  loadDashboard();
   render();
 
   return {
     destroy() {
       destroyed = true;
+      actionGate.release();
       destroyChart();
       campaignResource.destroy();
       statsResource.destroy();

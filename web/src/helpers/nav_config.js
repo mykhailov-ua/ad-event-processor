@@ -29,18 +29,62 @@ export const NAV_GROUPS = [
         perm: 'campaigns:read',
         altPerm: 'campaigns:read:masked',
       },
+      {
+        to: '/campaigns/portfolio',
+        label: 'Portfolio',
+        icon: 'layers',
+        perm: 'campaigns:read',
+        altPerm: 'campaigns:read:masked',
+      },
     ],
   },
   {
     title: 'Customers & billing',
     links: [
       { to: '/customers', label: 'Customers', icon: 'users', perm: 'customers:read' },
-      { to: '/billing', label: 'Billing', icon: 'credit-card', perm: 'customers:read' },
+      { to: '/billing', label: 'Billing', icon: 'credit-card', perm: 'customers:read', altPerm: 'billing:read' },
+    ],
+  },
+  {
+    title: 'Dashboards',
+    links: [
+      {
+        to: '/dashboards/adops',
+        label: 'AdOps',
+        icon: 'bar-chart',
+        perm: 'campaigns:read',
+        altPerm: 'campaigns:read:masked',
+      },
+      {
+        to: '/dashboards/cfo',
+        label: 'CFO',
+        icon: 'credit-card',
+        perm: 'customers:read',
+      },
+      {
+        to: '/dashboards/accountant',
+        label: 'Accountant',
+        icon: 'file-text',
+        perm: 'customers:read',
+      },
+      {
+        to: '/dashboards/fraud',
+        label: 'Fraud',
+        icon: 'shield',
+        perm: 'audit:read',
+      },
     ],
   },
   {
     title: 'Reports',
     links: [
+      {
+        to: '/reports',
+        label: 'Reports hub',
+        icon: 'bar-chart',
+        perm: 'campaigns:read',
+        altPerm: 'campaigns:read:masked',
+      },
       {
         to: '/reports/placements',
         label: 'Placements',
@@ -53,6 +97,24 @@ export const NAV_GROUPS = [
         label: 'Keywords',
         icon: 'file-text',
         perm: 'campaigns:read',
+        altPerm: 'campaigns:read:masked',
+      },
+      {
+        to: '/reports/ivt-by-source',
+        label: 'IVT by source',
+        icon: 'shield',
+        perm: 'audit:read',
+      },
+    ],
+  },
+  {
+    title: 'Deals',
+    links: [
+      {
+        to: '/rtb/deals',
+        label: 'Deal performance',
+        icon: 'handshake',
+        perm: 'rtb:read',
         altPerm: 'campaigns:read:masked',
       },
     ],
@@ -68,6 +130,8 @@ export const NAV_GROUPS = [
 ];
 
 /**
+ * Test whether a nav link is visible for the given permissions.
+ *
  * @param {string[]} permissions
  * @param {NavLink} link
  * @returns {boolean}
@@ -80,6 +144,8 @@ export function navLinkVisible(permissions, link) {
 }
 
 /**
+ * Filter nav groups to links visible for the given permissions.
+ *
  * @param {string[]} permissions
  * @returns {NavGroup[]}
  */

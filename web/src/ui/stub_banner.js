@@ -1,7 +1,10 @@
 import { el } from '../lib/dom.js';
 
 /**
+ * Render a 501 stub endpoint banner with an optional link.
+ *
  * @param {{ message?: string, linkTo?: string, linkLabel?: string }} opts
+ * @returns {HTMLElement}
  */
 export function renderStubBanner(opts) {
   const children = [

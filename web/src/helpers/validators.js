@@ -2,6 +2,8 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const MAX_RANGE_MS = 90 * 24 * 60 * 60 * 1000;
 
 /**
+ * Validate a report date range and return an error message or null.
+ *
  * @param {string} from ISO8601
  * @param {string} to ISO8601
  * @returns {string|null} error message or null
@@ -17,6 +19,8 @@ export function validateReportRange(from, to) {
 }
 
 /**
+ * Test whether a string is a valid UUID.
+ *
  * @param {string} s
  * @returns {boolean}
  */
@@ -25,7 +29,10 @@ export function validateUuid(s) {
 }
 
 /**
+ * Validate a customer id field value.
+ *
  * @param {string} value
+ * @returns {string|null} error message or null
  */
 export function validateCustomerIdField(value) {
   const trimmed = String(value).trim();
@@ -35,7 +42,10 @@ export function validateCustomerIdField(value) {
 }
 
 /**
+ * Validate a three-letter ISO currency code.
+ *
  * @param {string} code
+ * @returns {string|null} error message or null
  */
 export function validateCurrency(code) {
   const trimmed = String(code).trim();
@@ -44,7 +54,10 @@ export function validateCurrency(code) {
 }
 
 /**
+ * Validate a tracking domain field value.
+ *
  * @param {string} domain
+ * @returns {string|null} error message or null
  */
 export function validateTrackingDomain(domain) {
   if (!String(domain).trim()) return 'Tracking domain is required';
@@ -52,6 +65,8 @@ export function validateTrackingDomain(domain) {
 }
 
 /**
+ * Validate a self-serve budget in micro-units against min and max bounds.
+ *
  * @param {number} micro
  * @param {number} minMicro
  * @param {number} maxMicro

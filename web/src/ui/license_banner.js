@@ -1,7 +1,10 @@
 import { el } from '../lib/dom.js';
 
 /**
+ * Render a license state warning banner when the license is not valid.
+ *
  * @param {{ license: { state?: string, valid_until?: string, banner_severity?: string, renew_days?: number } }} opts
+ * @returns {HTMLElement}
  */
 export function renderLicenseBanner(opts) {
   const license = opts.license;

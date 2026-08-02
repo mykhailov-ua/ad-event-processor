@@ -156,7 +156,7 @@ func (s *Service) RecordConsent(ctx context.Context, in ConsentRecord) error {
 		}); err != nil {
 			return fmt.Errorf("upsert consent state: %w", err)
 		}
-		payload, err := coldpath.MarshalJSON(userConsentOutboxPayload{
+		payload, err := coldpath.MarshalOutbox(userConsentOutboxPayload{
 			UserIDHash: hex.EncodeToString(hash),
 			Purposes:   in.Purposes,
 		})
@@ -200,7 +200,7 @@ func (s *Service) UpdateCampaignConsentRequirements(ctx context.Context, campaig
 		}); err != nil {
 			return mapNotFound(err, ErrCampaignNotFound)
 		}
-		payload, err := coldpath.MarshalJSON(campaignIDPayload{CampaignID: campaignID.String()})
+		payload, err := coldpath.MarshalOutbox(campaignIDPayload{CampaignID: campaignID.String()})
 		if err != nil {
 			return err
 		}
@@ -324,7 +324,7 @@ func (s *Service) enqueueErasureRedisPurge(ctx context.Context, row db.PrivacyEr
 		if locked.LastError.Valid && locked.LastError.String == "purge_enqueued" {
 			return nil
 		}
-		payload, err := coldpath.MarshalJSON(purgeUserDataPayload{
+		payload, err := coldpath.MarshalOutbox(purgeUserDataPayload{
 			ErasureID:     uuid.UUID(locked.ID.Bytes).String(),
 			UserIDHash:    hex.EncodeToString(locked.UserIDHash),
 			SubjectUserID: locked.SubjectUserID,
@@ -710,7 +710,7 @@ func (s *Service) GetMarginGuardActivity(ctx context.Context, campaignID uuid.UU
 }
 
 func (s *Service) RemovePlacementOverride(ctx context.Context, campaignID uuid.UUID, placementID string) error {
-	payload, err := coldpath.MarshalJSON(PausePlacementPayload{
+	payload, err := coldpath.MarshalOutbox(PausePlacementPayload{
 		CampaignID:  campaignID.String(),
 		PlacementID: placementID,
 		Action:      "remove",
@@ -1168,14 +1168,14 @@ func (s *Service) autoscaleBudgetsTx(ctx context.Context, tx pgx.Tx, merge deliv
 			Source:    worstID.String(),
 		}, nil)
 
-		worstPayload, err := coldpath.MarshalJSON(CampaignPayload{
+		worstPayload, err := coldpath.MarshalOutbox(CampaignPayload{
 			CampaignID:  worstID.String(),
 			BudgetLimit: newWorstLimit,
 		})
 		if err != nil {
 			return fmt.Errorf("marshal autoscale worst campaign outbox payload: %w", err)
 		}
-		bestPayload, err := coldpath.MarshalJSON(CampaignPayload{
+		bestPayload, err := coldpath.MarshalOutbox(CampaignPayload{
 			CampaignID:  bestID.String(),
 			BudgetLimit: newBestLimit,
 		})
@@ -1291,7 +1291,7 @@ func (s *Service) blockIPWithTTL(ctx context.Context, ip string, source string, 
 		}
 		s.AuditLog(ctx, q, uid, "BLOCK_IP", "system", nil, map[string]string{"ip": ip, "source": reason}, nil)
 
-		payload, err := coldpath.MarshalJSON(BlacklistPayload{Action: "add", IP: ip, Reason: reason})
+		payload, err := coldpath.MarshalOutbox(BlacklistPayload{Action: "add", IP: ip, Reason: reason})
 		if err != nil {
 			return fmt.Errorf("marshal blacklist outbox payload: %w", err)
 		}
@@ -1319,7 +1319,7 @@ func (s *Service) EnqueueFraudThreat(ctx context.Context, action, ip, campaignID
 
 	return pgx.BeginFunc(ctx, s.GetPool(), func(tx pgx.Tx) error {
 		q := db.New(tx)
-		payload, err := coldpath.MarshalJSON(p)
+		payload, err := coldpath.MarshalOutbox(p)
 		if err != nil {
 			return fmt.Errorf("marshal ml threat payload: %w", err)
 		}
@@ -1373,7 +1373,7 @@ func (s *Service) UnblockExpiredBlacklist(ctx context.Context, rows []db.ListExp
 		batch := &pgx.Batch{}
 		for _, row := range rows {
 			reason := normalizeBlacklistReason(row.Reason)
-			payload, err := coldpath.MarshalJSON(BlacklistPayload{Action: "remove", IP: row.Ip, Reason: reason})
+			payload, err := coldpath.MarshalOutbox(BlacklistPayload{Action: "remove", IP: row.Ip, Reason: reason})
 			if err != nil {
 				return fmt.Errorf("marshal blacklist outbox payload: %w", err)
 			}
@@ -1411,7 +1411,7 @@ func (s *Service) UnblockIP(ctx context.Context, ip string, source string) error
 		}
 		s.AuditLog(ctx, q, uid, "UNBLOCK_IP", "system", nil, map[string]string{"ip": ip, "source": reason}, nil)
 
-		payload, err := coldpath.MarshalJSON(BlacklistPayload{Action: "remove", IP: ip, Reason: reason})
+		payload, err := coldpath.MarshalOutbox(BlacklistPayload{Action: "remove", IP: ip, Reason: reason})
 		if err != nil {
 			return fmt.Errorf("marshal blacklist outbox payload: %w", err)
 		}
@@ -1445,7 +1445,7 @@ func (s *Service) UpdateSettings(ctx context.Context, settings map[string]string
 			uid = u.UserID
 		}
 		s.AuditLog(ctx, q, uid, "UPDATE_SETTINGS", "system", nil, normalized, nil)
-		payloadBytes, err := coldpath.MarshalJSON(SettingsPayload{Settings: normalized})
+		payloadBytes, err := coldpath.MarshalOutbox(SettingsPayload{Settings: normalized})
 		if err != nil {
 			return fmt.Errorf("marshal settings outbox payload: %w", err)
 		}
@@ -1599,7 +1599,7 @@ func (s *Service) ToggleEmergencyBreaker(ctx context.Context, active bool, reaso
 		settings := map[string]string{
 			"emergency_breaker": val,
 		}
-		payloadBytes, err := coldpath.MarshalJSON(SettingsPayload{Settings: settings})
+		payloadBytes, err := coldpath.MarshalOutbox(SettingsPayload{Settings: settings})
 		if err != nil {
 			return fmt.Errorf("marshal emergency breaker outbox payload: %w", err)
 		}

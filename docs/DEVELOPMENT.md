@@ -61,20 +61,26 @@ bash scripts/dev/preflight.sh     # Verifies service health
 
 ### Admin web UI (`web/`)
 
-Build the embedded admin UI before `go build` on `cmd/control` when you need the full SPA in the binary. Stub HTML in `web/dist/` allows Go compile without npm; production bundles require:
+Build the embedded admin UI before `go build` on `cmd/control` when you need the full SPA in the binary. Stub HTML in `web/dist/` allows Go compile without a prior build; production embed requires:
 
 ```bash
-cd web && npm ci && npm run build
+node web/scripts/build.mjs
 go build ./cmd/control
 ```
 
-Mock Playwright specs (route interception) run against the static preview server (`node scripts/preview.mjs`, port 4173):
+Local dev: static server + API proxy (port 5173):
 
 ```bash
-cd web && npm ci && npm run build && npm run test:e2e
+node web/scripts/dev.mjs
+# or: npm run dev   (root package.json proxy)
 ```
 
-Local dev uses esbuild watch + a small Node static server with API proxy (`npm run dev`, port 5173).
+Mock Playwright specs (optional; installs deps under `web/e2e/node_modules`):
+
+```bash
+node web/scripts/build.mjs
+cd web/e2e && npm ci && npx playwright install chromium && npm run test:e2e
+```
 
 Stack e2e runs Playwright against a live control plane on port 8188 (real API, no mocks):
 
@@ -114,13 +120,15 @@ First-time install: open `/login` or `/bootstrap` on the control URL. If `bootst
 **Build order for production binary** (UI must be built before `go build` so `embed` picks up fresh `web/dist/`):
 
 ```bash
-cd web && npm ci && npm run build && cd ..
+node web/scripts/build.mjs
 go build -o bin/control ./cmd/control
 ```
 
 **CSP smoke** (after deploy): open admin in browser, confirm no `unsafe-inline` violations in devtools console on `/campaigns`.
 
-**Perf checklist**: `bash scripts/ci/admin_lighthouse_checklist.sh` after `npm run build`; target INP p95 &lt; 200 ms on staging. Checklist artifact: `artifacts/lighthouse-inp-checklist.txt`.
+**Perf checklist**: `bash scripts/ci/admin_lighthouse_checklist.sh` after `node web/scripts/build.mjs`; target INP p95 &lt; 200 ms on staging. Checklist artifact: `artifacts/lighthouse-inp-checklist.txt`.
+
+**Frontend backlog:** milestone IDs and task breakdown — `.cursor/MILESTONE.md` (M12–M17: charts, RUM, commercial dashboards, edge/traffic quality, reports, platform UX).
 
 #### Admin UI release gate (pre-tag `admin-ui-ga`)
 
@@ -129,7 +137,7 @@ Before tagging a production admin UI release:
 ```bash
 cd web && npm ci && npm run build && cd ..
 go test ./internal/controlplane/ -run TestAdminStaticRoutes -count=1
-bash scripts/ci/admin_web.sh          # mock Playwright + Vitest
+bash scripts/ci/admin_web.sh          # build + jsdoc + dist gates (e2e skipped by default)
 bash scripts/ci/admin_release_gate.sh # confirm audit + security literals + govulncheck
 bash scripts/test/admin_stack_e2e.sh  # optional: live stack on :8188
 ```

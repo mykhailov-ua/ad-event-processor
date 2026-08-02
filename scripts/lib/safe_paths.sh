@@ -133,6 +133,7 @@ safe_sync_proto_gen() {
 		rsync -a "$src/" "$dst_real/"
 		found=1
 	done
+	# outbox.proto uses go_package internal/controlplane/outboxpb (synced above).
 	shopt -u nullglob
 	[[ "$found" -eq 1 ]] || safe_die "api/gen has no internal/*/pb trees; check buf output"
 }

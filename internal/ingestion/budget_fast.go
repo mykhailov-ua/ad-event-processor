@@ -67,6 +67,7 @@ func (f *UnifiedFilter) runBudgetFastLua(
 	budgetSourceKey := campInfo.BudgetCampaignKey
 	if f.quotaEnabledAny == oneAny {
 		wQuota.buf = wQuota.buf[:0]
+		wQuota.buf = appendCampaignHashTag(wQuota.buf, evt.CampaignID)
 		wQuota.buf = append(wQuota.buf, "budget:quota:"...)
 		wQuota.buf = appendUUID(wQuota.buf, evt.CampaignID)
 		budgetSourceKey = unsafeString(wQuota.buf)

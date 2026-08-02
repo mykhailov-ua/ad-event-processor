@@ -27,7 +27,7 @@ log "bringing up data plane"
 "${COMPOSE[@]}" stop tracker-2 tracker-3 2>/dev/null || true
 
 log "waiting for postgres"
-until docker exec espx-db-1 pg_isready -p "$DB_PORT" -U ad_event_processor_user -d ad_event_processor >/dev/null 2>&1; do
+until "${COMPOSE[@]}" exec -T db pg_isready -p "$DB_PORT" -U ad_event_processor_user -d ad_event_processor >/dev/null 2>&1; do
 	sleep 1
 done
 
@@ -45,7 +45,7 @@ bash "$SCRIPTS/test/reconcile_ingestion_migrations.sh"
 bash "$SCRIPTS/test/verify_load_test_schema.sh"
 
 log "resetting clickhouse analytics (deterministic cold-path baseline)"
-docker exec -i espx-clickhouse-1 clickhouse-client --multiquery -u default --password "${CLICKHOUSE_PASSWORD:-secure_ch_pass}" -d ad_event_processor -q "
+"${COMPOSE[@]}" exec -T clickhouse clickhouse-client --multiquery -u default --password "${CLICKHOUSE_PASSWORD:-secure_ch_pass}" -d ad_event_processor -q "
 TRUNCATE TABLE impressions;
 TRUNCATE TABLE clicks;
 TRUNCATE TABLE conversions;
@@ -55,14 +55,14 @@ TRUNCATE TABLE fraud_events;
 REDIS_PASS="${REDIS_PASSWORD:-redis_secure_pass_456}"
 log "flushing redis shards"
 for i in 0 1 2 3 4 5; do
-	docker exec "espx-redis-${i}-1" redis-cli -p 6379 -a "$REDIS_PASS" FLUSHALL >/dev/null 2>&1
+	"${COMPOSE[@]}" exec -T "redis-${i}" redis-cli -p 6379 -a "$REDIS_PASS" FLUSHALL >/dev/null 2>&1
 done
 
 log "restarting processor (clean stream consumer groups after flush)"
 "${COMPOSE[@]}" restart processor
 
 log "seeding campaigns (100 active, matches loadgen campaign IDs)"
-docker exec -i espx-db-1 psql -h localhost -p "$DB_PORT" -U ad_event_processor_user -d ad_event_processor <<'EOF'
+"${COMPOSE[@]}" exec -T db psql -h localhost -p "$DB_PORT" -U ad_event_processor_user -d ad_event_processor <<'EOF'
 TRUNCATE TABLE events CASCADE;
 TRUNCATE TABLE campaign_stats CASCADE;
 
@@ -110,5 +110,5 @@ bash "$SCRIPTS/test/sync_tracker_registry.sh"
 bash "$SCRIPTS/test/seed_load_test_limits.sh"
 
 log "active campaigns:"
-docker exec espx-db-1 psql -h localhost -p "$DB_PORT" -U ad_event_processor_user -d ad_event_processor \
+"${COMPOSE[@]}" exec -T db psql -h localhost -p "$DB_PORT" -U ad_event_processor_user -d ad_event_processor \
 	-c "SELECT COUNT(*) FROM campaigns WHERE status = 'ACTIVE';"

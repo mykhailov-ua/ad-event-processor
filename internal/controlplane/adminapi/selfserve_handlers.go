@@ -95,6 +95,7 @@ type SelfServeHTTPHandlers struct {
 	APIKeys                    APIKeyCreator
 	ApplyRateLimit             func(http.HandlerFunc) http.HandlerFunc
 	RequireSelfServePermission func(string, http.HandlerFunc) http.HandlerFunc
+	RequireAnyPermission       func([]string, http.HandlerFunc) http.HandlerFunc
 	ResolveSelfServeCustomerID func(*http.Request, *uuid.UUID) (uuid.UUID, error)
 	AuthorizeCampaignAccess    func(*http.Request, uuid.UUID) error
 	WriteServiceError          func(http.ResponseWriter, error)
@@ -106,16 +107,26 @@ func (selfServe *SelfServeHTTPHandlers) Register(mux *http.ServeMux) {
 	}
 	limit := selfServe.ApplyRateLimit
 	perm := selfServe.RequireSelfServePermission
+	permAny := selfServe.RequireAnyPermission
 	if limit == nil {
 		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 	if perm == nil {
 		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
+	if permAny == nil {
+		permAny = func(perms []string, next http.HandlerFunc) http.HandlerFunc {
+			if len(perms) == 0 {
+				return next
+			}
+			return perm(perms[0], next)
+		}
+	}
+	pausePerms := []string{"campaigns:write", "campaigns:pause"}
 
 	mux.HandleFunc("POST /api/v1/selfserve/campaigns", limit(perm("campaigns:write", selfServe.createCampaign)))
-	mux.HandleFunc("POST /api/v1/selfserve/campaigns/{id}/pause", limit(perm("campaigns:write", selfServe.pauseCampaign)))
-	mux.HandleFunc("POST /api/v1/selfserve/campaigns/{id}/resume", limit(perm("campaigns:write", selfServe.resumeCampaign)))
+	mux.HandleFunc("POST /api/v1/selfserve/campaigns/{id}/pause", limit(permAny(pausePerms, selfServe.pauseCampaign)))
+	mux.HandleFunc("POST /api/v1/selfserve/campaigns/{id}/resume", limit(permAny(pausePerms, selfServe.resumeCampaign)))
 	mux.HandleFunc("POST /api/v1/selfserve/payment-intents", limit(perm("customers:read", selfServe.createPaymentIntent)))
 	mux.HandleFunc("GET /api/v1/selfserve/invoices", limit(perm("customers:read", selfServe.listInvoices)))
 	mux.HandleFunc("POST /api/v1/selfserve/api-keys", limit(perm("campaigns:write", selfServe.createAPIKey)))

@@ -1,7 +1,10 @@
 import { el } from '../lib/dom.js';
 
 /**
+ * Render a horizontal tab bar for switching panel sections.
+ *
  * @param {{ tabs: Array<{ id: string, label: string }>, active: string, onChange: (id: string) => void }} opts
+ * @returns {HTMLElement}
  */
 export function renderTabBar(opts) {
   return el('div', { className: 'tab-bar', role: 'tablist' },

@@ -53,6 +53,8 @@ const registry = new Map([
 ]);
 
 /**
+ * Resolve the confirm-registry entry for a method and path.
+ *
  * @param {string} method
  * @param {string} path - may include actual IDs matching {id} patterns
  * @returns {ConfirmEntry}
@@ -72,6 +74,8 @@ export function getConfirmLevel(method, path) {
 }
 
 /**
+ * Test whether an actual request key matches a registry pattern with placeholders.
+ *
  * @param {string} pattern
  * @param {string} actual
  * @returns {boolean}

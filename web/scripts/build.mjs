@@ -1,36 +1,50 @@
-import { writeFileSync, rmSync } from 'node:fs';
-import { resolve } from 'node:path';
-import esbuild from 'esbuild';
-import { esbuildOptions, ROOT_DIR } from './esbuild-shared.mjs';
-import {
-  INDEX_HTML,
-  LOGIN_HTML,
-  renderHtml,
-  assetsForEntry,
-} from './html-templates.mjs';
+#!/usr/bin/env node
+/**
+ * Copy native ESM sources into dist/ and write HTML entry shells.
+ * No bundler; no npm runtime dependencies.
+ */
+import { cpSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const distDir = resolve(ROOT_DIR, 'dist');
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const DIST = join(ROOT, 'dist');
+const SRC = join(ROOT, 'src');
 
-rmSync(distDir, { recursive: true, force: true });
+const INDEX_HTML = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BidShard Admin</title>
+    <link rel="stylesheet" href="/src/styles/a11y.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
+`;
 
-const result = await esbuild.build(esbuildOptions({ dev: false }));
+const LOGIN_HTML = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign in — BidShard Admin</title>
+    <link rel="stylesheet" href="/src/styles/a11y.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/login.js"></script>
+  </body>
+</html>
+`;
 
-if (!result.metafile) {
-  throw new Error('esbuild metafile missing');
-}
+rmSync(DIST, { recursive: true, force: true });
+mkdirSync(DIST, { recursive: true });
+cpSync(SRC, join(DIST, 'src'), { recursive: true });
+writeFileSync(join(DIST, 'index.html'), INDEX_HTML, 'utf8');
+writeFileSync(join(DIST, 'login.html'), LOGIN_HTML, 'utf8');
 
-const mainAssets = assetsForEntry(result.metafile, 'src/main.js');
-const loginAssets = assetsForEntry(result.metafile, 'src/login.js');
-
-writeFileSync(
-  resolve(distDir, 'index.html'),
-  renderHtml(INDEX_HTML, mainAssets.scripts, mainAssets.styles),
-  'utf8',
-);
-writeFileSync(
-  resolve(distDir, 'login.html'),
-  renderHtml(LOGIN_HTML, loginAssets.scripts, loginAssets.styles),
-  'utf8',
-);
-
-console.log('esbuild: dist written');
+console.log('dist: copied src/ and wrote index.html, login.html');

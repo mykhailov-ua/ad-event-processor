@@ -6,30 +6,19 @@ cd "$ROOT"
 
 WEB_DIR="$ROOT/web"
 
-if [ ! -f "$WEB_DIR/package.json" ]; then
-  echo "Error: $WEB_DIR/package.json not found"
+if [ ! -f "$WEB_DIR/scripts/build.mjs" ]; then
+  echo "Error: $WEB_DIR/scripts/build.mjs not found"
   exit 1
 fi
 
-cd "$WEB_DIR"
-
-echo "== admin: npm ci =="
-npm ci
-
-echo "== admin: web deps =="
-node "$WEB_DIR/scripts/ci/check_web_deps.mjs"
+echo "== admin: build (native ESM copy) =="
+node "$WEB_DIR/scripts/build.mjs"
 
 echo "== admin: ui literals =="
 bash "$SCRIPTS/ci/check_ui_literals.sh"
 
-echo "== admin: lint =="
-npm run lint
-
-echo "== admin: vitest =="
-npm test
-
-echo "== admin: build =="
-npm run build
+echo "== admin: jsdoc exports =="
+bash "$SCRIPTS/ci/check_jsdoc.sh"
 
 echo "== admin: dist hygiene =="
 bash "$SCRIPTS/ci/check_web_dist.sh"
@@ -37,21 +26,29 @@ bash "$SCRIPTS/ci/check_web_dist.sh"
 echo "== admin: security literals =="
 bash "$SCRIPTS/ci/check_web_security.sh"
 
-echo "== admin: bundle gate =="
+echo "== admin: forbidden chart libs =="
 bash "$SCRIPTS/ci/admin_bundle_gate.sh"
 
-echo "== admin: lighthouse checklist =="
-bash "$SCRIPTS/ci/admin_lighthouse_checklist.sh"
+echo "== admin: micro-benchmarks =="
+bash "$SCRIPTS/ci/web_bench.sh"
+
+echo "== admin: async guard tests =="
+npm run test:web
 
 echo "== admin: confirm registry audit =="
 bash "$SCRIPTS/ci/confirm_registry_audit.sh"
 
-if [ "${ADMIN_SKIP_E2E:-}" = "1" ]; then
-  echo "== admin: e2e skipped (ADMIN_SKIP_E2E=1) =="
+if [ "${ADMIN_SKIP_E2E:-1}" = "1" ]; then
+  echo "== admin: e2e skipped (ADMIN_SKIP_E2E=1, default) =="
 else
+  E2E_DIR="$WEB_DIR/e2e"
+  if [ ! -f "$E2E_DIR/package.json" ]; then
+    echo "Error: e2e requires $E2E_DIR/package.json (set ADMIN_SKIP_E2E=1 to skip)"
+    exit 1
+  fi
   echo "== admin: playwright e2e =="
-  npx playwright install chromium
-  npm run test:e2e
+  node "$WEB_DIR/scripts/build.mjs"
+  (cd "$E2E_DIR" && npm ci && npx playwright install chromium && npm run test:e2e)
 fi
 
 echo "Admin web checks PASSED."

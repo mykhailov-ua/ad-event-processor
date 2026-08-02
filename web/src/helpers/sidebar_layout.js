@@ -15,7 +15,10 @@ export const SIDEBAR_MIN_MAIN_WIDTH = 640;
 export const SIDEBAR_MAX_VIEWPORT_RATIO = 0.45;
 
 /**
+ * Compute min, max, and default sidebar widths for a viewport.
+ *
  * @param {number} [viewportWidth]
+ * @returns {{ min: number, max: number, default: number }}
  */
 export function getSidebarWidthBounds(viewportWidth = window.innerWidth) {
   const vw = Math.max(320, viewportWidth);
@@ -30,8 +33,11 @@ export function getSidebarWidthBounds(viewportWidth = window.innerWidth) {
 }
 
 /**
+ * Clamp a sidebar width to allowed bounds for the viewport.
+ *
  * @param {number} width
  * @param {number} [viewportWidth]
+ * @returns {number}
  */
 export function clampSidebarWidth(width, viewportWidth = window.innerWidth) {
   const { min, max } = getSidebarWidthBounds(viewportWidth);

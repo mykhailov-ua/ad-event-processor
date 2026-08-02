@@ -4,7 +4,10 @@ import { BUILD_LABEL } from '../lib/build_label.js';
 const STORAGE_KEY = 'adminServerVersion';
 
 /**
+ * Render a reload prompt when the server version changes mid-session.
+ *
  * @param {{ serverVersion: string|null }} opts
+ * @returns {HTMLElement}
  */
 export function renderVersionBanner(opts) {
   const serverVersion = opts.serverVersion?.trim() ?? '';
@@ -20,7 +23,6 @@ export function renderVersionBanner(opts) {
   try {
     sessionStorage.setItem(STORAGE_KEY, serverVersion);
   } catch {
-    /* ignore quota */
   }
 
   if (!prev || prev === serverVersion) return el('div');

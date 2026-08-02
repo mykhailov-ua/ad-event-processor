@@ -2,7 +2,8 @@ import { el } from '../lib/dom.js';
 import { renderStatusBadge } from './status_badge.js';
 
 /**
- * Split into columns with ceil(n/cols) rows each (table-style).
+ * Split items into columns with ceil(n/cols) rows each.
+ *
  * @param {unknown[]} items
  * @param {number} cols
  * @returns {unknown[][]}
@@ -19,8 +20,11 @@ function splitColumns(items, cols = 2) {
 }
 
 /**
+ * Render a labeled doctor stack section with two-column layout.
+ *
  * @param {string} label
  * @param {HTMLElement[]} rows
+ * @returns {HTMLElement|null}
  */
 function renderStackSection(label, rows) {
   if (rows.length === 0) return null;
@@ -40,12 +44,15 @@ function renderStackSection(label, rows) {
 }
 
 /**
+ * Render one doctor stack row with title, detail, and status badge.
+ *
  * @param {{
  *   title: string,
  *   detail?: string | null,
  *   mono?: boolean,
  *   status: string | undefined,
  * }} row
+ * @returns {HTMLElement}
  */
 function renderStackRow(row) {
   return el('div', { className: 'doctor-stack__row', role: 'row' },
@@ -67,11 +74,14 @@ function renderStackRow(row) {
 }
 
 /**
+ * Render the operations doctor panel with services and checks.
+ *
  * @param {{
  *   doctor?: { overall?: string, checks?: Array<{ id?: string, status?: string, message?: string }> } | null,
  *   services?: Array<{ name?: string, status?: string, detail?: string }> | null,
  *   loading?: boolean,
  * }} opts
+ * @returns {HTMLElement}
  */
 export function renderDoctorPanel(opts) {
   const services = opts.services ?? [];

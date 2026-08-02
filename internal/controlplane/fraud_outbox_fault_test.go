@@ -46,7 +46,7 @@ func TestFault_FraudBoostPropagation(t *testing.T) {
 	ctx := context.Background()
 
 	campID := uuid.New()
-	payload, err := coldpath.MarshalJSON(FraudThreatPayload{
+	payload, err := coldpath.MarshalOutbox(FraudThreatPayload{
 		Action:     "boost",
 		IP:         "203.0.113.70",
 		CampaignID: campID.String(),

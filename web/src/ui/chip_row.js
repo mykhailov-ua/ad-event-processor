@@ -1,8 +1,8 @@
 import { el } from '../lib/dom.js';
 
 /**
- * Mounts a ChipRow component inside container.
- * 
+ * Mount a chip row filter control inside container.
+ *
  * @param {HTMLElement} container
  * @param {{ items: Array<{ value: string, label: string }|string>, selected: string, onSelect: (value: string) => void }} props
  * @returns {{ destroy: () => void, update: (newProps: { selected: string }) => void }}

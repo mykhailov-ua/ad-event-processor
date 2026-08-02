@@ -62,7 +62,15 @@ type SelfServeInvoiceListResponse struct {
 
 type CustomerBalanceReader interface {
 	GetCustomerBalance(ctx context.Context, customerID uuid.UUID) (CustomerBalanceDTO, error)
+	ListCustomerLedger(ctx context.Context, customerID uuid.UUID, limit, offset int32) ([]BalanceLedgerDTO, int64, error)
 	ExportCustomerLedgerCSV(ctx context.Context, customerID uuid.UUID, cursor int64, w io.Writer) (LedgerExportResult, error)
+}
+
+type LedgerListResponse struct {
+	Items  []BalanceLedgerDTO `json:"items"`
+	Total  int64              `json:"total"`
+	Limit  int32              `json:"limit"`
+	Offset int32              `json:"offset"`
 }
 
 type DisputeRowDTO struct {
@@ -933,6 +941,7 @@ func (h *BillingHTTPHandlers) registerBalanceRoutes(mux *http.ServeMux) {
 		exportLimit = limit
 	}
 	mux.HandleFunc("GET /api/v1/customers/{id}/balance", limit(perm("customers:read", h.getCustomerBalance)))
+	mux.HandleFunc("GET /api/v1/customers/{id}/ledger", limit(perm("customers:read", h.getCustomerLedger)))
 	mux.HandleFunc("GET /api/v1/customers/{id}/balance/export", limit(exportLimit(perm("customers:read", h.exportCustomerBalance))))
 }
 
@@ -954,6 +963,37 @@ func (h *BillingHTTPHandlers) getCustomerBalance(w http.ResponseWriter, r *http.
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, report)
+}
+
+func (h *BillingHTTPHandlers) getCustomerLedger(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	customerID, err := uuid.Parse(idStr)
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer id")
+		return
+	}
+	if err := h.authorizeCustomer(r, idStr); err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	if h.CustomerBalance == nil {
+		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "ledger reader not configured")
+		return
+	}
+
+	limit, offset := parsePagination(r)
+
+	items, total, err := h.CustomerBalance.ListCustomerLedger(r.Context(), customerID, limit, offset)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, LedgerListResponse{
+		Items:  items,
+		Total:  total,
+		Limit:  limit,
+		Offset: offset,
+	})
 }
 
 func (h *BillingHTTPHandlers) exportCustomerBalance(w http.ResponseWriter, r *http.Request) {

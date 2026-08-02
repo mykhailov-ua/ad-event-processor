@@ -7,6 +7,8 @@ import { NAV_GROUPS, navLinkVisible } from '../helpers/nav_config.js';
 import { isCustomerUuid, shortCustomerId } from '../helpers/customer_context.js';
 
 /**
+ * Install the global command palette with Ctrl/Cmd+K shortcut.
+ *
  * @returns {{ destroy: () => void }}
  */
 export function installCommandPalette() {
@@ -15,6 +17,9 @@ export function installCommandPalette() {
   let listEl = null;
   let highlight = 0;
   let filtered = [];
+  /** @type {{ id: string, label: string, hint?: string, run: () => void }[]|null} */
+  let cachedItems = null;
+  let cachedPermKey = '';
 
   function destroy() {
     if (overlay) overlay.remove();
@@ -25,6 +30,8 @@ export function installCommandPalette() {
   function buildItems() {
     const user = auth.getUser();
     const permissions = user?.permissions ?? [];
+    const permKey = permissions.join('\0');
+    if (cachedItems && cachedPermKey === permKey) return cachedItems;
     /** @type {{ id: string, label: string, hint?: string, run: () => void }[]} */
     const items = [];
 
@@ -44,35 +51,66 @@ export function installCommandPalette() {
     }
 
     for (const id of storage.getRecentCustomerIds()) {
+      if (navLinkVisible(permissions, { perm: 'customers:read' })) {
+        items.push({
+          id: `customer-${id}`,
+          label: shortCustomerId(id, 12),
+          hint: 'Recent customer',
+          run: () => {
+            close();
+            navigate(`/customers/${id}`);
+          },
+        });
+      }
+      if (navLinkVisible(permissions, { perm: 'customers:read', altPerm: 'billing:read' })) {
+        items.push({
+          id: `billing-${id}`,
+          label: `Billing · ${shortCustomerId(id, 12)}`,
+          hint: 'Customer billing',
+          run: () => {
+            close();
+            navigate(`/billing?customer_id=${encodeURIComponent(id)}`);
+          },
+        });
+      }
+      if (navLinkVisible(permissions, { perm: 'campaigns:read', altPerm: 'campaigns:read:masked' })) {
+        items.push({
+          id: `campaigns-${id}`,
+          label: `Campaigns · ${shortCustomerId(id, 12)}`,
+          hint: 'Customer campaigns',
+          run: () => {
+            close();
+            navigate(`/campaigns?customer_id=${encodeURIComponent(id)}`);
+          },
+        });
+      }
+    }
+
+    if (navLinkVisible(permissions, { perm: 'shards:read' })) {
       items.push({
-        id: `customer-${id}`,
-        label: shortCustomerId(id, 12),
-        hint: 'Recent customer',
+        id: 'ops-outbox',
+        label: 'Open ops outbox',
+        hint: 'Operations',
         run: () => {
           close();
-          navigate(`/customers/${id}`);
+          navigate('/ops');
         },
       });
+    }
+    if (navLinkVisible(permissions, { perm: 'campaigns:write' })) {
       items.push({
-        id: `billing-${id}`,
-        label: `Billing · ${shortCustomerId(id, 12)}`,
-        hint: 'Customer billing',
+        id: 'action-pause-hint',
+        label: 'Pause campaign (open detail first)',
+        hint: 'Action',
         run: () => {
           close();
-          navigate(`/billing?customer_id=${encodeURIComponent(id)}`);
-        },
-      });
-      items.push({
-        id: `campaigns-${id}`,
-        label: `Campaigns · ${shortCustomerId(id, 12)}`,
-        hint: 'Customer campaigns',
-        run: () => {
-          close();
-          navigate(`/campaigns?customer_id=${encodeURIComponent(id)}`);
+          navigate('/campaigns');
         },
       });
     }
 
+    cachedPermKey = permKey;
+    cachedItems = items;
     return items;
   }
 

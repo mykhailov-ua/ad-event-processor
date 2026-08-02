@@ -1,43 +1,13 @@
 package controlplane
 
 import (
-	"io/fs"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
-
-	webstatic "espx/web"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func findHashedAssetPath(prefix, suffix string) (string, bool) {
-	fsys, err := webstatic.DistFS()
-	if err != nil {
-		return "", false
-	}
-	var found string
-	err = fs.WalkDir(fsys, "assets", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			return nil
-		}
-		name := d.Name()
-		if strings.HasPrefix(name, prefix) && strings.HasSuffix(name, suffix) {
-			found = "/" + path
-			return fs.SkipAll
-		}
-		return nil
-	})
-	if err != nil || found == "" {
-		return "", false
-	}
-	return found, true
-}
 
 func TestInjectAdminBoot(t *testing.T) {
 	t.Parallel()
@@ -64,6 +34,7 @@ func TestAdminStaticRoutes(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Contains(t, w.Body.String(), "<div id=\"root\"></div>")
+		assert.Contains(t, w.Body.String(), "/src/main.js")
 		assert.Equal(t, "no-cache, no-store, must-revalidate", w.Header().Get("Cache-Control"))
 	})
 
@@ -84,7 +55,7 @@ func TestAdminStaticRoutes(t *testing.T) {
 		assert.Equal(t, http.StatusOK, w.Code)
 		body := w.Body.String()
 		assert.Contains(t, body, "<div id=\"root\"></div>")
-		assert.NotContains(t, body, "/assets/index-")
+		assert.Contains(t, body, "/src/login.js")
 	})
 
 	t.Run("GET unknown /api/v1 route returns 404 JSON", func(t *testing.T) {
@@ -100,11 +71,8 @@ func TestAdminStaticRoutes(t *testing.T) {
 	require.NoError(t, err)
 	_ = staticFS
 
-	t.Run("GET hashed /assets chunk has immutable cache", func(t *testing.T) {
-		assetPath, ok := findHashedAssetPath("main-", ".js")
-		require.True(t, ok, "expected hashed main-*.js in embedded dist/assets")
-
-		req, _ := http.NewRequest("GET", assetPath, nil)
+	t.Run("GET /src/main.js has immutable cache", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "/src/main.js", nil)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -145,7 +113,6 @@ func TestAdminStaticRoutesWithGateUnauth(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	body := w.Body.String()
-	assert.NotContains(t, body, "/assets/index-")
-	assert.True(t, strings.Contains(body, "/assets/login-") || strings.Contains(body, "login.js"))
+	assert.Contains(t, body, "/src/login.js")
 	assert.Equal(t, "no-cache, no-store, must-revalidate", w.Header().Get("Cache-Control"))
 }

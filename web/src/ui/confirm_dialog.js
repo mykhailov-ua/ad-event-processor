@@ -5,6 +5,8 @@ import { renderCheckbox } from './checkbox.js';
 const STRONG_TOKEN = 'DELETE';
 
 /**
+ * Mount a confirm dialog for the given registry level.
+ *
  * @param {{
  *   level: string,
  *   title?: string,
@@ -12,6 +14,7 @@ const STRONG_TOKEN = 'DELETE';
  *   onConfirm: () => void,
  *   onCancel: () => void,
  * }} opts
+ * @returns {{ destroy: () => void }}
  */
 export function mountConfirmDialog(opts) {
   const isStrong = opts.level === 'strong';

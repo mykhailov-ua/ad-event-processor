@@ -84,6 +84,7 @@ type Worker struct {
 	pool  *PinnedWorkerPool
 	id    int
 	queue *MPSCQueue
+	arena workerArena
 }
 
 func (w *Worker) start() {
@@ -167,22 +168,58 @@ func NewPinnedWorkerPool(size int, queueSize int) *PinnedWorkerPool {
 	return p
 }
 
-func (p *PinnedWorkerPool) SubmitOffload(ctx *connContext) bool {
-	if atomic.LoadInt32(&p.closed) == 1 {
+func (p *PinnedWorkerPool) SubmitOffload(ctx *connContext, src []byte) bool {
+	if atomic.LoadInt32(&p.closed) == 1 || ctx == nil {
 		return false
 	}
 	p.wg.Add(1)
 
 	idx := atomic.AddUint64(&p.round, 1) % uint64(len(p.workers))
-	if p.workers[idx].queue.PushCtx(ctx) {
-		return true
-	}
-
-	for i := 1; i < len(p.workers); i++ {
-		nextIdx := (idx + uint64(i)) % uint64(len(p.workers))
-		if p.workers[nextIdx].queue.PushCtx(ctx) {
+	for i := 0; i < len(p.workers); i++ {
+		widx := (idx + uint64(i)) % uint64(len(p.workers))
+		w := p.workers[widx]
+		if len(src) > 0 && ctx.offloadReqSlice == nil && ctx.offloadReqBuf == nil {
+			if slot, buf, release, ok := w.arena.acquire(len(src)); ok {
+				copy(buf, src)
+				ctx.offloadReqSlice = buf
+				ctx.offloadReqLen = len(src)
+				ctx.offloadArenaWorker = int(widx)
+				ctx.offloadArenaSlot = slot
+				ctx.offloadRelease = release
+			}
+		}
+		if w.queue.PushCtx(ctx) {
 			return true
 		}
+		if ctx.offloadRelease != nil {
+			ctx.offloadRelease()
+			ctx.offloadRelease = nil
+			ctx.offloadReqSlice = nil
+			ctx.offloadArenaWorker = 0
+			ctx.offloadArenaSlot = 0
+		}
+	}
+
+	if len(src) > 0 && ctx.offloadReqSlice == nil && ctx.offloadReqBuf == nil {
+		reqBufPtr := requestBufferPool.Get().(*[]byte)
+		reqBytes := *reqBufPtr
+		if cap(reqBytes) < len(src) {
+			reqBytes = make([]byte, len(src))
+			*reqBufPtr = reqBytes
+		} else {
+			reqBytes = reqBytes[:len(src)]
+		}
+		copy(reqBytes, src)
+		ctx.offloadReqBuf = reqBufPtr
+		ctx.offloadReqLen = len(src)
+		for i := 0; i < len(p.workers); i++ {
+			widx := (idx + uint64(i)) % uint64(len(p.workers))
+			if p.workers[widx].queue.PushCtx(ctx) {
+				return true
+			}
+		}
+		requestBufferPool.Put(reqBufPtr)
+		ctx.offloadReqBuf = nil
 	}
 
 	p.wg.Done()

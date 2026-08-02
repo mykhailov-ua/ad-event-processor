@@ -11,7 +11,7 @@ fi
 
 CHANNEL="${CAMPAIGN_UPDATE_CHANNEL:-campaigns:update}"
 PAYLOAD="${REGISTRY_FULL_SYNC_PAYLOAD:-*}"
-REDIS_CONTAINER="${REDIS_CONTAINER:-espx-redis-0-1}"
+COMPOSE=(docker compose -f docker-compose.yaml -f docker-compose.load-test.yaml)
 REDIS_PASS="${REDIS_PASSWORD:-redis_secure_pass_456}"
 VERIFY_TRACKERS="${VERIFY_TRACKERS:-1}"
 VERIFY_RETRIES="${VERIFY_RETRIES:-30}"
@@ -20,7 +20,7 @@ log() { printf 'sync-tracker-registry: %s\n' "$*"; }
 die() { printf 'sync-tracker-registry: ERROR: %s\n' "$*" >&2; exit 1; }
 
 redis_publish() {
-	docker exec "$REDIS_CONTAINER" redis-cli -p 6379 -a "$REDIS_PASS" \
+	"${COMPOSE[@]}" exec -T redis-0 redis-cli -p 6379 -a "$REDIS_PASS" \
 		PUBLISH "$CHANNEL" "$PAYLOAD" >/dev/null
 }
 

@@ -2,7 +2,6 @@ package controlplane
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -14,6 +13,7 @@ import (
 	db "espx/internal/domain/db"
 	"espx/internal/ledger"
 	"espx/internal/metrics"
+	"espx/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -23,8 +23,8 @@ import (
 )
 
 func parseReconciliationAdjustPayload(payload []byte) (ReconciliationAdjustPayload, error) {
-	var p ReconciliationAdjustPayload
-	if err := json.Unmarshal(payload, &p); err != nil {
+	p, err := coldpath.UnmarshalStrict[ReconciliationAdjustPayload](payload)
+	if err != nil {
 		return p, err
 	}
 	if p.CampaignID == "" || p.CustomerID == "" {
@@ -610,10 +610,7 @@ func (w *ReconWorker) enqueueForcePauseCustomer(ctx context.Context, customerID 
 
 	batch := &pgx.Batch{}
 	for _, campID := range campIDs {
-		payload, err := json.Marshal(map[string]string{
-			"campaign_id": campID.String(),
-			"reason":      "FORCE_PAUSE: " + reason,
-		})
+		payload, err := coldpath.MarshalOutbox(CampaignPayload{CampaignID: campID.String()})
 		if err != nil {
 			continue
 		}
@@ -915,7 +912,7 @@ func (w *ReconWorker) enqueueReconciliationAdjust(
 	ledgerAmt, redisDelta int64,
 	reason string,
 ) error {
-	payload, err := json.Marshal(ReconciliationAdjustPayload{
+	payload, err := coldpath.MarshalOutbox(ReconciliationAdjustPayload{
 		RunID:      runID,
 		CampaignID: campID.String(),
 		CustomerID: customerID.String(),

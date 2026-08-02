@@ -25,6 +25,8 @@ type LedgerDTO = adminapi.BalanceLedgerDTO
 
 type CustomerBalanceDTO = adminapi.CustomerBalanceDTO
 
+type LedgerListResponse = adminapi.LedgerListResponse
+
 type LedgerExportResult = adminapi.LedgerExportResult
 
 const (
@@ -160,33 +162,11 @@ func (s *Service) GetCustomerBalance(ctx context.Context, customerID uuid.UUID) 
 		return CustomerBalanceDTO{}, mapNotFound(err, ErrCustomerNotFound)
 	}
 
-	rows, err := q.ListCustomerLedgerByIDDesc(ctx, domain.ToUUID(customerID))
-	if err != nil {
-		return CustomerBalanceDTO{}, err
-	}
-
-	ledger := make([]LedgerDTO, 0, len(rows))
-	for _, row := range rows {
-		var campID string
-		if row.CampaignID.Valid {
-			campID = uuid.UUID(row.CampaignID.Bytes).String()
-		}
-		ledger = append(ledger, LedgerDTO{
-			ID:              row.ID,
-			CustomerID:      uuid.UUID(row.CustomerID.Bytes).String(),
-			CampaignID:      campID,
-			Amount:          formatMicro(row.Amount),
-			Type:            string(row.Type),
-			IdempotencyHash: row.IdempotencyHash.String,
-			CreatedAt:       row.CreatedAt.Time.Format(time.RFC3339),
-		})
-	}
-
 	return CustomerBalanceDTO{
 		CustomerID: customerID.String(),
 		Balance:    formatMicro(cust.Balance),
 		Currency:   cust.Currency,
-		Ledger:     ledger,
+		Ledger:     []LedgerDTO{},
 	}, nil
 }
 

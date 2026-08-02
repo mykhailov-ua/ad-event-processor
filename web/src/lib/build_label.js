@@ -1,2 +1,2 @@
-/** Admin UI bundle label injected at esbuild build (package version). */
-export const BUILD_LABEL = import.meta.env.BUILD_LABEL ?? '';
+/** Return the admin UI build label (empty when not injected at build time). */
+export const BUILD_LABEL = '';

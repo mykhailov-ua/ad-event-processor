@@ -2099,7 +2099,7 @@ func (o *FraudModelSyncOrchestrator) Tick(ctx context.Context) error {
 			return fmt.Errorf("failed to insert shard sync state: %w", err)
 		}
 
-		payload, err := coldpath.MarshalJSON(FraudModelVersionPayload{
+		payload, err := coldpath.MarshalOutbox(FraudModelVersionPayload{
 			ModelVersion: versionID,
 			Hash:         artifactHash,
 			ShardID:      nextShardToSync,

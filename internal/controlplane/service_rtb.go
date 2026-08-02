@@ -87,7 +87,7 @@ func normalizeDealSeats(seats int32) (int32, error) {
 }
 
 func (s *Service) enqueueRtbCatalogReload(ctx context.Context, q db.Querier, trigger string) error {
-	payload, err := coldpath.MarshalJSON(RtbCatalogReloadPayload{Trigger: trigger})
+	payload, err := coldpath.MarshalOutbox(RtbCatalogReloadPayload{Trigger: trigger})
 	if err != nil {
 		return err
 	}

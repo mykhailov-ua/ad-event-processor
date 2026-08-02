@@ -21,8 +21,11 @@ import {
 } from '../ui/data_table.js';
 
 /**
+ * Mount the customer detail view with campaigns, wallet, and tax profile.
+ *
  * @param {HTMLElement} container
  * @param {{ params: Record<string, string>, navigate: (path: string) => void }} ctx
+ * @returns {import('../lib/router.js').ViewHandle}
  */
 export function mount(container, ctx) {
   let destroyed = false;
@@ -226,7 +229,7 @@ export function mount(container, ctx) {
           }, 'All campaigns'),
         ),
         campaignsState.loading && campaigns.length === 0
-          ? el('div', { className: 'table-wrapper' },
+          ? el('div', { className: 'table-wrapper elevation-raised' },
             el('table', { className: 'data-table' },
               el('tbody', null, tableSkeletonRows(3, 3)),
             ),
@@ -241,7 +244,7 @@ export function mount(container, ctx) {
           })
           : null,
         !campaignsState.loading && campaigns.length > 0
-          ? el('div', { className: 'table-wrapper' },
+          ? el('div', { className: 'table-wrapper elevation-raised' },
             el('table', { className: 'data-table' },
               el('thead', null,
                 el('tr', null,

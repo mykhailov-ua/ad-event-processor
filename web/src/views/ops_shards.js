@@ -5,7 +5,10 @@ import { isPageBlockingError, mapServiceError } from '../helpers/service_error.j
 import { renderBreadcrumbs } from '../ui/breadcrumbs.js';
 
 /**
+ * Mount the Redis shard health report view.
+ *
  * @param {HTMLElement} container
+ * @returns {import('../lib/router.js').ViewHandle}
  */
 export function mount(container) {
   let destroyed = false;
@@ -46,7 +49,7 @@ export function mount(container) {
           `Partial: ${state.report.errors.map((e) => e.source).join(', ')}`,
         )
         : null,
-      el('div', { className: 'table-wrapper' },
+      el('div', { className: 'table-wrapper elevation-raised' },
         el('table', { className: 'data-table' },
           el('thead', null,
             el('tr', null,

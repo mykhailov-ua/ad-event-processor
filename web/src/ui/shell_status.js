@@ -1,8 +1,10 @@
 import { renderAlertBanner } from './alert_banner.js';
 
 /**
- * Offline + rate-limit banners at top of main content.
+ * Install offline and rate-limit banners at the top of main content.
+ *
  * @param {HTMLElement} bannerSlot
+ * @returns {{ destroy: () => void, prependTo: (slot: HTMLElement, nodes: HTMLElement[]) => void }}
  */
 export function installShellStatus(bannerSlot) {
   let offlineNode = null;
@@ -83,7 +85,7 @@ export function installShellStatus(bannerSlot) {
       window.removeEventListener('admin:rate-limited', onRateLimited);
       if (rateLimitTimer) clearTimeout(rateLimitTimer);
     },
-    /** Rebuild banners after version/license slots update. */
+    /** Rebuild banners after version or license slots update. */
     prependTo(slot, nodes) {
       const statusNodes = [];
       if (offlineNode) statusNodes.push(offlineNode);

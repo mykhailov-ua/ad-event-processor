@@ -3,17 +3,21 @@ import { createResource } from '../lib/fetch_resource.js';
 import { renderErrorBlock } from '../ui/error_block.js';
 import { clickableRow } from '../ui/clickable_row.js';
 import * as auth from '../helpers/auth.js';
-import { isTenantUser } from '../helpers/permissions.js';
+import { isBuyer } from '../helpers/permissions.js';
+import { hasBoundCustomer, boundCustomerId } from '../helpers/buyer_session.js';
+import { buyerEmptyCopy } from '../models/empty_state.js';
+import { fetchBuyerDashboard } from '../helpers/buyer_dashboard.js';
+import { buyerCampaignStat, buyerCampaignIndex } from '../models/buyer.js';
 import { formatUsdDecimal } from '../helpers/money.js';
 import { renderStatusBadge } from '../ui/status_badge.js';
 import { renderCampaignStatusLegend } from '../ui/status_legend.js';
 import { renderAlertBanner } from '../ui/alert_banner.js';
 import { debounce } from '../helpers/debounce.js';
 import { renderBreadcrumbs } from '../ui/breadcrumbs.js';
+import { mountFilterToolbar } from '../ui/filter_toolbar.js';
 import { touchCustomerContext, isCustomerUuid, shortCustomerId } from '../helpers/customer_context.js';
 import { renderRecentCustomers } from '../ui/recent_customers.js';
 import { renderIcon } from '../ui/icon.js';
-import { mount as mountChipRow } from '../ui/chip_row.js';
 import {
   createSortState,
   toggleSort,
@@ -24,11 +28,15 @@ import {
 } from '../ui/data_table.js';
 
 const PAGE_SIZE = 50;
+const CAMPAIGNS_EMPTY = buyerEmptyCopy('campaigns_empty');
 
 /**
+ * Build the campaigns list API URL for pagination and filters.
+ *
  * @param {number} page
  * @param {string} customerId
  * @param {string} status
+ * @returns {string}
  */
 function buildUrl(page, customerId, status) {
   const offset = page * PAGE_SIZE;
@@ -42,6 +50,8 @@ function buildUrl(page, customerId, status) {
 }
 
 /**
+ * Render a UUID with middle truncation for table cells.
+ *
  * @param {string} uuid
  * @returns {HTMLElement|string}
  */
@@ -53,35 +63,63 @@ function renderMiddleTruncateUuid(uuid) {
 }
 
 /**
+ * Mount the campaigns list view with filters, sorting, and pagination.
+ *
  * @param {HTMLElement} container
  * @param {{ query: URLSearchParams, navigate: (path: string) => void }} ctx
+ * @returns {import('../lib/router.js').ViewHandle}
  */
 export function mount(container, ctx) {
   let destroyed = false;
   const user = auth.getUser();
-  const tenant = isTenantUser(user?.role);
-  const tenantCustomerId = user?.customer_id ?? '';
+  const sessionScoped = hasBoundCustomer(user?.role);
+  const buyerView = isBuyer(user?.role);
+  const tenantCustomerId = boundCustomerId(user);
   const queryCustomer = ctx.query.get('customer_id')?.trim() ?? '';
 
   const ui = {
     page: 0,
-    customerIdInput: tenant ? tenantCustomerId : queryCustomer,
+    customerIdInput: sessionScoped ? tenantCustomerId : queryCustomer,
     statusFilter: '',
   };
 
   const state = { data: null, loading: true, error: null };
   const sortState = createSortState('name', 'asc');
-  const skipFetch = tenant && !tenantCustomerId;
+  const sortCache = {};
+  const skipFetch = sessionScoped && !tenantCustomerId;
+  /** @type {import('../models/buyer.js').BuyerPortfolioVM|null} */
+  let buyerDashboard = null;
+  /** @type {Record<string, object>|null} */
+  let buyerIndexCache = null;
 
   if (queryCustomer && isCustomerUuid(queryCustomer)) {
     touchCustomerContext(queryCustomer);
+  }
+
+  async function refreshBuyerDashboard() {
+    if (!buyerView) return;
+    const cid = effectiveCustomerId();
+    if (!isCustomerUuid(cid)) {
+      buyerDashboard = null;
+      buyerIndexCache = null;
+      return;
+    }
+    const dash = await fetchBuyerDashboard(cid);
+    if (destroyed) return;
+    buyerDashboard = dash;
+    buyerIndexCache = null;
+    render();
+  }
+
+  if (buyerView && !skipFetch) {
+    refreshBuyerDashboard();
   }
 
   const reloadDebounced = debounce(() => resource.reload(), 400);
   let customerFilterError = null;
 
   function effectiveCustomerId() {
-    return tenant ? tenantCustomerId : ui.customerIdInput.trim();
+    return sessionScoped ? tenantCustomerId : ui.customerIdInput.trim();
   }
 
   function focusCustomerInput() {
@@ -93,10 +131,12 @@ export function mount(container, ctx) {
     if (destroyed) return;
 
     if (skipFetch) {
+      const copy = buyerEmptyCopy('session_customer');
       replaceChildren(container,
-        renderErrorBlock(
-          { status: 400, code: 'BAD_REQUEST', message: 'customer_id missing in session' },
-          'Failed to load campaigns',
+        el('section', null,
+          el('h1', null, 'Campaigns'),
+          el('p', null, copy.title),
+          el('p', null, copy.description),
         ),
       );
       return;
@@ -108,14 +148,28 @@ export function mount(container, ctx) {
     }
 
     const effectiveId = effectiveCustomerId();
-    const campaigns = sortRows(state.data?.items ?? [], sortState, {
-      name: (c) => c.name ?? '',
-      status: (c) => c.status ?? '',
-      budget_limit: (c) => Number(c.budget_limit ?? 0),
-      current_spend: (c) => Number(c.current_spend ?? 0),
-      pacing_mode: (c) => c.pacing_mode ?? '',
-      customer_id: (c) => c.customer_id ?? '',
-    });
+    const buyerIndex = buyerView
+      ? buyerCampaignIndex(buyerDashboard?.campaigns, buyerIndexCache ?? undefined)
+      : null;
+    if (buyerIndex) buyerIndexCache = buyerIndex;
+    const statFor = (c) => buyerCampaignStat(buyerIndex?.[c.id]);
+    const sortAccessors = buyerView
+      ? {
+        name: (c) => c.name ?? '',
+        status: (c) => c.status ?? '',
+        impressions: (c) => statFor(c).impressions,
+        clicks: (c) => statFor(c).clicks,
+        pacing_mode: (c) => c.pacing_mode ?? '',
+      }
+      : {
+        name: (c) => c.name ?? '',
+        status: (c) => c.status ?? '',
+        budget_limit: (c) => Number(c.budget_limit ?? 0),
+        current_spend: (c) => Number(c.current_spend ?? 0),
+        pacing_mode: (c) => c.pacing_mode ?? '',
+        customer_id: (c) => c.customer_id ?? '',
+      };
+    const campaigns = sortRows(state.data?.items ?? [], sortState, sortAccessors, sortCache);
     const total = state.data?.total ?? 0;
     const totalPages = Math.ceil(total / PAGE_SIZE) || 1;
 
@@ -123,6 +177,57 @@ export function mount(container, ctx) {
       toggleSort(sortState, key);
       render();
     };
+
+    const customerField = !sessionScoped
+      ? el('input', {
+        id: 'campaigns-customer-input',
+        type: 'text',
+        className: 'form-input form-input--sm',
+        placeholder: 'Customer UUID…',
+        value: ui.customerIdInput,
+        onInput: (e) => {
+          ui.customerIdInput = e.target.value.trim();
+          customerFilterError = ui.customerIdInput
+            ? (isCustomerUuid(ui.customerIdInput) ? null : 'Invalid UUID format')
+            : null;
+          ui.page = 0;
+          if (!customerFilterError && ui.customerIdInput) {
+            reloadDebounced();
+            refreshBuyerDashboard();
+          } else if (!ui.customerIdInput) {
+            resource.reload();
+            refreshBuyerDashboard();
+          }
+        },
+      })
+      : null;
+
+    const tenantHint = sessionScoped && effectiveId && !buyerView
+      ? el('p', { className: 'text-muted text-hint' },
+        'Customer: ',
+        el('a', {
+          href: `/customers/${effectiveId}`,
+          className: 'font-mono',
+        }, effectiveId),
+      )
+      : null;
+
+    const toolbarWrap = el('div', { className: 'mb-4' });
+    mountFilterToolbar(toolbarWrap, {
+      leading: [tenantHint, customerField].filter(Boolean),
+      chips: [
+        { value: '', label: 'All' },
+        { value: 'ACTIVE', label: 'Active' },
+        { value: 'PAUSED', label: 'Paused' },
+        { value: 'ARCHIVED', label: 'Archived' },
+      ],
+      chipSelected: ui.statusFilter,
+      onChipSelect: (v) => {
+        ui.statusFilter = v;
+        ui.page = 0;
+        resource.reload();
+      },
+    });
 
     replaceChildren(container,
       el('div', { className: 'page-header' },
@@ -138,108 +243,57 @@ export function mount(container, ctx) {
             renderIcon('megaphone', { size: 20, className: 'text-muted' }),
             el('h1', { className: 'page-header__title' }, 'Campaigns'),
           ),
+          buyerView
+            ? el('a', { href: '/campaigns/portfolio', className: 'btn btn--secondary btn--sm' }, 'Portfolio view')
+            : null,
           el('span', { className: 'text-muted', style: { fontSize: 13 } },
             state.loading ? '' : `${total} total`,
           ),
         ),
-        renderRecentCustomers({ tenant }),
+        renderRecentCustomers({ tenant: sessionScoped && !buyerView }),
       ),
-      el('div', { className: 'filter-bar mb-4' },
-        !tenant
-          ? el('div', { style: { minWidth: 240 } },
-            el('input', {
-              id: 'campaigns-customer-input',
-              type: 'text',
-              className: 'form-input',
-              placeholder: 'Customer UUID…',
-              value: ui.customerIdInput,
-              onInput: (e) => {
-                ui.customerIdInput = e.target.value.trim();
-                customerFilterError = ui.customerIdInput
-                  ? (isCustomerUuid(ui.customerIdInput) ? null : 'Invalid UUID format')
-                  : null;
-                ui.page = 0;
-                if (!customerFilterError && ui.customerIdInput) reloadDebounced();
-                else if (!ui.customerIdInput) resource.reload();
-              },
-            }),
-          )
-          : null,
-        tenant && effectiveId
-          ? el('p', { className: 'text-muted', style: { fontSize: 13 } },
-            'Customer: ',
-            el('a', {
-              href: `/customers/${effectiveId}`,
-              className: 'font-mono',
-            }, effectiveId),
-          )
-          : null,
-        el('div', { className: 'filter-chips-wrap' },
-          (() => {
-            const wrap = el('div');
-            mountChipRow(wrap, {
-              items: [
-                { value: '', label: 'All Statuses' },
-                { value: 'ACTIVE', label: 'Active' },
-                { value: 'PAUSED', label: 'Paused' },
-                { value: 'ARCHIVED', label: 'Archived' },
-              ],
-              selected: ui.statusFilter,
-              onSelect: (v) => {
-                ui.statusFilter = v;
-                ui.page = 0;
-                resource.reload();
-              },
-            });
-            return wrap;
-          })()
-        ),
-      ),
+      toolbarWrap,
       customerFilterError
         ? renderAlertBanner({ variant: 'error', message: customerFilterError })
         : null,
-      !effectiveId && !tenant
+      !effectiveId && !sessionScoped
         ? renderAlertBanner({
           variant: 'info',
           message: 'Enter a customer UUID to load the campaign list.',
         })
         : null,
       effectiveId ? renderCampaignStatusLegend() : null,
-      el('div', { className: 'table-wrapper table-wrapper--scroll' },
+      el('div', { className: 'table-wrapper table-wrapper--scroll elevation-raised' },
         el('table', { className: 'data-table' },
           el('thead', null,
             el('tr', null,
               sortableTh('Name', 'name', sortState, onSort),
               sortableTh('Status', 'status', sortState, onSort),
-              sortableTh('Budget limit', 'budget_limit', sortState, onSort),
-              sortableTh('Spend', 'current_spend', sortState, onSort),
+              buyerView ? sortableTh('Impr. (7d)', 'impressions', sortState, onSort) : sortableTh('Budget limit', 'budget_limit', sortState, onSort),
+              buyerView ? sortableTh('Clicks (7d)', 'clicks', sortState, onSort) : sortableTh('Spend', 'current_spend', sortState, onSort),
               sortableTh('Pacing', 'pacing_mode', sortState, onSort),
-              sortableTh('Customer', 'customer_id', sortState, onSort),
+              buyerView ? null : sortableTh('Customer', 'customer_id', sortState, onSort),
             ),
           ),
           el('tbody', null,
             state.loading && campaigns.length === 0
-              ? tableSkeletonRows(6)
+              ? tableSkeletonRows(buyerView ? 5 : 6)
               : null,
             !state.loading && campaigns.length === 0 && effectiveId
               ? el('tr', null,
-                el('td', { colSpan: 6 },
+                el('td', { colSpan: buyerView ? 5 : 6 },
                   renderEmptyState({
-                    title: 'No campaigns found',
-                    description: 'Try another status filter or verify the customer UUID.',
-                    actionLabel: 'Clear status filter',
-                    onAction: () => {
-                      ui.statusFilter = '';
-                      ui.page = 0;
-                      resource.reload();
-                    },
+                    title: CAMPAIGNS_EMPTY.title,
+                    description: CAMPAIGNS_EMPTY.description,
+                    actionLabel: CAMPAIGNS_EMPTY.actionLabel,
+                    onAction: () => ctx.navigate(CAMPAIGNS_EMPTY.actionHref ?? '/reports/placements'),
                   }),
                 ),
               )
               : null,
             !state.loading && campaigns.length === 0 && !effectiveId
               ? el('tr', null,
-                el('td', { colSpan: 6 },
+                el('td', { colSpan: buyerView ? 5 : 6 },
                   renderEmptyState({
                     title: 'Customer required',
                     description: 'Enter a customer UUID above to load campaigns.',
@@ -254,20 +308,26 @@ export function mount(container, ctx) {
                 id: `row-campaign-${c.id}`,
                 onActivate: () => ctx.navigate(`/campaigns/${c.id}`),
                 cells: [
-                  el('td', { style: { fontWeight: 500, color: 'var(--text-primary)' } }, c.name),
+                  el('td', null, c.name),
                   el('td', null, renderStatusBadge(c.status)),
-                  el('td', { className: 'font-mono' }, formatUsdDecimal(c.budget_limit ?? '0.00')),
-                  el('td', { className: 'font-mono' }, formatUsdDecimal(c.current_spend ?? '0.00')),
+                  buyerView
+                    ? el('td', null, String(statFor(c).impressions || '—'))
+                    : el('td', { className: 'font-mono' }, formatUsdDecimal(c.budget_limit ?? '0.00')),
+                  buyerView
+                    ? el('td', null, String(statFor(c).clicks || '—'))
+                    : el('td', { className: 'font-mono' }, formatUsdDecimal(c.current_spend ?? '0.00')),
                   el('td', null, c.pacing_mode ?? '—'),
-                  el('td', null,
-                    c.customer_id
-                      ? el('a', {
-                        href: `/customers/${c.customer_id}`,
-                        onClick: (e) => e.stopPropagation(),
-                      }, renderMiddleTruncateUuid(c.customer_id))
-                      : '—',
-                  ),
-                ],
+                  buyerView
+                    ? null
+                    : el('td', null,
+                      c.customer_id
+                        ? el('a', {
+                          href: `/customers/${c.customer_id}`,
+                          onClick: (e) => e.stopPropagation(),
+                        }, renderMiddleTruncateUuid(c.customer_id))
+                        : '—',
+                    ),
+                ].filter(Boolean),
               }),
             ),
           ),

@@ -20,7 +20,14 @@ type LGBMScorer struct {
 	pool  sync.Pool
 }
 
-func NewLGBMScorer(modelPath string) (*LGBMScorer, error) {
+func NewLGBMScorer(modelPath string) (Scorer, error) {
+	if native, err := NewNativeScorer(modelPath); err == nil {
+		return native, nil
+	}
+	return newCGOLGBMScorer(modelPath)
+}
+
+func newCGOLGBMScorer(modelPath string) (*LGBMScorer, error) {
 	model, err := lgbm.ModelFromFile(modelPath, true)
 	if err != nil {
 		model, err = lgbm.ModelFromFile(modelPath, false)

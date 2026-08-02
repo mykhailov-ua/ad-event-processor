@@ -44,13 +44,13 @@ func TestFault_PinnedWorkerPoolSaturationSpike(t *testing.T) {
 			offloadOnEnter: func() { started <- struct{}{} },
 			offloadBlock:   unblock,
 		}
-		require.True(t, pool.SubmitOffload(ctx))
+		require.True(t, pool.SubmitOffload(ctx, nil))
 	}
 	for i := 0; i < p1WorkerPoolWorkers; i++ {
 		<-started
 	}
 	for i := 0; i < p1WorkerPoolQueue; i++ {
-		require.True(t, pool.SubmitOffload(&connContext{offloadBlock: unblock}))
+		require.True(t, pool.SubmitOffload(&connContext{offloadBlock: unblock}, nil))
 	}
 
 	before := testutil.ToFloat64(metrics.WorkerPoolRejectTotal)

@@ -1,10 +1,12 @@
 package ingestion
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strconv"
@@ -19,6 +21,31 @@ import (
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 )
+
+type tgEventPayload struct {
+	TgUserID   string `json:"tg_user_id"`
+	StartParam string `json:"start_param"`
+	ChatType   string `json:"chat_type"`
+	IsPremium  bool   `json:"is_premium"`
+	Motivated  bool   `json:"motivated"`
+	WidgetID   string `json:"widget_id"`
+	BotID      uint64 `json:"bot_id"`
+}
+
+func isTelegramEvent(e *domain.Event) bool {
+	if e == nil {
+		return false
+	}
+	if e.Type == "tg_click" || e.Type == "tg_impression" || e.Type == "tg_conversion" {
+		return true
+	}
+	if len(e.Payload) > 0 {
+		if bytes.Contains(e.Payload, []byte("tg_user_id")) || bytes.Contains(e.Payload, []byte("bot_id")) {
+			return true
+		}
+	}
+	return false
+}
 
 func isFraudTelemetry(e *domain.Event) bool {
 	if e == nil {
@@ -313,6 +340,32 @@ func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, e
 				unsafeString(e.Payload),
 				e.CreatedAt,
 			)
+		} else if table == "tg_events_raw" {
+			var p tgEventPayload
+			if len(e.Payload) > 0 {
+				_ = json.Unmarshal(e.Payload, &p)
+			}
+			var premium uint8
+			if p.IsPremium {
+				premium = 1
+			}
+			var motivated uint8
+			if p.Motivated {
+				motivated = 1
+			}
+			err = batch.Append(
+				e.ClickID,
+				e.CampaignID,
+				p.TgUserID,
+				p.StartParam,
+				p.ChatType,
+				premium,
+				motivated,
+				p.WidgetID,
+				p.BotID,
+				unsafeString(e.Payload),
+				e.CreatedAt,
+			)
 		} else {
 			err = batch.Append(
 				e.ClickID,
@@ -348,6 +401,7 @@ func (chStore *ClickHouseStore) insertToClickHouse(ctx context.Context, events [
 	pConvs := slicePool.Get().(*[]*domain.Event)
 	pFraud := slicePool.Get().(*[]*domain.Event)
 	pAgg := slicePool.Get().(*[]*domain.Event)
+	pTgEvents := slicePool.Get().(*[]*domain.Event)
 
 	defer func() {
 		for i := range *pImps {
@@ -375,6 +429,11 @@ func (chStore *ClickHouseStore) insertToClickHouse(ctx context.Context, events [
 		}
 		*pAgg = (*pAgg)[:0]
 
+		for i := range *pTgEvents {
+			(*pTgEvents)[i] = nil
+		}
+		*pTgEvents = (*pTgEvents)[:0]
+
 		if cap(*pImps) <= 100000 {
 			slicePool.Put(pImps)
 		}
@@ -390,6 +449,9 @@ func (chStore *ClickHouseStore) insertToClickHouse(ctx context.Context, events [
 		if cap(*pAgg) <= 100000 {
 			slicePool.Put(pAgg)
 		}
+		if cap(*pTgEvents) <= 100000 {
+			slicePool.Put(pTgEvents)
+		}
 	}()
 
 	imps := *pImps
@@ -397,9 +459,14 @@ func (chStore *ClickHouseStore) insertToClickHouse(ctx context.Context, events [
 	convs := *pConvs
 	fraud := *pFraud
 	agg := *pAgg
+	tgEvents := *pTgEvents
 
 	for i := range events {
 		e := events[i]
+		if isTelegramEvent(e) {
+			tgEvents = append(tgEvents, e)
+			continue
+		}
 		if isFraudAggregateSpike(e) {
 			agg = append(agg, e)
 			continue
@@ -419,7 +486,7 @@ func (chStore *ClickHouseStore) insertToClickHouse(ctx context.Context, events [
 		}
 	}
 
-	*pImps, *pClicks, *pConvs, *pFraud, *pAgg = imps, clicks, convs, fraud, agg
+	*pImps, *pClicks, *pConvs, *pFraud, *pAgg, *pTgEvents = imps, clicks, convs, fraud, agg, tgEvents
 
 	insert := func(table string, evts []*domain.Event, isFraud bool) error {
 		if len(evts) == 0 {
@@ -441,6 +508,9 @@ func (chStore *ClickHouseStore) insertToClickHouse(ctx context.Context, events [
 		return err
 	}
 	if err := insert("fraud_aggregate_spikes", agg, false); err != nil {
+		return err
+	}
+	if err := insert("tg_events_raw", tgEvents, false); err != nil {
 		return err
 	}
 

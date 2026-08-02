@@ -6,7 +6,10 @@ const MAX_TOASTS = 3;
 const DISMISS_MS = 5000;
 
 /**
+ * Mount a toast stack and wire it to the global toast handler.
+ *
  * @param {HTMLElement} root
+ * @returns {{ destroy: () => void }}
  */
 export function installToastStack(root) {
   const stack = el('div', { className: 'toast-stack', role: 'status' });

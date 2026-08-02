@@ -1,6 +1,8 @@
 import { el } from '../lib/dom.js';
 
 /**
+ * Render a labeled form field with optional hint and error message.
+ *
  * @param {{
  *   label: string,
  *   htmlFor?: string,
@@ -8,6 +10,7 @@ import { el } from '../lib/dom.js';
  *   hint?: string,
  *   children: HTMLElement,
  * }} opts
+ * @returns {HTMLElement}
  */
 export function renderFormField(opts) {
   const field = el('div', {

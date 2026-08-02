@@ -6,7 +6,10 @@ import { renderIcon } from './icon.js';
  */
 
 /**
+ * Render a breadcrumb trail for the page header.
+ *
  * @param {BreadcrumbItem[]} items
+ * @returns {HTMLElement|null}
  */
 export function renderBreadcrumbs(items) {
   if (!items.length) return null;

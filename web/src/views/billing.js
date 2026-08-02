@@ -30,9 +30,12 @@ const LEDGER_PAGE = 50;
 const INVOICE_PAGE = 50;
 
 /**
+ * Build the billing invoices API URL for a customer and page.
+ *
  * @param {string} customerId
  * @param {number} page
  * @param {boolean} adminWide
+ * @returns {string|null}
  */
 function buildInvoiceUrl(customerId, page, adminWide) {
   const offset = page * INVOICE_PAGE;
@@ -46,6 +49,25 @@ function buildInvoiceUrl(customerId, page, adminWide) {
 }
 
 /**
+ * Build the paginated customer ledger API URL.
+ *
+ * @param {string} customerId
+ * @param {number} page
+ * @returns {string|null}
+ */
+function buildLedgerUrl(customerId, page) {
+  if (!customerId) return null;
+  const offset = page * LEDGER_PAGE;
+  const params = new URLSearchParams({
+    limit: String(LEDGER_PAGE),
+    offset: String(offset),
+  });
+  return `/api/v1/customers/${customerId}/ledger?${params.toString()}`;
+}
+
+/**
+ * Render a UUID with middle truncation for table cells.
+ *
  * @param {string} uuid
  * @returns {HTMLElement|string}
  */
@@ -57,8 +79,11 @@ function renderMiddleTruncateUuid(uuid) {
 }
 
 /**
+ * Mount the billing view with wallet, ledger, and invoice tabs.
+ *
  * @param {HTMLElement} container
  * @param {{ query: URLSearchParams, navigate: (path: string) => void }} ctx
+ * @returns {import('../lib/router.js').ViewHandle}
  */
 export function mount(container, ctx) {
   let destroyed = false;
@@ -74,14 +99,18 @@ export function mount(container, ctx) {
 
   const walletState = { data: null, loading: false, error: null };
   const balanceState = { data: null, loading: false, error: null };
+  const ledgerState = { data: null, loading: false, error: null };
   const invoicesState = { data: null, loading: false, error: null };
 
   let lastWalletError = null;
   let lastBalanceError = null;
+  let lastLedgerError = null;
   let lastInvoicesError = null;
 
   const ledgerSortState = createSortState('created_at', 'desc');
   const invoiceSortState = createSortState('billing_month', 'desc');
+  const ledgerSortCache = {};
+  const invoiceSortCache = {};
   let customerInputError = null;
 
   if (customerInput && isCustomerUuid(customerInput)) {
@@ -106,6 +135,7 @@ export function mount(container, ctx) {
     invoicePage = 0;
     walletResource.reload();
     balanceResource.reload();
+    ledgerResource.reload();
     invoicesResource.reload();
   }
 
@@ -114,12 +144,6 @@ export function mount(container, ctx) {
     const view = mapServiceError(err);
     if (!isPageBlockingError(view) && view.kind !== 'empty') return null;
     return renderErrorBlock(err);
-  }
-
-  function ledgerSlice() {
-    const rows = balanceState.data?.ledger ?? [];
-    const start = ledgerPage * LEDGER_PAGE;
-    return { rows: rows.slice(start, start + LEDGER_PAGE), total: rows.length };
   }
 
   function render() {
@@ -133,18 +157,19 @@ export function mount(container, ctx) {
       status: (inv) => inv.status ?? '',
       total_micro: (inv) => Number(inv.total_micro ?? 0),
       customer_id: (inv) => inv.customer_id ?? '',
-    });
+    }, invoiceSortCache);
     const invoiceTotal = invoicesState.data?.total ?? 0;
     const invoicePages = Math.max(1, Math.ceil(invoiceTotal / INVOICE_PAGE));
-    const ledgerRaw = ledgerSlice();
-    const ledgerRows = sortRows(ledgerRaw.rows, ledgerSortState, {
+    const ledgerItemsRaw = ledgerState.data?.items ?? [];
+    const ledgerTotal = ledgerState.data?.total ?? 0;
+    const ledgerRows = sortRows(ledgerItemsRaw, ledgerSortState, {
       id: (row) => row.id ?? '',
       type: (row) => row.type ?? '',
       amount: (row) => Number(row.amount ?? 0),
       campaign_id: (row) => row.campaign_id ?? '',
       created_at: (row) => row.created_at ?? '',
-    });
-    const ledgerView = { rows: ledgerRows, total: ledgerRaw.total };
+    }, ledgerSortCache);
+    const ledgerView = { rows: ledgerRows, total: ledgerTotal };
 
     const onLedgerSort = (key) => {
       toggleSort(ledgerSortState, key);
@@ -214,7 +239,10 @@ export function mount(container, ctx) {
       ], active: tab, onChange: (t) => {
         tab = t;
         if (t === 'wallet') walletResource.reload();
-        else if (t === 'ledger') balanceResource.reload();
+        else if (t === 'ledger') {
+          balanceResource.reload();
+          ledgerResource.reload();
+        }
         else invoicesResource.reload();
         render();
       } }),
@@ -269,6 +297,7 @@ export function mount(container, ctx) {
             : null,
           balanceState.loading ? el('span', { className: 'text-muted' }, 'Loading…') : null,
           renderBlocking(balanceState.error),
+          renderBlocking(ledgerState.error),
           balanceState.data
             ? el('div', null,
               el('div', { className: 'metric-row mb-4' },
@@ -279,7 +308,7 @@ export function mount(container, ctx) {
                   ),
                 ),
               ),
-              el('div', { className: 'table-wrapper table-wrapper--scroll' },
+              el('div', { className: 'table-wrapper table-wrapper--scroll elevation-raised' },
                 el('table', { className: 'data-table' },
                   el('thead', null,
                     el('tr', null,
@@ -291,10 +320,10 @@ export function mount(container, ctx) {
                     ),
                   ),
                   el('tbody', null,
-                    balanceState.loading && ledgerView.rows.length === 0
+                    ledgerState.loading && ledgerView.rows.length === 0
                       ? tableSkeletonRows(5)
                       : null,
-                    !balanceState.loading && ledgerView.rows.length === 0
+                    !ledgerState.loading && ledgerView.rows.length === 0
                       ? el('tr', null,
                         el('td', { colSpan: 5 },
                           renderEmptyState({
@@ -327,7 +356,7 @@ export function mount(container, ctx) {
                     type: 'button',
                     className: 'btn btn--secondary btn--sm',
                     disabled: ledgerPage === 0,
-                    onClick: () => { ledgerPage = Math.max(0, ledgerPage - 1); render(); },
+                    onClick: () => { ledgerPage = Math.max(0, ledgerPage - 1); ledgerResource.reload(); },
                   }, 'Prev'),
                   el('span', { className: 'text-muted', style: { fontSize: 12 } },
                     `${ledgerPage + 1} / ${Math.ceil(ledgerView.total / LEDGER_PAGE)}`,
@@ -336,7 +365,7 @@ export function mount(container, ctx) {
                     type: 'button',
                     className: 'btn btn--secondary btn--sm',
                     disabled: (ledgerPage + 1) * LEDGER_PAGE >= ledgerView.total,
-                    onClick: () => { ledgerPage += 1; render(); },
+                    onClick: () => { ledgerPage += 1; ledgerResource.reload(); },
                   }, 'Next'),
                 )
                 : null,
@@ -350,7 +379,7 @@ export function mount(container, ctx) {
           renderBlocking(invoicesState.error),
           invoicesState.data
             ? el('div', null,
-              el('div', { className: 'table-wrapper table-wrapper--scroll' },
+              el('div', { className: 'table-wrapper table-wrapper--scroll elevation-raised' },
                 el('table', { className: 'data-table' },
                   el('thead', null,
                     el('tr', null,
@@ -468,6 +497,21 @@ export function mount(container, ctx) {
     },
   );
 
+  const ledgerResource = createResource(
+    () => buildLedgerUrl(customerId(), ledgerPage),
+    {
+      skip: () => tab !== 'ledger' || !buildLedgerUrl(customerId(), ledgerPage),
+      onUpdate: (s) => {
+        if (s.error !== lastLedgerError) {
+          lastLedgerError = s.error;
+          if (s.error) surfaceServiceErrorToast(s.error);
+        }
+        Object.assign(ledgerState, s);
+        render();
+      },
+    },
+  );
+
   const invoicesResource = createResource(
     () => buildInvoiceUrl(customerId(), invoicePage, !tenant),
     {
@@ -490,6 +534,7 @@ export function mount(container, ctx) {
       destroyed = true;
       walletResource.destroy();
       balanceResource.destroy();
+      ledgerResource.destroy();
       invoicesResource.destroy();
     },
   };

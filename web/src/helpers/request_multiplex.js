@@ -1,6 +1,8 @@
 const inFlight = new Map();
 
 /**
+ * Coalesce concurrent requests for the same key into one promise.
+ *
  * @param {string} key
  * @param {() => Promise<any>} fn
  * @returns {Promise<any>}
@@ -13,6 +15,8 @@ export function coalesce(key, fn) {
 }
 
 /**
+ * Run tasks with bounded concurrency and collect results in order.
+ *
  * @param {Array<() => Promise<any>>} tasks
  * @param {number} concurrency
  * @returns {Promise<any[]>}
@@ -22,6 +26,12 @@ export async function parallelAll(tasks, concurrency = 6) {
   const active = new Set();
   let idx = 0;
 
+  /**
+   * Run one task slot and chain the next when finished.
+   *
+   * @param {number} i
+   * @returns {Promise<void>}
+   */
   async function run(i) {
     active.add(i);
     try {

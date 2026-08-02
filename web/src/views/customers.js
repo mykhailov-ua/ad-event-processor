@@ -8,6 +8,7 @@ import { isTenantUser } from '../helpers/permissions.js';
 import { touchCustomerContext } from '../helpers/customer_context.js';
 import { renderRecentCustomers } from '../ui/recent_customers.js';
 import { renderIcon } from '../ui/icon.js';
+import { mountFilterToolbar } from '../ui/filter_toolbar.js';
 import {
   createSortState,
   toggleSort,
@@ -20,7 +21,10 @@ import {
 const PAGE_SIZE = 50;
 
 /**
+ * Build the customers list API URL for a page offset.
+ *
  * @param {number} page
+ * @returns {string}
  */
 function buildUrl(page) {
   const offset = page * PAGE_SIZE;
@@ -28,7 +32,10 @@ function buildUrl(page) {
 }
 
 /**
+ * Format a customer balance field for display.
+ *
  * @param {unknown} bal
+ * @returns {string}
  */
 function formatBalance(bal) {
   if (!bal) return '—';
@@ -36,8 +43,11 @@ function formatBalance(bal) {
 }
 
 /**
+ * Mount the customers list view with search, sorting, and pagination.
+ *
  * @param {HTMLElement} container
  * @param {{ navigate: (path: string) => void }} ctx
+ * @returns {import('../lib/router.js').ViewHandle}
  */
 export function mount(container, ctx) {
   let destroyed = false;
@@ -52,7 +62,7 @@ export function mount(container, ctx) {
     return { destroy() { destroyed = true; } };
   }
 
-  const state = { data: null, loading: true, error: null, page: 0 };
+  const state = { data: null, loading: true, error: null, page: 0, searchQuery: '' };
   const sortState = createSortState('name', 'asc');
 
   function render() {
@@ -68,6 +78,11 @@ export function mount(container, ctx) {
       currency: (c) => c.currency ?? '',
       active_campaigns: (c) => Number(c.active_campaigns ?? 0),
       created_at: (c) => c.created_at ?? '',
+    }).filter((c) => {
+      const q = state.searchQuery.trim().toLowerCase();
+      if (!q) return true;
+      return (c.name ?? '').toLowerCase().includes(q)
+        || (c.id ?? '').toLowerCase().includes(q);
     });
     const total = state.data?.total ?? 0;
     const totalPages = Math.ceil(total / PAGE_SIZE);
@@ -76,6 +91,17 @@ export function mount(container, ctx) {
       toggleSort(sortState, key);
       render();
     };
+
+    const toolbarWrap = el('div', { className: 'mb-4' });
+    mountFilterToolbar(toolbarWrap, {
+      search: true,
+      searchPlaceholder: 'Filter by name or ID…',
+      searchValue: state.searchQuery,
+      onSearch: (value) => {
+        state.searchQuery = value;
+        render();
+      },
+    });
 
     replaceChildren(container,
       el('div', { className: 'page-header' },
@@ -90,7 +116,8 @@ export function mount(container, ctx) {
         ),
         renderRecentCustomers({ tenant }),
       ),
-      el('div', { className: 'table-wrapper table-wrapper--scroll' },
+      toolbarWrap,
+      el('div', { className: 'table-wrapper table-wrapper--scroll elevation-raised' },
         el('table', { className: 'data-table' },
           el('thead', null,
             el('tr', null,

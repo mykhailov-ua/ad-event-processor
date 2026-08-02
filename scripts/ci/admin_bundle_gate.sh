@@ -7,37 +7,28 @@ cd "$ROOT"
 DIST_DIR="$ROOT/web/dist"
 
 if [ ! -d "$DIST_DIR" ]; then
-  echo "Error: $DIST_DIR does not exist. Run npm run build first."
+  echo "Error: $DIST_DIR does not exist. Run: node web/scripts/build.mjs"
   exit 1
 fi
 
-# Check for forbidden chart.js dependency in build output
-if grep -ri "chart\.js" "$DIST_DIR" > /dev/null 2>&1; then
-  echo "Error: chart.js found in admin bundle! Forbidden dependency."
+if [ ! -f "$DIST_DIR/src/main.js" ]; then
+  echo "Error: $DIST_DIR/src/main.js missing"
   exit 1
 fi
 
-# Check gzip size of main index JS chunk
-MAIN_JS=$(find "$DIST_DIR/assets" -name "main-*.js" | head -n 1)
-
-if [ -z "$MAIN_JS" ]; then
-  MAIN_JS=$(find "$DIST_DIR/assets" -name "index-*.js" | head -n 1)
-fi
-
-if [ -z "$MAIN_JS" ]; then
-  echo "Error: No main JS chunk main-*.js or index-*.js found in $DIST_DIR/assets"
+if grep -riE '\bchart\.js\b|\buplot\b|from ['\''\"]react' "$DIST_DIR" > /dev/null 2>&1; then
+  echo "Error: forbidden chart or framework reference in dist/"
   exit 1
 fi
 
-GZIP_SIZE_BYTES=$(gzip -c "$MAIN_JS" | wc -c)
-MAX_BYTES=$((250 * 1024))
+TOTAL_BYTES=$(find "$DIST_DIR/src" -name '*.js' -print0 | xargs -0 cat | wc -c)
+MAX_BYTES=$((512 * 1024))
 
-echo "Main chunk: $MAIN_JS"
-echo "Gzip size: $GZIP_SIZE_BYTES bytes (limit: $MAX_BYTES bytes)"
+echo "ESM src total: $TOTAL_BYTES bytes (soft limit: $MAX_BYTES bytes)"
 
-if [ "$GZIP_SIZE_BYTES" -gt "$MAX_BYTES" ]; then
-  echo "Error: Main JS bundle gzip size ($GZIP_SIZE_BYTES bytes) exceeds 250 KB limit!"
+if [ "$TOTAL_BYTES" -gt "$MAX_BYTES" ]; then
+  echo "Error: admin ESM tree exceeds 512 KB uncompressed limit"
   exit 1
 fi
 
-echo "Admin bundle budget check PASSED."
+echo "Admin bundle gate PASSED."

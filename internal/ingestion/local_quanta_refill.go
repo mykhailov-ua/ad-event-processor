@@ -138,7 +138,8 @@ func (w *QuotaRefillWorker) loop() {
 			pending[sig.campaignID] = sig
 		case <-ticker.C:
 			for id, sig := range pending {
-				if !w.ledger.NeedsRefill(id, w.thresholdPct) {
+				threshold := adaptiveRefillThresholdPct(w.ledger.RPSEMA(id), w.thresholdPct)
+				if !w.ledger.NeedsRefill(id, threshold) {
 					delete(pending, id)
 					continue
 				}
