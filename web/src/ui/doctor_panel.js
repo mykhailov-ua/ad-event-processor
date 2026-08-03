@@ -1,5 +1,7 @@
 import { el } from '../lib/dom.js';
 import { renderStatusBadge } from './status_badge.js';
+import { displayLabel } from '../helpers/display_labels.js';
+import { humanizeTechnicalDetail } from '../helpers/technical_labels.js';
 
 /**
  * Split items into columns with ceil(n/cols) rows each.
@@ -90,17 +92,16 @@ export function renderDoctorPanel(opts) {
 
   const serviceRows = services.map((svc) =>
     renderStackRow({
-      title: svc.name ?? '—',
-      detail: svc.detail,
+      title: displayLabel(svc.name),
+      detail: humanizeTechnicalDetail(svc.detail),
       status: svc.status,
     }),
   );
 
   const checkRows = checks.map((check) =>
     renderStackRow({
-      title: check.id ?? '—',
-      detail: check.message,
-      mono: true,
+      title: displayLabel(check.id),
+      detail: humanizeTechnicalDetail(check.message),
       status: check.status,
     }),
   );
@@ -112,9 +113,9 @@ export function renderDoctorPanel(opts) {
     el('div', { className: 'doctor-panel__header' },
       el('h2', { className: 'doctor-panel__title' }, 'Doctor'),
       loading
-        ? el('span', { className: 'text-muted', style: { fontSize: 13 } }, 'Loading…')
+        ? el('span', { className: 'text-muted text-sm' }, 'Loading…')
         : opts.doctor?.overall
-          ? renderStatusBadge(opts.doctor.overall, { kind: 'service', label: opts.doctor.overall })
+          ? renderStatusBadge(opts.doctor.overall, { kind: 'service' })
           : null,
     ),
     serviceStack,

@@ -1,48 +1,58 @@
 import { el, replaceChildren } from '../lib/dom.js';
 import { to } from '../lib/to.js';
+import * as auth from '../helpers/auth.js';
 import { fetchTelegramFunnel } from '../helpers/tg_report_api.js';
 import { renderErrorBlock } from '../ui/error_block.js';
-import { renderFormField } from '../ui/form_field.js';
-import { validateReportRange } from '../helpers/validators.js';
-import { REPORT_DATE_PRESETS } from '../helpers/date_presets.js';
+import {
+  buildTelegramReportParams,
+  createTelegramReportController,
+  renderTelegramReportEmpty,
+  renderTelegramReportFilters,
+  renderTelegramReportHeader,
+  renderTelegramReportNav,
+  syncTelegramReportUrl,
+  telegramFilterHandlers,
+} from './tg_report_shell.js';
 
-/**
- * Mount Telegram funnel report view.
- *
- * @param {HTMLElement} container
- * @param {{ query: URLSearchParams }} ctx
- * @returns {import('../lib/router.js').ViewHandle}
- */
+const PAGE_PATH = '/reports/telegram/funnel';
+
 export function mount(container, ctx) {
   let destroyed = false;
-  let campaignInput = ctx.query.get('campaign_id') || '';
-  const preset = REPORT_DATE_PRESETS[1] ?? REPORT_DATE_PRESETS[0];
-  let from = ctx.query.get('from') || preset.from();
-  let to = ctx.query.get('to') || preset.to();
+  const user = auth.getUser();
+  const ctrl = createTelegramReportController(ctx, user, PAGE_PATH);
   let loading = false;
-  let data = null;
+  /** @type {object[]|null} */
+  let rows = null;
+  /** @type {object|null} */
+  let freshness = null;
   /** @type {Error|null} */
   let error = null;
 
   async function load() {
-    const rangeErr = validateReportRange(from, to);
-    if (rangeErr) {
-      error = new Error(rangeErr);
+    const validationErr = ctrl.validateBeforeLoad();
+    if (validationErr) {
+      error = new Error(validationErr);
       render();
       return;
     }
     loading = true;
     error = null;
     render();
-    const [res, err] = await to(fetchTelegramFunnel({
-      from,
-      to,
-      campaignId: campaignInput.trim() || undefined,
-    }));
+
+    const [res, err] = await to(fetchTelegramFunnel(
+      buildTelegramReportParams(ctrl.state, ctrl.sessionScoped, user),
+    ));
     if (destroyed) return;
     loading = false;
-    error = err ?? null;
-    data = res;
+    if (err) {
+      error = err;
+      rows = null;
+      freshness = null;
+    } else {
+      rows = res?.rows ?? [];
+      freshness = res?.freshness ?? null;
+      syncTelegramReportUrl(PAGE_PATH, ctrl.state);
+    }
     render();
   }
 
@@ -52,63 +62,42 @@ export function mount(container, ctx) {
       replaceChildren(container, renderErrorBlock(error));
       return;
     }
-    const rows = data?.rows ?? [];
+
+    const table = rows && rows.length > 0
+      ? el('div', { className: 'table-wrapper table-section' },
+        el('table', { className: 'data-table' },
+          el('thead', null,
+            el('tr', null,
+              el('th', { scope: 'col' }, 'start_param'),
+              el('th', { scope: 'col' }, 'Clicks'),
+              el('th', { scope: 'col' }, 'Impressions'),
+              el('th', { scope: 'col' }, 'Conversions'),
+            ),
+          ),
+          el('tbody', null,
+            rows.map((row) => el('tr', null,
+              el('td', null, row.start_param || '(empty)'),
+              el('td', null, String(row.clicks ?? 0)),
+              el('td', null, String(row.impressions ?? 0)),
+              el('td', null, String(row.conversions ?? 0)),
+            )),
+          ),
+        ),
+      )
+      : (!loading ? renderTelegramReportEmpty() : null);
+
     replaceChildren(container,
-      el('div', { className: 'page-header' },
-        el('h1', { className: 'page-header__title' }, 'Telegram Funnel'),
-      ),
-      el('form', {
-        onSubmit: (e) => {
-          e.preventDefault();
-          load();
-        },
-      },
-        renderFormField({
-          label: 'Campaign ID (Optional)',
-          htmlFor: 'tg-funnel-campaign',
-          children: el('input', {
-            id: 'tg-funnel-campaign',
-            className: 'form-input',
-            value: campaignInput,
-            onInput: (e) => { campaignInput = e.target.value; },
-          }),
-        }),
-        renderFormField({
-          label: 'From',
-          htmlFor: 'tg-funnel-from',
-          children: el('input', { id: 'tg-funnel-from', className: 'form-input', value: from, onInput: (e) => { from = e.target.value; } }),
-        }),
-        renderFormField({
-          label: 'To',
-          htmlFor: 'tg-funnel-to',
-          children: el('input', { id: 'tg-funnel-to', className: 'form-input', value: to, onInput: (e) => { to = e.target.value; } }),
-        }),
-        el('button', { type: 'submit', className: 'btn btn--primary', disabled: loading }, 'Query'),
-      ),
-      loading ? el('p', null, 'Loading…') : null,
-      !loading && rows.length > 0
-        ? el('table', { className: 'data-table', style: { marginTop: '16px', width: '100%' } },
-            el('thead', null,
-              el('tr', null,
-                el('th', null, 'start_param'),
-                el('th', null, 'clicks'),
-                el('th', null, 'impressions'),
-                el('th', null, 'conversions'),
-              ),
-            ),
-            el('tbody', null,
-              rows.map((row, idx) => el('tr', null,
-                el('td', null, row.start_param || '(empty)'),
-                el('td', null, String(row.clicks ?? 0)),
-                el('td', null, String(row.impressions ?? 0)),
-                el('td', null, String(row.conversions ?? 0)),
-              )),
-            ),
-          )
-        : (!loading ? el('p', null, 'No funnel rows for this range.') : null),
+      renderTelegramReportHeader('Telegram Funnel', freshness),
+      renderTelegramReportNav(PAGE_PATH, ctrl.state),
+      renderTelegramReportFilters(ctrl.state, telegramFilterHandlers(ctrl, { loading, onSubmit: load, onRerender: render })),
+      loading ? el('p', { className: 'loading-hint' }, 'Loading…') : null,
+      !loading ? table : null,
     );
   }
 
-  load();
+  ctrl.refreshCampaignOptions().then(() => {
+    if (!destroyed) load();
+  });
+
   return { destroy() { destroyed = true; } };
 }

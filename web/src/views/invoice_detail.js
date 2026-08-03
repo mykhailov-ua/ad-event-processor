@@ -17,6 +17,7 @@ import { renderBreadcrumbs } from '../ui/breadcrumbs.js';
 import { shortCustomerId } from '../helpers/customer_context.js';
 import { renderStatusBadge } from '../ui/status_badge.js';
 import { renderIcon } from '../ui/icon.js';
+import { displayLabel } from '../helpers/display_labels.js';
 
 /**
  * Mount the invoice detail view with void action.
@@ -106,7 +107,7 @@ export function mount(container, ctx) {
           invoice.status
             ? renderStatusBadge(invoice.status, { kind: 'invoice' })
             : null,
-          el('div', { className: 'flex items-center gap-2', style: { marginLeft: 'auto' } },
+          el('div', { className: 'flex items-center gap-2 ml-auto' },
             el('button', {
               type: 'button',
               className: 'btn btn--secondary btn--sm',
@@ -129,7 +130,7 @@ export function mount(container, ctx) {
           ),
         ),
       ),
-      el('div', { className: 'grid-stats' },
+      el('div', { className: 'grid-stats section-block' },
         el('div', { className: 'metric-card' },
           el('div', { className: 'metric-card__label' }, 'Month'),
           el('div', { className: 'metric-card__value' }, invoice.billing_month ?? '—'),
@@ -164,7 +165,7 @@ export function mount(container, ctx) {
             el('tbody', null,
               invoice.lines.map((line, _idx) =>
                 el('tr', null,
-                  el('td', null, line.ledger_type),
+                  el('td', null, displayLabel(line.ledger_type)),
                   el('td', { className: 'font-mono' }, String(line.amount_micro)),
                   el('td', null, String(line.entry_count)),
                 ),

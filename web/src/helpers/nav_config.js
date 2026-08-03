@@ -32,7 +32,7 @@ export const NAV_GROUPS = [
       {
         to: '/campaigns/portfolio',
         label: 'Portfolio',
-        icon: 'layers',
+        icon: 'bookmark',
         perm: 'campaigns:read',
         altPerm: 'campaigns:read:masked',
       },
@@ -51,14 +51,14 @@ export const NAV_GROUPS = [
       {
         to: '/dashboards/adops',
         label: 'AdOps',
-        icon: 'bar-chart',
+        icon: 'zap',
         perm: 'campaigns:read',
         altPerm: 'campaigns:read:masked',
       },
       {
         to: '/dashboards/cfo',
         label: 'CFO',
-        icon: 'credit-card',
+        icon: 'file-spreadsheet',
         perm: 'customers:read',
       },
       {
@@ -70,7 +70,7 @@ export const NAV_GROUPS = [
       {
         to: '/dashboards/fraud',
         label: 'Fraud',
-        icon: 'shield',
+        icon: 'alert-triangle',
         perm: 'audit:read',
       },
     ],
@@ -88,21 +88,21 @@ export const NAV_GROUPS = [
       {
         to: '/reports/placements',
         label: 'Placements',
-        icon: 'bar-chart',
+        icon: 'globe',
         perm: 'campaigns:read',
         altPerm: 'campaigns:read:masked',
       },
       {
         to: '/reports/keywords',
         label: 'Keywords',
-        icon: 'file-text',
+        icon: 'arrow-up-down',
         perm: 'campaigns:read',
         altPerm: 'campaigns:read:masked',
       },
       {
         to: '/reports/ivt-by-source',
         label: 'IVT by source',
-        icon: 'shield',
+        icon: 'alert-circle',
         perm: 'audit:read',
       },
     ],

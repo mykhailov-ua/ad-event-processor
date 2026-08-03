@@ -1,0 +1,7 @@
+{
+  "duration_sec": 120,
+  "network": [
+    {"name": "tracker", "role": "tracker", "connect_avg_us": 0, "connects": 0, "retrans": 0},
+    {"name": "redis-0", "role": "redis", "connect_avg_us": 12.5, "connects": 40, "retrans": 0}
+  ]
+}

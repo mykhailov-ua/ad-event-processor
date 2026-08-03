@@ -28,6 +28,9 @@ export async function tryRefreshSession() {
   }));
   if (refreshErr || !refreshRes?.ok) return false;
 
+  const refreshCsrf = refreshRes.headers.get('X-CSRF-Token');
+  if (refreshCsrf) auth.setCsrfFromLoginResponse(refreshCsrf);
+
   const [meRes, meErr] = await to(fetch('/api/v1/auth/me', { credentials: 'same-origin' }));
   if (meErr || !meRes?.ok) return false;
 

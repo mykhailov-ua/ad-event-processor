@@ -86,6 +86,30 @@ func setCookie(w http.ResponseWriter, r *http.Request, name, value, path string,
 	})
 }
 
+func issueCSRFToken(w http.ResponseWriter, r *http.Request) error {
+	if cookie, err := r.Cookie("csrfToken"); err == nil && cookie.Value != "" {
+		w.Header().Set("X-CSRF-Token", cookie.Value)
+		return nil
+	}
+	csrf, err := GenerateSecureToken(32)
+	if err != nil {
+		return err
+	}
+	setCookie(w, r, "csrfToken", csrf, "/", 3600, false)
+	w.Header().Set("X-CSRF-Token", csrf)
+	return nil
+}
+
+func rotateCSRFToken(w http.ResponseWriter, r *http.Request) error {
+	csrf, err := GenerateSecureToken(32)
+	if err != nil {
+		return err
+	}
+	setCookie(w, r, "csrfToken", csrf, "/", 3600, false)
+	w.Header().Set("X-CSRF-Token", csrf)
+	return nil
+}
+
 type LoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
@@ -133,14 +157,11 @@ func (h *AuthHandler) login(w http.ResponseWriter, r *http.Request) {
 
 	setCookie(w, r, "accessToken", resp.AccessToken, "/", 3600, true)
 	setCookie(w, r, "refreshToken", resp.RefreshToken, "/api/v1/auth", 30*24*3600, true)
-	csrf, err := GenerateSecureToken(32)
-	if err != nil {
+	if err := rotateCSRFToken(w, r); err != nil {
 		slog.Error("failed to generate secure csrf token due to entropy starvation", "error", err)
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", "internal system failure")
 		return
 	}
-	setCookie(w, r, "csrfToken", csrf, "/", 3600, false)
-	w.Header().Set("X-CSRF-Token", csrf)
 
 	userDTO := UserDTO{
 		ID:          resp.User.ID.String(),
@@ -197,6 +218,11 @@ func (h *AuthHandler) refresh(w http.ResponseWriter, r *http.Request) {
 
 	setCookie(w, r, "accessToken", resp.AccessToken, "/", 3600, true)
 	setCookie(w, r, "refreshToken", resp.RefreshToken, "/api/v1/auth", 30*24*3600, true)
+	if err := rotateCSRFToken(w, r); err != nil {
+		slog.Error("failed to rotate csrf token on refresh", "error", err)
+		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", "internal system failure")
+		return
+	}
 
 	httpresponse.JSON(w, http.StatusOK, RefreshResponse{Status: "refreshed"})
 }
@@ -238,6 +264,12 @@ func (h *AuthHandler) me(w http.ResponseWriter, r *http.Request) {
 		Role:        NormalizeRole(payload.Role),
 		CustomerID:  payload.CustomerID.String(),
 		Permissions: GetPermissionsForRole(payload.Role),
+	}
+
+	if err := issueCSRFToken(w, r); err != nil {
+		slog.Error("failed to issue csrf token on /me", "error", err)
+		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", "internal system failure")
+		return
 	}
 
 	httpresponse.JSON(w, http.StatusOK, dto)

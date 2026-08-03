@@ -27,7 +27,7 @@ export function mount(container, props) {
 
     if (activeIndex !== -1 && btnElements[activeIndex]) {
       const btn = btnElements[activeIndex];
-      pill.style.transform = `translateX(${btn.offsetLeft - 2}px)`;
+      pill.style.transform = `translateX(${btn.offsetLeft}px)`;
       pill.style.width = `${btn.offsetWidth}px`;
     }
   }

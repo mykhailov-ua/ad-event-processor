@@ -9,6 +9,32 @@ import { renderStubBanner } from '../ui/stub_banner.js';
 import { REPORT_DATE_PRESETS } from '../helpers/date_presets.js';
 import { createInFlightGuard } from '../lib/async_guard.js';
 
+/** @type {Record<string, { message: string, live: Array<{ href: string, label: string }> }>} */
+const STUB_COPY = {
+  'customer-portfolio': {
+    message: 'Customer portfolio is not available yet. Use Placements or Keywords for live campaign data.',
+    live: [
+      { href: '/reports/placements', label: 'Placements' },
+      { href: '/reports/keywords', label: 'Keywords' },
+    ],
+  },
+};
+
+/**
+ * @param {string} reportKey
+ * @returns {{ message: string, live: Array<{ href: string, label: string }> }}
+ */
+function stubCopy(reportKey) {
+  if (STUB_COPY[reportKey]) return STUB_COPY[reportKey];
+  return {
+    message: `${reportTitle(reportKey)} is not available yet.`,
+    live: [
+      { href: '/reports/placements', label: 'Placements' },
+      { href: '/reports/keywords', label: 'Keywords' },
+    ],
+  };
+}
+
 /**
  * Mount a stub report page that probes the planned API endpoint.
  *
@@ -20,6 +46,7 @@ export function mount(container, ctx) {
   let destroyed = false;
   const reportKey = ctx.params.reportKey;
   const title = reportTitle(reportKey);
+  const copy = stubCopy(reportKey);
   const user = auth.getUser();
   const customerId = hasBoundCustomer(user?.role) ? boundCustomerId(user) : '';
   const exportGate = createInFlightGuard();
@@ -42,7 +69,7 @@ export function mount(container, ctx) {
   async function handleExport() {
     if (!exportGate.tryAcquire()) return;
     if (!customerId) {
-      state.exportStatus = 'Customer context required for export.';
+      state.exportStatus = 'Select a customer to request an export.';
       exportGate.release();
       render();
       return;
@@ -81,11 +108,20 @@ export function mount(container, ctx) {
       }
     } else {
       state.exportStatus = result.stub
-        ? `Export stub (${result.status}): ${result.message}`
+        ? `Export not available yet (${result.status}).`
         : `Job ${result.jobId ?? 'queued'}`;
     }
     exportGate.release();
     render();
+  }
+
+  function renderLiveLinks() {
+    return el('div', { className: 'page-header__links' },
+      ...copy.live.map((link, i) => [
+        i > 0 ? el('span', { className: 'text-muted' }, '·') : null,
+        el('a', { href: link.href }, link.label),
+      ]).flat(),
+    );
   }
 
   function render() {
@@ -96,39 +132,52 @@ export function mount(container, ctx) {
         el('div', { className: 'page-header__row' },
           el('h1', { className: 'page-header__title' }, title),
         ),
+        el('p', { className: 'text-muted' },
+          el('a', { href: '/reports' }, '← Reports hub'),
+        ),
       ),
-      el('p', null, el('a', { href: '/reports' }, '← Reports hub')),
     ];
 
     if (state.loading) {
-      children.push(el('p', null, 'Probing API endpoint…'));
+      children.push(el('p', { className: 'text-muted' }, 'Checking availability…'));
     } else if (state.probe?.stub) {
-      children.push(renderStubBanner({
-        message: state.probe.message || 'Endpoint is planned but not implemented (501).',
-      }));
+      children.push(renderStubBanner({ message: copy.message }));
       children.push(
-        el('p', null, `Probed: ${state.probe.path} (${state.probe.status})`),
+        el('p', { className: 'text-sm text-muted' }, 'This report is planned but not built yet.'),
       );
     } else if (state.probe && !state.probe.ok) {
-      children.push(el('p', null, `Unexpected response: ${state.probe.status} — ${state.probe.message}`));
+      children.push(
+        el('p', { className: 'text-muted' },
+          `Unexpected response (${state.probe.status}). ${state.probe.message || ''}`.trim(),
+        ),
+      );
     }
 
     children.push(
-      el('p', null,
-        el('a', { href: '/reports/placements' }, 'Live: placements'),
-        ' · ',
-        el('a', { href: '/reports/keywords' }, 'Keywords'),
+      el('div', { className: 'section-card' },
+        el('h2', { className: 'subsection-title' }, 'Available now'),
+        renderLiveLinks(),
       ),
-      el('button', {
-        type: 'button',
-        disabled: state.exportLoading || !customerId,
-        onClick: handleExport,
-      }, state.exportLoading ? 'Exporting…' : 'Request CSV export'),
-      state.exportStatus ? el('p', { id: 'stub-export-status' }, state.exportStatus) : null,
+      el('div', { className: 'toolbar-row' },
+        el('button', {
+          type: 'button',
+          className: 'btn btn--secondary',
+          disabled: state.exportLoading || !customerId,
+          onClick: handleExport,
+        }, state.exportLoading ? 'Exporting…' : 'Request CSV export'),
+        !customerId
+          ? el('span', { className: 'text-sm text-muted' }, 'Customer context required for export.')
+          : null,
+      ),
+      state.exportStatus
+        ? el('p', { id: 'stub-export-status', className: 'text-sm text-muted' }, state.exportStatus)
+        : null,
       renderPerfBlock('report-stub-perf'),
     );
 
-    replaceChildren(container, el('section', { 'data-testid': `report-stub-${reportKey}` }, ...children));
+    replaceChildren(container,
+      el('div', { className: 'stack stack--lg', 'data-testid': `report-stub-${reportKey}` }, ...children),
+    );
   }
 
   load();

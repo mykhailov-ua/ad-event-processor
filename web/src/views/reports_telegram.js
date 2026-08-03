@@ -1,15 +1,23 @@
 import { el, replaceChildren } from '../lib/dom.js';
 import { to } from '../lib/to.js';
-import { fetchTelegramSummary } from '../helpers/tg_report_api.js';
 import * as auth from '../helpers/auth.js';
-import { hasBoundCustomer, boundCustomerId } from '../helpers/buyer_session.js';
+import { fetchTelegramSummary } from '../helpers/tg_report_api.js';
 import { renderErrorBlock } from '../ui/error_block.js';
-import { renderFormField } from '../ui/form_field.js';
-import { validateReportRange } from '../helpers/validators.js';
-import { REPORT_DATE_PRESETS } from '../helpers/date_presets.js';
+import { renderStatTile, renderStatsRow, renderSubsection } from '../ui/stat_tile.js';
+import {
+  buildTelegramReportParams,
+  createTelegramReportController,
+  renderTelegramReportFilters,
+  renderTelegramReportHeader,
+  renderTelegramReportNav,
+  syncTelegramReportUrl,
+  telegramFilterHandlers,
+} from './tg_report_shell.js';
+
+const PAGE_PATH = '/reports/telegram';
 
 /**
- * Mount Telegram Mini Apps report view.
+ * Mount Telegram Mini Apps summary report view.
  *
  * @param {HTMLElement} container
  * @param {{ query: URLSearchParams }} ctx
@@ -18,20 +26,19 @@ import { REPORT_DATE_PRESETS } from '../helpers/date_presets.js';
 export function mount(container, ctx) {
   let destroyed = false;
   const user = auth.getUser();
-  const sessionScoped = hasBoundCustomer(user?.role);
-  let campaignInput = ctx.query.get('campaign_id') || '';
-  const preset = REPORT_DATE_PRESETS[1] ?? REPORT_DATE_PRESETS[0];
-  let from = ctx.query.get('from') || preset.from();
-  let to = ctx.query.get('to') || preset.to();
+  const ctrl = createTelegramReportController(ctx, user, PAGE_PATH);
   let loading = false;
   let data = null;
   /** @type {Error|null} */
   let error = null;
+  /** @type {{ destroy: () => void }|null} */
+  let funnelChart = null;
+  let funnelChartMount = null;
 
   async function load() {
-    const rangeErr = validateReportRange(from, to);
-    if (rangeErr) {
-      error = new Error(rangeErr);
+    const validationErr = ctrl.validateBeforeLoad();
+    if (validationErr) {
+      error = new Error(validationErr);
       render();
       return;
     }
@@ -39,94 +46,93 @@ export function mount(container, ctx) {
     error = null;
     render();
 
-    const [res, err] = await to(fetchTelegramSummary({ from, to, campaignId: campaignInput.trim() || undefined }));
+    const [res, err] = await to(fetchTelegramSummary(
+      buildTelegramReportParams(ctrl.state, ctrl.sessionScoped, user),
+    ));
     if (destroyed) return;
     loading = false;
     if (err) {
       error = err;
+      data = null;
     } else {
       data = res;
+      syncTelegramReportUrl(PAGE_PATH, ctrl.state);
     }
     render();
+  }
+
+  function mountFunnelChart() {
+    funnelChart?.destroy();
+    funnelChart = null;
+    if (!funnelChartMount || !data) return;
+    const items = [
+      { label: 'Clicks', value: data.clicks },
+      { label: 'Impressions', value: data.impressions },
+      { label: 'Conversions', value: data.conversions },
+      { label: 'Premium', value: data.premium },
+      { label: 'Motivated', value: data.motivated },
+    ];
+    import('../charts/pie_chart.js').then((mod) => {
+      if (destroyed || !funnelChartMount) return;
+      funnelChart = mod.mountPieChart(funnelChartMount, items, 'Telegram attribution funnel');
+    });
   }
 
   function render() {
     if (destroyed) return;
     if (error) {
+      funnelChart?.destroy();
+      funnelChart = null;
       replaceChildren(container, renderErrorBlock(error));
       return;
     }
 
-    const funnelItems = data?.funnel
+    if (loading) {
+      funnelChart?.destroy();
+      funnelChart = null;
+    }
+
+    const funnelItems = data
       ? [
-          { label: 'Total Clicks', val: data.clicks },
-          { label: 'Total Impressions', val: data.impressions },
-          { label: 'Premium Users', val: data.premium },
-          { label: 'Motivated Clicks', val: data.motivated },
+          { label: 'Clicks', val: data.clicks },
+          { label: 'Impressions', val: data.impressions },
+          { label: 'Conversions', val: data.conversions },
+          { label: 'Premium users', val: data.premium },
+          { label: 'Motivated clicks', val: data.motivated },
         ]
       : [];
 
+    funnelChartMount = el('div');
+
     replaceChildren(container,
-      el('div', { className: 'page-header' },
-        el('h1', { className: 'page-header__title' }, 'Telegram Mini Apps Analytics'),
-      ),
-      el('form', {
-        onSubmit: (e) => {
-          e.preventDefault();
-          load();
-        },
-      },
-        renderFormField({
-          label: 'Campaign ID (Optional)',
-          htmlFor: 'tg-campaign',
-          children: el('input', {
-            id: 'tg-campaign',
-            className: 'form-input',
-            value: campaignInput,
-            placeholder: 'All campaigns',
-            onInput: (e) => { campaignInput = e.target.value; },
-          }),
-        }),
-        renderFormField({
-          label: 'From',
-          htmlFor: 'tg-from',
-          children: el('input', { id: 'tg-from', className: 'form-input', value: from, onInput: (e) => { from = e.target.value; } }),
-        }),
-        renderFormField({
-          label: 'To',
-          htmlFor: 'tg-to',
-          children: el('input', { id: 'tg-to', className: 'form-input', value: to, onInput: (e) => { to = e.target.value; } }),
-        }),
-        el('button', { type: 'submit', className: 'btn btn--primary', disabled: loading }, 'Query'),
-      ),
-      loading ? el('p', null, 'Loading report…') : null,
+      renderTelegramReportHeader('Telegram Mini Apps', data?.freshness ?? null),
+      renderTelegramReportNav(PAGE_PATH, ctrl.state),
+      renderTelegramReportFilters(ctrl.state, telegramFilterHandlers(ctrl, { loading, onSubmit: load, onRerender: render })),
+      loading ? el('p', { className: 'loading-hint' }, 'Loading report…') : null,
       !loading && data
-        ? el('div', { style: { marginTop: '20px' } },
-            data.freshness?.stale ? el('p', { className: 'text-muted' }, `Data may be stale (lag ${data.freshness.lag_seconds ?? 0}s)`) : null,
-            el('h2', null, 'Attribution Funnel'),
-            el('div', { style: { display: 'flex', gap: '20px', flexWrap: 'wrap', marginTop: '10px' } },
-              funnelItems.map((item) =>
-                el('div', {
-                  style: {
-                    border: '1px solid var(--border-color, #ccc)',
-                    padding: '15px 25px',
-                    borderRadius: '8px',
-                    minWidth: '150px',
-                    background: 'var(--bg-secondary, #fafafa)',
-                    textAlign: 'center',
-                  },
-                },
-                  el('div', { style: { fontSize: '14px', color: 'var(--text-muted, #666)' } }, item.label),
-                  el('div', { style: { fontSize: '28px', fontWeight: 'bold', marginTop: '5px' } }, String(item.val ?? 0)),
-                )
-              )
-            )
-          )
+        ? el('div', { className: 'stack stack--lg' },
+          renderSubsection('Attribution funnel',
+            el('div', { className: 'funnel-grid' },
+              funnelItems.map((item) => renderStatTile(item.label, item.val)),
+            ),
+          ),
+          renderSubsection('Volume breakdown', funnelChartMount),
+        )
         : null,
-      !loading && !data ? el('p', null, 'Perform a query to load report.') : null,
+      !loading && !data ? el('p', { className: 'empty-hint' }, 'Perform a query to load report.') : null,
     );
+
+    if (!loading && data) mountFunnelChart();
   }
 
-  load();
-  return { destroy() { destroyed = true; } };
+  ctrl.refreshCampaignOptions().then(() => {
+    if (!destroyed) load();
+  });
+
+  return {
+    destroy() {
+      destroyed = true;
+      funnelChart?.destroy();
+    },
+  };
 }

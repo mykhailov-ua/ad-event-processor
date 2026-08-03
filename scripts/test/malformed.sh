@@ -91,4 +91,7 @@ go run ./cmd/loadgen "${LG_ARGS[@]}" 2>&1 | tee "$OUT/loadgen.log"
 bash "$SCRIPTS/test/snapshot_runtime.sh" "$OUT/runtime-post" 10
 
 go run ./cmd/load-report all "$OUT"
+if [[ "${LOAD_TG_GATE:-0}" == "1" ]]; then
+	go run ./cmd/load-report telegram "$OUT" --prom "${PROMETHEUS_URL:-http://127.0.0.1:9190}"
+fi
 log "done — $OUT"

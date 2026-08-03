@@ -13,12 +13,17 @@ export async function openForecastModal(opts) {
   let forecast = null;
   /** @type {string|null} */
   let error = null;
+  /** @type {{ destroy: () => void }|null} */
+  let curveChart = null;
 
   const body = el('div', null, el('p', null, 'Loading forecast…'));
   let modal = mountModal({
     title: 'Campaign forecast',
     body: [body],
-    onClose: () => modal.destroy(),
+    onClose: () => {
+      curveChart?.destroy();
+      modal.destroy();
+    },
   });
 
   async function load() {
@@ -61,11 +66,16 @@ export async function openForecastModal(opts) {
   }
 
   function renderBody() {
+    curveChart?.destroy();
+    curveChart = null;
+
     if (!forecast) {
       body.replaceChildren(el('p', null, 'No forecast data.'));
       return;
     }
-    body.replaceChildren(
+
+    const chartMount = el('div');
+    const children = [
       el('dl', null,
         el('dt', null, 'Impressions P50'),
         el('dd', { className: 'font-mono' }, String(forecast.impressions_p50 ?? '—')),
@@ -77,12 +87,22 @@ export async function openForecastModal(opts) {
       forecast.advisory?.message
         ? el('p', { className: 'text-muted' }, forecast.advisory.message)
         : null,
-      Array.isArray(forecast.spend_curve) && forecast.spend_curve.length > 0
-        ? el('pre', { style: { fontSize: 12, maxHeight: 200, overflow: 'auto' } },
-          JSON.stringify(forecast.spend_curve.slice(0, 12), null, 2),
-        )
-        : null,
-    );
+    ];
+
+    if (Array.isArray(forecast.spend_curve) && forecast.spend_curve.length > 0) {
+      children.push(
+        el('h3', { className: 'subsection-title' }, 'Projected delivery'),
+        chartMount,
+      );
+    }
+
+    body.replaceChildren(el('div', { className: 'stack' }, ...children));
+
+    if (Array.isArray(forecast.spend_curve) && forecast.spend_curve.length > 0) {
+      import('../charts/campaign_stats_chart.js').then((mod) => {
+        curveChart = mod.mountSpendCurveChart(chartMount, forecast.spend_curve, 'impressions');
+      });
+    }
   }
 
   load();

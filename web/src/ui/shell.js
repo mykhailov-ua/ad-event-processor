@@ -21,10 +21,16 @@ import { installShellStatus } from './shell_status.js';
 /**
  * Mount the application shell with sidebar, banners, and main outlet.
  *
- * @param {{ outlet: HTMLElement }} opts
+ * @param {{
+ *   outlet: HTMLElement,
+ *   extraBanners?: Array<HTMLElement|null|undefined>,
+ *   onOpenSearch?: (query?: string) => void,
+ * }} opts
  * @returns {{ node: HTMLElement, destroy: () => void }}
  */
 export function mountShell(opts) {
+  const extraBanners = (opts.extraBanners ?? []).filter(Boolean);
+  const onOpenSearch = opts.onOpenSearch ?? (() => {});
   const shell = el('div', { className: 'shell' });
   let sidebarOpen = false;
 
@@ -61,6 +67,7 @@ export function mountShell(opts) {
   }
 
   function applyCollapsed(collapsed) {
+    const scrollTop = sidebarScroll.scrollTop;
     sidebarCollapsed = collapsed;
     storage.setSidebarCollapsed(collapsed);
     sidebar.classList.toggle('sidebar--collapsed', collapsed);
@@ -74,7 +81,12 @@ export function mountShell(opts) {
       applySidebarWidth(sidebarWidth);
     }
     renderNav();
+    renderSearch();
     renderFooter();
+    requestAnimationFrame(() => {
+      const maxScroll = Math.max(0, sidebarScroll.scrollHeight - sidebarScroll.clientHeight);
+      sidebarScroll.scrollTop = Math.min(scrollTop, maxScroll);
+    });
   }
 
   if (sidebarCollapsed) {
@@ -225,10 +237,11 @@ export function mountShell(opts) {
           el('a', {
             href: link.to,
             className: 'sidebar__link' + (isActive ? ' sidebar__link--active' : ''),
-            title: sidebarCollapsed ? link.label : undefined,
+            title: link.label,
+            'aria-label': link.label,
             onClick: () => closeSidebar(),
           },
-            link.icon ? renderIcon(link.icon, { size: 16, className: 'sidebar__link-icon' }) : null,
+            link.icon ? renderIcon(link.icon, { size: 18, className: 'sidebar__link-icon', strokeWidth: 1.5 }) : null,
             el('span', { className: 'sidebar__link-label' }, link.label),
           ),
         );
@@ -283,14 +296,27 @@ export function mountShell(opts) {
           renderIcon('log-out', { size: 15 }),
           el('span', { className: 'sidebar__action-label' }, 'Logout'),
         ),
-        el('kbd', {
-          className: 'sidebar__kbd',
-          title: 'Command palette (⌘K)',
-        },
-          renderIcon('search', { size: 13 }),
-          el('span', { className: 'sidebar__action-label' }, '⌘K'),
-        ),
       ),
+    );
+  }
+
+  function renderSearch() {
+    const searchWrap = sidebar.querySelector('.sidebar__search');
+    if (!searchWrap) return;
+    const input = el('input', {
+      type: 'search',
+      className: 'sidebar__search-input',
+      placeholder: 'Search pages…',
+      'aria-label': 'Search pages',
+      onFocus: (e) => {
+        const q = e.target.value;
+        e.target.blur();
+        onOpenSearch(q);
+      },
+    });
+    searchWrap.replaceChildren(
+      renderIcon('search', { size: 16, className: 'sidebar__search-icon' }),
+      input,
     );
   }
 
@@ -299,13 +325,23 @@ export function mountShell(opts) {
 
   function renderBanners() {
     shellStatus.prependTo(bannerSlot, [
+      ...extraBanners,
       renderVersionBanner({ serverVersion: version }),
       renderBootstrapBanner({ bootstrapComplete }),
       renderLicenseBanner({ license }),
     ]);
   }
 
-  sidebarScroll.appendChild(el('div', { className: 'sidebar__logo' }, 'Bid', el('span', {}, 'Shard')));
+  sidebarScroll.appendChild(
+    el('a', { href: '/', className: 'sidebar__logo', title: 'BidShard home' },
+      renderIcon('layers', { size: 32, className: 'sidebar__logo-icon', strokeWidth: 1.5 }),
+      el('span', { className: 'sidebar__logo-text' },
+        el('span', { className: 'sidebar__logo-bid' }, 'Bid'),
+        el('span', { className: 'sidebar__logo-shard' }, 'Shard'),
+      ),
+    ),
+  );
+  sidebarScroll.appendChild(el('div', { className: 'sidebar__search' }));
   sidebarScroll.appendChild(el('div', { className: 'sidebar__nav' }));
   sidebarScroll.appendChild(el('div', { className: 'sidebar__footer' }));
   sidebar.appendChild(sidebarScroll);
@@ -331,6 +367,7 @@ export function mountShell(opts) {
   ));
 
   renderNav();
+  renderSearch();
   renderFooter();
   renderBanners();
   syncResizerAria();

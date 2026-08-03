@@ -120,6 +120,9 @@ export async function api(path, init = {}) {
     clearScope(init.idempotencyScope);
   }
 
+  const csrfHeader = res.headers.get('X-CSRF-Token');
+  if (csrfHeader) auth.setCsrfFromLoginResponse(csrfHeader);
+
   if (!res.ok) {
     const code = body?.error?.code ?? 'UNKNOWN';
     const msg = body?.error?.message ?? res.statusText;

@@ -23,8 +23,10 @@ import { isoDaysAgo, toIsoNow } from '../helpers/date_presets.js';
 import { createInFlightGuard } from '../lib/async_guard.js';
 import { renderCommercialMetrics } from '../ui/commercial_metrics.js';
 import { api } from '../helpers/api_client.js';
+import { mountCampaignTelegramPanel } from './campaign_telegram_panel.js';
 
 import { renderIcon } from '../ui/icon.js';
+import { displayLabel } from '../helpers/display_labels.js';
 
 /**
  * Render a two-column label/value config grid.
@@ -33,17 +35,10 @@ import { renderIcon } from '../ui/icon.js';
  * @returns {HTMLElement}
  */
 function configGrid(rows) {
-  return el('div', {
-    style: {
-      display: 'grid',
-      gridTemplateColumns: 'auto 1fr',
-      gap: '12px 24px',
-      fontSize: 13,
-    },
-  },
+  return el('dl', { className: 'definition-list' },
     rows.flatMap(([label, value]) => [
-      el('span', { className: 'text-muted' }, label),
-      el('span', { className: 'text-secondary font-mono' }, value),
+      el('dt', null, label),
+      el('dd', { className: 'font-mono text-secondary' }, value),
     ]),
   );
 }
@@ -70,6 +65,11 @@ export function mount(container, ctx) {
   const masked = maskLevel(permissions) === 'masked';
   const canPause =
     can(permissions, 'campaigns:write') || can(permissions, 'campaigns:pause');
+  const canWriteCampaign = can(permissions, 'campaigns:write');
+
+  const tgSlot = el('div', { 'data-tg-panel': '' });
+  /** @type {{ destroy: () => void }|null} */
+  let tgPanelHandle = null;
 
   const campaignState = { data: null, loading: true, error: null };
   const statsState = { data: null, loading: false, error: null };
@@ -96,6 +96,7 @@ export function mount(container, ctx) {
       { id: 'config', label: 'Configuration' },
     ];
     if (!masked) list.push({ id: 'creative', label: 'Creative' });
+    if (!masked) list.push({ id: 'telegram', label: 'Telegram' });
     return list;
   }
 
@@ -191,7 +192,7 @@ export function mount(container, ctx) {
 
   function renderLoadingCards() {
     replaceChildren(container,
-      el('div', { className: 'grid-stats' },
+      el('div', { className: 'grid-stats section-block' },
         ['Status', 'Budget', 'Spend', 'Pacing'].map((label) =>
           el('div', { className: 'metric-card metric-card--loading' },
             el('div', { className: 'metric-card__label' }, label),
@@ -244,7 +245,7 @@ export function mount(container, ctx) {
           ),
           renderStatusBadge(campaign.status),
           canPause
-            ? el('div', { className: 'flex items-center gap-2', style: { marginLeft: 'auto' } },
+            ? el('div', { className: 'flex items-center gap-2 ml-auto' },
               isActive
                 ? el('button', {
                   type: 'button',
@@ -271,28 +272,28 @@ export function mount(container, ctx) {
             : null,
         ),
         actionError
-          ? el('div', {
-            className: 'text-muted',
-            style: { color: 'var(--error)', fontSize: 13, marginTop: 8 },
-          }, actionError)
+          ? el('p', { className: 'text-danger text-sm mt-2' }, actionError)
           : null,
       ),
       renderTabBar({ tabs: tabs(), active: tab, onChange: (t) => {
+        if (tab === 'telegram' && t !== 'telegram' && tgPanelHandle) {
+          tgPanelHandle.destroy();
+          tgPanelHandle = null;
+        }
         tab = t;
         if (t === 'stats') statsResource.reload();
         else destroyChart();
         render();
       } }),
       tab === 'overview'
-        ? el('div', { style: { marginTop: 24 } },
+        ? el('div', { className: 'section-block stack' },
           dashboardState.loading
             ? el('span', { className: 'text-muted' }, 'Loading economics…')
             : renderCommercialMetrics(dashboardState.data?.kpis, { masked }),
           !masked && campaign
             ? el('button', {
               type: 'button',
-              className: 'btn btn--secondary btn--sm',
-              style: { marginTop: 12 },
+              className: 'btn btn--secondary btn--sm shrink-0',
               onClick: () => openForecastModal({
                 campaignId: id,
                 customerId: campaign.customer_id,
@@ -312,7 +313,7 @@ export function mount(container, ctx) {
                 campaign.status,
               ),
             })
-            : el('div', { className: 'grid-stats' },
+            : el('div', { className: 'grid-stats section-block' },
               el('div', { className: 'metric-card' },
                 el('div', { className: 'metric-card__label' }, 'Budget limit'),
                 el('div', { className: 'metric-card__value font-mono' },
@@ -333,23 +334,23 @@ export function mount(container, ctx) {
               ),
               el('div', { className: 'metric-card' },
                 el('div', { className: 'metric-card__label' }, 'Pacing'),
-                el('div', { className: 'metric-card__value' }, campaign.pacing_mode ?? '—'),
+                el('div', { className: 'metric-card__value' }, displayLabel(campaign.pacing_mode)),
               ),
             ),
         )
         : null,
       tab === 'stats'
-        ? el('div', { style: { marginTop: 24 } },
+        ? el('div', { className: 'section-block stack' },
           statsState.loading ? el('span', { className: 'text-muted' }, 'Loading statistics…') : null,
           statsState.error
-            ? el('div', { className: 'error-page__desc', style: { color: 'var(--error)' } },
+            ? el('p', { className: 'text-danger text-sm' },
               statsState.error.message,
             )
             : null,
           statsState.data
-            ? el('div', null,
-              el('div', { className: 'flex items-center gap-2 mb-4' },
-                el('h2', { style: { fontSize: 14, fontWeight: 600 } }, 'Hourly metrics'),
+            ? el('div', { className: 'stack' },
+              el('div', { className: 'flex items-center gap-2' },
+                el('h2', { className: 'subsection-title' }, 'Hourly metrics'),
                 renderFreshnessBadge({ stale: statsState.data.stale }),
               ),
               el('div', { className: 'metric-row' },
@@ -378,13 +379,16 @@ export function mount(container, ctx) {
                   ),
                 ),
               ),
-              chartMount,
+              el('div', { className: 'section-card' },
+                el('h3', { className: 'subsection-title' }, 'Hourly trend'),
+                chartMount,
+              ),
             )
             : null,
         )
         : null,
       tab === 'config'
-        ? el('div', { className: 'mb-4', style: { marginTop: 24 } },
+        ? el('div', { className: 'section-block' },
           configGrid([
             ['ID', campaign.id],
             ['Customer', campaign.customer_id],
@@ -411,7 +415,7 @@ export function mount(container, ctx) {
         )
         : null,
       tab === 'creative' && !masked
-        ? el('div', { className: 'mb-4', style: { marginTop: 24 } },
+        ? el('div', { className: 'section-block' },
           configGrid([
             ['Target URL', campaign.target_url ?? '—'],
             ['Referrer filter', campaign.referrer_filter ?? '—'],
@@ -424,12 +428,21 @@ export function mount(container, ctx) {
           ]),
         )
         : null,
+      tab === 'telegram' && !masked
+        ? el('div', { className: 'section-block' }, tgSlot)
+        : null,
     ];
 
     replaceChildren(container, ...children);
 
     if (tab === 'stats' && statsState.data) {
       mountChart(statsState.data.hourly ?? []);
+    }
+    if (tab === 'telegram' && !masked && !tgPanelHandle) {
+      tgPanelHandle = mountCampaignTelegramPanel(tgSlot, {
+        campaignId: id,
+        canWrite: canWriteCampaign,
+      });
     }
   }
 
@@ -476,6 +489,7 @@ export function mount(container, ctx) {
       destroyed = true;
       actionGate.release();
       destroyChart();
+      tgPanelHandle?.destroy();
       campaignResource.destroy();
       statsResource.destroy();
     },

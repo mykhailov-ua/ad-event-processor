@@ -21,8 +21,8 @@ export function campaignStatusClass(status) {
  */
 export function serviceStatusClass(status) {
   const v = (status || '').toLowerCase();
-  if (v === 'ok' || v === 'healthy' || v === 'up' || v === 'pass') return 'success';
-  if (v === 'degraded' || v === 'warning' || v === 'disabled') return 'warning';
+  if (v === 'ok' || v === 'healthy' || v === 'up' || v === 'pass' || v === 'live') return 'success';
+  if (v === 'degraded' || v === 'warning' || v === 'disabled' || v === 'planned') return 'warning';
   return 'critical';
 }
 

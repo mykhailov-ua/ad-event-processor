@@ -1,4 +1,5 @@
 import { el } from '../lib/dom.js';
+import { displayLabel } from '../helpers/display_labels.js';
 
 /**
  * Render edge ingress and block-reason metrics panel.
@@ -14,50 +15,56 @@ export function renderEdgePanel(edge) {
   const blocked = edge.blocked ?? {};
   const blockRows = Object.keys(blocked).sort().map((key) =>
     el('tr', null,
-      el('td', null, key.replace(/_/g, ' ')),
+      el('td', null, displayLabel(key)),
       el('td', { className: 'font-mono' }, String(blocked[key] ?? 0)),
     ),
   );
 
-  return el('section', { 'data-testid': 'edge-panel', className: 'section-card' },
-    el('h2', null, 'Edge traffic'),
-    edge.updated_at
-      ? el('p', { className: 'text-muted', style: { fontSize: 13 } }, `Updated ${edge.updated_at}`)
-      : null,
-    el('h3', null, 'Ingress protocol'),
-    el('dl', null,
-      el('dt', null, 'HTTP/1.1'),
-      el('dd', null, `${edge.ingress_h1 ?? 0} (${pct(edge.ingress_h1 ?? 0)}%)`),
-      el('dt', null, 'HTTP/2'),
-      el('dd', null, `${edge.ingress_h2 ?? 0} (${pct(edge.ingress_h2 ?? 0)}%)`),
-      el('dt', null, 'HTTP/3'),
-      el('dd', null, `${edge.ingress_h3 ?? 0} (${pct(edge.ingress_h3 ?? 0)}%)`),
+  return el('section', { 'data-testid': 'edge-panel', className: 'settings-panel section-block' },
+    el('div', { className: 'settings-panel__header' },
+      el('h2', { className: 'settings-panel__title' }, 'Edge traffic'),
+      edge.updated_at
+        ? el('p', { className: 'settings-panel__desc' }, `Updated ${edge.updated_at}`)
+        : null,
     ),
-    el('h3', null, 'Body handling'),
-    el('dl', null,
-      el('dt', null, 'Stream'),
-      el('dd', null, String(edge.body_stream ?? 0)),
-      el('dt', null, 'Peek'),
-      el('dd', null, String(edge.body_peek ?? 0)),
-      el('dt', null, 'Read'),
-      el('dd', null, String(edge.body_read ?? 0)),
-      el('dt', null, 'Tarpit'),
-      el('dd', null, String(edge.tarpit_total ?? 0)),
-      el('dt', null, 'Blacklist stale'),
-      el('dd', null, String(edge.blacklist_stale ?? 0)),
-    ),
-    el('h3', null, 'Block reasons'),
-    blockRows.length > 0
-      ? el('table', { className: 'data-table' },
-        el('thead', null,
-          el('tr', null,
-            el('th', { scope: 'col' }, 'Reason'),
-            el('th', { scope: 'col' }, 'Count'),
+    el('div', { className: 'settings-panel__body panel-stack' },
+      el('h3', { className: 'subsection-title' }, 'Ingress protocol'),
+      el('dl', { className: 'definition-list' },
+        el('dt', null, 'HTTP/1.1'),
+        el('dd', null, `${edge.ingress_h1 ?? 0} (${pct(edge.ingress_h1 ?? 0)}%)`),
+        el('dt', null, 'HTTP/2'),
+        el('dd', null, `${edge.ingress_h2 ?? 0} (${pct(edge.ingress_h2 ?? 0)}%)`),
+        el('dt', null, 'HTTP/3'),
+        el('dd', null, `${edge.ingress_h3 ?? 0} (${pct(edge.ingress_h3 ?? 0)}%)`),
+      ),
+      el('h3', { className: 'subsection-title' }, 'Body handling'),
+      el('dl', { className: 'definition-list' },
+        el('dt', null, 'Stream'),
+        el('dd', null, String(edge.body_stream ?? 0)),
+        el('dt', null, 'Peek'),
+        el('dd', null, String(edge.body_peek ?? 0)),
+        el('dt', null, 'Read'),
+        el('dd', null, String(edge.body_read ?? 0)),
+        el('dt', null, 'Tarpit'),
+        el('dd', null, String(edge.tarpit_total ?? 0)),
+        el('dt', null, 'Blacklist stale'),
+        el('dd', null, String(edge.blacklist_stale ?? 0)),
+      ),
+      el('h3', { className: 'subsection-title' }, 'Block reasons'),
+      blockRows.length > 0
+        ? el('div', { className: 'table-wrapper' },
+          el('table', { className: 'data-table' },
+            el('thead', null,
+              el('tr', null,
+                el('th', { scope: 'col' }, 'Reason'),
+                el('th', { scope: 'col' }, 'Count'),
+              ),
+            ),
+            el('tbody', null, ...blockRows),
           ),
-        ),
-        el('tbody', null, ...blockRows),
-      )
-      : el('p', { className: 'text-muted' }, 'No block counters yet.'),
+        )
+        : el('p', { className: 'text-muted text-sm' }, 'No block counters yet.'),
+    ),
   );
 }
 
@@ -72,30 +79,36 @@ export function renderXDPPanel(xdp) {
   const drops = xdp.drops ?? {};
   const dropRows = Object.keys(drops).sort().map((key) =>
     el('tr', null,
-      el('td', null, key),
+      el('td', null, displayLabel(key)),
       el('td', { className: 'font-mono' }, String(drops[key] ?? 0)),
     ),
   );
-  return el('section', { 'data-testid': 'xdp-panel', className: 'section-card' },
-    el('h2', null, 'XDP drops'),
-    el('dl', null,
-      el('dt', null, 'Pass'),
-      el('dd', null, String(xdp.pass ?? 0)),
-      el('dt', null, 'Allowlist pass'),
-      el('dd', null, String(xdp.pass_allowlist ?? 0)),
-      el('dt', null, 'Fingerprints'),
-      el('dd', null, String(xdp.fingerprints ?? 0)),
+  return el('section', { 'data-testid': 'xdp-panel', className: 'settings-panel section-block' },
+    el('div', { className: 'settings-panel__header' },
+      el('h2', { className: 'settings-panel__title' }, 'Edge packet filter'),
     ),
-    dropRows.length > 0
-      ? el('table', { className: 'data-table' },
-        el('thead', null,
-          el('tr', null,
-            el('th', { scope: 'col' }, 'Reason'),
-            el('th', { scope: 'col' }, 'Drops'),
+    el('div', { className: 'settings-panel__body panel-stack' },
+      el('dl', { className: 'definition-list' },
+        el('dt', null, 'Pass'),
+        el('dd', null, String(xdp.pass ?? 0)),
+        el('dt', null, 'Allowlist pass'),
+        el('dd', null, String(xdp.pass_allowlist ?? 0)),
+        el('dt', null, 'Fingerprints'),
+        el('dd', null, String(xdp.fingerprints ?? 0)),
+      ),
+      dropRows.length > 0
+        ? el('div', { className: 'table-wrapper' },
+          el('table', { className: 'data-table' },
+            el('thead', null,
+              el('tr', null,
+                el('th', { scope: 'col' }, 'Reason'),
+                el('th', { scope: 'col' }, 'Drops'),
+              ),
+            ),
+            el('tbody', null, ...dropRows),
           ),
-        ),
-        el('tbody', null, ...dropRows),
-      )
-      : null,
+        )
+        : null,
+    ),
   );
 }

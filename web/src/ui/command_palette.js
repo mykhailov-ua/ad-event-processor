@@ -9,7 +9,7 @@ import { isCustomerUuid, shortCustomerId } from '../helpers/customer_context.js'
 /**
  * Install the global command palette with Ctrl/Cmd+K shortcut.
  *
- * @returns {{ destroy: () => void }}
+ * @returns {{ destroy: () => void, open: (initialQuery?: string) => void }}
  */
 export function installCommandPalette() {
   let overlay = null;
@@ -17,15 +17,12 @@ export function installCommandPalette() {
   let listEl = null;
   let highlight = 0;
   let filtered = [];
+  /** @type {HTMLButtonElement[]} */
+  let rowEls = [];
+  let lastFilterKey = '';
   /** @type {{ id: string, label: string, hint?: string, run: () => void }[]|null} */
   let cachedItems = null;
   let cachedPermKey = '';
-
-  function destroy() {
-    if (overlay) overlay.remove();
-    overlay = null;
-    document.removeEventListener('keydown', onGlobalKey);
-  }
 
   function buildItems() {
     const user = auth.getUser();
@@ -138,35 +135,88 @@ export function installCommandPalette() {
     return matches.slice(0, 12);
   }
 
-  function renderList() {
+  /**
+   * @param {Array<{ id: string }>} items
+   * @returns {string}
+   */
+  function filterKey(items) {
+    return items.map((item) => item.id).join('\0');
+  }
+
+  function setHighlight(index) {
+    const next = Math.max(0, Math.min(index, Math.max(rowEls.length - 1, 0)));
+    if (highlight === next) return;
+    highlight = next;
+    updateHighlight();
+  }
+
+  function updateHighlight() {
+    for (let i = 0; i < rowEls.length; i++) {
+      rowEls[i].classList.toggle('cmd-palette__item--active', i === highlight);
+    }
+    const active = rowEls[highlight];
+    if (active) active.scrollIntoView({ block: 'nearest' });
+  }
+
+  function rebuildList() {
     if (!listEl) return;
+    const key = filterKey(filtered);
+    if (key === lastFilterKey) {
+      updateHighlight();
+      return;
+    }
+    lastFilterKey = key;
+    rowEls = [];
     listEl.replaceChildren();
+
+    if (filtered.length === 0) {
+      listEl.appendChild(el('div', { className: 'cmd-palette__empty' }, 'No matches'));
+      return;
+    }
+
     filtered.forEach((item, i) => {
+      const showHint = item.hint && item.hint !== item.label;
       const row = el('button', {
         type: 'button',
         className: 'cmd-palette__item' + (i === highlight ? ' cmd-palette__item--active' : ''),
-        onMouseEnter: () => {
-          highlight = i;
-          renderList();
-        },
+        onMouseEnter: () => setHighlight(i),
         onClick: () => item.run(),
       },
         el('span', { className: 'cmd-palette__item-label' }, item.label),
-        item.hint
+        showHint
           ? el('span', { className: 'cmd-palette__item-hint' }, item.hint)
           : null,
       );
+      rowEls.push(row);
       listEl.appendChild(row);
     });
-    if (filtered.length === 0) {
-      listEl.appendChild(el('div', { className: 'cmd-palette__empty' }, 'No matches'));
-    }
   }
 
-  function open() {
-    if (overlay) return;
+  function applyQuery(query) {
+    filtered = filterItems(query);
     highlight = 0;
-    filtered = filterItems('');
+    rebuildList();
+  }
+
+  /**
+   * @param {string} [initialQuery]
+   */
+  function open(initialQuery = '') {
+    if (overlay) {
+      if (input) {
+        input.value = initialQuery;
+        applyQuery(initialQuery);
+        input.focus();
+        if (initialQuery) {
+          input.setSelectionRange(initialQuery.length, initialQuery.length);
+        }
+      }
+      return;
+    }
+
+    highlight = 0;
+    filtered = filterItems(initialQuery);
+    lastFilterKey = '';
 
     overlay = el('div', {
       className: 'cmd-palette-overlay',
@@ -178,33 +228,28 @@ export function installCommandPalette() {
       className: 'cmd-palette',
       role: 'dialog',
       'aria-modal': 'true',
-      'aria-label': 'Command palette',
+      'aria-label': 'Search',
       onClick: (e) => e.stopPropagation(),
     });
 
     const inputWrap = el('div', { className: 'cmd-palette__input-wrap' },
-      renderIcon('search', { size: 18 }),
+      renderIcon('search', { size: 18, className: 'cmd-palette__search-icon' }),
     );
 
     input = el('input', {
       type: 'search',
       className: 'cmd-palette__input',
-      placeholder: 'Jump to page, customer, billing…',
+      placeholder: 'Search pages, customers, billing…',
       autocomplete: 'off',
-      onInput: (e) => {
-        filtered = filterItems(e.target.value);
-        highlight = 0;
-        renderList();
-      },
+      value: initialQuery,
+      onInput: (e) => applyQuery(e.target.value),
       onKeydown: (e) => {
         if (e.key === 'ArrowDown') {
           e.preventDefault();
-          highlight = Math.min(highlight + 1, filtered.length - 1);
-          renderList();
+          setHighlight(highlight + 1);
         } else if (e.key === 'ArrowUp') {
           e.preventDefault();
-          highlight = Math.max(highlight - 1, 0);
-          renderList();
+          setHighlight(highlight - 1);
         } else if (e.key === 'Enter') {
           e.preventDefault();
           if (filtered[highlight]) filtered[highlight].run();
@@ -217,18 +262,26 @@ export function installCommandPalette() {
 
     inputWrap.appendChild(input);
 
-    listEl = el('div', { className: 'cmd-palette__list' });
-    renderList();
+    listEl = el('div', { className: 'cmd-palette__list', role: 'listbox' });
+    rebuildList();
 
     dialog.appendChild(inputWrap);
     dialog.appendChild(listEl);
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
     input.focus();
+    if (initialQuery) {
+      input.setSelectionRange(initialQuery.length, initialQuery.length);
+    }
   }
 
   function close() {
-    destroy();
+    if (overlay) overlay.remove();
+    overlay = null;
+    input = null;
+    listEl = null;
+    rowEls = [];
+    lastFilterKey = '';
   }
 
   function onGlobalKey(e) {
@@ -246,8 +299,11 @@ export function installCommandPalette() {
 
   document.addEventListener('keydown', onGlobalKey);
 
-  return { destroy: () => {
-    close();
-    document.removeEventListener('keydown', onGlobalKey);
-  } };
+  return {
+    open,
+    destroy: () => {
+      close();
+      document.removeEventListener('keydown', onGlobalKey);
+    },
+  };
 }

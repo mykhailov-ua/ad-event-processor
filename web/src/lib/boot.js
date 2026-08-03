@@ -13,6 +13,7 @@ import { mountShell } from '../ui/shell.js';
 import { installCommandPalette } from '../ui/command_palette.js';
 import { startRUMCollector } from '../helpers/rum_collector.js';
 import { renderIdempotencyRecoveryBanner } from '../ui/idempotency_banner.js';
+import { syncDevModeAttribute } from '../helpers/dev_mode.js';
 
 /**
  * @param {HTMLElement} root
@@ -24,6 +25,7 @@ export async function bootApp(root) {
   }
 
   document.documentElement.setAttribute('data-theme', storage.getTheme());
+  syncDevModeAttribute();
   installErrorSurface(root);
   installConfirmHost(root);
   const toast = installToastStack(root);
@@ -54,16 +56,19 @@ export async function bootApp(root) {
   loading.remove();
 
   const outlet = el('div', { id: 'app-outlet' });
-  const shell = mountShell({ outlet });
-  root.appendChild(shell.node);
   const idemBanner = renderIdempotencyRecoveryBanner();
-  if (idemBanner) shell.node.insertBefore(idemBanner, outlet);
+  const cmdPalette = installCommandPalette();
+  const shell = mountShell({
+    outlet,
+    extraBanners: idemBanner ? [idemBanner] : [],
+    onOpenSearch: (query = '') => cmdPalette.open(query),
+  });
+  root.appendChild(shell.node);
 
   configureRoutes(APP_ROUTES);
   setOutlet(outlet);
   startRouter(outlet);
 
-  const cmdPalette = installCommandPalette();
   const rum = startRUMCollector();
 
   return {
@@ -93,8 +98,10 @@ export async function bootLogin(root) {
   }
 
   installToastStack(root);
+  const outlet = el('div', { id: 'login-outlet', className: 'login-root' });
+  root.appendChild(outlet);
   import('../views/login.js').then((mod) => {
-    mod.mount(root, {
+    mod.mount(outlet, {
       params: {},
       query: new URLSearchParams(window.location.search),
       navigate: (path) => window.location.assign(path),
@@ -111,11 +118,14 @@ export async function bootStandalone(root) {
   installConfirmHost(root);
   installToastStack(root);
 
+  const outlet = el('div', { id: 'login-outlet', className: 'login-root' });
+  root.appendChild(outlet);
+
   const path = window.location.pathname;
   const route = APP_ROUTES.find((r) => r.path === path);
   if (!route) {
     const mod = await import('../views/not_found.js');
-    mod.mount(root, {
+    mod.mount(outlet, {
       params: {},
       query: new URLSearchParams(window.location.search),
       navigate: (p) => window.location.assign(p),
@@ -123,7 +133,7 @@ export async function bootStandalone(root) {
     return;
   }
   const mod = await route.load();
-  mod.mount(root, {
+  mod.mount(outlet, {
     params: {},
     query: new URLSearchParams(window.location.search),
     navigate: (p) => window.location.assign(p),

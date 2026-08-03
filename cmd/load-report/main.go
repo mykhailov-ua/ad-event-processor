@@ -66,6 +66,23 @@ func main() {
 				os.Exit(1)
 			}
 		}
+		if err := runTelegram(sessionDir, promURL); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			if os.Getenv("LOAD_TG_GATE") == "1" {
+				os.Exit(1)
+			}
+		}
+	case "telegram":
+		sessionDir, promURL, err := parseSessionFlags(os.Args[2:])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			usage()
+			os.Exit(1)
+		}
+		if err := runTelegram(sessionDir, promURL); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	case "sla":
 		sessionDir, promURL, err := parseSessionFlags(os.Args[2:])
 		if err != nil {
@@ -127,6 +144,15 @@ func runProm(sessionDir, promURL string) error {
 	return nil
 }
 
+func runTelegram(sessionDir, promURL string) error {
+	path, err := loadreport.WriteTelegramGateReport(sessionDir, promURL)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("load-report telegram: wrote %s\n", path)
+	return nil
+}
+
 func runSLA(sessionDir, promURL string) error {
 	path, err := loadreport.WriteSLAReport(sessionDir, promURL)
 	if err != nil {
@@ -141,9 +167,11 @@ func usage() {
   load-report prom <session-dir> [--prom URL]
   load-report bpf <session-dir>
   load-report sla <session-dir> [--prom URL]
+  load-report telegram <session-dir> [--prom URL]
   load-report all <session-dir> [--prom URL]
 
 Default Prometheus URL: %s (override with PROMETHEUS_URL or --prom)
 Set LOAD_SLA_GATE=1 to fail load-report all on SLA breach.
+Set LOAD_TG_GATE=1 to fail load-report all on Telegram T9 gate breach.
 `, defaultPromURL)
 }

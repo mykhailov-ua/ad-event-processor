@@ -110,7 +110,7 @@ export function mount(container, ctx) {
             renderIcon('users', { size: 20, className: 'text-muted' }),
             el('h1', { className: 'page-header__title' }, 'Customers'),
           ),
-          el('span', { className: 'text-muted', style: { fontSize: 13 } },
+          el('span', { className: 'text-muted text-sm' },
             state.loading ? '' : `${total} total`,
           ),
         ),
@@ -152,7 +152,7 @@ export function mount(container, ctx) {
                   ctx.navigate(`/customers/${c.id}`);
                 },
                 cells: [
-                  el('td', { style: { fontWeight: 500, color: 'var(--text-primary)' } }, c.name),
+                  el('td', { className: 'font-medium' }, c.name),
                   el('td', { className: 'font-mono' }, formatBalance(c.balance)),
                   el('td', null, c.currency ?? 'USD'),
                   el('td', null, String(c.active_campaigns ?? 0)),
@@ -166,17 +166,14 @@ export function mount(container, ctx) {
         ),
       ),
       totalPages > 1
-        ? el('div', {
-          className: 'flex items-center gap-2 mt-4',
-          style: { justifyContent: 'flex-end' },
-        },
+        ? el('div', { className: 'pagination-bar' },
           el('button', {
             id: 'customers-prev-btn',
             className: 'btn btn--secondary btn--sm',
             disabled: state.page === 0,
             onClick: () => { state.page = Math.max(0, state.page - 1); resource.reload(); },
           }, 'Prev'),
-          el('span', { className: 'text-muted', style: { fontSize: 12 } },
+          el('span', { className: 'text-muted text-xs' },
             `${state.page + 1} / ${totalPages}`,
           ),
           el('button', {

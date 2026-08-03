@@ -1,17 +1,25 @@
 import { el, replaceChildren } from '../lib/dom.js';
+import { formatChartAxisTime } from '../helpers/chart_format.js';
 import { seriesFromHourly } from '../helpers/chart_pool.js';
+import { SERIES_CAP, padScratch } from './chart_math.js';
+import {
+  chartColor,
+  chartPadInto,
+  createChartShell,
+  remPx,
+  setupCanvas,
+} from './canvas_util.js';
 
-const CHART_HEIGHT = 280;
-const PAD = { top: 16, right: 16, bottom: 28, left: 48 };
+const FONT_AXIS = 'var(--text-xs) var(--font-family), system-ui, sans-serif';
 
 /**
  * Compute y-axis bounds for a series slice.
  *
  * @param {Float64Array} y
  * @param {number} length
- * @returns {{ yMin: number, yMax: number, invYRange: number }}
+ * @param {{ yMin: number, yMax: number, invYRange: number }} out
  */
-function yScale(y, length) {
+function yScaleInto(y, length, out) {
   let yMin = y[0];
   let yMax = y[0];
   for (let i = 1; i < length; i++) {
@@ -23,7 +31,9 @@ function yScale(y, length) {
     yMax += 1;
     yMin -= 1;
   }
-  return { yMin, yMax, invYRange: 1 / (yMax - yMin) };
+  out.yMin = yMin;
+  out.yMax = yMax;
+  out.invYRange = 1 / (yMax - yMin);
 }
 
 /**
@@ -36,52 +46,93 @@ function yScale(y, length) {
  * @param {Float64Array} y
  * @param {number} length
  * @param {{ xMin: number, invXRange: number, yMin: number, invYRange: number }} scale
+ * @param {Float64Array} ptsX
+ * @param {Float64Array} ptsY
+ * @param {string} accent
+ * @param {string} border
+ * @param {string} muted
  */
-function drawLineChart(ctx, width, height, x, y, length, scale) {
+function drawLineChart(ctx, width, height, x, y, length, scale, ptsX, ptsY, accent, border, muted) {
   if (length < 1) return;
 
-  const plotW = width - PAD.left - PAD.right;
-  const plotH = height - PAD.top - PAD.bottom;
+  chartPadInto(padScratch);
+  const padTop = padScratch.top;
+  const padRight = padScratch.right;
+  const padBottom = padScratch.bottom;
+  const padLeft = padScratch.left;
+  const plotW = width - padLeft - padRight;
+  const plotH = height - padTop - padBottom;
+  const baseY = padTop + plotH;
 
-  ctx.strokeStyle = '#4a9eff';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
   for (let i = 0; i < length; i++) {
-    const px = PAD.left + (x[i] - scale.xMin) * scale.invXRange * plotW;
-    const py = PAD.top + plotH - (y[i] - scale.yMin) * scale.invYRange * plotH;
-    if (i === 0) ctx.moveTo(px, py);
-    else ctx.lineTo(px, py);
+    ptsX[i] = padLeft + (x[i] - scale.xMin) * scale.invXRange * plotW;
+    ptsY[i] = padTop + plotH - (y[i] - scale.yMin) * scale.invYRange * plotH;
+  }
+
+  const grad = ctx.createLinearGradient(0, padTop, 0, baseY);
+  grad.addColorStop(0, chartColor('--accent-subtle', 'rgba(77,143,232,0.22)'));
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+
+  ctx.beginPath();
+  ctx.moveTo(ptsX[0], baseY);
+  ctx.lineTo(ptsX[0], ptsY[0]);
+  for (let i = 1; i < length; i++) {
+    const x0 = ptsX[i - 1];
+    const y0 = ptsY[i - 1];
+    const x1 = ptsX[i];
+    const y1 = ptsY[i];
+    const cx = (x0 + x1) * 0.5;
+    ctx.bezierCurveTo(cx, y0, cx, y1, x1, y1);
+  }
+  ctx.lineTo(ptsX[length - 1], baseY);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(ptsX[0], ptsY[0]);
+  for (let i = 1; i < length; i++) {
+    const x0 = ptsX[i - 1];
+    const y0 = ptsY[i - 1];
+    const x1 = ptsX[i];
+    const y1 = ptsY[i];
+    const cx = (x0 + x1) * 0.5;
+    ctx.bezierCurveTo(cx, y0, cx, y1, x1, y1);
   }
   ctx.stroke();
 
-  ctx.strokeStyle = '#333';
+  ctx.strokeStyle = border;
   ctx.lineWidth = 1;
-  ctx.strokeRect(PAD.left, PAD.top, plotW, plotH);
+  ctx.strokeRect(padLeft, padTop, plotW, plotH);
+
+  const tickCount = length < 5 ? length : 5;
+  ctx.fillStyle = muted;
+  ctx.font = FONT_AXIS;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  const labelY = height - padBottom + remPx(0.125);
+  const inv = tickCount === 1 ? 0 : 1 / (tickCount - 1);
+  for (let i = 0; i < tickCount; i++) {
+    const idx = tickCount === 1 ? 0 : Math.round(i * inv * (length - 1));
+    ctx.fillText(formatChartAxisTime(x[idx] * 1000, 24 * 60 * 60 * 1000), ptsX[idx], labelY);
+  }
 }
 
 /**
  * Mount a canvas time-series chart for campaign hourly stats.
  *
  * @param {HTMLElement} container
- * @param {Array<{ hour: string, impressions?: number }>} hourly
- * @param {string} [label]
+ * @param {Array<{ hour: string, impressions?: number, clicks?: number, conversions?: number }>} hourly
+ * @param {{ field?: string, label?: string }} [options]
  * @returns {{ destroy: () => void }}
  */
-export function mountChart(container, hourly, label = 'Impressions') {
-  let ro = null;
-  let rafId = 0;
-  let lastWidth = 0;
-
-  /**
-   * Release canvas, observers, and pending animation frames.
-   */
-  function destroy() {
-    if (rafId) cancelAnimationFrame(rafId);
-    rafId = 0;
-    ro?.disconnect();
-    ro = null;
-    container.replaceChildren();
-  }
+export function mountChart(container, hourly, options = {}) {
+  const field = options.field ?? 'impressions';
+  const label = options.label ?? field.replace(/_/g, ' ');
 
   if (!hourly?.length) {
     replaceChildren(container,
@@ -90,61 +141,64 @@ export function mountChart(container, hourly, label = 'Impressions') {
         el('p', null, 'Hourly metrics appear after traffic.'),
       ),
     );
-    return { destroy };
+    return { destroy: () => container.replaceChildren() };
   }
 
-  const { x, y, length } = seriesFromHourly(hourly, 'impressions');
+  const { x, y, length } = seriesFromHourly(hourly, field);
   if (length === 0) {
     replaceChildren(container, el('p', null, 'No series points'));
-    return { destroy };
+    return { destroy: () => container.replaceChildren() };
   }
 
   const xMin = x[0];
   const xMax = x[length - 1] || xMin + 1;
-  const { yMin, yMax, invYRange } = yScale(y, length);
-  const scale = { xMin, invXRange: 1 / (xMax - xMin || 1), yMin, invYRange };
+  const yScaleOut = { yMin: 0, yMax: 1, invYRange: 1 };
+  yScaleInto(y, length, yScaleOut);
+  const scale = {
+    xMin,
+    invXRange: 1 / (xMax - xMin || 1),
+    yMin: yScaleOut.yMin,
+    invYRange: yScaleOut.invYRange,
+  };
 
-  const wrap = el('div', { className: 'chart-root' });
-  const canvas = el('canvas', {
-    width: 640,
-    height: CHART_HEIGHT,
-    role: 'img',
-    'aria-label': `${label} chart`,
+  const ptsX = new Float64Array(SERIES_CAP);
+  const ptsY = new Float64Array(SERIES_CAP);
+  const accent = chartColor('--accent');
+  const border = chartColor('--border-color');
+  const muted = chartColor('--text-muted');
+
+  const shell = createChartShell(container, `${label} chart`);
+
+  shell.onResize(() => {
+    const cssHeight = Math.max(shell.wrap.clientHeight, remPx(5));
+    const surface = setupCanvas(shell.wrap, shell.canvas, cssHeight);
+    if (!surface) return;
+    const { ctx, width, height } = surface;
+    ctx.clearRect(0, 0, width, height);
+    drawLineChart(ctx, width, height, x, y, length, scale, ptsX, ptsY, accent, border, muted);
   });
-  wrap.appendChild(canvas);
-  replaceChildren(container, wrap);
 
-  const ctx = canvas.getContext('2d');
+  return { destroy: () => shell.destroy() };
+}
 
-  /**
-   * Resize canvas when width changes and redraw the series.
-   */
-  function paint() {
-    if (!ctx) return;
-    const width = Math.max(wrap.clientWidth || 640, 320);
-    if (width !== lastWidth) {
-      lastWidth = width;
-      canvas.width = width;
-      canvas.height = CHART_HEIGHT;
-    }
-    ctx.clearRect(0, 0, width, CHART_HEIGHT);
-    drawLineChart(ctx, width, CHART_HEIGHT, x, y, length, scale);
-  }
-
-  /**
-   * Coalesce resize events into one animation frame paint.
-   */
-  function schedulePaint() {
-    if (rafId) return;
-    rafId = requestAnimationFrame(() => {
-      rafId = 0;
-      paint();
+/**
+ * Mount a line chart from forecast spend-curve points.
+ *
+ * @param {HTMLElement} container
+ * @param {Array<{ hour: string, spend_micro?: number, impressions?: number }>} curve
+ * @param {'impressions'|'spend_micro'} [field]
+ * @returns {{ destroy: () => void }}
+ */
+export function mountSpendCurveChart(container, curve, field = 'impressions') {
+  const hourly = [];
+  const src = curve ?? [];
+  for (let i = 0; i < src.length; i++) {
+    const point = src[i];
+    hourly.push({
+      hour: point.hour,
+      [field]: Number(point[field]) || 0,
     });
   }
-
-  paint();
-  ro = new ResizeObserver(() => schedulePaint());
-  ro.observe(wrap);
-
-  return { destroy };
+  const chartLabel = field === 'spend_micro' ? 'Projected spend' : 'Projected impressions';
+  return mountChart(container, hourly, { field, label: chartLabel });
 }

@@ -120,6 +120,9 @@ telegram-fuzz-smoke:
 tg-hotpath-soak:
 	bash scripts/test/tg_hotpath_soak.sh
 
+telegram-hotpath-gate:
+	bash scripts/test/telegram_hotpath_gate.sh
+
 edge-phase0:
 	bash scripts/ops/phase0.sh
 

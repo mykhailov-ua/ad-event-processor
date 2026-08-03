@@ -28,44 +28,48 @@ import { renderRecommendationCards, renderAlertFeed } from './recommendation_car
  * @returns {HTMLElement}
  */
 export function renderBuyerOverview(state) {
-  const root = el('section', { 'data-testid': 'buyer-overview' },
-    el('h2', null, 'Buyer portfolio'),
-  );
+  const children = [
+    el('h2', { className: 'subsection-title' }, 'Buyer portfolio'),
+  ];
 
   if (state.loading) {
-    root.appendChild(el('p', null, 'Loading portfolio metrics…'));
-    return root;
+    children.push(el('p', { className: 'loading-hint' }, 'Loading portfolio metrics…'));
+    return el('section', { className: 'buyer-overview', 'data-testid': 'buyer-overview' }, children);
   }
 
   if (state.error) {
     const copy = buyerEmptyCopy('campaigns_blocked');
-    root.appendChild(el('p', null, copy.title));
-    root.appendChild(el('p', null, copy.description));
-    root.appendChild(el('p', null, state.error));
-    return root;
+    children.push(
+      el('div', { className: 'stack stack--sm' },
+        el('p', { className: 'empty-hint' }, copy.title),
+        el('p', { className: 'text-muted text-sm' }, copy.description),
+        el('p', { className: 'text-sm' }, state.error),
+      )
+    );
+    return el('section', { className: 'buyer-overview', 'data-testid': 'buyer-overview' }, children);
   }
 
   const p = state.portfolio;
   if (!p) {
-    root.appendChild(el('p', null, 'Portfolio metrics unavailable.'));
-    return root;
+    children.push(el('p', { className: 'empty-hint' }, 'Portfolio metrics unavailable.'));
+    return el('section', { className: 'buyer-overview', 'data-testid': 'buyer-overview' }, children);
   }
 
   const commercial = renderCommercialMetrics(p.kpis, { masked: true });
-  if (commercial) root.appendChild(commercial);
+  if (commercial) children.push(commercial);
 
   if (p.overspendCount > 0) {
-    root.appendChild(el('p', { 'data-testid': 'buyer-overspend-alert' },
+    children.push(el('p', { 'data-testid': 'buyer-overspend-alert' },
       renderStatusBadge('warning', { label: `${p.overspendCount} campaign(s) at overspend risk` }),
     ));
   }
 
   const recs = renderRecommendationCards(p.recommendations ?? []);
-  if (recs) root.appendChild(recs);
+  if (recs) children.push(recs);
   const alerts = renderAlertFeed(p.alerts ?? []);
-  if (alerts) root.appendChild(alerts);
+  if (alerts) children.push(alerts);
 
-  const metrics = el('dl', null,
+  children.push(el('dl', { className: 'definition-list' },
     el('dt', null, 'Active campaigns'),
     el('dd', { id: 'buyer-metric-active' }, String(p.active)),
     el('dt', null, 'Paused campaigns'),
@@ -78,41 +82,51 @@ export function renderBuyerOverview(state) {
     el('dd', { id: 'buyer-metric-clicks' }, String(p.clicks7d)),
     el('dt', null, 'Campaigns in portfolio'),
     el('dd', null, String(p.sampled)),
-  );
-  root.appendChild(metrics);
+  ));
 
-  root.appendChild(el('h3', null, 'Needs attention'));
+  const attentionItems = [];
   if (p.attention.length === 0) {
-    root.appendChild(el('p', null, 'No paused campaigns or pacing flags in the current page.'));
+    attentionItems.push(el('p', { className: 'text-muted text-sm' },
+      'No paused campaigns or pacing flags in the current page.',
+    ));
   } else {
-    const list = el('ul', null);
+    const list = el('ul', { className: 'plain-list' });
     for (let i = 0; i < p.attention.length; i++) {
       const row = p.attention[i];
-      list.appendChild(el('li', null,
+      list.appendChild(el('li', { className: 'plain-list__item' },
         el('a', { href: `/campaigns/${row.id}` }, row.name),
         ` — ${row.reason}`,
       ));
     }
-    root.appendChild(list);
+    attentionItems.push(list);
   }
 
-  root.appendChild(el('h3', null, 'Next steps'));
-  root.appendChild(el('ul', null,
-    el('li', null, el('a', { href: '/campaigns/portfolio' }, 'Portfolio view (drift sort)')),
-    el('li', null, el('a', { href: '/campaigns' }, 'Review campaign delivery')),
-    el('li', null, el('a', { href: '/reports' }, 'Reports hub')),
-    el('li', null, el('a', { href: '/reports/placements' }, 'Check placement report')),
-    el('li', null, el('a', { href: '/reports/keywords' }, 'Check keyword report')),
+  children.push(el('div', { className: 'stack stack--sm' },
+    el('h3', { className: 'subsection-title' }, 'Needs attention'),
+    ...attentionItems,
+  ));
+
+  children.push(el('div', { className: 'stack stack--sm' },
+    el('h3', { className: 'subsection-title' }, 'Next steps'),
+    el('ul', { className: 'plain-list' },
+      el('li', { className: 'plain-list__item' }, el('a', { href: '/campaigns/portfolio' }, 'Portfolio view (drift sort)')),
+      el('li', { className: 'plain-list__item' }, el('a', { href: '/campaigns' }, 'Review campaign delivery')),
+      el('li', { className: 'plain-list__item' }, el('a', { href: '/reports' }, 'Reports hub')),
+      el('li', { className: 'plain-list__item' }, el('a', { href: '/reports/placements' }, 'Check placement report')),
+      el('li', { className: 'plain-list__item' }, el('a', { href: '/reports/keywords' }, 'Check keyword report')),
+    ),
   ));
 
   if (state.perf && Object.keys(state.perf).length > 0) {
-    const perfEl = el('pre', {
-      id: 'buyer-perf-metrics',
-      'aria-label': 'Critical path probe metrics',
-    }, JSON.stringify(state.perf, null, 2));
-    root.appendChild(el('h3', null, 'Critical path metrics'));
-    root.appendChild(perfEl);
+    children.push(el('div', { className: 'stack stack--sm' },
+      el('h3', { className: 'subsection-title' }, 'Critical path metrics'),
+      el('pre', {
+        id: 'buyer-perf-metrics',
+        className: 'code-block',
+        'aria-label': 'Critical path probe metrics',
+      }, JSON.stringify(state.perf, null, 2)),
+    ));
   }
 
-  return root;
+  return el('section', { className: 'buyer-overview', 'data-testid': 'buyer-overview' }, children);
 }

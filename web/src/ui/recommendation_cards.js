@@ -18,12 +18,12 @@ export function renderRecommendationCards(cards) {
         ? el('a', { href: `/campaigns/${card.campaign_id}`, className: 'btn btn--secondary btn--sm' }, 'Open campaign')
         : null,
       card.confidence != null
-        ? el('span', { className: 'text-muted', style: { fontSize: 12 } }, ` confidence ${Math.round(card.confidence * 100)}%`)
+        ? el('span', { className: 'text-muted text-xs' }, ` confidence ${Math.round(card.confidence * 100)}%`)
         : null,
     ));
   }
-  return el('section', { 'data-testid': 'recommendation-cards' },
-    el('h3', null, 'Recommendations'),
+  return el('section', { className: 'section-block', 'data-testid': 'recommendation-cards' },
+    el('h3', { className: 'subsection-title' }, 'Recommendations'),
     list,
   );
 }
@@ -36,18 +36,20 @@ export function renderRecommendationCards(cards) {
  */
 export function renderAlertFeed(alerts) {
   if (!alerts?.length) return null;
-  const list = el('ul', null);
+  const list = el('ul', { className: 'alert-feed__list' });
   for (const alert of alerts) {
     const tone = alert.level === 'critical' ? 'error' : 'warning';
-    list.appendChild(el('li', { 'data-testid': `alert-${alert.id}` },
+    list.appendChild(el('li', {
+      className: 'alert-feed__item',
+      'data-testid': `alert-${alert.id}`,
+    },
       renderStatusBadge(tone, { label: alert.title }),
-      ' ',
-      alert.detail,
-      alert.route ? [' ', el('a', { href: alert.route }, 'View')] : null,
+      el('span', null, alert.detail),
+      alert.route ? el('a', { href: alert.route, className: 'btn btn--ghost btn--sm' }, 'View') : null,
     ));
   }
-  return el('section', { 'data-testid': 'alert-feed' },
-    el('h3', null, 'Alerts'),
+  return el('section', { className: 'alert-feed section-block', 'data-testid': 'alert-feed' },
+    el('h3', { className: 'alert-feed__title' }, 'Alerts'),
     list,
   );
 }

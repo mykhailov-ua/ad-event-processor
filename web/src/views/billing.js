@@ -16,6 +16,7 @@ import { renderRecentCustomers } from '../ui/recent_customers.js';
 import { renderBreadcrumbs } from '../ui/breadcrumbs.js';
 import { validateCustomerIdField } from '../helpers/validators.js';
 import { renderAlertBanner } from '../ui/alert_banner.js';
+import { renderStatusBadge } from '../ui/status_badge.js';
 import { renderIcon } from '../ui/icon.js';
 import {
   createSortState,
@@ -25,6 +26,7 @@ import {
   tableSkeletonRows,
   renderEmptyState,
 } from '../ui/data_table.js';
+import { displayLabel } from '../helpers/display_labels.js';
 
 const LEDGER_PAGE = 50;
 const INVOICE_PAGE = 50;
@@ -226,7 +228,7 @@ export function mount(container, ctx) {
           ? renderAlertBanner({ variant: 'error', message: customerInputError })
           : null,
         tenant && cid
-          ? el('p', { className: 'text-muted', style: { fontSize: 13, marginTop: 8 } },
+          ? el('p', { className: 'text-muted text-sm mt-2' },
             'Customer: ',
             el('a', { href: `/customers/${cid}`, className: 'font-mono' }, cid),
           )
@@ -247,7 +249,7 @@ export function mount(container, ctx) {
         render();
       } }),
       tab === 'wallet'
-        ? el('div', { style: { marginTop: 24 } },
+        ? el('div', { className: 'section-block stack' },
           !cid && !tenant
             ? renderAlertBanner({
               variant: 'info',
@@ -288,7 +290,7 @@ export function mount(container, ctx) {
         )
         : null,
       tab === 'ledger'
-        ? el('div', { style: { marginTop: 24 } },
+        ? el('div', { className: 'section-block stack' },
           !cid
             ? renderAlertBanner({
               variant: 'info',
@@ -336,7 +338,7 @@ export function mount(container, ctx) {
                     ledgerView.rows.map((row) =>
                       el('tr', null,
                         el('td', null, renderMiddleTruncateUuid(row.id)),
-                        el('td', null, row.type),
+                        el('td', null, displayLabel(row.type)),
                         el('td', { className: 'font-mono' }, formatDecimalDisplay(row.amount)),
                         el('td', null, row.campaign_id ? renderMiddleTruncateUuid(row.campaign_id) : '—'),
                         el('td', { className: 'text-muted' },
@@ -348,17 +350,14 @@ export function mount(container, ctx) {
                 ),
               ),
               ledgerView.total > LEDGER_PAGE
-                ? el('div', {
-                  className: 'flex items-center gap-2 mt-4',
-                  style: { justifyContent: 'flex-end' },
-                },
+                ? el('div', { className: 'pagination-bar' },
                   el('button', {
                     type: 'button',
                     className: 'btn btn--secondary btn--sm',
                     disabled: ledgerPage === 0,
                     onClick: () => { ledgerPage = Math.max(0, ledgerPage - 1); ledgerResource.reload(); },
                   }, 'Prev'),
-                  el('span', { className: 'text-muted', style: { fontSize: 12 } },
+                  el('span', { className: 'text-muted text-xs' },
                     `${ledgerPage + 1} / ${Math.ceil(ledgerView.total / LEDGER_PAGE)}`,
                   ),
                   el('button', {
@@ -374,7 +373,7 @@ export function mount(container, ctx) {
         )
         : null,
       tab === 'invoices'
-        ? el('div', { style: { marginTop: 24 } },
+        ? el('div', { className: 'section-block stack' },
           invoicesState.loading ? el('span', { className: 'text-muted' }, 'Loading…') : null,
           renderBlocking(invoicesState.error),
           invoicesState.data
@@ -416,7 +415,7 @@ export function mount(container, ctx) {
                           }, renderMiddleTruncateUuid(inv.id)),
                         ),
                         el('td', null, inv.billing_month ?? '—'),
-                        el('td', null, inv.status ?? '—'),
+                        el('td', null, inv.status ? renderStatusBadge(inv.status, { kind: 'invoice' }) : '—'),
                         el('td', { className: 'font-mono' },
                           formatAmountMicro(inv.total_micro ?? 0, inv.currency),
                         ),
@@ -433,10 +432,7 @@ export function mount(container, ctx) {
                 ),
               ),
               invoicePages > 1
-                ? el('div', {
-                  className: 'flex items-center gap-2 mt-4',
-                  style: { justifyContent: 'flex-end' },
-                },
+                ? el('div', { className: 'pagination-bar' },
                   el('button', {
                     type: 'button',
                     className: 'btn btn--secondary btn--sm',
@@ -446,7 +442,7 @@ export function mount(container, ctx) {
                       invoicesResource.reload();
                     },
                   }, 'Prev'),
-                  el('span', { className: 'text-muted', style: { fontSize: 12 } },
+                  el('span', { className: 'text-muted text-xs' },
                     `${invoicePage + 1} / ${invoicePages}`,
                   ),
                   el('button', {

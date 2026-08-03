@@ -64,7 +64,7 @@ export function mount(container, ctx) {
 
   function renderLoadingCards() {
     replaceChildren(container,
-      el('div', { className: 'grid-stats' },
+      el('div', { className: 'grid-stats section-block' },
         ['Name', 'Balance', 'Currency', 'Created'].map((label) =>
           el('div', { className: 'metric-card metric-card--loading' },
             el('div', { className: 'metric-card__label' }, label),
@@ -115,7 +115,7 @@ export function mount(container, ctx) {
           ),
         ),
       ),
-      el('div', { className: 'grid-stats' },
+      el('div', { className: 'grid-stats section-block' },
         el('div', { className: 'metric-card' },
           el('div', { className: 'metric-card__label' }, 'Balance'),
           el('div', { className: 'metric-card__value font-mono' }, formatUsdDecimal(customer.balance)),
@@ -133,69 +133,51 @@ export function mount(container, ctx) {
           el('div', { className: 'metric-card__value font-mono' }, formatUsdDecimal(customer.total_spend)),
         ),
       ),
-      el('div', { className: 'mb-4' },
-        el('h2', {
-          style: { fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 12 },
-        }, 'Details'),
-        el('div', {
-          style: {
-            display: 'grid',
-            gridTemplateColumns: 'auto 1fr',
-            gap: '8px 24px',
-            fontSize: 13,
-          },
-        },
-          el('span', { className: 'text-muted' }, 'ID'),
-          el('span', { className: 'font-mono', style: { color: 'var(--text-secondary)' } }, customer.id),
-          el('span', { className: 'text-muted' }, 'Created'),
-          el('span', { className: 'text-secondary' },
+      el('section', { className: 'section-block' },
+        el('h2', { className: 'subsection-title' }, 'Details'),
+        el('dl', { className: 'definition-list' },
+          el('dt', null, 'ID'),
+          el('dd', { className: 'font-mono text-secondary' }, customer.id),
+          el('dt', null, 'Created'),
+          el('dd', null,
             customer.created_at ? new Date(customer.created_at).toLocaleString() : '—',
           ),
-          el('span', { className: 'text-muted' }, 'Updated'),
-          el('span', { className: 'text-secondary' },
+          el('dt', null, 'Updated'),
+          el('dd', null,
             customer.updated_at ? new Date(customer.updated_at).toLocaleString() : '—',
           ),
         ),
       ),
-      el('div', { className: 'mb-4' },
-        el('h2', {
-          style: { fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 12 },
-        }, 'Tax profile'),
+      el('section', { className: 'section-block' },
+        el('h2', { className: 'subsection-title' }, 'Tax profile'),
         taxState.loading ? el('span', { className: 'text-muted' }, 'Loading…') : null,
         taxState.error
-          ? el('p', { className: 'text-muted', style: { fontSize: 13 } }, 'Tax profile not available.')
+          ? el('p', { className: 'text-muted text-sm' }, 'Tax profile not available.')
           : null,
         taxState.data
-          ? el('div', {
-            style: {
-              display: 'grid',
-              gridTemplateColumns: 'auto 1fr',
-              gap: '8px 24px',
-              fontSize: 13,
-            },
-          },
-            el('span', { className: 'text-muted' }, 'Country'),
-            el('span', null, taxState.data.country_code ?? '—'),
-            el('span', { className: 'text-muted' }, 'Region'),
-            el('span', null, taxState.data.tax_region ?? '—'),
-            el('span', { className: 'text-muted' }, 'Scheme'),
-            el('span', null, taxState.data.tax_scheme ?? '—'),
-            el('span', { className: 'text-muted' }, 'Rate (bps)'),
-            el('span', { className: 'font-mono' }, String(taxState.data.tax_rate_bps ?? 0)),
+          ? el('dl', { className: 'definition-list' },
+            el('dt', null, 'Country'),
+            el('dd', null, taxState.data.country_code ?? '—'),
+            el('dt', null, 'Region'),
+            el('dd', null, taxState.data.tax_region ?? '—'),
+            el('dt', null, 'Scheme'),
+            el('dd', null, taxState.data.tax_scheme ?? '—'),
+            el('dt', null, 'Rate (bps)'),
+            el('dd', { className: 'font-mono' }, String(taxState.data.tax_rate_bps ?? 0)),
           )
           : null,
         !taxState.loading && !taxState.data && !taxState.error
-          ? el('p', { className: 'text-muted', style: { fontSize: 13 } }, 'No tax profile on file.')
+          ? el('p', { className: 'text-muted text-sm' }, 'No tax profile on file.')
           : null,
         canWriteCustomer
-          ? el('p', { className: 'text-muted', style: { fontSize: 12, marginTop: 8 } },
+          ? el('p', { className: 'text-muted text-xs mt-2' },
             'Tax profile edits use PUT /api/v1/customers/{id}/tax-profile (form in a future release).',
           )
           : null,
       ),
-      el('div', { className: 'mb-4' },
+      el('section', { className: 'section-block' },
         el('div', { className: 'flex items-center gap-2 mb-3' },
-          el('h2', { style: { fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)' } }, 'Wallet'),
+          el('h2', { className: 'subsection-title' }, 'Wallet'),
           el('button', {
             type: 'button',
             className: 'btn btn--secondary btn--sm',
@@ -204,7 +186,7 @@ export function mount(container, ctx) {
         ),
         walletState.loading ? el('span', { className: 'text-muted' }, 'Loading…') : null,
         walletState.data
-          ? el('div', { className: 'metric-row' },
+          ? el('div', { className: 'metric-row section-block' },
             el('div', { className: 'metric-card' },
               el('div', { className: 'metric-card__label' }, 'Balance (micro)'),
               el('div', { className: 'metric-card__value font-mono' },
@@ -220,9 +202,9 @@ export function mount(container, ctx) {
           )
           : null,
       ),
-      el('div', { className: 'mb-4' },
+      el('section', { className: 'section-block' },
         el('div', { className: 'flex items-center gap-2 mb-3' },
-          el('h2', { style: { fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)' } }, 'Campaigns'),
+          el('h2', { className: 'subsection-title' }, 'Campaigns'),
           el('a', {
             href: `/campaigns?customer_id=${encodeURIComponent(id)}`,
             className: 'btn btn--secondary btn--sm',
@@ -258,7 +240,7 @@ export function mount(container, ctx) {
                   clickableRow({
                     onActivate: () => ctx.navigate(`/campaigns/${c.id}`),
                     cells: [
-                      el('td', { style: { fontWeight: 500 } }, c.name),
+                      el('td', { className: 'font-medium' }, c.name),
                       el('td', null, renderStatusBadge(c.status)),
                       el('td', { className: 'font-mono' }, formatUsdDecimal(c.budget_limit ?? '0.00')),
                     ],

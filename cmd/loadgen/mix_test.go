@@ -10,7 +10,10 @@ func TestDefaultMix_includesOpenRTB26(t *testing.T) {
 	for _, mode := range []string{"smoke", "full", "business"} {
 		mix := defaultMix(mode, 0, 0)
 		assert.Greater(t, mix.pctOpenRTB, 0, "mode=%s", mode)
-		total := mix.pctOpenRTB + mix.pctValid + mix.pctFraud + mix.pctInvalid + mix.pctDDoS
+		if mode == "business" || mode == "smoke" {
+			assert.Greater(t, mix.pctTelegram, 0, "mode=%s", mode)
+		}
+		total := mix.pctOpenRTB + mix.pctTelegram + mix.pctValid + mix.pctFraud + mix.pctInvalid + mix.pctDDoS
 		assert.LessOrEqual(t, total, 100, "mode=%s", mode)
 	}
 }

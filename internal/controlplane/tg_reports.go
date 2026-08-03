@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"espx/internal/controlplane/adminapi"
+
 	"github.com/google/uuid"
 )
 
@@ -84,11 +86,37 @@ func (s *TelegramServiceImpl) reportFreshness(ctx context.Context) TelegramRepor
 	return fresh
 }
 
+func (s *TelegramServiceImpl) resolveTelegramCampaignIDs(
+	ctx context.Context,
+	filter adminapi.TelegramReportFilter,
+) ([]uuid.UUID, error) {
+	if filter.CampaignID != nil {
+		return []uuid.UUID{*filter.CampaignID}, nil
+	}
+	if filter.CustomerID != nil {
+		return adminapi.ListCustomerCampaignIDs(ctx, s.pool, *filter.CustomerID)
+	}
+	return nil, nil
+}
+
+func appendTelegramCampaignFilter(query string, args []any, campaignIDs []uuid.UUID) (string, []any, bool) {
+	if campaignIDs == nil {
+		return query, args, true
+	}
+	if len(campaignIDs) == 0 {
+		return query, args, false
+	}
+	return query + ` AND campaign_id IN (?)`, append(args, campaignIDs), true
+}
+
 func (s *TelegramServiceImpl) queryTelegramCounts(
 	ctx context.Context,
 	from, to time.Time,
-	campaignID *uuid.UUID,
+	campaignIDs []uuid.UUID,
 ) (clicks, impressions, premium, motivated, conversions int64, err error) {
+	if campaignIDs != nil && len(campaignIDs) == 0 {
+		return 0, 0, 0, 0, 0, nil
+	}
 	ch := s.svc.CHQuery()
 	if ch == nil {
 		return 0, 0, 0, 0, 0, errors.New("clickhouse connection not available")
@@ -103,16 +131,25 @@ func (s *TelegramServiceImpl) queryTelegramCounts(
 		FROM tg_events
 		WHERE created_at >= ? AND created_at < ?`
 	args := []any{from, to}
-	if campaignID != nil {
-		query += ` AND campaign_id = ?`
-		args = append(args, *campaignID)
+	var ok bool
+	query, args, ok = appendTelegramCampaignFilter(query, args, campaignIDs)
+	if !ok {
+		return 0, 0, 0, 0, 0, nil
 	}
 	err = ch.QueryRow(ctx, query, args...).Scan(&clicks, &impressions, &premium, &motivated, &conversions)
 	return clicks, impressions, premium, motivated, conversions, err
 }
 
-func (s *TelegramServiceImpl) GetTelegramSummaryReport(ctx context.Context, from, to time.Time, campaignID *uuid.UUID) ([]byte, error) {
-	clicks, impressions, premium, motivated, conversions, err := s.queryTelegramCounts(ctx, from, to, campaignID)
+func (s *TelegramServiceImpl) GetTelegramSummaryReport(
+	ctx context.Context,
+	from, to time.Time,
+	filter adminapi.TelegramReportFilter,
+) ([]byte, error) {
+	campaignIDs, err := s.resolveTelegramCampaignIDs(ctx, filter)
+	if err != nil {
+		return nil, fmt.Errorf("resolve campaign filter: %w", err)
+	}
+	clicks, impressions, premium, motivated, conversions, err := s.queryTelegramCounts(ctx, from, to, campaignIDs)
 	if err != nil {
 		return nil, fmt.Errorf("clickhouse query failed: %w", err)
 	}
@@ -131,7 +168,18 @@ func (s *TelegramServiceImpl) GetTelegramSummaryReport(ctx context.Context, from
 	return json.Marshal(report)
 }
 
-func (s *TelegramServiceImpl) GetTelegramFunnelReport(ctx context.Context, from, to time.Time, campaignID *uuid.UUID) ([]byte, error) {
+func (s *TelegramServiceImpl) GetTelegramFunnelReport(
+	ctx context.Context,
+	from, to time.Time,
+	filter adminapi.TelegramReportFilter,
+) ([]byte, error) {
+	campaignIDs, err := s.resolveTelegramCampaignIDs(ctx, filter)
+	if err != nil {
+		return nil, fmt.Errorf("resolve campaign filter: %w", err)
+	}
+	if campaignIDs != nil && len(campaignIDs) == 0 {
+		return json.Marshal(TelegramFunnelReport{Freshness: s.reportFreshness(ctx)})
+	}
 	ch := s.svc.CHQuery()
 	if ch == nil {
 		return nil, errors.New("clickhouse connection not available")
@@ -145,9 +193,10 @@ func (s *TelegramServiceImpl) GetTelegramFunnelReport(ctx context.Context, from,
 		FROM tg_events
 		WHERE created_at >= ? AND created_at < ?`
 	args := []any{from, to}
-	if campaignID != nil {
-		query += ` AND campaign_id = ?`
-		args = append(args, *campaignID)
+	var ok bool
+	query, args, ok = appendTelegramCampaignFilter(query, args, campaignIDs)
+	if !ok {
+		return json.Marshal(TelegramFunnelReport{Freshness: s.reportFreshness(ctx)})
 	}
 	query += ` GROUP BY start_param ORDER BY clicks DESC LIMIT 100`
 
@@ -171,7 +220,18 @@ func (s *TelegramServiceImpl) GetTelegramFunnelReport(ctx context.Context, from,
 	return json.Marshal(report)
 }
 
-func (s *TelegramServiceImpl) GetTelegramBotsReport(ctx context.Context, from, to time.Time, campaignID *uuid.UUID) ([]byte, error) {
+func (s *TelegramServiceImpl) GetTelegramBotsReport(
+	ctx context.Context,
+	from, to time.Time,
+	filter adminapi.TelegramReportFilter,
+) ([]byte, error) {
+	campaignIDs, err := s.resolveTelegramCampaignIDs(ctx, filter)
+	if err != nil {
+		return nil, fmt.Errorf("resolve campaign filter: %w", err)
+	}
+	if campaignIDs != nil && len(campaignIDs) == 0 {
+		return json.Marshal(TelegramBotsReport{Freshness: s.reportFreshness(ctx)})
+	}
 	ch := s.svc.CHQuery()
 	if ch == nil {
 		return nil, errors.New("clickhouse connection not available")
@@ -185,9 +245,10 @@ func (s *TelegramServiceImpl) GetTelegramBotsReport(ctx context.Context, from, t
 		FROM tg_events
 		WHERE created_at >= ? AND created_at < ? AND bot_id > 0`
 	args := []any{from, to}
-	if campaignID != nil {
-		query += ` AND campaign_id = ?`
-		args = append(args, *campaignID)
+	var ok bool
+	query, args, ok = appendTelegramCampaignFilter(query, args, campaignIDs)
+	if !ok {
+		return json.Marshal(TelegramBotsReport{Freshness: s.reportFreshness(ctx)})
 	}
 	query += ` GROUP BY bot_id ORDER BY clicks DESC LIMIT 50`
 
@@ -211,7 +272,18 @@ func (s *TelegramServiceImpl) GetTelegramBotsReport(ctx context.Context, from, t
 	return json.Marshal(report)
 }
 
-func (s *TelegramServiceImpl) GetTelegramPremiumReport(ctx context.Context, from, to time.Time, campaignID *uuid.UUID) ([]byte, error) {
+func (s *TelegramServiceImpl) GetTelegramPremiumReport(
+	ctx context.Context,
+	from, to time.Time,
+	filter adminapi.TelegramReportFilter,
+) ([]byte, error) {
+	campaignIDs, err := s.resolveTelegramCampaignIDs(ctx, filter)
+	if err != nil {
+		return nil, fmt.Errorf("resolve campaign filter: %w", err)
+	}
+	if campaignIDs != nil && len(campaignIDs) == 0 {
+		return json.Marshal(TelegramPremiumReport{Freshness: s.reportFreshness(ctx)})
+	}
 	ch := s.svc.CHQuery()
 	if ch == nil {
 		return nil, errors.New("clickhouse connection not available")
@@ -223,9 +295,10 @@ func (s *TelegramServiceImpl) GetTelegramPremiumReport(ctx context.Context, from
 		FROM tg_events
 		WHERE created_at >= ? AND created_at < ?`
 	args := []any{from, to}
-	if campaignID != nil {
-		query += ` AND campaign_id = ?`
-		args = append(args, *campaignID)
+	var ok bool
+	query, args, ok = appendTelegramCampaignFilter(query, args, campaignIDs)
+	if !ok {
+		return json.Marshal(TelegramPremiumReport{Freshness: s.reportFreshness(ctx)})
 	}
 	var premium, nonPremium int64
 	if err := ch.QueryRow(ctx, query, args...).Scan(&premium, &nonPremium); err != nil {
@@ -245,7 +318,18 @@ func (s *TelegramServiceImpl) GetTelegramPremiumReport(ctx context.Context, from
 	return json.Marshal(report)
 }
 
-func (s *TelegramServiceImpl) GetTelegramFraudReport(ctx context.Context, from, to time.Time, campaignID *uuid.UUID) ([]byte, error) {
+func (s *TelegramServiceImpl) GetTelegramFraudReport(
+	ctx context.Context,
+	from, to time.Time,
+	filter adminapi.TelegramReportFilter,
+) ([]byte, error) {
+	campaignIDs, err := s.resolveTelegramCampaignIDs(ctx, filter)
+	if err != nil {
+		return nil, fmt.Errorf("resolve campaign filter: %w", err)
+	}
+	if campaignIDs != nil && len(campaignIDs) == 0 {
+		return json.Marshal(TelegramFraudReport{Freshness: s.reportFreshness(ctx)})
+	}
 	ch := s.svc.CHQuery()
 	if ch == nil {
 		return nil, errors.New("clickhouse connection not available")
@@ -257,9 +341,10 @@ func (s *TelegramServiceImpl) GetTelegramFraudReport(ctx context.Context, from, 
 		FROM tg_events
 		WHERE created_at >= ? AND created_at < ?`
 	args := []any{from, to}
-	if campaignID != nil {
-		query += ` AND campaign_id = ?`
-		args = append(args, *campaignID)
+	var ok bool
+	query, args, ok = appendTelegramCampaignFilter(query, args, campaignIDs)
+	if !ok {
+		return json.Marshal(TelegramFraudReport{Freshness: s.reportFreshness(ctx)})
 	}
 	var shadow, blocked int64
 	if err := ch.QueryRow(ctx, query, args...).Scan(&shadow, &blocked); err != nil {
@@ -274,6 +359,10 @@ func (s *TelegramServiceImpl) GetTelegramFraudReport(ctx context.Context, from, 
 }
 
 // GetTelegramReport keeps the legacy single-endpoint response shape.
-func (s *TelegramServiceImpl) GetTelegramReport(ctx context.Context, from, to time.Time, campaignID *uuid.UUID) ([]byte, error) {
-	return s.GetTelegramSummaryReport(ctx, from, to, campaignID)
+func (s *TelegramServiceImpl) GetTelegramReport(
+	ctx context.Context,
+	from, to time.Time,
+	filter adminapi.TelegramReportFilter,
+) ([]byte, error) {
+	return s.GetTelegramSummaryReport(ctx, from, to, filter)
 }

@@ -3,6 +3,7 @@ import { api, ApiError } from '../helpers/api_client.js';
 import { renderErrorBlock } from '../ui/error_block.js';
 import { isPageBlockingError, mapServiceError } from '../helpers/service_error.js';
 import { renderBreadcrumbs } from '../ui/breadcrumbs.js';
+import { formatYesNo } from '../helpers/display_labels.js';
 
 /**
  * Mount the Redis shard health report view.
@@ -65,8 +66,7 @@ export function mount(container) {
               ? el('tr', null,
                 el('td', {
                   colSpan: 5,
-                  className: 'text-muted',
-                  style: { textAlign: 'center', padding: 24 },
+                  className: 'text-muted text-center p-6',
                 }, 'No data'),
               )
               : null,
@@ -75,10 +75,10 @@ export function mount(container) {
                 className: !s.ping_ok ? 'data-table__row--danger' : undefined,
               },
                 el('td', null, String(s.shard_id)),
-                el('td', null, s.ping_ok ? 'yes' : 'no'),
+                el('td', null, formatYesNo(s.ping_ok)),
                 el('td', null, s.ping_latency_ms?.toFixed(1) ?? '—'),
                 el('td', null, String(s.config_version_lag ?? 0)),
-                el('td', null, s.config_version_synced ? 'yes' : 'no'),
+                el('td', null, formatYesNo(s.config_version_synced)),
               ),
             ),
           ),

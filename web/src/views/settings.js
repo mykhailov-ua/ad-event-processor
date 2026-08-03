@@ -18,9 +18,14 @@ import { validateCurrency, validateTrackingDomain } from '../helpers/validators.
 import { renderSettingsSummaryItem } from '../ui/settings_section.js';
 import { renderSectionCard } from '../ui/section_card.js';
 import { renderIcon } from '../ui/icon.js';
-
-const INGRESS_OPTIONS = ['espx_native', 'openrtb_3'];
-const PROFILE_OPTIONS = ['single_vps', 'compose_dev', 'k8s_k3s'];
+import {
+  currencySelectOptions,
+  displayLabel,
+  INGRESS_SELECT_OPTIONS,
+  PROFILE_SELECT_OPTIONS,
+  timezoneSelectOptions,
+} from '../helpers/display_labels.js';
+import { devModeEnabled, setDevMode } from '../helpers/dev_mode.js';
 
 /**
  * Mount the platform settings view with save and apply actions.
@@ -161,8 +166,8 @@ export function mount(container) {
               el('h1', { className: 'page-header__title' }, 'Platform settings'),
             ),
             view?.bootstrap_complete === false
-              ? renderStatusBadge('pending', { label: 'not initialized' })
-              : renderStatusBadge('active', { label: 'initialized', kind: 'service' }),
+              ? renderStatusBadge('pending', { label: 'Not initialized' })
+              : renderStatusBadge('active', { label: 'Initialized', kind: 'service' }),
           ),
           el('p', { className: 'settings-layout__intro' },
             'Configure tracking, deployment profile, edge features, and payment integration. ',
@@ -170,13 +175,10 @@ export function mount(container) {
           ),
         ),
         restartBanner.length > 0
-          ? renderSectionCard({
-              urgent: 'warning',
-              className: 'mb-4',
-              children: el('p', { style: { margin: 0, color: 'var(--warning)', fontWeight: '500' } },
-                `Service restart required: ${restartBanner.join(', ')}`
-              )
-            })
+          ? renderAlertBanner({
+            variant: 'warning',
+            message: `Service restart required: ${restartBanner.map((s) => displayLabel(s)).join(', ')}`,
+          })
           : null,
         !canWrite
           ? renderAlertBanner({
@@ -185,27 +187,24 @@ export function mount(container) {
           })
           : null,
         el('div', { className: 'settings-summary' },
-          renderSettingsSummaryItem('Profile', c.profile ?? '—'),
-          renderSettingsSummaryItem('Ingress', c.ingress_schema ?? '—'),
+          renderSettingsSummaryItem('Deployment profile', displayLabel(c.profile)),
+          renderSettingsSummaryItem('Traffic format', displayLabel(c.ingress_schema)),
           renderSettingsSummaryItem('Timezone', c.timezone ?? '—'),
           view?.click_url_template
             ? renderSettingsSummaryItem(
               'Click URL',
-              el('span', { className: 'font-mono', title: view.click_url_template },
-                view.click_url_template.length > 28
-                  ? `${view.click_url_template.slice(0, 28)}…`
-                  : view.click_url_template,
-              ),
+              el('code', {
+                className: 'settings-summary__code',
+                title: view.click_url_template,
+              }, view.click_url_template),
             )
             : renderSettingsSummaryItem('Click URL', '—'),
         ),
-        el('form', { onSubmit: handleSave },
+        el('form', { className: 'settings-form', onSubmit: handleSave },
           el('div', { className: 'settings-grid' },
             renderSectionCard({
-              title: el('div', { className: 'settings-panel__title-row' },
-                renderIcon('globe', { size: 18, className: 'settings-panel__icon' }),
-                el('h2', { className: 'settings-panel__title' }, 'General'),
-              ),
+              icon: 'globe',
+              title: 'General',
               desc: 'Defaults used across campaigns and billing.',
               children: [
                 renderFormField({
@@ -225,57 +224,55 @@ export function mount(container) {
                 renderFormField({
                   label: 'Default currency',
                   error: fieldErrors.default_currency,
-                  hint: '3-letter ISO code (e.g. USD)',
-                  children: el('input', {
-                    className: 'form-input',
-                    value: c.default_currency ?? '',
+                  hint: 'Used for billing and reporting defaults',
+                  children: renderSelect({
+                    value: (c.default_currency || 'USD').toUpperCase(),
+                    options: currencySelectOptions(c.default_currency),
                     disabled: !canWrite,
-                    onInput: (e) => {
-                      updateField('default_currency', e.target.value.toUpperCase());
-                      fieldErrors.default_currency = validateCurrency(e.target.value);
+                    onChange: (v) => {
+                      updateField('default_currency', v);
+                      fieldErrors.default_currency = validateCurrency(v);
                     },
                   }),
                 }),
                 renderFormField({
                   label: 'Timezone',
-                  hint: 'IANA timezone for reporting and pacing',
-                  children: el('input', {
-                    className: 'form-input',
-                    value: c.timezone ?? '',
+                  hint: 'Used for reporting and pacing',
+                  children: renderSelect({
+                    value: c.timezone || 'UTC',
+                    options: timezoneSelectOptions(c.timezone),
                     disabled: !canWrite,
-                    onInput: (e) => updateField('timezone', e.target.value),
+                    onChange: (v) => updateField('timezone', v),
                   }),
                 }),
               ],
             }),
             renderSectionCard({
-              title: el('div', { className: 'settings-panel__title-row' },
-                renderIcon('server', { size: 18, className: 'settings-panel__icon' }),
-                el('h2', { className: 'settings-panel__title' }, 'Deployment'),
-              ),
+              icon: 'server',
+              title: 'Deployment',
               desc: 'Runtime profile and network bindings for this installation.',
               children: [
                 renderFormField({
-                  label: 'Profile',
+                  label: 'Deployment profile',
                   children: renderSelect({
                     value: c.profile ?? 'single_vps',
-                    options: PROFILE_OPTIONS,
+                    options: PROFILE_SELECT_OPTIONS,
                     disabled: !canWrite,
                     onChange: (v) => updateField('profile', v),
                   }),
                 }),
                 renderFormField({
-                  label: 'Ingress schema',
+                  label: 'Traffic format',
                   children: renderSelect({
                     value: c.ingress_schema ?? 'espx_native',
-                    options: INGRESS_OPTIONS,
+                    options: INGRESS_SELECT_OPTIONS,
                     disabled: !canWrite,
                     onChange: (v) => updateField('ingress_schema', v),
                   }),
                 }),
                 renderFormField({
                   label: 'Network interface',
-                  hint: 'Interface for edge XDP when enabled',
+                  hint: 'Host network interface used by edge acceleration when enabled',
                   children: el('input', {
                     className: 'form-input',
                     value: c.network_interface ?? '',
@@ -286,10 +283,8 @@ export function mount(container) {
               ],
             }),
             renderSectionCard({
-              title: el('div', { className: 'settings-panel__title-row' },
-                renderIcon('toggle-left', { size: 18, className: 'settings-panel__icon' }),
-                el('h2', { className: 'settings-panel__title' }, 'Features'),
-              ),
+              icon: 'toggle-left',
+              title: 'Features',
               desc: 'Optional telemetry and edge acceleration.',
               children: [
                 el('div', { className: 'settings-check-group' },
@@ -300,27 +295,35 @@ export function mount(container) {
                     onChange: (checked) => updateField('telemetry_enabled', checked),
                   }),
                   renderCheckbox({
-                    label: 'Edge XDP — kernel fast-path on the network interface',
+                    label: 'Edge acceleration (XDP) — fast network filtering at the kernel',
                     checked: c.edge_xdp ?? false,
                     disabled: !canWrite,
                     onChange: (checked) => updateField('edge_xdp', checked),
+                  }),
+                  renderCheckbox({
+                    label: 'Developer mode — show raw sysctl values and API paths in the UI',
+                    checked: devModeEnabled(),
+                    onChange: (checked) => {
+                      setDevMode(checked);
+                      render();
+                    },
                   }),
                 ),
               ],
             }),
             renderSectionCard({
-              title: el('div', { className: 'settings-panel__title-row' },
-                renderIcon('credit-card', { size: 18, className: 'settings-panel__icon' }),
-                el('h2', { className: 'settings-panel__title' }, 'Stripe'),
-              ),
+              icon: 'credit-card',
+              title: 'Stripe',
               desc: 'Payment provider for wallet top-ups. Secrets are stored server-side.',
               children: [
-                renderCheckbox({
-                  label: 'Stripe enabled',
-                  checked: c.stripe?.enabled ?? false,
-                  disabled: !canWrite,
-                  onChange: (checked) => updateField('stripe', { ...c.stripe, enabled: checked }),
-                }),
+                el('div', { className: 'settings-check-group' },
+                  renderCheckbox({
+                    label: 'Stripe enabled',
+                    checked: c.stripe?.enabled ?? false,
+                    disabled: !canWrite,
+                    onChange: (checked) => updateField('stripe', { ...c.stripe, enabled: checked }),
+                  }),
+                ),
                 renderFormField({
                   label: 'Secret key',
                   htmlFor: 'settings-stripe-secret',
@@ -329,7 +332,7 @@ export function mount(container) {
                     id: 'settings-stripe-secret',
                     type: 'password',
                     className: 'form-input',
-                    placeholder: 'sk_live_…',
+                    placeholder: 'Enter Stripe secret key',
                     disabled: !canWrite,
                     value: stripeSecretInput,
                     onInput: (e) => { stripeSecretInput = e.target.value; },
@@ -343,7 +346,7 @@ export function mount(container) {
                     id: 'settings-stripe-webhook',
                     type: 'password',
                     className: 'form-input',
-                    placeholder: 'whsec_…',
+                    placeholder: 'Enter webhook signing secret',
                     disabled: !canWrite,
                     value: stripeWebhookInput,
                     onInput: (e) => { stripeWebhookInput = e.target.value; },

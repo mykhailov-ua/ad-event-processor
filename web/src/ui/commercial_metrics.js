@@ -49,7 +49,7 @@ export function renderCommercialMetrics(kpis, opts = {}) {
 
   return el('div', { className: 'grid-stats', 'data-testid': 'commercial-metrics' },
     ...cards,
-    kpis.freshness ? renderFreshnessBadge(kpis.freshness) : null,
+    kpis.freshness ? el('div', { className: 'metric-card metric-card--freshness' }, renderFreshnessBadge(kpis.freshness)) : null,
   );
 }
 
@@ -62,7 +62,9 @@ export function renderCommercialMetrics(kpis, opts = {}) {
  */
 function metricCard(label, value) {
   return el('div', { className: 'metric-card' },
-    el('div', { className: 'metric-card__label' }, label),
+    el('div', { className: 'metric-card__head' },
+      el('div', { className: 'metric-card__label' }, label),
+    ),
     el('div', { className: 'metric-card__value font-mono' }, value),
   );
 }

@@ -144,17 +144,16 @@ export function tableSkeletonRows(colCount, rowCount = 5) {
  * @returns {HTMLElement}
  */
 export function renderEmptyState(opts) {
-  return el('div', { className: 'empty-state', style: { padding: '28px 16px', textAlign: 'center' } },
+  return el('div', { className: 'empty-state' },
     renderIcon(opts.icon ?? 'file-text', { size: 28, className: 'empty-state__icon text-muted mb-2' }),
-    el('div', { className: 'empty-state__title', style: { fontWeight: 600 } }, opts.title),
+    el('div', { className: 'empty-state__title' }, opts.title),
     opts.description
-      ? el('div', { className: 'empty-state__desc text-muted', style: { fontSize: 13, marginTop: 4 } }, opts.description)
+      ? el('div', { className: 'empty-state__desc text-muted text-sm' }, opts.description)
       : null,
     opts.actionLabel && opts.onAction
       ? el('button', {
         type: 'button',
         className: 'btn btn--secondary btn--sm empty-state__action',
-        style: { marginTop: 12 },
         onClick: opts.onAction,
       }, opts.actionLabel)
       : null,

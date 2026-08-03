@@ -26,11 +26,11 @@ export function mount(container, _ctx) {
     if (destroyed) return;
     replaceChildren(container,
       el('div', { className: 'login-page' },
-        el('div', { className: 'login-box', style: { maxWidth: 420 } },
+        el('div', { className: 'login-box login-box--narrow' },
           el('h1', { className: 'login-box__title' }, 'Bootstrap'),
           el('p', { className: 'login-box__sub' }, 'Platform bootstrap'),
           state.error
-            ? el('div', { style: { color: 'var(--error)', fontSize: 13, marginBottom: 12 } }, state.error)
+            ? el('div', { className: 'text-danger text-sm mb-3' }, state.error)
             : null,
           el('form', { onSubmit: handleSubmit },
             el('div', { className: 'form-field' },

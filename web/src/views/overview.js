@@ -15,9 +15,27 @@ import { renderFreshnessBadge } from '../ui/freshness_badge.js';
 import { renderAlertBanner } from '../ui/alert_banner.js';
 import { renderDoctorPanel } from '../ui/doctor_panel.js';
 import { renderIcon } from '../ui/icon.js';
-import { renderSectionCard } from '../ui/section_card.js';
 import { renderAlertFeed } from '../ui/recommendation_cards.js';
 import { renderStatusHint } from '../ui/status_hint.js';
+import { displayLabel, formatYesNo } from '../helpers/display_labels.js';
+
+/**
+ * Render one overview KPI metric card.
+ *
+ * @param {string} label
+ * @param {string} value
+ * @param {string} icon
+ * @returns {HTMLElement}
+ */
+function renderOverviewMetric(label, value, icon) {
+  return el('div', { className: 'metric-card' },
+    el('div', { className: 'metric-card__head' },
+      el('div', { className: 'metric-card__label' }, label),
+      renderIcon(icon, { size: 16, className: 'text-muted' }),
+    ),
+    el('div', { className: 'metric-card__value font-mono' }, value),
+  );
+}
 
 /**
  * Build permission-filtered quick navigation links for the overview page.
@@ -40,7 +58,7 @@ function buildQuickLinks(perms) {
     links.push({ href: '/settings', label: 'Settings', icon: 'settings' });
   }
   if (links.length === 0) return null;
-  return el('div', { className: 'flex items-center gap-2 mt-4', style: { flexWrap: 'wrap' } },
+  return el('div', { className: 'page-header__links' },
     links.map((l) =>
       el('a', { href: l.href, className: 'btn btn--secondary btn--sm' },
         renderIcon(l.icon, { size: 14 }),
@@ -109,10 +127,12 @@ export function mount(container) {
     const children = [
       el('div', { className: 'page-header' },
         el('div', { className: 'page-header__row' },
-          el('h1', { className: 'page-header__title' }, 'Overview'),
-          freshness ? renderFreshnessBadge(freshness) : null,
+          el('div', { className: 'flex items-center gap-2' },
+            el('h1', { className: 'page-header__title' }, 'Overview'),
+            freshness ? renderFreshnessBadge(freshness) : null,
+          ),
           state.meta?.version
-            ? el('span', { className: 'text-muted', style: { fontSize: 13 } }, `v${state.meta.version}`)
+            ? el('span', { className: 'text-muted text-sm' }, `v${state.meta.version}`)
             : null,
         ),
         buildQuickLinks(perms),
@@ -120,7 +140,7 @@ export function mount(container) {
       state.partialErrors.length > 0 && !state.partialDismissed
         ? renderStatusHint({
             tone: 'error',
-            message: el('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' } },
+            message: el('div', { className: 'flex items-center justify-between w-full' },
               el('span', null, `Partial degradation: ${state.partialErrors.join('; ')}`),
               el('button', {
                 type: 'button',
@@ -139,52 +159,16 @@ export function mount(container) {
           message: `License: ${license.state}${license.valid_until ? ` · until ${license.valid_until}` : ''}`,
         })
         : null,
-      state.loading ? el('span', { className: 'text-muted' }, 'Loading…') : null,
+      state.loading ? el('div', { className: 'text-muted' }, 'Loading…') : null,
       !state.loading && canOps && state.homeAlerts.length > 0
         ? renderAlertFeed(state.homeAlerts)
         : null,
       !state.loading && canOps && state.summary
         ? el('div', { className: 'grid-stats' },
-          renderSectionCard({
-            className: 'metric-card',
-            children: [
-              el('div', { className: 'flex items-center justify-between mb-2' },
-                el('div', { className: 'metric-card__label' }, 'Outbox pending'),
-                renderIcon('activity', { size: 16, className: 'text-muted' }),
-              ),
-              el('div', { className: 'metric-card__value font-mono' }, String(state.summary.outbox_pending ?? 0)),
-            ]
-          }),
-          renderSectionCard({
-            className: 'metric-card',
-            children: [
-              el('div', { className: 'flex items-center justify-between mb-2' },
-                el('div', { className: 'metric-card__label' }, 'RPS (estimate)'),
-                renderIcon('zap', { size: 16, className: 'text-muted' }),
-              ),
-              el('div', { className: 'metric-card__value font-mono' }, String(state.summary.rps_estimate ?? '—')),
-            ]
-          }),
-          renderSectionCard({
-            className: 'metric-card',
-            children: [
-              el('div', { className: 'flex items-center justify-between mb-2' },
-                el('div', { className: 'metric-card__label' }, 'Drift alert'),
-                renderIcon('alert-triangle', { size: 16, className: 'text-muted' }),
-              ),
-              el('div', { className: 'metric-card__value' }, state.summary.drift_alert ? 'Yes' : 'No'),
-            ]
-          }),
-          renderSectionCard({
-            className: 'metric-card',
-            children: [
-              el('div', { className: 'flex items-center justify-between mb-2' },
-                el('div', { className: 'metric-card__label' }, 'Emergency breaker'),
-                renderIcon('shield', { size: 16, className: 'text-muted' }),
-              ),
-              el('div', { className: 'metric-card__value font-mono' }, state.summary.emergency_breaker || '—'),
-            ]
-          }),
+          renderOverviewMetric('Outbox pending', String(state.summary.outbox_pending ?? 0), 'activity'),
+          renderOverviewMetric('RPS (estimate)', String(state.summary.rps_estimate ?? '—'), 'zap'),
+          renderOverviewMetric('Drift alert', formatYesNo(state.summary.drift_alert), 'alert-triangle'),
+          renderOverviewMetric('Emergency breaker', displayLabel(state.summary.emergency_breaker), 'shield'),
         )
         : null,
       canOps
@@ -203,7 +187,7 @@ export function mount(container) {
         })
         : null,
       !state.loading && !canOps && !buyerMode
-        ? el('p', { className: 'text-muted', style: { marginTop: 24, fontSize: 14 } },
+        ? el('p', { className: 'text-muted' },
           'Use the quick links above to manage campaigns and billing.',
         )
         : null,

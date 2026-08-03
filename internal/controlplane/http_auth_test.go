@@ -220,7 +220,8 @@ func TestAuthHandler_Refresh(t *testing.T) {
 		assert.Equal(t, http.StatusOK, resp.Code)
 
 		cookies := resp.Header().Values("Set-Cookie")
-		require.Len(t, cookies, 2)
+		require.Len(t, cookies, 3)
+		assert.NotEmpty(t, resp.Header().Get("X-CSRF-Token"))
 	})
 }
 
@@ -255,6 +256,7 @@ func TestAuthHandler_Me(t *testing.T) {
 	assert.Equal(t, RoleAdmin, dto.Role)
 	assert.Equal(t, customerID.String(), dto.CustomerID)
 	assert.Contains(t, dto.Permissions, "campaigns:write")
+	assert.NotEmpty(t, resp.Header().Get("X-CSRF-Token"))
 }
 
 func TestAuthHandler_MeRedisOutage(t *testing.T) {

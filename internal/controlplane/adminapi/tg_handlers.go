@@ -75,12 +75,18 @@ type TelegramService interface {
 	ListPostbacks(ctx context.Context, campaignID uuid.UUID) ([]PostbackDTO, error)
 	DeletePostback(ctx context.Context, id uuid.UUID) error
 	TestPostback(ctx context.Context, id uuid.UUID) error
-	GetTelegramReport(ctx context.Context, from, to time.Time, campaignID *uuid.UUID) ([]byte, error)
-	GetTelegramSummaryReport(ctx context.Context, from, to time.Time, campaignID *uuid.UUID) ([]byte, error)
-	GetTelegramFunnelReport(ctx context.Context, from, to time.Time, campaignID *uuid.UUID) ([]byte, error)
-	GetTelegramBotsReport(ctx context.Context, from, to time.Time, campaignID *uuid.UUID) ([]byte, error)
-	GetTelegramPremiumReport(ctx context.Context, from, to time.Time, campaignID *uuid.UUID) ([]byte, error)
-	GetTelegramFraudReport(ctx context.Context, from, to time.Time, campaignID *uuid.UUID) ([]byte, error)
+	GetTelegramReport(ctx context.Context, from, to time.Time, filter TelegramReportFilter) ([]byte, error)
+	GetTelegramSummaryReport(ctx context.Context, from, to time.Time, filter TelegramReportFilter) ([]byte, error)
+	GetTelegramFunnelReport(ctx context.Context, from, to time.Time, filter TelegramReportFilter) ([]byte, error)
+	GetTelegramBotsReport(ctx context.Context, from, to time.Time, filter TelegramReportFilter) ([]byte, error)
+	GetTelegramPremiumReport(ctx context.Context, from, to time.Time, filter TelegramReportFilter) ([]byte, error)
+	GetTelegramFraudReport(ctx context.Context, from, to time.Time, filter TelegramReportFilter) ([]byte, error)
+}
+
+// TelegramReportFilter scopes ClickHouse queries by customer and/or campaign.
+type TelegramReportFilter struct {
+	CustomerID *uuid.UUID
+	CampaignID *uuid.UUID
 }
 
 type TelegramHTTPHandlers struct {
@@ -118,6 +124,7 @@ func (h *TelegramHTTPHandlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /api/v1/telegram/bots/{id}", limit(perm([]string{"campaigns:write"}, h.configureBot)))
 
 	// Admin Postbacks
+	mux.HandleFunc("GET /api/v1/telegram/postbacks", limit(perm([]string{"campaigns:read"}, h.listPostbacks)))
 	mux.HandleFunc("POST /api/v1/telegram/postbacks", limit(perm([]string{"campaigns:write"}, h.createPostback)))
 	mux.HandleFunc("PUT /api/v1/telegram/postbacks/{id}", limit(perm([]string{"campaigns:write"}, h.updatePostback)))
 	mux.HandleFunc("DELETE /api/v1/telegram/postbacks/{id}", limit(perm([]string{"campaigns:write"}, h.deletePostback)))
@@ -272,6 +279,25 @@ func (h *TelegramHTTPHandlers) configureBot(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusOK)
 }
 
+func (h *TelegramHTTPHandlers) listPostbacks(w http.ResponseWriter, r *http.Request) {
+	cidStr := r.URL.Query().Get("campaign_id")
+	if cidStr == "" {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "campaign_id required")
+		return
+	}
+	campaignID, err := uuid.Parse(cidStr)
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign_id")
+		return
+	}
+	res, err := h.Telegram.ListPostbacks(r.Context(), campaignID)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, res)
+}
+
 func (h *TelegramHTTPHandlers) createPostback(w http.ResponseWriter, r *http.Request) {
 	req, ok := coldpath.DecodeRequestOrBadRequest[PostbackDTO](w, r, coldpath.DefaultMaxBody)
 	if !ok {
@@ -372,14 +398,14 @@ func (h *TelegramHTTPHandlers) exportTelegramReport(w http.ResponseWriter, r *ht
 	httpresponse.Error(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "use POST /api/v1/reports/jobs with report_key=telegram")
 }
 
-type telegramReportFn func(ctx context.Context, from, to time.Time, campaignID *uuid.UUID) ([]byte, error)
+type telegramReportFn func(ctx context.Context, from, to time.Time, filter TelegramReportFilter) ([]byte, error)
 
 func (h *TelegramHTTPHandlers) writeTelegramReport(w http.ResponseWriter, r *http.Request, fn telegramReportFn) {
-	from, to, campaignID, ok := parseTelegramReportQuery(w, r)
+	from, to, filter, ok := parseTelegramReportQuery(w, r)
 	if !ok {
 		return
 	}
-	res, err := fn(r.Context(), from, to, campaignID)
+	res, err := fn(r.Context(), from, to, filter)
 	if err != nil {
 		h.writeServiceError(w, err)
 		return
@@ -388,7 +414,7 @@ func (h *TelegramHTTPHandlers) writeTelegramReport(w http.ResponseWriter, r *htt
 	_, _ = w.Write(res)
 }
 
-func parseTelegramReportQuery(w http.ResponseWriter, r *http.Request) (time.Time, time.Time, *uuid.UUID, bool) {
+func parseTelegramReportQuery(w http.ResponseWriter, r *http.Request) (time.Time, time.Time, TelegramReportFilter, bool) {
 	q := r.URL.Query()
 	fromStr := q.Get("from")
 	toStr := q.Get("to")
@@ -396,18 +422,26 @@ func parseTelegramReportQuery(w http.ResponseWriter, r *http.Request) (time.Time
 	to, err2 := time.Parse(time.RFC3339, toStr)
 	if err1 != nil || err2 != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid from/to parameters")
-		return time.Time{}, time.Time{}, nil, false
+		return time.Time{}, time.Time{}, TelegramReportFilter{}, false
 	}
-	var campaignID *uuid.UUID
+	var filter TelegramReportFilter
 	if cidStr := q.Get("campaign_id"); cidStr != "" {
 		cid, err := uuid.Parse(cidStr)
 		if err != nil {
 			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign_id")
-			return time.Time{}, time.Time{}, nil, false
+			return time.Time{}, time.Time{}, TelegramReportFilter{}, false
 		}
-		campaignID = &cid
+		filter.CampaignID = &cid
 	}
-	return from, to, campaignID, true
+	if custStr := q.Get("customer_id"); custStr != "" {
+		custID, err := uuid.Parse(custStr)
+		if err != nil {
+			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer_id")
+			return time.Time{}, time.Time{}, TelegramReportFilter{}, false
+		}
+		filter.CustomerID = &custID
+	}
+	return from, to, filter, true
 }
 
 func (h *TelegramHTTPHandlers) writeServiceError(w http.ResponseWriter, err error) {

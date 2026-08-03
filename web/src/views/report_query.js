@@ -213,13 +213,13 @@ export function mountReportQuery(container, ctx, opts) {
           })
           : null,
         sessionScoped && customerId()
-          ? el('p', { className: 'text-muted', style: { fontSize: 13, marginBottom: 12 } },
+          ? el('p', { className: 'text-muted text-sm mb-3' },
             'Customer: ',
             el('span', { className: 'font-mono' }, customerId()),
           )
           : null,
         renderDatePresets(),
-        el('label', { className: 'form-checkbox', style: { display: 'block', marginBottom: 12 } },
+        el('label', { className: 'form-checkbox form-checkbox--block' },
           el('input', {
             type: 'checkbox',
             checked: comparePeriod,

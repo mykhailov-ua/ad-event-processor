@@ -37,17 +37,19 @@ export function mount(container) {
 
     if (state.loading) {
       replaceChildren(container,
-        el('section', null,
-          el('h1', null, 'Deal performance'),
-          el('p', null, 'Loading deals…'),
+        el('div', { className: 'page-header' },
+          el('h1', { className: 'page-header__title' }, 'Deal performance'),
         ),
+        el('p', { className: 'loading-hint' }, 'Loading deals…'),
       );
       return;
     }
 
     const children = [
-      el('h1', null, 'Deal performance'),
-      el('p', null, 'PMP deal win rate, bid rate, and fill metrics (skeleton).'),
+      el('div', { className: 'page-header' },
+        el('h1', { className: 'page-header__title' }, 'Deal performance'),
+        el('p', { className: 'page-header__desc' }, 'PMP deal win rate, bid rate, and fill metrics (skeleton).'),
+      ),
     ];
 
     if (state.error) {
@@ -61,20 +63,22 @@ export function mount(container) {
     }
 
     children.push(
-      el('table', { 'data-testid': 'rtb-deals-table' },
-        el('thead', null,
-          el('tr', null,
-            el('th', null, 'Deal ID'),
-            el('th', null, 'Placement'),
-            el('th', null, 'Win rate'),
-            el('th', null, 'Bid rate'),
-            el('th', null, 'Fill'),
-            el('th', null, 'Sample N'),
+      el('div', { className: 'table-wrapper table-section' },
+        el('table', { className: 'data-table', 'data-testid': 'rtb-deals-table' },
+          el('thead', null,
+            el('tr', null,
+              el('th', { scope: 'col' }, 'Deal ID'),
+              el('th', { scope: 'col' }, 'Placement'),
+              el('th', { scope: 'col' }, 'Win rate'),
+              el('th', { scope: 'col' }, 'Bid rate'),
+              el('th', { scope: 'col' }, 'Fill'),
+              el('th', { scope: 'col' }, 'Sample N'),
+            ),
           ),
-        ),
-        el('tbody', null,
-          el('tr', null,
-            el('td', { colSpan: 6 }, 'No deal rows — connect RTB deals API.'),
+          el('tbody', null,
+            el('tr', null,
+              el('td', { colSpan: 6 }, 'No deal rows — connect RTB deals API.'),
+            ),
           ),
         ),
       ),

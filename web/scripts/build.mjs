@@ -11,13 +11,22 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = join(ROOT, 'dist');
 const SRC = join(ROOT, 'src');
 
+const ts = Date.now();
+const FONT_LINKS = `    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/geist-sans@5.2.5/400.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/geist-sans@5.2.5/600.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/geist-mono@5.2.5/400.css" />
+    <link rel="stylesheet" href="/src/styles/tokens.css?v=${ts}" />
+    <link rel="stylesheet" href="/src/styles/system.css?v=${ts}" />
+`;
+
 const INDEX_HTML = `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BidShard Admin</title>
-    <link rel="stylesheet" href="/src/styles/a11y.css" />
+${FONT_LINKS}    <link rel="stylesheet" href="/src/styles/main.css?v=${ts}" />
+    <link rel="stylesheet" href="/src/styles/a11y.css?v=${ts}" />
   </head>
   <body>
     <div id="root"></div>
@@ -32,7 +41,8 @@ const LOGIN_HTML = `<!doctype html>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sign in — BidShard Admin</title>
-    <link rel="stylesheet" href="/src/styles/a11y.css" />
+${FONT_LINKS}    <link rel="stylesheet" href="/src/styles/main.css?v=${ts}" />
+    <link rel="stylesheet" href="/src/styles/a11y.css?v=${ts}" />
   </head>
   <body>
     <div id="root"></div>

@@ -14,6 +14,7 @@ import { clickableRow } from '../ui/clickable_row.js';
 import { renderErrorBlock } from '../ui/error_block.js';
 import { buyerEmptyCopy } from '../models/empty_state.js';
 import { createInFlightGuard } from '../lib/async_guard.js';
+import { displayLabel } from '../helpers/display_labels.js';
 
 /**
  * Run a bulk campaign mutation with bounded concurrency.
@@ -172,10 +173,10 @@ export function mount(container, ctx) {
     if (!sessionScoped || !customerId) {
       const copy = buyerEmptyCopy('session_customer');
       replaceChildren(container,
-        el('section', null,
-          el('h1', null, 'Portfolio'),
-          el('p', null, copy.title),
-          el('p', null, copy.description),
+        el('div', { className: 'page-header' },
+          el('h1', { className: 'page-header__title' }, 'Portfolio'),
+          el('p', { className: 'page-header__desc' }, copy.title),
+          el('p', { className: 'text-muted text-sm' }, copy.description),
         ),
       );
       return;
@@ -191,16 +192,19 @@ export function mount(container, ctx) {
     const perfBlock = renderPerfBlock('portfolio-perf-metrics');
 
     replaceChildren(container,
-      el('section', { 'data-testid': 'buyer-portfolio-view' },
-        el('h1', null, 'Portfolio'),
-        el('p', null,
-          'Sorted by pacing drift. ',
-          el('a', { href: '/campaigns' }, 'Table view'),
+      el('section', { className: 'stack', 'data-testid': 'buyer-portfolio-view' },
+        el('div', { className: 'page-header' },
+          el('h1', { className: 'page-header__title' }, 'Portfolio'),
+          el('p', { className: 'page-header__desc' },
+            'Sorted by pacing drift. ',
+            el('a', { href: '/campaigns' }, 'Table view'),
+          ),
         ),
-        state.loading ? el('p', null, 'Loading portfolio…') : null,
-        !state.loading ? el('div', null,
-          el('label', null, 'Status filter: '),
+        state.loading ? el('p', { className: 'loading-hint' }, 'Loading portfolio…') : null,
+        !state.loading ? el('div', { className: 'filter-row' },
+          el('label', { className: 'form-label form-label--flush' }, 'Status filter'),
           el('select', {
+            className: 'form-select min-w-40',
             onChange: (e) => {
               state.statusFilter = e.target.value;
               rowCache.rows = null;
@@ -213,23 +217,25 @@ export function mount(container, ctx) {
             el('option', { value: 'ARCHIVED', selected: state.statusFilter === 'ARCHIVED' }, 'Archived'),
           ),
         ) : null,
-        state.selected.size > 0 ? el('div', { id: 'portfolio-bulk-actions' },
+        state.selected.size > 0 ? el('div', { id: 'portfolio-bulk-actions', className: 'toolbar-row' },
           el('button', {
             type: 'button',
+            className: 'btn btn--secondary btn--sm',
             'data-action': 'pause',
             disabled: state.actionLoading,
             onClick: bulkPause,
           }, `Pause selected (${state.selected.size})`),
-          ' ',
           el('button', {
             type: 'button',
+            className: 'btn btn--secondary btn--sm',
             'data-action': 'resume',
             disabled: state.actionLoading,
             onClick: bulkResume,
           }, `Resume selected (${state.selected.size})`),
         ) : null,
-        state.actionError ? el('p', null, state.actionError) : null,
-        !state.loading ? el('table', null,
+        state.actionError ? el('p', { className: 'text-danger text-sm' }, state.actionError) : null,
+        !state.loading ? el('div', { className: 'table-wrapper table-wrapper--scroll elevation-raised' },
+          el('table', { className: 'data-table' },
           el('thead', null,
             el('tr', null,
               el('th', null,
@@ -269,11 +275,12 @@ export function mount(container, ctx) {
                   el('td', null, c.overspend_risk ? renderStatusBadge('warning', { label: 'risk' }) : '—'),
                   el('td', null, String(c.impressions_7d ?? 0)),
                   el('td', null, String(c.clicks_7d ?? 0)),
-                  el('td', null, c.pacing_mode ?? 'even'),
+                  el('td', null, displayLabel(c.pacing_mode)),
                 ],
               }),
             ),
           ),
+        ),
         ) : null,
         perfBlock,
       ),

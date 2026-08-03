@@ -18,6 +18,7 @@ import { mountFilterToolbar } from '../ui/filter_toolbar.js';
 import { touchCustomerContext, isCustomerUuid, shortCustomerId } from '../helpers/customer_context.js';
 import { renderRecentCustomers } from '../ui/recent_customers.js';
 import { renderIcon } from '../ui/icon.js';
+import { displayLabel } from '../helpers/display_labels.js';
 import {
   createSortState,
   toggleSort,
@@ -239,14 +240,14 @@ export function mount(container, ctx) {
           ])
           : null,
         el('div', { className: 'page-header__row' },
-          el('div', { className: 'flex items-center gap-2' },
-            renderIcon('megaphone', { size: 20, className: 'text-muted' }),
+          el('div', { className: 'flex items-center gap-3' },
+            renderIcon('megaphone', { size: 22, className: 'text-muted', strokeWidth: 1.5 }),
             el('h1', { className: 'page-header__title' }, 'Campaigns'),
           ),
           buyerView
             ? el('a', { href: '/campaigns/portfolio', className: 'btn btn--secondary btn--sm' }, 'Portfolio view')
             : null,
-          el('span', { className: 'text-muted', style: { fontSize: 13 } },
+          el('span', { className: 'text-muted text-sm' },
             state.loading ? '' : `${total} total`,
           ),
         ),
@@ -316,7 +317,7 @@ export function mount(container, ctx) {
                   buyerView
                     ? el('td', null, String(statFor(c).clicks || '—'))
                     : el('td', { className: 'font-mono' }, formatUsdDecimal(c.current_spend ?? '0.00')),
-                  el('td', null, c.pacing_mode ?? '—'),
+                  el('td', null, displayLabel(c.pacing_mode)),
                   buyerView
                     ? null
                     : el('td', null,
@@ -334,17 +335,14 @@ export function mount(container, ctx) {
         ),
       ),
       totalPages > 1
-        ? el('div', {
-          className: 'flex items-center gap-2 mt-4',
-          style: { justifyContent: 'flex-end' },
-        },
+        ? el('div', { className: 'pagination-bar' },
           el('button', {
             id: 'campaigns-prev-btn',
             className: 'btn btn--secondary btn--sm',
             disabled: ui.page === 0,
             onClick: () => { ui.page = Math.max(0, ui.page - 1); resource.reload(); },
           }, 'Prev'),
-          el('span', { className: 'text-muted', style: { fontSize: 12 } },
+          el('span', { className: 'text-muted text-xs' },
             `${ui.page + 1} / ${totalPages}`,
           ),
           el('button', {

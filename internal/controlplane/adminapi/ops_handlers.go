@@ -560,6 +560,7 @@ func (ops *OpsHTTPHandlers) registerDashboardRoutes(mux *http.ServeMux) {
 	}
 	mux.HandleFunc("GET /api/v1/ops/dashboard/summary", limit(perm("shards:read", ops.getDashboardSummary)))
 	mux.HandleFunc("GET /api/v1/ops/dashboard/metrics", limit(perm("shards:read", ops.getDashboardMetrics)))
+	mux.HandleFunc("GET /api/v1/ops/dashboard/stream", limit(perm("shards:read", ops.streamDashboard)))
 }
 
 func (ops *OpsHTTPHandlers) getDashboardSummary(w http.ResponseWriter, r *http.Request) {
@@ -587,6 +588,54 @@ func (ops *OpsHTTPHandlers) getDashboardMetrics(w http.ResponseWriter, r *http.R
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, metrics)
+}
+
+func (ops *OpsHTTPHandlers) streamDashboard(w http.ResponseWriter, r *http.Request) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		httpresponse.Error(w, http.StatusInternalServerError, "STREAM_UNSUPPORTED", "streaming not supported")
+		return
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+
+	writeEvent := func() bool {
+		summary, err := ops.OpsReader.GetDashboardSummary(r.Context())
+		if err != nil {
+			return true
+		}
+		payload, err := json.Marshal(map[string]any{
+			"generated_at": summary.GeneratedAt,
+			"data":         summary,
+		})
+		if err != nil {
+			return true
+		}
+		if _, err := fmt.Fprintf(w, "event: dashboard\ndata: %s\n\n", payload); err != nil {
+			return false
+		}
+		flusher.Flush()
+		return true
+	}
+
+	if !writeEvent() {
+		return
+	}
+
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case <-ticker.C:
+			if !writeEvent() {
+				return
+			}
+		}
+	}
 }
 
 func (ops *OpsHTTPHandlers) registerMLModelRoutes(mux *http.ServeMux) {

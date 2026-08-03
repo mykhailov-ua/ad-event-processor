@@ -4,6 +4,7 @@ import { api } from '../helpers/api_client.js';
 import * as auth from '../helpers/auth.js';
 import { hasBoundCustomer, boundCustomerId } from '../helpers/buyer_session.js';
 import { renderErrorBlock } from '../ui/error_block.js';
+import { renderSubsection } from '../ui/stat_tile.js';
 import { renderCommercialMetrics } from '../ui/commercial_metrics.js';
 import { renderFormField } from '../ui/form_field.js';
 import { validateCustomerIdField } from '../helpers/validators.js';
@@ -73,47 +74,51 @@ export function mount(container, ctx) {
   }
 
   function renderAdOps() {
-    if (!data) return el('p', null, t('status.loading'));
+    if (!data) return el('p', { className: 'loading-hint' }, t('status.loading'));
     const kpis = renderCommercialMetrics(data.kpis, { masked: false });
     const campaigns = Array.isArray(data.campaigns) ? data.campaigns : [];
     const worst = Array.isArray(data.worst_sources) ? data.worst_sources : [];
-    return el('div', null,
+    return el('div', { className: 'stack stack--lg section-block' },
       kpis,
-      el('h3', null, 'Campaigns'),
-      campaigns.length === 0
-        ? el('p', null, 'No campaigns.')
-        : el('table', { className: 'data-table' },
-          el('thead', null,
-            el('tr', null,
-              el('th', { scope: 'col' }, 'Campaign'),
-              el('th', { scope: 'col' }, 'Util %'),
-              el('th', { scope: 'col' }, 'Drift %'),
-              el('th', { scope: 'col' }, 'Spend'),
+      renderSubsection('Campaigns',
+        campaigns.length === 0
+          ? el('p', { className: 'empty-hint' }, 'No campaigns.')
+          : el('div', { className: 'table-wrapper' },
+            el('table', { className: 'data-table' },
+              el('thead', null,
+                el('tr', null,
+                  el('th', { scope: 'col' }, 'Campaign'),
+                  el('th', { scope: 'col' }, 'Util %'),
+                  el('th', { scope: 'col' }, 'Drift %'),
+                  el('th', { scope: 'col' }, 'Spend'),
+                ),
+              ),
+              el('tbody', null,
+                campaigns.map((c) => el('tr', null,
+                  el('td', null, el('a', { href: `/campaigns/${c.id}` }, c.name ?? c.id)),
+                  el('td', null, c.utilization_pct?.toFixed?.(1) ?? '—'),
+                  el('td', null, c.pacing_drift_pct?.toFixed?.(1) ?? '—'),
+                  el('td', { className: 'font-mono' }, formatAmountMicro(c.spend_micro ?? 0)),
+                )),
+              ),
             ),
           ),
-          el('tbody', null,
-            campaigns.map((c) => el('tr', null,
-              el('td', null, el('a', { href: `/campaigns/${c.id}` }, c.name ?? c.id)),
-              el('td', null, c.utilization_pct?.toFixed?.(1) ?? '—'),
-              el('td', null, c.pacing_drift_pct?.toFixed?.(1) ?? '—'),
-              el('td', { className: 'font-mono' }, formatAmountMicro(c.spend_micro ?? 0)),
+      ),
+      renderSubsection('Worst sources',
+        worst.length === 0
+          ? el('p', { className: 'empty-hint' }, 'No quality flags.')
+          : el('ul', { className: 'plain-list' },
+            worst.map((s) => el('li', { className: 'plain-list__item' },
+              `${s.sub1 ?? s.campaign_id} — IVT ${((s.ivt_rate ?? 0) * 100).toFixed(1)}%`,
             )),
           ),
-        ),
-      el('h3', null, 'Worst sources'),
-      worst.length === 0
-        ? el('p', null, 'No quality flags.')
-        : el('ul', null,
-          worst.map((s) => el('li', null,
-            `${s.sub1 ?? s.campaign_id} — IVT ${((s.ivt_rate ?? 0) * 100).toFixed(1)}%`,
-          )),
-        ),
+      ),
     );
   }
 
   function renderCFO() {
-    if (!data) return el('p', null, t('status.loading'));
-    return el('dl', null,
+    if (!data) return el('p', { className: 'loading-hint' }, t('status.loading'));
+    return el('dl', { className: 'definition-list section-block' },
       el('dt', null, 'Billed'),
       el('dd', { className: 'font-mono' }, formatAmountMicro(data.billed_micro ?? 0)),
       el('dt', null, 'AR aging'),
@@ -124,10 +129,10 @@ export function mount(container, ctx) {
   }
 
   function renderAccountant() {
-    if (!data) return el('p', null, t('status.loading'));
+    if (!data) return el('p', { className: 'loading-hint' }, t('status.loading'));
     const close = data.close ?? {};
-    return el('div', null,
-      el('dl', null,
+    return el('div', { className: 'stack section-block' },
+      el('dl', { className: 'definition-list' },
         el('dt', null, 'Billing month'),
         el('dd', null, close.billing_month ?? '—'),
         el('dt', null, 'Invariant OK'),
@@ -138,14 +143,16 @@ export function mount(container, ctx) {
         el('dd', null, data.tax_scheme ?? data.tax_vat_id ?? '—'),
       ),
       Array.isArray(data.export_jobs) && data.export_jobs.length > 0
-        ? el('ul', null, data.export_jobs.map((j) => el('li', null, `${j.id}: ${j.status}`)))
-        : el('p', { className: 'text-muted' }, 'No export jobs.'),
+        ? el('ul', { className: 'plain-list' },
+          data.export_jobs.map((j) => el('li', { className: 'plain-list__item' }, `${j.id}: ${j.status}`)),
+        )
+        : el('p', { className: 'empty-hint' }, 'No export jobs.'),
     );
   }
 
   function renderFraud() {
-    if (!data) return el('p', null, t('status.loading'));
-    return el('dl', null,
+    if (!data) return el('p', { className: 'loading-hint' }, t('status.loading'));
+    return el('dl', { className: 'definition-list section-block' },
       el('dt', null, 'Ghost IVT campaigns'),
       el('dd', null, String(data.ghost_ivt_campaigns ?? 0)),
       el('dt', null, 'Labels pending (7d)'),
@@ -173,6 +180,7 @@ export function mount(container, ctx) {
         el('h1', { className: 'page-header__title' }, titles[role] ?? 'Dashboard'),
       ),
       el('form', {
+        className: 'filter-form section-block',
         onSubmit: (e) => {
           e.preventDefault();
           load();
@@ -196,7 +204,7 @@ export function mount(container, ctx) {
           : null,
         el('button', { type: 'submit', className: 'btn btn--primary', disabled: loading }, t('action.load')),
       ),
-      loading ? el('p', null, t('status.loading')) : (renderers[role]?.() ?? el('p', null, 'Unknown role')),
+      loading ? el('p', { className: 'loading-hint' }, t('status.loading')) : (renderers[role]?.() ?? el('p', { className: 'empty-hint' }, 'Unknown role')),
     );
   }
 

@@ -14,11 +14,12 @@ import (
 )
 
 type mixConfig struct {
-	pctOpenRTB int
-	pctValid   int
-	pctFraud   int
-	pctInvalid int
-	pctDDoS    int
+	pctOpenRTB  int
+	pctTelegram int
+	pctValid    int
+	pctFraud    int
+	pctInvalid  int
+	pctDDoS     int
 }
 
 func defaultMix(mode string, pctBroken, pctGray int) mixConfig {
@@ -34,17 +35,25 @@ func defaultMix(mode string, pctBroken, pctGray int) mixConfig {
 		if clean < 0 {
 			clean = 0
 		}
+		pctTelegram := 8
+		if clean > pctTelegram {
+			clean -= pctTelegram
+		} else {
+			pctTelegram = clean
+			clean = 0
+		}
 		return mixConfig{
-			pctOpenRTB: 5,
-			pctValid:   clean,
-			pctFraud:   pctGray,
-			pctInvalid: pctBroken / 2,
-			pctDDoS:    pctBroken - pctBroken/2,
+			pctOpenRTB:  5,
+			pctTelegram: pctTelegram,
+			pctValid:    clean,
+			pctFraud:    pctGray,
+			pctInvalid:  pctBroken / 2,
+			pctDDoS:     pctBroken - pctBroken/2,
 		}
 	case "smoke":
-		return mixConfig{pctOpenRTB: 15, pctValid: 35, pctFraud: 10, pctInvalid: 20, pctDDoS: 15}
+		return mixConfig{pctOpenRTB: 12, pctTelegram: 5, pctValid: 28, pctFraud: 10, pctInvalid: 20, pctDDoS: 15}
 	default:
-		return mixConfig{pctOpenRTB: 10, pctValid: 30, pctFraud: 15, pctInvalid: 20, pctDDoS: 15}
+		return mixConfig{pctOpenRTB: 8, pctTelegram: 5, pctValid: 22, pctFraud: 15, pctInvalid: 20, pctDDoS: 15}
 	}
 }
 
@@ -88,7 +97,8 @@ func (r *runner) doOnce() {
 	base := r.trackers[iter%uint64(len(r.trackers))]
 
 	openrtbEnd := r.mix.pctOpenRTB
-	validEnd := openrtbEnd + r.mix.pctValid
+	telegramEnd := openrtbEnd + r.mix.pctTelegram
+	validEnd := telegramEnd + r.mix.pctValid
 	fraudEnd := validEnd + r.mix.pctFraud
 	invalidEnd := fraudEnd + r.mix.pctInvalid
 	ddosEnd := invalidEnd + r.mix.pctDDoS
@@ -96,6 +106,8 @@ func (r *runner) doOnce() {
 	switch {
 	case roll < openrtbEnd:
 		r.postOpenRTBBid(base, iter)
+	case roll < telegramEnd:
+		r.telegramTraffic(base, iter)
 	case roll < validEnd:
 		body := validBody(iter)
 		r.post(base+"/track", "application/json", body, nil)
@@ -116,6 +128,25 @@ func (r *runner) doOnce() {
 func openrtbBidBody(iter uint64) []byte {
 	id := iter % 100000
 	return []byte(`{"id":"load-` + strconv.FormatUint(id, 10) + `","tmax":300,"imp":[{"id":"1","bidfloor":0.5,"banner":{"w":300,"h":250}}],"site":{"page":"https://example.com"},"device":{"ip":"8.8.8.8","ua":"Mozilla/5.0","devicetype":2,"geo":{"country":"US"}}}`)
+}
+
+func (r *runner) telegramTraffic(base string, iter uint64) {
+	cid := campaignID(iter)
+	clickID := fmt.Sprintf("00000000-0000-4000-8000-%012x", iter)
+	token := "token_abc123_"
+	switch iter % 5 {
+	case 0:
+		r.get(fmt.Sprintf("%s/tg/click?campaign_id=%s&click_id=%s&bridge_token=%s", base, cid, clickID, token))
+	case 1:
+		r.get(fmt.Sprintf("%s/tg/impression?campaign_id=%s&click_id=%s", base, cid, clickID))
+	case 2:
+		r.get(fmt.Sprintf("%s/tg/click?campaign_id=%s&click_id=%s&initData=evil", base, cid, clickID))
+	case 3:
+		body := []byte(`{"ip":"8.8.8.8","user_agent":"TelegramBot/1.0","publisher_id":"pub1","bid_floor":0.1,"premium":true}`)
+		r.post(base+"/tg/bid", "application/json", body, nil)
+	default:
+		r.get(fmt.Sprintf("%s/tg/click?campaign_id=%s&click_id=not-a-uuid&bridge_token=%s", base, cid, token))
+	}
 }
 
 func (r *runner) postOpenRTBBid(base string, iter uint64) {

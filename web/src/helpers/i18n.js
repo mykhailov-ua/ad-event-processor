@@ -1,25 +1,25 @@
 /** @type {Record<string, string>} */
-const RU = {
-  'nav.overview': 'Обзор',
-  'nav.campaigns': 'Кампании',
-  'nav.portfolio': 'Портфель',
-  'nav.billing': 'Биллинг',
-  'nav.reports': 'Отчёты',
-  'nav.ops': 'Операции',
-  'nav.settings': 'Настройки',
-  'action.load': 'Загрузить',
-  'action.export': 'Экспорт CSV',
-  'status.loading': 'Загрузка…',
-  'report.compare': 'Сравнить с прошлым периодом',
+const EN = {
+  'nav.overview': 'Overview',
+  'nav.campaigns': 'Campaigns',
+  'nav.portfolio': 'Portfolio',
+  'nav.billing': 'Billing',
+  'nav.reports': 'Reports',
+  'nav.ops': 'Operations',
+  'nav.settings': 'Settings',
+  'action.load': 'Load',
+  'action.export': 'Export CSV',
+  'status.loading': 'Loading…',
+  'report.compare': 'Compare with previous period',
 };
 
 /**
- * Resolve a UI string (v1 Russian catalog).
+ * Resolve a UI string from the English catalog.
  *
  * @param {string} key
  * @param {string} [fallback]
  * @returns {string}
  */
 export function t(key, fallback = key) {
-  return RU[key] ?? fallback;
+  return EN[key] ?? fallback;
 }

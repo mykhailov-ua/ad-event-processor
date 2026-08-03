@@ -30,35 +30,19 @@ export function mount(container, ctx) {
       el('div', { className: 'login-page' },
         el('div', { className: 'login-box' },
           el('h1', { className: 'login-box__title' },
-            'Bid',
-            el('span', { style: { color: 'var(--accent)' } }, 'Shard'),
+            el('span', { className: 'login-box__title-bid' }, 'Bid'),
+            el('span', { className: 'login-box__title-shard' }, 'Shard'),
           ),
           el('p', { className: 'login-box__sub' }, 'Admin Control Plane'),
-          reason && REASON_MESSAGES[reason]
-            ? el('div', {
-              style: {
-                padding: '8px 12px',
-                background: 'color-mix(in srgb, var(--warning) 12%, transparent)',
-                border: '1px solid var(--warning)',
-                borderRadius: 'var(--radius)',
-                color: 'var(--warning)',
-                fontSize: 13,
-                marginBottom: 16,
-              },
-            }, REASON_MESSAGES[reason])
-            : null,
-          state.error
-            ? el('div', {
-              style: {
-                padding: '8px 12px',
-                background: 'color-mix(in srgb, var(--error) 12%, transparent)',
-                border: '1px solid var(--error)',
-                borderRadius: 'var(--radius)',
-                color: 'var(--error)',
-                fontSize: 13,
-                marginBottom: 16,
-              },
-            }, state.error)
+          (reason && REASON_MESSAGES[reason]) || state.error
+            ? el('div', { className: 'login-box__notices' },
+              reason && REASON_MESSAGES[reason]
+                ? el('div', { className: 'login-box__notice login-box__notice--warning' }, REASON_MESSAGES[reason])
+                : null,
+              state.error
+                ? el('div', { className: 'login-box__notice login-box__notice--error' }, state.error)
+                : null,
+            )
             : null,
           el('form', { onSubmit: handleSubmit },
             el('div', { className: 'form-field' },

@@ -11,6 +11,7 @@ const ROUTE_ACCESS = {
   '/campaigns': { perms: ['campaigns:read'], altPerm: 'campaigns:read:masked' },
   '/campaigns/portfolio': { perms: ['campaigns:read'], altPerm: 'campaigns:read:masked' },
   '/campaigns/:id': { perms: ['campaigns:read'], altPerm: 'campaigns:read:masked' },
+  '/campaigns/:id/telegram': { perms: ['campaigns:read'], altPerm: 'campaigns:read:masked' },
   '/billing': { perms: ['customers:read'], altPerm: 'billing:read' },
   '/billing/invoices/:id': { perms: ['customers:read'], altPerm: 'billing:read' },
   '/reports/placements': { perms: ['campaigns:read'], altPerm: 'campaigns:read:masked' },

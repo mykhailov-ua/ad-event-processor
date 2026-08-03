@@ -3,6 +3,7 @@ import {
   SIDEBAR_COLLAPSED_WIDTH,
   SIDEBAR_WIDTH_DEFAULT,
 } from './sidebar_layout.js';
+import { invalidateChartThemeCache } from '../charts/canvas_util.js';
 
 const ALLOWED_KEYS = new Set([
   'ui.theme',
@@ -10,6 +11,9 @@ const ALLOWED_KEYS = new Set([
   'ui.sidebar.collapsed',
   'ui.sidebar.width',
   'ui.reports.range',
+  'ui.dev_mode',
+  'ui.ops.charts_layout',
+  'ui.ops.charts_range',
   'nav.lastCustomerId',
   'nav.recentCustomerIds',
 ]);
@@ -35,6 +39,7 @@ export function setTheme(theme) {
   if (theme !== 'dark' && theme !== 'light') return;
   _set('ui.theme', theme);
   document.documentElement.setAttribute('data-theme', theme);
+  invalidateChartThemeCache();
 }
 
 /**
@@ -93,6 +98,65 @@ export function getSidebarWidth() {
  */
 export function setSidebarWidth(width) {
   _set('ui.sidebar.width', String(clampSidebarWidth(width)));
+}
+
+/**
+ * Read operations charts layout preference.
+ *
+ * @returns {'grid'|'stack'}
+ */
+export function getOpsChartsLayout() {
+  return _get('ui.ops.charts_layout') === 'stack' ? 'stack' : 'grid';
+}
+
+/**
+ * Persist operations charts layout preference.
+ *
+ * @param {'grid'|'stack'} layout
+ */
+export function setOpsChartsLayout(layout) {
+  _set('ui.ops.charts_layout', layout === 'stack' ? 'stack' : 'grid');
+}
+
+/**
+ * Read operations charts time range in hours.
+ *
+ * @returns {number}
+ */
+export function getOpsChartsRangeHours() {
+  const raw = Number(_get('ui.ops.charts_range'));
+  if (raw === 1 || raw === 6 || raw === 12 || raw === 24) return raw;
+  return 24;
+}
+
+/**
+ * Persist operations charts time range in hours.
+ *
+ * @param {number} hours
+ */
+export function setOpsChartsRangeHours(hours) {
+  const h = Number(hours);
+  if (h === 1 || h === 6 || h === 12 || h === 24) {
+    _set('ui.ops.charts_range', String(h));
+  }
+}
+
+/**
+ * Read whether developer mode (raw technical strings) is enabled.
+ *
+ * @returns {boolean}
+ */
+export function getDevMode() {
+  return _get('ui.dev_mode') === 'true';
+}
+
+/**
+ * Persist developer mode preference.
+ *
+ * @param {boolean} enabled
+ */
+export function setDevMode(enabled) {
+  _set('ui.dev_mode', String(enabled));
 }
 
 export { getSidebarWidthBounds, SIDEBAR_COLLAPSED_WIDTH } from './sidebar_layout.js';

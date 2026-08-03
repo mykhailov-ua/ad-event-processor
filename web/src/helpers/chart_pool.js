@@ -4,7 +4,7 @@ import { parseIsoUnixSeconds } from './iso_time.js';
  * Build owned time-series x/y typed arrays from hourly metrics.
  *
  * @param {Array<{ hour: string, impressions?: number, clicks?: number, conversions?: number }>} hourly
- * @param {'impressions'|'clicks'|'conversions'} field
+ * @param {'impressions'|'clicks'|'conversions'|string} field
  * @returns {{ x: Float64Array, y: Float64Array, length: number }}
  */
 export function seriesFromHourly(hourly, field) {
