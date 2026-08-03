@@ -55,6 +55,8 @@ type SettingsWatcher struct {
 	vppRatios        atomic.Value
 	fcapSnap         atomic.Pointer[rtb.FcapSnapshot]
 	onChange         []SettingsChangeListener
+	pgSync           func(context.Context) (map[string]string, int64, error)
+	staleCheck       func() bool
 }
 
 func NewSettingsWatcher(rdbs []redis.UniversalClient, initial *config.Config) *SettingsWatcher {
@@ -78,6 +80,14 @@ func NewSettingsWatcher(rdbs []redis.UniversalClient, initial *config.Config) *S
 	sw.fcapSnap.Store(emptyFcapSnapshot)
 
 	return sw
+}
+
+func (sw *SettingsWatcher) SetPGFallback(syncFn func(context.Context) (map[string]string, int64, error), staleCheck func() bool) {
+	if sw == nil {
+		return
+	}
+	sw.pgSync = syncFn
+	sw.staleCheck = staleCheck
 }
 
 func (sw *SettingsWatcher) AddChangeListener(fn SettingsChangeListener) {
@@ -347,28 +357,51 @@ func (sw *SettingsWatcher) sync(ctx context.Context) {
 		if err != redis.Nil {
 			slog.Error("failed to check config version on all redis shards", "error", err)
 		}
+		sw.trySyncFromPG(ctx)
 		return
 	}
 
 	if v <= atomic.LoadInt64(&sw.currentVersion) {
+		sw.trySyncFromPG(ctx)
 		return
 	}
 
 	data, err := sw.readConfigValues(ctx, rdb)
 	if err != nil {
 		slog.Error("failed to fetch config values from redis", "error", err)
+		sw.trySyncFromPG(ctx)
 		return
 	}
 
-	newCfg := sw.parseConfig(v, data)
+	sw.applyConfig(v, data)
+}
+
+func (sw *SettingsWatcher) trySyncFromPG(ctx context.Context) {
+	if sw.pgSync == nil || sw.staleCheck == nil || !sw.staleCheck() {
+		return
+	}
+	data, version, err := sw.pgSync(ctx)
+	if err != nil {
+		slog.Warn("settings pg fallback failed", "error", err)
+		return
+	}
+	if version <= atomic.LoadInt64(&sw.currentVersion) {
+		return
+	}
+	sw.applyConfig(version, data)
+	slog.Info("dynamic settings updated from postgres (shard-0 degraded)", "version", version)
+}
+
+func (sw *SettingsWatcher) applyConfig(version int64, data map[string]string) {
+	newCfg := sw.parseConfig(version, data)
 	sw.snapshot.Store(newCfg)
-	atomic.StoreInt64(&sw.currentVersion, v)
+	atomic.StoreInt64(&sw.currentVersion, version)
 
 	for _, fn := range sw.onChange {
 		fn(newCfg)
 	}
 
-	slog.Info("dynamic settings updated", "version", v)
+	slog.Info("dynamic settings updated", "version", version)
 }
 
 func (sw *SettingsWatcher) parseConfig(version int64, data map[string]string) *DynamicConfig {

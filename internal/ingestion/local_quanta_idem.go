@@ -14,6 +14,7 @@ const (
 type localClickIdemCell struct {
 	hash   uint64
 	expiry int64
+	_      [localQuantaCacheLine - 16]byte
 }
 
 type LocalClickIdemCache struct {

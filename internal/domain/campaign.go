@@ -103,7 +103,25 @@ const (
 	BehaviorConvFast
 	BehaviorSeqGap
 	BehaviorDwellProxy
+	BehaviorRoughPacing
+	BehaviorHighVolumeDebit
 )
+
+const HighVolumeDebitSubShards = 4
+
+func (c *Campaign) DebitSubShardCount() int {
+	if c == nil || c.BehaviorFlags&BehaviorHighVolumeDebit == 0 {
+		return 0
+	}
+	return HighVolumeDebitSubShards
+}
+
+func (c *Campaign) RoughPacingEnabled() bool {
+	if c == nil {
+		return false
+	}
+	return c.BehaviorFlags&BehaviorRoughPacing != 0
+}
 
 const (
 	DefaultFraudThresholdPass    uint8 = 30

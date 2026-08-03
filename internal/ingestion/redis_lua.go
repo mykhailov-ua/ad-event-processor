@@ -28,6 +28,9 @@ func (f *UnifiedFilter) PreloadScripts(ctx context.Context) error {
 		return fmt.Errorf("unified filter scripts are nil")
 	}
 	for i, rdb := range f.rdbs {
+		if rdb == nil {
+			continue
+		}
 		shard := strconv.Itoa(i)
 		if err := f.script.Load(ctx, rdb).Err(); err != nil {
 			metrics.RedisLuaScriptLoaded.WithLabelValues(shard).Set(0)

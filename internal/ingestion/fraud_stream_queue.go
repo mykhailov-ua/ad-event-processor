@@ -390,6 +390,10 @@ func (q *FraudStreamWriter) flushBatch(ctx context.Context, batch []*fraudStream
 		values = append(values, vals)
 
 		shard := slot.shard
+		if int(shard) >= len(q.rdbs) || q.rdbs[shard] == nil {
+			filterFraudStreamWriteErrors.Inc()
+			continue
+		}
 		sb, ok := shards[shard]
 		if !ok {
 			sb = &shardBatch{pipe: q.rdbs[shard].Pipeline()}

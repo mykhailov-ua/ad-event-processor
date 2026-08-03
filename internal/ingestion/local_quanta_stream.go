@@ -10,6 +10,7 @@ import (
 	"espx/internal/ingestion/pb"
 	"espx/internal/metrics"
 
+	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
 )
 
@@ -20,37 +21,34 @@ const (
 	localQuantaStreamBatch    = 128
 	localQuantaStreamFlush    = 2 * time.Millisecond
 
-	localQuantaSlotClickMax   = 128
-	localQuantaSlotUserMax    = 128
-	localQuantaSlotTypeMax    = 32
-	localQuantaSlotIPMax      = 64
-	localQuantaSlotUAMax      = 512
-	localQuantaSlotPayloadMax = 2048
+	localQuantaSlotClickMax = 128
+	localQuantaSlotUserMax  = 128
 )
 
 type localQuantaStreamSlot struct {
-	ready      atomic.Uint32
-	shard      uint8
-	_          [3]byte
-	campaignID [16]byte
-	createdAt  int64
+	ready       atomic.Uint32
+	shard       uint8
+	campaignID  [16]byte
+	customerID  [16]byte
+	amountMicro int64
 
-	clickLen   uint16
-	userLen    uint16
-	typeLen    uint16
-	ipLen      uint16
-	uaLen      uint16
-	payloadLen uint16
+	fcapPrefix [64]byte
+	fcapLen    uint16
+	freqLimit  uint32
+	freqWindow int32
 
-	clickID [localQuantaSlotClickMax]byte
 	userID  [localQuantaSlotUserMax]byte
-	evtType [localQuantaSlotTypeMax]byte
-	ip      [localQuantaSlotIPMax]byte
-	ua      [localQuantaSlotUAMax]byte
-	payload [localQuantaSlotPayloadMax]byte
+	userLen uint16
+
+	clickID  [localQuantaSlotClickMax]byte
+	clickLen uint16
+
+	data   []byte
+	wrap   *ByteSliceValue
+	bufPtr *[]byte
 }
 
-type LocalQuantaStreamPublisher struct {
+type localQuantaStreamLane struct {
 	_           [64]byte
 	writeCursor uint64
 	_           [64]byte
@@ -58,18 +56,22 @@ type LocalQuantaStreamPublisher struct {
 	_           [64]byte
 	readCursor  uint64
 	_           [64]byte
-	slots       [localQuantaStreamCapacity]localQuantaStreamSlot
+	slots       []localQuantaStreamSlot
+}
 
-	stream         string
-	maxLen         int64
-	rdbs           []redis.UniversalClient
-	idemTTL        time.Duration
-	idem           *LocalClickIdemCache
-	writeTimeout   time.Duration
-	idemKeyScratch [localQuantaSlotClickMax + 20]byte
+type LocalQuantaStreamPublisher struct {
+	stream       string
+	maxLen       int64
+	rdbs         []redis.UniversalClient
+	idemTTL      time.Duration
+	idem         *LocalClickIdemCache
+	writeTimeout time.Duration
 
 	stopCh chan struct{}
 	wg     sync.WaitGroup
+
+	initOnce sync.Once
+	lanes    []localQuantaStreamLane
 }
 
 type LocalQuantaStreamPublisherConfig struct {
@@ -79,6 +81,24 @@ type LocalQuantaStreamPublisherConfig struct {
 	IdempotencyTTL time.Duration
 	IdemCache      *LocalClickIdemCache
 	WriteTimeout   time.Duration
+}
+
+func (p *LocalQuantaStreamPublisher) ensureLanes() {
+	if p == nil {
+		return
+	}
+	p.initOnce.Do(func() {
+		if len(p.lanes) > 0 {
+			return
+		}
+		if len(p.rdbs) == 0 {
+			p.rdbs = []redis.UniversalClient{nil}
+		}
+		p.lanes = make([]localQuantaStreamLane, len(p.rdbs))
+		for i := range p.lanes {
+			p.lanes[i].slots = make([]localQuantaStreamSlot, localQuantaStreamCapacity)
+		}
+	})
 }
 
 func NewLocalQuantaStreamPublisher(cfg LocalQuantaStreamPublisherConfig) *LocalQuantaStreamPublisher {
@@ -100,8 +120,11 @@ func NewLocalQuantaStreamPublisher(cfg LocalQuantaStreamPublisherConfig) *LocalQ
 		writeTimeout: cfg.WriteTimeout,
 		stopCh:       make(chan struct{}),
 	}
-	p.wg.Add(1)
-	go p.worker()
+	p.ensureLanes()
+	p.wg.Add(len(p.lanes))
+	for i := range p.lanes {
+		go p.laneWorker(i)
+	}
 	return p
 }
 
@@ -120,193 +143,22 @@ func copyLocalQuantaField(dst []byte, s string) int {
 	return n
 }
 
-func fillLocalQuantaStreamSlot(slot *localQuantaStreamSlot, shard int, evt *domain.Event) {
-	slot.ready.Store(0)
-	slot.shard = uint8(shard)
-	copy(slot.campaignID[:], evt.CampaignID[:])
-	if evt.CreatedAt.IsZero() {
-		slot.createdAt = time.Now().Unix()
-	} else {
-		slot.createdAt = evt.CreatedAt.Unix()
-	}
-	slot.clickLen = uint16(copyLocalQuantaField(slot.clickID[:], evt.ClickID))
-	slot.userLen = uint16(copyLocalQuantaField(slot.userID[:], evt.UserID))
-	slot.typeLen = uint16(copyLocalQuantaField(slot.evtType[:], evt.Type))
-	slot.ipLen = uint16(copyLocalQuantaField(slot.ip[:], evt.IP))
-	slot.uaLen = uint16(copyLocalQuantaField(slot.ua[:], evt.UA))
-	slot.payloadLen = uint16(copyLocalQuantaField(slot.payload[:], unsafeString(evt.Payload)))
-	slot.ready.Store(1)
-}
-
-func (p *LocalQuantaStreamPublisher) Enqueue(shard int, evt *domain.Event) bool {
-	if p == nil || evt == nil {
-		return false
-	}
-	if shard < 0 || shard >= len(p.rdbs) {
-		shard = 0
-	}
-	for {
-		alloc := atomic.LoadUint64(&p.allocCursor)
-		read := atomic.LoadUint64(&p.readCursor)
-		if alloc-read >= localQuantaStreamUsable {
-			metrics.LocalQuotaStreamDropTotal.Inc()
-			return false
-		}
-		if !atomic.CompareAndSwapUint64(&p.allocCursor, alloc, alloc+1) {
-			continue
-		}
-		idx := alloc & localQuantaStreamMask
-		slot := &p.slots[idx]
-		if slot.ready.Load() != 0 {
-			metrics.LocalQuotaStreamDropTotal.Inc()
-			return false
-		}
-		fillLocalQuantaStreamSlot(slot, shard, evt)
-		atomic.StoreUint64(&p.writeCursor, alloc+1)
-		return true
-	}
-}
-
-func (p *LocalQuantaStreamPublisher) Pending() uint64 {
-	write := atomic.LoadUint64(&p.writeCursor)
-	read := atomic.LoadUint64(&p.readCursor)
-	if write < read {
-		return 0
-	}
-	return write - read
-}
-
-func (p *LocalQuantaStreamPublisher) Close() {
-	if p == nil {
-		return
-	}
-	close(p.stopCh)
-	p.wg.Wait()
-}
-
-func (p *LocalQuantaStreamPublisher) worker() {
-	defer p.wg.Done()
-	ticker := time.NewTicker(localQuantaStreamFlush)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-p.stopCh:
-			p.drain(true)
-			return
-		case <-ticker.C:
-			p.drain(false)
-		}
-	}
-}
-
-func (p *LocalQuantaStreamPublisher) drain(final bool) {
-	batch := make([]*localQuantaStreamSlot, 0, localQuantaStreamBatch)
-	for {
-		read := atomic.LoadUint64(&p.readCursor)
-		write := atomic.LoadUint64(&p.writeCursor)
-		if read >= write {
-			break
-		}
-		idx := read & localQuantaStreamMask
-		slot := &p.slots[idx]
-		if slot.ready.Load() != 1 {
-			break
-		}
-		batch = append(batch, slot)
-		atomic.StoreUint64(&p.readCursor, read+1)
-		if len(batch) >= localQuantaStreamBatch {
-			break
-		}
-	}
-	if len(batch) > 0 {
-		p.flushBatch(batch)
-	}
-	if final {
-		for atomic.LoadUint64(&p.writeCursor) != atomic.LoadUint64(&p.readCursor) {
-			p.drain(false)
-		}
-	}
-}
-
-func (p *LocalQuantaStreamPublisher) appendIdemKey(scratch []byte, clickLen int, slot *localQuantaStreamSlot) string {
-	const prefix = "idempotency:click:"
-	n := copy(scratch, prefix)
-	n += copy(scratch[n:], slot.clickID[:clickLen])
-	return unsafeString(scratch[:n])
-}
-
-func (p *LocalQuantaStreamPublisher) flushBatch(batch []*localQuantaStreamSlot) {
-	ctx, cancel := context.WithTimeout(context.Background(), p.writeTimeout)
-	defer cancel()
-
-	flushed := 0
-	for _, slot := range batch {
-		if p.flushOne(ctx, slot) {
-			flushed++
-		}
-		slot.ready.Store(0)
-	}
-	if flushed > 0 {
-		metrics.LocalQuotaStreamFlushTotal.Add(float64(flushed))
-	}
-}
-
-func (p *LocalQuantaStreamPublisher) flushOne(ctx context.Context, slot *localQuantaStreamSlot) bool {
-	data, wrap, bufPtr := marshalLocalQuantaStreamSlot(slot)
-	if data == nil {
-		metrics.LocalQuotaStreamWriteErrorTotal.Inc()
-		return false
-	}
-	defer func() {
-		byteSliceValuePool.Put(wrap)
-		byteBufPool.Put(bufPtr)
-	}()
-
-	shard := int(slot.shard)
-	if shard < 0 || shard >= len(p.rdbs) {
-		shard = 0
-	}
-	rdb := p.rdbs[shard]
-
-	if slot.clickLen > 0 {
-		idemKey := p.appendIdemKey(p.idemKeyScratch[:], int(slot.clickLen), slot)
-		ok, err := rdb.SetNX(ctx, idemKey, "1", p.idemTTL).Result()
-		if err != nil {
-			metrics.LocalQuotaStreamWriteErrorTotal.Inc()
-			return false
-		}
-		if !ok {
-			return false
-		}
-	}
-
-	_, err := rdb.XAdd(ctx, &redis.XAddArgs{
-		Stream: p.stream,
-		MaxLen: p.maxLen,
-		Approx: true,
-		Values: []any{"d", wrap},
-	}).Result()
-	if err != nil {
-		metrics.LocalQuotaStreamWriteErrorTotal.Inc()
-		return false
-	}
-	return true
-}
-
-func marshalLocalQuantaStreamSlot(slot *localQuantaStreamSlot) ([]byte, *ByteSliceValue, *[]byte) {
+func marshalEventToProto(evt *domain.Event) ([]byte, *ByteSliceValue, *[]byte) {
 	pbEvt := streamEventPool.Get().(*pb.AdStreamEvent)
 	DeepResetAdStreamEvent(pbEvt)
-	pbEvt.ClickId = slot.clickID[:slot.clickLen]
-	pbEvt.CampaignId = slot.campaignID[:]
-	pbEvt.EventType = slot.evtType[:slot.typeLen]
-	pbEvt.Payload = slot.payload[:slot.payloadLen]
-	pbEvt.Ip = slot.ip[:slot.ipLen]
-	pbEvt.Ua = slot.ua[:slot.uaLen]
-	if slot.userLen > 0 {
-		pbEvt.UserId = slot.userID[:slot.userLen]
+	pbEvt.ClickId = []byte(evt.ClickID)
+	pbEvt.CampaignId = evt.CampaignID[:]
+	pbEvt.EventType = []byte(evt.Type)
+	pbEvt.Payload = evt.Payload
+	pbEvt.Ip = []byte(evt.IP)
+	pbEvt.Ua = []byte(evt.UA)
+	if len(evt.UserID) > 0 {
+		pbEvt.UserId = []byte(evt.UserID)
 	}
-	if slot.createdAt > 0 {
-		pbEvt.CreatedAtUnix = slot.createdAt
+	if !evt.CreatedAt.IsZero() {
+		pbEvt.CreatedAtUnix = evt.CreatedAt.Unix()
+	} else {
+		pbEvt.CreatedAtUnix = time.Now().Unix()
 	}
 
 	size := pbEvt.SizeVT()
@@ -330,4 +182,377 @@ func marshalLocalQuantaStreamSlot(slot *localQuantaStreamSlot) ([]byte, *ByteSli
 	wrap.b = data
 	*bufPtr = buf
 	return data, wrap, bufPtr
+}
+
+func fillLocalQuantaStreamSlot(slot *localQuantaStreamSlot, shard int, evt *domain.Event, camp *domain.Campaign, amountMicro int64, data []byte, wrap *ByteSliceValue, bufPtr *[]byte) {
+	slot.ready.Store(0)
+	slot.shard = uint8(shard)
+	copy(slot.campaignID[:], evt.CampaignID[:])
+	if camp != nil {
+		copy(slot.customerID[:], camp.CustomerID[:])
+	}
+	slot.amountMicro = amountMicro
+
+	slot.clickLen = uint16(copyLocalQuantaField(slot.clickID[:], evt.ClickID))
+	slot.userLen = uint16(copyLocalQuantaField(slot.userID[:], evt.UserID))
+
+	slot.freqLimit = 0
+	slot.freqWindow = 0
+	slot.fcapLen = 0
+	if camp != nil && camp.FreqLimit > 0 {
+		slot.freqLimit = uint32(camp.FreqLimit)
+		slot.freqWindow = camp.FreqWindow
+		slot.fcapLen = uint16(copyLocalQuantaField(slot.fcapPrefix[:], camp.FcapKeyPrefix))
+	}
+
+	slot.data = data
+	slot.wrap = wrap
+	slot.bufPtr = bufPtr
+
+	slot.ready.Store(1)
+}
+
+func (p *LocalQuantaStreamPublisher) Enqueue(shard int, evt *domain.Event, camp *domain.Campaign, amountMicro int64) bool {
+	if p == nil || evt == nil {
+		return false
+	}
+	p.ensureLanes()
+	if shard < 0 || shard >= len(p.lanes) {
+		shard = 0
+	}
+
+	data, wrap, bufPtr := marshalEventToProto(evt)
+	if data == nil {
+		metrics.LocalQuotaStreamWriteErrorTotal.Inc()
+		return false
+	}
+
+	lane := &p.lanes[shard]
+	for {
+		alloc := atomic.LoadUint64(&lane.allocCursor)
+		read := atomic.LoadUint64(&lane.readCursor)
+		if alloc-read >= localQuantaStreamUsable {
+			metrics.LocalQuotaStreamDropTotal.Inc()
+			if wrap != nil {
+				byteSliceValuePool.Put(wrap)
+			}
+			if bufPtr != nil {
+				byteBufPool.Put(bufPtr)
+			}
+			return false
+		}
+		if !atomic.CompareAndSwapUint64(&lane.allocCursor, alloc, alloc+1) {
+			continue
+		}
+		idx := alloc & localQuantaStreamMask
+		slot := &lane.slots[idx]
+		if slot.ready.Load() != 0 {
+			metrics.LocalQuotaStreamDropTotal.Inc()
+			if wrap != nil {
+				byteSliceValuePool.Put(wrap)
+			}
+			if bufPtr != nil {
+				byteBufPool.Put(bufPtr)
+			}
+			return false
+		}
+		fillLocalQuantaStreamSlot(slot, shard, evt, camp, amountMicro, data, wrap, bufPtr)
+		atomic.StoreUint64(&lane.writeCursor, alloc+1)
+		return true
+	}
+}
+
+func (p *LocalQuantaStreamPublisher) DrainBench() {
+	if p == nil {
+		return
+	}
+	p.ensureLanes()
+	for i := range p.lanes {
+		lane := &p.lanes[i]
+		r := atomic.LoadUint64(&lane.readCursor)
+		w := atomic.LoadUint64(&lane.writeCursor)
+		for j := r; j < w; j++ {
+			idx := j & localQuantaStreamMask
+			slot := &lane.slots[idx]
+			if slot.ready.Load() == 1 {
+				if slot.wrap != nil {
+					byteSliceValuePool.Put(slot.wrap)
+					slot.wrap = nil
+				}
+				if slot.bufPtr != nil {
+					byteBufPool.Put(slot.bufPtr)
+					slot.bufPtr = nil
+				}
+				slot.data = nil
+				slot.ready.Store(0)
+			}
+		}
+		atomic.StoreUint64(&lane.readCursor, w)
+		atomic.StoreUint64(&lane.allocCursor, w)
+	}
+}
+
+func (p *LocalQuantaStreamPublisher) Pending() uint64 {
+	p.ensureLanes()
+	var total uint64
+	for i := range p.lanes {
+		lane := &p.lanes[i]
+		write := atomic.LoadUint64(&lane.writeCursor)
+		read := atomic.LoadUint64(&lane.readCursor)
+		if write > read {
+			total += (write - read)
+		}
+	}
+	return total
+}
+
+func (p *LocalQuantaStreamPublisher) WaitDrained(timeout time.Duration) bool {
+	if p == nil {
+		return true
+	}
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if p.Pending() == 0 {
+			return true
+		}
+		time.Sleep(time.Millisecond)
+	}
+	return p.Pending() == 0
+}
+
+func (p *LocalQuantaStreamPublisher) Close() {
+	if p == nil {
+		return
+	}
+	close(p.stopCh)
+	p.wg.Wait()
+}
+
+func (p *LocalQuantaStreamPublisher) laneWorker(shard int) {
+	defer p.wg.Done()
+	ticker := time.NewTicker(localQuantaStreamFlush)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-p.stopCh:
+			p.drainLane(shard, true)
+			return
+		case <-ticker.C:
+			p.drainLane(shard, false)
+		}
+	}
+}
+
+func (p *LocalQuantaStreamPublisher) drainLane(shard int, final bool) {
+	lane := &p.lanes[shard]
+	batch := make([]*localQuantaStreamSlot, 0, localQuantaStreamBatch)
+	for {
+		read := atomic.LoadUint64(&lane.readCursor)
+		write := atomic.LoadUint64(&lane.writeCursor)
+		if read >= write {
+			break
+		}
+		idx := read & localQuantaStreamMask
+		slot := &lane.slots[idx]
+		if slot.ready.Load() != 1 {
+			break
+		}
+		batch = append(batch, slot)
+		atomic.StoreUint64(&lane.readCursor, read+1)
+		if len(batch) >= localQuantaStreamBatch {
+			break
+		}
+	}
+	if len(batch) > 0 {
+		p.flushLaneBatch(shard, batch)
+	}
+	if final {
+		for atomic.LoadUint64(&lane.writeCursor) != atomic.LoadUint64(&lane.readCursor) {
+			p.drainLane(shard, false)
+		}
+	}
+}
+
+func (p *LocalQuantaStreamPublisher) appendIdemKey(scratch []byte, clickLen int, slot *localQuantaStreamSlot) string {
+	const prefix = "idempotency:click:"
+	n := copy(scratch, prefix)
+	n += copy(scratch[n:], slot.clickID[:clickLen])
+	return unsafeString(scratch[:n])
+}
+
+func (p *LocalQuantaStreamPublisher) flushLaneBatch(shard int, batch []*localQuantaStreamSlot) {
+	ctx, cancel := context.WithTimeout(context.Background(), p.writeTimeout)
+	defer cancel()
+
+	flushed := p.flushShardPipeline(ctx, shard, batch)
+	for _, slot := range batch {
+		slot.wrap = nil
+		slot.bufPtr = nil
+		slot.data = nil
+		slot.ready.Store(0)
+	}
+	if flushed > 0 {
+		metrics.LocalQuotaStreamFlushTotal.Add(float64(flushed))
+	}
+}
+
+type streamPipelineItem struct {
+	slot     *localQuantaStreamSlot
+	wrap     *ByteSliceValue
+	bufPtr   *[]byte
+	idemKey  string
+	hasClick bool
+}
+
+func (p *LocalQuantaStreamPublisher) flushShardPipeline(ctx context.Context, shard int, slots []*localQuantaStreamSlot) int {
+	if shard < 0 || shard >= len(p.rdbs) {
+		return 0
+	}
+	rdb := p.rdbs[shard]
+	if rdb == nil {
+		metrics.LocalQuotaStreamWriteErrorTotal.Add(float64(len(slots)))
+		return 0
+	}
+
+	items := make([]streamPipelineItem, 0, len(slots))
+	defer func() {
+		for i := range items {
+			if items[i].wrap != nil {
+				byteSliceValuePool.Put(items[i].wrap)
+			}
+			if items[i].bufPtr != nil {
+				byteBufPool.Put(items[i].bufPtr)
+			}
+		}
+	}()
+
+	for _, slot := range slots {
+		if slot.wrap == nil {
+			metrics.LocalQuotaStreamWriteErrorTotal.Inc()
+			continue
+		}
+		item := streamPipelineItem{slot: slot, wrap: slot.wrap, bufPtr: slot.bufPtr}
+		if slot.clickLen > 0 {
+			var scratch [localQuantaSlotClickMax + 20]byte
+			item.idemKey = p.appendIdemKey(scratch[:], int(slot.clickLen), slot)
+			item.hasClick = true
+		}
+		items = append(items, item)
+	}
+	if len(items) == 0 {
+		return 0
+	}
+
+	accepted := make([]streamPipelineItem, 0, len(items))
+	needIdem := false
+	for i := range items {
+		if items[i].hasClick {
+			needIdem = true
+			break
+		}
+	}
+	if needIdem {
+		idemPipe := rdb.Pipeline()
+		idemCmds := make([]*redis.BoolCmd, len(items))
+		for i := range items {
+			if items[i].hasClick {
+				idemCmds[i] = idemPipe.SetNX(ctx, items[i].idemKey, "1", p.idemTTL)
+			}
+		}
+		if _, err := idemPipe.Exec(ctx); err != nil {
+			metrics.LocalQuotaStreamWriteErrorTotal.Add(float64(len(items)))
+			return 0
+		}
+		for i, item := range items {
+			if item.hasClick {
+				ok, err := idemCmds[i].Result()
+				if err != nil || !ok {
+					continue
+				}
+			}
+			accepted = append(accepted, item)
+		}
+	} else {
+		accepted = items
+	}
+	if len(accepted) == 0 {
+		return 0
+	}
+
+	xaddPipe := rdb.Pipeline()
+	xaddCmds := make([]*redis.StringCmd, len(accepted))
+	for i, item := range accepted {
+		xaddCmds[i] = xaddPipe.XAdd(ctx, &redis.XAddArgs{
+			Stream: p.stream,
+			MaxLen: p.maxLen,
+			Approx: true,
+			Values: []any{"d", item.wrap},
+		})
+	}
+	if _, err := xaddPipe.Exec(ctx); err != nil {
+		metrics.LocalQuotaStreamWriteErrorTotal.Add(float64(len(accepted)))
+		return 0
+	}
+
+	type syncKey struct {
+		camp uuid.UUID
+		cust uuid.UUID
+	}
+	syncTotals := make(map[syncKey]int64, 8)
+	flushed := 0
+	for i, item := range accepted {
+		if err := xaddCmds[i].Err(); err != nil {
+			metrics.LocalQuotaStreamWriteErrorTotal.Inc()
+			continue
+		}
+		flushed++
+		if item.slot.amountMicro <= 0 {
+			continue
+		}
+		var campID, custID uuid.UUID
+		copy(campID[:], item.slot.campaignID[:])
+		copy(custID[:], item.slot.customerID[:])
+		if custID == uuid.Nil {
+			continue
+		}
+		syncTotals[syncKey{camp: campID, cust: custID}] += item.slot.amountMicro
+	}
+
+	fcapUpdates := false
+	for _, item := range accepted {
+		if item.slot.freqLimit > 0 && item.slot.userLen > 0 && item.slot.fcapLen > 0 {
+			fcapUpdates = true
+			break
+		}
+	}
+
+	if len(syncTotals) > 0 || fcapUpdates {
+		syncPipe := rdb.Pipeline()
+		for key, amt := range syncTotals {
+			if amt <= 0 {
+				continue
+			}
+			campSync := "budget:sync:campaign:" + key.camp.String()
+			custSync := "budget:sync:customer:" + key.cust.String()
+			syncPipe.IncrBy(ctx, campSync, amt)
+			syncPipe.IncrBy(ctx, custSync, amt)
+			syncPipe.SAdd(ctx, "budget:dirty_campaigns", key.camp.String())
+			syncPipe.SAdd(ctx, "budget:dirty_customers", key.cust.String())
+		}
+		for _, item := range accepted {
+			if item.slot.freqLimit > 0 && item.slot.userLen > 0 && item.slot.fcapLen > 0 {
+				fcapKey := string(item.slot.fcapPrefix[:item.slot.fcapLen]) + string(item.slot.userID[:item.slot.userLen])
+				syncPipe.Incr(ctx, fcapKey)
+				syncPipe.Expire(ctx, fcapKey, time.Duration(item.slot.freqWindow)*time.Second)
+			}
+		}
+		if _, err := syncPipe.Exec(ctx); err != nil {
+			metrics.LocalQuotaStreamWriteErrorTotal.Add(float64(len(syncTotals)))
+		}
+	}
+	return flushed
+}
+
+func (p *LocalQuantaStreamPublisher) flushOne(ctx context.Context, slot *localQuantaStreamSlot) bool {
+	return p.flushShardPipeline(ctx, int(slot.shard), []*localQuantaStreamSlot{slot}) == 1
 }

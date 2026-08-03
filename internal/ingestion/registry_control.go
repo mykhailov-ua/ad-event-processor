@@ -18,18 +18,19 @@ func (registry *Registry) StartWatchShards(ctx context.Context, rdbs []redis.Uni
 			continue
 		}
 		registry.wg.Add(1)
-		go registry.runShardPubSubWatch(ctx, rdb, channel, shardIdx)
+		staleDriver := true
+		go registry.runShardPubSubWatch(ctx, rdb, channel, shardIdx, staleDriver)
 	}
 }
 
-func (registry *Registry) runShardPubSubWatch(ctx context.Context, rdb redis.UniversalClient, channel string, shardIdx int) {
+func (registry *Registry) runShardPubSubWatch(ctx context.Context, rdb redis.UniversalClient, channel string, shardIdx int, staleDriver bool) {
 	defer registry.wg.Done()
 	backoff := time.Second
 	for {
 		if ctx.Err() != nil {
 			return
 		}
-		err := registry.watchPubSubOnce(ctx, rdb, channel)
+		err := registry.watchPubSubOnce(ctx, rdb, channel, staleDriver)
 		if ctx.Err() != nil {
 			return
 		}

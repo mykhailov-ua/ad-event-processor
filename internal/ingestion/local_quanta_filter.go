@@ -95,14 +95,26 @@ func (f *UnifiedFilter) checkLocalQuanta(
 	}
 
 	if f.localQuotaMode == "shadow" {
-		localOK := f.localQuantaLedger.TrySpendLocal(evt.CampaignID, amount)
+		subSlot := debitSubSlot(campInfo, evt.UserID, evt.ClickID)
+		localOK := f.localQuantaLedger.TrySpendDebit(evt.CampaignID, subSlot, amount)
 		if localOK {
 			f.publishLocalDelta(evt.CampaignID, amount)
 		}
 		return false, nil
 	}
 
-	if !f.localQuantaLedger.TrySpendLocal(evt.CampaignID, amount) {
+	if campInfo.FreqLimit > 0 && evt.UserID != "" {
+		exceeded, err := f.checkFreqLimitGo(evt, campInfo)
+		if err != nil {
+			return true, err
+		}
+		if exceeded {
+			return true, ErrFreqLimitExceeded
+		}
+	}
+
+	subSlot := debitSubSlot(campInfo, evt.UserID, evt.ClickID)
+	if !f.localQuantaLedger.TrySpendDebit(evt.CampaignID, subSlot, amount) {
 		if f.localQuantaRefill != nil {
 			f.localQuantaRefill.Signal(evt.CampaignID)
 		}
@@ -113,13 +125,13 @@ func (f *UnifiedFilter) checkLocalQuanta(
 	f.publishLocalDelta(evt.CampaignID, amount)
 
 	if f.localQuantaFullSkipEligible(evt, campInfo) {
-		err := f.acceptLocalQuantaFullSkip(evt, campInfo, amount)
+		err := f.acceptLocalQuantaFullSkip(evt, campInfo, amount, subSlot)
 		return true, err
 	}
 
-	shard, err := f.resolveDebitShard(evt.CampaignID, evt.UserID, campInfo)
+	shard, _, err := f.resolveDebitShard(evt.CampaignID, evt.UserID, evt.ClickID, campInfo)
 	if err != nil {
-		f.rollbackLocalQuantaSpend(evt.CampaignID, amount)
+		f.rollbackLocalQuantaSpend(evt.CampaignID, subSlot, amount)
 		return true, err
 	}
 	rdb := f.rdbs[shard%len(f.rdbs)]
@@ -137,42 +149,42 @@ func (f *UnifiedFilter) checkLocalQuanta(
 	budgetFastScratchPool.Put(fastScratch)
 
 	if err != nil {
-		f.rollbackLocalQuantaSpend(evt.CampaignID, amount)
+		f.rollbackLocalQuantaSpend(evt.CampaignID, subSlot, amount)
 		return true, err
 	}
 	return true, nil
 }
 
-func (f *UnifiedFilter) rollbackLocalQuantaSpend(campaignID uuid.UUID, amountMicro int64) {
+func (f *UnifiedFilter) rollbackLocalQuantaSpend(campaignID uuid.UUID, subSlot int, amountMicro int64) {
 	if f.localQuantaLedger != nil && amountMicro > 0 {
-		f.localQuantaLedger.Refund(campaignID, amountMicro)
+		f.localQuantaLedger.RefundDebit(campaignID, subSlot, amountMicro)
 	}
 	if f.localQuantaPublisher != nil && amountMicro > 0 {
 		f.localQuantaPublisher.PublishReturn(campaignID, amountMicro)
 	}
 }
 
-func (f *UnifiedFilter) acceptLocalQuantaFullSkip(evt *domain.Event, campInfo *domain.Campaign, amountMicro int64) error {
+func (f *UnifiedFilter) acceptLocalQuantaFullSkip(evt *domain.Event, campInfo *domain.Campaign, amountMicro int64, subSlot int) error {
 	if f.localClickIdem != nil && !f.localClickIdem.TryClaim(evt.ClickID) {
 		metrics.FilterLuaBranchTotal.WithLabelValues("duplicate").Inc()
-		f.rollbackLocalQuantaSpend(evt.CampaignID, amountMicro)
+		f.rollbackLocalQuantaSpend(evt.CampaignID, subSlot, amountMicro)
 		return ErrDuplicateEvent
 	}
 
-	shard, err := f.resolveDebitShard(evt.CampaignID, evt.UserID, campInfo)
+	shard, _, err := f.resolveDebitShard(evt.CampaignID, evt.UserID, evt.ClickID, campInfo)
 	if err != nil {
 		if f.localClickIdem != nil {
 			f.localClickIdem.Release(evt.ClickID)
 		}
-		f.rollbackLocalQuantaSpend(evt.CampaignID, amountMicro)
+		f.rollbackLocalQuantaSpend(evt.CampaignID, subSlot, amountMicro)
 		return err
 	}
 
-	if !f.localQuantaStream.Enqueue(shard, evt) {
+	if !f.localQuantaStream.Enqueue(shard, evt, campInfo, amountMicro) {
 		if f.localClickIdem != nil {
 			f.localClickIdem.Release(evt.ClickID)
 		}
-		f.rollbackLocalQuantaSpend(evt.CampaignID, amountMicro)
+		f.rollbackLocalQuantaSpend(evt.CampaignID, subSlot, amountMicro)
 		return ErrShardUnavailable
 	}
 

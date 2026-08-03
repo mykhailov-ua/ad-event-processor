@@ -32,6 +32,29 @@ func TestLocalQuantaLedger_NeedsRefill(t *testing.T) {
 	require.True(t, ledger.NeedsRefill(id, 20))
 }
 
+func TestLocalQuantaLedger_subSlotSequential(t *testing.T) {
+	ledger := NewLocalQuantaLedger()
+	id := uuid.New()
+	ledger.CreditDebit(id, 2, 1_000_000, 1_000_000)
+	require.True(t, ledger.TrySpendDebit(id, 2, 100_000))
+	require.False(t, ledger.TrySpendDebit(id, 0, 100_000))
+}
+
+func TestLocalQuantaLedger_debitSubSlotsSequentialSpend(t *testing.T) {
+	ledger := NewLocalQuantaLedger()
+	id := uuid.New()
+	const chunk = int64(10_000_000)
+	const spend = int64(10_000)
+	for sub := 0; sub < 4; sub++ {
+		ledger.CreditDebit(id, sub, chunk, chunk)
+	}
+	for sub := 0; sub < 4; sub++ {
+		for j := 0; j < 250; j++ {
+			require.True(t, ledger.TrySpendDebit(id, sub, spend), "sub=%d iter=%d", sub, j)
+		}
+	}
+}
+
 func TestLocalQuantaLedger_concurrentSpend(t *testing.T) {
 	ledger := NewLocalQuantaLedger()
 	id := uuid.New()

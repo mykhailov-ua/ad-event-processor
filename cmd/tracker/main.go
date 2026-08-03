@@ -74,6 +74,14 @@ func main() {
 	queries := db.New(pool)
 	registry := ingestion.NewRegistry(queries)
 	registry.SetPool(pool)
+	if cfg.CampaignReplicaPath != "" {
+		registry.SetReplicaPath(cfg.CampaignReplicaPath)
+	}
+	if replicaCount, err := registry.BootstrapFromReplica(); err != nil {
+		slog.Warn("campaign replica bootstrap failed", "error", err)
+	} else if replicaCount > 0 {
+		slog.Info("campaign registry preloaded from replica", "campaigns", replicaCount)
+	}
 	count, err := registry.Sync(ctx)
 	if err != nil {
 		slog.Warn("initial campaign registry sync failed", "error", err)
@@ -92,6 +100,12 @@ func main() {
 	if err != nil {
 		slog.Error("failed to connect to redis shards", "error", err)
 		os.Exit(1)
+	}
+	if rdbs[0] == nil {
+		slog.Warn("redis shard 0 not connected; running in degraded mode",
+			"replica", cfg.CampaignReplicaPath,
+			"broker_fallback", cfg.CampaignUpdateBrokerFallback,
+		)
 	}
 
 	channel := cfg.CampaignUpdateChannel
@@ -150,8 +164,13 @@ func main() {
 	if consentChannel == "" {
 		consentChannel = ingestion.ConsentDefaultUpdateChannel
 	}
-	consentStore := ingestion.NewConsentStore(rdbs[0])
-	consentStore.StartWatch(ctx, rdbs[0], consentChannel)
+	consentRdb := firstConnectedRedis(rdbs)
+	consentStore := ingestion.NewConsentStore(consentRdb)
+	if consentRdb != nil {
+		consentStore.StartWatch(ctx, consentRdb, consentChannel)
+	} else {
+		slog.Warn("consent pub/sub disabled: no redis shard available")
+	}
 
 	var geoProvider ingestion.GeoProvider
 	geoProvider, err = ingestion.NewMaxMindProvider(cfg.GeoIP.DBPath)
@@ -179,6 +198,7 @@ func main() {
 	fraudFilter := ingestion.NewFraudFilter(geoProvider)
 
 	settingsWatcher := ingestion.NewSettingsWatcher(rdbs, cfg)
+	settingsWatcher.SetPGFallback(ingestion.SettingsPGSync(pool), registry.IsStaleMode)
 	deviceFilter := ingestion.NewDeviceFilter(settingsWatcher)
 	go settingsWatcher.Start(ctx, time.Second)
 
@@ -201,12 +221,17 @@ func main() {
 	)
 	unifiedFilter.SetFilterEvalPinWorkers(cfg.MaxWorkers)
 	unifiedFilter.SetShardBreakers(breakers)
+	unifiedFilter.SetSettingsWatcher(settingsWatcher)
 	if err := unifiedFilter.PreloadScripts(ctx); err != nil {
 		slog.Error("failed to preload redis lua scripts on all shards", "error", err)
 		os.Exit(1)
 	}
 	unifiedFilter.SetTTCMin(time.Duration(cfg.TTCMinMs) * time.Millisecond)
 	unifiedFilter.SetTTCFailClosed(cfg.TTCFailClosed)
+	if cfg.TTCMinMs > 0 {
+		unifiedFilter.SetLocalTTCCache(ingestion.NewLocalTTCCache())
+	}
+	unifiedFilter.SetRoughPacingGate(ingestion.NewRoughPacingGate())
 	unifiedFilter.SetMetricsSampleMask(cfg.MetricsHistogramSampleMask)
 	unifiedFilter.SetQuotaConfig(cfg.QuotaMode, cfg.QuotaChunkSize, cfg.QuotaRefillThresholdPct)
 	unifiedFilter.SetLuaFastPathEnabled(cfg.LuaFastPathEnabled)
@@ -259,6 +284,8 @@ func main() {
 			IdemCache:      idemCache,
 		})
 		quotaRefillWorker.SetStrictMode(localQuantaStrict, localQuantaFlusher)
+		quotaRefillWorker.SetCampaignRegistry(registry)
+		localQuantaFlusher.SetCampaignRegistry(registry)
 		ingestion.SetRegistryQuantaFlushHook(func(id uuid.UUID) {
 			flushCtx, flushCancel := context.WithTimeout(context.Background(), 2*time.Second)
 			defer flushCancel()
@@ -576,9 +603,21 @@ func main() {
 	unifiedFilter.CloseFilterEvalPins()
 
 	for i, rdb := range rdbs {
+		if rdb == nil {
+			continue
+		}
 		if err := rdb.Close(); err != nil {
 			slog.Error("failed to close redis shard", "shard", i, "error", err)
 		}
 	}
 	slog.Info("ad-event-tracker shutdown complete")
+}
+
+func firstConnectedRedis(rdbs []redis.UniversalClient) redis.UniversalClient {
+	for _, rdb := range rdbs {
+		if rdb != nil {
+			return rdb
+		}
+	}
+	return nil
 }

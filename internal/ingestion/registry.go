@@ -79,6 +79,10 @@ type Registry struct {
 	lastPubSubOKUnix int64
 	staleTTLNano     int64
 	staleMode        int32
+
+	snapGen      atomic.Uint64
+	workerCache  [registryWorkerCacheMax]registryWorkerCacheSlot
+	lastSyncTime atomic.Int64
 }
 
 func NewRegistry(repo db.Querier) *Registry {
@@ -87,7 +91,7 @@ func NewRegistry(repo db.Querier) *Registry {
 		repo:          repo,
 		replicaPath:   "campaigns_replica.json",
 	}
-	r.data.Store(&campaignMapSnapshot{byID: make(map[uuid.UUID]campaignInfo, 100_000)})
+	r.storeCampaignSnapshot(&campaignMapSnapshot{byID: make(map[uuid.UUID]campaignInfo, 100_000)})
 	r.entitlements.Store(&entitlementsSnapshot{
 		byCustomerID: make(map[uuid.UUID]licensing.Entitlements),
 		licenseState: licensing.StateExpired,
@@ -138,7 +142,7 @@ func (r *Registry) UpdateAndWarmCampaign(ctx context.Context, id uuid.UUID) erro
 		delete(newMap, id)
 		invokeRegistryQuantaFlush(id)
 	}
-	r.data.Store(&campaignMapSnapshot{byID: newMap})
+	r.storeCampaignSnapshot(&campaignMapSnapshot{byID: newMap})
 	w := r.budgetWarmer
 	r.mu.Unlock()
 
@@ -255,7 +259,7 @@ func (r *Registry) Add(id, customerID uuid.UUID, brandID *uuid.UUID, brandFcapKe
 
 	newMap[id] = info
 	r.manuallyAdded[id] = true
-	r.data.Store(&campaignMapSnapshot{byID: newMap})
+	r.storeCampaignSnapshot(&campaignMapSnapshot{byID: newMap})
 
 	if err := r.saveReplica(newMap); err != nil {
 		slog.Error("failed to save local file replica in Add", "error", err)
@@ -263,6 +267,13 @@ func (r *Registry) Add(id, customerID uuid.UUID, brandID *uuid.UUID, brandFcapKe
 }
 
 func (r *Registry) Sync(ctx context.Context) (int, error) {
+	now := time.Now().UnixNano()
+	last := r.lastSyncTime.Load()
+	if last > 0 && now-last < int64(1*time.Second) {
+		return len(r.campaignMapSnapshot().byID), nil
+	}
+	r.lastSyncTime.Store(now)
+
 	if r.pool != nil {
 		if err := r.SyncEntitlements(ctx); err != nil {
 			slog.Error("entitlements sync failed", "error", err)
@@ -279,7 +290,7 @@ func (r *Registry) Sync(ctx context.Context) (int, error) {
 		if len(currentMap) == 0 {
 			slog.Warn("postgres sync failed and memory cache is empty, attempting to load from local file replica")
 			if loaded, loadErr := r.loadReplica(); loadErr == nil {
-				r.data.Store(loaded)
+				r.storeCampaignSnapshot(loaded)
 				return len(loaded.byID), nil
 			} else {
 				slog.Error("failed to load from local file replica", "error", loadErr)
@@ -318,7 +329,7 @@ func (r *Registry) Sync(ctx context.Context) (int, error) {
 		}
 	}
 
-	r.data.Store(&campaignMapSnapshot{byID: fresh})
+	r.storeCampaignSnapshot(&campaignMapSnapshot{byID: fresh})
 
 	if err := r.saveReplica(fresh); err != nil {
 		slog.Error("failed to save local file replica in Sync", "error", err)
@@ -489,14 +500,16 @@ func (r *Registry) StartSync(ctx context.Context, interval time.Duration) {
 	}()
 }
 
-func (r *Registry) watchPubSubOnce(ctx context.Context, rdb redis.UniversalClient, channel string) error {
+func (r *Registry) watchPubSubOnce(ctx context.Context, rdb redis.UniversalClient, channel string, staleDriver bool) error {
 	pubsub := rdb.Subscribe(ctx, channel)
 	defer pubsub.Close()
 
 	if _, err := pubsub.Receive(ctx); err != nil {
 		return err
 	}
-	r.MarkPubSubOK()
+	if staleDriver {
+		r.MarkPubSubOK()
+	}
 
 	ch := pubsub.Channel(redis.WithChannelSize(1000))
 	ticker := time.NewTicker(5 * time.Second)
@@ -510,7 +523,9 @@ func (r *Registry) watchPubSubOnce(ctx context.Context, rdb redis.UniversalClien
 			if err := pubsub.Ping(ctx); err != nil {
 				return err
 			}
-			r.MarkPubSubOK()
+			if staleDriver {
+				r.MarkPubSubOK()
+			}
 		case msg, ok := <-ch:
 			if !ok {
 				return errPubSubClosed
@@ -520,7 +535,9 @@ func (r *Registry) watchPubSubOnce(ctx context.Context, rdb redis.UniversalClien
 					slog.Error("full campaign registry reload failed", "error", err)
 					continue
 				}
-				r.MarkPubSubOK()
+				if staleDriver {
+					r.MarkPubSubOK()
+				}
 				continue
 			}
 			id := uuid.UUID{}
@@ -532,7 +549,9 @@ func (r *Registry) watchPubSubOnce(ctx context.Context, rdb redis.UniversalClien
 				slog.Error("incremental campaign registry reload failed", "campaign_id", id, "error", err)
 				continue
 			}
-			r.MarkPubSubOK()
+			if staleDriver {
+				r.MarkPubSubOK()
+			}
 			slog.Debug("campaign registry incremental reload", "campaign_id", id)
 		}
 	}

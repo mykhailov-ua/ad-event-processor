@@ -16,6 +16,7 @@ import (
 	"espx/internal/database"
 	"espx/internal/domain"
 	"espx/internal/metrics"
+	"espx/internal/rtb"
 
 	"github.com/prometheus/client_golang/prometheus"
 	redis "github.com/redis/go-redis/v9"
@@ -185,6 +186,9 @@ type UnifiedFilter struct {
 	localQuantaPublisher         *BudgetDeltaPublisher
 	localQuantaStream            *LocalQuantaStreamPublisher
 	localClickIdem               *LocalClickIdemCache
+	localTTC                     *LocalTTCCache
+	roughPacing                  *RoughPacingGate
+	settingsWatcher              *SettingsWatcher
 	dbLookupTimeout              time.Duration
 	pgFallbackAllowed            bool
 	luaMetricsSeq                atomic.Uint64
@@ -215,6 +219,12 @@ func (f *UnifiedFilter) SetFilterSlowMs(ms int) {
 
 func (f *UnifiedFilter) SetPGFallbackAllowed(allowed bool) {
 	f.pgFallbackAllowed = allowed
+}
+
+func (f *UnifiedFilter) SetSettingsWatcher(sw *SettingsWatcher) {
+	if f != nil {
+		f.settingsWatcher = sw
+	}
 }
 
 func (f *UnifiedFilter) SetTTCMin(d time.Duration) {
@@ -519,6 +529,38 @@ func (f *UnifiedFilter) checkGeoBidFloor(evt *domain.Event) error {
 	return nil
 }
 
+func (f *UnifiedFilter) checkFreqLimitGo(evt *domain.Event, campInfo *domain.Campaign) (bool, error) {
+	if campInfo == nil || campInfo.FreqLimit <= 0 || evt.UserID == "" {
+		return false, nil
+	}
+	if f.settingsWatcher == nil {
+		return false, nil
+	}
+	snap := f.settingsWatcher.GetFcapRtbSnapshot()
+	if snap == nil {
+		return false, nil
+	}
+	prefixHash := rtb.HashBytes64([]byte(campInfo.FcapKeyPrefix))
+	userHash := rtb.HashBytes64([]byte(evt.UserID))
+	count, ok := snap.FcapCount(prefixHash, userHash)
+	if ok && count >= uint32(campInfo.FreqLimit) {
+		return true, ErrFreqLimitExceeded
+	}
+	return false, nil
+}
+
+func (f *UnifiedFilter) getCampaign(evt *domain.Event) (*domain.Campaign, bool) {
+	if f == nil || f.registry == nil || evt == nil {
+		return nil, false
+	}
+	if reg, ok := f.registry.(*Registry); ok {
+		if w := int(evt.FilterWorkerIdx); w >= 0 {
+			return reg.GetCampaignWorker(w, evt.CampaignID)
+		}
+	}
+	return f.registry.GetCampaign(evt.CampaignID)
+}
+
 func (f *UnifiedFilter) Check(ctx context.Context, evt *domain.Event) error {
 	nowNano := monotonicNano()
 	if f.quotaMode == "live" && f.localQuotaCache.IsBlocked(evt.CampaignID, nowNano) {
@@ -526,7 +568,7 @@ func (f *UnifiedFilter) Check(ctx context.Context, evt *domain.Event) error {
 		return ErrBudgetExhausted
 	}
 
-	campInfo, ok := f.registry.GetCampaign(evt.CampaignID)
+	campInfo, ok := f.getCampaign(evt)
 	if !ok {
 		if reg, ok := f.registry.(*Registry); ok && reg.IsStaleMode() {
 			return ErrRegistryStale
@@ -539,6 +581,8 @@ func (f *UnifiedFilter) Check(ctx context.Context, evt *domain.Event) error {
 		appendUUID(evt.ClickIDBuf[:0], id)
 		evt.ClickID = unsafeString(evt.ClickIDBuf[:])
 	}
+
+	f.applyGoTTC(evt)
 
 	if f.geo != nil {
 		if err := f.checkGeoBidFloor(evt); err != nil {
@@ -567,20 +611,46 @@ func (f *UnifiedFilter) Check(ctx context.Context, evt *domain.Event) error {
 		amountMicro /= 2
 	}
 
+	if err := f.checkGoRoughPacing(evt, campInfo, amountMicro); err != nil {
+		return err
+	}
+
 	if handled, err := f.checkLocalQuanta(ctx, evt, campInfo, amountMicro); handled {
 		return err
 	}
 
-	shard, err := f.resolveDebitShard(evt.CampaignID, evt.UserID, campInfo)
+	shard, _, err := f.resolveDebitShard(evt.CampaignID, evt.UserID, evt.ClickID, campInfo)
 	if err != nil {
 		return err
 	}
 	rdb := f.rdbs[shard%len(f.rdbs)]
 
 	if f.fastPathEnabled.Load() && !f.needsFullLuaPath(evt, campInfo) {
+		if campInfo.FreqLimit > 0 && evt.UserID != "" {
+			exceeded, err := f.checkFreqLimitGo(evt, campInfo)
+			if err != nil {
+				return err
+			}
+			if exceeded {
+				return ErrFreqLimitExceeded
+			}
+		}
 		fastScratch := budgetFastScratchPool.Get().(*budgetFastScratch)
 		err := f.runBudgetFastLua(ctx, evt, campInfo, amount, rdb, shard, fastScratch)
 		budgetFastScratchPool.Put(fastScratch)
+		if err == nil {
+			if campInfo.FreqLimit > 0 && evt.UserID != "" {
+				fcapKey := campInfo.FcapKeyPrefix + evt.UserID
+				go func() {
+					ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+					defer cancel()
+					pipe := rdb.Pipeline()
+					pipe.Incr(ctx, fcapKey)
+					pipe.Expire(ctx, fcapKey, time.Duration(campInfo.FreqWindow)*time.Second)
+					_, _ = pipe.Exec(ctx)
+				}()
+			}
+		}
 		return err
 	}
 
@@ -666,10 +736,12 @@ func (f *UnifiedFilter) runUnifiedLua(
 	wImpTS.buf = appendUUID(wImpTS.buf, evt.CampaignID)
 	impTSKey := unsafeString(wImpTS.buf)
 
-	wQuota.buf = wQuota.buf[:0]
-	wQuota.buf = appendCampaignHashTag(wQuota.buf, evt.CampaignID)
-	wQuota.buf = append(wQuota.buf, "budget:quota:"...)
-	wQuota.buf = appendUUID(wQuota.buf, evt.CampaignID)
+	subSlot := 0
+	if campInfo != nil {
+		subSlot = debitSubSlot(campInfo, evt.UserID, evt.ClickID)
+	}
+
+	wQuota.buf = appendBudgetQuotaKey(wQuota.buf[:0], evt.CampaignID, subSlot)
 	quotaKey := unsafeString(wQuota.buf)
 
 	wRefillLock.buf = wRefillLock.buf[:0]

@@ -32,15 +32,19 @@ func (f *UnifiedFilter) needsFullLuaPath(evt *domain.Event, campInfo *domain.Cam
 		return true
 	}
 	if campInfo.FreqLimit > 0 && evt.UserID != "" {
-		return true
+		if f.settingsWatcher == nil {
+			return true
+		}
 	}
 	if campInfo.PacingMode == domain.PacingModeEven {
+		if f.roughPacing == nil || !campInfo.RoughPacingEnabled() {
+			return true
+		}
+	}
+	if ttcEnabled(f.ttcMinMsAny) && f.localTTC == nil {
 		return true
 	}
-	if ttcEnabled(f.ttcMinMsAny) {
-		return true
-	}
-	if f.quotaEnabledAny == oneAny && quotaRefillSample(evt.CampaignID) {
+	if f.quotaEnabledAny == oneAny && quotaRefillSample(evt.CampaignID) && f.localQuantaRefill == nil {
 		return true
 	}
 	return false

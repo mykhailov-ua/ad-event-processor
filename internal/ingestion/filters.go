@@ -344,8 +344,14 @@ func (f *EmergencyBreakerFilter) Check(ctx context.Context, evt *domain.Event) e
 	return nil
 }
 
+type placementCacheItem struct {
+	blacklisted bool
+	expiry      int64
+}
+
 type PlacementBlacklistFilter struct {
-	rdbs []redis.UniversalClient
+	rdbs  []redis.UniversalClient
+	cache sync.Map
 }
 
 func NewPlacementBlacklistFilter(rdbs []redis.UniversalClient) *PlacementBlacklistFilter {
@@ -356,6 +362,19 @@ func (f *PlacementBlacklistFilter) Check(ctx context.Context, evt *domain.Event)
 	if evt == nil || evt.PlacementID == "" {
 		return nil
 	}
+
+	cacheKey := evt.CampaignID.String() + ":" + evt.PlacementID
+	now := time.Now().UnixNano()
+	if val, ok := f.cache.Load(cacheKey); ok {
+		item := val.(placementCacheItem)
+		if now < item.expiry {
+			if item.blacklisted {
+				return ErrPlacementBlocked
+			}
+			return nil
+		}
+	}
+
 	rdb := pickLocalGlobalShard(f.rdbs)
 	if rdb == nil {
 		return nil
@@ -372,6 +391,12 @@ func (f *PlacementBlacklistFilter) Check(ctx context.Context, evt *domain.Event)
 	if err != nil {
 		return nil
 	}
+
+	f.cache.Store(cacheKey, placementCacheItem{
+		blacklisted: isBlacklisted,
+		expiry:      now + int64(5*time.Second),
+	})
+
 	if isBlacklisted {
 		return ErrPlacementBlocked
 	}

@@ -51,7 +51,7 @@ func TestResolveDebitShard_RerouteToReserve(t *testing.T) {
 		ReserveShard:  2,
 	}
 
-	shard, err := f.resolveDebitShard(campID, "user-1", camp)
+	shard, _, err := f.resolveDebitShard(campID, "user-1", "", camp)
 	require.NoError(t, err)
 	assert.NotEqual(t, 0, shard)
 	assert.Contains(t, []int{1, 2}, shard)
@@ -73,6 +73,6 @@ func TestResolveDebitShard_UnavailableWithoutTriplet(t *testing.T) {
 		}
 	}
 
-	_, err := f.resolveDebitShard(campID, "user", &domain.Campaign{})
+	_, _, err := f.resolveDebitShard(campID, "user", "", &domain.Campaign{})
 	require.ErrorIs(t, err, ErrShardUnavailable)
 }

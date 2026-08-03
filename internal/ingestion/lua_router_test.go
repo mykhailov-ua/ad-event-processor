@@ -21,6 +21,9 @@ func TestUnifiedFilter_needsFullLuaPath(t *testing.T) {
 	f.SetTTCMin(time.Second)
 	require.True(t, f.needsFullLuaPath(evt, camp))
 
+	f.SetLocalTTCCache(NewLocalTTCCache())
+	require.False(t, f.needsFullLuaPath(evt, camp))
+
 	f.SetTTCMin(0)
 	f.SetLuaFastPathEnabled(false)
 	require.True(t, f.needsFullLuaPath(evt, camp))
@@ -36,6 +39,16 @@ func TestUnifiedFilter_needsFullLuaPath(t *testing.T) {
 
 	camp.PacingMode = domain.PacingModeEven
 	require.True(t, f.needsFullLuaPath(evt, camp))
+
+	camp.BehaviorFlags = domain.BehaviorRoughPacing
+	f.SetRoughPacingGate(NewRoughPacingGate())
+	require.False(t, f.needsFullLuaPath(evt, camp))
+
+	f.SetQuotaConfig("live", 5_000_000, 20)
+	evt.CampaignID = uuid.UUID{byte(0), 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+	require.True(t, f.needsFullLuaPath(evt, camp))
+	f.localQuantaRefill = &QuotaRefillWorker{}
+	require.False(t, f.needsFullLuaPath(evt, camp))
 }
 
 func TestUnifiedFilter_fastPathDebitMatchesFull(t *testing.T) {

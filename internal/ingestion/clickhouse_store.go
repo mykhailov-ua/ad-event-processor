@@ -488,30 +488,43 @@ func (chStore *ClickHouseStore) insertToClickHouse(ctx context.Context, events [
 
 	*pImps, *pClicks, *pConvs, *pFraud, *pAgg, *pTgEvents = imps, clicks, convs, fraud, agg, tgEvents
 
-	insert := func(table string, evts []*domain.Event, isFraud bool) error {
-		if len(evts) == 0 {
-			return nil
+	var wg sync.WaitGroup
+	var firstErr error
+	var errMu sync.Mutex
+
+	setErr := func(err error) {
+		if err == nil {
+			return
 		}
-		return chStore.insertTable(ctx, table, evts, isFraud)
+		errMu.Lock()
+		if firstErr == nil {
+			firstErr = err
+		}
+		errMu.Unlock()
 	}
 
-	if err := insert("impressions", imps, false); err != nil {
-		return err
+	runInsert := func(table string, evts []*domain.Event, isFraud bool) {
+		if len(evts) == 0 {
+			return
+		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			err := chStore.insertTable(ctx, table, evts, isFraud)
+			setErr(err)
+		}()
 	}
-	if err := insert("clicks", clicks, false); err != nil {
-		return err
-	}
-	if err := insert("conversions", convs, false); err != nil {
-		return err
-	}
-	if err := insert("fraud_events", fraud, true); err != nil {
-		return err
-	}
-	if err := insert("fraud_aggregate_spikes", agg, false); err != nil {
-		return err
-	}
-	if err := insert("tg_events_raw", tgEvents, false); err != nil {
-		return err
+
+	runInsert("impressions", imps, false)
+	runInsert("clicks", clicks, false)
+	runInsert("conversions", convs, false)
+	runInsert("fraud_events", fraud, true)
+	runInsert("fraud_aggregate_spikes", agg, false)
+	runInsert("tg_events_raw", tgEvents, false)
+
+	wg.Wait()
+	if firstErr != nil {
+		return firstErr
 	}
 
 	duration := time.Since(start).Seconds()

@@ -31,6 +31,17 @@ func ConnectRedisShards(ctx context.Context, cfg *config.Config, opts RedisShard
 	for i := range cfg.RedisAddrs {
 		rdb, br, err := connectRedisShard(ctx, cfg, i, names, opts)
 		if err != nil {
+			if i == 0 && cfg.RedisShard0OptionalStartup {
+				slog.Warn("redis shard 0 unavailable at startup; continuing degraded",
+					"error", err,
+					"hint", "registry replica + PG sync + broker fallback keep ingest alive",
+				)
+				open := NewRedisBreaker(1, 1, 24*time.Hour)
+				open.RecordFailure()
+				clients = append(clients, nil)
+				breakers = append(breakers, open)
+				continue
+			}
 			for _, c := range clients {
 				_ = c.Close()
 			}

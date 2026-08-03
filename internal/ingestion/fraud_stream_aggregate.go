@@ -282,6 +282,15 @@ func (q *FraudStreamWriter) flushAggregates(final bool) {
 		return
 	}
 
+	if len(q.rdbs) == 0 || q.rdbs[0] == nil {
+		for range entries {
+			filterFraudStreamWriteErrors.Inc()
+		}
+		*entriesPtr = entries
+		fraudAggFlushPool.Put(entriesPtr)
+		return
+	}
+
 	ctx := context.Background()
 	pipe := q.rdbs[0].Pipeline()
 	for _, e := range entries {

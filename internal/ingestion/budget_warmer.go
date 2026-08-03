@@ -7,6 +7,7 @@ import (
 
 	"espx/internal/domain"
 	"espx/internal/metrics"
+
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
 )
@@ -63,6 +64,9 @@ func (w *BudgetCacheWarmer) Warm(ctx context.Context, campaigns []*domain.Campai
 		if len(items) == 0 {
 			continue
 		}
+		if shard < 0 || shard >= len(w.rdbs) || w.rdbs[shard] == nil {
+			continue
+		}
 		pipe := w.rdbs[shard].Pipeline()
 		cmds := make([]*redis.BoolCmd, len(items))
 		for i, item := range items {
@@ -91,6 +95,9 @@ func (w *BudgetCacheWarmer) WarmOne(ctx context.Context, camp *domain.Campaign) 
 	}
 
 	rdb := w.rdbs[shard]
+	if rdb == nil {
+		return false, nil
+	}
 	remaining := RemainingBudgetMicro(camp)
 
 	warmed, err := rdb.SetNX(ctx, camp.BudgetCampaignKey, remaining, budgetKeyTTL).Result()

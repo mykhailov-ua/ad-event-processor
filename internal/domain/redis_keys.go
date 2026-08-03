@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"strconv"
+
 	"github.com/google/uuid"
 )
 
@@ -47,6 +49,31 @@ func appendCampaignHashTag(dst []byte, id uuid.UUID) []byte {
 	dst = append(dst, '{')
 	dst = appendUUID(dst, id)
 	return append(dst, '}')
+}
+
+func AppendCampaignSubHashTag(dst []byte, id uuid.UUID, sub int) []byte {
+	dst = append(dst, '{')
+	dst = appendUUID(dst, id)
+	if sub > 0 {
+		dst = append(dst, ":slot_"...)
+		if sub < 10 {
+			dst = append(dst, byte('0'+sub))
+		} else {
+			dst = strconv.AppendInt(dst, int64(sub), 10)
+		}
+	}
+	return append(dst, '}')
+}
+
+func BudgetQuotaKeySub(id uuid.UUID, sub int) string {
+	if sub <= 0 {
+		return budgetQuotaKey(id)
+	}
+	var buf [80]byte
+	b := AppendCampaignSubHashTag(buf[:0], id, sub)
+	b = append(b, "budget:quota:"...)
+	b = append(b, id.String()...)
+	return string(b)
 }
 
 func campaignHashTag(id uuid.UUID) string {

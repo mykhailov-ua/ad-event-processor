@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"espx/internal/domain"
 	"espx/internal/metrics"
 
 	"github.com/google/uuid"
@@ -29,7 +30,15 @@ func (l *LocalQuantaLedger) TakeRemaining(id uuid.UUID) int64 {
 	if l == nil {
 		return 0
 	}
-	cell, h := l.cellFor(id)
+	var total int64
+	for sub := 0; sub < 4; sub++ {
+		total += l.takeRemainingDebit(id, sub)
+	}
+	return total
+}
+
+func (l *LocalQuantaLedger) takeRemainingDebit(id uuid.UUID, subSlot int) int64 {
+	cell, h := l.cellForDebit(id, subSlot)
 	if cell.campaignHash != h {
 		return 0
 	}
@@ -73,6 +82,7 @@ type LocalQuantaFlusher struct {
 	ledger    *LocalQuantaLedger
 	rdbs      []redis.UniversalClient
 	sharder   Sharder
+	registry  domain.CampaignRegistry
 	publisher *BudgetDeltaPublisher
 }
 
@@ -91,6 +101,13 @@ func NewLocalQuantaFlusher(
 		sharder:   sharder,
 		publisher: publisher,
 	}
+}
+
+func (f *LocalQuantaFlusher) SetCampaignRegistry(reg domain.CampaignRegistry) {
+	if f == nil {
+		return
+	}
+	f.registry = reg
 }
 
 func (f *LocalQuantaFlusher) FlushLocalQuanta(ctx context.Context, campaignID uuid.UUID, reason string) int64 {
@@ -139,11 +156,43 @@ func (f *LocalQuantaFlusher) returnToRedis(ctx context.Context, campaignID uuid.
 	if amount <= 0 {
 		return nil
 	}
-	shard := f.sharder.GetShard(campaignID)
+	n := 0
+	if f.registry != nil {
+		if camp, ok := f.registry.GetCampaign(campaignID); ok {
+			n = camp.DebitSubShardCount()
+		}
+	}
+	if n <= 1 {
+		shard := f.sharder.GetShard(campaignID)
+		return f.returnToRedisSlot(ctx, campaignID, amount, shard, 0)
+	}
+	perSlot := amount / int64(n)
+	rem := amount % int64(n)
+	var firstErr error
+	for sub := 0; sub < n; sub++ {
+		amt := perSlot
+		if sub == 0 {
+			amt += rem
+		}
+		if amt <= 0 {
+			continue
+		}
+		shard := spreadHighVolumeShard(len(f.rdbs), campaignID, sub)
+		if err := f.returnToRedisSlot(ctx, campaignID, amt, shard, sub); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
+}
+
+func (f *LocalQuantaFlusher) returnToRedisSlot(ctx context.Context, campaignID uuid.UUID, amount int64, shard, subSlot int) error {
+	if amount <= 0 {
+		return nil
+	}
 	if shard < 0 || shard >= len(f.rdbs) || f.rdbs[shard] == nil {
 		return fmt.Errorf("invalid shard %d", shard)
 	}
-	quotaKey := budgetQuotaKey(campaignID)
+	quotaKey := budgetQuotaKeyForDebit(campaignID, subSlot)
 	opCtx := ctx
 	if opCtx == nil {
 		var cancel context.CancelFunc

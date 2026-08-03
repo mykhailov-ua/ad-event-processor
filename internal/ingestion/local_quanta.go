@@ -52,9 +52,23 @@ func (l *LocalQuantaLedger) Mode() uint32 {
 	return l.mode.Load()
 }
 
-func (l *LocalQuantaLedger) cellFor(id uuid.UUID) (*LocalQuantaCell, uint32) {
+func ledgerCellHash(id uuid.UUID, subSlot int) uint32 {
 	h := crc32Castagnoli(&id)
-	return &l.cells[h&localQuantaSlotMask], h
+	if subSlot > 0 {
+		h ^= uint32(subSlot) * 0x85ebca6b
+	}
+	return h
+}
+
+func (l *LocalQuantaLedger) cellFor(id uuid.UUID) (*LocalQuantaCell, uint32) {
+	return l.cellForDebit(id, 0)
+}
+
+func (l *LocalQuantaLedger) cellForDebit(id uuid.UUID, subSlot int) (*LocalQuantaCell, uint32) {
+	base := crc32Castagnoli(&id)
+	sub := subSlot & 3
+	idx := (base + uint32(sub)*1024) & localQuantaSlotMask
+	return &l.cells[idx], ledgerCellHash(id, sub)
 }
 
 func (l *LocalQuantaLedger) HasCredit(id uuid.UUID) bool {
@@ -79,10 +93,14 @@ func (l *LocalQuantaLedger) ChunkSize(id uuid.UUID) int64 {
 }
 
 func (l *LocalQuantaLedger) Refund(id uuid.UUID, amountMicro int64) {
+	l.RefundDebit(id, 0, amountMicro)
+}
+
+func (l *LocalQuantaLedger) RefundDebit(id uuid.UUID, subSlot int, amountMicro int64) {
 	if amountMicro <= 0 {
 		return
 	}
-	cell, h := l.cellFor(id)
+	cell, h := l.cellForDebit(id, subSlot)
 	if cell.campaignHash != h {
 		return
 	}
@@ -90,10 +108,14 @@ func (l *LocalQuantaLedger) Refund(id uuid.UUID, amountMicro int64) {
 }
 
 func (l *LocalQuantaLedger) TrySpendLocal(id uuid.UUID, amountMicro int64) bool {
+	return l.TrySpendDebit(id, 0, amountMicro)
+}
+
+func (l *LocalQuantaLedger) TrySpendDebit(id uuid.UUID, subSlot int, amountMicro int64) bool {
 	if amountMicro <= 0 {
 		return true
 	}
-	cell, h := l.cellFor(id)
+	cell, h := l.cellForDebit(id, subSlot)
 	if cell.campaignHash != h {
 		return false
 	}
@@ -110,10 +132,14 @@ func (l *LocalQuantaLedger) TrySpendLocal(id uuid.UUID, amountMicro int64) bool 
 }
 
 func (l *LocalQuantaLedger) Credit(id uuid.UUID, amountMicro, chunkSize int64) {
+	l.CreditDebit(id, 0, amountMicro, chunkSize)
+}
+
+func (l *LocalQuantaLedger) CreditDebit(id uuid.UUID, subSlot int, amountMicro, chunkSize int64) {
 	if amountMicro <= 0 {
 		return
 	}
-	cell, h := l.cellFor(id)
+	cell, h := l.cellForDebit(id, subSlot)
 	cell.campaignHash = h
 	cell.campaignID = id
 	if chunkSize > 0 {

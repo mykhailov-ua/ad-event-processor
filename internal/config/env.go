@@ -183,6 +183,8 @@ type Config struct {
 	RegistryPollMs               int
 	CampaignUpdateBrokerFallback bool
 	CampaignUpdateBrokerTopic    string
+	RedisShard0OptionalStartup   bool
+	CampaignReplicaPath          string
 
 	AutoscaleHighCTRThreshold   float64
 	AutoscaleMinImpressions     int64
@@ -584,8 +586,10 @@ func Load() (*Config, error) {
 		RtbCatalogReloadChannel:         os.Getenv("RTB_CATALOG_RELOAD_CHANNEL"),
 		RegistryStaleTTLSec:             getEnvInt("REGISTRY_STALE_TTL", 30),
 		RegistryPollMs:                  getEnvInt("REGISTRY_POLL_MS", 5000),
-		CampaignUpdateBrokerFallback:    getEnvBool("CAMPAIGN_UPDATE_BROKER_FALLBACK", false),
+		CampaignUpdateBrokerFallback:    getEnvBool("CAMPAIGN_UPDATE_BROKER_FALLBACK", appEnv == "production" || appEnv == "prod"),
 		CampaignUpdateBrokerTopic:       envOrDefault("CAMPAIGN_UPDATE_BROKER_TOPIC", "campaigns:update"),
+		RedisShard0OptionalStartup:      getEnvBool("REDIS_SHARD0_OPTIONAL_STARTUP", appEnv == "production" || appEnv == "prod"),
+		CampaignReplicaPath:             envOrDefault("CAMPAIGN_REPLICA_PATH", "campaigns_replica.json"),
 		AutoscaleHighCTRThreshold:       getEnvFloat("AUTOSCALE_HIGH_CTR_THRESHOLD", 0.015),
 		AutoscaleMinImpressions:         getEnvInt64("AUTOSCALE_MIN_IMPRESSIONS", 100),
 		AutoscaleLowCTRThreshold:        getEnvFloat("AUTOSCALE_LOW_CTR_THRESHOLD", 0.005),

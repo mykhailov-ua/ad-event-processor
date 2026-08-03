@@ -7,9 +7,14 @@ import (
 	"github.com/google/uuid"
 )
 
-func (f *UnifiedFilter) resolveDebitShard(campaignID uuid.UUID, userID string, campInfo *domain.Campaign) (int, error) {
-	shard := f.sharder.GetShard(campaignID)
-	if campInfo != nil && campInfo.HasTriplet {
+func (f *UnifiedFilter) resolveDebitShard(campaignID uuid.UUID, userID, clickID string, campInfo *domain.Campaign) (shard int, subSlot int, err error) {
+	shard = f.sharder.GetShard(campaignID)
+	subSlot = 0
+
+	if campInfo != nil && campInfo.DebitSubShardCount() > 0 {
+		subSlot = debitSubSlot(campInfo, userID, clickID)
+		shard = spreadHighVolumeShard(len(f.rdbs), campaignID, subSlot)
+	} else if campInfo != nil && campInfo.HasTriplet {
 		hash := ComputeCompositeHashUUID(campaignID, []byte(userID))
 		pct := hash % 100
 		if pct < 40 {
@@ -22,10 +27,10 @@ func (f *UnifiedFilter) resolveDebitShard(campaignID uuid.UUID, userID string, c
 	}
 
 	if !f.shardBreakerOpen(shard) {
-		return shard, nil
+		return shard, subSlot, nil
 	}
 
-	if campInfo != nil && campInfo.HasTriplet {
+	if campInfo != nil && campInfo.HasTriplet && campInfo.DebitSubShardCount() == 0 {
 		alts := [...]int{
 			int(campInfo.ReserveShard),
 			int(campInfo.PrimaryAShard),
@@ -36,11 +41,11 @@ func (f *UnifiedFilter) resolveDebitShard(campaignID uuid.UUID, userID string, c
 				continue
 			}
 			if !f.shardBreakerOpen(alt) {
-				return alt, nil
+				return alt, subSlot, nil
 			}
 		}
 	}
-	return 0, ErrShardUnavailable
+	return 0, 0, ErrShardUnavailable
 }
 
 func (f *UnifiedFilter) shardBreakerOpen(shard int) bool {

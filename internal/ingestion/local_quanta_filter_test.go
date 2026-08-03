@@ -7,8 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"espx/internal/config"
 	"espx/internal/domain"
 	"espx/internal/metrics"
+	"espx/internal/rtb"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/google/uuid"
@@ -151,4 +153,47 @@ func TestUnifiedFilter_localQuanta_clickFastPathMatchesImpression(t *testing.T) 
 	require.NoError(t, err)
 	expected := int64(10_000_000) - 2*fFast.clickAmountMicro
 	require.Equal(t, expected, remaining)
+}
+
+func TestUnifiedFilter_localQuantaEligible_fcap_settingsWatcher(t *testing.T) {
+	sw := NewSettingsWatcher(nil, &config.Config{
+		RateLimitPerMin:   100,
+		RateLimitWindowMs: 1000,
+		ClickAmount:       100,
+		ImpressionAmount:  10,
+	})
+	f := NewUnifiedFilter(nil, nil, &mockRegistry{}, nil, 0, time.Minute, time.Hour, time.Hour, 100, 10, "events", 1000)
+	f.SetQuotaConfig("live", testQuotaChunkMicro, testQuotaRefillThreshold)
+	f.SetLocalQuantaDeps(LocalQuantaDeps{Ledger: NewLocalQuantaLedger()})
+	f.SetLocalQuantaMode("live")
+	f.SetLuaFastPathEnabled(true)
+	f.SetSettingsWatcher(sw)
+
+	camp := &domain.Campaign{
+		PacingMode:    domain.PacingModeAsap,
+		FreqLimit:     2,
+		FcapKeyPrefix: "fcap:c:123:u:",
+	}
+	click := &domain.Event{Type: "click", CampaignID: uuid.New(), UserID: "u1"}
+
+	// Eligible now because SettingsWatcher is available!
+	require.True(t, f.localQuantaEligible(click, camp))
+
+	// Under limit (count = 0)
+	exceeded, err := f.checkFreqLimitGo(click, camp)
+	require.NoError(t, err)
+	require.False(t, exceeded)
+
+	// Set count above limit in the snapshot
+	prefixHash := rtb.HashBytes64([]byte(camp.FcapKeyPrefix))
+	userHash := rtb.HashBytes64([]byte(click.UserID))
+	lookup := rtb.FcapLookupKey(prefixHash, userHash)
+	sw.fcapSnap.Store(rtb.NewFcapSnapshot(map[uint64]uint32{
+		lookup: 2,
+	}))
+
+	// Should be exceeded!
+	exceeded, err = f.checkFreqLimitGo(click, camp)
+	require.ErrorIs(t, err, ErrFreqLimitExceeded)
+	require.True(t, exceeded)
 }

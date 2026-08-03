@@ -257,6 +257,19 @@ Fault injection scenarios are executed via `scripts/fault/run.sh` (wrapper over 
 - **Instance Kill**: Sends `SIGKILL` to Redis, PostgreSQL, or ClickHouse containers under load.
 - **Network Latency**: Simulates Redis network degradation to verify that the circuit breaker opens and transitions to Fail-Closed.
 - **Shard 0 Outage**: Verifies that trackers continue processing traffic for cached campaigns and return `503 registry_stale` for unresolved campaigns.
+
+### Shard 0 degradation runbook (tracker)
+
+When Redis shard 0 (pub/sub, global config keys, consent) is unavailable:
+
+1. **Cold start**: `CAMPAIGN_REPLICA_PATH` (default `campaigns_replica.json`) is loaded before PG/Redis via `BootstrapFromReplica()`. PG `Sync()` overwrites when reachable.
+2. **Optional connect**: `REDIS_SHARD0_OPTIONAL_STARTUP=1` (default in production) lets the tracker start with shard 0 `nil`; budget shards 1–N keep serving traffic.
+3. **Stale signal**: Only shard-0 pub/sub drives `MarkPubSubOK()`; other shards may still reload campaigns but do not clear stale mode alone.
+4. **Settings fallback**: When registry is stale, `SettingsWatcher` reads `system_settings` + processed `UPDATE_SETTINGS` outbox version from Postgres.
+5. **Campaign updates**: Enable `CAMPAIGN_UPDATE_BROKER_FALLBACK=1` and `BROKER_URL` so control-plane publishes bypass shard-0 pub/sub.
+6. **Operator checks**: `registry_stale` metric / `503` on unknown campaigns; confirm replica file age; restore shard 0 or wait for broker + PG paths to catch up.
+
+Fault proof: `bash scripts/fault/run.sh` scenario `shard_0_outage` (`tests/resilience/shard_outage_fault_test.go`).
 - **ClickHouse Outage**: Verifies that the processor diverts events to the local disk spool and drains them once ClickHouse is restored.
 
 Successful scenarios output a `fault_proof fault=<name>` log line, which is verified by the CI runner.

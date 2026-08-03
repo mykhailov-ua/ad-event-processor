@@ -65,11 +65,12 @@ func (f *UnifiedFilter) runBudgetFastLua(
 	precheck := &scratch.precheck
 
 	budgetSourceKey := campInfo.BudgetCampaignKey
+	subSlot := 0
+	if campInfo != nil {
+		subSlot = debitSubSlot(campInfo, evt.UserID, evt.ClickID)
+	}
 	if f.quotaEnabledAny == oneAny {
-		wQuota.buf = wQuota.buf[:0]
-		wQuota.buf = appendCampaignHashTag(wQuota.buf, evt.CampaignID)
-		wQuota.buf = append(wQuota.buf, "budget:quota:"...)
-		wQuota.buf = appendUUID(wQuota.buf, evt.CampaignID)
+		wQuota.buf = appendBudgetQuotaKey(wQuota.buf[:0], evt.CampaignID, subSlot)
 		budgetSourceKey = unsafeString(wQuota.buf)
 	}
 

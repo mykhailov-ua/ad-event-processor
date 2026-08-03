@@ -10,22 +10,117 @@ import (
 
 	"espx/internal/domain"
 
-	"github.com/alicebob/miniredis/v2"
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
 )
 
-func BenchmarkLocalQuanta_FullSkip(b *testing.B) {
-	mr, err := miniredis.Run()
-	if err != nil {
-		b.Fatal(err)
-	}
-	defer mr.Close()
-	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+func benchRegistryForCamp(camp *domain.Campaign) *Registry {
+	reg := NewRegistry(nil)
+	enrichMockCampaign(camp)
+	reg.storeCampaignSnapshot(&campaignMapSnapshot{byID: map[uuid.UUID]campaignInfo{
+		camp.ID: {campaign: camp},
+	}})
+	return reg
+}
 
-	reg := &mockRegistry{}
+type benchNoopRedis struct{ mockRedisClient }
+
+func benchRegistryForCampaign(camp *domain.Campaign) *Registry {
+	reg := NewRegistry(nil)
+	enrichMockCampaign(camp)
+	reg.storeCampaignSnapshot(&campaignMapSnapshot{byID: map[uuid.UUID]campaignInfo{
+		camp.ID: {campaign: camp},
+	}})
+	return reg
+}
+
+func BenchmarkAcceptLocalQuantaFullSkip(b *testing.B) {
+	ledger := NewLocalQuantaLedger()
+	idem := NewLocalClickIdemCache(time.Hour)
+	stream := &LocalQuantaStreamPublisher{
+		stream:       "events",
+		maxLen:       1000,
+		rdbs:         []redis.UniversalClient{&benchNoopRedis{}},
+		idemTTL:      time.Hour,
+		idem:         idem,
+		writeTimeout: time.Millisecond,
+		stopCh:       make(chan struct{}),
+	}
+
+	campID := uuid.New()
+	custID := uuid.New()
+	ledger.Credit(campID, int64(b.N)*10_000+1_000_000, testQuotaChunkMicro)
+
 	f := NewUnifiedFilter(
-		[]redis.UniversalClient{rdb},
+		stream.rdbs,
+		NewJumpHashSharder(1),
+		&mockRegistry{},
+		nil,
+		0,
+		time.Minute,
+		time.Hour,
+		time.Hour,
+		100_000,
+		10_000,
+		"events",
+		1000,
+	)
+	f.SetQuotaConfig("live", testQuotaChunkMicro, testQuotaRefillThreshold)
+	f.SetLuaFastPathEnabled(true)
+	f.SetLocalQuantaDeps(LocalQuantaDeps{Ledger: ledger, Stream: stream})
+	f.SetLocalQuantaMode("live")
+
+	camp := &domain.Campaign{
+		ID:         campID,
+		CustomerID: custID,
+		PacingMode: domain.PacingModeAsap,
+	}
+	enrichMockCampaign(camp)
+
+	evt := &domain.Event{
+		Type:       "impression",
+		CampaignID: campID,
+		UserID:     "bench-accept",
+		IP:         "203.0.113.89",
+	}
+	clickScratch := evt.ClickIDBuf[:0]
+	const amount = int64(10_000)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		buf := strconv.AppendInt(clickScratch[:0], int64(i), 10)
+		copy(evt.ClickIDBuf[:], buf)
+		evt.ClickID = unsafeString(evt.ClickIDBuf[:len(buf)])
+		_ = f.acceptLocalQuantaFullSkip(evt, camp, amount, 0)
+	}
+}
+
+func BenchmarkLocalQuanta_FullSkip(b *testing.B) {
+	ledger := NewLocalQuantaLedger()
+	idem := NewLocalClickIdemCache(time.Hour)
+	stream := &LocalQuantaStreamPublisher{
+		stream:       "events",
+		maxLen:       1000,
+		rdbs:         []redis.UniversalClient{&benchNoopRedis{}},
+		idemTTL:      time.Hour,
+		idem:         idem,
+		writeTimeout: time.Millisecond,
+		stopCh:       make(chan struct{}),
+	}
+
+	campID := uuid.New()
+	custID := uuid.New()
+	camp := &domain.Campaign{
+		ID:         campID,
+		CustomerID: custID,
+		PacingMode: domain.PacingModeAsap,
+	}
+	enrichMockCampaign(camp)
+	reg := benchRegistryForCampaign(camp)
+
+	f := NewUnifiedFilter(
+		stream.rdbs,
 		NewJumpHashSharder(1),
 		reg,
 		nil,
@@ -33,47 +128,117 @@ func BenchmarkLocalQuanta_FullSkip(b *testing.B) {
 		time.Minute,
 		time.Hour,
 		time.Hour,
-		100,
-		10,
+		100_000,
+		10_000,
 		"events",
 		1000,
 	)
 	f.SetQuotaConfig("live", testQuotaChunkMicro, testQuotaRefillThreshold)
 	f.SetLuaFastPathEnabled(true)
 	f.SetTTCMin(0)
-	ledger := NewLocalQuantaLedger()
-	idem := NewLocalClickIdemCache(time.Hour)
-	stream := NewLocalQuantaStreamPublisher(LocalQuantaStreamPublisherConfig{
-		Rdbs:           []redis.UniversalClient{rdb},
-		StreamName:     "events",
-		MaxLen:         1000,
-		IdempotencyTTL: time.Hour,
-		IdemCache:      idem,
-	})
-	defer stream.Close()
 	f.SetLocalQuantaDeps(LocalQuantaDeps{Ledger: ledger, Stream: stream})
 	f.SetLocalQuantaMode("live")
 
-	campID := uuid.New()
-	ledger.Credit(campID, int64(b.N)*f.clickAmountMicro+testQuotaChunkMicro, testQuotaChunkMicro)
-
-	ctx := attachFilterDeadline(context.Background(), time.Minute)
+	const amount = int64(10_000)
+	ctx := context.Background()
 	evt := &domain.Event{
-		Type:       "click",
-		IP:         "203.0.113.70",
-		UserID:     "bench-full-skip",
-		CampaignID: campID,
+		Type:            "click",
+		IP:              "203.0.113.70",
+		UserID:          "bench-full-skip",
+		CampaignID:      campID,
+		FilterWorkerIdx: 0,
 	}
 	clickScratch := evt.ClickIDBuf[:0]
+	for i := 0; i < 100; i++ {
+		buf := strconv.AppendInt(clickScratch[:0], int64(i), 10)
+		copy(evt.ClickIDBuf[:], buf)
+		evt.ClickID = unsafeString(evt.ClickIDBuf[:len(buf)])
+		ledger.Credit(campID, amount, testQuotaChunkMicro)
+		_ = f.Check(ctx, evt)
+		stream.DrainBench()
+		idem.Release(evt.ClickID)
+	}
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		buf := strconv.AppendInt(clickScratch[:0], int64(i), 10)
+		buf := strconv.AppendInt(clickScratch[:0], int64(i+1000), 10)
 		if len(buf) > len(evt.ClickIDBuf) {
 			b.Fatal("click id overflow")
 		}
 		copy(evt.ClickIDBuf[:], buf)
 		evt.ClickID = unsafeString(evt.ClickIDBuf[:len(buf)])
+		ledger.Credit(campID, amount, testQuotaChunkMicro)
 		_ = f.Check(ctx, evt)
+		stream.DrainBench()
+		idem.Release(evt.ClickID)
+	}
+}
+
+func TestUnifiedFilter_Check_zeroAlloc_localQuantaFullSkip(t *testing.T) {
+	ledger := NewLocalQuantaLedger()
+	idem := NewLocalClickIdemCache(time.Hour)
+	stream := &LocalQuantaStreamPublisher{
+		stream:       "events",
+		maxLen:       1000,
+		rdbs:         []redis.UniversalClient{&benchNoopRedis{}},
+		idemTTL:      time.Hour,
+		idem:         idem,
+		writeTimeout: time.Millisecond,
+		stopCh:       make(chan struct{}),
+	}
+
+	campID := uuid.New()
+	custID := uuid.New()
+	ledger.Credit(campID, 50_000_000, testQuotaChunkMicro)
+
+	camp := &domain.Campaign{
+		ID:         campID,
+		CustomerID: custID,
+		PacingMode: domain.PacingModeAsap,
+	}
+	enrichMockCampaign(camp)
+	reg := benchRegistryForCampaign(camp)
+
+	f := NewUnifiedFilter(
+		stream.rdbs,
+		NewJumpHashSharder(1),
+		reg,
+		nil,
+		0,
+		time.Minute,
+		time.Hour,
+		time.Hour,
+		100_000,
+		10_000,
+		"events",
+		1000,
+	)
+	f.SetQuotaConfig("live", testQuotaChunkMicro, testQuotaRefillThreshold)
+	f.SetLuaFastPathEnabled(true)
+	f.SetLocalQuantaDeps(LocalQuantaDeps{Ledger: ledger, Stream: stream})
+	f.SetLocalQuantaMode("live")
+
+	evt := &domain.Event{
+		Type:            "click",
+		CampaignID:      campID,
+		UserID:          "zero-alloc-check",
+		IP:              "203.0.113.88",
+		FilterWorkerIdx: 0,
+	}
+	evt.ClickIDBuf[0] = 'c'
+	evt.ClickID = unsafeString(evt.ClickIDBuf[:1])
+
+	ctx := context.Background()
+	const amount = int64(10_000)
+	for i := 0; i < 100; i++ {
+		ledger.Credit(campID, amount, testQuotaChunkMicro)
+		_ = f.Check(ctx, evt)
+	}
+	allocs := testing.AllocsPerRun(100, func() {
+		ledger.Credit(campID, amount, testQuotaChunkMicro)
+		_ = f.Check(ctx, evt)
+	})
+	if allocs != 0 {
+		t.Fatalf("Check local-quanta full-skip allocs = %v, want 0", allocs)
 	}
 }
