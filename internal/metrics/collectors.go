@@ -217,6 +217,10 @@ var (
 		Name: "ad_ttc_bypass_total",
 		Help: "Clicks accepted without impression timestamp (TTC fail-open bypass)",
 	})
+	TgDeadlineExceededTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_tg_deadline_exceeded_total",
+		Help: "Telegram hot-path handler stages that exceeded the filter deadline budget",
+	}, []string{"stage"})
 	FilterTierDegradedTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "filter_tier_degraded_total",
 		Help: "Filter checks that skipped non-critical Lua gates near the monotonic deadline",

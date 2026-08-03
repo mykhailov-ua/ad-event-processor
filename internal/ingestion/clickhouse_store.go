@@ -365,6 +365,7 @@ func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, e
 				p.BotID,
 				unsafeString(e.Payload),
 				e.CreatedAt,
+				e.Type,
 			)
 		} else {
 			err = batch.Append(

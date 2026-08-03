@@ -5,6 +5,7 @@ import (
 	"unsafe"
 
 	"espx/internal/domain"
+	"espx/internal/metrics"
 	"espx/internal/telemetry"
 
 	"github.com/google/uuid"
@@ -446,6 +447,9 @@ func (h *AdsPacketHandler) applyTgTrackFilter(outcome trackOutcome, evt *domain.
 		return nil, true
 	case trackStatusRejected:
 		spec := filterRejectSpecs[outcome.RejectKind]
+		if outcome.RejectKind == filterRejectTimeout {
+			metrics.TgDeadlineExceededTotal.WithLabelValues("filter").Inc()
+		}
 		h.trackMetrics.recordFilterReject(outcome.RejectKind)
 		h.write(c, spec.gnetResp, ctx)
 		h.recordMetrics(startMono, spec.status)

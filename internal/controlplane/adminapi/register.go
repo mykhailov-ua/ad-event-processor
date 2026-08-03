@@ -168,6 +168,12 @@ var routeCatalog = []Route{
 	{Method: "DELETE", Path: "/api/v1/telegram/postbacks/{id}"},
 	{Method: "POST", Path: "/api/v1/telegram/postbacks/{id}/test"},
 	{Method: "GET", Path: "/api/v1/reports/telegram"},
+	{Method: "GET", Path: "/api/v1/reports/telegram/summary"},
+	{Method: "GET", Path: "/api/v1/reports/telegram/funnel"},
+	{Method: "GET", Path: "/api/v1/reports/telegram/bots"},
+	{Method: "GET", Path: "/api/v1/reports/telegram/premium"},
+	{Method: "GET", Path: "/api/v1/reports/telegram/fraud"},
+	{Method: "POST", Path: "/api/v1/reports/telegram/export"},
 }
 
 func RegisterRoutes(mux *http.ServeMux, routes RouteRegistry) {

@@ -34,3 +34,14 @@ func BenchmarkParseTgBidRequest_ZeroAlloc(b *testing.B) {
 		_ = parseTgBidRequest(body, &parsed)
 	}
 }
+
+func FuzzDecodeTgBid(f *testing.F) {
+	f.Add([]byte(`{"ip":"1.2.3.4","user_agent":"ua","publisher_id":"pub"}`))
+	f.Fuzz(func(t *testing.T, body []byte) {
+		if len(body) > 1024 {
+			return
+		}
+		var parsed tgBidRequest
+		_ = parseTgBidRequest(body, &parsed)
+	})
+}

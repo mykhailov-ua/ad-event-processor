@@ -26,13 +26,14 @@ import (
 )
 
 type tgEventPayload struct {
-	TgUserID   string `json:"tg_user_id"`
-	StartParam string `json:"start_param"`
-	ChatType   string `json:"chat_type"`
-	IsPremium  bool   `json:"is_premium"`
-	Motivated  bool   `json:"motivated"`
-	WidgetID   string `json:"widget_id"`
-	BotID      uint64 `json:"bot_id"`
+	TgUserID       string `json:"tg_user_id,omitempty"`
+	TgUserIDSha256 string `json:"tg_user_id_sha256,omitempty"`
+	StartParam     string `json:"start_param"`
+	ChatType       string `json:"chat_type"`
+	IsPremium      bool   `json:"is_premium"`
+	Motivated      bool   `json:"motivated"`
+	WidgetID       string `json:"widget_id"`
+	BotID          uint64 `json:"bot_id"`
 }
 
 type TelegramServiceImpl struct {
@@ -64,8 +65,10 @@ func FromUUID(pg pgtype.UUID) uuid.UUID {
 }
 
 func (s *TelegramServiceImpl) ValidateInitData(ctx context.Context, campaignID uuid.UUID, initData string) (adminapi.ValidateResult, error) {
+	pgCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 	q := db.New(s.pool)
-	bot, err := q.GetTelegramBot(ctx, ToUUID(campaignID))
+	bot, err := q.GetTelegramBot(pgCtx, ToUUID(campaignID))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return adminapi.ValidateResult{Valid: false}, fmt.Errorf("bot not configured for campaign %s", campaignID)
@@ -99,13 +102,14 @@ func (s *TelegramServiceImpl) ValidateInitData(ctx context.Context, campaignID u
 	tgUserIDStr := strconv.FormatInt(userObj.ID, 10)
 
 	meta := tgEventPayload{
-		TgUserID:   tgUserIDStr,
-		StartParam: params["start_param"],
-		ChatType:   params["chat_type"],
-		IsPremium:  userObj.IsPremium,
-		Motivated:  false,
-		WidgetID:   params["query_id"],
-		BotID:      uint64(bot.BotID),
+		TgUserID:       tgUserIDStr,
+		TgUserIDSha256: hexSha256(tgUserIDStr),
+		StartParam:     params["start_param"],
+		ChatType:       params["chat_type"],
+		IsPremium:      userObj.IsPremium,
+		Motivated:      false,
+		WidgetID:       params["query_id"],
+		BotID:          uint64(bot.BotID),
 	}
 	metaBytes, _ := json.Marshal(meta)
 
@@ -114,8 +118,10 @@ func (s *TelegramServiceImpl) ValidateInitData(ctx context.Context, campaignID u
 		return adminapi.ValidateResult{Valid: false}, errors.New("no redis client for campaign")
 	}
 
+	redisCtx, cancelR := context.WithTimeout(ctx, 2*time.Second)
+	defer cancelR()
 	redisKey := fmt.Sprintf("{%s}tg:click:%s", campaignID.String(), clickID.String())
-	err = rdb.Set(ctx, redisKey, metaBytes, 15*time.Minute).Err()
+	err = rdb.Set(redisCtx, redisKey, metaBytes, 15*time.Minute).Err()
 	if err != nil {
 		return adminapi.ValidateResult{Valid: false}, fmt.Errorf("failed to save click to redis: %w", err)
 	}
@@ -144,8 +150,10 @@ func (s *TelegramServiceImpl) MintClick(ctx context.Context, campaignID uuid.UUI
 		return adminapi.ClickMintResult{}, errors.New("no redis client for campaign")
 	}
 
+	redisCtx, cancelR := context.WithTimeout(ctx, 2*time.Second)
+	defer cancelR()
 	redisKey := fmt.Sprintf("{%s}tg:click:%s", campaignID.String(), clickID.String())
-	err := rdb.Set(ctx, redisKey, metaBytes, 15*time.Minute).Err()
+	err := rdb.Set(redisCtx, redisKey, metaBytes, 15*time.Minute).Err()
 	if err != nil {
 		return adminapi.ClickMintResult{}, fmt.Errorf("failed to save click to redis: %w", err)
 	}
@@ -157,8 +165,10 @@ func (s *TelegramServiceImpl) MintClick(ctx context.Context, campaignID uuid.UUI
 }
 
 func (s *TelegramServiceImpl) ReceiveWebhook(ctx context.Context, botID int64, secretToken string, body []byte) error {
+	pgCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 	q := db.New(s.pool)
-	bot, err := q.GetTelegramBotByBotID(ctx, botID)
+	bot, err := q.GetTelegramBotByBotID(pgCtx, botID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return fmt.Errorf("bot %d not configured", botID)
@@ -177,7 +187,7 @@ func (s *TelegramServiceImpl) ReceiveWebhook(ctx context.Context, botID int64, s
 		return fmt.Errorf("invalid update JSON: %w", err)
 	}
 
-	err = q.TryClaimTelegramWebhookUpdate(ctx, update.UpdateID)
+	err = q.TryClaimTelegramWebhookUpdate(pgCtx, update.UpdateID)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" { // unique violation
@@ -195,7 +205,7 @@ func (s *TelegramServiceImpl) ReceiveWebhook(ctx context.Context, botID int64, s
 		return err
 	}
 
-	_, err = q.CreateOutboxEvent(ctx, db.CreateOutboxEventParams{
+	_, err = q.CreateOutboxEvent(pgCtx, db.CreateOutboxEventParams{
 		EventType: "TELEGRAM_EVENT",
 		Payload:   pBytes,
 	})
@@ -210,8 +220,10 @@ func (s *TelegramServiceImpl) CreateDeeplink(ctx context.Context, d adminapi.Dee
 	d.Token = token
 	d.ExpiresAt = time.Now().Add(7 * 24 * time.Hour)
 
+	pgCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 	q := db.New(s.pool)
-	err = q.InsertTelegramDeeplink(ctx, db.InsertTelegramDeeplinkParams{
+	err = q.InsertTelegramDeeplink(pgCtx, db.InsertTelegramDeeplinkParams{
 		Token:       token,
 		CampaignID:  ToUUID(d.CampaignID),
 		Fbclid:      pgtype.Text{String: d.Fbclid, Valid: d.Fbclid != ""},
@@ -228,20 +240,28 @@ func (s *TelegramServiceImpl) CreateDeeplink(ctx context.Context, d adminapi.Dee
 		return adminapi.DeeplinkDTO{}, err
 	}
 
-	// Cache in Redis: `tg:deeplink:{token}`
 	rdb := s.svc.getRDB(d.CampaignID)
 	if rdb != nil {
+		redisCtx, cancelR := context.WithTimeout(ctx, 2*time.Second)
+		defer cancelR()
 		redisKey := "tg:deeplink:" + token
 		dBytes, _ := json.Marshal(d)
-		_ = rdb.Set(ctx, redisKey, dBytes, 7*24*time.Hour).Err()
+		set, err := rdb.SetNX(redisCtx, redisKey, dBytes, 7*24*time.Hour).Result()
+		if err == nil && !set {
+			if cached, getErr := rdb.Get(redisCtx, redisKey).Bytes(); getErr == nil {
+				_ = json.Unmarshal(cached, &d)
+			}
+		}
 	}
 
 	return d, nil
 }
 
 func (s *TelegramServiceImpl) GetDeeplink(ctx context.Context, token string) (adminapi.DeeplinkDTO, error) {
+	pgCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 	q := db.New(s.pool)
-	row, err := q.GetTelegramDeeplink(ctx, token)
+	row, err := q.GetTelegramDeeplink(pgCtx, token)
 	if err != nil {
 		return adminapi.DeeplinkDTO{}, err
 	}
@@ -274,6 +294,7 @@ func (s *TelegramServiceImpl) ConfigureBot(ctx context.Context, bot adminapi.Bot
 				BotID:       bot.BotID,
 				BotToken:    bot.BotToken,
 				WebhookUrl:  bot.WebhookURL,
+				MiniAppUrl:  bot.MiniAppURL,
 				SecretToken: bot.SecretToken,
 				AuthDateTtl: bot.AuthDateTTL,
 			})
@@ -286,6 +307,7 @@ func (s *TelegramServiceImpl) ConfigureBot(ctx context.Context, bot adminapi.Bot
 		BotID:       bot.BotID,
 		BotToken:    bot.BotToken,
 		WebhookUrl:  bot.WebhookURL,
+		MiniAppUrl:  bot.MiniAppURL,
 		SecretToken: bot.SecretToken,
 		AuthDateTtl: bot.AuthDateTTL,
 	})
@@ -304,6 +326,7 @@ func (s *TelegramServiceImpl) ListBots(ctx context.Context) ([]adminapi.BotDTO, 
 			BotID:       row.BotID,
 			BotToken:    row.BotToken,
 			WebhookURL:  row.WebhookUrl,
+			MiniAppURL:  row.MiniAppUrl,
 			SecretToken: row.SecretToken,
 			AuthDateTTL: row.AuthDateTtl,
 			CreatedAt:   row.CreatedAt.Time,
@@ -324,6 +347,7 @@ func (s *TelegramServiceImpl) GetBot(ctx context.Context, campaignID uuid.UUID) 
 		BotID:       row.BotID,
 		BotToken:    row.BotToken,
 		WebhookURL:  row.WebhookUrl,
+		MiniAppURL:  row.MiniAppUrl,
 		SecretToken: row.SecretToken,
 		AuthDateTTL: row.AuthDateTtl,
 		CreatedAt:   row.CreatedAt.Time,
@@ -364,8 +388,10 @@ func (s *TelegramServiceImpl) GetPostback(ctx context.Context, id uuid.UUID) (ad
 }
 
 func (s *TelegramServiceImpl) ListPostbacks(ctx context.Context, campaignID uuid.UUID) ([]adminapi.PostbackDTO, error) {
+	pgCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 	q := db.New(s.pool)
-	rows, err := q.ListTelegramPostbacksByCampaign(ctx, ToUUID(campaignID))
+	rows, err := q.ListTelegramPostbacksByCampaign(pgCtx, ToUUID(campaignID))
 	if err != nil {
 		return nil, err
 	}
@@ -383,8 +409,10 @@ func (s *TelegramServiceImpl) ListPostbacks(ctx context.Context, campaignID uuid
 }
 
 func (s *TelegramServiceImpl) DeletePostback(ctx context.Context, id uuid.UUID) error {
+	pgCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 	q := db.New(s.pool)
-	return q.DeleteTelegramPostback(ctx, ToUUID(id))
+	return q.DeleteTelegramPostback(pgCtx, ToUUID(id))
 }
 
 type tgAPIError struct {
@@ -397,6 +425,12 @@ func (e *tgAPIError) Error() string {
 }
 
 func (s *TelegramServiceImpl) sendBotMessage(ctx context.Context, botToken string, chatID int64, text string) error {
+	if s.limiter != nil {
+		if err := s.limiter.Wait(ctx, chatID, false); err != nil {
+			return err
+		}
+	}
+
 	client := &http.Client{Timeout: 5 * time.Second}
 	apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", botToken)
 
@@ -425,6 +459,13 @@ func (s *TelegramServiceImpl) sendBotMessage(ctx context.Context, botToken strin
 			} `json:"parameters"`
 		}
 		_ = json.NewDecoder(resp.Body).Decode(&errData)
+
+		if resp.StatusCode == http.StatusTooManyRequests && s.limiter != nil {
+			if errData.Parameters.RetryAfter > 0 {
+				s.limiter.BackoffChat(chatID, time.Duration(errData.Parameters.RetryAfter)*time.Second)
+			}
+		}
+
 		return &tgAPIError{
 			StatusCode: resp.StatusCode,
 			RetryAfter: errData.Parameters.RetryAfter,
@@ -434,8 +475,10 @@ func (s *TelegramServiceImpl) sendBotMessage(ctx context.Context, botToken strin
 }
 
 func (s *TelegramServiceImpl) TestPostback(ctx context.Context, id uuid.UUID) error {
+	pgCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 	q := db.New(s.pool)
-	p, err := q.GetTelegramPostback(ctx, ToUUID(id))
+	p, err := q.GetTelegramPostback(pgCtx, ToUUID(id))
 	if err != nil {
 		return err
 	}
@@ -455,55 +498,4 @@ func (s *TelegramServiceImpl) TestPostback(ctx context.Context, id uuid.UUID) er
 		return fmt.Errorf("postback url returned status code %d", resp.StatusCode)
 	}
 	return nil
-}
-
-func (s *TelegramServiceImpl) GetTelegramReport(ctx context.Context, from, to time.Time, campaignID *uuid.UUID) ([]byte, error) {
-	ch := s.svc.CHQuery()
-	if ch == nil {
-		return nil, errors.New("clickhouse connection not available")
-	}
-
-	var query string
-	var args []interface{}
-	if campaignID != nil {
-		query = `
-			SELECT
-				countIf(type = 'tg_click') as clicks,
-				countIf(type = 'tg_impression') as impressions,
-				countIf(is_premium = 1) as premium,
-				countIf(motivated = 1) as motivated
-			FROM tg_events
-			WHERE created_at >= ? AND created_at < ? AND campaign_id = ?`
-		args = []interface{}{from, to, *campaignID}
-	} else {
-		query = `
-			SELECT
-				countIf(type = 'tg_click') as clicks,
-				countIf(type = 'tg_impression') as impressions,
-				countIf(is_premium = 1) as premium,
-				countIf(motivated = 1) as motivated
-			FROM tg_events
-			WHERE created_at >= ? AND created_at < ?`
-		args = []interface{}{from, to}
-	}
-
-	var clicks, impressions, premium, motivated int64
-	err := ch.QueryRow(ctx, query, args...).Scan(&clicks, &impressions, &premium, &motivated)
-	if err != nil {
-		return nil, fmt.Errorf("clickhouse query failed: %w", err)
-	}
-
-	report := map[string]interface{}{
-		"clicks":      clicks,
-		"impressions": impressions,
-		"premium":     premium,
-		"motivated":   motivated,
-		"funnel": map[string]int64{
-			"validates": clicks,
-			"clicks":    clicks,
-			"motivated": motivated,
-			"premium":   premium,
-		},
-	}
-	return json.Marshal(report)
 }

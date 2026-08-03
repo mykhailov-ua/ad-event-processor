@@ -1,6 +1,6 @@
 import { el, replaceChildren } from '../lib/dom.js';
 import { to } from '../lib/to.js';
-import { api } from '../helpers/api_client.js';
+import { fetchTelegramSummary } from '../helpers/tg_report_api.js';
 import * as auth from '../helpers/auth.js';
 import { hasBoundCustomer, boundCustomerId } from '../helpers/buyer_session.js';
 import { renderErrorBlock } from '../ui/error_block.js';
@@ -39,18 +39,13 @@ export function mount(container, ctx) {
     error = null;
     render();
 
-    const params = new URLSearchParams({ from, to });
-    if (campaignInput.trim()) {
-      params.append('campaign_id', campaignInput.trim());
-    }
-
-    const [res, err] = await to(api(`/api/v1/reports/telegram?${params.toString()}`));
+    const [res, err] = await to(fetchTelegramSummary({ from, to, campaignId: campaignInput.trim() || undefined }));
     if (destroyed) return;
     loading = false;
     if (err) {
       error = err;
     } else {
-      data = res?.data ?? null;
+      data = res;
     }
     render();
   }
@@ -107,6 +102,7 @@ export function mount(container, ctx) {
       loading ? el('p', null, 'Loading report…') : null,
       !loading && data
         ? el('div', { style: { marginTop: '20px' } },
+            data.freshness?.stale ? el('p', { className: 'text-muted' }, `Data may be stale (lag ${data.freshness.lag_seconds ?? 0}s)`) : null,
             el('h2', null, 'Attribution Funnel'),
             el('div', { style: { display: 'flex', gap: '20px', flexWrap: 'wrap', marginTop: '10px' } },
               funnelItems.map((item) =>

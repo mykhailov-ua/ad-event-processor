@@ -228,14 +228,11 @@ func (h *AdsPacketHandler) reactTgBid(req parsedHTTPRequest, c gnet.Conn, ctx *c
 	body = append(body, `","price":`...)
 	body = appendFloatStr(body, float64(res.Price)/1000000.0)
 	body = append(body, `,"link":"`...)
-	body = append(body, `http://track.local/tg/click?campaign_id=`...)
-	body = appendUUIDStr(body, uid)
-	body = append(body, `&click_id=`...)
-	body = appendUUIDStr(body, clickID)
-	if len(parsedReq.widgetID) > 0 {
-		body = append(body, `&widget_id=`...)
-		body = append(body, parsedReq.widgetID...)
+	baseURL := "http://track.local/tg/click"
+	if h.cfg != nil && h.cfg.TrackerTgClickBaseURL != "" {
+		baseURL = h.cfg.TrackerTgClickBaseURL
 	}
+	body = appendTgClickLink(body, baseURL, uid, clickID, parsedReq.widgetID)
 	body = append(body, `","width":`...)
 	body = appendUintStr(body, uint64(parsedReq.width))
 	body = append(body, `,"height":`...)

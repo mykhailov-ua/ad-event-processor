@@ -166,6 +166,31 @@ func (r *ReportJobRunner) writeReportCSV(ctx context.Context, path string, spec 
 				break
 			}
 		}
+	case "telegram":
+		if err := w.Write([]string{"start_param", "clicks", "impressions", "conversions", "premium_clicks", "motivated_clicks"}); err != nil {
+			return err
+		}
+		for offset := 0; ; offset += reportExportPageSize {
+			rows, total, qerr := queryTelegramExportRows(ctx, r.deps.CHQuery, campaignIDs, from, to, reportExportPageSize, offset)
+			if qerr != nil {
+				return qerr
+			}
+			for _, row := range rows {
+				if err := w.Write([]string{
+					row.StartParam,
+					fmt.Sprintf("%d", row.Clicks),
+					fmt.Sprintf("%d", row.Impressions),
+					fmt.Sprintf("%d", row.Conversions),
+					fmt.Sprintf("%d", row.Premium),
+					fmt.Sprintf("%d", row.Motivated),
+				}); err != nil {
+					return err
+				}
+			}
+			if int64(offset+len(rows)) >= total || len(rows) == 0 {
+				break
+			}
+		}
 	default:
 		return fmt.Errorf("unsupported report_key %q", spec.ReportKey)
 	}

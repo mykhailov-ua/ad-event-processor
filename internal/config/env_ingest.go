@@ -55,6 +55,10 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 		cfg.RtbExchangeDelivery = "adm"
 	}
 	cfg.RtbExchangeNURLTemplate = os.Getenv("RTB_EXCHANGE_NURL_TEMPLATE")
+	cfg.TrackerTgClickBaseURL = os.Getenv("TRACKER_TG_CLICK_BASE_URL")
+	if cfg.TrackerTgClickBaseURL == "" {
+		cfg.TrackerTgClickBaseURL = "http://track.local/tg/click"
+	}
 	cfg.RtbExchangeSeatID = os.Getenv("RTB_EXCHANGE_SEAT_ID")
 	if cfg.RtbExchangeSeatID == "" {
 		cfg.RtbExchangeSeatID = "1"

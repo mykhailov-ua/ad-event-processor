@@ -146,14 +146,14 @@ func copyLocalQuantaField(dst []byte, s string) int {
 func marshalEventToProto(evt *domain.Event) ([]byte, *ByteSliceValue, *[]byte) {
 	pbEvt := streamEventPool.Get().(*pb.AdStreamEvent)
 	DeepResetAdStreamEvent(pbEvt)
-	pbEvt.ClickId = []byte(evt.ClickID)
+	pbEvt.ClickId = UnsafeBytes(evt.ClickID)
 	pbEvt.CampaignId = evt.CampaignID[:]
-	pbEvt.EventType = []byte(evt.Type)
+	pbEvt.EventType = UnsafeBytes(evt.Type)
 	pbEvt.Payload = evt.Payload
-	pbEvt.Ip = []byte(evt.IP)
-	pbEvt.Ua = []byte(evt.UA)
+	pbEvt.Ip = UnsafeBytes(evt.IP)
+	pbEvt.Ua = UnsafeBytes(evt.UA)
 	if len(evt.UserID) > 0 {
-		pbEvt.UserId = []byte(evt.UserID)
+		pbEvt.UserId = UnsafeBytes(evt.UserID)
 	}
 	if !evt.CreatedAt.IsZero() {
 		pbEvt.CreatedAtUnix = evt.CreatedAt.Unix()

@@ -274,6 +274,7 @@ type Config struct {
 	RtbExchangeGzip                bool
 	RtbExchangeDelivery            string
 	RtbExchangeNURLTemplate        string
+	TrackerTgClickBaseURL          string
 	RtbExchangeSeatID              string
 	RtbRegsPolicy                  string
 	RtbCoppaPolicy                 string

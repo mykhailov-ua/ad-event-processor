@@ -647,12 +647,30 @@ func (worker *OutboxWorker) handleTelegramEvent(ctx context.Context, payload []b
 	isGroup := update.Message.Chat.Type == "group" || update.Message.Chat.Type == "supergroup" || update.Message.Chat.Type == "channel"
 
 	tgSvc := NewTelegramService(worker.svc, worker.svc.GetPool(), worker.svc.RedisShards())
+
+	if update.Message.From != nil {
+		_ = tgSvc.recordWebhookStartEvent(
+			ctx,
+			FromUUID(deeplink.CampaignID),
+			p.BotID,
+			token,
+			update.Message.From.ID,
+			update.Message.Chat.Type,
+			update.Message.From.IsPremium,
+		)
+		go tgSvc.relayPostbacks(context.Background(), FromUUID(deeplink.CampaignID), token)
+	}
+
 	err = tgSvc.limiter.Wait(ctx, update.Message.Chat.ID, isGroup)
 	if err != nil {
 		return err
 	}
 
-	welcomeMsg := fmt.Sprintf("Welcome! Click here to start the app: %s", bot.WebhookUrl)
+	landingURL := bot.MiniAppUrl
+	if landingURL == "" {
+		landingURL = bot.WebhookUrl
+	}
+	welcomeMsg := fmt.Sprintf("Welcome! Click here to start the app: %s", landingURL)
 
 	err = tgSvc.sendBotMessage(ctx, bot.BotToken, update.Message.Chat.ID, welcomeMsg)
 	if err != nil {

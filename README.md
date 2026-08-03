@@ -18,7 +18,7 @@ BidShard is a private, high-performance alternative to expensive SaaS trackers a
 
 ### For Ad Networks & Publishers
 - **OpenRTB 2.6 exchange**: `POST /openrtb/bid` on tracker for SSP partners (display + video, PMP deals, shadow→live). See [RTB production runbook](docs/RTB_PRODUCTION_RUNBOOK.md).
-- **Agentic AI Bidding**: Leverage the Agentic Real-Time Framework (ARTF 1.0) to run containerized AI agents that enrich and mutate bidstreams in real-time, achieving sub-millisecond ML-driven decisioning.
+- **ML-Driven Traffic Scoring**: Run offline and near-real-time batch analysis using LightGBM and ONNX Isolation Forest models to score traffic quality, update blocklists, or execute silent "ghost" invalid traffic (IVT) drop actions.
 - **Supply Path Optimization (SPO)**: Integrated `sellers.json` and SupplyChain object support to provide full transparency to buyers and attract premium demand.
 - **CTV & Live Event Handling**: Optimized for high-concurrency environments, supporting Concurrent Streams API for large-scale live events.
 - **Integrated Payment Gateways**: Accept deposits automatically via Stripe (credit cards) or directly via cryptocurrency (USDT ERC-20/TRC-20) with automated ledger updates and fraud holds.
@@ -42,6 +42,9 @@ BidShard is a private, high-performance alternative to expensive SaaS trackers a
 ## Core Features
 
 - **High-Volume Ingestion**: Built on a custom epoll-based network engine (`gnet`) to handle hundreds of thousands of requests per second without breaking a sweat.
+- **Local Quanta & Full-Skip Ingestion**: Trackers reserve budget quotas in local memory to perform local atomic debits. Under Full-Skip mode, the hot path bypasses synchronous Redis network round-trips (RTT) entirely, executing local CAS debits and in-memory idempotency checks before writing asynchronously to streams.
+- **Multi-Lane Sharding & Fallbacks**: Shards campaigns based on CRC32 Castagnoli hash, supports high-volume campaign multi-lane sub-sharding (splitting budgets into 4 parallel lanes to avoid Redis single-thread bottlenecks), and provides triple-shard redundancy (Primary A, Primary B, and Reserve) with automatic circuit-breaker fallback.
+- **Telegram Mini App Integration**: Built-in edge-proxy and anti-fraud layer for Telegram Mini App and bot traffic. Validates `initData` HMAC/Ed25519 signatures, maps users, runs tracking redirects via `GET /tg/click`, and provides specialized performance reports (KPIs, funnels, premium breakdowns).
 - **Click Redirect (`GET /click`)**: Server-side `302` redirects for arbitrage and affiliate traffic. Runs the same `FilterEngine` as `POST /track`, resolves brand creative landing URLs with macros (`{click_id}`, `{sub1}`-`{sub5}`, `{user_id}`), and forwards attribution query parameters (`gclid`, `ttclid`, UTM) to the destination.
 - **Atomic Budgeting**: Real-time budget tracking, frequency capping, and pacing executed directly inside Redis memory.
 - **eBPF/XDP Network Protection**: Block malicious bots and DDoS attacks directly at the network card level, saving CPU resources for clean traffic.

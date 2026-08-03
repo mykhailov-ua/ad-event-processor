@@ -73,6 +73,13 @@ func (s *Service) CHQuery() *database.CHQuery {
 	return s.chQuery
 }
 
+func (s *Service) CHWrite() driver.Conn {
+	if s == nil {
+		return nil
+	}
+	return s.chWrite
+}
+
 func (s *Service) startWorker(fn func()) {
 	s.workerMu.Lock()
 	if s.closed.Load() {

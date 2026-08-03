@@ -27,9 +27,10 @@ redis_publish() {
 verify_track() {
 	local port="$1"
 	local code
+	local click_id="registry-verify-${port}-$(date +%s%N)"
 	code="$(curl -sf -o /dev/null -w '%{http_code}' -X POST "http://127.0.0.1:${port}/track" \
 		-H 'Content-Type: application/json' \
-		-d '{"campaign_id":"00000000-0000-0000-0000-000000000001","user_id":"registry-verify","type":"impression","click_id":"registry-verify-'"$port"'","payload":{"slot":"top"}}' \
+		-d '{"campaign_id":"00000000-0000-0000-0000-000000000001","user_id":"registry-verify","type":"impression","click_id":"'"$click_id"'","payload":{"slot":"top"}}' \
 		2>/dev/null || echo 000)"
 	[[ "$code" == "204" || "$code" == "200" || "$code" == "202" ]]
 }
@@ -43,14 +44,16 @@ if [[ "$VERIFY_TRACKERS" != "1" ]]; then
 fi
 
 for port in 8181 8182; do
+	accepted=0
 	for _ in $(seq 1 "$VERIFY_RETRIES"); do
 		if verify_track "$port"; then
 			log "tracker :${port} accepted seeded campaign (202/204/200)"
+			accepted=1
 			break
 		fi
 		sleep 1
 	done
-	if ! verify_track "$port"; then
+	if [[ "$accepted" != "1" ]]; then
 		die "tracker :${port} still rejects seeded campaign after full sync"
 	fi
 done

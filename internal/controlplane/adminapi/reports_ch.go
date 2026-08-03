@@ -436,3 +436,84 @@ func QueryCampaignEconomicsCH(
 	}
 	return out, nil
 }
+
+const telegramExportQuery = `
+SELECT
+    start_param,
+    countIf(event_type = 'tg_click') AS clicks,
+    countIf(event_type = 'tg_impression') AS impressions,
+    countIf(event_type = 'tg_conversion') AS conversions,
+    countIf(is_premium = 1) AS premium,
+    countIf(motivated = 1) AS motivated
+FROM tg_events
+WHERE campaign_id IN (?)
+  AND created_at >= ?
+  AND created_at < ?
+GROUP BY start_param
+ORDER BY clicks DESC
+LIMIT ? OFFSET ?`
+
+const telegramExportCountQuery = `
+SELECT count(DISTINCT start_param)
+FROM tg_events
+WHERE campaign_id IN (?)
+  AND created_at >= ?
+  AND created_at < ?`
+
+type telegramExportCHRow struct {
+	StartParam  string
+	Clicks      int64
+	Impressions int64
+	Conversions int64
+	Premium     int64
+	Motivated   int64
+}
+
+func queryTelegramExportRows(
+	ctx context.Context,
+	chQuery *database.CHQuery,
+	campaignIDs []uuid.UUID,
+	from, to time.Time,
+	limit, offset int,
+) ([]telegramExportCHRow, int64, error) {
+	if chQuery == nil || len(campaignIDs) == 0 {
+		return nil, 0, nil
+	}
+
+	chCtx, cancel := context.WithTimeout(ctx, reportCHQueryTimeout)
+	defer cancel()
+
+	rows, err := chQuery.Query(chCtx, telegramExportQuery,
+		campaignIDs, from, to,
+		limit, offset,
+	)
+	if err != nil {
+		return nil, 0, fmt.Errorf("telegram export query: %w", err)
+	}
+	defer rows.Close()
+
+	out := make([]telegramExportCHRow, 0, limit)
+	for rows.Next() {
+		var row telegramExportCHRow
+		if err := rows.Scan(
+			&row.StartParam,
+			&row.Clicks, &row.Impressions, &row.Conversions,
+			&row.Premium, &row.Motivated,
+		); err != nil {
+			return nil, 0, err
+		}
+		out = append(out, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	var total uint64
+	if err := chQuery.QueryRow(chCtx, telegramExportCountQuery,
+		campaignIDs, from, to,
+	).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("telegram export count query: %w", err)
+	}
+
+	return out, int64(total), nil
+}

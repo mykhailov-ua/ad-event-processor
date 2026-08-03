@@ -15,7 +15,7 @@ run_fuzz() {
 	done
 }
 
-run_fuzz ./internal/ingestion/ ParseTgClickQuery
+run_fuzz ./internal/ingestion/ ParseTgClickQuery DecodeTgBid
 run_fuzz ./internal/controlplane/ ParseInitData
 
 echo "telegram_fuzz_smoke: PASS"

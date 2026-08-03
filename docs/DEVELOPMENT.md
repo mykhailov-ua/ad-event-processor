@@ -270,6 +270,15 @@ When Redis shard 0 (pub/sub, global config keys, consent) is unavailable:
 6. **Operator checks**: `registry_stale` metric / `503` on unknown campaigns; confirm replica file age; restore shard 0 or wait for broker + PG paths to catch up.
 
 Fault proof: `bash scripts/fault/run.sh` scenario `shard_0_outage` (`tests/resilience/shard_outage_fault_test.go`).
+
+### Telegram Mini Apps (edge + cold path)
+
+- **Hot path** (`/tg/click`, `/tg/impression`, optional `/tg/bid`): tracker gnet only; rejects `initData` on redirect URLs. Edge: `location /tg/` in `deploy/nginx/nginx.conf` (same Lua shard pick as `/track`).
+- **Cold path**: `POST /api/v1/telegram/validate` (HMAC initData → `click_id`), webhooks, deeplink tokens, admin reports under `/api/v1/reports/telegram/*`.
+- **Webhook CIDR**: enforced on nginx via `deploy/nginx/snippets/telegram_webhook_cidrs.conf` (`149.154.160.0/20`, `91.108.4.0/22`). Go handler validates `X-Telegram-Bot-Api-Secret-Token` only. Update CIDRs when Telegram docs change, then `nginx -s reload`.
+- **Dev bypass**: `TELEGRAM_WEBHOOK_SKIP_IP_CHECK=1` in compose only (never production).
+- **CH analytics**: `tg_events_raw` (short TTL, raw `tg_user_id`) → MV → `tg_events` (SHA256 only). Reports query `tg_events.event_type` (`tg_click`, `tg_impression`, `tg_start`, `tg_conversion`).
+
 - **ClickHouse Outage**: Verifies that the processor diverts events to the local disk spool and drains them once ClickHouse is restored.
 
 Successful scenarios output a `fault_proof fault=<name>` log line, which is verified by the CI runner.
@@ -341,3 +350,54 @@ go test ./internal/ingestion/ -run='^$' -bench='BenchmarkParseClickQuery|Benchma
 ```
 
 Hot-path parse and macro expansion target **0 allocs/op** with pre-sized connection buffers.
+
+---
+
+## 11. Telegram Mini App Integration
+
+BidShard implements an edge-proxy and anti-fraud layer specialized for Telegram Mini App environments (`t.me/bot?startapp=`).
+
+### Core Endpoints
+
+- **`/api/v1/telegram/validate` (Cold Path)**: Accepts the raw `initData` query string directly from the Telegram WebApp SDK, computes HMAC-SHA256 signatures using the bot token, extracts user profiles, and returns a verified `click_id`.
+- **`/api/v1/telegram/clicks` (Cold Path)**: Generates and binds a fresh `click_id` for tracking without full validation (e.g. pre-auth flow).
+- **`/api/v1/telegram/webhook/{bot_id}`**: Direct ingestion for Telegram Bot API updates (requires matching `X-Telegram-Bot-Api-Secret-Token`).
+- **`/tg/click` (Hot Path)**: Serving server-side `302` redirects for Telegram context. Validates query parameters on the DFA parser layer before entering the `FilterEngine`.
+
+### Testing and Development
+
+Use the local test suite or curl to verify Telegram operations:
+
+```bash
+# Smoke test initData signature validation
+curl -sS -X POST -H "Content-Type: application/json" \
+  -d '{"init_data": "query_string_from_telegram_sdk"}' \
+  http://127.0.0.1:8188/api/v1/telegram/validate
+
+# Run Telegram Fuzz test suite
+bash scripts/test/telegram_fuzz_smoke.sh
+```
+
+---
+
+## 12. Local Quanta Full-Skip Configuration
+
+To bypass Redis connection bottlenecks on high-volume traffic nodes, configure the tracker to run in `Full-Skip` mode.
+
+### Hot-Path Execution Logic
+When `LOCAL_QUOTA_MODE=live` is configured:
+1. Trackers reserve credit quotas in local memory via CAS (`TrySpendDebit`).
+2. If simple validation filters pass, the handler skips Redis Lua script evaluation completely.
+3. The event click/impression uniqueness is verified against a local in-memory cache (`localClickIdem`).
+4. The event is enqueued directly into `localQuantaStream.Enqueue`, which writes to local memory ring buffers.
+5. A background worker flushes these aggregates back to Redis asynchronously.
+
+### Benchmarks
+
+To verify zero heap allocations and optimize performance for the Full-Skip path:
+
+```bash
+go test ./internal/ingestion/ -run='^$' -bench='BenchmarkLocalQuanta_FullSkip|BenchmarkAcceptLocalQuantaFullSkip' -benchmem
+```
+
+Ensure `allocs/op` equals **0** and processing stays under 15 nanoseconds per local debit call.

@@ -4,12 +4,13 @@ INSERT INTO telegram_bots (
     bot_id,
     bot_token,
     webhook_url,
+    mini_app_url,
     secret_token,
     auth_date_ttl,
     created_at,
     updated_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, NOW(), NOW()
+    $1, $2, $3, $4, $5, $6, $7, NOW(), NOW()
 );
 
 -- name: UpdateTelegramBot :exec
@@ -17,23 +18,24 @@ UPDATE telegram_bots
 SET bot_id = $2,
     bot_token = $3,
     webhook_url = $4,
-    secret_token = $5,
-    auth_date_ttl = $6,
+    mini_app_url = $5,
+    secret_token = $6,
+    auth_date_ttl = $7,
     updated_at = NOW()
 WHERE campaign_id = $1;
 
 -- name: GetTelegramBot :one
-SELECT campaign_id, bot_id, bot_token, webhook_url, secret_token, auth_date_ttl, created_at, updated_at
+SELECT campaign_id, bot_id, bot_token, webhook_url, mini_app_url, secret_token, auth_date_ttl, created_at, updated_at
 FROM telegram_bots
 WHERE campaign_id = $1;
 
 -- name: GetTelegramBotByBotID :one
-SELECT campaign_id, bot_id, bot_token, webhook_url, secret_token, auth_date_ttl, created_at, updated_at
+SELECT campaign_id, bot_id, bot_token, webhook_url, mini_app_url, secret_token, auth_date_ttl, created_at, updated_at
 FROM telegram_bots
 WHERE bot_id = $1;
 
 -- name: ListTelegramBots :many
-SELECT campaign_id, bot_id, bot_token, webhook_url, secret_token, auth_date_ttl, created_at, updated_at
+SELECT campaign_id, bot_id, bot_token, webhook_url, mini_app_url, secret_token, auth_date_ttl, created_at, updated_at
 FROM telegram_bots
 ORDER BY created_at DESC;
 
