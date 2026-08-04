@@ -5,7 +5,7 @@ import (
 )
 
 func DetermineState(claims *LicenseClaims, now time.Time, revoked bool) LicenseState {
-	if revoked {
+	if revoked || ClaimsRevoked(claims) {
 		return StateRevoked
 	}
 	if claims == nil {

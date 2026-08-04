@@ -90,6 +90,23 @@ func main() {
 	}
 	registry.StartSync(ctx, time.Duration(cfg.RegistrySyncIntervalMs)*time.Millisecond)
 
+	if config.LicenseRequiredFromEnv() {
+		recheckInterval := 5 * time.Minute
+		if d, parseErr := time.ParseDuration(config.LicenseFileRecheckInterval()); parseErr == nil && d > 0 {
+			recheckInterval = d
+		}
+		licensePath := config.LicenseEnv("PATH")
+		if licensePath == "" {
+			licensePath = "license.jwt"
+		}
+		registry.StartLicenseRecheck(ctx, ingestion.RegistryLicenseConfig{
+			Required: true,
+			Path:     licensePath,
+			Interval: recheckInterval,
+		})
+		slog.Info("license file recheck enabled", "path", licensePath, "interval", recheckInterval.String())
+	}
+
 	var rdbs []redis.UniversalClient
 	var breakers []*database.RedisBreaker
 	rdbs, breakers, err = database.ConnectRedisShards(ctx, cfg, database.RedisShardOptions{
@@ -332,6 +349,9 @@ func main() {
 
 	creativeStore := ingestion.NewBrandCreativeStore(rdbs[0])
 	licenseFilter := ingestion.NewLicenseFilter(registry)
+	licenseRPSFilter := ingestion.NewLicenseRPSFilter(registry)
+	entitlementsFilter := ingestion.NewEntitlementsFilter(registry, sharder, rdbs)
+	entitlementsFilter.SetRegionCode(uint8(cfg.RegionCode))
 	piiHasher, piiErr := piihash.NewFromConfig(cfg)
 	if piiErr != nil {
 		slog.Error("failed to initialize PII hasher for segment filter", "error", piiErr)
@@ -339,7 +359,7 @@ func main() {
 	}
 	vppFilter := ingestion.NewVPPFilter(registry, settingsWatcher)
 	segmentFilter := ingestion.NewSegmentFilter(rdbs, registry, piiHasher)
-	filterEngine := ingestion.NewFilterEngine(time.Duration(cfg.FilterTimeoutMs)*time.Millisecond, licenseFilter, breakerFilter, geoFilter, scheduleFilter, segmentFilter, vppFilter, fraudFilter, deviceFilter, consentFilter, unifiedFilter)
+	filterEngine := ingestion.NewFilterEngine(time.Duration(cfg.FilterTimeoutMs)*time.Millisecond, licenseFilter, licenseRPSFilter, breakerFilter, geoFilter, scheduleFilter, segmentFilter, vppFilter, fraudFilter, deviceFilter, consentFilter, entitlementsFilter, unifiedFilter)
 	filterEngine.SetSettingsWatcher(settingsWatcher)
 
 	var rtbCatalog *ingestion.RtbCatalog

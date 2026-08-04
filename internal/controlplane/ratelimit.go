@@ -88,8 +88,21 @@ func (h *Handler) limitByIP(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+func (h *Handler) limitLicenseApply(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if h.licenseApplyLimiter != nil && !h.licenseApplyLimiter.allow(clientIP(r)) {
+			httpresponse.Error(w, http.StatusTooManyRequests, "TOO_MANY_REQUESTS", "license apply rate limit exceeded")
+			return
+		}
+		next(w, r)
+	}
+}
+
 const customerExportRPS = 1.0
 const customerExportBurst = 3
+
+const licenseApplyRPS = 1.0 / 30.0
+const licenseApplyBurst = 3
 
 const defaultAPIKeyRPS = 30.0
 const defaultAPIKeyBurst = 60

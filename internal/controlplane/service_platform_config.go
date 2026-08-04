@@ -80,6 +80,11 @@ func (s *Service) BootstrapPlatformConfig(ctx context.Context, req platformconfi
 		if err := s.savePlatformConfigTx(ctx, q, cfg); err != nil {
 			return err
 		}
+		if req.EulaVersion != "" {
+			if err := s.saveEulaAcceptanceTx(ctx, q, req.EulaVersion, req.AdminEmail); err != nil {
+				return err
+			}
+		}
 		var uid uuid.UUID
 		if u, ok := GetUser(ctx); ok {
 			uid = u.UserID

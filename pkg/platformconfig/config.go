@@ -59,6 +59,7 @@ type BootstrapRequest struct {
 	LicenseKey    string `json:"license_key,omitempty"`
 	LicenseServer string `json:"license_server,omitempty"`
 	DeploymentID  string `json:"deployment_id,omitempty"`
+	EulaVersion   string `json:"eula_version,omitempty"`
 }
 
 func Default() Config {

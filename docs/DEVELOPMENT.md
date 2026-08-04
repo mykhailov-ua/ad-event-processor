@@ -130,7 +130,7 @@ make build-bin
 
 **Perf checklist**: `bash scripts/ci/admin_lighthouse_checklist.sh` after `node web/scripts/build.mjs`; target INP p95 &lt; 200 ms on staging. Checklist artifact: `artifacts/lighthouse-inp-checklist.txt`.
 
-**Frontend backlog:** milestone IDs and task breakdown — `.cursor/MILESTONE.md` (M12–M17: charts, RUM, commercial dashboards, edge/traffic quality, reports, platform UX).
+**Frontend backlog:** agent task list with acceptance criteria — `.cursor/FRONTEND.md` §16 (charts, RUM, commercial dashboards, edge/traffic quality, reports, platform UX, buyer ops gap).
 
 #### Admin UI release gate (pre-tag `admin-ui-ga`)
 

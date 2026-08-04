@@ -25,6 +25,9 @@ type MetaResponseDTO struct {
 	IngressSchemas    []string        `json:"ingress_schemas"`
 	DeploymentID      string          `json:"deployment_id,omitempty"`
 	BootstrapComplete bool            `json:"bootstrap_complete"`
+	EulaVersion       string          `json:"eula_version,omitempty"`
+	EulaAccepted      bool            `json:"eula_accepted"`
+	EulaRequired      bool            `json:"eula_required"`
 	License           *MetaLicenseDTO `json:"license,omitempty"`
 }
 
@@ -32,6 +35,9 @@ type MetaEnrichOut struct {
 	DeploymentID      string
 	License           *MetaLicenseDTO
 	BootstrapComplete bool
+	EulaVersion       string
+	EulaAccepted      bool
+	EulaRequired      bool
 }
 
 type MetaEnricher func(ctx context.Context) (MetaEnrichOut, error)
@@ -74,6 +80,9 @@ func (h *MetaHTTPHandlers) getMeta(w http.ResponseWriter, r *http.Request) {
 		resp.DeploymentID = out.DeploymentID
 		resp.License = out.License
 		resp.BootstrapComplete = out.BootstrapComplete
+		resp.EulaVersion = out.EulaVersion
+		resp.EulaAccepted = out.EulaAccepted
+		resp.EulaRequired = out.EulaRequired
 	}
 	httpresponse.JSON(w, http.StatusOK, resp)
 }

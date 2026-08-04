@@ -13,6 +13,7 @@ import (
 	"espx/internal/controlplane/authz"
 	"espx/internal/costsync"
 	"espx/internal/edge/xdpstats"
+	"espx/internal/licensing"
 	"espx/internal/openrtb"
 	"espx/pkg/doctor"
 	"espx/pkg/platformconfig"
@@ -37,7 +38,16 @@ type supportBundleWriter struct {
 
 func (w supportBundleWriter) WriteSupportBundle(ctx context.Context, out io.Writer) error {
 	meta := supportbundle.Meta{}
-	if w.pool != nil {
+	if diag, ok := licenseWatcherDiagnostics(); ok {
+		meta.DeploymentID = diag.DeploymentID
+		meta.LicenseState = string(diag.State)
+		meta.DaysToExpiry = diag.DaysToExpiry
+		meta.HostFingerprint = diag.HostFingerprint
+		if licensing.BindModeHard(diag.BindMode) && diag.BindFingerprint != "" {
+			match := diag.FingerprintMatch
+			meta.FingerprintMatch = &match
+		}
+	} else if w.pool != nil {
 		var dep uuid.UUID
 		var state string
 		err := w.pool.QueryRow(ctx, `
@@ -54,6 +64,7 @@ func (w supportBundleWriter) WriteSupportBundle(ctx context.Context, out io.Writ
 			meta.LicenseState = state
 		}
 	}
+	meta.HostFingerprint = licensing.HostFingerprint()
 	return supportbundle.Write(ctx, out, supportbundle.Options{
 		Meta:     meta,
 		LogDir:   w.logDir,
@@ -174,6 +185,10 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 				PGPool: func(ctx context.Context) (*pgxpool.Pool, error) {
 					return svc.GetPool(), nil
 				},
+				LicenseState: licenseWatcherState,
+				LicenseDiagnostics: func() (licensing.LicenseDiagnostics, bool) {
+					return licenseWatcherDiagnostics()
+				},
 			},
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
@@ -200,9 +215,12 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 		},
 		ExportHTTP: exportHTTP,
 		LicensingHTTP: &adminapi.LicensingHTTPHandlers{
-			Pool:              pool,
-			ApplyRateLimit:    limit,
-			RequirePermission: perm,
+			Pool:                  pool,
+			LicenseService:        svc,
+			ApplyRateLimit:        limit,
+			LicenseApplyRateLimit: h.limitLicenseApply,
+			RequirePermission:     perm,
+			WriteServiceError:     writeErr,
 		},
 		ReportsHTTP: &adminapi.ReportsHTTPHandlers{
 			CampaignStats:             svc,
@@ -329,6 +347,12 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			ApplyRateLimit: limit,
 			Enrich:         h.metaEnricher(),
 			WriteError:     writeErr,
+		},
+		EulaHTTP: &adminapi.EulaHTTPHandlers{
+			Service:           svc,
+			ApplyRateLimit:    limit,
+			RequirePermission: perm,
+			WriteServiceError: writeErr,
 		},
 		PlatformHTTP: &adminapi.PlatformHTTPHandlers{
 			Service:           svc,

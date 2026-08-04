@@ -1,3 +1,4 @@
+# Dev / full binary image (all entrypoints). Pilot GHCR release: deploy/docker/Dockerfile.pilot
 FROM golang:1.25.12-alpine AS modules
 WORKDIR /src
 COPY go.mod go.sum ./

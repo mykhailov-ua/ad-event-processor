@@ -45,7 +45,7 @@ func OfflineDays(offlineSince time.Time, now time.Time) int {
 }
 
 func DetermineEffectiveState(claims *LicenseClaims, now time.Time, revoked bool, offlineSince time.Time, heartbeatOffline bool, policy HeartbeatPolicy) LicenseState {
-	jwtState := DetermineState(claims, now, revoked)
+	jwtState := DetermineState(claims, now, claims.Revoked)
 	if jwtState == StateRevoked || jwtState == StateExpired {
 		return jwtState
 	}

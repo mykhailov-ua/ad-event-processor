@@ -21,6 +21,7 @@ type RouteRegistry struct {
 	CustomersHTTP   *CustomersHTTPHandlers
 	SupportHTTP     *SupportHTTPHandlers
 	MetaHTTP        *MetaHTTPHandlers
+	EulaHTTP        *EulaHTTPHandlers
 	PlatformHTTP    *PlatformHTTPHandlers
 	StubHTTP        *StubHTTPHandlers
 	TelegramHTTP    *TelegramHTTPHandlers
@@ -84,6 +85,9 @@ var routeCatalog = []Route{
 	{Method: "GET", Path: "/api/v1/disputes"},
 	{Method: "POST", Path: "/api/v1/forecast/campaign"},
 	{Method: "GET", Path: "/api/v1/license/status"},
+	{Method: "POST", Path: "/api/v1/license/apply"},
+	{Method: "GET", Path: "/api/v1/eula"},
+	{Method: "POST", Path: "/api/v1/eula/accept"},
 	{Method: "GET", Path: "/api/v1/meta"},
 	{Method: "GET", Path: "/api/v1/settings/platform"},
 	{Method: "PATCH", Path: "/api/v1/settings/platform"},
@@ -232,6 +236,9 @@ func RegisterRoutes(mux *http.ServeMux, routes RouteRegistry) {
 	}
 	if routes.MetaHTTP != nil {
 		routes.MetaHTTP.Register(mux)
+	}
+	if routes.EulaHTTP != nil {
+		routes.EulaHTTP.Register(mux)
 	}
 	if routes.PlatformHTTP != nil {
 		routes.PlatformHTTP.Register(mux)

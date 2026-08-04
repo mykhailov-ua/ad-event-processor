@@ -14,6 +14,7 @@ type LicenseClaims struct {
 	ValidFrom    time.Time  `json:"valid_from"`
 	ValidUntil   time.Time  `json:"valid_until"`
 	GraceDays    int        `json:"grace_days"`
+	Revoked      bool       `json:"revoked,omitempty"`
 	Limits       Limits     `json:"limits"`
 	Features     FeatureSet `json:"features"`
 	Bind         struct {

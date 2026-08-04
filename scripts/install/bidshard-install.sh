@@ -6,11 +6,12 @@ cd "$ROOT"
 
 YES=0
 SKIP_PROVISION=0
+ACCEPT_EULA=0
 ENV_FILE=""
 CMD="up"
 
 usage() {
-	echo "usage: $0 [--yes] [--skip-provision] [--env-file PATH] {up|status|apply|doctor}" >&2
+	echo "usage: $0 [--yes] [--skip-provision] [--accept-eula] [--env-file PATH] {up|status|apply|doctor|license-apply [JWT]}" >&2
 }
 
 while [[ $# -gt 0 ]]; do
@@ -23,11 +24,15 @@ while [[ $# -gt 0 ]]; do
 		SKIP_PROVISION=1
 		shift
 		;;
+	--accept-eula)
+		ACCEPT_EULA=1
+		shift
+		;;
 	--env-file)
 		ENV_FILE="${2:-}"
 		shift 2
 		;;
-	up | status | apply | doctor)
+	up | status | apply | doctor | license-apply)
 		CMD="$1"
 		shift
 		;;
@@ -89,6 +94,82 @@ ensure_env() {
 		token="$(openssl rand -hex 32)"
 		sed -i "s/^INSTALL_BOOTSTRAP_TOKEN=.*/INSTALL_BOOTSTRAP_TOKEN=${token}/" .env
 	fi
+	if [[ ! -f license.jwt ]]; then
+		touch license.jwt
+		chmod 600 license.jwt
+	fi
+}
+
+set_env_key() {
+	local key="$1"
+	local val="$2"
+	if grep -q "^${key}=" .env; then
+		sed -i "s|^${key}=.*|${key}=${val}|" .env
+	else
+		echo "${key}=${val}" >> .env
+	fi
+}
+
+compute_deployment_fingerprint() {
+	local mid="" id path
+	for id in /etc/machine-id /var/lib/dbus/machine-id; do
+		if [[ -r "$id" ]]; then
+			mid="$(tr -d '[:space:]' <"$id")"
+			break
+		fi
+	done
+	local -a paths=()
+	if [[ -n "${ROOT:-}" ]]; then
+		paths+=("$(realpath -m "$ROOT" 2>/dev/null || echo "$ROOT")")
+	fi
+	paths+=("$(pwd)")
+	local lic_path="${ESPX_LICENSE_PATH:-/espx/license.jwt}"
+	paths+=("$(dirname "$lic_path")")
+	python3 - "$mid" "${paths[@]}" <<'PY'
+import hashlib, sys
+h = hashlib.sha256()
+h.update(sys.argv[1].encode())
+seen = set()
+for p in sys.argv[2:]:
+    p = p.strip()
+    if not p or p in seen:
+        continue
+    seen.add(p)
+    h.update(b"\0")
+    h.update(p.encode())
+print(h.hexdigest())
+PY
+}
+
+setup_offline_license() {
+	local pub_file="$ROOT/deploy/vendor/license_public.key"
+	local mode="${ESPX_LICENSE_MODE:-file}"
+	local jwt="${ESPX_LICENSE_KEY:-}"
+
+	set_env_key ESPX_LICENSE_MODE "$mode"
+	set_env_key ESPX_LICENSE_SERVER ""
+	set_env_key ESPX_LICENSE_PATH "/espx/license.jwt"
+	set_env_key ESPX_TELEMETRY_OPT_IN "0"
+	set_env_key ESPX_LICENSE_REQUIRED "${ESPX_LICENSE_REQUIRED:-1}"
+
+	local fp
+	fp="$(compute_deployment_fingerprint)"
+	set_env_key ESPX_DEPLOYMENT_FINGERPRINT "$fp"
+	echo "bidshard-install: deployment fingerprint=$fp (include in vendor renewal ticket)"
+
+	if [[ -z "$(grep -m1 '^ESPX_LICENSE_PUBLIC_KEY=' .env 2>/dev/null | cut -d= -f2- | tr -d '[:space:]')" ]] && [[ -f "$pub_file" ]]; then
+		local pub
+		pub="$(tr -d '[:space:]' < "$pub_file")"
+		set_env_key ESPX_LICENSE_PUBLIC_KEY "$pub"
+	fi
+
+	if [[ -z "$jwt" ]]; then
+		echo "bidshard-install: set ESPX_LICENSE_KEY to the monthly license JWT in install.env" >&2
+		exit 1
+	fi
+
+	printf '%s' "$jwt" > "$ROOT/license.jwt"
+	chmod 600 "$ROOT/license.jwt"
 }
 
 prompt_default() {
@@ -171,6 +252,7 @@ stripe_webhook = sys.argv[7]
 admin_email = sys.argv[8]
 admin_password = sys.argv[9]
 license_key = sys.argv[10]
+eula_version = sys.argv[11]
 
 config = {
     "tracking_domain": tracking_domain,
@@ -196,9 +278,35 @@ req = {
 }
 if license_key:
     req["license_key"] = license_key
+if eula_version:
+    req["eula_version"] = eula_version
 
 print(json.dumps(req))
 PY
+}
+
+EULA_VERSION="2026-01"
+
+require_eula_acceptance() {
+	if [[ "$ACCEPT_EULA" == "1" ]]; then
+		return 0
+	fi
+	if [[ "$YES" == "1" ]]; then
+		echo "bidshard-install: re-run with --accept-eula (required for install)" >&2
+		exit 1
+	fi
+	echo ""
+	echo "BidShard on-premise license agreement (version ${EULA_VERSION})"
+	if [[ -f pkg/legal/EULA.txt ]]; then
+		head -n 12 pkg/legal/EULA.txt
+		echo "..."
+	fi
+	read -r -p "Accept license agreement? [y/N]: " yn
+	if [[ "${yn,,}" != "y" ]]; then
+		echo "bidshard-install: install aborted — EULA not accepted" >&2
+		exit 1
+	fi
+	ACCEPT_EULA=1
 }
 
 collect_config() {
@@ -254,10 +362,15 @@ collect_config() {
 	*) stripe_flag="0" ;;
 	esac
 
+	local eula_version=""
+	if [[ "$ACCEPT_EULA" == "1" ]]; then
+		eula_version="$EULA_VERSION"
+	fi
+
 	PLATFORM_JSON="$(build_bootstrap_json \
 		"$tracking_domain" "$currency" "$timezone" "$telemetry_flag" \
 		"$stripe_flag" "$stripe_secret" "$stripe_webhook" \
-		"$admin_email" "$admin_password" "$license_key")"
+		"$admin_email" "$admin_password" "$license_key" "$eula_version")"
 
 	echo "$PLATFORM_JSON" | python3 -c 'import json,sys; c=json.load(sys.stdin)["config"]; print(json.dumps(c))' > platform_config.json
 }
@@ -417,6 +530,8 @@ cmd_up() {
 	fi
 	ensure_env
 	load_install_env
+	require_eula_acceptance
+	setup_offline_license
 	set -a
 	# shellcheck disable=SC1091
 	source .env
@@ -440,6 +555,54 @@ cmd_up() {
 
 	run_doctor || true
 	print_summary
+}
+
+cmd_license_apply() {
+	local token="${1:-}"
+	ensure_env
+	load_install_env
+	if [[ -z "$token" ]]; then
+		token="${ESPX_LICENSE_KEY:-}"
+	fi
+	if [[ -z "$token" ]]; then
+		echo "bidshard-install: pass JWT argument or set ESPX_LICENSE_KEY" >&2
+		exit 2
+	fi
+	if ! check_docker; then
+		echo "bidshard-install: docker not available" >&2
+		exit 1
+	fi
+	set -a
+	# shellcheck disable=SC1091
+	source .env
+	set +a
+	local port key url body http_code
+	port="$(read_env_var MANAGEMENT_PORT)"
+	port="${port:-8188}"
+	key="$(read_env_var ADMIN_API_KEY)"
+	if [[ -z "$key" ]]; then
+		echo "bidshard-install: ADMIN_API_KEY missing in .env" >&2
+		exit 1
+	fi
+	url="http://127.0.0.1:${port}/api/v1/license/apply"
+	body="$(python3 -c 'import json,sys; print(json.dumps({"token": sys.argv[1]}))' "$token")"
+	local resp
+	resp="$(curl -s -w "\n%{http_code}" -X POST \
+		-H "Content-Type: application/json" \
+		-H "X-Admin-API-Key: ${key}" \
+		-d "$body" \
+		"$url")"
+	http_code="${resp##*$'\n'}"
+	resp="${resp%$'\n'*}"
+	if [[ "$http_code" == "200" ]]; then
+		echo "bidshard-install: license applied"
+		echo "$resp"
+		printf '%s' "$token" > "$ROOT/license.jwt"
+		chmod 600 "$ROOT/license.jwt"
+		return 0
+	fi
+	echo "bidshard-install: license apply failed (${http_code}): ${resp}" >&2
+	return 1
 }
 
 cmd_status() {
@@ -497,6 +660,9 @@ apply)
 	;;
 doctor)
 	cmd_doctor
+	;;
+license-apply)
+	cmd_license_apply "${1:-}"
 	;;
 *)
 	usage

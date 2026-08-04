@@ -54,9 +54,16 @@ cp "$ROOT/scripts/lib/paths.sh" "$STAGE/bidshard/scripts/lib/"
 cp "$ROOT/scripts/lib/safe_paths.sh" "$STAGE/bidshard/scripts/lib/"
 cp "$ROOT/scripts/ci/deps.sh" "$STAGE/bidshard/scripts/ci/"
 
+mkdir -p "$STAGE/bidshard/deploy/vendor"
+if [[ -f "$ROOT/deploy/vendor/license_public.key" ]]; then
+	cp "$ROOT/deploy/vendor/license_public.key" "$STAGE/bidshard/deploy/vendor/"
+fi
+
 mkdir -p "$OUT_DIR"
 tar -czf "$TARBALL" -C "$STAGE" bidshard
 rm -rf "$STAGE"
+
+bash "$ROOT/scripts/ci/verify_release_pack.sh" "$TARBALL"
 
 echo "release_pack: $TARBALL"
 echo "Upload to GitHub Releases as bidshard-installer.tar.gz for tag v${VERSION}"

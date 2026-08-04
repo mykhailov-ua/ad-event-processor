@@ -10,10 +10,11 @@ import (
 )
 
 type Handler struct {
-	svc             *Service
-	cfg             *config.Config
-	ipLimiter       *ipRateLimiter
-	customerLimiter *customerRateLimiter
+	svc                 *Service
+	cfg                 *config.Config
+	ipLimiter           *ipRateLimiter
+	licenseApplyLimiter *ipRateLimiter
+	customerLimiter     *customerRateLimiter
 	authMiddleware  *AuthMiddleware
 	authClient      *AuthClient
 	payment         *PaymentClient
@@ -28,10 +29,11 @@ func NewHandler(svc *Service, cfg *config.Config, authMiddleware *AuthMiddleware
 		burst = cfg.Management.RateLimitBurst
 	}
 	h := &Handler{
-		svc:             svc,
-		cfg:             cfg,
-		ipLimiter:       newIPRateLimiter(rps, burst),
-		customerLimiter: newCustomerRateLimiter(),
+		svc:                 svc,
+		cfg:                 cfg,
+		ipLimiter:           newIPRateLimiter(rps, burst),
+		licenseApplyLimiter: newIPRateLimiter(licenseApplyRPS, licenseApplyBurst),
+		customerLimiter:     newCustomerRateLimiter(),
 		authMiddleware:  authMiddleware,
 		authClient:      authClient,
 		payment:         paymentClient,

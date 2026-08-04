@@ -17,4 +17,5 @@ var checkHints = map[string]string{
 	"disk":       "df -h && docker system df",
 	"tls":        "set DB_DSN sslmode=verify-full for production Postgres TLS",
 	"rtb_config": "review RTB settings in control UI or GET /api/v1/settings/platform",
+	"license":    "apply monthly JWT: Settings → License or POST /api/v1/license/apply",
 }

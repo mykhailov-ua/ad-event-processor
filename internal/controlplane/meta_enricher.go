@@ -7,6 +7,7 @@ import (
 	"espx/internal/controlplane/adminapi"
 	billingdb "espx/internal/ledger/db"
 	"espx/internal/licensing"
+	"espx/pkg/legal"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -27,6 +28,13 @@ func (h *Handler) metaEnricher() adminapi.MetaEnricher {
 			return out, err
 		}
 		out.BootstrapComplete = bootstrapped
+		if _, accepted, eulaErr := h.svc.GetEulaStatus(ctx); eulaErr != nil {
+			return out, eulaErr
+		} else {
+			out.EulaVersion = legal.Version
+			out.EulaAccepted = accepted
+			out.EulaRequired = !accepted
+		}
 		pool := h.svc.GetPool()
 		if pool == nil {
 			return out, nil

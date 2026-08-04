@@ -69,6 +69,9 @@ func RegisterOpsRoutes(mux *http.ServeMux, pool *pgxpool.Pool, rdbs []redis.Univ
 				return false
 			}
 		}
+		if !licenseIngestReady() {
+			return false
+		}
 		return true
 	})
 	lifecycle.Register(mux, live, ready)

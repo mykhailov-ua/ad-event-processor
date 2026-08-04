@@ -191,3 +191,11 @@ type auditSlotMapRollback struct {
 	FromVersion int32 `json:"from_version"`
 	ToVersion   int32 `json:"to_version"`
 }
+
+type auditLicenseApplyChange struct {
+	DeploymentID string `json:"deployment_id"`
+	ValidUntil   string `json:"valid_until"`
+	CustomerName string `json:"customer_name,omitempty"`
+	Plan         string `json:"plan,omitempty"`
+	Revoked      bool   `json:"revoked,omitempty"`
+}

@@ -18,9 +18,23 @@ export function mount(container, _ctx) {
     email: '',
     password: '',
     trackingDomain: '',
+    eulaText: '',
+    eulaVersion: '',
+    eulaAccepted: false,
     loading: false,
     error: null,
   };
+
+  async function loadEula() {
+    const [res, err] = await to(fetch('/api/v1/eula', { credentials: 'same-origin' }).then(async (r) => {
+      if (!r.ok) throw new Error('eula unavailable');
+      return { data: await r.json() };
+    }));
+    if (err || !res?.data) return;
+    state.eulaVersion = res.data.version || '';
+    state.eulaText = res.data.text || '';
+    render();
+  }
 
   function render() {
     if (destroyed) return;
@@ -76,6 +90,23 @@ export function mount(container, _ctx) {
                 onInput: (e) => { state.trackingDomain = e.target.value; },
               }),
             ),
+            state.eulaText
+              ? el('div', { className: 'form-field' },
+                el('pre', {
+                  className: 'text-sm',
+                  style: { maxHeight: '160px', overflow: 'auto', whiteSpace: 'pre-wrap' },
+                }, state.eulaText),
+                el('label', { className: 'form-check' },
+                  el('input', {
+                    type: 'checkbox',
+                    required: true,
+                    checked: state.eulaAccepted,
+                    onChange: (e) => { state.eulaAccepted = e.target.checked; },
+                  }),
+                  ' I accept the on-premise license agreement',
+                ),
+              )
+              : null,
             el('div', { className: 'form-actions' },
               el('button', {
                 type: 'submit',
@@ -114,6 +145,7 @@ export function mount(container, _ctx) {
         },
         admin_email: state.email,
         admin_password: state.password,
+        eula_version: state.eulaAccepted ? state.eulaVersion : undefined,
       }),
     }));
     if (err) {
@@ -137,6 +169,7 @@ export function mount(container, _ctx) {
   }
 
   render();
+  loadEula();
 
   return {
     destroy() {

@@ -1,0 +1,21 @@
+BidShard On-Premise Software License Agreement (Pilot)
+
+By installing or using this software you agree to the following terms.
+
+1. License grant. Vendor grants you a non-exclusive, non-transferable license to run
+   one deployment identified by your deployment_id and host fingerprint.
+
+2. Restrictions. You may not sublicense, resell, or redistribute the software or
+   license token. Reverse engineering for competitive products is prohibited.
+
+3. Monthly JWT. Access requires a valid vendor-signed license token. Running without
+   a current token violates this agreement.
+
+4. Support data. Support bundles may include deployment metadata for troubleshooting.
+
+5. Termination. Vendor may stop renewal on chargeback or breach. You must cease use
+   and delete copies when the license expires without renewal.
+
+6. Warranty disclaimer. Software is provided "as is" without warranty.
+
+Contact your vendor for renewal and support.

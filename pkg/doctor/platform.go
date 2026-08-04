@@ -18,6 +18,13 @@ type DoctorCheckDTO struct {
 func RunPlatform(ctx context.Context, deps ProbeDeps, cfg platformconfig.Config, opts Options) Report {
 	probes := DefaultProbes(deps)
 	probes = append(probes, RtbConfigProbe{Deps: deps})
+	if deps.LicenseState != nil {
+		probe := LicenseProbe{StateFn: deps.LicenseState}
+		if deps.LicenseDiagnostics != nil {
+			probe.DiagnosticsFn = deps.LicenseDiagnostics
+		}
+		probes = append(probes, probe)
+	}
 	if strings.TrimSpace(cfg.TrackingDomain) != "" {
 		probes = append(probes, DNSProbe{Hostname: cfg.TrackingDomain})
 	}

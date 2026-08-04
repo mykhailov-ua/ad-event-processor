@@ -27,6 +27,11 @@ var (
 		Help: "Total number of events dropped due to Redis ingestion failure",
 	})
 
+	LicenseRPSExceededTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_license_rps_exceeded_total",
+		Help: "Hot-path rejects when deployment JWT max_rps is exceeded",
+	})
+
 	FilterBlockedTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ad_filter_blocked_total",
 		Help: "Total number of events blocked by filters",

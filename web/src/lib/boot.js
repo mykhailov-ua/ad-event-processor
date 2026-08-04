@@ -14,6 +14,7 @@ import { installCommandPalette } from '../ui/command_palette.js';
 import { startRUMCollector } from '../helpers/rum_collector.js';
 import { renderIdempotencyRecoveryBanner } from '../ui/idempotency_banner.js';
 import { syncDevModeAttribute } from '../helpers/dev_mode.js';
+import { mountEulaGate } from '../ui/eula_gate.js';
 
 /**
  * @param {HTMLElement} root
@@ -54,6 +55,15 @@ export async function bootApp(root) {
   });
 
   loading.remove();
+
+  const [eulaRes, eulaErr] = await to(api('/api/v1/eula'));
+  if (!eulaErr && eulaRes?.data?.required) {
+    const accepted = await mountEulaGate(root, {
+      version: eulaRes.data.version,
+      text: eulaRes.data.text,
+    });
+    if (!accepted) return;
+  }
 
   const outlet = el('div', { id: 'app-outlet' });
   const idemBanner = renderIdempotencyRecoveryBanner();

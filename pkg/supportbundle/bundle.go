@@ -23,9 +23,12 @@ const (
 )
 
 type Meta struct {
-	DeploymentID  string `json:"deployment_id,omitempty"`
-	LicenseState  string `json:"license_state,omitempty"`
-	BinaryVersion string `json:"binary_version,omitempty"`
+	DeploymentID     string `json:"deployment_id,omitempty"`
+	LicenseState     string `json:"license_state,omitempty"`
+	DaysToExpiry     int    `json:"days_to_expiry,omitempty"`
+	HostFingerprint  string `json:"host_fingerprint,omitempty"`
+	FingerprintMatch *bool  `json:"fingerprint_match,omitempty"`
+	BinaryVersion    string `json:"binary_version,omitempty"`
 }
 
 type Options struct {

@@ -16,6 +16,7 @@ services:
       - GOGC=300
     volumes:
       - ../../deploy/geoip:/deploy/geoip:ro
+      - ../../license.jwt:/espx/license.jwt:ro
       - espx_logs:/var/log/espx:rw
     ulimits:
       nofile:
@@ -68,6 +69,7 @@ services:
       - GOGC=300
     volumes:
       - ../../deploy/geoip:/deploy/geoip:ro
+      - ../../license.jwt:/espx/license.jwt:ro
       - espx_logs:/var/log/espx:rw
     ulimits:
       nofile:
@@ -120,6 +122,7 @@ services:
       - GOGC=300
     volumes:
       - ../../deploy/geoip:/deploy/geoip:ro
+      - ../../license.jwt:/espx/license.jwt:ro
       - espx_logs:/var/log/espx:rw
     ulimits:
       nofile:
@@ -172,6 +175,7 @@ services:
       - GOGC=300
     volumes:
       - ../../deploy/geoip:/deploy/geoip:ro
+      - ../../license.jwt:/espx/license.jwt:ro
       - espx_logs:/var/log/espx:rw
     ulimits:
       nofile:
@@ -440,8 +444,9 @@ services:
       - fraud-scorer
     env_file:
       - ../../.env
+    volumes:
+      - ../../license.jwt:/espx/license.jwt
     environment:
-      - SERVER_PORT=${SERVER_PORT:-8181}
       - MANAGEMENT_PORT=8188
       - PAYMENT_WEBHOOK_PORT=8187
       - DB_DSN=${DB_DSN}

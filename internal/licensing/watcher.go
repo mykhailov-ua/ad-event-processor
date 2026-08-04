@@ -168,6 +168,11 @@ func (w *LicenseWatcher) Start(ctx context.Context) error {
 	return nil
 }
 
+// Reload re-reads the local license file and updates DB/Redis entitlements.
+func (w *LicenseWatcher) Reload(ctx context.Context) error {
+	return w.verifyAndReload(ctx)
+}
+
 func (w *LicenseWatcher) verifyAndReload(ctx context.Context) error {
 	now := time.Now()
 	var tokenStr string
@@ -205,7 +210,7 @@ func (w *LicenseWatcher) verifyAndReload(ctx context.Context) error {
 		}
 	}
 
-	claims, err := VerifyJWT(tokenStr, w.pubKey)
+	claims, err := VerifyJWTWithKey(tokenStr, w.pubKey)
 	if err != nil {
 		w.mu.Lock()
 		w.lastRefreshError = err
@@ -215,10 +220,19 @@ func (w *LicenseWatcher) verifyAndReload(ctx context.Context) error {
 		return fmt.Errorf("license signature verification failed: %w", err)
 	}
 
+	if err := VerifyDeploymentBind(claims, HostFingerprint()); err != nil {
+		w.mu.Lock()
+		w.lastRefreshError = err
+		w.currentState = StateExpired
+		w.mu.Unlock()
+		SetLicenseMetrics(StateExpired, 0)
+		return fmt.Errorf("license bind verification failed: %w", err)
+	}
+
 	w.mu.Lock()
 	offlineSince := w.offlineSince
 	w.mu.Unlock()
-	state := DetermineEffectiveState(claims, now, false, offlineSince, heartbeatOffline, w.policy)
+	state := DetermineEffectiveState(claims, now, claims.Revoked, offlineSince, heartbeatOffline, w.policy)
 	offlineDays := 0
 	if heartbeatOffline {
 		offlineDays = OfflineDays(offlineSince, now)
@@ -234,6 +248,7 @@ func (w *LicenseWatcher) verifyAndReload(ctx context.Context) error {
 	w.mu.Unlock()
 
 	SetLicenseMetrics(state, offlineDays)
+	UpdateLogWatermark(claims)
 
 	if w.pool == nil && w.rdb == nil {
 		return nil

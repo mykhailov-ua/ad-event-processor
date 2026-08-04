@@ -198,14 +198,18 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 			slog.Error("invalid ESPX_LICENSE_PUBLIC_KEY", "error", err)
 			return err
 		}
-		watcher := licensing.NewLicenseWatcher(pool, PickHealthyControlShard(rdbs), pubKey)
-		watcher.SetControlRedisShards(rdbs)
-		svc.StartBackgroundWorker(func() {
-			if err := watcher.Start(ctx); err != nil && err != context.Canceled {
-				slog.Error("license watcher stopped", "error", err)
-			}
-		})
-		slog.Info("started license watcher", "mode", os.Getenv("ESPX_LICENSE_MODE"))
+		if err := startLicenseWatcher(ctx, pool, rdbs, pubKey, svc); err != nil {
+			return err
+		}
+	} else if pubKey, err := licensing.ResolvePublicKey(); err == nil {
+		if err := startLicenseWatcher(ctx, pool, rdbs, pubKey, svc); err != nil {
+			return err
+		}
+	} else if config.LicenseRequiredFromEnv() {
+		slog.Error("license required but public key missing", "error", err)
+		return err
+	} else {
+		slog.Warn("license watcher disabled", "error", err)
 	}
 
 	queries := db.New(pool)

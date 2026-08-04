@@ -9,8 +9,38 @@
 #   skus[].features   - licensing.FeatureSet JSON
 #   skus[].limits     - licensing.Limits JSON
 #   skus[].bind.mode  - fingerprint binding mode (soft|hard)
+#
+# Image profiles (S3.1) — separate GHCR tags limit leaked surface:
+#   pilot        -> :tag (tracker, processor, control)
+#   pilot-ingest -> :tag-ingest (tracker, processor only)
 
 skus:
+  - code: pilot
+    display_name: Pilot on-prem (monthly JWT)
+    valid_days: 35
+    grace_days: 7
+    offline_grace_days: 0
+    features:
+      rtb_live: true
+      openrtb_engine: true
+      ebpf_xdp_edge: false
+      ivt_ml_detector: false
+      ml_fraud_boost: false
+      multi_region: false
+      slot_migration: false
+      margin_guard: true
+    limits:
+      max_regions: 1
+      max_api_keys: 20
+      max_rps: 50000
+      max_requests_per_day: 5000000
+      max_active_campaigns: 500
+      max_tenants: 50
+      max_events_per_month: 50000000
+      max_export_chunk_bytes: 104857600
+    bind:
+      mode: hard
+
   - code: license
     valid_days: 30
     grace_days: 7

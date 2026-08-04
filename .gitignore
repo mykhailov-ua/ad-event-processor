@@ -26,6 +26,9 @@ vendor/
 /log-shipper
 /edge-xdp
 !deploy/vendor/
+deploy/vendor/license_private.key
+deploy/vendor/keys/*/license_private.key
+license.jwt
 
 # Generated code (make gen / make proto — repo keeps sources only)
 /api/gen/

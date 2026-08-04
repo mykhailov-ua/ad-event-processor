@@ -66,4 +66,6 @@ make build-bin          # bin/tracker, bin/control, bin/espx-install, …
 bin/espx-install preflight
 ```
 
+**Pilot on-prem license (offline JWT, monthly renewal):** [docs/PILOT_LICENSE.md](./PILOT_LICENSE.md)
+
 See `deploy/installer/install.yaml.example` and `docs/DEVELOPMENT.md` for other compose profiles.

@@ -17,6 +17,7 @@ import (
 	"espx/internal/metrics"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	redis "github.com/redis/go-redis/v9"
@@ -83,6 +84,9 @@ type Registry struct {
 	snapGen      atomic.Uint64
 	workerCache  [registryWorkerCacheMax]registryWorkerCacheSlot
 	lastSyncTime atomic.Int64
+
+	licenseEnforced atomic.Bool
+	fileLicense     atomic.Value
 }
 
 func NewRegistry(repo db.Querier) *Registry {
@@ -578,39 +582,49 @@ func (r *Registry) SyncEntitlements(ctx context.Context) error {
 	if r.pool == nil {
 		return nil
 	}
+	if r.licenseEnforced.Load() {
+		return nil
+	}
 
 	var stateStr string
 	var entitlementsBytes []byte
 
+	licState := licensing.StateExpired
 	var licEnt licensing.Entitlements
-	var licState licensing.LicenseState = licensing.StateActive
 
 	row := r.pool.QueryRow(ctx, "SELECT state, entitlements_json FROM billing.license_status LIMIT 1")
 	err := row.Scan(&stateStr, &entitlementsBytes)
-	if err == nil {
-		licState = licensing.LicenseState(stateStr)
-		_ = json.Unmarshal(entitlementsBytes, &licEnt)
-	} else {
-		licEnt.Limits.MaxRPS = 999999
-		licEnt.Limits.MaxRequestsPerDay = 999999999
-		licEnt.Limits.MaxActiveCampaigns = 99999
-		licEnt.Limits.MaxRegions = 9
-		licEnt.Features.RtbLive = true
-		licEnt.Features.MlFraudBoost = true
-		licEnt.Features.MultiRegion = true
-		licEnt.Features.SlotMigration = true
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			r.storeEntitlementsSnapshot(licState, licEnt)
+			return nil
+		}
+		return err
 	}
+	licState = licensing.LicenseState(stateStr)
+	if len(entitlementsBytes) > 0 {
+		_ = json.Unmarshal(entitlementsBytes, &licEnt)
+	}
+	licEnt.Features = licEnt.Features.Normalized()
+	r.storeEntitlementsSnapshot(licState, licEnt)
+	return nil
+}
 
+func (r *Registry) storeEntitlementsSnapshot(licState licensing.LicenseState, licEnt licensing.Entitlements) {
 	r.entitlements.Store(&entitlementsSnapshot{
 		byCustomerID: nil,
 		license:      licEnt,
 		licenseState: licState,
 	})
-
-	return nil
 }
 
 func (r *Registry) GetEntitlements(customerID uuid.UUID) (licensing.Entitlements, bool) {
+	if r.licenseEnforced.Load() {
+		if v, ok := r.fileLicense.Load().(*fileLicenseSnapshot); ok && v != nil {
+			return v.entitlements, true
+		}
+		return licensing.Entitlements{}, false
+	}
 	snap, ok := r.entitlements.Load().(*entitlementsSnapshot)
 	if !ok || snap == nil {
 		return licensing.Entitlements{}, false
@@ -619,6 +633,12 @@ func (r *Registry) GetEntitlements(customerID uuid.UUID) (licensing.Entitlements
 }
 
 func (r *Registry) GetLicenseState() (licensing.LicenseState, licensing.Entitlements) {
+	if r.licenseEnforced.Load() {
+		if v, ok := r.fileLicense.Load().(*fileLicenseSnapshot); ok && v != nil {
+			return v.state, v.entitlements
+		}
+		return licensing.StateExpired, licensing.Entitlements{}
+	}
 	snap, ok := r.entitlements.Load().(*entitlementsSnapshot)
 	if !ok || snap == nil {
 		return licensing.StateExpired, licensing.Entitlements{}

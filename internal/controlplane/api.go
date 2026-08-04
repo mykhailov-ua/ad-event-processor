@@ -387,6 +387,8 @@ func conflictMessage(err error) string {
 
 func badRequestMessage(err error) (string, bool) {
 	switch {
+	case errors.Is(err, ErrEulaVersionMismatch):
+		return ErrEulaVersionMismatch.Error(), true
 	case errors.Is(err, ErrFeedbackInvalidType),
 		errors.Is(err, ErrFeedbackInvalidEmail),
 		errors.Is(err, ErrFeedbackEmptyMessage):

@@ -42,6 +42,7 @@ export function mount(container) {
   let lastError = null;
   let stripeSecretInput = '';
   let stripeWebhookInput = '';
+  let licenseTokenInput = '';
 
   const user = auth.getUser();
   const canWrite = can(user?.permissions ?? [], 'settings:write');
@@ -115,6 +116,32 @@ export function mount(container) {
       resource.reload();
     saving = false;
     render();
+  }
+
+  async function handleLicenseApply() {
+    if (!canWrite) return;
+    const token = licenseTokenInput.trim();
+    if (!token) {
+      pushToastMessage({ title: 'License', message: 'Paste the license JWT from your vendor' });
+      return;
+    }
+    const [res, err] = await to(apiConfirmed('/api/v1/license/apply', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    }));
+    if (err) {
+      if (err instanceof ConfirmCancelledError) return;
+      const v = mapServiceError(err);
+      pushToastMessage({ title: v.title, message: v.message, code: v.code });
+      return;
+    }
+    licenseTokenInput = '';
+    const until = res?.data?.valid_until ?? '';
+    pushToastMessage({
+      title: 'License updated',
+      message: until ? `Valid until ${until}` : 'License applied',
+    });
+    resource.reload();
   }
 
   async function handleApply() {
@@ -366,6 +393,35 @@ export function mount(container) {
                         el('span', { className: 'font-mono' }, view.secrets.stripe_webhook_secret),
                       )
                       : null,
+                  )
+                  : null,
+              ],
+            }),
+            renderSectionCard({
+              icon: 'shield',
+              title: 'License renewal',
+              desc: 'Offline on-prem: paste the monthly JWT from your vendor. No internet license check.',
+              children: [
+                renderFormField({
+                  label: 'License JWT',
+                  hint: 'Paste the full token line from email; applies immediately without restart',
+                  children: el('textarea', {
+                    className: 'form-input',
+                    rows: 4,
+                    disabled: !canWrite,
+                    value: licenseTokenInput,
+                    placeholder: 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9...',
+                    onInput: (e) => { licenseTokenInput = e.target.value; },
+                  }),
+                }),
+                canWrite
+                  ? el('button', {
+                    type: 'button',
+                    className: 'btn btn--secondary',
+                    onClick: handleLicenseApply,
+                  },
+                    renderIcon('shield', { size: 14 }),
+                    'Apply license',
                   )
                   : null,
               ],

@@ -459,6 +459,23 @@ func (a *OpsAlerter) AlertSlotMigrationError(stage string, err error) {
 	a.sendAsync(key, title, body, true)
 }
 
+func (a *OpsAlerter) AlertLicenseApplied(deploymentID string, validUntil time.Time, adminID string, revoked bool) {
+	if a == nil {
+		return
+	}
+	key := "license:apply:" + deploymentID
+	title := fmt.Sprintf("%s: license applied", branding.ProductName())
+	kind := "renewal"
+	if revoked {
+		kind = "revocation"
+	}
+	body := fmt.Sprintf(
+		"<b>License %s</b>\nDeployment: %s\nValid until: %s\nAdmin: %s",
+		kind, deploymentID, validUntil.UTC().Format(time.RFC3339), adminID,
+	)
+	a.sendAsync(key, title, body, false)
+}
+
 func formatSlotIDs(slots []int16) string {
 	if len(slots) == 0 {
 		return ""

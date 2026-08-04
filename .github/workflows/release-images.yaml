@@ -22,9 +22,22 @@ concurrency:
 
 jobs:
   publish:
-    name: Build and push GHCR image
+    name: Build and push ${{ matrix.profile }} GHCR image
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
+    strategy:
+      matrix:
+        include:
+          - profile: pilot
+            dockerfile: deploy/docker/Dockerfile.pilot
+            tag_suffix: ''
+            expect_bins: 'control processor tracker'
+            forbid_bins: 'fraud-scorer broker region-proxy'
+          - profile: pilot-ingest
+            dockerfile: deploy/docker/Dockerfile.pilot-ingest
+            tag_suffix: -ingest
+            expect_bins: 'processor tracker'
+            forbid_bins: 'control fraud-scorer broker region-proxy'
     steps:
       - uses: actions/checkout@v4
 
@@ -41,6 +54,20 @@ jobs:
           TAG="${TAG#v}"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "full_tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          echo "image_tag=${GITHUB_REF_NAME}${{ matrix.tag_suffix }}" >> "$GITHUB_OUTPUT"
+          echo "image_tag_short=${TAG}${{ matrix.tag_suffix }}" >> "$GITHUB_OUTPUT"
+
+      - name: Compute garble seed (per-tag, vault salt)
+        id: garble
+        env:
+          GARBLE_SEED_SALT: ${{ secrets.GARBLE_SEED_SALT }}
+        run: |
+          if [ -z "$GARBLE_SEED_SALT" ]; then
+            echo "GARBLE_SEED_SALT GitHub secret is required for release builds" >&2
+            exit 1
+          fi
+          SEED=$(printf '%s:%s' "$GARBLE_SEED_SALT" "${{ steps.meta.outputs.full_tag }}" | sha256sum | cut -c1-32)
+          echo "seed=${SEED}" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@v3
 
@@ -51,20 +78,58 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: docker/build-push-action@v6
+        id: build
         with:
           context: .
-          file: deploy/docker/Dockerfile
+          file: ${{ matrix.dockerfile }}
           push: true
+          build-args: |
+            GARBLE_SEED=${{ steps.garble.outputs.seed }}
           tags: |
-            ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.full_tag }}
-            ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.tag }}
-            ghcr.io/${{ github.repository }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.image_tag }}
+            ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.image_tag_short }}
+          cache-from: type=gha,scope=${{ matrix.profile }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.profile }}
+
+      - name: Verify image binary surface
+        run: |
+          IMAGE="ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.image_tag }}"
+          CID=$(docker create "$IMAGE")
+          FILES=$(docker export "$CID" | tar -t | grep -E '^[^/]+$' | sort)
+          docker rm "$CID" >/dev/null
+          echo "$FILES"
+          for bin in ${{ matrix.expect_bins }}; do
+            echo "$FILES" | grep -qx "$bin"
+          done
+          for bin in ${{ matrix.forbid_bins }}; do
+            ! echo "$FILES" | grep -q "$bin"
+          done
+
+  release-installer:
+    name: Build installer tarball
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve image tag
+        id: meta
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          elif [ "${{ github.event_name }}" = "release" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          TAG="${TAG#v}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+      - run: make release-installer VERSION=${{ steps.meta.outputs.tag }}
 
       - name: Summary
         run: |
-          echo "Published ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.full_tag }}"
+          echo "Published pilot images:"
+          echo "  ghcr.io/${{ github.repository }}:${{ github.ref_name }} (tracker, processor, control)"
+          echo "  ghcr.io/${{ github.repository }}:${{ github.ref_name }}-ingest (tracker, processor)"
           echo "Set in install.env:"
           echo "  ESPX_USE_RELEASE_IMAGES=1"
-          echo "  ESPX_APP_IMAGE=ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.full_tag }}"
+          echo "  ESPX_APP_IMAGE=ghcr.io/${{ github.repository }}:${{ github.ref_name }}"
