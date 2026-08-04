@@ -1,6 +1,8 @@
 debian:
   - curl
   - git
+  - python3
+  - openssl
   - docker.io
   - docker-compose-plugin
   - libpcap-dev

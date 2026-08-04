@@ -3,10 +3,18 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 
+FROM node:22-alpine AS web
+WORKDIR /src
+COPY web/ ./web/
+RUN node web/scripts/build.mjs
+
 FROM golang:1.25.12-alpine AS builder
+RUN apk add --no-cache bash
 COPY --from=modules /go/pkg/mod /go/pkg/mod
 WORKDIR /src
 COPY . .
+COPY --from=web /src/web/dist ./web/dist
+RUN bash scripts/ci/gen.sh --proto
 RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/tracker ./cmd/tracker
 RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/processor ./cmd/processor
 RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/ivt-detector ./cmd/ivt-detector

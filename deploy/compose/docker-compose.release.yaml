@@ -1,0 +1,12 @@
+# Merged when ESPX_USE_RELEASE_IMAGES=1 or ESPX_APP_IMAGE is set (see scripts/dev/stack.sh).
+# Requires ESPX_APP_IMAGE (e.g. ghcr.io/<owner>/bidshard:v1.0.0).
+services:
+  tracker-0:
+    image: ${ESPX_APP_IMAGE}
+    build: !reset null
+  processor:
+    image: ${ESPX_APP_IMAGE}
+    build: !reset null
+  control:
+    image: ${ESPX_APP_IMAGE}
+    build: !reset null

@@ -61,11 +61,12 @@ bash scripts/dev/preflight.sh     # Verifies service health
 
 ### Admin web UI (`web/`)
 
-Build the embedded admin UI before `go build` on `cmd/control` when you need the full SPA in the binary. Stub HTML in `web/dist/` allows Go compile without a prior build; production embed requires:
+Build the embedded admin UI before `make build-bin` or `go build` on `cmd/control` when you need the full SPA in the binary. Stub HTML in `web/dist/` allows Go compile without a prior build; production embed requires:
 
 ```bash
 node web/scripts/build.mjs
-go build ./cmd/control
+make build-bin
+# or: go build -o bin/control ./cmd/control
 ```
 
 Local dev: static server + API proxy (port 5173):
@@ -121,7 +122,8 @@ First-time install: open `/login` or `/bootstrap` on the control URL. If `bootst
 
 ```bash
 node web/scripts/build.mjs
-go build -o bin/control ./cmd/control
+make build-bin
+# or: go build -o bin/control ./cmd/control
 ```
 
 **CSP smoke** (after deploy): open admin in browser, confirm no `unsafe-inline` violations in devtools console on `/campaigns`.

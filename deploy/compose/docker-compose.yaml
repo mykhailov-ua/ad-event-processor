@@ -492,6 +492,31 @@ services:
         max-file: "3"
 
 
+  ingress:
+    image: caddy:2.8-alpine
+    profiles:
+      - ingress
+    network_mode: "${NET_MODE:-host}"
+    env_file:
+      - ../../.env
+    volumes:
+      - ../../deploy/ingress/caddy/generated/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../../deploy/ingress/certs:/etc/caddy/certs:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      tracker-0:
+        condition: service_healthy
+      control:
+        condition: service_healthy
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+
   ivt-detector:
     build:
       context: ../..
@@ -975,3 +1000,5 @@ volumes:
   espx_region_proxy_wal:
   espx_broker_data:
   log_compactor_state:
+  caddy_data:
+  caddy_config:

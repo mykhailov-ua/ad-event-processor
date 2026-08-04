@@ -19,7 +19,7 @@ import { syncDevModeAttribute } from '../helpers/dev_mode.js';
  * @param {HTMLElement} root
  */
 export async function bootApp(root) {
-  if (window.location.pathname === '/bootstrap') {
+  if (window.location.pathname === '/bootstrap' || window.location.pathname === '/install/done') {
     await bootStandalone(root);
     return;
   }

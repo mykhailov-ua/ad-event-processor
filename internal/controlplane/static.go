@@ -60,7 +60,7 @@ func RegisterAdminStaticRoutes(mux *http.ServeMux, gate *AdminUIGate) {
 			return
 		}
 
-		if r.URL.Path == "/bootstrap" {
+		if r.URL.Path == "/bootstrap" || r.URL.Path == "/install/done" {
 			serveIndexHTML(w, staticFS, nil)
 			return
 		}

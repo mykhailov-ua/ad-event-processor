@@ -6,6 +6,7 @@ import { can } from './permissions.js';
 const ROUTE_ACCESS = {
   '/': {},
   '/bootstrap': {},
+  '/install/done': {},
   '/customers': { perms: ['customers:read'] },
   '/customers/:id': { perms: ['customers:read'] },
   '/campaigns': { perms: ['campaigns:read'], altPerm: 'campaigns:read:masked' },

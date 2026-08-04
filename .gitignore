@@ -3,7 +3,8 @@
 *.env
 
 # Build output & vendored deps
-bin/
+bin/*
+!bin/.gitkeep
 dist/release/
 vendor/
 

@@ -1,0 +1,14 @@
+# Reference template — runtime file is deploy/ingress/caddy/generated/Caddyfile
+# Generate: bash scripts/install/render_ingress.sh
+
+{
+	email {$CADDY_ACME_EMAIL}
+}
+
+{$TRACKING_DOMAIN} {
+	reverse_proxy 127.0.0.1:8181
+}
+
+{$ADMIN_DOMAIN} {
+	reverse_proxy 127.0.0.1:8188
+}

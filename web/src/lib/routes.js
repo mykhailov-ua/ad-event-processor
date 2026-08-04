@@ -5,6 +5,11 @@ export const APP_ROUTES = [
     shell: false,
     load: () => import('../views/bootstrap.js'),
   },
+  {
+    path: '/install/done',
+    shell: false,
+    load: () => import('../views/install_done.js'),
+  },
   { path: '/', load: () => import('../views/overview.js') },
   { path: '/customers', load: () => import('../views/customers.js') },
   { path: '/customers/:id', load: () => import('../views/customer_detail.js') },

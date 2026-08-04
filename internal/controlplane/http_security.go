@@ -10,7 +10,7 @@ func contentSecurityPolicy(path string) string {
 	if strings.HasPrefix(path, "/api/") {
 		return "default-src 'none'; " + frame
 	}
-	if path == "/login" || path == "/bootstrap" || strings.HasPrefix(path, "/assets/") || isAdminSPAPath(path) {
+	if path == "/login" || path == "/bootstrap" || path == "/install/done" || strings.HasPrefix(path, "/assets/") || isAdminSPAPath(path) {
 		return "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'self'; form-action 'self'; " + frame
 	}
 	return "default-src 'none'; " + frame

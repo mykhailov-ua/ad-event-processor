@@ -47,7 +47,7 @@ func getPreflightChecks() []checkFunc {
 func checkKernelVersion() PreflightCheck {
 	res := PreflightCheck{
 		ID:          "PF-KERNEL",
-		Description: "Kernel version ≥ 6.1",
+		Description: "Kernel version (6.1+ only for edge XDP)",
 		Status:      StatusPass,
 	}
 
@@ -76,8 +76,8 @@ func checkKernelVersion() PreflightCheck {
 	minor, _ := strconv.Atoi(parts[1])
 
 	if major < 6 || (major == 6 && minor < 1) {
-		res.Status = StatusFail
-		res.Message = fmt.Sprintf("Current version: %s", version)
+		res.Status = StatusWarn
+		res.Message = fmt.Sprintf("Current version: %s (appliance OK; edge XDP needs ≥ 6.1 + BTF)", version)
 	}
 
 	return res

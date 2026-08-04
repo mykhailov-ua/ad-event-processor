@@ -11,6 +11,7 @@ type DoctorCheckDTO struct {
 	ID        string `json:"id"`
 	Status    string `json:"status"`
 	Message   string `json:"message"`
+	Hint      string `json:"hint,omitempty"`
 	LatencyMs int64  `json:"latency_ms"`
 }
 
@@ -31,6 +32,7 @@ func ReportToDTO(rep Report) []DoctorCheckDTO {
 			ID:        r.Name,
 			Status:    r.Status.String(),
 			Message:   r.Detail,
+			Hint:      CheckHint(r.Name),
 			LatencyMs: r.Latency,
 		})
 	}

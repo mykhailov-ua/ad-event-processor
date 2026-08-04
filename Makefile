@@ -1,4 +1,11 @@
-.PHONY: fmt gen lint test test-fast test-unit test-integration test-fault test-int test-alloc-gate management-domain-coverage test-full test-resilience test-broker-fault-lab test-sentinel-resilience build release-build proto proto-grpc check-local pr-fast tier-a fraudtrain-check check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-bpf check-scripts-layout dev-preflight-smoke perf-gate-smoke edge-phase0 openrtb-fuzz-smoke
+.PHONY: fmt gen lint test test-fast test-unit test-integration test-fault test-int test-alloc-gate management-domain-coverage test-full test-resilience test-broker-fault-lab test-sentinel-resilience build build-bin release-build release-installer proto proto-grpc check-local pr-fast tier-a fraudtrain-check check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-bpf check-scripts-layout dev-preflight-smoke perf-gate-smoke edge-phase0 openrtb-fuzz-smoke
+
+BIN_DIR := bin
+BIN_TAGS := timetzdata
+BIN_LDFLAGS := -ldflags="-s -w"
+RELEASE_LDFLAGS := $(BIN_LDFLAGS)
+# Match deploy/docker/Dockerfile multi-binary image + local installer CLI.
+BIN_CMDS := tracker processor control ivt-detector fraud-scorer broker region-proxy log-shipper alertmanager-telegram log-evacuator log-compactor edge-xdp edge-bpf-sync
 
 fmt:
 	go fmt ./...
@@ -70,22 +77,33 @@ check-vuln:
 build: gen fmt
 	docker build -t ad-event-processor:latest .
 
-RELEASE_DIR := dist/release
-RELEASE_LDFLAGS := -ldflags="-s -w"
+build-bin: gen fmt
+	@mkdir -p $(BIN_DIR)
+	@set -e; \
+	for cmd in $(BIN_CMDS); do \
+	  echo "build-bin: $$cmd -> $(BIN_DIR)/$$cmd"; \
+	  CGO_ENABLED=0 go build -tags $(BIN_TAGS) $(BIN_LDFLAGS) -o $(BIN_DIR)/$$cmd ./cmd/$$cmd; \
+	done
+	@echo "build-bin: espx-install -> $(BIN_DIR)/espx-install"
+	@CGO_ENABLED=0 go build -tags $(BIN_TAGS) $(BIN_LDFLAGS) -o $(BIN_DIR)/espx-install ./cmd/installer
+
 RELEASE_PLATFORMS := linux/amd64 linux/arm64
 RELEASE_CMDS := tracker processor control ivt-detector fraud-scorer region-proxy broker
 
 release-build: gen fmt
-	@mkdir -p $(RELEASE_DIR)
+	@mkdir -p $(BIN_DIR)
 	@set -e; \
 	for platform in $(RELEASE_PLATFORMS); do \
-	  GOOS=$${platform%/*}; GOARCH=$${platform
+	  GOOS=$${platform%/*}; GOARCH=$${platform#*/}; \
 	  for cmd in $(RELEASE_CMDS); do \
-	    echo "release-build: $$cmd $$GOOS/$$GOARCH"; \
-	    CGO_ENABLED=0 GOOS=$$GOOS GOARCH=$$GOARCH go build -tags timetzdata $(RELEASE_LDFLAGS) \
-	      -o $(RELEASE_DIR)/$${cmd}-$${GOOS}-$${GOARCH} ./cmd/$${cmd}; \
+	    echo "release-build: $$cmd $$GOOS/$$GOARCH -> $(BIN_DIR)/$${cmd}-$${GOOS}-$${GOARCH}"; \
+	    CGO_ENABLED=0 GOOS=$$GOOS GOARCH=$$GOARCH go build -tags $(BIN_TAGS) $(RELEASE_LDFLAGS) \
+	      -o $(BIN_DIR)/$${cmd}-$${GOOS}-$${GOARCH} ./cmd/$${cmd}; \
 	  done; \
 	done
+
+release-installer:
+	bash scripts/install/release_pack.sh $(if $(VERSION),$(VERSION),)
 
 bpf-dev:
 	bash scripts/dev/bpf_setup.sh

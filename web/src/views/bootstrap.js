@@ -94,7 +94,7 @@ export function mount(container, _ctx) {
     state.loading = true;
     state.error = null;
     render();
-    const [, err] = await to(apiConfirmed('/api/v1/settings/platform/bootstrap', {
+    const [res, err] = await to(apiConfirmed('/api/v1/settings/platform/bootstrap', {
       method: 'POST',
       headers: {
         'X-Install-Token': state.installToken,
@@ -128,7 +128,12 @@ export function mount(container, _ctx) {
       render();
       return;
     }
-    window.location.assign('/login');
+    sessionStorage.setItem('install_tracking_domain', state.trackingDomain);
+    if (res?.data?.click_url_template) {
+      sessionStorage.setItem('install_click_url', res.data.click_url_template);
+    }
+    sessionStorage.setItem('install_ingress_enabled', '0');
+    window.location.assign('/install/done');
   }
 
   render();

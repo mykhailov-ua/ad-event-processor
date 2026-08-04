@@ -16,6 +16,15 @@ func RunUp() error {
 		return err
 	}
 
+	buildScript := filepath.Join(root, "scripts", "dev", "stack.sh")
+	buildCmd := exec.Command("bash", buildScript, "build")
+	buildCmd.Dir = root
+	buildCmd.Stdout = os.Stdout
+	buildCmd.Stderr = os.Stderr
+	if err := buildCmd.Run(); err != nil {
+		return fmt.Errorf("stack build: %w", err)
+	}
+
 	script := filepath.Join(root, "scripts", "dev", "stack.sh")
 	cmd := exec.Command("bash", script, "single-vps")
 	cmd.Dir = root
