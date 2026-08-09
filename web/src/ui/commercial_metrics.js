@@ -27,19 +27,19 @@ export function renderCommercialMetrics(kpis, opts = {}) {
   const cards = [];
 
   if (kpis.spend_micro != null && !masked) {
-    cards.push(metricCard('Spend', `$${formatMicro(kpis.spend_micro)}`));
+    cards.push(metricCard('Spend', '$' + formatMicro(kpis.spend_micro)));
   }
   if (kpis.revenue_micro != null && kpis.revenue_micro > 0) {
-    cards.push(metricCard('Revenue', `$${formatMicro(kpis.revenue_micro)}`));
+    cards.push(metricCard('Revenue', '$' + formatMicro(kpis.revenue_micro)));
   }
   if (kpis.profit_micro != null && kpis.profit_micro !== 0) {
-    cards.push(metricCard('Profit', `$${formatMicro(kpis.profit_micro)}`));
+    cards.push(metricCard('Profit', '$' + formatMicro(kpis.profit_micro)));
   }
   if (kpis.conversions != null) {
     cards.push(metricCard('Conversions', String(kpis.conversions)));
   }
   if (kpis.cpa_micro != null && kpis.cpa_micro > 0 && !masked) {
-    cards.push(metricCard('CPA', `$${formatMicro(kpis.cpa_micro)}`));
+    cards.push(metricCard('CPA', '$' + formatMicro(kpis.cpa_micro)));
   }
   if (kpis.roi_pct != null && kpis.roi_pct !== 0) {
     cards.push(metricCard('ROI', `${kpis.roi_pct.toFixed(1)}%`));

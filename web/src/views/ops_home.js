@@ -212,6 +212,20 @@ export function mount(container) {
           displayValue: formatChartTick(item.value),
         });
       }
+      const botSignals = [
+        { id: 'edge-tarpit', title: 'Edge tarpit', value: Number(edge.tarpit_total) || 0 },
+        { id: 'edge-blacklist-stale', title: 'Blacklist stale', value: Number(edge.blacklist_stale) || 0 },
+        { id: 'edge-fraud-tier', title: 'Fraud tier blocks', value: Number(edge.blocked?.fraud_tier) || 0 },
+      ];
+      for (let i = 0; i < botSignals.length; i++) {
+        const item = botSignals[i];
+        specs.push({
+          ...item,
+          points: snapshotSeries(item.id, item.value, rangeMs),
+          color: metricColorToken(item.id),
+          displayValue: formatChartTick(item.value),
+        });
+      }
     }
 
     const drops = state.operatorDash?.xdp?.drops;
@@ -250,6 +264,9 @@ export function mount(container) {
       recordSnapshot('ingress-h1', Number(edge.ingress_h1) || 0);
       recordSnapshot('ingress-h2', Number(edge.ingress_h2) || 0);
       recordSnapshot('ingress-h3', Number(edge.ingress_h3) || 0);
+      recordSnapshot('edge-tarpit', Number(edge.tarpit_total) || 0);
+      recordSnapshot('edge-blacklist-stale', Number(edge.blacklist_stale) || 0);
+      recordSnapshot('edge-fraud-tier', Number(edge.blocked?.fraud_tier) || 0);
     }
     const drops = state.operatorDash?.xdp?.drops;
     if (drops && typeof drops === 'object') {
@@ -261,19 +278,26 @@ export function mount(container) {
 
   async function loadMetricSeries() {
     const ids = Object.keys(OPS_METRIC_API_NAMES);
-    const results = await Promise.all(ids.map(async (id) => {
-      const name = OPS_METRIC_API_NAMES[id];
-      const [res] = await to(api(
-        `/api/v1/ops/dashboard/metrics?range=${chartsRangeHours}h&name=${encodeURIComponent(name)}`,
-      ));
-      let points = parseApiPoints(res?.data?.points ?? res?.points);
-      if (id === 'rps-estimate') points = toRateSeries(points);
-      return { id, points };
-    }));
+    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = ctrl ? window.setTimeout(() => ctrl.abort(), 8_000) : 0;
+    try {
+      const results = await Promise.all(ids.map(async (id) => {
+        const name = OPS_METRIC_API_NAMES[id];
+        const [res] = await to(api(
+          `/api/v1/ops/dashboard/metrics?range=${chartsRangeHours}h&name=${encodeURIComponent(name)}`,
+          ctrl ? { signal: ctrl.signal } : {},
+        ));
+        let points = parseApiPoints(res?.data?.points ?? res?.points);
+        if (id === 'rps-estimate') points = toRateSeries(points);
+        return { id, points };
+      }));
 
-    for (let i = 0; i < results.length; i++) {
-      const { id, points } = results[i];
-      if (points.length > 0) state.metricSeries[id] = points;
+      for (let i = 0; i < results.length; i++) {
+        const { id, points } = results[i];
+        if (points.length > 0) state.metricSeries[id] = points;
+      }
+    } finally {
+      if (timer) window.clearTimeout(timer);
     }
   }
 
@@ -690,13 +714,17 @@ export function mount(container) {
       state.blockError = null;
     }
 
+    const bundleCtrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const bundleTimer = bundleCtrl ? window.setTimeout(() => bundleCtrl.abort(), 12_000) : 0;
+    const signal = bundleCtrl?.signal;
     const [results, err] = await to(parallelAll([
-      () => api('/api/v1/ops/doctor'),
-      () => api('/api/v1/ops/incidents').catch((e) => ({ error: e })),
-      () => api('/api/v1/ops/dashboard/summary'),
-      () => api('/api/v1/ops/rum').catch(() => ({ data: { events: [] } })),
-      () => api('/api/v1/dashboards/operator').catch(() => ({ data: null })),
+      () => api('/api/v1/ops/doctor', signal ? { signal } : {}),
+      () => api('/api/v1/ops/incidents', signal ? { signal } : {}).catch((e) => ({ error: e })),
+      () => api('/api/v1/ops/dashboard/summary', signal ? { signal } : {}),
+      () => api('/api/v1/ops/rum', signal ? { signal } : {}).catch(() => ({ data: { events: [] } })),
+      () => api('/api/v1/dashboards/operator', signal ? { signal } : {}).catch(() => ({ data: null })),
     ], 3));
+    if (bundleTimer) window.clearTimeout(bundleTimer);
 
     if (destroyed) return;
 
@@ -737,16 +765,26 @@ export function mount(container) {
     state.partialErrors = errors;
 
     recordSnapshotMetrics();
-    await loadMetricSeries();
 
+    // Paint Ops shell first — metric series can be slow/unavailable (e.g. CH off).
     if (!quiet) state.loading = false;
     if (destroyed) return;
     markRefreshed();
     if (quiet) {
       mountOpsCharts({ reuse: true });
-      return;
+    } else {
+      render();
     }
-    render();
+
+    try {
+      await loadMetricSeries();
+    } catch {
+      // Charts stay on snapshot series when history metrics fail.
+    }
+    if (destroyed) return;
+    if (tab === 'overview') {
+      mountOpsCharts({ reuse: true });
+    }
   }
 
   /**

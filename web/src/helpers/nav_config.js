@@ -121,7 +121,14 @@ export const NAV_GROUPS = [
   },
   {
     title: 'Operations',
-    links: [{ to: '/ops', label: 'Operations', icon: 'activity', perm: 'shards:read' }],
+    links: [
+      { to: '/ops', label: 'Operations', icon: 'activity', perm: 'shards:read' },
+      { to: '/ops/blacklist', label: 'Blacklist', icon: 'shield-ban', perm: 'blacklist:read' },
+    ],
+  },
+  {
+    title: 'Security',
+    links: [{ to: '/audit', label: 'Audit log', icon: 'scroll-text', perm: 'audit:read' }],
   },
   {
     title: 'Settings',

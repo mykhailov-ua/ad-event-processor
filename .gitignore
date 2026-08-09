@@ -1,4 +1,5 @@
 # Secrets & environment
+.env
 .env.secrets
 *.env
 
@@ -29,6 +30,11 @@ vendor/
 deploy/vendor/license_private.key
 deploy/vendor/keys/*/license_private.key
 license.jwt
+.license-*.jwt
+
+# On-prem license / mmap runtime state (not sources)
+.license-spool/
+*.wal
 
 # Generated code (make gen / make proto — repo keeps sources only)
 /api/gen/
@@ -67,6 +73,7 @@ deploy/nginx/certs/*.crt
 campaigns_replica.json
 campaigns_replica.json.tmp
 var/
+*.log
 
 # Go test & profiling artifacts
 .cache/

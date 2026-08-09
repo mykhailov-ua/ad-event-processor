@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -97,6 +98,155 @@ func (s *Service) GetCampaign(ctx context.Context, id uuid.UUID) (CampaignDTO, e
 		return CampaignDTO{}, mapNotFound(err, ErrCampaignNotFound)
 	}
 	return scrubCampaignDTO(ctx, c), nil
+}
+
+func (s *Service) PatchCampaign(ctx context.Context, campaignID uuid.UUID, req adminapi.PatchCampaignRequest) (CampaignDTO, error) {
+	if req.PacingMode != nil {
+		if _, err := s.UpdateCampaignPacing(ctx, campaignID, *req.PacingMode); err != nil {
+			return CampaignDTO{}, err
+		}
+	}
+
+	adminPatch := req.Name != nil || req.DailyBudgetMicro != nil || req.Timezone != nil ||
+		req.FreqLimit != nil || req.FreqWindow != nil || req.TargetCountries != nil ||
+		req.TargetURL != nil || req.ReferrerFilter != nil
+	if !adminPatch {
+		return s.GetCampaign(ctx, campaignID)
+	}
+
+	var updated db.Campaign
+	err := pgx.BeginFunc(ctx, s.GetPool(), func(tx pgx.Tx) error {
+		q := db.New(tx)
+		camp, err := q.GetCampaignForUpdate(ctx, domain.ToUUID(campaignID))
+		if err != nil {
+			return mapNotFound(err, ErrCampaignNotFound)
+		}
+
+		name := camp.Name
+		if req.Name != nil {
+			name = strings.TrimSpace(*req.Name)
+			if name == "" {
+				return fmt.Errorf("name is required")
+			}
+		}
+		dailyBudget := camp.DailyBudget
+		if req.DailyBudgetMicro != nil {
+			if *req.DailyBudgetMicro < 0 {
+				return fmt.Errorf("invalid daily_budget")
+			}
+			dailyBudget = *req.DailyBudgetMicro
+		}
+		timezone := camp.Timezone
+		if req.Timezone != nil {
+			timezone = strings.TrimSpace(*req.Timezone)
+			if timezone == "" {
+				timezone = "UTC"
+			}
+		}
+		freqLimit := camp.FreqLimit
+		if req.FreqLimit != nil {
+			freqLimit = pgtype.Int4{Int32: *req.FreqLimit, Valid: true}
+		}
+		freqWindow := camp.FreqWindow
+		if req.FreqWindow != nil {
+			freqWindow = pgtype.Int4{Int32: *req.FreqWindow, Valid: true}
+		}
+		countries := camp.TargetCountries
+		if req.TargetCountries != nil {
+			countries = countriesOrEmpty(req.TargetCountries)
+		}
+		targetURL := camp.TargetUrl
+		if req.TargetURL != nil {
+			targetURL = *req.TargetURL
+		}
+		referrerFilter := camp.ReferrerFilter
+		if req.ReferrerFilter != nil {
+			referrerFilter = *req.ReferrerFilter
+		}
+
+		updated, err = q.UpdateCampaignAdmin(ctx, db.UpdateCampaignAdminParams{
+			ID:              domain.ToUUID(campaignID),
+			Name:            name,
+			DailyBudget:     dailyBudget,
+			Timezone:        timezone,
+			FreqLimit:       freqLimit,
+			FreqWindow:      freqWindow,
+			TargetCountries: countries,
+			TargetUrl:       targetURL,
+			ReferrerFilter:  referrerFilter,
+		})
+		if err != nil {
+			return err
+		}
+
+		var uid uuid.UUID
+		if u, ok := GetUser(ctx); ok {
+			uid = u.UserID
+		}
+		s.AuditLog(ctx, q, uid, "PATCH_CAMPAIGN", "campaign", &campaignID, auditCampaignAdminChange{
+			Name:            name,
+			DailyBudget:     dailyBudget,
+			Timezone:        timezone,
+			TargetCountries: countries,
+		}, nil)
+
+		return nil
+	})
+	if err != nil {
+		return CampaignDTO{}, err
+	}
+
+	if pubErr := s.publishCampaignUpdate(ctx, campaignID.String()); pubErr != nil {
+		slog.Warn("campaign update publish failed after patch", "campaign_id", campaignID, "err", pubErr)
+	}
+	return scrubCampaignDTO(ctx, updated), nil
+}
+
+func (s *Service) ListCampaignEvents(ctx context.Context, campaignID uuid.UUID, limit, offset int32) ([]adminapi.CampaignEventDTO, int64, error) {
+	q := db.New(s.GetPool())
+	cid := domain.ToUUID(campaignID)
+	total, err := q.CountCampaignEvents(ctx, cid)
+	if err != nil {
+		return nil, 0, err
+	}
+	if total == 0 {
+		return []adminapi.CampaignEventDTO{}, 0, nil
+	}
+	rows, err := q.ListCampaignEvents(ctx, db.ListCampaignEventsParams{
+		CampaignID: cid,
+		Limit:      limit,
+		Offset:     offset,
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	out := make([]adminapi.CampaignEventDTO, 0, len(rows))
+	for _, row := range rows {
+		var ip, ua, userID string
+		if row.IpAddress.Valid {
+			ip = row.IpAddress.String
+		}
+		if row.UserAgent.Valid {
+			ua = row.UserAgent.String
+		}
+		if row.UserID.Valid {
+			userID = row.UserID.String
+		}
+		createdAt := ""
+		if row.CreatedAt.Valid {
+			createdAt = row.CreatedAt.Time.UTC().Format(time.RFC3339)
+		}
+		out = append(out, adminapi.CampaignEventDTO{
+			ClickID:   row.ClickID,
+			EventType: row.EventType,
+			UserID:    userID,
+			IP:        ip,
+			UserAgent: ua,
+			Payload:   json.RawMessage(row.Payload),
+			CreatedAt: createdAt,
+		})
+	}
+	return out, total, nil
 }
 
 func (s *Service) ListStatusHistory(ctx context.Context, campaignID uuid.UUID, limit, offset int32) ([]StatusHistoryDTO, int64, error) {

@@ -17,6 +17,7 @@ const registry = new Map([
   ['PATCH /settings/platform', { level: 'standard' }],
   ['POST /settings/platform/apply', { level: 'destructive', label: 'Apply to disk' }],
   ['POST /selfserve/campaigns', { level: 'financial', label: 'Create campaign' }],
+  ['PATCH /campaigns/{id}', { level: 'standard', label: 'Save campaign changes' }],
   ['POST /selfserve/campaigns/{id}/pause', { level: 'destructive', label: 'Pause campaign' }],
   ['POST /selfserve/campaigns/{id}/resume', { level: 'standard', label: 'Resume campaign' }],
   ['POST /selfserve/payment-intents', { level: 'financial', label: 'Create payment' }],

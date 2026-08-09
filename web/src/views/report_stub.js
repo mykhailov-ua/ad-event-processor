@@ -3,7 +3,7 @@ import { to } from '../lib/to.js';
 import * as auth from '../helpers/auth.js';
 import { boundCustomerId, hasBoundCustomer } from '../helpers/buyer_session.js';
 import { probeStubReport, submitReportExport, pollReportJob, downloadReportExport } from '../helpers/report_api.js';
-import { reportTitle } from '../models/report.js';
+import { reportTitle, retiredReportAlt, isRetiredReport } from '../models/report.js';
 import { renderPerfBlock } from '../helpers/perf_display.js';
 import { renderStubBanner } from '../ui/stub_banner.js';
 import { REPORT_DATE_PRESETS } from '../helpers/date_presets.js';
@@ -59,6 +59,12 @@ export function mount(container, ctx) {
   };
 
   async function load() {
+    if (isRetiredReport(reportKey)) {
+      state.probe = { stub: false, ok: false, retired: true };
+      state.loading = false;
+      render();
+      return;
+    }
     const [probe] = await to(probeStubReport(reportKey, customerId));
     if (destroyed) return;
     state.probe = probe;
@@ -140,6 +146,11 @@ export function mount(container, ctx) {
 
     if (state.loading) {
       children.push(el('p', { className: 'text-muted' }, 'Checking availability…'));
+    } else if (isRetiredReport(reportKey)) {
+      const alt = retiredReportAlt(reportKey);
+      children.push(renderStubBanner({
+        message: `${title} was retired. Use ${alt?.label ?? 'a live report'} instead.`,
+      }));
     } else if (state.probe?.stub) {
       children.push(renderStubBanner({ message: copy.message }));
       children.push(
@@ -156,9 +167,13 @@ export function mount(container, ctx) {
     children.push(
       el('div', { className: 'section-card' },
         el('h2', { className: 'subsection-title' }, 'Available now'),
-        renderLiveLinks(),
+        isRetiredReport(reportKey) && retiredReportAlt(reportKey)
+          ? el('p', null, el('a', { href: retiredReportAlt(reportKey).href, className: 'btn btn--primary btn--sm' },
+            retiredReportAlt(reportKey).label,
+          ))
+          : renderLiveLinks(),
       ),
-      el('div', { className: 'toolbar-row' },
+      !isRetiredReport(reportKey) ? el('div', { className: 'toolbar-row' },
         el('button', {
           type: 'button',
           className: 'btn btn--secondary',
@@ -168,7 +183,7 @@ export function mount(container, ctx) {
         !customerId
           ? el('span', { className: 'text-sm text-muted' }, 'Customer context required for export.')
           : null,
-      ),
+      ) : null,
       state.exportStatus
         ? el('p', { id: 'stub-export-status', className: 'text-sm text-muted' }, state.exportStatus)
         : null,

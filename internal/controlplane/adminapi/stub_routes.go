@@ -15,14 +15,10 @@ type stubRoute struct {
 }
 
 var stubRouteCatalog = []stubRoute{
-	{"GET", "/api/v1/reports/campaign-unit-economics", "campaigns:read"},
-	{"GET", "/api/v1/reports/source-margin", "campaigns:read"},
 	{"GET", "/api/v1/reports/source-quality", "campaigns:read"},
 	{"GET", "/api/v1/reports/spend-velocity", "campaigns:read"},
 	{"GET", "/api/v1/reports/campaign-geo-device", "campaigns:read"},
 	{"GET", "/api/v1/reports/daypart-heatmap", "campaigns:read"},
-	{"GET", "/api/v1/reports/pacing-drift", "campaigns:read"},
-	{"GET", "/api/v1/reports/postback-reconciliation", "customers:read"},
 	{"GET", "/api/v1/reports/discrepancy-buy-sell", "customers:read"},
 	{"GET", "/api/v1/reports/campaign-overview", "campaigns:read"},
 	{"GET", "/api/v1/reports/customer-portfolio", "customers:read"},

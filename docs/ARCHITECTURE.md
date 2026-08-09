@@ -406,7 +406,7 @@ Shared `RunAuction` (`internal/rtb/auction.go`) for `/track` (optional), `POST /
 | Redis Cluster? | **No.** N standalone masters + `StaticSlotSharder`. |
 | How many Lua RTTs per event? | **0** (full-skip) or **1** (`EVALSHA`). |
 
-Micro-benchmark numbers (ns/op, allocs/op, malformed corpora): [hot_path_benchmarks.md](hot_path_benchmarks.md).
+Benchmark numbers (micro + purgatory): [BENCHMARKS.md](BENCHMARKS.md). OS/TCP/accept edge cases: [EDGE_CASES.md](EDGE_CASES.md).
 
 ### HTTP status codes (`POST /track`)
 

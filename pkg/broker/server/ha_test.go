@@ -73,29 +73,21 @@ func TestHAClusterFailoverAndReplication(t *testing.T) {
 	coord2.Start()
 	defer coord2.Stop()
 
-	time.Sleep(3 * time.Second)
-
 	topic := "ha-events"
+	pk := topicPartitionKey(topic)
 
-	p1, err := s1.getOrCreatePartition(topic)
-	if err != nil {
+	if _, err := s1.getOrCreatePartition(pk); err != nil {
 		t.Fatal(err)
 	}
-	_ = p1
-	p2, err := s2.getOrCreatePartition(topic)
-	if err != nil {
+	if _, err := s2.getOrCreatePartition(pk); err != nil {
 		t.Fatal(err)
 	}
-	_ = p2
 
-	time.Sleep(2 * time.Second)
+	requireEventually(t, func() bool {
+		return coord1.IsLeader(pk) || coord2.IsLeader(pk)
+	}, 15*time.Second, 200*time.Millisecond, "expected one broker to be elected as leader")
 
-	l1 := coord1.IsLeader(topic)
-	l2 := coord2.IsLeader(topic)
-
-	if !l1 && !l2 {
-		t.Fatal("expected one broker to be elected as leader")
-	}
+	l1 := coord1.IsLeader(pk)
 
 	var leaderServer *Server
 	var followerServer *Server
@@ -130,20 +122,23 @@ func TestHAClusterFailoverAndReplication(t *testing.T) {
 		}
 	}
 
-	time.Sleep(1 * time.Second)
-
-	fPartition, err := followerServer.getOrCreatePartition(topic)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if fPartition.NextOffset() != uint64(msgCount) {
-		t.Errorf("expected follower to replicate %d messages, got %d", msgCount, fPartition.NextOffset())
-	}
+	requireEventually(t, func() bool {
+		fPartition, err := followerServer.getOrCreatePartition(pk)
+		if err != nil {
+			return false
+		}
+		return fPartition.NextOffset() == uint64(msgCount)
+	}, 10*time.Second, 200*time.Millisecond, "follower must replicate leader messages")
 
 	leaderCoord.Stop()
 	leaderServer.Stop()
 
-	time.Sleep(6 * time.Second)
+	requireEventually(t, func() bool {
+		if l1 {
+			return coord2.IsLeader(pk) && coord2.IsLeaderReady(pk)
+		}
+		return coord1.IsLeader(pk) && coord1.IsLeaderReady(pk)
+	}, 20*time.Second, 200*time.Millisecond, "survivor must become ready leader after failover")
 
 	payload := []byte("msg-after-failover")
 	offset, err := cli.Produce(topic, 0, payload)
@@ -155,7 +150,7 @@ func TestHAClusterFailoverAndReplication(t *testing.T) {
 		t.Errorf("unexpected offset after failover: got %d, expected %d", offset, expectedOffset)
 	}
 
-	newLeaderPartition, err := followerServer.getOrCreatePartition(topic)
+	newLeaderPartition, err := followerServer.getOrCreatePartition(pk)
 	if err != nil {
 		t.Fatal(err)
 	}

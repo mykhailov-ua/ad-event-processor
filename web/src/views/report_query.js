@@ -1,5 +1,6 @@
 import { el, replaceChildren } from '../lib/dom.js';
 import { to } from '../lib/to.js';
+import { createGenerationGuard, shouldCommitAsyncResult } from '../lib/async_guard.js';
 import { renderFreshnessBadge } from '../ui/freshness_badge.js';
 import { renderErrorBlock } from '../ui/error_block.js';
 import { renderStubBanner } from '../ui/stub_banner.js';
@@ -22,6 +23,8 @@ import {
   mapServiceError,
 } from '../helpers/service_error.js';
 import { t } from '../helpers/i18n.js';
+
+import { createDatePicker } from '../ui/date_picker.js';
 
 /**
  * Mount a report query view with date presets and cursor pagination.
@@ -225,49 +228,47 @@ export function mountReportQuery(container, ctx, opts) {
             checked: comparePeriod,
             onChange: (e) => { comparePeriod = e.target.checked; },
           }),
-          ' ',
-          t('report.compare', 'Compare with previous period'),
+          el('span', null, t('report.compare', 'Compare with previous period')),
         ),
         el('div', { className: 'form-row' },
           renderFormField({
-            label: 'From (ISO)',
+            label: 'From date & time',
             htmlFor: 'report-from',
-            children: el('input', {
+            children: createDatePicker({
               id: 'report-from',
-              className: 'form-input',
               value: from,
-              onInput: (e) => {
-                from = e.target.value;
+              onChange: (iso) => {
+                from = iso;
                 activePreset = '';
                 rangeError = validateReportRange(from, rangeTo);
               },
-              required: true,
             }),
           }),
           renderFormField({
-            label: 'To (ISO)',
+            label: 'To date & time',
             htmlFor: 'report-to',
             error: rangeError,
-            children: el('input', {
+            children: createDatePicker({
               id: 'report-to',
-              className: 'form-input',
               value: rangeTo,
-              onInput: (e) => {
-                rangeTo = e.target.value;
+              onChange: (iso) => {
+                rangeTo = iso;
                 activePreset = '';
                 rangeError = validateReportRange(from, rangeTo);
               },
-              required: true,
             }),
           }),
-          el('button', {
-            type: 'submit',
-            className: 'btn btn--primary',
-            disabled: loading,
-          },
-            renderIcon('search', { size: 14 }),
-            'Load',
-          ),
+          renderFormField({
+            label: '\u00A0',
+            children: el('button', {
+              type: 'submit',
+              className: 'btn btn--primary form-submit-btn',
+              disabled: loading,
+            },
+              renderIcon('search', { size: 14 }),
+              'Load',
+            ),
+          }),
         ),
       ),
       loading && rows.length === 0
@@ -380,4 +381,30 @@ function defaultFrom() {
   const d = new Date();
   d.setDate(d.getDate() - 7);
   return d.toISOString();
+}
+
+/**
+ * Format an ISO string to a local datetime-local string (YYYY-MM-DDTHH:mm).
+ *
+ * @param {string} iso
+ * @returns {string}
+ */
+function isoToLocal(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/**
+ * Convert a datetime-local input string (YYYY-MM-DDTHH:mm) to ISO string.
+ *
+ * @param {string} local
+ * @returns {string}
+ */
+function localToIso(local) {
+  if (!local) return new Date().toISOString();
+  const d = new Date(local);
+  return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
 }

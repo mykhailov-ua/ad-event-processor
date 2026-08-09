@@ -506,23 +506,23 @@ func (s *Server) handleProduceBatch(c gnet.Conn, seq uint64, payload []byte) {
 			break
 		}
 
-		if s.coord != nil && !s.coord.IsLeader(protocol.TopicPartitionID(meta.Name, 0)) {
-			hasLeader, _ := s.coord.HasLeader(protocol.TopicPartitionID(meta.Name, 0))
-			if hasLeader {
-				status = 4
-				recordProduce(meta.Name, status)
-				break
-			}
+		tpKey := protocol.TopicPartitionID(meta.Name, 0)
+
+		if s.coord != nil && !s.coord.IsLeader(tpKey) {
+			s.requestTopicClaim(tpKey)
+			status = 4
+			recordProduce(meta.Name, status)
+			break
 		}
 
-		pl, err := s.getOrCreatePartition(protocol.TopicPartitionID(meta.Name, 0))
+		pl, err := s.getOrCreatePartition(tpKey)
 		if err != nil {
 			status = 2
 			recordProduce(meta.Name, status)
 			break
 		}
 
-		offset, st, err := s.appendLeader(protocol.TopicPartitionID(meta.Name, 0), pl, it.Payload)
+		offset, st, err := s.appendLeader(tpKey, pl, it.Payload)
 		if err != nil {
 			status = 3
 			recordProduce(meta.Name, status)
@@ -561,11 +561,9 @@ func (s *Server) handleProduce(c gnet.Conn, seq uint64, payload []byte) {
 	}
 
 	if s.coord != nil && !s.coord.IsLeader(tpKey) {
-		hasLeader, _ := s.coord.HasLeader(tpKey)
-		if hasLeader {
-			finishProduce(c, buf, seq, tpKey, produceStart, true, 4, 0)
-			return
-		}
+		s.requestTopicClaim(tpKey)
+		finishProduce(c, buf, seq, tpKey, produceStart, true, 4, 0)
+		return
 	}
 
 	pl, err := s.getOrCreatePartition(tpKey)
@@ -587,17 +585,36 @@ func (s *Server) handleProduce(c gnet.Conn, seq uint64, payload []byte) {
 	finishProduce(c, buf, seq, tpKey, produceStart, true, 0, offset)
 }
 
-func (s *Server) appendLeader(topic string, pl *log.PartitionLog, payload []byte) (uint64, byte, error) {
-	if s.coord != nil {
-		if s.coord.IsLeader(topic) && !s.coord.IsLeaderReady(topic) {
-			return 0, 6, nil
-		}
+// requestTopicClaim makes an unowned topic visible to the coordinator so a
+// leader can be elected for it. The partition must exist first: the coordination
+// loop only ranges over materialized partitions.
+func (s *Server) requestTopicClaim(tpKey string) {
+	if s.coord == nil {
+		return
 	}
+	if _, err := s.getOrCreatePartition(tpKey); err != nil {
+		return
+	}
+	s.coord.RequestClaim(tpKey)
+}
+
+// appendLeader refuses to write unless this node holds an unexpired lease with a
+// nonzero epoch. Appending without an epoch would bypass fencing entirely and
+// let a demoted or leaderless node accept writes the next leader never replays.
+func (s *Server) appendLeader(topic string, pl *log.PartitionLog, payload []byte) (uint64, byte, error) {
 	var epoch uint64
 	if s.coord != nil {
-		if ep, ok := s.coord.LeaderEpoch(topic); ok {
-			epoch = ep
+		if !s.coord.IsLeader(topic) {
+			return 0, 4, nil
 		}
+		if !s.coord.IsLeaderReady(topic) {
+			return 0, 6, nil
+		}
+		ep, ok := s.coord.LeaderEpoch(topic)
+		if !ok {
+			return 0, 4, nil
+		}
+		epoch = ep
 	}
 	offset, err := pl.AppendFenced(epoch, payload)
 	if errors.Is(err, log.ErrStaleFencingEpoch) {

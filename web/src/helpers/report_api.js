@@ -1,6 +1,43 @@
 import { api } from './api_client.js';
 import { probeStart, probeEnd } from './perf_probe.js';
 import { stubReportPath } from '../models/report.js';
+import { to } from '../lib/to.js';
+
+/**
+ * Parse Retry-After header from an API error into milliseconds.
+ *
+ * @param {{ status?: number, responseHeaders?: Headers|null }} err
+ * @returns {number}
+ */
+export function parseRetryAfterMs(err) {
+  const raw = err?.responseHeaders?.get?.('Retry-After');
+  const sec = raw ? Number.parseInt(raw, 10) : 0;
+  if (Number.isFinite(sec) && sec > 0) return sec * 1000;
+  return 2500;
+}
+
+/**
+ * Pause until the given number of milliseconds elapse.
+ *
+ * @param {number} ms
+ * @param {AbortSignal} [signal]
+ * @returns {Promise<void>}
+ */
+function sleepMs(ms, signal) {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new Error('aborted'));
+      return;
+    }
+    const timer = setTimeout(resolve, ms);
+    if (signal) {
+      signal.addEventListener('abort', () => {
+        clearTimeout(timer);
+        reject(new Error('aborted'));
+      }, { once: true });
+    }
+  });
+}
 
 /**
  * Probe a planned report endpoint (expected 501 until backend ships).
@@ -19,22 +56,21 @@ export async function probeStubReport(reportKey, customerId = '') {
   if (customerId) params.set('customer_id', customerId);
   const qs = params.toString();
   const url = qs ? `${path}?${qs}` : path;
-  try {
-    await api(url);
+  const [, err] = await to(api(url));
+  if (!err) {
     probeEnd(probe, { allocs: 1, bytes: 64 });
-    return { ok: true, status: 200, stub: false, message: 'unexpected success', path: url };
-  } catch (err) {
-    probeEnd(probe, { allocs: 1, bytes: 128 });
-    const status = err?.status ?? 0;
-    const stub = status === 501 || err?.code === 'NOT_IMPLEMENTED' || err?.stub === true;
-    return {
-      ok: false,
-      status,
-      stub,
-      message: err?.message ?? String(err),
-      path: url,
-    };
+    return { ok: true, status: 200, stub: false, message: 'live', path: url };
   }
+  probeEnd(probe, { allocs: 1, bytes: 128 });
+  const status = err?.status ?? 0;
+  const stub = status === 501 || err?.code === 'NOT_IMPLEMENTED' || err?.stub === true;
+  return {
+    ok: false,
+    status,
+    stub,
+    message: err?.message ?? String(err),
+    path: url,
+  };
 }
 
 /**
@@ -65,33 +101,48 @@ export async function downloadReportExport(jobId, filename = 'report.csv') {
 export async function pollReportJob(jobId, opts = {}) {
   const intervalMs = opts.intervalMs ?? 1500;
   const maxAttempts = opts.maxAttempts ?? 20;
+  let rateLimitHits = 0;
   for (let i = 0; i < maxAttempts; i++) {
     if (opts.signal?.aborted) {
       return { ok: false, status: 'ABORTED', message: 'polling aborted' };
     }
-    try {
-      const { data } = await api(`/api/v1/reports/jobs/${jobId}`, { signal: opts.signal });
-      const status = data?.status ?? '';
-      if (status === 'COMPLETED' || status === 'FAILED') {
-        return {
-          ok: status === 'COMPLETED',
-          status,
-          message: status === 'COMPLETED' ? 'Export ready' : (data?.error ?? 'Export failed'),
-        };
+    const [res, err] = await to(api(`/api/v1/reports/jobs/${jobId}`, { signal: opts.signal }));
+    if (err) {
+      if (err.status === 429 && rateLimitHits < 5) {
+        rateLimitHits += 1;
+        const wait = parseRetryAfterMs(err);
+        try {
+          await sleepMs(wait, opts.signal);
+        } catch {
+          return { ok: false, status: 'ABORTED', message: 'polling aborted' };
+        }
+        i -= 1;
+        continue;
       }
-    } catch (err) {
-      return { ok: false, status: 'ERROR', message: err?.message ?? String(err) };
+      return { ok: false, status: 'ERROR', message: err.message ?? String(err) };
     }
-    await new Promise((r) => setTimeout(r, intervalMs));
+    const status = res?.data?.status ?? '';
+    if (status === 'COMPLETED' || status === 'FAILED') {
+      return {
+        ok: status === 'COMPLETED',
+        status,
+        message: status === 'COMPLETED' ? 'Export ready' : (res?.data?.error ?? 'Export failed'),
+      };
+    }
+    try {
+      await sleepMs(intervalMs, opts.signal);
+    } catch {
+      return { ok: false, status: 'ABORTED', message: 'polling aborted' };
+    }
   }
   return { ok: false, status: 'TIMEOUT', message: 'Export job polling timed out' };
 }
 
 /**
- * Submit an async report export job (stub until backend ships).
+ * Submit an async report export job.
  *
- * @param {{ customerId: string, reportKey: string, from: string, to: string }} spec
- * @returns {Promise<{ ok: boolean, status: number, stub: boolean, message: string, jobId?: string }>}
+ * @param {{ customerId: string, reportKey: string, from: string, to: string, signal?: AbortSignal }} spec
+ * @returns {Promise<{ ok: boolean, status: number, stub: boolean, message: string, jobId?: string, rateLimited?: boolean }>}
  */
 export async function submitReportExport(spec) {
   const probe = probeStart('report.export.submit');
@@ -102,31 +153,41 @@ export async function submitReportExport(spec) {
     to: spec.to,
     format: 'csv',
   };
-  try {
-    const { data } = await api('/api/v1/reports/jobs', {
-      method: 'POST',
-      body: JSON.stringify(body),
-      idempotencyScope: `report-export:${spec.customerId}:${spec.reportKey}`,
-    });
+  const [res, err] = await to(api('/api/v1/reports/jobs', {
+    method: 'POST',
+    body: JSON.stringify(body),
+    idempotencyScope: `report-export:${spec.customerId}:${spec.reportKey}`,
+    signal: spec.signal,
+  }));
+  if (!err) {
     probeEnd(probe, { allocs: 1, bytes: 96 });
     return {
       ok: true,
       status: 201,
       stub: false,
       message: 'export job created',
-      jobId: data?.job_id ?? data?.id,
-    };
-  } catch (err) {
-    probeEnd(probe, { allocs: 1, bytes: 128 });
-    const status = err?.status ?? 0;
-    const stub = status === 501 || err?.code === 'NOT_IMPLEMENTED';
-    return {
-      ok: false,
-      status,
-      stub,
-      message: err?.message ?? String(err),
+      jobId: res?.data?.job_id ?? res?.data?.id,
     };
   }
+  if (err.status === 429) {
+    probeEnd(probe, { allocs: 1, bytes: 128 });
+    return {
+      ok: false,
+      status: 429,
+      stub: false,
+      rateLimited: true,
+      message: `Rate limited — retry in ${Math.ceil(parseRetryAfterMs(err) / 1000)}s`,
+    };
+  }
+  probeEnd(probe, { allocs: 1, bytes: 128 });
+  const status = err?.status ?? 0;
+  const stub = status === 501 || err?.code === 'NOT_IMPLEMENTED';
+  return {
+    ok: false,
+    status,
+    stub,
+    message: err?.message ?? String(err),
+  };
 }
 
 /**

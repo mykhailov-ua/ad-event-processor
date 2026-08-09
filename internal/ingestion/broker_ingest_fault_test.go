@@ -158,6 +158,104 @@ func TestFault_BrokerLiveConsumer_ReconnectOffsetResume(t *testing.T) {
 	})
 }
 
+// TestFault_BrokerShadowCutover_NoEventLoss models the shadow-to-live cutover:
+// events observed while shadowing must still reach the store once the same
+// consumer group goes live, so the shadow window cannot silently skip settlement.
+func TestFault_BrokerShadowCutover_NoEventLoss(t *testing.T) {
+	_, addr := startBrokerFaultServer(t)
+	topic := "tracker-logs"
+	group := "fault-shadow-cutover"
+	campID := uuid.New()
+
+	producer := client.NewClient(addr, 2*time.Second)
+	require.NoError(t, producer.Connect())
+	for i := 0; i < 2; i++ {
+		produceBrokerStreamEvent(t, producer, topic, &pb.AdStreamEvent{
+			CreatedAtUnix: time.Now().Unix(),
+			CampaignId:    campID[:],
+			ClickId:       []byte(fmt.Sprintf("shadow-click-%d", i)),
+			EventType:     []byte("click"),
+		})
+	}
+	require.NoError(t, producer.Close())
+
+	cfg := BrokerConsumerConfig{
+		BrokerAddr: addr,
+		Topic:      topic,
+		Group:      group,
+		BatchSize:  1,
+		FlushInt:   50 * time.Millisecond,
+		MaxBytes:   1024 * 1024,
+		Timeout:    2 * time.Second,
+		IdleWait:   20 * time.Millisecond,
+		ShadowMode: true,
+	}
+
+	shadowBefore := testutil.ToFloat64(metrics.BrokerShadowMessagesTotal.WithLabelValues(topic, group))
+	shadowStore := &MockEventStore{}
+	shadowCtx, shadowCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	shadow := NewBrokerStreamConsumer(shadowStore, cfg, time.Second, 50*time.Millisecond, time.Second, 1)
+	shadow.Start(shadowCtx)
+
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		if testutil.ToFloat64(metrics.BrokerShadowMessagesTotal.WithLabelValues(topic, group))-shadowBefore >= 2 {
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	shadowObserved := testutil.ToFloat64(metrics.BrokerShadowMessagesTotal.WithLabelValues(topic, group)) - shadowBefore
+	require.GreaterOrEqual(t, shadowObserved, float64(2), "shadow consumer must observe both events")
+
+	shadow.Close()
+	shadowCancel()
+	_ = shadow.Wait(context.Background())
+
+	shadowStore.mu.Lock()
+	shadowFlushes := len(shadowStore.flushes)
+	shadowStore.mu.Unlock()
+	require.Zero(t, shadowFlushes, "shadow consumer must not write to the store")
+
+	check := client.NewClient(addr, 2*time.Second)
+	require.NoError(t, check.Connect())
+	shadowCommitted, err := check.CommittedOffset(topic, 0, group)
+	_ = check.Close()
+	require.NoError(t, err)
+	require.Zero(t, shadowCommitted, "shadow consumer must not advance the group offset")
+
+	cfg.ShadowMode = false
+	liveStore := &MockEventStore{}
+	liveCtx, liveCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer liveCancel()
+	live := NewBrokerStreamConsumer(liveStore, cfg, time.Second, 50*time.Millisecond, time.Second, 1)
+	live.Start(liveCtx)
+	defer live.Close()
+
+	waitBrokerConsumerFlush(t, liveStore, 2)
+
+	liveStore.mu.Lock()
+	stored := 0
+	for _, batch := range liveStore.flushes {
+		stored += len(batch)
+	}
+	liveStore.mu.Unlock()
+	require.GreaterOrEqual(t, stored, 2, "cutover must replay every shadowed event")
+
+	confirm := client.NewClient(addr, 2*time.Second)
+	require.NoError(t, confirm.Connect())
+	liveCommitted, err := confirm.CommittedOffset(topic, 0, group)
+	_ = confirm.Close()
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, liveCommitted, uint64(2))
+
+	faultproof.Log(t, "broker_shadow_cutover_no_event_loss", map[string]string{
+		"shadow_observed":  fmt.Sprintf("%.0f", shadowObserved),
+		"shadow_committed": fmt.Sprintf("%d", shadowCommitted),
+		"live_stored":      fmt.Sprintf("%d", stored),
+		"live_committed":   fmt.Sprintf("%d", liveCommitted),
+	})
+}
+
 func waitBrokerConsumerFlush(t *testing.T, store *MockEventStore, want int) {
 	t.Helper()
 	deadline := time.Now().Add(3 * time.Second)

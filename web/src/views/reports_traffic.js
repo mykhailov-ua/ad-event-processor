@@ -10,6 +10,7 @@ import { REPORT_DATE_PRESETS } from '../helpers/date_presets.js';
 import { renderFreshnessBadge } from '../ui/freshness_badge.js';
 import { tenantReportQueryString } from '../helpers/tenant_url.js';
 import { formatMoney } from '../helpers/money.js';
+import { renderAlertBanner } from '../ui/alert_banner.js';
 
 /**
  * Mount traffic-sources report view.
@@ -32,15 +33,26 @@ export function mount(container, ctx) {
   let freshness = null;
   /** @type {Error|null} */
   let error = null;
+  let validationError = null;
 
   async function load() {
     const cid = sessionScoped ? boundCustomerId(user) : customerInput.trim();
     const rangeErr = validateReportRange(from, to);
-    if (!cid || rangeErr) {
-      error = rangeErr ? new Error(rangeErr) : new Error('customer_id required');
+    if (!cid) {
+      validationError = null;
+      rows = [];
+      error = null;
       render();
       return;
     }
+    if (rangeErr) {
+      validationError = rangeErr;
+      rows = [];
+      error = null;
+      render();
+      return;
+    }
+    validationError = null;
     loading = true;
     error = null;
     render();
@@ -67,6 +79,8 @@ export function mount(container, ctx) {
       replaceChildren(container, renderErrorBlock(error));
       return;
     }
+    const cid = sessionScoped ? boundCustomerId(user) : customerInput.trim();
+
     replaceChildren(container,
       el('div', { className: 'page-header' },
         el('h1', { className: 'page-header__title' }, 'Traffic sources'),
@@ -85,6 +99,7 @@ export function mount(container, ctx) {
             children: el('input', {
               id: 'traffic-customer',
               className: 'form-input',
+              placeholder: 'Customer UUID…',
               value: customerInput,
               onInput: (e) => { customerInput = e.target.value; },
             }),
@@ -102,29 +117,35 @@ export function mount(container, ctx) {
         }),
         el('button', { type: 'submit', className: 'btn btn--primary', disabled: loading }, 'Load'),
       ),
-      loading ? el('p', null, 'Loading…') : null,
+      validationError ? renderAlertBanner({ variant: 'error', message: validationError }) : null,
+      !cid && !sessionScoped
+        ? renderAlertBanner({ variant: 'info', message: 'Enter a customer UUID to load report data.' })
+        : null,
+      loading ? el('p', { className: 'text-muted mt-4' }, 'Loading…') : null,
       rows.length > 0
-        ? el('table', { className: 'data-table' },
-          el('thead', null,
-            el('tr', null,
-              el('th', { scope: 'col' }, 'Channel'),
-              el('th', { scope: 'col' }, 'Impr.'),
-              el('th', { scope: 'col' }, 'Clicks'),
-              el('th', { scope: 'col' }, 'Spend'),
-              el('th', { scope: 'col' }, 'ROI %'),
+        ? el('div', { className: 'table-wrapper elevation-raised mt-4' },
+          el('table', { className: 'data-table' },
+            el('thead', null,
+              el('tr', null,
+                el('th', { scope: 'col' }, 'Channel'),
+                el('th', { scope: 'col' }, 'Impr.'),
+                el('th', { scope: 'col' }, 'Clicks'),
+                el('th', { scope: 'col' }, 'Spend'),
+                el('th', { scope: 'col' }, 'ROI %'),
+              ),
+            ),
+            el('tbody', null,
+              rows.map((row) => el('tr', null,
+                el('td', null, row.channel ?? '—'),
+                el('td', null, String(row.impressions ?? 0)),
+                el('td', null, String(row.clicks ?? 0)),
+                el('td', null, formatMoney(row.spend_micro)),
+                el('td', null, row.roi_pct != null ? `${row.roi_pct.toFixed(2)}%` : '—'),
+              )),
             ),
           ),
-          el('tbody', null,
-            rows.map((row) => el('tr', null,
-              el('td', null, row.channel ?? '—'),
-              el('td', null, String(row.impressions ?? 0)),
-              el('td', null, String(row.clicks ?? 0)),
-              el('td', null, formatMoney(row.spend_micro)),
-              el('td', null, row.roi_pct != null ? `${row.roi_pct.toFixed(2)}%` : '—'),
-            )),
-          ),
         )
-        : (!loading ? el('p', null, 'No rows.') : null),
+        : (cid && !loading ? el('p', { className: 'text-muted mt-4' }, 'No rows.') : null),
     );
   }
 

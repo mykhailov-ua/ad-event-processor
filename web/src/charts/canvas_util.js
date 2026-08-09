@@ -38,16 +38,17 @@ export function remPx(rem) {
 }
 
 /**
- * Write standard chart padding into `out` (zero alloc).
+ * Write symmetrical chart padding into `out` (zero alloc).
+ * Symmetrical left & right margins (2.25rem each) center the plot area inside the tile.
  *
  * @param {{ top: number, right: number, bottom: number, left: number }} out
  * @param {{ top?: number, right?: number, bottom?: number, left?: number }} [overrides]
  */
 export function chartPadInto(out, overrides = {}) {
   out.top = remPx(overrides.top ?? 0.375);
-  out.right = remPx(overrides.right ?? 0.5);
+  out.right = remPx(overrides.right ?? 2.25);
   out.bottom = remPx(overrides.bottom ?? 1.75);
-  out.left = remPx(overrides.left ?? 2.75);
+  out.left = remPx(overrides.left ?? 2.25);
 }
 
 const padReturn = { top: 0, right: 0, bottom: 0, left: 0 };
@@ -101,7 +102,7 @@ export function segmentColors(count) {
 }
 
 /**
- * Configure a canvas for device-pixel-ratio aware drawing.
+ * Configure a canvas for HiDPI device-pixel-ratio aware crisp drawing.
  * Read phase first (geometry), then write phase (canvas + styles).
  *
  * @param {HTMLElement} wrap
@@ -110,17 +111,21 @@ export function segmentColors(count) {
  * @returns {CanvasSurface|null}
  */
 export function setupCanvas(wrap, canvas, cssHeight) {
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d', { alpha: true });
   if (!ctx) return null;
 
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const dpr = Math.max(window.devicePixelRatio || 1, 2);
   const cssWidth = Math.max(wrap.clientWidth || 0, 12);
   const resolvedHeight = cssHeight ?? Math.max(wrap.clientHeight || 0, 80);
   const pxW = Math.round(cssWidth * dpr);
   const pxH = Math.round(resolvedHeight * dpr);
 
-  canvas.style.width = `${cssWidth}px`;
-  canvas.style.height = `${resolvedHeight}px`;
+  if (canvas.style.width !== `${cssWidth}px`) {
+    canvas.style.width = `${cssWidth}px`;
+  }
+  if (canvas.style.height !== `${resolvedHeight}px`) {
+    canvas.style.height = `${resolvedHeight}px`;
+  }
 
   if (canvas.width !== pxW || canvas.height !== pxH) {
     canvas.width = pxW;
@@ -128,6 +133,8 @@ export function setupCanvas(wrap, canvas, cssHeight) {
   }
 
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
   return { ctx, width: cssWidth, height: resolvedHeight, dpr };
 }
 
@@ -136,7 +143,7 @@ export function setupCanvas(wrap, canvas, cssHeight) {
  *
  * @param {HTMLElement} container
  * @param {string} ariaLabel
- * @param {number} [_cssHeight] legacy height hint (ignored; container drives size)
+ * @param {number} [_cssHeight] legacy height hint
  * @returns {{ shell: HTMLDivElement, wrap: HTMLDivElement, canvas: HTMLCanvasElement, destroy: () => void, onResize: (fn: () => void) => void }}
  */
 export function createChartShell(container, ariaLabel, _cssHeight = CHART_HEIGHT_DEFAULT) {
@@ -180,7 +187,7 @@ export function createChartShell(container, ariaLabel, _cssHeight = CHART_HEIGHT
     destroy() {
       if (rafId) cancelAnimationFrame(rafId);
       rafId = 0;
-      ro.disconnect();
+      if (ro) ro.disconnect();
       ro = null;
       paintFn = null;
       container.replaceChildren();

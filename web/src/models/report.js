@@ -1,23 +1,31 @@
 /**
- * @typedef {{ key: string, title: string, live?: boolean, buyer?: boolean }} ReportCardDTO
+ * @typedef {{ key: string, title: string, live?: boolean, retired?: boolean, buyer?: boolean }} ReportCardDTO
  */
+
+/** @type {Record<string, { href: string, label: string }>} */
+export const RETIRED_REPORT_ALTS = {
+  'pacing-drift': { href: '/campaigns/portfolio', label: 'Portfolio (drift sort)' },
+  'campaign-unit-economics': { href: '/reports/placements', label: 'Placements' },
+  'source-margin': { href: '/reports/placements', label: 'Placements' },
+  'postback-reconciliation': { href: '/billing', label: 'Billing ledger' },
+};
 
 /** @type {ReportCardDTO[]} */
 export const REPORT_CATALOG = [
   { key: 'placements', title: 'Placements', live: true, buyer: true },
   { key: 'keywords', title: 'Keywords', live: true, buyer: true },
-  { key: 'pacing-drift', title: 'Pacing drift', buyer: true },
+  { key: 'pacing-drift', title: 'Pacing drift', retired: true, buyer: true },
   { key: 'spend-velocity', title: 'Spend velocity' },
   { key: 'daypart-heatmap', title: 'Daypart heatmap', buyer: true },
   { key: 'campaign-geo-device', title: 'Geo & device', buyer: true },
   { key: 'geo-roi', title: 'Geo ROI', live: true, buyer: true },
   { key: 'source-quality', title: 'Source quality', buyer: true },
   { key: 'ivt-by-source', title: 'IVT by source', live: true },
-  { key: 'postback-reconciliation', title: 'Postback reconciliation' },
+  { key: 'postback-reconciliation', title: 'Postback reconciliation', retired: true },
   { key: 'traffic-sources', title: 'Traffic sources', live: true, buyer: true },
   { key: 'discrepancy-buy-sell', title: 'Buy/sell discrepancy' },
-  { key: 'campaign-unit-economics', title: 'Unit economics' },
-  { key: 'source-margin', title: 'Source margin' },
+  { key: 'campaign-unit-economics', title: 'Unit economics', retired: true },
+  { key: 'source-margin', title: 'Source margin', retired: true },
   { key: 'customer-portfolio', title: 'Customer portfolio' },
   { key: 'telegram', title: 'Telegram Mini Apps', live: true, buyer: true },
 ];
@@ -29,11 +37,7 @@ export const STUB_REPORT_PATHS = {
   'geo-roi': '/api/v1/reports/geo-roi',
   'source-quality': '/api/v1/reports/source-quality',
   'ivt-by-source': '/api/v1/reports/ivt-by-source',
-  'postback-reconciliation': '/api/v1/reports/postback-reconciliation',
-  'pacing-drift': '/api/v1/reports/pacing-drift',
   'spend-velocity': '/api/v1/reports/spend-velocity',
-  'campaign-unit-economics': '/api/v1/reports/campaign-unit-economics',
-  'source-margin': '/api/v1/reports/source-margin',
   'traffic-sources': '/api/v1/reports/traffic-sources',
   'discrepancy-buy-sell': '/api/v1/reports/discrepancy-buy-sell',
   'campaign-overview': '/api/v1/reports/campaign-overview',
@@ -62,6 +66,26 @@ export function reportTitle(key) {
  */
 export function stubReportPath(key) {
   return STUB_REPORT_PATHS[key] ?? null;
+}
+
+/**
+ * Return true when a report key was retired in favor of a live alternative.
+ *
+ * @param {string} key
+ * @returns {boolean}
+ */
+export function isRetiredReport(key) {
+  return key in RETIRED_REPORT_ALTS;
+}
+
+/**
+ * Resolve retired report redirect target.
+ *
+ * @param {string} key
+ * @returns {{ href: string, label: string }|null}
+ */
+export function retiredReportAlt(key) {
+  return RETIRED_REPORT_ALTS[key] ?? null;
 }
 
 /**

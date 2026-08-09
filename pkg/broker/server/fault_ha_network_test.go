@@ -330,7 +330,7 @@ func TestFault_KillLeaderMidReplication(t *testing.T) {
 
 	requireEventually(t, func() bool {
 		return followerCoord.IsLeader(topicPartitionKey(topic)) && followerCoord.IsLeaderReady(topicPartitionKey(topic))
-	}, 20*time.Second, 500*time.Millisecond, "follower must become ready leader after leader kill")
+	}, 45*time.Second, 500*time.Millisecond, "follower must become ready leader after leader kill")
 
 	close(stopProduce)
 	produceWg.Wait()

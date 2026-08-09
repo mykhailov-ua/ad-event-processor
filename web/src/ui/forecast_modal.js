@@ -1,4 +1,5 @@
 import { el } from '../lib/dom.js';
+import { to } from '../lib/to.js';
 import { mountModal } from './modal.js';
 
 /**
@@ -15,12 +16,23 @@ export async function openForecastModal(opts) {
   let error = null;
   /** @type {{ destroy: () => void }|null} */
   let curveChart = null;
+  /** @type {ReturnType<typeof setInterval>|null} */
+  let retryTimer = null;
 
   const body = el('div', null, el('p', null, 'Loading forecast…'));
+
+  function clearRetryTimer() {
+    if (retryTimer) {
+      clearInterval(retryTimer);
+      retryTimer = null;
+    }
+  }
+
   let modal = mountModal({
     title: 'Campaign forecast',
     body: [body],
     onClose: () => {
+      clearRetryTimer();
       curveChart?.destroy();
       modal.destroy();
     },
@@ -37,22 +49,20 @@ export async function openForecastModal(opts) {
       timezone: 'UTC',
     };
     if (opts.customerId) payload.customer_id = opts.customerId;
-    try {
-      const { api } = await import('../helpers/api_client.js');
-      const res = await api('/api/v1/forecast/campaign', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-      forecast = res?.data ?? null;
-      renderBody();
-    } catch (err) {
+    const { api } = await import('../helpers/api_client.js');
+    const [res, err] = await to(api('/api/v1/forecast/campaign', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }));
+    if (err) {
       const retryAfter = Number(err?.retryAfter ?? 0);
       if (err?.status === 503 && retryAfter > 0) {
         countdown = retryAfter;
-        const tick = setInterval(() => {
+        clearRetryTimer();
+        retryTimer = setInterval(() => {
           countdown -= 1;
           if (countdown <= 0) {
-            clearInterval(tick);
+            clearRetryTimer();
             load();
           } else {
             body.replaceChildren(el('p', null, `Service busy — retry in ${countdown}s`));
@@ -62,7 +72,10 @@ export async function openForecastModal(opts) {
       }
       error = err?.message ?? 'Forecast failed';
       body.replaceChildren(el('p', null, error));
+      return;
     }
+    forecast = res?.data ?? null;
+    renderBody();
   }
 
   function renderBody() {

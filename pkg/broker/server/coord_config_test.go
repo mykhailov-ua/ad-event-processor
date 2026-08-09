@@ -47,7 +47,8 @@ func TestCoordElectionDebounceSkipsEpochBump(t *testing.T) {
 	defer coord.Stop()
 
 	topic := "tracker-logs"
-	pl, err := s.getOrCreatePartition(topic)
+	pk := topicPartitionKey(topic)
+	pl, err := s.getOrCreatePartition(pk)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,36 +56,36 @@ func TestCoordElectionDebounceSkipsEpochBump(t *testing.T) {
 
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
-		if coord.IsLeader(topic) {
+		if coord.IsLeader(pk) {
 			break
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	if !coord.IsLeader(topic) {
+	if !coord.IsLeader(pk) {
 		t.Fatal("expected leadership")
 	}
 
-	epoch1, ok := coord.LeaderEpoch(topic)
+	epoch1, ok := coord.LeaderEpoch(pk)
 	if !ok || epoch1 == 0 {
 		t.Fatal("expected epoch after first election")
 	}
 
 	rdb := coord.Redis()
-	_ = rdb.Del(ctx, leaderKey(topic)).Err()
+	_ = rdb.Del(ctx, leaderKey(pk)).Err()
 
 	time.Sleep(800 * time.Millisecond)
 
 	for time.Now().Before(deadline) {
-		if coord.IsLeader(topic) {
+		if coord.IsLeader(pk) {
 			break
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	if !coord.IsLeader(topic) {
+	if !coord.IsLeader(pk) {
 		t.Fatal("expected leadership after reclaim")
 	}
 
-	epoch2, ok := coord.LeaderEpoch(topic)
+	epoch2, ok := coord.LeaderEpoch(pk)
 	if !ok {
 		t.Fatal("expected epoch after reclaim")
 	}

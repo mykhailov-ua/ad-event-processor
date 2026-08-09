@@ -6,6 +6,7 @@ import { apiConfirmed } from '../helpers/confirmed_api.js';
 import { ConfirmCancelledError } from '../helpers/confirm_ui.js';
 import { mapServiceError } from '../helpers/service_error.js';
 import { pushToastMessage } from '../helpers/toast_ui.js';
+import { mountCustomerApiKeysPanel } from './customer_api_keys_panel.js';
 import { can } from '../helpers/permissions.js';
 import * as auth from '../helpers/auth.js';
 import { surfaceServiceErrorToast } from '../helpers/service_error_toast.js';
@@ -46,6 +47,10 @@ export function mount(container) {
 
   const user = auth.getUser();
   const canWrite = can(user?.permissions ?? [], 'settings:write');
+  const canCreateApiKey = can(user?.permissions ?? [], 'campaigns:write');
+  const apiKeysSlot = el('div');
+  /** @type {{ destroy: () => void }|null} */
+  let apiKeysPanel = null;
 
   const state = { data: null, loading: true, error: null };
   let fieldErrors = {};
@@ -452,8 +457,12 @@ export function mount(container) {
             )
             : null,
         ),
+        apiKeysSlot,
       ),
     );
+    if (!apiKeysPanel && !destroyed) {
+      apiKeysPanel = mountCustomerApiKeysPanel(apiKeysSlot, { canCreate: canCreateApiKey });
+    }
   }
 
   const resource = createResource(
@@ -475,6 +484,7 @@ export function mount(container) {
   return {
     destroy() {
       destroyed = true;
+      apiKeysPanel?.destroy();
       resource.destroy();
     },
   };

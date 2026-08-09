@@ -7,6 +7,7 @@ export const REQUIRED_CONFIRM_KEYS = [
   'PATCH /settings/platform',
   'POST /settings/platform/apply',
   'POST /selfserve/campaigns',
+  'PATCH /campaigns/{id}',
   'POST /selfserve/campaigns/{id}/pause',
   'POST /selfserve/campaigns/{id}/resume',
   'POST /selfserve/payment-intents',

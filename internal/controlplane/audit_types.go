@@ -78,6 +78,13 @@ type auditPacingChange struct {
 	NewPacingMode string `json:"new_pacing_mode"`
 }
 
+type auditCampaignAdminChange struct {
+	Name            string   `json:"name"`
+	DailyBudget     int64    `json:"daily_budget_micro"`
+	Timezone        string   `json:"timezone"`
+	TargetCountries []string `json:"target_countries,omitempty"`
+}
+
 type auditBrandFcapChange struct {
 	OldFreqLimit  int32 `json:"old_freq_limit"`
 	OldFreqWindow int32 `json:"old_freq_window"`

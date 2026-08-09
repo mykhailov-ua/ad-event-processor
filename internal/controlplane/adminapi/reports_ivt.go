@@ -315,3 +315,79 @@ func QueryWorstIVTSources(
 	}
 	return out, rows.Err()
 }
+
+const worstIVTCountriesQuery = `
+SELECT
+    country,
+    sum(impressions) AS impressions,
+    sum(clicks) AS clicks,
+    sum(ivt_events) AS ivt_events
+FROM (
+    SELECT
+        nullIf(JSONExtractString(i.payload, 'country'), '') AS country,
+        count() AS impressions,
+        toUInt64(0) AS clicks,
+        toUInt64(0) AS ivt_events
+    FROM impressions AS i
+    WHERE i.campaign_id IN (?)
+      AND i.created_at >= ?
+      AND i.created_at < ?
+    GROUP BY country
+    UNION ALL
+    SELECT
+        nullIf(JSONExtractString(c.payload, 'country'), '') AS country,
+        toUInt64(0) AS impressions,
+        count() AS clicks,
+        uniqIf(c.click_id, f.click_id != '') AS ivt_events
+    FROM clicks AS c
+    LEFT JOIN fraud_events AS f
+        ON c.click_id = f.click_id AND c.campaign_id = f.campaign_id
+    WHERE c.campaign_id IN (?)
+      AND c.created_at >= ?
+      AND c.created_at < ?
+    GROUP BY country
+)
+WHERE country != ''
+GROUP BY country
+ORDER BY ivt_events DESC, clicks DESC
+LIMIT ?`
+
+// QueryWorstIVTCountries returns top countries by IVT events for campaigns.
+func QueryWorstIVTCountries(
+	ctx context.Context,
+	chQuery *database.CHQuery,
+	campaignIDs []uuid.UUID,
+	from, to time.Time,
+	limit int,
+) ([]FraudGeoHintDTO, error) {
+	if chQuery == nil || len(campaignIDs) == 0 {
+		return nil, nil
+	}
+	if limit <= 0 {
+		limit = 5
+	}
+	rows, err := chQuery.Query(ctx, worstIVTCountriesQuery,
+		campaignIDs, from, to,
+		campaignIDs, from, to,
+		limit,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("worst ivt countries query: %w", err)
+	}
+	defer rows.Close()
+	out := make([]FraudGeoHintDTO, 0, limit)
+	for rows.Next() {
+		var country string
+		var impressions, clicks, ivtEvents int64
+		if err := rows.Scan(&country, &impressions, &clicks, &ivtEvents); err != nil {
+			return nil, err
+		}
+		out = append(out, FraudGeoHintDTO{
+			Country:   country,
+			IVTEvents: ivtEvents,
+			Clicks:    clicks,
+			IVTRate:   calcIVTRate(ivtEvents, clicks),
+		})
+	}
+	return out, rows.Err()
+}

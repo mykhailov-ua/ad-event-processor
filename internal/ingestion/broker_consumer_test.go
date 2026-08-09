@@ -61,7 +61,7 @@ func TestBrokerStreamConsumer_ShadowMode(t *testing.T) {
 	consumer.Start(ctx)
 	defer consumer.Close()
 
-	deadline := time.Now().Add(3 * time.Second)
+	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
 		store.mu.Lock()
 		n := len(store.flushes)
@@ -69,18 +69,21 @@ func TestBrokerStreamConsumer_ShadowMode(t *testing.T) {
 		if n > 0 {
 			t.Fatal("shadow mode must not write to store")
 		}
+
 		check := client.NewClient(srv.Addr(), 2*time.Second)
 		if err := check.Connect(); err != nil {
 			t.Fatal(err)
 		}
 		off, err := check.CommittedOffset("tracker-logs", 0, "test-shadow")
 		_ = check.Close()
-		if err == nil && off > 0 {
-			return
+		if err != nil {
+			t.Fatal(err)
+		}
+		if off != 0 {
+			t.Fatalf("shadow mode must not commit group offset, got %d", off)
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
-	t.Fatal("broker shadow consumer did not commit offset")
 }
 
 func produceBrokerStreamEvent(t *testing.T, producer *client.Client, topic string, rec *pb.AdStreamEvent) {

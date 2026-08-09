@@ -33,6 +33,7 @@ export function mountShell(opts) {
   const onOpenSearch = opts.onOpenSearch ?? (() => {});
   const shell = el('div', { className: 'shell' });
   let sidebarOpen = false;
+  let opsOutboxPending = 0;
 
   const hamburgerRef = { current: null };
   const sidebarRef = { current: null };
@@ -66,8 +67,13 @@ export function mountShell(opts) {
     document.documentElement.style.setProperty('--sidebar-width', w);
   }
 
+  let lastScrollRatio = 0;
+
   function applyCollapsed(collapsed) {
-    const scrollTop = sidebarScroll.scrollTop;
+    const currentMax = sidebarScroll.scrollHeight - sidebarScroll.clientHeight;
+    if (currentMax > 0) {
+      lastScrollRatio = sidebarScroll.scrollTop / currentMax;
+    }
     sidebarCollapsed = collapsed;
     storage.setSidebarCollapsed(collapsed);
     sidebar.classList.toggle('sidebar--collapsed', collapsed);
@@ -80,12 +86,12 @@ export function mountShell(opts) {
     } else {
       applySidebarWidth(sidebarWidth);
     }
-    renderNav();
-    renderSearch();
     renderFooter();
     requestAnimationFrame(() => {
-      const maxScroll = Math.max(0, sidebarScroll.scrollHeight - sidebarScroll.clientHeight);
-      sidebarScroll.scrollTop = Math.min(scrollTop, maxScroll);
+      const newMax = sidebarScroll.scrollHeight - sidebarScroll.clientHeight;
+      if (newMax > 0) {
+        sidebarScroll.scrollTop = Math.round(lastScrollRatio * newMax);
+      }
     });
   }
 
@@ -243,6 +249,12 @@ export function mountShell(opts) {
           },
             link.icon ? renderIcon(link.icon, { size: 18, className: 'sidebar__link-icon', strokeWidth: 1.5 }) : null,
             el('span', { className: 'sidebar__link-label' }, link.label),
+            link.to === '/ops' && opsOutboxPending > 0
+              ? el('span', {
+                className: 'sidebar__badge',
+                'aria-label': `${opsOutboxPending} outbox pending`,
+              }, String(opsOutboxPending))
+              : null,
           ),
         );
       }
@@ -390,12 +402,20 @@ export function mountShell(opts) {
     hamburger.setAttribute('aria-expanded', sidebarOpen ? 'true' : 'false');
   };
   window.addEventListener('popstate', onRoute);
+  window.addEventListener('routechange', onRoute);
 
   return {
     node: shell,
+    setOpsOutboxPending(count) {
+      const next = Math.max(0, Number(count) || 0);
+      if (next === opsOutboxPending) return;
+      opsOutboxPending = next;
+      renderNav();
+    },
     destroy() {
       document.removeEventListener('keydown', onSidebarKey);
       window.removeEventListener('popstate', onRoute);
+      window.removeEventListener('routechange', onRoute);
       window.removeEventListener('resize', onWindowResize);
       shellStatus.destroy();
     },

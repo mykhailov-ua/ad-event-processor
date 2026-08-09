@@ -8,16 +8,20 @@ import { boundCustomerId, hasBoundCustomer } from '../helpers/buyer_session.js';
 import { fetchBuyerDashboard } from '../helpers/buyer_dashboard.js';
 import { probeReport, probeReset } from '../helpers/perf_probe.js';
 import { renderBuyerOverview } from '../ui/buyer_overview.js';
+import { pauseCampaign, resumeCampaign } from '../helpers/campaign_actions.js';
+import { ConfirmCancelledError } from '../helpers/confirm_ui.js';
+import { invalidateBuyerDashboard } from '../helpers/buyer_dashboard.js';
 import { mapServiceError } from '../helpers/service_error.js';
 import { pushToastMessage } from '../helpers/toast_ui.js';
 import { renderErrorBlock } from '../ui/error_block.js';
 import { renderFreshnessBadge } from '../ui/freshness_badge.js';
-import { renderAlertBanner } from '../ui/alert_banner.js';
 import { renderDoctorPanel } from '../ui/doctor_panel.js';
 import { renderIcon } from '../ui/icon.js';
 import { renderAlertFeed } from '../ui/recommendation_cards.js';
 import { renderStatusHint } from '../ui/status_hint.js';
 import { displayLabel, formatYesNo } from '../helpers/display_labels.js';
+import { buildHomeAlerts } from '../helpers/home_alerts.js';
+import { connectOpsLiveFeed } from '../helpers/ops_live_feed.js';
 
 /**
  * Render one overview KPI metric card.
@@ -93,8 +97,44 @@ export function mount(container) {
     buyerPortfolio: null,
     buyerError: null,
     buyerPerf: null,
+    recActionLoading: false,
     homeAlerts: [],
   };
+
+  /**
+   * Handle a recommendation card action (pause, resume, or navigate).
+   *
+   * @param {string} actionId
+   * @param {{ campaign_id?: string }} card
+   * @returns {Promise<void>}
+   */
+  async function handleRecommendationAction(actionId, card) {
+    const campaignId = card.campaign_id;
+    if (!campaignId) return;
+    if (actionId === 'edit_budget') {
+      window.location.href = `/campaigns/${campaignId}`;
+      return;
+    }
+    state.recActionLoading = true;
+    render();
+    const [, err] = await to((async () => {
+      if (actionId === 'pause') await pauseCampaign(campaignId);
+      else if (actionId === 'resume') await resumeCampaign(campaignId);
+    })());
+    state.recActionLoading = false;
+    if (err && !(err instanceof ConfirmCancelledError)) {
+      pushToastMessage({ title: 'Action failed', message: err.message ?? String(err) });
+    }
+    if (!err || err instanceof ConfirmCancelledError) {
+      invalidateBuyerDashboard(boundCustomerId(user));
+      const [portfolio, loadErr] = await to(fetchBuyerDashboard(boundCustomerId(user)));
+      if (!loadErr && portfolio) {
+        state.buyerPortfolio = portfolio;
+        state.buyerPerf = probeReport();
+      }
+    }
+    render();
+  }
 
   function deriveFreshness() {
     if (state.incidents?.partial) {
@@ -122,7 +162,6 @@ export function mount(container) {
       return;
     }
 
-    const license = state.meta?.license;
     const freshness = deriveFreshness();
     const children = [
       el('div', { className: 'page-header' },
@@ -153,14 +192,8 @@ export function mount(container) {
             ),
           })
         : null,
-      license?.state && license.state.toLowerCase() !== 'valid' && license.state.toLowerCase() !== 'active'
-        ? renderAlertBanner({
-          variant: 'warning',
-          message: `License: ${license.state}${license.valid_until ? ` · until ${license.valid_until}` : ''}`,
-        })
-        : null,
       state.loading ? el('div', { className: 'text-muted' }, 'Loading…') : null,
-      !state.loading && canOps && state.homeAlerts.length > 0
+      !state.loading && (canOps || buyerMode) && state.homeAlerts.length > 0
         ? renderAlertFeed(state.homeAlerts)
         : null,
       !state.loading && canOps && state.summary
@@ -184,7 +217,8 @@ export function mount(container) {
           portfolio: state.buyerPortfolio,
           perf: state.buyerPerf,
           error: state.buyerError,
-        })
+          recActionLoading: state.recActionLoading,
+        }, { onAction: handleRecommendationAction })
         : null,
       !state.loading && !canOps && !buyerMode
         ? el('p', { className: 'text-muted' },
@@ -239,28 +273,7 @@ export function mount(container) {
       const sumRes = results[3];
 
       if (docRes?.data) state.doctor = docRes.data;
-      if (sumRes?.data) {
-        state.summary = sumRes.data;
-        state.homeAlerts = [];
-        if ((state.summary.outbox_pending ?? 0) > 0) {
-          state.homeAlerts.push({
-            id: 'outbox-pending',
-            level: 'warning',
-            title: 'Outbox backlog',
-            detail: `${state.summary.outbox_pending} pending events`,
-            route: '/ops',
-          });
-        }
-        if (state.summary.drift_alert) {
-          state.homeAlerts.push({
-            id: 'drift-alert',
-            level: 'critical',
-            title: 'Pacing drift',
-            detail: 'Campaign pacing drift detected',
-            route: '/campaigns/portfolio',
-          });
-        }
-      }
+      if (sumRes?.data) state.summary = sumRes.data;
       if (incRes?.data && !incRes.error) state.incidents = incRes.data;
 
       const errors = [];
@@ -288,6 +301,16 @@ export function mount(container) {
       }
     }
 
+    state.homeAlerts = buildHomeAlerts({
+      summary: state.summary,
+      doctor: state.doctor,
+      incidents: state.incidents,
+      meta: state.meta,
+      buyerPortfolio: state.buyerPortfolio,
+      canOps,
+      buyerMode,
+    });
+
     state.loading = false;
     render();
   }
@@ -295,31 +318,47 @@ export function mount(container) {
   render();
   loadData();
 
-  let outboxPoll = null;
+  let opsLiveFeed = null;
   if (canOps) {
-    outboxPoll = setInterval(async () => {
-      if (destroyed) return;
-      const [sumRes] = await to(api('/api/v1/ops/dashboard/summary'));
-      if (destroyed || !sumRes?.data) return;
-      state.summary = sumRes.data;
-      state.homeAlerts = [];
-      if ((state.summary.outbox_pending ?? 0) > 0) {
-        state.homeAlerts.push({
-          id: 'outbox-pending',
-          level: 'warning',
-          title: 'Outbox backlog',
-          detail: `${state.summary.outbox_pending} pending events`,
-          route: '/ops',
+    opsLiveFeed = connectOpsLiveFeed({
+      pollMs: 30_000,
+      onTick: (payload) => {
+        if (destroyed || !payload.summary) return;
+        state.summary = payload.summary;
+        state.homeAlerts = buildHomeAlerts({
+          summary: state.summary,
+          doctor: state.doctor,
+          incidents: state.incidents,
+          meta: state.meta,
+          buyerPortfolio: state.buyerPortfolio,
+          canOps,
+          buyerMode,
         });
-      }
-      render();
-    }, 30_000);
+        render();
+      },
+      onPoll: async () => {
+        if (destroyed) return;
+        const [sumRes] = await to(api('/api/v1/ops/dashboard/summary'));
+        if (destroyed || !sumRes?.data) return;
+        state.summary = sumRes.data;
+        state.homeAlerts = buildHomeAlerts({
+          summary: state.summary,
+          doctor: state.doctor,
+          incidents: state.incidents,
+          meta: state.meta,
+          buyerPortfolio: state.buyerPortfolio,
+          canOps,
+          buyerMode,
+        });
+        render();
+      },
+    });
   }
 
   return {
     destroy() {
       destroyed = true;
-      if (outboxPoll) clearInterval(outboxPoll);
+      opsLiveFeed?.destroy();
     },
   };
 }

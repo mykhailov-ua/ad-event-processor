@@ -152,6 +152,10 @@ func TestFault_LeaseExpiry_FrozenLeaderRejected(t *testing.T) {
 	}
 	_ = preCli.Close()
 
+	requireEventually(t, func() bool {
+		return partitionOffset(t, follower, topic) >= 16
+	}, 30*time.Second, 200*time.Millisecond, "follower must replicate before leader freeze")
+
 	if leaderProc.cmd.Process == nil {
 		t.Fatal("leader process not running")
 	}

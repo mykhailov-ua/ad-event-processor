@@ -89,7 +89,7 @@
 .text-copy-14 { font-weight: 400; line-height: var(--line-height-body); }
 .text-label-13,
 .text-copy-13 {
-  font-size: 0.8125rem;
+  font-size: var(--text-xs);
   line-height: var(--line-height-tight);
 }
 .text-label-13 { font-weight: 500; }

@@ -158,3 +158,30 @@ type AuditLogListResponse struct {
 	Items []AuditLogDTO `json:"items"`
 	Total int64         `json:"total"`
 }
+
+type PatchCampaignRequest struct {
+	Name             *string  `json:"name,omitempty"`
+	PacingMode       *string  `json:"pacing_mode,omitempty"`
+	DailyBudgetMicro *int64   `json:"daily_budget_micro,omitempty"`
+	Timezone         *string  `json:"timezone,omitempty"`
+	FreqLimit        *int32   `json:"freq_limit,omitempty"`
+	FreqWindow       *int32   `json:"freq_window,omitempty"`
+	TargetCountries  []string `json:"target_countries,omitempty"`
+	TargetURL        *string  `json:"target_url,omitempty"`
+	ReferrerFilter   *string  `json:"referrer_filter,omitempty"`
+}
+
+type CampaignEventDTO struct {
+	ClickID   string          `json:"click_id"`
+	EventType string          `json:"event_type"`
+	UserID    string          `json:"user_id,omitempty"`
+	IP        string          `json:"ip_address,omitempty"`
+	UserAgent string          `json:"user_agent,omitempty"`
+	Payload   json.RawMessage `json:"payload,omitempty"`
+	CreatedAt string          `json:"created_at"`
+}
+
+type CampaignEventListResponse struct {
+	Items []CampaignEventDTO `json:"items"`
+	Total int64              `json:"total"`
+}

@@ -202,13 +202,18 @@ func (b *BrokerStreamConsumer) run(ctx context.Context) {
 			batchCommit = start
 			lastFlush = time.Now()
 		} else if nextCommit > start {
-			stored, commitErr := b.cli.CommitOffset(b.cfg.Topic, b.cfg.Partition, b.cfg.Group, nextCommit)
-			if commitErr != nil {
-				slog.Error("broker offset commit failed", "group", b.cfg.Group, "error", commitErr)
-				return
+			if b.cfg.ShadowMode {
+				start = nextCommit
+				batchCommit = start
+			} else {
+				stored, commitErr := b.cli.CommitOffset(b.cfg.Topic, b.cfg.Partition, b.cfg.Group, nextCommit)
+				if commitErr != nil {
+					slog.Error("broker offset commit failed", "group", b.cfg.Group, "error", commitErr)
+					return
+				}
+				start = stored
+				batchCommit = start
 			}
-			start = stored
-			batchCommit = start
 		}
 
 		if ctx.Err() != nil {
@@ -314,6 +319,13 @@ func (b *BrokerStreamConsumer) flushAndCommit(ctx context.Context, batch []*doma
 	}
 
 commitOffset:
+	// Shadow mode never persists the group offset: a committed offset would make
+	// the later live cutover resume past events that were only counted, never
+	// stored, losing every event observed during the shadow window.
+	if b.cfg.ShadowMode {
+		return nextCommit, nil
+	}
+
 	stored, err := b.cli.CommitOffset(b.cfg.Topic, b.cfg.Partition, b.cfg.Group, nextCommit)
 	if err != nil {
 		slog.Error("broker offset commit failed", "group", b.cfg.Group, "error", err)

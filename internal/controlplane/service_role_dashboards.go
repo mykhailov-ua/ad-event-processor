@@ -2,6 +2,9 @@ package controlplane
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
+	"os"
 	"strings"
 	"time"
 
@@ -255,12 +258,19 @@ func (s *Service) GetAccountantDashboard(ctx context.Context, customerID uuid.UU
 	}, nil
 }
 
+const (
+	fraudTierPassMax    = 30
+	fraudTierSuspectMax = 60
+	fraudTierIVTMax     = 80
+)
+
 // GetFraudDashboard returns ML and IVT campaign signals for a customer.
 func (s *Service) GetFraudDashboard(ctx context.Context, customerID uuid.UUID) (FraudDashboardDTO, error) {
 	if customerID == uuid.Nil {
 		return FraudDashboardDTO{}, errValidation("customer_id is required")
 	}
 	now := time.Now().UTC()
+	from := now.Add(-7 * 24 * time.Hour)
 	var ghost int
 	err := s.GetPool().QueryRow(ctx, `
 		SELECT count(*)::int FROM campaigns
@@ -271,18 +281,111 @@ func (s *Service) GetFraudDashboard(ctx context.Context, customerID uuid.UUID) (
 		return FraudDashboardDTO{}, err
 	}
 
-	// ml_manual_labels is global ops queue; per-customer scoping needs campaign linkage.
 	var labelsPending int
+	_ = s.GetPool().QueryRow(ctx, `
+		SELECT count(*)::int FROM ml_manual_labels
+		WHERE created_at >= $1`, from).Scan(&labelsPending)
+
+	mlVersionID, mlHash, mlPrecision, mlRecall, mlDrift := s.fraudMLSnapshot(ctx)
+
+	recentLabels, _ := s.listRecentMLLabels(ctx, 5)
+
+	geoHints := s.fraudGeoHints(ctx, customerID, from, now)
 
 	edge, _ := FetchEdgeMetrics(ctx)
 	return FraudDashboardDTO{
 		CustomerID: customerID.String(),
 		Period: adminapi.PeriodDTO{
-			From: now.Add(-7 * 24 * time.Hour).Format(time.RFC3339),
+			From: from.Format(time.RFC3339),
 			To:   now.Format(time.RFC3339),
 		},
 		GhostIVTCampaigns: ghost,
 		LabelsPending:     labelsPending,
 		EdgeBlockedFraud:  edge.Blocked["fraud_tier"],
+		MLActiveVersionID: mlVersionID,
+		MLArtifactHash:    mlHash,
+		MLPrecision:       mlPrecision,
+		MLRecall:          mlRecall,
+		MLDriftDetected:   mlDrift,
+		FraudTierThresholds: adminapi.FraudTierThresholdsDTO{
+			PassMax:    fraudTierPassMax,
+			SuspectMax: fraudTierSuspectMax,
+			IVTMax:     fraudTierIVTMax,
+			BlockAbove: fraudTierIVTMax,
+		},
+		GeoHints:     geoHints,
+		RecentLabels: recentLabels,
 	}, nil
+}
+
+func (s *Service) fraudMLSnapshot(ctx context.Context) (versionID, artifactHash string, precision, recall float64, driftDetected bool) {
+	err := s.GetPool().QueryRow(ctx, `
+		SELECT id, artifact_hash FROM ml_model_versions
+		WHERE status = 'ACTIVE' ORDER BY created_at DESC LIMIT 1`,
+	).Scan(&versionID, &artifactHash)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return "", "", 0, 0, false
+	}
+	path := os.Getenv("FRAUD_EVAL_REPORT_PATH")
+	if path == "" {
+		path = "var/fraudscore/shadow_eval_report.json"
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return versionID, artifactHash, 0, 0, false
+	}
+	var report struct {
+		Precision     float64 `json:"precision"`
+		Recall        float64 `json:"recall"`
+		DriftDetected bool    `json:"drift_detected"`
+	}
+	if json.Unmarshal(data, &report) == nil {
+		precision = report.Precision
+		recall = report.Recall
+		driftDetected = report.DriftDetected
+	}
+	return versionID, artifactHash, precision, recall, driftDetected
+}
+
+func (s *Service) listRecentMLLabels(ctx context.Context, limit int) ([]adminapi.MLManualLabelDTO, error) {
+	if limit <= 0 {
+		limit = 5
+	}
+	rows, err := s.GetPool().Query(ctx, `
+		SELECT ip_hash, label, reason, source, created_at
+		FROM ml_manual_labels
+		ORDER BY created_at DESC
+		LIMIT $1`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]adminapi.MLManualLabelDTO, 0, limit)
+	for rows.Next() {
+		var row adminapi.MLManualLabelDTO
+		var createdAt time.Time
+		if err := rows.Scan(&row.IPHash, &row.Label, &row.Reason, &row.Source, &createdAt); err != nil {
+			return nil, err
+		}
+		row.CreatedAt = createdAt.UTC().Format(time.RFC3339)
+		out = append(out, row)
+	}
+	return out, rows.Err()
+}
+
+func (s *Service) fraudGeoHints(ctx context.Context, customerID uuid.UUID, from, to time.Time) []adminapi.FraudGeoHintDTO {
+	if s.chQuery == nil {
+		return nil
+	}
+	campaignIDs, err := adminapi.ListCustomerCampaignIDs(ctx, s.GetPool(), customerID)
+	if err != nil || len(campaignIDs) == 0 {
+		return nil
+	}
+	chCtx, cancel := context.WithTimeout(ctx, adminapi.ReportCHQueryTimeout())
+	defer cancel()
+	hints, err := adminapi.QueryWorstIVTCountries(chCtx, s.chQuery, campaignIDs, from, to, 5)
+	if err != nil {
+		return nil
+	}
+	return hints
 }

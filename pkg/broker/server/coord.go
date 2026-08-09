@@ -20,11 +20,18 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// topicLeaderState carries the local view of a topic lease. leaseExpiresAtNano
+// bounds authority in local monotonic-ish wall time: once it passes, the node
+// must stop acting as leader even when Redis is unreachable, otherwise a
+// partitioned node keeps accepting writes that the next leader never sees.
 type topicLeaderState struct {
-	isLeader bool
-	epoch    uint64
-	ready    bool
+	isLeader           bool
+	epoch              uint64
+	ready              bool
+	leaseExpiresAtNano int64
 }
+
+const claimQueueCapacity = 64
 
 type Coordinator struct {
 	nodeID        string
@@ -38,6 +45,7 @@ type Coordinator struct {
 	leaders       atomic.Pointer[map[string]topicLeaderState]
 	renewFailures map[string]int
 	renewMu       sync.Mutex
+	claimCh       chan string
 }
 
 func NewCoordinator(nodeID string, tcpAddr string, redisURL string, host CoordHost) (*Coordinator, error) {
@@ -58,6 +66,7 @@ func NewCoordinatorWithConfig(nodeID string, tcpAddr string, redisURL string, ho
 		cfg:           cfg.normalized(),
 		closeChan:     make(chan struct{}),
 		renewFailures: make(map[string]int),
+		claimCh:       make(chan string, claimQueueCapacity),
 	}
 	initMap := make(map[string]topicLeaderState)
 	c.leaders.Store(&initMap)
@@ -112,6 +121,12 @@ func (c *Coordinator) Start() {
 		defer c.wg.Done()
 		c.runCoordinationLoop()
 	}()
+
+	c.wg.Add(1)
+	go func() {
+		defer c.wg.Done()
+		c.runClaimLoop()
+	}()
 }
 
 func (c *Coordinator) Redis() redis.UniversalClient {
@@ -126,39 +141,95 @@ func (c *Coordinator) Stop() {
 	_ = c.rdb.Close()
 }
 
-func (c *Coordinator) IsLeader(topic string) bool {
+func leaseHeld(st topicLeaderState) bool {
+	return st.isLeader && st.leaseExpiresAtNano > time.Now().UnixNano()
+}
+
+func (c *Coordinator) leaderStateSnapshot(topic string) topicLeaderState {
 	m := c.leaders.Load()
 	if m == nil {
-		return false
+		return topicLeaderState{}
 	}
-	return (*m)[topic].isLeader
+	return (*m)[topic]
+}
+
+func (c *Coordinator) IsLeader(topic string) bool {
+	return leaseHeld(c.leaderStateSnapshot(topic))
 }
 
 func (c *Coordinator) LeaderEpoch(topic string) (uint64, bool) {
-	m := c.leaders.Load()
-	if m == nil {
-		return 0, false
-	}
-	st := (*m)[topic]
-	if !st.isLeader || st.epoch == 0 {
+	st := c.leaderStateSnapshot(topic)
+	if !leaseHeld(st) || st.epoch == 0 {
 		return 0, false
 	}
 	return st.epoch, true
 }
 
 func (c *Coordinator) IsLeaderReady(topic string) bool {
-	m := c.leaders.Load()
-	if m == nil {
-		return false
-	}
-	st := (*m)[topic]
-	return st.isLeader && st.ready
+	st := c.leaderStateSnapshot(topic)
+	return leaseHeld(st) && st.ready
 }
+
+// publishHWMScript keeps the cluster high watermark monotonic. A leader that
+// takes over while still behind must not lower the recorded tail, otherwise the
+// catch-up target for the next failover is silently truncated.
+var publishHWMScript = redis.NewScript(`
+local cur = redis.call('GET', KEYS[1])
+if cur and tonumber(cur) >= tonumber(ARGV[1]) then
+  return cur
+end
+redis.call('SET', KEYS[1], ARGV[1])
+return ARGV[1]
+`)
 
 func (c *Coordinator) PublishLogHWM(topic string, hwm uint64) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	_ = c.rdb.Set(ctx, logHWMKey(topic), strconv.FormatUint(hwm, 10), 0).Err()
+	_ = publishHWMScript.Run(ctx, c.rdb, []string{logHWMKey(topic)}, strconv.FormatUint(hwm, 10)).Err()
+}
+
+// RequestClaim asks the claim loop to try acquiring leadership for a topic that
+// received a write while unowned. Callers run on the gnet event loop, so the
+// enqueue never blocks and drops the hint when the queue is saturated.
+func (c *Coordinator) RequestClaim(topic string) {
+	if c == nil {
+		return
+	}
+	select {
+	case c.claimCh <- strings.Clone(topic):
+	default:
+	}
+}
+
+func (c *Coordinator) runClaimLoop() {
+	for {
+		select {
+		case <-c.closeChan:
+			return
+		case topic := <-c.claimCh:
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			c.claimTopic(ctx, topic)
+			cancel()
+		}
+	}
+}
+
+func (c *Coordinator) claimTopic(ctx context.Context, topic string) {
+	if c.IsLeader(topic) {
+		return
+	}
+	lKey := leaderKey(topic)
+	ok, err := c.rdb.SetNX(ctx, lKey, c.nodeID, c.cfg.LeaseTTL).Result()
+	if err != nil || !ok {
+		return
+	}
+	epoch, bumped, err := c.acquireEpoch(ctx, topic, leaderEpochKey(topic))
+	if err != nil {
+		_ = c.rdb.Del(ctx, lKey).Err()
+		return
+	}
+	c.clearRenewFailures(topic)
+	c.onAcquiredLeadership(ctx, topic, epoch, bumped)
 }
 
 func (c *Coordinator) HasLeader(topic string) (bool, error) {
@@ -266,17 +337,24 @@ func (c *Coordinator) coordTopic(ctx context.Context, topic string, replications
 	currentLeader, err := c.rdb.Get(ctx, lKey).Result()
 	if err == nil && currentLeader == c.nodeID {
 		epoch := c.readEpoch(ctx, topic)
-		pl, plErr := c.host.CoordGetOrCreatePartition(topic)
-		if plErr == nil {
-			c.PublishLogHWM(topic, pl.NextOffset())
-		}
 		if !c.renewLease(ctx, topic, lKey) {
 			clusterEpoch := c.readEpoch(ctx, topic)
 			c.demoteTopic(topic, clusterEpoch)
 			c.updateTopicMetrics(ctx, topic)
 			return
 		}
-		c.setLeaderState(topic, true, epoch, true)
+		prev := c.leaderStateSnapshot(topic)
+		if !prev.isLeader {
+			c.onAcquiredLeadership(ctx, topic, epoch, false)
+			c.updateTopicMetrics(ctx, topic)
+			return
+		}
+		if prev.ready {
+			if pl, plErr := c.host.CoordGetOrCreatePartition(topic); plErr == nil {
+				c.PublishLogHWM(topic, pl.NextOffset())
+			}
+		}
+		c.setLeaderState(topic, true, epoch, prev.ready)
 		c.updateTopicMetrics(ctx, topic)
 		return
 	}
@@ -371,12 +449,11 @@ func (c *Coordinator) updateTopicMetrics(ctx context.Context, topic string) {
 	}
 	metrics.BrokerReplicationLag.WithLabelValues(topic).Set(lag)
 
-	m := c.leaders.Load()
-	st := (*m)[topic]
+	st := c.leaderStateSnapshot(topic)
 	leader := float64(0)
 	ready := float64(0)
 	epoch := float64(0)
-	if st.isLeader {
+	if leaseHeld(st) {
 		leader = 1
 		if st.ready {
 			ready = 1
@@ -419,8 +496,9 @@ func (c *Coordinator) onAcquiredLeadership(ctx context.Context, topic string, ep
 
 	pl, err := c.host.CoordGetOrCreatePartition(topic)
 	if err != nil {
-		c.setLeaderState(topic, true, epoch, true)
-		slog.Info("Acquired topic leadership", "topic", topic, "epoch", epoch)
+		c.setLeaderState(topic, true, epoch, false)
+		slog.Error("Acquired topic leadership without partition log; leader stays not ready",
+			"topic", topic, "epoch", epoch, "error", err)
 		return
 	}
 
@@ -428,7 +506,9 @@ func (c *Coordinator) onAcquiredLeadership(ctx context.Context, topic string, ep
 	hwm := c.readLogHWM(ctx, topic)
 	ready := local >= hwm
 	c.setLeaderState(topic, true, epoch, ready)
-	c.PublishLogHWM(topic, local)
+	if ready {
+		c.PublishLogHWM(topic, local)
+	}
 	slog.Info("Acquired topic leadership", "topic", topic, "epoch", epoch, "local", local, "hwm", hwm, "ready", ready)
 
 	if !ready {
@@ -450,6 +530,9 @@ func (c *Coordinator) recoverLeaderReadiness(topic string, targetHWM uint64, sta
 		if err == nil && pl.NextOffset() >= targetHWM {
 			c.setLeaderReady(topic, true)
 			metrics.BrokerReplicationCatchupSeconds.WithLabelValues(topic).Observe(time.Since(started).Seconds())
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			c.updateTopicMetrics(ctx, topic)
+			cancel()
 			slog.Info("Leader ready after catch-up", "topic", topic, "offset", pl.NextOffset())
 			return
 		}
@@ -460,14 +543,21 @@ func (c *Coordinator) recoverLeaderReadiness(topic string, targetHWM uint64, sta
 	if err != nil {
 		c.setLeaderReady(topic, true)
 		metrics.BrokerReplicationCatchupSeconds.WithLabelValues(topic).Observe(time.Since(started).Seconds())
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		c.updateTopicMetrics(ctx, topic)
+		cancel()
 		return
 	}
+	// Availability wins after the catch-up budget, but the cluster HWM stays at
+	// the known tail: lowering it here would erase the catch-up target and make
+	// the truncation invisible to the next failover and to alerting.
 	local := pl.NextOffset()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	_ = c.rdb.Set(ctx, logHWMKey(topic), strconv.FormatUint(local, 10), 0).Err()
-	cancel()
+	recordReplicationError(topic, "catchup_gap")
 	c.setLeaderReady(topic, true)
 	metrics.BrokerReplicationCatchupSeconds.WithLabelValues(topic).Observe(time.Since(started).Seconds())
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	c.updateTopicMetrics(ctx, topic)
+	cancel()
 	slog.Warn("Leader readiness accepted with replication gap",
 		"topic", topic, "local", local, "target_hwm", targetHWM)
 }
@@ -496,7 +586,16 @@ func (c *Coordinator) setLeaderState(topic string, isLeader bool, epoch uint64, 
 		if !isLeader {
 			ready = false
 		}
-		newMap[topic] = topicLeaderState{isLeader: isLeader, epoch: epoch, ready: ready}
+		var expiresAt int64
+		if isLeader {
+			expiresAt = time.Now().Add(c.cfg.LeaseTTL).UnixNano()
+		}
+		newMap[topic] = topicLeaderState{
+			isLeader:           isLeader,
+			epoch:              epoch,
+			ready:              ready,
+			leaseExpiresAtNano: expiresAt,
+		}
 		if c.leaders.CompareAndSwap(old, &newMap) {
 			return
 		}

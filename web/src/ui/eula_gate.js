@@ -35,7 +35,10 @@ export async function mountEulaGate(root, eula) {
                 el('input', {
                   type: 'checkbox',
                   checked,
-                  onChange: (e) => { checked = e.target.checked; },
+                  onChange: (e) => {
+                    checked = e.target.checked;
+                    render();
+                  },
                 }),
                 ' I accept the BidShard on-premise license agreement',
               ),

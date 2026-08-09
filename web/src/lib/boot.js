@@ -9,9 +9,11 @@ import { APP_ROUTES } from './routes.js';
 import { installErrorSurface } from './error_surface.js';
 import { installConfirmHost } from '../ui/confirm_host.js';
 import { installToastStack } from '../ui/toast_stack.js';
+import { installCustomScrollbars } from '../ui/custom_scrollbars.js';
 import { mountShell } from '../ui/shell.js';
 import { installCommandPalette } from '../ui/command_palette.js';
 import { startRUMCollector } from '../helpers/rum_collector.js';
+import { startOpsOutboxBadge } from '../helpers/ops_outbox_badge.js';
 import { renderIdempotencyRecoveryBanner } from '../ui/idempotency_banner.js';
 import { syncDevModeAttribute } from '../helpers/dev_mode.js';
 import { mountEulaGate } from '../ui/eula_gate.js';
@@ -30,6 +32,7 @@ export async function bootApp(root) {
   installErrorSurface(root);
   installConfirmHost(root);
   const toast = installToastStack(root);
+  const scrollbars = installCustomScrollbars();
 
   auth.hydrateFromBoot();
 
@@ -81,10 +84,18 @@ export async function bootApp(root) {
 
   const rum = startRUMCollector();
 
+  const perms = auth.getUser()?.permissions ?? [];
+  let opsBadgeFeed = null;
+  if (perms.includes('shards:read') && typeof shell.setOpsOutboxPending === 'function') {
+    opsBadgeFeed = startOpsOutboxBadge(shell.setOpsOutboxPending);
+  }
+
   return {
     destroy() {
+      opsBadgeFeed?.destroy();
       rum.stop();
       cmdPalette.destroy();
+      scrollbars.destroy();
       toast.destroy();
       shell.destroy();
     },
@@ -108,6 +119,7 @@ export async function bootLogin(root) {
   }
 
   installToastStack(root);
+  installCustomScrollbars();
   const outlet = el('div', { id: 'login-outlet', className: 'login-root' });
   root.appendChild(outlet);
   import('../views/login.js').then((mod) => {

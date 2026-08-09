@@ -157,6 +157,8 @@ export function projectSeriesSoA(
 }
 
 /**
+ * Draw straight point-to-point line series (no Bezier curves).
+ *
  * @param {CanvasRenderingContext2D} ctx
  * @param {Float64Array} xs
  * @param {Float64Array} ys
@@ -168,19 +170,16 @@ export function strokeSeriesLineSoA(ctx, xs, ys, len, dashed = false) {
   if (dashed) ctx.setLineDash([5, 4]);
   ctx.beginPath();
   ctx.moveTo(xs[0], ys[0]);
-  for (let i = 0; i < len - 1; i++) {
-    const x0 = xs[i];
-    const y0 = ys[i];
-    const x1 = xs[i + 1];
-    const y1 = ys[i + 1];
-    const cx = (x0 + x1) * 0.5;
-    ctx.bezierCurveTo(cx, y0, cx, y1, x1, y1);
+  for (let i = 1; i < len; i++) {
+    ctx.lineTo(xs[i], ys[i]);
   }
   ctx.stroke();
   if (dashed) ctx.setLineDash([]);
 }
 
 /**
+ * Fill area under straight line series (no Bezier curves).
+ *
  * @param {CanvasRenderingContext2D} ctx
  * @param {Float64Array} xs
  * @param {Float64Array} ys
@@ -191,14 +190,8 @@ export function fillSmoothAreaSoA(ctx, xs, ys, len, baseY) {
   if (len < 2) return;
   ctx.beginPath();
   ctx.moveTo(xs[0], baseY);
-  ctx.lineTo(xs[0], ys[0]);
-  for (let i = 0; i < len - 1; i++) {
-    const x0 = xs[i];
-    const y0 = ys[i];
-    const x1 = xs[i + 1];
-    const y1 = ys[i + 1];
-    const cx = (x0 + x1) * 0.5;
-    ctx.bezierCurveTo(cx, y0, cx, y1, x1, y1);
+  for (let i = 0; i < len; i++) {
+    ctx.lineTo(xs[i], ys[i]);
   }
   ctx.lineTo(xs[len - 1], baseY);
   ctx.closePath();

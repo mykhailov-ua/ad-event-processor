@@ -3,7 +3,9 @@ import { to } from '../lib/to.js';
 import * as auth from '../helpers/auth.js';
 import { boundCustomerId } from '../helpers/buyer_session.js';
 import { listSavedViews, submitReportExport, pollReportJob, downloadReportExport } from '../helpers/report_api.js';
-import { REPORT_CATALOG, reportHref } from '../models/report.js';
+import { REPORT_CATALOG, reportHref, retiredReportAlt } from '../models/report.js';
+import { probeStubReport } from '../helpers/report_api.js';
+import { parallelAll } from '../helpers/request_multiplex.js';
 import { renderPerfBlock } from '../helpers/perf_display.js';
 import { REPORT_DATE_PRESETS } from '../helpers/date_presets.js';
 import { createInFlightGuard } from '../lib/async_guard.js';
@@ -19,6 +21,8 @@ import { renderIcon } from '../ui/icon.js';
  *   key: string,
  *   title: string,
  *   live?: boolean,
+ *   retired?: boolean,
+ *   probeStub?: boolean,
  *   exportLoading: boolean,
  *   customerId: string|null,
  *   onExport: (key: string) => void,
@@ -26,7 +30,9 @@ import { renderIcon } from '../ui/icon.js';
  * @returns {HTMLTableRowElement}
  */
 function renderReportRow(opts) {
-  const href = reportHref(opts.key);
+  const retiredAlt = opts.retired ? retiredReportAlt(opts.key) : null;
+  const href = retiredAlt?.href ?? reportHref(opts.key);
+  const isLive = opts.live === true || opts.probeStub === false;
   return el('tr', { 'data-report-key': opts.key },
     el('td', null,
       el('a', {
@@ -38,17 +44,21 @@ function renderReportRow(opts) {
       ),
     ),
     el('td', null,
-      opts.live
-        ? renderStatusBadge('ok', { kind: 'service', label: 'Live' })
-        : renderStatusBadge('planned', { kind: 'service', label: 'Planned' }),
+      opts.retired
+        ? renderStatusBadge('archived', { label: 'Retired' })
+        : isLive
+          ? renderStatusBadge('ok', { kind: 'service', label: 'Live' })
+          : opts.probeStub === true
+            ? renderStatusBadge('planned', { kind: 'service', label: 'Planned' })
+            : renderStatusBadge('pending', { kind: 'invoice', label: 'Checking…' }),
     ),
     el('td', { className: 'reports-hub__actions-cell' },
       el('div', { className: 'reports-hub__actions' },
         el('a', {
           href,
           className: 'btn btn--secondary btn--sm',
-        }, 'Open'),
-        el('button', {
+        }, retiredAlt ? retiredAlt.label : 'Open'),
+        !opts.retired ? el('button', {
           type: 'button',
           className: 'btn btn--ghost btn--sm',
           disabled: opts.exportLoading || !opts.customerId,
@@ -60,7 +70,7 @@ function renderReportRow(opts) {
         },
           renderIcon('download', { size: 14 }),
           'Export',
-        ),
+        ) : null,
       ),
     ),
   );
@@ -84,7 +94,34 @@ export function mount(container, ctx) {
     savedError: null,
     exportStatus: null,
     exportLoading: false,
+    probing: true,
+    /** @type {Record<string, boolean|null>} */
+    probeStub: {},
   };
+
+  async function loadProbes() {
+    const keys = REPORT_CATALOG
+      .filter((c) => !c.live && !c.retired)
+      .map((c) => c.key);
+    if (keys.length === 0) {
+      state.probing = false;
+      render();
+      return;
+    }
+    const tasks = keys.map((key) => async () => {
+      const [probe] = await to(probeStubReport(key, customerId ?? ''));
+      return { key, stub: probe?.stub ?? true };
+    });
+    const [results] = await to(parallelAll(tasks, 3));
+    if (destroyed) return;
+    state.probing = false;
+    if (results) {
+      for (let i = 0; i < results.length; i++) {
+        state.probeStub[results[i].key] = results[i].stub;
+      }
+    }
+    render();
+  }
 
   async function loadSaved() {
     if (!customerId) return;
@@ -115,12 +152,19 @@ export function mount(container, ctx) {
       reportKey,
       from: preset.from(),
       to: preset.to(),
+      signal,
     });
     if (destroyed) {
       exportGate.release();
       return;
     }
     state.exportLoading = false;
+    if (result.rateLimited) {
+      state.exportStatus = result.message;
+      exportGate.release();
+      render();
+      return;
+    }
     if (result.ok && result.jobId) {
       const polled = await pollReportJob(result.jobId, { signal });
       if (destroyed) {
@@ -246,6 +290,8 @@ export function mount(container, ctx) {
                   key: card.key,
                   title: card.title,
                   live: card.live,
+                  retired: card.retired,
+                  probeStub: card.live ? false : (card.retired ? null : state.probeStub[card.key]),
                   exportLoading: state.exportLoading,
                   customerId,
                   onExport: handleExport,
@@ -275,6 +321,7 @@ export function mount(container, ctx) {
   }
 
   loadSaved();
+  loadProbes();
   render();
 
   return {

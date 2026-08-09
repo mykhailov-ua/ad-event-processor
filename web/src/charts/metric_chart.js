@@ -29,6 +29,7 @@ const FONT_AXIS = 'var(--text-xs) var(--font-family), system-ui, sans-serif';
 
 /**
  * Mount a Grafana-style time-series area chart for a single metric.
+ * Pixel-snapped grid lines (0.5px offset) eliminate staircase/aliasing artifacts.
  *
  * @param {HTMLElement} container
  * @param {{
@@ -98,8 +99,8 @@ export function mountMetricChart(container, opts) {
     const ctx = surface.ctx;
     const width = surface.width;
     const height = surface.height;
-    const plotW = width - padLeft - padRight;
-    const plotH = height - padTop - padBottom;
+    const plotW = Math.max(width - padLeft - padRight, 10);
+    const plotH = Math.max(height - padTop - padBottom, 10);
     const baseY = padTop + plotH;
 
     const now = Date.now();
@@ -123,44 +124,62 @@ export function mountMetricChart(container, opts) {
 
     ctx.clearRect(0, 0, width, height);
 
+    // Y Grid & Tick Labels with 0.5px Pixel-Snapping (Zero Staircase/Aliasing)
     const yTickCount = fillNiceTicks(yMin, yMax, yTicks, 4);
     ctx.font = FONT_AXIS;
-    ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
     const labelPad = remPx(0.375);
     for (let i = 0; i < yTickCount; i++) {
       const t = yTicks[i];
-      const y = padTop + plotH - ((t - yMin) / ySpan) * plotH;
+      const rawY = padTop + plotH - ((t - yMin) / ySpan) * plotH;
+      const snapY = Math.floor(rawY) + 0.5;
       ctx.strokeStyle = i === 0 ? gridMajorCached : gridMinorCached;
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(padLeft, y);
-      ctx.lineTo(padLeft + plotW, y);
+      ctx.moveTo(padLeft, snapY);
+      ctx.lineTo(padLeft + plotW, snapY);
       ctx.stroke();
+
+      ctx.textAlign = 'right';
       ctx.fillStyle = mutedCached;
-      ctx.fillText(formatChartTick(t), padLeft - labelPad, y);
+      ctx.fillText(formatChartTick(t), padLeft - labelPad, rawY);
     }
 
-    const xLabelY = height - padBottom + remPx(0.125);
-    ctx.textAlign = 'center';
+    // X Grid & Time Tick Labels with 0.5px Pixel-Snapping
+    const xLabelY = height - padBottom + remPx(0.25);
     ctx.textBaseline = 'top';
     const xInv = X_TICK_MAX === 1 ? 0 : 1 / (X_TICK_MAX - 1);
     for (let i = 0; i < X_TICK_MAX; i++) {
       const ratio = X_TICK_MAX === 1 ? 0 : i * xInv;
       const ts = xMin + ratio * xSpan;
-      const x = padLeft + ratio * plotW;
+      const rawX = padLeft + ratio * plotW;
+      const snapX = Math.floor(rawX) + 0.5;
       ctx.strokeStyle = gridMinorCached;
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(x, padTop);
-      ctx.lineTo(x, baseY);
+      ctx.moveTo(snapX, padTop);
+      ctx.lineTo(snapX, baseY);
       ctx.stroke();
+
       ctx.fillStyle = mutedCached;
-      ctx.fillText(formatChartAxisTime(ts, rangeMs), x, xLabelY);
+      if (i === 0) {
+        ctx.textAlign = 'left';
+      } else if (i === X_TICK_MAX - 1) {
+        ctx.textAlign = 'right';
+      } else {
+        ctx.textAlign = 'center';
+      }
+      ctx.fillText(formatChartAxisTime(ts, rangeMs), rawX, xLabelY);
     }
 
+    // Pixel-Snapped Outer Plot Frame
     ctx.strokeStyle = gridMajorCached;
-    ctx.strokeRect(padLeft, padTop, plotW, plotH);
+    ctx.lineWidth = 1;
+    const snapLeft = Math.floor(padLeft) + 0.5;
+    const snapTop = Math.floor(padTop) + 0.5;
+    ctx.strokeRect(snapLeft, snapTop, Math.floor(plotW), Math.floor(plotH));
 
+    // Render Data Series Line & Area Fill
     ctx.save();
     ctx.beginPath();
     ctx.rect(padLeft, padTop, plotW, plotH);

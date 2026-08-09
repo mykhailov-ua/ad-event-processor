@@ -37,7 +37,7 @@ function yScaleInto(y, length, out) {
 }
 
 /**
- * Draw a line series on a 2D canvas context using precomputed scales.
+ * Draw a straight line series on a 2D canvas context using precomputed scales.
  *
  * @param {CanvasRenderingContext2D} ctx
  * @param {number} width
@@ -60,8 +60,8 @@ function drawLineChart(ctx, width, height, x, y, length, scale, ptsX, ptsY, acce
   const padRight = padScratch.right;
   const padBottom = padScratch.bottom;
   const padLeft = padScratch.left;
-  const plotW = width - padLeft - padRight;
-  const plotH = height - padTop - padBottom;
+  const plotW = Math.max(width - padLeft - padRight, 10);
+  const plotH = Math.max(height - padTop - padBottom, 10);
   const baseY = padTop + plotH;
 
   for (let i = 0; i < length; i++) {
@@ -75,14 +75,8 @@ function drawLineChart(ctx, width, height, x, y, length, scale, ptsX, ptsY, acce
 
   ctx.beginPath();
   ctx.moveTo(ptsX[0], baseY);
-  ctx.lineTo(ptsX[0], ptsY[0]);
-  for (let i = 1; i < length; i++) {
-    const x0 = ptsX[i - 1];
-    const y0 = ptsY[i - 1];
-    const x1 = ptsX[i];
-    const y1 = ptsY[i];
-    const cx = (x0 + x1) * 0.5;
-    ctx.bezierCurveTo(cx, y0, cx, y1, x1, y1);
+  for (let i = 0; i < length; i++) {
+    ctx.lineTo(ptsX[i], ptsY[i]);
   }
   ctx.lineTo(ptsX[length - 1], baseY);
   ctx.closePath();
@@ -96,12 +90,7 @@ function drawLineChart(ctx, width, height, x, y, length, scale, ptsX, ptsY, acce
   ctx.beginPath();
   ctx.moveTo(ptsX[0], ptsY[0]);
   for (let i = 1; i < length; i++) {
-    const x0 = ptsX[i - 1];
-    const y0 = ptsY[i - 1];
-    const x1 = ptsX[i];
-    const y1 = ptsY[i];
-    const cx = (x0 + x1) * 0.5;
-    ctx.bezierCurveTo(cx, y0, cx, y1, x1, y1);
+    ctx.lineTo(ptsX[i], ptsY[i]);
   }
   ctx.stroke();
 

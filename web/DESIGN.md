@@ -1,12 +1,22 @@
 # BidShard Admin — Design System
 
-Visual spec for the embedded admin UI (`web/`). Based on [Vercel Geist](https://vercel.com/geist/introduction): high-contrast neutrals, minimal chrome, color reserved for status and primary actions.
+Spec for the embedded admin UI (`web/`).
 
-Implementation: `web/src/styles/tokens.css` (variables) + `main.css` (components). No React/Geist npm packages — vanilla CSS only (`admin-web.mdc`).
+| Layer | Source of truth | Adopt |
+|-------|-----------------|--------|
+| **Visual** | [Vercel Geist](https://vercel.com/geist/introduction) | Tokens, type, surfaces, chrome — keep |
+| **UX / interaction** | [Grafana Saga](https://grafana.com/developers/saga/about/overview/) | Principles, alerts, forms, friction, page templates — adapt |
+| **UI chrome** | Geist + selective Saga patterns | Forms spacing, alert kinds, one primary CTA — where it fits BidShard density |
+
+**Not adopted:** `@grafana/ui`, Grafana Storybook components, Grafana palette/typography, React. Runtime stays vanilla ESM (`admin-web.mdc`).
+
+Implementation: `web/src/styles/tokens.css` + `main.css` + `a11y.css`. Confirm flows: `helpers/confirm_catalog.js` / `confirm_registry.js`. Toasts: `helpers/toast_ui.js`.
 
 ---
 
-## 1. Foundations (Geist → BidShard)
+## 1. Dual foundation
+
+### 1.1 Visual (Geist → BidShard)
 
 | Geist concept | BidShard token | Usage |
 |---------------|----------------|--------|
@@ -21,19 +31,26 @@ Implementation: `web/src/styles/tokens.css` (variables) + `main.css` (components
 
 Reference: [Geist colors](https://vercel.com/geist/colors), [materials](https://vercel.com/geist/materials).
 
+### 1.2 UX principles (Saga → BidShard)
+
+Adapted from [Saga design principles](https://grafana.com/developers/saga/foundations/design-principles/):
+
+1. **Task-at-hand** — each view optimizes the operator’s primary job (pace campaign, clear backlog, read doctor). Secondary chrome stays quiet.
+2. **Tasteful friction** — UI resistance matches blast radius. Rename / filter tweak: low friction. Pause campaign, revoke API key, budget overwrite, blacklist: confirm via catalog. Never surprise-destructive.
+3. **System carries complexity** — prefer smart defaults, progressive disclosure, and clear errors over dumping ops jargon on the user.
+4. **Default to reusability** — same page chrome, panels, tables, empty states, alerts. New layout only when an existing template cannot express the task.
+
+Visual Geist rules that still apply:
+
+5. **Border over shadow** — 1px `--border-color` on surfaces; shadows only on floating layers (modal, toast, menu).
+6. **Typography hierarchy** — one dominant metric per view; secondary text `--text-muted`.
+7. **Color = meaning** — green/amber/red for status only; charts monochrome + accent line.
+8. **4px spacing grid** — `--spacing-4` … `--spacing-48`; default gaps `--spacing-16` / `--spacing-24`.
+9. **Dark default** — `storage.js` sets `data-theme="dark"`; light is opt-in.
+
 ---
 
-## 2. Principles
-
-1. **Border over shadow** — surfaces use 1px `--border-color`; shadows only on floating layers (modal, toast, menu).
-2. **Typography hierarchy** — one dominant metric per view; secondary text uses `--text-muted`.
-3. **Color = meaning** — green/amber/red for status only; charts monochrome + accent line.
-4. **4px spacing grid** — `--spacing-4` … `--spacing-48`; default gaps `--spacing-16` / `--spacing-24`.
-5. **Dark default** — `storage.js` sets `data-theme="dark"`; light is opt-in.
-
----
-
-## 3. Typography
+## 2. Typography
 
 Geist type scale (CSS classes in `main.css`):
 
@@ -48,36 +65,110 @@ Geist type scale (CSS classes in `main.css`):
 | `.text-copy-13` | 13px / 400 | Dense tables, hints |
 | `.font-mono` | Geist Mono stack | IDs, money, KPI values |
 
+**Heading semantics (Saga Text pattern):** one `h1` per view; ranks continuous (`h1` → `h2` → `h3`). Change appearance with classes, not by skipping heading levels. Do not use color alone for emphasis — color is status.
+
 **Font loading:** `build.mjs` links Geist Sans/Mono from `cdn.jsdelivr.net`. Air-gapped installs may remove those `<link>` tags; `tokens.css` falls back to `system-ui`.
 
 Letter-spacing: `-0.02em` on headings ≥20px.
 
 ---
 
-## 4. Layout
+## 3. Layout & page templates
 
-- **Shell:** fixed sidebar (`--sidebar-width`) + scrollable `main__content` (max-width 1600px, padding `--spacing-24`).
-- **Grid:** `grid-stats` / `settings-grid` use `repeat(auto-fit, minmax(200px, 1fr))` with `--spacing-16` gap.
-- **Card-less sections:** prefer `page-header` + flat `settings-panel` with border, not stacked shadows.
+### Shell
+
+- Fixed sidebar (`--sidebar-width`) + scrollable main (`main` / `main__content`, max-width 1600px, padding `--spacing-24`).
+- Grid: `grid-stats` / `settings-grid` → `repeat(auto-fit, minmax(200px, 1fr))`, gap `--spacing-16`.
+- Card-less sections: `page-header` + flat `settings-panel` with border — not stacked shadows.
+
+### Templates (reuse before inventing)
+
+Inspired by [Saga templates](https://grafana.com/developers/saga/templates/overview/) — same jobs look the same:
+
+| Template | Structure | Examples |
+|----------|-----------|----------|
+| **Overview / hub** | `page-header` → alerts strip → KPI row → sections | Overview, Ops home, Reports hub |
+| **List** | `page-header` + filters + `data-table` + empty state | Campaigns, customers, blacklist |
+| **Detail** | `page-header` + tabs/panels + primary actions in header | Campaign detail, customer detail |
+| **Settings / form** | `page-header` + one or more `settings-panel` form bodies + action bar | Settings, margin guard, postback, filters |
+| **Wizard** | Stepper + one-column body + single primary CTA | Campaign wizard |
+
+Empty states: short title, one sentence why empty, optional single primary action — no decorative empty illustrations.
 
 ---
 
-## 5. Components
+## 4. Feedback: alerts, toasts, banners
+
+Saga [Alert pattern](https://grafana.com/developers/saga/patterns/alert/) mapped to BidShard widgets:
+
+| Kind | When | Placement | BidShard |
+|------|------|-----------|----------|
+| **Inline** | Task / page context (doctor fail, validation, policy) | Top or bottom of main content / panel | `alert-banner`, `alert-feed__item` |
+| **Toast** | Short result of a user action (saved, copied, blocked) | Corner stack; auto-dismiss or × | `pushToastMessage` (`helpers/toast_ui.js`) |
+| **Banner** | Persistent system state until resolved or dismissed | Page-level strip | `alert-banner` / home alerts |
+
+| Status | Use | Token / badge |
+|--------|-----|----------------|
+| Info | Non-blocking information | `--info` / `badge--info` |
+| Success | Action completed as expected | `--success` / `badge--success` |
+| Warning | Undesirable but recoverable | `--warning` / `badge--warning` |
+| Error | Failure; user should act | `--danger` / `badge--danger` |
+
+**Copy rules**
+
+- Title required: short, human, no stack traces or raw codes as the only text.
+- Details optional: what happened + path forward.
+- CTAs / links only on persistent (inline/banner) alerts — not on fleeting toasts unless essential.
+- Prefer toast for “Saved” / “Copied”; prefer inline for form/field failures still on screen.
+
+---
+
+## 5. Forms
+
+Adapted from [Saga Forms](https://grafana.com/developers/saga/patterns/forms/), spaced with BidShard tokens:
+
+### Structure
+
+- **Header** — title + short description (`settings-panel__header` / `page-header`).
+- **Body** — left-aligned, **one column**, vertical stack.
+- **Action bar** — primary submit; secondary/cancel distinct.
+
+### Spacing (map Saga 16 / 40 → tokens)
+
+| Gap | Token | Where |
+|-----|-------|--------|
+| Between fields / controls | `--spacing-16` | Form stack |
+| Title ↔ body, body ↔ actions, between sections | `--spacing-24` or `--spacing-32` | Prefer `--spacing-24` at BidShard density; use `--spacing-32` for heavy settings sections |
+
+### Behavior
+
+- One **primary** button per form (`btn btn--primary`). Left-align with the field column.
+- Destructive / discard: away from primary (header or secondary); confirm via catalog when irreversible.
+- Labels associated with controls; required only when truly required (`*` sparingly).
+- Inline validation; error on the field + how to fix. Never disable the submit button as the only error signal — explain why submit failed.
+- Progressive disclosure: advanced options behind expander / “Show advanced”; wizards for long creates.
+- Dialog (modal): ≤ ~5 fields, stays in context. Longer side flows: drawer/panel if already in shell patterns; else full-page settings template.
+- Smart defaults over empty required fields when a safe majority choice exists.
+
+---
+
+## 6. Components (visual)
 
 | Pattern | Classes | Notes |
 |---------|---------|--------|
-| Primary button | `btn btn--primary` | `--accent` fill, 6px radius |
+| Primary button | `btn btn--primary` | `--accent` fill, 6px radius; one per form/view action cluster |
 | Secondary | `btn btn--secondary` | `--bg-surface-hover` + border |
 | Nav item | `sidebar__link` | Active: `--bg-surface-hover`, not accent wash |
 | KPI tile | `metric-card` | Label 12px uppercase muted; value 24px mono |
 | Doctor row | `doctor-stack__row` | Two columns, border-separated |
+| Panel | `settings-panel` | Header + body; flat border |
 | Modal | `modal` | 12px radius, `--shadow-lg` |
-| Banner | `alert-banner` | Semantic border + subtle fill |
+| Banner / inline alert | `alert-banner`, `alert-feed__item` | Semantic border + subtle fill |
 | Table | `data-table` | 13px, row hover `--bg-surface-hover` |
 
 ---
 
-## 6. Status colors
+## 7. Status colors
 
 | State | Token | Badge |
 |-------|-------|-------|
@@ -88,25 +179,44 @@ Letter-spacing: `-0.02em` on headings ≥20px.
 
 ---
 
-## 7. Accessibility
+## 8. Accessibility
+
+Target: **WCAG 2.1 AA** intent (Saga accessibility posture), implemented with Geist contrast.
 
 - Focus: `:focus-visible` ring in `a11y.css` + `--focus-ring` on inputs.
-- Contrast: primary text on canvas ≥ 7:1 (Geist gray 1000 on black).
-- Motion: respect `prefers-reduced-motion` for segmented-control pill transitions.
+- Contrast: primary text on canvas ≥ 7:1 (Geist gray 1000 on dark canvas).
+- Forms: visible labels tied to controls; errors announced with the field.
+- Live regions: prefer polite toasts; assertive only for critical, user-triggered failures.
+- Motion: respect `prefers-reduced-motion`.
+- E2E: prefer role-based queries (`web/e2e/`).
 
 ---
 
-## 8. Do not
+## 9. Do not
 
+- Adopt Grafana visual language (colors, type, denseness) as a replacement for Geist.
+- Import `@grafana/ui`, Geist React, or any npm UI kit into `web/src`.
 - Box-shadow on every card (Stripe/legacy dashboard style).
 - Accent-colored inactive nav items.
-- Hard-coded hex in `views/` — use CSS variables only.
-- npm UI libraries or Geist React components in `web/src`.
+- Hard-coded hex in `views/` — CSS variables only.
+- Multiple primary buttons competing in one form.
+- Toast for persistent system faults that need an on-page path (use inline/banner).
+- Disable submit with no explanation.
+- New one-off page layouts when a §3 template fits.
 
 ---
 
-## 9. Changing the theme
+## 10. Changing the theme or UX rules
 
-1. Edit semantic mappings in `tokens.css` (not component CSS).
-2. Run `node web/scripts/build.mjs` and verify Overview, Settings, Login.
-3. Check light + dark via sidebar theme toggle.
+1. Visual tokens: edit semantic mappings in `tokens.css` (not one-off component CSS).
+2. UX rules: edit this doc first; then align `confirm_catalog`, toast helpers, and shared panel/form classes.
+3. Run `node web/scripts/build.mjs` and verify Overview, Settings, Login.
+4. Check light + dark via sidebar theme toggle.
+
+### External references
+
+- Geist: https://vercel.com/geist/introduction
+- Saga overview: https://grafana.com/developers/saga/about/overview/
+- Saga principles: https://grafana.com/developers/saga/foundations/design-principles/
+- Saga alerts: https://grafana.com/developers/saga/patterns/alert/
+- Saga forms: https://grafana.com/developers/saga/patterns/forms/

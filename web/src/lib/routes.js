@@ -35,8 +35,8 @@ export const APP_ROUTES = [
   { path: '/rtb/deals', load: () => import('../views/rtb_deals.js') },
   { path: '/ops', load: () => import('../views/ops_home.js') },
   { path: '/ops/shards', load: () => import('../views/ops_shards.js') },
-  { path: '/ops/blacklist', load: () => import('../views/placeholder.js') },
-  { path: '/audit', load: () => import('../views/placeholder.js') },
+  { path: '/ops/blacklist', load: () => import('../views/ops_blacklist.js') },
+  { path: '/audit', load: () => import('../views/audit.js') },
   { path: '/settings', load: () => import('../views/settings.js') },
   { path: '/dev/components', load: () => import('../ui/dev_components.js') },
 ];

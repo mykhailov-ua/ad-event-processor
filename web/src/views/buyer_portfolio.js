@@ -270,7 +270,9 @@ export function mount(container, ctx) {
                   ),
                   el('td', null, c.name ?? c.id),
                   el('td', null, renderStatusBadge(c.status)),
-                  el('td', null, String(c.pacing_drift_pct != null ? c.pacing_drift_pct.toFixed(0) : driftScore)),
+                  el('td', null, c.pacing_drift_pct != null
+                    ? `${Number(c.pacing_drift_pct).toFixed(0)}%`
+                    : String(driftScore)),
                   el('td', null, c.utilization_pct != null ? `${c.utilization_pct.toFixed(0)}%` : '—'),
                   el('td', null, c.overspend_risk ? renderStatusBadge('warning', { label: 'risk' }) : '—'),
                   el('td', null, String(c.impressions_7d ?? 0)),

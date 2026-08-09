@@ -364,6 +364,30 @@ SET pacing_mode = $2,
 WHERE id = $1
 RETURNING *;
 
+-- name: UpdateCampaignAdmin :one
+UPDATE campaigns
+SET name = $2,
+    daily_budget = $3,
+    timezone = $4,
+    freq_limit = $5,
+    freq_window = $6,
+    target_countries = $7,
+    target_url = $8,
+    referrer_filter = $9,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+RETURNING *;
+
+-- name: CountCampaignEvents :one
+SELECT COUNT(*)::bigint FROM events WHERE campaign_id = $1;
+
+-- name: ListCampaignEvents :many
+SELECT click_id, event_type, user_id, payload, ip_address, user_agent, created_at
+FROM events
+WHERE campaign_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3;
+
 -- name: UpdateCampaignFraudConfig :one
 UPDATE campaigns
 SET fraud_threshold_pass = $2,

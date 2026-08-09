@@ -3,7 +3,8 @@ import { createResource } from '../lib/fetch_resource.js';
 import { renderErrorBlock } from '../ui/error_block.js';
 import { clickableRow } from '../ui/clickable_row.js';
 import * as auth from '../helpers/auth.js';
-import { isBuyer } from '../helpers/permissions.js';
+import { isBuyer, can } from '../helpers/permissions.js';
+import { openCampaignWizard } from '../ui/campaign_wizard.js';
 import { hasBoundCustomer, boundCustomerId } from '../helpers/buyer_session.js';
 import { buyerEmptyCopy } from '../models/empty_state.js';
 import { fetchBuyerDashboard } from '../helpers/buyer_dashboard.js';
@@ -28,6 +29,8 @@ import {
   renderEmptyState,
 } from '../ui/data_table.js';
 
+import { renderCopyableUuid } from '../ui/copy_text.js';
+
 const PAGE_SIZE = 50;
 const CAMPAIGNS_EMPTY = buyerEmptyCopy('campaigns_empty');
 
@@ -51,20 +54,17 @@ function buildUrl(page, customerId, status) {
 }
 
 /**
- * Render a UUID with middle truncation for table cells.
+ * Render a UUID with middle truncation that is clickable and copyable.
  *
  * @param {string} uuid
  * @returns {HTMLElement|string}
  */
 function renderMiddleTruncateUuid(uuid) {
-  if (!uuid) return '—';
-  const start = uuid.slice(0, 8);
-  const end = uuid.slice(-8);
-  return el('span', { className: 'font-mono text-hint', title: uuid }, `${start}…${end}`);
+  return renderCopyableUuid(uuid);
 }
 
 /**
- * Mount the campaigns list view with filters, sorting, and pagination.
+ * Mount the campaigns list view with filters, sorting, budget precision toggle, and pagination.
  *
  * @param {HTMLElement} container
  * @param {{ query: URLSearchParams, navigate: (path: string) => void }} ctx
@@ -75,6 +75,7 @@ export function mount(container, ctx) {
   const user = auth.getUser();
   const sessionScoped = hasBoundCustomer(user?.role);
   const buyerView = isBuyer(user?.role);
+  const canWrite = can(user?.permissions ?? [], 'campaigns:write');
   const tenantCustomerId = boundCustomerId(user);
   const queryCustomer = ctx.query.get('customer_id')?.trim() ?? '';
 
@@ -82,6 +83,7 @@ export function mount(container, ctx) {
     page: 0,
     customerIdInput: sessionScoped ? tenantCustomerId : queryCustomer,
     statusFilter: '',
+    showDetailedBudget: false,
   };
 
   const state = { data: null, loading: true, error: null };
@@ -247,6 +249,30 @@ export function mount(container, ctx) {
           buyerView
             ? el('a', { href: '/campaigns/portfolio', className: 'btn btn--secondary btn--sm' }, 'Portfolio view')
             : null,
+          el('button', {
+            type: 'button',
+            className: 'btn btn--secondary btn--sm',
+            onClick: () => {
+              ui.showDetailedBudget = !ui.showDetailedBudget;
+              render();
+            },
+            title: 'Toggle budget precision (Standard $00.00 / Detailed $00.000000)',
+          },
+            renderIcon('sliders', { size: 14 }),
+            ui.showDetailedBudget ? 'Precision: Micro ($00.000000)' : 'Precision: Standard ($00.00)',
+          ),
+          canWrite && effectiveId && isCustomerUuid(effectiveId)
+            ? el('button', {
+              type: 'button',
+              className: 'btn btn--primary btn--sm',
+              onClick: () => {
+                openCampaignWizard({
+                  customerId: effectiveId,
+                  onCreated: (cid) => ctx.navigate(`/campaigns/${cid}`),
+                });
+              },
+            }, 'Create campaign')
+            : null,
           el('span', { className: 'text-muted text-sm' },
             state.loading ? '' : `${total} total`,
           ),
@@ -313,10 +339,10 @@ export function mount(container, ctx) {
                   el('td', null, renderStatusBadge(c.status)),
                   buyerView
                     ? el('td', null, String(statFor(c).impressions || '—'))
-                    : el('td', { className: 'font-mono' }, formatUsdDecimal(c.budget_limit ?? '0.00')),
+                    : el('td', { className: 'font-mono' }, formatUsdDecimal(c.budget_limit ?? '0.00', { full: ui.showDetailedBudget })),
                   buyerView
                     ? el('td', null, String(statFor(c).clicks || '—'))
-                    : el('td', { className: 'font-mono' }, formatUsdDecimal(c.current_spend ?? '0.00')),
+                    : el('td', { className: 'font-mono' }, formatUsdDecimal(c.current_spend ?? '0.00', { full: ui.showDetailedBudget })),
                   el('td', null, displayLabel(c.pacing_mode)),
                   buyerView
                     ? null

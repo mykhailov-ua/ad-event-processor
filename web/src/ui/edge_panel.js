@@ -1,5 +1,7 @@
 import { el } from '../lib/dom.js';
 import { displayLabel } from '../helpers/display_labels.js';
+import { fraudTierBandRows } from '../helpers/edge_fraud_tier.js';
+import { renderStatusBadge } from './status_badge.js';
 
 /**
  * Render edge ingress and block-reason metrics panel.
@@ -45,10 +47,38 @@ export function renderEdgePanel(edge) {
         el('dd', null, String(edge.body_peek ?? 0)),
         el('dt', null, 'Read'),
         el('dd', null, String(edge.body_read ?? 0)),
-        el('dt', null, 'Tarpit'),
+      ),
+      el('h3', { className: 'subsection-title' }, 'Fraud tier (edge)'),
+      el('p', { className: 'text-muted text-sm' },
+        'Score bands match edge-fraud-tier.lua. Blocked at edge: ',
+        el('strong', { className: 'font-mono' }, String(edge.blocked?.fraud_tier ?? 0)),
+      ),
+      el('div', { className: 'table-wrapper' },
+        el('table', { className: 'data-table', 'data-testid': 'edge-fraud-tier-table' },
+          el('thead', null,
+            el('tr', null,
+              el('th', { scope: 'col' }, 'Tier'),
+              el('th', { scope: 'col' }, 'Score'),
+              el('th', { scope: 'col' }, 'Action'),
+            ),
+          ),
+          el('tbody', null,
+            fraudTierBandRows().map((row) => el('tr', null,
+              el('td', null, renderStatusBadge(row.tier, { label: row.tier })),
+              el('td', { className: 'font-mono' }, row.range),
+              el('td', null, row.action),
+            )),
+          ),
+        ),
+      ),
+      el('h3', { className: 'subsection-title' }, 'Bot signals'),
+      el('dl', { className: 'definition-list' },
+        el('dt', null, 'Tarpit delays'),
         el('dd', null, String(edge.tarpit_total ?? 0)),
-        el('dt', null, 'Blacklist stale'),
+        el('dt', null, 'Blacklist stale rejects'),
         el('dd', null, String(edge.blacklist_stale ?? 0)),
+        el('dt', null, 'TLS fingerprint (X-TLS-Hash)'),
+        el('dd', { className: 'text-muted text-sm' }, 'Set at edge ingress; blocklist via platform TLS hash config'),
       ),
       el('h3', { className: 'subsection-title' }, 'Block reasons'),
       blockRows.length > 0

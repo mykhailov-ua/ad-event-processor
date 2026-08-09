@@ -79,6 +79,32 @@ test.describe('accessibility', () => {
     expect(results.violations.filter((v) => v.impact === 'critical')).toEqual([]);
   });
 
+  test('reports hub has no critical axe violations', async ({ page }) => {
+    await page.route('**/api/v1/reports/**', async (route) => {
+      await route.fulfill({
+        status: 501,
+        headers: { 'content-type': 'application/json', 'X-API-Stub': 'true' },
+        body: JSON.stringify({ error: { code: 'NOT_IMPLEMENTED', message: 'stub' } }),
+      });
+    });
+    await page.goto('/reports');
+    const results = await new AxeBuilder({ page }).analyze();
+    expect(results.violations.filter((v) => v.impact === 'critical')).toEqual([]);
+  });
+
+  test('placements report has no critical axe violations', async ({ page }) => {
+    await page.route('**/api/v1/reports/placements*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ items: [], total: 0, freshness: { stale: false } }),
+      });
+    });
+    await page.goto('/reports/placements?customer_id=cust-1');
+    const results = await new AxeBuilder({ page }).analyze();
+    expect(results.violations.filter((v) => v.impact === 'critical')).toEqual([]);
+  });
+
   test('settings page has no critical axe violations', async ({ page }) => {
     await page.goto('/settings');
     const results = await new AxeBuilder({ page }).analyze();

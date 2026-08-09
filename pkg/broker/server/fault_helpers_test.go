@@ -625,7 +625,11 @@ func ensureBrokerBinary(t *testing.T) string {
 	t.Helper()
 	root := moduleRoot(t)
 	bin := filepath.Join(os.TempDir(), "espx-broker-lab-test")
+	needBuild := true
 	if st, err := os.Stat(bin); err == nil && st.Mode().IsRegular() {
+		needBuild = brokerSourcesNewerThan(t, root, st.ModTime())
+	}
+	if !needBuild {
 		return bin
 	}
 	cmd := exec.Command("go", "build", "-o", bin, "./cmd/broker")
@@ -635,6 +639,30 @@ func ensureBrokerBinary(t *testing.T) string {
 		t.Fatalf("build broker: %v\n%s", err, out)
 	}
 	return bin
+}
+
+func brokerSourcesNewerThan(t *testing.T, root string, binTime time.Time) bool {
+	t.Helper()
+	paths := []string{
+		filepath.Join(root, "cmd", "broker"),
+		filepath.Join(root, "pkg", "broker"),
+	}
+	newer := false
+	for _, rootPath := range paths {
+		_ = filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
+			if err != nil || info == nil || info.IsDir() {
+				return nil
+			}
+			if info.ModTime().After(binTime) {
+				newer = true
+			}
+			return nil
+		})
+		if newer {
+			return true
+		}
+	}
+	return false
 }
 
 func startBrokerProcess(t *testing.T, bin, dataDir, nodeID, redisURL, addr string, extraArgs ...string) *brokerProcess {

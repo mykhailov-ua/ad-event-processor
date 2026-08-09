@@ -19,7 +19,7 @@ var migrationFiles embed.FS
 func ApplyMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 	if _, err := pool.Exec(ctx, `
 		CREATE SCHEMA IF NOT EXISTS notifier;
-		CREATE TABLE IF NOT EXISTS notify.schema_migrations (
+		CREATE TABLE IF NOT EXISTS notifier.schema_migrations (
 			filename   TEXT PRIMARY KEY,
 			applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
 		);
@@ -41,7 +41,7 @@ func ApplyMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 		}
 		var applied bool
 		err := pool.QueryRow(ctx, `
-			SELECT EXISTS (SELECT 1 FROM notify.schema_migrations WHERE filename = $1)
+			SELECT EXISTS (SELECT 1 FROM notifier.schema_migrations WHERE filename = $1)
 		`, entry.Name()).Scan(&applied)
 		if err != nil {
 			return fmt.Errorf("check migration %s: %w", entry.Name(), err)
@@ -68,7 +68,7 @@ func ApplyMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 			return fmt.Errorf("apply migration %s: %w", entry.Name(), err)
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO notify.schema_migrations (filename) VALUES ($1)
+			INSERT INTO notifier.schema_migrations (filename) VALUES ($1)
 		`, entry.Name()); err != nil {
 			_ = tx.Rollback(ctx)
 			return fmt.Errorf("record migration %s: %w", entry.Name(), err)

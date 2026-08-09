@@ -21,6 +21,25 @@ const IDEM_PREFIX = 'idem.pending.';
 const QUOTA_LIMIT = 4096;
 
 /**
+ * Error handler for localStorage related errors.
+ *
+ * @template T
+ * @param {() => T} fn
+ * @param {T} fallback
+ * @param {string} [context]
+ * @returns {T}
+ */
+function withStorageErrorHandler(fn, fallback, context) {
+  try {
+    return fn();
+  } catch (err) {
+    // Optionally, you could log to an error reporting system here.
+    // console.error(`[storage] Error${context ? ` in ${context}` : ''}:`, err);
+    return fallback;
+  }
+}
+
+/**
  * Read the persisted color theme preference.
  *
  * @returns {'dark'|'light'}
@@ -169,7 +188,7 @@ export { getSidebarWidthBounds, SIDEBAR_COLLAPSED_WIDTH } from './sidebar_layout
 export function getReportRange() {
   const v = _get('ui.reports.range');
   if (!v) return null;
-  try { return JSON.parse(v); } catch { return null; }
+  return withStorageErrorHandler(() => JSON.parse(v), null, "getReportRange");
 }
 
 /**
@@ -191,12 +210,12 @@ export function setReportRange(range) {
 export function getIdempotencyPending(scope) {
   const v = _getRaw(IDEM_PREFIX + scope);
   if (!v) return null;
-  try {
+  return withStorageErrorHandler(() => {
     const parsed = JSON.parse(v);
     const ageMs = Date.now() - (parsed.ts ?? 0);
     if (ageMs > 24 * 60 * 60 * 1000) { removeIdempotencyPending(scope); return null; }
     return parsed;
-  } catch { return null; }
+  }, null, "getIdempotencyPending");
 }
 
 /**
@@ -217,14 +236,16 @@ export function setIdempotencyPending(scope, data) {
  * @returns {void}
  */
 export function removeIdempotencyPending(scope) {
-  try { localStorage.removeItem(IDEM_PREFIX + scope); } catch {}
+  withStorageErrorHandler(() => {
+    localStorage.removeItem(IDEM_PREFIX + scope);
+  }, undefined, "removeIdempotencyPending");
 }
 
-/**
- * Read the last visited customer id.
- *
- * @returns {string|null}
- */
+ /**
+  * Read the last visited customer id.
+  *
+  * @returns {string|null}
+  */
 export function getLastCustomerId() {
   return _get('nav.lastCustomerId');
 }
@@ -249,13 +270,11 @@ const RECENT_CUSTOMERS_MAX = 8;
 export function getRecentCustomerIds() {
   const v = _get('nav.recentCustomerIds');
   if (!v) return [];
-  try {
+  return withStorageErrorHandler(() => {
     const parsed = JSON.parse(v);
     if (!Array.isArray(parsed)) return [];
     return parsed.filter((x) => typeof x === 'string' && x.length > 0).slice(0, RECENT_CUSTOMERS_MAX);
-  } catch {
-    return [];
-  }
+  }, [], "getRecentCustomerIds");
 }
 
 /**
@@ -281,7 +300,7 @@ export function pushRecentCustomerId(id) {
  */
 function _get(key) {
   if (!ALLOWED_KEYS.has(key)) return null;
-  try { return localStorage.getItem(key); } catch { return null; }
+  return withStorageErrorHandler(() => localStorage.getItem(key), null, '_get');
 }
 
 /**
@@ -293,10 +312,10 @@ function _get(key) {
  */
 function _set(key, value) {
   if (!ALLOWED_KEYS.has(key)) return;
-  try {
+  withStorageErrorHandler(() => {
     localStorage.setItem(key, value);
     _enforceQuota();
-  } catch {}
+  }, undefined, '_set');
 }
 
 /**
@@ -306,7 +325,7 @@ function _set(key, value) {
  * @returns {string|null}
  */
 function _getRaw(key) {
-  try { return localStorage.getItem(key); } catch { return null; }
+  return withStorageErrorHandler(() => localStorage.getItem(key), null, '_getRaw');
 }
 
 /**
@@ -317,10 +336,10 @@ function _getRaw(key) {
  * @returns {void}
  */
 function _setRaw(key, value) {
-  try {
+  withStorageErrorHandler(() => {
     localStorage.setItem(key, value);
     _enforceQuota();
-  } catch {}
+  }, undefined, '_setRaw');
 }
 
 /**
@@ -329,14 +348,14 @@ function _setRaw(key, value) {
  * @returns {void}
  */
 export function clearIdempotencyPendingAll() {
-  try {
+  withStorageErrorHandler(() => {
     const keys = [];
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       if (k?.startsWith(IDEM_PREFIX)) keys.push(k);
     }
     for (const k of keys) localStorage.removeItem(k);
-  } catch {}
+  }, undefined, "clearIdempotencyPendingAll");
 }
 
 /**
@@ -345,8 +364,8 @@ export function clearIdempotencyPendingAll() {
  * @returns {void}
  */
 function _enforceQuota() {
-  let total = 0;
-  try {
+  withStorageErrorHandler(() => {
+    let total = 0;
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       total += (k?.length ?? 0) + (localStorage.getItem(k) ?? '').length;
@@ -359,5 +378,5 @@ function _enforceQuota() {
       }
       for (const k of idemKeys) localStorage.removeItem(k);
     }
-  } catch {}
+  }, undefined, "_enforceQuota");
 }

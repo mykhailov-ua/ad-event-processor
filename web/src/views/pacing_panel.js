@@ -48,9 +48,9 @@ export function renderPacingPanel(input) {
     ),
     el('p', null, detail),
     el('p', null,
-      el('a', { href: '/reports/pacing-drift' }, 'Open pacing drift report'),
+      el('a', { href: '/campaigns/portfolio' }, 'Portfolio (pacing drift)'),
       ' · ',
-      el('a', { href: '/reports/spend-velocity' }, 'Spend velocity'),
+      el('a', { href: '/reports/placements' }, 'Placements'),
     ),
   );
 }

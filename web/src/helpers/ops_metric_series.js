@@ -18,6 +18,9 @@ export const OPS_METRIC_COLORS = {
   'ingress-h1': '--info',
   'ingress-h2': '--accent',
   'ingress-h3': '--success',
+  'edge-tarpit': '--warning',
+  'edge-blacklist-stale': '--danger',
+  'edge-fraud-tier': '--danger',
 };
 
 /** @type {string[]} */

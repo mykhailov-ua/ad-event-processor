@@ -9,6 +9,7 @@ import { validateCustomerIdField, validateReportRange } from '../helpers/validat
 import { REPORT_DATE_PRESETS } from '../helpers/date_presets.js';
 import { renderFreshnessBadge } from '../ui/freshness_badge.js';
 import { tenantReportQueryString } from '../helpers/tenant_url.js';
+import { renderAlertBanner } from '../ui/alert_banner.js';
 
 /**
  * Mount IVT-by-source report view.
@@ -31,15 +32,26 @@ export function mount(container, ctx) {
   let freshness = null;
   /** @type {Error|null} */
   let error = null;
+  let validationError = null;
 
   async function load() {
     const cid = sessionScoped ? boundCustomerId(user) : customerInput.trim();
     const rangeErr = validateReportRange(from, to);
-    if (!cid || rangeErr) {
-      error = rangeErr ? new Error(rangeErr) : new Error('customer_id required');
+    if (!cid) {
+      validationError = null;
+      rows = [];
+      error = null;
       render();
       return;
     }
+    if (rangeErr) {
+      validationError = rangeErr;
+      rows = [];
+      error = null;
+      render();
+      return;
+    }
+    validationError = null;
     loading = true;
     error = null;
     render();
@@ -66,6 +78,8 @@ export function mount(container, ctx) {
       replaceChildren(container, renderErrorBlock(error));
       return;
     }
+    const cid = sessionScoped ? boundCustomerId(user) : customerInput.trim();
+
     replaceChildren(container,
       el('div', { className: 'page-header' },
         el('h1', { className: 'page-header__title' }, 'IVT by source'),
@@ -84,6 +98,7 @@ export function mount(container, ctx) {
             children: el('input', {
               id: 'ivt-customer',
               className: 'form-input',
+              placeholder: 'Customer UUID…',
               value: customerInput,
               onInput: (e) => { customerInput = e.target.value; },
             }),
@@ -101,33 +116,39 @@ export function mount(container, ctx) {
         }),
         el('button', { type: 'submit', className: 'btn btn--primary', disabled: loading }, 'Load'),
       ),
-      loading ? el('p', null, 'Loading…') : null,
+      validationError ? renderAlertBanner({ variant: 'error', message: validationError }) : null,
+      !cid && !sessionScoped
+        ? renderAlertBanner({ variant: 'info', message: 'Enter a customer UUID to load report data.' })
+        : null,
+      loading ? el('p', { className: 'text-muted mt-4' }, 'Loading…') : null,
       rows.length > 0
-        ? el('table', { className: 'data-table' },
-          el('thead', null,
-            el('tr', null,
-              el('th', { scope: 'col' }, 'Campaign'),
-              el('th', { scope: 'col' }, 'Sub1'),
-              el('th', { scope: 'col' }, 'Sub2'),
-              el('th', { scope: 'col' }, 'Country'),
-              el('th', { scope: 'col' }, 'Impr.'),
-              el('th', { scope: 'col' }, 'IVT'),
-              el('th', { scope: 'col' }, 'IVT %'),
+        ? el('div', { className: 'table-wrapper elevation-raised mt-4' },
+          el('table', { className: 'data-table' },
+            el('thead', null,
+              el('tr', null,
+                el('th', { scope: 'col' }, 'Campaign'),
+                el('th', { scope: 'col' }, 'Sub1'),
+                el('th', { scope: 'col' }, 'Sub2'),
+                el('th', { scope: 'col' }, 'Country'),
+                el('th', { scope: 'col' }, 'Impr.'),
+                el('th', { scope: 'col' }, 'IVT'),
+                el('th', { scope: 'col' }, 'IVT %'),
+              ),
+            ),
+            el('tbody', null,
+              rows.map((row) => el('tr', null,
+                el('td', null, el('a', { href: `/campaigns/${row.campaign_id}` }, row.campaign_id)),
+                el('td', { className: 'font-mono' }, row.sub1 ?? '—'),
+                el('td', { className: 'font-mono' }, row.sub2 ?? '—'),
+                el('td', null, row.country ?? '—'),
+                el('td', null, String(row.impressions ?? 0)),
+                el('td', null, String(row.ivt_events ?? 0)),
+                el('td', null, row.ivt_rate != null ? `${(row.ivt_rate * 100).toFixed(2)}%` : '—'),
+              )),
             ),
           ),
-          el('tbody', null,
-            rows.map((row) => el('tr', null,
-              el('td', null, el('a', { href: `/campaigns/${row.campaign_id}` }, row.campaign_id)),
-              el('td', { className: 'font-mono' }, row.sub1 ?? '—'),
-              el('td', { className: 'font-mono' }, row.sub2 ?? '—'),
-              el('td', null, row.country ?? '—'),
-              el('td', null, String(row.impressions ?? 0)),
-              el('td', null, String(row.ivt_events ?? 0)),
-              el('td', null, row.ivt_rate != null ? `${(row.ivt_rate * 100).toFixed(2)}%` : '—'),
-            )),
-          ),
         )
-        : (!loading ? el('p', null, 'No rows.') : null),
+        : (cid && !loading ? el('p', { className: 'text-muted mt-4' }, 'No rows.') : null),
     );
   }
 

@@ -74,7 +74,19 @@ export function mapBuyerDashboard(data) {
 }
 
 /**
- * Estimate pacing drift priority for portfolio sorting (higher = needs attention).
+ * Return server pacing drift percent for sorting (absolute value; higher = more drift).
+ *
+ * @param {{ pacing_drift_pct?: number|null }} campaign
+ * @returns {number|null}
+ */
+export function portfolioDriftPct(campaign) {
+  const pct = campaign?.pacing_drift_pct;
+  if (pct == null || Number.isNaN(Number(pct))) return null;
+  return Math.abs(Number(pct));
+}
+
+/**
+ * Estimate pacing drift priority when API field is absent (higher = needs attention).
  *
  * @param {{ status?: string, pacing_mode?: string, impressions_7d?: number, clicks_7d?: number }} campaign
  * @returns {number}
@@ -111,6 +123,18 @@ export function filterPortfolioCampaigns(campaigns, statusFilter) {
 }
 
 /**
+ * Sort key for portfolio rows: server pacing_drift_pct when present, else heuristic score.
+ *
+ * @param {object} campaign
+ * @returns {number}
+ */
+export function portfolioDriftSortKey(campaign) {
+  const apiPct = portfolioDriftPct(campaign);
+  if (apiPct != null) return apiPct;
+  return pacingDriftScore(campaign);
+}
+
+/**
  * Sort portfolio rows by pacing drift descending; scores computed once per row.
  *
  * @param {object[]} campaigns
@@ -121,7 +145,7 @@ export function sortPortfolioByDrift(campaigns) {
   const decorated = new Array(n);
   for (let i = 0; i < n; i++) {
     const row = campaigns[i];
-    decorated[i] = { row, driftScore: pacingDriftScore(row) };
+    decorated[i] = { row, driftScore: portfolioDriftSortKey(row) };
   }
   decorated.sort((a, b) => b.driftScore - a.driftScore);
   return decorated;

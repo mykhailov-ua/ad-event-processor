@@ -19,6 +19,8 @@ type CampaignReader interface {
 	GetCampaign(ctx context.Context, campaignID uuid.UUID) (CampaignDTO, error)
 	GetCampaignMargin(ctx context.Context, campaignID uuid.UUID) (CampaignMarginDTO, error)
 	ListCampaigns(ctx context.Context, customerID uuid.UUID, status string, limit, offset int32) ([]CampaignDTO, int64, error)
+	PatchCampaign(ctx context.Context, campaignID uuid.UUID, req PatchCampaignRequest) (CampaignDTO, error)
+	ListCampaignEvents(ctx context.Context, campaignID uuid.UUID, limit, offset int32) ([]CampaignEventDTO, int64, error)
 }
 
 type CampaignsHTTPHandlers struct {
@@ -44,6 +46,8 @@ func (campaigns *CampaignsHTTPHandlers) Register(mux *http.ServeMux) {
 	}
 	mux.HandleFunc("GET /api/v1/campaigns", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, campaigns.listCampaigns)))
 	mux.HandleFunc("GET /api/v1/campaigns/{id}", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, campaigns.getCampaign)))
+	mux.HandleFunc("PATCH /api/v1/campaigns/{id}", limit(perm([]string{"campaigns:write"}, campaigns.patchCampaign)))
+	mux.HandleFunc("GET /api/v1/campaigns/{id}/events", limit(perm([]string{"campaigns:read"}, campaigns.listCampaignEvents)))
 	mux.HandleFunc("GET /api/v1/campaigns/{id}/margin", limit(perm([]string{"campaigns:read"}, campaigns.getCampaignMargin)))
 }
 
@@ -104,6 +108,42 @@ func (campaigns *CampaignsHTTPHandlers) getCampaignMargin(w http.ResponseWriter,
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, margin)
+}
+
+func (campaigns *CampaignsHTTPHandlers) patchCampaign(w http.ResponseWriter, r *http.Request) {
+	campaignID, ok := campaigns.parseCampaignID(w, r)
+	if !ok {
+		return
+	}
+	body, err := coldpath.ReadLimitedBody(w, r, coldpath.DefaultMaxBody)
+	if err != nil {
+		return
+	}
+	req, err := coldpath.DecodeBody[PatchCampaignRequest](body)
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
+		return
+	}
+	updated, err := campaigns.Campaigns.PatchCampaign(r.Context(), campaignID, req)
+	if err != nil {
+		campaigns.writeServiceError(w, err)
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, updated)
+}
+
+func (campaigns *CampaignsHTTPHandlers) listCampaignEvents(w http.ResponseWriter, r *http.Request) {
+	campaignID, ok := campaigns.parseCampaignID(w, r)
+	if !ok {
+		return
+	}
+	limit, offset := parseAPIPagination(r)
+	items, total, err := campaigns.Campaigns.ListCampaignEvents(r.Context(), campaignID, limit, offset)
+	if err != nil {
+		campaigns.writeServiceError(w, err)
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, CampaignEventListResponse{Items: items, Total: total})
 }
 
 func (campaigns *CampaignsHTTPHandlers) parseCampaignID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {

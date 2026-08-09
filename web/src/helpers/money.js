@@ -35,7 +35,7 @@ export function ParseDecimal(s) {
 }
 
 /**
- * Format micro-units as a dollar amount with two decimal places.
+ * Format micro-units as a dollar amount with two decimal places by default ($00.00).
  *
  * @param {MoneyMicro} micro
  * @returns {string}
@@ -49,7 +49,7 @@ export function formatMicro(micro) {
 }
 
 /**
- * Format micro-units as a dollar amount with six decimal places.
+ * Format micro-units as a dollar amount with six decimal places ($00.000000).
  *
  * @param {MoneyMicro} micro
  * @returns {string}
@@ -87,11 +87,20 @@ export function formatDecimalDisplay(decimal) {
 
 /**
  * Format a USD decimal field for display.
+ * Default: "$00.00" (dollars & cents, e.g. "$100.00").
+ * Options: { full: true } -> "$100.000000" for detailed view.
  *
  * @param {string | number | null | undefined} decimal
+ * @param {{ full?: boolean, currency?: boolean }} [options]
  * @returns {string}
  */
-export function formatUsdDecimal(decimal) {
+export function formatUsdDecimal(decimal, options = {}) {
   if (decimal == null || decimal === '') return '—';
-  return formatDecimalDisplay(String(decimal));
+  const num = Number(decimal);
+  if (!Number.isFinite(num)) return String(decimal);
+  const prefix = options.currency !== false ? '$' : '';
+  if (options.full) {
+    return `${prefix}${num.toFixed(6)}`;
+  }
+  return `${prefix}${num.toFixed(2)}`;
 }

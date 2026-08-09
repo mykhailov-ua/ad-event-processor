@@ -17,6 +17,8 @@ let onNavigate = null;
 let activeView = null;
 /** @type {HTMLElement|null} */
 let outlet = null;
+/** Monotonic id so stale async navigations do not clobber a newer route. */
+let routeGen = 0;
 
 /**
  * @param {RouteDef[]} defs
@@ -112,16 +114,26 @@ export async function renderCurrent(pathname = window.location.pathname) {
     navigate,
   };
 
-  replaceOutlet(el('span', { className: 'text-muted' }, 'Loading…'));
+  // Keep current view until the next module is ready; only flash Loading if import is slow.
+  const loadGen = ++routeGen;
+  let loadingTimer = window.setTimeout(() => {
+    if (routeGen !== loadGen) return;
+    replaceOutlet(el('span', { className: 'text-muted' }, 'Loading…'));
+  }, 120);
 
   try {
     const mod = await route.load();
+    window.clearTimeout(loadingTimer);
+    if (routeGen !== loadGen) return;
     if (activeView?.destroy) activeView.destroy();
     activeView = null;
     outlet.replaceChildren();
     activeView = mod.mount(outlet, ctx) ?? null;
     probeRouteChange(pathname.split('?')[0] || '/');
+    window.dispatchEvent(new Event('routechange'));
   } catch (err) {
+    window.clearTimeout(loadingTimer);
+    if (routeGen !== loadGen) return;
     replaceOutlet(
       el('div', { className: 'error-page' },
         el('div', { className: 'error-page__title' }, 'Failed to load view'),

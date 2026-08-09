@@ -28,6 +28,8 @@ import {
 } from '../ui/data_table.js';
 import { displayLabel } from '../helpers/display_labels.js';
 
+import { renderCopyableUuid } from '../ui/copy_text.js';
+
 const LEDGER_PAGE = 50;
 const INVOICE_PAGE = 50;
 
@@ -68,16 +70,13 @@ function buildLedgerUrl(customerId, page) {
 }
 
 /**
- * Render a UUID with middle truncation for table cells.
+ * Render a UUID with middle truncation that is clickable and copyable.
  *
  * @param {string} uuid
  * @returns {HTMLElement|string}
  */
 function renderMiddleTruncateUuid(uuid) {
-  if (!uuid) return '—';
-  const start = uuid.slice(0, 8);
-  const end = uuid.slice(-8);
-  return el('span', { className: 'font-mono text-hint', title: uuid }, `${start}…${end}`);
+  return renderCopyableUuid(uuid);
 }
 
 /**

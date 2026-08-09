@@ -11,6 +11,7 @@ import { touchCustomerContext } from '../helpers/customer_context.js';
 import { renderBreadcrumbs } from '../ui/breadcrumbs.js';
 import { renderStatusBadge } from '../ui/status_badge.js';
 import { renderIcon } from '../ui/icon.js';
+import { mountCustomerApiKeysPanel } from './customer_api_keys_panel.js';
 import {
   createSortState,
   toggleSort,
@@ -33,6 +34,11 @@ export function mount(container, ctx) {
   const user = auth.getUser();
   const tenant = isTenantUser(user?.role);
   const canWriteCustomer = can(user?.permissions ?? [], 'customers:write');
+  const canCreateApiKey = can(user?.permissions ?? [], 'campaigns:write');
+
+  const apiKeysSlot = el('div');
+  /** @type {{ destroy: () => void }|null} */
+  let apiKeysPanel = null;
 
   const customerState = { data: null, loading: true, error: null };
   const campaignsState = { data: null, loading: true, error: null };
@@ -175,6 +181,7 @@ export function mount(container, ctx) {
           )
           : null,
       ),
+      apiKeysSlot,
       el('section', { className: 'section-block' },
         el('div', { className: 'flex items-center gap-2 mb-3' },
           el('h2', { className: 'subsection-title' }, 'Wallet'),
@@ -252,6 +259,9 @@ export function mount(container, ctx) {
           : null,
       ),
     );
+    if (!apiKeysPanel && !destroyed) {
+      apiKeysPanel = mountCustomerApiKeysPanel(apiKeysSlot, { canCreate: canCreateApiKey });
+    }
   }
 
   const customerResource = createResource(
@@ -301,6 +311,7 @@ export function mount(container, ctx) {
   return {
     destroy() {
       destroyed = true;
+      apiKeysPanel?.destroy();
       customerResource.destroy();
       campaignsResource.destroy();
       walletResource.destroy();

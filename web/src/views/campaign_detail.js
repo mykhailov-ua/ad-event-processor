@@ -24,6 +24,12 @@ import { createInFlightGuard } from '../lib/async_guard.js';
 import { renderCommercialMetrics } from '../ui/commercial_metrics.js';
 import { api } from '../helpers/api_client.js';
 import { mountCampaignTelegramPanel } from './campaign_telegram_panel.js';
+import { mountCampaignTrackingPanel } from './campaign_tracking_panel.js';
+import { mountCampaignPostbackPanel } from './campaign_postback_panel.js';
+import { mountCampaignFiltersPanel } from './campaign_filters_panel.js';
+import { mountCampaignMarginGuardPanel } from './campaign_margin_guard_panel.js';
+import { patchCampaign } from '../helpers/campaign_admin_api.js';
+import { tableSkeletonRows } from '../ui/data_table.js';
 
 import { renderIcon } from '../ui/icon.js';
 import { displayLabel } from '../helpers/display_labels.js';
@@ -68,8 +74,26 @@ export function mount(container, ctx) {
   const canWriteCampaign = can(permissions, 'campaigns:write');
 
   const tgSlot = el('div', { 'data-tg-panel': '' });
+  const trackingSlot = el('div', { 'data-tracking-panel': '' });
+  const postbackSlot = el('div', { 'data-postback-panel': '' });
+  const filtersSlot = el('div', { 'data-filters-panel': '' });
+  const marginSlot = el('div', { 'data-margin-panel': '' });
   /** @type {{ destroy: () => void }|null} */
   let tgPanelHandle = null;
+  /** @type {{ destroy: () => void }|null} */
+  let trackingPanelHandle = null;
+  /** @type {{ destroy: () => void }|null} */
+  let postbackPanelHandle = null;
+  /** @type {{ destroy: () => void }|null} */
+  let filtersPanelHandle = null;
+  /** @type {{ destroy: () => void, reload: () => void }|null} */
+  let marginPanelHandle = null;
+  let eventsPage = 0;
+  let eventsRows = [];
+  let eventsTotal = 0;
+  let eventsLoading = false;
+  let configSaving = false;
+  let configError = null;
 
   const campaignState = { data: null, loading: true, error: null };
   const statsState = { data: null, loading: false, error: null };
@@ -95,9 +119,74 @@ export function mount(container, ctx) {
       { id: 'stats', label: 'Statistics' },
       { id: 'config', label: 'Configuration' },
     ];
-    if (!masked) list.push({ id: 'creative', label: 'Creative' });
-    if (!masked) list.push({ id: 'telegram', label: 'Telegram' });
+    if (!masked) {
+      list.push({ id: 'tracking', label: 'Tracking' });
+      list.push({ id: 'postbacks', label: 'Postbacks' });
+      list.push({ id: 'filters', label: 'Filters' });
+      list.push({ id: 'margin', label: 'Margin guard' });
+      list.push({ id: 'events', label: 'Event log' });
+      list.push({ id: 'creative', label: 'Creative' });
+      list.push({ id: 'telegram', label: 'Telegram' });
+    }
     return list;
+  }
+
+  function destroyAuxPanels() {
+    tgPanelHandle?.destroy();
+    tgPanelHandle = null;
+    trackingPanelHandle?.destroy();
+    trackingPanelHandle = null;
+    postbackPanelHandle?.destroy();
+    postbackPanelHandle = null;
+    filtersPanelHandle?.destroy();
+    filtersPanelHandle = null;
+    marginPanelHandle?.destroy();
+    marginPanelHandle = null;
+  }
+
+  async function loadEvents() {
+    eventsLoading = true;
+    render();
+    const limit = 50;
+    const offset = eventsPage * limit;
+    const [res, err] = await to(api(`/api/v1/campaigns/${id}/events?limit=${limit}&offset=${offset}`));
+    if (destroyed) return;
+    eventsLoading = false;
+    if (err) {
+      eventsRows = [];
+      eventsTotal = 0;
+    } else {
+      eventsRows = res?.data?.items ?? [];
+      eventsTotal = res?.data?.total ?? 0;
+    }
+    render();
+  }
+
+  async function saveConfig(campaign) {
+    if (!canWriteCampaign || configSaving) return;
+    configSaving = true;
+    configError = null;
+    render();
+    const nameInput = container.querySelector('#cfg-name');
+    const pacingInput = container.querySelector('#cfg-pacing');
+    const tzInput = container.querySelector('#cfg-timezone');
+    const body = {
+      name: nameInput instanceof HTMLInputElement ? nameInput.value.trim() : campaign.name,
+      pacing_mode: pacingInput instanceof HTMLSelectElement ? pacingInput.value : campaign.pacing_mode,
+      timezone: tzInput instanceof HTMLInputElement ? tzInput.value.trim() : campaign.timezone,
+    };
+    const [, err] = await to(patchCampaign(id, body));
+    configSaving = false;
+    if (err) {
+      if (err instanceof ConfirmCancelledError) {
+        render();
+        return;
+      }
+      configError = err.message || 'Save failed';
+      render();
+      return;
+    }
+    campaignResource.reload();
   }
 
   function destroyChart() {
@@ -276,12 +365,10 @@ export function mount(container, ctx) {
           : null,
       ),
       renderTabBar({ tabs: tabs(), active: tab, onChange: (t) => {
-        if (tab === 'telegram' && t !== 'telegram' && tgPanelHandle) {
-          tgPanelHandle.destroy();
-          tgPanelHandle = null;
-        }
+        destroyAuxPanels();
         tab = t;
         if (t === 'stats') statsResource.reload();
+        else if (t === 'events') loadEvents();
         else destroyChart();
         render();
       } }),
@@ -388,7 +475,47 @@ export function mount(container, ctx) {
         )
         : null,
       tab === 'config'
-        ? el('div', { className: 'section-block' },
+        ? el('div', { className: 'section-block stack' },
+          canWriteCampaign && !masked
+            ? el('div', { className: 'section-card stack' },
+              el('h3', { className: 'subsection-title' }, 'Edit settings'),
+              configError ? el('p', { className: 'text-danger text-sm' }, configError) : null,
+              el('label', { className: 'form-field', htmlFor: 'cfg-name' },
+                'Name',
+                el('input', {
+                  id: 'cfg-name',
+                  className: 'form-input',
+                  defaultValue: campaign.name,
+                }),
+              ),
+              el('label', { className: 'form-field', htmlFor: 'cfg-pacing' },
+                'Pacing',
+                el('select', {
+                  id: 'cfg-pacing',
+                  className: 'form-input form-input--sm',
+                  defaultValue: campaign.pacing_mode ?? 'ASAP',
+                },
+                  el('option', { value: 'ASAP' }, 'ASAP'),
+                  el('option', { value: 'EVEN' }, 'Even'),
+                  el('option', { value: 'VPP' }, 'VPP'),
+                ),
+              ),
+              el('label', { className: 'form-field', htmlFor: 'cfg-timezone' },
+                'Timezone',
+                el('input', {
+                  id: 'cfg-timezone',
+                  className: 'form-input form-input--sm',
+                  defaultValue: campaign.timezone ?? 'UTC',
+                }),
+              ),
+              el('button', {
+                type: 'button',
+                className: 'btn btn--primary btn--sm',
+                disabled: configSaving,
+                onClick: () => saveConfig(campaign),
+              }, configSaving ? 'Saving…' : 'Save changes'),
+            )
+            : null,
           configGrid([
             ['ID', campaign.id],
             ['Customer', campaign.customer_id],
@@ -412,6 +539,57 @@ export function mount(container, ctx) {
                 : '—',
             ],
           ]),
+        )
+        : null,
+      tab === 'tracking' && !masked ? el('div', { className: 'section-block' }, trackingSlot) : null,
+      tab === 'postbacks' && !masked ? el('div', { className: 'section-block' }, postbackSlot) : null,
+      tab === 'filters' && !masked ? el('div', { className: 'section-block' }, filtersSlot) : null,
+      tab === 'margin' && !masked ? el('div', { className: 'section-block' }, marginSlot) : null,
+      tab === 'events' && !masked
+        ? el('div', { className: 'section-block' },
+          el('div', { className: 'table-wrapper table-wrapper--scroll' },
+            el('table', { className: 'data-table', 'aria-label': 'Campaign events' },
+              el('thead', null,
+                el('tr', null,
+                  el('th', { scope: 'col' }, 'Time'),
+                  el('th', { scope: 'col' }, 'Type'),
+                  el('th', { scope: 'col' }, 'Click ID'),
+                  el('th', { scope: 'col' }, 'User'),
+                ),
+              ),
+              el('tbody', null,
+                eventsLoading ? tableSkeletonRows(4) : null,
+                !eventsLoading && eventsRows.length === 0
+                  ? el('tr', null, el('td', { colSpan: 4 }, 'No events in Postgres yet.'))
+                  : null,
+                eventsRows.map((row) => el('tr', null,
+                  el('td', null, row.created_at ? new Date(row.created_at).toLocaleString() : '—'),
+                  el('td', null, row.event_type ?? '—'),
+                  el('td', { className: 'font-mono text-hint' }, row.click_id ?? '—'),
+                  el('td', null, row.user_id ?? '—'),
+                )),
+              ),
+            ),
+          ),
+          eventsTotal > 50
+            ? el('div', { className: 'pagination-bar' },
+              el('button', {
+                type: 'button',
+                className: 'btn btn--secondary btn--sm',
+                disabled: eventsPage === 0,
+                onClick: () => { eventsPage -= 1; loadEvents(); },
+              }, 'Prev'),
+              el('span', { className: 'text-muted text-xs' },
+                `${eventsPage + 1} / ${Math.ceil(eventsTotal / 50)}`,
+              ),
+              el('button', {
+                type: 'button',
+                className: 'btn btn--secondary btn--sm',
+                disabled: (eventsPage + 1) * 50 >= eventsTotal,
+                onClick: () => { eventsPage += 1; loadEvents(); },
+              }, 'Next'),
+            )
+            : null,
         )
         : null,
       tab === 'creative' && !masked
@@ -440,6 +618,29 @@ export function mount(container, ctx) {
     }
     if (tab === 'telegram' && !masked && !tgPanelHandle) {
       tgPanelHandle = mountCampaignTelegramPanel(tgSlot, {
+        campaignId: id,
+        canWrite: canWriteCampaign,
+      });
+    }
+    if (tab === 'tracking' && !masked && !trackingPanelHandle) {
+      trackingPanelHandle = mountCampaignTrackingPanel(trackingSlot, { campaignId: id });
+    }
+    if (tab === 'postbacks' && !masked && !postbackPanelHandle) {
+      postbackPanelHandle = mountCampaignPostbackPanel(postbackSlot, {
+        campaignId: id,
+        canWrite: canWriteCampaign,
+      });
+    }
+    if (tab === 'filters' && !masked && !filtersPanelHandle) {
+      filtersPanelHandle = mountCampaignFiltersPanel(filtersSlot, {
+        campaignId: id,
+        referrerFilter: campaign.referrer_filter ?? '',
+        canWrite: canWriteCampaign,
+        onSaved: () => campaignResource.reload(),
+      });
+    }
+    if (tab === 'margin' && !masked && !marginPanelHandle) {
+      marginPanelHandle = mountCampaignMarginGuardPanel(marginSlot, {
         campaignId: id,
         canWrite: canWriteCampaign,
       });
@@ -489,7 +690,7 @@ export function mount(container, ctx) {
       destroyed = true;
       actionGate.release();
       destroyChart();
-      tgPanelHandle?.destroy();
+      destroyAuxPanels();
       campaignResource.destroy();
       statsResource.destroy();
     },

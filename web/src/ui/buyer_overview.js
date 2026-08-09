@@ -24,10 +24,12 @@ import { renderRecommendationCards, renderAlertFeed } from './recommendation_car
  *   }|null,
  *   perf?: Record<string, { count: number, nsPerOp: number, allocPerOp: number, bytesPerOp: number }>,
  *   error?: string|null,
+ *   recActionLoading?: boolean,
  * }} state
+ * @param {import('./recommendation_cards.js').RecommendationCardHandlers} [recHandlers]
  * @returns {HTMLElement}
  */
-export function renderBuyerOverview(state) {
+export function renderBuyerOverview(state, recHandlers = {}) {
   const children = [
     el('h2', { className: 'subsection-title' }, 'Buyer portfolio'),
   ];
@@ -64,7 +66,10 @@ export function renderBuyerOverview(state) {
     ));
   }
 
-  const recs = renderRecommendationCards(p.recommendations ?? []);
+  const recs = renderRecommendationCards(p.recommendations ?? [], {
+    ...recHandlers,
+    actionLoading: state.recActionLoading === true,
+  });
   if (recs) children.push(recs);
   const alerts = renderAlertFeed(p.alerts ?? []);
   if (alerts) children.push(alerts);

@@ -215,11 +215,34 @@ type FraudOverviewDTO struct {
 }
 
 type FraudDashboardDTO struct {
-	CustomerID        string    `json:"customer_id"`
-	Period            PeriodDTO `json:"period"`
-	GhostIVTCampaigns int       `json:"ghost_ivt_campaigns"`
-	LabelsPending     int       `json:"labels_pending"`
-	EdgeBlockedFraud  uint64    `json:"edge_blocked_fraud"`
+	CustomerID          string                 `json:"customer_id"`
+	Period              PeriodDTO              `json:"period"`
+	GhostIVTCampaigns   int                    `json:"ghost_ivt_campaigns"`
+	LabelsPending       int                    `json:"labels_pending"`
+	EdgeBlockedFraud    uint64                 `json:"edge_blocked_fraud"`
+	MLActiveVersionID   string                 `json:"ml_active_version_id,omitempty"`
+	MLArtifactHash      string                 `json:"ml_artifact_hash,omitempty"`
+	MLPrecision         float64                `json:"ml_precision,omitempty"`
+	MLRecall            float64                `json:"ml_recall,omitempty"`
+	MLDriftDetected     bool                   `json:"ml_drift_detected,omitempty"`
+	FraudTierThresholds FraudTierThresholdsDTO `json:"fraud_tier_thresholds"`
+	GeoHints            []FraudGeoHintDTO      `json:"geo_hints,omitempty"`
+	RecentLabels        []MLManualLabelDTO     `json:"recent_labels,omitempty"`
+}
+
+type FraudTierThresholdsDTO struct {
+	PassMax    int `json:"pass_max"`
+	SuspectMax int `json:"suspect_max"`
+	IVTMax     int `json:"ivt_max"`
+	BlockAbove int `json:"block_above"`
+}
+
+type FraudGeoHintDTO struct {
+	Country    string  `json:"country"`
+	IVTRate    float64 `json:"ivt_rate"`
+	IVTEvents  int64   `json:"ivt_events"`
+	Clicks     int64   `json:"clicks"`
+	CampaignID string  `json:"campaign_id,omitempty"`
 }
 
 type EdgeMetricsPanelDTO struct {
