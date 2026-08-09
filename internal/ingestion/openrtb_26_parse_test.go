@@ -155,11 +155,10 @@ func BenchmarkParseOpenRTB26Into_connReuse(b *testing.B) {
 }
 
 func BenchmarkParseOpenRTB26Split_hotOnly(b *testing.B) {
-	var hot OpenRTB26Hot
-	var cold OpenRTB26Cold
+	var ctx connContext
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		ParseOpenRTB26Split(openrtb26Sample, &hot, &cold)
+		ParseOpenRTB26Split(openrtb26Sample, &ctx.openrtbParsed.OpenRTB26Hot, &ctx.openrtbParsed.OpenRTB26Cold)
 	}
 }
 

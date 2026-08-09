@@ -12,7 +12,7 @@ import (
 
 func TestFault_SecurityGap_H1_04b_ObsFoldContinuation(t *testing.T) {
 	payload := []byte("POST /track HTTP/1.1\r\nX-Evil: safe\r\n continuation\r\nContent-Length: 0\r\n\r\n")
-	_, _, err := parseHTTP1(payload, 1024)
+	_, _, err := parseHTTP1(payload, 1024, nil)
 
 	disposition := "rejected"
 	gap := "closed"
@@ -33,7 +33,7 @@ func TestFault_SecurityGap_H1_04b_ObsFoldContinuation(t *testing.T) {
 func TestFault_SecurityGap_XDFA_04_ProtoAsJSON(t *testing.T) {
 	proto := testProtoTrackBody(t)
 	wire := append([]byte(fmt.Sprintf("POST /track HTTP/1.1\r\nContent-Length: %d\r\n\r\n", len(proto))), proto...)
-	n, req, err := parseHTTP1(wire, 1<<20)
+	n, req, err := parseHTTP1(wire, 1<<20, nil)
 	require.NoError(t, err)
 	require.Equal(t, len(wire), n)
 

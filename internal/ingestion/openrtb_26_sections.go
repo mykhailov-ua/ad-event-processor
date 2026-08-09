@@ -1,7 +1,7 @@
 package ingestion
 
-import "bytes"
-
+// openrtb26Sections holds first-hit byte offsets for top-level OpenRTB 2.6
+// object keys. Values are -1 when absent. Populated by scanOpenRTB26Payload.
 type openrtb26Sections struct {
 	imp    int
 	device int
@@ -10,18 +10,6 @@ type openrtb26Sections struct {
 	user   int
 	source int
 	dooh   int
-}
-
-func locateOpenRTB26Sections(payload []byte) openrtb26Sections {
-	return openrtb26Sections{
-		imp:    bytes.Index(payload, openrtbKeyImp),
-		device: bytes.Index(payload, openrtbKeyDevice),
-		site:   bytes.Index(payload, openrtbKeySite),
-		app:    bytes.Index(payload, openrtbKeyApp),
-		user:   bytes.Index(payload, openrtbKeyUser),
-		source: bytes.Index(payload, openrtbKeySource),
-		dooh:   bytes.Index(payload, openrtbKeyDOOH),
-	}
 }
 
 func asciiUpperByte(b byte) byte {

@@ -10,21 +10,21 @@ var (
 
 var rtbExchangeADomain = []byte("bidshard.local")
 
-func parseBlocklistFields(payload []byte, hot *OpenRTB26Hot, cold *OpenRTB26Cold) {
-	if idx := bytes.Index(payload, openrtbKeyBCat); idx >= 0 {
-		cold.BCatCount = parseStringJSONArrayBCat(payload, idx+len(openrtbKeyBCat), cold)
+func parseBlocklistFieldsFromScan(payload []byte, scan openrtb26Scan, hot *OpenRTB26Hot, cold *OpenRTB26Cold) {
+	if scan.idxBCat >= 0 {
+		cold.BCatCount = parseStringJSONArrayBCat(payload, scan.idxBCat+len(openrtbKeyBCat), cold)
 		if cold.BCatCount > 0 {
 			hot.Flags |= openrtb26FlagBCat
 		}
 	}
-	if idx := bytes.Index(payload, openrtbKeyBAdv); idx >= 0 {
-		cold.BAdvCount = parseStringJSONArrayBAdv(payload, idx+len(openrtbKeyBAdv), cold)
+	if scan.idxBAdv >= 0 {
+		cold.BAdvCount = parseStringJSONArrayBAdv(payload, scan.idxBAdv+len(openrtbKeyBAdv), cold)
 		if cold.BAdvCount > 0 {
 			hot.Flags |= openrtb26FlagBAdv
 		}
 	}
-	if idx := bytes.Index(payload, openrtbKeyBApp); idx >= 0 {
-		cold.BAppCount = parseStringJSONArrayBApp(payload, idx+len(openrtbKeyBApp), cold)
+	if scan.idxBApp >= 0 {
+		cold.BAppCount = parseStringJSONArrayBApp(payload, scan.idxBApp+len(openrtbKeyBApp), cold)
 		if cold.BAppCount > 0 {
 			hot.Flags |= openrtb26FlagBApp
 		}

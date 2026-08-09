@@ -70,7 +70,7 @@ func BenchmarkBuildRedirectLocation(b *testing.B) {
 
 func BenchmarkClickRedirectGnet_E2E(b *testing.B) {
 	h, inbound := benchClickHandler(b)
-	_, req, err := parseHTTP1(inbound, 1<<20)
+	_, req, err := parseHTTP1(inbound, 1<<20, nil)
 	if err != nil {
 		b.Fatal(err)
 	}

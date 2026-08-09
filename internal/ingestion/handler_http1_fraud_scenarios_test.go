@@ -127,7 +127,7 @@ func TestFraudScenarios_HTTP1_2026(t *testing.T) {
 				}
 			}()
 
-			n, req, err := parseHTTP1(tc.payload, tc.maxBody)
+			n, req, err := parseHTTP1(tc.payload, tc.maxBody, nil)
 			rest := tc.payload[n:]
 
 			switch {
@@ -172,7 +172,7 @@ func TestFraudScenarios_HTTP1_PipelineSpam(t *testing.T) {
 	buf := bytes.Repeat(reqLine, 50)
 	offset := 0
 	for i := 0; i < 50; i++ {
-		n, _, err := parseHTTP1(buf[offset:], maxBody)
+		n, _, err := parseHTTP1(buf[offset:], maxBody, nil)
 		require.NoError(t, err, "pipeline iter %d", i)
 		require.Equal(t, len(reqLine), n)
 		offset += n
@@ -182,7 +182,7 @@ func TestFraudScenarios_HTTP1_PipelineSpam(t *testing.T) {
 
 func TestFraudScenarios_HTTP1_HeaderValueCRLFInjection(t *testing.T) {
 	payload := []byte("POST /track HTTP/1.1\r\nX-Evil: safe\r\n continuation\r\nContent-Length: 0\r\n\r\n")
-	_, _, err := parseHTTP1(payload, 1024)
+	_, _, err := parseHTTP1(payload, 1024, nil)
 	if err == nil {
 		t.Fatal("GAP H1-04b: obs-fold continuation in header value accepted")
 	}
@@ -192,6 +192,6 @@ func TestFraudScenarios_HTTP1_FraudHeaderBounds(t *testing.T) {
 	const maxHeader = 1024
 	h := strings.Repeat("x", maxHeader+1)
 	payload := fmt.Appendf(nil, "POST /track HTTP/1.1\r\nX-TLS-Hash: %s\r\nContent-Length: 0\r\n\r\n", h)
-	_, _, err := parseHTTP1(payload, 1024)
+	_, _, err := parseHTTP1(payload, 1024, nil)
 	require.ErrorIs(t, err, errInvalidRequest)
 }

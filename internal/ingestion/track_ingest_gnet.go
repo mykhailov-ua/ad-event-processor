@@ -48,7 +48,7 @@ func (h *AdsPacketHandler) parseTrackIngest(
 			pbReq.Metadata.ExtraBytes = pbReq.Metadata.ExtraBytes[:0]
 		}
 
-		if err := pbReq.UnmarshalVT(req.Body); err != nil {
+		if err := unmarshalAdEventVT(pbReq, req.Body); err != nil {
 			return fields, respInvalidProto, http.StatusBadRequest, false
 		}
 

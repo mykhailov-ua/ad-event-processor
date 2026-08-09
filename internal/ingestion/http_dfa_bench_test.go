@@ -2,6 +2,7 @@ package ingestion
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 )
 
@@ -12,6 +13,19 @@ var http1HappyCorpus = []byte(
 		`{"campaign_id":"00000000-0000-0000-0000-000000000001","type":"click"}`,
 )
 
+var http1OpenRTBBidCorpus = func() []byte {
+	body := []byte(`{"id":"req-1","imp":[{"id":"1","banner":{"w":300,"h":250}}]}`)
+	var wire []byte
+	wire = append(wire, "POST /openrtb/bid HTTP/1.1\r\n"...)
+	wire = append(wire, "Host: edge.local\r\n"...)
+	wire = append(wire, "Content-Type: application/json\r\n"...)
+	wire = append(wire, fmt.Sprintf("Content-Length: %d\r\n", len(body))...)
+	wire = append(wire, "X-Forwarded-For: 203.0.113.10\r\n"...)
+	wire = append(wire, "User-Agent: Mozilla/5.0\r\n\r\n"...)
+	wire = append(wire, body...)
+	return wire
+}()
+
 var http1WorstCorpus = nginxTrackCorpus
 
 func BenchmarkHTTP1DFA_Happy(b *testing.B) {
@@ -20,7 +34,20 @@ func BenchmarkHTTP1DFA_Happy(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, _, err := parseHTTP1(http1HappyCorpus, maxBody)
+		_, _, err := parseHTTP1(http1HappyCorpus, maxBody, nil)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkHTTP1DFA_OpenRTBBid(b *testing.B) {
+	const maxBody = int64(1024 * 1024)
+	b.SetBytes(int64(len(http1OpenRTBBidCorpus)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _, err := parseHTTP1(http1OpenRTBBidCorpus, maxBody, nil)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -33,7 +60,7 @@ func BenchmarkHTTP1DFA_Worst(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, _, err := parseHTTP1(http1WorstCorpus, maxBody)
+		_, _, err := parseHTTP1(http1WorstCorpus, maxBody, nil)
 		if err != nil {
 			b.Fatal(err)
 		}

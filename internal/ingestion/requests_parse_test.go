@@ -134,7 +134,26 @@ func TestAdEvent_UnmarshalVT_ZeroAlloc(t *testing.T) {
 	}
 }
 
-func testProtoTrackBodyExtraRepeated(t testing.TB) []byte {
+func testProtoTrackBodyExtraBytes(t testing.TB) []byte {
+	t.Helper()
+	id := uuid.New()
+	evt := &pb.AdEvent{
+		CampaignId: id[:],
+		EventType:  []byte("click"),
+		Metadata: &pb.EventMetadata{
+			ClickId:    []byte("test-click"),
+			UserId:     []byte("user123"),
+			ExtraBytes: []byte(`{"slot":"top","cpm":"1.25"}`),
+		},
+	}
+	body, err := evt.MarshalVT()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return body
+}
+
+func testProtoTrackBodyExtraRepeatedLegacy(t testing.TB) []byte {
 	t.Helper()
 	id := uuid.New()
 	evt := &pb.AdEvent{
@@ -154,8 +173,31 @@ func testProtoTrackBodyExtraRepeated(t testing.TB) []byte {
 	return body
 }
 
-func TestAdEvent_UnmarshalVT_ExtraRepeated_ZeroAlloc(t *testing.T) {
-	body := testProtoTrackBodyExtraRepeated(t)
+func TestAdEvent_UnmarshalVT_ExtraBytes_ZeroAlloc(t *testing.T) {
+	body := testProtoTrackBodyExtraBytes(t)
+	var evt pb.AdEvent
+	evt.Metadata = &pb.EventMetadata{}
+
+	for i := 0; i < 100; i++ {
+		resetPooledAdEvent(&evt)
+		if err := evt.UnmarshalVT(body); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	avg := testing.AllocsPerRun(100, func() {
+		resetPooledAdEvent(&evt)
+		if err := evt.UnmarshalVT(body); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if avg > 0 {
+		t.Fatalf("AdEvent.UnmarshalVT extra_bytes allocated %f times per run, want 0", avg)
+	}
+}
+
+func TestAdEvent_UnmarshalVT_ExtraRepeated_LegacyZeroAlloc(t *testing.T) {
+	body := testProtoTrackBodyExtraRepeatedLegacy(t)
 	var evt pb.AdEvent
 	evt.Metadata = &pb.EventMetadata{}
 

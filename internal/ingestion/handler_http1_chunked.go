@@ -1,6 +1,12 @@
 package ingestion
 
 func teValueOnlyChunked(val []byte) bool {
+	for i := 0; i < len(val); i++ {
+		c := val[i]
+		if c < 0x20 && c != ' ' && c != '\t' {
+			return false
+		}
+	}
 	if !teValueHasChunked(val) {
 		return false
 	}
@@ -37,7 +43,21 @@ func teValueOnlyChunked(val []byte) bool {
 	return found
 }
 
-func parseHTTP1ChunkedBody(data []byte, off int, maxBody int64, scratch []byte) (consumed int, body []byte, contentLen int, scratchOut []byte, err error) {
+func growChunkScratch(scratchPtr *[]byte, totalLen int) []byte {
+	if scratchPtr == nil {
+		return make([]byte, totalLen)
+	}
+	buf := *scratchPtr
+	if cap(buf) < totalLen {
+		buf = make([]byte, totalLen)
+		*scratchPtr = buf
+	} else {
+		buf = buf[:totalLen]
+	}
+	return buf
+}
+
+func parseHTTP1ChunkedBody(data []byte, off int, maxBody int64, scratchPtr *[]byte) (consumed int, body []byte, contentLen int, err error) {
 	n := len(data)
 	pos := off
 	totalLen := 0
@@ -46,37 +66,32 @@ func parseHTTP1ChunkedBody(data []byte, off int, maxBody int64, scratch []byte) 
 
 	for {
 		if pos >= n {
-			return 0, nil, 0, scratch, errIncompleteRequest
+			return 0, nil, 0, errIncompleteRequest
 		}
 		size, lineEnd, perr := parseChunkSizeLine(data, pos, n)
 		if perr != nil {
-			return 0, nil, 0, scratch, perr
+			return 0, nil, 0, perr
 		}
 		pos = lineEnd
 
 		if size == 0 {
 			pos, perr = skipHTTP1ChunkTrailers(data, pos, n)
 			if perr != nil {
-				return 0, nil, 0, scratch, perr
+				return 0, nil, 0, perr
 			}
 			if totalLen == 0 {
-				return pos, nil, 0, scratch, nil
+				return pos, nil, 0, nil
 			}
 			if firstStart >= 0 && contiguousEnd == firstStart+totalLen {
-				return pos, data[firstStart:contiguousEnd], totalLen, scratch, nil
+				return pos, data[firstStart:contiguousEnd], totalLen, nil
 			}
-			if cap(scratch) < totalLen {
-				scratch = make([]byte, totalLen)
-			} else {
-				scratch = scratch[:totalLen]
-			}
-			copyScratch := scratch
+			copyScratch := growChunkScratch(scratchPtr, totalLen)
 			rpos := off
 			acc := 0
 			for {
 				chunkSize, next, perr := parseChunkSizeLine(data, rpos, n)
 				if perr != nil {
-					return 0, nil, 0, scratch, perr
+					return 0, nil, 0, perr
 				}
 				if chunkSize == 0 {
 					break
@@ -86,17 +101,17 @@ func parseHTTP1ChunkedBody(data []byte, off int, maxBody int64, scratch []byte) 
 				acc += chunkSize
 				rpos = next + chunkSize + 2
 			}
-			return pos, scratch, totalLen, scratch, nil
+			return pos, copyScratch, totalLen, nil
 		}
 
 		if int64(totalLen+size) > maxBody {
-			return 0, nil, 0, scratch, errPayloadTooLarge
+			return 0, nil, 0, errPayloadTooLarge
 		}
 		if pos+size+2 > n {
-			return 0, nil, 0, scratch, errIncompleteRequest
+			return 0, nil, 0, errIncompleteRequest
 		}
 		if data[pos+size] != '\r' || data[pos+size+1] != '\n' {
-			return 0, nil, 0, scratch, errInvalidRequest
+			return 0, nil, 0, errInvalidRequest
 		}
 
 		if firstStart < 0 {
@@ -133,10 +148,7 @@ func parseChunkSizeLine(data []byte, pos, n int) (size int, next int, err error)
 			return size, i + 2, nil
 		}
 		if b == ';' {
-			for i < n && data[i] != '\r' {
-				i++
-			}
-			continue
+			return 0, 0, errInvalidRequest
 		}
 		if b >= '0' && b <= '9' {
 			hasDigit = true

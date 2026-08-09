@@ -170,12 +170,13 @@ func parseQuotedField(payload []byte, start int, dst []byte) int {
 	if i >= n || payload[i] != '"' {
 		return 0
 	}
+	bud := newJSONScanBudget()
 	fieldStart := i + 1
-	i = fieldStart
-	for i < n && payload[i] != '"' {
-		i++
+	end, ok := scanJSONStringEnd(payload, i, n, &bud)
+	if !ok {
+		return 0
 	}
-	ln := i - fieldStart
+	ln := end - 1 - fieldStart
 	if ln <= 0 {
 		return 0
 	}
@@ -185,7 +186,7 @@ func parseQuotedField(payload []byte, start int, dst []byte) int {
 	if ln > len(dst) {
 		return 0
 	}
-	copy(dst[:ln], payload[fieldStart:i])
+	copy(dst[:ln], payload[fieldStart:end-1])
 	return ln
 }
 

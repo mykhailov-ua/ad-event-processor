@@ -1,5 +1,7 @@
 package ingestion
 
+const h2MaxIntContinuationOctets = 8
+
 func h2DecodeInt(data []byte, off int, prefixBits byte, prefixMask byte) (value int, next int, err error) {
 	n := len(data)
 	if off >= n {
@@ -13,6 +15,7 @@ func h2DecodeInt(data []byte, off int, prefixBits byte, prefixMask byte) (value 
 		return val, off, nil
 	}
 	mult := 1
+	continuations := 0
 	for off < n {
 		b = data[off]
 		off++
@@ -20,6 +23,10 @@ func h2DecodeInt(data []byte, off int, prefixBits byte, prefixMask byte) (value 
 		mult <<= 7
 		if b < 0x80 {
 			return val, off, nil
+		}
+		continuations++
+		if continuations > h2MaxIntContinuationOctets {
+			return 0, 0, errInvalidRequest
 		}
 		if mult > 1<<30 {
 			return 0, 0, errInvalidRequest

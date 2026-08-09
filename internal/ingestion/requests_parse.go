@@ -15,6 +15,10 @@ func ParseTrackRequestJSON(v *TrackRequest, data []byte) error {
 }
 
 func skipJSONValue(data []byte, start int) (int, error) {
+	return skipJSONValueBudget(data, start, nil)
+}
+
+func skipJSONValueBudget(data []byte, start int, bud *jsonScanBudget) (int, error) {
 	n := len(data)
 	if start >= n {
 		return start, errMalformedJSON
@@ -22,22 +26,14 @@ func skipJSONValue(data []byte, start int) (int, error) {
 	_ = data[n-1]
 
 	i := start
-	b := data[i]
-	switch b {
+	tok := data[i]
+	switch tok {
 	case '"':
-		i++
-		for i < n && data[i] != '"' {
-			if data[i] == '\\' {
-				i += 2
-			} else {
-				i++
-			}
-		}
-		if i >= n {
+		end, ok := scanJSONStringEnd(data, i, n, bud)
+		if !ok {
 			return i, errMalformedJSON
 		}
-		i++
-		return i, nil
+		return end, nil
 	case '{', '[':
 		depth := 1
 		if depth > MaxJSONDepth {

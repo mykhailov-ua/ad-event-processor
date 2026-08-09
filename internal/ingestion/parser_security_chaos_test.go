@@ -1,0 +1,167 @@
+package ingestion
+
+import (
+	"fmt"
+	"testing"
+	"time"
+
+	"espx/internal/config"
+	"espx/pkg/faultproof"
+
+	"github.com/panjf2000/gnet/v2"
+	"github.com/stretchr/testify/require"
+)
+
+// Proof stubs for .cursor/PARSER_SECURITY_MILESTONE.md (PS-Gxx).
+// Tests log fault_proof with gap=open|closed; they must not panic.
+
+func chaosSlowBodyHeaders() []byte {
+	return []byte("POST /track HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: 1048576\r\n\r\n")
+}
+
+func chaosSlowBodyPrefixBytes() []byte {
+	return []byte(`{"type":"click","campaign_id":"550e8400-e29b-41d4-a716-446655440000","payload":{`)
+}
+
+func chaosSlowBodyWire() []byte {
+	wire := make([]byte, 0, 256)
+	wire = append(wire, chaosSlowBodyHeaders()...)
+	wire = append(wire, chaosSlowBodyPrefixBytes()...)
+	return wire
+}
+
+func TestChaos_ParserSecurity_PS_G01_SlowBodyStall(t *testing.T) {
+	cfg := &config.Config{
+		MaxRequestBodySize: 1 << 20,
+		HTTP1IncompleteMax: 3,
+		HTTP1BodyIdleMs:    60_000,
+	}
+	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud", nil)
+	conn := newFaultGnetConn()
+	conn.Append(chaosSlowBodyHeaders())
+	require.Equal(t, gnet.None, h.OnTraffic(conn))
+
+	closed := false
+	reason := ""
+	body := chaosSlowBodyPrefixBytes()
+	for i := 0; i < len(body)+2; i++ {
+		if i < len(body) {
+			conn.Append(body[i : i+1])
+		}
+		act := h.OnTraffic(conn)
+		if act == gnet.Close {
+			closed = true
+			reason = "spin"
+			break
+		}
+	}
+
+	gap := "open"
+	if closed {
+		gap = "closed"
+	}
+	faultproof.Log(t, "parser_security_ps_g01", map[string]string{
+		"gap_id":      "PS-G01",
+		"gap":         gap,
+		"conn_closed": boolStr(closed),
+		"reason":      reason,
+		"incomplete":  "true",
+	})
+	require.Equal(t, "closed", gap)
+}
+
+func TestChaos_ParserSecurity_PS_G02_ChunkExtCRLF(t *testing.T) {
+	wire := []byte("POST /track HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n" +
+		"5;foo\r\n" +
+		"5\r\n" +
+		"hello\r\n" +
+		"0\r\n\r\n")
+	_, _, err := parseHTTP1(wire, 1<<20, nil)
+	gap := "open"
+	if err != nil {
+		gap = "closed"
+	}
+	faultproof.Log(t, "parser_security_ps_g02", map[string]string{
+		"gap_id": "PS-G02",
+		"gap":    gap,
+		"err":    errString(err),
+	})
+	require.Equal(t, "closed", gap)
+	require.ErrorIs(t, err, errInvalidRequest)
+}
+
+func TestChaos_ParserSecurity_PS_G03_QuoteDenseORTB(t *testing.T) {
+	const quotes = 1 << 20
+	payload := make([]byte, 0, quotes+64)
+	for i := 0; i < quotes; i++ {
+		payload = append(payload, '"')
+	}
+	payload = append(payload, `,"imp":[{"id":"1"}],"id":"req"}`...)
+
+	var hot OpenRTB26Hot
+	var cold OpenRTB26Cold
+	start := time.Now()
+	ParseOpenRTB26Split(payload, &hot, &cold)
+	elapsed := time.Since(start)
+
+	gap := "open"
+	if !hot.OK && elapsed < 100*time.Microsecond {
+		gap = "closed"
+	}
+	faultproof.Log(t, "parser_security_ps_g03", map[string]string{
+		"gap_id":     "PS-G03",
+		"gap":        gap,
+		"elapsed_ns": elapsed.String(),
+		"ok":         boolStr(hot.OK),
+	})
+	require.Equal(t, "closed", gap)
+	require.False(t, hot.OK)
+}
+
+func TestChaos_ParserSecurity_PS_G05_TETabObfuscation(t *testing.T) {
+	wire := []byte("POST /openrtb/bid HTTP/1.1\r\nTransfer-Encoding:\x0bchunked\r\n\r\n0\r\n\r\n")
+	_, _, err := parseHTTP1(wire, 1<<20, nil)
+	require.ErrorIs(t, err, errInvalidRequest)
+	faultproof.Log(t, "parser_security_ps_g05", map[string]string{
+		"gap_id": "PS-G05",
+		"gap":    "closed",
+		"err":    errString(err),
+	})
+}
+
+func TestChaos_ParserSecurity_PS_G07_HPACKContinuation(t *testing.T) {
+	block := make([]byte, 0, 65)
+	block = append(block, 0xFF)
+	for i := 0; i < 63; i++ {
+		block = append(block, 0xFF)
+	}
+	block = append(block, 0x00)
+	wire := buildH2WireAfterPreface(buildH2HeadersDataFrames(1, block, nil))
+	cfg := &config.Config{MaxRequestBodySize: 1 << 20, H2IncompleteMax: 3}
+	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud", nil)
+	conn := NewGnetHarnessConn(wire)
+	act := h.OnTraffic(conn)
+	gap := "open"
+	if act == gnet.Close {
+		gap = "closed"
+	}
+	faultproof.Log(t, "parser_security_ps_g07", map[string]string{
+		"gap_id": "PS-G07",
+		"gap":    gap,
+		"action": fmt.Sprintf("%d", act),
+	})
+}
+
+func boolStr(v bool) string {
+	if v {
+		return "true"
+	}
+	return "false"
+}
+
+func errString(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
+}

@@ -123,7 +123,7 @@ func parseOpenRTB3FSM(payload []byte) OpenRTB3Parsed {
 	return out
 }
 
-func parseOrtbObject(data []byte, i, n int, out *OpenRTB3Parsed, stack *[ortbMaxDepth]ortbFrame, depth *int) (int, bool) {
+func parseOrtbObject(data []byte, i, n int, out *OpenRTB3Parsed, stack *[ortbMaxDepth]ortbFrame, depth *int, bud *jsonScanBudget) (int, bool) {
 	if i >= n || data[i] != '{' {
 		return i, false
 	}
@@ -131,8 +131,8 @@ func parseOrtbObject(data []byte, i, n int, out *OpenRTB3Parsed, stack *[ortbMax
 	frame := stack[*depth]
 
 	for i < n {
-		i = skipJSONWS(data, i, n)
-		if i >= n {
+		i, ok := skipJSONWSBudget(data, i, n, bud)
+		if !ok || i >= n {
 			return i, false
 		}
 		if data[i] == '}' {
@@ -154,13 +154,16 @@ func parseOrtbObject(data []byte, i, n int, out *OpenRTB3Parsed, stack *[ortbMax
 		}
 		key := data[keyStart:i]
 		i++
-		i = skipJSONWS(data, i, n)
-		if i >= n || data[i] != ':' {
+		if !jsonTrackKeyOK(key) {
+			return i, false
+		}
+		i, ok = skipJSONWSBudget(data, i, n, bud)
+		if !ok || i >= n || data[i] != ':' {
 			return i, false
 		}
 		i++
-		i = skipJSONWS(data, i, n)
-		if i >= n {
+		i, ok = skipJSONWSBudget(data, i, n, bud)
+		if !ok || i >= n {
 			return i, false
 		}
 
@@ -177,7 +180,7 @@ func parseOrtbObject(data []byte, i, n int, out *OpenRTB3Parsed, stack *[ortbMax
 			*depth++
 			stack[*depth] = ortbFrame{parent: kid, itemIdx: frame.itemIdx}
 			var ok bool
-			i, ok = parseOrtbObject(data, i, n, out, stack, depth)
+			i, ok = parseOrtbObject(data, i, n, out, stack, depth, bud)
 			*depth--
 			if !ok {
 				return i, false
@@ -188,8 +191,8 @@ func parseOrtbObject(data []byte, i, n int, out *OpenRTB3Parsed, stack *[ortbMax
 				out.IsOpenRTB = true
 				itemIdx := 0
 				for i < n {
-					i = skipJSONWS(data, i, n)
-					if i >= n {
+					i, ok = skipJSONWSBudget(data, i, n, bud)
+					if !ok || i >= n {
 						return i, false
 					}
 					if data[i] == ']' {
@@ -204,7 +207,7 @@ func parseOrtbObject(data []byte, i, n int, out *OpenRTB3Parsed, stack *[ortbMax
 						stack[*depth] = ortbFrame{parent: ortbKeyItem, inArray: true, itemIdx: itemIdx}
 						var ok bool
 						prev := i
-						i, ok = parseOrtbObject(data, i, n, out, stack, depth)
+						i, ok = parseOrtbObject(data, i, n, out, stack, depth, bud)
 						*depth--
 						if !ok || i == prev {
 							return i, false
@@ -218,7 +221,10 @@ func parseOrtbObject(data []byte, i, n int, out *OpenRTB3Parsed, stack *[ortbMax
 							return i, false
 						}
 					}
-					i = skipJSONWS(data, i, n)
+					i, ok = skipJSONWSBudget(data, i, n, bud)
+					if !ok {
+						return i, false
+					}
 					if i < n && data[i] == ',' {
 						i++
 					}
@@ -231,19 +237,13 @@ func parseOrtbObject(data []byte, i, n int, out *OpenRTB3Parsed, stack *[ortbMax
 				}
 			}
 		case '"':
-			i++
-			valStart := i
-			for i < n && data[i] != '"' {
-				if data[i] == '\\' {
-					i++
-				}
-				i++
-			}
-			if i >= n {
+			valStart := i + 1
+			end, ok := scanJSONStringEnd(data, i, n, bud)
+			if !ok {
 				return i, false
 			}
-			applyOrtbString(out, kid, frame, valStart, i)
-			i++
+			applyOrtbString(out, kid, frame, valStart, end-1)
+			i = end
 		case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 			valStart := i
 			if data[i] == '-' {
@@ -261,7 +261,10 @@ func parseOrtbObject(data []byte, i, n int, out *OpenRTB3Parsed, stack *[ortbMax
 			}
 		}
 
-		i = skipJSONWS(data, i, n)
+		i, ok = skipJSONWSBudget(data, i, n, bud)
+		if !ok {
+			return i, false
+		}
 		if i < n && data[i] == ',' {
 			i++
 			continue
@@ -299,7 +302,7 @@ func applyOrtbString(out *OpenRTB3Parsed, kid ortbKeyID, frame ortbFrame, valSta
 			}
 			out.RequestIDOff = valStart
 			out.RequestIDLen = uint8(ln)
-		case frame.parent == ortbKeyItem && frame.itemIdx == 0 && out.ItemIDLen == 0:
+		case frame.parent == ortbKeyItem && frame.itemIdx == 0:
 			if ln > ortbItemIDMax {
 				ln = ortbItemIDMax
 			}
@@ -312,9 +315,7 @@ func applyOrtbString(out *OpenRTB3Parsed, kid ortbKeyID, frame ortbFrame, valSta
 func applyOrtbNumber(out *OpenRTB3Parsed, kid ortbKeyID, frame ortbFrame, val []byte) {
 	switch kid {
 	case ortbKeyFlr:
-		if out.MinBid == 0 {
-			out.MinBid = parseDecimalMicro(val)
-		}
+		out.MinBid = parseDecimalMicro(val)
 	case ortbKeyType:
 		if frame.parent == ortbKeyDevice {
 			var adcomType int64

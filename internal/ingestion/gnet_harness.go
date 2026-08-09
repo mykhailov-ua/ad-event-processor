@@ -96,6 +96,11 @@ func (c *GnetHarnessConn) AllResponses() [][]byte {
 
 func (c *GnetHarnessConn) SetRemoteAddr(addr net.Addr) { c.addr = addr }
 
+func (c *GnetHarnessConn) SetReadDeadline(time.Time) error  { return nil }
+func (c *GnetHarnessConn) SetWriteDeadline(time.Time) error { return nil }
+func (c *GnetHarnessConn) SetDeadline(time.Time) error      { return nil }
+func (c *GnetHarnessConn) Close() error                     { return nil }
+
 func BuildGnetHTTP(method, path string, headers map[string]string, body []byte) []byte {
 	var buf bytes.Buffer
 	buf.WriteString(method)

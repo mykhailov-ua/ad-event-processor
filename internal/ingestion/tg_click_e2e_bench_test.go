@@ -38,7 +38,7 @@ func benchTgClickHandler(b testing.TB) (*AdsPacketHandler, parsedHTTPRequest, *G
 		"Content-Length": "0",
 		"User-Agent":     "Mozilla/5.0 Telegram-Android",
 	}, nil)
-	_, req, err := parseHTTP1(inbound, 1<<20)
+	_, req, err := parseHTTP1(inbound, 1<<20, nil)
 	if err != nil {
 		b.Fatal(err)
 	}

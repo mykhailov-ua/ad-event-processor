@@ -48,8 +48,9 @@ func parseOpenRTB3FSMInto(out *OpenRTB3Parsed, payload []byte) bool {
 	out.IsOpenRTB = false
 	out.OK = false
 
-	i := skipJSONWS(payload, 0, n)
-	if i >= n || payload[i] != '{' {
+	bud := newJSONScanBudget()
+	i, ok := skipJSONWSBudget(payload, 0, n, &bud)
+	if !ok || i >= n || payload[i] != '{' {
 		return false
 	}
 
@@ -57,7 +58,7 @@ func parseOpenRTB3FSMInto(out *OpenRTB3Parsed, payload []byte) bool {
 	depth := 0
 	stack[0] = ortbFrame{parent: ortbKeyUnknown, itemIdx: -1}
 
-	i, ok := parseOrtbObject(payload, i, n, out, &stack, &depth)
+	i, ok = parseOrtbObject(payload, i, n, out, &stack, &depth, &bud)
 	_ = i
 	if !ok && !out.IsOpenRTB {
 		*out = OpenRTB3Parsed{}

@@ -1,7 +1,67 @@
 package ingestion
 
-import "bytes"
+//go:noinline
+func parseImpSlot(obj []byte, slot *OpenRTB26ImpSlot) bool {
+	if slot == nil || len(obj) < 4 {
+		return false
+	}
+	scan := scanImpObject(obj)
+	if scan.idxID >= 0 {
+		slot.ImpIDLen = uint8(parseQuotedField(obj, ortbFieldAt(obj, scan.idxID, openrtbKeyID), slot.ImpID[:]))
+	}
+	if slot.ImpIDLen == 0 {
+		return false
+	}
+	if scan.idxBidfloor >= 0 {
+		slot.BidFloorMicro = parseDecimalMicroField(obj, ortbFieldAt(obj, scan.idxBidfloor, openrtbKeyBidfloor))
+	}
+	if scan.idxBanner >= 0 {
+		slot.Flags |= impSlotFlagBanner
+		if scan.idxBannerW >= 0 {
+			slot.BannerW = uint16(parseJSONIntField(obj, ortbFieldAt(obj, scan.idxBannerW, openrtbKeyW)))
+		}
+		if scan.idxBannerH >= 0 {
+			slot.BannerH = uint16(parseJSONIntField(obj, ortbFieldAt(obj, scan.idxBannerH, openrtbKeyH)))
+		}
+	}
+	if scan.idxVideo >= 0 {
+		slot.Flags |= impSlotFlagVideo
+		if scan.idxVideoW >= 0 {
+			slot.VideoW = uint16(parseJSONIntField(obj, ortbFieldAt(obj, scan.idxVideoW, openrtbKeyW)))
+		}
+		if scan.idxVideoH >= 0 {
+			slot.VideoH = uint16(parseJSONIntField(obj, ortbFieldAt(obj, scan.idxVideoH, openrtbKeyH)))
+		}
+		if scan.idxMaxduration >= 0 {
+			if dur := parseJSONIntField(obj, ortbFieldAt(obj, scan.idxMaxduration, openrtbKeyMaxduration)); dur > 0 {
+				slot.MaxDurationSec = uint32(dur)
+			}
+		}
+	}
+	if scan.idxAudio >= 0 {
+		slot.Flags |= impSlotFlagAudio
+	}
+	if scan.idxNative >= 0 {
+		slot.Flags |= impSlotFlagNative
+	}
+	if scan.idxSecure >= 0 {
+		if parseJSONIntField(obj, ortbFieldAt(obj, scan.idxSecure, openrtbKeySecure)) == 1 {
+			slot.Flags |= impSlotFlagSecure
+		}
+	}
+	if scan.idxDealID >= 0 {
+		slot.DealIDLen = uint8(parseQuotedField(obj, ortbFieldAt(obj, scan.idxDealID, openrtbKeyID), slot.DealID[:]))
+	}
+	if scan.idxDealBidfloor >= 0 {
+		slot.DealBidFloorMicro = parseDecimalMicroField(obj, ortbFieldAt(obj, scan.idxDealBidfloor, openrtbKeyBidfloor))
+	}
+	if scan.idxWseat >= 0 {
+		slot.WSeatCount = parseSeatJSONArrayAt(obj, ortbFieldAt(obj, scan.idxWseat, openrtbKeyWseat), slot.WSeat[:], slot.WSeatLen[:])
+	}
+	return true
+}
 
+//go:noinline
 func parseImpSlotsAt(payload []byte, impIdx int, hot *OpenRTB26Hot, cold *OpenRTB26Cold) {
 	if hot == nil || cold == nil || impIdx < 0 {
 		return
@@ -74,72 +134,6 @@ func foreachImpObject(payload []byte, impIdx int, fn func(obj []byte) bool) {
 		}
 		i++
 	}
-}
-
-func parseImpSlot(obj []byte, slot *OpenRTB26ImpSlot) bool {
-	if slot == nil || len(obj) < 4 {
-		return false
-	}
-	if idIdx := bytes.Index(obj, openrtbKeyID); idIdx >= 0 {
-		slot.ImpIDLen = uint8(parseQuotedField(obj, idIdx+len(openrtbKeyID), slot.ImpID[:]))
-	}
-	if slot.ImpIDLen == 0 {
-		return false
-	}
-	if bfIdx := bytes.Index(obj, openrtbKeyBidfloor); bfIdx >= 0 {
-		slot.BidFloorMicro = parseDecimalMicroField(obj, bfIdx+len(openrtbKeyBidfloor))
-	}
-	if bIdx := bytes.Index(obj, openrtbKeyBanner); bIdx >= 0 {
-		slot.Flags |= impSlotFlagBanner
-		bWin := sectionWindow(obj, bIdx, 160)
-		if wIdx := bytes.Index(bWin, openrtbKeyW); wIdx >= 0 {
-			slot.BannerW = uint16(parseJSONIntField(bWin, wIdx+len(openrtbKeyW)))
-		}
-		if hIdx := bytes.Index(bWin, openrtbKeyH); hIdx >= 0 {
-			slot.BannerH = uint16(parseJSONIntField(bWin, hIdx+len(openrtbKeyH)))
-		}
-	}
-	if vIdx := bytes.Index(obj, openrtbKeyVideo); vIdx >= 0 {
-		slot.Flags |= impSlotFlagVideo
-		vWin := sectionWindow(obj, vIdx, 200)
-		if wIdx := bytes.Index(vWin, openrtbKeyW); wIdx >= 0 {
-			slot.VideoW = uint16(parseJSONIntField(vWin, wIdx+len(openrtbKeyW)))
-		}
-		if hIdx := bytes.Index(vWin, openrtbKeyH); hIdx >= 0 {
-			slot.VideoH = uint16(parseJSONIntField(vWin, hIdx+len(openrtbKeyH)))
-		}
-		if mdIdx := bytes.Index(vWin, openrtbKeyMaxduration); mdIdx >= 0 {
-			if dur := parseJSONIntField(vWin, mdIdx+len(openrtbKeyMaxduration)); dur > 0 {
-				slot.MaxDurationSec = uint32(dur)
-			}
-		}
-	}
-	if bytes.Contains(obj, openrtbKeyAudio) {
-		slot.Flags |= impSlotFlagAudio
-	}
-	if bytes.Contains(obj, openrtbKeyNative) {
-		slot.Flags |= impSlotFlagNative
-	}
-	if secIdx := bytes.Index(obj, openrtbKeySecure); secIdx >= 0 {
-		if parseJSONIntField(obj, secIdx+len(openrtbKeySecure)) == 1 {
-			slot.Flags |= impSlotFlagSecure
-		}
-	}
-	searchFrom := bytes.Index(obj, openrtbKeyDeals)
-	if searchFrom < 0 {
-		searchFrom = bytes.Index(obj, openrtbKeyPmp)
-	}
-	if searchFrom >= 0 {
-		slice := obj[searchFrom:]
-		if idRel := bytes.Index(slice, openrtbKeyID); idRel >= 0 {
-			slot.DealIDLen = uint8(parseQuotedField(obj, searchFrom+idRel+len(openrtbKeyID), slot.DealID[:]))
-		}
-		if bfRel := bytes.Index(slice, openrtbKeyBidfloor); bfRel >= 0 {
-			slot.DealBidFloorMicro = parseDecimalMicroField(slice, bfRel+len(openrtbKeyBidfloor))
-		}
-		parseWSeatInWindow(slice, slot)
-	}
-	return true
 }
 
 func syncHotFromImpSlot(hot *OpenRTB26Hot, slot *OpenRTB26ImpSlot) {

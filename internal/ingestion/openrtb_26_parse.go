@@ -1,9 +1,5 @@
 package ingestion
 
-import (
-	"bytes"
-)
-
 const (
 	openrtb26SeatMax       = 8
 	openrtb26UserIDMax     = 128
@@ -62,6 +58,17 @@ var (
 	openrtbKeyIFA            = []byte(`"ifa"`)
 	openrtbKeyLMT            = []byte(`"lmt"`)
 	openrtbKeyConnectiontype = []byte(`"connectiontype"`)
+	openrtbKeyTid            = []byte(`"tid"`)
+	openrtbKeyPrivate        = []byte(`"private"`)
+	openrtbKeyPage           = []byte(`"page"`)
+	openrtbKeyVer            = []byte(`"ver"`)
+	openrtbKeyEids           = []byte(`"eids"`)
+	openrtbKeyMetric         = []byte(`"metric"`)
+	openrtbKeyType           = []byte(`"type"`)
+	openrtbKeyValue          = []byte(`"value"`)
+	openrtbKeyVendor         = []byte(`"vendor"`)
+	openrtbKeyUids           = []byte(`"uids"`)
+	openrtbKeySource         = []byte(`"source"`)
 )
 
 func finalizeFcapUserHash(hot *OpenRTB26Hot, cold *OpenRTB26Cold) {
@@ -85,13 +92,14 @@ func ParseOpenRTB26Into(payload []byte, out *OpenRTB26Parsed) {
 }
 
 func ParseOpenRTB26Split(payload []byte, hot *OpenRTB26Hot, cold *OpenRTB26Cold) {
-	*hot = OpenRTB26Hot{}
-	*cold = OpenRTB26Cold{}
+	resetOpenRTB26Hot(hot)
+	resetOpenRTB26Cold(cold)
 	n := len(payload)
 	if n < 12 {
 		return
 	}
-	sec := locateOpenRTB26Sections(payload)
+	scan := scanOpenRTB26Payload(payload)
+	sec := scan.sec
 	if sec.imp < 0 {
 		return
 	}
@@ -111,87 +119,83 @@ func ParseOpenRTB26Split(payload []byte, hot *OpenRTB26Hot, cold *OpenRTB26Cold)
 		hot.Flags |= openrtb26FlagDOOH
 	}
 	impWin := sectionWindow(payload, sec.imp, 1536)
-	if bytes.Contains(impWin, openrtbKeyBanner) {
+	iw := scanImpWindow(impWin)
+	if iw.idxBanner >= 0 {
 		hot.Flags |= openrtb26FlagBanner
 	}
-	if bytes.Contains(impWin, openrtbKeyVideo) {
+	if iw.idxVideo >= 0 {
 		hot.Flags |= openrtb26FlagVideo
 	}
-	if bytes.Contains(impWin, openrtbKeyAudio) {
+	if iw.idxAudio >= 0 {
 		hot.Flags |= openrtb26FlagAudio
 	}
-	if bytes.Contains(impWin, openrtbKeyNative) {
+	if iw.idxNative >= 0 {
 		hot.Flags |= openrtb26FlagNative
 	}
 
-	hot.RequestIDLen = parseRequestID(payload, sec.imp, hot.RequestID[:])
+	if scan.idxRequestID >= 0 {
+		hot.RequestIDLen = uint8(parseQuotedField(payload, scan.idxRequestID+len(openrtbKeyID), hot.RequestID[:]))
+	}
 	hot.ImpIDLen = parseFirstImpIDAt(payload, sec.imp, hot.ImpID[:])
 	hot.ImpCount = uint8(parseImpObjectCountAt(payload, sec.imp))
 
-	if idx := bytes.Index(payload, openrtbKeyTmax); idx >= 0 {
-		hot.TmaxMs = int32(parseJSONIntField(payload, idx+len(openrtbKeyTmax)))
+	if scan.idxTmax >= 0 {
+		hot.TmaxMs = int32(parseJSONIntField(payload, scan.idxTmax+len(openrtbKeyTmax)))
 		if hot.TmaxMs <= 0 {
 			hot.TmaxMs = 200
 		}
 	}
-	if idx := bytes.Index(payload, openrtbKeyBidfloor); idx >= 0 {
-		hot.BidFloorMicro = parseDecimalMicroField(payload, idx+len(openrtbKeyBidfloor))
+	if scan.idxBidfloor >= 0 {
+		hot.BidFloorMicro = parseDecimalMicroField(payload, scan.idxBidfloor+len(openrtbKeyBidfloor))
 	}
-	if idx := bytes.Index(payload, openrtbKeyDevicetype); idx >= 0 {
-		hot.DeviceType = openrtbDeviceType(parseJSONIntField(payload, idx+len(openrtbKeyDevicetype)))
+	if scan.idxDevicetype >= 0 {
+		hot.DeviceType = openrtbDeviceType(parseJSONIntField(payload, scan.idxDevicetype+len(openrtbKeyDevicetype)))
 	}
-	if idx := bytes.Index(payload, openrtbKeyCat); idx >= 0 {
-		hot.CategoryMask = parseCategoryMaskFromArray(payload, idx)
+	if scan.idxCat >= 0 {
+		hot.CategoryMask = parseCategoryMaskFromArray(payload, scan.idxCat)
 	}
-	if idx := bytes.Index(payload, openrtbKeyWseat); idx >= 0 {
-		hot.SeatCount = parseSeatCountAt(payload, idx)
+	if scan.idxWseat >= 0 {
+		hot.SeatCount = parseSeatCountAt(payload, scan.idxWseat)
 	}
-	searchFrom := bytes.Index(impWin, openrtbKeyDeals)
-	if searchFrom < 0 {
-		searchFrom = bytes.Index(impWin, openrtbKeyPmp)
+	if iw.idxDealID >= 0 {
+		hot.DealIDLen = uint8(parseQuotedField(impWin, ortbFieldAt(impWin, iw.idxDealID, openrtbKeyID), hot.DealID[:]))
 	}
-	if searchFrom >= 0 {
-		slice := impWin[searchFrom:]
-		if idRel := bytes.Index(slice, openrtbKeyID); idRel >= 0 {
-			hot.DealIDLen = uint8(parseQuotedField(impWin, searchFrom+idRel+len(openrtbKeyID), hot.DealID[:]))
-		}
-		if bfRel := bytes.Index(slice, openrtbKeyBidfloor); bfRel >= 0 {
-			hot.DealBidFloorMicro = parseDecimalMicroField(slice, bfRel+len(openrtbKeyBidfloor))
-		}
+	if iw.idxDealBidfloor >= 0 {
+		hot.DealBidFloorMicro = parseDecimalMicroField(impWin, ortbFieldAt(impWin, iw.idxDealBidfloor, openrtbKeyBidfloor))
 	}
-	if idx := bytes.Index(payload, openrtbKeySchain); idx >= 0 {
-		cold.Schain = parseSchainNodesAt(payload, idx)
+	if scan.idxSchain >= 0 {
+		cold.Schain = parseSchainNodesAt(payload, scan.idxSchain)
 	}
 	parseDeviceSection(payload, sec, hot, cold)
-	parseRegsFlags(payload, hot)
-	parseCurrencyFlags(payload, hot)
-	if idx := bytes.Index(payload, openrtbKeyTest); idx >= 0 {
-		if parseJSONIntField(payload, idx+len(openrtbKeyTest)) == 1 {
+	parseRegsFlagsFromScan(payload, scan, hot)
+	parseCurrencyFlagsFromScan(payload, scan, hot)
+	if scan.idxTest >= 0 {
+		if parseJSONIntField(payload, scan.idxTest+len(openrtbKeyTest)) == 1 {
 			hot.Flags |= openrtb26FlagTest
 		}
 	}
-	if idx := bytes.Index(payload, openrtbKeyMaxduration); idx >= 0 {
-		dur := parseJSONIntField(payload, idx+len(openrtbKeyMaxduration))
+	if scan.idxMaxduration >= 0 {
+		dur := parseJSONIntField(payload, scan.idxMaxduration+len(openrtbKeyMaxduration))
 		if dur > 0 {
 			hot.MaxDurationSec = uint32(dur)
 		}
 	}
 	cold.UserIDLen = parseUserIDAt(payload, sec.user, cold.UserID[:])
 	parseInventoryFieldsAt(payload, sec, hot, cold)
-	parseImpDimensionsAt(sec.imp, impWin, hot)
-	if idx := bytes.Index(impWin, openrtbKeySecure); idx >= 0 {
-		if parseJSONIntField(impWin, idx+len(openrtbKeySecure)) == 1 {
+	parseImpDimensionsFromScan(impWin, iw, hot)
+	if iw.idxSecure >= 0 {
+		if parseJSONIntField(impWin, ortbFieldAt(impWin, iw.idxSecure, openrtbKeySecure)) == 1 {
 			hot.Flags |= openrtb26FlagSecure
 		}
 	}
-	if idx := bytes.Index(payload, openrtbKeyCoppa); idx >= 0 {
-		if parseJSONIntField(payload, idx+len(openrtbKeyCoppa)) == 1 {
+	if scan.idxCoppa >= 0 {
+		if parseJSONIntField(payload, scan.idxCoppa+len(openrtbKeyCoppa)) == 1 {
 			hot.Flags |= openrtb26FlagCOPPA
 		}
 	}
 	parseExchangeExtensionFields(payload, sec, impWin, hot, cold)
-	parseBlocklistFields(payload, hot, cold)
-	parseSeatFields(payload, sec.imp, hot, cold)
+	parseBlocklistFieldsFromScan(payload, scan, hot, cold)
+	parseSeatFieldsFromScan(payload, scan, hot, cold)
 	parseImpSlotsAt(payload, sec.imp, hot, cold)
 	finalizeFcapUserHash(hot, cold)
 }

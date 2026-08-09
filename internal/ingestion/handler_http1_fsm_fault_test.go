@@ -61,7 +61,8 @@ func http1FaultMalformedCases() []http1FaultCase {
 		{name: "negative_looking_cl", payload: []byte("POST /track HTTP/1.1\r\nContent-Length: -1\r\n\r\n"), maxBody: maxBody, wantErr: errInvalidRequest},
 		{name: "leading_zero_cl", payload: []byte("POST /track HTTP/1.1\r\nContent-Length: 0005\r\n\r\nhello"), maxBody: maxBody, wantOK: true},
 		{name: "pipelined_valid_then_garbage", payload: append(append([]byte(nil), nginxTrackCorpus...), randomWireGarbage(64)...), maxBody: 1024 * 1024, wantOK: true},
-		{name: "chunked_empty_ok", payload: []byte("POST /track HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n"), maxBody: maxBody, wantOK: true},
+		{name: "chunked_track_rejected", payload: []byte("POST /track HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n"), maxBody: maxBody, wantErr: errInvalidRequest},
+		{name: "chunked_openrtb_ok", payload: []byte("POST /openrtb/bid HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n"), maxBody: maxBody, wantOK: true},
 		{name: "control_chars_in_method", payload: []byte("PO\x01ST /track HTTP/1.1\r\nContent-Length: 0\r\n\r\n"), maxBody: maxBody, wantErr: errInvalidRequest},
 	}
 }
@@ -89,7 +90,7 @@ func TestFault_HTTP1_MalformedCorpus(t *testing.T) {
 					t.Fatalf("parseHTTP1 panicked: %v", r)
 				}
 			}()
-			n, req, err := parseHTTP1(tc.payload, tc.maxBody)
+			n, req, err := parseHTTP1(tc.payload, tc.maxBody, nil)
 			if tc.wantOK {
 				require.NoError(t, err, "payload=%q", truncateBytes(tc.payload, 80))
 				assert.Greater(t, n, 0)
@@ -222,7 +223,7 @@ func TestFault_HTTP1_ConcurrentParse(t *testing.T) {
 							panics.Add(1)
 						}
 					}()
-					_, _, err := parseHTTP1(tc.payload, tc.maxBody)
+					_, _, err := parseHTTP1(tc.payload, tc.maxBody, nil)
 					if err == nil {
 						ok.Add(1)
 					} else {
@@ -386,6 +387,11 @@ func (c *faultGnetConn) Append(b []byte) {
 	c.mu.Unlock()
 }
 
+func (c *faultGnetConn) SetReadDeadline(time.Time) error  { return nil }
+func (c *faultGnetConn) SetWriteDeadline(time.Time) error { return nil }
+func (c *faultGnetConn) SetDeadline(time.Time) error      { return nil }
+func (c *faultGnetConn) Close() error                     { return nil }
+
 func TestFault_HTTP1_IncrementalConcurrentWrite(t *testing.T) {
 	cfg := &config.Config{MaxRequestBodySize: 1024 * 1024}
 	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud", nil)
@@ -473,11 +479,11 @@ func TestFault_HTTP1_PipelinedMalformedMix(t *testing.T) {
 
 	remaining := buf
 	for i := 0; i < 5; i++ {
-		n, _, err := parseHTTP1(remaining, cfg.MaxRequestBodySize)
+		n, _, err := parseHTTP1(remaining, cfg.MaxRequestBodySize, nil)
 		require.NoError(t, err)
 		remaining = remaining[n:]
 	}
-	_, _, err := parseHTTP1(remaining, cfg.MaxRequestBodySize)
+	_, _, err := parseHTTP1(remaining, cfg.MaxRequestBodySize, nil)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, errIncompleteRequest) || errors.Is(err, errPayloadTooLarge))
 

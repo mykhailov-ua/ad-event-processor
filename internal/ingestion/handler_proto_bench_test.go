@@ -5,6 +5,7 @@ import (
 
 	"espx/internal/config"
 	"espx/internal/ingestion/pb"
+
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/proto"
 )
@@ -41,7 +42,7 @@ func BenchmarkAdsPacketHandlerProto_ExtraBytes(b *testing.B) {
 	})
 }
 
-func BenchmarkAdsPacketHandlerProto_ExtraRepeated(b *testing.B) {
+func BenchmarkAdsPacketHandlerProto_ExtraRepeated_Legacy(b *testing.B) {
 	cid := uuid.New()
 	benchProtoHandler(b, &pb.AdEvent{
 		CampaignId: cid[:],

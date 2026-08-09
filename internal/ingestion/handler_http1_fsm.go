@@ -16,9 +16,14 @@ var (
 		'P', 'O', 'S', 'T', ' ', '/', 't', 'r', 'a', 'c', 'k', ' ',
 		'H', 'T', 'T', 'P', '/', '1', '.', '1', '\r', '\n',
 	}
+	openrtbBidReqLine = [29]byte{
+		'P', 'O', 'S', 'T', ' ', '/', 'o', 'p', 'e', 'n', 'r', 't', 'b', '/', 'b', 'i', 'd', ' ',
+		'H', 'T', 'T', 'P', '/', '1', '.', '1', '\r', '\n',
+	}
 )
 
 func init() {
+	initHTTP1ValidateTables()
 	for i := 0; i < 256; i++ {
 		httpFold[i] = byte(i)
 	}
@@ -34,151 +39,45 @@ const (
 	http1flCLSet
 )
 
-func parseHTTP1(data []byte, maxBody int64, scratch ...[]byte) (int, parsedHTTPRequest, error) {
-	var chunkScratch []byte
-	if len(scratch) > 0 {
-		chunkScratch = scratch[0]
-	}
+func parseHTTP1(data []byte, maxBody int64, scratchPtr *[]byte) (int, parsedHTTPRequest, error) {
 	var req parsedHTTPRequest
-	var hFlags uint8
-	var clValue int
 	n := len(data)
 	if n == 0 {
 		return 0, req, errIncompleteRequest
 	}
 	_ = data[n-1]
 
-	i := 0
-
-	if n >= 22 && *(*[22]byte)(unsafe.Pointer(&data[0])) == trackReqLine {
-		req.Method = data[:4]
-		req.Path = data[5:11]
-		i = 22
-	} else {
-		sp1, sp2 := -1, -1
-		for i < n {
-			b := data[i]
-			if b == '\r' {
-				if i+1 >= n {
-					return 0, req, errIncompleteRequest
-				}
-				if data[i+1] != '\n' {
-					return 0, req, errInvalidRequest
-				}
-				if sp1 < 0 || sp2 < 0 {
-					return 0, req, errInvalidRequest
-				}
-				req.Method = data[:sp1]
-				req.Path = data[sp1+1 : sp2]
-				if len(req.Method) > http1MaxMethodLen || len(req.Path) > http1MaxPathLen {
-					return 0, req, errInvalidRequest
-				}
-				if !httpTokenValid(req.Method) || !httpPathValid(req.Path) || !http1VersionValid(data[sp2+1:i]) {
-					return 0, req, errInvalidRequest
-				}
-				if !http1IngressValid(req.Method, req.Path) {
-					return 0, req, errInvalidRequest
-				}
-				i += 2
-				goto headers
-			}
-			if b == 0 || (b < 0x20 && b != '\t') {
-				return 0, req, errInvalidRequest
-			}
-			if b == ' ' {
-				if sp1 < 0 {
-					sp1 = i
-				} else if sp2 < 0 {
-					sp2 = i
-				}
-				i++
-				continue
-			}
-			i++
-		}
-		return 0, req, errIncompleteRequest
+	i, err := parseHTTP1RequestLine(data, n, &req)
+	if err != nil {
+		return 0, req, err
 	}
 
-headers:
-	for {
-		if i >= n {
-			return 0, req, errIncompleteRequest
-		}
-		if data[i] == '\r' {
-			if i+1 >= n {
-				return 0, req, errIncompleteRequest
-			}
-			if data[i+1] != '\n' {
-				return 0, req, errInvalidRequest
-			}
-			i += 2
-			break
-		}
-
-		lineStart := i
-		colon := -1
-		for i < n {
-			b := data[i]
-			if b == 0 || (b < 0x20 && b != '\t') {
-				return 0, req, errInvalidRequest
-			}
-			if b == ':' {
-				colon = i
-				i++
-				break
-			}
-			if b == '\r' {
-				return 0, req, errInvalidRequest
-			}
-			i++
-		}
-		if colon < 0 {
-			return 0, req, errIncompleteRequest
-		}
-
-		for i < n && data[i] != '\r' {
-			if data[i] == 0 {
-				return 0, req, errInvalidRequest
-			}
-			i++
-		}
-		if i+1 >= n {
-			return 0, req, errIncompleteRequest
-		}
-		if data[i+1] != '\n' {
-			return 0, req, errInvalidRequest
-		}
-
-		key := trimHTTPKey(data[lineStart:colon])
-		val := trimHTTPVal(data[colon+1 : i])
-		if len(key) == 0 || len(key) > http1MaxHeaderNameLen || !httpTokenValid(key) {
-			return 0, req, errInvalidRequest
-		}
-		if len(val) > http1MaxHeaderValLen || !httpHeaderValValid(val) {
-			return 0, req, errInvalidRequest
-		}
-		if err := http1AssignHeader(&req, key, val, &hFlags, &clValue); err != nil {
-			return 0, req, err
-		}
-		i += 2
+	var hFlags uint8
+	var clValue int
+	i, hFlags, clValue, err = parseHTTP1Headers(data, i, n, &req, &hFlags, &clValue)
+	if err != nil {
+		return 0, req, err
 	}
 
 	if hFlags&http1flInvalidTE != 0 {
 		return 0, req, errInvalidRequest
 	}
 
+	if err := http1TrackEdgePolicy(&req, hFlags); err != nil {
+		return 0, req, err
+	}
+
 	if hFlags&http1flChunkedTE != 0 {
 		if hFlags&http1flCLSet != 0 {
 			return 0, req, errInvalidRequest
 		}
-		consumed, body, cl, scratchOut, err := parseHTTP1ChunkedBody(data, i, maxBody, chunkScratch)
+		consumed, body, cl, err := parseHTTP1ChunkedBody(data, i, maxBody, scratchPtr)
 		if err != nil {
 			return 0, req, err
 		}
 		req.Body = body
 		req.ContentLength = cl
 		req.HasContentLength = true
-		_ = scratchOut
 		return consumed, req, nil
 	}
 
@@ -199,13 +98,133 @@ headers:
 	return total, req, nil
 }
 
-func httpTokenValid(b []byte) bool {
-	for _, c := range b {
-		if c < 0x21 || c > 0x7E {
-			return false
-		}
+func parseHTTP1RequestLine(data []byte, n int, req *parsedHTTPRequest) (int, error) {
+	if req == nil {
+		return 0, errInvalidRequest
 	}
-	return len(b) > 0
+	i := 0
+	if n >= 22 && *(*[22]byte)(unsafe.Pointer(&data[0])) == trackReqLine {
+		req.Method = data[:4]
+		req.Path = data[5:11]
+		return 22, nil
+	}
+	if n >= 29 && *(*[29]byte)(unsafe.Pointer(&data[0])) == openrtbBidReqLine {
+		req.Method = data[:4]
+		req.Path = data[5:18]
+		return 29, nil
+	}
+
+	sp1, sp2 := -1, -1
+	for i < n {
+		b := data[i]
+		if b == '\r' {
+			if i+1 >= n {
+				return 0, errIncompleteRequest
+			}
+			if data[i+1] != '\n' {
+				return 0, errInvalidRequest
+			}
+			if sp1 < 0 || sp2 < 0 {
+				return 0, errInvalidRequest
+			}
+			req.Method = data[:sp1]
+			req.Path = data[sp1+1 : sp2]
+			if len(req.Method) > http1MaxMethodLen || len(req.Path) > http1MaxPathLen {
+				return 0, errInvalidRequest
+			}
+			if !httpTokenValid(req.Method) || !httpPathValid(req.Path) || !http1VersionValid(data[sp2+1:i]) {
+				return 0, errInvalidRequest
+			}
+			if !http1IngressValid(req.Method, req.Path) {
+				return 0, errInvalidRequest
+			}
+			return i + 2, nil
+		}
+		if b == 0 || (b < 0x20 && b != '\t') {
+			return 0, errInvalidRequest
+		}
+		if b == ' ' {
+			if sp1 < 0 {
+				sp1 = i
+			} else if sp2 < 0 {
+				sp2 = i
+			}
+			i++
+			continue
+		}
+		i++
+	}
+	return 0, errIncompleteRequest
+}
+
+func parseHTTP1Headers(data []byte, i, n int, req *parsedHTTPRequest, hFlags *uint8, clValue *int) (int, uint8, int, error) {
+	if req == nil || hFlags == nil || clValue == nil {
+		return 0, 0, 0, errInvalidRequest
+	}
+	flags := *hFlags
+	cl := *clValue
+
+	for {
+		if i >= n {
+			return 0, flags, cl, errIncompleteRequest
+		}
+		if data[i] == '\r' {
+			if i+1 >= n {
+				return 0, flags, cl, errIncompleteRequest
+			}
+			if data[i+1] != '\n' {
+				return 0, flags, cl, errInvalidRequest
+			}
+			return i + 2, flags, cl, nil
+		}
+
+		lineStart := i
+		colon := -1
+		for i < n {
+			b := data[i]
+			if b == 0 || (b < 0x20 && b != '\t') {
+				return 0, flags, cl, errInvalidRequest
+			}
+			if b == ':' {
+				colon = i
+				i++
+				break
+			}
+			if b == '\r' {
+				return 0, flags, cl, errInvalidRequest
+			}
+			i++
+		}
+		if colon < 0 {
+			return 0, flags, cl, errIncompleteRequest
+		}
+
+		for i < n && data[i] != '\r' {
+			if data[i] == 0 {
+				return 0, flags, cl, errInvalidRequest
+			}
+			i++
+		}
+		if i+1 >= n {
+			return 0, flags, cl, errIncompleteRequest
+		}
+		if data[i+1] != '\n' {
+			return 0, flags, cl, errInvalidRequest
+		}
+
+		key := trimHTTPKey(data[lineStart:colon])
+		val := trimHTTPVal(data[colon+1 : i])
+		if len(key) == 0 || len(key) > http1MaxHeaderNameLen || !httpTokenValid(key) {
+			return 0, flags, cl, errInvalidRequest
+		}
+		if len(val) > http1MaxHeaderValLen || !httpHeaderValValid(val) {
+			return 0, flags, cl, errInvalidRequest
+		}
+		if err := http1AssignHeader(req, key, val, &flags, &cl); err != nil {
+			return 0, flags, cl, err
+		}
+		i += 2
+	}
 }
 
 func httpPathValid(b []byte) bool {
@@ -304,21 +323,6 @@ func http1VersionValid(b []byte) bool {
 		foldKeyU32(b, 4) == 0x312e312f
 }
 
-func httpHeaderValValid(b []byte) bool {
-	for _, c := range b {
-		if c == 0 || c == '\r' || c == '\n' {
-			return false
-		}
-		if c < 0x20 && c != '\t' {
-			return false
-		}
-		if c == 0x7F {
-			return false
-		}
-	}
-	return true
-}
-
 func parseContentLengthStrict(b []byte) (int, bool) {
 	if len(b) == 0 {
 		return 0, false
@@ -376,6 +380,9 @@ func foldKeyU64(key []byte, off int) uint64 {
 
 func http1AssignHeader(req *parsedHTTPRequest, key, val []byte, hFlags *uint8, clValue *int) error {
 	kl := len(key)
+	if kl == 2 && httpFold[key[0]] == 't' && httpFold[key[1]] == 'e' {
+		return http1AssignTransferEncoding(hFlags, val)
+	}
 	if kl < 6 {
 		return nil
 	}
@@ -447,13 +454,21 @@ func http1AssignHeader(req *parsedHTTPRequest, key, val []byte, hFlags *uint8, c
 	case 17:
 		if foldKeyU64(key, 0) == 0x726566736e617274 && foldKeyU64(key, 8) == 0x6e69646f636e652d &&
 			httpFold[key[16]] == 'g' {
-			*hFlags |= http1flHasTE
-			if teValueOnlyChunked(val) {
-				*hFlags |= http1flChunkedTE
-			} else {
-				*hFlags |= http1flInvalidTE
-			}
+			return http1AssignTransferEncoding(hFlags, val)
 		}
+	}
+	return nil
+}
+
+func http1AssignTransferEncoding(hFlags *uint8, val []byte) error {
+	if *hFlags&http1flHasTE != 0 {
+		return errInvalidRequest
+	}
+	*hFlags |= http1flHasTE
+	if teValueOnlyChunked(val) {
+		*hFlags |= http1flChunkedTE
+	} else {
+		*hFlags |= http1flInvalidTE
 	}
 	return nil
 }

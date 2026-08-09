@@ -42,11 +42,16 @@ func loadU64(b []byte) uint64 {
 	return *(*uint64)(unsafe.Pointer(&b[0]))
 }
 
-func skipJSONWS(data []byte, i, n int) int {
+func skipJSONWS(data []byte, i, n int) (int, bool) {
+	skipped := 0
 	for i < n && jsonWhitespace[data[i]] != 0 {
+		if skipped >= MaxWSkip {
+			return i, false
+		}
 		i++
+		skipped++
 	}
-	return i
+	return i, true
 }
 
 func matchTrackKey(key []byte) keyID {
@@ -94,15 +99,16 @@ func parseTrackRequestJSON(v *TrackRequest, data []byte) error {
 	_ = data[len(data)-1]
 
 	n := len(data)
-	i := skipJSONWS(data, 0, n)
-	if i >= n || data[i] != '{' {
+	bud := newJSONScanBudget()
+	i, ok := skipJSONWSBudget(data, 0, n, &bud)
+	if !ok || i >= n || data[i] != '{' {
 		return errMalformedJSON
 	}
 	i++
 
 	for i < n {
-		i = skipJSONWS(data, i, n)
-		if i >= n {
+		i, ok = skipJSONWSBudget(data, i, n, &bud)
+		if !ok || i >= n {
 			return errMalformedJSON
 		}
 		if data[i] == '}' {
@@ -125,15 +131,18 @@ func parseTrackRequestJSON(v *TrackRequest, data []byte) error {
 		}
 		keyEnd := i
 		i++
+		if !jsonTrackKeyOK(data[keyStart:keyEnd]) {
+			return errMalformedJSON
+		}
 
-		i = skipJSONWS(data, i, n)
-		if i >= n || data[i] != ':' {
+		i, ok = skipJSONWSBudget(data, i, n, &bud)
+		if !ok || i >= n || data[i] != ':' {
 			return errMalformedJSON
 		}
 		i++
 
-		i = skipJSONWS(data, i, n)
-		if i >= n {
+		i, ok = skipJSONWSBudget(data, i, n, &bud)
+		if !ok || i >= n {
 			return errMalformedJSON
 		}
 
@@ -143,20 +152,13 @@ func parseTrackRequestJSON(v *TrackRequest, data []byte) error {
 			if data[i] != '"' {
 				return errMalformedJSON
 			}
-			i++
-			valStart := i
-			for i < n && data[i] != '"' {
-				if data[i] == '\\' {
-					i += 2
-				} else {
-					i++
-				}
-			}
-			if i >= n {
+			valStart := i + 1
+			end, ok := scanJSONStringEnd(data, i, n, &bud)
+			if !ok {
 				return errMalformedJSON
 			}
-			valBytes := data[valStart:i]
-			i++
+			valBytes := data[valStart : end-1]
+			i = end
 
 			switch kid {
 			case keyType:
@@ -172,40 +174,33 @@ func parseTrackRequestJSON(v *TrackRequest, data []byte) error {
 			if data[i] != '"' {
 				return errMalformedJSON
 			}
-			i++
-			valStart := i
-			for i < n && data[i] != '"' {
-				if data[i] == '\\' {
-					i += 2
-				} else {
-					i++
-				}
-			}
-			if i >= n {
+			valStart := i + 1
+			end, ok := scanJSONLiteralStringEnd(data, i, n, &bud)
+			if !ok {
 				return errMalformedJSON
 			}
-			if !ParseUUID(data[valStart:i], &v.CampaignID) {
+			if !ParseUUID(data[valStart:end-1], &v.CampaignID) {
 				return errMalformedJSON
 			}
-			i++
+			i = end
 		case keyPayload:
 			valStart := i
-			valEnd, err := skipJSONValue(data, i)
+			valEnd, err := skipJSONValueBudget(data, i, &bud)
 			if err != nil {
 				return err
 			}
 			v.Payload = data[valStart:valEnd]
 			i = valEnd
 		default:
-			valEnd, err := skipJSONValue(data, i)
+			valEnd, err := skipJSONValueBudget(data, i, &bud)
 			if err != nil {
 				return err
 			}
 			i = valEnd
 		}
 
-		i = skipJSONWS(data, i, n)
-		if i >= n {
+		i, ok = skipJSONWSBudget(data, i, n, &bud)
+		if !ok || i >= n {
 			return errMalformedJSON
 		}
 		switch data[i] {

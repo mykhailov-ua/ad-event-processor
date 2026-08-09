@@ -1,22 +1,14 @@
 package ingestion
 
-import "bytes"
-
 var openrtbKeyBseat = []byte(`"bseat"`)
 
-func parseSeatFields(payload []byte, impIdx int, hot *OpenRTB26Hot, cold *OpenRTB26Cold) {
-	if cold == nil {
+func parseSeatFieldsFromScan(payload []byte, scan openrtb26Scan, hot *OpenRTB26Hot, cold *OpenRTB26Cold) {
+	if cold == nil || scan.idxBseat < 0 {
 		return
 	}
-	search := payload
-	if impIdx > 0 {
-		search = payload[:impIdx]
-	}
-	if idx := bytes.Index(search, openrtbKeyBseat); idx >= 0 {
-		cold.BSeatCount = parseSeatJSONArrayAt(payload, idx+len(openrtbKeyBseat), cold.BSeat[:], cold.BSeatLen[:])
-		if cold.BSeatCount > 0 {
-			hot.Flags |= openrtb26FlagBSeat
-		}
+	cold.BSeatCount = parseSeatJSONArrayAt(payload, scan.idxBseat+len(openrtbKeyBseat), cold.BSeat[:], cold.BSeatLen[:])
+	if cold.BSeatCount > 0 {
+		hot.Flags |= openrtb26FlagBSeat
 	}
 }
 
@@ -24,8 +16,9 @@ func parseWSeatInWindow(win []byte, slot *OpenRTB26ImpSlot) {
 	if slot == nil || len(win) == 0 {
 		return
 	}
-	if idx := bytes.Index(win, openrtbKeyWseat); idx >= 0 {
-		slot.WSeatCount = parseSeatJSONArrayAt(win, idx+len(openrtbKeyWseat), slot.WSeat[:], slot.WSeatLen[:])
+	scan := scanImpObject(win)
+	if scan.idxWseat >= 0 {
+		slot.WSeatCount = parseSeatJSONArrayAt(win, ortbFieldAt(win, scan.idxWseat, openrtbKeyWseat), slot.WSeat[:], slot.WSeatLen[:])
 	}
 }
 

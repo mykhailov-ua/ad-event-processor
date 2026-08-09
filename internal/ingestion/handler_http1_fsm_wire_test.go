@@ -33,11 +33,11 @@ func TestHTTP1Parse_IncompleteTwoReads(t *testing.T) {
 func TestHTTP1Parse_SplitAtHeaderBoundary(t *testing.T) {
 	const maxBody = int64(1024 * 1024)
 	full := []byte("POST /track HTTP/1.1\r\nContent-Length: 5\r\n\r\nhello")
-	n, _, err := parseHTTP1(full[:len(full)-3], maxBody)
+	n, _, err := parseHTTP1(full[:len(full)-3], maxBody, nil)
 	require.ErrorIs(t, err, errIncompleteRequest)
 	assert.Equal(t, 0, n)
 
-	n, req, err := parseHTTP1(full, maxBody)
+	n, req, err := parseHTTP1(full, maxBody, nil)
 	require.NoError(t, err)
 	assert.Equal(t, len(full), n)
 	assert.Equal(t, "hello", string(req.Body))

@@ -104,6 +104,9 @@ type connContext struct {
 	h2         h2ConnState
 	h2StreamID uint32
 
+	http1IncompleteSpin   uint8
+	http1BodyIdleDeadline int64
+
 	chunkScratch []byte
 }
 
@@ -267,7 +270,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 			pbReq := adEventPool.Get().(*pb.AdEvent)
 			defer putAdEvent(pbReq)
 
-			if err := pbReq.UnmarshalVT(buf.Bytes()); err != nil {
+			if err := unmarshalAdEventVT(pbReq, buf.Bytes()); err != nil {
 				metrics.HttpParseErrors.WithLabelValues("invalid_proto").Inc()
 				status = http.StatusBadRequest
 				http.Error(w, "invalid protobuf", status)
@@ -633,6 +636,8 @@ func NewAdsPacketHandler(cfg *config.Config, registry domain.CampaignRegistry, f
 		auditLogSampleMask:    auditLogSampleMaskFromConfig(cfg.AuditLogSampleMask),
 	}
 	h.startedAtNano.Store(time.Now().UnixNano())
+	configureOrtbScanLimits(cfg)
+	configureProtoMaxFields(cfg)
 	if n := len(rdbs); n > 0 {
 		h.rdbsHealthy = make([]atomic.Int32, n)
 		for i := range h.rdbsHealthy {
@@ -663,6 +668,7 @@ func NewAdsPacketHandler(cfg *config.Config, registry domain.CampaignRegistry, f
 					buf: make([]byte, 0, 128),
 				},
 				offloadHTTPPin: make([]byte, 0, 2048),
+				chunkScratch:   make([]byte, 0, 4096),
 				wTime: bufWrapper{
 					buf: make([]byte, 0, 128),
 				},
@@ -1003,15 +1009,19 @@ func (h *AdsPacketHandler) OnTraffic(c gnet.Conn) (action gnet.Action) {
 			continue
 		}
 
-		var parseScratch []byte
-		if ctx, ok := c.Context().(*connContext); ok && ctx != nil {
-			parseScratch = ctx.chunkScratch
+		var scratchPtr *[]byte
+		ctx := h.http1EnsureConnContext(c)
+		if act := h.http1CheckBodyIdle(c, ctx); act != gnet.None {
+			return act
 		}
+		scratchPtr = &ctx.chunkScratch
 
-		reqLen, req, err := h.parseHTTP(buf, parseScratch)
+		reqLen, req, err := h.parseHTTP(buf, scratchPtr)
 		if err != nil {
 			if errors.Is(err, errIncompleteRequest) {
-				metrics.HttpParseErrors.WithLabelValues("incomplete").Inc()
+				if act := h.http1HandleIncomplete(c, ctx, buf, reqLen); act != gnet.None {
+					return act
+				}
 				break
 			}
 			if errors.Is(err, errPayloadTooLarge) {
@@ -1024,6 +1034,8 @@ func (h *AdsPacketHandler) OnTraffic(c gnet.Conn) (action gnet.Action) {
 			_, _ = c.Write(respBadRequestClose)
 			return gnet.Close
 		}
+
+		h.http1ResetIncompleteState(ctx, c)
 
 		if h.workerPool != nil {
 			if _, err := c.Discard(reqLen); err != nil {
@@ -1103,7 +1115,7 @@ func (h *AdsPacketHandler) runOffloadedRequest(workerID int, ctx *connContext) {
 			reqBytes = (*ctx.offloadReqBuf)[:ctx.offloadReqLen:ctx.offloadReqLen]
 		}
 		var err error
-		_, reqParsed, err = h.parseHTTP(reqBytes, ctx.chunkScratch)
+		_, reqParsed, err = h.parseHTTP(reqBytes, &ctx.chunkScratch)
 		if err != nil {
 			h.write(c, respBadRequestClose, ctx)
 			return
@@ -1134,12 +1146,12 @@ var (
 	errPayloadTooLarge   = errors.New("payload too large")
 )
 
-func (h *AdsPacketHandler) parseHTTP(data []byte, scratch ...[]byte) (int, parsedHTTPRequest, error) {
+func (h *AdsPacketHandler) parseHTTP(data []byte, scratchPtr *[]byte) (int, parsedHTTPRequest, error) {
 	maxBody := int64(1 << 20)
 	if h != nil && h.cfg != nil {
 		maxBody = h.cfg.MaxRequestBodySize
 	}
-	return parseHTTP1(data, maxBody, scratch...)
+	return parseHTTP1(data, maxBody, scratchPtr)
 }
 
 func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action {
@@ -1166,6 +1178,7 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 				buf: make([]byte, 0, clickQueryScratchCap),
 			},
 			offloadHTTPPin: make([]byte, 0, 2048),
+			chunkScratch:   make([]byte, 0, 4096),
 			wTime: bufWrapper{
 				buf: make([]byte, 0, 128),
 			},
