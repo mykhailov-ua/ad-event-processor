@@ -2,7 +2,7 @@
 
 Developer notes: failure modes that look like product bugs but sit at **OS / cgroup / TCP / Redis**, plus how we proved them. Numbers are laptop compose runs (2026-08-07), not production SLA. SLA budgets: `espx.mdc` (tracker p95 &lt; 50 ms, p99 &lt; 80 ms; Redis Lua p99 &lt; 10 ms/shard).
 
-Related: [BENCHMARKS.md](BENCHMARKS.md) (micro + purgatory tables), [ARCHITECTURE.md](ARCHITECTURE.md), fault catalog `.cursor/rules/fault-resilience.mdc`.
+Related: [BENCHMARKS.md](BENCHMARKS.md) (micro + purgatory tables), [ARCHITECTURE.md](ARCHITECTURE.md), [PARSER_SECURITY.md](PARSER_SECURITY.md), fault catalog `.cursor/rules/fault-resilience.mdc`.
 
 Repo posture: **source-only** — clone is not ready-to-use; runtime/WAL/var artifacts stay gitignored (`.cursor/rules/source-repo.mdc`).
 
@@ -201,6 +201,24 @@ Alert idea: page on rising `ListenOverflows` even when tracker “healthy” and
 - Match `GOMAXPROCS` to cgroup CPUs on fractional quotas (explicit pin in load-test / purgatory).
 - Prefer keepalive / pooled clients at the edge; avoid short-conn storms into gnet under tight backlog.
 - Treat 1% lo loss + tiny buffers as **torture**, not a baseline for ranking code changes.
+
+---
+
+## 9. Parser security vs infrastructure failures
+
+Parser hardening (PS-G01–G08) and infrastructure stress (purgatory, listen overflow, netem) answer different questions. Use this table before filing a hot-path parser regression.
+
+| Symptom | Likely layer | First checks |
+| :--- | :--- | :--- |
+| Handler p99 ≈ Redis Lua p99 under netem loss | Network / Redis RTT | `ad_redis_lua_duration_seconds`, path loss, not DFA |
+| `ListenOverflows` rising, CPU low | OS accept backlog | `somaxconn`, edge connection churn — see §3 |
+| Single connection drips 1 B/s, slot never frees | Parser / connection policy | `ad_http1_incomplete_close_total`, `HTTP1_BODY_IDLE_MS` — [PARSER_SECURITY.md](PARSER_SECURITY.md) |
+| 1 MB quote-dense OpenRTB pegs one core | Parser scan budget | `ad_ortb_scan_truncated_total`, `ORTB_SCAN_MAX_BYTES` |
+| nginx returns 400 but `:8181` accepts same wire | Edge ↔ tracker differential | `TestChaos_CrossHop_NginxGnet` — should be zero differentials |
+| Mixed chaos load raises pool rejects | Worker pool saturation | `WorkerPoolRejectTotal`, `CHAOS_LOAD_*` drill |
+| Microbenches green, chaos proofs green, p99 bad under wrk | Torture profile | Not a parser bug — see verdict table at top |
+
+**Do not** treat purgatory or edge-cascade numbers as parser regression signals. **Do** run `bash scripts/fault/parser_chaos_drill.sh` after any change to `handler_http*`, `openrtb_*`, or ingress policy.
 
 ---
 

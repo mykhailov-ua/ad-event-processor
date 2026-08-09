@@ -69,3 +69,5 @@ bin/espx-install preflight
 **Pilot on-prem license (offline JWT, monthly renewal):** [docs/PILOT_LICENSE.md](./PILOT_LICENSE.md)
 
 See `deploy/installer/install.yaml.example` and `docs/DEVELOPMENT.md` for other compose profiles.
+
+**Direct tracker access (`:8181`):** In development you can bypass nginx and post to gnet directly. `POST /track` still requires `Content-Length` and rejects chunked bodies — the same rules nginx enforces in production. See [PARSER_SECURITY.md](PARSER_SECURITY.md).

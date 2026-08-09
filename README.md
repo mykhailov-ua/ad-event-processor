@@ -59,4 +59,5 @@ If you are a developer, system administrator, or DevOps engineer looking to depl
 - **[RTB production runbook](docs/RTB_PRODUCTION_RUNBOOK.md)**: OpenRTB 2.6 shadow→live, reconcile export, CH retention.
 - **[System Architecture & Data Flow](docs/ARCHITECTURE.md)**: Deep dive into the network topology, Redis sharding, PostgreSQL ledger, ClickHouse spooling, and the request lifecycle.
 - **[Development & Deployment Guide](docs/DEVELOPMENT.md)**: Local setup, codegen, Docker Compose profiles, and testing (appliance default path).
+- **[Parser security & ingress hardening](docs/PARSER_SECURITY.md)**: Edge ↔ tracker wire policy, slow-body limits, scan budgets, chaos drills (PS-G01–G08).
 - **[Frozen / Enterprise features](docs/FROZEN_FEATURES.md)**: Multi-region proxy and XDP — license, compose profiles, operator runbooks.

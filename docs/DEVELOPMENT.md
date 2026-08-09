@@ -293,6 +293,49 @@ bash scripts/fault/milestone_gates.sh /tmp/milestone-fault.log
 
 Compose+loadgen drills: `bash scripts/fault/milestone_compose_drill.sh all` (RAM proof, cutover compare, E/F/G, TCP). Nightly/manual CI: `.github/workflows/milestone-compose-nightly.yaml`. Unit gates E/F/G run in CI `resilience` job via `scripts/fault/milestone_gates.sh`.
 
+### Parser security and ingress hardening
+
+The tracker enforces wire and body parser limits aligned with the nginx edge (2026 threat model: slow streams, scan bombs, smuggling seams, HPACK integer bombs). All eight proof gaps **PS-G01–G08** are closed in the current tree.
+
+**Full guide:** [PARSER_SECURITY.md](PARSER_SECURITY.md)
+
+**Quick verification:**
+
+```bash
+# Proof stubs for each gap (PS-G01–G08)
+go test ./internal/ingestion/ -run=TestChaos_ParserSecurity -count=1 -v
+
+# Edge ↔ gnet parity (237 vectors, zero differentials)
+go test ./internal/ingestion/ -run=TestChaos_CrossHop_NginxGnet -count=1
+
+# Full drill: ingress chaos, security proofs, cross-hop, slow-body, S4, load mix, benches
+bash scripts/fault/parser_chaos_drill.sh
+
+# Sustained mixed load (default 5 min; use --duration=8s for a quick smoke)
+bash scripts/fault/parser_chaos_load.sh --duration=300s --rps=5000 --chaos-pct=10
+```
+
+**Key environment variables** (see `.env.example`):
+
+| Variable | Default | Purpose |
+| :--- | :--- | :--- |
+| `HTTP1_INCOMPLETE_MAX` | 3 | Close HTTP/1 connections stuck in incomplete parse |
+| `HTTP1_BODY_IDLE_MS` | 5000 | Wall-clock body idle timeout |
+| `ORTB_SCAN_MAX_BYTES` | 262144 | OpenRTB top-level scan byte cap |
+| `ORTB_MAX_QUOTE_CHECKS` | 65536 | OpenRTB quote-walk cap |
+| `PROTO_MAX_FIELDS` | 256 | Protobuf wire field budget on `/track` |
+| `H2_INCOMPLETE_MAX` | 3 | HTTP/2 incomplete frame spin limit |
+
+**Fault scripts** (`scripts/fault/`):
+
+| Script | Role |
+| :--- | :--- |
+| `parser_chaos_drill.sh` | PR/nightly: unit chaos, security proofs, cross-hop, slow-body, TE/proto/HPACK, 8 s load mix, fuzz smoke, `gate_bench.sh` |
+| `parser_slow_body_drill.sh` | PS-G01 slow-body integration proof |
+| `parser_chaos_load.sh` | PS-G08 sustained valid + chaos mix; greps `fault_proof fault=parser_chaos_load gap=closed` |
+
+Engineering detail, SLAs, and synthetic data recipes: `.cursor/PARSER_SECURITY_MILESTONE.md`. Perf cross-link: `.cursor/PERFORMANCE.md` §19.
+
 ### Broker cutover (`CH_INGEST_SOURCE`)
 
 Tiered event bus: tracker → mmap WAL (`pkg/broker`) → processor → ClickHouse. Redis Streams remain for settlement/fraud until fully migrated.

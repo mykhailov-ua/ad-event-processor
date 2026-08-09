@@ -106,6 +106,20 @@ Shard pick at edge (`edge-shard-balancer.lua`) must match Go `StaticSlotSharder`
 
 Infrastructure (compose defaults): PostgreSQL `5430`, Redis host ports `6479–6484` (six masters in dev compose; runtime shard count = `len(REDIS_ADDRS)`), ClickHouse `9000`.
 
+### 1.3 Ingress wire policy (parser security)
+
+`POST /track` uses a **strict wire contract** shared between nginx and gnet:
+
+- **`Content-Length` is required** — no chunked `Transfer-Encoding` on `/track`.
+- **Duplicate or obfuscated `TE` headers are rejected** — closes TE.TE smuggling seams.
+- **Incomplete bodies are closed** — spin limit (`HTTP1_INCOMPLETE_MAX`) and idle timeout (`HTTP1_BODY_IDLE_MS`) prevent slow-stream holds on direct `:8181` access.
+
+`POST /openrtb/bid` allows chunked bodies for exchange partners; chunk extensions (`;` in chunk size lines) are still rejected.
+
+Body parsers apply bounded work: OpenRTB scan caps (`ORTB_SCAN_MAX_BYTES`, `ORTB_MAX_QUOTE_CHECKS`), protobuf field budget (`PROTO_MAX_FIELDS`), and HPACK continuation limits on HTTP/2.
+
+**Operator guide:** [PARSER_SECURITY.md](PARSER_SECURITY.md). **Verification:** `bash scripts/fault/parser_chaos_drill.sh`.
+
 ---
 
 ## 2. End-to-End Request Lifecycle
@@ -150,7 +164,7 @@ sequenceDiagram
 **Step-by-step (code path)**
 
 1. **Ingress** — `cmd/tracker/main.go` runs `gnet.Run(AdsPacketHandler)`. `OnTraffic` reads the socket ring buffer; optional `PinnedWorkerPool` offloads to worker goroutines (`handler.go`).
-2. **Parse** — `parseTrackIngest`: JSON (ESPX or OpenRTB3 ingress) or protobuf `AdEvent` vtproto; zero-alloc DFA on hot path (`track_ingest_gnet.go`).
+2. **Parse** — `parseTrackIngest`: JSON (ESPX or OpenRTB3 ingress) or protobuf `AdEvent` vtproto; zero-alloc DFA on the hot path (`track_ingest_gnet.go`). Wire policy for `POST /track` matches nginx (see §1.3 and [PARSER_SECURITY.md](PARSER_SECURITY.md)).
 3. **RTB (optional)** — `applyRtbAuction` (`rtb_track.go`) **before** filters:
    - `RTB_MODE=off` — skip.
    - `shadow` — `RunAuction`, metrics only.
@@ -416,7 +430,7 @@ Shared `RunAuction` (`internal/rtb/auction.go`) for `/track` (optional), `POST /
 | Redis Cluster? | **No.** N standalone masters + `StaticSlotSharder`. |
 | How many Lua RTTs per event? | **0** (full-skip) or **1** (`EVALSHA`). |
 
-Benchmark numbers (micro + purgatory): [BENCHMARKS.md](BENCHMARKS.md). OS/TCP/accept edge cases: [EDGE_CASES.md](EDGE_CASES.md).
+Benchmark numbers (micro + purgatory): [BENCHMARKS.md](BENCHMARKS.md). OS/TCP/accept edge cases: [EDGE_CASES.md](EDGE_CASES.md). Parser security and ingress limits: [PARSER_SECURITY.md](PARSER_SECURITY.md).
 
 ### HTTP status codes (`POST /track`)
 

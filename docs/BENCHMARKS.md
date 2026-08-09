@@ -440,10 +440,37 @@ go test -count=1 ./internal/ingestion/ -run TestRedisStreamTrimmer_PELPendingNot
 
 ---
 
+## H. Parser security benches and chaos gates
+
+**Guide:** [PARSER_SECURITY.md](PARSER_SECURITY.md)
+
+Parser security changes must keep **0 allocs/op** on reject paths and pass `scripts/test/gate_bench.sh`. CI medians (linux/amd64, GOMAXPROCS=1) as of 2026-08-09:
+
+| Bench | Median ns/op | B/op | allocs/op | Gate |
+| :--- | ---: | ---: | ---: | :--- |
+| `HTTP1DFA_Happy` | 67 | 0 | 0 | ≤ 75 |
+| `HTTP1DFA_Worst` | 539 | 0 | 0 | ≤ 470 |
+| `ParseOpenRTB26` | 2567 | 0 | 0 | ≤ 1600 |
+| `AdsPacketHandlerProto_ExtraBytes` | 313 | 0 | 0 | ≤ 320 |
+| `HTTP1ChunkedFragmented` | — | 0 | 0 | ≤ 220 |
+
+**Chaos load (PS-G08):** in-process mix of valid protobuf and hostile wire. Pass when control-cohort p99 &lt; **80 ms** and `WorkerPoolRejectTotal` does not increase.
+
+```bash
+go test ./internal/ingestion/ -run='TestChaos_ParserLoad_CX02|TestChaos_ParserSecurity_PS_G08' -count=1 -v
+bash scripts/fault/parser_chaos_load.sh --duration=8s --rps=3000
+bash scripts/fault/parser_chaos_drill.sh
+```
+
+**Proof contract:** chaos tests log `fault_proof fault=<name> gap=closed gap_id=PS-Gxx ...` for CI grep.
+
+---
+
 ## Related
 
 - Edge cases (ListenOverflow, netem/RTO, code vs OS): [EDGE_CASES.md](EDGE_CASES.md)
 - Alloc gate: `scripts/test/gate_bench.sh`, `make test-alloc-gate`
 - BCE gate: `TestBCEAudit_hotSymbolsNoPanicIndexInMainBody`
-- Fault corpora: `handler_http1_fsm_fault_test.go`, `ingress_security_fault_test.go`
+- Fault corpora: `handler_http1_fsm_fault_test.go`, `ingress_security_fault_test.go`, `parser_chaos_load_test.go`
+- Parser security: [PARSER_SECURITY.md](PARSER_SECURITY.md)
 - Architecture: [ARCHITECTURE.md](ARCHITECTURE.md)
