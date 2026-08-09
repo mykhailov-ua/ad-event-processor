@@ -110,6 +110,8 @@ type Config struct {
 	HttpIdleTimeoutMs               int
 	DefaultTokenDurationHrs         int
 	StreamMaxLen                    int
+	RedisStreamTrimIntervalMs       int
+	RedisMaxActiveConns             int
 	RetryInitialWaitMs              int
 	RetryMaxWaitMs                  int
 	MaxRetries                      int
@@ -251,6 +253,7 @@ type Config struct {
 		Topic               string
 		PartitionCount      int
 		ShadowMode          bool
+		CHIngestSource      string // "" = redis stream (default); "broker" = broker-primary, skips Redis _ch consumer
 		MaxBytes            int
 		TimeoutMs           int
 		ReconcileIntervalMs int
@@ -506,6 +509,7 @@ func Load() (*Config, error) {
 		LogRetentionDays:                getEnvInt("LOG_RETENTION_DAYS", 7),
 		DBTrackerMaxConns:               getEnvInt("DB_TRACKER_MAX_CONNS", 4),
 		DBProcessorMaxConns:             getEnvInt("DB_PROCESSOR_MAX_CONNS", 16),
+		RedisMaxActiveConns:             getEnvIntDual("REDIS_MAX_ACTIVE_CONNS", "REDIS_MAX_ACTIVE", 2048),
 		DBMinConns:                      getEnvInt("DB_MIN_CONNS", 2),
 		PgPoolSettleMaxConns:            getEnvInt("PG_POOL_SETTLE_MAX_CONNS", 0),
 		VolumeMeterSource:               envOrDefault("VOLUME_METER_SOURCE", "pg"),
@@ -566,7 +570,8 @@ func Load() (*Config, error) {
 		DefaultTokenDurationHrs:         getEnvInt("DEFAULT_TOKEN_DURATION_HRS", 24),
 		ClickAmount:                     getEnvMicro("CLICK_AMOUNT", 100_000),
 		ImpressionAmount:                getEnvMicro("IMPRESSION_AMOUNT", 10_000),
-		StreamMaxLen:                    getEnvInt("STREAM_MAX_LEN", 100000),
+		StreamMaxLen:                    getEnvIntDual("REDIS_STREAM_MAXLEN", "STREAM_MAX_LEN", 10000),
+		RedisStreamTrimIntervalMs:       getEnvIntDual("REDIS_STREAM_TRIM_INTERVAL", "REDIS_STREAM_TRIM_INTERVAL_MS", 10000),
 		RetryInitialWaitMs:              getEnvInt("RETRY_INITIAL_WAIT_MS", 100),
 		RetryMaxWaitMs:                  getEnvInt("RETRY_MAX_WAIT_MS", 5000),
 		MaxRetries:                      getEnvInt("MAX_RETRIES", 5),

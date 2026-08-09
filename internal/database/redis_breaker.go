@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"errors"
+	"math"
 	"net"
 	"strings"
 	"sync/atomic"
@@ -42,19 +43,69 @@ type RedisBreaker struct {
 	failThreshold    int64
 	successThreshold int64
 	openTimeout      time.Duration
+
+	failRateRatio   float64
+	totalReqs       uint64
+	failedReqs      uint64
+	windowStartUnix int64
+	ewmaRPSBits     uint64
 }
 
 func NewRedisBreaker(failThreshold, successThreshold int64, openTimeout time.Duration) *RedisBreaker {
+	return NewAdaptiveRedisBreaker(failThreshold, successThreshold, openTimeout, 0.20)
+}
+
+func NewAdaptiveRedisBreaker(failThreshold, successThreshold int64, openTimeout time.Duration, failRateRatio float64) *RedisBreaker {
+	if failThreshold <= 0 {
+		failThreshold = 150
+	}
+	if failRateRatio <= 0 {
+		failRateRatio = 0.20
+	}
 	return &RedisBreaker{
 		state:            int32(CircuitClosed),
 		failThreshold:    failThreshold,
 		successThreshold: successThreshold,
 		openTimeout:      openTimeout,
+		failRateRatio:    failRateRatio,
+		windowStartUnix:  time.Now().Unix(),
 	}
 }
 
 func (b *RedisBreaker) State() CircuitState {
 	return CircuitState(atomic.LoadInt32(&b.state))
+}
+
+func (b *RedisBreaker) EWMARPS() float64 {
+	_ = b.updateEWMAAndGetThreshold()
+	return math.Float64frombits(atomic.LoadUint64(&b.ewmaRPSBits))
+}
+
+func (b *RedisBreaker) updateEWMAAndGetThreshold() int64 {
+	nowSec := time.Now().Unix()
+	winSec := atomic.LoadInt64(&b.windowStartUnix)
+	if nowSec > winSec {
+		if atomic.CompareAndSwapInt64(&b.windowStartUnix, winSec, nowSec) {
+			total := atomic.SwapUint64(&b.totalReqs, 0)
+			_ = atomic.SwapUint64(&b.failedReqs, 0)
+
+			oldEWMA := math.Float64frombits(atomic.LoadUint64(&b.ewmaRPSBits))
+			var newEWMA float64
+			if oldEWMA == 0 {
+				newEWMA = float64(total)
+			} else {
+				newEWMA = 0.2*float64(total) + 0.8*oldEWMA
+			}
+			atomic.StoreUint64(&b.ewmaRPSBits, math.Float64bits(newEWMA))
+		}
+	}
+
+	ewmaRPS := math.Float64frombits(atomic.LoadUint64(&b.ewmaRPSBits))
+	dynamicThreshold := int64(ewmaRPS * b.failRateRatio)
+	if dynamicThreshold < b.failThreshold {
+		dynamicThreshold = b.failThreshold
+	}
+	return dynamicThreshold
 }
 
 func (b *RedisBreaker) Allow() bool {
@@ -70,7 +121,6 @@ func (b *RedisBreaker) Allow() bool {
 	if state == int32(CircuitOpen) {
 		lastOpened := atomic.LoadInt64(&b.lastOpenedUnix)
 		if time.Since(time.Unix(0, lastOpened)) >= b.openTimeout {
-
 			if atomic.CompareAndSwapInt32(&b.state, int32(CircuitOpen), int32(CircuitHalfOpen)) {
 				atomic.StoreInt64(&b.successes, 0)
 				atomic.StoreInt64(&b.failures, 0)
@@ -84,6 +134,8 @@ func (b *RedisBreaker) Allow() bool {
 }
 
 func (b *RedisBreaker) RecordSuccess() {
+	atomic.AddUint64(&b.totalReqs, 1)
+	_ = b.updateEWMAAndGetThreshold()
 	state := atomic.LoadInt32(&b.state)
 	if state == int32(CircuitHalfOpen) {
 		successes := atomic.AddInt64(&b.successes, 1)
@@ -93,19 +145,21 @@ func (b *RedisBreaker) RecordSuccess() {
 			}
 		}
 	} else if state == int32(CircuitClosed) {
-
 		atomic.StoreInt64(&b.failures, 0)
 	}
 }
 
 func (b *RedisBreaker) RecordFailure() {
+	atomic.AddUint64(&b.totalReqs, 1)
+	atomic.AddUint64(&b.failedReqs, 1)
+
 	state := atomic.LoadInt32(&b.state)
 	if state == int32(CircuitHalfOpen) {
-
 		b.trip()
 	} else if state == int32(CircuitClosed) {
+		threshold := b.updateEWMAAndGetThreshold()
 		failures := atomic.AddInt64(&b.failures, 1)
-		if failures >= b.failThreshold {
+		if failures >= threshold {
 			b.trip()
 		}
 	}

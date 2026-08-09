@@ -7,8 +7,10 @@ cd "$ROOT"
 MODE="${1:-report}"
 EDGE_CONF="$ROOT/deploy/edge/99-espx-edge.conf"
 LOADTEST_CONF="$ROOT/deploy/edge/99-espx-loadtest.conf"
+BIDSHARD_CONF="$ROOT/deploy/sysctl/99-bidshard-sysctl.conf"
 CONF_DST_EDGE="${ESPX_SYSCTL_CONF:-/etc/sysctl.d/99-espx-edge.conf}"
 CONF_DST_LOAD="${ESPX_LOADTEST_SYSCTL_CONF:-/etc/sysctl.d/99-espx-loadtest.conf}"
+CONF_DST_BIDSHARD="${BIDSHARD_SYSCTL_CONF:-/etc/sysctl.d/99-bidshard-sysctl.conf}"
 
 log() { printf 'host-tune: %s\n' "$*"; }
 warn() { printf 'host-tune: WARN: %s\n' "$*" >&2; }
@@ -18,7 +20,7 @@ require_root() { [[ "$(id -u)" -eq 0 ]] || die "mode $MODE requires root (sudo)"
 
 expected_keys() {
 	local f=$1
-	awk -F= '/^[[:space:]]*(net\.|fs\.)/ {
+	awk -F= '/^[[:space:]]*(net\.|fs\.|vm\.)/ {
 		gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1)
 		print $1
 	}' "$f"

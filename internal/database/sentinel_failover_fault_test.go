@@ -28,7 +28,38 @@ const (
 	sentinelFaultLoadShard0ErrKey  = "sentinel:fault:load:shard0:errors"
 	sentinelFaultLoadShard0OKKey   = "sentinel:fault:load:shard0:ok"
 	sentinelFaultLoadOtherOKKey    = "sentinel:fault:load:other:ok"
+	sentinelFaultLoadRPSKey        = "sentinel:fault:load:rps"
+	sentinelFaultLoadTargetRPSKey  = "sentinel:fault:load:target_rps"
 )
+
+func sentinelLoadTargetRPS() int {
+	if v := os.Getenv("SENTINEL_LOAD_TARGET_RPS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
+		}
+	}
+	return 30_000
+}
+
+func sentinelLoadWorkersPerShard(targetRPS int) int {
+	if v := os.Getenv("SENTINEL_LOAD_WORKERS_PER_SHARD"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
+		}
+	}
+	perShard := targetRPS / sentinelFaultShards
+	if perShard < 1000 {
+		return 4
+	}
+	w := perShard / 1000
+	if w < 8 {
+		w = 8
+	}
+	if w > 48 {
+		w = 48
+	}
+	return w
+}
 
 func logSentinelFaultProof(t *testing.T, fault string, kv map[string]string) {
 	t.Helper()
@@ -76,6 +107,12 @@ func TestSentinelFailoverLoadWorker(t *testing.T) {
 		t.Skip("orchestrator must set SENTINEL_LOAD_WORKER=1 and run this test in background during failover")
 	}
 	cfg := sentinelFaultConfig(t)
+	targetRPS := sentinelLoadTargetRPS()
+	workersPerShard := sentinelLoadWorkersPerShard(targetRPS)
+	poolSize := workersPerShard + 8
+	if poolSize > 64 {
+		poolSize = 64
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
@@ -83,7 +120,7 @@ func TestSentinelFailoverLoadWorker(t *testing.T) {
 	dialCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 
-	clients, _, err := ConnectRedisShards(dialCtx, cfg, RedisShardOptions{PoolSize: 8, FilterTimeoutMs: 100})
+	clients, _, err := ConnectRedisShards(dialCtx, cfg, RedisShardOptions{PoolSize: poolSize, FilterTimeoutMs: 100})
 	if err != nil {
 		t.Fatalf("ConnectRedisShards: %v", err)
 	}
@@ -111,7 +148,9 @@ func TestSentinelFailoverLoadWorker(t *testing.T) {
 	if err := clients[0].Set(seedCtx, sentinelFaultMarkerKey, "ok", 0).Err(); err != nil {
 		t.Fatalf("seed marker: %v", err)
 	}
-	_ = clients[1].Del(seedCtx, sentinelFaultLoadShard0ErrKey, sentinelFaultLoadShard0OKKey, sentinelFaultLoadOtherOKKey)
+	_ = clients[1].Del(seedCtx,
+		sentinelFaultLoadShard0ErrKey, sentinelFaultLoadShard0OKKey, sentinelFaultLoadOtherOKKey,
+		sentinelFaultLoadRPSKey, sentinelFaultLoadTargetRPSKey)
 
 	var (
 		shard0Errors atomic.Int64
@@ -120,28 +159,47 @@ func TestSentinelFailoverLoadWorker(t *testing.T) {
 		panics       atomic.Int32
 	)
 	var wg sync.WaitGroup
+	loadStart := time.Now()
 	for shardIdx, rdb := range clients {
 		shardIdx := shardIdx
 		rdb := rdb
 		campID := campaignIDs[shardIdx]
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			defer func() {
-				if recover() != nil {
-					panics.Add(1)
-				}
+		for w := 0; w < workersPerShard; w++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				defer func() {
+					if recover() != nil {
+						panics.Add(1)
+					}
+				}()
+				loadShardSpin(ctx, rdb, shardIdx, campID, &shard0Errors, &shard0OK, &otherOK)
 			}()
-			loadShardLoop(ctx, rdb, shardIdx, campID, &shard0Errors, &shard0OK, &otherOK)
-		}()
+		}
 	}
 
 	<-ctx.Done()
 	wg.Wait()
 
+	elapsed := time.Since(loadStart).Seconds()
+	total := shard0OK.Load() + otherOK.Load() + shard0Errors.Load()
+	rps := int64(0)
+	if elapsed > 0 {
+		rps = int64(float64(total) / elapsed)
+	}
+	minRPS := int64(float64(targetRPS) * 0.5)
+	if rps < minRPS {
+		t.Fatalf("load worker RPS %d below min %d (target %d, workers_per_shard=%d)", rps, minRPS, targetRPS, workersPerShard)
+	}
+	logSentinelFaultProof(t, "sentinel_load_rps", map[string]string{
+		"target_rps":        strconv.Itoa(targetRPS),
+		"actual_rps":        strconv.FormatInt(rps, 10),
+		"workers_per_shard": strconv.Itoa(workersPerShard),
+	})
+
 	flushCtx, flushCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer flushCancel()
-	if err := flushLoadStats(flushCtx, clients[1], &shard0Errors, &shard0OK, &otherOK); err != nil {
+	if err := flushLoadStats(flushCtx, clients[1], targetRPS, rps, &shard0Errors, &shard0OK, &otherOK); err != nil {
 		t.Fatalf("flush load stats: %v", err)
 	}
 	if panics.Load() > 0 {
@@ -149,17 +207,14 @@ func TestSentinelFailoverLoadWorker(t *testing.T) {
 	}
 }
 
-func loadShardLoop(ctx context.Context, rdb redis.UniversalClient, shardIdx int, campID uuid.UUID, shard0Errors, shard0OK, otherOK *atomic.Int64) {
+func loadShardSpin(ctx context.Context, rdb redis.UniversalClient, shardIdx int, campID uuid.UUID, shard0Errors, shard0OK, otherOK *atomic.Int64) {
 	bKey := budgetCampaignKey(campID)
-	ticker := time.NewTicker(10 * time.Millisecond)
-	defer ticker.Stop()
-
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-ticker.C:
-			opCtx, cancel := context.WithTimeout(ctx, 150*time.Millisecond)
+		default:
+			opCtx, cancel := context.WithTimeout(ctx, 50*time.Millisecond)
 			_, err := rdb.Get(opCtx, bKey).Result()
 			cancel()
 			recordLoadResult(shardIdx, err, shard0Errors, shard0OK, otherOK)
@@ -181,11 +236,13 @@ func recordLoadResult(shardIdx int, err error, shard0Errors, shard0OK, otherOK *
 	}
 }
 
-func flushLoadStats(ctx context.Context, rdb redis.UniversalClient, shard0Errors, shard0OK, otherOK *atomic.Int64) error {
+func flushLoadStats(ctx context.Context, rdb redis.UniversalClient, targetRPS int, actualRPS int64, shard0Errors, shard0OK, otherOK *atomic.Int64) error {
 	pipe := rdb.Pipeline()
 	pipe.Set(ctx, sentinelFaultLoadShard0ErrKey, shard0Errors.Load(), 0)
 	pipe.Set(ctx, sentinelFaultLoadShard0OKKey, shard0OK.Load(), 0)
 	pipe.Set(ctx, sentinelFaultLoadOtherOKKey, otherOK.Load(), 0)
+	pipe.Set(ctx, sentinelFaultLoadTargetRPSKey, targetRPS, 0)
+	pipe.Set(ctx, sentinelFaultLoadRPSKey, actualRPS, 0)
 	_, err := pipe.Exec(ctx)
 	return err
 }
@@ -282,6 +339,15 @@ func TestSentinelActiveFailoverVerify(t *testing.T) {
 	shard0Errors, _ := statsRdb.Get(ctx, sentinelFaultLoadShard0ErrKey).Int64()
 	shard0OK, _ := statsRdb.Get(ctx, sentinelFaultLoadShard0OKKey).Int64()
 	otherOK, _ := statsRdb.Get(ctx, sentinelFaultLoadOtherOKKey).Int64()
+	loadRPS, _ := statsRdb.Get(ctx, sentinelFaultLoadRPSKey).Int64()
+	targetRPS, _ := statsRdb.Get(ctx, sentinelFaultLoadTargetRPSKey).Int64()
+	if targetRPS <= 0 {
+		targetRPS = int64(sentinelLoadTargetRPS())
+	}
+	minRPS := targetRPS / 2
+	if loadRPS < minRPS {
+		t.Fatalf("load worker RPS %d below min %d (target %d)", loadRPS, minRPS, targetRPS)
+	}
 
 	if shard0Errors == 0 {
 		t.Fatalf("expected shard 0 load errors during failover window, got 0")
@@ -299,5 +365,19 @@ func TestSentinelActiveFailoverVerify(t *testing.T) {
 		"shard0_errors":     strconv.FormatInt(shard0Errors, 10),
 		"shard0_ok":         strconv.FormatInt(shard0OK, 10),
 		"other_ok":          strconv.FormatInt(otherOK, 10),
+		"target_rps":        strconv.FormatInt(targetRPS, 10),
+		"actual_rps":        strconv.FormatInt(loadRPS, 10),
+	})
+	healthyAffected := 0
+	if otherOK == 0 {
+		healthyAffected = 1
+	}
+	logSentinelFaultProof(t, "sentinel_promotion_isolation", map[string]string{
+		"healthy_shards_affected": strconv.Itoa(healthyAffected),
+		"other_ok":                strconv.FormatInt(otherOK, 10),
+		"shard0_errors":           strconv.FormatInt(shard0Errors, 10),
+		"target_rps":              strconv.FormatInt(targetRPS, 10),
+		"actual_rps":              strconv.FormatInt(loadRPS, 10),
+		"baseline_ok":             "true",
 	})
 }

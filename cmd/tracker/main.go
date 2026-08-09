@@ -222,6 +222,19 @@ func main() {
 	breakerFilter := ingestion.NewEmergencyBreakerFilter(settingsWatcher)
 	consentFilter := ingestion.NewConsentFilter(registry, consentStore)
 
+	streamTrimmer := ingestion.NewRedisStreamTrimmer(ingestion.RedisStreamTrimmerConfig{
+		Rdbs:         rdbs,
+		Streams:      []string{cfg.RedisStreamName, cfg.FraudStreamName},
+		MaxLen:       cfg.StreamMaxLen,
+		TrimInterval: time.Duration(cfg.RedisStreamTrimIntervalMs) * time.Millisecond,
+	})
+	streamTrimmer.Start(ctx)
+
+	trackerStreamName := cfg.RedisStreamName
+	if cfg.BrokerEnabled() && cfg.Broker.CHIngestSource == "broker" {
+		trackerStreamName = "fcap:ignored"
+	}
+
 	unifiedFilter := ingestion.NewUnifiedFilter(
 		rdbs,
 		sharder,
@@ -233,7 +246,7 @@ func main() {
 		time.Duration(cfg.IdempotencyTTLHrs)*time.Hour,
 		cfg.ClickAmount,
 		cfg.ImpressionAmount,
-		cfg.RedisStreamName,
+		trackerStreamName,
 		cfg.StreamMaxLen,
 	)
 	unifiedFilter.SetFilterEvalPinWorkers(cfg.MaxWorkers)
@@ -243,6 +256,8 @@ func main() {
 		slog.Error("failed to preload redis lua scripts on all shards", "error", err)
 		os.Exit(1)
 	}
+	unifiedFilter.AttachReconnectPreload()
+	unifiedFilter.StartScriptPreheater(ctx, 30*time.Second)
 	unifiedFilter.SetTTCMin(time.Duration(cfg.TTCMinMs) * time.Millisecond)
 	unifiedFilter.SetTTCFailClosed(cfg.TTCFailClosed)
 	if cfg.TTCMinMs > 0 {
@@ -295,7 +310,7 @@ func main() {
 		idemCache := ingestion.NewLocalClickIdemCache(time.Duration(cfg.IdempotencyTTLHrs) * time.Hour)
 		localQuantaStream = ingestion.NewLocalQuantaStreamPublisher(ingestion.LocalQuantaStreamPublisherConfig{
 			Rdbs:           rdbs,
-			StreamName:     cfg.RedisStreamName,
+			StreamName:     trackerStreamName,
 			MaxLen:         cfg.StreamMaxLen,
 			IdempotencyTTL: time.Duration(cfg.IdempotencyTTLHrs) * time.Hour,
 			IdemCache:      idemCache,
@@ -459,6 +474,23 @@ func main() {
 	}
 
 	gnetHandler := ingestion.NewAdsPacketHandler(cfg, registry, filterEngine, pool, rdbs, sharder, cfg.FraudStreamName, creativeStore)
+
+	var brokerProducer *ingestion.BrokerProducer
+	if cfg.Broker.URL != "" {
+		producerCfg := ingestion.DefaultBrokerProducerConfig()
+		producerCfg.BrokerAddr = cfg.Broker.URL
+		if cfg.Broker.TimeoutMs > 0 {
+			producerCfg.Timeout = time.Duration(cfg.Broker.TimeoutMs) * time.Millisecond
+		}
+		var bpErr error
+		brokerProducer, bpErr = ingestion.NewBrokerProducer(producerCfg)
+		if bpErr != nil {
+			slog.Warn("broker producer init failed", "error", bpErr)
+		} else {
+			gnetHandler.SetBrokerProducer(brokerProducer)
+			slog.Info("broker producer enabled", "addr", cfg.Broker.URL, "topic", producerCfg.Topic)
+		}
+	}
 	ingestion.StartFraudBackpressureWatcher(ctx, ingestion.FraudBackpressureConfig{
 		Rdbs:        rdbs,
 		Writer:      gnetHandler.FraudWriter(),
@@ -612,6 +644,15 @@ func main() {
 	}
 	if localQuantaStream != nil {
 		localQuantaStream.Close()
+	}
+	if brokerProducer != nil {
+		if err := brokerProducer.Close(); err != nil {
+			slog.Warn("broker producer close error", "error", err)
+		}
+	}
+	if streamTrimmer != nil {
+		streamTrimmer.Close()
+		streamTrimmer.Wait()
 	}
 
 	registryWaitCtx, registryWaitCancel := context.WithTimeout(context.Background(), time.Duration(cfg.Lifecycle.WaitTimeoutMs)*time.Millisecond)

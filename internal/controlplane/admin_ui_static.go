@@ -75,7 +75,7 @@ func serveLoginHTML(w http.ResponseWriter, staticFS http.FileSystem) {
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-	w.Write(data)
+	_, _ = w.Write(data)
 }
 
 func serveIndexHTML(w http.ResponseWriter, staticFS http.FileSystem, boot *AdminBootJSON) {
@@ -100,7 +100,7 @@ func serveIndexHTML(w http.ResponseWriter, staticFS http.FileSystem, boot *Admin
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-	w.Write(data)
+	_, _ = w.Write(data)
 }
 
 func isAdminSPAPath(path string) bool {

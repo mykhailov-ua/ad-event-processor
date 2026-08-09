@@ -163,22 +163,20 @@ func (b *BrokerStreamConsumer) run(ctx context.Context) {
 			if ctx.Err() != nil {
 				break
 			}
-			evt, parseErr := ParseBrokerPayload(iter.Payload)
+			parseErr := ParseBrokerPayloadStream(iter.Payload, func(evt *domain.Event) {
+				metrics.BrokerIngestMessagesTotal.WithLabelValues(b.cfg.Topic, b.cfg.Group, evt.Type).Inc()
+				if len(batch) == 0 {
+					batchStartOffset = iter.Offset
+				}
+				batch = append(batch, evt)
+				processed++
+			})
 			if parseErr != nil {
 				metrics.BrokerIngestParseErrorsTotal.WithLabelValues(b.cfg.Topic, b.cfg.Group).Inc()
 				slog.Warn("broker payload parse failed", "group", b.cfg.Group, "offset", iter.Offset, "error", parseErr)
-				nextCommit = iter.Offset + 1
-				batchCommit = nextCommit
-				continue
 			}
-			metrics.BrokerIngestMessagesTotal.WithLabelValues(b.cfg.Topic, b.cfg.Group, evt.Type).Inc()
-			if len(batch) == 0 {
-				batchStartOffset = iter.Offset
-			}
-			batch = append(batch, evt)
 			nextCommit = iter.Offset + 1
 			batchCommit = nextCommit
-			processed++
 
 			if len(batch) >= b.cfg.BatchSize || time.Since(lastFlush) >= b.cfg.FlushInt {
 				committed, flushErr := b.flushAndCommit(ctx, batch, batchStartOffset, nextCommit)

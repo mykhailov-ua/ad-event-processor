@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: espx-edge
-  labels:
-    app.kubernetes.io/part-of: espx
-    app.kubernetes.io/component: hot-path

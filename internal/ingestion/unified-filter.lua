@@ -169,15 +169,17 @@ if campaign_id ~= "" and click_id ~= "" then
     end
 end
 
-redis_call("XADD", KEYS[9], "MAXLEN", "~", ARGV[8], "*",
-    "click_id", click_id,
-    "campaign_id", campaign_id,
-    "user_id", user_id,
-    "type", evt_type,
-    "payload", payload,
-    "ip", ARGV[12],
-    "ua", ARGV[13]
-)
+if KEYS[9] and KEYS[9] ~= "fcap:ignored" and KEYS[9] ~= "" then
+    redis_call("XADD", KEYS[9], "MAXLEN", "~", ARGV[8], "*",
+        "click_id", click_id,
+        "campaign_id", campaign_id,
+        "user_id", user_id,
+        "type", evt_type,
+        "payload", payload,
+        "ip", ARGV[12],
+        "ua", ARGV[13]
+    )
+end
 
 if not degraded and quota_enabled and chunk_size > 0 and spend_key == KEYS[13] and not skip_budget then
     local quota_after = budget - amount

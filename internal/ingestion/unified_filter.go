@@ -207,6 +207,7 @@ type UnifiedFilter struct {
 	evalPins                 *filterEvalPin
 	breakers                 []*database.RedisBreaker
 	filterSlowNs             int64
+	evalFallbackGate         chan struct{}
 }
 
 func (f *UnifiedFilter) SetFilterSlowMs(ms int) {
@@ -372,9 +373,31 @@ func NewUnifiedFilter(
 		redisObservability:           newRedisShardObservability(len(rdbs), luaMetricsSampleMask),
 		dbLookupTimeout:              2 * time.Second,
 		pgFallbackAllowed:            true,
+		evalFallbackGate:             make(chan struct{}, 32),
 	}
 	f.geoFloors.Store(&emptyGeoFloors)
 	return f
+}
+
+func (f *UnifiedFilter) StartScriptPreheater(ctx context.Context, interval time.Duration) {
+	if interval <= 0 {
+		interval = 30 * time.Second
+	}
+	go func() {
+		// Run initial preload on start
+		_ = f.PreloadScripts(ctx)
+
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				_ = f.PreloadScripts(ctx)
+			}
+		}
+	}()
 }
 
 func (f *UnifiedFilter) SetMetricsSampleMask(mask int) {

@@ -317,9 +317,11 @@ func TestFault_ScriptFlushUnderTrackRPS(t *testing.T) {
 	beforeNoscript := testutil.ToFloat64(metrics.RedisLuaNoScriptTotal.WithLabelValues("0"))
 
 	var (
-		okCount  atomic.Uint64
-		errCount atomic.Uint64
-		wg       sync.WaitGroup
+		okCount   atomic.Uint64
+		errCount  atomic.Uint64
+		latMu     sync.Mutex
+		latencies []time.Duration
+		wg        sync.WaitGroup
 	)
 	wg.Add(p0ScriptFlushWorkers + 1)
 	for w := 0; w < p0ScriptFlushWorkers; w++ {
@@ -329,7 +331,12 @@ func TestFault_ScriptFlushUnderTrackRPS(t *testing.T) {
 			prefix := fmt.Sprintf("flush-w%d-", worker)
 			for i := 0; i < p0ScriptFlushPerW; i++ {
 				clickID := uuid.NewString()
+				start := time.Now()
 				status := postFaultImpression(t, stack.Handler, stack.CampaignID, prefix+clickID[:8])
+				elapsed := time.Since(start)
+				latMu.Lock()
+				latencies = append(latencies, elapsed)
+				latMu.Unlock()
 				if status == http.StatusAccepted || status == http.StatusOK {
 					okCount.Add(1)
 				} else {
@@ -353,6 +360,10 @@ func TestFault_ScriptFlushUnderTrackRPS(t *testing.T) {
 	require.Equal(t, uint64(p0ScriptFlushWorkers*p0ScriptFlushPerW), total)
 	require.Greater(t, okCount.Load(), total*8/10, "≥80%% tracks succeed after EVAL fallback")
 
+	flushP99 := percentileDuration(latencies, 99)
+	require.Less(t, flushP99, shardLoadSpikeP99Limit,
+		"SCRIPT FLUSH under track load p99 must stay below tracker SLA ceiling")
+
 	AssertBudgetInvariant(t, ctx, infra.Pool, infra.Redis, stack.CampaignID)
 
 	faultproof.Log(t, "script_flush_under_track_rps", map[string]string{
@@ -361,7 +372,16 @@ func TestFault_ScriptFlushUnderTrackRPS(t *testing.T) {
 		"ok":             fmt.Sprintf("%d", okCount.Load()),
 		"err":            fmt.Sprintf("%d", errCount.Load()),
 		"noscript_delta": fmt.Sprintf("%.0f", noscriptDelta),
+		"p99_ms":         fmt.Sprintf("%.3f", float64(flushP99.Microseconds())/1000),
 		"budget_ok":      "true",
+	})
+	faultproof.Log(t, "noscript_storm", map[string]string{
+		"status":            "recovered",
+		"n_noscript_events": fmt.Sprintf("%.0f", noscriptDelta),
+		"workers":           fmt.Sprintf("%d", p0ScriptFlushWorkers),
+		"p99_ms":            fmt.Sprintf("%.3f", float64(flushP99.Microseconds())/1000),
+		"target_rps":        "20000",
+		"baseline_ok":       "true",
 	})
 }
 

@@ -16,6 +16,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type regionProxySpendSyncAdapter struct {
+	client *rpclient.Client
+}
+
+func (a regionProxySpendSyncAdapter) ProduceSpendSyncPayload(payload []byte) (SpendSyncBatchResult, error) {
+	res, err := a.client.ProduceSpendSyncPayload(payload)
+	return SpendSyncBatchResult{Committed: res.Committed}, err
+}
+
 func TestSpendSyncProducer_FlushToRegionProxy(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration test")
@@ -33,7 +42,7 @@ func TestSpendSyncProducer_FlushToRegionProxy(t *testing.T) {
 	client := rpclient.New(rpclient.Config{Addr: srv.Addr(), Timeout: 2 * time.Second})
 	defer client.Close()
 
-	producer := NewSpendSyncProducer(client, 2)
+	producer := NewSpendSyncProducer(regionProxySpendSyncAdapter{client: client}, 2)
 	campID := uuid.New()
 
 	for i := 0; i < 2; i++ {

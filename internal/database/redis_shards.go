@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net"
 	"runtime"
+	"strings"
 	"time"
 
 	"espx/internal/config"
@@ -111,10 +113,14 @@ func shardUniversalOptions(cfg *config.Config, shardIdx int, masterNames []strin
 	if opts.StickyPinWorkers > 0 {
 		poolSize += opts.StickyPinWorkers
 	}
+	maxActiveConns := poolSize
+	if cfg != nil && cfg.RedisMaxActiveConns > maxActiveConns {
+		maxActiveConns = cfg.RedisMaxActiveConns
+	}
 	uopts := &redis.UniversalOptions{
 		Password:       string(cfg.RedisPassword),
 		PoolSize:       poolSize,
-		MaxActiveConns: poolSize,
+		MaxActiveConns: maxActiveConns,
 	}
 	if opts.FilterTimeoutMs > 0 {
 		d := time.Duration(opts.FilterTimeoutMs) * time.Millisecond
@@ -126,6 +132,13 @@ func shardUniversalOptions(cfg *config.Config, shardIdx int, masterNames []strin
 		uopts.Addrs = cfg.RedisSentinelAddrs
 		return uopts
 	}
-	uopts.Addrs = []string{cfg.RedisAddrs[shardIdx]}
+	addr := cfg.RedisAddrs[shardIdx]
+	uopts.Addrs = []string{addr}
+	if strings.HasPrefix(addr, "/") || strings.HasSuffix(addr, ".sock") || strings.Contains(addr, ".sock") {
+		uopts.Dialer = func(ctx context.Context, _, addr string) (net.Conn, error) {
+			var netDialer net.Dialer
+			return netDialer.DialContext(ctx, "unix", addr)
+		}
+	}
 	return uopts
 }

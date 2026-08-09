@@ -4,6 +4,8 @@ import (
 	"context"
 	_ "embed"
 	"errors"
+	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -64,11 +66,11 @@ func (f *UnifiedFilter) runBudgetFastLua(
 	wrappers := &scratch.wrappers
 	precheck := &scratch.precheck
 
-	budgetSourceKey := campInfo.BudgetCampaignKey
-	subSlot := 0
-	if campInfo != nil {
-		subSlot = debitSubSlot(campInfo, evt.UserID, evt.ClickID)
+	if campInfo == nil {
+		return errors.New("budget fast: missing campaign")
 	}
+	budgetSourceKey := campInfo.BudgetCampaignKey
+	subSlot := debitSubSlot(campInfo, evt.UserID, evt.ClickID)
 	if f.quotaEnabledAny == oneAny {
 		wQuota.buf = appendBudgetQuotaKey(wQuota.buf[:0], evt.CampaignID, subSlot)
 		budgetSourceKey = unsafeString(wQuota.buf)
@@ -247,6 +249,24 @@ func (f *UnifiedFilter) evalFastScript(ctx context.Context, rdb redis.UniversalC
 	res, err := f.evalShaPooledN(ctx, rdb, shard, evt, f.fastScriptHashAny, keyArgs[:], args, budgetFastKeyCount)
 	if err != nil && isNoScriptErr(err) {
 		incRedisLuaNoScript(f.luaNoScriptCounters, shard)
+		slog.Warn("redis lua NOSCRIPT encountered (fast script)", "shard", shard, "error", err)
+
+		go func() {
+			ctxPreheat, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+			_ = f.PreloadScripts(ctxPreheat)
+		}()
+
+		if f.evalFallbackGate != nil {
+			select {
+			case f.evalFallbackGate <- struct{}{}:
+				defer func() { <-f.evalFallbackGate }()
+				return f.evalPooledN(ctx, rdb, shard, evt, budgetFastLuaAny, keyArgs[:], args, budgetFastKeyCount)
+			default:
+				slog.Warn("redis lua NOSCRIPT fallback concurrency limit exceeded (fast script)", "shard", shard)
+				return -1, fmt.Errorf("redis lua EVAL fallback concurrency limit exceeded")
+			}
+		}
 		return f.evalPooledN(ctx, rdb, shard, evt, budgetFastLuaAny, keyArgs[:], args, budgetFastKeyCount)
 	}
 	return res, err

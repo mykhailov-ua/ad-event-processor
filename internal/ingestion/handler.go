@@ -561,6 +561,13 @@ type AdsPacketHandler struct {
 	contextPool           sync.Pool
 	workerPool            *PinnedWorkerPool
 	udpControl            *UDPControl
+	brokerProducer        *BrokerProducer
+}
+
+func (h *AdsPacketHandler) SetBrokerProducer(bp *BrokerProducer) {
+	if h != nil {
+		h.brokerProducer = bp
+	}
 }
 
 func (h *AdsPacketHandler) SetUDPControl(ctrl *UDPControl) {
@@ -1285,6 +1292,9 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 	releaseOpenRTB3Scratch(evt)
 	h.trackMetrics.decisionAccepted.Inc()
 	writeAuditLog(h.logger, &h.auditLogSeq, h.auditLogSampleMask, ctx.shardID, evt)
+	if h.brokerProducer != nil {
+		_ = h.brokerProducer.Enqueue(evt)
+	}
 	landing := ResolveLandingURL(h.registry, h.creativeStore, &ctx.evt)
 	h.writeGnetTrackAccepted(ctx, req, c, startMono, wReqID, requestIDStr, landing)
 	return gnet.None

@@ -23,7 +23,8 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 	cfg.Broker.RedisURL = os.Getenv("BROKER_REDIS_URL")
 	cfg.Broker.Topic = os.Getenv("BROKER_TOPIC")
 	cfg.Broker.PartitionCount = getEnvInt("BROKER_PARTITION_COUNT", ExpectedRedisShardCount)
-	cfg.Broker.ShadowMode = getEnvBool("BROKER_SHADOW_MODE", true)
+	cfg.Broker.ShadowMode = getEnvBool("BROKER_SHADOW_MODE", false)
+	cfg.Broker.CHIngestSource = os.Getenv("CH_INGEST_SOURCE") // "broker" = skip Redis _ch StreamConsumer
 	cfg.Broker.MaxBytes = getEnvInt("BROKER_FETCH_MAX_BYTES", 1024*1024)
 	cfg.Broker.TimeoutMs = getEnvInt("BROKER_TIMEOUT_MS", 5000)
 	cfg.Broker.ReconcileIntervalMs = getEnvInt("BROKER_RECONCILE_INTERVAL_MS", 30000)

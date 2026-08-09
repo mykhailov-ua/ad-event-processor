@@ -58,6 +58,11 @@ var (
 		Help: "Current state of the Redis shard circuit breaker (0=closed, 1=open, 2=half-open)",
 	}, []string{"shard"})
 
+	RedisMemoryUsedBytes = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "ad_redis_memory_used_bytes",
+		Help: "Current used memory of Redis instance in bytes",
+	}, []string{"shard"})
+
 	DlqSize = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "ad_dlq_size_total",
 		Help: "Current number of events in the Dead Letter Queue",
@@ -502,6 +507,15 @@ var (
 		Name: "ad_broker_ingest_divergence_high",
 		Help: "1 when broker/redis ingest divergence exceeds configured threshold",
 	}, []string{"topic", "group"})
+	BrokerProducedEventsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_broker_produced_events_total",
+		Help: "Total events produced to broker by status",
+	}, []string{"status"})
+	BrokerWriteDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "ad_broker_write_duration_seconds",
+		Help:    "Duration of broker write operations in seconds",
+		Buckets: []float64{0.00005, 0.0001, 0.00025, 0.0005, 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1},
+	}, []string{"topic"})
 
 	DiskGateAppendWaitSeconds = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "ad_disk_gate_append_wait_seconds",
@@ -872,6 +886,11 @@ var (
 	CHSpoolSegments = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "ad_ch_spool_segments",
 		Help: "Current ClickHouse spool segment count (active + sealed)",
+	})
+	CHSpoolAppendDurationSeconds = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name:    "ad_ch_spool_append_duration_seconds",
+		Help:    "Duration of mmap spool append (excludes async fsync in flusher loop)",
+		Buckets: []float64{0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1},
 	})
 	ProcessorStreamXLen = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "ad_processor_stream_xlen",

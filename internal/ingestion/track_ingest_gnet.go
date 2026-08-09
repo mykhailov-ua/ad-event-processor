@@ -143,6 +143,9 @@ func (h *AdsPacketHandler) deliverGnetTrack(
 	case trackStatusAccepted:
 		h.trackMetrics.decisionAccepted.Inc()
 		writeAuditLog(h.logger, &h.auditLogSeq, h.auditLogSampleMask, ctx.shardID, evt)
+		if h.brokerProducer != nil {
+			_ = h.brokerProducer.Enqueue(evt)
+		}
 		h.writeGnetTrackAccepted(ctx, req, c, startMono, wReqID, requestIDStr, outcome.LandingURL)
 		return gnet.None
 	default:

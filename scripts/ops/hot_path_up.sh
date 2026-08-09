@@ -89,7 +89,8 @@ if [[ "$SKIP_SYNC" -eq 0 ]]; then
 fi
 
 if [[ "$SKIP_BUILD" -eq 0 ]]; then
-	bash scripts/deploy/import_image.sh
+	echo "k8s-hot-path-up: scripts/deploy/import_image.sh removed (k8s path deprecated; use stack.sh build)" >&2
+	exit 1
 fi
 
 tmpdir="$(mktemp -d)"
@@ -115,4 +116,5 @@ kubectl rollout status deploy/tracker-2 -n espx-edge --timeout=120s
 kubectl rollout status deploy/tracker-3 -n espx-edge --timeout=120s
 kubectl rollout status daemonset/nginx-edge -n espx-edge --timeout=120s || true
 
-bash scripts/deploy/hot_path_smoke.sh
+echo "k8s-hot-path-up: scripts/deploy/hot_path_smoke.sh removed (k8s path deprecated; use preflight.sh)" >&2
+exit 1

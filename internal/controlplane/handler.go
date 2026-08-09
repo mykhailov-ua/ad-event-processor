@@ -15,10 +15,10 @@ type Handler struct {
 	ipLimiter           *ipRateLimiter
 	licenseApplyLimiter *ipRateLimiter
 	customerLimiter     *customerRateLimiter
-	authMiddleware  *AuthMiddleware
-	authClient      *AuthClient
-	payment         *PaymentClient
-	billing         *BillingClient
+	authMiddleware      *AuthMiddleware
+	authClient          *AuthClient
+	payment             *PaymentClient
+	billing             *BillingClient
 }
 
 func NewHandler(svc *Service, cfg *config.Config, authMiddleware *AuthMiddleware, authClient *AuthClient, paymentClient *PaymentClient, billingClient *BillingClient) *Handler {
@@ -34,10 +34,10 @@ func NewHandler(svc *Service, cfg *config.Config, authMiddleware *AuthMiddleware
 		ipLimiter:           newIPRateLimiter(rps, burst),
 		licenseApplyLimiter: newIPRateLimiter(licenseApplyRPS, licenseApplyBurst),
 		customerLimiter:     newCustomerRateLimiter(),
-		authMiddleware:  authMiddleware,
-		authClient:      authClient,
-		payment:         paymentClient,
-		billing:         billingClient,
+		authMiddleware:      authMiddleware,
+		authClient:          authClient,
+		payment:             paymentClient,
+		billing:             billingClient,
 	}
 	if paymentClient != nil {
 		svc.SetPayment(paymentClient)

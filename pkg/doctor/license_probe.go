@@ -10,8 +10,8 @@ import (
 )
 
 type LicenseProbe struct {
-	StateFn        func() (licensing.LicenseState, bool)
-	DiagnosticsFn  func() (licensing.LicenseDiagnostics, bool)
+	StateFn       func() (licensing.LicenseState, bool)
+	DiagnosticsFn func() (licensing.LicenseDiagnostics, bool)
 }
 
 func (LicenseProbe) Name() string { return "license" }

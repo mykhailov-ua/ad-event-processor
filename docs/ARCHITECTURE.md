@@ -12,9 +12,13 @@ flowchart TB
         C[Browser / SDK / SSP]
     end
 
-    subgraph Perimeter
-        XDP[eBPF/XDP edge-xdp]
+    subgraph Perimeter["Perimeter — appliance default"]
         NGX[Nginx OpenResty :8180 / :443]
+    end
+
+    subgraph EnterpriseOpt["Enterprise optional"]
+        XDP[eBPF/XDP edge-xdp]
+        RP[region-proxy WAL]
     end
 
     subgraph HotPath["Hot path (tracker :8181–8184)"]
@@ -34,8 +38,9 @@ flowchart TB
         FS[fraud-scorer]
     end
 
-    C --> XDP
-    XDP -->|pass| NGX
+    C --> NGX
+    C -. optional NIC drop .-> XDP
+    XDP -.-> NGX
     NGX -->|/track /tg/*| GNET
     NGX -->|/admin auth telegram| CTRL
 
@@ -52,12 +57,16 @@ flowchart TB
     RS -->|XREADGROUP ad:events:stream| PROC
     PROC --> PG
     PROC --> CH
+    PROC -. spend sync .-> RP
+    RP -. uplink .-> CTRL
 
     CH --> IVT
     CH --> FS
     IVT -->|HTTP ops API| CTRL
     FS -->|HTTP ops API| CTRL
 ```
+
+**Appliance default:** Nginx Lua perimeter only (`single_vps`). **Enterprise optional** (license + compose profile): `edge-xdp` on ingress NIC; `region-proxy` for geo/quorum WAL — see [FROZEN_FEATURES.md](FROZEN_FEATURES.md).
 
 ### 1.1 Edge routing (what hits where)
 
@@ -92,7 +101,8 @@ Shard pick at edge (`edge-shard-balancer.lua`) must match Go `StaticSlotSharder`
 | `control` | `8188` admin API, `8187` payment webhooks | Modular monolith: `/api/v1`, ledger, outbox worker, domain modules in-process |
 | `ivt-detector` | — | CH rules → HTTP `POST /api/v1/ops/*` on control |
 | `fraud-scorer` | — | CH batch ML → same ops HTTP path |
-| `edge-xdp` | — | NIC-level IP drop from blacklist maps |
+| `edge-xdp` | — | **Enterprise optional** — NIC-level IP drop from blacklist maps |
+| `region-proxy` | — | **Enterprise optional** — regional WAL / quorum (`--profile multi-region`) |
 
 Infrastructure (compose defaults): PostgreSQL `5430`, Redis host ports `6479–6484` (six masters in dev compose; runtime shard count = `len(REDIS_ADDRS)`), ClickHouse `9000`.
 
@@ -379,7 +389,8 @@ Shared `RunAuction` (`internal/rtb/auction.go`) for `/track` (optional), `POST /
 ## 9. Security & Compliance
 
 - **PII**: `piihash` rolling hash → `ip_hash` / `ua_hash` in CH; raw IP/UA not stored in analytics tables.
-- **XDP**: passive drop at NIC for blacklisted IPs (`edge-xdp`); sync from outbox → Redis shard 0 → BPF maps.
+- **Edge (default)**: Nginx Lua blacklist and rate limits on appliance path.
+- **XDP (Enterprise)**: optional passive drop at NIC (`edge-xdp`); sync from outbox → Redis shard 0 → BPF maps — see [enterprise/EDGE_XDP.md](enterprise/EDGE_XDP.md).
 - **Audit**: `admin_audit_log` in same TX as admin mutations.
 
 ---
@@ -388,7 +399,6 @@ Shared `RunAuction` (`internal/rtb/auction.go`) for `/track` (optional), `POST /
 
 - **OpenRTB 2.6** exchange: `POST /openrtb/bid` on tracker; codec `internal/openrtb/`. OpenRTB 3.0 / full macro table not P0 — see `OPENRTB-FULL.md`.
 - **Supply chain**: tolerant `schain` parse; optional Postgres allowlist.
-- **Privacy Sandbox / Topics**: filter hooks in `FilterEngine`; Protected Audience orchestration on tracker where enabled.
 - **Runbook**: [RTB_PRODUCTION_RUNBOOK.md](RTB_PRODUCTION_RUNBOOK.md).
 
 ---

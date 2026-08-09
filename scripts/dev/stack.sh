@@ -103,10 +103,11 @@ multi-region | up-multi-region)
 		espx_compose --profile multi-region up -d region-proxy processor-1
 		;;
 	broker)
-		espx_compose --profile multi-region up -d broker
+		espx_compose up -d broker
 		;;
 	down)
-		espx_compose --profile multi-region stop region-proxy broker 2>/dev/null || true
+		espx_compose --profile multi-region stop region-proxy 2>/dev/null || true
+		espx_compose stop broker 2>/dev/null || true
 		;;
 	status)
 		espx_compose --profile multi-region ps
@@ -121,11 +122,6 @@ crypto | up-crypto)
 	sub="${2:-up}"
 	case "$sub" in
 	up)
-		if [ -f deploy/payment/crypto-sandbox.env ]; then
-			set -a
-			source deploy/payment/crypto-sandbox.env
-			set +a
-		fi
 		espx_compose --profile crypto up -d db-payment control
 		;;
 	down)

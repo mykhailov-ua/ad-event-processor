@@ -48,13 +48,17 @@ func DefaultCHSpoolConfig() CHSpoolConfig {
 }
 
 type CHSpool struct {
-	dir      string
-	cfg      CHSpoolConfig
-	mu       sync.Mutex
-	active   *chSpoolSegment
-	rotated  []string
-	nextSeq  int
-	writePos atomic.Int64
+	dir          string
+	cfg          CHSpoolConfig
+	mu           sync.Mutex
+	active       *chSpoolSegment
+	rotated      []string
+	nextSeq      int
+	writePos     atomic.Int64
+	asyncFlusher bool
+	flushTrigger chan struct{}
+	stopFlusher  chan struct{}
+	flusherWg    sync.WaitGroup
 }
 
 type chSpoolSegment struct {
@@ -261,10 +265,60 @@ func bytesEqual4(a, b []byte) bool {
 	return len(a) >= 4 && len(b) >= 4 && a[0] == b[0] && a[1] == b[1] && a[2] == b[2] && a[3] == b[3]
 }
 
+func (s *CHSpool) StartAsyncFlusher(interval time.Duration) {
+	s.mu.Lock()
+	if s.asyncFlusher {
+		s.mu.Unlock()
+		return
+	}
+	if interval <= 0 {
+		interval = 50 * time.Millisecond
+	}
+	s.asyncFlusher = true
+	s.flushTrigger = make(chan struct{}, 1)
+	s.stopFlusher = make(chan struct{})
+	s.flusherWg.Add(1)
+	s.mu.Unlock()
+
+	go s.flusherLoop(interval)
+}
+
+func (s *CHSpool) flusherLoop(interval time.Duration) {
+	defer s.flusherWg.Done()
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-s.stopFlusher:
+			_ = s.Sync()
+			return
+		case <-s.flushTrigger:
+			_ = s.Sync()
+		case <-ticker.C:
+			_ = s.Sync()
+		}
+	}
+}
+
+func (s *CHSpool) Sync() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.active != nil && s.active.file != nil {
+		return s.active.file.Sync()
+	}
+	return nil
+}
+
 func (s *CHSpool) AppendDurably(dedupToken string, events []*domain.Event) error {
 	if len(events) == 0 {
 		return nil
 	}
+	start := time.Now()
+	defer func() {
+		metrics.CHSpoolAppendDurationSeconds.Observe(time.Since(start).Seconds())
+	}()
+
 	payload, err := marshalCHSpoolPayload(dedupToken, events)
 	if err != nil {
 		return err
@@ -277,7 +331,12 @@ func (s *CHSpool) AppendDurably(dedupToken string, events []*domain.Event) error
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if err := s.appendLocked(payload, recordLen); err != nil {
+	appendFn := s.appendLocked
+	if s.asyncFlusher {
+		appendFn = s.appendLockedAsync
+	}
+
+	if err := appendFn(payload, recordLen); err != nil {
 		if !errors.Is(err, errCHSpoolFull) {
 			return err
 		}
@@ -285,7 +344,7 @@ func (s *CHSpool) AppendDurably(dedupToken string, events []*domain.Event) error
 			return rotErr
 		}
 		metrics.CHSpoolRotateTotal.Inc()
-		return s.appendLocked(payload, recordLen)
+		return appendFn(payload, recordLen)
 	}
 	return nil
 }
@@ -308,6 +367,30 @@ func (s *CHSpool) appendLocked(payload []byte, recordLen int) error {
 
 	seg.writePos = pos + int64(recordLen)
 	s.writePos.Store(seg.writePos)
+	return nil
+}
+
+func (s *CHSpool) appendLockedAsync(payload []byte, recordLen int) error {
+	seg := s.active
+	pos := seg.writePos
+	if pos+int64(recordLen) > int64(len(seg.mmap)) {
+		return errCHSpoolFull
+	}
+
+	copy(seg.mmap[pos:pos+4], chSpoolRecordMagic[:])
+	binary.BigEndian.PutUint32(seg.mmap[pos+4:pos+8], uint32(recordLen))
+	binary.BigEndian.PutUint32(seg.mmap[pos+8:pos+12], crc32.ChecksumIEEE(payload))
+	copy(seg.mmap[pos+12:pos+int64(recordLen)], payload)
+
+	seg.writePos = pos + int64(recordLen)
+	s.writePos.Store(seg.writePos)
+
+	if s.flushTrigger != nil {
+		select {
+		case s.flushTrigger <- struct{}{}:
+		default:
+		}
+	}
 	return nil
 }
 
@@ -608,6 +691,16 @@ func (s *CHSpool) OpenFDCount() int {
 
 func (s *CHSpool) Close() error {
 	s.mu.Lock()
+	if s.asyncFlusher && s.stopFlusher != nil {
+		select {
+		case <-s.stopFlusher:
+		default:
+			close(s.stopFlusher)
+		}
+		s.mu.Unlock()
+		s.flusherWg.Wait()
+		s.mu.Lock()
+	}
 	defer s.mu.Unlock()
 	return closeCHSpoolSegment(s.active)
 }

@@ -45,9 +45,3 @@ func snapshotRUMEvents() []ClientRUMEvent {
 	copy(out, globalRUMStore.events)
 	return out
 }
-
-func resetRUMStoreForTest() {
-	globalRUMStore.mu.Lock()
-	defer globalRUMStore.mu.Unlock()
-	globalRUMStore.events = nil
-}

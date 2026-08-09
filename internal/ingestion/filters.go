@@ -349,13 +349,29 @@ type placementCacheItem struct {
 	expiry      int64
 }
 
+const placementCacheShards = 128
+
+type placementCacheKey struct {
+	campaignID uuid.UUID
+	placement  string
+}
+
+type placementCacheShard struct {
+	mu sync.RWMutex
+	m  map[placementCacheKey]placementCacheItem
+}
+
 type PlacementBlacklistFilter struct {
-	rdbs  []redis.UniversalClient
-	cache sync.Map
+	rdbs   []redis.UniversalClient
+	shards [placementCacheShards]placementCacheShard
 }
 
 func NewPlacementBlacklistFilter(rdbs []redis.UniversalClient) *PlacementBlacklistFilter {
-	return &PlacementBlacklistFilter{rdbs: rdbs}
+	f := &PlacementBlacklistFilter{rdbs: rdbs}
+	for i := 0; i < placementCacheShards; i++ {
+		f.shards[i].m = make(map[placementCacheKey]placementCacheItem, 64)
+	}
+	return f
 }
 
 func (f *PlacementBlacklistFilter) Check(ctx context.Context, evt *domain.Event) error {
@@ -363,16 +379,25 @@ func (f *PlacementBlacklistFilter) Check(ctx context.Context, evt *domain.Event)
 		return nil
 	}
 
-	cacheKey := evt.CampaignID.String() + ":" + evt.PlacementID
+	key := placementCacheKey{
+		campaignID: evt.CampaignID,
+		placement:  evt.PlacementID,
+	}
+
+	h := uint32(evt.CampaignID[0]) | (uint32(evt.CampaignID[1]) << 8)
+	shardIdx := h % placementCacheShards
+	shard := &f.shards[shardIdx]
+
 	now := time.Now().UnixNano()
-	if val, ok := f.cache.Load(cacheKey); ok {
-		item := val.(placementCacheItem)
-		if now < item.expiry {
-			if item.blacklisted {
-				return ErrPlacementBlocked
-			}
-			return nil
+	shard.mu.RLock()
+	item, ok := shard.m[key]
+	shard.mu.RUnlock()
+
+	if ok && now < item.expiry {
+		if item.blacklisted {
+			return ErrPlacementBlocked
 		}
+		return nil
 	}
 
 	rdb := pickLocalGlobalShard(f.rdbs)
@@ -384,18 +409,20 @@ func (f *PlacementBlacklistFilter) Check(ctx context.Context, evt *domain.Event)
 	w.buf = appendCampaignHashTag(w.buf[:0], evt.CampaignID)
 	w.buf = append(w.buf, "blacklist:placement:"...)
 	w.buf = appendUUID(w.buf, evt.CampaignID)
-	key := unsafeString(w.buf)
+	redisKey := unsafeString(w.buf)
 
-	isBlacklisted, err := rdb.HExists(ctx, key, evt.PlacementID).Result()
+	isBlacklisted, err := rdb.HExists(ctx, redisKey, evt.PlacementID).Result()
 	bufPool.Put(w)
 	if err != nil {
 		return nil
 	}
 
-	f.cache.Store(cacheKey, placementCacheItem{
+	shard.mu.Lock()
+	shard.m[key] = placementCacheItem{
 		blacklisted: isBlacklisted,
 		expiry:      now + int64(5*time.Second),
-	})
+	}
+	shard.mu.Unlock()
 
 	if isBlacklisted {
 		return ErrPlacementBlocked

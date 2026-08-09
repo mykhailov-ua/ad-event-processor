@@ -56,6 +56,20 @@ func getEnvInt(key string, fallback int) int {
 	return fallback
 }
 
+func getEnvIntDual(primaryKey, secondaryKey string, fallback int) int {
+	if value, ok := os.LookupEnv(primaryKey); ok && value != "" {
+		if intVal, err := strconv.Atoi(value); err == nil {
+			return intVal
+		}
+	}
+	if value, ok := os.LookupEnv(secondaryKey); ok && value != "" {
+		if intVal, err := strconv.Atoi(value); err == nil {
+			return intVal
+		}
+	}
+	return fallback
+}
+
 func getEnvFloat(key string, fallback float64) float64 {
 	if value, ok := os.LookupEnv(key); ok {
 		if floatVal, err := strconv.ParseFloat(value, 64); err == nil {

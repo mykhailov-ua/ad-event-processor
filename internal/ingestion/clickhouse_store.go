@@ -88,7 +88,7 @@ func fraudAggregateFields(e *domain.Event) (uint64, uint32) {
 
 var slicePool = sync.Pool{
 	New: func() any {
-		s := make([]*domain.Event, 0, 20000)
+		s := make([]*domain.Event, 0, 50000)
 		return &s
 	},
 }
@@ -120,6 +120,7 @@ func NewClickHouseStore(conn driver.Conn, writeTimeout time.Duration, spoolDir s
 			slog.Error("failed to open clickhouse spool", "error", err, "dir", spoolDir)
 		} else {
 			chStore.spool = spool
+			spool.StartAsyncFlusher(20 * time.Millisecond)
 			chStore.startSpoolReplayer()
 		}
 	}

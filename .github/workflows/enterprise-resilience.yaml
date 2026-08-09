@@ -1,0 +1,32 @@
+name: Enterprise Resilience
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: enterprise-resilience-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  multi-region-drill:
+    name: Multi-region resilience drill (manual)
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.12'
+          cache: true
+
+      - name: Multi-region resilience drill
+        run: bash scripts/test/mr_resilience_drill.sh 2>&1 | tee mr-resilience.log
+
+      - name: Upload drill log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mr-resilience-log
+          path: mr-resilience.log
+          retention-days: 7

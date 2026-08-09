@@ -6,6 +6,7 @@ import (
 
 	"espx/internal/domain"
 	"espx/internal/ingestion/pb"
+
 	"github.com/google/uuid"
 )
 
@@ -77,6 +78,33 @@ func TestParseBrokerPayload_AdStreamEvent(t *testing.T) {
 	}
 	if string(evt.Payload) != `{"k":"v"}` {
 		t.Fatalf("payload: %q", evt.Payload)
+	}
+}
+
+func TestParseBrokerPayloadStream_RawVTProto(t *testing.T) {
+	campID := uuid.New()
+	pbEvt := &pb.AdStreamEvent{
+		ClickId:       []byte("raw-click"),
+		CampaignId:    campID[:],
+		EventType:     []byte("click"),
+		Ip:            []byte("1.2.3.4"),
+		Ua:            []byte("agent"),
+		CreatedAtUnix: time.Now().Unix(),
+	}
+	raw := marshalAdStreamEvent(t, pbEvt)
+	var got int
+	err := ParseBrokerPayloadStream(raw, func(evt *domain.Event) {
+		got++
+		if evt.ClickID != "raw-click" {
+			t.Fatalf("click_id=%q", evt.ClickID)
+		}
+		domain.EventPool.Put(evt)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != 1 {
+		t.Fatalf("events=%d want 1", got)
 	}
 }
 

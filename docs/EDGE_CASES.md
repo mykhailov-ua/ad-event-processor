@@ -204,7 +204,28 @@ Alert idea: page on rising `ListenOverflows` even when tracker “healthy” and
 
 ---
 
-## 9. Artifact index
+## 10. Sentinel promotion: `503 shard_unavailable` vs `202 Accepted`
+
+When a Redis master is down or the **adaptive per-shard breaker** is open, the tracker isolates blast radius by campaign shard (`crc32(campaign_id) → slot → shard`).
+
+| Request | Shard state | HTTP | Body |
+| :--- | :--- | :---: | :--- |
+| Campaign on failed shard (e.g. shard 0 during `redis-0` pause) | Breaker open / Redis unreachable | **503** | `shard_unavailable` |
+| Campaign on healthy shard (shards 1–3) | Breaker closed | **202** | protobuf or JSON accepted event |
+| Unknown campaign while registry stale | Pub/sub / PG sync lag | **503** | `registry_stale` |
+
+**Code:** `internal/ingestion/handler.go` (`respShardUnavailable`, `202 Accepted` writers). **Proof:** `tests/resilience/shard_outage_fault_test.go` (`TestFault_Shard0Outage` — shard 0 → 503 + `shard_unavailable`; shards 1–3 → 202 under latency budget).
+
+**Compose scenario G** (`scripts/test/sentinel.sh` + `deploy/compose/docker-compose.sentinel.yaml`): background Redis budget GET load at **30k RPS** (`SENTINEL_LOAD_TARGET_RPS`) via Sentinel while `redis-0` is paused; healthy shards keep `other_ok` traffic, shard 0 records errors, budget keys stay consistent after promotion. HTTP 503/202 mapping is unit-tested in resilience; the compose drill proves **Redis path isolation** under promotion load.
+
+```bash
+SENTINEL_LOAD_TARGET_RPS=30000 bash scripts/test/sentinel.sh
+# fault_proof fault=sentinel_promotion_isolation target_rps=30000 ...
+```
+
+---
+
+## 11. Artifact index
 
 | Path | Contents |
 | :--- | :--- |
@@ -214,4 +235,6 @@ Alert idea: page on rising `ListenOverflows` even when tracker “healthy” and
 | `var/purgatory/edge-20260807T143839Z/` | Cascade with `FILTER_TIMEOUT_MS=100` |
 | `scripts/perf/purgatory/run_with_bpf.sh` | Steady torture + eBPF |
 | `scripts/perf/purgatory/run_edge_cascade.sh` | Overflow + FLUSH + close burst |
+| `scripts/perf/tcp_syn_drop_gate.sh` | Phase 6: ListenOverflow gate under loadgen (tuned sysctl) |
+| `deploy/compose/docker-compose.sentinel.yaml` | Sentinel + replica overlay for scenario G |
 | `docs/BENCHMARKS.md` | Full number tables |

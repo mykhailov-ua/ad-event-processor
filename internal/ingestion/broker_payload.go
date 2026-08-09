@@ -1,6 +1,7 @@
 package ingestion
 
 import (
+	"encoding/binary"
 	"time"
 
 	"espx/internal/domain"
@@ -8,6 +9,48 @@ import (
 
 	"github.com/google/uuid"
 )
+
+func ParseBrokerPayloadStream(data []byte, fn func(evt *domain.Event)) error {
+	if len(data) == 0 {
+		return nil
+	}
+	offset := 0
+	parsedAny := false
+
+	for offset < len(data) {
+		length, n := binary.Uvarint(data[offset:])
+		if n <= 0 || offset+n+int(length) > len(data) {
+			if !parsedAny {
+				evt, err := ParseBrokerPayload(data)
+				if err != nil {
+					return err
+				}
+				fn(evt)
+				return nil
+			}
+			break
+		}
+		msgBytes := data[offset+n : offset+n+int(length)]
+		evt, err := ParseBrokerPayload(msgBytes)
+		if err != nil {
+			if !parsedAny && offset == 0 {
+				// Raw vtproto can look like a uvarint length prefix; fall back to whole blob.
+				if rawEvt, rawErr := ParseBrokerPayload(data); rawErr == nil {
+					fn(rawEvt)
+					return nil
+				}
+			}
+			if !parsedAny {
+				return err
+			}
+			break
+		}
+		fn(evt)
+		parsedAny = true
+		offset += n + int(length)
+	}
+	return nil
+}
 
 func ParseBrokerPayload(data []byte) (*domain.Event, error) {
 	evt := domain.EventPool.Get().(*domain.Event)

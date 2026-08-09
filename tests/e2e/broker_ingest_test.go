@@ -22,6 +22,7 @@ func TestE2E_BrokerIngest(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping broker e2e")
 	}
+	// Broker-primary PG settlement (_pg_broker consumer group).
 
 	pool, cleanupDB := testutil.SetupAdsPostgres(t)
 	defer cleanupDB()
@@ -66,7 +67,7 @@ func TestE2E_BrokerIngest(t *testing.T) {
 	cfg := ingestion.BrokerConsumerConfig{
 		BrokerAddr: srv.Addr(),
 		Topic:      "tracker-logs",
-		Group:      "e2e-broker",
+		Group:      "ad:processor:group_pg_broker",
 		BatchSize:  1,
 		FlushInt:   50 * time.Millisecond,
 		MaxBytes:   1024 * 1024,

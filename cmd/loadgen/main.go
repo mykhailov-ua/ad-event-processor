@@ -70,7 +70,7 @@ func main() {
 		go runSpike(run, w, &wg, stop, sched)
 		time.Sleep(sched.total())
 	} else {
-		go runConstant(run, &wg, stop, rps)
+		go runConstant(run, &wg, stop, rps, w)
 		time.Sleep(dur)
 	}
 
@@ -118,28 +118,37 @@ func splitComma(s string) []string {
 	return out
 }
 
-func runConstant(run *runner, wg *sync.WaitGroup, stop <-chan struct{}, rps int) {
+func runConstant(run *runner, wg *sync.WaitGroup, stop <-chan struct{}, rps, workers int) {
 	if rps <= 0 {
 		return
 	}
-	interval := time.Second / time.Duration(rps)
+	if workers <= 0 {
+		workers = 1
+	}
+	perWorker := rps / workers
+	if perWorker < 1 {
+		perWorker = 1
+	}
+	interval := time.Second / time.Duration(perWorker)
 	if interval < time.Microsecond {
 		interval = time.Microsecond
 	}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		ticker := time.NewTicker(interval)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-stop:
-				return
-			case <-ticker.C:
-				run.doOnce()
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			ticker := time.NewTicker(interval)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-stop:
+					return
+				case <-ticker.C:
+					run.doOnce()
+				}
 			}
-		}
-	}()
+		}()
+	}
 }
 
 type spikeSchedule struct {

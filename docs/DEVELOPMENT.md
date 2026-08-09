@@ -30,7 +30,7 @@ make gen bpf-dev  # Compiles BPF programs for development probes (requires clang
 | :--- | :--- | :--- |
 | `internal/*/queries/*.sql`, migrations | `make gen` | `internal/<svc>/db/*.sql.go` |
 | `api/*.proto` | `make proto` | `internal/*/pb/*.pb.go`, `*_vtproto.pb.go` |
-| `deploy/edge-xdp/bpf/*.c` | `make gen bpf-dev` | `internal/edge/bpf/edge_bpf*.go` |
+| `deploy/edge/xdp/bpf/*.c` | `make gen bpf-dev` | `internal/edge/bpf/edge_bpf*.go` |
 
 ### vtproto Memory Patch
 Running `make proto` automatically executes the `patch-vtproto-hotpath` utility (`cmd/patch-vtproto-hotpath/main.go`). This tool replaces standard `make+copy` slices with the optimized `appendReuseBytes` helper for repeated Protobuf fields (`EventMetadata.ExtraKeys` / `ExtraValues`). This optimization is mandatory to maintain zero heap allocations on the hot path.
@@ -55,9 +55,8 @@ bash scripts/dev/preflight.sh     # Verifies service health
 | `single-vps` (or `full`) | Standard monolithic deployment | `tracker`, `processor`, `control`, PostgreSQL, Redis x4, ClickHouse. |
 | `infra` | Database infrastructure only | PostgreSQL, Redis x6 (with Sentinel), ClickHouse. |
 | `ingest-only` | Lightweight stack without billing | `tracker`, `processor`, `control` (billing disabled), PostgreSQL, Redis x4. ClickHouse is disabled. |
-| `network-operator` | Operator deployment mode | `control` with the payment gRPC server enabled on port 51052. |
-| `analytics-ml` | Analytics and machine learning stack | Adds `fraud-scorer` and `ivt-detector` to the active services. |
-| `multi-region` | Multi-region local testbed | Adds `region-proxy` and `broker` services. |
+| `network-operator` | **Advanced**: Operator deployment mode | `control` with the payment gRPC server enabled on port 51052. Not part of the standard single-VPS install. |
+| `analytics-ml` | **Advanced**: Analytics and machine learning stack | Adds `fraud-scorer` and `ivt-detector`. Requires GPU/large RAM; not part of the standard single-VPS install. |
 
 ### Admin web UI (`web/`)
 
@@ -221,7 +220,6 @@ Mark only these as required in GitHub **Settings → Branches → main**:
 | Fraud model smoke | `fraudtrain` | Optional (path: `model/**`) |
 | Full test suite | `full-test` | No on PR — **main push only** |
 | Container resilience | `resilience` | No on PR — **main push** or `workflow_dispatch` |
-| Terraform validate | `terraform-validate` | Optional (path: `deploy/terraform/**`) |
 
 Perf gate (`.github/workflows/perf-gate.yaml`): smoke zero-alloc on PR when hot-path paths change; strict benchstat needs self-hosted runner (`PERF_RUNNER_LABEL` repo variable).
 
@@ -285,28 +283,50 @@ Fault proof: `bash scripts/fault/run.sh` scenario `shard_0_outage` (`tests/resil
 
 Successful scenarios output a `fault_proof fault=<name>` log line, which is verified by the CI runner.
 
+**Milestone gates E/F/G:** after `bash scripts/fault/run.sh`, `scripts/fault/milestone_gates.sh` requires `fault_proof` lines for `noscript_storm`, `spool_disk_block`, and `sentinel_promotion_isolation`. Standalone:
+
+```bash
+go test -run 'TestFault_(NOSCRIPTStorm|CHSpoolDiskBlock)' ./internal/ingestion/
+go test -run TestFault_SentinelPromotionIsolation ./internal/database/
+bash scripts/fault/milestone_gates.sh /tmp/milestone-fault.log
+```
+
+Compose+loadgen drills: `bash scripts/fault/milestone_compose_drill.sh all` (RAM proof, cutover compare, E/F/G, TCP). Nightly/manual CI: `.github/workflows/milestone-compose-nightly.yaml`. Unit gates E/F/G run in CI `resilience` job via `scripts/fault/milestone_gates.sh`.
+
+### Broker cutover (`CH_INGEST_SOURCE`)
+
+Tiered event bus: tracker → mmap WAL (`pkg/broker`) → processor → ClickHouse. Redis Streams remain for settlement/fraud until fully migrated.
+
+| Env | Effect |
+| --- | --- |
+| `BROKER_URL` | Enables `BrokerProducer` on tracker and broker consumers on processor |
+| `CH_INGEST_SOURCE=broker` | Broker-primary: skips Redis `_ch`/`_pg` `StreamConsumer`; Lua uses `fcap:ignored` stream key (no main `XADD`) |
+| `CH_INGEST_SOURCE=` (empty) | Dual-path: Redis Streams + broker shadow/reconcile |
+| `BROKER_SHADOW_MODE=1` | Broker CH consumer reads but does not write to ClickHouse (parity check) |
+
+**Migration (dual → broker-only):**
+
+1. Deploy broker (`deploy/broker/docker-compose.yaml` or appliance profile). Set `BROKER_URL` on tracker + processor.
+2. Run with `CH_INGEST_SOURCE=` (empty) and `BROKER_SHADOW_MODE=1` — verify `ad_broker_ingest_divergence_high` stays 0.
+3. Set `BROKER_SHADOW_MODE=0`, keep dual-path until PEL lag on `_ch` drains to 0. **Operator checklist:** [PEL_DRAIN.md](PEL_DRAIN.md).
+4. Set `CH_INGEST_SOURCE=broker` on tracker + processor; restart. Redis `_ch` consumer stops; broker `_ch_broker` is sole CH ingest.
+5. Optional rollback: unset `CH_INGEST_SOURCE`, re-enable Redis consumers; broker offsets remain on disk under `LOGGER_DIR/offsets`.
+
+**Redis UDS (single-VPS):** set `REDIS_ADDRS` to unix socket paths (e.g. `/run/espx/redis/redis-0.sock`) — `internal/database/redis_shards.go` dials `unix` when the address starts with `/` or contains `.sock`. Compose mounts shared volume `espx_run:/run/espx` on db, redis shards, tracker, and processor.
+
+**Postgres UDS (single-VPS):** default `DB_DSN` in `.env.example` uses `host=/run/espx/postgresql&port=5430` (same `espx_run` volume; Postgres `unix_socket_directories=/run/espx/postgresql`). TCP port publish remains for ops/debug.
+
+**UDS latency proof:** `bash scripts/perf/redis_uds_benchmark.sh` → `var/uds-bench/<ts>/report.json` (dial p50 &lt; 2.5 µs gate).
+
 ---
 
-## 8. Multi-Region Resilience Drill
+## 8. Enterprise optional features (frozen in appliance SKU)
 
-Multi-region drills are executed quarterly to verify distributed fault tolerance.
+Multi-region proxy and NIC-level XDP are **not** part of the default single-VPS path. Enable paths, licenses, and operator drills:
 
-### Region-Proxy WAL Architecture
-Regional processors write events to an append-only Write-Ahead Log (WAL) built on `mmap` segments (`pkg/regionproxy/wal/`).
-- **Group Commit**: Write operations are sequential. A `fsyncSem` semaphore with a capacity of **1** serializes `fsync` calls, allowing concurrent appends to share a single sync operation.
-- **Crash Recovery**: On startup, `Recover()` scans the log tail, discards torn records, and remaps the segment before accepting network traffic.
-
-### 90-Minute Operator Checklist
-Drill runner: `bash scripts/fault/mr_resilience_drill.sh`
-
-1. **Min 0–10 (Baseline)**: Verify baseline latency (p99 < 80 ms) and node weights.
-2. **Min 10–20 (Fault Injection)**: Execute the multi-region fault suite (verify at least 12 `mr_*` proofs).
-3. **Min 20–35 (Quorum Check)**: Simulate a network partition where only 1 of 3 regional proxies is active. Verify that global updates are blocked.
-4. **Min 35–50 (Lease Partition)**: Stop the regional PostgreSQL instance. Verify that the operation lease expires and local budget spending continues.
-5. **Min 50–65 (Proxy Failover)**: Terminate a `region-proxy` replica. Verify that failover completes with an RTO of **< 120 seconds**.
-6. **Min 65–75 (Global DB Outage)**: Pause the global PostgreSQL instance for 60 seconds. Verify that trackers remain online and regional proxies spool WAL segments.
-7. **Min 75–85 (Invariants)**: Execute `AssertBudgetInvariant` to verify that Redis and PostgreSQL balances match within $\pm 1$ micro-unit.
-8. **Min 85–90 (Teardown)**: Collect logs, restore original configurations, and verify that all outboxes have drained.
+- [FROZEN_FEATURES.md](./FROZEN_FEATURES.md)
+- [enterprise/MULTI_REGION.md](./enterprise/MULTI_REGION.md) — quarterly MR drill, WAL, compose profile
+- [enterprise/EDGE_XDP.md](./enterprise/EDGE_XDP.md) — BTF, `edge-xdp`, blacklist sync
 
 ---
 

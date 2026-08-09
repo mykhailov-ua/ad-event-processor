@@ -76,14 +76,16 @@ end
 
 redis_call("SET", KEYS[2], "1", "EX", ARGV[2])
 
-redis_call("XADD", KEYS[7], "MAXLEN", "~", ARGV[5], "*",
-    "click_id", ARGV[6],
-    "campaign_id", ARGV[3],
-    "user_id", ARGV[11],
-    "type", ARGV[7],
-    "payload", ARGV[8],
-    "ip", ARGV[9],
-    "ua", ARGV[10])
+if KEYS[7] and KEYS[7] ~= "fcap:ignored" and KEYS[7] ~= "" then
+    redis_call("XADD", KEYS[7], "MAXLEN", "~", ARGV[5], "*",
+        "click_id", ARGV[6],
+        "campaign_id", ARGV[3],
+        "user_id", ARGV[11],
+        "type", ARGV[7],
+        "payload", ARGV[8],
+        "ip", ARGV[9],
+        "ua", ARGV[10])
+end
 
 if fraud_list_hit then
     return 21

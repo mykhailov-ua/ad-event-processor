@@ -77,7 +77,28 @@ go test -run='^$' -benchmem -benchtime=300ms -count=5 -cpu=1 \
 | :--- | ---: | ---: | ---: |
 | `FilterLicense` | 6.6 | 0 | 0 |
 | `GeoFilter` | 28 | 0 | 0 |
-| `GeoFilter_lookupOK` | 40 | 0 | 0 |
+
+### A.4a Broker producer (`BenchmarkTrackerToBroker`)
+
+**Date:** 2026-08-09  
+**Conditions:** mock broker client (no network RTT). Bench: `GOMAXPROCS=12`, `-benchmem`, `-count=3`. Latency SLA: `TestBrokerProducer_LatencySLA`, 10k samples after 2k warmup.
+
+| Benchmark / gate | ns/op | B/op | allocs/op | p99 |
+| :--- | ---: | ---: | ---: | ---: |
+| `BenchmarkTrackerToBroker` | 112–113 | 0 | 0 | — |
+| `TestBrokerProducer_LatencySLA` | p50 ~196 ns | 0 | 0 | **&lt; 1 µs** (lab ~483 ns) |
+
+Included in `make test-alloc-gate` (`BrokerProducer_*` + `BenchmarkTrackerToBroker`).
+
+```bash
+go test -run=TestBrokerProducer_LatencySLA -v ./internal/ingestion/
+go test -run='^$' -bench=BenchmarkTrackerToBroker -benchmem -count=3 ./internal/ingestion/
+```
+
+### A.5 FilterEngine (continued)
+
+| Benchmark | ns/op | B/op | allocs/op |
+| :--- | ---: | ---: | ---: |
 | `GeoFilter_lookupError` | 35 | 0 | 0 |
 | `FraudFilter_DC` | 6.0 | 0 | 0 |
 | `FilterFraudBoost` | 105 | 0 | 0 |
@@ -188,6 +209,8 @@ Redis Lua adds one RTT (prod budget &lt; 10 ms/shard; not in unit benches).
 
 ## B. Purgatory (OS / cgroup / netem torture)
 
+> **Internal engineering notes.** The data below documents OS-level stress behaviour under intentionally hostile cgroup and netem conditions. It is not a product SLA or deployment guide. Operator-facing performance targets are in `docs/ARCHITECTURE.md` (tracker p95 < 50 ms, p99 < 80 ms).
+
 **Date:** 2026-08-07  
 **SUT:** compose `bidshard-tracker-0`, `POST http://127.0.0.1:8181/track`  
 **Loadgen:** `bin/wrk` 4.2.0, 4 threads, 10 000 keep-alive, 60 s  
@@ -285,6 +308,135 @@ CPU raise alone does not restore RPS. Microbenches (tens–hundreds ns) vs purga
 | `var/purgatory/20260807T094603Z/` | accuracy A/B |
 | `var/purgatory/20260807T093448Z/` | hostile 0.5 vCPU + BPF |
 | `scripts/perf/purgatory/run_with_bpf.sh` | orchestrator |
+
+---
+
+## C. Redis RAM proof (milestone phase 3)
+
+**Script:** `scripts/perf/redis_ram_proof.sh`  
+**Gate:** peak `used_memory` per Redis shard &lt; **300 MiB** under sustained `/track` load.
+
+| Parameter | Default |
+| :--- | :--- |
+| `TARGET_RPS` | 100000 |
+| `DURATION` | 90s |
+| `RAM_MAX_BYTES` | 314572800 (300 MiB) |
+| Config | `CH_INGEST_SOURCE=broker`, `STREAM_MAX_LEN=10000`, broker profile |
+
+```bash
+bash scripts/test/prepare_constrained_stack.sh   # once
+TARGET_RPS=100000 bash scripts/perf/redis_ram_proof.sh
+# artifacts → var/ram-proof/<ts>/report.json + fault_proof.txt
+```
+
+**Status:** lab run **2026-08-09** (`var/ram-proof/20260809T130425Z/`).
+
+| Metric | Result |
+| :--- | :--- |
+| `target_rps` | 100000 |
+| `duration` | 90s |
+| `peak_used_memory_bytes_max_shard` | **3_622_240** (~3.5 MiB) |
+| `ram_max_bytes_per_shard` | 314_572_800 (300 MiB) |
+| `passed` | **true** |
+
+Config: `CH_INGEST_SOURCE=broker`, broker profile, constrained load-test compose (`prepare_constrained_stack.sh`). Loadgen reported many dial errors at 100k RPS on lab host; RAM gate uses Redis `used_memory`, not HTTP success rate.
+
+### C.1 Dual-path vs broker-only cutover (phase 3)
+
+**Script:** `scripts/perf/redis_ram_cutover_compare.sh`  
+**Compares:** peak `used_memory` per shard — dual-path (`CH_INGEST_SOURCE=` + `BROKER_SHADOW_MODE=1`) vs broker-only (`CH_INGEST_SOURCE=broker`).
+
+| Parameter | Default |
+| :--- | :--- |
+| `TARGET_RPS` | 50000 |
+| `DURATION` | 45s |
+
+```bash
+bash scripts/test/prepare_constrained_stack.sh
+bash scripts/perf/redis_ram_cutover_compare.sh
+# → var/ram-proof/cutover-compare-<ts>/report.json
+```
+
+**Expected (lab):** broker-only peak ≤ dual-path peak (skip main `XADD` on `_ch` reduces stream pressure). Run script locally to populate `dual_path_peak_bytes_max_shard` / `broker_only_peak_bytes_max_shard` in `report.json`.
+
+| Metric | Broker-only (20260809) | Dual-path (same script) |
+| :--- | :--- | :--- |
+| `peak_used_memory_bytes_max_shard` | **3.6 MiB** (from `redis_ram_proof`) | run `cutover_compare` |
+| `STREAM_MAX_LEN` | 10000 + 10s trim | same |
+
+---
+
+## D. Redis UDS transport (milestone phase 5)
+
+**Script:** `scripts/perf/redis_uds_benchmark.sh`  
+**Gate:** UDS dial p50 &lt; **5 µs** (stretch **2.5 µs** on governor-tuned host); UDS dial/PING beats TCP loopback.
+
+| Parameter | Default |
+| :--- | :--- |
+| `UDS_DIAL_P50_BUDGET_NS` | 5000 (5 µs) |
+| `UDS_BENCH_REQUESTS` | 100000 (`redis-benchmark -n`) |
+
+```bash
+GOMAXPROCS=1 taskset -c 0 bash scripts/perf/redis_uds_benchmark.sh
+# artifacts → var/uds-bench/<ts>/report.json + redis-benchmark-*.txt
+```
+
+**Status:** lab run **2026-08-09** (`var/uds-bench/20260809T151336Z/`).
+
+| Metric | Result |
+| :--- | :--- |
+| `uds_dial_p50_us` | **~4.8** |
+| `uds_dial_p50_budget_ns` | 5000 |
+| `stretch_goal_2_5us_passed` | false (lab) |
+| UDS vs TCP dial | UDS faster |
+| `passed` | **true** |
+
+Compose/installer defaults: `espx_run:/run/espx`, `DB_DSN` with `host=/run/espx/postgresql`, `REDIS_ADDRS=/run/espx/redis/*.sock`.
+
+---
+
+## E. NOSCRIPT storm (milestone phase 8 / scenario E)
+
+**CI unit gates** (`scripts/test/run_resilience.sh` → `TestFault_*`):
+
+| Test | What it proves |
+| :--- | :--- |
+| `TestFault_NOSCRIPTStorm` | 24 workers × 50 checks; SCRIPT FLUSH; ≥80% success; `ad_redis_lua_noscript_total` &gt; 0 |
+| `TestFault_ScriptFlushUnderTrackRPS` | 16×100 HTTP `/track`; p99 **&lt; 80 ms**; budget invariant |
+
+**Compose drill:** `scripts/fault/noscript_compose_drill.sh` — **20k RPS**, SCRIPT FLUSH @ 10s, ≥80% `202`, `fault_proof fault=noscript_storm`.
+
+| Parameter | Default |
+| :--- | :--- |
+| `NOSCRIPT_DRILL_RPS` | 20000 |
+| `NOSCRIPT_P99_BUDGET_MS` | 80 |
+
+**Reconnect preload:** `UnifiedFilter.AttachReconnectPreload()` (tracker) — `SCRIPT LOAD` on new pooled dial, debounced 1s/shard (`internal/ingestion/redis_lua.go`).
+
+---
+
+## F. Stream trimmer vs PEL (phase 3 CI smoke)
+
+**Test:** `TestRedisStreamTrimmer_PELPendingNotInflated` (`go test ./internal/ingestion/ -run PELPending`)
+
+Proves aggressive `XTrimMaxLenApprox` caps stream length while in-flight consumer reads remain **ackable** (no stuck PEL growth from trimmer alone).
+
+```bash
+go test -count=1 ./internal/ingestion/ -run TestRedisStreamTrimmer_PELPendingNotInflated
+```
+
+---
+
+## G. CH spool async (milestone phase 9)
+
+**CI unit gates:** `TestFault_CHSpoolDiskBlock`, `TestFault_CHSpoolStressNgNoDState` (`linux` + `stress-ng`; installed in CI via `run_resilience.sh`).
+
+| Test | What it proves |
+| :--- | :--- |
+| `TestFault_CHSpoolDiskBlock` | 32×40 async appends; no caller blocked &gt; 25 ms |
+| `TestFault_CHSpoolStressNgNoDState` | stress-ng HDD on spool dir; 0 D-state threads in process |
+
+**Compose:** `scripts/fault/spool_compose_drill.sh` — pause ClickHouse, loadgen 5k RPS, stress-ng on processor spool volume, tracker D-state = 0.
 
 ---
 

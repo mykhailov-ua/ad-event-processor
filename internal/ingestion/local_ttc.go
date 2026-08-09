@@ -38,10 +38,6 @@ func (c *LocalTTCCache) userHash(campaignID uuid.UUID, userID string) uint64 {
 	return h.Sum64()
 }
 
-func (c *LocalTTCCache) slotIndex(campaignID uuid.UUID, userID string) uint64 {
-	return c.userHash(campaignID, userID) % localTTCCapacity
-}
-
 func (c *LocalTTCCache) Record(campaignID uuid.UUID, userID string) {
 	if userID == "" {
 		return

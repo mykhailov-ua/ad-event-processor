@@ -19,7 +19,7 @@ safe_assert_not_dangerous() {
 
 safe_realpath() {
 	local p="$1"
-	if command -v realpath >/dev/null 2>&1; then
+	if command -v realpath >/dev/null 2>&1 && realpath -m / >/dev/null 2>&1; then
 		realpath -m "$p"
 	else
 		local dir base

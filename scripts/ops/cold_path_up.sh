@@ -67,22 +67,17 @@ go run ./cmd/migrate-cold-path --only=ads,auth,billing || log "core migrations i
 sync_geoip
 
 if [[ "$SKIP_BUILD" -eq 0 ]]; then
-	bash scripts/deploy/import_image.sh
+	echo "k8s-cold-path-up: scripts/deploy/import_image.sh removed (k8s path deprecated; use stack.sh build)" >&2
+	exit 1
 fi
 
-export TF_VAR_geoip_host_path="/var/lib/espx/geoip"
-log "terraform apply"
-(
-	cd deploy/terraform/envs/local
-	if [[ ! -d .terraform ]]; then
-		terraform init
-	fi
-	terraform apply -auto-approve
-)
+echo "k8s-cold-path-up: terraform path removed (deploy/terraform/ deleted in P1 cleanup)" >&2
+exit 1
 
 log "waiting for cold-path pods"
 export KUBECONFIG="${KUBECONFIG:-$HOME/.kube/config-espx}"
 kubectl rollout restart deploy -n espx
 kubectl rollout status deploy -n espx --timeout=180s || true
 
-bash scripts/deploy/cold_path_smoke.sh
+echo "k8s-cold-path-up: scripts/deploy/cold_path_smoke.sh removed (k8s path deprecated; use preflight.sh)" >&2
+exit 1

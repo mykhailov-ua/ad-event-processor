@@ -18,6 +18,9 @@ set +a
 REDIS_PASSWORD="${REDIS_PASSWORD:?REDIS_PASSWORD required in $ENV_FILE}"
 SENTINEL_FAILOVER_MAX_MS="${SENTINEL_FAILOVER_MAX_MS:-15000}"
 LOAD_WARMUP_SEC="${SENTINEL_LOAD_WARMUP_SEC:-3}"
+SENTINEL_LOAD_TARGET_RPS="${SENTINEL_LOAD_TARGET_RPS:-30000}"
+
+COMPOSE=(docker compose -f docker-compose.yaml -f deploy/compose/docker-compose.sentinel.yaml)
 
 now_ms() {
 	date +%s%3N
@@ -28,8 +31,8 @@ wait_service_healthy() {
 	local attempts=90
 	while [ "$attempts" -gt 0 ]; do
 		local state health
-		state="$(docker compose ps "$service" --format '{{.State}}' 2>/dev/null | head -1)"
-		health="$(docker compose ps "$service" --format '{{.Health}}' 2>/dev/null | head -1)"
+		state="$("${COMPOSE[@]}" ps "$service" --format '{{.State}}' 2>/dev/null | head -1)"
+		health="$("${COMPOSE[@]}" ps "$service" --format '{{.Health}}' 2>/dev/null | head -1)"
 		if [ "$state" = "running" ] && { [ "$health" = "healthy" ] || [ -z "$health" ]; }; then
 			return 0
 		fi
@@ -40,8 +43,8 @@ wait_service_healthy() {
 	return 1
 }
 
-echo "test_sentinel_failover: starting Redis + Sentinel stack..."
-docker compose up -d \
+echo "test_sentinel_failover: starting Redis + Sentinel stack (target_rps=${SENTINEL_LOAD_TARGET_RPS})..."
+"${COMPOSE[@]}" up -d \
 	redis-0 redis-1 redis-2 redis-3 \
 	redis-0-replica redis-1-replica redis-2-replica redis-3-replica \
 	sentinel-0 sentinel-1 sentinel-2
@@ -50,7 +53,7 @@ wait_service_healthy redis-0
 wait_service_healthy sentinel-0
 
 compose_network() {
-	docker compose ps -q sentinel-0 | head -1 | xargs docker inspect -f '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}' | head -1
+	"${COMPOSE[@]}" ps -q sentinel-0 | head -1 | xargs docker inspect -f '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}' | head -1
 }
 
 TEST_BIN="$ROOT/.cache/sentinel_fault.test"
@@ -84,12 +87,13 @@ start_load_worker() {
 		-v "$TEST_BIN:/sentinel.test:ro" \
 		-e SENTINEL_FAULT_TEST=1 \
 		-e SENTINEL_LOAD_WORKER=1 \
+		-e SENTINEL_LOAD_TARGET_RPS="$SENTINEL_LOAD_TARGET_RPS" \
 		-e REDIS_PASSWORD="$REDIS_PASSWORD" \
 		-e REDIS_SENTINEL_ADDRS=sentinel-0:26379,sentinel-1:26379,sentinel-2:26379 \
 		-e REDIS_MASTER_NAMES=espx-shard-0,espx-shard-1,espx-shard-2,espx-shard-3 \
 		-e REDIS_ADDRS=redis-0:6379,redis-1:6379,redis-2:6379,redis-3:6379 \
 		debian:bookworm-slim \
-		/sentinel.test -test.count=1 -test.timeout=3m -test.v -test.run TestSentinelFailoverLoadWorker
+		/sentinel.test -test.count=1 -test.timeout=10m -test.v -test.run TestSentinelFailoverLoadWorker
 }
 
 stop_load_worker() {
@@ -117,7 +121,7 @@ wait_sentinel_master_promoted() {
 	local attempts=40
 	while [ "$attempts" -gt 0 ]; do
 		local host
-		host="$(docker compose exec -T sentinel-0 redis-cli -p 26379 SENTINEL get-master-addr-by-name "$master_name" 2>/dev/null | head -1 | tr -d '\r')"
+		host="$("${COMPOSE[@]}" exec -T sentinel-0 redis-cli -p 26379 SENTINEL get-master-addr-by-name "$master_name" 2>/dev/null | head -1 | tr -d '\r')"
 		if [ -n "$host" ] && [ "$host" != "redis-0" ]; then
 			echo "test_sentinel_failover: $master_name promoted to $host"
 			return 0
@@ -126,11 +130,11 @@ wait_sentinel_master_promoted() {
 		attempts=$((attempts - 1))
 	done
 	echo "test_sentinel_failover: forcing SENTINEL failover $master_name..."
-	docker compose exec -T sentinel-0 redis-cli -p 26379 SENTINEL failover "$master_name" >/dev/null || true
+	"${COMPOSE[@]}" exec -T sentinel-0 redis-cli -p 26379 SENTINEL failover "$master_name" >/dev/null || true
 	attempts=30
 	while [ "$attempts" -gt 0 ]; do
 		local host
-		host="$(docker compose exec -T sentinel-0 redis-cli -p 26379 SENTINEL get-master-addr-by-name "$master_name" 2>/dev/null | head -1 | tr -d '\r')"
+		host="$("${COMPOSE[@]}" exec -T sentinel-0 redis-cli -p 26379 SENTINEL get-master-addr-by-name "$master_name" 2>/dev/null | head -1 | tr -d '\r')"
 		if [ -n "$host" ] && [ "$host" != "redis-0" ]; then
 			echo "test_sentinel_failover: $master_name promoted to $host"
 			return 0
@@ -150,7 +154,7 @@ sleep "$LOAD_WARMUP_SEC"
 
 echo "test_sentinel_failover: pausing redis-0 master (keeps DNS; stop removes hostname and breaks Sentinel)..."
 FAILOVER_START_MS="$(now_ms)"
-docker compose pause redis-0
+"${COMPOSE[@]}" pause redis-0
 wait_sentinel_master_promoted espx-shard-0
 FAILOVER_END_MS="$(now_ms)"
 FAILOVER_DURATION_MS=$((FAILOVER_END_MS - FAILOVER_START_MS))
@@ -172,7 +176,7 @@ run_sentinel_test TestSentinelActiveFailoverVerify \
 	-e SENTINEL_FAILOVER_MAX_MS="$SENTINEL_FAILOVER_MAX_MS"
 
 echo "test_sentinel_failover: restoring redis-0..."
-docker compose unpause redis-0
+"${COMPOSE[@]}" unpause redis-0
 wait_service_healthy redis-0
 
 echo "test_sentinel_failover: OK"

@@ -8,14 +8,23 @@ import (
 	"espx/internal/domain"
 	"espx/internal/metrics"
 	"espx/pkg/dedupkey"
-	rpclient "espx/pkg/regionproxy/client"
 
 	"github.com/google/uuid"
 )
 
+// SpendSyncBatchResult is the commit outcome from a regional spend-sync transport.
+type SpendSyncBatchResult struct {
+	Committed uint32
+}
+
+// SpendSyncTransport pushes encoded spend-sync batches to region-proxy (Enterprise).
+type SpendSyncTransport interface {
+	ProduceSpendSyncPayload(payload []byte) (SpendSyncBatchResult, error)
+}
+
 type SpendSyncProducer struct {
-	client   *rpclient.Client
-	minBatch int
+	transport SpendSyncTransport
+	minBatch  int
 
 	mu      sync.Mutex
 	pending []pendingSpendSync
@@ -27,13 +36,13 @@ type pendingSpendSync struct {
 	rollup domain.PendingRollup
 }
 
-func NewSpendSyncProducer(client *rpclient.Client, minBatch int) *SpendSyncProducer {
+func NewSpendSyncProducer(transport SpendSyncTransport, minBatch int) *SpendSyncProducer {
 	if minBatch <= 0 {
 		minBatch = 100
 	}
 	return &SpendSyncProducer{
-		client:   client,
-		minBatch: minBatch,
+		transport: transport,
+		minBatch:  minBatch,
 	}
 }
 
@@ -47,7 +56,7 @@ func (p *SpendSyncProducer) PendingCount() int {
 }
 
 func (p *SpendSyncProducer) EnqueueRollup(ctx context.Context, w *domain.SyncWorker, id uuid.UUID, entry domain.PendingRollup) error {
-	if p == nil || p.client == nil {
+	if p == nil || p.transport == nil {
 		return fmt.Errorf("spend sync producer: unavailable")
 	}
 	if entry.AmountMicro <= 0 || entry.TxID == "" {
@@ -66,7 +75,7 @@ func (p *SpendSyncProducer) EnqueueRollup(ctx context.Context, w *domain.SyncWor
 }
 
 func (p *SpendSyncProducer) Flush(ctx context.Context) error {
-	if p == nil || p.client == nil {
+	if p == nil || p.transport == nil {
 		return nil
 	}
 	if ctx.Err() != nil {
@@ -97,7 +106,7 @@ func (p *SpendSyncProducer) Flush(ctx context.Context) error {
 		return fmt.Errorf("spend sync producer encode batch: %w", err)
 	}
 
-	result, err := p.client.ProduceSpendSyncPayload(payload)
+	result, err := p.transport.ProduceSpendSyncPayload(payload)
 	if err != nil {
 		p.requeueLocked(items)
 		return fmt.Errorf("spend sync producer produce batch: %w", err)

@@ -190,6 +190,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	streamTrimmer := ingestion.NewRedisStreamTrimmer(ingestion.RedisStreamTrimmerConfig{
+		Rdbs:         rdbs,
+		Streams:      []string{cfg.RedisStreamName, cfg.FraudStreamName},
+		MaxLen:       cfg.StreamMaxLen,
+		TrimInterval: time.Duration(cfg.RedisStreamTrimIntervalMs) * time.Millisecond,
+	})
+	streamTrimmer.Start(consumerCtx)
+
 	pgStore := ingestion.NewPostgresStoreWithGate(settleQueries, time.Duration(cfg.WriteTimeoutMs)*time.Millisecond, procPgGate)
 	piiHasher, piiErr := piihash.NewFromConfig(cfg)
 	if piiErr != nil {
@@ -247,6 +255,7 @@ func main() {
 	var pgSettlementWorkers []*ingestion.SettlementWorker
 	var chConsumers []*ingestion.StreamConsumer
 	var brokerConsumers []*ingestion.BrokerStreamConsumer
+	var brokerCHGroup *BrokerConsumerGroup
 	var brokerReconcile *ingestion.BrokerReconcileWorker
 	var budgetDeltaConsumer *controlplane.BudgetDeltaConsumer
 	var syncWorkers []*ingestion.SyncWorker
@@ -262,7 +271,7 @@ func main() {
 			RedisURL: cfg.RegionProxyRedisURL,
 		})
 		defer func() { _ = rpClient.Close() }()
-		spendSyncProducer = ingestion.NewSpendSyncProducer(rpClient, cfg.GlobalSpendBatchMin)
+		spendSyncProducer = ingestion.NewSpendSyncProducer(newRegionProxySpendSync(rpClient), cfg.GlobalSpendBatchMin)
 		slog.Info("regional spend sync producer enabled",
 			"region", cfg.RegionCode,
 			"proxy_addr", cfg.RegionProxyAddr,
@@ -285,34 +294,38 @@ func main() {
 		syncWorkers = append(syncWorkers, sw)
 		sw.Start(syncCtx)
 
-		settleFlush := time.Duration(cfg.SettlementFlushMs) * time.Millisecond
-		settleW := ingestion.NewSettlementWorker(
-			settleStore,
-			rdb,
-			cfg.RedisStreamName,
-			cfg.RedisGroupName+"_pg",
-			cfg.RedisConsumerID+"_"+shardID,
-			cfg.SettlementLaneCount(),
-			cfg.EventBatchSize,
-			settleFlush,
-			time.Duration(cfg.WriteTimeoutMs)*time.Millisecond,
-			time.Duration(cfg.RetryInitialWaitMs)*time.Millisecond,
-			time.Duration(cfg.RetryMaxWaitMs)*time.Millisecond,
-			cfg.MaxRetries,
-			time.Duration(cfg.StreamMinIdleMs)*time.Millisecond,
-			time.Duration(cfg.Lifecycle.DrainTimeoutMs)*time.Millisecond,
-		)
-		settleW.SetLogger(appLogger)
-		settleW.SetAuditLogSampleMask(cfg.AuditLogSampleMask)
-		if weightCtrl != nil {
-			settleW.SetWeightController(weightCtrl)
+		if cfg.Broker.CHIngestSource != "broker" {
+			settleFlush := time.Duration(cfg.SettlementFlushMs) * time.Millisecond
+			settleW := ingestion.NewSettlementWorker(
+				settleStore,
+				rdb,
+				cfg.RedisStreamName,
+				cfg.RedisGroupName+"_pg",
+				cfg.RedisConsumerID+"_"+shardID,
+				cfg.SettlementLaneCount(),
+				cfg.EventBatchSize,
+				settleFlush,
+				time.Duration(cfg.WriteTimeoutMs)*time.Millisecond,
+				time.Duration(cfg.RetryInitialWaitMs)*time.Millisecond,
+				time.Duration(cfg.RetryMaxWaitMs)*time.Millisecond,
+				cfg.MaxRetries,
+				time.Duration(cfg.StreamMinIdleMs)*time.Millisecond,
+				time.Duration(cfg.Lifecycle.DrainTimeoutMs)*time.Millisecond,
+			)
+			settleW.SetLogger(appLogger)
+			settleW.SetAuditLogSampleMask(cfg.AuditLogSampleMask)
+			if weightCtrl != nil {
+				settleW.SetWeightController(weightCtrl)
+			}
+			segmentHandler := ingestion.NewSegmentConversionHandler(campaignRepo, queries, []redis.UniversalClient{rdb}, piiHasher)
+			settleW.SetOnMessageProcessed(segmentHandler.Handle)
+			pgSettlementWorkers = append(pgSettlementWorkers, settleW)
+			settleW.Start(consumerCtx)
+		} else {
+			slog.Info("processor: Redis _pg StreamConsumer disabled (CH_INGEST_SOURCE=broker)")
 		}
-		segmentHandler := ingestion.NewSegmentConversionHandler(campaignRepo, queries, []redis.UniversalClient{rdb}, piiHasher)
-		settleW.SetOnMessageProcessed(segmentHandler.Handle)
-		pgSettlementWorkers = append(pgSettlementWorkers, settleW)
-		settleW.Start(consumerCtx)
 
-		if chStore != nil {
+		if chStore != nil && cfg.Broker.CHIngestSource != "broker" {
 			cc := ingestion.NewStreamConsumer(
 				chStore,
 				rdb,
@@ -367,6 +380,8 @@ func main() {
 			}
 			chConsumers = append(chConsumers, fc)
 			fc.Start(consumerCtx)
+		} else if chStore != nil && cfg.Broker.CHIngestSource == "broker" {
+			slog.Info("processor: Redis _ch StreamConsumer disabled (CH_INGEST_SOURCE=broker)")
 		}
 	}
 
@@ -411,17 +426,28 @@ func main() {
 			pgBroker.SetLogger(appLogger)
 			brokerConsumers = append(brokerConsumers, pgBroker)
 			pgBroker.Start(consumerCtx)
+		}
 
-			if chStore != nil {
-				chBrokerCfg := brokerBase
-				chBrokerCfg.Partition = uint16(p)
-				chBrokerCfg.Group = cfg.RedisGroupName + "_ch_broker"
-				chBrokerCfg.BatchSize = cfg.CHBatchSize
-				chBrokerCfg.FlushInt = time.Duration(cfg.CHFlushIntervalMs) * time.Millisecond
-				chBroker := ingestion.NewBrokerStreamConsumer(chStore, chBrokerCfg, writeTimeout, retryInit, retryMax, cfg.MaxRetries)
-				chBroker.SetLogger(appLogger)
-				brokerConsumers = append(brokerConsumers, chBroker)
-				chBroker.Start(consumerCtx)
+		if chStore != nil {
+			chGroupCfg := BrokerConsumerGroupConfig{
+				BrokerAddr:     cfg.Broker.URL,
+				RedisURL:       brokerRedisURL,
+				Topic:          cfg.Broker.Topic,
+				Group:          cfg.RedisGroupName + "_ch_broker",
+				PartitionCount: partCount,
+				BatchSize:      cfg.CHBatchSize,
+				FlushInterval:  time.Duration(cfg.CHFlushIntervalMs) * time.Millisecond,
+				MaxBytes:       uint32(cfg.Broker.MaxBytes),
+				Timeout:        time.Duration(cfg.Broker.TimeoutMs) * time.Millisecond,
+				DataDir:        cfg.Logger.Dir + "/offsets",
+				ShadowMode:     cfg.Broker.ShadowMode,
+			}
+			var chGrpErr error
+			brokerCHGroup, chGrpErr = NewBrokerConsumerGroup(chStore, chGroupCfg, appLogger)
+			if chGrpErr != nil {
+				slog.Error("failed to create broker consumer group for clickhouse", "error", chGrpErr)
+			} else {
+				brokerCHGroup.Start(consumerCtx)
 			}
 		}
 
@@ -547,6 +573,9 @@ func main() {
 	for _, bc := range brokerConsumers {
 		bc.Close()
 	}
+	if brokerCHGroup != nil {
+		brokerCHGroup.Close()
+	}
 	if budgetDeltaConsumer != nil {
 		budgetDeltaConsumer.Close()
 	}
@@ -564,6 +593,11 @@ func main() {
 	for _, bc := range brokerConsumers {
 		if err := bc.Wait(waitCtx); err != nil {
 			slog.Error("broker consumer wait failed", "error", err)
+		}
+	}
+	if brokerCHGroup != nil {
+		if err := brokerCHGroup.Wait(waitCtx); err != nil {
+			slog.Error("broker clickhouse consumer group wait failed", "error", err)
 		}
 	}
 	if brokerReconcile != nil {
@@ -605,6 +639,11 @@ func main() {
 	}
 
 	cancel()
+
+	if streamTrimmer != nil {
+		streamTrimmer.Close()
+		streamTrimmer.Wait()
+	}
 
 	for i, rdb := range rdbs {
 		if err := rdb.Close(); err != nil {

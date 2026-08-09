@@ -14,7 +14,7 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-func benchRegistryForCamp(camp *domain.Campaign) *Registry {
+func benchRegistryForCampaign(camp *domain.Campaign) *Registry {
 	reg := NewRegistry(nil)
 	enrichMockCampaign(camp)
 	reg.storeCampaignSnapshot(&campaignMapSnapshot{byID: map[uuid.UUID]campaignInfo{
@@ -24,15 +24,6 @@ func benchRegistryForCamp(camp *domain.Campaign) *Registry {
 }
 
 type benchNoopRedis struct{ mockRedisClient }
-
-func benchRegistryForCampaign(camp *domain.Campaign) *Registry {
-	reg := NewRegistry(nil)
-	enrichMockCampaign(camp)
-	reg.storeCampaignSnapshot(&campaignMapSnapshot{byID: map[uuid.UUID]campaignInfo{
-		camp.ID: {campaign: camp},
-	}})
-	return reg
-}
 
 func BenchmarkAcceptLocalQuantaFullSkip(b *testing.B) {
 	ledger := NewLocalQuantaLedger()

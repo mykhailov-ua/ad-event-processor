@@ -2,13 +2,21 @@
 x-go-load-test-env: &go_load_test_env
   GOMAXPROCS: "2"
 
+x-tracker-lab-env: &tracker_lab_env
+  GOMAXPROCS: "2"
+  GOMEMLIMIT: 400MiB
+  GOGC: "300"
+  TRACKER_INGRESS_SCHEMA: espx_native
+  ESPX_LICENSE_REQUIRED: "0"
+  ENV: development
+  REDIS_ADDRS: 127.0.0.1:6479,127.0.0.1:6480,127.0.0.1:6481,127.0.0.1:6482,127.0.0.1:6483,127.0.0.1:6484
+
 services:
   tracker-0:
     environment:
-      - GOMAXPROCS=2
-      - GOMEMLIMIT=400MiB
-      - GOGC=300
-      - TRACKER_INGRESS_SCHEMA=espx_native
+      <<: *tracker_lab_env
+      SERVER_PORT: "8181"
+      METRICS_PORT: "9101"
     deploy:
       resources:
         limits:
@@ -17,10 +25,9 @@ services:
 
   tracker-1:
     environment:
-      - GOMAXPROCS=2
-      - GOMEMLIMIT=400MiB
-      - GOGC=300
-      - TRACKER_INGRESS_SCHEMA=espx_native
+      <<: *tracker_lab_env
+      SERVER_PORT: "8182"
+      METRICS_PORT: "9102"
     deploy:
       resources:
         limits:

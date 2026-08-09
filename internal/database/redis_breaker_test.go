@@ -161,3 +161,69 @@ func TestRedisBreaker_FastFailWhenOpen(t *testing.T) {
 
 	require.Equal(t, callsAtOpen, redisCalls.Load(), "open breaker must fast-fail without hitting redis")
 }
+
+func TestRedisBreaker_AdaptiveEWMAThreshold(t *testing.T) {
+	// minFailThreshold = 100, failRateRatio = 0.20
+	b := NewAdaptiveRedisBreaker(100, 2, 50*time.Millisecond, 0.20)
+
+	// Simulate 1 second of 10,000 successful requests to establish EWMA RPS ~ 10,000
+	for i := 0; i < 10000; i++ {
+		b.RecordSuccess()
+	}
+
+	// Move to next second window
+	time.Sleep(1100 * time.Millisecond)
+
+	// Record 1 success to trigger EWMA window calculation
+	b.RecordSuccess()
+	ewma := b.EWMARPS()
+	assert.Greater(t, ewma, 5000.0, "EWMA RPS should reflect past window volume")
+
+	// Dynamic threshold should be ~20% of 10k = 2000 failures.
+	// 200 failures under 10k EWMA RPS should NOT trip the breaker.
+	for i := 0; i < 200; i++ {
+		b.RecordFailure()
+	}
+	assert.Equal(t, CircuitClosed, b.State(), "200 failures under 10k EWMA RPS must not trip breaker")
+}
+
+func TestRedisBreaker_AdaptiveTripsOnSustainedOutage(t *testing.T) {
+	b := NewAdaptiveRedisBreaker(50, 2, 50*time.Millisecond, 0.20)
+
+	// Establish low EWMA RPS
+	for i := 0; i < 100; i++ {
+		b.RecordSuccess()
+	}
+	time.Sleep(1100 * time.Millisecond)
+
+	// Exceed minimum failure threshold (50 failures)
+	for i := 0; i < 60; i++ {
+		b.RecordFailure()
+	}
+	assert.Equal(t, CircuitOpen, b.State(), "sustained failures exceeding dynamic threshold must trip breaker")
+}
+
+func BenchmarkRedisBreaker_AdaptiveHotPath(b *testing.B) {
+	breaker := NewAdaptiveRedisBreaker(150, 2, time.Minute, 0.20)
+
+	b.Run("Allow", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			_ = breaker.Allow()
+		}
+	})
+
+	b.Run("RecordSuccess", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			breaker.RecordSuccess()
+		}
+	})
+
+	b.Run("RecordFailure", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			breaker.RecordFailure()
+		}
+	})
+}

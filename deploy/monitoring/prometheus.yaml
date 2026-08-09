@@ -19,15 +19,6 @@ scrape_configs:
   - job_name: 'processor'
     static_configs:
       - targets: ['127.0.0.1:8186']
-  - job_name: 'management'
-    static_configs:
-      - targets: ['127.0.0.1:8188']
-  - job_name: 'auth'
-    static_configs:
-      - targets: ['127.0.0.1:9091']
-  - job_name: 'payment'
-    static_configs:
-      - targets: ['127.0.0.1:8187']
   - job_name: 'broker'
     static_configs:
       - targets: ['127.0.0.1:8081', '127.0.0.1:8082']

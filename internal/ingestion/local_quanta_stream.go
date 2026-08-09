@@ -479,43 +479,59 @@ func (p *LocalQuantaStreamPublisher) flushShardPipeline(ctx context.Context, sha
 		return 0
 	}
 
-	xaddPipe := rdb.Pipeline()
-	xaddCmds := make([]*redis.StringCmd, len(accepted))
-	for i, item := range accepted {
-		xaddCmds[i] = xaddPipe.XAdd(ctx, &redis.XAddArgs{
-			Stream: p.stream,
-			MaxLen: p.maxLen,
-			Approx: true,
-			Values: []any{"d", item.wrap},
-		})
-	}
-	if _, err := xaddPipe.Exec(ctx); err != nil {
-		metrics.LocalQuotaStreamWriteErrorTotal.Add(float64(len(accepted)))
-		return 0
-	}
-
 	type syncKey struct {
 		camp uuid.UUID
 		cust uuid.UUID
 	}
 	syncTotals := make(map[syncKey]int64, 8)
 	flushed := 0
-	for i, item := range accepted {
-		if err := xaddCmds[i].Err(); err != nil {
-			metrics.LocalQuotaStreamWriteErrorTotal.Inc()
-			continue
+
+	if p.stream != "fcap:ignored" && p.stream != "" {
+		xaddPipe := rdb.Pipeline()
+		xaddCmds := make([]*redis.StringCmd, len(accepted))
+		for i, item := range accepted {
+			xaddCmds[i] = xaddPipe.XAdd(ctx, &redis.XAddArgs{
+				Stream: p.stream,
+				MaxLen: p.maxLen,
+				Approx: true,
+				Values: []any{"d", item.wrap},
+			})
 		}
-		flushed++
-		if item.slot.amountMicro <= 0 {
-			continue
+		if _, err := xaddPipe.Exec(ctx); err != nil {
+			metrics.LocalQuotaStreamWriteErrorTotal.Add(float64(len(accepted)))
+			return 0
 		}
-		var campID, custID uuid.UUID
-		copy(campID[:], item.slot.campaignID[:])
-		copy(custID[:], item.slot.customerID[:])
-		if custID == uuid.Nil {
-			continue
+		for i, item := range accepted {
+			if err := xaddCmds[i].Err(); err != nil {
+				metrics.LocalQuotaStreamWriteErrorTotal.Inc()
+				continue
+			}
+			flushed++
+			if item.slot.amountMicro <= 0 {
+				continue
+			}
+			var campID, custID uuid.UUID
+			copy(campID[:], item.slot.campaignID[:])
+			copy(custID[:], item.slot.customerID[:])
+			if custID == uuid.Nil {
+				continue
+			}
+			syncTotals[syncKey{camp: campID, cust: custID}] += item.slot.amountMicro
 		}
-		syncTotals[syncKey{camp: campID, cust: custID}] += item.slot.amountMicro
+	} else {
+		flushed = len(accepted)
+		for _, item := range accepted {
+			if item.slot.amountMicro <= 0 {
+				continue
+			}
+			var campID, custID uuid.UUID
+			copy(campID[:], item.slot.campaignID[:])
+			copy(custID[:], item.slot.customerID[:])
+			if custID == uuid.Nil {
+				continue
+			}
+			syncTotals[syncKey{camp: campID, cust: custID}] += item.slot.amountMicro
+		}
 	}
 
 	fcapUpdates := false
@@ -551,8 +567,4 @@ func (p *LocalQuantaStreamPublisher) flushShardPipeline(ctx context.Context, sha
 		}
 	}
 	return flushed
-}
-
-func (p *LocalQuantaStreamPublisher) flushOne(ctx context.Context, slot *localQuantaStreamSlot) bool {
-	return p.flushShardPipeline(ctx, int(slot.shard), []*localQuantaStreamSlot{slot}) == 1
 }

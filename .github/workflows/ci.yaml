@@ -16,7 +16,6 @@ jobs:
     name: Path filter
     runs-on: ubuntu-latest
     outputs:
-      terraform: ${{ steps.filter.outputs.terraform }}
       openrtb: ${{ steps.filter.outputs.openrtb }}
       model: ${{ steps.filter.outputs.model }}
       go: ${{ steps.filter.outputs.go }}
@@ -27,8 +26,6 @@ jobs:
         id: filter
         with:
           filters: |
-            terraform:
-              - 'deploy/terraform/**'
             openrtb:
               - 'internal/openrtb/**'
               - 'internal/ingestion/openrtb*.go'
@@ -192,24 +189,3 @@ jobs:
       - name: License red-team (P0 scenarios)
         run: make license-red-team
 
-  terraform-validate:
-    name: Terraform validate
-    needs: paths
-    if: needs.paths.outputs.terraform == 'true' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: '1.9.8'
-      - name: Validate local env
-        run: |
-          cd deploy/terraform/envs/local
-          terraform init -backend=false
-          terraform validate
-      - name: Validate staging env
-        run: |
-          cd deploy/terraform/envs/staging
-          terraform init -backend=false
-          terraform validate

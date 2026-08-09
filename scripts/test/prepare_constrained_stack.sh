@@ -13,6 +13,7 @@ DB_PORT="${DB_PORT:-5430}"
 DB_DSN="${DB_DSN:-postgres://${DB_USER:-ad_event_processor_user}:${DB_PASSWORD:-secure_pass_123}@127.0.0.1:${DB_PORT}/${DB_NAME:-ad_event_processor}?sslmode=${DB_SSLMODE:-disable}}"
 
 COMPOSE=(docker compose -f docker-compose.yaml -f docker-compose.load-test.yaml)
+export SKIP_CODEGEN="${SKIP_CODEGEN:-1}"
 DATA_SERVICES=(
 	db redis-0 redis-1 redis-2 redis-3 redis-4 redis-5 clickhouse processor prometheus grafana
 )
@@ -113,8 +114,30 @@ FROM generate_series(1, 100) s(i)
 ON CONFLICT (id) DO UPDATE SET current_spend = 0, status = 'ACTIVE', budget_limit = 100000000000000, daily_budget = 100000000000000, freq_limit = 100000000;
 EOF
 
+log "seeding active license_status (load-test ingest gate)"
+"${COMPOSE[@]}" exec -T db psql -h localhost -p "$DB_PORT" -U ad_event_processor_user -d ad_event_processor <<'EOF'
+INSERT INTO billing.license_status (
+    deployment_id, license_id, plan_code, valid_until, state, entitlements_json, last_verified_at
+) VALUES (
+    '00000000-0000-0000-0000-0000000000ab',
+    '00000000-0000-0000-0000-0000000000cd',
+    'pilot',
+    NOW() + INTERVAL '365 days',
+    'ACTIVE',
+    '{"limits":{"max_active_campaigns":1000,"max_rps":200000,"max_requests_per_day":0,"max_events_per_month":0,"max_regions":4,"max_api_keys":10,"max_export_chunk_bytes":10485760,"quota_reset_timezone":"UTC"},"features":{"rtb_live":true,"ml_fraud_boost":true,"multi_region":true,"slot_migration":true}}'::jsonb,
+    NOW()
+)
+ON CONFLICT (deployment_id) DO UPDATE SET
+    state = EXCLUDED.state,
+    valid_until = EXCLUDED.valid_until,
+    entitlements_json = EXCLUDED.entitlements_json,
+    last_verified_at = EXCLUDED.last_verified_at;
+EOF
+
 log "starting trackers (registry Sync on boot + pub/sub watch)"
 "${COMPOSE[@]}" up -d --build --force-recreate "${TRACKER_SERVICES[@]}"
+
+"${COMPOSE[@]}" stop tracker-2 tracker-3 2>/dev/null || true
 
 for port in 8181 8182; do
 	for _ in $(seq 1 120); do

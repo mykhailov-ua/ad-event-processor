@@ -69,10 +69,7 @@ func RegisterOpsRoutes(mux *http.ServeMux, pool *pgxpool.Pool, rdbs []redis.Univ
 				return false
 			}
 		}
-		if !licenseIngestReady() {
-			return false
-		}
-		return true
+		return licenseIngestReady()
 	})
 	lifecycle.Register(mux, live, ready)
 	prometheus.MustRegister(database.NewPgTableStatsCollector(pool))
