@@ -205,6 +205,14 @@ var (
 		Name: "ad_h2_hostile_disconnect_total",
 		Help: "HTTP/2 connections closed after H2_INCOMPLETE_MAX incomplete frames with consumed=0",
 	})
+	Http1IncompleteCloseTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_http1_incomplete_close_total",
+		Help: "HTTP/1 connections closed due to incomplete request policy (spin, idle, or buffer cap)",
+	}, []string{"reason"})
+	OrtbScanTruncatedTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_ortb_scan_truncated_total",
+		Help: "OpenRTB 2.6 top-level scans stopped early by ORTB_SCAN_MAX_BYTES or ORTB_MAX_QUOTE_CHECKS",
+	})
 
 	FilterThroughput = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ad_filter_throughput_total",

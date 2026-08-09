@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -25,6 +26,11 @@ type Config struct {
 	FraudStreamName                 string
 	FraudConsumerLagSec             int
 	H2IncompleteMax                 int
+	HTTP1IncompleteMax              int
+	HTTP1BodyIdleMs                 int
+	OrtbScanMaxBytes                int
+	OrtbMaxQuoteChecks              int
+	ProtoMaxFields                  int
 	RedisGroupName                  string
 	RedisConsumerID                 string
 	CHDSN                           Secret
@@ -483,6 +489,11 @@ func Load() (*Config, error) {
 		FraudStreamName:                 os.Getenv("FRAUD_STREAM_NAME"),
 		FraudConsumerLagSec:             getEnvInt("FRAUD_CONSUMER_LAG_SEC", 30),
 		H2IncompleteMax:                 getEnvInt("H2_INCOMPLETE_MAX", 3),
+		HTTP1IncompleteMax:              getEnvInt("HTTP1_INCOMPLETE_MAX", 3),
+		HTTP1BodyIdleMs:                 getEnvIntDefaultHTTP1BodyIdle(appEnv),
+		OrtbScanMaxBytes:                getEnvInt("ORTB_SCAN_MAX_BYTES", 262144),
+		OrtbMaxQuoteChecks:              getEnvInt("ORTB_MAX_QUOTE_CHECKS", 65536),
+		ProtoMaxFields:                  getEnvInt("PROTO_MAX_FIELDS", 256),
 		RedisGroupName:                  os.Getenv("REDIS_GROUP_NAME"),
 		RedisConsumerID:                 os.Getenv("REDIS_CONSUMER_ID"),
 		EventBatchSize:                  getEnvInt("EVENT_BATCH_SIZE", 1000),
@@ -832,4 +843,16 @@ func vendorTelemetryEnabled(appEnv string) bool {
 		return getEnvBool("ESPX_VENDOR_TELEMETRY", false)
 	}
 	return appEnv == "production"
+}
+
+func getEnvIntDefaultHTTP1BodyIdle(appEnv string) int {
+	if v := strings.TrimSpace(os.Getenv("HTTP1_BODY_IDLE_MS")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
+		}
+	}
+	if appEnv == "production" {
+		return 5000
+	}
+	return 500
 }
