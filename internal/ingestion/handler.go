@@ -124,6 +124,14 @@ func putBuffer(buf *bytes.Buffer) {
 	bufferPool.Put(buf)
 }
 
+func putRequestBuffer(buf *[]byte) {
+	if buf == nil || cap(*buf) > maxPoolObjectSize {
+		return
+	}
+	*buf = (*buf)[:0]
+	requestBufferPool.Put(buf)
+}
+
 func putAdEvent(evt *pb.AdEvent) {
 	if evt == nil {
 		return
@@ -637,6 +645,7 @@ func NewAdsPacketHandler(cfg *config.Config, registry domain.CampaignRegistry, f
 	}
 	h.startedAtNano.Store(time.Now().UnixNano())
 	configureOrtbScanLimits(cfg)
+	configureJSONParseSecurity(cfg)
 	configureProtoMaxFields(cfg)
 	if n := len(rdbs); n > 0 {
 		h.rdbsHealthy = make([]atomic.Int32, n)
@@ -966,6 +975,9 @@ func (h *AdsPacketHandler) OnOpen(c gnet.Conn) (out []byte, action gnet.Action) 
 
 func (h *AdsPacketHandler) OnClose(c gnet.Conn, err error) (action gnet.Action) {
 	metrics.GnetActiveConnections.Dec()
+	if ctx, ok := c.Context().(*connContext); ok && ctx != nil {
+		resetChunkScratch(&ctx.chunkScratch)
+	}
 	return gnet.None
 }
 
@@ -1092,7 +1104,7 @@ func (h *AdsPacketHandler) runOffloadedRequest(workerID int, ctx *connContext) {
 			ctx.offloadRelease = nil
 			ctx.offloadReqSlice = nil
 		} else if ctx.offloadReqBuf != nil {
-			requestBufferPool.Put(ctx.offloadReqBuf)
+			putRequestBuffer(ctx.offloadReqBuf)
 			ctx.offloadReqBuf = nil
 		}
 	}()

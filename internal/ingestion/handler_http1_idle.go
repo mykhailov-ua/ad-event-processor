@@ -69,6 +69,7 @@ func (h *AdsPacketHandler) http1ResetIncompleteState(ctx *connContext, c gnet.Co
 	}
 	ctx.http1IncompleteSpin = 0
 	ctx.http1BodyIdleDeadline = 0
+	resetChunkScratch(&ctx.chunkScratch)
 	if c != nil {
 		_ = c.SetReadDeadline(time.Time{})
 	}

@@ -2,7 +2,6 @@ package ingestion
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 	"time"
 
@@ -12,18 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-const chaosValidTrackJSON = `{"type":"click","campaign_id":"550e8400-e29b-41d4-a716-446655440000"}`
-
-func chaosWSBomb(n int, suffix string) []byte {
-	var b strings.Builder
-	b.Grow(n + len(suffix))
-	for i := 0; i < n; i++ {
-		b.WriteByte(' ')
-	}
-	b.WriteString(suffix)
-	return []byte(b.String())
-}
 
 func chaosChunkedHTTP1(body []byte, chunkCount int) []byte {
 	if chunkCount < 1 {

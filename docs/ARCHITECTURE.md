@@ -118,7 +118,7 @@ Infrastructure (compose defaults): PostgreSQL `5430`, Redis host ports `6479–6
 
 Body parsers apply bounded work: OpenRTB scan caps (`ORTB_SCAN_MAX_BYTES`, `ORTB_MAX_QUOTE_CHECKS`), protobuf field budget (`PROTO_MAX_FIELDS`), and HPACK continuation limits on HTTP/2.
 
-**Operator guide:** [PARSER_SECURITY.md](PARSER_SECURITY.md). **Verification:** `bash scripts/fault/parser_chaos_drill.sh`.
+**Operator guide:** [PARSER_SECURITY.md](PARSER_SECURITY.md). **Out of scope:** admin/cold-path JSON ([COLD_PATH_JSON.md](COLD_PATH_JSON.md)), XDP, fraud ML — [PARSER_SECURITY.md](PARSER_SECURITY.md) §9. **Verification:** `bash scripts/fault/parser_chaos_drill.sh`.
 
 ---
 

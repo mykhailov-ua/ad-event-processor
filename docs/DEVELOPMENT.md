@@ -295,7 +295,7 @@ Compose+loadgen drills: `bash scripts/fault/milestone_compose_drill.sh all` (RAM
 
 ### Parser security and ingress hardening
 
-The tracker enforces wire and body parser limits aligned with the nginx edge (2026 threat model: slow streams, scan bombs, smuggling seams, HPACK integer bombs). All eight proof gaps **PS-G01–G08** are closed in the current tree.
+The tracker enforces wire and body parser limits aligned with the nginx edge (2026 threat model). All proof gaps in phases **P0–P3** (**PS-G01–G13**, **PS-H01–H06**) are closed in code/CI.
 
 **Full guide:** [PARSER_SECURITY.md](PARSER_SECURITY.md)
 
@@ -308,7 +308,7 @@ go test ./internal/ingestion/ -run=TestChaos_ParserSecurity -count=1 -v
 # Edge ↔ gnet parity (237 vectors, zero differentials)
 go test ./internal/ingestion/ -run=TestChaos_CrossHop_NginxGnet -count=1
 
-# Full drill: ingress chaos, security proofs, cross-hop, slow-body, S4, load mix, benches
+# Full drill: ingress chaos, security proofs, cross-hop, slow-body, phase P2 wire, load mix, benches
 bash scripts/fault/parser_chaos_drill.sh
 
 # Sustained mixed load (default 5 min; use --duration=8s for a quick smoke)
@@ -334,7 +334,43 @@ bash scripts/fault/parser_chaos_load.sh --duration=300s --rps=5000 --chaos-pct=1
 | `parser_slow_body_drill.sh` | PS-G01 slow-body integration proof |
 | `parser_chaos_load.sh` | PS-G08 sustained valid + chaos mix; greps `fault_proof fault=parser_chaos_load gap=closed` |
 
+**Parser security phases P0–P3:** all gaps closed — catalog in `.cursor/PARSER_SECURITY_MILESTONE.md` §0 and §4.
+
+| Phase | Gap IDs | Topic (summary) |
+| :--- | :--- | :--- |
+| P0 | PS-G01 | Slow-body / incomplete HTTP/1 |
+| P1 | PS-G02–G04, PS-H01 | Framing, ORTB scan, edge parity, pool cap |
+| P2 | PS-G05–G13, PS-H02–H03, PS-H06 | Wire bombs, JSON budgets, key-pair cap, fuzz smoke |
+| P3 | PS-H04–H05 | ORTB literal keys, UTF-8 values |
+
+**Nightly fuzz (pre-release, dedicated runner):**
+
+```bash
+go test ./internal/ingestion/ -fuzz=FuzzParseTrackJSON -fuzztime=2h -count=1
+go test ./internal/ingestion/ -fuzz=FuzzSkipJSONValueBudget -fuzztime=2h -count=1
+go test ./internal/ingestion/ -fuzz=FuzzHTTP1Chunked -fuzztime=2h -count=1
+go test ./internal/ingestion/ -fuzz=FuzzParseOpenRTB3FSM -fuzztime=2h -count=1
+```
+
 Engineering detail, SLAs, and synthetic data recipes: `.cursor/PARSER_SECURITY_MILESTONE.md`. Perf cross-link: `.cursor/PERFORMANCE.md` §19.
+
+**Out of scope** (not tracker parser gaps): cold-path admin JSON → [COLD_PATH_JSON.md](COLD_PATH_JSON.md); XDP → [enterprise/EDGE_XDP.md](enterprise/EDGE_XDP.md); TCP/netem → [EDGE_CASES.md](EDGE_CASES.md) §9.
+
+**Nightly fuzz CI:** `.github/workflows/parser-fuzz-nightly.yaml` (Sunday 05:00 UTC, 2 h per target; `workflow_dispatch` for manual runs).
+
+#### Edge nginx: slow-body and drip-rate limits
+
+The tracker closes incomplete HTTP/1 bodies via `HTTP1_INCOMPLETE_MAX` and `HTTP1_BODY_IDLE_MS` (PS-G01). On the **edge**, complement tracker policy so slow clients never reach `:8181` on paths that bypass Lua (misconfig, direct port exposure):
+
+| Directive | Recommended (appliance) | Role |
+| :--- | :--- | :--- |
+| `client_body_timeout` | **5s** (match `HTTP1_BODY_IDLE_MS` default) | Close connections that stall while sending a request body |
+| `client_header_timeout` | **5s** | Same class for header drip |
+| `client_body_buffer_size` | **16k** | Buffer small bodies; reject oversized via `client_max_body_size` (already **20k** on `/track` in `deploy/nginx/nginx.conf`) |
+| `limit_rate` | Optional per-`location` floor (e.g. **1k** B/s) on untrusted ingress | Rate-limit drip before upstream; use only where latency SLA allows |
+| Chunked on `/track` | **Rejected** | `deploy/nginx/lua/edge-phase2.lua` → `reject_chunked()`; metric `espx_edge_chunked_reject_total` |
+
+Direct tracker access (`:8181`, h2c eval) must rely on Go-side `HTTP1_*` env vars — do not assume nginx is in front. After sysctl or nginx timeout changes, re-run `bash scripts/fault/parser_slow_body_drill.sh`.
 
 ### Broker cutover (`CH_INGEST_SOURCE`)
 

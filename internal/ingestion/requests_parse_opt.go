@@ -199,6 +199,10 @@ func parseTrackRequestJSON(v *TrackRequest, data []byte) error {
 			i = valEnd
 		}
 
+		if !bud.consumeKeyPair() {
+			return errMalformedJSON
+		}
+
 		i, ok = skipJSONWSBudget(data, i, n, &bud)
 		if !ok || i >= n {
 			return errMalformedJSON

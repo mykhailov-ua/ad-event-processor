@@ -29,8 +29,6 @@ ngx.shared = {
     },
 }
 
-local edge_tarpit = require("edge-tarpit")
-
 local passed, failed = 0, 0
 
 local function assert_true(cond, msg)
@@ -72,7 +70,7 @@ local function env_on(name)
 end
 
 package.loaded["edge-tarpit"] = nil
-edge_tarpit = require("edge-tarpit")
+local edge_tarpit = require("edge-tarpit")
 edge_tarpit.set_getenv_for_test(env_off)
 sleep_calls = {}
 metrics_store = {}

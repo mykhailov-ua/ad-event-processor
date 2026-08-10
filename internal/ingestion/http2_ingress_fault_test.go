@@ -39,6 +39,7 @@ func http2FaultMalformedCases() []http2FaultCase {
 		{name: "data_before_headers", payload: buildH2WireAfterPreface(buildH2Frame(1, h2FrameData, h2FlagEndStream, []byte("x"))), maxBody: maxBody, wantErr: errIncompleteRequest},
 		{name: "payload_too_large", payload: buildH2OversizedDataFrame(maxBody + 1), maxBody: maxBody, wantErr: errPayloadTooLarge},
 		{name: "valid_track", payload: validTrack, maxBody: maxBody, wantOK: true},
+		{name: "header_block_oversized", payload: buildH2OversizedHeaderBlock(), maxBody: maxBody, wantErr: errInvalidRequest},
 		{name: "settings_only", payload: append(append([]byte(nil), h2ClientPreface[:]...), buildH2Frame(0, h2FrameSettings, 0, nil)...), maxBody: maxBody, wantErr: errIncompleteRequest},
 	}
 }
@@ -75,6 +76,14 @@ func buildH2OversizedDataFrame(bodyLen int64) []byte {
 	hdrBlock := []byte{0x83, 0x04, 0x06, '/', 't', 'r', 'a', 'c', 'k'}
 	settings := buildH2Frame(0, h2FrameSettings, 0, nil)
 	return buildH2WireAfterPreface(append(settings, buildH2HeadersDataFrames(1, hdrBlock, body)...))
+}
+
+func buildH2OversizedHeaderBlock() []byte {
+	chunk := bytes.Repeat([]byte{0x41}, h2MaxHeaderBlock/2+1)
+	settings := buildH2Frame(0, h2FrameSettings, 0, nil)
+	headers := buildH2Frame(1, h2FrameHeaders, 0, chunk)
+	cont := buildH2Frame(1, h2FrameContinuation, h2FlagEndHeaders, chunk)
+	return buildH2WireAfterPreface(append(append(settings, headers...), cont...))
 }
 
 func TestFault_HTTP2_MalformedCorpus(t *testing.T) {

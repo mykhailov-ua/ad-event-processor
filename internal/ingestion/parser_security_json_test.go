@@ -73,3 +73,23 @@ func TestChaos_ParserSecurity_PS_G13_QuoteDenseStringRejected(t *testing.T) {
 		"gap":    "closed",
 	})
 }
+
+func TestChaos_ParserSecurity_PS_G13_NestedPayloadEscapeBomb(t *testing.T) {
+	escapes := strings.Repeat(`\"`, MaxJSONStringEscapes+1)
+	body := fmt.Sprintf(`{"campaign_id":"550e8400-e29b-41d4-a716-446655440000","payload":{"x":"%s"}}`, escapes)
+	var req TrackRequest
+	err := ParseTrackRequestJSON(&req, []byte(body))
+	require.Error(t, err, "nested payload escape bomb must honor MaxJSONStringEscapes")
+	faultproof.Log(t, "parser_security_ps_g13_nested", map[string]string{
+		"gap_id": "PS-G13",
+		"gap":    "closed",
+		"path":   "payload",
+	})
+}
+
+func TestSkipJSONValueBudget_nestedRawControlRejected(t *testing.T) {
+	body := []byte("{\"payload\":{\"a\":\"" + "\n" + "\"}}")
+	bud := newJSONScanBudget()
+	_, err := skipJSONValueBudget(body, 0, &bud)
+	require.Error(t, err)
+}

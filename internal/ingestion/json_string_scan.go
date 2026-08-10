@@ -21,10 +21,14 @@ func scanJSONStringEnd(data []byte, i, n int, b *jsonScanBudget) (int, bool) {
 	if i >= n || data[i] != '"' {
 		return i, false
 	}
+	contentStart := i + 1
 	i++
 	for i < n {
 		c := data[i]
 		if c == '"' {
+			if jsonStrictUTF8Enabled && !utf8ValidBytes(data[contentStart:i]) {
+				return i, false
+			}
 			return i + 1, true
 		}
 		if !b.consumeStrByte() {
@@ -51,7 +55,8 @@ func scanJSONStringEnd(data []byte, i, n int, b *jsonScanBudget) (int, bool) {
 					return i, false
 				}
 				if cp >= 0xD800 && cp <= 0xDBFF {
-					if i+6 > n || data[i+4] != '\\' || data[i+5] != 'u' {
+					// i points at the first hex digit of \uXXXX; the full pair needs 10 bytes (XXXX\uYYYY).
+					if i+10 > n || data[i+4] != '\\' || data[i+5] != 'u' {
 						return i, false
 					}
 					cp2, ok := decodeJSONU16(data[i+6 : i+10])
@@ -82,10 +87,14 @@ func scanJSONLiteralStringEnd(data []byte, i, n int, b *jsonScanBudget) (int, bo
 	if i >= n || data[i] != '"' {
 		return i, false
 	}
+	contentStart := i + 1
 	i++
 	for i < n {
 		c := data[i]
 		if c == '"' {
+			if jsonStrictUTF8Enabled && !utf8ValidBytes(data[contentStart:i]) {
+				return i, false
+			}
 			return i + 1, true
 		}
 		if c == '\\' || c < 0x20 {

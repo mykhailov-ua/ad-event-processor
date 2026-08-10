@@ -206,19 +206,25 @@ Alert idea: page on rising `ListenOverflows` even when tracker “healthy” and
 
 ## 9. Parser security vs infrastructure failures
 
-Parser hardening (PS-G01–G08) and infrastructure stress (purgatory, listen overflow, netem) answer different questions. Use this table before filing a hot-path parser regression.
+Parser hardening (**P0–P3**: **PS-G01–G13**, **PS-H01–H06**) and infrastructure stress (purgatory, listen overflow, netem) answer different questions. Use this table before filing a hot-path parser regression.
+
+**Canonical docs:** [PARSER_SECURITY.md](PARSER_SECURITY.md), `.cursor/PARSER_SECURITY_MILESTONE.md` (gap catalog + DoD). **Verification:** `bash scripts/fault/parser_chaos_drill.sh`; slow-body isolation: `bash scripts/fault/parser_slow_body_drill.sh`.
 
 | Symptom | Likely layer | First checks |
 | :--- | :--- | :--- |
 | Handler p99 ≈ Redis Lua p99 under netem loss | Network / Redis RTT | `ad_redis_lua_duration_seconds`, path loss, not DFA |
 | `ListenOverflows` rising, CPU low | OS accept backlog | `somaxconn`, edge connection churn — see §3 |
-| Single connection drips 1 B/s, slot never frees | Parser / connection policy | `ad_http1_incomplete_close_total`, `HTTP1_BODY_IDLE_MS` — [PARSER_SECURITY.md](PARSER_SECURITY.md) |
-| 1 MB quote-dense OpenRTB pegs one core | Parser scan budget | `ad_ortb_scan_truncated_total`, `ORTB_SCAN_MAX_BYTES` |
-| nginx returns 400 but `:8181` accepts same wire | Edge ↔ tracker differential | `TestChaos_CrossHop_NginxGnet` — should be zero differentials |
-| Mixed chaos load raises pool rejects | Worker pool saturation | `WorkerPoolRejectTotal`, `CHAOS_LOAD_*` drill |
+| Single connection drips 1 B/s, slot never frees | Parser / connection policy | `ad_http1_incomplete_close_total`, `HTTP1_INCOMPLETE_MAX`, `HTTP1_BODY_IDLE_MS` — [PARSER_SECURITY.md](PARSER_SECURITY.md) (PS-G01 **closed**) |
+| Pool RSS spike after one 1 MiB reject | sync.Pool cap guard | `requestBufferPool` drops `cap > 64 KiB` — PS-H01 |
+| Millions of `{`/`}` pairs in one JSON body | Key-pair budget | `MaxJSONKeyPairs`, `ad_json_key_pair_reject_total` — PS-H02 |
+| nginx returns 400, tracker accepts same wire | Edge ↔ tracker differential | `TestChaos_CrossHop_NginxGnet` — PS-G04 (**zero** differentials) |
+| 1 MB quote-dense OpenRTB pegs one core | Parser scan budget | `ad_ortb_scan_truncated_total`, `ORTB_SCAN_MAX_BYTES` — PS-G03 |
+| Mixed chaos load raises pool rejects | Worker pool saturation | `WorkerPoolRejectTotal`, `CHAOS_LOAD_*` drill — PS-G08 |
 | Microbenches green, chaos proofs green, p99 bad under wrk | Torture profile | Not a parser bug — see verdict table at top |
 
 **Do not** treat purgatory or edge-cascade numbers as parser regression signals. **Do** run `bash scripts/fault/parser_chaos_drill.sh` after any change to `handler_http*`, `openrtb_*`, or ingress policy.
+
+**Out of scope** (cold-path JSON, fraud ML, XDP, TCP backlog): [PARSER_SECURITY.md](PARSER_SECURITY.md) §9, [COLD_PATH_JSON.md](COLD_PATH_JSON.md), [enterprise/EDGE_XDP.md](enterprise/EDGE_XDP.md).
 
 ---
 

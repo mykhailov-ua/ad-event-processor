@@ -43,6 +43,11 @@ func teValueOnlyChunked(val []byte) bool {
 	return found
 }
 
+const (
+	chunkScratchInitCap   = 4096
+	chunkScratchRetainCap = 64 << 10 // align with maxPoolObjectSize
+)
+
 func growChunkScratch(scratchPtr *[]byte, totalLen int) []byte {
 	if scratchPtr == nil {
 		return make([]byte, totalLen)
@@ -55,6 +60,18 @@ func growChunkScratch(scratchPtr *[]byte, totalLen int) []byte {
 		buf = buf[:totalLen]
 	}
 	return buf
+}
+
+// resetChunkScratch drops oversized per-connection chunked reassembly buffers (PS-H03).
+func resetChunkScratch(scratchPtr *[]byte) {
+	if scratchPtr == nil {
+		return
+	}
+	if cap(*scratchPtr) > chunkScratchRetainCap {
+		*scratchPtr = make([]byte, 0, chunkScratchInitCap)
+		return
+	}
+	*scratchPtr = (*scratchPtr)[:0]
 }
 
 func parseHTTP1ChunkedBody(data []byte, off int, maxBody int64, scratchPtr *[]byte) (consumed int, body []byte, contentLen int, err error) {
@@ -152,22 +169,31 @@ func parseChunkSizeLine(data []byte, pos, n int) (size int, next int, err error)
 		}
 		if b >= '0' && b <= '9' {
 			hasDigit = true
-			size = size*16 + int(b-'0')
-			if size < 0 {
+			d := int(b - '0')
+			if size > (1<<60)/16 || size*16 > (1<<60)-d {
 				return 0, 0, errInvalidRequest
 			}
+			size = size*16 + d
 			i++
 			continue
 		}
 		if b >= 'a' && b <= 'f' {
 			hasDigit = true
-			size = size*16 + int(b-'a'+10)
+			d := int(b - 'a' + 10)
+			if size > (1<<60)/16 || size*16 > (1<<60)-d {
+				return 0, 0, errInvalidRequest
+			}
+			size = size*16 + d
 			i++
 			continue
 		}
 		if b >= 'A' && b <= 'F' {
 			hasDigit = true
-			size = size*16 + int(b-'A'+10)
+			d := int(b - 'A' + 10)
+			if size > (1<<60)/16 || size*16 > (1<<60)-d {
+				return 0, 0, errInvalidRequest
+			}
+			size = size*16 + d
 			i++
 			continue
 		}

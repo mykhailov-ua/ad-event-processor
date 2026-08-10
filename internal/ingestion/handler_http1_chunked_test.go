@@ -2,7 +2,10 @@ package ingestion
 
 import (
 	"fmt"
+	"strconv"
 	"testing"
+
+	"espx/pkg/faultproof"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -63,18 +66,28 @@ func TestChaos_ChunkExt_CRLFInExtension(t *testing.T) {
 	require.ErrorIs(t, err, errInvalidRequest)
 }
 
-func fragmentedChunkedOpenRTBRequest() []byte {
-	body := []byte(`{"id":"req-1","imp":[{"id":"1"}]}`)
-	half := len(body) / 2
-	var wire []byte
-	wire = append(wire, "POST /openrtb/bid HTTP/1.1\r\nTransfer-Encoding: chunked\r\nContent-Type: application/json\r\n\r\n"...)
-	wire = append(wire, fmt.Sprintf("%x\r\n", half)...)
-	wire = append(wire, body[:half]...)
-	wire = append(wire, "\r\n"...)
-	wire = append(wire, fmt.Sprintf("%x\r\n", len(body)-half)...)
-	wire = append(wire, body[half:]...)
-	wire = append(wire, "\r\n0\r\n\r\n"...)
-	return wire
+func TestHTTP1ChunkedRejectOversizedHexSize(t *testing.T) {
+	// Hex size line overflow must reject before size*16 wraps (P3).
+	payload := []byte("POST /openrtb/bid HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n" +
+		"ffffffffffffffff\r\n" +
+		"0\r\n\r\n")
+	_, _, err := parseHTTP1(payload, 1<<20, nil)
+	assert.ErrorIs(t, err, errInvalidRequest)
+}
+
+func TestHTTP1ChunkedScratch_ShrinkOnClose(t *testing.T) {
+	var scratch []byte
+	_ = growChunkScratch(&scratch, 150*1024)
+	require.GreaterOrEqual(t, cap(scratch), 150*1024)
+
+	resetChunkScratch(&scratch)
+	require.LessOrEqual(t, cap(scratch), chunkScratchRetainCap)
+
+	faultproof.Log(t, "parser_security_ps_h03", map[string]string{
+		"gap_id":     "PS-H03",
+		"gap":        "closed",
+		"cap_after":  strconv.Itoa(cap(scratch)),
+	})
 }
 
 func TestHTTP1ChunkedFragmentedZeroAlloc(t *testing.T) {

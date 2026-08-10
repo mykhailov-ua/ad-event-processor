@@ -82,6 +82,11 @@ func (c *GnetHarnessConn) RemoteAddr() net.Addr {
 	return gnetHarnessRemoteAddr
 }
 
+// Append adds incremental inbound bytes (fault/drip drills).
+func (c *GnetHarnessConn) Append(b []byte) {
+	c.inbound = append(c.inbound, b...)
+}
+
 func (c *GnetHarnessConn) Written() []byte { return c.written }
 
 func (c *GnetHarnessConn) WriteCount() int { return len(c.responses) }

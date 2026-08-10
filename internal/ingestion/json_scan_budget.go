@@ -10,16 +10,18 @@ const (
 )
 
 type jsonScanBudget struct {
-	wsLeft  int
-	strLeft int
-	escLeft int
+	wsLeft    int
+	strLeft   int
+	escLeft   int
+	pairsLeft int
 }
 
 func newJSONScanBudget() jsonScanBudget {
 	return jsonScanBudget{
-		wsLeft:  MaxJSONTotalWSkip,
-		strLeft: MaxJSONStringScanBytes,
-		escLeft: MaxJSONStringEscapes,
+		wsLeft:    MaxJSONTotalWSkip,
+		strLeft:   MaxJSONStringScanBytes,
+		escLeft:   MaxJSONStringEscapes,
+		pairsLeft: MaxJSONKeyPairs,
 	}
 }
 
@@ -45,6 +47,15 @@ func (b *jsonScanBudget) consumeEscape() bool {
 	}
 	b.escLeft--
 	return b.escLeft >= 0
+}
+
+// consumeKeyPair decrements the per-document key:value pair budget (PS-H02).
+func (b *jsonScanBudget) consumeKeyPair() bool {
+	if b == nil {
+		return true
+	}
+	b.pairsLeft--
+	return b.pairsLeft >= 0
 }
 
 func skipJSONWSBudget(data []byte, i, n int, b *jsonScanBudget) (int, bool) {

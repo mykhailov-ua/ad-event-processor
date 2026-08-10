@@ -1,0 +1,47 @@
+name: Parser Fuzz Nightly
+
+on:
+  schedule:
+    - cron: '0 5 * * 0'
+  workflow_dispatch:
+
+concurrency:
+  group: parser-fuzz-nightly
+  cancel-in-progress: false
+
+env:
+  GOMAXPROCS: "1"
+
+jobs:
+  parser-fuzz:
+    name: Ingestion parser fuzz (2h targets)
+    runs-on: ${{ vars.PERF_RUNNER_LABEL || 'ubuntu-latest' }}
+    timeout-minutes: 600
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.12'
+          cache: true
+
+      - name: Stabilize CPU
+        run: bash scripts/perf/stabilize_cpu.sh
+
+      - name: Fuzz ParseTrackJSON
+        run: go test ./internal/ingestion/ -fuzz=FuzzParseTrackJSON -fuzztime=2h -count=1
+
+      - name: Fuzz SkipJSONValueBudget
+        run: go test ./internal/ingestion/ -fuzz=FuzzSkipJSONValueBudget -fuzztime=2h -count=1
+
+      - name: Fuzz HTTP1Chunked
+        run: go test ./internal/ingestion/ -fuzz=FuzzHTTP1Chunked -fuzztime=2h -count=1
+
+      - name: Fuzz ParseOpenRTB3FSM
+        run: go test ./internal/ingestion/ -fuzz=FuzzParseOpenRTB3FSM -fuzztime=2h -count=1
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: parser-fuzz-corpus
+          path: internal/ingestion/testdata/fuzz/
+          retention-days: 14

@@ -4,9 +4,9 @@ BidShard’s tracker parses every byte of HTTP traffic on the hot path before fi
 
 **Scope:** `internal/ingestion` — HTTP/1–2 wire parsers, JSON/OpenRTB/protobuf body parsers, and the nginx ↔ gnet ingress seam.
 
-**Related:** [ARCHITECTURE.md](ARCHITECTURE.md) (request lifecycle), [DEVELOPMENT.md](DEVELOPMENT.md) §7 (fault drills), [BENCHMARKS.md](BENCHMARKS.md) (micro-bench gates), [EDGE_CASES.md](EDGE_CASES.md) §9 (parser vs OS/network failures).
+**Related:** [ARCHITECTURE.md](ARCHITECTURE.md) (request lifecycle), [DEVELOPMENT.md](DEVELOPMENT.md) §7 (fault drills), [BENCHMARKS.md](BENCHMARKS.md) (micro-bench gates), [EDGE_CASES.md](EDGE_CASES.md) §9 (parser vs OS/network failures), [COLD_PATH_JSON.md](COLD_PATH_JSON.md) (admin JSON — out of scope).
 
-Engineering backlog and proof IDs (PS-G01–G08) live in `.cursor/PARSER_SECURITY_MILESTONE.md` for agents; this page is the operator-facing summary.
+Engineering backlog: `.cursor/PARSER_SECURITY_MILESTONE.md` (phases **P0–P3**, gaps **PS-G01–G13**, **PS-H01–H06** — all closed in code).
 
 ---
 
@@ -80,6 +80,14 @@ bash scripts/fault/parser_slow_body_drill.sh
 ### Chunk extensions (HTTP/1)
 
 Chunk size lines containing `;` (RFC chunk extensions) are **rejected** on all paths. This closes CRLF-in-extension parser differentials (Netty CVE-2026-33870 class).
+
+Hex chunk sizes are parsed with an overflow guard before each `size*16` step; absurd size lines (e.g. 16+ hex digits) are rejected with `errInvalidRequest` before body slicing.
+
+Per-connection `chunkScratch` for fragmented chunked bodies is reset after each completed HTTP/1 parse and on connection close; capacity above **64 KiB** is dropped (PS-H03).
+
+### HTTP/2 header block cap
+
+Assembled HPACK header blocks per request are capped at **16 KiB** (`h2MaxHeaderBlock` in `http2_conn.go`). Continuation frames that would exceed the cap trigger `RST_STREAM` / connection teardown (PS-G07 companion).
 
 ### TE.TE obfuscation
 
@@ -177,7 +185,7 @@ H2_INCOMPLETE_MAX=3          # HTTP/2 incomplete frames (pre-existing)
 | :--- | :--- |
 | All PS-G proof stubs | `go test ./internal/ingestion/ -run=TestChaos_ParserSecurity -count=1 -v` |
 | Cross-hop corpus | `go test ./internal/ingestion/ -run=TestChaos_CrossHop_NginxGnet -count=1` |
-| S4 TE / proto / HPACK | `go test ./internal/ingestion/ -run='TestChaos_TE_TE|TestChaos_Proto_FieldBudget|TestChaos_HPACK' -count=1` |
+| Phase P2 TE / proto / HPACK | `go test ./internal/ingestion/ -run='TestChaos_TE_TE|TestChaos_Proto_FieldBudget|TestChaos_HPACK' -count=1` |
 | Sustained load | `bash scripts/fault/parser_chaos_load.sh --duration=8s --rps=3000` |
 | JSON hardening (G09–G13) | `go test ./internal/ingestion/ -run='TestChaos_ParserSecurity_PS_G09|TestChaos_ParserSecurity_PS_G1[0-3]' -count=1` |
 | Full parser drill | `bash scripts/fault/parser_chaos_drill.sh` |
@@ -187,41 +195,82 @@ Every chaos test emits a `fault_proof` line (`gap=open|closed`) for CI grep gate
 
 ---
 
-## 8. Gap summary (PS-G01–G13)
+## 8. Gap summary (phases P0–P3)
 
-| ID | Topic | Status |
-| :--- | :--- | :---: |
-| PS-G01 | HTTP/1 slow-body / incomplete hold | closed |
-| PS-G02 | Chunk-extension framing | closed |
-| PS-G03 | OpenRTB quote-dense scan CPU | closed |
-| PS-G04 | Edge ↔ tracker differential | closed |
-| PS-G05 | TE.TE obfuscation | closed |
-| PS-G06 | Protobuf wire field budget | closed |
-| PS-G07 | HPACK continuation cap | closed |
-| PS-G08 | Sustained chaos load mix | closed |
-| PS-G09 | Unicode homoglyph / non-ASCII keys | closed |
-| PS-G10 | Duplicate JSON key last-wins | closed |
-| PS-G11 | Lone Unicode surrogate in strings | closed |
-| PS-G12 | Distributed whitespace bomb | closed |
-| PS-G13 | Quote-dense / escape-flood strings | closed |
+| Phase | ID | Topic | Status |
+| :--- | :--- | :--- | :---: |
+| P0 | PS-G01 | HTTP/1 slow-body / incomplete hold | closed |
+| P1 | PS-G02 | Chunk-extension framing | closed |
+| P1 | PS-G03 | OpenRTB quote-dense scan CPU | closed |
+| P1 | PS-G04 | Edge ↔ tracker differential | closed |
+| P1 | PS-H01 | `requestBufferPool` cap poisoning | closed |
+| P2 | PS-G05 | TE.TE obfuscation | closed |
+| P2 | PS-G06 | Protobuf wire field budget | closed |
+| P2 | PS-G07 | HPACK continuation cap | closed |
+| P2 | PS-G08 | Sustained chaos load mix | closed |
+| P2 | PS-G09 | Unicode homoglyph / non-ASCII keys | closed |
+| P2 | PS-G10 | Duplicate JSON key last-wins | closed |
+| P2 | PS-G11 | Lone Unicode surrogate in strings | closed |
+| P2 | PS-G12 | Distributed whitespace bomb | closed |
+| P2 | PS-G13 | Quote-dense / escape-flood strings | closed |
+| P2 | PS-H02 | Per-object JSON key-pair flood (`MaxJSONKeyPairs`) | closed |
+| P2 | PS-H03 | `chunkScratch` per-connection retention | closed |
+| P2 | PS-H06 | Extended fuzz + nightly 2 h (smoke in drill) | closed |
+| P3 | PS-H04 | ORTB3 key-scan escape walk | closed |
+| P3 | PS-H05 | Strict UTF-8 in JSON string values | closed |
 
-### JSON parse budgets (PS-G09–G13)
+DoD detail: `.cursor/PARSER_SECURITY_MILESTONE.md` §6 (PS-H), §1 (PS-G).
+
+### JSON parse budgets (PS-G09–G13, PS-H02)
 
 | Constant | Default | Effect |
 | :--- | ---: | :--- |
 | `MaxJSONTotalWSkip` | 4096 | Cumulative whitespace per JSON document |
 | `MaxJSONStringScanBytes` | 65536 | Bytes examined in one string value |
 | `MaxJSONStringEscapes` | 16384 | Backslash escapes per string value |
+| `MaxJSONKeyPairs` | 10000 | Key:value pairs per JSON document (track + ORTB3) |
+| `JSON_STRICT_UTF8` | on (`0` disables) | Reject ill-formed / overlong UTF-8 in string values |
 
 Track JSON requires literal ASCII keys; `campaign_id` must be a literal UUID string. OpenRTB top-level section keys use last-wins at root depth only (nested `"source"` in `eids` cannot shadow the top-level `source` object).
+
+Nested JSON values (track `payload` field and OpenRTB skip paths) use `skipJSONValueBudgetDepth` with `scanJSONStringEnd` inside `{`/`[` so escape bombs cannot bypass the string budget. Depth caps: `MaxJSONDepth` (16) for track, `OrtbMaxJSONDepth` (32) for OpenRTB ingress.
 
 ---
 
 ## 9. What this does not cover
 
-- **Cold-path JSON** in control plane APIs — separate parsers and limits.
-- **ML / fraud scoring** — cold path only; tracker reads Redis snapshots.
-- **NIC-level XDP drops** — see [enterprise/EDGE_XDP.md](enterprise/EDGE_XDP.md).
-- **TCP listen overflow / netem RTO** — infrastructure floors documented in [EDGE_CASES.md](EDGE_CASES.md); fixing sysctl and backlog is ops work, not a parser patch.
+Phases **P0–P3** (**PS-G01–G13**, **PS-H01–H06**) close **tracker ingress** only (`internal/ingestion` + nginx edge seam). The table below is the explicit boundary — do not file hot-path parser regressions against these layers.
 
-When handler p99 spikes but micro-benches and chaos proofs pass, investigate Redis RTT, accept backlog, and cgroup throttle before opening a parser regression.
+| Boundary | In scope ([§1–§8](#1-design-goals)) | Out of scope (this milestone) |
+| :--- | :--- | :--- |
+| **Packages** | `internal/ingestion`, `deploy/nginx/lua` edge DFA | `pkg/coldpath`, `internal/controlplane`, `internal/payment`, `internal/openrtb` validate |
+| **Wire / parser** | Custom DFA, vtproto wire budget, HPACK/TE guards | Stdlib `encoding/json` on admin APIs |
+| **Body limits** | `MaxRequestBodySize`, ORTB scan, `PROTO_MAX_FIELDS` | `coldpath.DefaultMaxBody` (64 KiB) + per-route overrides — [COLD_PATH_JSON.md](COLD_PATH_JSON.md) |
+| **Verification** | `TestChaos_ParserSecurity`, `parser_chaos_drill.sh`, fuzz nightly | Admin auth + `MaxBytesReader`; no PS-G chaos corpus |
+| **ML / fraud scoring** | Tracker reads Redis `ml:score:boost:*` snapshots only | `internal/fraud`, `cmd/fraud-scorer` — model training and batch scoring |
+| **NIC / XDP** | — | Optional Enterprise kernel drop — [enterprise/EDGE_XDP.md](enterprise/EDGE_XDP.md) |
+| **TCP / OS** | HTTP/1 incomplete close on gnet | Listen backlog, netem RTO, cgroup throttle — [EDGE_CASES.md](EDGE_CASES.md) §9 |
+
+### 9.1 Cold-path JSON
+
+Admin (`:8188`), payment webhooks, and control-plane batch ingest use **`pkg/coldpath`** with **`encoding/json`**. They do **not** inherit `MaxJSONKeyPairs`, `JSON_STRICT_UTF8`, or fuzz/chaos CI from the tracker parser milestone.
+
+**Canonical doc:** [COLD_PATH_JSON.md](COLD_PATH_JSON.md) (limits table, helpers, verification).
+
+### 9.2 ML / fraud scoring
+
+The tracker hot path must **not** import `internal/fraud`. Fraud scores arrive asynchronously via Redis; scoring logic lives in `cmd/fraud-scorer` / processor microbatch. Parser security does not cover model inference, ONNX paths, or feature extraction.
+
+### 9.3 NIC-level XDP
+
+Enterprise optional: BPF blacklist drop on the ingress NIC **before** userspace. Default appliance uses nginx Lua (`access_check.lua`). XDP does not parse HTTP or JSON; it is perimeter volume control, not a parser substitute.
+
+**Doc:** [enterprise/EDGE_XDP.md](enterprise/EDGE_XDP.md). Compliance fingerprint: `bash scripts/ci/compliance.sh`.
+
+### 9.4 TCP listen overflow / netem
+
+`ListenOverflows`, SYN backlog, 1% lo loss, and Redis RTT under netem can raise handler p99 without any parser change. Fixing `somaxconn`, edge connection churn, and cgroup CPU is **ops / infrastructure** work.
+
+**Triage:** [EDGE_CASES.md](EDGE_CASES.md) §9 symptom table. **Drills:** `scripts/perf/purgatory/`, `scripts/test/tcp_syn_drop_gate.sh`.
+
+When handler p99 spikes but `gate_bench.sh`, `parser_chaos_drill.sh`, and PS-G proofs pass, investigate Redis RTT, accept backlog, and cgroup throttle **before** opening a parser regression.

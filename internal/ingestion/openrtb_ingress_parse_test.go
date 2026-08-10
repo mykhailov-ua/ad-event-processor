@@ -1,6 +1,7 @@
 package ingestion
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -79,6 +80,31 @@ func TestParseOpenRTB3Ingress(t *testing.T) {
 		_ = ParseOpenRTB3Ingress(&req, payload)
 	})
 	assert.Equal(t, float64(0), allocs)
+}
+
+func TestSkipJSONValueOrtb_DeepArrayRejected(t *testing.T) {
+	depth := ortbMaxDepth + 1
+	var b strings.Builder
+	b.WriteByte('[')
+	for i := 0; i < depth; i++ {
+		b.WriteByte('[')
+	}
+	b.WriteString(`1`)
+	for i := 0; i < depth; i++ {
+		b.WriteByte(']')
+	}
+	b.WriteByte(']')
+	bud := newJSONScanBudget()
+	_, err := skipJSONValueBudgetDepth([]byte(b.String()), 0, &bud, ortbMaxDepth)
+	require.Error(t, err)
+}
+
+func TestSkipJSONValueOrtb_EscapeBombRejected(t *testing.T) {
+	escapes := strings.Repeat(`\"`, MaxJSONStringEscapes+1)
+	body := []byte(`"` + escapes + `"`)
+	bud := newJSONScanBudget()
+	_, err := skipJSONValueBudgetDepth(body, 0, &bud, ortbMaxDepth)
+	require.Error(t, err)
 }
 
 func TestParseOpenRTB3Ingress_RejectsESPXNative(t *testing.T) {

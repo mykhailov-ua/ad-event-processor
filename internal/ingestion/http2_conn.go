@@ -1,5 +1,7 @@
 package ingestion
 
+const h2MaxHeaderBlock = 16 << 10 // cap assembled HPACK block per request
+
 type h2ConnState struct {
 	established     bool
 	settingsSent    bool
@@ -36,6 +38,14 @@ func (s *h2ConnState) resetStream() {
 func (s *h2ConnState) appendSettingsOut(extra []byte) []byte {
 	s.settingsLen += copy(s.settingsScratch[s.settingsLen:], extra)
 	return s.settingsScratch[:s.settingsLen]
+}
+
+func (s *h2ConnState) appendHeaderBlock(p []byte) error {
+	if len(s.headerBlock)+len(p) > h2MaxHeaderBlock {
+		return errInvalidRequest
+	}
+	s.headerBlock = append(s.headerBlock, p...)
+	return nil
 }
 
 func parseH2Ingress(buf []byte, st *h2ConnState, maxBody int64) (consumed int, req parsedHTTPRequest, streamID uint32, settingsOut []byte, err error) {
@@ -80,7 +90,9 @@ func parseH2Ingress(buf []byte, st *h2ConnState, maxBody int64) (consumed int, r
 				return off + frameLen, req, 0, settingsOut, errInvalidRequest
 			}
 			st.headerStreamID = fr.StreamID
-			st.headerBlock = append(st.headerBlock, fr.Payload...)
+			if err := st.appendHeaderBlock(fr.Payload); err != nil {
+				return off + frameLen, req, 0, settingsOut, err
+			}
 			if fr.Flags&h2FlagEndHeaders != 0 {
 				if err := h2DecodeHeadersBlock(st.headerBlock, &req); err != nil {
 					return off + frameLen, req, 0, settingsOut, err
@@ -96,7 +108,9 @@ func parseH2Ingress(buf []byte, st *h2ConnState, maxBody int64) (consumed int, r
 			if fr.StreamID != st.headerStreamID {
 				return off + frameLen, req, 0, settingsOut, errInvalidRequest
 			}
-			st.headerBlock = append(st.headerBlock, fr.Payload...)
+			if err := st.appendHeaderBlock(fr.Payload); err != nil {
+				return off + frameLen, req, 0, settingsOut, err
+			}
 			if fr.Flags&h2FlagEndHeaders != 0 {
 				if err := h2DecodeHeadersBlock(st.headerBlock, &req); err != nil {
 					return off + frameLen, req, 0, settingsOut, err

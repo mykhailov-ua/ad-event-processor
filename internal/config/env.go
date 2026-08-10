@@ -31,6 +31,7 @@ type Config struct {
 	OrtbScanMaxBytes                int
 	OrtbMaxQuoteChecks              int
 	ProtoMaxFields                  int
+	JSONStrictUTF8                  bool
 	RedisGroupName                  string
 	RedisConsumerID                 string
 	CHDSN                           Secret
@@ -494,6 +495,7 @@ func Load() (*Config, error) {
 		OrtbScanMaxBytes:                getEnvInt("ORTB_SCAN_MAX_BYTES", 262144),
 		OrtbMaxQuoteChecks:              getEnvInt("ORTB_MAX_QUOTE_CHECKS", 65536),
 		ProtoMaxFields:                  getEnvInt("PROTO_MAX_FIELDS", 256),
+		JSONStrictUTF8:                  getEnvBool("JSON_STRICT_UTF8", true),
 		RedisGroupName:                  os.Getenv("REDIS_GROUP_NAME"),
 		RedisConsumerID:                 os.Getenv("REDIS_CONSUMER_ID"),
 		EventBatchSize:                  getEnvInt("EVENT_BATCH_SIZE", 1000),

@@ -201,25 +201,36 @@ func (p *PinnedWorkerPool) SubmitOffload(ctx *connContext, src []byte) bool {
 	}
 
 	if len(src) > 0 && ctx.offloadReqSlice == nil && ctx.offloadReqBuf == nil {
-		reqBufPtr := requestBufferPool.Get().(*[]byte)
-		reqBytes := *reqBufPtr
-		if cap(reqBytes) < len(src) {
-			reqBytes = make([]byte, len(src))
-			*reqBufPtr = reqBytes
+		if len(src) > maxPoolObjectSize {
+			heap := make([]byte, len(src))
+			copy(heap, src)
+			ctx.offloadReqSlice = heap
+			ctx.offloadReqLen = len(src)
 		} else {
-			reqBytes = reqBytes[:len(src)]
+			reqBufPtr := requestBufferPool.Get().(*[]byte)
+			reqBytes := *reqBufPtr
+			if cap(reqBytes) < len(src) {
+				reqBytes = make([]byte, len(src))
+				*reqBufPtr = reqBytes
+			} else {
+				reqBytes = reqBytes[:len(src)]
+			}
+			copy(reqBytes, src)
+			ctx.offloadReqBuf = reqBufPtr
+			ctx.offloadReqLen = len(src)
 		}
-		copy(reqBytes, src)
-		ctx.offloadReqBuf = reqBufPtr
-		ctx.offloadReqLen = len(src)
 		for i := 0; i < len(p.workers); i++ {
 			widx := (idx + uint64(i)) % uint64(len(p.workers))
 			if p.workers[widx].queue.PushCtx(ctx) {
 				return true
 			}
 		}
-		requestBufferPool.Put(reqBufPtr)
-		ctx.offloadReqBuf = nil
+		if ctx.offloadReqBuf != nil {
+			putRequestBuffer(ctx.offloadReqBuf)
+			ctx.offloadReqBuf = nil
+		}
+		ctx.offloadReqSlice = nil
+		ctx.offloadReqLen = 0
 	}
 
 	p.wg.Done()

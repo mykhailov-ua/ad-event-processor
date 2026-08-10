@@ -6,7 +6,7 @@ cd "$ROOT"
 
 CONNECTIONS=64
 RATE=1
-DURATION=120s
+DURATION=8s
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
@@ -23,14 +23,19 @@ while [[ $# -gt 0 ]]; do
 		shift
 		;;
 	*)
-		echo "usage: $0 [--connections=N] [--rate=bytes_per_sec] [--duration=120s]" >&2
+		echo "usage: $0 [--connections=N] [--rate=bytes_per_sec] [--duration=8s]" >&2
 		exit 2
 		;;
 	esac
 done
 
-echo "parser-slow-body: unit proof (PS-G01 spin close)"
+echo "parser-slow-body: unit proof (PS-G01 spin close, phase P0)"
 go test ./internal/ingestion/ -run='TestChaos_ParserSecurity_PS_G01|TestHTTP1Incomplete' -count=1 -timeout=5m -v
 
-echo "parser-slow-body: integration stub connections=${CONNECTIONS} rate=${RATE}B/s duration=${DURATION}"
-echo "fault_proof fault=parser_slow_body_drill gap=stub connections=${CONNECTIONS} rate=${RATE} duration=${DURATION} note=run_against_live_tracker_for_p99_gate"
+echo "parser-slow-body: in-process p99 isolation (control cohort under ${CONNECTIONS} slow drips)"
+export SLOW_BODY_DRILL_CONNECTIONS="${CONNECTIONS}"
+export SLOW_BODY_DRILL_DURATION="${DURATION}"
+export SLOW_BODY_DRILL_P99_MS=80
+go test ./internal/ingestion/ -run='TestParserSlowBodyDrill_P99Isolation' -count=1 -timeout=15m -v
+
+echo "fault_proof fault=parser_slow_body_drill gap=closed connections=${CONNECTIONS} rate=${RATE} duration=${DURATION}"

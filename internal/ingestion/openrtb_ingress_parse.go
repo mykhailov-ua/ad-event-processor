@@ -130,8 +130,9 @@ func parseOrtbObject(data []byte, i, n int, out *OpenRTB3Parsed, stack *[ortbMax
 	i++
 	frame := stack[*depth]
 
+	var ok bool
 	for i < n {
-		i, ok := skipJSONWSBudget(data, i, n, bud)
+		i, ok = skipJSONWSBudget(data, i, n, bud)
 		if !ok || i >= n {
 			return i, false
 		}
@@ -145,7 +146,7 @@ func parseOrtbObject(data []byte, i, n int, out *OpenRTB3Parsed, stack *[ortbMax
 		keyStart := i
 		for i < n && data[i] != '"' {
 			if data[i] == '\\' {
-				i++
+				return i, false
 			}
 			i++
 		}
@@ -186,8 +187,8 @@ func parseOrtbObject(data []byte, i, n int, out *OpenRTB3Parsed, stack *[ortbMax
 				return i, false
 			}
 		case '[':
-			i++
 			if kid == ortbKeyItem {
+				i++
 				out.IsOpenRTB = true
 				itemIdx := 0
 				for i < n {
@@ -215,9 +216,9 @@ func parseOrtbObject(data []byte, i, n int, out *OpenRTB3Parsed, stack *[ortbMax
 						itemIdx++
 					} else {
 						prev := i
-						var err bool
-						i, err = skipJSONValueAt(data, i, n)
-						if err || i == prev {
+						var skipErr bool
+						i, skipErr = skipJSONValueOrtb(data, i, n, bud)
+						if skipErr || i == prev {
 							return i, false
 						}
 					}
@@ -230,9 +231,9 @@ func parseOrtbObject(data []byte, i, n int, out *OpenRTB3Parsed, stack *[ortbMax
 					}
 				}
 			} else {
-				var err bool
-				i, err = skipJSONArrayFrom(data, i, n)
-				if err {
+				var skipErr bool
+				i, skipErr = skipJSONValueOrtb(data, i, n, bud)
+				if skipErr {
 					return i, false
 				}
 			}
@@ -254,11 +255,15 @@ func parseOrtbObject(data []byte, i, n int, out *OpenRTB3Parsed, stack *[ortbMax
 			}
 			applyOrtbNumber(out, kid, frame, data[valStart:i])
 		default:
-			var err bool
-			i, err = skipJSONValueAt(data, i, n)
-			if err {
+			var skipErr bool
+			i, skipErr = skipJSONValueOrtb(data, i, n, bud)
+			if skipErr {
 				return i, false
 			}
+		}
+
+		if !bud.consumeKeyPair() {
+			return i, false
 		}
 
 		i, ok = skipJSONWSBudget(data, i, n, bud)
@@ -341,111 +346,23 @@ func applyOrtbNumber(out *OpenRTB3Parsed, kid ortbKeyID, frame ortbFrame, val []
 	}
 }
 
+func skipJSONValueOrtb(data []byte, i, n int, bud *jsonScanBudget) (int, bool) {
+	if i >= n {
+		return i, true
+	}
+	prev := i
+	end, err := skipJSONValueBudgetDepth(data, i, bud, ortbMaxDepth)
+	if err != nil || end <= prev {
+		return prev, true
+	}
+	return end, false
+}
+
 func ortbSlice(payload []byte, off int, ln uint8) []byte {
 	if ln == 0 || off < 0 || off+int(ln) > len(payload) {
 		return nil
 	}
 	return payload[off : off+int(ln)]
-}
-
-func skipJSONValueAt(data []byte, i, n int) (int, bool) {
-	if i >= n {
-		return i, true
-	}
-	switch data[i] {
-	case '"':
-		i++
-		for i < n && data[i] != '"' {
-			if data[i] == '\\' {
-				i++
-			}
-			i++
-		}
-		if i >= n {
-			return i, true
-		}
-		return i + 1, false
-	case '{':
-		return skipJSONObjectFrom(data, i+1, n)
-	case '[':
-		return skipJSONArrayFrom(data, i+1, n)
-	case 't':
-		if i+3 < n {
-			return i + 4, false
-		}
-		return i, true
-	case 'f':
-		if i+4 < n {
-			return i + 5, false
-		}
-		return i, true
-	case 'n':
-		if i+3 < n {
-			return i + 4, false
-		}
-		return i, true
-	default:
-		for i < n && data[i] != ',' && data[i] != '}' && data[i] != ']' && jsonWhitespace[data[i]] == 0 {
-			i++
-		}
-		return i, false
-	}
-}
-
-func skipJSONObjectFrom(data []byte, i, n int) (int, bool) {
-	depth := 1
-	for i < n && depth > 0 {
-		c := data[i]
-		if c == '"' {
-			i++
-			for i < n && data[i] != '"' {
-				if data[i] == '\\' {
-					i++
-				}
-				i++
-			}
-			if i >= n {
-				return i, true
-			}
-			i++
-			continue
-		}
-		if c == '{' {
-			depth++
-		} else if c == '}' {
-			depth--
-		}
-		i++
-	}
-	return i, depth != 0
-}
-
-func skipJSONArrayFrom(data []byte, i, n int) (int, bool) {
-	depth := 1
-	for i < n && depth > 0 {
-		c := data[i]
-		if c == '"' {
-			i++
-			for i < n && data[i] != '"' {
-				if data[i] == '\\' {
-					i++
-				}
-				i++
-			}
-			if i >= n {
-				return i, true
-			}
-			i++
-			continue
-		}
-		if c == '[' {
-			depth++
-		} else if c == ']' {
-			depth--
-		}
-		i++
-	}
-	return i, depth != 0
 }
 
 func ParseOpenRTB3Ingress(dst *TrackRequest, data []byte) error {

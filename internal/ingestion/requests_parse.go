@@ -19,6 +19,10 @@ func skipJSONValue(data []byte, start int) (int, error) {
 }
 
 func skipJSONValueBudget(data []byte, start int, bud *jsonScanBudget) (int, error) {
+	return skipJSONValueBudgetDepth(data, start, bud, MaxJSONDepth)
+}
+
+func skipJSONValueBudgetDepth(data []byte, start int, bud *jsonScanBudget, maxDepth int) (int, error) {
 	n := len(data)
 	if start >= n {
 		return start, errMalformedJSON
@@ -36,35 +40,27 @@ func skipJSONValueBudget(data []byte, start int, bud *jsonScanBudget) (int, erro
 		return end, nil
 	case '{', '[':
 		depth := 1
-		if depth > MaxJSONDepth {
-			return i, errMalformedJSON
-		}
 		i++
-		inString := false
 		for i < n && depth > 0 {
-			char := data[i]
-			if inString {
-				if char == '"' {
-					inString = false
-				} else if char == '\\' {
-					if i+1 < n {
-						i++
-					}
+			switch data[i] {
+			case '"':
+				end, ok := scanJSONStringEnd(data, i, n, bud)
+				if !ok {
+					return i, errMalformedJSON
 				}
-			} else {
-				switch char {
-				case '"':
-					inString = true
-				case '{', '[':
-					depth++
-					if depth > MaxJSONDepth {
-						return i, errMalformedJSON
-					}
-				case '}', ']':
-					depth--
+				i = end
+			case '{', '[':
+				depth++
+				if depth > maxDepth {
+					return i, errMalformedJSON
 				}
+				i++
+			case '}', ']':
+				depth--
+				i++
+			default:
+				i++
 			}
-			i++
 		}
 		if depth > 0 {
 			return i, errMalformedJSON

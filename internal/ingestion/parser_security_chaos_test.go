@@ -15,14 +15,6 @@ import (
 // Proof stubs for .cursor/PARSER_SECURITY_MILESTONE.md (PS-Gxx).
 // Tests log fault_proof with gap=open|closed; they must not panic.
 
-func chaosSlowBodyHeaders() []byte {
-	return []byte("POST /track HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: 1048576\r\n\r\n")
-}
-
-func chaosSlowBodyPrefixBytes() []byte {
-	return []byte(`{"type":"click","campaign_id":"550e8400-e29b-41d4-a716-446655440000","payload":{`)
-}
-
 func chaosSlowBodyWire() []byte {
 	wire := make([]byte, 0, 256)
 	wire = append(wire, chaosSlowBodyHeaders()...)
