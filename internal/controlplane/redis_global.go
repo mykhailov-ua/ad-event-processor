@@ -14,13 +14,7 @@ const (
 )
 
 func syncGlobalConfigToAllShards(ctx context.Context, rdbs []redis.UniversalClient, settings map[string]string, version int64) error {
-	if len(rdbs) == 0 {
-		return fmt.Errorf("no redis client available")
-	}
-	for i, rdb := range rdbs {
-		if rdb == nil {
-			return fmt.Errorf("redis shard %d is nil", i)
-		}
+	return forEachConnectedShard(ctx, rdbs, "sync_global_config", func(_ int, rdb redis.UniversalClient) error {
 		_, err := rdb.Pipelined(ctx, func(pipe redis.Pipeliner) error {
 			if len(settings) > 0 {
 				pipe.HSet(ctx, redisConfigValuesKey, settings)
@@ -30,11 +24,8 @@ func syncGlobalConfigToAllShards(ctx context.Context, rdbs []redis.UniversalClie
 			}
 			return nil
 		})
-		if err != nil {
-			return fmt.Errorf("sync global config on shard %d: %w", i, err)
-		}
-	}
-	return nil
+		return err
+	})
 }
 
 func replicateConfigVersionFromPrimary(ctx context.Context, rdbs []redis.UniversalClient) error {
@@ -52,76 +43,37 @@ func replicateConfigVersionFromPrimary(ctx context.Context, rdbs []redis.Univers
 	if err != nil {
 		return fmt.Errorf("read config version from primary shard: %w", err)
 	}
-	for i := 1; i < len(rdbs); i++ {
-		if rdbs[i] == nil {
-			return fmt.Errorf("redis shard %d is nil", i)
+	return forEachConnectedShard(ctx, rdbs, "replicate_config_version", func(i int, rdb redis.UniversalClient) error {
+		if rdb == primary {
+			return nil
 		}
-		if err := rdbs[i].Set(ctx, redisConfigVersionKey, version, 0).Err(); err != nil {
-			return fmt.Errorf("replicate config version on shard %d: %w", i, err)
-		}
-	}
-	return nil
+		return rdb.Set(ctx, redisConfigVersionKey, version, 0).Err()
+	})
 }
 
 func syncGlobalStringToAllShards(ctx context.Context, rdbs []redis.UniversalClient, key, value string, ttl time.Duration) error {
-	if len(rdbs) == 0 {
-		return fmt.Errorf("no redis client available")
-	}
-	for i, rdb := range rdbs {
-		if rdb == nil {
-			return fmt.Errorf("redis shard %d is nil", i)
-		}
-		if err := rdb.Set(ctx, key, value, ttl).Err(); err != nil {
-			return fmt.Errorf("set %s on shard %d: %w", key, i, err)
-		}
-	}
-	return nil
+	return forEachConnectedShard(ctx, rdbs, "sync_global_string", func(_ int, rdb redis.UniversalClient) error {
+		return rdb.Set(ctx, key, value, ttl).Err()
+	})
 }
 
 func deleteGlobalKeyFromAllShards(ctx context.Context, rdbs []redis.UniversalClient, key string) error {
-	if len(rdbs) == 0 {
-		return fmt.Errorf("no redis client available")
-	}
-	for i, rdb := range rdbs {
-		if rdb == nil {
-			continue
-		}
-		if err := rdb.Del(ctx, key).Err(); err != nil {
-			return fmt.Errorf("del %s on shard %d: %w", key, i, err)
-		}
-	}
-	return nil
+	return forEachConnectedShard(ctx, rdbs, "delete_global_key", func(_ int, rdb redis.UniversalClient) error {
+		return rdb.Del(ctx, key).Err()
+	})
 }
 
 func syncGlobalSetMemberToAllShards(ctx context.Context, rdbs []redis.UniversalClient, key, member string, add bool) error {
-	if len(rdbs) == 0 {
-		return fmt.Errorf("no redis client available")
-	}
-	for i, rdb := range rdbs {
-		if rdb == nil {
-			return fmt.Errorf("redis shard %d is nil", i)
-		}
-		var err error
+	return forEachConnectedShard(ctx, rdbs, "sync_global_set_member", func(_ int, rdb redis.UniversalClient) error {
 		if add {
-			err = rdb.SAdd(ctx, key, member).Err()
-		} else {
-			err = rdb.SRem(ctx, key, member).Err()
+			return rdb.SAdd(ctx, key, member).Err()
 		}
-		if err != nil {
-			return fmt.Errorf("set member sync on shard %d key %s: %w", i, key, err)
-		}
-	}
-	return nil
+		return rdb.SRem(ctx, key, member).Err()
+	})
 }
 
 func syncGlobalSetReplaceToAllShards(ctx context.Context, rdbs []redis.UniversalClient, key string, members []interface{}) error {
-	if len(rdbs) == 0 {
-		return fmt.Errorf("no redis client available")
-	}
-	for i, rdb := range rdbs {
-		if rdb == nil {
-			return fmt.Errorf("redis shard %d is nil", i)
-		}
+	return forEachConnectedShard(ctx, rdbs, "sync_global_set_replace", func(_ int, rdb redis.UniversalClient) error {
 		_, err := rdb.Pipelined(ctx, func(pipe redis.Pipeliner) error {
 			pipe.Del(ctx, key)
 			if len(members) > 0 {
@@ -129,11 +81,8 @@ func syncGlobalSetReplaceToAllShards(ctx context.Context, rdbs []redis.Universal
 			}
 			return nil
 		})
-		if err != nil {
-			return fmt.Errorf("replace set on shard %d key %s: %w", i, key, err)
-		}
-	}
-	return nil
+		return err
+	})
 }
 
 func syncMLModelMetaOnShard(ctx context.Context, rdb redis.UniversalClient, versionID, hash string, appliedAt int64) error {
@@ -150,37 +99,16 @@ func syncMLModelMetaOnShard(ctx context.Context, rdb redis.UniversalClient, vers
 }
 
 func syncKeyToAllShards(ctx context.Context, rdbs []redis.UniversalClient, key string, value interface{}, ttl time.Duration) error {
-	if len(rdbs) == 0 {
-		return fmt.Errorf("no redis client available")
-	}
-	for i, rdb := range rdbs {
-		if rdb == nil {
-			return fmt.Errorf("redis shard %d is nil", i)
-		}
-		if err := rdb.Set(ctx, key, value, ttl).Err(); err != nil {
-			return fmt.Errorf("set %s on shard %d: %w", key, i, err)
-		}
-	}
-	return nil
+	return forEachConnectedShard(ctx, rdbs, "sync_key", func(_ int, rdb redis.UniversalClient) error {
+		return rdb.Set(ctx, key, value, ttl).Err()
+	})
 }
 
 func syncGlobalHashFieldToAllShards(ctx context.Context, rdbs []redis.UniversalClient, key, field, value string, del bool) error {
-	if len(rdbs) == 0 {
-		return fmt.Errorf("no redis client available")
-	}
-	for i, rdb := range rdbs {
-		if rdb == nil {
-			continue
-		}
-		var err error
+	return forEachConnectedShard(ctx, rdbs, "sync_global_hash_field", func(_ int, rdb redis.UniversalClient) error {
 		if del {
-			err = rdb.HDel(ctx, key, field).Err()
-		} else {
-			err = rdb.HSet(ctx, key, field, value).Err()
+			return rdb.HDel(ctx, key, field).Err()
 		}
-		if err != nil {
-			return fmt.Errorf("hash field sync on shard %d key %s: %w", i, key, err)
-		}
-	}
-	return nil
+		return rdb.HSet(ctx, key, field, value).Err()
+	})
 }

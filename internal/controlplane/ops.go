@@ -64,10 +64,8 @@ func RegisterOpsRoutes(mux *http.ServeMux, pool *pgxpool.Pool, rdbs []redis.Univ
 		if err := pool.Ping(ctx); err != nil {
 			return false
 		}
-		for _, rdb := range rdbs {
-			if err := rdb.Ping(ctx).Err(); err != nil {
-				return false
-			}
+		if !pingConnectedRedisShards(ctx, rdbs) {
+			return false
 		}
 		return licenseIngestReady()
 	})

@@ -362,7 +362,7 @@ func main() {
 	}
 	slog.Info("redis lua scripts preloaded", "shards", len(rdbs))
 
-	creativeStore := ingestion.NewBrandCreativeStore(rdbs[0])
+	creativeStore := ingestion.NewBrandCreativeStore(firstConnectedRedis(rdbs))
 	licenseFilter := ingestion.NewLicenseFilter(registry)
 	licenseRPSFilter := ingestion.NewLicenseRPSFilter(registry)
 	entitlementsFilter := ingestion.NewEntitlementsFilter(registry, sharder, rdbs)
@@ -403,8 +403,8 @@ func main() {
 		} else {
 			slog.Info("rtb deals loaded", "count", rtbCatalog.DealCount())
 		}
-		ingestion.StartRtbCatalogReloadWatch(ctx, queries, rdbs[0], ingestion.RtbCatalogReloadChannel(cfg), registry, rtbCatalog, cfg, rtbHybrid, rtbBudgetSync, settingsWatcher)
-		dealFloorCache := ingestion.NewDealFloorCache(rdbs[0])
+		ingestion.StartRtbCatalogReloadWatch(ctx, queries, firstConnectedRedis(rdbs), ingestion.RtbCatalogReloadChannel(cfg), registry, rtbCatalog, cfg, rtbHybrid, rtbBudgetSync, settingsWatcher)
+		dealFloorCache := ingestion.NewDealFloorCache(firstConnectedRedis(rdbs))
 		rtbCatalog.SetDealFloors(dealFloorCache)
 		ingestion.StartDealFloorRefresh(ctx, dealFloorCache, rtbCatalog, time.Duration(cfg.DealFloorRefreshIntervalMs)*time.Millisecond)
 		if allow, err := ingestion.LoadSupplyChainAllowlist(ctx, queries); err == nil {

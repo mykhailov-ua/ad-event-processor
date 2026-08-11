@@ -10,6 +10,7 @@ import (
 	"espx/internal/metrics"
 	"espx/pkg/broker/client"
 	"espx/pkg/broker/protocol"
+
 	redis "github.com/redis/go-redis/v9"
 )
 
@@ -111,6 +112,9 @@ func (w *BrokerReconcileWorker) sample(ctx context.Context) {
 
 	var streamLen int64
 	for _, shard := range w.shards {
+		if shard == nil {
+			continue
+		}
 		n, err := shard.XLen(sampleCtx, w.cfg.StreamName).Result()
 		if err != nil {
 			slog.Warn("broker reconcile XLEN failed", "stream", w.cfg.StreamName, "error", err)
@@ -134,7 +138,11 @@ func (w *BrokerReconcileWorker) sample(ctx context.Context) {
 	for p := 0; p < w.cfg.PartitionCount; p++ {
 		part := uint16(p)
 		tpKey := protocol.TopicPartitionID(w.cfg.Topic, part)
-		hwmStr, err := w.shards[0].Get(sampleCtx, "espx:topics:"+tpKey+":log_hwm").Result()
+		hwmShard := firstConnectedRedisShard(w.shards)
+		if hwmShard == nil {
+			continue
+		}
+		hwmStr, err := hwmShard.Get(sampleCtx, "espx:topics:"+tpKey+":log_hwm").Result()
 		if err == nil {
 			if v, parseErr := strconv.ParseUint(hwmStr, 10, 64); parseErr == nil {
 				brokerHWMSum += v

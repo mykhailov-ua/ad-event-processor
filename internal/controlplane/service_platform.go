@@ -390,6 +390,9 @@ func (s *Service) PurgeUserDataRedis(ctx context.Context, hashHex, subjectUserID
 	var firstErr error
 	var success int
 	for _, rdb := range s.rdbs {
+		if rdb == nil {
+			continue
+		}
 		if err := rdb.Del(ctx, consentKey).Err(); err != nil && err != redis.Nil {
 			if firstErr == nil {
 				firstErr = err
@@ -416,10 +419,18 @@ func (s *Service) SyncUserConsentToRedis(ctx context.Context, hashHex string, pu
 	}
 	val := strconv.FormatInt(int64(purposes), 10)
 	key := domain.ConsentRedisKeyPrefix + hashHex
+	wrote := 0
 	for _, rdb := range s.rdbs {
+		if rdb == nil {
+			continue
+		}
 		if err := rdb.Set(ctx, key, val, 0).Err(); err != nil {
 			return err
 		}
+		wrote++
+	}
+	if wrote == 0 {
+		return fmt.Errorf("no connected redis shard for consent write")
 	}
 	return publishControlChannelToAllShards(ctx, s.rdbs, s.consentUpdateChannel(), hashHex)
 }

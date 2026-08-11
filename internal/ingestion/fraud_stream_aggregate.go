@@ -282,7 +282,8 @@ func (q *FraudStreamWriter) flushAggregates(final bool) {
 		return
 	}
 
-	if len(q.rdbs) == 0 || q.rdbs[0] == nil {
+	rdb := firstConnectedRedisShard(q.rdbs)
+	if rdb == nil {
 		for range entries {
 			filterFraudStreamWriteErrors.Inc()
 		}
@@ -292,7 +293,7 @@ func (q *FraudStreamWriter) flushAggregates(final bool) {
 	}
 
 	ctx := context.Background()
-	pipe := q.rdbs[0].Pipeline()
+	pipe := rdb.Pipeline()
 	for _, e := range entries {
 		fillFraudAggregateValues(e, windowMs, q.aggValScratch[:])
 		pipe.XAdd(ctx, &redis.XAddArgs{

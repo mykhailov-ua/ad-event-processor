@@ -258,16 +258,37 @@ Fault injection scenarios are executed via `scripts/fault/run.sh` (wrapper over 
 - **Network Latency**: Simulates Redis network degradation to verify that the circuit breaker opens and transitions to Fail-Closed.
 - **Shard 0 Outage**: Verifies that trackers continue processing traffic for cached campaigns and return `503 registry_stale` for unresolved campaigns.
 
-### Shard 0 degradation runbook (tracker)
+### Shard 0 degradation runbook
 
-When Redis shard 0 (pub/sub, global config keys, consent) is unavailable:
+Full failure matrix and proof tests: [SHARDING_MILESTONE.md](./SHARDING_MILESTONE.md).
+
+When Redis shard 0 (pub/sub hub, global keys, edge blacklist source) is unavailable:
+
+#### Tracker
 
 1. **Cold start**: `CAMPAIGN_REPLICA_PATH` (default `campaigns_replica.json`) is loaded before PG/Redis via `BootstrapFromReplica()`. PG `Sync()` overwrites when reachable.
-2. **Optional connect**: `REDIS_SHARD0_OPTIONAL_STARTUP=1` (default in production) lets the tracker start with shard 0 `nil`; budget shards 1–N keep serving traffic.
-3. **Stale signal**: Only shard-0 pub/sub drives `MarkPubSubOK()`; other shards may still reload campaigns but do not clear stale mode alone.
+2. **Optional connect**: `REDIS_SHARD0_OPTIONAL_STARTUP=1` (production default) lets tracker and control start with shard 0 `nil`; budget shards 1–N keep serving traffic.
+3. **Stale signal**: Only shard-0 pub/sub drives `MarkPubSubOK()`; other shards may reload campaigns but do not clear stale mode alone.
 4. **Settings fallback**: When registry is stale, `SettingsWatcher` reads `system_settings` + processed `UPDATE_SETTINGS` outbox version from Postgres.
 5. **Campaign updates**: Enable `CAMPAIGN_UPDATE_BROKER_FALLBACK=1` and `BROKER_URL` so control-plane publishes bypass shard-0 pub/sub.
-6. **Operator checks**: `registry_stale` metric / `503` on unknown campaigns; confirm replica file age; restore shard 0 or wait for broker + PG paths to catch up.
+6. **Edge**: Nginx blacklist/config sync uses first healthy Redis from `REDIS_ADDRS` (not shard 0 only).
+7. **Operator checks**: `ad_shard0_client_nil`, `ad_registry_stale_mode`, `ad_shard0_pubsub_unreachable`; `503 shard_unavailable` on shard-0-homed campaigns; confirm replica file age.
+
+#### Control plane
+
+1. **Liveness**: No panic on nil shard 0 (readiness, shutdown, SyncWorker, consent purge).
+2. **Outbox**: Best-effort fan-out to shards 1..N; watch `ad_control_fanout_partial_total` and `ad_control_shard_fanout_skipped_total`.
+3. **Recovery**: After shard 0 is back, run global key catch-up (replicate config version, re-sync blacklist/globals) — no automated job yet.
+
+#### Prometheus alerts
+
+| Metric | Meaning |
+| --- | --- |
+| `ad_shard0_client_nil == 1` | Process running without shard 0 client |
+| `ad_control_fanout_partial_total` | Admin/outbox wrote globals to subset of shards |
+| `ad_shard0_pubsub_unreachable` / `ad_registry_stale_mode` | Tracker stale-serve |
+
+Regression gate (no Docker): `bash scripts/ci/shard0_nil_gate.sh`
 
 Fault proof: `bash scripts/fault/run.sh` scenario `shard_0_outage` (`tests/resilience/shard_outage_fault_test.go`).
 

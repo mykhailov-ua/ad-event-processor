@@ -322,11 +322,23 @@ var (
 		Name: "ad_shard0_pubsub_unreachable",
 		Help: "1 when shard-0 campaigns:update pub/sub is unreachable (tracker stale-serve), else 0",
 	})
+	Shard0ClientNil = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_shard0_client_nil",
+		Help: "1 when Redis shard 0 client slot is nil after ConnectRedisShards (REDIS_SHARD0_OPTIONAL_STARTUP), else 0",
+	})
 	ControlFanoutLagSeconds = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "ad_control_fanout_lag_seconds",
 		Help:    "Outbox-to-Redis control fan-out latency per shard",
 		Buckets: []float64{0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0},
 	}, []string{"shard"})
+	ControlShardFanoutSkippedTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_control_shard_fanout_skipped_total",
+		Help: "Redis control-plane fan-out skips per shard (nil_client or error during degraded topology)",
+	}, []string{"shard", "reason"})
+	ControlFanoutPartialTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_control_fanout_partial_total",
+		Help: "Control-plane Redis fan-out that succeeded on a strict subset of shards (degraded topology)",
+	}, []string{"op"})
 	RegistryEpoch = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "ad_registry_epoch",
 		Help: "Highest observed campaign_epoch across tracker registry shard polls",

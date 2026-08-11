@@ -243,7 +243,7 @@ Common `event_type` → Redis effect (fan-out to **all** shards unless campaign-
 | :--- | :--- |
 | `CREATE_CAMPAIGN` / `RESUME_CAMPAIGN` | Set `budget:campaign:{id}` + `PUBLISH campaigns:update` |
 | `PAUSE_CAMPAIGN` / `CANCEL_CAMPAIGN` | `DEL` budget key + pub/sub |
-| `UPDATE_BLACKLIST` | `blacklist:{manual\|auto\|fraud}` SADD/SREM + pub/sub |
+| `UPDATE_BLACKLIST` | `blacklist:{manual&#124;auto&#124;fraud}` SADD/SREM + pub/sub |
 | `ML_SCORE_BOOST` | `ml:score:boost:{campaign_id}` on all shards |
 | `ML_GHOST_IVT` | PG flag + pub/sub |
 | `UPDATE_SETTINGS` | `config:values` HSET + `config:version` |

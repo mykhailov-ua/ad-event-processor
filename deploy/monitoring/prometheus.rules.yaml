@@ -20,6 +20,24 @@ groups:
           summary: "Redis shard circuit breaker is OPEN"
           description: "Shard {{ $labels.shard }} Redis circuit breaker has been open for 30s. Hot-path filter calls are fast-failing with 503."
 
+      - alert: Shard0ClientNil
+        expr: ad_shard0_client_nil == 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis shard 0 client slot is nil"
+          description: "Process started with REDIS_SHARD0_OPTIONAL_STARTUP and shard 0 unreachable. Budget shards 1–N serve traffic; globals may be partial until shard 0 recovers. Runbook: docs/DEVELOPMENT.md §Shard 0 degradation."
+
+      - alert: ControlFanoutPartial
+        expr: increase(ad_control_fanout_partial_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Control-plane Redis fan-out is partial"
+          description: "Outbox/global sync wrote to a subset of shards (shard 0 down or per-shard errors). Check ad_control_shard_fanout_skipped_total and plan shard 0 catch-up after recovery."
+
       - alert: Shard0PubSubUnreachable
         expr: ad_shard0_pubsub_unreachable == 1 or ad_registry_stale_mode == 1
         for: 30s

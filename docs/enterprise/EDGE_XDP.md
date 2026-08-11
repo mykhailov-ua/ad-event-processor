@@ -71,6 +71,6 @@ Detach XDP program; Nginx Lua blacklist remains active. No tracker restart requi
 
 | Symptom | Check |
 | :--- | :--- |
-| Program won't load | `bpftool btf dump file /sys/kernel/btf/vmlinux`; kernel ≥ 6.1 |
+| Program will not load | `bpftool btf dump file /sys/kernel/btf/vmlinux`; kernel ≥ 6.1 |
 | Stale blacklist | `edge-bpf-sync` logs; Redis shard 0 connectivity |
 | Legitimate traffic dropped | Compare Lua edge list vs BPF map; sync lag |

@@ -6,18 +6,66 @@ local _M = {}
 local cache = ngx.shared.blacklist_cache
 local sentinel_cache = ngx.shared.sentinel_cache
 
-local REDIS_HOST = os.getenv("REDIS_HOST") or "127.0.0.1"
-local REDIS_PORT = os.getenv("REDIS_PORT") or 6379
-local REDIS_PASS = os.getenv("REDIS_PASS") or ""
-local REDIS_ADDRS = os.getenv("REDIS_ADDRS") or ""
-local REDIS_SENTINEL_ADDRS = os.getenv("REDIS_SENTINEL_ADDRS") or ""
-local REDIS_MASTER_NAMES = os.getenv("REDIS_MASTER_NAMES") or ""
+local test_env = nil
+local test_connect_shard = nil
+
+local REDIS_HOST = "127.0.0.1"
+local REDIS_PORT = 6379
+local REDIS_PASS = ""
+local REDIS_ADDRS = ""
+local REDIS_SENTINEL_ADDRS = ""
+local REDIS_MASTER_NAMES = ""
 local SENTINEL_CACHE_TTL = 5
 
 local shards
 local sentinel_addrs
 local master_names
 local sentinel_enabled
+
+local function getenv(name)
+    if test_env then
+        return test_env(name)
+    end
+    return os.getenv(name)
+end
+
+function _M.set_env_for_test(env)
+    test_env = env
+    shards = nil
+    sentinel_addrs = nil
+    master_names = nil
+    sentinel_enabled = nil
+end
+
+function _M.set_connect_shard_for_test(fn)
+    test_connect_shard = fn
+end
+
+function _M.reset_test_hooks()
+    test_env = nil
+    test_connect_shard = nil
+    shards = nil
+    sentinel_addrs = nil
+    master_names = nil
+    sentinel_enabled = nil
+end
+
+function _M.shard_try_order(shard_count)
+    local order = {}
+    for i = 1, shard_count do
+        order[i] = i
+    end
+    return order
+end
+
+local function load_env()
+    REDIS_HOST = getenv("REDIS_HOST") or REDIS_HOST
+    REDIS_PORT = getenv("REDIS_PORT") or REDIS_PORT
+    REDIS_PASS = getenv("REDIS_PASS") or ""
+    REDIS_ADDRS = getenv("REDIS_ADDRS") or ""
+    REDIS_SENTINEL_ADDRS = getenv("REDIS_SENTINEL_ADDRS") or ""
+    REDIS_MASTER_NAMES = getenv("REDIS_MASTER_NAMES") or ""
+end
 
 local function parse_addr_list(raw)
     local out = {}
@@ -83,6 +131,7 @@ local function ensure_redis_topology()
     if shards then
         return
     end
+    load_env()
     shards = parse_addr_list(REDIS_ADDRS)
     if #shards == 0 then
         shards = {{host = REDIS_HOST, port = tonumber(REDIS_PORT)}}
@@ -100,29 +149,39 @@ local function ensure_redis_topology()
     sentinel_enabled = #sentinel_addrs > 0 and #master_names > 0
 end
 
-local function shard0_target()
+local function shard_target(shard_idx)
     ensure_redis_topology()
-    local target = shards[1]
+    if shard_idx < 1 or shard_idx > #shards then
+        return nil
+    end
+    local target = shards[shard_idx]
     if sentinel_enabled then
-        local resolved, resolve_err = sentinel_master_addr(1, master_names, sentinel_addrs)
+        local resolved, resolve_err = sentinel_master_addr(shard_idx, master_names, sentinel_addrs)
         if resolved then
             target = resolved
         else
-            ngx.log(ngx.WARN, "edge_blacklist_sync: sentinel resolve failed for shard 0: ", resolve_err)
+            ngx.log(ngx.WARN, "edge_blacklist_sync: sentinel resolve failed for shard ", shard_idx - 1, ": ", resolve_err)
         end
     end
     return target
 end
 
-local function connect_shard0()
-    local target = shard0_target()
+local function connect_shard(shard_idx)
+    if test_connect_shard then
+        return test_connect_shard(shard_idx)
+    end
+
+    local target = shard_target(shard_idx)
+    if not target then
+        return nil, "invalid shard index"
+    end
     local red = redis:new()
     red:set_timeout(500)
 
     local ok, err = red:connect(target.host, target.port)
     if not ok and sentinel_enabled then
-        sentinel_cache:delete("m:" .. master_names[1])
-        local resolved, resolve_err = sentinel_master_addr(1, master_names, sentinel_addrs)
+        sentinel_cache:delete("m:" .. master_names[shard_idx])
+        local resolved, resolve_err = sentinel_master_addr(shard_idx, master_names, sentinel_addrs)
         if resolved then
             target = resolved
             ok, err = red:connect(target.host, target.port)
@@ -144,8 +203,22 @@ local function connect_shard0()
     return red, nil
 end
 
+function _M.connect_any_shard()
+    ensure_redis_topology()
+    local last_err = "no redis shard configured"
+    for _, shard_idx in ipairs(_M.shard_try_order(#shards)) do
+        local red, err = connect_shard(shard_idx)
+        if red then
+            return red, nil, shard_idx
+        end
+        last_err = err or "connect failed"
+        ngx.log(ngx.WARN, "edge_blacklist_sync: shard ", shard_idx - 1, " connect failed: ", last_err)
+    end
+    return nil, last_err, nil
+end
+
 function _M.sync()
-    local red, err = connect_shard0()
+    local red, err, shard_idx = _M.connect_any_shard()
     if not red then
         ngx.log(ngx.WARN, "edge_blacklist_sync: connect failed: ", err)
         return false
@@ -187,7 +260,8 @@ function _M.sync()
     cache:set("_bl_ver", new_ver)
     cache:set("_bl_sync_ts", ngx.time())
     cache:set("_bl_count", count)
-    ngx.log(ngx.INFO, "edge_blacklist_sync: ", count, " blocked IPs (ver=", new_ver, ")")
+    local shard_label = shard_idx and (shard_idx - 1) or "?"
+    ngx.log(ngx.INFO, "edge_blacklist_sync: ", count, " blocked IPs (ver=", new_ver, ", shard=", shard_label, ")")
     return true
 end
 

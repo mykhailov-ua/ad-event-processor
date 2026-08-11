@@ -1,122 +1,121 @@
-# Кандидаты на удаление и заморозку (Appliance SKU)
+# Deprecation and Freeze Candidates (Appliance SKU)
 
-Инвентаризация компонентов и возможностей системы, создающих операционный или «resume-driven» оверхед относительно основного коммерческого продукта: **self-hosted single-VPS** (для рекламных сетей, медиабаеров и паблишеров).
+Inventory of system components and capabilities that introduce operational or resume-driven overhead relative to the primary commercial product: **self-hosted single-VPS** (for ad networks, media buyers, and publishers).
 
-Канонический сценарий поставки: `deploy/compose` с профилем `single_vps` + инсталлятор + `docs/QUICKSTART.md`.
+Canonical deployment scenario: `deploy/compose` using profile `single_vps` + installer + `docs/QUICKSTART.md`.
 
-Критерии включения в список:
-- Не увеличивает средний чек (deal size) коробочного продукта (appliance SKU).
-- Создает затраты на поддержку, инсталляцию и документацию без прямой ценности для генерации выручки (money-path).
-- Противоречит фактической поставке (маркетинговый шум / заброшенные манифесты).
+Inclusion criteria:
+- Does not increase average deal size for the boxed product (appliance SKU).
+- Creates maintenance, installation, and documentation costs without direct revenue generation.
+- Contradicts actual shipping artifacts (marketing noise / abandoned manifests).
 
-Категории:
-- **CUT (Удалить)** — полностью изъять из кодовой базы, документации или навигации.
-- **FREEZE (Заморозить)** — сохранить в истории git для корпоративных заказчиков (SOW/Enterprise); исключить из инсталлятора, питча и QUICKSTART.
-- **KEEP (Оставить)** — ключевой функционал; защищает выручку или сам коробочный дистрибутив.
+Classification categories:
+- **CUT** - Completely remove from codebase, documentation, or navigation.
+- **FREEZE** - Retain in git history for enterprise customers (SOW / Enterprise); exclude from installer, sales pitch, and QUICKSTART.
+- **KEEP** - Core functionality; protects revenue generation or the boxed distribution package.
 
-Документ предназначен исключительно для инженеров.
+This document is intended strictly for engineering personnel.
 
-Связанные документы: [QUICKSTART.md](QUICKSTART.md), [ARCHITECTURE.md](ARCHITECTURE.md), [TRADEOFFS.md](TRADEOFFS.md), `.cursor/INSTALLER.md`.
+Related documents: [QUICKSTART.md](QUICKSTART.md), [ARCHITECTURE.md](ARCHITECTURE.md), [TRADEOFFS.md](TRADEOFFS.md), `.cursor/INSTALLER.md`.
 
 ---
 
-## 1. Подлежит удалению (CUT)
+## 1. Scheduled for Removal (CUT)
 
-| Кандидат | Свидетельства в коде / документах | Причина удаления | Трудоемкость |
+| Candidate | Evidence in Code / Docs | Reason for Removal | Effort |
 | :--- | :--- | :--- | :--- |
-| Утверждения о поддержке Privacy Sandbox / Topics / PAAPI | `README.md`, `ARCHITECTURE.md` §10 (реализации Topics/PAAPI нет, согласие ≠ Sandbox) | Недостоверные заявки в маркетинге; подрывают доверие | S |
-| Несуществующая поддержка «CTV live / concurrent streams» | Разногласия между `README.md` и чек-листами RTB/CTV | Декларации без рабочей реализации в коде | S |
-| K8s как стандартный способ развертывания | `deploy/k8s/**` (~29 файлов); манифесты ссылаются на удаленные микросервисы (`auth`, `billing`, `notifier`) | Продукт поставляется через Compose; K8s-манифесты сломаны | M |
-| Инфраструктура Terraform / k3s | `deploy/terraform/**` | Лишний оркестратор; выходить за рамки инсталлятора не требуется | M |
-| Заброшенные файлы окружения (orphan env stubs) | `deploy/management/`, `deploy/payment/` | Артефакты домонолитной архитектуры | S |
-| Таргеты Prometheus для удаленных сервисов | `deploy/monitoring/prometheus.yaml` (задачи `auth`, `payment`, `management` при едином `control`) | Пустые метрики, ложная видимость мониторинга | S |
-| Бинарник `tracker-quic` | `cmd/tracker-quic` | TLS-терминация выполняется на Caddy/Nginx; дублирующий бинарник | S |
-| BPF / purgatory в клиентской документации | `docs/BENCHMARKS.md`, `cmd/bpf-collector`, `deploy/dev/bpf/` | Внутренняя отладка разработчиков, не входит в SKU | S |
-| Сценарий multi-region как обязательный для разработки | `docs/DEVELOPMENT.md` §8, `scripts/fault/mr_resilience_drill.sh`, `deploy/multi-region/` | Избыточный процесс для покупателей одиночного VPS | S–M |
-| Избыточные профили Docker Compose в основном сценарии | Профили `analytics-ml`, `multi-region`, `network-operator`, `infra` рядом с appliance | Размывает концепцию «установки в один клик» | S |
-| Заглушки сгенерированных конфигураций | `*.rendered.yaml` и подобные артефакты | Замусоривание репозитория | S |
-| Ошибка в пути к XDP в документации | Карта кодогенерации в `DEVELOPMENT.md` указывает на неверный путь `deploy/edge-xdp` вместо `deploy/edge/xdp/` | Сбой первичной сборки при попытке следовать документации | S |
-| Устаревшие блокеры инсталлятора | `.cursor/INSTALLER.md` помечает G1/G2 как блокеры при готовых тирах | Заставляет агентов повторно чинить неактуальные проблемы | S |
-| Ссылки на удаленные скрипты `scripts/deploy/*` | Вызовы из `scripts/ops/` и тестов в несуществующие каталоги | Ошибки развертывания при выполнении скриптов | S |
+| Claims of Privacy Sandbox / Topics / PAAPI support | `README.md`, `ARCHITECTURE.md` Section 10 (no Topics/PAAPI implementations exist; consent compliance is not Sandbox) | Inaccurate marketing claims; undermines product credibility | S |
+| Non-existent "CTV live / concurrent streams" support | Discrepancies between `README.md` and RTB/CTV checklists | Declarations without functional code implementations | S |
+| Kubernetes as standard deployment option | `deploy/k8s/**` (~29 files); manifests reference deleted microservices (`auth`, `billing`, `notifier`) | Product ships via Compose; Kubernetes manifests are broken | M |
+| Terraform / k3s infrastructure manifests | `deploy/terraform/**` | Unnecessary orchestrator; out of scope for single-VPS appliance | M |
+| Abandoned environment files (orphan env stubs) | `deploy/management/`, `deploy/payment/` | Artifacts of pre-monolith architecture | S |
+| Prometheus targets for deleted microservices | `deploy/monitoring/prometheus.yaml` (targets `auth`, `payment`, `management` despite single `control` binary) | Empty metrics, misleading monitoring visibility | S |
+| `tracker-quic` binary | `cmd/tracker-quic` | TLS termination handled by Caddy/Nginx; redundant binary | S |
+| BPF / purgatory documentation in client docs | `docs/BENCHMARKS.md`, `cmd/bpf-collector`, `deploy/dev/bpf/` | Internal developer debugging tools, not part of appliance SKU | S |
+| Multi-region scenario as mandatory dev path | `docs/DEVELOPMENT.md` Section 8, `scripts/fault/mr_resilience_drill.sh`, `deploy/multi-region/` | Excessive process overhead for single-VPS buyers | S-M |
+| Excessive Docker Compose profiles in primary flow | Profiles `analytics-ml`, `multi-region`, `network-operator`, `infra` alongside appliance | Blurs the single-click installation proposition | S |
+| Rendered configuration artifact stubs | `*.rendered.yaml` and similar files | Repository clutter | S |
+| Incorrect XDP path in documentation | Code generation map in `DEVELOPMENT.md` references incorrect `deploy/edge-xdp` instead of `deploy/edge/xdp/` | Initial build failure when following documentation | S |
+| Outdated installer blockers | `.cursor/INSTALLER.md` marks G1/G2 as blockers despite complete tiers | Forces agents to re-fix obsolete issues | S |
+| Broken references to deleted `scripts/deploy/*` | Invocation calls from `scripts/ops/` and tests to non-existent directories | Deployment errors during script execution | S |
 
 ---
 
-## 2. Заморозка (FREEZE — опционально / Enterprise SOW)
+## 2. Feature Freeze (FREEZE - Optional / Enterprise SOW)
 
-| Кандидат | Свидетельства | Правило |
+| Candidate | Evidence | Governance Rule |
 | :--- | :--- | :--- |
-| Межрегиональное проксирование `region-proxy` | `cmd/region-proxy`, `pkg/regionproxy/`, `deploy/broker/` | Исключить из базовой поставки; использовать только при явной Enterprise-подписке |
-| fraud-scorer / ivt-detector / `deploy/ml` | `cmd/fraud-scorer`, `cmd/ivt-detector`, `cmd/ml-*`, профиль `analytics-ml` | Вынести в опциональный профиль; горячий путь использует списки и буст-снимки |
-| edge-xdp / edge-bpf-sync | `cmd/edge-xdp`, `cmd/edge-bpf-sync`, `deploy/edge/` | Отсутствует в `single_vps`; базовую фильтрацию выполняет Nginx Lua |
-| Эластичное шардирование / `campaign-shard` / миграции | Переменные `ELASTIC_SHARDING_*`, `cmd/campaign-shard`, `DEVELOPMENT.md` §9 | Кластерная возможность; в appliance используются фиксированные Redis-мастера |
-| DFA-парсеры HTTP/2 и HTTP/3 в трекере | `handler_http2.go`, `http3_frame*.go` | Приостановить расширение; Edge проксирует HTTP/1 в трекер |
-| Развертывание Grafana / Alertmanager / Telegram на каждом узле | `deploy/monitoring/**`, `cmd/alertmanager-telegram` | Перенести в профиль `--profile monitoring`; оставить сбор метрик только с tracker, control, processor |
-| Сборщики и ротаторы логов (log-shipper / compactor / evacuator) | `cmd/log-*` | Вспомогательные утилиты узла; не входят в базовай SKU |
-| Питч OpenRTB Exchange по умолчанию | `internal/rtb/`, `internal/openrtb/`, `RTB_PRODUCTION_RUNBOOK.md` | Код сохранить; по умолчанию `RTB_MODE=off`; не делать SSP главным аргументом продаж |
-| Строгий SPO-функционал (schain / sellers.json) | Парсинг schain и экспорт supply в OpenRTB; пункт в README | Заморозить развитие, снизить приоритет в маркетинге |
-| Бэклог фронтенда из FRONTEND §16 | `.cursor/FRONTEND.md` | Внутренняя задача; приоритет — P0-запросы покупателей |
-| Docker-файлы пилотных сборок | `Dockerfile.pilot`, `Dockerfile.pilot-ingest` | Использовать только в пилотном канале |
-| Переименование модуля `espx` | Импорты `espx/...`, переменные `ESPX_*`, путь `/etc/espx/` | Вызывает массовые поломки; не блокирует релиз appliance SKU |
-| Сценарий отказоустойчивости Redis (Sentinel / 6 Redis) | Профиль `infra`, оверлеи Sentinel; расхождения в документации (4 vs 6 узлов) | Зафиксировать число узлов Redis для appliance; HA поставлять по Enterprise SOW |
-| Разделение процессов network-operator / payment NodePort | Профиль в DEVELOPMENT; K8s-сервис `service-payment*` | Обработка платежей выполняется внутри процесса `control` |
-| Опциональные проверки в CI (terraform-validate, fraudtrain) | `.github/workflows/*` | Запускать по фильтрам путей; не блокировать мёрдж критичного кода |
+| Multi-region proxying (`region-proxy`) | `cmd/region-proxy`, `pkg/regionproxy/`, `deploy/broker/` | Exclude from base distribution; enable strictly under explicit Enterprise contracts |
+| `fraud-scorer` / `ivt-detector` / `deploy/ml` | `cmd/fraud-scorer`, `cmd/ivt-detector`, `cmd/ml-*`, profile `analytics-ml` | Move to optional profile; hot path relies on blocklists and boost snapshots |
+| `edge-xdp` / `edge-bpf-sync` | `cmd/edge-xdp`, `cmd/edge-bpf-sync`, `deploy/edge/` | Omitted from `single_vps`; primary filtering handled by Nginx Lua |
+| Elastic sharding / `campaign-shard` / migrations | Environment variables `ELASTIC_SHARDING_*`, `cmd/campaign-shard`, `DEVELOPMENT.md` Section 9 | Cluster feature; appliance relies on fixed Redis masters |
+| DFA parsers for HTTP/2 and HTTP/3 in tracker | `handler_http2.go`, `http3_frame*.go` | Pause feature expansion; Edge proxies HTTP/1.1 traffic to tracker |
+| Per-node Grafana / Alertmanager / Telegram stack | `deploy/monitoring/**`, `cmd/alertmanager-telegram` | Move to `--profile monitoring`; restrict metric collection to tracker, control, processor |
+| Log collectors and rotators (log-shipper / compactor / evacuator) | `cmd/log-*` | Node utility scripts; excluded from base SKU |
+| OpenRTB Exchange enabled by default | `internal/rtb/`, `internal/openrtb/`, `RTB_PRODUCTION_RUNBOOK.md` | Preserve code; default `RTB_MODE=off`; do not lead sales pitches with SSP functionality |
+| Strict SPO features (schain / `sellers.json`) | Parsing schain and exporting supply in OpenRTB; bullet in README | Freeze development, lower priority in marketing materials |
+| Frontend backlog from FRONTEND Section 16 | `.cursor/FRONTEND.md` | Internal engineering tasks; prioritize customer P0 requests |
+| Pilot build Dockerfiles | `Dockerfile.pilot`, `Dockerfile.pilot-ingest` | Restrict usage to pilot delivery pipeline |
+| Module renaming (`espx` module name) | Imports `espx/...`, environment variables `ESPX_*`, system path `/etc/espx/` | Causes breaking refactoring churn; does not block appliance SKU release |
+| Redis HA / Sentinel setups (6 Redis instances) | Profile `infra`, Sentinel overlays; documentation discrepancies (4 vs 6 nodes) | Standardize Redis instance counts for appliance; supply HA via Enterprise SOW |
+| Process separation for network-operator / payment NodePort | Profile in DEVELOPMENT; Kubernetes service `service-payment*` | Payment processing executes within `control` binary |
+| Optional CI workflows (terraform-validate, fraudtrain) | `.github/workflows/*` | Trigger via path filters; do not block critical code merges |
 
 ---
 
-## 3. Оставить без изменений (KEEP)
+## 3. Retain Without Modification (KEEP)
 
-| Компонент | Назначение |
+| Component | Operational Purpose |
 | :--- | :--- |
-| Движок `pkg/broker` и `cmd/broker` (Tiered Event Bus) | Дисковый mmap WAL для разгрузки RAM Redis, гарантии сохранности эвентов при сбоях (Zero-Loss Crash Recovery) и реплея логов |
-| Lua-фильтры трекера / FilterEngine / бюджеты в Redis | Предотвращение перерасхода бюджетов рекламных кампаний |
-| Outbox + processor + леджер в Postgres (`balance_ledger`) | Точный финансовый взаиморасчет (settlement) |
-| Docker Compose `single_vps` + инсталлятор + встроенный админ-интерфейс | Основной поставляемый продукт (SKU) |
-| Lua-шардинг в Nginx, совпадающий с `StaticSlotSharder` | Корректная маршрутизация запросов к трекерам |
-| Обработчики `POST /track`, `GET /click`, postback | Критический путь обработки трафика и денег |
-| Базовая отчетность в ClickHouse | Аналитика и удержание клиентов после установки |
-| Таблицы согласий (GDPR / Consent) без бренда Sandbox | Юридическое соответствие регуляторным требованиям |
-| Офлайн-лицензирование для пилотов | Модель продаж on-premise |
-| Маршрутизация StaticSlot + CRC32 | Базовая топология распределения нагрузки |
+| `pkg/broker` engine and `cmd/broker` (Tiered Event Bus) | Memory-mapped disk WAL for offloading Redis RAM, guaranteeing event durability during crashes (Zero-Loss Crash Recovery), and supporting log replay |
+| Tracker Lua filters / FilterEngine / Redis budgets | Prevents campaign budget overspending |
+| Outbox + processor + PostgreSQL ledger (`balance_ledger`) | Precise financial settlement and reconciliation |
+| Docker Compose `single_vps` + installer + embedded admin UI | Core product offering (appliance SKU) |
+| Nginx Lua sharding matching `StaticSlotSharder` | Correct traffic routing to tracker instances |
+| Handlers `POST /track`, `GET /click`, postback endpoints | Critical traffic ingestion and monetization path |
+| Core ClickHouse reporting | Essential analytics and customer retention features |
+| Privacy consent tables (GDPR / Consent) without Sandbox branding | Regulatory legal compliance |
+| Offline pilot licensing | On-premises commercial sales model |
+| StaticSlot + CRC32 routing topology | Core load distribution model |
 
 ---
 
-## 4. Номенклатурный долг (Naming Debt)
+## 4. Naming Technical Debt
 
-| Старое наименование | Текущее состояние | Необходимое действие |
+| Historical Name | Current System State | Required Remediation Action |
 | :--- | :--- | :--- |
-| Сервис `management` / `MANAGEMENT_PORT` / Prom job | Бинарный файл `control` | Переименовать или удалить вместе с очисткой K8s/мониторинга |
-| Имена образов `ad-event-processor` / `ghcr.io/example/espx` | Релизный образ `bidshard` | Привести к единому имени во всей системе |
-| Конфигурация Redis в документации (4 vs 6 узлов) | Расхождения с compose | Согласовать Compose, `QUICKSTART.md` и `INSTALLER.md` |
+| Service `management` / `MANAGEMENT_PORT` / Prom job | Binary executable `control` | Rename or remove alongside Kubernetes/monitoring cleanup |
+| Container image names `ad-event-processor` / `ghcr.io/example/espx` | Release image `bidshard` | Standardize image name across build systems |
+| Redis documentation configuration (4 vs 6 nodes) | Discrepancies with Docker Compose | Align Compose, `QUICKSTART.md`, and `INSTALLER.md` |
 
 ---
 
-## 5. Рекомендуемый порядок выполнения
+## 5. Recommended Execution Order
 
-1. **Маркетинг и претензии** — удалить упоминания Privacy Sandbox и нереализованного CTV из `README.md` и `ARCHITECTURE.md`.
-2. **Сценарий развертывания** — зафиксировать в документации: self-host = Compose + инсталлятор. Пометить K8s/Terraform как неподдерживаемые в appliance SKU (удалить или заархивировать сломанные манифесты).
-3. **Оптимизация Appliance** — отключить тяжелый мониторинг в `single_vps`; зафиксировать число узлов Redis; удалить неиспользуемые каталоги переменных окружения.
-4. **Очистка скриптов и документации** — исправить вызовы `scripts/deploy`; устранить несоответствия в `INSTALLER.md`; убрать multi-region из базового руководства по разработке.
-5. **Навигация по документации** — оставить для клиентов `QUICKSTART.md`, сокращенный `ARCHITECTURE.md` и `PILOT_LICENSE.md`. Документы `BENCHMARKS.md`, `EDGE_CASES.md`, `TRADEOFFS.md` и данный файл перевести в статус «только для внутренних инженеров».
-6. **Вспомогательные сервисы** — сохранить замороженные бинарники в кодовой базе, но исключить их из коммерческого питча и профилей по умолчанию.
-7. **Отложить** — полное переименование модуля `espx` -> `bidshard` и глубокую продуктовизацию RTB/XDP до появления оплаченного контракта (SOW).
-
----
-
-## 6. Чек-лист проверки (Resume-Driven Overhead)
-
-Компонент или функция подлежит удалению (CUT) или заморозке (FREEZE), если выполняются два и более условия:
-
-- [ ] Требует второго оркестратора (K8s, Terraform, вторую шину событий).
-- [ ] Отсутствует в профиле `single_vps` и не задействован в цепочке «трекинг → бюджет → инвойс».
-- [ ] Описан в `README.md` с большим пафосом, чем представлен в реальности в инсталляторе.
-- [ ] Содержит сломанный код или ссылается на удаленные микросервисы.
-- [ ] Не вызывает вопросов у покупателя на первой презентации продукта.
-- [ ] Увеличивает потребление RAM/CPU сервера без повышения стоимости лицензии.
+1. **Marketing and Claims Cleanup:** Remove Privacy Sandbox and unimplemented CTV references from `README.md` and `ARCHITECTURE.md`.
+2. **Deployment Footprint:** Standardize documentation on self-hosted Compose + installer. Mark Kubernetes/Terraform as unsupported in the appliance SKU (archive or remove broken manifests).
+3. **Appliance Optimization:** Disable heavy monitoring profiles in `single_vps`; standardize Redis node count; remove unused environment directory stubs.
+4. **Script and Documentation Scrub:** Fix `scripts/deploy` calls; resolve `INSTALLER.md` inconsistencies; remove multi-region setups from the base development guide.
+5. **Documentation Hierarchy:** Maintain customer-facing `QUICKSTART.md`, streamlined `ARCHITECTURE.md`, and `PILOT_LICENSE.md`. Reclassify `BENCHMARKS.md`, `EDGE_CASES.md`, `TRADEOFFS.md`, and this file as internal engineering documentation.
+6. **Auxiliary Binaries:** Retain frozen binaries in the repository, but exclude them from commercial pitches and default profiles.
+7. **Postpone Non-Essential Work:** Defer global module renaming (`espx` -> `bidshard`) and deep RTB/XDP productization until backed by paid Enterprise SOW contracts.
 
 ---
 
-## 7. Главный принцип (One-line policy)
+## 6. Audit Criteria (Resume-Driven Overhead)
 
-Продавать **трекинг → бюджет → финансовый расчет → админка на одном сервере**.  
-Все, что продвигает **кластеры, multi-region, сайдкары ML/XDP/QUIC, Privacy Sandbox или оверхед инфраструктуры**, подлежит удалению или заморозке, пока за это не заплатил конкретный Enterprise-клиент.
+A component or feature must be scheduled for removal (CUT) or freeze (FREEZE) if two or more of the following conditions are met:
 
+- [ ] Requires an auxiliary orchestrator (Kubernetes, Terraform, second event bus).
+- [ ] Omitted from the `single_vps` profile and not required in the tracking -> budget -> invoice path.
+- [ ] Described in `README.md` with greater ambition than implemented in the installer.
+- [ ] Contains broken code or references deleted microservices.
+- [ ] Is never raised by potential customers during initial product demonstrations.
+- [ ] Increases server RAM/CPU consumption without increasing license contract value.
+
+---
+
+## 7. Core Operating Policy
+
+Sell **tracking -> budget -> financial settlement -> administration on a single server**.  
+Any capability promoting **clustering, multi-region setups, ML/XDP/QUIC sidecars, Privacy Sandbox, or infrastructure complexity** must be removed or frozen until explicitly funded by an Enterprise customer contract.

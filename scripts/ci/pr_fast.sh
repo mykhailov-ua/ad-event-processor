@@ -12,4 +12,5 @@ bash "$SCRIPTS/ci/ch_direct.sh"
 make lint
 make test-alloc-gate
 make test-fast
+bash "$SCRIPTS/ci/shard0_nil_gate.sh"
 bash "$SCRIPTS/ci/admin_web.sh"

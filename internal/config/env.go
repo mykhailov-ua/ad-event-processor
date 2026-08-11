@@ -192,7 +192,7 @@ type Config struct {
 	RegistryPollMs               int
 	CampaignUpdateBrokerFallback bool
 	CampaignUpdateBrokerTopic    string
-	RedisShard0OptionalStartup   bool
+	RedisShard0OptionalStartup   bool // when true, shard 0 connect failure leaves rdbs[0]==nil (tracker + control degraded mode)
 	CampaignReplicaPath          string
 
 	AutoscaleHighCTRThreshold   float64

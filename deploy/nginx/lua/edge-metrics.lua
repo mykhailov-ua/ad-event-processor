@@ -205,7 +205,7 @@ function _M.render_prometheus()
     say_metric(
         "espx_edge_sync_last_success_timestamp",
         "gauge",
-        "Unix time of last successful blacklist sync from Redis shard 0.",
+        "Unix time of last successful blacklist sync from any connected Redis shard.",
         sync_ts
     )
     say_metric(

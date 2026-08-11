@@ -248,11 +248,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			WriteServiceError:    writeErr,
 			EdgeMetricsReader:    FetchEdgeMetrics,
 			XDPStatsReader: func(ctx context.Context) (xdpstats.Snapshot, error) {
-				shards := svc.RedisShards()
-				if len(shards) == 0 {
-					return xdpstats.Snapshot{}, fmt.Errorf("redis unavailable")
-				}
-				return xdpstats.ReadRedis(ctx, shards[0])
+				return xdpstats.ReadRedisAny(ctx, svc.RedisShards())
 			},
 		},
 		ViewsHTTP: &adminapi.ViewsHTTPHandlers{

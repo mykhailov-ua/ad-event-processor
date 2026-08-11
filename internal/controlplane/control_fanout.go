@@ -12,35 +12,20 @@ import (
 )
 
 func publishControlChannelToAllShards(ctx context.Context, rdbs []redis.UniversalClient, channel, payload string) error {
-	if len(rdbs) == 0 {
-		return fmt.Errorf("no redis client available")
-	}
-	for i, rdb := range rdbs {
-		if rdb == nil {
-			return fmt.Errorf("redis shard %d is nil", i)
-		}
-		if err := rdb.Publish(ctx, channel, payload).Err(); err != nil {
-			return fmt.Errorf("publish control channel on shard %d: %w", i, err)
-		}
-	}
-	return nil
+	return forEachConnectedShard(ctx, rdbs, "publish_control_channel", func(_ int, rdb redis.UniversalClient) error {
+		return rdb.Publish(ctx, channel, payload).Err()
+	})
 }
 
 func publishCampaignControlToAllShards(ctx context.Context, rdbs []redis.UniversalClient, channel, campaignID string, queuedAt time.Time) error {
-	if len(rdbs) == 0 {
-		return fmt.Errorf("no redis client available")
-	}
-	for i, rdb := range rdbs {
-		if rdb == nil {
-			return fmt.Errorf("redis shard %d is nil", i)
-		}
+	return forEachConnectedShard(ctx, rdbs, "publish_campaign_control", func(i int, rdb redis.UniversalClient) error {
 		_, err := rdb.Pipelined(ctx, func(pipe redis.Pipeliner) error {
 			pipe.Incr(ctx, domain.CampaignEpochKey)
 			pipe.Publish(ctx, channel, campaignID)
 			return nil
 		})
 		if err != nil {
-			return fmt.Errorf("campaign control fan-out on shard %d: %w", i, err)
+			return err
 		}
 		if !queuedAt.IsZero() {
 			lag := time.Since(queuedAt).Seconds()
@@ -48,18 +33,12 @@ func publishCampaignControlToAllShards(ctx context.Context, rdbs []redis.Univers
 				metrics.ControlFanoutLagSeconds.WithLabelValues(fmt.Sprintf("%d", i)).Observe(lag)
 			}
 		}
-	}
-	return nil
+		return nil
+	})
 }
 
 func publishControlMessagesToAllShards(ctx context.Context, rdbs []redis.UniversalClient, channel string, payloads []string) error {
-	if len(rdbs) == 0 {
-		return fmt.Errorf("no redis client available")
-	}
-	for i, rdb := range rdbs {
-		if rdb == nil {
-			return fmt.Errorf("redis shard %d is nil", i)
-		}
+	return forEachConnectedShard(ctx, rdbs, "publish_control_messages", func(_ int, rdb redis.UniversalClient) error {
 		_, err := rdb.Pipelined(ctx, func(pipe redis.Pipeliner) error {
 			pipe.Incr(ctx, domain.CampaignEpochKey)
 			for _, payload := range payloads {
@@ -67,31 +46,23 @@ func publishControlMessagesToAllShards(ctx context.Context, rdbs []redis.Univers
 			}
 			return nil
 		})
-		if err != nil {
-			return fmt.Errorf("control message fan-out on shard %d: %w", i, err)
-		}
-	}
-	return nil
+		return err
+	})
 }
 
 func setNXOnAllShards(ctx context.Context, rdbs []redis.UniversalClient, key, value string, ttl time.Duration) (bool, error) {
-	if len(rdbs) == 0 {
-		return false, fmt.Errorf("no redis client available")
-	}
 	allNew := true
-	for i, rdb := range rdbs {
-		if rdb == nil {
-			return false, fmt.Errorf("redis shard %d is nil", i)
-		}
+	err := forEachConnectedShard(ctx, rdbs, "setnx", func(_ int, rdb redis.UniversalClient) error {
 		ok, err := rdb.SetNX(ctx, key, value, ttl).Result()
 		if err != nil {
-			return false, fmt.Errorf("setnx on shard %d: %w", i, err)
+			return err
 		}
 		if !ok {
 			allNew = false
 		}
-	}
-	return allNew, nil
+		return nil
+	})
+	return allNew, err
 }
 
 func PickHealthyControlShard(rdbs []redis.UniversalClient) redis.UniversalClient {

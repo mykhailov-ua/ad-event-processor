@@ -1,50 +1,13 @@
 
-local redis = require "resty.redis"
 local blacklist_sync = require "edge-blacklist-sync"
 
 local _M = {}
 
-local REDIS_HOST = os.getenv("REDIS_HOST") or "127.0.0.1"
-local REDIS_PORT = tonumber(os.getenv("REDIS_PORT") or 6379)
-local REDIS_PASS = os.getenv("REDIS_PASS") or ""
-local REDIS_ADDRS = os.getenv("REDIS_ADDRS") or ""
-
 local CHANNEL = "fraud:quarantine"
-
-local function parse_first_addr()
-    if REDIS_ADDRS ~= "" then
-        local first = string.match(REDIS_ADDRS, "^%s*([^,]+)")
-        if first then
-            local host, port = string.match(first, "([^:]+):(%d+)")
-            if host and port then
-                return host, tonumber(port)
-            end
-        end
-    end
-    return REDIS_HOST, REDIS_PORT
-end
-
-local function connect_shard0()
-    local host, port = parse_first_addr()
-    local red = redis:new()
-    red:set_timeout(5000)
-    local ok, err = red:connect(host, port)
-    if not ok then
-        return nil, err
-    end
-    if REDIS_PASS ~= "" then
-        local res, auth_err = red:auth(REDIS_PASS)
-        if not res then
-            red:close()
-            return nil, auth_err
-        end
-    end
-    return red, nil
-end
 
 local function listen_loop()
     while not ngx.worker.exiting() do
-        local red, err = connect_shard0()
+        local red, err = blacklist_sync.connect_any_shard()
         if not red then
             ngx.log(ngx.ERR, "edge_quarantine_sub: connect failed: ", err)
             ngx.sleep(2)

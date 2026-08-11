@@ -1,14 +1,9 @@
 
-local redis = require "resty.redis"
+local blacklist_sync = require "edge-blacklist-sync"
 
 local _M = {}
 
 local dict = ngx.shared.edge_config
-
-local REDIS_HOST = os.getenv("REDIS_HOST") or "127.0.0.1"
-local REDIS_PORT = tonumber(os.getenv("REDIS_PORT") or 6379)
-local REDIS_PASS = os.getenv("REDIS_PASS") or ""
-local REDIS_ADDRS = os.getenv("REDIS_ADDRS") or ""
 
 local DEFAULT_LIMIT = 100
 local DEFAULT_WINDOW_MS = 60000
@@ -18,19 +13,6 @@ local DEFAULT_BLOCK_PCT = 0
 local DEFAULT_RETRY_SUSPECT = 30
 local DEFAULT_RETRY_IVT = 60
 local DEFAULT_RETRY_BLOCK = 120
-
-local function parse_first_addr()
-    if REDIS_ADDRS ~= "" then
-        local first = string.match(REDIS_ADDRS, "^%s*([^,]+)")
-        if first then
-            local host, port = string.match(first, "([^:]+):(%d+)")
-            if host and port then
-                return host, tonumber(port)
-            end
-        end
-    end
-    return REDIS_HOST, REDIS_PORT
-end
 
 function _M.get()
     local limit = dict:get("limit_per_min")
@@ -110,23 +92,10 @@ local function clear_asn_keys()
 end
 
 function _M.sync()
-    local host, port = parse_first_addr()
-    local red = redis:new()
-    red:set_timeout(200)
-
-    local ok, err = red:connect(host, port)
-    if not ok then
+    local red, err = blacklist_sync.connect_any_shard()
+    if not red then
         ngx.log(ngx.WARN, "edge_config: redis connect failed: ", err)
         return
-    end
-
-    if REDIS_PASS ~= "" then
-        local res, auth_err = red:auth(REDIS_PASS)
-        if not res then
-            ngx.log(ngx.WARN, "edge_config: redis auth failed: ", auth_err)
-            red:close()
-            return
-        end
     end
 
     local vals, cmd_err = red:hmget(

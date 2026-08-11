@@ -29,14 +29,18 @@ func pickSegmentShard(rdbs []redis.UniversalClient, segmentID uuid.UUID) redis.U
 	if len(rdbs) == 0 {
 		return nil
 	}
-	if len(rdbs) == 1 {
-		return rdbs[0]
-	}
 	var h uint32
 	for i := 0; i < 16; i++ {
 		h = h*31 + uint32(segmentID[i])
 	}
-	return rdbs[int(h%uint32(len(rdbs)))]
+	start := int(h % uint32(len(rdbs)))
+	for i := 0; i < len(rdbs); i++ {
+		idx := (start + i) % len(rdbs)
+		if rdbs[idx] != nil {
+			return rdbs[idx]
+		}
+	}
+	return nil
 }
 
 func segmentMemberExists(ctx context.Context, rdbs []redis.UniversalClient, segmentID uuid.UUID, userHash [16]byte) (bool, error) {

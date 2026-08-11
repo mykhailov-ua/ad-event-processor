@@ -45,3 +45,26 @@ func ReadRedis(ctx context.Context, rdb redis.Cmdable) (Snapshot, error) {
 	}
 	return snap, nil
 }
+
+// ReadRedisAny returns the first non-empty snapshot found on any connected shard.
+func ReadRedisAny(ctx context.Context, rdbs []redis.UniversalClient) (Snapshot, error) {
+	if len(rdbs) == 0 {
+		return Snapshot{}, fmt.Errorf("no redis client available")
+	}
+	var lastErr error
+	for i, rdb := range rdbs {
+		if rdb == nil {
+			continue
+		}
+		snap, err := ReadRedis(ctx, rdb)
+		if err == nil {
+			return snap, nil
+		}
+		lastErr = err
+		_ = i
+	}
+	if lastErr != nil {
+		return Snapshot{}, lastErr
+	}
+	return Snapshot{}, fmt.Errorf("no connected redis shard")
+}

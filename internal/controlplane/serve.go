@@ -218,7 +218,11 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 	customerRepo := domain.NewCustomerRepoWithDB(pool, queries)
 	dedupAdapter := dedup.NewAdapter(pool, cfg.RegionCode, dedup.LoadRoutingEpoch(ctx, pool))
 	var syncWorkers []*domain.SyncWorker
-	for _, rdb := range rdbs {
+	for i, rdb := range rdbs {
+		if rdb == nil {
+			slog.Warn("skipping budget sync worker for unavailable redis shard", "shard", i)
+			continue
+		}
 		sw := domain.NewSyncWorker(rdb, campaignRepo, customerRepo, time.Duration(cfg.BudgetSyncIntervalMs)*time.Millisecond, time.Duration(cfg.LedgerBatchFlushMs)*time.Millisecond, nil, 0)
 		sw.SetDedupAdapter(dedupAdapter)
 		sw.ConfigureBudgetContention(
@@ -532,11 +536,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 
 	svc.Close()
 
-	for i, rdb := range rdbs {
-		if err := rdb.Close(); err != nil {
-			slog.Error("failed to close redis shard", "shard", i, "error", err)
-		}
-	}
+	closeConnectedRedisShards(rdbs)
 	slog.Info("management server shutdown complete")
 	return ctx.Err()
 }

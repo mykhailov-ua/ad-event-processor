@@ -11,8 +11,8 @@ For exact SLA targets and benchmarks, check out [`espx.mdc`](espx.mdc), [ARCHITE
 ### How Sharding Works
 We distribute our Redis workload across $N$ standalone Redis masters using client-side routing. We map incoming campaign IDs into one of 1024 static slots using Castagnoli CRC32C:
 
-```
-slot  = CRC32C(campaign_id) & 1023    // Maps to 0..1023
+```text
+slot  = CRC32C(campaign_id) & 1023     // Maps to 0..1023
 shard = slot_table[slot]               // Looks up the assigned master index
 ```
 

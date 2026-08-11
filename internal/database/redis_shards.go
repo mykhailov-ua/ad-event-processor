@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"espx/internal/config"
+	"espx/internal/metrics"
 
 	redis "github.com/redis/go-redis/v9"
 )
@@ -52,7 +53,16 @@ func ConnectRedisShards(ctx context.Context, cfg *config.Config, opts RedisShard
 		clients = append(clients, rdb)
 		breakers = append(breakers, br)
 	}
+	setShard0ClientNilMetric(clients)
 	return clients, breakers, nil
+}
+
+func setShard0ClientNilMetric(clients []redis.UniversalClient) {
+	if len(clients) > 0 && clients[0] == nil {
+		metrics.Shard0ClientNil.Set(1)
+		return
+	}
+	metrics.Shard0ClientNil.Set(0)
 }
 
 func ConnectRedisShard(ctx context.Context, cfg *config.Config, shardIdx int, opts RedisShardOptions) (redis.UniversalClient, error) {

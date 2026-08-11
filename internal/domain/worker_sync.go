@@ -123,6 +123,9 @@ func (w *SyncWorker) Wait(ctx context.Context) error {
 }
 
 func (w *SyncWorker) SyncAll(ctx context.Context) {
+	if w == nil || w.rdb == nil {
+		return
+	}
 	w.syncMu.Lock()
 	defer w.syncMu.Unlock()
 	w.collectCampaignRollup(ctx)

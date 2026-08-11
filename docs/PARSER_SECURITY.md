@@ -185,9 +185,9 @@ H2_INCOMPLETE_MAX=3          # HTTP/2 incomplete frames (pre-existing)
 | :--- | :--- |
 | All PS-G proof stubs | `go test ./internal/ingestion/ -run=TestChaos_ParserSecurity -count=1 -v` |
 | Cross-hop corpus | `go test ./internal/ingestion/ -run=TestChaos_CrossHop_NginxGnet -count=1` |
-| Phase P2 TE / proto / HPACK | `go test ./internal/ingestion/ -run='TestChaos_TE_TE|TestChaos_Proto_FieldBudget|TestChaos_HPACK' -count=1` |
+| Phase P2 TE / proto / HPACK | `go test ./internal/ingestion/ -run='TestChaos_TE_TE&#124;TestChaos_Proto_FieldBudget&#124;TestChaos_HPACK' -count=1` |
 | Sustained load | `bash scripts/fault/parser_chaos_load.sh --duration=8s --rps=3000` |
-| JSON hardening (G09–G13) | `go test ./internal/ingestion/ -run='TestChaos_ParserSecurity_PS_G09|TestChaos_ParserSecurity_PS_G1[0-3]' -count=1` |
+| JSON hardening (G09–G13) | `go test ./internal/ingestion/ -run='TestChaos_ParserSecurity_PS_G09&#124;TestChaos_ParserSecurity_PS_G1[0-3]' -count=1` |
 | Full parser drill | `bash scripts/fault/parser_chaos_drill.sh` |
 | Alloc + micro benches | `bash scripts/test/gate_bench.sh` |
 

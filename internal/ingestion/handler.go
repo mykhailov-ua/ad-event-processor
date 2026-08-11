@@ -201,12 +201,9 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 			return
 		}
 
-		for i, rdb := range rdbs {
-			if err := rdb.Ping(ctx).Err(); err != nil {
-				slog.Error("health check failed: redis shard", "shard", i, "error", err)
-				http.Error(w, "redis shard unreachable", http.StatusServiceUnavailable)
-				return
-			}
+		if !pingConnectedRedisShards(ctx, rdbs) {
+			http.Error(w, "redis shard unreachable", http.StatusServiceUnavailable)
+			return
 		}
 
 		w.WriteHeader(http.StatusOK)
