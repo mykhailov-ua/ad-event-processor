@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/dedup"
-	"espx/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/dedup"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"

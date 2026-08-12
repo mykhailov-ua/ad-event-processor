@@ -4,9 +4,9 @@ import (
 	"errors"
 	"net/http"
 
-	"espx/internal/database"
-	"espx/internal/metrics"
-	"espx/internal/telemetry"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/telemetry"
 )
 
 type filterRejectKind uint8

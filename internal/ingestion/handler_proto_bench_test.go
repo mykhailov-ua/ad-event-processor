@@ -3,8 +3,8 @@ package ingestion
 import (
 	"testing"
 
-	"espx/internal/config"
-	"espx/internal/ingestion/pb"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
 
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/proto"

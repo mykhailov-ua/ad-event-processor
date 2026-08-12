@@ -4,7 +4,7 @@ import (
 	"sync"
 	"testing"
 
-	"espx/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/config"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"
 )

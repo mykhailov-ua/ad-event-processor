@@ -5,7 +5,8 @@ import (
 	"log/slog"
 	"time"
 
-	"espx/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/licensing"
 
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
@@ -43,6 +44,13 @@ func (f *EntitlementsFilter) Check(ctx context.Context, evt *domain.Event) error
 		return ErrCampaignNotFound
 	}
 	custID := campInfo.CustomerID
+
+	if evt.Type == "bid" || evt.Type == "rtb" {
+		state, depEnt := f.registry.GetLicenseState()
+		if !licensing.OpenRTBAllowed(state, depEnt) {
+			return ErrLicenseExpired
+		}
+	}
 
 	ent, ok := f.registry.GetEntitlements(custID)
 	if !ok {

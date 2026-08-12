@@ -5,8 +5,8 @@ import (
 	"sync"
 	"testing"
 
-	"espx/internal/database"
-	"espx/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/domain/db"
 
 	"github.com/stretchr/testify/require"
 )

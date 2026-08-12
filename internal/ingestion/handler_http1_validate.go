@@ -80,7 +80,3 @@ func httpHeaderValValid(b []byte) bool {
 	}
 	return true
 }
-
-func httpHeaderValByteOK(c byte) bool {
-	return httpHeaderValOK[c] != 0
-}

@@ -81,6 +81,9 @@ type Campaign struct {
 	SegmentTTLHours   int32
 	SegmentIncludeID  uuid.UUID
 	SegmentExcludeID  uuid.UUID
+
+	SafePageURL     string
+	SafePageEnabled bool
 }
 
 func (c *Campaign) LuaRoutingEpoch() int64 {

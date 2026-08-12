@@ -3,9 +3,9 @@ package ingestion
 import (
 	"testing"
 
-	"espx/internal/domain"
-	"espx/internal/metrics"
-	"espx/internal/rtb"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/rtb"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"

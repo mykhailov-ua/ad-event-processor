@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"espx/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 )
 
 type GeoIPUpdaterConfig struct {

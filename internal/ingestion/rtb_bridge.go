@@ -5,8 +5,8 @@ import (
 	"hash/crc32"
 	"unsafe"
 
-	"espx/internal/domain"
-	"espx/internal/rtb"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/rtb"
 
 	"github.com/google/uuid"
 )

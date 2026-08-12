@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"net/http"
 
-	"espx/internal/telemetry"
+	"github.com/bidshard/ad-event-processor/internal/telemetry"
 
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
@@ -35,6 +35,10 @@ const (
 	clickKeySub3
 	clickKeySub4
 	clickKeySub5
+	clickKeySubGeneric
+	clickKeyFBCLID
+	clickKeyGCLID
+	clickKeyTTCLID
 )
 
 const (
@@ -70,7 +74,10 @@ type clickQueryParsed struct {
 	userID      string
 	clickID     string
 	placementID string
-	subs        [5]string
+	subs        SubIDSlots
+	fbclid      string
+	gclid       string
+	ttclid      string
 	passthrough []byte
 	ok          bool
 }
@@ -81,7 +88,10 @@ func (p *clickQueryParsed) reset() {
 	p.userID = ""
 	p.clickID = ""
 	p.placementID = ""
-	p.subs = [5]string{}
+	p.subs.reset()
+	p.fbclid = ""
+	p.gclid = ""
+	p.ttclid = ""
 	p.passthrough = nil
 	p.ok = false
 }
@@ -102,6 +112,27 @@ func matchClickQueryKey(key []byte) clickQueryKeyID {
 			return clickKeySub4
 		case u32Sub5:
 			return clickKeySub5
+		}
+		if idx, ok := subKeyIndex(key); ok && idx >= 6 {
+			return clickKeySubGeneric
+		}
+	case 5:
+		if loadU32(key) == 0x696c6367 && key[4] == 'd' { // gclid
+			return clickKeyGCLID
+		}
+		if idx, ok := subKeyIndex(key); ok && idx >= 10 {
+			return clickKeySubGeneric
+		}
+	case 6:
+		switch loadU32(key) {
+		case 0x6c636266: // fbcl
+			if key[4] == 'i' && key[5] == 'd' {
+				return clickKeyFBCLID
+			}
+		case 0x6c637474: // ttcl
+			if key[4] == 'i' && key[5] == 'd' {
+				return clickKeyTTCLID
+			}
 		}
 	case 7:
 		if loadU32(key) == u32User && key[4] == '_' && key[5] == 'i' && key[6] == 'd' {
@@ -261,6 +292,16 @@ func parseClickQuery(path []byte, scratch []byte, out *clickQueryParsed) []byte 
 			out.subs[3] = unsafeString(decoded)
 		case clickKeySub5:
 			out.subs[4] = unsafeString(decoded)
+		case clickKeySubGeneric:
+			if idx, ok := subKeyIndex(key); ok {
+				out.subs[idx-1] = unsafeString(decoded)
+			}
+		case clickKeyFBCLID:
+			out.fbclid = unsafeString(decoded)
+		case clickKeyGCLID:
+			out.gclid = unsafeString(decoded)
+		case clickKeyTTCLID:
+			out.ttclid = unsafeString(decoded)
 		}
 	}
 
@@ -313,32 +354,30 @@ func dispatchRedirectMacro(base []byte, i int) (redirectMacroID, int) {
 		}
 	case 's':
 		if i+redirectMacroSubLen <= n && base[i+2] == 'u' && base[i+3] == 'b' && base[i+5] == '}' {
-			switch base[i+4] {
-			case '1':
-				return redirectMacroSub1, i + redirectMacroSubLen
-			case '2':
-				return redirectMacroSub2, i + redirectMacroSubLen
-			case '3':
-				return redirectMacroSub3, i + redirectMacroSubLen
-			case '4':
-				return redirectMacroSub4, i + redirectMacroSubLen
-			case '5':
-				return redirectMacroSub5, i + redirectMacroSubLen
+			digit := base[i+4]
+			if digit >= '1' && digit <= '9' {
+				return redirectMacroID(redirectMacroSub1 + redirectMacroID(digit-'1')), i + redirectMacroSubLen
+			}
+		}
+		if i+redirectMacroSubLen+1 <= n && base[i+2] == 'u' && base[i+3] == 'b' {
+			d1, d2 := base[i+4], base[i+5]
+			if d1 >= '1' && d1 <= '3' && d2 >= '0' && d2 <= '9' {
+				idx := int(d1-'0')*10 + int(d2-'0')
+				if idx >= 10 && idx <= MaxSubIDs && base[i+6] == '}' {
+					return redirectMacroID(redirectMacroSub1 + redirectMacroID(idx-1)), i + redirectMacroSubLen + 1
+				}
 			}
 		}
 	}
 	return redirectMacroNone, i
 }
 
-func expandRedirectMacros(dst, base []byte, clickID, userID string, subs [5]string) []byte {
+func expandRedirectMacros(dst, base []byte, clickID, userID string, subs SubIDSlots) []byte {
 	clickB := UnsafeBytes(clickID)
 	userB := UnsafeBytes(userID)
-	subB := [5][]byte{
-		UnsafeBytes(subs[0]),
-		UnsafeBytes(subs[1]),
-		UnsafeBytes(subs[2]),
-		UnsafeBytes(subs[3]),
-		UnsafeBytes(subs[4]),
+	subB := [MaxSubIDs][]byte{}
+	for i := 0; i < MaxSubIDs; i++ {
+		subB[i] = UnsafeBytes(subs[i])
 	}
 
 	n := len(base)
@@ -362,22 +401,12 @@ func expandRedirectMacros(dst, base []byte, clickID, userID string, subs [5]stri
 		case redirectMacroUserID:
 			dst = append(dst, userB...)
 			i = end
-		case redirectMacroSub1:
-			dst = append(dst, subB[0]...)
-			i = end
-		case redirectMacroSub2:
-			dst = append(dst, subB[1]...)
-			i = end
-		case redirectMacroSub3:
-			dst = append(dst, subB[2]...)
-			i = end
-		case redirectMacroSub4:
-			dst = append(dst, subB[3]...)
-			i = end
-		case redirectMacroSub5:
-			dst = append(dst, subB[4]...)
-			i = end
 		default:
+			if mid >= redirectMacroSub1 && mid < redirectMacroSub1+redirectMacroID(MaxSubIDs) {
+				dst = append(dst, subB[mid-redirectMacroSub1]...)
+				i = end
+				continue
+			}
 			dst = append(dst, base[i])
 			i++
 		}
@@ -385,7 +414,7 @@ func expandRedirectMacros(dst, base []byte, clickID, userID string, subs [5]stri
 	return dst
 }
 
-func buildRedirectLocation(dst, base []byte, clickID, userID string, subs [5]string, passthrough []byte) ([]byte, bool) {
+func buildRedirectLocation(dst, base []byte, clickID, userID string, subs SubIDSlots, passthrough []byte) ([]byte, bool) {
 	if !redirectBaseValid(base) {
 		return dst, false
 	}
@@ -487,32 +516,36 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 	var landing []byte
 	if h.filterEngine != nil {
 		outcome := processTrack(h.trackProc, evt, nil)
-		switch outcome.Status {
-		case trackStatusFraudAccepted:
-			h.trackMetrics.recordFilterReject(outcome.RejectKind)
-			shard := h.sharder.GetShard(evt.CampaignID)
-			enqueueFraudReject(h.fraudWriter, shard, evt)
-			h.write(c, respConsentDenied, ctx)
-			h.recordMetrics(startMono, http.StatusNoContent)
-			return gnet.None
-		case trackStatusRejected:
-			spec := filterRejectSpecs[outcome.RejectKind]
-			h.trackMetrics.recordFilterReject(outcome.RejectKind)
-			h.write(c, spec.gnetResp, ctx)
-			h.recordMetrics(startMono, spec.status)
-			return gnet.None
-		case trackStatusInternalError:
-			h.write(c, respInternalError, ctx)
-			h.recordMetrics(startMono, http.StatusInternalServerError)
-			return gnet.None
-		case trackStatusAccepted:
-			if outcome.LandingURL != "" {
-				landing = UnsafeBytes(outcome.LandingURL)
+		if safeURL, ok := trySafePageRedirect(h.registry, evt.CampaignID, outcome); ok {
+			landing = UnsafeBytes(safeURL)
+		} else {
+			switch outcome.Status {
+			case trackStatusFraudAccepted:
+				h.trackMetrics.recordFilterReject(outcome.RejectKind)
+				shard := h.sharder.GetShard(evt.CampaignID)
+				enqueueFraudReject(h.fraudWriter, shard, evt)
+				h.write(c, respConsentDenied, ctx)
+				h.recordMetrics(startMono, http.StatusNoContent)
+				return gnet.None
+			case trackStatusRejected:
+				spec := filterRejectSpecs[outcome.RejectKind]
+				h.trackMetrics.recordFilterReject(outcome.RejectKind)
+				h.write(c, spec.gnetResp, ctx)
+				h.recordMetrics(startMono, spec.status)
+				return gnet.None
+			case trackStatusInternalError:
+				h.write(c, respInternalError, ctx)
+				h.recordMetrics(startMono, http.StatusInternalServerError)
+				return gnet.None
+			case trackStatusAccepted:
+				if outcome.LandingURL != "" {
+					landing = UnsafeBytes(outcome.LandingURL)
+				}
+			default:
+				h.write(c, respInternalError, ctx)
+				h.recordMetrics(startMono, http.StatusInternalServerError)
+				return gnet.None
 			}
-		default:
-			h.write(c, respInternalError, ctx)
-			h.recordMetrics(startMono, http.StatusInternalServerError)
-			return gnet.None
 		}
 	} else {
 		landing = ResolveLandingURLBytes(h.registry, h.creativeStore, evt)
@@ -524,7 +557,18 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 		return gnet.None
 	}
 
-	loc, ok := buildRedirectLocation(ctx.extraBuf[:0], landing, clickID, parsed.userID, parsed.subs, parsed.passthrough)
+	evt.Payload = appendAttributionPayload(evt.Payload[:0], nil, parsed.subs, parsed.fbclid, parsed.gclid, parsed.ttclid)
+
+	passthrough := parsed.passthrough
+	if parsed.fbclid != "" || parsed.gclid != "" || parsed.ttclid != "" {
+		buf := ctx.wCamp.buf[:0]
+		if len(passthrough) > 0 {
+			buf = append(buf, passthrough...)
+		}
+		passthrough = appendAttributionPassthrough(buf, parsed.fbclid, parsed.gclid, parsed.ttclid)
+	}
+
+	loc, ok := buildRedirectLocation(ctx.extraBuf[:0], landing, clickID, parsed.userID, parsed.subs, passthrough)
 	if !ok {
 		h.write(c, respClickBadLanding, ctx)
 		h.recordMetrics(startMono, http.StatusBadRequest)

@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/database"
-	"espx/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/domain"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

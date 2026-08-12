@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/metrics"
-	"espx/pkg/broker/client"
-	"espx/pkg/broker/protocol"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/pkg/broker/client"
+	"github.com/bidshard/ad-event-processor/pkg/broker/protocol"
 
 	redis "github.com/redis/go-redis/v9"
 )
@@ -142,7 +142,7 @@ func (w *BrokerReconcileWorker) sample(ctx context.Context) {
 		if hwmShard == nil {
 			continue
 		}
-		hwmStr, err := hwmShard.Get(sampleCtx, "espx:topics:"+tpKey+":log_hwm").Result()
+		hwmStr, err := hwmShard.Get(sampleCtx, "ad_event_processor:topics:"+tpKey+":log_hwm").Result()
 		if err == nil {
 			if v, parseErr := strconv.ParseUint(hwmStr, 10, 64); parseErr == nil {
 				brokerHWMSum += v

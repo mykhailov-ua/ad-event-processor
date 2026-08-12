@@ -4,8 +4,8 @@ import (
 	"net"
 	"testing"
 
-	"espx/internal/config"
-	"espx/internal/ingestion/pb"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
 	"google.golang.org/protobuf/proto"

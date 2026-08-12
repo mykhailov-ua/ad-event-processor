@@ -11,10 +11,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/internal/domain"
-	db "espx/internal/domain/db"
-	"espx/internal/licensing"
-	"espx/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/licensing"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -56,6 +56,8 @@ type campaignReplicaDTO struct {
 	FreqLimit        int32                 `json:"freq_limit"`
 	FreqWindow       int32                 `json:"freq_window"`
 	TargetCountries  []string              `json:"target_countries,omitempty"`
+	SafePageURL      string                `json:"safe_page_url,omitempty"`
+	SafePageEnabled  bool                  `json:"safe_page_enabled"`
 	RegistryStatus   string                `json:"registry_status"`
 }
 
@@ -369,6 +371,8 @@ func (r *Registry) saveReplica(m map[uuid.UUID]campaignInfo) error {
 			FreqLimit:        info.campaign.FreqLimit,
 			FreqWindow:       info.campaign.FreqWindow,
 			TargetCountries:  targetCountries,
+			SafePageURL:      info.campaign.SafePageURL,
+			SafePageEnabled:  info.campaign.SafePageEnabled,
 			RegistryStatus:   string(info.status),
 		})
 	}
@@ -474,6 +478,8 @@ func (r *Registry) loadReplica() (*campaignMapSnapshot, error) {
 				CustomerSyncKey:     customerSyncKey(dto.ID, dto.CustomerID),
 				FcapKeyPrefix:       fcapPrefix,
 				DailySpendKeyPrefix: dailySpendKeyPrefix(dto.ID),
+				SafePageURL:         dto.SafePageURL,
+				SafePageEnabled:     dto.SafePageEnabled,
 			},
 			status: db.CampaignStatusType(dto.RegistryStatus),
 		}

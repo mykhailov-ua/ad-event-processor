@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"espx/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 )
 
 type MockCampaignRepository struct {

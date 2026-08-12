@@ -3,8 +3,8 @@ package ingestion
 import (
 	"testing"
 
-	"espx/internal/config"
-	"espx/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/domain"
 
 	"github.com/google/uuid"
 )

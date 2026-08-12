@@ -1,7 +1,7 @@
 package ingestion
 
 import (
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"context"
 	"errors"
@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 
 	"github.com/panjf2000/gnet/v2"
 	"github.com/prometheus/client_golang/prometheus/testutil"

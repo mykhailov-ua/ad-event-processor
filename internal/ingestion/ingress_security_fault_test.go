@@ -1,7 +1,7 @@
 package ingestion
 
 import (
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"fmt"
 	"strings"
@@ -28,6 +28,7 @@ func TestFault_SecurityGap_H1_04b_ObsFoldContinuation(t *testing.T) {
 		"risk":        "header_injection_obs_fold",
 		"err":         fmt.Sprintf("%v", err),
 	})
+	require.Equal(t, "closed", gap)
 }
 
 func TestFault_SecurityGap_XDFA_04_ProtoAsJSON(t *testing.T) {
@@ -54,6 +55,7 @@ func TestFault_SecurityGap_XDFA_04_ProtoAsJSON(t *testing.T) {
 		"risk":        "content_type_confusion_proto_json",
 		"parse_err":   fmt.Sprintf("%v", parseErr),
 	})
+	require.Equal(t, "closed", gap)
 }
 
 func TestFault_SecurityGap_G_J05b_DeepNestedJSON(t *testing.T) {

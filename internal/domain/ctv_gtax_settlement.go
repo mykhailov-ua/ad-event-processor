@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	db "espx/internal/domain/db"
-	"espx/pkg/gtax"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/pkg/gtax"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

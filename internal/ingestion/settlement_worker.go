@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/domain"
-	"espx/internal/metrics"
-	"espx/pkg/logger"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/pkg/logger"
 
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"

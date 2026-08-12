@@ -2,13 +2,14 @@
 SELECT * FROM postback_configs WHERE campaign_id = $1;
 
 -- name: UpsertPostbackConfig :exec
-INSERT INTO postback_configs (campaign_id, provider, url_template, api_token_encrypted, target_event, updated_at)
-VALUES ($1, $2, $3, $4, $5, NOW())
+INSERT INTO postback_configs (campaign_id, provider, url_template, api_token_encrypted, target_event, test_event_code, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, NOW())
 ON CONFLICT (campaign_id) DO UPDATE
 SET provider = EXCLUDED.provider,
     url_template = EXCLUDED.url_template,
     api_token_encrypted = EXCLUDED.api_token_encrypted,
     target_event = EXCLUDED.target_event,
+    test_event_code = EXCLUDED.test_event_code,
     updated_at = NOW();
 
 -- name: ListPostbackConfigs :many

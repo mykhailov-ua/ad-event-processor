@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	"espx/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/config"
 
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"

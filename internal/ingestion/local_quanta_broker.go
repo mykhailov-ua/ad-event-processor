@@ -6,9 +6,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/internal/domain"
-	"espx/internal/ingestion/pb"
-	"espx/pkg/broker/client"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
+	"github.com/bidshard/ad-event-processor/pkg/broker/client"
 
 	"github.com/google/uuid"
 )

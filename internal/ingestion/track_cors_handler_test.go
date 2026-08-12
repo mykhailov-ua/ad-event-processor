@@ -1,0 +1,43 @@
+package ingestion
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/stretchr/testify/require"
+)
+
+func TestTrackOPTIONS_GnetPreflight(t *testing.T) {
+	t.Parallel()
+	cfg := &config.Config{
+		MaxRequestBodySize: 1 << 20,
+		TrackCORSOrigins:   []string{"https://lp.example"},
+	}
+	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud", nil)
+	inbound := BuildGnetHTTP("OPTIONS", "/track", map[string]string{
+		"Connection":     "keep-alive",
+		"Content-Length": "0",
+		"Origin":         "https://lp.example",
+	}, nil)
+	_, conn := ServeGnetHarness(h, inbound)
+	require.Equal(t, http.StatusNoContent, ParseGnetHTTPStatus(conn.Written()))
+	body := string(conn.Written())
+	require.Contains(t, body, "Access-Control-Allow-Origin: https://lp.example")
+}
+
+func TestTrackOPTIONS_NetHTTPPreflight(t *testing.T) {
+	t.Parallel()
+	cfg := &config.Config{
+		MaxRequestBodySize: 1 << 20,
+		TrackCORSOrigins:   []string{"https://lp.example"},
+	}
+	router := NewRouter(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud", nil)
+	req := httptest.NewRequest(http.MethodOptions, "/track", nil)
+	req.Header.Set("Origin", "https://lp.example")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusNoContent, rec.Code)
+	require.Equal(t, "https://lp.example", rec.Header().Get("Access-Control-Allow-Origin"))
+}

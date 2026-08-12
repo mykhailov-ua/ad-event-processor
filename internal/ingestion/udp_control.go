@@ -8,9 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/domain"
-	"espx/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 )
 
 type UDPChannelState uint32

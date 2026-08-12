@@ -5,10 +5,10 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/domain"
-	"espx/internal/domain/db"
-	"espx/internal/metrics"
-	"espx/pkg/piihash"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/pkg/piihash"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )

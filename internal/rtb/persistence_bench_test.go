@@ -9,7 +9,7 @@ import (
 )
 
 func BenchmarkSaveSnapshot(b *testing.B) {
-	tmpDir, err := os.MkdirTemp("", "espx-rtb-bench-*")
+	tmpDir, err := os.MkdirTemp("", "ad-event-processor-rtb-bench-*")
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -45,7 +45,7 @@ func BenchmarkSaveSnapshot(b *testing.B) {
 }
 
 func BenchmarkLoadSnapshot(b *testing.B) {
-	tmpDir, err := os.MkdirTemp("", "espx-rtb-bench-*")
+	tmpDir, err := os.MkdirTemp("", "ad-event-processor-rtb-bench-*")
 	if err != nil {
 		b.Fatal(err)
 	}

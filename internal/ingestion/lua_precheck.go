@@ -3,8 +3,8 @@ package ingestion
 import (
 	"time"
 
-	"espx/internal/domain"
-	"espx/internal/licensing"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/licensing"
 
 	"github.com/google/uuid"
 )

@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/domain"
-	"espx/pkg/piihash"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/pkg/piihash"
 
 	chgo "github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"

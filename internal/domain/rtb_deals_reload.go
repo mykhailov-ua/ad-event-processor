@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/binary"
 
-	db "espx/internal/domain/db"
-	"espx/internal/rtb"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/rtb"
 
 	"github.com/google/uuid"
 )

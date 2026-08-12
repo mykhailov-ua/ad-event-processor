@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"testing"
 
-	"espx/internal/config"
-	"espx/internal/ingestion/pb"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"

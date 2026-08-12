@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/licensing"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/licensing"
 )
 
 type fileLicenseSnapshot struct {
@@ -76,6 +76,11 @@ func (r *Registry) recheckLicenseFile(path string, pubKey ed25519.PublicKey) {
 	now := time.Now()
 	hostFP := licensing.HostFingerprint()
 	verified, err := licensing.VerifyLicenseFile(path, pubKey, hostFP, now)
+	if err == nil && verified.Claims != nil && r.pool != nil {
+		if actErr := licensing.CheckHostActivation(context.Background(), r.pool, verified.Claims, hostFP); actErr != nil {
+			err = actErr
+		}
+	}
 	if err != nil {
 		slog.Warn("license file verification failed", "error", err, "path", path)
 		r.fileLicense.Store(&fileLicenseSnapshot{state: licensing.StateExpired})

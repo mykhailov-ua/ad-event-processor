@@ -1,15 +1,15 @@
 package ingestion
 
 import (
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"context"
 	"sync"
 	"sync/atomic"
 	"testing"
 
-	"espx/internal/domain"
-	"espx/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/testutil"

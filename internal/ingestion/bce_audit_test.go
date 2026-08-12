@@ -19,13 +19,13 @@ var (
 
 // bceHotSymbols are ingestion hot-path symbols audited for BCE (no panicIndex in main body).
 var bceHotSymbols = []string{
-	"espx/internal/ingestion.foldKeyU32",
-	"espx/internal/ingestion.foldKeyU64",
-	"espx/internal/ingestion.matchTgQueryKey",
-	"espx/internal/ingestion.dispatchTgRedirectMacro",
-	"espx/internal/ingestion.expandTgRedirectMacros",
-	"espx/internal/ingestion.parseTgQuery",
-	"espx/internal/ingestion.unsafeString",
+	"github.com/bidshard/ad-event-processor/internal/ingestion.foldKeyU32",
+	"github.com/bidshard/ad-event-processor/internal/ingestion.foldKeyU64",
+	"github.com/bidshard/ad-event-processor/internal/ingestion.matchTgQueryKey",
+	"github.com/bidshard/ad-event-processor/internal/ingestion.dispatchTgRedirectMacro",
+	"github.com/bidshard/ad-event-processor/internal/ingestion.expandTgRedirectMacros",
+	"github.com/bidshard/ad-event-processor/internal/ingestion.parseTgQuery",
+	"github.com/bidshard/ad-event-processor/internal/ingestion.unsafeString",
 }
 
 func TestBCEAudit_hotSymbolsNoPanicIndexInMainBody(t *testing.T) {
@@ -49,7 +49,7 @@ func TestBCEAudit_dispatchTgRedirectMacro_boundsChecks(t *testing.T) {
 		t.Skip("CMP budget calibrated on amd64")
 	}
 	bin := testBinaryPath(t)
-	asm := asmMainBody(objdumpSymbol(t, bin, "espx/internal/ingestion.dispatchTgRedirectMacro"))
+	asm := asmMainBody(objdumpSymbol(t, bin, "github.com/bidshard/ad-event-processor/internal/ingestion.dispatchTgRedirectMacro"))
 	// Window + array-compare BCE: pre-audit baseline was 29 CMPQ BX on amd64.
 	cmpLen := strings.Count(asm, "CMPQ BX,")
 	if cmpLen > 12 {

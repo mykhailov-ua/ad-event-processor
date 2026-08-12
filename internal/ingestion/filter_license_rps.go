@@ -5,8 +5,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/internal/domain"
-	"espx/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 )
 
 // LicenseRPSFilter enforces deployment-wide JWT max_rps on the hot path.

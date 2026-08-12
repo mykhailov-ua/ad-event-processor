@@ -8,10 +8,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/domain"
-	"espx/internal/rtb"
-	"espx/pkg/money"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/rtb"
+	"github.com/bidshard/ad-event-processor/pkg/money"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"

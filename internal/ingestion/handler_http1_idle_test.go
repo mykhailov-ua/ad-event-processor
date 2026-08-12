@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/config"
 
 	"github.com/panjf2000/gnet/v2"
 	"github.com/stretchr/testify/assert"

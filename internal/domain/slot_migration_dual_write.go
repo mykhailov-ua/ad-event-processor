@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"espx/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"

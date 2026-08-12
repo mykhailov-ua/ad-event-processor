@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/internal/rtb"
+	"github.com/bidshard/ad-event-processor/internal/rtb"
 
 	redis "github.com/redis/go-redis/v9"
 )

@@ -3,7 +3,7 @@ package ingestion
 import (
 	"hash/crc32"
 
-	"espx/internal/ingestion/pb"
+	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
 	"github.com/google/uuid"
 )
 

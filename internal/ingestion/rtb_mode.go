@@ -3,9 +3,9 @@ package ingestion
 import (
 	"strings"
 
-	"espx/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/config"
 
-	"espx/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/domain"
 )
 
 const SystemSettingRtbMode = domain.SystemSettingRtbMode

@@ -3,8 +3,8 @@ package ingestion
 import (
 	"testing"
 
-	"espx/internal/config"
-	"espx/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/domain"
 
 	"github.com/google/uuid"
 )
@@ -56,9 +56,25 @@ func BenchmarkParseClickQuery(b *testing.B) {
 	}
 }
 
+func BenchmarkParseClickQuery30Params(b *testing.B) {
+	path := []byte("/click?campaign_id=550e8400-e29b-41d4-a716-446655440000&type=click&click_id=bench-click&user_id=u1" +
+		"&sub1=a&sub2=b&sub3=c&sub4=d&sub5=e&sub6=f&sub7=g&sub8=h&sub9=i&sub10=j" +
+		"&sub11=k&sub12=l&sub13=m&sub14=n&sub15=o&sub16=p&sub17=q&sub18=r&sub19=s&sub20=t" +
+		"&sub21=u&sub22=v&sub23=w&sub24=x&sub25=y&sub26=z&sub27=aa&sub28=bb&sub29=cc&sub30=dd" +
+		"&gclid=GCLID99&ttclid=TTC99&fbclid=FBC99")
+	scratch := make([]byte, 0, clickQueryScratchCap)
+	parsed := &clickQueryParsed{}
+	b.ReportAllocs()
+	b.SetBytes(int64(len(path)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		scratch = parseClickQuery(path, scratch[:0], parsed)
+	}
+}
+
 func BenchmarkBuildRedirectLocation(b *testing.B) {
 	base := []byte("https://offer.example/lp?cid={click_id}&src={sub1}")
-	subs := [5]string{"fb"}
+	subs := SubIDSlots{"fb"}
 	pass := []byte("gclid=GCLID99&ttclid=TTC99")
 	dst := make([]byte, 0, 512)
 	b.ReportAllocs()
@@ -88,7 +104,7 @@ func BenchmarkClickRedirectGnet_E2E(b *testing.B) {
 
 func BenchmarkClickRedirectExpandMacros(b *testing.B) {
 	base := []byte("https://offer.example/lp?cid={click_id}&src={sub1}&uid={user_id}")
-	subs := [5]string{"fb"}
+	subs := SubIDSlots{"fb"}
 	dst := make([]byte, 0, 256)
 	b.ReportAllocs()
 	b.ResetTimer()

@@ -1,8 +1,8 @@
 package ingestion
 
 import (
-	"espx/internal/domain"
-	"espx/pkg/piihash"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/pkg/piihash"
 )
 
 type chPIIFields struct {

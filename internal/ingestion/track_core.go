@@ -3,8 +3,8 @@ package ingestion
 import (
 	"context"
 
-	"espx/internal/domain"
-	"espx/internal/ingestion/traceprobe"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/ingestion/traceprobe"
 )
 
 type trackStatus uint8

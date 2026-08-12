@@ -12,7 +12,7 @@ import (
 )
 
 func TestRegistry_snapshot_roundTrip(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "espx-rtb-snap-*")
+	tmpDir, err := os.MkdirTemp("", "ad-event-processor-rtb-snap-*")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
@@ -102,7 +102,7 @@ func TestRegistry_snapshot_roundTrip(t *testing.T) {
 }
 
 func TestRegistry_startPersistence_periodicFlush(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "espx-rtb-persist-*")
+	tmpDir, err := os.MkdirTemp("", "ad-event-processor-rtb-persist-*")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 

@@ -16,9 +16,9 @@ import (
 
 	"time"
 
-	"espx/internal/domain"
-	"espx/internal/ingestion/pb"
-	"espx/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 )
 
 const (
@@ -74,7 +74,7 @@ func OpenCHSpool(dir string) (*CHSpool, error) {
 
 func OpenCHSpoolWithConfig(dir string, cfg CHSpoolConfig) (*CHSpool, error) {
 	if dir == "" {
-		dir = "/var/spool/espx/ch"
+		dir = "/var/spool/ad-event-processor/ch"
 	}
 	if cfg.SegmentSizeBytes <= 0 {
 		cfg.SegmentSizeBytes = chSpoolDefaultSegmentSize

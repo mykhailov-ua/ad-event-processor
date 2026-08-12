@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"unsafe"
 
-	"espx/internal/domain"
-	"espx/internal/metrics"
-	"espx/internal/telemetry"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/telemetry"
 
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"

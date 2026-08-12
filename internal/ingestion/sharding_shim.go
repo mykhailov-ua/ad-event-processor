@@ -1,6 +1,6 @@
 package ingestion
 
-import "espx/internal/domain"
+import "github.com/bidshard/ad-event-processor/internal/domain"
 
 type Sharder = domain.Sharder
 type StaticSlotSharder = domain.StaticSlotSharder

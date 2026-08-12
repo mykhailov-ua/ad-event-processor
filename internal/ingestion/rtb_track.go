@@ -1,8 +1,8 @@
 package ingestion
 
 import (
-	"espx/internal/config"
-	"espx/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/domain"
 )
 
 const (
@@ -27,6 +27,10 @@ func rtbModeFromConfig(cfg *config.Config) uint8 {
 
 func ConfigureTrackRtb(proc *trackProcessor, cfg *config.Config, catalog *RtbCatalog, geo GeoProvider, unified *UnifiedFilter, watcher *SettingsWatcher) {
 	if proc == nil || cfg == nil || catalog == nil || !cfg.RtbEnabled() {
+		return
+	}
+	if !openRTBLicenseAllowed(proc.registry) {
+		proc.rtbMode = rtbModeOff
 		return
 	}
 	proc.rtbCatalog = catalog
@@ -142,6 +146,9 @@ func catalogDealFloors(catalog *RtbCatalog) *DealFloorCache {
 
 func applyRtbAuction(proc trackProcessor, evt *domain.Event, deviceType []byte) (trackOutcome, bool) {
 	if proc.rtbCatalog == nil || proc.rtbMode == rtbModeOff || evt == nil {
+		return trackOutcome{}, false
+	}
+	if !openRTBLicenseAllowed(proc.registry) {
 		return trackOutcome{}, false
 	}
 

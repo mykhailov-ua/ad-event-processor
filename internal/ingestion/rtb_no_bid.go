@@ -1,6 +1,6 @@
 package ingestion
 
-import "espx/internal/rtb"
+import "github.com/bidshard/ad-event-processor/internal/rtb"
 
 func noBidToRejectKind(reason rtb.NoBidReason) filterRejectKind {
 	switch reason {

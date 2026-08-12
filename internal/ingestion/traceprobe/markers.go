@@ -1,4 +1,4 @@
-//go:build espx_bpf_trace
+//go:build ad_event_processor_bpf_trace
 
 package traceprobe
 

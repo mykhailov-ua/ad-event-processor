@@ -3,7 +3,7 @@ package ingestion
 import (
 	"hash/fnv"
 
-	"espx/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/domain"
 )
 
 func AssignCohortVariant(salt, subjectID string, variants []domain.CohortVariant) (variantID string, flags map[string]string) {

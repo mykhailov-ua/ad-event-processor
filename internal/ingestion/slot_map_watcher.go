@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"espx/pkg/broker/client"
+	"github.com/bidshard/ad-event-processor/pkg/broker/client"
 
-	"espx/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/domain"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )

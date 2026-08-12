@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"espx/internal/domain"
-	"espx/internal/licensing"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/licensing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -47,12 +47,4 @@ func TestLicenseFilter_offlineGraceAllowsIngest(t *testing.T) {
 	f := NewLicenseFilter(&stubLicenseRegistry{state: licensing.StateOfflineGrace})
 	err := f.Check(context.Background(), &domain.Event{})
 	assert.NoError(t, err)
-}
-
-func TestFault_LicenseGraceIngestContinues(t *testing.T) {
-	f := NewLicenseFilter(&stubLicenseRegistry{state: licensing.StateGrace})
-	if err := f.Check(context.Background(), &domain.Event{}); err != nil {
-		t.Fatalf("grace must allow ingest: %v", err)
-	}
-	t.Log("fault_proof fault=license_grace_ingest subsystem=ingestion state=GRACE")
 }

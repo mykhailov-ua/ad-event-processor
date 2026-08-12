@@ -2,7 +2,7 @@ package ingestion
 
 import (
 	"context"
-	db "espx/internal/domain/db"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
 )
 
 func LoadSupplyChainAllowlist(ctx context.Context, q *db.Queries) (*SupplyChainAllowlistSnapshot, error) {

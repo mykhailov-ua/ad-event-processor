@@ -3,7 +3,7 @@ package ingestion
 import (
 	"testing"
 
-	"espx/internal/openrtb"
+	"github.com/bidshard/ad-event-processor/internal/openrtb"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

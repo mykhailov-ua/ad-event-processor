@@ -5,17 +5,6 @@ import (
 	"time"
 )
 
-func parseRequestID(payload []byte, impIdx int, dst []byte) uint8 {
-	search := payload
-	if impIdx > 0 {
-		search = payload[:impIdx]
-	}
-	if idx := bytes.Index(search, openrtbKeyID); idx >= 0 {
-		return uint8(parseQuotedField(payload, idx+len(openrtbKeyID), dst))
-	}
-	return 0
-}
-
 func parseFirstImpIDAt(payload []byte, impIdx int, dst []byte) uint8 {
 	if impIdx < 0 {
 		return 0

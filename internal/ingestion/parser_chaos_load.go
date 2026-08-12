@@ -8,9 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/ingestion/pb"
-	"espx/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/testutil"

@@ -3,10 +3,10 @@ package ingestion
 import (
 	"testing"
 
-	"espx/internal/config"
-	"espx/internal/domain"
-	"espx/internal/openrtb"
-	"espx/internal/rtb"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/openrtb"
+	"github.com/bidshard/ad-event-processor/internal/rtb"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

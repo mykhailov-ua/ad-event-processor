@@ -4,7 +4,7 @@ import (
 	"sync"
 	"unsafe"
 
-	"espx/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/domain"
 )
 
 const openRTBScratchMagic = 0x4f525442335f01

@@ -3,7 +3,7 @@ package ingestion
 import (
 	"context"
 
-	"espx/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/domain"
 
 	"github.com/google/uuid"
 )

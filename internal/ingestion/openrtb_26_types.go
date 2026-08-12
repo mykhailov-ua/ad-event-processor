@@ -1,6 +1,6 @@
 package ingestion
 
-import "espx/internal/openrtb"
+import "github.com/bidshard/ad-event-processor/internal/openrtb"
 
 const (
 	openrtb26RequestIDMax    = 64

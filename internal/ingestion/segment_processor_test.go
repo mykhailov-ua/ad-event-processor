@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/domain"
-	"espx/pkg/piihash"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/pkg/piihash"
 
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"

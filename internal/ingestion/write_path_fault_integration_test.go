@@ -1,7 +1,7 @@
 package ingestion
 
 import (
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"context"
 	"net/http"
@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/database"
-	"espx/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -3,9 +3,9 @@ package ingestion
 import (
 	"errors"
 
-	"espx/internal/domain"
-	"espx/internal/ingestion/pb"
-	"espx/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 
 	"github.com/panjf2000/gnet/v2"
 )

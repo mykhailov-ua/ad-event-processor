@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"testing"
 
-	"espx/internal/config"
-	"espx/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/domain"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -23,14 +23,37 @@ func TestParseClickQuery(t *testing.T) {
 	require.Equal(t, "c1", parsed.clickID)
 	require.Equal(t, "u1", parsed.userID)
 	require.Equal(t, "fb", parsed.subs[0])
-	require.Contains(t, string(parsed.passthrough), "gclid=abc123")
-	require.Contains(t, string(parsed.passthrough), "ttclid=xyz")
+	require.Equal(t, "abc123", parsed.gclid)
+	require.Equal(t, "xyz", parsed.ttclid)
+}
+
+func TestParseClickQuery_sub30(t *testing.T) {
+	t.Parallel()
+	path := []byte("/click?campaign_id=550e8400-e29b-41d4-a716-446655440000&type=click" +
+		"&sub1=a&sub10=j&sub20=t&sub30=end")
+	parsed := &clickQueryParsed{}
+	_ = parseClickQuery(path, nil, parsed)
+	require.True(t, parsed.ok)
+	require.Equal(t, "a", parsed.subs[0])
+	require.Equal(t, "j", parsed.subs[9])
+	require.Equal(t, "t", parsed.subs[19])
+	require.Equal(t, "end", parsed.subs[29])
+}
+
+func TestBuildRedirectLocation_sub30Macro(t *testing.T) {
+	t.Parallel()
+	var subs SubIDSlots
+	subs[29] = "slot30"
+	base := []byte("https://offer.test/lp?s={sub30}")
+	loc, ok := buildRedirectLocation(nil, base, "c1", "u1", subs, nil)
+	require.True(t, ok)
+	require.Equal(t, "https://offer.test/lp?s=slot30", string(loc))
 }
 
 func TestBuildRedirectLocation_macrosAndPassthrough(t *testing.T) {
 	t.Parallel()
 	base := []byte("https://offer.test/lp?x=1&cid={click_id}&s={sub1}")
-	loc, ok := buildRedirectLocation(nil, base, "click-99", "user-1", [5]string{"fb"}, []byte("gclid=G1"))
+	loc, ok := buildRedirectLocation(nil, base, "click-99", "user-1", SubIDSlots{"fb"}, []byte("gclid=G1"))
 	require.True(t, ok)
 	require.Equal(t, "https://offer.test/lp?x=1&cid=click-99&s=fb&gclid=G1", string(loc))
 }

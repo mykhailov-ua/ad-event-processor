@@ -3,8 +3,8 @@ package ingestion
 import (
 	"errors"
 
-	"espx/internal/config"
-	"espx/internal/ingestion/pb"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
 )
 
 const ProtoMaxFields = 256

@@ -4,7 +4,7 @@ import (
 	"sync/atomic"
 	_ "unsafe"
 
-	"espx/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 
 	"github.com/prometheus/client_golang/prometheus"
 )

@@ -1,6 +1,6 @@
 package ingestion
 
-import "espx/internal/config"
+import "github.com/bidshard/ad-event-processor/internal/config"
 
 type RtbAuthorityController struct {
 	cfg        *config.Config

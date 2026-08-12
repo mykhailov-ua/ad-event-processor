@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"espx/internal/openrtb"
+	"github.com/bidshard/ad-event-processor/internal/openrtb"
 )
 
 var (

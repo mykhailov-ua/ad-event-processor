@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"espx/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 
 	redis "github.com/redis/go-redis/v9"
 )
@@ -109,7 +109,7 @@ func publishStreamPELAges(ctx context.Context, cfg FraudBackpressureConfig) {
 	}
 	group := cfg.Group
 	if group == "" {
-		group = "espx"
+		group = "ad_event_processor"
 	}
 	for i, rdb := range cfg.Rdbs {
 		if rdb == nil {

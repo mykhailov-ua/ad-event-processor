@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/domain"
 
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
@@ -101,6 +101,10 @@ func (s *BrandCreativeStore) SelectLandingURLBytes(brandID uuid.UUID, userID str
 
 func (s *BrandCreativeStore) selectCreative(brandID uuid.UUID, userID string) (brandCreativeEntry, bool) {
 	entries := s.brandCreativeSnapshot().byBrand[brandID]
+	if len(entries) == 0 && s.rdb != nil {
+		s.LoadFromRedis(context.Background(), brandID)
+		entries = s.brandCreativeSnapshot().byBrand[brandID]
+	}
 	if len(entries) == 0 {
 		return brandCreativeEntry{}, false
 	}

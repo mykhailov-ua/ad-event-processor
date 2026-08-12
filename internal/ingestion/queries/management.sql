@@ -374,6 +374,8 @@ SET name = $2,
     target_countries = $7,
     target_url = $8,
     referrer_filter = $9,
+    safe_page_url = $10,
+    safe_page_enabled = $11,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
 RETURNING *;

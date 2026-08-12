@@ -240,6 +240,10 @@ func http1IngressValid(method, path []byte) bool {
 	if len(method) == 4 && method[0] == 'P' && method[1] == 'O' && method[2] == 'S' && method[3] == 'T' {
 		return httpPathHasPrefix(path, "/track") || httpPathHasPrefix(path, "/openrtb/bid") || httpPathHasPrefix(path, "/tg/bid")
 	}
+	if len(method) == 7 && method[0] == 'O' && method[1] == 'P' && method[2] == 'T' &&
+		method[3] == 'I' && method[4] == 'O' && method[5] == 'N' && method[6] == 'S' {
+		return bytesEqual(path, "/track")
+	}
 	if len(method) == 3 && method[0] == 'G' && method[1] == 'E' && method[2] == 'T' {
 		return bytesEqual(path, "/health") ||
 			bytesEqual(path, "/healthz") ||
@@ -392,6 +396,8 @@ func http1AssignHeader(req *parsedHTTPRequest, key, val []byte, hFlags *uint8, c
 	case 6:
 		if foldKeyU32(key, 0) == 0x65636361 && httpFold[key[4]] == 'p' && httpFold[key[5]] == 't' {
 			req.Accept = val
+		} else if foldKeyU32(key, 0) == 0x6769726f && httpFold[key[4]] == 'i' && httpFold[key[5]] == 'n' {
+			req.Origin = val
 		}
 	case 9:
 		switch foldKeyU32(key, 0) {

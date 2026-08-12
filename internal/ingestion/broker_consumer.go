@@ -8,12 +8,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/internal/dedup"
-	"espx/internal/domain"
-	"espx/internal/metrics"
-	"espx/pkg/broker/client"
-	"espx/pkg/dedupkey"
-	"espx/pkg/logger"
+	"github.com/bidshard/ad-event-processor/internal/dedup"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/pkg/broker/client"
+	"github.com/bidshard/ad-event-processor/pkg/dedupkey"
+	"github.com/bidshard/ad-event-processor/pkg/logger"
 )
 
 type BrokerConsumerConfig = domain.BrokerConsumerConfig

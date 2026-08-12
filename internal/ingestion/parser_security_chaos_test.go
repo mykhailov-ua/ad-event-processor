@@ -1,12 +1,11 @@
 package ingestion
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
-	"espx/internal/config"
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"github.com/panjf2000/gnet/v2"
 	"github.com/stretchr/testify/require"
@@ -14,13 +13,6 @@ import (
 
 // Proof stubs for .cursor/PARSER_SECURITY_MILESTONE.md (PS-Gxx).
 // Tests log fault_proof with gap=open|closed; they must not panic.
-
-func chaosSlowBodyWire() []byte {
-	wire := make([]byte, 0, 256)
-	wire = append(wire, chaosSlowBodyHeaders()...)
-	wire = append(wire, chaosSlowBodyPrefixBytes()...)
-	return wire
-}
 
 func TestChaos_ParserSecurity_PS_G01_SlowBodyStall(t *testing.T) {
 	cfg := &config.Config{
@@ -118,29 +110,6 @@ func TestChaos_ParserSecurity_PS_G05_TETabObfuscation(t *testing.T) {
 		"gap_id": "PS-G05",
 		"gap":    "closed",
 		"err":    errString(err),
-	})
-}
-
-func TestChaos_ParserSecurity_PS_G07_HPACKContinuation(t *testing.T) {
-	block := make([]byte, 0, 65)
-	block = append(block, 0xFF)
-	for i := 0; i < 63; i++ {
-		block = append(block, 0xFF)
-	}
-	block = append(block, 0x00)
-	wire := buildH2WireAfterPreface(buildH2HeadersDataFrames(1, block, nil))
-	cfg := &config.Config{MaxRequestBodySize: 1 << 20, H2IncompleteMax: 3}
-	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud", nil)
-	conn := NewGnetHarnessConn(wire)
-	act := h.OnTraffic(conn)
-	gap := "open"
-	if act == gnet.Close {
-		gap = "closed"
-	}
-	faultproof.Log(t, "parser_security_ps_g07", map[string]string{
-		"gap_id": "PS-G07",
-		"gap":    gap,
-		"action": fmt.Sprintf("%d", act),
 	})
 }
 

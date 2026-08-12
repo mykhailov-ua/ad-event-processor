@@ -1,15 +1,15 @@
 package ingestion
 
 import (
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"context"
 	"strconv"
 	"testing"
 	"time"
 
-	"espx/internal/dedup"
-	"espx/pkg/dedupkey"
+	"github.com/bidshard/ad-event-processor/internal/dedup"
+	"github.com/bidshard/ad-event-processor/pkg/dedupkey"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"espx/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/domain"
 )
 
 type DeviceFilter struct {

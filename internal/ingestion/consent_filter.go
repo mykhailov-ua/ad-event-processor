@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"espx/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/domain"
 )
 
 var ErrConsentDenied = errors.New("consent not granted")

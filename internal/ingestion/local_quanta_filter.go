@@ -3,9 +3,9 @@ package ingestion
 import (
 	"context"
 
-	"espx/internal/domain"
-	"espx/internal/metrics"
-	"espx/internal/telemetry"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/telemetry"
 
 	"github.com/google/uuid"
 )

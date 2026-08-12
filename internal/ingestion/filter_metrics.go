@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"sync/atomic"
 
-	"espx/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"

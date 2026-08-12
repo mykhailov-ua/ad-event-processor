@@ -3,9 +3,9 @@ package ingestion
 import (
 	"strings"
 
-	"espx/internal/domain"
-	"espx/internal/openrtb"
-	"espx/internal/rtb"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/openrtb"
+	"github.com/bidshard/ad-event-processor/internal/rtb"
 )
 
 type wireTargeting struct {

@@ -8,8 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/internal/config"
-	db "espx/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -74,6 +74,8 @@ func CampaignFromDBRow(row db.Campaign) *Campaign {
 		BehaviorFlags:          BehaviorFlags(row.BehaviorFlags),
 		RequireConsentPurposes: row.RequireConsentPurposes,
 		MigrationGen:           row.MigrationGen,
+		SafePageURL:            row.SafePageUrl,
+		SafePageEnabled:        row.SafePageEnabled,
 	}
 	applyCampaignSegmentFields(camp, row.RetargetSegmentID, row.SegmentInclude, row.SegmentExclude, row.SegmentTtlHours)
 	return camp
@@ -137,6 +139,8 @@ func CampaignFromGetCampaignFullRow(row db.GetCampaignFullRow) *Campaign {
 		BehaviorFlags:          BehaviorFlags(row.BehaviorFlags),
 		RequireConsentPurposes: row.RequireConsentPurposes,
 		MigrationGen:           row.MigrationGen,
+		SafePageURL:            row.SafePageUrl,
+		SafePageEnabled:        row.SafePageEnabled,
 	}
 	applyCampaignSegmentFields(camp, row.RetargetSegmentID, row.SegmentInclude, row.SegmentExclude, row.SegmentTtlHours)
 
@@ -214,6 +218,8 @@ func CampaignFromListActiveCampaignsRow(row db.ListActiveCampaignsRow) *Campaign
 		BehaviorFlags:          BehaviorFlags(row.BehaviorFlags),
 		RequireConsentPurposes: row.RequireConsentPurposes,
 		MigrationGen:           row.MigrationGen,
+		SafePageURL:            row.SafePageUrl,
+		SafePageEnabled:        row.SafePageEnabled,
 	}
 	applyCampaignSegmentFields(camp, row.RetargetSegmentID, row.SegmentInclude, row.SegmentExclude, row.SegmentTtlHours)
 

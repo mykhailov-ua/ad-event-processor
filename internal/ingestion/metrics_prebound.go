@@ -3,7 +3,7 @@ package ingestion
 import (
 	"strconv"
 
-	"espx/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 
 	"github.com/prometheus/client_golang/prometheus"
 )

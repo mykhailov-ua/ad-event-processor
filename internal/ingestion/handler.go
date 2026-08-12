@@ -4,12 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"espx/internal/config"
-	"espx/internal/domain"
-	"espx/internal/ingestion/pb"
-	"espx/internal/metrics"
-	"espx/internal/telemetry"
-	"espx/pkg/logger"
 	"io"
 	"log/slog"
 	"net"
@@ -20,6 +14,13 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/telemetry"
+	"github.com/bidshard/ad-event-processor/pkg/logger"
 
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
@@ -175,6 +176,7 @@ type Pinger interface {
 
 func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngine *FilterEngine, pool Pinger, rdbs []redis.UniversalClient, sharder Sharder, fraudStream string, creativeStore *BrandCreativeStore) http.Handler {
 	mux := http.NewServeMux()
+	trackCORS := newTrackCORS(cfg.TrackCORSOrigins)
 
 	trackDurationObserver := metrics.HttpRequestDuration.WithLabelValues("POST", "/track")
 	var trackStatusCounters [600]prometheus.Counter
@@ -216,10 +218,15 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 
+	mux.HandleFunc("OPTIONS /track", func(w http.ResponseWriter, r *http.Request) {
+		serveHTTPTrackCORSPreflight(w, r, trackCORS)
+	})
+
 	mux.HandleFunc("POST /track", func(w http.ResponseWriter, r *http.Request) {
 		telemetry.RecordTrack()
 		startMono := monotonicNano()
 		status := http.StatusAccepted
+		applyHTTPTrackCORSHeaders(w, r.Header.Get("Origin"), trackCORS)
 
 		defer func() {
 			if status >= 0 && status < 600 {
@@ -260,8 +267,8 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 		if ctSlice := r.Header["Content-Type"]; len(ctSlice) > 0 {
 			contentType = ctSlice[0]
 		}
-		espxNative := cfg.IsESPXNativeIngress()
-		if espxNative && (contentType == "application/x-protobuf" || contentType == "") {
+		adEventProcessorNative := cfg.IsAdEventProcessorNativeIngress()
+		if adEventProcessorNative && (contentType == "application/x-protobuf" || contentType == "") {
 			buf := bufferPool.Get().(*bytes.Buffer)
 			defer putBuffer(buf)
 
@@ -321,7 +328,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 			defer trackRequestPool.Put(req)
 
 			var err error
-			if !espxNative {
+			if !adEventProcessorNative {
 				err = ParseOpenRTB3Ingress(req, buf.Bytes())
 			} else {
 				err = ParseTrackRequestJSONOpt(req, buf.Bytes())
@@ -570,11 +577,39 @@ type AdsPacketHandler struct {
 	workerPool            *PinnedWorkerPool
 	udpControl            *UDPControl
 	brokerProducer        *BrokerProducer
+	streamProducers       []*StreamProducer
+	trackCORS             trackCORS
 }
 
 func (h *AdsPacketHandler) SetBrokerProducer(bp *BrokerProducer) {
 	if h != nil {
 		h.brokerProducer = bp
+	}
+}
+
+func (h *AdsPacketHandler) SetStreamProducers(producers []*StreamProducer) {
+	if h != nil {
+		h.streamProducers = producers
+	}
+}
+
+func (h *AdsPacketHandler) publishAcceptedTrack(evt *domain.Event) {
+	if h == nil || evt == nil {
+		return
+	}
+	if h.brokerProducer != nil {
+		_ = h.brokerProducer.Enqueue(evt)
+		return
+	}
+	if h.sharder == nil || len(h.streamProducers) == 0 {
+		return
+	}
+	shard := h.sharder.GetShard(evt.CampaignID)
+	if shard < 0 || shard >= len(h.streamProducers) {
+		return
+	}
+	if p := h.streamProducers[shard]; p != nil {
+		_ = p.Process(evt)
 	}
 }
 
@@ -639,6 +674,7 @@ func NewAdsPacketHandler(cfg *config.Config, registry domain.CampaignRegistry, f
 		trackMetrics:          newPreboundTrackMetrics(),
 		trackLatencyRing:      NewLatencyRing(defaultLatencyRingCap),
 		auditLogSampleMask:    auditLogSampleMaskFromConfig(cfg.AuditLogSampleMask),
+		trackCORS:             newTrackCORS(cfg.TrackCORSOrigins),
 	}
 	h.startedAtNano.Store(time.Now().UnixNano())
 	configureOrtbScanLimits(cfg)
@@ -787,7 +823,9 @@ func (h *AdsPacketHandler) writeGnetTrackAccepted(ctx *connContext, req parsedHT
 			bufSlice = bufSlice[:200+respSize]
 		}
 
-		offset := copy(bufSlice, "HTTP/1.1 202 Accepted\r\nContent-Type: application/x-protobuf\r\nContent-Length: ")
+		offset := copy(bufSlice, "HTTP/1.1 202 Accepted\r\n")
+		offset = len(appendTrackCORSHeaders(bufSlice[:offset], unsafeString(req.Origin), h.trackCORS))
+		offset += copy(bufSlice[offset:], "Content-Type: application/x-protobuf\r\nContent-Length: ")
 		offset += copy(bufSlice[offset:], strconv.Itoa(respSize))
 		offset += copy(bufSlice[offset:], "\r\nConnection: keep-alive\r\n\r\n")
 
@@ -823,7 +861,9 @@ func (h *AdsPacketHandler) writeGnetTrackAccepted(ctx *connContext, req parsedHT
 			bufSlice = bufSlice[:200+respSize]
 		}
 
-		offset := copy(bufSlice, "HTTP/1.1 202 Accepted\r\nContent-Type: application/json\r\nContent-Length: ")
+		offset := copy(bufSlice, "HTTP/1.1 202 Accepted\r\n")
+		offset = len(appendTrackCORSHeaders(bufSlice[:offset], unsafeString(req.Origin), h.trackCORS))
+		offset += copy(bufSlice[offset:], "Content-Type: application/json\r\nContent-Length: ")
 		offset += copy(bufSlice[offset:], strconv.Itoa(respSize))
 		offset += copy(bufSlice[offset:], "\r\nConnection: keep-alive\r\n\r\n")
 		offset += copy(bufSlice[offset:], jsonPrefix)
@@ -1145,6 +1185,7 @@ type parsedHTTPRequest struct {
 	SecCHUA          []byte
 	AcceptLang       []byte
 	Body             []byte
+	Origin           []byte
 	ContentLength    int
 	HasContentLength bool
 }
@@ -1196,6 +1237,15 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 			ctx.shardID = int(h.loggerShardCounter.Add(1) % uint64(len(h.logger.Shards())))
 		}
 		c.SetContext(ctx)
+	}
+
+	if len(req.Method) == 7 && req.Method[0] == 'O' && req.Method[1] == 'P' && req.Method[2] == 'T' &&
+		req.Method[3] == 'I' && req.Method[4] == 'O' && req.Method[5] == 'N' && req.Method[6] == 'S' {
+		if bytes.Equal(req.Path, []byte("/track")) {
+			return h.reactTrackOPTIONS(req, c, ctx)
+		}
+		h.write(c, respMethodNotAllowed, ctx)
+		return gnet.None
 	}
 
 	if len(req.Method) == 3 && req.Method[0] == 'G' && req.Method[1] == 'E' && req.Method[2] == 'T' {
@@ -1314,9 +1364,7 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 	releaseOpenRTB3Scratch(evt)
 	h.trackMetrics.decisionAccepted.Inc()
 	writeAuditLog(h.logger, &h.auditLogSeq, h.auditLogSampleMask, ctx.shardID, evt)
-	if h.brokerProducer != nil {
-		_ = h.brokerProducer.Enqueue(evt)
-	}
+	h.publishAcceptedTrack(evt)
 	landing := ResolveLandingURL(h.registry, h.creativeStore, &ctx.evt)
 	h.writeGnetTrackAccepted(ctx, req, c, startMono, wReqID, requestIDStr, landing)
 	return gnet.None

@@ -3,7 +3,7 @@ package rtb
 import (
 	"bytes"
 
-	"espx/internal/rtb/pb"
+	"github.com/bidshard/ad-event-processor/internal/rtb/pb"
 )
 
 const (

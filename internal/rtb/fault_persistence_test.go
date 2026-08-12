@@ -1,7 +1,7 @@
 package rtb
 
 import (
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"fmt"
 	"os"

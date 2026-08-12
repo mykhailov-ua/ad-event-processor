@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/config"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"

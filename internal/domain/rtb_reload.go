@@ -1,6 +1,6 @@
 package domain
 
-import "espx/internal/config"
+import "github.com/bidshard/ad-event-processor/internal/config"
 
 const DefaultRtbCatalogReloadChannel = "rtb:catalog:reload"
 

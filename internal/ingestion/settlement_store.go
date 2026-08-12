@@ -3,8 +3,8 @@ package ingestion
 import (
 	"context"
 
-	"espx/internal/domain"
-	"espx/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 )
 
 type settlementModeStore struct {

@@ -12,16 +12,6 @@ func parseSeatFieldsFromScan(payload []byte, scan openrtb26Scan, hot *OpenRTB26H
 	}
 }
 
-func parseWSeatInWindow(win []byte, slot *OpenRTB26ImpSlot) {
-	if slot == nil || len(win) == 0 {
-		return
-	}
-	scan := scanImpObject(win)
-	if scan.idxWseat >= 0 {
-		slot.WSeatCount = parseSeatJSONArrayAt(win, ortbFieldAt(win, scan.idxWseat, openrtbKeyWseat), slot.WSeat[:], slot.WSeatLen[:])
-	}
-}
-
 func parseSeatCountAt(payload []byte, wseatAt int) uint8 {
 	var seats [openrtb26SeatMax][openrtb26SeatIDMax]byte
 	var lens [openrtb26SeatMax]uint8

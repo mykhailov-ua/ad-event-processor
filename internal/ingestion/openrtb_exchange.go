@@ -5,11 +5,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/domain"
-	"espx/internal/metrics"
-	"espx/internal/openrtb"
-	"espx/internal/rtb"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/openrtb"
+	"github.com/bidshard/ad-event-processor/internal/rtb"
 
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
@@ -67,6 +67,11 @@ func (h *AdsPacketHandler) reactOpenRTBBid(req parsedHTTPRequest, c gnet.Conn, c
 }
 
 func (h *AdsPacketHandler) reactOpenRTBBidCore(req parsedHTTPRequest, c gnet.Conn, ctx *connContext) gnet.Action {
+	if !openRTBLicenseAllowed(h.registry) {
+		metrics.RtbExchangeValidateErrors.Inc()
+		return h.writeOpenRTBNoBid(req, c, ctx, nil, rtb.NoBidInvalidRequest, 0)
+	}
+
 	if !globalOpenRTBLimiter.allow() {
 		return h.writeOpenRTBNoBid(req, c, ctx, nil, rtb.NoBidInvalidRequest, 0)
 	}

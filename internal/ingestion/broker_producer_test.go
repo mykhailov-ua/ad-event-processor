@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/domain"
-	"espx/internal/ingestion/pb"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

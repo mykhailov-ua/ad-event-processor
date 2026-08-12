@@ -13,10 +13,10 @@ import (
 
 	"github.com/google/uuid"
 
-	"espx/internal/database"
-	"espx/internal/domain"
-	"espx/internal/metrics"
-	"espx/internal/rtb"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/rtb"
 
 	"github.com/prometheus/client_golang/prometheus"
 	redis "github.com/redis/go-redis/v9"

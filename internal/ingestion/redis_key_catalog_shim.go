@@ -1,5 +1,5 @@
 package ingestion
 
-import "espx/internal/domain"
+import "github.com/bidshard/ad-event-processor/internal/domain"
 
 var DefaultCampaignRedisKeyCatalog = domain.DefaultCampaignRedisKeyCatalog

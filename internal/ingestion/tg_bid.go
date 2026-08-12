@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"net/http"
 
-	"espx/internal/telemetry"
+	"github.com/bidshard/ad-event-processor/internal/telemetry"
 
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"

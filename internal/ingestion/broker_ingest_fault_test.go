@@ -1,17 +1,17 @@
 package ingestion
 
 import (
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"context"
 	"fmt"
 	"testing"
 	"time"
 
-	"espx/internal/ingestion/pb"
-	"espx/internal/metrics"
-	"espx/pkg/broker/client"
-	bserver "espx/pkg/broker/server"
+	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/pkg/broker/client"
+	bserver "github.com/bidshard/ad-event-processor/pkg/broker/server"
 
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/testutil"

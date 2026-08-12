@@ -3,7 +3,7 @@ package ingestion
 import (
 	"strconv"
 
-	"espx/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 )
 
 func exportHealthProbeMetrics(healthy bool, shardHealthy []int32) {

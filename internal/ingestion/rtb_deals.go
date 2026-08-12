@@ -5,9 +5,9 @@ import (
 	"log/slog"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/domain"
-	db "espx/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
 
 	"github.com/redis/go-redis/v9"
 )

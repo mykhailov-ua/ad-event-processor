@@ -6,7 +6,7 @@ import (
 	"time"
 	"unsafe"
 
-	"espx/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/domain"
 )
 
 type filterDeadlineKey struct{}

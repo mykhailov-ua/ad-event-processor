@@ -65,11 +65,8 @@ func TestFraudScenarios_XDFA04_ProtoBodyParsedAsJSONFails(t *testing.T) {
 
 	var tr TrackRequest
 	err = ParseTrackRequestJSON(&tr, req.Body)
-	if err == nil {
-		t.Log("GAP XDFA-04: proto body accepted by JSON DFA (content-type confusion)")
-	} else {
-		t.Logf("XDFA-04: proto body correctly rejected by JSON DFA: %v", err)
-	}
+	require.Error(t, err, "proto body must be rejected by JSON DFA")
+	t.Logf("XDFA-04: proto body correctly rejected by JSON DFA: %v", err)
 }
 
 func TestFraudScenarios_XDFA05_SecCHUAVsUserAgentBothForwarded(t *testing.T) {

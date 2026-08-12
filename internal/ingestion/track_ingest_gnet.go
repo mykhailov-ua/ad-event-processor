@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
 
-	"espx/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/domain"
 )
 
 type trackIngestFields struct {
@@ -17,6 +17,10 @@ type trackIngestFields struct {
 	clickID     string
 	placementID string
 	deviceType  []byte
+	subs        SubIDSlots
+	fbclid      string
+	gclid       string
+	ttclid      string
 	ortbSlot    *openRTBScratchSlot
 }
 
@@ -26,8 +30,8 @@ func (h *AdsPacketHandler) parseTrackIngest(
 	wReqID *bufWrapper,
 ) (fields trackIngestFields, badResp []byte, httpStatus int, ok bool) {
 	contentType := unsafeString(req.ContentType)
-	espxNative := h.cfg == nil || h.cfg.IsESPXNativeIngress()
-	if espxNative && (contentType == "application/x-protobuf" || contentType == "") {
+	adEventProcessorNative := h.cfg == nil || h.cfg.IsAdEventProcessorNativeIngress()
+	if adEventProcessorNative && (contentType == "application/x-protobuf" || contentType == "") {
 		h.trackMetrics.throughputProto.Inc()
 		pbReq := &ctx.pbReq
 		pbReq.CampaignId = pbReq.CampaignId[:0]
@@ -78,7 +82,7 @@ func (h *AdsPacketHandler) parseTrackIngest(
 	trackReq := &ctx.trackReq
 	trackReq.Reset()
 
-	if !espxNative {
+	if !adEventProcessorNative {
 		if err := ParseOpenRTB3Ingress(trackReq, req.Body); err != nil {
 			return fields, respInvalidJSON, http.StatusBadRequest, false
 		}
@@ -90,6 +94,10 @@ func (h *AdsPacketHandler) parseTrackIngest(
 	fields.eventType = trackReq.Type
 	fields.payload = trackReq.Payload
 	fields.placementID = trackReq.PlacementID
+	fields.subs = trackReq.subs
+	fields.fbclid = trackReq.fbclid
+	fields.gclid = trackReq.gclid
+	fields.ttclid = trackReq.ttclid
 	if trackReq.ClickID != "" {
 		fields.clickID = trackReq.ClickID
 	}
@@ -105,7 +113,10 @@ func fillTrackEvent(evt *domain.Event, fields trackIngestFields, ip, ua string) 
 	evt.UserID = fields.userID
 	evt.Type = fields.eventType
 	evt.PlacementID = fields.placementID
-	evt.Payload = append(evt.Payload[:0], fields.payload...)
+	evt.Payload = appendAttributionPayload(evt.Payload[:0], fields.payload, fields.subs, fields.fbclid, fields.gclid, fields.ttclid)
+	if evt.Payload == nil {
+		evt.Payload = evt.Payload[:0]
+	}
 	evt.IP = ip
 	evt.UA = ua
 	if fields.ortbSlot != nil {
@@ -143,9 +154,7 @@ func (h *AdsPacketHandler) deliverGnetTrack(
 	case trackStatusAccepted:
 		h.trackMetrics.decisionAccepted.Inc()
 		writeAuditLog(h.logger, &h.auditLogSeq, h.auditLogSampleMask, ctx.shardID, evt)
-		if h.brokerProducer != nil {
-			_ = h.brokerProducer.Enqueue(evt)
-		}
+		h.publishAcceptedTrack(evt)
 		h.writeGnetTrackAccepted(ctx, req, c, startMono, wReqID, requestIDStr, outcome.LandingURL)
 		return gnet.None
 	default:

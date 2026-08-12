@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/database"
-	"espx/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 
 	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/require"

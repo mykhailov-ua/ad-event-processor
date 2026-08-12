@@ -1,14 +1,14 @@
 package ingestion
 
 import (
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"bytes"
 	"errors"
 	"fmt"
 	"testing"
 
-	"espx/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/config"
 
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"

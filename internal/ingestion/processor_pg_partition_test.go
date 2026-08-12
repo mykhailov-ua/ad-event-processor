@@ -1,7 +1,7 @@
 package ingestion
 
 import (
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"context"
 	"fmt"
@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/domain/db"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"

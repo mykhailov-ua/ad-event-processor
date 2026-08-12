@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"sync"
 
-	"espx/internal/domain"
-	"espx/internal/metrics"
-	"espx/pkg/dedupkey"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/pkg/dedupkey"
 
 	"github.com/google/uuid"
 )

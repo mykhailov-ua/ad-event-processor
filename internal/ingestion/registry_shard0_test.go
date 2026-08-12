@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"espx/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/config"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"espx/internal/licensing"
+	"github.com/bidshard/ad-event-processor/internal/licensing"
 
 	"github.com/stretchr/testify/assert"
 )

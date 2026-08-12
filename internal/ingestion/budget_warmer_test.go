@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/domain"
-	db "espx/internal/domain/db"
-	"espx/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"

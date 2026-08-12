@@ -14,6 +14,9 @@ const (
 	keyClickID
 	keyCampaignID
 	keyPlacementID
+	keyFBCLID
+	keyGCLID
+	keyTTCLID
 )
 
 const (
@@ -40,18 +43,6 @@ func loadU32(b []byte) uint32 {
 
 func loadU64(b []byte) uint64 {
 	return *(*uint64)(unsafe.Pointer(&b[0]))
-}
-
-func skipJSONWS(data []byte, i, n int) (int, bool) {
-	skipped := 0
-	for i < n && jsonWhitespace[data[i]] != 0 {
-		if skipped >= MaxWSkip {
-			return i, false
-		}
-		i++
-		skipped++
-	}
-	return i, true
 }
 
 func matchTrackKey(key []byte) keyID {
@@ -83,8 +74,42 @@ func matchTrackKey(key []byte) keyID {
 		if loadU64(key) == u64Placement && key[8] == '_' && key[9] == 'i' && key[10] == 'd' {
 			return keyPlacementID
 		}
+	case 5:
+		if loadU32(key) == 0x696c6367 && key[4] == 'd' {
+			return keyGCLID
+		}
+	case 6:
+		switch loadU32(key) {
+		case 0x6c636266:
+			if key[4] == 'i' && key[5] == 'd' {
+				return keyFBCLID
+			}
+		case 0x6c637474:
+			if key[4] == 'i' && key[5] == 'd' {
+				return keyTTCLID
+			}
+		}
 	}
 	return keyUnknown
+}
+
+func assignTrackStringField(v *TrackRequest, kid keyID, valBytes []byte) {
+	switch kid {
+	case keyType:
+		v.Type = unsafeString(valBytes)
+	case keyUserID:
+		v.UserID = unsafeString(valBytes)
+	case keyClickID:
+		v.ClickID = unsafeString(valBytes)
+	case keyPlacementID:
+		v.PlacementID = unsafeString(valBytes)
+	case keyFBCLID:
+		v.fbclid = unsafeString(valBytes)
+	case keyGCLID:
+		v.gclid = unsafeString(valBytes)
+	case keyTTCLID:
+		v.ttclid = unsafeString(valBytes)
+	}
 }
 
 func ParseTrackRequestJSONOpt(v *TrackRequest, data []byte) error {
@@ -147,8 +172,9 @@ func parseTrackRequestJSON(v *TrackRequest, data []byte) error {
 		}
 
 		kid := matchTrackKey(data[keyStart:keyEnd])
+		keyBytes := data[keyStart:keyEnd]
 		switch kid {
-		case keyType, keyUserID, keyClickID, keyPlacementID:
+		case keyType, keyUserID, keyClickID, keyPlacementID, keyFBCLID, keyGCLID, keyTTCLID:
 			if data[i] != '"' {
 				return errMalformedJSON
 			}
@@ -160,16 +186,7 @@ func parseTrackRequestJSON(v *TrackRequest, data []byte) error {
 			valBytes := data[valStart : end-1]
 			i = end
 
-			switch kid {
-			case keyType:
-				v.Type = unsafeString(valBytes)
-			case keyUserID:
-				v.UserID = unsafeString(valBytes)
-			case keyClickID:
-				v.ClickID = unsafeString(valBytes)
-			case keyPlacementID:
-				v.PlacementID = unsafeString(valBytes)
-			}
+			assignTrackStringField(v, kid, valBytes)
 		case keyCampaignID:
 			if data[i] != '"' {
 				return errMalformedJSON
@@ -192,11 +209,24 @@ func parseTrackRequestJSON(v *TrackRequest, data []byte) error {
 			v.Payload = data[valStart:valEnd]
 			i = valEnd
 		default:
-			valEnd, err := skipJSONValueBudget(data, i, &bud)
-			if err != nil {
-				return err
+			if idx, ok := subKeyIndex(keyBytes); ok {
+				if data[i] != '"' {
+					return errMalformedJSON
+				}
+				valStart := i + 1
+				end, ok := scanJSONStringEnd(data, i, n, &bud)
+				if !ok {
+					return errMalformedJSON
+				}
+				v.subs[idx-1] = unsafeString(data[valStart : end-1])
+				i = end
+			} else {
+				valEnd, err := skipJSONValueBudget(data, i, &bud)
+				if err != nil {
+					return err
+				}
+				i = valEnd
 			}
-			i = valEnd
 		}
 
 		if !bud.consumeKeyPair() {

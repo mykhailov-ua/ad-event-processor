@@ -5,7 +5,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 )
 
 const ProcessorPgReserve = 1

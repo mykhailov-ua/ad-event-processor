@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/domain"
 
 	rediscontainer "github.com/testcontainers/testcontainers-go/modules/redis"
 

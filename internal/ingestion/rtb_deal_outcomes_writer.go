@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/internal/rtb"
+	"github.com/bidshard/ad-event-processor/internal/rtb"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 )

@@ -3,8 +3,8 @@ package ingestion
 import (
 	"testing"
 
-	"espx/internal/config"
-	"espx/internal/rtb"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/rtb"
 	"github.com/stretchr/testify/assert"
 )
 
