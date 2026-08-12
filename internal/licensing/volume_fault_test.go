@@ -1,6 +1,7 @@
 package licensing
 
 import (
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
@@ -27,7 +28,7 @@ func TestFault_LicenseServerUnreachableUsesLastKnownGood(t *testing.T) {
 	require.NoError(t, err)
 
 	claims := LicenseClaims{
-		Issuer:       "espx-license",
+		Issuer:       "ad-event-processor-license",
 		Subject:      uuid.NewString(),
 		DeploymentID: uuid.NewString(),
 		Plan:         "growth",
@@ -41,10 +42,10 @@ func TestFault_LicenseServerUnreachableUsesLastKnownGood(t *testing.T) {
 	token := signFaultJWT(t, priv, claims)
 	require.NoError(t, os.WriteFile(tokenPath, []byte(token), 0o640))
 
-	t.Setenv("ESPX_LICENSE_MODE", "online")
-	t.Setenv("ESPX_LICENSE_PATH", tokenPath)
-	t.Setenv("ESPX_LICENSE_SERVER", "http://127.0.0.1:1")
-	t.Setenv("ESPX_LICENSE_KEY", "fault-key")
+	t.Setenv(naming.LegacyVendorEnvKey("LICENSE_MODE"), "online")
+	t.Setenv(naming.LegacyVendorEnvKey("LICENSE_PATH"), tokenPath)
+	t.Setenv(naming.LegacyVendorEnvKey("LICENSE_SERVER"), "http://127.0.0.1:1")
+	t.Setenv(naming.LegacyVendorEnvKey("LICENSE_KEY"), "fault-key")
 
 	w := NewLicenseWatcher(nil, nil, pub)
 

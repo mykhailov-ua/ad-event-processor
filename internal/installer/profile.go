@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 )
 
 type Profile string
@@ -11,15 +13,18 @@ type Profile string
 const (
 	ProfileSingleVPS  Profile = "single_vps"
 	ProfileComposeDev Profile = "compose_dev"
-	ProfileK8sK3s     Profile = "k8s_k3s"
 )
 
 type IngressSchema string
 
 const (
-	IngressSchemaOpenRTB3   IngressSchema = "openrtb_3"
-	IngressSchemaESPXNative IngressSchema = "espx_native"
+	IngressSchemaOpenRTB3               IngressSchema = "openrtb_3"
+	IngressSchemaAdEventProcessorNative IngressSchema = "ad_event_processor_native"
 )
+
+func legacyIngressNativeSchema() IngressSchema {
+	return IngressSchema(naming.DeprecatedIngressNativeSchema())
+}
 
 type ServiceDeploy struct {
 	Binary    string `yaml:"binary,omitempty"`
@@ -40,7 +45,7 @@ type InstallProfile struct {
 
 func (p *InstallProfile) Validate() error {
 	switch p.Type {
-	case ProfileSingleVPS, ProfileComposeDev, ProfileK8sK3s:
+	case ProfileSingleVPS, ProfileComposeDev:
 	default:
 		return fmt.Errorf("invalid profile: %s", p.Type)
 	}
@@ -57,36 +62,26 @@ func (p *InstallProfile) Validate() error {
 		return errors.New("multi_region is not supported in compose_dev profile")
 	}
 
-	if p.Interface == "" && (p.Type == ProfileSingleVPS || p.Type == ProfileK8sK3s) {
+	if p.Interface == "" && p.Type == ProfileSingleVPS {
 		return errors.New("network interface must be specified for production-like profiles")
-	}
-
-	if p.Type == ProfileK8sK3s && !cgroupV2Enabled() {
-		return errors.New("k8s_k3s profile requires cgroup v2")
 	}
 
 	if p.IngressSchema == "" {
 		p.IngressSchema = IngressSchemaOpenRTB3
 	}
 	switch p.IngressSchema {
-	case IngressSchemaOpenRTB3, IngressSchemaESPXNative:
+	case IngressSchemaOpenRTB3, IngressSchemaAdEventProcessorNative, legacyIngressNativeSchema(), "native_v1":
 	default:
-		return fmt.Errorf("invalid ingress_schema: %s (want openrtb_3 or espx_native)", p.IngressSchema)
+		return fmt.Errorf("invalid ingress_schema: %s (want openrtb_3 or ad_event_processor_native)", p.IngressSchema)
+	}
+	if p.IngressSchema == legacyIngressNativeSchema() || p.IngressSchema == "native_v1" {
+		p.IngressSchema = IngressSchemaAdEventProcessorNative
 	}
 
 	return nil
 }
 
 func btfAvailable() bool {
-	if _, err := os.Stat(btfSysPath()); err == nil {
-		return true
-	}
-	return false
-}
-
-func cgroupV2Enabled() bool {
-	if _, err := os.Stat(cgroupControllersPath()); err == nil {
-		return true
-	}
-	return false
+	_, err := os.Stat(btfSysPath())
+	return err == nil
 }

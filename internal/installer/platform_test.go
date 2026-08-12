@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"espx/pkg/platformconfig"
+	"github.com/bidshard/ad-event-processor/pkg/platformconfig"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,13 +15,13 @@ import (
 func TestLoadPlatformConfigFromYAML(t *testing.T) {
 	profile := &InstallProfile{
 		Type:             ProfileSingleVPS,
-		IngressSchema:    IngressSchemaESPXNative,
+		IngressSchema:    IngressSchemaAdEventProcessorNative,
 		TelemetryEnabled: true,
 		Interface:        "eth0",
 	}
 	cfg := LoadPlatformConfigFromYAML(profile)
 	assert.Equal(t, platformconfig.ProfileSingleVPS, cfg.Profile)
-	assert.Equal(t, platformconfig.IngressESPXNative, cfg.IngressSchema)
+	assert.Equal(t, platformconfig.IngressAdEventProcessorNative, cfg.IngressSchema)
 	assert.True(t, cfg.TelemetryEnabled)
 }
 
@@ -75,8 +75,8 @@ func TestBootstrapViaAPI(t *testing.T) {
 func TestInstallProfileFromConfig(t *testing.T) {
 	cfg := platformconfig.Default()
 	cfg.Profile = platformconfig.ProfileSingleVPS
-	cfg.IngressSchema = platformconfig.IngressESPXNative
+	cfg.IngressSchema = platformconfig.IngressAdEventProcessorNative
 	profile := installProfileFromConfig(cfg)
 	assert.Equal(t, ProfileSingleVPS, profile.Type)
-	assert.Equal(t, IngressSchemaESPXNative, profile.IngressSchema)
+	assert.Equal(t, IngressSchemaAdEventProcessorNative, profile.IngressSchema)
 }

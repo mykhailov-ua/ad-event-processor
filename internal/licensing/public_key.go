@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"espx/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/config"
 )
 
 const defaultPublicKeyRelPath = "deploy/vendor/license_public.key"
@@ -15,7 +15,7 @@ const defaultPublicKeyRelPath = "deploy/vendor/license_public.key"
 // Production verify key shipped in release binaries (not secret).
 const embeddedProductionPublicKeyHex = "ede21d8e759af2ba68a74149d28f37a859d33497accee01e8f8ac712bd455c70"
 
-// ResolvePublicKey loads the Ed25519 verify key from ESPX_LICENSE_PUBLIC_KEY or file paths.
+// ResolvePublicKey loads the Ed25519 verify key from AD_EVENT_PROCESSOR_LICENSE_PUBLIC_KEY or file paths.
 func ResolvePublicKey() (ed25519.PublicKey, error) {
 	if raw := strings.TrimSpace(config.LicenseEnv("PUBLIC_KEY")); raw != "" {
 		return ParsePublicKey([]byte(raw))
@@ -34,7 +34,7 @@ func ResolvePublicKey() (ed25519.PublicKey, error) {
 	if pub, err := ParsePublicKey([]byte(embeddedProductionPublicKeyHex)); err == nil {
 		return pub, nil
 	}
-	return nil, errors.New("license public key not configured (set ESPX_LICENSE_PUBLIC_KEY or deploy/vendor/license_public.key)")
+	return nil, errors.New("license public key not configured (set AD_EVENT_PROCESSOR_LICENSE_PUBLIC_KEY or deploy/vendor/license_public.key)")
 }
 
 func publicKeySearchPaths() []string {

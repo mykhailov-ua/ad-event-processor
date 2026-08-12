@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"text/template"
 
-	"espx/pkg/branding"
+	"github.com/bidshard/ad-event-processor/pkg/branding"
+	"github.com/bidshard/ad-event-processor/pkg/runtimepaths"
 )
 
 const trackerUnitTemplate = `[Unit]
@@ -14,11 +15,11 @@ After=network-online.target
 Wants=network-online.target
 StartLimitIntervalSec=10
 StartLimitBurst=3
-OnFailure=espx-rollback@tracker.service
+OnFailure=ad-event-processor-rollback@tracker.service
 
 [Service]
 Type=simple
-EnvironmentFile=-/etc/espx/secrets.env
+EnvironmentFile=-{{.SecretsEnv}}
 Environment=TRACKER_INGRESS_SCHEMA={{.IngressSchema}}
 Environment=GOGC={{.GOGC}}
 Environment=GOMEMLIMIT={{.GOMEMLIMIT}}
@@ -41,9 +42,10 @@ func renderSystemdUnit(profile *InstallProfile) ([]byte, error) {
 		"ProductName":   branding.ProductName(),
 		"Interface":     profile.Interface,
 		"Profile":       string(profile.Type),
-		"IngressSchema": string(profile.IngressSchema),
+		"IngressSchema": trackerIngressSchema(profile),
 		"GOGC":          trackerGOGC,
 		"GOMEMLIMIT":    trackerGOMEMLIMIT,
+		"SecretsEnv":    runtimepaths.SecretsEnvPath(),
 	}
 	if err := tmpl.Execute(&buf, data); err != nil {
 		return nil, err

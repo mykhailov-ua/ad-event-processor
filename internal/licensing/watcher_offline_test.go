@@ -1,6 +1,7 @@
 package licensing
 
 import (
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
@@ -22,7 +23,7 @@ func TestLicenseWatcher_offlineGraceBlocksIngest(t *testing.T) {
 	require.NoError(t, err)
 
 	claims := LicenseClaims{
-		Issuer:       "espx-license",
+		Issuer:       "ad-event-processor-license",
 		Subject:      uuid.NewString(),
 		DeploymentID: uuid.NewString(),
 		Plan:         "growth",
@@ -33,12 +34,12 @@ func TestLicenseWatcher_offlineGraceBlocksIngest(t *testing.T) {
 	token := signFaultJWT(t, priv, claims)
 	require.NoError(t, os.WriteFile(tokenPath, []byte(token), 0o640))
 
-	t.Setenv("ESPX_LICENSE_MODE", "online")
-	t.Setenv("ESPX_LICENSE_PATH", tokenPath)
-	t.Setenv("ESPX_LICENSE_SERVER", "http://127.0.0.1:1")
-	t.Setenv("ESPX_LICENSE_KEY", "fault-key")
-	t.Setenv("ESPX_LICENSE_OFFLINE_GRACE_DAYS", "14")
-	t.Setenv("ESPX_LICENSE_RENEW_BEFORE_DAYS", "7")
+	t.Setenv(naming.LegacyVendorEnvKey("LICENSE_MODE"), "online")
+	t.Setenv(naming.LegacyVendorEnvKey("LICENSE_PATH"), tokenPath)
+	t.Setenv(naming.LegacyVendorEnvKey("LICENSE_SERVER"), "http://127.0.0.1:1")
+	t.Setenv(naming.LegacyVendorEnvKey("LICENSE_KEY"), "fault-key")
+	t.Setenv(naming.LegacyVendorEnvKey("LICENSE_OFFLINE_GRACE_DAYS"), "14")
+	t.Setenv(naming.LegacyVendorEnvKey("LICENSE_RENEW_BEFORE_DAYS"), "7")
 
 	w := NewLicenseWatcher(nil, nil, pub)
 	w.policy = HeartbeatPolicy{OfflineGraceDays: 14, RenewBeforeDays: 7}

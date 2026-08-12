@@ -5,7 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"espx/pkg/platformconfig"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/pkg/platformconfig"
 
 	"gopkg.in/yaml.v3"
 )
@@ -45,8 +46,8 @@ func RunBootstrap() error {
 		Config:        cfg,
 		AdminEmail:    email,
 		AdminPassword: password,
-		LicenseKey:    strings.TrimSpace(os.Getenv("ESPX_LICENSE_KEY")),
-		LicenseServer: strings.TrimSpace(os.Getenv("ESPX_LICENSE_SERVER")),
+		LicenseKey:    strings.TrimSpace(config.LicenseEnv("KEY")),
+		LicenseServer: strings.TrimSpace(config.LicenseEnv("SERVER")),
 	}
 
 	view, err := BootstrapViaAPI(managementBaseURL(), token, req)

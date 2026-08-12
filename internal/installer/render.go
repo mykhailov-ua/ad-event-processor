@@ -26,7 +26,7 @@ func renderTemplates(profile *InstallProfile, dryRun bool) error {
 		content []byte
 		mode    os.FileMode
 	}{
-		{systemdUnitPath("espx-tracker.service"), unit, 0644},
+		{systemdUnitPath(TrackerSystemdUnitName), unit, 0644},
 		{secretsPath(), secrets, 0600},
 	}
 	if profile.Type == ProfileComposeDev {
@@ -63,14 +63,8 @@ func renderTemplates(profile *InstallProfile, dryRun bool) error {
 		return err
 	}
 
-	switch profile.Type {
-	case ProfileComposeDev:
+	if profile.Type == ProfileComposeDev {
 		script := filepath.Join(repoRoot(), "scripts", "dev", "stack.sh")
-		if dryRun {
-			fmt.Printf("[Dry-Run] Would invoke %s\n", script)
-		}
-	case ProfileK8sK3s:
-		script := filepath.Join(repoRoot(), "scripts", "k8s", "install_k3s.sh")
 		if dryRun {
 			fmt.Printf("[Dry-Run] Would invoke %s\n", script)
 		}

@@ -9,6 +9,7 @@ type Limits struct {
 	MaxEventsPerMonth   uint64 `json:"max_events_per_month" yaml:"max_events_per_month"`
 	MaxAPIKeys          uint64 `json:"max_api_keys" yaml:"max_api_keys"`
 	MaxExportChunkBytes uint64 `json:"max_export_chunk_bytes" yaml:"max_export_chunk_bytes"`
+	MaxActivations      uint64 `json:"max_activations" yaml:"max_activations"`
 	QuotaResetTimezone  string `json:"quota_reset_timezone" yaml:"quota_reset_timezone"`
 }
 
@@ -38,6 +39,7 @@ type LimitsDTO struct {
 	MaxEventsPerMonth   uint64 `json:"max_events_per_month"`
 	MaxAPIKeys          uint64 `json:"max_api_keys"`
 	MaxExportChunkBytes uint64 `json:"max_export_chunk_bytes"`
+	MaxActivations      uint64 `json:"max_activations"`
 	QuotaResetTimezone  string `json:"quota_reset_timezone"`
 }
 

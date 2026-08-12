@@ -98,7 +98,7 @@ func (sku SKUDefinition) BuildClaims(in IssueLicenseInput) LicenseClaims {
 		validFrom = time.Now().UTC()
 	}
 	claims := LicenseClaims{
-		Issuer:       "espx-license",
+		Issuer:       "ad-event-processor-license",
 		Subject:      in.LicenseID,
 		DeploymentID: in.DeploymentID,
 		CustomerName: in.CustomerName,
@@ -109,7 +109,7 @@ func (sku SKUDefinition) BuildClaims(in IssueLicenseInput) LicenseClaims {
 		ValidUntil:   validFrom.Add(time.Duration(sku.ValidDays) * 24 * time.Hour),
 		GraceDays:    sku.GraceDays,
 		Limits:       sku.Limits,
-		Features:     sku.Features.Normalized(),
+		Features:     SanitizeFeaturesForSKU(sku.Code, sku.Features).Normalized(),
 		SupportTier:  sku.SupportTier,
 	}
 	claims.Bind.Mode = sku.Bind.Mode

@@ -7,7 +7,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"espx/internal/licensing"
+	"github.com/bidshard/ad-event-processor/internal/licensing"
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 )
 
 func RunLicense(cmd string) error {
@@ -24,9 +25,9 @@ func RunLicense(cmd string) error {
 }
 
 func installLicenseFromEnv() error {
-	src := os.Getenv("ESPX_LICENSE_SRC")
+	src := os.Getenv(naming.LegacyVendorEnvKey("LICENSE_SRC"))
 	if src == "" {
-		return fmt.Errorf("set ESPX_LICENSE_SRC to the license JWT file path")
+		return fmt.Errorf("set %s to the license JWT file path", naming.LegacyVendorEnvKey("LICENSE_SRC"))
 	}
 
 	data, err := os.ReadFile(src)
@@ -46,13 +47,16 @@ func installLicenseFromEnv() error {
 }
 
 func activateLicense() error {
-	serverURL := os.Getenv("ESPX_LICENSE_SERVER")
-	licenseKey := os.Getenv("ESPX_LICENSE_KEY")
-	deploymentID := os.Getenv("ESPX_DEPLOYMENT_ID")
-	fingerprint := os.Getenv("ESPX_DEPLOYMENT_FINGERPRINT")
+	serverURL := os.Getenv(naming.LegacyVendorEnvKey("LICENSE_SERVER"))
+	licenseKey := os.Getenv(naming.LegacyVendorEnvKey("LICENSE_KEY"))
+	deploymentID := os.Getenv(naming.LegacyVendorEnvKey("DEPLOYMENT_ID"))
+	fingerprint := os.Getenv(naming.LegacyVendorEnvKey("DEPLOYMENT_FINGERPRINT"))
 
 	if serverURL == "" || licenseKey == "" || deploymentID == "" {
-		return fmt.Errorf("set ESPX_LICENSE_SERVER, ESPX_LICENSE_KEY, and ESPX_DEPLOYMENT_ID")
+		return fmt.Errorf("set %s, %s, and %s",
+			naming.LegacyVendorEnvKey("LICENSE_SERVER"),
+			naming.LegacyVendorEnvKey("LICENSE_KEY"),
+			naming.LegacyVendorEnvKey("DEPLOYMENT_ID"))
 	}
 
 	client := licensing.NewLicenseClient(serverURL, licenseKey, 5*time.Second)

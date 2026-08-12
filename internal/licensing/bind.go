@@ -13,6 +13,10 @@ func BindModeHard(mode string) bool {
 	}
 }
 
+func BindModeMulti(mode string) bool {
+	return strings.EqualFold(strings.TrimSpace(mode), "multi")
+}
+
 func VerifyDeploymentBind(claims *LicenseClaims, hostFingerprint string) error {
 	if claims == nil {
 		return ErrInvalidTokenFormat

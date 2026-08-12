@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"espx/pkg/branding"
-	"espx/pkg/platformconfig"
+	"github.com/bidshard/ad-event-processor/pkg/branding"
+	"github.com/bidshard/ad-event-processor/pkg/platformconfig"
 
 	"gopkg.in/yaml.v3"
 )
@@ -14,7 +14,7 @@ import (
 func RunConfigure(interactive bool) error {
 	cfg := platformconfig.Default()
 	cfg.Profile = platformconfig.ProfileSingleVPS
-	cfg.IngressSchema = platformconfig.IngressESPXNative
+	cfg.IngressSchema = platformconfig.IngressAdEventProcessorNative
 
 	if interactive {
 		fmt.Println(branding.ProductName() + " setup (single_vps)")

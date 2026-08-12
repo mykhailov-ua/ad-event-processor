@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/ledger/db"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/ledger/db"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -220,7 +220,7 @@ func (w *LicenseWatcher) verifyAndReload(ctx context.Context) error {
 		return fmt.Errorf("license signature verification failed: %w", err)
 	}
 
-	if err := VerifyDeploymentBind(claims, HostFingerprint()); err != nil {
+	if err := CheckHostActivation(ctx, w.pool, claims, HostFingerprint()); err != nil {
 		w.mu.Lock()
 		w.lastRefreshError = err
 		w.currentState = StateExpired
@@ -228,6 +228,8 @@ func (w *LicenseWatcher) verifyAndReload(ctx context.Context) error {
 		SetLicenseMetrics(StateExpired, 0)
 		return fmt.Errorf("license bind verification failed: %w", err)
 	}
+
+	claims.Features = SanitizeFeaturesForSKU(claims.SKU, claims.Features)
 
 	w.mu.Lock()
 	offlineSince := w.offlineSince
@@ -368,7 +370,7 @@ func (w *LicenseWatcher) updateDatabaseAndRedis(ctx context.Context, token strin
 	entitlements := Entitlements{
 		VolumeBand: ParseVolumeBand(string(claims.VolumeBand)),
 		Limits:     claims.Limits,
-		Features:   claims.Features.Normalized(),
+		Features:   SanitizeFeaturesForSKU(claims.SKU, claims.Features).Normalized(),
 	}
 	entitlementsJSON, err := json.Marshal(entitlements)
 	if err != nil {
@@ -396,7 +398,7 @@ func (w *LicenseWatcher) updateDatabaseAndRedis(ctx context.Context, token strin
 	}
 
 	redisKey := "entitlement:deployment"
-	features := claims.Features.Normalized()
+	features := SanitizeFeaturesForSKU(claims.SKU, claims.Features).Normalized()
 	fields := map[string]any{
 		"state":                string(state),
 		"plan":                 claims.Plan,

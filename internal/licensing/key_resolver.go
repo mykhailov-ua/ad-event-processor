@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/bidshard/ad-event-processor/internal/config"
 )
 
 func JWTKeyID(tokenStr string) (string, error) {
@@ -89,7 +91,7 @@ func ResolvePrivateKeyFileForKID(kid, explicitPath string) string {
 	if p := strings.TrimSpace(explicitPath); p != "" {
 		return p
 	}
-	if env := strings.TrimSpace(os.Getenv("ESPX_LICENSE_PRIVATE_KEY_FILE")); env != "" {
+	if env := strings.TrimSpace(config.LicenseEnv("PRIVATE_KEY_FILE")); env != "" {
 		return env
 	}
 	for _, path := range cohortPrivateKeyPaths(kid) {

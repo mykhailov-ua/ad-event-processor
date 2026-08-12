@@ -1,17 +1,19 @@
 package installer
 
 import (
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 	"os"
 	"path/filepath"
-)
 
-const (
-	defaultSecretsPath = "/etc/espx/secrets.env"
-	defaultLicensePath = "/etc/espx/license.jwt"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/pkg/runtimepaths"
 )
 
 func repoRoot() string {
-	if root := os.Getenv("ESPX_REPO_ROOT"); root != "" {
+	if root := os.Getenv("AD_EVENT_PROCESSOR_REPO_ROOT"); root != "" {
+		return root
+	}
+	if root := os.Getenv(naming.LegacyVendorEnvKey("REPO_ROOT")); root != "" {
 		return root
 	}
 	if root := os.Getenv("ROOT"); root != "" {
@@ -35,24 +37,21 @@ func repoRoot() string {
 }
 
 func installRoot() string {
-	if root := os.Getenv("ESPX_INSTALL_ROOT"); root != "" {
-		return root
-	}
-	return ""
+	return config.InstallRootFromEnv()
 }
 
 func secretsPath() string {
 	if root := installRoot(); root != "" {
-		return filepath.Join(root, "etc/espx/secrets.env")
+		return filepath.Join(root, "etc/ad-event-processor/secrets.env")
 	}
-	return defaultSecretsPath
+	return runtimepaths.SecretsEnvPath()
 }
 
 func licensePath() string {
 	if root := installRoot(); root != "" {
-		return filepath.Join(root, "etc/espx/license.jwt")
+		return filepath.Join(root, "etc/ad-event-processor/license.jwt")
 	}
-	return defaultLicensePath
+	return runtimepaths.LicensePath()
 }
 
 func systemdUnitPath(name string) string {

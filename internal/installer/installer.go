@@ -73,7 +73,7 @@ func (c *CLI) Run() error {
 
 	case "rollback":
 		if len(c.Args) < 3 {
-			return fmt.Errorf("usage: espx-install rollback <tracker|processor>")
+			return fmt.Errorf("usage: ad-event-processor-install rollback <tracker|processor>")
 		}
 		return RunRollbackCLI(c.Args[2])
 
@@ -88,7 +88,7 @@ func (c *CLI) Run() error {
 
 	case "license":
 		if len(c.Args) < 3 {
-			fmt.Println("Usage: espx-install license <install|activate|status>")
+			fmt.Println("Usage: ad-event-processor-install license <install|activate|status>")
 			return nil
 		}
 		return RunLicense(c.Args[2])
@@ -100,7 +100,7 @@ func (c *CLI) Run() error {
 }
 
 func (c *CLI) PrintUsage() {
-	fmt.Println("Usage: espx-install <command> [options]")
+	fmt.Println("Usage: ad-event-processor-install <command> [options]")
 	fmt.Println("Commands:")
 	fmt.Println("  preflight [--strict] [--json]")
 	fmt.Println("  provision [--yes]")

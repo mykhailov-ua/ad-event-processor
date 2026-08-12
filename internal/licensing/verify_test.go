@@ -41,7 +41,7 @@ func TestVerifyJWT(t *testing.T) {
 	assert.NoError(t, err)
 
 	claims := LicenseClaims{
-		Issuer:       "espx-license",
+		Issuer:       "ad-event-processor-license",
 		Subject:      "lic-123",
 		KeyID:        "2026-01",
 		DeploymentID: "dep-123",

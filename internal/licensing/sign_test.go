@@ -15,7 +15,7 @@ func TestSignJWT_roundTrip(t *testing.T) {
 	require.NoError(t, err)
 
 	claims := LicenseClaims{
-		Issuer:       "espx-license",
+		Issuer:       "ad-event-processor-license",
 		Subject:      "lic-1",
 		CustomerName: "Acme",
 		Plan:         DefaultSKUCode,
@@ -46,7 +46,7 @@ func TestSignJWT_ed25519DeterministicVector(t *testing.T) {
 	validFrom := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	validUntil := validFrom.Add(72 * time.Hour)
 	claims := LicenseClaims{
-		Issuer:       "espx-license",
+		Issuer:       "ad-event-processor-license",
 		Subject:      "vector-subject",
 		DeploymentID: "dep-vector",
 		CustomerName: "Vector Co",

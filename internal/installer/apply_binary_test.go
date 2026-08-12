@@ -1,6 +1,7 @@
 package installer
 
 import (
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -42,10 +43,10 @@ func TestInstallYAMLRoundTrip(t *testing.T) {
 func TestRenderSecretsIngressSchema(t *testing.T) {
 	profile := &InstallProfile{
 		Type:          ProfileComposeDev,
-		IngressSchema: IngressSchemaESPXNative,
+		IngressSchema: legacyIngressNativeSchema(),
 	}
 	content := string(renderSecrets(profile))
-	if want := "TRACKER_INGRESS_SCHEMA=espx_native"; !containsLine(content, want) {
+	if want := "TRACKER_INGRESS_SCHEMA=ad_event_processor_native"; !containsLine(content, want) {
 		t.Fatalf("secrets missing %q:\n%s", want, content)
 	}
 	if want := "GOGC=300"; !containsLine(content, want) {
@@ -55,7 +56,7 @@ func TestRenderSecretsIngressSchema(t *testing.T) {
 
 func TestBinaryDeployBadBinaryRollsBack(t *testing.T) {
 	root := t.TempDir()
-	t.Setenv("ESPX_INSTALL_ROOT", root)
+	t.Setenv(naming.LegacyVendorEnvKey("INSTALL_ROOT"), root)
 
 	dir := t.TempDir()
 	good := filepath.Join(dir, "good")
@@ -92,7 +93,7 @@ func TestBinaryDeployBadBinaryRollsBack(t *testing.T) {
 
 func TestRollbackServiceRestoresMarker(t *testing.T) {
 	root := t.TempDir()
-	t.Setenv("ESPX_INSTALL_ROOT", root)
+	t.Setenv(naming.LegacyVendorEnvKey("INSTALL_ROOT"), root)
 
 	dir := t.TempDir()
 	good := filepath.Join(dir, "good")

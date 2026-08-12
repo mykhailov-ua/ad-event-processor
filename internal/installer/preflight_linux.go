@@ -13,9 +13,8 @@ import (
 )
 
 var (
-	btfPathOverride               = ""
-	cgroupControllersPathOverride = ""
-	ethToolOutputOverride         = ""
+	btfPathOverride       = ""
+	ethToolOutputOverride = ""
 )
 
 func btfSysPath() string {
@@ -23,13 +22,6 @@ func btfSysPath() string {
 		return btfPathOverride
 	}
 	return "/sys/kernel/btf/vmlinux"
-}
-
-func cgroupControllersPath() string {
-	if cgroupControllersPathOverride != "" {
-		return cgroupControllersPathOverride
-	}
-	return "/sys/fs/cgroup/cgroup.controllers"
 }
 
 func getPreflightChecks() []checkFunc {

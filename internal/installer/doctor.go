@@ -34,7 +34,7 @@ var doctorRemediation = map[string]string{
 	"tracker":        "docker compose logs tracker-0",
 	"control":        "docker compose logs control",
 	"processor":      "docker compose logs processor",
-	"redis_password": "set REDIS_PASSWORD in .env (not the example placeholder), then bash scripts/install/bidshard-install.sh apply",
+	"redis_password": "set REDIS_PASSWORD in .env (not the example placeholder), then bash scripts/install/ad-event-processor-install.sh apply",
 	"pii_salt":       "set PII_SALT_HEX in .env to a unique 64-char hex value",
 }
 

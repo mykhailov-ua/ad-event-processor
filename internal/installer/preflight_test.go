@@ -1,6 +1,7 @@
 package installer
 
 import (
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 	"bytes"
 	"encoding/json"
 	"io"
@@ -11,15 +12,11 @@ import (
 )
 
 func TestProfileValidation(t *testing.T) {
-	cgroupFile := writeTempFile(t, "cgroup.controllers", "cpu memory\n")
 	btfFile := writeTempFile(t, "vmlinux", "btf")
 
-	oldCgroup := cgroupControllersPathOverride
 	oldBTF := btfPathOverride
-	cgroupControllersPathOverride = cgroupFile
 	btfPathOverride = btfFile
 	t.Cleanup(func() {
-		cgroupControllersPathOverride = oldCgroup
 		btfPathOverride = oldBTF
 	})
 
@@ -67,22 +64,6 @@ func TestProfileValidation(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "k8s without cgroup v2",
-			profile: InstallProfile{
-				Type:      ProfileK8sK3s,
-				Interface: "eth0",
-			},
-			wantErr: true,
-		},
-		{
-			name: "k8s with cgroup v2",
-			profile: InstallProfile{
-				Type:      ProfileK8sK3s,
-				Interface: "eth0",
-			},
-			wantErr: false,
-		},
-		{
 			name: "edge_xdp without btf",
 			profile: InstallProfile{
 				Type:      ProfileSingleVPS,
@@ -99,10 +80,10 @@ func TestProfileValidation(t *testing.T) {
 			},
 		},
 		{
-			name: "ingress_schema espx_native",
+			name: "ingress_schema legacy_native",
 			profile: InstallProfile{
 				Type:          ProfileComposeDev,
-				IngressSchema: IngressSchemaESPXNative,
+				IngressSchema: legacyIngressNativeSchema(),
 			},
 		},
 		{
@@ -118,11 +99,6 @@ func TestProfileValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			profile := tt.profile
-			if tt.name == "k8s without cgroup v2" {
-				cgroupControllersPathOverride = filepath.Join(t.TempDir(), "missing")
-			} else {
-				cgroupControllersPathOverride = cgroupFile
-			}
 			if tt.name == "edge_xdp without btf" {
 				btfPathOverride = filepath.Join(t.TempDir(), "missing")
 			} else {
@@ -220,7 +196,7 @@ func TestGoldenRenderSystemd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	want, err := os.ReadFile("testdata/golden/espx-tracker.service")
+	want, err := os.ReadFile("testdata/golden/ad-event-processor-tracker.service")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -232,7 +208,7 @@ func TestGoldenRenderSystemd(t *testing.T) {
 
 func TestIdempotentApply(t *testing.T) {
 	root := t.TempDir()
-	t.Setenv("ESPX_INSTALL_ROOT", root)
+	t.Setenv(naming.LegacyVendorEnvKey("INSTALL_ROOT"), root)
 
 	profile := &InstallProfile{
 		Type:             ProfileComposeDev,

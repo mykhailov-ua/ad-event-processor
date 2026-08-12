@@ -15,5 +15,4 @@ func getPreflightChecks() []checkFunc {
 	}
 }
 
-func btfSysPath() string            { return "/sys/kernel/btf/vmlinux" }
-func cgroupControllersPath() string { return "/sys/fs/cgroup/cgroup.controllers" }
+func btfSysPath() string { return "/sys/kernel/btf/vmlinux" }

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/licensing"
+	"github.com/bidshard/ad-event-processor/internal/licensing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -35,7 +35,7 @@ func TestVerifyLicenseFile_validAndExpired(t *testing.T) {
 	require.NoError(t, err)
 
 	claims := licensing.LicenseClaims{
-		Issuer:       "espx-license",
+		Issuer:       "ad-event-processor-license",
 		Subject:      uuid.NewString(),
 		DeploymentID: uuid.NewString(),
 		ValidFrom:    time.Now().Add(-48 * time.Hour),

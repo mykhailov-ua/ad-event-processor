@@ -25,6 +25,9 @@ func MergeLimits(dst *Limits, src Limits) {
 	if src.MaxExportChunkBytes != 0 {
 		dst.MaxExportChunkBytes = src.MaxExportChunkBytes
 	}
+	if src.MaxActivations != 0 {
+		dst.MaxActivations = src.MaxActivations
+	}
 	if src.QuotaResetTimezone != "" {
 		dst.QuotaResetTimezone = src.QuotaResetTimezone
 	}

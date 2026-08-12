@@ -99,6 +99,9 @@ func randomToken() (string, error) {
 }
 
 func managementPort() string {
+	if v := strings.TrimSpace(os.Getenv("CONTROL_PORT")); v != "" {
+		return v
+	}
 	if v := strings.TrimSpace(os.Getenv("MANAGEMENT_PORT")); v != "" {
 		return v
 	}

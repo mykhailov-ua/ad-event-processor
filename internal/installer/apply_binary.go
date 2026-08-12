@@ -12,7 +12,7 @@ import (
 
 const (
 	healthProbeTimeout = time.Second
-	backupDirName      = ".espx/backup"
+	backupDirName      = "." + legacyStackSlug + "/backup"
 )
 
 type BinaryDeploy struct {

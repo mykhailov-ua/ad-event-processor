@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/licensing"
+	"github.com/bidshard/ad-event-processor/internal/licensing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -31,7 +31,7 @@ func TestResolvePublicKeyForKID_cohortFile(t *testing.T) {
 	require.Equal(t, ed25519.PublicKey(pub), resolved)
 
 	claims := licensing.LicenseClaims{
-		Issuer:       "espx-license",
+		Issuer:       "ad-event-processor-license",
 		Subject:      uuid.NewString(),
 		DeploymentID: uuid.NewString(),
 		ValidFrom:    time.Now().Add(-time.Hour),

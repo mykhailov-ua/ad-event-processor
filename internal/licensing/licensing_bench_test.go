@@ -32,7 +32,7 @@ func BenchmarkVerifyJWT(b *testing.B) {
 		b.Fatal(err)
 	}
 	claims := LicenseClaims{
-		Issuer:       "espx-license",
+		Issuer:       "ad-event-processor-license",
 		Subject:      "lic-bench",
 		KeyID:        "2026-01",
 		DeploymentID: "dep-bench",

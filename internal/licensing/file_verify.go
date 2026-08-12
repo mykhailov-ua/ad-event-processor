@@ -17,10 +17,11 @@ func EntitlementsFromClaims(claims *LicenseClaims) Entitlements {
 	if claims == nil {
 		return Entitlements{}
 	}
+	features := SanitizeFeaturesForSKU(claims.SKU, claims.Features)
 	return Entitlements{
 		VolumeBand: ParseVolumeBand(string(claims.VolumeBand)),
 		Limits:     claims.Limits,
-		Features:   claims.Features.Normalized(),
+		Features:   features.Normalized(),
 	}
 }
 

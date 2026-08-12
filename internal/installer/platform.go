@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"espx/pkg/platformconfig"
+	"github.com/bidshard/ad-event-processor/pkg/platformconfig"
 
 	"gopkg.in/yaml.v3"
 )

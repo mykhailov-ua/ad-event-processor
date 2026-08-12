@@ -20,7 +20,7 @@ func SignJWT(claims LicenseClaims, privKey ed25519.PrivateKey, kid string) (stri
 	}
 	claims.KeyID = kid
 	if claims.Issuer == "" {
-		claims.Issuer = "espx-license"
+		claims.Issuer = "ad-event-processor-license"
 	}
 	header := map[string]string{
 		"alg": "EdDSA",
