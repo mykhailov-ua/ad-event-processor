@@ -1,22 +1,188 @@
 # Vendor SKU catalog (Layer V). Not shipped inside customer binaries.
 # Sign offline: use bidshard-license repo CLI
-# go run ./cmd/bidshard-license --sku license --customer-name "Acme" --deployment-id <uuid>
+# go run ./cmd/bidshard-license --sku <code> --customer-name "Acme" --deployment-id <uuid> [--fingerprint <host_fp>]
 #
 # Schema:
-#   skus[].code       - JWT sku/plan claim (required, unique)
-#   skus[].valid_days - JWT valid_until = issued_at + valid_days (default 30)
-#   skus[].grace_days - JWT grace_days (default 7)
-#   skus[].features   - licensing.FeatureSet JSON
-#   skus[].limits     - licensing.Limits JSON
-#   skus[].bind.mode  - fingerprint binding mode (soft|hard)
+#   skus[].code              - JWT sku/plan claim (required, unique)
+#   skus[].price_usd_monthly - commercial reference (USDT); not enforced in binary
+#   skus[].valid_days        - JWT valid_until = issued_at + valid_days (default 30)
+#   skus[].grace_days        - JWT grace_days (default 7)
+#   skus[].features          - licensing.FeatureSet JSON (tier_policy.go sanitizes at runtime)
+#   skus[].limits            - licensing.Limits JSON
+#   skus[].bind.mode         - hard|fingerprint (1 host, FP in JWT) | multi (max_activations hosts)
 #
-# Image profiles (S3.1) — separate GHCR tags limit leaked surface:
-#   pilot        -> :tag (tracker, processor, control)
-#   pilot-ingest -> :tag-ingest (tracker, processor only)
+# Tier enforcement (code):
+#   solo/starter — HTTP redirect + /track only; OpenRTB + eBPF blocked
+#   pro          — OpenRTB live; 1 host (max_activations: 1); campaign cap
+#   scale        — OpenRTB; up to 3 hosts; higher campaign cap
+#   network+     — full programmatic stack; Enterprise includes eBPF/XDP
 
 skus:
+  - code: solo
+    display_name: Solo on-prem ($69)
+    price_usd_monthly: 69
+    valid_days: 30
+    grace_days: 7
+    features:
+      rtb_live: false
+      openrtb_engine: false
+      ebpf_xdp_edge: false
+      ivt_ml_detector: false
+      ml_fraud_boost: false
+      multi_region: false
+      slot_migration: false
+      margin_guard: true
+    limits:
+      max_activations: 1
+      max_regions: 1
+      max_api_keys: 2
+      max_rps: 2000
+      max_requests_per_day: 100000
+      max_active_campaigns: 10
+      max_tenants: 1
+      max_events_per_month: 3000000
+      max_export_chunk_bytes: 1048576
+    bind:
+      mode: hard
+
+  - code: starter
+    display_name: Starter on-prem ($99)
+    price_usd_monthly: 99
+    valid_days: 30
+    grace_days: 7
+    features:
+      rtb_live: false
+      openrtb_engine: false
+      ebpf_xdp_edge: false
+      ivt_ml_detector: false
+      ml_fraud_boost: false
+      multi_region: false
+      slot_migration: false
+      margin_guard: true
+    limits:
+      max_activations: 1
+      max_regions: 1
+      max_api_keys: 5
+      max_rps: 5000
+      max_requests_per_day: 500000
+      max_active_campaigns: 25
+      max_tenants: 3
+      max_events_per_month: 15000000
+      max_export_chunk_bytes: 5242880
+    bind:
+      mode: hard
+
+  - code: pro
+    display_name: Pro on-prem ($199)
+    price_usd_monthly: 199
+    valid_days: 30
+    grace_days: 7
+    features:
+      rtb_live: true
+      openrtb_engine: true
+      ebpf_xdp_edge: false
+      ivt_ml_detector: false
+      ml_fraud_boost: false
+      multi_region: false
+      slot_migration: false
+      margin_guard: true
+    limits:
+      max_activations: 1
+      max_regions: 1
+      max_api_keys: 10
+      max_rps: 15000
+      max_requests_per_day: 2000000
+      max_active_campaigns: 50
+      max_tenants: 10
+      max_events_per_month: 60000000
+      max_export_chunk_bytes: 10485760
+    bind:
+      mode: multi
+
+  - code: scale
+    display_name: Scale on-prem ($399)
+    price_usd_monthly: 399
+    valid_days: 30
+    grace_days: 7
+    features:
+      rtb_live: true
+      openrtb_engine: true
+      ebpf_xdp_edge: false
+      ivt_ml_detector: true
+      ml_fraud_boost: true
+      multi_region: false
+      slot_migration: false
+      margin_guard: true
+    limits:
+      max_activations: 3
+      max_regions: 1
+      max_api_keys: 25
+      max_rps: 50000
+      max_requests_per_day: 5000000
+      max_active_campaigns: 150
+      max_tenants: 25
+      max_events_per_month: 150000000
+      max_export_chunk_bytes: 52428800
+    bind:
+      mode: multi
+
+  - code: network
+    display_name: Network on-prem ($799)
+    price_usd_monthly: 799
+    valid_days: 30
+    grace_days: 7
+    features:
+      rtb_live: true
+      openrtb_engine: true
+      ebpf_xdp_edge: false
+      ivt_ml_detector: true
+      ml_fraud_boost: true
+      multi_region: true
+      slot_migration: true
+      margin_guard: true
+    limits:
+      max_activations: 10
+      max_regions: 3
+      max_api_keys: 50
+      max_rps: 100000
+      max_requests_per_day: 10000000
+      max_active_campaigns: 500
+      max_tenants: 50
+      max_events_per_month: 500000000
+      max_export_chunk_bytes: 104857600
+    bind:
+      mode: multi
+
+  - code: enterprise
+    display_name: Enterprise on-prem ($1,999)
+    price_usd_monthly: 1999
+    valid_days: 30
+    grace_days: 7
+    features:
+      rtb_live: true
+      openrtb_engine: true
+      ebpf_xdp_edge: true
+      ivt_ml_detector: true
+      ml_fraud_boost: true
+      multi_region: true
+      slot_migration: true
+      margin_guard: true
+    limits:
+      max_activations: 99
+      max_regions: 99
+      max_api_keys: 999
+      max_rps: 999999999
+      max_requests_per_day: 999999999999
+      max_active_campaigns: 999999999
+      max_tenants: 999999
+      max_events_per_month: 999999999999
+      max_export_chunk_bytes: 1073741824
+    bind:
+      mode: multi
+
   - code: pilot
     display_name: Pilot on-prem (monthly JWT)
+    price_usd_monthly: 0
     valid_days: 35
     grace_days: 7
     offline_grace_days: 0
@@ -30,6 +196,7 @@ skus:
       slot_migration: false
       margin_guard: true
     limits:
+      max_activations: 1
       max_regions: 1
       max_api_keys: 20
       max_rps: 50000
@@ -42,6 +209,7 @@ skus:
       mode: hard
 
   - code: license
+    display_name: Internal unlimited (vendor)
     valid_days: 30
     grace_days: 7
     features:
@@ -54,6 +222,7 @@ skus:
       slot_migration: true
       margin_guard: true
     limits:
+      max_activations: 999
       max_regions: 99
       max_api_keys: 999
       max_rps: 999999999
