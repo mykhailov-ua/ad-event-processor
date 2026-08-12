@@ -2,7 +2,7 @@
 
 Appliance SKU (`single_vps`, pilot license) ships **without** multi-region proxy and NIC-level XDP. Code, fault tests, and compose profiles remain in git for Enterprise contracts.
 
-Canonical policy: [CUT_CANDIDATES.md](CUT_CANDIDATES.md) §2, milestone `.cursor/MILESTONE.md` §7.
+Canonical policy: [CUT_CANDIDATES.md](CUT_CANDIDATES.md) §2, [MILESTONES.md](MILESTONES.md) §5 (Enterprise freeze).
 
 ---
 

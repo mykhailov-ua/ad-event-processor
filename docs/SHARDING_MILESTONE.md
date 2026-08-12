@@ -1,5 +1,7 @@
 # Sharding Milestone — Shard 0 SPOF Hardening
 
+**Naming:** **ad-event-processor** stack — [NAMING.md](NAMING.md).
+
 Status: **P0–P5 complete** — tracker/control survive `rdbs[0]==nil`; metrics, alerts, and runbook in place.
 Last regression run: `go test -count=3 -run 'TestShard0Nil_|TestPingConnectedRedisShards' ./internal/controlplane/ ./internal/ingestion/` → **PASS** (behavioral checks on Redis side effects).
 
@@ -64,7 +66,7 @@ Previously returned `redis shard 0 is nil` and blocked the outbox worker. Now `f
 | `syncGlobalSetReplaceToAllShards` | `TestShard0Nil_SyncGlobalSetReplaceHealthyShards` | emergency breaker IPs |
 | All shards nil | `TestShard0Nil_FanoutAllNilShardsFails` | still errors |
 
-**Impact:** Admin mutations and outbox processing continue on shards 1..N during shard-0 outage. **Caveat:** shard 0 does not receive writes until recovery; run `replicateConfigVersionFromPrimary` / full fan-out catch-up after shard 0 is back (no automated job yet).
+**Impact:** Admin mutations and outbox processing continue on shards 1..N during shard-0 outage. **Recovery:** automated catch-up via `Shard0CatchupWorker` (nil→healthy) or `POST /api/v1/ops/shards/0/catchup`; metric `ad_shard0_catchup_last_success_timestamp`.
 
 **Broker fallback:** `publishCampaignUpdate` with `CAMPAIGN_UPDATE_BROKER_FALLBACK=1` still masks Redis fan-out when broker is up (`TestShard0Nil_PublishCampaignUpdateBrokerFallback`).
 
@@ -168,7 +170,7 @@ go test -count=3 -run 'TestShard0Nil_|TestPingConnectedRedisShards' ./internal/c
 
 1. Policy: **best-effort fan-out** — log + metric `ad_control_shard_fanout_skipped_total{shard,reason}`, succeed if ≥1 shard written.
 2. Applied via `forEachConnectedShard` in `redis_shard_fanout.go` to `sync*ToAllShards`, `publish*ToAllShards`, `setNXOnAllShards` (not budget keys).
-3. **Catch-up on recovery:** manual / existing `replicateConfigVersionFromPrimary` pattern; automated full reconcile job still open.
+3. **Catch-up on recovery:** automated — `Shard0CatchupWorker` in `cmd/control` polls every 30s; on shard 0 `nil → healthy` (or config/blacklist lag) runs `replicateGlobalsFromPrimary` (config, blacklist sets, ml:model meta), validates edge blacklist source, publishes `campaigns:update` full-sync. Manual: `POST /api/v1/ops/shards/0/catchup` (`shards:write`). Metric: `ad_shard0_catchup_last_success_timestamp`.
 4. Gate: `TestShard0Nil_OutboxHandleUpdateSettings` + fan-out tests with nil shard 0.
 
 **Proof command:** same as Phase 1 (`go test -count=3 -run 'TestShard0Nil_|TestPingConnectedRedisShards' ...`).
@@ -248,10 +250,24 @@ go test -count=3 -run 'TestShard0Nil_|TestPingConnectedRedisShards' ./internal/c
 
 ---
 
+## Shard 0 recovery (automated catch-up)
+
+When `REDIS_SHARD0_OPTIONAL_STARTUP=1` and shard 0 was down, globals exist only on shards 1..N. After shard 0 returns:
+
+1. **Automatic:** `Shard0CatchupWorker` (control plane) reconnects shard 0 when reachable, copies globals from shard 1 (authoritative during outage), validates `blacklist:*` parity, publishes `campaigns:update` `*` full-sync.
+2. **Manual:** `POST /api/v1/ops/shards/0/catchup` with `shards:write` permission.
+3. **Verify:** `ad_shard0_catchup_last_success_timestamp` updated; `GET /api/v1/ops/shards` shows shard 0 `config_version_synced=true`; edge blacklist sync reads consistent sets from any healthy shard.
+
+```bash
+go test -count=1 -run 'TestShard0Nil_CatchupAfterRecovery|TestShard0CatchupWorker_' ./internal/controlplane/
+```
+
+---
+
 ## Honest bottom line
 
 - **Shard 0 is still a SPOF** only for campaigns whose StaticSlot maps to shard 0 (`503`) and for edge-bpf-sync default write target (`FirstRedisAddr`).
-- **`REDIS_SHARD0_OPTIONAL_STARTUP=1` is viable for `cmd/control` and tracker globals** after P0–P2; shard 0 catch-up after recovery is manual.
+- **`REDIS_SHARD0_OPTIONAL_STARTUP=1` is viable for `cmd/control` and tracker globals** after P0–P2; shard 0 catch-up after recovery is automated (`Shard0CatchupWorker` + ops endpoint).
 - **Tracker ingest on shards 1..N is genuinely isolated** for budget traffic; degradation is mostly control/config/fraud sidecars.
 - **Broker fallback for campaign updates works** when broker is configured — complements P1 Redis fan-out.
 - **Key drift:** during shard-0 outage, globals exist only on shards 1..N; reconcile shard 0 on recovery before re-enabling edge sync from shard 0.

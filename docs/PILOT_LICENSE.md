@@ -14,7 +14,7 @@ git add deploy/vendor/license_public.key
 Issue a monthly license for a customer:
 
 ```bash
-export ESPX_LICENSE_PRIVATE_KEY_FILE=deploy/vendor/license_private.key
+export AD_EVENT_PROCESSOR_LICENSE_PRIVATE_KEY_FILE=deploy/vendor/license_private.key
 
 go run ./cmd/license-issue \
   --sku pilot \
@@ -34,18 +34,18 @@ Record `deployment_id` per customer — reuse the same ID on renewal JWTs.
 In `deploy/installer/install.env`:
 
 ```bash
-ESPX_LICENSE_MODE=file
-ESPX_LICENSE_KEY=<paste full JWT line from vendor>
+AD_EVENT_PROCESSOR_LICENSE_MODE=file
+AD_EVENT_PROCESSOR_LICENSE_KEY=<paste full JWT line from vendor>
 TELEMETRY_ENABLED=false
 ```
 
 Then:
 
 ```bash
-bash scripts/install/bidshard-install.sh --yes
+bash scripts/install/ad-event-processor-install.sh --yes
 ```
 
-Install writes `license.jwt`, sets `ESPX_LICENSE_MODE=file`, clears license server URL, disables product telemetry ping.
+Install writes `license.jwt`, sets `AD_EVENT_PROCESSOR_LICENSE_MODE=file`, clears license server URL, disables product telemetry ping.
 
 ## Customer — monthly renewal (after payment)
 
@@ -54,7 +54,7 @@ Install writes `license.jwt`, sets `ESPX_LICENSE_MODE=file`, clears license serv
 **Option B — CLI on the server:**
 
 ```bash
-bash scripts/install/bidshard-install.sh license-apply '<JWT>'
+bash scripts/install/ad-event-processor-install.sh license-apply '<JWT>'
 ```
 
 **Option C — API:**
@@ -98,7 +98,7 @@ Mismatching fingerprint on another VPS blocks ingest even with a copied `license
 Before issuing a renewal JWT:
 
 1. Customer ticket includes **same** `deployment_id` as prior invoice (Settings → License or support bundle `version.json`).
-2. Compare `host_fingerprint` from support bundle with the fingerprint used at first install (`ESPX_DEPLOYMENT_FINGERPRINT` on server or install log).
+2. Compare `host_fingerprint` from support bundle with the fingerprint used at first install (`AD_EVENT_PROCESSOR_DEPLOYMENT_FINGERPRINT` on server or install log).
 3. Reject renewal when fingerprint or deployment_id changed without a signed migration note.
 4. Issue JWT with matching `--deployment-id` and `--fingerprint`.
 
@@ -128,9 +128,9 @@ Runs integration tests for empty PG row, fake ACTIVE row, and expired JWT bypass
 
 | Check | Setting |
 |-------|---------|
-| No license server | `ESPX_LICENSE_MODE=file`, empty `ESPX_LICENSE_SERVER` |
-| No product telemetry | `ESPX_TELEMETRY_OPT_IN=0` |
-| Verify key in image/env | `deploy/vendor/license_public.key` or `ESPX_LICENSE_PUBLIC_KEY` |
+| No license server | `AD_EVENT_PROCESSOR_LICENSE_MODE=file`, empty `AD_EVENT_PROCESSOR_LICENSE_SERVER` |
+| No product telemetry | `AD_EVENT_PROCESSOR_TELEMETRY_OPT_IN=0` |
+| Verify key in image/env | `deploy/vendor/license_public.key` or `AD_EVENT_PROCESSOR_LICENSE_PUBLIC_KEY` |
 | Status | `GET /api/v1/license/status` or Overview license banner |
 
 ## Support bundle
@@ -144,11 +144,11 @@ Ask customer for `deployment_id` from Settings or `GET /api/v1/meta` before issu
 | `v1.0.0-pilot` (default tag) | tracker, processor, control | Full single-VPS pilot |
 | `v1.0.0-pilot-ingest` | tracker, processor | Ingest-only workers (no admin binary in image) |
 
-Set `ESPX_APP_IMAGE=ghcr.io/<org>/bidshard:<tag>-ingest` for ingest-only deployments.
+Set `AD_EVENT_PROCESSOR_APP_IMAGE=ghcr.io/<org>/ad-event-processor:<tag>-ingest` for ingest-only deployments.
 
 ## EULA
 
-Install requires `--accept-eula` (non-interactive) or interactive acceptance during `bidshard-install.sh up`.
+Install requires `--accept-eula` (non-interactive) or interactive acceptance during `ad-event-processor-install.sh up`.
 
 First admin login shows a click-through if EULA was not recorded at bootstrap. Text: `pkg/legal/EULA.txt`, version `2026-01`.
 

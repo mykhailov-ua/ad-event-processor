@@ -1,6 +1,6 @@
 # Platform Architecture
 
-BidShard separates **hot-path ingestion** (tracker: sub-80 ms p99, zero heap allocs) from **cold-path settlement and control** (PostgreSQL truth, ClickHouse analytics, transactional outbox to Redis). This document matches the code as of the current tree.
+BidShard separates **hot-path ingestion** (tracker: sub-80 ms p99, zero heap allocs) from **cold-path settlement and control** (PostgreSQL truth, ClickHouse analytics, transactional outbox to Redis). Technical stack identity: **ad-event-processor** — [NAMING.md](NAMING.md). This document matches the code as of the current tree.
 
 ---
 
@@ -104,7 +104,7 @@ Shard pick at edge (`edge-shard-balancer.lua`) must match Go `StaticSlotSharder`
 | `edge-xdp` | — | **Enterprise optional** — NIC-level IP drop from blacklist maps |
 | `region-proxy` | — | **Enterprise optional** — regional WAL / quorum (`--profile multi-region`) |
 
-Infrastructure (compose defaults): PostgreSQL `5430`, Redis host ports `6479–6484` (six masters in dev compose; runtime shard count = `len(REDIS_ADDRS)`), ClickHouse `9000`.
+Infrastructure (compose defaults): PostgreSQL `5430`, Redis host ports `6479–6482` (four masters on appliance / `single_vps`; `redis-4`/`redis-5` on host ports `6483–6484` require compose profile `infra`), ClickHouse `9000`. Runtime shard count = `len(REDIS_ADDRS)`; appliance and installer default to **4** shards.
 
 ### 1.3 Ingress wire policy (parser security)
 
@@ -164,7 +164,7 @@ sequenceDiagram
 **Step-by-step (code path)**
 
 1. **Ingress** — `cmd/tracker/main.go` runs `gnet.Run(AdsPacketHandler)`. `OnTraffic` reads the socket ring buffer; optional `PinnedWorkerPool` offloads to worker goroutines (`handler.go`).
-2. **Parse** — `parseTrackIngest`: JSON (ESPX or OpenRTB3 ingress) or protobuf `AdEvent` vtproto; zero-alloc DFA on the hot path (`track_ingest_gnet.go`). Wire policy for `POST /track` matches nginx (see §1.3 and [PARSER_SECURITY.md](PARSER_SECURITY.md)).
+2. **Parse** — `parseTrackIngest`: JSON (`ad_event_processor_native` or OpenRTB3 ingress) or protobuf `AdEvent` vtproto; zero-alloc DFA on the hot path (`track_ingest_gnet.go`). Wire policy for `POST /track` matches nginx (see §1.3 and [PARSER_SECURITY.md](PARSER_SECURITY.md)).
 3. **RTB (optional)** — `applyRtbAuction` (`rtb_track.go`) **before** filters:
    - `RTB_MODE=off` — skip.
    - `shadow` — `RunAuction`, metrics only.
@@ -397,6 +397,7 @@ Shared `RunAuction` (`internal/rtb/auction.go`) for `/track` (optional), `POST /
 | ClickHouse down | Processor spools to disk; PG settlement can continue |
 | PostgreSQL down | Processor stops PG commits; streams buffer backlog |
 | Full-skip + local quanta | Zero synchronous Redis RTT for eligible campaigns |
+| Local quanta + Redis crash | In-RAM ledger debits without a completed stream `XADD` are lost (no PG spend); unused ledger balance is returned via `local-quota-return.lua` on flush/shutdown when Redis is reachable; `AssertBudgetInvariant` (±1 micro-unit) after recovery |
 
 ---
 
@@ -411,7 +412,7 @@ Shared `RunAuction` (`internal/rtb/auction.go`) for `/track` (optional), `POST /
 
 ## 10. Programmatic & Privacy (2026 scope)
 
-- **OpenRTB 2.6** exchange: `POST /openrtb/bid` on tracker; codec `internal/openrtb/`. OpenRTB 3.0 / full macro table not P0 — see `OPENRTB-FULL.md`.
+- **OpenRTB 2.6** exchange: `POST /openrtb/bid` on tracker; codec `internal/openrtb/`. See **[RTB Features](RTB.md)** for a detailed list.
 - **Supply chain**: tolerant `schain` parse; optional Postgres allowlist.
 - **Runbook**: [RTB_PRODUCTION_RUNBOOK.md](RTB_PRODUCTION_RUNBOOK.md).
 

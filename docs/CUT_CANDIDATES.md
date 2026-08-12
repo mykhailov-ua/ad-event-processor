@@ -26,8 +26,8 @@ Related documents: [QUICKSTART.md](QUICKSTART.md), [ARCHITECTURE.md](ARCHITECTUR
 | :--- | :--- | :--- | :--- |
 | Claims of Privacy Sandbox / Topics / PAAPI support | `README.md`, `ARCHITECTURE.md` Section 10 (no Topics/PAAPI implementations exist; consent compliance is not Sandbox) | Inaccurate marketing claims; undermines product credibility | S |
 | Non-existent "CTV live / concurrent streams" support | Discrepancies between `README.md` and RTB/CTV checklists | Declarations without functional code implementations | S |
-| Kubernetes as standard deployment option | `deploy/k8s/**` (~29 files); manifests reference deleted microservices (`auth`, `billing`, `notifier`) | Product ships via Compose; Kubernetes manifests are broken | M |
-| Terraform / k3s infrastructure manifests | `deploy/terraform/**` | Unnecessary orchestrator; out of scope for single-VPS appliance | M |
+| Kubernetes as standard deployment option | ~~`deploy/k8s/**`~~ **CUT (2026-08):** manifests removed; k3s scripts archived under `deploy/enterprise/archive/k8s/`; installer profile `k8s_k3s` removed | Product ships via Compose `single_vps` only | M |
+| Terraform / k3s infrastructure manifests | ~~`deploy/terraform/**`~~ removed; k3s ops scripts in `deploy/enterprise/archive/k8s/` (not in installer/CI) | Unnecessary orchestrator; out of scope for single-VPS appliance | M |
 | Abandoned environment files (orphan env stubs) | `deploy/management/`, `deploy/payment/` | Artifacts of pre-monolith architecture | S |
 | Prometheus targets for deleted microservices | `deploy/monitoring/prometheus.yaml` (targets `auth`, `payment`, `management` despite single `control` binary) | Empty metrics, misleading monitoring visibility | S |
 | `tracker-quic` binary | `cmd/tracker-quic` | TLS termination handled by Caddy/Nginx; redundant binary | S |
@@ -56,7 +56,7 @@ Related documents: [QUICKSTART.md](QUICKSTART.md), [ARCHITECTURE.md](ARCHITECTUR
 | Strict SPO features (schain / `sellers.json`) | Parsing schain and exporting supply in OpenRTB; bullet in README | Freeze development, lower priority in marketing materials |
 | Frontend backlog from FRONTEND Section 16 | `.cursor/FRONTEND.md` | Internal engineering tasks; prioritize customer P0 requests |
 | Pilot build Dockerfiles | `Dockerfile.pilot`, `Dockerfile.pilot-ingest` | Restrict usage to pilot delivery pipeline |
-| Module renaming (`espx` module name) | Imports `espx/...`, environment variables `ESPX_*`, system path `/etc/espx/` | Causes breaking refactoring churn; does not block appliance SKU release |
+| Legacy naming (removed) | was `go.mod` `espx`, `ESPX_*`, `/run/espx` | **Done** — internal **ad-event-processor**; public docs keep **BidShard** — [NAMING.md](NAMING.md) |
 | Redis HA / Sentinel setups (6 Redis instances) | Profile `infra`, Sentinel overlays; documentation discrepancies (4 vs 6 nodes) | Standardize Redis instance counts for appliance; supply HA via Enterprise SOW |
 | Process separation for network-operator / payment NodePort | Profile in DEVELOPMENT; Kubernetes service `service-payment*` | Payment processing executes within `control` binary |
 | Optional CI workflows (terraform-validate, fraudtrain) | `.github/workflows/*` | Trigger via path filters; do not block critical code merges |
@@ -85,7 +85,9 @@ Related documents: [QUICKSTART.md](QUICKSTART.md), [ARCHITECTURE.md](ARCHITECTUR
 | Historical Name | Current System State | Required Remediation Action |
 | :--- | :--- | :--- |
 | Service `management` / `MANAGEMENT_PORT` / Prom job | Binary executable `control` | Rename or remove alongside Kubernetes/monitoring cleanup |
-| Container image names `ad-event-processor` / `ghcr.io/example/espx` | Release image `bidshard` | Standardize image name across build systems |
+| Container / release image | Tags `bidshard`, `ghcr.io/.../bidshard` | Standardize on **`ad-event-processor`** (matches DB + processor role) |
+| Product (public) | `README`, `QUICKSTART`, `PILOT_LICENSE`, admin UI | Keep **BidShard** for non-tech readers — [NAMING.md](NAMING.md) |
+| Go module + paths | was `module espx`, `/etc/espx`, `ESPX_*` | **Done** — **ad-event-processor** |
 | Redis documentation configuration (4 vs 6 nodes) | Discrepancies with Docker Compose | Align Compose, `QUICKSTART.md`, and `INSTALLER.md` |
 
 ---
@@ -98,7 +100,7 @@ Related documents: [QUICKSTART.md](QUICKSTART.md), [ARCHITECTURE.md](ARCHITECTUR
 4. **Script and Documentation Scrub:** Fix `scripts/deploy` calls; resolve `INSTALLER.md` inconsistencies; remove multi-region setups from the base development guide.
 5. **Documentation Hierarchy:** Maintain customer-facing `QUICKSTART.md`, streamlined `ARCHITECTURE.md`, and `PILOT_LICENSE.md`. Reclassify `BENCHMARKS.md`, `EDGE_CASES.md`, `TRADEOFFS.md`, and this file as internal engineering documentation.
 6. **Auxiliary Binaries:** Retain frozen binaries in the repository, but exclude them from commercial pitches and default profiles.
-7. **Postpone Non-Essential Work:** Defer global module renaming (`espx` -> `bidshard`) and deep RTB/XDP productization until backed by paid Enterprise SOW contracts.
+7. **Naming:** **Done** — public **BidShard**, internal **ad-event-processor** — [NAMING.md](NAMING.md), [MILESTONES.md §11](MILESTONES.md#11-de-branding-espx--ad-event-processor--closed-2026-08-12).
 
 ---
 

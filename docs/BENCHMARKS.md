@@ -1,6 +1,8 @@
 # BENCHMARKS
 
-Laptop numbers only. Not production SLA (`espx.mdc`: tracker p95 &lt; 50 ms, p99 &lt; 80 ms; Redis Lua p99 &lt; 10 ms/shard).
+**Naming:** **ad-event-processor** stack — [NAMING.md](NAMING.md).
+
+Laptop numbers only. Not production SLA (`platform-sla.mdc`: tracker p95 &lt; 50 ms, p99 &lt; 80 ms; Redis Lua p99 &lt; 10 ms/shard).
 
 ## Hardware
 
@@ -214,7 +216,7 @@ Redis Lua adds one RTT (prod budget &lt; 10 ms/shard; not in unit benches).
 **Date:** 2026-08-07  
 **SUT:** compose `bidshard-tracker-0`, `POST http://127.0.0.1:8181/track`  
 **Loadgen:** `bin/wrk` 4.2.0, 4 threads, 10 000 keep-alive, 60 s  
-**Probe:** `bin/bpf-collector` + `deploy/dev/bpf/loadtest_probe.o`, `ESPX_BPF_SAMPLE_RATE=10`  
+**Probe:** `bin/bpf-collector -sample-rate 10` + `deploy/dev/bpf/loadtest_probe.o` (see `scripts/perf/purgatory/run_with_bpf.sh`)  
 **Netem (`lo`):** delay 5 ms, loss 1%, dup 1%  
 **Sysctl:** r/wmem max 64 KiB; syn/somaxconn 128  
 **Cache pollution:** `stress-ng --cache` on CPU 1  
@@ -391,7 +393,7 @@ GOMAXPROCS=1 taskset -c 0 bash scripts/perf/redis_uds_benchmark.sh
 | UDS vs TCP dial | UDS faster |
 | `passed` | **true** |
 
-Compose/installer defaults: `espx_run:/run/espx`, `DB_DSN` with `host=/run/espx/postgresql`, `REDIS_ADDRS=/run/espx/redis/*.sock`.
+Compose/installer defaults: `ad_event_processor_run:/run/ad-event-processor`, `DB_DSN` with `host=/run/ad-event-processor/postgresql`, `REDIS_ADDRS=/run/ad-event-processor/redis/*.sock`.
 
 ---
 

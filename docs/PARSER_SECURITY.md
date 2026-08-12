@@ -1,12 +1,12 @@
 # Parser security and ingress hardening
 
-BidShard’s tracker parses every byte of HTTP traffic on the hot path before filters or billing run. Parser bugs and parser differentials are a common source of denial-of-service and request-smuggling incidents in 2026 advisories. This document describes what the tracker enforces, how that lines up with the nginx edge, and how to verify it in CI and drills.
+The ad-event-processor tracker parses every byte of HTTP traffic on the hot path before filters or billing run. Parser bugs and parser differentials are a common source of denial-of-service and request-smuggling incidents in 2026 advisories. This document describes what the tracker enforces, how that lines up with the nginx edge, and how to verify it in CI and drills. Stack naming: [NAMING.md](NAMING.md).
 
 **Scope:** `internal/ingestion` — HTTP/1–2 wire parsers, JSON/OpenRTB/protobuf body parsers, and the nginx ↔ gnet ingress seam.
 
 **Related:** [ARCHITECTURE.md](ARCHITECTURE.md) (request lifecycle), [DEVELOPMENT.md](DEVELOPMENT.md) §7 (fault drills), [BENCHMARKS.md](BENCHMARKS.md) (micro-bench gates), [EDGE_CASES.md](EDGE_CASES.md) §9 (parser vs OS/network failures), [COLD_PATH_JSON.md](COLD_PATH_JSON.md) (admin JSON — out of scope).
 
-Engineering backlog: `.cursor/PARSER_SECURITY_MILESTONE.md` (phases **P0–P3**, gaps **PS-G01–G13**, **PS-H01–H06** — all closed in code).
+Milestone status: **closed** — [MILESTONES.md](MILESTONES.md) §2. Gap catalog: `.cursor/PARSER_SECURITY_MILESTONE.md` (phases **P0–P3**, **PS-G01–G13**, **PS-H01–H06**).
 
 ---
 
@@ -17,7 +17,7 @@ Engineering backlog: `.cursor/PARSER_SECURITY_MILESTONE.md` (phases **P0–P3**,
 3. **Match the edge** — `POST /track` policy on the tracker must agree with nginx `edge-phase2.lua` so attackers cannot pick a weaker hop.
 4. **Protect the control cohort** — under mixed valid + chaos load, handler p99 for legitimate traffic stays below **80 ms** and the worker pool must not reject work.
 
-These gates are **additive** to the tracker SLA in `espx.mdc` (p95 &lt; 50 ms, p99 &lt; 80 ms).
+These gates are **additive** to the tracker SLA in `platform-sla.mdc` (p95 &lt; 50 ms, p99 &lt; 80 ms).
 
 ---
 
@@ -42,6 +42,21 @@ go test ./internal/ingestion/ -run=TestChaos_CrossHop_NginxGnet -count=1 -v
 ```
 
 Chunked transfer encoding remains supported on **`POST /openrtb/bid`** (exchange path), with chunk extensions rejected (see §4).
+
+---
+
+## 2.1 Edge ↔ tracker alignment (`GET /click`)
+
+Click redirects are **query-only** (no request body):
+
+| Rule | Edge (Lua) | Tracker (gnet) |
+| :--- | :---: | :---: |
+| Method | `GET` only (`limit_except` → 405) | `GET` only |
+| `campaign_id` | Strict UUID via `edge-click-query.lua` | Strict UUID in `parseClickQuery` |
+| Chunked / body | N/A (no body) | N/A |
+| Gate | `edge_expose_click` / `EDGE_EXPOSE_CLICK` (404 when off) | Always serves `/click` on tracker ports |
+
+Shard pick uses the same CRC32 slot table as `/track` (`access-check.lua` → `edge-phase2.run_click`).
 
 ---
 

@@ -1,12 +1,14 @@
 # Development Guide
 
-This document describes the local environment setup, code generation, CI merge gates, coding standards, testing procedures, and operational runbooks for the BidShard platform.
+**Naming:** engineering docs use **ad-event-processor** for the stack; public product name **BidShard** — [NAMING.md](NAMING.md).
+
+This document describes the local environment setup, code generation, CI merge gates, coding standards, testing procedures, and operational runbooks for the ad-event-processor stack.
 
 ---
 
 ## 1. System Requirements
 
-To develop and test BidShard locally, ensure your environment meets the following specifications:
+To develop and test the ad-event-processor stack locally, ensure your environment meets the following specifications:
 - **Go**: Version 1.25+
 - **Docker & Docker Compose**: For running local infrastructure.
 - **Build Tools**: `make`, `clang`, `llvm` (required for compiling eBPF/XDP programs).
@@ -60,28 +62,34 @@ bash scripts/dev/preflight.sh     # Verifies service health
 
 ### Admin web UI (`web/`)
 
-Build the embedded admin UI before `make build-bin` or `go build` on `cmd/control` when you need the full SPA in the binary. Stub HTML in `web/dist/` allows Go compile without a prior build; production embed requires:
+Build the embedded admin UI before `make build-bin` or `go build` on `cmd/control` when you need the full SPA in the binary. Stub/local `web/dist/` allows Go compile after a prior build; production embed requires:
 
 ```bash
-node web/scripts/build.mjs
+cd web && npm ci && npm run build
+# or from repo root: npm run build
 make build-bin
 # or: go build -o bin/control ./cmd/control
 ```
 
-Local dev: static server + API proxy (port 5173):
+Typecheck (no emit):
 
 ```bash
-node web/scripts/dev.mjs
-# or: npm run dev   (root package.json proxy)
+cd web && npm run typecheck
+```
+
+Local dev: esbuild + static server + API proxy (port 5173):
+
+```bash
+cd web && npm run dev
+# or: npm run dev
 ```
 
 Mock Playwright specs (optional; installs deps under `web/e2e/node_modules`):
 
 ```bash
-node web/scripts/build.mjs
+cd web && npm run build
 cd web/e2e && npm ci && npx playwright install chromium && npm run test:e2e
 ```
-
 Stack e2e runs Playwright against a live control plane on port 8188 (real API, no mocks):
 
 ```bash
@@ -129,7 +137,24 @@ make build-bin
 
 **Perf checklist**: `bash scripts/ci/admin_lighthouse_checklist.sh` after `node web/scripts/build.mjs`; target INP p95 &lt; 200 ms on staging. Checklist artifact: `artifacts/lighthouse-inp-checklist.txt`.
 
-**Frontend backlog:** agent task list with acceptance criteria — `.cursor/FRONTEND.md` §16 (charts, RUM, commercial dashboards, edge/traffic quality, reports, platform UX, buyer ops gap).
+#### Shipped admin surface (GA)
+
+Embedded SPA routes (see `web/src/lib/routes.ts`, nav in `web/src/helpers/nav_config.ts`):
+
+| Area | Paths |
+| :--- | :--- |
+| Campaigns | `/campaigns`, `/campaigns/:id` (integration, CAPI, filters, margin, creative, Telegram tabs), `/campaigns/portfolio` |
+| Customers & billing | `/customers`, `/billing`, `/billing/invoices/:id` |
+| Reports | `/reports` hub + live CH reports + `/reports/telegram/*` |
+| Dashboards | `/dashboards/adops`, `cfo`, `accountant`, `fraud` |
+| Integrations | `/integrations/cost-sync`, `/margin-guard`, `/integrations/smart-alerts`, `/integrations/supply` |
+| RTB | `/rtb/integration`, `/rtb/deals` |
+| Ops | `/ops`, `/ops/shards`, `/ops/blacklist` |
+| Settings | `/settings`, `/settings/domains` |
+
+Closed milestone detail: [MILESTONES.md §8–10](MILESTONES.md#8-september-2026-ga-appliance-p0--closed-2026-08-12). Traffic macros and CAPI: [TRAFFIC_INTEGRATION.md](TRAFFIC_INTEGRATION.md).
+
+**Open UI backlog:** [`.cursor/MILESTONE.md`](../.cursor/MILESTONE.md) §1 — DoD, SLA, tests, **anti-slop** (§1.0); UX honesty: [web/DESIGN.md §11](../web/DESIGN.md#11-anti-slop-and-honesty-2026-admin-ui).
 
 #### Admin UI release gate (pre-tag `admin-ui-ga`)
 
@@ -149,7 +174,7 @@ Attach Lighthouse INP results to the release PR (see `artifacts/lighthouse-inp-c
 
 ## 4. Coding Standards (Code Style)
 
-BidShard avoids complex architectural patterns (such as Clean or Hexagonal architecture, Factory/Provider/Repository patterns, or parallel model layers).
+The ad-event-processor tree avoids complex architectural patterns (such as Clean or Hexagonal architecture, Factory/Provider/Repository patterns, or parallel model layers).
 
 ### R1. Flat Service Packages
 Each deployable service must be implemented as a single flat package under `internal/<service>/`.
@@ -278,13 +303,14 @@ When Redis shard 0 (pub/sub hub, global keys, edge blacklist source) is unavaila
 
 1. **Liveness**: No panic on nil shard 0 (readiness, shutdown, SyncWorker, consent purge).
 2. **Outbox**: Best-effort fan-out to shards 1..N; watch `ad_control_fanout_partial_total` and `ad_control_shard_fanout_skipped_total`.
-3. **Recovery**: After shard 0 is back, run global key catch-up (replicate config version, re-sync blacklist/globals) — no automated job yet.
+3. **Recovery**: After shard 0 is back, global catch-up runs automatically (`Shard0CatchupWorker`) or via `POST /api/v1/ops/shards/0/catchup`. Watch `ad_shard0_catchup_last_success_timestamp`.
 
 #### Prometheus alerts
 
 | Metric | Meaning |
 | --- | --- |
 | `ad_shard0_client_nil == 1` | Process running without shard 0 client |
+| `ad_shard0_catchup_last_success_timestamp` | Last successful shard-0 global reconcile (0 = never) |
 | `ad_control_fanout_partial_total` | Admin/outbox wrote globals to subset of shards |
 | `ad_shard0_pubsub_unreachable` / `ad_registry_stale_mode` | Tracker stale-serve |
 
@@ -389,7 +415,7 @@ The tracker closes incomplete HTTP/1 bodies via `HTTP1_INCOMPLETE_MAX` and `HTTP
 | `client_header_timeout` | **5s** | Same class for header drip |
 | `client_body_buffer_size` | **16k** | Buffer small bodies; reject oversized via `client_max_body_size` (already **20k** on `/track` in `deploy/nginx/nginx.conf`) |
 | `limit_rate` | Optional per-`location` floor (e.g. **1k** B/s) on untrusted ingress | Rate-limit drip before upstream; use only where latency SLA allows |
-| Chunked on `/track` | **Rejected** | `deploy/nginx/lua/edge-phase2.lua` → `reject_chunked()`; metric `espx_edge_chunked_reject_total` |
+| Chunked on `/track` | **Rejected** | `deploy/nginx/lua/edge-phase2.lua` → `reject_chunked()`; metric `ad_event_processor_edge_chunked_reject_total` |
 
 Direct tracker access (`:8181`, h2c eval) must rely on Go-side `HTTP1_*` env vars — do not assume nginx is in front. After sysctl or nginx timeout changes, re-run `bash scripts/fault/parser_slow_body_drill.sh`.
 
@@ -412,9 +438,9 @@ Tiered event bus: tracker → mmap WAL (`pkg/broker`) → processor → ClickHou
 4. Set `CH_INGEST_SOURCE=broker` on tracker + processor; restart. Redis `_ch` consumer stops; broker `_ch_broker` is sole CH ingest.
 5. Optional rollback: unset `CH_INGEST_SOURCE`, re-enable Redis consumers; broker offsets remain on disk under `LOGGER_DIR/offsets`.
 
-**Redis UDS (single-VPS):** set `REDIS_ADDRS` to unix socket paths (e.g. `/run/espx/redis/redis-0.sock`) — `internal/database/redis_shards.go` dials `unix` when the address starts with `/` or contains `.sock`. Compose mounts shared volume `espx_run:/run/espx` on db, redis shards, tracker, and processor.
+**Redis UDS (single-VPS):** set `REDIS_ADDRS` to unix socket paths (e.g. `/run/ad-event-processor/redis/redis-0.sock`) — `internal/database/redis_shards.go` dials `unix` when the address starts with `/` or contains `.sock`. Compose mounts shared volume `ad_event_processor_run:/run/ad-event-processor` on db, redis shards, tracker, and processor.
 
-**Postgres UDS (single-VPS):** default `DB_DSN` in `.env.example` uses `host=/run/espx/postgresql&port=5430` (same `espx_run` volume; Postgres `unix_socket_directories=/run/espx/postgresql`). TCP port publish remains for ops/debug.
+**Postgres UDS (single-VPS):** default `DB_DSN` in `.env.example` uses `host=/run/ad-event-processor/postgresql&port=5430` (same `ad_event_processor_run` volume; Postgres `unix_socket_directories=/run/ad-event-processor/postgresql`). TCP port publish remains for ops/debug.
 
 **UDS latency proof:** `bash scripts/perf/redis_uds_benchmark.sh` → `var/uds-bench/<ts>/report.json` (dial p50 &lt; 2.5 µs gate).
 
@@ -477,7 +503,7 @@ Hot-path parse and macro expansion target **0 allocs/op** with pre-sized connect
 
 ## 11. Telegram Mini App Integration
 
-BidShard implements an edge-proxy and anti-fraud layer specialized for Telegram Mini App environments (`t.me/bot?startapp=`).
+The ad-event-processor stack implements an edge-proxy and anti-fraud layer specialized for Telegram Mini App environments (`t.me/bot?startapp=`).
 
 ### Core Endpoints
 
@@ -523,3 +549,17 @@ go test ./internal/ingestion/ -run='^$' -bench='BenchmarkLocalQuanta_FullSkip|Be
 ```
 
 Ensure `allocs/op` equals **0** and processing stays under 15 nanoseconds per local debit call.
+
+---
+
+## 13. Milestones and backlog routing
+
+| Document | Role |
+| :--- | :--- |
+| [NAMING.md](NAMING.md) | **BidShard** (public) vs **ad-event-processor** (internal); **espx** removed |
+| [MILESTONES.md](MILESTONES.md) | **Closed** milestones (broker, parser, shard 0, GA P0/P1, admin SPA, naming, operability) |
+| `.cursor/MILESTONE.md` | **Open** backlog — UI §1 (DoD/SLA/tests), ops gates §0, enterprise §2, CUT §3 |
+| [SHARDING_MILESTONE.md](SHARDING_MILESTONE.md) | Shard 0 failure matrix + automated catch-up runbook |
+| [PEL_DRAIN.md](PEL_DRAIN.md) | Broker cutover operator checklist |
+| [CUT_CANDIDATES.md](CUT_CANDIDATES.md) | CUT / FREEZE / KEEP inventory for appliance SKU |
+| [TRAFFIC_INTEGRATION.md](TRAFFIC_INTEGRATION.md) | Buyer integration guide (click, track, CAPI, Cost Sync, zero-redirect) |

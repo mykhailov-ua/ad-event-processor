@@ -1,8 +1,10 @@
 # Trade-offs and Design Decisions
 
+**Naming:** **ad-event-processor** stack — [NAMING.md](NAMING.md).
+
 Welcome to our architectural trade-offs guide. When building a high-throughput real-time bidding (RTB) engine, many engineering decisions come down to careful balances between raw speed, operational simplicity, and data correctness. This document explains the choices we made, the reasons behind them, and the trade-offs we happily accept.
 
-For exact SLA targets and benchmarks, check out [`espx.mdc`](espx.mdc), [ARCHITECTURE.md](ARCHITECTURE.md), and [BENCHMARKS.md](BENCHMARKS.md).
+For exact SLA targets and benchmarks, check out [`platform-sla.mdc`](platform-sla.mdc), [ARCHITECTURE.md](ARCHITECTURE.md), and [BENCHMARKS.md](BENCHMARKS.md).
 
 ---
 

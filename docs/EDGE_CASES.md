@@ -1,6 +1,8 @@
 # EDGE_CASES
 
-Developer notes: failure modes that look like product bugs but sit at **OS / cgroup / TCP / Redis**, plus how we proved them. Numbers are laptop compose runs (2026-08-07), not production SLA. SLA budgets: `espx.mdc` (tracker p95 &lt; 50 ms, p99 &lt; 80 ms; Redis Lua p99 &lt; 10 ms/shard).
+**Naming:** **ad-event-processor** stack — [NAMING.md](NAMING.md).
+
+Developer notes: failure modes that look like product bugs but sit at **OS / cgroup / TCP / Redis**, plus how we proved them. Numbers are laptop compose runs (2026-08-07), not production SLA. SLA budgets: `platform-sla.mdc` (tracker p95 &lt; 50 ms, p99 &lt; 80 ms; Redis Lua p99 &lt; 10 ms/shard).
 
 Related: [BENCHMARKS.md](BENCHMARKS.md) (micro + purgatory tables), [ARCHITECTURE.md](ARCHITECTURE.md), [PARSER_SECURITY.md](PARSER_SECURITY.md), fault catalog `.cursor/rules/fault-resilience.mdc`.
 
@@ -117,6 +119,8 @@ Primary artifacts: `var/purgatory/edge-20260807T143839Z/`
 
 Backlog is fixed **at `listen`/`bind`**. Changing `somaxconn` without recreating the tracker leaves a large backlog (we saw 16384 until recreate).
 
+**Doctor:** `ad-event-processor doctor --only listen` or `GET /api/v1/ops/doctor` → `listen` probe reads `TcpExtListenOverflows` / `ListenDrops` from `/proc/net/netstat` and warns on delta or low `somaxconn`.
+
 SCRIPT FLUSH returned `OK`; NOSCRIPT rate stayed small — reload path held; not a thundering-herd outage in this profile. `DEBUG SLEEP` disabled on Redis image (expected).
 
 ---
@@ -132,7 +136,7 @@ SCRIPT FLUSH returned `OK`; NOSCRIPT rate stayed small — reload path held; not
 | E | nginx↔gnet keepalive race | Not run | idle timeout mismatch |
 | F | Half-open Redis + tiny buffers | Partial (netem+buffers) | no dedicated TCP-deadlock proof |
 | G | Fractional CPU + GOMAX≥2 | Confirmed in purgatory | pin GOMAX=1 |
-| H | Local quanta × Redis kill | Not run | budget invariant risk — product-relevant |
+| H | Local quanta × Redis kill | **Confirmed** | `TestFault_LocalQuantaRedisSIGKILL_BudgetInvariant`; budget invariant after stop/start |
 | I | Short-conn TIME_WAIT / FD | Related to A | close burst |
 | J | Wall-clock step vs TTC | Unit only | compose NTP step TBD |
 
@@ -198,6 +202,7 @@ Alert idea: page on rising `ListenOverflows` even when tracker “healthy” and
 
 - Production: keep `net.core.somaxconn` and tracker listen backlog in the **thousands**; document in deploy runbook.
 - Recreate/restart listeners after sysctl backlog changes.
+- Run `ad-event-processor doctor --only listen` (or Ops → Doctor) after sysctl or edge churn; see §3 for silent accept drops.
 - Match `GOMAXPROCS` to cgroup CPUs on fractional quotas (explicit pin in load-test / purgatory).
 - Prefer keepalive / pooled clients at the edge; avoid short-conn storms into gnet under tight backlog.
 - Treat 1% lo loss + tiny buffers as **torture**, not a baseline for ranking code changes.
@@ -213,7 +218,7 @@ Parser hardening (**P0–P3**: **PS-G01–G13**, **PS-H01–H06**) and infrastru
 | Symptom | Likely layer | First checks |
 | :--- | :--- | :--- |
 | Handler p99 ≈ Redis Lua p99 under netem loss | Network / Redis RTT | `ad_redis_lua_duration_seconds`, path loss, not DFA |
-| `ListenOverflows` rising, CPU low | OS accept backlog | `somaxconn`, edge connection churn — see §3 |
+| `ListenOverflows` rising, CPU low | OS accept backlog | `somaxconn`, edge connection churn — see §3; `listen` doctor probe |
 | Single connection drips 1 B/s, slot never frees | Parser / connection policy | `ad_http1_incomplete_close_total`, `HTTP1_INCOMPLETE_MAX`, `HTTP1_BODY_IDLE_MS` — [PARSER_SECURITY.md](PARSER_SECURITY.md) (PS-G01 **closed**) |
 | Pool RSS spike after one 1 MiB reject | sync.Pool cap guard | `requestBufferPool` drops `cap > 64 KiB` — PS-H01 |
 | Millions of `{`/`}` pairs in one JSON body | Key-pair budget | `MaxJSONKeyPairs`, `ad_json_key_pair_reject_total` — PS-H02 |

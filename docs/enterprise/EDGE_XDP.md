@@ -51,10 +51,10 @@ Hot path (`tracker`, `processor`) does **not** import `internal/edge/bpf` — is
 
 ```bash
 # After license + BPF build on host
-sudo ./bin/edge-xdp -iface eth0 -map /var/lib/espx/xdp/blacklist.bin
+sudo ./bin/edge-xdp -iface eth0 -map /var/lib/ad-event-processor/xdp/blacklist.bin
 ```
 
-Use installer-generated systemd units when deployed via `bidshard-install.sh` with `edge_xdp=true`.
+Use installer-generated systemd units when deployed via `ad-event-processor-install.sh` with `edge_xdp=true`.
 
 ### Verify
 

@@ -11,6 +11,10 @@ Admin, payment, and control-plane HTTP APIs parse JSON with **stdlib** `encoding
 | Helper | File | Behavior |
 | :--- | :--- | :--- |
 | `DefaultMaxBody` | `pkg/coldpath/http.go` | **65536** bytes (64 KiB) |
+| `SelfServePaymentIntentMaxBody` | same | **16384** bytes (16 KiB) |
+| `PaymentWebhookMaxBody` | same | **65536** bytes (64 KiB) |
+| `AlertmanagerWebhookMaxBody` | same | **1048576** bytes (1 MiB) |
+| `RegionIngestMaxBody` | same | **4194304** bytes (4 MiB) |
 | `ReadLimitedBody` | same | `http.MaxBytesReader` — oversize → 413 / read error |
 | `DecodeBody[T]` | same | `json.Unmarshal` into typed struct |
 | `DecodeRequestOrBadRequest` | same | read + decode; 400 on failure |
@@ -24,11 +28,11 @@ Handlers should use these helpers rather than raw `io.ReadAll(r.Body)`.
 | Limit | Routes / module | Notes |
 | ---: | :--- | :--- |
 | **64 KiB** | Most `/api/v1/*` admin handlers | `coldpath.DefaultMaxBody` |
-| **16 KiB** | `POST /api/v1/selfserve/payment-intents` | `selfserve_handlers.go` |
-| **64 KiB** | `POST /api/v1/consent` | `ops_handlers.go` (`LimitReader`) |
-| **64 KiB** | Stripe / crypto payment webhooks | `internal/payment/http_webhook.go` |
-| **1 MiB** | `POST /ops/alertmanager/webhook` | `alertmanager_webhook.go` |
-| **4 MiB** | `POST /api/v1/region/ingest/batch` | `controlplane/api.go` — region replica ingest |
+| **16 KiB** | `POST /api/v1/selfserve/payment-intents` | `coldpath.SelfServePaymentIntentMaxBody` |
+| **64 KiB** | `POST /api/v1/consent` | `ops_handlers.go` (`ReadLimitedBody`) |
+| **64 KiB** | Stripe / crypto payment webhooks | `coldpath.PaymentWebhookMaxBody` |
+| **1 MiB** | `POST /ops/alertmanager/webhook` | `coldpath.AlertmanagerWebhookMaxBody` |
+| **4 MiB** | `POST /api/v1/region/ingest/batch` | `coldpath.RegionIngestMaxBody` |
 | **4 MiB** | Outbound edge metrics scrape | `edge_metrics_reader.go` (response, not ingress) |
 | **8 MiB** | Outbound ops scrape readers | `ops_readers.go` (response, not ingress) |
 
@@ -72,12 +76,17 @@ Treat outbox/replica JSON as **trusted-after-auth** data, not anonymous internet
 ## 5. Verification
 
 ```bash
+# Dedicated CI gate (separate from parser security)
+bash scripts/ci/cold_path_json_gate.sh
+
 # Login 64 KiB cap
 go test ./internal/controlplane/ -run=TestLoginBodySizeLimit -count=1
 
-# Cold-path handler smoke (representative)
-go test ./internal/controlplane/ -run=TestStub -count=1
-go test ./pkg/coldpath/ -count=1
+# Per-route oversize rejection
+go test ./internal/controlplane/ -run=TestColdPathJSON -count=1
+go test ./internal/controlplane/adminapi/ -run=TestColdPathJSON -count=1
+go test ./internal/payment/ -run=TestColdPathJSON -count=1
+go test ./pkg/coldpath/ -run=TestReadLimitedBody -count=1
 ```
 
 There is **no** `fault_proof gap=PS-Gxx` line for cold-path JSON — parser security CI gates apply only to `internal/ingestion`.
