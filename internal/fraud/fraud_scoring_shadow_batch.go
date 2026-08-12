@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"espx/pkg/piihash"
+	"github.com/bidshard/ad-event-processor/pkg/piihash"
 )
 
 func (r *fraudScoringRule) insertShadowScores(ctx context.Context, featureRows []FeatureRow, scores []float64) error {

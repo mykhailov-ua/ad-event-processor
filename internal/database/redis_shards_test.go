@@ -3,7 +3,7 @@ package database
 import (
 	"testing"
 
-	"espx/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/config"
 )
 
 func TestShardUniversalOptions_direct(t *testing.T) {
@@ -33,11 +33,11 @@ func TestShardUniversalOptions_sentinel(t *testing.T) {
 	cfg := &config.Config{
 		RedisAddrs:         []string{"127.0.0.1:6479", "127.0.0.1:6480"},
 		RedisSentinelAddrs: []string{"127.0.0.1:26379", "127.0.0.1:26380"},
-		RedisMasterNames:   []string{"espx-shard-0", "espx-shard-1"},
+		RedisMasterNames:   []string{"ad-event-processor-shard-0", "ad-event-processor-shard-1"},
 		RedisPassword:      "secret",
 	}
 	opts := shardUniversalOptions(cfg, 0, cfg.RedisMasterNames, RedisShardOptions{})
-	if opts.MasterName != "espx-shard-0" {
+	if opts.MasterName != "ad-event-processor-shard-0" {
 		t.Fatalf("master=%q", opts.MasterName)
 	}
 	if len(opts.Addrs) != 2 {

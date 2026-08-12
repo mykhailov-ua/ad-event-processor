@@ -37,6 +37,11 @@ var (
 		Help: "Total number of events blocked by filters",
 	}, []string{"reason"})
 
+	SafePageRedirectTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_safe_page_redirect_total",
+		Help: "GET /click redirects to campaign safe_page_url (fraud or placement blacklist)",
+	})
+
 	DbWriteDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "ad_db_write_duration_seconds",
 		Help:    "Duration of database batch write operations",
@@ -70,16 +75,31 @@ var (
 
 	CommissionsCollectedTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_management_commissions_total",
+		Help: "Deprecated: use ad_control_commissions_total (dual-published). Total commissions collected from campaign cancellations",
+	})
+
+	ControlCommissionsCollectedTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_control_commissions_total",
 		Help: "Total amount of commissions collected from campaign cancellations",
 	})
 
 	BalanceTopupsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ad_management_topups_total",
+		Help: "Deprecated: use ad_control_topups_total (dual-published). Total amount of customer balance top-ups",
+	}, []string{"currency"})
+
+	ControlBalanceTopupsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_control_topups_total",
 		Help: "Total amount of customer balance top-ups",
 	}, []string{"currency"})
 
 	ActiveCampaigns = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "ad_management_active_campaigns_count",
+		Help: "Deprecated: use ad_control_active_campaigns_count (dual-published). Current number of active campaigns",
+	})
+
+	ControlActiveCampaigns = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_control_active_campaigns_count",
 		Help: "Current number of active campaigns in the system",
 	})
 
@@ -149,7 +169,7 @@ var (
 		Help: "Total number of HTTP/1.1 parsing errors",
 	}, []string{"error_type"})
 	IngressLegacyJSONTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "espx_ingress_legacy_json_total",
+		Name: "ad_event_processor_ingress_legacy_json_total",
 		Help: "Track payloads that fell back to deprecated flat bid_micro / category_mask JSON",
 	})
 	WorkerPoolRejectTotal = promauto.NewCounter(prometheus.CounterOpts{
@@ -326,6 +346,10 @@ var (
 		Name: "ad_shard0_client_nil",
 		Help: "1 when Redis shard 0 client slot is nil after ConnectRedisShards (REDIS_SHARD0_OPTIONAL_STARTUP), else 0",
 	})
+	Shard0CatchupLastSuccessTimestamp = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_shard0_catchup_last_success_timestamp",
+		Help: "Unix timestamp of the last successful shard-0 global catch-up reconcile",
+	})
 	ControlFanoutLagSeconds = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "ad_control_fanout_lag_seconds",
 		Help:    "Outbox-to-Redis control fan-out latency per shard",
@@ -360,10 +384,18 @@ var (
 
 	ManagementOutboxPendingTotal = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "ad_management_outbox_pending_total",
+		Help: "Deprecated: use ad_control_outbox_pending_total (dual-published). Count of outbox_events rows in PENDING status awaiting Redis propagation",
+	})
+	ControlOutboxPendingTotal = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_control_outbox_pending_total",
 		Help: "Count of outbox_events rows in PENDING status awaiting Redis propagation",
 	})
 	ManagementOutboxOldestPendingSeconds = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "ad_management_outbox_oldest_pending_seconds",
+		Help: "Deprecated: use ad_control_outbox_oldest_pending_seconds (dual-published). Age in seconds of the oldest PENDING outbox event (0 when queue empty)",
+	})
+	ControlOutboxOldestPendingSeconds = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_control_outbox_oldest_pending_seconds",
 		Help: "Age in seconds of the oldest PENDING outbox event (0 when queue empty)",
 	})
 	BlacklistReplicationLag = promauto.NewHistogram(prometheus.HistogramOpts{
@@ -374,6 +406,10 @@ var (
 
 	ManagementOpsAlertEnqueueFailuresTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_management_ops_alert_enqueue_failures_total",
+		Help: "Deprecated: use ad_control_ops_alert_enqueue_failures_total (dual-published). Failed notifier enqueue attempts from OpsAlerter and Alertmanager webhook",
+	})
+	ControlOpsAlertEnqueueFailuresTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_control_ops_alert_enqueue_failures_total",
 		Help: "Failed notifier enqueue attempts from OpsAlerter and Alertmanager webhook",
 	})
 

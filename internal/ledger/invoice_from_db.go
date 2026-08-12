@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"espx/internal/domain"
-	"espx/internal/ledger/db"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/ledger/db"
 
 	"github.com/google/uuid"
 )

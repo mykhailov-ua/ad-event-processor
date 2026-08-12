@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/edge/blocklist"
-	"espx/internal/testutil"
+	"github.com/bidshard/ad-event-processor/internal/edge/blocklist"
+	"github.com/bidshard/ad-event-processor/internal/testutil"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/ringbuf"

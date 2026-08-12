@@ -7,9 +7,9 @@ import (
 	"net"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/identity/db"
-	"espx/pkg/clientip"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/identity/db"
+	"github.com/bidshard/ad-event-processor/pkg/clientip"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

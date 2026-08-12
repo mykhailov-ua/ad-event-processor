@@ -39,7 +39,7 @@ func CheckTelegramBPF(outDir string) (TelegramGateResult, error) {
 					Name:   "bpf_summary",
 					Value:  "missing",
 					OK:     true,
-					Detail: "skipped (no BPF session; set ESPX_BPF_PROBE=1)",
+					Detail: "skipped (no BPF session; set ADSTACK_BPF_PROBE=1)",
 				}},
 				Pass: true,
 			}, nil
@@ -92,7 +92,7 @@ func CheckTelegramSLA(promURL string) (TelegramGateResult, error) {
 	}
 	chk.Value = fmt.Sprintf("%.2f", val)
 	chk.OK = val < TelegramTrackerHandlerP99MsLimit
-	chk.Detail = "espx.mdc tracker SLA"
+	chk.Detail = "platform-sla.mdc tracker SLA"
 	pass := chk.OK
 	return TelegramGateResult{Checks: []TelegramGateCheck{chk}, Pass: pass}, nil
 }
@@ -140,7 +140,7 @@ func WriteTelegramGateReport(outDir, promURL string) (string, error) {
 	if result.Pass {
 		b.WriteString("\n**Result: PASS**\n")
 	} else {
-		b.WriteString("\n**Result: FAIL** — see TELEGRAM.md T9 / espx.mdc SLA.\n")
+		b.WriteString("\n**Result: FAIL** — see TELEGRAM.md T9 / platform-sla.mdc SLA.\n")
 	}
 	if err := os.WriteFile(path, []byte(b.String()), 0o644); err != nil {
 		return "", err

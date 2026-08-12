@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	db "espx/internal/domain/db"
-	"espx/pkg/money"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/pkg/money"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"

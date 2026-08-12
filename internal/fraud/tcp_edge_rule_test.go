@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/database"
-	"espx/internal/edge/fingerprint"
-	"espx/pkg/piihash"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/edge/fingerprint"
+	"github.com/bidshard/ad-event-processor/pkg/piihash"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/google/uuid"

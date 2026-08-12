@@ -1,16 +1,16 @@
 package fraud
 
 import (
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"context"
 	"fmt"
 	"testing"
 	"time"
 
-	"espx/internal/controlplane"
-	"espx/internal/database"
-	"espx/internal/ingestion"
+	"github.com/bidshard/ad-event-processor/internal/controlplane"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/ingestion"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"

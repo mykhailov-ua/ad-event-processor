@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"espx/internal/notify"
+	"github.com/bidshard/ad-event-processor/internal/notify"
 )
 
 type stubNotifierAPI struct {

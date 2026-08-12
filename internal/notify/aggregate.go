@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"espx/internal/notify/db"
+	"github.com/bidshard/ad-event-processor/internal/notify/db"
 )
 
 func buildAggregatedBody(items []db.NotifierNotification) string {

@@ -9,7 +9,7 @@ import (
 func loadIngestModules(cfg *Config, appEnv string) error {
 	cfg.Logger.Dir = os.Getenv("LOGGER_DIR")
 	if cfg.Logger.Dir == "" {
-		cfg.Logger.Dir = "/var/log/espx"
+		cfg.Logger.Dir = "/var/log/ad-event-processor"
 	}
 	cfg.Logger.Shards = getEnvInt("LOGGER_SHARDS", 8)
 	cfg.Logger.FlushSizeKB = getEnvInt("LOGGER_FLUSH_SIZE_KB", 256)
@@ -85,9 +85,9 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 	}
 	cfg.IngressSchema = NormalizeIngressSchema(rawIngress)
 	switch cfg.IngressSchema {
-	case IngressSchemaOpenRTB3, IngressSchemaNativeV1:
+	case IngressSchemaOpenRTB3, IngressSchemaAdEventProcessorNative:
 	default:
-		return fmt.Errorf("invalid TRACKER_INGRESS_SCHEMA %q (want openrtb_3 or native_v1)", cfg.IngressSchema)
+		return fmt.Errorf("invalid TRACKER_INGRESS_SCHEMA %q (want openrtb_3 or ad_event_processor_native)", cfg.IngressSchema)
 	}
 
 	cfg.QuotaMode = os.Getenv("QUOTA_MODE")

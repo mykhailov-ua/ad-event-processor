@@ -1,7 +1,7 @@
 package logpipeline
 
 import (
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"context"
 	"errors"

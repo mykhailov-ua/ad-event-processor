@@ -11,7 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"espx/pkg/money"
+	"github.com/bidshard/ad-event-processor/pkg/money"
 )
 
 type tonicEPCResponse struct {

@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"espx/internal/domain"
-	"espx/internal/domain/db"
-	"espx/internal/ingestion"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/ingestion"
 
 	redis "github.com/redis/go-redis/v9"
 )

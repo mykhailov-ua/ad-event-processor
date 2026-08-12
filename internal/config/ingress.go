@@ -6,37 +6,45 @@ import (
 )
 
 const (
-	IngressSchemaOpenRTB3   = "openrtb_3"
-	IngressSchemaNativeV1   = "native_v1"
-	IngressSchemaESPXNative = "espx_native"
+	IngressSchemaOpenRTB3               = "openrtb_3"
+	IngressSchemaAdEventProcessorNative = "ad_event_processor_native"
+	// IngressAdEventProcessorNative is the canonical ingress schema (alias for API/docs).
+	IngressAdEventProcessorNative = IngressSchemaAdEventProcessorNative
+	// Deprecated: accepted at API/env boundary; normalized to ad_event_processor_native.
+	IngressSchemaNativeV1 = "native_v1"
 )
 
 var ingressLegacyWarnOnce sync.Once
 
 func SupportedIngressSchemas() []string {
-	return []string{IngressSchemaOpenRTB3, IngressSchemaNativeV1}
+	return []string{IngressSchemaOpenRTB3, IngressSchemaAdEventProcessorNative}
 }
 
 func NormalizeIngressSchema(raw string) string {
 	switch raw {
-	case IngressSchemaESPXNative:
+	case LegacyIngressNativeSchema(), IngressSchemaNativeV1:
 		ingressLegacyWarnOnce.Do(func() {
-			slog.Warn("deprecated ingress schema", "legacy", IngressSchemaESPXNative, "use", IngressSchemaNativeV1)
+			slog.Warn("deprecated ingress schema", "legacy", raw, "use", IngressSchemaAdEventProcessorNative)
 		})
-		return IngressSchemaNativeV1
+		return IngressSchemaAdEventProcessorNative
 	default:
 		return raw
 	}
 }
 
-func (c *Config) IsESPXNativeIngress() bool {
+func (c *Config) IsAdEventProcessorNativeIngress() bool {
 	if c == nil {
 		return true
 	}
 	switch c.IngressSchema {
-	case "", IngressSchemaESPXNative, IngressSchemaNativeV1:
+	case "", IngressSchemaAdEventProcessorNative, LegacyIngressNativeSchema(), IngressSchemaNativeV1:
 		return true
 	default:
 		return false
 	}
+}
+
+// Deprecated: use IsAdEventProcessorNativeIngress.
+func (c *Config) IsLegacyNativeIngress() bool {
+	return c.IsAdEventProcessorNativeIngress()
 }

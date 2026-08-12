@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"espx/internal/config"
-	"espx/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -75,7 +75,7 @@ func (webhookHandler *WebhookHandler) handleStripeWebhook(w http.ResponseWriter,
 		return
 	}
 
-	body, err := coldpath.ReadLimitedBody(w, r, 64*1024)
+	body, err := coldpath.ReadLimitedBody(w, r, coldpath.PaymentWebhookMaxBody)
 	if err != nil {
 		slog.Warn("failed to read webhook body", "error", err)
 		http.Error(w, "Bad Request", http.StatusBadRequest)
@@ -258,7 +258,7 @@ func (webhookHandler *WebhookHandler) handleCryptoWebhook(w http.ResponseWriter,
 		return
 	}
 
-	body, err := coldpath.ReadLimitedBody(w, r, 64*1024)
+	body, err := coldpath.ReadLimitedBody(w, r, coldpath.PaymentWebhookMaxBody)
 	if err != nil {
 		slog.Warn("failed to read crypto webhook body", "error", err)
 		http.Error(w, "Bad Request", http.StatusBadRequest)

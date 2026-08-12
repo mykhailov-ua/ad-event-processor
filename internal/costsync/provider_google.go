@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"espx/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/database"
 
 	"github.com/google/uuid"
 )

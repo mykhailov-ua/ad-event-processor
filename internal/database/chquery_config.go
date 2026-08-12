@@ -3,7 +3,7 @@ package database
 import (
 	"time"
 
-	"espx/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/config"
 )
 
 func CHQueryConfigFromApp(cfg *config.Config) CHQueryConfig {

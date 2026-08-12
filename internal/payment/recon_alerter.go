@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/metrics"
-	"espx/pkg/branding"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/pkg/branding"
 )
 
 type FinancialReconAlerter struct {
@@ -94,7 +94,7 @@ func (a *FinancialReconAlerter) sendAsync(key, title, body string, broadcast boo
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := enqueueOpsNotification(ctx, a.client, a.provider, a.recipient, title, body, key, broadcast, a.broadcastProviders); err != nil {
-			metrics.ManagementOpsAlertEnqueueFailuresTotal.Inc()
+			metrics.IncControlOpsAlertEnqueueFailures()
 			slog.Warn("payment financial recon alert enqueue failed", "key", key, "error", err)
 		}
 	}()

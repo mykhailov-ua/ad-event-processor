@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/database"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/google/uuid"

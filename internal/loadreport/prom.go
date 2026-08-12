@@ -219,9 +219,9 @@ func writeBottleneckReport(b *strings.Builder, outDir, promURL string, prom *pro
 	b.WriteString("\n")
 
 	b.WriteString("## Edge (nginx OpenResty)\n\n")
-	fmt.Fprintf(b, "- Phase1 pass/s: %s\n", prom.scalar(`sum(rate(espx_edge_phase1_pass_total[5m]))`))
-	fmt.Fprintf(b, "- Circuit reject/s: %s\n", prom.scalar(`sum(rate(espx_edge_circuit_reject_total[5m]))`))
-	fmt.Fprintf(b, "- Blocked IP/s: %s\n", prom.scalar(`sum(rate(espx_edge_blocked_ip_total[5m]))`))
+	fmt.Fprintf(b, "- Phase1 pass/s: %s\n", prom.scalar(`sum(rate(ad_event_processor_edge_phase1_pass_total[5m]))`))
+	fmt.Fprintf(b, "- Circuit reject/s: %s\n", prom.scalar(`sum(rate(ad_event_processor_edge_circuit_reject_total[5m]))`))
+	fmt.Fprintf(b, "- Blocked IP/s: %s\n", prom.scalar(`sum(rate(ad_event_processor_edge_blocked_ip_total[5m]))`))
 	b.WriteString("\n")
 
 	b.WriteString("## File descriptors & syscalls\n\n")
@@ -284,12 +284,12 @@ func writeStraceSection(b *strings.Builder, outDir string) {
 		b.WriteString("_No strace samples. Re-run with snapshot_runtime.sh during load._\n")
 	}
 
-	espxMatches, _ := filepath.Glob(filepath.Join(outDir, "espx-*.txt"))
-	if len(espxMatches) > 0 {
+	reportMatches, _ := filepath.Glob(filepath.Join(outDir, "ad-event-processor-*.txt"))
+	if len(reportMatches) > 0 {
 		b.WriteString("\nFD counts:\n")
 		b.WriteString("```\n")
 		shown := 0
-		for _, f := range espxMatches {
+		for _, f := range reportMatches {
 			data, err := os.ReadFile(f)
 			if err != nil {
 				continue

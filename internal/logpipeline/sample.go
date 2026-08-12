@@ -3,7 +3,7 @@ package logpipeline
 import (
 	"hash/fnv"
 
-	"espx/internal/ingestion/pb"
+	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
 )
 
 func isAlwaysKeepEvent(evt *pb.AdStreamEvent) bool {

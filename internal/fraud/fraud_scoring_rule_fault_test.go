@@ -1,13 +1,13 @@
 package fraud
 
 import (
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"context"
 	"errors"
 	"testing"
 
-	"espx/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/database"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/stretchr/testify/assert"

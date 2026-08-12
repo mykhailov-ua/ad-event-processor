@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 )
 
 var ErrNoBPFSummary = errors.New("loadreport: bpf/maps/summary.json not found")
@@ -215,7 +217,7 @@ func writeBPFReport(b *strings.Builder, bpfDir string, data *bpfSummary, timelin
 		b.WriteString("\n")
 		fmt.Fprintf(b, "- **loadgen share of tracked on-CPU time:** %.1f%%\n", loadgenPct)
 	} else {
-		b.WriteString("_loadgen not observed (set ESPX_BPF_TRACK_LOADGEN=1 or ESPX_BPF_LOADGEN_COMM during load)._\n")
+		b.WriteString("_loadgen not observed (set ADSTACK_BPF_TRACK_LOADGEN=1 or ADSTACK_BPF_LOADGEN_COMM during load)._\n")
 	}
 	b.WriteString("\n")
 
@@ -519,7 +521,7 @@ func writeThreadsSection(b *strings.Builder, data *bpfSummary) {
 
 func writeMarkersSection(b *strings.Builder, markers []markerStat) {
 	b.WriteString("## Hot path uprobes (Go)\n\n")
-	b.WriteString("Requires tracker built with `-tags espx_bpf_trace` and bpf-collector uprobes attached.\n\n")
+	b.WriteString("Requires tracker built with `-tags " + naming.DeprecatedBPFTraceBuildTag() + "` and bpf-collector uprobes attached.\n\n")
 	b.WriteString("| role | marker | slot | count | avg (µs) | p99 (µs) | max (µs) |\n")
 	b.WriteString("|------|--------|------|-------|----------|----------|----------|\n")
 	sorted := append([]markerStat(nil), markers...)

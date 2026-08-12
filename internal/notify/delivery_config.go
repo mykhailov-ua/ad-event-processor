@@ -3,8 +3,8 @@ package notify
 import (
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/notify/db"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/notify/db"
 )
 
 type Config struct {

@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"espx/internal/edge/lpm"
+	"github.com/bidshard/ad-event-processor/internal/edge/lpm"
 
 	"github.com/cilium/ebpf"
 	"github.com/redis/go-redis/v9"

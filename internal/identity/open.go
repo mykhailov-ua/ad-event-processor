@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/database"
-	"espx/internal/identity/db"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/identity/db"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"

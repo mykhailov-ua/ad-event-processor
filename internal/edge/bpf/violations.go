@@ -11,7 +11,7 @@ const (
 
 const DefaultSynSubnetLimit = 256
 
-const DefaultViolationsMapPath = "/sys/fs/bpf/espx/violations"
+const DefaultViolationsMapPath = "/sys/fs/bpf/ad-event-processor/violations"
 
 type ViolationEvent struct {
 	TsNs   uint64

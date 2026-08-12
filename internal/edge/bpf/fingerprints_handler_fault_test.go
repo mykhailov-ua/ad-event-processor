@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"espx/internal/testutil"
+	"github.com/bidshard/ad-event-processor/internal/testutil"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

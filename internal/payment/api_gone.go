@@ -3,7 +3,7 @@ package payment
 import (
 	"net/http"
 
-	"espx/pkg/httpresponse"
+	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
 )
 
 func registerLegacyUIRoutes(mux *http.ServeMux) {

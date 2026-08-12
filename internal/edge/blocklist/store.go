@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"sync"
 
-	"espx/internal/edge/allowlist"
-	"espx/internal/edge/lpm"
-	"espx/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/edge/allowlist"
+	"github.com/bidshard/ad-event-processor/internal/edge/lpm"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 
 	"github.com/cilium/ebpf"
 )
 
 const (
-	DefaultMapPath = "/sys/fs/bpf/espx/blocklist_v4"
+	DefaultMapPath = "/sys/fs/bpf/ad-event-processor/blocklist_v4"
 	blockedMarker  = byte(1)
 )
 

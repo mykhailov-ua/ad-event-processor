@@ -2,7 +2,7 @@ package ledger
 
 import (
 	"bytes"
-	"espx/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/domain"
 	"fmt"
 	"strconv"
 	"strings"

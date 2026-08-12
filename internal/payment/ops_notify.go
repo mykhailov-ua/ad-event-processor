@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"espx/internal/config"
-	"espx/internal/notify"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/notify"
 )
 
 func resolveOpsAlertTarget(cfg *config.Config) (string, string, bool) {

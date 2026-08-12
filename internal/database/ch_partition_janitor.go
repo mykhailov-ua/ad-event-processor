@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 )

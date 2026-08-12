@@ -17,13 +17,13 @@ func TestPostgresConnect_UDSDSNParsing(t *testing.T) {
 	}{
 		{
 			name:     "Unix socket key-value DSN",
-			dsn:      "host=/var/run/postgresql port=5430 dbname=espx user=postgres",
+			dsn:      "host=/var/run/postgresql port=5430 dbname=ad_event_processor user=postgres",
 			wantHost: "/var/run/postgresql",
 			wantPort: 5430,
 		},
 		{
 			name:     "Unix socket URL DSN",
-			dsn:      "postgres://postgres:pass@/espx?host=/var/run/postgresql&port=5430",
+			dsn:      "postgres://postgres:pass@/ad_event_processor?host=/var/run/postgresql&port=5430",
 			wantHost: "/var/run/postgresql",
 			wantPort: 5430,
 		},

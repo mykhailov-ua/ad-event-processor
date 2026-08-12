@@ -126,6 +126,26 @@ func loadManagementModules(cfg *Config) {
 	cfg.Management.AdminFanoutMaxConcurrency = getEnvInt("ADMIN_FANOUT_MAX_CONCURRENCY", 8)
 	cfg.Management.LowBalanceThresholdMicro = int64(getEnvInt("LOW_BALANCE_THRESHOLD_MICRO", 5_000_000))
 	cfg.Management.LowBalanceAlertEnabled = getEnvBool("LOW_BALANCE_ALERT_ENABLED", true)
+	cfg.Management.SmartAlertsEnabled = getEnvBool("SMART_ALERTS_ENABLED", true)
+	cfg.Management.SmartAlertsIntervalMin = getEnvInt("SMART_ALERTS_INTERVAL_MIN", 15)
+	if cfg.Management.SmartAlertsIntervalMin < 5 {
+		cfg.Management.SmartAlertsIntervalMin = 5
+	}
+	if cfg.Management.SmartAlertsIntervalMin > 60 {
+		cfg.Management.SmartAlertsIntervalMin = 60
+	}
+	cfg.AdminDomain = strings.TrimSpace(os.Getenv("ADMIN_DOMAIN"))
+	cfg.Management.DomainHealthEnabled = getEnvBool("DOMAIN_HEALTH_ENABLED", true)
+	cfg.Management.DomainHealthIntervalMin = getEnvInt("DOMAIN_HEALTH_INTERVAL_MIN", 5)
+	if cfg.Management.DomainHealthIntervalMin < 5 {
+		cfg.Management.DomainHealthIntervalMin = 5
+	}
+	if cfg.Management.DomainHealthIntervalMin > 60 {
+		cfg.Management.DomainHealthIntervalMin = 60
+	}
+	cfg.Management.DomainSSLSetupEnabled = getEnvBool("DOMAIN_SSL_SETUP_ENABLED", true)
+	cfg.Management.DomainSSLSetupScript = strings.TrimSpace(os.Getenv("DOMAIN_SSL_SETUP_SCRIPT"))
+	cfg.Management.DomainSSLAcmeEmail = strings.TrimSpace(os.Getenv("CADDY_ACME_EMAIL"))
 
 	cfg.Control.EnableAuth = getEnvBool("CONTROL_ENABLE_AUTH", true)
 	cfg.Control.EnableManagement = getEnvBool("CONTROL_ENABLE_MANAGEMENT", true)

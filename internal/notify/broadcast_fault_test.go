@@ -1,7 +1,7 @@
 package notify
 
 import (
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"context"
 	"fmt"
@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/notify/db"
+	"github.com/bidshard/ad-event-processor/internal/notify/db"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -5,9 +5,9 @@ import (
 	"errors"
 	"time"
 
-	db "espx/internal/domain/db"
-	"espx/internal/metrics"
-	"espx/pkg/dedupkey"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/pkg/dedupkey"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"

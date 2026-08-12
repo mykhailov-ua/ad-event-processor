@@ -9,10 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/database"
-	"espx/internal/domain"
-	"espx/internal/payment/db"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/payment/db"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

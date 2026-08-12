@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"espx/pkg/logger"
+	"github.com/bidshard/ad-event-processor/pkg/logger"
 
 	"github.com/klauspost/compress/zstd"
 )
@@ -30,7 +30,7 @@ func openPlaintextSegment(path string, decryptKey []byte) (io.ReadCloser, error)
 		if len(decryptKey) == 0 {
 			passphrase := os.Getenv("LOG_ENCRYPTION_KEY")
 			if passphrase == "" {
-				passphrase = "default-espx-logger-fallback-passphrase-change-me"
+				passphrase = "default-ad-event-processor-logger-fallback-passphrase-change-me"
 			}
 			decryptKey = logger.DeriveKey(passphrase)
 		}

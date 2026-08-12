@@ -1,7 +1,7 @@
 package logpipeline
 
 import (
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"bytes"
 	"context"
@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/ingestion/pb"
+	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

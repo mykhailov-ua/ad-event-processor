@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	ingestdb "espx/internal/domain/db"
-	"espx/internal/ingestion"
+	ingestdb "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/ingestion"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"

@@ -3,7 +3,7 @@ package ledger
 import (
 	"testing"
 
-	"espx/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/config"
 
 	"github.com/stretchr/testify/assert"
 )

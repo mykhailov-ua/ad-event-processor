@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/payment"
+	"github.com/bidshard/ad-event-processor/internal/payment"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"

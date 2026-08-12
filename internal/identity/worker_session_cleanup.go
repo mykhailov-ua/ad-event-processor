@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"time"
 
-	"espx/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/database"
 )
 
 type SessionCleanupWorker struct {

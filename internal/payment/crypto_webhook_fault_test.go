@@ -1,14 +1,14 @@
 package payment_test
 
 import (
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"context"
 	"encoding/json"
 	"sync"
 	"testing"
 
-	"espx/internal/payment"
+	"github.com/bidshard/ad-event-processor/internal/payment"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"

@@ -2,7 +2,7 @@ package bpf
 
 import "github.com/cilium/ebpf"
 
-const DefaultFingerprintsMapPath = "/sys/fs/bpf/espx/fingerprints"
+const DefaultFingerprintsMapPath = "/sys/fs/bpf/ad-event-processor/fingerprints"
 
 type FingerprintEvent struct {
 	TsNs    uint64

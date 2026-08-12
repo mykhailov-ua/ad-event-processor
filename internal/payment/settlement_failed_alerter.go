@@ -8,10 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/metrics"
-	"espx/internal/payment/db"
-	"espx/pkg/branding"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/payment/db"
+	"github.com/bidshard/ad-event-processor/pkg/branding"
 )
 
 type SettlementFailedAlerter struct {
@@ -78,7 +78,7 @@ func (a *SettlementFailedAlerter) AlertPermanentFailure(outboxEvent db.PaymentPa
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := enqueueOpsNotification(ctx, a.client, a.provider, a.recipient, title, body, dedupKey, true, a.broadcastProviders); err != nil {
-			metrics.ManagementOpsAlertEnqueueFailuresTotal.Inc()
+			metrics.IncControlOpsAlertEnqueueFailures()
 			slog.Warn("payment settlement failed alert enqueue failed", "intent_id", intentID, "error", err)
 		}
 	}()

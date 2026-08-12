@@ -2,7 +2,7 @@ package ledger
 
 import (
 	"context"
-	"espx/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/domain"
 	"time"
 
 	"github.com/google/uuid"

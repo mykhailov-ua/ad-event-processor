@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"espx/internal/config"
-	"espx/internal/controlplane"
-	"espx/internal/database"
-	"espx/internal/ingestion"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/controlplane"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/ingestion"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"

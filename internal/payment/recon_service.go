@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/payment/db"
+	"github.com/bidshard/ad-event-processor/internal/payment/db"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

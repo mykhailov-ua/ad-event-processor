@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"espx/internal/edge/lpm"
+	"github.com/bidshard/ad-event-processor/internal/edge/lpm"
 )
 
 func benchIPs(n int) ([]string, []string, []string) {

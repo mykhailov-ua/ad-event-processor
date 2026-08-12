@@ -32,10 +32,10 @@ type Evacuator struct {
 
 func NewEvacuator(cfg EvacuatorConfig, store ObjectStore) (*Evacuator, error) {
 	if cfg.LogDir == "" {
-		cfg.LogDir = "/var/log/espx"
+		cfg.LogDir = "/var/log/ad-event-processor"
 	}
 	if cfg.CheckpointPath == "" {
-		cfg.CheckpointPath = "/var/lib/espx/log-evacuator.checkpoint"
+		cfg.CheckpointPath = "/var/lib/ad-event-processor/log-evacuator.checkpoint"
 	}
 	if cfg.ScanInterval <= 0 {
 		cfg.ScanInterval = 5 * time.Second

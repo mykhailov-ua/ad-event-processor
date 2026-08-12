@@ -5,7 +5,7 @@ import (
 	"net"
 	"testing"
 
-	"espx/internal/edge/lpm"
+	"github.com/bidshard/ad-event-processor/internal/edge/lpm"
 
 	"github.com/cilium/ebpf"
 	"github.com/stretchr/testify/assert"

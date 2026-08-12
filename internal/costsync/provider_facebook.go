@@ -12,8 +12,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"espx/internal/database"
-	"espx/pkg/money"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/pkg/money"
 )
 
 type fbInsightsResponse struct {

@@ -1,14 +1,14 @@
 package perimeter
 
 import (
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"context"
 	"strconv"
 	"testing"
 	"time"
 
-	"espx/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/database"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

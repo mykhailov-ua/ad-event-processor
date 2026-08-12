@@ -1,8 +1,8 @@
 package testutil
 
 import (
-	"espx/internal/config"
-	"espx/internal/ingestion"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/ingestion"
 
 	redis "github.com/redis/go-redis/v9"
 )

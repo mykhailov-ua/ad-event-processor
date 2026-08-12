@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"testing"
 
-	"espx/internal/config"
-	"espx/internal/payment/db"
-	"espx/internal/payment/dbtest"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/payment/db"
+	"github.com/bidshard/ad-event-processor/internal/payment/dbtest"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

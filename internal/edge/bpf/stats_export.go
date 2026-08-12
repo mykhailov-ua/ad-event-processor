@@ -1,8 +1,8 @@
 package bpf
 
 import (
-	"espx/internal/edge/xdpstats"
-	"espx/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/edge/xdpstats"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 
 	"github.com/cilium/ebpf"
 )

@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"espx/internal/notify/db"
+	"github.com/bidshard/ad-event-processor/internal/notify/db"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )

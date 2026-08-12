@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"sync"
 
-	"espx/pkg/piihash"
+	"github.com/bidshard/ad-event-processor/pkg/piihash"
 )
 
 var (

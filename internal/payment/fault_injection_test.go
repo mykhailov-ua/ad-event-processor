@@ -1,7 +1,7 @@
 package payment_test
 
 import (
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"context"
 	"fmt"
@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/ingestion"
-	"espx/internal/payment"
-	"espx/internal/payment/db"
+	"github.com/bidshard/ad-event-processor/internal/ingestion"
+	"github.com/bidshard/ad-event-processor/internal/payment"
+	"github.com/bidshard/ad-event-processor/internal/payment/db"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"

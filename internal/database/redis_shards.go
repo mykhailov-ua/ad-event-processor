@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 
 	redis "github.com/redis/go-redis/v9"
 )
@@ -55,6 +55,10 @@ func ConnectRedisShards(ctx context.Context, cfg *config.Config, opts RedisShard
 	}
 	setShard0ClientNilMetric(clients)
 	return clients, breakers, nil
+}
+
+func SetShard0ClientNilMetric(clients []redis.UniversalClient) {
+	setShard0ClientNilMetric(clients)
 }
 
 func setShard0ClientNilMetric(clients []redis.UniversalClient) {

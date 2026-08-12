@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/database"
-	"espx/internal/identity/db"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/identity/db"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"

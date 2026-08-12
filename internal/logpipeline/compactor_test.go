@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/ingestion/pb"
+	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

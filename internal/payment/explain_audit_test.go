@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"espx/internal/ingestion"
+	"github.com/bidshard/ad-event-processor/internal/ingestion"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"

@@ -3,7 +3,7 @@ package testutil
 import (
 	"testing"
 
-	"espx/internal/ingestion"
+	"github.com/bidshard/ad-event-processor/internal/ingestion"
 
 	"github.com/google/uuid"
 )

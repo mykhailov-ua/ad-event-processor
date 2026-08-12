@@ -3,7 +3,7 @@ package fraud
 import (
 	"testing"
 
-	"espx/internal/edge/perimeter"
+	"github.com/bidshard/ad-event-processor/internal/edge/perimeter"
 
 	"github.com/stretchr/testify/assert"
 )

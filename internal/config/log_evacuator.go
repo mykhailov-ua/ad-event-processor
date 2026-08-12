@@ -22,7 +22,7 @@ type LogEvacuator struct {
 func LoadLogEvacuator() (LogEvacuator, error) {
 	cfg := LogEvacuator{
 		LogDir:                 envOrDefault("LOG_EVACUATOR_LOG_DIR", os.Getenv("LOG_DIR")),
-		CheckpointPath:         envOrDefault("LOG_EVACUATOR_CHECKPOINT_PATH", "/var/lib/espx/log-evacuator.checkpoint"),
+		CheckpointPath:         envOrDefault("LOG_EVACUATOR_CHECKPOINT_PATH", "/var/lib/ad-event-processor/log-evacuator.checkpoint"),
 		S3Region:               envOrDefault("LOG_EVACUATOR_S3_REGION", os.Getenv("AWS_REGION")),
 		S3Bucket:               os.Getenv("LOG_EVACUATOR_S3_BUCKET"),
 		S3Prefix:               strings.Trim(os.Getenv("LOG_EVACUATOR_S3_PREFIX"), "/"),
@@ -34,7 +34,7 @@ func LoadLogEvacuator() (LogEvacuator, error) {
 	}
 
 	if cfg.LogDir == "" {
-		cfg.LogDir = "/var/log/espx"
+		cfg.LogDir = "/var/log/ad-event-processor"
 	}
 	if cfg.S3Region == "" {
 		return LogEvacuator{}, errors.New("LOG_EVACUATOR_S3_REGION or AWS_REGION is required")

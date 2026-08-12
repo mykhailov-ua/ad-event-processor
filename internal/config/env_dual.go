@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 )
 
 var legacyEnvWarned sync.Map
@@ -29,20 +31,43 @@ func envStringDual(adstackKey, legacyKey string) string {
 }
 
 func LicenseEnv(suffix string) string {
-	return envStringDual("ADSTACK_LICENSE_"+suffix, "ESPX_LICENSE_"+suffix)
+	adEventKey := "AD_EVENT_PROCESSOR_LICENSE_" + suffix
+	if v, ok := os.LookupEnv(adEventKey); ok && strings.TrimSpace(v) != "" {
+		return v
+	}
+	legacyKey := naming.LegacyVendorEnvKey("LICENSE_" + suffix)
+	if v, ok := os.LookupEnv(legacyKey); ok {
+		warnLegacyEnvOnce(legacyKey, adEventKey)
+		return v
+	}
+	adstackKey := "ADSTACK_LICENSE_" + suffix
+	if v, ok := os.LookupEnv(adstackKey); ok {
+		warnLegacyEnvOnce(adstackKey, adEventKey)
+		return v
+	}
+	return ""
+}
+
+func InstallRootFromEnv() string {
+	return envStringDual("AD_EVENT_PROCESSOR_INSTALL_ROOT", naming.LegacyVendorEnvKey("INSTALL_ROOT"))
+}
+
+func ProfileFromEnv() string {
+	return envStringDual("AD_EVENT_PROCESSOR_PROFILE", naming.LegacyVendorEnvKey("PROFILE"))
 }
 
 func BPFEnv(suffix string) string {
-	return envStringDual("ADSTACK_BPF_"+suffix, "ESPX_BPF_"+suffix)
+	return envStringDual("ADSTACK_BPF_"+suffix, naming.LegacyVendorEnvKey("BPF_"+suffix))
 }
 
 func RegionCodeFromEnv() int {
 	if v, ok := os.LookupEnv("ADSTACK_REGION_CODE"); ok && strings.TrimSpace(v) != "" {
 		return atoiEnv("ADSTACK_REGION_CODE", 0)
 	}
-	if _, ok := os.LookupEnv("ESPX_REGION_CODE"); ok {
-		warnLegacyEnvOnce("ESPX_REGION_CODE", "ADSTACK_REGION_CODE")
-		return atoiEnv("ESPX_REGION_CODE", 0)
+	legacyKey := naming.LegacyVendorEnvKey("REGION_CODE")
+	if _, ok := os.LookupEnv(legacyKey); ok {
+		warnLegacyEnvOnce(legacyKey, "ADSTACK_REGION_CODE")
+		return atoiEnv(legacyKey, 0)
 	}
 	return 0
 }
@@ -51,24 +76,26 @@ func TelemetryOptInFromEnvDual() bool {
 	if v, ok := os.LookupEnv("ADSTACK_TELEMETRY_OPT_IN"); ok {
 		return parseBoolEnv(v)
 	}
-	if v, ok := os.LookupEnv("ESPX_TELEMETRY_OPT_IN"); ok {
-		warnLegacyEnvOnce("ESPX_TELEMETRY_OPT_IN", "ADSTACK_TELEMETRY_OPT_IN")
+	legacyKey := naming.LegacyVendorEnvKey("TELEMETRY_OPT_IN")
+	if v, ok := os.LookupEnv(legacyKey); ok {
+		warnLegacyEnvOnce(legacyKey, "ADSTACK_TELEMETRY_OPT_IN")
 		return parseBoolEnv(v)
 	}
 	return false
 }
 
 func TelemetryURLFromEnv() string {
-	return envStringDual("ADSTACK_TELEMETRY_URL", "ESPX_TELEMETRY_URL")
+	return envStringDual("ADSTACK_TELEMETRY_URL", naming.LegacyVendorEnvKey("TELEMETRY_URL"))
 }
 
 func TelemetryIntervalSecFromEnv() int {
 	if v, ok := os.LookupEnv("ADSTACK_TELEMETRY_INTERVAL_SEC"); ok && strings.TrimSpace(v) != "" {
 		return atoiEnv("ADSTACK_TELEMETRY_INTERVAL_SEC", 3600)
 	}
-	if _, ok := os.LookupEnv("ESPX_TELEMETRY_INTERVAL_SEC"); ok {
-		warnLegacyEnvOnce("ESPX_TELEMETRY_INTERVAL_SEC", "ADSTACK_TELEMETRY_INTERVAL_SEC")
-		return atoiEnv("ESPX_TELEMETRY_INTERVAL_SEC", 3600)
+	legacyKey := naming.LegacyVendorEnvKey("TELEMETRY_INTERVAL_SEC")
+	if _, ok := os.LookupEnv(legacyKey); ok {
+		warnLegacyEnvOnce(legacyKey, "ADSTACK_TELEMETRY_INTERVAL_SEC")
+		return atoiEnv(legacyKey, 3600)
 	}
 	return 3600
 }
@@ -77,9 +104,10 @@ func TelemetryHTTPTimeoutSecFromEnv() int {
 	if v, ok := os.LookupEnv("ADSTACK_TELEMETRY_TIMEOUT_SEC"); ok && strings.TrimSpace(v) != "" {
 		return atoiEnv("ADSTACK_TELEMETRY_TIMEOUT_SEC", 5)
 	}
-	if _, ok := os.LookupEnv("ESPX_TELEMETRY_TIMEOUT_SEC"); ok {
-		warnLegacyEnvOnce("ESPX_TELEMETRY_TIMEOUT_SEC", "ADSTACK_TELEMETRY_TIMEOUT_SEC")
-		return atoiEnv("ESPX_TELEMETRY_TIMEOUT_SEC", 5)
+	legacyKey := naming.LegacyVendorEnvKey("TELEMETRY_TIMEOUT_SEC")
+	if _, ok := os.LookupEnv(legacyKey); ok {
+		warnLegacyEnvOnce(legacyKey, "ADSTACK_TELEMETRY_TIMEOUT_SEC")
+		return atoiEnv(legacyKey, 5)
 	}
 	return 5
 }
@@ -104,4 +132,14 @@ func parseBoolEnv(raw string) bool {
 
 func parseInt(raw string) (int, error) {
 	return strconv.Atoi(strings.TrimSpace(raw))
+}
+
+// LegacyVendorEnvKey exposes deprecated env keys for tests and installer render.
+func LegacyVendorEnvKey(suffix string) string {
+	return naming.LegacyVendorEnvKey(suffix)
+}
+
+// LegacyIngressNativeSchema is the deprecated ingress schema accepted at API boundaries.
+func LegacyIngressNativeSchema() string {
+	return naming.DeprecatedIngressNativeSchema()
 }

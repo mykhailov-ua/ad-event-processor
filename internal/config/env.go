@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 )
 
 const ExpectedRedisShardCount = 4
@@ -15,6 +17,7 @@ type Config struct {
 	ServerPort                      string
 	ProcessorPort                   string
 	ManagementPort                  string
+	AdminDomain                     string
 	MetricsPort                     string
 	DBDSN                           Secret
 	PaymentDBDSN                    Secret
@@ -133,6 +136,7 @@ type Config struct {
 	AdminAPIKey                     Secret
 	InstallBootstrapToken           Secret
 	AllowedOrigins                  []string
+	TrackCORSOrigins                []string
 	PaymentWebhookPort              string
 	PaymentInternalToken            Secret
 	SettlementInternalToken         Secret
@@ -175,6 +179,13 @@ type Config struct {
 		AdminFanoutMaxConcurrency   int
 		LowBalanceThresholdMicro    int64
 		LowBalanceAlertEnabled      bool
+		SmartAlertsEnabled          bool
+		SmartAlertsIntervalMin      int
+		DomainHealthEnabled         bool
+		DomainHealthIntervalMin     int
+		DomainSSLSetupEnabled       bool
+		DomainSSLSetupScript        string
+		DomainSSLAcmeEmail          string
 	}
 	Control struct {
 		EnableAuth        bool
@@ -468,9 +479,17 @@ func (c *Config) ResolveRedisMasterNames() []string {
 	}
 	names := make([]string, len(c.RedisAddrs))
 	for i := range c.RedisAddrs {
-		names[i] = fmt.Sprintf("espx-shard-%d", i)
+		names[i] = fmt.Sprintf("ad-event-processor-shard-%d", i)
 	}
 	return names
+}
+
+// resolveControlPort prefers CONTROL_PORT; MANAGEMENT_PORT is accepted for one release.
+func resolveControlPort() string {
+	if v := strings.TrimSpace(os.Getenv("CONTROL_PORT")); v != "" {
+		return v
+	}
+	return strings.TrimSpace(os.Getenv("MANAGEMENT_PORT"))
 }
 
 func Load() (*Config, error) {
@@ -478,7 +497,7 @@ func Load() (*Config, error) {
 	cfg := &Config{
 		ServerPort:                      os.Getenv("SERVER_PORT"),
 		ProcessorPort:                   os.Getenv("PROCESSOR_PORT"),
-		ManagementPort:                  os.Getenv("MANAGEMENT_PORT"),
+		ManagementPort:                  resolveControlPort(),
 		MetricsPort:                     os.Getenv("METRICS_PORT"),
 		DBDSN:                           Secret(os.Getenv("DB_DSN")),
 		PaymentDBDSN:                    Secret(os.Getenv("PAYMENT_DB_DSN")),
@@ -537,7 +556,7 @@ func Load() (*Config, error) {
 		CHQuerySlowLogMS:                getEnvInt("CH_QUERY_SLOW_LOG_MS", 2000),
 		CHQueryMaxMemoryBytes:           uint64(getEnvInt("CH_QUERY_MAX_MEMORY_BYTES", 0)),
 		CHQueryMaxExecSec:               getEnvInt("CH_QUERY_MAX_EXEC_SEC", 0),
-		CHSpoolDir:                      envOrDefault("CH_SPOOL_DIR", "/var/spool/espx/ch"),
+		CHSpoolDir:                      envOrDefault("CH_SPOOL_DIR", "/var/spool/ad-event-processor/ch"),
 		CHSpoolSegmentMB:                getEnvInt("CH_SPOOL_SEGMENT_MB", 512),
 		CHSpoolMaxSegments:              getEnvInt("CH_SPOOL_MAX_SEGMENTS", 8),
 		CHReadonlyDSN:                   Secret(envOrDefault("CH_READONLY_DSN", os.Getenv("CH_DSN"))),
@@ -599,6 +618,7 @@ func Load() (*Config, error) {
 		AdminAPIKey:                     Secret(os.Getenv("ADMIN_API_KEY")),
 		InstallBootstrapToken:           Secret(os.Getenv("INSTALL_BOOTSTRAP_TOKEN")),
 		AllowedOrigins:                  strings.Split(os.Getenv("ALLOWED_ORIGINS"), ","),
+		TrackCORSOrigins:                strings.Split(os.Getenv("TRACK_CORS_ORIGINS"), ","),
 		TrustedProxies:                  strings.Split(os.Getenv("TRUSTED_PROXIES"), ","),
 		Env:                             appEnv,
 		CampaignUpdateChannel:           os.Getenv("CAMPAIGN_UPDATE_CHANNEL"),
@@ -841,8 +861,8 @@ func vendorTelemetryEnabled(appEnv string) bool {
 	if v := os.Getenv("VENDOR_TELEMETRY_ENABLED"); v != "" {
 		return getEnvBool("VENDOR_TELEMETRY_ENABLED", false)
 	}
-	if v := os.Getenv("ESPX_VENDOR_TELEMETRY"); v != "" {
-		return getEnvBool("ESPX_VENDOR_TELEMETRY", false)
+	if v := os.Getenv(naming.LegacyVendorEnvKey("VENDOR_TELEMETRY")); v != "" {
+		return getEnvBool(naming.LegacyVendorEnvKey("VENDOR_TELEMETRY"), false)
 	}
 	return appEnv == "production"
 }

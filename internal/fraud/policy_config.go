@@ -5,7 +5,7 @@ import (
 	"os"
 	"strconv"
 
-	"espx/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/domain"
 )
 
 type PolicyConfig struct {

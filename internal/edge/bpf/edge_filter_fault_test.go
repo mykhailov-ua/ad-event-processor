@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/edge/lpm"
-	"espx/internal/testutil"
+	"github.com/bidshard/ad-event-processor/internal/edge/lpm"
+	"github.com/bidshard/ad-event-processor/internal/testutil"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/ringbuf"

@@ -38,7 +38,7 @@ func NewS3TierStore(ctx context.Context, cfg S3Config) (*S3TierStore, error) {
 		return nil, ErrCloudConfigIncomplete
 	}
 	if cfg.ScratchDir == "" {
-		cfg.ScratchDir = "/var/lib/espx/log-compactor/scratch"
+		cfg.ScratchDir = "/var/lib/ad-event-processor/log-compactor/scratch"
 	}
 
 	awsCfg, err := awsconfig.LoadDefaultConfig(ctx, awsconfig.WithRegion(cfg.Region))

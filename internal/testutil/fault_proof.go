@@ -3,7 +3,7 @@ package testutil
 import (
 	"testing"
 
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 )
 
 func LogFaultProof(t testing.TB, scenario string, attrs map[string]string) {

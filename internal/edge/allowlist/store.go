@@ -6,13 +6,13 @@ import (
 	"os"
 	"sync"
 
-	"espx/internal/edge/lpm"
+	"github.com/bidshard/ad-event-processor/internal/edge/lpm"
 
 	"github.com/cilium/ebpf"
 )
 
 const (
-	DefaultMapPath = "/sys/fs/bpf/espx/allow_v4"
+	DefaultMapPath = "/sys/fs/bpf/ad-event-processor/allow_v4"
 	allowedMarker  = byte(1)
 )
 

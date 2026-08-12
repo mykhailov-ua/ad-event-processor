@@ -21,7 +21,7 @@ func TestTrimCommaList_dropsEmpty(t *testing.T) {
 func TestResolveRedisMasterNames_defaults(t *testing.T) {
 	cfg := &Config{RedisAddrs: []string{"h0:6379", "h1:6379", "h2:6379"}}
 	names := cfg.ResolveRedisMasterNames()
-	want := []string{"espx-shard-0", "espx-shard-1", "espx-shard-2"}
+	want := []string{"ad-event-processor-shard-0", "ad-event-processor-shard-1", "ad-event-processor-shard-2"}
 	if len(names) != len(want) {
 		t.Fatalf("len=%d want %d", len(names), len(want))
 	}
@@ -108,5 +108,17 @@ func TestFraudScoringEnabled_defaultFalse(t *testing.T) {
 	cfg2.FraudScoring.Enabled = getEnvBool("FRAUD_SCORING_ENABLED", false)
 	if !cfg2.FraudScoringEnabled() {
 		t.Fatal("FRAUD_SCORING_ENABLED=true must enable scoring")
+	}
+}
+
+func TestResolveControlPort_prefersControlPort(t *testing.T) {
+	t.Setenv("CONTROL_PORT", "9191")
+	t.Setenv("MANAGEMENT_PORT", "8188")
+	if got := resolveControlPort(); got != "9191" {
+		t.Fatalf("resolveControlPort()=%q want 9191", got)
+	}
+	t.Setenv("CONTROL_PORT", "")
+	if got := resolveControlPort(); got != "8188" {
+		t.Fatalf("resolveControlPort()=%q want 8188 from MANAGEMENT_PORT", got)
 	}
 }

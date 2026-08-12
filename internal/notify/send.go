@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"espx/internal/notify/db"
+	"github.com/bidshard/ad-event-processor/internal/notify/db"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"

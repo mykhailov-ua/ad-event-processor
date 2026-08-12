@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"espx/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )

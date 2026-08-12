@@ -22,7 +22,7 @@ func TestLoadLogEvacuator_defaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load log evacuator config: %v", err)
 	}
-	if cfg.LogDir != "/var/log/espx" {
+	if cfg.LogDir != "/var/log/ad-event-processor" {
 		t.Fatalf("log dir default mismatch: %q", cfg.LogDir)
 	}
 	if cfg.ScanIntervalMs != 5000 {

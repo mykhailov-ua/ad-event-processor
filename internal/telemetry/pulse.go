@@ -164,7 +164,7 @@ func (w *Worker) validateEndpoints() error {
 		return nil
 	}
 	if pulseHost == licenseHost {
-		return errors.New("ESPX_TELEMETRY_URL must differ from ESPX_LICENSE_SERVER host")
+		return errors.New("ADSTACK_TELEMETRY_URL must differ from license server host")
 	}
 	return nil
 }

@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/notify"
-	"espx/internal/payment/db"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/notify"
+	"github.com/bidshard/ad-event-processor/internal/payment/db"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
