@@ -11,9 +11,10 @@ if [[ -z "$VERSION" ]]; then
 fi
 VERSION="${VERSION#v}"
 
-STAGE="$ROOT/dist/bidshard-installer-stage"
+STAGE="$ROOT/dist/ad-event-processor-installer-stage"
 OUT_DIR="$ROOT/dist"
-TARBALL="$OUT_DIR/bidshard-installer-${VERSION}.tar.gz"
+TARBALL="$OUT_DIR/ad-event-processor-installer-${VERSION}.tar.gz"
+LEGACY_TARBALL="$OUT_DIR/bidshard-installer-${VERSION}.tar.gz"
 
 rm -rf "$STAGE"
 mkdir -p "$STAGE/bidshard"
@@ -41,6 +42,8 @@ mkdir -p "$STAGE/bidshard/deploy/geoip"
 touch "$STAGE/bidshard/deploy/geoip/.gitkeep"
 
 mkdir -p "$STAGE/bidshard/scripts/install" "$STAGE/bidshard/scripts/dev" "$STAGE/bidshard/scripts/lib" "$STAGE/bidshard/scripts/ci"
+cp "$ROOT/scripts/install/ad-event-processor-install.sh" "$STAGE/bidshard/scripts/install/"
+cp "$ROOT/scripts/install/preflight.sh" "$STAGE/bidshard/scripts/install/"
 cp "$ROOT/scripts/install/bidshard-install.sh" "$STAGE/bidshard/scripts/install/"
 cp "$ROOT/scripts/install/get.sh" "$STAGE/bidshard/scripts/install/"
 mkdir -p "$STAGE/bidshard/deploy/ingress/caddy"
@@ -51,8 +54,14 @@ touch "$STAGE/bidshard/deploy/ingress/certs/.gitkeep"
 cp "$ROOT/scripts/install/render_ingress.sh" "$STAGE/bidshard/scripts/install/"
 cp "$ROOT/scripts/dev/stack.sh" "$STAGE/bidshard/scripts/dev/"
 cp "$ROOT/scripts/lib/paths.sh" "$STAGE/bidshard/scripts/lib/"
+cp "$ROOT/scripts/lib/installer_env.sh" "$STAGE/bidshard/scripts/lib/"
 cp "$ROOT/scripts/lib/safe_paths.sh" "$STAGE/bidshard/scripts/lib/"
 cp "$ROOT/scripts/ci/deps.sh" "$STAGE/bidshard/scripts/ci/"
+
+mkdir -p "$STAGE/bidshard/bin"
+echo "release_pack: building linux/amd64 ad-event-processor-install CLI..."
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "$STAGE/bidshard/bin/ad-event-processor-install" ./cmd/installer
+chmod +x "$STAGE/bidshard/bin/ad-event-processor-install"
 
 mkdir -p "$STAGE/bidshard/deploy/vendor"
 if [[ -f "$ROOT/deploy/vendor/license_public.key" ]]; then
@@ -61,9 +70,11 @@ fi
 
 mkdir -p "$OUT_DIR"
 tar -czf "$TARBALL" -C "$STAGE" bidshard
+cp -f "$TARBALL" "$LEGACY_TARBALL"
 rm -rf "$STAGE"
 
 bash "$ROOT/scripts/ci/verify_release_pack.sh" "$TARBALL"
 
 echo "release_pack: $TARBALL"
-echo "Upload to GitHub Releases as bidshard-installer.tar.gz for tag v${VERSION}"
+echo "release_pack: $LEGACY_TARBALL (legacy alias tarball)"
+echo "Upload to GitHub Releases as ad-event-processor-installer.tar.gz (and bidshard-installer.tar.gz alias) for tag v${VERSION}"

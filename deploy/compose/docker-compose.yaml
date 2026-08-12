@@ -13,17 +13,20 @@ services:
     environment:
       - SERVER_PORT=8181
       - METRICS_PORT=9101
+      - DB_DSN=${DB_DSN}
+      - REDIS_ADDRS=${REDIS_ADDRS}
       - BROKER_URL=${BROKER_URL:-127.0.0.1:9092}
       - CH_INGEST_SOURCE=${CH_INGEST_SOURCE:-broker}
       - BROKER_SHADOW_MODE=${BROKER_SHADOW_MODE:-0}
       - TRACKER_PG_FALLBACK=${TRACKER_PG_FALLBACK:-0}
+      - TRACKER_INGRESS_SCHEMA=${TRACKER_INGRESS_SCHEMA:-openrtb_3}
       - GOMEMLIMIT=700MiB
       - GOGC=300
     volumes:
       - ../../deploy/geoip:/deploy/geoip:ro
-      - ../../license.jwt:/espx/license.jwt:ro
+      - ../../license.jwt:/etc/ad-event-processor/license.jwt:ro
       - espx_logs:/var/log/espx:rw
-      - espx_run:/run/espx:rw
+      - ad_event_processor_run:/run/ad-event-processor:rw
     ulimits:
       nofile:
         soft: 100000
@@ -49,10 +52,6 @@ services:
         condition: service_healthy
       redis-3:
         condition: service_healthy
-      redis-4:
-        condition: service_healthy
-      redis-5:
-        condition: service_healthy
     logging:
       driver: "json-file"
       options:
@@ -77,9 +76,9 @@ services:
       - GOGC=300
     volumes:
       - ../../deploy/geoip:/deploy/geoip:ro
-      - ../../license.jwt:/espx/license.jwt:ro
+      - ../../license.jwt:/etc/ad-event-processor/license.jwt:ro
       - espx_logs:/var/log/espx:rw
-      - espx_run:/run/espx:rw
+      - ad_event_processor_run:/run/ad-event-processor:rw
     ulimits:
       nofile:
         soft: 100000
@@ -105,10 +104,6 @@ services:
         condition: service_healthy
       redis-3:
         condition: service_healthy
-      redis-4:
-        condition: service_healthy
-      redis-5:
-        condition: service_healthy
     logging:
       driver: "json-file"
       options:
@@ -133,9 +128,9 @@ services:
       - GOGC=300
     volumes:
       - ../../deploy/geoip:/deploy/geoip:ro
-      - ../../license.jwt:/espx/license.jwt:ro
+      - ../../license.jwt:/etc/ad-event-processor/license.jwt:ro
       - espx_logs:/var/log/espx:rw
-      - espx_run:/run/espx:rw
+      - ad_event_processor_run:/run/ad-event-processor:rw
     ulimits:
       nofile:
         soft: 100000
@@ -161,10 +156,6 @@ services:
         condition: service_healthy
       redis-3:
         condition: service_healthy
-      redis-4:
-        condition: service_healthy
-      redis-5:
-        condition: service_healthy
     logging:
       driver: "json-file"
       options:
@@ -189,9 +180,9 @@ services:
       - GOGC=300
     volumes:
       - ../../deploy/geoip:/deploy/geoip:ro
-      - ../../license.jwt:/espx/license.jwt:ro
+      - ../../license.jwt:/etc/ad-event-processor/license.jwt:ro
       - espx_logs:/var/log/espx:rw
-      - espx_run:/run/espx:rw
+      - ad_event_processor_run:/run/ad-event-processor:rw
     ulimits:
       nofile:
         soft: 100000
@@ -217,10 +208,6 @@ services:
         condition: service_healthy
       redis-3:
         condition: service_healthy
-      redis-4:
-        condition: service_healthy
-      redis-5:
-        condition: service_healthy
     logging:
       driver: "json-file"
       options:
@@ -238,10 +225,13 @@ services:
       - REDIS_ADDRS=${REDIS_ADDRS}
       - MANAGEMENT_URL=http://127.0.0.1:8188
       - TRACKER_INGRESS_SCHEMA=${TRACKER_INGRESS_SCHEMA:-openrtb_3}
+      - EDGE_EXPOSE_CLICK=${EDGE_EXPOSE_CLICK:-true}
+      - EDGE_EXPOSE_OPENRTB=${EDGE_EXPOSE_OPENRTB:-false}
     volumes:
       - ../../deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ../../deploy/nginx/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf:ro
       - ../../deploy/nginx/lua:/etc/nginx/lua:ro
+      - ../../deploy/nginx/snippets:/etc/nginx/snippets:ro
       - ../../deploy/nginx/certs:/etc/nginx/certs:ro
     depends_on:
       tracker-0:
@@ -280,10 +270,10 @@ services:
       - ../../.env
     volumes:
       - espx_logs:/var/log/espx:rw
-      - espx_run:/run/espx:rw
+      - ad_event_processor_run:/run/ad-event-processor:rw
       - espx_ch_spool:/var/spool/espx/ch:rw
       - ../../deploy/geoip:/deploy/geoip:rw
-      - espx_run:/run/espx:rw
+      - ad_event_processor_run:/run/ad-event-processor:rw
     environment:
       - DB_DSN=${DB_DSN}
       - REDIS_ADDRS=${REDIS_ADDRS}
@@ -348,7 +338,7 @@ services:
       - ../../.env
     volumes:
       - espx_logs:/var/log/espx:rw
-      - espx_run:/run/espx:rw
+      - ad_event_processor_run:/run/ad-event-processor:rw
       - espx_ch_spool_1:/var/spool/espx/ch:rw
       - ../../deploy/geoip:/deploy/geoip:rw
     environment:
@@ -445,7 +435,7 @@ services:
       - -redis-url=${REGION_PROXY_REDIS_URL:-redis://127.0.0.1:6479/0}
     volumes:
       - espx_broker_data:/tmp/espx-broker
-      - espx_run:/run/espx:rw
+      - ad_event_processor_run:/run/ad-event-processor:rw
     restart: unless-stopped
     depends_on:
       redis-0:
@@ -475,14 +465,14 @@ services:
     env_file:
       - ../../.env
     volumes:
-      - ../../license.jwt:/espx/license.jwt
-      - espx_run:/run/espx:rw
+      - ../../license.jwt:/etc/ad-event-processor/license.jwt
+      - ad_event_processor_run:/run/ad-event-processor:rw
     environment:
       - MANAGEMENT_PORT=8188
       - PAYMENT_WEBHOOK_PORT=8187
       - DB_DSN=${DB_DSN}
       - PAYMENT_DB_DSN=${PAYMENT_DB_DSN}
-      - REDIS_ADDRS=${REDIS_ADDRS:-/run/espx/redis/redis-0.sock}
+      - REDIS_ADDRS=${REDIS_ADDRS:-/run/ad-event-processor/redis/redis-0.sock}
       - CONTROL_ENABLE_AUTH=1
       - CONTROL_ENABLE_MANAGEMENT=1
       - CONTROL_ENABLE_PAYMENT=${CONTROL_ENABLE_PAYMENT:-1}
@@ -638,14 +628,14 @@ services:
     ports:
       - "${DB_PORT}:${DB_PORT}"
     command:
-      ["postgres", "-p", "${DB_PORT}", "-c", "unix_socket_directories=/run/espx/postgresql", "-c", "max_connections=600", "-c", "shared_buffers=1GB", "-c", "work_mem=64MB", "-c", "maintenance_work_mem=256MB", "-c", "effective_cache_size=3GB"]
+      ["postgres", "-p", "${DB_PORT}", "-c", "unix_socket_directories=/run/ad-event-processor/postgresql", "-c", "max_connections=600", "-c", "shared_buffers=1GB", "-c", "work_mem=64MB", "-c", "maintenance_work_mem=256MB", "-c", "effective_cache_size=3GB"]
     volumes:
       - db_data:/var/lib/postgresql/data
-      - espx_run:/run/espx
+      - ad_event_processor_run:/run/ad-event-processor
     networks:
       - database
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -p ${DB_PORT} -U ${DB_USER} -d ${DB_NAME}"]
+      test: ["CMD-SHELL", "pg_isready -h /run/ad-event-processor/postgresql -p ${DB_PORT} -U ${DB_USER} -d ${DB_NAME}"]
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
@@ -676,10 +666,10 @@ services:
     ports:
       - "${PAYMENT_DB_PORT}:${PAYMENT_DB_PORT}"
     command:
-      ["postgres", "-p", "${PAYMENT_DB_PORT}", "-c", "unix_socket_directories=/run/espx/postgresql", "-c", "max_connections=100", "-c", "shared_buffers=256MB", "-c", "work_mem=16MB", "-c", "maintenance_work_mem=64MB", "-c", "effective_cache_size=768MB"]
+      ["postgres", "-p", "${PAYMENT_DB_PORT}", "-c", "unix_socket_directories=/run/ad-event-processor/postgresql", "-c", "max_connections=100", "-c", "shared_buffers=256MB", "-c", "work_mem=16MB", "-c", "maintenance_work_mem=64MB", "-c", "effective_cache_size=768MB"]
     volumes:
       - db_payment_data:/var/lib/postgresql/data
-      - espx_run:/run/espx
+      - ad_event_processor_run:/run/ad-event-processor
     networks:
       - database
     healthcheck:
@@ -704,12 +694,12 @@ services:
       - ../../.env
     ports:
       - "6479:6379"
-    command: ["redis-server", "--port", "6379", "--unixsocket", "/run/espx/redis/redis-0.sock", "--unixsocketperm", "777", "--requirepass", "${REDIS_PASSWORD}",
+    command: ["redis-server", "--port", "6379", "--unixsocket", "/run/ad-event-processor/redis/redis-0.sock", "--unixsocketperm", "777", "--requirepass", "${REDIS_PASSWORD}",
               "--appendonly", "yes", "--appendfsync", "everysec",
               "--maxmemory-policy", "noeviction", "--tcp-backlog", "2048"]
     volumes:
       - redis_0_data:/data
-      - espx_run:/run/espx
+      - ad_event_processor_run:/run/ad-event-processor
     deploy:
       resources:
         limits:
@@ -728,12 +718,12 @@ services:
       - ../../.env
     ports:
       - "6480:6379"
-    command: ["redis-server", "--port", "6379", "--unixsocket", "/run/espx/redis/redis-1.sock", "--unixsocketperm", "777", "--requirepass", "${REDIS_PASSWORD}",
+    command: ["redis-server", "--port", "6379", "--unixsocket", "/run/ad-event-processor/redis/redis-1.sock", "--unixsocketperm", "777", "--requirepass", "${REDIS_PASSWORD}",
               "--appendonly", "yes", "--appendfsync", "everysec",
               "--maxmemory-policy", "noeviction", "--tcp-backlog", "2048"]
     volumes:
       - redis_1_data:/data
-      - espx_run:/run/espx
+      - ad_event_processor_run:/run/ad-event-processor
     deploy:
       resources:
         limits:
@@ -752,12 +742,12 @@ services:
       - ../../.env
     ports:
       - "6481:6379"
-    command: ["redis-server", "--port", "6379", "--unixsocket", "/run/espx/redis/redis-2.sock", "--unixsocketperm", "777", "--requirepass", "${REDIS_PASSWORD}",
+    command: ["redis-server", "--port", "6379", "--unixsocket", "/run/ad-event-processor/redis/redis-2.sock", "--unixsocketperm", "777", "--requirepass", "${REDIS_PASSWORD}",
               "--appendonly", "yes", "--appendfsync", "everysec",
               "--maxmemory-policy", "noeviction", "--tcp-backlog", "2048"]
     volumes:
       - redis_2_data:/data
-      - espx_run:/run/espx
+      - ad_event_processor_run:/run/ad-event-processor
     deploy:
       resources:
         limits:
@@ -776,12 +766,12 @@ services:
       - ../../.env
     ports:
       - "6482:6379"
-    command: ["redis-server", "--port", "6379", "--unixsocket", "/run/espx/redis/redis-3.sock", "--unixsocketperm", "777", "--requirepass", "${REDIS_PASSWORD}",
+    command: ["redis-server", "--port", "6379", "--unixsocket", "/run/ad-event-processor/redis/redis-3.sock", "--unixsocketperm", "777", "--requirepass", "${REDIS_PASSWORD}",
               "--appendonly", "yes", "--appendfsync", "everysec",
               "--maxmemory-policy", "noeviction", "--tcp-backlog", "2048"]
     volumes:
       - redis_3_data:/data
-      - espx_run:/run/espx
+      - ad_event_processor_run:/run/ad-event-processor
     deploy:
       resources:
         limits:
@@ -795,17 +785,19 @@ services:
       retries: ${HEALTHCHECK_RETRIES}
 
   redis-4:
+    profiles:
+      - infra
     image: redis:${REDIS_VERSION}
     env_file:
       - ../../.env
     ports:
       - "6483:6379"
-    command: ["redis-server", "--port", "6379", "--unixsocket", "/run/espx/redis/redis-4.sock", "--unixsocketperm", "777", "--requirepass", "${REDIS_PASSWORD}",
+    command: ["redis-server", "--port", "6379", "--unixsocket", "/run/ad-event-processor/redis/redis-4.sock", "--unixsocketperm", "777", "--requirepass", "${REDIS_PASSWORD}",
               "--appendonly", "yes", "--appendfsync", "everysec",
               "--maxmemory-policy", "noeviction", "--tcp-backlog", "2048"]
     volumes:
       - redis_4_data:/data
-      - espx_run:/run/espx
+      - ad_event_processor_run:/run/ad-event-processor
     deploy:
       resources:
         limits:
@@ -819,17 +811,19 @@ services:
       retries: ${HEALTHCHECK_RETRIES}
 
   redis-5:
+    profiles:
+      - infra
     image: redis:${REDIS_VERSION}
     env_file:
       - ../../.env
     ports:
       - "6484:6379"
-    command: ["redis-server", "--port", "6379", "--unixsocket", "/run/espx/redis/redis-5.sock", "--unixsocketperm", "777", "--requirepass", "${REDIS_PASSWORD}",
+    command: ["redis-server", "--port", "6379", "--unixsocket", "/run/ad-event-processor/redis/redis-5.sock", "--unixsocketperm", "777", "--requirepass", "${REDIS_PASSWORD}",
               "--appendonly", "yes", "--appendfsync", "everysec",
               "--maxmemory-policy", "noeviction", "--tcp-backlog", "2048"]
     volumes:
       - redis_5_data:/data
-      - espx_run:/run/espx
+      - ad_event_processor_run:/run/ad-event-processor
     deploy:
       resources:
         limits:
@@ -1017,7 +1011,7 @@ services:
         SKIP_CODEGEN: ${SKIP_CODEGEN:-0}.log-evacuator
     volumes:
       - espx_logs:/var/log/espx:rw
-      - espx_run:/run/espx:rw
+      - ad_event_processor_run:/run/ad-event-processor:rw
       - ${STORAGE_BOX_SSH_KEY_PATH:-~/.ssh/id_rsa}:/root/.ssh/id_rsa:ro
     environment:
       - LOG_DIR=/var/log/espx
@@ -1054,7 +1048,7 @@ volumes:
   espx_ch_spool_1:
   espx_region_proxy_wal:
   espx_broker_data:
-  espx_run:
+  ad_event_processor_run:
   log_compactor_state:
   caddy_data:
   caddy_config:

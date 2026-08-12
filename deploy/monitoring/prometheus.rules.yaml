@@ -255,15 +255,15 @@ groups:
           summary: "TTC fail-open bypass rate above 1%"
           description: "More than 1% of /track requests are clicks accepted without impression timestamp (Redis imp_ts missing). Review Redis health before enabling TTC_FAIL_CLOSED."
 
-  - name: management-cold-path-alerts
+  - name: control-cold-path-alerts
     rules:
-      - alert: ManagementOutboxLagHigh
-        expr: ad_management_outbox_oldest_pending_seconds > 30
+      - alert: ControlOutboxLagHigh
+        expr: ad_control_outbox_oldest_pending_seconds > 30
         for: 1m
         labels:
           severity: warning
         annotations:
-          summary: "Management outbox lag above 30s"
+          summary: "Control outbox lag above 30s"
           description: "Oldest PENDING outbox event is {{ $value | humanizeDuration }} old. Hot-path Redis may be stale vs Postgres."
           runbook_url: "https://github.com/mykhailov-ua/espx/blob/main/docs/DEVELOPMENT.md#post-deploy-redis-reconciliation"
 
@@ -427,10 +427,10 @@ groups:
           summary: "Redis and RTB campaign budgets diverged"
           description: "Sampled Redis budget keys differ from in-process RTB store beyond threshold. Check SyncRTBBudgetState and reconcile worker."
 
-  - name: espx_edge_alerts
+  - name: ad_event_processor_edge_alerts
     rules:
       - alert: EdgeIpBlockRateHigh
-        expr: sum(rate(espx_edge_blocked_ip_total[1m])) > 500
+        expr: sum(rate(ad_event_processor_edge_blocked_ip_total[1m])) > 500
         for: 1m
         labels:
           severity: warning
@@ -439,7 +439,7 @@ groups:
           description: "Nginx is dropping more than 500 requests/sec via IP blacklist. Potential DDoS in progress."
 
       - alert: EdgeBlacklistSyncStale
-        expr: espx_edge_sync_last_success_timestamp > 0 and (time() - espx_edge_sync_last_success_timestamp > 60)
+        expr: ad_event_processor_edge_sync_last_success_timestamp > 0 and (time() - ad_event_processor_edge_sync_last_success_timestamp > 60)
         for: 2m
         labels:
           severity: critical
@@ -448,7 +448,7 @@ groups:
           description: "Nginx worker failed to sync blacklist from Redis for more than 60 seconds. Check Redis Shard 0 availability."
 
       - alert: EdgeCampaignRlBlockRateHigh
-        expr: sum(rate(espx_edge_blocked_campaign_rl_total[1m])) > 200
+        expr: sum(rate(ad_event_processor_edge_blocked_campaign_rl_total[1m])) > 200
         for: 2m
         labels:
           severity: warning
@@ -457,16 +457,16 @@ groups:
           description: "OpenResty edge_rl is rejecting more than 200 requests/sec. Review campaign limits or abuse on hot campaigns."
 
       - alert: EdgeStreamModeBodyRead
-        expr: rate(espx_edge_body_read_total[5m]) > 0
+        expr: rate(ad_event_processor_edge_body_read_total[5m]) > 0
         for: 5m
         labels:
           severity: warning
         annotations:
           summary: "Edge body read in stream mode"
-          description: "espx_edge_body_read_total is non-zero while EDGE_BODY_MODE=stream is expected. Phase-2 may be reading bodies unintentionally."
+          description: "ad_event_processor_edge_body_read_total is non-zero while EDGE_BODY_MODE=stream is expected. Phase-2 may be reading bodies unintentionally."
 
       - alert: EdgeCircuitBreakerRejectHigh
-        expr: sum(rate(espx_edge_circuit_reject_total[1m])) > 10
+        expr: sum(rate(ad_event_processor_edge_circuit_reject_total[1m])) > 10
         for: 2m
         labels:
           severity: critical
@@ -477,8 +477,8 @@ groups:
       - alert: EdgeTrack503RateHigh
         expr: |
           (
-            sum(rate(espx_edge_circuit_reject_total[1m]))
-            + sum(rate(espx_edge_blacklist_stale_total[1m]))
+            sum(rate(ad_event_processor_edge_circuit_reject_total[1m]))
+            + sum(rate(ad_event_processor_edge_blacklist_stale_total[1m]))
           ) > 25
         for: 2m
         labels:
@@ -590,13 +590,13 @@ groups:
           summary: "Log compactor has no leader with pending hot segments"
           description: "Hot-tier segments are waiting but no compactor instance holds leadership."
 
-      - alert: ManagementOpsAlertEnqueueFailures
-        expr: rate(ad_management_ops_alert_enqueue_failures_total[15m]) > 0
+      - alert: ControlOpsAlertEnqueueFailures
+        expr: rate(ad_control_ops_alert_enqueue_failures_total[15m]) > 0
         for: 5m
         labels:
           severity: warning
         annotations:
-          summary: "Management failed to enqueue ops alerts"
+          summary: "Control plane failed to enqueue ops alerts"
           description: "OpsAlerter or Alertmanager webhook could not reach the notifier gRPC service."
 
   - name: payment-financial-recon-alerts

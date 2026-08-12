@@ -1,5 +1,5 @@
 profile: single_vps
-ingress_schema: espx_native
+ingress_schema: ad_event_processor_native
 telemetry_enabled: true
 edge_xdp: false
 multi_region: false

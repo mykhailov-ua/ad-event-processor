@@ -7,10 +7,10 @@ route:
   group_wait: 10s
   group_interval: 10s
   repeat_interval: 1h
-  receiver: 'management-webhook'
+  receiver: 'control-webhook'
 
 receivers:
-- name: 'management-webhook'
+- name: 'control-webhook'
   webhook_configs:
   - url: 'http://127.0.0.1:8188/ops/alertmanager/webhook'
     send_resolved: true

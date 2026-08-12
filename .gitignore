@@ -113,5 +113,5 @@ deploy/geoip/*.mmdb
 deploy/terraform/**/.terraform/
 deploy/terraform/**/terraform.tfstate*
 
-# Rendered deploy configs (scripts/k8s/render_prometheus_k3s.sh, etc.)
+# Rendered deploy configs (enterprise archive render_prometheus_k3s.sh, etc.)
 deploy/monitoring/*.rendered.yaml

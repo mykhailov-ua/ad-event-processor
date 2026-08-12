@@ -88,6 +88,8 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.image_tag }}
             ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.image_tag_short }}
+            ghcr.io/${{ github.repository_owner }}/ad-event-processor:${{ steps.meta.outputs.image_tag }}
+            ghcr.io/${{ github.repository_owner }}/ad-event-processor:${{ steps.meta.outputs.image_tag_short }}
           cache-from: type=gha,scope=${{ matrix.profile }}
           cache-to: type=gha,mode=max,scope=${{ matrix.profile }}
 
@@ -128,8 +130,9 @@ jobs:
       - name: Summary
         run: |
           echo "Published pilot images:"
-          echo "  ghcr.io/${{ github.repository }}:${{ github.ref_name }} (tracker, processor, control)"
-          echo "  ghcr.io/${{ github.repository }}:${{ github.ref_name }}-ingest (tracker, processor)"
+          echo "  ghcr.io/${{ github.repository_owner }}/ad-event-processor:${{ github.ref_name }} (tracker, processor, control)"
+          echo "  ghcr.io/${{ github.repository_owner }}/ad-event-processor:${{ github.ref_name }}-ingest (tracker, processor)"
+          echo "  ghcr.io/${{ github.repository }}:${{ github.ref_name }} (legacy repo tag, one release)"
           echo "Set in install.env:"
-          echo "  ESPX_USE_RELEASE_IMAGES=1"
-          echo "  ESPX_APP_IMAGE=ghcr.io/${{ github.repository }}:${{ github.ref_name }}"
+          echo "  AD_EVENT_PROCESSOR_USE_RELEASE_IMAGES=1"
+          echo "  AD_EVENT_PROCESSOR_APP_IMAGE=ghcr.io/${{ github.repository_owner }}/ad-event-processor:${{ github.ref_name }}"

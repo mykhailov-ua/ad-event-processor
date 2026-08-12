@@ -25,18 +25,20 @@ resolve_latest_tag() {
 
 install_from_tarball() {
 	local tag="$1"
-	local url="https://github.com/${REPO}/releases/download/${tag}/bidshard-installer.tar.gz"
 	local tmp
 	tmp="$(mktemp -d)"
-	log "downloading ${url}"
-	if ! curl -fsSL "$url" | tar -xz -C "$tmp"; then
-		rm -rf "$tmp"
-		return 1
-	fi
-	rm -rf "$INSTALL_DIR"
-	mv "$tmp/bidshard" "$INSTALL_DIR"
+	for name in ad-event-processor-installer bidshard-installer; do
+		local url="https://github.com/${REPO}/releases/download/${tag}/${name}.tar.gz"
+		log "downloading ${url}"
+		if curl -fsSL "$url" | tar -xz -C "$tmp" 2>/dev/null; then
+			rm -rf "$INSTALL_DIR"
+			mv "$tmp/bidshard" "$INSTALL_DIR"
+			rm -rf "$tmp"
+			return 0
+		fi
+	done
 	rm -rf "$tmp"
-	return 0
+	return 1
 }
 
 install_from_git() {
@@ -78,7 +80,7 @@ main() {
 	fi
 
 	cd "$INSTALL_DIR"
-	exec bash scripts/install/bidshard-install.sh --yes "$@"
+	exec bash scripts/install/ad-event-processor-install.sh --yes "$@"
 }
 
 if [[ -n "$GET_SCRIPT_URL" ]]; then

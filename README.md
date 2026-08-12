@@ -1,4 +1,4 @@
-# BidShard (eSPX)
+# BidShard
 
 The ultimate self-hosted ad tracking, event ingestion, and real-time bidding (RTB) platform designed for Ad Networks, Media Buying Teams (Arbitrageurs), and Publishers in the 2026 programmatic landscape.
 
@@ -56,6 +56,7 @@ BidShard is a private, high-performance alternative to expensive SaaS trackers a
 If you are a developer, system administrator, or DevOps engineer looking to deploy, configure, or modify BidShard, please refer to our technical documentation:
 
 - **[Quick Start (single VPS install)](docs/QUICKSTART.md)**: Interactive installer script, platform config bootstrap, and Doctor API.
+- **[RTB Features & Capabilities](docs/RTB.md)**: Executive summary for buyers and technical deep-dive for engineers.
 - **[RTB production runbook](docs/RTB_PRODUCTION_RUNBOOK.md)**: OpenRTB 2.6 shadow→live, reconcile export, CH retention.
 - **[System Architecture & Data Flow](docs/ARCHITECTURE.md)**: Deep dive into the network topology, Redis sharding, PostgreSQL ledger, ClickHouse spooling, and the request lifecycle.
 - **[Development & Deployment Guide](docs/DEVELOPMENT.md)**: Local setup, codegen, Docker Compose profiles, and testing (appliance default path).

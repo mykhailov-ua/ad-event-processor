@@ -87,8 +87,9 @@ build-bin: gen fmt
 	  echo "build-bin: $$cmd -> $(BIN_DIR)/$$cmd"; \
 	  CGO_ENABLED=0 go build -tags $(BIN_TAGS) $(BIN_LDFLAGS) -o $(BIN_DIR)/$$cmd ./cmd/$$cmd; \
 	done
-	@echo "build-bin: espx-install -> $(BIN_DIR)/espx-install"
-	@CGO_ENABLED=0 go build -tags $(BIN_TAGS) $(BIN_LDFLAGS) -o $(BIN_DIR)/espx-install ./cmd/installer
+	@echo "build-bin: ad-event-processor-install -> $(BIN_DIR)/ad-event-processor-install"
+	@CGO_ENABLED=0 go build -tags $(BIN_TAGS) $(BIN_LDFLAGS) -o $(BIN_DIR)/ad-event-processor-install ./cmd/installer
+	@ln -sf ad-event-processor-install $(BIN_DIR)/espx-install 2>/dev/null || cp -f $(BIN_DIR)/ad-event-processor-install $(BIN_DIR)/espx-install
 
 RELEASE_PLATFORMS := linux/amd64 linux/arm64
 RELEASE_CMDS := tracker processor control ivt-detector fraud-scorer region-proxy broker

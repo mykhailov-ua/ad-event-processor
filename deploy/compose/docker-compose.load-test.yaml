@@ -79,6 +79,7 @@ services:
       - ../../deploy/nginx/nginx.load-test.conf:/etc/nginx/nginx.conf:ro
       - ../../deploy/nginx/nginx.load-test.conf:/usr/local/openresty/nginx/conf/nginx.conf:ro
       - ../../deploy/nginx/lua/edge-tracker-peers.load-test.lua:/etc/nginx/lua/edge-tracker-peers.lua:ro
+      - ../../deploy/nginx/snippets:/etc/nginx/snippets:ro
     deploy:
       resources:
         limits:

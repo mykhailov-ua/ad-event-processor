@@ -75,27 +75,27 @@
       "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
       "targets": [
         {
-          "expr": "sum(rate(espx_edge_phase1_pass_total[1m]))",
+          "expr": "sum(rate(ad_event_processor_edge_phase1_pass_total[1m]))",
           "legendFormat": "phase1 pass",
           "refId": "A"
         },
         {
-          "expr": "sum(rate(espx_edge_phase2_pass_total[1m]))",
+          "expr": "sum(rate(ad_event_processor_edge_phase2_pass_total[1m]))",
           "legendFormat": "phase2 pass",
           "refId": "B"
         },
         {
-          "expr": "sum(rate(espx_edge_blocked_ip_total[1m]))",
+          "expr": "sum(rate(ad_event_processor_edge_blocked_ip_total[1m]))",
           "legendFormat": "blocked IP 403",
           "refId": "C"
         },
         {
-          "expr": "sum(rate(espx_edge_circuit_reject_total[1m]))",
+          "expr": "sum(rate(ad_event_processor_edge_circuit_reject_total[1m]))",
           "legendFormat": "circuit 503",
           "refId": "D"
         },
         {
-          "expr": "sum(rate(espx_edge_blacklist_stale_total[1m]))",
+          "expr": "sum(rate(ad_event_processor_edge_blacklist_stale_total[1m]))",
           "legendFormat": "stale blacklist 503",
           "refId": "E"
         }
@@ -132,7 +132,7 @@
       "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
       "targets": [
         {
-          "expr": "time() - espx_edge_sync_last_success_timestamp",
+          "expr": "time() - ad_event_processor_edge_sync_last_success_timestamp",
           "legendFormat": "sync age",
           "refId": "A"
         }
@@ -159,7 +159,7 @@
       "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
       "targets": [
         {
-          "expr": "espx_edge_blacklist_entries",
+          "expr": "ad_event_processor_edge_blacklist_entries",
           "legendFormat": "entries",
           "refId": "A"
         }
@@ -181,17 +181,17 @@
       "id": 213,
       "targets": [
         {
-          "expr": "sum(rate(espx_edge_blocked_campaign_rl_total[1m]))",
+          "expr": "sum(rate(ad_event_processor_edge_blocked_campaign_rl_total[1m]))",
           "legendFormat": "campaign RL 429",
           "refId": "A"
         },
         {
-          "expr": "sum(rate(espx_edge_blocked_fraud_tier_total[1m]))",
+          "expr": "sum(rate(ad_event_processor_edge_blocked_fraud_tier_total[1m]))",
           "legendFormat": "fraud tier 403/429",
           "refId": "B"
         },
         {
-          "expr": "sum(rate(espx_edge_body_read_total[1m]))",
+          "expr": "sum(rate(ad_event_processor_edge_body_read_total[1m]))",
           "legendFormat": "body read (full mode)",
           "refId": "C"
         }
@@ -255,12 +255,12 @@
       "id": 216,
       "targets": [
         {
-          "expr": "sum(rate(espx_edge_tarpit_total[1m]))",
+          "expr": "sum(rate(ad_event_processor_edge_tarpit_total[1m]))",
           "legendFormat": "tarpit delayed req/s",
           "refId": "A"
         },
         {
-          "expr": "sum(rate(espx_edge_tarpit_delay_ms_total[1m]))",
+          "expr": "sum(rate(ad_event_processor_edge_tarpit_delay_ms_total[1m]))",
           "legendFormat": "tarpit delay ms/s",
           "refId": "B"
         }
