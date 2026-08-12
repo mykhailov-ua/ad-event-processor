@@ -2,32 +2,15 @@
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
+source "$SCRIPTS/lib/installer_env.sh"
 cd "$ROOT"
 
 espx_read_env() {
-	local key="$1"
-	local file val
-	for file in "$ROOT/.env" "$ROOT/deploy/installer/install.env"; do
-		if [[ -f "$file" ]]; then
-			val="$(grep -m1 "^${key}=" "$file" 2>/dev/null | cut -d= -f2- || true)"
-			if [[ -n "$val" ]]; then
-				echo "$val"
-				return 0
-			fi
-		fi
-	done
-	echo ""
+	installer_read_env "$1"
 }
 
 espx_use_release_images() {
-	local flag img
-	flag="$(espx_read_env ESPX_USE_RELEASE_IMAGES)"
-	img="$(espx_read_env ESPX_APP_IMAGE)"
-	[[ "$flag" == "1" ]] || [[ -n "$img" ]]
-}
-
-espx_ingress_enabled() {
-	[[ "$(espx_read_env INGRESS_ENABLED)" == "1" ]]
+	installer_use_release_images
 }
 
 espx_ingress_enabled() {
@@ -39,6 +22,10 @@ espx_compose() {
 	local -a file_args=(-f "$ROOT/docker-compose.yaml")
 	if espx_use_release_images; then
 		file_args+=(-f "$ROOT/deploy/compose/docker-compose.release.yaml")
+		if [[ -z "${AD_EVENT_PROCESSOR_APP_IMAGE:-}" ]]; then
+			AD_EVENT_PROCESSOR_APP_IMAGE="$(installer_release_app_image)"
+			export AD_EVENT_PROCESSOR_APP_IMAGE
+		fi
 	fi
 	if [[ -f "$ROOT/.env" ]]; then
 		env_args+=(--env-file "$ROOT/.env")
@@ -59,7 +46,7 @@ SENTINEL=(redis-0 redis-0-replica sentinel-0 sentinel-1 sentinel-2)
 
 case "$CMD" in
 infra | up-infra)
-	espx_compose up -d "${INFRA[@]}"
+	espx_compose --profile infra up -d db db-payment redis-0 redis-1 redis-2 redis-3 redis-4 redis-5 clickhouse
 	;;
 full | up-full)
 	echo "stack.sh: full runs single-vps monolith" >&2
@@ -146,7 +133,7 @@ status)
 	;;
 build)
 	if espx_use_release_images; then
-		echo "stack.sh: pulling release images (ESPX_USE_RELEASE_IMAGES / ESPX_APP_IMAGE)" >&2
+		echo "stack.sh: pulling release images (AD_EVENT_PROCESSOR_USE_RELEASE_IMAGES / AD_EVENT_PROCESSOR_APP_IMAGE)" >&2
 		espx_compose pull tracker-0 processor control
 	else
 		espx_compose build

@@ -46,11 +46,11 @@ fetch_metrics() {
 	TRACKER_P99_MS="$(prom_query_scalar 'histogram_quantile(0.99, sum(rate(ad_http_request_duration_seconds_bucket{job="tracker"}[5m])) by (le)) * 1000' || echo "")"
 	REDIS_LUA_P99_MS="$(prom_query_scalar 'max(histogram_quantile(0.99, sum(rate(ad_redis_lua_duration_seconds_bucket{job="tracker"}[5m])) by (le, shard)) * 1000)' || echo "")"
 	TRACKER_RPS="$(prom_query_scalar 'sum(rate(ad_http_request_duration_seconds_count{job="tracker"}[5m]))' || echo "")"
-	EDGE_PHASE1_RPS="$(prom_query_scalar 'sum(rate(espx_edge_phase1_pass_total[5m]))' || echo "")"
-	EDGE_CIRCUIT_RPS="$(prom_query_scalar 'sum(rate(espx_edge_circuit_reject_total[5m]))' || echo "")"
-	EDGE_BLOCKED_IP_RPS="$(prom_query_scalar 'sum(rate(espx_edge_blocked_ip_total[5m]))' || echo "")"
-	EDGE_BODY_READ_RPS="$(prom_query_scalar 'sum(rate(espx_edge_body_read_total[5m]))' || echo "")"
-	EDGE_BL_AGE_SEC="$(prom_query_scalar 'time() - espx_edge_sync_last_success_timestamp' || echo "")"
+	EDGE_PHASE1_RPS="$(prom_query_scalar 'sum(rate(ad_event_processor_edge_phase1_pass_total[5m]))' || echo "")"
+	EDGE_CIRCUIT_RPS="$(prom_query_scalar 'sum(rate(ad_event_processor_edge_circuit_reject_total[5m]))' || echo "")"
+	EDGE_BLOCKED_IP_RPS="$(prom_query_scalar 'sum(rate(ad_event_processor_edge_blocked_ip_total[5m]))' || echo "")"
+	EDGE_BODY_READ_RPS="$(prom_query_scalar 'sum(rate(ad_event_processor_edge_body_read_total[5m]))' || echo "")"
+	EDGE_BL_AGE_SEC="$(prom_query_scalar 'time() - ad_event_processor_edge_sync_last_success_timestamp' || echo "")"
 }
 
 cmp_sla() {

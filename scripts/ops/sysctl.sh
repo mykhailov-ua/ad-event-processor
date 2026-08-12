@@ -4,8 +4,11 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 MODE="${1:-apply}"
-CONF_SRC="$ROOT/deploy/edge/99-espx-edge.conf"
-CONF_DST="${ESPX_SYSCTL_CONF:-/etc/sysctl.d/99-espx-edge.conf}"
+CONF_SRC="${AD_EVENT_PROCESSOR_SYSCTL_CONF:-$ROOT/deploy/edge/99-ad-event-processor-sysctl.conf}"
+if [[ ! -f "$CONF_SRC" ]]; then
+	CONF_SRC="$ROOT/deploy/edge/99-espx-edge.conf"
+fi
+CONF_DST="${AD_EVENT_PROCESSOR_SYSCTL_CONF_DST:-${ESPX_SYSCTL_CONF:-/etc/sysctl.d/99-ad-event-processor-sysctl.conf}}"
 
 log() { printf 'edge-sysctl: %s\n' "$*"; }
 warn() { printf 'edge-sysctl: WARN: %s\n' "$*" >&2; }
@@ -114,7 +117,7 @@ Usage: edge_sysctl.sh <apply|verify|report>
   verify  exit 1 if live values or install path differ from repo conf
   report  print current vs expected sysctl values
 
-Environment: ESPX_SYSCTL_CONF (default /etc/sysctl.d/99-espx-edge.conf)
+Environment: AD_EVENT_PROCESSOR_SYSCTL_CONF_DST (default /etc/sysctl.d/99-ad-event-processor-sysctl.conf)
 EOF
 	;;
 *)

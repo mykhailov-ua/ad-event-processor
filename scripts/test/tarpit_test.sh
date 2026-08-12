@@ -25,7 +25,7 @@ if ! curl -sf --max-time 2 "${METRICS_URL}" >/dev/null 2>&1; then
 	exit 0
 fi
 
-before="$(curl -sf "${METRICS_URL}" | awk '/^espx_edge_tarpit_total /{print $2; exit}')"
+before="$(curl -sf "${METRICS_URL}" | awk '/^ad_event_processor_edge_tarpit_total /{print $2; exit}')"
 before="${before:-0}"
 
 hdrs=()
@@ -35,14 +35,14 @@ done
 
 curl -sf -o /dev/null "${hdrs[@]}" "${EDGE_URL}/health" || true
 
-after="$(curl -sf "${METRICS_URL}" | awk '/^espx_edge_tarpit_total /{print $2; exit}')"
+after="$(curl -sf "${METRICS_URL}" | awk '/^ad_event_processor_edge_tarpit_total /{print $2; exit}')"
 after="${after:-0}"
 
 if [[ "${EDGE_TARPIT_ENABLED:-}" == "1" || "${EDGE_TARPIT_ENABLED:-}" == "true" ]]; then
 	if awk -v b="$before" -v a="$after" 'BEGIN { exit !(a > b) }'; then
 		echo "fault_proof fault=edge_tarpit_triggered tarpit_before=${before} tarpit_after=${after} baseline_ok=true"
 	else
-		echo "WARN: EDGE_TARPIT_ENABLED but espx_edge_tarpit_total did not increase (before=${before} after=${after})" >&2
+		echo "WARN: EDGE_TARPIT_ENABLED but ad_event_processor_edge_tarpit_total did not increase (before=${before} after=${after})" >&2
 		exit 1
 	fi
 else

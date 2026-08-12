@@ -277,10 +277,10 @@ install_systemd() {
 	[[ -f "$unit_src" ]] || die "missing $unit_src"
 	require_root
 
-	install -d /etc/espx
-	if [[ ! -f /etc/espx/edge-nic-tune.env ]]; then
-		install -m 0644 "$env_example" /etc/espx/edge-nic-tune.env
-		log "installed /etc/espx/edge-nic-tune.env (edit INGRESS_INTERFACE if needed)"
+	install -d /etc/ad-event-processor
+	if [[ ! -f /etc/ad-event-processor/edge-nic-tune.env ]]; then
+		install -m 0644 "$env_example" /etc/ad-event-processor/edge-nic-tune.env
+		log "installed /etc/ad-event-processor/edge-nic-tune.env (edit INGRESS_INTERFACE if needed)"
 	fi
 	install -m 0755 "$SCRIPTS/edge/nic_tune.sh" /usr/local/bin/edge_nic_tune.sh
 	install -m 0644 "$unit_src" /etc/systemd/system/espx-edge-nic-tune.service

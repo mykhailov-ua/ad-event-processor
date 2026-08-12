@@ -16,12 +16,12 @@ metric() {
 }
 
 snapshot_metrics() {
-	printf 'body_read=%s\n' "$(metric espx_edge_body_read_total || echo 0)"
-	printf 'body_stream=%s\n' "$(metric espx_edge_body_stream_total || echo 0)"
-	printf 'body_peek=%s\n' "$(metric espx_edge_body_peek_total || echo 0)"
-	printf 'parse_oversize=%s\n' "$(metric espx_edge_parse_oversize_total || echo 0)"
-	printf 'phase2_pass=%s\n' "$(metric espx_edge_phase2_pass_total || echo 0)"
-	printf 'chunked_reject=%s\n' "$(metric espx_edge_chunked_reject_total || echo 0)"
+	printf 'body_read=%s\n' "$(metric ad_event_processor_edge_body_read_total || echo 0)"
+	printf 'body_stream=%s\n' "$(metric ad_event_processor_edge_body_stream_total || echo 0)"
+	printf 'body_peek=%s\n' "$(metric ad_event_processor_edge_body_peek_total || echo 0)"
+	printf 'parse_oversize=%s\n' "$(metric ad_event_processor_edge_parse_oversize_total || echo 0)"
+	printf 'phase2_pass=%s\n' "$(metric ad_event_processor_edge_phase2_pass_total || echo 0)"
+	printf 'chunked_reject=%s\n' "$(metric ad_event_processor_edge_chunked_reject_total || echo 0)"
 }
 
 gen_body() {

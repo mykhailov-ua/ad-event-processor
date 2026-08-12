@@ -49,7 +49,7 @@ else
 fi
 
 run_check "nginx edge metrics" bash -c '
-	curl -sf --max-time 3 http://127.0.0.1:8180/metrics/edge | grep -q espx_edge_phase1_pass_total
+	curl -sf --max-time 3 http://127.0.0.1:8180/metrics/edge | grep -q ad_event_processor_edge_phase1_pass_total
 ' || warn "nginx :8180 /metrics/edge unreachable (start full stack)"
 
 run_check "prometheus baseline snapshot" bash "$SCRIPTS/edge/baseline.sh" snapshot || true

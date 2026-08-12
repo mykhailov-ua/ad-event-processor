@@ -29,11 +29,11 @@ snapshot_metrics() {
 		echo "scenario=$SCENARIO"
 		echo "requests=$REQUESTS"
 		echo "concurrency=$CONCURRENCY"
-		echo "phase1_pass=$(metric_val espx_edge_phase1_pass_total || echo 0)"
-		echo "body_read=$(metric_val espx_edge_body_read_total || echo 0)"
-		echo "blocked_ip=$(metric_val espx_edge_blocked_ip_total || echo 0)"
-		echo "blocked_rl=$(metric_val espx_edge_blocked_campaign_rl_total || echo 0)"
-		echo "circuit_reject=$(metric_val espx_edge_circuit_reject_total || echo 0)"
+		echo "phase1_pass=$(metric_val ad_event_processor_edge_phase1_pass_total || echo 0)"
+		echo "body_read=$(metric_val ad_event_processor_edge_body_read_total || echo 0)"
+		echo "blocked_ip=$(metric_val ad_event_processor_edge_blocked_ip_total || echo 0)"
+		echo "blocked_rl=$(metric_val ad_event_processor_edge_blocked_campaign_rl_total || echo 0)"
+		echo "circuit_reject=$(metric_val ad_event_processor_edge_circuit_reject_total || echo 0)"
 	} | tee "$OUT_DIR/${prefix}-${SCENARIO}.txt"
 }
 
