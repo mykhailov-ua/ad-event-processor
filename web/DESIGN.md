@@ -10,7 +10,7 @@ Spec for the embedded admin UI (`web/`).
 
 **Not adopted:** `@grafana/ui`, Grafana Storybook components, Grafana palette/typography, React. Runtime stays vanilla ESM (`admin-web.mdc`).
 
-Implementation: `web/src/styles/tokens.css` + `main.css` + `a11y.css`. Confirm flows: `helpers/confirm_catalog.js` / `confirm_registry.js`. Toasts: `helpers/toast_ui.js`.
+Implementation: `web/src/styles/tokens.css` + `main.css` + `components.css` + `a11y.css`. Shared controls: `web/src/ui/button.ts`, `web/src/ui/form_field.ts`. Confirm flows: `helpers/confirm_catalog.js` / `confirm_registry.js`. Toasts: `helpers/toast_ui.js`.
 
 ---
 
@@ -206,7 +206,76 @@ Target: **WCAG 2.1 AA** intent (Saga accessibility posture), implemented with Ge
 
 ---
 
-## 10. Changing the theme or UX rules
+## 11. Anti-slop and honesty (2026 admin UI)
+
+Operators and buyers must never think a screen works when it does not. This section is the **product honesty** bar for `web/` — complementary to engineering DoD in [`.cursor/MILESTONE.md`](../.cursor/MILESTONE.md) §1.0.
+
+### 11.1 What counts as slop / lying
+
+| Class | Example (forbidden) | Why |
+|-------|---------------------|-----|
+| **False live** | `live: true` in `REPORT_CATALOG` but route mounts `report_stub.js` | User pays for analytics that 501 |
+| **Dead fetch** | `api('/rtb/deals')` then always render “No rows — connect API” | Looks wired; data discarded — see `rtb_deals.ts` (allowlisted debt until §1.3.1) |
+| **Skeleton in prod copy** | Page desc “(skeleton)” while linked from `nav_config.ts` | Admits placeholder in GA chrome |
+| **Silent failure** | `catch` → empty table with no `renderErrorBlock` / toast | Hides outage as “no data” |
+| **Fake save** | Toast “Saved” before `apiConfirmed` resolves 2xx | User believes mutation persisted |
+| **Phantom fields** | Form submits `budget_limit` when `PatchCampaignRequest` has no such field | UI lies about server contract — see MILESTONE §1.2.4 |
+| **Demo KPIs** | Hardcoded `metric-card` numbers not from API | Fraudulent dashboard |
+| **Docs ≠ routes** | MILESTONE/DESIGN “shipped” without `routes.ts` + e2e | Agent/human marketing drift |
+| **Marketing filler** | “Seamless”, “cutting-edge”, “revolutionize” in operator UI | AI boilerplate; no signal |
+| **Secret echo** | Show `api_token`, JWT, webhook secret after save | Security + fake “configured” state |
+
+**Not slop:** loading `tableSkeletonRows` during fetch; `stub-banner` on real 501/404; `retired: true` reports with redirect; honest empty state **after** successful API returning `items: []`.
+
+### 11.2 Required patterns (how to avoid)
+
+| Situation | Do this |
+|-----------|---------|
+| API not ready | **No nav link**; or `report_stub.js` + hub card without `live: true`; or `placeholder.ts` pattern (not in `nav_config`) |
+| API 501 / stub backend | `renderStubBanner` + link to live alternative ([`stub_banner.ts`](src/ui/stub_banner.ts)) |
+| API error / timeout | `renderErrorBlock` or `mapServiceError` toast — never blank table |
+| Partial fan-out (`503` + items) | Yellow `stub-banner` listing `errors[]` (ops outbox pattern) |
+| Report is GA | `live: true` + dedicated route in `routes.ts` + `report_live_routes_gate.sh` |
+| Mutation | `apiConfirmed` + `confirm_registry` level matches blast radius |
+| Money | `formatUsdDecimal` / `formatAmountMicro` — never string concat `$` |
+| Types | `web/src/types/api/*` matches Go `json` tags — grep handler DTO before form |
+| Agent claims “done” | Must cite green command: `bash scripts/ci/admin_web.sh` (includes slop gate) |
+
+### 11.3 Verification (CI + manual)
+
+**Automated** (in `admin_web.sh`):
+
+```bash
+bash scripts/ci/report_live_routes_gate.sh   # live reports ≠ stub route
+bash scripts/ci/check_ui_literals.sh         # EN copy, money helpers
+bash scripts/ci/check_ui_slop.sh           # skeleton / fake-wiring phrases
+bash scripts/ci/check_web_security.sh      # no console.log, secrets in URLs
+```
+
+**Per-feature before merge:**
+
+1. Playwright: mock API returns rows → table shows them; mock 500 → error visible.
+2. Manual: Network tab — no fetch on hidden tabs until selected (lazy ops tabs).
+3. `grep` view for `TODO` / `skeleton` / `FIXME` in user-visible strings.
+
+**Known debt (remove allowlist when fixed):**
+
+- `web/src/views/rtb_deals.ts` — §1.3.1 RTB deals CRUD ([MILESTONE](../.cursor/MILESTONE.md) §1.3.1).
+
+### 11.4 Agent / LLM checklist
+
+When implementing or reviewing `web/` changes:
+
+- [ ] Read Go handler + DTO before building form fields.
+- [ ] Run `npm run typecheck` and targeted e2e — do not claim green without output.
+- [ ] If API response is unused, **delete the fetch** or wire the table — never “pretend shipped”.
+- [ ] Do not set `live: true` without route + gate.
+- [ ] Copy: imperative, short, English — title + what to do next (§4 copy rules).
+- [ ] No new nav entry until happy path works with mocked 200 in Playwright.
+
+---
+
+## 12. Changing the theme or UX rules
 
 1. Visual tokens: edit semantic mappings in `tokens.css` (not one-off component CSS).
 2. UX rules: edit this doc first; then align `confirm_catalog`, toast helpers, and shared panel/form classes.

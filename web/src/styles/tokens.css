@@ -107,6 +107,26 @@
 
   --focus-ring: 0 0 0 0.125rem color-mix(in srgb, var(--accent) 35%, transparent);
 
+  /* Component control sizes (Milestone 4) */
+  --control-height-xs: 1.625rem;
+  --control-height-sm: 2rem;
+  --control-height-md: 2.5rem;
+  --control-height-lg: 3rem;
+  --control-padding-x-sm: var(--space-sm);
+  --control-padding-x-md: var(--space-md);
+  --control-gap: var(--space-xs);
+
+  /* Component semantics (primitive → component) */
+  --btn-bg-primary: var(--accent);
+  --btn-bg-primary-hover: var(--accent-hover);
+  --btn-bg-danger: var(--danger);
+  --btn-bg-danger-hover: color-mix(in srgb, var(--danger) 88%, black);
+  --btn-fg-on-accent: var(--gray-1000);
+  --input-bg: var(--bg-canvas);
+  --input-border: var(--border-color);
+  --input-border-focus: var(--border-strong);
+  --input-border-error: var(--danger);
+
   /* Chart */
   --chart-max-height: 15.5rem;
   --chart-aspect-ratio: 16 / 9;

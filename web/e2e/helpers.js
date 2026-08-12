@@ -9,6 +9,7 @@ export const ADMIN_USER = {
     'customers:read',
     'campaigns:read',
     'shards:read',
+    'shards:write',
     'settings:read',
     'settings:write',
     'billing:read',
@@ -32,7 +33,7 @@ export const TENANT_USER = {
   email: 'user@test.local',
   role: 'U',
   customer_id: 'cust-own',
-  permissions: ['customers:read'],
+  permissions: ['customers:read', 'campaigns:read'],
 };
 
 /**

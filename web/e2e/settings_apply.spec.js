@@ -6,7 +6,7 @@ const PLATFORM_VIEW = {
     tracking_domain: 'track.example',
     default_currency: 'USD',
     timezone: 'UTC',
-    ingress_schema: 'espx_native',
+    ingress_schema: 'ad_event_processor_native',
     telemetry_enabled: true,
     profile: 'single_vps',
     edge_xdp: false,

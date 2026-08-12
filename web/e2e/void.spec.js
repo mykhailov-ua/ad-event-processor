@@ -44,8 +44,8 @@ test('void invoice requires strong confirm dialog', async ({ page }) => {
   await expect(confirmBtn).toBeDisabled();
   expect(voidCalled).toBe(false);
 
-  await page.fill('input[type=text]', 'DELETE');
-  await page.locator('input[type=checkbox]').check({ force: true });
+  await page.getByLabel('Type DELETE to confirm').fill('DELETE');
+  await page.getByRole('checkbox', { name: 'I understand the consequences' }).check();
   await page.getByRole('button', { name: 'Confirm' }).click();
 
   await expect.poll(() => voidCalled).toBe(true);

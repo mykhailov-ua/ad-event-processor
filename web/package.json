@@ -1,0 +1,19 @@
+{
+  "name": "bidshard-admin",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "icons:gen": "node scripts/gen_icon_paths.mjs",
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/dev.mjs",
+    "preview": "node scripts/preview.mjs",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tests.json",
+    "test": "node --experimental-strip-types --import ./scripts/register_ts.mjs --test src/lib/async_guard.test.ts src/models/buyer.test.ts src/models/campaign_health.test.ts src/models/traffic_source_templates.test.ts src/models/affiliate_postback_presets.test.ts src/helpers/api_timing.test.ts src/helpers/home_alerts.test.ts src/helpers/integration_kit.test.ts src/helpers/edge_fraud_tier.test.ts src/helpers/tracking_link.test.ts src/helpers/traffic_filter.test.ts src/helpers/ops_metric_series.test.ts"
+  },
+  "devDependencies": {
+    "@phosphor-icons/core": "^2.1.1",
+    "@types/node": "^22.17.0",
+    "esbuild": "0.25.9",
+    "typescript": "5.9.2"
+  }
+}

@@ -24,13 +24,13 @@ test('bootstrap page submits with strong confirm and install token', async ({ pa
   await page.getByRole('button', { name: 'Initialize platform' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
 
-  await page.fill('input[type=text]', 'DELETE');
-  await page.locator('input[type=checkbox]').check({ force: true });
+  await page.getByLabel('Type DELETE to confirm').fill('DELETE');
+  await page.getByRole('checkbox', { name: 'I understand the consequences' }).check();
   await page.getByRole('button', { name: 'Confirm' }).click();
 
   await expect.poll(() => bootstrapCalled).toBe(true);
   expect(bootstrapHeaders?.['x-install-token']).toBe('install-token');
-  await page.waitForURL('/login');
+  await page.waitForURL('/install/done');
 });
 
 test('login redirects to bootstrap when platform not initialized', async ({ page }) => {
