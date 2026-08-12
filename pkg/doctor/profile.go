@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"espx/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/config"
 )
 
 const (

@@ -6,16 +6,16 @@ import (
 	"net"
 	"os"
 
-	"espx/internal/edge"
-	"espx/internal/edge/bpf"
-	"espx/pkg/lifecycle"
+	"github.com/bidshard/ad-event-processor/internal/edge"
+	"github.com/bidshard/ad-event-processor/internal/edge/bpf"
+	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
 
 	"github.com/cilium/ebpf/rlimit"
 )
 
 func main() {
 	iface := flag.String("iface", os.Getenv("INGRESS_INTERFACE"), "network interface for XDP attach")
-	pinDir := flag.String("pin-dir", edge.EnvOr("BPF_PIN_DIR", "/sys/fs/bpf/espx"), "directory for pinned BPF maps")
+	pinDir := flag.String("pin-dir", edge.EnvOr("BPF_PIN_DIR", "/sys/fs/bpf/ad-event-processor"), "directory for pinned BPF maps")
 	mode := flag.String("mode", edge.EnvOr("XDP_MODE", "generic"), "XDP attach mode: generic|native|offload")
 	flag.Parse()
 

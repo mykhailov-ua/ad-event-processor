@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"espx/internal/loadreport"
+	"github.com/bidshard/ad-event-processor/internal/loadreport"
 )
 
 const defaultPromURL = "http://127.0.0.1:9190"
@@ -140,7 +140,7 @@ func runProm(sessionDir, promURL string) error {
 		return err
 	}
 	fmt.Printf("load-report prom: wrote %s\n", path)
-	fmt.Println("load-report prom: Grafana dashboard: http://127.0.0.1:3100/d/espx-main/espx-operations (or browse Dashboards tagged load-test)")
+	fmt.Println("load-report prom: Grafana dashboard: http://127.0.0.1:3100/d/ad-event-processor-main/ad-event-processor-operations (or browse Dashboards tagged load-test)")
 	return nil
 }
 

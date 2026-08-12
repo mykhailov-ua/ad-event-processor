@@ -13,9 +13,9 @@ import (
 	"os/exec"
 	"time"
 
-	"espx/internal/ingestion"
-	"espx/internal/ingestion/pb"
-	"espx/pkg/lifecycle"
+	"github.com/bidshard/ad-event-processor/internal/ingestion"
+	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
+	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"

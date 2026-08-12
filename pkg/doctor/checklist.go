@@ -6,7 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"espx/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 )
 
 type ChecklistRow struct {
@@ -35,8 +36,8 @@ func checkManual(id, detail string) ChecklistRow {
 }
 
 func checkDBTLS(cfg *config.Config) ChecklistRow {
-	if os.Getenv("ESPX_PROFILE") != "production" {
-		return ChecklistRow{ID: "db_tls", Status: StatusSkip, Detail: "ESPX_PROFILE!=production"}
+	if os.Getenv(naming.LegacyVendorEnvKey("PROFILE")) != "production" {
+		return ChecklistRow{ID: "db_tls", Status: StatusSkip, Detail: naming.LegacyVendorEnvKey("PROFILE") + "!=production"}
 	}
 	if cfg == nil || string(cfg.DBDSN) == "" {
 		return ChecklistRow{ID: "db_tls", Status: StatusFail, Detail: "DB_DSN not set"}
@@ -77,17 +78,17 @@ func checkRedisPassword() ChecklistRow {
 }
 
 func checkTelemetryOptIn() ChecklistRow {
-	raw, ok := os.LookupEnv("ESPX_TELEMETRY_OPT_IN")
+	raw, ok := os.LookupEnv(naming.LegacyVendorEnvKey("TELEMETRY_OPT_IN"))
 	if !ok {
 		return ChecklistRow{ID: "telemetry_opt_in", Status: StatusPass, Detail: "unset (default off)"}
 	}
 	switch strings.ToLower(strings.TrimSpace(raw)) {
 	case "0", "false", "no", "off":
-		return ChecklistRow{ID: "telemetry_opt_in", Status: StatusPass, Detail: "ESPX_TELEMETRY_OPT_IN=0"}
+		return ChecklistRow{ID: "telemetry_opt_in", Status: StatusPass, Detail: naming.LegacyVendorEnvKey("TELEMETRY_OPT_IN") + "=0"}
 	case "1", "true", "yes", "on":
-		return ChecklistRow{ID: "telemetry_opt_in", Status: StatusWarn, Detail: "ESPX_TELEMETRY_OPT_IN enabled; review policy"}
+		return ChecklistRow{ID: "telemetry_opt_in", Status: StatusWarn, Detail: naming.LegacyVendorEnvKey("TELEMETRY_OPT_IN") + " enabled; review policy"}
 	default:
-		return ChecklistRow{ID: "telemetry_opt_in", Status: StatusWarn, Detail: "unrecognized ESPX_TELEMETRY_OPT_IN value"}
+		return ChecklistRow{ID: "telemetry_opt_in", Status: StatusWarn, Detail: "unrecognized " + naming.LegacyVendorEnvKey("TELEMETRY_OPT_IN") + " value"}
 	}
 }
 
@@ -107,8 +108,8 @@ func checkEventsRetention(cfg *config.Config) ChecklistRow {
 }
 
 func checkRedisTLS() ChecklistRow {
-	if os.Getenv("ESPX_PROFILE") != "production" {
-		return ChecklistRow{ID: "redis_tls", Status: StatusSkip, Detail: "ESPX_PROFILE!=production"}
+	if os.Getenv(naming.LegacyVendorEnvKey("PROFILE")) != "production" {
+		return ChecklistRow{ID: "redis_tls", Status: StatusSkip, Detail: naming.LegacyVendorEnvKey("PROFILE") + "!=production"}
 	}
 	ca := strings.TrimSpace(os.Getenv("REDIS_TLS_CA"))
 	cert := strings.TrimSpace(os.Getenv("REDIS_TLS_CERT"))

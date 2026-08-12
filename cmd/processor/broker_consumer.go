@@ -6,12 +6,12 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/domain"
-	"espx/internal/ingestion"
-	"espx/internal/metrics"
-	"espx/pkg/broker"
-	"espx/pkg/broker/client"
-	"espx/pkg/logger"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/ingestion"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/pkg/broker"
+	"github.com/bidshard/ad-event-processor/pkg/broker/client"
+	"github.com/bidshard/ad-event-processor/pkg/logger"
 )
 
 type BrokerConsumerGroupConfig struct {

@@ -6,10 +6,10 @@ import (
 	"strconv"
 	"strings"
 
-	"espx/internal/config"
-	"espx/internal/controlplane"
-	"espx/internal/domain/db"
-	"espx/internal/ingestion"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/controlplane"
+	"github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/ingestion"
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"

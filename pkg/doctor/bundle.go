@@ -12,6 +12,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/bidshard/ad-event-processor/internal/config"
 )
 
 type BundleOptions struct {
@@ -32,9 +34,10 @@ func WriteBundle(ctx context.Context, opts BundleOptions) error {
 	report := Run(ctx, Options{
 		Only:    opts.Only,
 		Timeout: opts.Timeout,
-		Probes:  DefaultProbes(opts.Deps),
+		Probes:  DefaultProbes(WithCLILicenseDeps(opts.Deps)),
 	})
 	checklist := MVSSChecklist(opts.Deps.Config)
+	deps := WithCLILicenseDeps(opts.Deps)
 
 	f, err := os.Create(opts.Out)
 	if err != nil {
@@ -59,7 +62,12 @@ func WriteBundle(ctx context.Context, opts BundleOptions) error {
 	if err := writeTarBytes(tw, "config/sanitized.env", sanitizedEnv()); err != nil {
 		return err
 	}
-	readme := []byte("Redacted operator bundle from espx doctor. Full pprof/log redaction ships in GAP-SUP-01.\n")
+	if config.LicenseProbeEnabled() {
+		if err := writeTarJSON(tw, "doctor/license.json", bundleLicenseInfo(deps)); err != nil {
+			return err
+		}
+	}
+	readme := []byte("Redacted operator bundle from ad-event-processor doctor. Full pprof/log redaction ships in GAP-SUP-01.\n")
 	return writeTarBytes(tw, "README.txt", readme)
 }
 

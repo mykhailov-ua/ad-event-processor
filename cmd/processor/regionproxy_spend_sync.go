@@ -1,8 +1,8 @@
 package main
 
 import (
-	"espx/internal/ingestion"
-	rpclient "espx/pkg/regionproxy/client"
+	"github.com/bidshard/ad-event-processor/internal/ingestion"
+	rpclient "github.com/bidshard/ad-event-processor/pkg/regionproxy/client"
 )
 
 type regionProxySpendSync struct {

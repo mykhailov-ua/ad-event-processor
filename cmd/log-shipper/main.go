@@ -10,14 +10,14 @@ import (
 	"sync"
 	"time"
 
-	"espx/pkg/broker/client"
-	"espx/pkg/lifecycle"
+	"github.com/bidshard/ad-event-processor/pkg/broker/client"
+	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
 )
 
 func main() {
 	brokerAddr := flag.String("broker", "127.0.0.1:9092", "Broker address")
 	redisURL := flag.String("redis-url", "redis://127.0.0.1:6379/0", "Redis URL for leader discovery")
-	logFilePath := flag.String("log-file", "/var/log/espx/active.log", "Path to the active log file")
+	logFilePath := flag.String("log-file", "/var/log/ad-event-processor/active.log", "Path to the active log file")
 	topic := flag.String("topic", "tracker-logs", "Topic name")
 	workersCount := flag.Int("workers", 16, "Number of concurrent workers")
 	flag.Parse()

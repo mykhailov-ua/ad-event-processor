@@ -6,11 +6,11 @@ import (
 	"os"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/database"
-	"espx/internal/logpipeline"
-	"espx/pkg/lifecycle"
-	"espx/pkg/logger"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/logpipeline"
+	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
+	"github.com/bidshard/ad-event-processor/pkg/logger"
 )
 
 func main() {

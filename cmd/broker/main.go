@@ -10,10 +10,10 @@ import (
 	"syscall"
 	"time"
 
-	"espx/internal/database"
-	"espx/internal/domain"
-	"espx/internal/ingestion"
-	"espx/pkg/broker"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/ingestion"
+	"github.com/bidshard/ad-event-processor/pkg/broker"
 )
 
 func main() {

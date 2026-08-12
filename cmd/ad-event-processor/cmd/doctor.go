@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"espx/pkg/doctor"
+	"github.com/bidshard/ad-event-processor/pkg/doctor"
 
 	"github.com/spf13/cobra"
 )
@@ -33,7 +33,7 @@ var doctorBundleCmd = &cobra.Command{
 }
 
 func init() {
-	doctorCmd.Flags().StringVar(&doctorOnly, "only", "", "comma-separated probe names (kernel,sysctl,redis,clickhouse,disk,tls)")
+	doctorCmd.Flags().StringVar(&doctorOnly, "only", "", "comma-separated probe names (kernel,sysctl,listen,redis,slotmap,license,clickhouse,disk,tls)")
 	doctorCmd.Flags().StringVar(&doctorProfile, "profile", "", "deploy profile to validate (ingest_only, network_operator, analytics_ml)")
 	doctorCmd.Flags().BoolVar(&doctorChecklist, "checklist", false, "print MVSS checklist from DATA_SECURITY.md")
 	doctorCmd.Flags().DurationVar(&doctorTimeout, "timeout", 60*time.Second, "overall probe timeout")
@@ -63,7 +63,7 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 	if err := ensureConfig(only); err != nil {
 		return err
 	}
-	deps := doctor.ProbeDeps{Config: cfg}
+	deps := doctor.WithCLILicenseDeps(doctor.ProbeDeps{Config: cfg})
 
 	report := doctor.Run(context.Background(), doctor.Options{
 		Only:    only,
@@ -83,7 +83,7 @@ func runDoctorBundle(cmd *cobra.Command, args []string) error {
 	if err := ensureConfig(only); err != nil {
 		return err
 	}
-	deps := doctor.ProbeDeps{Config: cfg}
+	deps := doctor.WithCLILicenseDeps(doctor.ProbeDeps{Config: cfg})
 	if err := doctor.WriteBundle(context.Background(), doctor.BundleOptions{
 		Out:     bundleOut,
 		Deps:    deps,

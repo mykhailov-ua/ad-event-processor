@@ -6,10 +6,10 @@ import (
 	"os"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/database"
-	"espx/internal/postback"
-	"espx/pkg/lifecycle"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/postback"
+	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
 )
 
 func main() {
@@ -32,10 +32,18 @@ func main() {
 	}
 	defer pool.Close()
 
+	postback.RegisterMetrics()
+	metricsAddr := os.Getenv("POSTBACK_METRICS_ADDR")
+	if metricsAddr == "" {
+		metricsAddr = "127.0.0.1:9119"
+	}
+	metricsSrv := lifecycle.StartMetrics(metricsAddr)
+	defer func() { _ = metricsSrv.Shutdown(5 * time.Second) }()
+
 	key := []byte(os.Getenv("POSTBACK_ENCRYPTION_KEY"))
 	worker := postback.NewPostbackWorker(pool, key)
 
-	slog.Info("starting postback-sender daemon")
+	slog.Info("starting postback-sender daemon", "metrics_addr", metricsAddr)
 	go worker.Start(ctx, 5*time.Second)
 
 	sig := lifecycle.WaitSignal()

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	ingestdb "espx/internal/domain/db"
-	"espx/internal/identity"
-	authdb "espx/internal/identity/db"
+	ingestdb "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/identity"
+	authdb "github.com/bidshard/ad-event-processor/internal/identity/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/spf13/cobra"

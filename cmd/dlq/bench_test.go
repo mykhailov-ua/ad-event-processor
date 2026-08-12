@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/ingestion"
-	"espx/internal/ingestion/pb"
+	"github.com/bidshard/ad-event-processor/internal/ingestion"
+	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/proto"
 )

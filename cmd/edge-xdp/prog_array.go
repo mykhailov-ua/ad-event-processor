@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"espx/internal/edge/bpf"
+	"github.com/bidshard/ad-event-processor/internal/edge/bpf"
 
 	"github.com/cilium/ebpf"
 )

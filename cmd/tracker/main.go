@@ -9,17 +9,17 @@ import (
 	"syscall"
 	"time"
 
-	"espx/internal/clickhouse/migrate"
-	"espx/internal/config"
-	"espx/internal/database"
-	db "espx/internal/domain/db"
-	"espx/internal/ingestion"
-	"espx/internal/metrics"
-	"espx/internal/rtb"
-	"espx/pkg/lifecycle"
-	"espx/pkg/logger"
-	"espx/pkg/piihash"
-	"espx/pkg/runtimeautotune"
+	"github.com/bidshard/ad-event-processor/internal/clickhouse/migrate"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/ingestion"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/rtb"
+	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
+	"github.com/bidshard/ad-event-processor/pkg/logger"
+	"github.com/bidshard/ad-event-processor/pkg/piihash"
+	"github.com/bidshard/ad-event-processor/pkg/runtimeautotune"
 
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
@@ -476,7 +476,7 @@ func main() {
 	gnetHandler := ingestion.NewAdsPacketHandler(cfg, registry, filterEngine, pool, rdbs, sharder, cfg.FraudStreamName, creativeStore)
 
 	var brokerProducer *ingestion.BrokerProducer
-	if cfg.Broker.URL != "" {
+	if cfg.BrokerEnabled() && cfg.Broker.CHIngestSource == "broker" && cfg.Broker.URL != "" {
 		producerCfg := ingestion.DefaultBrokerProducerConfig()
 		producerCfg.BrokerAddr = cfg.Broker.URL
 		if cfg.Broker.TimeoutMs > 0 {
@@ -490,6 +490,20 @@ func main() {
 			gnetHandler.SetBrokerProducer(brokerProducer)
 			slog.Info("broker producer enabled", "addr", cfg.Broker.URL, "topic", producerCfg.Topic)
 		}
+	} else if cfg.Broker.CHIngestSource != "broker" && cfg.RedisStreamName != "" {
+		streamProducers := make([]*ingestion.StreamProducer, len(rdbs))
+		writeTimeout := time.Duration(cfg.WriteTimeoutMs) * time.Millisecond
+		if writeTimeout <= 0 {
+			writeTimeout = 2 * time.Second
+		}
+		for i, rdb := range rdbs {
+			if rdb == nil {
+				continue
+			}
+			streamProducers[i] = ingestion.NewStreamProducer(rdb, cfg.RedisStreamName, cfg.StreamMaxLen, writeTimeout)
+		}
+		gnetHandler.SetStreamProducers(streamProducers)
+		slog.Info("redis stream producers enabled", "stream", cfg.RedisStreamName, "shards", len(rdbs))
 	}
 	ingestion.StartFraudBackpressureWatcher(ctx, ingestion.FraudBackpressureConfig{
 		Rdbs:        rdbs,

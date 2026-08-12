@@ -5,7 +5,7 @@ import (
 	"os"
 	"strconv"
 
-	"espx/internal/ingestion"
+	"github.com/bidshard/ad-event-processor/internal/ingestion"
 
 	"github.com/google/uuid"
 )

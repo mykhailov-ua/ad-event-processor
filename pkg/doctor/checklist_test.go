@@ -1,13 +1,14 @@
 package doctor
 
 import (
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 	"os"
 	"testing"
 )
 
 func TestMVSSChecklistTelemetryDefault(t *testing.T) {
-	t.Setenv("ESPX_TELEMETRY_OPT_IN", "")
-	_ = os.Unsetenv("ESPX_TELEMETRY_OPT_IN")
+	t.Setenv(naming.LegacyVendorEnvKey("TELEMETRY_OPT_IN"), "")
+	_ = os.Unsetenv(naming.LegacyVendorEnvKey("TELEMETRY_OPT_IN"))
 
 	rows := MVSSChecklist(nil)
 	var telemetry ChecklistRow

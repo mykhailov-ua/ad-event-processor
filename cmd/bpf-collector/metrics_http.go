@@ -11,6 +11,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+const bpfMetricPrefix = "ad_event_processor_bpf_"
+
 type promExporter struct {
 	run *probeRun
 
@@ -26,23 +28,23 @@ type promExporter struct {
 func newPromExporter(run *probeRun) *promExporter {
 	e := &promExporter{run: run}
 	e.oncpuPct = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "espx_bpf_oncpu_pct",
+		Name: bpfMetricPrefix + "oncpu_pct",
 		Help: "BPF measured on-CPU percent by role during session wall time",
 	}, []string{"role", "name"})
 	e.runqueueP99Us = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "espx_bpf_runqueue_p99_us",
+		Name: bpfMetricPrefix + "runqueue_p99_us",
 		Help: "Runqueue wait p99 microseconds by role",
 	}, []string{"role", "name"})
 	e.connectAvgUs = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "espx_bpf_connect_avg_us",
+		Name: bpfMetricPrefix + "connect_avg_us",
 		Help: "Average connect syscall duration microseconds",
 	}, []string{"role", "name"})
 	e.tcpRetrans = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "espx_bpf_tcp_retrans_total",
+		Name: bpfMetricPrefix + "tcp_retrans_total",
 		Help: "TCP retransmit count observed during session",
 	}, []string{"role", "name"})
 	e.ctxSwitchPerSec = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "espx_bpf_ctx_switch_per_sec",
+		Name: bpfMetricPrefix + "ctx_switch_per_sec",
 		Help: "Context switches per second by role",
 	}, []string{"role", "name"})
 	prometheus.MustRegister(e.oncpuPct, e.runqueueP99Us, e.connectAvgUs, e.tcpRetrans, e.ctxSwitchPerSec)

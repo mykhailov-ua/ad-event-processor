@@ -9,24 +9,26 @@ import (
 	"syscall"
 	"time"
 
-	"espx/internal/clickhouse/migrate"
-	"espx/internal/config"
-	"espx/internal/controlplane"
-	"espx/internal/database"
-	"espx/internal/dedup"
-	"espx/internal/domain"
-	db "espx/internal/domain/db"
-	"espx/internal/fraud"
-	"espx/internal/ingestion"
-	"espx/internal/licensing"
-	"espx/internal/metrics"
-	"espx/internal/notify"
-	"espx/pkg/lifecycle"
-	"espx/pkg/logger"
-	"espx/pkg/piihash"
-	rpclient "espx/pkg/regionproxy/client"
 	"fmt"
 	"strconv"
+
+	"github.com/bidshard/ad-event-processor/internal/clickhouse/migrate"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/controlplane"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/dedup"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/fraud"
+	"github.com/bidshard/ad-event-processor/internal/ingestion"
+	"github.com/bidshard/ad-event-processor/internal/licensing"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/notify"
+	"github.com/bidshard/ad-event-processor/internal/postback"
+	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
+	"github.com/bidshard/ad-event-processor/pkg/logger"
+	"github.com/bidshard/ad-event-processor/pkg/piihash"
+	rpclient "github.com/bidshard/ad-event-processor/pkg/regionproxy/client"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -222,6 +224,15 @@ func main() {
 	if chStore != nil {
 		settleStore = ingestion.NewSettlementStore(pgStore, true)
 		slog.Info("postgres settlement stats-only mode enabled (clickhouse-first)")
+	}
+
+	postbackEnqueuer := postback.NewConversionPostbackEnqueuer(settleQueries)
+	pgStoreForBroker := domain.EventStore(pgStore)
+	if postbackEnqueuer != nil {
+		afterStored := postbackEnqueuer.OnBatchStored
+		settleStore = ingestion.WrapEventStoreAfterBatch(settleStore, afterStored)
+		pgStoreForBroker = ingestion.WrapEventStoreAfterBatch(pgStore, afterStored)
+		slog.Info("conversion postback outbox hook enabled on PG settlement")
 	}
 
 	var fraudScorer fraud.Scorer
@@ -421,7 +432,7 @@ func main() {
 			pgBrokerCfg := brokerBase
 			pgBrokerCfg.Partition = uint16(p)
 			pgBrokerCfg.Group = cfg.RedisGroupName + "_pg_broker"
-			pgBroker := ingestion.NewBrokerStreamConsumer(pgStore, pgBrokerCfg, writeTimeout, retryInit, retryMax, cfg.MaxRetries)
+			pgBroker := ingestion.NewBrokerStreamConsumer(pgStoreForBroker, pgBrokerCfg, writeTimeout, retryInit, retryMax, cfg.MaxRetries)
 			pgBroker.SetDedupAdapter(dedupAdapter)
 			pgBroker.SetLogger(appLogger)
 			brokerConsumers = append(brokerConsumers, pgBroker)

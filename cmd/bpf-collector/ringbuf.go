@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"espx/cmd/bpf-collector/bpfprobe"
+	"github.com/bidshard/ad-event-processor/cmd/bpf-collector/bpfprobe"
 
 	"github.com/cilium/ebpf/ringbuf"
 )

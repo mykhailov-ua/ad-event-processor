@@ -18,8 +18,9 @@ import (
 	"github.com/cilium/ebpf/ringbuf"
 	"github.com/cilium/ebpf/rlimit"
 
-	"espx/cmd/bpf-collector/bpfprobe"
-	"espx/internal/config"
+	"github.com/bidshard/ad-event-processor/cmd/bpf-collector/bpfprobe"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 )
 
 const (
@@ -36,7 +37,7 @@ func main() {
 	sampleRate := flag.Uint("sample-rate", 1, "syscall sample rate (1=every event)")
 	slowUs := flag.Uint("slow-us", 10000, "slow syscall threshold microseconds")
 	discoverLoadgen := flag.Bool("discover-loadgen", true, "watch for load generator PIDs by /proc comm")
-	loadgenComms := flag.String("loadgen-comms", "", "comma-separated /proc comm names (default loadgen; env ESPX_BPF_LOADGEN_COMM)")
+	loadgenComms := flag.String("loadgen-comms", "", "comma-separated /proc comm names (default loadgen; env ADSTACK_BPF_LOADGEN_COMM)")
 	discoverSec := flag.Duration("discover-interval", 2*time.Second, "dynamic target scan interval")
 	dumpInterval := flag.Duration("dump-interval", 0, "periodic maps/summary.json dump (0=disabled)")
 	metricsAddr := flag.String("metrics-addr", "", "Prometheus /metrics listen address (empty=disabled)")
@@ -100,7 +101,7 @@ func main() {
 }
 
 func repoRoot() string {
-	if v := os.Getenv("ESPX_REPO_ROOT"); v != "" {
+	if v := os.Getenv(naming.LegacyVendorEnvKey("REPO_ROOT")); v != "" {
 		return v
 	}
 	wd, err := os.Getwd()

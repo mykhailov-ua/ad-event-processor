@@ -7,8 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"espx/internal/config"
-	"espx/internal/control"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/control"
 )
 
 func main() {

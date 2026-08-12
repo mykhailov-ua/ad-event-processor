@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"espx/internal/edge/bpf"
+	"github.com/bidshard/ad-event-processor/internal/edge/bpf"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"

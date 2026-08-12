@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"testing"
 
-	"espx/internal/fraud"
+	"github.com/bidshard/ad-event-processor/internal/fraud"
 
 	"github.com/stretchr/testify/require"
 )

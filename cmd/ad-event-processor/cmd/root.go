@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"espx/internal/config"
-	"espx/pkg/branding"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/pkg/branding"
 
 	"github.com/spf13/cobra"
 )
@@ -18,7 +18,7 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "espx",
+	Use:   "ad-event-processor",
 	Short: branding.ProductName() + " operator CLI",
 	Long:  "Operator-facing CLI for health checks, MVSS checklist, and support bundles.",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
@@ -88,7 +88,7 @@ func needsFullConfig(only []string) bool {
 	}
 	for _, name := range only {
 		switch strings.ToLower(strings.TrimSpace(name)) {
-		case "redis", "clickhouse", "tls":
+		case "redis", "clickhouse", "tls", "slotmap", "license":
 			return true
 		}
 	}

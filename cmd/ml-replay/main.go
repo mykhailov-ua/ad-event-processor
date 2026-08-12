@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/database"
-	"espx/internal/fraud"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/fraud"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 )

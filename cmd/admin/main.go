@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"os"
 
-	"espx/cmd/admin/cmd"
+	"github.com/bidshard/ad-event-processor/cmd/admin/cmd"
 )
 
 func main() {

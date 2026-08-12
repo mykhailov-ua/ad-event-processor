@@ -8,9 +8,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/database"
-	"espx/pkg/iogate"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/pkg/iogate"
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -122,7 +123,7 @@ func (DiskProbe) Name() string { return "disk" }
 func (DiskProbe) Run(ctx context.Context) Result {
 	start := time.Now()
 	budget := iogate.DefaultConfig().DiskLatencyBudget
-	path := filepath.Join(os.TempDir(), "espx-doctor-disk-smoke")
+	path := filepath.Join(os.TempDir(), "ad-event-processor-doctor-disk-smoke")
 	payload := make([]byte, 4096)
 	for i := range payload {
 		payload[i] = byte(i)
@@ -153,8 +154,8 @@ func (TLSProbe) Name() string { return "tls" }
 
 func (p TLSProbe) Run(ctx context.Context) Result {
 	start := time.Now()
-	if os.Getenv("ESPX_PROFILE") != "production" {
-		return Result{Name: "tls", Status: StatusSkip, Detail: "ESPX_PROFILE!=production", Latency: time.Since(start).Milliseconds()}
+	if os.Getenv(naming.LegacyVendorEnvKey("PROFILE")) != "production" {
+		return Result{Name: "tls", Status: StatusSkip, Detail: naming.LegacyVendorEnvKey("PROFILE") + "!=production", Latency: time.Since(start).Milliseconds()}
 	}
 	if p.Deps.Config == nil || string(p.Deps.Config.DBDSN) == "" {
 		return Result{Name: "tls", Status: StatusFail, Detail: "DB_DSN not set", Latency: time.Since(start).Milliseconds()}

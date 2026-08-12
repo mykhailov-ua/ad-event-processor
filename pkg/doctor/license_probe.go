@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/licensing"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/licensing"
 )
 
 type LicenseProbe struct {
@@ -18,8 +18,8 @@ func (LicenseProbe) Name() string { return "license" }
 
 func (p LicenseProbe) Run(ctx context.Context) Result {
 	start := time.Now()
-	if !config.LicenseRequiredFromEnv() {
-		return Result{Name: "license", Status: StatusSkip, Detail: "ESPX_LICENSE_REQUIRED=0", Latency: time.Since(start).Milliseconds()}
+	if !config.LicenseProbeEnabled() {
+		return Result{Name: "license", Status: StatusSkip, Detail: "license not required and no license file", Latency: time.Since(start).Milliseconds()}
 	}
 	if p.StateFn == nil {
 		return Result{Name: "license", Status: StatusFail, Detail: "license watcher not configured", Latency: time.Since(start).Milliseconds()}

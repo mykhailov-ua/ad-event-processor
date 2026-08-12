@@ -6,8 +6,13 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 	"github.com/cilium/ebpf"
 )
+
+func bpfProgramName(suffix string) string {
+	return naming.DeprecatedBPFProgramPrefix() + suffix
+}
 
 type Config struct {
 	SampleRate    uint32
@@ -120,16 +125,16 @@ func Load(objectPath string) (*Collection, error) {
 	out := &Collection{
 		raw: coll,
 		Progs: Programs{
-			SysEnter:         coll.Programs["espx_sys_enter"],
-			SysExit:          coll.Programs["espx_sys_exit"],
-			SchedWakeup:      coll.Programs["espx_sched_wakeup"],
-			SchedSwitch:      coll.Programs["espx_sched_switch"],
-			PageFaultUser:    coll.Programs["espx_page_fault_user"],
-			TcpRetransmit:    coll.Programs["espx_tcp_retransmit"],
-			SchedProcessFork: coll.Programs["espx_sched_process_fork"],
-			SchedProcessExit: coll.Programs["espx_sched_process_exit"],
-			TraceEnter:       coll.Programs["espx_trace_enter"],
-			TraceExit:        coll.Programs["espx_trace_exit"],
+			SysEnter:         coll.Programs[bpfProgramName("sys_enter")],
+			SysExit:          coll.Programs[bpfProgramName("sys_exit")],
+			SchedWakeup:      coll.Programs[bpfProgramName("sched_wakeup")],
+			SchedSwitch:      coll.Programs[bpfProgramName("sched_switch")],
+			PageFaultUser:    coll.Programs[bpfProgramName("page_fault_user")],
+			TcpRetransmit:    coll.Programs[bpfProgramName("tcp_retransmit")],
+			SchedProcessFork: coll.Programs[bpfProgramName("sched_process_fork")],
+			SchedProcessExit: coll.Programs[bpfProgramName("sched_process_exit")],
+			TraceEnter:       coll.Programs[bpfProgramName("trace_enter")],
+			TraceExit:        coll.Programs[bpfProgramName("trace_exit")],
 		},
 		Maps: Maps{
 			TargetPids:    coll.Maps["target_pids"],

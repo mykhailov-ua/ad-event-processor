@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 	"time"
+
+	"github.com/bidshard/ad-event-processor/internal/config"
 )
 
 type Options struct {
@@ -13,14 +15,21 @@ type Options struct {
 }
 
 func DefaultProbes(deps ProbeDeps) []Probe {
-	return []Probe{
+	deps = WithCLILicenseDeps(deps)
+	probes := []Probe{
 		KernelProbe{},
 		SysctlProbe{},
+		ListenBacklogProbe{},
 		RedisProbe{Deps: deps},
+		SlotMapProbe{Deps: deps},
 		ClickHouseProbe{Deps: deps},
 		DiskProbe{},
 		TLSProbe{Deps: deps},
 	}
+	if config.LicenseProbeEnabled() {
+		probes = append(probes, licenseProbe(deps))
+	}
+	return probes
 }
 
 func Run(ctx context.Context, opts Options) Report {

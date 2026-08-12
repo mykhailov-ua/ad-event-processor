@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 	"github.com/cilium/ebpf/link"
 )
 
@@ -18,10 +19,10 @@ type uprobeSpec struct {
 }
 
 var trackerUprobeSpecs = []uprobeSpec{
-	{symbol: "espx/internal/ingestion/traceprobe.ProcessTrackEnter", enter: true, cookie: 1},
-	{symbol: "espx/internal/ingestion/traceprobe.ProcessTrackExit", enter: false, cookie: 2},
-	{symbol: "espx/internal/ingestion/traceprobe.FilterCheckEnter", enter: true, cookie: 3},
-	{symbol: "espx/internal/ingestion/traceprobe.FilterCheckExit", enter: false, cookie: 4},
+	{symbol: "github.com/bidshard/ad-event-processor/internal/ingestion/traceprobe.ProcessTrackEnter", enter: true, cookie: 1},
+	{symbol: "github.com/bidshard/ad-event-processor/internal/ingestion/traceprobe.ProcessTrackExit", enter: false, cookie: 2},
+	{symbol: "github.com/bidshard/ad-event-processor/internal/ingestion/traceprobe.FilterCheckEnter", enter: true, cookie: 3},
+	{symbol: "github.com/bidshard/ad-event-processor/internal/ingestion/traceprobe.FilterCheckExit", enter: false, cookie: 4},
 }
 
 func (r *probeRun) attachUprobes() {
@@ -30,7 +31,7 @@ func (r *probeRun) attachUprobes() {
 		bin = r.findTrackerBinary()
 	}
 	if bin == "" {
-		slog.Info("uprobes skipped: tracker binary not found (build tracker with -tags espx_bpf_trace)")
+		slog.Info("uprobes skipped: tracker binary not found (build tracker with -tags " + naming.DeprecatedBPFTraceBuildTag() + ")")
 		return
 	}
 	if r.coll == nil {
@@ -65,7 +66,7 @@ func (r *probeRun) attachUprobes() {
 		attached++
 	}
 	if attached == 0 {
-		slog.Info("uprobes not attached", "binary", bin, "hint", "go build -tags espx_bpf_trace -o bin/tracker ./cmd/tracker")
+		slog.Info("uprobes not attached", "binary", bin, "hint", "go build -tags "+naming.DeprecatedBPFTraceBuildTag()+" -o bin/tracker ./cmd/tracker")
 		return
 	}
 	slog.Info("uprobes attached", "binary", bin, "count", attached)

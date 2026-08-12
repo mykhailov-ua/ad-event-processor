@@ -8,9 +8,9 @@ import (
 	"os"
 	"strings"
 
-	"espx/internal/config"
-	"espx/internal/database"
-	"espx/internal/ingestion"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/ingestion"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
