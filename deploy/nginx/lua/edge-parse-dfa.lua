@@ -650,7 +650,7 @@ function _M.extract_campaign_id(body, content_length, schema)
     end
 
     if not schema or schema == "" then
-        schema = os.getenv("TRACKER_INGRESS_SCHEMA") or "espx_native"
+        schema = os.getenv("TRACKER_INGRESS_SCHEMA") or "ad_event_processor_native"
     end
 
     local pos = 1

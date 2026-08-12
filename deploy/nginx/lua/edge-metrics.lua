@@ -95,121 +95,121 @@ function _M.render_prometheus()
     local bl_count = blacklist_cache:get("_bl_count") or 0
 
     say_metric(
-        "espx_edge_phase1_pass_total",
+        "ad_event_processor_edge_phase1_pass_total",
         "counter",
         "Requests that passed phase-1 edge checks (circuit breaker, IP blacklist).",
         phase1_pass
     )
     say_metric(
-        "espx_edge_phase2_pass_total",
+        "ad_event_processor_edge_phase2_pass_total",
         "counter",
         "Requests that passed phase-2 edge checks (body read, parse, campaign RL).",
         phase2_pass
     )
     say_metric(
-        "espx_edge_body_read_total",
+        "ad_event_processor_edge_body_read_total",
         "counter",
         "Requests where ngx.req.read_body was invoked at the edge.",
         body_read
     )
     say_metric(
-        "espx_edge_circuit_reject_total",
+        "ad_event_processor_edge_circuit_reject_total",
         "counter",
         "Requests rejected by edge circuit breaker (503).",
         circuit_reject
     )
     say_metric(
-        "espx_edge_blocked_ip_total",
+        "ad_event_processor_edge_blocked_ip_total",
         "counter",
         "Requests blocked by IP blacklist at OpenResty edge (403).",
         blocked_ip
     )
     say_metric(
-        "espx_edge_blocked_campaign_rl_total",
+        "ad_event_processor_edge_blocked_campaign_rl_total",
         "counter",
         "Requests blocked by per-campaign edge rate limiter.",
         blocked_rl
     )
     say_metric(
-        "espx_edge_blocked_fraud_tier_total",
+        "ad_event_processor_edge_blocked_fraud_tier_total",
         "counter",
         "Requests blocked by fraud_score tier at edge (403/429).",
         blocked_fraud_tier
     )
     say_metric(
-        "espx_edge_parse_oversize_total",
+        "ad_event_processor_edge_parse_oversize_total",
         "counter",
         "Requests rejected by edge DFA or Content-Length over body/scan limits (413).",
         parse_oversize
     )
     say_metric(
-        "espx_edge_body_stream_total",
+        "ad_event_processor_edge_body_stream_total",
         "counter",
         "Phase-2 stream mode: no read_body, body proxied without Lua buffering.",
         body_stream
     )
     say_metric(
-        "espx_edge_body_peek_total",
+        "ad_event_processor_edge_body_peek_total",
         "counter",
         "Phase-2 peek mode: cosocket read of scan window only.",
         body_peek
     )
     say_metric(
-        "espx_edge_chunked_reject_total",
+        "ad_event_processor_edge_chunked_reject_total",
         "counter",
         "Requests rejected because chunked encoding is not allowed on edge.",
         chunked_reject
     )
     say_metric(
-        "espx_edge_ingress_protocol_total",
+        "ad_event_processor_edge_ingress_protocol_total",
         "counter",
         "Client ingress protocol at edge (label via separate series below).",
         ingress_h1 + ingress_h2 + ingress_h3
     )
     say_metric(
-        "espx_edge_ingress_protocol_h1_total",
+        "ad_event_processor_edge_ingress_protocol_h1_total",
         "counter",
         "Requests terminated at edge over HTTP/1.1.",
         ingress_h1
     )
     say_metric(
-        "espx_edge_ingress_protocol_h2_total",
+        "ad_event_processor_edge_ingress_protocol_h2_total",
         "counter",
         "Requests terminated at edge over HTTP/2.",
         ingress_h2
     )
     say_metric(
-        "espx_edge_ingress_protocol_h3_total",
+        "ad_event_processor_edge_ingress_protocol_h3_total",
         "counter",
         "Requests terminated at edge over HTTP/3 (QUIC).",
         ingress_h3
     )
     say_metric(
-        "espx_edge_blacklist_stale_total",
+        "ad_event_processor_edge_blacklist_stale_total",
         "counter",
         "Requests rejected because blacklist sync is missing or stale (503).",
         blacklist_stale
     )
     say_metric(
-        "espx_edge_tarpit_total",
+        "ad_event_processor_edge_tarpit_total",
         "counter",
         "Requests delayed by optional edge tarpit (EDGE_TARPIT_ENABLED).",
         tarpit_total
     )
     say_metric(
-        "espx_edge_tarpit_delay_ms_total",
+        "ad_event_processor_edge_tarpit_delay_ms_total",
         "counter",
         "Cumulative tarpit delay milliseconds applied at edge.",
         tarpit_delay_ms
     )
     say_metric(
-        "espx_edge_sync_last_success_timestamp",
+        "ad_event_processor_edge_sync_last_success_timestamp",
         "gauge",
         "Unix time of last successful blacklist sync from any connected Redis shard.",
         sync_ts
     )
     say_metric(
-        "espx_edge_blacklist_entries",
+        "ad_event_processor_edge_blacklist_entries",
         "gauge",
         "Blocked IPs in the last successful blacklist sync.",
         bl_count

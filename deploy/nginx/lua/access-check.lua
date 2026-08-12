@@ -80,4 +80,15 @@ local client_ip = ngx.var.remote_addr
 phase1(client_ip, bucket_curr, bucket_prev)
 edge_tarpit.maybe_delay()
 edge_ingress.record_and_forward()
-edge_phase2.run()
+
+local edge_route_gate = require "edge-route-gate"
+local uri = ngx.var.uri
+if uri == "/click" then
+    edge_route_gate.require_click()
+    edge_phase2.run_click()
+elseif uri == "/openrtb/bid" then
+    edge_route_gate.require_openrtb()
+    edge_phase2.run_openrtb()
+else
+    edge_phase2.run()
+end

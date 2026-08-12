@@ -52,6 +52,10 @@ function _M.get_retry_after(tier)
     return dict:get("retry_suspect_sec") or DEFAULT_RETRY_SUSPECT
 end
 
+function _M.get_flag(name)
+    return dict:get(name)
+end
+
 local function stamp_asn_list(field, prefix)
     local raw = dict:get(field)
     if not raw or raw == "" then
@@ -109,7 +113,9 @@ function _M.sync()
         "fraud_rl_retry_ivt_sec",
         "fraud_rl_retry_block_sec",
         "asn_cdn_whitelist",
-        "asn_mobile_whitelist"
+        "asn_mobile_whitelist",
+        "edge_expose_click",
+        "edge_expose_openrtb"
     )
     red:set_keepalive(10000, 8)
     if not vals or type(vals) ~= "table" then
@@ -160,6 +166,12 @@ function _M.sync()
     if vals[10] and vals[10] ~= "" then
         dict:set("asn_mobile_raw", vals[10])
         stamp_asn_list("asn_mobile_raw", "asn_mobile:")
+    end
+    if vals[11] ~= nil then
+        dict:set("edge_expose_click", vals[11])
+    end
+    if vals[12] ~= nil then
+        dict:set("edge_expose_openrtb", vals[12])
     end
 end
 

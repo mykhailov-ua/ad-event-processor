@@ -4,11 +4,10 @@ package.path = arg[1] .. "/?.lua;;"
 package.loaded["resty.redis"] = {}
 
 ngx = {
-    log = {
-        WARN = function() end,
-        INFO = function() end,
-        ERR = function() end,
-    },
+    WARN = 1,
+    INFO = 2,
+    ERR = 3,
+    log = function() end,
     time = function()
         return os.time()
     end,

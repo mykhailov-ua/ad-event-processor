@@ -3,6 +3,7 @@ local edge_rl = require "edge-rl"
 local edge_metrics = require "edge-metrics"
 local edge_parse_dfa = require "edge-parse-dfa"
 local edge_fraud_tier = require "edge-fraud-tier"
+local edge_click_query = require "edge-click-query"
 
 local _M = {}
 
@@ -49,6 +50,18 @@ end
 
 local function header_value(name)
     return request_headers[name] or request_headers[string.lower(name)]
+end
+
+local function transfer_encoding_chunked()
+    local te = header_value("Transfer-Encoding") or header_value("TE")
+    if not te or te == "" then
+        return false
+    end
+    te = string.lower(te)
+    if string.find(te, "\x0b", 1, true) or string.find(te, "\t", 1, true) then
+        return false
+    end
+    return string.find(te, "chunked", 1, true) ~= nil
 end
 
 local function fraud_score_from_headers()
@@ -209,6 +222,68 @@ function _M.run_peek()
         apply_campaign_rl(hdr_cid, fraud_score)
     end
 
+    edge_metrics.record_phase2_pass()
+end
+
+function _M.run_click()
+    refresh_request_headers()
+    local fraud_score = fraud_score_from_headers()
+    local campaign_id = edge_click_query.extract_campaign_id()
+    if campaign_id and campaign_id ~= "" then
+        ngx.ctx.campaign_id = campaign_id
+    end
+    apply_campaign_rl(campaign_id, fraud_score)
+    edge_metrics.record_phase2_pass()
+end
+
+function _M.run_openrtb()
+    refresh_request_headers()
+    local fraud_score = fraud_score_from_headers()
+    if transfer_encoding_chunked() then
+        local cl = content_length()
+        if cl then
+            check_edge_limits(cl)
+        end
+        local sock, sock_err = ngx.req.socket()
+        if not sock then
+            ngx.log(ngx.ERR, "edge openrtb peek: socket unavailable: ", sock_err)
+            edge_metrics.record_body_stream()
+            edge_metrics.record_phase2_pass()
+            return
+        end
+        sock:settimeout(500)
+        local chunk = sock:receive(MAX_SCAN_BYTES)
+        edge_metrics.record_body_peek()
+        if chunk and #chunk > 0 then
+            local campaign_id, perr = edge_parse_dfa.extract_campaign_id(chunk, cl, INGRESS_SCHEMA)
+            if perr == edge_parse_dfa.ERR_OVERSIZE then
+                reject_oversize()
+            end
+            if campaign_id and campaign_id ~= "" then
+                ngx.ctx.campaign_id = campaign_id
+            end
+            apply_campaign_rl(campaign_id, fraud_score)
+        else
+            local hdr_cid = campaign_id_from_headers()
+            if hdr_cid and hdr_cid ~= "" then
+                ngx.ctx.campaign_id = hdr_cid
+            end
+            apply_campaign_rl(hdr_cid, fraud_score)
+        end
+        edge_metrics.record_phase2_pass()
+        return
+    end
+
+    local cl = require_content_length()
+    local body, _ = read_bounded_body(cl)
+    local campaign_id, perr = edge_parse_dfa.extract_campaign_id(body, cl, INGRESS_SCHEMA)
+    if perr == edge_parse_dfa.ERR_OVERSIZE then
+        reject_oversize()
+    end
+    if campaign_id and campaign_id ~= "" then
+        ngx.ctx.campaign_id = campaign_id
+    end
+    apply_campaign_rl(campaign_id, fraud_score)
     edge_metrics.record_phase2_pass()
 end
 

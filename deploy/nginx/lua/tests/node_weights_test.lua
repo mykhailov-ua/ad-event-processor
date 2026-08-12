@@ -8,15 +8,16 @@ local SYNC_INTERVAL_SEC = 10
 local dict_store = {}
 
 ngx = {
+    WARN = 1,
+    INFO = 2,
+    ERR = 3,
+    log = function() end,
     time = function()
         return os.time()
     end,
     now = function()
         return os.clock()
     end,
-    log = {
-        WARN = function() end,
-    },
     shared = {
         node_weights = {
             get = function(_, key)

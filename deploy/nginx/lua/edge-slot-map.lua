@@ -1,4 +1,6 @@
 
+local edge_uuid = require "edge-uuid"
+
 local _M = {}
 
 local dict = ngx.shared.slot_map
@@ -47,21 +49,6 @@ local function crc32c_bytes(data)
         crc = bit.bxor(bit.rshift(crc, 8), crc32c_table[bit.band(bit.bxor(crc, b), 0xFF) + 1])
     end
     return bit.bxor(crc, 0xFFFFFFFF)
-end
-
-local function parse_uuid_bytes(uuid_str)
-    if not uuid_str or #uuid_str < 36 then
-        return nil
-    end
-    local hex = uuid_str:gsub("-", ""):lower()
-    if #hex ~= 32 then
-        return nil
-    end
-    local bytes = {}
-    for i = 1, 32, 2 do
-        bytes[#bytes + 1] = string.char(tonumber(hex:sub(i, i + 1), 16))
-    end
-    return table.concat(bytes)
 end
 
 local function parse_url(url)
@@ -127,7 +114,7 @@ function _M.get_shard(campaign_id)
     if not ver or ver <= 0 then
         return nil
     end
-    local raw = parse_uuid_bytes(campaign_id)
+    local raw = edge_uuid.normalize_to_bytes(campaign_id)
     if not raw then
         return nil
     end
