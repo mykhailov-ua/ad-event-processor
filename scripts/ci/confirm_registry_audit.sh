@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT/web"
 
-node --input-type=module -e "
+node --experimental-strip-types --import ./scripts/register_ts.mjs --input-type=module -e "
 import { registry } from './src/helpers/confirm_registry.js';
 import { REQUIRED_CONFIRM_KEYS } from './src/helpers/confirm_catalog.js';
 

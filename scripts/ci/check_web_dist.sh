@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Verify web/dist is embed-ready for go:embed (control admin UI).
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
@@ -11,9 +12,48 @@ if [ ! -d "$DIST/src" ]; then
   exit 1
 fi
 
-if [ ! -f "$DIST/index.html" ] || [ ! -f "$DIST/login.html" ]; then
-  echo "Error: dist HTML entry files missing"
+missing=0
+require() {
+  local path="$1"
+  if [ ! -e "$DIST/$path" ]; then
+    echo "Error: dist missing $path (required for go:embed admin UI)"
+    missing=1
+  fi
+}
+
+require "index.html"
+require "login.html"
+require "src/main.js"
+require "src/login.js"
+require "src/workers/parse_json.worker.js"
+require "src/workers/report_aggregate.worker.js"
+require "src/styles/tokens.css"
+require "src/styles/system.css"
+require "src/styles/main.css"
+require "src/static/bidshard-track.js"
+
+if ! grep -q '/src/main.js' "$DIST/index.html"; then
+  echo "Error: index.html must reference /src/main.js (go:embed + static routes)"
+  missing=1
+fi
+if ! grep -q '/src/login.js' "$DIST/login.html"; then
+  echo "Error: login.html must reference /src/login.js"
+  missing=1
+fi
+
+if [ "$missing" -ne 0 ]; then
   exit 1
 fi
 
-echo "Web dist hygiene: OK"
+TRACK_SNIPPET="$DIST/src/static/bidshard-track.js"
+if [ -f "$TRACK_SNIPPET" ]; then
+  GZ_BYTES="$(gzip -c "$TRACK_SNIPPET" | wc -c | tr -d ' ')"
+  MAX_GZ=2048
+  if [ "$GZ_BYTES" -gt "$MAX_GZ" ]; then
+    echo "Error: bidshard-track.js gzip size ${GZ_BYTES}B exceeds ${MAX_GZ}B SLA"
+    exit 1
+  fi
+  echo "bidshard-track.js gzip: ${GZ_BYTES}B (limit ${MAX_GZ}B)"
+fi
+
+echo "Web dist hygiene: OK (embed entry + workers + styles + track snippet)"

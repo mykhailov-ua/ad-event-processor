@@ -12,6 +12,10 @@ while IFS= read -r -d '' srcfile; do
   case "$srcfile" in
     *.test.js|*/icon.js) continue ;;
   esac
+  # TypeScript modules are gated by tsc; skip JSDoc export lint for .ts
+  case "$srcfile" in
+    *.ts) continue ;;
+  esac
   while IFS= read -r line; do
     [[ -z "$line" ]] && continue
     lineno="${line%%:*}"
@@ -29,7 +33,7 @@ while IFS= read -r -d '' srcfile; do
       fi
     fi
   done < <(rg -n --no-heading '^export (async )?function ' "$srcfile" 2>/dev/null || true)
-done < <(find "$WEB_SRC" -name '*.js' ! -name '*.test.js' -print0)
+done < <(find "$WEB_SRC" \( -name '*.js' -o -name '*.ts' \) ! -name '*.test.js' ! -name '*.test.ts' -print0)
 
 if [[ "$FAIL" -ne 0 ]]; then
   echo "JSDoc check failed. Add /** ... */ above each exported function."

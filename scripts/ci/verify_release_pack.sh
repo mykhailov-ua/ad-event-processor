@@ -24,4 +24,14 @@ if ! echo "$LIST" | grep -q 'deploy/vendor/license_public.key'; then
 	exit 1
 fi
 
+if ! echo "$LIST" | grep -q 'bin/ad-event-processor-install'; then
+	echo "verify_release_pack: missing bin/ad-event-processor-install in $TARBALL" >&2
+	exit 1
+fi
+
+if ! echo "$LIST" | grep -q 'scripts/install/preflight.sh'; then
+	echo "verify_release_pack: missing scripts/install/preflight.sh in $TARBALL" >&2
+	exit 1
+fi
+
 echo "verify_release_pack: OK ($TARBALL)"
