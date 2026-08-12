@@ -157,6 +157,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 	return adminapi.RouteRegistry{
 		BillingHTTP: &adminapi.BillingHTTPHandlers{
 			Billing:                      h.billing,
+			InvoiceDelivery:              h.invoiceDelivery,
 			CompositeReads:               composite,
 			ApplyRateLimit:               limit,
 			RequirePermission:            perm,
@@ -185,9 +186,10 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 				PGPool: func(ctx context.Context) (*pgxpool.Pool, error) {
 					return svc.GetPool(), nil
 				},
-				LicenseState: licenseWatcherState,
-				LicenseDiagnostics: func() (licensing.LicenseDiagnostics, bool) {
-					return licenseWatcherDiagnostics()
+				LicenseState:       licenseWatcherState,
+				LicenseDiagnostics: licenseWatcherDiagnostics,
+				XDPStatsReader: func(ctx context.Context) (xdpstats.Snapshot, error) {
+					return xdpstats.ReadRedisAny(ctx, svc.RedisShards())
 				},
 			},
 			ApplyRateLimit:    limit,

@@ -1,10 +1,25 @@
 import * as auth from './auth.js';
 import { ApiError, type ErrorPayload } from './api_client.js';
 
+export type ApiBlobResult = {
+  blob: Blob;
+  truncated: boolean;
+  nextCursor: string | null;
+  bytes: number | null;
+};
+
 /**
  * Fetch a binary response from the API with CSRF on mutations.
  */
 export async function apiBlob(path: string, init: RequestInit = {}): Promise<Blob> {
+  const result = await apiBlobResult(path, init);
+  return result.blob;
+}
+
+/**
+ * Fetch a binary response and return export metadata headers when present.
+ */
+export async function apiBlobResult(path: string, init: RequestInit = {}): Promise<ApiBlobResult> {
   const headers = new Headers(init.headers || {});
   const method = (init.method || 'GET').toUpperCase();
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
@@ -32,5 +47,11 @@ export async function apiBlob(path: string, init: RequestInit = {}): Promise<Blo
       body,
     );
   }
-  return res.blob();
+  const bytesHdr = res.headers.get('X-Export-Bytes');
+  return {
+    blob: await res.blob(),
+    truncated: res.headers.get('X-Export-Truncated') === 'true',
+    nextCursor: res.headers.get('X-Next-Cursor'),
+    bytes: bytesHdr ? Number(bytesHdr) : null,
+  };
 }

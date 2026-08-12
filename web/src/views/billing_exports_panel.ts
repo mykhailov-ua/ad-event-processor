@@ -22,6 +22,13 @@ export type BillingExportsPanelOpts = {
 type ExportJobRow = BillingExportJobDTO & { localId: string };
 
 /**
+ * Normalize export job status for comparisons.
+ */
+function exportJobStatus(job: Pick<BillingExportJobDTO, 'status'>): string {
+  return String(job.status ?? '').trim().toUpperCase();
+}
+
+/**
  * Mount billing ledger export form and job list.
  */
 export function mountBillingExportsPanel(
@@ -106,13 +113,13 @@ export function mountBillingExportsPanel(
                 el('tbody', null,
                   jobs.map((job) => el('tr', null,
                     el('td', { className: 'font-mono text-xs' }, job.id.slice(0, 8)),
-                    el('td', null, job.status),
+                    el('td', null, exportJobStatus(job)),
                     el('td', { className: 'font-mono' }, String(job.bytes ?? '—')),
                     el('td', { className: 'text-muted text-xs' },
                       job.created_at ? new Date(job.created_at).toLocaleString() : '—',
                     ),
                     el('td', null,
-                      job.status === 'COMPLETED'
+                      exportJobStatus(job) === 'COMPLETED'
                         ? renderButton({
                           label: 'Download',
                           variant: 'secondary',
@@ -120,7 +127,7 @@ export function mountBillingExportsPanel(
                           testId: `billing-export-download-${job.id}`,
                           onClick: () => downloadJob(job),
                         })
-                        : job.status === 'FAILED'
+                        : exportJobStatus(job) === 'FAILED'
                           ? el('span', { className: 'text-danger text-xs' }, job.error ?? 'Failed')
                           : el('span', { className: 'text-muted text-xs' }, 'Running…'),
                     ),
@@ -135,7 +142,11 @@ export function mountBillingExportsPanel(
 
   async function downloadJob(job: ExportJobRow): Promise<void> {
     const ext = job.format === 'ndjson' ? 'ndjson' : 'csv';
-    const [, err] = await to(downloadBillingExport(job.id, `ledger-${job.customer_id}.${ext}`));
+    const [, err] = await to(downloadBillingExport(
+      job.id,
+      `ledger-${job.customer_id}.${ext}`,
+      job.download_url ?? '',
+    ));
     if (err) {
       const view = mapServiceError(err);
       pushToastMessage({ title: view.title, message: view.message, code: view.code });
@@ -161,7 +172,7 @@ export function mountBillingExportsPanel(
     if (idx >= 0 && finalJob) {
       jobs[idx] = { ...jobs[idx], ...finalJob };
     }
-    if (finalJob?.status === 'COMPLETED') {
+    if (finalJob?.status && exportJobStatus(finalJob) === 'COMPLETED') {
       pushToastMessage({ title: 'Export ready', message: 'Download is available below.' });
     }
     render();

@@ -75,9 +75,22 @@ export async function applyRtbFloors(
   placementIds: string[] = [],
 ): Promise<unknown> {
   const qs = dryRun ? '?dry_run=true' : '';
-  const { data } = await apiConfirmed(`/api/v1/rtb/floors/apply${qs}`, {
+  const path = `/api/v1/rtb/floors/apply${qs}`;
+  const init = {
     method: 'POST',
     body: JSON.stringify({ placement_ids: placementIds }),
-  });
+  };
+  const { data } = dryRun
+    ? await api(path, init)
+    : await apiConfirmed(path, init);
+  return data;
+}
+
+/**
+ * Fetch RTB reconcile export snapshot (CH bids/wins vs shadow gate).
+ */
+export async function fetchRtbReconcileExport(window = '24h'): Promise<unknown> {
+  const params = new URLSearchParams({ window });
+  const { data } = await api(`/api/v1/rtb/reconcile/export?${params.toString()}`);
   return data;
 }

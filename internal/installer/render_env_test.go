@@ -10,6 +10,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestRenderSecrets_singleVPSIncludesRedisAddrs(t *testing.T) {
+	profile := &InstallProfile{
+		Type:          ProfileSingleVPS,
+		IngressSchema: IngressSchemaOpenRTB3,
+	}
+	out := string(renderSecrets(profile))
+	if !strings.Contains(out, "REDIS_ADDRS=") {
+		t.Fatalf("secrets missing REDIS_ADDRS:\n%s", out)
+	}
+}
+
 func TestRenderComposeEnv_singleVPSFourRedisShards(t *testing.T) {
 	profile := &InstallProfile{
 		Type:          ProfileSingleVPS,

@@ -125,11 +125,11 @@ func (l *Logger) metricsReporterLoop(interval time.Duration) {
 				LogLoadSheddingEventsTotal.Add(float64(shedEvents))
 			}
 			depth := len(l.persistCh)
-			cap := l.persistQueueCap
+			queueCap := l.persistQueueCap
 			LogQueueDepth.Set(float64(depth))
-			LogPersistQueueCapacity.Set(float64(cap))
-			if cap > 0 {
-				LogPersistQueueSaturation.Set(float64(depth) / float64(cap))
+			LogPersistQueueCapacity.Set(float64(queueCap))
+			if queueCap > 0 {
+				LogPersistQueueSaturation.Set(float64(depth) / float64(queueCap))
 			}
 			drops := l.persistQueueDrops.Swap(0)
 			if drops > 0 {

@@ -543,6 +543,47 @@ services:
         max-file: "3"
 
 
+  # Enterprise lab only — requires BTF host, privileged, host network. Not in single_vps / compose_dev.
+  edge-xdp:
+    build:
+      context: ../..
+      dockerfile: deploy/edge/xdp/Dockerfile
+    network_mode: "${NET_MODE:-host}"
+    profiles:
+      - enterprise-xdp
+    privileged: true
+    cap_add:
+      - BPF
+      - NET_ADMIN
+    security_opt:
+      - seccomp:unconfined
+    pid: host
+    env_file:
+      - ../../.env
+    environment:
+      - INGRESS_INTERFACE=${EDGE_XDP_INGRESS_INTERFACE:-lo}
+      - BPF_PIN_DIR=${EDGE_BPF_PIN_DIR:-/sys/fs/bpf/ad-event-processor}
+      - XDP_MODE=${EDGE_XDP_MODE:-generic}
+      - REDIS_ADDRS=${EDGE_XDP_REDIS_ADDRS:-127.0.0.1:6479}
+      - REDIS_PASS=${REDIS_PASSWORD}
+      - SYNC_INTERVAL=${EDGE_BPF_SYNC_INTERVAL:-5s}
+      - METRICS_PORT=${EDGE_BPF_SYNC_METRICS_PORT:-9191}
+      - XDP_SYN_COOKIE=${XDP_SYN_COOKIE:-0}
+      - XDP_FINGERPRINT=${XDP_FINGERPRINT:-1}
+    volumes:
+      - /sys/fs/bpf:/sys/fs/bpf
+      - /sys/kernel/btf:/sys/kernel/btf:ro
+    depends_on:
+      redis-0:
+        condition: service_healthy
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+
   ivt-detector:
     build:
       context: ../..

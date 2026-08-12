@@ -2,7 +2,6 @@ package installer
 
 import (
 	"bytes"
-	"fmt"
 	"text/template"
 
 	"github.com/bidshard/ad-event-processor/pkg/branding"
@@ -49,9 +48,6 @@ func renderSystemdUnit(profile *InstallProfile) ([]byte, error) {
 	}
 	if err := tmpl.Execute(&buf, data); err != nil {
 		return nil, err
-	}
-	if profile.EdgeXDP {
-		buf.WriteString(fmt.Sprintf("\n# edge_xdp enabled on %s\n", profile.Interface))
 	}
 	return buf.Bytes(), nil
 }

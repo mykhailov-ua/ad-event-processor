@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
+	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

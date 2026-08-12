@@ -107,7 +107,7 @@ func (l *Logger) checkRotation() {
 
 func (l *Logger) openActiveFile() {
 	activePath := filepath.Join(l.cfg.LogDir, "active.log")
-	f, err := os.OpenFile(activePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	f, err := os.OpenFile(activePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o666)
 	if err != nil {
 		l.diskDegraded.Store(1)
 		return

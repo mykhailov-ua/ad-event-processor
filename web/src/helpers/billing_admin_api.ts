@@ -118,8 +118,15 @@ export async function pollBillingExportJob(
 /**
  * Download a completed billing export file.
  */
-export async function downloadBillingExport(jobId: string, filename = 'ledger-export.csv'): Promise<void> {
-  const blob = await apiBlob(`/api/v1/billing/exports/${encodeURIComponent(jobId)}/download`);
+export async function downloadBillingExport(
+  jobId: string,
+  filename = 'ledger-export.csv',
+  downloadUrl = '',
+): Promise<void> {
+  const path = downloadUrl.startsWith('/')
+    ? downloadUrl
+    : `/api/v1/billing/exports/${encodeURIComponent(jobId)}/download`;
+  const blob = await apiBlob(path);
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;

@@ -515,7 +515,7 @@ func ProbeDiskWritable(dataDir string) bool {
 		return false
 	}
 	testFile := filepath.Join(dataDir, ".healthcheck")
-	f, err := os.OpenFile(testFile, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0600)
+	f, err := os.OpenFile(testFile, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0o600)
 	if err != nil {
 		return false
 	}

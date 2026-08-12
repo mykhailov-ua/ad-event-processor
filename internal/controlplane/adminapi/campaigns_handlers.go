@@ -19,6 +19,7 @@ type CampaignReader interface {
 	GetCampaign(ctx context.Context, campaignID uuid.UUID) (CampaignDTO, error)
 	GetCampaignMargin(ctx context.Context, campaignID uuid.UUID) (CampaignMarginDTO, error)
 	ListCampaigns(ctx context.Context, customerID uuid.UUID, status string, limit, offset int32) ([]CampaignDTO, int64, error)
+	AttachCampaignListMarginBreach(ctx context.Context, items []CampaignDTO)
 	PatchCampaign(ctx context.Context, campaignID uuid.UUID, req PatchCampaignRequest) (CampaignDTO, error)
 	ListCampaignEvents(ctx context.Context, campaignID uuid.UUID, limit, offset int32) ([]CampaignEventDTO, int64, error)
 }
@@ -81,6 +82,7 @@ func (campaigns *CampaignsHTTPHandlers) listCampaigns(w http.ResponseWriter, r *
 		campaigns.writeServiceError(w, err)
 		return
 	}
+	campaigns.Campaigns.AttachCampaignListMarginBreach(r.Context(), items)
 	httpresponse.JSON(w, http.StatusOK, CampaignListResponse{Items: items, Total: total})
 }
 

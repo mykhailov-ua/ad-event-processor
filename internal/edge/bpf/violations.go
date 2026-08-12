@@ -1,6 +1,10 @@
 package bpf
 
-import "github.com/cilium/ebpf"
+import (
+	"github.com/bidshard/ad-event-processor/internal/edge"
+
+	"github.com/cilium/ebpf"
+)
 
 const (
 	ViolationSYN       = 1
@@ -11,7 +15,7 @@ const (
 
 const DefaultSynSubnetLimit = 256
 
-const DefaultViolationsMapPath = "/sys/fs/bpf/ad-event-processor/violations"
+const DefaultViolationsMapPath = edge.DefaultViolationsMapPath
 
 type ViolationEvent struct {
 	TsNs   uint64
@@ -22,7 +26,7 @@ type ViolationEvent struct {
 
 func LoadPinnedViolationsMap(path string) (*ebpf.Map, error) {
 	if path == "" {
-		path = DefaultViolationsMapPath
+		path = edge.PinnedMapPath(edge.BPFPinDir(), edge.MapViolations)
 	}
 	return ebpf.LoadPinnedMap(path, nil)
 }

@@ -22,9 +22,9 @@ func (s stubCampaignRegistry) GetCustomerID(uuid.UUID) (uuid.UUID, bool) { retur
 func (s stubCampaignRegistry) GetCampaign(uuid.UUID) (*domain.Campaign, bool) {
 	return s.camp, s.ok
 }
-func (s stubCampaignRegistry) Sync(context.Context) (int, error) { return 0, nil }
+func (s stubCampaignRegistry) Sync(context.Context) (int, error)        { return 0, nil }
 func (s stubCampaignRegistry) StartSync(context.Context, time.Duration) {}
-func (s stubCampaignRegistry) Wait(context.Context) error             { return nil }
+func (s stubCampaignRegistry) Wait(context.Context) error               { return nil }
 
 func TestSafePageEligibleReject(t *testing.T) {
 	assert.True(t, safePageEligibleReject(filterRejectFraud))

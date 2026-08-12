@@ -411,7 +411,9 @@ func (h *TelegramHTTPHandlers) writeTelegramReport(w http.ResponseWriter, r *htt
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(res)
+	if _, err := w.Write(res); err != nil {
+		return
+	}
 }
 
 func parseTelegramReportQuery(w http.ResponseWriter, r *http.Request) (time.Time, time.Time, TelegramReportFilter, bool) {

@@ -20,8 +20,48 @@ const CAMPAIGN = {
   updated_at: '2026-01-01T00:00:00Z',
 };
 
+/**
+ * @param {import('@playwright/test').Page} page
+ */
+async function mockCampaignDetailApis(page) {
+  await page.route('**/api/v1/campaigns/camp-edit-1', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(CAMPAIGN),
+      });
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.route('**/api/v1/campaigns/camp-edit-1/**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ items: [], total: 0, kpis: {} }),
+    });
+  });
+
+  await page.route('**/api/v1/dashboards/campaign/camp-edit-1**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ kpis: {} }),
+    });
+  });
+}
+
+async function confirmAndSave(page) {
+  await page.getByRole('button', { name: 'Save changes' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click();
+}
+
 test('campaign config PATCH sends daily_budget_micro and geo', async ({ page }) => {
   await mockAuthedSession(page, ADMIN_USER);
+  await mockCampaignDetailApis(page);
 
   let patchBody = null;
 
@@ -46,20 +86,85 @@ test('campaign config PATCH sends daily_budget_micro and geo', async ({ page }) 
     await route.continue();
   });
 
-  await page.route('**/api/v1/campaigns/camp-edit-1/**', async (route) => {
-    await route.fulfill({ status: 200, body: JSON.stringify({ items: [], total: 0 }) });
-  });
-
   await page.goto('/campaigns/camp-edit-1?tab=config');
+  await expect(page.locator('#cfg-name')).toHaveValue('Edit me');
   await page.getByTestId('cfg-daily-budget').fill('75.50');
   await page.getByTestId('cfg-geo').fill('US,CA');
   await page.getByTestId('cfg-target-url').fill('https://new.example/landing');
-
-  await page.getByRole('button', { name: 'Save changes' }).click();
-  await page.getByRole('button', { name: 'Confirm' }).click();
+  await confirmAndSave(page);
 
   await expect.poll(() => patchBody).not.toBeNull();
   expect(patchBody.daily_budget_micro).toBe(75_500_000);
   expect(patchBody.target_countries).toEqual(['US', 'CA']);
   expect(patchBody.target_url).toBe('https://new.example/landing');
+});
+
+test('campaign config PATCH sends freq_limit and freq_window', async ({ page }) => {
+  await mockAuthedSession(page, ADMIN_USER);
+  await mockCampaignDetailApis(page);
+
+  let patchBody = null;
+
+  await page.route('**/api/v1/campaigns/camp-edit-1', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(CAMPAIGN),
+      });
+      return;
+    }
+    if (route.request().method() === 'PATCH') {
+      patchBody = route.request().postDataJSON();
+      await route.fulfill({
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ...CAMPAIGN, ...patchBody }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.goto('/campaigns/camp-edit-1?tab=config');
+  await expect(page.locator('#cfg-name')).toHaveValue('Edit me');
+  await page.getByTestId('cfg-freq-limit').fill('5');
+  await page.getByTestId('cfg-freq-window').fill('7200');
+  await confirmAndSave(page);
+
+  await expect.poll(() => patchBody).not.toBeNull();
+  expect(patchBody.freq_limit).toBe(5);
+  expect(patchBody.freq_window).toBe(7200);
+});
+
+test('campaign config rejects empty name before PATCH', async ({ page }) => {
+  await mockAuthedSession(page, ADMIN_USER);
+  await mockCampaignDetailApis(page);
+
+  let patchCalled = false;
+
+  await page.route('**/api/v1/campaigns/camp-edit-1', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(CAMPAIGN),
+      });
+      return;
+    }
+    if (route.request().method() === 'PATCH') {
+      patchCalled = true;
+      await route.fulfill({ status: 200, body: JSON.stringify(CAMPAIGN) });
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.goto('/campaigns/camp-edit-1?tab=config');
+  await expect(page.locator('#cfg-name')).toBeVisible();
+  await page.locator('#cfg-name').fill('');
+  await page.getByRole('button', { name: 'Save changes' }).click();
+
+  await expect(page.getByText('Name is required')).toBeVisible();
+  expect(patchCalled).toBe(false);
 });

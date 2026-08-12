@@ -107,6 +107,7 @@ export const NAV_GROUPS: NavGroup[] = [
     title: 'Operations',
     links: [
       { to: '/ops', label: 'Operations', icon: 'activity', perm: 'shards:read' },
+      { to: '/ops/recon', label: 'Reconciliation', icon: 'git-compare', perm: 'audit:read' },
       { to: '/ops/blacklist', label: 'Blacklist', icon: 'shield-ban', perm: 'blacklist:read' },
     ],
   },

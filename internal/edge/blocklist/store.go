@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/bidshard/ad-event-processor/internal/edge"
 	"github.com/bidshard/ad-event-processor/internal/edge/allowlist"
 	"github.com/bidshard/ad-event-processor/internal/edge/lpm"
 	"github.com/bidshard/ad-event-processor/internal/metrics"
@@ -12,7 +13,7 @@ import (
 )
 
 const (
-	DefaultMapPath = "/sys/fs/bpf/ad-event-processor/blocklist_v4"
+	DefaultMapPath = edge.DefaultBlocklistMapPath
 	blockedMarker  = byte(1)
 )
 
@@ -28,7 +29,7 @@ func KeyFromHost(a, b, c, d byte) IPv4LPMKey {
 
 func LoadPinnedMap(path string) (*ebpf.Map, error) {
 	if path == "" {
-		path = DefaultMapPath
+		path = edge.PinnedMapPath(edge.BPFPinDir(), edge.MapBlocklistV4)
 	}
 	return ebpf.LoadPinnedMap(path, nil)
 }

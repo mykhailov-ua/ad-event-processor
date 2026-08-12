@@ -17,13 +17,7 @@ gen:
 	bash scripts/ci/gen.sh --proto
 
 lint: gen fmt
-	@if [ -z "$$(which golangci-lint 2> /dev/null)" ]; then \
-		echo "Installing golangci-lint..."; \
-		go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.5; \
-	fi
-	@GOPATH=$$(go env GOPATH); \
-	if [ -z "$$GOPATH" ]; then GOPATH=$$HOME/go; fi; \
-	$$GOPATH/bin/golangci-lint run
+	bash scripts/ci/lint_go_gate.sh all
 
 test-fast: gen fmt
 	go test -short -count=1 -timeout=120s ./internal/... ./pkg/...

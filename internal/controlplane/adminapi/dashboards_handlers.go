@@ -78,6 +78,7 @@ type BuyerCampaignPortfolioRowDTO struct {
 	UtilizationPct float64 `json:"utilization_pct,omitempty"`
 	PacingDriftPct float64 `json:"pacing_drift_pct,omitempty"`
 	OverspendRisk  bool    `json:"overspend_risk,omitempty"`
+	MarginBreach   bool    `json:"margin_breach,omitempty"`
 }
 
 type BuyerPortfolioDTO struct {

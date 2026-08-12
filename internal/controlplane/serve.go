@@ -15,6 +15,7 @@ import (
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	db "github.com/bidshard/ad-event-processor/internal/domain/db"
 	"github.com/bidshard/ad-event-processor/internal/identity"
+	"github.com/bidshard/ad-event-processor/internal/ledger"
 	"github.com/bidshard/ad-event-processor/internal/licensing"
 	"github.com/bidshard/ad-event-processor/internal/notify"
 	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
@@ -467,6 +468,9 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 	}
 
 	controlHandler := NewHandler(svc, cfg, authMiddleware, controlAuthClient, paymentClient, billingClient)
+	if mod, ok := opts.BillingModule.(*ledger.Module); ok && mod != nil {
+		controlHandler.invoiceDelivery = newInvoiceDeliveryRetryer(mod.Ledger(), rdbs)
+	}
 
 	mux := http.NewServeMux()
 	RegisterOpsRoutes(mux, pool, rdbs, cfg)

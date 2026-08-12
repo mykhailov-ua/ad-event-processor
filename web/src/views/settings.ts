@@ -29,6 +29,9 @@ import {
   timezoneSelectOptions,
 } from '../helpers/display_labels.js';
 import { devModeEnabled, setDevMode } from '../helpers/dev_mode.js';
+import { api } from '../helpers/api.js';
+import type { OpsDoctorSummary } from '../types/api/ops.js';
+import { humanizeTechnicalDetail } from '../helpers/technical_labels.js';
 
 type PlatformStripeConfig = {
   enabled?: boolean;
@@ -85,6 +88,8 @@ export function mount(container: HTMLElement): ViewHandle {
   let stripeSecretInput = '';
   let stripeWebhookInput = '';
   let licenseTokenInput = '';
+  let doctorSummary: OpsDoctorSummary | null = null;
+  let doctorLoading = false;
 
   const user = auth.getUser();
   const canWrite = can(user?.permissions ?? [], 'settings:write');
@@ -103,6 +108,51 @@ export function mount(container: HTMLElement): ViewHandle {
   function updateField(key: string, value: unknown) {
     form = { ...cfg(), [key]: value };
     render();
+  }
+
+  async function loadDoctor() {
+    if (doctorLoading) return;
+    doctorLoading = true;
+    const [res] = await to(api<OpsDoctorSummary>('/api/v1/ops/doctor'));
+    doctorSummary = res?.data ?? null;
+    doctorLoading = false;
+    render();
+  }
+
+  function edgeXdpDoctorCheck() {
+    return doctorSummary?.checks?.find((c) => c.id === 'edge_xdp') ?? null;
+  }
+
+  function renderEdgeXdpRuntimeStatus(): HTMLElement | null {
+    const check = edgeXdpDoctorCheck();
+    if (!cfg().edge_xdp) return null;
+    if (doctorLoading && !check) {
+      return el('p', { className: 'text-muted text-sm settings-edge-xdp__status' }, 'Checking host runtime…');
+    }
+    if (!check || check.status === 'skip') {
+      return renderAlertBanner({
+        variant: 'info',
+        message: 'Platform flag enabled — confirm host Apply and Doctor status on /ops before expecting kernel filtering.',
+      });
+    }
+    const variant = check.status === 'pass'
+      ? 'info'
+      : (check.status === 'warn' ? 'warning' : 'error');
+    if (check.status === 'pass') {
+      return el('div', { className: 'settings-edge-xdp__status', 'data-testid': 'edge-xdp-runtime-status' },
+        el('div', { className: 'flex items-center gap-2' },
+          el('span', { className: 'text-sm font-medium' }, 'Host runtime'),
+          renderStatusBadge(check.status ?? '', { kind: 'service', label: displayLabel(check.status ?? '') }),
+        ),
+        check.message
+          ? el('p', { className: 'text-muted text-sm' }, humanizeTechnicalDetail(check.message))
+          : null,
+      );
+    }
+    return renderAlertBanner({
+      variant,
+      message: humanizeTechnicalDetail(check.message ?? 'Edge XDP host runtime not ready'),
+    });
   }
 
   async function handleSave(e: Event) {
@@ -160,6 +210,7 @@ export function mount(container: HTMLElement): ViewHandle {
       stripeSecretInput = '';
       stripeWebhookInput = '';
       resource.reload();
+      void loadDoctor();
     saving = false;
     render();
   }
@@ -209,6 +260,7 @@ export function mount(container: HTMLElement): ViewHandle {
     }
     pushToastMessage({ title: 'Applied', message: 'Configuration written to disk' });
     resource.reload();
+    void loadDoctor();
     applying = false;
     render();
   }
@@ -368,11 +420,19 @@ export function mount(container: HTMLElement): ViewHandle {
                     onChange: (checked: any) => updateField('telemetry_enabled', checked),
                   }),
                   renderCheckbox({
-                    label: 'Edge acceleration (XDP) — fast network filtering at the kernel',
+                    label: 'Edge XDP (Enterprise) — kernel-level IP filtering via installer systemd',
                     checked: c.edge_xdp ?? false,
                     disabled: !canWrite,
                     onChange: (checked: any) => updateField('edge_xdp', checked),
                   }),
+                  el('p', { className: 'text-muted text-sm' },
+                    'Requires Enterprise license (ebpf_xdp_edge), kernel BTF (6.1+), and installer units ',
+                    el('code', null, 'ad-event-processor-edge-xdp'),
+                    ' / ',
+                    el('code', null, 'ad-event-processor-edge-bpf-sync'),
+                    '. Saving updates platform YAML only — use Apply on the host, then verify Doctor on Ops.',
+                  ),
+                  renderEdgeXdpRuntimeStatus(),
                   renderCheckbox({
                     label: 'Developer mode — show raw sysctl values and API paths in the UI',
                     checked: devModeEnabled(),
@@ -515,6 +575,9 @@ export function mount(container: HTMLElement): ViewHandle {
           if (s.error) surfaceServiceErrorToast(s.error);
         }
         Object.assign(state, s);
+        if (!doctorSummary && !doctorLoading && !s.loading && !s.error) {
+          void loadDoctor();
+        }
         render();
       },
     },

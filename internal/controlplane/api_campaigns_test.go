@@ -4,10 +4,12 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/internal/database"
 	"github.com/bidshard/ad-event-processor/internal/domain/db"
 
@@ -82,8 +84,8 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 	t.Run("GetCampaignByID", func(t *testing.T) {
 		camp, err := svc.GetCampaignRow(ctx, campID)
 		require.NoError(t, err)
-		assert.Equal(t, campID.String(), camp.ID)
-		assert.Equal(t, "100.00", camp.BudgetLimit)
+		assert.Equal(t, campID.String(), uuid.UUID(camp.ID.Bytes).String())
+		assert.Equal(t, int64(100_000_000), camp.BudgetLimit)
 		assert.NotNil(t, camp.TargetCountries)
 	})
 
@@ -93,6 +95,48 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 		assert.Greater(t, total, int64(0))
 		require.NotEmpty(t, history)
 		assert.Equal(t, "ACTIVE", history[0].NewStatus)
+	})
+
+	t.Run("PatchCampaign", func(t *testing.T) {
+		name := "Updated Spring Sale"
+		dailyMicro := int64(25_000_000)
+		targetURL := "https://new.example/landing"
+		countries := []string{"US", "CA"}
+		freqLimit := int32(10)
+		freqWindow := int32(7200)
+
+		updated, err := svc.PatchCampaign(ctx, campID, adminapi.PatchCampaignRequest{
+			Name:             &name,
+			DailyBudgetMicro: &dailyMicro,
+			TargetURL:        &targetURL,
+			TargetCountries:  countries,
+			FreqLimit:        &freqLimit,
+			FreqWindow:       &freqWindow,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, name, updated.Name)
+		assert.Equal(t, countries, updated.TargetCountries)
+		assert.Equal(t, targetURL, updated.TargetURL)
+		assert.Equal(t, int32(10), updated.FreqLimit)
+		assert.Equal(t, int32(7200), updated.FreqWindow)
+
+		body := `{"daily_budget_micro":30000000,"target_countries":["US"]}`
+		req, err := http.NewRequest(http.MethodPatch, "/api/v1/campaigns/"+campID.String(), strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		withSessionUser(req, tokenMaker, RoleAdmin, uuid.Nil)
+
+		resp := httptest.NewRecorder()
+		mux.ServeHTTP(resp, req)
+		assert.Equal(t, http.StatusOK, resp.Code)
+		assert.Contains(t, resp.Body.String(), `"daily_budget"`)
+	})
+
+	t.Run("PatchCampaign_EmptyNameRejected", func(t *testing.T) {
+		empty := "   "
+		_, err := svc.PatchCampaign(ctx, campID, adminapi.PatchCampaignRequest{Name: &empty})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "name is required")
 	})
 
 	t.Run("CampaignIsolation_Forbidden", func(t *testing.T) {

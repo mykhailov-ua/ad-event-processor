@@ -3,7 +3,7 @@ import type { AuditLogRow } from '../types/api/index.js';
 import { el, replaceChildren, eventTargetChecked } from '../lib/dom.js';
 import { to } from '../lib/to.js';
 import { api } from '../helpers/api_client.js';
-import { apiBlob } from '../helpers/api_blob.js';
+import { apiBlobResult } from '../helpers/api_blob.js';
 import { can } from '../helpers/permissions.js';
 import * as auth from '../helpers/auth.js';
 import { mapServiceError } from '../helpers/service_error.js';
@@ -30,16 +30,33 @@ export function mount(container: HTMLElement): ViewHandle {
   let loading = true;
   let error: unknown = null;
   let exportBusy = false;
+  let exportTruncated = false;
+  let exportNextCursor: string | null = null;
 
   const user = auth.getUser();
   const canExport = can(user?.permissions ?? [], 'audit:read');
 
+  function downloadBlob(blob: Blob, filename: string): void {
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function exportCsv(): Promise<void> {
     if (!canExport || exportBusy) return;
     exportBusy = true;
+    exportTruncated = false;
+    exportNextCursor = null;
     render();
-    const params = new URLSearchParams({ format: 'csv', redact_pii: redactPii ? 'true' : 'false' });
-    const [blob, err] = await to(apiBlob(`/api/v1/audit/export?${params.toString()}`));
+
+    const params = new URLSearchParams({
+      format: 'csv',
+      redact_pii: redactPii ? 'true' : 'false',
+    });
+    const [result, err] = await to(apiBlobResult(`/api/v1/audit/export?${params.toString()}`));
     exportBusy = false;
     if (destroyed) return;
     if (err) {
@@ -48,12 +65,9 @@ export function mount(container: HTMLElement): ViewHandle {
       render();
       return;
     }
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = 'audit-export.csv';
-    anchor.click();
-    URL.revokeObjectURL(url);
+    exportTruncated = result.truncated;
+    exportNextCursor = result.nextCursor;
+    downloadBlob(result.blob, 'audit-export.csv');
     render();
   }
 
@@ -105,6 +119,12 @@ export function mount(container: HTMLElement): ViewHandle {
         ),
         el('p', { className: 'text-muted text-sm' }, `${total} entries`),
       ),
+      exportTruncated
+        ? el('p', {
+          className: 'text-warning text-sm mb-2',
+          'data-testid': 'audit-export-truncated',
+        }, `Last export was truncated at cursor ${exportNextCursor ?? '—'}.`)
+        : null,
       el('label', { className: 'form-check mb-3' },
         el('input', {
           type: 'checkbox',

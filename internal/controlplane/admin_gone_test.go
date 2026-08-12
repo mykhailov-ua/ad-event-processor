@@ -7,17 +7,17 @@ import (
 	"testing"
 )
 
-func TestRootReturnsJSONNotFound(t *testing.T) {
+func TestLegacyAdminRoutesReturnGone(t *testing.T) {
 	t.Parallel()
 	mux := http.NewServeMux()
-	registerRootRoute(mux, nil)
+	registerAdminGoneRoutes(mux)
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/admin/campaigns", http.NoBody)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusNotFound {
-		t.Fatalf("status=%d want %d body=%s", rec.Code, http.StatusNotFound, rec.Body.String())
+	if rec.Code != http.StatusGone {
+		t.Fatalf("status=%d want %d body=%s", rec.Code, http.StatusGone, rec.Body.String())
 	}
 	if ct := rec.Header().Get("Content-Type"); ct != "application/json" {
 		t.Fatalf("content-type=%q want application/json", ct)
@@ -30,7 +30,7 @@ func TestRootReturnsJSONNotFound(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode: %v body=%s", err, rec.Body.String())
 	}
-	if body.Error.Code != "NOT_FOUND" {
-		t.Fatalf("code=%q want NOT_FOUND", body.Error.Code)
+	if body.Error.Code != "GONE" {
+		t.Fatalf("code=%q want GONE", body.Error.Code)
 	}
 }

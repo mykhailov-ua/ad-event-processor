@@ -35,10 +35,10 @@ func installLicenseFromEnv() error {
 		return err
 	}
 
-	if err := os.MkdirAll(filepath.Dir(licensePath()), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(licensePath()), 0o755); err != nil {
 		return err
 	}
-	if err := os.WriteFile(licensePath(), data, 0600); err != nil {
+	if err := os.WriteFile(licensePath(), data, 0o600); err != nil {
 		return err
 	}
 
@@ -68,10 +68,10 @@ func activateLicense() error {
 		return err
 	}
 
-	if err := os.MkdirAll(filepath.Dir(licensePath()), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(licensePath()), 0o755); err != nil {
 		return err
 	}
-	if err := os.WriteFile(licensePath(), []byte(token), 0600); err != nil {
+	if err := os.WriteFile(licensePath(), []byte(token), 0o600); err != nil {
 		return err
 	}
 

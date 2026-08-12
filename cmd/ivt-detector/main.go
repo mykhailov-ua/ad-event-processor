@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"os"
 	"strings"
@@ -133,7 +134,7 @@ func main() {
 		"window_sec", cfg.IVT.WindowSec,
 	)
 
-	if err := detector.RunLoop(ctx); err != nil && err != context.Canceled {
+	if err := detector.RunLoop(ctx); err != nil && !errors.Is(err, context.Canceled) {
 		slog.Error("ivt detector stopped with error", "error", err)
 		os.Exit(1)
 	}

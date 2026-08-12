@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -86,7 +87,7 @@ func main() {
 }
 
 func archiveDLQ(ctx context.Context, rdb *redis.Client, stream, destFile string, batchSize int64) error {
-	file, err := os.OpenFile(destFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(destFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		return fmt.Errorf("failed to open archive file: %w", err)
 	}
@@ -156,9 +157,10 @@ func archiveDLQ(ctx context.Context, rdb *redis.Client, stream, destFile string,
 				if v, ok := msg.Values["type"].(string); ok {
 					pbStream.EventType = ingestion.UnsafeBytes(v)
 				}
-				if v, ok := msg.Values["payload"].(string); ok {
+				switch v := msg.Values["payload"].(type) {
+				case string:
 					pbStream.Payload = ingestion.UnsafeBytes(v)
-				} else if v, ok := msg.Values["payload"].([]byte); ok {
+				case []byte:
 					pbStream.Payload = v
 				}
 				if v, ok := msg.Values["ip"].(string); ok {
@@ -355,7 +357,7 @@ func restoreDLQ(ctx context.Context, rdb *redis.Client, srcFile, targetStream st
 
 		_, err := reader.Read(lengthBuf[:])
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			return fmt.Errorf("failed to read length prefix: %w", err)

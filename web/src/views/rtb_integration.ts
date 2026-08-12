@@ -13,8 +13,9 @@ import {
   fetchRtbShadowDiff,
   validateBidRequest,
   applyRtbFloors,
+  fetchRtbReconcileExport,
 } from '../helpers/rtb_api.js';
-import type { RtbFloorsApplyResult, RtbFloorSuggestionDTO } from '../types/api/rtb.js';
+import type { RtbFloorsApplyResult, RtbFloorSuggestionDTO, RtbReconcileExportDTO } from '../types/api/rtb.js';
 import { ConfirmCancelledError } from '../helpers/confirm_ui.js';
 import { mapServiceError } from '../helpers/service_error.js';
 import { formatAmountMicro } from '../helpers/money.js';
@@ -138,6 +139,9 @@ export function mount(container: HTMLElement): ViewHandle {
   let floorsBusy = false;
   let floorsResult: RtbFloorsApplyResult | null = null;
   let floorsError: string | null = null;
+  let reconcileBusy = false;
+  let reconcileData: RtbReconcileExportDTO | null = null;
+  let reconcileError: string | null = null;
 
   async function runFloors(dryRun: boolean): Promise<void> {
     if (!canApplyFloors || floorsBusy) return;
@@ -167,6 +171,69 @@ export function mount(container: HTMLElement): ViewHandle {
       });
     }
     render();
+  }
+
+  async function loadReconcileExport(): Promise<void> {
+    if (reconcileBusy) return;
+    reconcileBusy = true;
+    reconcileError = null;
+    render();
+    const [res, err] = await to(fetchRtbReconcileExport('24h'));
+    reconcileBusy = false;
+    if (destroyed) return;
+    if (err) {
+      const view = mapServiceError(err);
+      reconcileError = view.message;
+      pushToastMessage({ title: view.title, message: view.message, code: view.code });
+      render();
+      return;
+    }
+    reconcileData = res as RtbReconcileExportDTO;
+    const json = JSON.stringify(reconcileData, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'rtb-reconcile-export.json';
+    anchor.click();
+    URL.revokeObjectURL(url);
+    pushToastMessage({
+      title: 'Reconcile export',
+      message: `${reconcileData.bids} bids, ${reconcileData.wins} wins`,
+    });
+    render();
+  }
+
+  function renderReconcilePanel(): HTMLElement {
+    return renderSectionCard({
+      title: 'Reconcile export',
+      icon: 'download',
+      desc: 'Download ClickHouse bid/win snapshot and live-gate readiness for the last 24h.',
+      children: [
+        renderButton({
+          label: reconcileBusy ? 'Exporting…' : 'Download reconcile JSON',
+          variant: 'secondary',
+          size: 'sm',
+          loading: reconcileBusy,
+          disabled: reconcileBusy,
+          testId: 'rtb-reconcile-export',
+          onClick: loadReconcileExport,
+        }),
+        reconcileError ? el('p', { className: 'text-danger text-sm' }, reconcileError) : null,
+        reconcileData
+          ? el('dl', { className: 'definition-list mt-2', 'data-testid': 'rtb-reconcile-summary' },
+            el('dt', null, 'Bids'),
+            el('dd', null, String(reconcileData.bids)),
+            el('dt', null, 'Wins'),
+            el('dd', null, String(reconcileData.wins)),
+            el('dt', null, 'Spend (micro)'),
+            el('dd', { className: 'font-mono' }, String(reconcileData.spend_micro)),
+            el('dt', null, 'Live gate'),
+            el('dd', null, reconcileData.live_gate_ready ? 'Ready' : 'Not ready'),
+          )
+          : null,
+      ],
+    });
   }
 
   function renderFloorsPanel(): HTMLElement {
@@ -435,6 +502,7 @@ export function mount(container: HTMLElement): ViewHandle {
         children: [renderShadowSummary(shadow)],
       }),
       renderFloorsPanel(),
+      renderReconcilePanel(),
     );
 
     if (!canWrite) {

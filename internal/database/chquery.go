@@ -128,11 +128,11 @@ func (q *CHQuery) observe(start time.Time, query string, err error) {
 }
 
 func queryPrefix(query string) string {
-	const max = 120
-	if len(query) <= max {
+	const maxLen = 120
+	if len(query) <= maxLen {
 		return query
 	}
-	return query[:max]
+	return query[:maxLen]
 }
 
 func (q *CHQuery) Query(ctx context.Context, query string, args ...any) (driver.Rows, error) {

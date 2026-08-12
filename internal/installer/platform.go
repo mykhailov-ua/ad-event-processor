@@ -2,6 +2,7 @@ package installer
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -100,7 +101,7 @@ func loadConfigForApply(baseURL, adminKey string) (platformconfig.Config, Instal
 
 func FetchPlatformConfigFromAPI(baseURL, adminKey string) (platformconfig.PublicView, error) {
 	url := strings.TrimRight(baseURL, "/") + platformSettingsPath
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return platformconfig.PublicView{}, err
 	}
@@ -131,7 +132,7 @@ func BootstrapViaAPI(baseURL, token string, req platformconfig.BootstrapRequest)
 	if err != nil {
 		return platformconfig.PublicView{}, err
 	}
-	httpReq, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(payload))
+	httpReq, err := http.NewRequestWithContext(context.Background(), http.MethodPost, url, bytes.NewReader(payload))
 	if err != nil {
 		return platformconfig.PublicView{}, err
 	}

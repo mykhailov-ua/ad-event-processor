@@ -59,7 +59,6 @@ func TestBuildRedirectLocation_macrosAndPassthrough(t *testing.T) {
 }
 
 func TestClickRedirectGnet_302(t *testing.T) {
-	t.Parallel()
 	cid := uuid.New()
 	brandID := uuid.New()
 	staticCampaignMu.Lock()

@@ -320,7 +320,10 @@ func applyOrtbString(out *OpenRTB3Parsed, kid ortbKeyID, frame ortbFrame, valSta
 func applyOrtbNumber(out *OpenRTB3Parsed, kid ortbKeyID, frame ortbFrame, val []byte) {
 	switch kid {
 	case ortbKeyFlr:
-		out.MinBid = parseDecimalMicro(val)
+		bid := parseDecimalMicro(val)
+		if bid > 0 && (out.MinBid == 0 || bid < out.MinBid) {
+			out.MinBid = bid
+		}
 	case ortbKeyType:
 		if frame.parent == ortbKeyDevice {
 			var adcomType int64

@@ -1,9 +1,9 @@
 package installer
 
 import (
-	"github.com/bidshard/ad-event-processor/pkg/naming"
 	"bytes"
 	"encoding/json"
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 	"io"
 	"os"
 	"path/filepath"
@@ -225,7 +225,7 @@ func TestIdempotentApply(t *testing.T) {
 	if err != nil {
 		t.Fatalf("secrets missing: %v", err)
 	}
-	if info.Mode().Perm() != 0600 {
+	if info.Mode().Perm() != 0o600 {
 		t.Fatalf("secrets mode = %o, want 0600", info.Mode().Perm())
 	}
 

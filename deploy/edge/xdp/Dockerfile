@@ -4,9 +4,13 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 FROM golang:1.25.12-bookworm AS builder
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends clang llvm linux-libc-dev libbpf-dev \
+	&& rm -rf /var/lib/apt/lists/*
 COPY --from=modules /go/pkg/mod /go/pkg/mod
 WORKDIR /src
 COPY . .
+RUN go generate ./internal/edge/bpf/
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/edge-xdp ./cmd/edge-xdp
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/edge-bpf-sync ./cmd/edge-bpf-sync
 

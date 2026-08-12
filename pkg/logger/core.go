@@ -240,7 +240,7 @@ func NewLogger(cfg Config, numShards int) *Logger {
 		compressBuf:     make([]byte, 0, bufSize),
 		nonceBuf:        nonceBuf,
 	}
-	_ = os.MkdirAll(l.cfg.LogDir, 0755)
+	_ = os.MkdirAll(l.cfg.LogDir, 0o755)
 	l.openActiveFile()
 	l.wg.Add(4)
 	go l.StartDrainer()
@@ -294,7 +294,7 @@ func (l *Logger) compressAndEncryptFile(srcPath, dstPath string) error {
 	defer srcFile.Close()
 
 	tmpPath := dstPath + ".tmp"
-	dstFile, err := os.OpenFile(tmpPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	dstFile, err := os.OpenFile(tmpPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o666)
 	if err != nil {
 		return err
 	}

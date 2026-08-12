@@ -107,7 +107,11 @@ export function mount(container: HTMLElement, ctx: RouteContext): ViewHandle {
   const buyerView = isBuyer(user?.role);
   const canReadCustomers = can(user?.permissions ?? [], 'customers:read');
 
-  let tab = 'wallet';
+  let tab = (() => {
+    const raw = ctx.query.get('tab');
+    if (raw === 'ledger' || raw === 'invoices' || raw === 'exports') return raw;
+    return 'wallet';
+  })();
   let ledgerPage = 0;
   let invoicePage = 0;
   let customerInput = sessionScoped
@@ -575,6 +579,14 @@ export function mount(container: HTMLElement, ctx: RouteContext): ViewHandle {
 
   render();
   if (sessionScoped) mountSelfServePanel();
+  if (tab === 'ledger' && customerId()) {
+    balanceResource.reload();
+    ledgerResource.reload();
+  } else if (tab === 'exports' && customerId()) {
+    mountExportsPanel();
+  } else if (tab === 'invoices' && customerId()) {
+    invoicesResource.reload();
+  }
 
   return {
     destroy() {

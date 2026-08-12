@@ -44,13 +44,14 @@ type PostbackWorker struct {
 }
 
 func NewPostbackWorker(pool *pgxpool.Pool, encryptionKey []byte) *PostbackWorker {
-	if len(encryptionKey) == 0 {
+	switch {
+	case len(encryptionKey) == 0:
 		encryptionKey = []byte("postback-encryption-secret-key32")
-	} else if len(encryptionKey) < 32 {
+	case len(encryptionKey) < 32:
 		padded := make([]byte, 32)
 		copy(padded, encryptionKey)
 		encryptionKey = padded
-	} else if len(encryptionKey) > 32 {
+	case len(encryptionKey) > 32:
 		encryptionKey = encryptionKey[:32]
 	}
 

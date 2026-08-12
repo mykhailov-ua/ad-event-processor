@@ -2,6 +2,7 @@ package controlplane
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -95,7 +96,7 @@ func (s *Service) ProbeDomainNow(ctx context.Context, hostname string) (adminapi
 	var role string
 	err := s.pool.QueryRow(ctx, `SELECT role FROM domain_health_status WHERE hostname = $1`, host).Scan(&role)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return adminapi.DomainHealthDTO{}, fmt.Errorf("domain not found")
 		}
 		return adminapi.DomainHealthDTO{}, err

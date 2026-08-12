@@ -1123,7 +1123,7 @@ func (nginxWorker *NginxConfigWorker) ExportAndReload(ctx context.Context) error
 	}
 
 	flagPath := filepath.Join(nginxWorker.exportPath, "reload_required.flg")
-	if err := os.WriteFile(flagPath, []byte("1\n"), 0644); err != nil {
+	if err := os.WriteFile(flagPath, []byte("1\n"), 0o644); err != nil {
 		return fmt.Errorf("failed to write reload flag: %w", err)
 	}
 
@@ -1132,14 +1132,14 @@ func (nginxWorker *NginxConfigWorker) ExportAndReload(ctx context.Context) error
 }
 
 func (nginxWorker *NginxConfigWorker) writeDenyFile(filename string, ips []string) (err error) {
-	if err := os.MkdirAll(nginxWorker.exportPath, 0755); err != nil {
+	if err := os.MkdirAll(nginxWorker.exportPath, 0o755); err != nil {
 		return err
 	}
 
 	path := filepath.Join(nginxWorker.exportPath, filename)
 	tmpPath := path + ".tmp"
 
-	tmpFile, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	tmpFile, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
 	if err != nil {
 		return fmt.Errorf("failed to open temp config file: %w", err)
 	}
@@ -1375,14 +1375,14 @@ func (w *AuditExportWorker) exportDay(ctx context.Context, day time.Time) error 
 	end := day.Add(24 * time.Hour)
 	filename := day.Format("2006-01-02") + ".csv"
 
-	if err := os.MkdirAll(w.exportPath, 0755); err != nil {
+	if err := os.MkdirAll(w.exportPath, 0o755); err != nil {
 		return fmt.Errorf("create audit export dir: %w", err)
 	}
 
 	path := filepath.Join(w.exportPath, filename)
 	tmpPath := path + ".tmp"
 
-	tmpFile, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	tmpFile, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
 	if err != nil {
 		return fmt.Errorf("open audit export temp file: %w", err)
 	}
@@ -2471,11 +2471,12 @@ func (worker *OutboxWorker) applyBlacklistPayloadsBatch(ctx context.Context, eve
 			batch = &reasonBatch{}
 			byReason[reason] = batch
 		}
-		if p.Action == "add" {
+		switch p.Action {
+		case "add":
 			batch.adds = append(batch.adds, p.IP)
-		} else if p.Action == "remove" {
+		case "remove":
 			batch.removes = append(batch.removes, p.IP)
-		} else {
+		default:
 			return fmt.Errorf("unknown blacklist action: %s", p.Action)
 		}
 		if ev.CreatedAt.Valid && ev.CreatedAt.Time.After(maxQueued) {

@@ -29,6 +29,9 @@ func renderSecrets(profile *InstallProfile) []byte {
 		"GOGC=" + trackerGOGC,
 		"GOMEMLIMIT=" + trackerGOMEMLIMIT,
 	}
+	if profile.Type == ProfileSingleVPS {
+		lines = append(lines, "REDIS_ADDRS="+platformconfig.RedisAddrsForProfile(string(profile.Type)))
+	}
 	return []byte(joinLines(lines))
 }
 

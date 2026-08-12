@@ -83,6 +83,8 @@ export function mount(container: HTMLElement, ctx: RouteContext): ViewHandle {
     if (destroyed) return;
     if (err) {
       deliveries = [];
+      const view = mapServiceError(err);
+      pushToastMessage({ title: view.title, message: view.message, code: view.code });
     } else {
       deliveries = res?.items ?? [];
     }
@@ -133,6 +135,8 @@ export function mount(container: HTMLElement, ctx: RouteContext): ViewHandle {
       return;
     }
 
+    const invoiceVoid = String(invoice.status ?? '').toUpperCase() === 'VOID';
+
     const invoiceCrumbs: BreadcrumbItem[] = [{ label: 'Billing', href: '/billing' }];
     if (invoice.customer_id) {
       invoiceCrumbs.push({
@@ -161,7 +165,7 @@ export function mount(container: HTMLElement, ctx: RouteContext): ViewHandle {
               icon: 'download',
               onClick: openPdf,
             }),
-            canVoid && invoice.status !== 'VOID'
+            canVoid && !invoiceVoid
               ? renderButton({
                 label: 'Void',
                 variant: 'danger',
@@ -222,7 +226,7 @@ export function mount(container: HTMLElement, ctx: RouteContext): ViewHandle {
       el('section', { className: 'section-block', 'data-testid': 'invoice-deliveries' },
         el('div', { className: 'flex items-center gap-2 mb-3' },
           el('h2', { className: 'subsection-title' }, 'Delivery attempts'),
-          canRetryDelivery && invoice.status !== 'VOID'
+          canRetryDelivery && !invoiceVoid
             ? renderButton({
               label: 'Retry delivery',
               variant: 'secondary',
@@ -244,7 +248,7 @@ export function mount(container: HTMLElement, ctx: RouteContext): ViewHandle {
                 el('th', { scope: 'col' }, 'Status'),
                 el('th', { scope: 'col' }, 'Recipient'),
                 el('th', { scope: 'col' }, 'Last error'),
-                el('th', { scope: 'col' }, 'Sent'),
+                el('th', { scope: 'col' }, 'Sent at'),
               ),
             ),
             el('tbody', null,

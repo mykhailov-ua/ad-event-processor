@@ -41,6 +41,23 @@ export type AuditLogRow = {
   [key: string]: unknown;
 };
 
+/** GET /api/v1/recon/runs — mirror adminapi.ReconRunDTO */
+export type ReconRunDTO = {
+  service: string;
+  id: number;
+  period_start: string;
+  period_end: string;
+  status: string;
+  total_delta?: number;
+  campaigns_checked?: number;
+  discrepancies_found?: number;
+  findings_count?: number;
+  intents_checked?: number;
+  error_message?: string;
+  created_at: string;
+  completed_at?: string;
+};
+
 /** GET /api/v1/ops/dlq — mirror adminapi.DLQEntryDTO */
 export type DLQEntryDTO = {
   id: string;
@@ -53,6 +70,8 @@ export type DLQEntryDTO = {
   failed_at: string;
   retry_count: number;
   worker_id?: string;
+  /** Present when the API tracks retry lifecycle (e.g. RETRIED). */
+  status?: string;
 };
 
 export type FanOutSourceError = {

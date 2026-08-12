@@ -3,11 +3,11 @@ package controlplane
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/bidshard/ad-event-processor/internal/domain/db"
 	"github.com/bidshard/ad-event-processor/internal/metrics"
 	"github.com/bidshard/ad-event-processor/pkg/coldpath"
-	"fmt"
 	"log/slog"
 	"math"
 	"time"

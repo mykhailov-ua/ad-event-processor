@@ -30,6 +30,7 @@ go test -count=1 -v -run 'Fault' -timeout 20m \
 	./internal/fraud/... \
 	./pkg/broker/server/... \
 	./internal/controlplane/... \
+	./internal/edge/bpf/... \
 	./internal/edge/perimeter/... \
 	./internal/rtb/... \
 	./internal/logevacuator/... \

@@ -18,8 +18,8 @@ func (s *Service) enforceDeploymentLicenseCampaignCap(ctx context.Context) error
 	if !licensing.IngestAllowed(state) {
 		return errValidation("license not active")
 	}
-	max := limits.MaxActiveCampaigns
-	if max == 0 {
+	maxActive := limits.MaxActiveCampaigns
+	if maxActive == 0 {
 		return nil
 	}
 	var active int64
@@ -28,7 +28,7 @@ func (s *Service) enforceDeploymentLicenseCampaignCap(ctx context.Context) error
 	if err != nil {
 		return fmt.Errorf("count deployment active campaigns: %w", err)
 	}
-	if uint64(active) >= max {
+	if uint64(active) >= maxActive {
 		return ErrDeploymentCampaignLimit
 	}
 	return nil

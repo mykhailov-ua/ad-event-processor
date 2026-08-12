@@ -86,6 +86,16 @@ async function mockCampaignApis(page) {
   });
 }
 
+test('Integration tab sub15 appears in click URL', async ({ page }) => {
+  await mockAuthedSession(page, ADMIN_USER);
+  await mockCampaignApis(page);
+
+  await page.goto(`/campaigns/${CAMPAIGN_ID}?tab=tracking`);
+  await page.getByTestId('integration-sub11-30').locator('summary').click();
+  await page.locator('#track-sub15').fill('test');
+  await expect(page.getByTestId('integration-click-url')).toContainText('sub15=test');
+});
+
 test('Integration tab shows click + inbound S2S copy rows', async ({ page }) => {
   await mockAuthedSession(page, ADMIN_USER);
   await mockCampaignApis(page);

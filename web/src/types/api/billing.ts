@@ -55,13 +55,17 @@ export type WalletBalanceDTO = {
   [key: string]: unknown;
 };
 
-/** GET /api/v1/billing/invariant */
+/** GET /api/v1/billing/invariant — maps to adminapi.InvariantDTO */
 export type BillingInvariantDTO = {
   ok: boolean;
   customer_id?: string;
+  /** Wallet balance (wallet_balance_micro in ops copy). */
   balance_micro?: number;
+  /** Ledger sum (ledger_balance_micro in ops copy). */
   ledger_sum_micro?: number;
   diff_micro?: number;
+  /** Present when fleet scan runs without customer_id (admin only). */
+  fleet_scan_limit?: number;
 };
 
 /** GET /api/v1/billing/invoices/{id}/deliveries */

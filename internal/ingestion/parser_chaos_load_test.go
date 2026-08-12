@@ -34,17 +34,17 @@ func TestChaos_ParserLoad_CX02(t *testing.T) {
 	}
 
 	faultproof.Log(t, "parser_chaos_load", map[string]string{
-		"gap_id":        "PS-G08",
-		"gap":           gap,
-		"total_reqs":    fmt.Sprintf("%d", res.TotalReqs),
-		"control_reqs":  fmt.Sprintf("%d", res.ControlReqs),
-		"chaos_reqs":    fmt.Sprintf("%d", res.ChaosReqs),
-		"pool_rejects":  fmt.Sprintf("%.0f", res.PoolRejects),
-		"p99_ms":        fmt.Sprintf("%.3f", p99Ms),
-		"achieved_rps":  fmt.Sprintf("%.0f", res.AchievedRPS),
-		"duration":      cfg.Duration.String(),
-		"target_rps":    fmt.Sprintf("%d", cfg.RPS),
-		"chaos_pct":     fmt.Sprintf("%d", cfg.ChaosPct),
+		"gap_id":       "PS-G08",
+		"gap":          gap,
+		"total_reqs":   fmt.Sprintf("%d", res.TotalReqs),
+		"control_reqs": fmt.Sprintf("%d", res.ControlReqs),
+		"chaos_reqs":   fmt.Sprintf("%d", res.ChaosReqs),
+		"pool_rejects": fmt.Sprintf("%.0f", res.PoolRejects),
+		"p99_ms":       fmt.Sprintf("%.3f", p99Ms),
+		"achieved_rps": fmt.Sprintf("%.0f", res.AchievedRPS),
+		"duration":     cfg.Duration.String(),
+		"target_rps":   fmt.Sprintf("%d", cfg.RPS),
+		"chaos_pct":    fmt.Sprintf("%d", cfg.ChaosPct),
 	})
 
 	require.Equal(t, float64(0), res.PoolRejects, "WorkerPoolRejectTotal must not increase")

@@ -1,6 +1,7 @@
 package loadreport
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -100,7 +101,11 @@ func (c *promClient) query(query string) ([]byte, error) {
 	q := u.Query()
 	q.Set("query", query)
 	u.RawQuery = q.Encode()
-	resp, err := c.client.Get(u.String())
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, u.String(), http.NoBody)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, err
 	}

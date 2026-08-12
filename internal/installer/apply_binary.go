@@ -55,7 +55,7 @@ func BackupBinary(service, targetPath, version string) (string, error) {
 		return "", err
 	}
 	dest := backupPath(service, version)
-	if err := os.MkdirAll(filepath.Dir(dest), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 		return "", err
 	}
 	if err := copyFile(targetPath, dest); err != nil {
@@ -93,7 +93,7 @@ func (d *BinaryDeploy) DeployBinary() error {
 	if err := copyFile(d.SourcePath, d.TargetPath); err != nil {
 		return fmt.Errorf("install %s: %w", d.Service, err)
 	}
-	if err := os.Chmod(d.TargetPath, 0755); err != nil {
+	if err := os.Chmod(d.TargetPath, 0o755); err != nil {
 		return err
 	}
 
@@ -103,7 +103,7 @@ func (d *BinaryDeploy) DeployBinary() error {
 	if err := RunHealthProbe(d.TargetPath, d.HealthURL); err != nil {
 		if backup != "" {
 			_ = copyFile(backup, d.TargetPath)
-			_ = os.Chmod(d.TargetPath, 0755)
+			_ = os.Chmod(d.TargetPath, 0o755)
 		}
 		return fmt.Errorf("deploy rolled back: %w", err)
 	}
@@ -120,7 +120,7 @@ func RollbackService(service, targetPath string) error {
 	if err := copyFile(backup, targetPath); err != nil {
 		return fmt.Errorf("rollback %s: %w", service, err)
 	}
-	return os.Chmod(targetPath, 0755)
+	return os.Chmod(targetPath, 0o755)
 }
 
 func copyFile(src, dst string) error {
@@ -130,10 +130,10 @@ func copyFile(src, dst string) error {
 	}
 	defer in.Close()
 
-	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 		return err
 	}
-	out, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+	out, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
 	if err != nil {
 		return err
 	}

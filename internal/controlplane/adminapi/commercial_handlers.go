@@ -114,11 +114,11 @@ type CommercialAdminService interface {
 }
 
 type CommercialHTTPHandlers struct {
-	Commercial            CommercialAdminService
-	ApplyRateLimit        func(http.HandlerFunc) http.HandlerFunc
-	RequirePermission     func(string, http.HandlerFunc) http.HandlerFunc
+	Commercial              CommercialAdminService
+	ApplyRateLimit          func(http.HandlerFunc) http.HandlerFunc
+	RequirePermission       func(string, http.HandlerFunc) http.HandlerFunc
 	AuthorizeCustomerAccess func(*http.Request, string) error
-	WriteServiceError     func(http.ResponseWriter, error)
+	WriteServiceError       func(http.ResponseWriter, error)
 }
 
 func (h *CommercialHTTPHandlers) Register(mux *http.ServeMux) {
@@ -414,7 +414,9 @@ func (h *CommercialHTTPHandlers) previewSellersJSON(w http.ResponseWriter, r *ht
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(body)
+	if _, err := w.Write(body); err != nil {
+		return
+	}
 }
 
 func (h *CommercialHTTPHandlers) previewAdsTxt(w http.ResponseWriter, r *http.Request) {
@@ -425,7 +427,9 @@ func (h *CommercialHTTPHandlers) previewAdsTxt(w http.ResponseWriter, r *http.Re
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte(body))
+	if _, err := w.Write([]byte(body)); err != nil {
+		return
+	}
 }
 
 func (h *CommercialHTTPHandlers) getExportPath(w http.ResponseWriter, r *http.Request) {

@@ -11,14 +11,16 @@ Canonical policy: [CUT_CANDIDATES.md](CUT_CANDIDATES.md) §2, [MILESTONES.md](MI
 | Feature | License JWT (`features.*`) | Installer profile | Compose | Operator doc |
 | :--- | :--- | :--- | :--- | :--- |
 | **Multi-region / `region-proxy`** | `multi_region: true` | `multi_region: true` (blocked in `compose_dev`) | `--profile multi-region` | [enterprise/MULTI_REGION.md](enterprise/MULTI_REGION.md) |
-| **XDP edge (`edge-xdp`)** | `ebpf_xdp_edge: true` | `edge_xdp: true` (BTF preflight) | Not in `single_vps`; manual systemd from installer | [enterprise/EDGE_XDP.md](enterprise/EDGE_XDP.md) |
+| **XDP edge (`edge-xdp`)** | `ebpf_xdp_edge: true` | `edge_xdp: true` (BTF preflight) | `--profile enterprise-xdp` (not `single_vps`) | [enterprise/EDGE_XDP.md](enterprise/EDGE_XDP.md) |
 
 Pilot defaults: `deploy/vendor/sku.yaml` — both features `false`.
 
 Runtime checks:
 
 - `control` refuses start when `MULTI_REGION_ENABLED=1` without `multi_region` entitlement (`internal/controlplane/serve.go`).
-- `edge-bpf-sync` idles without `ebpf_xdp_edge` (`cmd/edge-bpf-sync`).
+- `edge-xdp` pins BPF maps but **skips XDP attach** when Redis `entitlement:deployment` `ebpf_xdp_edge` is `0` (`internal/edge/entitlement.go`, `cmd/edge-xdp`).
+- `edge-bpf-sync` idles without `ebpf_xdp_edge` (`cmd/edge-bpf-sync`; shared `edge.EbpfEdgeLicensed`).
+- Doctor `edge_xdp` probe (when platform `edge_xdp: true`) reports BTF, pinned maps, systemd units, stats snapshot age (`pkg/doctor/xdp_probe.go`).
 - Release pilot images exclude `region-proxy` binary (`.github/workflows/release-images.yaml`).
 
 ---

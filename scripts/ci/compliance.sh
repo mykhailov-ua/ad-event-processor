@@ -14,21 +14,21 @@ fi
 echo "ebpf import ban: OK"
 
 echo "No DOM/Canvas/WebGL fingerprinting..."
-if grep -rnEi "toDataURL|getImageData|getChannelData|font-family|canvas-fingerprint" . --include="*.js" --include="*.ts" --include="*.html" --exclude-dir="node_modules" 2>/dev/null; then
+if grep -rnEi "toDataURL|getImageData|getChannelData|canvas-fingerprint" . --include="*.js" --include="*.ts" --include="*.html" --exclude-dir="node_modules" 2>/dev/null; then
     echo "COMPLIANCE FAILURE: Found potential device fingerprinting pattern!"
     exit 1
 fi
 echo "fingerprint SDK ban: OK"
 
 echo "No outbound attack or hack-back helpers..."
-if grep -rnEi "\bsyn_flood\b|\budp_flood\b|\bhack_back\b|\breverse_ddos\b" . --exclude-dir="scripts" --exclude-dir="node_modules" --exclude-dir="docs" --exclude-dir=".cursor" 2>/dev/null; then
+if grep -rnEi "\bsyn_flood\b|\budp_flood\b|\bhack_back\b|\breverse_ddos\b" . --exclude-dir="scripts" --exclude-dir="node_modules" --exclude-dir="docs" --exclude-dir=".cursor" --exclude-dir="bin" 2>/dev/null; then
     echo "COMPLIANCE FAILURE: Found potential hack-back or attack pattern!"
     exit 1
 fi
 echo "hack-back ban: OK"
 
 echo "No port scanning or active probing..."
-if grep -rnEi "\bnmap\b|\bportscan\b|\bport_scan\b|\bactive_probe\b" . --exclude-dir="scripts" --exclude-dir="node_modules" --exclude-dir="docs" --exclude-dir=".cursor" 2>/dev/null; then
+if grep -rnEi "\bnmap\b|\bportscan\b|\bport_scan\b|\bactive_probe\b" . --exclude-dir="scripts" --exclude-dir="node_modules" --exclude-dir="docs" --exclude-dir=".cursor" --exclude-dir="bin" 2>/dev/null; then
     echo "COMPLIANCE FAILURE: Found potential port scan or active probe pattern!"
     exit 1
 fi

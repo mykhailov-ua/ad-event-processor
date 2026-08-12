@@ -1,14 +1,16 @@
 package bpf
 
-import "github.com/cilium/ebpf"
+import (
+	"github.com/bidshard/ad-event-processor/internal/edge"
 
-const (
-	DefaultStatsMapPath = "/sys/fs/bpf/ad-event-processor/stats"
+	"github.com/cilium/ebpf"
 )
+
+const DefaultStatsMapPath = edge.DefaultStatsMapPath
 
 func LoadPinnedStatsMap(path string) (*ebpf.Map, error) {
 	if path == "" {
-		path = DefaultStatsMapPath
+		path = edge.PinnedMapPath(edge.BPFPinDir(), edge.MapStats)
 	}
 	return ebpf.LoadPinnedMap(path, nil)
 }

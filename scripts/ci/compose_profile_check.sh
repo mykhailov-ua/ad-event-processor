@@ -54,4 +54,23 @@ if ! docker compose --profile analytics_ml --profile fraud-scorer config --servi
 	exit 1
 fi
 
+echo "compose profile config: enterprise-xdp"
+docker compose --profile enterprise-xdp config >/dev/null
+if ! docker compose --profile enterprise-xdp config --services | grep -qx edge-xdp; then
+	echo "enterprise-xdp profile must include edge-xdp" >&2
+	exit 1
+fi
+if docker compose --profile single_vps config --services | grep -qx edge-xdp; then
+	echo "single_vps profile must not include edge-xdp" >&2
+	exit 1
+fi
+if ! docker compose --profile enterprise-xdp config 2>/dev/null | grep -q 'privileged: true'; then
+	echo "enterprise-xdp edge-xdp service must be privileged" >&2
+	exit 1
+fi
+if ! docker compose --profile enterprise-xdp config 2>/dev/null | grep -q 'network_mode: host'; then
+	echo "enterprise-xdp edge-xdp service must use host network" >&2
+	exit 1
+fi
+
 echo "compose_profile_check: ok"

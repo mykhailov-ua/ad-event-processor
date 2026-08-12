@@ -29,11 +29,12 @@ func main() {
 	fingerprintInterval := edge.EnvDuration("FINGERPRINT_POLL_INTERVAL", 500*time.Millisecond)
 	autobanTTL := edge.EnvDuration("AUTOBAN_TTL", 5*time.Minute)
 	metricsPort := edge.EnvOr("METRICS_PORT", "9090")
-	blocklistPath := edge.EnvOr("BPF_BLOCKLIST_MAP", blocklist.DefaultMapPath)
-	allowlistPath := edge.EnvOr("BPF_ALLOWLIST_MAP", allowlist.DefaultMapPath)
-	statsPath := edge.EnvOr("BPF_STATS_MAP", bpf.DefaultStatsMapPath)
-	violationsPath := edge.EnvOr("BPF_VIOLATIONS_MAP", bpf.DefaultViolationsMapPath)
-	fingerprintsPath := edge.EnvOr("BPF_FINGERPRINTS_MAP", bpf.DefaultFingerprintsMapPath)
+	paths := edge.ResolvePinnedMapPaths()
+	blocklistPath := paths.Blocklist
+	allowlistPath := paths.Allowlist
+	statsPath := paths.Stats
+	violationsPath := paths.Violations
+	fingerprintsPath := paths.Fingerprints
 	redisAddr := edge.FirstRedisAddr()
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
@@ -137,12 +138,12 @@ func main() {
 		})
 	})
 
-	if ebpfEdgeLicensed(ctx, rdb) {
+	if edge.EbpfEdgeLicensed(ctx, rdb) {
 		if err := runSync(ctx, rdb, denyMap, allowMap, denyStore, allowStore); err != nil {
 			slog.Warn("initial edge bpf sync failed", "error", err)
 		}
 	} else {
-		slog.Warn("ebpf_xdp_edge module not licensed; edge-bpf-sync idle")
+		slog.Warn("ebpf_xdp_edge module not licensed; edge-bpf-sync idle (maps pinned)")
 	}
 
 	if statsMap != nil {
@@ -167,7 +168,7 @@ func main() {
 			slog.Info("edge-bpf-sync stopped")
 			return
 		case <-violationTicker.C:
-			if violationReader == nil || !ebpfEdgeLicensed(ctx, rdb) {
+			if violationReader == nil || !edge.EbpfEdgeLicensed(ctx, rdb) {
 				continue
 			}
 			n, err := violationHandler.Drain(violationReader, violationInterval)
@@ -181,7 +182,7 @@ func main() {
 				}
 			}
 		case <-fingerprintTicker.C:
-			if fingerprintReader == nil || !ebpfEdgeLicensed(ctx, rdb) {
+			if fingerprintReader == nil || !edge.EbpfEdgeLicensed(ctx, rdb) {
 				continue
 			}
 			if _, err := fingerprintHandler.Drain(fingerprintReader, fingerprintInterval); err != nil {
@@ -192,7 +193,7 @@ func main() {
 				lastStats = exportStats(ctx, rdb, statsMap, lastStats)
 			}
 		case <-syncTicker.C:
-			if !ebpfEdgeLicensed(ctx, rdb) {
+			if !edge.EbpfEdgeLicensed(ctx, rdb) {
 				continue
 			}
 			if err := runSync(ctx, rdb, denyMap, allowMap, denyStore, allowStore); err != nil {
@@ -219,14 +220,6 @@ func serveMetrics(ctx context.Context, port string) {
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		slog.Error("metrics server failed", "error", err)
 	}
-}
-
-func ebpfEdgeLicensed(ctx context.Context, rdb *redis.Client) bool {
-	enabled, err := rdb.HGet(ctx, "entitlement:deployment", "ebpf_xdp_edge").Int()
-	if err != nil {
-		return true
-	}
-	return enabled == 1
 }
 
 func runSync(ctx context.Context, rdb *redis.Client, denyMap, allowMap *ebpf.Map, denyStore *blocklist.Store, allowStore *allowlist.Store) error {

@@ -2,11 +2,11 @@ package controlplane
 
 import (
 	"context"
+	"fmt"
 	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/bidshard/ad-event-processor/internal/domain/db"
 	"github.com/bidshard/ad-event-processor/internal/metrics"
-	"fmt"
 	"log/slog"
 	"strconv"
 	"strings"

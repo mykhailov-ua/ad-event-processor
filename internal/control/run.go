@@ -2,6 +2,7 @@ package control
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"os"
 	"sync"
@@ -46,7 +47,7 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if err := fn(ctx); err != nil && err != context.Canceled {
+			if err := fn(ctx); err != nil && !errors.Is(err, context.Canceled) {
 				slog.Error("control component stopped", "component", name, "error", err)
 				select {
 				case errCh <- err:

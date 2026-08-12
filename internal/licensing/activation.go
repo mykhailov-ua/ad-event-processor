@@ -35,18 +35,18 @@ type ActivationDecision struct {
 }
 
 func CapHeartbeatValidUntil(licenseValidUntil, now time.Time) time.Time {
-	cap := now.UTC().Add(HeartbeatJWTMaxTTL)
-	if licenseValidUntil.Before(cap) {
+	capped := now.UTC().Add(HeartbeatJWTMaxTTL)
+	if licenseValidUntil.Before(capped) {
 		return licenseValidUntil.UTC()
 	}
-	return cap
+	return capped
 }
 
-func NormalizeMaxActivations(max int32) int {
-	if max <= 0 {
+func NormalizeMaxActivations(maxActivations int32) int {
+	if maxActivations <= 0 {
 		return 1
 	}
-	return int(max)
+	return int(maxActivations)
 }
 
 func EvaluateActivate(fingerprint string, licenseKey string, maxActivations int32, activations []ActivationRecord, deployment *DeploymentRecord) ActivationDecision {

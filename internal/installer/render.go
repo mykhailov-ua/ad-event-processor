@@ -26,15 +26,15 @@ func renderTemplates(profile *InstallProfile, dryRun bool) error {
 		content []byte
 		mode    os.FileMode
 	}{
-		{systemdUnitPath(TrackerSystemdUnitName), unit, 0644},
-		{secretsPath(), secrets, 0600},
+		{systemdUnitPath(TrackerSystemdUnitName), unit, 0o644},
+		{secretsPath(), secrets, 0o600},
 	}
 	if profile.Type == ProfileComposeDev {
 		manifests = append(manifests, struct {
 			path    string
 			content []byte
 			mode    os.FileMode
-		}{composeEnvPath(), composeEnv, 0644})
+		}{composeEnvPath(), composeEnv, 0o644})
 	}
 
 	for _, m := range manifests {
@@ -56,10 +56,34 @@ func renderTemplates(profile *InstallProfile, dryRun bool) error {
 		fmt.Printf("Rendered %s\n", m.path)
 	}
 
+	edgeManifests, err := edgeSystemdManifests(profile)
+	if err != nil {
+		return err
+	}
+	for _, m := range edgeManifests {
+		if dryRun {
+			fmt.Printf("[Dry-Run] Would render %s (sha256=%s)\n", m.path, checksum(m.content))
+			continue
+		}
+		if unchanged, err := fileUnchanged(m.path, m.content); err != nil {
+			return err
+		} else if unchanged {
+			fmt.Printf("Skipping %s (unchanged)\n", m.path)
+			continue
+		}
+		if err := writeFile(m.path, m.content, m.mode); err != nil {
+			return err
+		}
+		fmt.Printf("Rendered %s\n", m.path)
+	}
+
 	if err := writeRollbackUnits(profile, dryRun); err != nil {
 		return err
 	}
 	if err := applyServiceBinaries(profile, dryRun); err != nil {
+		return err
+	}
+	if err := syncEdgeSystemdUnits(profile, dryRun); err != nil {
 		return err
 	}
 
@@ -97,7 +121,7 @@ func fileUnchanged(path string, content []byte) (bool, error) {
 }
 
 func writeFile(path string, content []byte, mode os.FileMode) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
 	return os.WriteFile(path, content, mode)

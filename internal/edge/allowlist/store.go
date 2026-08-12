@@ -6,13 +6,14 @@ import (
 	"os"
 	"sync"
 
+	"github.com/bidshard/ad-event-processor/internal/edge"
 	"github.com/bidshard/ad-event-processor/internal/edge/lpm"
 
 	"github.com/cilium/ebpf"
 )
 
 const (
-	DefaultMapPath = "/sys/fs/bpf/ad-event-processor/allow_v4"
+	DefaultMapPath = edge.DefaultAllowlistMapPath
 	allowedMarker  = byte(1)
 )
 
@@ -58,7 +59,7 @@ func IsProtected(ipStr string) bool {
 
 func LoadPinnedMap(path string) (*ebpf.Map, error) {
 	if path == "" {
-		path = DefaultMapPath
+		path = edge.PinnedMapPath(edge.BPFPinDir(), edge.MapAllowV4)
 	}
 	return ebpf.LoadPinnedMap(path, nil)
 }

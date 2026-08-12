@@ -782,7 +782,7 @@ func (s *Service) publishCampaignUpdate(ctx context.Context, campaignID string) 
 		); err != nil {
 			slog.Warn("campaign update broker fallback publish failed", "err", err, "campaign_id", campaignID)
 			if pubErr != nil {
-				return fmt.Errorf("redis pubsub: %w; broker: %v", pubErr, err)
+				return fmt.Errorf("redis pubsub: %w; broker: %w", pubErr, err)
 			}
 		} else if pubErr != nil {
 			slog.Warn("campaign update redis pubsub failed; broker fallback ok", "err", pubErr, "campaign_id", campaignID)
@@ -790,6 +790,9 @@ func (s *Service) publishCampaignUpdate(ctx context.Context, campaignID string) 
 		}
 	}
 
+	if pubErr != nil {
+		slog.Warn("campaign update publish failed", "campaign_id", campaignID, "err", pubErr)
+	}
 	return pubErr
 }
 
@@ -928,7 +931,7 @@ func (s *Service) UpdateOverdraft(ctx context.Context, id uuid.UUID, newOverdraf
 							return fmt.Errorf("failed to record release ledger entry: %w", err)
 						}
 
-						availableLimit = availableLimit + remaining
+						availableLimit += remaining
 					}
 
 					payloadBytes, marshalErr := coldpath.MarshalOutbox(CampaignPayload{CampaignID: uuid.UUID(locked.ID.Bytes).String()})

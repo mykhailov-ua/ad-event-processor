@@ -126,17 +126,17 @@ func NormalizeMetricHealth(raw float64, def ScoringMetricDef) float64 {
 		}
 		return clamp01(1 - (raw-good)/(bad-good))
 	case MetricRate:
-		max := def.Norm.rateMax
-		if max <= 0 {
+		rateMax := def.Norm.rateMax
+		if rateMax <= 0 {
 			return 1
 		}
-		return clamp01(1 - raw/max)
+		return clamp01(1 - raw/rateMax)
 	case MetricCounter:
-		max := def.Norm.counterMax
-		if max <= 0 {
+		counterMax := def.Norm.counterMax
+		if counterMax <= 0 {
 			return 1
 		}
-		return clamp01(1 - raw/max)
+		return clamp01(1 - raw/counterMax)
 	default:
 		return clamp01(1 - raw)
 	}

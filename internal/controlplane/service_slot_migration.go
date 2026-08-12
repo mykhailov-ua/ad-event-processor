@@ -340,7 +340,7 @@ func (s *Service) ActivateSlotMapVersionWithMigration(ctx context.Context, admin
 			}
 			if err := catalog.VerifySlotCampaignKeysExist(ctx, dst, slotCampaigns); err != nil {
 				metrics.SlotMigrationCutoverBlockedTotal.WithLabelValues("missing_keys").Inc()
-				return fmt.Errorf("%w: %v", ErrSlotMigrationKeysMissing, err)
+				return fmt.Errorf("%w: %w", ErrSlotMigrationKeysMissing, err)
 			}
 		}
 	}

@@ -19,8 +19,9 @@ var ManagementDomains = []Domain{
 		"errors.go", "rbac.go", "ratelimit.go",
 		"ops.go", "postgres_gate.go", "domains.go",
 		"serve.go", "api_access.go", "meta_enricher.go",
-	}, LogicFiles: []string{"rbac.go", "errors.go"}, TestPrefixes: []string{"service_test", "handler_test", "middleware_test", "workers_test", "rbac_test", "core_domain_test", "domains_test", "admin_gone"}},
-	{ID: "billing", Prefixes: []string{"handler_billing", "handler_api_balance", "service_customer", "billing_"}, Files: []string{"billing_money.go", "workers.go"}, LogicFiles: []string{"billing_money.go"}, TestPrefixes: []string{"api_balance", "handler_billing", "billing_domain_test", "service_customer", "ledger_invariant"}},
+		"admin_ui_static.go", "static.go",
+	}, LogicFiles: []string{"rbac.go", "errors.go"}, TestPrefixes: []string{"service_test", "handler_test", "middleware_test", "workers_test", "rbac_test", "core_domain_test", "domains_test", "admin_gone", "static_routes"}},
+	{ID: "billing", Prefixes: []string{"handler_billing", "handler_api_balance", "service_customer", "billing_", "invoice_delivery_"}, Files: []string{"billing_money.go", "workers.go"}, LogicFiles: []string{"billing_money.go"}, TestPrefixes: []string{"api_balance", "handler_billing", "billing_domain_test", "service_customer", "ledger_invariant"}},
 	{ID: "campaign", Prefixes: []string{
 		"service_campaign", "handler_campaign", "pacing_", "schedule_", "brand_",
 		"campaign_", "service_brands", "handler_warm", "service_warm", "drain_",
@@ -32,7 +33,7 @@ var ManagementDomains = []Domain{
 	{ID: "fraud", Prefixes: []string{"service_fraud", "blacklist_", "worker_blacklist_", "fraud_"}, TestPrefixes: []string{"service_fraud", "blacklist_", "fraud_"}},
 	{ID: "node", Prefixes: []string{"node_", "service_node_"}, Files: []string{"workers.go", "service_node.go"}, TestPrefixes: []string{"node_", "service_node_", "node_domain_test", "global_region_"}},
 	{ID: "rtb", Prefixes: []string{"service_rtb", "service_bid", "rtb_", "floor_optimizer_"}, Files: []string{"workers.go", "budget_delta_consumer.go"}, TestPrefixes: []string{"service_rtb", "api_rtb", "service_bid", "rtb_", "floor_optimizer"}},
-	{ID: "shard", Prefixes: []string{"shard_", "slot_", "service_slot_"}, Files: []string{"shard_control.go"}, TestPrefixes: []string{"shard_", "slot_", "service_slot"}},
+	{ID: "shard", Prefixes: []string{"shard_", "slot_", "service_slot_", "shard0_catchup_"}, Files: []string{"shard_control.go"}, TestPrefixes: []string{"shard_", "slot_", "service_slot"}},
 	{ID: "settlement", Prefixes: []string{"settlement_"}, Files: []string{"settlement.go", "service_gtax.go"}, TestPrefixes: []string{"settlement_", "gtax_"}},
 	{ID: "region", Prefixes: []string{"region_"}, TestPrefixes: []string{"region_"}},
 	{ID: "quota", Prefixes: []string{"quota_"}, Files: []string{"quota.go"}, TestPrefixes: []string{"quota_"}},
@@ -51,6 +52,7 @@ var ManagementDomains = []Domain{
 		"emergency_", "autoscale", "consent_", "edge_", "fault_", "migration_",
 		"repository_", "registry_", "platform_", "supply_export",
 		"domain_health", "smart_alerts",
+		"license_", "service_license", "service_eula", "service_role_dashboards", "rum_",
 	}, Files: []string{
 		"policy_init.go", "telemetry_pulse.go", "vendor_telemetry.go",
 		"control_fanout.go", "service_platform.go", "service_platform_config.go",
@@ -64,7 +66,11 @@ var ManagementDomains = []Domain{
 		"adminapi_wire.go",
 		"dry_run.go",
 	}, TestPrefixes: []string{"api", "api_", "dry_run", "support_bundle", "support_feedback"}},
-	{ID: "selfserve", Prefixes: []string{"api_selfserve", "service_selfserve", "selfserve_"}, TestPrefixes: []string{"api_selfserve", "selfserve_"}},
+	{ID: "selfserve", Prefixes: []string{
+		"api_selfserve", "service_selfserve", "selfserve_",
+		"service_buyer_portfolio", "buyer_commercial", "buyer_recommendations", "commercial_admin_",
+	}, TestPrefixes: []string{"api_selfserve", "selfserve_", "buyer_commercial", "dashboards_buyer", "buyer_resolve"}},
+	{ID: "telegram", Prefixes: []string{"tg_"}, TestPrefixes: []string{"tg_"}},
 	{ID: "integration", Files: []string{
 		"client_integration.go", "notifier_routing.go", "alertmanager_webhook.go",
 	}, TestPrefixes: []string{"client_integration", "client_auth", "client_billing", "client_payment", "notifier_", "alertmanager_"}},

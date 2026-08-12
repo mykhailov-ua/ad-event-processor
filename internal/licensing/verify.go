@@ -103,13 +103,14 @@ func sscanf(s string, format string, a ...any) (int, error) {
 	for i := 0; i < 2; i++ {
 		c := s[i]
 		var digit byte
-		if c >= '0' && c <= '9' {
+		switch {
+		case c >= '0' && c <= '9':
 			digit = c - '0'
-		} else if c >= 'a' && c <= 'f' {
+		case c >= 'a' && c <= 'f':
 			digit = c - 'a' + 10
-		} else if c >= 'A' && c <= 'F' {
+		case c >= 'A' && c <= 'F':
 			digit = c - 'A' + 10
-		} else {
+		default:
 			return 0, errors.New("bad char")
 		}
 		val = val*16 + digit

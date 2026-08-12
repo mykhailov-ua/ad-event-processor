@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -151,7 +152,7 @@ func (r *runner) telegramTraffic(base string, iter uint64) {
 
 func (r *runner) postOpenRTBBid(base string, iter uint64) {
 	body := openrtbBidBody(iter)
-	req, _ := http.NewRequest(http.MethodPost, base+"/openrtb/bid", bytes.NewReader(body))
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, base+"/openrtb/bid", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-openrtb-version", "2.6")
 	req.Header.Set("Connection", "keep-alive")
@@ -231,18 +232,18 @@ func (r *runner) edgeTraffic(base string, iter uint64) {
 		r.post(r.edgeURL+"/track", "application/json", validBody(iter), nil)
 		return
 	}
-	req, _ := http.NewRequest(http.MethodPost, base+"/track", nil)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, base+"/track", http.NoBody)
 	req.Header.Set("Content-Type", "application/json")
 	r.exec(req)
 }
 
 func (r *runner) get(url string) {
-	req, _ := http.NewRequest(http.MethodGet, url, nil)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, url, http.NoBody)
 	r.exec(req)
 }
 
 func (r *runner) post(url, ctype string, body []byte, extra map[string]string) {
-	req, _ := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, url, bytes.NewReader(body))
 	req.Header.Set("Content-Type", ctype)
 	req.Header.Set("Connection", "keep-alive")
 	for k, v := range extra {
@@ -290,7 +291,11 @@ func ternary(cond bool, a, b string) string {
 func healthCheck(trackers []string) error {
 	client := &http.Client{Timeout: 5 * time.Second}
 	for _, base := range trackers {
-		resp, err := client.Get(base + "/health")
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, base+"/health", http.NoBody)
+		if err != nil {
+			return fmt.Errorf("%s: %w", base, err)
+		}
+		resp, err := client.Do(req)
 		if err != nil {
 			return fmt.Errorf("%s: %w", base, err)
 		}

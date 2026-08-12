@@ -19,6 +19,11 @@ func RunPlatform(ctx context.Context, deps ProbeDeps, cfg platformconfig.Config,
 	deps = WithCLILicenseDeps(deps)
 	probes := DefaultProbes(deps)
 	probes = append(probes, RtbConfigProbe{Deps: deps})
+	probes = append(probes, EdgeXDPProbe{
+		ConfigEnabled: cfg.EdgeXDP,
+		Deps:          deps,
+		StatsReader:   deps.XDPStatsReader,
+	})
 	if strings.TrimSpace(cfg.TrackingDomain) != "" {
 		probes = append(probes, DNSProbe{Hostname: cfg.TrackingDomain})
 	}

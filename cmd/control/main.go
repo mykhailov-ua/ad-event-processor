@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -39,7 +40,7 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	if err := control.Run(ctx, cfg, opts); err != nil && err != context.Canceled {
+	if err := control.Run(ctx, cfg, opts); err != nil && !errors.Is(err, context.Canceled) {
 		slog.Error("control plane stopped", "error", err)
 		os.Exit(1)
 	}

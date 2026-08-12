@@ -33,11 +33,11 @@ func TestScanAndRegister(t *testing.T) {
 	err = os.Chdir(tmpDir)
 	require.NoError(t, err)
 
-	err = os.MkdirAll("var/fraudscore/artifacts", 0755)
+	err = os.MkdirAll("var/fraudscore/artifacts", 0o755)
 	require.NoError(t, err)
 
 	modelContent := "test model content"
-	err = os.WriteFile("var/fraudscore/artifacts/model.txt", []byte(modelContent), 0644)
+	err = os.WriteFile("var/fraudscore/artifacts/model.txt", []byte(modelContent), 0o644)
 	require.NoError(t, err)
 
 	meta := struct {
@@ -52,7 +52,7 @@ func TestScanAndRegister(t *testing.T) {
 
 	metaBytes, err := json.Marshal(meta)
 	require.NoError(t, err)
-	err = os.WriteFile("var/fraudscore/artifacts/metadata.json", metaBytes, 0644)
+	err = os.WriteFile("var/fraudscore/artifacts/metadata.json", metaBytes, 0o644)
 	require.NoError(t, err)
 
 	err = scanAndRegister(ctx, pool)

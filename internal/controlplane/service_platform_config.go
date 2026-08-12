@@ -150,10 +150,10 @@ func (s *Service) ApplyPlatformConfig(ctx context.Context, installRoot string) (
 	root := platformconfig.FormatInstallRoot(installRoot)
 	path := platformconfig.ComposeEnvPath(root)
 	data := platformconfig.RenderComposeEnv(cfg)
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return "", fmt.Errorf("create install compose env dir: %w", err)
 	}
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	if err := os.WriteFile(path, data, 0o644); err != nil {
 		return "", fmt.Errorf("write install compose env: %w", err)
 	}
 	err = pgx.BeginFunc(ctx, s.GetPool(), func(tx pgx.Tx) error {

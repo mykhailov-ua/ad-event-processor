@@ -1,19 +1,12 @@
 package controlplane
 
 import (
-	"github.com/bidshard/ad-event-processor/pkg/naming"
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/domain/db"
-	"github.com/bidshard/ad-event-processor/internal/edge/allowlist"
-	"github.com/bidshard/ad-event-processor/internal/ledger"
-	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 	"fmt"
 	"math"
 	"net"
@@ -22,6 +15,14 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/edge/allowlist"
+	"github.com/bidshard/ad-event-processor/internal/ledger"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -689,6 +690,35 @@ func (s *Service) GetCampaignMargin(ctx context.Context, campaignID uuid.UUID) (
 		ThresholdBps:         thresholdBps,
 		MarginBreach:         sums.RtbCostMicro > limitMicro && sums.AdvertiserSpendMicro > 0,
 	}, nil
+}
+
+// AttachCampaignListMarginBreach sets margin_breach on ACTIVE campaigns (1h window).
+func (s *Service) AttachCampaignListMarginBreach(ctx context.Context, items []CampaignDTO) {
+	if s == nil || len(items) == 0 {
+		return
+	}
+	for i := range items {
+		if items[i].Status != "ACTIVE" {
+			continue
+		}
+		campID, err := uuid.Parse(items[i].ID)
+		if err != nil {
+			continue
+		}
+		breach, err := s.campaignMarginBreach(ctx, campID)
+		if err != nil {
+			continue
+		}
+		items[i].MarginBreach = breach
+	}
+}
+
+func (s *Service) campaignMarginBreach(ctx context.Context, campaignID uuid.UUID) (bool, error) {
+	margin, err := s.GetCampaignMargin(ctx, campaignID)
+	if err != nil {
+		return false, err
+	}
+	return margin.MarginBreach, nil
 }
 
 func (s *Service) GetMarginGuardActivity(ctx context.Context, campaignID uuid.UUID) ([]adminapi.MarginGuardActivityRow, error) {

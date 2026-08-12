@@ -3,6 +3,7 @@ package controlplane
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net"
 	"sync/atomic"
@@ -78,7 +79,8 @@ func (s *UDPControlServer) recvLoop(ctx context.Context) {
 		_ = s.conn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
 		n, remote, err := s.conn.ReadFromUDP(buf)
 		if err != nil {
-			if ne, ok := err.(net.Error); ok && ne.Timeout() {
+			var ne net.Error
+			if errors.As(err, &ne) && ne.Timeout() {
 				continue
 			}
 			if ctx.Err() != nil {

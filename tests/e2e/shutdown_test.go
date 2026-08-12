@@ -101,7 +101,12 @@ func TestE2E_GracefulShutdown_NoDataLoss(t *testing.T) {
 				"payload":     map[string]string{"idx": fmt.Sprintf("%d", idx)},
 			}
 			body, _ := json.Marshal(payload)
-			resp, err := http.Post(srv.URL+"/track", "application/json", bytes.NewBuffer(body))
+			req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, srv.URL+"/track", bytes.NewBuffer(body))
+			if err != nil {
+				return
+			}
+			req.Header.Set("Content-Type", "application/json")
+			resp, err := http.DefaultClient.Do(req)
 			if err == nil && resp.StatusCode == http.StatusAccepted {
 				mu.Lock()
 				acceptedCount++

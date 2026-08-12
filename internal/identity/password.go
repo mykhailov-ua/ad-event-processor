@@ -192,25 +192,26 @@ func VerifyPassword(password, encodedHash string) (bool, error) {
 			sIdx += eIdx + 1
 		}
 
-		if strings.HasPrefix(part, "m=") {
+		switch {
+		case strings.HasPrefix(part, "m="):
 			m, err := strconv.ParseUint(part[2:], 10, 32)
 			if err != nil || m > uint64(maxMemory) {
 				return false, ErrAuthenticationFailed
 			}
 			p.memory = uint32(m)
-		} else if strings.HasPrefix(part, "t=") {
+		case strings.HasPrefix(part, "t="):
 			t, err := strconv.ParseUint(part[2:], 10, 32)
 			if err != nil || t > uint64(maxIterations) {
 				return false, ErrAuthenticationFailed
 			}
 			p.iterations = uint32(t)
-		} else if strings.HasPrefix(part, "p=") {
+		case strings.HasPrefix(part, "p="):
 			pr, err := strconv.ParseUint(part[2:], 10, 8)
 			if err != nil || pr > uint64(maxParallelism) {
 				return false, ErrAuthenticationFailed
 			}
 			p.parallelism = uint8(pr)
-		} else {
+		default:
 			return false, ErrAuthenticationFailed
 		}
 	}

@@ -33,10 +33,10 @@ type scrapedMetric struct {
 }
 
 var opsScrapeMetricNames = map[string]struct{}{
-	"ad_http_requests_total":             {},
-	"ad_recon_drift_micro":               {},
+	"ad_http_requests_total":          {},
+	"ad_recon_drift_micro":            {},
 	"ad_control_outbox_pending_total": {},
-	"ad_tracker_redis_shard_healthy":     {},
+	"ad_tracker_redis_shard_healthy":  {},
 }
 
 type OpsNodeWeightEntry struct {

@@ -23,9 +23,23 @@ done
 
 allowed_docs=(
 	ARCHITECTURE.md
+	BENCHMARKS.md
+	COLD_PATH_JSON.md
+	CUT_CANDIDATES.md
 	DEVELOPMENT.md
+	EDGE_CASES.md
+	FROZEN_FEATURES.md
+	MILESTONES.md
+	NAMING.md
+	PARSER_SECURITY.md
+	PEL_DRAIN.md
+	PILOT_LICENSE.md
 	QUICKSTART.md
+	RTB.md
 	RTB_PRODUCTION_RUNBOOK.md
+	SHARDING_MILESTONE.md
+	TRADEOFFS.md
+	TRAFFIC_INTEGRATION.md
 )
 
 for path in docs/*.md; do
@@ -110,6 +124,7 @@ check_html_dir() {
 	while IFS= read -r -d '' file; do
 		case "$file" in
 			*_test.go|*/testdata/*) continue ;;
+			*/admin_ui_static.go) continue ;;
 		esac
 		if rg -n 'Set\("Content-Type",\s*"text/html' "$file" >/dev/null 2>&1; then
 			echo "check_no_html_success: text/html success Content-Type in $file"

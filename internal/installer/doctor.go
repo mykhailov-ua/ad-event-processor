@@ -2,6 +2,7 @@ package installer
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -124,7 +125,7 @@ func fetchDoctorAPI() (*doctorAPIResponse, error) {
 		return nil, fmt.Errorf("ADMIN_API_KEY not set")
 	}
 	url := managementBaseURL() + "/api/v1/ops/doctor"
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, err
 	}

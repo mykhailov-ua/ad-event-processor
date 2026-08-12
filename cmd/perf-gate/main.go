@@ -119,7 +119,7 @@ func runBenchstatCSVComparison(baseline, pr string) (bool, string, error) {
 
 	err = cmd.Run()
 	if err != nil {
-		return false, "", fmt.Errorf("benchstat error: %v (stderr: %s)", err, stderrBuf.String())
+		return false, "", fmt.Errorf("benchstat error: %w (stderr: %s)", err, stderrBuf.String())
 	}
 
 	regressionDetected, table := parseCSVOutput(stdoutBuf.String())
@@ -173,27 +173,30 @@ func parseCSVOutput(csvContent string) (bool, string) {
 
 			status := "OK"
 
-			if currentMetric == "B/op" {
+			switch currentMetric {
+			case "B/op":
 				val, parseErr := strconv.ParseFloat(record[3], 64)
 				if parseErr == nil && val > 0.0 {
 					status = "FAIL (Memory Bloat)"
 					regression = true
 				}
-			} else if currentMetric == "allocs/op" {
+			case "allocs/op":
 				val, parseErr := strconv.ParseFloat(record[3], 64)
 				if parseErr == nil && val > 0.0 {
 					status = "FAIL (Memory Leak)"
 					regression = true
 				}
-			} else if currentMetric == "sec/op" && delta != "~" && strings.HasPrefix(delta, "+") {
-				deltaPctStr := strings.TrimSuffix(strings.TrimPrefix(delta, "+"), "%")
-				deltaPct, err1 := strconv.ParseFloat(deltaPctStr, 64)
-				pVal, err2 := strconv.ParseFloat(pValStr, 64)
+			case "sec/op":
+				if delta != "~" && strings.HasPrefix(delta, "+") {
+					deltaPctStr := strings.TrimSuffix(strings.TrimPrefix(delta, "+"), "%")
+					deltaPct, err1 := strconv.ParseFloat(deltaPctStr, 64)
+					pVal, err2 := strconv.ParseFloat(pValStr, 64)
 
-				if err1 == nil && err2 == nil {
-					if deltaPct > 12.0 && pVal < 0.05 {
-						status = "FAIL (CPU Regression)"
-						regression = true
+					if err1 == nil && err2 == nil {
+						if deltaPct > 12.0 && pVal < 0.05 {
+							status = "FAIL (CPU Regression)"
+							regression = true
+						}
 					}
 				}
 			}

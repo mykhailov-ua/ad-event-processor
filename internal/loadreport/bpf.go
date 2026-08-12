@@ -402,11 +402,12 @@ func writeDiskDurabilitySection(b *strings.Builder, hot, syscalls []syscallStat)
 	fmt.Fprintf(b, "- **durability sync (fsync+fdatasync):** %d\n", syncOps)
 	if writeOps > 0 && syncOps > 0 {
 		fmt.Fprintf(b, "- **sync reduction vs 1:1 baseline: %.1f%%** (target \u226570%%)\n", syncReductionPct)
-		if writevOps > 0 && syncReductionPct >= 70.0 {
+		switch {
+		case writevOps > 0 && syncReductionPct >= 70.0:
 			b.WriteString("- **Group-commit coalescing: PASS** (writev grouping + \u226570% fewer sync syscalls)\n")
-		} else if syncReductionPct >= 70.0 {
+		case syncReductionPct >= 70.0:
 			b.WriteString("- **Group-commit coalescing: PASS** (\u226570% fewer sync syscalls; mmap path may omit writev)\n")
-		} else {
+		default:
 			b.WriteString("- **Group-commit coalescing: FAIL** (sync rate still high — check `GroupCommitRecords` / disk gate)\n")
 		}
 	}

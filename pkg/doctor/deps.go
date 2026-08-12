@@ -5,6 +5,7 @@ import (
 
 	"github.com/bidshard/ad-event-processor/internal/config"
 	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/edge/xdpstats"
 	"github.com/bidshard/ad-event-processor/internal/licensing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -20,4 +21,5 @@ type ProbeDeps struct {
 	SlotMapFromHTTP    func(context.Context, string) (domain.OpsSlotMapResponse, error)
 	LicenseState       func() (licensing.LicenseState, bool)
 	LicenseDiagnostics func() (licensing.LicenseDiagnostics, bool)
+	XDPStatsReader     func(context.Context) (xdpstats.Snapshot, error)
 }

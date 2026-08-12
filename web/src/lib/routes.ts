@@ -70,6 +70,7 @@ export const APP_ROUTES = [
   { path: '/ops', load: () => import('../views/ops_home.js') },
   { path: '/ops/shards', load: () => import('../views/ops_shards.js') },
   { path: '/ops/blacklist', load: () => import('../views/ops_blacklist.js') },
+  { path: '/ops/recon', load: () => import('../views/ops_recon.js') },
   { path: '/audit', load: () => import('../views/audit.js') },
   { path: '/settings', load: () => import('../views/settings.js') },
   { path: '/settings/license', load: () => import('../views/settings_license.js') },

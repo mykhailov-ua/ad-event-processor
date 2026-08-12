@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -214,9 +213,7 @@ func (s *Service) PatchCampaign(ctx context.Context, campaignID uuid.UUID, req a
 		return CampaignDTO{}, err
 	}
 
-	if pubErr := s.publishCampaignUpdate(ctx, campaignID.String()); pubErr != nil {
-		slog.Warn("campaign update publish failed after patch", "campaign_id", campaignID, "err", pubErr)
-	}
+	_ = s.publishCampaignUpdate(ctx, campaignID.String())
 	return scrubCampaignDTO(ctx, updated), nil
 }
 
@@ -1802,10 +1799,10 @@ func (s *Service) UpdateCampaignSchedule(ctx context.Context, campaignID uuid.UU
 	})
 }
 
-func (s *Service) transitionCampaignStatus(ctx context.Context, q db.Querier, campaignID uuid.UUID, old, new db.CampaignStatusType, reason string, budget int64) error {
+func (s *Service) transitionCampaignStatus(ctx context.Context, q db.Querier, campaignID uuid.UUID, old, newStatus db.CampaignStatusType, reason string, budget int64) error {
 	_, err := q.UpdateCampaignStatus(ctx, db.UpdateCampaignStatusParams{
 		ID:     domain.ToUUID(campaignID),
-		Status: new,
+		Status: newStatus,
 	})
 	if err != nil {
 		return err
@@ -1813,13 +1810,13 @@ func (s *Service) transitionCampaignStatus(ctx context.Context, q db.Querier, ca
 	err = q.CreateStatusHistory(ctx, db.CreateStatusHistoryParams{
 		CampaignID: domain.ToUUID(campaignID),
 		OldStatus:  db.NullCampaignStatusType{CampaignStatusType: old, Valid: true},
-		NewStatus:  new,
+		NewStatus:  newStatus,
 		Reason:     pgtype.Text{String: reason, Valid: true},
 	})
 	if err != nil {
 		return err
 	}
-	return s.emitCampaignLifecycleOutbox(ctx, q, campaignID, new, budget)
+	return s.emitCampaignLifecycleOutbox(ctx, q, campaignID, newStatus, budget)
 }
 
 func (s *Service) CreateCampaignTemplate(ctx context.Context, customerID uuid.UUID, name string, budgetLimit int64, pacing db.PacingModeType, dailyBudget int64, timezone string, freqLimit, freqWindow int32, targetCountries []string, brandID *uuid.UUID, daypartHours []int16) (uuid.UUID, error) {

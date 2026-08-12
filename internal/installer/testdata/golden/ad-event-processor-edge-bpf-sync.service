@@ -1,0 +1,16 @@
+[Unit]
+Description=BidShard edge BPF blacklist sync
+After=network-online.target ad-event-processor-edge-xdp.service
+Requires=ad-event-processor-edge-xdp.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=BPF_PIN_DIR=/sys/fs/bpf/ad-event-processor
+EnvironmentFile=-/etc/ad-event-processor/secrets.env
+ExecStart=/usr/local/bin/edge-bpf-sync
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -100,6 +100,15 @@ func (s *Service) GetBuyerPortfolio(ctx context.Context, customerID uuid.UUID) (
 			})
 		}
 
+		marginBreach := false
+		if c.Status == "ACTIVE" {
+			if campID, parseErr := uuid.Parse(c.ID); parseErr == nil {
+				if breach, err := s.campaignMarginBreach(ctx, campID); err == nil {
+					marginBreach = breach
+				}
+			}
+		}
+
 		resp.Campaigns = append(resp.Campaigns, BuyerCampaignPortfolioRowDTO{
 			ID:             c.ID,
 			Name:           c.Name,
@@ -112,6 +121,7 @@ func (s *Service) GetBuyerPortfolio(ctx context.Context, customerID uuid.UUID) (
 			UtilizationPct: util,
 			PacingDriftPct: drift,
 			OverspendRisk:  risk,
+			MarginBreach:   marginBreach,
 		})
 	}
 	if resp.KPIs != nil {

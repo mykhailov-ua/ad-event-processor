@@ -5,7 +5,7 @@ pre-commit:
       run: bash scripts/ci/tier_a.sh
     lint:
       tags: backend
-      run: make lint
+      run: bash scripts/ci/lint_go_gate.sh all
 
 pre-push:
   commands:

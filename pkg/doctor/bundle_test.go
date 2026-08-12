@@ -19,7 +19,7 @@ func TestWriteBundle(t *testing.T) {
 	dir := t.TempDir()
 	out := filepath.Join(dir, "bundle.tar.gz")
 	err := WriteBundle(context.Background(), BundleOptions{
-		Out:     out,
+		Out: out,
 		Deps: ProbeDeps{
 			LicenseDiagnostics: func() (licensing.LicenseDiagnostics, bool) {
 				return licensing.LicenseDiagnostics{

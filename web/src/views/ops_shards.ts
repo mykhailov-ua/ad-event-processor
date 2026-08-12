@@ -16,11 +16,16 @@ import { renderButton } from '../ui/button.js';
 
 type ShardHealthReport = IncidentSnapshot;
 
+type CatchupMetricResponse = {
+  points?: Array<{ ts?: string; value?: number }>;
+};
+
 type ShardsViewState = {
   report: ShardHealthReport | null;
   loading: boolean;
   error: unknown | null;
   catchupLoading: boolean;
+  catchupLastSuccess: string | null;
 };
 
 /**
@@ -33,14 +38,34 @@ export function mount(container: HTMLElement): ViewHandle {
     loading: true,
     error: null,
     catchupLoading: false,
+    catchupLastSuccess: null,
   };
 
   const user = auth.getUser();
   const canCatchup = can(user?.permissions ?? [], 'shards:write');
 
-  function shard0Unsynced(): ShardHealthStatus | null {
+  function shard0CatchupTarget(): ShardHealthStatus | null {
     const shards = state.report?.shards ?? [];
-    return shards.find((s) => s.shard_id === 0 && s.config_version_synced === false) ?? null;
+    const shard0 = shards.find((s) => s.shard_id === 0);
+    if (!shard0) return null;
+    if (shard0.config_version_synced === false) return shard0;
+    return null;
+  }
+
+  async function loadCatchupMetric(): Promise<void> {
+    const [res] = await to(api<CatchupMetricResponse>(
+      '/api/v1/ops/dashboard/metrics?range=24h&name=ad_shard0_catchup_last_success_timestamp',
+    ));
+    if (destroyed) return;
+    const points = res?.data?.points ?? [];
+    let latest = 0;
+    for (let i = 0; i < points.length; i++) {
+      const value = Number(points[i]?.value ?? 0);
+      if (value > latest) latest = value;
+    }
+    state.catchupLastSuccess = latest > 0
+      ? new Date(latest * 1000).toLocaleString()
+      : null;
   }
 
   async function runCatchup(): Promise<void> {
@@ -82,7 +107,9 @@ export function mount(container: HTMLElement): ViewHandle {
       .finally(() => {
         if (!destroyed) {
           state.loading = false;
-          render();
+          loadCatchupMetric().finally(() => {
+            if (!destroyed) render();
+          });
         }
       });
   }
@@ -106,7 +133,7 @@ export function mount(container: HTMLElement): ViewHandle {
     }
 
     const shards = state.report?.shards ?? [];
-    const unsynced0 = shard0Unsynced();
+    const catchupTarget = shard0CatchupTarget();
 
     replaceChildren(container,
       el('div', { className: 'page-header' },
@@ -116,7 +143,7 @@ export function mount(container: HTMLElement): ViewHandle {
         ]),
         el('div', { className: 'page-header__row' },
           el('h1', { className: 'page-header__title' }, 'Redis shards'),
-          unsynced0 && canCatchup
+          catchupTarget && canCatchup
             ? renderButton({
               label: state.catchupLoading ? 'Running…' : 'Run catch-up',
               variant: 'danger',
@@ -130,10 +157,16 @@ export function mount(container: HTMLElement): ViewHandle {
             : null,
         ),
       ),
-      unsynced0
-        ? el('div', { className: 'stub-banner mb-4', role: 'status' },
-          `Shard 0 config is out of sync (lag ${unsynced0.config_version_lag ?? 0}). Run catch-up to reconcile pub/sub keys.`,
+      catchupTarget
+        ? el('div', { className: 'stub-banner mb-4', role: 'status', 'data-testid': 'shard0-catchup-banner' },
+          `Shard 0 config is out of sync (lag ${catchupTarget.config_version_lag ?? 0}). Run catch-up to reconcile pub/sub keys.`,
         )
+        : null,
+      state.catchupLastSuccess
+        ? el('p', {
+          className: 'text-muted text-sm mb-4',
+          'data-testid': 'shard0-catchup-metric',
+        }, `Last successful shard 0 catch-up: ${state.catchupLastSuccess}`)
         : null,
       (state.report?.errors?.length ?? 0) > 0
         ? el('div', { className: 'stub-banner mb-4' },

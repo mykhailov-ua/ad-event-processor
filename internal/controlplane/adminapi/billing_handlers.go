@@ -1188,12 +1188,17 @@ type WalletDTO struct {
 	PaymentProviderConfigured bool   `json:"payment_provider_configured"`
 }
 
+// fleetInvariantScanLimit caps operator fleet-wide invariant scans (no customer_id).
+const fleetInvariantScanLimit = 500
+
 type InvariantDTO struct {
 	OK             bool   `json:"ok"`
 	CustomerID     string `json:"customer_id,omitempty"`
 	BalanceMicro   int64  `json:"balance_micro,omitempty"`
 	LedgerSumMicro int64  `json:"ledger_sum_micro,omitempty"`
 	DiffMicro      int64  `json:"diff_micro,omitempty"`
+	// FleetScanLimit is set when customer_id is omitted (admin fleet scan).
+	FleetScanLimit int `json:"fleet_scan_limit,omitempty"`
 }
 
 type SummaryDTO struct {
@@ -1526,7 +1531,7 @@ func (s *CompositeReadService) GetInvariant(ctx context.Context, customerID *uui
 		}, nil
 	}
 
-	rows, err := s.pool.Query(ctx, `SELECT id FROM customers ORDER BY id LIMIT 500`)
+	rows, err := s.pool.Query(ctx, `SELECT id FROM customers ORDER BY id LIMIT $1`, fleetInvariantScanLimit)
 	if err != nil {
 		return InvariantDTO{}, err
 	}
@@ -1549,10 +1554,11 @@ func (s *CompositeReadService) GetInvariant(ctx context.Context, customerID *uui
 				BalanceMicro:   snap.BalanceMicro,
 				LedgerSumMicro: snap.LedgerSumMicro,
 				DiffMicro:      diff,
+				FleetScanLimit: fleetInvariantScanLimit,
 			}, nil
 		}
 	}
-	return InvariantDTO{OK: true}, rows.Err()
+	return InvariantDTO{OK: true, FleetScanLimit: fleetInvariantScanLimit}, rows.Err()
 }
 
 func (s *CompositeReadService) GetSummary(ctx context.Context) (SummaryDTO, error) {

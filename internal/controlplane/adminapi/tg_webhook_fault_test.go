@@ -30,7 +30,7 @@ func (telegramServiceStub) GetDeeplink(context.Context, string) (DeeplinkDTO, er
 	return DeeplinkDTO{}, nil
 }
 func (telegramServiceStub) ConfigureBot(context.Context, BotDTO) error { return nil }
-func (telegramServiceStub) ListBots(context.Context) ([]BotDTO, error)   { return nil, nil }
+func (telegramServiceStub) ListBots(context.Context) ([]BotDTO, error) { return nil, nil }
 func (telegramServiceStub) GetBot(context.Context, uuid.UUID) (BotDTO, error) {
 	return BotDTO{}, nil
 }

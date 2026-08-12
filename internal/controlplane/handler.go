@@ -19,6 +19,7 @@ type Handler struct {
 	authClient          *AuthClient
 	payment             *PaymentClient
 	billing             *BillingClient
+	invoiceDelivery     adminapi.InvoiceRetryer
 }
 
 func NewHandler(svc *Service, cfg *config.Config, authMiddleware *AuthMiddleware, authClient *AuthClient, paymentClient *PaymentClient, billingClient *BillingClient) *Handler {

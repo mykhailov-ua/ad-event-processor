@@ -15,7 +15,6 @@ import {
   pollCampaignStatus,
 } from '../helpers/campaign_actions.js';
 import { ConfirmCancelledError } from '../helpers/confirm_ui.js';
-import { mapServiceError } from '../helpers/service_error.js';
 import { pushToastMessage } from '../helpers/toast_ui.js';
 import { renderStatusBadge } from '../ui/status_badge.js';
 import { formatUsdDecimal, ParseDecimal } from '../helpers/money.js';
@@ -228,6 +227,11 @@ export function mount(container: HTMLElement, ctx: RouteContext): ViewHandle {
       pacing_mode: pacingInput instanceof HTMLSelectElement ? pacingInput.value : campaign.pacing_mode,
       timezone: tzInput instanceof HTMLInputElement ? tzInput.value.trim() : campaign.timezone,
     };
+    if (!String(body.name ?? '').trim()) {
+      configError = 'Name is required';
+      render();
+      return;
+    }
     if (dailyBudgetInput instanceof HTMLInputElement && dailyBudgetInput.value.trim()) {
       try {
         body.daily_budget_micro = ParseDecimal(dailyBudgetInput.value.trim());
@@ -675,6 +679,7 @@ export function mount(container: HTMLElement, ctx: RouteContext): ViewHandle {
                     type: 'number',
                     min: '0',
                     defaultValue: String(campaign.freq_limit ?? 0),
+                    'data-testid': 'cfg-freq-limit',
                   }),
                 ),
                 el('label', { className: 'form-field', htmlFor: 'cfg-freq-window' },
@@ -685,6 +690,7 @@ export function mount(container: HTMLElement, ctx: RouteContext): ViewHandle {
                     type: 'number',
                     min: '1',
                     defaultValue: String(campaign.freq_window ?? 86400),
+                    'data-testid': 'cfg-freq-window',
                   }),
                 ),
               ),
@@ -849,20 +855,11 @@ export function mount(container: HTMLElement, ctx: RouteContext): ViewHandle {
         brandId: campaign.brand_id ?? '',
         customerId: campaign.customer_id ?? '',
         canWrite: canWriteCampaign,
-        onBrandCreated: (brandId) => {
-          void (async () => {
-            const [, err] = await to(patchCampaign(id, { brand_id: brandId }));
-            if (err) {
-              if (!(err instanceof ConfirmCancelledError)) {
-                pushToastMessage({
-                  title: 'Link brand failed',
-                  message: mapServiceError(err).message,
-                });
-              }
-              return;
-            }
-            campaignResource.reload();
-          })();
+        onBrandCreated: () => {
+          pushToastMessage({
+            title: 'Brand created',
+            message: 'Creatives work for this session. Linking brand_id on the campaign requires API work (MILESTONE §1.2.4).',
+          });
         },
       });
     }

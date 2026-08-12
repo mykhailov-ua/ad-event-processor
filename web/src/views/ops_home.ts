@@ -7,9 +7,9 @@ import type {
   OutboxListResponse,
   ShardHealthStatus,
   DLQEntryDTO,
-  DLQListResponse,
   BillingInvariantDTO,
 } from '../types/api/index.js';
+import type { DLQListResponse } from '../types/api/ops_extra.js';
 import { el, replaceChildren } from '../lib/dom.js';
 import { to } from '../lib/to.js';
 import { api, ApiError, type ApiResult } from '../helpers/api_client.js';
@@ -48,7 +48,7 @@ import {
 import { formatChartTick, formatClockTime, formatRefreshCountdown } from '../helpers/chart_format.js';
 import { connectOpsLiveFeed } from '../helpers/ops_live_feed.js';
 import { fetchBillingInvariant } from '../helpers/billing_admin_api.js';
-import { retryOpsDlq } from '../helpers/ops_dlq_api.js';
+import { fetchOpsDlqPage, isOpsDlqEntryRetryable, retryOpsDlq } from '../helpers/ops_dlq_api.js';
 import { ConfirmCancelledError } from '../helpers/confirm_ui.js';
 import { formatAmountMicro } from '../helpers/money.js';
 import { renderSubsection } from '../ui/stat_tile.js';
@@ -658,8 +658,12 @@ export function mount(container: HTMLElement): ViewHandle {
             el('h2', { className: 'subsection-title' }, 'Billing invariant'),
             invariantState
               ? (invariantState.ok
-                ? renderStatusBadge('ok', { kind: 'service', label: 'OK' })
-                : renderStatusBadge('critical', { kind: 'service', label: 'Mismatch' }))
+                ? el('span', { 'data-testid': 'ops-billing-invariant-ok' },
+                  renderStatusBadge('ok', { kind: 'service', label: 'OK' }),
+                )
+                : el('span', { 'data-testid': 'ops-billing-invariant-mismatch' },
+                  renderStatusBadge('critical', { kind: 'service', label: 'Mismatch' }),
+                ))
               : null,
           ),
           el('div', { className: 'filter-row mb-3' },
@@ -698,7 +702,7 @@ export function mount(container: HTMLElement): ViewHandle {
                 ? el('dd', { className: 'font-mono' }, formatAmountMicro(invariantState.balance_micro))
                 : null,
               invariantState.ledger_sum_micro != null
-                ? el('dt', null, 'Ledger sum (micro)')
+                ? el('dt', null, 'Ledger balance (micro)')
                 : null,
               invariantState.ledger_sum_micro != null
                 ? el('dd', { className: 'font-mono' }, formatAmountMicro(invariantState.ledger_sum_micro))
@@ -711,12 +715,27 @@ export function mount(container: HTMLElement): ViewHandle {
                   className: invariantState.ok ? 'font-mono' : 'font-mono text-danger',
                 }, String(invariantState.diff_micro))
                 : null,
+              invariantState.fleet_scan_limit != null
+                ? el('dt', null, 'Fleet scan')
+                : null,
+              invariantState.fleet_scan_limit != null
+                ? el('dd', {
+                  className: 'text-muted text-sm',
+                  'data-testid': 'ops-billing-invariant-fleet-cap',
+                }, `Scanned first ${invariantState.fleet_scan_limit} customers (omit customer_id filter for fleet scan).`)
+                : null,
               !invariantState.ok && invariantState.customer_id
-                ? el('dd', { className: 'mt-2' },
+                ? el('dd', { className: 'mt-2 flex gap-3' },
                   el('a', {
                     href: `/billing?customer_id=${encodeURIComponent(invariantState.customer_id)}`,
                     className: 'text-sm',
-                  }, 'Open customer billing →'),
+                    'data-testid': 'ops-invariant-billing-link',
+                  }, 'Open billing →'),
+                  el('a', {
+                    href: `/billing?customer_id=${encodeURIComponent(invariantState.customer_id)}&tab=ledger`,
+                    className: 'text-sm',
+                    'data-testid': 'ops-invariant-ledger-link',
+                  }, 'Open ledger →'),
                 )
                 : null,
             )
@@ -870,15 +889,17 @@ export function mount(container: HTMLElement): ViewHandle {
                   el('td', null, String(row.retry_count ?? 0)),
                   canShardsWrite
                     ? el('td', null,
-                      renderButton({
-                        label: 'Retry',
-                        variant: 'secondary',
-                        size: 'sm',
-                        testId: `ops-dlq-retry-${row.id}`,
-                        loading: dlqLoading,
-                        disabled: dlqLoading,
-                        onClick: () => retryDlqEntry(row),
-                      }),
+                      isOpsDlqEntryRetryable(row)
+                        ? renderButton({
+                          label: 'Retry',
+                          variant: 'secondary',
+                          size: 'sm',
+                          testId: `ops-dlq-retry-${row.id}`,
+                          loading: dlqLoading,
+                          disabled: dlqLoading,
+                          onClick: () => retryDlqEntry(row),
+                        })
+                        : null,
                     )
                     : null,
                 )),
@@ -947,23 +968,15 @@ export function mount(container: HTMLElement): ViewHandle {
     dlqCursor = '';
     dlqPartialErrors = [];
     render();
-    const [dlqRes, dlqErr] = await to(api<DLQListResponse>('/api/v1/ops/dlq?limit=50'));
+    const page = await fetchOpsDlqPage();
     if (!shouldCommitAsyncResult(opGen, dlqGuard.current(), destroyed)) return;
-    if (dlqErr) {
-      if (dlqErr instanceof ApiError && dlqErr.status === 503 && dlqErr.payload) {
-        const payload = dlqErr.payload as DLQListResponse;
-        dlqItems = payload.items ?? [];
-        dlqCursor = payload.next_cursor ?? '';
-        dlqPartialErrors = payload.errors ?? [];
-      } else {
-        const view = mapServiceError(dlqErr);
-        pushToastMessage({ title: view.title, message: view.message, code: view.code });
-      }
+    if (page.error) {
+      const view = mapServiceError(page.error);
+      pushToastMessage({ title: view.title, message: view.message, code: view.code });
     } else {
-      const data = dlqRes?.data ?? {};
-      dlqItems = data.items ?? [];
-      dlqCursor = data.next_cursor ?? '';
-      dlqPartialErrors = data.errors ?? [];
+      dlqItems = page.items;
+      dlqCursor = page.nextCursor;
+      dlqPartialErrors = page.partialErrors;
     }
     dlqLoading = false;
     if (!destroyed) render();
@@ -975,20 +988,28 @@ export function mount(container: HTMLElement): ViewHandle {
     const cursorAtStart = dlqCursor;
     dlqLoading = true;
     render();
-    const [dlqRes, dlqErr] = await to(api<DLQListResponse>(`/api/v1/ops/dlq?limit=50&cursor=${encodeURIComponent(dlqCursor)}`));
+    const page = await fetchOpsDlqPage(dlqCursor);
     if (!shouldCommitAsyncResult(opGen, dlqGuard.current(), destroyed)
       || cursorAtStart !== dlqCursor) {
       dlqLoading = false;
       return;
     }
-    if (dlqErr) {
-      const view = mapServiceError(dlqErr);
-      pushToastMessage({ title: view.title, message: view.message, code: view.code });
+    if (page.error) {
+      if (page.error instanceof ApiError && page.error.status === 503 && page.error.payload) {
+        const payload = page.error.payload as DLQListResponse;
+        dlqItems = [...dlqItems, ...(payload.items ?? [])];
+        dlqCursor = payload.next_cursor ?? dlqCursor;
+        dlqPartialErrors = [...dlqPartialErrors, ...(payload.errors ?? [])];
+      } else {
+        const view = mapServiceError(page.error);
+        pushToastMessage({ title: view.title, message: view.message, code: view.code });
+      }
     } else {
-      const data = dlqRes?.data ?? {};
-      dlqItems = [...dlqItems, ...(data.items ?? [])];
-      dlqCursor = data.next_cursor ?? '';
-      if (data.errors?.length) dlqPartialErrors = [...dlqPartialErrors, ...data.errors];
+      dlqItems = [...dlqItems, ...page.items];
+      dlqCursor = page.nextCursor;
+      if (page.partialErrors.length > 0) {
+        dlqPartialErrors = [...dlqPartialErrors, ...page.partialErrors];
+      }
     }
     dlqLoading = false;
     if (!destroyed) render();

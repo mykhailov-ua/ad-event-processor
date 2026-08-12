@@ -67,7 +67,7 @@ function renderStackRow(row: DoctorStackRow): HTMLElement {
 }
 
 /** Pinned doctor probes shown in a dedicated platform section. */
-const PINNED_CHECK_IDS = ['license', 'slotmap'] as const;
+const PINNED_CHECK_IDS = ['license', 'slotmap', 'edge_xdp'] as const;
 
 export type DoctorCheck = {
   id?: string;

@@ -222,7 +222,7 @@ func scanOpenRTB26Window(win []byte, record func(ortb26WinKeyID, int)) {
 
 type openrtb26DeviceScan struct {
 	idxIP, idxIPv6, idxUA, idxCountry, idxOS, idxLanguage, idxRegion int
-	idxIFA, idxLMT, idxConnectiontype, idxBuyeruid                    int
+	idxIFA, idxLMT, idxConnectiontype, idxBuyeruid                   int
 }
 
 func (s *openrtb26DeviceScan) initMiss() {
@@ -601,7 +601,7 @@ func scanAppWindow(win []byte) openrtb26AppScan {
 }
 
 type openrtb26ExtScan struct {
-	idxTid, idxEids, idxEidSource, idxEidUID int
+	idxTid, idxEids, idxEidSource, idxEidUID                  int
 	idxMetric, idxMetricType, idxMetricVendor, idxMetricValue int
 }
 

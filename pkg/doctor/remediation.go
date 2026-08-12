@@ -19,5 +19,6 @@ var checkHints = map[string]string{
 	"tls":        "set DB_DSN sslmode=verify-full for production Postgres TLS",
 	"rtb_config": "review RTB settings in control UI or GET /api/v1/settings/platform",
 	"license":    "apply monthly JWT: Settings → License or POST /api/v1/license/apply",
+	"edge_xdp":   "enable Enterprise license (ebpf_xdp_edge), BTF kernel, installer systemd units; bash scripts/install/bidshard-install.sh apply",
 	"slotmap":    "see docs/TRADEOFFS.md §1; reload nginx to re-sync edge-slot-map.lua from GET /ops/shards/slot-map",
 }

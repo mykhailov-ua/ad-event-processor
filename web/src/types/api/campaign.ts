@@ -63,7 +63,6 @@ export type CampaignPatchBody = Partial<{
   freq_window: number;
   target_countries: string[];
   target_url: string;
-  brand_id: string;
   safe_page_url: string;
   safe_page_enabled: boolean;
   referrer_filter: string;

@@ -182,11 +182,12 @@ func IsNetworkOrSystemError(err error) bool {
 	if err == nil {
 		return false
 	}
-	switch err.(type) {
-	case *net.OpError:
+	var opErr *net.OpError
+	if errors.As(err, &opErr) {
 		return true
 	}
-	if _, ok := err.(net.Error); ok {
+	var netErr net.Error
+	if errors.As(err, &netErr) {
 		return true
 	}
 	if errors.Is(err, context.DeadlineExceeded) {
@@ -197,10 +198,6 @@ func IsNetworkOrSystemError(err error) bool {
 	}
 	if errors.Is(err, context.Canceled) {
 		return false
-	}
-	var opErr *net.OpError
-	if errors.As(err, &opErr) {
-		return true
 	}
 	errStr := err.Error()
 	if strings.Contains(errStr, "connection refused") ||

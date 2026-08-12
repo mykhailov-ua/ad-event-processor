@@ -33,8 +33,8 @@ func TestFault_XDPMalformedPacketFuzzing(t *testing.T) {
 	}
 
 	for i := 0; i < 1000; i++ {
-		len := 14 + r.Intn(1486)
-		pkt := make([]byte, len)
+		pktLen := 14 + r.Intn(1486)
+		pkt := make([]byte, pktLen)
 		r.Read(pkt)
 		ret, _, _ = objs.XdpEdgeFilter.Test(pkt)
 		if ret != 0 {

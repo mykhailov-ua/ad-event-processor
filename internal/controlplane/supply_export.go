@@ -9,7 +9,7 @@ import (
 
 func (s *Service) ExportSupplyFiles(ctx context.Context) error {
 	exportDir := s.SupplyExportPath()
-	if err := os.MkdirAll(exportDir, 0755); err != nil {
+	if err := os.MkdirAll(exportDir, 0o755); err != nil {
 		return fmt.Errorf("create supply export dir: %w", err)
 	}
 
@@ -18,7 +18,7 @@ func (s *Service) ExportSupplyFiles(ctx context.Context) error {
 		return err
 	}
 	sellersPath := filepath.Join(exportDir, "sellers.json")
-	if err := os.WriteFile(sellersPath, sellersBody, 0644); err != nil {
+	if err := os.WriteFile(sellersPath, sellersBody, 0o644); err != nil {
 		return fmt.Errorf("write sellers.json: %w", err)
 	}
 
@@ -27,7 +27,7 @@ func (s *Service) ExportSupplyFiles(ctx context.Context) error {
 		return err
 	}
 	adsPath := filepath.Join(exportDir, "ads.txt")
-	if err := os.WriteFile(adsPath, []byte(adsTxt), 0644); err != nil {
+	if err := os.WriteFile(adsPath, []byte(adsTxt), 0o644); err != nil {
 		return fmt.Errorf("write ads.txt: %w", err)
 	}
 

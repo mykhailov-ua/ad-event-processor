@@ -1,21 +1,25 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log/slog"
 	"net"
 	"os"
+	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/edge"
 	"github.com/bidshard/ad-event-processor/internal/edge/bpf"
 	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
 
+	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/rlimit"
+	"github.com/redis/go-redis/v9"
 )
 
 func main() {
 	iface := flag.String("iface", os.Getenv("INGRESS_INTERFACE"), "network interface for XDP attach")
-	pinDir := flag.String("pin-dir", edge.EnvOr("BPF_PIN_DIR", "/sys/fs/bpf/ad-event-processor"), "directory for pinned BPF maps")
+	pinDir := flag.String("pin-dir", edge.BPFPinDir(), "directory for pinned BPF maps")
 	mode := flag.String("mode", edge.EnvOr("XDP_MODE", "generic"), "XDP attach mode: generic|native|offload")
 	flag.Parse()
 
@@ -35,7 +39,7 @@ func main() {
 	}
 
 	objs := bpf.EdgeObjects{}
-	if err := bpf.LoadEdgeObjects(&objs, nil); err != nil {
+	if err := bpf.LoadEdgeObjectsLenient(&objs, nil); err != nil {
 		slog.Error("load bpf objects", "error", err)
 		os.Exit(1)
 	}
@@ -59,15 +63,40 @@ func main() {
 		os.Exit(1)
 	}
 
-	xdpLink, err := attachXDP(*iface, objs.XdpEdgeFilter, *mode)
-	if err != nil {
-		slog.Error("attach xdp", "iface", *iface, "mode", *mode, "error", err)
-		os.Exit(1)
+	var xdpLink link.Link
+	if ebpfEdgeAttachAllowed() {
+		var attachedMode string
+		var err error
+		xdpLink, attachedMode, err = attachXDPWithFallback(*iface, objs.XdpEdgeFilter, *mode)
+		if err != nil {
+			slog.Error("attach xdp", "iface", *iface, "mode", *mode, "error", err)
+			os.Exit(1)
+		}
+		defer func() { _ = xdpLink.Close() }()
+		slog.Info("edge xdp attached", "iface", *iface, "mode", attachedMode, "requested_mode", *mode, "pin_dir", *pinDir, "syn_cookie", bpf.SynCookieEnabled())
+	} else {
+		slog.Warn("ebpf_xdp_edge module not licensed; skipping XDP attach (maps pinned)", "iface", *iface, "pin_dir", *pinDir)
 	}
-	defer xdpLink.Close()
-
-	slog.Info("edge xdp attached", "iface", *iface, "mode", *mode, "pin_dir", *pinDir, "syn_cookie", bpf.SynCookieEnabled())
 
 	sig := lifecycle.WaitSignal()
 	slog.Info("received shutdown signal", "signal", sig.String(), "iface", *iface)
+}
+
+func ebpfEdgeAttachAllowed() bool {
+	redisAddr := edge.FirstRedisAddr()
+	if redisAddr == "" {
+		slog.Warn("REDIS_ADDRS unset; ebpf_xdp_edge entitlement check skipped")
+		return true
+	}
+
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     redisAddr,
+		Password: os.Getenv("REDIS_PASS"),
+	})
+	defer func() { _ = rdb.Close() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	return edge.EbpfEdgeLicensed(ctx, rdb)
 }

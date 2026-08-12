@@ -15,6 +15,7 @@ import (
 	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/internal/database"
 	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/pkg/branding"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -510,7 +511,7 @@ func (w *SmartAlertsWorker) deliverWebhook(ctx context.Context, url string, body
 		return "failed", err.Error()
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "BidShard-SmartAlerts/1.0")
+	req.Header.Set("User-Agent", branding.HTTPUserAgent("SmartAlerts"))
 
 	resp, err := w.client.Do(req)
 	if err != nil {

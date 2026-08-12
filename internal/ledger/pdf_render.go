@@ -2,8 +2,8 @@ package ledger
 
 import (
 	"bytes"
-	"github.com/bidshard/ad-event-processor/internal/domain"
 	"fmt"
+	"github.com/bidshard/ad-event-processor/internal/domain"
 	"strconv"
 	"strings"
 	"time"

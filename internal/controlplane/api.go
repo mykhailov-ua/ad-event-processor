@@ -364,7 +364,8 @@ func isNotFoundError(err error) bool {
 		errors.Is(err, ErrDealCustomerMissing) ||
 		errors.Is(err, ErrSellerNotFound) ||
 		errors.Is(err, ErrAdsTxtEntryNotFound) ||
-		errors.Is(err, domain.ErrSlotMapVersionNotFound)
+		errors.Is(err, domain.ErrSlotMapVersionNotFound) ||
+		errors.Is(err, ErrDLQEntryNotFound)
 }
 
 func isConflictError(err error) bool {

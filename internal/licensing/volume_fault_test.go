@@ -1,12 +1,12 @@
 package licensing
 
 import (
-	"github.com/bidshard/ad-event-processor/pkg/naming"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 	"os"
 	"path/filepath"
 	"testing"

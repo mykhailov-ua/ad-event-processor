@@ -69,6 +69,12 @@ func AlertTitle(subject string) string {
 	return ProductName() + ": " + subject
 }
 
+// HTTPUserAgent returns a branded User-Agent for outbound HTTP clients.
+func HTTPUserAgent(component string) string {
+	once.Do(initFromEnv)
+	return ProductName() + "-" + component + "/" + Version()
+}
+
 func Version() string {
 	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
 		return info.Main.Version

@@ -1,8 +1,8 @@
 package controlplane
 
 import (
-	"github.com/bidshard/ad-event-processor/pkg/naming"
 	"context"
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 	"os"
 
 	"github.com/bidshard/ad-event-processor/internal/config"

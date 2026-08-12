@@ -181,6 +181,9 @@ func (ops *OpsHTTPHandlers) getShards(w http.ResponseWriter, r *http.Request) {
 	httpresponse.JSON(w, http.StatusOK, report)
 }
 
+// postShard0Catchup runs shard-0 config reconcile synchronously in the HTTP request.
+// Full reconcile may exceed the 5 s cold SLA on large keyspaces; completion is reflected
+// in ad_shard0_catchup_last_success_timestamp and shard health on /ops/shards.
 func (ops *OpsHTTPHandlers) postShard0Catchup(w http.ResponseWriter, r *http.Request) {
 	if ops.Shard0Catchup == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "shard 0 catch-up not configured")
@@ -208,11 +211,12 @@ func (ops *OpsHTTPHandlers) exportAudit(w http.ResponseWriter, r *http.Request) 
 	}
 
 	cursor := r.URL.Query().Get("cursor")
+	redactPII := r.URL.Query().Get("redact_pii") == "true"
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 
 	var buf bytes.Buffer
-	result, err := ops.OpsReader.ExportAuditCSV(r.Context(), cursor, &buf)
+	result, err := ops.OpsReader.ExportAuditCSV(r.Context(), cursor, redactPII, &buf)
 	if err != nil {
 		ops.writeServiceError(w, err)
 		return
@@ -796,12 +800,12 @@ type FanOutCollector struct {
 }
 
 func NewFanOutCollector(cfg *config.Config, route string) *FanOutCollector {
-	max := defaultFanOutMaxConcurrency
+	maxConcurrency := defaultFanOutMaxConcurrency
 	if cfg != nil && cfg.Management.AdminFanoutMaxConcurrency > 0 {
-		max = cfg.Management.AdminFanoutMaxConcurrency
+		maxConcurrency = cfg.Management.AdminFanoutMaxConcurrency
 	}
 	return &FanOutCollector{
-		maxConcurrency: max,
+		maxConcurrency: maxConcurrency,
 		perSourceTO:    defaultFanOutPerSourceTO,
 		route:          route,
 	}

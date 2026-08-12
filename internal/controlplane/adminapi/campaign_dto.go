@@ -44,6 +44,7 @@ type CampaignDTO struct {
 	DaypartHours    []int16         `json:"daypart_hours"`
 	CreatedAt       string          `json:"created_at"`
 	UpdatedAt       string          `json:"updated_at"`
+	MarginBreach    bool            `json:"margin_breach,omitempty"`
 }
 
 type BlacklistDTO struct {

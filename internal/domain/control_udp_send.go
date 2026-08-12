@@ -13,12 +13,13 @@ func EncodeQuotaEpochDatagramWithWeights(dst []byte, msgType uint8, hdr *UDPHead
 		return 0
 	}
 	hdr.Magic = udpMagic
-	if len(weights) > 0 {
+	switch {
+	case len(weights) > 0:
 		hdr.Version = udpProtocolVersion3
 		hdr.Flags |= UDPFlagNodeWeights
-	} else if limits.MaxRPD > 0 {
+	case limits.MaxRPD > 0:
 		hdr.Version = udpProtocolVersion2
-	} else {
+	default:
 		hdr.Version = udpProtocolVersion
 	}
 	hdr.MsgType = msgType

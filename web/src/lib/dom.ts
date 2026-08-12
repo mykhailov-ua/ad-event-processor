@@ -19,6 +19,7 @@ type ElProps = Record<string, unknown> & {
  */
 export function el(tag: string, props?: ElProps | null, ...children: Child[]): HTMLElement {
   const node = document.createElement(tag);
+  let defaultValue: string | undefined;
   if (props) {
     for (const [key, value] of Object.entries(props)) {
       if (value === undefined || value === false) continue;
@@ -31,12 +32,22 @@ export function el(tag: string, props?: ElProps | null, ...children: Child[]): H
         node.addEventListener(key.slice(2).toLowerCase(), value as EventListener);
       } else if (key === 'htmlFor') (node as HTMLLabelElement).htmlFor = String(value);
       else if (key === 'textContent') node.textContent = String(value);
+      else if (key === 'defaultValue') defaultValue = String(value);
       else if (key === 'checked' || key === 'disabled' || key === 'hidden') {
         (node as HTMLInputElement)[key] = Boolean(value);
       } else node.setAttribute(key, String(value));
     }
   }
   appendChildren(node, children);
+  if (defaultValue !== undefined) {
+    if (
+      node instanceof HTMLInputElement
+      || node instanceof HTMLTextAreaElement
+      || node instanceof HTMLSelectElement
+    ) {
+      node.value = defaultValue;
+    }
+  }
   return node;
 }
 

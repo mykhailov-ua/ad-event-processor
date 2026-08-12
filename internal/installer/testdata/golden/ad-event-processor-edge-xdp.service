@@ -1,0 +1,18 @@
+[Unit]
+Description=BidShard edge XDP attach
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=INGRESS_INTERFACE=eth0
+Environment=BPF_PIN_DIR=/sys/fs/bpf/ad-event-processor
+ExecStart=/usr/local/bin/edge-xdp
+AmbientCapabilities=CAP_BPF CAP_NET_ADMIN
+CapabilityBoundingSet=CAP_BPF CAP_NET_ADMIN
+NoNewPrivileges=true
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

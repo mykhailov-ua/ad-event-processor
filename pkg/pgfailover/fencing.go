@@ -37,7 +37,7 @@ func (g *FencingGate) Refresh(ctx context.Context) error {
 		return nil
 	}
 	val, err := g.rdb.Get(ctx, redisFencingEpochKey).Result()
-	if err == redis.Nil {
+	if errors.Is(err, redis.Nil) {
 		return nil
 	}
 	if err != nil {

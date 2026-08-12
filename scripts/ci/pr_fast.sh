@@ -9,7 +9,7 @@ bash "$SCRIPTS/ci/tier_a.sh"
 bash "$SCRIPTS/ci/check_scripts_layout.sh"
 bash "$SCRIPTS/ci/compliance.sh"
 bash "$SCRIPTS/ci/ch_direct.sh"
-make lint
+bash "$SCRIPTS/ci/lint_go_gate.sh" all
 make test-alloc-gate
 make test-fast
 bash "$SCRIPTS/ci/shard0_nil_gate.sh"

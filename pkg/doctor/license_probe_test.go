@@ -1,8 +1,8 @@
 package doctor
 
 import (
-	"github.com/bidshard/ad-event-processor/pkg/naming"
 	"context"
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 	"os"
 	"path/filepath"
 	"testing"

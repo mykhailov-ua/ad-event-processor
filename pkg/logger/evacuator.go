@@ -77,7 +77,7 @@ func (l *Logger) compressSegment(srcPath, dstPath string) error {
 	}
 	defer src.Close()
 
-	dst, err := os.OpenFile(dstPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	dst, err := os.OpenFile(dstPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o666)
 	if err != nil {
 		return err
 	}

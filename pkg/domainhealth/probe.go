@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bidshard/ad-event-processor/pkg/branding"
 	"github.com/bidshard/ad-event-processor/pkg/platformconfig"
 )
 
@@ -83,7 +84,7 @@ func Probe(ctx context.Context, hostname, role string) Result {
 		res.ProbeLatencyMs = time.Since(start).Milliseconds()
 		return res
 	}
-	req.Header.Set("User-Agent", "BidShard-DomainHealth/1.0")
+	req.Header.Set("User-Agent", branding.HTTPUserAgent("DomainHealth"))
 
 	client := &http.Client{
 		Timeout: probeTimeout,

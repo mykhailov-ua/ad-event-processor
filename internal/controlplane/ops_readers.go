@@ -120,17 +120,11 @@ func (r *opsReader) ListOutboxEvents(ctx context.Context, status, eventType, cur
 }
 
 func (r *opsReader) ListDLQEntries(ctx context.Context, cursor string, limit int) (adminapi.FanOutResult[adminapi.DLQEntryDTO], error) {
-	_ = ctx
-	_ = cursor
-	_ = limit
-	return adminapi.FanOutResult[adminapi.DLQEntryDTO]{Items: []adminapi.DLQEntryDTO{}}, nil
+	return r.listDLQEntries(ctx, cursor, limit)
 }
 
 func (r *opsReader) EnqueueDLQRetry(ctx context.Context, payload adminapi.DLQRetryPayload, idempotencyKey string) error {
-	_ = ctx
-	_ = payload
-	_ = idempotencyKey
-	return fmt.Errorf("dlq retry not configured")
+	return r.enqueueDLQRetry(ctx, payload, idempotencyKey)
 }
 
 func (r *opsReader) GetShardHealthFanOut(ctx context.Context) (adminapi.ShardHealthAPIResponse, error) {
@@ -143,7 +137,7 @@ func (r *opsReader) GetShardHealthFanOut(ctx context.Context) (adminapi.ShardHea
 	}, nil
 }
 
-func (r *opsReader) ExportAuditCSV(ctx context.Context, cursor string, w io.Writer) (adminapi.AuditExportResult, error) {
+func (r *opsReader) ExportAuditCSV(ctx context.Context, cursor string, redactPII bool, w io.Writer) (adminapi.AuditExportResult, error) {
 	var cursorID int64
 	if cursor != "" {
 		n, err := strconv.ParseInt(cursor, 10, 64)
@@ -176,6 +170,14 @@ func (r *opsReader) ExportAuditCSV(ctx context.Context, cursor string, w io.Writ
 		createdAt := ""
 		if row.CreatedAt.Valid {
 			createdAt = row.CreatedAt.Time.UTC().Format(time.RFC3339)
+		}
+		if redactPII {
+			if adminID != "" {
+				adminID = "***"
+			}
+			if targetID != "" {
+				targetID = "***"
+			}
 		}
 		_ = cw.Write([]string{
 			strconv.FormatInt(row.ID, 10),

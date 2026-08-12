@@ -32,6 +32,13 @@ func (m *Module) Close() {
 	}
 }
 
+func (m *Module) Ledger() *Service {
+	if m == nil {
+		return nil
+	}
+	return m.svc
+}
+
 func (m *Module) ConfigureNotifier(api notify.NotifierAPI) {
 	if m == nil || m.svc == nil || m.cfg == nil || api == nil {
 		return

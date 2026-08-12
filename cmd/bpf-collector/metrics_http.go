@@ -84,9 +84,10 @@ func (e *promExporter) refresh() {
 		if v, ok := row["connect_avg_us"].(float64); ok {
 			e.connectAvgUs.With(lbl).Set(v)
 		}
-		if v, ok := row["retrans"].(uint64); ok {
+		switch v := row["retrans"].(type) {
+		case uint64:
 			e.tcpRetrans.With(lbl).Set(float64(v))
-		} else if v, ok := row["retrans"].(int); ok {
+		case int:
 			e.tcpRetrans.With(lbl).Set(float64(v))
 		}
 	}

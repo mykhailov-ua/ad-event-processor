@@ -112,7 +112,7 @@ type ManagementOpsReader interface {
 	ListDLQEntries(ctx context.Context, cursor string, limit int) (FanOutResult[DLQEntryDTO], error)
 	EnqueueDLQRetry(ctx context.Context, payload DLQRetryPayload, idempotencyKey string) error
 	GetShardHealthFanOut(ctx context.Context) (ShardHealthAPIResponse, error)
-	ExportAuditCSV(ctx context.Context, cursor string, w io.Writer) (AuditExportResult, error)
+	ExportAuditCSV(ctx context.Context, cursor string, redactPII bool, w io.Writer) (AuditExportResult, error)
 	LookupLedgerIDForPaymentIntent(ctx context.Context, intentID string) (string, error)
 	ListReconRuns(ctx context.Context, service string, limit, offset int32) ([]ReconRunDTO, int64, error)
 	GetDashboardSummary(ctx context.Context) (DashboardSummaryDTO, error)

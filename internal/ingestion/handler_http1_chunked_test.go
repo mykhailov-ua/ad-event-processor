@@ -84,9 +84,9 @@ func TestHTTP1ChunkedScratch_ShrinkOnClose(t *testing.T) {
 	require.LessOrEqual(t, cap(scratch), chunkScratchRetainCap)
 
 	faultproof.Log(t, "parser_security_ps_h03", map[string]string{
-		"gap_id":     "PS-H03",
-		"gap":        "closed",
-		"cap_after":  strconv.Itoa(cap(scratch)),
+		"gap_id":    "PS-H03",
+		"gap":       "closed",
+		"cap_after": strconv.Itoa(cap(scratch)),
 	})
 }
 

@@ -11,11 +11,11 @@ func ProxySourceID(regionCode uint8, nodeID string) uuid.UUID {
 }
 
 func WriteCanonicalProxyBatchPayload(buf []byte, seq uint64, payload []byte) []byte {
-	out := append(buf[:0], "proxy|"...)
-	out = appendUint64(out, seq)
-	out = append(out, '|')
-	out = append(out, payload...)
-	return out
+	buf = append(buf[:0], "proxy|"...)
+	buf = appendUint64(buf, seq)
+	buf = append(buf, '|')
+	buf = append(buf, payload...)
+	return buf
 }
 
 func appendUint64(buf []byte, v uint64) []byte {

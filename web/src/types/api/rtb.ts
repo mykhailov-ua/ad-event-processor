@@ -42,3 +42,22 @@ export type RtbFloorsApplyResult = {
   suggestions: RtbFloorSuggestionDTO[];
   outbox_rows: number;
 };
+
+export type RtbReconcileExportDTO = {
+  window: string;
+  request_id?: string;
+  bids: number;
+  wins: number;
+  spend_micro: number;
+  ch_source?: string;
+  shadow: {
+    window?: string;
+    source?: string;
+    parity_rate?: number;
+    mismatch_rate?: number;
+    shadow_evals?: number;
+    shadow_no_bid?: number;
+  };
+  live_gate_ready: boolean;
+  reasons?: string[];
+};

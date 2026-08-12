@@ -1,8 +1,12 @@
 package bpf
 
-import "github.com/cilium/ebpf"
+import (
+	"github.com/bidshard/ad-event-processor/internal/edge"
 
-const DefaultFingerprintsMapPath = "/sys/fs/bpf/ad-event-processor/fingerprints"
+	"github.com/cilium/ebpf"
+)
+
+const DefaultFingerprintsMapPath = edge.DefaultFingerprintsMapPath
 
 type FingerprintEvent struct {
 	TsNs    uint64
@@ -15,7 +19,7 @@ type FingerprintEvent struct {
 
 func LoadPinnedFingerprintsMap(path string) (*ebpf.Map, error) {
 	if path == "" {
-		path = DefaultFingerprintsMapPath
+		path = edge.PinnedMapPath(edge.BPFPinDir(), edge.MapFingerprints)
 	}
 	return ebpf.LoadPinnedMap(path, nil)
 }
