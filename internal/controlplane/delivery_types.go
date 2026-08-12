@@ -3,8 +3,8 @@ package controlplane
 import (
 	"time"
 
-	"espx/internal/controlplane/adminapi"
-	"espx/internal/controlplane/authz"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/authz"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )

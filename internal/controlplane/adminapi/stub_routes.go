@@ -3,7 +3,7 @@ package adminapi
 import (
 	"net/http"
 
-	"espx/pkg/httpresponse"
+	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
 )
 
 const stubNotImplementedMessage = "planned API surface; not implemented — use /api/v1/reports/placements or /api/v1/reports/keywords"
@@ -14,15 +14,9 @@ type stubRoute struct {
 	Permission string
 }
 
-var stubRouteCatalog = []stubRoute{
-	{"GET", "/api/v1/reports/source-quality", "campaigns:read"},
-	{"GET", "/api/v1/reports/spend-velocity", "campaigns:read"},
-	{"GET", "/api/v1/reports/campaign-geo-device", "campaigns:read"},
-	{"GET", "/api/v1/reports/daypart-heatmap", "campaigns:read"},
-	{"GET", "/api/v1/reports/discrepancy-buy-sell", "customers:read"},
-	{"GET", "/api/v1/reports/campaign-overview", "campaigns:read"},
-	{"GET", "/api/v1/reports/customer-portfolio", "customers:read"},
-}
+// stubRouteCatalog lists report endpoints not yet implemented. Extended reports
+// are registered on ReportsHTTPHandlers instead.
+var stubRouteCatalog = []stubRoute{}
 
 type StubHTTPHandlers struct {
 	ApplyRateLimit    func(http.HandlerFunc) http.HandlerFunc

@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"espx/pkg/coldpath"
-	"espx/pkg/httpresponse"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
 
 	"github.com/google/uuid"
 )

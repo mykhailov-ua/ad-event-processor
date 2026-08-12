@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"espx/pkg/clientip"
-	"espx/pkg/httpresponse"
+	"github.com/bidshard/ad-event-processor/pkg/clientip"
+	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
 
 	"golang.org/x/time/rate"
 )

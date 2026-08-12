@@ -157,6 +157,14 @@ type BlacklistAdmin interface {
 	ListBlacklist(ctx context.Context, limit, offset int32) ([]BlacklistDTO, int64, error)
 }
 
+type Shard0CatchupRunner interface {
+	RunShard0Catchup(ctx context.Context) error
+}
+
+type shard0CatchupResponse struct {
+	Status string `json:"status"`
+}
+
 type DashboardServiceCard struct {
 	ID     string `json:"id"`
 	Name   string `json:"name"`

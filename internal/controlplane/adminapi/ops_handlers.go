@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -17,12 +16,12 @@ import (
 	"time"
 	"unicode"
 
-	"espx/internal/config"
-	"espx/internal/domain"
-	"espx/internal/metrics"
-	"espx/pkg/coldpath"
-	"espx/pkg/httpresponse"
-	"espx/pkg/supportbundle"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
+	"github.com/bidshard/ad-event-processor/pkg/supportbundle"
 )
 
 type OpsHTTPHandlers struct {
@@ -33,6 +32,7 @@ type OpsHTTPHandlers struct {
 	AuditLister             AuditLister
 	RolesReloader           RolesReloader
 	Blacklist               BlacklistAdmin
+	Shard0Catchup           Shard0CatchupRunner
 	FraudThreat             FraudThreatEnqueuer
 	ApplyRateLimit          func(http.HandlerFunc) http.HandlerFunc
 	RequirePermission       func(string, http.HandlerFunc) http.HandlerFunc
@@ -60,6 +60,7 @@ func (ops *OpsHTTPHandlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/ops/dlq", limit(perm("shards:read", ops.listDLQ)))
 	mux.HandleFunc("POST /api/v1/ops/dlq/{id}/retry", limit(perm("shards:write", ops.retryDLQ)))
 	mux.HandleFunc("GET /api/v1/ops/shards", limit(perm("shards:read", ops.getShards)))
+	mux.HandleFunc("POST /api/v1/ops/shards/0/catchup", limit(perm("shards:write", ops.postShard0Catchup)))
 	mux.HandleFunc("GET /api/v1/audit/export", limit(perm("audit:read", ops.exportAudit)))
 	mux.HandleFunc("GET /api/v1/customers/{id}/payments", limit(perm("customers:read", ops.listCustomerPayments)))
 	ops.registerReconRoutes(mux)
@@ -178,6 +179,18 @@ func (ops *OpsHTTPHandlers) getShards(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, report)
+}
+
+func (ops *OpsHTTPHandlers) postShard0Catchup(w http.ResponseWriter, r *http.Request) {
+	if ops.Shard0Catchup == nil {
+		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "shard 0 catch-up not configured")
+		return
+	}
+	if err := ops.Shard0Catchup.RunShard0Catchup(r.Context()); err != nil {
+		ops.writeServiceError(w, err)
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, shard0CatchupResponse{Status: "ok"})
 }
 
 func (ops *OpsHTTPHandlers) exportAudit(w http.ResponseWriter, r *http.Request) {
@@ -391,7 +404,7 @@ func (h *OpsHTTPHandlers) registerConsentRoutes(mux *http.ServeMux) {
 }
 
 func (h *OpsHTTPHandlers) postConsent(w http.ResponseWriter, r *http.Request) {
-	body, err := io.ReadAll(io.LimitReader(r.Body, 64*1024))
+	body, err := coldpath.ReadLimitedBody(w, r, coldpath.DefaultMaxBody)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid body")
 		return
@@ -745,7 +758,7 @@ func (h *OpsHTTPHandlers) postSupportBundle(w http.ResponseWriter, r *http.Reque
 	defer cancel()
 
 	w.Header().Set("Content-Type", "application/gzip")
-	w.Header().Set("Content-Disposition", `attachment; filename="espx-support-bundle.tar.gz"`)
+	w.Header().Set("Content-Disposition", `attachment; filename="ad-event-processor-support-bundle.tar.gz"`)
 	w.Header().Set("Cache-Control", "no-store")
 
 	if err := h.SupportBundle.WriteSupportBundle(ctx, w); err != nil {

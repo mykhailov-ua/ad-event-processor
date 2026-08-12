@@ -3,8 +3,8 @@ package controlplane
 import (
 	"context"
 
-	"espx/internal/config"
-	"espx/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/domain"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )

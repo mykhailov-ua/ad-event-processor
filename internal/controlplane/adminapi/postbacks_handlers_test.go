@@ -1,0 +1,106 @@
+package adminapi
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/testutil"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/stretchr/testify/require"
+)
+
+func TestPostbackConfig_PreservesTokenOnEmptyUpdate(t *testing.T) {
+	ctx := context.Background()
+	cfgPostgres := testutil.DefaultPostgresConfig()
+	cfgPostgres.MigrationDirs = []string{testutil.AdsMigrationsDir(), testutil.BillingMigrationsDir()}
+	pool, cleanup := testutil.SetupPostgres(t, cfgPostgres)
+	defer cleanup()
+
+	customerID := uuid.New()
+	campaignID := uuid.New()
+	_, err := pool.Exec(ctx, "INSERT INTO customers (id, name, balance, currency) VALUES ($1, 'c', 0, 'USD')", customerID)
+	require.NoError(t, err)
+	_, err = pool.Exec(ctx, `INSERT INTO campaigns (id, name, status, customer_id) VALUES ($1, 'Camp', 'ACTIVE', $2)`, campaignID, customerID)
+	require.NoError(t, err)
+
+	key := []byte("postback-encryption-secret-key32")
+	h := &PostbackHTTPHandlers{Pool: pool, EncryptionKey: key}
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	put := func(body UpdatePostbackConfigRequest) *httptest.ResponseRecorder {
+		raw, err := json.Marshal(body)
+		require.NoError(t, err)
+		req := httptest.NewRequest(http.MethodPut, "/api/v1/postbacks/config/"+campaignID.String(), bytes.NewReader(raw))
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		return rec
+	}
+
+	rec := put(UpdatePostbackConfigRequest{
+		Provider:    "facebook",
+		UrlTemplate: "999888777",
+		ApiToken:    "secret-token",
+		TargetEvent: "conversion",
+	})
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	rec = put(UpdatePostbackConfigRequest{
+		Provider:    "facebook",
+		UrlTemplate: "999888777",
+		TargetEvent: "conversion",
+	})
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	q := db.New(pool)
+	cfg, err := q.GetPostbackConfig(ctx, pgtype.UUID{Bytes: campaignID, Valid: true})
+	require.NoError(t, err)
+	require.NotEmpty(t, cfg.ApiTokenEncrypted)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/postbacks/config", nil)
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var dtos []PostbackConfigDTO
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&dtos))
+	require.Len(t, dtos, 1)
+	require.True(t, dtos[0].HasApiToken)
+}
+
+func TestPostbackConfig_CAPIRequiresToken(t *testing.T) {
+	ctx := context.Background()
+	cfgPostgres := testutil.DefaultPostgresConfig()
+	cfgPostgres.MigrationDirs = []string{testutil.AdsMigrationsDir(), testutil.BillingMigrationsDir()}
+	pool, cleanup := testutil.SetupPostgres(t, cfgPostgres)
+	defer cleanup()
+
+	customerID := uuid.New()
+	campaignID := uuid.New()
+	_, err := pool.Exec(ctx, "INSERT INTO customers (id, name, balance, currency) VALUES ($1, 'c', 0, 'USD')", customerID)
+	require.NoError(t, err)
+	_, err = pool.Exec(ctx, `INSERT INTO campaigns (id, name, status, customer_id) VALUES ($1, 'Camp', 'ACTIVE', $2)`, campaignID, customerID)
+	require.NoError(t, err)
+
+	h := &PostbackHTTPHandlers{Pool: pool, EncryptionKey: []byte("postback-encryption-secret-key32")}
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	body, err := json.Marshal(UpdatePostbackConfigRequest{
+		Provider:    "google",
+		UrlTemplate: "customers/1/conversionActions/2",
+		TargetEvent: "conversion",
+	})
+	require.NoError(t, err)
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/postbacks/config/"+campaignID.String(), bytes.NewReader(body))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+}

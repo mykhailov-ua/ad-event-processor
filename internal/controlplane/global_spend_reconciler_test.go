@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/database"
-	"espx/internal/domain"
-	"espx/pkg/dedupkey"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/pkg/dedupkey"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"

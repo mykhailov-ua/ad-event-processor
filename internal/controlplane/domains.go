@@ -50,6 +50,7 @@ var ManagementDomains = []Domain{
 		"volume_", "tls_", "nginx_", "tcp_", "udp_", "redis_", "pg_failover",
 		"emergency_", "autoscale", "consent_", "edge_", "fault_", "migration_",
 		"repository_", "registry_", "platform_", "supply_export",
+		"domain_health", "smart_alerts",
 	}, Files: []string{
 		"policy_init.go", "telemetry_pulse.go", "vendor_telemetry.go",
 		"control_fanout.go", "service_platform.go", "service_platform_config.go",

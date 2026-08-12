@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"espx/pkg/pgfailover"
+	"github.com/bidshard/ad-event-processor/pkg/pgfailover"
 
 	"github.com/redis/go-redis/v9"
 )

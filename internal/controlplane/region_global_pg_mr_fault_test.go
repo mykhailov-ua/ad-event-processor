@@ -1,16 +1,16 @@
 package controlplane
 
 import (
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"context"
 	"strconv"
 	"testing"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/database"
-	"espx/pkg/dedupkey"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/pkg/dedupkey"
 
 	"github.com/stretchr/testify/require"
 )

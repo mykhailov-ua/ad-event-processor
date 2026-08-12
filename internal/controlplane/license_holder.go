@@ -4,12 +4,11 @@ import (
 	"context"
 	"crypto/ed25519"
 	"log/slog"
-	"os"
 	"sync/atomic"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/licensing"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/licensing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -41,7 +40,7 @@ func startLicenseWatcher(ctx context.Context, pool *pgxpool.Pool, rdbs []redis.U
 			<-ctx.Done()
 		})
 	}
-	slog.Info("started license watcher", "mode", os.Getenv("ESPX_LICENSE_MODE"))
+	slog.Info("started license watcher", "mode", config.LicenseEnv("MODE"))
 	return nil
 }
 
@@ -81,4 +80,16 @@ func licenseWatcherDiagnostics() (licensing.LicenseDiagnostics, bool) {
 	}
 	state, claims := w.GetState()
 	return licensing.BuildLicenseDiagnostics(claims, state, time.Now()), true
+}
+
+func licenseDeploymentLimits() (licensing.Limits, licensing.LicenseState, bool) {
+	w := activeLicenseWatcher.Load()
+	if w == nil {
+		return licensing.Limits{}, licensing.StateExpired, false
+	}
+	state, claims := w.GetState()
+	if claims == nil {
+		return licensing.Limits{}, state, true
+	}
+	return claims.Limits, state, true
 }

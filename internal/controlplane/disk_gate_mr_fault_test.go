@@ -1,12 +1,12 @@
 package controlplane
 
 import (
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"context"
 	"testing"
 
-	"espx/pkg/iogate"
+	"github.com/bidshard/ad-event-processor/pkg/iogate"
 
 	"github.com/stretchr/testify/require"
 )

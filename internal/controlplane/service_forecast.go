@@ -8,8 +8,8 @@ import (
 	"sort"
 	"time"
 
-	"espx/internal/controlplane/adminapi"
-	db "espx/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"

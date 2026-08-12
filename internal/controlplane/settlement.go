@@ -3,9 +3,9 @@ package controlplane
 import (
 	"context"
 	"errors"
-	"espx/internal/config"
-	"espx/internal/domain"
-	db "espx/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
 
 	"github.com/google/uuid"
 )

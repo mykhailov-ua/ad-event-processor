@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"strconv"
 
-	"espx/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 
 	"github.com/redis/go-redis/v9"
 )

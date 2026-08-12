@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"time"
 
-	"espx/internal/database"
-	"espx/pkg/coldpath"
-	"espx/pkg/httpresponse"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
 
 	"github.com/google/uuid"
 )
@@ -32,6 +32,8 @@ type TrafficSourcesReportResponse struct {
 	NextCursor string                `json:"next_cursor,omitempty"`
 }
 
+// trafficChannelExpr classifies events by attribution fields in ClickHouse.
+// Retired UI reports redirect to placements/billing; taxonomy is SQL-only here.
 const trafficChannelExpr = `
 multiIf(
     JSONExtractString(payload, 'gclid') != '', 'paid_search',

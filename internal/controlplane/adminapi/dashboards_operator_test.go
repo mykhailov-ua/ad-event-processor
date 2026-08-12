@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/edge/xdpstats"
+	"github.com/bidshard/ad-event-processor/internal/edge/xdpstats"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

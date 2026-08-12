@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"time"
 
-	"espx/internal/config"
-	"espx/pkg/doctor"
-	"espx/pkg/httpresponse"
-	"espx/pkg/platformconfig"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/pkg/doctor"
+	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
+	"github.com/bidshard/ad-event-processor/pkg/platformconfig"
 )
 
 type PlatformConfigReader func(ctx context.Context) (platformconfig.Config, error)
@@ -27,6 +27,8 @@ type DoctorResponseDTO struct {
 	Checks           []doctor.DoctorCheckDTO `json:"checks"`
 	ClickURLTemplate string                  `json:"click_url_template"`
 	TrackingDomain   string                  `json:"tracking_domain"`
+	RtbMode          string                  `json:"rtb_mode,omitempty"`
+	RtbEnabled       bool                    `json:"rtb_enabled"`
 }
 
 func (h *DoctorHTTPHandlers) Register(mux *http.ServeMux) {
@@ -61,11 +63,20 @@ func (h *DoctorHTTPHandlers) getDoctor(w http.ResponseWriter, r *http.Request) {
 	})
 	checks := doctor.ReportToDTO(report)
 
+	rtbMode := ""
+	rtbEnabled := false
+	if h.Config != nil {
+		rtbMode = h.Config.RtbMode
+		rtbEnabled = h.Config.RtbEnabled()
+	}
+
 	httpresponse.JSON(w, http.StatusOK, DoctorResponseDTO{
 		Overall:          doctor.OverallStatus(checks),
 		Checks:           checks,
 		ClickURLTemplate: platformconfig.ClickURLTemplate(platCfg.TrackingDomain),
 		TrackingDomain:   platCfg.TrackingDomain,
+		RtbMode:          rtbMode,
+		RtbEnabled:       rtbEnabled,
 	})
 }
 

@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/clickhouse/migrate"
-	"espx/internal/config"
-	"espx/internal/database"
-	"espx/internal/domain"
-	"espx/pkg/httpresponse"
+	"github.com/bidshard/ad-event-processor/internal/clickhouse/migrate"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"

@@ -2,7 +2,7 @@ package controlplane
 
 import (
 	"errors"
-	"espx/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/domain"
 	"net/http"
 	"net/http/httptest"
 	"testing"

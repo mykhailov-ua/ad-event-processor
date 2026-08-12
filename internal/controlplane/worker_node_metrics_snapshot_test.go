@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/database"
-	db "espx/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"

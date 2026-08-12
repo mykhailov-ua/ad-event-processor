@@ -16,16 +16,16 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/database"
-	"espx/internal/dedup"
-	"espx/internal/domain"
-	db "espx/internal/domain/db"
-	"espx/internal/ledger"
-	"espx/internal/licensing"
-	"espx/internal/metrics"
-	"espx/pkg/coldpath"
-	"espx/pkg/dedupkey"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/dedup"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/ledger"
+	"github.com/bidshard/ad-event-processor/internal/licensing"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/pkg/dedupkey"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -2655,7 +2655,7 @@ func NewOperationLeaseWorker(svc *Service) *OperationLeaseWorker {
 		fencingDir = svc.cfg.OpLeaseFencingDir
 	}
 	if fencingDir == "" {
-		fencingDir = filepath.Join(os.TempDir(), "espx-op-lease", nodeID)
+		fencingDir = filepath.Join(os.TempDir(), "ad-event-processor-op-lease", nodeID)
 	}
 	fencing, err := NewLeaseFencingRegistry(fencingDir)
 	if err != nil {

@@ -10,10 +10,10 @@ import (
 	"net/http"
 	"strings"
 
-	"espx/internal/config"
-	"espx/internal/controlplane/authz"
-	"espx/internal/identity"
-	"espx/pkg/httpresponse"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/authz"
+	"github.com/bidshard/ad-event-processor/internal/identity"
+	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"

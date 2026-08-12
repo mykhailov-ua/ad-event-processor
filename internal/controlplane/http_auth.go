@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/identity"
-	"espx/pkg/coldpath"
-	"espx/pkg/httpresponse"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/identity"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"

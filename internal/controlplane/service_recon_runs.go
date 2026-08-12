@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"espx/internal/controlplane/adminapi"
-	"espx/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
+	"github.com/bidshard/ad-event-processor/internal/domain/db"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"

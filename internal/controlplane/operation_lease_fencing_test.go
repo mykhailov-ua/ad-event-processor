@@ -1,18 +1,18 @@
 package controlplane
 
 import (
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"context"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"espx/internal/config"
-	"espx/internal/database"
-	"espx/internal/dedup"
-	db "espx/internal/domain/db"
-	"espx/pkg/dedupkey"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/dedup"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/pkg/dedupkey"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"

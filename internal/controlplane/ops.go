@@ -12,11 +12,11 @@ import (
 	"strings"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/database"
-	"espx/internal/domain"
-	db "espx/internal/domain/db"
-	"espx/pkg/lifecycle"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
@@ -35,7 +35,7 @@ type scrapedMetric struct {
 var opsScrapeMetricNames = map[string]struct{}{
 	"ad_http_requests_total":             {},
 	"ad_recon_drift_micro":               {},
-	"ad_management_outbox_pending_total": {},
+	"ad_control_outbox_pending_total": {},
 	"ad_tracker_redis_shard_healthy":     {},
 }
 

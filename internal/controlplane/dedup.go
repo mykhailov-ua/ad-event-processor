@@ -3,7 +3,7 @@ package controlplane
 import (
 	"context"
 
-	"espx/internal/dedup"
+	"github.com/bidshard/ad-event-processor/internal/dedup"
 )
 
 func (s *Service) dedupAdapter() *dedup.Adapter {

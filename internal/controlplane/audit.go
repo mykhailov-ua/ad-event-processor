@@ -2,13 +2,13 @@ package controlplane
 
 import (
 	"context"
-	"espx/internal/controlplane/authz"
-	"espx/internal/domain"
-	"espx/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/authz"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/domain/db"
 	"log/slog"
 	"time"
 
-	"espx/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"

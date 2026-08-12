@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/database"
-	"espx/internal/domain"
-	"espx/internal/domain/db"
-	"espx/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

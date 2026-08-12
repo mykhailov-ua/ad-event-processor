@@ -1,7 +1,7 @@
 package controlplane
 
 import (
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"context"
 	"fmt"
@@ -15,9 +15,9 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/config"
-	bserver "espx/pkg/broker/server"
-	"espx/pkg/pgfailover"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	bserver "github.com/bidshard/ad-event-processor/pkg/broker/server"
+	"github.com/bidshard/ad-event-processor/pkg/pgfailover"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"

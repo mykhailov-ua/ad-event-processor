@@ -6,9 +6,10 @@ import (
 	"strconv"
 	"time"
 
-	"espx/internal/openrtb"
-	"espx/pkg/coldpath"
-	"espx/pkg/httpresponse"
+	"github.com/bidshard/ad-event-processor/internal/openrtb"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
+	"github.com/bidshard/ad-event-processor/pkg/platformconfig"
 )
 
 type RtbDealDTO struct {
@@ -81,6 +82,35 @@ type RtbHTTPHandlers struct {
 	ShadowDiff        func(time.Duration) RtbShadowDiffSnapshotDTO
 	LiveGate          func(time.Duration) RtbLiveGateDTO
 	ReconcileCH       RtbReconcileCHFunc
+	RuntimeConfig     RtbRuntimeConfigReader
+	PlatformConfig    PlatformConfigReader
+}
+
+// RtbRuntimeConfigReader supplies env-driven tracker/exchange hints for the admin UI.
+type RtbRuntimeConfigReader interface {
+	RtbMode() string
+	RtbEnabled() bool
+	RtbExchangeNoBidMode() string
+}
+
+type RtbRuntimeHintsDTO struct {
+	RtbMode              string `json:"rtb_mode"`
+	RtbEnabled           bool   `json:"rtb_enabled"`
+	RtbExchangeNoBidMode string `json:"rtb_exchange_no_bid_mode,omitempty"`
+}
+
+type RtbEndpointsDTO struct {
+	OpenRTBBidURL     string `json:"openrtb_bid_url"`
+	EdgeExposeOpenRTB bool   `json:"edge_expose_openrtb"`
+	TrackingDomain    string `json:"tracking_domain,omitempty"`
+	EdgePortHint      string `json:"edge_port_hint,omitempty"`
+	TrackerPortHint   string `json:"tracker_port_hint,omitempty"`
+}
+
+type RtbIntegrationResponseDTO struct {
+	openrtb.IntegrationProfile
+	Runtime   RtbRuntimeHintsDTO `json:"runtime"`
+	Endpoints RtbEndpointsDTO    `json:"endpoints"`
 }
 
 func (h *RtbHTTPHandlers) Register(mux *http.ServeMux) {
@@ -115,8 +145,29 @@ func (h *RtbHTTPHandlers) validateBidRequest(w http.ResponseWriter, r *http.Requ
 	httpresponse.JSON(w, http.StatusOK, result)
 }
 
-func (h *RtbHTTPHandlers) integrationProfile(w http.ResponseWriter, _ *http.Request) {
-	httpresponse.JSON(w, http.StatusOK, openrtb.Profile())
+func (h *RtbHTTPHandlers) integrationProfile(w http.ResponseWriter, r *http.Request) {
+	profile := openrtb.Profile()
+	resp := RtbIntegrationResponseDTO{IntegrationProfile: profile}
+	if h.RuntimeConfig != nil {
+		resp.Runtime = RtbRuntimeHintsDTO{
+			RtbMode:              h.RuntimeConfig.RtbMode(),
+			RtbEnabled:           h.RuntimeConfig.RtbEnabled(),
+			RtbExchangeNoBidMode: h.RuntimeConfig.RtbExchangeNoBidMode(),
+		}
+	}
+	if h.PlatformConfig != nil {
+		if plat, err := h.PlatformConfig(r.Context()); err == nil {
+			domain := plat.TrackingDomain
+			resp.Endpoints = RtbEndpointsDTO{
+				OpenRTBBidURL:     platformconfig.OpenRTBEndpointTemplate(domain),
+				EdgeExposeOpenRTB: plat.EdgeExposeOpenRTB,
+				TrackingDomain:    domain,
+				EdgePortHint:      ":8180/openrtb/bid",
+				TrackerPortHint:   ":8181–8184/openrtb/bid",
+			}
+		}
+	}
+	httpresponse.JSON(w, http.StatusOK, resp)
 }
 
 func (h *RtbHTTPHandlers) shadowDiff(w http.ResponseWriter, r *http.Request) {

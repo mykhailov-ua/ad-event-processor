@@ -11,9 +11,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/internal/config"
-	db "espx/internal/domain/db"
-	"espx/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"

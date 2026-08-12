@@ -3,7 +3,7 @@ package adminapi
 import (
 	"net/http"
 
-	"espx/pkg/httpresponse"
+	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
 
 	"github.com/google/uuid"
 )

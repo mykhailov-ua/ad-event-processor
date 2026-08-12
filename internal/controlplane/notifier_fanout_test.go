@@ -1,7 +1,7 @@
 package controlplane
 
 import (
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"bytes"
 	"context"
@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/notify"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/notify"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

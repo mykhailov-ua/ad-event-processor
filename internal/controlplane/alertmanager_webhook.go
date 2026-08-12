@@ -3,17 +3,16 @@ package controlplane
 import (
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/metrics"
-	"espx/internal/notify"
-	"espx/pkg/branding"
-	"espx/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/notify"
+	"github.com/bidshard/ad-event-processor/pkg/branding"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 )
 
 type AlertmanagerAlert struct {
@@ -78,7 +77,7 @@ func (h *AlertmanagerWebhook) handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+	body, err := coldpath.ReadLimitedBody(w, r, coldpath.AlertmanagerWebhookMaxBody)
 	if err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -117,7 +116,7 @@ func (h *AlertmanagerWebhook) handle(w http.ResponseWriter, r *http.Request) {
 		sendErr := enqueueOpsNotificationBatch(ctx, h.client, batchItems)
 		cancel()
 		if sendErr != nil {
-			metrics.ManagementOpsAlertEnqueueFailuresTotal.Add(float64(len(batchItems)))
+			metrics.AddControlOpsAlertEnqueueFailures(float64(len(batchItems)))
 			slog.Warn("alertmanager webhook batch enqueue failed", "error", sendErr, "count", len(batchItems))
 		}
 	}

@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/database"
-	"espx/internal/identity"
-	"espx/pkg/httpresponse"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/identity"
+	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

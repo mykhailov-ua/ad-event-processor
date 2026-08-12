@@ -2,7 +2,6 @@ package controlplane
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -25,29 +24,6 @@ func syncGlobalConfigToAllShards(ctx context.Context, rdbs []redis.UniversalClie
 			return nil
 		})
 		return err
-	})
-}
-
-func replicateConfigVersionFromPrimary(ctx context.Context, rdbs []redis.UniversalClient) error {
-	if len(rdbs) < 2 {
-		return nil
-	}
-	primary := PickHealthyControlShard(rdbs)
-	if primary == nil {
-		return nil
-	}
-	version, err := primary.Get(ctx, redisConfigVersionKey).Int64()
-	if err == redis.Nil {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("read config version from primary shard: %w", err)
-	}
-	return forEachConnectedShard(ctx, rdbs, "replicate_config_version", func(i int, rdb redis.UniversalClient) error {
-		if rdb == primary {
-			return nil
-		}
-		return rdb.Set(ctx, redisConfigVersionKey, version, 0).Err()
 	})
 }
 

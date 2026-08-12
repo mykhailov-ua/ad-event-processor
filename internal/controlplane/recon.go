@@ -8,12 +8,12 @@ import (
 	"math"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/domain"
-	db "espx/internal/domain/db"
-	"espx/internal/ledger"
-	"espx/internal/metrics"
-	"espx/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/ledger"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

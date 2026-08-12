@@ -1,6 +1,6 @@
 package controlplane
 
-import "espx/internal/controlplane/adminapi"
+import "github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 
 type rumStoreAdapter struct{}
 

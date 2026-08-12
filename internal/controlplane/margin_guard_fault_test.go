@@ -4,11 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"espx/internal/config"
-	"espx/internal/domain"
-	"espx/internal/ledger"
-	"espx/internal/testutil"
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/ledger"
+	"github.com/bidshard/ad-event-processor/internal/testutil"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"

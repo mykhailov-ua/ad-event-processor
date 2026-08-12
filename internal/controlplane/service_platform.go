@@ -1,18 +1,19 @@
 package controlplane
 
 import (
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"espx/internal/controlplane/adminapi"
-	"espx/internal/domain"
-	"espx/internal/domain/db"
-	"espx/internal/edge/allowlist"
-	"espx/internal/ledger"
-	"espx/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/edge/allowlist"
+	"github.com/bidshard/ad-event-processor/internal/ledger"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 	"fmt"
 	"math"
 	"net"
@@ -549,7 +550,7 @@ type SupportFeedbackMeta = adminapi.SupportFeedbackMeta
 
 func (s *Service) SupportFeedbackMeta(ctx context.Context) (SupportFeedbackMeta, error) {
 	meta := SupportFeedbackMeta{
-		BinaryVersion: os.Getenv("ESPX_BINARY_VERSION"),
+		BinaryVersion: os.Getenv(naming.LegacyVendorEnvKey("BINARY_VERSION")),
 	}
 	if meta.BinaryVersion == "" {
 		meta.BinaryVersion = "dev"

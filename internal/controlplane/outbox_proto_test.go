@@ -3,7 +3,7 @@ package controlplane
 import (
 	"testing"
 
-	"espx/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"

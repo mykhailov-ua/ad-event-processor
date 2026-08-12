@@ -1,7 +1,7 @@
 package controlplane
 
 import (
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"context"
 	"encoding/json"
@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/database"
-	"espx/internal/domain"
-	"espx/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/domain/db"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

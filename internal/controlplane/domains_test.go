@@ -14,6 +14,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 )
 
 func TestDomainRegistry_AllProductionFilesMapped(t *testing.T) {
@@ -105,9 +107,9 @@ func TestBoundaryDTO_ServiceFilesNoHTTPResponse(t *testing.T) {
 }
 
 func TestDomainBusinessLogicCoverage(t *testing.T) {
-	profile := os.Getenv("ESPX_MGMT_COVER_PROFILE")
+	profile := os.Getenv(naming.LegacyVendorEnvKey("MGMT_COVER_PROFILE"))
 	if profile == "" {
-		t.Skip("set ESPX_MGMT_COVER_PROFILE (see scripts/ci/management_domain_coverage.sh)")
+		t.Skip("set " + naming.LegacyVendorEnvKey("MGMT_COVER_PROFILE") + " (see scripts/ci/management_domain_coverage.sh)")
 	}
 	covered, total := parseCoverProfileByDomain(t, profile)
 	for _, d := range ManagementDomains {

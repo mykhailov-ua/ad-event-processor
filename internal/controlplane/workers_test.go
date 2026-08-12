@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/database"
-	"espx/internal/domain"
-	"espx/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/domain/db"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"

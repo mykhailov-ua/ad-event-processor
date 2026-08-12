@@ -3,7 +3,7 @@ package authz_test
 import (
 	"testing"
 
-	"espx/internal/controlplane/authz"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/authz"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

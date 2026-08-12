@@ -8,16 +8,16 @@ import (
 	"os"
 	"time"
 
-	"espx/internal/clickhouse/migrate"
-	"espx/internal/config"
-	"espx/internal/database"
-	"espx/internal/dedup"
-	"espx/internal/domain"
-	db "espx/internal/domain/db"
-	"espx/internal/identity"
-	"espx/internal/licensing"
-	"espx/internal/notify"
-	"espx/pkg/httpresponse"
+	"github.com/bidshard/ad-event-processor/internal/clickhouse/migrate"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/dedup"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/identity"
+	"github.com/bidshard/ad-event-processor/internal/licensing"
+	"github.com/bidshard/ad-event-processor/internal/notify"
+	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/redis/go-redis/v9"
@@ -79,9 +79,10 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 	}
 
 	var rdbs []redis.UniversalClient
-	rdbs, _, err = database.ConnectRedisShards(ctx, cfg, database.RedisShardOptions{
+	redisOpts := database.RedisShardOptions{
 		PoolSize: cfg.RedisPoolSize,
-	})
+	}
+	rdbs, _, err = database.ConnectRedisShards(ctx, cfg, redisOpts)
 	if err != nil {
 		slog.Error("failed to connect to redis shards", "error", err)
 		return err
@@ -132,6 +133,10 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 	}
 
 	svc := NewService(pool, rdbs, sharder, cfg)
+	svc.StartBackgroundWorker(func() {
+		NewShard0CatchupWorker(svc, redisOpts).Start(ctx)
+	})
+	slog.Info("started shard 0 catch-up worker")
 	if opts.RtbBidShadeSim != nil {
 		svc.SetRtbBidShadeSimulator(opts.RtbBidShadeSim)
 	}
@@ -192,10 +197,10 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 		}
 	}
 
-	if pubKeyRaw := os.Getenv("ESPX_LICENSE_PUBLIC_KEY"); pubKeyRaw != "" {
+	if pubKeyRaw := config.LicenseEnv("PUBLIC_KEY"); pubKeyRaw != "" {
 		pubKey, err := licensing.ParsePublicKey([]byte(pubKeyRaw))
 		if err != nil {
-			slog.Error("invalid ESPX_LICENSE_PUBLIC_KEY", "error", err)
+			slog.Error("invalid AD_EVENT_PROCESSOR_LICENSE_PUBLIC_KEY", "error", err)
 			return err
 		}
 		if err := startLicenseWatcher(ctx, pool, rdbs, pubKey, svc); err != nil {
@@ -475,6 +480,15 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 	}
 	svc.StartOpsMetricScraper(ctx, scrapeURL)
 	slog.Info("ops metric scraper enabled", "url", scrapeURL)
+
+	if cfg.Management.SmartAlertsEnabled {
+		interval := time.Duration(cfg.Management.SmartAlertsIntervalMin) * time.Minute
+		svc.StartSmartAlertsWorker(ctx, interval)
+	}
+	if cfg.Management.DomainHealthEnabled {
+		domainInterval := time.Duration(cfg.Management.DomainHealthIntervalMin) * time.Minute
+		svc.StartDomainHealthWorker(ctx, domainInterval)
+	}
 
 	authHandler.RegisterRoutes(mux)
 	controlHandler.RegisterRoutes(mux)

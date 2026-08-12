@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"espx/internal/domain/db"
-	"espx/pkg/legal"
+	"github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/pkg/legal"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

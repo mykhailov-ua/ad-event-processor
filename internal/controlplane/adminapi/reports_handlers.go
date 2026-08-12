@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"time"
 
-	"espx/internal/database"
-	"espx/pkg/coldpath"
-	"espx/pkg/httpresponse"
-	"espx/pkg/money"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
+	"github.com/bidshard/ad-event-processor/pkg/money"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -217,6 +217,7 @@ type ReportsHTTPHandlers struct {
 	ReportJobs                *ReportJobRunner
 	Pool                      *pgxpool.Pool
 	CHQuery                   *database.CHQuery
+	BuyerPortfolio            BuyerPortfolioReader
 	ApplyRateLimit            func(http.HandlerFunc) http.HandlerFunc
 	RequirePermission         func(string, http.HandlerFunc) http.HandlerFunc
 	RequireAnyPermission      func([]string, http.HandlerFunc) http.HandlerFunc
@@ -251,6 +252,7 @@ func (reports *ReportsHTTPHandlers) Register(mux *http.ServeMux) {
 	reports.registerIVTBySource(mux)
 	reports.registerTrafficSources(mux)
 	reports.registerGeoROI(mux)
+	reports.registerExtendedReports(mux)
 	reports.registerReportJobs(mux)
 }
 

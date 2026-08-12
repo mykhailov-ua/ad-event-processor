@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"espx/internal/testutil"
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/internal/testutil"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"

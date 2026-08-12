@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"espx/internal/controlplane/adminapi"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 )
 
 type MutationPreview = adminapi.MutationPreviewDTO

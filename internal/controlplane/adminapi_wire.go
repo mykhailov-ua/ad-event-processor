@@ -9,15 +9,15 @@ import (
 	"path/filepath"
 	"time"
 
-	"espx/internal/controlplane/adminapi"
-	"espx/internal/controlplane/authz"
-	"espx/internal/costsync"
-	"espx/internal/edge/xdpstats"
-	"espx/internal/licensing"
-	"espx/internal/openrtb"
-	"espx/pkg/doctor"
-	"espx/pkg/platformconfig"
-	"espx/pkg/supportbundle"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/authz"
+	"github.com/bidshard/ad-event-processor/internal/costsync"
+	"github.com/bidshard/ad-event-processor/internal/edge/xdpstats"
+	"github.com/bidshard/ad-event-processor/internal/licensing"
+	"github.com/bidshard/ad-event-processor/internal/openrtb"
+	"github.com/bidshard/ad-event-processor/pkg/doctor"
+	"github.com/bidshard/ad-event-processor/pkg/platformconfig"
+	"github.com/bidshard/ad-event-processor/pkg/supportbundle"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -202,6 +202,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			AuditLister:             svc,
 			RolesReloader:           rolesReloader{mw: h.authMiddleware},
 			Blacklist:               svc,
+			Shard0Catchup:           svc,
 			FraudThreat:             svc,
 			ApplyRateLimit:          limit,
 			RequirePermission:       perm,
@@ -228,6 +229,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			ReportJobs:                reportJobs,
 			Pool:                      pool,
 			CHQuery:                   svc.CHQuery(),
+			BuyerPortfolio:            svc,
 			ApplyRateLimit:            limit,
 			RequirePermission:         perm,
 			RequireAnyPermission:      permAny,
@@ -289,6 +291,30 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
 		},
+		SmartAlertsHTTP: &adminapi.SmartAlertsHTTPHandlers{
+			Service:           svc,
+			ApplyRateLimit:    limit,
+			RequirePermission: perm,
+			ResolveActorID: func(ctx context.Context) uuid.UUID {
+				u, ok := GetUser(ctx)
+				if !ok {
+					return uuid.Nil
+				}
+				return u.UserID
+			},
+		},
+		DomainHealthHTTP: &adminapi.DomainHealthHTTPHandlers{
+			Service:           svc,
+			ApplyRateLimit:    limit,
+			RequirePermission: perm,
+		},
+		CommercialHTTP: &adminapi.CommercialHTTPHandlers{
+			Commercial:              commercialAdminAdapter{svc: svc},
+			ApplyRateLimit:          limit,
+			RequirePermission:       perm,
+			AuthorizeCustomerAccess: authCustomer,
+			WriteServiceError:       writeErr,
+		},
 		RtbFloorsHTTP: &adminapi.RtbFloorsHTTPHandlers{
 			Service:           svc,
 			ApplyRateLimit:    limit,
@@ -300,6 +326,11 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
 			WriteServiceError: writeErr,
+			RuntimeConfig:     rtbRuntimeConfig{cfg: h.cfg},
+			PlatformConfig: func(ctx context.Context) (platformconfig.Config, error) {
+				cfg, _, err := svc.GetPlatformConfig(ctx)
+				return cfg, err
+			},
 			ExchangeConfig: openrtb.ExchangeConfig{
 				NoBidMode:   h.cfg.RtbExchangeNoBidMode,
 				MultiImpMax: h.cfg.RtbExchangeMultiImpMax,

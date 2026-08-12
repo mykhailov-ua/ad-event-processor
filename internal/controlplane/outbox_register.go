@@ -3,8 +3,8 @@ package controlplane
 import (
 	"time"
 
-	"espx/internal/controlplane/outboxpb"
-	"espx/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/outboxpb"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/proto"

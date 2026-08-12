@@ -1,15 +1,15 @@
 package controlplane
 
 import (
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"context"
 	"testing"
 
-	"espx/internal/config"
-	"espx/internal/database"
-	"espx/internal/domain"
-	ingestdb "espx/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	ingestdb "github.com/bidshard/ad-event-processor/internal/domain/db"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"

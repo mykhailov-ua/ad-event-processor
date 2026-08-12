@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"espx/internal/controlplane/adminapi"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 )
 
 const (
@@ -73,34 +73,34 @@ func parseEdgePrometheus(r io.Reader) adminapi.EdgeMetricsPanelDTO {
 		if !ok {
 			continue
 		}
-		switch name {
-		case "espx_edge_ingress_protocol_h1_total":
+		switch {
+		case edgeMetricMatch(name, "ad_event_processor_edge_ingress_protocol_h1_total"):
 			out.IngressH1 = val
-		case "espx_edge_ingress_protocol_h2_total":
+		case edgeMetricMatch(name, "ad_event_processor_edge_ingress_protocol_h2_total"):
 			out.IngressH2 = val
-		case "espx_edge_ingress_protocol_h3_total":
+		case edgeMetricMatch(name, "ad_event_processor_edge_ingress_protocol_h3_total"):
 			out.IngressH3 = val
-		case "espx_edge_body_stream_total":
+		case edgeMetricMatch(name, "ad_event_processor_edge_body_stream_total"):
 			out.BodyStream = val
-		case "espx_edge_body_peek_total":
+		case edgeMetricMatch(name, "ad_event_processor_edge_body_peek_total"):
 			out.BodyPeek = val
-		case "espx_edge_body_read_total":
+		case edgeMetricMatch(name, "ad_event_processor_edge_body_read_total"):
 			out.BodyRead = val
-		case "espx_edge_blocked_ip_total":
+		case edgeMetricMatch(name, "ad_event_processor_edge_blocked_ip_total"):
 			out.Blocked["ip_blacklist"] = val
-		case "espx_edge_blocked_campaign_rl_total":
+		case edgeMetricMatch(name, "ad_event_processor_edge_blocked_campaign_rl_total"):
 			out.Blocked["campaign_rl"] = val
-		case "espx_edge_blocked_fraud_tier_total":
+		case edgeMetricMatch(name, "ad_event_processor_edge_blocked_fraud_tier_total"):
 			out.Blocked["fraud_tier"] = val
-		case "espx_edge_circuit_reject_total":
+		case edgeMetricMatch(name, "ad_event_processor_edge_circuit_reject_total"):
 			out.Blocked["circuit_breaker"] = val
-		case "espx_edge_parse_oversize_total":
+		case edgeMetricMatch(name, "ad_event_processor_edge_parse_oversize_total"):
 			out.Blocked["parse_oversize"] = val
-		case "espx_edge_chunked_reject_total":
+		case edgeMetricMatch(name, "ad_event_processor_edge_chunked_reject_total"):
 			out.Blocked["chunked_reject"] = val
-		case "espx_edge_tarpit_total":
+		case edgeMetricMatch(name, "ad_event_processor_edge_tarpit_total"):
 			out.TarpitTotal = val
-		case "espx_edge_blacklist_stale_total":
+		case edgeMetricMatch(name, "ad_event_processor_edge_blacklist_stale_total"):
 			out.BlacklistStale = val
 		}
 	}

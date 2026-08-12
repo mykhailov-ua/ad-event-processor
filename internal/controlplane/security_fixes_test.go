@@ -9,7 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/controlplane"
+	"github.com/bidshard/ad-event-processor/internal/controlplane"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 )
 
 func TestClientIPXFFNotTrustedWithoutProxy(t *testing.T) {
@@ -135,7 +136,7 @@ func TestLoginBodySizeLimit(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	r2 := r.Clone(r.Context())
-	r2.Body = http.MaxBytesReader(w, r2.Body, 65536)
+	r2.Body = http.MaxBytesReader(w, r2.Body, coldpath.DefaultMaxBody)
 	buf := make([]byte, 70000)
 	n, err := r2.Body.Read(buf)
 	if err == nil && n > 65536 {

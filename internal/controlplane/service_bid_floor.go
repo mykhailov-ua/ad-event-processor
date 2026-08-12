@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/controlplane/adminapi"
-	"espx/internal/database"
-	"espx/internal/domain"
-	db "espx/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"

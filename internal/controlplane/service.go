@@ -11,14 +11,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/database"
-	"espx/internal/domain"
-	db "espx/internal/domain/db"
-	"espx/internal/metrics"
-	"espx/pkg/coldpath"
-	"espx/pkg/money"
-	"espx/pkg/pgfailover"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/pkg/money"
+	"github.com/bidshard/ad-event-processor/pkg/pgfailover"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/google/uuid"
@@ -54,6 +54,7 @@ type Service struct {
 	pgFencing       *pgfailover.FencingGate
 	globalSpend     *GlobalSpendReconciler
 	rtbBidShadeSim  RtbBidShadeSimulator
+	shard0Mu        sync.Mutex
 }
 
 func (s *Service) SetRtbBidShadeSimulator(sim RtbBidShadeSimulator) {
@@ -344,7 +345,7 @@ func (s *Service) TopUpBalance(ctx context.Context, customerID uuid.UUID, amount
 			PaymentIntentID: pgtype.UUID{},
 		})
 		if err == nil {
-			metrics.BalanceTopupsTotal.WithLabelValues("USD").Add(money.APIValueFloat(amount))
+			metrics.AddControlBalanceTopup("USD", money.APIValueFloat(amount))
 			s.AuditLog(ctx, q, uuid.Nil, "TOPUP_BALANCE", "customer", &customerID, auditAmountChange{Amount: amount}, auditIdempotencyMeta{IdempotencyKey: idempotencyKey})
 		}
 		return err
@@ -415,7 +416,7 @@ func (s *Service) ApplyPaymentCredit(ctx context.Context, customerID uuid.UUID, 
 		ledgerEntryID = row.ID
 		applied = true
 
-		metrics.BalanceTopupsTotal.WithLabelValues("USD").Add(money.APIValueFloat(amount))
+		metrics.AddControlBalanceTopup("USD", money.APIValueFloat(amount))
 		s.AuditLog(ctx, q, uuid.Nil, "PAYMENT_SETTLEMENT", "customer", &customerID, auditPaymentSettlementChange{
 			Amount:          amount,
 			PaymentIntentID: paymentIntentID.String(),
@@ -734,7 +735,7 @@ func (s *Service) finalizeDrainingCampaign(ctx context.Context, q db.Querier, ca
 		if err != nil {
 			return err
 		}
-		metrics.CommissionsCollectedTotal.Add(money.APIValueFloat(fee))
+		metrics.AddControlCommissionsCollected(money.APIValueFloat(fee))
 	}
 	if err := q.SoftDeleteCampaign(ctx, domain.ToUUID(campaignID)); err != nil {
 		return err

@@ -10,10 +10,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"espx/internal/config"
-	"espx/internal/controlplane/adminapi"
-	"espx/internal/database"
-	"espx/pkg/platformconfig"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/pkg/platformconfig"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"

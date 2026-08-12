@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"strings"
 
-	db "espx/internal/domain/db"
-	"espx/internal/postback"
-	"espx/pkg/coldpath"
-	"espx/pkg/httpresponse"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/postback"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -45,10 +45,12 @@ func (postbacks *PostbackHTTPHandlers) Register(mux *http.ServeMux) {
 }
 
 type PostbackConfigDTO struct {
-	CampaignID  string `json:"campaign_id"`
-	Provider    string `json:"provider"`
-	UrlTemplate string `json:"url_template"`
-	TargetEvent string `json:"target_event"`
+	CampaignID    string `json:"campaign_id"`
+	Provider      string `json:"provider"`
+	UrlTemplate   string `json:"url_template"`
+	TargetEvent   string `json:"target_event"`
+	TestEventCode string `json:"test_event_code,omitempty"`
+	HasApiToken   bool   `json:"has_api_token"`
 }
 
 func (postbacks *PostbackHTTPHandlers) getPostbacksConfig(w http.ResponseWriter, r *http.Request) {
@@ -66,10 +68,12 @@ func (postbacks *PostbackHTTPHandlers) getPostbacksConfig(w http.ResponseWriter,
 			campaignIDStr = ingestionUUIDToString(c.CampaignID)
 		}
 		dtos = append(dtos, PostbackConfigDTO{
-			CampaignID:  campaignIDStr,
-			Provider:    c.Provider,
-			UrlTemplate: c.UrlTemplate,
-			TargetEvent: c.TargetEvent,
+			CampaignID:    campaignIDStr,
+			Provider:      c.Provider,
+			UrlTemplate:   c.UrlTemplate,
+			TargetEvent:   c.TargetEvent,
+			TestEventCode: c.TestEventCode,
+			HasApiToken:   len(c.ApiTokenEncrypted) > 0,
 		})
 	}
 
@@ -77,10 +81,11 @@ func (postbacks *PostbackHTTPHandlers) getPostbacksConfig(w http.ResponseWriter,
 }
 
 type UpdatePostbackConfigRequest struct {
-	Provider    string `json:"provider"`
-	UrlTemplate string `json:"url_template"`
-	ApiToken    string `json:"api_token"`
-	TargetEvent string `json:"target_event"`
+	Provider      string `json:"provider"`
+	UrlTemplate   string `json:"url_template"`
+	ApiToken      string `json:"api_token"`
+	TargetEvent   string `json:"target_event"`
+	TestEventCode string `json:"test_event_code"`
 }
 
 func (postbacks *PostbackHTTPHandlers) updatePostbackConfig(w http.ResponseWriter, r *http.Request) {
@@ -104,6 +109,22 @@ func (postbacks *PostbackHTTPHandlers) updatePostbackConfig(w http.ResponseWrite
 		return
 	}
 
+	if req.Provider == "" {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "provider is required")
+		return
+	}
+	provider := strings.ToLower(strings.TrimSpace(req.Provider))
+	switch provider {
+	case "webhook", "facebook", "google", "tiktok":
+	default:
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "unsupported provider")
+		return
+	}
+	if strings.TrimSpace(req.UrlTemplate) == "" {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "url_template is required")
+		return
+	}
+
 	q := db.New(postbacks.Pool)
 	_, err = q.GetCampaign(r.Context(), pgtype.UUID{Bytes: campaignID, Valid: true})
 	if err != nil {
@@ -116,6 +137,11 @@ func (postbacks *PostbackHTTPHandlers) updatePostbackConfig(w http.ResponseWrite
 	}
 
 	var encryptedToken []byte
+	existing, existingErr := q.GetPostbackConfig(r.Context(), pgtype.UUID{Bytes: campaignID, Valid: true})
+	if existingErr != nil && !errors.Is(existingErr, pgx.ErrNoRows) {
+		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", existingErr.Error())
+		return
+	}
 	if req.ApiToken != "" {
 		key := postbacks.EncryptionKey
 		if len(key) == 0 {
@@ -126,6 +152,12 @@ func (postbacks *PostbackHTTPHandlers) updatePostbackConfig(w http.ResponseWrite
 			httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "encryption failed: "+err.Error())
 			return
 		}
+	} else if existingErr == nil {
+		encryptedToken = existing.ApiTokenEncrypted
+	}
+	if provider != "webhook" && len(encryptedToken) == 0 {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "api_token is required for CAPI providers")
+		return
 	}
 
 	targetEv := "conversion"
@@ -135,10 +167,11 @@ func (postbacks *PostbackHTTPHandlers) updatePostbackConfig(w http.ResponseWrite
 
 	err = q.UpsertPostbackConfig(r.Context(), db.UpsertPostbackConfigParams{
 		CampaignID:        pgtype.UUID{Bytes: campaignID, Valid: true},
-		Provider:          req.Provider,
-		UrlTemplate:       req.UrlTemplate,
+		Provider:          provider,
+		UrlTemplate:       strings.TrimSpace(req.UrlTemplate),
 		ApiTokenEncrypted: encryptedToken,
 		TargetEvent:       targetEv,
+		TestEventCode:     strings.TrimSpace(req.TestEventCode),
 	})
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())

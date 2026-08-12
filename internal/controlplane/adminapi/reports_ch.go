@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"espx/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/database"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"

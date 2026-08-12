@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/database"
-	"espx/internal/domain/db"
-	"espx/internal/identity"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/identity"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"

@@ -4,9 +4,9 @@ import (
 	"context"
 	"net/http"
 
-	"espx/internal/config"
-	"espx/internal/controlplane/adminapi"
-	"espx/pkg/httpresponse"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
+	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
 )
 
 type Handler struct {

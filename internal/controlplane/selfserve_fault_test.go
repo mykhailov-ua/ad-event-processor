@@ -8,19 +8,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"espx/internal/config"
-	"espx/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/database"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestFault_SelfServeOverdraftReject(t *testing.T) {
-	t.Parallel()
-	TestSelfServe_CreateCampaign_insufficientBalance(t)
-}
 
 func TestFault_SelfServeIdempotentCreate(t *testing.T) {
 	if testing.Short() {

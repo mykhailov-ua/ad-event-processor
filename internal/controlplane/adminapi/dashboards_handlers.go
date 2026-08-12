@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"espx/internal/edge/xdpstats"
-	"espx/pkg/httpresponse"
+	"github.com/bidshard/ad-event-processor/internal/edge/xdpstats"
+	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
 
 	"github.com/google/uuid"
 )

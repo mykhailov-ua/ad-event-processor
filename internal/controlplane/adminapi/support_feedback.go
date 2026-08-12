@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"regexp"
 
-	"espx/pkg/coldpath"
-	"espx/pkg/httpresponse"
-	"espx/pkg/supportbundle"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
+	"github.com/bidshard/ad-event-processor/pkg/supportbundle"
 
 	"github.com/google/uuid"
 )

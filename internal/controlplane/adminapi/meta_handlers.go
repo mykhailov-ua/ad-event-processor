@@ -5,16 +5,27 @@ import (
 	"net/http"
 	"time"
 
-	"espx/internal/config"
-	"espx/pkg/branding"
-	"espx/pkg/httpresponse"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/pkg/branding"
+	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
 )
 
 type MetaLicenseDTO struct {
-	State          string `json:"state"`
-	ValidUntil     string `json:"valid_until,omitempty"`
-	BannerSeverity string `json:"banner_severity,omitempty"`
-	RenewDays      int    `json:"renew_days,omitempty"`
+	State          string   `json:"state"`
+	PlanCode       string   `json:"plan_code,omitempty"`
+	ValidUntil     string   `json:"valid_until,omitempty"`
+	BannerSeverity string   `json:"banner_severity,omitempty"`
+	RenewDays      int      `json:"renew_days,omitempty"`
+	TierWarnings   []string `json:"tier_warnings,omitempty"`
+}
+
+type MetaLicenseBuildInput struct {
+	State          string
+	BannerSeverity string
+	PlanCode       string
+	ValidUntil     time.Time
+	HasValidUntil  bool
+	TierWarnings   []string
 }
 
 type MetaResponseDTO struct {
@@ -87,17 +98,19 @@ func (h *MetaHTTPHandlers) getMeta(w http.ResponseWriter, r *http.Request) {
 	httpresponse.JSON(w, http.StatusOK, resp)
 }
 
-func BuildMetaLicense(state, bannerSeverity string, validUntil time.Time, hasValidUntil bool) *MetaLicenseDTO {
-	if state == "" {
+func BuildMetaLicense(in MetaLicenseBuildInput) *MetaLicenseDTO {
+	if in.State == "" {
 		return nil
 	}
 	lic := &MetaLicenseDTO{
-		State:          state,
-		BannerSeverity: bannerSeverity,
+		State:          in.State,
+		PlanCode:       in.PlanCode,
+		BannerSeverity: in.BannerSeverity,
+		TierWarnings:   in.TierWarnings,
 	}
-	if hasValidUntil {
-		lic.ValidUntil = validUntil.Format(time.RFC3339)
-		days := int(time.Until(validUntil).Hours() / 24)
+	if in.HasValidUntil {
+		lic.ValidUntil = in.ValidUntil.Format(time.RFC3339)
+		days := int(time.Until(in.ValidUntil).Hours() / 24)
 		if days >= 0 {
 			lic.RenewDays = days
 		}

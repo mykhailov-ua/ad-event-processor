@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/database"
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"

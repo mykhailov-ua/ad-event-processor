@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"espx/internal/domain"
-	"espx/internal/identity"
-	"espx/pkg/coldpath"
-	"espx/pkg/httpresponse"
-	"espx/pkg/money"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/identity"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
+	"github.com/bidshard/ad-event-processor/pkg/money"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -303,7 +303,7 @@ func (selfServe *SelfServeHTTPHandlers) resumeCampaign(w http.ResponseWriter, r 
 }
 
 func (selfServe *SelfServeHTTPHandlers) createPaymentIntent(w http.ResponseWriter, r *http.Request) {
-	body, err := coldpath.ReadLimitedBody(w, r, 16*1024)
+	body, err := coldpath.ReadLimitedBody(w, r, coldpath.SelfServePaymentIntentMaxBody)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
 		return

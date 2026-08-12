@@ -10,13 +10,13 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/controlplane/adminapi"
-	"espx/internal/controlplane/authz"
-	"espx/internal/database"
-	"espx/internal/domain"
-	db "espx/internal/domain/db"
-	"espx/pkg/coldpath"
-	"espx/pkg/money"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/authz"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/pkg/money"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/google/uuid"
@@ -40,6 +40,13 @@ func formatOptionalTime(t pgtype.Timestamptz) string {
 		return ""
 	}
 	return t.Time.Format(time.RFC3339)
+}
+
+func formatOptionalUUID(u pgtype.UUID) string {
+	if !u.Valid {
+		return ""
+	}
+	return uuid.UUID(u.Bytes).String()
 }
 
 func daypartOrEmpty(h []int16) []int16 {
@@ -109,7 +116,8 @@ func (s *Service) PatchCampaign(ctx context.Context, campaignID uuid.UUID, req a
 
 	adminPatch := req.Name != nil || req.DailyBudgetMicro != nil || req.Timezone != nil ||
 		req.FreqLimit != nil || req.FreqWindow != nil || req.TargetCountries != nil ||
-		req.TargetURL != nil || req.ReferrerFilter != nil
+		req.TargetURL != nil || req.ReferrerFilter != nil ||
+		req.SafePageURL != nil || req.SafePageEnabled != nil
 	if !adminPatch {
 		return s.GetCampaign(ctx, campaignID)
 	}
@@ -163,6 +171,14 @@ func (s *Service) PatchCampaign(ctx context.Context, campaignID uuid.UUID, req a
 		if req.ReferrerFilter != nil {
 			referrerFilter = *req.ReferrerFilter
 		}
+		safePageURL := camp.SafePageUrl
+		if req.SafePageURL != nil {
+			safePageURL = *req.SafePageURL
+		}
+		safePageEnabled := camp.SafePageEnabled
+		if req.SafePageEnabled != nil {
+			safePageEnabled = *req.SafePageEnabled
+		}
 
 		updated, err = q.UpdateCampaignAdmin(ctx, db.UpdateCampaignAdminParams{
 			ID:              domain.ToUUID(campaignID),
@@ -174,6 +190,8 @@ func (s *Service) PatchCampaign(ctx context.Context, campaignID uuid.UUID, req a
 			TargetCountries: countries,
 			TargetUrl:       targetURL,
 			ReferrerFilter:  referrerFilter,
+			SafePageUrl:     safePageURL,
+			SafePageEnabled: safePageEnabled,
 		})
 		if err != nil {
 			return err
@@ -389,6 +407,9 @@ func scrubCampaignDTO(ctx context.Context, c db.Campaign) CampaignDTO {
 		FreqWindow:      c.FreqWindow.Int32,
 		TargetCountries: countries,
 		TargetURL:       c.TargetUrl,
+		SafePageURL:     c.SafePageUrl,
+		SafePageEnabled: c.SafePageEnabled,
+		BrandID:         formatOptionalUUID(c.BrandID),
 		CreativePayload: json.RawMessage(c.CreativePayload),
 		ReferrerFilter:  c.ReferrerFilter,
 		StartAt:         formatOptionalTime(c.StartAt),
@@ -1406,6 +1427,9 @@ func (s *Service) CreateCampaign(ctx context.Context, spec CampaignCreateSpec) (
 		return uuid.Nil, err
 	}
 	if err := validateSchedule(spec.StartAt, spec.EndAt); err != nil {
+		return uuid.Nil, err
+	}
+	if err := s.enforceDeploymentLicenseCampaignCap(ctx); err != nil {
 		return uuid.Nil, err
 	}
 	pacing := db.PacingModeTypeASAP

@@ -18,13 +18,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/controlplane/adminapi"
-	"espx/internal/domain"
-	db "espx/internal/domain/db"
-	"espx/internal/metrics"
-	"espx/internal/notify"
-	"espx/pkg/branding"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/internal/notify"
+	"github.com/bidshard/ad-event-processor/pkg/branding"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -283,7 +283,7 @@ func (a *OpsAlerter) sendAsync(key, title, body string, broadcast bool) {
 		defer cancel()
 		if err := a.dispatch(ctx, key, title, body, broadcast); err != nil {
 			failures := a.enqueueFailures.Add(1)
-			metrics.ManagementOpsAlertEnqueueFailuresTotal.Inc()
+			metrics.IncControlOpsAlertEnqueueFailures()
 			slog.Warn("ops alert enqueue failed", "key", key, "error", err, "consecutive_failures", failures)
 			if failures == 1 || failures%5 == 0 {
 				metaTitle := branding.AlertTitle("ops alert enqueue failing")

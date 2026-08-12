@@ -3,7 +3,7 @@ package controlplane
 import (
 	"testing"
 
-	"espx/internal/controlplane/adminapi"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 
 	"github.com/stretchr/testify/assert"
 )

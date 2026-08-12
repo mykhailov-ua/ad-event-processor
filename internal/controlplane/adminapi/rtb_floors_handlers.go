@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	"espx/pkg/coldpath"
-	"espx/pkg/httpresponse"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
 )
 
 type RtbFloorSuggestionDTO struct {

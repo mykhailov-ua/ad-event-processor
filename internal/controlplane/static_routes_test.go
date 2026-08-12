@@ -58,6 +58,19 @@ func TestAdminStaticRoutes(t *testing.T) {
 		assert.Contains(t, body, "/src/login.js")
 	})
 
+	t.Run("GET /install/done serves index without boot", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "/install/done", nil)
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		body := w.Body.String()
+		assert.Contains(t, body, "<div id=\"root\"></div>")
+		assert.Contains(t, body, "/src/main.js")
+		assert.NotContains(t, body, "__BOOT__")
+		assert.Equal(t, "no-cache, no-store, must-revalidate", w.Header().Get("Cache-Control"))
+	})
+
 	t.Run("GET unknown /api/v1 route returns 404 JSON", func(t *testing.T) {
 		req, _ := http.NewRequest("GET", "/api/v1/nonexistent", nil)
 		w := httptest.NewRecorder()

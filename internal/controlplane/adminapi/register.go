@@ -3,28 +3,31 @@ package adminapi
 import "net/http"
 
 type RouteRegistry struct {
-	BillingHTTP     *BillingHTTPHandlers
-	OpsHTTP         *OpsHTTPHandlers
-	DoctorHTTP      *DoctorHTTPHandlers
-	ExportHTTP      *ExportHTTPHandlers
-	LicensingHTTP   *LicensingHTTPHandlers
-	ReportsHTTP     *ReportsHTTPHandlers
-	DashboardsHTTP  *DashboardsHTTPHandlers
-	ViewsHTTP       *ViewsHTTPHandlers
-	SelfServeHTTP   *SelfServeHTTPHandlers
-	PostbackHTTP    *PostbackHTTPHandlers
-	CostSyncHTTP    *CostSyncHTTPHandlers
-	MarginGuardHTTP *MarginGuardHTTPHandlers
-	RtbFloorsHTTP   *RtbFloorsHTTPHandlers
-	RtbHTTP         *RtbHTTPHandlers
-	CampaignsHTTP   *CampaignsHTTPHandlers
-	CustomersHTTP   *CustomersHTTPHandlers
-	SupportHTTP     *SupportHTTPHandlers
-	MetaHTTP        *MetaHTTPHandlers
-	EulaHTTP        *EulaHTTPHandlers
-	PlatformHTTP    *PlatformHTTPHandlers
-	StubHTTP        *StubHTTPHandlers
-	TelegramHTTP    *TelegramHTTPHandlers
+	BillingHTTP      *BillingHTTPHandlers
+	OpsHTTP          *OpsHTTPHandlers
+	DoctorHTTP       *DoctorHTTPHandlers
+	ExportHTTP       *ExportHTTPHandlers
+	LicensingHTTP    *LicensingHTTPHandlers
+	ReportsHTTP      *ReportsHTTPHandlers
+	DashboardsHTTP   *DashboardsHTTPHandlers
+	ViewsHTTP        *ViewsHTTPHandlers
+	SelfServeHTTP    *SelfServeHTTPHandlers
+	PostbackHTTP     *PostbackHTTPHandlers
+	CostSyncHTTP     *CostSyncHTTPHandlers
+	MarginGuardHTTP  *MarginGuardHTTPHandlers
+	SmartAlertsHTTP  *SmartAlertsHTTPHandlers
+	DomainHealthHTTP *DomainHealthHTTPHandlers
+	RtbFloorsHTTP    *RtbFloorsHTTPHandlers
+	RtbHTTP          *RtbHTTPHandlers
+	CampaignsHTTP    *CampaignsHTTPHandlers
+	CustomersHTTP    *CustomersHTTPHandlers
+	SupportHTTP      *SupportHTTPHandlers
+	MetaHTTP         *MetaHTTPHandlers
+	EulaHTTP         *EulaHTTPHandlers
+	PlatformHTTP     *PlatformHTTPHandlers
+	CommercialHTTP   *CommercialHTTPHandlers
+	StubHTTP         *StubHTTPHandlers
+	TelegramHTTP     *TelegramHTTPHandlers
 }
 
 func Catalog() []Route {
@@ -34,6 +37,7 @@ func Catalog() []Route {
 type Route struct {
 	Method string
 	Path   string
+	Stub   bool
 }
 
 func (r Route) Key() string { return r.Method + " " + r.Path }
@@ -68,6 +72,23 @@ var routeCatalog = []Route{
 	{Method: "DELETE", Path: "/api/v1/cost-sync/credentials/{network}"},
 	{Method: "GET", Path: "/api/v1/cost-sync/history"},
 	{Method: "POST", Path: "/api/v1/cost-sync/run"},
+	{Method: "GET", Path: "/api/v1/brands"},
+	{Method: "POST", Path: "/api/v1/brands"},
+	{Method: "GET", Path: "/api/v1/brands/{id}/creatives"},
+	{Method: "POST", Path: "/api/v1/brands/{id}/creatives"},
+	{Method: "PATCH", Path: "/api/v1/brand-creatives/{id}"},
+	{Method: "DELETE", Path: "/api/v1/brand-creatives/{id}"},
+	{Method: "GET", Path: "/api/v1/supply/sellers"},
+	{Method: "POST", Path: "/api/v1/supply/sellers"},
+	{Method: "PUT", Path: "/api/v1/supply/sellers/{id}"},
+	{Method: "DELETE", Path: "/api/v1/supply/sellers/{id}"},
+	{Method: "GET", Path: "/api/v1/supply/ads-txt"},
+	{Method: "POST", Path: "/api/v1/supply/ads-txt"},
+	{Method: "PUT", Path: "/api/v1/supply/ads-txt/{id}"},
+	{Method: "DELETE", Path: "/api/v1/supply/ads-txt/{id}"},
+	{Method: "GET", Path: "/api/v1/supply/preview/sellers.json"},
+	{Method: "GET", Path: "/api/v1/supply/preview/ads.txt"},
+	{Method: "GET", Path: "/api/v1/supply/export-path"},
 	{Method: "GET", Path: "/api/v1/customers/{id}/balance"},
 	{Method: "GET", Path: "/api/v1/customers/{id}/ledger"},
 	{Method: "GET", Path: "/api/v1/customers/{id}/balance/export"},
@@ -99,6 +120,17 @@ var routeCatalog = []Route{
 	{Method: "GET", Path: "/api/v1/margin-guard/policies"},
 	{Method: "POST", Path: "/api/v1/margin-guard/policies"},
 	{Method: "POST", Path: "/api/v1/margin-guard/overrides"},
+	{Method: "GET", Path: "/api/v1/smart-alerts/rules"},
+	{Method: "POST", Path: "/api/v1/smart-alerts/rules"},
+	{Method: "PATCH", Path: "/api/v1/smart-alerts/rules/{id}"},
+	{Method: "DELETE", Path: "/api/v1/smart-alerts/rules/{id}"},
+	{Method: "GET", Path: "/api/v1/smart-alerts/history"},
+	{Method: "POST", Path: "/api/v1/smart-alerts/events/{id}/ack"},
+	{Method: "GET", Path: "/api/v1/domains"},
+	{Method: "POST", Path: "/api/v1/domains"},
+	{Method: "DELETE", Path: "/api/v1/domains/{hostname}"},
+	{Method: "POST", Path: "/api/v1/domains/{hostname}/probe"},
+	{Method: "POST", Path: "/api/v1/domains/{hostname}/ssl/setup"},
 	{Method: "GET", Path: "/api/v1/ops/blacklist"},
 	{Method: "POST", Path: "/api/v1/ops/blacklist"},
 	{Method: "DELETE", Path: "/api/v1/ops/blacklist"},
@@ -114,6 +146,7 @@ var routeCatalog = []Route{
 	{Method: "GET", Path: "/api/v1/ops/rum"},
 	{Method: "POST", Path: "/api/v1/ops/roles/reload"},
 	{Method: "GET", Path: "/api/v1/ops/shards"},
+	{Method: "POST", Path: "/api/v1/ops/shards/0/catchup"},
 	{Method: "GET", Path: "/api/v1/postbacks/config"},
 	{Method: "PUT", Path: "/api/v1/postbacks/config/{campaign_id}"},
 	{Method: "GET", Path: "/api/v1/postbacks/dlq"},
@@ -131,20 +164,16 @@ var routeCatalog = []Route{
 	{Method: "GET", Path: "/api/v1/recon/runs"},
 	{Method: "GET", Path: "/api/v1/reports/campaign-geo-device"},
 	{Method: "GET", Path: "/api/v1/reports/campaign-overview"},
-	{Method: "GET", Path: "/api/v1/reports/campaign-unit-economics"},
 	{Method: "GET", Path: "/api/v1/reports/customer-portfolio"},
 	{Method: "GET", Path: "/api/v1/reports/daypart-heatmap"},
 	{Method: "GET", Path: "/api/v1/reports/discrepancy-buy-sell"},
 	{Method: "GET", Path: "/api/v1/reports/geo-roi"},
 	{Method: "GET", Path: "/api/v1/reports/ivt-by-source"},
 	{Method: "GET", Path: "/api/v1/reports/keywords"},
-	{Method: "GET", Path: "/api/v1/reports/pacing-drift"},
 	{Method: "GET", Path: "/api/v1/reports/placements"},
-	{Method: "GET", Path: "/api/v1/reports/postback-reconciliation"},
 	{Method: "POST", Path: "/api/v1/reports/jobs"},
 	{Method: "GET", Path: "/api/v1/reports/jobs/{id}"},
 	{Method: "GET", Path: "/api/v1/reports/jobs/{id}/download"},
-	{Method: "GET", Path: "/api/v1/reports/source-margin"},
 	{Method: "GET", Path: "/api/v1/reports/source-quality"},
 	{Method: "GET", Path: "/api/v1/reports/spend-velocity"},
 	{Method: "GET", Path: "/api/v1/reports/traffic-sources"},
@@ -221,6 +250,12 @@ func RegisterRoutes(mux *http.ServeMux, routes RouteRegistry) {
 	if routes.MarginGuardHTTP != nil {
 		routes.MarginGuardHTTP.Register(mux)
 	}
+	if routes.SmartAlertsHTTP != nil {
+		routes.SmartAlertsHTTP.Register(mux)
+	}
+	if routes.DomainHealthHTTP != nil {
+		routes.DomainHealthHTTP.Register(mux)
+	}
 	if routes.RtbFloorsHTTP != nil {
 		routes.RtbFloorsHTTP.Register(mux)
 	}
@@ -244,6 +279,9 @@ func RegisterRoutes(mux *http.ServeMux, routes RouteRegistry) {
 	}
 	if routes.PlatformHTTP != nil {
 		routes.PlatformHTTP.Register(mux)
+	}
+	if routes.CommercialHTTP != nil {
+		routes.CommercialHTTP.Register(mux)
 	}
 	if routes.StubHTTP != nil {
 		routes.StubHTTP.Register(mux)

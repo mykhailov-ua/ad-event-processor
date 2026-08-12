@@ -8,9 +8,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"espx/internal/domain/db"
-	"espx/pkg/coldpath"
-	"espx/pkg/platformconfig"
+	"github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/pkg/platformconfig"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -68,7 +68,7 @@ func (s *Service) BootstrapPlatformConfig(ctx context.Context, req platformconfi
 	if err := cfg.Validate(); err != nil {
 		return errValidation(err.Error())
 	}
-	return pgx.BeginFunc(ctx, s.GetPool(), func(tx pgx.Tx) error {
+	err = pgx.BeginFunc(ctx, s.GetPool(), func(tx pgx.Tx) error {
 		q := db.New(tx)
 		_, bootstrapped, err := s.loadPlatformConfigTx(ctx, q)
 		if err != nil {
@@ -92,6 +92,10 @@ func (s *Service) BootstrapPlatformConfig(ctx context.Context, req platformconfi
 		s.AuditLog(ctx, q, uid, "PLATFORM_CONFIG_BOOTSTRAP", "system", nil, platformconfig.RedactConfig(cfg), nil)
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	return s.syncPlatformEdgeExpose(ctx, cfg)
 }
 
 func (s *Service) UpdatePlatformConfig(ctx context.Context, patch platformconfig.Patch) (platformconfig.Config, []string, error) {
@@ -128,6 +132,9 @@ func (s *Service) UpdatePlatformConfig(ctx context.Context, patch platformconfig
 	})
 	if err != nil {
 		return platformconfig.Config{}, nil, err
+	}
+	if syncErr := s.syncPlatformEdgeExpose(ctx, after); syncErr != nil {
+		return platformconfig.Config{}, nil, syncErr
 	}
 	return after, restartRequired, nil
 }
@@ -210,6 +217,13 @@ func (s *Service) savePlatformConfigTx(ctx context.Context, q db.Querier, cfg pl
 		Key:   platformconfig.SettingsKey,
 		Value: raw,
 	})
+}
+
+func (s *Service) syncPlatformEdgeExpose(ctx context.Context, cfg platformconfig.Config) error {
+	if s == nil || len(s.rdbs) == 0 {
+		return nil
+	}
+	return syncGlobalConfigToAllShards(ctx, s.rdbs, platformconfig.EdgeExposeRedisSettings(cfg), 0)
 }
 
 func (s *Service) savePlatformRestartPendingTx(ctx context.Context, q db.Querier, pending []string) error {

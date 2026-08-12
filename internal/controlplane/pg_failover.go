@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/database"
-	bserver "espx/pkg/broker/server"
-	"espx/pkg/pgfailover"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	bserver "github.com/bidshard/ad-event-processor/pkg/broker/server"
+	"github.com/bidshard/ad-event-processor/pkg/pgfailover"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )

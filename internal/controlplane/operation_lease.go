@@ -13,11 +13,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/internal/dedup"
-	"espx/internal/domain"
-	db "espx/internal/domain/db"
-	"espx/pkg/dedupkey"
-	"espx/pkg/regionproxy/quorum"
+	"github.com/bidshard/ad-event-processor/internal/dedup"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/pkg/dedupkey"
+	"github.com/bidshard/ad-event-processor/pkg/regionproxy/quorum"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -88,14 +88,14 @@ type LeaseFencingStore struct {
 }
 
 func RelayDeliveryOpID(regionCode uint8, outboxEventID int64) uuid.UUID {
-	return uuid.NewSHA1(uuid.NameSpaceOID, []byte(fmt.Sprintf("espx-relay-op:%d:%d", regionCode, outboxEventID)))
+	return uuid.NewSHA1(uuid.NameSpaceOID, []byte(fmt.Sprintf("ad_event_processor-relay-op:%d:%d", regionCode, outboxEventID)))
 }
 
 func ProxyBatchOpID(regionCode uint8, nodeID string, seq uint64, opID uuid.UUID) uuid.UUID {
 	if opID != uuid.Nil {
 		return opID
 	}
-	return uuid.NewSHA1(uuid.NameSpaceOID, []byte(fmt.Sprintf("espx-proxy-op:%d:%s:%d", regionCode, nodeID, seq)))
+	return uuid.NewSHA1(uuid.NameSpaceOID, []byte(fmt.Sprintf("ad_event_processor-proxy-op:%d:%s:%d", regionCode, nodeID, seq)))
 }
 
 func ProxyBatchOpIDFromBytes(opID [16]byte) uuid.UUID {
@@ -235,7 +235,7 @@ func RelayDeliveryBookRequest(s *Service, regionCode uint8, outboxEventID int64,
 		OpID:         RelayDeliveryOpID(regionCode, outboxEventID),
 		RegionCode:   int16(regionCode),
 		Role:         "management",
-		ReplicaSetID: uuid.NewSHA1(uuid.NameSpaceOID, []byte(fmt.Sprintf("espx-relay-set:%d", regionCode))),
+		ReplicaSetID: uuid.NewSHA1(uuid.NameSpaceOID, []byte(fmt.Sprintf("ad_event_processor-relay-set:%d", regionCode))),
 		Attempt:      attempt,
 		FactorU:      factorU,
 		Scope:        scope,
@@ -258,7 +258,7 @@ func ProxyBatchBookRequest(ctx context.Context, s *Service, in RegionIngestBatch
 		OpID:         ProxyBatchOpID(in.RegionCode, in.NodeID, in.Seq, in.OpID),
 		RegionCode:   int16(in.RegionCode),
 		Role:         "region-proxy",
-		ReplicaSetID: uuid.NewSHA1(uuid.NameSpaceOID, []byte(fmt.Sprintf("espx-proxy-set:%d:%s", in.RegionCode, in.NodeID))),
+		ReplicaSetID: uuid.NewSHA1(uuid.NameSpaceOID, []byte(fmt.Sprintf("ad_event_processor-proxy-set:%d:%s", in.RegionCode, in.NodeID))),
 		Attempt:      attempt,
 		FactorU:      in.FactorU,
 		Scope:        scope,

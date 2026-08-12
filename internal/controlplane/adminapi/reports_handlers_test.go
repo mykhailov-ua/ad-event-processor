@@ -76,6 +76,29 @@ func TestReports_Keywords(t *testing.T) {
 	require.Equal(t, http.StatusServiceUnavailable, w.Code)
 }
 
+func TestReports_JobRoutesRegistered(t *testing.T) {
+	t.Parallel()
+
+	h := &ReportsHTTPHandlers{ReportJobs: &ReportJobRunner{}}
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	jobID := uuid.New().String()
+	for _, tc := range []struct {
+		method string
+		path   string
+	}{
+		{"POST", "/api/v1/reports/jobs"},
+		{"GET", "/api/v1/reports/jobs/" + jobID},
+		{"GET", "/api/v1/reports/jobs/" + jobID + "/download"},
+	} {
+		req := httptest.NewRequest(tc.method, tc.path, nil)
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+		require.True(t, routeRegistered(w), "%s %s", tc.method, tc.path)
+	}
+}
+
 func TestDashboards_Campaign(t *testing.T) {
 	t.Parallel()
 

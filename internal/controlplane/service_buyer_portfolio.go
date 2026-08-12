@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"espx/internal/controlplane/adminapi"
-	"espx/internal/domain"
-	db "espx/internal/domain/db"
-	"espx/pkg/money"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/pkg/money"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"

@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/domain"
-	"espx/internal/identity"
-	"espx/internal/notify"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/identity"
+	"github.com/bidshard/ad-event-processor/internal/notify"
 )
 
 var errAuthUnavailable = errors.New("auth service not configured")

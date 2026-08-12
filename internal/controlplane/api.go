@@ -5,18 +5,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
 
-	"espx/internal/controlplane/adminapi"
-	"espx/internal/dedup"
-	"espx/internal/domain"
-	db "espx/internal/domain/db"
-	"espx/pkg/coldpath"
-	"espx/pkg/dedupkey"
-	"espx/pkg/httpresponse"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
+	"github.com/bidshard/ad-event-processor/internal/dedup"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/pkg/dedupkey"
+	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -267,7 +266,7 @@ func (h *Handler) postRegionIngestBatch(w http.ResponseWriter, r *http.Request) 
 		httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
 		return
 	}
-	body, err := io.ReadAll(io.LimitReader(r.Body, 4*1024*1024))
+	body, err := coldpath.ReadLimitedBody(w, r, coldpath.RegionIngestMaxBody)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid body")
 		return
@@ -320,7 +319,7 @@ func mapServiceError(err error) (status int, code, message string) {
 		return http.StatusUnauthorized, "UNAUTHORIZED", ErrInstallTokenInvalid.Error()
 	}
 
-	if errors.Is(err, ErrSelfServeActiveCampaignLimit) || errors.Is(err, ErrSelfServeDailyCreateLimit) {
+	if errors.Is(err, ErrSelfServeActiveCampaignLimit) || errors.Is(err, ErrSelfServeDailyCreateLimit) || errors.Is(err, ErrDeploymentCampaignLimit) {
 		return http.StatusTooManyRequests, "LIMIT_EXCEEDED", err.Error()
 	}
 

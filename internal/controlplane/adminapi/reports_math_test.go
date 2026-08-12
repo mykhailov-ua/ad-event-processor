@@ -35,6 +35,17 @@ func TestCalcCPAMicro_invariants(t *testing.T) {
 	assert.Equal(t, int64(0), calcCPAMicro(50, 0))
 }
 
+func TestTrueROIColumns_math(t *testing.T) {
+	t.Parallel()
+	adSpend := int64(100_000_000)
+	revenue := int64(150_000_000)
+	conversions := int64(10)
+	profit := revenue - adSpend
+	assert.Equal(t, int64(50_000_000), profit)
+	assert.InDelta(t, 50.0, calcROIPct(profit, adSpend), 1e-9)
+	assert.Equal(t, int64(10_000_000), calcCPAMicro(adSpend, conversions))
+}
+
 func TestCalcQualityFromDrift_monotone(t *testing.T) {
 	t.Parallel()
 	q0 := calcQualityFromDrift(0)

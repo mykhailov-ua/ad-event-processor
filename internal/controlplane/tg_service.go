@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"espx/internal/controlplane/adminapi"
-	db "espx/internal/domain/db"
-	"espx/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

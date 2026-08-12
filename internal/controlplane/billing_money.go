@@ -3,7 +3,7 @@ package controlplane
 import (
 	"fmt"
 
-	"espx/pkg/money"
+	"github.com/bidshard/ad-event-processor/pkg/money"
 )
 
 func parseMoneyMicro(micro *int64, legacy float64, hasLegacy bool, field string) (int64, error) {

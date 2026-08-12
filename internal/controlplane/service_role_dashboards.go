@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"espx/internal/controlplane/adminapi"
-	"espx/internal/domain"
-	"espx/internal/ledger"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/ledger"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

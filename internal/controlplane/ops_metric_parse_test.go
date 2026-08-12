@@ -17,8 +17,8 @@ ad_http_requests_total{method="POST",status="500"} 3
 # TYPE ad_recon_drift_micro gauge
 ad_recon_drift_micro{campaign_id="a"} 10
 ad_recon_drift_micro{campaign_id="b"} 25
-# TYPE ad_management_outbox_pending_total gauge
-ad_management_outbox_pending_total 4
+# TYPE ad_control_outbox_pending_total gauge
+ad_control_outbox_pending_total 4
 # TYPE ad_tracker_redis_shard_healthy gauge
 ad_tracker_redis_shard_healthy{shard="0"} 1
 ignored_metric 99
@@ -33,7 +33,7 @@ ignored_metric 99
 	}
 	assert.Contains(t, names, "ad_http_requests_total")
 	assert.Contains(t, names, "ad_recon_drift_micro_max")
-	assert.Contains(t, names, "ad_management_outbox_pending_total")
+	assert.Contains(t, names, "ad_control_outbox_pending_total")
 	assert.Contains(t, names, "ad_tracker_redis_shard_healthy")
 
 	var driftMax float64

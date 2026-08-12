@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	db "espx/internal/domain/db"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
 )
 
 type auditReasonChange struct {

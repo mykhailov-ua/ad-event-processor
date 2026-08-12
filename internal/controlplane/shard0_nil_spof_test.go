@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/domain"
-	"espx/internal/identity"
-	"espx/internal/metrics"
-	bserver "espx/pkg/broker/server"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/identity"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	bserver "github.com/bidshard/ad-event-processor/pkg/broker/server"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/google/uuid"

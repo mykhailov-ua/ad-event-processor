@@ -3,8 +3,34 @@ package controlplane
 import (
 	"context"
 
-	"espx/internal/controlplane/adminapi"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 )
+
+type rtbRuntimeConfig struct {
+	cfg *config.Config
+}
+
+func (r rtbRuntimeConfig) RtbMode() string {
+	if r.cfg == nil {
+		return ""
+	}
+	return r.cfg.RtbMode
+}
+
+func (r rtbRuntimeConfig) RtbEnabled() bool {
+	if r.cfg == nil {
+		return false
+	}
+	return r.cfg.RtbEnabled()
+}
+
+func (r rtbRuntimeConfig) RtbExchangeNoBidMode() string {
+	if r.cfg == nil {
+		return ""
+	}
+	return r.cfg.RtbExchangeNoBidMode
+}
 
 type rtbAdminService struct {
 	svc *Service

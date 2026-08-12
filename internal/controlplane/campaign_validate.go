@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	db "espx/internal/domain/db"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
 )
 
 func validateDaypartHours(hours []int16) error {

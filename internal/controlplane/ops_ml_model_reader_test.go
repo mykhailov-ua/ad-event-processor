@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/database"
-	"espx/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/domain"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"

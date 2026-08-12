@@ -3,8 +3,8 @@ package controlplane
 import (
 	"time"
 
-	"espx/internal/metrics"
-	"espx/pkg/vendorprobe"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/pkg/vendorprobe"
 )
 
 type vendorProbeMetrics struct{}

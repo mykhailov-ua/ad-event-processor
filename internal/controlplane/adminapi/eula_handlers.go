@@ -4,9 +4,9 @@ import (
 	"context"
 	"net/http"
 
-	"espx/pkg/coldpath"
-	"espx/pkg/httpresponse"
-	"espx/pkg/legal"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
+	"github.com/bidshard/ad-event-processor/pkg/legal"
 )
 
 type EulaStatusDTO struct {

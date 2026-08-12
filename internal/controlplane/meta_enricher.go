@@ -2,12 +2,13 @@ package controlplane
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
-	"espx/internal/controlplane/adminapi"
-	billingdb "espx/internal/ledger/db"
-	"espx/internal/licensing"
-	"espx/pkg/legal"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
+	billingdb "github.com/bidshard/ad-event-processor/internal/ledger/db"
+	"github.com/bidshard/ad-event-processor/internal/licensing"
+	"github.com/bidshard/ad-event-processor/pkg/legal"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -51,12 +52,31 @@ func (h *Handler) metaEnricher() adminapi.MetaEnricher {
 		if hasValidUntil {
 			validUntil = licRow.ValidUntil.Time
 		}
-		out.License = adminapi.BuildMetaLicense(
-			licRow.State,
-			licensing.BannerSeverity(licensing.LicenseState(licRow.State)),
+		var ent licensing.Entitlements
+		if len(licRow.EntitlementsJson) > 0 {
+			_ = json.Unmarshal(licRow.EntitlementsJson, &ent)
+		}
+		var activeCampaigns int64
+		if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM campaigns WHERE status = 'ACTIVE'`).Scan(&activeCampaigns); err != nil {
+			return out, err
+		}
+		policy := licensing.LoadHeartbeatPolicyFromEnv()
+		warnings := licensing.TierUsageWarnings(
+			ent.Limits,
+			int(activeCampaigns),
+			licensing.LicenseState(licRow.State),
 			validUntil,
-			hasValidUntil,
+			time.Now(),
+			policy.RenewBeforeDays,
 		)
+		out.License = adminapi.BuildMetaLicense(adminapi.MetaLicenseBuildInput{
+			State:          licRow.State,
+			BannerSeverity: licensing.BannerSeverity(licensing.LicenseState(licRow.State)),
+			PlanCode:       licRow.PlanCode,
+			ValidUntil:     validUntil,
+			HasValidUntil:  hasValidUntil,
+			TierWarnings:   warnings,
+		})
 		return out, nil
 	}
 }

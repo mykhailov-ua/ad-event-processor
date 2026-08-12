@@ -7,14 +7,14 @@ import (
 	"sync"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/controlplane"
-	"espx/internal/costsync"
-	"espx/internal/database"
-	db "espx/internal/domain/db"
-	"espx/internal/ingestion"
-	"espx/internal/ledger"
-	"espx/internal/notify"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/controlplane"
+	"github.com/bidshard/ad-event-processor/internal/costsync"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/ingestion"
+	"github.com/bidshard/ad-event-processor/internal/ledger"
+	"github.com/bidshard/ad-event-processor/internal/notify"
 )
 
 func Run(ctx context.Context, cfg *config.Config, opts Options) error {

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/licensing"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/licensing"
 
 	"github.com/google/uuid"
 )
@@ -29,6 +29,16 @@ func (s *Service) ApplyLicenseToken(ctx context.Context, token string) error {
 			return errValidation("invalid license token")
 		}
 		return err
+	}
+	if err := licensing.CheckHostActivation(ctx, s.GetPool(), claims, licensing.HostFingerprint()); err != nil {
+		switch {
+		case errors.Is(err, licensing.ErrFingerprintMismatch),
+			errors.Is(err, licensing.ErrFingerprintRequired),
+			errors.Is(err, licensing.ErrActivationLimit):
+			return errValidation(err.Error())
+		default:
+			return err
+		}
 	}
 
 	path := config.LicenseEnv("PATH")

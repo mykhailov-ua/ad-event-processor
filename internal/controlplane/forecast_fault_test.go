@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/clickhouse/migrate"
-	"espx/internal/config"
-	"espx/internal/controlplane/adminapi"
-	"espx/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/clickhouse/migrate"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
+	"github.com/bidshard/ad-event-processor/internal/database"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"

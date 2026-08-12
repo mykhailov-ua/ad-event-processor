@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"espx/internal/controlplane/adminapi"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 )
 
 func enrichBuyerPortfolioCommercial(resp *BuyerPortfolioDTO) {

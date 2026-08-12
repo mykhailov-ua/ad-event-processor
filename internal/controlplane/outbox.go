@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"espx/internal/database"
-	"espx/internal/domain"
-	db "espx/internal/domain/db"
-	"espx/internal/metrics"
-	"espx/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -559,8 +559,7 @@ func (worker *OutboxWorker) recordOutboxLagMetrics(ctx context.Context) {
 		}
 		return
 	}
-	metrics.ManagementOutboxPendingTotal.Set(float64(pending))
-	metrics.ManagementOutboxOldestPendingSeconds.Set(oldestSeconds)
+	metrics.SetControlOutboxQueueMetrics(pending, oldestSeconds)
 
 	if worker.svc != nil && worker.svc.alerter != nil && pending > 0 {
 		threshold := float64(worker.svc.alerter.OutboxStuckThresholdSec())
@@ -571,8 +570,7 @@ func (worker *OutboxWorker) recordOutboxLagMetrics(ctx context.Context) {
 }
 
 func (worker *OutboxWorker) recordOutboxLagFromValues(pending int64, oldestSeconds float64) {
-	metrics.ManagementOutboxPendingTotal.Set(float64(pending))
-	metrics.ManagementOutboxOldestPendingSeconds.Set(oldestSeconds)
+	metrics.SetControlOutboxQueueMetrics(pending, oldestSeconds)
 	if worker.svc != nil && worker.svc.alerter != nil && pending > 0 {
 		threshold := float64(worker.svc.alerter.OutboxStuckThresholdSec())
 		if oldestSeconds >= threshold {

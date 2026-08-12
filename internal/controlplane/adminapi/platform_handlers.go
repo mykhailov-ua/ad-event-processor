@@ -4,10 +4,10 @@ import (
 	"context"
 	"net/http"
 
-	"espx/internal/config"
-	"espx/pkg/coldpath"
-	"espx/pkg/httpresponse"
-	"espx/pkg/platformconfig"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
+	"github.com/bidshard/ad-event-processor/pkg/platformconfig"
 )
 
 type PlatformConfigService interface {

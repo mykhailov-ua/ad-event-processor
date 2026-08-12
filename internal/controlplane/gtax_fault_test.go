@@ -1,15 +1,15 @@
 package controlplane
 
 import (
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"context"
 	"strconv"
 	"testing"
 
-	"espx/internal/config"
-	"espx/internal/database"
-	"espx/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/domain"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"

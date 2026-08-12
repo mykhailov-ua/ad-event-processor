@@ -34,6 +34,9 @@ type CampaignDTO struct {
 	FreqWindow      int32           `json:"freq_window"`
 	TargetCountries []string        `json:"target_countries"`
 	TargetURL       string          `json:"target_url,omitempty"`
+	SafePageURL     string          `json:"safe_page_url,omitempty"`
+	SafePageEnabled bool            `json:"safe_page_enabled"`
+	BrandID         string          `json:"brand_id,omitempty"`
 	CreativePayload json.RawMessage `json:"creative_payload,omitempty"`
 	ReferrerFilter  string          `json:"referrer_filter,omitempty"`
 	StartAt         string          `json:"start_at,omitempty"`
@@ -168,6 +171,8 @@ type PatchCampaignRequest struct {
 	FreqWindow       *int32   `json:"freq_window,omitempty"`
 	TargetCountries  []string `json:"target_countries,omitempty"`
 	TargetURL        *string  `json:"target_url,omitempty"`
+	SafePageURL      *string  `json:"safe_page_url,omitempty"`
+	SafePageEnabled  *bool    `json:"safe_page_enabled,omitempty"`
 	ReferrerFilter   *string  `json:"referrer_filter,omitempty"`
 }
 

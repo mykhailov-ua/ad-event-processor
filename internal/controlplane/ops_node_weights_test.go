@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"espx/internal/config"
-	"espx/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/database"
 
 	"github.com/stretchr/testify/require"
 )

@@ -1,10 +1,12 @@
 package controlplane
 
 import (
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 	"context"
 	"os"
 
-	"espx/internal/telemetry"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/telemetry"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -12,8 +14,8 @@ import (
 
 func (s *Service) telemetryMetadata(ctx context.Context) (telemetry.Metadata, error) {
 	meta := telemetry.Metadata{
-		BinaryVersion: os.Getenv("ESPX_BINARY_VERSION"),
-		DCRegion:      os.Getenv("ESPX_DC_REGION"),
+		BinaryVersion: os.Getenv(naming.LegacyVendorEnvKey("BINARY_VERSION")),
+		DCRegion:      os.Getenv(naming.LegacyVendorEnvKey("DC_REGION")),
 	}
 	if meta.BinaryVersion == "" {
 		meta.BinaryVersion = "dev"
@@ -45,7 +47,7 @@ func (s *Service) StartProductTelemetryPulse() {
 	worker := telemetry.NewWorker(telemetry.Config{
 		OptIn:            s.cfg.TelemetryOptIn,
 		URL:              string(s.cfg.TelemetryURL),
-		LicenseServerURL: os.Getenv("ESPX_LICENSE_SERVER"),
+		LicenseServerURL: config.LicenseEnv("SERVER"),
 		Interval:         s.cfg.TelemetryInterval(),
 		HTTPTimeout:      s.cfg.TelemetryHTTPTimeout(),
 		Metadata:         s.telemetryMetadata,
