@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/pkg/broker/protocol"
+	"github.com/bidshard/ad-event-processor/pkg/broker/protocol"
 )
 
 func (c *Client) RegisterTopic(topic string) (uint16, error) {

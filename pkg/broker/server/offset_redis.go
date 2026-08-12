@@ -8,7 +8,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-const redisOffsetsKeyPrefix = "espx:broker:offsets:"
+const redisOffsetsKeyPrefix = "ad_event_processor:broker:offsets:"
 
 var commitOffsetScript = redis.NewScript(`
 local cur = redis.call('HGET', KEYS[1], ARGV[1])

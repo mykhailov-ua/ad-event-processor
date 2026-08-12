@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/pkg/broker/client"
+	"github.com/bidshard/ad-event-processor/pkg/broker/client"
 )
 
 func TestFetchHighWatermark(t *testing.T) {

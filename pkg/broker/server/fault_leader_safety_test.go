@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"espx/pkg/broker/client"
-	"espx/pkg/faultproof"
+	"github.com/bidshard/ad-event-processor/pkg/broker/client"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 )
 
 func newLeaderSafetyServer(t *testing.T) *Server {

@@ -17,10 +17,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/internal/metrics"
-	"espx/pkg/broker/log"
-	"espx/pkg/broker/protocol"
-	"espx/pkg/iogate"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/pkg/broker/log"
+	"github.com/bidshard/ad-event-processor/pkg/broker/protocol"
+	"github.com/bidshard/ad-event-processor/pkg/iogate"
 
 	"github.com/panjf2000/gnet/v2"
 	"github.com/prometheus/client_golang/prometheus/promhttp"

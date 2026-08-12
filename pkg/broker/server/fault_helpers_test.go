@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"espx/pkg/broker/client"
-	"espx/pkg/broker/protocol"
+	"github.com/bidshard/ad-event-processor/pkg/broker/client"
+	"github.com/bidshard/ad-event-processor/pkg/broker/protocol"
 
 	rediscontainer "github.com/testcontainers/testcontainers-go/modules/redis"
 )
@@ -624,7 +624,7 @@ type brokerProcess struct {
 func ensureBrokerBinary(t *testing.T) string {
 	t.Helper()
 	root := moduleRoot(t)
-	bin := filepath.Join(os.TempDir(), "espx-broker-lab-test")
+	bin := filepath.Join(os.TempDir(), "ad-event-processor-broker-lab-test")
 	needBuild := true
 	if st, err := os.Stat(bin); err == nil && st.Mode().IsRegular() {
 		needBuild = brokerSourcesNewerThan(t, root, st.ModTime())

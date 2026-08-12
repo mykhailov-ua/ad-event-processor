@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"espx/pkg/broker/client"
-	"espx/pkg/broker/log"
+	"github.com/bidshard/ad-event-processor/pkg/broker/client"
+	"github.com/bidshard/ad-event-processor/pkg/broker/log"
 
 	rediscontainer "github.com/testcontainers/testcontainers-go/modules/redis"
 )

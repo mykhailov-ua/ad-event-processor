@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"espx/internal/database"
-	"espx/pkg/regionproxy/quorum"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/pkg/regionproxy/quorum"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"

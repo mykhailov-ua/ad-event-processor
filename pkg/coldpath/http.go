@@ -7,12 +7,23 @@ import (
 	"net/http"
 	"strconv"
 
-	"espx/pkg/httpresponse"
+	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
 
 	"github.com/google/uuid"
 )
 
-const DefaultMaxBody = 65536
+const (
+	// DefaultMaxBody is the standard admin /api/v1 JSON ingress cap (64 KiB).
+	DefaultMaxBody = 65536
+	// SelfServePaymentIntentMaxBody caps POST /api/v1/selfserve/payment-intents.
+	SelfServePaymentIntentMaxBody = 16 * 1024
+	// PaymentWebhookMaxBody caps Stripe/crypto payment webhook bodies.
+	PaymentWebhookMaxBody = DefaultMaxBody
+	// AlertmanagerWebhookMaxBody caps POST /ops/alertmanager/webhook.
+	AlertmanagerWebhookMaxBody = 1 << 20
+	// RegionIngestMaxBody caps POST /api/v1/region/ingest/batch.
+	RegionIngestMaxBody = 4 * 1024 * 1024
+)
 
 func ParsePathUUID(r *http.Request, param string) (uuid.UUID, error) {
 	if r == nil {

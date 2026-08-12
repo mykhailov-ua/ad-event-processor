@@ -12,8 +12,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/pkg/regionproxy/opkey"
-	"espx/pkg/regionproxy/wal"
+	"github.com/bidshard/ad-event-processor/pkg/regionproxy/opkey"
+	"github.com/bidshard/ad-event-processor/pkg/regionproxy/wal"
 
 	"github.com/google/uuid"
 )

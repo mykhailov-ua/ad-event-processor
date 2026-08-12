@@ -6,13 +6,13 @@ import (
 	"strconv"
 	"time"
 
-	"espx/pkg/broker/protocol"
+	"github.com/bidshard/ad-event-processor/pkg/broker/protocol"
 	"github.com/redis/go-redis/v9"
 )
 
 const (
-	redisTopicsHashKey = "espx:broker:topics"
-	redisTopicsNextKey = "espx:broker:topics:next_id"
+	redisTopicsHashKey = "ad_event_processor:broker:topics"
+	redisTopicsNextKey = "ad_event_processor:broker:topics:next_id"
 )
 
 var registerTopicScript = redis.NewScript(`

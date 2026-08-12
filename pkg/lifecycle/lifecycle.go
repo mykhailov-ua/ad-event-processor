@@ -8,7 +8,7 @@ import (
 	"syscall"
 	"time"
 
-	"espx/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/config"
 )
 
 type Timeouts struct {

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"espx/pkg/broker/protocol"
+	"github.com/bidshard/ad-event-processor/pkg/broker/protocol"
 )
 
 func TestProduceBatch_AfterWireRegister_SameConn(t *testing.T) {

@@ -13,10 +13,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/internal/metrics"
-	"espx/pkg/broker/client"
-	"espx/pkg/broker/log"
-	"espx/pkg/broker/protocol"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/pkg/broker/client"
+	"github.com/bidshard/ad-event-processor/pkg/broker/log"
+	"github.com/bidshard/ad-event-processor/pkg/broker/protocol"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -240,15 +240,15 @@ func (c *Coordinator) HasLeader(topic string) (bool, error) {
 }
 
 func leaderKey(topic string) string {
-	return "espx:topics:" + topic + ":leader"
+	return "ad_event_processor:topics:" + topic + ":leader"
 }
 
 func leaderEpochKey(topic string) string {
-	return "espx:topics:" + topic + ":leader_epoch"
+	return "ad_event_processor:topics:" + topic + ":leader_epoch"
 }
 
 func logHWMKey(topic string) string {
-	return "espx:topics:" + topic + ":log_hwm"
+	return "ad_event_processor:topics:" + topic + ":log_hwm"
 }
 
 func (c *Coordinator) runHeartbeatLoop() {
@@ -264,12 +264,12 @@ func (c *Coordinator) runHeartbeatLoop() {
 		select {
 		case <-c.closeChan:
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			_ = c.rdb.Del(ctx, "espx:brokers:"+c.nodeID).Err()
+			_ = c.rdb.Del(ctx, "ad_event_processor:brokers:"+c.nodeID).Err()
 			cancel()
 			return
 		case <-ticker.C:
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			_ = c.rdb.Set(ctx, "espx:brokers:"+c.nodeID, c.tcpAddr, lease).Err()
+			_ = c.rdb.Set(ctx, "ad_event_processor:brokers:"+c.nodeID, c.tcpAddr, lease).Err()
 			cancel()
 		}
 	}
@@ -645,7 +645,7 @@ func (c *Coordinator) replicate(topic string, leaderID string, stopCh chan struc
 			return
 		case <-ticker.C:
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			leaderAddr, err := c.rdb.Get(ctx, "espx:brokers:"+leaderID).Result()
+			leaderAddr, err := c.rdb.Get(ctx, "ad_event_processor:brokers:"+leaderID).Result()
 			cancel()
 			if err != nil {
 				if cli != nil {

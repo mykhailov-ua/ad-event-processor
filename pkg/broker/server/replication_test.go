@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"espx/pkg/broker/log"
+	"github.com/bidshard/ad-event-processor/pkg/broker/log"
 )
 
 func TestFault_Replication_GapDetection(t *testing.T) {

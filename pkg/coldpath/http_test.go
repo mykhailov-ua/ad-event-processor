@@ -39,6 +39,14 @@ func TestPaginate(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestReadLimitedBody_RejectsOversize(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(strings.Repeat("x", DefaultMaxBody+1)))
+	rec := httptest.NewRecorder()
+
+	_, err := ReadLimitedBody(rec, req, DefaultMaxBody)
+	require.Error(t, err)
+}
+
 func TestDecodeRequestOrBadRequest(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{"name":"ok"}`))
 	rec := httptest.NewRecorder()

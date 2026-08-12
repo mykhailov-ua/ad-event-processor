@@ -5,8 +5,8 @@ import (
 	"runtime"
 	"testing"
 
-	"espx/internal/config"
-	"espx/pkg/runtimeautotune"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/pkg/runtimeautotune"
 )
 
 func TestApplyMaxWorkersFromCPU(t *testing.T) {

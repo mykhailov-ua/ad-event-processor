@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"espx/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/config"
 
 	"github.com/minio/highwayhash"
 )
@@ -98,7 +98,7 @@ func decodeSaltKey(saltHex, fallbackSecret string) ([keySize]byte, error) {
 	if fallbackSecret == "" {
 		return key, errors.New("piihash: PII_SALT_HEX or TOKEN_SYMMETRIC_KEY required")
 	}
-	sum := sha256.Sum256([]byte("espx:pii:salt:v1:" + fallbackSecret))
+	sum := sha256.Sum256([]byte("ad_event_processor:pii:salt:v1:" + fallbackSecret))
 	copy(key[:], sum[:])
 	return key, nil
 }

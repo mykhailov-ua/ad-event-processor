@@ -3,8 +3,8 @@ package server
 import (
 	"testing"
 
-	"espx/pkg/broker/log"
-	"espx/pkg/iogate"
+	"github.com/bidshard/ad-event-processor/pkg/broker/log"
+	"github.com/bidshard/ad-event-processor/pkg/iogate"
 )
 
 func TestServerRetentionPass_StandaloneEvictsByBytes(t *testing.T) {

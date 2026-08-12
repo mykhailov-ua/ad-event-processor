@@ -11,10 +11,10 @@ import (
 )
 
 const (
-	redisFencingEpochKey = "espx:pg:global:fencing_epoch"
-	redisActiveDSNKey    = "espx:pg:global:dsn"
-	redisDSNEpochKey     = "espx:pg:global:dsn_epoch"
-	redisNotifyChannel   = "espx:pg:global:notify"
+	redisFencingEpochKey = "ad_event_processor:pg:global:fencing_epoch"
+	redisActiveDSNKey    = "ad_event_processor:pg:global:dsn"
+	redisDSNEpochKey     = "ad_event_processor:pg:global:dsn_epoch"
+	redisNotifyChannel   = "ad_event_processor:pg:global:notify"
 )
 
 var ErrStalePgFencingEpoch = errors.New("stale pg fencing epoch")

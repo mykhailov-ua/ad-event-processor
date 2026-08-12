@@ -47,7 +47,7 @@ func Write(ctx context.Context, w io.Writer, opts Options) error {
 		opts.LogDir = os.Getenv("LOGGER_DIR")
 	}
 	if opts.LogDir == "" {
-		opts.LogDir = "/var/log/espx"
+		opts.LogDir = "/var/log/ad-event-processor"
 	}
 	if opts.MaxLogLines <= 0 {
 		opts.MaxLogLines = defaultMaxLogLines

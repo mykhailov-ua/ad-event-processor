@@ -3,15 +3,13 @@ package branding
 import (
 	"os"
 	"runtime/debug"
+	"strings"
 	"sync"
 )
 
 const (
-	defaultProductName     = "BidShard"
-	defaultVendorName      = "BidShard"
-	defaultSiteURL         = "https://bidshard.com"
-	defaultSupportEmail    = "support@bidshard.com"
-	defaultAdminConsoleURL = "https://admin.bidshard.com"
+	defaultProductName = "BidShard"
+	defaultVendorName  = "BidShard"
 )
 
 var (
@@ -26,9 +24,9 @@ var (
 func initFromEnv() {
 	productName = envOr("BRAND_PRODUCT_NAME", defaultProductName)
 	vendorName = envOr("BRAND_VENDOR_NAME", defaultVendorName)
-	siteURL = envOr("BRAND_SITE_URL", defaultSiteURL)
-	supportEmail = envOr("BRAND_SUPPORT_EMAIL", defaultSupportEmail)
-	adminConsoleURL = envOr("BRAND_ADMIN_URL", defaultAdminConsoleURL)
+	siteURL = strings.TrimSpace(os.Getenv("BRAND_SITE_URL"))
+	supportEmail = strings.TrimSpace(os.Getenv("BRAND_SUPPORT_EMAIL"))
+	adminConsoleURL = strings.TrimSpace(os.Getenv("BRAND_ADMIN_URL"))
 }
 
 func envOr(key, fallback string) string {

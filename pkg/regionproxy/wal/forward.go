@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"espx/pkg/iogate"
+	"github.com/bidshard/ad-event-processor/pkg/iogate"
 )
 
 func (w *WAL) TryClaimForward(seq uint64) (bool, error) {

@@ -15,19 +15,19 @@ type Scope struct {
 }
 
 func RegionUUID(regionCode uint8) uuid.UUID {
-	return uuid.NewSHA1(uuid.NameSpaceOID, []byte(fmt.Sprintf("espx-region:%d", regionCode)))
+	return uuid.NewSHA1(uuid.NameSpaceOID, []byte(fmt.Sprintf("ad_event_processor-region:%d", regionCode)))
 }
 
 func SyncWorkerSourceID(shardID int16, campaignID uuid.UUID) uuid.UUID {
-	return uuid.NewSHA1(uuid.NameSpaceOID, []byte(fmt.Sprintf("espx-sync:%d:%s", shardID, campaignID)))
+	return uuid.NewSHA1(uuid.NameSpaceOID, []byte(fmt.Sprintf("ad_event_processor-sync:%d:%s", shardID, campaignID)))
 }
 
 func RelaySourceID(regionCode uint8) uuid.UUID {
-	return uuid.NewSHA1(uuid.NameSpaceOID, []byte(fmt.Sprintf("espx-relay:%d", regionCode)))
+	return uuid.NewSHA1(uuid.NameSpaceOID, []byte(fmt.Sprintf("ad_event_processor-relay:%d", regionCode)))
 }
 
 func BrokerSourceID(topic string, partition uint16, group string) uuid.UUID {
-	return uuid.NewSHA1(uuid.NameSpaceOID, []byte(fmt.Sprintf("espx-broker:%s:%d:%s", topic, partition, group)))
+	return uuid.NewSHA1(uuid.NameSpaceOID, []byte(fmt.Sprintf("ad_event_processor-broker:%s:%d:%s", topic, partition, group)))
 }
 
 func InflightSeq(txID string) int64 {

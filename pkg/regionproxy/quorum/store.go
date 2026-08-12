@@ -16,8 +16,8 @@ const (
 	StateCompleted = "completed"
 
 	defaultQuorum     = 2
-	leaseKeyPrefix    = "espx:op:lease:"
-	leaseAckKeyPrefix = "espx:op:lease:ack:"
+	leaseKeyPrefix    = "ad_event_processor:op:lease:"
+	leaseAckKeyPrefix = "ad_event_processor:op:lease:ack:"
 	leaseTTL          = 48 * time.Hour
 )
 

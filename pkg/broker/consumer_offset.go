@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"espx/pkg/broker/protocol"
+	"github.com/bidshard/ad-event-processor/pkg/broker/protocol"
 )
 
 type ConsumerOffsetTracker struct {

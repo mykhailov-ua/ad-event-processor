@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/pkg/broker/protocol"
+	"github.com/bidshard/ad-event-processor/pkg/broker/protocol"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -440,9 +440,9 @@ func (c *Client) resolveLeaderAddr(topic string, partition uint16) (string, erro
 	tpKey := protocol.TopicPartitionID(topic, partition)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	leaderID, err := c.rdb.Get(ctx, "espx:topics:"+tpKey+":leader").Result()
+	leaderID, err := c.rdb.Get(ctx, "ad_event_processor:topics:"+tpKey+":leader").Result()
 	if err != nil {
 		return "", err
 	}
-	return c.rdb.Get(ctx, "espx:brokers:"+leaderID).Result()
+	return c.rdb.Get(ctx, "ad_event_processor:brokers:"+leaderID).Result()
 }

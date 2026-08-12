@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/pkg/broker/server"
+	"github.com/bidshard/ad-event-processor/pkg/broker/server"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 )

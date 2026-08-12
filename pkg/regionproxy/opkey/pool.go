@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"espx/pkg/regionproxy/wal"
+	"github.com/bidshard/ad-event-processor/pkg/regionproxy/wal"
 )
 
 type Config struct {

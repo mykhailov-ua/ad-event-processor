@@ -12,14 +12,14 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const espxMigrationsTable = "public.espx_migrations"
+const espxMigrationsTable = "public.ad_event_processor_migrations"
 
 func ApplyTrackedSchemaMigrations(ctx context.Context, pool *pgxpool.Pool, dir string) error {
 	if pool == nil {
 		return fmt.Errorf("coldpath: nil pool")
 	}
 	if _, err := pool.Exec(ctx, `
-		CREATE TABLE IF NOT EXISTS public.espx_migrations (
+		CREATE TABLE IF NOT EXISTS public.ad_event_processor_migrations (
 			filename   TEXT PRIMARY KEY,
 			applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
 		);
@@ -41,7 +41,7 @@ func ApplyTrackedSchemaMigrations(ctx context.Context, pool *pgxpool.Pool, dir s
 		}
 		var applied bool
 		err := pool.QueryRow(ctx, `
-			SELECT EXISTS (SELECT 1 FROM public.espx_migrations WHERE filename = $1)
+			SELECT EXISTS (SELECT 1 FROM public.ad_event_processor_migrations WHERE filename = $1)
 		`, entry.Name()).Scan(&applied)
 		if err != nil {
 			return fmt.Errorf("check migration %s: %w", entry.Name(), err)
@@ -67,7 +67,7 @@ func ApplyTrackedSchemaMigrations(ctx context.Context, pool *pgxpool.Pool, dir s
 			_ = tx.Rollback(ctx)
 			if migrationAlreadyApplied(err) {
 				if _, recErr := pool.Exec(ctx, `
-					INSERT INTO public.espx_migrations (filename) VALUES ($1)
+					INSERT INTO public.ad_event_processor_migrations (filename) VALUES ($1)
 					ON CONFLICT (filename) DO NOTHING
 				`, entry.Name()); recErr != nil {
 					return fmt.Errorf("record skipped migration %s: %w", entry.Name(), recErr)
@@ -77,7 +77,7 @@ func ApplyTrackedSchemaMigrations(ctx context.Context, pool *pgxpool.Pool, dir s
 			return fmt.Errorf("apply migration %s: %w", entry.Name(), err)
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO public.espx_migrations (filename) VALUES ($1)
+			INSERT INTO public.ad_event_processor_migrations (filename) VALUES ($1)
 		`, entry.Name()); err != nil {
 			_ = tx.Rollback(ctx)
 			return fmt.Errorf("record migration %s: %w", entry.Name(), err)

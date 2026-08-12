@@ -180,9 +180,9 @@ type Logger struct {
 func deriveKeyFromEnv() ([]byte, error) {
 	passphrase := os.Getenv("LOG_ENCRYPTION_KEY")
 	if passphrase == "" {
-		passphrase = "default-espx-logger-fallback-passphrase-change-me"
+		passphrase = "default-ad-event-processor-logger-fallback-passphrase-change-me"
 	}
-	salt := []byte("espx-logger-salt-salt")
+	salt := []byte("ad-event-processor-logger-salt-salt")
 	return pbkdf2.Key([]byte(passphrase), salt, 4096, 32, sha256.New), nil
 }
 
@@ -384,7 +384,7 @@ func (l *Logger) Write(priority uint8, data []byte) bool {
 }
 
 func DeriveKey(passphrase string) []byte {
-	salt := []byte("espx-logger-salt-salt")
+	salt := []byte("ad-event-processor-logger-salt-salt")
 	return pbkdf2.Key([]byte(passphrase), salt, 4096, 32, sha256.New)
 }
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
-	"espx/pkg/iogate"
+	"github.com/bidshard/ad-event-processor/pkg/iogate"
 	"fmt"
 	"io"
 	"math/bits"

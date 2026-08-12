@@ -36,9 +36,9 @@ func (c CoordConfig) normalized() CoordConfig {
 }
 
 func leaderSinceKey(topic string) string {
-	return "espx:topics:" + topic + ":leader_since"
+	return "ad_event_processor:topics:" + topic + ":leader_since"
 }
 
 func leaderLastWinnerKey(topic string) string {
-	return "espx:topics:" + topic + ":leader_last_winner"
+	return "ad_event_processor:topics:" + topic + ":leader_last_winner"
 }

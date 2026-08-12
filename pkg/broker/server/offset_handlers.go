@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
-	"espx/internal/metrics"
-	"espx/pkg/broker/protocol"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/pkg/broker/protocol"
 	"github.com/panjf2000/gnet/v2"
 )
 

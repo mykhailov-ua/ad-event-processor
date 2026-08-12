@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"espx/pkg/broker/protocol"
-	"espx/pkg/iogate"
-	"espx/pkg/regionproxy/wal"
+	"github.com/bidshard/ad-event-processor/pkg/broker/protocol"
+	"github.com/bidshard/ad-event-processor/pkg/iogate"
+	"github.com/bidshard/ad-event-processor/pkg/regionproxy/wal"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"

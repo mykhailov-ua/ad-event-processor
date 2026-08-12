@@ -14,9 +14,9 @@ import (
 	"strings"
 	"time"
 
-	"espx/internal/domain"
-	"espx/internal/ingestion"
-	blog "espx/pkg/broker/log"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/ingestion"
+	blog "github.com/bidshard/ad-event-processor/pkg/broker/log"
 )
 
 type ReplayConfig struct {

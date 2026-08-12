@@ -7,7 +7,7 @@ import (
 )
 
 func ProxySourceID(regionCode uint8, nodeID string) uuid.UUID {
-	return uuid.NewSHA1(uuid.NameSpaceOID, []byte(fmt.Sprintf("espx-region-proxy:%d:%s", regionCode, nodeID)))
+	return uuid.NewSHA1(uuid.NameSpaceOID, []byte(fmt.Sprintf("ad_event_processor-region-proxy:%d:%s", regionCode, nodeID)))
 }
 
 func WriteCanonicalProxyBatchPayload(buf []byte, seq uint64, payload []byte) []byte {

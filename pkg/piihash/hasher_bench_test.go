@@ -3,8 +3,8 @@ package piihash_test
 import (
 	"testing"
 
-	"espx/internal/domain"
-	"espx/pkg/piihash"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/pkg/piihash"
 )
 
 func BenchmarkPIIHash_batch1000(b *testing.B) {

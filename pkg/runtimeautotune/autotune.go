@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"espx/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/config"
 )
 
 func Apply(cfg *config.Config) {

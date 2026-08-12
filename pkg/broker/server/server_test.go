@@ -16,9 +16,9 @@ import (
 	"time"
 	"unsafe"
 
-	"espx/pkg/broker/client"
-	"espx/pkg/broker/log"
-	"espx/pkg/broker/protocol"
+	"github.com/bidshard/ad-event-processor/pkg/broker/client"
+	"github.com/bidshard/ad-event-processor/pkg/broker/log"
+	"github.com/bidshard/ad-event-processor/pkg/broker/protocol"
 )
 
 func skipBrokerHeavyTest(t *testing.T) {
