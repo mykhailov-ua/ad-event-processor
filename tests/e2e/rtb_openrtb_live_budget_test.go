@@ -6,11 +6,11 @@ import (
 	"os"
 	"testing"
 
-	"espx/internal/config"
-	db "espx/internal/domain/db"
-	"espx/internal/ingestion"
-	"espx/internal/rtb"
-	"espx/internal/testutil"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/ingestion"
+	"github.com/bidshard/ad-event-processor/internal/rtb"
+	"github.com/bidshard/ad-event-processor/internal/testutil"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"

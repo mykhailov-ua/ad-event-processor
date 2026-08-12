@@ -8,8 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"espx/internal/controlplane/adminapi"
-	"espx/internal/testutil"
+	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
+	"github.com/bidshard/ad-event-processor/internal/testutil"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

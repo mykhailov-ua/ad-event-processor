@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/domain"
-	db "espx/internal/domain/db"
-	"espx/internal/ingestion"
-	"espx/internal/licensing"
-	"espx/internal/testutil"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/ingestion"
+	"github.com/bidshard/ad-event-processor/internal/licensing"
+	"github.com/bidshard/ad-event-processor/internal/testutil"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"

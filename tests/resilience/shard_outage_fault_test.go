@@ -7,16 +7,16 @@ import (
 	"testing"
 	"time"
 
-	"espx/internal/config"
-	"espx/internal/controlplane"
-	"espx/internal/database"
-	db "espx/internal/domain/db"
-	"espx/internal/ingestion"
+	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/internal/controlplane"
+	"github.com/bidshard/ad-event-processor/internal/database"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/ingestion"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"espx/internal/testutil"
+	"github.com/bidshard/ad-event-processor/internal/testutil"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
