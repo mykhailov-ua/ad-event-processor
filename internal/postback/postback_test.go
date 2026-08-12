@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	db "espx/internal/domain/db"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -165,6 +165,67 @@ func TestPostbackIntegration_IdempotencyAndEgress(t *testing.T) {
 	require.ErrorIs(t, err, ErrDuplicateEvent)
 	require.Equal(t, int32(1), atomic.LoadInt32(&requestCount))
 	t.Logf("fault_proof fault=postback_rate_limit_429 retried=true")
+}
+
+func TestCAPI_DoubleFire(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	pool, cleanup := setupPostgresInfra(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	customerID := uuid.New()
+	campaignID := uuid.New()
+
+	var requestCount int32
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&requestCount, 1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer mockServer.Close()
+
+	key := []byte("postback-encryption-secret-key32")
+	encryptedToken, err := EncryptAESGCM([]byte("tok"), key)
+	require.NoError(t, err)
+
+	q := db.New(pool)
+	err = q.UpsertPostbackConfig(ctx, db.UpsertPostbackConfigParams{
+		CampaignID:        pgtype.UUID{Bytes: campaignID, Valid: true},
+		Provider:          "facebook",
+		UrlTemplate:       mockServer.URL,
+		ApiTokenEncrypted: encryptedToken,
+		TargetEvent:       "conversion",
+		TestEventCode:     "TEST99",
+	})
+	require.NoError(t, err)
+
+	payloadBytes, err := json.Marshal(PostbackPayload{
+		CustomerID: customerID,
+		CampaignID: campaignID,
+		ClickID:    "click_double_fire",
+		EventType:  "conversion",
+		FBCLID:     "fb1",
+	})
+	require.NoError(t, err)
+
+	outboxEv, err := q.CreateOutboxEvent(ctx, db.CreateOutboxEventParams{
+		EventType: "SEND_POSTBACK",
+		Payload:   payloadBytes,
+	})
+	require.NoError(t, err)
+
+	worker := NewPostbackWorker(pool, key)
+	ev := db.OutboxEvent{ID: outboxEv.ID, Payload: payloadBytes}
+
+	require.NoError(t, worker.ProcessEvent(ctx, ev))
+	require.Equal(t, int32(1), atomic.LoadInt32(&requestCount))
+
+	// Simulate worker kill + replay of the same outbox row: idempotency hash blocks second HTTP.
+	require.ErrorIs(t, worker.ProcessEvent(ctx, ev), ErrDuplicateEvent)
+	require.Equal(t, int32(1), atomic.LoadInt32(&requestCount))
+	t.Logf("fault_proof fault=postback_worker_kill_replay duplicate_suppressed=true")
 }
 
 func TestPostbackIntegration_DLQMovement(t *testing.T) {

@@ -9,8 +9,7 @@ var (
 		ClickID:   "click123456789",
 		Payout:    "10.50",
 		TxID:      "tx999",
-		SubID1:    "sub1",
-		Param10:   "keyword",
+		SubIDs:    [maxSubMacroSlots]string{"sub1", "", "", "", "", "", "", "", "", "keyword"},
 		EventType: "conversion",
 	}
 )

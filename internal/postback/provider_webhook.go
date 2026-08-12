@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"sync"
 
-	"espx/pkg/money"
+	"github.com/bidshard/ad-event-processor/pkg/money"
 )
 
 type WebhookAdapter struct {
@@ -31,10 +31,9 @@ func (a *WebhookAdapter) Send(ctx context.Context, client *http.Client, payload 
 		ClickID:   payload.ClickID,
 		Payout:    money.FormatDecimal(payload.PayoutMicro),
 		TxID:      payload.TxID,
-		SubID1:    payload.SubID1,
-		Param10:   payload.Param10,
 		EventType: payload.EventType,
 	}
+	evtCtx.SubIDs = payload.SubIDs()
 	var scratch [MaxRenderedURLLen]byte
 	renderedURL := string(mt.RenderStack(evtCtx, &scratch))
 

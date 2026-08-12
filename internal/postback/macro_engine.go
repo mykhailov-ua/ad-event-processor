@@ -18,7 +18,11 @@ const (
 	TokenMacroSubID1
 	TokenMacroParam10
 	TokenMacroEventType
+	TokenMacroSubBase   TokenKind = 32
+	TokenMacroSubIDBase TokenKind = 62
 )
+
+const maxSubMacroSlots = 30
 
 type MacroTemplate struct {
 	kinds      [maxInlineTokens]uint8
@@ -87,7 +91,48 @@ func indexByte(s string, c byte) int {
 	return -1
 }
 
+func parseSubDigits(s string) (int, bool) {
+	switch len(s) {
+	case 1:
+		if s[0] < '1' || s[0] > '9' {
+			return 0, false
+		}
+		return int(s[0] - '0'), true
+	case 2:
+		if s[0] < '1' || s[0] > '3' || s[1] < '0' || s[1] > '9' {
+			return 0, false
+		}
+		idx := int(s[0]-'0')*10 + int(s[1]-'0')
+		if idx < 10 || idx > maxSubMacroSlots {
+			return 0, false
+		}
+		return idx, true
+	default:
+		return 0, false
+	}
+}
+
+func parseSubMacroName(name string, subidStyle bool) (int, bool) {
+	n := len(name)
+	if subidStyle {
+		if n < 6 || !eqFoldASCII(name[:5], "subid") {
+			return 0, false
+		}
+		return parseSubDigits(name[5:])
+	}
+	if n < 4 || !eqFoldASCII(name[:3], "sub") {
+		return 0, false
+	}
+	return parseSubDigits(name[3:])
+}
+
 func parseMacroKind(name string) (TokenKind, bool) {
+	if idx, ok := parseSubMacroName(name, false); ok {
+		return TokenMacroSubBase + TokenKind(idx-1), true
+	}
+	if idx, ok := parseSubMacroName(name, true); ok {
+		return TokenMacroSubIDBase + TokenKind(idx-1), true
+	}
 	switch len(name) {
 	case 5:
 		if eqFoldASCII(name, "tx_id") {
@@ -98,7 +143,7 @@ func parseMacroKind(name string) (TokenKind, bool) {
 			return TokenMacroPayout, true
 		}
 		if eqFoldASCII(name, "subid1") {
-			return TokenMacroSubID1, true
+			return TokenMacroSubIDBase, true
 		}
 	case 7:
 		if eqFoldASCII(name, "param10") {
@@ -137,8 +182,7 @@ type EventContext struct {
 	ClickID   string
 	Payout    string
 	TxID      string
-	SubID1    string
-	Param10   string
+	SubIDs    [maxSubMacroSlots]string
 	EventType string
 }
 
@@ -162,7 +206,8 @@ func (mt *MacroTemplate) RenderAppend(dst []byte, ctx *EventContext) []byte {
 	kinds := mt.kinds[:n]
 	statics := mt.staticVals[:n]
 	for i := 0; i < n; i++ {
-		switch TokenKind(kinds[i]) {
+		kind := TokenKind(kinds[i])
+		switch kind {
 		case TokenStatic:
 			dst = appendStringInline(dst, statics[i])
 		case TokenMacroClickID:
@@ -172,11 +217,17 @@ func (mt *MacroTemplate) RenderAppend(dst []byte, ctx *EventContext) []byte {
 		case TokenMacroTxID:
 			dst = appendStringInline(dst, ctx.TxID)
 		case TokenMacroSubID1:
-			dst = appendStringInline(dst, ctx.SubID1)
+			dst = appendStringInline(dst, ctx.SubIDs[0])
 		case TokenMacroParam10:
-			dst = appendStringInline(dst, ctx.Param10)
+			dst = appendStringInline(dst, ctx.SubIDs[9])
 		case TokenMacroEventType:
 			dst = appendStringInline(dst, ctx.EventType)
+		default:
+			if kind >= TokenMacroSubBase && kind < TokenMacroSubBase+maxSubMacroSlots {
+				dst = appendStringInline(dst, ctx.SubIDs[kind-TokenMacroSubBase])
+			} else if kind >= TokenMacroSubIDBase && kind < TokenMacroSubIDBase+maxSubMacroSlots {
+				dst = appendStringInline(dst, ctx.SubIDs[kind-TokenMacroSubIDBase])
+			}
 		}
 	}
 	return dst
@@ -184,4 +235,11 @@ func (mt *MacroTemplate) RenderAppend(dst []byte, ctx *EventContext) []byte {
 
 func (mt *MacroTemplate) RenderStack(ctx *EventContext, scratch *[MaxRenderedURLLen]byte) []byte {
 	return mt.RenderAppend(scratch[:0], ctx)
+}
+
+func PopulateEventContextSubs(evt *EventContext, payload *PostbackPayload) {
+	if payload == nil {
+		return
+	}
+	evt.SubIDs = payload.SubIDs()
 }

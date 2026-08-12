@@ -19,7 +19,7 @@ import (
 	"sync"
 	"time"
 
-	db "espx/internal/domain/db"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -162,6 +162,7 @@ func (w *PostbackWorker) ProcessEvent(ctx context.Context, ev db.OutboxEvent) er
 		return fmt.Errorf("failed to check idempotency: %w", err)
 	}
 	if isDuplicate {
+		recordDuplicate()
 		return ErrDuplicateEvent
 	}
 
@@ -174,6 +175,11 @@ func (w *PostbackWorker) ProcessEvent(ctx context.Context, ev db.OutboxEvent) er
 			return nil
 		}
 		return fmt.Errorf("failed to get postback config: %w", err)
+	}
+
+	provider := strings.ToLower(config.Provider)
+	if strings.TrimSpace(config.TestEventCode) != "" {
+		payload.TestEventCode = strings.TrimSpace(config.TestEventCode)
 	}
 
 	var apiTokenDecrypted string
@@ -190,7 +196,7 @@ func (w *PostbackWorker) ProcessEvent(ctx context.Context, ev db.OutboxEvent) er
 		return fmt.Errorf("rate limiter wait aborted: %w", err)
 	}
 
-	adapter, ok := w.adapters[strings.ToLower(config.Provider)]
+	adapter, ok := w.adapters[provider]
 	if !ok {
 		return fmt.Errorf("unsupported provider: %s", config.Provider)
 	}
@@ -199,8 +205,11 @@ func (w *PostbackWorker) ProcessEvent(ctx context.Context, ev db.OutboxEvent) er
 		w.onDispatchAttempt()
 	}
 
+	started := time.Now()
 	err = w.dispatchWithRetry(ctx, adapter, &payload, config.UrlTemplate, apiTokenDecrypted)
+	elapsed := time.Since(started).Seconds()
 	if err != nil {
+		recordDispatch(provider, "fail", elapsed)
 		slog.Error("Postback dispatch failed completely, moving to DLQ", "error", err, "payload", payload)
 		_, dlqErr := q.InsertPostbackDLQ(ctx, db.InsertPostbackDLQParams{
 			OutboxEventID: ev.ID,
@@ -216,8 +225,11 @@ func (w *PostbackWorker) ProcessEvent(ctx context.Context, ev db.OutboxEvent) er
 			slog.Error("Failed to insert into DLQ", "error", dlqErr)
 			return fmt.Errorf("original error: %w; dlq insert failed: %s", err, dlqErr)
 		}
+		recordDLQ(provider)
 		return fmt.Errorf("dispatch failed (moved to DLQ): %w", err)
 	}
+
+	recordDispatch(provider, "success", elapsed)
 
 	err = q.InsertPostbackDispatch(ctx, db.InsertPostbackDispatchParams{
 		IdempotencyHash: idempotencyHash,

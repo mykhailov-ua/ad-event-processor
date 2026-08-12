@@ -34,7 +34,8 @@ type FacebookCustomData struct {
 }
 
 type FacebookCAPIPayload struct {
-	Data []FacebookEvent `json:"data"`
+	Data          []FacebookEvent `json:"data"`
+	TestEventCode string          `json:"test_event_code,omitempty"`
 }
 
 func hashSHA256(input string) string {
@@ -44,6 +45,22 @@ func hashSHA256(input string) string {
 	h := sha256.New()
 	h.Write([]byte(strings.TrimSpace(strings.ToLower(input))))
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+// mapFacebookEventName maps BidShard event types to Meta standard event names.
+func mapFacebookEventName(eventType string) string {
+	switch strings.ToLower(strings.TrimSpace(eventType)) {
+	case "conversion", "purchase":
+		return "Purchase"
+	case "lead":
+		return "Lead"
+	case "install":
+		return "CompleteRegistration"
+	case "click":
+		return "ViewContent"
+	default:
+		return "Lead"
+	}
 }
 
 func (a *FacebookAdapter) Send(ctx context.Context, client *http.Client, payload *PostbackPayload, urlTemplate string, apiTokenDecrypted string) error {
@@ -56,10 +73,7 @@ func (a *FacebookAdapter) Send(ctx context.Context, client *http.Client, payload
 		url = fmt.Sprintf("https://graph.facebook.com/v19.0/%s/events", pixelID)
 	}
 
-	eventName := "Lead"
-	if strings.ToLower(payload.EventType) == "conversion" || strings.ToLower(payload.EventType) == "purchase" {
-		eventName = "Purchase"
-	}
+	eventName := mapFacebookEventName(payload.EventType)
 
 	var ems []string
 	if payload.Email != "" {
@@ -93,7 +107,8 @@ func (a *FacebookAdapter) Send(ctx context.Context, client *http.Client, payload
 	}
 
 	capiPayload := FacebookCAPIPayload{
-		Data: []FacebookEvent{fbEvent},
+		Data:          []FacebookEvent{fbEvent},
+		TestEventCode: strings.TrimSpace(payload.TestEventCode),
 	}
 
 	bodyBytes, err := json.Marshal(capiPayload)

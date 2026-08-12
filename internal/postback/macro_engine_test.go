@@ -28,8 +28,7 @@ func TestMacroSubstitution(t *testing.T) {
 				ClickID:   "c",
 				Payout:    "p",
 				TxID:      "t",
-				SubID1:    "s",
-				Param10:   "p10",
+				SubIDs:    [maxSubMacroSlots]string{"s", "", "", "", "", "", "", "", "", "p10"},
 				EventType: "et",
 			},
 			expected: "http://example.com/c/p/t/s/p10/et",
@@ -70,6 +69,20 @@ func TestMacroSubstitution(t *testing.T) {
 				t.Errorf("expected %q, got %q", tt.expected, string(got))
 			}
 		})
+	}
+}
+
+func TestMacroExpansion_Sub30(t *testing.T) {
+	var subs [maxSubMacroSlots]string
+	subs[29] = "slot30"
+	tpl := "https://net.test/?s={sub30}&id={subid30}"
+	mt := ParseTemplate(tpl)
+	ctx := EventContext{SubIDs: subs, ClickID: "c1"}
+	var scratch [MaxRenderedURLLen]byte
+	got := string(mt.RenderStack(&ctx, &scratch))
+	want := "https://net.test/?s=slot30&id=slot30"
+	if got != want {
+		t.Fatalf("got %q want %q", got, want)
 	}
 }
 

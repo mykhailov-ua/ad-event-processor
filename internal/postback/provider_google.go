@@ -25,16 +25,24 @@ type GoogleCAPIPayload struct {
 	Conversions []GoogleOfflineConversion `json:"conversions"`
 }
 
+func resolveGoogleConversionAction(urlTemplate, eventType string) string {
+	action := "Conversion"
+	if eventType != "" {
+		action = eventType
+	}
+	if urlTemplate != "" && !strings.HasPrefix(urlTemplate, "http") {
+		action = urlTemplate
+	}
+	return action
+}
+
 func (a *GoogleAdapter) Send(ctx context.Context, client *http.Client, payload *PostbackPayload, urlTemplate string, apiTokenDecrypted string) error {
 	url := urlTemplate
 	if url == "" || !strings.HasPrefix(url, "http") {
 		url = "https://googleads.googleapis.com/v15/customers/default/offlineUserDataJobs:run"
 	}
 
-	action := "Conversion"
-	if payload.EventType != "" {
-		action = payload.EventType
-	}
+	action := resolveGoogleConversionAction(urlTemplate, payload.EventType)
 
 	conv := GoogleOfflineConversion{
 		Gclid:            payload.GCLID,

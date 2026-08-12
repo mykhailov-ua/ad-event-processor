@@ -29,7 +29,29 @@ type TikTokEvent struct {
 }
 
 type TikTokCAPIPayload struct {
-	Events []TikTokEvent `json:"events"`
+	PixelCode     string        `json:"pixel_code,omitempty"`
+	TestEventCode string        `json:"test_event_code,omitempty"`
+	Events        []TikTokEvent `json:"events"`
+}
+
+func mapTikTokEventName(eventType string) string {
+	switch strings.ToLower(strings.TrimSpace(eventType)) {
+	case "lead":
+		return "Contact"
+	case "click":
+		return "ClickButton"
+	case "install":
+		return "Download"
+	default:
+		return "CompletePayment"
+	}
+}
+
+func resolveTikTokPixelCode(urlTemplate string) string {
+	if urlTemplate == "" || strings.HasPrefix(urlTemplate, "http") {
+		return ""
+	}
+	return urlTemplate
 }
 
 func (a *TikTokAdapter) Send(ctx context.Context, client *http.Client, payload *PostbackPayload, urlTemplate string, apiTokenDecrypted string) error {
@@ -38,10 +60,9 @@ func (a *TikTokAdapter) Send(ctx context.Context, client *http.Client, payload *
 		url = "https://business-api.tiktok.com/open_api/v1.3/event/track/"
 	}
 
-	event := "CompletePayment"
-	if strings.ToLower(payload.EventType) == "lead" {
-		event = "Contact"
-	}
+	pixelCode := resolveTikTokPixelCode(urlTemplate)
+
+	event := mapTikTokEventName(payload.EventType)
 
 	hashedEmail := ""
 	if payload.Email != "" {
@@ -69,7 +90,9 @@ func (a *TikTokAdapter) Send(ctx context.Context, client *http.Client, payload *
 	}
 
 	tiktokPayload := TikTokCAPIPayload{
-		Events: []TikTokEvent{ttEvent},
+		PixelCode:     pixelCode,
+		TestEventCode: strings.TrimSpace(payload.TestEventCode),
+		Events:        []TikTokEvent{ttEvent},
 	}
 
 	bodyBytes, err := json.Marshal(tiktokPayload)
