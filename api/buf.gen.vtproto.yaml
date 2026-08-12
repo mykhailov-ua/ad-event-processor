@@ -3,5 +3,5 @@ plugins:
   - name: go-vtproto
     out: gen
     opt:
-      - module=espx
+      - module=github.com/bidshard/ad-event-processor
       - features=marshal+unmarshal+size+pool

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package ads.v1;
 
-option go_package = "espx/internal/ingestion/pb;pb";
+option go_package = "github.com/bidshard/ad-event-processor/internal/ingestion/pb;pb";
 
 message AdEvent {
   bytes campaign_id = 1;
