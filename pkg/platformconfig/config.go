@@ -6,10 +6,13 @@ import (
 )
 
 const (
-	SettingsKey       = "platform_config"
-	ProfileSingleVPS  = "single_vps"
-	IngressESPXNative = "espx_native"
-	IngressOpenRTB3   = "openrtb_3"
+	SettingsKey                   = "platform_config"
+	ProfileSingleVPS              = "single_vps"
+	IngressAdEventProcessorNative = "ad_event_processor_native"
+	IngressOpenRTB3               = "openrtb_3"
+
+	RedisEdgeExposeClick   = "edge_expose_click"
+	RedisEdgeExposeOpenRTB = "edge_expose_openrtb"
 )
 
 type StripeConfig struct {
@@ -21,27 +24,31 @@ type StripeConfig struct {
 }
 
 type Config struct {
-	TrackingDomain   string       `json:"tracking_domain"`
-	DefaultCurrency  string       `json:"default_currency"`
-	Timezone         string       `json:"timezone"`
-	IngressSchema    string       `json:"ingress_schema"`
-	TelemetryEnabled bool         `json:"telemetry_enabled"`
-	Stripe           StripeConfig `json:"stripe"`
-	Profile          string       `json:"profile"`
-	EdgeXDP          bool         `json:"edge_xdp"`
-	NetworkInterface string       `json:"network_interface"`
+	TrackingDomain    string       `json:"tracking_domain"`
+	DefaultCurrency   string       `json:"default_currency"`
+	Timezone          string       `json:"timezone"`
+	IngressSchema     string       `json:"ingress_schema"`
+	TelemetryEnabled  bool         `json:"telemetry_enabled"`
+	Stripe            StripeConfig `json:"stripe"`
+	Profile           string       `json:"profile"`
+	EdgeXDP           bool         `json:"edge_xdp"`
+	EdgeExposeClick   bool         `json:"edge_expose_click"`
+	EdgeExposeOpenRTB bool         `json:"edge_expose_openrtb"`
+	NetworkInterface  string       `json:"network_interface"`
 }
 
 type Patch struct {
-	TrackingDomain   *string      `json:"tracking_domain,omitempty"`
-	DefaultCurrency  *string      `json:"default_currency,omitempty"`
-	Timezone         *string      `json:"timezone,omitempty"`
-	IngressSchema    *string      `json:"ingress_schema,omitempty"`
-	TelemetryEnabled *bool        `json:"telemetry_enabled,omitempty"`
-	Stripe           *StripePatch `json:"stripe,omitempty"`
-	Profile          *string      `json:"profile,omitempty"`
-	EdgeXDP          *bool        `json:"edge_xdp,omitempty"`
-	NetworkInterface *string      `json:"network_interface,omitempty"`
+	TrackingDomain    *string      `json:"tracking_domain,omitempty"`
+	DefaultCurrency   *string      `json:"default_currency,omitempty"`
+	Timezone          *string      `json:"timezone,omitempty"`
+	IngressSchema     *string      `json:"ingress_schema,omitempty"`
+	TelemetryEnabled  *bool        `json:"telemetry_enabled,omitempty"`
+	Stripe            *StripePatch `json:"stripe,omitempty"`
+	Profile           *string      `json:"profile,omitempty"`
+	EdgeXDP           *bool        `json:"edge_xdp,omitempty"`
+	EdgeExposeClick   *bool        `json:"edge_expose_click,omitempty"`
+	EdgeExposeOpenRTB *bool        `json:"edge_expose_openrtb,omitempty"`
+	NetworkInterface  *string      `json:"network_interface,omitempty"`
 }
 
 type StripePatch struct {
@@ -66,9 +73,10 @@ func Default() Config {
 	return Config{
 		DefaultCurrency:  "USD",
 		Timezone:         "UTC",
-		IngressSchema:    IngressESPXNative,
+		IngressSchema:    IngressAdEventProcessorNative,
 		TelemetryEnabled: true,
 		Profile:          ProfileSingleVPS,
+		EdgeExposeClick:  true,
 		NetworkInterface: "eth0",
 	}
 }
@@ -82,6 +90,7 @@ func Parse(raw string) (Config, error) {
 		return Config{}, fmt.Errorf("parse platform_config: %w", err)
 	}
 	cfg = MergeDefaults(cfg)
+	cfg.IngressSchema = NormalizeIngressSchema(cfg.IngressSchema)
 	if err := cfg.Validate(); err != nil {
 		return Config{}, err
 	}
@@ -107,11 +116,13 @@ func MergeDefaults(cfg Config) Config {
 	if cfg.IngressSchema == "" {
 		cfg.IngressSchema = def.IngressSchema
 	}
+	cfg.IngressSchema = NormalizeIngressSchema(cfg.IngressSchema)
 	if cfg.Profile == "" {
 		cfg.Profile = def.Profile
 	}
 	if cfg.NetworkInterface == "" {
 		cfg.NetworkInterface = def.NetworkInterface
 	}
+	cfg.IngressSchema = NormalizeIngressSchema(cfg.IngressSchema)
 	return cfg
 }

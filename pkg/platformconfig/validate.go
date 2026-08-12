@@ -21,13 +21,13 @@ func (c *Config) Validate() error {
 	}
 
 	switch c.Profile {
-	case ProfileSingleVPS, "compose_dev", "k8s_k3s":
+	case ProfileSingleVPS, "compose_dev":
 	default:
 		return fmt.Errorf("invalid profile: %s", c.Profile)
 	}
 
 	switch c.IngressSchema {
-	case IngressESPXNative, IngressOpenRTB3:
+	case IngressAdEventProcessorNative, IngressOpenRTB3:
 	default:
 		return fmt.Errorf("invalid ingress_schema: %s", c.IngressSchema)
 	}
@@ -61,7 +61,7 @@ func (p Patch) Apply(base Config) (Config, error) {
 		out.Timezone = strings.TrimSpace(*p.Timezone)
 	}
 	if p.IngressSchema != nil {
-		out.IngressSchema = strings.TrimSpace(*p.IngressSchema)
+		out.IngressSchema = NormalizeIngressSchema(strings.TrimSpace(*p.IngressSchema))
 	}
 	if p.TelemetryEnabled != nil {
 		out.TelemetryEnabled = *p.TelemetryEnabled
@@ -71,6 +71,12 @@ func (p Patch) Apply(base Config) (Config, error) {
 	}
 	if p.EdgeXDP != nil {
 		out.EdgeXDP = *p.EdgeXDP
+	}
+	if p.EdgeExposeClick != nil {
+		out.EdgeExposeClick = *p.EdgeExposeClick
+	}
+	if p.EdgeExposeOpenRTB != nil {
+		out.EdgeExposeOpenRTB = *p.EdgeExposeOpenRTB
 	}
 	if p.NetworkInterface != nil {
 		out.NetworkInterface = strings.TrimSpace(*p.NetworkInterface)
@@ -110,6 +116,12 @@ func RestartRequiredFields(before, after Config) []string {
 	if before.EdgeXDP != after.EdgeXDP {
 		fields = append(fields, "edge_xdp")
 	}
+	if before.EdgeExposeClick != after.EdgeExposeClick {
+		fields = append(fields, "edge_expose_click")
+	}
+	if before.EdgeExposeOpenRTB != after.EdgeExposeOpenRTB {
+		fields = append(fields, "edge_expose_openrtb")
+	}
 	if before.Profile != after.Profile {
 		fields = append(fields, "profile")
 	}
@@ -136,6 +148,21 @@ func ClickURLTemplate(domain string) string {
 		return ""
 	}
 	return fmt.Sprintf("https://%s/click?campaign_id={campaign_id}&sub1={sub1}", domain)
+}
+
+func OpenRTBEndpointTemplate(domain string) string {
+	domain = strings.TrimSpace(domain)
+	if domain == "" {
+		return ""
+	}
+	return fmt.Sprintf("https://%s/openrtb/bid", domain)
+}
+
+func EdgeExposeRedisSettings(cfg Config) map[string]string {
+	return map[string]string{
+		RedisEdgeExposeClick:   boolString(cfg.EdgeExposeClick),
+		RedisEdgeExposeOpenRTB: boolString(cfg.EdgeExposeOpenRTB),
+	}
 }
 
 func ResolveHost(domain string) string {

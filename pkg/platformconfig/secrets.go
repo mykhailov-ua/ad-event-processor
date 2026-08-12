@@ -1,11 +1,12 @@
 package platformconfig
 
 type PublicView struct {
-	Config            Config        `json:"config"`
-	Secrets           MaskedSecrets `json:"secrets"`
-	RestartRequired   []string      `json:"restart_required,omitempty"`
-	ClickURLTemplate  string        `json:"click_url_template,omitempty"`
-	BootstrapComplete bool          `json:"bootstrap_complete"`
+	Config                  Config        `json:"config"`
+	Secrets                 MaskedSecrets `json:"secrets"`
+	RestartRequired         []string      `json:"restart_required,omitempty"`
+	ClickURLTemplate        string        `json:"click_url_template,omitempty"`
+	OpenRTBEndpointTemplate string        `json:"openrtb_endpoint_template,omitempty"`
+	BootstrapComplete       bool          `json:"bootstrap_complete"`
 }
 
 type MaskedSecrets struct {
@@ -43,9 +44,10 @@ func Public(cfg Config, bootstrapComplete bool, pendingRestart []string) PublicV
 			StripeSecretKey:     MaskSecret(cfg.Stripe.SecretKey),
 			StripeWebhookSecret: MaskSecret(cfg.Stripe.WebhookSecret),
 		},
-		RestartRequired:   pendingRestart,
-		ClickURLTemplate:  ClickURLTemplate(cfg.TrackingDomain),
-		BootstrapComplete: bootstrapComplete,
+		RestartRequired:         pendingRestart,
+		ClickURLTemplate:        ClickURLTemplate(cfg.TrackingDomain),
+		OpenRTBEndpointTemplate: OpenRTBEndpointTemplate(cfg.TrackingDomain),
+		BootstrapComplete:       bootstrapComplete,
 	}
 	return view
 }

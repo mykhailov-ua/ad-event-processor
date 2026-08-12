@@ -1,4 +1,4 @@
-module espx
+module github.com/bidshard/ad-event-processor
 
 go 1.25.12
 

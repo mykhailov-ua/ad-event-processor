@@ -66,5 +66,32 @@ func TestClickURLTemplate(t *testing.T) {
 		ClickURLTemplate("trk.example.com"))
 }
 
+func TestOpenRTBEndpointTemplate(t *testing.T) {
+	assert.Equal(t, "https://trk.example.com/openrtb/bid", OpenRTBEndpointTemplate("trk.example.com"))
+}
+
+func TestEdgeExposeRedisSettings(t *testing.T) {
+	cfg := Default()
+	assert.True(t, cfg.EdgeExposeClick, "single_vps appliance default exposes /click on edge")
+	settings := EdgeExposeRedisSettings(cfg)
+	assert.Equal(t, "true", settings[RedisEdgeExposeClick])
+	assert.Equal(t, "false", settings[RedisEdgeExposeOpenRTB])
+}
+
+func TestRestartRequired_edgeExpose(t *testing.T) {
+	before := Default()
+	before.EdgeExposeClick = false
+	after := before
+	after.EdgeExposeClick = true
+	fields := RestartRequiredFields(before, after)
+	assert.Contains(t, fields, "edge_expose_click")
+}
+
+func TestValidate_rejectsRemovedK8sProfile(t *testing.T) {
+	cfg := Default()
+	cfg.Profile = "k8s_k3s"
+	require.Error(t, cfg.Validate())
+}
+
 func strPtr(s string) *string { return &s }
 func boolPtr(b bool) *bool    { return &b }

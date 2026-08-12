@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"strings"
 
-	"espx/pkg/branding"
+	"github.com/bidshard/ad-event-processor/pkg/branding"
 )
 
 func RenderComposeEnv(cfg Config) []byte {
 	lines := []string{
 		branding.GeneratedConfigHeader(),
 		"TRACKER_INGRESS_SCHEMA=" + cfg.IngressSchema,
-		"ESPX_TELEMETRY_ENABLED=" + boolString(cfg.TelemetryEnabled),
+		"AD_EVENT_PROCESSOR_TELEMETRY_ENABLED=" + boolString(cfg.TelemetryEnabled),
 		"GOGC=300",
 		"GOMEMLIMIT=700MiB",
 		"PROCESSOR_GOGC=100",
@@ -39,6 +39,9 @@ func RenderComposeEnv(cfg Config) []byte {
 	if tz := strings.TrimSpace(cfg.Timezone); tz != "" {
 		lines = append(lines, "PLATFORM_TIMEZONE="+tz)
 	}
+	lines = append(lines, "REDIS_ADDRS="+RedisAddrsForProfile(cfg.Profile))
+	lines = append(lines, "EDGE_EXPOSE_CLICK="+boolString(cfg.EdgeExposeClick))
+	lines = append(lines, "EDGE_EXPOSE_OPENRTB="+boolString(cfg.EdgeExposeOpenRTB))
 	return []byte(strings.Join(lines, "\n") + "\n")
 }
 
