@@ -27,7 +27,7 @@ func requireAuthFaultActive(t *testing.T, faultActive func() bool, msg string) {
 
 func countVerifyFailClosed(ctx context.Context, svc *Service, accessToken string, attempts int) int {
 	n := 0
-	for i := 0; i < attempts; i++ {
+	for range attempts {
 		_, err := svc.VerifyToken(ctx, accessToken)
 		if errors.Is(err, ErrSessionBlocked) {
 			n++
@@ -38,7 +38,7 @@ func countVerifyFailClosed(ctx context.Context, svc *Service, accessToken string
 
 func countLoginBlocked(ctx context.Context, svc *Service, email, password string, attempts int) int {
 	n := 0
-	for i := 0; i < attempts; i++ {
+	for i := range attempts {
 		clientIP := fmt.Sprintf("10.2.0.%d", i+1)
 		_, err := svc.Login(ctx, email, password, "fault-agent", clientIP, time.Hour)
 		if errors.Is(err, ErrSessionBlocked) || errors.Is(err, ErrInvalidCredentials) {
@@ -176,7 +176,7 @@ func TestFault_AuthRedisDownLockoutFailClosed(t *testing.T) {
 
 	blocked := 0
 	const attempts = 8
-	for i := 0; i < attempts; i++ {
+	for i := range attempts {
 		clientIP := fmt.Sprintf("10.3.0.%d", i+1)
 		_, err := svc.Login(ctx, email, password, "fault-agent", clientIP, time.Hour)
 		if errors.Is(err, ErrSessionBlocked) {
@@ -302,10 +302,10 @@ func TestFault_AuthConcurrentVerifyDuringRedisOutage(t *testing.T) {
 	var failClosed atomic.Int32
 	var wg sync.WaitGroup
 	wg.Add(authFaultWorkers)
-	for i := 0; i < authFaultWorkers; i++ {
+	for range authFaultWorkers {
 		go func() {
 			defer wg.Done()
-			for j := 0; j < 5; j++ {
+			for range 5 {
 				_, err := svc.VerifyToken(ctx, accessToken)
 				if errors.Is(err, ErrSessionBlocked) {
 					failClosed.Add(1)
@@ -351,7 +351,7 @@ func TestFault_AuthPGDownRefreshTokenFailClosed(t *testing.T) {
 
 	denied := 0
 	const attempts = 8
-	for i := 0; i < attempts; i++ {
+	for range attempts {
 		_, _, err := svc.RefreshToken(ctx, refreshToken, time.Hour)
 		if err != nil {
 			denied++

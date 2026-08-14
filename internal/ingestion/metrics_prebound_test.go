@@ -63,7 +63,7 @@ func TestObserveRedisLua_parallel(t *testing.T) {
 	t.Parallel()
 	observers := newRedisLuaObservers(8)
 	var wg sync.WaitGroup
-	for i := 0; i < 64; i++ {
+	for i := range 64 {
 		wg.Add(1)
 		go func(shard int) {
 			defer wg.Done()
@@ -112,7 +112,7 @@ func TestPreboundTrackMetrics_concurrentInc(t *testing.T) {
 	before := testutil.ToFloat64(pm.decisionAccepted)
 
 	var wg sync.WaitGroup
-	for i := 0; i < n; i++ {
+	for range n {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

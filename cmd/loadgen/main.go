@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"log"
+	"log/slog"
 	"os"
 	"runtime"
 	"strings"
@@ -27,24 +28,29 @@ func main() {
 	hold := flag.Duration("hold", 30*time.Second, "spike hold at peak")
 	rampDown := flag.Duration("ramp-down", 10*time.Second, "spike ramp down")
 	workers := flag.Int("workers", 0, "concurrent workers (0 = GOMAXPROCS*4)")
+	campaignID := flag.String("campaign-id", "", "pin all /track traffic to this campaign UUID (load-test drill)")
 	flag.Parse()
 
 	if *outDir == "" {
-		log.Fatal("loadgen: -out is required")
+		slog.Error("loadgen: -out is required")
+		os.Exit(1)
 	}
 	if err := os.MkdirAll(*outDir, 0o755); err != nil {
-		log.Fatal(err)
+		slog.Error("loadgen: mkdir output dir", "error", err, "dir", *outDir)
+		os.Exit(1)
 	}
 
 	rps, dur := modeDefaults(*mode, *rate, *duration)
 	bases := splitComma(*trackers)
 	if err := healthCheck(bases); err != nil {
-		log.Fatalf("loadgen: health check: %v", err)
+		slog.Error("loadgen: health check", "error", err)
+		os.Exit(1)
 	}
 
 	mix := defaultMix(*mode, *pctBroken, *pctGray)
 	hist := newHistogram()
 	run := newRunner(bases, *edgeURL, *oversize, mix, hist)
+	run.campaignID = strings.TrimSpace(*campaignID)
 
 	w := *workers
 	if w <= 0 {
@@ -79,7 +85,8 @@ func main() {
 
 	histPath := *outDir + "/status-histogram.json"
 	if err := hist.write(histPath, startedAt.UTC().Format(time.RFC3339)); err != nil {
-		log.Fatalf("loadgen: write histogram: %v", err)
+		slog.Error("loadgen: write histogram", "error", err, "path", histPath)
+		os.Exit(1)
 	}
 	elapsed := time.Since(startedAt).Round(time.Millisecond)
 	log.Printf("loadgen: done in %s — %s", elapsed, histPath)
@@ -167,7 +174,7 @@ func runSpike(run *runner, workers int, wg *sync.WaitGroup, stop <-chan struct{}
 	ticker := time.NewTicker(time.Millisecond)
 	defer ticker.Stop()
 
-	for i := 0; i < workers; i++ {
+	for range workers {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

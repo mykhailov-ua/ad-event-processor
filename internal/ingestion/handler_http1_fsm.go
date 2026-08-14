@@ -24,7 +24,7 @@ var (
 
 func init() {
 	initHTTP1ValidateTables()
-	for i := 0; i < 256; i++ {
+	for i := range 256 {
 		httpFold[i] = byte(i)
 	}
 	for i := 'A'; i <= 'Z'; i++ {

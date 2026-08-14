@@ -13,7 +13,7 @@ import (
 
 func TestCampaignKeyMigrator_MigrateAndDrain(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	src, cleanupSrc := database.SetupTestRedis(t)
 	defer cleanupSrc()

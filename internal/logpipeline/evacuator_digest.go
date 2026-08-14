@@ -20,7 +20,7 @@ func computeFileDigests(path string) (fileDigests, error) {
 	if err != nil {
 		return fileDigests{}, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	sha := sha256.New()
 	md5Hash := md5.New()

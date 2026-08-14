@@ -218,10 +218,10 @@ func TestFraudStreamWriter_spike50kZeroRingDrops(t *testing.T) {
 	const perProducer = 1600
 	var wg sync.WaitGroup
 	wg.Add(producers)
-	for p := 0; p < producers; p++ {
+	for range producers {
 		go func() {
 			defer wg.Done()
-			for i := 0; i < perProducer; i++ {
+			for range perProducer {
 				q.Enqueue(0, evt)
 			}
 		}()

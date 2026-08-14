@@ -27,7 +27,7 @@ func TestEdge_RoundingAndSmallAmounts(t *testing.T) {
 	cfg := &config.Config{}
 	cfg.Management.CancellationFeePercent = 10.0
 	cfg.Lifecycle.WaitTimeoutMs = 1
-	svc := NewService(pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), cfg)
 	defer svc.Close()
 
 	customerID := uuid.New()
@@ -62,7 +62,7 @@ func TestEdge_ResumingStuckSettlement(t *testing.T) {
 	cfg := &config.Config{}
 	cfg.Management.CancellationFeePercent = 10
 	cfg.Lifecycle.WaitTimeoutMs = 1
-	svc := NewService(pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), cfg)
 	defer svc.Close()
 
 	customerID := uuid.New()
@@ -138,7 +138,7 @@ func TestEdge_OutboxPartialRedisFailure(t *testing.T) {
 	cfg := &config.Config{
 		CampaignUpdateChannel: "campaigns:update-test",
 	}
-	svc := NewService(pool, []redis.UniversalClient{wrappedRDB}, domain.NewJumpHashSharder(1), cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{wrappedRDB}, domain.NewJumpHashSharder(1), cfg)
 	defer svc.Close()
 
 	ctx := context.Background()
@@ -164,7 +164,7 @@ func TestEdge_OutboxPartialRedisFailure(t *testing.T) {
 	processed, err := worker.ProcessOutboxWithCount(ctx, 3)
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "outbox event 2")
-	assert.Equal(t, 2, processed)
+	assert.Equal(t, 1, processed)
 
 	rows, err := pool.Query(ctx, "SELECT id, status, payload FROM outbox_events ORDER BY id ASC")
 	require.NoError(t, err)
@@ -182,8 +182,8 @@ func TestEdge_OutboxPartialRedisFailure(t *testing.T) {
 
 	require.Len(t, statuses, 3)
 	assert.Equal(t, "PROCESSED", statuses[0])
-	assert.Equal(t, "PROCESSED", statuses[2])
 	assert.Equal(t, "PENDING", statuses[1])
+	assert.Equal(t, "PENDING", statuses[2], "later events in batch must halt when earlier event fails")
 }
 
 func TestEdge_OutboxWorkerRecoveryOfProcessingEvents(t *testing.T) {
@@ -195,7 +195,7 @@ func TestEdge_OutboxWorkerRecoveryOfProcessingEvents(t *testing.T) {
 	cfg := &config.Config{
 		CampaignUpdateChannel: "campaigns:update-test",
 	}
-	svc := NewService(pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), cfg)
 	defer svc.Close()
 
 	ctx := context.Background()
@@ -263,7 +263,7 @@ func TestEdge_OutboxSetsRemainingBudget(t *testing.T) {
 	defer cleanupRedis()
 
 	cfg := &config.Config{CampaignUpdateChannel: "campaigns:update-test"}
-	svc := NewService(pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), cfg)
 	defer svc.Close()
 
 	ctx := context.Background()

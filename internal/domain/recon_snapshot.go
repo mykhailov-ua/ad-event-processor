@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"errors"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -32,16 +33,7 @@ return {remaining, sync, inflight, quota, has_lock, has_fence}
 `
 
 func FetchBudgetReconSnapshot(ctx context.Context, rdb redis.Cmdable, campaignID uuid.UUID, quotaMode bool) (BudgetReconSnapshot, error) {
-	idStr := campaignID.String()
-	tag := campaignHashTag(campaignID)
-	keys := []string{
-		budgetCampaignKey(campaignID),
-		campaignSyncKey(campaignID),
-		tag + "budget:inflight:campaign:" + idStr,
-		tag + "budget:quota:" + idStr,
-		tag + "budget:lock:campaign:" + idStr,
-		MigrationFenceRedisKey(campaignID),
-	}
+	keys := budgetReconSnapshotKeys(campaignID)
 	includeQuota := "0"
 	if quotaMode {
 		includeQuota = "1"
@@ -51,6 +43,65 @@ func FetchBudgetReconSnapshot(ctx context.Context, rdb redis.Cmdable, campaignID
 		return BudgetReconSnapshot{}, err
 	}
 	return parseBudgetReconSnapshot(res)
+}
+
+func budgetReconSnapshotKeys(campaignID uuid.UUID) []string {
+	idStr := campaignID.String()
+	tag := campaignHashTag(campaignID)
+	return []string{
+		budgetCampaignKey(campaignID),
+		campaignSyncKey(campaignID),
+		tag + "budget:inflight:campaign:" + idStr,
+		tag + "budget:quota:" + idStr,
+		tag + "budget:lock:campaign:" + idStr,
+		MigrationFenceRedisKey(campaignID),
+	}
+}
+
+type redisPipeliner interface {
+	Pipeline() redis.Pipeliner
+}
+
+// BatchFetchBudgetReconSnapshots pipelines recon snapshot EVAL per campaign on one Redis connection.
+func BatchFetchBudgetReconSnapshots(ctx context.Context, rdb redis.Cmdable, campaignIDs []uuid.UUID, quotaMode bool) (map[uuid.UUID]BudgetReconSnapshot, error) {
+	out := make(map[uuid.UUID]BudgetReconSnapshot, len(campaignIDs))
+	if len(campaignIDs) == 0 {
+		return out, nil
+	}
+	includeQuota := "0"
+	if quotaMode {
+		includeQuota = "1"
+	}
+	pipeRdb, ok := rdb.(redisPipeliner)
+	if !ok {
+		for _, campID := range campaignIDs {
+			snap, err := FetchBudgetReconSnapshot(ctx, rdb, campID, quotaMode)
+			if err != nil {
+				return nil, err
+			}
+			out[campID] = snap
+		}
+		return out, nil
+	}
+	pipe := pipeRdb.Pipeline()
+	cmds := make(map[uuid.UUID]*redis.Cmd, len(campaignIDs))
+	for _, campID := range campaignIDs {
+		cmds[campID] = pipe.Eval(ctx, reconSnapshotScript, budgetReconSnapshotKeys(campID), includeQuota)
+	}
+	if _, err := pipe.Exec(ctx); err != nil && !errors.Is(err, redis.Nil) {
+		return nil, err
+	}
+	for campID, cmd := range cmds {
+		if err := cmd.Err(); err != nil {
+			return nil, err
+		}
+		snap, err := parseBudgetReconSnapshot(cmd.Val())
+		if err != nil {
+			return nil, err
+		}
+		out[campID] = snap
+	}
+	return out, nil
 }
 
 func parseBudgetReconSnapshot(res any) (BudgetReconSnapshot, error) {

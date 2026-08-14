@@ -33,7 +33,7 @@ func TestXDP_dropSynSubnetFlood(t *testing.T) {
 	require.NoError(t, objs.Config.Update(&key, &cfg, ebpf.UpdateAny))
 
 	var last uint32
-	for i := 0; i < 6; i++ {
+	for i := range 6 {
 		src := net.IPv4(203, 0, 113, byte(i))
 		pkt := buildSYNPacket(t, src, net.IPv4(10, 0, 0, 1), trackerPort)
 		last = runXDP(t, objs.XdpEdgeFilter, pkt)
@@ -53,7 +53,7 @@ func TestXDP_subnetCapIndependentPerHost(t *testing.T) {
 
 	for _, host := range []byte{1, 2} {
 		pkt := buildSYNPacket(t, net.IPv4(198, 18, 9, host), net.IPv4(10, 0, 0, 1), trackerPort)
-		for i := 0; i < 3; i++ {
+		for range 3 {
 			runXDP(t, objs.XdpEdgeFilter, pkt)
 		}
 	}

@@ -2,14 +2,32 @@
 target-version = "py312"
 line-length = 120
 
+[tool.ruff.lint]
+extend-select = ["W291", "W293"]
+
 [tool.ruff.lint.isort]
 known-first-party = [
     "ch_client",
     "feature_spec",
+    "fixture_catalog",
     "labeled_dataset",
     "policy_calibrate",
     "policy_config",
+    "policy_config_parity_fixtures",
+    "policy_parity_fixtures",
     "scoring_policy",
     "shadow_precision",
     "traffic_simulator",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.pyright]
+include = ["."]
+pythonVersion = "3.12"
+typeCheckingMode = "basic"
+reportMissingModuleSource = "none"
+venvPath = "."
+venv = ".venv"

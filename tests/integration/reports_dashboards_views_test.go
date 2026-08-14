@@ -54,14 +54,14 @@ func TestIntegration_ReportsDashboardsViews_NoTierGate(t *testing.T) {
 	viewsHandler.Register(mux)
 
 	t.Run("Reports_Placements_AllowedWithoutSubscription", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/v1/reports/placements?customer_id="+customerID.String(), nil)
+		req := httptest.NewRequest("GET", "/api/v1/reports/placements?customer_id="+customerID.String(), http.NoBody)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 		assert.NotEqual(t, http.StatusForbidden, w.Code)
 	})
 
 	t.Run("Reports_Keywords_AllowedWithoutSubscription", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/v1/reports/keywords?customer_id="+customerID.String(), nil)
+		req := httptest.NewRequest("GET", "/api/v1/reports/keywords?customer_id="+customerID.String(), http.NoBody)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 		assert.NotEqual(t, http.StatusForbidden, w.Code)
@@ -80,7 +80,7 @@ func TestIntegration_ReportsDashboardsViews_NoTierGate(t *testing.T) {
 		mux.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusCreated, w.Code)
 
-		req = httptest.NewRequest("GET", "/api/v1/views?customer_id="+customerID.String(), nil)
+		req = httptest.NewRequest("GET", "/api/v1/views?customer_id="+customerID.String(), http.NoBody)
 		w = httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusOK, w.Code)

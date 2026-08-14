@@ -2,6 +2,7 @@ package controlplane
 
 import (
 	"context"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -13,7 +14,7 @@ func TestResolveCampaignsCustomerID_BuyerUsesSessionCustomer(t *testing.T) {
 	t.Parallel()
 	h := &Handler{}
 	custID := uuid.New()
-	req := httptest.NewRequest("GET", "/api/v1/campaigns", nil)
+	req := httptest.NewRequest("GET", "/api/v1/campaigns", http.NoBody)
 	ctx := context.WithValue(req.Context(), UserContextKey, AuthenticatedUser{
 		UserID:     uuid.New(),
 		Role:       RoleBuyer,

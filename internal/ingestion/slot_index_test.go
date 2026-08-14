@@ -9,7 +9,7 @@ import (
 
 func TestCampaignSlotIndex_matchesGetShardSlot(t *testing.T) {
 	sharder := NewStaticSlotSharder(4)
-	for i := 0; i < 256; i++ {
+	for range 256 {
 		id := uuid.New()
 		slot := CampaignSlotIndex(id)
 		require.GreaterOrEqual(t, slot, int16(0))

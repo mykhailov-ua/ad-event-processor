@@ -239,7 +239,7 @@ func TestXDP_dropPerIPSYNFlood(t *testing.T) {
 	pkt := buildSYNPacket(t, src, net.IPv4(10, 0, 0, 1), trackerPort)
 
 	var last uint32
-	for i := 0; i < 70; i++ {
+	for range 70 {
 		last = runXDP(t, objs.XdpEdgeFilter, pkt)
 	}
 	assert.Equal(t, uint32(1), last)
@@ -256,7 +256,7 @@ func TestXDP_dropGlobalSYNFlood(t *testing.T) {
 
 	const limit = 1000
 	var last uint32
-	for i := 0; i < limit+10; i++ {
+	for i := range limit + 10 {
 		src := net.IPv4(203, 0, byte(i>>8), byte(i))
 		pkt := buildSYNPacket(t, src, net.IPv4(10, 0, 0, 1), trackerPort)
 		last = runXDP(t, objs.XdpEdgeFilter, pkt)
@@ -269,7 +269,7 @@ func TestXDP_passACKTraffic(t *testing.T) {
 	src := net.IPv4(198, 51, 100, 99)
 	pkt := buildACKPacket(t, src, net.IPv4(10, 0, 0, 1), trackerPort)
 
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		assert.Equal(t, uint32(2), runXDP(t, objs.XdpEdgeFilter, pkt))
 	}
 }
@@ -280,7 +280,7 @@ func TestXDP_dropPPSFlood(t *testing.T) {
 	pkt := buildPSHACKPacket(t, src, net.IPv4(10, 0, 0, 1), trackerPort)
 
 	var last uint32
-	for i := 0; i < 2100; i++ {
+	for range 2100 {
 		last = runXDP(t, objs.XdpEdgeFilter, pkt)
 	}
 	assert.Equal(t, uint32(1), last)
@@ -293,7 +293,7 @@ func TestXDP_ppsPerIPIndependent(t *testing.T) {
 	pktA := buildPSHACKPacket(t, srcA, net.IPv4(10, 0, 0, 1), trackerPort)
 	pktB := buildPSHACKPacket(t, srcB, net.IPv4(10, 0, 0, 1), trackerPort)
 
-	for i := 0; i < 2100; i++ {
+	for range 2100 {
 		runXDP(t, objs.XdpEdgeFilter, pktA)
 	}
 	assert.Equal(t, uint32(1), runXDP(t, objs.XdpEdgeFilter, pktA))
@@ -306,7 +306,7 @@ func TestXDP_synCountsTowardPPS(t *testing.T) {
 	pkt := buildSYNPacket(t, src, net.IPv4(10, 0, 0, 1), trackerPort)
 
 	var last uint32
-	for i := 0; i < 2100; i++ {
+	for range 2100 {
 		last = runXDP(t, objs.XdpEdgeFilter, pkt)
 	}
 	assert.Equal(t, uint32(1), last)
@@ -335,7 +335,7 @@ func TestXDP_allowBypassPPS(t *testing.T) {
 	src := net.IPv4(198, 18, 5, 42)
 	pkt := buildPSHACKPacket(t, src, net.IPv4(10, 0, 0, 1), trackerPort)
 
-	for i := 0; i < 2100; i++ {
+	for range 2100 {
 		assert.Equal(t, uint32(2), runXDP(t, objs.XdpEdgeFilter, pkt))
 	}
 }
@@ -430,7 +430,7 @@ func TestXDP_dropRSTFlood(t *testing.T) {
 	pkt := buildRSTPacket(t, src, net.IPv4(10, 0, 0, 1), trackerPort)
 
 	var last uint32
-	for i := 0; i < 70; i++ {
+	for range 70 {
 		last = runXDP(t, objs.XdpEdgeFilter, pkt)
 	}
 	assert.Equal(t, uint32(1), last)
@@ -447,7 +447,7 @@ func TestXDP_configMapOverridesSYNLimit(t *testing.T) {
 	pkt := buildSYNPacket(t, src, net.IPv4(10, 0, 0, 1), trackerPort)
 
 	var last uint32
-	for i := 0; i < 6; i++ {
+	for range 6 {
 		last = runXDP(t, objs.XdpEdgeFilter, pkt)
 	}
 	assert.Equal(t, uint32(1), last)

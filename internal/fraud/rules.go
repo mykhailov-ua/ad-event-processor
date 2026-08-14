@@ -94,7 +94,7 @@ GROUP BY ip_hash`
 	if err != nil {
 		return nil, fmt.Errorf("campaign ctr spike query: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []SuspiciousIP
 	for rows.Next() {
@@ -151,7 +151,7 @@ HAVING event_count >= ?`
 	if err != nil {
 		return nil, fmt.Errorf("datacenter asn query: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []SuspiciousIP
 	for rows.Next() {

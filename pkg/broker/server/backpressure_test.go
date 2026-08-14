@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net"
 	"os"
 	"testing"
@@ -27,7 +28,7 @@ func TestMaxConnections_RejectsExcessClients(t *testing.T) {
 	addr := s.Addr()
 
 	hold := make([]net.Conn, 0, 2)
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		c, err := net.DialTimeout("tcp", addr, time.Second)
 		if err != nil {
 			t.Fatalf("dial %d: %v", i, err)
@@ -82,7 +83,7 @@ func TestAdmissionShedding_ProduceOverloaded(t *testing.T) {
 		}
 	}()
 
-	for i := 0; i < 9; i++ {
+	for i := range 9 {
 		cli := client.NewClient(s.Addr(), 2*time.Second)
 		if err := cli.Connect(); err != nil {
 			t.Fatalf("connect %d: %v", i, err)
@@ -98,7 +99,7 @@ func TestAdmissionShedding_ProduceOverloaded(t *testing.T) {
 		t.Fatalf("expected admission shedding at %d/10 connections", s.connCount.Load())
 	}
 
-	_, err = clients[0].Produce("overload-topic", 0, []byte("x"))
+	_, err = clients[0].Produce(context.Background(), "overload-topic", 0, []byte("x"))
 	if err == nil {
 		t.Fatal("expected produce to fail with overloaded status")
 	}
@@ -126,7 +127,7 @@ func TestFault_ConnectionLimit_HealthyClientUnaffected(t *testing.T) {
 	}
 	defer cli.Close()
 
-	if _, err := cli.Produce("fault-conn-topic", 0, []byte("ok")); err != nil {
+	if _, err := cli.Produce(context.Background(), "fault-conn-topic", 0, []byte("ok")); err != nil {
 		t.Fatal(err)
 	}
 

@@ -267,7 +267,7 @@ func (r *probeRun) drainRingbuf(ctx context.Context, m *ebpf.Map) {
 		slog.Warn("ringbuf reader", "error", err)
 		return
 	}
-	defer rd.Close()
+	defer func() { _ = rd.Close() }()
 	drainRingbufRecords(ctx, rd, r.session.Dir)
 }
 

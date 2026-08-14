@@ -85,7 +85,7 @@ func (lgbmScorer *LGBMScorer) ScoreBatch(ctx context.Context, rows []FeatureRow)
 	for i, row := range rows {
 		row.ToVectorInto(vec[:])
 		offset := i * nCols
-		for j := 0; j < nCols; j++ {
+		for j := range nCols {
 			if j < featureVectorDims {
 				flat[offset+j] = vec[j]
 			} else {

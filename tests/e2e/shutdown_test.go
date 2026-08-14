@@ -91,7 +91,7 @@ func TestE2E_GracefulShutdown_NoDataLoss(t *testing.T) {
 	var acceptedCount int64
 	var mu sync.Mutex
 
-	for i := 0; i < eventCount; i++ {
+	for i := range eventCount {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()

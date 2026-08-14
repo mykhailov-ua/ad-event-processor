@@ -254,13 +254,15 @@ Do **not** set `offload` on appliance pilot SKU; use `generic` unless Enterprise
 
 ### Verification (Tier D lab)
 
+Perf: `BenchmarkXDP_*` = prog test only (harness `xdp_prog_test`); kernel proof = `edge-xdp-fault` / `scripts/test/xdp_resilience_drill.sh` — see [EDGE_XDP.md](../../docs/enterprise/EDGE_XDP.md) Tier D lab verification.
+
 ```bash
 bash scripts/ci/compliance.sh
 go test ./internal/edge/bpf/... -count=1
 bash scripts/test/edge_xdp_bench_gate.sh   # skips without BTF
 ```
 
-Compliance and `BenchmarkXDP_*` baselines use **generic** program tests (`internal/edge/bpf/bench_test.go`) — unchanged by offload path. See [BENCHMARKS.md](../../docs/BENCHMARKS.md) §A.10.
+Compliance and `BenchmarkXDP_*` baselines use **generic** userspace program tests (`internal/edge/bpf/bench_test.go`, harness `xdp_prog_test`) — not kernel RX; unchanged by offload path. See [BENCHMARKS.md](../../docs/BENCHMARKS.md) §A.10.
 
 ### Known detection limits (§2.2.10)
 

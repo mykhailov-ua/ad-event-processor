@@ -76,21 +76,21 @@ func TestLatencyRing_concurrentRecordFlush(t *testing.T) {
 	obs := &sumObserver{}
 	var wg sync.WaitGroup
 
-	for g := 0; g < 8; g++ {
+	for range 8 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			start := monotonicNano()
-			for i := 0; i < 2000; i++ {
+			for range 2000 {
 				ring.RecordMono(start)
 			}
 		}()
 	}
-	for g := 0; g < 2; g++ {
+	for range 2 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for i := 0; i < 200; i++ {
+			for range 200 {
 				ring.FlushTo(obs)
 			}
 		}()
@@ -106,7 +106,7 @@ func TestAdsPacketHandler_recordMetrics_countersAndRing(t *testing.T) {
 	before := testutil.ToFloat64(h.trackStatusCounters[202])
 	start := monotonicNano()
 	const n = 32
-	for i := 0; i < n; i++ {
+	for range n {
 		h.recordMetrics(start, 202)
 	}
 	after := testutil.ToFloat64(h.trackStatusCounters[202])

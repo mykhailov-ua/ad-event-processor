@@ -77,7 +77,7 @@ func Probe(ctx context.Context, hostname, role string) Result {
 		res.SSLStatus = SSLMissing
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodHead, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, url, http.NoBody)
 	if err != nil {
 		res.HealthStatus = HealthDown
 		res.ProbeDetail = err.Error()
@@ -111,7 +111,7 @@ func Probe(ctx context.Context, hostname, role string) Result {
 		}
 		return res
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	res.HTTPStatus = resp.StatusCode
 
 	res.HealthStatus, res.ProbeDetail = classifyHTTP(resp.StatusCode, latency, res.SSLStatus)
@@ -138,7 +138,7 @@ func probeTLS(ctx context.Context, host string) (tlsProbeResult, error) {
 	if err != nil {
 		return tlsProbeResult{}, err
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	if deadline, ok := ctx.Deadline(); ok {
 		_ = conn.SetDeadline(deadline)

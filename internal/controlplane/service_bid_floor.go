@@ -116,7 +116,7 @@ func (s *Service) queryClickHouseDealWinRates(ctx context.Context, lookbackHours
 	if err != nil {
 		return nil, fmt.Errorf("clickhouse deal win rates: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	out := make(map[string]DealWinLossRate)
 	for rows.Next() {
@@ -154,7 +154,7 @@ func (s *Service) queryClickHousePlacementFloorBuckets(ctx context.Context, look
 	if err != nil {
 		return nil, fmt.Errorf("clickhouse placement floor buckets: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []PlacementFloorBucket
 	for rows.Next() {
@@ -243,7 +243,7 @@ func (s *Service) RunFloorOptimizer(ctx context.Context) (int, error) {
 	}
 
 	br := s.GetPool().SendBatch(ctx, batch)
-	defer br.Close()
+	defer func() { _ = br.Close() }()
 	for i := 0; i < batch.Len(); i++ {
 		if _, err := br.Exec(); err != nil {
 			return i, fmt.Errorf("upsert floor suggestion batch item %d: %w", i, err)

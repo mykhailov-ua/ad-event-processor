@@ -43,7 +43,7 @@ func TestLedgerBatch_ConsolidatesDeltas(t *testing.T) {
 	syncKey := "budget:sync:campaign:" + campaignID.String()
 	budgetKey := "budget:campaign:" + campaignID.String()
 
-	for i := 0; i < deltaCount; i++ {
+	for range deltaCount {
 		require.NoError(t, infra.Redis.IncrBy(ctx, syncKey, deltaMicro).Err())
 		totalMicro += deltaMicro
 	}
@@ -132,7 +132,7 @@ func TestLedgerBatch_MultiCampaignSingleTxn(t *testing.T) {
 	const deltaMicro = int64(2_500)
 	campaignIDs := make([]uuid.UUID, campaignCount)
 
-	for i := 0; i < campaignCount; i++ {
+	for i := range campaignCount {
 		campaignIDs[i] = uuid.New()
 		_, err = infra.Pool.Exec(ctx,
 			"INSERT INTO campaigns (id, name, status, customer_id, budget_limit) VALUES ($1, $2, $3, $4, $5)",
@@ -182,7 +182,7 @@ func TestLedgerBatch_AuditSampling(t *testing.T) {
 	campaignRepo.ConfigureAuditLedgerFlush(1)
 
 	const flushCount = 64
-	for i := 0; i < flushCount; i++ {
+	for range flushCount {
 		campaignID := uuid.New()
 		_, err = infra.Pool.Exec(ctx,
 			"INSERT INTO campaigns (id, name, status, customer_id, budget_limit) VALUES ($1, $2, $3, $4, $5)",

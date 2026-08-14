@@ -1,7 +1,9 @@
 """Grid search for policy thresholds; persists best config to metadata.json."""
+
 from __future__ import annotations
 
 import os
+from typing import Any
 
 import numpy as np
 
@@ -60,40 +62,38 @@ def calibrate_policy(
     *,
     max_fpr: float = 0.01,
     max_block_fpr: float = 0.005,
-) -> tuple[PolicyConfig, dict[str, object]]:
+) -> tuple[PolicyConfig, dict[str, Any]]:
     """Select thresholds under FPR caps; maximize recall with proxy cohort weight."""
     base = default_policy_config()
     y_true = np.asarray(labels, dtype=np.int32)
-    probs_f = np.asarray(probs, dtype=np.float64)
+    probability_vector = np.asarray(probs, dtype=np.float64)
 
-    proxy_sig, structural_sig = precompute_row_signals(rows, base)
-    proxy_mask = np.fromiter(
-        (a == "residential_proxy_bot" for a in archetypes), dtype=bool, count=len(archetypes)
-    )
+    proxy_signals, structural_signals = precompute_row_signals(rows, base)
+    proxy_mask = np.fromiter((a == "residential_proxy_bot" for a in archetypes), dtype=bool, count=len(archetypes))
     grey_mask = np.fromiter((a == "grey_noise" for a in archetypes), dtype=bool, count=len(archetypes))
-    proxy_n = int(np.sum(proxy_mask))
-    grey_n = int(np.sum(grey_mask))
+    proxy_count = int(np.sum(proxy_mask))
+    grey_noise_count = int(np.sum(grey_mask))
 
     block_prob = base.block_probability()
     ml_thresholds, proxy_floors, proxy_max_ml, fp_caps = _calibration_grid()
 
-    best_cfg = base
+    best_policy_config = base
     best_score = -1.0
     best_metrics: dict[str, float] = {}
     best_proxy_recall = 0.0
     best_grey_fpr = 1.0
 
-    for ml_th in ml_thresholds:
+    for ml_threshold_candidate in ml_thresholds:
         for floor in proxy_floors:
             for max_ml in proxy_max_ml:
-                for fp_cap in fp_caps:
+                for fp_guard_cap_candidate in fp_caps:
                     scores = policy_scores_vector(
-                        probs_f,
-                        proxy_sig,
-                        structural_sig,
+                        probability_vector,
+                        proxy_signals,
+                        structural_signals,
                         float(floor),
                         float(max_ml),
-                        float(fp_cap),
+                        float(fp_guard_cap_candidate),
                         block_prob,
                     )
                     suspect_pred = scores_suspect_positive(scores, base.tier_pass).astype(np.int32)
@@ -107,28 +107,28 @@ def calibrate_policy(
                     if block_metrics["false_positive_rate"] > max_block_fpr:
                         continue
 
-                    if proxy_n > 0:
-                        proxy_recall = float(np.sum(suspect_pred[proxy_mask]) / proxy_n)
+                    if proxy_count > 0:
+                        proxy_recall = float(np.sum(suspect_pred[proxy_mask]) / proxy_count)
                     else:
                         proxy_recall = 0.0
 
-                    if grey_n > 0:
-                        grey_fpr = float(np.sum(suspect_pred[grey_mask]) / grey_n)
+                    if grey_noise_count > 0:
+                        grey_fpr = float(np.sum(suspect_pred[grey_mask]) / grey_noise_count)
                     else:
                         grey_fpr = 0.0
 
                     objective = suspect_metrics["recall"] * 0.6 + proxy_recall * 0.3 - grey_fpr * 0.1
                     if objective > best_score:
                         best_score = objective
-                        best_cfg = PolicyConfig(
-                            ml_threshold=float(ml_th),
+                        best_policy_config = PolicyConfig(
+                            ml_threshold=float(ml_threshold_candidate),
                             residential_proxy_floor=float(floor),
                             residential_proxy_max_ml=float(max_ml),
-                            fp_guard_cap=float(fp_cap),
+                            fp_guard_cap=float(fp_guard_cap_candidate),
                         )
                         best_metrics = {
-                            **{f"suspect_{k}": v for k, v in suspect_metrics.items()},
-                            **{f"block_{k}": v for k, v in block_metrics.items()},
+                            **{f"suspect_{key}": value for key, value in suspect_metrics.items()},
+                            **{f"block_{key}": value for key, value in block_metrics.items()},
                         }
                         best_proxy_recall = proxy_recall
                         best_grey_fpr = grey_fpr
@@ -140,6 +140,6 @@ def calibrate_policy(
         "proxy_cohort_recall": best_proxy_recall,
         "grey_noise_fpr": best_grey_fpr,
         "metrics": best_metrics,
-        "policy": best_cfg.to_dict(),
+        "policy": best_policy_config.to_dict(),
     }
-    return best_cfg, report
+    return best_policy_config, report

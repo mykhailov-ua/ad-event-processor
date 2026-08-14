@@ -71,7 +71,7 @@ func TestPostbacksAdminAPIIntegration(t *testing.T) {
 	require.Equal(t, "facebook", configEntry.Provider)
 	require.Equal(t, "https://mock.com", configEntry.UrlTemplate)
 
-	req = httptest.NewRequest("GET", "/api/v1/postbacks/config", nil)
+	req = httptest.NewRequest("GET", "/api/v1/postbacks/config", http.NoBody)
 	rec = httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -94,7 +94,7 @@ func TestPostbacksAdminAPIIntegration(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	req = httptest.NewRequest("GET", "/api/v1/postbacks/dlq", nil)
+	req = httptest.NewRequest("GET", "/api/v1/postbacks/dlq", http.NoBody)
 	rec = httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -107,7 +107,7 @@ func TestPostbacksAdminAPIIntegration(t *testing.T) {
 	require.Equal(t, "FAILED", dlqs[0].Status)
 
 	dlqIDStr := strconv.FormatInt(dlqs[0].ID, 10)
-	req = httptest.NewRequest("POST", "/api/v1/postbacks/dlq/"+dlqIDStr+"/retry", nil)
+	req = httptest.NewRequest("POST", "/api/v1/postbacks/dlq/"+dlqIDStr+"/retry", http.NoBody)
 	rec = httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -116,7 +116,10 @@ func TestPostbacksAdminAPIIntegration(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "RETRIED", dlqUpdated.Status)
 
-	outboxEvents, err := q.GetPendingPostbackEventsForUpdate(ctx, 10)
+	outboxEvents, err := q.GetPendingPostbackEventsForUpdate(ctx, db.GetPendingPostbackEventsForUpdateParams{
+		Limit:   10,
+		Column2: 120,
+	})
 	require.NoError(t, err)
 	require.Len(t, outboxEvents, 1)
 	require.Equal(t, "SEND_POSTBACK", outboxEvents[0].EventType)

@@ -156,7 +156,7 @@ func validateBridgeToken(b []byte) bool {
 		return false
 	}
 	_ = b[bn-1]
-	for i := 0; i < bn; i++ {
+	for i := range bn {
 		c := b[i]
 		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-') {
 			return false
@@ -183,7 +183,7 @@ func parseTgQuery(path []byte, scratch []byte, out *tgQueryParsed) []byte {
 	if pn > 0 {
 		_ = path[pn-1]
 	}
-	for i := 0; i < pn; i++ {
+	for i := range pn {
 		if path[i] == '?' {
 			qIdx = i
 			break
@@ -215,7 +215,7 @@ func parseTgQuery(path []byte, scratch []byte, out *tgQueryParsed) []byte {
 			continue
 		}
 		eq := -1
-		for i := 0; i < len(seg); i++ {
+		for i := range seg {
 			if seg[i] == '=' {
 				eq = i
 				break

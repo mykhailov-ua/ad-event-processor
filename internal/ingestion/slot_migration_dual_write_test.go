@@ -12,7 +12,7 @@ import (
 
 func TestSlotMigrationDualWrite_CatchUpAndLag(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	src, cleanupSrc := database.SetupTestRedis(t)
@@ -54,7 +54,7 @@ func TestSlotMigrationDualWrite_CatchUpAndLag(t *testing.T) {
 
 func TestVerifyBudgetInvariant_afterDualWriteCatchUp(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)

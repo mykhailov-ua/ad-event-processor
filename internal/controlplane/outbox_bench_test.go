@@ -32,7 +32,7 @@ func TestOutboxPerformanceMetrics(t *testing.T) {
 	cfg := &config.Config{
 		CampaignUpdateChannel: "campaigns:update-test",
 	}
-	svc := NewService(pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), cfg)
 	svc.Close()
 
 	ctx := context.Background()
@@ -113,7 +113,7 @@ func TestOutboxPerformanceMetrics(t *testing.T) {
 func seedEvents(t *testing.T, pool *pgxpool.Pool, count int) {
 	ctx := context.Background()
 	payloads := make([][]byte, count)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		payload := CampaignPayload{
 			CampaignID:  uuid.New().String(),
 			BudgetLimit: 100_500_000,
@@ -176,7 +176,7 @@ func BenchmarkProcessOutbox(b *testing.B) {
 	cfg := &config.Config{
 		CampaignUpdateChannel: "campaigns:update-bench",
 	}
-	svc := NewService(pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), cfg)
 	defer svc.Close()
 
 	worker := NewOutboxWorker(svc)

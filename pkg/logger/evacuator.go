@@ -75,19 +75,19 @@ func (l *Logger) compressSegment(srcPath, dstPath string) error {
 	if err != nil {
 		return err
 	}
-	defer src.Close()
+	defer func() { _ = src.Close() }()
 
 	dst, err := os.OpenFile(dstPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o666)
 	if err != nil {
 		return err
 	}
-	defer dst.Close()
+	defer func() { _ = dst.Close() }()
 
 	writer, err := zstd.NewWriter(dst, zstd.WithEncoderConcurrency(1))
 	if err != nil {
 		return err
 	}
-	defer writer.Close()
+	defer func() { _ = writer.Close() }()
 
 	_, err = io.Copy(writer, src)
 	return err
@@ -98,7 +98,7 @@ func calculateMD5(filePath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	hash := md5.New()
 	if _, err := io.Copy(hash, file); err != nil {

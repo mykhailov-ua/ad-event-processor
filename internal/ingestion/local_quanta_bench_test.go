@@ -32,7 +32,7 @@ func TestLocalQuantaSpend_1M_under50ms(t *testing.T) {
 		amount = int64(10_000)
 	)
 	start := monotonicNano()
-	for i := 0; i < iters; i++ {
+	for range iters {
 		if !ledger.TrySpendLocal(id, amount) {
 			t.Fatal("unexpected exhaust")
 		}

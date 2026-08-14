@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -35,7 +36,7 @@ func ReadBudgetInvariant(ctx context.Context, pool *pgxpool.Pool, rdb redis.Cmda
 	syncKey := campaignSyncKey(campaignID)
 
 	syncDelta, err := rdb.Get(ctx, syncKey).Int64()
-	if err == redis.Nil {
+	if errors.Is(err, redis.Nil) {
 		syncDelta = 0
 	} else if err != nil {
 		return snap, fmt.Errorf("read %s: %w", syncKey, err)
@@ -43,7 +44,7 @@ func ReadBudgetInvariant(ctx context.Context, pool *pgxpool.Pool, rdb redis.Cmda
 	snap.SyncDelta = syncDelta
 
 	remaining, err := rdb.Get(ctx, budgetKey).Int64()
-	if err == redis.Nil {
+	if errors.Is(err, redis.Nil) {
 		remaining = snap.BudgetLimit - snap.PGCurrentSpend - snap.SyncDelta
 		if remaining < 0 {
 			remaining = 0

@@ -343,7 +343,7 @@ RETURNING *;
 
 -- name: GetAllActiveCampaignsWithStats :many
 SELECT 
-    c.id, c.name, c.status, c.budget_limit, c.created_at, c.updated_at, c.customer_id, c.current_spend, c.deleted_at, c.pacing_mode, c.daily_budget, c.timezone, c.freq_limit, c.freq_window, c.target_countries, c.brand_id, c.brand_fcap_key,
+    c.id, c.name, c.status, c.budget_limit, c.created_at, c.updated_at, c.customer_id, c.current_spend, c.deleted_at, c.pacing_mode, c.daily_budget, c.timezone, c.freq_limit, c.freq_window, c.target_countries, c.brand_id, c.brand_fcap_key, c.daypart_hours,
     COALESCE(SUM(s.impressions_count), 0)::bigint AS total_impressions,
     COALESCE(SUM(s.clicks_count), 0)::bigint AS total_clicks,
     COALESCE(SUM(s.conversions_count), 0)::bigint AS total_conversions

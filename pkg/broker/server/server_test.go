@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -52,9 +53,9 @@ func TestBrokerIntegration(t *testing.T) {
 	msgCount := 50
 	offsets := make([]uint64, msgCount)
 
-	for i := 0; i < msgCount; i++ {
+	for i := range msgCount {
 		payload := []byte(fmt.Sprintf("msg-payload-%d", i))
-		offset, err := cli.Produce(topic, 0, payload)
+		offset, err := cli.Produce(context.Background(), topic, 0, payload)
 		if err != nil {
 			t.Fatalf("failed to produce message %d: %v", i, err)
 		}
@@ -64,7 +65,7 @@ func TestBrokerIntegration(t *testing.T) {
 		}
 	}
 
-	iter, err := cli.Fetch(topic, 0, 0, 1024*1024)
+	iter, err := cli.Fetch(context.Background(), topic, 0, 0, 1024*1024)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +85,7 @@ func TestBrokerIntegration(t *testing.T) {
 		t.Fatalf("expected to fetch %d messages, got %d", msgCount, i)
 	}
 
-	midIter, err := cli.Fetch(topic, 0, 25, 1024*1024)
+	midIter, err := cli.Fetch(context.Background(), topic, 0, 25, 1024*1024)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +114,7 @@ func TestClient_ReconnectAfterClose(t *testing.T) {
 	if err := cli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := cli.Produce("tracker-logs", 0, []byte("a")); err != nil {
+	if _, err := cli.Produce(context.Background(), "tracker-logs", 0, []byte("a")); err != nil {
 		t.Fatal(err)
 	}
 	if err := cli.Close(); err != nil {
@@ -122,7 +123,7 @@ func TestClient_ReconnectAfterClose(t *testing.T) {
 	if err := cli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := cli.Produce("tracker-logs", 0, []byte("b")); err != nil {
+	if _, err := cli.Produce(context.Background(), "tracker-logs", 0, []byte("b")); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -147,9 +148,9 @@ func TestBrokerCrashRecovery(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			payload := []byte(fmt.Sprintf("rec-msg-%d", i))
-			_, err := cli.Produce(topic, 0, payload)
+			_, err := cli.Produce(context.Background(), topic, 0, payload)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -172,7 +173,7 @@ func TestBrokerCrashRecovery(t *testing.T) {
 		}
 		defer cli.Close()
 
-		iter, err := cli.Fetch(topic, 0, 0, 1024*1024)
+		iter, err := cli.Fetch(context.Background(), topic, 0, 0, 1024*1024)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -207,7 +208,7 @@ func TestTornWrite_RecoverTruncatesPartialRecord(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		payload := []byte(fmt.Sprintf("clean-msg-%d", i))
 		if _, err := pl.Append(payload); err != nil {
 			t.Fatal(err)
@@ -325,13 +326,13 @@ func TestSlowloris_DoesNotBlockOtherClients(t *testing.T) {
 	defer cli.Close()
 
 	const msgCount = 100
-	for i := 0; i < msgCount; i++ {
-		if _, err := cli.Produce("slowloris-topic", 0, []byte(fmt.Sprintf("msg-%d", i))); err != nil {
+	for i := range msgCount {
+		if _, err := cli.Produce(context.Background(), "slowloris-topic", 0, []byte(fmt.Sprintf("msg-%d", i))); err != nil {
 			t.Fatalf("produce failed while slow client connected: %v", err)
 		}
 	}
 
-	iter, err := cli.Fetch("slowloris-topic", 0, 0, 1024*1024)
+	iter, err := cli.Fetch(context.Background(), "slowloris-topic", 0, 0, 1024*1024)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -394,7 +395,7 @@ func TestFDExhaustion_ServerHandlesGracefully(t *testing.T) {
 	cli := client.NewClient(addr, 500*time.Millisecond)
 	err = cli.Connect()
 	if err == nil {
-		_, _ = cli.Produce("fd-test", 0, []byte("probe"))
+		_, _ = cli.Produce(context.Background(), "fd-test", 0, []byte("probe"))
 		_ = cli.Close()
 	} else {
 		t.Logf("connect correctly failed under FD pressure: %v", err)
@@ -410,7 +411,7 @@ func TestFDExhaustion_ServerHandlesGracefully(t *testing.T) {
 	}
 	defer cli2.Close()
 
-	if _, err := cli2.Produce("fd-test", 0, []byte("recovery-msg")); err != nil {
+	if _, err := cli2.Produce(context.Background(), "fd-test", 0, []byte("recovery-msg")); err != nil {
 		t.Errorf("produce failed after FD recovery: %v", err)
 	}
 }
@@ -441,8 +442,8 @@ func TestSplitBrain_IsolatedLogsNoCorruption(t *testing.T) {
 	}
 
 	topic := "split-topic"
-	for i := 0; i < 10; i++ {
-		if _, err := cliA.Produce(topic, 0, []byte(fmt.Sprintf("A-msg-%d", i))); err != nil {
+	for i := range 10 {
+		if _, err := cliA.Produce(context.Background(), topic, 0, []byte(fmt.Sprintf("A-msg-%d", i))); err != nil {
 			_ = cliA.Close()
 			sA.Stop()
 			t.Fatal(err)
@@ -464,13 +465,13 @@ func TestSplitBrain_IsolatedLogsNoCorruption(t *testing.T) {
 	}
 	defer cliB.Close()
 
-	for i := 0; i < 5; i++ {
-		if _, err := cliB.Produce(topic, 0, []byte(fmt.Sprintf("B-msg-%d", i))); err != nil {
+	for i := range 5 {
+		if _, err := cliB.Produce(context.Background(), topic, 0, []byte(fmt.Sprintf("B-msg-%d", i))); err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	iterB, err := cliB.Fetch(topic, 0, 0, 1024*1024)
+	iterB, err := cliB.Fetch(context.Background(), topic, 0, 0, 1024*1024)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -501,7 +502,7 @@ func TestSplitBrain_IsolatedLogsNoCorruption(t *testing.T) {
 	}
 	defer cliA2.Close()
 
-	iterA, err := cliA2.Fetch(topic, 0, 0, 1024*1024)
+	iterA, err := cliA2.Fetch(context.Background(), topic, 0, 0, 1024*1024)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -539,7 +540,7 @@ func TestConcurrentProduceFetch_NoRace(t *testing.T) {
 	var wg sync.WaitGroup
 	var produceErrors atomic.Int64
 
-	for p := 0; p < producers; p++ {
+	for p := range producers {
 		wg.Add(1)
 		go func(pid int) {
 			defer wg.Done()
@@ -549,9 +550,9 @@ func TestConcurrentProduceFetch_NoRace(t *testing.T) {
 				return
 			}
 			defer cli.Close()
-			for i := 0; i < messagesPerProducer; i++ {
+			for i := range messagesPerProducer {
 				payload := []byte(fmt.Sprintf("p%d-m%d", pid, i))
-				if _, err := cli.Produce(topic, 0, payload); err != nil {
+				if _, err := cli.Produce(context.Background(), topic, 0, payload); err != nil {
 					produceErrors.Add(1)
 					return
 				}
@@ -560,7 +561,7 @@ func TestConcurrentProduceFetch_NoRace(t *testing.T) {
 	}
 
 	var fetchErrors atomic.Int64
-	for c := 0; c < consumers; c++ {
+	for range consumers {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -571,7 +572,7 @@ func TestConcurrentProduceFetch_NoRace(t *testing.T) {
 			}
 			defer cli.Close()
 			for offset := uint64(0); offset < 50; offset += 10 {
-				_, err := cli.Fetch(topic, 0, offset, 4096)
+				_, err := cli.Fetch(context.Background(), topic, 0, offset, 4096)
 				if err != nil {
 					continue
 				}
@@ -613,8 +614,8 @@ func TestSegmentRoll_CrossSegmentFetch(t *testing.T) {
 	}
 
 	const total = 60
-	for i := 0; i < total; i++ {
-		if _, err := cli.Produce(topic, 0, payload); err != nil {
+	for i := range total {
+		if _, err := cli.Produce(context.Background(), topic, 0, payload); err != nil {
 			t.Fatalf("produce %d failed: %v", i, err)
 		}
 	}
@@ -634,7 +635,7 @@ func TestSegmentRoll_CrossSegmentFetch(t *testing.T) {
 		t.Errorf("expected multiple segments after roll, got %d log files", logFiles)
 	}
 
-	iter, err := cli.Fetch(topic, 0, 0, 10*512)
+	iter, err := cli.Fetch(context.Background(), topic, 0, 0, 10*512)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -720,7 +721,7 @@ func TestMalformedFrames_ServerDoesNotPanic(t *testing.T) {
 	}
 	defer cli.Close()
 
-	if _, err := cli.Produce("survival-topic", 0, []byte("alive")); err != nil {
+	if _, err := cli.Produce(context.Background(), "survival-topic", 0, []byte("alive")); err != nil {
 		t.Error("server did not survive malformed frame attacks:", err)
 	}
 }
@@ -746,8 +747,8 @@ func TestSegmentRoll_FetchDuringRoll_NoUseAfterFree(t *testing.T) {
 		t.Fatal(err)
 	}
 	seedPayload := make([]byte, 200)
-	for i := 0; i < 20; i++ {
-		if _, err := seeder.Produce(topic, 0, seedPayload); err != nil {
+	for i := range 20 {
+		if _, err := seeder.Produce(context.Background(), topic, 0, seedPayload); err != nil {
 			t.Fatalf("seed produce %d: %v", i, err)
 		}
 	}
@@ -756,7 +757,7 @@ func TestSegmentRoll_FetchDuringRoll_NoUseAfterFree(t *testing.T) {
 	var wg sync.WaitGroup
 	var produceErr, fetchErr atomic.Int64
 
-	for w := 0; w < 4; w++ {
+	for range 4 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -767,8 +768,8 @@ func TestSegmentRoll_FetchDuringRoll_NoUseAfterFree(t *testing.T) {
 			}
 			defer cli.Close()
 			payload := make([]byte, 200)
-			for i := 0; i < 50; i++ {
-				if _, err := cli.Produce(topic, 0, payload); err != nil {
+			for range 50 {
+				if _, err := cli.Produce(context.Background(), topic, 0, payload); err != nil {
 					produceErr.Add(1)
 					return
 				}
@@ -776,7 +777,7 @@ func TestSegmentRoll_FetchDuringRoll_NoUseAfterFree(t *testing.T) {
 		}()
 	}
 
-	for r := 0; r < 4; r++ {
+	for range 4 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -786,8 +787,8 @@ func TestSegmentRoll_FetchDuringRoll_NoUseAfterFree(t *testing.T) {
 				return
 			}
 			defer cli.Close()
-			for i := 0; i < 50; i++ {
-				_, err := cli.Fetch(topic, 0, uint64(i), 2048)
+			for i := range 50 {
+				_, err := cli.Fetch(context.Background(), topic, 0, uint64(i), 2048)
 				if err != nil {
 					continue
 				}
@@ -818,7 +819,7 @@ func TestConnectionCounter_TracksClients(t *testing.T) {
 	const numConns = 20
 	clients := make([]*client.Client, numConns)
 
-	for i := 0; i < numConns; i++ {
+	for i := range numConns {
 		c := client.NewClient(s.Addr(), 2*time.Second)
 		if err := c.Connect(); err != nil {
 			t.Fatalf("connect[%d]: %v", i, err)
@@ -864,7 +865,7 @@ func TestReadRawMessages_SliceValidAfterRoll(t *testing.T) {
 		payload[i] = byte(i)
 	}
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if _, err := pl.Append(payload); err != nil {
 			t.Fatalf("append %d: %v", i, err)
 		}
@@ -881,7 +882,7 @@ func TestReadRawMessages_SliceValidAfterRoll(t *testing.T) {
 		defer log.FetchBufPool.Put(bufPtr)
 	}
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		_, _ = pl.Append(payload)
 	}
 
@@ -931,7 +932,7 @@ func TestHealthz_NoSyscallUnderLoad(t *testing.T) {
 
 	const iterations = 200
 	start := time.Now()
-	for i := 0; i < iterations; i++ {
+	for i := range iterations {
 		if code := httpGet(t, healthURL); code != http.StatusOK {
 			t.Fatalf("iteration %d: expected 200, got %d", i, code)
 		}
@@ -970,7 +971,7 @@ func TestConcurrentRollFetchHealth_NoDataRace(t *testing.T) {
 	var wg sync.WaitGroup
 	var errs atomic.Int64
 
-	for w := 0; w < 4; w++ {
+	for range 4 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -981,8 +982,8 @@ func TestConcurrentRollFetchHealth_NoDataRace(t *testing.T) {
 			}
 			defer cli.Close()
 			payload := make([]byte, 400)
-			for i := 0; i < 100; i++ {
-				if _, err := cli.Produce(topic, 0, payload); err != nil {
+			for range 100 {
+				if _, err := cli.Produce(context.Background(), topic, 0, payload); err != nil {
 					errs.Add(1)
 					return
 				}
@@ -990,7 +991,7 @@ func TestConcurrentRollFetchHealth_NoDataRace(t *testing.T) {
 		}()
 	}
 
-	for r := 0; r < 4; r++ {
+	for range 4 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -1000,8 +1001,8 @@ func TestConcurrentRollFetchHealth_NoDataRace(t *testing.T) {
 				return
 			}
 			defer cli.Close()
-			for i := 0; i < 100; i++ {
-				_, _ = cli.Fetch(topic, 0, 0, 4096)
+			for range 100 {
+				_, _ = cli.Fetch(context.Background(), topic, 0, 0, 4096)
 			}
 		}()
 	}
@@ -1009,7 +1010,7 @@ func TestConcurrentRollFetchHealth_NoDataRace(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		for i := 0; i < 50; i++ {
+		for range 50 {
 			code := httpGet(t, healthURL)
 			if code != http.StatusOK && code != http.StatusServiceUnavailable {
 				errs.Add(1)
@@ -1191,25 +1192,25 @@ func TestBrokerE2EAllocs(t *testing.T) {
 
 	topic := "alloc-topic"
 	payload := []byte("hello")
-	if _, err := cli.Produce(topic, 0, payload); err != nil {
+	if _, err := cli.Produce(context.Background(), topic, 0, payload); err != nil {
 		t.Fatal(err)
 	}
 
-	for i := 0; i < 200; i++ {
-		if _, err := cli.Produce(topic, 0, payload); err != nil {
+	for range 200 {
+		if _, err := cli.Produce(context.Background(), topic, 0, payload); err != nil {
 			t.Fatal(err)
 		}
 	}
 
 	produceAllocs := testing.AllocsPerRun(1000, func() {
-		_, _ = cli.Produce(topic, 0, payload)
+		_, _ = cli.Produce(context.Background(), topic, 0, payload)
 	})
 	if produceAllocs > 1 {
 		t.Fatalf("Produce: got %v allocs/op, want <=1", produceAllocs)
 	}
 
 	fetchAllocs := testing.AllocsPerRun(1000, func() {
-		iter, err := cli.Fetch(topic, 0, 0, 1024)
+		iter, err := cli.Fetch(context.Background(), topic, 0, 0, 1024)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1252,7 +1253,7 @@ func BenchmarkBrokerThroughput(b *testing.B) {
 	b.Run("Produce-Sequential", func(b *testing.B) {
 		b.SetBytes(int64(len(payload)))
 		for i := 0; i < b.N; i++ {
-			_, err := cli.Produce(topic, 0, payload)
+			_, err := cli.Produce(context.Background(), topic, 0, payload)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -1263,7 +1264,7 @@ func BenchmarkBrokerThroughput(b *testing.B) {
 		b.SetBytes(int64(len(payload)))
 		for i := 0; i < b.N; i++ {
 			offset := uint64(i % b.N)
-			iter, err := cli.Fetch(topic, 0, offset, 1024)
+			iter, err := cli.Fetch(context.Background(), topic, 0, offset, 1024)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -1276,7 +1277,7 @@ func BenchmarkBrokerThroughput(b *testing.B) {
 		b.SetBytes(int64(len(payload)))
 		for i := 0; i < b.N; i++ {
 			offset := uint64(i % b.N)
-			iter, err := cli.Fetch(topic, 0, offset, 1024)
+			iter, err := cli.Fetch(context.Background(), topic, 0, offset, 1024)
 			if err != nil {
 				b.Fatal(err)
 			}

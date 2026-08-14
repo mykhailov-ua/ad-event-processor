@@ -109,7 +109,7 @@ func (f *UnifiedFilter) openFilterEvalPins(ctx context.Context) error {
 		shards:  shards,
 		slots:   make([]filterEvalPinSlot, workers*shards),
 	}
-	for w := 0; w < workers; w++ {
+	for w := range workers {
 		for i, rdb := range f.rdbs {
 			client, ok := rdb.(*redis.Client)
 			if !ok {

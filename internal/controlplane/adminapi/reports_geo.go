@@ -192,7 +192,7 @@ func queryGeoROIRows(
 	if err != nil {
 		return nil, 0, fmt.Errorf("geo roi event query: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	eventRows := make([]geoCampaignCountryRow, 0, 256)
 	campaignClicks := make(map[string]int64)
@@ -220,7 +220,7 @@ func queryGeoROIRows(
 	if err != nil {
 		return nil, 0, fmt.Errorf("geo roi spend query: %w", err)
 	}
-	defer spendRows.Close()
+	defer func() { _ = spendRows.Close() }()
 	for spendRows.Next() {
 		var campaignID uuid.UUID
 		var totals campaignSpendTotals
@@ -308,7 +308,7 @@ func allocateGeoShare(row geoCampaignCountryRow, campaignClicks, campaignImpress
 }
 
 func sortGeoROIRows(rows []GeoROIRowDTO) {
-	for i := 0; i < len(rows); i++ {
+	for i := range rows {
 		for j := i + 1; j < len(rows); j++ {
 			if rows[j].SpendMicro > rows[i].SpendMicro ||
 				(rows[j].SpendMicro == rows[i].SpendMicro && rows[j].IVTEvents > rows[i].IVTEvents) {

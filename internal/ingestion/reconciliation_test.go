@@ -65,7 +65,7 @@ func TestReconciliationWorker_DataDriftDetection(t *testing.T) {
 
 	logTime := time.Now().Add(-10 * time.Minute)
 
-	for i := 0; i < 9; i++ {
+	for range 9 {
 		ch.LogEvent(&domain.Event{
 			CampaignID: campID1,
 			ClickID:    uuid.NewString(),
@@ -80,7 +80,7 @@ func TestReconciliationWorker_DataDriftDetection(t *testing.T) {
 		})
 	}
 
-	for i := 0; i < 18; i++ {
+	for range 18 {
 		ch.LogEvent(&domain.Event{
 			CampaignID: campID2,
 			ClickID:    uuid.NewString(),
@@ -88,7 +88,7 @@ func TestReconciliationWorker_DataDriftDetection(t *testing.T) {
 			CreatedAt:  logTime,
 		})
 	}
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		ch.LogEvent(&domain.Event{
 			CampaignID: campID2,
 			ClickID:    uuid.NewString(),

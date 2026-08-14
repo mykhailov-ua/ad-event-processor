@@ -58,7 +58,7 @@ func TestNodeCapacityScorer_TickWritesScores(t *testing.T) {
 		MetricBudgetInvariantDrift: 0.5,
 		MetricStreamLagBytes:       800_000,
 	}
-	for i := 0; i < 40; i++ {
+	for i := range 40 {
 		ts := windowStart.Add(time.Duration(i) * 10 * time.Second)
 		for metric, mean := range healthy {
 			_, err := pool.Exec(ctx, `

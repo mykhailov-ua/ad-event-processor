@@ -79,7 +79,7 @@ COALESCE(SUM(s.impressions_count), 0)::bigint, COALESCE(SUM(s.clicks_count), 0):
 FROM campaigns c LEFT JOIN campaign_stats s ON c.id = s.campaign_id
 WHERE c.customer_id = $1 AND c.status = 'ACTIVE' GROUP BY c.id`, args: []any{custID}},
 		{name: "controlplane.GetAllActiveCampaignsWithStats", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
-SELECT c.id, c.name, c.status, c.budget_limit, c.created_at, c.updated_at, c.customer_id, c.current_spend, c.deleted_at, c.pacing_mode, c.daily_budget, c.timezone, c.freq_limit, c.freq_window, c.target_countries, c.brand_id, c.brand_fcap_key,
+SELECT c.id, c.name, c.status, c.budget_limit, c.created_at, c.updated_at, c.customer_id, c.current_spend, c.deleted_at, c.pacing_mode, c.daily_budget, c.timezone, c.freq_limit, c.freq_window, c.target_countries, c.brand_id, c.brand_fcap_key, c.daypart_hours,
 COALESCE(SUM(s.impressions_count), 0)::bigint, COALESCE(SUM(s.clicks_count), 0)::bigint, COALESCE(SUM(s.conversions_count), 0)::bigint
 FROM campaigns c LEFT JOIN campaign_stats s ON c.id = s.campaign_id WHERE c.status = 'ACTIVE' GROUP BY c.id`},
 		{name: "partial.idx_ledger_fee_created", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)

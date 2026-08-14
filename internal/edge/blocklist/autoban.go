@@ -2,6 +2,7 @@ package blocklist
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -39,7 +40,7 @@ func activeAutoBans(ctx context.Context, rdb autoBanReader) ([]string, error) {
 	active := make([]string, 0, len(members))
 	for _, ip := range members {
 		score, err := rdb.ZScore(ctx, redisKeyBlacklistAutoTTL, ip).Result()
-		if err == redis.Nil {
+		if errors.Is(err, redis.Nil) {
 			active = append(active, ip)
 			continue
 		}

@@ -1,3 +1,7 @@
+/**
+ * Catch-all report stub for retired keys and dev probes — not for GA `live: true` reports.
+ * STUB_COPY is intentionally empty; per-key copy only via retiredReportAlt for retired catalog keys.
+ */
 import type { RouteContext, ViewHandle } from '../lib/router_types.js';
 import { el, replaceChildren } from '../lib/dom.js';
 import { to } from '../lib/to.js';
@@ -18,6 +22,7 @@ import { createInFlightGuard } from '../lib/async_guard.js';
 import { renderButton, renderButtonLink } from '../ui/button.js';
 
 /** @type {Record<string, { message: string, live: Array<{ href: string, label: string }> }>} */
+// Empty by design — GA reports use dedicated routes; retired keys use retiredReportAlt.
 const STUB_COPY: Record<string, { message: string; live: Array<{ href: string; label: string }> }> = {};
 
 type ReportStubProbe = StubProbeResult | {

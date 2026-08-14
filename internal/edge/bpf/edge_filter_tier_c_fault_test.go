@@ -42,7 +42,7 @@ func TestFault_XDPFingerprintRingbufCongestion(t *testing.T) {
 	fpBefore := statCount(t, objs.Stats, StatFingerprint)
 
 	const syns = 3000
-	for i := 0; i < syns; i++ {
+	for range syns {
 		ret := runXDP(t, objs.XdpEdgeFilter, pkt)
 		require.Contains(t, []uint32{1, 2}, ret)
 	}
@@ -83,7 +83,7 @@ func TestFault_XDPFingerprintNoExtraDrops(t *testing.T) {
 
 		src := net.IPv4(203, 0, 113, 77)
 		pkt := buildSYNPacket(t, src, net.IPv4(10, 0, 0, 1), trackerPort)
-		for i := 0; i < 20; i++ {
+		for range 20 {
 			switch runXDP(t, objs.XdpEdgeFilter, pkt) {
 			case 2:
 				pass++
@@ -189,13 +189,13 @@ func TestFault_XDPFingerprintConcurrentHosts(t *testing.T) {
 	start := make(chan struct{})
 
 	wg.Add(hosts)
-	for h := 0; h < hosts; h++ {
+	for h := range hosts {
 		go func(hostID int) {
 			defer wg.Done()
 			<-start
 			src := net.IPv4(198, 19, byte(hostID>>8), byte(hostID))
 			pkt := buildSYNPacket(t, src, net.IPv4(10, 0, 0, 1), trackerPort)
-			for i := 0; i < synsEach; i++ {
+			for range synsEach {
 				switch runXDP(t, objs.XdpEdgeFilter, pkt) {
 				case 2:
 					pass.Add(1)
@@ -268,7 +268,7 @@ func TestFault_XDPFingerprintUnderSYNFlood(t *testing.T) {
 
 	var pass, drop uint64
 	fpBefore := statCount(t, objs.Stats, StatFingerprint)
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		switch runXDP(t, objs.XdpEdgeFilter, pkt) {
 		case 2:
 			pass++

@@ -80,6 +80,7 @@ services:
       - ../../deploy/nginx/nginx.load-test.conf:/usr/local/openresty/nginx/conf/nginx.conf:ro
       - ../../deploy/nginx/lua/edge-tracker-peers.load-test.lua:/etc/nginx/lua/edge-tracker-peers.lua:ro
       - ../../deploy/nginx/snippets:/etc/nginx/snippets:ro
+      - ../../deploy/nginx/snippets/edge_optional_locations.load-test.conf:/etc/nginx/snippets/edge_optional_locations.conf:ro
     deploy:
       resources:
         limits:
@@ -92,6 +93,8 @@ services:
         "postgres",
         "-p",
         "${DB_PORT}",
+        "-c",
+        "unix_socket_directories=/run/ad-event-processor/postgresql",
         "-c",
         "max_connections=300",
         "-c",

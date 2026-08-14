@@ -75,7 +75,7 @@ func RunConfigure(interactive bool) error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile("install.yaml", yamlData, 0644); err != nil {
+	if err := os.WriteFile("install.yaml", yamlData, 0o644); err != nil {
 		return err
 	}
 

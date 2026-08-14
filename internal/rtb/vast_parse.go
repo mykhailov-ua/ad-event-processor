@@ -342,7 +342,7 @@ func parseVASTUint(b []byte) uint32 {
 		return 0
 	}
 	var v uint32
-	for i := 0; i < len(b); i++ {
+	for i := range b {
 		c := b[i]
 		if c < '0' || c > '9' {
 			break

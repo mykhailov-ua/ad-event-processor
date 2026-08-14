@@ -44,7 +44,7 @@ func seedCampaignBudget(t testing.TB, ctx context.Context, rdb redis.UniversalCl
 
 func TestVerify_1a_RedisSpec_EvalShaAfterScriptLoad(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)
@@ -75,7 +75,7 @@ func TestVerify_1a_RedisSpec_EvalShaAfterScriptLoad(t *testing.T) {
 
 func TestEvalScript_NOSCRIPTFallbackAfterScriptFlush(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)
@@ -105,7 +105,7 @@ func TestEvalScript_NOSCRIPTFallbackAfterScriptFlush(t *testing.T) {
 
 func TestFilterRedisOptions_realClientRespectsReadTimeout(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)
@@ -133,7 +133,7 @@ func TestFilterRedisOptions_realClientRespectsReadTimeout(t *testing.T) {
 
 func TestVerify_1d_RealRedisLatencyProfile(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)
@@ -147,7 +147,7 @@ func TestVerify_1d_RealRedisLatencyProfile(t *testing.T) {
 	campID := uuid.New()
 	seedCampaignBudget(t, ctx, rdb, campID)
 
-	for i := 0; i < iterations; i++ {
+	for i := range iterations {
 		evt := &domain.Event{
 			Type:       "click",
 			IP:         "203.0.113.3",
@@ -172,10 +172,7 @@ func TestVerify_1d_RealRedisLatencyProfile(t *testing.T) {
 	}
 }
 
-func BenchmarkUnifiedFilter_Check_RealRedis(b *testing.B) {
-	if testing.Short() {
-		b.Skip()
-	}
+func benchUnifiedFilterCheckRealRedis(b *testing.B) {
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(b)
 	defer cleanup()
@@ -217,4 +214,23 @@ func BenchmarkUnifiedFilter_Check_RealRedis(b *testing.B) {
 			b.Fatal(err)
 		}
 	}
+}
+
+// BenchmarkUnifiedFilter_Check_RealRedis runs unified-filter Lua against live Redis (testcontainers).
+// Harness: unified_filter_testcontainers. Skipped with -short. Nightly: scripts/test/nightly_bench_job.sh redis.
+func BenchmarkUnifiedFilter_Check_RealRedis(b *testing.B) {
+	if testing.Short() {
+		b.Skip()
+	}
+	benchUnifiedFilterCheckRealRedis(b)
+}
+
+// BenchmarkUnifiedFilter_Check_integration runs unified-filter Lua against live Redis (testcontainers).
+// Harness: unified_filter_testcontainers. Skipped with -short. Not in make test-alloc-gate;
+// use scripts/test/run_bench.sh (see docs/DEVELOPMENT.md perf section).
+func BenchmarkUnifiedFilter_Check_integration(b *testing.B) {
+	if testing.Short() {
+		b.Skip()
+	}
+	benchUnifiedFilterCheckRealRedis(b)
 }

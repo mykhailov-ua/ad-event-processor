@@ -26,11 +26,11 @@ func TestParseTrackRequestJSON_DepthCap(t *testing.T) {
 		b.WriteString(`{"campaign_id":"`)
 		b.WriteString(validCID)
 		b.WriteString(`","payload":`)
-		for i := 0; i < depth; i++ {
+		for range depth {
 			b.WriteString(`{"a":`)
 		}
 		b.WriteString(`"leaf"`)
-		for i := 0; i < depth; i++ {
+		for range depth {
 			b.WriteString(`}`)
 		}
 		b.WriteString(`}`)
@@ -49,11 +49,11 @@ func TestParseTrackRequestJSON_Depth1000Under1us(t *testing.T) {
 	nested.WriteString(`{"campaign_id":"`)
 	nested.WriteString(validCID)
 	nested.WriteString(`","payload":`)
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		nested.WriteString(`{"a":`)
 	}
 	nested.WriteString(`"leaf"`)
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		nested.WriteString(`}`)
 	}
 	nested.WriteString(`}`)
@@ -73,11 +73,11 @@ func TestFault_WireJSONDepthReject(t *testing.T) {
 	nested.WriteString(`{"campaign_id":"`)
 	nested.WriteString(validCID)
 	nested.WriteString(`","payload":`)
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		nested.WriteString(`{"a":`)
 	}
 	nested.WriteString(`"leaf"`)
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		nested.WriteString(`}`)
 	}
 	nested.WriteString(`}`)
@@ -104,7 +104,7 @@ func TestFault_H2HostileIncompleteDisconnect(t *testing.T) {
 
 	before := testutil.ToFloat64(metrics.H2HostileDisconnectTotal)
 	var last gnet.Action
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		last = h.onTrafficH2(conn, partial)
 	}
 	assert.Equal(t, gnet.Close, last)

@@ -55,7 +55,7 @@ func TestRankCandidates_tmaxTimeout(t *testing.T) {
 	geo := uint32(3)
 	n := 200
 	campaigns := make([]CampaignData, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		campaigns[i] = CampaignData{
 			ID:           CampaignID(uint64(i + 1)),
 			Bid:          10,

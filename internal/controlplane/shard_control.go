@@ -2,16 +2,18 @@ package controlplane
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/domain/db"
-	"github.com/bidshard/ad-event-processor/internal/metrics"
 	"log/slog"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -81,7 +83,7 @@ func (o *ShardOrchestrator) tick(ctx context.Context) {
 	var maxShard int16 = -1
 	var maxEma float64 = -1.0
 
-	for i := int16(0); i < numShards; i++ {
+	for i := range numShards {
 		m, err := o.metricsProvider.GetMetrics(ctx, i, o.svc.rdbs[i])
 		if err != nil {
 			slog.Warn("orchestrator: failed to get metrics", "shard", i, "error", err)
@@ -429,7 +431,7 @@ func probeShardHealth(ctx context.Context, shardID int, rdb redis.UniversalClien
 	versionCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	version, err := rdb.Get(versionCtx, redisConfigVersionKey).Int64()
-	if err == redis.Nil {
+	if errors.Is(err, redis.Nil) {
 		if lastProcessedEventID > 0 {
 			status.ConfigVersionLag = lastProcessedEventID
 		}
@@ -522,7 +524,7 @@ func (s *Service) AutoscaleShards(ctx context.Context, provider ShardMetricsProv
 	numShards := int16(len(s.rdbs))
 	shardMetrics := make([]ShardMetrics, numShards)
 
-	for i := int16(0); i < numShards; i++ {
+	for i := range numShards {
 		m, err := provider.GetMetrics(ctx, i, s.rdbs[i])
 		if err != nil {
 			continue
@@ -535,7 +537,7 @@ func (s *Service) AutoscaleShards(ctx context.Context, provider ShardMetricsProv
 	var maxLoadScore float64 = -1.0
 	var minLoadScore float64 = 1e18
 
-	for i := int16(0); i < numShards; i++ {
+	for i := range numShards {
 		m := shardMetrics[i]
 		memScore := m.MemoryPct / cfg.MemoryPctLimit
 		opsScore := float64(m.OpsPerSec) / float64(cfg.OpsLimit)

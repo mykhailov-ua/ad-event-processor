@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"net"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -14,8 +15,11 @@ import (
 	db "github.com/bidshard/ad-event-processor/internal/domain/db"
 	"github.com/bidshard/ad-event-processor/internal/metrics"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+const udpLimitsQueryTimeout = 5 * time.Second
 
 type UDPControlServer struct {
 	cfg       *config.Config
@@ -25,6 +29,9 @@ type UDPControlServer struct {
 	epoch     atomic.Int64
 	numShards int
 	trackers  []*net.UDPAddr
+
+	limitsLicenseWarn sync.Once
+	limitsRegionWarn  sync.Once
 }
 
 func NewUDPControlServer(cfg *config.Config, pool *pgxpool.Pool, sharder domain.Sharder, numShards int) *UDPControlServer {
@@ -124,7 +131,9 @@ func (s *UDPControlServer) publishLoop(ctx context.Context) {
 }
 
 func (s *UDPControlServer) publishEpoch(ctx context.Context, snapshot bool) {
-	limits := s.buildLimits()
+	limitsCtx, cancel := context.WithTimeout(ctx, udpLimitsQueryTimeout)
+	limits := s.buildLimits(limitsCtx)
+	cancel()
 	weights := s.buildNodeWeights(ctx)
 	epoch := s.epoch.Add(1)
 	slotVersion := int32(0)
@@ -154,7 +163,7 @@ func (s *UDPControlServer) publishEpoch(ctx context.Context, snapshot bool) {
 		return
 	}
 	for _, taddr := range s.trackers {
-		for i := 0; i < 3; i++ {
+		for range 3 {
 			_, _ = s.conn.WriteToUDP(pkt[:n], taddr)
 		}
 	}
@@ -165,7 +174,9 @@ func (s *UDPControlServer) publishEpoch(ctx context.Context, snapshot bool) {
 }
 
 func (s *UDPControlServer) sendSnapshotBurst(ctx context.Context, addr *net.UDPAddr, count int) {
-	limits := s.buildLimits()
+	limitsCtx, cancel := context.WithTimeout(ctx, udpLimitsQueryTimeout)
+	limits := s.buildLimits(limitsCtx)
+	cancel()
 	weights := s.buildNodeWeights(ctx)
 	epoch := s.epoch.Load()
 	if epoch == 0 {
@@ -189,13 +200,16 @@ func (s *UDPControlServer) sendSnapshotBurst(ctx context.Context, addr *net.UDPA
 	if n == 0 {
 		return
 	}
-	for i := 0; i < count; i++ {
+	for range count {
 		_, _ = s.conn.WriteToUDP(pkt[:n], addr)
 	}
 	metrics.UDPControlPublishTotal.Add(float64(count))
 }
 
-func (s *UDPControlServer) buildLimits() *domain.UDPControlLimits {
+// buildLimits loads license entitlements and optional per-region RPD cap from Postgres.
+// On ctx deadline or query error, shard RPS falls back to UDPDefaultShardRPS (or 50_000)
+// and MaxRPD adjustment is skipped.
+func (s *UDPControlServer) buildLimits(ctx context.Context) *domain.UDPControlLimits {
 	n := s.numShards
 	if n <= 0 {
 		n = 1
@@ -209,9 +223,13 @@ func (s *UDPControlServer) buildLimits() *domain.UDPControlLimits {
 	var maxRPD uint64
 	if s.pool != nil {
 		var entitlementsJSON []byte
-		err := s.pool.QueryRow(context.Background(), `
+		err := s.pool.QueryRow(ctx, `
 			SELECT entitlements_json FROM billing.license_status LIMIT 1`).Scan(&entitlementsJSON)
-		if err == nil && len(entitlementsJSON) > 0 {
+		if err != nil {
+			if !errors.Is(err, pgx.ErrNoRows) {
+				s.warnLimitsLookup("license", err)
+			}
+		} else if len(entitlementsJSON) > 0 {
 			var ent struct {
 				Limits struct {
 					MaxRPS            uint64 `json:"max_rps"`
@@ -249,12 +267,33 @@ func (s *UDPControlServer) buildLimits() *domain.UDPControlLimits {
 
 	if s.cfg != nil && s.cfg.MultiRegionEnabled && maxRPD > 0 && s.pool != nil {
 		var regionCount int64
-		if err := s.pool.QueryRow(context.Background(), `
-			SELECT COUNT(*) FROM regions WHERE active = TRUE`).Scan(&regionCount); err == nil && regionCount > 0 {
+		err := s.pool.QueryRow(ctx, `
+			SELECT COUNT(*) FROM regions WHERE active = TRUE`).Scan(&regionCount)
+		if err != nil {
+			s.warnLimitsLookup("region_count", err)
+		} else if regionCount > 0 {
 			limits.MaxRPD = maxRPD / uint64(regionCount)
 		}
 	}
 	return limits
+}
+
+func (s *UDPControlServer) warnLimitsLookup(kind string, err error) {
+	if s == nil || err == nil {
+		return
+	}
+	switch kind {
+	case "license":
+		s.limitsLicenseWarn.Do(func() {
+			slog.Warn("udp control limits: license entitlements lookup failed, using UDPDefaultShardRPS", "error", err)
+		})
+	case "region_count":
+		s.limitsRegionWarn.Do(func() {
+			slog.Warn("udp control limits: region count lookup failed, skipping MaxRPD", "error", err)
+		})
+	default:
+		slog.Warn("udp control limits lookup failed", "kind", kind, "error", err)
+	}
 }
 
 func (s *UDPControlServer) buildNodeWeights(ctx context.Context) []domain.UDPNodeWeight {

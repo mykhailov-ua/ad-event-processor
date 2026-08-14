@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"context"
+
 	"github.com/bidshard/ad-event-processor/internal/config"
 	"github.com/bidshard/ad-event-processor/internal/notify"
 	"github.com/bidshard/ad-event-processor/internal/payment/db"
@@ -65,7 +67,7 @@ func TestFinancialReconAlerter_AlertFindings_enqueuesWarnPlus(t *testing.T) {
 		{Kind: db.PaymentFinancialFindingKindMISSINGLEDGERTOPUP, PaymentIntentID: uuid.New()},
 	}
 
-	alerter.AlertFindings(summary, findings)
+	alerter.AlertFindings(context.Background(), summary, findings)
 	time.Sleep(150 * time.Millisecond)
 
 	requests := stub.snapshot()
@@ -82,7 +84,7 @@ func TestFinancialReconAlerter_AlertFindings_skipsCleanRun(t *testing.T) {
 	alerter := NewFinancialReconAlerter(&NotifierClient{api: stub}, cfg)
 	require.NotNil(t, alerter)
 
-	alerter.AlertFindings(FinancialReconSummary{RunID: 1}, nil)
+	alerter.AlertFindings(context.Background(), FinancialReconSummary{RunID: 1}, nil)
 	time.Sleep(50 * time.Millisecond)
 	assert.Empty(t, stub.snapshot())
 }

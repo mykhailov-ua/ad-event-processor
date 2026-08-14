@@ -16,7 +16,7 @@ import (
 
 func TestRtbDealsAPI_CRUDAndOutbox(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
@@ -92,7 +92,7 @@ func TestRtbDealsAPI_CRUDAndOutbox(t *testing.T) {
 
 func TestRtbDealsAPI_duplicateDealID(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
@@ -120,7 +120,7 @@ func TestRtbDealsAPI_duplicateDealID(t *testing.T) {
 
 func TestRtbDealsAPI_invalidSeats(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
@@ -211,7 +211,7 @@ func TestRtbDeals_ExplainAnalyze(t *testing.T) {
 
 func TestRtbBudgetAuthority_settingsPropagation(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()

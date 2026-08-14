@@ -27,12 +27,23 @@ const (
 var ErrSpendBatchTooSmall = errors.New("spend sync batch below minimum txn count")
 
 const globalSpendCommitScript = `
+local marker = KEYS[2]
+if redis.call("EXISTS", marker) == 1 then
+	return 0
+end
 local remaining = redis.call("INCRBY", KEYS[1], -tonumber(ARGV[1]))
 if tonumber(remaining) <= 0 then
     redis.call("DEL", KEYS[1])
 end
+redis.call("SET", marker, "1", "EX", tonumber(ARGV[2]))
 return remaining
 `
+
+const globalSpendRedisMarkerTTL = 7 * 24 * time.Hour
+
+func globalSpendRedisMarkerKey(batchDedupKey string, campaignID uuid.UUID) string {
+	return fmt.Sprintf("global_spend:redis_applied:%s:%s", batchDedupKey, campaignID.String())
+}
 
 type GlobalSpendReconciler struct {
 	pool           *pgxpool.Pool
@@ -142,24 +153,31 @@ func (r *GlobalSpendReconciler) ApplyBatch(ctx context.Context, batchDedupKey st
 		redisDeltas[txn.CampaignID] += txn.AmountMicro
 	}
 
-	for startIdx := 0; startIdx < len(items); startIdx += domain.MaxLedgerBatchSize() {
-		endIdx := startIdx + domain.MaxLedgerBatchSize()
-		if endIdx > len(items) {
-			endIdx = len(items)
-		}
-		chunk := items[startIdx:endIdx]
-		outcomes, err := r.campaignRepo.UpdateSpendBatch(ctx, chunk)
-		if err != nil {
-			return fmt.Errorf("global spend batch dedup=%s: %w", batchDedupKey, err)
-		}
-		for _, outcome := range outcomes {
-			if outcome.Err != nil && !errors.Is(outcome.Err, domain.ErrInsufficientCustomerBalance) {
-				return fmt.Errorf("global spend batch dedup=%s campaign=%s: %w", batchDedupKey, outcome.CampaignID, outcome.Err)
+	pgApplied, err := r.globalSpendPgApplied(ctx, items[0].TxID)
+	if err != nil {
+		return fmt.Errorf("global spend batch dedup=%s pg probe: %w", batchDedupKey, err)
+	}
+	if !pgApplied {
+		for startIdx := 0; startIdx < len(items); startIdx += domain.MaxLedgerBatchSize() {
+			endIdx := startIdx + domain.MaxLedgerBatchSize()
+			if endIdx > len(items) {
+				endIdx = len(items)
+			}
+			chunk := items[startIdx:endIdx]
+			outcomes, err := r.campaignRepo.UpdateSpendBatch(ctx, chunk)
+			if err != nil {
+				return fmt.Errorf("global spend batch dedup=%s: %w", batchDedupKey, err)
+			}
+			for _, outcome := range outcomes {
+				if outcome.Err != nil && !errors.Is(outcome.Err, domain.ErrInsufficientCustomerBalance) {
+					return fmt.Errorf("global spend batch dedup=%s campaign=%s: %w", batchDedupKey, outcome.CampaignID, outcome.Err)
+				}
 			}
 		}
 	}
 
-	if err := r.commitRedisBudget(ctx, redisDeltas); err != nil {
+	if err := r.commitRedisBudget(ctx, batchDedupKey, redisDeltas); err != nil {
+		metrics.GlobalSpendFlushErrorsTotal.Inc()
 		return fmt.Errorf("global spend batch dedup=%s redis commit: %w", batchDedupKey, err)
 	}
 
@@ -171,10 +189,20 @@ func (r *GlobalSpendReconciler) ApplyBatch(ctx context.Context, batchDedupKey st
 	return nil
 }
 
-func (r *GlobalSpendReconciler) commitRedisBudget(ctx context.Context, deltas map[uuid.UUID]int64) error {
+func (r *GlobalSpendReconciler) globalSpendPgApplied(ctx context.Context, probeTxID string) (bool, error) {
+	if r == nil || r.pool == nil || probeTxID == "" {
+		return false, nil
+	}
+	var exists bool
+	err := r.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM sync_idempotency WHERE id = $1)`, probeTxID).Scan(&exists)
+	return exists, err
+}
+
+func (r *GlobalSpendReconciler) commitRedisBudget(ctx context.Context, batchDedupKey string, deltas map[uuid.UUID]int64) error {
 	if len(r.rdbs) == 0 {
 		return nil
 	}
+	ttlSec := int64(globalSpendRedisMarkerTTL / time.Second)
 	sem := make(chan struct{}, r.maxConcurrency)
 	var wg sync.WaitGroup
 	var firstErr error
@@ -190,12 +218,13 @@ func (r *GlobalSpendReconciler) commitRedisBudget(ctx context.Context, deltas ma
 		}
 		rdb := r.rdbs[shardIdx]
 		budgetKey := domain.BudgetCampaignKey(campID)
+		markerKey := globalSpendRedisMarkerKey(batchDedupKey, campID)
 		wg.Add(1)
 		sem <- struct{}{}
-		go func(rdb redis.UniversalClient, budgetKey string, amount int64) {
+		go func(rdb redis.UniversalClient, budgetKey, markerKey string, amount int64) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			_, err := rdb.Eval(ctx, globalSpendCommitScript, []string{budgetKey}, amount).Result()
+			_, err := rdb.Eval(ctx, globalSpendCommitScript, []string{budgetKey, markerKey}, amount, ttlSec).Result()
 			if err != nil {
 				errMu.Lock()
 				if firstErr == nil {
@@ -203,7 +232,7 @@ func (r *GlobalSpendReconciler) commitRedisBudget(ctx context.Context, deltas ma
 				}
 				errMu.Unlock()
 			}
-		}(rdb, budgetKey, amount)
+		}(rdb, budgetKey, markerKey, amount)
 	}
 	wg.Wait()
 	return firstErr

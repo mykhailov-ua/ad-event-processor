@@ -100,7 +100,7 @@ func TestApplyRtbAuction_shadow_zeroAlloc(t *testing.T) {
 	}
 	evt := &domain.Event{CampaignID: id}
 
-	for i := 0; i < 16; i++ {
+	for range 16 {
 		_, _ = applyRtbAuction(proc, evt, nil)
 	}
 	allocs := testing.AllocsPerRun(100, func() {

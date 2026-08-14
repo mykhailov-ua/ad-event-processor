@@ -142,11 +142,11 @@ func TestFault_HTTP3_ConcurrentParse(t *testing.T) {
 	)
 	var wg sync.WaitGroup
 	wg.Add(workers)
-	for w := 0; w < workers; w++ {
+	for w := range workers {
 		w := w
 		go func() {
 			defer wg.Done()
-			for i := 0; i < iterations; i++ {
+			for i := range iterations {
 				payload := cases[(w+i)%len(cases)].payload
 				if i%5 == 0 {
 					payload = valid

@@ -220,6 +220,7 @@ func (postbacks *PostbackHTTPHandlers) getDLQ(w http.ResponseWriter, r *http.Req
 }
 
 func (postbacks *PostbackHTTPHandlers) retryDLQ(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	idStr := r.PathValue("id")
 	if idStr == "" {
 		idStr = r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:]
@@ -236,15 +237,15 @@ func (postbacks *PostbackHTTPHandlers) retryDLQ(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	tx, err := postbacks.Pool.Begin(r.Context())
+	tx, err := postbacks.Pool.Begin(ctx)
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}
-	defer func() { _ = tx.Rollback(r.Context()) }()
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	q := db.New(tx)
-	dlq, err := q.GetPostbackDLQ(r.Context(), id)
+	dlq, err := q.GetPostbackDLQ(ctx, id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "dlq entry not found")
@@ -259,7 +260,7 @@ func (postbacks *PostbackHTTPHandlers) retryDLQ(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	_, err = q.CreateOutboxEvent(r.Context(), db.CreateOutboxEventParams{
+	_, err = q.CreateOutboxEvent(ctx, db.CreateOutboxEventParams{
 		EventType: "SEND_POSTBACK",
 		Payload:   dlq.Payload,
 	})
@@ -268,7 +269,7 @@ func (postbacks *PostbackHTTPHandlers) retryDLQ(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	err = q.UpdatePostbackDLQ(r.Context(), db.UpdatePostbackDLQParams{
+	err = q.UpdatePostbackDLQ(ctx, db.UpdatePostbackDLQParams{
 		ID:            dlq.ID,
 		FailuresCount: dlq.FailuresCount,
 		LastError:     pgtype.Text{String: "Manual retry triggered", Valid: true},
@@ -279,7 +280,7 @@ func (postbacks *PostbackHTTPHandlers) retryDLQ(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	if err := tx.Commit(r.Context()); err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}

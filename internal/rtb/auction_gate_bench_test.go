@@ -12,7 +12,7 @@ func BenchmarkRunAuction_daypartGate(b *testing.B) {
 	campaigns := make([]CampaignData, n)
 	nowUnix := int64(1_700_000_000)
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		campaigns[i] = CampaignData{
 			ID:           CampaignID(uint64(i + 1)),
 			Bid:          int64(100 + (i % 500)),
@@ -53,7 +53,7 @@ func BenchmarkRunAuction_freqCapGate(b *testing.B) {
 
 	n := 1000
 	campaigns := make([]CampaignData, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		campaigns[i] = CampaignData{
 			ID:             CampaignID(uint64(i + 1)),
 			Bid:            int64(100 + (i % 500)),

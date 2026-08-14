@@ -122,7 +122,7 @@ func (store *S3TierStore) downloadObject(ctx context.Context, objectKey, destPat
 	if err != nil {
 		return fmt.Errorf("get s3 object %q: %w", objectKey, err)
 	}
-	defer output.Body.Close()
+	defer func() { _ = output.Body.Close() }()
 
 	if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
 		return err
@@ -154,7 +154,7 @@ func (store *S3TierStore) uploadFile(ctx context.Context, key, srcPath, sha256 s
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	info, err := file.Stat()
 	if err != nil {
@@ -289,7 +289,7 @@ func (store *S3TierStore) WarmMetaFromS3(ctx context.Context, destKey string) (C
 	if err != nil {
 		return CompactionMeta{}, err
 	}
-	defer output.Body.Close()
+	defer func() { _ = output.Body.Close() }()
 
 	var meta CompactionMeta
 	if err := json.NewDecoder(output.Body).Decode(&meta); err != nil {

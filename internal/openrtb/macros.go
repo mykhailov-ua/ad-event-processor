@@ -93,7 +93,7 @@ func macroAt(src []byte, off int, macro []byte) bool {
 	if off+len(macro) > len(src) {
 		return false
 	}
-	for j := 0; j < len(macro); j++ {
+	for j := range macro {
 		if src[off+j] != macro[j] {
 			return false
 		}

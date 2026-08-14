@@ -2,8 +2,10 @@ package controlplane
 
 import (
 	"context"
-	"github.com/bidshard/ad-event-processor/pkg/naming"
+	"errors"
 	"os"
+
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 
 	"github.com/bidshard/ad-event-processor/internal/config"
 	"github.com/bidshard/ad-event-processor/internal/telemetry"
@@ -29,7 +31,7 @@ func (s *Service) telemetryMetadata(ctx context.Context) (telemetry.Metadata, er
 		FROM billing.license_status
 		LIMIT 1`).Scan(&deploymentID)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return meta, nil
 		}
 		return meta, err

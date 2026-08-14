@@ -210,7 +210,7 @@ func (s *Service) MarkSlotMapMigrating(ctx context.Context, adminID uuid.UUID, v
 		return err
 	}
 	if s.alerter != nil {
-		s.alerter.AlertSlotMapMigrating(version, slots, targetShard)
+		s.alerter.AlertSlotMapMigrating(ctx, version, slots, targetShard)
 	}
 	return nil
 }

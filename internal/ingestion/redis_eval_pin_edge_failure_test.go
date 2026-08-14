@@ -42,7 +42,7 @@ func edgeImpressionEvt(campID uuid.UUID, worker int8) *domain.Event {
 
 func TestEdgePin_ConcurrentDistinctWorkers(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)
@@ -62,12 +62,12 @@ func TestEdgePin_ConcurrentDistinctWorkers(t *testing.T) {
 		start sync.WaitGroup
 	)
 	start.Add(1)
-	for g := 0; g < workers; g++ {
+	for g := range workers {
 		wg.Add(1)
 		go func(workerID int) {
 			defer wg.Done()
 			start.Wait()
-			for i := 0; i < perG; i++ {
+			for range perG {
 				evt := edgeImpressionEvt(campID, int8(workerID))
 				evt.ClickID = uuid.NewString()
 				if err := f.Check(ctx, evt); err != nil {
@@ -87,7 +87,7 @@ func TestEdgePin_ConcurrentDistinctWorkers(t *testing.T) {
 
 func TestEdgePin_WorkerAboveTableFallsBack(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)
@@ -105,7 +105,7 @@ func TestEdgePin_WorkerAboveTableFallsBack(t *testing.T) {
 
 func TestEdgePin_ReopensClosedConn(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)
@@ -126,7 +126,7 @@ func TestEdgePin_ReopensClosedConn(t *testing.T) {
 
 func TestEdgePin_PoolReserveHeadroom(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	const pinWorkers = 4
@@ -156,7 +156,7 @@ func TestEdgePin_PoolReserveHeadroom(t *testing.T) {
 
 func TestEdgePin_UnsetWorkerIdxSkipsPin(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)
@@ -174,7 +174,7 @@ func TestEdgePin_UnsetWorkerIdxSkipsPin(t *testing.T) {
 
 func TestEdgePin_DeadlineStringNearDegradeThreshold(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)
@@ -203,7 +203,7 @@ func TestEdgePin_DeadlineStringNearDegradeThreshold(t *testing.T) {
 
 func TestEdgePin_ShutdownClosesPinsBeforeShard(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)
@@ -225,7 +225,7 @@ func TestEdgePin_ShutdownClosesPinsBeforeShard(t *testing.T) {
 
 func TestEdgePin_ReopensAfterServerKill(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)

@@ -54,7 +54,7 @@ func TestCostSyncAdminAPIIntegration(t *testing.T) {
 	mux.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
 
-	req = httptest.NewRequest(http.MethodGet, "/api/v1/cost-sync/credentials?customer_id="+customerID.String(), nil)
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/cost-sync/credentials?customer_id="+customerID.String(), http.NoBody)
 	rec = httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -70,7 +70,7 @@ func TestCostSyncAdminAPIIntegration(t *testing.T) {
 	mux.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusAccepted, rec.Code)
 
-	req = httptest.NewRequest(http.MethodGet, "/api/v1/cost-sync/history?customer_id="+customerID.String(), nil)
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/cost-sync/history?customer_id="+customerID.String(), http.NoBody)
 	rec = httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)

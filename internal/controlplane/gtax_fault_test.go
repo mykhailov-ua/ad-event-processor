@@ -73,14 +73,14 @@ func TestFault_CTVGtaxSettlementReplay(t *testing.T) {
 	require.NoError(t, rdb.Set(ctx, domain.BudgetCampaignKey(campaignID), budgetLimit, 0).Err())
 
 	cfg := &config.Config{SettlementInternalToken: "gtax-test-token"}
-	svc := NewService(pool, []redis.UniversalClient{rdb}, nil, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, cfg)
 	defer svc.Close()
 	handler := NewSettlementHandler(svc, cfg)
 
 	settlementID := "ctv-settle-" + uuid.New().String()
 
 	var first domain.CTVSettlementResult
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		resp, callErr := handler.applyCTVSettlement(ctx, settlementID, customerID, campaignID, spendMicro)
 		require.NoError(t, callErr)
 		if i == 0 {

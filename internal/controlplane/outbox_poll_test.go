@@ -21,7 +21,7 @@ func TestOutboxPollBackoff_ActiveThenIdle(t *testing.T) {
 func TestOutboxPollBackoff_IdleMedianAboveDoD(t *testing.T) {
 	b := newOutboxPollBackoff()
 	var samples []time.Duration
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		samples = append(samples, b.next(0))
 	}
 	assert.Greater(t, samples[3], 50*time.Millisecond)

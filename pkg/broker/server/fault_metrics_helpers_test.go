@@ -15,7 +15,7 @@ func scrapeBrokerMetrics(t *testing.T, healthAddr string) string {
 	}
 	var lastErr error
 	var body string
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		resp, err := http.Get("http://" + healthAddr + "/metrics")
 		if err != nil {
 			lastErr = err

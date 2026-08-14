@@ -21,7 +21,7 @@ func TestRegistry_updateCampaigns_preservesLiveBudget(t *testing.T) {
 	reg.UpdateCampaigns(singleCampaign(cid, 100, 1000))
 
 	req := stdReq(7, 50)
-	for i := 0; i < 9; i++ {
+	for i := range 9 {
 		_, reason := reg.RunAuction(req)
 		require.True(t, reason.OK(), "auction %d", i)
 	}
@@ -115,7 +115,7 @@ func TestRegistry_saveSnapshot_consistentUnderConcurrentSpend(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		for i := 0; i < 50; i++ {
+		for range 50 {
 			_ = reg.SaveSnapshot(snapPath)
 		}
 	}()
@@ -171,7 +171,7 @@ func TestRegistry_runAuction_ghostWinnerBudgetNonNegative(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		for i := 0; i < 200; i++ {
+		for i := range 200 {
 			if i%2 == 0 {
 				reg.UpdateCampaigns(nil)
 			} else {
@@ -210,7 +210,7 @@ func TestRegistry_runAuction_concurrentSpendBoundedByCAS(t *testing.T) {
 	req := stdReq(7, 50)
 	var wins atomic.Int64
 	var wg sync.WaitGroup
-	for i := 0; i < 16; i++ {
+	for range 16 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -233,7 +233,7 @@ func TestRegistry_runAuction_concurrentCatalogRebuild(t *testing.T) {
 	n := 100
 	campaigns := make([]CampaignData, n)
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		campaigns[i] = CampaignData{
 			ID:           CampaignID(uint64(i + 1)),
 			Bid:          int64(100 + i),
@@ -250,12 +250,12 @@ func TestRegistry_runAuction_concurrentCatalogRebuild(t *testing.T) {
 	workers := 12
 	iterations := 500
 
-	for w := 0; w < workers; w++ {
+	for w := range workers {
 		wg.Add(1)
 		go func(workerID int) {
 			defer wg.Done()
 			rnd := rand.New(rand.NewSource(int64(workerID)))
-			for i := 0; i < iterations; i++ {
+			for i := range iterations {
 				if i%50 == 0 {
 					time.Sleep(time.Duration(rnd.Intn(5)+1) * time.Microsecond)
 				}
@@ -274,11 +274,11 @@ func TestRegistry_runAuction_concurrentCatalogRebuild(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		rnd := rand.New(rand.NewSource(999))
-		for i := 0; i < 20; i++ {
+		for i := range 20 {
 			time.Sleep(time.Duration(rnd.Intn(8)+2) * time.Millisecond)
 
 			updated := make([]CampaignData, n)
-			for j := 0; j < n; j++ {
+			for j := range n {
 				updated[j] = campaigns[j]
 				updated[j].Weight += uint32(i)
 			}
@@ -288,7 +288,7 @@ func TestRegistry_runAuction_concurrentCatalogRebuild(t *testing.T) {
 
 	wg.Wait()
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		b := store.GetBudget(campaigns[i].ID)
 		assert.GreaterOrEqual(t, b, int64(0), "campaign %d", campaigns[i].ID)
 	}
@@ -373,7 +373,7 @@ func TestRegistry_updateCampaigns_atomicCatalogPublish(t *testing.T) {
 		}
 	}()
 
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		reg.UpdateCampaigns(campaigns)
 		reg.UpdateCampaigns(singleCampaign(oldID, 100, 5000))
 	}

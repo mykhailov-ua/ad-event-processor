@@ -5,6 +5,7 @@ import (
 
 	"context"
 	"encoding/json"
+	"errors"
 	"strconv"
 	"sync"
 	"testing"
@@ -124,7 +125,7 @@ func TestFault_SlotMigrationFence(t *testing.T) {
 			defer cancel()
 			err := f.Check(checkCtx, evt)
 			if err != nil {
-				if err == domain.ErrMigrationFenced {
+				if errors.Is(err, domain.ErrMigrationFenced) {
 					fenced++
 				}
 				return

@@ -155,7 +155,7 @@ func categoryBitFromIABCode(code []byte) uint64 {
 		return 0
 	}
 	var mask uint64
-	for i := 0; i < len(code); i++ {
+	for i := range code {
 		c := code[i]
 		if c >= '0' && c <= '9' {
 			mask |= uint64(1) << uint64(c-'0')

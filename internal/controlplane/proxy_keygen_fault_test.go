@@ -28,7 +28,7 @@ func TestFault_ProxyKeyGenCPUThrottle(t *testing.T) {
 
 	const n = 500
 	payload := []byte(`{"region":"us-east"}`)
-	for i := 0; i < n; i++ {
+	for range n {
 		_, err := w.Append(payload)
 		require.NoError(t, err)
 	}
@@ -62,7 +62,7 @@ func TestFault_ProxyKeyGenCPUThrottle(t *testing.T) {
 
 	seen := make(map[[32]byte]uint64, n)
 	factors := make([][32]byte, n)
-	for seq := uint64(0); seq < n; seq++ {
+	for seq := range uint64(n) {
 		hdr, _, err := w.ReadRecord(seq)
 		require.NoError(t, err)
 		require.True(t, hdr.Has(wal.WalFlagDedupReady))
@@ -74,11 +74,11 @@ func TestFault_ProxyKeyGenCPUThrottle(t *testing.T) {
 	}
 	assert.Len(t, seen, n)
 
-	for round := 0; round < 2; round++ {
+	for range 2 {
 		_, err := w.ProcessPendingKeyGen(n, throttle)
 		require.NoError(t, err)
 	}
-	for seq := uint64(0); seq < n; seq++ {
+	for seq := range uint64(n) {
 		hdr, _, err := w.ReadRecord(seq)
 		require.NoError(t, err)
 		assert.Equal(t, factors[seq], hdr.FactorU, "seq=%d", seq)

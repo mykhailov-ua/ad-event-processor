@@ -21,7 +21,7 @@ func TestAggregateWarmSegment_hourlyRollups(t *testing.T) {
 	hour := time.Now().UTC().Add(-24 * time.Hour).Truncate(time.Hour)
 
 	var plain bytes.Buffer
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		plain.Write(encodeRecord(t, &pb.AdStreamEvent{
 			CampaignId:    campaignID[:],
 			EventType:     []byte("impression"),
@@ -64,7 +64,7 @@ func TestColdRolluperRunOnce_memoryInserter(t *testing.T) {
 	hour := time.Date(2025, 5, 15, 12, 0, 0, 0, time.UTC)
 
 	var plain bytes.Buffer
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		plain.Write(encodeRecord(t, &pb.AdStreamEvent{
 			CampaignId:    campaignID[:],
 			EventType:     []byte("impression"),

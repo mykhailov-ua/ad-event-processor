@@ -153,11 +153,11 @@ func TestFraudScenarios_TrackJSON_DeepNestedPayload(t *testing.T) {
 	nested.WriteString(`{"campaign_id":"`)
 	nested.WriteString(validCID)
 	nested.WriteString(`","payload":`)
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		nested.WriteString(`{"a":`)
 	}
 	nested.WriteString(`"leaf"`)
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		nested.WriteString(`}`)
 	}
 	nested.WriteString(`}`)

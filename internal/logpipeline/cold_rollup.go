@@ -3,6 +3,7 @@ package logpipeline
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -51,7 +52,7 @@ func aggregateWarmSegment(r io.Reader, sourceSegment, warmSHA string) ([]RollupR
 
 	for {
 		_, err := io.ReadFull(r, hdr[:])
-		if err == io.EOF || err == io.ErrUnexpectedEOF {
+		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
 			break
 		}
 		if err != nil {

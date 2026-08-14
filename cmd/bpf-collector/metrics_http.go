@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -105,6 +106,7 @@ func (r *probeRun) serveMetrics(ctx context.Context, addr string) {
 		_, _ = w.Write([]byte("ok"))
 	})
 	srv := &http.Server{Addr: addr, Handler: mux}
+	lifecycle.ApplySidecarHTTPServerTimeouts(srv)
 	go func() {
 		<-ctx.Done()
 		_ = srv.Close()

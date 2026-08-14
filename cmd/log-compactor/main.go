@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"os"
 	"time"
@@ -98,7 +99,7 @@ func main() {
 			slog.Error("failed to connect to clickhouse for cold tier", "error", err)
 			os.Exit(1)
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 
 		coldCheckpoint := logpipeline.NewCheckpointStore(cfg.ColdCheckpointPath)
 		coldRolluper := logpipeline.NewColdRolluper(logpipeline.ColdConfig{
@@ -116,7 +117,7 @@ func main() {
 
 	var runErr error
 	for range workers {
-		if err := <-errCh; err != nil && err != context.Canceled && runErr == nil {
+		if err := <-errCh; err != nil && !errors.Is(err, context.Canceled) && runErr == nil {
 			runErr = err
 			stop()
 		}

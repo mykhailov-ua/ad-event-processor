@@ -9,37 +9,58 @@ import (
 )
 
 const vppLookbackDays = 7
+const vppCampaignSampleBatch = 200
 
-func (s *Service) queryCampaignVPPSamples(ctx context.Context, campaignID uuid.UUID, from, to time.Time) ([]forecastHourlySample, error) {
-	if s.chQuery == nil {
-		return nil, nil
+func (s *Service) queryVPPCampaignSamplesBatch(ctx context.Context, from, to time.Time, campaignIDs []uuid.UUID) (map[uuid.UUID][]forecastHourlySample, error) {
+	if s.chQuery == nil || len(campaignIDs) == 0 {
+		return map[uuid.UUID][]forecastHourlySample{}, nil
 	}
-	query := `
-SELECT toHour(hour) AS hr, sum(impression_count) AS impressions
-FROM mv_campaign_hourly_impressions
-WHERE hour >= ? AND hour < ? AND campaign_id = ?
-GROUP BY hr
-ORDER BY hr`
 	chCtx, cancel := chQueryContext(ctx)
 	defer cancel()
-	rows, err := s.chQuery.Query(chCtx, query, from, to, campaignID)
+
+	out := make(map[uuid.UUID][]forecastHourlySample, len(campaignIDs))
+	for start := 0; start < len(campaignIDs); start += vppCampaignSampleBatch {
+		end := start + vppCampaignSampleBatch
+		if end > len(campaignIDs) {
+			end = len(campaignIDs)
+		}
+		chunk, err := s.queryVPPCampaignSamplesChunk(chCtx, from, to, campaignIDs[start:end])
+		if err != nil {
+			return nil, err
+		}
+		for id, samples := range chunk {
+			out[id] = samples
+		}
+	}
+	return out, nil
+}
+
+func (s *Service) queryVPPCampaignSamplesChunk(ctx context.Context, from, to time.Time, campaignIDs []uuid.UUID) (map[uuid.UUID][]forecastHourlySample, error) {
+	query := `
+SELECT campaign_id, toHour(hour) AS hr, sum(impression_count) AS impressions
+FROM mv_campaign_hourly_impressions
+WHERE hour >= ? AND hour < ? AND campaign_id IN (?)
+GROUP BY campaign_id, hr
+ORDER BY campaign_id, hr`
+	rows, err := s.chQuery.Query(ctx, query, from, to, campaignIDs)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
-	samples := make([]forecastHourlySample, 0, 24)
+	out := make(map[uuid.UUID][]forecastHourlySample, len(campaignIDs))
 	for rows.Next() {
+		var campID uuid.UUID
 		var sample forecastHourlySample
-		if err := rows.Scan(&sample.hourOfDay, &sample.impressions); err != nil {
+		if err := rows.Scan(&campID, &sample.hourOfDay, &sample.impressions); err != nil {
 			return nil, err
 		}
-		samples = append(samples, sample)
+		out[campID] = append(out[campID], sample)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	return samples, nil
+	return out, nil
 }
 
 func hourlySharesFromSamples(samples []forecastHourlySample) [24]float64 {

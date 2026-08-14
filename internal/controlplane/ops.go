@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -57,10 +58,10 @@ var defaultProcessorPeerOrder = []string{"processor", "processor-1"}
 
 var defaultTrackerPeerOrder = []string{"tracker-1", "tracker-2", "tracker-3", "tracker-4"}
 
-func RegisterOpsRoutes(mux *http.ServeMux, pool *pgxpool.Pool, rdbs []redis.UniversalClient, cfg *config.Config) {
+func RegisterOpsRoutes(ctx context.Context, mux *http.ServeMux, pool *pgxpool.Pool, rdbs []redis.UniversalClient, cfg *config.Config) {
 	live := &lifecycle.Liveness{}
 	ready := &lifecycle.ReadinessProbe{}
-	ready.StartBackground(context.Background(), 2*time.Second, func(ctx context.Context) bool {
+	ready.StartBackground(ctx, 2*time.Second, func(ctx context.Context) bool {
 		if err := pool.Ping(ctx); err != nil {
 			return false
 		}
@@ -124,7 +125,7 @@ func parsePrometheusMetrics(r io.Reader, contentType string) ([]scrapedMetric, e
 	for {
 		var mf dto.MetricFamily
 		if err := dec.Decode(&mf); err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			return nil, err

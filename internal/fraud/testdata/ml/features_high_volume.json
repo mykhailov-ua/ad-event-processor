@@ -1,0 +1,47 @@
+{
+  "id": "high_volume",
+  "feature_names": [
+    "events",
+    "clicks",
+    "ctr",
+    "spend_norm",
+    "spend_ratio",
+    "unique_users",
+    "unique_uas",
+    "events_per_ua",
+    "clicks_per_ua",
+    "users_per_ua",
+    "clicks_per_user",
+    "spend_per_click",
+    "ua_diversity",
+    "events_per_user",
+    "impression_pressure",
+    "user_click_gap"
+  ],
+  "row": {
+    "events": 100,
+    "clicks": 10,
+    "spend_micro": 10000000,
+    "budget_limit_micro": 50000000,
+    "unique_users": 5,
+    "unique_uas": 2
+  },
+  "vector": [
+    100.0,
+    10.0,
+    0.1,
+    10.0,
+    0.2,
+    5.0,
+    2.0,
+    50.0,
+    5.0,
+    2.5,
+    2.0,
+    1.0,
+    0.02,
+    20.0,
+    9.090909090909092,
+    0.45454545454545453
+  ]
+}

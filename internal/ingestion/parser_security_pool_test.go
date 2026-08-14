@@ -36,7 +36,7 @@ func buildJSONKeyPairSpam(pairs int) []byte {
 	var b strings.Builder
 	b.Grow(pairs * 8)
 	b.WriteByte('{')
-	for i := 0; i < pairs; i++ {
+	for i := range pairs {
 		if i > 0 {
 			b.WriteByte(',')
 		}

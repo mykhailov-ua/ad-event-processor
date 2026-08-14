@@ -67,7 +67,7 @@ func (r *tcpEdgeCorrelationRule) Find(ctx context.Context) ([]SuspiciousIP, erro
 	if err != nil {
 		return nil, fmt.Errorf("tcp edge correlation query: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	ipByHash := make(map[string]string, len(ips))
 	for i, ip := range ips {

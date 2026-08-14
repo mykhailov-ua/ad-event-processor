@@ -40,7 +40,7 @@ func TestFault_FingerprintHandlerBrokenSamples(t *testing.T) {
 		{0xff},
 	}
 	r := rand.New(rand.NewSource(42))
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		n := r.Intn(64)
 		buf := make([]byte, n)
 		r.Read(buf)
@@ -84,11 +84,11 @@ func TestFault_FingerprintHandlerConcurrentDecode(t *testing.T) {
 	r := rand.New(rand.NewSource(99))
 
 	wg.Add(goroutines)
-	for g := 0; g < goroutines; g++ {
+	for g := range goroutines {
 		go func() {
 			defer wg.Done()
 			<-start
-			for i := 0; i < perG; i++ {
+			for i := range perG {
 				raw := encodeFingerprintSample(
 					uint64(i),
 					uint32(g*1000+i),
@@ -126,7 +126,7 @@ func TestFault_FingerprintHandlerCallbackFailure(t *testing.T) {
 		return nil
 	})
 
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		raw := encodeFingerprintSample(uint64(i), 0x0a000001, uint32(i), 64240, 64, 44)
 		evt := decodeFingerprint(raw)
 		err := handler.onEvent(evt)

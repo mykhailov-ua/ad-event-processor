@@ -151,14 +151,14 @@ GROUP BY partition`, table)
 		for rows.Next() {
 			var part string
 			if err := rows.Scan(&part); err != nil {
-				rows.Close()
+				_ = rows.Close()
 				return err
 			}
 			if !partitionOlderThan(part, cutoffPart) {
 				continue
 			}
 			if err := j.dropPartition(ctx, table, part, "retention"); err != nil {
-				rows.Close()
+				_ = rows.Close()
 				return err
 			}
 		}
@@ -187,7 +187,7 @@ LIMIT 1`, currentPart)
 	if err != nil {
 		return fmt.Errorf("select emergency drop candidate: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var table, part string
 	if !rows.Next() {
@@ -230,7 +230,7 @@ LIMIT 1`, j.recompressPartsThreshold)
 	if err != nil {
 		return fmt.Errorf("select recompress candidate: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var table, part string
 	var parts uint64

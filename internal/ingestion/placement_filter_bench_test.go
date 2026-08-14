@@ -1,3 +1,6 @@
+// Placement blacklist benches (harness: placement_blacklist_mock_redis).
+// placementHExistsMock stubs Redis HExists — not live Redis RTT.
+// Do not cite as tracker p99 SLA evidence.
 package ingestion
 
 import (
@@ -32,7 +35,7 @@ func setupPlacementBlacklistBench(t testing.TB, blacklisted bool) (*PlacementBla
 		PlacementID: "zone-42",
 	}
 	ctx := context.Background()
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		_ = f.Check(ctx, evt)
 	}
 	return f, evt, ctx

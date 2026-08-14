@@ -25,6 +25,8 @@ const (
 	JobStatusRunning   = "RUNNING"
 	JobStatusCompleted = "COMPLETED"
 	JobStatusFailed    = "FAILED"
+
+	exportJobRunTimeout = 15 * time.Minute
 )
 
 type JobSpec struct {
@@ -59,14 +61,18 @@ type jobRecord struct {
 	completedAt time.Time
 }
 
+type ledgerExportReader interface {
+	ListLedgerLinesInWindow(ctx context.Context, customerID uuid.UUID, from, to time.Time, cursorID int64, limit int32) ([]LedgerLineDTO, string, error)
+}
+
 type JobRunner struct {
-	ledgerReads *CompositeReadService
+	ledgerReads ledgerExportReader
 	exportDir   string
 	mu          sync.RWMutex
 	jobs        map[string]*jobRecord
 }
 
-func NewJobRunner(ledgerReads *CompositeReadService, exportDir string) *JobRunner {
+func NewJobRunner(ledgerReads ledgerExportReader, exportDir string) *JobRunner {
 	if exportDir == "" {
 		exportDir = "./data/billing-export"
 	}
@@ -110,7 +116,11 @@ func (s *JobRunner) CreateJob(ctx context.Context, spec JobSpec) (string, error)
 	s.jobs[jobID] = rec
 	s.mu.Unlock()
 
-	go s.runJob(context.Background(), jobID)
+	go func() {
+		jobCtx, cancel := context.WithTimeout(ctx, exportJobRunTimeout)
+		defer cancel()
+		s.runJob(jobCtx, jobID)
+	}()
 	return jobID, nil
 }
 
@@ -193,6 +203,10 @@ func (s *JobRunner) runJob(ctx context.Context, jobID string) {
 		s.failJob(jobID, writeErr)
 		return
 	}
+	if err := ctx.Err(); err != nil {
+		s.failJob(jobID, err)
+		return
+	}
 
 	info, err := os.Stat(filePath)
 	if err != nil {
@@ -225,7 +239,7 @@ func (s *JobRunner) writeCSV(ctx context.Context, path string, rec *jobRecord) e
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	cw := csv.NewWriter(f)
 	if err := cw.Write([]string{"id", "amount_micro", "ledger_type", "created_at"}); err != nil {
@@ -234,6 +248,9 @@ func (s *JobRunner) writeCSV(ctx context.Context, path string, rec *jobRecord) e
 
 	var cursor int64
 	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		lines, next, err := s.ledgerReads.ListLedgerLinesInWindow(ctx, rec.customerID, rec.from, rec.to, cursor, 1000)
 		if err != nil {
 			return err
@@ -264,11 +281,14 @@ func (s *JobRunner) writeNDJSON(ctx context.Context, path string, rec *jobRecord
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	enc := json.NewEncoder(f)
 	var cursor int64
 	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		lines, next, err := s.ledgerReads.ListLedgerLinesInWindow(ctx, rec.customerID, rec.from, rec.to, cursor, 1000)
 		if err != nil {
 			return err
@@ -375,7 +395,7 @@ func (exportHandlers *ExportHTTPHandlers) downloadExport(w http.ResponseWriter, 
 		httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "export job not found")
 		return
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	if exportHandlers.AuthorizeCustomerAccess != nil {
 		if err := exportHandlers.AuthorizeCustomerAccess(r, status.CustomerID); err != nil {
 			exportHandlers.writeServiceError(w, err)

@@ -1,3 +1,6 @@
+// Synthetic fraud-signal benches (harness: fraud_signals_filter_mock_registry).
+// fraudSignalsFilter stubs L1/L2 signal accumulation — not internal/fraud LGBM inference.
+// ML scoring latency: internal/fraud BenchmarkLGBMScorer_ScoreBatch10k and processor microbatch path.
 package ingestion
 
 import (
@@ -39,7 +42,7 @@ func benchFilterEngineFraudScoring(b *testing.B, filters ...EventFilter) (*Filte
 	}
 	ctx := context.Background()
 
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		evt.ShadowEvent = false
 		evt.FraudScore = 0
 		evt.FraudReason = ""
@@ -114,7 +117,7 @@ func TestFilterEngine_Check_zeroAlloc_fraudScoring(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			engine := NewFilterEngine(0, tc.filters...)
 			engine.SetRegistry(&mockRegistry{})
-			for i := 0; i < 100; i++ {
+			for range 100 {
 				resetFraudBenchEvent(evt)
 				_ = engine.Check(ctx, evt)
 			}
@@ -129,6 +132,9 @@ func TestFilterEngine_Check_zeroAlloc_fraudScoring(t *testing.T) {
 	}
 }
 
+// TestFilterEngine_FraudScoring_LatencySLA measures incremental FilterEngine.Check cost
+// (fraudSignalsFilter + accumulator vs countingFilter baseline). Not ML inference.
+// Budget aligns with platform-sla.mdc hot-path fraud accumulator (< 500 µs incremental).
 func TestFilterEngine_FraudScoring_LatencySLA(t *testing.T) {
 	const (
 		iterations = 4000
@@ -152,7 +158,7 @@ func TestFilterEngine_FraudScoring_LatencySLA(t *testing.T) {
 	}, &countingFilter{})
 	scored.SetRegistry(&mockRegistry{})
 
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		resetFraudBenchEvent(evt)
 		_ = baseline.Check(ctx, evt)
 		resetFraudBenchEvent(evt)
@@ -160,7 +166,7 @@ func TestFilterEngine_FraudScoring_LatencySLA(t *testing.T) {
 	}
 
 	var baseTotal, scoredTotal int64
-	for i := 0; i < iterations; i++ {
+	for range iterations {
 		resetFraudBenchEvent(evt)
 		start := monotonicNano()
 		_ = baseline.Check(ctx, evt)

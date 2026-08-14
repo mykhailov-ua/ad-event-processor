@@ -73,6 +73,14 @@ func processTrackInner(p trackProcessor, evt *domain.Event, deviceType []byte) t
 			return trackOutcome{Status: trackStatusInternalError}
 		}
 	}
+	if evt != nil && p.filterEngine != nil {
+		if d := p.filterEngine.Timeout(); d > 0 {
+			evt.FilterDeadlineMono = monotonicNano() + d.Nanoseconds()
+		}
+	}
 	landing := ResolveLandingURL(p.registry, p.creativeStore, evt)
+	if evt != nil {
+		evt.FilterDeadlineMono = 0
+	}
 	return trackOutcome{Status: trackStatusAccepted, LandingURL: landing}
 }

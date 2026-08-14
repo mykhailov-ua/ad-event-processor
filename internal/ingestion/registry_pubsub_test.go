@@ -27,7 +27,7 @@ func (m *countingMockRepo) ListActiveCampaigns(ctx context.Context) ([]db.ListAc
 
 func TestRegistry_StartWatch_IncrementalOnlyOneCampaign(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -72,7 +72,7 @@ func TestRegistry_StartWatch_IncrementalOnlyOneCampaign(t *testing.T) {
 
 func TestRegistry_StartWatch_FullSyncPayload(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

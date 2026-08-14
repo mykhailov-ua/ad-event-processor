@@ -100,7 +100,7 @@ func TestFault_IVTCorrelationConcurrentFind(t *testing.T) {
 	start := make(chan struct{})
 
 	wg.Add(goroutines)
-	for i := 0; i < goroutines; i++ {
+	for range goroutines {
 		go func() {
 			defer wg.Done()
 			<-start

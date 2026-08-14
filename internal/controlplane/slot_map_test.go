@@ -20,7 +20,7 @@ import (
 
 func TestSlotMapAPI_RBAC(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
@@ -34,7 +34,7 @@ func TestSlotMapAPI_RBAC(t *testing.T) {
 	tokenMaker, err := identity.NewPasetoMaker(string(cfg.TokenSymmetricKey))
 	require.NoError(t, err)
 
-	svc := NewService(pool, []redis.UniversalClient{rdb}, nil, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, cfg)
 	defer svc.Close()
 
 	authMW := NewAuthMiddleware(tokenMaker, rdb, cfg, nil)
@@ -47,7 +47,7 @@ func TestSlotMapAPI_RBAC(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("manager forbidden shards read", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/api/v1/ops/shards", nil)
+		req, _ := http.NewRequest("GET", "/api/v1/ops/shards", http.NoBody)
 		req.AddCookie(&http.Cookie{Name: "accessToken", Value: managerToken})
 		resp := httptest.NewRecorder()
 		mux.ServeHTTP(resp, req)
@@ -74,7 +74,7 @@ func TestSlotMapAPI_RBAC(t *testing.T) {
 
 func TestSlotMapAPI_markMigratingAndActivate(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
@@ -83,7 +83,7 @@ func TestSlotMapAPI_markMigratingAndActivate(t *testing.T) {
 
 	cfg := &config.Config{AdminAPIKey: "test-secret"}
 	rdbs := []redis.UniversalClient{rdb, rdb, rdb, rdb}
-	svc := NewService(pool, rdbs, nil, cfg)
+	svc := NewService(context.Background(), pool, rdbs, nil, cfg)
 	defer svc.Close()
 
 	ctx := context.Background()

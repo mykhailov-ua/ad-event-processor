@@ -33,7 +33,7 @@ func TestParseTcpListenCounters_missingBlock(t *testing.T) {
 
 func TestReadTcpListenCounters_live(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	got, err := ReadTcpListenCounters()
 	require.NoError(t, err)

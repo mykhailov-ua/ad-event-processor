@@ -23,7 +23,7 @@ func TestShardFromSlotTable_matchesStaticSlotSharder(t *testing.T) {
 	}
 
 	const samples = 256
-	for i := 0; i < samples; i++ {
+	for range samples {
 		id := uuid.New()
 		edgeShard, ok := ShardFromSlotTable(id, slots)
 		require.True(t, ok)

@@ -13,7 +13,7 @@ func BenchmarkAuction(b *testing.B) {
 	n := 1000
 	campaigns := make([]CampaignData, n)
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		deviceMask := uint8(1 << (i % 3))
 		campaigns[i] = CampaignData{
 			ID:           CampaignID(uint64(i + 1)),
@@ -47,7 +47,7 @@ func BenchmarkAuction_highDensity(b *testing.B) {
 	n := 1000
 	campaigns := make([]CampaignData, n)
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		campaigns[i] = CampaignData{
 			ID:           CampaignID(uint64(i + 1)),
 			Bid:          int64(100 + i),
@@ -82,7 +82,7 @@ func BenchmarkRunAuction_MultiCreative(b *testing.B) {
 	creatives := make([]CreativeData, 0, n*3)
 	vastWire := mustBenchVASTWire(b)
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		cid := CampaignID(uint64(i + 1))
 		deviceMask := uint8(1 << (i % 3))
 		campaigns[i] = CampaignData{
@@ -94,7 +94,7 @@ func BenchmarkRunAuction_MultiCreative(b *testing.B) {
 			Weight:       uint32(i),
 			Budget:       1000000000,
 		}
-		for c := 0; c < 3; c++ {
+		for c := range 3 {
 			creatives = append(creatives, CreativeData{
 				ID:          CreativeID(uint64(i*10 + c + 1)),
 				CampaignID:  cid,

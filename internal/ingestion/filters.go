@@ -214,6 +214,13 @@ func (e *FilterEngine) SetSettingsWatcher(watcher *SettingsWatcher) {
 	e.watcher = watcher
 }
 
+func (e *FilterEngine) Timeout() time.Duration {
+	if e == nil {
+		return 0
+	}
+	return e.timeout
+}
+
 func (e *FilterEngine) Check(ctx context.Context, evt *domain.Event) error {
 	slot := uint32(0)
 	if evt != nil {
@@ -368,7 +375,7 @@ type PlacementBlacklistFilter struct {
 
 func NewPlacementBlacklistFilter(rdbs []redis.UniversalClient) *PlacementBlacklistFilter {
 	f := &PlacementBlacklistFilter{rdbs: rdbs}
-	for i := 0; i < placementCacheShards; i++ {
+	for i := range placementCacheShards {
 		f.shards[i].m = make(map[placementCacheKey]placementCacheItem, 64)
 	}
 	return f

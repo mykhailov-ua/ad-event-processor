@@ -50,7 +50,7 @@ func TestFault_SelfServeIdempotentCreate(t *testing.T) {
 	idemKey := "ss-idem-fault-" + uuid.New().String()
 
 	var firstID string
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		req, _ := http.NewRequest("POST", "/api/v1/selfserve/campaigns", bytes.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Idempotency-Key", idemKey)

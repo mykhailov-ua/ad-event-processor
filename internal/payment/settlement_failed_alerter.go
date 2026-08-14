@@ -58,7 +58,7 @@ func (a *SettlementFailedAlerter) shouldSend(paymentIntentID string) bool {
 	return true
 }
 
-func (a *SettlementFailedAlerter) AlertPermanentFailure(outboxEvent db.PaymentPaymentOutbox, cause error) {
+func (a *SettlementFailedAlerter) AlertPermanentFailure(ctx context.Context, outboxEvent db.PaymentPaymentOutbox, cause error) {
 	if a == nil {
 		return
 	}
@@ -75,9 +75,9 @@ func (a *SettlementFailedAlerter) AlertPermanentFailure(outboxEvent db.PaymentPa
 	body := formatSettlementFailedAlertBody(outboxEvent, intentID, cause)
 
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		alertCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
-		if err := enqueueOpsNotification(ctx, a.client, a.provider, a.recipient, title, body, dedupKey, true, a.broadcastProviders); err != nil {
+		if err := enqueueOpsNotification(alertCtx, a.client, a.provider, a.recipient, title, body, dedupKey, true, a.broadcastProviders); err != nil {
 			metrics.IncControlOpsAlertEnqueueFailures()
 			slog.Warn("payment settlement failed alert enqueue failed", "intent_id", intentID, "error", err)
 		}

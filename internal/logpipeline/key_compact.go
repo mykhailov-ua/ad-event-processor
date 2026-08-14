@@ -153,7 +153,7 @@ func readCompactMarker(path string) (CompactMarker, error) {
 	}
 	var marker CompactMarker
 	if err := json.Unmarshal(data, &marker); err != nil {
-		return CompactMarker{}, fmt.Errorf("%w: %v", ErrCheckpointCorrupt, err)
+		return CompactMarker{}, fmt.Errorf("%w: %w", ErrCheckpointCorrupt, err)
 	}
 	return marker, nil
 }

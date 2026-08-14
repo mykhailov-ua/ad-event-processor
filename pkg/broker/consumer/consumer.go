@@ -69,7 +69,7 @@ func (c *Consumer) Run(ctx context.Context) error {
 			return ctx.Err()
 		}
 
-		iter, err := c.cli.Fetch(c.cfg.Topic, c.cfg.Partition, start, c.cfg.MaxBytes)
+		iter, err := c.cli.Fetch(ctx, c.cfg.Topic, c.cfg.Partition, start, c.cfg.MaxBytes)
 		if err != nil {
 			if c.cfg.RedisURL != "" {
 				select {

@@ -37,7 +37,7 @@ func TestFault_RBACMaskEnforced(t *testing.T) {
 	authMW.SetPolicyStore(InitPolicyStore())
 	authMW.SetPool(pool)
 
-	svc := NewService(pool, []redis.UniversalClient{rdb}, nil, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, cfg)
 	defer svc.Close()
 	h := NewHandler(svc, cfg, authMW, nil, nil, nil)
 	mux := http.NewServeMux()
@@ -55,7 +55,7 @@ func TestFault_RBACMaskEnforced(t *testing.T) {
 	require.NoError(t, err)
 
 	buyerID := uuid.New()
-	req, _ := http.NewRequest(http.MethodGet, "/api/v1/campaigns/"+campID.String(), nil)
+	req, _ := http.NewRequest(http.MethodGet, "/api/v1/campaigns/"+campID.String(), http.NoBody)
 	withSessionUser(req, tokenMaker, RoleBuyer, custID)
 	token, err := tokenMaker.CreateToken(buyerID, uuid.New(), RoleBuyer, custID, time.Hour)
 	require.NoError(t, err)
@@ -95,7 +95,7 @@ func TestAPI_GetCampaign_BuyerMasking(t *testing.T) {
 	authMW.SetPolicyStore(InitPolicyStore())
 	authMW.SetPool(pool)
 
-	svc := NewService(pool, []redis.UniversalClient{rdb}, nil, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, cfg)
 	defer svc.Close()
 	h := NewHandler(svc, cfg, authMW, nil, nil, nil)
 	mux := http.NewServeMux()
@@ -110,7 +110,7 @@ func TestAPI_GetCampaign_BuyerMasking(t *testing.T) {
 		VALUES ($1, 'c', 'ACTIVE', $2, 1000000, 0, 'https://secret.example')`, campID, custID)
 	require.NoError(t, err)
 
-	req, _ := http.NewRequest(http.MethodGet, "/api/v1/campaigns/"+campID.String(), nil)
+	req, _ := http.NewRequest(http.MethodGet, "/api/v1/campaigns/"+campID.String(), http.NoBody)
 	token, err := tokenMaker.CreateToken(uuid.New(), uuid.New(), RoleBuyer, custID, time.Hour)
 	require.NoError(t, err)
 	req.AddCookie(&http.Cookie{Name: "accessToken", Value: token})

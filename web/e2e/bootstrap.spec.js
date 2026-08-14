@@ -1,3 +1,4 @@
+/** harness=mock_api — Playwright route.fulfill; does not prove Go handler or CH/PG. */
 import { test, expect } from '@playwright/test';
 
 test('bootstrap page submits with strong confirm and install token', async ({ page }) => {

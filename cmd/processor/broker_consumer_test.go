@@ -60,7 +60,7 @@ func TestBrokerConsumerGroup_BatchFetchAndOffsetCommit(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		evt := &domain.Event{
 			ClickID:    uuid.New().String(),
 			CampaignID: uuid.New(),
@@ -120,7 +120,7 @@ func TestBrokerConsumerGroup_SpoolAndCatchupOnOutage(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		evt := &domain.Event{
 			ClickID:    uuid.New().String(),
 			CampaignID: uuid.New(),
@@ -206,7 +206,7 @@ func TestBrokerConsumerGroup_Batch50k(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	for i := 0; i < total; i++ {
+	for range total {
 		evt := &domain.Event{
 			ClickID:    uuid.New().String(),
 			CampaignID: uuid.New(),

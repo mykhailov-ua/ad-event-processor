@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"math"
+	"time"
+
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/bidshard/ad-event-processor/internal/domain/db"
 	"github.com/bidshard/ad-event-processor/internal/metrics"
 	"github.com/bidshard/ad-event-processor/pkg/coldpath"
-	"log/slog"
-	"math"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -157,77 +158,114 @@ func (qm *QuotaManager) warmActiveCampaignQuotas(ctx context.Context) {
 		return
 	}
 
+	shadow := qm.svc.cfg != nil && qm.svc.cfg.QuotaMode == "shadow"
+	byShard := make(map[int][]*domain.Campaign)
 	for _, camp := range campaigns {
 		if camp == nil {
 			continue
 		}
-		campaignID := camp.ID
-		shardIdx := qm.svc.sharder.GetShard(campaignID)
+		shardIdx := qm.svc.sharder.GetShard(camp.ID)
 		if shardIdx < 0 || shardIdx >= len(qm.svc.rdbs) {
 			continue
 		}
+		byShard[shardIdx] = append(byShard[shardIdx], camp)
+	}
+
+	for shardIdx, shardCamps := range byShard {
 		rdb := qm.svc.rdbs[shardIdx]
-
-		quotaKey := fmt.Sprintf("budget:quota:%s", campaignID)
-		lockKey := fmt.Sprintf("budget:refill_lock:%s", campaignID)
-
-		exists, err := rdb.Exists(ctx, quotaKey).Result()
+		if rdb == nil {
+			continue
+		}
+		campaignIDs := make([]uuid.UUID, len(shardCamps))
+		for i, camp := range shardCamps {
+			campaignIDs[i] = camp.ID
+		}
+		existsMap, err := batchQuotaKeyExists(ctx, rdb, campaignIDs)
 		if err != nil {
+			slog.Error("quota warm: batch exists failed", "shard", shardIdx, "error", err)
 			continue
 		}
 
-		shadow := qm.svc.cfg != nil && qm.svc.cfg.QuotaMode == "shadow"
-		if exists == 0 {
-			if shadow {
-				pgQuota, qerr := qm.quotaRepo.GetQuota(ctx, qm.svc.sharder, campaignID)
-				if qerr == nil && pgQuota.ReservedAmount > 0 {
+		missing := make([]*domain.Campaign, 0)
+		missingIDs := make([]uuid.UUID, 0)
+		for _, camp := range shardCamps {
+			if existsMap[camp.ID] {
+				continue
+			}
+			missing = append(missing, camp)
+			missingIDs = append(missingIDs, camp.ID)
+		}
+		if len(missing) == 0 {
+			continue
+		}
+
+		if shadow {
+			reservedMap, err := qm.quotaRepo.MapReservedByCampaignIDs(ctx, missingIDs)
+			if err != nil {
+				slog.Error("quota warm: batch pg lookup failed", "shard", shardIdx, "error", err)
+				continue
+			}
+			filtered := make([]*domain.Campaign, 0, len(missing))
+			for _, camp := range missing {
+				if reservedMap[camp.ID] > 0 {
 					continue
 				}
+				filtered = append(filtered, camp)
 			}
+			missing = filtered
+		}
 
-			locked, err := rdb.SetNX(ctx, lockKey, "1", 10*time.Second).Result()
-			if err != nil || !locked {
-				continue
-			}
-
-			exists, err = rdb.Exists(ctx, quotaKey).Result()
-			if err != nil || exists > 0 {
-				_ = rdb.Del(ctx, lockKey).Err()
-				continue
-			}
-
-			slog.Info("initializing quota for campaign", "campaign_id", campaignID, "shadow", shadow)
-			idempotencyKey := fmt.Sprintf("init-quota-%s", campaignID)
-			_, err = qm.quotaRepo.ReserveChunk(ctx, qm.svc.sharder, campaignID, qm.chunkSize, idempotencyKey)
-			if err != nil {
-				_ = rdb.Del(ctx, lockKey).Err()
-				if !errors.Is(err, domain.ErrQuotaBudgetExceeded) {
-					slog.Error("failed to reserve initial chunk in Postgres", "campaign_id", campaignID, "error", err)
-				}
-				continue
-			}
-
-			actualChunk := qm.chunkSize
-
-			if shadow {
-				_ = rdb.Del(ctx, lockKey).Err()
-				slog.Info("shadow quota warm reserved in Postgres only",
-					"campaign_id", campaignID, "shard", shardIdx, "chunk_size", actualChunk)
-				continue
-			}
-
-			_, err = rdb.IncrBy(ctx, quotaKey, actualChunk).Result()
-			if err != nil {
-				slog.Error("failed to set initial budget:quota in Redis, rolling back Postgres", "campaign_id", campaignID, "error", err)
-				_ = qm.quotaRepo.ReleaseChunk(ctx, qm.svc.sharder, campaignID, actualChunk)
-				_ = rdb.Del(ctx, lockKey).Err()
-				continue
-			}
-
-			_ = rdb.Del(ctx, lockKey).Err()
-			slog.Info("successfully initialized campaign quota", "campaign_id", campaignID, "shard", shardIdx, "chunk_size", actualChunk)
+		for _, camp := range missing {
+			qm.warmCampaignQuota(ctx, shardIdx, rdb, camp.ID, shadow)
 		}
 	}
+}
+
+func (qm *QuotaManager) warmCampaignQuota(ctx context.Context, shardIdx int, rdb redis.UniversalClient, campaignID uuid.UUID, shadow bool) {
+	quotaKey := fmt.Sprintf("budget:quota:%s", campaignID)
+	lockKey := fmt.Sprintf("budget:refill_lock:%s", campaignID)
+
+	locked, err := rdb.SetNX(ctx, lockKey, "1", 10*time.Second).Result()
+	if err != nil || !locked {
+		return
+	}
+
+	exists, err := rdb.Exists(ctx, quotaKey).Result()
+	if err != nil || exists > 0 {
+		_ = rdb.Del(ctx, lockKey).Err()
+		return
+	}
+
+	slog.Info("initializing quota for campaign", "campaign_id", campaignID, "shadow", shadow)
+	idempotencyKey := fmt.Sprintf("init-quota-%s", campaignID)
+	_, err = qm.quotaRepo.ReserveChunk(ctx, qm.svc.sharder, campaignID, qm.chunkSize, idempotencyKey)
+	if err != nil {
+		_ = rdb.Del(ctx, lockKey).Err()
+		if !errors.Is(err, domain.ErrQuotaBudgetExceeded) {
+			slog.Error("failed to reserve initial chunk in Postgres", "campaign_id", campaignID, "error", err)
+		}
+		return
+	}
+
+	actualChunk := qm.chunkSize
+
+	if shadow {
+		_ = rdb.Del(ctx, lockKey).Err()
+		slog.Info("shadow quota warm reserved in Postgres only",
+			"campaign_id", campaignID, "shard", shardIdx, "chunk_size", actualChunk)
+		return
+	}
+
+	_, err = rdb.IncrBy(ctx, quotaKey, actualChunk).Result()
+	if err != nil {
+		slog.Error("failed to set initial budget:quota in Redis, rolling back Postgres", "campaign_id", campaignID, "error", err)
+		_ = qm.quotaRepo.ReleaseChunk(ctx, qm.svc.sharder, campaignID, actualChunk)
+		_ = rdb.Del(ctx, lockKey).Err()
+		return
+	}
+
+	_ = rdb.Del(ctx, lockKey).Err()
+	slog.Info("successfully initialized campaign quota", "campaign_id", campaignID, "shard", shardIdx, "chunk_size", actualChunk)
 }
 
 const (
@@ -285,6 +323,7 @@ func (w *ReconWorker) RepairQuotaDrift(ctx context.Context) {
 		return
 	}
 
+	shardRows := make(map[int][]quotaRow)
 	for _, r := range rows {
 		if int(r.shardID) >= len(w.svc.rdbs) {
 			continue
@@ -292,22 +331,38 @@ func (w *ReconWorker) RepairQuotaDrift(ctx context.Context) {
 		if w.quorum != nil && w.quorum.DeadShardConfirmed(int(r.shardID)) {
 			continue
 		}
-		rdb := w.svc.rdbs[r.shardID]
-		redisExpected, quotaMissing, err := w.redisQuotaExpected(ctx, rdb, r.campaignID)
+		shardRows[int(r.shardID)] = append(shardRows[int(r.shardID)], r)
+	}
+
+	for shardID, shardRows := range shardRows {
+		rdb := w.svc.rdbs[shardID]
+		if rdb == nil {
+			continue
+		}
+		campaignIDs := make([]uuid.UUID, len(shardRows))
+		for i, r := range shardRows {
+			campaignIDs[i] = r.campaignID
+		}
+		snapshots, err := batchRedisQuotaExpected(ctx, rdb, campaignIDs)
 		if err != nil {
+			slog.Error("quota repair: batch redis read failed", "shard", shardID, "error", err)
 			continue
 		}
-
-		action, repairMicro, reason := decideQuotaRepair(r, redisExpected, quotaMissing)
-		if action == "" || repairMicro <= 0 {
-			continue
+		for _, r := range shardRows {
+			snap, ok := snapshots[r.campaignID]
+			if !ok {
+				continue
+			}
+			action, repairMicro, reason := decideQuotaRepair(r, snap.expected, snap.quotaMissing)
+			if action == "" || repairMicro <= 0 {
+				continue
+			}
+			if err := w.enqueueQuotaRepair(ctx, r, action, snap.expected, repairMicro, reason); err != nil {
+				slog.Error("quota repair: enqueue failed", "campaign_id", r.campaignID, "error", err)
+				continue
+			}
+			metrics.QuotaRepairEnqueuedTotal.Inc()
 		}
-
-		if err := w.enqueueQuotaRepair(ctx, r, action, redisExpected, repairMicro, reason); err != nil {
-			slog.Error("quota repair: enqueue failed", "campaign_id", r.campaignID, "error", err)
-			continue
-		}
-		metrics.QuotaRepairEnqueuedTotal.Inc()
 	}
 }
 
@@ -336,28 +391,83 @@ func (w *ReconWorker) loadActiveQuotas(ctx context.Context) ([]quotaRow, error) 
 }
 
 func (w *ReconWorker) redisQuotaExpected(ctx context.Context, rdb redis.UniversalClient, campaignID uuid.UUID) (int64, bool, error) {
-	cidStr := campaignID.String()
-	quotaKey := "budget:quota:" + cidStr
-	syncKey := "budget:sync:campaign:" + cidStr
-	inflightKey := "budget:inflight:campaign:" + cidStr
-
-	pipe := rdb.Pipeline()
-	quotaCmd := pipe.Get(ctx, quotaKey)
-	syncCmd := pipe.Get(ctx, syncKey)
-	inflightCmd := pipe.Get(ctx, inflightKey)
-	_, err := pipe.Exec(ctx)
-	if err != nil && err != redis.Nil {
+	snapshots, err := batchRedisQuotaExpected(ctx, rdb, []uuid.UUID{campaignID})
+	if err != nil {
 		return 0, false, err
 	}
-
-	quotaVal, qErr := quotaCmd.Int64()
-	syncVal, _ := syncCmd.Int64()
-	inflightVal, _ := inflightCmd.Int64()
-	quotaMissing := qErr == redis.Nil
-	if quotaMissing {
-		quotaVal = 0
+	snap, ok := snapshots[campaignID]
+	if !ok {
+		return 0, false, fmt.Errorf("quota redis batch missing campaign %s", campaignID)
 	}
-	return quotaVal + syncVal + inflightVal, quotaMissing, nil
+	return snap.expected, snap.quotaMissing, nil
+}
+
+type quotaRedisSnapshot struct {
+	expected     int64
+	quotaMissing bool
+}
+
+func batchQuotaKeyExists(ctx context.Context, rdb redis.UniversalClient, campaignIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
+	if rdb == nil || len(campaignIDs) == 0 {
+		return map[uuid.UUID]bool{}, nil
+	}
+	pipe := rdb.Pipeline()
+	cmds := make(map[uuid.UUID]*redis.IntCmd, len(campaignIDs))
+	for _, id := range campaignIDs {
+		cmds[id] = pipe.Exists(ctx, fmt.Sprintf("budget:quota:%s", id))
+	}
+	if _, err := pipe.Exec(ctx); err != nil {
+		return nil, err
+	}
+	out := make(map[uuid.UUID]bool, len(campaignIDs))
+	for id, cmd := range cmds {
+		n, err := cmd.Result()
+		if err != nil {
+			return nil, err
+		}
+		out[id] = n > 0
+	}
+	return out, nil
+}
+
+func batchRedisQuotaExpected(ctx context.Context, rdb redis.UniversalClient, campaignIDs []uuid.UUID) (map[uuid.UUID]quotaRedisSnapshot, error) {
+	if rdb == nil || len(campaignIDs) == 0 {
+		return map[uuid.UUID]quotaRedisSnapshot{}, nil
+	}
+	type quotaCmds struct {
+		quota    *redis.StringCmd
+		sync     *redis.StringCmd
+		inflight *redis.StringCmd
+	}
+	pipe := rdb.Pipeline()
+	cmdByID := make(map[uuid.UUID]quotaCmds, len(campaignIDs))
+	for _, id := range campaignIDs {
+		cidStr := id.String()
+		cmdByID[id] = quotaCmds{
+			quota:    pipe.Get(ctx, "budget:quota:"+cidStr),
+			sync:     pipe.Get(ctx, "budget:sync:campaign:"+cidStr),
+			inflight: pipe.Get(ctx, "budget:inflight:campaign:"+cidStr),
+		}
+	}
+	_, err := pipe.Exec(ctx)
+	if err != nil && !errors.Is(err, redis.Nil) {
+		return nil, err
+	}
+	out := make(map[uuid.UUID]quotaRedisSnapshot, len(campaignIDs))
+	for id, cmds := range cmdByID {
+		quotaVal, qErr := cmds.quota.Int64()
+		syncVal, _ := cmds.sync.Int64()
+		inflightVal, _ := cmds.inflight.Int64()
+		quotaMissing := errors.Is(qErr, redis.Nil)
+		if quotaMissing {
+			quotaVal = 0
+		}
+		out[id] = quotaRedisSnapshot{
+			expected:     quotaVal + syncVal + inflightVal,
+			quotaMissing: quotaMissing,
+		}
+	}
+	return out, nil
 }
 
 func decideQuotaRepair(r quotaRow, redisExpected int64, quotaKeyMissing bool) (QuotaRepairAction, int64, string) {
@@ -492,11 +602,18 @@ func (w *ReconWorker) MonitorQuotaDrift(ctx context.Context) {
 	if err != nil {
 		return
 	}
+	shardRows := make(map[int][]quotaRow)
 	for _, r := range rows {
 		if int(r.shardID) >= len(w.svc.rdbs) {
 			continue
 		}
-		rdb := w.svc.rdbs[r.shardID]
+		shardRows[int(r.shardID)] = append(shardRows[int(r.shardID)], r)
+	}
+	for shardID, shardRows := range shardRows {
+		rdb := w.svc.rdbs[shardID]
+		if rdb == nil {
+			continue
+		}
 		pingCtx, cancel := context.WithTimeout(ctx, 1*time.Second)
 		if err := rdb.Ping(pingCtx).Err(); err != nil {
 			cancel()
@@ -504,23 +621,63 @@ func (w *ReconWorker) MonitorQuotaDrift(ctx context.Context) {
 		}
 		cancel()
 
-		redisExpected, _, err := w.redisQuotaExpected(ctx, rdb, r.campaignID)
+		campaignIDs := make([]uuid.UUID, len(shardRows))
+		for i, r := range shardRows {
+			campaignIDs[i] = r.campaignID
+		}
+		snapshots, err := batchRedisQuotaExpected(ctx, rdb, campaignIDs)
 		if err != nil {
 			continue
 		}
-		drift := math.Abs(float64(r.reservedAmount - redisExpected))
-		if drift > float64(r.chunkSize) {
-			metrics.QuotaDriftDetectedTotal.Inc()
-			slog.Error("QUOTA DRIFT DETECTED",
-				"campaign_id", r.campaignID,
-				"shard", r.shardID,
-				"pg_reserved", r.reservedAmount,
-				"redis_expected", redisExpected,
-				"drift", drift,
-				"chunk_size", r.chunkSize,
-			)
+		for _, r := range shardRows {
+			snap, ok := snapshots[r.campaignID]
+			if !ok {
+				continue
+			}
+			drift := math.Abs(float64(r.reservedAmount - snap.expected))
+			if drift > float64(r.chunkSize) {
+				metrics.QuotaDriftDetectedTotal.Inc()
+				slog.Error("QUOTA DRIFT DETECTED",
+					"campaign_id", r.campaignID,
+					"shard", r.shardID,
+					"pg_reserved", r.reservedAmount,
+					"redis_expected", snap.expected,
+					"drift", drift,
+					"chunk_size", r.chunkSize,
+				)
+			}
 		}
 	}
+}
+
+func quotaRepairRedisAppliedKey(outboxEventID int64) string {
+	return fmt.Sprintf("quota:repair:redis_applied:%d", outboxEventID)
+}
+
+func quotaRepairAuditAction(action QuotaRepairAction) string {
+	switch action {
+	case QuotaRepairTopUpRedis:
+		return "QUOTA_REPAIR_TOPUP"
+	case QuotaRepairReleasePG:
+		return "QUOTA_REPAIR_RELEASE"
+	default:
+		return ""
+	}
+}
+
+func (w *OutboxWorker) quotaRepairPgAlreadyApplied(ctx context.Context, eventID int64, action QuotaRepairAction, campID uuid.UUID) (bool, error) {
+	auditAction := quotaRepairAuditAction(action)
+	if auditAction == "" {
+		return false, fmt.Errorf("unknown quota repair action: %s", action)
+	}
+	var exists bool
+	err := w.svc.GetPool().QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM admin_audit_log
+			WHERE action = $1 AND target_id = $2
+			  AND (metadata->>'outbox_event_id')::bigint = $3
+		)`, auditAction, domain.ToUUID(campID), eventID).Scan(&exists)
+	return exists, err
 }
 
 func (w *OutboxWorker) ApplyQuotaRepair(ctx context.Context, eventID int64, payload []byte) error {
@@ -533,12 +690,41 @@ func (w *OutboxWorker) ApplyQuotaRepair(ctx context.Context, eventID int64, payl
 		return fmt.Errorf("invalid campaign id: %w", err)
 	}
 
+	action := QuotaRepairAction(p.Action)
+	if err := w.applyQuotaRepairPG(ctx, eventID, p, campID, action); err != nil {
+		return err
+	}
+	if action == QuotaRepairTopUpRedis {
+		if err := w.applyQuotaRepairRedisTopUp(ctx, eventID, p); err != nil {
+			return err
+		}
+	}
+	metrics.QuotaRepairAppliedTotal.Inc()
+	return nil
+}
+
+func (w *OutboxWorker) applyQuotaRepairPG(
+	ctx context.Context,
+	eventID int64,
+	p QuotaRepairPayload,
+	campID uuid.UUID,
+	action QuotaRepairAction,
+) error {
+	applied, err := w.quotaRepairPgAlreadyApplied(ctx, eventID, action, campID)
+	if err != nil {
+		return err
+	}
+	if applied {
+		return nil
+	}
+
 	tx, err := w.svc.GetPool().Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	q := db.New(tx)
 	adminID := uuid.MustParse(quotaRepairSystemAdmin)
 	auditMeta := auditQuotaRepairMeta{
 		OutboxEventID: eventID,
@@ -546,20 +732,8 @@ func (w *OutboxWorker) ApplyQuotaRepair(ctx context.Context, eventID int64, payl
 		RepairMicro:   p.RepairMicro,
 	}
 
-	switch QuotaRepairAction(p.Action) {
-	case QuotaRepairTopUpRedis:
-		if int(p.ShardID) >= len(w.svc.rdbs) {
-			return fmt.Errorf("invalid shard_id %d", p.ShardID)
-		}
-		rdb := w.svc.rdbs[p.ShardID]
-		quotaKey := fmt.Sprintf("budget:quota:%s", p.CampaignID)
-		if err := rdb.IncrBy(ctx, quotaKey, p.RepairMicro).Err(); err != nil {
-			return err
-		}
-		w.svc.AuditLog(ctx, db.New(tx), adminID, "QUOTA_REPAIR_TOPUP", quotaRepairTargetType,
-			&campID, p, auditMeta)
+	switch action {
 	case QuotaRepairReleasePG:
-		q := db.New(tx)
 		if err := q.DecreaseCampaignQuotaReserved(ctx, db.DecreaseCampaignQuotaReservedParams{
 			ShardID:        p.ShardID,
 			CampaignID:     domain.ToUUID(campID),
@@ -569,15 +743,36 @@ func (w *OutboxWorker) ApplyQuotaRepair(ctx context.Context, eventID int64, payl
 		}
 		w.svc.AuditLog(ctx, q, adminID, "QUOTA_REPAIR_RELEASE", quotaRepairTargetType,
 			&campID, p, auditMeta)
+	case QuotaRepairTopUpRedis:
+		w.svc.AuditLog(ctx, q, adminID, "QUOTA_REPAIR_TOPUP", quotaRepairTargetType,
+			&campID, p, auditMeta)
 	default:
 		return fmt.Errorf("unknown quota repair action: %s", p.Action)
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	return tx.Commit(ctx)
+}
+
+func (w *OutboxWorker) applyQuotaRepairRedisTopUp(ctx context.Context, eventID int64, p QuotaRepairPayload) error {
+	if int(p.ShardID) >= len(w.svc.rdbs) {
+		return fmt.Errorf("invalid shard_id %d", p.ShardID)
+	}
+	rdb := w.svc.rdbs[p.ShardID]
+	appliedKey := quotaRepairRedisAppliedKey(eventID)
+
+	n, err := rdb.Exists(ctx, appliedKey).Result()
+	if err != nil {
 		return err
 	}
-	metrics.QuotaRepairAppliedTotal.Inc()
-	return nil
+	if n > 0 {
+		return nil
+	}
+
+	quotaKey := fmt.Sprintf("budget:quota:%s", p.CampaignID)
+	if err := rdb.IncrBy(ctx, quotaKey, p.RepairMicro).Err(); err != nil {
+		return err
+	}
+	return rdb.Set(ctx, appliedKey, "1", 7*24*time.Hour).Err()
 }
 
 func parseQuotaRepairPayload(payload []byte) (QuotaRepairPayload, error) {

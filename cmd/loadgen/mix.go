@@ -65,6 +65,7 @@ type runner struct {
 	oversizeBytes int
 	mix           mixConfig
 	hist          *histogram
+	campaignID    string
 	iter          atomic.Uint64
 }
 
@@ -92,6 +93,13 @@ func campaignID(iter uint64) string {
 	return fmt.Sprintf("00000000-0000-0000-0000-%012x", n)
 }
 
+func (r *runner) pickCampaign(iter uint64) string {
+	if r.campaignID != "" {
+		return r.campaignID
+	}
+	return campaignID(iter)
+}
+
 func (r *runner) doOnce() {
 	iter := r.iter.Add(1)
 	roll := rand.Intn(100)
@@ -110,10 +118,10 @@ func (r *runner) doOnce() {
 	case roll < telegramEnd:
 		r.telegramTraffic(base, iter)
 	case roll < validEnd:
-		body := validBody(iter)
+		body := r.validBody(iter)
 		r.post(base+"/track", "application/json", body, nil)
 	case roll < fraudEnd:
-		body := fraudBody(iter)
+		body := r.fraudBody(iter)
 		r.post(base+"/track", "application/json", body, map[string]string{
 			"X-Forwarded-For": fraudIP(iter),
 		})
@@ -132,7 +140,7 @@ func openrtbBidBody(iter uint64) []byte {
 }
 
 func (r *runner) telegramTraffic(base string, iter uint64) {
-	cid := campaignID(iter)
+	cid := r.pickCampaign(iter)
 	clickID := fmt.Sprintf("00000000-0000-4000-8000-%012x", iter)
 	token := "token_abc123_"
 	switch iter % 5 {
@@ -159,9 +167,9 @@ func (r *runner) postOpenRTBBid(base string, iter uint64) {
 	r.exec(req)
 }
 
-func validBody(iter uint64) []byte {
+func (r *runner) validBody(iter uint64) []byte {
 	b, _ := json.Marshal(map[string]any{
-		"campaign_id": campaignID(iter),
+		"campaign_id": r.pickCampaign(iter),
 		"user_id":     fmt.Sprintf("u-%d", iter),
 		"type":        ternary(iter%3 == 0, "click", "impression"),
 		"click_id":    fmt.Sprintf("clk-%d", iter),
@@ -170,9 +178,9 @@ func validBody(iter uint64) []byte {
 	return b
 }
 
-func fraudBody(iter uint64) []byte {
+func (r *runner) fraudBody(iter uint64) []byte {
 	b, _ := json.Marshal(map[string]any{
-		"campaign_id": campaignID(iter),
+		"campaign_id": r.pickCampaign(iter),
 		"user_id":     fmt.Sprintf("fraud-%d", iter),
 		"type":        "click",
 		"click_id":    fmt.Sprintf("fclk-%d", iter),
@@ -229,7 +237,7 @@ func (r *runner) ddosTraffic(base string, iter uint64) {
 
 func (r *runner) edgeTraffic(base string, iter uint64) {
 	if r.edgeURL != "" {
-		r.post(r.edgeURL+"/track", "application/json", validBody(iter), nil)
+		r.post(r.edgeURL+"/track", "application/json", r.validBody(iter), nil)
 		return
 	}
 	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, base+"/track", http.NoBody)
@@ -259,7 +267,7 @@ func (r *runner) exec(req *http.Request) {
 		return
 	}
 	_, _ = io.Copy(io.Discard, resp.Body)
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	r.hist.inc(strconv.Itoa(resp.StatusCode), "none")
 }
 
@@ -299,7 +307,7 @@ func healthCheck(trackers []string) error {
 		if err != nil {
 			return fmt.Errorf("%s: %w", base, err)
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		if resp.StatusCode != http.StatusOK {
 			return fmt.Errorf("%s: status %d", base, resp.StatusCode)
 		}

@@ -141,7 +141,7 @@ func (w *brokerWorker) run(ctx context.Context) {
 			return
 		}
 
-		iter, err := w.cli.Fetch(w.parent.cfg.Topic, w.partition, start, w.parent.cfg.MaxBytes)
+		iter, err := w.cli.Fetch(ctx, w.parent.cfg.Topic, w.partition, start, w.parent.cfg.MaxBytes)
 		if err != nil {
 			slog.Error("broker worker fetch failed", "partition", w.partition, "error", err)
 			select {

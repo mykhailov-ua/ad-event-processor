@@ -203,7 +203,7 @@ func testConditionC6RenewMax(t *testing.T) {
 		WHERE op_id = $1`, domain.ToUUID(opID))
 	require.NoError(t, err)
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		renewed, err := worker.RenewLease(ctx, opID)
 		require.NoError(t, err)
 		require.Equal(t, int32(i+1), renewed.RenewCount)

@@ -15,7 +15,7 @@ func TestReports_FreshnessWithoutCH(t *testing.T) {
 	mux := http.NewServeMux()
 	h.Register(mux)
 
-	req := httptest.NewRequest("GET", "/api/v1/reports/placements?customer_id=00000000-0000-0000-0000-000000000001&limit=1", nil)
+	req := httptest.NewRequest("GET", "/api/v1/reports/placements?customer_id=00000000-0000-0000-0000-000000000001&limit=1", http.NoBody)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 	require.Equal(t, http.StatusServiceUnavailable, w.Code)

@@ -39,7 +39,7 @@ func TestWriteAuditLog_impressionSampling(t *testing.T) {
 	var seq atomic.Uint64
 	campID := uuid.New()
 	const n = 128 * 50
-	for i := 0; i < n; i++ {
+	for range n {
 		evt := auditEventFromFields(time.Now().Unix(), campID, "click-id", "impression")
 		writeAuditLog(l, &seq, 127, 0, evt)
 		domain.EventPool.Put(evt)
@@ -63,7 +63,7 @@ func TestWriteAuditLog_criticalNotSampled(t *testing.T) {
 	var seq atomic.Uint64
 	campID := uuid.New()
 	const n = 64
-	for i := 0; i < n; i++ {
+	for range n {
 		evt := auditEventFromFields(time.Now().Unix(), campID, "click-id", "click")
 		writeAuditLog(l, &seq, 127, 0, evt)
 		domain.EventPool.Put(evt)

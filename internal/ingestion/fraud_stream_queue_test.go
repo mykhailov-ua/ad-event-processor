@@ -92,10 +92,10 @@ func TestFraudStreamWriter_concurrentEnqueue(t *testing.T) {
 	const perProducer = 128
 	var wg sync.WaitGroup
 	wg.Add(producers)
-	for p := 0; p < producers; p++ {
+	for range producers {
 		go func() {
 			defer wg.Done()
-			for i := 0; i < perProducer; i++ {
+			for range perProducer {
 				evt := &domain.Event{
 					ClickID:    "click",
 					CampaignID: uuid.New(),

@@ -32,7 +32,7 @@ func TestManagementAPI_Customers(t *testing.T) {
 	}
 
 	authMW, tokenMaker := integrationTestAuth(t, rdb, cfg)
-	svc := NewService(pool, []redis.UniversalClient{rdb}, nil, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, cfg)
 	defer svc.Close()
 	h := NewHandler(svc, cfg, authMW, nil, nil, nil)
 	mux := http.NewServeMux()
@@ -83,7 +83,7 @@ func TestManagementAPI_Customers(t *testing.T) {
 	t.Run("CustomerIsolation_Forbidden", func(t *testing.T) {
 		otherCustID := uuid.New()
 
-		req, _ := http.NewRequest("GET", "/api/v1/customers/"+custID.String()+"/balance", nil)
+		req, _ := http.NewRequest("GET", "/api/v1/customers/"+custID.String()+"/balance", http.NoBody)
 		withSessionUser(req, tokenMaker, RoleUser, otherCustID)
 
 		resp := httptest.NewRecorder()

@@ -21,7 +21,7 @@ func BenchmarkDiskGateAcquire(b *testing.B) {
 func TestDiskGateAcquire_zeroAlloc(t *testing.T) {
 	g := NewDiskWriteGate(DefaultConfig())
 	ctx := context.Background()
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		if err := g.AcquireAppend(ctx, TierHigh); err != nil {
 			t.Fatal(err)
 		}

@@ -32,7 +32,7 @@ func TestManagementAPI_System(t *testing.T) {
 		AdminAPIKey: "test-secret",
 	}
 
-	svc := NewService(pool, []redis.UniversalClient{rdb}, nil, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, cfg)
 	defer svc.Close()
 	h := NewHandler(svc, cfg, nil, nil, nil, nil)
 	mux := http.NewServeMux()
@@ -66,7 +66,7 @@ func TestManagementAPI_System(t *testing.T) {
 			return err == nil && isMember
 		}, 2*time.Second, 20*time.Millisecond)
 
-		reqList, _ := http.NewRequest("GET", "/api/v1/ops/blacklist", nil)
+		reqList, _ := http.NewRequest("GET", "/api/v1/ops/blacklist", http.NoBody)
 		reqList.Header.Set("X-Admin-API-Key", "test-secret")
 		respList := httptest.NewRecorder()
 		mux.ServeHTTP(respList, reqList)

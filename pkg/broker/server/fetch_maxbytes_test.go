@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -28,12 +29,12 @@ func TestFetch_MaxBytesBoundary(t *testing.T) {
 		large[i] = 'l'
 	}
 
-	_, err := cli.Produce("tracker-logs", 0, small)
+	_, err := cli.Produce(context.Background(), "tracker-logs", 0, small)
 	require.NoError(t, err)
-	_, err = cli.Produce("tracker-logs", 0, large)
+	_, err = cli.Produce(context.Background(), "tracker-logs", 0, large)
 	require.NoError(t, err)
 
-	iter, err := cli.Fetch("tracker-logs", 0, 0, 60)
+	iter, err := cli.Fetch(context.Background(), "tracker-logs", 0, 0, 60)
 	require.NoError(t, err)
 
 	count := 0
@@ -45,7 +46,7 @@ func TestFetch_MaxBytesBoundary(t *testing.T) {
 	}
 	assert.Equal(t, 1, count, "maxBytes must stop before oversized second record")
 
-	iter2, err := cli.Fetch("tracker-logs", 0, 1, 512)
+	iter2, err := cli.Fetch(context.Background(), "tracker-logs", 0, 1, 512)
 	require.NoError(t, err)
 	require.True(t, iter2.Next())
 	assert.Equal(t, large, iter2.Payload)

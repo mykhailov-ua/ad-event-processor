@@ -120,6 +120,8 @@ sudo ./bin/edge-xdp -iface eth0 -mode offload
 
 ### Lab verification
 
+Perf: `BenchmarkXDP_*` = **prog test only** (harness `xdp_prog_test`; userspace `prog.Run` in `internal/edge/bpf/bench_test.go`). Not kernel NIC RX or pinned-attach drop rates. Kernel drop proof: `cmd/edge-xdp-fault`, `scripts/test/xdp_resilience_drill.sh`, pinned attach drills on lab NIC.
+
 ```bash
 bash scripts/ci/compliance.sh
 bash scripts/test/edge_xdp_bench_gate.sh
@@ -137,7 +139,7 @@ XDP is **not** the sole perimeter. Nginx Lua (`access_check.lua`), tracker `Filt
 | **X-06** | Low-volume /24 rotation (≤1 SYN per host, spread across a subnet) may stay under default `syn_subnet_limit` (256/window) | **Accepted** — no default tuning | Lua per-IP/campaign rate limits; tracker filters; IVT + fraud-scorer |
 | **X-07** | Fingerprint ringbuf may emit zero when `XDP_FINGERPRINT=0` or under ringbuf congestion | **Accepted** — fingerprint is best-effort telemetry | IVT pipeline uses other signals; Lua blacklist + manual bans |
 
-High-volume /24 bursts **are** dropped when the subnet cap is exceeded (see `TestXDP_dropSynSubnetFlood`, `TestFraudScenarios_X06_HighVolumeSubnetBurstDrops`). Operators may lower `syn_subnet_limit` via BPF `config` map for stricter Enterprise contracts — re-run `BenchmarkXDP_*` after changes.
+High-volume /24 bursts **are** dropped when the subnet cap is exceeded (see `TestXDP_dropSynSubnetFlood`, `TestFraudScenarios_X06_HighVolumeSubnetBurstDrops`). Operators may lower `syn_subnet_limit` via BPF `config` map for stricter Enterprise contracts — re-run `BenchmarkXDP_*` (harness `xdp_prog_test`) after changes.
 
 Scenario corpus: `internal/edge/bpf/edge_filter_fraud_scenarios_test.go`.
 

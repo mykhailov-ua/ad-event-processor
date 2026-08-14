@@ -23,7 +23,7 @@ func TestBlockIPUsesOutbox(t *testing.T) {
 	rdb, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
-	svc := NewService(pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), nil)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), nil)
 	defer svc.Close()
 
 	ctx := context.Background()
@@ -52,7 +52,7 @@ func TestBlockIP_ProtectedAndAudit(t *testing.T) {
 	rdb, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
-	svc := NewService(pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), nil)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), nil)
 	defer svc.Close()
 
 	ctx := context.Background()

@@ -62,7 +62,7 @@ func TestFault_CryptoWebhookStormIdempotent(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(stormSize)
 
-	for i := 0; i < stormSize; i++ {
+	for range stormSize {
 		go func() {
 			defer wg.Done()
 			_ = svc.ProcessCryptoWebhook(ctx, eventID, "payment.succeeded", bodyBytes, res.Intent.ProviderRef, amountMicro, "0xabc123", 12)
@@ -128,7 +128,7 @@ func TestFault_CryptoWebhookReplay(t *testing.T) {
 	require.NoError(t, err)
 
 	const replays = 3
-	for i := 0; i < replays; i++ {
+	for range replays {
 		err = svc.ProcessCryptoWebhook(ctx, eventID, "payment.succeeded", bodyBytes, providerRef, amountMicro, "0xreplay123", 12)
 		require.NoError(t, err)
 	}
@@ -148,7 +148,7 @@ func TestFault_CryptoWebhookReplay(t *testing.T) {
 	require.NoError(t, holdWorker.ProcessHolds(ctx))
 
 	outboxWorker := NewOutboxWorkerForFault(infra)
-	for i := 0; i < replays; i++ {
+	for range replays {
 		_, _ = outboxWorker.ProcessOutbox(ctx, 10)
 	}
 

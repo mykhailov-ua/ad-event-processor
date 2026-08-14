@@ -144,7 +144,7 @@ func TestReadFrameNewCommands(t *testing.T) {
 func BenchmarkTopicRegistryLookup(b *testing.B) {
 	registry := NewTopicRegistry()
 	var ids []uint16
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		id, _ := registry.Register("topic-" + strconv.Itoa(i))
 		ids = append(ids, id)
 	}
@@ -166,7 +166,7 @@ func BenchmarkTopicRegistryLookup(b *testing.B) {
 
 func BenchmarkBatchIterator(b *testing.B) {
 	var batch []byte
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		batch = AppendBatchMessage(batch, uint16(i%1000), []byte("message-payload-data-for-benchmarking"))
 	}
 

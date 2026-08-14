@@ -31,7 +31,7 @@ func (l *LocalQuantaLedger) TakeRemaining(id uuid.UUID) int64 {
 		return 0
 	}
 	var total int64
-	for sub := 0; sub < 4; sub++ {
+	for sub := range 4 {
 		total += l.takeRemainingDebit(id, sub)
 	}
 	return total

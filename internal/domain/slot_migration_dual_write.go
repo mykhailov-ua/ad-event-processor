@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -72,7 +73,7 @@ func CatchUpSlotMigrationDeltas(
 	}
 
 	cursor, err := src.Get(ctx, SlotMigrationDeltaCursorKey).Result()
-	if err == redis.Nil {
+	if errors.Is(err, redis.Nil) {
 		cursor = "0-0"
 	} else if err != nil {
 		return 0, 0, fmt.Errorf("read delta cursor: %w", err)
@@ -120,7 +121,7 @@ func SlotMigrationReplicationLag(ctx context.Context, src redis.Cmdable) (int64,
 		return 0, fmt.Errorf("nil redis source")
 	}
 	cursor, err := src.Get(ctx, SlotMigrationDeltaCursorKey).Result()
-	if err == redis.Nil {
+	if errors.Is(err, redis.Nil) {
 		cursor = "0-0"
 	} else if err != nil {
 		return 0, err

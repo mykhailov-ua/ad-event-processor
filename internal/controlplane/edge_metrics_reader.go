@@ -42,7 +42,7 @@ func FetchEdgeMetrics(ctx context.Context) (adminapi.EdgeMetricsPanelDTO, error)
 
 	reqCtx, cancel := context.WithTimeout(ctx, edgeMetricsTimeout)
 	defer cancel()
-	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, rawURL, nil)
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, rawURL, http.NoBody)
 	if err != nil {
 		return adminapi.EdgeMetricsPanelDTO{}, err
 	}
@@ -50,7 +50,7 @@ func FetchEdgeMetrics(ctx context.Context) (adminapi.EdgeMetricsPanelDTO, error)
 	if err != nil {
 		return adminapi.EdgeMetricsPanelDTO{}, err
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode != http.StatusOK {
 		return adminapi.EdgeMetricsPanelDTO{}, fmt.Errorf("edge metrics status %d", res.StatusCode)
 	}
@@ -103,6 +103,9 @@ func parseEdgePrometheus(r io.Reader) adminapi.EdgeMetricsPanelDTO {
 		case edgeMetricMatch(name, "ad_event_processor_edge_blacklist_stale_total"):
 			out.BlacklistStale = val
 		}
+	}
+	if err := sc.Err(); err != nil {
+		return out
 	}
 	return out
 }

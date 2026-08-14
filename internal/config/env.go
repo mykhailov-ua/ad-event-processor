@@ -31,6 +31,7 @@ type Config struct {
 	H2IncompleteMax                 int
 	HTTP1IncompleteMax              int
 	HTTP1BodyIdleMs                 int
+	HTTP1MaxConnLifetimeMs          int
 	OrtbScanMaxBytes                int
 	OrtbMaxQuoteChecks              int
 	ProtoMaxFields                  int
@@ -511,6 +512,7 @@ func Load() (*Config, error) {
 		H2IncompleteMax:                 getEnvInt("H2_INCOMPLETE_MAX", 3),
 		HTTP1IncompleteMax:              getEnvInt("HTTP1_INCOMPLETE_MAX", 3),
 		HTTP1BodyIdleMs:                 getEnvIntDefaultHTTP1BodyIdle(appEnv),
+		HTTP1MaxConnLifetimeMs:          getEnvInt("HTTP1_MAX_CONN_LIFETIME_MS", 0),
 		OrtbScanMaxBytes:                getEnvInt("ORTB_SCAN_MAX_BYTES", 262144),
 		OrtbMaxQuoteChecks:              getEnvInt("ORTB_MAX_QUOTE_CHECKS", 65536),
 		ProtoMaxFields:                  getEnvInt("PROTO_MAX_FIELDS", 256),

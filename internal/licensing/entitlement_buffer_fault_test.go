@@ -44,7 +44,7 @@ func TestFault_EntitlementBufferOOMProtection(t *testing.T) {
 	buf.Start(ctx)
 
 	var rejected int
-	for i := 0; i < 64; i++ {
+	for range 64 {
 		if err := buf.Enqueue(uuid.New()); err != nil {
 			require.ErrorIs(t, err, ErrEntitlementBufferFull)
 			rejected++

@@ -49,7 +49,7 @@ func TestChaos_ParserSecurity_PS_G11_LoneSurrogateRejected(t *testing.T) {
 func TestChaos_ParserSecurity_PS_G12_DistributedWSBomb(t *testing.T) {
 	var b strings.Builder
 	b.WriteString(`{"campaign_id":"550e8400-e29b-41d4-a716-446655440000"`)
-	for i := 0; i < MaxJSONTotalWSkip+64; i++ {
+	for range MaxJSONTotalWSkip + 64 {
 		b.WriteByte(' ')
 	}
 	b.WriteString(`,"type":"click"}`)

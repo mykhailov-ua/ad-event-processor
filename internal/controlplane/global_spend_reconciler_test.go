@@ -118,7 +118,7 @@ func TestGlobalSpendReconciler_ConcurrentApply(t *testing.T) {
 
 	var wg sync.WaitGroup
 	errCh := make(chan error, workers)
-	for w := 0; w < workers; w++ {
+	for w := range workers {
 		wg.Add(1)
 		go func(workerID int) {
 			defer wg.Done()

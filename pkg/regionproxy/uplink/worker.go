@@ -19,15 +19,17 @@ import (
 )
 
 type Config struct {
-	RegionCode     uint8
-	NodeID         string
-	SourceEpoch    uint32
-	GlobalURL      string
-	APIKey         string
-	PollInterval   time.Duration
-	BatchSize      int
-	HTTPTimeout    time.Duration
-	BatchCommitter *opkey.BatchCommitter
+	RegionCode          uint8
+	NodeID              string
+	SourceEpoch         uint32
+	GlobalURL           string
+	APIKey              string
+	PollInterval        time.Duration
+	BatchSize           int
+	HTTPTimeout         time.Duration
+	ForwardMaxAttempts  int
+	ForwardRetryBackoff time.Duration
+	BatchCommitter      *opkey.BatchCommitter
 }
 
 type Worker struct {
@@ -52,6 +54,12 @@ func New(w *wal.WAL, pool *opkey.Pool, cfg Config) *Worker {
 	}
 	if cfg.HTTPTimeout <= 0 {
 		cfg.HTTPTimeout = 5 * time.Second
+	}
+	if cfg.ForwardMaxAttempts <= 0 {
+		cfg.ForwardMaxAttempts = 3
+	}
+	if cfg.ForwardRetryBackoff <= 0 {
+		cfg.ForwardRetryBackoff = 50 * time.Millisecond
 	}
 	return &Worker{
 		wal:  w,
@@ -140,15 +148,42 @@ func (u *Worker) forwardSlot(slot *opkey.Slot) {
 	if slot == nil {
 		return
 	}
-	claimed, err := u.wal.TryClaimForward(slot.Seq)
-	if err != nil || !claimed {
+	maxAttempts := u.cfg.ForwardMaxAttempts
+	backoff := u.cfg.ForwardRetryBackoff
+
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		if attempt > 1 {
+			time.Sleep(backoff * time.Duration(attempt-1))
+		}
+		claimed, err := u.wal.TryClaimForward(slot.Seq)
+		if err != nil {
+			continue
+		}
+		if !claimed {
+			return
+		}
+		u.forwarded.Add(1)
+
+		if err := u.forwardAttempt(slot); err != nil {
+			if unclaimErr := u.wal.UnclaimForward(slot.Seq); unclaimErr != nil {
+				err = fmt.Errorf("%w; unclaim forward seq=%d: %v", err, slot.Seq, unclaimErr)
+			}
+			if attempt == maxAttempts {
+				return
+			}
+			continue
+		}
+		if err := u.wal.MarkRemoteAcked(slot.Seq); err == nil {
+			u.acked.Add(1)
+		}
 		return
 	}
-	u.forwarded.Add(1)
+}
 
+func (u *Worker) forwardAttempt(slot *opkey.Slot) error {
 	payload, err := u.wal.ReadRecordPayload(slot.Seq)
 	if err != nil {
-		return
+		return err
 	}
 	var factor uuid.UUID
 	copy(factor[:], slot.FactorU[:])
@@ -166,14 +201,14 @@ func (u *Worker) forwardSlot(slot *opkey.Slot) {
 	}
 	body, err := json.Marshal(reqBody)
 	if err != nil {
-		return
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), u.cfg.HTTPTimeout)
 	defer cancel()
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, u.cfg.GlobalURL, bytes.NewReader(body))
 	if err != nil {
-		return
+		return err
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 	if u.cfg.APIKey != "" {
@@ -182,16 +217,14 @@ func (u *Worker) forwardSlot(slot *opkey.Slot) {
 
 	resp, err := u.client.Do(httpReq)
 	if err != nil {
-		return
+		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	_, _ = io.Copy(io.Discard, resp.Body)
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return
+		return fmt.Errorf("region proxy uplink seq=%d: http %d", slot.Seq, resp.StatusCode)
 	}
-	if err := u.wal.MarkRemoteAcked(slot.Seq); err == nil {
-		u.acked.Add(1)
-	}
+	return nil
 }
 
 func (u *Worker) ForwardOnce(slot *opkey.Slot) error {

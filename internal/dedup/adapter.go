@@ -51,6 +51,14 @@ func NewAdapter(pool *pgxpool.Pool, regionCode uint8, sourceEpoch uint32) *Adapt
 	}
 }
 
+func (a *Adapter) SetPool(pool *pgxpool.Pool) {
+	if a == nil || pool == nil {
+		return
+	}
+	a.pool = pool
+	a.queries = db.New(pool)
+}
+
 func (a *Adapter) SourceEpoch() uint32 {
 	if a == nil {
 		return 0

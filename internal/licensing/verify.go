@@ -74,7 +74,7 @@ func ParsePublicKey(keyBytes []byte) (ed25519.PublicKey, error) {
 	keyStr := strings.TrimSpace(string(keyBytes))
 	if len(keyStr) == 64 {
 		var raw [32]byte
-		for i := 0; i < 32; i++ {
+		for i := range 32 {
 			var b byte
 			_, err := sscanf(keyStr[i*2:i*2+2], "%x", &b)
 			if err != nil {
@@ -100,7 +100,7 @@ func sscanf(s string, format string, a ...any) (int, error) {
 	if len(s) != 2 {
 		return 0, errors.New("bad length")
 	}
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		c := s[i]
 		var digit byte
 		switch {

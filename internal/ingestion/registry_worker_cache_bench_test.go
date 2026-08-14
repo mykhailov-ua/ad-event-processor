@@ -18,7 +18,7 @@ func BenchmarkRegistry_GetCampaignWorker_hot(b *testing.B) {
 	reg.storeCampaignSnapshot(&campaignMapSnapshot{byID: map[uuid.UUID]campaignInfo{
 		id: {campaign: camp},
 	}})
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		_, _ = reg.GetCampaignWorker(0, id)
 	}
 	b.ReportAllocs()

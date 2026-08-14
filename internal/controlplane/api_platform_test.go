@@ -57,7 +57,7 @@ func TestManagementAPI_PlatformSettingsCycle(t *testing.T) {
 	adminapi.RegisterRoutes(mux, registry)
 
 	t.Run("GET before bootstrap", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/api/v1/settings/platform", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/settings/platform", http.NoBody)
 		withAdminAPIKey(req, cfg)
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
@@ -127,7 +127,7 @@ func TestManagementAPI_PlatformSettingsCycle(t *testing.T) {
 	})
 
 	t.Run("GET after apply clears pending restart", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/api/v1/settings/platform", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/settings/platform", http.NoBody)
 		withAdminAPIKey(req, cfg)
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)

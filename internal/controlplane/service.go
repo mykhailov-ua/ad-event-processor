@@ -96,8 +96,8 @@ func (s *Service) startWorker(fn func()) {
 	}()
 }
 
-func NewService(pool *pgxpool.Pool, rdbs []redis.UniversalClient, sharder domain.Sharder, cfg *config.Config) *Service {
-	ctx, cancel := context.WithCancel(context.Background())
+func NewService(ctx context.Context, pool *pgxpool.Pool, rdbs []redis.UniversalClient, sharder domain.Sharder, cfg *config.Config) *Service {
+	ctx, cancel := context.WithCancel(ctx)
 	s := &Service{
 		pool:    pool,
 		rdbs:    rdbs,
@@ -122,7 +122,7 @@ func NewService(pool *pgxpool.Pool, rdbs []redis.UniversalClient, sharder domain
 		}
 	})
 	s.startWorker(func() {
-		adapter := s.dedupAdapter()
+		adapter := s.dedupAdapter(ctx)
 		if adapter == nil {
 			return
 		}
@@ -353,6 +353,9 @@ func (s *Service) TopUpBalance(ctx context.Context, customerID uuid.UUID, amount
 }
 
 func (s *Service) ApplyPaymentCredit(ctx context.Context, customerID uuid.UUID, amount int64, ledgerIdempotencyKey string, paymentIntentID uuid.UUID, provider string, providerRef string) (bool, int64, error) {
+	if err := s.requirePgFencing(ctx); err != nil {
+		return false, 0, err
+	}
 	var ledgerEntryID int64
 	var applied bool
 
@@ -430,6 +433,9 @@ func (s *Service) ApplyPaymentCredit(ctx context.Context, customerID uuid.UUID, 
 }
 
 func (s *Service) ApplyPaymentRefund(ctx context.Context, customerID uuid.UUID, amountMicro int64, ledgerIdempotencyKey string, paymentIntentID uuid.UUID, provider string, providerRefundID string) (bool, int64, error) {
+	if err := s.requirePgFencing(ctx); err != nil {
+		return false, 0, err
+	}
 	if amountMicro <= 0 {
 		return false, 0, errValidation("refund amount must be positive")
 	}
@@ -532,6 +538,9 @@ func (s *Service) applyPaymentChargebackMovement(
 	ledgerType string,
 	isDebit bool,
 ) (bool, int64, error) {
+	if err := s.requirePgFencing(ctx); err != nil {
+		return false, 0, err
+	}
 	if amountMicro <= 0 {
 		return false, 0, errValidation("chargeback amount must be positive")
 	}
@@ -674,6 +683,9 @@ func (s *Service) CancelCampaign(ctx context.Context, campaignID uuid.UUID, reas
 }
 
 func (s *Service) FinalizeCancelledCampaign(ctx context.Context, campaignID uuid.UUID, reason string) error {
+	if err := s.requirePgFencing(ctx); err != nil {
+		return err
+	}
 	return pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		q := db.New(tx)
 		var camp db.Campaign
@@ -774,6 +786,7 @@ func (s *Service) publishCampaignUpdate(ctx context.Context, campaignID string) 
 		}
 		timeout := time.Duration(s.cfg.Broker.TimeoutMs) * time.Millisecond
 		if err := domain.PublishCampaignUpdateBroker(
+			ctx,
 			s.cfg.Broker.URL,
 			s.cfg.Broker.RedisURL,
 			topic,
@@ -986,6 +999,7 @@ func (s *Service) publishRoutingCutover(ctx context.Context, routingEpoch int64,
 			timeout = 3 * time.Second
 		}
 		if err := domain.PublishSlotMapReload(
+			ctx,
 			s.cfg.Broker.URL,
 			s.cfg.Broker.RedisURL,
 			s.cfg.SlotMapReloadTopic,

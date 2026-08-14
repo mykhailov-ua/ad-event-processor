@@ -111,7 +111,7 @@ func defaultCHPing(cfg *config.Config) func(context.Context) error {
 		if err != nil {
 			return err
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 		return conn.Exec(ctx, "INSERT INTO FUNCTION Null('doctor_probe UInt8') VALUES (1)")
 	}
 }
@@ -132,7 +132,7 @@ func (DiskProbe) Run(ctx context.Context) Result {
 	if err := os.WriteFile(path, payload, 0o600); err != nil {
 		return Result{Name: "disk", Status: StatusFail, Detail: err.Error(), Latency: time.Since(start).Milliseconds()}
 	}
-	defer os.Remove(path)
+	defer func() { _ = os.Remove(path) }()
 	latency := time.Since(writeStart)
 	status := StatusPass
 	if latency > budget {

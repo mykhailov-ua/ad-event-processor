@@ -81,7 +81,7 @@ func (s *Service) recordLicenseApplyAudit(ctx context.Context, claims *licenseCl
 	}
 	s.AuditLog(ctx, nil, adminID, "LICENSE_APPLY", "license", targetID, change, nil)
 	if s.alerter != nil {
-		s.alerter.AlertLicenseApplied(claims.DeploymentID, claims.ValidUntil, adminID.String(), claims.Revoked)
+		s.alerter.AlertLicenseApplied(ctx, claims.DeploymentID, claims.ValidUntil, adminID.String(), claims.Revoked)
 	}
 }
 

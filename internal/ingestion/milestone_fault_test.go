@@ -83,10 +83,10 @@ func TestFault_NOSCRIPTStorm(t *testing.T) {
 		require.NoError(t, rdb.ScriptFlush(ctx).Err())
 	}()
 
-	for w := 0; w < workers; w++ {
+	for range workers {
 		go func() {
 			defer wg.Done()
-			for i := 0; i < perWorker; i++ {
+			for i := range perWorker {
 				evt := &domain.Event{
 					CampaignID: campID,
 					UserID:     fmt.Sprintf("u-%d", i),
@@ -134,11 +134,11 @@ func TestFault_CHSpoolDiskBlock(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(workers)
 
-	for w := 0; w < workers; w++ {
+	for w := range workers {
 		worker := w
 		go func() {
 			defer wg.Done()
-			for i := 0; i < perWorker; i++ {
+			for i := range perWorker {
 				start := time.Now()
 				token := fmt.Sprintf("w%d-%d", worker, i)
 				evt := &domain.Event{

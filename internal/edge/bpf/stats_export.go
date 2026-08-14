@@ -15,7 +15,7 @@ func ExportStatsToPrometheus(m *ebpf.Map, last []uint64) []uint64 {
 	if len(last) != StatMax {
 		last = make([]uint64, StatMax)
 	}
-	for idx := uint32(0); idx < StatMax; idx++ {
+	for idx := range uint32(StatMax) {
 		delta := totals[idx]
 		if last[idx] > 0 {
 			delta = totals[idx] - last[idx]

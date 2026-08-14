@@ -31,7 +31,7 @@ func TestFault_BrokerLiveConsumer_CorruptPayload(t *testing.T) {
 
 	producer := client.NewClient(addr, 2*time.Second)
 	require.NoError(t, producer.Connect())
-	_, err := producer.Produce("tracker-logs", 0, []byte{0xff, 0xfe, 0x01, 0x02})
+	_, err := producer.Produce(context.Background(), "tracker-logs", 0, []byte{0xff, 0xfe, 0x01, 0x02})
 	require.NoError(t, err)
 	campID := uuid.New()
 	produceBrokerStreamEvent(t, producer, "tracker-logs", &pb.AdStreamEvent{
@@ -169,7 +169,7 @@ func TestFault_BrokerShadowCutover_NoEventLoss(t *testing.T) {
 
 	producer := client.NewClient(addr, 2*time.Second)
 	require.NoError(t, producer.Connect())
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		produceBrokerStreamEvent(t, producer, topic, &pb.AdStreamEvent{
 			CreatedAtUnix: time.Now().Unix(),
 			CampaignId:    campID[:],

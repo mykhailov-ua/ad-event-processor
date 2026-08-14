@@ -185,7 +185,7 @@ func udpDecodeNodeWeights(payload []byte, out *[]UDPNodeWeight) bool {
 	}
 	off := 2
 	weights := make([]UDPNodeWeight, 0, count)
-	for i := 0; i < count; i++ {
+	for range count {
 		if off >= len(payload) {
 			return false
 		}

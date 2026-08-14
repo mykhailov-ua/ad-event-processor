@@ -27,26 +27,19 @@ import (
 	"github.com/bidshard/ad-event-processor/internal/postback"
 	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
 	"github.com/bidshard/ad-event-processor/pkg/logger"
+	"github.com/bidshard/ad-event-processor/pkg/pgfailover"
 	"github.com/bidshard/ad-event-processor/pkg/piihash"
 	rpclient "github.com/bidshard/ad-event-processor/pkg/regionproxy/client"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
 )
 
 func main() {
 	if len(os.Args) > 2 && os.Args[1] == "--health-probe" {
-		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, os.Args[2], http.NoBody)
-		if err != nil {
-			os.Exit(1)
-		}
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			os.Exit(1)
-		}
-		defer func() { _ = resp.Body.Close() }()
-		if resp.StatusCode != 200 {
+		if !lifecycle.RunHealthProbe(os.Args[2]) {
 			os.Exit(1)
 		}
 		os.Exit(0)
@@ -133,7 +126,7 @@ func main() {
 			slog.Error("failed to connect to clickhouse", "error", err)
 			os.Exit(1)
 		}
-		defer chConn.Close()
+		defer func() { _ = chConn.Close() }()
 
 		if err := migrate.ApplyClickHouseMigrations(ctx, chConn); err != nil {
 			slog.Error("failed to apply clickhouse migrations", "error", err)
@@ -160,7 +153,7 @@ func main() {
 	if chEnabled && opsAlerter != nil && cfg.CHEmergencyDropPercent > 0 {
 		threshold := cfg.CHEmergencyDropPercent
 		onEmergencyDrop = func(table, partition string, diskPct float64) {
-			opsAlerter.AlertCHEmergencyDrop(table, partition, diskPct, threshold)
+			opsAlerter.AlertCHEmergencyDrop(ctx, table, partition, diskPct, threshold)
 		}
 	}
 	if chEnabled && chConn != nil && cfg.CHJanitorEnabled {
@@ -263,6 +256,50 @@ func main() {
 	campaignRepo.ConfigureAuditLedgerFlush(cfg.AuditLedgerFlushSampleMask)
 	customerRepo := ingestion.NewCustomerRepoWithDB(pool, queries)
 	dedupAdapter := dedup.NewAdapter(pool, cfg.RegionCode, dedup.LoadRoutingEpoch(ctx, pool))
+
+	var ingestPgFailover *pgfailover.IngestRuntime
+	ingestPgFailover = pgfailover.StartIngestSubscribers(ctx, rdbs, pgfailover.IngestSubscriberConfig{
+		MaxConns: cfg.DBProcessorMaxConns,
+		MinConns: cfg.DBMinConns,
+		Interval: time.Duration(cfg.PgFailoverPollMs) * time.Millisecond,
+	}, func(newRead *pgxpool.Pool) {
+		oldRead := pool
+		pool = newRead
+		queries = db.New(newRead)
+		campaignRepo.SetDB(newRead, queries)
+		customerRepo.SetDB(newRead, queries)
+		if dedupAdapter != nil {
+			dedupAdapter.SetPool(newRead)
+		}
+		partManager.SetPool(newRead)
+		if oldRead != nil && oldRead != newRead {
+			oldRead.Close()
+		}
+
+		dsn := ingestPgFailover.CurrentDSN()
+		if dsn == "" {
+			dsn = string(cfg.DBDSN)
+		}
+		settleNew, connectErr := database.Connect(ctx, dsn, cfg.PgPoolSettleConns(cfg.SettlementLaneCount()), 1)
+		if connectErr != nil {
+			slog.Warn("processor pg failover settle pool reconnect failed", "error", connectErr)
+			return
+		}
+		oldSettle := settlePool
+		settlePool = settleNew
+		settleQueries = db.New(settleNew)
+		pgStore.SetQuerier(settleQueries)
+		if postbackEnqueuer != nil {
+			postbackEnqueuer.SetStore(settleQueries)
+		}
+		if oldSettle != nil && oldSettle != settleNew && oldSettle != oldRead {
+			oldSettle.Close()
+		}
+		slog.Info("processor pg failover reconnected read and settle pools")
+	})
+	if ingestPgFailover != nil {
+		defer ingestPgFailover.Stop()
+	}
 
 	var weightCtrl *ingestion.ProcessorWeightController
 	if cfg.ProcessorWeightEnabled {
@@ -570,6 +607,7 @@ func main() {
 		Addr:    ":" + cfg.ProcessorPort,
 		Handler: mux,
 	}
+	lifecycle.ApplySidecarHTTPServerTimeouts(server)
 
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -631,7 +669,7 @@ func main() {
 			slog.Error("pg settlement worker wait failed", "error", err)
 		}
 	}
-	pgStore.Close()
+	_ = pgStore.Close()
 
 	for _, cc := range chConsumers {
 		cc.Close()
@@ -640,7 +678,7 @@ func main() {
 		}
 	}
 	if chStore != nil {
-		chStore.Close()
+		_ = chStore.Close()
 	}
 
 	syncCancel()

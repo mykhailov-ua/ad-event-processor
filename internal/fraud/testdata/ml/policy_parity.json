@@ -1,0 +1,89 @@
+{
+  "cases": [
+    {
+      "id": "residential_proxy_positive",
+      "op": "residential_proxy_signal",
+      "row": {
+        "events": 275,
+        "clicks": 4,
+        "spend_micro": 6130354,
+        "budget_limit_micro": 22060077,
+        "unique_users": 32,
+        "unique_uas": 11
+      },
+      "want": true
+    },
+    {
+      "id": "residential_proxy_negative",
+      "op": "residential_proxy_signal",
+      "row": {
+        "events": 1000,
+        "clicks": 120,
+        "spend_micro": 1,
+        "budget_limit_micro": 1,
+        "unique_users": 80,
+        "unique_uas": 70
+      },
+      "want": false
+    },
+    {
+      "id": "adjust_structural_exempt",
+      "op": "adjust_probability",
+      "row": {
+        "events": 1139,
+        "clicks": 1046,
+        "spend_micro": 1,
+        "budget_limit_micro": 1,
+        "unique_users": 3,
+        "unique_uas": 3
+      },
+      "ml_probability": 0.91,
+      "want": {
+        "adjusted_probability": 0.91,
+        "residential_proxy": false,
+        "structural_fraud": true,
+        "fp_guard_applied": false
+      }
+    },
+    {
+      "id": "adjust_fp_guard_grey",
+      "op": "adjust_probability",
+      "row": {
+        "events": 500,
+        "clicks": 10,
+        "spend_micro": 1,
+        "budget_limit_micro": 1,
+        "unique_users": 200,
+        "unique_uas": 120
+      },
+      "ml_probability": 0.91,
+      "want": {
+        "adjusted_probability": 0.79,
+        "residential_proxy": false,
+        "structural_fraud": false,
+        "fp_guard_applied": true
+      }
+    },
+    {
+      "id": "decide_proxy_floor",
+      "op": "decide",
+      "row": {
+        "events": 400,
+        "clicks": 6,
+        "spend_micro": 1,
+        "budget_limit_micro": 1,
+        "unique_users": 40,
+        "unique_uas": 8
+      },
+      "ml_probability": 0.35,
+      "want": {
+        "tier": "ivt",
+        "score": 62,
+        "adjusted_probability": 0.62,
+        "residential_proxy": true,
+        "structural_fraud": false,
+        "fp_guard_applied": false
+      }
+    }
+  ]
+}

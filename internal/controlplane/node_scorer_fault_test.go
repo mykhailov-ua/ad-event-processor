@@ -117,7 +117,7 @@ func TestFault_Score_DrainThreeEpochs(t *testing.T) {
 	state := NodeScoreState{EMAScore: 0.15, DrainEpochs: 0}
 	weight := prev
 
-	for epoch := 0; epoch < 3; epoch++ {
+	for range 3 {
 		res := ScoreNode(NodeScoreInput{
 			Uptime: 25 * time.Minute,
 			Kind:   MetricUtilization,

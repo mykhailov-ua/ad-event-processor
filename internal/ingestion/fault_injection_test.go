@@ -33,7 +33,7 @@ func TestFault_AdsRedisTerminateStopsTrack(t *testing.T) {
 	defer stack.Close(t)
 
 	const preFault = 5
-	for i := 0; i < preFault; i++ {
+	for range preFault {
 		require.Equal(t, http.StatusAccepted, postFaultClick(t, stack.Handler, stack.CampaignID))
 	}
 	require.Eventually(t, func() bool {
@@ -47,7 +47,7 @@ func TestFault_AdsRedisTerminateStopsTrack(t *testing.T) {
 	}, "track must reject once Redis is dead")
 
 	postFaultFail := 0
-	for i := 0; i < adsFaultAttempts; i++ {
+	for range adsFaultAttempts {
 		if postFaultClick(t, stack.Handler, stack.CampaignID) != http.StatusAccepted {
 			postFaultFail++
 		}
@@ -77,7 +77,7 @@ func TestFault_AdsPGKillOpensConsumerCircuit(t *testing.T) {
 
 	producer := NewStreamProducer(infra.Redis, stack.Stream, 1000, 1*time.Second)
 	ctx := context.Background()
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		require.NoError(t, producer.Process(faultDomainEventClick(stack.CampaignID)))
 	}
 	require.Eventually(t, func() bool {
@@ -90,7 +90,7 @@ func TestFault_AdsPGKillOpensConsumerCircuit(t *testing.T) {
 		return infra.Pool.Ping(ctx) != nil
 	}, "pg ping must fail after container terminate")
 
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		_ = producer.Process(faultDomainEventClick(stack.CampaignID))
 	}
 
@@ -126,7 +126,7 @@ func TestFault_AdsStreamBacklogUnderPostgresOutage(t *testing.T) {
 	defer stack.Close(t)
 
 	const seeded = 4
-	for i := 0; i < seeded; i++ {
+	for range seeded {
 		require.Equal(t, http.StatusAccepted, postFaultClick(t, stack.Handler, stack.CampaignID))
 	}
 	require.Eventually(t, func() bool {
@@ -145,7 +145,7 @@ func TestFault_AdsStreamBacklogUnderPostgresOutage(t *testing.T) {
 
 	postFaultAccepted := 0
 	const attempts = 6
-	for i := 0; i < attempts; i++ {
+	for range attempts {
 		if postFaultClick(t, stack.Handler, stack.CampaignID) == http.StatusAccepted {
 			postFaultAccepted++
 		}
@@ -228,7 +228,7 @@ func TestFault_AdsPGStopStartConsumerRecovery(t *testing.T) {
 	producer := NewStreamProducer(infra.Redis, stack.Stream, 1000, 1*time.Second)
 	ctx := context.Background()
 
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		require.NoError(t, producer.Process(faultDomainEventClick(stack.CampaignID)))
 	}
 	require.Eventually(t, func() bool {
@@ -246,7 +246,7 @@ func TestFault_AdsPGStopStartConsumerRecovery(t *testing.T) {
 	_ = stack.Consumer.Wait(ctx)
 
 	const buffered = 5
-	for i := 0; i < buffered; i++ {
+	for range buffered {
 		require.NoError(t, producer.Process(faultDomainEventClick(stack.CampaignID)))
 	}
 
@@ -292,10 +292,10 @@ func TestFault_AdsConcurrentTrackDuringRedisOutage(t *testing.T) {
 	var rejected atomic.Int32
 	var wg sync.WaitGroup
 	wg.Add(adsFaultWorkers)
-	for i := 0; i < adsFaultWorkers; i++ {
+	for range adsFaultWorkers {
 		go func() {
 			defer wg.Done()
-			for j := 0; j < 5; j++ {
+			for range 5 {
 				if postFaultClick(t, stack.Handler, stack.CampaignID) != http.StatusAccepted {
 					rejected.Add(1)
 				}

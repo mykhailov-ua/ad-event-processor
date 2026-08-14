@@ -2,6 +2,7 @@ package controlplane
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -54,7 +55,7 @@ func (w supportBundleWriter) WriteSupportBundle(ctx context.Context, out io.Writ
 			SELECT deployment_id, state
 			FROM billing.license_status
 			LIMIT 1`).Scan(&dep, &state)
-		if err != nil && err != pgx.ErrNoRows {
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return err
 		}
 		if err == nil {

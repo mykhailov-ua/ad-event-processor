@@ -69,17 +69,7 @@ func StartRtbCatalogReloadWatch(
 
 		ch := pubsub.Channel(redis.WithChannelSize(64))
 		trigger := make(chan struct{}, 1)
-		go func() {
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-trigger:
-					reload()
-					time.Sleep(100 * time.Millisecond)
-				}
-			}
-		}()
+		go runRtbCatalogReloadDebouncer(ctx, trigger, reload, rtbCatalogReloadDebounce)
 
 		for {
 			select {

@@ -75,7 +75,7 @@ func readProcMem(t targetEntry) (procMemSnapshot, error) {
 	if err != nil {
 		return row, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {
 		line := sc.Text()
@@ -123,6 +123,9 @@ func readProcMem(t targetEntry) (procMemSnapshot, error) {
 				row.NonvoluntaryCtx = v
 			}
 		}
+	}
+	if err := sc.Err(); err != nil {
+		return row, err
 	}
 	if minflt, majflt, err := readProcStatFlt(t.PID); err == nil {
 		row.MinFlt = minflt

@@ -56,7 +56,7 @@ func TestColdRolluper_ClickHouse_RealCH(t *testing.T) {
 	destKey := "segment_ch_test.compact.zst"
 
 	var plain bytesSegment
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		plain.appendRecord(t, &pb.AdStreamEvent{
 			CampaignId:    campaignID[:],
 			EventType:     []byte("impression"),

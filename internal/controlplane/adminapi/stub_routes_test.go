@@ -8,12 +8,13 @@ import (
 )
 
 func TestStubRoutes_return501(t *testing.T) {
+	// Guard: when stubRouteCatalog is non-empty, every entry must return 501 NOT_IMPLEMENTED.
 	t.Parallel()
 	mux := http.NewServeMux()
 	(&StubHTTPHandlers{}).Register(mux)
 
 	for _, route := range stubRouteCatalog {
-		req := httptest.NewRequest(route.Method, route.Path, nil)
+		req := httptest.NewRequest(route.Method, route.Path, http.NoBody)
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 		if rec.Code != http.StatusNotImplemented {

@@ -150,7 +150,7 @@ func (w *BrokerReconcileWorker) sample(ctx context.Context) {
 			}
 		}
 		committed, _ := w.cli.CommittedOffset(w.cfg.Topic, part, w.cfg.BrokerGroup)
-		iter, fetchErr := w.cli.Fetch(w.cfg.Topic, part, committed, 1024)
+		iter, fetchErr := w.cli.Fetch(sampleCtx, w.cfg.Topic, part, committed, 1024)
 		if fetchErr == nil {
 			brokerHWMSum += iter.HighWatermark
 		}

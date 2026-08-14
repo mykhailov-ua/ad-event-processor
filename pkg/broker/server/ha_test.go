@@ -56,7 +56,7 @@ func TestHAClusterFailoverAndReplication(t *testing.T) {
 		t.Fatal(err)
 	}
 	s1.SetCoordinator(coord1)
-	coord1.Start()
+	coord1.Start(context.Background())
 	defer coord1.Stop()
 
 	s2 := NewServer("127.0.0.1:0", dir2, 10*1024*1024, 4096)
@@ -70,7 +70,7 @@ func TestHAClusterFailoverAndReplication(t *testing.T) {
 		t.Fatal(err)
 	}
 	s2.SetCoordinator(coord2)
-	coord2.Start()
+	coord2.Start(context.Background())
 	defer coord2.Stop()
 
 	topic := "ha-events"
@@ -111,9 +111,9 @@ func TestHAClusterFailoverAndReplication(t *testing.T) {
 	defer cli.Close()
 
 	msgCount := 20
-	for i := 0; i < msgCount; i++ {
+	for i := range msgCount {
 		payload := []byte(fmt.Sprintf("ha-msg-payload-%d", i))
-		offset, err := cli.Produce(topic, 0, payload)
+		offset, err := cli.Produce(context.Background(), topic, 0, payload)
 		if err != nil {
 			t.Fatalf("produce failed on message %d: %v", i, err)
 		}
@@ -141,7 +141,7 @@ func TestHAClusterFailoverAndReplication(t *testing.T) {
 	}, 20*time.Second, 200*time.Millisecond, "survivor must become ready leader after failover")
 
 	payload := []byte("msg-after-failover")
-	offset, err := cli.Produce(topic, 0, payload)
+	offset, err := cli.Produce(context.Background(), topic, 0, payload)
 	if err != nil {
 		t.Fatalf("failover produce failed: %v", err)
 	}

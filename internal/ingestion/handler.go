@@ -106,13 +106,15 @@ type connContext struct {
 	h2StreamID uint32
 
 	http1IncompleteSpin   uint8
+	http1BodyIdleArmed    bool
 	http1BodyIdleDeadline int64
+	http1ConnOpenedMono   int64
 
 	chunkScratch []byte
 }
 
 func init() {
-	for i := 0; i < 600; i++ {
+	for i := range 600 {
 		statusStrings[i] = strconv.Itoa(i)
 	}
 }
@@ -180,7 +182,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 
 	trackDurationObserver := metrics.HttpRequestDuration.WithLabelValues("POST", "/track")
 	var trackStatusCounters [600]prometheus.Counter
-	for i := 0; i < 600; i++ {
+	for i := range 600 {
 		trackStatusCounters[i] = metrics.HttpRequestsTotal.WithLabelValues("POST", "/track", statusStrings[i])
 	}
 
@@ -581,6 +583,12 @@ type AdsPacketHandler struct {
 	trackCORS             trackCORS
 }
 
+func (h *AdsPacketHandler) SetPool(p Pinger) {
+	if h != nil {
+		h.pool = p
+	}
+}
+
 func (h *AdsPacketHandler) SetBrokerProducer(bp *BrokerProducer) {
 	if h != nil {
 		h.brokerProducer = bp
@@ -654,7 +662,7 @@ func (h *AdsPacketHandler) write(c gnet.Conn, data []byte, ctx *connContext) {
 func NewAdsPacketHandler(cfg *config.Config, registry domain.CampaignRegistry, filterEngine *FilterEngine, pool Pinger, rdbs []redis.UniversalClient, sharder Sharder, fraudStream string, creativeStore *BrandCreativeStore) *AdsPacketHandler {
 	trackDurationObserver := metrics.HttpRequestDuration.WithLabelValues("POST", "/track")
 	var trackStatusCounters [600]prometheus.Counter
-	for i := 0; i < 600; i++ {
+	for i := range 600 {
 		trackStatusCounters[i] = metrics.HttpRequestsTotal.WithLabelValues("POST", "/track", statusStrings[i])
 	}
 
@@ -1424,7 +1432,7 @@ func equalFoldBytes(a, b []byte) bool {
 	if len(a) != len(b) {
 		return false
 	}
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		c1 := a[i]
 		c2 := b[i]
 		if c1 >= 'A' && c1 <= 'Z' {

@@ -59,7 +59,7 @@ func TestService_GenerateInvoiceConcurrent(t *testing.T) {
 
 	wg.Add(goroutines)
 	start := make(chan struct{})
-	for i := 0; i < goroutines; i++ {
+	for range goroutines {
 		go func() {
 			defer wg.Done()
 			<-start

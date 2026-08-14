@@ -13,7 +13,7 @@ func TestTelegramRateLimiter_PerChat(t *testing.T) {
 	l := NewTelegramRateLimiter()
 	ctx := context.Background()
 	start := time.Now()
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		require.NoError(t, l.Wait(ctx, 42, false))
 	}
 	elapsed := time.Since(start)
@@ -28,13 +28,13 @@ func TestTelegramRateLimiter_GlobalBurst(t *testing.T) {
 
 	const n = 35
 	done := make(chan error, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		chatID := int64(1000 + i)
 		go func(id int64) {
 			done <- l.Wait(ctx, id, false)
 		}(chatID)
 	}
-	for i := 0; i < n; i++ {
+	for range n {
 		require.NoError(t, <-done)
 	}
 }

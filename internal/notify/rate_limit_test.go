@@ -11,7 +11,7 @@ func TestTokenBucket_allowBurstThenRefill(t *testing.T) {
 	t.Parallel()
 	bucket := newTokenBucket(20)
 	now := time.Now()
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		require.True(t, bucket.allow(now), "burst %d", i)
 	}
 	require.False(t, bucket.allow(now))

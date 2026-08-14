@@ -241,7 +241,7 @@ func TestService_processPending_circuitBreaker(t *testing.T) {
 	svc := newTestServiceWithBreakers(pool, breakers)
 	ctx := context.Background()
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		_, err := sendTestNotification(ctx, svc, NotificationInput{
 			Provider:  string(db.NotifierProviderTELEGRAM),
 			Recipient: "12345678",
@@ -321,7 +321,7 @@ func TestService_processPending_deduplication(t *testing.T) {
 	svc := newTestService(pool)
 	ctx := context.Background()
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		_, err := sendTestNotification(ctx, svc, NotificationInput{
 			Provider:  string(db.NotifierProviderTELEGRAM),
 			Recipient: "12345678",

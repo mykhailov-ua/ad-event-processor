@@ -20,7 +20,7 @@ func benchTgClickHandler(b testing.TB) (*AdsPacketHandler, parsedHTTPRequest, *G
 	staticCampaignMu.Unlock()
 	cachedMockCamp.Store(nil)
 
-	store := NewBrandCreativeStore(nil)
+	store := NewBrandCreativeStore(nil, 0)
 	store.cache.Store(&brandCreativeMapSnapshot{
 		byBrand: map[uuid.UUID][]brandCreativeEntry{
 			benchClickBrandID: brandCreativeEntriesReady([]brandCreativeEntry{{

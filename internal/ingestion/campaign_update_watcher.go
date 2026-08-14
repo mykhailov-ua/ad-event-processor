@@ -87,7 +87,7 @@ func (w *CampaignUpdateWatcher) consumeOnce(ctx context.Context) error {
 		default:
 		}
 
-		iter, err := cli.Fetch(w.cfg.BrokerTopic, partition, start, 64*1024)
+		iter, err := cli.Fetch(ctx, w.cfg.BrokerTopic, partition, start, 64*1024)
 		if err != nil {
 			return err
 		}

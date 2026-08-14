@@ -12,7 +12,7 @@ func buildCreativeCache(reg *CampaignAuctionRegistry, creatives []CreativeData) 
 	}
 
 	campaignPos := make(map[CampaignID]int, count)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		campaignPos[reg.CampaignIDs[i]] = i
 	}
 
@@ -58,7 +58,7 @@ func buildCreativeCache(reg *CampaignAuctionRegistry, creatives []CreativeData) 
 	}
 
 	total := 0
-	for i := 0; i < count; i++ {
+	for i := range count {
 		reg.CampaignCreativeStart[i] = uint32(total)
 		total += int(perCampaign[i])
 	}

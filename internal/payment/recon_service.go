@@ -145,7 +145,7 @@ func (recon *ReconService) Run(ctx context.Context, periodStart, periodEnd time.
 		"intents_checked", intentsChecked,
 	)
 	if recon.alerter != nil {
-		recon.alerter.AlertFindings(summary, findings)
+		recon.alerter.AlertFindings(ctx, summary, findings)
 	}
 	return summary, nil
 }

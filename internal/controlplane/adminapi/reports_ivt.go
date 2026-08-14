@@ -206,7 +206,7 @@ func queryIVTBySourceRows(
 	if err != nil {
 		return nil, 0, fmt.Errorf("ivt by source query: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	out := make([]ivtBySourceCHRow, 0, limit)
 	for rows.Next() {
 		var row ivtBySourceCHRow
@@ -293,7 +293,7 @@ func QueryWorstIVTSources(
 	if err != nil {
 		return nil, fmt.Errorf("worst ivt sources query: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	out := make([]SourceRowDTO, 0, limit)
 	for rows.Next() {
 		var row ivtBySourceCHRow
@@ -374,7 +374,7 @@ func QueryWorstIVTCountries(
 	if err != nil {
 		return nil, fmt.Errorf("worst ivt countries query: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	out := make([]FraudGeoHintDTO, 0, limit)
 	for rows.Next() {
 		var country string

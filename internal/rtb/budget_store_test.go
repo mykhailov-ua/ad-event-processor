@@ -18,7 +18,7 @@ func TestBudgetStore_setBudget_concurrentSlotGrowth(t *testing.T) {
 	const n = 32
 	ids := make([]CampaignID, n)
 	campaigns := make([]CampaignData, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		ids[i] = CampaignID(uint64(i + 1))
 		campaigns[i] = CampaignData{
 			ID: ids[i], Bid: 10, DeviceMask: 1, CategoryMask: 1,
@@ -48,7 +48,7 @@ func TestBudgetStore_setBudget_concurrentSlotGrowth(t *testing.T) {
 		}
 	}()
 
-	for i := 0; i < 5000; i++ {
+	for range 5000 {
 		store.SetBudget(target, 500)
 	}
 	close(stop)
@@ -98,7 +98,7 @@ func TestBudgetStore_getBudget_noPanicUnderSnapshotRace(t *testing.T) {
 				panicked <- struct{}{}
 			}
 		}()
-		for i := 0; i < 1000; i++ {
+		for i := range 1000 {
 			_ = reg.LoadSnapshot(snapPath)
 			store.SetBudget(id, int64(i))
 			_ = store.GetBudget(id)

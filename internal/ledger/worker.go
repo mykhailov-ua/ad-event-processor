@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/config"
@@ -30,6 +31,7 @@ type Worker struct {
 	cfg      *config.Config
 	registry CampaignEntitlementRegistry
 	notifier notify.NotifierAPI
+	cycleWG  sync.WaitGroup
 }
 
 func NewWorker(pool *pgxpool.Pool, ch *database.CHQuery, cfg *config.Config, registry CampaignEntitlementRegistry, notifier notify.NotifierAPI) *Worker {
@@ -77,13 +79,23 @@ func (w *Worker) Start(ctx context.Context, interval time.Duration) {
 	for {
 		select {
 		case <-ctx.Done():
+			w.Wait()
 			return
 		case <-ticker.C:
-			if err := w.RunCycle(ctx); err != nil {
-				slog.Error("margin guard cycle failed", "error", err)
-			}
+			w.cycleWG.Add(1)
+			go func() {
+				defer w.cycleWG.Done()
+				if err := w.RunCycle(ctx); err != nil {
+					slog.Error("margin guard cycle failed", "error", err)
+				}
+			}()
 		}
 	}
+}
+
+// Wait blocks until in-flight RunCycle completes (shutdown drain before pool close).
+func (w *Worker) Wait() {
+	w.cycleWG.Wait()
 }
 
 func (w *Worker) RunCycle(ctx context.Context) error {
@@ -120,7 +132,7 @@ func (w *Worker) fetchActivePolicies(ctx context.Context) ([]*Policy, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { rows.Close() }()
 
 	var policies []*Policy
 	for rows.Next() {
@@ -195,7 +207,7 @@ func (w *Worker) queryPlacementStatsBatch(ctx context.Context, campaignIDs []uui
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var stats PlacementStats
@@ -246,7 +258,7 @@ WHERE action = 'pause' AND created_at > now() - interval '1 day'
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() { rows.Close() }()
 	for rows.Next() {
 		var campaignID uuid.UUID
 		var placementID string
@@ -280,7 +292,7 @@ WHERE action = 'pause' AND created_at > now() - interval '1 day'
 	}
 
 	br := w.pool.SendBatch(ctx, batch)
-	defer br.Close()
+	defer func() { _ = br.Close() }()
 	for i := 0; i < batch.Len(); i++ {
 		if _, err := br.Exec(); err != nil {
 			return fmt.Errorf("margin guard batch item %d: %w", i, err)

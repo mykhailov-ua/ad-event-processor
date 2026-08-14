@@ -314,7 +314,7 @@ ORDER BY hr`
 	if err != nil {
 		return 0, nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var total uint64
 	samples := make([]forecastHourlySample, 0, 24)

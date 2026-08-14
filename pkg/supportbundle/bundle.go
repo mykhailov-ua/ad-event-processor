@@ -55,9 +55,9 @@ func Write(ctx context.Context, w io.Writer, opts Options) error {
 
 	lw := &limitedWriter{w: w, max: opts.MaxBytes}
 	gz := gzip.NewWriter(lw)
-	defer gz.Close()
+	defer func() { _ = gz.Close() }()
 	tw := tar.NewWriter(gz)
-	defer tw.Close()
+	defer func() { _ = tw.Close() }()
 
 	if err := writeVersionJSON(ctx, tw, opts.Meta); err != nil {
 		return err

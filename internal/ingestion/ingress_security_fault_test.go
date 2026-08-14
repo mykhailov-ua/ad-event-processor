@@ -65,11 +65,11 @@ func TestFault_SecurityGap_G_J05b_DeepNestedJSON(t *testing.T) {
 	nested.WriteString(`{"campaign_id":"`)
 	nested.WriteString(validCID)
 	nested.WriteString(`","payload":`)
-	for i := 0; i < depth; i++ {
+	for range depth {
 		nested.WriteString(`{"a":`)
 	}
 	nested.WriteString(`"leaf"`)
-	for i := 0; i < depth; i++ {
+	for range depth {
 		nested.WriteString(`}`)
 	}
 	nested.WriteString(`}`)

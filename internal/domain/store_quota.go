@@ -8,6 +8,7 @@ import (
 	"github.com/bidshard/ad-event-processor/internal/domain/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -184,6 +185,26 @@ func (r *QuotaRepo) ReleaseChunk(
 		ReservedAmount: -chunkSize,
 		ChunkSize:      chunkSize,
 	})
+}
+
+func (r *QuotaRepo) MapReservedByCampaignIDs(ctx context.Context, campaignIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
+	out := make(map[uuid.UUID]int64)
+	if r.pool == nil || len(campaignIDs) == 0 {
+		return out, nil
+	}
+	pgIDs := make([]pgtype.UUID, len(campaignIDs))
+	for i, id := range campaignIDs {
+		pgIDs[i] = ToUUID(id)
+	}
+	q := db.New(r.pool)
+	rows, err := q.ListCampaignQuotasReservedByCampaignIDs(ctx, pgIDs)
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		out[uuid.UUID(row.CampaignID.Bytes)] = row.ReservedAmount
+	}
+	return out, nil
 }
 
 func QuotaShardForCampaign(sharder Sharder, campaignID uuid.UUID) int16 {

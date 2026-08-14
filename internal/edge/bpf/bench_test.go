@@ -1,5 +1,8 @@
 package bpf
 
+// bench_test.go: harness xdp_prog_test — userspace prog.Run only; not kernel NIC RX.
+// Kernel proof: edge-xdp-fault, scripts/test/xdp_resilience_drill.sh (docs/enterprise/EDGE_XDP.md).
+
 import (
 	"net"
 	"testing"

@@ -114,7 +114,7 @@ func matchQuotedKeyAt(b []byte, i, n int, key []byte) bool {
 		return false
 	}
 	_ = b[i+kn-1]
-	for j := 0; j < kn; j++ {
+	for j := range kn {
 		if b[i+j] != key[j] {
 			return false
 		}

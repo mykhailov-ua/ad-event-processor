@@ -43,7 +43,7 @@ func TestBrokerReplay_Integrity(t *testing.T) {
 	baseTime := time.Date(2026, 8, 8, 12, 0, 0, 0, time.UTC)
 
 	// Write 100 events to partition log
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		clickID := uuid.New().String()
 		evtType := "click"
 		campID := uuid.New()
@@ -102,7 +102,7 @@ func TestBrokerReplay_TimestampFiltering(t *testing.T) {
 	baseTime := time.Date(2026, 8, 8, 12, 0, 0, 0, time.UTC)
 
 	// Write 10 events: i = 0..9 (time = 12:00 to 12:09)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		pbEvt := &pb.AdStreamEvent{
 			ClickId:       []byte(uuid.New().String()),
 			EventType:     []byte("impression"),

@@ -12,10 +12,12 @@ echo "== milestone §1.5: admin web CI (e2e skipped by default) =="
 ADMIN_SKIP_E2E=1 bash "$SCRIPTS/ci/admin_web.sh"
 
 if [ "${MILESTONE_SKIP_E2E:-1}" = "1" ]; then
-  echo "== milestone §1.5: e2e bundle skipped (set MILESTONE_SKIP_E2E=0 to run) =="
-  echo "Milestone UI gate PASSED (CI only)."
+  echo "== milestone §1.5: e2e skipped (set MILESTONE_SKIP_E2E=0 to run Playwright bundle) =="
+  echo "Milestone UI gate PASSED (CI only — typecheck + unit + slop gates; not full Playwright)."
   exit 0
 fi
+
+echo "== milestone §1.5: e2e running (MILESTONE_SKIP_E2E=0) =="
 
 if [ ! -d "$E2E_DIR/node_modules/@playwright/test" ]; then
   echo "== milestone §1.5: playwright install =="

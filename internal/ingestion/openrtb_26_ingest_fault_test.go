@@ -132,11 +132,11 @@ func TestFault_OpenRTB26_ConcurrentGnetBid(t *testing.T) {
 	)
 	var wg sync.WaitGroup
 	wg.Add(workers)
-	for w := 0; w < workers; w++ {
+	for w := range workers {
 		w := w
 		go func() {
 			defer wg.Done()
-			for i := 0; i < iterations; i++ {
+			for i := range iterations {
 				body := valid
 				if (w+i)%3 == 0 {
 					body = truncated

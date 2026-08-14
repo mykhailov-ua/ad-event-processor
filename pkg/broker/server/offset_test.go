@@ -58,10 +58,10 @@ func TestBrokerOffsetCommitWire(t *testing.T) {
 	}
 	defer func() { _ = cli.Close() }()
 
-	if _, err := cli.Produce("tracker-logs", 0, []byte("a")); err != nil {
+	if _, err := cli.Produce(context.Background(), "tracker-logs", 0, []byte("a")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := cli.Produce("tracker-logs", 0, []byte("b")); err != nil {
+	if _, err := cli.Produce(context.Background(), "tracker-logs", 0, []byte("b")); err != nil {
 		t.Fatal(err)
 	}
 
@@ -81,8 +81,8 @@ func TestConsumerRunAndResume(t *testing.T) {
 	if err := cli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	for i := 0; i < 4; i++ {
-		if _, err := cli.Produce("tracker-logs", 0, []byte{byte(i)}); err != nil {
+	for i := range 4 {
+		if _, err := cli.Produce(context.Background(), "tracker-logs", 0, []byte{byte(i)}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -154,7 +154,7 @@ func TestRetentionRespectsCommittedOffsetFloor(t *testing.T) {
 		t.Fatal(err)
 	}
 	payload := make([]byte, 48)
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		if _, err := pl.Append(payload); err != nil {
 			t.Fatal(err)
 		}

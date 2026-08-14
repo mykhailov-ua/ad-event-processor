@@ -236,7 +236,7 @@ func (s *Service) GetAccountantDashboard(ctx context.Context, customerID uuid.UU
 		FROM billing.customer_tax_profiles WHERE customer_id = $1`,
 		domain.ToUUID(customerID),
 	).Scan(&countryCode, &taxScheme)
-	if err != nil && err != pgx.ErrNoRows {
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return AccountantDashboardDTO{}, err
 	}
 

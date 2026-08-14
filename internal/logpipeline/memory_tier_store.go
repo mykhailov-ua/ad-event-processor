@@ -111,7 +111,7 @@ func NewMemoryS3TierStore(scratchDir, hotPrefix, warmPrefix string, mem *MemoryO
 	}
 }
 
-func (store *MemoryS3TierStore) ListHot(_ context.Context, olderThan time.Time) ([]TierObject, error) {
+func (store *MemoryS3TierStore) ListHot(ctx context.Context, olderThan time.Time) ([]TierObject, error) {
 	for _, object := range store.mem.List(store.hotPrefix) {
 		name := strings.TrimPrefix(object.key, store.hotPrefix)
 		if name == "" || !isHotSegmentName(filepath.Base(name)) {
@@ -135,7 +135,7 @@ func (store *MemoryS3TierStore) ListHot(_ context.Context, olderThan time.Time) 
 			return nil, err
 		}
 	}
-	return store.local.ListHot(context.Background(), olderThan)
+	return store.local.ListHot(ctx, olderThan)
 }
 
 func (store *MemoryS3TierStore) uploadWarmArtifacts(destKey, sha256 string) error {

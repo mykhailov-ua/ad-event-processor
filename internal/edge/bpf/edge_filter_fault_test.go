@@ -28,7 +28,7 @@ func TestFault_XDPSynFloodSynthetic(t *testing.T) {
 	controlSrc := net.IPv4(10, 20, 30, 40)
 	controlPkt := buildACKPacket(t, controlSrc, net.IPv4(10, 0, 0, 1), trackerPort)
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		require.Equal(t, uint32(2), runXDP(t, objs.XdpEdgeFilter, controlPkt), "control pre-flood iter %d", i)
 	}
 
@@ -42,10 +42,10 @@ func TestFault_XDPSynFloodSynthetic(t *testing.T) {
 	)
 
 	var attackPass, attackDrop uint64
-	for h := 0; h < attackHosts; h++ {
+	for h := range attackHosts {
 		src := net.IPv4(198, 18, byte(h>>8), byte(h))
 		pkt := buildSYNPacket(t, src, net.IPv4(10, 0, 0, 1), trackerPort)
-		for i := 0; i < synsPerHost; i++ {
+		for range synsPerHost {
 			ret := runXDP(t, objs.XdpEdgeFilter, pkt)
 			switch ret {
 			case 2:
@@ -58,7 +58,7 @@ func TestFault_XDPSynFloodSynthetic(t *testing.T) {
 		}
 	}
 
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		require.Equal(t, uint32(2), runXDP(t, objs.XdpEdgeFilter, controlPkt), "control post-flood iter %d", i)
 	}
 
@@ -121,12 +121,12 @@ func TestFault_XDPAutobanPipelineSynthetic(t *testing.T) {
 	src4 := src.To4()
 	require.NotNil(t, src4)
 	synPkt := buildSYNPacket(t, src, net.IPv4(10, 0, 0, 1), trackerPort)
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		runXDP(t, objs.XdpEdgeFilter, synPkt)
 	}
 
 	ppsPkt := buildPSHACKPacket(t, src, net.IPv4(10, 0, 0, 1), trackerPort)
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		runXDP(t, objs.XdpEdgeFilter, ppsPkt)
 	}
 

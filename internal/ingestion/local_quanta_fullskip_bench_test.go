@@ -1,5 +1,9 @@
 //go:build !race
 
+// Local quanta full-skip benchmarks (harness: local_quanta_noop_redis).
+// benchNoopRedis intentionally bypasses Redis RTT; LocalQuantaStreamPublisher drains in-process.
+// Applies when SetLocalQuantaMode("live") and LocalQuantaDeps are wired (LOCAL_QUOTA_MODE=live) —
+// not the default compose tracker path unless that env is set. Fast-path only; not Redis Lua SLA.
 package ingestion
 
 import (
@@ -140,7 +144,7 @@ func BenchmarkLocalQuanta_FullSkip(b *testing.B) {
 		FilterWorkerIdx: 0,
 	}
 	clickScratch := evt.ClickIDBuf[:0]
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		buf := strconv.AppendInt(clickScratch[:0], int64(i), 10)
 		copy(evt.ClickIDBuf[:], buf)
 		evt.ClickID = unsafeString(evt.ClickIDBuf[:len(buf)])
@@ -221,7 +225,7 @@ func TestUnifiedFilter_Check_zeroAlloc_localQuantaFullSkip(t *testing.T) {
 
 	ctx := context.Background()
 	const amount = int64(10_000)
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		ledger.Credit(campID, amount, testQuotaChunkMicro)
 		_ = f.Check(ctx, evt)
 	}

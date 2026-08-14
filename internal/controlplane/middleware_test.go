@@ -39,7 +39,7 @@ func TestAuthMiddleware_RequireAuth(t *testing.T) {
 	t.Run("APIKey_Success", func(t *testing.T) {
 		handler := m.RequireAuth(RoleAdmin)(targetHandler)
 
-		req, _ := http.NewRequest("GET", "/protected", nil)
+		req, _ := http.NewRequest("GET", "/protected", http.NoBody)
 		req.Header.Set("X-Admin-API-Key", "secret-api-key")
 		resp := httptest.NewRecorder()
 
@@ -61,7 +61,7 @@ func TestAuthMiddleware_RequireAuth(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		})
 
-		req, _ := http.NewRequest("GET", "/protected", nil)
+		req, _ := http.NewRequest("GET", "/protected", http.NoBody)
 		req.Header.Set("X-Admin-API-Key", "secret-api-key")
 		resp := httptest.NewRecorder()
 		handler.ServeHTTP(resp, req)
@@ -75,7 +75,7 @@ func TestAuthMiddleware_RequireAuth(t *testing.T) {
 		handler := m.RequireAuth(RoleManager, RoleAdmin)(targetHandler)
 
 		token, _ := tokenMaker.CreateToken(uuid.New(), uuid.New(), "manager", uuid.New(), time.Hour)
-		req, _ := http.NewRequest("GET", "/protected", nil)
+		req, _ := http.NewRequest("GET", "/protected", http.NoBody)
 		req.AddCookie(&http.Cookie{Name: "accessToken", Value: token})
 		resp := httptest.NewRecorder()
 
@@ -89,7 +89,7 @@ func TestAuthMiddleware_RequireAuth(t *testing.T) {
 		handler := m.RequireAuth(RoleAdmin)(targetHandler)
 
 		token, _ := tokenMaker.CreateToken(uuid.New(), uuid.New(), "customer", uuid.New(), time.Hour)
-		req, _ := http.NewRequest("GET", "/protected", nil)
+		req, _ := http.NewRequest("GET", "/protected", http.NoBody)
 		req.AddCookie(&http.Cookie{Name: "accessToken", Value: token})
 		resp := httptest.NewRecorder()
 
@@ -101,7 +101,7 @@ func TestAuthMiddleware_RequireAuth(t *testing.T) {
 	t.Run("MissingToken", func(t *testing.T) {
 		handler := m.RequireAuth(RoleAdmin)(targetHandler)
 
-		req, _ := http.NewRequest("GET", "/protected", nil)
+		req, _ := http.NewRequest("GET", "/protected", http.NoBody)
 		resp := httptest.NewRecorder()
 
 		handler.ServeHTTP(resp, req)
@@ -113,7 +113,7 @@ func TestAuthMiddleware_RequireAuth(t *testing.T) {
 		handler := m.RequireAuth(RoleAdmin)(targetHandler)
 
 		token, _ := tokenMaker.CreateToken(uuid.New(), uuid.New(), RoleAdmin, uuid.New(), -time.Hour)
-		req, _ := http.NewRequest("GET", "/protected", nil)
+		req, _ := http.NewRequest("GET", "/protected", http.NoBody)
 		req.AddCookie(&http.Cookie{Name: "accessToken", Value: token})
 		resp := httptest.NewRecorder()
 
@@ -148,7 +148,7 @@ func TestAuthMiddleware_RedisOutage(t *testing.T) {
 	handler := m.RequireAuth(RoleAdmin)(targetHandler)
 
 	token, _ := tokenMaker.CreateToken(uuid.New(), uuid.New(), RoleAdmin, uuid.New(), time.Hour)
-	req, _ := http.NewRequest("GET", "/protected", nil)
+	req, _ := http.NewRequest("GET", "/protected", http.NoBody)
 	req.AddCookie(&http.Cookie{Name: "accessToken", Value: token})
 	resp := httptest.NewRecorder()
 

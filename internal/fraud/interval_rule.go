@@ -73,7 +73,7 @@ WHERE length(sample_ip_hash) > 0`
 	if err != nil {
 		return nil, fmt.Errorf("interval bot query: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []SuspiciousIP
 	for rows.Next() {

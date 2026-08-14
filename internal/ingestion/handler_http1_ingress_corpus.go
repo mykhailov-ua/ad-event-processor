@@ -77,7 +77,7 @@ func buildNginxIngressCorpus() []ingressCorpusCase {
 		add("get_"+path, wire, faultMax)
 	}
 
-	for i := 0; i < 32; i++ {
+	for i := range 32 {
 		cl := strconv.Itoa(i % 17)
 		wire := []byte("POST /track HTTP/1.1\r\nContent-Length:\t" + cl + "\r\n\r\n")
 		if i%17 > 0 {
@@ -86,14 +86,14 @@ func buildNginxIngressCorpus() []ingressCorpusCase {
 		add(fmt.Sprintf("cl_tab_variant_%d", i), wire, faultMax)
 	}
 
-	for i := 0; i < 32; i++ {
+	for i := range 32 {
 		pad := bytes.Repeat([]byte("h"), i%8)
 		wire := append([]byte("POST /track HTTP/1.1\r\nX-Pad: "), pad...)
 		wire = append(wire, []byte("\r\nContent-Length: 0\r\n\r\n")...)
 		add(fmt.Sprintf("header_pad_%d", i), wire, faultMax)
 	}
 
-	for i := 0; i < 24; i++ {
+	for i := range 24 {
 		wire := append([]byte("POST /track HTTP/1.1\r\nContent-Length: "), []byte(strconv.Itoa(1024+i))...)
 		wire = append(wire, "\r\n\r\n"...)
 		wire = append(wire, bytes.Repeat([]byte("z"), 1024+i)...)

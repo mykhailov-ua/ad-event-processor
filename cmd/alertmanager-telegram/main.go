@@ -94,7 +94,7 @@ func main() {
 				continue
 			}
 
-			if err := sendTelegramMessage(botToken, chatID, message); err != nil {
+			if err := sendTelegramMessage(r.Context(), botToken, chatID, message); err != nil {
 				slog.Error("failed to send telegram notification", "error", err)
 			}
 		}
@@ -104,11 +104,10 @@ func main() {
 	})
 
 	server := &http.Server{
-		Addr:         ":" + port,
-		Handler:      mux,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 5 * time.Second,
+		Addr:    ":" + port,
+		Handler: mux,
 	}
+	lifecycle.ApplySidecarHTTPServerTimeouts(server)
 
 	go func() {
 		slog.Info("starting alertmanager telegram proxy", "port", port)
@@ -128,7 +127,7 @@ func main() {
 	slog.Info("proxy shutdown complete")
 }
 
-func sendTelegramMessage(token, chatID, htmlMessage string) error {
+func sendTelegramMessage(ctx context.Context, token, chatID, htmlMessage string) error {
 	apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", token)
 	payload := map[string]interface{}{
 		"chat_id":    chatID,
@@ -141,7 +140,7 @@ func sendTelegramMessage(token, chatID, htmlMessage string) error {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewBuffer(body))
@@ -154,7 +153,7 @@ func sendTelegramMessage(token, chatID, htmlMessage string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, err := io.ReadAll(resp.Body)

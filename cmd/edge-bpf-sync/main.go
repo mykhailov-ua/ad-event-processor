@@ -55,20 +55,20 @@ func main() {
 		slog.Error("open pinned blocklist map", "path", blocklistPath, "error", err)
 		os.Exit(1)
 	}
-	defer denyMap.Close()
+	defer func() { _ = denyMap.Close() }()
 
 	allowMap, err := allowlist.LoadPinnedMap(allowlistPath)
 	if err != nil {
 		slog.Error("open pinned allowlist map", "path", allowlistPath, "error", err)
 		os.Exit(1)
 	}
-	defer allowMap.Close()
+	defer func() { _ = allowMap.Close() }()
 
 	statsMap, err := bpf.LoadPinnedStatsMap(statsPath)
 	if err != nil {
 		slog.Warn("open pinned stats map; xdp metrics disabled", "path", statsPath, "error", err)
 	} else {
-		defer statsMap.Close()
+		defer func() { _ = statsMap.Close() }()
 	}
 
 	var violationReader *ringbuf.Reader
@@ -76,12 +76,12 @@ func main() {
 	if err != nil {
 		slog.Warn("open pinned violations ringbuf; autoban disabled", "path", violationsPath, "error", err)
 	} else {
-		defer violationsMap.Close()
+		defer func() { _ = violationsMap.Close() }()
 		violationReader, err = ringbuf.NewReader(violationsMap)
 		if err != nil {
 			slog.Warn("create violations ringbuf reader", "error", err)
 		} else {
-			defer violationReader.Close()
+			defer func() { _ = violationReader.Close() }()
 		}
 	}
 
@@ -90,12 +90,12 @@ func main() {
 	if err != nil {
 		slog.Warn("open pinned fingerprints ringbuf; ivt staging disabled", "path", fingerprintsPath, "error", err)
 	} else {
-		defer fingerprintsMap.Close()
+		defer func() { _ = fingerprintsMap.Close() }()
 		fingerprintReader, err = ringbuf.NewReader(fingerprintsMap)
 		if err != nil {
 			slog.Warn("create fingerprints ringbuf reader", "error", err)
 		} else {
-			defer fingerprintReader.Close()
+			defer func() { _ = fingerprintReader.Close() }()
 		}
 	}
 
@@ -103,7 +103,7 @@ func main() {
 		Addr:     redisAddr,
 		Password: os.Getenv("REDIS_PASS"),
 	})
-	defer rdb.Close()
+	defer func() { _ = rdb.Close() }()
 
 	ctx, cancel := lifecycle.NotifyContext(context.Background())
 	defer cancel()
@@ -210,9 +210,10 @@ func serveMetrics(ctx context.Context, port string) {
 		Addr:    ":" + port,
 		Handler: mux,
 	}
+	lifecycle.ApplySidecarHTTPServerTimeouts(srv)
 	go func() {
 		<-ctx.Done()
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
 		_ = srv.Shutdown(shutdownCtx)
 	}()

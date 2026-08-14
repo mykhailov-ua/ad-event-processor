@@ -80,7 +80,7 @@ func HashBytes64(b []byte) uint64 {
 		prime64  = 1099511628211
 	)
 	h := uint64(offset64)
-	for i := 0; i < len(b); i++ {
+	for i := range b {
 		h ^= uint64(b[i])
 		h *= prime64
 	}

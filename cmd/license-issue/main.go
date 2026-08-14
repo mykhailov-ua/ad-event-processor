@@ -99,6 +99,6 @@ func main() {
 		return
 	}
 
-	fmt.Println(token)
+	_, _ = fmt.Fprintf(os.Stdout, "%s\n", token)
 	fmt.Fprintf(os.Stderr, "kid=%s deployment_id=%s valid_until=%s\n", keyID, depID, claims.ValidUntil.Format(time.RFC3339))
 }

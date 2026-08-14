@@ -31,7 +31,7 @@ func TestManagementAPI_Robustness(t *testing.T) {
 		AdminAPIKey: "test-secret",
 	}
 
-	svc := NewService(pool, []redis.UniversalClient{rdb}, nil, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, cfg)
 	defer svc.Close()
 	h := NewHandler(svc, cfg, nil, nil, nil, nil)
 	mux := http.NewServeMux()
@@ -67,7 +67,7 @@ func TestManagementAPI_Robustness(t *testing.T) {
 		}
 
 		for _, tc := range paths {
-			req, _ := http.NewRequest(tc.method, tc.path, nil)
+			req, _ := http.NewRequest(tc.method, tc.path, http.NoBody)
 			req.Header.Set("X-Admin-API-Key", "test-secret")
 			resp := httptest.NewRecorder()
 			mux.ServeHTTP(resp, req)
@@ -79,7 +79,7 @@ func TestManagementAPI_Robustness(t *testing.T) {
 		badPool, cleanupBadDB := database.SetupTestDB(t)
 		cleanupBadDB()
 
-		badSvc := NewService(badPool, []redis.UniversalClient{rdb}, nil, cfg)
+		badSvc := NewService(context.Background(), badPool, []redis.UniversalClient{rdb}, nil, cfg)
 		defer badSvc.Close()
 		badH := NewHandler(badSvc, cfg, nil, nil, nil, nil)
 		badMux := http.NewServeMux()
@@ -91,7 +91,7 @@ func TestManagementAPI_Robustness(t *testing.T) {
 		}
 
 		for _, path := range paths {
-			req, _ := http.NewRequest("GET", path, nil)
+			req, _ := http.NewRequest("GET", path, http.NoBody)
 			req.Header.Set("X-Admin-API-Key", "test-secret")
 			resp := httptest.NewRecorder()
 			badMux.ServeHTTP(resp, req)
@@ -115,7 +115,7 @@ func TestManagementAPI_Robustness(t *testing.T) {
 	})
 
 	t.Run("LegacyAdmin_Gone", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/admin/customers", nil)
+		req, _ := http.NewRequest("GET", "/admin/customers", http.NoBody)
 		req.Header.Set("X-Admin-API-Key", "test-secret")
 		resp := httptest.NewRecorder()
 		mux.ServeHTTP(resp, req)

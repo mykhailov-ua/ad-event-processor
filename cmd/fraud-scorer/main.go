@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -123,7 +124,7 @@ func main() {
 		"window_sec", cfg.IVT.WindowSec,
 	)
 
-	if err := detector.RunLoop(ctx); err != nil && err != context.Canceled {
+	if err := detector.RunLoop(ctx); err != nil && !errors.Is(err, context.Canceled) {
 		slog.Error("fraud-scorer worker stopped with error", "error", err)
 		os.Exit(1)
 	}
@@ -215,7 +216,7 @@ func calculateSHA256(filePath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	hash := sha256.New()
 	if _, err := io.Copy(hash, file); err != nil {

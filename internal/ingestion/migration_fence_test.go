@@ -15,7 +15,7 @@ import (
 
 func TestUnifiedFilter_migrationFenceRejectsDebit(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)
@@ -46,7 +46,7 @@ func TestUnifiedFilter_migrationFenceRejectsDebit(t *testing.T) {
 
 func TestUnifiedFilter_budgetFrozenRejectsDebit(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)
@@ -77,7 +77,7 @@ func TestUnifiedFilter_budgetFrozenRejectsDebit(t *testing.T) {
 
 func TestBumpMigrationFences_setsRedisAndPG(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)

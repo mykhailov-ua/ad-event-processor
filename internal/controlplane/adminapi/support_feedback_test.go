@@ -47,7 +47,7 @@ func TestSupportFeedbackMeta_handler(t *testing.T) {
 	mux := http.NewServeMux()
 	h.Register(mux)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/support/feedback/meta", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/support/feedback/meta", http.NoBody)
 	recorder := httptest.NewRecorder()
 	mux.ServeHTTP(recorder, req)
 

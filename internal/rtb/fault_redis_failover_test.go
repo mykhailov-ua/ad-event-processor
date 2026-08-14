@@ -61,10 +61,10 @@ func TestFault_rtb_redis_failover(t *testing.T) {
 	var wins atomic.Uint64
 	var noBids atomic.Uint64
 
-	for i := 0; i < workers; i++ {
+	for range workers {
 		go func() {
 			defer wg.Done()
-			for j := 0; j < 50; j++ {
+			for range 50 {
 				_, reason := reg.RunAuction(req)
 				if reason.OK() {
 					wins.Add(1)
@@ -88,10 +88,10 @@ func TestFault_rtb_redis_failover(t *testing.T) {
 	var noBidsDuringFailover atomic.Uint64
 
 	wg.Add(workers)
-	for i := 0; i < workers; i++ {
+	for range workers {
 		go func() {
 			defer wg.Done()
-			for j := 0; j < 100; j++ {
+			for range 100 {
 				_, reason := reg.RunAuction(req)
 				if reason.OK() {
 					winsDuringFailover.Add(1)

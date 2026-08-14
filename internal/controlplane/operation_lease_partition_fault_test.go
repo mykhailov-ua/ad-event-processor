@@ -265,7 +265,7 @@ func TestFault_OperationLease_DualCAS(t *testing.T) {
 	const contenders = 32
 	var wg sync.WaitGroup
 	executionCount := make(chan struct{}, contenders)
-	for i := 0; i < contenders; i++ {
+	for i := range contenders {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()

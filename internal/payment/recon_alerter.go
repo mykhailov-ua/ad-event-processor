@@ -57,7 +57,7 @@ func (a *FinancialReconAlerter) shouldSend(key string) bool {
 	return true
 }
 
-func (a *FinancialReconAlerter) AlertFindings(summary FinancialReconSummary, findings []FinancialReconFinding) {
+func (a *FinancialReconAlerter) AlertFindings(ctx context.Context, summary FinancialReconSummary, findings []FinancialReconFinding) {
 	if a == nil || len(findings) == 0 {
 		return
 	}
@@ -86,14 +86,14 @@ func (a *FinancialReconAlerter) AlertFindings(summary FinancialReconSummary, fin
 	title := branding.AlertTitle("payment financial recon findings")
 	body := formatFinancialReconAlertBody(summary, alertable)
 
-	a.sendAsync(key, title, body, hasCritical)
+	a.sendAsync(ctx, key, title, body, hasCritical)
 }
 
-func (a *FinancialReconAlerter) sendAsync(key, title, body string, broadcast bool) {
+func (a *FinancialReconAlerter) sendAsync(ctx context.Context, key, title, body string, broadcast bool) {
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		sendCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
-		if err := enqueueOpsNotification(ctx, a.client, a.provider, a.recipient, title, body, key, broadcast, a.broadcastProviders); err != nil {
+		if err := enqueueOpsNotification(sendCtx, a.client, a.provider, a.recipient, title, body, key, broadcast, a.broadcastProviders); err != nil {
 			metrics.IncControlOpsAlertEnqueueFailures()
 			slog.Warn("payment financial recon alert enqueue failed", "key", key, "error", err)
 		}

@@ -27,7 +27,7 @@ go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.28.0 generate
 "$SCRIPTS/test/gate_bench.sh" >"$PR_BENCH"
 
 if [[ "$STRICT" != "true" ]]; then
-	echo "perf-gate-run: smoke mode — benchmark pipeline only (set PERF_GATE_STRICT=true for alloc gate)"
+	echo "perf-gate-run: smoke mode — alloc gate NOT run (set PERF_GATE_STRICT=true for strict benchstat + alloc regression)"
 	tail -5 "$PR_BENCH"
 	exit 0
 fi

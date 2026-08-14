@@ -86,11 +86,11 @@ func TestSkipJSONValueOrtb_DeepArrayRejected(t *testing.T) {
 	depth := ortbMaxDepth + 1
 	var b strings.Builder
 	b.WriteByte('[')
-	for i := 0; i < depth; i++ {
+	for range depth {
 		b.WriteByte('[')
 	}
 	b.WriteString(`1`)
-	for i := 0; i < depth; i++ {
+	for range depth {
 		b.WriteByte(']')
 	}
 	b.WriteByte(']')

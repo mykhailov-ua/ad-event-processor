@@ -5,9 +5,6 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -28,15 +25,17 @@ import (
 )
 
 var (
-	ErrDuplicateEvent = errors.New("duplicate postback event ignored")
+	ErrDuplicateEvent          = errors.New("duplicate postback event ignored")
+	ErrDispatchFinalizePending = errors.New("dispatch delivered awaiting finalize")
 )
 
 type PostbackWorker struct {
-	pool          *pgxpool.Pool
-	client        *http.Client
-	encryptionKey []byte
-	limiters      map[string]*rate.Limiter
-	limitersMu    sync.RWMutex
+	pool               *pgxpool.Pool
+	client             *http.Client
+	encryptionKey      []byte
+	limiters           map[string]*rate.Limiter
+	limitersMu         sync.RWMutex
+	staleProcessingSec int32
 
 	adapters map[string]PostbackAdapter
 
@@ -67,10 +66,11 @@ func NewPostbackWorker(pool *pgxpool.Pool, encryptionKey []byte) *PostbackWorker
 	}
 
 	return &PostbackWorker{
-		pool:          pool,
-		client:        client,
-		encryptionKey: encryptionKey,
-		limiters:      make(map[string]*rate.Limiter),
+		pool:               pool,
+		client:             client,
+		encryptionKey:      encryptionKey,
+		limiters:           make(map[string]*rate.Limiter),
+		staleProcessingSec: 120,
 		adapters: map[string]PostbackAdapter{
 			"facebook": &FacebookAdapter{},
 			"google":   &GoogleAdapter{},
@@ -78,6 +78,13 @@ func NewPostbackWorker(pool *pgxpool.Pool, encryptionKey []byte) *PostbackWorker
 			"webhook":  &WebhookAdapter{},
 		},
 	}
+}
+
+func (w *PostbackWorker) ConfigureStaleProcessingSec(sec int32) {
+	if w == nil || sec <= 0 {
+		return
+	}
+	w.staleProcessingSec = sec
 }
 
 func (w *PostbackWorker) Start(ctx context.Context, interval time.Duration) {
@@ -105,7 +112,10 @@ func (w *PostbackWorker) ProcessBatch(ctx context.Context) error {
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	q := db.New(tx)
-	events, err := q.GetPendingPostbackEventsForUpdate(ctx, 50)
+	events, err := q.GetPendingPostbackEventsForUpdate(ctx, db.GetPendingPostbackEventsForUpdateParams{
+		Limit:   50,
+		Column2: w.staleProcessingSec,
+	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
@@ -130,17 +140,31 @@ func (w *PostbackWorker) ProcessBatch(ctx context.Context) error {
 		return err
 	}
 
+	claimed, err := claimPostbackDispatchesInTx(ctx, q, events)
+	if err != nil {
+		return err
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
 
-	for _, ev := range events {
-		err := w.ProcessEvent(ctx, ev)
+	for _, c := range claimed {
+		if c.skip {
+			_, _ = w.pool.Exec(ctx, "UPDATE outbox_events SET status = 'PROCESSED', processing_started_at = NULL WHERE id = $1", c.event.ID)
+			continue
+		}
+		err := w.ProcessEvent(ctx, c.event)
 		if err != nil {
-			slog.Warn("Failed to process postback event", "id", ev.ID, "error", err)
-			_, _ = w.pool.Exec(ctx, "UPDATE outbox_events SET status = 'FAILED', processing_started_at = NULL WHERE id = $1", ev.ID)
+			if errors.Is(err, ErrDispatchFinalizePending) {
+				_, _ = w.pool.Exec(ctx, "UPDATE outbox_events SET status = 'PROCESSING', processing_started_at = NOW() WHERE id = $1", c.event.ID)
+				slog.Warn("Postback finalize pending, will retry", "id", c.event.ID, "error", err)
+				continue
+			}
+			slog.Warn("Failed to process postback event", "id", c.event.ID, "error", err)
+			_, _ = w.pool.Exec(ctx, "UPDATE outbox_events SET status = 'FAILED', processing_started_at = NULL WHERE id = $1", c.event.ID)
 		} else {
-			_, _ = w.pool.Exec(ctx, "UPDATE outbox_events SET status = 'PROCESSED', processing_started_at = NULL WHERE id = $1", ev.ID)
+			_, _ = w.pool.Exec(ctx, "UPDATE outbox_events SET status = 'PROCESSED', processing_started_at = NULL WHERE id = $1", c.event.ID)
 		}
 	}
 
@@ -148,27 +172,31 @@ func (w *PostbackWorker) ProcessBatch(ctx context.Context) error {
 }
 
 func (w *PostbackWorker) ProcessEvent(ctx context.Context, ev db.OutboxEvent) error {
-	var payload PostbackPayload
-	if err := json.Unmarshal(ev.Payload, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal payload: %w", err)
-	}
-
-	idempotencyStr := fmt.Sprintf("%s|%s|%s", payload.CustomerID, payload.ClickID, payload.EventType)
-	hashBytes := sha256.Sum256([]byte(idempotencyStr))
-	idempotencyHash := hex.EncodeToString(hashBytes[:])
-
-	var isDuplicate bool
-	err := w.pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM postback_dispatches WHERE idempotency_hash = $1)", idempotencyHash).Scan(&isDuplicate)
+	payload, err := parsePostbackPayload(ev.Payload)
 	if err != nil {
-		return fmt.Errorf("failed to check idempotency: %w", err)
+		return err
 	}
-	if isDuplicate {
+
+	idempotencyHash := postbackIdempotencyHash(payload)
+
+	q := db.New(w.pool)
+	slot, err := w.resolveDispatchSlot(ctx, q, idempotencyHash, payload)
+	if err != nil {
+		return err
+	}
+	if slot == dispatchSlotDuplicate {
 		recordDuplicate()
 		return ErrDuplicateEvent
 	}
 
+	if slot == dispatchSlotDelivered {
+		if err := w.finalizeDispatchSent(ctx, q, idempotencyHash); err != nil {
+			return ErrDispatchFinalizePending
+		}
+		return nil
+	}
+
 	var config db.PostbackConfig
-	q := db.New(w.pool)
 	config, err = q.GetPostbackConfig(ctx, pgtype.UUID{Bytes: payload.CampaignID, Valid: true})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -207,7 +235,9 @@ func (w *PostbackWorker) ProcessEvent(ctx context.Context, ev db.OutboxEvent) er
 	}
 
 	started := time.Now()
-	err = w.dispatchWithRetry(ctx, adapter, &payload, config.UrlTemplate, apiTokenDecrypted)
+	err = w.dispatchWithRetry(ctx, adapter, &payload, config.UrlTemplate, apiTokenDecrypted, func() error {
+		return w.markDispatchDelivered(ctx, q, idempotencyHash)
+	})
 	elapsed := time.Since(started).Seconds()
 	if err != nil {
 		recordDispatch(provider, "fail", elapsed)
@@ -224,33 +254,33 @@ func (w *PostbackWorker) ProcessEvent(ctx context.Context, ev db.OutboxEvent) er
 		})
 		if dlqErr != nil {
 			slog.Error("Failed to insert into DLQ", "error", dlqErr)
-			return fmt.Errorf("original error: %w; dlq insert failed: %s", err, dlqErr)
+			return fmt.Errorf("original error: %w; dlq insert failed: %w", err, dlqErr)
 		}
 		recordDLQ(provider)
+		if markErr := q.UpdatePostbackDispatchStatus(ctx, db.UpdatePostbackDispatchStatusParams{
+			IdempotencyHash: idempotencyHash,
+			Status:          postbackDispatchStatusFailed,
+			ErrorMessage:    pgtype.Text{String: err.Error(), Valid: true},
+			Status_2:        postbackDispatchStatusInFlight,
+		}); markErr != nil {
+			slog.Warn("Failed to mark dispatch failed", "error", markErr)
+		}
 		return fmt.Errorf("dispatch failed (moved to DLQ): %w", err)
 	}
 
 	recordDispatch(provider, "success", elapsed)
 
-	err = q.InsertPostbackDispatch(ctx, db.InsertPostbackDispatchParams{
-		IdempotencyHash: idempotencyHash,
-		CampaignID:      pgtype.UUID{Bytes: payload.CampaignID, Valid: true},
-		ClickID:         payload.ClickID,
-		EventType:       payload.EventType,
-		Status:          "SENT",
-	})
-	if err != nil {
-		slog.Error("Failed to record dispatch success", "error", err)
+	if err := w.finalizeDispatchSent(ctx, q, idempotencyHash); err != nil {
+		return ErrDispatchFinalizePending
 	}
-
 	return nil
 }
 
-func (w *PostbackWorker) dispatchWithRetry(ctx context.Context, adapter PostbackAdapter, payload *PostbackPayload, urlTemplate, token string) error {
+func (w *PostbackWorker) dispatchWithRetry(ctx context.Context, adapter PostbackAdapter, payload *PostbackPayload, urlTemplate, token string, onDelivered func() error) error {
 	var lastErr error
 	maxRetries := 5
 
-	for attempt := 0; attempt < maxRetries; attempt++ {
+	for attempt := range maxRetries {
 		if attempt > 0 {
 			backoff := time.Duration(math.Pow(2, float64(attempt))) * 200 * time.Millisecond
 			jitter := time.Duration(randInt64(50)) * time.Millisecond
@@ -266,6 +296,11 @@ func (w *PostbackWorker) dispatchWithRetry(ctx context.Context, adapter Postback
 
 		err := adapter.Send(ctx, w.client, payload, urlTemplate, token)
 		if err == nil {
+			if onDelivered != nil {
+				if err := onDelivered(); err != nil {
+					return err
+				}
+			}
 			return nil
 		}
 		lastErr = err
@@ -293,14 +328,14 @@ func (w *PostbackWorker) getLimiter(targetURL string, provider string) *rate.Lim
 	return lim
 }
 
-func randInt64(max int64) int64 {
+func randInt64(upper int64) int64 {
 	b := make([]byte, 8)
 	_, _ = rand.Read(b)
 	val := int64(b[0]) | int64(b[1])<<8 | int64(b[2])<<16 | int64(b[3])<<24 | int64(b[4])<<32 | int64(b[5])<<40 | int64(b[6])<<48 | int64(b[7])<<56
 	if val < 0 {
 		val = -val
 	}
-	return val % max
+	return val % upper
 }
 
 func EncryptAESGCM(plaintext []byte, key []byte) ([]byte, error) {

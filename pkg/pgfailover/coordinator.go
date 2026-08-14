@@ -107,12 +107,12 @@ func NewCoordinator(cfg Config, promoter Promoter, health HealthCheck) (*Coordin
 	}, nil
 }
 
-func (c *Coordinator) Start() {
-	c.coord.Start()
+func (c *Coordinator) Start(ctx context.Context) {
+	c.coord.Start(ctx)
 	c.wg.Add(1)
 	go func() {
 		defer c.wg.Done()
-		c.runHealthLoop()
+		c.runHealthLoop(ctx)
 	}()
 }
 
@@ -132,12 +132,14 @@ func (c *Coordinator) IsLeader() bool {
 	return c.coord.IsLeader(c.host.TopicKey())
 }
 
-func (c *Coordinator) runHealthLoop() {
+func (c *Coordinator) runHealthLoop(ctx context.Context) {
 	ticker := time.NewTicker(c.cfg.HealthInterval)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-c.closeCh:
+			return
+		case <-ctx.Done():
 			return
 		case <-ticker.C:
 			if !c.IsLeader() {
@@ -147,8 +149,8 @@ func (c *Coordinator) runHealthLoop() {
 			if c.failover.Load() {
 				continue
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), c.cfg.HealthTimeout)
-			err := c.health(ctx)
+			healthCtx, cancel := context.WithTimeout(ctx, c.cfg.HealthTimeout)
+			err := c.health(healthCtx)
 			cancel()
 			if err == nil {
 				c.resetFailures()
@@ -157,7 +159,7 @@ func (c *Coordinator) runHealthLoop() {
 			if c.recordFailure() < c.cfg.FailThreshold {
 				continue
 			}
-			if err := c.executeFailover(); err != nil {
+			if err := c.executeFailover(ctx); err != nil {
 				slog.Warn("postgres failover failed", "error", err)
 			}
 		}
@@ -177,22 +179,22 @@ func (c *Coordinator) resetFailures() {
 	c.failures = 0
 }
 
-func (c *Coordinator) executeFailover() error {
+func (c *Coordinator) executeFailover(ctx context.Context) error {
 	if !c.failover.CompareAndSwap(false, true) {
 		return nil
 	}
 	defer c.resetFailures()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	failoverCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	epoch, err := BumpEpoch(ctx, c.rdb)
+	epoch, err := BumpEpoch(failoverCtx, c.rdb)
 	if err != nil {
 		c.failover.Store(false)
 		return fmt.Errorf("bump fencing epoch: %w", err)
 	}
 
-	promotedDSN, err := c.promoter.Promote(ctx)
+	promotedDSN, err := c.promoter.Promote(failoverCtx)
 	if err != nil {
 		c.failover.Store(false)
 		return fmt.Errorf("promote standby: %w", err)
@@ -205,7 +207,7 @@ func (c *Coordinator) executeFailover() error {
 		return errors.New("promoted dsn empty")
 	}
 
-	if err := PublishDSN(ctx, c.rdb, promotedDSN, epoch); err != nil {
+	if err := PublishDSN(failoverCtx, c.rdb, promotedDSN, epoch); err != nil {
 		c.failover.Store(false)
 		return fmt.Errorf("publish dsn: %w", err)
 	}

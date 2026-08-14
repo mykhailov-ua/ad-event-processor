@@ -14,8 +14,8 @@ type stubRoute struct {
 	Permission string
 }
 
-// stubRouteCatalog lists report endpoints not yet implemented. Extended reports
-// are registered on ReportsHTTPHandlers instead.
+// stubRouteCatalog is intentionally empty — extended reports register on ReportsHTTPHandlers.
+// Do not re-add 501 stubs without stub-banner UI; empty catalog means Register is a no-op.
 var stubRouteCatalog = []stubRoute{}
 
 type StubHTTPHandlers struct {

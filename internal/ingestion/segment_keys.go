@@ -12,7 +12,7 @@ import (
 )
 
 func appendHex16(dst []byte, h [16]byte) []byte {
-	for i := 0; i < 16; i++ {
+	for i := range 16 {
 		dst = append(dst, hexChars[h[i]>>4], hexChars[h[i]&0xf])
 	}
 	return dst
@@ -30,11 +30,11 @@ func pickSegmentShard(rdbs []redis.UniversalClient, segmentID uuid.UUID) redis.U
 		return nil
 	}
 	var h uint32
-	for i := 0; i < 16; i++ {
+	for i := range 16 {
 		h = h*31 + uint32(segmentID[i])
 	}
 	start := int(h % uint32(len(rdbs)))
-	for i := 0; i < len(rdbs); i++ {
+	for i := range rdbs {
 		idx := (start + i) % len(rdbs)
 		if rdbs[idx] != nil {
 			return rdbs[idx]

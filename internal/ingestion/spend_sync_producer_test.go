@@ -45,7 +45,7 @@ func TestSpendSyncProducer_FlushToRegionProxy(t *testing.T) {
 	producer := NewSpendSyncProducer(regionProxySpendSyncAdapter{client: client}, 2)
 	campID := uuid.New()
 
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		entry := PendingRollup{
 			AmountMicro: 1_000,
 			TxID:        "sync-txn-" + string(rune('a'+i)),

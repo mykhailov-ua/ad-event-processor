@@ -26,7 +26,7 @@ func openTestPartition(t *testing.T, maxSegSize int64) (*PartitionLog, string) {
 func appendMessages(t *testing.T, pl *PartitionLog, n int, payloadSize int) {
 	t.Helper()
 	payload := make([]byte, payloadSize)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if _, err := pl.Append(payload); err != nil {
 			t.Fatalf("append %d: %v", i, err)
 		}

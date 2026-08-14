@@ -14,6 +14,7 @@ import (
 var (
 	filterGeoLookupErrors           = metrics.FilterInternalErrors.WithLabelValues("geo_lookup")
 	brandCreativeReplicaParseErrors = metrics.FilterInternalErrors.WithLabelValues("brand_creative_replica")
+	brandCreativeLoadTimeout        = metrics.FilterInternalErrors.WithLabelValues("brand_creative_load_timeout")
 	filterFraudStreamWriteErrors    = metrics.FilterInternalErrors.WithLabelValues("fraud_stream_write")
 	filterEngineFailures            = metrics.FilterInternalErrors.WithLabelValues("filter_engine")
 	filterGeoDuration               = metrics.FilterGeoDuration
@@ -55,7 +56,7 @@ func newRedisShardObservability(numShards int, sampleMask uint64) redisShardObse
 		shardLabel[s] = strconv.Itoa(s)
 		o.sampledCampaignCounters[s] = make([]prometheus.Counter, sampledCampaignBuckets)
 		o.sampledSpendCounters[s] = make([]prometheus.Counter, sampledCampaignBuckets)
-		for b := 0; b < sampledCampaignBuckets; b++ {
+		for b := range sampledCampaignBuckets {
 			o.sampledCampaignCounters[s][b] = metrics.RedisCampaignOpsSampledTotal.WithLabelValues(shardLabel[s], sampledCampaignBucketLabels[b])
 			o.sampledSpendCounters[s][b] = metrics.TrackerCampaignSpendSampledTotal.WithLabelValues(shardLabel[s], sampledCampaignBucketLabels[b])
 		}

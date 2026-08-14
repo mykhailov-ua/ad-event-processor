@@ -163,10 +163,13 @@ Before tagging a production admin UI release:
 ```bash
 cd web && npm ci && npm run build && cd ..
 go test ./internal/controlplane/ -run TestAdminStaticRoutes -count=1
-bash scripts/ci/admin_web.sh          # build + jsdoc + dist gates (e2e skipped by default)
+bash scripts/ci/admin_web.sh          # typecheck + unit + slop gates; e2e skipped (ADMIN_SKIP_E2E=1 default)
+MILESTONE_SKIP_E2E=0 bash scripts/ci/milestone_ui_gate.sh  # required once before tag — full Playwright bundle
 bash scripts/ci/admin_release_gate.sh # confirm audit + security literals + govulncheck
 bash scripts/test/admin_stack_e2e.sh  # optional: live stack on :8188
 ```
+
+**UI CI green** (`bash scripts/ci/admin_web.sh`, `pr_fast.sh`) = typecheck, esbuild, unit tests, slop/live-route gates — **not** full Playwright unless `ADMIN_SKIP_E2E=0`. `report_live_routes_gate.sh` requires `python3` or `node` on `PATH` for live-report key extraction (false green if both missing — gate exits 1).
 
 Attach Lighthouse INP results to the release PR (see `artifacts/lighthouse-inp-checklist.txt`).
 
@@ -227,6 +230,87 @@ These constraints apply to `internal/ingestion`, hot paths in `pkg/broker`, and 
    ```
 6. **unsafe.String Lifetime**: The lifetime of strings created via `unsafe.String` must not exceed the gnet read frame. Copy values to `evt.StringBuffer` if they are needed for asynchronous processing.
 
+### Performance benchmarks
+
+Full laptop numbers: [BENCHMARKS.md](BENCHMARKS.md). Production SLAs: handler p95 &lt; 50 ms, Redis unified-filter Lua p99 &lt; 10 ms/shard (`platform-sla.mdc`). Bench harness honesty (PR claims, mock vs truth): [.cursor/skills/bidshard-fuzz-benchmark/ai-slop-benchmarks.md](../.cursor/skills/bidshard-fuzz-benchmark/ai-slop-benchmarks.md).
+
+**Micro only — not Lua SLA** (`mockRedisClient.EvalSha` never runs Lua; measures Go wrapper overhead only):
+
+| Benchmark | Harness |
+| :--- | :--- |
+| `BenchmarkUnifiedFilter_Check` | `unified_filter_mock_redis` |
+| `BenchmarkRedisBudgetManager_CheckAndSpend` | `redis_budget_mock` |
+
+Lua truth (testcontainers Redis; not in `make test-alloc-gate`):
+
+| Benchmark | Harness | Invocation |
+| :--- | :--- | :--- |
+| `BenchmarkLuaScript_Happy` | `lua_testcontainers` | `bash scripts/test/run_bench.sh 'BenchmarkLuaScript_Happy' ./internal/ingestion` |
+| `BenchmarkUnifiedFilter_Check_integration` | `unified_filter_testcontainers` | `bash scripts/test/run_bench.sh 'BenchmarkUnifiedFilter_Check_integration' ./internal/ingestion` |
+
+Skip matrix for integration/Lua benches:
+
+| Condition | Result |
+| :--- | :--- |
+| `go test -short` | Skipped (`testing.Short`) |
+| Docker unavailable | `setupTestRedis` fails at container start |
+| `make test-alloc-gate` / `gate_bench.sh` | Mock benches only; integration benches excluded |
+
+**Mock only — not Postgres** (`MockEventStore`; no sqlc/pgx):
+
+| Benchmark | Harness |
+| :--- | :--- |
+| `BenchmarkPostgresStoreBatch_Mock` | `mock_event_store` |
+
+Cold-path write truth (not hot alloc gate):
+
+| Benchmark / test | Harness | Notes |
+| :--- | :--- | :--- |
+| `BenchmarkClickHouseStoreBatch_Spooled` | `ch_spool_local` | CH insert fails; local spool path |
+| `BenchmarkPostgresStoreBatch_integration` | `postgres_testcontainers` | `bash scripts/test/run_bench.sh 'BenchmarkPostgresStoreBatch_integration' ./internal/ingestion` |
+| `TestFault_ProcessorPgGate_Overflow` | `postgres_testcontainers` | Processor PG gate under burst |
+| `TestFault_AdsProcessorPGNetworkPartition` | compose PG partition | Stream consumer + real Postgres |
+
+Do not cite `BenchmarkPostgresStoreBatch_Mock` (mock store only) ns/op as Postgres or ingest write SLA.
+
+**Handler proto — not full `/track`** (`nil` FilterEngine, `mockRegistry`; harness `handler_proto_mock_no_filter`):
+
+| Benchmark | Harness | In `gate_bench.sh` |
+| :--- | :--- | :--- |
+| `BenchmarkAdsPacketHandlerProto` | `handler_proto_mock_no_filter` | Yes |
+| `BenchmarkAdsPacketHandlerProto_*` | `handler_proto_mock_no_filter` | Yes |
+| `BenchmarkHotPath_handlerProto_delegate` | `handler_proto_mock_no_filter` or reject shell | Yes |
+| `BenchmarkTrackE2E_accept` | `track_e2e_license_unified_redis` | No — `run_bench.sh` only |
+
+Gated `AdsPacketHandlerProto*` = protobuf parse + handler shell, not production `/track` (no license/geo/unified-filter Lua).
+
+**Synthetic fraud scoring — not ML inference** (`fraudSignalsFilter` + `mockRegistry`; harness `fraud_signals_filter_mock_registry` / `fraud_boost_snapshot_mock`):
+
+| Benchmark / test | Harness | Notes |
+| :--- | :--- | :--- |
+| `BenchmarkFilterEngine_Check_fraudScoring_*` | `fraud_signals_filter_mock_registry` | Incremental accumulator cost |
+| `BenchmarkFilterFraudBoost` | `fraud_boost_snapshot_mock` | Boost snapshot apply (~90 ns lab); **not** LGBM |
+| `TestFilterEngine_FraudScoring_LatencySLA` | `fraud_signals_filter_mock_registry` | Incremental vs `countingFilter`; not ML |
+
+ML inference (cold path only — `internal/fraud`, not tracker):
+
+| Benchmark / test | Package | Notes |
+| :--- | :--- | :--- |
+| `BenchmarkLGBMScorer_ScoreBatch10k` | `internal/fraud` | Batch LightGBM; skip `-short` |
+| `TestLGBMScorer_ScoreBatch10k_under2s` | `internal/fraud` | Manual gate |
+| Processor microbatch | `cmd/processor` | When `FRAUD_SCORING_ENABLED` |
+
+Do not cite `BenchmarkFilterFraudBoost` ns/op as `BenchmarkLGBMScorer_ScoreBatch10k` or ingest ML SLA.
+
+**Geo / placement — mock harnesses** (not tracker p99 SLA evidence):
+
+| Benchmark | Harness | Production geo / placement perf |
+| :--- | :--- | :--- |
+| `BenchmarkGeoFilter`, `BenchmarkGeoFilter_lookupOK`, `BenchmarkGeoFilter_lookupError` | `geo_mock_provider` | `BenchmarkGeoFilter_MaxMindCountry` with `deploy/geoip/GeoLite2-Country.mmdb`, or load test |
+| `BenchmarkPlacementBlacklistFilter_*` | `placement_blacklist_mock_redis` | Load test with real Redis shard |
+
+Tracker handler p99 SLA (`ad_http_request_duration_seconds`) is measured via load test / Prometheus — not these unit benches.
+
 ---
 
 ## 6. CI Merge Gates
@@ -253,13 +337,43 @@ Sentinel failover (`.github/workflows/sentinel-resilience.yaml`): **main push** 
 ### Local commands
 
 ```bash
-bash scripts/ci/pr_fast.sh          # PR merge gate (lint, alloc-gate, test -short)
+bash scripts/ci/pr_fast.sh          # PR merge gate (lint, alloc-gate, test -short; integration skipped)
 make check-local                    # pr_fast + docker image build
 bash scripts/ci/full_test.sh        # integration + fault (main / pre-release)
 bash scripts/fault/run.sh           # fault injection + fault_proof count
-bash scripts/test/gate_run.sh       # perf gate (set PERF_GATE_STRICT=false for smoke)
+PERF_GATE_STRICT=false bash scripts/test/gate_run.sh   # smoke — alloc gate NOT run
+PERF_GATE_STRICT=true bash scripts/test/gate_run.sh     # strict benchstat + alloc regression
 bash scripts/fault/sentinel.sh      # Redis Sentinel failover drill
 ```
+
+#### Go test tiers
+
+| Target | Command | Scope |
+| :--- | :--- | :--- |
+| **Fast** (PR / `pr_fast`) | `make test-fast` or `make test` | `go test -short` — skips Docker testcontainers integration |
+| **Integration** | `make test-integration` | No `-short`; Redis/Postgres testcontainers; timeout 30m; skips `Fault` tests |
+| **Fault** | `make test-fault` | `-run Fault` across tree |
+| **Alloc gate** | `make test-alloc-gate` | Zero-alloc + selected microbenches — not integration |
+
+Integration tests skip under `-short` with reason: `integration: run make test-integration (Docker testcontainers)`. Optional gate: `bash scripts/ci/integration_skip_reason_gate.sh` (no bare `t.Skip()`).
+
+#### Lab script skip matrix
+
+Scripts log `skip (…)` and **exit 0** when preconditions are missing — citing the script name without this matrix is a false “verified” signal.
+
+| Script | Preconditions | Proves when it runs |
+| :--- | :--- | :--- |
+| `scripts/test/xdp_resilience_drill.sh` | BTF vmlinux, root/CAP for XDP attach, BPF objects | XDP resilience drill (`drop_assertion=prog_test_same_maps`) |
+| `scripts/fault/xdp_injector_drill.sh` | BTF, `clang`, BPF build | Lab XDP fault injector |
+| `scripts/test/edge_xdp_compose_smoke.sh` | BTF, Docker | Edge XDP compose attach smoke |
+| `scripts/test/edge_xdp_bench_gate.sh` | BTF | `BenchmarkXDP_*` (`harness=xdp_prog_test`, not kernel RX) |
+| `scripts/test/billing_export_smoke.sh` | Docker (Postgres testcontainer) | `TestJobRunner_ExportLedgerNonZeroBytes` — export bytes ≥ header |
+| `scripts/test/blacklist_sync_test.sh` | `luajit` or `espx-nginx-1` container | OpenResty blacklist sync Lua |
+| `scripts/test/admin_stack_e2e.sh` | Live control on :8188, bootstrap env | Stack Playwright (`harness=stack`) |
+
+MILESTONE verification blocks should link here instead of bare script names.
+
+Production perf claims require `PERF_GATE_STRICT=true bash scripts/test/gate_run.sh` or `make test-alloc-gate` — smoke `gate_run.sh` prints `alloc gate NOT run` and is not sufficient alone.
 
 Concurrency: overlapping runs on the same branch cancel in-progress jobs (`cancel-in-progress: true`).
 
@@ -542,13 +656,17 @@ When `LOCAL_QUOTA_MODE=live` is configured:
 
 ### Benchmarks
 
-To verify zero heap allocations and optimize performance for the Full-Skip path:
+Fast-path only — harness `local_quanta_noop_redis` (`benchNoopRedis` in `local_quanta_fullskip_bench_test.go`; no Redis RTT, in-process stream drain). Requires `LOCAL_QUOTA_MODE=live` and local quanta deps wired on the tracker; **not** the default compose stack unless that env is configured (see §12 Hot-Path Execution Logic above).
+
+To verify zero heap allocations on the full-skip path:
 
 ```bash
 go test ./internal/ingestion/ -run='^$' -bench='BenchmarkLocalQuanta_FullSkip|BenchmarkAcceptLocalQuantaFullSkip' -benchmem
 ```
 
-Ensure `allocs/op` equals **0** and processing stays under 15 nanoseconds per local debit call.
+Zero-alloc gate: `TestUnifiedFilter_Check_zeroAlloc_localQuantaFullSkip` (run with `-run='localQuantaFullSkip'`).
+
+`BenchmarkAcceptLocalQuantaFullSkip` targets the local debit call (~15 ns lab); `BenchmarkLocalQuanta_FullSkip` includes full `UnifiedFilter.Check` on the noop-Redis full-skip path. Do not cite these as Redis unified-filter or ingest handler SLA.
 
 ---
 

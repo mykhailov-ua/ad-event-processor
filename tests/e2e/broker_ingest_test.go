@@ -59,7 +59,7 @@ func TestE2E_BrokerIngest(t *testing.T) {
 	data := make([]byte, rec.SizeVT())
 	n, err := rec.MarshalToSizedBufferVT(data)
 	require.NoError(t, err)
-	_, err = producer.Produce("tracker-logs", 0, data[:n])
+	_, err = producer.Produce(context.Background(), "tracker-logs", 0, data[:n])
 	require.NoError(t, err)
 	require.NoError(t, producer.Close())
 

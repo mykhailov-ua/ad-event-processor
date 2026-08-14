@@ -205,7 +205,7 @@ func (q *FraudStreamWriter) enqueueCritical(shard int, evt *domain.Event) bool {
 		alloc := atomic.LoadUint64(&q.critAlloc)
 		read := atomic.LoadUint64(&q.critRead)
 		if alloc-read >= fraudCriticalUsable {
-			for spin := 0; spin < fraudCriticalSpinMax; spin++ {
+			for spin := range fraudCriticalSpinMax {
 				if spin < 8 {
 					runtime.Gosched()
 				} else {
@@ -244,7 +244,7 @@ func (q *FraudStreamWriter) enqueueRing(shard int, evt *domain.Event) bool {
 		alloc := atomic.LoadUint64(&q.allocCursor)
 		read := atomic.LoadUint64(&q.readCursor)
 		if alloc-read >= fraudAnalyticalUsable {
-			for spin := 0; spin < 100; spin++ {
+			for spin := range 100 {
 				if spin < 20 {
 					runtime.Gosched()
 				} else {

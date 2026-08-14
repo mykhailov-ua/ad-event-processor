@@ -61,7 +61,7 @@ func BackupBinary(service, targetPath, version string) (string, error) {
 	if err := copyFile(targetPath, dest); err != nil {
 		return "", fmt.Errorf("backup %s: %w", service, err)
 	}
-	if err := os.WriteFile(currentBackupMarker(service), []byte(dest), 0644); err != nil {
+	if err := os.WriteFile(currentBackupMarker(service), []byte(dest), 0o644); err != nil {
 		return "", err
 	}
 	return dest, nil
@@ -128,7 +128,7 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer func() { _ = in.Close() }()
 
 	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 		return err
@@ -137,7 +137,7 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer func() { _ = out.Close() }()
 
 	if _, err := io.Copy(out, in); err != nil {
 		return err

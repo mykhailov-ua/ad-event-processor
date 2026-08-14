@@ -109,11 +109,14 @@ func openCoordRedis(redisURL string) (redis.UniversalClient, error) {
 	return redis.NewClient(opts), nil
 }
 
-func (c *Coordinator) Start() {
+func (c *Coordinator) Start(ctx context.Context) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	c.wg.Add(1)
 	go func() {
 		defer c.wg.Done()
-		c.runHeartbeatLoop()
+		c.runHeartbeatLoop(ctx)
 	}()
 
 	c.wg.Add(1)
@@ -251,7 +254,7 @@ func logHWMKey(topic string) string {
 	return "ad_event_processor:topics:" + topic + ":log_hwm"
 }
 
-func (c *Coordinator) runHeartbeatLoop() {
+func (c *Coordinator) runHeartbeatLoop(ctx context.Context) {
 	interval := c.cfg.Interval
 	if interval <= 0 {
 		interval = 3 * time.Second
@@ -263,13 +266,13 @@ func (c *Coordinator) runHeartbeatLoop() {
 	for {
 		select {
 		case <-c.closeChan:
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			_ = c.rdb.Del(ctx, "ad_event_processor:brokers:"+c.nodeID).Err()
+			shutdownCtx, cancel := context.WithTimeout(ctx, time.Second)
+			_ = c.rdb.Del(shutdownCtx, "ad_event_processor:brokers:"+c.nodeID).Err()
 			cancel()
 			return
 		case <-ticker.C:
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			_ = c.rdb.Set(ctx, "ad_event_processor:brokers:"+c.nodeID, c.tcpAddr, lease).Err()
+			beatCtx, cancel := context.WithTimeout(ctx, time.Second)
+			_ = c.rdb.Set(beatCtx, "ad_event_processor:brokers:"+c.nodeID, c.tcpAddr, lease).Err()
 			cancel()
 		}
 	}
@@ -644,67 +647,69 @@ func (c *Coordinator) replicate(topic string, leaderID string, stopCh chan struc
 		case <-c.closeChan:
 			return
 		case <-ticker.C:
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			leaderAddr, err := c.rdb.Get(ctx, "ad_event_processor:brokers:"+leaderID).Result()
-			cancel()
-			if err != nil {
-				if cli != nil {
-					_ = cli.Close()
-					cli = nil
+			func() {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				leaderAddr, err := c.rdb.Get(ctx, "ad_event_processor:brokers:"+leaderID).Result()
+				if err != nil {
+					if cli != nil {
+						_ = cli.Close()
+						cli = nil
+					}
+					return
 				}
-				continue
-			}
 
-			if cli == nil || leaderAddr != currentAddr {
-				if cli != nil {
-					_ = cli.Close()
-				}
-				cli = client.NewClient(leaderAddr, time.Second)
-				currentAddr = leaderAddr
-				if err := cli.Connect(); err != nil {
-					_ = cli.Close()
-					cli = nil
-					continue
-				}
-			}
-
-			pl, err := c.host.CoordGetOrCreatePartition(topic)
-			if err != nil {
-				continue
-			}
-
-			nextOffset := pl.NextOffset()
-
-			topicName, part := protocol.ParseTopicPartitionID(topic)
-			iter, fetchErr := cli.Fetch(topicName, part, nextOffset, 65536)
-			if fetchErr == nil {
-				for iter.Next() {
-					if _, err = pl.AppendReplicatedAt(iter.Offset, iter.Payload); err != nil {
-						if errors.Is(err, log.ErrReplicationGap) {
-							slog.Warn("Replication gap detected, halting batch",
-								"topic", topic,
-								"expected", pl.NextOffset(),
-								"got", iter.Offset,
-							)
-						}
-						fetchErr = err
-						break
+				if cli == nil || leaderAddr != currentAddr {
+					if cli != nil {
+						_ = cli.Close()
+					}
+					cli = client.NewClient(leaderAddr, time.Second)
+					currentAddr = leaderAddr
+					if err := cli.Connect(); err != nil {
+						_ = cli.Close()
+						cli = nil
+						return
 					}
 				}
-			}
 
-			if fetchErr != nil {
-				_ = cli.Close()
-				cli = nil
-				if errors.Is(fetchErr, log.ErrReplicationGap) {
-					recordReplicationError(topic, "gap")
-				} else if !errors.Is(fetchErr, io.EOF) {
-					recordReplicationError(topic, "fetch")
+				pl, err := c.host.CoordGetOrCreatePartition(topic)
+				if err != nil {
+					return
 				}
-				if !errors.Is(fetchErr, io.EOF) {
-					time.Sleep(500 * time.Millisecond)
+
+				nextOffset := pl.NextOffset()
+
+				topicName, part := protocol.ParseTopicPartitionID(topic)
+				iter, fetchErr := cli.Fetch(ctx, topicName, part, nextOffset, 65536)
+				if fetchErr == nil {
+					for iter.Next() {
+						if _, err = pl.AppendReplicatedAt(iter.Offset, iter.Payload); err != nil {
+							if errors.Is(err, log.ErrReplicationGap) {
+								slog.Warn("Replication gap detected, halting batch",
+									"topic", topic,
+									"expected", pl.NextOffset(),
+									"got", iter.Offset,
+								)
+							}
+							fetchErr = err
+							break
+						}
+					}
 				}
-			}
+
+				if fetchErr != nil {
+					_ = cli.Close()
+					cli = nil
+					if errors.Is(fetchErr, log.ErrReplicationGap) {
+						recordReplicationError(topic, "gap")
+					} else if !errors.Is(fetchErr, io.EOF) {
+						recordReplicationError(topic, "fetch")
+					}
+					if !errors.Is(fetchErr, io.EOF) {
+						time.Sleep(500 * time.Millisecond)
+					}
+				}
+			}()
 		}
 	}
 }

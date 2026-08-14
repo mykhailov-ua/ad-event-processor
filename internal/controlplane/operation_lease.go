@@ -221,8 +221,8 @@ func (w *OperationLeaseWorker) EnsureBook(ctx context.Context, req OperationLeas
 	return result, err
 }
 
-func RelayDeliveryBookRequest(s *Service, regionCode uint8, outboxEventID int64, eventType string, payload []byte, attempt int32) OperationLeaseBookRequest {
-	adapter := s.dedupAdapter()
+func RelayDeliveryBookRequest(ctx context.Context, s *Service, regionCode uint8, outboxEventID int64, eventType string, payload []byte, attempt int32) OperationLeaseBookRequest {
+	adapter := s.dedupAdapter(ctx)
 	scope := dedupkey.Scope{}
 	if adapter != nil {
 		scope = adapter.RegionScope(dedupkey.RelaySourceID(regionCode), outboxEventID, outboxEventID)

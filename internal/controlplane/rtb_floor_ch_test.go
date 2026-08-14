@@ -36,7 +36,7 @@ ORDER BY (deal_id, created_at)`))
 		INSERT INTO rtb_deal_outcomes (deal_id, outcome, floor_micro, created_at) VALUES
 		('bucket-deal', 1, 100000, now() - INTERVAL 1 HOUR),
 		('bucket-deal', 0, 100000, now() - INTERVAL 1 HOUR)`))
-	for i := 0; i < 12; i++ {
+	for range 12 {
 		require.NoError(t, conn.Exec(ctx, `
 			INSERT INTO rtb_deal_outcomes (deal_id, outcome, floor_micro, created_at)
 			VALUES ('bucket-deal', 1, 110000, now() - INTERVAL 2 HOUR)`))

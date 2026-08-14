@@ -14,7 +14,7 @@ func TestGroupCommit_FsyncReduction70Percent(t *testing.T) {
 	})
 
 	var fsyncs int
-	for i := 0; i < appends; i++ {
+	for range appends {
 		if g.NoteAppend() {
 			fsyncs++
 		}

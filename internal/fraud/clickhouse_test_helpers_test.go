@@ -79,7 +79,7 @@ func seedClickHouseEvents(t *testing.T, conn driver.Conn, ip, userAgent string, 
 	campaignID := uuid.New()
 	now := time.Now().UTC()
 
-	for i := 0; i < impressions; i++ {
+	for i := range impressions {
 		clickID := fmt.Sprintf("imp-%s-%d", ip, i)
 		require.NoError(t, conn.Exec(ctx, `
 			INSERT INTO ad_event_processor.impressions
@@ -88,7 +88,7 @@ func seedClickHouseEvents(t *testing.T, conn driver.Conn, ip, userAgent string, 
 			clickID, campaignID, ipHash, uaHash, h.Version(), now,
 		))
 	}
-	for i := 0; i < clicks; i++ {
+	for i := range clicks {
 		clickID := fmt.Sprintf("clk-%s-%d", ip, i)
 		require.NoError(t, conn.Exec(ctx, `
 			INSERT INTO ad_event_processor.clicks
@@ -110,7 +110,7 @@ func seedIntervalBotClicks(t *testing.T, conn driver.Conn, ip, userAgent string,
 	campaignID := uuid.New()
 	base := time.Now().UTC().Add(-interval * time.Duration(count))
 
-	for i := 0; i < count; i++ {
+	for i := range count {
 		clickID := fmt.Sprintf("interval-%s-%d", ip, i)
 		ts := base.Add(interval * time.Duration(i))
 		require.NoError(t, conn.Exec(ctx, `

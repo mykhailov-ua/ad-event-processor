@@ -10,7 +10,7 @@ const chaosValidTrackJSON = `{"type":"click","campaign_id":"550e8400-e29b-41d4-a
 func chaosWSBomb(n int, suffix string) []byte {
 	var b strings.Builder
 	b.Grow(n + len(suffix))
-	for i := 0; i < n; i++ {
+	for range n {
 		b.WriteByte(' ')
 	}
 	b.WriteString(suffix)

@@ -47,7 +47,7 @@ func TestCollectFanOut_respectsConcurrencyCap(t *testing.T) {
 	var peak atomic.Int32
 	var current atomic.Int32
 	sources := make([]FanOutSource[int], 0, 6)
-	for i := 0; i < 6; i++ {
+	for range 6 {
 		sources = append(sources, FanOutSource[int]{
 			ID: "s",
 			Poll: func(ctx context.Context) ([]int, error) {

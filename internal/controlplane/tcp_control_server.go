@@ -103,7 +103,7 @@ func (s *TCPControlServer) acceptLoop(ctx context.Context) {
 }
 
 func (s *TCPControlServer) handleConn(ctx context.Context, conn net.Conn) {
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
 	var buf [4096]byte
 	n, err := conn.Read(buf[:])
@@ -175,7 +175,7 @@ func (s *TCPControlServer) pushSnapshot(ctx context.Context, addr string, routin
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	return s.writeSnapshot(conn, routingEpoch, slotVersion)
 }
 

@@ -97,7 +97,7 @@ WHERE c.click_count >= ?
 	if err != nil {
 		return nil, fmt.Errorf("high click-to-imp query: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []SuspiciousIP
 	for rows.Next() {
@@ -164,7 +164,7 @@ HAVING count() >= 1`
 	if err != nil {
 		return nil, fmt.Errorf("shared fingerprint query: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []SuspiciousIP
 	for rows.Next() {

@@ -41,7 +41,7 @@ func TestFault_CoordinatorUnreachable_ProduceFailsClosed(t *testing.T) {
 		t.Fatalf("coordinator: %v", err)
 	}
 	s.SetCoordinator(coord)
-	coord.Start()
+	coord.Start(context.Background())
 	defer coord.Stop()
 
 	topic := "leaderless-topic"
@@ -53,7 +53,7 @@ func TestFault_CoordinatorUnreachable_ProduceFailsClosed(t *testing.T) {
 	}
 	defer cli.Close()
 
-	if _, err := cli.Produce(topic, 0, []byte("must-not-persist")); err == nil {
+	if _, err := cli.Produce(context.Background(), topic, 0, []byte("must-not-persist")); err == nil {
 		t.Fatal("produce accepted while no lease is held")
 	}
 
@@ -96,7 +96,7 @@ func TestFault_LeaseExpiry_SelfFencesProduce(t *testing.T) {
 		t.Fatalf("coordinator: %v", err)
 	}
 	s.SetCoordinator(coord)
-	coord.Start()
+	coord.Start(context.Background())
 	defer coord.Stop()
 
 	topic := "lease-expiry-topic"
@@ -108,7 +108,7 @@ func TestFault_LeaseExpiry_SelfFencesProduce(t *testing.T) {
 	}
 	defer cli.Close()
 
-	if _, err := cli.Produce(topic, 0, []byte("leader-write")); err != nil {
+	if _, err := cli.Produce(context.Background(), topic, 0, []byte("leader-write")); err != nil {
 		t.Fatalf("produce under healthy lease failed: %v", err)
 	}
 	acceptedOffset := partitionNextOffset(t, s, tpKey)
@@ -123,7 +123,7 @@ func TestFault_LeaseExpiry_SelfFencesProduce(t *testing.T) {
 		return !coord.IsLeader(tpKey)
 	}, 15*time.Second, 200*time.Millisecond, "node must self-fence after lease expiry")
 
-	if _, err := cli.Produce(topic, 0, []byte("post-fence-write")); err == nil {
+	if _, err := cli.Produce(context.Background(), topic, 0, []byte("post-fence-write")); err == nil {
 		t.Fatal("produce accepted after lease expiry")
 	}
 	if got := partitionNextOffset(t, s, tpKey); got != acceptedOffset {

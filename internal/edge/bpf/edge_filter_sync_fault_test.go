@@ -43,7 +43,7 @@ func TestFault_XDPEarlySyncAheadOfSchedule(t *testing.T) {
 
 	var wg sync.WaitGroup
 	stop := make(chan struct{})
-	for i := 0; i < 24; i++ {
+	for i := range 24 {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()

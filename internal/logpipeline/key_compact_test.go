@@ -13,7 +13,7 @@ import (
 
 func TestKeyCompaction_keepsLastImpressionPerClickID(t *testing.T) {
 	var src bytes.Buffer
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		src.Write(encodeRecord(t, &pb.AdStreamEvent{
 			EventType:     []byte("impression"),
 			ClickId:       []byte("shared-click"),

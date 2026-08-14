@@ -109,7 +109,7 @@ func TestAuthMiddleware(t *testing.T) {
 			}))
 
 			recorder := httptest.NewRecorder()
-			request, err := http.NewRequest(http.MethodGet, authPath, nil)
+			request, err := http.NewRequest(http.MethodGet, authPath, http.NoBody)
 			require.NoError(t, err)
 
 			tc.setupAuth(t, request, tokenMaker)
@@ -138,7 +138,7 @@ func BenchmarkAuthMiddleware(b *testing.B) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	req, err := http.NewRequest(http.MethodGet, "/auth", nil)
+	req, err := http.NewRequest(http.MethodGet, "/auth", http.NoBody)
 	if err != nil {
 		b.Fatal(err)
 	}

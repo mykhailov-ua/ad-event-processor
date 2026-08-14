@@ -117,7 +117,7 @@ func udpDecodeShardLimits(payload []byte, numShards uint8, version uint8, out *U
 		return false
 	}
 	out.NumShards = numShards
-	for i := uint8(0); i < numShards; i++ {
+	for i := range numShards {
 		out.Limits[i] = binary.LittleEndian.Uint64(payload[i*8 : i*8+8])
 	}
 	out.MaxRPD = 0

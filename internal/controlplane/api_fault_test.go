@@ -71,7 +71,7 @@ func TestFault_APITenantIsolation(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	ownerReq, _ := http.NewRequest("GET", "/api/v1/customers/"+victimID.String()+"/balance", nil)
+	ownerReq, _ := http.NewRequest("GET", "/api/v1/customers/"+victimID.String()+"/balance", http.NoBody)
 	withSessionUser(ownerReq, tokenMaker, RoleUser, victimID)
 	ownerResp := httptest.NewRecorder()
 	mux.ServeHTTP(ownerResp, ownerReq)
@@ -89,11 +89,11 @@ func TestFault_APITenantIsolation(t *testing.T) {
 	var forbidden atomic.Int32
 	var wg sync.WaitGroup
 	wg.Add(apiFaultWorkers * len(paths))
-	for i := 0; i < apiFaultWorkers; i++ {
+	for range apiFaultWorkers {
 		for _, path := range paths {
 			go func(p string) {
 				defer wg.Done()
-				req, _ := http.NewRequest("GET", p, nil)
+				req, _ := http.NewRequest("GET", p, http.NoBody)
 				withSessionUser(req, tokenMaker, RoleUser, attackerID)
 				resp := httptest.NewRecorder()
 				mux.ServeHTTP(resp, req)
@@ -180,7 +180,7 @@ func TestFault_APIChLagStaleOK(t *testing.T) {
 		VALUES (?, ?, '1.1.1.1', 'ua', '{}', ?)`,
 		"stale-click", campID, staleHour.Add(5*time.Minute)))
 
-	reqStale, _ := http.NewRequest("GET", statsURL, nil)
+	reqStale, _ := http.NewRequest("GET", statsURL, http.NoBody)
 	withSessionUser(reqStale, tokenMaker, RoleUser, custID)
 	respStale := httptest.NewRecorder()
 	mux.ServeHTTP(respStale, reqStale)
@@ -197,7 +197,7 @@ func TestFault_APIChLagStaleOK(t *testing.T) {
 		VALUES (?, ?, '1.1.1.1', 'ua', '{}', ?)`,
 		"fresh-click", campID, now))
 
-	reqFresh, _ := http.NewRequest("GET", statsURL, nil)
+	reqFresh, _ := http.NewRequest("GET", statsURL, http.NoBody)
 	withSessionUser(reqFresh, tokenMaker, RoleUser, custID)
 	respFresh := httptest.NewRecorder()
 	mux.ServeHTTP(respFresh, reqFresh)
@@ -253,7 +253,7 @@ func TestFault_LedgerExportCursor(t *testing.T) {
 
 	padding := strings.Repeat("X", 4096)
 	const rows = 3000
-	for i := 0; i < rows; i++ {
+	for i := range rows {
 		_, err := pool.Exec(ctx, `
 			INSERT INTO balance_ledger (customer_id, amount, type, idempotency_hash)
 			VALUES ($1, 1000, 'FEE', $2)`,
@@ -266,10 +266,10 @@ func TestFault_LedgerExportCursor(t *testing.T) {
 	var wg sync.WaitGroup
 	var truncations atomic.Int32
 	wg.Add(apiFaultWorkers)
-	for i := 0; i < apiFaultWorkers; i++ {
+	for range apiFaultWorkers {
 		go func() {
 			defer wg.Done()
-			req, _ := http.NewRequest("GET", exportURL, nil)
+			req, _ := http.NewRequest("GET", exportURL, http.NoBody)
 			withAdminAPIKey(req, cfg)
 			resp := httptest.NewRecorder()
 			mux.ServeHTTP(resp, req)
@@ -283,7 +283,7 @@ func TestFault_LedgerExportCursor(t *testing.T) {
 	wg.Wait()
 	require.Equal(t, int32(apiFaultWorkers), truncations.Load())
 
-	req1, _ := http.NewRequest("GET", exportURL, nil)
+	req1, _ := http.NewRequest("GET", exportURL, http.NoBody)
 	withAdminAPIKey(req1, cfg)
 	resp1 := httptest.NewRecorder()
 	mux.ServeHTTP(resp1, req1)
@@ -297,7 +297,7 @@ func TestFault_LedgerExportCursor(t *testing.T) {
 	require.LessOrEqual(t, bytesWritten, ledgerExportMaxBytes)
 	require.Greater(t, bytesWritten, ledgerExportMaxBytes-50_000)
 
-	req2, _ := http.NewRequest("GET", exportURL+"&cursor="+cursor, nil)
+	req2, _ := http.NewRequest("GET", exportURL+"&cursor="+cursor, http.NoBody)
 	withAdminAPIKey(req2, cfg)
 	resp2 := httptest.NewRecorder()
 	mux.ServeHTTP(resp2, req2)

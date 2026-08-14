@@ -10,11 +10,41 @@ import (
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/bidshard/ad-event-processor/internal/domain/db"
 
+	"github.com/alicebob/miniredis/v2"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestPipelineWriteVPPRatios_batchesPerShard(t *testing.T) {
+	ctx := context.Background()
+	mr, err := miniredis.Run()
+	require.NoError(t, err)
+	t.Cleanup(mr.Close)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+
+	svc := &Service{
+		rdbs:    []redis.UniversalClient{rdb},
+		sharder: domain.NewStaticSlotSharder(1),
+	}
+	c1, c2 := uuid.New(), uuid.New()
+	writes := map[int][]vppRatioWrite{
+		0: {
+			{campaignID: c1, ratio: 0.75},
+			{campaignID: c2, ratio: 1.0},
+		},
+	}
+	require.NoError(t, svc.pipelineWriteVPPRatios(ctx, writes))
+
+	raw1, err := rdb.Get(ctx, vppPacingRedisKey(c1)).Result()
+	require.NoError(t, err)
+	assert.Equal(t, "0.7500", raw1)
+	raw2, err := rdb.Get(ctx, vppPacingRedisKey(c2)).Result()
+	require.NoError(t, err)
+	assert.Equal(t, "1.0000", raw2)
+}
 
 func TestRunVPPPacingController_writesRedisRatio(t *testing.T) {
 	if testing.Short() {
@@ -31,7 +61,7 @@ func TestRunVPPPacingController_writesRedisRatio(t *testing.T) {
 		PacingToleranceMargin: 0.0,
 	}
 	sharder := domain.NewStaticSlotSharder(1)
-	svc := NewService(pool, []redis.UniversalClient{rdb}, sharder, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, sharder, cfg)
 	defer svc.Close()
 
 	ctx := context.Background()
@@ -78,7 +108,7 @@ func TestRunVPPPacingController_onPaceWritesFullRatio(t *testing.T) {
 	defer cleanupRedis()
 
 	cfg := &config.Config{PacingToleranceMargin: 0.15}
-	svc := NewService(pool, []redis.UniversalClient{rdb}, domain.NewStaticSlotSharder(1), cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, domain.NewStaticSlotSharder(1), cfg)
 	defer svc.Close()
 
 	ctx := context.Background()
@@ -123,7 +153,7 @@ func TestRunVPPPacingController_skipsNonVPP(t *testing.T) {
 	rdb, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
-	svc := NewService(pool, []redis.UniversalClient{rdb}, domain.NewStaticSlotSharder(1), &config.Config{})
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, domain.NewStaticSlotSharder(1), &config.Config{})
 	defer svc.Close()
 
 	ctx := context.Background()

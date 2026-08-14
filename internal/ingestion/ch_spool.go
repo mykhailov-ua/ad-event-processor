@@ -569,7 +569,7 @@ func unmarshalCHSpoolPayload(payload []byte) (string, []*domain.Event, error) {
 	off += 4
 
 	events := make([]*domain.Event, 0, count)
-	for i := 0; i < count; i++ {
+	for range count {
 		if off+4 > len(payload) {
 			return "", nil, errCHSpoolCorrupt
 		}

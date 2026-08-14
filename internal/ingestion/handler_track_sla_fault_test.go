@@ -88,7 +88,7 @@ func TestFault_FilterChainRedisLatency(t *testing.T) {
 	const samples = 60
 	latencies := make([]time.Duration, 0, samples)
 	timeoutCount := 0
-	for i := 0; i < samples; i++ {
+	for range samples {
 		start := time.Now()
 		status := postFaultClick(t, delayed.Handler, delayed.CampaignID)
 		elapsed := time.Since(start)
@@ -186,7 +186,7 @@ func TestFault_HandlerRejectMatrix(t *testing.T) {
 			body := []byte(`{"campaign_id":"` + uuid.NewString() + `","type":"click","click_id":"c1"}`)
 			var wg sync.WaitGroup
 			wg.Add(p0RejectConcurrency)
-			for i := 0; i < p0RejectConcurrency; i++ {
+			for range p0RejectConcurrency {
 				go func() {
 					defer wg.Done()
 					status, _ := PostTrackGnetJSON(h, body)
@@ -250,7 +250,7 @@ func TestFault_StaticSlotReloadInflight(t *testing.T) {
 
 	var trafficWG sync.WaitGroup
 	trafficWG.Add(8)
-	for w := 0; w < 8; w++ {
+	for w := range 8 {
 		go func(worker int) {
 			defer trafficWG.Done()
 			defer func() {
@@ -259,7 +259,7 @@ func TestFault_StaticSlotReloadInflight(t *testing.T) {
 				}
 			}()
 			prefix := fmt.Sprintf("slot-w%d-", worker)
-			for i := 0; i < p0StaticSlotTraffic/8; i++ {
+			for range p0StaticSlotTraffic / 8 {
 				clickID := uuid.NewString()
 				status := postFaultImpression(t, stack.Handler, stack.CampaignID, prefix+clickID[:8])
 				if status == http.StatusAccepted || status == http.StatusOK {
@@ -324,12 +324,12 @@ func TestFault_ScriptFlushUnderTrackRPS(t *testing.T) {
 		wg        sync.WaitGroup
 	)
 	wg.Add(p0ScriptFlushWorkers + 1)
-	for w := 0; w < p0ScriptFlushWorkers; w++ {
+	for w := range p0ScriptFlushWorkers {
 		worker := w
 		go func() {
 			defer wg.Done()
 			prefix := fmt.Sprintf("flush-w%d-", worker)
-			for i := 0; i < p0ScriptFlushPerW; i++ {
+			for range p0ScriptFlushPerW {
 				clickID := uuid.NewString()
 				start := time.Now()
 				status := postFaultImpression(t, stack.Handler, stack.CampaignID, prefix+clickID[:8])
@@ -420,7 +420,7 @@ func TestFault_ProductionFilterChainRedisLatency(t *testing.T) {
 	const samples = 40
 	latencies := make([]time.Duration, 0, samples)
 	okCount := 0
-	for i := 0; i < samples; i++ {
+	for i := range samples {
 		start := time.Now()
 		status := postFaultImpression(t, delayed.Handler, delayed.CampaignID, fmt.Sprintf("prod-w%d", i%4))
 		latencies = append(latencies, time.Since(start))

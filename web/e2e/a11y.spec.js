@@ -1,3 +1,4 @@
+/** harness=mock_api — Playwright route.fulfill; does not prove Go handler or CH/PG. */
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { mockAuthedSession, ADMIN_USER } from './helpers.js';

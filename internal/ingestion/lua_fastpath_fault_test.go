@@ -56,7 +56,7 @@ func TestFault_LuaFastPathP99(t *testing.T) {
 	latencies := make([]time.Duration, 0, iterations)
 	beforeFast := testutil.ToFloat64(metrics.RedisLuaFastPathTotal.WithLabelValues("0"))
 
-	for i := 0; i < iterations; i++ {
+	for i := range iterations {
 		evt := &domain.Event{
 			Type:       "impression",
 			CampaignID: campaignID,

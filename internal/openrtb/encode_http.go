@@ -110,7 +110,7 @@ func writeBid200Header(buf []byte, gzip bool) {
 		prefix = bidHTTPHdrPrefix
 	}
 	n := copy(buf, prefix)
-	for i := 0; i < bidHTTPContentLenDigits; i++ {
+	for i := range bidHTTPContentLenDigits {
 		buf[n+i] = '0'
 	}
 	copy(buf[n+bidHTTPContentLenDigits:], bidHTTPHdrSuffix)

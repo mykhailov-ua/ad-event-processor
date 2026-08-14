@@ -66,6 +66,12 @@ func NewPostgresStoreWithGate(queries db.Querier, writeTimeout time.Duration, ga
 	}
 }
 
+func (s *PostgresStore) SetQuerier(queries db.Querier) {
+	if s != nil && queries != nil {
+		s.queries = queries
+	}
+}
+
 func (s *PostgresStore) StoreBatch(ctx context.Context, events []*domain.Event) error {
 	if len(events) == 0 {
 		return nil

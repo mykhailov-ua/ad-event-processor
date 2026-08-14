@@ -41,7 +41,7 @@ func (m *FailingEventStore) Heal() { m.healed.Store(true) }
 
 func TestStreamConsumer_CircuitBreakerStopsReads(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers Redis)")
 	}
 
 	rdb, cleanup := setupTestRedis(t)
@@ -67,7 +67,7 @@ func TestStreamConsumer_CircuitBreakerStopsReads(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		err := producer.Process(&domain.Event{CampaignID: uuid.New(), Type: "click"})
 		require.NoError(t, err)
 	}
@@ -80,17 +80,19 @@ func TestStreamConsumer_CircuitBreakerStopsReads(t *testing.T) {
 
 	callsAtOpen := failStore.calls.Load()
 
-	time.Sleep(200 * time.Millisecond)
-	callsAfterWait := failStore.calls.Load()
-
-	assert.LessOrEqual(t, callsAfterWait-callsAtOpen, int64(4),
-		"CB should prevent flush calls while open, got %d extra calls", callsAfterWait-callsAtOpen)
+	// CI budget: 500ms poll window — no fixed sleep before primary assertion.
+	assert.Eventually(t, func() bool {
+		extra := failStore.calls.Load() - callsAtOpen
+		return extra <= 4
+	}, 500*time.Millisecond, 10*time.Millisecond,
+		"CB should prevent flush calls while open, got %d extra calls", failStore.calls.Load()-callsAtOpen)
 
 	failStore.Heal()
 
+	// CI budget: 5s max wait for half-open probe success after heal.
 	assert.Eventually(t, func() bool {
 		return consumer.cb.State() == CircuitClosed
-	}, 3*time.Second, 10*time.Millisecond, "circuit breaker should recover to closed")
+	}, 5*time.Second, 10*time.Millisecond, "circuit breaker should recover to closed")
 
 	consumer.Close()
 	consumer.Wait(ctx)

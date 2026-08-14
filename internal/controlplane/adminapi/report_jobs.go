@@ -112,7 +112,7 @@ func (r *ReportJobRunner) CreateJob(ctx context.Context, spec ReportJobSpec, ide
 	if idempotencyKey != "" {
 		r.byIdem[idempotencyKey] = jobID
 	}
-	go r.runJob(jobID)
+	go r.runJob(ctx, jobID)
 	return jobID, nil
 }
 
@@ -202,8 +202,8 @@ func (r *ReportJobRunner) evictLocked(now time.Time) {
 	}
 }
 
-func (r *ReportJobRunner) runJob(jobID string) {
-	ctx, cancel := context.WithTimeout(context.Background(), reportJobRunTimeout)
+func (r *ReportJobRunner) runJob(parent context.Context, jobID string) {
+	ctx, cancel := context.WithTimeout(parent, reportJobRunTimeout)
 	defer cancel()
 
 	r.mu.Lock()
@@ -345,7 +345,7 @@ func (reports *ReportsHTTPHandlers) downloadReportJob(w http.ResponseWriter, r *
 		httpresponse.Error(w, http.StatusConflict, "NOT_READY", err.Error())
 		return
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	if reports.AuthorizeCustomerAccess != nil {
 		if err := reports.AuthorizeCustomerAccess(r, status.CustomerID); err != nil {
 			reports.writeServiceError(w, err)

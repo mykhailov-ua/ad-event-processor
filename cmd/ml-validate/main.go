@@ -122,5 +122,5 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("ml-validate: OK model=%s dims=%d fixtures=%s\n", modelPath, fraud.Dims(), fixturesDir)
+	_, _ = fmt.Fprintf(os.Stdout, "ml-validate: OK model=%s dims=%d fixtures=%s\n", modelPath, fraud.Dims(), fixturesDir)
 }

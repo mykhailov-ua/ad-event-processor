@@ -10,7 +10,7 @@ import (
 func TestSettlementLaneIndex_distribution(t *testing.T) {
 	lanes := 8
 	counts := make([]int, lanes)
-	for i := 0; i < 10_000; i++ {
+	for range 10_000 {
 		id := uuid.New()
 		counts[settlementLaneIndex(id, lanes)]++
 	}

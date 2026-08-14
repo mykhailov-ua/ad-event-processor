@@ -32,16 +32,16 @@ func main() {
 	baselineFile := os.Args[1]
 	prFile := os.Args[2]
 
-	fmt.Printf("PERFORMANCE GATE ANALYSIS\n")
-	fmt.Printf("Baseline File: %s\n", baselineFile)
-	fmt.Printf("PR File:       %s\n\n", prFile)
+	fmt.Fprintf(os.Stderr, "PERFORMANCE GATE ANALYSIS\n")
+	fmt.Fprintf(os.Stderr, "Baseline File: %s\n", baselineFile)
+	fmt.Fprintf(os.Stderr, "PR File:       %s\n\n", prFile)
 
 	err := verifyRawZeroAlloc(prFile)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "FAIL: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Println("PASS: Zero-Alloc raw verification successful.")
+	fmt.Fprintf(os.Stderr, "PASS: Zero-Alloc raw verification successful.\n")
 
 	regressionDetected, comparisonTable, err := runBenchstatCSVComparison(baselineFile, prFile)
 	if err != nil {
@@ -49,15 +49,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Println("\nCOMPARISON REPORT")
-	fmt.Println(comparisonTable)
+	fmt.Fprintf(os.Stderr, "\nCOMPARISON REPORT\n")
+	fmt.Fprintf(os.Stderr, "%s", comparisonTable)
 
 	if regressionDetected {
 		fmt.Fprintln(os.Stderr, "FAIL: CPU performance regression exceeding 12% with p-value < 0.05 detected.")
 		os.Exit(1)
 	}
 
-	fmt.Println("PASS: Performance gate cleared successfully.")
+	fmt.Fprintf(os.Stderr, "PASS: Performance gate cleared successfully.\n")
 }
 
 func verifyRawZeroAlloc(filename string) error {
@@ -65,7 +65,7 @@ func verifyRawZeroAlloc(filename string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open PR benchmark file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -215,16 +215,16 @@ func parseCSVOutput(csvContent string) (bool, string) {
 
 	var tableBuilder strings.Builder
 	w := tabwriter.NewWriter(&tableBuilder, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, "BENCHMARK\tMETRIC\tBASELINE\tPR\tDELTA\tP-VALUE\tSTATUS")
+	_, _ = fmt.Fprintln(w, "BENCHMARK\tMETRIC\tBASELINE\tPR\tDELTA\tP-VALUE\tSTATUS")
 
 	for _, r := range rows {
 		pValDisplay := r.PValue
 		if pValDisplay == "" {
 			pValDisplay = "-"
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", r.Benchmark, r.Metric, r.OldVal, r.NewVal, r.Delta, pValDisplay, r.Status)
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", r.Benchmark, r.Metric, r.OldVal, r.NewVal, r.Delta, pValDisplay, r.Status)
 	}
-	w.Flush()
+	_ = w.Flush()
 
 	return regression, tableBuilder.String()
 }

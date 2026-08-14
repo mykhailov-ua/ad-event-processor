@@ -72,7 +72,7 @@ func TestValidateOpenRTB26_invalidJSON(t *testing.T) {
 func TestValidateOpenRTB26_errorCap(t *testing.T) {
 	var b strings.Builder
 	b.WriteString(`{"id":"","imp":[`)
-	for i := 0; i < 60; i++ {
+	for i := range 60 {
 		if i > 0 {
 			b.WriteByte(',')
 		}

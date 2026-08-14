@@ -117,9 +117,9 @@ func (c *Client) getConn() (*net.TCPConn, error) {
 	return c.conn, nil
 }
 
-func (c *Client) Produce(topic string, partition uint16, payload []byte) (uint64, error) {
+func (c *Client) Produce(ctx context.Context, topic string, partition uint16, payload []byte) (uint64, error) {
 	var lastErr error
-	for attempt := 0; attempt < 5; attempt++ {
+	for attempt := range 5 {
 		if attempt > 0 {
 			time.Sleep(500 * time.Millisecond)
 		}
@@ -131,7 +131,7 @@ func (c *Client) Produce(topic string, partition uint16, payload []byte) (uint64
 			lastErr = err
 
 			if c.redisURL != "" {
-				if newAddr, rErr := c.resolveLeaderAddr(topic, partition); rErr == nil && newAddr != c.addr {
+				if newAddr, rErr := c.resolveLeaderAddr(ctx, topic, partition); rErr == nil && newAddr != c.addr {
 					c.addr = newAddr
 				}
 			}
@@ -150,7 +150,7 @@ func (c *Client) Produce(topic string, partition uint16, payload []byte) (uint64
 			c.mu.Unlock()
 			lastErr = err
 			if c.redisURL != "" {
-				if newAddr, rErr := c.resolveLeaderAddr(topic, partition); rErr == nil && newAddr != c.addr {
+				if newAddr, rErr := c.resolveLeaderAddr(ctx, topic, partition); rErr == nil && newAddr != c.addr {
 					c.addr = newAddr
 				}
 			}
@@ -163,7 +163,7 @@ func (c *Client) Produce(topic string, partition uint16, payload []byte) (uint64
 			c.mu.Unlock()
 			lastErr = err
 			if c.redisURL != "" {
-				if newAddr, rErr := c.resolveLeaderAddr(topic, partition); rErr == nil && newAddr != c.addr {
+				if newAddr, rErr := c.resolveLeaderAddr(ctx, topic, partition); rErr == nil && newAddr != c.addr {
 					c.addr = newAddr
 				}
 			}
@@ -200,7 +200,7 @@ func (c *Client) Produce(topic string, partition uint16, payload []byte) (uint64
 				lastErr = errors.New("not leader")
 			}
 			if c.redisURL != "" {
-				if newAddr, rErr := c.resolveLeaderAddr(topic, partition); rErr == nil && newAddr != c.addr {
+				if newAddr, rErr := c.resolveLeaderAddr(ctx, topic, partition); rErr == nil && newAddr != c.addr {
 					c.addr = newAddr
 				}
 			}
@@ -220,9 +220,9 @@ func (c *Client) Produce(topic string, partition uint16, payload []byte) (uint64
 	return 0, fmt.Errorf("failed after 5 attempts, last error: %w", lastErr)
 }
 
-func (c *Client) Fetch(topic string, partition uint16, startOffset uint64, maxBytes uint32) (*MessageIterator, error) {
+func (c *Client) Fetch(ctx context.Context, topic string, partition uint16, startOffset uint64, maxBytes uint32) (*MessageIterator, error) {
 	var lastErr error
-	for attempt := 0; attempt < 5; attempt++ {
+	for attempt := range 5 {
 		if attempt > 0 {
 			time.Sleep(500 * time.Millisecond)
 		}
@@ -233,7 +233,7 @@ func (c *Client) Fetch(topic string, partition uint16, startOffset uint64, maxBy
 			c.mu.Unlock()
 			lastErr = err
 			if c.redisURL != "" {
-				if newAddr, rErr := c.resolveLeaderAddr(topic, partition); rErr == nil && newAddr != c.addr {
+				if newAddr, rErr := c.resolveLeaderAddr(ctx, topic, partition); rErr == nil && newAddr != c.addr {
 					c.addr = newAddr
 				}
 			}
@@ -252,7 +252,7 @@ func (c *Client) Fetch(topic string, partition uint16, startOffset uint64, maxBy
 			c.mu.Unlock()
 			lastErr = err
 			if c.redisURL != "" {
-				if newAddr, rErr := c.resolveLeaderAddr(topic, partition); rErr == nil && newAddr != c.addr {
+				if newAddr, rErr := c.resolveLeaderAddr(ctx, topic, partition); rErr == nil && newAddr != c.addr {
 					c.addr = newAddr
 				}
 			}
@@ -265,7 +265,7 @@ func (c *Client) Fetch(topic string, partition uint16, startOffset uint64, maxBy
 			c.mu.Unlock()
 			lastErr = err
 			if c.redisURL != "" {
-				if newAddr, rErr := c.resolveLeaderAddr(topic, partition); rErr == nil && newAddr != c.addr {
+				if newAddr, rErr := c.resolveLeaderAddr(ctx, topic, partition); rErr == nil && newAddr != c.addr {
 					c.addr = newAddr
 				}
 			}
@@ -302,7 +302,7 @@ func (c *Client) Fetch(topic string, partition uint16, startOffset uint64, maxBy
 				lastErr = errors.New("not leader")
 			}
 			if c.redisURL != "" {
-				if newAddr, rErr := c.resolveLeaderAddr(topic, partition); rErr == nil && newAddr != c.addr {
+				if newAddr, rErr := c.resolveLeaderAddr(ctx, topic, partition); rErr == nil && newAddr != c.addr {
 					c.addr = newAddr
 				}
 			}
@@ -426,7 +426,7 @@ func (c *Client) closeRawConn() error {
 	return nil
 }
 
-func (c *Client) resolveLeaderAddr(topic string, partition uint16) (string, error) {
+func (c *Client) resolveLeaderAddr(ctx context.Context, topic string, partition uint16) (string, error) {
 	if c.redisURL == "" {
 		return "", errors.New("redis URL not set")
 	}
@@ -438,11 +438,11 @@ func (c *Client) resolveLeaderAddr(topic string, partition uint16) (string, erro
 		c.rdb = redis.NewClient(opts)
 	}
 	tpKey := protocol.TopicPartitionID(topic, partition)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	lookupCtx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
-	leaderID, err := c.rdb.Get(ctx, "ad_event_processor:topics:"+tpKey+":leader").Result()
+	leaderID, err := c.rdb.Get(lookupCtx, "ad_event_processor:topics:"+tpKey+":leader").Result()
 	if err != nil {
 		return "", err
 	}
-	return c.rdb.Get(ctx, "ad_event_processor:brokers:"+leaderID).Result()
+	return c.rdb.Get(lookupCtx, "ad_event_processor:brokers:"+leaderID).Result()
 }

@@ -51,7 +51,7 @@ func main() {
 		fatal("invalid redis url", "error", err)
 	}
 	rdb := redis.NewClient(opt)
-	defer rdb.Close()
+	defer func() { _ = rdb.Close() }()
 
 	if err := rdb.Ping(ctx).Err(); err != nil {
 		fatal("failed to connect to redis", "error", err)
@@ -91,10 +91,10 @@ func archiveDLQ(ctx context.Context, rdb *redis.Client, stream, destFile string,
 	if err != nil {
 		return fmt.Errorf("failed to open archive file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	writer := bufio.NewWriter(file)
-	defer writer.Flush()
+	defer func() { _ = writer.Flush() }()
 
 	startID := "0-0"
 	var totalProcessed int64
@@ -111,7 +111,7 @@ func archiveDLQ(ctx context.Context, rdb *redis.Client, stream, destFile string,
 			Block:   time.Millisecond * 10,
 		}).Result()
 
-		if err != nil && err != redis.Nil {
+		if err != nil && !errors.Is(err, redis.Nil) {
 			return fmt.Errorf("failed to read from stream: %w", err)
 		}
 
@@ -253,7 +253,7 @@ func requeueDLQ(ctx context.Context, rdb *redis.Client, dlqStream, targetStream 
 			Block:   time.Millisecond * 10,
 		}).Result()
 
-		if err != nil && err != redis.Nil {
+		if err != nil && !errors.Is(err, redis.Nil) {
 			return fmt.Errorf("failed to read from stream: %w", err)
 		}
 
@@ -327,7 +327,7 @@ func restoreDLQ(ctx context.Context, rdb *redis.Client, srcFile, targetStream st
 	if err != nil {
 		return fmt.Errorf("failed to open archive file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	slog.Info("starting dlq restore",
 		"src", srcFile,
@@ -442,7 +442,7 @@ func inspectStream(ctx context.Context, rdb *redis.Client, stream string, batchS
 			Block:   time.Millisecond * 10,
 		}).Result()
 
-		if err != nil && err != redis.Nil {
+		if err != nil && !errors.Is(err, redis.Nil) {
 			return fmt.Errorf("failed to read from stream: %w", err)
 		}
 
@@ -451,12 +451,12 @@ func inspectStream(ctx context.Context, rdb *redis.Client, stream string, batchS
 		}
 
 		for _, msg := range msgs[0].Messages {
-			fmt.Printf("\nMessage ID: %s\n", msg.ID)
+			_, _ = fmt.Fprintf(os.Stdout, "\nMessage ID: %s\n", msg.ID)
 
 			if rawBytesStr, ok := msg.Values["d"].(string); ok {
 				pbDLQ.Reset()
 				if err := proto.Unmarshal(ingestion.UnsafeBytes(rawBytesStr), pbDLQ); err == nil && pbDLQ.OriginalEvent != nil {
-					fmt.Println("Format: Protobuf (AdDLQEvent)")
+					_, _ = fmt.Fprintf(os.Stdout, "Format: Protobuf (AdDLQEvent)\n")
 					orig := pbDLQ.OriginalEvent
 					var campUUIDStr string
 					if len(orig.CampaignId) == 16 {
@@ -487,11 +487,11 @@ func inspectStream(ctx context.Context, rdb *redis.Client, stream string, batchS
 						},
 					}
 					prettyJSON, _ := json.MarshalIndent(m, "", "  ")
-					fmt.Println(string(prettyJSON))
+					_, _ = fmt.Fprintf(os.Stdout, "%s\n", string(prettyJSON))
 				} else {
 					pbStream.Reset()
 					if err := proto.Unmarshal(ingestion.UnsafeBytes(rawBytesStr), pbStream); err == nil {
-						fmt.Println("Format: Protobuf (AdStreamEvent)")
+						_, _ = fmt.Fprintf(os.Stdout, "Format: Protobuf (AdStreamEvent)\n")
 						var campUUIDStr string
 						if len(pbStream.CampaignId) == 16 {
 							if u, err := uuid.FromBytes(pbStream.CampaignId); err == nil {
@@ -513,16 +513,16 @@ func inspectStream(ctx context.Context, rdb *redis.Client, stream string, batchS
 							"created_at":      time.Unix(pbStream.CreatedAtUnix, 0).Format(time.RFC3339),
 						}
 						prettyJSON, _ := json.MarshalIndent(m, "", "  ")
-						fmt.Println(string(prettyJSON))
+						_, _ = fmt.Fprintf(os.Stdout, "%s\n", string(prettyJSON))
 					} else {
-						fmt.Println("Format: Unknown Binary Protobuf")
-						fmt.Printf("Raw values: %+v\n", msg.Values)
+						_, _ = fmt.Fprintf(os.Stdout, "Format: Unknown Binary Protobuf\n")
+						_, _ = fmt.Fprintf(os.Stdout, "Raw values: %+v\n", msg.Values)
 					}
 				}
 			} else {
-				fmt.Println("Format: Legacy Flat Map")
+				_, _ = fmt.Fprintf(os.Stdout, "Format: Legacy Flat Map\n")
 				prettyJSON, _ := json.MarshalIndent(msg.Values, "", "  ")
-				fmt.Println(string(prettyJSON))
+				_, _ = fmt.Fprintf(os.Stdout, "%s\n", string(prettyJSON))
 			}
 			startID = msg.ID
 			totalProcessed++
@@ -667,7 +667,7 @@ func editDLQMessage(ctx context.Context, rdb *redis.Client, stream, id string) e
 		return fmt.Errorf("failed to create temporary file: %w", err)
 	}
 	tmpPath := tmpFile.Name()
-	defer os.Remove(tmpPath)
+	defer func() { _ = os.Remove(tmpPath) }()
 
 	if _, err := tmpFile.Write(jsonData); err != nil {
 		_ = tmpFile.Close()

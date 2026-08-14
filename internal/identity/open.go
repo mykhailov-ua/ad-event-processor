@@ -2,7 +2,7 @@ package identity
 
 import (
 	"context"
-	"log/slog"
+	"fmt"
 	"sync"
 	"time"
 
@@ -55,26 +55,39 @@ func OpenModule(ctx context.Context, cfg *config.Config) (*Module, error) {
 	if err != nil {
 		return nil, err
 	}
-	rdb, err := database.ConnectRedisShard(ctx, cfg, 0, database.RedisShardOptions{
-		PoolSize: cfg.RedisPoolSize,
-	})
-	if err != nil {
-		pool.Close()
-		return nil, err
-	}
 	var controlRdbs []redis.UniversalClient
-	controlRdbs, _, err = database.ConnectRedisShards(ctx, cfg, database.RedisShardOptions{
+	var errShards error
+	controlRdbs, _, errShards = database.ConnectRedisShards(ctx, cfg, database.RedisShardOptions{
 		PoolSize: cfg.RedisPoolSize,
 	})
-	if err != nil {
-		slog.Warn("multi-shard redis unavailable, using single shard for control", "error", err)
+	var rdb redis.UniversalClient
+	if errShards != nil {
+		rdb, err = database.ConnectRedisShard(ctx, cfg, 0, database.RedisShardOptions{
+			PoolSize: cfg.RedisPoolSize,
+		})
+		if err != nil {
+			pool.Close()
+			return nil, fmt.Errorf("connect redis shard 0 fallback: %w (shards err: %v)", err, errShards)
+		}
 		controlRdbs = []redis.UniversalClient{rdb}
+	} else {
+		if len(controlRdbs) > 0 {
+			rdb = controlRdbs[0]
+		}
+		if rdb == nil {
+			for _, shard := range controlRdbs {
+				if shard != nil {
+					rdb = shard
+					break
+				}
+			}
+		}
 	}
 	repo := db.NewStore(pool)
 	tokenMaker, err := NewPasetoMaker(string(cfg.TokenSymmetricKey))
 	if err != nil {
 		pool.Close()
-		rdb.Close()
+		_ = rdb.Close()
 		for _, shard := range controlRdbs {
 			if shard != nil && shard != rdb {
 				_ = shard.Close()
@@ -90,7 +103,7 @@ func OpenModule(ctx context.Context, cfg *config.Config) (*Module, error) {
 	)
 	if err != nil {
 		pool.Close()
-		rdb.Close()
+		_ = rdb.Close()
 		for _, shard := range controlRdbs {
 			if shard != nil && shard != rdb {
 				_ = shard.Close()

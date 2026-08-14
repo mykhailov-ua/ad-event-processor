@@ -28,7 +28,7 @@ func TestShouldKeepEvent_fraudAlwaysKept(t *testing.T) {
 func TestShouldKeepEvent_impressionDeterministic(t *testing.T) {
 	seen := 0
 	const n = 10_000
-	for i := 0; i < n; i++ {
+	for i := range n {
 		clickID := []byte(fmt.Sprintf("click-%d", i))
 		evt := &pb.AdStreamEvent{EventType: []byte("impression"), ClickId: clickID}
 		if shouldKeepEvent(evt, 1000) {

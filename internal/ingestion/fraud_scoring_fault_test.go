@@ -78,7 +78,7 @@ func TestFault_MLHotPathZeroAlloc(t *testing.T) {
 	}
 
 	engine, evt, ctx := setupFilterFraudBoostBench(t)
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		resetFraudBenchEvent(evt)
 		_ = engine.Check(ctx, evt)
 	}

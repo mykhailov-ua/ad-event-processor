@@ -1,7 +1,7 @@
 package wal
 
-func (w *WAL) ScanDedupReady(fromSeq uint64, max int, fn func(seq uint64, factorU [32]byte) bool) int {
-	if max <= 0 || fn == nil {
+func (w *WAL) ScanDedupReady(fromSeq uint64, maxRecords int, fn func(seq uint64, factorU [32]byte) bool) int {
+	if maxRecords <= 0 || fn == nil {
 		return 0
 	}
 	w.mu.Lock()
@@ -10,7 +10,7 @@ func (w *WAL) ScanDedupReady(fromSeq uint64, max int, fn func(seq uint64, factor
 	visited := 0
 	pos := int64(0)
 	writePos := w.writePos.Load()
-	for visited < max && pos < writePos {
+	for visited < maxRecords && pos < writePos {
 		if len(w.mmap) <= int(pos)+HeaderSize {
 			break
 		}

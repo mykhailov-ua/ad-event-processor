@@ -40,7 +40,7 @@ func DecodeJSONStrict(r io.Reader, maxBytes int64, dst any) error {
 	dec := json.NewDecoder(strings.NewReader(string(body)))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(dst); err != nil {
-		return fmt.Errorf("%w: %v", ErrJSONMalformed, err)
+		return fmt.Errorf("%w: %w", ErrJSONMalformed, err)
 	}
 	if dec.More() {
 		return fmt.Errorf("%w: trailing data after first value", ErrJSONMalformed)

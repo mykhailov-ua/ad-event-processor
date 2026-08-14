@@ -214,7 +214,7 @@ func TestFault_PostgresMasterFailover(t *testing.T) {
 		return infra.StandbyDSN, nil
 	}), pgfailover.PingDSN(infra.PrimaryDSN))
 	require.NoError(t, err)
-	coord.Start()
+	coord.Start(context.Background())
 	defer coord.Stop()
 
 	syncPgFailoverSnapshot(t, infra.PrimaryPool, infra.StandbyPool)
@@ -241,12 +241,12 @@ func TestFault_PostgresMasterFailover(t *testing.T) {
 
 	var wg sync.WaitGroup
 	var successCount atomic.Int32
-	for i := 0; i < 24; i++ {
+	for i := range 24 {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
 			key := fmt.Sprintf("pg-failover-topup-%d", i)
-			for attempt := 0; attempt < 8; attempt++ {
+			for range 8 {
 				err := cellA.TopUpBalance(ctx, customerID, 1_000_000, key)
 				if err == nil {
 					successCount.Add(1)

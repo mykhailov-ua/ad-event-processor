@@ -52,7 +52,7 @@ func TestFault_RegionGlobalPGPartition(t *testing.T) {
 	}, 15*time.Second, 200*time.Millisecond)
 
 	partitionErr := false
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		_, err = svc.IngestRegionProxyBatch(ctx, in)
 		if err != nil {
 			partitionErr = true

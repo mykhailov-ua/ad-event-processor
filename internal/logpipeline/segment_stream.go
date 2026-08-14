@@ -89,7 +89,7 @@ func verifyPlaintextSegment(path string, expectKept int64) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	got, err := countSegmentRecords(file)
 	if err != nil {

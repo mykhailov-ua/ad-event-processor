@@ -30,7 +30,7 @@ func TestManagementService_CancelCampaign(t *testing.T) {
 	cfg.CampaignUpdateChannel = "test:campaign:updates"
 
 	sharder := domain.NewJumpHashSharder(1)
-	svc := NewService(pool, []redis.UniversalClient{rdb}, sharder, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, sharder, cfg)
 
 	t.Cleanup(func() {
 		svc.Close()
@@ -76,7 +76,7 @@ func TestManagementService_Idempotency(t *testing.T) {
 	cfg := &config.Config{}
 	cfg.Lifecycle.WaitTimeoutMs = 500
 
-	svc := NewService(pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), cfg)
 
 	t.Cleanup(func() {
 		svc.Close()

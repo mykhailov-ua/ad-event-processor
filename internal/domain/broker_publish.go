@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"time"
@@ -17,7 +18,7 @@ func IsRegistryFullSyncPayload(payload string) bool {
 	return payload == RegistryFullSyncPayload
 }
 
-func PublishCampaignUpdateBroker(brokerURL, brokerRedisURL, topic string, timeout time.Duration, campaignID string) error {
+func PublishCampaignUpdateBroker(ctx context.Context, brokerURL, brokerRedisURL, topic string, timeout time.Duration, campaignID string) error {
 	if brokerURL == "" || campaignID == "" {
 		return nil
 	}
@@ -34,12 +35,14 @@ func PublishCampaignUpdateBroker(brokerURL, brokerRedisURL, topic string, timeou
 	if err := cli.Connect(); err != nil {
 		return fmt.Errorf("campaign update broker connect: %w", err)
 	}
-	defer cli.Close()
-	_, err := cli.Produce(topic, 0, []byte(campaignID))
+	defer func() { _ = cli.Close() }()
+	publishCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	_, err := cli.Produce(publishCtx, topic, 0, []byte(campaignID))
 	return err
 }
 
-func PublishSlotMapReload(brokerURL, brokerRedisURL, topic string, timeout time.Duration, version int32, routingEpoch int64) error {
+func PublishSlotMapReload(ctx context.Context, brokerURL, brokerRedisURL, topic string, timeout time.Duration, version int32, routingEpoch int64) error {
 	if brokerURL == "" {
 		return nil
 	}
@@ -60,8 +63,10 @@ func PublishSlotMapReload(brokerURL, brokerRedisURL, topic string, timeout time.
 	if err := cli.Connect(); err != nil {
 		return fmt.Errorf("slot map reload publish connect: %w", err)
 	}
-	defer cli.Close()
-	if _, err := cli.Produce(topic, 0, payload); err != nil {
+	defer func() { _ = cli.Close() }()
+	publishCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	if _, err := cli.Produce(publishCtx, topic, 0, payload); err != nil {
 		return fmt.Errorf("slot map reload publish: %w", err)
 	}
 	slog.Info("published slot map reload", "topic", topic, "version", version)

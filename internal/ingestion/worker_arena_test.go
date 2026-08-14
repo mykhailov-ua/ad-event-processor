@@ -9,7 +9,7 @@ import (
 func TestWorkerArena_acquireRelease(t *testing.T) {
 	var a workerArena
 	releases := make([]func(), 0, offloadArenaSlots)
-	for i := 0; i < offloadArenaSlots; i++ {
+	for i := range offloadArenaSlots {
 		slot, buf, release, ok := a.acquire(128)
 		require.True(t, ok, "slot %d", i)
 		require.Equal(t, i, slot)

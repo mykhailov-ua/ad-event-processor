@@ -29,7 +29,7 @@ func TestBundleRedaction_handler(t *testing.T) {
 	mux := http.NewServeMux()
 	h.registerSupportBundleRoutes(mux)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/ops/support/bundle", nil)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/ops/support/bundle", http.NoBody)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 

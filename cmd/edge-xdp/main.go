@@ -43,7 +43,7 @@ func main() {
 		slog.Error("load bpf objects", "error", err)
 		os.Exit(1)
 	}
-	defer objs.Close()
+	defer func() { _ = objs.Close() }()
 
 	if err := bpf.InitConfigFromEnv(objs.Config); err != nil {
 		slog.Error("init bpf config", "error", err)

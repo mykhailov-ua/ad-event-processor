@@ -87,7 +87,7 @@ func SetupPaymentFaultInfra(t *testing.T) (*FaultInfra, func()) {
 	}
 
 	rdbs := []redis.UniversalClient{rdb}
-	mgmtSvc := controlplane.NewService(pool, rdbs, ingestion.NewStaticSlotSharder(len(rdbs)), cfg)
+	mgmtSvc := controlplane.NewService(context.Background(), pool, rdbs, ingestion.NewStaticSlotSharder(len(rdbs)), cfg)
 	settleHandler := controlplane.NewSettlementHandler(mgmtSvc, cfg)
 	settlementGate := NewSettlementFaultGate(settleHandler.PaymentSettlement())
 

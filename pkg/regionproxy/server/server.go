@@ -20,7 +20,9 @@ import (
 	"github.com/bidshard/ad-event-processor/pkg/broker/log"
 	"github.com/bidshard/ad-event-processor/pkg/broker/protocol"
 	bserver "github.com/bidshard/ad-event-processor/pkg/broker/server"
+	"github.com/bidshard/ad-event-processor/pkg/gnetutil"
 	"github.com/bidshard/ad-event-processor/pkg/iogate"
+	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
 	"github.com/bidshard/ad-event-processor/pkg/regionproxy/keygen"
 	"github.com/bidshard/ad-event-processor/pkg/regionproxy/opkey"
 	"github.com/bidshard/ad-event-processor/pkg/regionproxy/uplink"
@@ -74,6 +76,9 @@ type Server struct {
 	uplink          *uplink.Worker
 	active          atomic.Bool
 	shutdownTimeout time.Duration
+	connReadIdle    time.Duration
+	connMaxLifetime time.Duration
+	connCount       atomic.Int64
 }
 
 func NewServer(addr, dataDir string, gate *iogate.DiskWriteGate) (*Server, error) {
@@ -146,6 +151,16 @@ func (s *Server) SetShutdownTimeout(d time.Duration) {
 	}
 }
 
+// SetConnReadIdle bounds how long a peer may drip partial length-prefixed frames (default 30s).
+func (s *Server) SetConnReadIdle(d time.Duration) {
+	s.connReadIdle = d
+}
+
+// SetConnMaxLifetime is the maximum wall time for a TCP connection (default 120s).
+func (s *Server) SetConnMaxLifetime(d time.Duration) {
+	s.connMaxLifetime = d
+}
+
 func (s *Server) SetCoordinator(coord *bserver.Coordinator) {
 	s.coord = coord
 }
@@ -200,6 +215,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/ready", s.handleReady)
 	mux.Handle("/metrics", promhttp.Handler())
 	s.httpSrv = &http.Server{Addr: s.healthAddr, Handler: mux}
+	lifecycle.ApplySidecarHTTPServerTimeouts(s.httpSrv)
 
 	s.wg.Add(1)
 	go func() {
@@ -275,6 +291,18 @@ func (s *Server) OnBoot(eng gnet.Engine) gnet.Action {
 	return gnet.None
 }
 
+func (s *Server) OnOpen(c gnet.Conn) ([]byte, gnet.Action) {
+	s.connCount.Add(1)
+	ctx := s.newConnState()
+	gnetutil.OpenConn(c, s.connPolicy(), ctx)
+	return nil, gnet.None
+}
+
+func (s *Server) OnClose(c gnet.Conn, err error) gnet.Action {
+	s.connCount.Add(-1)
+	return gnet.None
+}
+
 func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	if !s.active.Load() {
 		http.Error(w, "not active", http.StatusServiceUnavailable)
@@ -304,22 +332,65 @@ func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) OnTraffic(c gnet.Conn) gnet.Action {
+	ctx := s.ensureConnState(c)
+	if s.connMaxLifetimeExceeded(ctx) {
+		return s.closeConnIdle(c, "max_lifetime")
+	}
+
+	const maxFrame = uint32(1 << 20)
+
 	for {
 		lenBuf, err := c.Peek(4)
 		if err != nil {
+			if act := s.waitIncomplete(c, ctx); act != gnet.None {
+				return act
+			}
 			return gnet.None
 		}
 		length := binary.BigEndian.Uint32(lenBuf)
-		if length < 14 {
-			if _, err := c.Discard(int(4 + length)); err != nil {
+
+		if length < 14 || length > maxFrame {
+			need := int(4 + length)
+			if length < 14 {
+				if c.InboundBuffered() < need {
+					if act := s.waitIncomplete(c, ctx); act != gnet.None {
+						return act
+					}
+					return gnet.None
+				}
+				if _, err := c.Discard(need); err != nil {
+					return gnet.Close
+				}
+				return gnet.Close
+			}
+			if _, err := c.Discard(4); err != nil {
 				return gnet.Close
 			}
 			return gnet.Close
 		}
-		payloadBuf, err := c.Peek(int(4 + length))
-		if err != nil {
+
+		need := int(4 + length)
+		if c.InboundBuffered() < need {
+			if act := s.waitIncomplete(c, ctx); act != gnet.None {
+				return act
+			}
 			return gnet.None
 		}
+
+		payloadBuf, err := c.Peek(need)
+		if err != nil {
+			if act := s.waitIncomplete(c, ctx); act != gnet.None {
+				return act
+			}
+			return gnet.None
+		}
+		if len(payloadBuf) < need {
+			if act := s.waitIncomplete(c, ctx); act != gnet.None {
+				return act
+			}
+			return gnet.None
+		}
+
 		framePayload := payloadBuf[4 : 4+length]
 		cmd := binary.BigEndian.Uint16(framePayload[0:2])
 		seq := binary.BigEndian.Uint64(framePayload[2:10])
@@ -347,6 +418,7 @@ func (s *Server) OnTraffic(c gnet.Conn) gnet.Action {
 		if _, err := c.Discard(int(4 + length)); err != nil {
 			return gnet.Close
 		}
+		s.onFrameProgress(c, ctx)
 	}
 }
 
@@ -511,7 +583,7 @@ func OpenDataDir(base string) string {
 }
 
 func ProbeDiskWritable(dataDir string) bool {
-	if err := os.MkdirAll(dataDir, 0755); err != nil {
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
 		return false
 	}
 	testFile := filepath.Join(dataDir, ".healthcheck")

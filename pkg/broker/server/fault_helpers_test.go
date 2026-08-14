@@ -331,7 +331,7 @@ func startHACluster(t *testing.T, opts haClusterOpts) *haCluster {
 		t.Fatal(err)
 	}
 	leader.SetCoordinator(leaderCoord)
-	leaderCoord.Start()
+	leaderCoord.Start(context.Background())
 	t.Cleanup(func() { leaderCoord.Stop() })
 
 	followerCoord, err := NewCoordinatorWithConfig("fault-follower", follower.Addr(), coordRedisURL(opts, "follower"), follower, coordCfg)
@@ -339,7 +339,7 @@ func startHACluster(t *testing.T, opts haClusterOpts) *haCluster {
 		t.Fatal(err)
 	}
 	follower.SetCoordinator(followerCoord)
-	followerCoord.Start()
+	followerCoord.Start(context.Background())
 	t.Cleanup(func() { followerCoord.Stop() })
 
 	cl := &haCluster{
@@ -382,7 +382,7 @@ func startHAPartitionedCluster(t *testing.T) (*haCluster, *faultTCPProxy) {
 		t.Fatal(err)
 	}
 	leader.SetCoordinator(leaderCoord)
-	leaderCoord.Start()
+	leaderCoord.Start(context.Background())
 	t.Cleanup(func() { leaderCoord.Stop() })
 
 	if _, err := leader.getOrCreatePartition(pk); err != nil {
@@ -410,7 +410,7 @@ func startHAPartitionedCluster(t *testing.T) (*haCluster, *faultTCPProxy) {
 		t.Fatal(err)
 	}
 	follower.SetCoordinator(followerCoord)
-	followerCoord.Start()
+	followerCoord.Start(context.Background())
 	t.Cleanup(func() { followerCoord.Stop() })
 
 	if _, err := follower.getOrCreatePartition(pk); err != nil {
@@ -461,7 +461,7 @@ func startHAClusterOrdered(t *testing.T) *haCluster {
 		t.Fatal(err)
 	}
 	leader.SetCoordinator(leaderCoord)
-	leaderCoord.Start()
+	leaderCoord.Start(context.Background())
 	t.Cleanup(func() { leaderCoord.Stop() })
 
 	if _, err := leader.getOrCreatePartition(pk); err != nil {
@@ -489,7 +489,7 @@ func startHAClusterOrdered(t *testing.T) *haCluster {
 		t.Fatal(err)
 	}
 	follower.SetCoordinator(followerCoord)
-	followerCoord.Start()
+	followerCoord.Start(context.Background())
 	t.Cleanup(func() { followerCoord.Stop() })
 
 	if _, err := follower.getOrCreatePartition(pk); err != nil {
@@ -559,9 +559,9 @@ func produceMessages(t *testing.T, addr, topic string, count int) {
 	}
 	defer cli.Close()
 
-	for i := 0; i < count; i++ {
+	for i := range count {
 		payload := []byte(fmt.Sprintf("fault-msg-%d", i))
-		off, err := cli.Produce(topic, 0, payload)
+		off, err := cli.Produce(context.Background(), topic, 0, payload)
 		if err != nil {
 			t.Fatalf("produce %d: %v", i, err)
 		}
@@ -579,7 +579,7 @@ func verifyPartitionPayloads(t *testing.T, s *Server, topic string, expectedCoun
 	}
 	defer cli.Close()
 
-	iter, err := cli.Fetch(topic, 0, 0, 16*1024*1024)
+	iter, err := cli.Fetch(context.Background(), topic, 0, 0, 16*1024*1024)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -722,7 +722,7 @@ func fetchMessageCount(t *testing.T, addr, topic string) uint64 {
 	}
 	defer cli.Close()
 
-	iter, err := cli.Fetch(topic, 0, 0, 32*1024*1024)
+	iter, err := cli.Fetch(context.Background(), topic, 0, 0, 32*1024*1024)
 	if err != nil {
 		t.Fatal(err)
 	}

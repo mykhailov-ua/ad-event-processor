@@ -15,7 +15,7 @@ func murmur3_32(data []byte, seed uint32) uint32 {
 	)
 	h := seed
 	nblocks := len(data) / 4
-	for i := 0; i < nblocks; i++ {
+	for i := range nblocks {
 		k := uint32(data[i*4]) | uint32(data[i*4+1])<<8 | uint32(data[i*4+2])<<16 | uint32(data[i*4+3])<<24
 		k *= c1
 		k = (k << 15) | (k >> 17)
@@ -55,7 +55,7 @@ func slotFromHash(h uint32) int {
 
 func shardEntropy(assign func(uuid.UUID) int, samples int, numShards int) float64 {
 	counts := make([]int, numShards)
-	for i := 0; i < samples; i++ {
+	for range samples {
 		id := uuid.New()
 		shard := assign(id)
 		if shard < 0 || shard >= numShards {

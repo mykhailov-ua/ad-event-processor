@@ -37,7 +37,7 @@ func TestFault_ReconDriftRefill(t *testing.T) {
 
 	sharder := domain.NewStaticSlotSharder(1)
 	cfg := &config.Config{ReconForceRefill: true}
-	svc := NewService(pool, []redis.UniversalClient{rdb}, sharder, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, sharder, cfg)
 	require.NotNil(t, svc)
 
 	require.NoError(t, svc.forceRefillCampaignFromPG(ctx, campaignID, 500_000))

@@ -172,7 +172,7 @@ func (p *BudgetDeltaPublisher) produce(campaignID uuid.UUID, amountMicro int64) 
 	if err != nil || len(data) == 0 {
 		return
 	}
-	_, _ = p.cli.Produce(p.topic, 0, data)
+	_, _ = p.cli.Produce(context.Background(), p.topic, 0, data)
 }
 
 var budgetDeltaPool = sync.Pool{
@@ -200,7 +200,7 @@ func FetchRecoveryDeltas(ctx context.Context, cfg domain.BrokerConsumerConfig, s
 			return out, ctx.Err()
 		default:
 		}
-		iter, err := cli.Fetch(cfg.Topic, cfg.Partition, offset, cfg.MaxBytes)
+		iter, err := cli.Fetch(ctx, cfg.Topic, cfg.Partition, offset, cfg.MaxBytes)
 		if err != nil {
 			return out, err
 		}

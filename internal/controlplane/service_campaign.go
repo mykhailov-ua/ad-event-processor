@@ -531,7 +531,7 @@ ORDER BY hour`
 	if err != nil {
 		return nil, 0, fmt.Errorf("clickhouse hourly query: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	buckets := make([]CampaignHourlyBucketDTO, 0)
 	for rows.Next() {
@@ -2081,7 +2081,7 @@ func (s *Service) ProcessScheduleTick(ctx context.Context) error {
 	opCtx, cancel := workerContext(ctx, workerBatchTimeout)
 	defer cancel()
 
-	for i := int32(0); i < 200; i++ {
+	for range int32(200) {
 		done, err := s.processNextScheduledCampaign(opCtx)
 		if err != nil {
 			return err
@@ -2394,7 +2394,7 @@ func smartPacingExpectedRatio(weights [24]float64, daypart []int16, localNow tim
 	minuteFrac := (float64(localNow.Minute()) + float64(localNow.Second())/60.0) / 60.0
 
 	var totalWeight, elapsedWeight float64
-	for h := 0; h < 24; h++ {
+	for h := range 24 {
 		if useDaypart {
 			if _, ok := daypartSet[int16(h)]; !ok {
 				continue

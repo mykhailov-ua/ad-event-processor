@@ -41,7 +41,7 @@ func TestE2E_RegionProxyUplink(t *testing.T) {
 		RegionCode:         0,
 		AdminAPIKey:        "e2e-uplink-key",
 	}
-	svc := controlplane.NewService(pool, nil, ingestion.NewStaticSlotSharder(1), cfg)
+	svc := controlplane.NewService(context.Background(), pool, nil, ingestion.NewStaticSlotSharder(1), cfg)
 	t.Cleanup(func() { svc.Close() })
 	handler := controlplane.NewHandler(svc, cfg, nil, nil, nil, nil)
 	mux := http.NewServeMux()

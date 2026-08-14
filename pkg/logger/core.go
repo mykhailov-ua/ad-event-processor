@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -78,7 +79,7 @@ func (s *LogShard) Write(priority uint8, data []byte) bool {
 		alloc := atomic.LoadUint64(&s.allocCursor)
 		read := atomic.LoadUint64(&s.readCursor)
 		if alloc-read >= ringUsable {
-			for spin := 0; spin < 100; spin++ {
+			for spin := range 100 {
 				if spin < 20 {
 					runtime.Gosched()
 				} else {
@@ -201,7 +202,7 @@ func NewLogger(cfg Config, numShards int) *Logger {
 	}
 	queueDepth := ComputePersistQueueDepth(cfg)
 	shards := make([]*LogShard, numShards)
-	for i := 0; i < numShards; i++ {
+	for i := range numShards {
 		shards[i] = NewLogShard()
 	}
 
@@ -291,7 +292,7 @@ func (l *Logger) compressAndEncryptFile(srcPath, dstPath string) error {
 	if err != nil {
 		return err
 	}
-	defer srcFile.Close()
+	defer func() { _ = srcFile.Close() }()
 
 	tmpPath := dstPath + ".tmp"
 	dstFile, err := os.OpenFile(tmpPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o666)
@@ -336,7 +337,7 @@ func (l *Logger) compressAndEncryptFile(srcPath, dstPath string) error {
 			}
 		}
 
-		if err == io.EOF || err == io.ErrUnexpectedEOF {
+		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
 			break
 		}
 		if err != nil {
@@ -393,7 +394,7 @@ func DecryptSegment(filePath string, key []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -410,7 +411,7 @@ func DecryptSegment(filePath string, key []byte) ([]byte, error) {
 
 	for {
 		_, err := io.ReadFull(file, header)
-		if err == io.EOF || err == io.ErrUnexpectedEOF {
+		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
 			break
 		}
 		if err != nil {

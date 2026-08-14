@@ -3,6 +3,7 @@ package quorum
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -119,7 +120,7 @@ func readStatus(ctx context.Context, rdb redis.UniversalClient, opID [16]byte, r
 	stateCmd := pipe.HGet(ctx, key, "state")
 	countCmd := pipe.HGet(ctx, key, "replica_count")
 	ackCmd := pipe.SCard(ctx, ackKey)
-	if _, err := pipe.Exec(ctx); err != nil && err != redis.Nil {
+	if _, err := pipe.Exec(ctx); err != nil && !errors.Is(err, redis.Nil) {
 		return Status{}, err
 	}
 	state, _ := stateCmd.Result()

@@ -4,15 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
+	"github.com/alicebob/miniredis/v2"
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/google/uuid"
+	redis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSelectLandingURL_StickyWeighted(t *testing.T) {
-	store := NewBrandCreativeStore(nil)
+	store := NewBrandCreativeStore(nil, 0)
 	brandID := uuid.New()
 	store.cache.Store(&brandCreativeMapSnapshot{byBrand: map[uuid.UUID][]brandCreativeEntry{
 		brandID: {
@@ -21,10 +24,42 @@ func TestSelectLandingURL_StickyWeighted(t *testing.T) {
 		},
 	}})
 
-	url1 := store.SelectLandingURL(brandID, "user-sticky-1")
-	url2 := store.SelectLandingURL(brandID, "user-sticky-1")
+	url1 := store.SelectLandingURL(brandID, "user-sticky-1", nil)
+	url2 := store.SelectLandingURL(brandID, "user-sticky-1", nil)
 	assert.Equal(t, url1, url2)
 	assert.Contains(t, []string{"https://a.example", "https://b.example"}, url1)
+}
+
+func TestBrandCreativeStore_expiredDeadlineSkipsRedisLoad(t *testing.T) {
+	t.Parallel()
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{
+		Addr:        mr.Addr(),
+		ReadTimeout: 50 * time.Millisecond,
+	})
+	defer rdb.Close()
+
+	brandID := uuid.New()
+	mr.Set("brand:creatives:"+brandID.String(), `[{"id":"a","url":"https://a.example","weight":1}]`)
+
+	store := NewBrandCreativeStore(rdb, 50)
+	evt := &domain.Event{FilterDeadlineMono: monotonicNano() - 1}
+	assert.Nil(t, store.SelectLandingURLBytes(brandID, "user-1", evt))
+}
+
+func TestBrandCreativeStore_loadFromRedisWithinDeadline(t *testing.T) {
+	t.Parallel()
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr(), ReadTimeout: time.Second})
+	defer rdb.Close()
+
+	brandID := uuid.New()
+	mr.Set("brand:creatives:"+brandID.String(), `[{"id":"a","url":"https://a.example","weight":1}]`)
+
+	store := NewBrandCreativeStore(rdb, 500)
+	evt := &domain.Event{FilterDeadlineMono: monotonicNano() + int64(500*time.Millisecond)}
+	got := store.SelectLandingURLBytes(brandID, "user-1", evt)
+	assert.Equal(t, []byte("https://a.example"), got)
 }
 
 func TestScheduleFilter_BlocksOutsideDaypart(t *testing.T) {
@@ -54,7 +89,7 @@ func TestBrandCreativeStore_LoadFromRedis(t *testing.T) {
 		t.Skip("integration")
 	}
 
-	store := NewBrandCreativeStore(nil)
+	store := NewBrandCreativeStore(nil, 0)
 	brandID := uuid.New()
 	raw, err := json.Marshal([]brandCreativeEntry{{ID: "x", URL: "https://x.test", Weight: 100}})
 	require.NoError(t, err)
@@ -62,5 +97,5 @@ func TestBrandCreativeStore_LoadFromRedis(t *testing.T) {
 	store.cache.Store(&brandCreativeMapSnapshot{byBrand: map[uuid.UUID][]brandCreativeEntry{
 		brandID: {{ID: "x", URL: "https://x.test", Weight: 100}},
 	}})
-	assert.Equal(t, "https://x.test", store.SelectLandingURL(brandID, "u1"))
+	assert.Equal(t, "https://x.test", store.SelectLandingURL(brandID, "u1", nil))
 }

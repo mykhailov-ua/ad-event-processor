@@ -167,7 +167,7 @@ func NBRFromReason(reason string) int {
 
 func appendJSONBytes(dst []byte, b []byte) []byte {
 	dst = append(dst, '"')
-	for i := 0; i < len(b); i++ {
+	for i := range b {
 		c := b[i]
 		switch c {
 		case '"', '\\':

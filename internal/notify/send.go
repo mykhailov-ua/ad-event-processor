@@ -201,7 +201,7 @@ func SendSMS(ctx context.Context, cfg Config, breaker *CircuitBreaker, recipient
 		recordBreakerFailure(breaker)
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		recordBreakerFailure(breaker)
@@ -255,14 +255,14 @@ func SendSMTP(ctx context.Context, cfg Config, breaker *CircuitBreaker, recipien
 		recordBreakerFailure(breaker)
 		return err
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	client, err := smtp.NewClient(conn, cfg.SMTPHost)
 	if err != nil {
 		recordBreakerFailure(breaker)
 		return err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	if ok, _ := client.Extension("STARTTLS"); ok {
 		if err = client.StartTLS(&tls.Config{ServerName: cfg.SMTPHost}); err != nil {
@@ -343,7 +343,7 @@ func postJSON(ctx context.Context, client *http.Client, url string, payload any)
 	if err != nil {
 		return nil, 0, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, resp.StatusCode, err

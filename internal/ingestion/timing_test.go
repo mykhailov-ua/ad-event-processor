@@ -63,7 +63,7 @@ func TestObserveHistogramSampled_respectsMask(t *testing.T) {
 	start := monotonicNano()
 
 	const n = 256
-	for i := 0; i < n; i++ {
+	for range n {
 		observeHistogramSampled(&seq, 127, spy, start)
 	}
 	assert.InDelta(t, n/128, spy.count(), 2)
@@ -74,7 +74,7 @@ func TestObserveHistogramSampled_maskZeroAlwaysObserves(t *testing.T) {
 	var seq atomic.Uint64
 	start := monotonicNano()
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		observeHistogramSampled(&seq, 0, spy, start)
 	}
 	assert.Equal(t, 10, spy.count())

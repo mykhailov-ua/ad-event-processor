@@ -17,7 +17,7 @@ import (
 
 func TestWarmCampaignBudgetAPI(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
@@ -52,7 +52,7 @@ func TestWarmCampaignBudgetAPI(t *testing.T) {
 
 func TestWarmCampaignBudget_noOutboxOrPubsub(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
@@ -150,7 +150,7 @@ SELECT GREATEST(budget_limit - current_spend, 0) AS remaining_micro FROM campaig
 
 func TestOptimizeBidFloors_writesRedis(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()

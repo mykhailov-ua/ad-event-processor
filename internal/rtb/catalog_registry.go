@@ -18,7 +18,7 @@ func NewRegistry(store *BudgetStore) *Registry {
 	registry := &Registry{store: store}
 	registry.clearingMode.Store(uint32(ClearingSecondPrice))
 	empty := &catalogSnapshot{}
-	for i := 0; i < geoShardCount; i++ {
+	for i := range geoShardCount {
 		empty.shards[i] = &CampaignAuctionRegistry{}
 	}
 	registry.catalog.Store(empty)
@@ -81,7 +81,7 @@ func (registry *Registry) UpdateCampaigns(campaigns []CampaignData) {
 	}
 
 	var registries [geoShardCount]*CampaignAuctionRegistry
-	for shardIdx := 0; shardIdx < geoShardCount; shardIdx++ {
+	for shardIdx := range geoShardCount {
 		n := counts[shardIdx]
 		registries[shardIdx] = &CampaignAuctionRegistry{
 			Count:                 n,
@@ -139,7 +139,7 @@ func (registry *Registry) UpdateCampaigns(campaigns []CampaignData) {
 
 	targetingEnabled := registry.targetingIndexEnabled.Load()
 	shardCreatives := partitionCreativesByShard(campaigns, registry.pendingCreatives)
-	for shardIdx := 0; shardIdx < geoShardCount; shardIdx++ {
+	for shardIdx := range geoShardCount {
 		buildCreativeCache(registries[shardIdx], shardCreatives[shardIdx])
 		buildGeoIndex(registries[shardIdx])
 		if targetingEnabled {

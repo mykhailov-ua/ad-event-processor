@@ -41,7 +41,7 @@ func catalogIDs(reg *Registry) map[CampaignID]struct{} {
 	if snap == nil {
 		return out
 	}
-	for i := 0; i < geoShardCount; i++ {
+	for i := range geoShardCount {
 		sh := snap.shards[i]
 		if sh == nil || sh.Count == 0 {
 			continue

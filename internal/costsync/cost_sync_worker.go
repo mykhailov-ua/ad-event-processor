@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sync"
 	"time"
 
 	db "github.com/bidshard/ad-event-processor/internal/domain/db"
@@ -22,6 +23,7 @@ import (
 )
 
 const costSyncAdvisoryLockKey = int64(0x657370785f636f73)
+const advisoryUnlockTimeout = 5 * time.Second
 
 type OAuthConfig struct {
 	MetaAppID, MetaAppSecret           string
@@ -37,6 +39,7 @@ type Worker struct {
 	oauth           OAuthConfig
 	insertSnapshots func(context.Context, []CostLine, []int64) error
 	onSyncComplete  func(network string, duration time.Duration)
+	cycleWG         sync.WaitGroup
 }
 
 type WorkerOption func(*Worker)
@@ -119,16 +122,30 @@ func (w *Worker) Start(ctx context.Context) {
 	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
 
-	w.runHourly(ctx, "cron")
+	w.runHourlyGuarded(ctx, "cron")
 
 	for {
 		select {
 		case <-ctx.Done():
+			w.Wait()
 			return
 		case <-ticker.C:
-			w.runHourly(ctx, "cron")
+			w.runHourlyGuarded(ctx, "cron")
 		}
 	}
+}
+
+func (w *Worker) runHourlyGuarded(ctx context.Context, trigger string) {
+	w.cycleWG.Add(1)
+	go func() {
+		defer w.cycleWG.Done()
+		w.runHourly(ctx, trigger)
+	}()
+}
+
+// Wait blocks until in-flight hourly sync completes (shutdown drain before pool close).
+func (w *Worker) Wait() {
+	w.cycleWG.Wait()
 }
 
 func (w *Worker) RunManual(ctx context.Context, customerID *uuid.UUID, network string, from, to time.Time) error {
@@ -156,7 +173,7 @@ func (w *Worker) runHourly(ctx context.Context, trigger string) {
 		slog.Debug("cost-sync skipped: another leader holds lock")
 		return
 	}
-	defer w.releaseAdvisoryLock(context.Background())
+	defer w.releaseAdvisoryLock(opCtx)
 
 	yesterday := time.Now().UTC().AddDate(0, 0, -1).Truncate(24 * time.Hour)
 	if err := w.syncDay(opCtx, nil, "", yesterday, trigger); err != nil {
@@ -247,46 +264,31 @@ func (w *Worker) persistLines(ctx context.Context, lines []CostLine, date time.T
 		return 0, 0, nil
 	}
 
+	fxCache, err := w.converter.PrepareFXCache(ctx, lines, date)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	usdAmounts := make([]int64, len(lines))
+	var totalUSD int64
+	for i, line := range lines {
+		usdMicro, err := w.converter.ToUSDMicroCached(line.AmountMicro, line.Currency, fxCache)
+		if err != nil {
+			return 0, 0, err
+		}
+		usdAmounts[i] = usdMicro
+		totalUSD += usdMicro
+	}
+
 	tx, err := w.pool.Begin(ctx)
 	if err != nil {
 		return 0, 0, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	q := db.New(tx)
-	usdAmounts := make([]int64, len(lines))
-
-	var imported int
-	var totalUSD int64
-	for i, line := range lines {
-		usdMicro, err := w.converter.ToUSDMicro(ctx, line.AmountMicro, line.Currency, date)
-		if err != nil {
-			return imported, totalUSD, err
-		}
-		usdAmounts[i] = usdMicro
-		totalUSD += usdMicro
-
-		ingestKey := IngestKey(line.CustomerID, line.CampaignID, line.Date, line.Network, line.PlacementID, line.LineType)
-		rows, err := q.InsertCampaignCost(ctx, db.InsertCampaignCostParams{
-			CustomerID:     pgtype.UUID{Bytes: line.CustomerID, Valid: true},
-			CampaignID:     pgtype.UUID{Bytes: line.CampaignID, Valid: true},
-			CostDate:       pgtype.Date{Time: line.Date, Valid: true},
-			Network:        line.Network,
-			PlacementID:    line.PlacementID,
-			AdsetID:        line.AdsetID,
-			AdID:           line.AdID,
-			LineType:       string(line.LineType),
-			AmountMicro:    line.AmountMicro,
-			Currency:       line.Currency,
-			AmountUsdMicro: usdMicro,
-			IngestKey:      ingestKey,
-		})
-		if err != nil {
-			return imported, totalUSD, err
-		}
-		if rows > 0 {
-			imported++
-		}
+	imported, err := insertCampaignCostsBatch(ctx, tx, lines, usdAmounts)
+	if err != nil {
+		return 0, 0, err
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -380,7 +382,7 @@ func (w *Worker) reconcileCampaigns(ctx context.Context, lines []CostLine, date 
 	br := w.pool.SendBatch(ctx, batch)
 	for i := 0; i < adjustments; i++ {
 		if _, err := br.Exec(); err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			br.Close()
+			_ = br.Close()
 			return err
 		}
 	}
@@ -499,7 +501,20 @@ func (w *Worker) tryAdvisoryLock(ctx context.Context) (bool, error) {
 }
 
 func (w *Worker) releaseAdvisoryLock(ctx context.Context) {
-	_, _ = w.pool.Exec(ctx, `SELECT pg_advisory_unlock($1)`, costSyncAdvisoryLockKey)
+	if w == nil || w.pool == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, advisoryUnlockTimeout)
+	defer cancel()
+	_, err := w.pool.Exec(ctx, `SELECT pg_advisory_unlock($1)`, costSyncAdvisoryLockKey)
+	if err == nil {
+		return
+	}
+	if errors.Is(err, context.DeadlineExceeded) || ctx.Err() == context.DeadlineExceeded {
+		slog.Error("cost-sync advisory unlock timed out", "error", err)
+		return
+	}
+	slog.Warn("cost-sync advisory unlock failed", "error", err)
 }
 
 func abs64(v int64) int64 {

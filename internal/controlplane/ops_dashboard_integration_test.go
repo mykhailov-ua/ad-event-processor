@@ -43,7 +43,7 @@ func TestOpsDashboard_insertSample_queryAPI(t *testing.T) {
 	rdb, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 	sharder := domain.NewStaticSlotSharder(1)
-	svc := NewService(pool, []redis.UniversalClient{rdb}, sharder, &config.Config{})
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, sharder, &config.Config{})
 	defer svc.Close()
 	reader = &opsReader{svc: svc}
 	summary, err := reader.GetDashboardSummary(ctx)
@@ -63,7 +63,7 @@ func TestOpsDashboard_metricsQuery_10kSamples_under200ms(t *testing.T) {
 	ctx := context.Background()
 	q := db.New(pool)
 	start := time.Now().UTC().Add(-24 * time.Hour)
-	for i := 0; i < 10_000; i++ {
+	for i := range 10_000 {
 		ts := start.Add(time.Duration(i) * time.Second)
 		require.NoError(t, q.InsertOpsMetricSample(ctx, db.InsertOpsMetricSampleParams{
 			Name:       "ad_http_requests_total",

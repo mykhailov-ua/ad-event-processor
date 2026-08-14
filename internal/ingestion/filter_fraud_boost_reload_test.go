@@ -28,7 +28,7 @@ func TestFilterFraudBoost_ConcurrentReload(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		for i := 0; i < 500; i++ {
+		for i := range 500 {
 			select {
 			case <-stop:
 				return
@@ -41,7 +41,7 @@ func TestFilterFraudBoost_ConcurrentReload(t *testing.T) {
 	}()
 
 	wg.Add(8)
-	for w := 0; w < 8; w++ {
+	for range 8 {
 		go func() {
 			defer wg.Done()
 			evt := &domain.Event{
@@ -49,7 +49,7 @@ func TestFilterFraudBoost_ConcurrentReload(t *testing.T) {
 				StringBuffer: make([]byte, 0, 64),
 			}
 			ctx := context.Background()
-			for i := 0; i < 200; i++ {
+			for range 200 {
 				resetFraudBenchEvent(evt)
 				_ = engine.Check(ctx, evt)
 			}

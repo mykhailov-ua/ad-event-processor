@@ -2,6 +2,7 @@ package controlplane
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"sync"
 	"testing"
@@ -27,9 +28,13 @@ func newMockRedisForRecon() *mockRedisForRecon {
 
 func (m *mockRedisForRecon) Get(ctx context.Context, key string) *redis.StringCmd {
 	m.mu.Lock()
-	defer m.mu.Unlock()
-	val := m.data[key]
+	val, ok := m.data[key]
+	m.mu.Unlock()
 	cmd := redis.NewStringCmd(ctx)
+	if !ok {
+		cmd.SetErr(redis.Nil)
+		return cmd
+	}
 	cmd.SetVal(strconv.FormatInt(val, 10))
 	return cmd
 }
@@ -72,7 +77,7 @@ func TestRecon_RaceConcurrentAdjustments(t *testing.T) {
 
 	start := make(chan struct{})
 
-	for i := 0; i < goroutines; i++ {
+	for range goroutines {
 		go func() {
 			defer wg.Done()
 			<-start
@@ -111,7 +116,7 @@ func TestRecon_AdjustRealRedis(t *testing.T) {
 	wg.Add(goroutines)
 	start := make(chan struct{})
 
-	for i := 0; i < goroutines; i++ {
+	for range goroutines {
 		go func() {
 			defer wg.Done()
 			<-start
@@ -123,7 +128,7 @@ func TestRecon_AdjustRealRedis(t *testing.T) {
 	wg.Wait()
 
 	final, err := rdb.Get(ctx, key).Int64()
-	if err == redis.Nil {
+	if errors.Is(err, redis.Nil) {
 		final = 0
 	} else {
 		require.NoError(t, err)

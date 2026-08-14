@@ -53,7 +53,7 @@ func (w *Shard0CatchupWorker) tick(ctx context.Context) {
 		w.shard0Seen = true
 		slog.Info("redis shard 0 reconnected; scheduling global catch-up")
 	}
-	if !w.shouldRunCatchup() {
+	if !w.shouldRunCatchup(ctx) {
 		return
 	}
 	if err := w.svc.RunShard0Catchup(ctx); err != nil {
@@ -63,7 +63,7 @@ func (w *Shard0CatchupWorker) tick(ctx context.Context) {
 	w.shard0Seen = false
 }
 
-func (w *Shard0CatchupWorker) shouldRunCatchup() bool {
+func (w *Shard0CatchupWorker) shouldRunCatchup(ctx context.Context) bool {
 	rdbs := w.svc.RedisShards()
 	if len(rdbs) == 0 || rdbs[0] == nil {
 		return false
@@ -71,7 +71,7 @@ func (w *Shard0CatchupWorker) shouldRunCatchup() bool {
 	if w.shard0Seen {
 		return true
 	}
-	return shard0NeedsCatchup(rdbs)
+	return shard0NeedsCatchup(ctx, rdbs)
 }
 
 func (s *Service) tryReconnectShard0(ctx context.Context, opts database.RedisShardOptions) bool {

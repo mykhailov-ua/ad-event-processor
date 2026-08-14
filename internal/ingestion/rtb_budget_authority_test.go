@@ -13,7 +13,7 @@ import (
 
 func TestUnifiedFilter_skipBudgetDebit_preservesRedisBalance(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)

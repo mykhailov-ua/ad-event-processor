@@ -37,7 +37,7 @@ func BenchmarkIngressQuota_unpadded(b *testing.B) {
 
 func TestIngressQuota_falseSharingRatio(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	const workers = 8
 	const iters = 500_000
@@ -60,11 +60,11 @@ func TestIngressQuota_falseSharingRatio(t *testing.T) {
 func benchIngressWorkers(padded *ingressQuotaMap, unpadded *unpaddedIngressCounters, workers, iters int, usePadded bool) int64 {
 	var wg sync.WaitGroup
 	start := monotonicNano()
-	for w := 0; w < workers; w++ {
+	for w := range workers {
 		wg.Add(1)
 		go func(worker int) {
 			defer wg.Done()
-			for i := 0; i < iters; i++ {
+			for range iters {
 				if usePadded {
 					_ = padded.tryAcquire(0, worker)
 				} else {

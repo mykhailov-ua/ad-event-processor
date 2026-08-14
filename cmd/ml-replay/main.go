@@ -129,7 +129,7 @@ LIMIT ?`
 	if err != nil {
 		return nil, fmt.Errorf("clickhouse query: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []replayRow
 	for rows.Next() {
@@ -277,7 +277,7 @@ func runReplay(ctx context.Context, opts replayOptions) error {
 		if err != nil {
 			return fmt.Errorf("create output: %w", err)
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 		out = file
 	}
 

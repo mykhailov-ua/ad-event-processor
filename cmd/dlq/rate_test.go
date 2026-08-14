@@ -53,7 +53,7 @@ func TestRequeueDLQ_RateLimiting(t *testing.T) {
 	targetStream := "test:target"
 
 	const eventCount = 40
-	for i := 0; i < eventCount; i++ {
+	for i := range eventCount {
 		cid := uuid.New()
 		evt := &pb.AdDLQEvent{
 			OriginalEvent: &pb.AdStreamEvent{
@@ -98,7 +98,7 @@ func TestRequeueDLQ_RateLimiting(t *testing.T) {
 
 	rdb.Del(ctx, dlqStream, targetStream)
 
-	for i := 0; i < eventCount; i++ {
+	for i := range eventCount {
 		cid := uuid.New()
 		evt := &pb.AdDLQEvent{
 			OriginalEvent: &pb.AdStreamEvent{
@@ -166,7 +166,7 @@ func TestRestoreDLQ_RateLimiting(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for i := 0; i < eventCount; i++ {
+	for i := range eventCount {
 		cid := uuid.New()
 		evt := &pb.AdDLQEvent{
 			OriginalEvent: &pb.AdStreamEvent{

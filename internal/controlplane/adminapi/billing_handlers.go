@@ -913,7 +913,7 @@ ORDER BY hr`
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	out := make([]CHHourlyPoint, 0, 168)
 	for rows.Next() {

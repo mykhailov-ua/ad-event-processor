@@ -28,7 +28,7 @@ func TestOpsReader_GetMLModelStatus(t *testing.T) {
 	defer cleanupRedis()
 
 	sharder := domain.NewStaticSlotSharder(1)
-	svc := NewService(pool, []redis.UniversalClient{rdb}, sharder, nil)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, sharder, nil)
 	defer svc.Close()
 
 	ctx := context.Background()
@@ -70,7 +70,7 @@ func TestOpsReader_GetMLModelStatus(t *testing.T) {
 	}
 	reportBytes, err := json.Marshal(report)
 	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(reportPath, reportBytes, 0644))
+	require.NoError(t, os.WriteFile(reportPath, reportBytes, 0o644))
 	t.Setenv("FRAUD_EVAL_REPORT_PATH", reportPath)
 
 	reader := &opsReader{svc: svc}
@@ -120,7 +120,7 @@ func TestOpsReader_AddMLManualLabel_Validation(t *testing.T) {
 	defer cleanupDB()
 
 	sharder := domain.NewStaticSlotSharder(1)
-	svc := NewService(pool, nil, sharder, nil)
+	svc := NewService(context.Background(), pool, nil, sharder, nil)
 	defer svc.Close()
 
 	reader := &opsReader{svc: svc}

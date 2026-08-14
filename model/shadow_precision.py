@@ -1,8 +1,15 @@
 """Shadow precision report from ml_shadow_scores vs proxy labels in ClickHouse."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import Any
+
+PROXY_LABEL_METHOD = "proxy"
+PROXY_LABEL_DEFINITION = (
+    "positive: fraud_events with non-empty fraud_reason in the lookback window; "
+    "negative: impressions in the window excluding positives (capped sample)"
+)
 
 SHADOW_PRECISION_SQL = """
 WITH
@@ -63,7 +70,7 @@ def run_shadow_precision(
     *,
     hours: int = 24,
     threshold: float = 0.6,
-) -> dict[str, float | int | str]:
+) -> dict[str, Any]:
     """Run proxy-label precision report; labeled_rows=0 when CH has no shadow data."""
     result = client.query(
         SHADOW_PRECISION_SQL,
@@ -75,6 +82,8 @@ def run_shadow_precision(
             "labeled_rows": 0,
             "hours": hours,
             "threshold": threshold,
+            "label_method": PROXY_LABEL_METHOD,
+            "label_definition": PROXY_LABEL_DEFINITION,
         }
 
     row = result.result_rows[0]
@@ -96,6 +105,8 @@ def run_shadow_precision(
         "labeled_rows": labeled_rows,
         "hours": hours,
         "threshold": threshold,
+        "label_method": PROXY_LABEL_METHOD,
+        "label_definition": PROXY_LABEL_DEFINITION,
         "tp": tp,
         "fp": fp,
         "fn": fn,
@@ -119,13 +130,24 @@ def format_markdown(report: dict[str, float | int | str]) -> str:
         f"- Window: last {report.get('hours', 'n/a')} hours",
         f"- Threshold: {report.get('threshold', 'n/a')}",
         f"- Labeled rows: {report.get('labeled_rows', 0)}",
+        f"- Label method: `{report.get('label_method', PROXY_LABEL_METHOD)}` (not human-audited ground truth)",
         "",
     ]
+    label_definition = report.get("label_definition", PROXY_LABEL_DEFINITION)
+    if label_definition:
+        lines.extend(
+            [
+                "## Label definition",
+                "",
+                str(label_definition),
+                "",
+            ]
+        )
     if status in {"skipped", "empty"}:
         if "reason" in report:
             lines.append(f"- Note: {report['reason']}")
         lines.append("")
-        lines.append("No metrics — insufficient shadow scores or proxy labels in ClickHouse.")
+        lines.append("No metrics: insufficient shadow scores or proxy labels in ClickHouse.")
         return "\n".join(lines)
 
     tp = int(report.get("tp", 0))

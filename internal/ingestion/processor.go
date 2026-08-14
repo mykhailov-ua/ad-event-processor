@@ -334,11 +334,14 @@ func (consumer *StreamConsumer) pauseStreamReads(ctx context.Context) bool {
 		return false
 	}
 
-	metrics.ProcessorStreamBackpressureActive.WithLabelValues(consumer.groupName).Set(1)
 	wait := consumer.cb.WaitDuration()
 	if wait <= 0 {
-		wait = 100 * time.Millisecond
+		// Open timeout elapsed — return false so worker calls tryFlush; Allow() transitions half-open.
+		metrics.ProcessorStreamBackpressureActive.WithLabelValues(consumer.groupName).Set(0)
+		return false
 	}
+
+	metrics.ProcessorStreamBackpressureActive.WithLabelValues(consumer.groupName).Set(1)
 	select {
 	case <-ctx.Done():
 		return false

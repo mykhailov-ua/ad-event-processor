@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# OpenResty blacklist sync Lua unit test (deploy/nginx/lua).
+# Precondition: luajit on PATH or espx-nginx-1 container — skips exit 0 when neither available.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

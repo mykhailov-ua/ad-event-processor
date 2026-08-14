@@ -141,7 +141,7 @@ func (f *UnifiedFilter) runBudgetFastLua(
 	args[15] = &wrappers.placementID
 	wrappers.placementID.s = evt.PlacementID
 
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		seq := f.luaMetricsSeq.Add(1)
 		sampleLua := shouldSampleHistogram(seq, f.redisObservability.sampleMask)
 		var luaStart int64

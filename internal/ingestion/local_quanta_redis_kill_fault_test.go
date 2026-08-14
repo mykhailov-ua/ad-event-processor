@@ -96,10 +96,10 @@ func TestFault_LocalQuantaRedisSIGKILL_BudgetInvariant(t *testing.T) {
 	var accepted atomic.Int64
 	var wg sync.WaitGroup
 	wg.Add(workers)
-	for w := 0; w < workers; w++ {
+	for w := range workers {
 		go func(worker int) {
 			defer wg.Done()
-			for i := 0; i < perWorker; i++ {
+			for i := range perWorker {
 				select {
 				case <-stopLoad:
 					return
@@ -138,7 +138,7 @@ func TestFault_LocalQuantaRedisSIGKILL_BudgetInvariant(t *testing.T) {
 	campaignRepo := NewCampaignRepoWithDB(infra.Pool, infra.Queries)
 	customerRepo := NewCustomerRepoWithDB(infra.Pool, infra.Queries)
 	worker := NewSyncWorker(infra.Redis, campaignRepo, customerRepo, time.Hour, 0, nil, 0)
-	for attempt := 0; attempt < 5; attempt++ {
+	for range 5 {
 		worker.SyncAll(ctx)
 	}
 

@@ -44,7 +44,7 @@ func fetchTaboolaCosts(ctx context.Context, client *http.Client, baseURL string,
 	endpoint := fmt.Sprintf("%s/%s/reports/campaign-summary/dimensions/campaign_site_day_breakdown?start_date=%s&end_date=%s",
 		strings.TrimRight(base, "/"), accountID, date.Format("2006-01-02"), date.Format("2006-01-02"))
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func fetchTaboolaCosts(ctx context.Context, client *http.Client, baseURL string,
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("taboola report: status %d: %s", resp.StatusCode, string(body))
@@ -121,7 +121,7 @@ func fetchOutbrainCosts(ctx context.Context, client *http.Client, baseURL string
 	endpoint := fmt.Sprintf("%s/reports/marketers/%s/campaigns?from=%s&to=%s&breakdown=section",
 		strings.TrimRight(base, "/"), cred.AccountID, date.Format("2006-01-02"), date.Format("2006-01-02"))
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +133,7 @@ func fetchOutbrainCosts(ctx context.Context, client *http.Client, baseURL string
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("outbrain report: status %d: %s", resp.StatusCode, string(body))

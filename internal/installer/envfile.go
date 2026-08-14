@@ -28,7 +28,7 @@ func loadDotEnv(root string) {
 		if key == "" || os.Getenv(key) != "" {
 			continue
 		}
-		os.Setenv(key, strings.TrimSpace(val))
+		_ = os.Setenv(key, strings.TrimSpace(val))
 	}
 }
 
@@ -40,7 +40,7 @@ func ensureEnvFile(root string) error {
 		if readErr != nil {
 			return fmt.Errorf("missing .env and .env.example: %w", readErr)
 		}
-		if err := os.WriteFile(envPath, data, 0644); err != nil {
+		if err := os.WriteFile(envPath, data, 0o644); err != nil {
 			return err
 		}
 	}
@@ -85,7 +85,7 @@ func ensureBootstrapToken(envPath string) error {
 		if !strings.HasSuffix(out, "\n") {
 			out += "\n"
 		}
-		return os.WriteFile(envPath, []byte(out), 0644)
+		return os.WriteFile(envPath, []byte(out), 0o644)
 	}
 	return nil
 }

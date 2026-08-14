@@ -46,7 +46,7 @@ func vppAllow(campaignID uuid.UUID, ratio float32, nowMono int64) bool {
 		return true
 	}
 	var h uint64
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		h ^= uint64(campaignID[i]) << (uint(i) * 8)
 	}
 	bucket := uint64(nowMono) ^ h

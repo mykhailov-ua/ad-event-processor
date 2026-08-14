@@ -61,7 +61,7 @@ func TestFault_ForecastDeterministic(t *testing.T) {
 	})
 
 	var first map[string]any
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		req, _ := http.NewRequest("POST", "/api/v1/forecast/campaign", bytes.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
 		withSessionUser(req, tokenMaker, RoleUser, custID)

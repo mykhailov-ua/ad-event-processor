@@ -29,7 +29,7 @@ func TestJumpHashSharder_GetShard(t *testing.T) {
 		t.Errorf("expected deterministic shard, got %d and %d", shard1, shard2)
 	}
 
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		shard := sharder.GetShard(uuid.New())
 		if shard < 0 || shard >= numShards {
 			t.Errorf("shard %d out of range [0, %d)", shard, numShards)
@@ -38,7 +38,7 @@ func TestJumpHashSharder_GetShard(t *testing.T) {
 
 	counts := make(map[int]int)
 	total := 10000
-	for i := 0; i < total; i++ {
+	for range total {
 		shard := sharder.GetShard(uuid.New())
 		counts[shard]++
 	}
@@ -164,7 +164,7 @@ func TestStaticSlotSharder_GetShard(t *testing.T) {
 		t.Errorf("expected deterministic shard, got %d and %d", shard1, shard2)
 	}
 
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		shard := sharder.GetShard(uuid.New())
 		if shard < 0 || shard >= numShards {
 			t.Errorf("shard %d out of range [0, %d)", shard, numShards)

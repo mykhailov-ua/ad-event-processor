@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"os"
@@ -35,10 +36,10 @@ func TestMetricsEndpoint(t *testing.T) {
 	}
 	defer cli.Close()
 
-	if _, err := cli.Produce(topic, 0, []byte("metric-payload")); err != nil {
+	if _, err := cli.Produce(context.Background(), topic, 0, []byte("metric-payload")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := cli.Fetch(topic, 0, 0, 4096); err != nil {
+	if _, err := cli.Fetch(context.Background(), topic, 0, 0, 4096); err != nil {
 		t.Fatal(err)
 	}
 

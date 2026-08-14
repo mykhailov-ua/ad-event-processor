@@ -15,7 +15,7 @@ func TestIngressQuotaMap_tryAcquire_perWorkerLimit(t *testing.T) {
 	m := buildIngressQuotaMap(1, &limits, 4)
 	require.NotNil(t, m)
 
-	for i := 0; i < 25; i++ {
+	for range 25 {
 		require.True(t, m.tryAcquire(0, 0))
 	}
 	require.False(t, m.tryAcquire(0, 0))
@@ -27,7 +27,7 @@ func TestIngressQuotaMap_epochSwapResetsCounters(t *testing.T) {
 	limits.NumShards = 1
 	limits.Limits[0] = 40
 	m1 := buildIngressQuotaMap(1, &limits, 2)
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		require.True(t, m1.tryAcquire(0, 0))
 	}
 	m2 := buildIngressQuotaMap(2, &limits, 2)
@@ -41,7 +41,7 @@ func TestUDPControl_TryIngress(t *testing.T) {
 		NumWorkers: 2,
 		InitialRPS: 10,
 	})
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		require.True(t, c.TryIngress(0, 0))
 	}
 	require.False(t, c.TryIngress(0, 0))
@@ -51,16 +51,16 @@ func TestUDPControl_TryIngress(t *testing.T) {
 func TestIngressQuotaMap_race(t *testing.T) {
 	var limits UDPControlLimits
 	limits.NumShards = 4
-	for i := uint8(0); i < 4; i++ {
+	for i := range uint8(4) {
 		limits.Limits[i] = 10_000
 	}
 	m := buildIngressQuotaMap(1, &limits, 8)
 	var wg sync.WaitGroup
-	for w := 0; w < 8; w++ {
+	for w := range 8 {
 		wg.Add(1)
 		go func(worker int) {
 			defer wg.Done()
-			for i := 0; i < 2000; i++ {
+			for i := range 2000 {
 				_ = m.tryAcquire(i%4, worker)
 			}
 		}(w)

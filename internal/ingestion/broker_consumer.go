@@ -145,7 +145,7 @@ func (b *BrokerStreamConsumer) run(ctx context.Context) {
 			return
 		}
 
-		iter, err := b.cli.Fetch(b.cfg.Topic, b.cfg.Partition, start, b.cfg.MaxBytes)
+		iter, err := b.cli.Fetch(ctx, b.cfg.Topic, b.cfg.Partition, start, b.cfg.MaxBytes)
 		if err != nil {
 			slog.Error("broker consumer fetch failed", "group", b.cfg.Group, "error", err)
 			select {

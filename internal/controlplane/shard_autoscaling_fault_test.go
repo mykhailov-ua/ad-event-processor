@@ -48,7 +48,7 @@ func TestFault_ShardAutoscale_SuddenLoadSpike(t *testing.T) {
 	defer cleanup1()
 
 	cfg := &config.Config{SlotMigrationEnabled: false}
-	svc := NewService(pool, []redis.UniversalClient{rdb0, rdb1}, domain.NewStaticSlotSharder(2), cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb0, rdb1}, domain.NewStaticSlotSharder(2), cfg)
 	defer svc.Close()
 
 	mapRepo := domain.NewSlotMapRepo(pool)
@@ -136,7 +136,7 @@ func TestFault_ShardAutoscale_ShuffledShards(t *testing.T) {
 	defer cleanup1()
 
 	cfg := &config.Config{SlotMigrationEnabled: false}
-	svc := NewService(pool, []redis.UniversalClient{rdb1, rdb0}, domain.NewStaticSlotSharder(2), cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb1, rdb0}, domain.NewStaticSlotSharder(2), cfg)
 	defer svc.Close()
 
 	mapRepo := domain.NewSlotMapRepo(pool)
@@ -219,7 +219,7 @@ func TestFault_ShardAutoscale_ConcurrentAutoscaleDeadlock(t *testing.T) {
 	defer cleanup1()
 
 	cfg := &config.Config{SlotMigrationEnabled: false}
-	svc := NewService(pool, []redis.UniversalClient{rdb0, rdb1}, domain.NewStaticSlotSharder(2), cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb0, rdb1}, domain.NewStaticSlotSharder(2), cfg)
 	defer svc.Close()
 
 	mapRepo := domain.NewSlotMapRepo(pool)
@@ -231,7 +231,7 @@ func TestFault_ShardAutoscale_ConcurrentAutoscaleDeadlock(t *testing.T) {
 
 	var slot0CampID uuid.UUID
 	const migratedSlot int16 = 0
-	for i := int16(0); i < 5; i++ {
+	for i := range int16(5) {
 		var campID uuid.UUID
 		for {
 			campID = uuid.New()
@@ -273,7 +273,7 @@ func TestFault_ShardAutoscale_ConcurrentAutoscaleDeadlock(t *testing.T) {
 	errorsChan := make(chan error, concurrency)
 	var maxNewVer int32
 
-	for i := 0; i < concurrency; i++ {
+	for i := range concurrency {
 		wg.Add(1)
 		go func(workerID int) {
 			defer wg.Done()

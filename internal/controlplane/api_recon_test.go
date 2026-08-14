@@ -40,7 +40,7 @@ func TestAPI_ListReconRuns_Management(t *testing.T) {
 		VALUES ($1, $2, 'COMPLETED', 5000, 10, 1, NOW())`, start, end)
 	require.NoError(t, err)
 
-	req, _ := http.NewRequest("GET", "/api/v1/recon/runs?service=management", nil)
+	req, _ := http.NewRequest("GET", "/api/v1/recon/runs?service=management", http.NoBody)
 	withAdminAPIKey(req, cfg)
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)

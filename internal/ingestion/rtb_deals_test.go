@@ -18,7 +18,7 @@ import (
 
 func TestReloadRtbDeals_buildsDealIndex(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, cleanup := database.SetupTestDB(t)
 	defer cleanup()
@@ -50,7 +50,7 @@ func TestRtbCatalogReloadChannel_default(t *testing.T) {
 
 func TestReloadRtbCatalog_withinSLO(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, cleanup := database.SetupTestDB(t)
 	defer cleanup()
@@ -59,7 +59,7 @@ func TestReloadRtbCatalog_withinSLO(t *testing.T) {
 	customerID := uuid.New()
 	_, err := pool.Exec(ctx, `INSERT INTO customers (id, name) VALUES ($1, 'slo-test')`, customerID)
 	require.NoError(t, err)
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		_, err = pool.Exec(ctx, `
 			INSERT INTO rtb_deals (deal_id, floor_micro, geo_mask, cat_mask, pacing, customer_id, seats)
 			VALUES ($1, 100000, 15, 7, 1, $2, 1)`, fmt.Sprintf("slo-deal-%d", i), customerID)

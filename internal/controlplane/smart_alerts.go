@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -212,7 +213,7 @@ func (s *Service) UpdateSmartAlertRule(ctx context.Context, ruleID uuid.UUID, re
 	)
 	dto, err := scanSmartAlertRule(row)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return adminapi.SmartAlertRuleDTO{}, fmt.Errorf("rule not found")
 		}
 		return adminapi.SmartAlertRuleDTO{}, err
@@ -517,7 +518,7 @@ func (w *SmartAlertsWorker) deliverWebhook(ctx context.Context, url string, body
 	if err != nil {
 		return "failed", err.Error()
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, smartAlertMaxWebhookBytes))
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return "failed", fmt.Sprintf("http %d", resp.StatusCode)

@@ -37,7 +37,7 @@ func TestFault_PaymentRefundConcurrentWebhookSameEventID(t *testing.T) {
 
 	var wg sync.WaitGroup
 	wg.Add(paymentFaultWorkers)
-	for i := 0; i < paymentFaultWorkers; i++ {
+	for range paymentFaultWorkers {
 		go func() {
 			defer wg.Done()
 			stripeCents, _ := payment.MicroToStripeAmount(refundAmount)
@@ -88,7 +88,7 @@ func TestFault_PaymentRefundDualOutboxWorkerRace(t *testing.T) {
 	var wg sync.WaitGroup
 	var totalProcessed atomic.Int32
 	wg.Add(workers)
-	for i := 0; i < workers; i++ {
+	for range workers {
 		go func() {
 			defer wg.Done()
 			n, _ := worker.ProcessOutbox(ctx, 10)

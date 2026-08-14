@@ -120,7 +120,7 @@ func (store *S3Store) putSinglePart(ctx context.Context, key string, filePath st
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	output, err := store.client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket:        aws.String(store.bucket),
@@ -172,7 +172,7 @@ func (store *S3Store) putMultipart(ctx context.Context, key string, filePath str
 		abort()
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	buffer := copyBuffer()
 	completedParts := make([]types.CompletedPart, 0, 8)

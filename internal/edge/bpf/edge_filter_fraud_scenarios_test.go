@@ -27,10 +27,10 @@ func TestFraudScenarios_X06_HighVolumeSubnetBurstDrops(t *testing.T) {
 	require.NoError(t, objs.Config.Update(&key, &cfg, ebpf.UpdateAny))
 
 	var drops uint64
-	for h := 0; h < 8; h++ {
+	for h := range 8 {
 		src := net.IPv4(203, 0, 113, byte(h+1))
 		pkt := buildSYNPacket(t, src, net.IPv4(10, 0, 0, 1), trackerPort)
-		for i := 0; i < 3; i++ {
+		for range 3 {
 			if runXDP(t, objs.XdpEdgeFilter, pkt) == 1 {
 				drops++
 			}
@@ -54,7 +54,7 @@ func TestFraudScenarios_X06_LowVolumeRotationAcceptedGap(t *testing.T) {
 
 	const hosts = 32
 	var drops uint64
-	for h := 0; h < hosts; h++ {
+	for h := range hosts {
 		src := net.IPv4(203, 0, 113, byte(h+1))
 		pkt := buildSYNPacket(t, src, net.IPv4(10, 0, 0, 1), trackerPort)
 		if runXDP(t, objs.XdpEdgeFilter, pkt) == 1 {

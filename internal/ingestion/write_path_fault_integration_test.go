@@ -82,7 +82,7 @@ func TestFault_ProcessorPgGate_Overflow(t *testing.T) {
 
 	const workers = 24
 	var wg sync.WaitGroup
-	for i := 0; i < workers; i++ {
+	for i := range workers {
 		wg.Add(1)
 		go func(n int) {
 			defer wg.Done()
@@ -145,7 +145,7 @@ func TestFault_SyncWorker_PgGateOverflow(t *testing.T) {
 	}()
 
 	var wg sync.WaitGroup
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -189,7 +189,7 @@ func TestFault_CHSpool_Rotation(t *testing.T) {
 		bigPayload[i] = 'x'
 	}
 
-	for i := 0; i < 40; i++ {
+	for i := range 40 {
 		evt := faultTestEvent("ch-rotate-" + strconv.Itoa(i))
 		evt.Payload = bigPayload
 		if err := store.StoreBatch(context.Background(), []*domain.Event{evt}); err != nil {
@@ -234,7 +234,7 @@ func TestFault_CHSpool_MaxSegments(t *testing.T) {
 	}
 
 	var lastErr error
-	for i := 0; i < 30; i++ {
+	for i := range 30 {
 		evt := faultTestEvent("ch-maxseg-" + strconv.Itoa(i))
 		evt.Payload = bigPayload
 		lastErr = store.StoreBatch(context.Background(), []*domain.Event{evt})
@@ -274,7 +274,7 @@ func TestFault_CHSpool_FdRelease(t *testing.T) {
 
 	before := countLinuxFDs(t)
 	payload := make([]byte, 512)
-	for i := 0; i < 25; i++ {
+	for i := range 25 {
 		evt := faultTestEvent("ch-fd-" + strconv.Itoa(i))
 		evt.Payload = payload
 		require.NoError(t, store.StoreBatch(context.Background(), []*domain.Event{evt}))

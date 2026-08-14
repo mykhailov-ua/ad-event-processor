@@ -2,6 +2,7 @@ package supportbundle
 
 import (
 	"bufio"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -54,7 +55,7 @@ func readFileLines(path string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var lines []string
 	sc := bufio.NewScanner(f)
@@ -62,7 +63,7 @@ func readFileLines(path string) ([]string, error) {
 	for sc.Scan() {
 		lines = append(lines, sc.Text())
 	}
-	if err := sc.Err(); err != nil && err != io.EOF {
+	if err := sc.Err(); err != nil && !errors.Is(err, io.EOF) {
 		return lines, err
 	}
 	return lines, nil

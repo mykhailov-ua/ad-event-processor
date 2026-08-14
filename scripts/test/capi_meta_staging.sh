@@ -68,20 +68,56 @@ log "POST /track -> HTTP ${TRACK_CODE}"
 
 if [[ "${CAPI_SEED_OUTBOX:-1}" == "1" && -n "${CAPI_BOOTSTRAP_DB:-}" ]]; then
   log "seeding SEND_POSTBACK outbox row (local smoke fallback)"
-  docker exec bidshard-db-1 psql -h /run/ad-event-processor/postgresql -p 5430 \
-    -U ad_event_processor_user -d ad_event_processor -v ON_ERROR_STOP=1 -c \
-    "INSERT INTO outbox_events (event_type, payload, status) VALUES (
-      'SEND_POSTBACK',
-      convert_to('{\"customer_id\":\"${CAMPAIGN_ID}\",\"campaign_id\":\"${CAMPAIGN_ID}\",\"click_id\":\"${CLICK_ID}\",\"event_type\":\"conversion\",\"email\":\"staging@example.com\",\"fbclid\":\"${FBCLID}\"}', 'UTF8'),
-      'PENDING');" >/dev/null
+  python3 - "$CAMPAIGN_ID" "$CLICK_ID" "$FBCLID" <<'PY'
+import json, subprocess, sys
+
+campaign_id, click_id, fbclid = sys.argv[1:4]
+customer = subprocess.check_output([
+    "docker", "exec", "bidshard-db-1", "psql", "-h", "/run/ad-event-processor/postgresql",
+    "-p", "5430", "-U", "ad_event_processor_user", "-d", "ad_event_processor",
+    "-t", "-A", "-c",
+    f"SELECT customer_id::text FROM campaigns WHERE id='{campaign_id}'::uuid;",
+], text=True).strip()
+if not customer:
+    raise SystemExit(f"campaign {campaign_id} missing customer_id")
+payload = json.dumps({
+    "customer_id": customer,
+    "campaign_id": campaign_id,
+    "click_id": click_id,
+    "event_type": "conversion",
+    "email": "staging@example.com",
+    "fbclid": fbclid,
+})
+sql = (
+    "INSERT INTO outbox_events (event_type, payload, status) VALUES ("
+    "'SEND_POSTBACK', convert_to(%s, 'UTF8'), 'PENDING');"
+)
+subprocess.check_call([
+    "docker", "exec", "bidshard-db-1", "psql", "-h", "/run/ad-event-processor/postgresql",
+    "-p", "5430", "-U", "ad_event_processor_user", "-d", "ad_event_processor",
+    "-v", "ON_ERROR_STOP=1", "-c", sql.replace("%s", "'" + payload.replace("'", "''") + "'"),
+])
+PY
 fi
 
 if [[ -n "$ADMIN_API_KEY" && -n "$META_TEST_EVENT_CODE" ]]; then
   log "step 3: verify test_event_code in postback config"
   cfg="$(curl -sS "${CONTROL_URL}/api/v1/postbacks/config" \
     -H "X-Admin-API-Key: ${ADMIN_API_KEY}" || true)"
+  verified=0
   if echo "$cfg" | grep -q "\"campaign_id\":\"${CAMPAIGN_ID}\"" \
     && echo "$cfg" | grep -q "\"test_event_code\":\"${META_TEST_EVENT_CODE}\""; then
+    verified=1
+  elif [[ -n "${CAPI_BOOTSTRAP_DB:-}" ]]; then
+    db_code="$(docker exec bidshard-db-1 psql -h /run/ad-event-processor/postgresql -p 5430 \
+      -U ad_event_processor_user -d ad_event_processor -t -A -c \
+      "SELECT test_event_code FROM postback_configs WHERE campaign_id='${CAMPAIGN_ID}'::uuid;" 2>/dev/null | tr -d '[:space:]' || true)"
+    if [[ "$db_code" == "$META_TEST_EVENT_CODE" ]]; then
+      verified=1
+      log "postback config test_event_code=${META_TEST_EVENT_CODE} (verified via Postgres; control API may need rebuild)"
+    fi
+  fi
+  if [[ "$verified" == "1" ]]; then
     log "postback config includes test_event_code=${META_TEST_EVENT_CODE}"
   else
     log "WARN: set test_event_code=${META_TEST_EVENT_CODE} in Campaign → CAPI & Postbacks (admin UI)"

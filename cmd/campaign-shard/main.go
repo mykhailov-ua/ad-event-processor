@@ -29,5 +29,5 @@ func main() {
 		}
 	}
 	sharder := ingestion.NewStaticSlotSharder(n)
-	fmt.Println(sharder.GetShard(id))
+	_, _ = fmt.Fprintf(os.Stdout, "%d\n", sharder.GetShard(id))
 }

@@ -70,7 +70,7 @@ func main() {
 			return err
 		}
 		rdb := redis.NewClient(opts)
-		defer rdb.Close()
+		defer func() { _ = rdb.Close() }()
 		return rdb.Ping(ctx).Err()
 	})
 
@@ -85,10 +85,12 @@ func main() {
 		os.Exit(1)
 	}
 	srv.SetCoordinator(coord)
-	coord.Start()
+	coord.Start(context.Background())
 
 	srv.LogStart()
 	sig := lifecycle.WaitSignal()
 	slog.Info("region-proxy shutting down", "signal", sig.String())
+	// coord first (HA deregister), then gnet + metrics HTTP drain.
 	coord.Stop()
+	srv.Stop()
 }

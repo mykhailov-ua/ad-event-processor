@@ -3,6 +3,7 @@ package controlplane
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
@@ -41,7 +42,7 @@ func (h *Handler) metaEnricher() adminapi.MetaEnricher {
 			return out, nil
 		}
 		licRow, err := billingdb.New(pool).GetLicenseStatus(ctx)
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return out, nil
 		}
 		if err != nil {

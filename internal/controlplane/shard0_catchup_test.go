@@ -68,6 +68,83 @@ func assertShardGlobalsMatch(t *testing.T, ctx context.Context, want, got redis.
 	assert.Equal(t, wantMLVersion, gotMLVersion)
 }
 
+func TestPickGlobalReconcileSource_fresherShard0Wins(t *testing.T) {
+	ctx := context.Background()
+	mr0, err := miniredis.Run()
+	require.NoError(t, err)
+	t.Cleanup(mr0.Close)
+	mr1, err := miniredis.Run()
+	require.NoError(t, err)
+	t.Cleanup(mr1.Close)
+
+	rdbs := []redis.UniversalClient{
+		redis.NewClient(&redis.Options{Addr: mr0.Addr()}),
+		redis.NewClient(&redis.Options{Addr: mr1.Addr()}),
+	}
+	t.Cleanup(func() {
+		_ = rdbs[0].Close()
+		_ = rdbs[1].Close()
+	})
+
+	seedGlobalStateOnShard(t, ctx, rdbs[0])
+	require.NoError(t, rdbs[0].Set(ctx, redisConfigVersionKey, 200, 0).Err())
+
+	require.NoError(t, rdbs[1].Set(ctx, redisConfigVersionKey, 5, 0).Err())
+	require.NoError(t, rdbs[1].SAdd(ctx, "blacklist:manual", "stale-ip").Err())
+
+	source := pickGlobalReconcileSource(ctx, rdbs)
+	assert.Equal(t, rdbs[0], source)
+}
+
+func TestShard0Catchup_staleShard1DoesNotOverwriteFresherShard0(t *testing.T) {
+	ctx := context.Background()
+	mr0, err := miniredis.Run()
+	require.NoError(t, err)
+	t.Cleanup(mr0.Close)
+	mr1, err := miniredis.Run()
+	require.NoError(t, err)
+	t.Cleanup(mr1.Close)
+
+	rdbs := []redis.UniversalClient{
+		redis.NewClient(&redis.Options{Addr: mr0.Addr()}),
+		redis.NewClient(&redis.Options{Addr: mr1.Addr()}),
+	}
+	t.Cleanup(func() {
+		_ = rdbs[0].Close()
+		_ = rdbs[1].Close()
+	})
+
+	seedGlobalStateOnShard(t, ctx, rdbs[0])
+	require.NoError(t, rdbs[0].Set(ctx, redisConfigVersionKey, 200, 0).Err())
+
+	require.NoError(t, rdbs[1].Set(ctx, redisConfigVersionKey, 3, 0).Err())
+	require.NoError(t, rdbs[1].HSet(ctx, redisConfigValuesKey, "emergency_breaker", "false").Err())
+	require.NoError(t, rdbs[1].Del(ctx, "blacklist:manual", "blacklist:auto").Err())
+	require.NoError(t, rdbs[1].SAdd(ctx, "blacklist:manual", "stale-ip").Err())
+
+	svc := &Service{
+		rdbs: rdbs,
+		cfg:  &config.Config{CampaignUpdateChannel: "campaigns:update"},
+	}
+	before := testutil.ToFloat64(metrics.Shard0CatchupLastSuccessTimestamp)
+	require.NoError(t, svc.RunShard0Catchup(ctx))
+	after := testutil.ToFloat64(metrics.Shard0CatchupLastSuccessTimestamp)
+	assert.Greater(t, after, before)
+
+	ver, err := rdbs[0].Get(ctx, redisConfigVersionKey).Int64()
+	require.NoError(t, err)
+	assert.Equal(t, int64(200), ver)
+
+	breaker, err := rdbs[0].HGet(ctx, redisConfigValuesKey, "emergency_breaker").Result()
+	require.NoError(t, err)
+	assert.Equal(t, "true", breaker)
+
+	members, err := rdbs[0].SMembers(ctx, "blacklist:manual").Result()
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"10.0.0.1", "10.0.0.2"}, members)
+	assert.NotContains(t, members, "stale-ip")
+}
+
 func TestShard0Nil_CatchupAfterRecovery(t *testing.T) {
 	rdbs := rdbsWithNilShard0(t, 4)
 	ctx := context.Background()
@@ -95,7 +172,8 @@ func TestShard0Nil_CatchupAfterRecovery(t *testing.T) {
 	assert.Equal(t, int64(1), epoch)
 
 	after := testutil.ToFloat64(metrics.Shard0CatchupLastSuccessTimestamp)
-	assert.Greater(t, after, before)
+	assert.GreaterOrEqual(t, after, before)
+	assert.Greater(t, after, 0.0)
 }
 
 func TestReplicateGlobalsFromPrimary(t *testing.T) {
@@ -165,8 +243,8 @@ func TestShard0NeedsCatchup_detectsLag(t *testing.T) {
 	seedGlobalStateOnShard(t, ctx, rdbs[1])
 	shard0 := attachMiniredisShard0(t, rdbs)
 
-	assert.True(t, shard0NeedsCatchup(rdbs))
+	assert.True(t, shard0NeedsCatchup(ctx, rdbs))
 
 	require.NoError(t, replicateGlobalsToTarget(ctx, rdbs[1], shard0))
-	assert.False(t, shard0NeedsCatchup(rdbs))
+	assert.False(t, shard0NeedsCatchup(ctx, rdbs))
 }

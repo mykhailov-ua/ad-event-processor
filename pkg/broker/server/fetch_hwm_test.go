@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -32,13 +33,13 @@ func TestFetchHighWatermark(t *testing.T) {
 	defer cli.Close()
 
 	const n = 5
-	for i := 0; i < n; i++ {
-		if _, err := cli.Produce(topic, 0, []byte(fmt.Sprintf("m-%d", i))); err != nil {
+	for i := range n {
+		if _, err := cli.Produce(context.Background(), topic, 0, []byte(fmt.Sprintf("m-%d", i))); err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	iter, err := cli.Fetch(topic, 0, 0, 1024*1024)
+	iter, err := cli.Fetch(context.Background(), topic, 0, 0, 1024*1024)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +47,7 @@ func TestFetchHighWatermark(t *testing.T) {
 		t.Fatalf("expected hwm %d after produce, got %d", n, iter.HighWatermark)
 	}
 
-	empty, err := cli.Fetch(topic, 0, n, 1024)
+	empty, err := cli.Fetch(context.Background(), topic, 0, n, 1024)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,11 +82,11 @@ func TestFault_MonotonicReads_HighWatermarkNeverRegresses(t *testing.T) {
 	defer cli.Close()
 
 	var lastHWM uint64
-	for i := 0; i < 10; i++ {
-		if _, err := cli.Produce(topic, 0, []byte(fmt.Sprintf("m-%d", i))); err != nil {
+	for i := range 10 {
+		if _, err := cli.Produce(context.Background(), topic, 0, []byte(fmt.Sprintf("m-%d", i))); err != nil {
 			t.Fatal(err)
 		}
-		iter, err := cli.Fetch(topic, 0, 0, 4096)
+		iter, err := cli.Fetch(context.Background(), topic, 0, 0, 4096)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -270,7 +270,7 @@ func TestFault_SlotMigrationConcurrentCopySameSlot(t *testing.T) {
 	var wg sync.WaitGroup
 	var okCount atomic.Int32
 	wg.Add(workers)
-	for i := 0; i < workers; i++ {
+	for range workers {
 		go func() {
 			defer wg.Done()
 			if err := svc.CopyAllMigratingSlots(ctx, v); err == nil {
@@ -321,7 +321,7 @@ func TestFault_SlotMigrationConcurrentActivate(t *testing.T) {
 	var success atomic.Int32
 	var alreadyActive atomic.Int32
 	wg.Add(workers)
-	for i := 0; i < workers; i++ {
+	for range workers {
 		go func() {
 			defer wg.Done()
 			err := svc.ActivateSlotMapVersion(ctx, uuid.Nil, v)
@@ -372,7 +372,7 @@ func TestFault_SlotMapMetaLockContention(t *testing.T) {
 	var mu sync.Mutex
 	created := make([]int32, 0, workers)
 	wg.Add(workers)
-	for i := 0; i < workers; i++ {
+	for range workers {
 		go func() {
 			defer wg.Done()
 			v, err := repo.CreateNextVersion(ctx, active, []domain.SlotOverride{

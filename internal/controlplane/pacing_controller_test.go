@@ -32,7 +32,7 @@ func TestClosedLoopPacingController(t *testing.T) {
 	}
 
 	sharder := domain.NewJumpHashSharder(1)
-	svc := NewService(pool, []redis.UniversalClient{rdb}, sharder, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, sharder, cfg)
 	defer svc.Close()
 
 	ctx := context.Background()
@@ -104,7 +104,7 @@ func TestClosedLoopPacingController_EdgeCases(t *testing.T) {
 	}
 
 	sharder := domain.NewJumpHashSharder(1)
-	svc := NewService(pool, []redis.UniversalClient{rdb}, sharder, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, sharder, cfg)
 	defer svc.Close()
 
 	ctx := context.Background()
@@ -166,7 +166,7 @@ func BenchmarkClosedLoopPacingController(b *testing.B) {
 	}
 
 	sharder := domain.NewJumpHashSharder(1)
-	svc := NewService(pool, []redis.UniversalClient{rdb}, sharder, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, sharder, cfg)
 	defer svc.Close()
 
 	ctx := context.Background()
@@ -177,7 +177,7 @@ func BenchmarkClosedLoopPacingController(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		_, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
 			CustomerID: customerID, Name: uuid.New().String(), BudgetLimitMicro: 100_000_000,
 			PacingMode: string(db.PacingModeTypeEVEN), DailyBudgetMicro: 100_000_000, Timezone: "UTC", FreqWindow: 86400, IdempotencyKey: uuid.New().String(),

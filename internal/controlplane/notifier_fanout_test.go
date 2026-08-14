@@ -285,10 +285,10 @@ func TestFault_opsEventFanOut(t *testing.T) {
 	alerter := NewOpsAlerter(testNotifierClient(stub), cfg)
 	require.NotNil(t, alerter)
 
-	alerter.AlertReconDiscrepancy(42, 3, 1000, "2026-07-04")
-	alerter.AlertRedisShardUnhealthy(1, assert.AnError)
-	alerter.AlertDrainStuck(7, 3, "draining", "timeout", time.Now().UTC())
-	alerter.AlertSlotMapMigrating(2, []int16{1, 2}, 0)
+	alerter.AlertReconDiscrepancy(context.Background(), 42, 3, 1000, "2026-07-04")
+	alerter.AlertRedisShardUnhealthy(context.Background(), 1, assert.AnError)
+	alerter.AlertDrainStuck(context.Background(), 7, 3, "draining", "timeout", time.Now().UTC())
+	alerter.AlertSlotMapMigrating(context.Background(), 2, []int16{1, 2}, 0)
 
 	time.Sleep(100 * time.Millisecond)
 

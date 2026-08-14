@@ -39,17 +39,17 @@ func TestFault_PinnedWorkerPoolSaturationSpike(t *testing.T) {
 	}()
 
 	started := make(chan struct{}, p1WorkerPoolWorkers)
-	for i := 0; i < p1WorkerPoolWorkers; i++ {
+	for range p1WorkerPoolWorkers {
 		ctx := &connContext{
 			offloadOnEnter: func() { started <- struct{}{} },
 			offloadBlock:   unblock,
 		}
 		require.True(t, pool.SubmitOffload(ctx, nil))
 	}
-	for i := 0; i < p1WorkerPoolWorkers; i++ {
+	for range p1WorkerPoolWorkers {
 		<-started
 	}
-	for i := 0; i < p1WorkerPoolQueue; i++ {
+	for range p1WorkerPoolQueue {
 		require.True(t, pool.SubmitOffload(&connContext{offloadBlock: unblock}, nil))
 	}
 
@@ -61,7 +61,7 @@ func TestFault_PinnedWorkerPoolSaturationSpike(t *testing.T) {
 	var overloads atomic.Int32
 	var wg sync.WaitGroup
 	wg.Add(p1WorkerPoolSpikeReqs)
-	for i := 0; i < p1WorkerPoolSpikeReqs; i++ {
+	for range p1WorkerPoolSpikeReqs {
 		go func() {
 			defer wg.Done()
 			body := []byte(`{"campaign_id":"` + uuid.NewString() + `","type":"click","click_id":"c1"}`)
@@ -103,10 +103,10 @@ func TestFault_FraudStreamRingOverflowSpike(t *testing.T) {
 
 	var wg sync.WaitGroup
 	wg.Add(p1FraudBurstProducers)
-	for p := 0; p < p1FraudBurstProducers; p++ {
+	for range p1FraudBurstProducers {
 		go func() {
 			defer wg.Done()
-			for i := 0; i < p1FraudBurstPerProd; i++ {
+			for range p1FraudBurstPerProd {
 				enqueueFraudReject(q, 0, evt)
 			}
 		}()
@@ -149,12 +149,12 @@ func TestFault_TrackUnderWorkerPoolSpike(t *testing.T) {
 		wg      sync.WaitGroup
 	)
 	wg.Add(p1TrackSpikeWorkers)
-	for w := 0; w < p1TrackSpikeWorkers; w++ {
+	for w := range p1TrackSpikeWorkers {
 		w := w
 		go func() {
 			defer wg.Done()
 			prefix := fmt.Sprintf("wp-w%d-", w)
-			for i := 0; i < p1TrackSpikePerWorker; i++ {
+			for i := range p1TrackSpikePerWorker {
 				status := postFaultImpression(t, stack.Handler, stack.CampaignID, prefix+fmt.Sprintf("%d", i))
 				if status == http.StatusAccepted || status == http.StatusOK {
 					okCount.Add(1)

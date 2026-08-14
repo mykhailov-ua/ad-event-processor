@@ -20,7 +20,7 @@ func TestDiskWriteGate_ConcurrentFsyncSerializes(t *testing.T) {
 	var wg sync.WaitGroup
 	start := make(chan struct{})
 
-	for i := 0; i < workers; i++ {
+	for range workers {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -97,7 +97,7 @@ func TestDiskWriteGate_GroupCommitThreshold(t *testing.T) {
 		AppendCapacity:     4,
 		GroupCommitRecords: 4,
 	})
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		assert.False(t, g.NoteAppend())
 	}
 	assert.True(t, g.NoteAppend())

@@ -91,7 +91,7 @@ func TestFraudScenarios_HTTP1_PipelineSpam(t *testing.T) {
 	reqLine := []byte("POST /track HTTP/1.1\r\nContent-Length: 0\r\n\r\n")
 	buf := bytes.Repeat(reqLine, 50)
 	offset := 0
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		n, _, err := parseHTTP1(buf[offset:], maxBody, nil)
 		require.NoError(t, err, "pipeline iter %d", i)
 		require.Equal(t, len(reqLine), n)

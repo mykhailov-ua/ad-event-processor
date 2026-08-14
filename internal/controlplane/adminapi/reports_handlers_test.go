@@ -41,7 +41,7 @@ func TestRouteRegistration(t *testing.T) {
 	}
 
 	for _, rt := range routes {
-		req := httptest.NewRequest(rt.method, rt.path, nil)
+		req := httptest.NewRequest(rt.method, rt.path, http.NoBody)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 		assert.NotEqual(t, http.StatusNotFound, w.Code, "route %s %s not registered", rt.method, rt.path)
@@ -55,7 +55,7 @@ func TestReports_Placements(t *testing.T) {
 	mux := http.NewServeMux()
 	h.Register(mux)
 
-	req := httptest.NewRequest("GET", "/api/v1/reports/placements?customer_id="+uuid.New().String()+"&limit=5", nil)
+	req := httptest.NewRequest("GET", "/api/v1/reports/placements?customer_id="+uuid.New().String()+"&limit=5", http.NoBody)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
@@ -69,7 +69,7 @@ func TestReports_Keywords(t *testing.T) {
 	mux := http.NewServeMux()
 	h.Register(mux)
 
-	req := httptest.NewRequest("GET", "/api/v1/reports/keywords?customer_id="+uuid.New().String()+"&limit=5", nil)
+	req := httptest.NewRequest("GET", "/api/v1/reports/keywords?customer_id="+uuid.New().String()+"&limit=5", http.NoBody)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
@@ -92,7 +92,7 @@ func TestReports_JobRoutesRegistered(t *testing.T) {
 		{"GET", "/api/v1/reports/jobs/" + jobID},
 		{"GET", "/api/v1/reports/jobs/" + jobID + "/download"},
 	} {
-		req := httptest.NewRequest(tc.method, tc.path, nil)
+		req := httptest.NewRequest(tc.method, tc.path, http.NoBody)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 		require.True(t, routeRegistered(w), "%s %s", tc.method, tc.path)
@@ -107,7 +107,7 @@ func TestDashboards_Campaign(t *testing.T) {
 	h.Register(mux)
 
 	campaignID := uuid.New()
-	req := httptest.NewRequest("GET", "/api/v1/dashboards/campaign/"+campaignID.String(), nil)
+	req := httptest.NewRequest("GET", "/api/v1/dashboards/campaign/"+campaignID.String(), http.NoBody)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
@@ -154,7 +154,7 @@ func TestViews_CRUD(t *testing.T) {
 	assert.Equal(t, createReq.Name, created.Name)
 	assert.Equal(t, createReq.CustomerID, created.CustomerID)
 
-	reqList := httptest.NewRequest("GET", "/api/v1/views?customer_id="+customerID, nil)
+	reqList := httptest.NewRequest("GET", "/api/v1/views?customer_id="+customerID, http.NoBody)
 	wList := httptest.NewRecorder()
 	mux.ServeHTTP(wList, reqList)
 
@@ -167,7 +167,7 @@ func TestViews_CRUD(t *testing.T) {
 	assert.Len(t, list, 1)
 	assert.Equal(t, created.ID, list[0].ID)
 
-	reqGet := httptest.NewRequest("GET", "/api/v1/views/"+created.ID, nil)
+	reqGet := httptest.NewRequest("GET", "/api/v1/views/"+created.ID, http.NoBody)
 	wGet := httptest.NewRecorder()
 	mux.ServeHTTP(wGet, reqGet)
 
@@ -199,13 +199,13 @@ func TestViews_CRUD(t *testing.T) {
 	assert.Equal(t, updateReq.Name, updated.Name)
 	assert.False(t, updated.IsShared)
 
-	reqDelete := httptest.NewRequest("DELETE", "/api/v1/views/"+created.ID, nil)
+	reqDelete := httptest.NewRequest("DELETE", "/api/v1/views/"+created.ID, http.NoBody)
 	wDelete := httptest.NewRecorder()
 	mux.ServeHTTP(wDelete, reqDelete)
 
 	require.Equal(t, http.StatusNoContent, wDelete.Code)
 
-	reqGet2 := httptest.NewRequest("GET", "/api/v1/views/"+created.ID, nil)
+	reqGet2 := httptest.NewRequest("GET", "/api/v1/views/"+created.ID, http.NoBody)
 	wGet2 := httptest.NewRecorder()
 	mux.ServeHTTP(wGet2, reqGet2)
 
@@ -249,7 +249,7 @@ func TestViews_CustomerAccessDenied(t *testing.T) {
 	mux.ServeHTTP(w, req)
 	require.Equal(t, http.StatusForbidden, w.Code)
 
-	reqList := httptest.NewRequest("GET", "/api/v1/views?customer_id="+otherCustomer, nil)
+	reqList := httptest.NewRequest("GET", "/api/v1/views?customer_id="+otherCustomer, http.NoBody)
 	wList := httptest.NewRecorder()
 	mux.ServeHTTP(wList, reqList)
 	require.Equal(t, http.StatusForbidden, wList.Code)

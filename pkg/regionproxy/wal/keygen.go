@@ -42,8 +42,8 @@ func (w *WAL) keyGenQueueDepthLocked() int64 {
 	return pending
 }
 
-func (w *WAL) ProcessPendingKeyGen(max int, derive func(seq uint64, payload []byte) ([32]byte, error)) (int, error) {
-	if max <= 0 {
+func (w *WAL) ProcessPendingKeyGen(maxRecords int, derive func(seq uint64, payload []byte) ([32]byte, error)) (int, error) {
+	if maxRecords <= 0 {
 		return 0, nil
 	}
 	w.mu.Lock()
@@ -52,7 +52,7 @@ func (w *WAL) ProcessPendingKeyGen(max int, derive func(seq uint64, payload []by
 	processed := 0
 	pos := int64(0)
 	writePos := w.writePos.Load()
-	for processed < max && pos < writePos {
+	for processed < maxRecords && pos < writePos {
 		if len(w.mmap) <= int(pos)+HeaderSize {
 			break
 		}

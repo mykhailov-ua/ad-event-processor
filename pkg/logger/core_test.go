@@ -67,10 +67,10 @@ func TestLogShardMPSCConcurrent(t *testing.T) {
 	line := []byte("mpsc concurrent log line payload")
 	var wg sync.WaitGroup
 	wg.Add(producers)
-	for p := 0; p < producers; p++ {
+	for range producers {
 		go func() {
 			defer wg.Done()
-			for i := 0; i < perProd; i++ {
+			for range perProd {
 				if !s.Write(1, line) {
 					t.Error("write failed under load")
 					return
@@ -104,11 +104,11 @@ func TestLogShardMPSCUniqueLines(t *testing.T) {
 	s := NewLogShard()
 	var wg sync.WaitGroup
 	wg.Add(producers)
-	for p := 0; p < producers; p++ {
+	for p := range producers {
 		p := p
 		go func() {
 			defer wg.Done()
-			for i := 0; i < 500; i++ {
+			for i := range 500 {
 				msg := []byte("p=" + strconv.Itoa(p) + " i=" + strconv.Itoa(i))
 				if !s.Write(1, msg) {
 					t.Error("write failed")
@@ -139,8 +139,8 @@ func TestLogShardMPSCUniqueLines(t *testing.T) {
 		lines[string(data[:length])] = true
 		data = data[length:]
 	}
-	for p := 0; p < producers; p++ {
-		for i := 0; i < 500; i++ {
+	for p := range producers {
+		for i := range 500 {
 			needle := "p=" + strconv.Itoa(p) + " i=" + strconv.Itoa(i)
 			if !lines[needle] {
 				t.Fatalf("missing line %q in drained output", needle)
@@ -152,7 +152,7 @@ func TestLogShardMPSCUniqueLines(t *testing.T) {
 func TestLoggerRingBufferOverflow(t *testing.T) {
 	s := NewLogShard()
 	data := []byte("overflow testing line")
-	for i := 0; i < ringUsable; i++ {
+	for i := range ringUsable {
 		ok := s.Write(0, data)
 		if !ok {
 			t.Fatalf("early drop at %d", i)
@@ -239,7 +239,7 @@ func TestLoggerRotation(t *testing.T) {
 	l.WriteToShard(0, 1, data)
 
 	var matches []string
-	for i := 0; i < 40; i++ {
+	for range 40 {
 		matches, _ = filepath.Glob(filepath.Join(logDir, "segment_*.log.zst.ready"))
 		if len(matches) > 0 {
 			break
@@ -282,7 +282,7 @@ func TestLoggerEncryptionDecryption(t *testing.T) {
 	}
 
 	var readyMatches []string
-	for i := 0; i < 40; i++ {
+	for range 40 {
 		readyMatches, _ = filepath.Glob(filepath.Join(logDir, "segment_*.log.zst.ready"))
 		if len(readyMatches) >= 2 {
 			break

@@ -52,7 +52,7 @@ func TestGetClientRUM_OK(t *testing.T) {
 			return next
 		},
 	}
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/ops/rum", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/ops/rum", http.NoBody)
 	rec := httptest.NewRecorder()
 	h.getClientRUM(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)

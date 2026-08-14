@@ -92,7 +92,7 @@ func (registry *Registry) LoadSnapshot(path string) error {
 	}
 
 	slots := make(map[CampaignID]uint32, slotsCount)
-	for i := uint32(0); i < slotsCount; i++ {
+	for i := range slotsCount {
 		slots[keys[i]] = vals[i]
 	}
 
@@ -158,7 +158,7 @@ func (registry *Registry) LoadSnapshot(path string) error {
 					return err
 				}
 			} else {
-				for j := uint32(0); j < count; j++ {
+				for j := range count {
 					reg.CTRPPM[j] = CTRPPMUnit
 				}
 			}
@@ -176,7 +176,7 @@ func (registry *Registry) LoadSnapshot(path string) error {
 					return err
 				}
 			} else {
-				for j := uint32(0); j < count; j++ {
+				for j := range count {
 					reg.PacingOpen[j] = PacingOpen
 					reg.CustomerBudgetIndices[j] = invalidCustomerBudgetIdx
 				}
@@ -349,7 +349,7 @@ func writeSnapshotFile(path string, captured snapshotCapture) error {
 	if snap == nil {
 		snap = &catalogSnapshot{}
 	}
-	for i := 0; i < geoShardCount; i++ {
+	for i := range geoShardCount {
 		shard := snap.shards[i]
 		count := 0
 		if shard != nil {

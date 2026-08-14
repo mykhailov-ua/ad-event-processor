@@ -115,7 +115,7 @@ func (m *RedisBudgetManager) CheckAndSpend(ctx context.Context, customerID, camp
 	ba.args[2] = &ba.campaignIDStr
 	ba.args[3] = &ba.customerIDStr
 
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		res, err := m.rdb.Eval(ctx, budgetLuaScript, ba.keys[:], ba.args[:]...).Int64()
 		if err != nil {
 			return false, err

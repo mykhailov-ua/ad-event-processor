@@ -262,6 +262,13 @@ func NewCampaignRepo(queries db.Querier) *CampaignRepo {
 	return &CampaignRepo{queries: queries}
 }
 
+func (r *CampaignRepo) SetDB(dbtx db.DBTX, queries db.Querier) {
+	if r == nil || queries == nil {
+		return
+	}
+	r.queries = &dbQuerier{Querier: queries, dbtx: dbtx}
+}
+
 func (r *CampaignRepo) ConfigureAuditLedgerFlush(cfgVal int) {
 	if cfgVal < 0 {
 		r.auditLedgerFlushEnabled = false
@@ -526,6 +533,13 @@ func NewCustomerRepo(queries db.Querier) *CustomerRepo {
 
 func NewCustomerRepoWithDB(dbtx db.DBTX, queries db.Querier) *CustomerRepo {
 	return &CustomerRepo{queries: &dbQuerier{Querier: queries, dbtx: dbtx}}
+}
+
+func (r *CustomerRepo) SetDB(dbtx db.DBTX, queries db.Querier) {
+	if r == nil || queries == nil {
+		return
+	}
+	r.queries = &dbQuerier{Querier: queries, dbtx: dbtx}
 }
 
 func (r *CustomerRepo) GetByID(ctx context.Context, id uuid.UUID) (*Customer, error) {

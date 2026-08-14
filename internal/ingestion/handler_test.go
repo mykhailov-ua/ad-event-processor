@@ -5,10 +5,8 @@ import (
 	"testing"
 
 	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
-	"google.golang.org/protobuf/proto"
 )
 
 var staticRemoteAddr = &net.TCPAddr{IP: net.IPv4(1, 1, 1, 1), Port: 1234}
@@ -48,41 +46,6 @@ func BenchmarkAdsPacketHandlerJSON(b *testing.B) {
 		UserAgent:        []byte("Mozilla/5.0"),
 		Body:             payload,
 		ContentLength:    len(payload),
-		HasContentLength: true,
-	}
-
-	conn := &mockGnetConn{written: make([]byte, 0, 512)}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		handler.React(req, conn)
-	}
-}
-
-func BenchmarkAdsPacketHandlerProto(b *testing.B) {
-	cfg := &config.Config{
-		MaxRequestBodySize: 1024 * 1024,
-	}
-	registry := &mockRegistry{}
-	sharder := NewJumpHashSharder(1)
-	handler := NewAdsPacketHandler(cfg, registry, nil, nil, nil, sharder, "fraud-stream", nil)
-
-	pbPayload := &pb.AdEvent{
-		CampaignId: []byte(uuid.NewString()),
-		EventType:  []byte("click"),
-		Metadata: &pb.EventMetadata{
-			ClickId: []byte("test-click"),
-		},
-	}
-	body, _ := proto.Marshal(pbPayload)
-	req := parsedHTTPRequest{
-		Method:           []byte("POST"),
-		Path:             []byte("/track"),
-		ContentType:      []byte("application/x-protobuf"),
-		ClientIP:         []byte("1.1.1.1"),
-		UserAgent:        []byte("Mozilla/5.0"),
-		Body:             body,
-		ContentLength:    len(body),
 		HasContentLength: true,
 	}
 

@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"log/slog"
 	"strconv"
 	"sync/atomic"
@@ -46,7 +47,7 @@ func (s *ConsentStore) LoadFromRedis(ctx context.Context, hashHex string) {
 	}
 	raw, err := s.rdb.Get(ctx, ConsentRedisKeyPrefix+hashHex).Result()
 	if err != nil {
-		if err != redis.Nil {
+		if !errors.Is(err, redis.Nil) {
 			slog.Warn("consent redis load failed", "hash", hashHex, "error", err)
 		}
 		return
@@ -82,7 +83,7 @@ func (s *ConsentStore) StartWatch(ctx context.Context, rdb redis.UniversalClient
 	}
 	go func() {
 		pubsub := rdb.Subscribe(ctx, channel)
-		defer pubsub.Close()
+		defer func() { _ = pubsub.Close() }()
 		ch := pubsub.Channel(redis.WithChannelSize(256))
 		for {
 			select {

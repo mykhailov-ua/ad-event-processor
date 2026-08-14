@@ -24,7 +24,7 @@ func TestEffectiveDealFloor_usesOptimizedWhenHigher(t *testing.T) {
 
 func TestDealFloorCache_RefreshFromRedis(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	rdb, cleanup := database.SetupTestRedis(t)
 	defer cleanup()

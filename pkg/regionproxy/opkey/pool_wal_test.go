@@ -21,7 +21,7 @@ func TestPool_DrainsWALDedupReady(t *testing.T) {
 	defer w.Close()
 
 	payload := []byte("batch")
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		_, err := w.Append(payload)
 		require.NoError(t, err)
 	}
@@ -52,7 +52,7 @@ func TestPool_DrainsWALDedupReady(t *testing.T) {
 	}
 
 	seen := make(map[uint64]struct{}, 100)
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		slot, ok := pool.Dequeue()
 		require.True(t, ok)
 		assert.True(t, slot.Has(OpKeyFlagDerived))

@@ -191,6 +191,6 @@ func produceAdStreamEvent(producer *client.Client, topic string, campaignID uuid
 	if err != nil {
 		return err
 	}
-	_, err = producer.Produce(topic, 0, data)
+	_, err = producer.Produce(context.Background(), topic, 0, data)
 	return err
 }

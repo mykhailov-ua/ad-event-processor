@@ -23,7 +23,7 @@ func TestTgClickWorkerPoolNoDoubleParse(t *testing.T) {
 	staticCampaignMu.Unlock()
 	cachedMockCamp.Store(nil)
 
-	store := NewBrandCreativeStore(nil)
+	store := NewBrandCreativeStore(nil, 0)
 	store.cache.Store(&brandCreativeMapSnapshot{
 		byBrand: map[uuid.UUID][]brandCreativeEntry{
 			benchClickBrandID: brandCreativeEntriesReady([]brandCreativeEntry{{
@@ -47,7 +47,7 @@ func TestTgClickWorkerPoolNoDoubleParse(t *testing.T) {
 
 	parse400 := 0
 	ok := 0
-	for i := 0; i < 40; i++ {
+	for range 40 {
 		_, conn := ServeGnetHarness(h, inbound)
 		deadline := time.Now().Add(2 * time.Second)
 		for time.Now().Before(deadline) {

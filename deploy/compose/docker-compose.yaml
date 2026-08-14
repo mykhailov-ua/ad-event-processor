@@ -13,7 +13,6 @@ services:
     environment:
       - SERVER_PORT=8181
       - METRICS_PORT=9101
-      - DB_DSN=${DB_DSN}
       - REDIS_ADDRS=${REDIS_ADDRS}
       - BROKER_URL=${BROKER_URL:-127.0.0.1:9092}
       - CH_INGEST_SOURCE=${CH_INGEST_SOURCE:-broker}

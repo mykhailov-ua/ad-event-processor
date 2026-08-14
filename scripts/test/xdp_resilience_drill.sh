@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Enterprise XDP resilience drill (MILESTONE §2.2.9). Manual / workflow_dispatch only.
+# Precondition: BTF vmlinux readable; root for XDP attach; BPF objects via go generate — skips exit 0 when BTF/BPF missing.
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

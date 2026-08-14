@@ -62,7 +62,7 @@ func (client *ControlplaneClient) BlockIP(ctx context.Context, ip string) error 
 
 	resp, err := client.httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrManagementUnavailable, err)
+		return fmt.Errorf("%w: %w", ErrManagementUnavailable, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
@@ -72,7 +72,7 @@ func (client *ControlplaneClient) BlockIP(ctx context.Context, ip string) error 
 
 	payload, readErr := io.ReadAll(io.LimitReader(resp.Body, 4096))
 	if readErr != nil {
-		return fmt.Errorf("%w: status=%d read body: %v", ErrManagementUnavailable, resp.StatusCode, readErr)
+		return fmt.Errorf("%w: status=%d read body: %w", ErrManagementUnavailable, resp.StatusCode, readErr)
 	}
 	return fmt.Errorf("%w: status=%d body=%s", ErrManagementUnavailable, resp.StatusCode, strings.TrimSpace(string(payload)))
 }
@@ -106,7 +106,7 @@ func (client *ControlplaneClient) EnqueueFraudThreat(ctx context.Context, action
 
 	resp, err := client.httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrManagementUnavailable, err)
+		return fmt.Errorf("%w: %w", ErrManagementUnavailable, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
@@ -116,7 +116,7 @@ func (client *ControlplaneClient) EnqueueFraudThreat(ctx context.Context, action
 
 	payload, readErr := io.ReadAll(io.LimitReader(resp.Body, 4096))
 	if readErr != nil {
-		return fmt.Errorf("%w: status=%d read body: %v", ErrManagementUnavailable, resp.StatusCode, readErr)
+		return fmt.Errorf("%w: status=%d read body: %w", ErrManagementUnavailable, resp.StatusCode, readErr)
 	}
 	return fmt.Errorf("%w: status=%d body=%s", ErrManagementUnavailable, resp.StatusCode, strings.TrimSpace(string(payload)))
 }

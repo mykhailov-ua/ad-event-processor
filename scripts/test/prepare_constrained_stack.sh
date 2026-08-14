@@ -6,7 +6,9 @@ cd "$ROOT"
 
 if [[ -f "$ROOT/.env" ]]; then
 	set -a
-	source "$ROOT/.env"
+	if ! source "$ROOT/.env" 2>/dev/null; then
+		log "WARN: .env present but not sourced (parse error); using compose defaults"
+	fi
 	set +a
 fi
 DB_PORT="${DB_PORT:-5430}"
@@ -28,7 +30,7 @@ log "bringing up data plane"
 "${COMPOSE[@]}" stop tracker-2 tracker-3 2>/dev/null || true
 
 log "waiting for postgres"
-until "${COMPOSE[@]}" exec -T db pg_isready -p "$DB_PORT" -U ad_event_processor_user -d ad_event_processor >/dev/null 2>&1; do
+until "${COMPOSE[@]}" exec -T db pg_isready -h 127.0.0.1 -p "$DB_PORT" -U ad_event_processor_user -d ad_event_processor >/dev/null 2>&1; do
 	sleep 1
 done
 

@@ -5,7 +5,7 @@ func decodeJSONU16(hex []byte) (uint16, bool) {
 		return 0, false
 	}
 	var v uint16
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		h := hexLookup[hex[i]]
 		if h == 0xff {
 			return 0, false

@@ -29,7 +29,7 @@ func TestEmergencyCircuitBreaker(t *testing.T) {
 		RateLimitWindowMs: 60000,
 	}
 
-	svc := NewService(pool, []redis.UniversalClient{rdb}, nil, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, cfg)
 	defer svc.Close()
 
 	ctx := context.Background()

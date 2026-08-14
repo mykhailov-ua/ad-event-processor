@@ -31,14 +31,14 @@ func TestManagementAPI_Hardening(t *testing.T) {
 		AdminAPIKey: "test-secret",
 	}
 
-	svc := NewService(pool, []redis.UniversalClient{rdb}, nil, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, cfg)
 	defer svc.Close()
 	h := NewHandler(svc, cfg, nil, nil, nil, nil)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 
 	t.Run("LegacyAdmin_Gone", func(t *testing.T) {
-		req, _ := http.NewRequest("POST", "/admin/settings", nil)
+		req, _ := http.NewRequest("POST", "/admin/settings", http.NoBody)
 		req.Header.Set("X-Admin-API-Key", "test-secret")
 		resp := httptest.NewRecorder()
 		mux.ServeHTTP(resp, req)
@@ -62,7 +62,7 @@ func TestManagementAPI_Hardening(t *testing.T) {
 	})
 
 	t.Run("ListAudit", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/api/v1/audit?limit=10", nil)
+		req, _ := http.NewRequest("GET", "/api/v1/audit?limit=10", http.NoBody)
 		req.Header.Set("X-Admin-API-Key", "test-secret")
 		resp := httptest.NewRecorder()
 		mux.ServeHTTP(resp, req)
@@ -76,8 +76,8 @@ func TestManagementAPI_Hardening(t *testing.T) {
 	})
 
 	t.Run("RateLimit", func(t *testing.T) {
-		for i := 0; i < 60; i++ {
-			req, _ := http.NewRequest("GET", "/api/v1/audit", nil)
+		for range 60 {
+			req, _ := http.NewRequest("GET", "/api/v1/audit", http.NoBody)
 			req.Header.Set("X-Admin-API-Key", "test-secret")
 			resp := httptest.NewRecorder()
 			mux.ServeHTTP(resp, req)

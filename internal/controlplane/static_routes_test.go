@@ -28,7 +28,7 @@ func TestAdminStaticRoutes(t *testing.T) {
 	RegisterAdminStaticRoutes(mux, nil)
 
 	t.Run("GET / unauthenticated without gate serves index fallback", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/", nil)
+		req, _ := http.NewRequest("GET", "/", http.NoBody)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -39,7 +39,7 @@ func TestAdminStaticRoutes(t *testing.T) {
 	})
 
 	t.Run("GET SPA route /customers returns index.html fallback", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/customers", nil)
+		req, _ := http.NewRequest("GET", "/customers", http.NoBody)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -48,7 +48,7 @@ func TestAdminStaticRoutes(t *testing.T) {
 	})
 
 	t.Run("GET /login serves login.html", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/login", nil)
+		req, _ := http.NewRequest("GET", "/login", http.NoBody)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -59,7 +59,7 @@ func TestAdminStaticRoutes(t *testing.T) {
 	})
 
 	t.Run("GET /install/done serves index without boot", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/install/done", nil)
+		req, _ := http.NewRequest("GET", "/install/done", http.NoBody)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -72,7 +72,7 @@ func TestAdminStaticRoutes(t *testing.T) {
 	})
 
 	t.Run("GET unknown /api/v1 route returns 404 JSON", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/api/v1/nonexistent", nil)
+		req, _ := http.NewRequest("GET", "/api/v1/nonexistent", http.NoBody)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -85,7 +85,7 @@ func TestAdminStaticRoutes(t *testing.T) {
 	_ = staticFS
 
 	t.Run("GET /src/main.js has immutable cache", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/src/main.js", nil)
+		req, _ := http.NewRequest("GET", "/src/main.js", http.NoBody)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -100,7 +100,7 @@ func TestAdminStaticRoutesWithGateUnauth(t *testing.T) {
 	RegisterAdminStaticRoutes(mux, gate)
 
 	t.Run("GET /bootstrap serves main index without boot", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/bootstrap", nil)
+		req, _ := http.NewRequest("GET", "/bootstrap", http.NoBody)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -112,7 +112,7 @@ func TestAdminStaticRoutesWithGateUnauth(t *testing.T) {
 	})
 
 	t.Run("GET /login serves login.html with no-cache", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/login", nil)
+		req, _ := http.NewRequest("GET", "/login", http.NoBody)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -120,7 +120,7 @@ func TestAdminStaticRoutesWithGateUnauth(t *testing.T) {
 		assert.Equal(t, "no-cache, no-store, must-revalidate", w.Header().Get("Cache-Control"))
 	})
 
-	req, _ := http.NewRequest("GET", "/customers", nil)
+	req, _ := http.NewRequest("GET", "/customers", http.NoBody)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 

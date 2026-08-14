@@ -219,7 +219,7 @@ func queryPlacementReportRows(
 	if err != nil {
 		return nil, 0, fmt.Errorf("placement report query: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	out := make([]placementReportCHRow, 0, limit)
 	for rows.Next() {
@@ -272,7 +272,7 @@ func queryKeywordReportRows(
 	if err != nil {
 		return nil, 0, fmt.Errorf("keyword report query: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	out := make([]keywordReportCHRow, 0, limit)
 	for rows.Next() {
@@ -377,7 +377,7 @@ func queryPlacementIVTRates(
 	if err != nil {
 		return nil, fmt.Errorf("placement ivt query: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	out := make(map[string]float64)
 	for rows.Next() {
 		var row placementIVTRow
@@ -404,7 +404,7 @@ func queryKeywordIVTRates(
 	if err != nil {
 		return nil, fmt.Errorf("keyword ivt query: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	out := make(map[string]float64)
 	for rows.Next() {
 		var row keywordIVTRow
@@ -490,7 +490,7 @@ func queryTelegramExportRows(
 	if err != nil {
 		return nil, 0, fmt.Errorf("telegram export query: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	out := make([]telegramExportCHRow, 0, limit)
 	for rows.Next() {

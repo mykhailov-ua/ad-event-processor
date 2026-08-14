@@ -67,7 +67,7 @@ func serveLoginHTML(w http.ResponseWriter, staticFS http.FileSystem) {
 		http.Error(w, "login page missing", http.StatusInternalServerError)
 		return
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	data, err := io.ReadAll(f)
 	if err != nil {
 		http.Error(w, "login page unreadable", http.StatusInternalServerError)
@@ -84,7 +84,7 @@ func serveIndexHTML(w http.ResponseWriter, staticFS http.FileSystem, boot *Admin
 		http.Error(w, "index missing", http.StatusInternalServerError)
 		return
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	data, err := io.ReadAll(f)
 	if err != nil {
 		http.Error(w, "index unreadable", http.StatusInternalServerError)

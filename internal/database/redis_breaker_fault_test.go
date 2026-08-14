@@ -20,7 +20,7 @@ func TestFault_SentinelPromotionIsolation(t *testing.T) {
 	}
 
 	// Trip breaker on shard 1 only (simulated master kill / promotion window).
-	for i := 0; i < 60; i++ {
+	for range 60 {
 		breakers[1].RecordFailure()
 	}
 	require.Equal(t, CircuitOpen, breakers[1].State())

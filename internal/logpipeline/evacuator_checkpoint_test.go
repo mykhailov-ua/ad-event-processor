@@ -1,6 +1,7 @@
 package logpipeline
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -48,7 +49,7 @@ func TestCheckpointStore_corruptFile(t *testing.T) {
 
 	store := NewEvacuatorCheckpointStore(path)
 	_, err := store.Load()
-	if err != ErrEvacuatorCheckpointCorrupt {
+	if !errors.Is(err, ErrEvacuatorCheckpointCorrupt) {
 		t.Fatalf("expected ErrEvacuatorCheckpointCorrupt, got %v", err)
 	}
 }

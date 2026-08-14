@@ -17,14 +17,14 @@ func TestWAL_RecoverTruncatesTornTail(t *testing.T) {
 	w, err := Open(dir, gate)
 	require.NoError(t, err)
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		_, err := w.Append([]byte{byte('a' + i)})
 		require.NoError(t, err)
 	}
 	cleanPos := w.WritePos()
 	require.NoError(t, w.Close())
 
-	f, err := os.OpenFile(w.path, os.O_RDWR, 0644)
+	f, err := os.OpenFile(w.path, os.O_RDWR, 0o644)
 	require.NoError(t, err)
 	_, err = f.WriteAt([]byte{0xFF, 0xFF, 0xFF, 0xFF, 0x01, 0x00, 0x00, 0x00}, cleanPos)
 	require.NoError(t, err)
@@ -37,7 +37,7 @@ func TestWAL_RecoverTruncatesTornTail(t *testing.T) {
 	assert.Equal(t, cleanPos, w2.WritePos())
 	assert.Equal(t, uint64(5), w2.NextSeq())
 
-	for i := uint64(0); i < 5; i++ {
+	for i := range uint64(5) {
 		hdr, payload, err := w2.ReadRecord(i)
 		require.NoError(t, err)
 		assert.True(t, hdr.Has(WalFlagAppended))

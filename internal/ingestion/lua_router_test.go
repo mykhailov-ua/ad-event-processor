@@ -53,7 +53,7 @@ func TestUnifiedFilter_needsFullLuaPath(t *testing.T) {
 
 func TestUnifiedFilter_fastPathDebitMatchesFull(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := attachFilterDeadline(t.Context(), time.Second)
 	rdb, cleanup := setupTestRedis(t)

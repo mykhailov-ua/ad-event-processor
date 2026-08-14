@@ -13,7 +13,7 @@ import (
 
 func TestParsePathUUID(t *testing.T) {
 	id := uuid.NewString()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/campaigns/"+id+"/stats", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/campaigns/"+id+"/stats", http.NoBody)
 	req.SetPathValue("id", id)
 	got, err := ParsePathUUID(req, "id")
 	require.NoError(t, err)

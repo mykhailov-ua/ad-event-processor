@@ -15,7 +15,7 @@ import (
 
 func TestSlotMigration_DualWriteCopyAndActivate(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	rdb, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
@@ -57,7 +57,7 @@ func TestSlotMigration_DualWriteCopyAndActivate(t *testing.T) {
 
 func TestSlotMigration_DualWriteActivateBlockedOnLag(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	rdb, cleanup := database.SetupTestRedis(t)
 	defer cleanup()

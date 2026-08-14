@@ -60,3 +60,11 @@ func TestEffectiveScoreWithBoost_ranking(t *testing.T) {
 func effectiveScoreWithBoost(bid int64, ctrPPM, boostPPM uint32) int64 {
 	return bid * int64(ctrPPM) * int64(boostPPM) / int64(CTRPPMUnit) / int64(CTRPPMUnit)
 }
+
+func TestRunAuction_nilCatalog(t *testing.T) {
+	t.Parallel()
+	var catalog *RtbCatalog
+	res, reason := catalog.RunAuction(&domain.Event{}, RtbTargetingInput{})
+	assert.Equal(t, rtb.AuctionResult{}, res)
+	assert.Equal(t, rtb.NoBidInvalidRequest, reason)
+}

@@ -36,7 +36,7 @@ func (r *ReportJobRunner) writeReportCSV(ctx context.Context, path string, spec 
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	w := csv.NewWriter(f)
 
 	switch spec.ReportKey {

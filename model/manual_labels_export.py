@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Export manual labels from Postgres for ML training feedback loop."""
+
 from __future__ import annotations
 
 import csv
@@ -45,8 +46,8 @@ def main() -> int:
     output = Path(os.environ.get("FRAUD_MANUAL_LABELS", "var/fraudscore/training/manual_labels.csv"))
     try:
         count = export_manual_labels(output, dsn=dsn)
-    except (psycopg2.Error, OSError) as exc:
-        print(f"manual_labels_export: {exc}", file=sys.stderr)
+    except (psycopg2.Error, OSError) as err:
+        print(f"manual_labels_export: {err}", file=sys.stderr)
         return 1
 
     print(f"manual_labels_export: exported {count} labels to {output}", file=sys.stderr)

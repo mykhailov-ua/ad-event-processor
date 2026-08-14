@@ -50,7 +50,7 @@ func TestFault_StaleLeaderFencingRejected(t *testing.T) {
 		t.Fatal(err)
 	}
 	s.SetCoordinator(coord)
-	coord.Start()
+	coord.Start(context.Background())
 	defer coord.Stop()
 
 	topic := "fence-events"
@@ -76,7 +76,7 @@ func TestFault_StaleLeaderFencingRejected(t *testing.T) {
 	}
 	defer cli.Close()
 
-	if _, err := cli.Produce(topic, 0, []byte("live-leader")); err != nil {
+	if _, err := cli.Produce(context.Background(), topic, 0, []byte("live-leader")); err != nil {
 		t.Fatalf("produce on live leader failed: %v", err)
 	}
 
@@ -90,8 +90,8 @@ func TestFault_StaleLeaderFencingRejected(t *testing.T) {
 	}
 
 	staleRejected := false
-	for i := 0; i < 3; i++ {
-		_, err := cli.Produce(topic, 0, []byte("stale-via-server"))
+	for range 3 {
+		_, err := cli.Produce(context.Background(), topic, 0, []byte("stale-via-server"))
 		if err != nil {
 			staleRejected = true
 			break

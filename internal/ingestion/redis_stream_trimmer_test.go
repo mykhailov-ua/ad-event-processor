@@ -35,7 +35,7 @@ func TestRedisStreamTrimmer_TrimOnceAndMetrics(t *testing.T) {
 	stream := "test:trim:stream"
 
 	// Add 50 entries to miniredis stream
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		_, err := rdb.XAdd(ctx, &redis.XAddArgs{
 			Stream: stream,
 			Values: map[string]interface{}{"k": "v"},
@@ -82,7 +82,7 @@ func TestRedisStreamTrimmer_PELPendingNotInflated(t *testing.T) {
 
 	require.NoError(t, rdb.XGroupCreateMkStream(ctx, stream, group, "0").Err())
 
-	for i := 0; i < 30; i++ {
+	for i := range 30 {
 		_, err := rdb.XAdd(ctx, &redis.XAddArgs{
 			Stream: stream,
 			Values: map[string]interface{}{"k": i},

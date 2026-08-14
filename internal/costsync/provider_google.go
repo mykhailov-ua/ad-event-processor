@@ -72,7 +72,7 @@ func fetchGoogleCosts(ctx context.Context, client *http.Client, baseURL string, 
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("google ads: status %d: %s", resp.StatusCode, string(respBody))

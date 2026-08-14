@@ -80,7 +80,7 @@ func TestResilienceDrill_LoopbackBlocklistDrop(t *testing.T) {
 	// Drop counter: bpf prog.Test against the same maps the attached program uses.
 	// Raw frames on lo are not relied on for blocklist proof (routing/XDP generic quirks).
 	pkt := faultinject.BuildSYNPacket(victim, net.IPv4(10, 0, 0, 1), faultinject.TrackerPort)
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		ret, _, err := objs.XdpEdgeFilter.Test(pkt)
 		require.NoError(t, err)
 		require.Equal(t, uint32(1), ret, "blocklisted source must XDP_DROP")

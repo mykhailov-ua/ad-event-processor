@@ -50,7 +50,7 @@ func fetchTonicRSOCCosts(ctx context.Context, client *http.Client, baseURL strin
 
 func tonicFetchEPCDaily(ctx context.Context, client *http.Client, base string, cred Credential, date string) ([]CostLine, error) {
 	endpoint := fmt.Sprintf("%s/epc/daily?date=%s", strings.TrimRight(base, "/"), date)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +60,7 @@ func tonicFetchEPCDaily(ctx context.Context, client *http.Client, base string, c
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("tonic epc/daily: status %d: %s", resp.StatusCode, string(body))
@@ -108,7 +108,7 @@ func tonicRevenueMicro(revenue, epc float64, clicks int64) (int64, error) {
 
 func tonicFetchStatsByCountry(ctx context.Context, client *http.Client, base string, cred Credential, date string) ([]CostLine, error) {
 	endpoint := fmt.Sprintf("%s/rsoc/stats_by_country?date=%s", strings.TrimRight(base, "/"), date)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func tonicFetchStatsByCountry(ctx context.Context, client *http.Client, base str
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("tonic stats_by_country: status %d: %s", resp.StatusCode, string(body))
@@ -182,7 +182,7 @@ func fetchSystem1RSOCCosts(ctx context.Context, client *http.Client, baseURL str
 	}
 
 	endpoint := fmt.Sprintf("%s/revenue/%s?date=%s", strings.TrimRight(base, "/"), mode, date.Format("2006-01-02"))
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +192,7 @@ func fetchSystem1RSOCCosts(ctx context.Context, client *http.Client, baseURL str
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("system1 rsoc: status %d: %s", resp.StatusCode, string(body))

@@ -3,6 +3,7 @@ package ingestion
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"hash/fnv"
 	"log/slog"
 	"sync/atomic"
@@ -43,12 +44,16 @@ func (s *BrandCreativeStore) brandCreativeSnapshot() *brandCreativeMapSnapshot {
 }
 
 type BrandCreativeStore struct {
-	rdb   redis.UniversalClient
-	cache atomic.Value
+	rdb              redis.UniversalClient
+	redisLoadTimeout time.Duration
+	cache            atomic.Value
 }
 
-func NewBrandCreativeStore(rdb redis.UniversalClient) *BrandCreativeStore {
+func NewBrandCreativeStore(rdb redis.UniversalClient, loadTimeoutMs int) *BrandCreativeStore {
 	s := &BrandCreativeStore{rdb: rdb}
+	if ms := FilterRedisReadTimeoutMs(loadTimeoutMs); ms > 0 {
+		s.redisLoadTimeout = time.Duration(ms) * time.Millisecond
+	}
 	s.cache.Store(&brandCreativeMapSnapshot{byBrand: make(map[uuid.UUID][]brandCreativeEntry)})
 	return s
 }
@@ -59,6 +64,9 @@ func (s *BrandCreativeStore) LoadFromRedis(ctx context.Context, brandID uuid.UUI
 	}
 	raw, err := s.rdb.Get(ctx, "brand:creatives:"+brandID.String()).Bytes()
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			brandCreativeLoadTimeout.Inc()
+		}
 		return
 	}
 	var entries []brandCreativeEntry
@@ -77,16 +85,16 @@ func (s *BrandCreativeStore) LoadFromRedis(ctx context.Context, brandID uuid.UUI
 	s.cache.Store(&brandCreativeMapSnapshot{byBrand: next})
 }
 
-func (s *BrandCreativeStore) SelectLandingURL(brandID uuid.UUID, userID string) string {
-	e, ok := s.selectCreative(brandID, userID)
+func (s *BrandCreativeStore) SelectLandingURL(brandID uuid.UUID, userID string, evt *domain.Event) string {
+	e, ok := s.selectCreative(brandID, userID, evt)
 	if !ok {
 		return ""
 	}
 	return e.URL
 }
 
-func (s *BrandCreativeStore) SelectLandingURLBytes(brandID uuid.UUID, userID string) []byte {
-	e, ok := s.selectCreative(brandID, userID)
+func (s *BrandCreativeStore) SelectLandingURLBytes(brandID uuid.UUID, userID string, evt *domain.Event) []byte {
+	e, ok := s.selectCreative(brandID, userID, evt)
 	if !ok {
 		return nil
 	}
@@ -99,10 +107,10 @@ func (s *BrandCreativeStore) SelectLandingURLBytes(brandID uuid.UUID, userID str
 	return UnsafeBytes(e.URL)
 }
 
-func (s *BrandCreativeStore) selectCreative(brandID uuid.UUID, userID string) (brandCreativeEntry, bool) {
+func (s *BrandCreativeStore) selectCreative(brandID uuid.UUID, userID string, evt *domain.Event) (brandCreativeEntry, bool) {
 	entries := s.brandCreativeSnapshot().byBrand[brandID]
 	if len(entries) == 0 && s.rdb != nil {
-		s.LoadFromRedis(context.Background(), brandID)
+		s.loadFromRedisBounded(evt, brandID)
 		entries = s.brandCreativeSnapshot().byBrand[brandID]
 	}
 	if len(entries) == 0 {
@@ -133,6 +141,33 @@ func (s *BrandCreativeStore) selectCreative(brandID uuid.UUID, userID string) (b
 		}
 	}
 	return entries[len(entries)-1], true
+}
+
+func (s *BrandCreativeStore) loadFromRedisBounded(evt *domain.Event, brandID uuid.UUID) {
+	if filterDeadlineExceededEvt(evt, nil) {
+		brandCreativeLoadTimeout.Inc()
+		return
+	}
+	rem, hasRem := filterDeadlineRemainingEvt(evt, nil)
+	if hasRem && rem <= 0 {
+		brandCreativeLoadTimeout.Inc()
+		return
+	}
+
+	var ctx context.Context
+	var cancel context.CancelFunc
+	switch {
+	case hasRem:
+		ctx, cancel = context.WithTimeout(context.Background(), rem)
+	case s.redisLoadTimeout > 0:
+		ctx, cancel = context.WithTimeout(context.Background(), s.redisLoadTimeout)
+	default:
+		ctx = context.Background()
+	}
+	if cancel != nil {
+		defer cancel()
+	}
+	s.LoadFromRedis(ctx, brandID)
 }
 
 type ScheduleFilter struct {

@@ -16,7 +16,7 @@ func TestSmartPacingExpectedRatio_daypartWeighted(t *testing.T) {
 	for h := 9; h <= 17; h++ {
 		weights[h] = 1.0
 	}
-	for h := 0; h < 24; h++ {
+	for h := range 24 {
 		if weights[h] == 0 {
 			weights[h] = 0.01
 		}

@@ -116,7 +116,7 @@ func TestAdEvent_UnmarshalVT_ZeroAlloc(t *testing.T) {
 	var evt pb.AdEvent
 	evt.Metadata = &pb.EventMetadata{}
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		resetPooledAdEvent(&evt)
 		if err := evt.UnmarshalVT(body); err != nil {
 			t.Fatal(err)
@@ -178,7 +178,7 @@ func TestAdEvent_UnmarshalVT_ExtraBytes_ZeroAlloc(t *testing.T) {
 	var evt pb.AdEvent
 	evt.Metadata = &pb.EventMetadata{}
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		resetPooledAdEvent(&evt)
 		if err := evt.UnmarshalVT(body); err != nil {
 			t.Fatal(err)
@@ -201,7 +201,7 @@ func TestAdEvent_UnmarshalVT_ExtraRepeated_LegacyZeroAlloc(t *testing.T) {
 	var evt pb.AdEvent
 	evt.Metadata = &pb.EventMetadata{}
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		resetPooledAdEvent(&evt)
 		if err := evt.UnmarshalVT(body); err != nil {
 			t.Fatal(err)

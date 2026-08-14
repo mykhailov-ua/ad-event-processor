@@ -20,7 +20,7 @@ func drainRingbufRecords(ctx context.Context, rd *ringbuf.Reader, sessionDir str
 		slog.Warn("events file", "error", err)
 		return
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	enc := json.NewEncoder(f)
 
 	for {

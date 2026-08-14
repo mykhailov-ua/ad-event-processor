@@ -17,7 +17,7 @@ func TestWAL_FaultSIGKILLReplayIdempotent(t *testing.T) {
 	appendRecords := func() uint64 {
 		w, err := Open(dir, gate)
 		require.NoError(t, err)
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			_, err := w.Append([]byte{byte('a' + i)})
 			require.NoError(t, err)
 		}
@@ -33,7 +33,7 @@ func TestWAL_FaultSIGKILLReplayIdempotent(t *testing.T) {
 	defer w2.Close()
 	assert.Equal(t, wantSeq, w2.NextSeq())
 
-	for i := uint64(0); i < wantSeq; i++ {
+	for i := range wantSeq {
 		hdr, payload, err := w2.ReadRecord(i)
 		require.NoError(t, err)
 		assert.True(t, hdr.Has(WalFlagAppended))
@@ -48,7 +48,7 @@ func TestWAL_FaultSIGKILLReplayIdempotent(t *testing.T) {
 	path := dir + "/" + walSegmentFile
 	fi, err := os.Stat(path)
 	require.NoError(t, err)
-	f, err := os.OpenFile(path, os.O_RDWR, 0644)
+	f, err := os.OpenFile(path, os.O_RDWR, 0o644)
 	require.NoError(t, err)
 	_, err = f.WriteAt([]byte{0xFF, 0xFF, 0xFF, 0xFF}, fi.Size()-4)
 	require.NoError(t, err)

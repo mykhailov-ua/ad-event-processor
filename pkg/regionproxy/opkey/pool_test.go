@@ -36,12 +36,12 @@ func TestPool_20ProducersUniqueOpID(t *testing.T) {
 	seen := make(map[[16]byte]struct{}, producers*perProd)
 	var seenMu sync.Mutex
 
-	for p := 0; p < producers; p++ {
+	for range producers {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			var factor [32]byte
-			for i := 0; i < perProd; i++ {
+			for range perProd {
 				for {
 					id, ok := pool.TryEnqueue(1, factor)
 					if ok {
@@ -73,7 +73,7 @@ func TestSlot_TryClaimExecutingSingleWinner(t *testing.T) {
 	const competitors = 32
 	var winners atomic.Int32
 	var wg sync.WaitGroup
-	for i := 0; i < competitors; i++ {
+	for range competitors {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -90,7 +90,7 @@ func TestSlot_TryClaimExecutingSingleWinner(t *testing.T) {
 func TestPool_ShedWhenOverWatermark(t *testing.T) {
 	pool := New(nil, Config{NodeID: "node-b", QueueSize: 64, Watermark: 4})
 	var factor [32]byte
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		_, ok := pool.TryEnqueue(uint64(i), factor)
 		require.True(t, ok)
 	}

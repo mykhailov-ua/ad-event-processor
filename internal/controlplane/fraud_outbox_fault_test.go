@@ -40,7 +40,7 @@ func TestFault_FraudBoostPropagation(t *testing.T) {
 	rdb3 := redis.NewUniversalClient(&redis.UniversalOptions{Addrs: []string{endpoint}, DB: 2})
 	defer rdb3.Close()
 
-	svc := NewService(pool, []redis.UniversalClient{rdb1, rdb2, rdb3}, nil, nil)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb1, rdb2, rdb3}, nil, nil)
 	defer svc.Close()
 	worker := NewOutboxWorker(svc)
 	ctx := context.Background()

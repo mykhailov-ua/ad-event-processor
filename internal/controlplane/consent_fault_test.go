@@ -51,7 +51,7 @@ func TestFault_ConsentWebhookReplay(t *testing.T) {
 	})
 	sig := signConsentBody(secret, body)
 
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		req, _ := http.NewRequest("POST", "/api/v1/consent", bytes.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("X-Consent-Signature", sig)

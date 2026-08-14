@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Offline ML vs policy benchmark on synthetic traffic."""
+
 from __future__ import annotations
 
 import argparse
@@ -27,18 +28,15 @@ DEFAULT_MODEL = REPO_ROOT / "var" / "fraudscore" / "artifacts" / "model.txt"
 ARTIFACT_DIR = REPO_ROOT / os.environ.get("FRAUD_ARTIFACT_DIR", "var/fraudscore/artifacts")
 FRAUD_THRESHOLD = float(os.environ.get("FRAUD_POLICY_ML_THRESHOLD", "0.5"))
 
+
 def _load_booster(model_path: Path):
     try:
         import lightgbm as lgb
-    except ImportError as exc:
-        raise SystemExit(
-            "evaluate: lightgbm required — pip install -r model/requirements.txt"
-        ) from exc
+    except ImportError as err:
+        raise SystemExit("evaluate: lightgbm required; pip install -r model/requirements.txt") from err
     booster = lgb.Booster(model_file=str(model_path))
     if booster.num_feature() != FEATURE_DIMS:
-        raise SystemExit(
-            f"evaluate: model num_feature={booster.num_feature()} want {FEATURE_DIMS}"
-        )
+        raise SystemExit(f"evaluate: model num_feature={booster.num_feature()} want {FEATURE_DIMS}")
     return booster
 
 
@@ -48,11 +46,11 @@ def _train_booster(train_rows: list[dict[str, int]], train_labels: list[int]):
     matrix = np.array([row_to_vector(row) for row in train_rows], dtype=np.float64)
     labels = np.array(train_labels, dtype=np.int32)
     if labels.sum() == 0 or labels.sum() == len(labels):
-        raise SystemExit("evaluate: train set has a single class — increase --train-size")
+        raise SystemExit("evaluate: train set has a single class; increase --train-size")
 
-    neg = int(np.sum(labels == 0))
-    pos = int(np.sum(labels == 1))
-    scale_pos_weight = float(neg / pos) if pos > 0 else 1.0
+    negative_count = int(np.sum(labels == 0))
+    positive_count = int(np.sum(labels == 1))
+    scale_pos_weight = float(negative_count / positive_count) if positive_count > 0 else 1.0
 
     train_data = lgb.Dataset(matrix, label=labels, feature_name=list(FEATURE_NAMES))
     params = {
@@ -77,8 +75,13 @@ def _confusion(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, int]:
     return {"tp": tp, "tn": tn, "fp": fp, "fn": fn}
 
 
-def _rates(cm: dict[str, int]) -> dict[str, float]:
-    tp, tn, fp, fn = cm["tp"], cm["tn"], cm["fp"], cm["fn"]
+def _rates(confusion_counts: dict[str, int]) -> dict[str, float]:
+    tp, tn, fp, fn = (
+        confusion_counts["tp"],
+        confusion_counts["tn"],
+        confusion_counts["fp"],
+        confusion_counts["fn"],
+    )
     precision = tp / (tp + fp) if (tp + fp) else 0.0
     recall = tp / (tp + fn) if (tp + fn) else 0.0
     f1 = 2 * precision * recall / (precision + recall) if (precision + recall) else 0.0
@@ -136,8 +139,8 @@ def _evaluate_mode(
     y_pred: np.ndarray,
     probs: np.ndarray,
 ) -> dict[str, object]:
-    cm = _confusion(y_true, y_pred)
-    rates = _rates(cm)
+    confusion_counts = _confusion(y_true, y_pred)
+    rates = _rates(confusion_counts)
     from sklearn.metrics import average_precision_score, roc_auc_score
 
     try:
@@ -146,7 +149,7 @@ def _evaluate_mode(
     except ValueError:
         auc = 0.0
         pr_auc = 0.0
-    return {"confusion_matrix": cm, "metrics": {**rates, "roc_auc": auc, "pr_auc": pr_auc}}
+    return {"confusion_matrix": confusion_counts, "metrics": {**rates, "roc_auc": auc, "pr_auc": pr_auc}}
 
 
 def _archetype_report_policy(
@@ -169,17 +172,17 @@ def _archetype_report_policy(
         bucket = by_name.get(archetype.name)
         if not bucket:
             continue
-        y = np.array(bucket["labels"], dtype=np.int32)
-        p = np.array(bucket["preds"], dtype=np.int32)
-        cm = _confusion(y, p)
-        rates = _rates(cm)
+        labels_batch = np.array(bucket["labels"], dtype=np.int32)
+        predictions_batch = np.array(bucket["preds"], dtype=np.int32)
+        confusion_counts = _confusion(labels_batch, predictions_batch)
+        rates = _rates(confusion_counts)
         report.append(
             {
                 "archetype": archetype.name,
                 "is_fraud_cohort": archetype.is_fraud,
-                "n": len(y),
+                "n": len(labels_batch),
                 **rates,
-                **cm,
+                **confusion_counts,
             }
         )
     return report
@@ -202,22 +205,22 @@ def _archetype_report(
         bucket = by_name.get(archetype.name)
         if not bucket:
             continue
-        y = np.array(bucket["labels"], dtype=np.int32)
-        p = np.array(bucket["probs"], dtype=np.float64)
-        pred = (p >= threshold).astype(np.int32)
-        cm = _confusion(y, pred)
-        rates = _rates(cm)
+        labels_batch = np.array(bucket["labels"], dtype=np.int32)
+        probability_batch = np.array(bucket["probs"], dtype=np.float64)
+        predictions_batch = (probability_batch >= threshold).astype(np.int32)
+        confusion_counts = _confusion(labels_batch, predictions_batch)
+        rates = _rates(confusion_counts)
         report.append(
             {
                 "archetype": archetype.name,
                 "is_fraud_cohort": archetype.is_fraud,
-                "n": len(y),
-                "fraud_rate_labeled": float(y.mean()),
-                "score_mean": float(p.mean()),
-                "score_p50": float(np.median(p)),
-                "score_p95": float(np.quantile(p, 0.95)),
+                "n": len(labels_batch),
+                "fraud_rate_labeled": float(labels_batch.mean()),
+                "score_mean": float(probability_batch.mean()),
+                "score_p50": float(np.median(probability_batch)),
+                "score_p95": float(np.quantile(probability_batch, 0.95)),
                 **rates,
-                **cm,
+                **confusion_counts,
             }
         )
     return report
@@ -316,12 +319,8 @@ def run_simulation(
         "archetype_breakdown_policy_block": _archetype_report_policy(
             test_rows, test_archetypes, test_labels, probs, block_only=True
         ),
-        "misclassified_samples": _sample_misclassified(
-            test_rows, test_labels, test_archetypes, probs, threshold
-        ),
-        "archetype_mix": [
-            {"name": a.name, "is_fraud": a.is_fraud, "weight": a.weight} for a in ARCHETYPES
-        ],
+        "misclassified_samples": _sample_misclassified(test_rows, test_labels, test_archetypes, probs, threshold),
+        "archetype_mix": [{"name": a.name, "is_fraud": a.is_fraud, "weight": a.weight} for a in ARCHETYPES],
     }
 
     if metrics_out is not None:
@@ -345,15 +344,15 @@ def run_shadow_precision_report(
         if not ping_client(client):
             raise ConnectionError("clickhouse ping failed")
         report = run_shadow_precision(client, hours=hours, threshold=threshold)
-    except (ConnectionError, OSError, TimeoutError, ValueError) as exc:
+    except (ConnectionError, OSError, TimeoutError, ValueError) as err:
         if allow_offline:
-            cfg = ch_config_from_env()
+            clickhouse_config = ch_config_from_env()
             report = {
                 "status": "skipped",
-                "reason": str(exc),
-                "host": cfg.host,
-                "port": cfg.port,
-                "database": cfg.database,
+                "reason": str(err),
+                "host": clickhouse_config.host,
+                "port": clickhouse_config.port,
+                "database": clickhouse_config.database,
             }
         else:
             raise
@@ -396,9 +395,7 @@ def main() -> int:
 
     if args.shadow_precision:
         metrics_out = (
-            Path(args.metrics_out)
-            if args.metrics_out
-            else REPO_ROOT / "var/fraudscore/shadow_precision_report.json"
+            Path(args.metrics_out) if args.metrics_out else REPO_ROOT / "var/fraudscore/shadow_precision_report.json"
         )
         threshold = float(os.environ.get("FRAUD_POLICY_ML_THRESHOLD", str(args.threshold)))
         report = run_shadow_precision_report(
@@ -422,9 +419,9 @@ def main() -> int:
         return 1
 
     metadata_path = ARTIFACT_DIR / "metadata.json"
-    env_cfg = load_policy_config_from_env()
+    env_policy = load_policy_config_from_env()
     source = os.environ.get("FRAUD_POLICY_SOURCE", "auto")
-    set_policy_config(resolve_policy_config(env_cfg, metadata_path, source))
+    set_policy_config(resolve_policy_config(env_policy, metadata_path, source))
     threshold = float(os.environ.get("FRAUD_POLICY_ML_THRESHOLD", str(args.threshold)))
 
     model_path = Path(args.model)

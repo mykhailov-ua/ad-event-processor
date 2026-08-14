@@ -191,7 +191,7 @@ func TestIntegration_StatsDeadlockStress(t *testing.T) {
 	queries := db.New(pool)
 
 	campaignIDs := make([]uuid.UUID, 5)
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		campaignIDs[i] = uuid.New()
 		_, err := pool.Exec(ctx, "INSERT INTO campaigns (id, name, status) VALUES ($1, $2, $3)",
 			campaignIDs[i], fmt.Sprintf("Stress Camp %d", i), "ACTIVE")
@@ -206,18 +206,18 @@ func TestIntegration_StatsDeadlockStress(t *testing.T) {
 
 	errChan := make(chan error, workers*iterations)
 
-	for w := 0; w < workers; w++ {
+	for w := range workers {
 		go func(workerID int) {
 			defer wg.Done()
 			rng := rand.New(rand.NewSource(int64(workerID)))
-			for i := 0; i < iterations; i++ {
+			for range iterations {
 				indices := []int{0, 1, 2, 3, 4}
 				rng.Shuffle(len(indices), func(i, j int) {
 					indices[i], indices[j] = indices[j], indices[i]
 				})
 
 				selectedIDs := make([]pgtype.UUID, 3)
-				for k := 0; k < 3; k++ {
+				for k := range 3 {
 					selectedIDs[k] = pgtype.UUID{Bytes: campaignIDs[indices[k]], Valid: true}
 				}
 

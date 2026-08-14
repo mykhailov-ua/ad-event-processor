@@ -23,7 +23,7 @@ func TestServerRetentionPass_StandaloneEvictsByBytes(t *testing.T) {
 		t.Fatal(err)
 	}
 	payload := make([]byte, 48)
-	for i := 0; i < 12; i++ {
+	for range 12 {
 		if _, err := pl.Append(payload); err != nil {
 			t.Fatal(err)
 		}

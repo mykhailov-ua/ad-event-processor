@@ -14,7 +14,7 @@ import (
 )
 
 func TestClientIPXFFNotTrustedWithoutProxy(t *testing.T) {
-	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	r := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
 	r.RemoteAddr = "203.0.113.1:12345"
 	r.Header.Set("X-Forwarded-For", "1.2.3.4, 203.0.113.1")
 
@@ -32,7 +32,7 @@ func TestClientIPXFFTrustedWithProxy(t *testing.T) {
 	controlplane.SetTrustedProxyRanges([]*net.IPNet{cidr})
 	t.Cleanup(func() { controlplane.SetTrustedProxyRanges(nil) })
 
-	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	r := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
 	r.RemoteAddr = "10.0.0.1:4321"
 	r.Header.Set("X-Forwarded-For", "203.0.113.5, 10.0.0.1")
 
@@ -46,7 +46,7 @@ func TestCORSWildcardNoCredentials(t *testing.T) {
 	handler := controlplane.NewCORSMiddleware([]string{"*"})(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}),
 	)
-	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	r := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
 	r.Header.Set("Origin", "https://evil.example.com")
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
@@ -63,7 +63,7 @@ func TestCORSExplicitAllowlistHasCredentials(t *testing.T) {
 	handler := controlplane.NewCORSMiddleware([]string{"https://dashboard.example.com"})(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}),
 	)
-	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	r := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
 	r.Header.Set("Origin", "https://dashboard.example.com")
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
@@ -79,7 +79,7 @@ func TestCSRFPatchBlocked(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	r := httptest.NewRequest(http.MethodPatch, "/api/v1/campaigns/123", nil)
+	r := httptest.NewRequest(http.MethodPatch, "/api/v1/campaigns/123", http.NoBody)
 	r.AddCookie(&http.Cookie{Name: "csrfToken", Value: "abc"})
 	r.Header.Set("X-CSRF-Token", "WRONG")
 
@@ -98,7 +98,7 @@ func TestCSRFPatchAccepted(t *testing.T) {
 	}))
 
 	token := "csrf-secure-token-12345"
-	r := httptest.NewRequest(http.MethodPatch, "/api/v1/campaigns/123", nil)
+	r := httptest.NewRequest(http.MethodPatch, "/api/v1/campaigns/123", http.NoBody)
 	r.AddCookie(&http.Cookie{Name: "csrfToken", Value: token})
 	r.Header.Set("X-CSRF-Token", token)
 
@@ -118,7 +118,7 @@ func TestAdminKeyWrongKeyRejected(t *testing.T) {
 	}))
 
 	almostCorrect := "super-secret-admin-key-xy"
-	r := httptest.NewRequest(http.MethodPost, "/api/v1/campaigns", nil)
+	r := httptest.NewRequest(http.MethodPost, "/api/v1/campaigns", http.NoBody)
 	r.Header.Set("X-Admin-API-Key", almostCorrect)
 
 	w := httptest.NewRecorder()
@@ -149,7 +149,7 @@ func TestRateLimiterEviction(t *testing.T) {
 	entries := make(map[string]*controlplane.ExportedRateLimiterEntry)
 	now := time.Now()
 
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		entries[fmt.Sprintf("ip-%d", i)] = &controlplane.ExportedRateLimiterEntry{
 			LastSeen: now.Add(-20 * time.Minute),
 		}

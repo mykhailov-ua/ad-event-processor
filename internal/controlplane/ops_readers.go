@@ -274,16 +274,16 @@ func (a *OpsAlerter) shouldSend(key string) bool {
 	return true
 }
 
-func (a *OpsAlerter) sendAsync(key, title, body string, broadcast bool) {
+func (a *OpsAlerter) sendAsync(ctx context.Context, key, title, body string, broadcast bool) {
 	if a == nil || !a.shouldSend(key) {
 		return
 	}
 	a.wg.Add(1)
 	go func() {
 		defer a.wg.Done()
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		sendCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
-		if err := a.dispatch(ctx, key, title, body, broadcast); err != nil {
+		if err := a.dispatch(sendCtx, key, title, body, broadcast); err != nil {
 			failures := a.enqueueFailures.Add(1)
 			metrics.IncControlOpsAlertEnqueueFailures()
 			slog.Warn("ops alert enqueue failed", "key", key, "error", err, "consecutive_failures", failures)
@@ -294,7 +294,7 @@ func (a *OpsAlerter) sendAsync(key, title, body string, broadcast bool) {
 					failures, key, err,
 				)
 				if a.shouldSend("notifier:enqueue") {
-					if metaErr := a.dispatch(ctx, "notifier:enqueue", metaTitle, metaBody, true); metaErr != nil {
+					if metaErr := a.dispatch(sendCtx, "notifier:enqueue", metaTitle, metaBody, true); metaErr != nil {
 						slog.Warn("ops meta alert enqueue failed", "error", metaErr)
 					}
 				}
@@ -323,7 +323,7 @@ func (a *OpsAlerter) enqueueNotification(ctx context.Context, key, title, body s
 	return a.dispatch(ctx, key, title, body, broadcast)
 }
 
-func (a *OpsAlerter) AlertReconDiscrepancy(runID int64, discrepancies int, totalDelta int64, period string) {
+func (a *OpsAlerter) AlertReconDiscrepancy(ctx context.Context, runID int64, discrepancies int, totalDelta int64, period string) {
 	if a == nil || discrepancies <= 0 {
 		return
 	}
@@ -333,10 +333,10 @@ func (a *OpsAlerter) AlertReconDiscrepancy(runID int64, discrepancies int, total
 		"<b>Recon discrepancy</b>\nPeriod: %s\nRun #%d\nCampaigns adjusted: %d\nTotal delta (micro): %d",
 		period, runID, discrepancies, totalDelta,
 	)
-	a.sendAsync(key, title, body, true)
+	a.sendAsync(ctx, key, title, body, true)
 }
 
-func (a *OpsAlerter) AlertReconDiscrepancyUnresolved(runID int64, unresolved int, totalDelta int64, period string, oldest time.Time) {
+func (a *OpsAlerter) AlertReconDiscrepancyUnresolved(ctx context.Context, runID int64, unresolved int, totalDelta int64, period string, oldest time.Time) {
 	if a == nil || unresolved <= 0 {
 		return
 	}
@@ -346,10 +346,10 @@ func (a *OpsAlerter) AlertReconDiscrepancyUnresolved(runID int64, unresolved int
 		"<b>Unresolved recon discrepancy</b>\nPeriod: %s\nRun #%d\nUnresolved campaigns: %d\nTotal |delta| (micro): %d\nOldest since: %s",
 		period, runID, unresolved, totalDelta, oldest.UTC().Format(time.RFC3339),
 	)
-	a.sendAsync(key, title, body, true)
+	a.sendAsync(ctx, key, title, body, true)
 }
 
-func (a *OpsAlerter) AlertRedisShardUnhealthy(shardIdx int, err error) {
+func (a *OpsAlerter) AlertRedisShardUnhealthy(ctx context.Context, shardIdx int, err error) {
 	if a == nil {
 		return
 	}
@@ -359,10 +359,10 @@ func (a *OpsAlerter) AlertRedisShardUnhealthy(shardIdx int, err error) {
 		"<b>Redis shard unhealthy</b>\nShard: %d\nError: %v\nStuck quota reservations were released.",
 		shardIdx, err,
 	)
-	a.sendAsync(key, title, body, true)
+	a.sendAsync(ctx, key, title, body, true)
 }
 
-func (a *OpsAlerter) AlertSlotMapMigrating(version int32, slots []int16, targetShard int16) {
+func (a *OpsAlerter) AlertSlotMapMigrating(ctx context.Context, version int32, slots []int16, targetShard int16) {
 	if a == nil || len(slots) == 0 {
 		return
 	}
@@ -372,10 +372,10 @@ func (a *OpsAlerter) AlertSlotMapMigrating(version int32, slots []int16, targetS
 		"<b>Slot map migration</b>\nVersion: %d\nTarget shard: %d\nSlots (%d): %s\nNext: copy data, then activate.",
 		version, targetShard, len(slots), formatSlotIDs(slots),
 	)
-	a.sendAsync(key, title, body, false)
+	a.sendAsync(ctx, key, title, body, false)
 }
 
-func (a *OpsAlerter) AlertDrainStuck(version int32, slot int16, state, lastError string, updatedAt time.Time) {
+func (a *OpsAlerter) AlertDrainStuck(ctx context.Context, version int32, slot int16, state, lastError string, updatedAt time.Time) {
 	if a == nil {
 		return
 	}
@@ -385,20 +385,20 @@ func (a *OpsAlerter) AlertDrainStuck(version int32, slot int16, state, lastError
 		"<b>Drain stuck</b>\nVersion: %d\nSlot: %d\nState: %s\nSince: %s\nError: %s",
 		version, slot, state, updatedAt.UTC().Format(time.RFC3339), lastError,
 	)
-	a.sendAsync(key, title, body, true)
+	a.sendAsync(ctx, key, title, body, true)
 }
 
-func (a *OpsAlerter) AlertBlacklistJanitorFailed(err error) {
+func (a *OpsAlerter) AlertBlacklistJanitorFailed(ctx context.Context, err error) {
 	if a == nil || err == nil {
 		return
 	}
 	key := "blacklist:janitor:scan"
 	title := branding.AlertTitle("blacklist janitor failed")
 	body := fmt.Sprintf("<b>Blacklist janitor scan failed</b>\nError: %v", err)
-	a.sendAsync(key, title, body, true)
+	a.sendAsync(ctx, key, title, body, true)
 }
 
-func (a *OpsAlerter) AlertOutboxStuck(pending int64, oldestSeconds float64) {
+func (a *OpsAlerter) AlertOutboxStuck(ctx context.Context, pending int64, oldestSeconds float64) {
 	if a == nil || pending <= 0 {
 		return
 	}
@@ -408,7 +408,7 @@ func (a *OpsAlerter) AlertOutboxStuck(pending int64, oldestSeconds float64) {
 		"<b>Outbox backlog stale</b>\nPending events: %d\nOldest pending age (s): %.0f\nHot-path Redis may drift from Postgres.",
 		pending, oldestSeconds,
 	)
-	a.sendAsync(key, title, body, true)
+	a.sendAsync(ctx, key, title, body, true)
 }
 
 func (a *OpsAlerter) OutboxStuckThresholdSec() int {
@@ -418,27 +418,27 @@ func (a *OpsAlerter) OutboxStuckThresholdSec() int {
 	return a.outboxStuckSec
 }
 
-func (a *OpsAlerter) AlertSlotMigrationComplete(version int32) {
+func (a *OpsAlerter) AlertSlotMigrationComplete(ctx context.Context, version int32) {
 	if a == nil {
 		return
 	}
 	key := fmt.Sprintf("migration:complete:%d", version)
 	title := branding.AlertTitle("slot migration cutover complete")
 	body := fmt.Sprintf("<b>Slot migration complete</b>\nActive version: %d\nPost-cutover R5 verification passed.", version)
-	a.sendAsync(key, title, body, false)
+	a.sendAsync(ctx, key, title, body, false)
 }
 
-func (a *OpsAlerter) AlertLedgerDrift(customerID string, driftErr error) {
+func (a *OpsAlerter) AlertLedgerDrift(ctx context.Context, customerID string, driftErr error) {
 	if a == nil || driftErr == nil {
 		return
 	}
 	key := fmt.Sprintf("billing:drift:%s", customerID)
 	title := branding.AlertTitle("billing ledger drift")
 	body := fmt.Sprintf("<b>Ledger invariant failed</b>\nCustomer: %s\nError: %v", customerID, driftErr)
-	a.sendAsync(key, title, body, true)
+	a.sendAsync(ctx, key, title, body, true)
 }
 
-func (a *OpsAlerter) AlertCHEmergencyDrop(table, partition string, diskUsedPct float64, thresholdPct int) {
+func (a *OpsAlerter) AlertCHEmergencyDrop(ctx context.Context, table, partition string, diskUsedPct float64, thresholdPct int) {
 	if a == nil {
 		return
 	}
@@ -448,20 +448,20 @@ func (a *OpsAlerter) AlertCHEmergencyDrop(table, partition string, diskUsedPct f
 		"<b>CH emergency drop</b>\nTable: %s\nPartition: %s\nDisk used: %.1f%%\nThreshold: %d%%\nReview retention and ingest volume.",
 		table, partition, diskUsedPct, thresholdPct,
 	)
-	a.sendAsync(key, title, body, true)
+	a.sendAsync(ctx, key, title, body, true)
 }
 
-func (a *OpsAlerter) AlertSlotMigrationError(stage string, err error) {
+func (a *OpsAlerter) AlertSlotMigrationError(ctx context.Context, stage string, err error) {
 	if a == nil || err == nil {
 		return
 	}
 	key := fmt.Sprintf("migration:tick:%s", stage)
 	title := fmt.Sprintf("%s: slot migration %s failed", branding.ProductName(), stage)
 	body := fmt.Sprintf("<b>Slot migration error</b>\nStage: %s\nError: %v", stage, err)
-	a.sendAsync(key, title, body, true)
+	a.sendAsync(ctx, key, title, body, true)
 }
 
-func (a *OpsAlerter) AlertLicenseApplied(deploymentID string, validUntil time.Time, adminID string, revoked bool) {
+func (a *OpsAlerter) AlertLicenseApplied(ctx context.Context, deploymentID string, validUntil time.Time, adminID string, revoked bool) {
 	if a == nil {
 		return
 	}
@@ -475,7 +475,7 @@ func (a *OpsAlerter) AlertLicenseApplied(deploymentID string, validUntil time.Ti
 		"<b>License %s</b>\nDeployment: %s\nValid until: %s\nAdmin: %s",
 		kind, deploymentID, validUntil.UTC().Format(time.RFC3339), adminID,
 	)
-	a.sendAsync(key, title, body, false)
+	a.sendAsync(ctx, key, title, body, false)
 }
 
 func formatSlotIDs(slots []int16) string {
@@ -529,7 +529,7 @@ func fetchMetrics(ctx context.Context, client *http.Client, url string) ([]byte,
 	if client == nil {
 		client = http.DefaultClient
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, "", err
 	}
@@ -537,7 +537,7 @@ func fetchMetrics(ctx context.Context, client *http.Client, url string) ([]byte,
 	if err != nil {
 		return nil, "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
 	if err != nil {
 		return nil, "", err

@@ -12,18 +12,32 @@ FIXTURES_DIR="${FRAUD_FIXTURES_DIR:-var/fraudscore/fixtures}"
 mkdir -p "${ARTIFACT_DIR}" "${FIXTURES_DIR}"
 
 echo "fraudtrain: bootstrap artifacts (ephemeral)"
-if python3 -c "import lightgbm" 2>/dev/null; then
-  python3 "${MODEL_DIR}/artifact_bootstrap.py" bootstrap
-  python3 "${MODEL_DIR}/fixture_generator.py"
-else
-  python3 "${MODEL_DIR}/artifact_bootstrap.py" bootstrap
-  echo "fraudtrain: skip fixture_generator (lightgbm not installed)"
-fi
+python3 "${MODEL_DIR}/artifact_bootstrap.py" bootstrap
+
+echo "fraudtrain: sync ML fixtures (tracked + ephemeral)"
+python3 "${MODEL_DIR}/fixture_generator.py"
 
 if [[ ! -f "${MODEL_PATH}" ]]; then
   echo "fraudtrain: missing ${MODEL_PATH} after bootstrap" >&2
   exit 1
 fi
+
+echo "fraudtrain: Python contract tests"
+if python3 -c "import pytest" 2>/dev/null; then
+  (cd "${MODEL_DIR}" && python3 -m pytest tests/ -q)
+else
+  echo "fraudtrain: skip pytest (pip install -r model/requirements.txt)" >&2
+  exit 1
+fi
+
+echo "fraudtrain: Go feature_spec golden"
+go test ./internal/fraud/ -run 'TestFeatureSpec' -count=1
+
+echo "fraudtrain: Go scoring_policy parity"
+go test ./internal/fraud/ -run 'TestScoringPolicyParity' -count=1
+
+echo "fraudtrain: Go policy_config parity"
+go test ./internal/fraud/ -run 'TestPolicyConfigParity' -count=1
 
 echo "fraudtrain: Go ml-validate"
 go test ./cmd/ml-validate/... -count=1
@@ -44,7 +58,7 @@ sys.path.insert(0, '${MODEL_DIR}')
 from labeled_dataset import write_synthetic_dataset
 write_synthetic_dataset(Path('var/fraudscore/training/fit_smoke.csv'), count=1500)
 "
-  python3 "${MODEL_DIR}/manual_labels_export.py" || true
+  python3 "${MODEL_DIR}/manual_labels_export.py"
 
   FRAUD_TRAIN_DATASET=var/fraudscore/training/fit_smoke.csv \
     FRAUD_FIT_MIN_ROWS=500 \
@@ -55,14 +69,23 @@ else
 fi
 
 if python3 -c "import clickhouse_connect" 2>/dev/null; then
-  echo "fraudtrain: features_export smoke"
-  python3 "${MODEL_DIR}/features_export.py" --smoke --allow-offline
+  if python3 -c "
+import sys
+sys.path.insert(0, '${MODEL_DIR}')
+from ch_client import connect_client, ping_client
+client = connect_client()
+sys.exit(0 if ping_client(client) else 1)
+" 2>/dev/null; then
+    echo "fraudtrain: features_export smoke"
+    python3 "${MODEL_DIR}/features_export.py" --smoke
+    echo "fraudtrain: evaluate smoke"
+    python3 "${MODEL_DIR}/evaluate.py" --format json --hours 1
+  else
+    echo "fraudtrain: skip CH smokes (ClickHouse unreachable)"
+  fi
 else
-  echo "fraudtrain: skip CH export smoke (clickhouse-connect not installed)"
+  echo "fraudtrain: skip CH smokes (clickhouse-connect not installed)"
 fi
-
-echo "fraudtrain: evaluate smoke"
-python3 "${MODEL_DIR}/evaluate.py" --allow-offline --format json --hours 1
 
 if command -v ruff >/dev/null 2>&1; then
   ruff check "${MODEL_DIR}/"

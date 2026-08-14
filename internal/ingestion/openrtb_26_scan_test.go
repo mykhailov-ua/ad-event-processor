@@ -9,7 +9,7 @@ import (
 
 func TestScanOpenRTB26Payload_truncatesQuoteDense(t *testing.T) {
 	payload := make([]byte, 0, (1<<20)+64)
-	for i := 0; i < 1<<20; i++ {
+	for range 1 << 20 {
 		payload = append(payload, '"')
 	}
 	payload = append(payload, `,"imp":[{"id":"1"}],"id":"req"}`...)

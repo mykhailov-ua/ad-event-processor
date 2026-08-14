@@ -13,7 +13,7 @@ import (
 
 func TestSlotMapRepo_CreateNextVersion_ACID(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	pool, cleanup := database.SetupTestDB(t)
@@ -49,7 +49,7 @@ func TestSlotMapRepo_CreateNextVersion_ACID(t *testing.T) {
 
 func TestSlotMapRepo_ActivateVersion_serializesMeta(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	pool, cleanup := database.SetupTestDB(t)
@@ -61,7 +61,7 @@ func TestSlotMapRepo_ActivateVersion_serializesMeta(t *testing.T) {
 
 	var wg sync.WaitGroup
 	errs := make(chan error, 2)
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -86,7 +86,7 @@ func TestSlotMapRepo_ActivateVersion_serializesMeta(t *testing.T) {
 
 func TestSlotMapRepo_MarkSlotsMigrating_rowLocks(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	pool, cleanup := database.SetupTestDB(t)
@@ -121,7 +121,7 @@ func TestTableFromRows_matchesModulo(t *testing.T) {
 	require.NoError(t, err)
 
 	sharder := NewStaticSlotSharder(4)
-	for slot := 0; slot < SlotCount; slot++ {
+	for slot := range SlotCount {
 		require.Equal(t, uint16(slot%4), table[slot])
 	}
 	_ = sharder
@@ -129,7 +129,7 @@ func TestTableFromRows_matchesModulo(t *testing.T) {
 
 func TestSlotMapRepo_invalidOverrideRejected(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	pool, cleanup := database.SetupTestDB(t)

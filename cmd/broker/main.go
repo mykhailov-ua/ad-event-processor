@@ -36,17 +36,17 @@ func main() {
 }
 
 func printUsage() {
-	fmt.Println("Usage: broker <command> [options]")
-	fmt.Println("\nCommands:")
-	fmt.Println("  replay    Replay historical WAL segments to target storage (e.g. clickhouse)")
-	fmt.Println("\nOptions for replay:")
-	fmt.Println("  --data-dir     Path to broker WAL data directory (e.g. /var/lib/bidshard/broker)")
-	fmt.Println("  --topic        Topic name to replay (default: ad-events)")
-	fmt.Println("  --from         RFC3339 start timestamp filter (e.g. 2026-08-08T12:00:00Z)")
-	fmt.Println("  --to           RFC3339 end timestamp filter (e.g. 2026-08-08T18:00:00Z)")
-	fmt.Println("  --target       Target system: clickhouse, stdout, or null (default: clickhouse)")
-	fmt.Println("  --ch-dsn       ClickHouse DSN connection string")
-	fmt.Println("  --batch-size   Replay batch size (default: 50000)")
+	_, _ = fmt.Fprintf(os.Stdout, "Usage: broker <command> [options]\n")
+	_, _ = fmt.Fprintf(os.Stdout, "\nCommands:\n")
+	_, _ = fmt.Fprintf(os.Stdout, "  replay    Replay historical WAL segments to target storage (e.g. clickhouse)\n")
+	_, _ = fmt.Fprintf(os.Stdout, "\nOptions for replay:\n")
+	_, _ = fmt.Fprintf(os.Stdout, "  --data-dir     Path to broker WAL data directory (e.g. /var/lib/bidshard/broker)\n")
+	_, _ = fmt.Fprintf(os.Stdout, "  --topic        Topic name to replay (default: ad-events)\n")
+	_, _ = fmt.Fprintf(os.Stdout, "  --from         RFC3339 start timestamp filter (e.g. 2026-08-08T12:00:00Z)\n")
+	_, _ = fmt.Fprintf(os.Stdout, "  --to           RFC3339 end timestamp filter (e.g. 2026-08-08T18:00:00Z)\n")
+	_, _ = fmt.Fprintf(os.Stdout, "  --target       Target system: clickhouse, stdout, or null (default: clickhouse)\n")
+	_, _ = fmt.Fprintf(os.Stdout, "  --ch-dsn       ClickHouse DSN connection string\n")
+	_, _ = fmt.Fprintf(os.Stdout, "  --batch-size   Replay batch size (default: 50000)\n")
 }
 
 func runReplay(args []string) {

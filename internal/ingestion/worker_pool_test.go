@@ -16,7 +16,7 @@ func TestPinnedWorkerPool(t *testing.T) {
 	numTasks := 10000
 
 	wg.Add(numTasks)
-	for i := 0; i < numTasks; i++ {
+	for i := range numTasks {
 		ctx := &connContext{
 			offloadWG: &wg,
 			offloadOnEnter: func() {

@@ -53,7 +53,7 @@ func FetchOpsSlotMapHTTP(ctx context.Context, client *http.Client, baseURL strin
 		client = &http.Client{Timeout: 3 * time.Second}
 	}
 	url := strings.TrimRight(baseURL, "/") + "/ops/shards/slot-map"
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return OpsSlotMapResponse{}, err
 	}
@@ -63,7 +63,7 @@ func FetchOpsSlotMapHTTP(ctx context.Context, client *http.Client, baseURL strin
 	if err != nil {
 		return OpsSlotMapResponse{}, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
 		return OpsSlotMapResponse{}, fmt.Errorf("slot map http: status %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
@@ -115,7 +115,7 @@ func CheckSlotMapRoutingParity(sharder *StaticSlotSharder, slots []uint16, sampl
 		return samples
 	}
 	mismatches := 0
-	for i := 0; i < samples; i++ {
+	for range samples {
 		id := uuid.New()
 		goShard := sharder.GetShard(id)
 		edgeShard, ok := ShardFromSlotTable(id, slots)

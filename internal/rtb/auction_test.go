@@ -67,7 +67,7 @@ func TestAuction_secondPrice_manyCandidates(t *testing.T) {
 	n := 200
 	campaigns := make([]CampaignData, n)
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		campaigns[i] = CampaignData{
 			ID:           CampaignID(uint64(i + 1)),
 			Bid:          int64(100 + i),
@@ -134,7 +134,7 @@ func TestAuction_secondPrice_manyCandidates_equalFloors(t *testing.T) {
 	reg := NewRegistry(store)
 	n := 150
 	campaigns := make([]CampaignData, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		campaigns[i] = CampaignData{
 			ID: CampaignID(uint64(i + 1)), Bid: 300, DeviceMask: 1, CategoryMask: 1,
 			GeoHashVal: 5, Weight: uint32(i), Budget: 10000,

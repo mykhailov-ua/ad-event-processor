@@ -178,7 +178,7 @@ func queryTrafficSourceRows(
 	if err != nil {
 		return nil, 0, fmt.Errorf("traffic sources query: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	eventRows := make([]trafficCampaignChannelRow, 0, 256)
 	campaignClicks := make(map[string]int64)
@@ -203,7 +203,7 @@ func queryTrafficSourceRows(
 	if err != nil {
 		return nil, 0, fmt.Errorf("traffic spend query: %w", err)
 	}
-	defer spendRows.Close()
+	defer func() { _ = spendRows.Close() }()
 	for spendRows.Next() {
 		var campaignID uuid.UUID
 		var totals campaignSpendTotals
@@ -288,7 +288,7 @@ func allocateTrafficShare(row trafficCampaignChannelRow, campaignClicks, campaig
 }
 
 func sortTrafficRows(rows []TrafficSourceRowDTO) {
-	for i := 0; i < len(rows); i++ {
+	for i := range rows {
 		for j := i + 1; j < len(rows); j++ {
 			if rows[j].SpendMicro > rows[i].SpendMicro ||
 				(rows[j].SpendMicro == rows[i].SpendMicro && rows[j].Clicks > rows[i].Clicks) {

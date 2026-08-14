@@ -144,7 +144,7 @@ func (w *Worker) upload(ctx context.Context, payload PulsePayload) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("telemetry pulse status %d", resp.StatusCode)
 	}

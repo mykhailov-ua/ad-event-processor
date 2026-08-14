@@ -2,7 +2,6 @@ package resilience_test
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"testing"
 	"time"
@@ -106,7 +105,7 @@ func TestFault_Shard0Outage(t *testing.T) {
 	statusBaseline, baselineLatency := postClickCampaign(t, handler, campaignIDs[1], uuid.NewString())
 	require.Equal(t, http.StatusAccepted, statusBaseline)
 
-	svc := controlplane.NewService(pool, rdbs, sharder, cfg)
+	svc := controlplane.NewService(context.Background(), pool, rdbs, sharder, cfg)
 	defer svc.Close()
 
 	testutil.StopRedisShardContainer(t, shardInfra.Containers[0])
@@ -148,9 +147,13 @@ func TestFault_Shard0Outage(t *testing.T) {
 
 	outboxWorker := controlplane.NewOutboxWorker(svc)
 	processed, err := outboxWorker.ProcessOutboxWithCount(ctx, 10)
-	require.Error(t, err)
-	require.Equal(t, 0, processed)
-	assert.Equal(t, "PENDING", outboxStatus(t, pool, eventID))
+	require.NoError(t, err, "partial fanout must succeed when shards 1-3 are healthy")
+	require.Equal(t, 1, processed)
+	assert.Equal(t, "PROCESSED", outboxStatus(t, pool, eventID))
+
+	versionShard1, err := shardInfra.Clients[1].Get(ctx, "config:version").Int64()
+	require.NoError(t, err)
+	assert.Equal(t, eventID, versionShard1, "healthy shards must receive settings fanout")
 
 	testutil.StartRedisShardContainer(t, shardInfra.Containers[0])
 	testutil.WaitRedisContainerReady(t, shardInfra.Containers[0])
@@ -172,41 +175,15 @@ func TestFault_Shard0Outage(t *testing.T) {
 	}
 
 	testutil.LogFaultProof(t, "shard_0_outage", map[string]string{
-		"status":        "recovered",
-		"shards_123_ok": "true",
-		"outbox":        "processed",
+		"status":         "recovered",
+		"shards_123_ok":  "true",
+		"outbox":         "partial_fanout_processed",
+		"partial_fanout": "true",
 	})
 	testutil.LogFaultProof(t, "shard0_survival_shards_1_3", map[string]string{
 		"shard0_status": "503_shard_unavailable",
 		"invariant":     "ok",
 	})
-}
-
-func postClickCampaign(t *testing.T, h *ingestion.AdsPacketHandler, campaignID uuid.UUID, clickID string) (int, time.Duration) {
-	t.Helper()
-	status, _, elapsed := postClickCampaignFull(t, h, campaignID, clickID)
-	return status, elapsed
-}
-
-func postClickCampaignBody(t *testing.T, h *ingestion.AdsPacketHandler, campaignID uuid.UUID, clickID string) (int, string) {
-	t.Helper()
-	status, body, _ := postClickCampaignFull(t, h, campaignID, clickID)
-	return status, body
-}
-
-func postClickCampaignFull(t *testing.T, h *ingestion.AdsPacketHandler, campaignID uuid.UUID, clickID string) (int, string, time.Duration) {
-	t.Helper()
-	start := time.Now()
-	payload := map[string]any{
-		"campaign_id": campaignID,
-		"type":        "click",
-		"click_id":    clickID,
-		"payload":     map[string]string{"fault": "shard0"},
-	}
-	body, err := json.Marshal(payload)
-	require.NoError(t, err)
-	status, respBody := ingestion.PostTrackGnetJSON(h, body)
-	return status, string(respBody), time.Since(start)
 }
 
 func latestOutboxEventID(t *testing.T, pool *pgxpool.Pool, eventType string) int64 {

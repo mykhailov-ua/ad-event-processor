@@ -27,7 +27,7 @@ func encodeTestEpochPacket(t *testing.T, epoch int64, rps uint64, msgType uint8,
 	t.Helper()
 	var limits UDPControlLimits
 	limits.NumShards = numShards
-	for i := uint8(0); i < numShards; i++ {
+	for i := range numShards {
 		limits.Limits[i] = rps
 	}
 	hash := ComputeUDPConfigHash(epoch, 0, &limits)

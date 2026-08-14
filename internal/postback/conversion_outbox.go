@@ -34,6 +34,12 @@ func NewConversionPostbackEnqueuer(queries conversionPostbackStore) *ConversionP
 	return &ConversionPostbackEnqueuer{queries: queries}
 }
 
+func (e *ConversionPostbackEnqueuer) SetStore(queries conversionPostbackStore) {
+	if e != nil && queries != nil {
+		e.queries = queries
+	}
+}
+
 func (e *ConversionPostbackEnqueuer) OnBatchStored(ctx context.Context, events []*domain.Event) {
 	if e == nil || len(events) == 0 {
 		return

@@ -20,7 +20,7 @@ func TestAuditLog(t *testing.T) {
 	pool, cleanup := database.SetupTestDB(t)
 	defer cleanup()
 
-	svc := NewService(pool, nil, nil, nil)
+	svc := NewService(context.Background(), pool, nil, nil, nil)
 	defer svc.Close()
 	ctx := context.Background()
 

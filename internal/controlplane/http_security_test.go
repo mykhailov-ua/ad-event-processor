@@ -21,7 +21,7 @@ func TestSecurityHeadersMiddleware_AdminLoginCSP(t *testing.T) {
 	handler := SecurityHeadersMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
-	req := httptest.NewRequest(http.MethodGet, "/login", nil)
+	req := httptest.NewRequest(http.MethodGet, "/login", http.NoBody)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 	assert.Contains(t, rec.Header().Get("Content-Security-Policy"), "script-src 'self'")

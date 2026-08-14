@@ -63,7 +63,7 @@ func TestAPI_GetCampaignStats_PostgresOnly(t *testing.T) {
 	to := time.Now().UTC().Add(time.Hour).Format(time.RFC3339)
 	url := "/api/v1/campaigns/" + campID.String() + "/stats?from=" + from + "&to=" + to + "&granularity=hour"
 
-	req, _ := http.NewRequest("GET", url, nil)
+	req, _ := http.NewRequest("GET", url, http.NoBody)
 	withSessionUser(req, tokenMaker, RoleUser, custID)
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
@@ -117,7 +117,7 @@ func TestAPI_GetCampaignStats_TenantIsolation(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	req, _ := http.NewRequest("GET", "/api/v1/campaigns/"+campID.String()+"/stats", nil)
+	req, _ := http.NewRequest("GET", "/api/v1/campaigns/"+campID.String()+"/stats", http.NoBody)
 	withSessionUser(req, tokenMaker, RoleUser, otherID)
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
@@ -170,7 +170,7 @@ func TestAPI_GetCampaignStats_ClickHouseStaleOK(t *testing.T) {
 
 	from := staleHour.Add(-time.Hour).Format(time.RFC3339)
 	to := staleHour.Add(2 * time.Hour).Format(time.RFC3339)
-	req, _ := http.NewRequest("GET", "/api/v1/campaigns/"+campID.String()+"/stats?from="+from+"&to="+to, nil)
+	req, _ := http.NewRequest("GET", "/api/v1/campaigns/"+campID.String()+"/stats?from="+from+"&to="+to, http.NoBody)
 	withSessionUser(req, tokenMaker, RoleUser, custID)
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
@@ -197,7 +197,7 @@ func TestAPI_GetCampaignStats_InvalidGranularity(t *testing.T) {
 	h.RegisterRoutes(mux)
 
 	campID := uuid.New()
-	req, _ := http.NewRequest("GET", "/api/v1/campaigns/"+campID.String()+"/stats?granularity=day", nil)
+	req, _ := http.NewRequest("GET", "/api/v1/campaigns/"+campID.String()+"/stats?granularity=day", http.NoBody)
 	withAdminAPIKey(req, cfg)
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)

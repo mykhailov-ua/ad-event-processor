@@ -25,7 +25,7 @@ func TestFault_SettlementReplay(t *testing.T) {
 	eventID := "evt-" + uuid.New().String()
 	campaignID := uuid.New()
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		id := eventID
 		if i > 0 {
 			id = eventID + "-retry-" + uuid.New().String()[:8]

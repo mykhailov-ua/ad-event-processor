@@ -45,11 +45,11 @@ func TestLocalQuantaLedger_debitSubSlotsSequentialSpend(t *testing.T) {
 	id := uuid.New()
 	const chunk = int64(10_000_000)
 	const spend = int64(10_000)
-	for sub := 0; sub < 4; sub++ {
+	for sub := range 4 {
 		ledger.CreditDebit(id, sub, chunk, chunk)
 	}
-	for sub := 0; sub < 4; sub++ {
-		for j := 0; j < 250; j++ {
+	for sub := range 4 {
+		for j := range 250 {
 			require.True(t, ledger.TrySpendDebit(id, sub, spend), "sub=%d iter=%d", sub, j)
 		}
 	}
@@ -64,11 +64,11 @@ func TestLocalQuantaLedger_concurrentSpend(t *testing.T) {
 
 	var wg sync.WaitGroup
 	var okCount atomic.Int64
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for j := 0; j < 100; j++ {
+			for range 100 {
 				if ledger.TrySpendLocal(id, spend) {
 					okCount.Add(1)
 				}

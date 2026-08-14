@@ -37,7 +37,7 @@ func TestBrokerStreamConsumer_ShadowMode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := producer.Produce("tracker-logs", 0, data[:n]); err != nil {
+	if _, err := producer.Produce(context.Background(), "tracker-logs", 0, data[:n]); err != nil {
 		t.Fatal(err)
 	}
 	_ = producer.Close()
@@ -93,7 +93,7 @@ func produceBrokerStreamEvent(t *testing.T, producer *client.Client, topic strin
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := producer.Produce(topic, 0, data[:n]); err != nil {
+	if _, err := producer.Produce(context.Background(), topic, 0, data[:n]); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -171,7 +171,7 @@ func TestBrokerStreamConsumer_CorruptPayload(t *testing.T) {
 	if err := producer.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := producer.Produce("tracker-logs", 0, []byte{0xff, 0xfe, 0x01}); err != nil {
+	if _, err := producer.Produce(context.Background(), "tracker-logs", 0, []byte{0xff, 0xfe, 0x01}); err != nil {
 		t.Fatal(err)
 	}
 	campID := uuid.New()

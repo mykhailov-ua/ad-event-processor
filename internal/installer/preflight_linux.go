@@ -103,7 +103,7 @@ func checkUlimit() PreflightCheck {
 		res.Message = "Could not check ulimit"
 		return res
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {

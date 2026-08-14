@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"os"
 	"time"
@@ -55,7 +56,7 @@ func main() {
 		"region", cfg.S3Region,
 	)
 
-	if err := evac.Run(ctx); err != nil && err != context.Canceled {
+	if err := evac.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
 		slog.Error("log evacuator stopped with error", "error", err)
 		os.Exit(1)
 	}

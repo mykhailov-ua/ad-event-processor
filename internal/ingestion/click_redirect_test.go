@@ -71,7 +71,7 @@ func TestClickRedirectGnet_302(t *testing.T) {
 	staticCampaignMu.Unlock()
 	cachedMockCamp.Store(nil)
 
-	store := NewBrandCreativeStore(nil)
+	store := NewBrandCreativeStore(nil, 0)
 	store.cache.Store(&brandCreativeMapSnapshot{
 		byBrand: map[uuid.UUID][]brandCreativeEntry{
 			brandID: brandCreativeEntriesReady([]brandCreativeEntry{{URL: "https://lander.test/go?cid={click_id}", Weight: 100}}),

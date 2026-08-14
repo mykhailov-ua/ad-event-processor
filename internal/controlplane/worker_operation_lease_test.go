@@ -104,7 +104,7 @@ func TestOperationLeaseWorker_DualCASOneExecutor(t *testing.T) {
 
 	const contenders = 32
 	var wg sync.WaitGroup
-	for i := 0; i < contenders; i++ {
+	for i := range contenders {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()

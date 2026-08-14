@@ -32,7 +32,7 @@ func TestFault_XDPMalformedPacketFuzzing(t *testing.T) {
 		assert.Equal(t, uint32(2), ret, "short packet should PASS")
 	}
 
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		pktLen := 14 + r.Intn(1486)
 		pkt := make([]byte, pktLen)
 		r.Read(pkt)
@@ -92,7 +92,7 @@ func TestFault_XDPRingbufCongestion(t *testing.T) {
 	opts.SynLimit = 1
 	require.NoError(t, objs.Config.Update(&cfg, &opts, ebpf.UpdateAny))
 
-	for i := 0; i < 2000; i++ {
+	for range 2000 {
 		runXDP(t, objs.XdpEdgeFilter, pkt)
 	}
 
@@ -116,7 +116,7 @@ func TestFault_XDPLRUEvictionUnderPressure(t *testing.T) {
 
 	r := rand.New(rand.NewSource(42))
 
-	for i := 0; i < 10000; i++ {
+	for range 10000 {
 		src := r.Uint32()
 		pkt := buildPSHACKPacket(t, net.IP{byte(src >> 24), byte(src >> 16), byte(src >> 8), byte(src)}, net.IPv4(10, 0, 0, 1), trackerPort)
 		runXDP(t, objs.XdpEdgeFilter, pkt)

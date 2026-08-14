@@ -74,7 +74,7 @@ func TestFault_ivtIntervalAutoblock(t *testing.T) {
 	require.True(t, foundProtected, "expected protected timer bot in candidates")
 	require.True(t, foundBot, "expected open timer bot in candidates")
 
-	svc := controlplane.NewService(pool, []redis.UniversalClient{rdb}, ingestion.NewJumpHashSharder(1), nil)
+	svc := controlplane.NewService(context.Background(), pool, []redis.UniversalClient{rdb}, ingestion.NewJumpHashSharder(1), nil)
 	defer svc.Close()
 
 	err = svc.BlockIP(ctx, protectedIP, "fraud")

@@ -28,7 +28,7 @@ func TestFault_BatchSettlementDrain(t *testing.T) {
 	defer cleanupRedis()
 
 	cfg := &config.Config{SettlementInternalToken: "settlement-test-token"}
-	svc := NewService(pool, []redis.UniversalClient{rdb}, nil, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, cfg)
 	defer svc.Close()
 
 	handler := NewSettlementHandler(svc, cfg)

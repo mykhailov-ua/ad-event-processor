@@ -33,6 +33,12 @@ func NewPartitionManager(pool dbExecutor, retentionDays int, preCreateDays int) 
 	}
 }
 
+func (pm *PartitionManager) SetPool(pool dbExecutor) {
+	if pm != nil && pool != nil {
+		pm.pool = pool
+	}
+}
+
 func (pm *PartitionManager) Run(ctx context.Context) error {
 	if err := pm.truncateDefault(ctx); err != nil {
 		slog.Warn("failed to truncate events_default before partition creation", "error", err)

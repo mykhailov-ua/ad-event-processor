@@ -67,7 +67,7 @@ func TestFault_Shard0PubsubDown(t *testing.T) {
 		RegistryPollMs:        200,
 	}
 
-	svc := NewService(pool, rdbs, sharder, cfg)
+	svc := NewService(context.Background(), pool, rdbs, sharder, cfg)
 	defer svc.Close()
 
 	testutil.StopRedisShardContainer(t, shardInfra.Containers[0])

@@ -28,7 +28,7 @@ fi
 echo "hack-back ban: OK"
 
 echo "No port scanning or active probing..."
-if grep -rnEi "\bnmap\b|\bportscan\b|\bport_scan\b|\bactive_probe\b" . --exclude-dir="scripts" --exclude-dir="node_modules" --exclude-dir="docs" --exclude-dir=".cursor" --exclude-dir="bin" 2>/dev/null; then
+if grep -rnEi "\bnmap\b|\bportscan\b|\bport_scan\b|\bactive_probe\b" . --exclude-dir="scripts" --exclude-dir="node_modules" --exclude-dir="docs" --exclude-dir=".cursor" --exclude-dir="bin" --exclude-dir=".cache" --exclude-dir=".venv" 2>/dev/null; then
     echo "COMPLIANCE FAILURE: Found potential port scan or active probe pattern!"
     exit 1
 fi

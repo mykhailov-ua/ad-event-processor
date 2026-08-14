@@ -12,6 +12,7 @@ bash "$SCRIPTS/ci/ch_direct.sh"
 bash "$SCRIPTS/ci/lint_go_gate.sh" all
 make test-alloc-gate
 make test-fast
+echo "pr_fast: integration tests skipped (run make test-integration locally or on nightly Docker runner)"
 bash "$SCRIPTS/ci/shard0_nil_gate.sh"
 bash "$SCRIPTS/ci/cold_path_json_gate.sh"
 bash "$SCRIPTS/ci/capi_staging_gate.sh"

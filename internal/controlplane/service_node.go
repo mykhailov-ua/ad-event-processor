@@ -180,7 +180,7 @@ func (s *NodeCapacityScorer) scoreRole(ctx context.Context, role string, now tim
 		)
 	}
 	br := s.pool.SendBatch(ctx, batch)
-	defer br.Close()
+	defer func() { _ = br.Close() }()
 	for i := 0; i < batch.Len(); i++ {
 		if _, err := br.Exec(); err != nil {
 			return fmt.Errorf("upsert node capacity score batch item %d: %w", i, err)
@@ -512,7 +512,7 @@ func (g *GlobalRegionTrafficScorer) tick(ctx context.Context, now time.Time, epo
 		)
 	}
 	br := g.pool.SendBatch(ctx, batch)
-	defer br.Close()
+	defer func() { _ = br.Close() }()
 	for i := 0; i < batch.Len(); i++ {
 		if _, err := br.Exec(); err != nil {
 			return fmt.Errorf("upsert region traffic dial batch item %d: %w", i, err)

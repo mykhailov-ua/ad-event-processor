@@ -17,7 +17,7 @@ import (
 
 func TestReconcileCampaignBudget_detectsDivergence(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)
@@ -40,7 +40,7 @@ func TestReconcileCampaignBudget_detectsDivergence(t *testing.T) {
 
 func TestRtbBudgetReconcileWorker_sample(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)

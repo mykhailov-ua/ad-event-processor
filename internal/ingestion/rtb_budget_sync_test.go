@@ -31,7 +31,7 @@ func TestSyncRTBBudgetState_fromRegistry(t *testing.T) {
 
 func TestSyncRTBBudgetState_fromRedis(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)
@@ -60,7 +60,7 @@ func TestSyncRTBBudgetState_fromRedis(t *testing.T) {
 
 func TestLoadRedisDailySpend(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)

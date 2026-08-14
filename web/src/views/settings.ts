@@ -29,7 +29,7 @@ import {
   timezoneSelectOptions,
 } from '../helpers/display_labels.js';
 import { devModeEnabled, setDevMode } from '../helpers/dev_mode.js';
-import { api } from '../helpers/api.js';
+import { api } from '../helpers/api_client.js';
 import type { OpsDoctorSummary } from '../types/api/ops.js';
 import { humanizeTechnicalDetail } from '../helpers/technical_labels.js';
 
@@ -135,9 +135,7 @@ export function mount(container: HTMLElement): ViewHandle {
         message: 'Platform flag enabled — confirm host Apply and Doctor status on /ops before expecting kernel filtering.',
       });
     }
-    const variant = check.status === 'pass'
-      ? 'info'
-      : (check.status === 'warn' ? 'warning' : 'error');
+    const variant: 'info' | 'warning' | 'error' = check.status === 'warn' ? 'warning' : 'error';
     if (check.status === 'pass') {
       return el('div', { className: 'settings-edge-xdp__status', 'data-testid': 'edge-xdp-runtime-status' },
         el('div', { className: 'flex items-center gap-2' },
@@ -151,7 +149,7 @@ export function mount(container: HTMLElement): ViewHandle {
     }
     return renderAlertBanner({
       variant,
-      message: humanizeTechnicalDetail(check.message ?? 'Edge XDP host runtime not ready'),
+      message: humanizeTechnicalDetail(check.message ?? 'Edge XDP host runtime not ready') ?? 'Edge XDP host runtime not ready',
     });
   }
 

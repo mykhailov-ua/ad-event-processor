@@ -20,7 +20,7 @@ func TestOpsAlerter_AlertOutboxStuck(t *testing.T) {
 	require.NotNil(t, alerter)
 	assert.Equal(t, 120, alerter.OutboxStuckThresholdSec())
 
-	alerter.AlertOutboxStuck(12, 180)
+	alerter.AlertOutboxStuck(context.Background(), 12, 180)
 	time.Sleep(100 * time.Millisecond)
 
 	requests := stub.snapshot()
@@ -36,7 +36,7 @@ func TestOpsAlerter_AlertCHEmergencyDrop(t *testing.T) {
 	alerter := NewOpsAlerter(testNotifierClient(stub), cfg)
 	require.NotNil(t, alerter)
 
-	alerter.AlertCHEmergencyDrop("impressions", "202401", 92.5, 90)
+	alerter.AlertCHEmergencyDrop(context.Background(), "impressions", "202401", 92.5, 90)
 	time.Sleep(100 * time.Millisecond)
 
 	requests := stub.snapshot()
@@ -53,7 +53,7 @@ func TestOpsAlerter_AlertBlacklistJanitorFailed(t *testing.T) {
 	alerter := NewOpsAlerter(testNotifierClient(stub), cfg)
 	require.NotNil(t, alerter)
 
-	alerter.AlertBlacklistJanitorFailed(assert.AnError)
+	alerter.AlertBlacklistJanitorFailed(context.Background(), assert.AnError)
 	time.Sleep(100 * time.Millisecond)
 
 	requests := stub.snapshot()
@@ -69,7 +69,7 @@ func TestOpsAlerter_AlertSlotMigrationError(t *testing.T) {
 	alerter := NewOpsAlerter(testNotifierClient(stub), cfg)
 	require.NotNil(t, alerter)
 
-	alerter.AlertSlotMigrationError("copy", assert.AnError)
+	alerter.AlertSlotMigrationError(context.Background(), "copy", assert.AnError)
 	time.Sleep(100 * time.Millisecond)
 
 	requests := stub.snapshot()
@@ -86,7 +86,7 @@ func TestOutboxMetrics_AlertsWhenStale(t *testing.T) {
 	svc := &Service{alerter: NewOpsAlerter(testNotifierClient(stub), cfg)}
 	worker := &OutboxWorker{svc: svc}
 
-	worker.recordOutboxLagFromValues(5, 90)
+	worker.recordOutboxLagFromValues(context.Background(), 5, 90)
 	time.Sleep(100 * time.Millisecond)
 
 	requests := stub.snapshot()
@@ -114,9 +114,9 @@ func TestFault_opsAlertExtendedCoverage(t *testing.T) {
 	alerter := NewOpsAlerter(testNotifierClient(stub), cfg)
 	require.NotNil(t, alerter)
 
-	alerter.AlertBlacklistJanitorFailed(assert.AnError)
-	alerter.AlertOutboxStuck(3, 150)
-	alerter.AlertSlotMigrationError("drain", assert.AnError)
+	alerter.AlertBlacklistJanitorFailed(context.Background(), assert.AnError)
+	alerter.AlertOutboxStuck(context.Background(), 3, 150)
+	alerter.AlertSlotMigrationError(context.Background(), "drain", assert.AnError)
 	time.Sleep(150 * time.Millisecond)
 
 	requests := stub.snapshot()

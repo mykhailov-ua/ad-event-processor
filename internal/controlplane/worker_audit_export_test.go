@@ -24,7 +24,7 @@ func TestAuditExportWorker_exportDay(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
 
-	svc := NewService(pool, nil, nil, nil)
+	svc := NewService(context.Background(), pool, nil, nil, nil)
 	defer svc.Close()
 
 	exportPath := t.TempDir()
@@ -65,8 +65,8 @@ func TestAuditExportWorker_retentionCleanup(t *testing.T) {
 	oldDay := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	recentDay := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
 
-	require.NoError(t, os.WriteFile(filepath.Join(exportPath, oldDay.Format("2006-01-02")+".csv"), []byte("old"), 0644))
-	require.NoError(t, os.WriteFile(filepath.Join(exportPath, recentDay.Format("2006-01-02")+".csv"), []byte("recent"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(exportPath, oldDay.Format("2006-01-02")+".csv"), []byte("old"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(exportPath, recentDay.Format("2006-01-02")+".csv"), []byte("recent"), 0o644))
 
 	now := time.Date(2026, 7, 7, 0, 0, 0, 0, time.UTC)
 	require.NoError(t, worker.cleanupOldExports(now))

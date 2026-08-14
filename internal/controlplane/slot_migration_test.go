@@ -16,7 +16,7 @@ import (
 
 func TestSlotMigration_CopyAndActivate(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -28,7 +28,7 @@ func TestSlotMigration_CopyAndActivate(t *testing.T) {
 	defer cleanup1()
 
 	cfg := &config.Config{SlotMigrationEnabled: false}
-	svc := NewService(pool, []redis.UniversalClient{rdb0, rdb1}, domain.NewStaticSlotSharder(2), cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb0, rdb1}, domain.NewStaticSlotSharder(2), cfg)
 	defer svc.Close()
 
 	mapRepo := domain.NewSlotMapRepo(pool)

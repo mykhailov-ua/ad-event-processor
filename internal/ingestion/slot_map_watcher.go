@@ -30,6 +30,12 @@ type SlotMapWatcher struct {
 	cfg SlotMapWatcherConfig
 }
 
+func (w *SlotMapWatcher) SetPool(pool *pgxpool.Pool) {
+	if w != nil {
+		w.cfg.Pool = pool
+	}
+}
+
 func NewSlotMapWatcher(cfg SlotMapWatcherConfig) *SlotMapWatcher {
 	if cfg.PollInterval <= 0 {
 		cfg.PollInterval = 10 * time.Second
@@ -131,7 +137,7 @@ func (w *SlotMapWatcher) consumeBrokerOnce(ctx context.Context) error {
 		default:
 		}
 
-		iter, err := cli.Fetch(w.cfg.BrokerTopic, partition, start, 64*1024)
+		iter, err := cli.Fetch(ctx, w.cfg.BrokerTopic, partition, start, 64*1024)
 		if err != nil {
 			return err
 		}

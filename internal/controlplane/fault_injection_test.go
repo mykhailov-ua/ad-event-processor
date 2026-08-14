@@ -49,7 +49,7 @@ func TestFault_DualOutboxWorkerRace(t *testing.T) {
 	var wg sync.WaitGroup
 	var totalProcessed atomic.Int32
 	wg.Add(workers)
-	for i := 0; i < workers; i++ {
+	for range workers {
 		go func() {
 			defer wg.Done()
 			n, err := worker.ProcessOutboxWithCount(ctx, 10)
@@ -218,7 +218,7 @@ func TestFault_ScheduleTickRace(t *testing.T) {
 	const workers = 8
 	var wg sync.WaitGroup
 	wg.Add(workers)
-	for i := 0; i < workers; i++ {
+	for range workers {
 		go func() {
 			defer wg.Done()
 			_ = svc.ProcessScheduleTick(ctx)
@@ -266,7 +266,7 @@ func TestFault_ConcurrentBalanceDepletion(t *testing.T) {
 	var wg sync.WaitGroup
 	results := make(chan error, workers)
 	wg.Add(workers)
-	for i := 0; i < workers; i++ {
+	for i := range workers {
 		go func(idx int) {
 			defer wg.Done()
 			_, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
@@ -394,7 +394,7 @@ func TestFault_DualOutboxWorkerManyEvents(t *testing.T) {
 	ctx := context.Background()
 
 	const eventCount = 20
-	for i := 0; i < eventCount; i++ {
+	for range eventCount {
 		payload, err := json.Marshal(CampaignPayload{
 			CampaignID:  uuid.New().String(),
 			BudgetLimit: 10_000_000,
@@ -411,7 +411,7 @@ func TestFault_DualOutboxWorkerManyEvents(t *testing.T) {
 	var wg sync.WaitGroup
 	var total atomic.Int32
 	wg.Add(3)
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		go func() {
 			defer wg.Done()
 			for {

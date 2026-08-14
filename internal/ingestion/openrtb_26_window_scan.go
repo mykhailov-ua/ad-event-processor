@@ -208,7 +208,7 @@ func scanOpenRTB26Window(win []byte, record func(ortb26WinKeyID, int)) {
 	}
 	n := len(win)
 	_ = win[n-1]
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if win[i] != '"' {
 			continue
 		}

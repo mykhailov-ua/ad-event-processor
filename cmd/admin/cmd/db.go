@@ -73,7 +73,7 @@ var seedCmd = &cobra.Command{
 			}
 		}
 
-		for i := 0; i < 20; i++ {
+		for i := range 20 {
 			_, err = adsQueries.UpdateCustomerOverdraft(ctx, ingestdb.UpdateCustomerOverdraftParams{
 				AllowedOverdraft: 5_000_000_000,
 				ID:               pgtype.UUID{Bytes: customerIDs[i], Valid: true},

@@ -43,7 +43,7 @@ func quicDecodeVarint(data []byte, off int) (uint64, int, error) {
 		}
 		var v uint64
 		v |= uint64(first&0x3f) << 56
-		for i := 0; i < 7; i++ {
+		for i := range 7 {
 			v |= uint64(data[off+i]) << (48 - i*8)
 		}
 		return v, off + 7, nil

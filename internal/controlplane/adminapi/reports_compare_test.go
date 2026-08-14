@@ -1,6 +1,7 @@
 package adminapi
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -36,8 +37,8 @@ func TestAttachPlacementCompareDeltas(t *testing.T) {
 
 func TestParseComparePrevious(t *testing.T) {
 	t.Parallel()
-	req := httptest.NewRequest("GET", "/api/v1/reports/placements?compare=previous", nil)
+	req := httptest.NewRequest("GET", "/api/v1/reports/placements?compare=previous", http.NoBody)
 	assert.True(t, parseComparePrevious(req))
-	req2 := httptest.NewRequest("GET", "/api/v1/reports/placements?compare_period=true", nil)
+	req2 := httptest.NewRequest("GET", "/api/v1/reports/placements?compare_period=true", http.NoBody)
 	assert.True(t, parseComparePrevious(req2))
 }

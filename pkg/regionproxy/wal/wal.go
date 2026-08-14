@@ -37,11 +37,11 @@ type WAL struct {
 }
 
 func Open(dir string, gate *iogate.DiskWriteGate) (*WAL, error) {
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, fmt.Errorf("region proxy wal open dir=%s: %w", dir, err)
 	}
 	path := filepath.Join(dir, walSegmentFile)
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0644)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o644)
 	if err != nil {
 		return nil, fmt.Errorf("region proxy wal open file=%s: %w", path, err)
 	}

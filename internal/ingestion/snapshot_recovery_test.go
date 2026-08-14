@@ -174,10 +174,10 @@ func TestSnapshotRecovery_DisasterStressReplay(t *testing.T) {
 
 	startTime := time.Now().Add(-5 * time.Minute)
 
-	for g := 0; g < concurrency; g++ {
+	for g := range concurrency {
 		go func(workerID int) {
 			defer wg.Done()
-			for i := 0; i < iterations; i++ {
+			for i := range iterations {
 				evtType := "click"
 				if i%5 == 0 {
 					evtType = "impression"
@@ -217,10 +217,10 @@ func TestSnapshotRecovery_DisasterStressReplay(t *testing.T) {
 	liveStart := checkpointTime.Add(time.Second)
 	var postWg sync.WaitGroup
 	postWg.Add(10)
-	for g := 0; g < 10; g++ {
+	for g := range 10 {
 		go func(workerID int) {
 			defer postWg.Done()
-			for i := 0; i < 50; i++ {
+			for i := range 50 {
 				evt := &domain.Event{
 					CampaignID: campID,
 					ClickID:    fmt.Sprintf("post_clk_%d_%d", workerID, i),

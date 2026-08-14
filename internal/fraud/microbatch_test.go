@@ -35,7 +35,7 @@ func TestMicroBatch_AggregationAndScoring(t *testing.T) {
 	campaignID := uuid.New()
 
 	now := time.Now()
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		evt := &domain.Event{
 			IP:         "1.2.3.4",
 			CampaignID: campaignID,
@@ -89,7 +89,7 @@ func TestMicroBatch_BoundedQueueDrop(t *testing.T) {
 	mb := NewMicroBatcher(rdb, nil)
 
 	campaignID := uuid.New()
-	for i := 0; i < 10000; i++ {
+	for range 10000 {
 		evt := &domain.Event{
 			IP:         "1.2.3.4",
 			CampaignID: campaignID,

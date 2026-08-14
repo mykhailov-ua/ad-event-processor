@@ -1,6 +1,7 @@
 package identity
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -30,11 +31,11 @@ func TestHashAndVerify(t *testing.T) {
 	}
 
 	_, err = hasher.HashPassword("")
-	if err != ErrInvalidPassword {
+	if !errors.Is(err, ErrInvalidPassword) {
 		t.Errorf("Expected ErrInvalidPassword for empty string, got %v", err)
 	}
 	match, err = VerifyPassword("", hash)
-	if match || err != ErrAuthenticationFailed {
+	if match || !errors.Is(err, ErrAuthenticationFailed) {
 		t.Errorf("Expected ErrAuthenticationFailed for empty password verification, got %v", err)
 	}
 }
@@ -61,7 +62,7 @@ func TestVerifyPassword_SecurityBoundsAndFormats(t *testing.T) {
 			if match {
 				t.Error("Expected match to be false on invalid/malicious format")
 			}
-			if err != ErrAuthenticationFailed {
+			if !errors.Is(err, ErrAuthenticationFailed) {
 				t.Errorf("Expected ErrAuthenticationFailed, got %v", err)
 			}
 		})

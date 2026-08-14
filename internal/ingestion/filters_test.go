@@ -11,7 +11,7 @@ import (
 
 func TestIPRateLimiter(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	rdb, cleanup := setupTestRedis(t)
 	defer cleanup()
@@ -35,7 +35,7 @@ func TestIPRateLimiter(t *testing.T) {
 
 func TestDuplicateEventFilter(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	rdb, cleanup := setupTestRedis(t)
 	defer cleanup()
@@ -61,7 +61,7 @@ func TestDuplicateEventFilter(t *testing.T) {
 
 func TestFilterEngine(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	rdb, cleanup := setupTestRedis(t)
 	defer cleanup()

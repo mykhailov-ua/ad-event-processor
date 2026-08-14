@@ -392,7 +392,7 @@ func TestLoginFlood(t *testing.T) {
 	var lockedCount atomic.Int32
 	var rateLimitedCount atomic.Int32
 
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

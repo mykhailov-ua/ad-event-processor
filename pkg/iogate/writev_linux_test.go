@@ -36,7 +36,7 @@ func TestFlushVectored_groupCommitFsync(t *testing.T) {
 
 	var fsyncs int
 	chunks := [][]byte{[]byte("a")}
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		err := g.FlushVectored(t.Context(), int(f.Fd()), chunks, func() error {
 			fsyncs++
 			return nil

@@ -114,7 +114,7 @@ func (c *CurrencyConverter) usdPerUnitMicro(ctx context.Context, currency string
 }
 
 func (c *CurrencyConverter) fetchECBRates(ctx context.Context) (map[string]float64, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml", http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func (c *CurrencyConverter) fetchECBRates(ctx context.Context) (map[string]float
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("ecb: status %d", resp.StatusCode)
 	}

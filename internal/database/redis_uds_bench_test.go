@@ -48,7 +48,7 @@ func TestRedisUDS_DialLatencyGate(t *testing.T) {
 	sock, _ := requireUDSBenchEnv(t)
 
 	latencies := make([]time.Duration, 0, udsDialSamples+udsDialWarmupSamples)
-	for i := 0; i < udsDialWarmupSamples+udsDialSamples; i++ {
+	for range udsDialWarmupSamples + udsDialSamples {
 		start := monotonicNano()
 		conn, err := shardUniversalOptions(&config.Config{
 			RedisAddrs: []string{sock},
@@ -86,7 +86,7 @@ func TestRedisUDS_PingLatency(t *testing.T) {
 	defer func() { _ = tcpRDB.Close() }()
 
 	ctx := context.Background()
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		require.NoError(t, udsRDB.Ping(ctx).Err())
 		require.NoError(t, tcpRDB.Ping(ctx).Err())
 	}
@@ -116,7 +116,7 @@ func TestRedisUDS_DialVsTCP(t *testing.T) {
 func sampleDialLatency(t *testing.T, addr string, unixTransport bool, n int) []time.Duration {
 	t.Helper()
 	out := make([]time.Duration, 0, n)
-	for i := 0; i < n; i++ {
+	for range n {
 		start := monotonicNano()
 		var conn net.Conn
 		var err error
@@ -139,7 +139,7 @@ func sampleDialLatency(t *testing.T, addr string, unixTransport bool, n int) []t
 func samplePingLatency(ctx context.Context, t *testing.T, rdb redis.UniversalClient, n int) []time.Duration {
 	t.Helper()
 	out := make([]time.Duration, 0, n)
-	for i := 0; i < n; i++ {
+	for range n {
 		start := monotonicNano()
 		require.NoError(t, rdb.Ping(ctx).Err())
 		out = append(out, time.Duration(monotonicNano()-start))

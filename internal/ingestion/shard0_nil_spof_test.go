@@ -155,9 +155,9 @@ func TestShard0Nil_BrandCreativeStoreLoadsFromHealthyShard(t *testing.T) {
 	payload := `[{"id":"c1","url":"https://example.com","weight":1}]`
 	require.NoError(t, rdbs[1].Set(ctx, key, payload, 0).Err())
 
-	store := NewBrandCreativeStore(firstConnectedRedisShard(rdbs))
+	store := NewBrandCreativeStore(firstConnectedRedisShard(rdbs), 0)
 	store.LoadFromRedis(ctx, brandID)
-	assert.Equal(t, "https://example.com", store.SelectLandingURL(brandID, "user"))
+	assert.Equal(t, "https://example.com", store.SelectLandingURL(brandID, "user", nil))
 }
 
 func TestShard0Nil_DealFloorCacheRefreshFromHealthyShard(t *testing.T) {

@@ -43,7 +43,7 @@ func TestCoordElectionDebounceSkipsEpochBump(t *testing.T) {
 		t.Fatal(err)
 	}
 	s.SetCoordinator(coord)
-	coord.Start()
+	coord.Start(context.Background())
 	defer coord.Stop()
 
 	topic := "tracker-logs"

@@ -36,6 +36,14 @@ func parseReconciliationAdjustPayload(payload []byte) (ReconciliationAdjustPaylo
 	return p, nil
 }
 
+func reconciliationAdjustIdempotencyHash(outboxEventID int64) string {
+	return fmt.Sprintf("recon_adjust_outbox_%d", outboxEventID)
+}
+
+func reconciliationRedisAppliedKey(outboxEventID int64) string {
+	return fmt.Sprintf("recon:redis_applied:%d", outboxEventID)
+}
+
 func (w *OutboxWorker) ApplyReconciliationAdjust(ctx context.Context, eventID int64, payload []byte) error {
 	p, err := parseReconciliationAdjustPayload(payload)
 	if err != nil {
@@ -50,6 +58,22 @@ func (w *OutboxWorker) ApplyReconciliationAdjust(ctx context.Context, eventID in
 		return fmt.Errorf("invalid customer id: %w", err)
 	}
 
+	if err := w.applyReconciliationAdjustPG(ctx, eventID, p, campID, customerID); err != nil {
+		return err
+	}
+	if err := w.applyReconciliationAdjustRedis(ctx, eventID, p, campID); err != nil {
+		return err
+	}
+	metrics.ReconCorrectionsAppliedTotal.Inc()
+	return nil
+}
+
+func (w *OutboxWorker) applyReconciliationAdjustPG(
+	ctx context.Context,
+	eventID int64,
+	p ReconciliationAdjustPayload,
+	campID, customerID uuid.UUID,
+) error {
 	tx, err := w.svc.GetPool().Begin(ctx)
 	if err != nil {
 		return err
@@ -57,11 +81,22 @@ func (w *OutboxWorker) ApplyReconciliationAdjust(ctx context.Context, eventID in
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	q := db.New(tx)
+	idemHash := reconciliationAdjustIdempotencyHash(eventID)
+	_, err = q.GetLedgerByHashForUpdate(ctx, pgtype.Text{String: idemHash, Valid: true})
+	if err == nil {
+		return nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return err
+	}
+
 	_, err = q.CreateLedgerEntry(ctx, db.CreateLedgerEntryParams{
-		CustomerID: pgUUID(customerID),
-		CampaignID: domain.ToUUID(campID),
-		Amount:     p.LedgerAmt,
-		Type:       db.LedgerTypeRECONCILIATIONADJUST,
+		CustomerID:      pgUUID(customerID),
+		CampaignID:      domain.ToUUID(campID),
+		Amount:          p.LedgerAmt,
+		Type:            db.LedgerTypeRECONCILIATIONADJUST,
+		IdempotencyHash: pgtype.Text{String: idemHash, Valid: true},
+		PaymentIntentID: pgtype.UUID{},
 	})
 	if err != nil {
 		return err
@@ -77,38 +112,88 @@ func (w *OutboxWorker) ApplyReconciliationAdjust(ctx context.Context, eventID in
 		}
 	}
 
-	if p.RedisDelta != 0 {
-		if int(p.ShardID) >= len(w.svc.rdbs) {
-			return fmt.Errorf("invalid shard_id %d", p.ShardID)
-		}
-		rdb := w.svc.rdbs[p.ShardID]
-		recon := NewReconService(w.svc)
-		if err := recon.adjustRedisBudgetAtomically(ctx, rdb, campID, p.RedisDelta); err != nil {
-			return err
-		}
+	adminID := uuid.MustParse(quotaRepairSystemAdmin)
+	w.svc.AuditLog(ctx, q, adminID, "RECONCILIATION_ADJUST", "campaign",
+		&campID, p, auditOutboxEventMeta{OutboxEventID: eventID})
+
+	return tx.Commit(ctx)
+}
+
+func (w *OutboxWorker) applyReconciliationAdjustRedis(
+	ctx context.Context,
+	eventID int64,
+	p ReconciliationAdjustPayload,
+	campID uuid.UUID,
+) error {
+	if p.RedisDelta == 0 {
+		return nil
+	}
+	if int(p.ShardID) >= len(w.svc.rdbs) {
+		return fmt.Errorf("invalid shard_id %d", p.ShardID)
+	}
+	rdb := w.svc.rdbs[p.ShardID]
+	recon := NewReconService(w.svc)
+
+	applied, err := recon.reconciliationRedisAdjustApplied(ctx, rdb, eventID, p, campID)
+	if err != nil {
+		return err
+	}
+	if applied {
+		return nil
 	}
 
+	if err := recon.adjustRedisBudgetAtomically(ctx, rdb, campID, p.RedisDelta); err != nil {
+		return err
+	}
+	return recon.markReconciliationRedisAdjusted(ctx, rdb, eventID, p, campID)
+}
+
+func (reconService *ReconService) reconciliationRedisAdjustApplied(
+	ctx context.Context,
+	rdb redis.UniversalClient,
+	eventID int64,
+	p ReconciliationAdjustPayload,
+	campID uuid.UUID,
+) (bool, error) {
 	if p.RunID > 0 {
-		_, err = tx.Exec(ctx, `
+		var adjusted bool
+		err := reconService.svc.GetPool().QueryRow(ctx, `
+			SELECT redis_adjusted FROM recon_discrepancies
+			WHERE run_id = $1 AND campaign_id = $2`,
+			p.RunID, domain.ToUUID(campID),
+		).Scan(&adjusted)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		if err != nil {
+			return false, err
+		}
+		return adjusted, nil
+	}
+	n, err := rdb.Exists(ctx, reconciliationRedisAppliedKey(eventID)).Result()
+	if err != nil {
+		return false, err
+	}
+	return n > 0, nil
+}
+
+func (reconService *ReconService) markReconciliationRedisAdjusted(
+	ctx context.Context,
+	rdb redis.UniversalClient,
+	eventID int64,
+	p ReconciliationAdjustPayload,
+	campID uuid.UUID,
+) error {
+	if p.RunID > 0 {
+		_, err := reconService.svc.GetPool().Exec(ctx, `
 			UPDATE recon_discrepancies
 			SET redis_adjusted = true
 			WHERE run_id = $1 AND campaign_id = $2`,
 			p.RunID, domain.ToUUID(campID),
 		)
-		if err != nil {
-			return err
-		}
-	}
-
-	adminID := uuid.MustParse(quotaRepairSystemAdmin)
-	w.svc.AuditLog(ctx, q, adminID, "RECONCILIATION_ADJUST", "campaign",
-		&campID, p, auditOutboxEventMeta{OutboxEventID: eventID})
-
-	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
-	metrics.ReconCorrectionsAppliedTotal.Inc()
-	return nil
+	return rdb.Set(ctx, reconciliationRedisAppliedKey(eventID), "1", 7*24*time.Hour).Err()
 }
 
 func pgUUID(id uuid.UUID) pgtype.UUID {
@@ -253,7 +338,7 @@ func (reconService *ReconService) ReconcileWindow(ctx context.Context, start, en
 		"discrepancies", discrepancies,
 	)
 	if discrepancies > 0 && reconService.svc.alerter != nil {
-		reconService.svc.alerter.AlertReconDiscrepancy(
+		reconService.svc.alerter.AlertReconDiscrepancy(ctx,
 			run.ID,
 			discrepancies,
 			totalDelta,
@@ -308,7 +393,7 @@ func (reconService *ReconService) AlertStaleUnresolvedDiscrepancies(ctx context.
 			continue
 		}
 		period := periodStart.Format(time.RFC3339) + "-" + periodEnd.Format(time.RFC3339)
-		reconService.svc.alerter.AlertReconDiscrepancyUnresolved(runID, unresolved, totalDelta, period, oldest)
+		reconService.svc.alerter.AlertReconDiscrepancyUnresolved(ctx, runID, unresolved, totalDelta, period, oldest)
 	}
 }
 
@@ -402,40 +487,73 @@ func (w *ReconWorker) auditRedisPGLedger(ctx context.Context, pool *pgxpool.Pool
 	}
 	defer rows.Close()
 
+	type hyg30AuditRow struct {
+		campID, customerID   uuid.UUID
+		pgSpend, ledgerSpend int64
+	}
+	var auditRows []hyg30AuditRow
 	for rows.Next() {
-		var campID, customerID uuid.UUID
-		var pgSpend, ledgerSpend int64
-		if err := rows.Scan(&campID, &customerID, &pgSpend, &ledgerSpend); err != nil {
+		var row hyg30AuditRow
+		if err := rows.Scan(&row.campID, &row.customerID, &row.pgSpend, &row.ledgerSpend); err != nil {
 			continue
 		}
-		rdb := w.svc.getRDB(campID)
-		if rdb == nil {
+		auditRows = append(auditRows, row)
+	}
+	if err := rows.Err(); err != nil {
+		slog.Error("hyg30 audit A scan failed", "error", err)
+		return
+	}
+
+	byShard := make(map[int][]hyg30AuditRow)
+	for _, row := range auditRows {
+		shard := w.svc.sharder.GetShard(row.campID)
+		if shard < 0 || shard >= len(w.svc.rdbs) || w.svc.rdbs[shard] == nil {
 			continue
 		}
-		syncKey := domain.CampaignSyncKey(campID)
-		redisSpend, err := rdb.Get(ctx, syncKey).Int64()
-		if err != nil && !errors.Is(err, redis.Nil) {
+		byShard[shard] = append(byShard[shard], row)
+	}
+
+	for shard, shardRows := range byShard {
+		rdb := w.svc.rdbs[shard]
+		pipe := rdb.Pipeline()
+		syncCmds := make(map[uuid.UUID]*redis.StringCmd, len(shardRows))
+		for _, row := range shardRows {
+			syncCmds[row.campID] = pipe.Get(ctx, domain.CampaignSyncKey(row.campID))
+		}
+		if _, err := pipe.Exec(ctx); err != nil && !errors.Is(err, redis.Nil) {
+			slog.Error("hyg30 audit A redis pipeline failed", "shard", shard, "error", err)
 			continue
 		}
-		drift := redisSpend - ledgerSpend
-		if drift == 0 {
-			metrics.ReconDriftMicro.DeleteLabelValues(campID.String())
-			continue
-		}
-		absDrift := drift
-		if absDrift < 0 {
-			absDrift = -absDrift
-		}
-		metrics.ReconDriftMicro.WithLabelValues(campID.String()).Set(float64(absDrift))
-		if absDrift <= hyg30ReconDriftThresholdMicro {
-			continue
-		}
-		if w.svc.cfg != nil && w.svc.cfg.ReconForceRefillEnabled() {
-			if err := w.svc.forceRefillCampaignFromPG(ctx, campID, pgSpend); err != nil {
-				slog.Error("force refill from pg failed", "campaign_id", campID, "error", err)
-			} else {
-				slog.Info("force refill from pg applied", "campaign_id", campID, "pg_spend", pgSpend)
+		for _, row := range shardRows {
+			cmd := syncCmds[row.campID]
+			redisSpend, err := cmd.Int64()
+			if err != nil && !errors.Is(err, redis.Nil) {
+				continue
 			}
+			w.processHYG30AuditDrift(ctx, row.campID, row.pgSpend, row.ledgerSpend, redisSpend)
+		}
+	}
+}
+
+func (w *ReconWorker) processHYG30AuditDrift(ctx context.Context, campID uuid.UUID, pgSpend, ledgerSpend, redisSpend int64) {
+	drift := redisSpend - ledgerSpend
+	if drift == 0 {
+		metrics.ReconDriftMicro.DeleteLabelValues(campID.String())
+		return
+	}
+	absDrift := drift
+	if absDrift < 0 {
+		absDrift = -absDrift
+	}
+	metrics.ReconDriftMicro.WithLabelValues(campID.String()).Set(float64(absDrift))
+	if absDrift <= hyg30ReconDriftThresholdMicro {
+		return
+	}
+	if w.svc.cfg != nil && w.svc.cfg.ReconForceRefillEnabled() {
+		if err := w.svc.forceRefillCampaignFromPG(ctx, campID, pgSpend); err != nil {
+			slog.Error("force refill from pg failed", "campaign_id", campID, "error", err)
+		} else {
+			slog.Info("force refill from pg applied", "campaign_id", campID, "pg_spend", pgSpend)
 		}
 	}
 }
@@ -509,7 +627,7 @@ func (w *ReconWorker) auditPGCHStats(ctx context.Context) {
 		slog.Error("hyg30 audit B ch batch query failed", "error", err)
 		return
 	}
-	defer chRows.Close()
+	defer func() { _ = chRows.Close() }()
 
 	chTotals := make(map[string]uint64, len(pgStats))
 	for chRows.Next() {
@@ -620,7 +738,7 @@ func (w *ReconWorker) enqueueForcePauseCustomer(ctx context.Context, customerID 
 	for range campIDs {
 		if _, err := br.Exec(); err != nil {
 			slog.Error("failed to enqueue FORCE_PAUSE batch", "error", err)
-			br.Close()
+			_ = br.Close()
 			return
 		}
 	}
@@ -705,9 +823,41 @@ func (w *ReconWorker) ReconcileBudgetSnapshot(ctx context.Context) {
 		return
 	}
 
+	pgByID, err := w.loadCampaignBudgetPGBatch(ctx, campaignIDs)
+	if err != nil {
+		slog.Error("budget snapshot recon: batch pg load failed", "error", err)
+		return
+	}
+
+	quotaMode := w.svc.cfg != nil && (w.svc.cfg.QuotaMode == "shadow" || w.svc.cfg.QuotaMode == "live")
+	snapByID := make(map[uuid.UUID]domain.BudgetReconSnapshot, len(campaignIDs))
+	byShard := make(map[int][]uuid.UUID)
+	for _, campID := range campaignIDs {
+		shardIdx := w.svc.sharder.GetShard(campID)
+		if w.quorum != nil && w.quorum.DeadShardConfirmed(shardIdx) {
+			continue
+		}
+		if shardIdx < 0 || shardIdx >= len(w.svc.rdbs) || w.svc.rdbs[shardIdx] == nil {
+			continue
+		}
+		byShard[shardIdx] = append(byShard[shardIdx], campID)
+	}
+	for shardIdx, ids := range byShard {
+		snaps, err := domain.BatchFetchBudgetReconSnapshots(ctx, w.svc.rdbs[shardIdx], ids, quotaMode)
+		if err != nil {
+			slog.Error("budget snapshot recon: batch redis snapshot failed", "shard", shardIdx, "error", err)
+			continue
+		}
+		for id, snap := range snaps {
+			snapByID[id] = snap
+		}
+	}
+
 	var checked, skipped, discrepancies int
 	for _, campID := range campaignIDs {
-		ok, disc, skip := w.reconcileCampaignSnapshot(ctx, reconSvc, campID)
+		pg, pgOk := pgByID[campID]
+		snap, snapOk := snapByID[campID]
+		ok, disc, skip := w.reconcileCampaignSnapshot(ctx, reconSvc, campID, pg, snap, pgOk, snapOk)
 		if skip {
 			skipped++
 			continue
@@ -762,7 +912,14 @@ func (w *ReconWorker) collectDirtyCampaignIDs(ctx context.Context) ([]uuid.UUID,
 	return out, nil
 }
 
-func (w *ReconWorker) reconcileCampaignSnapshot(ctx context.Context, reconSvc *ReconService, campID uuid.UUID) (checked, discrepancy, skipped bool) {
+func (w *ReconWorker) reconcileCampaignSnapshot(
+	ctx context.Context,
+	reconSvc *ReconService,
+	campID uuid.UUID,
+	pg campaignBudgetPG,
+	snap domain.BudgetReconSnapshot,
+	pgOk, snapOk bool,
+) (checked, discrepancy, skipped bool) {
 	shardIdx := w.svc.sharder.GetShard(campID)
 	if w.quorum != nil && w.quorum.DeadShardConfirmed(shardIdx) {
 		return false, false, true
@@ -770,21 +927,10 @@ func (w *ReconWorker) reconcileCampaignSnapshot(ctx context.Context, reconSvc *R
 	if shardIdx >= len(w.svc.rdbs) {
 		return false, false, true
 	}
-	rdb := w.svc.rdbs[shardIdx]
-
-	pg, err := w.loadCampaignBudgetPG(ctx, campID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return false, false, true
-		}
-		slog.Error("budget snapshot recon: load pg state failed", "campaign_id", campID, "error", err)
+	if !pgOk {
 		return false, false, true
 	}
-
-	quotaMode := w.svc.cfg != nil && (w.svc.cfg.QuotaMode == "shadow" || w.svc.cfg.QuotaMode == "live")
-	snap, err := domain.FetchBudgetReconSnapshot(ctx, rdb, campID, quotaMode)
-	if err != nil {
-		slog.Error("budget snapshot recon: redis snapshot failed", "campaign_id", campID, "error", err)
+	if !snapOk {
 		return false, false, true
 	}
 
@@ -853,18 +999,51 @@ func (w *ReconWorker) reconcileCampaignSnapshot(ctx context.Context, reconSvc *R
 	return true, true, false
 }
 
-func (w *ReconWorker) loadCampaignBudgetPG(ctx context.Context, campID uuid.UUID) (campaignBudgetPG, error) {
-	var out campaignBudgetPG
-	out.campaignID = campID
-	err := w.svc.GetPool().QueryRow(ctx, `
-		SELECT c.customer_id, c.budget_limit, c.current_spend, c.updated_at,
+func (w *ReconWorker) loadCampaignBudgetPGBatch(ctx context.Context, campIDs []uuid.UUID) (map[uuid.UUID]campaignBudgetPG, error) {
+	out := make(map[uuid.UUID]campaignBudgetPG, len(campIDs))
+	if len(campIDs) == 0 {
+		return out, nil
+	}
+	pgIDs := make([]pgtype.UUID, len(campIDs))
+	for i, id := range campIDs {
+		pgIDs[i] = domain.ToUUID(id)
+	}
+	rows, err := w.svc.GetPool().Query(ctx, `
+		SELECT c.id, c.customer_id, c.budget_limit, c.current_spend, c.updated_at,
 		       COALESCE(q.reserved_amount, 0)
 		FROM campaigns c
 		LEFT JOIN campaign_quotas q ON q.campaign_id = c.id
-		WHERE c.id = $1`,
-		domain.ToUUID(campID),
-	).Scan(&out.customerID, &out.budgetLimit, &out.currentSpend, &out.updatedAt, &out.quotaReserved)
-	return out, err
+		WHERE c.id = ANY($1::uuid[])`, pgIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var outID uuid.UUID
+		var pg campaignBudgetPG
+		if err := rows.Scan(&outID, &pg.customerID, &pg.budgetLimit, &pg.currentSpend, &pg.updatedAt, &pg.quotaReserved); err != nil {
+			return nil, err
+		}
+		pg.campaignID = outID
+		out[outID] = pg
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *ReconWorker) loadCampaignBudgetPG(ctx context.Context, campID uuid.UUID) (campaignBudgetPG, error) {
+	m, err := w.loadCampaignBudgetPGBatch(ctx, []uuid.UUID{campID})
+	if err != nil {
+		return campaignBudgetPG{}, err
+	}
+	pg, ok := m[campID]
+	if !ok {
+		return campaignBudgetPG{}, pgx.ErrNoRows
+	}
+	return pg, nil
 }
 
 func (w *ReconWorker) shouldSkipSnapshotGrace(snap domain.BudgetReconSnapshot, lastPGUpdate time.Time) bool {

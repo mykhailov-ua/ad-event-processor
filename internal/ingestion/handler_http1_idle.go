@@ -45,6 +45,13 @@ func (h *AdsPacketHandler) http1BodyIdleDuration() time.Duration {
 	return time.Duration(ms) * time.Millisecond
 }
 
+func (h *AdsPacketHandler) http1MaxConnLifetimeDuration() time.Duration {
+	if h == nil || h.cfg == nil || h.cfg.HTTP1MaxConnLifetimeMs <= 0 {
+		return 0
+	}
+	return time.Duration(h.cfg.HTTP1MaxConnLifetimeMs) * time.Millisecond
+}
+
 func (h *AdsPacketHandler) http1MaxBufferedBytes() int64 {
 	maxBody := int64(1 << 20)
 	if h != nil && h.cfg != nil {
@@ -68,6 +75,7 @@ func (h *AdsPacketHandler) http1ResetIncompleteState(ctx *connContext, c gnet.Co
 		return
 	}
 	ctx.http1IncompleteSpin = 0
+	ctx.http1BodyIdleArmed = false
 	ctx.http1BodyIdleDeadline = 0
 	resetChunkScratch(&ctx.chunkScratch)
 	if c != nil {
@@ -76,7 +84,7 @@ func (h *AdsPacketHandler) http1ResetIncompleteState(ctx *connContext, c gnet.Co
 }
 
 func (h *AdsPacketHandler) http1ArmBodyIdle(c gnet.Conn, ctx *connContext) {
-	if ctx == nil || c == nil {
+	if ctx == nil || c == nil || ctx.http1BodyIdleArmed {
 		return
 	}
 	idle := h.http1BodyIdleDuration()
@@ -85,10 +93,21 @@ func (h *AdsPacketHandler) http1ArmBodyIdle(c gnet.Conn, ctx *connContext) {
 	}
 	_ = c.SetReadDeadline(time.Now().Add(idle))
 	ctx.http1BodyIdleDeadline = monotonicNano() + idle.Nanoseconds()
+	ctx.http1BodyIdleArmed = true
 }
 
 func (h *AdsPacketHandler) http1CheckBodyIdle(c gnet.Conn, ctx *connContext) gnet.Action {
-	if ctx == nil || ctx.http1BodyIdleDeadline == 0 {
+	if ctx == nil {
+		return gnet.None
+	}
+	maxLife := h.http1MaxConnLifetimeDuration()
+	if maxLife > 0 && ctx.http1ConnOpenedMono > 0 &&
+		monotonicNano()-ctx.http1ConnOpenedMono >= maxLife.Nanoseconds() {
+		metrics.Http1IncompleteCloseTotal.WithLabelValues("idle").Inc()
+		h.http1ResetIncompleteState(ctx, c)
+		return gnet.Close
+	}
+	if ctx.http1BodyIdleDeadline == 0 {
 		return gnet.None
 	}
 	if monotonicNano() < ctx.http1BodyIdleDeadline {

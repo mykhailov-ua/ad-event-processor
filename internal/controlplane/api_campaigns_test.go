@@ -36,7 +36,7 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 	}
 
 	authMW, tokenMaker := integrationTestAuth(t, rdb, cfg)
-	svc := NewService(pool, []redis.UniversalClient{rdb}, nil, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, cfg)
 	defer svc.Close()
 	h := NewHandler(svc, cfg, authMW, nil, nil, nil)
 	mux := http.NewServeMux()
@@ -142,7 +142,7 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 	t.Run("CampaignIsolation_Forbidden", func(t *testing.T) {
 		otherCustID := uuid.New()
 
-		req, _ := http.NewRequest("GET", "/api/v1/campaigns/"+campID.String(), nil)
+		req, _ := http.NewRequest("GET", "/api/v1/campaigns/"+campID.String(), http.NoBody)
 		withSessionUser(req, tokenMaker, RoleUser, otherCustID)
 
 		resp := httptest.NewRecorder()

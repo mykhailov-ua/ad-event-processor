@@ -34,7 +34,7 @@ func TestNodeMetricsWorker_FlushWindowAndTTL(t *testing.T) {
 	worker := NewNodeMetricsWorker(svc)
 
 	now := time.Date(2026, 7, 27, 12, 0, 0, 0, time.UTC)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		worker.Record("ingress_p99_ms", float64(i))
 	}
 	require.NoError(t, worker.Flush(ctx, now))

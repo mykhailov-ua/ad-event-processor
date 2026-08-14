@@ -90,6 +90,8 @@ venv/
 .venv-ml/
 .ruff_cache/
 **/.ruff_cache/
+.pytest_cache/
+**/.pytest_cache/
 
 # Generated ML artifacts (make fraudtrain-check)
 var/fraudscore/

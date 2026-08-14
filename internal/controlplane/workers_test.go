@@ -25,7 +25,7 @@ func TestProcessScheduleTickSkipsAlreadyAligned(t *testing.T) {
 	rdb, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
-	svc := NewService(pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), nil)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), nil)
 	defer svc.Close()
 
 	ctx := context.Background()
@@ -60,7 +60,7 @@ func TestCreateCampaignRejectsIncompleteIdempotencyLedger(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
 
-	svc := NewService(pool, nil, nil, nil)
+	svc := NewService(context.Background(), pool, nil, nil, nil)
 	defer svc.Close()
 
 	ctx := context.Background()
@@ -83,7 +83,7 @@ func TestServiceCloseGuardsLateWorkerStart(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
 
-	svc := NewService(pool, nil, nil, nil)
+	svc := NewService(context.Background(), pool, nil, nil, nil)
 	svc.Close()
 
 	done := make(chan struct{})

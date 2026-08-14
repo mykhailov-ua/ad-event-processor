@@ -41,7 +41,7 @@ func measureOpenRTBBidLatencies(h *AdsPacketHandler, body []byte, samples int) [
 		"Content-Length": itoa(len(body)),
 	}, body)
 	latencies := make([]time.Duration, 0, samples)
-	for i := 0; i < samples; i++ {
+	for range samples {
 		start := time.Now()
 		_, conn := ServeGnetHarness(h, wire)
 		_ = conn.Written()
@@ -74,7 +74,7 @@ func TestOpenRTB26_Exchange_Core_LatencySLA(t *testing.T) {
 
 	const samples = 512
 	latencies := make([]time.Duration, 0, samples)
-	for i := 0; i < samples; i++ {
+	for range samples {
 		var evt domain.Event
 		start := time.Now()
 		out := runOpenRTBExchangeParsed(proc, &p.OpenRTB26Hot, &p.OpenRTB26Cold, []byte("bid-sla"), "8.8.8.8", exCfg, &admBuf, &evt)

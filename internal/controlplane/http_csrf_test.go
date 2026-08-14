@@ -23,7 +23,7 @@ func TestCSRFMiddleware(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("GET_Request_Allowed", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/api/v1/audit", nil)
+		req, _ := http.NewRequest("GET", "/api/v1/audit", http.NoBody)
 		resp := httptest.NewRecorder()
 
 		handler.ServeHTTP(resp, req)
@@ -32,7 +32,7 @@ func TestCSRFMiddleware(t *testing.T) {
 	})
 
 	t.Run("POST_Login_AllowedWithoutToken", func(t *testing.T) {
-		req, _ := http.NewRequest("POST", "/api/v1/auth/login", nil)
+		req, _ := http.NewRequest("POST", "/api/v1/auth/login", http.NoBody)
 		resp := httptest.NewRecorder()
 
 		handler.ServeHTTP(resp, req)
@@ -41,7 +41,7 @@ func TestCSRFMiddleware(t *testing.T) {
 	})
 
 	t.Run("POST_MissingCookie_Forbidden", func(t *testing.T) {
-		req, _ := http.NewRequest("POST", "/api/v1/consent", nil)
+		req, _ := http.NewRequest("POST", "/api/v1/consent", http.NoBody)
 		resp := httptest.NewRecorder()
 
 		handler.ServeHTTP(resp, req)
@@ -50,7 +50,7 @@ func TestCSRFMiddleware(t *testing.T) {
 	})
 
 	t.Run("POST_MissingHeader_Forbidden", func(t *testing.T) {
-		req, _ := http.NewRequest("POST", "/api/v1/consent", nil)
+		req, _ := http.NewRequest("POST", "/api/v1/consent", http.NoBody)
 		req.AddCookie(&http.Cookie{Name: "csrfToken", Value: token})
 		resp := httptest.NewRecorder()
 
@@ -60,7 +60,7 @@ func TestCSRFMiddleware(t *testing.T) {
 	})
 
 	t.Run("POST_MismatchToken_Forbidden", func(t *testing.T) {
-		req, _ := http.NewRequest("POST", "/api/v1/consent", nil)
+		req, _ := http.NewRequest("POST", "/api/v1/consent", http.NoBody)
 		req.AddCookie(&http.Cookie{Name: "csrfToken", Value: token})
 		req.Header.Set("X-CSRF-Token", "wrong-token")
 		resp := httptest.NewRecorder()
@@ -71,7 +71,7 @@ func TestCSRFMiddleware(t *testing.T) {
 	})
 
 	t.Run("POST_ValidCSRF_Success", func(t *testing.T) {
-		req, _ := http.NewRequest("POST", "/api/v1/consent", nil)
+		req, _ := http.NewRequest("POST", "/api/v1/consent", http.NoBody)
 		req.AddCookie(&http.Cookie{Name: "csrfToken", Value: token})
 		req.Header.Set("X-CSRF-Token", token)
 		resp := httptest.NewRecorder()
@@ -82,7 +82,7 @@ func TestCSRFMiddleware(t *testing.T) {
 	})
 
 	t.Run("POST_PlatformBootstrap_AllowedWithoutCSRF", func(t *testing.T) {
-		req, _ := http.NewRequest("POST", "/api/v1/settings/platform/bootstrap", nil)
+		req, _ := http.NewRequest("POST", "/api/v1/settings/platform/bootstrap", http.NoBody)
 		resp := httptest.NewRecorder()
 
 		handler.ServeHTTP(resp, req)
@@ -93,7 +93,7 @@ func TestCSRFMiddleware(t *testing.T) {
 	t.Run("POST_AdminAPIKey_SkipsCSRF", func(t *testing.T) {
 		mdl := NewCSRFMiddleware("secret-key")
 		handler := mdl(dummyHandler)
-		req, _ := http.NewRequest("POST", "/api/v1/consent", nil)
+		req, _ := http.NewRequest("POST", "/api/v1/consent", http.NoBody)
 		req.Header.Set("X-Admin-API-Key", "secret-key")
 		resp := httptest.NewRecorder()
 

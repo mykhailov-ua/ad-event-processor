@@ -57,7 +57,7 @@ func RunIface(opts IfaceOptions) (IfaceResult, error) {
 	if err != nil {
 		return IfaceResult{}, err
 	}
-	defer unix.Close(fd)
+	defer func() { _ = unix.Close(fd) }()
 
 	addr := &unix.SockaddrLinklayer{
 		Protocol: htons(unix.ETH_P_ALL),

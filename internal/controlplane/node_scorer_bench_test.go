@@ -16,7 +16,7 @@ func BenchmarkScoreNodesInMemory_100Nodes(b *testing.B) {
 	cfg := DefaultScorerConfig()
 	defs := DefaultTrackerMetrics()
 	nodeBuckets := make(map[string][]db.NodeMetricBucket, 100)
-	for n := 0; n < 100; n++ {
+	for n := range 100 {
 		nodeID := fmt.Sprintf("node-%03d", n)
 		ts := windowStart.Add(time.Duration(n) * time.Second)
 		for _, metric := range []string{MetricCPUUtil, MetricRAMUtil, MetricIngressP99MS} {

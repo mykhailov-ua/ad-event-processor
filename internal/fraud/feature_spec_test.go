@@ -34,11 +34,9 @@ func TestFeatureSpecDims(t *testing.T) {
 }
 
 func TestFeatureSpecGoldenFixtures(t *testing.T) {
-	root := repoRoot(t)
-	fixturesDir := filepath.Join(root, "testdata", "ml")
-	if _, err := os.Stat(fixturesDir); os.IsNotExist(err) {
-		t.Skip("testdata/ml fixtures not present; run make fraudtrain-check locally")
-	}
+	fixturesDir := fraudMLFixtureDir(t)
+	require.DirExists(t, fixturesDir, "run model/fixture_generator.py to refresh tracked fixtures")
+
 	entries, err := os.ReadDir(fixturesDir)
 	require.NoError(t, err)
 
@@ -70,14 +68,12 @@ func TestFeatureSpecGoldenFixtures(t *testing.T) {
 		}
 		loaded++
 	}
-	if loaded == 0 {
-		t.Skip("no features_*.json fixtures under var/fraudscore/fixtures; run make fraudtrain-check locally")
-	}
+	require.Greater(t, loaded, 0, "expected features_*.json under %s", fixturesDir)
 }
 
-func repoRoot(t *testing.T) string {
+func fraudMLFixtureDir(t *testing.T) string {
 	t.Helper()
 	_, file, _, ok := runtime.Caller(0)
 	require.True(t, ok)
-	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
+	return filepath.Join(filepath.Dir(file), "testdata", "ml")
 }

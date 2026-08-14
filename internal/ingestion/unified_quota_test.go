@@ -43,7 +43,7 @@ func seedCampaignQuota(t testing.TB, ctx context.Context, rdb redis.UniversalCli
 
 func TestUnifiedFilter_quotaDebit(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)
@@ -72,7 +72,7 @@ func TestUnifiedFilter_quotaDebit(t *testing.T) {
 
 func TestUnifiedFilter_quotaDualRead_legacyFallback(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)
@@ -107,7 +107,7 @@ func TestUnifiedFilter_quotaDualRead_legacyFallback(t *testing.T) {
 
 func TestUnifiedFilter_quotaExhausted_returns3(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)
@@ -132,7 +132,7 @@ func TestUnifiedFilter_quotaExhausted_returns3(t *testing.T) {
 
 func TestUnifiedFilter_quotaRefill_thunderingHerd(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)
@@ -170,7 +170,7 @@ func TestUnifiedFilter_quotaRefill_thunderingHerd(t *testing.T) {
 
 func TestUnifiedFilter_quotaOff_legacyPathUnchanged(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)
@@ -200,7 +200,7 @@ func TestUnifiedFilter_quotaOff_legacyPathUnchanged(t *testing.T) {
 
 func TestUnifiedFilter_QuotaMode_LatencyProfile(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)

@@ -92,7 +92,7 @@ func runDoctorBundle(cmd *cobra.Command, args []string) error {
 	}); err != nil {
 		return err
 	}
-	fmt.Fprintf(os.Stdout, "bundle written to %s\n", bundleOut)
+	_, _ = fmt.Fprintf(os.Stdout, "bundle written to %s\n", bundleOut)
 	return nil
 }
 

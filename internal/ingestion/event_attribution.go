@@ -12,7 +12,7 @@ func appendAttributionPayload(dst, payload []byte, subs SubIDSlots, fbclid, gcli
 		dst = append(dst, '{')
 	}
 
-	for i := 0; i < MaxSubIDs; i++ {
+	for i := range MaxSubIDs {
 		if subs[i] == "" {
 			continue
 		}

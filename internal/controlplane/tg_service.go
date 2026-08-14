@@ -450,7 +450,7 @@ func (s *TelegramServiceImpl) sendBotMessage(ctx context.Context, botToken strin
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		var errData struct {
@@ -485,7 +485,7 @@ func (s *TelegramServiceImpl) TestPostback(ctx context.Context, id uuid.UUID) er
 	client := &http.Client{Timeout: 5 * time.Second}
 	testURL := strings.ReplaceAll(p.PostbackUrl, "{click_id}", "test_click_id")
 	testURL = strings.ReplaceAll(testURL, "{campaign_id}", FromUUID(p.CampaignID).String())
-	req, err := http.NewRequestWithContext(ctx, "GET", testURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", testURL, http.NoBody)
 	if err != nil {
 		return err
 	}
@@ -493,7 +493,7 @@ func (s *TelegramServiceImpl) TestPostback(ctx context.Context, id uuid.UUID) er
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode >= 400 {
 		return fmt.Errorf("postback url returned status code %d", resp.StatusCode)
 	}

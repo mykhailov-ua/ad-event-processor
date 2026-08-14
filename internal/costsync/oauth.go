@@ -26,7 +26,7 @@ func refreshMetaOAuth(ctx context.Context, client *http.Client, appID, appSecret
 	q.Set("fb_exchange_token", cred.RefreshToken)
 
 	endpoint := "https://graph.facebook.com/v19.0/oauth/access_token?" + q.Encode()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
 	if err != nil {
 		return "", time.Time{}, err
 	}
@@ -34,7 +34,7 @@ func refreshMetaOAuth(ctx context.Context, client *http.Client, appID, appSecret
 	if err != nil {
 		return "", time.Time{}, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 	if resp.StatusCode != http.StatusOK {
 		return "", time.Time{}, fmt.Errorf("meta oauth refresh: status %d: %s", resp.StatusCode, string(body))
@@ -75,7 +75,7 @@ func refreshGoogleOAuth(ctx context.Context, client *http.Client, clientID, clie
 	if err != nil {
 		return "", time.Time{}, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 	if resp.StatusCode != http.StatusOK {
 		return "", time.Time{}, fmt.Errorf("google oauth refresh: status %d: %s", resp.StatusCode, string(body))

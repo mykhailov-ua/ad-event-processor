@@ -51,7 +51,7 @@ func TestFault_Replication_HighLatency(t *testing.T) {
 		t.Fatal(err)
 	}
 	leader.SetCoordinator(leaderCoord)
-	leaderCoord.Start()
+	leaderCoord.Start(context.Background())
 	defer leaderCoord.Stop()
 
 	followerCoord, err := NewCoordinator("fault-lat-follower", follower.Addr(), redisURL, follower)
@@ -59,7 +59,7 @@ func TestFault_Replication_HighLatency(t *testing.T) {
 		t.Fatal(err)
 	}
 	follower.SetCoordinator(followerCoord)
-	followerCoord.Start()
+	followerCoord.Start(context.Background())
 	defer followerCoord.Stop()
 
 	topic := "latency-fault-topic"
@@ -142,7 +142,7 @@ func TestFault_Replication_PacketLoss(t *testing.T) {
 		t.Fatal(err)
 	}
 	leader.SetCoordinator(leaderCoord)
-	leaderCoord.Start()
+	leaderCoord.Start(context.Background())
 	defer leaderCoord.Stop()
 
 	followerCoord, err := NewCoordinator("fault-loss-follower", follower.Addr(), redisURL, follower)
@@ -150,7 +150,7 @@ func TestFault_Replication_PacketLoss(t *testing.T) {
 		t.Fatal(err)
 	}
 	follower.SetCoordinator(followerCoord)
-	followerCoord.Start()
+	followerCoord.Start(context.Background())
 	defer followerCoord.Stop()
 
 	topic := "loss-fault-topic"
@@ -206,7 +206,7 @@ func TestFault_RedisLatency_LeaderStability(t *testing.T) {
 
 	deadline := time.Now().Add(15 * time.Second)
 	for time.Now().Before(deadline) {
-		_, _ = cli.Produce(topic, 0, []byte("redis-latency-heartbeat"))
+		_, _ = cli.Produce(context.Background(), topic, 0, []byte("redis-latency-heartbeat"))
 		time.Sleep(2 * time.Second)
 	}
 
@@ -256,7 +256,7 @@ func TestFault_KillLeaderMidReplication(t *testing.T) {
 	if err := seedCli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := seedCli.Produce(topic, 0, []byte("bootstrap")); err != nil {
+	if _, err := seedCli.Produce(context.Background(), topic, 0, []byte("bootstrap")); err != nil {
 		t.Fatalf("bootstrap produce: %v", err)
 	}
 	_ = seedCli.Close()
@@ -284,7 +284,7 @@ func TestFault_KillLeaderMidReplication(t *testing.T) {
 		t.Fatal(err)
 	}
 	follower.SetCoordinator(followerCoord)
-	followerCoord.Start()
+	followerCoord.Start(context.Background())
 	defer followerCoord.Stop()
 
 	if _, err := follower.getOrCreatePartition(topicPartitionKey(topic)); err != nil {
@@ -314,7 +314,7 @@ func TestFault_KillLeaderMidReplication(t *testing.T) {
 			default:
 			}
 			payload := []byte(fmt.Sprintf("kill-msg-%d", i))
-			if _, err := cli.Produce(topic, 0, payload); err != nil {
+			if _, err := cli.Produce(context.Background(), topic, 0, payload); err != nil {
 				return
 			}
 			produced.Store(uint64(i + 1))
@@ -350,7 +350,7 @@ func TestFault_KillLeaderMidReplication(t *testing.T) {
 	defer cli.Close()
 
 	tail := partitionOffset(t, follower, topic)
-	if _, err := cli.Produce(topic, 0, []byte("after-failover")); err != nil {
+	if _, err := cli.Produce(context.Background(), topic, 0, []byte("after-failover")); err != nil {
 		t.Fatalf("produce after failover: %v", err)
 	}
 	if got := partitionOffset(t, follower, topic); got != tail+1 {
@@ -410,8 +410,8 @@ func TestFault_SplitBrain_FencingPreventsDualWrite(t *testing.T) {
 	defer staleCli.Close()
 
 	staleRejected := false
-	for i := 0; i < 3; i++ {
-		_, err := staleCli.Produce(topic, 0, []byte("stale-brain"))
+	for range 3 {
+		_, err := staleCli.Produce(context.Background(), topic, 0, []byte("stale-brain"))
 		if err != nil {
 			staleRejected = true
 			break
@@ -427,7 +427,7 @@ func TestFault_SplitBrain_FencingPreventsDualWrite(t *testing.T) {
 	}
 	defer liveCli.Close()
 
-	off, err := liveCli.Produce(topic, 0, []byte("live-brain"))
+	off, err := liveCli.Produce(context.Background(), topic, 0, []byte("live-brain"))
 	if err != nil {
 		t.Fatalf("live leader produce failed: %v", err)
 	}
@@ -464,9 +464,9 @@ func TestFault_AsyncDurability_RPOOnKill9(t *testing.T) {
 	if err := cli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	for i := 0; i < msgCount; i++ {
+	for i := range msgCount {
 		payload := []byte(fmt.Sprintf("rpo-msg-%d", i))
-		if _, err := cli.Produce(topic, 0, payload); err != nil {
+		if _, err := cli.Produce(context.Background(), topic, 0, payload); err != nil {
 			t.Fatalf("produce %d: %v", i, err)
 		}
 	}
@@ -502,7 +502,7 @@ func verifyKillMidReplicationPrefix(t *testing.T, addr, topic string, count, fir
 	}
 	defer cli.Close()
 
-	iter, err := cli.Fetch(topic, 0, 0, 32*1024*1024)
+	iter, err := cli.Fetch(context.Background(), topic, 0, 0, 32*1024*1024)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -534,7 +534,7 @@ func verifyRPOContiguousPrefix(t *testing.T, addr, topic string, count uint64) {
 	}
 	defer cli.Close()
 
-	iter, err := cli.Fetch(topic, 0, 0, 32*1024*1024)
+	iter, err := cli.Fetch(context.Background(), topic, 0, 0, 32*1024*1024)
 	if err != nil {
 		t.Fatal(err)
 	}

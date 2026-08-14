@@ -40,8 +40,8 @@ func TestFault_NetworkPartition_StaleLeaderRejected(t *testing.T) {
 	defer staleCli.Close()
 
 	staleAccepted := false
-	for i := 0; i < 5; i++ {
-		_, err := staleCli.Produce(topic, 0, []byte("stale-partition"))
+	for range 5 {
+		_, err := staleCli.Produce(context.Background(), topic, 0, []byte("stale-partition"))
 		if err != nil {
 			continue
 		}
@@ -55,7 +55,7 @@ func TestFault_NetworkPartition_StaleLeaderRejected(t *testing.T) {
 	}
 	defer liveCli.Close()
 
-	if _, err := liveCli.Produce(topic, 0, []byte("live-after-partition")); err != nil {
+	if _, err := liveCli.Produce(context.Background(), topic, 0, []byte("live-after-partition")); err != nil {
 		t.Fatalf("new leader produce failed: %v", err)
 	}
 
@@ -64,7 +64,7 @@ func TestFault_NetworkPartition_StaleLeaderRejected(t *testing.T) {
 		t.Fatalf("follower next offset: got %d want 21", got)
 	}
 
-	iter, err := liveCli.Fetch(topic, 0, 0, 32*1024*1024)
+	iter, err := liveCli.Fetch(context.Background(), topic, 0, 0, 32*1024*1024)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestFault_LeaseExpiry_FrozenLeaderRejected(t *testing.T) {
 	if err := seedCli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := seedCli.Produce(topic, 0, []byte("bootstrap")); err != nil {
+	if _, err := seedCli.Produce(context.Background(), topic, 0, []byte("bootstrap")); err != nil {
 		t.Fatalf("bootstrap produce: %v", err)
 	}
 	_ = seedCli.Close()
@@ -133,7 +133,7 @@ func TestFault_LeaseExpiry_FrozenLeaderRejected(t *testing.T) {
 		t.Fatal(err)
 	}
 	follower.SetCoordinator(followerCoord)
-	followerCoord.Start()
+	followerCoord.Start(context.Background())
 	defer followerCoord.Stop()
 
 	if _, err := follower.getOrCreatePartition(pk); err != nil {
@@ -145,8 +145,8 @@ func TestFault_LeaseExpiry_FrozenLeaderRejected(t *testing.T) {
 	if err := preCli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	for i := 0; i < 15; i++ {
-		if _, err := preCli.Produce(topic, 0, []byte(fmt.Sprintf("freeze-%d", i))); err != nil {
+	for i := range 15 {
+		if _, err := preCli.Produce(context.Background(), topic, 0, []byte(fmt.Sprintf("freeze-%d", i))); err != nil {
 			t.Fatalf("freeze produce %d: %v", i, err)
 		}
 	}
@@ -184,8 +184,8 @@ func TestFault_LeaseExpiry_FrozenLeaderRejected(t *testing.T) {
 	defer staleCli.Close()
 
 	staleRejected := false
-	for i := 0; i < 5; i++ {
-		_, err := staleCli.Produce(topic, 0, []byte("stale-after-freeze"))
+	for range 5 {
+		_, err := staleCli.Produce(context.Background(), topic, 0, []byte("stale-after-freeze"))
 		if err != nil {
 			staleRejected = true
 			break
@@ -202,7 +202,7 @@ func TestFault_LeaseExpiry_FrozenLeaderRejected(t *testing.T) {
 	}
 	defer liveCli.Close()
 
-	if _, err := liveCli.Produce(topic, 0, []byte("live-after-freeze")); err != nil {
+	if _, err := liveCli.Produce(context.Background(), topic, 0, []byte("live-after-freeze")); err != nil {
 		t.Fatalf("new leader produce: %v", err)
 	}
 
@@ -244,7 +244,7 @@ func TestFault_ClientRedirect_AfterFailover(t *testing.T) {
 	}, 20*time.Second, 500*time.Millisecond, "follower must become ready leader")
 
 	tail := partitionOffset(t, followerSrv, topic)
-	off, err := cli.Produce(topic, 0, []byte("redirect-after-failover"))
+	off, err := cli.Produce(context.Background(), topic, 0, []byte("redirect-after-failover"))
 	if err != nil {
 		t.Fatalf("produce via redis redirect failed: %v", err)
 	}
@@ -278,8 +278,8 @@ func TestFault_ConsumerResume_AfterLeaderKill(t *testing.T) {
 	if err := preCli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	for i := 0; i < preKill; i++ {
-		if _, err := preCli.Produce(topic, 0, []byte(fmt.Sprintf("pre-%d", i))); err != nil {
+	for i := range preKill {
+		if _, err := preCli.Produce(context.Background(), topic, 0, []byte(fmt.Sprintf("pre-%d", i))); err != nil {
 			t.Fatalf("pre produce %d: %v", i, err)
 		}
 	}
@@ -341,8 +341,8 @@ func TestFault_ConsumerResume_AfterLeaderKill(t *testing.T) {
 	if err := postCli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	for i := 0; i < postKill; i++ {
-		if _, err := postCli.Produce(topic, 0, []byte(fmt.Sprintf("post-%d", i))); err != nil {
+	for i := range postKill {
+		if _, err := postCli.Produce(context.Background(), topic, 0, []byte(fmt.Sprintf("post-%d", i))); err != nil {
 			t.Fatalf("post failover produce %d: %v", i, err)
 		}
 	}
@@ -384,7 +384,7 @@ func verifyFreezeLeasePrefix(t *testing.T, addr, topic string, wantCount int) {
 	}
 	defer cli.Close()
 
-	iter, err := cli.Fetch(topic, 0, 0, 32*1024*1024)
+	iter, err := cli.Fetch(context.Background(), topic, 0, 0, 32*1024*1024)
 	if err != nil {
 		t.Fatal(err)
 	}

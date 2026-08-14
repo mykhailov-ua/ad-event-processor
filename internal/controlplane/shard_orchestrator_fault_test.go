@@ -4,6 +4,7 @@ import (
 	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"context"
+	"errors"
 	"io"
 	"net"
 	"testing"
@@ -33,7 +34,7 @@ func TestFault_ShardOrchestrator_NoFalseMigrate(t *testing.T) {
 	defer cleanup1()
 
 	cfg := &config.Config{SlotMigrationEnabled: false}
-	svc := NewService(pool, []redis.UniversalClient{rdb0, rdb1}, domain.NewStaticSlotSharder(2), cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb0, rdb1}, domain.NewStaticSlotSharder(2), cfg)
 	defer svc.Close()
 
 	var campID uuid.UUID
@@ -63,7 +64,7 @@ func TestFault_ShardOrchestrator_NoFalseMigrate(t *testing.T) {
 	orchestrator.scaleThreshold = 0.85
 	orchestrator.overloadLimit = 10 * time.Millisecond
 
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		orchestrator.tick(ctx)
 		time.Sleep(10 * time.Millisecond)
 	}
@@ -96,7 +97,7 @@ func TestFault_ShardOrchestrator_CampaignRoutingMigration(t *testing.T) {
 	defer cleanup1()
 
 	cfg := &config.Config{SlotMigrationEnabled: false}
-	svc := NewService(pool, []redis.UniversalClient{rdb0, rdb1}, domain.NewStaticSlotSharder(2), cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb0, rdb1}, domain.NewStaticSlotSharder(2), cfg)
 	defer svc.Close()
 
 	var campID uuid.UUID
@@ -226,7 +227,7 @@ func requestTCPSnapshotACK(t *testing.T, ctx context.Context, addr string, secre
 		m, rerr := conn.Read(frame[n:])
 		n += m
 		if rerr != nil {
-			if rerr == io.EOF {
+			if errors.Is(rerr, io.EOF) {
 				break
 			}
 			require.NoError(t, rerr)

@@ -1,4 +1,5 @@
 """ClickHouse HTTP client from CH_DSN / CH_READONLY_DSN and CH_HTTP_PORT."""
+
 from __future__ import annotations
 
 import os
@@ -41,16 +42,16 @@ def ch_config_from_env() -> CHConfig:
     )
 
 
-def connect_client(cfg: CHConfig | None = None) -> Any:
+def connect_client(config: CHConfig | None = None) -> Any:
     import clickhouse_connect
 
-    resolved = cfg or ch_config_from_env()
+    resolved_config = config or ch_config_from_env()
     return clickhouse_connect.get_client(
-        host=resolved.host,
-        port=resolved.port,
-        username=resolved.username,
-        password=resolved.password,
-        database=resolved.database,
+        host=resolved_config.host,
+        port=resolved_config.port,
+        username=resolved_config.username,
+        password=resolved_config.password,
+        database=resolved_config.database,
     )
 
 

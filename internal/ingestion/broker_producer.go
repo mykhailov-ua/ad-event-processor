@@ -24,7 +24,7 @@ var (
 )
 
 type BrokerClient interface {
-	Produce(topic string, partition uint16, payload []byte) (uint64, error)
+	Produce(ctx context.Context, topic string, partition uint16, payload []byte) (uint64, error)
 	Close() error
 }
 
@@ -364,7 +364,7 @@ func (bp *BrokerProducer) dispatchBatch(events []pb.AdStreamEvent, bufPtr *[]byt
 	}
 	*bufPtr = buf
 
-	_, err := bp.client.Produce(bp.topic, bp.partition, buf)
+	_, err := bp.client.Produce(context.Background(), bp.topic, bp.partition, buf)
 	dur := time.Since(start).Seconds()
 
 	metrics.BrokerWriteDuration.WithLabelValues(bp.topic).Observe(dur)

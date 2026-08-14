@@ -2,6 +2,7 @@ package fraud
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -206,7 +207,7 @@ func (detector *Detector) RunLoop(ctx context.Context) error {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
-	if _, err := detector.Run(ctx); err != nil && err != ErrOutboxBackpressure && ctx.Err() == nil {
+	if _, err := detector.Run(ctx); err != nil && !errors.Is(err, ErrOutboxBackpressure) && ctx.Err() == nil {
 		slog.Error("ivt detector initial cycle failed", "error", err)
 	}
 
@@ -216,7 +217,7 @@ func (detector *Detector) RunLoop(ctx context.Context) error {
 			return ctx.Err()
 		case <-ticker.C:
 			result, err := detector.Run(ctx)
-			if err == ErrOutboxBackpressure {
+			if errors.Is(err, ErrOutboxBackpressure) {
 				slog.Warn("ivt detector paused for outbox backpressure",
 					"candidates", result.Candidates,
 					"pending_limit", detector.cfg.OutboxPendingLimit,

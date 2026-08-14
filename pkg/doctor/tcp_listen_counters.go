@@ -34,7 +34,7 @@ func ReadTcpListenCounters() (TcpListenCounters, error) {
 	if err != nil {
 		return TcpListenCounters{}, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	return ParseTcpListenCounters(f)
 }
 

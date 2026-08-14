@@ -73,7 +73,7 @@ func ComputeCompositeHashUUID(campaignID uuid.UUID, userID []byte) uint32 {
 func crc32IEEEInplace36(b *[36]byte) uint32 {
 	crc := ^uint32(0)
 	tab := crc32.IEEETable
-	for i := 0; i < 36; i++ {
+	for i := range 36 {
 		crc = tab[byte(crc)^b[i]] ^ crc>>8
 	}
 	return ^crc

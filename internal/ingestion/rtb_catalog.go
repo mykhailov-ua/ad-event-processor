@@ -165,6 +165,9 @@ func (catalog *RtbCatalog) EvaluateAuction(evt *domain.Event, targeting RtbTarge
 }
 
 func (catalog *RtbCatalog) RunAuction(evt *domain.Event, targeting RtbTargetingInput) (rtb.AuctionResult, rtb.NoBidReason) {
+	if catalog == nil || catalog.registry == nil {
+		return rtb.AuctionResult{}, rtb.NoBidInvalidRequest
+	}
 	if catalog.authority != BudgetAuthorityShadow {
 		if reason := rtbPrefilterReject(catalog.settingsWatcher, catalog, targeting); reason != rtb.NoBidNone {
 			return rtb.AuctionResult{}, reason

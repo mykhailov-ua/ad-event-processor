@@ -42,7 +42,7 @@ func TestTgClickLiveDiagnose(t *testing.T) {
 
 func probeTgClick(client *http.Client, base, campaign, token string, n int) map[string]int {
 	kinds := map[string]int{}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		clickID := fmt.Sprintf("00000000-0000-4000-8000-%012x", i)
 		url := fmt.Sprintf("%s/tg/click?campaign_id=%s&click_id=%s&bridge_token=%s", base, campaign, clickID, token)
 		resp, err := client.Get(url)

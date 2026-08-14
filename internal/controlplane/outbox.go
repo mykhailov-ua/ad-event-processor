@@ -564,17 +564,17 @@ func (worker *OutboxWorker) recordOutboxLagMetrics(ctx context.Context) {
 	if worker.svc != nil && worker.svc.alerter != nil && pending > 0 {
 		threshold := float64(worker.svc.alerter.OutboxStuckThresholdSec())
 		if oldestSeconds >= threshold {
-			worker.svc.alerter.AlertOutboxStuck(pending, oldestSeconds)
+			worker.svc.alerter.AlertOutboxStuck(ctx, pending, oldestSeconds)
 		}
 	}
 }
 
-func (worker *OutboxWorker) recordOutboxLagFromValues(pending int64, oldestSeconds float64) {
+func (worker *OutboxWorker) recordOutboxLagFromValues(ctx context.Context, pending int64, oldestSeconds float64) {
 	metrics.SetControlOutboxQueueMetrics(pending, oldestSeconds)
 	if worker.svc != nil && worker.svc.alerter != nil && pending > 0 {
 		threshold := float64(worker.svc.alerter.OutboxStuckThresholdSec())
 		if oldestSeconds >= threshold {
-			worker.svc.alerter.AlertOutboxStuck(pending, oldestSeconds)
+			worker.svc.alerter.AlertOutboxStuck(ctx, pending, oldestSeconds)
 		}
 	}
 }
@@ -656,7 +656,9 @@ func (worker *OutboxWorker) handleTelegramEvent(ctx context.Context, payload []b
 			update.Message.Chat.Type,
 			update.Message.From.IsPremium,
 		)
-		go tgSvc.relayPostbacks(context.Background(), FromUUID(deeplink.CampaignID), token)
+		relayCtx, relayCancel := telegramPostbackRelayContext(ctx)
+		tgSvc.relayPostbacks(relayCtx, FromUUID(deeplink.CampaignID), token)
+		relayCancel()
 	}
 
 	err = tgSvc.limiter.Wait(ctx, update.Message.Chat.ID, isGroup)

@@ -129,7 +129,7 @@ LIMIT ?`
 		slog.Warn("fraud shadow scoring skipped: clickhouse query failed", "error", err)
 		return nil, nil
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var featureRows []FeatureRow
 	for rows.Next() {

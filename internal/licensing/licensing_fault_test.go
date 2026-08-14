@@ -126,7 +126,7 @@ func TestFault_LicenseSpoolConcurrentAppend(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(workers)
 	errCh := make(chan error, workers)
-	for i := 0; i < workers; i++ {
+	for i := range workers {
 		go func(n int) {
 			defer wg.Done()
 			token := strings.Repeat("c", 20) + ".payload.sig"

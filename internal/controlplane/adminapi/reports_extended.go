@@ -1,5 +1,9 @@
 package adminapi
 
+// Report row inventory (S7.11): extended CH reports in this file still build
+// []map[string]any rows at the HTTP boundary. Typed row structs: TrueROIReportRow (true-roi).
+// Portfolio/spend-velocity/daypart/geo-device/placements/keywords remain map-backed until migrated.
+
 import (
 	"context"
 	"fmt"
@@ -19,6 +23,33 @@ type ReportRowsResponse struct {
 	Rows       []map[string]any `json:"rows"`
 	Freshness  DataFreshnessDTO `json:"freshness"`
 	NextCursor string           `json:"next_cursor,omitempty"`
+}
+
+// TrueROIReportRow is the typed row contract for GET /api/v1/reports/true-roi.
+type TrueROIReportRow struct {
+	CampaignID      string  `json:"campaign_id"`
+	AdSpendMicro    int64   `json:"ad_spend_micro"`
+	RevenueMicro    int64   `json:"revenue_micro"`
+	TrueProfitMicro int64   `json:"true_profit_micro"`
+	TrueRoiPct      float64 `json:"true_roi_pct"`
+	TrueCpaMicro    int64   `json:"true_cpa_micro"`
+	Conversions     int64   `json:"conversions"`
+}
+
+func trueROIReportRowsToMaps(rows []TrueROIReportRow) []map[string]any {
+	out := make([]map[string]any, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, map[string]any{
+			"campaign_id":       r.CampaignID,
+			"ad_spend_micro":    r.AdSpendMicro,
+			"revenue_micro":     r.RevenueMicro,
+			"true_profit_micro": r.TrueProfitMicro,
+			"true_roi_pct":      r.TrueRoiPct,
+			"true_cpa_micro":    r.TrueCpaMicro,
+			"conversions":       r.Conversions,
+		})
+	}
+	return out
 }
 
 const spendVelocityQuery = `
@@ -347,7 +378,7 @@ func querySpendVelocityRows(
 	if err != nil {
 		return nil, 0, fmt.Errorf("spend velocity: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	out := make([]map[string]any, 0, limit)
 	for rows.Next() {
 		var bucket time.Time
@@ -376,7 +407,7 @@ func queryDaypartHeatmapRows(
 	if err != nil {
 		return nil, 0, fmt.Errorf("daypart heatmap: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	out := make([]map[string]any, 0, 24)
 	for rows.Next() {
 		var hour uint8
@@ -403,7 +434,7 @@ func queryGeoDeviceRows(
 	if err != nil {
 		return nil, 0, fmt.Errorf("geo device: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	out := make([]map[string]any, 0, limit)
 	for rows.Next() {
 		var country, device string
@@ -431,7 +462,7 @@ func queryDiscrepancyRows(
 	if err != nil {
 		return nil, 0, fmt.Errorf("discrepancy: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	out := make([]map[string]any, 0, limit)
 	for rows.Next() {
 		var campaignID uuid.UUID
@@ -466,8 +497,8 @@ func queryTrueROIRows(
 	if err != nil {
 		return nil, 0, fmt.Errorf("true roi: %w", err)
 	}
-	defer rows.Close()
-	out := make([]map[string]any, 0, limit)
+	defer func() { _ = rows.Close() }()
+	out := make([]TrueROIReportRow, 0, limit)
 	for rows.Next() {
 		var campaignID uuid.UUID
 		var adSpendMicro, revenueMicro, conversions int64
@@ -475,15 +506,15 @@ func queryTrueROIRows(
 			return nil, 0, err
 		}
 		trueProfit := revenueMicro - adSpendMicro
-		out = append(out, map[string]any{
-			"campaign_id":       campaignID.String(),
-			"ad_spend_micro":    adSpendMicro,
-			"revenue_micro":     revenueMicro,
-			"true_profit_micro": trueProfit,
-			"true_roi_pct":      calcROIPct(trueProfit, adSpendMicro),
-			"true_cpa_micro":    calcCPAMicro(adSpendMicro, conversions),
-			"conversions":       conversions,
+		out = append(out, TrueROIReportRow{
+			CampaignID:      campaignID.String(),
+			AdSpendMicro:    adSpendMicro,
+			RevenueMicro:    revenueMicro,
+			TrueProfitMicro: trueProfit,
+			TrueRoiPct:      calcROIPct(trueProfit, adSpendMicro),
+			TrueCpaMicro:    calcCPAMicro(adSpendMicro, conversions),
+			Conversions:     conversions,
 		})
 	}
-	return out, int64(len(out) + offset), rows.Err()
+	return trueROIReportRowsToMaps(out), int64(len(out) + offset), rows.Err()
 }

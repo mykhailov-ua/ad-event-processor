@@ -105,7 +105,7 @@ func TestRollbackServiceRestoresMarker(t *testing.T) {
 	if _, err := BackupBinary("tracker", target, "v1"); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(target, []byte("#!/bin/sh\nexit 1\n"), 0755); err != nil {
+	if err := os.WriteFile(target, []byte("#!/bin/sh\nexit 1\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := RollbackService("tracker", target); err != nil {
@@ -125,7 +125,7 @@ func writeProbeScript(t *testing.T, path string, exitCode int) {
 	} else {
 		script += "exit 1\n"
 	}
-	if err := os.WriteFile(path, []byte(script), 0755); err != nil {
+	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
 }

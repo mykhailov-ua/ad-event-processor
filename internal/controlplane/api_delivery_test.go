@@ -136,7 +136,7 @@ func TestManagementAPI_RoleUserForbiddenSettings(t *testing.T) {
 	token, err := tokenMaker.CreateToken(uuid.New(), uuid.New(), "user", customerID, time.Hour)
 	require.NoError(t, err)
 
-	req, _ := http.NewRequest("POST", "/api/v1/ops/roles/reload", nil)
+	req, _ := http.NewRequest("POST", "/api/v1/ops/roles/reload", http.NoBody)
 	req.AddCookie(&http.Cookie{Name: "accessToken", Value: token})
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
@@ -199,7 +199,7 @@ func TestManagementAPI_RoleUserForbiddenEmergencyBreaker(t *testing.T) {
 	token, err := tokenMaker.CreateToken(uuid.New(), uuid.New(), "user", uuid.New(), time.Hour)
 	require.NoError(t, err)
 
-	req, _ := http.NewRequest("POST", "/api/v1/ops/roles/reload", nil)
+	req, _ := http.NewRequest("POST", "/api/v1/ops/roles/reload", http.NoBody)
 	req.AddCookie(&http.Cookie{Name: "accessToken", Value: token})
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)

@@ -1,3 +1,7 @@
+// Harness: handler_proto_mock_no_filter — nil FilterEngine and mockRegistry; measures protobuf
+// parse + handler shell only, not full /track (no license, geo, unified-filter Lua).
+// Gated AdsPacketHandlerProto* benches in gate_bench.sh are this harness.
+// Full accept path: BenchmarkTrackE2E_accept (license + unified filter + testcontainers Redis).
 package ingestion
 
 import (
@@ -27,6 +31,15 @@ func benchProtoHandler(b *testing.B, pbPayload *pb.AdEvent) {
 	for i := 0; i < b.N; i++ {
 		handler.React(req, conn)
 	}
+}
+
+func BenchmarkAdsPacketHandlerProto(b *testing.B) {
+	cid := uuid.New()
+	benchProtoHandler(b, &pb.AdEvent{
+		CampaignId: cid[:],
+		EventType:  []byte("click"),
+		Metadata:   &pb.EventMetadata{ClickId: []byte("test-click")},
+	})
 }
 
 func BenchmarkAdsPacketHandlerProto_ExtraBytes(b *testing.B) {

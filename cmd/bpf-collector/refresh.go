@@ -18,21 +18,21 @@ func (r *probeRun) refreshTargetsLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if err := r.refreshTargetsFromScript(); err != nil {
+			if err := r.refreshTargetsFromScript(ctx); err != nil {
 				slog.Debug("refresh targets", "error", err)
 			}
 		}
 	}
 }
 
-func (r *probeRun) refreshTargetsFromScript() error {
+func (r *probeRun) refreshTargetsFromScript(ctx context.Context) error {
 	targetsPath := filepath.Join(r.session.Dir, "targets.json")
 	roles := r.rolesWanted
 	if roles == "" {
 		roles = "tracker,nginx,redis,processor"
 	}
 	script := filepath.Join(repoRoot(), "scripts", "test", "bpf_resolve_targets.sh")
-	cmd := exec.CommandContext(context.Background(), "bash", script, targetsPath, roles)
+	cmd := exec.CommandContext(ctx, "bash", script, targetsPath, roles)
 	cmd.Env = os.Environ()
 	cmd.Dir = repoRoot()
 	if out, err := cmd.CombinedOutput(); err != nil {

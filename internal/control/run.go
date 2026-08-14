@@ -121,7 +121,7 @@ func serveMarginGuard(ctx context.Context, cfg *config.Config, inProcess *contro
 	if err != nil {
 		return err
 	}
-	defer chRead.Close()
+	defer func() { _ = chRead.Close() }()
 
 	chQuery := database.NewCHQuery(chRead, database.CHQueryConfigFromApp(cfg))
 	var notifierAPI notify.NotifierAPI
@@ -130,7 +130,6 @@ func serveMarginGuard(ctx context.Context, cfg *config.Config, inProcess *contro
 	}
 	worker := ledger.NewWorker(pool, chQuery, cfg, registry, notifierAPI)
 	worker.Start(ctx, ledger.WorkerInterval(cfg))
-	<-ctx.Done()
 	return ctx.Err()
 }
 
@@ -152,7 +151,7 @@ func serveCostSync(ctx context.Context, cfg *config.Config) error {
 		if err != nil {
 			return err
 		}
-		defer chConn.Close()
+		defer func() { _ = chConn.Close() }()
 		workerOpts = append(workerOpts, costsync.WithClickHouse(costsync.NewClickHouseInserter(chConn)))
 	}
 

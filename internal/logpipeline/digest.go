@@ -17,7 +17,7 @@ func computeFileDigest(path string) (fileDigest, error) {
 	if err != nil {
 		return fileDigest{}, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	sha := sha256.New()
 	written, err := io.Copy(sha, file)

@@ -1,4 +1,5 @@
 """Labeled synthetic traffic for bootstrap and offline benchmarks."""
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -11,7 +12,6 @@ Row = dict[str, int]
 
 @dataclass(frozen=True)
 class TrafficArchetype:
-
     name: str
     is_fraud: bool
     weight: float

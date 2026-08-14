@@ -29,7 +29,7 @@ func (s *Service) CheckStuckDrainJobs(ctx context.Context) {
 		return
 	}
 	for _, job := range jobs {
-		s.alerter.AlertDrainStuck(job.version, job.slot, job.state, job.lastError, job.updatedAt)
+		s.alerter.AlertDrainStuck(ctx, job.version, job.slot, job.state, job.lastError, job.updatedAt)
 	}
 }
 

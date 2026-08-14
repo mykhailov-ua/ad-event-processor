@@ -35,11 +35,11 @@ func TestFault_FingerprintConcurrentRecord(t *testing.T) {
 	start := make(chan struct{})
 
 	wg.Add(goroutines)
-	for g := 0; g < goroutines; g++ {
+	for g := range goroutines {
 		go func(id int) {
 			defer wg.Done()
 			<-start
-			for i := 0; i < iters; i++ {
+			for i := range iters {
 				ip := fmt.Sprintf("203.0.113.%d", (id+i)%64)
 				if err := Record(ctx, rdb, Entry{
 					IP:      ip,
@@ -82,7 +82,7 @@ func TestFault_FingerprintZSETOverflow(t *testing.T) {
 	const members = 5000
 	pipe := rdb.Pipeline()
 	now := float64(time.Now().Unix())
-	for i := 0; i < members; i++ {
+	for i := range members {
 		member := fmt.Sprintf("198.18.%d.%d:%08x", i>>8, i&0xff, i)
 		pipe.ZAdd(ctx, redisRecentKey, redis.Z{Score: now + float64(i), Member: member})
 	}

@@ -111,7 +111,7 @@ func protoDecodeVarint(wire []byte, off int) (uint64, int, error) {
 // chaosProtoWireFieldFlood builds a wire with n varint fields (unknown tags).
 func chaosProtoWireFieldFlood(n int) []byte {
 	wire := make([]byte, 0, n*4)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		tag := uint64((i%200 + 1) << 3)
 		wire = appendProtoVarint(wire, tag)
 		wire = appendProtoVarint(wire, 1)

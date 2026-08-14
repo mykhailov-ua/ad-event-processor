@@ -222,6 +222,7 @@ Operators and buyers must never think a screen works when it does not. This sect
 | **Phantom fields** | Form submits `budget_limit` when `PatchCampaignRequest` has no such field | UI lies about server contract — see MILESTONE §1.2.4 |
 | **Demo KPIs** | Hardcoded `metric-card` numbers not from API | Fraudulent dashboard |
 | **Docs ≠ routes** | MILESTONE/DESIGN “shipped” without `routes.ts` + e2e | Agent/human marketing drift |
+| **Mock e2e overclaim** | Playwright mock cited as backend/CH/PG proof | Spec `harness=mock_api`; use stack smoke or Go integration test |
 | **Marketing filler** | “Seamless”, “cutting-edge”, “revolutionize” in operator UI | AI boilerplate; no signal |
 | **Secret echo** | Show `api_token`, JWT, webhook secret after save | Security + fake “configured” state |
 
@@ -235,7 +236,7 @@ Operators and buyers must never think a screen works when it does not. This sect
 | API 501 / stub backend | `renderStubBanner` + link to live alternative ([`stub_banner.ts`](src/ui/stub_banner.ts)) |
 | API error / timeout | `renderErrorBlock` or `mapServiceError` toast — never blank table |
 | Partial fan-out (`503` + items) | Yellow `stub-banner` listing `errors[]` (ops outbox pattern) |
-| Report is GA | `live: true` + dedicated route in `routes.ts` + `report_live_routes_gate.sh` |
+| Report is GA | `live: true` + dedicated route in `routes.ts` + `report_live_routes_gate.sh` + handler returns rows or documented empty-state |
 | Mutation | `apiConfirmed` + `confirm_registry` level matches blast radius |
 | Money | `formatUsdDecimal` / `formatAmountMicro` — never string concat `$` |
 | Types | `web/src/types/api/*` matches Go `json` tags — grep handler DTO before form |
@@ -251,6 +252,8 @@ bash scripts/ci/check_ui_literals.sh         # EN copy, money helpers
 bash scripts/ci/check_ui_slop.sh           # skeleton / fake-wiring phrases
 bash scripts/ci/check_web_security.sh      # no console.log, secrets in URLs
 ```
+
+Stack finance path (Go + Postgres testcontainer, not Playwright mock): `bash scripts/test/billing_export_smoke.sh` — see `docs/DEVELOPMENT.md` skip matrix.
 
 **Per-feature before merge:**
 

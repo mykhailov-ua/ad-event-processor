@@ -10,6 +10,7 @@ import (
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type MockEventStore struct {
@@ -36,7 +37,7 @@ func (m *MockEventStore) Close() error {
 
 func TestStreamConsumer_Ingestion(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	rdb, cleanup := setupTestRedis(t)
 	defer cleanup()
@@ -49,7 +50,7 @@ func TestStreamConsumer_Ingestion(t *testing.T) {
 
 func TestStreamConsumer_BatchFlushing(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers Redis)")
 	}
 	rdb, cleanup := setupTestRedis(t)
 	defer cleanup()
@@ -59,25 +60,25 @@ func TestStreamConsumer_BatchFlushing(t *testing.T) {
 	proc := NewStreamConsumer(mockStore, rdb, "s2", "g2", "c2", 2, 1, 10*time.Second, 1*time.Second, 10*time.Millisecond, 100*time.Millisecond, 3, 1*time.Minute, 1*time.Second)
 
 	proc.Start(context.Background())
-	time.Sleep(100 * time.Millisecond)
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		_ = producer.Process(&domain.Event{CampaignID: uuid.New(), Type: "click"})
 	}
 
-	time.Sleep(200 * time.Millisecond)
+	// CI budget: 5s max wait for batch flush (replaces fixed sleeps).
+	require.Eventually(t, func() bool {
+		mockStore.mu.Lock()
+		defer mockStore.mu.Unlock()
+		return len(mockStore.flushes) >= 1
+	}, 5*time.Second, 10*time.Millisecond, "StoreBatch flush hook must record at least one batch")
+
 	proc.Close()
 	proc.Wait(context.Background())
-
-	mockStore.mu.Lock()
-	count := len(mockStore.flushes)
-	mockStore.mu.Unlock()
-	assert.GreaterOrEqual(t, count, 1)
 }
 
 func TestStreamConsumer_DLQ(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	rdb, cleanup := setupTestRedis(t)
 	defer cleanup()
@@ -95,7 +96,7 @@ func TestStreamConsumer_DLQ(t *testing.T) {
 
 	proc.Start(ctx)
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		_ = producer.Process(&domain.Event{CampaignID: uuid.New(), Type: "click"})
 	}
 

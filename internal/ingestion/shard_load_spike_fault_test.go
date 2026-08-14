@@ -54,12 +54,12 @@ func TestFault_ShardLoadSpike(t *testing.T) {
 
 	var wg sync.WaitGroup
 	wg.Add(shardLoadSpikeWorkers)
-	for w := 0; w < shardLoadSpikeWorkers; w++ {
+	for w := range shardLoadSpikeWorkers {
 		workerID := w
 		go func() {
 			defer wg.Done()
 			userPrefix := fmt.Sprintf("spike-w%d-", workerID)
-			for i := 0; i < shardLoadSpikePerWorker; i++ {
+			for range shardLoadSpikePerWorker {
 				clickID := uuid.NewString()
 				userID := userPrefix + clickID[:8]
 				start := time.Now()

@@ -95,11 +95,11 @@ func TestFault_CHSpoolStressNgNoDState(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(workers)
 
-	for w := 0; w < workers; w++ {
+	for w := range workers {
 		worker := w
 		go func() {
 			defer wg.Done()
-			for i := 0; i < perWorker; i++ {
+			for i := range perWorker {
 				start := time.Now()
 				token := fmt.Sprintf("stress-w%d-%d", worker, i)
 				evt := &domain.Event{

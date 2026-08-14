@@ -4,6 +4,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -77,7 +78,7 @@ func (reader *decryptedSegmentReader) Read(p []byte) (int, error) {
 			return 0, io.EOF
 		}
 		if err := reader.readNextBlock(); err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				reader.done = true
 				return 0, io.EOF
 			}
@@ -99,7 +100,7 @@ func (reader *decryptedSegmentReader) Close() error {
 
 func (reader *decryptedSegmentReader) readNextBlock() error {
 	_, err := io.ReadFull(reader.file, reader.header[:])
-	if err == io.EOF || err == io.ErrUnexpectedEOF {
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
 		return io.EOF
 	}
 	if err != nil {

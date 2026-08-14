@@ -116,7 +116,7 @@ func TestEvacuator_concurrentClaimSingleUpload(t *testing.T) {
 
 	ctx := context.Background()
 	var wg sync.WaitGroup
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

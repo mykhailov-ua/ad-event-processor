@@ -54,7 +54,7 @@ func (r *probeRun) procSampleLoop(ctx context.Context) {
 	if err != nil {
 		return
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	enc := json.NewEncoder(f)
 
 	for {
@@ -246,7 +246,7 @@ func splitLines(data []byte) <-chan string {
 	go func() {
 		defer close(ch)
 		start := 0
-		for i := 0; i < len(data); i++ {
+		for i := range data {
 			if data[i] != '\n' {
 				continue
 			}

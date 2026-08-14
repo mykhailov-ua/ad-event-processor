@@ -3,10 +3,13 @@ package ledger
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+const advisoryUnlockTimeout = 5 * time.Second
 
 type InvoiceWorker struct {
 	service *Service
@@ -58,7 +61,7 @@ func (w *InvoiceWorker) runMonth(ctx context.Context, month time.Time) {
 	if !acquired {
 		return
 	}
-	defer w.service.releaseInvoiceCronLock(context.Background())
+	defer w.service.releaseInvoiceCronLock(opCtx)
 
 	const pageSize int32 = 200
 	var offset int32
@@ -102,7 +105,20 @@ func (service *Service) tryInvoiceCronLock(ctx context.Context) (bool, error) {
 }
 
 func (service *Service) releaseInvoiceCronLock(ctx context.Context) {
-	_, _ = service.pool.Exec(ctx, `SELECT pg_advisory_unlock($1)`, invoiceCronLockKey)
+	if service == nil || service.pool == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, advisoryUnlockTimeout)
+	defer cancel()
+	_, err := service.pool.Exec(ctx, `SELECT pg_advisory_unlock($1)`, invoiceCronLockKey)
+	if err == nil {
+		return
+	}
+	if errors.Is(err, context.DeadlineExceeded) || ctx.Err() == context.DeadlineExceeded {
+		slog.Error("invoice cron advisory unlock timed out", "error", err)
+		return
+	}
+	slog.Warn("invoice cron advisory unlock failed", "error", err)
 }
 
 func (service *Service) GenerateInvoiceForCustomers(ctx context.Context, customerIDs []uuid.UUID, month time.Time) {

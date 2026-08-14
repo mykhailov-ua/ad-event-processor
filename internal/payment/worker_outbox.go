@@ -215,7 +215,7 @@ func (outboxWorker *OutboxWorker) getSettlementAPI() domain.PaymentSettlement {
 
 func (outboxWorker *OutboxWorker) markOutboxProcessedWithRetry(ctx context.Context, outboxID int64) error {
 	var lastErr error
-	for attempt := 0; attempt < 3; attempt++ {
+	for attempt := range 3 {
 		lastErr = db.New(outboxWorker.pool).MarkOutboxEventProcessed(ctx, outboxID)
 		if lastErr == nil {
 			return nil
@@ -285,7 +285,7 @@ func (outboxWorker *OutboxWorker) markOutboxEventRetryable(ctx context.Context, 
 		return
 	}
 	if permanent && outboxWorker.settlementAlerter != nil {
-		outboxWorker.settlementAlerter.AlertPermanentFailure(outboxEvent, cause)
+		outboxWorker.settlementAlerter.AlertPermanentFailure(ctx, outboxEvent, cause)
 	}
 }
 

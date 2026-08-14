@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"net"
 	"testing"
 	"time"
@@ -30,7 +31,7 @@ func TestClient_TimeoutExpiry(t *testing.T) {
 
 	cli := NewClient(ln.Addr().String(), 20*time.Millisecond)
 	require.NoError(t, cli.Connect())
-	_, err = cli.Produce("t", 0, []byte("x"))
+	_, err = cli.Produce(context.Background(), "t", 0, []byte("x"))
 	require.Error(t, err)
 	require.NoError(t, cli.Close())
 }
@@ -52,6 +53,6 @@ func TestClient_HungServer(t *testing.T) {
 
 	cli := NewClient(ln.Addr().String(), 30*time.Millisecond)
 	require.NoError(t, cli.Connect())
-	_, err = cli.Produce("t", 0, []byte("payload"))
+	_, err = cli.Produce(context.Background(), "t", 0, []byte("payload"))
 	require.Error(t, err)
 }

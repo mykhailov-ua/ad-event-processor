@@ -24,7 +24,7 @@ func TestResolveLandingURLBytes_TgClick(t *testing.T) {
 	staticCampaignMu.Unlock()
 	cachedMockCamp.Store(nil)
 
-	store := NewBrandCreativeStore(nil)
+	store := NewBrandCreativeStore(nil, 0)
 	store.cache.Store(&brandCreativeMapSnapshot{
 		byBrand: map[uuid.UUID][]brandCreativeEntry{
 			brandID: brandCreativeEntriesReady([]brandCreativeEntry{{

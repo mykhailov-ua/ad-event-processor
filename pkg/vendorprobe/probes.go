@@ -57,7 +57,7 @@ func (p *StripeProbe) Probe(ctx context.Context) error {
 	if p == nil || p.SecretKey == "" {
 		return nil
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, stripeBalanceURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, stripeBalanceURL, http.NoBody)
 	if err != nil {
 		return err
 	}
@@ -66,7 +66,7 @@ func (p *StripeProbe) Probe(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	_, _ = io.Copy(io.Discard, resp.Body)
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("stripe balance status %d", resp.StatusCode)
@@ -93,7 +93,7 @@ func (p *TelegramProbe) Probe(ctx context.Context) error {
 		return nil
 	}
 	url := telegramAPIBase + p.BotToken + "/getMe"
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func (p *TelegramProbe) Probe(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	_, _ = io.Copy(io.Discard, resp.Body)
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("telegram getMe status %d", resp.StatusCode)

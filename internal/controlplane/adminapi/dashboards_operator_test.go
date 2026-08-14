@@ -29,7 +29,7 @@ func TestGetOperatorDashboard_XDPPanel(t *testing.T) {
 		},
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/dashboards/operator", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/dashboards/operator", http.NoBody)
 	rec := httptest.NewRecorder()
 	h.getOperatorDashboard(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)

@@ -37,3 +37,8 @@ WHERE shard_id = $1 AND campaign_id = $2;
 SELECT COALESCE(reserved_amount, 0)::bigint AS reserved_amount
 FROM campaign_quotas
 WHERE campaign_id = $1;
+
+-- name: ListCampaignQuotasReservedByCampaignIDs :many
+SELECT shard_id, campaign_id, reserved_amount, chunk_size, updated_at
+FROM campaign_quotas
+WHERE campaign_id = ANY($1::uuid[]) AND reserved_amount > 0;

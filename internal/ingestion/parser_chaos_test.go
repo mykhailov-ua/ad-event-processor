@@ -144,7 +144,7 @@ func TestChaos_ParserIngress_2026(t *testing.T) {
 
 func chaosQuoteDenseORTB(quotes int) []byte {
 	payload := make([]byte, 0, quotes+64)
-	for i := 0; i < quotes; i++ {
+	for range quotes {
 		payload = append(payload, '"')
 	}
 	payload = append(payload, `,"imp":[{"id":"1"}],"id":"req"}`...)

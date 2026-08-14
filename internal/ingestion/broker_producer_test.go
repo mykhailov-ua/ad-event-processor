@@ -1,6 +1,7 @@
 package ingestion
 
 import (
+	"context"
 	"fmt"
 	"sync/atomic"
 	"testing"
@@ -20,7 +21,7 @@ type mockBrokerClient struct {
 	produceErr    error
 }
 
-func (m *mockBrokerClient) Produce(topic string, partition uint16, payload []byte) (uint64, error) {
+func (m *mockBrokerClient) Produce(ctx context.Context, topic string, partition uint16, payload []byte) (uint64, error) {
 	if m.produceErr != nil {
 		return 0, m.produceErr
 	}
@@ -94,12 +95,12 @@ func TestBrokerProducer_LatencySLA(t *testing.T) {
 		CreatedAt:   time.Unix(1700000000, 0),
 	}
 
-	for i := 0; i < warmup; i++ {
+	for range warmup {
 		_ = bp.Enqueue(&evt)
 	}
 
 	latencies := make([]time.Duration, 0, iterations)
-	for i := 0; i < iterations; i++ {
+	for range iterations {
 		start := monotonicNano()
 		require.NoError(t, bp.Enqueue(&evt))
 		latencies = append(latencies, time.Duration(monotonicNano()-start))
@@ -124,7 +125,7 @@ func TestBrokerProducer_EnqueueAndFlush(t *testing.T) {
 	defer bp.Close()
 
 	n := 25
-	for i := 0; i < n; i++ {
+	for i := range n {
 		evt := &domain.Event{
 			ClickID:    fmt.Sprintf("click-%d", i),
 			CampaignID: uuid.New(),
@@ -188,7 +189,7 @@ func TestBrokerProducer_RingOverflow(t *testing.T) {
 	}
 
 	filled := 0
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		if err := bp.Enqueue(evt); err == nil {
 			filled++
 		}
@@ -209,7 +210,7 @@ func TestBrokerProducer_ShutdownDrain(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		_ = bp.Enqueue(&domain.Event{
 			ClickID:   fmt.Sprintf("click-drain-%d", i),
 			CreatedAt: time.Now(),

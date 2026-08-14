@@ -8,7 +8,7 @@ func BenchmarkUpdateCampaigns(b *testing.B) {
 	n := 1000
 	campaigns := make([]CampaignData, n)
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		campaigns[i] = CampaignData{
 			ID:           CampaignID(uint64(i + 1)),
 			Bid:          int64(100 + i),

@@ -51,7 +51,7 @@ func TestFault_SettlementFailedNotifier(t *testing.T) {
 	require.Equal(t, "payment-settlement-failed:"+seed.IntentID.String(), requests[0].DedupKey)
 	require.Contains(t, requests[0].Body, seed.IntentID.String())
 
-	alerter.AlertPermanentFailure(
+	alerter.AlertPermanentFailure(context.Background(),
 		loadPaymentOutboxRow(t, infra.Pool, seed.OutboxID),
 		fmt.Errorf("customer not found"),
 	)

@@ -74,7 +74,7 @@ func TestUnifiedFilter_localQuantaEligible_click(t *testing.T) {
 
 func TestUnifiedFilter_localQuanta_clickLiveSkipsRedisDebit(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupMiniredis(t)
@@ -112,7 +112,7 @@ func TestUnifiedFilter_localQuanta_clickLiveSkipsRedisDebit(t *testing.T) {
 
 func TestUnifiedFilter_localQuanta_clickFastPathMatchesImpression(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupMiniredis(t)

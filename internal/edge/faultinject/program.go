@@ -34,10 +34,10 @@ func OpenProgram() (*bpf.EdgeObjects, func(), error) {
 		return nil, nil, err
 	}
 	if err := bpf.InitConfigWith(objs.Config, bpf.InitOptions{}); err != nil {
-		objs.Close()
+		_ = objs.Close()
 		return nil, nil, err
 	}
-	return &objs, func() { objs.Close() }, nil
+	return &objs, func() { _ = objs.Close() }, nil
 }
 
 // RunProgram exercises malformed and high-rate SYN traffic via prog.Test/Run.

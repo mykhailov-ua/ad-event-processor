@@ -51,7 +51,7 @@ func TestGetBuyerDashboard_OK(t *testing.T) {
 		},
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/dashboards/buyer", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/dashboards/buyer", http.NoBody)
 	rec := httptest.NewRecorder()
 	h.getBuyerDashboard(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -70,7 +70,7 @@ func TestGetBuyerDashboard_requiresCustomerID(t *testing.T) {
 		BuyerPortfolio: &stubBuyerPortfolio{},
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/dashboards/buyer", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/dashboards/buyer", http.NoBody)
 	rec := httptest.NewRecorder()
 	h.getBuyerDashboard(rec, req)
 	require.Equal(t, http.StatusBadRequest, rec.Code)

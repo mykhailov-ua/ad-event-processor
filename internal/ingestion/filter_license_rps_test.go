@@ -37,7 +37,7 @@ func TestLicenseRPSFilter_exceedsCap(t *testing.T) {
 
 func TestLicenseRPSFilter_zeroUnlimited(t *testing.T) {
 	f := NewLicenseRPSFilter(&stubLicenseRPSRegistry{maxRPS: 0})
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		assert.NoError(t, f.Check(context.Background(), &domain.Event{}))
 	}
 }

@@ -16,7 +16,7 @@ import (
 
 func TestFilterSegmentStream_matchesBufferFilter(t *testing.T) {
 	var src bytes.Buffer
-	for i := 0; i < 2000; i++ {
+	for i := range 2000 {
 		src.Write(encodeRecord(t, &pb.AdStreamEvent{
 			EventType: []byte("impression"),
 			ClickId:   []byte("imp-" + itoa(i)),
@@ -46,7 +46,7 @@ func TestFilterSegmentStream_largeSegmentUsesStreamingPath(t *testing.T) {
 
 	file, err := os.OpenFile(segmentPath, os.O_CREATE|os.O_WRONLY, 0o644)
 	require.NoError(t, err)
-	for i := 0; i < 5000; i++ {
+	for i := range 5000 {
 		_, err := file.Write(encodeRecord(t, &pb.AdStreamEvent{
 			EventType: []byte("impression"),
 			ClickId:   []byte("stream-" + itoa(i)),

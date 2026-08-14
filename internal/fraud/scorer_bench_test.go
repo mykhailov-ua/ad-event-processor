@@ -28,6 +28,8 @@ func benchModelPath(b *testing.B) string {
 	return ""
 }
 
+// BenchmarkLGBMScorer_ScoreBatch10k measures cold-path LightGBM batch inference in internal/fraud.
+// Not BenchmarkFilterFraudBoost (hot-path boost snapshot in internal/ingestion).
 func BenchmarkLGBMScorer_ScoreBatch10k(b *testing.B) {
 	if testing.Short() {
 		b.Skip("skipped in -short; run manually: go test -bench=BenchmarkLGBMScorer_ScoreBatch10k -benchtime=1x ./internal/fraud")

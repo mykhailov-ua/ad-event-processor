@@ -43,12 +43,12 @@ func WriteBundle(ctx context.Context, opts BundleOptions) error {
 	if err != nil {
 		return fmt.Errorf("create bundle: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	gz := gzip.NewWriter(f)
-	defer gz.Close()
+	defer func() { _ = gz.Close() }()
 	tw := tar.NewWriter(gz)
-	defer tw.Close()
+	defer func() { _ = tw.Close() }()
 
 	if err := writeTarJSON(tw, "doctor/report.json", report); err != nil {
 		return err

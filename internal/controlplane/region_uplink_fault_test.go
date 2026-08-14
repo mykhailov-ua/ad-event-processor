@@ -45,7 +45,7 @@ func TestFault_RegionUplinkDedup(t *testing.T) {
 		Payload:    payload,
 	}
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		_, err := svc.IngestRegionProxyBatch(ctx, in)
 		require.NoError(t, err)
 	}

@@ -3,15 +3,17 @@ package ingestion
 const h2MaxHeaderBlock = 16 << 10 // cap assembled HPACK block per request
 
 type h2ConnState struct {
-	established     bool
-	settingsSent    bool
-	headerBlock     []byte
-	headerStreamID  uint32
-	expectData      bool
-	dataStreamID    uint32
-	settingsScratch [40]byte
-	settingsLen     int
-	incompleteSpin  uint8
+	established            bool
+	settingsSent           bool
+	headerBlock            []byte
+	headerStreamID         uint32
+	expectData             bool
+	dataStreamID           uint32
+	settingsScratch        [40]byte
+	settingsLen            int
+	incompleteSpin         uint8
+	incompleteIdleArmed    bool
+	incompleteIdleDeadline int64
 }
 
 func newH2ConnState() h2ConnState {
@@ -25,6 +27,8 @@ func (s *h2ConnState) resetConn() {
 	s.settingsSent = false
 	s.settingsLen = 0
 	s.incompleteSpin = 0
+	s.incompleteIdleArmed = false
+	s.incompleteIdleDeadline = 0
 	s.resetStream()
 }
 

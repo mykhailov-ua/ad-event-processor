@@ -27,7 +27,7 @@ type tgBidRequest struct {
 
 func parseAsciiInt(b []byte) int {
 	res := 0
-	for i := 0; i < len(b); i++ {
+	for i := range b {
 		c := b[i]
 		if c >= '0' && c <= '9' {
 			res = res*10 + int(c-'0')
@@ -39,7 +39,7 @@ func parseAsciiInt(b []byte) int {
 func parseAsciiFloat(b []byte) float64 {
 	res := 0.0
 	dec := -1.0
-	for i := 0; i < len(b); i++ {
+	for i := range b {
 		c := b[i]
 		if c >= '0' && c <= '9' {
 			if dec < 0 {
@@ -198,6 +198,12 @@ func (h *AdsPacketHandler) reactTgBid(req parsedHTTPRequest, c gnet.Conn, ctx *c
 	evt.Reset()
 	evt.IP = clientIP
 	ensureIngestGeo(h.trackProc.ingestGeo, evt)
+
+	if h.trackProc.rtbCatalog == nil {
+		h.write(c, respTg204, ctx)
+		h.recordMetrics(startMono, http.StatusNoContent)
+		return gnet.None
+	}
 
 	targeting := RtbTargetingInput{
 		PublisherFloorMicro: int64(parsedReq.bidFloor * 1000000),

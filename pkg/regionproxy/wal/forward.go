@@ -43,6 +43,39 @@ func (w *WAL) TryClaimForward(seq uint64) (bool, error) {
 	return true, nil
 }
 
+func (w *WAL) UnclaimForward(seq uint64) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	off, hdr, err := w.recordHeaderOffsetLocked(seq)
+	if err != nil {
+		return err
+	}
+	if hdr.Has(WalFlagRemoteAcked) {
+		return nil
+	}
+	if !hdr.Has(WalFlagForwardClaimed) {
+		return nil
+	}
+	ctx := context.Background()
+	if w.gate != nil {
+		if err := w.gate.AcquireAppend(ctx, iogate.TierLow); err != nil {
+			return fmt.Errorf("region proxy wal unclaim forward seq=%d: %w", seq, err)
+		}
+	}
+	if len(w.mmap) <= int(off)+flagsOffset {
+		if w.gate != nil {
+			w.gate.ReleaseAppend(iogate.TierLow)
+		}
+		return ErrCorrupt
+	}
+	w.mmap[off+flagsOffset] &^= WalFlagForwardClaimed
+	if w.gate != nil {
+		w.gate.ReleaseAppend(iogate.TierLow)
+	}
+	return nil
+}
+
 func (w *WAL) MarkRemoteAcked(seq uint64) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()

@@ -37,7 +37,7 @@ func (a *WebhookAdapter) Send(ctx context.Context, client *http.Client, payload 
 	var scratch [MaxRenderedURLLen]byte
 	renderedURL := string(mt.RenderStack(evtCtx, &scratch))
 
-	req, err := http.NewRequestWithContext(ctx, "GET", renderedURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", renderedURL, http.NoBody)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -50,7 +50,7 @@ func (a *WebhookAdapter) Send(ctx context.Context, client *http.Client, payload 
 	if err != nil {
 		return fmt.Errorf("http request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))

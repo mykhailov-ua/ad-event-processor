@@ -61,7 +61,7 @@ func TestFault_DedupMultiRegionDuplicate(t *testing.T) {
 	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
 	relay := NewRegionOutboxRelay(svc)
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		_, _ = pool.Exec(ctx, `
 			UPDATE outbox_region_delivery
 			SET status = 'PENDING', processing_started_at = NULL, delivered_at = NULL

@@ -12,7 +12,7 @@ func BenchmarkUDPControl_ApplyPacket(b *testing.B) {
 	})
 	var limits UDPControlLimits
 	limits.NumShards = 4
-	for i := uint8(0); i < 4; i++ {
+	for i := range uint8(4) {
 		limits.Limits[i] = 50_000
 	}
 	var pkt [256]byte

@@ -36,9 +36,9 @@ func TestOpsNodeWeights_ReturnsTrackerPeers(t *testing.T) {
 
 	mux := http.NewServeMux()
 	cfg := &config.Config{RegionCode: 1, MultiRegionEnabled: true}
-	RegisterOpsRoutes(mux, pool, nil, cfg)
+	RegisterOpsRoutes(t.Context(), mux, pool, nil, cfg)
 
-	req := httptest.NewRequest(http.MethodGet, "/ops/node-weights", nil)
+	req := httptest.NewRequest(http.MethodGet, "/ops/node-weights", http.NoBody)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)

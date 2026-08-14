@@ -112,7 +112,7 @@ func (store *LocalTierStore) WriteWarmFromFile(_ context.Context, destKey, filte
 	if err != nil {
 		return "", err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	return store.writeWarmFromPath(destKey, file, meta)
 }
 

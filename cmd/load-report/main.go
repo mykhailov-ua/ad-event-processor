@@ -94,6 +94,31 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
+	case "strict":
+		sessionDir, promURL, err := parseSessionFlags(os.Args[2:])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			usage()
+			os.Exit(1)
+		}
+		if err := runStrict(sessionDir, promURL); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+	case "strict-compare":
+		if len(os.Args) < 4 {
+			fmt.Fprintln(os.Stderr, "load-report strict-compare: baseline-dir treatment-dir required")
+			usage()
+			os.Exit(1)
+		}
+		promURL := os.Getenv("PROMETHEUS_URL")
+		if promURL == "" {
+			promURL = defaultPromURL
+		}
+		if err := runStrictCompare(os.Args[2], os.Args[3], promURL); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	default:
 		fmt.Fprintf(os.Stderr, "load-report: unknown subcommand %q\n", cmd)
 		usage()
@@ -130,7 +155,7 @@ func runBPF(sessionDir string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("load-report bpf: wrote %s\n", path)
+	fmt.Fprintf(os.Stderr, "load-report bpf: wrote %s\n", path)
 	return nil
 }
 
@@ -139,8 +164,8 @@ func runProm(sessionDir, promURL string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("load-report prom: wrote %s\n", path)
-	fmt.Println("load-report prom: Grafana dashboard: http://127.0.0.1:3100/d/ad-event-processor-main/ad-event-processor-operations (or browse Dashboards tagged load-test)")
+	fmt.Fprintf(os.Stderr, "load-report prom: wrote %s\n", path)
+	fmt.Fprintf(os.Stderr, "load-report prom: Grafana dashboard: http://127.0.0.1:3100/d/ad-event-processor-main/ad-event-processor-operations (or browse Dashboards tagged load-test)\n")
 	return nil
 }
 
@@ -149,7 +174,7 @@ func runTelegram(sessionDir, promURL string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("load-report telegram: wrote %s\n", path)
+	fmt.Fprintf(os.Stderr, "load-report telegram: wrote %s\n", path)
 	return nil
 }
 
@@ -158,7 +183,25 @@ func runSLA(sessionDir, promURL string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("load-report sla: wrote %s\n", path)
+	fmt.Fprintf(os.Stderr, "load-report sla: wrote %s\n", path)
+	return nil
+}
+
+func runStrict(sessionDir, promURL string) error {
+	path, err := loadreport.WriteStrictContentionReport(sessionDir, promURL)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(os.Stderr, "load-report strict: wrote %s\n", path)
+	return nil
+}
+
+func runStrictCompare(baselineDir, treatmentDir, promURL string) error {
+	path, err := loadreport.WriteStrictContentionCompare(baselineDir, treatmentDir, promURL)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(os.Stderr, "load-report strict-compare: wrote %s\n", path)
 	return nil
 }
 
@@ -167,6 +210,8 @@ func usage() {
   load-report prom <session-dir> [--prom URL]
   load-report bpf <session-dir>
   load-report sla <session-dir> [--prom URL]
+  load-report strict <session-dir> [--prom URL]
+  load-report strict-compare <baseline-dir> <treatment-dir>
   load-report telegram <session-dir> [--prom URL]
   load-report all <session-dir> [--prom URL]
 

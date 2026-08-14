@@ -49,7 +49,7 @@ func TestOperationLeaseClaimExecuting_SingleWinnerUnderContention(t *testing.T) 
 	winners := make(chan string, contenders)
 	var claimErrs atomic.Int32
 
-	for i := 0; i < contenders; i++ {
+	for i := range contenders {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()

@@ -117,7 +117,7 @@ func (store *CheckpointStore) Save(record CheckpointRecord) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	if _, err := file.Write(append(line, '\n')); err != nil {
 		return err

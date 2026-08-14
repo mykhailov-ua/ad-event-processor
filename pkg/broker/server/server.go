@@ -20,6 +20,7 @@ import (
 	"github.com/bidshard/ad-event-processor/internal/metrics"
 	"github.com/bidshard/ad-event-processor/pkg/broker/log"
 	"github.com/bidshard/ad-event-processor/pkg/broker/protocol"
+	"github.com/bidshard/ad-event-processor/pkg/gnetutil"
 	"github.com/bidshard/ad-event-processor/pkg/iogate"
 
 	"github.com/panjf2000/gnet/v2"
@@ -61,8 +62,10 @@ type Server struct {
 	shutdownTimeout time.Duration
 	registry        *protocol.TopicRegistry
 
-	connCount      atomic.Int64
-	maxConnections int64
+	connCount       atomic.Int64
+	maxConnections  int64
+	connReadIdle    time.Duration
+	connMaxLifetime time.Duration
 
 	diskOK atomic.Bool
 
@@ -102,6 +105,16 @@ func (s *Server) SetShutdownTimeout(d time.Duration) {
 	if d > 0 {
 		s.shutdownTimeout = d
 	}
+}
+
+// SetConnReadIdle bounds how long a peer may drip partial length-prefixed frames (default 30s).
+func (s *Server) SetConnReadIdle(d time.Duration) {
+	s.connReadIdle = d
+}
+
+// SetConnMaxLifetime closes broker TCP connections after wall time regardless of traffic (default 120s).
+func (s *Server) SetConnMaxLifetime(d time.Duration) {
+	s.connMaxLifetime = d
 }
 
 func (s *Server) SetDurability(cfg log.DurabilityConfig) {
@@ -217,8 +230,12 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/leaderz", s.handleLeaderz)
 	mux.Handle("/metrics", promhttp.Handler())
 	s.httpSrv = &http.Server{
-		Addr:    s.healthAddr,
-		Handler: mux,
+		Addr:              s.healthAddr,
+		Handler:           mux,
+		ReadHeaderTimeout: 2 * time.Second,
+		ReadTimeout:       5 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       30 * time.Second,
 	}
 
 	s.wg.Add(1)
@@ -378,6 +395,8 @@ func (s *Server) OnOpen(c gnet.Conn) ([]byte, gnet.Action) {
 		return nil, gnet.Close
 	}
 	metrics.BrokerActiveConnections.Set(float64(new))
+	ctx := s.newConnState()
+	gnetutil.OpenConn(c, s.connPolicy(), ctx)
 	return nil, gnet.None
 }
 
@@ -399,22 +418,64 @@ func (s *Server) isAdmissionShedding() bool {
 }
 
 func (s *Server) OnTraffic(c gnet.Conn) gnet.Action {
+	ctx := s.ensureConnState(c)
+	if s.connMaxLifetimeExceeded(ctx) {
+		return s.closeConnIdle(c, "max_lifetime")
+	}
+
 	for {
 		lenBuf, err := c.Peek(4)
 		if err != nil {
+			if act := s.waitIncomplete(c, ctx); act != gnet.None {
+				return act
+			}
 			return gnet.None
 		}
 		length := binary.BigEndian.Uint32(lenBuf)
+		maxFrame := uint32(1 << 20)
+		if s.maxSegSize > 0 && s.maxSegSize < int64(maxFrame) {
+			maxFrame = uint32(s.maxSegSize)
+		}
 
-		if length < 14 {
-			if _, err := c.Discard(int(4 + length)); err != nil {
+		if length < 14 || length > maxFrame {
+			need := int(4 + length)
+			if length < 14 {
+				if c.InboundBuffered() < need {
+					if act := s.waitIncomplete(c, ctx); act != gnet.None {
+						return act
+					}
+					return gnet.None
+				}
+				if _, err := c.Discard(need); err != nil {
+					return gnet.Close
+				}
+				return gnet.Close
+			}
+			if _, err := c.Discard(4); err != nil {
 				return gnet.Close
 			}
 			return gnet.Close
 		}
 
-		payloadBuf, err := c.Peek(int(4 + length))
+		need := int(4 + length)
+		if c.InboundBuffered() < need {
+			if act := s.waitIncomplete(c, ctx); act != gnet.None {
+				return act
+			}
+			return gnet.None
+		}
+
+		payloadBuf, err := c.Peek(need)
 		if err != nil {
+			if act := s.waitIncomplete(c, ctx); act != gnet.None {
+				return act
+			}
+			return gnet.None
+		}
+		if len(payloadBuf) < need {
+			if act := s.waitIncomplete(c, ctx); act != gnet.None {
+				return act
+			}
 			return gnet.None
 		}
 
@@ -455,6 +516,7 @@ func (s *Server) OnTraffic(c gnet.Conn) gnet.Action {
 		if _, err := c.Discard(int(4 + length)); err != nil {
 			return gnet.Close
 		}
+		s.onFrameProgress(c, ctx)
 	}
 }
 

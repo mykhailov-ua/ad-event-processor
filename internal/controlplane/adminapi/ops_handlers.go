@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -613,6 +614,7 @@ func (ops *OpsHTTPHandlers) streamDashboard(w http.ResponseWriter, r *http.Reque
 		httpresponse.Error(w, http.StatusInternalServerError, "STREAM_UNSUPPORTED", "streaming not supported")
 		return
 	}
+	ctx := r.Context()
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
@@ -621,7 +623,7 @@ func (ops *OpsHTTPHandlers) streamDashboard(w http.ResponseWriter, r *http.Reque
 	defer ticker.Stop()
 
 	writeEvent := func() bool {
-		summary, err := ops.OpsReader.GetDashboardSummary(r.Context())
+		summary, err := ops.OpsReader.GetDashboardSummary(ctx)
 		if err != nil {
 			return true
 		}
@@ -645,7 +647,7 @@ func (ops *OpsHTTPHandlers) streamDashboard(w http.ResponseWriter, r *http.Reque
 
 	for {
 		select {
-		case <-r.Context().Done():
+		case <-ctx.Done():
 			return
 		case <-ticker.C:
 			if !writeEvent() {
@@ -861,7 +863,7 @@ func CollectFanOut[T any](ctx context.Context, c *FanOutCollector, sources []Fan
 		if slot.err != nil {
 			failed++
 			code := "SOURCE_UNAVAILABLE"
-			if slot.err == context.DeadlineExceeded || slot.err == context.Canceled {
+			if errors.Is(slot.err, context.DeadlineExceeded) || errors.Is(slot.err, context.Canceled) {
 				code = "TIMEOUT"
 			}
 			out.Errors = append(out.Errors, FanOutSourceError{Source: slot.sourceID, Code: code})

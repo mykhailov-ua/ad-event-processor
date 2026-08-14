@@ -173,7 +173,7 @@ func TestAuthHandler_Logout(t *testing.T) {
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 
-	req, _ := http.NewRequest("POST", "/api/v1/auth/logout", nil)
+	req, _ := http.NewRequest("POST", "/api/v1/auth/logout", http.NoBody)
 	req.AddCookie(&http.Cookie{Name: "refreshToken", Value: "token-to-revoke"})
 	resp := httptest.NewRecorder()
 
@@ -211,7 +211,7 @@ func TestAuthHandler_Refresh(t *testing.T) {
 	h.RegisterRoutes(mux)
 
 	t.Run("ValidRefresh", func(t *testing.T) {
-		req, _ := http.NewRequest("POST", "/api/v1/auth/refresh", nil)
+		req, _ := http.NewRequest("POST", "/api/v1/auth/refresh", http.NoBody)
 		req.AddCookie(&http.Cookie{Name: "refreshToken", Value: "valid-refresh"})
 		resp := httptest.NewRecorder()
 
@@ -241,7 +241,7 @@ func TestAuthHandler_Me(t *testing.T) {
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 
-	req, _ := http.NewRequest("GET", "/api/v1/auth/me", nil)
+	req, _ := http.NewRequest("GET", "/api/v1/auth/me", http.NoBody)
 	req.AddCookie(&http.Cookie{Name: "accessToken", Value: token})
 	resp := httptest.NewRecorder()
 
@@ -283,7 +283,7 @@ func TestAuthHandler_MeRedisOutage(t *testing.T) {
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 
-	req, _ := http.NewRequest("GET", "/api/v1/auth/me", nil)
+	req, _ := http.NewRequest("GET", "/api/v1/auth/me", http.NoBody)
 	req.AddCookie(&http.Cookie{Name: "accessToken", Value: token})
 	resp := httptest.NewRecorder()
 

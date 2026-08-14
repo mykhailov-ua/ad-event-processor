@@ -172,7 +172,7 @@ func (m *Module) startWebhookServer(ctx context.Context) {
 
 	go func() {
 		<-ctx.Done()
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), time.Duration(m.cfg.Lifecycle.ShutdownTimeoutMs)*time.Millisecond)
+		shutdownCtx, cancel := context.WithTimeout(ctx, time.Duration(m.cfg.Lifecycle.ShutdownTimeoutMs)*time.Millisecond)
 		defer cancel()
 		if err := httpServer.Shutdown(shutdownCtx); err != nil {
 			slog.Error("payment webhook server shutdown failed", "error", err)

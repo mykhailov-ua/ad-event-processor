@@ -13,7 +13,7 @@ import (
 
 func TestLoadActiveSlotMap_fromPostgres(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	pool, cleanup := database.SetupTestDB(t)
@@ -31,7 +31,7 @@ func TestLoadActiveSlotMap_fromPostgres(t *testing.T) {
 
 func TestReloadStaticSlotMapIfChanged_skipsWhenCurrent(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	pool, cleanup := database.SetupTestDB(t)

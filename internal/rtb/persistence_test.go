@@ -81,7 +81,7 @@ func TestRegistry_snapshot_roundTrip(t *testing.T) {
 	assert.Equal(t, b2, newStore.GetBudget(c2))
 	assert.Equal(t, b3, newStore.GetBudget(c3))
 
-	for i := uint32(0); i < geoShardCount; i++ {
+	for i := range uint32(geoShardCount) {
 		origShard := reg.LoadShard(i)
 		newShard := newReg.LoadShard(i)
 

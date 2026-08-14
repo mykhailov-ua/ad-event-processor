@@ -124,7 +124,7 @@ func WaitRedisContainerReady(t testing.TB, c testcontainers.Container) {
 			return false
 		}
 		probe := redis.NewClient(&redis.Options{Addr: endpoint, ReadTimeout: time.Second})
-		defer probe.Close()
+		defer func() { _ = probe.Close() }()
 		return probe.Ping(ctx).Err() == nil
 	}, 30*time.Second, 200*time.Millisecond)
 }

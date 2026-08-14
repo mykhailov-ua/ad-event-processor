@@ -72,7 +72,7 @@ func TestFault_LocalQuantaFullSkip_BudgetInvariant(t *testing.T) {
 	seedCampaignQuota(t, ctx, counter, campaignID, 0)
 
 	beforeSkip := testutil.ToFloat64(metrics.RedisLuaSkippedTotal)
-	for i := 0; i < iterations; i++ {
+	for i := range iterations {
 		for stream.Pending() >= localQuantaStreamUsable/2 {
 			time.Sleep(time.Millisecond)
 		}
@@ -96,7 +96,7 @@ func TestFault_LocalQuantaFullSkip_BudgetInvariant(t *testing.T) {
 	campaignRepo := NewCampaignRepoWithDB(infra.Pool, infra.Queries)
 	customerRepo := NewCustomerRepoWithDB(infra.Pool, infra.Queries)
 	worker := NewSyncWorker(counter, campaignRepo, customerRepo, time.Hour, 0, nil, 0)
-	for attempt := 0; attempt < 3; attempt++ {
+	for range 3 {
 		worker.SyncAll(ctx)
 	}
 

@@ -33,12 +33,12 @@ func TestHandlerAudit_pagination(t *testing.T) {
 	defer cleanupRedis()
 
 	cfg := &config.Config{AdminAPIKey: "test-secret"}
-	svc := NewService(pool, []redis.UniversalClient{rdb}, nil, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, cfg)
 	defer svc.Close()
 
 	ctx := context.Background()
 	adminID := uuid.New()
-	for i := 0; i < 55; i++ {
+	for i := range 55 {
 		svc.AuditLog(ctx, nil, adminID, "PAGINATION_TEST", "system", nil, auditPaginationMarker{I: i}, nil)
 	}
 
@@ -47,7 +47,7 @@ func TestHandlerAudit_pagination(t *testing.T) {
 	h.RegisterRoutes(mux)
 
 	t.Run("default_limit_50", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/api/v1/audit", nil)
+		req, _ := http.NewRequest("GET", "/api/v1/audit", http.NoBody)
 		req.Header.Set("X-Admin-API-Key", "test-secret")
 		resp := httptest.NewRecorder()
 		mux.ServeHTTP(resp, req)
@@ -61,7 +61,7 @@ func TestHandlerAudit_pagination(t *testing.T) {
 	})
 
 	t.Run("limit_and_offset", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/api/v1/audit?limit=10&offset=50", nil)
+		req, _ := http.NewRequest("GET", "/api/v1/audit?limit=10&offset=50", http.NoBody)
 		req.Header.Set("X-Admin-API-Key", "test-secret")
 		resp := httptest.NewRecorder()
 		mux.ServeHTTP(resp, req)
@@ -75,7 +75,7 @@ func TestHandlerAudit_pagination(t *testing.T) {
 	})
 
 	t.Run("limit_capped_at_1000", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/api/v1/audit?limit=1000000", nil)
+		req, _ := http.NewRequest("GET", "/api/v1/audit?limit=1000000", http.NoBody)
 		req.Header.Set("X-Admin-API-Key", "test-secret")
 		resp := httptest.NewRecorder()
 		mux.ServeHTTP(resp, req)

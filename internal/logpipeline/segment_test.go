@@ -25,7 +25,7 @@ func encodeRecord(t *testing.T, evt *pb.AdStreamEvent) []byte {
 
 func TestFilterSegment_downsamplesImpressions(t *testing.T) {
 	var src bytes.Buffer
-	for i := 0; i < 2000; i++ {
+	for i := range 2000 {
 		evt := &pb.AdStreamEvent{
 			EventType: []byte("impression"),
 			ClickId:   []byte("impression-" + string(rune(i))),

@@ -16,10 +16,11 @@ func ProbeHealth(args []string) bool {
 		if err != nil {
 			os.Exit(1)
 		}
-		defer func() { _ = resp.Body.Close() }()
 		if resp.StatusCode != 200 {
+			_ = resp.Body.Close()
 			os.Exit(1)
 		}
+		_ = resp.Body.Close()
 		os.Exit(0)
 	}
 	return false

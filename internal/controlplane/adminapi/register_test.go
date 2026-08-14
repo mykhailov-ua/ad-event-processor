@@ -69,7 +69,7 @@ func TestCatalog_reportRoutesRegistered(t *testing.T) {
 			continue
 		}
 		path := catalogPathForRequest(route.Path)
-		req := httptest.NewRequest(route.Method, path, nil)
+		req := httptest.NewRequest(route.Method, path, http.NoBody)
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 

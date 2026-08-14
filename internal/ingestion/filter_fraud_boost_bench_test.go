@@ -1,3 +1,6 @@
+// Hot-path fraud boost snapshot benches (harness: fraud_boost_snapshot_mock).
+// fraudSignalsFilter + preloaded Redis boost snapshot — not internal/fraud LGBM inference.
+// Do not conflate BenchmarkFilterFraudBoost with BenchmarkLGBMScorer_ScoreBatch10k.
 package ingestion
 
 import (
@@ -36,13 +39,15 @@ func setupFilterFraudBoostBench(t testing.TB) (*FilterEngine, *domain.Event, con
 	}
 	ctx := context.Background()
 
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		resetFraudBenchEvent(evt)
 		_ = engine.Check(ctx, evt)
 	}
 	return engine, evt, ctx
 }
 
+// BenchmarkFilterFraudBoost measures hot-path boost snapshot apply + fraud layer decision.
+// Harness: fraud_boost_snapshot_mock. Not BenchmarkLGBMScorer_ScoreBatch10k (cold-path ML).
 func BenchmarkFilterFraudBoost(b *testing.B) {
 	engine, evt, ctx := setupFilterFraudBoostBench(b)
 	b.ReportAllocs()
@@ -55,7 +60,7 @@ func BenchmarkFilterFraudBoost(b *testing.B) {
 
 func TestFilterFraudBoost_zeroAlloc(t *testing.T) {
 	engine, evt, ctx := setupFilterFraudBoostBench(t)
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		resetFraudBenchEvent(evt)
 		_ = engine.Check(ctx, evt)
 	}

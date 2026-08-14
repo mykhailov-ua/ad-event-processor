@@ -62,7 +62,7 @@ func (evac *Evacuator) Run(ctx context.Context) error {
 	if err := evac.watcher.Add(evac.cfg.LogDir); err != nil {
 		return err
 	}
-	defer evac.watcher.Close()
+	defer func() { _ = evac.watcher.Close() }()
 
 	if err := evac.recoverStuckSegments(ctx); err != nil {
 		slog.Warn("recover stuck segments", "error", err)

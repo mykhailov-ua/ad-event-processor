@@ -93,7 +93,7 @@ func resolveGoSymbol(binaryPath, want string) string {
 	if err != nil {
 		return ""
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	syms, err := f.Symbols()
 	if err != nil {

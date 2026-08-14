@@ -112,7 +112,7 @@ func TestIntegration_Licensing(t *testing.T) {
 		sig := ed25519.Sign(priv, []byte(signingInput))
 		token := signingInput + "." + base64.RawURLEncoding.EncodeToString(sig)
 
-		require.NoError(t, os.WriteFile(tempFile, []byte(token), 0644))
+		require.NoError(t, os.WriteFile(tempFile, []byte(token), 0o644))
 
 		t.Setenv("ESPX_LICENSE_MODE", "file")
 		t.Setenv("ESPX_LICENSE_PATH", tempFile)

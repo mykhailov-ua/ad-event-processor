@@ -18,10 +18,12 @@ import (
 	"github.com/bidshard/ad-event-processor/internal/rtb"
 	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
 	"github.com/bidshard/ad-event-processor/pkg/logger"
+	"github.com/bidshard/ad-event-processor/pkg/pgfailover"
 	"github.com/bidshard/ad-event-processor/pkg/piihash"
 	"github.com/bidshard/ad-event-processor/pkg/runtimeautotune"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/panjf2000/gnet/v2"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
@@ -29,8 +31,7 @@ import (
 
 func main() {
 	if len(os.Args) > 2 && os.Args[1] == "--health-probe" {
-		resp, err := http.Get(os.Args[2])
-		if err != nil || resp.StatusCode != 200 {
+		if !lifecycle.RunHealthProbe(os.Args[2]) {
 			os.Exit(1)
 		}
 		os.Exit(0)
@@ -362,7 +363,7 @@ func main() {
 	}
 	slog.Info("redis lua scripts preloaded", "shards", len(rdbs))
 
-	creativeStore := ingestion.NewBrandCreativeStore(firstConnectedRedis(rdbs))
+	creativeStore := ingestion.NewBrandCreativeStore(firstConnectedRedis(rdbs), cfg.FilterTimeoutMs)
 	licenseFilter := ingestion.NewLicenseFilter(registry)
 	licenseRPSFilter := ingestion.NewLicenseRPSFilter(registry)
 	entitlementsFilter := ingestion.NewEntitlementsFilter(registry, sharder, rdbs)
@@ -474,6 +475,29 @@ func main() {
 	}
 
 	gnetHandler := ingestion.NewAdsPacketHandler(cfg, registry, filterEngine, pool, rdbs, sharder, cfg.FraudStreamName, creativeStore)
+
+	if cfg.PgFailoverEnabled {
+		var ingestPgFailover *pgfailover.IngestRuntime
+		ingestPgFailover = pgfailover.StartIngestSubscribers(ctx, rdbs, pgfailover.IngestSubscriberConfig{
+			MaxConns: cfg.DBTrackerMaxConns,
+			MinConns: cfg.DBMinConns,
+			Interval: time.Duration(cfg.PgFailoverPollMs) * time.Millisecond,
+		}, func(newPool *pgxpool.Pool) {
+			old := pool
+			pool = newPool
+			registry.SetPool(newPool)
+			slotMapWatcher.SetPool(newPool)
+			gnetHandler.SetPool(newPool)
+			settingsWatcher.SetPGFallback(ingestion.SettingsPGSync(newPool), registry.IsStaleMode)
+			if old != nil && old != newPool {
+				old.Close()
+			}
+			slog.Info("tracker pg failover reconnected read pool")
+		})
+		if ingestPgFailover != nil {
+			defer ingestPgFailover.Stop()
+		}
+	}
 
 	var brokerProducer *ingestion.BrokerProducer
 	if cfg.BrokerEnabled() && cfg.Broker.CHIngestSource == "broker" && cfg.Broker.URL != "" {

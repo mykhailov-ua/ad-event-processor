@@ -161,27 +161,37 @@ func (r *RegionOutboxRelay) ProcessPendingWithCount(ctx context.Context, limit i
 	}
 
 	delivered := 0
-	var batchErrs []error
-	for _, row := range rows {
+	// Strict causal order: halt the batch on first apply failure. Revert the failed
+	// row and all later claimed rows (still PROCESSING) to PENDING for ordered retry.
+	for i, row := range rows {
 		if err := r.applyDelivery(opCtx, ctx, row); err != nil {
 			slog.Warn("region outbox apply failed", "region", r.regionCode, "event_id", row.outboxEventID, "error", err)
-			_, revertErr := r.svc.GetPool().Exec(opCtx, `
-				UPDATE outbox_region_delivery
-				SET status = 'PENDING', processing_started_at = NULL
-				WHERE region_code = $1 AND outbox_event_id = $2`, r.regionCode, row.outboxEventID)
-			if revertErr != nil {
-				batchErrs = append(batchErrs, revertErr)
+			if revertErr := r.revertRegionDeliveriesPending(opCtx, rows[i:]); revertErr != nil {
+				return delivered, errors.Join(
+					fmt.Errorf("region delivery %d: %w", row.outboxEventID, err),
+					fmt.Errorf("revert region deliveries: %w", revertErr),
+				)
 			}
-			batchErrs = append(batchErrs, fmt.Errorf("region delivery %d: %w", row.outboxEventID, err))
-			continue
+			return delivered, fmt.Errorf("region delivery %d: %w", row.outboxEventID, err)
 		}
 		delivered++
 	}
-
-	if len(batchErrs) > 0 {
-		return delivered, errors.Join(batchErrs...)
-	}
 	return delivered, nil
+}
+
+func (r *RegionOutboxRelay) revertRegionDeliveriesPending(ctx context.Context, rows []regionDeliveryRow) error {
+	if r == nil || r.svc == nil || len(rows) == 0 {
+		return nil
+	}
+	ids := make([]int64, len(rows))
+	for i, row := range rows {
+		ids[i] = row.outboxEventID
+	}
+	_, err := r.svc.GetPool().Exec(ctx, `
+		UPDATE outbox_region_delivery
+		SET status = 'PENDING', processing_started_at = NULL
+		WHERE region_code = $1 AND outbox_event_id = ANY($2)`, r.regionCode, ids)
+	return err
 }
 
 func (r *RegionOutboxRelay) regionAlreadyApplied(ctx context.Context, outboxEventID int64) (bool, error) {
@@ -222,7 +232,7 @@ func (r *RegionOutboxRelay) applyDelivery(opCtx, ctx context.Context, row region
 
 func (r *RegionOutboxRelay) applyDeliveryLeased(opCtx, ctx context.Context, row regionDeliveryRow) error {
 	worker := r.relayLeaseWorker()
-	bookReq := RelayDeliveryBookRequest(r.svc, r.regionCode, row.outboxEventID, row.eventType, row.payload, 1)
+	bookReq := RelayDeliveryBookRequest(opCtx, r.svc, r.regionCode, row.outboxEventID, row.eventType, row.payload, 1)
 	status, err := worker.EnsureBook(opCtx, bookReq)
 	if err != nil {
 		return fmt.Errorf("region delivery lease book event_id=%d: %w", row.outboxEventID, err)
@@ -236,7 +246,7 @@ func (r *RegionOutboxRelay) applyDeliveryLeased(opCtx, ctx context.Context, row 
 }
 
 func (r *RegionOutboxRelay) applyDeliveryDirect(opCtx, ctx context.Context, row regionDeliveryRow) error {
-	adapter := r.svc.dedupAdapter()
+	adapter := r.svc.dedupAdapter(opCtx)
 	var claim dedup.ClaimResult
 	if adapter != nil {
 		scope := adapter.RegionScope(dedupkey.RelaySourceID(r.regionCode), row.outboxEventID, row.outboxEventID)
@@ -261,7 +271,10 @@ func (r *RegionOutboxRelay) applyDeliveryDirect(opCtx, ctx context.Context, row 
 		if r.svc != nil && len(r.svc.rdbs) > 0 && claim.DedupKey != "" {
 			redisKey := dedupkey.RedisKey(claim.DedupKey)
 			ok, nxErr := setNXOnAllShards(opCtx, r.svc.rdbs, redisKey, "1", 48*time.Hour)
-			if nxErr == nil && !ok && claim.Outcome == dedup.OutcomeConfirmed {
+			if nxErr != nil {
+				return nxErr
+			}
+			if !ok && claim.Outcome == dedup.OutcomeConfirmed {
 				already, idemErr := r.regionAlreadyApplied(opCtx, row.outboxEventID)
 				if idemErr != nil {
 					return idemErr
@@ -296,7 +309,10 @@ func (r *RegionOutboxRelay) applyDeliverySideEffects(opCtx, ctx context.Context,
 	if r.svc != nil && len(r.svc.rdbs) > 0 && claim.DedupKey != "" && claim.Outcome == dedup.OutcomeConfirmed {
 		redisKey := dedupkey.RedisKey(claim.DedupKey)
 		ok, nxErr := setNXOnAllShards(opCtx, r.svc.rdbs, redisKey, "1", 48*time.Hour)
-		if nxErr == nil && !ok {
+		if nxErr != nil {
+			return nxErr
+		}
+		if !ok {
 			already, idemErr := r.regionAlreadyApplied(opCtx, row.outboxEventID)
 			if idemErr != nil {
 				return idemErr

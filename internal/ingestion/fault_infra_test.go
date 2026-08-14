@@ -106,7 +106,7 @@ func setupAdsFaultInfra(t *testing.T) (*adsFaultInfra, func()) {
 	return infra, cleanup
 }
 
-func applyAdsMigrations(t *testing.T, pool *pgxpool.Pool) {
+func applyAdsMigrations(t testing.TB, pool *pgxpool.Pool) {
 	t.Helper()
 	ctx := context.Background()
 	_, filename, _, ok := runtime.Caller(0)

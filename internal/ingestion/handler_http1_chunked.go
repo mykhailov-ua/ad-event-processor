@@ -1,7 +1,7 @@
 package ingestion
 
 func teValueOnlyChunked(val []byte) bool {
-	for i := 0; i < len(val); i++ {
+	for i := range val {
 		c := val[i]
 		if c < 0x20 && c != ' ' && c != '\t' {
 			return false

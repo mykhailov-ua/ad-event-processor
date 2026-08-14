@@ -25,7 +25,7 @@ func TestResolveDebitShard_highVolumeSpread(t *testing.T) {
 	}
 
 	seen := make(map[int]struct{})
-	for i := 0; i < 64; i++ {
+	for i := range 64 {
 		userID := "user-" + strconv.Itoa(i)
 		shard, sub, err := f.resolveDebitShard(campID, userID, "", camp)
 		require.NoError(t, err)

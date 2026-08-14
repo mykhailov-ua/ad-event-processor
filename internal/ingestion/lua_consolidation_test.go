@@ -32,7 +32,7 @@ func TestFault_EdgeSlotMapParity(t *testing.T) {
 
 	const n = 4096
 	mismatches := 0
-	for i := 0; i < n; i++ {
+	for range n {
 		id := uuid.New()
 		goShard := sharder.GetShard(id)
 		edgeShard, ok := edgeSlotPick(id, table)
@@ -52,7 +52,7 @@ func TestFault_EdgeSlotMapParity(t *testing.T) {
 
 func TestUnifiedFilter_LuaConsolidatedPrechecks(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := attachFilterDeadline(t.Context(), time.Second)
 	rdb, cleanup := setupTestRedis(t)
@@ -118,7 +118,7 @@ func (r *entitlementsTestRegistry) GetEntitlements(customerID uuid.UUID) (licens
 
 func TestUnifiedFilter_NoIPRateLimitKeys(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := attachFilterDeadline(t.Context(), time.Second)
 	rdb, cleanup := setupTestRedis(t)
@@ -153,7 +153,7 @@ func TestUnifiedFilter_NoIPRateLimitKeys(t *testing.T) {
 
 func TestUnifiedFilter_TierDegradationNearDeadline(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)

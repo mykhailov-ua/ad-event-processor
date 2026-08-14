@@ -1,0 +1,41 @@
+{
+  "cases": [
+    {
+      "id": "load_from_metadata",
+      "check": "load_metadata",
+      "policy": {
+        "tier_pass": 30,
+        "tier_suspect": 60,
+        "tier_ivt": 80,
+        "tier_block": 100,
+        "ml_threshold": 0.42,
+        "residential_proxy_floor": 0.61,
+        "residential_proxy_max_ml": 0.44,
+        "fp_guard_cap": 0.78
+      },
+      "want": {
+        "ml_threshold": 0.42,
+        "residential_proxy_floor": 0.61
+      }
+    },
+    {
+      "id": "resolve_auto_merges_env",
+      "check": "resolve_auto",
+      "policy": {
+        "tier_pass": 30,
+        "tier_suspect": 60,
+        "tier_ivt": 80,
+        "tier_block": 100,
+        "ml_threshold": 0.42,
+        "fp_guard_cap": 0.78
+      },
+      "env": {
+        "FRAUD_POLICY_ML_THRESHOLD": "0.55"
+      },
+      "want": {
+        "ml_threshold": 0.55,
+        "fp_guard_cap": 0.78
+      }
+    }
+  ]
+}

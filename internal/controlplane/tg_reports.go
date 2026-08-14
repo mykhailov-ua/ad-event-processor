@@ -204,7 +204,7 @@ func (s *TelegramServiceImpl) GetTelegramFunnelReport(
 	if err != nil {
 		return nil, fmt.Errorf("clickhouse funnel query failed: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	report := TelegramFunnelReport{Freshness: s.reportFreshness(ctx)}
 	for rows.Next() {
@@ -256,7 +256,7 @@ func (s *TelegramServiceImpl) GetTelegramBotsReport(
 	if err != nil {
 		return nil, fmt.Errorf("clickhouse bots query failed: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	report := TelegramBotsReport{Freshness: s.reportFreshness(ctx)}
 	for rows.Next() {

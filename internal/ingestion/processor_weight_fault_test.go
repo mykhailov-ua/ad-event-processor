@@ -26,8 +26,8 @@ func TestFault_ProcessorWeightDrain(t *testing.T) {
 	slow.SetWeightForTest(0.1)
 
 	var fastReads, slowReads int
-	for epoch := 0; epoch < 3; epoch++ {
-		for i := 0; i < 200; i++ {
+	for range 3 {
+		for range 200 {
 			fastReads += int(fast.EffectiveReadCount(500))
 			slowReads += int(slow.EffectiveReadCount(500))
 		}

@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
 const slotMigrationR5SamplePerShard = 3
@@ -49,19 +50,19 @@ func (o *SlotMigrationOrchestrator) tick(ctx context.Context) {
 	draft, err := migRepo.GetMaxDraftVersionWithMigrating(ctx)
 	if err != nil {
 		if o.svc.alerter != nil {
-			o.svc.alerter.AlertSlotMigrationError("draft_lookup", err)
+			o.svc.alerter.AlertSlotMigrationError(ctx, "draft_lookup", err)
 		}
 		return
 	}
 	if draft > 0 {
 		if err := o.svc.CatchUpDualWriteSlots(ctx, draft); err != nil {
 			if o.svc.alerter != nil {
-				o.svc.alerter.AlertSlotMigrationError("dual_write_catchup", err)
+				o.svc.alerter.AlertSlotMigrationError(ctx, "dual_write_catchup", err)
 			}
 		}
 		if err := o.svc.CopyAllMigratingSlots(ctx, draft); err != nil {
 			if o.svc.alerter != nil {
-				o.svc.alerter.AlertSlotMigrationError("copy", err)
+				o.svc.alerter.AlertSlotMigrationError(ctx, "copy", err)
 			}
 		}
 	}
@@ -70,19 +71,19 @@ func (o *SlotMigrationOrchestrator) tick(ctx context.Context) {
 	active, err := mapRepo.GetActiveVersion(ctx)
 	if err != nil {
 		if o.svc.alerter != nil {
-			o.svc.alerter.AlertSlotMigrationError("active_lookup", err)
+			o.svc.alerter.AlertSlotMigrationError(ctx, "active_lookup", err)
 		}
 		return
 	}
 	if err := o.svc.DrainMigratingSlots(ctx, active); err != nil {
 		if o.svc.alerter != nil {
-			o.svc.alerter.AlertSlotMigrationError("drain", err)
+			o.svc.alerter.AlertSlotMigrationError(ctx, "drain", err)
 		}
 	} else {
 		pending, pendErr := o.svc.HasPendingSlotDrain(ctx)
 		if pendErr == nil && !pending {
 			if r5Err := o.svc.VerifySlotMigrationR5(ctx); r5Err != nil && o.svc.alerter != nil {
-				o.svc.alerter.AlertSlotMigrationError("r5_verify", r5Err)
+				o.svc.alerter.AlertSlotMigrationError(ctx, "r5_verify", r5Err)
 			}
 		}
 	}
@@ -91,7 +92,7 @@ func (o *SlotMigrationOrchestrator) tick(ctx context.Context) {
 
 func (o *SlotMigrationOrchestrator) bumpPendingMigrationFences(ctx context.Context) {
 	if err := o.svc.BumpFencesForPendingMigrations(ctx); err != nil && o.svc.alerter != nil {
-		o.svc.alerter.AlertSlotMigrationError("bump_fences", err)
+		o.svc.alerter.AlertSlotMigrationError(ctx, "bump_fences", err)
 	}
 }
 
@@ -178,6 +179,9 @@ func (s *Service) EnsureSlotMigrationJobs(ctx context.Context, draftVersion int3
 	return nil
 }
 
+// CopySlotMigrationData copies campaign Redis keys for one slot. Post-copy activation
+// verification is O(campaigns × activation_keys) Redis EXISTS calls, batched via pipelines
+// (two round-trips per slot). Large slots may take minutes — plan operator timeout accordingly.
 func (s *Service) CopySlotMigrationData(ctx context.Context, version int32, slot int16) error {
 	if len(s.rdbs) == 0 {
 		return fmt.Errorf("no redis shards configured")
@@ -239,25 +243,10 @@ func (s *Service) CopySlotMigrationData(ctx context.Context, version int32, slot
 	}
 
 	catalog := domain.DefaultCampaignRedisKeyCatalog
-	for _, id := range slotCampaigns {
-		for _, key := range catalog.ActivationRequiredKeys(id) {
-			srcExists, err := src.Exists(ctx, key).Result()
-			if err != nil {
-				return fmt.Errorf("post-copy exists src %q: %w", key, err)
-			}
-			if srcExists == 0 {
-				continue
-			}
-			dstExists, err := dst.Exists(ctx, key).Result()
-			if err != nil {
-				return fmt.Errorf("post-copy exists dst %q: %w", key, err)
-			}
-			if dstExists == 0 {
-				_ = migRepo.UpdateProgress(ctx, version, slot, total, copied,
-					db.RedisSlotMigrationStateFailed, "missing key on target: "+key)
-				return fmt.Errorf("post-copy verify: %q missing on target shard", key)
-			}
-		}
+	if err := verifyActivationKeysPostCopy(ctx, src, dst, catalog, slotCampaigns); err != nil {
+		_ = migRepo.UpdateProgress(ctx, version, slot, total, copied,
+			db.RedisSlotMigrationStateFailed, err.Error())
+		return err
 	}
 
 	finalState := db.RedisSlotMigrationStateCopied
@@ -731,4 +720,64 @@ func mapRepoUpdateSlotState(ctx context.Context, pool *pgxpool.Pool, version int
 		ShardID: shard,
 		State:   state,
 	})
+}
+
+func verifyActivationKeysPostCopy(
+	ctx context.Context,
+	src, dst redis.Cmdable,
+	catalog *domain.CampaignRedisKeyCatalog,
+	campaignIDs []uuid.UUID,
+) error {
+	if catalog == nil || len(campaignIDs) == 0 {
+		return nil
+	}
+	keys := make([]string, 0, len(campaignIDs))
+	for _, id := range campaignIDs {
+		keys = append(keys, catalog.ActivationRequiredKeys(id)...)
+	}
+	if len(keys) == 0 {
+		return nil
+	}
+
+	srcPipe := src.Pipeline()
+	srcCmds := make([]*redis.IntCmd, len(keys))
+	for i, key := range keys {
+		srcCmds[i] = srcPipe.Exists(ctx, key)
+	}
+	if _, err := srcPipe.Exec(ctx); err != nil {
+		return fmt.Errorf("post-copy exists src pipeline: %w", err)
+	}
+
+	needDst := make([]string, 0, len(keys))
+	for i, cmd := range srcCmds {
+		n, err := cmd.Result()
+		if err != nil {
+			return fmt.Errorf("post-copy exists src %q: %w", keys[i], err)
+		}
+		if n > 0 {
+			needDst = append(needDst, keys[i])
+		}
+	}
+	if len(needDst) == 0 {
+		return nil
+	}
+
+	dstPipe := dst.Pipeline()
+	dstCmds := make([]*redis.IntCmd, len(needDst))
+	for i, key := range needDst {
+		dstCmds[i] = dstPipe.Exists(ctx, key)
+	}
+	if _, err := dstPipe.Exec(ctx); err != nil {
+		return fmt.Errorf("post-copy exists dst pipeline: %w", err)
+	}
+	for i, cmd := range dstCmds {
+		n, err := cmd.Result()
+		if err != nil {
+			return fmt.Errorf("post-copy exists dst %q: %w", needDst[i], err)
+		}
+		if n == 0 {
+			return fmt.Errorf("post-copy verify: %q missing on target shard", needDst[i])
+		}
+	}
+	return nil
 }

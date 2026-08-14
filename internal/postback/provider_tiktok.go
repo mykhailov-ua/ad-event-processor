@@ -114,7 +114,7 @@ func (a *TikTokAdapter) Send(ctx context.Context, client *http.Client, payload *
 	if err != nil {
 		return fmt.Errorf("http request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))

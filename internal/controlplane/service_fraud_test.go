@@ -49,7 +49,7 @@ func TestFraudModelSync_EndToEnd(t *testing.T) {
 	rdb2 := redis.NewUniversalClient(&redis.UniversalOptions{Addrs: []string{endpoint}, DB: 1})
 	defer rdb2.Close()
 
-	svc := NewService(pool, []redis.UniversalClient{rdb1, rdb2}, nil, nil)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb1, rdb2}, nil, nil)
 	svc.Close()
 
 	worker := NewOutboxWorker(svc)
@@ -147,7 +147,7 @@ func TestFraudModelSync_CanaryRollback(t *testing.T) {
 	rdb, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
-	svc := NewService(pool, []redis.UniversalClient{rdb}, nil, nil)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, nil)
 	svc.Close()
 
 	orchestrator := NewFraudModelSyncOrchestrator(svc)
@@ -206,7 +206,7 @@ func TestFraudModelSync_StaleEpochTighten(t *testing.T) {
 		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`)
 	require.NoError(t, err)
 
-	svc := NewService(pool, []redis.UniversalClient{rdb}, nil, nil)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, nil)
 	svc.Close()
 
 	ctx := context.Background()

@@ -208,7 +208,7 @@ func TestHTTP1Pipelining(t *testing.T) {
 	single := BuildGnetPostTrackJSON(body)
 
 	var pipelined []byte
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		pipelined = append(pipelined, single...)
 	}
 
@@ -217,7 +217,7 @@ func TestHTTP1Pipelining(t *testing.T) {
 	assert.Equal(t, gnet.None, act)
 
 	remaining := pipelined
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		n, req, err := parseHTTP1(remaining, cfg.MaxRequestBodySize, nil)
 		require.NoError(t, err, "request %d", i+1)
 		assert.Equal(t, "/track", string(req.Path))

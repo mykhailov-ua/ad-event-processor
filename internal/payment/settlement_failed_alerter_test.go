@@ -1,6 +1,7 @@
 package payment
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -44,7 +45,7 @@ func TestSettlementFailedAlerter_AlertPermanentFailure_enqueues(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	alerter.AlertPermanentFailure(db.PaymentPaymentOutbox{
+	alerter.AlertPermanentFailure(context.Background(), db.PaymentPaymentOutbox{
 		ID:        99,
 		EventType: "SETTLE_BALANCE",
 		Payload:   payload,
@@ -69,8 +70,8 @@ func TestSettlementFailedAlerter_AlertPermanentFailure_dedupSecondCall(t *testin
 	require.NoError(t, err)
 	ev := db.PaymentPaymentOutbox{ID: 1, EventType: "SETTLE_BALANCE", Payload: payload}
 
-	alerter.AlertPermanentFailure(ev, fmt.Errorf("first"))
-	alerter.AlertPermanentFailure(ev, fmt.Errorf("second"))
+	alerter.AlertPermanentFailure(context.Background(), ev, fmt.Errorf("first"))
+	alerter.AlertPermanentFailure(context.Background(), ev, fmt.Errorf("second"))
 	time.Sleep(150 * time.Millisecond)
 
 	assert.Len(t, stub.snapshot(), 1)

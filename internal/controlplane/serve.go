@@ -113,7 +113,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 			slog.Error("udp control server start failed", "error", err)
 			return err
 		}
-		defer udpSrv.Close()
+		defer func() { _ = udpSrv.Close() }()
 	}
 
 	var tcpSrv *TCPControlServer
@@ -123,7 +123,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 			slog.Error("tcp control server start failed", "error", err)
 			return err
 		}
-		defer tcpSrv.Close()
+		defer func() { _ = tcpSrv.Close() }()
 	}
 
 	if cfg.MultiRegionEnabled {
@@ -133,7 +133,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 		}
 	}
 
-	svc := NewService(pool, rdbs, sharder, cfg)
+	svc := NewService(ctx, pool, rdbs, sharder, cfg)
 	svc.StartBackgroundWorker(func() {
 		NewShard0CatchupWorker(svc, redisOpts).Start(ctx)
 	})
@@ -177,9 +177,9 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 			slog.Error("failed to connect to clickhouse for reporting", "error", err)
 			return err
 		}
-		defer chRead.Close()
+		defer func() { _ = chRead.Close() }()
 		if chWrite != nil {
-			defer chWrite.Close()
+			defer func() { _ = chWrite.Close() }()
 		}
 		svc.SetClickHouse(chRead, database.CHQueryConfigFromApp(cfg))
 		slog.Info("clickhouse reporting enabled", "readonly_dsn", "CH_READONLY_DSN")
@@ -473,7 +473,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 	}
 
 	mux := http.NewServeMux()
-	RegisterOpsRoutes(mux, pool, rdbs, cfg)
+	RegisterOpsRoutes(ctx, mux, pool, rdbs, cfg)
 	if alertmanagerWebhook != nil {
 		alertmanagerWebhook.Register(mux)
 		slog.Info("alertmanager webhook adapter enabled")
@@ -541,7 +541,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 
 	<-ctx.Done()
 
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), time.Duration(cfg.Lifecycle.ShutdownTimeoutMs)*time.Millisecond)
+	shutdownCtx, shutdownCancel := context.WithTimeout(ctx, time.Duration(cfg.Lifecycle.ShutdownTimeoutMs)*time.Millisecond)
 	defer shutdownCancel()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {

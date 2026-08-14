@@ -200,7 +200,7 @@ func TestFault_FinancialReconConcurrentRuns(t *testing.T) {
 	const workers = 4
 	var wg sync.WaitGroup
 	wg.Add(workers)
-	for i := 0; i < workers; i++ {
+	for range workers {
 		go func() {
 			defer wg.Done()
 			_, _ = recon.Run(context.Background(), start, end)

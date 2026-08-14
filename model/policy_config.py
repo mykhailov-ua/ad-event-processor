@@ -1,10 +1,12 @@
 """FRAUD_POLICY_* env + metadata.json; mirrors internal/fraud/policy_config.go."""
+
 from __future__ import annotations
 
 import json
 import os
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
+from typing import Any, cast
 
 
 @dataclass(frozen=True)
@@ -49,11 +51,18 @@ class PolicyConfig:
 
     @classmethod
     def from_dict(cls, raw: dict[str, object]) -> PolicyConfig:
-        kwargs: dict[str, object] = {}
+        tier_fields = {"tier_pass", "tier_suspect", "tier_ivt", "tier_block"}
+        int_kwargs: dict[str, int] = {}
+        float_kwargs: dict[str, float] = {}
         for field in fields(cls):
-            if field.name in raw:
-                kwargs[field.name] = raw[field.name]
-        return cls(**kwargs)
+            if field.name not in raw:
+                continue
+            value = raw[field.name]
+            if field.name in tier_fields:
+                int_kwargs[field.name] = int(cast(Any, value))
+            else:
+                float_kwargs[field.name] = float(cast(Any, value))
+        return cls(**cast(Any, {**int_kwargs, **float_kwargs}))
 
 
 def default_policy_config() -> PolicyConfig:
@@ -95,12 +104,8 @@ def load_policy_config_from_env() -> PolicyConfig:
         proxy_min_events=_env_float("FRAUD_POLICY_PROXY_MIN_EVENTS", base.proxy_min_events),
         proxy_max_ctr=_env_float("FRAUD_POLICY_PROXY_MAX_CTR", base.proxy_max_ctr),
         proxy_min_users=_env_float("FRAUD_POLICY_PROXY_MIN_USERS", base.proxy_min_users),
-        proxy_min_user_click_gap=_env_float(
-            "FRAUD_POLICY_PROXY_MIN_USER_CLICK_GAP", base.proxy_min_user_click_gap
-        ),
-        proxy_min_events_per_user=_env_float(
-            "FRAUD_POLICY_PROXY_MIN_EVENTS_PER_USER", base.proxy_min_events_per_user
-        ),
+        proxy_min_user_click_gap=_env_float("FRAUD_POLICY_PROXY_MIN_USER_CLICK_GAP", base.proxy_min_user_click_gap),
+        proxy_min_events_per_user=_env_float("FRAUD_POLICY_PROXY_MIN_EVENTS_PER_USER", base.proxy_min_events_per_user),
         proxy_min_impression_pressure=_env_float(
             "FRAUD_POLICY_PROXY_MIN_IMPRESSION_PRESSURE", base.proxy_min_impression_pressure
         ),
@@ -133,29 +138,59 @@ def load_policy_from_metadata(path: Path) -> PolicyConfig | None:
 
 
 def resolve_policy_config(
-    env_cfg: PolicyConfig,
+    env_policy: PolicyConfig,
     metadata_path: Path,
     source: str,
 ) -> PolicyConfig:
     """source: env | metadata | auto (metadata + non-default env overrides)."""
     if source == "env":
-        return env_cfg
-    meta_cfg = load_policy_from_metadata(metadata_path)
+        return env_policy
+    metadata_policy = load_policy_from_metadata(metadata_path)
     if source == "metadata":
-        return meta_cfg if meta_cfg is not None else env_cfg
-    if meta_cfg is not None:
-        return merge_policy_config(meta_cfg, env_cfg)
-    return env_cfg
+        return metadata_policy if metadata_policy is not None else env_policy
+    if metadata_policy is not None:
+        return merge_policy_config(metadata_policy, env_policy)
+    return env_policy
 
 
 def merge_policy_config(base: PolicyConfig, override: PolicyConfig) -> PolicyConfig:
-    def pick(name: str, current: object) -> object:
+    def pick_int(name: str, current: int) -> int:
         new_val = getattr(override, name)
         default_val = getattr(default_policy_config(), name)
         return new_val if new_val != default_val else current
 
-    merged = {field.name: pick(field.name, getattr(base, field.name)) for field in fields(PolicyConfig)}
-    return PolicyConfig(**merged)
+    def pick_float(name: str, current: float) -> float:
+        new_val = getattr(override, name)
+        default_val = getattr(default_policy_config(), name)
+        return new_val if new_val != default_val else current
+
+    return PolicyConfig(
+        tier_pass=pick_int("tier_pass", base.tier_pass),
+        tier_suspect=pick_int("tier_suspect", base.tier_suspect),
+        tier_ivt=pick_int("tier_ivt", base.tier_ivt),
+        tier_block=pick_int("tier_block", base.tier_block),
+        ml_threshold=pick_float("ml_threshold", base.ml_threshold),
+        residential_proxy_floor=pick_float("residential_proxy_floor", base.residential_proxy_floor),
+        residential_proxy_max_ml=pick_float("residential_proxy_max_ml", base.residential_proxy_max_ml),
+        fp_guard_cap=pick_float("fp_guard_cap", base.fp_guard_cap),
+        proxy_min_events=pick_float("proxy_min_events", base.proxy_min_events),
+        proxy_max_ctr=pick_float("proxy_max_ctr", base.proxy_max_ctr),
+        proxy_min_users=pick_float("proxy_min_users", base.proxy_min_users),
+        proxy_min_user_click_gap=pick_float("proxy_min_user_click_gap", base.proxy_min_user_click_gap),
+        proxy_min_events_per_user=pick_float("proxy_min_events_per_user", base.proxy_min_events_per_user),
+        proxy_min_impression_pressure=pick_float("proxy_min_impression_pressure", base.proxy_min_impression_pressure),
+        proxy_min_users_per_ua=pick_float("proxy_min_users_per_ua", base.proxy_min_users_per_ua),
+        proxy_min_clicks=pick_float("proxy_min_clicks", base.proxy_min_clicks),
+        structural_high_ctr=pick_float("structural_high_ctr", base.structural_high_ctr),
+        structural_max_users=pick_float("structural_max_users", base.structural_max_users),
+        structural_min_events=pick_float("structural_min_events", base.structural_min_events),
+        structural_min_events_per_ua=pick_float("structural_min_events_per_ua", base.structural_min_events_per_ua),
+        structural_min_clicks_per_user=pick_float(
+            "structural_min_clicks_per_user", base.structural_min_clicks_per_user
+        ),
+        structural_spend_ratio=pick_float("structural_spend_ratio", base.structural_spend_ratio),
+        structural_spend_min_ctr=pick_float("structural_spend_min_ctr", base.structural_spend_min_ctr),
+    )
 
 
 def format_policy_env(cfg: PolicyConfig) -> str:

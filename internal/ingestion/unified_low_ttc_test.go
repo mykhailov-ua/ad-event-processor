@@ -17,7 +17,7 @@ import (
 
 func TestUnifiedFilter_LowTTC_ReturnsFraudDetected(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)
@@ -49,7 +49,7 @@ func TestUnifiedFilter_LowTTC_ReturnsFraudDetected(t *testing.T) {
 
 func TestUnifiedFilter_impressionSetsImpTS_clickChecksTTC(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)
@@ -85,7 +85,7 @@ func TestUnifiedFilter_impressionSetsImpTS_clickChecksTTC(t *testing.T) {
 
 func TestUnifiedFilter_failClosed_missingImpTS_realRedis(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)

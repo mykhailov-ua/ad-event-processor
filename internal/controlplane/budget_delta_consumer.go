@@ -79,7 +79,7 @@ func (c *BudgetDeltaConsumer) run(ctx context.Context) {
 			return
 		default:
 		}
-		iter, err := c.cli.Fetch(c.cfg.Topic, c.cfg.Partition, offset, c.cfg.MaxBytes)
+		iter, err := c.cli.Fetch(ctx, c.cfg.Topic, c.cfg.Partition, offset, c.cfg.MaxBytes)
 		if err != nil {
 			time.Sleep(c.cfg.IdleWait)
 			continue

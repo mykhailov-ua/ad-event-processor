@@ -34,7 +34,7 @@ func TestCustomersList_Handler(t *testing.T) {
 	}
 
 	authMW, tokenMaker := integrationTestAuth(t, rdb, cfg)
-	svc := NewService(pool, []redis.UniversalClient{rdb}, nil, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, cfg)
 	defer svc.Close()
 	h := NewHandler(svc, cfg, authMW, nil, nil, nil)
 	mux := http.NewServeMux()
@@ -46,7 +46,7 @@ func TestCustomersList_Handler(t *testing.T) {
 	require.NoError(t, svc.TopUpBalance(ctx, custID, 50_000_000, "idemp-list-1"))
 
 	t.Run("list returns items and total as admin", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/api/v1/customers?limit=50&offset=0", nil)
+		req, _ := http.NewRequest("GET", "/api/v1/customers?limit=50&offset=0", http.NoBody)
 		withSessionUser(req, tokenMaker, RoleAdmin, uuid.Nil)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -70,7 +70,7 @@ func TestCustomersList_Handler(t *testing.T) {
 	})
 
 	t.Run("get by id returns customer", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/api/v1/customers/"+custID.String(), nil)
+		req, _ := http.NewRequest("GET", "/api/v1/customers/"+custID.String(), http.NoBody)
 		withSessionUser(req, tokenMaker, RoleAdmin, uuid.Nil)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -83,7 +83,7 @@ func TestCustomersList_Handler(t *testing.T) {
 	})
 
 	t.Run("get by malformed id returns 400", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/api/v1/customers/not-a-uuid", nil)
+		req, _ := http.NewRequest("GET", "/api/v1/customers/not-a-uuid", http.NoBody)
 		withSessionUser(req, tokenMaker, RoleAdmin, uuid.Nil)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -91,7 +91,7 @@ func TestCustomersList_Handler(t *testing.T) {
 	})
 
 	t.Run("get by unknown id returns 404", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/api/v1/customers/"+uuid.New().String(), nil)
+		req, _ := http.NewRequest("GET", "/api/v1/customers/"+uuid.New().String(), http.NoBody)
 		withSessionUser(req, tokenMaker, RoleAdmin, uuid.Nil)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -99,7 +99,7 @@ func TestCustomersList_Handler(t *testing.T) {
 	})
 
 	t.Run("role U sees only own customer", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/api/v1/customers/"+custID.String(), nil)
+		req, _ := http.NewRequest("GET", "/api/v1/customers/"+custID.String(), http.NoBody)
 		withSessionUser(req, tokenMaker, RoleUser, custID)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -108,7 +108,7 @@ func TestCustomersList_Handler(t *testing.T) {
 
 	t.Run("role U forbidden on another customer", func(t *testing.T) {
 		otherID := uuid.New()
-		req, _ := http.NewRequest("GET", "/api/v1/customers/"+custID.String(), nil)
+		req, _ := http.NewRequest("GET", "/api/v1/customers/"+custID.String(), http.NoBody)
 		withSessionUser(req, tokenMaker, RoleUser, otherID)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -116,7 +116,7 @@ func TestCustomersList_Handler(t *testing.T) {
 	})
 
 	t.Run("unauthenticated returns 401", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/api/v1/customers", nil)
+		req, _ := http.NewRequest("GET", "/api/v1/customers", http.NoBody)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusUnauthorized, w.Code)
@@ -140,7 +140,7 @@ func TestCampaignsList_Handler(t *testing.T) {
 	}
 
 	authMW, tokenMaker := integrationTestAuth(t, rdb, cfg)
-	svc := NewService(pool, []redis.UniversalClient{rdb}, nil, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, cfg)
 	defer svc.Close()
 	h := NewHandler(svc, cfg, authMW, nil, nil, nil)
 	mux := http.NewServeMux()
@@ -161,7 +161,7 @@ func TestCampaignsList_Handler(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("list returns items filtered by customer_id", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/api/v1/campaigns?customer_id="+custID.String()+"&limit=50", nil)
+		req, _ := http.NewRequest("GET", "/api/v1/campaigns?customer_id="+custID.String()+"&limit=50", http.NoBody)
 		withSessionUser(req, tokenMaker, RoleAdmin, uuid.Nil)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -184,7 +184,7 @@ func TestCampaignsList_Handler(t *testing.T) {
 	})
 
 	t.Run("role U sees only own customer campaigns", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/api/v1/campaigns", nil)
+		req, _ := http.NewRequest("GET", "/api/v1/campaigns", http.NoBody)
 		withSessionUser(req, tokenMaker, RoleUser, custID)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -199,7 +199,7 @@ func TestCampaignsList_Handler(t *testing.T) {
 
 	t.Run("role U forbidden when customer_id is another", func(t *testing.T) {
 		otherID := uuid.New()
-		req, _ := http.NewRequest("GET", "/api/v1/campaigns?customer_id="+otherID.String(), nil)
+		req, _ := http.NewRequest("GET", "/api/v1/campaigns?customer_id="+otherID.String(), http.NoBody)
 		withSessionUser(req, tokenMaker, RoleUser, custID)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -207,7 +207,7 @@ func TestCampaignsList_Handler(t *testing.T) {
 	})
 
 	t.Run("unauthenticated returns 401", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/api/v1/campaigns", nil)
+		req, _ := http.NewRequest("GET", "/api/v1/campaigns", http.NoBody)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusUnauthorized, w.Code)

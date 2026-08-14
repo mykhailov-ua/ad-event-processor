@@ -11,7 +11,7 @@ func benchIPs(n int) ([]string, []string, []string) {
 	manual := make([]string, 0, n/3)
 	auto := make([]string, 0, n/3)
 	fraud := make([]string, 0, n/3)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		ip := fmt.Sprintf("10.%d.%d.%d", (i>>16)&0xff, (i>>8)&0xff, i&0xff)
 		switch i % 3 {
 		case 0:

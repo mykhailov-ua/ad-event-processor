@@ -114,7 +114,7 @@ func TestRedisBreaker_ConcurrentStress(t *testing.T) {
 	b := NewRedisBreaker(100, 2, 10*time.Millisecond)
 
 	var wg sync.WaitGroup
-	for i := 0; i < 200; i++ {
+	for i := range 200 {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
@@ -144,7 +144,7 @@ func TestRedisBreaker_FastFailWhenOpen(t *testing.T) {
 	}
 	processHook := hook.ProcessHook(next)
 
-	for i := 0; i < threshold; i++ {
+	for range threshold {
 		cmd := redis.NewStatusCmd(context.Background(), "PING")
 		err := processHook(context.Background(), cmd)
 		require.Error(t, err)
@@ -152,7 +152,7 @@ func TestRedisBreaker_FastFailWhenOpen(t *testing.T) {
 	require.Equal(t, CircuitOpen, b.State())
 	callsAtOpen := redisCalls.Load()
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		cmd := redis.NewStatusCmd(context.Background(), "PING")
 		err := processHook(context.Background(), cmd)
 		require.ErrorIs(t, err, ErrRedisCircuitOpen)
@@ -167,7 +167,7 @@ func TestRedisBreaker_AdaptiveEWMAThreshold(t *testing.T) {
 	b := NewAdaptiveRedisBreaker(100, 2, 50*time.Millisecond, 0.20)
 
 	// Simulate 1 second of 10,000 successful requests to establish EWMA RPS ~ 10,000
-	for i := 0; i < 10000; i++ {
+	for range 10000 {
 		b.RecordSuccess()
 	}
 
@@ -181,7 +181,7 @@ func TestRedisBreaker_AdaptiveEWMAThreshold(t *testing.T) {
 
 	// Dynamic threshold should be ~20% of 10k = 2000 failures.
 	// 200 failures under 10k EWMA RPS should NOT trip the breaker.
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		b.RecordFailure()
 	}
 	assert.Equal(t, CircuitClosed, b.State(), "200 failures under 10k EWMA RPS must not trip breaker")
@@ -191,13 +191,13 @@ func TestRedisBreaker_AdaptiveTripsOnSustainedOutage(t *testing.T) {
 	b := NewAdaptiveRedisBreaker(50, 2, 50*time.Millisecond, 0.20)
 
 	// Establish low EWMA RPS
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		b.RecordSuccess()
 	}
 	time.Sleep(1100 * time.Millisecond)
 
 	// Exceed minimum failure threshold (50 failures)
-	for i := 0; i < 60; i++ {
+	for range 60 {
 		b.RecordFailure()
 	}
 	assert.Equal(t, CircuitOpen, b.State(), "sustained failures exceeding dynamic threshold must trip breaker")

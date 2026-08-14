@@ -17,7 +17,7 @@ func TestEvaluateRtbLiveGate_insufficientShadow(t *testing.T) {
 func TestEvaluateRtbLiveGate_parityOk(t *testing.T) {
 	ResetRtbShadowDiffBuckets()
 	b := &rtbShadowDiffRing[rtbShadowDiffBucketIdx(time.Now())]
-	for i := 0; i < 120; i++ {
+	for range 120 {
 		b.shadowEvals.Add(1)
 		b.parityMatch.Add(1)
 		b.shadowWinnerMatch.Add(1)

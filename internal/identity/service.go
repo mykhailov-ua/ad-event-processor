@@ -247,7 +247,7 @@ func (service *Service) Login(ctx context.Context, email, password, userAgent, c
 			return LoginDTO{}, ErrAccountLocked
 		}
 		defer func() {
-			cleanupCtx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+			cleanupCtx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
 			if errDec := service.lockout.DecrementInflight(cleanupCtx, clientIP, email); errDec != nil {
 				slog.Error("failed to decrement inflight count", slog.String("ip", clientIP), slog.String("email", email), slog.Any("error", errDec))
 			}
@@ -309,13 +309,13 @@ func (service *Service) Login(ctx context.Context, email, password, userAgent, c
 				go func(plainPwd, userEmail string) {
 					defer func() {
 						<-service.rehashSem
-						cleanupCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+						cleanupCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 						if errDel := service.rdb.Del(cleanupCtx, lockKey).Err(); errDel != nil {
 							slog.Error("failed to release rehash lock", slog.String("email", userEmail), slog.Any("error", errDel))
 						}
 						cancel()
 					}()
-					rehashCtx, rehashCancel := context.WithTimeout(context.Background(), 30*time.Second)
+					rehashCtx, rehashCancel := context.WithTimeout(ctx, 30*time.Second)
 					defer rehashCancel()
 					newHash, errHash := service.hasher.HashPassword(plainPwd)
 					if errHash != nil {
@@ -330,7 +330,7 @@ func (service *Service) Login(ctx context.Context, email, password, userAgent, c
 					}
 				}(password, email)
 			default:
-				cleanupCtx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+				cleanupCtx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
 				if errDel := service.rdb.Del(cleanupCtx, lockKey).Err(); errDel != nil {
 					slog.Error("failed to release rehash lock on default", slog.String("email", email), slog.Any("error", errDel))
 				}

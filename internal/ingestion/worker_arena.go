@@ -19,7 +19,7 @@ func (a *workerArena) acquire(n int) (slot int, buf []byte, release func(), ok b
 	if n <= 0 || n > offloadMaxReqBytes {
 		return 0, nil, nil, false
 	}
-	for i := 0; i < offloadArenaSlots; i++ {
+	for i := range offloadArenaSlots {
 		if a.inUse[i].CompareAndSwap(0, 1) {
 			return i, a.slots[i][:n:offloadMaxReqBytes], func() { a.inUse[i].Store(0) }, true
 		}

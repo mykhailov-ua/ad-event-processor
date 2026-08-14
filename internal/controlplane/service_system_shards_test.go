@@ -45,7 +45,7 @@ func TestBlockIP_MultipleShards(t *testing.T) {
 	})
 	defer rdb3.Close()
 
-	svc := NewService(pool, []redis.UniversalClient{rdb1, rdb2, rdb3}, nil, nil)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb1, rdb2, rdb3}, nil, nil)
 	defer svc.Close()
 
 	ctx := context.Background()

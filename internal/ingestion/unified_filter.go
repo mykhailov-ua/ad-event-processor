@@ -891,7 +891,7 @@ func (f *UnifiedFilter) runUnifiedLua(
 	args[32] = maxRPDAny
 	args[33] = luaPrecheckIngressTTLAny
 
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		seq := f.luaMetricsSeq.Add(1)
 		sampleLua := shouldSampleHistogram(seq, f.redisObservability.sampleMask)
 		var luaStart int64

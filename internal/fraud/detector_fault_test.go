@@ -113,7 +113,7 @@ func TestFault_ivtDetectorExactlyOnce(t *testing.T) {
 	start := make(chan struct{})
 
 	wg.Add(goroutines)
-	for i := 0; i < goroutines; i++ {
+	for range goroutines {
 		go func() {
 			defer wg.Done()
 			<-start
@@ -150,7 +150,7 @@ func TestFault_ivtDetectorOutboxBackpressure(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		_, err := pool.Exec(ctx, `
 			INSERT INTO outbox_events (event_type, payload, status)
 			VALUES ('UPDATE_BLACKLIST', '{"action":"add"}', 'PENDING')`)

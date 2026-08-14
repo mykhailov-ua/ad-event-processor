@@ -1,12 +1,17 @@
 """Load labeled feature rows for time-based model training."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from feature_spec import FEATURE_DIMS, FEATURE_NAMES, row_to_vector
+from traffic_simulator import Row
+
+if TYPE_CHECKING:
+    import numpy as np
 
 ROW_FIELDS: tuple[str, ...] = (
     "events",
@@ -31,9 +36,9 @@ class LabeledRecord:
 @dataclass(frozen=True)
 class LabeledSplit:
     records: list[LabeledRecord]
-    matrix: Any
-    labels: Any
-    probs: Any | None = None
+    matrix: np.ndarray
+    labels: np.ndarray
+    probs: np.ndarray | None = None
 
 
 def _parse_window_start(value: object) -> datetime:
@@ -41,10 +46,14 @@ def _parse_window_start(value: object) -> datetime:
         if value.tzinfo is None:
             return value.replace(tzinfo=UTC)
         return value.astimezone(UTC)
-    if hasattr(value, "isoformat"):
-        text = value.isoformat()
+    if isinstance(value, str):
+        text = value.strip()
     else:
-        text = str(value).strip()
+        iso_attr = getattr(value, "isoformat", None)
+        if callable(iso_attr):
+            text = str(iso_attr())
+        else:
+            text = str(value).strip()
     if text.endswith("Z"):
         text = text[:-1] + "+00:00"
     parsed = datetime.fromisoformat(text)
@@ -117,21 +126,21 @@ def load_labeled_dataset(path: Path, manual_labels_path: Path | None = None) -> 
         if field not in columns:
             raise ValueError(f"dataset missing required feature column: {field}")
 
-    n = len(columns[TIME_COLUMN])
-    if n == 0:
+    row_count = len(columns[TIME_COLUMN])
+    if row_count == 0:
         raise ValueError("dataset is empty")
 
-    label_sources = columns.get("label_source", ["unknown"] * n)
-    ip_hashes = columns.get("ip_hash_hex", [None] * n)
+    label_sources = columns.get("label_source", ["unknown"] * row_count)
+    ip_hashes = columns.get("ip_hash_hex", [None] * row_count)
     records: list[LabeledRecord] = []
-    for idx in range(n):
-        row = {field: int(columns[field][idx]) for field in ROW_FIELDS}
+    for row_index in range(row_count):
+        row = {field: int(columns[field][row_index]) for field in ROW_FIELDS}
         records.append(
             LabeledRecord(
-                window_start=_parse_window_start(columns[TIME_COLUMN][idx]),
+                window_start=_parse_window_start(columns[TIME_COLUMN][row_index]),
                 row=row,
-                label=_resolve_label(columns, idx),
-                label_source=str(label_sources[idx] or "unknown"),
+                label=_resolve_label(columns, row_index),
+                label_source=str(label_sources[row_index] or "unknown"),
             )
         )
 
@@ -149,40 +158,40 @@ def _apply_manual_labels(
 ) -> list[LabeledRecord]:
     import csv
 
-    manual: dict[str, tuple[int, str]] = {}
-    with manual_labels_path.open(encoding="utf-8", newline="") as f:
-        reader = csv.DictReader(f)
+    manual_labels: dict[str, tuple[int, str]] = {}
+    with manual_labels_path.open(encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
         for row in reader:
-            ip = row.get("ip_hash")
+            ip_hash = row.get("ip_hash")
             label = row.get("label")
-            if ip and label is not None:
-                manual[ip.lower()] = (int(label), row.get("source", "manual"))
+            if ip_hash and label is not None:
+                manual_labels[ip_hash.lower()] = (int(label), row.get("source", "manual"))
 
-    if not manual:
+    if not manual_labels:
         return records
 
-    out: list[LabeledRecord] = []
+    updated_records: list[LabeledRecord] = []
     overrides = 0
-    for idx, rec in enumerate(records):
-        ip = ip_hashes[idx]
-        if ip and ip.lower() in manual:
-            label, source = manual[ip.lower()]
-            out.append(
+    for row_index, record in enumerate[LabeledRecord](records):
+        ip_hash = ip_hashes[row_index]
+        if ip_hash and ip_hash.lower() in manual_labels:
+            label, source = manual_labels[ip_hash.lower()]
+            updated_records.append(
                 LabeledRecord(
-                    window_start=rec.window_start,
-                    row=rec.row,
+                    window_start=record.window_start,
+                    row=record.row,
                     label=label,
                     label_source=f"override:{source}",
                 )
             )
             overrides += 1
         else:
-            out.append(rec)
+            updated_records.append(record)
 
     if overrides > 0:
         print(f"labeled_dataset: applied {overrides} manual label overrides", flush=True)
 
-    return out
+    return updated_records
 
 
 def time_based_split(
@@ -203,9 +212,9 @@ def time_based_split(
         elif train_until is not None:
             train = [r for r in records if r.window_start < train_until]
             val = [r for r in records if r.window_start >= train_until]
-        else:
-            train = [r for r in records if r.window_start < val_from]  # type: ignore[operator]
-            val = [r for r in records if r.window_start >= val_from]  # type: ignore[operator]
+        elif val_from is not None:
+            train = [r for r in records if r.window_start < val_from]
+            val = [r for r in records if r.window_start >= val_from]
     else:
         if not 0.0 < val_fraction < 1.0:
             raise ValueError("val_fraction must be between 0 and 1")
@@ -217,15 +226,15 @@ def time_based_split(
     if not train or not val:
         raise ValueError("time split produced empty train or validation set")
     if train[-1].window_start >= val[0].window_start:
-        raise ValueError("train/val time ranges overlap — adjust split boundaries")
+        raise ValueError("train/val time ranges overlap; adjust split boundaries")
     return train, val
 
 
-def records_to_matrix(records: list[LabeledRecord]) -> tuple[Any, Any]:
+def records_to_matrix(records: list[LabeledRecord]) -> tuple[np.ndarray, np.ndarray]:
     import numpy as np
 
-    matrix = np.array([row_to_vector(rec.row) for rec in records], dtype=np.float32)
-    labels = np.array([rec.label for rec in records], dtype=np.int32)
+    matrix = np.array([row_to_vector(record.row) for record in records], dtype=np.float32)
+    labels = np.array([record.label for record in records], dtype=np.int32)
     return matrix, labels
 
 
@@ -236,8 +245,8 @@ def split_to_bundle(records: list[LabeledRecord]) -> LabeledSplit:
 
 def label_source_counts(records: list[LabeledRecord]) -> dict[str, int]:
     counts: dict[str, int] = {}
-    for rec in records:
-        counts[rec.label_source] = counts.get(rec.label_source, 0) + 1
+    for record in records:
+        counts[record.label_source] = counts.get(record.label_source, 0) + 1
     return counts
 
 
@@ -253,8 +262,8 @@ def training_summary(train: list[LabeledRecord], val: list[LabeledRecord]) -> di
         "val_window_end": val[-1].window_start.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "train_label_sources": label_source_counts(train),
         "val_label_sources": label_source_counts(val),
-        "train_fraud_rate": float(sum(r.label for r in train) / len(train)),
-        "val_fraud_rate": float(sum(r.label for r in val) / len(val)),
+        "train_fraud_rate": float(sum(record.label for record in train) / len(train)),
+        "val_fraud_rate": float(sum(record.label for record in val) / len(val)),
     }
 
 
@@ -269,7 +278,7 @@ def write_synthetic_dataset(path: Path, count: int = 2000, seed: int = 42) -> No
     fieldnames = [TIME_COLUMN, *ROW_FIELDS, "label", "label_source", "ip_hash_hex", "campaign_id"]
     records: list[dict[str, object]] = []
 
-    for idx, row in enumerate(rows):
+    for idx, row in enumerate[Row](rows):
         window = base + timedelta(minutes=idx)
         record: dict[str, object] = {
             TIME_COLUMN: window.strftime("%Y-%m-%dT%H:%M:%SZ"),

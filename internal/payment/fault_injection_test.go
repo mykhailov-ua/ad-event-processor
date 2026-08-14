@@ -38,7 +38,7 @@ func TestFault_PaymentDualOutboxWorkerRace(t *testing.T) {
 	var wg sync.WaitGroup
 	var totalProcessed atomic.Int32
 	wg.Add(workers)
-	for i := 0; i < workers; i++ {
+	for range workers {
 		go func() {
 			defer wg.Done()
 			n, _ := worker.ProcessOutbox(ctx, 10)
@@ -81,7 +81,7 @@ func TestFault_PaymentConcurrentCreateIdempotencyKey(t *testing.T) {
 
 	var wg sync.WaitGroup
 	wg.Add(paymentFaultWorkers)
-	for i := 0; i < paymentFaultWorkers; i++ {
+	for range paymentFaultWorkers {
 		go func() {
 			defer wg.Done()
 			_, err := svc.CreatePaymentIntent(ctx, customerID, amount, "USD", key, nil)
@@ -128,7 +128,7 @@ func TestFault_PaymentConcurrentWebhookSameEventID(t *testing.T) {
 
 	var wg sync.WaitGroup
 	wg.Add(paymentFaultWorkers)
-	for i := 0; i < paymentFaultWorkers; i++ {
+	for range paymentFaultWorkers {
 		go func() {
 			defer wg.Done()
 			_ = svc.ProcessStripeWebhook(ctx, eventID, "payment_intent.succeeded", []byte(payload), providerRef, 8_000_000, payload)

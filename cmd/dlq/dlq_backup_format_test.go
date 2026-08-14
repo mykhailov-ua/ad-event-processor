@@ -16,12 +16,19 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func TestDLQBackupMetrics(t *testing.T) {
+func dlqExploratoryLogf(t *testing.T, format string, args ...any) {
+	t.Helper()
+	t.Logf("harness=exploratory_not_gate "+format, args...)
+}
+
+// TestDLQBackupFormatComparison logs JSON vs binary backup size and throughput.
+// Exploratory only — not a perf gate (not in gate_bench.sh / test-alloc-gate).
+func TestDLQBackupFormatComparison(t *testing.T) {
 	const count = 10000
-	t.Logf("Generating %d mock DLQ events for metrics analysis...", count)
+	dlqExploratoryLogf(t, "generating %d mock DLQ events for format comparison...", count)
 
 	events := make([]*pb.AdDLQEvent, count)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		cid := uuid.New()
 		events[i] = &pb.AdDLQEvent{
 			OriginalEvent: &pb.AdStreamEvent{
@@ -41,7 +48,7 @@ func TestDLQBackupMetrics(t *testing.T) {
 		}
 	}
 
-	tempDir, err := os.MkdirTemp("", "dlq-metrics-*")
+	tempDir, err := os.MkdirTemp("", "dlq-format-*")
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
@@ -50,7 +57,7 @@ func TestDLQBackupMetrics(t *testing.T) {
 	jsonlPath := filepath.Join(tempDir, "backup.jsonl")
 	binPath := filepath.Join(tempDir, "backup.bin")
 
-	t.Log("write speed and file size")
+	dlqExploratoryLogf(t, "write speed and file size")
 
 	startJSONWrite := time.Now()
 	jsonFile, err := os.Create(jsonlPath)
@@ -110,10 +117,10 @@ func TestDLQBackupMetrics(t *testing.T) {
 	jsonInfo, _ := os.Stat(jsonlPath)
 	binInfo, _ := os.Stat(binPath)
 
-	t.Logf("jsonl backup: time=%v size=%.2f KB", durJSONWrite, float64(jsonInfo.Size())/1024)
-	t.Logf("binary backup: time=%v size=%.2f KB", durBinWrite, float64(binInfo.Size())/1024)
-	t.Logf("size reduction: %.1f%%", float64(jsonInfo.Size()-binInfo.Size())/float64(jsonInfo.Size())*100)
-	t.Logf("write speedup: %.1fx", float64(durJSONWrite.Nanoseconds())/float64(durBinWrite.Nanoseconds()))
+	dlqExploratoryLogf(t, "jsonl backup: time=%v size=%.2f KB", durJSONWrite, float64(jsonInfo.Size())/1024)
+	dlqExploratoryLogf(t, "binary backup: time=%v size=%.2f KB", durBinWrite, float64(binInfo.Size())/1024)
+	dlqExploratoryLogf(t, "size reduction: %.1f%%", float64(jsonInfo.Size()-binInfo.Size())/float64(jsonInfo.Size())*100)
+	dlqExploratoryLogf(t, "write speedup: %.1fx", float64(durJSONWrite.Nanoseconds())/float64(durBinWrite.Nanoseconds()))
 
 	startJSONRead := time.Now()
 	jsonReadVal, err := os.Open(jsonlPath)
@@ -164,7 +171,7 @@ func TestDLQBackupMetrics(t *testing.T) {
 	binReadVal.Close()
 	durBinRead := time.Since(startBinRead)
 
-	t.Logf("jsonl read: decoded %d events in %v", decodedJSONCount, durJSONRead)
-	t.Logf("binary read: decoded %d events in %v", decodedBinCount, durBinRead)
-	t.Logf("read/decode speedup: %.1fx", float64(durJSONRead.Nanoseconds())/float64(durBinRead.Nanoseconds()))
+	dlqExploratoryLogf(t, "jsonl read: decoded %d events in %v", decodedJSONCount, durJSONRead)
+	dlqExploratoryLogf(t, "binary read: decoded %d events in %v", decodedBinCount, durBinRead)
+	dlqExploratoryLogf(t, "read/decode speedup: %.1fx", float64(durJSONRead.Nanoseconds())/float64(durBinRead.Nanoseconds()))
 }

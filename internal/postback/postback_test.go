@@ -225,7 +225,227 @@ func TestCAPI_DoubleFire(t *testing.T) {
 	// Simulate worker kill + replay of the same outbox row: idempotency hash blocks second HTTP.
 	require.ErrorIs(t, worker.ProcessEvent(ctx, ev), ErrDuplicateEvent)
 	require.Equal(t, int32(1), atomic.LoadInt32(&requestCount))
+
+	hash := postbackIdempotencyHash(PostbackPayload{
+		CustomerID: customerID,
+		CampaignID: campaignID,
+		ClickID:    "click_double_fire",
+		EventType:  "conversion",
+	})
+	dispatch, err := q.GetPostbackDispatch(ctx, hash)
+	require.NoError(t, err)
+	require.Equal(t, postbackDispatchStatusSent, dispatch.Status)
 	t.Logf("fault_proof fault=postback_worker_kill_replay duplicate_suppressed=true")
+}
+
+func TestProcessBatch_claimsInFlightBeforeHTTP(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	pool, cleanup := setupPostgresInfra(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	customerID := uuid.New()
+	campaignID := uuid.New()
+
+	var requestCount int32
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&requestCount, 1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer mockServer.Close()
+
+	key := []byte("postback-encryption-secret-key32")
+	encryptedToken, err := EncryptAESGCM([]byte("tok"), key)
+	require.NoError(t, err)
+
+	q := db.New(pool)
+	err = q.UpsertPostbackConfig(ctx, db.UpsertPostbackConfigParams{
+		CampaignID:        pgtype.UUID{Bytes: campaignID, Valid: true},
+		Provider:          "facebook",
+		UrlTemplate:       mockServer.URL,
+		ApiTokenEncrypted: encryptedToken,
+		TargetEvent:       "conversion",
+	})
+	require.NoError(t, err)
+
+	payload := PostbackPayload{
+		CustomerID: customerID,
+		CampaignID: campaignID,
+		ClickID:    "click_in_flight_claim",
+		EventType:  "conversion",
+		FBCLID:     "fb1",
+	}
+	payloadBytes, err := json.Marshal(payload)
+	require.NoError(t, err)
+
+	_, err = q.CreateOutboxEvent(ctx, db.CreateOutboxEventParams{
+		EventType: "SEND_POSTBACK",
+		Payload:   payloadBytes,
+	})
+	require.NoError(t, err)
+
+	tx, err := pool.Begin(ctx)
+	require.NoError(t, err)
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	txQ := db.New(tx)
+	events, err := txQ.GetPendingPostbackEventsForUpdate(ctx, db.GetPendingPostbackEventsForUpdateParams{
+		Limit:   50,
+		Column2: 120,
+	})
+	require.NoError(t, err)
+	require.Len(t, events, 1)
+
+	claimed, err := claimPostbackDispatchesInTx(ctx, txQ, events)
+	require.NoError(t, err)
+	require.Len(t, claimed, 1)
+	require.False(t, claimed[0].skip)
+	require.NoError(t, tx.Commit(ctx))
+
+	require.Equal(t, int32(0), atomic.LoadInt32(&requestCount))
+
+	dispatch, err := q.GetPostbackDispatch(ctx, claimed[0].hash)
+	require.NoError(t, err)
+	require.Equal(t, postbackDispatchStatusInFlight, dispatch.Status)
+	t.Logf("fault_proof fault=postback_claim_before_http in_flight=true http_count=0")
+}
+
+func TestPostback_DeliveredSkipsSecondHTTP(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	pool, cleanup := setupPostgresInfra(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	customerID := uuid.New()
+	campaignID := uuid.New()
+
+	var requestCount int32
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&requestCount, 1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer mockServer.Close()
+
+	key := []byte("postback-encryption-secret-key32")
+	encryptedToken, err := EncryptAESGCM([]byte("tok"), key)
+	require.NoError(t, err)
+
+	q := db.New(pool)
+	err = q.UpsertPostbackConfig(ctx, db.UpsertPostbackConfigParams{
+		CampaignID:        pgtype.UUID{Bytes: campaignID, Valid: true},
+		Provider:          "facebook",
+		UrlTemplate:       mockServer.URL,
+		ApiTokenEncrypted: encryptedToken,
+		TargetEvent:       "conversion",
+	})
+	require.NoError(t, err)
+
+	payload := PostbackPayload{
+		CustomerID: customerID,
+		CampaignID: campaignID,
+		ClickID:    "click_delivered_replay",
+		EventType:  "conversion",
+		FBCLID:     "fb1",
+	}
+	payloadBytes, err := json.Marshal(payload)
+	require.NoError(t, err)
+
+	outboxEv, err := q.CreateOutboxEvent(ctx, db.CreateOutboxEventParams{
+		EventType: "SEND_POSTBACK",
+		Payload:   payloadBytes,
+	})
+	require.NoError(t, err)
+
+	hash := postbackIdempotencyHash(payload)
+	_, err = pool.Exec(ctx, `
+		INSERT INTO postback_dispatches (idempotency_hash, campaign_id, click_id, event_type, status)
+		VALUES ($1, $2, $3, $4, 'DELIVERED')`,
+		hash, campaignID, payload.ClickID, payload.EventType,
+	)
+	require.NoError(t, err)
+
+	worker := NewPostbackWorker(pool, key)
+	ev := db.OutboxEvent{ID: outboxEv.ID, Payload: payloadBytes}
+
+	require.NoError(t, worker.ProcessEvent(ctx, ev))
+	require.Equal(t, int32(0), atomic.LoadInt32(&requestCount))
+
+	dispatch, err := q.GetPostbackDispatch(ctx, hash)
+	require.NoError(t, err)
+	require.Equal(t, postbackDispatchStatusSent, dispatch.Status)
+	t.Logf("fault_proof fault=postback_delivered_replay http_skipped=true")
+}
+
+func TestProcessBatch_reclaimsStaleProcessing(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	pool, cleanup := setupPostgresInfra(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	customerID := uuid.New()
+	campaignID := uuid.New()
+
+	var requestCount int32
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&requestCount, 1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer mockServer.Close()
+
+	key := []byte("postback-encryption-secret-key32")
+	encryptedToken, err := EncryptAESGCM([]byte("tok"), key)
+	require.NoError(t, err)
+
+	q := db.New(pool)
+	err = q.UpsertPostbackConfig(ctx, db.UpsertPostbackConfigParams{
+		CampaignID:        pgtype.UUID{Bytes: campaignID, Valid: true},
+		Provider:          "facebook",
+		UrlTemplate:       mockServer.URL,
+		ApiTokenEncrypted: encryptedToken,
+		TargetEvent:       "conversion",
+	})
+	require.NoError(t, err)
+
+	payloadBytes, err := json.Marshal(PostbackPayload{
+		CustomerID: customerID,
+		CampaignID: campaignID,
+		ClickID:    "click_stale_processing",
+		EventType:  "conversion",
+		FBCLID:     "fb1",
+	})
+	require.NoError(t, err)
+
+	outboxEv, err := q.CreateOutboxEvent(ctx, db.CreateOutboxEventParams{
+		EventType: "SEND_POSTBACK",
+		Payload:   payloadBytes,
+	})
+	require.NoError(t, err)
+
+	_, err = pool.Exec(ctx, `
+		UPDATE outbox_events
+		SET status = 'PROCESSING', processing_started_at = NOW() - INTERVAL '10 minutes'
+		WHERE id = $1`, outboxEv.ID)
+	require.NoError(t, err)
+
+	worker := NewPostbackWorker(pool, key)
+	worker.ConfigureStaleProcessingSec(60)
+	require.NoError(t, worker.ProcessBatch(ctx))
+	require.Equal(t, int32(1), atomic.LoadInt32(&requestCount))
+
+	var outboxStatus string
+	err = pool.QueryRow(ctx, `SELECT status FROM outbox_events WHERE id = $1`, outboxEv.ID).Scan(&outboxStatus)
+	require.NoError(t, err)
+	require.Equal(t, "PROCESSED", outboxStatus)
+	t.Logf("fault_proof fault=postback_stale_processing reclaimed=true")
 }
 
 func TestPostbackIntegration_DLQMovement(t *testing.T) {

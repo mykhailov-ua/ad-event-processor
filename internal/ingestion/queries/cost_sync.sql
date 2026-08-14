@@ -77,3 +77,8 @@ SET usd_per_unit_micro = EXCLUDED.usd_per_unit_micro;
 -- name: GetECBRate :one
 SELECT usd_per_unit_micro FROM cost_sync_ecb_rates
 WHERE rate_date = $1 AND currency = $2;
+
+-- name: ListECBRatesForDate :many
+SELECT currency, usd_per_unit_micro
+FROM cost_sync_ecb_rates
+WHERE rate_date = $1 AND currency = ANY($2::text[]);

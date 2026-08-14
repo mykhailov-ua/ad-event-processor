@@ -56,7 +56,7 @@ func findActualIndexSize(idxData []byte, baseOffset uint64) int64 {
 	var lastOffset uint64 = 0
 	hasLast := false
 
-	for i := 0; i < numEntries; i++ {
+	for i := range numEntries {
 		off := binary.BigEndian.Uint64(idxData[i*16 : i*16+8])
 		pos := int64(binary.BigEndian.Uint64(idxData[i*16+8 : i*16+16]))
 

@@ -1,3 +1,4 @@
+/** harness=stack — live control plane on PLAYWRIGHT_BASE_URL; no route.fulfill mocks. */
 import { test, expect } from '@playwright/test';
 
 const stackEnabled = process.env.ADMIN_STACK_E2E === '1';

@@ -459,7 +459,7 @@ func (j *BlacklistJanitor) runOnce(ctx context.Context) {
 	if err != nil {
 		slog.Error("blacklist janitor scan failed", "error", err)
 		if j.svc.alerter != nil {
-			j.svc.alerter.AlertBlacklistJanitorFailed(err)
+			j.svc.alerter.AlertBlacklistJanitorFailed(opCtx, err)
 		}
 		return
 	}
@@ -743,7 +743,7 @@ func (w *CampaignDrainWorker) ProcessDraining(ctx context.Context) error {
 	}
 	threshold := time.Now().Add(-time.Duration(waitTimeoutMs) * time.Millisecond)
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		finalized, err := w.finalizeNextDraining(opCtx, threshold)
 		if err != nil {
 			return err
@@ -1827,7 +1827,7 @@ func batchIncrementUsageMeters(ctx context.Context, pool *pgxpool.Pool, meter st
 		return nil
 	}
 	br := pool.SendBatch(ctx, batch)
-	defer br.Close()
+	defer func() { _ = br.Close() }()
 	for i := 0; i < batch.Len(); i++ {
 		if _, err := br.Exec(); err != nil {
 			return fmt.Errorf("increment usage meter batch item %d: %w", i, err)
@@ -1901,7 +1901,7 @@ func (w *VolumeMeterWorker) queryCHRollups(ctx context.Context, from, to time.Ti
 	if err != nil {
 		return nil, fmt.Errorf("clickhouse rollup query: %w", err)
 	}
-	defer chRows.Close()
+	defer func() { _ = chRows.Close() }()
 
 	var out []rollupRow
 	for chRows.Next() {
@@ -2080,7 +2080,7 @@ func (o *FraudModelSyncOrchestrator) Tick(ctx context.Context) error {
 	}
 
 	var nextShardToSync = -1
-	for i := 0; i < numShards; i++ {
+	for i := range numShards {
 		state, exists := states[i]
 		if !exists || state.phase == "ROLLBACK" {
 			nextShardToSync = i
@@ -2177,7 +2177,7 @@ func (o *FraudModelSyncOrchestrator) runCanaryCheck(ctx context.Context, shardID
 	if err != nil {
 		return false, fmt.Errorf("clickhouse query failed: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var totalRows int
 	var highScores int
@@ -2378,12 +2378,19 @@ func (worker *OutboxWorker) ProcessOutboxWithCount(ctx context.Context, limit in
 		}
 	}
 
-	for _, ev := range otherEvents {
+	// Ordering policy (matches GetPendingOutboxEventsForUpdate):
+	// 1. UPDATE_BLACKLIST events are applied in a single batch before other types.
+	// 2. Other types run in SQL claim order (priority lane for pause/cancel/freeze/quota/ml, then created_at).
+	// 3. On first failure in the other-events lane, halt the remainder of that lane in this batch.
+	for i, ev := range otherEvents {
 		if err := worker.handleOutboxEvent(opCtx, ctx, ev); err != nil {
-			slog.Warn("redis outbox processing failed for event, marking for revert", "id", ev.ID, "err", err)
+			slog.Warn("redis outbox processing failed for event, halting batch lane", "id", ev.ID, "err", err)
 			revertIDs = append(revertIDs, ev.ID)
 			batchErrs = append(batchErrs, fmt.Errorf("outbox event %d: %w", ev.ID, err))
-			continue
+			for j := i + 1; j < len(otherEvents); j++ {
+				revertIDs = append(revertIDs, otherEvents[j].ID)
+			}
+			break
 		}
 		processedIDs = append(processedIDs, ev.ID)
 	}
@@ -2906,7 +2913,7 @@ func (w *OperationLeaseWorker) ExecuteOp(ctx context.Context, opID uuid.UUID, ex
 	}
 	factorU := uuid.UUID(lease.FactorU.Bytes)
 
-	adapter := w.svc.dedupAdapter()
+	adapter := w.svc.dedupAdapter(ctx)
 	if adapter == nil {
 		return fmt.Errorf("operation lease execute op_id=%s: dedup adapter unavailable", opID)
 	}

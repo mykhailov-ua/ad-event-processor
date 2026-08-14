@@ -134,7 +134,7 @@ func TestFault_logCompactorLeaderElectionSingleWriter(t *testing.T) {
 	checkpointPath := filepath.Join(t.TempDir(), "checkpoint.jsonl")
 	lockPath := filepath.Join(t.TempDir(), "leader.lock")
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		writeHotSegment(t, sourceDir, "segment_leader_"+itoa(i)+".log", buildSegmentPayload(t, 4, 0))
 	}
 

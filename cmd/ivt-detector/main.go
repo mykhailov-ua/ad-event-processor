@@ -119,7 +119,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	registry := fraud.NewAnalyzerRegistry(chQuery, chWrite, pool, analyzerCfg, asn, scorer, cfg.FraudScoring.BatchSize, newRedisShard0(cfg))
+	rdb := newRedisShard0(cfg)
+
+	registry := fraud.NewAnalyzerRegistry(chQuery, chWrite, pool, analyzerCfg, asn, scorer, cfg.FraudScoring.BatchSize, rdb)
 
 	detector := fraud.NewDetector(
 		registry,
@@ -134,6 +136,11 @@ func main() {
 		"window_sec", cfg.IVT.WindowSec,
 	)
 
+	// Shutdown order when RunLoop exits: cancel via ctx → close Redis → PG/CH (defer LIFO).
+	if rdb != nil {
+		defer func() { _ = rdb.Close() }()
+	}
+
 	if err := detector.RunLoop(ctx); err != nil && !errors.Is(err, context.Canceled) {
 		slog.Error("ivt detector stopped with error", "error", err)
 		os.Exit(1)
@@ -142,7 +149,7 @@ func main() {
 	slog.Info("ivt detector shutdown complete")
 }
 
-func newRedisShard0(cfg *config.Config) redis.Cmdable {
+func newRedisShard0(cfg *config.Config) *redis.Client {
 	addr := edge.FirstRedisAddr()
 	if addr == "" {
 		return nil

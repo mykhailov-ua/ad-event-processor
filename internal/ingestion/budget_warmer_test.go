@@ -72,7 +72,7 @@ func TestRemainingBudgetMicro(t *testing.T) {
 
 func TestBudgetCacheWarmer_SetNXDoesNotOverwrite(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)
@@ -100,7 +100,7 @@ func TestBudgetCacheWarmer_SetNXDoesNotOverwrite(t *testing.T) {
 
 func TestBudgetCacheWarmer_insertsMissingKeys(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)
@@ -171,7 +171,7 @@ func TestVerify_budgetMissRegistryBeforePG(t *testing.T) {
 
 func TestBudgetCacheWarmer_WarmOne_Incremental(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)
@@ -202,7 +202,7 @@ func TestBudgetCacheWarmer_WarmOne_Incremental(t *testing.T) {
 
 func TestCampaignRegistry_UpdateAndWarmCampaign_Incremental(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)
@@ -248,7 +248,7 @@ func TestCampaignRegistry_UpdateAndWarmCampaign_Incremental(t *testing.T) {
 
 func TestCampaignRegistry_StartWatch_IncrementalWarm(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -348,7 +348,7 @@ func BenchmarkBudgetCacheWarmer_Warm(b *testing.B) {
 	rdb := &benchmarkRedisClient{}
 	w := NewBudgetCacheWarmer([]redis.UniversalClient{rdb}, NewJumpHashSharder(1))
 	campaigns := make([]*domain.Campaign, 10)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		campID := uuid.New()
 		campaigns[i] = &domain.Campaign{
 			ID:                campID,

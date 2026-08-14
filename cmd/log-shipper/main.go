@@ -54,7 +54,7 @@ func main() {
 		shutdown(jobs, &wg, timeouts)
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	header := make([]byte, 4)
 	payloadBuf := make([]byte, 1024*1024)
@@ -146,13 +146,13 @@ func runWorker(ctx context.Context, wg *sync.WaitGroup, cfg workerConfig) {
 	if ctx.Err() != nil {
 		return
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	var count int64
 	lastReport := time.Now()
 
 	for payload := range cfg.jobs {
-		_, err := cli.Produce(cfg.topic, 0, payload)
+		_, err := cli.Produce(ctx, cfg.topic, 0, payload)
 		if err != nil {
 			slog.Error("error producing message", "worker", cfg.id, "error", err)
 		} else {

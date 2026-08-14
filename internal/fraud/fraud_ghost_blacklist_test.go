@@ -37,7 +37,7 @@ func TestMLGhostAndBlacklist_EndToEnd(t *testing.T) {
 
 	cfg := &config.Config{}
 	sharder := ingestion.NewStaticSlotSharder(1)
-	svc := controlplane.NewService(pool, []redis.UniversalClient{rdb}, sharder, cfg)
+	svc := controlplane.NewService(context.Background(), pool, []redis.UniversalClient{rdb}, sharder, cfg)
 
 	worker := controlplane.NewOutboxWorker(svc)
 

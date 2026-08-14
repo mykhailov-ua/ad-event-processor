@@ -327,7 +327,7 @@ func applyOrtbNumber(out *OpenRTB3Parsed, kid ortbKeyID, frame ortbFrame, val []
 	case ortbKeyType:
 		if frame.parent == ortbKeyDevice {
 			var adcomType int64
-			for j := 0; j < len(val); j++ {
+			for j := range val {
 				c := val[j]
 				if c >= '0' && c <= '9' {
 					adcomType = adcomType*10 + int64(c-'0')
@@ -337,7 +337,7 @@ func applyOrtbNumber(out *OpenRTB3Parsed, kid ortbKeyID, frame ortbFrame, val []
 		}
 	case ortbKeyCategoryMask:
 		var mask uint64
-		for j := 0; j < len(val); j++ {
+		for j := range val {
 			c := val[j]
 			if c >= '0' && c <= '9' {
 				mask = mask*10 + uint64(c-'0')

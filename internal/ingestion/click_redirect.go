@@ -238,7 +238,7 @@ func parseClickQuery(path []byte, scratch []byte, out *clickQueryParsed) []byte 
 			continue
 		}
 		eq := -1
-		for i := 0; i < len(seg); i++ {
+		for i := range seg {
 			if seg[i] == '=' {
 				eq = i
 				break
@@ -376,7 +376,7 @@ func expandRedirectMacros(dst, base []byte, clickID, userID string, subs SubIDSl
 	clickB := UnsafeBytes(clickID)
 	userB := UnsafeBytes(userID)
 	subB := [MaxSubIDs][]byte{}
-	for i := 0; i < MaxSubIDs; i++ {
+	for i := range MaxSubIDs {
 		subB[i] = UnsafeBytes(subs[i])
 	}
 

@@ -127,7 +127,7 @@ func writeRollbackUnits(profile *InstallProfile, dryRun bool) error {
 			fmt.Printf("[Dry-Run] Would render %s\n", path)
 			continue
 		}
-		if err := writeFile(path, content, 0644); err != nil {
+		if err := writeFile(path, content, 0o644); err != nil {
 			return err
 		}
 	}

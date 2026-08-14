@@ -94,7 +94,7 @@ func TestCHPartitionJanitor_Recompress_RealCH(t *testing.T) {
 	defer cancel()
 	require.NoError(t, conn.Exec(ctx, `SYSTEM STOP MERGES impressions`))
 	t.Cleanup(func() { _ = conn.Exec(context.Background(), `SYSTEM START MERGES impressions`) })
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		insertImpressionPart(t, conn, fmt.Sprintf("recompress-%d", i), partitionTime)
 	}
 	require.GreaterOrEqual(t, countActiveParts(t, conn, "impressions", partition), uint64(8))

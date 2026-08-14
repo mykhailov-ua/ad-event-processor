@@ -18,7 +18,7 @@ func TestStaticSlotSharder_SnapshotAtomic_concurrentStress(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		for n := 0; n < 10_000; n++ {
+		for n := range 10_000 {
 			select {
 			case <-done:
 				return

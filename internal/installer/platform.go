@@ -57,7 +57,7 @@ func WritePlatformConfigJSON(path string, cfg platformconfig.Config) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, []byte(raw), 0644)
+	return os.WriteFile(path, []byte(raw), 0o644)
 }
 
 func installProfileFromConfig(cfg platformconfig.Config) InstallProfile {
@@ -111,7 +111,7 @@ func FetchPlatformConfigFromAPI(baseURL, adminKey string) (platformconfig.Public
 	if err != nil {
 		return platformconfig.PublicView{}, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return platformconfig.PublicView{}, err
@@ -143,7 +143,7 @@ func BootstrapViaAPI(baseURL, token string, req platformconfig.BootstrapRequest)
 	if err != nil {
 		return platformconfig.PublicView{}, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return platformconfig.PublicView{}, err
@@ -171,7 +171,7 @@ func writeInstallComposeEnv(cfg platformconfig.Config, dryRun bool) error {
 		fmt.Printf("Skipping %s (unchanged)\n", path)
 		return nil
 	}
-	if err := writeFile(path, content, 0644); err != nil {
+	if err := writeFile(path, content, 0o644); err != nil {
 		return err
 	}
 	fmt.Printf("Rendered %s\n", path)

@@ -24,7 +24,7 @@ func TestNginxConfigWorker(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
 
-	svc := NewService(pool, []redis.UniversalClient{rdb}, nil, nil)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, nil)
 	defer svc.Close()
 
 	exportPath := t.TempDir()
@@ -55,7 +55,7 @@ func TestNginxConfigWorker(t *testing.T) {
 		flagPath := filepath.Join(exportPath, "reload_required.flg")
 		flagInfo, err := os.Stat(flagPath)
 		require.NoError(t, err)
-		assert.Equal(t, os.FileMode(0644), flagInfo.Mode().Perm())
+		assert.Equal(t, os.FileMode(0o644), flagInfo.Mode().Perm())
 
 		flagContent, err := os.ReadFile(flagPath)
 		require.NoError(t, err)
@@ -94,7 +94,7 @@ func TestNginxConfigWorker(t *testing.T) {
 func BenchmarkNginxConfigWorker_writeDenyFile(b *testing.B) {
 	worker := &NginxConfigWorker{exportPath: b.TempDir()}
 	ips := make([]string, 1000)
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		ips[i] = "192.168.1.1"
 	}
 	b.ResetTimer()

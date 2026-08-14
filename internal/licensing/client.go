@@ -95,7 +95,7 @@ func (c *LicenseClient) Activate(ctx context.Context, deploymentID, fingerprint 
 		c.recordFailure()
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		c.recordFailure()
@@ -143,7 +143,7 @@ func (c *LicenseClient) Heartbeat(ctx context.Context, deploymentID, fingerprint
 		c.recordFailure()
 		return "", false, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusNotModified {
 		c.recordSuccess()

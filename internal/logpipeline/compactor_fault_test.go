@@ -166,7 +166,7 @@ func TestFault_logCompactorConcurrentStress(t *testing.T) {
 	}()
 
 	var wg sync.WaitGroup
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		wg.Add(1)
 		go func(index int) {
 			defer wg.Done()
@@ -249,13 +249,13 @@ func writeHotSegment(t *testing.T, dir, name string, payload []byte) string {
 func buildSegmentPayload(t *testing.T, impressions int, clicks int) []byte {
 	t.Helper()
 	var buf bytes.Buffer
-	for i := 0; i < impressions; i++ {
+	for i := range impressions {
 		buf.Write(encodeRecord(t, &pb.AdStreamEvent{
 			EventType: []byte("impression"),
 			ClickId:   []byte("imp-" + itoa(i)),
 		}))
 	}
-	for i := 0; i < clicks; i++ {
+	for i := range clicks {
 		buf.Write(encodeRecord(t, &pb.AdStreamEvent{
 			EventType: []byte("click"),
 			ClickId:   []byte("click-" + itoa(i)),

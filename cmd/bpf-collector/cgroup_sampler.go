@@ -53,7 +53,7 @@ func (r *probeRun) cgroupSampleLoop(ctx context.Context) {
 	if err != nil {
 		return
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	enc := json.NewEncoder(f)
 
 	for {

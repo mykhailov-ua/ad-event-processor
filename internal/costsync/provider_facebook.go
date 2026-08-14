@@ -59,7 +59,7 @@ func fetchFacebookCosts(ctx context.Context, client *http.Client, baseURL string
 	q.Set("access_token", cred.AccessToken)
 
 	endpoint := fmt.Sprintf("%s/%s/insights?%s", strings.TrimRight(base, "/"), accountID, q.Encode())
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +68,7 @@ func fetchFacebookCosts(ctx context.Context, client *http.Client, baseURL string
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("facebook insights: status %d: %s", resp.StatusCode, string(body))

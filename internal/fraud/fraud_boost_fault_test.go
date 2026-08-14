@@ -36,7 +36,7 @@ func TestFault_FraudOutboxBackpressure(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		_, err := pool.Exec(ctx, `
 			INSERT INTO outbox_events (event_type, payload, status)
 			VALUES ('ML_SCORE_BOOST', '{"action":"boost"}', 'PENDING')`)
@@ -89,7 +89,7 @@ func TestFault_FraudExactlyOnce(t *testing.T) {
 	start := make(chan struct{})
 
 	wg.Add(goroutines)
-	for i := 0; i < goroutines; i++ {
+	for range goroutines {
 		go func() {
 			defer wg.Done()
 			<-start

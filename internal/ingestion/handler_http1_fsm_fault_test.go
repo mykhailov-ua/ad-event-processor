@@ -159,10 +159,10 @@ func TestFault_HTTP1_ConcurrentParse(t *testing.T) {
 	)
 	var wg sync.WaitGroup
 	wg.Add(workers)
-	for w := 0; w < workers; w++ {
+	for w := range workers {
 		go func(seed int) {
 			defer wg.Done()
-			for i := 0; i < iterations; i++ {
+			for i := range iterations {
 				tc := cases[(seed*iterations+i)%len(cases)]
 				func() {
 					defer func() {
@@ -216,10 +216,10 @@ func TestFault_HTTP1_ConcurrentOnTraffic(t *testing.T) {
 	)
 	var wg sync.WaitGroup
 	wg.Add(workers)
-	for w := 0; w < workers; w++ {
+	for w := range workers {
 		go func(workerID int) {
 			defer wg.Done()
-			for i := 0; i < perWorker; i++ {
+			for i := range perWorker {
 				var payload []byte
 				if i%3 == 0 {
 					payload = validReq
@@ -354,7 +354,7 @@ func TestFault_HTTP1_IncrementalConcurrentWrite(t *testing.T) {
 	var panics atomic.Uint64
 	var completed atomic.Uint64
 
-	for r := 0; r < rounds; r++ {
+	for r := range rounds {
 		raw := payloads[r%len(payloads)]
 		conn := newFaultGnetConn()
 		var wg sync.WaitGroup
@@ -410,7 +410,7 @@ func TestFault_HTTP1_PipelinedMalformedMix(t *testing.T) {
 
 	valid := BuildGnetPostTrackJSON([]byte(`{"campaign_id":"` + uuid.NewString() + `","type":"click","click_id":"p1"}`))
 	var buf []byte
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		buf = append(buf, valid...)
 	}
 	buf = append(buf, []byte("POST /track HTTP/1.1\r\nContent-Length: 99999\r\n\r\n")...)
@@ -425,7 +425,7 @@ func TestFault_HTTP1_PipelinedMalformedMix(t *testing.T) {
 	}
 
 	remaining := buf
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		n, _, err := parseHTTP1(remaining, cfg.MaxRequestBodySize, nil)
 		require.NoError(t, err)
 		remaining = remaining[n:]
@@ -454,7 +454,7 @@ func TestFault_HTTP1_PipelinedKeepAliveBudget(t *testing.T) {
 
 	const n = 10
 	var pipelined []byte
-	for i := 0; i < n; i++ {
+	for i := range n {
 		body := fmt.Sprintf(
 			`{"campaign_id":"%s","type":"impression","click_id":"pipe-%d","user_id":"pipe-user"}`,
 			stack.CampaignID, i,

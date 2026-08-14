@@ -2,6 +2,7 @@ package controlplane
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sort"
@@ -22,13 +23,66 @@ type mlModelMeta struct {
 	present   bool
 }
 
-func pickGlobalReconcileSource(rdbs []redis.UniversalClient) redis.UniversalClient {
-	for i := 1; i < len(rdbs); i++ {
-		if rdbs[i] != nil {
-			return rdbs[i]
+func pickGlobalReconcileSource(ctx context.Context, rdbs []redis.UniversalClient) redis.UniversalClient {
+	if len(rdbs) == 0 {
+		return nil
+	}
+	checkCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+
+	var (
+		best      redis.UniversalClient
+		bestIdx         = -1
+		bestVer   int64 = -1
+		bestBLGen int64 = -1
+	)
+	for i, rdb := range rdbs {
+		if rdb == nil {
+			continue
+		}
+		version, verErr := rdb.Get(checkCtx, redisConfigVersionKey).Int64()
+		if verErr != nil {
+			if !errors.Is(verErr, redis.Nil) {
+				continue
+			}
+			version = -1
+		}
+		blGen, blErr := blacklistGenerationScore(checkCtx, rdb)
+		if blErr != nil {
+			blGen = -1
+		}
+		if best == nil ||
+			version > bestVer ||
+			(version == bestVer && blGen > bestBLGen) ||
+			(version == bestVer && blGen == bestBLGen && bestIdx > i) {
+			best = rdb
+			bestIdx = i
+			bestVer = version
+			bestBLGen = blGen
 		}
 	}
+	if best != nil {
+		return best
+	}
 	return PickHealthyControlShard(rdbs)
+}
+
+// blacklistGenerationScore sums member counts across blacklist:* sets as a tie-breaker
+// when config:version is equal across shards.
+func blacklistGenerationScore(ctx context.Context, rdb redis.UniversalClient) (int64, error) {
+	keys, err := scanRedisKeys(ctx, rdb, globalBlacklistKeyPrefix+"*")
+	if err != nil {
+		return 0, err
+	}
+	var total int64
+	for _, key := range keys {
+		n, err := rdb.SCard(ctx, key).Result()
+		if err != nil {
+			return 0, err
+		}
+		total += n
+	}
+	return total, nil
 }
 
 func replicateConfigVersionFromPrimary(ctx context.Context, rdbs []redis.UniversalClient) error {
@@ -39,7 +93,7 @@ func replicateGlobalsFromPrimary(ctx context.Context, rdbs []redis.UniversalClie
 	if len(rdbs) < 2 {
 		return nil
 	}
-	source := pickGlobalReconcileSource(rdbs)
+	source := pickGlobalReconcileSource(ctx, rdbs)
 	if source == nil {
 		return nil
 	}
@@ -62,7 +116,7 @@ func replicateGlobalsToTarget(ctx context.Context, source, target redis.Universa
 	}
 
 	version, versionErr := source.Get(ctx, redisConfigVersionKey).Int64()
-	if versionErr != nil && versionErr != redis.Nil {
+	if versionErr != nil && !errors.Is(versionErr, redis.Nil) {
 		return fmt.Errorf("read %s from source: %w", redisConfigVersionKey, versionErr)
 	}
 
@@ -121,18 +175,18 @@ func replicateGlobalsToTarget(ctx context.Context, source, target redis.Universa
 func readMLModelMeta(ctx context.Context, source redis.UniversalClient) (mlModelMeta, error) {
 	var meta mlModelMeta
 	version, err := source.Get(ctx, "ml:model:version").Result()
-	if err == redis.Nil {
+	if errors.Is(err, redis.Nil) {
 		return meta, nil
 	}
 	if err != nil {
 		return meta, fmt.Errorf("read ml:model:version: %w", err)
 	}
 	hash, err := source.Get(ctx, "ml:model:hash").Result()
-	if err != nil && err != redis.Nil {
+	if err != nil && !errors.Is(err, redis.Nil) {
 		return meta, fmt.Errorf("read ml:model:hash: %w", err)
 	}
 	appliedAt, err := source.Get(ctx, "ml:model:applied_at").Int64()
-	if err != nil && err != redis.Nil {
+	if err != nil && !errors.Is(err, redis.Nil) {
 		return meta, fmt.Errorf("read ml:model:applied_at: %w", err)
 	}
 	meta.version = version
@@ -158,7 +212,7 @@ func validateEdgeBlacklistSource(ctx context.Context, rdbs []redis.UniversalClie
 	if len(rdbs) == 0 || rdbs[0] == nil {
 		return fmt.Errorf("shard 0 not connected")
 	}
-	source := pickGlobalReconcileSource(rdbs)
+	source := pickGlobalReconcileSource(ctx, rdbs)
 	if source == nil {
 		return fmt.Errorf("no healthy reconcile source shard")
 	}
@@ -202,37 +256,37 @@ func stringSlicesEqual(a, b []string) bool {
 	return true
 }
 
-func shard0NeedsCatchup(rdbs []redis.UniversalClient) bool {
+func shard0NeedsCatchup(ctx context.Context, rdbs []redis.UniversalClient) bool {
 	if len(rdbs) == 0 || rdbs[0] == nil {
 		return false
 	}
-	source := pickGlobalReconcileSource(rdbs)
+	source := pickGlobalReconcileSource(ctx, rdbs)
 	if source == nil || source == rdbs[0] {
 		return false
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	checkCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
-	sourceVersion, sourceErr := source.Get(ctx, redisConfigVersionKey).Int64()
-	targetVersion, targetErr := rdbs[0].Get(ctx, redisConfigVersionKey).Int64()
+	sourceVersion, sourceErr := source.Get(checkCtx, redisConfigVersionKey).Int64()
+	targetVersion, targetErr := rdbs[0].Get(checkCtx, redisConfigVersionKey).Int64()
 	if sourceErr == nil && targetErr == nil && sourceVersion != targetVersion {
 		return true
 	}
-	if sourceErr == nil && targetErr == redis.Nil {
+	if sourceErr == nil && errors.Is(targetErr, redis.Nil) {
 		return true
 	}
 
-	keys, err := scanRedisKeys(ctx, source, globalBlacklistKeyPrefix+"*")
+	keys, err := scanRedisKeys(checkCtx, source, globalBlacklistKeyPrefix+"*")
 	if err != nil {
 		return true
 	}
 	for _, key := range keys {
-		sourceMembers, err := source.SMembers(ctx, key).Result()
+		sourceMembers, err := source.SMembers(checkCtx, key).Result()
 		if err != nil {
 			return true
 		}
-		targetMembers, err := rdbs[0].SMembers(ctx, key).Result()
+		targetMembers, err := rdbs[0].SMembers(checkCtx, key).Result()
 		if err != nil {
 			return true
 		}
@@ -243,11 +297,11 @@ func shard0NeedsCatchup(rdbs []redis.UniversalClient) bool {
 		}
 	}
 
-	sourceSettings, err := source.HLen(ctx, redisConfigValuesKey).Result()
+	sourceSettings, err := source.HLen(checkCtx, redisConfigValuesKey).Result()
 	if err != nil {
 		return false
 	}
-	targetSettings, err := rdbs[0].HLen(ctx, redisConfigValuesKey).Result()
+	targetSettings, err := rdbs[0].HLen(checkCtx, redisConfigValuesKey).Result()
 	if err != nil {
 		return true
 	}
@@ -262,7 +316,7 @@ func (s *Service) RunShard0Catchup(ctx context.Context) error {
 	if len(rdbs) == 0 || rdbs[0] == nil {
 		return fmt.Errorf("shard 0 not connected")
 	}
-	source := pickGlobalReconcileSource(rdbs)
+	source := pickGlobalReconcileSource(ctx, rdbs)
 	if source == nil {
 		return fmt.Errorf("no healthy reconcile source shard")
 	}

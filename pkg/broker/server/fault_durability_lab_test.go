@@ -30,9 +30,9 @@ func meanProduceLatency(t *testing.T, addr, topic string, n int) time.Duration {
 	defer cli.Close()
 
 	var total time.Duration
-	for i := 0; i < n; i++ {
+	for i := range n {
 		start := time.Now()
-		if _, err := cli.Produce(topic, 0, []byte(fmt.Sprintf("lat-%d-%d", time.Now().UnixNano(), i))); err != nil {
+		if _, err := cli.Produce(context.Background(), topic, 0, []byte(fmt.Sprintf("lat-%d-%d", time.Now().UnixNano(), i))); err != nil {
 			t.Fatalf("produce %d: %v", i, err)
 		}
 		total += time.Since(start)
@@ -171,7 +171,7 @@ func TestFault_CPUThrottle_ReplicationCatchesUp(t *testing.T) {
 	if err := seedCli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := seedCli.Produce(topic, 0, []byte("bootstrap")); err != nil {
+	if _, err := seedCli.Produce(context.Background(), topic, 0, []byte("bootstrap")); err != nil {
 		t.Fatal(err)
 	}
 	_ = seedCli.Close()
@@ -193,8 +193,8 @@ func TestFault_CPUThrottle_ReplicationCatchesUp(t *testing.T) {
 	if err := cli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	for i := 0; i < msgCount; i++ {
-		if _, err := cli.Produce(topic, 0, []byte(fmt.Sprintf("cpu-msg-%d", i))); err != nil {
+	for i := range msgCount {
+		if _, err := cli.Produce(context.Background(), topic, 0, []byte(fmt.Sprintf("cpu-msg-%d", i))); err != nil {
 			t.Fatalf("produce %d: %v", i, err)
 		}
 	}
@@ -235,7 +235,7 @@ func TestFault_RedisOutage_CoordinationRecovers(t *testing.T) {
 	if err := cli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := cli.Produce(topic, 0, []byte("before-outage")); err != nil {
+	if _, err := cli.Produce(context.Background(), topic, 0, []byte("before-outage")); err != nil {
 		t.Fatal(err)
 	}
 	_ = cli.Close()
@@ -258,7 +258,7 @@ func TestFault_RedisOutage_CoordinationRecovers(t *testing.T) {
 			return false
 		}
 		defer c.Close()
-		_, err := c.Produce(topic, 0, []byte("after-outage"))
+		_, err := c.Produce(context.Background(), topic, 0, []byte("after-outage"))
 		return err == nil
 	}, 30*time.Second, 500*time.Millisecond, "produce must recover after redis outage")
 
@@ -299,7 +299,7 @@ func TestFault_RedisSentinelFailover_ProduceContinues(t *testing.T) {
 		t.Fatal(err)
 	}
 	s.SetCoordinator(coord)
-	coord.Start()
+	coord.Start(context.Background())
 	defer coord.Stop()
 
 	topic := "sentinel-fault-topic"
@@ -309,7 +309,7 @@ func TestFault_RedisSentinelFailover_ProduceContinues(t *testing.T) {
 	if err := cli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := cli.Produce(topic, 0, []byte("before-failover")); err != nil {
+	if _, err := cli.Produce(context.Background(), topic, 0, []byte("before-failover")); err != nil {
 		t.Fatalf("produce before failover: %v", err)
 	}
 	_ = cli.Close()
@@ -334,7 +334,7 @@ func TestFault_RedisSentinelFailover_ProduceContinues(t *testing.T) {
 	defer cli2.Close()
 
 	requireEventually(t, func() bool {
-		_, err := cli2.Produce(topic, 0, []byte("after-failover"))
+		_, err := cli2.Produce(context.Background(), topic, 0, []byte("after-failover"))
 		return err == nil
 	}, 60*time.Second, 2*time.Second, "produce must succeed after sentinel failover")
 

@@ -87,7 +87,7 @@ func connectRedisShard(ctx context.Context, cfg *config.Config, shardIdx int, ma
 	}
 
 	var pingErr error
-	for attempt := 0; attempt < redisConnectRetries; attempt++ {
+	for range redisConnectRetries {
 		select {
 		case <-ctx.Done():
 			_ = rdb.Close()

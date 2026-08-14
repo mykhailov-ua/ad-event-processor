@@ -52,7 +52,7 @@ func publishControlMessagesToAllShards(ctx context.Context, rdbs []redis.Univers
 
 func setNXOnAllShards(ctx context.Context, rdbs []redis.UniversalClient, key, value string, ttl time.Duration) (bool, error) {
 	allNew := true
-	err := forEachConnectedShard(ctx, rdbs, "setnx", func(_ int, rdb redis.UniversalClient) error {
+	err := forEachConnectedShardStrict(ctx, rdbs, "setnx", func(_ int, rdb redis.UniversalClient) error {
 		ok, err := rdb.SetNX(ctx, key, value, ttl).Result()
 		if err != nil {
 			return err

@@ -78,7 +78,7 @@ go test -run='^$' -benchmem -benchtime=300ms -count=5 -cpu=1 \
 | Benchmark | ns/op | B/op | allocs/op |
 | :--- | ---: | ---: | ---: |
 | `FilterLicense` | 6.6 | 0 | 0 |
-| `GeoFilter` | 28 | 0 | 0 |
+| `GeoFilter` | 28 | 0 | 0 | harness `geo_mock_provider`; not SLA evidence |
 
 ### A.4a Broker producer (`BenchmarkTrackerToBroker`)
 
@@ -101,14 +101,15 @@ go test -run='^$' -bench=BenchmarkTrackerToBroker -benchmem -count=3 ./internal/
 
 | Benchmark | ns/op | B/op | allocs/op |
 | :--- | ---: | ---: | ---: |
-| `GeoFilter_lookupError` | 35 | 0 | 0 |
+| `GeoFilter_lookupError` | 35 | 0 | 0 | harness `geo_mock_provider` |
+| `GeoFilter_MaxMindCountry` | — | — | — | harness `maxmind_mmdb_fixture`; skips without `.mmdb` |
 | `FraudFilter_DC` | 6.0 | 0 | 0 |
-| `FilterFraudBoost` | 105 | 0 | 0 |
-| `FilterEngine_Check_fraudScoring_noSignals` | 33 | 0 | 0 |
-| `FilterEngine_Check_fraudScoring_L2Shadow` | 87 | 0 | 0 |
-| `FilterEngine_Check_fraudScoring_L1Reject` | 116 | 0 | 0 |
-| `PlacementBlacklistFilter_miss` | 175 | 96 | 2 |
-| `PlacementBlacklistFilter_hit` | 179 | 96 | 2 |
+| `FilterFraudBoost` | 105 | 0 | 0 | hot-path boost snapshot (`fraud_boost_snapshot_mock`); not LGBM |
+| `FilterEngine_Check_fraudScoring_noSignals` | 33 | 0 | 0 | synthetic `fraudSignalsFilter`; not ML |
+| `FilterEngine_Check_fraudScoring_L2Shadow` | 87 | 0 | 0 | synthetic signals; not ML |
+| `FilterEngine_Check_fraudScoring_L1Reject` | 116 | 0 | 0 | synthetic signals; not ML |
+| `PlacementBlacklistFilter_miss` | 175 | 96 | 2 | harness `placement_blacklist_mock_redis`; not SLA evidence |
+| `PlacementBlacklistFilter_hit` | 179 | 96 | 2 | harness `placement_blacklist_mock_redis` |
 | `DuplicateEventFilter_Check` | 21 | 0 | 0 |
 | `UnifiedFilter_Check` (mock Redis) | 801 | 0 | 0 |
 | `RedisBudgetManager_CheckAndSpend` | 116 | 0 | 0 |
@@ -126,7 +127,7 @@ go test -run='^$' -bench='Benchmark(LuaScript|UnifiedFilter_Check_.*Redis)' -ben
 | `LocalQuantaSpend` | 16.6 | 0 | 0 |
 | `LocalQuantaSpend_parallel` | 16.7 | 0 | 0 |
 | `AcceptLocalQuantaFullSkip` | 269 | 5 | 0 |
-| `LocalQuanta_FullSkip` | 648 | 0 | 0 |
+| `LocalQuanta_FullSkip` | 648 | 0 | 0 | harness `local_quanta_noop_redis`; `LOCAL_QUOTA_MODE=live` only |
 
 ### A.6 RTB / OpenRTB encode / PII
 
@@ -173,6 +174,21 @@ go test -run='^$' -bench='Benchmark(LuaScript|UnifiedFilter_Check_.*Redis)' -ben
 | `Handler_auditLog_click_always` | 467 | 15 | 0 |
 | `Handler_auditLog_impression_unsampled` | 614 | 19 | 0 |
 
+### A.10 Cold-path write (`write_path_bench_test.go`)
+
+Mock store only — **not Postgres** (`BenchmarkPostgresStoreBatch_Mock`, harness `mock_event_store`). Postgres truth: `BenchmarkPostgresStoreBatch_integration` (testcontainers) or processor fault tests (`TestFault_ProcessorPgGate_Overflow`, `TestFault_AdsProcessorPGNetworkPartition`). CH outage path: `BenchmarkClickHouseStoreBatch_Spooled`.
+
+| Benchmark | Harness | ns/op (lab) | Notes |
+| :--- | :--- | ---: | :--- |
+| `PostgresStoreBatch_Mock` | `mock_event_store` | — | Wrapper only; not PG SLA |
+| `ClickHouseStoreBatch_Spooled` | `ch_spool_local` | — | Spool when CH insert fails |
+| `PostgresStoreBatch_integration` | `postgres_testcontainers` | — | Skipped `-short`; needs Docker |
+
+```bash
+go test ./internal/ingestion/ -run='^$' -bench='^BenchmarkPostgresStoreBatch_Mock$' -benchmem -count=1  # mock harness only
+bash scripts/test/run_bench.sh 'BenchmarkPostgresStoreBatch_integration' ./internal/ingestion
+```
+
 ### A.9 Malformed / reject
 
 | Path | Result |
@@ -186,7 +202,7 @@ go test -run='^$' -bench='Benchmark(LuaScript|UnifiedFilter_Check_.*Redis)' -ben
 
 ### A.10 XDP (`internal/edge/bpf`)
 
-Requires `edge_filter.o` + root/BTF. Target: XDP decision p99 &lt; 10 µs.
+Requires `edge_filter.o` + root/BTF. Harness `xdp_prog_test`: userspace `prog.Run` only — **not** kernel NIC RX or pinned-attach drops. Kernel proof: `edge-xdp-fault`, `scripts/test/xdp_resilience_drill.sh`, pinned attach drills ([EDGE_XDP.md](enterprise/EDGE_XDP.md)). Lab target: XDP decision p99 &lt; 10 µs on prog test path.
 
 ```bash
 bash scripts/dev/bpf_setup.sh

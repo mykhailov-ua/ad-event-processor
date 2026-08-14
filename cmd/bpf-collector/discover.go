@@ -109,7 +109,7 @@ func procTGID(statusPath string) uint32 {
 	if err != nil {
 		return 0
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {
 		line := sc.Text()
@@ -121,6 +121,9 @@ func procTGID(statusPath string) uint32 {
 			v, _ := strconv.ParseUint(fields[1], 10, 32)
 			return uint32(v)
 		}
+	}
+	if err := sc.Err(); err != nil {
+		return 0
 	}
 	return 0
 }

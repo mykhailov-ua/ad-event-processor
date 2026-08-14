@@ -105,7 +105,7 @@ func TestFault_SupplyOutboxRedelivery(t *testing.T) {
 	var wg sync.WaitGroup
 	var totalProcessed atomic.Int32
 	wg.Add(workers)
-	for i := 0; i < workers; i++ {
+	for range workers {
 		go func() {
 			defer wg.Done()
 			n, err := worker.ProcessOutboxWithCount(ctx, 10)

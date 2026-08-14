@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"hash/crc32"
 	"os"
 	"os/signal"
@@ -164,7 +165,7 @@ func TestSentinelFailoverLoadWorker(t *testing.T) {
 		shardIdx := shardIdx
 		rdb := rdb
 		campID := campaignIDs[shardIdx]
-		for w := 0; w < workersPerShard; w++ {
+		for range workersPerShard {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
@@ -323,7 +324,7 @@ func TestSentinelActiveFailoverVerify(t *testing.T) {
 		t.Fatalf("GET budget after failover: %v", err)
 	}
 	postSync, err := rdb.Get(ctx, budgetSyncKey(campID)).Int64()
-	if err == redis.Nil {
+	if errors.Is(err, redis.Nil) {
 		postSync = 0
 	} else if err != nil {
 		t.Fatalf("GET sync after failover: %v", err)

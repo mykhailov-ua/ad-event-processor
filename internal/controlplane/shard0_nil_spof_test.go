@@ -184,16 +184,14 @@ func TestShard0Nil_OutboxHandleUpdateSettings(t *testing.T) {
 	}
 }
 
-func TestShard0Nil_SetNXOnAllShardsHealthyShards(t *testing.T) {
+func TestShard0Nil_SetNXOnAllShardsRequiresAllShards(t *testing.T) {
 	rdbs := rdbsWithNilShard0(t, 4)
 	ctx := context.Background()
 	const key = "proof:nx"
 
-	allNew, err := setNXOnAllShards(ctx, rdbs, key, "1", time.Minute)
-	require.NoError(t, err)
-	assert.True(t, allNew)
-	_, err = rdbs[2].Get(ctx, key).Result()
-	require.NoError(t, err)
+	_, err := setNXOnAllShards(ctx, rdbs, key, "1", time.Minute)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "shard 0 unavailable")
 }
 
 func TestShard0Nil_SyncGlobalSetMemberHealthyShards(t *testing.T) {

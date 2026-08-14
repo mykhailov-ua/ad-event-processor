@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Edge XDP compose smoke — BPF pin/attach in Docker lab stack.
+# Precondition: BTF vmlinux, Docker daemon — skips exit 0 when BTF/docker missing.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

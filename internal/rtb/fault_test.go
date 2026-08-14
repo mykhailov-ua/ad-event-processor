@@ -363,7 +363,7 @@ func TestFault_SetBudgetZeroRace(t *testing.T) {
 		}
 	}()
 
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		reg.RunAuction(stdReq(7, 50))
 	}
 	close(stop)
@@ -547,7 +547,7 @@ func TestFault_CatalogClearDuringAuction(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		for i := 0; i < 500; i++ {
+		for range 500 {
 			reg.UpdateCampaigns(nil)
 			reg.UpdateCampaigns(singleCampaign(CampaignID(1), 100, 10_000))
 		}
@@ -566,11 +566,11 @@ func TestFault_ParallelDrainNonNegative(t *testing.T) {
 	reg.UpdateCampaigns(singleCampaign(CampaignID(1), 100, 100))
 
 	var wg sync.WaitGroup
-	for i := 0; i < 32; i++ {
+	for range 32 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for j := 0; j < 50; j++ {
+			for range 50 {
 				reg.RunAuction(stdReq(7, 50))
 			}
 		}()

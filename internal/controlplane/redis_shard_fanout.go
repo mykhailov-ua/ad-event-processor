@@ -46,6 +46,27 @@ func forEachConnectedShard(ctx context.Context, rdbs []redis.UniversalClient, op
 	return nil
 }
 
+// forEachConnectedShardStrict requires every shard slot to be connected and fn to succeed.
+// Used for dedup SETNX fanout: partial writes allow double-apply after a missed shard recovers.
+func forEachConnectedShardStrict(ctx context.Context, rdbs []redis.UniversalClient, op string, fn func(shard int, rdb redis.UniversalClient) error) error {
+	if len(rdbs) == 0 {
+		return fmt.Errorf("%s: no redis client available", op)
+	}
+	for i, rdb := range rdbs {
+		if rdb == nil {
+			recordShardFanoutSkip(i, "nil_client", op)
+			metrics.ControlFanoutPartialTotal.WithLabelValues(op).Inc()
+			return fmt.Errorf("%s: shard %d unavailable", op, i)
+		}
+		if err := fn(i, rdb); err != nil {
+			recordShardFanoutSkip(i, "error", op)
+			metrics.ControlFanoutPartialTotal.WithLabelValues(op).Inc()
+			return fmt.Errorf("%s: shard %d failed: %w", op, i, err)
+		}
+	}
+	return nil
+}
+
 func recordShardFanoutSkip(shard int, reason, op string) {
 	metrics.ControlShardFanoutSkippedTotal.WithLabelValues(strconv.Itoa(shard), reason).Inc()
 	slog.Warn("redis shard fan-out skipped", "shard", shard, "op", op, "reason", reason)

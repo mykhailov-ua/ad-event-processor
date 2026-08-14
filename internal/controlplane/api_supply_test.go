@@ -22,7 +22,7 @@ import (
 
 func TestSupplyAPI_CRUDAndExport(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
@@ -123,7 +123,7 @@ func TestSupplyAPI_CRUDAndExport(t *testing.T) {
 
 func TestSupplyAPI_RBAC(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()

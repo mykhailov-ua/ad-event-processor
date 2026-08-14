@@ -395,7 +395,7 @@ func (s *Service) PurgeUserDataRedis(ctx context.Context, hashHex, subjectUserID
 		if rdb == nil {
 			continue
 		}
-		if err := rdb.Del(ctx, consentKey).Err(); err != nil && err != redis.Nil {
+		if err := rdb.Del(ctx, consentKey).Err(); err != nil && !errors.Is(err, redis.Nil) {
 			if firstErr == nil {
 				firstErr = err
 			}
@@ -565,7 +565,7 @@ func (s *Service) SupportFeedbackMeta(ctx context.Context) (SupportFeedbackMeta,
 		FROM billing.license_status
 		LIMIT 1`).Scan(&deploymentID)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return meta, nil
 		}
 		return meta, err
@@ -848,7 +848,7 @@ func (s *Service) optimizeBrandCreativeMABTx(ctx context.Context, tx pgx.Tx) ([]
 	}
 	if weightBatch.Len() > 0 {
 		br := tx.SendBatch(ctx, weightBatch)
-		defer br.Close()
+		defer func() { _ = br.Close() }()
 		for i := 0; i < weightBatch.Len(); i++ {
 			if _, err := br.Exec(); err != nil {
 				return nil, fmt.Errorf("update creative weight batch item %d: %w", i, err)
@@ -967,7 +967,7 @@ GROUP BY campaign_id, creative_id`
 	if err != nil {
 		return nil, fmt.Errorf("mab creative stats query: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	out := make(map[uuid.UUID]mabCreativeStat)
 	for rows.Next() {
@@ -1428,7 +1428,7 @@ func (s *Service) UnblockExpiredBlacklist(ctx context.Context, rows []db.ListExp
 		br := tx.SendBatch(ctx, batch)
 		for range rows {
 			if _, err := br.Exec(); err != nil {
-				br.Close()
+				_ = br.Close()
 				return err
 			}
 		}

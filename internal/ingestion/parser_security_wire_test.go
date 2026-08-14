@@ -79,7 +79,7 @@ func TestChaos_Proto_FieldBudget(t *testing.T) {
 func TestChaos_HPACK_ContinuationBomb(t *testing.T) {
 	block := make([]byte, 0, 65)
 	block = append(block, 0xFF)
-	for i := 0; i < 63; i++ {
+	for range 63 {
 		block = append(block, 0xFF)
 	}
 	block = append(block, 0x00)

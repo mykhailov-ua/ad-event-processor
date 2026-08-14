@@ -49,7 +49,7 @@ func TestFault_SafeFailover_LaggingLeaderNotReady(t *testing.T) {
 		t.Fatal(err)
 	}
 	s.SetCoordinator(coord)
-	coord.Start()
+	coord.Start(context.Background())
 	defer coord.Stop()
 
 	topic := "safe-failover-topic"
@@ -76,13 +76,13 @@ func TestFault_SafeFailover_LaggingLeaderNotReady(t *testing.T) {
 	}
 	defer cli.Close()
 
-	_, err = cli.Produce(topic, 0, []byte("should-wait"))
+	_, err = cli.Produce(context.Background(), topic, 0, []byte("should-wait"))
 	if err == nil {
 		t.Fatal("expected produce to fail while leader catching up")
 	}
 
 	coord.setLeaderReady(pk, true)
-	if _, err := cli.Produce(topic, 0, []byte("ready-now")); err != nil {
+	if _, err := cli.Produce(context.Background(), topic, 0, []byte("ready-now")); err != nil {
 		t.Fatalf("produce after ready failed: %v", err)
 	}
 

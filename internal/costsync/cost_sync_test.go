@@ -115,6 +115,34 @@ type roundTripperFunc func(*http.Request) (*http.Response, error)
 
 func (f roundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
+func TestPersistLines_batchEURRows(t *testing.T) {
+	pool := setupCostSyncDB(t)
+	ctx := context.Background()
+	customerID, campaignID := seedCustomerCampaign(t, pool)
+
+	date := time.Date(2026, 7, 3, 0, 0, 0, 0, time.UTC)
+	_, err := pool.Exec(ctx, `
+		INSERT INTO cost_sync_ecb_rates (rate_date, currency, usd_per_unit_micro)
+		VALUES ($1, 'EUR', 1100000)`, date)
+	require.NoError(t, err)
+
+	worker := NewWorker(pool, []byte("postback-encryption-secret-key32"))
+	lines := []CostLine{
+		{CustomerID: customerID, CampaignID: campaignID, Date: date, Network: "taboola", PlacementID: "p1", LineType: LineTypeSpend, AmountMicro: 1_000_000, Currency: "EUR"},
+		{CustomerID: customerID, CampaignID: campaignID, Date: date, Network: "taboola", PlacementID: "p2", LineType: LineTypeSpend, AmountMicro: 2_000_000, Currency: "EUR"},
+		{CustomerID: customerID, CampaignID: campaignID, Date: date, Network: "taboola", PlacementID: "p3", LineType: LineTypeSpend, AmountMicro: 3_000_000, Currency: "EUR"},
+	}
+	imported, totalUSD, err := worker.persistLines(ctx, lines, date)
+	require.NoError(t, err)
+	require.Equal(t, 3, imported)
+	require.Equal(t, int64(6_600_000), totalUSD)
+
+	var count int
+	err = pool.QueryRow(ctx, `SELECT COUNT(*) FROM campaign_costs WHERE campaign_id = $1`, campaignID).Scan(&count)
+	require.NoError(t, err)
+	require.Equal(t, 3, count)
+}
+
 func TestIdempotency_DuplicateImport(t *testing.T) {
 	pool := setupCostSyncDB(t)
 	ctx := context.Background()

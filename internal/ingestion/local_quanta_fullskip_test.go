@@ -34,7 +34,7 @@ func (c *evalCountRedis) Eval(ctx context.Context, script string, keys []string,
 
 func TestUnifiedFilter_localQuanta_fullSkipNoRedisEval(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	mr, cleanup := setupMiniredis(t)
@@ -87,7 +87,7 @@ func TestUnifiedFilter_localQuanta_fullSkipNoRedisEval(t *testing.T) {
 
 func TestUnifiedFilter_localQuanta_fullSkipDuplicate(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupMiniredis(t)

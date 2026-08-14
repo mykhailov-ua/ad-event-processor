@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync/atomic"
@@ -9,9 +10,9 @@ import (
 	"github.com/bidshard/ad-event-processor/pkg/broker/protocol"
 )
 
-func (c *Client) RegisterTopic(topic string) (uint16, error) {
+func (c *Client) RegisterTopic(ctx context.Context, topic string) (uint16, error) {
 	var lastErr error
-	for attempt := 0; attempt < 5; attempt++ {
+	for attempt := range 5 {
 		if attempt > 0 {
 			time.Sleep(500 * time.Millisecond)
 		}
@@ -22,7 +23,7 @@ func (c *Client) RegisterTopic(topic string) (uint16, error) {
 			c.mu.Unlock()
 			lastErr = err
 			if c.redisURL != "" {
-				if newAddr, rErr := c.resolveLeaderAddr(topic, 0); rErr == nil && newAddr != c.addr {
+				if newAddr, rErr := c.resolveLeaderAddr(ctx, topic, 0); rErr == nil && newAddr != c.addr {
 					c.addr = newAddr
 				}
 			}
@@ -39,7 +40,7 @@ func (c *Client) RegisterTopic(topic string) (uint16, error) {
 			c.mu.Unlock()
 			lastErr = err
 			if c.redisURL != "" {
-				if newAddr, rErr := c.resolveLeaderAddr(topic, 0); rErr == nil && newAddr != c.addr {
+				if newAddr, rErr := c.resolveLeaderAddr(ctx, topic, 0); rErr == nil && newAddr != c.addr {
 					c.addr = newAddr
 				}
 			}
@@ -52,7 +53,7 @@ func (c *Client) RegisterTopic(topic string) (uint16, error) {
 			c.mu.Unlock()
 			lastErr = err
 			if c.redisURL != "" {
-				if newAddr, rErr := c.resolveLeaderAddr(topic, 0); rErr == nil && newAddr != c.addr {
+				if newAddr, rErr := c.resolveLeaderAddr(ctx, topic, 0); rErr == nil && newAddr != c.addr {
 					c.addr = newAddr
 				}
 			}
@@ -76,7 +77,7 @@ func (c *Client) RegisterTopic(topic string) (uint16, error) {
 			c.mu.Unlock()
 			lastErr = brokerStatusError(status)
 			if c.redisURL != "" {
-				if newAddr, rErr := c.resolveLeaderAddr(topic, 0); rErr == nil && newAddr != c.addr {
+				if newAddr, rErr := c.resolveLeaderAddr(ctx, topic, 0); rErr == nil && newAddr != c.addr {
 					c.addr = newAddr
 				}
 			}
@@ -97,7 +98,7 @@ type ProduceBatchResult struct {
 	Committed uint32
 }
 
-func (c *Client) ProduceBatch(topic string, topicID uint16, payloads [][]byte) (ProduceBatchResult, error) {
+func (c *Client) ProduceBatch(ctx context.Context, topic string, topicID uint16, payloads [][]byte) (ProduceBatchResult, error) {
 	var zero ProduceBatchResult
 	if len(payloads) == 0 {
 		return zero, errors.New("broker client: empty produce batch")
@@ -109,7 +110,7 @@ func (c *Client) ProduceBatch(topic string, topicID uint16, payloads [][]byte) (
 	}
 
 	var lastErr error
-	for attempt := 0; attempt < 5; attempt++ {
+	for attempt := range 5 {
 		if attempt > 0 {
 			time.Sleep(500 * time.Millisecond)
 		}
@@ -120,7 +121,7 @@ func (c *Client) ProduceBatch(topic string, topicID uint16, payloads [][]byte) (
 			c.mu.Unlock()
 			lastErr = err
 			if c.redisURL != "" {
-				if newAddr, rErr := c.resolveLeaderAddr(topic, 0); rErr == nil && newAddr != c.addr {
+				if newAddr, rErr := c.resolveLeaderAddr(ctx, topic, 0); rErr == nil && newAddr != c.addr {
 					c.addr = newAddr
 				}
 			}
@@ -137,7 +138,7 @@ func (c *Client) ProduceBatch(topic string, topicID uint16, payloads [][]byte) (
 			c.mu.Unlock()
 			lastErr = err
 			if c.redisURL != "" {
-				if newAddr, rErr := c.resolveLeaderAddr(topic, 0); rErr == nil && newAddr != c.addr {
+				if newAddr, rErr := c.resolveLeaderAddr(ctx, topic, 0); rErr == nil && newAddr != c.addr {
 					c.addr = newAddr
 				}
 			}
@@ -150,7 +151,7 @@ func (c *Client) ProduceBatch(topic string, topicID uint16, payloads [][]byte) (
 			c.mu.Unlock()
 			lastErr = err
 			if c.redisURL != "" {
-				if newAddr, rErr := c.resolveLeaderAddr(topic, 0); rErr == nil && newAddr != c.addr {
+				if newAddr, rErr := c.resolveLeaderAddr(ctx, topic, 0); rErr == nil && newAddr != c.addr {
 					c.addr = newAddr
 				}
 			}
@@ -174,7 +175,7 @@ func (c *Client) ProduceBatch(topic string, topicID uint16, payloads [][]byte) (
 			c.mu.Unlock()
 			lastErr = brokerStatusError(status)
 			if c.redisURL != "" {
-				if newAddr, rErr := c.resolveLeaderAddr(topic, 0); rErr == nil && newAddr != c.addr {
+				if newAddr, rErr := c.resolveLeaderAddr(ctx, topic, 0); rErr == nil && newAddr != c.addr {
 					c.addr = newAddr
 				}
 			}

@@ -346,7 +346,7 @@ func verifyWarmSegment(path string, expectKept int64) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	decoder, err := zstd.NewReader(file)
 	if err != nil {

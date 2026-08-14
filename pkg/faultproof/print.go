@@ -2,6 +2,7 @@ package faultproof
 
 import (
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -16,5 +17,5 @@ func Print(fault string, kv map[string]string) {
 		b.WriteByte('=')
 		b.WriteString(v)
 	}
-	fmt.Println(b.String())
+	_, _ = fmt.Fprintf(os.Stdout, "%s\n", b.String())
 }

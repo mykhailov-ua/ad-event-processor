@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Export ml_features_1m rows to parquet or CSV."""
+
 from __future__ import annotations
 
 import argparse
@@ -192,24 +193,25 @@ def main() -> int:
             fmt=fmt,
             db_dsn=db_dsn,
         )
-    except ImportError as exc:
-        print(f"features_export: missing dependency: {exc}", file=sys.stderr)
+    except ImportError as err:
+        print(f"features_export: missing dependency: {err}", file=sys.stderr)
         return 1
-    except ConnectionError as exc:
+    except ConnectionError as err:
         if args.allow_offline or args.smoke:
-            cfg = ch_config_from_env()
+            clickhouse_config = ch_config_from_env()
             print(
-                f"features_export: skip ({exc}) host={cfg.host}:{cfg.port} db={cfg.database}",
+                f"features_export: skip ({err}) host={clickhouse_config.host}:"
+                f"{clickhouse_config.port} db={clickhouse_config.database}",
                 file=sys.stderr,
             )
             return 0
-        print(f"features_export: {exc}", file=sys.stderr)
+        print(f"features_export: {err}", file=sys.stderr)
         return 1
-    except OSError as exc:
+    except OSError as err:
         if args.allow_offline:
-            print(f"features_export: skip ({exc})", file=sys.stderr)
+            print(f"features_export: skip ({err})", file=sys.stderr)
             return 0
-        print(f"features_export: {exc}", file=sys.stderr)
+        print(f"features_export: {err}", file=sys.stderr)
         return 1
 
     label_note = " with manual labels" if db_dsn else ""

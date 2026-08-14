@@ -152,7 +152,7 @@ var slotMapCopyCmd = &cobra.Command{
 		}
 		sharder := ingestion.NewStaticSlotSharder(len(rdbs))
 		cfg, _ := config.Load()
-		svc := controlplane.NewService(pool, rdbs, sharder, cfg)
+		svc := controlplane.NewService(ctx, pool, rdbs, sharder, cfg)
 		defer svc.Close()
 		if err := svc.CopyAllMigratingSlots(ctx, version); err != nil {
 			return err
@@ -179,7 +179,7 @@ var slotMapMigrationsCmd = &cobra.Command{
 			return err
 		}
 		cfg, _ := config.Load()
-		svc := controlplane.NewService(pool, rdbs, ingestion.NewStaticSlotSharder(len(rdbs)), cfg)
+		svc := controlplane.NewService(ctx, pool, rdbs, ingestion.NewStaticSlotSharder(len(rdbs)), cfg)
 		defer svc.Close()
 		rows, err := svc.GetSlotMigrations(ctx, version)
 		if err != nil {
@@ -214,7 +214,7 @@ var slotMapRollbackCmd = &cobra.Command{
 			return err
 		}
 		cfg, _ := config.Load()
-		svc := controlplane.NewService(pool, rdbs, ingestion.NewStaticSlotSharder(len(rdbs)), cfg)
+		svc := controlplane.NewService(ctx, pool, rdbs, ingestion.NewStaticSlotSharder(len(rdbs)), cfg)
 		defer svc.Close()
 		if err := svc.RollbackSlotMapVersion(ctx, uuid.Nil, prev); err != nil {
 			return err

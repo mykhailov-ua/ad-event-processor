@@ -55,7 +55,10 @@ func TestConversionPostbackEnqueuer_integration(t *testing.T) {
 		},
 	})
 
-	events, err := q.GetPendingPostbackEventsForUpdate(ctx, 10)
+	events, err := q.GetPendingPostbackEventsForUpdate(ctx, db.GetPendingPostbackEventsForUpdateParams{
+		Limit:   10,
+		Column2: 120,
+	})
 	require.NoError(t, err)
 	require.Len(t, events, 1)
 	require.Equal(t, outboxEventSendPostback, events[0].EventType)

@@ -2,6 +2,7 @@ package doctor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -144,7 +145,8 @@ func edgeSystemdStatus() (active bool, detail string) {
 func systemdUnitActive(unit string) (bool, error) {
 	cmd := exec.Command("systemctl", "is-active", "--quiet", unit)
 	if err := cmd.Run(); err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() != 0 {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) && exitErr.ExitCode() != 0 {
 			return false, nil
 		}
 		return false, err

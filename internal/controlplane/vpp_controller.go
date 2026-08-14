@@ -10,7 +10,13 @@ import (
 	db "github.com/bidshard/ad-event-processor/internal/domain/db"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
+
+type vppRatioWrite struct {
+	campaignID uuid.UUID
+	ratio      float32
+}
 
 func (s *Service) RunVPPPacingController(ctx context.Context) error {
 	return s.withPgLow(ctx, func(runCtx context.Context) error {
@@ -23,31 +29,39 @@ func (s *Service) RunVPPPacingController(ctx context.Context) error {
 			return fmt.Errorf("vpp pacing: list campaigns: %w", err)
 		}
 
-		lookbackEnd := time.Now().UTC().Truncate(time.Hour)
-		lookbackStart := lookbackEnd.Add(-vppLookbackDays * 24 * time.Hour)
-		tolerance := s.cfg.PacingToleranceMargin
-
+		vppRows := make([]db.GetAllActiveCampaignsWithStatsRow, 0)
+		campaignIDs := make([]uuid.UUID, 0)
 		for _, row := range rows {
 			if row.PacingMode != db.PacingModeTypeVPP {
 				continue
 			}
+			vppRows = append(vppRows, row)
+			campaignIDs = append(campaignIDs, uuid.UUID(row.ID.Bytes))
+		}
+		if len(vppRows) == 0 {
+			return nil
+		}
+
+		lookbackEnd := time.Now().UTC().Truncate(time.Hour)
+		lookbackStart := lookbackEnd.Add(-vppLookbackDays * 24 * time.Hour)
+		tolerance := s.cfg.PacingToleranceMargin
+
+		sampleByCampaign, err := s.queryVPPCampaignSamplesBatch(opCtx, lookbackStart, lookbackEnd, campaignIDs)
+		if err != nil {
+			slog.Warn("vpp pacing: batch ch query failed, using uniform weights", "error", err)
+			sampleByCampaign = nil
+		}
+
+		writesByShard := make(map[int][]vppRatioWrite)
+		for _, row := range vppRows {
 			campID := uuid.UUID(row.ID.Bytes)
 
-			samples, err := s.queryCampaignVPPSamples(opCtx, campID, lookbackStart, lookbackEnd)
-			if err != nil {
-				slog.Warn("vpp pacing: ch query failed, using uniform weights", "campaign_id", campID, "error", err)
-				samples = nil
-			}
+			samples := sampleByCampaign[campID]
 			weights := hourlySharesFromSamples(samples)
 
 			loc := s.campaignLocation(row.Timezone)
 			localNow := time.Now().In(loc)
-
-			var daypart []int16
-			camp, err := q.GetCampaign(opCtx, row.ID)
-			if err == nil && camp.DaypartHours != nil {
-				daypart = camp.DaypartHours
-			}
+			daypart := row.DaypartHours
 
 			budgetMicro := row.DailyBudget
 			if budgetMicro == 0 {
@@ -58,12 +72,42 @@ func (s *Service) RunVPPPacingController(ctx context.Context) error {
 			}
 
 			ratio := computeVPPRatio(weights, daypart, localNow, row.CurrentSpend, budgetMicro, tolerance)
-			if err := s.writeVPPRatio(opCtx, campID, ratio); err != nil {
-				slog.Warn("vpp pacing: redis write failed", "campaign_id", campID, "error", err)
-			}
+			shard := s.sharder.GetShard(campID)
+			writesByShard[shard] = append(writesByShard[shard], vppRatioWrite{campaignID: campID, ratio: ratio})
+		}
+
+		if err := s.pipelineWriteVPPRatios(opCtx, writesByShard); err != nil {
+			slog.Warn("vpp pacing: redis pipeline write failed", "error", err)
 		}
 		return nil
 	})
+}
+
+func (s *Service) pipelineWriteVPPRatios(ctx context.Context, byShard map[int][]vppRatioWrite) error {
+	rdbs := s.RedisShards()
+	for shard, writes := range byShard {
+		if len(writes) == 0 {
+			continue
+		}
+		if shard < 0 || shard >= len(rdbs) {
+			return fmt.Errorf("redis shard %d out of range", shard)
+		}
+		rdb := rdbs[shard]
+		if rdb == nil {
+			return fmt.Errorf("redis shard %d unavailable", shard)
+		}
+		_, err := rdb.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+			for _, w := range writes {
+				val := strconv.FormatFloat(float64(w.ratio), 'f', 4, 32)
+				pipe.Set(ctx, vppPacingRedisKey(w.campaignID), val, 20*time.Minute)
+			}
+			return nil
+		})
+		if err != nil {
+			return fmt.Errorf("vpp pacing shard %d: %w", shard, err)
+		}
+	}
+	return nil
 }
 
 func (s *Service) writeVPPRatio(ctx context.Context, campaignID uuid.UUID, ratio float32) error {

@@ -223,7 +223,7 @@ var (
 	}, []string{"stream", "shard"})
 	H2HostileDisconnectTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_h2_hostile_disconnect_total",
-		Help: "HTTP/2 connections closed after H2_INCOMPLETE_MAX incomplete frames with consumed=0",
+		Help: "HTTP/2 connections closed after H2_INCOMPLETE_MAX zero-progress spins or incomplete read idle / max lifetime",
 	})
 	Http1IncompleteCloseTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ad_http1_incomplete_close_total",
@@ -496,6 +496,10 @@ var (
 		Name: "ad_broker_connections_rejected_total",
 		Help: "TCP connections closed because max-connections limit was reached",
 	})
+	BrokerConnIdleCloseTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_broker_conn_idle_close_total",
+		Help: "Broker gnet TCP connections closed due to read idle or max lifetime (partial frame drip)",
+	}, []string{"reason"})
 	BrokerReplicationErrors = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ad_broker_replication_errors_total",
 		Help: "Follower replication failures by topic and reason",
@@ -591,6 +595,10 @@ var (
 		Help: "Disk gate degraded state (1 = shedding TierLow).",
 	})
 
+	RegionProxyConnIdleCloseTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_region_proxy_conn_idle_close_total",
+		Help: "Region-proxy gnet TCP connections closed due to read idle or max lifetime (partial frame drip)",
+	}, []string{"reason"})
 	RegionProxyKeygenRate = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_region_proxy_keygen_rate",
 		Help: "WAL records marked WalFlagDedupReady by the KeyGen thread.",

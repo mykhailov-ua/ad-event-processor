@@ -1,3 +1,4 @@
+/** harness=mock_api — Playwright route.fulfill; does not prove Go handler or CH/PG. */
 import { test, expect } from '@playwright/test';
 import { mockAuthedSession, ADMIN_USER } from './helpers.js';
 
@@ -67,4 +68,6 @@ test('true roi report view mounts', async ({ page }) => {
   await page.getByRole('button', { name: 'Load' }).click();
   await expect(page.getByText('Ad Spend')).toBeVisible();
   await expect(page.getByText('True Profit')).toBeVisible();
+  await expect(page.getByText('$50.00')).toBeVisible();
+  await expect(page.getByText('50')).toBeVisible();
 });

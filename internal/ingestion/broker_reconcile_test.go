@@ -23,9 +23,9 @@ func TestBrokerReconcileWorker_Divergence(t *testing.T) {
 
 	producer := client.NewClient(srv.Addr(), 2*time.Second)
 	require.NoError(t, producer.Connect())
-	_, err := producer.Produce("tracker-logs", 0, []byte("x"))
+	_, err := producer.Produce(context.Background(), "tracker-logs", 0, []byte("x"))
 	require.NoError(t, err)
-	_, err = producer.Produce("tracker-logs", 0, []byte("y"))
+	_, err = producer.Produce(context.Background(), "tracker-logs", 0, []byte("y"))
 	require.NoError(t, err)
 	require.NoError(t, producer.Close())
 

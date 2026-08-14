@@ -8,12 +8,12 @@ import (
 // TierUsageWarnings returns admin UI banner hints for tier caps and renewal windows.
 func TierUsageWarnings(limits Limits, activeCampaigns int, state LicenseState, validUntil, now time.Time, renewBeforeDays int) []string {
 	var w []string
-	if max := limits.MaxActiveCampaigns; max > 0 {
+	if maxCampaigns := limits.MaxActiveCampaigns; maxCampaigns > 0 {
 		n := uint64(activeCampaigns)
-		if n >= max {
-			w = append(w, fmt.Sprintf("Active campaign cap reached (%d/%d). Upgrade tier for more campaigns.", activeCampaigns, max))
-		} else if max >= 5 && n*100/max >= 80 {
-			w = append(w, fmt.Sprintf("Approaching active campaign cap (%d/%d).", activeCampaigns, max))
+		if n >= maxCampaigns {
+			w = append(w, fmt.Sprintf("Active campaign cap reached (%d/%d). Upgrade tier for more campaigns.", activeCampaigns, maxCampaigns))
+		} else if maxCampaigns >= 5 && n*100/maxCampaigns >= 80 {
+			w = append(w, fmt.Sprintf("Approaching active campaign cap (%d/%d).", activeCampaigns, maxCampaigns))
 		}
 	}
 	switch state {

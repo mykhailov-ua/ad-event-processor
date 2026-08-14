@@ -46,7 +46,7 @@ func TestFault_AdsProcessorPGNetworkPartition(t *testing.T) {
 
 	ctx := context.Background()
 	const baselineTracks = 4
-	for i := 0; i < baselineTracks; i++ {
+	for range baselineTracks {
 		require.Equal(t, http.StatusAccepted, postFaultClick(t, stack.Handler, stack.CampaignID))
 	}
 	waitFaultStreamDrained(t, infra.Redis, stack.Stream, stack.Stream+"-group", stack.CampaignID, infra.Pool, baselineTracks)
@@ -65,7 +65,7 @@ func TestFault_AdsProcessorPGNetworkPartition(t *testing.T) {
 
 	const bufferedTracks = 8
 	acceptedDuringPartition := 0
-	for i := 0; i < bufferedTracks; i++ {
+	for range bufferedTracks {
 		if postFaultClick(t, stack.Handler, stack.CampaignID) == http.StatusAccepted {
 			acceptedDuringPartition++
 		}

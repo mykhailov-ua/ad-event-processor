@@ -26,7 +26,7 @@ func TestParseAPIPagination_defaultsAndCaps(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.query, func(t *testing.T) {
-			req, _ := http.NewRequest("GET", "/api/v1/recon/runs?"+tc.query, nil)
+			req, _ := http.NewRequest("GET", "/api/v1/recon/runs?"+tc.query, http.NoBody)
 			limit, offset := parseAPIPagination(req)
 			assert.Equal(t, tc.wantLimit, limit, "limit")
 			assert.Equal(t, tc.wantOffset, offset, "offset")

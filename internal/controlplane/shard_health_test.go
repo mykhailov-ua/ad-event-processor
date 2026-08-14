@@ -70,7 +70,7 @@ func TestGetShardHealth_configVersionLag(t *testing.T) {
 	ctx := context.Background()
 	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, &config.Config{})
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		_, err := db.New(pool).CreateOutboxEvent(ctx, db.CreateOutboxEventParams{
 			EventType: "UPDATE_SETTINGS",
 			Payload:   []byte(`{"settings":{"rate_limit_per_min":"100"}}`),
@@ -110,12 +110,12 @@ func TestHandler_OpsShards_requiresPermShardsRead(t *testing.T) {
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 
-	req, _ := http.NewRequest("GET", "/api/v1/ops/shards", nil)
+	req, _ := http.NewRequest("GET", "/api/v1/ops/shards", http.NoBody)
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
 	assert.Equal(t, http.StatusUnauthorized, resp.Code)
 
-	req, _ = http.NewRequest("GET", "/api/v1/ops/shards", nil)
+	req, _ = http.NewRequest("GET", "/api/v1/ops/shards", http.NoBody)
 	req.Header.Set("X-Admin-API-Key", "test-secret")
 	resp = httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
@@ -151,7 +151,7 @@ func TestHandler_OpsShards_roleUserForbidden(t *testing.T) {
 	token, err := tokenMaker.CreateToken(uuid.New(), uuid.New(), "user", uuid.New(), time.Hour)
 	require.NoError(t, err)
 
-	req, _ := http.NewRequest("GET", "/api/v1/ops/shards", nil)
+	req, _ := http.NewRequest("GET", "/api/v1/ops/shards", http.NoBody)
 	req.AddCookie(&http.Cookie{Name: "accessToken", Value: token})
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)

@@ -1,3 +1,6 @@
+// Monotonic clock vs time.Now microbenches on hot-path helpers.
+// BenchmarkHotPath_handlerProto_delegate delegates to BenchmarkAdsPacketHandlerProto
+// in handler_proto_bench_test.go (harness handler_proto_mock_no_filter — not a clock comparison).
 package ingestion
 
 import (
@@ -102,7 +105,7 @@ func BenchmarkHotPath_counterInc(b *testing.B) {
 	}
 }
 
-func BenchmarkHotPath_AdsPacketHandlerProto_accept(b *testing.B) {
+func BenchmarkHotPath_handlerProto_delegate(b *testing.B) {
 	BenchmarkAdsPacketHandlerProto(b)
 }
 

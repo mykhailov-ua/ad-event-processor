@@ -25,5 +25,5 @@ func ResolveLandingURLBytes(registry domain.CampaignRegistry, store *BrandCreati
 	if !ok || camp.BrandID == nil {
 		return nil
 	}
-	return store.SelectLandingURLBytes(*camp.BrandID, evt.UserID)
+	return store.SelectLandingURLBytes(*camp.BrandID, evt.UserID, evt)
 }

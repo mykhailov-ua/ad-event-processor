@@ -20,7 +20,7 @@ func TestCompactorRunOnce_localFilesystem(t *testing.T) {
 
 	segmentPath := filepath.Join(sourceDir, "segment_test.log")
 	var src bytesSegment
-	for i := 0; i < 500; i++ {
+	for i := range 500 {
 		src.appendRecord(t, &pb.AdStreamEvent{
 			EventType: []byte("impression"),
 			ClickId:   []byte("imp-" + itoa(i)),

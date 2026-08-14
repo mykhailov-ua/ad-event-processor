@@ -77,7 +77,7 @@ func TestChaos_ParserSecurity_PS_G02_ChunkExtCRLF(t *testing.T) {
 func TestChaos_ParserSecurity_PS_G03_QuoteDenseORTB(t *testing.T) {
 	const quotes = 1 << 20
 	payload := make([]byte, 0, quotes+64)
-	for i := 0; i < quotes; i++ {
+	for range quotes {
 		payload = append(payload, '"')
 	}
 	payload = append(payload, `,"imp":[{"id":"1"}],"id":"req"}`...)

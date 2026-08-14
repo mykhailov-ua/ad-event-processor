@@ -189,7 +189,7 @@ func (q *FraudStreamWriter) aggregateEvent(evt *domain.Event) bool {
 
 func (q *FraudStreamWriter) aggIncrement(subnet uint32, reasonID uint8) bool {
 	start := fraudAggHash(subnet, reasonID)
-	for probe := 0; probe < fraudAggMaxProbe; probe++ {
+	for probe := range fraudAggMaxProbe {
 		idx := (start + uint32(probe)) & fraudAggTableMask
 		cell := &q.aggSlots[idx]
 

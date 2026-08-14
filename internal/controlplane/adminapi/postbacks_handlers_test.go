@@ -64,7 +64,7 @@ func TestPostbackConfig_PreservesTokenOnEmptyUpdate(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, cfg.ApiTokenEncrypted)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/postbacks/config", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/postbacks/config", http.NoBody)
 	rec = httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)

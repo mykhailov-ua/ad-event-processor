@@ -12,7 +12,7 @@ func TestStore_concurrentApplyDiff(t *testing.T) {
 	const workers = 24
 	var wg sync.WaitGroup
 	wg.Add(workers)
-	for i := 0; i < workers; i++ {
+	for i := range workers {
 		i := i
 		go func() {
 			defer wg.Done()

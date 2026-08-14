@@ -1,0 +1,3 @@
+# Dev/type-check tooling (install after requirements.txt)
+-r requirements.txt
+pyright[nodejs]>=1.1.0

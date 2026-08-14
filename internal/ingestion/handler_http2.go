@@ -31,6 +31,10 @@ func (h *AdsPacketHandler) onTrafficH2(c gnet.Conn, buf []byte) gnet.Action {
 	}
 	ctx.protoH2 = true
 
+	if act := h.h2CheckConnDeadlines(c, ctx); act != gnet.None {
+		return act
+	}
+
 	consumed, req, streamID, settings, err := parseH2Ingress(buf, &ctx.h2, maxBody)
 	if len(settings) > 0 {
 		_, _ = c.Write(settings)
@@ -43,10 +47,12 @@ func (h *AdsPacketHandler) onTrafficH2(c gnet.Conn, buf []byte) gnet.Action {
 	}
 	if err != nil {
 		if errors.Is(err, errIncompleteRequest) {
+			h.h2ArmIncompleteIdle(c, &ctx.h2)
 			if consumed == 0 {
 				ctx.h2.incompleteSpin++
 				if ctx.h2.incompleteSpin >= incompleteMax {
 					metrics.H2HostileDisconnectTotal.Inc()
+					h.h2ResetIncompleteIdle(&ctx.h2, c)
 					return gnet.Close
 				}
 			}
@@ -62,6 +68,7 @@ func (h *AdsPacketHandler) onTrafficH2(c gnet.Conn, buf []byte) gnet.Action {
 		return gnet.Close
 	}
 	ctx.h2.incompleteSpin = 0
+	h.h2ResetIncompleteIdle(&ctx.h2, c)
 	if len(req.Method) == 0 {
 		return gnet.None
 	}
@@ -99,5 +106,6 @@ func (h *AdsPacketHandler) allocConnContext(c gnet.Conn) *connContext {
 	if h.logger != nil {
 		ctx.shardID = int(h.loggerShardCounter.Add(1) % uint64(len(h.logger.Shards())))
 	}
+	ctx.http1ConnOpenedMono = monotonicNano()
 	return ctx
 }

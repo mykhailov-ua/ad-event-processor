@@ -12,7 +12,7 @@ func TestFault_ShardOrchestrator_TripletFailover(t *testing.T) {
 	t.Parallel()
 	camp := &CampaignTripletPick{PrimaryA: 1, PrimaryB: 2, Reserve: 3}
 	shards := map[int]int{}
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		user := "user-" + string(rune('a'+i%26))
 		shards[camp.PickShard("550e8400-e29b-41d4-a716-446655440000", user)]++
 	}

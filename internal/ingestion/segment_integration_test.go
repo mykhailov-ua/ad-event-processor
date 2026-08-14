@@ -133,7 +133,7 @@ func setupSegmentFilterBench(t testing.TB, member bool) (*SegmentFilter, *domain
 		UserID:     "bench-user",
 	}
 	ctx := context.Background()
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		_ = f.Check(ctx, evt)
 	}
 	return f, evt, ctx
@@ -162,7 +162,7 @@ func TestSegmentMemberExists_zeroAlloc(t *testing.T) {
 	rdbs := []redis.UniversalClient{&segmentGetMock{hit: false}}
 	userHash := piihash.TestHasher().HashUserID("bench-user")
 	ctx := context.Background()
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		_, _ = segmentMemberExists(ctx, rdbs, segmentID, userHash)
 	}
 	avg := testing.AllocsPerRun(100, func() {

@@ -567,7 +567,7 @@ func writeSlowEventsSection(b *strings.Builder, bpfDir string) {
 	if err != nil {
 		return
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var slow []slowEvent
 	sc := bufio.NewScanner(f)

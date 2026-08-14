@@ -102,7 +102,7 @@ func TestPaymentService_Integration(t *testing.T) {
 	assert.Equal(t, "SETTLE_BALANCE", outboxEvents[0].EventType)
 
 	rdbs := []redis.UniversalClient{rdb}
-	mgmtSvc := controlplane.NewService(pool, rdbs, ingestion.NewStaticSlotSharder(len(rdbs)), cfg)
+	mgmtSvc := controlplane.NewService(context.Background(), pool, rdbs, ingestion.NewStaticSlotSharder(len(rdbs)), cfg)
 	settleHandler := controlplane.NewSettlementHandler(mgmtSvc, cfg)
 
 	outboxWorker := payment.NewOutboxWorker(pool, cfg)

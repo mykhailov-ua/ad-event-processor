@@ -25,11 +25,11 @@ func TestRegistry_LockFreeReadsStress(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for j := 0; j < 100; j++ {
+			for range 100 {
 				_ = r.Exists(id1)
 				_, _ = r.GetCustomerID(id1)
 				_, _ = r.GetCampaign(id1)
@@ -37,11 +37,11 @@ func TestRegistry_LockFreeReadsStress(t *testing.T) {
 		}()
 	}
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for j := 0; j < 10; j++ {
+			for range 10 {
 				r.Add(uuid.New(), uuid.New(), nil, "", domain.PacingModeAsap, 1000, "UTC", 0, 0, nil)
 			}
 		}()

@@ -43,7 +43,7 @@ func TestAPI_GetCustomerBalance(t *testing.T) {
 	custID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(context.Background(), custID, "Balance API", 250_000_000, "USD"))
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		_, err := pool.Exec(context.Background(), `
 			INSERT INTO balance_ledger (customer_id, amount, type, idempotency_hash)
 			VALUES ($1, $2, 'TOPUP', $3)`,
@@ -51,7 +51,7 @@ func TestAPI_GetCustomerBalance(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	req, _ := http.NewRequest("GET", "/api/v1/customers/"+custID.String()+"/balance", nil)
+	req, _ := http.NewRequest("GET", "/api/v1/customers/"+custID.String()+"/balance", http.NoBody)
 	withSessionUser(req, tokenMaker, RoleUser, custID)
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
@@ -62,7 +62,7 @@ func TestAPI_GetCustomerBalance(t *testing.T) {
 	assert.Equal(t, "250.00", report.Balance)
 	assert.Empty(t, report.Ledger)
 
-	ledgerReq, _ := http.NewRequest("GET", "/api/v1/customers/"+custID.String()+"/ledger?limit=50&offset=0", nil)
+	ledgerReq, _ := http.NewRequest("GET", "/api/v1/customers/"+custID.String()+"/ledger?limit=50&offset=0", http.NoBody)
 	withSessionUser(ledgerReq, tokenMaker, RoleUser, custID)
 	ledgerResp := httptest.NewRecorder()
 	mux.ServeHTTP(ledgerResp, ledgerReq)
@@ -99,7 +99,7 @@ func TestAPI_GetCustomerBalance_TenantIsolation(t *testing.T) {
 	otherID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(context.Background(), ownerID, "Owner", 100_000_000, "USD"))
 
-	req, _ := http.NewRequest("GET", "/api/v1/customers/"+ownerID.String()+"/balance", nil)
+	req, _ := http.NewRequest("GET", "/api/v1/customers/"+ownerID.String()+"/balance", http.NoBody)
 	withSessionUser(req, tokenMaker, RoleUser, otherID)
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
@@ -133,7 +133,7 @@ func TestAPI_ExportCustomerBalance_CSV(t *testing.T) {
 		VALUES ($1, 1000000, 'TOPUP', 'export-1')`, domain.ToUUID(custID))
 	require.NoError(t, err)
 
-	req, _ := http.NewRequest("GET", "/api/v1/customers/"+custID.String()+"/balance/export?format=csv", nil)
+	req, _ := http.NewRequest("GET", "/api/v1/customers/"+custID.String()+"/balance/export?format=csv", http.NoBody)
 	withSessionUser(req, tokenMaker, RoleUser, custID)
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
@@ -165,7 +165,7 @@ func TestAPI_ExportCustomerBalance_BufferOverflowCap(t *testing.T) {
 	require.NoError(t, svc.CreateCustomer(context.Background(), custID, "Overflow", 0, "USD"))
 
 	padding := strings.Repeat("X", 4096)
-	for i := 0; i < 3000; i++ {
+	for i := range 3000 {
 		_, err := pool.Exec(context.Background(), `
 			INSERT INTO balance_ledger (customer_id, amount, type, idempotency_hash)
 			VALUES ($1, 1000, 'FEE', $2)`,
@@ -173,7 +173,7 @@ func TestAPI_ExportCustomerBalance_BufferOverflowCap(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	req, _ := http.NewRequest("GET", "/api/v1/customers/"+custID.String()+"/balance/export?format=csv", nil)
+	req, _ := http.NewRequest("GET", "/api/v1/customers/"+custID.String()+"/balance/export?format=csv", http.NoBody)
 	withAdminAPIKey(req, cfg)
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
@@ -206,13 +206,13 @@ func TestAPI_ExportCustomerBalance_RateLimit(t *testing.T) {
 	require.NoError(t, svc.CreateCustomer(context.Background(), custID, "RL", 0, "USD"))
 
 	url := "/api/v1/customers/" + custID.String() + "/balance/export?format=csv"
-	req1, _ := http.NewRequest("GET", url, nil)
+	req1, _ := http.NewRequest("GET", url, http.NoBody)
 	withAdminAPIKey(req1, cfg)
 	resp1 := httptest.NewRecorder()
 	mux.ServeHTTP(resp1, req1)
 	require.Equal(t, http.StatusOK, resp1.Code)
 
-	req2, _ := http.NewRequest("GET", url, nil)
+	req2, _ := http.NewRequest("GET", url, http.NoBody)
 	withAdminAPIKey(req2, cfg)
 	resp2 := httptest.NewRecorder()
 	mux.ServeHTTP(resp2, req2)
@@ -238,7 +238,7 @@ func TestAPI_ExportCustomerBalance_CursorResume(t *testing.T) {
 	custID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(context.Background(), custID, "Cursor", 0, "USD"))
 	padding := strings.Repeat("Y", 2048)
-	for i := 0; i < 6000; i++ {
+	for i := range 6000 {
 		_, err := pool.Exec(context.Background(), `
 			INSERT INTO balance_ledger (customer_id, amount, type, idempotency_hash)
 			VALUES ($1, 1000, 'FEE', $2)`,
@@ -247,7 +247,7 @@ func TestAPI_ExportCustomerBalance_CursorResume(t *testing.T) {
 	}
 
 	url := "/api/v1/customers/" + custID.String() + "/balance/export?format=csv"
-	req1, _ := http.NewRequest("GET", url, nil)
+	req1, _ := http.NewRequest("GET", url, http.NoBody)
 	withAdminAPIKey(req1, cfg)
 	resp1 := httptest.NewRecorder()
 	mux.ServeHTTP(resp1, req1)
@@ -255,7 +255,7 @@ func TestAPI_ExportCustomerBalance_CursorResume(t *testing.T) {
 	cursor := resp1.Header().Get("X-Next-Cursor")
 	require.NotEmpty(t, cursor)
 
-	req2, _ := http.NewRequest("GET", url+"&cursor="+cursor, nil)
+	req2, _ := http.NewRequest("GET", url+"&cursor="+cursor, http.NoBody)
 	withAdminAPIKey(req2, cfg)
 	resp2 := httptest.NewRecorder()
 	mux.ServeHTTP(resp2, req2)

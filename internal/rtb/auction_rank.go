@@ -116,7 +116,7 @@ func (registry *Registry) rankCandidates(
 		_ = weights[n-1]
 	}
 
-	for pos := 0; pos < n; pos++ {
+	for pos := range n {
 		if hasDeadline && scanned&rankDeadlineCheckMask == 0 && monotonicNano() > deadline {
 			return -1, 0, -1, scanned, NoBidTimeout
 		}

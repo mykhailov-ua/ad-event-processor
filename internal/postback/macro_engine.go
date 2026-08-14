@@ -205,7 +205,7 @@ func (mt *MacroTemplate) RenderAppend(dst []byte, ctx *EventContext) []byte {
 	n := int(mt.length)
 	kinds := mt.kinds[:n]
 	statics := mt.staticVals[:n]
-	for i := 0; i < n; i++ {
+	for i := range n {
 		kind := TokenKind(kinds[i])
 		switch kind {
 		case TokenStatic:
