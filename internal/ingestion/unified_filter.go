@@ -117,6 +117,7 @@ var hourAnyCache [25]any
 func init() {
 	unifiedFilterLuaAny = unifiedFilterLua
 	budgetFastLuaAny = budgetFastLua
+	budgetRollbackLuaAny = budgetRollbackLua
 	for i := 0; i <= 24; i++ {
 		hourAnyCache[i] = i
 	}
@@ -194,6 +195,8 @@ type UnifiedFilter struct {
 	luaMetricsSeq                atomic.Uint64
 	fastScript                   *redis.Script
 	fastScriptHashAny            any
+	rollbackScript               *redis.Script
+	rollbackScriptHash           string
 	fastPathEnabled              atomic.Bool
 
 	luaDurationObservers     []prometheus.Observer
@@ -329,6 +332,7 @@ func NewUnifiedFilter(
 ) *UnifiedFilter {
 	script := redis.NewScript(unifiedFilterLua)
 	fastScript := redis.NewScript(budgetFastLua)
+	rollbackScript := redis.NewScript(budgetRollbackLua)
 	emptyGeoFloors := make(map[string]int64)
 	f := &UnifiedFilter{
 		rdbs:                         rdbs,
@@ -338,6 +342,8 @@ func NewUnifiedFilter(
 		scriptHashAny:                script.Hash(),
 		fastScript:                   fastScript,
 		fastScriptHashAny:            fastScript.Hash(),
+		rollbackScript:               rollbackScript,
+		rollbackScriptHash:           rollbackScript.Hash(),
 		registry:                     registry,
 		repo:                         repo,
 		rateLimit:                    rateLimit,
@@ -377,6 +383,24 @@ func NewUnifiedFilter(
 	}
 	f.geoFloors.Store(&emptyGeoFloors)
 	return f
+}
+
+// SetDeferStreamToProducer disables Lua XADD when the async Go StreamProducer writes events.
+func (f *UnifiedFilter) SetDeferStreamToProducer(deferWrite bool) {
+	if f == nil {
+		return
+	}
+	if deferWrite {
+		f.streamKeyVal = fcapIgnoredKeyVal
+		if f.localQuantaStream != nil {
+			f.localQuantaStream.SetStreamName("fcap:ignored")
+		}
+	} else {
+		f.streamKeyVal = StringVal{s: f.streamName}
+		if f.localQuantaStream != nil {
+			f.localQuantaStream.SetStreamName(f.streamName)
+		}
+	}
 }
 
 func (f *UnifiedFilter) StartScriptPreheater(ctx context.Context, interval time.Duration) {

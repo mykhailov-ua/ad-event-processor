@@ -430,6 +430,13 @@ func startAdsIngestStackOpts(t *testing.T, infra *adsFaultInfra, stream string, 
 
 	handler := NewAdsPacketHandler(cfg, registry, filterEngine, infra.Pool, []redis.UniversalClient{infra.Redis}, sharder, cfg.FraudStreamName, nil)
 
+	writeTimeout := time.Duration(cfg.WriteTimeoutMs) * time.Millisecond
+	if writeTimeout <= 0 {
+		writeTimeout = 2 * time.Second
+	}
+	producers := []*StreamProducer{NewStreamProducer(infra.Redis, stream, cfg.StreamMaxLen, writeTimeout)}
+	handler.SetStreamProducers(producers)
+
 	stack := &adsIngestStack{
 		Handler:         handler,
 		Consumer:        consumer,

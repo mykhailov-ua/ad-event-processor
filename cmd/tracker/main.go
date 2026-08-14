@@ -356,6 +356,9 @@ func main() {
 			"strict_enter_micro", cfg.QuotaStrictThresholdMicro,
 			"strict_exit_micro", cfg.QuotaStrictExitMicro,
 		)
+		if cfg.LocalQuotaMode == "live" {
+			slog.Info("local quota full-skip ratio: rate(ad_local_quota_full_skip_total[5m]) / rate(ad_local_quota_full_skip_eligible_total[5m])")
+		}
 	}
 	unifiedFilter.SetFilterSlowMs(cfg.FilterSlowMs)
 	if cfg.TTCFailClosed {

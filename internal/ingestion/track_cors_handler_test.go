@@ -33,7 +33,7 @@ func TestTrackOPTIONS_NetHTTPPreflight(t *testing.T) {
 		MaxRequestBodySize: 1 << 20,
 		TrackCORSOrigins:   []string{"https://lp.example"},
 	}
-	router := NewRouter(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud", nil)
+	router := NewRouter(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud", nil, nil, nil)
 	req := httptest.NewRequest(http.MethodOptions, "/track", nil)
 	req.Header.Set("Origin", "https://lp.example")
 	rec := httptest.NewRecorder()

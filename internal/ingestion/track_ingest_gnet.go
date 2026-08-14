@@ -1,6 +1,7 @@
 package ingestion
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -126,20 +127,22 @@ func fillTrackEvent(evt *domain.Event, fields trackIngestFields, ip, ua string) 
 
 func (h *AdsPacketHandler) deliverGnetTrack(
 	ctx *connContext,
-	req parsedHTTPRequest,
+	accept string,
+	origin string,
 	c gnet.Conn,
 	evt *domain.Event,
 	startMono int64,
 	wReqID *bufWrapper,
 	requestIDStr string,
 	outcome trackOutcome,
+	lease *streamAdmissionLease,
 ) gnet.Action {
 	switch outcome.Status {
 	case trackStatusFraudAccepted:
 		h.trackMetrics.recordFilterReject(outcome.RejectKind)
 		shard := h.sharder.GetShard(evt.CampaignID)
 		enqueueFraudReject(h.fraudWriter, shard, evt)
-		h.writeGnetTrackAccepted(ctx, req, c, startMono, wReqID, requestIDStr, "")
+		h.writeGnetTrackAccepted(ctx, accept, origin, c, startMono, wReqID, requestIDStr, "")
 		return gnet.None
 	case trackStatusRejected:
 		spec := filterRejectSpecs[outcome.RejectKind]
@@ -154,8 +157,32 @@ func (h *AdsPacketHandler) deliverGnetTrack(
 	case trackStatusAccepted:
 		h.trackMetrics.decisionAccepted.Inc()
 		writeAuditLog(h.logger, &h.auditLogSeq, h.auditLogSampleMask, ctx.shardID, evt)
-		h.publishAcceptedTrack(evt)
-		h.writeGnetTrackAccepted(ctx, req, c, startMono, wReqID, requestIDStr, outcome.LandingURL)
+		if lease != nil {
+			if !h.publishAcceptedTrack(evt, lease) {
+				if h.filterEngine != nil {
+					rbCtx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+					h.filterEngine.RollbackDebit(rbCtx, evt, h.registry)
+					cancel()
+				}
+				spec := filterRejectSpecs[filterRejectProducerOverload]
+				h.trackMetrics.recordFilterReject(filterRejectProducerOverload)
+				h.write(c, spec.gnetResp, ctx)
+				h.recordMetrics(startMono, spec.status)
+				return gnet.None
+			}
+		} else if !h.publishAcceptedTrack(evt, nil) {
+			if h.filterEngine != nil {
+				rbCtx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+				h.filterEngine.RollbackDebit(rbCtx, evt, h.registry)
+				cancel()
+			}
+			spec := filterRejectSpecs[filterRejectProducerOverload]
+			h.trackMetrics.recordFilterReject(filterRejectProducerOverload)
+			h.write(c, spec.gnetResp, ctx)
+			h.recordMetrics(startMono, spec.status)
+			return gnet.None
+		}
+		h.writeGnetTrackAccepted(ctx, accept, origin, c, startMono, wReqID, requestIDStr, outcome.LandingURL)
 		return gnet.None
 	default:
 		h.write(c, respInternalError, ctx)

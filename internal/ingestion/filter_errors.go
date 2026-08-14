@@ -33,6 +33,7 @@ const (
 	filterRejectSegmentNotIncluded
 	filterRejectRegistryStale
 	filterRejectShardUnavailable
+	filterRejectProducerOverload
 )
 
 type filterRejectSpec struct {
@@ -64,6 +65,7 @@ var filterRejectSpecs = [...]filterRejectSpec{
 	filterRejectSegmentNotIncluded: {http.StatusForbidden, "segment not included", respSegmentNotIncluded, "segment_not_included"},
 	filterRejectRegistryStale:      {http.StatusServiceUnavailable, "registry_stale", respRegistryStale, "registry_stale"},
 	filterRejectShardUnavailable:   {http.StatusServiceUnavailable, "shard_unavailable", respShardUnavailable, "shard_unavailable"},
+	filterRejectProducerOverload:   {http.StatusServiceUnavailable, "producer overloaded", respProducerOverload, "producer_overload"},
 }
 
 type FraudReasonID uint8
@@ -239,6 +241,9 @@ func (m *preboundTrackMetrics) recordFilterReject(kind filterRejectKind) {
 	case filterRejectShardUnavailable:
 		m.blockedShardUnavailable.Inc()
 		m.decisionShardUnavailable.Inc()
+	case filterRejectProducerOverload:
+		m.blockedProducerOverload.Inc()
+		m.decisionProducerOverload.Inc()
 	case filterRejectLicenseExpired, filterRejectDailyQuotaExceeded:
 	}
 }

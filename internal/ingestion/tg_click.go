@@ -498,6 +498,15 @@ func (h *AdsPacketHandler) reactTgClick(req parsedHTTPRequest, c gnet.Conn, ctx 
 
 	var filtered []byte
 	if h.filterEngine != nil {
+		lease, kind, acquired := h.tryAcquireStreamAdmission(evt.CampaignID)
+		if !acquired {
+			spec := filterRejectSpecs[kind]
+			h.write(c, spec.gnetResp, ctx)
+			h.recordMetrics(startMono, spec.status)
+			h.trackMetrics.recordFilterReject(kind)
+			return gnet.None
+		}
+		defer lease.Release()
 		var done bool
 		filtered, done = h.applyTgTrackFilter(processTrack(h.trackProc, evt, nil), evt, c, ctx, startMono)
 		if done {
@@ -543,6 +552,15 @@ func (h *AdsPacketHandler) reactTgImpression(req parsedHTTPRequest, c gnet.Conn,
 	fillTgEventFromParsed(evt, "tg_impression", parsed, req)
 
 	if h.filterEngine != nil {
+		lease, kind, acquired := h.tryAcquireStreamAdmission(evt.CampaignID)
+		if !acquired {
+			spec := filterRejectSpecs[kind]
+			h.write(c, spec.gnetResp, ctx)
+			h.recordMetrics(startMono, spec.status)
+			h.trackMetrics.recordFilterReject(kind)
+			return gnet.None
+		}
+		defer lease.Release()
 		if _, done := h.applyTgTrackFilter(processTrack(h.trackProc, evt, nil), evt, c, ctx, startMono); done {
 			return gnet.None
 		}

@@ -176,7 +176,7 @@ type Pinger interface {
 	Ping(ctx context.Context) error
 }
 
-func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngine *FilterEngine, pool Pinger, rdbs []redis.UniversalClient, sharder Sharder, fraudStream string, creativeStore *BrandCreativeStore) http.Handler {
+func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngine *FilterEngine, pool Pinger, rdbs []redis.UniversalClient, sharder Sharder, fraudStream string, creativeStore *BrandCreativeStore, streamProducers []*StreamProducer, brokerProducer *BrokerProducer) http.Handler {
 	mux := http.NewServeMux()
 	trackCORS := newTrackCORS(cfg.TrackCORSOrigins)
 
@@ -377,6 +377,17 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 
 		var landing string
 		if filterEngine != nil {
+			lease, kind, acquired := tryAcquireStreamAdmission(cfg, sharder, streamProducers, brokerProducer, campaignID)
+			if !acquired {
+				spec := filterRejectSpecs[kind]
+				recordHTTPFilterReject(kind)
+				w.Header().Set("Retry-After", "1")
+				http.Error(w, spec.body, spec.status)
+				status = spec.status
+				return
+			}
+			defer lease.Release()
+
 			outcome := processTrack(trackProc, evt, nil)
 			switch outcome.Status {
 			case trackStatusFraudAccepted:
@@ -518,6 +529,7 @@ var (
 	respInvalidJSON        = []byte("HTTP/1.1 400 Bad Request\r\nContent-Type: text/plain\r\nContent-Length: 12\r\nConnection: keep-alive\r\n\r\ninvalid json")
 	respEmergencyBreaker   = []byte("HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nContent-Length: 32\r\nConnection: keep-alive\r\n\r\nservice temporarily unavailable")
 	respWorkerPoolOverload = []byte("HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nRetry-After: 1\r\nContent-Length: 17\r\nConnection: keep-alive\r\n\r\nserver overloaded")
+	respProducerOverload   = []byte("HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nRetry-After: 1\r\nContent-Length: 18\r\nConnection: keep-alive\r\n\r\nproducer overloaded")
 	respInfraUnavailable   = []byte("HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nRetry-After: 1\r\nContent-Length: 19\r\nConnection: keep-alive\r\n\r\nservice unavailable")
 	respRateLimit          = []byte("HTTP/1.1 429 Too Many Requests\r\nContent-Type: text/plain\r\nRetry-After: 60\r\nContent-Length: 19\r\nConnection: keep-alive\r\n\r\nrate limit exceeded")
 	respDuplicate          = []byte("HTTP/1.1 409 Conflict\r\nContent-Type: text/plain\r\nContent-Length: 15\r\nConnection: keep-alive\r\n\r\nduplicate event")
@@ -596,29 +608,61 @@ func (h *AdsPacketHandler) SetBrokerProducer(bp *BrokerProducer) {
 }
 
 func (h *AdsPacketHandler) SetStreamProducers(producers []*StreamProducer) {
-	if h != nil {
-		h.streamProducers = producers
+	if h == nil {
+		return
+	}
+	h.streamProducers = producers
+	if h.filterEngine != nil && len(producers) > 0 {
+		h.filterEngine.SetDeferStreamToProducer(true)
 	}
 }
 
-func (h *AdsPacketHandler) publishAcceptedTrack(evt *domain.Event) {
+func (h *AdsPacketHandler) publishAcceptedTrack(evt *domain.Event, lease *streamAdmissionLease) bool {
 	if h == nil || evt == nil {
-		return
+		return true
 	}
+	hasLease := lease != nil && lease.release != nil
 	if h.brokerProducer != nil {
-		_ = h.brokerProducer.Enqueue(evt)
-		return
+		var err error
+		if hasLease {
+			err = h.brokerProducer.EnqueueReserved(evt)
+		} else {
+			err = h.brokerProducer.Enqueue(evt)
+		}
+		if err != nil {
+			metrics.StreamProducerPostDebitRejectedTotal.Inc()
+			return false
+		}
+		if lease != nil {
+			lease.Clear()
+		}
+		return true
 	}
 	if h.sharder == nil || len(h.streamProducers) == 0 {
-		return
+		return true
 	}
 	shard := h.sharder.GetShard(evt.CampaignID)
 	if shard < 0 || shard >= len(h.streamProducers) {
-		return
+		return true
 	}
-	if p := h.streamProducers[shard]; p != nil {
-		_ = p.Process(evt)
+	p := h.streamProducers[shard]
+	if p == nil {
+		return true
 	}
+	var err error
+	if hasLease {
+		err = p.ProcessReserved(evt)
+	} else {
+		err = p.Process(evt)
+	}
+	if err != nil {
+		metrics.StreamProducerPostDebitRejectedTotal.Inc()
+		return false
+	}
+	if lease != nil {
+		lease.Clear()
+	}
+	return true
 }
 
 func (h *AdsPacketHandler) SetUDPControl(ctrl *UDPControl) {
@@ -810,12 +854,11 @@ func (h *AdsPacketHandler) SetHealthProbeState(healthy bool, shardOK ...bool) {
 	}
 }
 
-func (h *AdsPacketHandler) writeGnetTrackAccepted(ctx *connContext, req parsedHTTPRequest, c gnet.Conn, startMono int64, wReqID *bufWrapper, requestIDStr, landingURL string) {
+func (h *AdsPacketHandler) writeGnetTrackAccepted(ctx *connContext, accept string, origin string, c gnet.Conn, startMono int64, wReqID *bufWrapper, requestIDStr, landingURL string) {
 	if requestIDStr == "" {
 		requestIDStr = unsafeString(wReqID.buf)
 	}
 
-	accept := unsafeString(req.Accept)
 	if accept == "application/x-protobuf" {
 		resp := &ctx.resp
 		resp.Reset()
@@ -832,7 +875,7 @@ func (h *AdsPacketHandler) writeGnetTrackAccepted(ctx *connContext, req parsedHT
 		}
 
 		offset := copy(bufSlice, "HTTP/1.1 202 Accepted\r\n")
-		offset = len(appendTrackCORSHeaders(bufSlice[:offset], unsafeString(req.Origin), h.trackCORS))
+		offset = len(appendTrackCORSHeaders(bufSlice[:offset], origin, h.trackCORS))
 		offset += copy(bufSlice[offset:], "Content-Type: application/x-protobuf\r\nContent-Length: ")
 		offset += copy(bufSlice[offset:], strconv.Itoa(respSize))
 		offset += copy(bufSlice[offset:], "\r\nConnection: keep-alive\r\n\r\n")
@@ -870,7 +913,7 @@ func (h *AdsPacketHandler) writeGnetTrackAccepted(ctx *connContext, req parsedHT
 		}
 
 		offset := copy(bufSlice, "HTTP/1.1 202 Accepted\r\n")
-		offset = len(appendTrackCORSHeaders(bufSlice[:offset], unsafeString(req.Origin), h.trackCORS))
+		offset = len(appendTrackCORSHeaders(bufSlice[:offset], origin, h.trackCORS))
 		offset += copy(bufSlice[offset:], "Content-Type: application/json\r\nContent-Length: ")
 		offset += copy(bufSlice[offset:], strconv.Itoa(respSize))
 		offset += copy(bufSlice[offset:], "\r\nConnection: keep-alive\r\n\r\n")
@@ -1370,16 +1413,49 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 	}
 
 	if h.filterEngine != nil {
-		outcome := processTrack(h.trackProc, evt, fields.deviceType)
-		return h.deliverGnetTrack(ctx, req, c, evt, startMono, wReqID, requestIDStr, outcome)
+		lease, kind, acquired := h.tryAcquireStreamAdmission(evt.CampaignID)
+		if !acquired {
+			spec := filterRejectSpecs[kind]
+			h.write(c, spec.gnetResp, ctx)
+			h.recordMetrics(startMono, spec.status)
+			h.trackMetrics.recordFilterReject(kind)
+			return gnet.None
+		}
+
+		acceptStr := string(req.Accept)
+		originStr := string(req.Origin)
+
+		go func(l streamAdmissionLease) {
+			defer l.Release()
+			outcome := processTrack(h.trackProc, evt, fields.deviceType)
+			_ = h.deliverGnetTrack(ctx, acceptStr, originStr, c, evt, startMono, wReqID, requestIDStr, outcome, &l)
+		}(lease)
+
+		lease.Clear()
+		return gnet.None
 	}
 
 	releaseOpenRTB3Scratch(evt)
+	lease, kind, acquired := h.tryAcquireStreamAdmission(evt.CampaignID)
+	if !acquired {
+		spec := filterRejectSpecs[kind]
+		h.write(c, spec.gnetResp, ctx)
+		h.recordMetrics(startMono, spec.status)
+		h.trackMetrics.recordFilterReject(kind)
+		return gnet.None
+	}
+	defer lease.Release()
 	h.trackMetrics.decisionAccepted.Inc()
 	writeAuditLog(h.logger, &h.auditLogSeq, h.auditLogSampleMask, ctx.shardID, evt)
-	h.publishAcceptedTrack(evt)
+	if !h.publishAcceptedTrack(evt, &lease) {
+		spec := filterRejectSpecs[filterRejectProducerOverload]
+		h.write(c, spec.gnetResp, ctx)
+		h.recordMetrics(startMono, spec.status)
+		h.trackMetrics.recordFilterReject(filterRejectProducerOverload)
+		return gnet.None
+	}
 	landing := ResolveLandingURL(h.registry, h.creativeStore, &ctx.evt)
-	h.writeGnetTrackAccepted(ctx, req, c, startMono, wReqID, requestIDStr, landing)
+	h.writeGnetTrackAccepted(ctx, string(req.Accept), string(req.Origin), c, startMono, wReqID, requestIDStr, landing)
 	return gnet.None
 }
 

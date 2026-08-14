@@ -29,6 +29,7 @@ type preboundTrackMetrics struct {
 	decisionInfraUnavailable prometheus.Counter
 	decisionRegistryStale    prometheus.Counter
 	decisionShardUnavailable prometheus.Counter
+	decisionProducerOverload prometheus.Counter
 
 	blockedEmergencyBreaker prometheus.Counter
 	blockedRateLimit        prometheus.Counter
@@ -46,6 +47,7 @@ type preboundTrackMetrics struct {
 	blockedInfra            prometheus.Counter
 	blockedRegistryStale    prometheus.Counter
 	blockedShardUnavailable prometheus.Counter
+	blockedProducerOverload prometheus.Counter
 }
 
 func newPreboundTrackMetrics() preboundTrackMetrics {
@@ -70,6 +72,7 @@ func newPreboundTrackMetrics() preboundTrackMetrics {
 		decisionInfraUnavailable: metrics.FilterDecisions.WithLabelValues("infra_unavailable"),
 		decisionRegistryStale:    metrics.FilterDecisions.WithLabelValues("registry_stale"),
 		decisionShardUnavailable: metrics.FilterDecisions.WithLabelValues("shard_unavailable"),
+		decisionProducerOverload: metrics.FilterDecisions.WithLabelValues("producer_overload"),
 
 		blockedEmergencyBreaker: metrics.FilterBlockedTotal.WithLabelValues("emergency_breaker"),
 		blockedRateLimit:        metrics.FilterBlockedTotal.WithLabelValues("rate_limit"),
@@ -87,6 +90,7 @@ func newPreboundTrackMetrics() preboundTrackMetrics {
 		blockedInfra:            metrics.FilterBlockedTotal.WithLabelValues("infra_unavailable"),
 		blockedRegistryStale:    metrics.FilterBlockedTotal.WithLabelValues("registry_stale"),
 		blockedShardUnavailable: metrics.FilterBlockedTotal.WithLabelValues("shard_unavailable"),
+		blockedProducerOverload: metrics.FilterBlockedTotal.WithLabelValues("producer_overload"),
 	}
 }
 

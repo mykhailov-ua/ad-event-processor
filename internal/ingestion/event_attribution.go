@@ -4,7 +4,11 @@ package ingestion
 func appendAttributionPayload(dst, payload []byte, subs SubIDSlots, fbclid, gclid, ttclid string) []byte {
 	dst = dst[:0]
 	if len(payload) > 0 && payload[0] == '{' {
-		dst = append(dst, payload...)
+		if len(payload) > 1 && payload[len(payload)-1] == '}' {
+			dst = append(dst, payload[:len(payload)-1]...)
+		} else {
+			dst = append(dst, payload...)
+		}
 	} else if len(payload) > 0 {
 		dst = append(dst, '{')
 		dst = appendJSONKeyString(dst, "payload", payload)

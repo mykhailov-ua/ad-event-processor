@@ -214,6 +214,37 @@ func (e *FilterEngine) SetSettingsWatcher(watcher *SettingsWatcher) {
 	e.watcher = watcher
 }
 
+func (e *FilterEngine) SetDeferStreamToProducer(deferWrite bool) {
+	if e == nil {
+		return
+	}
+	for _, filter := range e.filters {
+		if uf, ok := filter.(*UnifiedFilter); ok {
+			uf.SetDeferStreamToProducer(deferWrite)
+		}
+	}
+}
+
+func (e *FilterEngine) RollbackDebit(ctx context.Context, evt *domain.Event, registry domain.CampaignRegistry) {
+	if e == nil || evt == nil || registry == nil {
+		return
+	}
+	campInfo, ok := registry.GetCampaign(evt.CampaignID)
+	if !ok {
+		return
+	}
+	for _, f := range e.filters {
+		if uf, ok := f.(*UnifiedFilter); ok {
+			debitAmount := uf.clickAmountMicro
+			if evt.Type == "impression" {
+				debitAmount = uf.impressionAmountMicro
+			}
+			isLocalQuanta := uf.localQuantaFullSkipEligible(evt, campInfo)
+			uf.RollbackDebit(ctx, evt, campInfo, debitAmount, isLocalQuanta)
+		}
+	}
+}
+
 func (e *FilterEngine) Timeout() time.Duration {
 	if e == nil {
 		return 0

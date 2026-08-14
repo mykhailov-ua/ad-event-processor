@@ -515,6 +515,15 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 
 	var landing []byte
 	if h.filterEngine != nil {
+		lease, kind, acquired := h.tryAcquireStreamAdmission(evt.CampaignID)
+		if !acquired {
+			spec := filterRejectSpecs[kind]
+			h.write(c, spec.gnetResp, ctx)
+			h.recordMetrics(startMono, spec.status)
+			h.trackMetrics.recordFilterReject(kind)
+			return gnet.None
+		}
+		defer lease.Release()
 		outcome := processTrack(h.trackProc, evt, nil)
 		if safeURL, ok := trySafePageRedirect(h.registry, evt.CampaignID, outcome); ok {
 			landing = UnsafeBytes(safeURL)

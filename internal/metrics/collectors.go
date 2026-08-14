@@ -754,6 +754,22 @@ var (
 		Name: "ad_local_quota_full_skip_total",
 		Help: "Hot-path accepts that skipped Redis Lua via local quanta full-skip",
 	})
+	LocalQuotaFullSkipEligibleTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_local_quota_full_skip_eligible_total",
+		Help: "Events entering local quanta full-skip path (ratio denominator for ad_local_quota_full_skip_total)",
+	})
+	StreamProducerQueueDepth = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "ad_stream_producer_queue_depth",
+		Help: "Async stream producer queue depth by shard label",
+	}, []string{"shard"})
+	StreamProducerAdmissionRejectedTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_stream_producer_admission_rejected_total",
+		Help: "Track requests rejected before filter debit because producer queue exceeded admission threshold",
+	}, []string{"shard"})
+	StreamProducerPostDebitRejectedTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_stream_producer_post_debit_rejected_total",
+		Help: "Accepted track events that failed producer enqueue after filter debit (should be near zero with reservation)",
+	})
 	RedisLuaSkippedTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_redis_lua_skipped_total",
 		Help: "Redis Lua EVAL calls avoided on the ingestion hot path",

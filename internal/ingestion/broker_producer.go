@@ -87,10 +87,11 @@ type BrokerProducer struct {
 	batchSize     int
 	flushInterval time.Duration
 
-	closed  atomic.Bool
-	done    chan struct{}
-	wg      sync.WaitGroup
-	dropped atomic.Uint64
+	closed   atomic.Bool
+	done     chan struct{}
+	wg       sync.WaitGroup
+	dropped  atomic.Uint64
+	reserved atomic.Uint64
 }
 
 func NewBrokerProducer(cfg BrokerProducerConfig) (*BrokerProducer, error) {
@@ -168,6 +169,77 @@ func (bp *BrokerProducer) Enqueue(evt *domain.Event) error {
 			return ErrRingBufferFull
 		}
 	}
+}
+
+func (bp *BrokerProducer) PendingCount() int {
+	head := atomic.LoadUint64(&bp.head)
+	tail := bp.tail
+	return int(head - tail)
+}
+
+func (bp *BrokerProducer) QueueCapacity() int {
+	return int(bp.mask) + 1
+}
+
+func (bp *BrokerProducer) QueuePressurePct() int {
+	cap := int(bp.mask) + 1
+	if cap == 0 {
+		return 0
+	}
+	occupied := int(bp.occupied())
+	if occupied < 0 {
+		return 100
+	}
+	return occupied * 100 / cap
+}
+
+func (bp *BrokerProducer) admissionLimit(admissionPct int) uint64 {
+	cap := bp.mask + 1
+	if admissionPct <= 0 {
+		return cap
+	}
+	if admissionPct > 100 {
+		admissionPct = 100
+	}
+	limit := cap * uint64(admissionPct) / 100
+	if limit == 0 {
+		return 1
+	}
+	return limit
+}
+
+func (bp *BrokerProducer) occupied() uint64 {
+	head := atomic.LoadUint64(&bp.head)
+	tail := bp.tail
+	pending := head - tail
+	return pending + bp.reserved.Load()
+}
+
+func (bp *BrokerProducer) TryReserve(admissionPct int) bool {
+	limit := bp.admissionLimit(admissionPct)
+	for {
+		if bp.occupied() >= limit {
+			return false
+		}
+		r := bp.reserved.Load()
+		if !bp.reserved.CompareAndSwap(r, r+1) {
+			continue
+		}
+		if bp.occupied() > limit {
+			bp.ReleaseReserve()
+			return false
+		}
+		return true
+	}
+}
+
+func (bp *BrokerProducer) ReleaseReserve() {
+	bp.reserved.Add(^uint64(0))
+}
+
+func (bp *BrokerProducer) EnqueueReserved(evt *domain.Event) error {
+	defer bp.ReleaseReserve()
+	return bp.Enqueue(evt)
 }
 
 func (bp *BrokerProducer) EnqueueStreamEvent(evt *pb.AdStreamEvent) error {

@@ -37,13 +37,6 @@ var producerValuesPool = sync.Pool{
 	},
 }
 
-var pendingEventPool = sync.Pool{
-	New: func() any {
-		b := make([]byte, 0, 512)
-		return &b
-	},
-}
-
 var ErrQueueFull = errors.New("producer queue full")
 
 type PregeneratedID struct {
@@ -55,8 +48,10 @@ type IDRingBuffer struct {
 	buffer []PregeneratedID
 	size   uint32
 	mask   uint32
-	head   uint32 // consumer index
-	tail   uint32 // producer index
+	_      [56]byte // padding against false sharing
+	head   uint32   // consumer index
+	_      [56]byte // padding
+	tail   uint32   // producer index
 }
 
 func NewIDRingBuffer(size uint32) *IDRingBuffer {
@@ -136,14 +131,17 @@ func (rb *IDRingBuffer) refillWorker() {
 var globalIDRingBuffer = NewIDRingBuffer(16384)
 
 type StreamProducer struct {
-	rdb          redis.UniversalClient
-	streamName   string
-	maxStreamLen int64
-	writeTimeout time.Duration
-	queue        chan *[]byte
-	flushChan    chan chan struct{}
-	closeCh      chan struct{}
-	wg           sync.WaitGroup
+	rdb           redis.UniversalClient
+	streamName    string
+	maxStreamLen  int64
+	writeTimeout  time.Duration
+	queue         chan *[]byte
+	queueCap      uint32
+	queueDepth    atomic.Uint32
+	queueReserved atomic.Uint32
+	flushChan     chan chan struct{}
+	closeCh       chan struct{}
+	wg            sync.WaitGroup
 }
 
 func NewStreamProducer(
@@ -158,6 +156,7 @@ func NewStreamProducer(
 		maxStreamLen: int64(maxStreamLen),
 		writeTimeout: writeTimeout,
 		queue:        make(chan *[]byte, 50000),
+		queueCap:     50000,
 		flushChan:    make(chan chan struct{}),
 		closeCh:      make(chan struct{}),
 	}
@@ -166,7 +165,59 @@ func NewStreamProducer(
 	return p
 }
 
+func (p *StreamProducer) admissionLimit(admissionPct int) uint32 {
+	if admissionPct <= 0 {
+		return p.queueCap
+	}
+	if admissionPct > 100 {
+		admissionPct = 100
+	}
+	limit := uint64(p.queueCap) * uint64(admissionPct) / 100
+	if limit == 0 {
+		return 1
+	}
+	return uint32(limit)
+}
+
+func (p *StreamProducer) occupied() uint32 {
+	return p.queueDepth.Load() + p.queueReserved.Load()
+}
+
+func (p *StreamProducer) TryReserve(admissionPct int) bool {
+	limit := p.admissionLimit(admissionPct)
+	for {
+		occupied := p.occupied()
+		if occupied >= limit {
+			return false
+		}
+		r := p.queueReserved.Load()
+		if !p.queueReserved.CompareAndSwap(r, r+1) {
+			continue
+		}
+		if p.occupied() > limit {
+			p.ReleaseReserve()
+			return false
+		}
+		return true
+	}
+}
+
+func (p *StreamProducer) ReleaseReserve() {
+	p.queueReserved.Add(^uint32(0))
+}
+
 func (p *StreamProducer) Process(evt *domain.Event) error {
+	return p.process(evt, false)
+}
+
+func (p *StreamProducer) ProcessReserved(evt *domain.Event) error {
+	return p.process(evt, true)
+}
+
+func (p *StreamProducer) process(evt *domain.Event, reserved bool) error {
+	if reserved {
+		defer p.ReleaseReserve()
+	}
 	if evt.ClickID == "" {
 		evt.ClickID = globalIDRingBuffer.Next().String
 	}
@@ -204,33 +255,44 @@ func (p *StreamProducer) Process(evt *domain.Event) error {
 		return err
 	}
 	data := buf[:n]
+	*bufPtr = data // update pointer to exact slice for worker
 
-	// Copy serialized data into a pooled buffer to send to the background queue
-	pendingBufPtr := pendingEventPool.Get().(*[]byte)
-	pendingBuf := *pendingBufPtr
-	if cap(pendingBuf) < len(data) {
-		pendingBuf = make([]byte, len(data))
-	} else {
-		pendingBuf = pendingBuf[:len(data)]
-	}
-	copy(pendingBuf, data)
-	*pendingBufPtr = pendingBuf
-
-	// Clean up serialization resources
+	// Clean up proto resources
 	ClearAdStreamEvent(pbEvt)
 	streamEventPool.Put(pbEvt)
-	*bufPtr = buf
-	byteBufPool.Put(bufPtr)
 
 	select {
-	case p.queue <- pendingBufPtr:
+	case p.queue <- bufPtr:
+		p.queueDepth.Add(1)
 		return nil
 	default:
-		pendingEventPool.Put(pendingBufPtr)
+		*bufPtr = buf[:cap(buf)] // reset to full capacity before return
+		byteBufPool.Put(bufPtr)
 		metrics.EventsDropped.Inc()
 		telemetry.RecordRejected()
 		return ErrQueueFull
 	}
+}
+
+func (p *StreamProducer) QueueDepth() int {
+	return int(p.queueDepth.Load())
+}
+
+func (p *StreamProducer) QueueCapacity() int {
+	return int(p.queueCap)
+}
+
+func (p *StreamProducer) QueuePressurePct() int {
+	cap := int(p.queueCap)
+	if cap == 0 {
+		return 0
+	}
+	depth := int(p.occupied())
+	return depth * 100 / cap
+}
+
+func (p *StreamProducer) dequeueOne() {
+	p.queueDepth.Add(^uint32(0))
 }
 
 func (p *StreamProducer) Close() {
@@ -276,6 +338,7 @@ func (p *StreamProducer) worker() {
 			for {
 				select {
 				case item := <-p.queue:
+					p.dequeueOne()
 					batch = append(batch, item)
 					if len(batch) >= maxBatchSize {
 						flush()
@@ -287,6 +350,7 @@ func (p *StreamProducer) worker() {
 			}
 
 		case item := <-p.queue:
+			p.dequeueOne()
 			batch = append(batch, item)
 			if len(batch) >= maxBatchSize {
 				flush()
@@ -300,6 +364,7 @@ func (p *StreamProducer) worker() {
 			for {
 				select {
 				case item := <-p.queue:
+					p.dequeueOne()
 					batch = append(batch, item)
 					if len(batch) >= maxBatchSize {
 						flush()
@@ -321,10 +386,18 @@ func (p *StreamProducer) flushBatch(batch []*[]byte) {
 
 	pipe := p.rdb.Pipeline()
 
-	wraps := make([]*ByteSliceValue, len(batch))
-	valuesPtrs := make([]*[]any, len(batch))
+	// Use stack-allocated arrays for pointers to avoid heap churn
+	// 500 pointers = 4000 bytes, fits well within default stack frame
+	var wraps [500]*ByteSliceValue
+	var valuesPtrs [500]*[]any
 
-	for i, bufPtr := range batch {
+	n := len(batch)
+	if n > 500 {
+		n = 500 // safety cap
+	}
+
+	for i := 0; i < n; i++ {
+		bufPtr := batch[i]
 		wrap := byteSliceValuePool.Get().(*ByteSliceValue)
 		wrap.b = *bufPtr
 		wraps[i] = wrap
@@ -345,22 +418,24 @@ func (p *StreamProducer) flushBatch(batch []*[]byte) {
 	_, err := pipe.Exec(ctx)
 
 	// Return resources to pools
-	for i, bufPtr := range batch {
-		pendingEventPool.Put(bufPtr)
+	for i := 0; i < n; i++ {
+		bufPtr := batch[i]
+		*bufPtr = (*bufPtr)[:cap(*bufPtr)] // reset to full capacity
+		byteBufPool.Put(bufPtr)
 		byteSliceValuePool.Put(wraps[i])
 		producerValuesPool.Put(valuesPtrs[i])
 	}
 
 	if err != nil {
-		metrics.EventsDropped.Add(float64(len(batch)))
-		for i := 0; i < len(batch); i++ {
+		metrics.EventsDropped.Add(float64(n))
+		for i := 0; i < n; i++ {
 			telemetry.RecordRejected()
 		}
 		return
 	}
 
-	metrics.EventsProcessed.Add(float64(len(batch)))
-	for i := 0; i < len(batch); i++ {
+	metrics.EventsProcessed.Add(float64(n))
+	for i := 0; i < n; i++ {
 		telemetry.RecordAccepted()
 	}
 }

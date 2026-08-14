@@ -28,7 +28,7 @@ func isNoScriptErr(err error) bool {
 }
 
 func (f *UnifiedFilter) PreloadScripts(ctx context.Context) error {
-	if f == nil || f.script == nil || f.fastScript == nil {
+	if f == nil || f.script == nil || f.fastScript == nil || f.rollbackScript == nil {
 		return fmt.Errorf("unified filter scripts are nil")
 	}
 	for i, rdb := range f.rdbs {
@@ -43,7 +43,7 @@ func (f *UnifiedFilter) PreloadScripts(ctx context.Context) error {
 }
 
 func (f *UnifiedFilter) preloadScriptsShard(ctx context.Context, shard int, rdb redis.UniversalClient) error {
-	if f == nil || f.script == nil || f.fastScript == nil {
+	if f == nil || f.script == nil || f.fastScript == nil || f.rollbackScript == nil {
 		return fmt.Errorf("unified filter scripts are nil")
 	}
 	if rdb == nil {
@@ -59,6 +59,9 @@ func (f *UnifiedFilter) preloadScriptsShard(ctx context.Context, shard int, rdb 
 		metrics.RedisLuaScriptLoaded.WithLabelValues(shardLabel).Set(0)
 		metrics.RedisLuaFastScriptLoaded.WithLabelValues(shardLabel).Set(0)
 		return fmt.Errorf("preload budget fast script shard %d: %w", shard, err)
+	}
+	if err := f.rollbackScript.Load(ctx, rdb).Err(); err != nil {
+		return fmt.Errorf("preload budget rollback script shard %d: %w", shard, err)
 	}
 	metrics.RedisLuaScriptLoaded.WithLabelValues(shardLabel).Set(1)
 	metrics.RedisLuaFastScriptLoaded.WithLabelValues(shardLabel).Set(1)

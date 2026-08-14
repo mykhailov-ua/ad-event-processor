@@ -132,6 +132,12 @@ func (p *LocalQuantaStreamPublisher) IdemCache() *LocalClickIdemCache {
 	return p.idem
 }
 
+func (p *LocalQuantaStreamPublisher) SetStreamName(name string) {
+	if p != nil {
+		p.stream = name
+	}
+}
+
 func copyLocalQuantaField(dst []byte, s string) int {
 	n := len(s)
 	if n > len(dst) {

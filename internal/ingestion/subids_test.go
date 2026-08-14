@@ -34,6 +34,12 @@ func TestAppendAttributionPayload(t *testing.T) {
 	if string(out) != want {
 		t.Fatalf("got %s want %s", out, want)
 	}
+
+	nested := appendAttributionPayload(nil, []byte(`{"fault":"1"}`), subs, "", "", "")
+	wantNested := `{"fault":"1","sub1":"fb","sub10":"ten"}`
+	if string(nested) != wantNested {
+		t.Fatalf("nested got %s want %s", nested, wantNested)
+	}
 }
 
 func TestParseTrackRequestJSON_SubIDs(t *testing.T) {

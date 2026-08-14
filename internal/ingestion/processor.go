@@ -686,12 +686,15 @@ func (consumer *StreamConsumer) parseMessage(id string, values map[string]interf
 	event := domain.EventPool.Get().(*domain.Event)
 	event.Reset()
 
-	if rawBytesStr, ok := values["d"].(string); ok {
+	if raw, ok := streamFieldBytes(values, "d"); ok {
 		pbEvt := streamEventPool.Get().(*pb.AdStreamEvent)
 		DeepResetAdStreamEvent(pbEvt)
 
-		buf := UnsafeBytes(rawBytesStr)
-		if err := pbEvt.UnmarshalVT(buf); err == nil {
+		if len(raw) > 0 {
+			_ = raw[len(raw)-1] // BCE hint
+		}
+
+		if err := pbEvt.UnmarshalVT(raw); err == nil {
 			totalLen := len(pbEvt.ClickId) + len(pbEvt.EventType) + len(pbEvt.Ip) + len(pbEvt.Ua)
 			if cap(event.StringBuffer) < totalLen {
 				event.StringBuffer = make([]byte, 0, totalLen+128)
@@ -745,6 +748,8 @@ func (consumer *StreamConsumer) parseMessage(id string, values map[string]interf
 		if v, ok := values["window_ms"].(string); ok {
 			event.UserID = v
 		}
+	} else if _, ok := values["click_id"]; ok {
+		parseFlatStreamMessage(event, values)
 	}
 
 	if event.CreatedAt.IsZero() {
@@ -760,6 +765,48 @@ func (consumer *StreamConsumer) parseMessage(id string, values map[string]interf
 	}
 
 	return event
+}
+
+func streamFieldBytes(values map[string]interface{}, key string) ([]byte, bool) {
+	v, ok := values[key]
+	if !ok {
+		return nil, false
+	}
+	switch b := v.(type) {
+	case string:
+		return UnsafeBytes(b), true
+	case []byte:
+		return b, true
+	default:
+		return nil, false
+	}
+}
+
+func parseFlatStreamMessage(event *domain.Event, values map[string]interface{}) {
+	if v, ok := values["click_id"].(string); ok {
+		event.ClickID = v
+	}
+	if v, ok := values["campaign_id"].(string); ok {
+		_ = ParseUUID(UnsafeBytes(v), &event.CampaignID)
+	}
+	if v, ok := values["user_id"].(string); ok {
+		event.UserID = v
+	}
+	if v, ok := values["type"].(string); ok {
+		event.Type = v
+	}
+	if raw, ok := streamFieldBytes(values, "payload"); ok {
+		if len(raw) > 0 {
+			_ = raw[len(raw)-1] // BCE hint
+		}
+		event.Payload = append(event.Payload[:0], raw...)
+	}
+	if v, ok := values["ip"].(string); ok {
+		event.IP = v
+	}
+	if v, ok := values["ua"].(string); ok {
+		event.UA = v
+	}
 }
 
 func firstN(ids []string, n int) []string {

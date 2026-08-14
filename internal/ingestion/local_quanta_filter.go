@@ -125,6 +125,7 @@ func (f *UnifiedFilter) checkLocalQuanta(
 	f.publishLocalDelta(evt.CampaignID, amount)
 
 	if f.localQuantaFullSkipEligible(evt, campInfo) {
+		metrics.LocalQuotaFullSkipEligibleTotal.Inc()
 		err := f.acceptLocalQuantaFullSkip(evt, campInfo, amount, subSlot)
 		return true, err
 	}
