@@ -76,10 +76,12 @@ func TestFault_AdsPGKillOpensConsumerCircuit(t *testing.T) {
 	defer stack.Close(t)
 
 	producer := NewStreamProducer(infra.Redis, stack.Stream, 1000, 1*time.Second)
+	defer producer.Close()
 	ctx := context.Background()
 	for range 8 {
 		require.NoError(t, producer.Process(faultDomainEventClick(stack.CampaignID)))
 	}
+	producer.Flush()
 	require.Eventually(t, func() bool {
 		return countFaultCampaignEvents(t, infra.Pool, stack.CampaignID) >= 3
 	}, 10*time.Second, 100*time.Millisecond)
@@ -93,6 +95,7 @@ func TestFault_AdsPGKillOpensConsumerCircuit(t *testing.T) {
 	for range 20 {
 		_ = producer.Process(faultDomainEventClick(stack.CampaignID))
 	}
+	producer.Flush()
 
 	require.Eventually(t, func() bool {
 		return stack.Consumer.CircuitBreakerState() == CircuitOpen
@@ -226,11 +229,13 @@ func TestFault_AdsPGStopStartConsumerRecovery(t *testing.T) {
 	defer stack.Close(t)
 
 	producer := NewStreamProducer(infra.Redis, stack.Stream, 1000, 1*time.Second)
+	defer producer.Close()
 	ctx := context.Background()
 
 	for range 4 {
 		require.NoError(t, producer.Process(faultDomainEventClick(stack.CampaignID)))
 	}
+	producer.Flush()
 	require.Eventually(t, func() bool {
 		return countFaultCampaignEvents(t, infra.Pool, stack.CampaignID) >= 4
 	}, 10*time.Second, 100*time.Millisecond)
@@ -249,6 +254,7 @@ func TestFault_AdsPGStopStartConsumerRecovery(t *testing.T) {
 	for range buffered {
 		require.NoError(t, producer.Process(faultDomainEventClick(stack.CampaignID)))
 	}
+	producer.Flush()
 
 	startAdsContainer(t, infra.PGContainer)
 	infra.refreshPGPool(t)

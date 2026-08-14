@@ -52,6 +52,7 @@ func TestStreamConsumer_CircuitBreakerStopsReads(t *testing.T) {
 	}
 
 	producer := NewStreamProducer(rdb, "cb-test", 1000, 1*time.Second)
+	defer producer.Close()
 	consumer := NewStreamConsumer(
 		failStore, rdb, "cb-test", "cb-group", "cb-c",
 		2, 1,
@@ -71,6 +72,7 @@ func TestStreamConsumer_CircuitBreakerStopsReads(t *testing.T) {
 		err := producer.Process(&domain.Event{CampaignID: uuid.New(), Type: "click"})
 		require.NoError(t, err)
 	}
+	producer.Flush()
 
 	consumer.Start(ctx)
 

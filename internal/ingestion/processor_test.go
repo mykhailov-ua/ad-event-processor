@@ -43,9 +43,11 @@ func TestStreamConsumer_Ingestion(t *testing.T) {
 	defer cleanup()
 
 	producer := NewStreamProducer(rdb, "s1", 1000, 1*time.Second)
+	defer producer.Close()
 
 	err := producer.Process(&domain.Event{CampaignID: uuid.New(), Type: "click"})
 	assert.NoError(t, err)
+	producer.Flush()
 }
 
 func TestStreamConsumer_BatchFlushing(t *testing.T) {
@@ -57,6 +59,7 @@ func TestStreamConsumer_BatchFlushing(t *testing.T) {
 
 	mockStore := &MockEventStore{}
 	producer := NewStreamProducer(rdb, "s2", 1000, 1*time.Second)
+	defer producer.Close()
 	proc := NewStreamConsumer(mockStore, rdb, "s2", "g2", "c2", 2, 1, 10*time.Second, 1*time.Second, 10*time.Millisecond, 100*time.Millisecond, 3, 1*time.Minute, 1*time.Second)
 
 	proc.Start(context.Background())
@@ -64,6 +67,7 @@ func TestStreamConsumer_BatchFlushing(t *testing.T) {
 	for range 3 {
 		_ = producer.Process(&domain.Event{CampaignID: uuid.New(), Type: "click"})
 	}
+	producer.Flush()
 
 	// CI budget: 5s max wait for batch flush (replaces fixed sleeps).
 	require.Eventually(t, func() bool {
@@ -88,6 +92,7 @@ func TestStreamConsumer_DLQ(t *testing.T) {
 	}
 
 	producer := NewStreamProducer(rdb, "s_dlq", 1000, 1*time.Second)
+	defer producer.Close()
 
 	proc := NewStreamConsumer(failStore, rdb, "s_dlq", "g_dlq", "c_dlq", 2, 1, 10*time.Millisecond, 1*time.Second, 10*time.Millisecond, 10*time.Millisecond, 1, 1*time.Minute, 1*time.Second)
 
@@ -99,6 +104,7 @@ func TestStreamConsumer_DLQ(t *testing.T) {
 	for range 2 {
 		_ = producer.Process(&domain.Event{CampaignID: uuid.New(), Type: "click"})
 	}
+	producer.Flush()
 
 	assert.Eventually(t, func() bool {
 		size, err := rdb.XLen(ctx, "ad:events:dlq").Result()

@@ -962,6 +962,11 @@ func (h *AdsPacketHandler) Stop(ctx context.Context) error {
 	if h.fraudWriter != nil {
 		h.fraudWriter.Stop()
 	}
+	for _, p := range h.streamProducers {
+		if p != nil {
+			p.Close()
+		}
+	}
 	if h.eng != nil {
 		return h.eng.Stop(ctx)
 	}
