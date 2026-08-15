@@ -16,7 +16,7 @@ import (
 )
 
 type openrtbExchangeLimiter struct {
-	maxQPS   int64
+	maxQPS   atomic.Int64
 	tokens   atomic.Int64
 	lastTick atomic.Int64
 }
@@ -25,14 +25,14 @@ var globalOpenRTBLimiter openrtbExchangeLimiter
 
 func configureOpenRTBExchangeLimiter(cfg *config.Config) {
 	if cfg == nil {
-		globalOpenRTBLimiter.maxQPS = 0
+		globalOpenRTBLimiter.maxQPS.Store(0)
 		return
 	}
-	globalOpenRTBLimiter.maxQPS = int64(cfg.RtbExchangeMaxQPS)
+	globalOpenRTBLimiter.maxQPS.Store(int64(cfg.RtbExchangeMaxQPS))
 }
 
 func (lim *openrtbExchangeLimiter) allow() bool {
-	maxQPS := lim.maxQPS
+	maxQPS := lim.maxQPS.Load()
 	if maxQPS <= 0 {
 		return true
 	}

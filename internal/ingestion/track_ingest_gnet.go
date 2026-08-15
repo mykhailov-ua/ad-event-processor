@@ -3,6 +3,7 @@ package ingestion
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
@@ -28,7 +29,6 @@ type trackIngestFields struct {
 func (h *AdsPacketHandler) parseTrackIngest(
 	ctx *connContext,
 	req parsedHTTPRequest,
-	wReqID *bufWrapper,
 ) (fields trackIngestFields, badResp []byte, httpStatus int, ok bool) {
 	contentType := unsafeString(req.ContentType)
 	adEventProcessorNative := h.cfg == nil || h.cfg.IsAdEventProcessorNativeIngress()

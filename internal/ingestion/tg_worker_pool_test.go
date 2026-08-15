@@ -12,7 +12,6 @@ import (
 )
 
 func TestTgClickWorkerPoolNoDoubleParse(t *testing.T) {
-	t.Parallel()
 	staticCampaignMu.Lock()
 	staticCampaign = &domain.Campaign{
 		ID:         benchClickCampaignID,
@@ -49,6 +48,7 @@ func TestTgClickWorkerPoolNoDoubleParse(t *testing.T) {
 	ok := 0
 	for range 40 {
 		_, conn := ServeGnetHarness(h, inbound)
+		pool.WaitIdle()
 		deadline := time.Now().Add(2 * time.Second)
 		for time.Now().Before(deadline) {
 			if len(conn.Written()) > 0 {

@@ -118,8 +118,9 @@ func TestGnetHandler_infraFilterErr_503WithRetryAfter(t *testing.T) {
 		HasContentLength: true,
 	}, conn)
 
-	assert.True(t, bytes.HasPrefix(conn.written, []byte("HTTP/1.1 503")))
-	assert.True(t, bytes.Contains(conn.written, []byte("Retry-After: 1")))
+	written := waitMockGnetWritten(conn, 2*time.Second)
+	assert.True(t, bytes.HasPrefix(written, []byte("HTTP/1.1 503")))
+	assert.True(t, bytes.Contains(written, []byte("Retry-After: 1")))
 	assert.Equal(t, before, testutil.ToFloat64(filterEngineFailures))
 }
 
@@ -139,7 +140,8 @@ func TestGnetHandler_filterEngineFailure_500AndCounter(t *testing.T) {
 		HasContentLength: true,
 	}, conn)
 
-	assert.True(t, bytes.HasPrefix(conn.written, []byte("HTTP/1.1 500")))
+	written := waitMockGnetWritten(conn, 2*time.Second)
+	assert.True(t, bytes.HasPrefix(written, []byte("HTTP/1.1 500")))
 	assert.Equal(t, before+1, testutil.ToFloat64(filterEngineFailures))
 }
 
@@ -161,7 +163,8 @@ func TestGnetHandler_fraudStreamWriteError_incrementsCounter(t *testing.T) {
 		HasContentLength: true,
 	}, conn)
 
-	assert.True(t, bytes.HasPrefix(conn.written, []byte("HTTP/1.1 202")))
+	written := waitMockGnetWritten(conn, 2*time.Second)
+	assert.True(t, bytes.HasPrefix(written, []byte("HTTP/1.1 202")))
 	require.Eventually(t, func() bool {
 		return testutil.ToFloat64(filterFraudStreamWriteErrors) == before+1
 	}, time.Second, 2*time.Millisecond)
@@ -171,14 +174,16 @@ func TestUnifiedFilter_budgetMiss_respectsDBLookupTimeout(t *testing.T) {
 	campID := uuid.New()
 	custID := uuid.New()
 	reg := &mockRegistry{}
-	staticCampaign.ID = campID
-	staticCampaign.CustomerID = custID
-	staticCampaign.IDStr = campID.String()
-	staticCampaign.CustomerIDStr = custID.String()
-	staticCampaign.IDStrAny = campID.String()
-	staticCampaign.CustomerIDStrAny = custID.String()
-	staticCampaign.DailyBudgetMicroAny = int64(10_000_000)
-	staticCampaign.Location = time.UTC
+	lockStaticCampaign(func(c *domain.Campaign) {
+		c.ID = campID
+		c.CustomerID = custID
+		c.IDStr = campID.String()
+		c.CustomerIDStr = custID.String()
+		c.IDStrAny = campID.String()
+		c.CustomerIDStrAny = custID.String()
+		c.DailyBudgetMicroAny = int64(10_000_000)
+		c.Location = time.UTC
+	})
 
 	f := NewUnifiedFilter(
 		[]redis.UniversalClient{&budgetMissRedis{}},
@@ -213,14 +218,16 @@ func TestFilterEngine_budgetMissRespectsEngineDeadline(t *testing.T) {
 	campID := uuid.New()
 	custID := uuid.New()
 	reg := &mockRegistry{}
-	staticCampaign.ID = campID
-	staticCampaign.CustomerID = custID
-	staticCampaign.IDStr = campID.String()
-	staticCampaign.CustomerIDStr = custID.String()
-	staticCampaign.IDStrAny = campID.String()
-	staticCampaign.CustomerIDStrAny = custID.String()
-	staticCampaign.DailyBudgetMicroAny = int64(10_000_000)
-	staticCampaign.Location = time.UTC
+	lockStaticCampaign(func(c *domain.Campaign) {
+		c.ID = campID
+		c.CustomerID = custID
+		c.IDStr = campID.String()
+		c.CustomerIDStr = custID.String()
+		c.IDStrAny = campID.String()
+		c.CustomerIDStrAny = custID.String()
+		c.DailyBudgetMicroAny = int64(10_000_000)
+		c.Location = time.UTC
+	})
 
 	uf := NewUnifiedFilter(
 		[]redis.UniversalClient{&budgetMissRedis{}},

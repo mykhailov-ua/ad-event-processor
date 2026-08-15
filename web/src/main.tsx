@@ -1,4 +1,10 @@
-import { bootApp } from './lib/boot.js';
+const path = window.location.pathname;
+const rootEl = document.getElementById('root');
 
-const root = document.getElementById('root');
-if (root) bootApp(root);
+if (!rootEl) {
+  // no-op
+} else if (path === '/bootstrap' || path === '/install/done') {
+  void import('./react/standalone_mount.js');
+} else {
+  void import('./react/main_mount.js');
+}

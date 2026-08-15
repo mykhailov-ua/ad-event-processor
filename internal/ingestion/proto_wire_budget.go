@@ -2,6 +2,7 @@ package ingestion
 
 import (
 	"errors"
+	"sync/atomic"
 
 	"github.com/bidshard/ad-event-processor/internal/config"
 	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
@@ -10,23 +11,27 @@ import (
 const ProtoMaxFields = 256
 
 var (
-	protoMaxFields      = ProtoMaxFields
+	protoMaxFields      atomic.Int32
 	errProtoFieldBudget = errors.New("protobuf field budget exceeded")
 )
 
+func init() {
+	protoMaxFields.Store(int32(ProtoMaxFields))
+}
+
 func configureProtoMaxFields(cfg *config.Config) {
 	if cfg == nil || cfg.ProtoMaxFields <= 0 {
-		protoMaxFields = ProtoMaxFields
+		protoMaxFields.Store(int32(ProtoMaxFields))
 		return
 	}
-	protoMaxFields = cfg.ProtoMaxFields
+	protoMaxFields.Store(int32(cfg.ProtoMaxFields))
 }
 
 func unmarshalAdEventVT(evt *pb.AdEvent, wire []byte) error {
 	if evt == nil {
 		return errProtoFieldBudget
 	}
-	if _, err := protoWireFieldCount(wire, protoMaxFields); err != nil {
+	if _, err := protoWireFieldCount(wire, int(protoMaxFields.Load())); err != nil {
 		return err
 	}
 	return evt.UnmarshalVT(wire)

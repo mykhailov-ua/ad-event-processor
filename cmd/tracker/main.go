@@ -480,8 +480,7 @@ func main() {
 	gnetHandler := ingestion.NewAdsPacketHandler(cfg, registry, filterEngine, pool, rdbs, sharder, cfg.FraudStreamName, creativeStore)
 
 	if cfg.PgFailoverEnabled {
-		var ingestPgFailover *pgfailover.IngestRuntime
-		ingestPgFailover = pgfailover.StartIngestSubscribers(ctx, rdbs, pgfailover.IngestSubscriberConfig{
+		ingestPgFailover := pgfailover.StartIngestSubscribers(ctx, rdbs, pgfailover.IngestSubscriberConfig{
 			MaxConns: cfg.DBTrackerMaxConns,
 			MinConns: cfg.DBMinConns,
 			Interval: time.Duration(cfg.PgFailoverPollMs) * time.Millisecond,

@@ -1,13 +1,25 @@
 package ingestion
 
-import "github.com/bidshard/ad-event-processor/internal/config"
+import (
+	"sync/atomic"
 
-var jsonStrictUTF8Enabled = true
+	"github.com/bidshard/ad-event-processor/internal/config"
+)
+
+var jsonStrictUTF8Enabled atomic.Bool
+
+func init() {
+	jsonStrictUTF8Enabled.Store(true)
+}
 
 func configureJSONParseSecurity(cfg *config.Config) {
 	if cfg == nil {
-		jsonStrictUTF8Enabled = true
+		jsonStrictUTF8Enabled.Store(true)
 		return
 	}
-	jsonStrictUTF8Enabled = cfg.JSONStrictUTF8
+	jsonStrictUTF8Enabled.Store(cfg.JSONStrictUTF8)
+}
+
+func jsonStrictUTF8() bool {
+	return jsonStrictUTF8Enabled.Load()
 }

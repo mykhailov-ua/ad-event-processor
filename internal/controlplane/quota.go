@@ -390,18 +390,6 @@ func (w *ReconWorker) loadActiveQuotas(ctx context.Context) ([]quotaRow, error) 
 	return out, rows.Err()
 }
 
-func (w *ReconWorker) redisQuotaExpected(ctx context.Context, rdb redis.UniversalClient, campaignID uuid.UUID) (int64, bool, error) {
-	snapshots, err := batchRedisQuotaExpected(ctx, rdb, []uuid.UUID{campaignID})
-	if err != nil {
-		return 0, false, err
-	}
-	snap, ok := snapshots[campaignID]
-	if !ok {
-		return 0, false, fmt.Errorf("quota redis batch missing campaign %s", campaignID)
-	}
-	return snap.expected, snap.quotaMissing, nil
-}
-
 type quotaRedisSnapshot struct {
 	expected     int64
 	quotaMissing bool

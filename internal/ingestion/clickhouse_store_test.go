@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -62,11 +63,16 @@ func TestClickHouseStore_StoreBatch_DeduplicationTokenFromContext(t *testing.T) 
 		CreatedAt:  time.Now(),
 	}
 
-	var preparedQueries []string
+	var (
+		preparedQueries []string
+		preparedMu      sync.Mutex
+	)
 
 	connMock := &mockConn{
 		prepareBatchFn: func(ctx context.Context, query string) (driver.Batch, error) {
+			preparedMu.Lock()
 			preparedQueries = append(preparedQueries, query)
+			preparedMu.Unlock()
 			return &mockBatch{}, nil
 		},
 	}
@@ -96,11 +102,16 @@ func TestClickHouseStore_StoreBatch_DeterministicTokenGeneration(t *testing.T) {
 		CreatedAt:  time.Unix(1600000001, 0),
 	}
 
-	var preparedQueries []string
+	var (
+		preparedQueries []string
+		preparedMu      sync.Mutex
+	)
 
 	connMock := &mockConn{
 		prepareBatchFn: func(ctx context.Context, query string) (driver.Batch, error) {
+			preparedMu.Lock()
 			preparedQueries = append(preparedQueries, query)
+			preparedMu.Unlock()
 			return &mockBatch{}, nil
 		},
 	}
@@ -140,15 +151,22 @@ func TestClickHouseStore_StoreBatch_PartialFailureRetry(t *testing.T) {
 		CreatedAt:  time.Now(),
 	}
 
-	var preparedQueries []string
-	var sentQueries []string
+	var (
+		preparedQueries []string
+		sentQueries     []string
+		queryMu         sync.Mutex
+	)
 
 	connMock := &mockConn{
 		prepareBatchFn: func(ctx context.Context, query string) (driver.Batch, error) {
+			queryMu.Lock()
 			preparedQueries = append(preparedQueries, query)
+			queryMu.Unlock()
 			return &mockBatch{
 				sendFn: func() error {
+					queryMu.Lock()
 					sentQueries = append(sentQueries, query)
+					queryMu.Unlock()
 					if strings.Contains(query, "clicks") {
 						return errors.New("clickhouse connection refused on clicks")
 					}

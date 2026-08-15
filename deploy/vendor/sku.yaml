@@ -8,46 +8,16 @@
 #   skus[].valid_days        - JWT valid_until = issued_at + valid_days (default 30)
 #   skus[].grace_days        - JWT grace_days (default 7)
 #   skus[].features          - licensing.FeatureSet JSON (tier_policy.go sanitizes at runtime)
-#   skus[].limits            - licensing.Limits JSON
+#   skus[].limits            - licensing.Limits JSON (0 = unlimited: campaigns, events/mo, requests/day)
 #   skus[].bind.mode         - hard|fingerprint (1 host, FP in JWT) | multi (max_activations hosts)
 #
-# Tier enforcement (code):
-#   solo/starter — HTTP redirect + /track only; OpenRTB + eBPF blocked
-#   pro          — OpenRTB live; 1 host (max_activations: 1); campaign cap
-#   scale        — OpenRTB; up to 3 hosts; higher campaign cap
-#   network+     — full programmatic stack; Enterprise includes eBPF/XDP
+# Tier enforcement (code): hosts (max_activations) + RPS + feature gates only.
+# No campaign count, monthly event, or daily request caps on self-hosted JWT (0 = disabled).
 
 skus:
-  - code: solo
-    display_name: Solo on-prem ($69)
-    price_usd_monthly: 69
-    valid_days: 30
-    grace_days: 7
-    features:
-      rtb_live: false
-      openrtb_engine: false
-      ebpf_xdp_edge: false
-      ivt_ml_detector: false
-      ml_fraud_boost: false
-      multi_region: false
-      slot_migration: false
-      margin_guard: true
-    limits:
-      max_activations: 1
-      max_regions: 1
-      max_api_keys: 2
-      max_rps: 2000
-      max_requests_per_day: 100000
-      max_active_campaigns: 10
-      max_tenants: 1
-      max_events_per_month: 3000000
-      max_export_chunk_bytes: 1048576
-    bind:
-      mode: hard
-
   - code: starter
-    display_name: Starter on-prem ($99)
-    price_usd_monthly: 99
+    display_name: Starter on-prem ($129)
+    price_usd_monthly: 129
     valid_days: 30
     grace_days: 7
     features:
@@ -63,18 +33,18 @@ skus:
       max_activations: 1
       max_regions: 1
       max_api_keys: 5
-      max_rps: 5000
-      max_requests_per_day: 500000
-      max_active_campaigns: 25
+      max_rps: 10000
+      max_requests_per_day: 0
+      max_active_campaigns: 0
       max_tenants: 3
-      max_events_per_month: 15000000
+      max_events_per_month: 0
       max_export_chunk_bytes: 5242880
     bind:
       mode: hard
 
   - code: pro
-    display_name: Pro on-prem ($199)
-    price_usd_monthly: 199
+    display_name: Pro on-prem ($329)
+    price_usd_monthly: 329
     valid_days: 30
     grace_days: 7
     features:
@@ -90,18 +60,18 @@ skus:
       max_activations: 1
       max_regions: 1
       max_api_keys: 10
-      max_rps: 15000
-      max_requests_per_day: 2000000
-      max_active_campaigns: 50
+      max_rps: 25000
+      max_requests_per_day: 0
+      max_active_campaigns: 0
       max_tenants: 10
-      max_events_per_month: 60000000
+      max_events_per_month: 0
       max_export_chunk_bytes: 10485760
     bind:
       mode: multi
 
   - code: scale
-    display_name: Scale on-prem ($399)
-    price_usd_monthly: 399
+    display_name: Scale on-prem ($649)
+    price_usd_monthly: 649
     valid_days: 30
     grace_days: 7
     features:
@@ -117,18 +87,18 @@ skus:
       max_activations: 3
       max_regions: 1
       max_api_keys: 25
-      max_rps: 50000
-      max_requests_per_day: 5000000
-      max_active_campaigns: 150
+      max_rps: 75000
+      max_requests_per_day: 0
+      max_active_campaigns: 0
       max_tenants: 25
-      max_events_per_month: 150000000
+      max_events_per_month: 0
       max_export_chunk_bytes: 52428800
     bind:
       mode: multi
 
   - code: network
-    display_name: Network on-prem ($799)
-    price_usd_monthly: 799
+    display_name: Network on-prem ($1,199)
+    price_usd_monthly: 1199
     valid_days: 30
     grace_days: 7
     features:
@@ -144,18 +114,18 @@ skus:
       max_activations: 10
       max_regions: 3
       max_api_keys: 50
-      max_rps: 100000
-      max_requests_per_day: 10000000
-      max_active_campaigns: 500
+      max_rps: 150000
+      max_requests_per_day: 0
+      max_active_campaigns: 0
       max_tenants: 50
-      max_events_per_month: 500000000
+      max_events_per_month: 0
       max_export_chunk_bytes: 104857600
     bind:
       mode: multi
 
   - code: enterprise
-    display_name: Enterprise on-prem ($1,999)
-    price_usd_monthly: 1999
+    display_name: Enterprise on-prem ($2,500+)
+    price_usd_monthly: 2500
     valid_days: 30
     grace_days: 7
     features:
@@ -172,18 +142,18 @@ skus:
       max_regions: 99
       max_api_keys: 999
       max_rps: 999999999
-      max_requests_per_day: 999999999999
-      max_active_campaigns: 999999999
+      max_requests_per_day: 0
+      max_active_campaigns: 0
       max_tenants: 999999
-      max_events_per_month: 999999999999
+      max_events_per_month: 0
       max_export_chunk_bytes: 1073741824
     bind:
       mode: multi
 
   - code: pilot
-    display_name: Pilot on-prem (monthly JWT)
+    display_name: Pilot on-prem (14-day JWT)
     price_usd_monthly: 0
-    valid_days: 35
+    valid_days: 14
     grace_days: 7
     offline_grace_days: 0
     features:
@@ -200,10 +170,10 @@ skus:
       max_regions: 1
       max_api_keys: 20
       max_rps: 50000
-      max_requests_per_day: 5000000
-      max_active_campaigns: 500
+      max_requests_per_day: 0
+      max_active_campaigns: 0
       max_tenants: 50
-      max_events_per_month: 50000000
+      max_events_per_month: 0
       max_export_chunk_bytes: 104857600
     bind:
       mode: hard
@@ -226,10 +196,10 @@ skus:
       max_regions: 99
       max_api_keys: 999
       max_rps: 999999999
-      max_requests_per_day: 999999999999
-      max_active_campaigns: 999999999
+      max_requests_per_day: 0
+      max_active_campaigns: 0
       max_tenants: 999999
-      max_events_per_month: 999999999999
+      max_events_per_month: 0
       max_export_chunk_bytes: 1073741824
     bind:
       mode: fingerprint

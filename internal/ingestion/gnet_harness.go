@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"net"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/panjf2000/gnet/v2"
@@ -13,6 +14,7 @@ var gnetHarnessRemoteAddr = &net.TCPAddr{IP: net.IPv4(1, 1, 1, 1), Port: 1234}
 
 type GnetHarnessConn struct {
 	gnet.Conn
+	mu             sync.Mutex
 	inbound        []byte
 	written        []byte
 	responses      [][]byte
@@ -40,6 +42,12 @@ func (c *GnetHarnessConn) Context() any     { return c.ctx }
 func (c *GnetHarnessConn) SetContext(v any) { c.ctx = v }
 
 func (c *GnetHarnessConn) Write(b []byte) (int, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.writeLocked(b)
+}
+
+func (c *GnetHarnessConn) writeLocked(b []byte) (int, error) {
 	c.written = append(c.written[:0], b...)
 	if c.benchZeroAlloc {
 		return len(b), nil
@@ -51,11 +59,13 @@ func (c *GnetHarnessConn) Write(b []byte) (int, error) {
 }
 
 func (c *GnetHarnessConn) AsyncWrite(buf []byte, callback gnet.AsyncCallback) error {
-	_, _ = c.Write(buf)
+	c.mu.Lock()
+	_, err := c.writeLocked(buf)
+	c.mu.Unlock()
 	if callback != nil {
-		_ = callback(c, nil)
+		_ = callback(c, err)
 	}
-	return nil
+	return err
 }
 
 func (c *GnetHarnessConn) InboundBuffered() int { return len(c.inbound) }
@@ -87,7 +97,11 @@ func (c *GnetHarnessConn) Append(b []byte) {
 	c.inbound = append(c.inbound, b...)
 }
 
-func (c *GnetHarnessConn) Written() []byte { return c.written }
+func (c *GnetHarnessConn) Written() []byte {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]byte(nil), c.written...)
+}
 
 func (c *GnetHarnessConn) WriteCount() int { return len(c.responses) }
 

@@ -9,7 +9,6 @@ import (
 )
 
 func TestStaticSlotSharder_SnapshotAtomic_concurrentStress(t *testing.T) {
-	t.Parallel()
 	s := NewStaticSlotSharder(4)
 	id := uuid.New()
 
@@ -71,7 +70,6 @@ func TestStaticSlotSharder_SnapshotAtomic_versionTableBundle(t *testing.T) {
 }
 
 func TestLocalQuotaCache_concurrentRace(t *testing.T) {
-	t.Parallel()
 	cache := NewLocalQuotaCache()
 	const workers = 32
 	var wg sync.WaitGroup

@@ -21,9 +21,18 @@ func (s *stubLicenseRPSRegistry) GetLicenseState() (licensing.LicenseState, lice
 	}
 }
 
+func TestLicenseRPSSoftCeil(t *testing.T) {
+	assert.Equal(t, uint64(3), licenseRPSSoftCeil(2))
+	assert.Equal(t, uint64(11000), licenseRPSSoftCeil(10000))
+}
+
+func TestLicenseRPSBurstCap(t *testing.T) {
+	assert.Equal(t, uint64(9), licenseRPSBurstCap(2))
+	assert.Equal(t, uint64(45000), licenseRPSBurstCap(10000))
+}
+
 func TestLicenseRPSFilter_exceedsCap(t *testing.T) {
-	globalDeploymentRPS.epoch.Store(0)
-	globalDeploymentRPS.count.Store(0)
+	globalDeploymentRPS.resetForTests()
 
 	f := NewLicenseRPSFilter(&stubLicenseRPSRegistry{maxRPS: 2})
 	ctx := context.Background()
@@ -31,8 +40,26 @@ func TestLicenseRPSFilter_exceedsCap(t *testing.T) {
 
 	require.NoError(t, f.Check(ctx, evt))
 	require.NoError(t, f.Check(ctx, evt))
+	require.NoError(t, f.Check(ctx, evt))
 	err := f.Check(ctx, evt)
 	require.ErrorIs(t, err, ErrRateLimitExceeded)
+}
+
+func TestLicenseRPSFilter_burstConsumesCredits(t *testing.T) {
+	globalDeploymentRPS.resetForTests()
+	globalDeploymentRPS.burstInit.Store(1)
+	globalDeploymentRPS.burstRemain.Store(1)
+
+	f := NewLicenseRPSFilter(&stubLicenseRPSRegistry{maxRPS: 2})
+	ctx := context.Background()
+	evt := &domain.Event{}
+
+	require.NoError(t, f.Check(ctx, evt))
+	require.NoError(t, f.Check(ctx, evt))
+	require.NoError(t, f.Check(ctx, evt))
+	err := f.Check(ctx, evt)
+	require.ErrorIs(t, err, ErrRateLimitExceeded)
+	assert.Equal(t, uint64(0), globalDeploymentRPS.burstRemain.Load())
 }
 
 func TestLicenseRPSFilter_zeroUnlimited(t *testing.T) {

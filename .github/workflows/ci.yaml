@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   paths:
-    name: Path filter
+    name: Gate · path-filter
     runs-on: ubuntu-latest
     outputs:
       openrtb: ${{ steps.filter.outputs.openrtb }}
@@ -48,12 +48,14 @@ jobs:
               - 'docker-compose*.yaml'
               - 'Dockerfile*'
 
-  fast:
-    name: Fast gate
+  merge-pr-fast:
+    name: Gate · merge-pr-fast
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25.12'
@@ -61,13 +63,57 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: PR fast checks
+      - name: PR fast checks (lint, alloc, unit -short, admin web)
         run: bash scripts/ci/pr_fast.sh
 
-  govulncheck:
-    name: govulncheck
-    needs: paths
-    if: needs.paths.outputs.go == 'true' || github.event_name == 'workflow_dispatch'
+  merge-race-short:
+    name: Gate · merge-race-short
+    needs: merge-pr-fast
+    if: always() && needs.merge-pr-fast.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.12'
+          cache: true
+      - name: Race detector (go test -race -short)
+        run: bash scripts/ci/race_short.sh 2>&1 | tee race_short.log
+      - name: Upload race-short log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: merge-race-short-log
+          path: race_short.log
+          retention-days: 7
+
+  merge-integration:
+    name: Gate · merge-integration
+    needs: merge-pr-fast
+    if: always() && needs.merge-pr-fast.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.12'
+          cache: true
+      - name: Integration tests (testcontainers)
+        run: bash scripts/ci/integration_test.sh 2>&1 | tee integration_test.log
+      - name: Upload integration log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: merge-integration-log
+          path: integration_test.log
+          retention-days: 7
+
+  merge-govulncheck:
+    name: Gate · merge-govulncheck
+    needs: merge-pr-fast
+    if: always() && needs.merge-pr-fast.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -76,13 +122,44 @@ jobs:
         with:
           go-version: '1.25.12'
           cache: true
-      - name: Run govulncheck
+      - name: govulncheck
         run: bash scripts/ci/govulncheck.sh
 
-  openrtb-fuzz:
-    name: OpenRTB fuzz smoke
-    needs: paths
-    if: needs.paths.outputs.openrtb == 'true' || github.event_name == 'workflow_dispatch'
+  merge-perf-smoke:
+    name: Gate · merge-perf-smoke
+    needs: merge-pr-fast
+    if: always() && needs.merge-pr-fast.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GOMAXPROCS: "1"
+      PERF_GATE_STRICT: "false"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.12'
+          cache: true
+      - name: Perf smoke (zero-alloc; benchstat skipped on github-hosted)
+        run: bash scripts/ci/perf_smoke.sh 2>&1 | tee perf_smoke.log
+      - name: Upload perf smoke log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: merge-perf-smoke-log
+          path: perf_smoke.log
+          retention-days: 7
+
+  merge-openrtb-fuzz:
+    name: Gate · merge-openrtb-fuzz
+    needs: [merge-pr-fast, paths]
+    if: |
+      always() && needs.merge-pr-fast.result == 'success' && (
+        github.event_name == 'workflow_dispatch' ||
+        needs.paths.outputs.openrtb == 'true'
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -91,13 +168,17 @@ jobs:
         with:
           go-version: '1.25.12'
           cache: true
-      - name: Fuzz smoke (5s per target)
+      - name: OpenRTB fuzz smoke (5s per target)
         run: make openrtb-fuzz-smoke
 
-  fraudtrain:
-    name: Fraud model smoke
-    needs: paths
-    if: needs.paths.outputs.model == 'true' || github.event_name == 'workflow_dispatch'
+  merge-fraud-model:
+    name: Gate · merge-fraud-model
+    needs: [merge-pr-fast, paths]
+    if: |
+      always() && needs.merge-pr-fast.result == 'success' && (
+        github.event_name == 'workflow_dispatch' ||
+        needs.paths.outputs.model == 'true'
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -114,42 +195,45 @@ jobs:
       - name: fraudtrain-check (bootstrap + ml-validate)
         run: bash scripts/ci/fraudtrain.sh
 
-  full-test:
-    name: Full test suite (no -short)
-    needs: [fast, paths]
+  main-full-test:
+    name: Gate · main-full-test
+    needs: [merge-pr-fast, merge-race-short, paths]
     if: |
-      always() && needs.fast.result == 'success' && (
+      always() &&
+      needs.merge-pr-fast.result == 'success' &&
+      needs.merge-race-short.result == 'success' &&
+      (
         github.event_name == 'workflow_dispatch' ||
         (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.paths.outputs.integration == 'true')
       )
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25.12'
           cache: true
-      - name: Run full test suite
+      - name: Full test suite (integration + fault, no -short)
         run: bash scripts/ci/full_test.sh 2>&1 | tee full_test.log
       - name: Upload full-test log
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: full-test-log
+          name: main-full-test-log
           path: full_test.log
           retention-days: 7
 
-  resilience:
-    name: Container resilience tests
-    needs: fast
+  main-resilience:
+    name: Gate · main-resilience
+    needs: merge-pr-fast
     if: |
-      always() && needs.fast.result == 'success' && (
+      always() && needs.merge-pr-fast.result == 'success' && (
         github.event_name == 'workflow_dispatch' ||
         (github.event_name == 'push' && github.ref == 'refs/heads/main')
       )
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     env:
       RESILIENCE_MIN_PROOFS: '52'
       RESILIENCE_MIN_PROOFS_MR: '12'
@@ -160,21 +244,21 @@ jobs:
         with:
           go-version: '1.25.12'
           cache: true
-      - name: Run resilience suite
+      - name: Container resilience suite
         run: bash scripts/fault/run.sh
       - name: Upload resilience log
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: resilience-log
+          name: main-resilience-log
           path: resilience.log
           retention-days: 7
 
-  license-red-team:
-    name: License red-team
-    needs: fast
+  main-license-red-team:
+    name: Gate · main-license-red-team
+    needs: merge-pr-fast
     if: |
-      always() && needs.fast.result == 'success' && (
+      always() && needs.merge-pr-fast.result == 'success' && (
         github.event_name == 'workflow_dispatch' ||
         (github.event_name == 'push' && github.ref == 'refs/heads/main')
       )
@@ -188,4 +272,3 @@ jobs:
           cache: true
       - name: License red-team (P0 scenarios)
         run: make license-red-team
-

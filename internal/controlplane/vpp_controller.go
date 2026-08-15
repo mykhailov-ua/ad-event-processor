@@ -109,12 +109,3 @@ func (s *Service) pipelineWriteVPPRatios(ctx context.Context, byShard map[int][]
 	}
 	return nil
 }
-
-func (s *Service) writeVPPRatio(ctx context.Context, campaignID uuid.UUID, ratio float32) error {
-	rdb := s.getRDB(campaignID)
-	if rdb == nil {
-		return fmt.Errorf("no redis shard for campaign %s", campaignID)
-	}
-	val := strconv.FormatFloat(float64(ratio), 'f', 4, 32)
-	return rdb.Set(ctx, vppPacingRedisKey(campaignID), val, 20*time.Minute).Err()
-}

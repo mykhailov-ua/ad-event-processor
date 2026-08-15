@@ -164,10 +164,3 @@ func rejectIfStreamProducerOverloaded(
 	telemetry.RecordRejected()
 	return filterRejectProducerOverload, true
 }
-
-func (h *AdsPacketHandler) rejectIfStreamProducerOverloaded(campaignID uuid.UUID) (filterRejectKind, bool) {
-	if h == nil {
-		return 0, false
-	}
-	return rejectIfStreamProducerOverloaded(h.cfg, h.sharder, h.streamProducers, h.brokerProducer, campaignID)
-}

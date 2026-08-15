@@ -76,11 +76,7 @@ func StartIngestSubscribers(
 		cfg.MinConns = 1
 	}
 	gate := NewFencingGate(primary)
-	subCfg := SubscriberConfig{
-		MaxConns: cfg.MaxConns,
-		MinConns: cfg.MinConns,
-		Interval: cfg.Interval,
-	}
+	subCfg := SubscriberConfig(cfg)
 	rt := &IngestRuntime{}
 	sub := NewSubscriber(primary, gate, onReconnect, subCfg)
 	sub.Start(ctx)

@@ -69,5 +69,5 @@ test('true roi report view mounts', async ({ page }) => {
   await expect(page.getByText('Ad Spend')).toBeVisible();
   await expect(page.getByText('True Profit')).toBeVisible();
   await expect(page.getByText('$50.00')).toBeVisible();
-  await expect(page.getByText('50')).toBeVisible();
+  await expect(page.getByRole('cell', { name: '50.00%' })).toBeVisible();
 });

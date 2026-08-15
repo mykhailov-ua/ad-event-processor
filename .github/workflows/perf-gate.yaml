@@ -1,4 +1,4 @@
-name: Performance Gate
+name: Performance Gate (strict)
 
 on:
   push:
@@ -13,27 +13,15 @@ on:
       - 'deploy/nginx/lua/**'
       - 'api/**'
       - 'scripts/test/**'
-  pull_request:
-    branches: [main]
-    paths:
-      - 'internal/ingestion/**'
-      - 'internal/rtb/**'
-      - 'internal/config/**'
-      - 'internal/database/redis*.go'
-      - 'pkg/logger/**'
-      - 'pkg/broker/**'
-      - 'deploy/nginx/lua/**'
-      - 'api/**'
-      - 'scripts/test/**'
   workflow_dispatch:
 
 concurrency:
-  group: perf-gate-${{ github.ref }}
+  group: perf-gate-strict-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  performance-gate:
-    name: Performance Gate
+  perf-strict:
+    name: Gate · main-perf-strict
     runs-on: ${{ vars.PERF_RUNNER_LABEL || 'ubuntu-latest' }}
     timeout-minutes: 30
     env:

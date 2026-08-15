@@ -27,8 +27,6 @@ func TestGeoFilter_lookupErrorIncrementsCounter(t *testing.T) {
 }
 
 func TestRedisShardObservability_recordLuaOp(t *testing.T) {
-	t.Parallel()
-
 	campaignID := uuid.MustParse("11111111-1111-4111-8111-111111111111")
 	obs := newRedisShardObservability(4, 0)
 	bucket := sampledCampaignBucketLabels[sampledCampaignBucket(campaignID)]
@@ -50,8 +48,6 @@ func TestRedisShardObservability_recordLuaOp(t *testing.T) {
 }
 
 func TestRedisShardObservability_recordAcceptedSpend(t *testing.T) {
-	t.Parallel()
-
 	campaignID := uuid.MustParse("22222222-2222-4222-8222-222222222222")
 	obs := newRedisShardObservability(4, 0)
 	bucket := sampledCampaignBucketLabels[sampledCampaignBucket(campaignID)]
@@ -67,13 +63,11 @@ func TestRedisShardObservability_recordAcceptedSpend(t *testing.T) {
 }
 
 func TestSpendMicroFromAny(t *testing.T) {
-	t.Parallel()
 	require.Equal(t, int64(42), spendMicroFromAny(int64(42)))
 	require.Equal(t, int64(0), spendMicroFromAny("nope"))
 }
 
 func TestNewRedisShardObservability_defaultSampleMask(t *testing.T) {
-	t.Parallel()
 	obs := newRedisShardObservability(4, 0)
 	require.Equal(t, luaMetricsSampleMask, obs.sampleMask)
 }

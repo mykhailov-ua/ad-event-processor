@@ -67,7 +67,7 @@ func OpenModule(ctx context.Context, cfg *config.Config) (*Module, error) {
 		})
 		if err != nil {
 			pool.Close()
-			return nil, fmt.Errorf("connect redis shard 0 fallback: %w (shards err: %v)", err, errShards)
+			return nil, fmt.Errorf("connect redis shard 0 fallback: %w (shards err: %w)", err, errShards)
 		}
 		controlRdbs = []redis.UniversalClient{rdb}
 	} else {

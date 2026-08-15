@@ -6,14 +6,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSanitizeFeaturesForSKU_soloBlocksOpenRTBAndXDP(t *testing.T) {
+func TestSanitizeFeaturesForSKU_starterBlocksOpenRTBAndXDP(t *testing.T) {
 	in := FeatureSet{
 		RtbLive:       true,
 		OpenRTBEngine: true,
 		EbpfXDPEdge:   true,
 		MlFraudBoost:  true,
 	}
-	out := SanitizeFeaturesForSKU(SKUCodeSolo, in)
+	out := SanitizeFeaturesForSKU(SKUCodeStarter, in)
 	require.False(t, out.OpenRTBEnabled())
 	require.False(t, out.EbpfEdgeEnabled())
 	require.False(t, out.MlFraudBoostEnabled())

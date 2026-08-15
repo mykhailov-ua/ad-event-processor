@@ -76,7 +76,7 @@ No restart required — entitlements reload immediately.
 | GRACE | JWT expired but within `grace_days` (7) — renew soon |
 | EXPIRED | Tracking blocked |
 
-Pilot SKU (`deploy/vendor/sku.yaml`): 35-day validity, 7-day grace, **hard bind** (host fingerprint).
+Pilot SKU (`deploy/vendor/sku.yaml`): 14-day validity, 7-day grace, **hard bind** (host fingerprint).
 
 ## Host fingerprint (hard bind)
 

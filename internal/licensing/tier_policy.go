@@ -5,7 +5,6 @@ import "strings"
 // Commercial SKU codes (deploy/vendor/sku.yaml). Used to sanitize signed JWT features at runtime.
 const (
 	SKUCodePilot      = "pilot"
-	SKUCodeSolo       = "solo"
 	SKUCodeStarter    = "starter"
 	SKUCodePro        = "pro"
 	SKUCodeScale      = "scale"
@@ -18,7 +17,7 @@ const (
 func SanitizeFeaturesForSKU(sku string, features FeatureSet) FeatureSet {
 	out := features.Normalized()
 	switch strings.ToLower(strings.TrimSpace(sku)) {
-	case SKUCodeSolo, SKUCodeStarter:
+	case SKUCodeStarter, "solo":
 		out.RtbLive = false
 		out.OpenRTBEngine = false
 		out.EbpfXDPEdge = false

@@ -242,3 +242,8 @@ func (p *PinnedWorkerPool) Shutdown() {
 		p.wg.Wait()
 	}
 }
+
+// WaitIdle blocks until all submitted offload work has finished.
+func (p *PinnedWorkerPool) WaitIdle() {
+	p.wg.Wait()
+}

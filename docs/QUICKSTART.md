@@ -4,7 +4,7 @@ Self-hosted appliance on one Linux server. No Go required on the host.
 
 ## Requirements
 
-- Ubuntu 22.04+ (or similar Linux), **4 vCPU / 8 GB RAM** minimum for gray-market Solo/Starter appliance (Hetzner CX31 / Contabo VPS S or similar)
+- Ubuntu 22.04+ (or similar Linux), **4 vCPU / 8 GB RAM** minimum for gray-market Starter appliance (Hetzner CX31 / Contabo VPS S or similar)
 - Kernel 5.15+ is fine for the appliance; edge XDP needs 6.1+ with BTF (optional)
 - Root or sudo for first-time package install (Docker)
 
@@ -101,7 +101,7 @@ Commercial tiers and USDT sales flow (vendor): [deploy/vendor/SALES_KIT.md](../d
 
 Moving from **pilot → paid** or **Starter → Pro** (etc.) is a JWT swap only — same `deployment_id`, no stack rebuild.
 
-1. Vendor issues invoice ([USDT template](../deploy/vendor/USDT_INVOICE_TEMPLATE.md)); after USDT confirm, you receive a new JWT for the target SKU (`solo` … `enterprise` in [sku.yaml](../deploy/vendor/sku.yaml)).
+1. Vendor issues invoice ([USDT template](../deploy/vendor/USDT_INVOICE_TEMPLATE.md)); after USDT confirm, you receive a new JWT for the target SKU (`starter` … `enterprise` in [sku.yaml](../deploy/vendor/sku.yaml)).
 2. Apply the JWT (entitlements reload immediately; no container restart):
 
 ```bash
@@ -117,7 +117,7 @@ curl -sS -X POST http://127.0.0.1:8188/api/v1/license/apply \
 
 3. Open **Settings** — admin banner shows grace, renewal window (≤7 days), or campaign-cap warnings when approaching tier limits.
 
-Higher tiers raise `max_rps`, `max_requests_per_day`, and `max_active_campaigns` enforced on the hot path and at campaign create.
+Higher tiers raise `max_rps` and `max_activations` (hosts) on the hot path. Campaign count, daily requests, and monthly events are unlimited (`max_active_campaigns: 0`, `max_requests_per_day: 0`, `max_events_per_month: 0` in JWT).
 
 ## Upgrading an existing install
 

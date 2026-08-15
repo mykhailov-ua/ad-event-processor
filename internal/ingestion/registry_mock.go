@@ -25,6 +25,13 @@ var (
 	cachedMockCamp   atomic.Pointer[domain.Campaign]
 )
 
+// lockStaticCampaign mutates the shared mock campaign template for handler tests.
+func lockStaticCampaign(mut func(c *domain.Campaign)) {
+	staticCampaignMu.Lock()
+	defer staticCampaignMu.Unlock()
+	mut(staticCampaign)
+}
+
 func enrichMockCampaign(cp *domain.Campaign) {
 	if cp.Location == nil {
 		cp.Location = time.UTC

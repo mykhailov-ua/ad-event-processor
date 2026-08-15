@@ -73,14 +73,19 @@ deploy/nginx/certs/*.crt
 campaigns_replica.json
 campaigns_replica.json.tmp
 var/
+# var/load-test/, var/fault-drill/, var/purgatory/, var/ram-proof/, var/bpf-session/, …
 *.log
 
 # Go test & profiling artifacts
 .cache/
+coverage/
 coverage.out
+coverage.html
 *.coverprofile
 *.prof
 *.test
+*.trace
+trace.out
 
 # Python (model/)
 __pycache__/
@@ -96,13 +101,67 @@ venv/
 # Generated ML artifacts (make fraudtrain-check)
 var/fraudscore/
 
-# Perf gate & benchmark reports (local / CI scratch)
+# Perf gate, benchmark & nightly regression scratch (local / CI)
 .ci-baselines/
 pr_bench.txt
 baseline_bench.txt
 gate_report.txt
+gate_run.log
 escape_report.txt
 *_bench.txt
+*_gate.txt
+
+# CI workflow tee logs (repo root; also *.log)
+/race_short.log
+/integration_test.log
+/perf_smoke.log
+/full_test.log
+/resilience.log
+/sentinel.log
+/mr-resilience.log
+/xdp-resilience.log
+/milestone-compose.log
+
+# Load-test / BPF / resilience report artifacts (also under var/)
+fault_proof.txt
+**/REPORT.txt
+**/PROOF.md
+bpf-report.md
+bpf-report.err
+bottleneck-report.md
+bpf-collector.tail.txt
+lua_quantiles.json
+k6_summary.json
+sla-gate.md
+strict-contention-compare.md
+metrics.before.txt
+metrics.after.txt
+stress-ng.log
+listen.bind.txt
+redis.flush.log
+burst.log
+delta.txt
+sysctl.txt
+gomaxprocs.txt
+docker.events.txt
+tracker.oom.log
+tracker.state.txt
+load-report-prom.log
+load-report-all.log
+script_flush.log
+sync-registry.log
+prepare.log
+
+# Local env overrides (secrets stay in .env / .env.secrets)
+.env.local
+.env.*.local
+
+# Editor & merge conflict junk
+*~
+*.swp
+*.swo
+.#*
+#*#
 
 # OS junk
 .DS_Store
@@ -116,4 +175,8 @@ deploy/terraform/**/.terraform/
 deploy/terraform/**/terraform.tfstate*
 
 # Rendered deploy configs (enterprise archive render_prometheus_k3s.sh, etc.)
+**/*.rendered.yaml
+**/*.rendered.yml
 deploy/monitoring/*.rendered.yaml
+deploy/ingress/caddy/generated/*
+!deploy/ingress/caddy/generated/.gitkeep

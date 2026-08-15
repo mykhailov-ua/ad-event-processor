@@ -4,7 +4,6 @@ package ingestion
 
 import (
 	"context"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -13,24 +12,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/testutil"
-	redis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 )
-
-type evalCountRedis struct {
-	redis.UniversalClient
-	evals atomic.Int64
-}
-
-func (c *evalCountRedis) EvalSha(ctx context.Context, sha1 string, keys []string, args ...any) *redis.Cmd {
-	c.evals.Add(1)
-	return c.UniversalClient.EvalSha(ctx, sha1, keys, args...)
-}
-
-func (c *evalCountRedis) Eval(ctx context.Context, script string, keys []string, args ...any) *redis.Cmd {
-	c.evals.Add(1)
-	return c.UniversalClient.Eval(ctx, script, keys, args...)
-}
 
 func TestUnifiedFilter_localQuanta_fullSkipNoRedisEval(t *testing.T) {
 	if testing.Short() {

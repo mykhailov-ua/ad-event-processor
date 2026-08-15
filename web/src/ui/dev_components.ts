@@ -6,6 +6,7 @@ import { mount as mountSegmented } from './segmented_control.js';
 import { renderStatusHint } from './status_hint.js';
 
 /**
+ * @deprecated Route migrated to React — see react/pages/dev_components_page.tsx.
  * Mount the UI component gallery for development preview.
  */
 export function mount(container: HTMLElement): { destroy: () => void } {

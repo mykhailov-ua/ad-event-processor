@@ -18,15 +18,6 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-func benchRegistryForCampaign(camp *domain.Campaign) *Registry {
-	reg := NewRegistry(nil)
-	enrichMockCampaign(camp)
-	reg.storeCampaignSnapshot(&campaignMapSnapshot{byID: map[uuid.UUID]campaignInfo{
-		camp.ID: {campaign: camp},
-	}})
-	return reg
-}
-
 type benchNoopRedis struct{ mockRedisClient }
 
 func BenchmarkAcceptLocalQuantaFullSkip(b *testing.B) {

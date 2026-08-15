@@ -10,13 +10,13 @@ REPORT_JS="$ROOT/web/src/models/report.ts"
 if [ ! -f "$REPORT_JS" ]; then
   REPORT_JS="$ROOT/web/src/models/report.js"
 fi
-ROUTES_JS="$ROOT/web/src/lib/routes.ts"
-if [ ! -f "$ROUTES_JS" ]; then
-  ROUTES_JS="$ROOT/web/src/lib/routes.js"
+APP_ROUTES_JS="$ROOT/web/src/react/app_routes.tsx"
+if [ ! -f "$APP_ROUTES_JS" ]; then
+  APP_ROUTES_JS="$ROOT/web/src/react/app_routes.js"
 fi
 
-if [ ! -f "$REPORT_JS" ] || [ ! -f "$ROUTES_JS" ]; then
-  echo "Error: report.ts/js or routes.ts/js missing"
+if [ ! -f "$REPORT_JS" ] || [ ! -f "$APP_ROUTES_JS" ]; then
+  echo "Error: report.ts/js or app_routes missing"
   exit 1
 fi
 
@@ -59,8 +59,10 @@ fi
 missing=0
 while IFS= read -r key; do
   [ -z "$key" ] && continue
-  if ! grep -q "/reports/${key}" "$ROUTES_JS"; then
-    echo "Error: live report '${key}' has no explicit route in ${ROUTES_JS#$ROOT/}"
+  if grep -q "/reports/${key}" "$APP_ROUTES_JS"; then
+    :
+  else
+    echo "Error: live report '${key}' has no explicit route in app_routes"
     missing=1
   fi
 done <"$keys_tmp"

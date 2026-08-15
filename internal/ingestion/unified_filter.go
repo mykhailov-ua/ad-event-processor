@@ -117,7 +117,6 @@ var hourAnyCache [25]any
 func init() {
 	unifiedFilterLuaAny = unifiedFilterLua
 	budgetFastLuaAny = budgetFastLua
-	budgetRollbackLuaAny = budgetRollbackLua
 	for i := 0; i <= 24; i++ {
 		hourAnyCache[i] = i
 	}

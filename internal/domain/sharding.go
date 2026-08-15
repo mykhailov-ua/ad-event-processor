@@ -63,8 +63,8 @@ func NewStaticSlotSharder(numBuckets int) *StaticSlotSharder {
 func (s *StaticSlotSharder) GetShard(id uuid.UUID) int {
 	key := crc32Castagnoli(&id)
 	slot := key & 1023
-	table := &s.loadSnapshot().Table
-	return int(table[slot])
+	snap := s.loadSnapshot()
+	return int(snap.Table[slot])
 }
 
 func (s *StaticSlotSharder) SnapshotVersion() int32 {

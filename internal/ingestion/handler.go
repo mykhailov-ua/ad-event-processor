@@ -97,9 +97,11 @@ type connContext struct {
 	offloadArenaSlot   int
 	offloadRelease     func()
 
-	offloadOnEnter func()
-	offloadBlock   <-chan struct{}
-	offloadWG      *sync.WaitGroup
+	offloadOnEnter    func()
+	offloadBlock      <-chan struct{}
+	offloadWG         *sync.WaitGroup
+	offloadAsyncWrite atomic.Bool
+	offloadRetired    atomic.Bool
 
 	protoH2    bool
 	h2         h2ConnState
@@ -133,6 +135,27 @@ func putRequestBuffer(buf *[]byte) {
 	}
 	*buf = (*buf)[:0]
 	requestBufferPool.Put(buf)
+}
+
+func (h *AdsPacketHandler) releaseOffloadBuffers(ctx *connContext) {
+	if ctx == nil {
+		return
+	}
+	if ctx.offloadRelease != nil {
+		ctx.offloadRelease()
+		ctx.offloadRelease = nil
+		ctx.offloadReqSlice = nil
+	} else if ctx.offloadReqBuf != nil {
+		putRequestBuffer(ctx.offloadReqBuf)
+		ctx.offloadReqBuf = nil
+	}
+}
+
+func (h *AdsPacketHandler) retireOffloadContext(ctx *connContext) {
+	if ctx == nil || !ctx.offloadRetired.CompareAndSwap(false, true) {
+		return
+	}
+	h.contextPool.Put(ctx)
 }
 
 func putAdEvent(evt *pb.AdEvent) {
@@ -694,8 +717,10 @@ func (h *AdsPacketHandler) write(c gnet.Conn, data []byte, ctx *connContext) {
 		}
 	}
 	if h.workerPool != nil && ctx != nil {
+		h.releaseOffloadBuffers(ctx)
+		ctx.offloadAsyncWrite.Store(true)
 		_ = c.AsyncWrite(data, func(c gnet.Conn, err error) error {
-			h.contextPool.Put(ctx)
+			h.retireOffloadContext(ctx)
 			return nil
 		})
 	} else {
@@ -1148,6 +1173,8 @@ func (h *AdsPacketHandler) OnTraffic(c gnet.Conn) (action gnet.Action) {
 			}
 
 			ctx := h.contextPool.Get().(*connContext)
+			ctx.offloadAsyncWrite.Store(false)
+			ctx.offloadRetired.Store(false)
 			if h.logger != nil {
 				ctx.shardID = int(h.loggerShardCounter.Add(1) % uint64(len(h.logger.Shards())))
 			}
@@ -1164,7 +1191,7 @@ func (h *AdsPacketHandler) OnTraffic(c gnet.Conn) (action gnet.Action) {
 
 			submitted := h.workerPool.SubmitOffload(ctx, buf[:reqLen])
 			if !submitted {
-				h.contextPool.Put(ctx)
+				h.retireOffloadContext(ctx)
 				metrics.WorkerPoolRejectTotal.Inc()
 				h.write(c, respWorkerPoolOverload, nil)
 				h.recordTrackStatus(http.StatusServiceUnavailable)
@@ -1189,16 +1216,13 @@ func (h *AdsPacketHandler) runOffloadedRequest(workerID int, ctx *connContext) {
 	}
 	if ctx.offloadReqSlice == nil && ctx.offloadReqBuf == nil {
 		finishOffloadCtx(ctx)
+		h.retireOffloadContext(ctx)
 		return
 	}
 	defer func() {
-		if ctx.offloadRelease != nil {
-			ctx.offloadRelease()
-			ctx.offloadRelease = nil
-			ctx.offloadReqSlice = nil
-		} else if ctx.offloadReqBuf != nil {
-			putRequestBuffer(ctx.offloadReqBuf)
-			ctx.offloadReqBuf = nil
+		if !ctx.offloadAsyncWrite.Load() {
+			h.releaseOffloadBuffers(ctx)
+			h.retireOffloadContext(ctx)
 		}
 	}()
 
@@ -1377,7 +1401,7 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 	wReqID.buf = wReqID.buf[:0]
 	wReqID.buf = appendUUID(wReqID.buf, id)
 
-	fields, badResp, status, ok := h.parseTrackIngest(ctx, req, wReqID)
+	fields, badResp, status, ok := h.parseTrackIngest(ctx, req)
 	if !ok {
 		h.write(c, badResp, ctx)
 		h.recordMetrics(startMono, status)

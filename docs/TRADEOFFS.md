@@ -8,6 +8,137 @@ For exact SLA targets and benchmarks, check out [`platform-sla.mdc`](platform-sl
 
 ---
 
+## Hot-path ingest: strategy, rejected alternatives, verification
+
+This section ties together the **2026-08** hot-path work: async `StreamProducer`, admission reservation, budget rollback, Lua defer, local-quanta dual-write fix, gnet Redis offload, Redis UDS, and optional `pkg/broker` cutover. It answers *why this stack*, *what we did not pick*, and *how we know it works*.
+
+### Problem statement
+
+Under sustained `/track` load we observed four coupled failure modes:
+
+1. **Pinned worker starvation** — `PinnedWorkerPool` threads call `runtime.LockOSThread()`. A synchronous `EVALSHA` on the worker blocks the entire core for Redis RTT (often hundreds of µs–ms), not just the goroutine. Worker pool saturation → 503 before Redis itself is the bottleneck.
+2. **Lua holding the shard thread** — `XADD` inside `budget-fast.lua` / `unified-filter.lua` extends single-threaded Redis script time. Budget checks and stream append are both on the critical path of one `EVALSHA`.
+3. **Debit without event (race window)** — A read-only queue pressure check followed by filter debit and `Process()` is not atomic. Concurrent producers can fill the channel between check and enqueue; `_ = p.Process` used to swallow `ErrQueueFull` after spend.
+4. **Duplicate stream writes** — With `LOCAL_QUOTA_MODE=live` and `StreamProducer` both active, full-skip could `XADD` via `LocalQuantaStreamPublisher` *and* via `StreamProducer` unless stream keys are coordinated.
+
+Financial invariant: **`current_spend <= budget_limit`** (Postgres, ±1 micro-unit in tests). Hot path must **fail closed** (503) rather than accept without debit+log alignment.
+
+### Layered strategy (what we built)
+
+| Layer | Mechanism | Role |
+| :--- | :--- | :--- |
+| **Routing** | `StaticSlotSharder` + CRC32C asm | Single-master keys per campaign; edge/tracker/broker parity |
+| **Filter order** | Go-first chain ending in `UnifiedFilter` | Reject cheaply before any Redis RTT |
+| **Local quanta** | `LOCAL_QUOTA_MODE=live` full-skip | Zero synchronous `EVALSHA` for eligible clicks/impressions |
+| **Budget atomicity** | Lua `EVALSHA` (debit + dedup) | One RTT; multi-key atomic on one master |
+| **Stream append** | `StreamProducer` / `BrokerProducer` | vtproto encode on hot path; pipeline `XADD` in background |
+| **Lua defer** | `SetDeferStreamToProducer(true)` | Lua stream key → `fcap:ignored`; single writer |
+| **Admission** | `TryReserve` before debit (`STREAM_PRODUCER_ADMISSION_PCT=85`) | 503 before spend when queue near full |
+| **Rollback** | `budget-rollback.lua` + local ledger refund | Undo debit if enqueue fails after filter accept |
+| **gnet offload** | Detached goroutine for `FilterEngine.Check` | Pinned workers not blocked on Redis |
+| **Transport** | Redis UDS on single-VPS | Skip TCP loopback stack when co-located |
+| **CH durability (optional)** | `pkg/broker` mmap WAL | Offload Redis stream RAM; crash-safe replay to processor |
+
+Default appliance path: **Redis Streams** for settlement + analytics consume; **broker** is an optional migration for ClickHouse ingest (`CH_INGEST_SOURCE=broker`), not a replacement for budget Lua.
+
+### Why not Jump Consistent Hash?
+
+`JumpHashSharder` remains in the tree for **tests and benchmarks only** (`stream_admission_test.go`, `registry_worker_cache_bench_test.go`). Production uses `StaticSlotSharder`.
+
+| Criterion | Jump Hash | Static slots (chosen) |
+| :--- | :--- | :--- |
+| Resharding | Changing `numBuckets` remaps a **large fraction** of keys (tail-add constraint) | Only explicitly rewritten slots in `slot_table[1024]` move |
+| Mid-cluster node loss | Dropping a bucket index breaks monotonic tail assumption | Operator maps slot → shard; fence + epoch during migration |
+| Hot-path cost | ~41 ns/op in microbench at 1024 buckets | ~5.5 ns/op, 0 allocs (`GetShard`) |
+| Edge parity | Harder to mirror in Lua without full jump impl | Fixed table synced from control plane |
+| Lua atomicity | Same as static (per-shard) if keys co-locate | Same — reason to reject Jump is **ops/reshard**, not Lua |
+
+We need **predictable partial migration** (copy, fence, dual-write, drain) more than minimal key movement on scale-out. Jump Hash optimizes the wrong dimension for ad-tech campaign-key routing.
+
+### Why not Redis Cluster?
+
+| Issue | Impact on BidShard |
+| :--- | :--- |
+| `MOVED` / `ASK` redirects | Multi-key Lua (`MGET` + multiple `INCRBY` + `SET` + optional `XADD`) must land on one master; redirects mid-script are not viable |
+| Cluster slot migration | Redis-driven rebalancing fights our operator-led `slot_table` epoch and migration fence |
+| Hot campaign | Still one primary per key — Cluster does not split a hot campaign |
+| Ops | Four standalone masters on appliance SKU; Sentinel optional under `infra` profile — not 6-node cluster bus |
+
+**Verdict:** N standalone masters + client-side `StaticSlotSharder` + hash tags `{campaign_id}`.
+
+### Why not Kafka / NATS / RabbitMQ on the hot path?
+
+| Requirement | External bus | Our approach |
+| :--- | :--- | :--- |
+| Budget debit + idempotency atomic with accept | Requires distributed transaction or outbox between bus and Redis | Single Lua script on campaign shard |
+| Sub-80 ms p99 `/track` | Producer latency + serialization + broker round-trip | One Redis RTT (or 0 with full-skip) |
+| Appliance footprint | Extra service, JVM/ops, topic partitioning | Redis already required for filters |
+| Fail closed on overload | Consumer lag ≠ reject on ingest | Admission 503 before debit |
+
+Kafka is appropriate for **analytics pipelines** downstream; it is a poor fit for **synchronous budget gate**. `pkg/broker` is a **narrow mmap WAL** for tracker→processor on the same host (or region), not a general message bus.
+
+### Why our own `pkg/broker` (not Redis-only, not Kafka)
+
+**Goals** (see [MILESTONES.md](MILESTONES.md) Tiered Event Bus):
+
+1. **Cut Redis RAM** — `MAXLEN ~` on `ad:events:stream` still costs memory under load; broker segments are disk-backed.
+2. **Crash durability** — mmap WAL survives tracker/process kill; replay via `broker replay` / consumer offsets (`LOGGER_DIR/offsets`).
+3. **Controlled cutover** — Dual-path shadow (`BROKER_SHADOW_MODE=1`), PEL drain ([PEL_DRAIN.md](PEL_DRAIN.md)), then `CH_INGEST_SOURCE=broker`.
+4. **Same routing story** — Broker partition pick uses the same campaign→shard mental model; reconcile workers compare broker HWM vs Redis.
+
+**Why build vs buy:**
+
+| Option | Why we did not default to it |
+| :--- | :--- |
+| **Kafka** | Heavy ops, no atomicity with Redis budget; overkill for single-VPS appliance |
+| **NATS JetStream** | Same split-brain with Lua debit unless another coordination layer |
+| **Redis Streams only** | RAM pressure + trim windows; CH ingest competes with settlement PEL on same key |
+| **Postgres NOTIFY/LISTEN** | Already rejected for outbox (§3); worse for event volume |
+
+Custom broker = **append-only segment log + gnet server + Redis leader lease** — scope limited to what processor needs, no cluster protocol on `/track`.
+
+Budget/settlement can stay on Redis Streams until broker `_pg` path is proven; Lua sets `fcap:ignored` for main stream when broker-primary.
+
+### Why split Lua debit from Go `XADD`?
+
+**Before:** One Lua script debited budget and `XADD`’d — atomic but held Redis longer and tied stream backpressure to script latency.
+
+**After:** Lua debits + dedup only; `StreamProducer` batches `XADD`. Trade-off: two-phase accept → **reservation + rollback** restore invariants.
+
+**Why 85% admission headroom?** Reject before debit while leaving slack for in-flight requests that already passed admission. Tunable via `STREAM_PRODUCER_ADMISSION_PCT`; `0` disables.
+
+**Why async filter goroutine?** `LockOSThread` workers are the scarce resource; moving `EVALSHA` off them isolates network waits from parse/accept throughput. Response still completes on the same `gnet.Conn` from the goroutine (copies `Accept`/`Origin` strings — no `unsafe.String` over freed frame).
+
+**Why UDS?** On single-VPS, Redis and tracker share a volume; unix socket avoids TCP loopback. Gate: `scripts/perf/redis_uds_benchmark.sh` (dial p50 &lt; 5 µs). `redis_shards.go` and `redis_connect.go` auto-dial `unix` when addr is a socket path.
+
+### Verification matrix (evidence in tree)
+
+| Behavior | Test / gate | Expected |
+| :--- | :--- | :--- |
+| Race: check then fill queue → post-debit drop | `TestStreamProducerAdmissionRaceWithoutReserve` | 7/16 `Process` → `ErrQueueFull` without reserve |
+| Reserve prevents `ErrQueueFull` | `TestStreamProducerReservePreventsQueueFull` | Only headroom slots reserved; 0 failures |
+| Admission reject at pressure | `TestStreamProducerAdmissionReject` | `filterRejectProducerOverload` |
+| Dual-write fix | `TestUnifiedFilter_SetDeferStreamToProducer_DualStreamWriteFix` | local-quanta stream → `fcap:ignored` when defer on |
+| Local rollback | `TestUnifiedFilter_RollbackDebit_LocalQuanta` | ledger restored after refund |
+| Producer microbench | `BenchmarkStreamProducer_Process`, `BenchmarkStreamProducer_AdmissionCheck` | enqueue + admission path (no live Redis) |
+| Static slot parity | `TestShardFromSlotTable_matchesStaticSlotSharder`, `sharding_test.go` | Go/Lua/broker same slot |
+| Shard 0 isolation | `tests/resilience/chaos_fault_suite_test.go`, `SHARDING_MILESTONE.md` | Control-plane kill drills |
+| UDS transport | `TestRedisUDS_DialLatencyGate`, `redis_uds_benchmark.sh` | UDS p50 &lt; budget vs TCP |
+| Budget invariant | `AssertBudgetInvariant` in settlement tests | `current_spend <= budget_limit` |
+
+**Agent/human must paste command output for prod SLA claims** — see `.cursor/rules/ai-slop.mdc` verification checklist.
+
+### Operator signals
+
+| Metric | Meaning |
+| :--- | :--- |
+| `ad_stream_producer_queue_depth{shard}` | Per-shard producer backlog |
+| `ad_stream_producer_admission_rejected_total{shard}` | Rejected **before** debit (healthy under overload) |
+| `ad_stream_producer_post_debit_rejected_total` | Rollback path — should stay **≈ 0**; spike → tune admission or capacity |
+| `ad_local_quota_full_skip_ratio` | Full-skip share when `LOCAL_QUOTA_MODE=live` (logged at tracker start) |
+
+---
+
 ## 1. Redis Sharding: Static Slots over Redis Cluster
 
 ### How Sharding Works
@@ -23,6 +154,9 @@ Our `StaticSlotSharder` keeps this 1024-entry mapping table in an `atomic.Value`
 To ensure all keys needed by a campaign remain on the exact same master, every key includes a `{campaign_id}` hash tag.
 
 ### Why We Choose Static Slots over Redis Cluster
+
+> Deeper comparison (Jump Hash, Kafka, broker): [Hot-path ingest: strategy](#hot-path-ingest-strategy-rejected-alternatives-verification).
+
 When evaluating Redis Cluster for our hot path, we ran into several structural challenges:
 
 * **Atomic Multi-Key Scripts:** Our settlement logic executes multi-key Lua scripts (`EVALSHA`) that combine budget checks, deduplication, and stream appending (`XADD`). Under Redis Cluster, any slot rebalancing or redirection (`MOVED`) breaks multi-key operations mid-request. With static slots, single-master routing guarantees single-RTT execution with zero redirects.
@@ -94,9 +228,11 @@ Every request requiring budget settlement calls a pre-compiled Lua script (`unif
 
 1. **Batched Lookups:** An initial `MGET` fetches campaign budget, idempotency keys, daily spend limits, and frequency caps in a single round-trip inside Redis.
 2. **Business Rules:** The script evaluates budget limits, pacing caps, frequency rules, time-to-click restrictions, placement blacklists, and slot migration fences.
-3. **Atomic Writes:** If checks pass, the script marks deduplication keys (`SET NX`), increments spend (`INCRBY`), and appends the event to `ad:events:stream` via `XADD`.
+3. **Atomic Writes:** If checks pass, the script marks deduplication keys (`SET NX`), increments spend (`INCRBY`), and — unless `SetDeferStreamToProducer(true)` is active — appends the event to `ad:events:stream` via `XADD`.
 
-Executing budget debits and event stream appends in a single script prevents inconsistencies like "debited budget without logged event" or vice versa.
+When the tracker wires `StreamProducer` or `BrokerProducer`, Lua stream key is set to `fcap:ignored` and the Go producer performs `XADD` asynchronously. This splits **budget atomicity** (Lua) from **stream append** (bounded Go queue) while keeping a single logical writer per event.
+
+When defer is **off** (legacy/tests), executing budget debits and stream appends in one Lua script still prevents "debited without logged event" inside that single Redis command. With defer **on**, reservation + rollback (§18) bound the two-phase window.
 
 ### Why Lua is Rarely the Bottleneck
 * **Single Round-Trip:** Go sends one `EVALSHA` rather than issuing separate pipeline commands for check, debit, and logging.
@@ -110,6 +246,7 @@ Executing budget debits and event stream appends in a single script prevents inc
 | System Layer | Unit of Operation | Architectural Role |
 | :--- | :--- | :--- |
 | **Lua Script** | One event, multiple keys | Guarantees atomic checks and writes within a single Redis command. |
+| **StreamProducer** | Bounded per-shard queue (50k slots) | Defers `XADD` off the request goroutine; admission reserves a slot before debit. |
 | **Local Quanta** | Chunk of budget | Fetches budget blocks periodically to serve thousands of requests locally. |
 | **Stream Processor** | `XREADGROUP` batches | Consumes event streams asynchronously to write into Postgres and ClickHouse. |
 | **ClickHouse Store** | Configurable batches (default 50k) | Efficiently writes telemetry batches to minimize disk part fragmentation. |
@@ -126,6 +263,10 @@ Executing budget debits and event stream appends in a single script prevents inc
 ### Ingestion Flow in the Tracker
 The tracker engine uses `gnet` to manage event-driven networking over epoll ring buffers. Incoming HTTP/1 (and optional HTTP/2 or HTTP/3) requests are parsed by a deterministic finite automaton (DFA) directly into pooled `Event` structures. Requests are then routed across CPU cores using a worker pool (`PinnedWorkerPool`) pinned by campaign ID.
 
+**Redis filter offload:** On the gnet `/track` path, after stream admission reserves a producer slot, `FilterEngine.Check` (including `EVALSHA`) runs in a **detached goroutine**. Pinned workers return to the event loop immediately instead of blocking on Redis RTT. The HTTP response is written from that goroutine when filtering completes.
+
+**Stream admission:** Before any budget debit, `tryAcquireStreamAdmission` atomically reserves capacity in the target `StreamProducer` or `BrokerProducer` queue (`STREAM_PRODUCER_ADMISSION_PCT`, default 85%). This closes the race where a queue could fill between a pressure check and `Process()`. Failed reservation → HTTP 503 before spend.
+
 The core filtering and RTB auction logic queries in-memory data structures exclusively:
 * Atomic campaign registry snapshots (~2–11 ns lookup overhead)
 * Feature flags, licenses, and ML model boost parameters
@@ -141,7 +282,8 @@ When latency spikes occur, the root cause is almost always downstream Redis scri
 
 ### Trade-offs We Accept
 * **Custom Protocol Parsing:** We maintain custom state machines instead of using standard Go `net/http` packages or third-party middleware ecosystems.
-* **Strict Memory Lifetimes:** Request bytes parsed with zero-copy string views (`unsafe.String`) are valid only for the duration of the network frame. Asynchronous tasks must copy required fields into owned buffers (`evt.StringBuffer`).
+* **Strict Memory Lifetimes:** Request bytes parsed with zero-copy string views (`unsafe.String`) are valid only for the duration of the network frame. Asynchronous filter goroutines copy `Accept`/`Origin` (and event fields via `evt.StringBuffer`) before writing responses.
+* **Async response timing:** `/track` with `FilterEngine` returns from the gnet loop before Redis completes; latency includes filter RTT in the detached goroutine (by design — frees pinned workers).
 
 ---
 
@@ -151,6 +293,8 @@ When latency spikes occur, the root cause is almost always downstream Redis scri
 When `LOCAL_QUOTA_MODE=live` is enabled, tracker nodes request budget chunks from Redis in advance using `local-quota-refill.lua`. Eligible campaigns debit their allocation directly in Go memory (`TrySpendDebit` / `LocalQuantaSpend` in ~16 ns).
 
 When full-skip conditions are met, `acceptLocalQuantaFullSkip` handles click deduplication locally and publishes events asynchronously via `LocalQuantaStreamPublisher`. This completely eliminates synchronous `EVALSHA` round-trips to Redis on the hot path.
+
+When `StreamProducer` is enabled, `SetDeferStreamToProducer(true)` also sets the local-quanta stream lane to `fcap:ignored`, so full-skip events enqueue only through `StreamProducer` — preventing duplicate `XADD` of the same event.
 
 ### Trade-offs We Accept
 * **Eventual Consistency:** Stream records may lag behind local in-memory debits. If a node crashes unexpectedly, unflushed local allocations are reconciled during periodic refill and return cycles (`local-quota-return.lua`). Operators monitor these operations via `ad_local_quota_*` Prometheus metrics.
@@ -246,12 +390,37 @@ When rebalancing Redis instances, operators perform slot migrations without rely
 ## 13. Dual Event Buses: Redis Streams and `pkg/broker`
 
 ### How Messaging is Structured
-Redis Streams serve as our primary event log on the hot path, combining atomic Lua budget debits and event appends in one operation.
+**Default (appliance):** Redis Streams are the primary event log. Budget settlement uses Lua on the hot path; events reach `ad:events:stream` via `StreamProducer` (or Lua `XADD` when defer is off). Processor consumes `{REDIS_GROUP_NAME}_pg` and `_ch` per shard.
 
-For cross-region replication and fallback logging, we maintain `pkg/broker`—a custom disk-backed segment log with memory-mapped buffers. It coordinates leader leases through Redis and handles fallback event recording if primary communication channels experience issues (`CAMPAIGN_UPDATE_BROKER_FALLBACK`).
+**Optional cutover:** `pkg/broker` is a disk-backed mmap segment log (`cmd/broker`, `pkg/broker/log`) for tracker → processor ingest, especially ClickHouse (`CH_INGEST_SOURCE=broker`). Tracker `BrokerProducer` mirrors the same admission/reservation path as `StreamProducer`.
+
+### Why Not Kafka / Managed Streaming Here?
+
+See [Hot-path ingest: strategy](#hot-path-ingest-strategy-rejected-alternatives-verification). Summary:
+
+* **Atomicity:** Budget debit must stay in Redis Lua on the campaign shard; a separate bus publish cannot be one phase with debit without distributed transactions.
+* **Appliance:** Single-VPS SKU cannot depend on a JVM cluster or external topic ops.
+* **Scope:** Broker solves **durability + RAM** for high-volume CH ingest and regional WAL — not general pub/sub (campaign updates still use outbox → Redis pub/sub).
+
+### Why Build `pkg/broker` Instead of Redis-Only?
+
+| Pressure | Redis Streams alone | + `pkg/broker` |
+| :--- | :--- | :--- |
+| Memory at 50k+ RPS | `XADD` + `MAXLEN ~` retains hot window in RAM | Segments on disk; bounded Redis role |
+| Tracker crash | Events only in producer queue / unacked stream | mmap WAL replayable to processor |
+| CH ingest lag | PEL growth on `_ch` competes with settlement | Independent consumer offsets on broker |
+| Multi-region (Enterprise) | Cross-region Redis stream replication is heavy | `region-proxy` uplink + broker segments ([enterprise/MULTI_REGION.md](enterprise/MULTI_REGION.md)) |
+
+Leader election and HWM still coordinate through Redis (`pkg/broker/server/coord.go`); broker is **not** a second budget store.
+
+### Migration and Rollback
+
+Documented in [DEVELOPMENT.md §7](DEVELOPMENT.md#broker-cutover-ch_ingest_source) and [PEL_DRAIN.md](PEL_DRAIN.md): shadow → drain PEL → `CH_INGEST_SOURCE=broker` → optional rollback to Redis consumers while broker offsets persist on disk.
 
 ### Trade-offs We Accept
-* **Increased System Complexity:** Operating a custom broker alongside Redis Streams introduces additional state monitoring (leader election leases, high-water marks, segment retention policies). `pkg/broker` serves as a secondary relay, while Redis Streams remain authoritative for hot-path budget transactions.
+* **Increased System Complexity:** Segment retention, leader lease, reconcile workers (`broker_reconcile.go`), dual-path divergence metrics.
+* **Two ingest paths during migration:** Operators must drain PEL before cutover; `ad_broker_ingest_divergence_high` must be quiet in shadow mode.
+* **Budget path unchanged until explicitly migrated:** Redis Lua remains authoritative for spend limits; broker does not replace `UnifiedFilter`.
 
 ---
 
@@ -314,7 +483,66 @@ Stripe webhooks insert records into Postgres `payment.payment_outbox` tables. Ba
 
 ---
 
-## 18. Frequently Asked Questions (FAQ)
+## 18. Async Stream Producer, Admission, and Budget Rollback
+
+> **Context:** Part of the layered hot-path strategy — full rationale, rejected alternatives (Cluster, Jump Hash, Kafka), and verification table: [Hot-path ingest: strategy](#hot-path-ingest-strategy-rejected-alternatives-verification).
+
+### How the Producer Path Works
+Each Redis shard (or the broker WAL path when `CH_INGEST_SOURCE=broker`) has a bounded async queue (`StreamProducer`, capacity 50k per shard). Accepted events are vtproto-encoded on the hot path and enqueued; a background worker batches pipeline `XADD` to `ad:events:stream`.
+
+1. **Admission before debit:** `tryAcquireStreamAdmission` reserves a queue slot when `STREAM_PRODUCER_ADMISSION_PCT` &gt; 0 (default 85%). Reject → 503 with no Redis spend.
+2. **Consume reservation on publish:** `ProcessReserved` / `EnqueueReserved` consumes the lease; `lease.Release()` on filter reject.
+3. **Rollback on post-debit enqueue failure:** `budget-rollback.lua` reverses `INCRBY`, sync counters, and idempotency key; local-quanta path refunds the in-memory ledger. Rollback context timeout: 200 ms.
+
+### Problem This Replaced
+
+Earlier design: Lua did debit + `XADD` in one script, or Go called `Process()` after debit without reservation. Failure modes:
+
+* **Silent drop** — `ErrQueueFull` swallowed after successful Lua debit.
+* **Race window** — read-only `QueuePressurePct` check, then concurrent fills before `Process()` (reproduced in `TestStreamProducerAdmissionRaceWithoutReserve`: 7/16 enqueues fail without reserve).
+* **Dual `XADD`** — full-skip local quanta lane + `StreamProducer` both writing the same stream.
+
+### Why We Split Lua Debit from Go XADD
+Lua must stay short and single-threaded per shard. Moving `XADD` to a Go producer:
+* Keeps one Redis RTT for budget/dedup on the filter path.
+* Amortizes stream writes via pipeline batching off the request goroutine.
+* Allows backpressure via admission control instead of silent `ErrQueueFull` drops after debit.
+* Shortens Lua script hold time (no stream append inside `EVALSHA` when defer is on).
+
+### Alternatives Considered
+
+| Alternative | Why rejected |
+| :--- | :--- |
+| Larger queue only | Hides overload; longer crash window; does not fix check→enqueue race |
+| Rollback only (no reserve) | Still accepts debit under race; rollback adds Redis RTT on failure path |
+| Keep Lua `XADD` | Stream backpressure blocks Redis shard thread; couples script latency to ingest burst |
+| Synchronous `Process` on worker | `LockOSThread` + Redis RTT exhausts pinned pool (§5) |
+| Block until queue space | Unbounded latency; violates filter timeout SLA |
+
+### How We Verified
+
+| Test | Proves |
+| :--- | :--- |
+| `TestStreamProducerAdmissionRaceWithoutReserve` | Without reserve, post-debit `ErrQueueFull` is possible under concurrent fill |
+| `TestStreamProducerReservePreventsQueueFull` | `TryReserve` caps acquisitions to headroom; `ProcessReserved` never full |
+| `TestStreamProducerAdmissionReject` | 100% queue → `filterRejectProducerOverload` |
+| `TestUnifiedFilter_SetDeferStreamToProducer_DualStreamWriteFix` | Single stream writer when producer enabled |
+| `TestUnifiedFilter_RollbackDebit_LocalQuanta` | In-memory ledger refund path |
+| `BenchmarkStreamProducer_*` | Hot-path enqueue/admission cost (micro; no Redis) |
+
+```bash
+go test ./internal/ingestion/ -run='TestStreamProducer|TestUnifiedFilter_SetDefer|TestUnifiedFilter_Rollback' -v
+go test ./internal/ingestion/ -run='^$' -bench='BenchmarkStreamProducer_' -benchmem -count=3
+```
+
+### Trade-offs We Accept
+* **Two-phase accept:** Budget debit and stream append are no longer one Lua atomic unit when defer is on; rollback + reservation bound the failure window.
+* **Monitor post-debit rejects:** `ad_stream_producer_post_debit_rejected_total` should stay near zero; sustained spikes mean admission tuning or capacity work.
+* **Rollback latency:** Extra Redis script on rare failure path (200 ms cap); still cheaper than silent budget leak.
+
+---
+
+## 19. Frequently Asked Questions (FAQ)
 
 **Does the `/track` endpoint write directly to Postgres?**  
 No. `/track` writes only to Redis Streams (or local quanta memory logs). Background processors (`cmd/processor`) consume stream events and update Postgres asynchronously.
@@ -355,6 +583,12 @@ Querying Postgres on incoming HTTP requests would violate our latency SLAs. Trac
 **When does `/track` skip Redis entirely?**  
 Only when `LOCAL_QUOTA_MODE=live` is enabled, a valid local budget allocation is active, and the request meets full-skip criteria for simple impressions or clicks.
 
+**Why reserve a stream producer slot before filter debit?**  
+Without reservation, the producer queue could fill between an admission pressure check and `Process()`, causing a silent drop after budget was already debited. Atomic `TryReserve` closes that window; post-debit failures call `budget-rollback.lua` or local ledger refund.
+
+**Does Lua still write to `ad:events:stream`?**  
+Not when `StreamProducer` or `BrokerProducer` is wired — `SetDeferStreamToProducer(true)` sets the Lua stream key to `fcap:ignored` and the Go producer performs `XADD`.
+
 **Why patch `vtproto` generated files after `make proto`?**  
 Standard `vtproto` code allocates memory when unmarshaling repeated byte fields. Our patch rewrites those functions to reuse slice buffers (`appendReuseBytes`), maintaining zero-allocation contracts on the hot path.
 
@@ -390,3 +624,18 @@ No. `unsafe.String` views reference `gnet` network buffer frames that are reused
 
 **Why avoid Redis Cluster for slot migrations?**  
 Redis Cluster redirects (`MOVED`) disrupt single-master multi-key Lua scripts mid-execution. Controlled slot migrations (copy, fence, epoch bump, drain) preserve script atomicity throughout the migration process.
+
+**Why not Jump Hash for production sharding?**  
+Jump Consistent Hash remaps a large key fraction when bucket count changes and is slower (~41 ns vs ~5.5 ns). `JumpHashSharder` remains for unit tests; `StaticSlotSharder` is production and edge-aligned.
+
+**Why not Kafka on `/track`?**  
+Budget debit and event accept must be atomic on the campaign shard (Lua). A separate publish step creates split-brain if the bus succeeds and Redis rolls back, or vice versa. Kafka suits downstream analytics, not synchronous spend gates.
+
+**Why build `pkg/broker` instead of only Redis Streams?**  
+Optional mmap WAL cuts Redis RAM for high-volume CH ingest, survives tracker crash with replay, and supports broker-only cutover after PEL drain. It does not replace Redis budget Lua unless explicitly migrated. See [TRADEOFFS.md §13](TRADEOFFS.md#13-dual-event-buses-redis-streams-and-pkgbroker).
+
+**Why async `FilterEngine` on gnet after admission?**  
+Pinned workers use `LockOSThread`; blocking `EVALSHA` on them exhausts the pool faster than Redis itself. Filter runs in a detached goroutine; response is written when complete.
+
+**Why Redis UDS on single-VPS?**  
+Tracker and Redis share a host/volume; unix sockets skip TCP loopback overhead. Auto-detected in `redis_shards.go` / `redis_connect.go` when `REDIS_ADDRS` is a socket path.

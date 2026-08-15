@@ -12,8 +12,6 @@ import (
 //go:embed budget-rollback.lua
 var budgetRollbackLua string
 
-var budgetRollbackLuaAny any
-
 func (f *UnifiedFilter) RollbackRedisDebit(
 	ctx context.Context,
 	evt *domain.Event,

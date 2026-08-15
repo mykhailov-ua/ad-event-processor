@@ -2,7 +2,9 @@ package ingestion
 
 import (
 	"net"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/config"
 	"github.com/google/uuid"
@@ -13,6 +15,7 @@ var staticRemoteAddr = &net.TCPAddr{IP: net.IPv4(1, 1, 1, 1), Port: 1234}
 
 type mockGnetConn struct {
 	gnet.Conn
+	mu      sync.Mutex
 	written []byte
 	ctx     any
 }
@@ -21,8 +24,45 @@ func (m *mockGnetConn) Context() any     { return m.ctx }
 func (m *mockGnetConn) SetContext(v any) { m.ctx = v }
 
 func (m *mockGnetConn) Write(b []byte) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.written = append(m.written[:0], b...)
 	return len(b), nil
+}
+
+func (m *mockGnetConn) AsyncWrite(buf []byte, callback gnet.AsyncCallback) error {
+	m.mu.Lock()
+	_, err := m.writeLocked(buf)
+	m.mu.Unlock()
+	if callback != nil {
+		_ = callback(m, err)
+	}
+	return err
+}
+
+func (m *mockGnetConn) writeLocked(b []byte) (int, error) {
+	m.written = append(m.written[:0], b...)
+	return len(b), nil
+}
+
+func (m *mockGnetConn) snapshotWritten() []byte {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]byte(nil), m.written...)
+}
+
+func waitMockGnetWritten(conn *mockGnetConn, timeout time.Duration) []byte {
+	if timeout <= 0 {
+		timeout = 2 * time.Second
+	}
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if written := conn.snapshotWritten(); len(written) > 0 {
+			return written
+		}
+		time.Sleep(time.Millisecond)
+	}
+	return nil
 }
 
 func (m *mockGnetConn) RemoteAddr() net.Addr {

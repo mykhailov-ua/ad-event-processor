@@ -315,47 +315,62 @@ Tracker handler p99 SLA (`ad_http_request_duration_seconds`) is measured via loa
 
 ## 6. CI Merge Gates
 
-GitHub Actions (`.github/workflows/ci.yaml`) runs on **pull requests** and **pushes to `main`**. Use `bash scripts/ci/pr_fast.sh` locally before opening a PR — it matches the **Fast gate** job.
+GitHub Actions (`.github/workflows/ci.yaml`) runs on **pull requests** and **pushes to `main`**. Job names use the `Gate · …` prefix so branch protection lists match the Actions UI.
+
+Use `bash scripts/ci/pr_fast.sh` locally before opening a PR — it matches **Gate · merge-pr-fast**.
 
 ### Required checks (branch protection)
 
-Mark only these as required in GitHub **Settings → Branches → main**:
+Mark these as required in GitHub **Settings → Branches → main**:
 
-| Check | Job | Blocks merge |
+| Check (Actions UI) | Script / command | Blocks merge |
 | :--- | :--- | :--- |
-| **Fast gate** | `fast` | Yes |
-| govulncheck | `govulncheck` | Optional (runs when Go sources change) |
-| OpenRTB fuzz smoke | `openrtb-fuzz` | Optional (path: `internal/openrtb/**`) |
-| Fraud model smoke | `fraudtrain` | Optional (path: `model/**`) |
-| Full test suite | `full-test` | No on PR — **main push only** |
-| Container resilience | `resilience` | No on PR — **main push** or `workflow_dispatch` |
+| **Gate · merge-pr-fast** | `bash scripts/ci/pr_fast.sh` | Yes |
+| **Gate · merge-race-short** | `bash scripts/ci/race_short.sh` | Yes |
+| **Gate · merge-integration** | `bash scripts/ci/integration_test.sh` | Yes |
+| Gate · merge-govulncheck | `bash scripts/ci/govulncheck.sh` | Optional |
+| Gate · merge-openrtb-fuzz | `make openrtb-fuzz-smoke` | Optional (path: OpenRTB) |
+| Gate · merge-fraud-model | `bash scripts/ci/fraudtrain.sh` | Optional (path: `model/**`) |
+| Gate · merge-perf-smoke | `bash scripts/ci/perf_smoke.sh` | Optional |
 
-Perf gate (`.github/workflows/perf-gate.yaml`): smoke zero-alloc on PR when hot-path paths change; strict benchstat needs self-hosted runner (`PERF_RUNNER_LABEL` repo variable).
+**Main-only** (no PR required checks):
+
+| Check | Script | When |
+| :--- | :--- | :--- |
+| Gate · main-full-test | `bash scripts/ci/full_test.sh` | Push to `main` (integration paths) |
+| Gate · main-resilience | `bash scripts/fault/run.sh` | Push to `main` |
+| Gate · main-license-red-team | `make license-red-team` | Push to `main` |
+| Gate · main-perf-strict | `PERF_GATE_STRICT=true bash scripts/test/gate_run.sh` | Push to `main` (hot-path paths); workflow `perf-gate.yaml` |
+
+Perf smoke on every PR: **Gate · merge-perf-smoke** (`PERF_GATE_STRICT=false`). Strict benchstat vs baseline: **Gate · main-perf-strict** on self-hosted when repo variable `PERF_RUNNER_LABEL` is set.
 
 Sentinel failover (`.github/workflows/sentinel-resilience.yaml`): **main push** and manual `workflow_dispatch` only.
 
 ### Local commands
 
 ```bash
-bash scripts/ci/pr_fast.sh          # PR merge gate (lint, alloc-gate, test -short; integration skipped)
-make check-local                    # pr_fast + docker image build
-bash scripts/ci/full_test.sh        # integration + fault (main / pre-release)
-bash scripts/fault/run.sh           # fault injection + fault_proof count
-PERF_GATE_STRICT=false bash scripts/test/gate_run.sh   # smoke — alloc gate NOT run
-PERF_GATE_STRICT=true bash scripts/test/gate_run.sh     # strict benchstat + alloc regression
-bash scripts/fault/sentinel.sh      # Redis Sentinel failover drill
+bash scripts/ci/pr_fast.sh              # merge-pr-fast (lint, alloc-gate, test -short, admin web)
+bash scripts/ci/race_short.sh           # merge-race-short (go test -race -short)
+bash scripts/ci/integration_test.sh     # merge-integration (testcontainers)
+bash scripts/ci/full_test.sh            # main-full-test (integration + fault)
+bash scripts/fault/run.sh               # main-resilience
+bash scripts/ci/perf_smoke.sh           # merge-perf-smoke
+PERF_GATE_STRICT=true bash scripts/test/gate_run.sh   # main-perf-strict
+make check-local                        # pr_fast + docker image build
+bash scripts/fault/sentinel.sh          # Redis Sentinel failover drill
 ```
 
 #### Go test tiers
 
 | Target | Command | Scope |
 | :--- | :--- | :--- |
-| **Fast** (PR / `pr_fast`) | `make test-fast` or `make test` | `go test -short` — skips Docker testcontainers integration |
-| **Integration** | `make test-integration` | No `-short`; Redis/Postgres testcontainers; timeout 30m; skips `Fault` tests |
+| **Fast** (`merge-pr-fast`) | `make test-fast` or `make test` | `go test -short` — skips Docker testcontainers integration |
+| **Race short** (`merge-race-short`) | `bash scripts/ci/race_short.sh` | `go test -race -short` on `internal/...` and `pkg/...` |
+| **Integration** (`merge-integration`) | `make test-integration` | No `-short`; Redis/Postgres testcontainers; timeout 30m; skips `Fault` tests |
 | **Fault** | `make test-fault` | `-run Fault` across tree |
 | **Alloc gate** | `make test-alloc-gate` | Zero-alloc + selected microbenches — not integration |
 
-Integration tests skip under `-short` with reason: `integration: run make test-integration (Docker testcontainers)`. Optional gate: `bash scripts/ci/integration_skip_reason_gate.sh` (no bare `t.Skip()`).
+Integration tests skip under `-short` with reason: `integration: run make test-integration (Docker testcontainers)`. **merge-pr-fast** runs `bash scripts/ci/integration_skip_reason_gate.sh` (no bare `t.Skip()`).
 
 #### Lab script skip matrix
 
@@ -377,12 +392,12 @@ Production perf claims require `PERF_GATE_STRICT=true bash scripts/test/gate_run
 
 Concurrency: overlapping runs on the same branch cancel in-progress jobs (`cancel-in-progress: true`).
 
-Failed CI uploads logs: `full-test-log`, `resilience-log`, `perf-gate-failure`, `sentinel-log` artifacts.
+Failed CI uploads logs: `merge-race-short-log`, `merge-integration-log`, `merge-perf-smoke-log`, `main-full-test-log`, `main-resilience-log`, `perf-gate-failure`, `sentinel-log` artifacts.
 
 ### Dependencies
 
 - **Dependabot** (`.github/dependabot.yml`): one grouped PR/month for Go **patch+minor** only; major bumps are manual.
-- **govulncheck** CI job: run on Go changes; fix or ignore with documented reason.
+- **govulncheck** (**Gate · merge-govulncheck**): fix or ignore with documented reason.
 - **GitHub Actions** (`actions/*` pins): update manually when editing workflows — not via Dependabot.
 
 To silence existing Dependabot PRs: close them; new ones appear at most monthly. To disable version PRs entirely, delete `.github/dependabot.yml` and rely on govulncheck + manual `go get -u`.
@@ -552,7 +567,7 @@ Tiered event bus: tracker → mmap WAL (`pkg/broker`) → processor → ClickHou
 4. Set `CH_INGEST_SOURCE=broker` on tracker + processor; restart. Redis `_ch` consumer stops; broker `_ch_broker` is sole CH ingest.
 5. Optional rollback: unset `CH_INGEST_SOURCE`, re-enable Redis consumers; broker offsets remain on disk under `LOGGER_DIR/offsets`.
 
-**Redis UDS (single-VPS):** set `REDIS_ADDRS` to unix socket paths (e.g. `/run/ad-event-processor/redis/redis-0.sock`) — `internal/database/redis_shards.go` dials `unix` when the address starts with `/` or contains `.sock`. Compose mounts shared volume `ad_event_processor_run:/run/ad-event-processor` on db, redis shards, tracker, and processor.
+**Redis UDS (single-VPS):** set `REDIS_ADDRS` to unix socket paths (e.g. `/run/ad-event-processor/redis/redis-0.sock`) — `internal/database/redis_shards.go` and `redis_connect.go` dial `unix` when the address starts with `/` or contains `.sock`. Compose mounts shared volume `ad_event_processor_run:/run/ad-event-processor` on db, redis shards, tracker, and processor.
 
 **Postgres UDS (single-VPS):** default `DB_DSN` in `.env.example` uses `host=/run/ad-event-processor/postgresql&port=5430` (same `ad_event_processor_run` volume; Postgres `unix_socket_directories=/run/ad-event-processor/postgresql`). TCP port publish remains for ops/debug.
 
@@ -653,6 +668,20 @@ When `LOCAL_QUOTA_MODE=live` is configured:
 3. The event click/impression uniqueness is verified against a local in-memory cache (`localClickIdem`).
 4. The event is enqueued directly into `localQuantaStream.Enqueue`, which writes to local memory ring buffers.
 5. A background worker flushes these aggregates back to Redis asynchronously.
+
+When `StreamProducer` is enabled (default Redis ingest path), `SetDeferStreamToProducer(true)` routes stream `XADD` through the async producer only — local-quanta lane stream name becomes `fcap:ignored` to prevent duplicate events.
+
+**Rationale and verification:** [TRADEOFFS.md — Hot-path ingest strategy](TRADEOFFS.md#hot-path-ingest-strategy-rejected-alternatives-verification), [§18 Async Stream Producer](TRADEOFFS.md#18-async-stream-producer-admission-and-budget-rollback).
+
+### Stream producer admission
+
+| Env | Default | Effect |
+| --- | --- | --- |
+| `STREAM_PRODUCER_ADMISSION_PCT` | `85` | Reject `/track` with 503 **before** filter debit when per-shard producer queue occupancy ≥ this percent. `0` disables admission. |
+
+Metrics: `ad_stream_producer_queue_depth{shard}`, `ad_stream_producer_admission_rejected_total{shard}`, `ad_stream_producer_post_debit_rejected_total` (rollback path; should stay near zero).
+
+Unit tests: `go test ./internal/ingestion/ -run='TestStreamProducer' -v`
 
 ### Benchmarks
 

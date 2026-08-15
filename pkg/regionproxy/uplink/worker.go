@@ -165,9 +165,7 @@ func (u *Worker) forwardSlot(slot *opkey.Slot) {
 		u.forwarded.Add(1)
 
 		if err := u.forwardAttempt(slot); err != nil {
-			if unclaimErr := u.wal.UnclaimForward(slot.Seq); unclaimErr != nil {
-				err = fmt.Errorf("%w; unclaim forward seq=%d: %v", err, slot.Seq, unclaimErr)
-			}
+			_ = u.wal.UnclaimForward(slot.Seq)
 			if attempt == maxAttempts {
 				return
 			}

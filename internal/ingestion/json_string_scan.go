@@ -26,7 +26,7 @@ func scanJSONStringEnd(data []byte, i, n int, b *jsonScanBudget) (int, bool) {
 	for i < n {
 		c := data[i]
 		if c == '"' {
-			if jsonStrictUTF8Enabled && !utf8ValidBytes(data[contentStart:i]) {
+			if jsonStrictUTF8() && !utf8ValidBytes(data[contentStart:i]) {
 				return i, false
 			}
 			return i + 1, true
@@ -92,7 +92,7 @@ func scanJSONLiteralStringEnd(data []byte, i, n int, b *jsonScanBudget) (int, bo
 	for i < n {
 		c := data[i]
 		if c == '"' {
-			if jsonStrictUTF8Enabled && !utf8ValidBytes(data[contentStart:i]) {
+			if jsonStrictUTF8() && !utf8ValidBytes(data[contentStart:i]) {
 				return i, false
 			}
 			return i + 1, true

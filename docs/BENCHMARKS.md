@@ -129,6 +129,19 @@ go test -run='^$' -bench='Benchmark(LuaScript|UnifiedFilter_Check_.*Redis)' -ben
 | `AcceptLocalQuantaFullSkip` | 269 | 5 | 0 |
 | `LocalQuanta_FullSkip` | 648 | 0 | 0 | harness `local_quanta_noop_redis`; `LOCAL_QUOTA_MODE=live` only |
 
+### A.5b Stream producer (micro only)
+
+No live Redis — `benchStreamProducer()` dials dead address; measures enqueue + admission only.
+
+| Benchmark | Notes |
+| :--- | :--- |
+| `StreamProducer_Process` | vtproto marshal + queue push |
+| `StreamProducer_AdmissionCheck` | `tryAcquireStreamAdmission` reserve path |
+
+```bash
+go test ./internal/ingestion/ -run='^$' -bench='BenchmarkStreamProducer_' -benchmem -count=3
+```
+
 ### A.6 RTB / OpenRTB encode / PII
 
 | Benchmark | ns/op | B/op | allocs/op |
@@ -219,6 +232,8 @@ Benches: `XDP_passSYN`, `XDP_passSYN_noFingerprint`, `XDP_dropBlocklist`, `XDP_p
 | Protobuf accept | 203 |
 | Geo + license + signals | ~50–150 |
 | Local quanta / full-skip | 16–650 |
+| StreamProducer `Process` enqueue | microbench only; no live Redis |
+| StreamProducer admission `tryAcquire` | microbench only |
 | RTB `Auction` (if live) | +43–91 |
 
 Redis Lua adds one RTT (prod budget &lt; 10 ms/shard; not in unit benches).

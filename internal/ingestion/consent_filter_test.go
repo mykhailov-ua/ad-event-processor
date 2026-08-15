@@ -12,7 +12,6 @@ import (
 )
 
 func TestConsentFilter_blocksMissingPurposes(t *testing.T) {
-	t.Parallel()
 	campID := uuid.New()
 	custID := uuid.New()
 	registry := NewRegistry(nil)
@@ -35,7 +34,6 @@ func TestConsentFilter_blocksMissingPurposes(t *testing.T) {
 }
 
 func TestConsentFilter_allowsGrantedPurposes(t *testing.T) {
-	t.Parallel()
 	campID := uuid.New()
 	custID := uuid.New()
 	registry := NewRegistry(nil)

@@ -1,6 +1,8 @@
 package ingestion
 
 import (
+	"sync/atomic"
+
 	"github.com/bidshard/ad-event-processor/internal/domain"
 
 	"github.com/google/uuid"
@@ -8,11 +10,14 @@ import (
 
 const registryWorkerCacheMax = 128
 
-type registryWorkerCacheSlot struct {
+type registryWorkerCacheEntry struct {
 	id   uuid.UUID
 	gen  uint64
 	camp *domain.Campaign
-	_    [64 - 16 - 8 - 8]byte
+}
+
+type registryWorkerCacheSlot struct {
+	ptr atomic.Pointer[registryWorkerCacheEntry]
 }
 
 func (r *Registry) storeCampaignSnapshot(s *campaignMapSnapshot) {
@@ -29,9 +34,8 @@ func (r *Registry) GetCampaignWorker(worker int, id uuid.UUID) (*domain.Campaign
 	}
 	gen := r.snapGen.Load()
 	if worker >= 0 && worker < registryWorkerCacheMax {
-		slot := &r.workerCache[worker]
-		if slot.id == id && slot.gen == gen && slot.camp != nil {
-			return slot.camp, true
+		if ent := r.workerCache[worker].ptr.Load(); ent != nil && ent.id == id && ent.gen == gen && ent.camp != nil {
+			return ent.camp, true
 		}
 	}
 	info, ok := r.campaignMapSnapshot().byID[id]
@@ -39,10 +43,11 @@ func (r *Registry) GetCampaignWorker(worker int, id uuid.UUID) (*domain.Campaign
 		return nil, false
 	}
 	if worker >= 0 && worker < registryWorkerCacheMax {
-		slot := &r.workerCache[worker]
-		slot.id = id
-		slot.gen = gen
-		slot.camp = info.campaign
+		r.workerCache[worker].ptr.Store(&registryWorkerCacheEntry{
+			id:   id,
+			gen:  gen,
+			camp: info.campaign,
+		})
 	}
 	return info.campaign, true
 }

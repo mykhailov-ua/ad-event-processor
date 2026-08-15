@@ -1034,18 +1034,6 @@ func (w *ReconWorker) loadCampaignBudgetPGBatch(ctx context.Context, campIDs []u
 	return out, nil
 }
 
-func (w *ReconWorker) loadCampaignBudgetPG(ctx context.Context, campID uuid.UUID) (campaignBudgetPG, error) {
-	m, err := w.loadCampaignBudgetPGBatch(ctx, []uuid.UUID{campID})
-	if err != nil {
-		return campaignBudgetPG{}, err
-	}
-	pg, ok := m[campID]
-	if !ok {
-		return campaignBudgetPG{}, pgx.ErrNoRows
-	}
-	return pg, nil
-}
-
 func (w *ReconWorker) shouldSkipSnapshotGrace(snap domain.BudgetReconSnapshot, lastPGUpdate time.Time) bool {
 	if snap.Inflight <= 0 {
 		return false

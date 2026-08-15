@@ -10,9 +10,9 @@ bash "$SCRIPTS/ci/check_scripts_layout.sh"
 bash "$SCRIPTS/ci/compliance.sh"
 bash "$SCRIPTS/ci/ch_direct.sh"
 bash "$SCRIPTS/ci/lint_go_gate.sh" all
+bash "$SCRIPTS/ci/integration_skip_reason_gate.sh"
 make test-alloc-gate
 make test-fast
-echo "pr_fast: integration tests skipped (run make test-integration locally or on nightly Docker runner)"
 bash "$SCRIPTS/ci/shard0_nil_gate.sh"
 bash "$SCRIPTS/ci/cold_path_json_gate.sh"
 bash "$SCRIPTS/ci/capi_staging_gate.sh"

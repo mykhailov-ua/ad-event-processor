@@ -355,10 +355,11 @@ func scanOpenRTB26Payload(payload []byte) openrtb26Scan {
 	_ = payload[n-1]
 
 	scanEnd := n
-	if scanEnd > ortbScanMaxBytes {
-		scanEnd = ortbScanMaxBytes
+	maxScan := ortbScanMaxBytesLimit()
+	if scanEnd > maxScan {
+		scanEnd = maxScan
 	}
-	if n > ortbScanMaxBytes && openrtb26FindImpKey(payload, scanEnd) < 0 {
+	if n > maxScan && openrtb26FindImpKey(payload, scanEnd) < 0 {
 		metrics.OrtbScanTruncatedTotal.Inc()
 		return s
 	}
@@ -371,7 +372,7 @@ func scanOpenRTB26Payload(payload []byte) openrtb26Scan {
 			continue
 		}
 		quoteChecks++
-		if quoteChecks > ortbMaxQuoteChecks {
+		if quoteChecks > ortbMaxQuoteChecksLimit() {
 			truncated = true
 			break
 		}
@@ -385,7 +386,7 @@ func scanOpenRTB26Payload(payload []byte) openrtb26Scan {
 			break
 		}
 	}
-	if !truncated && n > ortbScanMaxBytes && s.sec.imp < 0 {
+	if !truncated && n > ortbScanMaxBytesLimit() && s.sec.imp < 0 {
 		truncated = true
 	}
 	if truncated {

@@ -8,7 +8,7 @@ Replace `{{…}}` placeholders. Send via Telegram or email **before** first paid
 
 Hi {{CUSTOMER_NAME}},
 
-Invoice for your on-prem BidShard license (**{{TIER}}** / SKU `{{SKU_CODE}}`).
+Invoice for your on-prem BidShard license (**{{TIER}}** / SKU `{{SKU_CODE}}`). Onboarding is included with the first paid month — no separate setup fee.
 
 | Field | Value |
 | :--- | :--- |
@@ -16,7 +16,6 @@ Invoice for your on-prem BidShard license (**{{TIER}}** / SKU `{{SKU_CODE}}`).
 | **Billing period** | {{PERIOD_START}} → {{PERIOD_END}} (30 days) |
 | **Deployment ID** | `{{DEPLOYMENT_ID}}` |
 | **Host fingerprint** | `{{HOST_FINGERPRINT}}` (if hard bind) |
-| **Setup fee** | {{SETUP_FEE_USDT}} USDT (one-time; omit if renewal) |
 
 **Pay to (USDT):**
 
@@ -29,7 +28,7 @@ Invoice for your on-prem BidShard license (**{{TIER}}** / SKU `{{SKU_CODE}}`).
 
 **After payment:** reply with transaction hash (txid). We issue a signed JWT within:
 
-- **24 hours** — Solo / Starter / Network / Enterprise
+- **24 hours** — Starter / Network / Enterprise
 - **12 hours** — Pro / Scale
 
 **Apply JWT (no reinstall):**
@@ -52,8 +51,7 @@ Tier limits reference: [sku.yaml](./sku.yaml) · internal ladder: [SALES_KIT.md]
 | CUSTOMER_NAME | Acme Media |
 | TIER | Pro on-prem |
 | SKU_CODE | `pro` |
-| AMOUNT_USDT | 199 |
-| SETUP_FEE_USDT | 150 (first invoice only) |
+| AMOUNT_USDT | 329 |
 | DEPLOYMENT_ID | `a1b2c3d4-e5f6-7890-abcd-ef1234567890` |
 | HOST_FINGERPRINT | `sha256:abc…` |
 | PERIOD_START | 2026-09-01 |

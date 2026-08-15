@@ -182,7 +182,7 @@ bash scripts/ops/verify_redis_topology.sh
 | RTB onboarding UI | `/rtb/integration` — profile, validate-bid, shadow-diff |
 | Brands & creatives | Campaign **Creative** tab — weighted landings CRUD |
 | Safe-page redirect | `safe_page_*` on campaign; hot-path `302` on IVT / blacklist |
-| Commercial tiers | `solo`…`enterprise` in `sku.yaml`; license banners in admin |
+| Commercial tiers | `starter`…`enterprise` in `sku.yaml`; license banners in admin |
 | Zero-redirect tracking | `bidshard-track.js` + CORS on `POST /track` | [TRAFFIC_INTEGRATION.md §3.3](TRAFFIC_INTEGRATION.md#33-zero-redirect-tracking-lander-pixel) |
 | SubID ×30 | Hot path + macros + admin reference; CH typed columns deferred | [TRAFFIC_INTEGRATION.md §2](TRAFFIC_INTEGRATION.md#get-click--click-redirect) |
 

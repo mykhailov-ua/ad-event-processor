@@ -87,6 +87,7 @@ await esbuild.build({
   chunkNames: 'chunks/[name]-[hash]',
   assetNames: 'assets/[name]-[hash]',
   sourcemap: true,
+  minify: true,
   logLevel: 'info',
   loader: {
     '.ts': 'ts',

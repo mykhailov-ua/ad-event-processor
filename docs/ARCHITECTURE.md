@@ -26,6 +26,7 @@ flowchart TB
         FE[FilterEngine]
         LUA[Redis EVALSHA Lua]
         LQ[Local Quanta optional]
+        SP[StreamProducer async queue]
         RS[(Redis shards N masters)]
     end
 
@@ -48,7 +49,9 @@ flowchart TB
     FE --> LQ
     LQ --> LUA
     LUA --> RS
-    LQ -.->|full-skip async XADD| RS
+    FE --> SP
+    SP -->|pipeline XADD| RS
+    LQ -.->|full-skip async lane| SP
 
     CTRL -->|mutation + outbox row same TX| PG
     PG -->|OutboxWorker 20ms poll| RS
@@ -135,10 +138,12 @@ sequenceDiagram
     participant NGX as Nginx edge
     participant GNET as gnet tracker
     participant RTB as RunAuction optional
+    participant ADM as Stream admission
     participant FE as FilterEngine
     participant LQ as Local Quanta
     participant Redis as Redis shard
     participant Lua as budget-fast or unified-filter.lua
+    participant SP as StreamProducer
 
     Client->>XDP: TCP
     XDP-->>Client: drop if blacklisted IP
@@ -147,40 +152,71 @@ sequenceDiagram
     GNET->>GNET: HTTP/1 FSM parse body into pooled Event
     GNET->>RTB: applyRtbAuction if RTB_MODE live/shadow
     RTB-->>GNET: winning campaign_id or no-bid reject
-    GNET->>FE: FilterEngine.Check
+    GNET->>ADM: tryAcquireStreamAdmission reserve slot
+    alt queue over STREAM_PRODUCER_ADMISSION_PCT
+        ADM-->>Client: 503 producer overloaded
+    end
+    GNET->>FE: FilterEngine.Check async goroutine
     FE->>FE: License Breaker Geo Schedule Segment VPP signals Consent
     FE->>LQ: UnifiedFilter local quanta try
     alt full-skip eligible
         LQ->>LQ: CAS debit + local idempotency
-        LQ-->>Redis: async XADD ad:events:stream
+        LQ->>SP: enqueue LocalQuantaStream lane
     else needs Redis
-        FE->>Lua: EVALSHA one RTT
-        Lua->>Redis: budget dedup fcap XADD atomic
+        FE->>Lua: EVALSHA one RTT debit dedup fcap
+        Lua->>Redis: INCRBY spend no XADD when defer producer
         Lua-->>FE: accept or reject code
     end
-    GNET-->>Client: 202 accepted or 4xx/5xx
+    FE->>SP: publishAcceptedTrack ProcessReserved
+    alt enqueue failed after debit
+        FE->>Redis: budget-rollback.lua or local ledger refund
+        SP-->>Client: 503 producer overloaded
+    else accept
+        SP-->>Redis: background pipeline XADD ad:events:stream
+        GNET-->>Client: 202 accepted or 4xx/5xx
+    end
 ```
 
 **Step-by-step (code path)**
 
-1. **Ingress** — `cmd/tracker/main.go` runs `gnet.Run(AdsPacketHandler)`. `OnTraffic` reads the socket ring buffer; optional `PinnedWorkerPool` offloads to worker goroutines (`handler.go`).
+1. **Ingress** — `cmd/tracker/main.go` runs `gnet.Run(AdsPacketHandler)`. `OnTraffic` reads the socket ring buffer; optional `PinnedWorkerPool` offloads parse to worker goroutines (`handler.go`).
 2. **Parse** — `parseTrackIngest`: JSON (`ad_event_processor_native` or OpenRTB3 ingress) or protobuf `AdEvent` vtproto; zero-alloc DFA on the hot path (`track_ingest_gnet.go`). Wire policy for `POST /track` matches nginx (see §1.3 and [PARSER_SECURITY.md](PARSER_SECURITY.md)).
 3. **RTB (optional)** — `applyRtbAuction` (`rtb_track.go`) **before** filters:
    - `RTB_MODE=off` — skip.
    - `shadow` — `RunAuction`, metrics only.
    - `live` — win rewrites `campaign_id`; no-bid → HTTP reject (does not reach Lua).
-4. **FilterEngine** — fixed order from `main.go`:
-   1. License → 2. Emergency breaker → 3. Geo → 4. Schedule → 5. Segment (Redis sets) → 6. VPP → 7. Fraud (**signals only**) → 8. Device (**signals only**) → 9. Consent → 10. **UnifiedFilter** (budget + stream).
-5. **UnifiedFilter settlement** (`unified_filter.go`):
+4. **Stream admission** — `tryAcquireStreamAdmission` reserves a slot in the per-shard `StreamProducer` (or `BrokerProducer`) queue **before** filter debit when `STREAM_PRODUCER_ADMISSION_PCT` &gt; 0 (default **85**). Over-capacity → **503** `producer overloaded` with no budget debit. Metrics: `ad_stream_producer_queue_depth`, `ad_stream_producer_admission_rejected_total`.
+5. **FilterEngine** — fixed order from `main.go`; Redis work runs in a **detached goroutine** on the gnet `/track` path so pinned workers are not blocked on Redis RTT:
+   1. License → 2. Emergency breaker → 3. Geo → 4. Schedule → 5. Segment (Redis sets) → 6. VPP → 7. Fraud (**signals only**) → 8. Device (**signals only**) → 9. Consent → 10. **UnifiedFilter** (budget).
+6. **UnifiedFilter settlement** (`unified_filter.go`):
    - Try **local quanta** (`TrySpendDebit`, ~13 ns) when `LOCAL_QUOTA_MODE` is `shadow` or `live`.
-   - **Full-skip** (`live` + simple campaign): no synchronous `EVALSHA`; async `LocalQuantaStreamPublisher` XADD.
+   - **Full-skip** (`live` + simple campaign): no synchronous `EVALSHA`; async `LocalQuantaStreamPublisher` lane (same defer rules as §7 below).
    - Else **one** Redis round-trip:
      - **budget-fast.lua** — impressions / simple path (`fastPathEnabled`, no TTC/fcap in Lua).
      - **unified-filter.lua** — clicks, conversions, TTC, pacing, freq caps, quotas.
-6. **Lua atomically** — on the campaign’s shard: read budget, dedup, optional fcap/TTC, `INCRBY` spend, **`XADD ad:events:stream`** (default name `REDIS_STREAM_NAME`).
-7. **Response** — `deliverGnetTrack`: **202** on accept (including fraud L1 “ghost accept” on `/track`); pre-built bodies from `filterRejectSpecs` for rejects.
+7. **Event logging** — when `StreamProducer` or `BrokerProducer` is wired (`cmd/tracker/main.go`), `SetDeferStreamToProducer(true)` sets Lua stream key and local-quanta stream name to `fcap:ignored` so **only one writer** enqueues `ad:events:stream`. Accepted events call `publishAcceptedTrack` → `ProcessReserved` (consumes the admission lease) → background worker pipeline `XADD`.
+8. **Post-debit safety** — if `publishAcceptedTrack` fails after a successful filter debit, `FilterEngine.RollbackDebit` runs (`budget-rollback.lua` on Redis, or local ledger refund + idempotency release for full-skip). Rollback uses a **200 ms** context timeout. Metric: `ad_stream_producer_post_debit_rejected_total` (should stay near zero with reservation).
+9. **Response** — `deliverGnetTrack`: **202** on accept (including fraud L1 “ghost accept” on `/track`); pre-built bodies from `filterRejectSpecs` for rejects.
 
 **What does *not* happen on this path:** PostgreSQL write, ClickHouse write, outbox write, ML inference.
+
+#### Design rationale (why this shape)
+
+Full trade-off narrative: [TRADEOFFS.md — Hot-path ingest strategy](TRADEOFFS.md#hot-path-ingest-strategy-rejected-alternatives-verification). Condensed:
+
+| Decision | Rationale |
+| :--- | :--- |
+| **Static slots, not Redis Cluster** | Multi-key Lua must run on one master without `MOVED`; operator controls slot migration |
+| **Static slots, not Jump Hash (prod)** | Jump remaps most keys on resize; static table remaps only edited slots; faster `GetShard` |
+| **Lua debit, Go `XADD`** | Shorten Redis script time; batch stream writes; admission backpressure |
+| **Reserve before debit** | Closes check→enqueue race (`TestStreamProducerAdmissionRaceWithoutReserve`) |
+| **Rollback script** | Rare safety net if enqueue fails after debit; 200 ms timeout |
+| **Async filter goroutine** | `LockOSThread` workers must not wait on Redis RTT |
+| **Single stream writer** | `fcap:ignored` in Lua + local quanta when `StreamProducer` active |
+| **Redis UDS (co-located)** | Lower loopback latency on appliance single-VPS |
+| **`pkg/broker` (optional)** | mmap WAL for CH ingest / RAM relief — not hot-path budget; not Kafka |
+
+**Verification:** `go test ./internal/ingestion/ -run='TestStreamProducer|TestUnifiedFilter_SetDefer|TestUnifiedFilter_Rollback' -v`; UDS gate `bash scripts/perf/redis_uds_benchmark.sh`; chaos shard drills in `tests/resilience/`.
 
 ### 2.2 Hot path → cold path — settlement (minutes later, async)
 
@@ -394,6 +430,7 @@ Shared `RunAuction` (`internal/rtb/auction.go`) for `/track` (optional), `POST /
 | :--- | :--- |
 | Redis shard down | Circuit breaker → 503; triplet fallback if configured |
 | Redis shard 0 pub/sub down | Cached campaigns still serve; `503 registry_stale` after ~30 s for new IDs |
+| Stream producer queue saturated | Admission reject **before** debit (`STREAM_PRODUCER_ADMISSION_PCT`, default 85%); post-debit enqueue failure triggers budget rollback |
 | ClickHouse down | Processor spools to disk; PG settlement can continue |
 | PostgreSQL down | Processor stops PG commits; streams buffer backlog |
 | Full-skip + local quanta | Zero synchronous Redis RTT for eligible campaigns |
@@ -422,14 +459,16 @@ Shared `RunAuction` (`internal/rtb/auction.go`) for `/track` (optional), `POST /
 
 | Question | Answer |
 | :--- | :--- |
-| Does `/track` write to Postgres? | **No.** Only Redis Stream (+ optional local quanta async XADD). |
+| Does `/track` write to Postgres? | **No.** Only Redis Stream (+ optional local quanta async lane). |
 | Where is spend finalized? | Processor + `SyncWorker` → `campaigns.current_spend` / `events`. |
 | Does ML score on each request? | **No.** Offline batch → outbox → Redis snapshot reload. |
 | Does outbox run on tracker? | **No.** Only `control` OutboxWorker. |
 | Is `/click` on nginx edge? | **Not in default** `nginx.conf`; hit tracker `8181–8184`. |
 | Is `/api/v1` on nginx edge? | **Only** `/api/v1/auth/*` and `/admin/`; rest is control `:8188`. |
 | Redis Cluster? | **No.** N standalone masters + `StaticSlotSharder`. |
-| How many Lua RTTs per event? | **0** (full-skip) or **1** (`EVALSHA`). |
+| How many Lua RTTs per event? | **0** (full-skip) or **1** (`EVALSHA` debit only when `StreamProducer` defers `XADD`). |
+| Who writes `ad:events:stream` on tracker? | **`StreamProducer`** (or `BrokerProducer` when `CH_INGEST_SOURCE=broker`); Lua skips `XADD` when defer is on. |
+| Can budget debit without logged event? | **No** on the happy path (reservation + rollback on enqueue failure). Monitor `ad_stream_producer_post_debit_rejected_total`. |
 
 Benchmark numbers (micro + purgatory): [BENCHMARKS.md](BENCHMARKS.md). OS/TCP/accept edge cases: [EDGE_CASES.md](EDGE_CASES.md). Parser security and ingress limits: [PARSER_SECURITY.md](PARSER_SECURITY.md).
 
@@ -445,7 +484,7 @@ Benchmark numbers (micro + purgatory): [BENCHMARKS.md](BENCHMARKS.md). OS/TCP/ac
 | **409** | Duplicate click/conversion |
 | **413** | Body too large |
 | **429** | Rate limit, pacing, daily quota, UDP ingress |
-| **503** | Breaker, Redis/infra, registry stale, pool saturated |
+| **503** | Breaker, Redis/infra, registry stale, pool saturated, **producer queue admission** |
 | **504** | Filter timeout |
 
 `GET /click`: **302** redirect on success; **204** on fraud L1 (differs from `/track`).

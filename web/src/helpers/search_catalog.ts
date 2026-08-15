@@ -1,4 +1,4 @@
-import { navigate } from '../lib/router.js';
+import { navigate } from './spa_navigate.js';
 import * as auth from './auth.js';
 import * as storage from './storage.js';
 import { NAV_GROUPS, navLinkVisible, type NavLink } from './nav_config.js';
