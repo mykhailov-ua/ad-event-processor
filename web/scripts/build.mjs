@@ -73,12 +73,14 @@ const workerEntries = [
 
 await esbuild.build({
   absWorkingDir: ROOT,
-  entryPoints: [join(SRC, 'main.ts'), join(SRC, 'login.ts'), ...workerEntries],
+  entryPoints: [join(SRC, 'main.tsx'), join(SRC, 'login.tsx'), ...workerEntries],
   bundle: true,
   splitting: true,
   format: 'esm',
   platform: 'browser',
   target: ['es2022'],
+  jsx: 'automatic',
+  jsxImportSource: 'react',
   outdir: join(DIST, 'src'),
   outbase: SRC,
   entryNames: '[dir]/[name]',
@@ -88,6 +90,7 @@ await esbuild.build({
   logLevel: 'info',
   loader: {
     '.ts': 'ts',
+    '.tsx': 'tsx',
     '.js': 'js',
   },
 });

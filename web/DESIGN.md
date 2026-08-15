@@ -8,7 +8,7 @@ Spec for the embedded admin UI (`web/`).
 | **UX / interaction** | [Grafana Saga](https://grafana.com/developers/saga/about/overview/) | Principles, alerts, forms, friction, page templates — adapt |
 | **UI chrome** | Geist + selective Saga patterns | Forms spacing, alert kinds, one primary CTA — where it fits BidShard density |
 
-**Not adopted:** `@grafana/ui`, Grafana Storybook components, Grafana palette/typography, React. Runtime stays vanilla ESM (`admin-web.mdc`).
+**Not adopted:** `@grafana/ui`, Grafana Storybook components, Grafana palette/typography. **React:** allowed under [`.cursor/WEB_REACT_MIGRATION.md`](../.cursor/WEB_REACT_MIGRATION.md) (Phase 0+); legacy `mount()` views coexist until ported. No Geist React or npm UI kits.
 
 Implementation: `web/src/styles/tokens.css` + `main.css` + `components.css` + `a11y.css`. Shared controls: `web/src/ui/button.ts`, `web/src/ui/form_field.ts`. Confirm flows: `helpers/confirm_catalog.js` / `confirm_registry.js`. Toasts: `helpers/toast_ui.js`.
 
@@ -195,7 +195,7 @@ Target: **WCAG 2.1 AA** intent (Saga accessibility posture), implemented with Ge
 ## 9. Do not
 
 - Adopt Grafana visual language (colors, type, denseness) as a replacement for Geist.
-- Import `@grafana/ui`, Geist React, or any npm UI kit into `web/src`.
+- Import `@grafana/ui`, Geist React, or any npm UI kit into `web/src` (React view layer in `web/src/react/` only — see `WEB_REACT_MIGRATION.md`).
 - Box-shadow on every card (Stripe/legacy dashboard style).
 - Accent-colored inactive nav items.
 - Hard-coded hex in `views/` — CSS variables only.
@@ -208,7 +208,7 @@ Target: **WCAG 2.1 AA** intent (Saga accessibility posture), implemented with Ge
 
 ## 11. Anti-slop and honesty (2026 admin UI)
 
-Operators and buyers must never think a screen works when it does not. This section is the **product honesty** bar for `web/` — complementary to engineering DoD in [`.cursor/MILESTONE.md`](../.cursor/MILESTONE.md) §1.0.
+Operators and buyers must never think a screen works when it does not. This section is the **product honesty** bar for `web/` — complementary to engineering DoD in [`.cursor/MILESTONE.md`](../.cursor/MILESTONE.md) §1.0. **React migration does not relax this bar** (see `WEB_REACT_MIGRATION.md` §4).
 
 ### 11.1 What counts as slop / lying
 

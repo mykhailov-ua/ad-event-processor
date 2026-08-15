@@ -9,8 +9,23 @@ if rg -n '\bconsole\.(log|debug|info)\(' web/src --glob '*.js' 2>/dev/null; then
   exit 1
 fi
 
-if rg -n 'from ['\''\"]react|\.jsx$' web/src 2>/dev/null; then
-  echo "Error: React or JSX references in web/src."
+if rg -l '\.jsx$' web/src 2>/dev/null | grep -q .; then
+  echo "Error: .jsx files not allowed in web/src (use .tsx with jsx: react-jsx)."
+  exit 1
+fi
+
+# React imports allowed only under web/src/react/ and entry shells during migration.
+react_violations=()
+while IFS= read -r file; do
+  case "$file" in
+    web/src/react/*|*/web/src/react/*|web/src/main.tsx|*/web/src/main.tsx|web/src/login.tsx|*/web/src/login.tsx) ;;
+    *) react_violations+=("$file") ;;
+  esac
+done < <(rg -l "from ['\"]react" web/src 2>/dev/null || true)
+
+if [ "${#react_violations[@]}" -gt 0 ]; then
+  echo "Error: React imports outside web/src/react/ or entry shells:"
+  printf '  %s\n' "${react_violations[@]}"
   exit 1
 fi
 
