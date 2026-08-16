@@ -23,6 +23,7 @@ import { isoDaysAgo, toIsoNow } from '../helpers/date_presets.js';
 import { createInFlightGuard } from '../lib/async_guard.js';
 import type { MetricsBlockDTO } from '../types/metrics.js';
 import { patchCampaign } from '../helpers/campaign_admin_api.js';
+import { fetchFlows, type FlowDTO } from '../helpers/flows_api.js';
 import { displayLabel } from '../helpers/display_labels.js';
 import type { HourlyMetricRow } from '../helpers/chart_pool.js';
 import { CampaignFiltersSection } from '../components/campaign_filters_section.js';
@@ -165,7 +166,10 @@ export function CampaignDetailPage() {
     freq_window: '86400',
     safe_page_enabled: false,
     safe_page_url: '',
+    flow_id: '',
   });
+
+  const [flowOptions, setFlowOptions] = useState<FlowDTO[]>([]);
 
   const statsUrl = useMemo(() => {
     const params = new URLSearchParams({ granularity: 'hour' });
@@ -208,8 +212,16 @@ export function CampaignDetailPage() {
       freq_window: String(campaign.freq_window ?? 86400),
       safe_page_enabled: campaign.safe_page_enabled === true,
       safe_page_url: campaign.safe_page_url ?? '',
+      flow_id: campaign.flow_id ?? '',
     });
   }, [campaign]);
+
+  useEffect(() => {
+    if (!canWriteCampaign || masked || tab !== 'config') return;
+    void fetchFlows()
+      .then(setFlowOptions)
+      .catch(() => setFlowOptions([]));
+  }, [canWriteCampaign, masked, tab]);
 
   useEffect(() => {
     if (!id) return undefined;
@@ -352,6 +364,9 @@ export function CampaignDetailPage() {
     if (Number.isFinite(freqWindow) && freqWindow > 0) body.freq_window = freqWindow;
     body.safe_page_enabled = configForm.safe_page_enabled;
     body.safe_page_url = configForm.safe_page_url.trim();
+    body.flow_id = configForm.flow_id.trim()
+      ? configForm.flow_id.trim()
+      : '00000000-0000-0000-0000-000000000000';
 
     setConfigSaving(true);
     setConfigError(null);
@@ -643,6 +658,24 @@ export function CampaignDetailPage() {
                   />
                 </label>
               </div>
+              <label className="form-field" htmlFor="cfg-flow">
+                Flow routing
+                <select
+                  id="cfg-flow"
+                  className="form-input form-input--sm"
+                  value={configForm.flow_id}
+                  data-testid="campaign-flow-select"
+                  onChange={(e) => setConfigForm((f) => ({ ...f, flow_id: e.target.value }))}
+                >
+                  <option value="">None (brand creatives)</option>
+                  {flowOptions.map((flow) => (
+                    <option key={flow.id} value={flow.id}>{flow.name}</option>
+                  ))}
+                </select>
+              </label>
+              <p className="text-muted text-sm">
+                <a href="/campaigns/flows">Manage landers, offers &amp; flows →</a>
+              </p>
               <div className="section-card stack" data-testid="campaign-safe-page-config">
                 <h4 className="subsection-title">Safe page (cloak companion)</h4>
                 <p className="text-muted text-sm">

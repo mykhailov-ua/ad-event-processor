@@ -1,5 +1,7 @@
 package ingestion
 
+import "github.com/google/uuid"
+
 // appendAttributionPayload writes sub slots and ad-network click ids into evt.Payload JSON.
 func appendAttributionPayload(dst, payload []byte, subs SubIDSlots, fbclid, gclid, ttclid string) []byte {
 	dst = dst[:0]
@@ -85,6 +87,42 @@ func appendAttributionPassthrough(dst []byte, fbclid, gclid, ttclid string) []by
 		dst = append(dst, "ttclid="...)
 		dst = append(dst, ttclid...)
 	}
+	return dst
+}
+
+func appendFlowAttribution(dst []byte, landerID, offerID uuid.UUID) []byte {
+	if landerID == uuid.Nil && offerID == uuid.Nil {
+		return dst
+	}
+	if len(dst) == 0 {
+		dst = append(dst, '{')
+	} else if dst[0] != '{' {
+		dst = append(dst, '{')
+	} else if len(dst) > 1 && dst[len(dst)-1] == '}' {
+		dst = dst[:len(dst)-1]
+	} else {
+		dst = append(dst, '{')
+	}
+	if landerID != uuid.Nil {
+		if len(dst) > 1 {
+			dst = append(dst, ',')
+		}
+		dst = append(dst, `"lander_id":"`...)
+		dst = append(dst, landerID.String()...)
+		dst = append(dst, '"')
+	}
+	if offerID != uuid.Nil {
+		if len(dst) > 1 {
+			dst = append(dst, ',')
+		}
+		dst = append(dst, `"offer_id":"`...)
+		dst = append(dst, offerID.String()...)
+		dst = append(dst, '"')
+	}
+	if len(dst) == 1 {
+		return nil
+	}
+	dst = append(dst, '}')
 	return dst
 }
 

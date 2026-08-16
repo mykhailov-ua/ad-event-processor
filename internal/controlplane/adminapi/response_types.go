@@ -39,10 +39,13 @@ type PaymentIntentListResponse struct {
 }
 
 type PaymentIntentCreatedResponse struct {
-	IntentID    string `json:"intent_id"`
-	Status      string `json:"status"`
-	CheckoutURL string `json:"checkout_url"`
-	ProviderRef string `json:"provider_ref"`
+	IntentID       string `json:"intent_id"`
+	Status         string `json:"status"`
+	CheckoutURL    string `json:"checkout_url"`
+	ProviderRef    string `json:"provider_ref"`
+	DepositAddress string `json:"deposit_address,omitempty"`
+	DepositNetwork string `json:"deposit_network,omitempty"`
+	DepositQRSVG   string `json:"deposit_qr_svg,omitempty"`
 }
 
 type ExportJobCreatedResponse struct {

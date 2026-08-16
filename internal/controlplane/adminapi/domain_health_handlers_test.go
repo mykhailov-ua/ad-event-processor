@@ -35,6 +35,9 @@ func (s *stubDomainHealthService) IsTLSAllowed(ctx context.Context, hostname str
 	}
 	return s.allowed[hostname], nil
 }
+func (s *stubDomainHealthService) ParkDomain(ctx context.Context, req adminapi.ParkDomainRequest) (adminapi.ParkDomainResponse, error) {
+	return adminapi.ParkDomainResponse{}, nil
+}
 
 func TestDomainHealthTLSAllowed_loopbackAllowed(t *testing.T) {
 	h := &adminapi.DomainHealthHTTPHandlers{

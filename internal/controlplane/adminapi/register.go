@@ -18,6 +18,7 @@ type RouteRegistry struct {
 	MarginGuardHTTP       *MarginGuardHTTPHandlers
 	SmartAlertsHTTP       *SmartAlertsHTTPHandlers
 	DomainHealthHTTP      *DomainHealthHTTPHandlers
+	FlowHTTP              *FlowHTTPHandlers
 	IntegrationSchemaHTTP *IntegrationSchemaHTTPHandlers
 	TeamHTTP              *TeamHTTPHandlers
 	RtbFloorsHTTP         *RtbFloorsHTTPHandlers
@@ -135,6 +136,13 @@ var routeCatalog = []Route{
 	{Method: "DELETE", Path: "/api/v1/domains/{hostname}"},
 	{Method: "POST", Path: "/api/v1/domains/{hostname}/probe"},
 	{Method: "POST", Path: "/api/v1/domains/{hostname}/ssl/setup"},
+	{Method: "POST", Path: "/api/v1/domains/park"},
+	{Method: "GET", Path: "/api/v1/flows"},
+	{Method: "POST", Path: "/api/v1/flows"},
+	{Method: "GET", Path: "/api/v1/landers"},
+	{Method: "POST", Path: "/api/v1/landers"},
+	{Method: "GET", Path: "/api/v1/offers"},
+	{Method: "POST", Path: "/api/v1/offers"},
 	{Method: "GET", Path: "/api/v1/ops/domains/tls-allowed"},
 	{Method: "GET", Path: "/api/v1/ops/domains/{hostname}/tls-allowed"},
 	{Method: "GET", Path: "/api/v1/ops/blacklist"},
@@ -158,6 +166,9 @@ var routeCatalog = []Route{
 	{Method: "POST", Path: "/api/v1/integration/schemas"},
 	{Method: "GET", Path: "/api/v1/integration/schemas/{id}"},
 	{Method: "POST", Path: "/api/v1/integration/schemas/{id}/apply"},
+	{Method: "GET", Path: "/api/v1/integration/templates"},
+	{Method: "POST", Path: "/api/v1/integration/templates/import"},
+	{Method: "POST", Path: "/api/v1/campaigns/{id}/apply-templates"},
 	{Method: "PUT", Path: "/api/v1/postbacks/config/{campaign_id}"},
 	{Method: "GET", Path: "/api/v1/postbacks/dlq"},
 	{Method: "POST", Path: "/api/v1/postbacks/dlq/{id}/retry"},
@@ -268,6 +279,9 @@ func RegisterRoutes(mux *http.ServeMux, routes RouteRegistry) {
 	}
 	if routes.DomainHealthHTTP != nil {
 		routes.DomainHealthHTTP.Register(mux)
+	}
+	if routes.FlowHTTP != nil {
+		routes.FlowHTTP.Register(mux)
 	}
 	if routes.IntegrationSchemaHTTP != nil {
 		routes.IntegrationSchemaHTTP.Register(mux)

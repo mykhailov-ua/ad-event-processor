@@ -1,0 +1,9 @@
+version: 1
+url_template: "https://postback.everad.com/lead?click_id={sub1}&payout={payout}&status={status}&tx_id={tx_id}"
+placeholders:
+  - click_id
+  - sub1
+  - payout
+  - status
+  - tx_id
+  - currency

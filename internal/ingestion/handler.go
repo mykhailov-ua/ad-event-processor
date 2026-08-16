@@ -619,6 +619,10 @@ type AdsPacketHandler struct {
 	trackCORS             trackCORS
 	cidrTable             *CIDRTable
 	cidrMetrics           l1CIDRMetrics
+	proxyVPNTable         *ProxyVPNTable
+	l15ProxyVPNMetrics    l15ProxyVPNMetrics
+	domainPoolTable       *DomainPoolTable
+	campaignFlowTable     *CampaignFlowTable
 	clickProxyClient      *http.Client
 }
 
@@ -630,6 +634,31 @@ func (h *AdsPacketHandler) ConfigureCIDR(table *CIDRTable) {
 	}
 	h.cidrTable = table
 	h.cidrMetrics = newL1CIDRMetrics()
+}
+
+// ConfigureProxyVPN attaches the L1.5 proxy/VPN table (GM-M1). Nil disables the hook.
+func (h *AdsPacketHandler) ConfigureProxyVPN(table *ProxyVPNTable) {
+	if h == nil {
+		return
+	}
+	h.proxyVPNTable = table
+	h.l15ProxyVPNMetrics = newL15ProxyVPNMetrics()
+}
+
+// ConfigureDomainPool attaches the GM-M2 tracking-domain rotation table.
+func (h *AdsPacketHandler) ConfigureDomainPool(table *DomainPoolTable) {
+	if h == nil {
+		return
+	}
+	h.domainPoolTable = table
+}
+
+// ConfigureCampaignFlow attaches the GM-M3 campaign flow router table.
+func (h *AdsPacketHandler) ConfigureCampaignFlow(table *CampaignFlowTable) {
+	if h == nil {
+		return
+	}
+	h.campaignFlowTable = table
 }
 
 func (h *AdsPacketHandler) SetPool(p Pinger) {
@@ -1284,6 +1313,7 @@ type parsedHTTPRequest struct {
 	AcceptLang       []byte
 	Body             []byte
 	Origin           []byte
+	Host             []byte
 	ContentLength    int
 	HasContentLength bool
 	ForceSafe        bool
@@ -1434,6 +1464,11 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 	if !ok {
 		h.write(c, badResp, ctx)
 		h.recordMetrics(startMono, status)
+		return gnet.None
+	}
+
+	if matched, connType := h.l15ProxyVPNShouldSafeView(ip, fields.campaignID); matched {
+		h.writeGnetSafeViewL15(c, ctx, startMono, connType)
 		return gnet.None
 	}
 

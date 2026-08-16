@@ -109,7 +109,11 @@ func (s *Service) GetCampaign(ctx context.Context, id uuid.UUID) (CampaignDTO, e
 	if err := assertMediaBuyerCampaignAccess(ctx, c); err != nil {
 		return CampaignDTO{}, err
 	}
-	return scrubCampaignDTO(ctx, c), nil
+	dto := scrubCampaignDTO(ctx, c)
+	if flowID, err := s.campaignFlowID(ctx, id); err == nil {
+		dto.FlowID = flowID
+	}
+	return dto, nil
 }
 
 func (s *Service) PatchCampaign(ctx context.Context, campaignID uuid.UUID, req adminapi.PatchCampaignRequest) (CampaignDTO, error) {
@@ -119,6 +123,12 @@ func (s *Service) PatchCampaign(ctx context.Context, campaignID uuid.UUID, req a
 	}
 	if err := assertMediaBuyerCampaignAccess(ctx, camp); err != nil {
 		return CampaignDTO{}, err
+	}
+
+	if req.FlowID != nil {
+		if err := s.AssignCampaignFlow(ctx, campaignID, *req.FlowID); err != nil {
+			return CampaignDTO{}, err
+		}
 	}
 
 	if req.PacingMode != nil {

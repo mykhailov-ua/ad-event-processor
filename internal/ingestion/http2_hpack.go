@@ -228,7 +228,11 @@ func h2AssignHeader(req *parsedHTTPRequest, key, val []byte, hFlags *uint8, clVa
 				return nil
 			}
 		}
-		if bytesEqual(key, ":authority") || bytesEqual(key, ":scheme") {
+		if bytesEqual(key, ":authority") {
+			req.Host = val
+			return nil
+		}
+		if bytesEqual(key, ":scheme") {
 			return nil
 		}
 		return errInvalidRequest

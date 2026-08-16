@@ -89,6 +89,10 @@ type Campaign struct {
 	// branch (RP-M1). Default true; replicated to the tracker hot path.
 	L1CIDRBlockEnabled bool
 
+	// L15ProxyVPNBlockEnabled gates the pre-FilterEngine L1.5 proxy/VPN Safe View
+	// branch (GM-M1). Default true; replicated to the tracker hot path.
+	L15ProxyVPNBlockEnabled bool
+
 	// Click delivery (RP-M3): redirect (default) or reverse-proxy upstream.
 	ClickDelivery      string
 	ProxyUpstreamURL   string

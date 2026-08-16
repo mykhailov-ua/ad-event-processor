@@ -53,10 +53,13 @@ func (a *paymentAPI) CreatePaymentIntent(ctx context.Context, customerID string,
 		return nil, err
 	}
 	return &domain.CreatePaymentIntentResult{
-		IntentID:    result.Intent.ID,
-		Status:      result.Intent.Status,
-		CheckoutURL: result.CheckoutURL,
-		ProviderRef: result.Intent.ProviderRef,
+		IntentID:       result.Intent.ID,
+		Status:         result.Intent.Status,
+		CheckoutURL:    result.CheckoutURL,
+		ProviderRef:    result.Intent.ProviderRef,
+		DepositAddress: result.DepositAddress,
+		DepositNetwork: result.DepositNetwork,
+		DepositQRSVG:   result.DepositQRSVG,
 	}, nil
 }
 

@@ -14,6 +14,7 @@ const ROUTE_ACCESS: Record<string, RouteAccess> = {
   '/customers/:id': { perms: ['customers:read'] },
   '/campaigns': { perms: ['campaigns:read'], altPerm: 'campaigns:read:masked' },
   '/campaigns/portfolio': { perms: ['campaigns:read'], altPerm: 'campaigns:read:masked' },
+  '/campaigns/flows': { perms: ['campaigns:read'], altPerm: 'campaigns:read:masked' },
   '/campaigns/:id': { perms: ['campaigns:read'], altPerm: 'campaigns:read:masked' },
   '/campaigns/:id/telegram': { perms: ['campaigns:read'], altPerm: 'campaigns:read:masked' },
   '/billing': { perms: ['customers:read', 'billing:read', 'campaigns:read:masked'] },

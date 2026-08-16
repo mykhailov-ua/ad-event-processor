@@ -12,6 +12,8 @@ PREPARE="${PREPARE:-0}"
 PCT_BROKEN="${PCT_BROKEN:-}"
 PCT_GRAY="${PCT_GRAY:-}"
 PCT_CLICK_PROXY="${PCT_CLICK_PROXY:-}"
+PCT_PROXY_VPN="${PCT_PROXY_VPN:-}"
+PCT_FLOW_ROUTE="${PCT_FLOW_ROUTE:-}"
 OUT="$ROOT/var/load-test/$(date -u +%Y%m%dT%H%M%SZ)"
 mkdir -p "$OUT"
 
@@ -84,6 +86,8 @@ LG_ARGS=(-mode "$MODE" -out "$OUT" -trackers "$TRACKER_BASES" -edge "${EDGE_URL:
 [[ -n "$PCT_BROKEN" ]] && LG_ARGS+=(-pct-broken "$PCT_BROKEN")
 [[ -n "$PCT_GRAY" ]] && LG_ARGS+=(-pct-gray "$PCT_GRAY")
 [[ -n "$PCT_CLICK_PROXY" ]] && LG_ARGS+=(-pct-click-proxy "$PCT_CLICK_PROXY")
+[[ -n "$PCT_PROXY_VPN" ]] && LG_ARGS+=(-pct-proxy-vpn "$PCT_PROXY_VPN")
+[[ -n "$PCT_FLOW_ROUTE" ]] && LG_ARGS+=(-pct-flow-route "$PCT_FLOW_ROUTE")
 
 log "starting loadgen (${MODE})"
 go run ./cmd/loadgen "${LG_ARGS[@]}" 2>&1 | tee "$OUT/loadgen.log"

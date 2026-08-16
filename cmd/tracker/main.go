@@ -614,6 +614,30 @@ func main() {
 			slog.Info("cidr l1 loader started", "dir", cfg.CIDRFeedDir, "refresh", cfg.CIDRFeedRefresh, "download", cfg.CIDRFeedDownloadEnable)
 		}
 	}
+	if cfg.ProxyVPNL15Enabled {
+		proxyTable := ingestion.NewProxyVPNTable()
+		gnetHandler.ConfigureProxyVPN(proxyTable)
+		if proxyLoader := ingestion.NewProxyVPNFeedLoader(cfg, proxyTable); proxyLoader != nil {
+			go proxyLoader.Start(ctx)
+			slog.Info("proxy vpn l1.5 loader started", "dir", cfg.ProxyVPNFeedDir, "refresh", cfg.ProxyVPNFeedRefresh)
+		}
+	}
+	if cfg.DomainPoolEnabled {
+		domainPoolTable := ingestion.NewDomainPoolTable()
+		gnetHandler.ConfigureDomainPool(domainPoolTable)
+		if domainPoolSync := ingestion.NewDomainPoolSync(pool, domainPoolTable, cfg.DomainPoolSyncInterval); domainPoolSync != nil {
+			go domainPoolSync.Start(ctx)
+			slog.Info("domain pool sync started", "interval", cfg.DomainPoolSyncInterval)
+		}
+	}
+	if cfg.FlowRoutingEnabled {
+		flowTable := ingestion.NewCampaignFlowTable()
+		gnetHandler.ConfigureCampaignFlow(flowTable)
+		if flowSync := ingestion.NewCampaignFlowSync(pool, flowTable, cfg.FlowSyncInterval); flowSync != nil {
+			go flowSync.Start(ctx)
+			slog.Info("campaign flow sync started", "interval", cfg.FlowSyncInterval)
+		}
+	}
 	if rtbCatalog != nil {
 		gnetHandler.ConfigureRtb(rtbCatalog, geoProvider, unifiedFilter, settingsWatcher)
 	}

@@ -1,0 +1,6 @@
+version: 1
+status_map:
+  approved: lead
+  rejected: trash
+  pending: hold
+  hold: hold

@@ -7,6 +7,9 @@ export type PaymentIntentResult = {
   status: string;
   checkout_url: string;
   provider_ref?: string;
+  deposit_address?: string;
+  deposit_network?: string;
+  deposit_qr_svg?: string;
 };
 
 export type BillingStatementDTO = {
@@ -51,3 +54,20 @@ export async function fetchSelfServeStatement(month = ''): Promise<BillingStatem
   const res = await api<BillingStatementDTO>(path);
   return res.data ?? {};
 }
+
+function formatPaymentStatus(status: string): string {
+  switch (status) {
+    case 'PAYMENT_INTENT_STATUS_PENDING_PROVIDER':
+      return 'Awaiting payment';
+    case 'PAYMENT_INTENT_STATUS_PROCESSING':
+      return 'Confirming on-chain';
+    case 'PAYMENT_INTENT_STATUS_SUCCEEDED':
+      return 'Paid';
+    case 'PAYMENT_INTENT_STATUS_FAILED':
+      return 'Failed';
+    default:
+      return status.replace(/^PAYMENT_INTENT_STATUS_/, '').replaceAll('_', ' ').toLowerCase();
+  }
+}
+
+export { formatPaymentStatus };

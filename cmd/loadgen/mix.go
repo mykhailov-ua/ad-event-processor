@@ -22,6 +22,8 @@ type mixConfig struct {
 	pctInvalid    int
 	pctDDoS       int
 	pctClickProxy int
+	pctProxyVPN   int
+	pctFlowRoute  int
 }
 
 func defaultMix(mode string, pctBroken, pctGray int) mixConfig {
@@ -109,7 +111,9 @@ func (r *runner) doOnce() {
 	openrtbEnd := r.mix.pctOpenRTB
 	telegramEnd := openrtbEnd + r.mix.pctTelegram
 	clickProxyEnd := telegramEnd + r.mix.pctClickProxy
-	validEnd := clickProxyEnd + r.mix.pctValid
+	proxyVPNEnd := clickProxyEnd + r.mix.pctProxyVPN
+	flowRouteEnd := proxyVPNEnd + r.mix.pctFlowRoute
+	validEnd := flowRouteEnd + r.mix.pctValid
 	fraudEnd := validEnd + r.mix.pctFraud
 	invalidEnd := fraudEnd + r.mix.pctInvalid
 	ddosEnd := invalidEnd + r.mix.pctDDoS
@@ -121,6 +125,10 @@ func (r *runner) doOnce() {
 		r.telegramTraffic(base, iter)
 	case roll < clickProxyEnd:
 		r.clickProxyTraffic(base, iter)
+	case roll < proxyVPNEnd:
+		r.proxyVPNTraffic(base, iter)
+	case roll < flowRouteEnd:
+		r.flowRouteTraffic(base, iter)
 	case roll < validEnd:
 		body := r.validBody(iter)
 		r.post(base+"/track", "application/json", body, nil)
@@ -169,6 +177,39 @@ func (r *runner) clickProxyTraffic(base string, iter uint64) {
 	cid := r.pickCampaign(iter)
 	clickID := fmt.Sprintf("00000000-0000-4000-8000-%012x", iter)
 	r.get(fmt.Sprintf("%s/click?campaign_id=%s&click_id=%s&sub1=loadgen", base, cid, clickID))
+}
+
+// proxyVPNTraffic simulates residential/commercial proxy and VPN delivery via
+// datacenter-class X-Forwarded-For addresses. Exercises FraudFilter IsAnonymous
+// until GM-M1 L1.5 hard drops land.
+func (r *runner) proxyVPNTraffic(base string, iter uint64) {
+	cid := r.pickCampaign(iter)
+	body := r.validBody(iter)
+	r.post(base+"/track", "application/json", body, map[string]string{
+		"X-Forwarded-For": proxyVPNClientIP(iter),
+		"X-Campaign-ID":   cid,
+	})
+}
+
+// flowRouteTraffic issues GET /click with a flow_id token so GM-M3 routing
+// drills can pin cohorts before the hot-path FlowRouter is wired.
+func (r *runner) flowRouteTraffic(base string, iter uint64) {
+	cid := r.pickCampaign(iter)
+	clickID := fmt.Sprintf("00000000-0000-4000-8000-%012x", iter)
+	flowID := fmt.Sprintf("flow-%d", iter%8)
+	r.get(fmt.Sprintf("%s/click?campaign_id=%s&click_id=%s&flow_id=%s&sub1=loadgen-flow", base, cid, clickID, flowID))
+}
+
+func proxyVPNClientIP(iter uint64) string {
+	// Well-known hosting / CDN ranges used as mock proxy egress in load tests.
+	ips := []string{
+		"54.230.17.9",
+		"35.190.0.1",
+		"104.16.0.1",
+		"185.220.101.1",
+		"45.33.32.156",
+	}
+	return ips[iter%uint64(len(ips))]
 }
 
 func (r *runner) postOpenRTBBid(base string, iter uint64) {

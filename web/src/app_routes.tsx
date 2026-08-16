@@ -19,6 +19,9 @@ const RtbDealsPage = lazy(() => import('./pages/rtb_deals_page.js').then((mod) =
 const CustomerDetailPage = lazy(() => import('./pages/customer_detail_page.js').then((mod) => ({
   default: mod.CustomerDetailPage,
 })));
+const CampaignFlowsPage = lazy(() => import('./pages/campaign_flows_page.js').then((mod) => ({
+  default: mod.CampaignFlowsPage,
+})));
 const CampaignDetailPage = lazy(() => import('./pages/campaign_detail_page.js').then((mod) => ({
   default: mod.CampaignDetailPage,
 })));
@@ -169,6 +172,7 @@ export function AppRoutes() {
       <Route path="/customers" element={lazyRoute(<CustomersPage />)} />
       <Route path="/customers/:id" element={lazyRoute(<CustomerDetailPage />)} />
       <Route path="/campaigns" element={lazyRoute(<CampaignsPage />)} />
+      <Route path="/campaigns/flows" element={lazyRoute(<CampaignFlowsPage />)} />
       <Route path="/campaigns/:id" element={lazyRoute(<CampaignDetailPage />)} />
       <Route path="/rtb/deals" element={lazyRoute(<RtbDealsPage />)} />
       <Route path="/billing/invoices/:id" element={lazyRoute(<InvoiceDetailPage />)} />

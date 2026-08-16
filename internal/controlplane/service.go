@@ -54,6 +54,7 @@ type Service struct {
 	pgFencing       *pgfailover.FencingGate
 	globalSpend     *GlobalSpendReconciler
 	rtbBidShadeSim  RtbBidShadeSimulator
+	cloudflare      CloudflareAPI
 	shard0Mu        sync.Mutex
 }
 
@@ -108,6 +109,7 @@ func NewService(ctx context.Context, pool *pgxpool.Pool, rdbs []redis.UniversalC
 	}
 	if cfg != nil {
 		s.pgGate = NewPostgresGate(cfg.DBTrackerMaxConns)
+		s.cloudflare = NewCloudflareClient(string(cfg.Management.CloudflareAPIToken), cfg.Management.CloudflareAPIBase)
 	}
 	s.startWorker(func() {
 		if cfg == nil {

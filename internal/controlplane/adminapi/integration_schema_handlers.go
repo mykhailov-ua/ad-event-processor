@@ -1,14 +1,15 @@
 package adminapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/integrationschema"
 	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/integrationschema"
 	"github.com/bidshard/ad-event-processor/internal/postback"
 	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
@@ -40,10 +41,12 @@ type ApplyIntegrationSchemaRequest struct {
 }
 
 type IntegrationSchemaHTTPHandlers struct {
-	Pool              *pgxpool.Pool
-	EncryptionKey     []byte
-	ApplyRateLimit    func(http.HandlerFunc) http.HandlerFunc
-	RequirePermission func(string, http.HandlerFunc) http.HandlerFunc
+	Pool                  *pgxpool.Pool
+	EncryptionKey         []byte
+	TemplateCatalog       any
+	ResolveTrackingDomain func(ctx context.Context) string
+	ApplyRateLimit        func(http.HandlerFunc) http.HandlerFunc
+	RequirePermission     func(string, http.HandlerFunc) http.HandlerFunc
 }
 
 func (h *IntegrationSchemaHTTPHandlers) Register(mux *http.ServeMux) {
@@ -62,6 +65,7 @@ func (h *IntegrationSchemaHTTPHandlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/integration/schemas", limit(perm("campaigns:write", h.createSchema)))
 	mux.HandleFunc("GET /api/v1/integration/schemas/{id}", limit(perm("campaigns:read", h.getSchema)))
 	mux.HandleFunc("POST /api/v1/integration/schemas/{id}/apply", limit(perm("campaigns:write", h.applySchema)))
+	h.RegisterTemplateRoutes(mux)
 }
 
 func (h *IntegrationSchemaHTTPHandlers) listSchemas(w http.ResponseWriter, r *http.Request) {
@@ -255,8 +259,33 @@ func (h *IntegrationSchemaHTTPHandlers) applySchema(w http.ResponseWriter, r *ht
 			return
 		}
 		applied["url_template"] = tpl
-	case integrationschema.KindInboundTokens, integrationschema.KindStatusMapping:
-		// v1: registry link only; runtime token enforcement is v1.1 (atomic snapshot).
+	case integrationschema.KindInboundTokens:
+		parsedKind, parsed, err := integrationschema.ParseDocument(schemaBody)
+		if err != nil || parsedKind != integrationschema.KindInboundTokens {
+			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid inbound schema")
+			return
+		}
+		inbound := parsed.(*integrationschema.InboundTokensSchema)
+		trackingDomain := ""
+		if h.ResolveTrackingDomain != nil {
+			trackingDomain = h.ResolveTrackingDomain(r.Context())
+		}
+		trackingURL := integrationschema.BuildInboundTrackingURL(trackingDomain, inbound)
+		if _, err := tx.Exec(r.Context(), `
+			UPDATE campaigns
+			SET integration_schema_id = $2, target_url = $3, updated_at = NOW()
+			WHERE id = $1`, campaignID, schemaID, trackingURL); err != nil {
+			httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+			return
+		}
+		applied["target_url"] = trackingURL
+	case integrationschema.KindStatusMapping:
+		if _, err := tx.Exec(r.Context(), `
+			UPDATE campaigns SET status_integration_schema_id = $2, updated_at = NOW() WHERE id = $1`,
+			campaignID, schemaID); err != nil {
+			httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+			return
+		}
 	default:
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "unsupported schema kind")
 		return

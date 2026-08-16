@@ -148,6 +148,9 @@ func loadManagementModules(cfg *Config) {
 	cfg.Management.DomainSSLSetupEnabled = getEnvBool("DOMAIN_SSL_SETUP_ENABLED", true)
 	cfg.Management.DomainSSLSetupScript = strings.TrimSpace(os.Getenv("DOMAIN_SSL_SETUP_SCRIPT"))
 	cfg.Management.DomainSSLAcmeEmail = strings.TrimSpace(os.Getenv("CADDY_ACME_EMAIL"))
+	cfg.Management.CloudflareAPIToken = Secret(strings.TrimSpace(os.Getenv("CLOUDFLARE_API_TOKEN")))
+	cfg.Management.CloudflareAPIBase = strings.TrimSpace(os.Getenv("CLOUDFLARE_API_BASE"))
+	cfg.Management.CloudflareDNSTarget = strings.TrimSpace(os.Getenv("CLOUDFLARE_DNS_TARGET"))
 	cfg.Management.CaddyTLSAskToken = Secret(strings.TrimSpace(os.Getenv("CADDY_TLS_ASK_TOKEN")))
 	cfg.Management.CaddyTLSAskAllowLocal = getEnvBool("CADDY_TLS_ASK_ALLOW_LOCAL", true)
 

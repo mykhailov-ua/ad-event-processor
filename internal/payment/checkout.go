@@ -68,7 +68,16 @@ func CreateCheckout(
 				prov = p
 			}
 		}
-		return CreateCryptoCheckout(cfg, prov, amountMicro, idempotencyKey)
+		result, err := CreateCryptoCheckout(cfg, prov, amountMicro, idempotencyKey)
+		if err != nil {
+			return "", "", err
+		}
+		if metadata != nil {
+			metadata["deposit_address"] = result.DepositAddress
+			metadata["deposit_network"] = result.DepositNetwork
+			metadata["deposit_qr_svg"] = result.DepositQRSVG
+		}
+		return result.ProviderRef, result.CheckoutURL, nil
 	case "stripe", "":
 		if StripeConfigured(cfg) {
 			return createStripeCheckout(ctx, cfg, amountMicro, currency, metadata, idempotencyKey)
@@ -84,7 +93,11 @@ func createMockCheckout(idempotencyKey string) (string, string, error) {
 }
 
 func createCryptoCheckout(cfg *config.Config, amountMicro int64, idempotencyKey string) (string, string, error) {
-	return CreateCryptoCheckout(cfg, CryptoProviderGeneric, amountMicro, idempotencyKey)
+	result, err := CreateCryptoCheckout(cfg, CryptoProviderGeneric, amountMicro, idempotencyKey)
+	if err != nil {
+		return "", "", err
+	}
+	return result.ProviderRef, result.CheckoutURL, nil
 }
 
 func createStripeCheckout(

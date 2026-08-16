@@ -26,8 +26,12 @@ test('buyer billing wallet top-up creates payment intent', async ({ page }) => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         intent_id: 'pi-e2e',
-        status: 'pending',
+        status: 'PAYMENT_INTENT_STATUS_PENDING_PROVIDER',
         checkout_url: 'https://checkout.example/pi-e2e',
+        provider_ref: 'tx_crypto_e2e',
+        deposit_address: 'TTestDepositAddressForE2E123456789',
+        deposit_network: 'USDT TRC-20',
+        deposit_qr_svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3 3"><rect width="3" height="3" fill="#fff"/><rect x="1" y="1" width="1" height="1" fill="#000"/></svg>',
       }),
     });
   });
@@ -40,6 +44,9 @@ test('buyer billing wallet top-up creates payment intent', async ({ page }) => {
   await page.getByRole('button', { name: 'Confirm' }).click();
 
   await expect(page.getByTestId('billing-topup-checkout-link')).toBeVisible();
+  await expect(page.getByTestId('billing-deposit-address')).toContainText('TTestDeposit');
+  await expect(page.getByTestId('billing-deposit-qr')).toBeVisible();
+  await expect(page.getByTestId('billing-topup-status')).toHaveText('Awaiting payment');
   expect(intentBody?.amount_micro).toBe(50_000_000);
 });
 

@@ -1,0 +1,6 @@
+# Proxy/VPN ASN feed for L1.5 (GM-M1). One prefix per line:
+# CIDR ASN conn_flags
+54.0.0.0/8 16509 vpn,hosting
+35.190.0.0/16 15169 hosting
+104.16.0.0/12 13335 hosting
+185.220.100.0/24 60729 vpn

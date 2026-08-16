@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -133,6 +134,35 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 	cfg.CIDRFeedURLAzure = os.Getenv("CIDR_FEED_URL_AZURE")
 	cfg.CIDRFeedURLTor = os.Getenv("CIDR_FEED_URL_TOR")
 	cfg.CIDRFeedDownloadEnable = getEnvBool("CIDR_FEED_DOWNLOAD_ENABLED", false)
+
+	cfg.ProxyVPNL15Enabled = getEnvBool("PROXY_VPN_L15_ENABLED", true)
+	cfg.ProxyVPNFeedDir = os.Getenv("PROXY_VPN_FEED_DIR")
+	if cfg.ProxyVPNFeedDir == "" {
+		cfg.ProxyVPNFeedDir = "/var/lib/ad-event-processor/proxy-vpn"
+	}
+	cfg.ProxyVPNFeedRefresh = 24 * time.Hour
+	if raw := os.Getenv("PROXY_VPN_FEED_REFRESH_INTERVAL"); raw != "" {
+		if d, err := time.ParseDuration(raw); err == nil && d > 0 {
+			cfg.ProxyVPNFeedRefresh = d
+		} else if n, err := strconv.Atoi(raw); err == nil && n > 0 {
+			cfg.ProxyVPNFeedRefresh = time.Duration(n) * time.Second
+		}
+	}
+	cfg.DomainPoolEnabled = getEnvBool("DOMAIN_POOL_ENABLED", true)
+	cfg.DomainPoolSyncInterval = 30 * time.Second
+	if raw := strings.TrimSpace(os.Getenv("DOMAIN_POOL_SYNC_INTERVAL")); raw != "" {
+		if d, err := time.ParseDuration(raw); err == nil && d > 0 {
+			cfg.DomainPoolSyncInterval = d
+		}
+	}
+	cfg.FlowRoutingEnabled = getEnvBool("FLOW_ROUTING_ENABLED", true)
+	cfg.FlowSyncInterval = 30 * time.Second
+	if raw := strings.TrimSpace(os.Getenv("FLOW_SYNC_INTERVAL")); raw != "" {
+		if d, err := time.ParseDuration(raw); err == nil && d > 0 {
+			cfg.FlowSyncInterval = d
+		}
+	}
+
 	cfg.ProxyAllowHTTPInsecure = getEnvBool("PROXY_ALLOW_HTTP_INSECURE", false)
 
 	cfg.SlotMapReloadTopic = os.Getenv("SLOT_MAP_RELOAD_TOPIC")

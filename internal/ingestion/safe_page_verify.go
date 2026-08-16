@@ -25,14 +25,17 @@ type safePageVerifyEvent struct {
 }
 
 type safePageVerifyFingerprint struct {
-	UA        string   `json:"ua"`
-	Lang      string   `json:"lang"`
-	Platform  string   `json:"platform"`
-	Cores     int      `json:"cores"`
-	Screen    []int    `json:"screen"`
-	Timezone  string   `json:"timezone"`
-	Webdriver bool     `json:"webdriver"`
-	Languages []string `json:"languages"`
+	UA            string   `json:"ua"`
+	Lang          string   `json:"lang"`
+	Platform      string   `json:"platform"`
+	Cores         int      `json:"cores"`
+	Screen        []int    `json:"screen"`
+	Timezone      string   `json:"timezone"`
+	Webdriver     bool     `json:"webdriver"`
+	Languages     []string `json:"languages"`
+	WebRTCLocalIP string   `json:"webrtc_local_ip,omitempty"`
+	WebGLRenderer string   `json:"webgl_renderer,omitempty"`
+	Mobile        bool     `json:"mobile,omitempty"`
 }
 
 type safePageVerifyRequest struct {
@@ -177,6 +180,36 @@ func (h *AdsPacketHandler) reactTrackVerify(req parsedHTTPRequest, c gnet.Conn, 
 	}
 	if !validSafePageFingerprint(verifyReq.Fingerprint) {
 		h.writeGnetVerifyJSON(c, ctx, startMono, safePageVerifyResponse{Success: false, Code: "fingerprint_reject"}, http.StatusForbidden)
+		return gnet.None
+	}
+
+	country := ""
+	if h.trackProc.ingestGeo != nil {
+		country, _ = h.trackProc.ingestGeo.GetCountry(ip)
+	}
+	if fail, code := evaluateSafePageAttestation(safePageAttestationInput{
+		remoteIP:    ip,
+		country:     country,
+		fingerprint: verifyReq.Fingerprint,
+		nowUnix:     time.Now().Unix(),
+	}); fail {
+		landingURL, ok := resolveSafePageLanding(h.registry, campaignID)
+		if !ok {
+			h.writeGnetVerifyJSON(c, ctx, startMono, safePageVerifyResponse{Success: false, Code: "safe_page_disabled"}, http.StatusForbidden)
+			return gnet.None
+		}
+		urlBytes, ok := safePageURLAttrBytes(landingURL)
+		if !ok {
+			h.writeGnetVerifyJSON(c, ctx, startMono, safePageVerifyResponse{Success: false, Code: "invalid_landing"}, http.StatusBadRequest)
+			return gnet.None
+		}
+		body := appendSafePageStubBody(nil, urlBytes)
+		metrics.SafePageVerifyTotal.Inc()
+		h.writeGnetVerifyJSON(c, ctx, startMono, safePageVerifyResponse{
+			Success:     true,
+			HTMLContent: string(body),
+			Code:        code,
+		}, http.StatusOK)
 		return gnet.None
 	}
 

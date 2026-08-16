@@ -13,7 +13,8 @@ func TestDefaultMix_includesOpenRTB26(t *testing.T) {
 		if mode == "business" || mode == "smoke" {
 			assert.Greater(t, mix.pctTelegram, 0, "mode=%s", mode)
 		}
-		total := mix.pctOpenRTB + mix.pctTelegram + mix.pctValid + mix.pctFraud + mix.pctInvalid + mix.pctDDoS
+		total := mix.pctOpenRTB + mix.pctTelegram + mix.pctValid + mix.pctFraud +
+			mix.pctInvalid + mix.pctDDoS + mix.pctClickProxy + mix.pctProxyVPN + mix.pctFlowRoute
 		assert.LessOrEqual(t, total, 100, "mode=%s", mode)
 	}
 }

@@ -35,6 +35,13 @@ export const NAV_GROUPS: NavGroup[] = [
         perm: 'campaigns:read',
         altPerm: 'campaigns:read:masked',
       },
+      {
+        to: '/campaigns/flows',
+        label: 'Flows',
+        icon: 'git-branch',
+        perm: 'campaigns:read',
+        altPerm: 'campaigns:read:masked',
+      },
     ],
   },
   {

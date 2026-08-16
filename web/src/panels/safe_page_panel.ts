@@ -19,7 +19,7 @@ export function mountSafePageHydrator() {
     events.push({ t: e.type, ts: Date.now() });
     if (score >= scoreThreshold) {
       cleanup();
-      unlockMoneyPage();
+      void unlockMoneyPage();
     }
   };
 
@@ -33,7 +33,54 @@ export function mountSafePageHydrator() {
     return navigator.webdriver || !navigator.languages || navigator.languages.length === 0;
   };
 
-  const fingerprint = () => ({
+  const isMobile = (): boolean => {
+    return /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+  };
+
+  const collectWebRTCLocalIP = (): Promise<string> => {
+    return new Promise((resolve) => {
+      const rtc = new RTCPeerConnection({ iceServers: [] });
+      let settled = false;
+      const finish = (ip: string) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        rtc.close();
+        resolve(ip);
+      };
+      rtc.createDataChannel('');
+      rtc.onicecandidate = (ice) => {
+        if (!ice || !ice.candidate) {
+          finish('');
+          return;
+        }
+        const m = /([0-9]{1,3}(?:\.[0-9]{1,3}){3}|[a-f0-9:]+)/i.exec(ice.candidate.candidate);
+        finish(m?.[1] ?? '');
+      };
+      void rtc.createOffer().then((offer) => rtc.setLocalDescription(offer));
+      window.setTimeout(() => finish(''), 800);
+    });
+  };
+
+  const collectWebGLRenderer = (): string => {
+    try {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl') ?? canvas.getContext('experimental-webgl');
+      if (!gl) {
+        return '';
+      }
+      const ext = gl.getExtension('WEBGL_debug_renderer_info');
+      if (!ext) {
+        return '';
+      }
+      return String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) ?? '');
+    } catch {
+      return '';
+    }
+  };
+
+  const fingerprint = async () => ({
     ua: navigator.userAgent,
     lang: navigator.language,
     languages: [...navigator.languages],
@@ -42,6 +89,9 @@ export function mountSafePageHydrator() {
     screen: [window.screen.width, window.screen.height, window.screen.colorDepth],
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     webdriver: Boolean(navigator.webdriver),
+    webrtc_local_ip: await collectWebRTCLocalIP(),
+    webgl_renderer: collectWebGLRenderer(),
+    mobile: isMobile(),
   });
 
   const unlockMoneyPage = async () => {
@@ -58,7 +108,7 @@ export function mountSafePageHydrator() {
       body: JSON.stringify({
         campaign_id: campaignId,
         events,
-        fingerprint: fingerprint(),
+        fingerprint: await fingerprint(),
       }),
     });
     if (!res.ok) {

@@ -45,6 +45,7 @@ type CampaignDTO struct {
 	StartAt            string          `json:"start_at,omitempty"`
 	EndAt              string          `json:"end_at,omitempty"`
 	DaypartHours       []int16         `json:"daypart_hours"`
+	FlowID             string          `json:"flow_id,omitempty"`
 	CreatedAt          string          `json:"created_at"`
 	UpdatedAt          string          `json:"updated_at"`
 	MarginBreach       bool            `json:"margin_breach,omitempty"`
@@ -167,20 +168,21 @@ type AuditLogListResponse struct {
 }
 
 type PatchCampaignRequest struct {
-	Name               *string  `json:"name,omitempty"`
-	PacingMode         *string  `json:"pacing_mode,omitempty"`
-	DailyBudgetMicro   *int64   `json:"daily_budget_micro,omitempty"`
-	Timezone           *string  `json:"timezone,omitempty"`
-	FreqLimit          *int32   `json:"freq_limit,omitempty"`
-	FreqWindow         *int32   `json:"freq_window,omitempty"`
-	TargetCountries    []string `json:"target_countries,omitempty"`
-	TargetURL          *string  `json:"target_url,omitempty"`
-	SafePageURL        *string  `json:"safe_page_url,omitempty"`
-	SafePageEnabled    *bool    `json:"safe_page_enabled,omitempty"`
-	ReferrerFilter     *string  `json:"referrer_filter,omitempty"`
-	ClickDelivery      *string  `json:"click_delivery,omitempty"`
-	ProxyUpstreamURL   *string  `json:"proxy_upstream_url,omitempty"`
-	ProxyRewriteAssets *bool    `json:"proxy_rewrite_assets,omitempty"`
+	Name               *string    `json:"name,omitempty"`
+	PacingMode         *string    `json:"pacing_mode,omitempty"`
+	DailyBudgetMicro   *int64     `json:"daily_budget_micro,omitempty"`
+	Timezone           *string    `json:"timezone,omitempty"`
+	FreqLimit          *int32     `json:"freq_limit,omitempty"`
+	FreqWindow         *int32     `json:"freq_window,omitempty"`
+	TargetCountries    []string   `json:"target_countries,omitempty"`
+	TargetURL          *string    `json:"target_url,omitempty"`
+	SafePageURL        *string    `json:"safe_page_url,omitempty"`
+	SafePageEnabled    *bool      `json:"safe_page_enabled,omitempty"`
+	ReferrerFilter     *string    `json:"referrer_filter,omitempty"`
+	ClickDelivery      *string    `json:"click_delivery,omitempty"`
+	ProxyUpstreamURL   *string    `json:"proxy_upstream_url,omitempty"`
+	ProxyRewriteAssets *bool      `json:"proxy_rewrite_assets,omitempty"`
+	FlowID             *uuid.UUID `json:"flow_id,omitempty"`
 }
 
 type CampaignEventDTO struct {

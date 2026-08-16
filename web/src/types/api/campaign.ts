@@ -24,6 +24,7 @@ export type CampaignDTO = {
   start_at?: string;
   end_at?: string;
   daypart_hours: number[];
+  flow_id?: string;
   created_at: string;
   updated_at: string;
   /** Present when list API embeds margin guard summary. */
@@ -69,6 +70,7 @@ export type CampaignPatchBody = Partial<{
   start_at: string;
   end_at: string;
   daypart_hours: number[];
+  flow_id?: string | null;
 }>;
 
 /**

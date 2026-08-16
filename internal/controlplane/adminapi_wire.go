@@ -16,6 +16,7 @@ import (
 	"github.com/bidshard/ad-event-processor/internal/edge/xdpstats"
 	"github.com/bidshard/ad-event-processor/internal/licensing"
 	"github.com/bidshard/ad-event-processor/internal/openrtb"
+	"github.com/bidshard/ad-event-processor/internal/payment"
 	"github.com/bidshard/ad-event-processor/pkg/doctor"
 	"github.com/bidshard/ad-event-processor/pkg/platformconfig"
 	"github.com/bidshard/ad-event-processor/pkg/supportbundle"
@@ -155,6 +156,19 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 		costWorker = costsync.NewWorker(pool, encKey)
 	}
 
+	selfServePaymentProvider := ""
+	selfServeCryptoSubProvider := ""
+	if h.cfg != nil {
+		if h.cfg.Billing.PaymentProvider == "crypto" || payment.CryptoConfigured(h.cfg) {
+			selfServePaymentProvider = "crypto"
+		}
+		if string(h.cfg.BTCPayWebhookSecret) != "" {
+			selfServeCryptoSubProvider = payment.CryptoProviderBTCPay
+		} else if string(h.cfg.CryptomusAPIKey) != "" {
+			selfServeCryptoSubProvider = payment.CryptoProviderCryptomus
+		}
+	}
+
 	opsReader := newOpsReader(svc)
 	reportJobs := adminapi.NewReportJobRunner(filepath.Join(".", "data", "report-exports"), adminapi.ReportExportDeps{
 		Pool:    pool,
@@ -182,6 +196,8 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 		CryptoBillingWebhook: &adminapi.CryptoBillingWebhookHandlers{
 			Processor:           svc,
 			CryptoWebhookSecret: string(h.cfg.CryptoWebhookSecret),
+			BTCPayWebhookSecret: string(h.cfg.BTCPayWebhookSecret),
+			CryptomusAPIKey:     string(h.cfg.CryptomusAPIKey),
 		},
 		DoctorHTTP: &adminapi.DoctorHTTPHandlers{
 			Config: h.cfg,
@@ -285,6 +301,8 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			ResolveSelfServeCustomerID: h.resolveSelfServeCustomerIDForSelfServe,
 			AuthorizeCampaignAccess:    authCampaign,
 			WriteServiceError:          writeErr,
+			DefaultPaymentProvider:     selfServePaymentProvider,
+			CryptoSubProvider:          selfServeCryptoSubProvider,
 		},
 		PostbackHTTP: &adminapi.PostbackHTTPHandlers{
 			Pool:              pool,
@@ -323,11 +341,24 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			TLSAskToken:       string(h.cfg.Management.CaddyTLSAskToken),
 			TLSAskAllowLocal:  h.cfg.Management.CaddyTLSAskAllowLocal,
 		},
+		FlowHTTP: &adminapi.FlowHTTPHandlers{
+			Service:           svc,
+			ApplyRateLimit:    limit,
+			RequirePermission: perm,
+		},
 		IntegrationSchemaHTTP: &adminapi.IntegrationSchemaHTTPHandlers{
 			Pool:              pool,
 			EncryptionKey:     encKey,
+			TemplateCatalog:   svc,
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
+			ResolveTrackingDomain: func(ctx context.Context) string {
+				cfg, _, err := svc.GetPlatformConfig(ctx)
+				if err != nil {
+					return ""
+				}
+				return cfg.TrackingDomain
+			},
 		},
 		TeamHTTP: &adminapi.TeamHTTPHandlers{
 			Team:                 &adminapi.TeamOverviewService{Pool: pool},

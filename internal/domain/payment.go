@@ -19,10 +19,13 @@ type PaymentIntent struct {
 }
 
 type CreatePaymentIntentResult struct {
-	IntentID    string
-	Status      string
-	CheckoutURL string
-	ProviderRef string
+	IntentID       string
+	Status         string
+	CheckoutURL    string
+	ProviderRef    string
+	DepositAddress string
+	DepositNetwork string
+	DepositQRSVG   string
 }
 
 type ListPaymentIntentsResult struct {

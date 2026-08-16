@@ -388,6 +388,12 @@ func http1AssignHeader(req *parsedHTTPRequest, key, val []byte, hFlags *uint8, c
 	if kl == 2 && httpFold[key[0]] == 't' && httpFold[key[1]] == 'e' {
 		return http1AssignTransferEncoding(hFlags, val)
 	}
+	if kl == 4 {
+		if httpFold[key[0]] == 'h' && httpFold[key[1]] == 'o' && httpFold[key[2]] == 's' && httpFold[key[3]] == 't' {
+			req.Host = val
+		}
+		return nil
+	}
 	if kl < 6 {
 		return nil
 	}

@@ -2,8 +2,10 @@ package payment
 
 import (
 	"crypto/md5"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"strings"
 )
 
@@ -13,16 +15,49 @@ func VerifyCryptomusWebhookSignature(body []byte, sigHeader, apiKey string) bool
 	if apiKey == "" || sigHeader == "" {
 		return false
 	}
+	expected, ok := cryptomusSignFromBody(body, apiKey)
+	if !ok {
+		return false
+	}
+	sigBytes, err := hex.DecodeString(strings.ToLower(sigHeader))
+	if err != nil {
+		return false
+	}
+	expBytes, err := hex.DecodeString(expected)
+	if err != nil || len(sigBytes) != len(expBytes) {
+		return false
+	}
+	return subtle.ConstantTimeCompare(sigBytes, expBytes) == 1
+}
+
+func cryptomusSignFromBody(body []byte, apiKey string) (string, bool) {
 	var payload map[string]json.RawMessage
 	if err := json.Unmarshal(body, &payload); err != nil {
-		return false
+		return "", false
 	}
 	delete(payload, "sign")
 	encoded, err := json.Marshal(payload)
 	if err != nil {
-		return false
+		return "", false
 	}
 	sum := md5.Sum(append(encoded, []byte(apiKey)...))
-	expected := hex.EncodeToString(sum[:])
-	return strings.EqualFold(expected, sigHeader)
+	return hex.EncodeToString(sum[:]), true
+}
+
+// SignCryptomusWebhookFields returns signed JSON and the sign header value.
+func SignCryptomusWebhookFields(fields map[string]any, apiKey string) ([]byte, string, error) {
+	unsigned, err := json.Marshal(fields)
+	if err != nil {
+		return nil, "", err
+	}
+	sign, ok := cryptomusSignFromBody(unsigned, apiKey)
+	if !ok {
+		return nil, "", fmt.Errorf("cryptomus sign payload")
+	}
+	fields["sign"] = sign
+	signed, err := json.Marshal(fields)
+	if err != nil {
+		return nil, "", err
+	}
+	return signed, sign, nil
 }

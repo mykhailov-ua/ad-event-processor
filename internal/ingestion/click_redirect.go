@@ -474,11 +474,19 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 		return gnet.None
 	}
 
+	if h.tryTrackingDomainRotation(req, ctx, c, startMono) {
+		return gnet.None
+	}
+
 	ip := extractClientIPGnet(ctx, &req, c, h.cfg.TrustedProxies)
 	ua := unsafeString(req.UserAgent)
 
 	if matched, feed := h.l1CIDRShouldSafeView(ip, parsed.campaignID); matched {
 		h.writeGnetSafeViewCIDR(c, ctx, startMono, feed)
+		return gnet.None
+	}
+	if matched, connType := h.l15ProxyVPNShouldSafeView(ip, parsed.campaignID); matched {
+		h.writeGnetSafeViewL15(c, ctx, startMono, connType)
 		return gnet.None
 	}
 
@@ -571,7 +579,16 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 		landing = ResolveLandingURLBytes(h.registry, h.creativeStore, evt)
 	}
 
+	var flowSel FlowSelection
+	if flowLanding, sel, flowOK := h.selectFlowLanding(evt.CampaignID, parsed.userID); flowOK {
+		landing = flowLanding
+		flowSel = sel
+	}
+
 	evt.Payload = appendAttributionPayload(evt.Payload[:0], nil, parsed.subs, parsed.fbclid, parsed.gclid, parsed.ttclid)
+	if flowSel.LanderID != uuid.Nil || flowSel.OfferID != uuid.Nil {
+		evt.Payload = appendFlowAttribution(evt.Payload, flowSel.LanderID, flowSel.OfferID)
+	}
 
 	if camp, ok := h.registry.GetCampaign(evt.CampaignID); ok {
 		if proxyOn, upstream, rewrite := campaignClickProxyEnabled(camp); proxyOn {

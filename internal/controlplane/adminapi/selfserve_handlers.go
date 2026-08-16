@@ -99,6 +99,8 @@ type SelfServeHTTPHandlers struct {
 	ResolveSelfServeCustomerID func(*http.Request, *uuid.UUID) (uuid.UUID, error)
 	AuthorizeCampaignAccess    func(*http.Request, uuid.UUID) error
 	WriteServiceError          func(http.ResponseWriter, error)
+	DefaultPaymentProvider     string
+	CryptoSubProvider          string
 }
 
 func (selfServe *SelfServeHTTPHandlers) Register(mux *http.ServeMux) {
@@ -349,6 +351,12 @@ func (selfServe *SelfServeHTTPHandlers) createPaymentIntent(w http.ResponseWrite
 		"customer_id": customerID.String(),
 		"source":      "selfserve",
 	}
+	if p := strings.TrimSpace(selfServe.DefaultPaymentProvider); p != "" {
+		meta["provider"] = p
+	}
+	if cp := strings.TrimSpace(selfServe.CryptoSubProvider); cp != "" {
+		meta["crypto_provider"] = cp
+	}
 
 	resp, err := selfServe.PaymentIntents.CreatePaymentIntent(r.Context(), customerID.String(), req.AmountMicro, currency, idempotencyKey, meta)
 	if err != nil {
@@ -374,10 +382,13 @@ func (selfServe *SelfServeHTTPHandlers) createPaymentIntent(w http.ResponseWrite
 	}
 
 	httpresponse.JSON(w, http.StatusOK, PaymentIntentCreatedResponse{
-		IntentID:    resp.IntentID,
-		Status:      resp.Status,
-		CheckoutURL: resp.CheckoutURL,
-		ProviderRef: resp.ProviderRef,
+		IntentID:       resp.IntentID,
+		Status:         resp.Status,
+		CheckoutURL:    resp.CheckoutURL,
+		ProviderRef:    resp.ProviderRef,
+		DepositAddress: resp.DepositAddress,
+		DepositNetwork: resp.DepositNetwork,
+		DepositQRSVG:   resp.DepositQRSVG,
 	})
 }
 

@@ -92,6 +92,31 @@ var (
 		Help: "Number of CIDR prefixes in the active L1 snapshot",
 	})
 
+	ProxyVPNLPMMatchTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_proxy_vpn_lpm_match_total",
+		Help: "L1.5 proxy/VPN pre-filter matches (fixed labels: vpn, hosting)",
+	}, []string{"kind"})
+
+	ProxyVPNFeedRefreshTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_proxy_vpn_feed_refresh_total",
+		Help: "Proxy/VPN ASN feed refresh cycles completed",
+	})
+
+	ProxyVPNFeedRefreshErrorsTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_proxy_vpn_feed_refresh_errors_total",
+		Help: "Proxy/VPN feed parse failures; previous snapshot retained",
+	})
+
+	ProxyVPNLPMUninitialized = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_proxy_vpn_lpm_uninitialized",
+		Help: "1 while the L1.5 proxy/VPN table has no published snapshot",
+	})
+
+	ProxyVPNLPMPrefixes = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_proxy_vpn_lpm_prefixes",
+		Help: "Number of prefixes in the active L1.5 proxy/VPN snapshot",
+	})
+
 	ClickProxyDeliverTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_click_proxy_deliver_total",
 		Help: "GET /click proxy deliveries completed (upstream streamed to client)",

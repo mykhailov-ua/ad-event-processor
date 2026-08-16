@@ -152,6 +152,8 @@ type Config struct {
 	CryptoWebhookSecret             Secret
 	CryptoMinPaymentMicro           int64
 	CryptoConfirmationDepth         int
+	BTCPayWebhookSecret             Secret
+	CryptomusAPIKey                 Secret
 	PaymentFinancialReconIntervalMs int
 
 	SelfServeMaxActiveCampaigns int
@@ -193,6 +195,9 @@ type Config struct {
 		DomainSSLAcmeEmail          string
 		CaddyTLSAskToken            Secret
 		CaddyTLSAskAllowLocal       bool
+		CloudflareAPIToken          Secret
+		CloudflareAPIBase           string
+		CloudflareDNSTarget         string
 	}
 	Control struct {
 		EnableAuth        bool
@@ -344,6 +349,13 @@ type Config struct {
 	CIDRFeedURLAzure            string
 	CIDRFeedURLTor              string
 	CIDRFeedDownloadEnable      bool
+	ProxyVPNL15Enabled          bool
+	ProxyVPNFeedDir             string
+	ProxyVPNFeedRefresh         time.Duration
+	DomainPoolEnabled           bool
+	DomainPoolSyncInterval      time.Duration
+	FlowRoutingEnabled          bool
+	FlowSyncInterval            time.Duration
 	ProxyAllowHTTPInsecure      bool
 	SlotMigrationLagThreshold   int64
 	ElasticShardingEnabled      bool
@@ -708,6 +720,8 @@ func Load() (*Config, error) {
 		CryptoWebhookSecret:             Secret(envOrDefault("CRYPTO_WEBHOOK_SECRET", "cryptosecret")),
 		CryptoMinPaymentMicro:           getEnvMicro("CRYPTO_MIN_PAYMENT_MICRO", 10.0),
 		CryptoConfirmationDepth:         getEnvInt("CRYPTO_CONFIRMATION_DEPTH", 12),
+		BTCPayWebhookSecret:             Secret(os.Getenv("BTCPAY_WEBHOOK_SECRET")),
+		CryptomusAPIKey:                 Secret(os.Getenv("CRYPTOMUS_API_KEY")),
 		PaymentFinancialReconIntervalMs: getEnvInt("PAYMENT_FINANCIAL_RECON_INTERVAL_MS", 0),
 		SelfServeMaxActiveCampaigns:     getEnvInt("SELF_SERVE_MAX_ACTIVE_CAMPAIGNS", 500),
 		SelfServeMaxCreatesPerDay:       getEnvInt("SELF_SERVE_MAX_CREATES_PER_DAY", 50),

@@ -10,6 +10,8 @@ import (
 
 	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
+
+	"github.com/google/uuid"
 )
 
 type DomainHealthService interface {
@@ -19,6 +21,7 @@ type DomainHealthService interface {
 	ProbeDomainNow(ctx context.Context, hostname string) (DomainHealthDTO, error)
 	SetupDomainSSL(ctx context.Context, hostname string) (DomainSSLSetupResult, error)
 	IsTLSAllowed(ctx context.Context, hostname string) (bool, error)
+	ParkDomain(ctx context.Context, req ParkDomainRequest) (ParkDomainResponse, error)
 }
 
 type DomainHealthDTO struct {
@@ -45,6 +48,20 @@ type DomainTLSAllowedResponse struct {
 	Allowed bool `json:"allowed"`
 }
 
+type ParkDomainRequest struct {
+	Domain           string     `json:"domain"`
+	CloudflareZoneID string     `json:"cloudflare_zone_id"`
+	PoolID           *uuid.UUID `json:"pool_id,omitempty"`
+}
+
+type ParkDomainResponse struct {
+	Success     bool      `json:"success"`
+	DNSRecordID string    `json:"dns_record_id"`
+	SSLStatus   string    `json:"ssl_status"`
+	Hostname    string    `json:"hostname,omitempty"`
+	PoolID      uuid.UUID `json:"pool_id,omitempty"`
+}
+
 type DomainHealthHTTPHandlers struct {
 	Service           DomainHealthService
 	ApplyRateLimit    func(http.HandlerFunc) http.HandlerFunc
@@ -67,6 +84,7 @@ func (h *DomainHealthHTTPHandlers) Register(mux *http.ServeMux) {
 	}
 	mux.HandleFunc("GET /api/v1/domains", limit(perm("settings:read", h.listDomains)))
 	mux.HandleFunc("POST /api/v1/domains", limit(perm("settings:write", h.addDomain)))
+	mux.HandleFunc("POST /api/v1/domains/park", limit(perm("settings:write", h.parkDomain)))
 	mux.HandleFunc("DELETE /api/v1/domains/{hostname}", limit(perm("settings:write", h.deleteDomain)))
 	mux.HandleFunc("POST /api/v1/domains/{hostname}/probe", limit(perm("settings:write", h.probeDomain)))
 	mux.HandleFunc("POST /api/v1/domains/{hostname}/ssl/setup", limit(perm("settings:write", h.setupSSL)))
@@ -105,6 +123,19 @@ func (h *DomainHealthHTTPHandlers) addDomain(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	httpresponse.JSON(w, http.StatusCreated, dto)
+}
+
+func (h *DomainHealthHTTPHandlers) parkDomain(w http.ResponseWriter, r *http.Request) {
+	req, ok := coldpath.DecodeRequestOrBadRequest[ParkDomainRequest](w, r, coldpath.DefaultMaxBody)
+	if !ok {
+		return
+	}
+	result, err := h.Service.ParkDomain(r.Context(), req)
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, result)
 }
 
 func (h *DomainHealthHTTPHandlers) deleteDomain(w http.ResponseWriter, r *http.Request) {

@@ -29,8 +29,11 @@ func NewService(pool *pgxpool.Pool, cfg *config.Config) *Service {
 }
 
 type CreateIntentResult struct {
-	Intent      domain.PaymentIntent
-	CheckoutURL string
+	Intent         domain.PaymentIntent
+	CheckoutURL    string
+	DepositAddress string
+	DepositNetwork string
+	DepositQRSVG   string
 }
 
 func (service *Service) CreatePaymentIntent(ctx context.Context, customerID uuid.UUID, amountMicro int64, currency string, idempotencyKey string, metadata map[string]string) (CreateIntentResult, error) {
@@ -64,7 +67,13 @@ func (service *Service) CreatePaymentIntent(ctx context.Context, customerID uuid
 	}
 
 	IntentsTotal.WithLabelValues(string(finalized.Status)).Inc()
-	return CreateIntentResult{Intent: paymentIntentFromDB(finalized), CheckoutURL: checkoutURL}, nil
+	return CreateIntentResult{
+		Intent:         paymentIntentFromDB(finalized),
+		CheckoutURL:    checkoutURL,
+		DepositAddress: intentMetadataString(finalized.Metadata, "deposit_address"),
+		DepositNetwork: intentMetadataString(finalized.Metadata, "deposit_network"),
+		DepositQRSVG:   intentMetadataString(finalized.Metadata, "deposit_qr_svg"),
+	}, nil
 }
 
 func (service *Service) claimPaymentIntent(
@@ -214,7 +223,13 @@ func reconcileIdempotentIntent(existing db.PaymentPaymentIntent, customerID uuid
 	if existCust != customerID || existing.AmountMicro != amountMicro || existing.Currency != currency {
 		return CreateIntentResult{}, fmt.Errorf("%w: existing intent has customer=%s amount=%d currency=%s", ErrIdempotencyConflict, existCust, existing.AmountMicro, existing.Currency)
 	}
-	return CreateIntentResult{Intent: paymentIntentFromDB(existing), CheckoutURL: checkoutURLFromIntent(existing)}, nil
+	return CreateIntentResult{
+		Intent:         paymentIntentFromDB(existing),
+		CheckoutURL:    checkoutURLFromIntent(existing),
+		DepositAddress: intentMetadataString(existing.Metadata, "deposit_address"),
+		DepositNetwork: intentMetadataString(existing.Metadata, "deposit_network"),
+		DepositQRSVG:   intentMetadataString(existing.Metadata, "deposit_qr_svg"),
+	}, nil
 }
 
 func (s *Service) GetPaymentIntent(ctx context.Context, intentID uuid.UUID) (domain.PaymentIntent, error) {

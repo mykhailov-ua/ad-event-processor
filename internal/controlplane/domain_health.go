@@ -303,7 +303,15 @@ func (s *Service) probeAndStore(ctx context.Context, target domainTarget) error 
 		res.ProbeDetail,
 		now,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	if res.HealthStatus == "down" {
+		if err := s.markPoolDomainBanned(ctx, target.Hostname); err != nil {
+			slog.Warn("domain health: ban pool domain", "host", target.Hostname, "err", err)
+		}
+	}
+	return nil
 }
 
 type domainHealthScanner interface {
