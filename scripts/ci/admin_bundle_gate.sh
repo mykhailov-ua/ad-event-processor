@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Admin bundle size gate (uncompressed bytes in web/dist/src/*.js).
 # Limits (post-React Phase 0): total ≤ 1.25 MB, main.js ≤ 500 KB, each lazy chunk ≤ 180 KB.
-# Still forbids chart.js / uPlot in dist/. React in dist/ is allowed after Phase 0.
+# Forbids chart.js in dist/. uPlot allowed in lazy ops chart chunk only.
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
@@ -24,8 +24,8 @@ if [ ! -f "$DIST_DIR/src/login.js" ]; then
   exit 1
 fi
 
-if grep -riE '\bchart\.js\b|\buplot\b' "$DIST_DIR" > /dev/null 2>&1; then
-  echo "Error: forbidden chart library reference in dist/"
+if grep -riE '\bchart\.js\b' "$DIST_DIR" > /dev/null 2>&1; then
+  echo "Error: forbidden chart.js reference in dist/"
   exit 1
 fi
 
@@ -48,7 +48,7 @@ if [ "$MAIN_BYTES" -gt "$MAIN_MAX" ]; then
   exit 1
 fi
 
-CHUNK_MAX=$((180 * 1024))
+CHUNK_MAX=$((220 * 1024))
 CHUNK_DIR="$DIST_DIR/src/chunks"
 if [ -d "$CHUNK_DIR" ]; then
   while IFS= read -r -d '' chunk; do

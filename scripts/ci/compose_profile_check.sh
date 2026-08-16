@@ -4,6 +4,33 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
+ENV_FILE=()
+if [[ -f "$ROOT/.env.example" ]]; then
+	ENV_FILE=(--env-file "$ROOT/.env.example")
+fi
+
+echo "compose default config (no cpu-isolation overlay)"
+docker compose "${ENV_FILE[@]}" config >/dev/null
+	if ! docker compose "${ENV_FILE[@]}" config --services | grep -qx tracker-0; then
+	echo "default compose must include tracker-0 without cpu-isolation profile" >&2
+	exit 1
+fi
+if ! docker compose "${ENV_FILE[@]}" config --services | grep -qx broker; then
+	echo "default compose must include broker (CH_INGEST_SOURCE defaults to broker)" >&2
+	exit 1
+fi
+
+echo "compose cpu-isolation overlay + profile"
+docker compose -f "$ROOT/deploy/compose/docker-compose.yaml" \
+	-f "$ROOT/deploy/compose/docker-compose.cpu-isolation.yaml" \
+	"${ENV_FILE[@]}" --profile cpu-isolation config >/dev/null
+if ! docker compose -f "$ROOT/deploy/compose/docker-compose.yaml" \
+	-f "$ROOT/deploy/compose/docker-compose.cpu-isolation.yaml" \
+	"${ENV_FILE[@]}" --profile cpu-isolation config --services | grep -qx tracker-0; then
+	echo "cpu-isolation profile must include tracker-0" >&2
+	exit 1
+fi
+
 echo "compose profile config: single_vps"
 docker compose --profile single_vps config >/dev/null
 

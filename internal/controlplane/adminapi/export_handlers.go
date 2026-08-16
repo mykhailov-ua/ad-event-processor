@@ -26,7 +26,8 @@ const (
 	JobStatusCompleted = "COMPLETED"
 	JobStatusFailed    = "FAILED"
 
-	exportJobRunTimeout = 15 * time.Minute
+	defaultExportFetchRows  = 1000
+	defaultExportJobTimeout = 15 * time.Minute
 )
 
 type JobSpec struct {
@@ -68,6 +69,8 @@ type ledgerExportReader interface {
 type JobRunner struct {
 	ledgerReads ledgerExportReader
 	exportDir   string
+	fetchRows   int32
+	jobTimeout  time.Duration
 	mu          sync.RWMutex
 	jobs        map[string]*jobRecord
 }
@@ -79,7 +82,21 @@ func NewJobRunner(ledgerReads ledgerExportReader, exportDir string) *JobRunner {
 	return &JobRunner{
 		ledgerReads: ledgerReads,
 		exportDir:   exportDir,
+		fetchRows:   defaultExportFetchRows,
+		jobTimeout:  defaultExportJobTimeout,
 		jobs:        make(map[string]*jobRecord),
+	}
+}
+
+func (s *JobRunner) ConfigureExport(fetchRows int32, jobTimeout time.Duration) {
+	if s == nil {
+		return
+	}
+	if fetchRows > 0 {
+		s.fetchRows = fetchRows
+	}
+	if jobTimeout > 0 {
+		s.jobTimeout = jobTimeout
 	}
 }
 
@@ -117,7 +134,11 @@ func (s *JobRunner) CreateJob(ctx context.Context, spec JobSpec) (string, error)
 	s.mu.Unlock()
 
 	go func() {
-		jobCtx, cancel := context.WithTimeout(ctx, exportJobRunTimeout)
+		timeout := s.jobTimeout
+		if timeout <= 0 {
+			timeout = defaultExportJobTimeout
+		}
+		jobCtx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
 		s.runJob(jobCtx, jobID)
 	}()
@@ -251,7 +272,7 @@ func (s *JobRunner) writeCSV(ctx context.Context, path string, rec *jobRecord) e
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		lines, next, err := s.ledgerReads.ListLedgerLinesInWindow(ctx, rec.customerID, rec.from, rec.to, cursor, 1000)
+		lines, next, err := s.ledgerReads.ListLedgerLinesInWindow(ctx, rec.customerID, rec.from, rec.to, cursor, s.fetchRows)
 		if err != nil {
 			return err
 		}
@@ -289,7 +310,7 @@ func (s *JobRunner) writeNDJSON(ctx context.Context, path string, rec *jobRecord
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		lines, next, err := s.ledgerReads.ListLedgerLinesInWindow(ctx, rec.customerID, rec.from, rec.to, cursor, 1000)
+		lines, next, err := s.ledgerReads.ListLedgerLinesInWindow(ctx, rec.customerID, rec.from, rec.to, cursor, s.fetchRows)
 		if err != nil {
 			return err
 		}

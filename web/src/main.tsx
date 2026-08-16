@@ -4,7 +4,7 @@ const rootEl = document.getElementById('root');
 if (!rootEl) {
   // no-op
 } else if (path === '/bootstrap' || path === '/install/done') {
-  void import('./react/standalone_mount.js');
+  void import('./standalone_mount.js');
 } else {
-  void import('./react/main_mount.js');
+  void import('./main_mount.js');
 }

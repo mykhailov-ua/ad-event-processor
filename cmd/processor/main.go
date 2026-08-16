@@ -44,6 +44,9 @@ func main() {
 		}
 		os.Exit(0)
 	}
+	if licensing.MaybeRunGuardWatchdogCLI(os.Args) {
+		return
+	}
 
 	slogLogger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(slogLogger)
@@ -71,6 +74,11 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	licensing.StartLicenseGuard(ctx, licensing.GuardConfig{
+		Enabled:        licensing.GuardCompiledIn() && config.LicenseGuardEnvEnabled(),
+		PtraceWatchdog: licensing.GuardCompiledIn() && config.LicenseGuardPtraceWatchdogEnabled(),
+	})
 
 	consumerCtx, consumerCancel := context.WithCancel(context.Background())
 	defer consumerCancel()
@@ -312,9 +320,15 @@ func main() {
 	var chConsumers []*ingestion.StreamConsumer
 	var brokerConsumers []*ingestion.BrokerStreamConsumer
 	var brokerCHGroup *BrokerConsumerGroup
+	var brokerFraudGroup *BrokerConsumerGroup
 	var brokerReconcile *ingestion.BrokerReconcileWorker
 	var budgetDeltaConsumer *controlplane.BudgetDeltaConsumer
 	var syncWorkers []*ingestion.SyncWorker
+	var fraudMicrobatcher *fraud.MicroBatcher
+	if fraudScorer != nil && len(rdbs) > 0 {
+		fraudMicrobatcher = fraud.NewMicroBatcher(rdbs, fraudScorer, cfg.CampaignUpdateChannel)
+		go fraudMicrobatcher.Start(consumerCtx)
+	}
 
 	var spendSyncProducer *ingestion.SpendSyncProducer
 	if cfg.MultiRegionCell() {
@@ -350,7 +364,7 @@ func main() {
 		syncWorkers = append(syncWorkers, sw)
 		sw.Start(syncCtx)
 
-		if cfg.Broker.CHIngestSource != "broker" {
+		if !cfg.BrokerPrimaryCH() {
 			settleFlush := time.Duration(cfg.SettlementFlushMs) * time.Millisecond
 			settleW := ingestion.NewSettlementWorker(
 				settleStore,
@@ -378,10 +392,10 @@ func main() {
 			pgSettlementWorkers = append(pgSettlementWorkers, settleW)
 			settleW.Start(consumerCtx)
 		} else {
-			slog.Info("processor: Redis _pg StreamConsumer disabled (CH_INGEST_SOURCE=broker)")
+			slog.Info("processor: Redis SettlementWorker disabled (CH_INGEST_SOURCE=broker)")
 		}
 
-		if chStore != nil && cfg.Broker.CHIngestSource != "broker" {
+		if chStore != nil && !cfg.BrokerPrimaryCH() {
 			cc := ingestion.NewStreamConsumer(
 				chStore,
 				rdb,
@@ -404,15 +418,17 @@ func main() {
 				cc.SetWeightController(weightCtrl)
 			}
 
-			if fraudScorer != nil {
-				mb := fraud.NewMicroBatcher(rdb, fraudScorer)
-				go mb.Start(consumerCtx)
-				cc.SetOnMessageProcessed(mb.Enqueue)
+			if fraudMicrobatcher != nil {
+				cc.SetOnMessageProcessed(fraudMicrobatcher.Enqueue)
 			}
 
 			chConsumers = append(chConsumers, cc)
 			cc.Start(consumerCtx)
+		} else if chStore != nil && cfg.BrokerPrimaryCH() {
+			slog.Info("processor: Redis _ch StreamConsumer disabled (CH_INGEST_SOURCE=broker)")
+		}
 
+		if chStore != nil && !cfg.BrokerPrimaryCH() {
 			fc := ingestion.NewStreamConsumer(
 				chStore,
 				rdb,
@@ -436,24 +452,30 @@ func main() {
 			}
 			chConsumers = append(chConsumers, fc)
 			fc.Start(consumerCtx)
-		} else if chStore != nil && cfg.Broker.CHIngestSource == "broker" {
-			slog.Info("processor: Redis _ch StreamConsumer disabled (CH_INGEST_SOURCE=broker)")
 		}
 	}
 
-	ingestion.StartFraudLagPublisher(
-		ctx,
-		rdbs,
-		cfg.FraudStreamName,
-		cfg.RedisGroupName+"_fraud",
-		cfg.FraudConsumerLagSec,
-		2*time.Second,
-	)
+	if cfg.BrokerPrimaryCH() {
+		metrics.IngestFraudPath.Set(1)
+	} else {
+		metrics.IngestFraudPath.Set(0)
+	}
+
+	if !cfg.BrokerPrimaryCH() {
+		ingestion.StartFraudLagPublisher(
+			ctx,
+			rdbs,
+			cfg.FraudStreamName,
+			cfg.RedisGroupName+"_fraud",
+			cfg.FraudConsumerLagSec,
+			2*time.Second,
+		)
+	}
 
 	if cfg.BrokerEnabled() {
 		brokerRedisURL := cfg.Broker.RedisURL
 		if brokerRedisURL == "" && len(cfg.RedisAddrs) > 0 {
-			brokerRedisURL = "redis://" + cfg.RedisAddrs[0] + "/0"
+			brokerRedisURL = database.BrokerRedisURL(cfg.RedisAddrs, string(cfg.RedisPassword))
 		}
 		brokerBase := ingestion.BrokerConsumerConfig{
 			BrokerAddr: cfg.Broker.URL,
@@ -498,6 +520,14 @@ func main() {
 				DataDir:        cfg.Logger.Dir + "/offsets",
 				ShadowMode:     cfg.Broker.ShadowMode,
 			}
+			if fraudMicrobatcher != nil {
+				chGroupCfg.OnMessageProcessed = func(evt *domain.Event, _ uint64) {
+					if evt == nil {
+						return
+					}
+					fraudMicrobatcher.Enqueue(evt, "")
+				}
+			}
 			var chGrpErr error
 			brokerCHGroup, chGrpErr = NewBrokerConsumerGroup(chStore, chGroupCfg, appLogger)
 			if chGrpErr != nil {
@@ -507,7 +537,31 @@ func main() {
 			}
 		}
 
-		if len(rdbs) > 0 {
+		if chStore != nil && cfg.BrokerPrimaryCH() {
+			slog.Info("processor: Redis _fraud StreamConsumer disabled (CH_INGEST_SOURCE=broker)")
+			fraudGroupCfg := BrokerConsumerGroupConfig{
+				BrokerAddr:     cfg.Broker.URL,
+				RedisURL:       brokerRedisURL,
+				Topic:          cfg.Broker.FraudTopic,
+				Group:          cfg.RedisGroupName + "_fraud_broker",
+				PartitionCount: partCount,
+				BatchSize:      cfg.CHBatchSize,
+				FlushInterval:  time.Duration(cfg.CHFlushIntervalMs) * time.Millisecond,
+				MaxBytes:       uint32(cfg.Broker.MaxBytes),
+				Timeout:        time.Duration(cfg.Broker.TimeoutMs) * time.Millisecond,
+				DataDir:        cfg.Logger.Dir + "/offsets/fraud",
+				ShadowMode:     cfg.Broker.ShadowMode,
+			}
+			var fraudGrpErr error
+			brokerFraudGroup, fraudGrpErr = NewBrokerConsumerGroup(chStore, fraudGroupCfg, appLogger)
+			if fraudGrpErr != nil {
+				slog.Error("failed to create broker consumer group for fraud clickhouse", "error", fraudGrpErr)
+			} else {
+				brokerFraudGroup.Start(consumerCtx)
+			}
+		}
+
+		if len(rdbs) > 0 && !cfg.BrokerPrimaryCH() {
 			brokerReconcile = ingestion.NewBrokerReconcileWorker(ingestion.BrokerReconcileConfig{
 				BrokerAddr:          cfg.Broker.URL,
 				BrokerRedis:         brokerRedisURL,
@@ -519,22 +573,26 @@ func main() {
 				DivergenceThreshold: cfg.Broker.DivergenceThreshold,
 			}, rdbs)
 			brokerReconcile.Start(consumerCtx)
+		} else if cfg.BrokerPrimaryCH() {
+			slog.Info("processor: broker reconcile skipped (CH_INGEST_SOURCE=broker)")
 		}
 
 		slog.Info("broker ingest bridge enabled",
 			"broker", cfg.Broker.URL,
 			"topic", cfg.Broker.Topic,
+			"fraud_topic", cfg.Broker.FraudTopic,
 			"partitions", partCount,
 			"shadow_mode", cfg.Broker.ShadowMode,
 			"pg_group", cfg.RedisGroupName+"_pg_broker",
 			"ch_group", cfg.RedisGroupName+"_ch_broker",
+			"fraud_group", cfg.RedisGroupName+"_fraud_broker",
 		)
 	}
 
 	if cfg.BrokerEnabled() && (cfg.LocalQuotaMode == "shadow" || cfg.LocalQuotaMode == "live") {
 		brokerRedisURL := cfg.Broker.RedisURL
 		if brokerRedisURL == "" && len(cfg.RedisAddrs) > 0 {
-			brokerRedisURL = "redis://" + cfg.RedisAddrs[0] + "/0"
+			brokerRedisURL = database.BrokerRedisURL(cfg.RedisAddrs, string(cfg.RedisPassword))
 		}
 		budgetDeltaConsumer = controlplane.NewBudgetDeltaConsumer(
 			domain.NewBudgetDeltaAggregator(),
@@ -633,6 +691,9 @@ func main() {
 	if brokerCHGroup != nil {
 		brokerCHGroup.Close()
 	}
+	if brokerFraudGroup != nil {
+		brokerFraudGroup.Close()
+	}
 	if budgetDeltaConsumer != nil {
 		budgetDeltaConsumer.Close()
 	}
@@ -655,6 +716,11 @@ func main() {
 	if brokerCHGroup != nil {
 		if err := brokerCHGroup.Wait(waitCtx); err != nil {
 			slog.Error("broker clickhouse consumer group wait failed", "error", err)
+		}
+	}
+	if brokerFraudGroup != nil {
+		if err := brokerFraudGroup.Wait(waitCtx); err != nil {
+			slog.Error("broker fraud clickhouse consumer group wait failed", "error", err)
 		}
 	}
 	if brokerReconcile != nil {

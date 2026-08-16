@@ -467,7 +467,7 @@ Shared `RunAuction` (`internal/rtb/auction.go`) for `/track` (optional), `POST /
 | Is `/api/v1` on nginx edge? | **Only** `/api/v1/auth/*` and `/admin/`; rest is control `:8188`. |
 | Redis Cluster? | **No.** N standalone masters + `StaticSlotSharder`. |
 | How many Lua RTTs per event? | **0** (full-skip) or **1** (`EVALSHA` debit only when `StreamProducer` defers `XADD`). |
-| Who writes `ad:events:stream` on tracker? | **`StreamProducer`** (or `BrokerProducer` when `CH_INGEST_SOURCE=broker`); Lua skips `XADD` when defer is on. |
+| Who writes `ad:events:stream` on tracker? | **`BrokerProducer`** when `CH_INGEST_SOURCE=broker` (default appliance); else **`StreamProducer`** with Lua defer `fcap:ignored`. |
 | Can budget debit without logged event? | **No** on the happy path (reservation + rollback on enqueue failure). Monitor `ad_stream_producer_post_debit_rejected_total`. |
 
 Benchmark numbers (micro + purgatory): [BENCHMARKS.md](BENCHMARKS.md). OS/TCP/accept edge cases: [EDGE_CASES.md](EDGE_CASES.md). Parser security and ingress limits: [PARSER_SECURITY.md](PARSER_SECURITY.md).

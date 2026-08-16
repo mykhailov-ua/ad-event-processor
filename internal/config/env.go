@@ -17,6 +17,9 @@ type Config struct {
 	ServerPort                      string
 	ProcessorPort                   string
 	ManagementPort                  string
+	TrackerUnixSocket               string
+	ControlUnixSocket               string
+	CHUnixSocket                    string
 	AdminDomain                     string
 	MetricsPort                     string
 	DBDSN                           Secret
@@ -271,6 +274,7 @@ type Config struct {
 		URL                 string
 		RedisURL            string
 		Topic               string
+		FraudTopic          string
 		PartitionCount      int
 		ShadowMode          bool
 		CHIngestSource      string // "" = redis stream (default); "broker" = broker-primary, skips Redis _ch consumer
@@ -419,6 +423,13 @@ type Config struct {
 		TelegramRateLimitPerMinute int
 	}
 
+	Postback struct {
+		PollIntervalMs     int
+		BatchSize          int
+		StaleProcessingSec int
+		MetricsAddr        string
+	}
+
 	IVT struct {
 		Enabled              bool
 		ScanIntervalMs       int
@@ -454,6 +465,8 @@ type Config struct {
 		InvoiceWorkerEnabled bool
 		PaymentProvider      string
 		PaymentProviderKey   Secret
+		ExportFetchRows      int
+		ExportJobTimeoutMin  int
 	}
 
 	BillingInternalToken Secret
@@ -469,6 +482,11 @@ func (c *Config) MultiRegionGlobal() bool {
 
 func (c *Config) BrokerEnabled() bool {
 	return c != nil && c.Broker.URL != ""
+}
+
+// BrokerPrimaryCH skips Redis Stream consumers for main ingest; tracker uses BrokerProducer.
+func (c *Config) BrokerPrimaryCH() bool {
+	return c != nil && c.Broker.CHIngestSource == "broker"
 }
 
 func (c *Config) RedisSentinelEnabled() bool {
@@ -701,6 +719,9 @@ func Load() (*Config, error) {
 
 	loadControlplaneModules(cfg)
 	loadManagementModules(cfg)
+	loadPostbackModules(cfg)
+
+	applyUnixTransportDefaults(cfg)
 
 	if err := validateAndApplyDefaults(cfg); err != nil {
 		return nil, err

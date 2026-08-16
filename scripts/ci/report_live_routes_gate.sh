@@ -10,9 +10,9 @@ REPORT_JS="$ROOT/web/src/models/report.ts"
 if [ ! -f "$REPORT_JS" ]; then
   REPORT_JS="$ROOT/web/src/models/report.js"
 fi
-APP_ROUTES_JS="$ROOT/web/src/react/app_routes.tsx"
+APP_ROUTES_JS="$ROOT/web/src/app_routes.tsx"
 if [ ! -f "$APP_ROUTES_JS" ]; then
-  APP_ROUTES_JS="$ROOT/web/src/react/app_routes.js"
+  APP_ROUTES_JS="$ROOT/web/src/app_routes.js"
 fi
 
 if [ ! -f "$REPORT_JS" ] || [ ! -f "$APP_ROUTES_JS" ]; then

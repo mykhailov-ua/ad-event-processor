@@ -697,28 +697,25 @@ func (s *Service) AttachCampaignListMarginBreach(ctx context.Context, items []Ca
 	if s == nil || len(items) == 0 {
 		return
 	}
-	for i := range items {
-		if items[i].Status != "ACTIVE" {
-			continue
-		}
-		campID, err := uuid.Parse(items[i].ID)
-		if err != nil {
-			continue
-		}
-		breach, err := s.campaignMarginBreach(ctx, campID)
-		if err != nil {
-			continue
-		}
-		items[i].MarginBreach = breach
+	activeIDs, activeIdx := activeCampaignIDsFromDTOs(items)
+	if len(activeIDs) == 0 {
+		return
+	}
+	breaches, err := s.batchCampaignMarginBreach(ctx, activeIDs)
+	if err != nil {
+		return
+	}
+	for i, id := range activeIDs {
+		items[activeIdx[i]].MarginBreach = breaches[id]
 	}
 }
 
 func (s *Service) campaignMarginBreach(ctx context.Context, campaignID uuid.UUID) (bool, error) {
-	margin, err := s.GetCampaignMargin(ctx, campaignID)
+	breaches, err := s.batchCampaignMarginBreach(ctx, []uuid.UUID{campaignID})
 	if err != nil {
 		return false, err
 	}
-	return margin.MarginBreach, nil
+	return breaches[campaignID], nil
 }
 
 func (s *Service) GetMarginGuardActivity(ctx context.Context, campaignID uuid.UUID) ([]adminapi.MarginGuardActivityRow, error) {

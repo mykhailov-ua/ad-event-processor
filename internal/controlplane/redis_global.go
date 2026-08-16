@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/bidshard/ad-event-processor/internal/database"
+
 	"github.com/redis/go-redis/v9"
 )
 
@@ -28,15 +30,11 @@ func syncGlobalConfigToAllShards(ctx context.Context, rdbs []redis.UniversalClie
 }
 
 func syncGlobalStringToAllShards(ctx context.Context, rdbs []redis.UniversalClient, key, value string, ttl time.Duration) error {
-	return forEachConnectedShard(ctx, rdbs, "sync_global_string", func(_ int, rdb redis.UniversalClient) error {
-		return rdb.Set(ctx, key, value, ttl).Err()
-	})
+	return database.SyncGlobalStringToAllShards(ctx, rdbs, key, value, ttl)
 }
 
 func deleteGlobalKeyFromAllShards(ctx context.Context, rdbs []redis.UniversalClient, key string) error {
-	return forEachConnectedShard(ctx, rdbs, "delete_global_key", func(_ int, rdb redis.UniversalClient) error {
-		return rdb.Del(ctx, key).Err()
-	})
+	return database.DeleteGlobalKeyFromAllShards(ctx, rdbs, key)
 }
 
 func syncGlobalSetMemberToAllShards(ctx context.Context, rdbs []redis.UniversalClient, key, member string, add bool) error {

@@ -6,11 +6,11 @@ import (
 	"log/slog"
 	"net"
 	"runtime"
-	"strings"
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/config"
 	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/pkg/netaddr"
 
 	redis "github.com/redis/go-redis/v9"
 )
@@ -148,7 +148,7 @@ func shardUniversalOptions(cfg *config.Config, shardIdx int, masterNames []strin
 	}
 	addr := cfg.RedisAddrs[shardIdx]
 	uopts.Addrs = []string{addr}
-	if strings.HasPrefix(addr, "/") || strings.HasSuffix(addr, ".sock") || strings.Contains(addr, ".sock") {
+	if netaddr.IsUnixSocketPath(addr) {
 		uopts.Dialer = func(ctx context.Context, _, addr string) (net.Conn, error) {
 			var netDialer net.Dialer
 			return netDialer.DialContext(ctx, "unix", addr)

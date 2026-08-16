@@ -15,7 +15,7 @@ func (s *Service) enforceDeploymentLicenseCampaignCap(ctx context.Context) error
 	if !ok {
 		return nil
 	}
-	if !licensing.IngestAllowed(state) {
+	if state == licensing.StateExpired || state == licensing.StateRevoked {
 		return errValidation("license not active")
 	}
 	maxActive := limits.MaxActiveCampaigns

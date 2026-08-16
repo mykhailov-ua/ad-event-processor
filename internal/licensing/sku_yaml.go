@@ -89,6 +89,7 @@ type IssueLicenseInput struct {
 	DeploymentID string
 	LicenseID    string
 	Fingerprint  string
+	HWIDHash     string
 	ValidFrom    time.Time
 }
 
@@ -117,5 +118,6 @@ func (sku SKUDefinition) BuildClaims(in IssueLicenseInput) LicenseClaims {
 		claims.Bind.Mode = "soft"
 	}
 	claims.Bind.Fingerprint = in.Fingerprint
+	claims.HWIDHash = strings.TrimSpace(in.HWIDHash)
 	return claims
 }

@@ -525,9 +525,15 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 		}
 		defer lease.Release()
 		outcome := processTrack(h.trackProc, evt, nil)
-		if safeURL, ok := trySafePageRedirect(h.registry, evt.CampaignID, outcome); ok {
+		action, safeURL := resolveSafePageAction(h.registry, evt.CampaignID, outcome, req.ForceSafe)
+		switch action {
+		case safePageActionInPlace:
+			h.write(c, respClickSafePage, ctx)
+			h.recordMetrics(startMono, http.StatusOK)
+			return gnet.None
+		case safePageActionRedirect:
 			landing = UnsafeBytes(safeURL)
-		} else {
+		default:
 			switch outcome.Status {
 			case trackStatusFraudAccepted:
 				h.trackMetrics.recordFilterReject(outcome.RejectKind)

@@ -41,7 +41,7 @@ func LoadDeploymentSnapshot(ctx context.Context, pool *pgxpool.Pool) (Deployment
 }
 
 func (s DeploymentSnapshot) ModuleAllowed(check func(FeatureSet) bool) bool {
-	if !IngestAllowed(s.State) {
+	if s.State == StateExpired || s.State == StateRevoked {
 		return false
 	}
 	return check(s.Entitlements.Features)

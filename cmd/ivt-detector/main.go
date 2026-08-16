@@ -14,6 +14,7 @@ import (
 	"github.com/bidshard/ad-event-processor/internal/fraud"
 	"github.com/bidshard/ad-event-processor/internal/licensing"
 	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
+	"github.com/bidshard/ad-event-processor/pkg/netaddr"
 	"github.com/bidshard/ad-event-processor/pkg/piihash"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
@@ -154,8 +155,5 @@ func newRedisShard0(cfg *config.Config) *redis.Client {
 	if addr == "" {
 		return nil
 	}
-	return redis.NewClient(&redis.Options{
-		Addr:     addr,
-		Password: string(cfg.RedisPassword),
-	})
+	return redis.NewClient(netaddr.RedisClientOptions(addr, string(cfg.RedisPassword)))
 }

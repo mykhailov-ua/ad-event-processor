@@ -19,6 +19,7 @@ import (
 	"github.com/bidshard/ad-event-processor/internal/licensing"
 	"github.com/bidshard/ad-event-processor/internal/notify"
 	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
+	"github.com/bidshard/ad-event-processor/pkg/netaddr"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/redis/go-redis/v9"
@@ -288,7 +289,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 	if cfg.BrokerEnabled() && (cfg.LocalQuotaMode == "shadow" || cfg.LocalQuotaMode == "live") {
 		brokerRedisURL := cfg.Broker.RedisURL
 		if brokerRedisURL == "" && len(cfg.RedisAddrs) > 0 {
-			brokerRedisURL = "redis://" + cfg.RedisAddrs[0] + "/0"
+			brokerRedisURL = database.BrokerRedisURL(cfg.RedisAddrs, string(cfg.RedisPassword))
 		}
 		budgetDeltaAgg := domain.NewBudgetDeltaAggregator()
 		svc.SetBrokerDeltas(budgetDeltaAgg)
@@ -512,11 +513,39 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 		IdleTimeout:       time.Duration(cfg.HttpIdleTimeoutMs) * time.Millisecond,
 	}
 
+	var unixSrv *http.Server
+	if cfg.ControlUnixSocket != "" {
+		if err := netaddr.PrepareUnixSocket(cfg.ControlUnixSocket); err != nil {
+			return fmt.Errorf("control unix socket: %w", err)
+		}
+		unixSrv = &http.Server{
+			Handler:           gatewayHandler,
+			ReadHeaderTimeout: server.ReadHeaderTimeout,
+			ReadTimeout:       server.ReadTimeout,
+			WriteTimeout:      server.WriteTimeout,
+			IdleTimeout:       server.IdleTimeout,
+		}
+	}
+
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			slog.Error("management server failed", "error", err)
 		}
 	}()
+
+	if unixSrv != nil {
+		go func() {
+			ln, err := netaddr.ListenUnix(cfg.ControlUnixSocket)
+			if err != nil {
+				slog.Error("management unix listen failed", "path", cfg.ControlUnixSocket, "error", err)
+				return
+			}
+			if err := unixSrv.Serve(ln); err != nil && err != http.ErrServerClosed {
+				slog.Error("management unix server failed", "error", err)
+			}
+		}()
+		slog.Info("management unix socket enabled", "path", cfg.ControlUnixSocket)
+	}
 
 	settleHandler := NewSettlementHandler(svc, cfg)
 	if opts.NotifierModule != nil {
@@ -546,6 +575,11 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		slog.Error("management server shutdown failed", "error", err)
+	}
+	if unixSrv != nil {
+		if err := unixSrv.Shutdown(shutdownCtx); err != nil {
+			slog.Error("management unix server shutdown failed", "error", err)
+		}
 	}
 
 	if opsAlerter != nil {

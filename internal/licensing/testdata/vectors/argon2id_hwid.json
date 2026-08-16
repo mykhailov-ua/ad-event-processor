@@ -1,0 +1,37 @@
+{
+  "fixtures": [
+    {
+      "name": "pilot_vm",
+      "input": {
+        "DMIUUID": "11111111-2222-3333-4444-555555555555",
+        "DiskID": "disk-serial-abc",
+        "MAC": "52:54:00:12:34:56",
+        "CPUModel": "QEMU Virtual CPU version 2.5+",
+        "CPUCores": 4
+      },
+      "hwid_hash": "989fc4fabb31798631dcf310ea45cbc1b9c9dda952b06de69d800fd5254aedce"
+    },
+    {
+      "name": "missing_dmi",
+      "input": {
+        "DMIUUID": "",
+        "DiskID": "/dev/vda1",
+        "MAC": "52:54:00:ab:cd:ef",
+        "CPUModel": "Intel(R) Xeon(R)",
+        "CPUCores": 2
+      },
+      "hwid_hash": "7a6eba41cbfdc5a34a481238c26948517cc96de4d4e6726cd468929201e364c5"
+    },
+    {
+      "name": "bare_metal",
+      "input": {
+        "DMIUUID": "7c43435b-1234-5678-9abc-def012345678",
+        "DiskID": "S3YNNX0K123456",
+        "MAC": "00:1a:2b:3c:4d:5e",
+        "CPUModel": "AMD EPYC 7763 64-Core Processor",
+        "CPUCores": 32
+      },
+      "hwid_hash": "be8cc7422b90b9b63765106502c93f09c21b204b2df6ad5685765d60094afe28"
+    }
+  ]
+}

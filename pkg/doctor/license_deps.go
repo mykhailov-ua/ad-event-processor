@@ -10,6 +10,8 @@ import (
 
 type BundleLicenseDTO struct {
 	FingerprintMatch bool   `json:"fingerprint_match"`
+	HWIDv2           string `json:"hwid_v2,omitempty"`
+	HWIDMatch        *bool  `json:"hwid_match,omitempty"`
 	DeploymentID     string `json:"deployment_id,omitempty"`
 	DaysToExpiry     int    `json:"days_to_expiry"`
 	State            string `json:"state"`
@@ -42,10 +44,23 @@ func bundleLicenseInfo(deps ProbeDeps) BundleLicenseDTO {
 	}
 	return BundleLicenseDTO{
 		FingerprintMatch: diag.FingerprintMatch,
+		HWIDv2:           diag.HostHWID,
+		HWIDMatch:        hwidMatchPtr(diag),
 		DeploymentID:     diag.DeploymentID,
 		DaysToExpiry:     diag.DaysToExpiry,
 		State:            string(diag.State),
 	}
+}
+
+func hwidMatchPtr(diag licensing.LicenseDiagnostics) *bool {
+	if !licensing.BindModeHard(diag.BindMode) {
+		return nil
+	}
+	if diag.BindHWIDHash == "" && diag.BindFingerprint == "" {
+		return nil
+	}
+	match := diag.HWIDMatch
+	return &match
 }
 
 func cliLicenseSnapshotFns(cfg *config.Config) (func() (licensing.LicenseState, bool), func() (licensing.LicenseDiagnostics, bool)) {

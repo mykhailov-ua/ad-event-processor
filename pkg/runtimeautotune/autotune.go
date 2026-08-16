@@ -9,9 +9,11 @@ import (
 	"strings"
 
 	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/pkg/cpuset"
 )
 
 func Apply(cfg *config.Config) {
+	applyGOMAXPROCS()
 	if _, ok := os.LookupEnv("GOMEMLIMIT"); !ok {
 		if mem, err := systemMemoryBytes(); err == nil && mem > 0 {
 			limit := int64(float64(mem) * 0.9)
@@ -27,6 +29,25 @@ func Apply(cfg *config.Config) {
 			n = 1
 		}
 		cfg.MaxWorkers = n
+	}
+}
+
+func applyGOMAXPROCS() {
+	if _, ok := os.LookupEnv("GOMAXPROCS"); ok {
+		return
+	}
+	host := runtime.NumCPU()
+	if host < 1 {
+		host = 1
+	}
+	if n, err := cpuset.EffectiveCount(); err == nil && n > 0 && n < host {
+		runtime.GOMAXPROCS(n)
+		return
+	}
+	if s := strings.TrimSpace(os.Getenv("TRACKER_CPUSET")); s != "" {
+		if n := cpuset.Count(s); n > 0 {
+			runtime.GOMAXPROCS(n)
+		}
 	}
 }
 

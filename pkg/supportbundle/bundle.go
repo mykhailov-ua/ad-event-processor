@@ -27,6 +27,7 @@ type Meta struct {
 	LicenseState     string `json:"license_state,omitempty"`
 	DaysToExpiry     int    `json:"days_to_expiry,omitempty"`
 	HostFingerprint  string `json:"host_fingerprint,omitempty"`
+	HostHWIDv2       string `json:"hwid_v2,omitempty"`
 	FingerprintMatch *bool  `json:"fingerprint_match,omitempty"`
 	BinaryVersion    string `json:"binary_version,omitempty"`
 }

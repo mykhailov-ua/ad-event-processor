@@ -17,9 +17,48 @@ espx_ingress_enabled() {
 	[[ "$(espx_read_env INGRESS_ENABLED)" == "1" ]]
 }
 
+espx_cpu_isolation_enabled() {
+	[[ "$(espx_read_env CPU_ISOLATION_ENABLED)" == "1" ]]
+}
+
+espx_sysctl_auto_apply_enabled() {
+	[[ "$(espx_read_env EDGE_SYSCTL_AUTO_APPLY)" == "1" ]]
+}
+
+espx_stack_hardening() {
+	if [[ ! -x "$SCRIPTS/ops/sysctl.sh" ]]; then
+		return 0
+	fi
+	if espx_sysctl_auto_apply_enabled; then
+		if [[ "$(id -u)" -eq 0 ]]; then
+			echo "stack.sh: applying host sysctl (EDGE_SYSCTL_AUTO_APPLY=1)" >&2
+			bash "$SCRIPTS/ops/sysctl.sh" apply || echo "stack.sh: WARN sysctl apply failed" >&2
+		else
+			if ! bash "$SCRIPTS/ops/sysctl.sh" verify 2>/dev/null; then
+				echo "stack.sh: WARN sysctl not applied — run: sudo bash scripts/ops/sysctl.sh apply" >&2
+				echo "stack.sh: WARN recreate listeners after somaxconn change (see docs/EDGE_CASES.md)" >&2
+			fi
+		fi
+	else
+		bash "$SCRIPTS/ops/sysctl.sh" verify 2>/dev/null || \
+			echo "stack.sh: hint: EDGE_SYSCTL_AUTO_APPLY=1 or sudo bash scripts/ops/sysctl.sh apply" >&2
+	fi
+
+	if espx_cpu_isolation_enabled && command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+		if ! bash "$SCRIPTS/ops/cpu_isolation.sh" verify 2>/dev/null; then
+			echo "stack.sh: WARN cpu isolation verify failed (tracker-0 running with profile cpu-isolation?)" >&2
+		fi
+	fi
+}
+
 espx_compose() {
 	local -a env_args=()
 	local -a file_args=(-f "$ROOT/docker-compose.yaml")
+	local -a profile_args=()
+	if espx_cpu_isolation_enabled; then
+		file_args+=(-f "$ROOT/deploy/compose/docker-compose.cpu-isolation.yaml")
+		profile_args+=(--profile cpu-isolation)
+	fi
 	if espx_use_release_images; then
 		file_args+=(-f "$ROOT/deploy/compose/docker-compose.release.yaml")
 		if [[ -z "${AD_EVENT_PROCESSOR_APP_IMAGE:-}" ]]; then
@@ -33,15 +72,15 @@ espx_compose() {
 	if [[ -f "$ROOT/install.compose.env" ]]; then
 		env_args+=(--env-file "$ROOT/install.compose.env")
 	fi
-	docker compose "${file_args[@]}" "${env_args[@]}" "$@"
+	docker compose "${file_args[@]}" "${profile_args[@]}" "${env_args[@]}" "$@"
 }
 
 CMD="${1:-status}"
 
 INFRA=(db db-payment redis-0 redis-1 redis-2 redis-3 clickhouse)
-SINGLE_VPS=(db redis-0 redis-1 redis-2 redis-3 clickhouse processor tracker-0 control)
-INGEST_ONLY=(db redis-0 redis-1 redis-2 redis-3 processor tracker-0 control)
-NETWORK_OPERATOR=(db db-payment redis-0 redis-1 redis-2 redis-3 clickhouse processor tracker-0 control)
+SINGLE_VPS=(db redis-0 redis-1 redis-2 redis-3 clickhouse broker processor tracker-0 control)
+INGEST_ONLY=(db redis-0 redis-1 redis-2 redis-3 broker processor tracker-0 control)
+NETWORK_OPERATOR=(db db-payment redis-0 redis-1 redis-2 redis-3 clickhouse broker processor tracker-0 control)
 SENTINEL=(redis-0 redis-0-replica sentinel-0 sentinel-1 sentinel-2)
 
 case "$CMD" in
@@ -51,6 +90,7 @@ infra | up-infra)
 full | up-full)
 	echo "stack.sh: full runs single-vps monolith" >&2
 	espx_compose --profile single_vps up -d "${SINGLE_VPS[@]}"
+	espx_stack_hardening
 	;;
 legacy-full | up-legacy-full)
 	echo "stack.sh: legacy-full removed; use single-vps or network-operator" >&2
@@ -68,14 +108,17 @@ single-vps | up-single-vps)
 	else
 		espx_compose "${prof[@]}" up -d "${SINGLE_VPS[@]}"
 	fi
+	espx_stack_hardening
 	;;
 ingest-only | up-ingest-only)
 	CH_ENABLED=0 CONTROL_ENABLE_PAYMENT=0 CONTROL_ENABLE_BILLING=0 CONTROL_ENABLE_NOTIFIER=0 \
 		CONTROL_ENABLE_MARGIN_GUARD=0 CONTROL_ENABLE_COST_SYNC=0 \
 		espx_compose --profile ingest_only up -d "${INGEST_ONLY[@]}"
+	espx_stack_hardening
 	;;
 network-operator | up-network-operator)
 	espx_compose --profile network_operator up -d "${NETWORK_OPERATOR[@]}"
+	espx_stack_hardening
 	;;
 analytics-ml | up-analytics-ml)
 	espx_compose --profile analytics_ml --profile fraud-scorer up -d ivt-detector fraud-scorer clickhouse

@@ -14,17 +14,17 @@ if rg -l '\.jsx$' web/src 2>/dev/null | grep -q .; then
   exit 1
 fi
 
-# React imports allowed only under web/src/react/ and entry shells during migration.
+# React imports allowed under pages/, components/, hooks/, and entry shells.
 react_violations=()
 while IFS= read -r file; do
   case "$file" in
-    web/src/react/*|*/web/src/react/*|web/src/main.tsx|*/web/src/main.tsx|web/src/login.tsx|*/web/src/login.tsx) ;;
+    web/src/pages/*|*/web/src/pages/*|web/src/components/*|*/web/src/components/*|web/src/hooks/*|*/web/src/hooks/*|web/src/main.tsx|*/web/src/main.tsx|web/src/login.tsx|*/web/src/login.tsx|web/src/app_*.tsx|*/web/src/app_*.tsx|web/src/login_boot.tsx|*/web/src/login_boot.tsx|web/src/main_mount.tsx|*/web/src/main_mount.tsx|web/src/standalone_*.tsx|*/web/src/standalone_*.tsx) ;;
     *) react_violations+=("$file") ;;
   esac
 done < <(rg -l "from ['\"]react" web/src 2>/dev/null || true)
 
 if [ "${#react_violations[@]}" -gt 0 ]; then
-  echo "Error: React imports outside web/src/react/ or entry shells:"
+  echo "Error: React imports outside pages/components/hooks or entry shells:"
   printf '  %s\n' "${react_violations[@]}"
   exit 1
 fi

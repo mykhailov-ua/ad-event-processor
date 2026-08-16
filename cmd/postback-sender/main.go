@@ -33,7 +33,7 @@ func main() {
 	defer pool.Close()
 
 	postback.RegisterMetrics()
-	metricsAddr := os.Getenv("POSTBACK_METRICS_ADDR")
+	metricsAddr := cfg.Postback.MetricsAddr
 	if metricsAddr == "" {
 		metricsAddr = "127.0.0.1:9119"
 	}
@@ -42,9 +42,17 @@ func main() {
 
 	key := []byte(os.Getenv("POSTBACK_ENCRYPTION_KEY"))
 	worker := postback.NewPostbackWorker(pool, key)
+	worker.ConfigureBatchSize(cfg.PostbackBatchSize())
+	worker.ConfigureStaleProcessingSec(int32(cfg.Postback.StaleProcessingSec))
 
-	slog.Info("starting postback-sender daemon", "metrics_addr", metricsAddr)
-	go worker.Start(ctx, 5*time.Second)
+	pollInterval := cfg.PostbackPollInterval()
+	slog.Info("starting postback-sender daemon",
+		"metrics_addr", metricsAddr,
+		"poll_interval_ms", cfg.Postback.PollIntervalMs,
+		"batch_size", cfg.Postback.BatchSize,
+		"stale_processing_sec", cfg.Postback.StaleProcessingSec,
+	)
+	go worker.Start(ctx, pollInterval)
 
 	sig := lifecycle.WaitSignal()
 	slog.Info("received shutdown signal, shutting down postback-sender daemon", "signal", sig.String())

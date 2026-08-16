@@ -32,6 +32,26 @@ var (
 		Help: "Hot-path rejects when deployment JWT max_rps is exceeded",
 	})
 
+	EdgeBPFSealFailTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "edge_bpf_seal_fail_total",
+		Help: "Sealed edge BPF decrypt or collection load failures",
+	})
+
+	LicenseLuaSealFailTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "license_lua_seal_fail_total",
+		Help: "Sealed unified-filter.lua decrypt failures",
+	})
+
+	LicenseClockSkewTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "license_clock_skew_total",
+		Help: "License state forced expired due to wall clock vs monotonic skew",
+	})
+
+	LicenseGuardTripTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "license_guard_trip_total",
+		Help: "License guard detections (tracer, injected maps, text tamper)",
+	}, []string{"reason"})
+
 	FilterBlockedTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ad_filter_blocked_total",
 		Help: "Total number of events blocked by filters",
@@ -40,6 +60,11 @@ var (
 	SafePageRedirectTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_safe_page_redirect_total",
 		Help: "GET /click redirects to campaign safe_page_url (fraud or placement blacklist)",
+	})
+
+	SafePageVerifyTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_safe_page_verify_total",
+		Help: "POST /track/verify behavioral unlock to money landing HTML",
 	})
 
 	DbWriteDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
@@ -221,6 +246,10 @@ var (
 		Name: "ad_fraud_stream_pel_age_seconds",
 		Help: "Oldest pending entry idle age for ad:events:stream (or fraud stream) per shard",
 	}, []string{"stream", "shard"})
+	IngestFraudPath = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_ingest_fraud_path",
+		Help: "Fraud ingest transport: 0 = Redis ad:fraud:stream, 1 = broker topic",
+	})
 	H2HostileDisconnectTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_h2_hostile_disconnect_total",
 		Help: "HTTP/2 connections closed after H2_INCOMPLETE_MAX zero-progress spins or incomplete read idle / max lifetime",

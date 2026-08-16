@@ -39,7 +39,7 @@ Financial invariant: **`current_spend <= budget_limit`** (Postgres, ±1 micro-un
 | **Transport** | Redis UDS on single-VPS | Skip TCP loopback stack when co-located |
 | **CH durability (optional)** | `pkg/broker` mmap WAL | Offload Redis stream RAM; crash-safe replay to processor |
 
-Default appliance path: **Redis Streams** for settlement + analytics consume; **broker** is an optional migration for ClickHouse ingest (`CH_INGEST_SOURCE=broker`), not a replacement for budget Lua.
+Default appliance path: **broker-primary** (`CH_INGEST_SOURCE=broker`) for ClickHouse ingest via mmap WAL; Redis Streams remain for budget Lua and `ad:fraud:stream`.
 
 ### Why not Jump Consistent Hash?
 

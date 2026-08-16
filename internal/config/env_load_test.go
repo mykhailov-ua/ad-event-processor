@@ -3,6 +3,7 @@ package config
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestTrimCommaList_dropsEmpty(t *testing.T) {
@@ -108,6 +109,67 @@ func TestFraudScoringEnabled_defaultFalse(t *testing.T) {
 	cfg2.FraudScoring.Enabled = getEnvBool("FRAUD_SCORING_ENABLED", false)
 	if !cfg2.FraudScoringEnabled() {
 		t.Fatal("FRAUD_SCORING_ENABLED=true must enable scoring")
+	}
+}
+
+func TestBrokerPrimaryCH(t *testing.T) {
+	cfg := &Config{}
+	cfg.Broker.CHIngestSource = "broker"
+	if !cfg.BrokerPrimaryCH() {
+		t.Fatal("broker CH ingest source must be primary")
+	}
+	cfg.Broker.CHIngestSource = ""
+	if cfg.BrokerPrimaryCH() {
+		t.Fatal("empty CH ingest source must not be broker-primary")
+	}
+}
+
+func TestPostbackDefaults(t *testing.T) {
+	t.Setenv("POSTBACK_POLL_INTERVAL_MS", "2000")
+	t.Setenv("POSTBACK_BATCH_SIZE", "100")
+	cfg := &Config{}
+	loadPostbackModules(cfg)
+	if cfg.Postback.PollIntervalMs != 2000 {
+		t.Fatalf("poll interval: got %d want 2000", cfg.Postback.PollIntervalMs)
+	}
+	if cfg.Postback.BatchSize != 100 {
+		t.Fatalf("batch size: got %d want 100", cfg.Postback.BatchSize)
+	}
+	if cfg.PostbackPollInterval() != 2*time.Second {
+		t.Fatalf("poll duration: got %v", cfg.PostbackPollInterval())
+	}
+	if cfg.PostbackBatchSize() != 100 {
+		t.Fatalf("batch int32: got %d", cfg.PostbackBatchSize())
+	}
+}
+
+func TestBillingExportDefaults(t *testing.T) {
+	t.Setenv("BILLING_EXPORT_FETCH_ROWS", "2000")
+	t.Setenv("BILLING_EXPORT_JOB_TIMEOUT_MIN", "30")
+	cfg := &Config{}
+	loadControlplaneModules(cfg)
+	if cfg.Billing.ExportFetchRows != 2000 {
+		t.Fatalf("fetch rows: got %d", cfg.Billing.ExportFetchRows)
+	}
+	if cfg.Billing.ExportJobTimeoutMin != 30 {
+		t.Fatalf("timeout min: got %d", cfg.Billing.ExportJobTimeoutMin)
+	}
+}
+
+func TestValidateBrokerPrimaryRequiresBrokerURL(t *testing.T) {
+	cfg := &Config{
+		ServerPort:        "8181",
+		DBDSN:             "postgres://localhost/db",
+		TokenSymmetricKey: "test-key",
+		RedisAddrs:        []string{"127.0.0.1:6379"},
+	}
+	cfg.Broker.CHIngestSource = "broker"
+	if err := validateAndApplyDefaults(cfg); err == nil {
+		t.Fatal("CH_INGEST_SOURCE=broker without BROKER_URL must fail validation")
+	}
+	cfg.Broker.URL = "/run/ad-event-processor/broker/gnet.sock"
+	if err := validateAndApplyDefaults(cfg); err != nil {
+		t.Fatalf("broker-primary with BROKER_URL must pass: %v", err)
 	}
 }
 

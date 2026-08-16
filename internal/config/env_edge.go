@@ -73,7 +73,4 @@ func loadEdgeModules(cfg *Config) {
 	if cfg.RegionProxyRedisURL == "" {
 		cfg.RegionProxyRedisURL = os.Getenv("REGION_PROXY_REDIS_URL")
 	}
-	if cfg.RegionProxyRedisURL == "" && len(cfg.RedisAddrs) > 0 {
-		cfg.RegionProxyRedisURL = "redis://" + cfg.RedisAddrs[0] + "/0"
-	}
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/bidshard/ad-event-processor/internal/ingestion"
+	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
 	bserver "github.com/bidshard/ad-event-processor/pkg/broker/server"
 
 	"github.com/google/uuid"
@@ -39,6 +40,64 @@ func (m *mockEventStore) Count() int {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return len(m.storedEvents)
+}
+
+func TestBrokerConsumerGroup_OnMessageProcessed(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	srv := bserver.NewServer("127.0.0.1:0", t.TempDir(), 1024*1024, 4096)
+	require.NoError(t, srv.Start())
+	defer srv.Stop()
+
+	addr := srv.Addr()
+	topic := "ch-callback-test"
+
+	bp, err := ingestion.NewBrokerProducer(ingestion.BrokerProducerConfig{
+		Topic:      topic,
+		BrokerAddr: addr,
+		BatchSize:  10,
+	})
+	require.NoError(t, err)
+
+	campaignID := uuid.New()
+	for range 3 {
+		evt := &domain.Event{
+			ClickID:    uuid.New().String(),
+			CampaignID: campaignID,
+			Type:       "click",
+			CreatedAt:  time.Now(),
+		}
+		require.NoError(t, bp.Enqueue(evt))
+	}
+	require.NoError(t, bp.Close())
+
+	var seen int
+	mockStore := &mockEventStore{}
+	bcg, err := NewBrokerConsumerGroup(mockStore, BrokerConsumerGroupConfig{
+		BrokerAddr:     addr,
+		Topic:          topic,
+		Group:          "ch_callback_test",
+		PartitionCount: 1,
+		BatchSize:      10,
+		FlushInterval:  20 * time.Millisecond,
+		DataDir:        tmpDir,
+		OnMessageProcessed: func(evt *domain.Event, _ uint64) {
+			if evt != nil && evt.CampaignID == campaignID {
+				seen++
+			}
+		},
+	}, nil)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	bcg.Start(ctx)
+
+	require.Eventually(t, func() bool {
+		return seen >= 3
+	}, 3*time.Second, 50*time.Millisecond)
+
+	cancel()
+	require.NoError(t, bcg.Wait(context.Background()))
 }
 
 func TestBrokerConsumerGroup_BatchFetchAndOffsetCommit(t *testing.T) {
@@ -240,4 +299,67 @@ func TestBrokerConsumerGroup_Batch50k(t *testing.T) {
 	cancel()
 	require.NoError(t, bcg.Wait(context.Background()))
 	assert.GreaterOrEqual(t, mockStore.Count(), total)
+}
+
+func TestBrokerConsumerGroup_FraudTopic(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	srv := bserver.NewServer("127.0.0.1:0", t.TempDir(), 1024*1024, 4096)
+	require.NoError(t, srv.Start())
+	defer srv.Stop()
+
+	addr := srv.Addr()
+	topic := "ad-fraud-events-test"
+
+	sink, err := ingestion.NewFraudBrokerSink(addr, "", topic, 5*time.Second)
+	require.NoError(t, err)
+	defer sink.Close()
+
+	evt := &domain.Event{
+		ClickID:     "fraud-click",
+		CampaignID:  uuid.New(),
+		Type:        "click",
+		FraudReason: "geo_block",
+		FraudScore:  90,
+	}
+	payloads := make([][]byte, 0, 1)
+	payloads = append(payloads, mustMarshalFraudStreamEvent(t, evt))
+	require.NoError(t, sink.Produce(context.Background(), 0, payloads))
+
+	mockStore := &mockEventStore{}
+	bcg, err := NewBrokerConsumerGroup(mockStore, BrokerConsumerGroupConfig{
+		BrokerAddr:     addr,
+		Topic:          topic,
+		Group:          "fraud_broker_test",
+		PartitionCount: 1,
+		BatchSize:      10,
+		FlushInterval:  50 * time.Millisecond,
+		MaxBytes:       512 * 1024,
+		DataDir:        tmpDir,
+	}, nil)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	bcg.Start(ctx)
+
+	require.Eventually(t, func() bool {
+		return mockStore.Count() >= 1
+	}, 10*time.Second, 50*time.Millisecond)
+
+	cancel()
+	require.NoError(t, bcg.Wait(context.Background()))
+}
+
+func mustMarshalFraudStreamEvent(t *testing.T, evt *domain.Event) []byte {
+	t.Helper()
+	pbEvt := &pb.AdStreamEvent{
+		ClickId:     []byte(evt.ClickID),
+		CampaignId:  evt.CampaignID[:],
+		EventType:   []byte(evt.Type),
+		FraudReason: []byte(evt.FraudReason),
+		FraudScore:  evt.FraudScore,
+	}
+	data, err := pbEvt.MarshalVT()
+	require.NoError(t, err)
+	return data
 }

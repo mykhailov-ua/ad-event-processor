@@ -93,14 +93,33 @@ go run ./cmd/license-issue \
 
 Mismatching fingerprint on another VPS blocks ingest even with a copied `license.jwt`.
 
+### HWID v2 (Argon2id, recommended for new renewals)
+
+Renewal JWTs may include an `hwid_hash` claim (Argon2id over DMI UUID, root disk id, NIC MAC, and CPU model/cores). The support bundle and doctor output export `hwid_v2` alongside the legacy `host_fingerprint`.
+
+Issue with HWID v2 (preferred when the customer bundle includes `hwid_v2`):
+
+```bash
+go run ./cmd/license-issue \
+  --sku pilot \
+  --customer "Acme Media" \
+  --deployment-id "<uuid>" \
+  --hwid-v2 "<hwid_v2-from-support-bundle>" \
+  --out /tmp/acme-license.jwt
+```
+
+When `hwid_hash` is present in the JWT, verification uses HWID v2 only; legacy `--fingerprint` remains valid for older tokens without `hwid_hash`.
+
+Regenerate golden HWID vectors (vendor CI only): `bash scripts/security/license_vector_gen.sh`
+
 ## Vendor renewal checklist (support)
 
 Before issuing a renewal JWT:
 
 1. Customer ticket includes **same** `deployment_id` as prior invoice (Settings → License or support bundle `version.json`).
-2. Compare `host_fingerprint` from support bundle with the fingerprint used at first install (`AD_EVENT_PROCESSOR_DEPLOYMENT_FINGERPRINT` on server or install log).
-3. Reject renewal when fingerprint or deployment_id changed without a signed migration note.
-4. Issue JWT with matching `--deployment-id` and `--fingerprint`.
+2. Compare `host_fingerprint` or `hwid_v2` from support bundle with values used at first install (`AD_EVENT_PROCESSOR_DEPLOYMENT_FINGERPRINT` on server or install log).
+3. Reject renewal when fingerprint, HWID v2, or deployment_id changed without a signed migration note.
+4. Issue JWT with matching `--deployment-id` and `--hwid-v2` (or legacy `--fingerprint` when `hwid_hash` is absent).
 
 ## Revocation (chargeback)
 
@@ -152,11 +171,90 @@ Install requires `--accept-eula` (non-interactive) or interactive acceptance dur
 
 First admin login shows a click-through if EULA was not recorded at bootstrap. Text: `pkg/legal/EULA.txt`, version `2026-01`.
 
-## Garble literals (optional)
+## Garble literals (V2-D.1)
 
-Evaluate before enabling `GARBLE_LITERALS=1` in release builds:
+Release garble builds apply `-literals` per binary:
+
+| Binary | Default `-literals` |
+| --- | --- |
+| `tracker` | off (hot path; enable only after eval) |
+| `processor` | on |
+| `control` | on |
+
+Override all: `GARBLE_LITERALS=0|1`. Per binary: `GARBLE_LITERALS_TRACKER=1`, etc.
+
+Evaluate tracker size impact before enabling literals on ingest:
 
 ```bash
 make garble-literals-eval
+make garble-literals-policy-gate
 ```
+
+p99 acceptance (+10% vs baseline): `make garble-literals-p99-smoke` (load-test stack + Prometheus). Size-only eval: `make garble-literals-eval`.
+
+## Sealed BPF + XDP lab smoke (V2-B.D2)
+
+Valid JWT on bound host must load sealed edge BPF and attach XDP like the unsealed baseline:
+
+```bash
+# Prereq: clang + BTF
+sudo apt install -y clang llvm libbpf-dev linux-libc-dev
+make bpf-edge-prereq-gate          # go generate + sealed unit tests; skip if no clang
+
+sudo SEALED_BPF_XDP_SMOKE=1 make sealed-bpf-xdp-smoke
+```
+
+Harness: `kernel_xdp_attach_lo_generic` on `lo`; drop proof via `prog.Test` on the same maps (`drop_assertion=prog_test_same_maps`), not raw loopback RX.
+
+### Sealed unified-filter.lua (V2-B.4)
+
+Vendor seal (enterprise images):
+
+```bash
+go run ./cmd/license-asset-seal \
+  --label unified-filter \
+  --in internal/ingestion/unified-filter.lua \
+  --out internal/ingestion/unified_filter_sealed.bin \
+  --license license.jwt
+```
+
+Runtime: tracker calls `InitUnifiedFilterLua()` at cold startup. When `AD_EVENT_PROCESSOR_LICENSE_MODE=enterprise` and `unified_filter_sealed.bin` exists, decrypts with MCK from `license.jwt`. Missing blob falls back to embedded `//go:embed` script (pilot transition). Override path: `AD_EVENT_PROCESSOR_UNIFIED_FILTER_SEALED_BLOB`.
+
+## License guard (V2-C)
+
+Release garble builds (`license_guard` tag) enable cold-path anti-debug probes on tracker, processor, and control.
+
+| Env | Effect |
+| --- | --- |
+| `AD_EVENT_PROCESSOR_LICENSE_GUARD=0` | Disable all guard probes (gdb/strace friendly) |
+| `AD_EVENT_PROCESSOR_LICENSE_GUARD_PTRACE=0` | Disable ptrace watchdog child only; keep TracerPid/maps/text checks |
+
+Ptrace watchdog (V2-C.2): on startup a re-exec child attaches to the parent with `PTRACE_ATTACH`, occupying the tracer slot so external debuggers get `EBUSY`. If another tracer is already present, the license epoch is invalidated (`ptrace_busy`). When `kernel.yama.ptrace_scope` blocks attach, the watchdog skips with a warning (no trip).
+
+```bash
+go test -tags=license_guard ./internal/licensing/ -run Guard -count=1
+make license-guard-off-smoke
+make license-guard-fault-gate
+make license-gdb-guard-smoke          # automated gdb attach denial (harness=license_guard_release)
+make license-red-team-extended        # red-team steps 7–10 (automated subset)
+```
+
+### Lab gdb drill (V2-C.D1)
+
+Automated smoke (test binary subprocess):
+
+```bash
+make license-gdb-guard-smoke
+# or: LICENSE_GDB_SMOKE=1 go test -tags=license_guard ./internal/licensing/ -run GDBAttachDenied -count=1
+```
+
+Full release tracker on a lab host:
+
+```bash
+RELEASE_GARBLE=1 LICENSE_GUARD=1 make release-garble
+# run tracker with valid license.jwt, then:
+gdb -p "$(pgrep -n tracker)"
+```
+
+Harness: `license_guard_release`. Expect `ptrace: Operation not permitted` / attach failure, or license epoch invalid within the background probe window. Use `AD_EVENT_PROCESSOR_LICENSE_GUARD=0` to confirm gdb works when guard is intentionally disabled (C.D2).
 

@@ -1,5 +1,6 @@
 
 local redis = require "resty.redis"
+local edge_net = require "edge-net"
 
 local _M = {}
 
@@ -68,18 +69,7 @@ local function load_env()
 end
 
 local function parse_addr_list(raw)
-    local out = {}
-    if raw == "" then
-        return out
-    end
-    for addr in string.gmatch(raw, "([^,]+)") do
-        addr = string.match(addr, "^%s*(.-)%s*$")
-        local host, port = string.match(addr, "([^:]+):(%d+)")
-        if host and port then
-            table.insert(out, {host = host, port = tonumber(port)})
-        end
-    end
-    return out
+    return edge_net.parse_addr_list(raw)
 end
 
 local function sentinel_master_addr(shard_idx, names, sentinels)
@@ -178,13 +168,13 @@ local function connect_shard(shard_idx)
     local red = redis:new()
     red:set_timeout(500)
 
-    local ok, err = red:connect(target.host, target.port)
+    local ok, err = edge_net.redis_connect(red, target)
     if not ok and sentinel_enabled then
         sentinel_cache:delete("m:" .. master_names[shard_idx])
         local resolved, resolve_err = sentinel_master_addr(shard_idx, master_names, sentinel_addrs)
         if resolved then
             target = resolved
-            ok, err = red:connect(target.host, target.port)
+            ok, err = edge_net.redis_connect(red, target)
         else
             return nil, "sentinel re-resolve: " .. (resolve_err or "unknown")
         end

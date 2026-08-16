@@ -10,7 +10,7 @@ Spec for the embedded admin UI (`web/`).
 
 **Not adopted:** `@grafana/ui`, Grafana Storybook components, Grafana palette/typography. **React:** allowed under [`.cursor/WEB_REACT_MIGRATION.md`](../.cursor/WEB_REACT_MIGRATION.md) (Phase 0+); legacy `mount()` views coexist until ported. No Geist React or npm UI kits.
 
-Implementation: `web/src/styles/tokens.css` + `main.css` + `components.css` + `a11y.css`. Shared controls: `web/src/ui/button.ts`, `web/src/ui/form_field.ts`. Confirm flows: `helpers/confirm_catalog.js` / `confirm_registry.js`. Toasts: `helpers/toast_ui.js`.
+Implementation: `web/src/styles/tokens.css` + `main.css` + `components.css` + `a11y.css`. Shared controls: `web/src/components/`. Confirm flows: `helpers/confirm_catalog.js` / `confirm_registry.js`. Toasts: `helpers/toast_ui.js`.
 
 ---
 

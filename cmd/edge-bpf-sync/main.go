@@ -14,6 +14,7 @@ import (
 	"github.com/bidshard/ad-event-processor/internal/edge/fingerprint"
 	"github.com/bidshard/ad-event-processor/internal/edge/xdpstats"
 	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
+	"github.com/bidshard/ad-event-processor/pkg/netaddr"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/ringbuf"
@@ -99,10 +100,7 @@ func main() {
 		}
 	}
 
-	rdb := redis.NewClient(&redis.Options{
-		Addr:     redisAddr,
-		Password: os.Getenv("REDIS_PASS"),
-	})
+	rdb := redis.NewClient(netaddr.RedisClientOptions(redisAddr, os.Getenv("REDIS_PASS")))
 	defer func() { _ = rdb.Close() }()
 
 	ctx, cancel := lifecycle.NotifyContext(context.Background())

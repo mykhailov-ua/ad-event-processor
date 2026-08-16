@@ -329,7 +329,8 @@ func NewUnifiedFilter(
 	streamName string,
 	maxStreamLen int,
 ) *UnifiedFilter {
-	script := redis.NewScript(unifiedFilterLua)
+	_ = InitUnifiedFilterLua()
+	script := redis.NewScript(unifiedFilterLuaForScript())
 	fastScript := redis.NewScript(budgetFastLua)
 	rollbackScript := redis.NewScript(budgetRollbackLua)
 	emptyGeoFloors := make(map[string]int64)

@@ -279,7 +279,11 @@ func ReadFrame(r io.Reader, buf []byte, lenBuf []byte) (uint16, uint64, []byte, 
 }
 
 func ReadFrameTCP(c *net.TCPConn, buf []byte, lenBuf []byte) (uint16, uint64, []byte, error) {
-	if err := readFullTCPLoop(c, lenBuf[:4]); err != nil {
+	return ReadFrameConn(c, buf, lenBuf)
+}
+
+func ReadFrameConn(c net.Conn, buf []byte, lenBuf []byte) (uint16, uint64, []byte, error) {
+	if err := readFullConn(c, lenBuf[:4]); err != nil {
 		return 0, 0, nil, err
 	}
 	length := binary.BigEndian.Uint32(lenBuf[:4])
@@ -289,7 +293,7 @@ func ReadFrameTCP(c *net.TCPConn, buf []byte, lenBuf []byte) (uint16, uint64, []
 	}
 
 	readBuf := buf[:length]
-	if err := readFullTCPLoop(c, readBuf); err != nil {
+	if err := readFullConn(c, readBuf); err != nil {
 		return 0, 0, nil, err
 	}
 
@@ -297,6 +301,10 @@ func ReadFrameTCP(c *net.TCPConn, buf []byte, lenBuf []byte) (uint16, uint64, []
 }
 
 func readFullTCPLoop(c *net.TCPConn, buf []byte) error {
+	return readFullConn(c, buf)
+}
+
+func readFullConn(c net.Conn, buf []byte) error {
 	for n := 0; n < len(buf); {
 		nn, err := c.Read(buf[n:])
 		n += nn

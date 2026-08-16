@@ -19,5 +19,8 @@ func openRTBLicenseAllowed(reg domain.CampaignRegistry) bool {
 		return true
 	}
 	state, ent := reader.GetLicenseState()
+	if !licensing.SeedGateOpenRTB(ent) {
+		return false
+	}
 	return licensing.OpenRTBAllowed(state, ent)
 }

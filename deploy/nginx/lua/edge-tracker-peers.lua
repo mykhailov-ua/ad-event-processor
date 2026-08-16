@@ -2,10 +2,10 @@
 local _M = {}
 
 _M.list = {
-    { host = "127.0.0.1", port = 8181, node_id = "tracker-1" },
-    { host = "127.0.0.1", port = 8182, node_id = "tracker-2" },
-    { host = "127.0.0.1", port = 8183, node_id = "tracker-3" },
-    { host = "127.0.0.1", port = 8184, node_id = "tracker-4" },
+    { unix_socket = "/run/ad-event-processor/tracker/tracker-0.sock", node_id = "tracker-1" },
+    { unix_socket = "/run/ad-event-processor/tracker/tracker-1.sock", node_id = "tracker-2" },
+    { unix_socket = "/run/ad-event-processor/tracker/tracker-2.sock", node_id = "tracker-3" },
+    { unix_socket = "/run/ad-event-processor/tracker/tracker-3.sock", node_id = "tracker-4" },
 }
 
 function _M.index_for_node_id(node_id)

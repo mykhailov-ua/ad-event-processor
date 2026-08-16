@@ -1,0 +1,39 @@
+name: License Fuzz Nightly
+
+on:
+  schedule:
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: license-fuzz-nightly
+  cancel-in-progress: false
+
+jobs:
+  license-fuzz:
+    name: Licensing JWT/HWID fuzz (10m)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.12'
+          cache: true
+
+      - name: FuzzVerifyJWT
+        run: go test ./internal/licensing/ -fuzz=FuzzVerifyJWT -fuzztime=10m -count=1
+
+      - name: FuzzDecodeUnverified
+        run: go test ./internal/licensing/ -fuzz=FuzzDecodeUnverified -fuzztime=5m -count=1
+
+      - name: FuzzJSONClaims
+        run: go test ./internal/licensing/ -fuzz=FuzzJSONClaims -fuzztime=5m -count=1
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: license-fuzz-corpus
+          path: internal/licensing/testdata/fuzz/
+          retention-days: 14
+          if-no-files-found: ignore

@@ -23,6 +23,7 @@ import (
 	"github.com/bidshard/ad-event-processor/pkg/gnetutil"
 	"github.com/bidshard/ad-event-processor/pkg/iogate"
 	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
+	"github.com/bidshard/ad-event-processor/pkg/netaddr"
 	"github.com/bidshard/ad-event-processor/pkg/regionproxy/keygen"
 	"github.com/bidshard/ad-event-processor/pkg/regionproxy/opkey"
 	"github.com/bidshard/ad-event-processor/pkg/regionproxy/uplink"
@@ -193,7 +194,7 @@ func (s *Server) Gate() *iogate.DiskWriteGate {
 }
 
 func (s *Server) Start() error {
-	if strings.HasSuffix(s.addr, ":0") {
+	if strings.HasSuffix(s.addr, ":0") && !netaddr.IsUnixSocketPath(s.addr) {
 		l, err := net.Listen("tcp", s.addr)
 		if err != nil {
 			return err
@@ -201,13 +202,23 @@ func (s *Server) Start() error {
 		s.addr = l.Addr().String()
 		_ = l.Close()
 	}
-	if strings.HasSuffix(s.healthAddr, ":0") {
+	if strings.HasSuffix(s.healthAddr, ":0") && !netaddr.IsUnixSocketPath(s.healthAddr) {
 		l, err := net.Listen("tcp", s.healthAddr)
 		if err != nil {
 			return err
 		}
 		s.healthAddr = l.Addr().String()
 		_ = l.Close()
+	}
+	if netaddr.IsUnixSocketPath(s.addr) {
+		if err := netaddr.PrepareUnixSocket(s.addr); err != nil {
+			return err
+		}
+	}
+	if netaddr.IsUnixSocketPath(s.healthAddr) {
+		if err := netaddr.PrepareUnixSocket(s.healthAddr); err != nil {
+			return err
+		}
 	}
 
 	mux := http.NewServeMux()
@@ -220,6 +231,15 @@ func (s *Server) Start() error {
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
+		if netaddr.IsUnixSocketPath(s.healthAddr) {
+			ln, err := netaddr.ListenUnix(s.healthAddr)
+			if err != nil {
+				slog.Error("region-proxy health listen failed", "addr", s.healthAddr, "error", err)
+				return
+			}
+			_ = s.httpSrv.Serve(ln)
+			return
+		}
 		_ = s.httpSrv.ListenAndServe()
 	}()
 
@@ -227,7 +247,7 @@ func (s *Server) Start() error {
 	errChan := make(chan error, 1)
 	go func() {
 		defer s.wg.Done()
-		err := gnet.Run(s, "tcp://"+s.addr, gnet.WithMulticore(true))
+		err := gnet.Run(s, netaddr.GnetListenURI(s.addr), gnet.WithMulticore(true))
 		if err != nil {
 			errChan <- err
 		}

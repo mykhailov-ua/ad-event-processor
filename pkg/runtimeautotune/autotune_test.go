@@ -30,3 +30,14 @@ func TestApplyRespectsExplicitMaxWorkers(t *testing.T) {
 		t.Fatalf("MaxWorkers=%d want unchanged 16", cfg.MaxWorkers)
 	}
 }
+
+func TestApplyGOMAXPROCSFromTrackerCpuset(t *testing.T) {
+	_ = os.Unsetenv("GOMAXPROCS")
+	t.Setenv("TRACKER_CPUSET", "0-3")
+	before := runtime.GOMAXPROCS(0)
+	runtimeautotune.Apply(&config.Config{})
+	if got := runtime.GOMAXPROCS(0); got != 4 {
+		t.Fatalf("GOMAXPROCS=%d want 4 from TRACKER_CPUSET", got)
+	}
+	runtime.GOMAXPROCS(before)
+}

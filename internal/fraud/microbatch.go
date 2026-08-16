@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bidshard/ad-event-processor/internal/database"
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/bidshard/ad-event-processor/internal/metrics"
 
@@ -27,16 +28,18 @@ type aggStats struct {
 }
 
 type MicroBatcher struct {
-	eventsChan chan *domain.Event
-	rdb        redis.UniversalClient
-	scorer     Scorer
+	eventsChan            chan *domain.Event
+	rdbs                  []redis.UniversalClient
+	scorer                Scorer
+	campaignUpdateChannel string
 }
 
-func NewMicroBatcher(rdb redis.UniversalClient, scorer Scorer) *MicroBatcher {
+func NewMicroBatcher(rdbs []redis.UniversalClient, scorer Scorer, campaignUpdateChannel string) *MicroBatcher {
 	return &MicroBatcher{
-		eventsChan: make(chan *domain.Event, 10000),
-		rdb:        rdb,
-		scorer:     scorer,
+		eventsChan:            make(chan *domain.Event, 10000),
+		rdbs:                  rdbs,
+		scorer:                scorer,
+		campaignUpdateChannel: domain.DefaultCampaignUpdateChannel(campaignUpdateChannel),
 	}
 }
 
@@ -86,7 +89,7 @@ func (m *MicroBatcher) Start(ctx context.Context) {
 }
 
 func (m *MicroBatcher) flush(ctx context.Context) {
-	if m.scorer == nil || m.rdb == nil {
+	if m.scorer == nil || len(m.rdbs) == 0 {
 		return
 	}
 
@@ -147,16 +150,28 @@ func (m *MicroBatcher) flush(ctx context.Context) {
 		return
 	}
 
+	campaignBoost := make(map[string]int, len(rows))
 	for i, score := range scores {
-		fraudScore := ProbabilityToFraudScore(score)
-		if fraudScore >= 30 {
-			key := fmt.Sprintf("ml:score:boost:%s", keys[i].CampaignID)
-			err := m.rdb.Set(ctx, key, fraudScore, 30*time.Second).Err()
-			if err != nil {
-				slog.Error("failed to set micro-batch ml score boost to redis", "error", err, "campaign", keys[i].CampaignID)
-			} else {
-				metrics.MicroBatchBoostsWrittenTotal.Inc()
-			}
+		boost, ok := microbatchBoostScore(rows[i], score)
+		if !ok {
+			continue
 		}
+		campaignID := keys[i].CampaignID
+		if prev, exists := campaignBoost[campaignID]; !exists || boost > prev {
+			campaignBoost[campaignID] = boost
+		}
+	}
+
+	for campaignID, fraudScore := range campaignBoost {
+		key := fmt.Sprintf("ml:score:boost:%s", campaignID)
+		value := strconv.Itoa(fraudScore)
+		if err := database.SyncGlobalStringToAllShards(ctx, m.rdbs, key, value, ScoreBoostTTL); err != nil {
+			slog.Error("failed to set micro-batch ml score boost to redis", "error", err, "campaign", campaignID)
+			continue
+		}
+		if err := domain.PublishCampaignUpdateRedis(ctx, m.rdbs, m.campaignUpdateChannel, campaignID); err != nil {
+			slog.Warn("failed to publish campaign update after ml boost", "error", err, "campaign", campaignID)
+		}
+		metrics.MicroBatchBoostsWrittenTotal.Inc()
 	}
 }

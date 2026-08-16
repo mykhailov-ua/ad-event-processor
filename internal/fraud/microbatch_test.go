@@ -29,7 +29,7 @@ func TestMicroBatch_AggregationAndScoring(t *testing.T) {
 	scorer, err := NewLGBMScorer(testModelPath(t))
 	require.NoError(t, err)
 
-	mb := NewMicroBatcher(rdb, scorer)
+	mb := NewMicroBatcher([]redis.UniversalClient{rdb}, scorer, "")
 	go mb.Start(ctx)
 
 	campaignID := uuid.New()
@@ -57,14 +57,14 @@ func TestMicroBatch_AggregationAndScoring(t *testing.T) {
 	assert.NotEmpty(t, val)
 	ttl, err := rdb.TTL(ctx, key).Result()
 	require.NoError(t, err)
-	assert.True(t, ttl > 0 && ttl <= 30*time.Second)
+	assert.True(t, ttl > 0 && ttl <= ScoreBoostTTL)
 }
 
 func TestMicroBatch_StreamLagPause(t *testing.T) {
 	rdb := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
 	defer rdb.Close()
 
-	mb := NewMicroBatcher(rdb, nil)
+	mb := NewMicroBatcher([]redis.UniversalClient{rdb}, nil, "")
 
 	campaignID := uuid.New()
 	evt := &domain.Event{
@@ -86,7 +86,7 @@ func TestMicroBatch_BoundedQueueDrop(t *testing.T) {
 	rdb := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
 	defer rdb.Close()
 
-	mb := NewMicroBatcher(rdb, nil)
+	mb := NewMicroBatcher([]redis.UniversalClient{rdb}, nil, "")
 
 	campaignID := uuid.New()
 	for range 10000 {
@@ -127,7 +127,7 @@ func TestFault_MLProcessorLag(t *testing.T) {
 	rdb := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
 	defer rdb.Close()
 
-	mb := NewMicroBatcher(rdb, nil)
+	mb := NewMicroBatcher([]redis.UniversalClient{rdb}, nil, "")
 
 	campaignID := uuid.New()
 	evt := &domain.Event{

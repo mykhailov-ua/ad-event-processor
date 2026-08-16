@@ -384,7 +384,12 @@ Scripts log `skip (…)` and **exit 0** when preconditions are missing — citin
 | `scripts/test/edge_xdp_bench_gate.sh` | BTF | `BenchmarkXDP_*` (`harness=xdp_prog_test`, not kernel RX) |
 | `scripts/test/billing_export_smoke.sh` | Docker (Postgres testcontainer) | `TestJobRunner_ExportLedgerNonZeroBytes` — export bytes ≥ header |
 | `scripts/test/blacklist_sync_test.sh` | `luajit` or `espx-nginx-1` container | OpenResty blacklist sync Lua |
+| `scripts/test/nginx_ktls_smoke.sh` | Docker; live `TlsTxSw` only if host `tls` module loaded | `nginx -t` with `Options KTLS`; `fault_proof status=ok` only when `TlsTxSw` rises |
+| `scripts/test/broker_primary_smoke.sh` | Go; live needs docker + broker container | Unit gates; `status=ok` only with processor log markers |
+| `scripts/test/cpu_isolation_smoke.sh` | `CPU_ISOLATION_ENABLED=1`; docker + running tracker for live | cpuset unit; live `status=ok` via `cpu_isolation.sh verify` |
 | `scripts/test/admin_stack_e2e.sh` | Live control on :8188, bootstrap env | Stack Playwright (`harness=stack`) |
+
+**Smoke `fault_proof` contract:** `status=ok` means the named harness invariant ran (e.g. `TlsTxSw` delta, compose cpuset pin, processor log markers). `status=partial` means config/unit gates only — live stack absent or skipped. Smokes do **not** assert kTLS or CPU-isolation p99/CPU percent wins; use load-test + Prometheus for perf claims.
 
 MILESTONE verification blocks should link here instead of bare script names.
 
@@ -546,7 +551,7 @@ The tracker closes incomplete HTTP/1 bodies via `HTTP1_INCOMPLETE_MAX` and `HTTP
 | `limit_rate` | Optional per-`location` floor (e.g. **1k** B/s) on untrusted ingress | Rate-limit drip before upstream; use only where latency SLA allows |
 | Chunked on `/track` | **Rejected** | `deploy/nginx/lua/edge-phase2.lua` → `reject_chunked()`; metric `ad_event_processor_edge_chunked_reject_total` |
 
-Direct tracker access (`:8181`, h2c eval) must rely on Go-side `HTTP1_*` env vars — do not assume nginx is in front. After sysctl or nginx timeout changes, re-run `bash scripts/fault/parser_slow_body_drill.sh`.
+Direct tracker access (`:8181`, h2c eval) must rely on Go-side `HTTP1_*` env vars — do not assume nginx is in front. After sysctl, nginx timeout, or CPU isolation changes, re-run `bash scripts/fault/parser_slow_body_drill.sh`.
 
 ### Broker cutover (`CH_INGEST_SOURCE`)
 
@@ -572,6 +577,12 @@ Tiered event bus: tracker → mmap WAL (`pkg/broker`) → processor → ClickHou
 **Postgres UDS (single-VPS):** default `DB_DSN` in `.env.example` uses `host=/run/ad-event-processor/postgresql&port=5430` (same `ad_event_processor_run` volume; Postgres `unix_socket_directories=/run/ad-event-processor/postgresql`). TCP port publish remains for ops/debug.
 
 **UDS latency proof:** `bash scripts/perf/redis_uds_benchmark.sh` → `var/uds-bench/<ts>/report.json` (dial p50 &lt; 2.5 µs gate).
+
+**OpenResty kTLS (TCP :443 only):** `deploy/nginx/snippets/ssl_server.conf` enables `ssl_conf_command Options KTLS`. Handshake stays in userspace; record crypto can move to the kernel when `tls` is loaded (`sudo cp deploy/nginx/modules-load.d/tls.conf /etc/modules-load.d/ad-event-processor-tls.conf && sudo modprobe tls`). Does not apply to QUIC/HTTP3 or to Caddy (`ingress` profile). `/track` is `proxy_pass`, so this is SSL_write kTLS, not `SSL_sendfile`. **No in-tree CPU/p99 benchmark** — smoke proves config (`nginx -t`) and optional host `TlsTxSw` only: `bash scripts/test/nginx_ktls_smoke.sh`.
+
+**CPU isolation (p99 tail):** default `CPU_ISOLATION_ENABLED=1` in `.env.example` — `stack.sh single-vps` adds compose profile `cpu-isolation` (`deploy/compose/docker-compose.cpu-isolation.yaml`): per-role `cpuset`, `cpu_shares` weights, **no** `deploy.resources.limits.cpus` (avoids CFS throttle). Tracker `runtimeautotune` sets `GOMAXPROCS` from effective cpuset when unset. Native install: drop-ins under `deploy/systemd/*.cpu-isolation.conf`. **No in-tree p99 delta gate** — verify pin: `bash scripts/ops/cpu_isolation.sh verify`; smoke: `bash scripts/test/cpu_isolation_smoke.sh`. Load-test compose intentionally keeps hard `cpus:` for purgatory drills — not the appliance default.
+
+**Host sysctl (listen backlog):** `deploy/edge/99-ad-event-processor-sysctl.conf` (`somaxconn=16384`). Default `EDGE_SYSCTL_AUTO_APPLY=1` — `stack.sh` warns or applies when root. Manual: `sudo bash scripts/ops/sysctl.sh apply`; verify: `bash scripts/ops/phase0.sh`.
 
 ---
 

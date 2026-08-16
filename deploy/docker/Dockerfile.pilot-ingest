@@ -16,6 +16,9 @@ COPY . .
 COPY --from=web /src/web/dist ./web/dist
 ARG GARBLE_SEED
 ENV GARBLE_SEED=${GARBLE_SEED}
+ARG ASSET_SEAL_SALT
+ENV ASSET_SEAL_SALT=${ASSET_SEAL_SALT}
+ENV AD_EVENT_PROCESSOR_ASSET_SEAL_SALT=${ASSET_SEAL_SALT}
 ENV RELEASE_GARBLE=1
 RUN bash scripts/ci/gen.sh --proto
 RUN bash scripts/ci/release_garble.sh /bin tracker processor

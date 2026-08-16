@@ -48,6 +48,95 @@ func TestIntegration_LicenseProtection_emptyPGRowBlocksIngest(t *testing.T) {
 	require.ErrorIs(t, err, ingestion.ErrLicenseExpired)
 }
 
+func TestIntegration_LicenseProtection_hwidMismatchBlocksIngest(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping license protection integration test")
+	}
+	ctx := context.Background()
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "license.jwt")
+	claims := licensing.LicenseClaims{
+		Issuer:       "espx-license",
+		Subject:      uuid.NewString(),
+		DeploymentID: uuid.NewString(),
+		ValidFrom:    time.Now().Add(-time.Hour),
+		ValidUntil:   time.Now().Add(24 * time.Hour),
+		GraceDays:    7,
+		HWIDHash:     "0000000000000000000000000000000000000000000000000000000000000000",
+		Limits: licensing.Limits{
+			MaxRPS:             1000,
+			MaxRequestsPerDay:  100000,
+			MaxActiveCampaigns: 10,
+		},
+	}
+	claims.Bind.Mode = "hard"
+	require.NoError(t, os.WriteFile(path, []byte(signLicenseToken(t, priv, claims)), 0o600))
+
+	registry := ingestion.NewRegistry(nil)
+	registry.StartLicenseRecheck(ctx, ingestion.RegistryLicenseConfig{
+		Required: true,
+		Path:     path,
+		PubKey:   pub,
+		Interval: time.Hour,
+	})
+
+	filter := ingestion.NewLicenseFilter(registry)
+	err = filter.Check(ctx, &domain.Event{})
+	require.ErrorIs(t, err, ingestion.ErrLicenseExpired)
+}
+
+func TestIntegration_LicenseProtection_hwidMatchAllowsIngest(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping license protection integration test")
+	}
+	ctx := context.Background()
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+
+	tel := licensing.HWIDTelemetry{
+		DMIUUID:  "integration-dmi",
+		DiskID:   "integration-disk",
+		MAC:      "de:ad:be:ef:00:01",
+		CPUModel: "Integration CPU",
+		CPUCores: 4,
+	}
+	restore := licensing.SetHWIDCollectForTest(func() licensing.HWIDTelemetry { return tel })
+	defer restore()
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "license.jwt")
+	claims := licensing.LicenseClaims{
+		Issuer:       "espx-license",
+		Subject:      uuid.NewString(),
+		DeploymentID: uuid.NewString(),
+		ValidFrom:    time.Now().Add(-time.Hour),
+		ValidUntil:   time.Now().Add(24 * time.Hour),
+		GraceDays:    7,
+		HWIDHash:     licensing.HashHWIDFromTelemetry(tel),
+		Limits: licensing.Limits{
+			MaxRPS:             1000,
+			MaxRequestsPerDay:  100000,
+			MaxActiveCampaigns: 10,
+		},
+	}
+	claims.Bind.Mode = "hard"
+	require.NoError(t, os.WriteFile(path, []byte(signLicenseToken(t, priv, claims)), 0o600))
+
+	registry := ingestion.NewRegistry(nil)
+	registry.StartLicenseRecheck(ctx, ingestion.RegistryLicenseConfig{
+		Required: true,
+		Path:     path,
+		PubKey:   pub,
+		Interval: time.Hour,
+	})
+
+	filter := ingestion.NewLicenseFilter(registry)
+	require.NoError(t, filter.Check(ctx, &domain.Event{}))
+}
+
 func TestIntegration_LicenseProtection_validJWTAllowsIngest(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping license protection integration test")

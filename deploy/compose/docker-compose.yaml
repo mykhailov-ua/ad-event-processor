@@ -11,10 +11,10 @@ services:
     env_file:
       - ../../.env
     environment:
-      - SERVER_PORT=8181
+      - TRACKER_UNIX_SOCKET=/run/ad-event-processor/tracker/tracker-0.sock
       - METRICS_PORT=9101
       - REDIS_ADDRS=${REDIS_ADDRS}
-      - BROKER_URL=${BROKER_URL:-127.0.0.1:9092}
+      - BROKER_URL=${BROKER_URL:-/run/ad-event-processor/broker/gnet.sock}
       - CH_INGEST_SOURCE=${CH_INGEST_SOURCE:-broker}
       - BROKER_SHADOW_MODE=${BROKER_SHADOW_MODE:-0}
       - TRACKER_PG_FALLBACK=${TRACKER_PG_FALLBACK:-0}
@@ -35,13 +35,15 @@ services:
         limits:
           memory: 1G
     healthcheck:
-      test: ["CMD", "/tracker", "--health-probe", "http://127.0.0.1:8181/health"]
+      test: ["CMD", "/tracker", "--health-probe", "/run/ad-event-processor/tracker/tracker-0.sock"]
       interval: 5s
       timeout: 3s
       retries: 3
     restart: always
     depends_on:
       db:
+        condition: service_healthy
+      broker:
         condition: service_healthy
       redis-0:
         condition: service_healthy
@@ -69,8 +71,11 @@ services:
     env_file:
       - ../../.env
     environment:
-      - SERVER_PORT=8182
+      - TRACKER_UNIX_SOCKET=/run/ad-event-processor/tracker/tracker-1.sock
       - METRICS_PORT=9102
+      - BROKER_URL=${BROKER_URL:-/run/ad-event-processor/broker/gnet.sock}
+      - CH_INGEST_SOURCE=${CH_INGEST_SOURCE:-broker}
+      - BROKER_SHADOW_MODE=${BROKER_SHADOW_MODE:-0}
       - GOMEMLIMIT=700MiB
       - GOGC=300
     volumes:
@@ -87,13 +92,15 @@ services:
         limits:
           memory: 1G
     healthcheck:
-      test: ["CMD", "/tracker", "--health-probe", "http://127.0.0.1:8182/health"]
+      test: ["CMD", "/tracker", "--health-probe", "/run/ad-event-processor/tracker/tracker-1.sock"]
       interval: 5s
       timeout: 3s
       retries: 3
     restart: always
     depends_on:
       db:
+        condition: service_healthy
+      broker:
         condition: service_healthy
       redis-0:
         condition: service_healthy
@@ -121,8 +128,11 @@ services:
     env_file:
       - ../../.env
     environment:
-      - SERVER_PORT=8183
+      - TRACKER_UNIX_SOCKET=/run/ad-event-processor/tracker/tracker-2.sock
       - METRICS_PORT=9103
+      - BROKER_URL=${BROKER_URL:-/run/ad-event-processor/broker/gnet.sock}
+      - CH_INGEST_SOURCE=${CH_INGEST_SOURCE:-broker}
+      - BROKER_SHADOW_MODE=${BROKER_SHADOW_MODE:-0}
       - GOMEMLIMIT=700MiB
       - GOGC=300
     volumes:
@@ -139,13 +149,15 @@ services:
         limits:
           memory: 1G
     healthcheck:
-      test: ["CMD", "/tracker", "--health-probe", "http://127.0.0.1:8183/health"]
+      test: ["CMD", "/tracker", "--health-probe", "/run/ad-event-processor/tracker/tracker-2.sock"]
       interval: 5s
       timeout: 3s
       retries: 3
     restart: always
     depends_on:
       db:
+        condition: service_healthy
+      broker:
         condition: service_healthy
       redis-0:
         condition: service_healthy
@@ -173,8 +185,11 @@ services:
     env_file:
       - ../../.env
     environment:
-      - SERVER_PORT=8184
+      - TRACKER_UNIX_SOCKET=/run/ad-event-processor/tracker/tracker-3.sock
       - METRICS_PORT=9104
+      - BROKER_URL=${BROKER_URL:-/run/ad-event-processor/broker/gnet.sock}
+      - CH_INGEST_SOURCE=${CH_INGEST_SOURCE:-broker}
+      - BROKER_SHADOW_MODE=${BROKER_SHADOW_MODE:-0}
       - GOMEMLIMIT=700MiB
       - GOGC=300
     volumes:
@@ -191,13 +206,15 @@ services:
         limits:
           memory: 1G
     healthcheck:
-      test: ["CMD", "/tracker", "--health-probe", "http://127.0.0.1:8184/health"]
+      test: ["CMD", "/tracker", "--health-probe", "/run/ad-event-processor/tracker/tracker-3.sock"]
       interval: 5s
       timeout: 3s
       retries: 3
     restart: always
     depends_on:
       db:
+        condition: service_healthy
+      broker:
         condition: service_healthy
       redis-0:
         condition: service_healthy
@@ -222,7 +239,8 @@ services:
       - REDIS_PORT=6479
       - REDIS_PASS=${REDIS_PASSWORD}
       - REDIS_ADDRS=${REDIS_ADDRS}
-      - MANAGEMENT_URL=http://127.0.0.1:8188
+      - MANAGEMENT_URL=unix:///run/ad-event-processor/control/http.sock
+      - CONTROL_URL=unix:///run/ad-event-processor/control/http.sock
       - TRACKER_INGRESS_SCHEMA=${TRACKER_INGRESS_SCHEMA:-openrtb_3}
       - EDGE_EXPOSE_CLICK=${EDGE_EXPOSE_CLICK:-true}
       - EDGE_EXPOSE_OPENRTB=${EDGE_EXPOSE_OPENRTB:-false}
@@ -232,6 +250,7 @@ services:
       - ../../deploy/nginx/lua:/etc/nginx/lua:ro
       - ../../deploy/nginx/snippets:/etc/nginx/snippets:ro
       - ../../deploy/nginx/certs:/etc/nginx/certs:ro
+      - ad_event_processor_run:/run/ad-event-processor:ro
     depends_on:
       tracker-0:
         condition: service_healthy
@@ -273,6 +292,7 @@ services:
       - espx_ch_spool:/var/spool/espx/ch:rw
       - ../../deploy/geoip:/deploy/geoip:rw
       - ad_event_processor_run:/run/ad-event-processor:rw
+      - ../../var/fraudscore/artifacts:/var/fraudscore/artifacts:ro
     environment:
       - DB_DSN=${DB_DSN}
       - REDIS_ADDRS=${REDIS_ADDRS}
@@ -285,7 +305,7 @@ services:
       - MAXMIND_LICENSE_KEY=${MAXMIND_LICENSE_KEY:-}
       - DB_PROCESSOR_MAX_CONNS=${DB_PROCESSOR_MAX_CONNS}
       - CH_SPOOL_DIR=/var/spool/espx/ch
-      - BROKER_URL=${BROKER_URL:-127.0.0.1:9092}
+      - BROKER_URL=${BROKER_URL:-/run/ad-event-processor/broker/gnet.sock}
       - CH_INGEST_SOURCE=${CH_INGEST_SOURCE:-broker}
       - BROKER_SHADOW_MODE=${BROKER_SHADOW_MODE:-0}
       - TRACKER_PG_FALLBACK=${TRACKER_PG_FALLBACK:-0}
@@ -298,6 +318,8 @@ services:
       - NODE_ID=${NODE_ID:-processor}
       - PROCESSOR_WEIGHT_ENABLED=${PROCESSOR_WEIGHT_ENABLED:-0}
       - MANAGEMENT_URL=${MANAGEMENT_URL:-http://127.0.0.1:8188}
+      - FRAUD_SCORING_ENABLED=${FRAUD_SCORING_ENABLED:-false}
+      - FRAUD_SCORING_MODEL_PATH=/var/fraudscore/artifacts/model.txt
       - GOMEMLIMIT=1500MiB
       - GOGC=100
     healthcheck:
@@ -313,6 +335,8 @@ services:
     restart: always
     depends_on:
       db:
+        condition: service_healthy
+      broker:
         condition: service_healthy
       redis-0:
         condition: service_healthy
@@ -349,6 +373,9 @@ services:
       - GEOIP_DB_PATH=/deploy/geoip/GeoLite2-Country.mmdb
       - DB_PROCESSOR_MAX_CONNS=${DB_PROCESSOR_MAX_CONNS}
       - CH_SPOOL_DIR=/var/spool/espx/ch
+      - BROKER_URL=${BROKER_URL:-/run/ad-event-processor/broker/gnet.sock}
+      - CH_INGEST_SOURCE=${CH_INGEST_SOURCE:-broker}
+      - BROKER_SHADOW_MODE=${BROKER_SHADOW_MODE:-0}
       - TRACKER_PG_FALLBACK=${TRACKER_PG_FALLBACK:-0}
       - ENV=${ENV:-development}
       - NODE_ID=processor-1
@@ -370,6 +397,8 @@ services:
     restart: unless-stopped
     depends_on:
       db:
+        condition: service_healthy
+      broker:
         condition: service_healthy
       redis-0:
         condition: service_healthy
@@ -396,16 +425,17 @@ services:
       - GLOBAL_INGEST_URL=${GLOBAL_INGEST_URL:-http://127.0.0.1:8188/api/v1/region/ingest/batch}
       - GLOBAL_INGEST_API_KEY=${GLOBAL_INGEST_API_KEY:-${ADMIN_API_KEY}}
     command:
-      - -addr=127.0.0.1:9093
-      - -health-addr=127.0.0.1:8083
+      - -addr=/run/ad-event-processor/region-proxy/gnet.sock
+      - -health-addr=/run/ad-event-processor/region-proxy/health.sock
       - -data-dir=/tmp/espx-region-proxy
       - -node-id=region-proxy-1
       - -region-code=${ESPX_REGION_CODE:-1}
-      - -redis-url=${REGION_PROXY_REDIS_URL:-redis://127.0.0.1:6479/0}
+      - -redis-url=${REGION_PROXY_REDIS_URL:-unix:///run/ad-event-processor/redis/redis-0.sock?db=0}
       - -global-ingest-url=${GLOBAL_INGEST_URL:-http://127.0.0.1:8188/api/v1/region/ingest/batch}
       - -global-ingest-api-key=${GLOBAL_INGEST_API_KEY:-${ADMIN_API_KEY}}
     volumes:
       - espx_region_proxy_wal:/tmp/espx-region-proxy
+      - ad_event_processor_run:/run/ad-event-processor:rw
     restart: unless-stopped
     depends_on:
       redis-0:
@@ -427,14 +457,21 @@ services:
     env_file:
       - ../../.env
     command:
-      - -addr=127.0.0.1:9092
-      - -health-addr=127.0.0.1:8084
+      - serve
+      - -addr=/run/ad-event-processor/broker/gnet.sock
+      - -health-addr=/run/ad-event-processor/broker/health.sock
       - -data-dir=/tmp/espx-broker
       - -node-id=broker-1
-      - -redis-url=${REGION_PROXY_REDIS_URL:-redis://127.0.0.1:6479/0}
+      - -redis-url=${BROKER_REDIS_URL:-unix:///run/ad-event-processor/redis/redis-0.sock?db=0}
     volumes:
       - espx_broker_data:/tmp/espx-broker
       - ad_event_processor_run:/run/ad-event-processor:rw
+    healthcheck:
+      test: ["CMD", "/broker", "--health-probe", "/run/ad-event-processor/broker/health.sock"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     restart: unless-stopped
     depends_on:
       redis-0:
@@ -468,6 +505,7 @@ services:
       - ad_event_processor_run:/run/ad-event-processor:rw
     environment:
       - MANAGEMENT_PORT=8188
+      - CONTROL_UNIX_SOCKET=/run/ad-event-processor/control/http.sock
       - PAYMENT_WEBHOOK_PORT=8187
       - DB_DSN=${DB_DSN}
       - PAYMENT_DB_DSN=${PAYMENT_DB_DSN}
@@ -897,7 +935,9 @@ services:
         hard: 262144
     volumes:
       - clickhouse_data:/var/lib/clickhouse
+      - ad_event_processor_run:/run/ad-event-processor:rw
       - ../../deploy/clickhouse/config.yaml:/etc/clickhouse-server/config.d/memory_limit.yaml:ro
+      - ../../deploy/clickhouse/config.unix.yaml:/etc/clickhouse-server/config.d/unix_socket.yaml:ro
       - ../../deploy/clickhouse/users.yaml:/etc/clickhouse-server/users.d/custom_users.yaml:ro
       - ../../deploy/clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
       - ../../deploy/clickhouse/recon_materialized_views.sql:/docker-entrypoint-initdb.d/02_recon_materialized_views.sql:ro

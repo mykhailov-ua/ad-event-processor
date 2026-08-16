@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/licensing"
 	"github.com/bidshard/ad-event-processor/internal/metrics"
 )
 
@@ -137,6 +138,10 @@ func (f *LicenseRPSFilter) Check(_ context.Context, _ *domain.Event) error {
 	max := ent.Limits.MaxRPS
 	if max == 0 {
 		return nil
+	}
+	if !licensing.SeedGateRPS(max) {
+		metrics.LicenseRPSExceededTotal.Inc()
+		return ErrRateLimitExceeded
 	}
 	if !globalDeploymentRPS.allow(max) {
 		metrics.LicenseRPSExceededTotal.Inc()

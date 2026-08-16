@@ -83,12 +83,3 @@ func BannerSeverity(state LicenseState) string {
 		return ""
 	}
 }
-
-func IngestAllowed(state LicenseState) bool {
-	switch state {
-	case StateExpired, StateRevoked:
-		return false
-	default:
-		return true
-	}
-}

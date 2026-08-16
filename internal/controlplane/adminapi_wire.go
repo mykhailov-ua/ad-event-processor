@@ -44,7 +44,8 @@ func (w supportBundleWriter) WriteSupportBundle(ctx context.Context, out io.Writ
 		meta.LicenseState = string(diag.State)
 		meta.DaysToExpiry = diag.DaysToExpiry
 		meta.HostFingerprint = diag.HostFingerprint
-		if licensing.BindModeHard(diag.BindMode) && diag.BindFingerprint != "" {
+		meta.HostHWIDv2 = diag.HostHWID
+		if licensing.BindModeHard(diag.BindMode) && (diag.BindFingerprint != "" || diag.BindHWIDHash != "") {
 			match := diag.FingerprintMatch
 			meta.FingerprintMatch = &match
 		}
@@ -66,6 +67,7 @@ func (w supportBundleWriter) WriteSupportBundle(ctx context.Context, out io.Writ
 		}
 	}
 	meta.HostFingerprint = licensing.HostFingerprint()
+	meta.HostHWIDv2 = licensing.HostHWID()
 	return supportbundle.Write(ctx, out, supportbundle.Options{
 		Meta:     meta,
 		LogDir:   w.logDir,
@@ -130,8 +132,12 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 	}
 	var exportHTTP *adminapi.ExportHTTPHandlers
 	if composite != nil {
+		jobRunner := adminapi.NewJobRunner(composite, exportDir)
+		if h.cfg != nil {
+			jobRunner.ConfigureExport(int32(h.cfg.Billing.ExportFetchRows), time.Duration(h.cfg.Billing.ExportJobTimeoutMin)*time.Minute)
+		}
 		exportHTTP = &adminapi.ExportHTTPHandlers{
-			JobRunner:               adminapi.NewJobRunner(composite, exportDir),
+			JobRunner:               jobRunner,
 			ApplyRateLimit:          limit,
 			RequirePermission:       perm,
 			AuthorizeCustomerAccess: authCustomer,

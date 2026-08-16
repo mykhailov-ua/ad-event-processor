@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Vendors Phosphor regular SVG primitives into web/src/ui/icon_paths.ts.
+ * Vendors Phosphor regular SVG primitives into web/src/lib/icon_paths.ts.
  * Run: npm run icons:gen (requires @phosphor-icons/core devDependency).
  */
 import fs from 'node:fs';
@@ -11,7 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.resolve(__dirname, '..');
 const phosphorDir = path.join(webRoot, 'node_modules/@phosphor-icons/core/assets/regular');
 const mapPath = path.join(__dirname, 'icon_phosphor_map.json');
-const outPath = path.join(webRoot, 'src/ui/icon_paths.ts');
+const outPath = path.join(webRoot, 'src/lib/icon_paths.ts');
 
 const map = JSON.parse(fs.readFileSync(mapPath, 'utf8'));
 

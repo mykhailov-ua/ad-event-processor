@@ -227,11 +227,21 @@ end
 
 function _M.run_click()
     refresh_request_headers()
+    local args, err = ngx.req.get_uri_args(100)
+    if not args then
+        ngx.log(ngx.ERR, "edge click query parse failed: ", err or "unknown")
+        args = {}
+    end
     local fraud_score = fraud_score_from_headers()
     local campaign_id = edge_click_query.extract_campaign_id()
     if campaign_id and campaign_id ~= "" then
         ngx.ctx.campaign_id = campaign_id
     end
+
+    if not args.gclid and not args.fbclid and not args.ttclid and not args.yclid and not args.w then
+        ngx.req.set_header("X-BidShard-Force-Safe", "1")
+    end
+
     apply_campaign_rl(campaign_id, fraud_score)
     edge_metrics.record_phase2_pass()
 end

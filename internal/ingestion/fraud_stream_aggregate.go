@@ -282,6 +282,37 @@ func (q *FraudStreamWriter) flushAggregates(final bool) {
 		return
 	}
 
+	ctx := context.Background()
+	if q.useBroker && q.brokerSink != nil {
+		payloads := make([][]byte, 0, len(entries))
+		wraps := make([]*ByteSliceValue, 0, len(entries))
+		bufs := make([]*[]byte, 0, len(entries))
+		for _, e := range entries {
+			data, wrap, bufPtr := marshalFraudAggregateEntry(e, windowMs)
+			if data == nil {
+				filterFraudStreamWriteErrors.Inc()
+				continue
+			}
+			wraps = append(wraps, wrap)
+			bufs = append(bufs, bufPtr)
+			payloads = append(payloads, data)
+		}
+		if len(payloads) > 0 {
+			if err := q.brokerSink.Produce(ctx, 0, payloads); err != nil {
+				for range payloads {
+					filterFraudStreamWriteErrors.Inc()
+				}
+			}
+		}
+		for i := range wraps {
+			byteSliceValuePool.Put(wraps[i])
+			byteBufPool.Put(bufs[i])
+		}
+		*entriesPtr = entries
+		fraudAggFlushPool.Put(entriesPtr)
+		return
+	}
+
 	rdb := firstConnectedRedisShard(q.rdbs)
 	if rdb == nil {
 		for range entries {
@@ -292,7 +323,6 @@ func (q *FraudStreamWriter) flushAggregates(final bool) {
 		return
 	}
 
-	ctx := context.Background()
 	pipe := rdb.Pipeline()
 	for _, e := range entries {
 		fillFraudAggregateValues(e, windowMs, q.aggValScratch[:])

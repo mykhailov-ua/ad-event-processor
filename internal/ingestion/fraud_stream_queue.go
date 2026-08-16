@@ -3,6 +3,7 @@ package ingestion
 import (
 	"context"
 	"runtime"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -99,6 +100,9 @@ type FraudStreamWriter struct {
 	maxLen int64
 	rdbs   []redis.UniversalClient
 
+	brokerSink *FraudBrokerSink
+	useBroker  bool
+
 	stopCh chan struct{}
 	wg     sync.WaitGroup
 	aggWg  sync.WaitGroup
@@ -123,6 +127,21 @@ func NewFraudStreamWriter(rdbs []redis.UniversalClient, stream string, maxLen in
 	metrics.FraudStreamRingFillRatio.Set(0)
 	metrics.FraudStreamPending.Set(0)
 	return q
+}
+
+func (q *FraudStreamWriter) SetBrokerSink(sink *FraudBrokerSink) {
+	if q == nil {
+		return
+	}
+	q.brokerSink = sink
+	q.useBroker = sink != nil
+	if q.useBroker {
+		metrics.IngestFraudPath.Set(1)
+	}
+}
+
+func (q *FraudStreamWriter) UseBroker() bool {
+	return q != nil && q.useBroker
 }
 
 func copyFraudField(dst []byte, s string) int {
@@ -305,6 +324,9 @@ func (q *FraudStreamWriter) Stop() {
 	}
 	q.wg.Wait()
 	q.aggWg.Wait()
+	if q.brokerSink != nil {
+		_ = q.brokerSink.Close()
+	}
 }
 
 func (q *FraudStreamWriter) worker() {
@@ -369,13 +391,53 @@ func (q *FraudStreamWriter) flushBatch(ctx context.Context, batch []*fraudStream
 		return
 	}
 
+	wraps := make([]*ByteSliceValue, 0, len(batch))
+	bufs := make([]*[]byte, 0, len(batch))
+
+	type shardPayloads struct {
+		payloads [][]byte
+	}
+
+	if q.useBroker && q.brokerSink != nil {
+		byShard := make(map[uint8]*shardPayloads)
+		for _, slot := range batch {
+			data, wrap, bufPtr := marshalFraudStreamSlot(slot)
+			if data == nil {
+				filterFraudStreamWriteErrors.Inc()
+				continue
+			}
+			wraps = append(wraps, wrap)
+			bufs = append(bufs, bufPtr)
+			shard := slot.shard
+			sp, ok := byShard[shard]
+			if !ok {
+				sp = &shardPayloads{}
+				byShard[shard] = sp
+			}
+			sp.payloads = append(sp.payloads, data)
+		}
+		for shard, sp := range byShard {
+			if len(sp.payloads) == 0 {
+				continue
+			}
+			if err := q.brokerSink.Produce(ctx, uint16(shard), sp.payloads); err != nil {
+				for range sp.payloads {
+					filterFraudStreamWriteErrors.Inc()
+				}
+			}
+		}
+		for i := range wraps {
+			byteSliceValuePool.Put(wraps[i])
+			byteBufPool.Put(bufs[i])
+		}
+		return
+	}
+
 	type shardBatch struct {
 		pipe redis.Pipeliner
 		cmds []*redis.StringCmd
 	}
 	shards := make(map[uint8]*shardBatch)
-	wraps := make([]*ByteSliceValue, 0, len(batch))
-	bufs := make([]*[]byte, 0, len(batch))
 	values := make([][]any, 0, len(batch))
 
 	for _, slot := range batch {
@@ -441,6 +503,38 @@ func marshalFraudStreamSlot(slot *fraudStreamSlot) ([]byte, *ByteSliceValue, *[]
 	pbEvt.FraudScore = slot.fraudScore
 	pbEvt.FraudReason = slot.reason[:slot.reasonLen]
 	pbEvt.GhostEvent = slot.ghostEvent
+
+	size := pbEvt.SizeVT()
+	bufPtr := byteBufPool.Get().(*[]byte)
+	buf := *bufPtr
+	if cap(buf) < size {
+		buf = make([]byte, size)
+	} else {
+		buf = buf[:size]
+	}
+	n, err := pbEvt.MarshalToSizedBufferVT(buf)
+	ClearAdStreamEvent(pbEvt)
+	streamEventPool.Put(pbEvt)
+	if err != nil {
+		*bufPtr = buf
+		byteBufPool.Put(bufPtr)
+		return nil, nil, nil
+	}
+	data := buf[:n]
+	*bufPtr = buf
+	wrap := byteSliceValuePool.Get().(*ByteSliceValue)
+	wrap.b = data
+	return data, wrap, bufPtr
+}
+
+func marshalFraudAggregateEntry(e fraudAggFlushEntry, windowMs int64) ([]byte, *ByteSliceValue, *[]byte) {
+	pbEvt := streamEventPool.Get().(*pb.AdStreamEvent)
+	DeepResetAdStreamEvent(pbEvt)
+	pbEvt.EventType = []byte(fraudAggregateEventType)
+	pbEvt.Ip = []byte(formatIPv4Subnet24(e.subnet))
+	pbEvt.FraudReason = []byte(FraudReasonCode(FraudReasonID(e.reason)))
+	pbEvt.ClickId = []byte(strconv.FormatUint(e.count, 10))
+	pbEvt.UserId = []byte(strconv.FormatInt(windowMs, 10))
 
 	size := pbEvt.SizeVT()
 	bufPtr := byteBufPool.Get().(*[]byte)

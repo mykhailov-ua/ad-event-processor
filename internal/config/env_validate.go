@@ -5,11 +5,15 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
 
 func validateAndApplyDefaults(cfg *Config) error {
+	if cfg.ServerPort == "" && cfg.TrackerUnixSocket == "" {
+		return errors.New("SERVER_PORT is required when TRACKER_UNIX_SOCKET is unset")
+	}
 	if cfg.ServerPort == "" {
-		return errors.New("SERVER_PORT is required")
+		cfg.ServerPort = "8181"
 	}
 	if cfg.ProcessorPort == "" {
 		cfg.ProcessorPort = "8186"
@@ -71,6 +75,34 @@ func validateAndApplyDefaults(cfg *Config) error {
 	}
 	if cfg.Env == "production" && cfg.TrackerPGFallback {
 		return fmt.Errorf("production TRACKER_PG_FALLBACK must be 0")
+	}
+
+	if cfg.BrokerPrimaryCH() && strings.TrimSpace(cfg.Broker.URL) == "" {
+		return errors.New("CH_INGEST_SOURCE=broker requires BROKER_URL")
+	}
+
+	if cfg.Postback.PollIntervalMs <= 0 {
+		cfg.Postback.PollIntervalMs = 5000
+	}
+	if cfg.Postback.BatchSize <= 0 {
+		cfg.Postback.BatchSize = 50
+	}
+	if cfg.Postback.StaleProcessingSec <= 0 {
+		cfg.Postback.StaleProcessingSec = 120
+	}
+
+	if cfg.FraudScoring.ScanIntervalMs <= 0 {
+		cfg.FraudScoring.ScanIntervalMs = 300000
+	}
+	if cfg.FraudScoring.BatchSize <= 0 {
+		cfg.FraudScoring.BatchSize = 1000
+	}
+
+	if cfg.Billing.ExportFetchRows <= 0 {
+		cfg.Billing.ExportFetchRows = 1000
+	}
+	if cfg.Billing.ExportJobTimeoutMin <= 0 {
+		cfg.Billing.ExportJobTimeoutMin = 15
 	}
 
 	return nil

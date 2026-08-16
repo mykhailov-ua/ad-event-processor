@@ -8,9 +8,6 @@ func loadDatabaseModules(cfg *Config) {
 	cfg.PgPrimaryDSN = Secret(envOrDefault("PG_PRIMARY_DSN", string(cfg.DBDSN)))
 	cfg.PgStandbyDSN = Secret(os.Getenv("PG_STANDBY_DSN"))
 	cfg.PgFailoverRedisURL = os.Getenv("PG_FAILOVER_REDIS_URL")
-	if cfg.PgFailoverRedisURL == "" && len(cfg.RedisAddrs) > 0 {
-		cfg.PgFailoverRedisURL = "redis://" + cfg.RedisAddrs[0] + "/0"
-	}
 	cfg.PgFailoverHealthMs = getEnvInt("PG_FAILOVER_HEALTH_MS", 750)
 	cfg.PgFailoverPollMs = getEnvInt("PG_FAILOVER_POLL_MS", 300)
 	cfg.PgFailoverCoordMs = getEnvInt("PG_FAILOVER_COORD_MS", 350)

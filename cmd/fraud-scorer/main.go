@@ -16,6 +16,7 @@ import (
 	"github.com/bidshard/ad-event-processor/internal/config"
 	"github.com/bidshard/ad-event-processor/internal/database"
 	"github.com/bidshard/ad-event-processor/internal/fraud"
+	"github.com/bidshard/ad-event-processor/internal/licensing"
 	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -68,6 +69,12 @@ func main() {
 	}
 	defer pool.Close()
 
+	snap, snapErr := licensing.LoadDeploymentSnapshot(ctx, pool)
+	if snapErr != nil || !snap.ModuleAllowed(func(f licensing.FeatureSet) bool { return f.MlFraudBoostEnabled() }) {
+		slog.Error("fraud-scorer requires ml_fraud_boost license entitlement (set FRAUD_SCORING_ENABLED only with license + model)")
+		os.Exit(1)
+	}
+
 	chConn, err := database.ConnectClickHouse(ctx, string(cfg.CHDSN))
 	if err != nil {
 		slog.Error("failed to connect to clickhouse", "error", err)
@@ -75,7 +82,7 @@ func main() {
 	}
 	defer func() { _ = chConn.Close() }()
 
-	go watchAndRegisterModels(ctx, pool)
+	go watchAndRegisterModels(ctx, pool, artifactDir)
 
 	var scorer fraud.Scorer
 	scorer, err = fraud.NewLGBMScorer(cfg.FraudScoring.ModelPath)
@@ -121,6 +128,7 @@ func main() {
 
 	slog.Info("starting fraud-scorer worker",
 		"scan_interval_ms", cfg.FraudScoring.ScanIntervalMs,
+		"batch_size", cfg.FraudScoring.BatchSize,
 		"window_sec", cfg.IVT.WindowSec,
 	)
 
@@ -130,7 +138,7 @@ func main() {
 	}
 }
 
-func watchAndRegisterModels(ctx context.Context, pool *pgxpool.Pool) {
+func watchAndRegisterModels(ctx context.Context, pool *pgxpool.Pool, artifactDir string) {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
@@ -139,15 +147,17 @@ func watchAndRegisterModels(ctx context.Context, pool *pgxpool.Pool) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if err := scanAndRegister(ctx, pool); err != nil {
+			if err := scanAndRegister(ctx, pool, artifactDir); err != nil {
 				slog.Error("failed to scan and register models", "error", err)
 			}
 		}
 	}
 }
 
-func scanAndRegister(ctx context.Context, pool *pgxpool.Pool) error {
-	artifactDir := "var/fraudscore/artifacts"
+func scanAndRegister(ctx context.Context, pool *pgxpool.Pool, artifactDir string) error {
+	if artifactDir == "" {
+		artifactDir = "var/fraudscore/artifacts"
+	}
 	modelPath := filepath.Join(artifactDir, "model.txt")
 	metadataPath := filepath.Join(artifactDir, "metadata.json")
 

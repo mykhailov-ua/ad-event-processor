@@ -20,6 +20,7 @@ func main() {
 	customer := flag.String("customer", "", "customer display name (required)")
 	deploymentID := flag.String("deployment-id", "", "deployment UUID (generated if empty)")
 	fingerprint := flag.String("fingerprint", "", "host fingerprint for hard bind (from customer support bundle)")
+	hwidV2 := flag.String("hwid-v2", "", "host HWID v2 (Argon2id) for hard bind; preferred over --fingerprint")
 	kid := flag.String("kid", licensing.DefaultLicenseKeyID, "JWT key id (kid); uses deploy/vendor/keys/<kid>/ when set")
 	revoke := flag.Bool("revoke", false, "issue revocation JWT (valid_until in past, revoked=true)")
 	validDays := flag.Int("days", 0, "override valid_days from SKU")
@@ -75,6 +76,7 @@ func main() {
 		DeploymentID: depID,
 		LicenseID:    licenseID,
 		Fingerprint:  strings.TrimSpace(*fingerprint),
+		HWIDHash:     strings.TrimSpace(*hwidV2),
 		ValidFrom:    time.Now().UTC(),
 	})
 	if *revoke {

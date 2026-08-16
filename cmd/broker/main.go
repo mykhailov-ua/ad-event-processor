@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -14,9 +15,26 @@ import (
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/bidshard/ad-event-processor/internal/ingestion"
 	"github.com/bidshard/ad-event-processor/pkg/broker"
+	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
 )
 
 func main() {
+	if len(os.Args) > 2 && os.Args[1] == "--health-probe" {
+		if !lifecycle.RunHealthProbe(os.Args[2]) {
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
+	if len(os.Args) >= 2 && (os.Args[1] == "serve" || strings.HasPrefix(os.Args[1], "-")) {
+		if os.Args[1] == "serve" {
+			runServe(os.Args[2:])
+			return
+		}
+		runServe(os.Args[1:])
+		return
+	}
+
 	if len(os.Args) < 2 {
 		printUsage()
 		os.Exit(1)
@@ -38,7 +56,8 @@ func main() {
 func printUsage() {
 	_, _ = fmt.Fprintf(os.Stdout, "Usage: broker <command> [options]\n")
 	_, _ = fmt.Fprintf(os.Stdout, "\nCommands:\n")
-	_, _ = fmt.Fprintf(os.Stdout, "  replay    Replay historical WAL segments to target storage (e.g. clickhouse)\n")
+	_, _ = fmt.Fprintf(os.Stdout, "  serve      Run mmap WAL broker (gnet ingress)\n")
+	_, _ = fmt.Fprintf(os.Stdout, "  replay     Replay historical WAL segments to target storage (e.g. clickhouse)\n")
 	_, _ = fmt.Fprintf(os.Stdout, "\nOptions for replay:\n")
 	_, _ = fmt.Fprintf(os.Stdout, "  --data-dir     Path to broker WAL data directory (e.g. /var/lib/bidshard/broker)\n")
 	_, _ = fmt.Fprintf(os.Stdout, "  --topic        Topic name to replay (default: ad-events)\n")

@@ -1,11 +1,12 @@
 
 local edge_uuid = require "edge-uuid"
+local edge_net = require "edge-net"
 
 local _M = {}
 
 local dict = ngx.shared.slot_map
 
-local CONTROL_URL = os.getenv("CONTROL_URL") or os.getenv("MANAGEMENT_URL") or "http://127.0.0.1:8188"
+local CONTROL_URL = os.getenv("CONTROL_URL") or os.getenv("MANAGEMENT_URL") or "unix:///run/ad-event-processor/control/http.sock"
 
 local crc32c_table = {
     0x00000000, 0xF26B8303, 0xE13B70F7, 0x1350F3F4, 0xC79A971F, 0x35F1141C, 0x26A1E7E8, 0xD4CA64EB,
@@ -51,54 +52,8 @@ local function crc32c_bytes(data)
     return bit.bxor(crc, 0xFFFFFFFF)
 end
 
-local function parse_url(url)
-    local host, port, path = string.match(url, "^https?://([^:/]+):?(%d*)(/.*)$")
-    if not host then
-        host, path = string.match(url, "^https?://([^/]+)(/.*)$")
-        port = ""
-    end
-    if not host then
-        return nil
-    end
-    if port == "" or port == nil then
-        port = 8188
-    else
-        port = tonumber(port)
-    end
-    if not path or path == "" then
-        path = "/"
-    end
-    return host, port, path
-end
-
 local function http_get_json(url)
-    local host, port, path = parse_url(url)
-    if not host then
-        return nil, "invalid management url"
-    end
-    local sock = ngx.socket.tcp()
-    sock:settimeout(2000)
-    local ok, err = sock:connect(host, port)
-    if not ok then
-        return nil, err
-    end
-    local req = "GET " .. path .. " HTTP/1.1\r\nHost: " .. host .. "\r\nConnection: close\r\nAccept: application/json\r\n\r\n"
-    local sent, send_err = sock:send(req)
-    if not sent then
-        sock:close()
-        return nil, send_err
-    end
-    local data, read_err = sock:receive("*a")
-    sock:close()
-    if not data then
-        return nil, read_err
-    end
-    local body = string.match(data, "\r\n\r\n(.*)$")
-    if not body then
-        return nil, "empty http body"
-    end
-    local cjson = require "cjson.safe"
-    return cjson.decode(body)
+    return edge_net.http_get_json(url)
 end
 
 function _M.active_version()

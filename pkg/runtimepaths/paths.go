@@ -22,3 +22,31 @@ func PostgresSocketDir() string { return RunDir + "/postgresql" }
 func RedisSocket(shard int) string {
 	return fmt.Sprintf("%s/redis/redis-%d.sock", RunDir, shard)
 }
+
+func BrokerGnetSocket() string {
+	return RunDir + "/broker/gnet.sock"
+}
+
+func BrokerHealthSocket() string {
+	return RunDir + "/broker/health.sock"
+}
+
+func RegionProxyGnetSocket() string {
+	return RunDir + "/region-proxy/gnet.sock"
+}
+
+func RegionProxyHealthSocket() string {
+	return RunDir + "/region-proxy/health.sock"
+}
+
+func ClickHouseNativeSocket() string {
+	return RunDir + "/clickhouse/native.sock"
+}
+
+func ControlHTTPSocket() string {
+	return RunDir + "/control/http.sock"
+}
+
+func TrackerSocket(instance int) string {
+	return fmt.Sprintf("%s/tracker/tracker-%d.sock", RunDir, instance)
+}

@@ -47,7 +47,7 @@ func (c *Client) RegisterTopic(ctx context.Context, topic string) (uint16, error
 			continue
 		}
 
-		cmd, respSeq, respPayload, err := protocol.ReadFrameTCP(conn, c.readBuf, c.lenBuf)
+		cmd, respSeq, respPayload, err := protocol.ReadFrameConn(conn, c.readBuf, c.lenBuf)
 		if err != nil {
 			_ = c.closeRawConn()
 			c.mu.Unlock()
@@ -145,7 +145,7 @@ func (c *Client) ProduceBatch(ctx context.Context, topic string, topicID uint16,
 			continue
 		}
 
-		cmd, respSeq, respPayload, err := protocol.ReadFrameTCP(conn, c.readBuf, c.lenBuf)
+		cmd, respSeq, respPayload, err := protocol.ReadFrameConn(conn, c.readBuf, c.lenBuf)
 		if err != nil {
 			_ = c.closeRawConn()
 			c.mu.Unlock()

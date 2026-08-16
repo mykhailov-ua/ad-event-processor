@@ -18,6 +18,7 @@ import (
 
 	db "github.com/bidshard/ad-event-processor/internal/domain/db"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -36,6 +37,7 @@ type PostbackWorker struct {
 	limiters           map[string]*rate.Limiter
 	limitersMu         sync.RWMutex
 	staleProcessingSec int32
+	batchSize          int32
 
 	adapters map[string]PostbackAdapter
 
@@ -71,6 +73,7 @@ func NewPostbackWorker(pool *pgxpool.Pool, encryptionKey []byte) *PostbackWorker
 		encryptionKey:      encryptionKey,
 		limiters:           make(map[string]*rate.Limiter),
 		staleProcessingSec: 120,
+		batchSize:          50,
 		adapters: map[string]PostbackAdapter{
 			"facebook": &FacebookAdapter{},
 			"google":   &GoogleAdapter{},
@@ -87,8 +90,15 @@ func (w *PostbackWorker) ConfigureStaleProcessingSec(sec int32) {
 	w.staleProcessingSec = sec
 }
 
+func (w *PostbackWorker) ConfigureBatchSize(size int32) {
+	if w == nil || size <= 0 {
+		return
+	}
+	w.batchSize = size
+}
+
 func (w *PostbackWorker) Start(ctx context.Context, interval time.Duration) {
-	slog.Info("Postback sender worker starting", "interval", interval)
+	slog.Info("Postback sender worker starting", "interval", interval, "batch_size", w.batchSize)
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
@@ -113,7 +123,7 @@ func (w *PostbackWorker) ProcessBatch(ctx context.Context) error {
 
 	q := db.New(tx)
 	events, err := q.GetPendingPostbackEventsForUpdate(ctx, db.GetPendingPostbackEventsForUpdateParams{
-		Limit:   50,
+		Limit:   w.batchSize,
 		Column2: w.staleProcessingSec,
 	})
 	if err != nil {
@@ -149,29 +159,47 @@ func (w *PostbackWorker) ProcessBatch(ctx context.Context) error {
 		return err
 	}
 
-	for _, c := range claimed {
+	payloads := make([]PostbackPayload, len(claimed))
+	for i, c := range claimed {
 		if c.skip {
-			_, _ = w.pool.Exec(ctx, "UPDATE outbox_events SET status = 'PROCESSED', processing_started_at = NULL WHERE id = $1", c.event.ID)
 			continue
 		}
-		err := w.ProcessEvent(ctx, c.event)
+		payload, parseErr := parsePostbackPayload(c.event.Payload)
+		if parseErr != nil {
+			continue
+		}
+		payloads[i] = payload
+	}
+	configs, err := w.loadPostbackConfigs(ctx, uniqueCampaignIDsFromEvents(events, payloads))
+	if err != nil {
+		slog.Warn("postback batch config preload failed, falling back to per-event lookup", "error", err)
+	}
+
+	var processedIDs, failedIDs, processingIDs []int64
+	for _, c := range claimed {
+		if c.skip {
+			processedIDs = append(processedIDs, c.event.ID)
+			continue
+		}
+		err := w.ProcessEvent(ctx, c.event, configs)
 		if err != nil {
 			if errors.Is(err, ErrDispatchFinalizePending) {
-				_, _ = w.pool.Exec(ctx, "UPDATE outbox_events SET status = 'PROCESSING', processing_started_at = NOW() WHERE id = $1", c.event.ID)
+				processingIDs = append(processingIDs, c.event.ID)
 				slog.Warn("Postback finalize pending, will retry", "id", c.event.ID, "error", err)
 				continue
 			}
 			slog.Warn("Failed to process postback event", "id", c.event.ID, "error", err)
-			_, _ = w.pool.Exec(ctx, "UPDATE outbox_events SET status = 'FAILED', processing_started_at = NULL WHERE id = $1", c.event.ID)
+			failedIDs = append(failedIDs, c.event.ID)
 		} else {
-			_, _ = w.pool.Exec(ctx, "UPDATE outbox_events SET status = 'PROCESSED', processing_started_at = NULL WHERE id = $1", c.event.ID)
+			processedIDs = append(processedIDs, c.event.ID)
 		}
 	}
+	w.batchUpdateOutboxStatus(ctx, processedIDs, failedIDs, processingIDs)
 
 	return nil
 }
 
-func (w *PostbackWorker) ProcessEvent(ctx context.Context, ev db.OutboxEvent) error {
+func (w *PostbackWorker) ProcessEvent(ctx context.Context, ev db.OutboxEvent, preloadedConfigs map[uuid.UUID]db.PostbackConfig) error {
 	payload, err := parsePostbackPayload(ev.Payload)
 	if err != nil {
 		return err
@@ -197,13 +225,23 @@ func (w *PostbackWorker) ProcessEvent(ctx context.Context, ev db.OutboxEvent) er
 	}
 
 	var config db.PostbackConfig
-	config, err = q.GetPostbackConfig(ctx, pgtype.UUID{Bytes: payload.CampaignID, Valid: true})
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+	if preloadedConfigs != nil {
+		cfg, ok := preloadedConfigs[payload.CampaignID]
+		if !ok {
 			slog.Warn("No postback config found for campaign, marking processed", "campaign_id", payload.CampaignID)
 			return nil
 		}
-		return fmt.Errorf("failed to get postback config: %w", err)
+		config = cfg
+	} else {
+		var err error
+		config, err = q.GetPostbackConfig(ctx, pgtype.UUID{Bytes: payload.CampaignID, Valid: true})
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				slog.Warn("No postback config found for campaign, marking processed", "campaign_id", payload.CampaignID)
+				return nil
+			}
+			return fmt.Errorf("failed to get postback config: %w", err)
+		}
 	}
 
 	provider := strings.ToLower(config.Provider)

@@ -35,7 +35,7 @@ func (p LicenseProbe) Run(ctx context.Context) Result {
 		diag, _ = p.DiagnosticsFn()
 	}
 
-	if !licensing.IngestAllowed(state) {
+	if state == licensing.StateExpired || state == licensing.StateRevoked {
 		return Result{
 			Name:    "license",
 			Status:  StatusFail,
@@ -47,7 +47,7 @@ func (p LicenseProbe) Run(ctx context.Context) Result {
 	detail := licenseDetail(state, diag)
 	if diag.BindMode != "" && licensing.BindModeHard(diag.BindMode) && !diag.FingerprintMatch {
 		status = StatusFail
-		detail += "; fingerprint mismatch"
+		detail += "; bind mismatch"
 	} else if diag.DaysToExpiry <= 7 && diag.DaysToExpiry >= 0 {
 		status = StatusWarn
 	}
@@ -62,11 +62,11 @@ func (p LicenseProbe) Run(ctx context.Context) Result {
 func licenseDetail(state licensing.LicenseState, diag licensing.LicenseDiagnostics) string {
 	if diag.DeploymentID != "" {
 		if diag.DaysToExpiry > 0 || diag.ValidUntil.IsZero() {
-			return fmt.Sprintf("state=%s deployment_id=%s days_to_expiry=%d fingerprint_match=%v",
-				state, diag.DeploymentID, diag.DaysToExpiry, diag.FingerprintMatch)
+			return fmt.Sprintf("state=%s deployment_id=%s days_to_expiry=%d fingerprint_match=%v hwid_match=%v hwid_v2=%s",
+				state, diag.DeploymentID, diag.DaysToExpiry, diag.FingerprintMatch, diag.HWIDMatch, diag.HostHWID)
 		}
-		return fmt.Sprintf("state=%s deployment_id=%s valid_until=%s fingerprint_match=%v",
-			state, diag.DeploymentID, diag.ValidUntil.UTC().Format(time.RFC3339), diag.FingerprintMatch)
+		return fmt.Sprintf("state=%s deployment_id=%s valid_until=%s fingerprint_match=%v hwid_match=%v hwid_v2=%s",
+			state, diag.DeploymentID, diag.ValidUntil.UTC().Format(time.RFC3339), diag.FingerprintMatch, diag.HWIDMatch, diag.HostHWID)
 	}
 	return fmt.Sprintf("state=%s", state)
 }

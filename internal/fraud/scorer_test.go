@@ -14,7 +14,7 @@ func TestLGBMScorer(t *testing.T) {
 		t.Fatalf("failed to create LGBMScorer: %v", err)
 	}
 
-	assert.Equal(t, "lightgbm", scorer.Name())
+	assert.Contains(t, []string{"lightgbm", "lightgbm_native"}, scorer.Name())
 	assert.Equal(t, 16, scorer.Dims())
 
 	rows := []FeatureRow{

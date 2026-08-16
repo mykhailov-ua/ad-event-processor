@@ -219,35 +219,39 @@ func (reconService *ReconService) ReconcileWindow(ctx context.Context, start, en
 		return err
 	}
 
-	ledgerRows, err := reconService.svc.GetPool().Query(opCtx, `
-		SELECT campaign_id, COALESCE(SUM(CASE WHEN amount < 0 THEN -amount ELSE 0 END), 0)::bigint
-		FROM balance_ledger
-		WHERE created_at >= $1 AND created_at < $2
-		  AND (type IN ('FEE', 'RECONCILIATION_ADJUST', 'REFUND'))
-		GROUP BY campaign_id
-	`, start, end)
+	q := db.New(reconService.svc.GetPool())
+	ledgerRows, err := q.SumLedgerSpendByCampaignWindowWithCustomer(ctx, db.SumLedgerSpendByCampaignWindowWithCustomerParams{
+		CreatedAt:   pgtype.Timestamp{Time: start, Valid: true},
+		CreatedAt_2: pgtype.Timestamp{Time: end, Valid: true},
+	})
 	if err != nil {
 		reconService.failRun(opCtx, run.ID, err)
 		metrics.ReconRunsTotal.WithLabelValues("failed").Inc()
 		return err
 	}
-	defer ledgerRows.Close()
 
-	ledgerMap := make(map[uuid.UUID]int64)
-	for ledgerRows.Next() {
-		var cid uuid.UUID
-		var spent int64
-		if err := ledgerRows.Scan(&cid, &spent); err != nil {
-			slog.Error("failed to scan ledger row in recon run", "run_id", run.ID, "error", err)
+	type reconLedgerEntry struct {
+		spent      int64
+		customerID pgtype.UUID
+	}
+	ledgerMap := make(map[uuid.UUID]reconLedgerEntry, len(ledgerRows))
+	for _, row := range ledgerRows {
+		id, parseErr := uuid.FromBytes(row.CampaignID.Bytes[:])
+		if parseErr != nil {
+			slog.Error("failed to parse campaign id in recon run", "run_id", run.ID, "error", parseErr)
 			continue
 		}
-		ledgerMap[cid] = spent
+		ledgerMap[id] = reconLedgerEntry{
+			spent:      row.TotalSpentMicro,
+			customerID: row.CustomerID,
+		}
 	}
 
 	discrepancies := 0
 	var totalDelta int64
 
-	for campID, ledgerSpent := range ledgerMap {
+	for campID, entry := range ledgerMap {
+		ledgerSpent := entry.spent
 		syncKey := domain.CampaignSyncKey(campID)
 		rdb := reconService.svc.getRDB(campID)
 		if rdb == nil {
@@ -270,13 +274,7 @@ func (reconService *ReconService) ReconcileWindow(ctx context.Context, start, en
 			continue
 		}
 
-		var customerID pgtype.UUID
-		err = reconService.svc.GetPool().QueryRow(opCtx, `SELECT customer_id FROM campaigns WHERE id = $1`, domain.ToUUID(campID)).Scan(&customerID)
-		if err != nil {
-			slog.Error("failed to resolve campaign customer in recon", "campaign_id", campID, "error", err)
-			metrics.ReconAdjustmentErrors.Inc()
-			continue
-		}
+		var customerID pgtype.UUID = entry.customerID
 
 		discrepancies++
 

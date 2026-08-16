@@ -1,5 +1,4 @@
 import { el } from './dom.js';
-import { renderButton } from '../ui/button.js';
 
 let mounted = false;
 
@@ -20,14 +19,14 @@ export function installErrorSurface(root: HTMLElement): void {
       });
       root.prepend(banner);
     }
+    const reloadBtn = el('button', {
+      type: 'button',
+      className: 'btn btn--primary btn--sm',
+      onClick: () => window.location.reload(),
+    }, 'Reload page');
     banner.replaceChildren(
       el('span', {}, message),
-      renderButton({
-        label: 'Reload page',
-        variant: 'primary',
-        size: 'sm',
-        onClick: () => window.location.reload(),
-      }),
+      reloadBtn,
     );
   }
 

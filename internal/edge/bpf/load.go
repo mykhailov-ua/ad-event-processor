@@ -3,13 +3,22 @@ package bpf
 import (
 	"fmt"
 
+	"github.com/bidshard/ad-event-processor/internal/config"
 	"github.com/cilium/ebpf"
 )
 
 // LoadEdgeObjectsLenient loads edge BPF objects. When the optional xdp_syn_cookie
 // program fails verifier load (common on some kernels / lab hosts), it retries
 // without that program so blocklist attach can still proceed with syn_cookie disabled.
+// When a sealed blob is present and license mode requires sealing, decrypts with MCK first.
 func LoadEdgeObjectsLenient(objs *EdgeObjects, opts *ebpf.CollectionOptions) error {
+	_, sealedErr := sealedEdgeBlob()
+	if sealedErr == nil && !config.LicenseAssetsUnsealed() {
+		if err := loadEdgeObjectsFromSealed(objs, opts); err != nil {
+			return err
+		}
+		return nil
+	}
 	if err := LoadEdgeObjects(objs, opts); err == nil {
 		return nil
 	}

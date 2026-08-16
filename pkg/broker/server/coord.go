@@ -17,6 +17,7 @@ import (
 	"github.com/bidshard/ad-event-processor/pkg/broker/client"
 	"github.com/bidshard/ad-event-processor/pkg/broker/log"
 	"github.com/bidshard/ad-event-processor/pkg/broker/protocol"
+	"github.com/bidshard/ad-event-processor/pkg/netaddr"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -102,8 +103,16 @@ func openCoordRedis(redisURL string) (redis.UniversalClient, error) {
 		}), nil
 	}
 
+	pwd := os.Getenv("BROKER_REDIS_PASSWORD")
 	opts, err := redis.ParseURL(redisURL)
 	if err != nil {
+		if strings.HasPrefix(redisURL, "unix://") || netaddr.IsUnixSocketPath(redisURL) {
+			rdb, parseErr := netaddr.ParseRedisURL(redisURL, pwd)
+			if parseErr != nil {
+				return nil, parseErr
+			}
+			return rdb, nil
+		}
 		return nil, err
 	}
 	return redis.NewClient(opts), nil

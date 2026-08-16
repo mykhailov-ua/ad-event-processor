@@ -10,10 +10,14 @@ import (
 
 	"github.com/bidshard/ad-event-processor/internal/config"
 	"github.com/bidshard/ad-event-processor/internal/control"
+	"github.com/bidshard/ad-event-processor/internal/licensing"
 )
 
 func main() {
 	if control.ProbeHealth(os.Args) {
+		return
+	}
+	if licensing.MaybeRunGuardWatchdogCLI(os.Args) {
 		return
 	}
 
@@ -39,6 +43,11 @@ func main() {
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+
+	licensing.StartLicenseGuard(ctx, licensing.GuardConfig{
+		Enabled:        licensing.GuardCompiledIn() && config.LicenseGuardEnvEnabled(),
+		PtraceWatchdog: licensing.GuardCompiledIn() && config.LicenseGuardPtraceWatchdogEnabled(),
+	})
 
 	if err := control.Run(ctx, cfg, opts); err != nil && !errors.Is(err, context.Canceled) {
 		slog.Error("control plane stopped", "error", err)

@@ -3,63 +3,14 @@ local _M = {}
 
 local dict = ngx.shared.node_weights
 local peers = require "edge-tracker-peers"
+local edge_net = require "edge-net"
 
 local getenv = os.getenv
 
-local CONTROL_URL = os.getenv("CONTROL_URL") or os.getenv("MANAGEMENT_URL") or "http://127.0.0.1:8188"
+local CONTROL_URL = os.getenv("CONTROL_URL") or os.getenv("MANAGEMENT_URL") or "unix:///run/ad-event-processor/control/http.sock"
 local SYNC_INTERVAL_SEC = tonumber(os.getenv("NODE_WEIGHTS_SYNC_INTERVAL_SEC") or "") or 10
 local STALE_EPOCH_LAG = 2
 local WEIGHT_SCALE = 1000000
-
-local function parse_url(url)
-    local host, port, path = string.match(url, "^https?://([^:/]+):?(%d*)(/.*)$")
-    if not host then
-        host, path = string.match(url, "^https?://([^/]+)(/.*)$")
-        port = ""
-    end
-    if not host then
-        return nil
-    end
-    if port == "" or port == nil then
-        port = 8188
-    else
-        port = tonumber(port)
-    end
-    if not path or path == "" then
-        path = "/"
-    end
-    return host, port, path
-end
-
-local function http_get_json(url)
-    local host, port, path = parse_url(url)
-    if not host then
-        return nil, "invalid management url"
-    end
-    local sock = ngx.socket.tcp()
-    sock:settimeout(2000)
-    local ok, err = sock:connect(host, port)
-    if not ok then
-        return nil, err
-    end
-    local req = "GET " .. path .. " HTTP/1.1\r\nHost: " .. host .. "\r\nConnection: close\r\nAccept: application/json\r\n\r\n"
-    local sent, send_err = sock:send(req)
-    if not sent then
-        sock:close()
-        return nil, send_err
-    end
-    local data, read_err = sock:receive("*a")
-    sock:close()
-    if not data then
-        return nil, read_err
-    end
-    local body = string.match(data, "\r\n\r\n(.*)$")
-    if not body then
-        return nil, "empty http body"
-    end
-    local cjson = require "cjson.safe"
-    return cjson.decode(body)
-end
 
 function _M.sync_interval_sec()
     return SYNC_INTERVAL_SEC
@@ -145,7 +96,7 @@ end
 function _M.sync()
     dict:set("sync_interval", SYNC_INTERVAL_SEC)
     local url = CONTROL_URL .. "/ops/node-weights"
-    local doc, err = http_get_json(url)
+    local doc, err = edge_net.http_get_json(url)
     if not doc then
         ngx.log(ngx.WARN, "edge node weights sync failed: ", err or "unknown")
         return

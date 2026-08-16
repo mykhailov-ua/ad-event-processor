@@ -2180,6 +2180,18 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   min-width: 0;
 }
 
+.metric-chart-uplot .uplot {
+  font-family: var(--font-family), system-ui, sans-serif;
+}
+
+.metric-chart-uplot .uplot .u-title {
+  display: none;
+}
+
+.metric-chart-uplot__root {
+  min-height: 12.5rem;
+}
+
 .ops-kpi-strip {
   display: flex;
   flex-direction: column;
@@ -3305,6 +3317,27 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 .chart-root-clip,
 .chart-root--clip {
   overflow: hidden;
+}
+
+.metric-chart-uplot__root {
+  position: relative;
+}
+
+.uplot-tooltip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  padding: var(--space-2xs) var(--space-xs);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-tight);
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  pointer-events: none;
+  white-space: nowrap;
 }
 
 .chart-legend {

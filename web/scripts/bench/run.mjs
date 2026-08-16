@@ -14,7 +14,7 @@ const { parseIsoUnixSeconds } = await import(pathToFileURL(join(SRC, 'helpers/is
 const { seriesFromHourly } = await import(pathToFileURL(join(SRC, 'helpers/chart_pool.js')).href);
 const { appendReportRows } = await import(pathToFileURL(join(SRC, 'helpers/report_rows.js')).href);
 const { mapBuyerDashboard, sortPortfolioByDrift, filterPortfolioCampaigns, pacingDriftScore } = await import(pathToFileURL(join(SRC, 'models/buyer.js')).href);
-const { sortRows, createSortState } = await import(pathToFileURL(join(SRC, 'ui/data_table.js')).href);
+const { sortRows, createSortState } = await import(pathToFileURL(join(SRC, 'lib/table_sort.js')).href);
 
 /**
  * Build synthetic hourly metrics for chart benchmarks.

@@ -65,6 +65,20 @@ func (s *Service) GetBuyerPortfolio(ctx context.Context, customerID uuid.UUID) (
 	var totalSpendMicro int64
 	var totalConversions int64
 
+	activeCampaignIDs := make([]uuid.UUID, 0, len(campaigns))
+	for _, c := range campaigns {
+		if c.Status == "ACTIVE" {
+			if campID, parseErr := uuid.Parse(c.ID); parseErr == nil {
+				activeCampaignIDs = append(activeCampaignIDs, campID)
+			}
+		}
+	}
+	marginBreaches, _ := s.batchCampaignMarginBreach(ctx, activeCampaignIDs)
+	marginBreachByID := make(map[string]bool, len(activeCampaignIDs))
+	for _, id := range activeCampaignIDs {
+		marginBreachByID[id.String()] = marginBreaches[id]
+	}
+
 	for _, c := range campaigns {
 		switch c.Status {
 		case "ACTIVE":
@@ -102,11 +116,7 @@ func (s *Service) GetBuyerPortfolio(ctx context.Context, customerID uuid.UUID) (
 
 		marginBreach := false
 		if c.Status == "ACTIVE" {
-			if campID, parseErr := uuid.Parse(c.ID); parseErr == nil {
-				if breach, err := s.campaignMarginBreach(ctx, campID); err == nil {
-					marginBreach = breach
-				}
-			}
+			marginBreach = marginBreachByID[c.ID]
 		}
 
 		resp.Campaigns = append(resp.Campaigns, BuyerCampaignPortfolioRowDTO{

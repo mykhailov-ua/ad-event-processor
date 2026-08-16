@@ -1,4 +1,4 @@
-.PHONY: fmt gen lint test test-fast test-unit test-integration test-fault test-int test-alloc-gate management-domain-coverage test-full test-resilience test-broker-fault-lab test-sentinel-resilience build build-bin release-build release-garble release-installer proto proto-grpc check-local pr-fast tier-a fraudtrain-check check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-bpf check-scripts-layout dev-preflight-smoke perf-gate-smoke edge-phase0 openrtb-fuzz-smoke
+.PHONY: fmt gen lint test test-fast test-unit test-integration test-fault test-int test-alloc-gate management-domain-coverage test-full test-resilience test-broker-fault-lab test-sentinel-resilience build build-bin release-build release-garble release-installer proto proto-grpc check-local pr-fast tier-a fraudtrain-check check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-bpf check-scripts-layout dev-preflight-smoke perf-gate-smoke edge-phase0 openrtb-fuzz-smoke license-red-team license-verify license-alloc-gate license-differential-gate license-red-team-garbled license-garbled-alloc-gate license-red-team-extended license-gdb-guard-smoke release-strings-gate license-guard-test license-guard-off-smoke license-guard-fault-gate public-key-strings-gate asset-seal-salt-smoke hwid-strings-gate garble-literals-policy-gate garble-literals-p99-smoke bpf-edge-prereq-gate sealed-bpf-xdp-smoke
 
 BIN_DIR := bin
 BIN_TAGS := timetzdata
@@ -6,7 +6,7 @@ BIN_LDFLAGS := -ldflags="-s -w -buildid="
 RELEASE_LDFLAGS := -trimpath $(BIN_LDFLAGS)
 RELEASE_GARBLE_CMDS := tracker processor control
 PILOT_IMAGE_CMDS := tracker processor control
-GARBLE_VERSION ?= v0.14.2
+GARBLE_VERSION ?= v0.15.0
 # Match deploy/docker/Dockerfile multi-binary image + local installer CLI.
 BIN_CMDS := tracker processor control ivt-detector fraud-scorer broker region-proxy log-shipper alertmanager-telegram log-evacuator log-compactor edge-xdp edge-bpf-sync
 
@@ -124,8 +124,62 @@ license-issue:
 license-red-team:
 	bash scripts/security/license_red_team.sh
 
+license-verify:
+	bash scripts/ci/license_verify_tier.sh
+
+license-alloc-gate:
+	bash scripts/ci/license_alloc_gate.sh
+
+license-differential-gate:
+	bash scripts/ci/license_differential_gate.sh
+
+asset-seal-salt-smoke:
+	bash scripts/ci/asset_seal_salt_smoke.sh
+
+hwid-strings-gate:
+	bash scripts/ci/hwid_strings_gate.sh
+
+license-guard-test:
+	go test -tags=license_guard ./internal/licensing/ -run Guard -count=1
+
+license-guard-off-smoke:
+	bash scripts/test/license_guard_off_smoke.sh
+
+license-guard-fault-gate:
+	bash scripts/ci/license_guard_fault_gate.sh
+
+public-key-strings-gate:
+	bash scripts/ci/public_key_strings_gate.sh
+
+license-red-team-garbled:
+	bash scripts/ci/license_red_team_garbled.sh
+
+license-garbled-alloc-gate:
+	bash scripts/ci/license_garbled_alloc_gate.sh
+
+license-red-team-extended:
+	bash scripts/test/license_red_team_extended.sh
+
+license-gdb-guard-smoke:
+	bash scripts/test/license_gdb_guard_smoke.sh
+
+release-strings-gate:
+	bash scripts/ci/release_strings_gate.sh $(BIN_DIR)/tracker
+
 garble-literals-eval:
 	bash scripts/ci/garble_literals_eval.sh
+
+garble-literals-policy-gate:
+	bash scripts/ci/garble_literals_policy_gate.sh
+
+garble-literals-p99-smoke:
+	bash scripts/test/garble_literals_p99_smoke.sh
+
+bpf-edge-prereq-gate:
+	bash scripts/ci/bpf_edge_prereq_gate.sh
+
+sealed-bpf-xdp-smoke:
+	bash scripts/test/sealed_bpf_xdp_smoke.sh
 
 bpf-dev:
 	bash scripts/dev/bpf_setup.sh

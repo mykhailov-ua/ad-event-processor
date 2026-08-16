@@ -68,3 +68,15 @@ func TestLicenseRPSFilter_zeroUnlimited(t *testing.T) {
 		assert.NoError(t, f.Check(context.Background(), &domain.Event{}))
 	}
 }
+
+func TestLicenseRPSFilter_seedCouplingBlocksWithoutValidSeed(t *testing.T) {
+	licensing.ResetFeatureSeedForTest()
+	t.Cleanup(licensing.ResetFeatureSeedForTest)
+	licensing.SetSeedCouplingRequired(true)
+	licensing.PublishFeatureSeed(0, false)
+
+	globalDeploymentRPS.resetForTests()
+	f := NewLicenseRPSFilter(&stubLicenseRPSRegistry{maxRPS: 1000})
+	err := f.Check(context.Background(), &domain.Event{})
+	require.ErrorIs(t, err, ErrRateLimitExceeded)
+}

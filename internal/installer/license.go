@@ -19,9 +19,19 @@ func RunLicense(cmd string) error {
 		return activateLicense()
 	case "status":
 		return licenseStatus()
+	case "host-id":
+		return printHostLicenseIdentity()
 	default:
 		return fmt.Errorf("unknown license command: %s", cmd)
 	}
+}
+
+func printHostLicenseIdentity() error {
+	fp := licensing.HostFingerprint()
+	hwid := licensing.HostHWID()
+	fmt.Printf("host_fingerprint=%s\n", fp)
+	fmt.Printf("hwid_v2=%s\n", hwid)
+	return nil
 }
 
 func installLicenseFromEnv() error {

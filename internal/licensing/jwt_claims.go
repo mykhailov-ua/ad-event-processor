@@ -21,6 +21,7 @@ type LicenseClaims struct {
 		Mode        string `json:"mode"`
 		Fingerprint string `json:"fingerprint"`
 	} `json:"bind"`
+	HWIDHash    string `json:"hwid_hash,omitempty"`
 	SupportTier string `json:"support_tier,omitempty"`
 }
 

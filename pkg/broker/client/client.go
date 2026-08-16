@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/bidshard/ad-event-processor/pkg/broker/protocol"
+	"github.com/bidshard/ad-event-processor/pkg/netaddr"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -42,7 +43,7 @@ func (it *MessageIterator) Next() bool {
 
 type Client struct {
 	addr      string
-	conn      *net.TCPConn
+	conn      net.Conn
 	mu        sync.Mutex
 	nextSeq   uint64
 	readBuf   []byte
@@ -50,7 +51,7 @@ type Client struct {
 	lenBuf    []byte
 	timeout   time.Duration
 	redisURL  string
-	rdb       *redis.Client
+	rdb       redis.Cmdable
 	fetchIter MessageIterator
 }
 
@@ -79,16 +80,11 @@ func (c *Client) connectLocked() error {
 		return nil
 	}
 
-	conn, err := net.DialTimeout("tcp", c.addr, c.timeout)
+	conn, err := netaddr.DialTimeout(c.addr, c.timeout)
 	if err != nil {
 		return err
 	}
-	tc, ok := conn.(*net.TCPConn)
-	if !ok {
-		_ = conn.Close()
-		return errors.New("broker client requires tcp")
-	}
-	c.conn = tc
+	c.conn = conn
 	return nil
 }
 
@@ -102,13 +98,15 @@ func (c *Client) Close() error {
 		c.conn = nil
 	}
 	if c.rdb != nil {
-		_ = c.rdb.Close()
+		if cl, ok := c.rdb.(interface{ Close() error }); ok {
+			_ = cl.Close()
+		}
 		c.rdb = nil
 	}
 	return err
 }
 
-func (c *Client) getConn() (*net.TCPConn, error) {
+func (c *Client) getConn() (net.Conn, error) {
 	if c.conn == nil {
 		if err := c.connectLocked(); err != nil {
 			return nil, err
@@ -157,7 +155,7 @@ func (c *Client) Produce(ctx context.Context, topic string, partition uint16, pa
 			continue
 		}
 
-		cmd, respSeq, respPayload, err := protocol.ReadFrameTCP(conn, c.readBuf, c.lenBuf)
+		cmd, respSeq, respPayload, err := protocol.ReadFrameConn(conn, c.readBuf, c.lenBuf)
 		if err != nil {
 			_ = c.closeRawConn()
 			c.mu.Unlock()
@@ -259,7 +257,7 @@ func (c *Client) Fetch(ctx context.Context, topic string, partition uint16, star
 			continue
 		}
 
-		cmd, respSeq, respPayload, err := protocol.ReadFrameTCP(conn, c.readBuf, c.lenBuf)
+		cmd, respSeq, respPayload, err := protocol.ReadFrameConn(conn, c.readBuf, c.lenBuf)
 		if err != nil {
 			_ = c.closeRawConn()
 			c.mu.Unlock()
@@ -353,7 +351,7 @@ func (c *Client) CommitOffset(topic string, partition uint16, group string, offs
 		return 0, err
 	}
 
-	cmd, respSeq, respPayload, err := protocol.ReadFrameTCP(conn, c.readBuf, c.lenBuf)
+	cmd, respSeq, respPayload, err := protocol.ReadFrameConn(conn, c.readBuf, c.lenBuf)
 	if err != nil {
 		_ = c.closeRawConn()
 		return 0, err
@@ -395,7 +393,7 @@ func (c *Client) CommittedOffset(topic string, partition uint16, group string) (
 		return 0, err
 	}
 
-	cmd, respSeq, respPayload, err := protocol.ReadFrameTCP(conn, c.readBuf, c.lenBuf)
+	cmd, respSeq, respPayload, err := protocol.ReadFrameConn(conn, c.readBuf, c.lenBuf)
 	if err != nil {
 		_ = c.closeRawConn()
 		return 0, err
@@ -431,11 +429,11 @@ func (c *Client) resolveLeaderAddr(ctx context.Context, topic string, partition 
 		return "", errors.New("redis URL not set")
 	}
 	if c.rdb == nil {
-		opts, err := redis.ParseURL(c.redisURL)
+		rdb, err := netaddr.ParseRedisURL(c.redisURL, "")
 		if err != nil {
 			return "", err
 		}
-		c.rdb = redis.NewClient(opts)
+		c.rdb = rdb
 	}
 	tpKey := protocol.TopicPartitionID(topic, partition)
 	lookupCtx, cancel := context.WithTimeout(ctx, time.Second)

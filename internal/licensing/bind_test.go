@@ -23,6 +23,32 @@ func TestVerifyDeploymentBind_hardMismatch(t *testing.T) {
 	require.ErrorIs(t, err, licensing.ErrFingerprintMismatch)
 }
 
+func TestVerifyDeploymentBind_legacyFingerprintMatch(t *testing.T) {
+	claims := &licensing.LicenseClaims{}
+	claims.Bind.Mode = "hard"
+	claims.Bind.Fingerprint = "legacy-fp"
+	require.NoError(t, licensing.VerifyDeploymentBind(claims, "legacy-fp"))
+}
+
+func TestVerifyDeploymentBind_hwidTakesPrecedenceOverFingerprint(t *testing.T) {
+	tel := licensing.HWIDTelemetry{
+		DMIUUID:  "precedence-dmi",
+		DiskID:   "precedence-disk",
+		MAC:      "11:22:33:44:55:66",
+		CPUModel: "Precedence CPU",
+		CPUCores: 4,
+	}
+	expected := licensing.HashHWIDFromTelemetry(tel)
+	restore := licensing.SetHWIDCollectForTest(func() licensing.HWIDTelemetry { return tel })
+	defer restore()
+
+	claims := &licensing.LicenseClaims{}
+	claims.Bind.Mode = "hard"
+	claims.Bind.Fingerprint = "wrong-legacy-fp"
+	claims.HWIDHash = expected
+	require.NoError(t, licensing.VerifyDeploymentBind(claims, "wrong-legacy-fp"))
+}
+
 func TestVerifyDeploymentBind_softAllowsMismatch(t *testing.T) {
 	claims := &licensing.LicenseClaims{}
 	claims.Bind.Mode = "soft"

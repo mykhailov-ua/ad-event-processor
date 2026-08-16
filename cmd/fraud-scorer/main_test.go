@@ -55,7 +55,8 @@ func TestScanAndRegister(t *testing.T) {
 	err = os.WriteFile("var/fraudscore/artifacts/metadata.json", metaBytes, 0o644)
 	require.NoError(t, err)
 
-	err = scanAndRegister(ctx, pool)
+	artifactDir := "var/fraudscore/artifacts"
+	err = scanAndRegister(ctx, pool, artifactDir)
 	require.NoError(t, err)
 
 	var id, status, artifactHash string
@@ -71,6 +72,6 @@ func TestScanAndRegister(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, 0.99, nestedMetrics["accuracy"])
 
-	err = scanAndRegister(ctx, pool)
+	err = scanAndRegister(ctx, pool, artifactDir)
 	require.NoError(t, err)
 }

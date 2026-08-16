@@ -45,6 +45,25 @@ WHERE campaign_id = $1
   AND created_at >= $2
   AND type IN ('FEE', 'rtb_cost', 'operator_margin', 'publisher_payout');
 
+-- name: SumCampaignMarginWindowByCampaignIDs :many
+SELECT
+  campaign_id,
+  COALESCE(SUM(CASE WHEN type = 'FEE' THEN -amount ELSE 0 END), 0)::bigint AS advertiser_spend_micro,
+  COALESCE(SUM(CASE WHEN type = 'rtb_cost' THEN amount ELSE 0 END), 0)::bigint AS rtb_cost_micro,
+  COALESCE(SUM(CASE WHEN type = 'operator_margin' THEN amount ELSE 0 END), 0)::bigint AS operator_margin_micro,
+  COALESCE(SUM(CASE WHEN type = 'publisher_payout' THEN amount ELSE 0 END), 0)::bigint AS publisher_payout_micro
+FROM balance_ledger
+WHERE campaign_id = ANY(@campaign_ids::uuid[])
+  AND created_at >= @window_start
+  AND type IN ('FEE', 'rtb_cost', 'operator_margin', 'publisher_payout')
+GROUP BY campaign_id;
+
+-- name: ListMarginGuardPoliciesByCampaignIDs :many
+SELECT id, campaign_id, name, min_clicks, roi_floor_pct, zero_conv_streak, cost_over_revenue_threshold_bps, is_active
+FROM margin_guard_policies
+WHERE campaign_id = ANY($1::uuid[])
+ORDER BY campaign_id, id;
+
 -- name: GetLedgerByHash :one
 SELECT * FROM balance_ledger
 WHERE idempotency_hash = $1;
@@ -412,6 +431,18 @@ WHERE created_at >= $1
   AND created_at < $2
   AND (type = 'FEE' OR type = 'RECONCILIATION_ADJUST' OR type = 'REFUND')
 GROUP BY campaign_id;
+
+-- name: SumLedgerSpendByCampaignWindowWithCustomer :many
+SELECT
+    bl.campaign_id,
+    c.customer_id,
+    COALESCE(SUM(CASE WHEN bl.amount < 0 THEN -bl.amount ELSE 0 END), 0)::bigint AS total_spent_micro
+FROM balance_ledger bl
+INNER JOIN campaigns c ON c.id = bl.campaign_id
+WHERE bl.created_at >= $1
+  AND bl.created_at < $2
+  AND (bl.type = 'FEE' OR bl.type = 'RECONCILIATION_ADJUST' OR bl.type = 'REFUND')
+GROUP BY bl.campaign_id, c.customer_id;
 
 -- name: CreateReconRun :one
 INSERT INTO recon_runs (period_start, period_end, status)

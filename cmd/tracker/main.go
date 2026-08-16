@@ -14,10 +14,12 @@ import (
 	"github.com/bidshard/ad-event-processor/internal/database"
 	db "github.com/bidshard/ad-event-processor/internal/domain/db"
 	"github.com/bidshard/ad-event-processor/internal/ingestion"
+	"github.com/bidshard/ad-event-processor/internal/licensing"
 	"github.com/bidshard/ad-event-processor/internal/metrics"
 	"github.com/bidshard/ad-event-processor/internal/rtb"
 	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
 	"github.com/bidshard/ad-event-processor/pkg/logger"
+	"github.com/bidshard/ad-event-processor/pkg/netaddr"
 	"github.com/bidshard/ad-event-processor/pkg/pgfailover"
 	"github.com/bidshard/ad-event-processor/pkg/piihash"
 	"github.com/bidshard/ad-event-processor/pkg/runtimeautotune"
@@ -35,6 +37,9 @@ func main() {
 			os.Exit(1)
 		}
 		os.Exit(0)
+	}
+	if licensing.MaybeRunGuardWatchdogCLI(os.Args) {
+		return
 	}
 
 	slogLogger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelWarn}))
@@ -64,6 +69,11 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	licensing.StartLicenseGuard(ctx, licensing.GuardConfig{
+		Enabled:        licensing.GuardCompiledIn() && config.LicenseGuardEnvEnabled(),
+		PtraceWatchdog: licensing.GuardCompiledIn() && config.LicenseGuardPtraceWatchdogEnabled(),
+	})
 
 	pool, err := database.Connect(ctx, string(cfg.DBDSN), cfg.DBTrackerMaxConns, cfg.DBMinConns)
 	if err != nil {
@@ -232,8 +242,13 @@ func main() {
 	streamTrimmer.Start(ctx)
 
 	trackerStreamName := cfg.RedisStreamName
-	if cfg.BrokerEnabled() && cfg.Broker.CHIngestSource == "broker" {
+	if cfg.BrokerEnabled() && cfg.BrokerPrimaryCH() {
 		trackerStreamName = "fcap:ignored"
+	}
+
+	if err := ingestion.InitUnifiedFilterLua(); err != nil {
+		slog.Error("unified-filter lua init failed", "error", err)
+		os.Exit(1)
 	}
 
 	unifiedFilter := ingestion.NewUnifiedFilter(
@@ -298,7 +313,7 @@ func main() {
 		)
 		brokerRedisURL := cfg.Broker.RedisURL
 		if brokerRedisURL == "" && len(cfg.RedisAddrs) > 0 {
-			brokerRedisURL = "redis://" + cfg.RedisAddrs[0] + "/0"
+			brokerRedisURL = database.BrokerRedisURL(cfg.RedisAddrs, string(cfg.RedisPassword))
 		}
 		budgetDeltaPublisher = ingestion.NewBudgetDeltaPublisher(ingestion.BudgetDeltaPublisherConfig{
 			BrokerAddr: cfg.Broker.URL,
@@ -502,20 +517,37 @@ func main() {
 	}
 
 	var brokerProducer *ingestion.BrokerProducer
-	if cfg.BrokerEnabled() && cfg.Broker.CHIngestSource == "broker" && cfg.Broker.URL != "" {
+	var fraudBrokerSink *ingestion.FraudBrokerSink
+	if cfg.BrokerEnabled() && cfg.BrokerPrimaryCH() && cfg.Broker.URL != "" {
 		producerCfg := ingestion.DefaultBrokerProducerConfig()
 		producerCfg.BrokerAddr = cfg.Broker.URL
+		producerCfg.Topic = cfg.Broker.Topic
 		if cfg.Broker.TimeoutMs > 0 {
 			producerCfg.Timeout = time.Duration(cfg.Broker.TimeoutMs) * time.Millisecond
 		}
 		var bpErr error
 		brokerProducer, bpErr = ingestion.NewBrokerProducer(producerCfg)
 		if bpErr != nil {
-			slog.Warn("broker producer init failed", "error", bpErr)
-		} else {
-			gnetHandler.SetBrokerProducer(brokerProducer)
-			slog.Info("broker producer enabled", "addr", cfg.Broker.URL, "topic", producerCfg.Topic)
+			slog.Error("broker producer init failed (CH_INGEST_SOURCE=broker)", "error", bpErr)
+			os.Exit(1)
 		}
+		gnetHandler.SetBrokerProducer(brokerProducer)
+		slog.Info("broker producer enabled", "addr", cfg.Broker.URL, "topic", producerCfg.Topic)
+
+		brokerRedisURL := cfg.Broker.RedisURL
+		if brokerRedisURL == "" && len(cfg.RedisAddrs) > 0 {
+			brokerRedisURL = database.BrokerRedisURL(cfg.RedisAddrs, string(cfg.RedisPassword))
+		}
+		fraudTimeout := producerCfg.Timeout
+		fraudBrokerSink, bpErr = ingestion.NewFraudBrokerSink(cfg.Broker.URL, brokerRedisURL, cfg.Broker.FraudTopic, fraudTimeout)
+		if bpErr != nil {
+			slog.Error("fraud broker sink init failed (CH_INGEST_SOURCE=broker)", "error", bpErr)
+			os.Exit(1)
+		}
+		if fw := gnetHandler.FraudWriter(); fw != nil {
+			fw.SetBrokerSink(fraudBrokerSink)
+		}
+		slog.Info("fraud broker sink enabled", "addr", cfg.Broker.URL, "topic", cfg.Broker.FraudTopic)
 	} else if cfg.Broker.CHIngestSource != "broker" && cfg.RedisStreamName != "" {
 		streamProducers := make([]*ingestion.StreamProducer, len(rdbs))
 		writeTimeout := time.Duration(cfg.WriteTimeoutMs) * time.Millisecond
@@ -583,10 +615,19 @@ func main() {
 	workerPool := ingestion.NewPinnedWorkerPool(cfg.MaxWorkers, 8192)
 	gnetHandler.SetWorkerPool(workerPool)
 
-	slog.Info("starting ad-event-tracker via gnet", "port", cfg.ServerPort)
+	slog.Info("starting ad-event-tracker via gnet", "port", cfg.ServerPort, "unix_socket", cfg.TrackerUnixSocket)
+
+	listenURI := "tcp://:" + cfg.ServerPort
+	if cfg.TrackerUnixSocket != "" {
+		if err := netaddr.PrepareUnixSocket(cfg.TrackerUnixSocket); err != nil {
+			slog.Error("tracker unix socket prepare failed", "path", cfg.TrackerUnixSocket, "error", err)
+			os.Exit(1)
+		}
+		listenURI = netaddr.GnetListenURI(cfg.TrackerUnixSocket)
+	}
 
 	go func() {
-		err := gnet.Run(gnetHandler, "tcp://:"+cfg.ServerPort,
+		err := gnet.Run(gnetHandler, listenURI,
 			gnet.WithMulticore(true),
 			gnet.WithReusePort(true),
 			gnet.WithTCPNoDelay(gnet.TCPNoDelay),

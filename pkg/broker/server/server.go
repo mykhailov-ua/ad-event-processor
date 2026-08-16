@@ -22,6 +22,7 @@ import (
 	"github.com/bidshard/ad-event-processor/pkg/broker/protocol"
 	"github.com/bidshard/ad-event-processor/pkg/gnetutil"
 	"github.com/bidshard/ad-event-processor/pkg/iogate"
+	"github.com/bidshard/ad-event-processor/pkg/netaddr"
 
 	"github.com/panjf2000/gnet/v2"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -192,7 +193,7 @@ func (s *Server) Start() error {
 		return fmt.Errorf("load topic registry: %w", err)
 	}
 
-	if strings.HasSuffix(s.addr, ":0") {
+	if strings.HasSuffix(s.addr, ":0") && !netaddr.IsUnixSocketPath(s.addr) {
 		l, err := net.Listen("tcp", s.addr)
 		if err != nil {
 			return err
@@ -201,13 +202,24 @@ func (s *Server) Start() error {
 		_ = l.Close()
 	}
 
-	if strings.HasSuffix(s.healthAddr, ":0") {
+	if strings.HasSuffix(s.healthAddr, ":0") && !netaddr.IsUnixSocketPath(s.healthAddr) {
 		l, err := net.Listen("tcp", s.healthAddr)
 		if err != nil {
 			return err
 		}
 		s.healthAddr = l.Addr().String()
 		_ = l.Close()
+	}
+
+	if netaddr.IsUnixSocketPath(s.addr) {
+		if err := netaddr.PrepareUnixSocket(s.addr); err != nil {
+			return err
+		}
+	}
+	if netaddr.IsUnixSocketPath(s.healthAddr) {
+		if err := netaddr.PrepareUnixSocket(s.healthAddr); err != nil {
+			return err
+		}
 	}
 
 	s.wg.Add(1)
@@ -241,6 +253,15 @@ func (s *Server) Start() error {
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
+		if netaddr.IsUnixSocketPath(s.healthAddr) {
+			ln, err := netaddr.ListenUnix(s.healthAddr)
+			if err != nil {
+				slog.Error("broker health listen failed", "addr", s.healthAddr, "error", err)
+				return
+			}
+			_ = s.httpSrv.Serve(ln)
+			return
+		}
 		_ = s.httpSrv.ListenAndServe()
 	}()
 
@@ -248,7 +269,7 @@ func (s *Server) Start() error {
 	errChan := make(chan error, 1)
 	go func() {
 		defer s.wg.Done()
-		addr := "tcp://" + s.addr
+		addr := netaddr.GnetListenURI(s.addr)
 		err := gnet.Run(s, addr,
 			gnet.WithMulticore(true),
 		)

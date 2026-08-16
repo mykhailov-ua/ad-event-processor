@@ -24,5 +24,6 @@ func pinParsedHTTPRequest(ctx *connContext, req parsedHTTPRequest) parsedHTTPReq
 		Body:             pin(req.Body),
 		ContentLength:    req.ContentLength,
 		HasContentLength: req.HasContentLength,
+		ForceSafe:        req.ForceSafe,
 	}
 }

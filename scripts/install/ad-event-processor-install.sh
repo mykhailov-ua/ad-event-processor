@@ -171,6 +171,13 @@ setup_offline_license() {
 	fp="$(compute_deployment_fingerprint)"
 	set_env_key AD_EVENT_PROCESSOR_DEPLOYMENT_FINGERPRINT "$fp"
 	echo "ad-event-processor-install: deployment fingerprint=$fp (include in vendor renewal ticket)"
+	if command -v go >/dev/null 2>&1 && [[ -f go.mod ]]; then
+		local hwid_line
+		hwid_line="$(go run ./cmd/installer license host-id 2>/dev/null | grep '^hwid_v2=' || true)"
+		if [[ -n "$hwid_line" ]]; then
+			echo "ad-event-processor-install: deployment ${hwid_line} (preferred for new renewal JWTs)"
+		fi
+	fi
 
 	if [[ -z "$(grep -m1 '^AD_EVENT_PROCESSOR_LICENSE_PUBLIC_KEY=' .env 2>/dev/null | cut -d= -f2- | tr -d '[:space:]')" ]] && [[ -f "$pub_file" ]]; then
 		local pub

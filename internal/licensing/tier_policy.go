@@ -38,7 +38,7 @@ func SanitizeFeaturesForSKU(sku string, features FeatureSet) FeatureSet {
 
 // OpenRTBAllowed gates /openrtb/bid and RTB auction on /track.
 func OpenRTBAllowed(state LicenseState, ent Entitlements) bool {
-	if !IngestAllowed(state) {
+	if state == StateExpired || state == StateRevoked {
 		return false
 	}
 	return ent.Features.OpenRTBEnabled()
@@ -46,7 +46,7 @@ func OpenRTBAllowed(state LicenseState, ent Entitlements) bool {
 
 // EbpfEdgeAllowed gates edge XDP / edge-bpf-sync.
 func EbpfEdgeAllowed(state LicenseState, ent Entitlements) bool {
-	if !IngestAllowed(state) {
+	if state == StateExpired || state == StateRevoked {
 		return false
 	}
 	return ent.Features.EbpfEdgeEnabled()

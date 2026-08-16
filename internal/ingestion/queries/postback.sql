@@ -1,6 +1,9 @@
 -- name: GetPostbackConfig :one
 SELECT * FROM postback_configs WHERE campaign_id = $1;
 
+-- name: ListPostbackConfigsByCampaignIDs :many
+SELECT * FROM postback_configs WHERE campaign_id = ANY($1::uuid[]);
+
 -- name: UpsertPostbackConfig :exec
 INSERT INTO postback_configs (campaign_id, provider, url_template, api_token_encrypted, target_event, test_event_code, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6, NOW())

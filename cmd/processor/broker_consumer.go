@@ -15,17 +15,18 @@ import (
 )
 
 type BrokerConsumerGroupConfig struct {
-	BrokerAddr     string
-	RedisURL       string
-	Topic          string
-	Group          string
-	PartitionCount int
-	BatchSize      int
-	FlushInterval  time.Duration
-	MaxBytes       uint32
-	Timeout        time.Duration
-	DataDir        string
-	ShadowMode     bool
+	BrokerAddr         string
+	RedisURL           string
+	Topic              string
+	Group              string
+	PartitionCount     int
+	BatchSize          int
+	FlushInterval      time.Duration
+	MaxBytes           uint32
+	Timeout            time.Duration
+	DataDir            string
+	ShadowMode         bool
+	OnMessageProcessed func(evt *domain.Event, brokerOffset uint64)
 }
 
 type BrokerConsumerGroup struct {
@@ -161,6 +162,9 @@ func (w *brokerWorker) run(ctx context.Context) {
 			}
 			parseErr := ingestion.ParseBrokerPayloadStream(iter.Payload, func(evt *domain.Event) {
 				metrics.BrokerIngestMessagesTotal.WithLabelValues(w.parent.cfg.Topic, w.parent.cfg.Group, evt.Type).Inc()
+				if w.parent.cfg.OnMessageProcessed != nil {
+					w.parent.cfg.OnMessageProcessed(evt, iter.Offset)
+				}
 				batch = append(batch, evt)
 				processed++
 			})
@@ -191,6 +195,10 @@ func (w *brokerWorker) run(ctx context.Context) {
 		} else if nextCommit > start {
 			w.commitOffset(ctx, nextCommit)
 			start = nextCommit
+		}
+
+		if iter.HighWatermark > start {
+			metrics.BrokerConsumerLagMessages.WithLabelValues(w.parent.cfg.Topic, w.parent.cfg.Group).Set(float64(iter.HighWatermark - start))
 		}
 
 		if processed == 0 {

@@ -22,6 +22,7 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 	cfg.Broker.URL = os.Getenv("BROKER_URL")
 	cfg.Broker.RedisURL = os.Getenv("BROKER_REDIS_URL")
 	cfg.Broker.Topic = os.Getenv("BROKER_TOPIC")
+	cfg.Broker.FraudTopic = os.Getenv("BROKER_FRAUD_TOPIC")
 	cfg.Broker.PartitionCount = getEnvInt("BROKER_PARTITION_COUNT", ExpectedRedisShardCount)
 	cfg.Broker.ShadowMode = getEnvBool("BROKER_SHADOW_MODE", false)
 	cfg.Broker.CHIngestSource = os.Getenv("CH_INGEST_SOURCE") // "broker" = skip Redis _ch StreamConsumer
@@ -31,6 +32,9 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 	cfg.Broker.DivergenceThreshold = uint64(getEnvInt64("BROKER_DIVERGENCE_THRESHOLD", 1000))
 	if cfg.Broker.Topic == "" {
 		cfg.Broker.Topic = "tracker-logs"
+	}
+	if cfg.Broker.FraudTopic == "" {
+		cfg.Broker.FraudTopic = "ad-fraud-events"
 	}
 
 	cfg.RtbMode = os.Getenv("RTB_MODE")

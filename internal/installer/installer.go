@@ -88,7 +88,7 @@ func (c *CLI) Run() error {
 
 	case "license":
 		if len(c.Args) < 3 {
-			fmt.Println("Usage: ad-event-processor-install license <install|activate|status>")
+			fmt.Println("Usage: ad-event-processor-install license <install|activate|status|host-id>")
 			return nil
 		}
 		return RunLicense(c.Args[2])
@@ -110,7 +110,7 @@ func (c *CLI) PrintUsage() {
 	fmt.Println("  apply     [--dry-run]")
 	fmt.Println("  rollback  <tracker|processor>")
 	fmt.Println("  doctor    [--json]")
-	fmt.Println("  license   <install|activate|status>")
+	fmt.Println("  license   <install|activate|status|host-id>")
 }
 
 func (c *CLI) RunApply(dryRun bool) error {

@@ -22,20 +22,6 @@ func HostFingerprint() string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func readMachineID() string {
-	for _, path := range []string{"/etc/machine-id", "/var/lib/dbus/machine-id"} {
-		data, err := os.ReadFile(path)
-		if err != nil {
-			continue
-		}
-		id := strings.TrimSpace(string(data))
-		if id != "" {
-			return id
-		}
-	}
-	return ""
-}
-
 func stableInstallPaths() []string {
 	var paths []string
 	if root := strings.TrimSpace(os.Getenv("ROOT")); root != "" {

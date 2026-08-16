@@ -13,6 +13,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/minio/highwayhash v1.0.3
+	github.com/moby/moby/api v1.54.2
 	github.com/o1egl/paseto/v2 v2.1.1
 	github.com/oschwald/maxminddb-golang v1.13.0
 	github.com/panjf2000/gnet/v2 v2.9.8
@@ -34,6 +35,7 @@ require (
 	golang.org/x/time v0.11.0
 	google.golang.org/grpc v1.67.0
 	google.golang.org/protobuf v1.36.11
+	pgregory.net/rapid v1.2.0
 )
 
 require (
@@ -54,6 +56,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.43.5 // indirect
 	github.com/aws/smithy-go v1.27.3 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
+	github.com/moby/moby/client v0.4.0 // indirect
 	github.com/yuin/gopher-lua v1.1.1 // indirect
 )
 
@@ -93,8 +96,6 @@ require (
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/go-archive v0.2.0 // indirect
-	github.com/moby/moby/api v1.54.2
-	github.com/moby/moby/client v0.4.0 // indirect
 	github.com/moby/patternmatcher v0.6.1 // indirect
 	github.com/moby/sys/sequential v0.6.0 // indirect
 	github.com/moby/sys/user v0.4.0 // indirect

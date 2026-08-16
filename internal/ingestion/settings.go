@@ -48,20 +48,24 @@ type VPPRatioSnapshot struct {
 }
 
 type SettingsWatcher struct {
-	rdbs             []redis.UniversalClient
-	currentVersion   int64
-	snapshot         atomic.Value
-	fraudScoreBoosts atomic.Value
-	vppRatios        atomic.Value
-	fcapSnap         atomic.Pointer[rtb.FcapSnapshot]
-	onChange         []SettingsChangeListener
-	pgSync           func(context.Context) (map[string]string, int64, error)
-	staleCheck       func() bool
+	rdbs                  []redis.UniversalClient
+	campaignUpdateChannel string
+	currentVersion        int64
+	snapshot              atomic.Value
+	fraudScoreBoosts      atomic.Value
+	vppRatios             atomic.Value
+	fcapSnap              atomic.Pointer[rtb.FcapSnapshot]
+	onChange              []SettingsChangeListener
+	pgSync                func(context.Context) (map[string]string, int64, error)
+	staleCheck            func() bool
 }
 
 func NewSettingsWatcher(rdbs []redis.UniversalClient, initial *config.Config) *SettingsWatcher {
 	sw := &SettingsWatcher{
 		rdbs: rdbs,
+	}
+	if initial != nil {
+		sw.campaignUpdateChannel = initial.CampaignUpdateChannel
 	}
 
 	sw.snapshot.Store(&DynamicConfig{
@@ -137,8 +141,13 @@ func (sw *SettingsWatcher) GetFcapRtbSnapshot() *rtb.FcapSnapshot {
 }
 
 func (sw *SettingsWatcher) Start(ctx context.Context, interval time.Duration) {
+	sw.syncFraudScoreBoostsFull(ctx)
+	go sw.runFraudBoostSubscriber(ctx)
+
 	ticker := time.NewTicker(interval)
+	boostResync := time.NewTicker(fraudBoostFullResync)
 	defer ticker.Stop()
+	defer boostResync.Stop()
 
 	for {
 		select {
@@ -146,77 +155,11 @@ func (sw *SettingsWatcher) Start(ctx context.Context, interval time.Duration) {
 			return
 		case <-ticker.C:
 			sw.sync(ctx)
-			sw.syncFraudScoreBoosts(ctx)
 			sw.syncVPPRatios(ctx)
 			sw.syncFcapCounts(ctx)
+		case <-boostResync.C:
+			sw.syncFraudScoreBoostsFull(ctx)
 		}
-	}
-}
-
-func (sw *SettingsWatcher) syncFraudScoreBoosts(ctx context.Context) {
-	rdb := sw.pickHealthyShard()
-	if rdb == nil {
-		return
-	}
-
-	newBoosts := make(map[uuid.UUID]uint8)
-	prefix := "ml:score:boost:"
-
-	for attempt := 0; attempt < len(sw.rdbs); attempt++ {
-		cursor := uint64(0)
-		ok := true
-		for {
-			keys, next, err := rdb.Scan(ctx, cursor, prefix+"*", 100).Result()
-			if err != nil {
-				slog.Warn("failed to scan ml boost keys from redis, trying next shard", "error", err)
-				ok = false
-				break
-			}
-
-			for _, key := range keys {
-				parts := strings.Split(key, ":")
-				if len(parts) < 4 {
-					continue
-				}
-				campIDStr := parts[3]
-				var campID uuid.UUID
-				if !ParseUUID(UnsafeBytes(campIDStr), &campID) {
-					continue
-				}
-
-				valStr, err := rdb.Get(ctx, key).Result()
-				if err != nil {
-					continue
-				}
-				val, err := strconv.Atoi(valStr)
-				if err != nil {
-					continue
-				}
-				if val < 0 {
-					val = 0
-				}
-				if val > 100 {
-					val = 100
-				}
-				newBoosts[campID] = uint8(val)
-			}
-
-			cursor = next
-			if cursor == 0 {
-				break
-			}
-		}
-		if ok {
-			sw.fraudScoreBoosts.Store(&FraudScoreBoostSnapshot{
-				Boosts: newBoosts,
-			})
-			return
-		}
-		rdb = sw.nextShardAfter(rdb)
-		if rdb == nil {
-			return
-		}
-		newBoosts = make(map[uuid.UUID]uint8)
 	}
 }
 

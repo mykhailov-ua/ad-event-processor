@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log/slog"
 	"os"
 	"time"
@@ -12,17 +13,17 @@ import (
 	"github.com/bidshard/ad-event-processor/pkg/broker/server"
 	"github.com/bidshard/ad-event-processor/pkg/iogate"
 	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
+	"github.com/bidshard/ad-event-processor/pkg/netaddr"
 	"github.com/bidshard/ad-event-processor/pkg/regionproxy/keygen"
 	"github.com/bidshard/ad-event-processor/pkg/regionproxy/opkey"
 	rserver "github.com/bidshard/ad-event-processor/pkg/regionproxy/server"
 	"github.com/bidshard/ad-event-processor/pkg/regionproxy/uplink"
-
-	"github.com/redis/go-redis/v9"
+	"github.com/bidshard/ad-event-processor/pkg/runtimepaths"
 )
 
 func main() {
-	addr := flag.String("addr", "127.0.0.1:9093", "gnet TCP ingress address")
-	healthAddr := flag.String("health-addr", "127.0.0.1:8082", "HTTP health and metrics address")
+	addr := flag.String("addr", runtimepaths.RegionProxyGnetSocket(), "gnet listen address (tcp or unix socket path)")
+	healthAddr := flag.String("health-addr", runtimepaths.RegionProxyHealthSocket(), "HTTP health and metrics address")
 	dataDir := flag.String("data-dir", "/tmp/ad-event-processor-region-proxy", "WAL data directory")
 	nodeID := flag.String("node-id", "region-proxy-1", "Unique node ID")
 	regionCode := flag.Uint("region-code", 1, "Region code for dedup scope")
@@ -65,12 +66,19 @@ func main() {
 	}
 	srv.SetShutdownTimeout(config.LifecycleShutdownTimeout())
 	srv.SetReadyProbe(func(ctx context.Context) error {
-		opts, err := redis.ParseURL(*redisURL)
+		raw := *redisURL
+		if raw == "" {
+			return fmt.Errorf("redis url is empty")
+		}
+		rdb, err := netaddr.ParseRedisURL(raw, "")
 		if err != nil {
 			return err
 		}
-		rdb := redis.NewClient(opts)
-		defer func() { _ = rdb.Close() }()
+		defer func() {
+			if cl, ok := rdb.(interface{ Close() error }); ok {
+				_ = cl.Close()
+			}
+		}()
 		return rdb.Ping(ctx).Err()
 	})
 

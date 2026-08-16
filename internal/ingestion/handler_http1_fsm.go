@@ -250,6 +250,7 @@ func http1IngressValid(method, path []byte) bool {
 			bytesEqual(path, "/ready") ||
 			bytesEqual(path, "/readyz") ||
 			bytesEqual(path, "/metrics") ||
+			httpPathHasPrefix(path, safePageStubPathPrefix) ||
 			httpPathHasPrefix(path, "/click") ||
 			httpPathHasPrefix(path, tgPathClick) ||
 			httpPathHasPrefix(path, tgPathImpression)
@@ -462,8 +463,36 @@ func http1AssignHeader(req *parsedHTTPRequest, key, val []byte, hFlags *uint8, c
 			httpFold[key[16]] == 'g' {
 			return http1AssignTransferEncoding(hFlags, val)
 		}
+	case 21:
+		if http1MatchForceSafeHeader(key) && http1ForceSafeValue(val) {
+			req.ForceSafe = true
+		}
 	}
 	return nil
+}
+
+func http1MatchForceSafeHeader(key []byte) bool {
+	if len(key) != 21 {
+		return false
+	}
+	const lit = "x-bidshard-force-safe"
+	for i := 0; i < 21; i++ {
+		if httpFold[key[i]] != lit[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func http1ForceSafeValue(val []byte) bool {
+	if len(val) == 1 && val[0] == '1' {
+		return true
+	}
+	if len(val) == 4 && httpFold[val[0]] == 't' && httpFold[val[1]] == 'r' &&
+		httpFold[val[2]] == 'u' && httpFold[val[3]] == 'e' {
+		return true
+	}
+	return false
 }
 
 func http1AssignTransferEncoding(hFlags *uint8, val []byte) error {

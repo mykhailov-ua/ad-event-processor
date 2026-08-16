@@ -1,15 +1,18 @@
 package config_test
 
 import (
-	"github.com/bidshard/ad-event-processor/pkg/naming"
 	"testing"
+
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 
 	"github.com/bidshard/ad-event-processor/internal/config"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"os"
 	"path/filepath"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLicenseRequiredFromEnv_defaultOffInDev(t *testing.T) {
@@ -52,4 +55,48 @@ func TestLicenseProbeEnabled_requiredOnly(t *testing.T) {
 	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_REQUIRED", "1")
 	assert.False(t, config.LicenseFilePresent())
 	assert.True(t, config.LicenseProbeEnabled())
+}
+
+func TestLicenseAssetsUnsealed_devMode(t *testing.T) {
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_MODE", "dev")
+	assert.True(t, config.LicenseAssetsUnsealed())
+	assert.False(t, config.LicenseSeedCouplingEnabled())
+}
+
+func TestLicenseSeedCoupling_enterpriseMode(t *testing.T) {
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_MODE", "enterprise")
+	assert.False(t, config.LicenseAssetsUnsealed())
+	assert.True(t, config.LicenseSeedCouplingEnabled())
+}
+
+func TestLicenseSkewWatch_devModeDisabled(t *testing.T) {
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_MODE", "dev")
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_REQUIRED", "1")
+	assert.False(t, config.LicenseSkewWatchEnabled())
+}
+
+func TestLicenseGuardEnv_killSwitch(t *testing.T) {
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_GUARD", "0")
+	assert.False(t, config.LicenseGuardEnvEnabled())
+	assert.False(t, config.LicenseGuardPtraceWatchdogEnabled())
+}
+
+func TestLicenseGuardPtrace_killSwitch(t *testing.T) {
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_GUARD", "1")
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_GUARD_PTRACE", "0")
+	assert.True(t, config.LicenseGuardEnvEnabled())
+	assert.False(t, config.LicenseGuardPtraceWatchdogEnabled())
+}
+
+func TestLicenseSkewWatch_defaults(t *testing.T) {
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_MODE", "file")
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_REQUIRED", "")
+	t.Setenv(naming.LegacyVendorEnvKey("PROFILE"), "")
+	dir := t.TempDir()
+	path := filepath.Join(dir, "license.jwt")
+	require.NoError(t, os.WriteFile(path, []byte("token"), 0o600))
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_PATH", path)
+	assert.True(t, config.LicenseSkewWatchEnabled())
+	assert.Equal(t, time.Hour, config.LicenseSkewWatchInterval())
+	assert.Equal(t, 5*time.Minute, config.LicenseSkewWatchThreshold())
 }

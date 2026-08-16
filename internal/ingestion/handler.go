@@ -565,6 +565,7 @@ var (
 	respBidFloorNotMet     = []byte("HTTP/1.1 402 Payment Required\r\nContent-Type: text/plain\r\nContent-Length: 17\r\nConnection: keep-alive\r\n\r\nbid floor not met")
 	respFilterTimeout      = []byte("HTTP/1.1 504 Gateway Timeout\r\nContent-Type: text/plain\r\nContent-Length: 15\r\nConnection: keep-alive\r\n\r\nfilter timeout")
 	respConsentDenied      = []byte("HTTP/1.1 204 No Content\r\nContent-Length: 0\r\nConnection: keep-alive\r\n\r\n")
+	respClickSafePage      = []byte("HTTP/1.1 200 OK\r\nContent-Length: 0\r\nX-BidShard-Safe-Page: 1\r\nConnection: keep-alive\r\n\r\n")
 	respInternalError      = []byte("HTTP/1.1 500 Internal Server Error\r\nContent-Type: text/plain\r\nContent-Length: 14\r\nConnection: keep-alive\r\n\r\ninternal error")
 	respBadRequestClose    = []byte("HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
 	respNotFound           = []byte("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: keep-alive\r\n\r\n")
@@ -625,8 +626,12 @@ func (h *AdsPacketHandler) SetPool(p Pinger) {
 }
 
 func (h *AdsPacketHandler) SetBrokerProducer(bp *BrokerProducer) {
-	if h != nil {
-		h.brokerProducer = bp
+	if h == nil {
+		return
+	}
+	h.brokerProducer = bp
+	if bp != nil && h.filterEngine != nil {
+		h.filterEngine.SetDeferStreamToProducer(true)
 	}
 }
 
@@ -1268,6 +1273,7 @@ type parsedHTTPRequest struct {
 	Origin           []byte
 	ContentLength    int
 	HasContentLength bool
+	ForceSafe        bool
 }
 
 var (
@@ -1346,6 +1352,9 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 			h.write(c, respNotFound, ctx)
 			return gnet.None
 		}
+		if httpPathHasPrefix(req.Path, safePageStubPathPrefix) {
+			return h.reactSafePageStub(req, c, ctx)
+		}
 		if httpPathHasPrefix(req.Path, "/click") {
 			return h.reactClickRedirect(req, c, ctx)
 		}
@@ -1366,6 +1375,13 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 	}
 
 	if !bytes.Equal(req.Path, []byte("/track")) {
+		if bytes.Equal(req.Path, []byte(safePageVerifyPath)) {
+			if !req.HasContentLength {
+				h.write(c, respBadRequestClose, ctx)
+				return gnet.Close
+			}
+			return h.reactTrackVerify(req, c, ctx)
+		}
 		if bytes.Equal(req.Path, []byte("/openrtb/bid")) {
 			if !req.HasContentLength {
 				h.write(c, respBadRequestClose, ctx)

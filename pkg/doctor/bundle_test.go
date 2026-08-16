@@ -27,6 +27,8 @@ func TestWriteBundle(t *testing.T) {
 					DeploymentID:     "dep-bundle",
 					DaysToExpiry:     14,
 					FingerprintMatch: true,
+					HWIDMatch:        true,
+					HostHWID:         "abc123hwid",
 				}, true
 			},
 		},
@@ -80,5 +82,8 @@ func TestWriteBundle(t *testing.T) {
 	}
 	if license.DeploymentID != "dep-bundle" || license.DaysToExpiry != 14 || !license.FingerprintMatch {
 		t.Fatalf("unexpected license.json: %+v", license)
+	}
+	if license.HWIDv2 != "abc123hwid" {
+		t.Fatalf("expected hwid_v2 in bundle, got %+v", license)
 	}
 }

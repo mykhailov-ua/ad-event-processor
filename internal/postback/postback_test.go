@@ -142,7 +142,7 @@ func TestPostbackIntegration_IdempotencyAndEgress(t *testing.T) {
 	err = worker.ProcessEvent(ctx, db.OutboxEvent{
 		ID:      outboxEv.ID,
 		Payload: payloadBytes,
-	})
+	}, nil)
 	require.NoError(t, err)
 	require.Equal(t, int32(1), atomic.LoadInt32(&requestCount))
 
@@ -161,7 +161,7 @@ func TestPostbackIntegration_IdempotencyAndEgress(t *testing.T) {
 	err = worker.ProcessEvent(ctx, db.OutboxEvent{
 		ID:      outboxEv.ID,
 		Payload: payloadBytes,
-	})
+	}, nil)
 	require.ErrorIs(t, err, ErrDuplicateEvent)
 	require.Equal(t, int32(1), atomic.LoadInt32(&requestCount))
 	t.Logf("fault_proof fault=postback_rate_limit_429 retried=true")
@@ -219,11 +219,11 @@ func TestCAPI_DoubleFire(t *testing.T) {
 	worker := NewPostbackWorker(pool, key)
 	ev := db.OutboxEvent{ID: outboxEv.ID, Payload: payloadBytes}
 
-	require.NoError(t, worker.ProcessEvent(ctx, ev))
+	require.NoError(t, worker.ProcessEvent(ctx, ev, nil))
 	require.Equal(t, int32(1), atomic.LoadInt32(&requestCount))
 
 	// Simulate worker kill + replay of the same outbox row: idempotency hash blocks second HTTP.
-	require.ErrorIs(t, worker.ProcessEvent(ctx, ev), ErrDuplicateEvent)
+	require.ErrorIs(t, worker.ProcessEvent(ctx, ev, nil), ErrDuplicateEvent)
 	require.Equal(t, int32(1), atomic.LoadInt32(&requestCount))
 
 	hash := postbackIdempotencyHash(PostbackPayload{
@@ -373,7 +373,7 @@ func TestPostback_DeliveredSkipsSecondHTTP(t *testing.T) {
 	worker := NewPostbackWorker(pool, key)
 	ev := db.OutboxEvent{ID: outboxEv.ID, Payload: payloadBytes}
 
-	require.NoError(t, worker.ProcessEvent(ctx, ev))
+	require.NoError(t, worker.ProcessEvent(ctx, ev, nil))
 	require.Equal(t, int32(0), atomic.LoadInt32(&requestCount))
 
 	dispatch, err := q.GetPostbackDispatch(ctx, hash)
@@ -499,7 +499,7 @@ func TestPostbackIntegration_DLQMovement(t *testing.T) {
 	err = worker.ProcessEvent(ctx, db.OutboxEvent{
 		ID:      outboxEv.ID,
 		Payload: payloadBytes,
-	})
+	}, nil)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "moved to DLQ")
 

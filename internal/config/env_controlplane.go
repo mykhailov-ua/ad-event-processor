@@ -52,6 +52,8 @@ func loadControlplaneModules(cfg *Config) {
 	if cfg.Billing.PaymentProviderKey == "" {
 		cfg.Billing.PaymentProviderKey = "placeholder_dev"
 	}
+	cfg.Billing.ExportFetchRows = getEnvInt("BILLING_EXPORT_FETCH_ROWS", 1000)
+	cfg.Billing.ExportJobTimeoutMin = getEnvInt("BILLING_EXPORT_JOB_TIMEOUT_MIN", 15)
 	cfg.BillingInternalToken = Secret(os.Getenv("BILLING_INTERNAL_TOKEN"))
 }
 

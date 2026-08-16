@@ -31,7 +31,7 @@ func startLicenseWatcher(ctx context.Context, pool *pgxpool.Pool, rdbs []redis.U
 	}
 	if config.LicenseRequiredFromEnv() {
 		state, _ := watcher.GetState()
-		if !licensing.IngestAllowed(state) {
+		if state == licensing.StateExpired || state == licensing.StateRevoked {
 			slog.Warn("license required but ingest not allowed at startup", "state", state)
 		}
 	}
@@ -53,7 +53,7 @@ func licenseIngestReady() bool {
 		return false
 	}
 	state, _ := w.GetState()
-	return licensing.IngestAllowed(state)
+	return state != licensing.StateExpired && state != licensing.StateRevoked
 }
 
 func reloadLicense(ctx context.Context) error {

@@ -6,7 +6,7 @@ import {
   segmentColors,
   setupCanvas,
 } from './canvas_util.js';
-import type { ChartCategoryItem, ChartHandle } from './area_chart.js';
+import type { ChartCategoryItem, ChartHandle } from './chart_types.js';
 
 /**
  * Draw a single donut slice between start and end angles.

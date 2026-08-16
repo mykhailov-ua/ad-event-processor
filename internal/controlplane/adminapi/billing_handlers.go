@@ -1536,29 +1536,39 @@ func (s *CompositeReadService) GetInvariant(ctx context.Context, customerID *uui
 		return InvariantDTO{}, err
 	}
 	defer rows.Close()
+
+	var customerIDs []uuid.UUID
 	for rows.Next() {
 		var id pgtype.UUID
 		if err := rows.Scan(&id); err != nil {
 			return InvariantDTO{}, err
 		}
-		cid := uuid.UUID(id.Bytes)
-		snap, err := ledger.ReadLedgerInvariant(ctx, s.pool, cid)
+		customerIDs = append(customerIDs, uuid.UUID(id.Bytes))
+	}
+	if err := rows.Err(); err != nil {
+		return InvariantDTO{}, err
+	}
+
+	mismatches, err := ledger.ListLedgerInvariantMismatchesForIDs(ctx, s.pool, customerIDs)
+	if err != nil {
+		return InvariantDTO{}, err
+	}
+	if len(mismatches) > 0 {
+		snap, err := ledger.ReadLedgerInvariant(ctx, s.pool, mismatches[0])
 		if err != nil {
 			return InvariantDTO{}, err
 		}
 		diff := snap.BalanceMicro - snap.LedgerSumMicro
-		if diff < -ledgerInvariantToleranceMicro || diff > ledgerInvariantToleranceMicro {
-			return InvariantDTO{
-				OK:             false,
-				CustomerID:     cid.String(),
-				BalanceMicro:   snap.BalanceMicro,
-				LedgerSumMicro: snap.LedgerSumMicro,
-				DiffMicro:      diff,
-				FleetScanLimit: fleetInvariantScanLimit,
-			}, nil
-		}
+		return InvariantDTO{
+			OK:             false,
+			CustomerID:     mismatches[0].String(),
+			BalanceMicro:   snap.BalanceMicro,
+			LedgerSumMicro: snap.LedgerSumMicro,
+			DiffMicro:      diff,
+			FleetScanLimit: fleetInvariantScanLimit,
+		}, nil
 	}
-	return InvariantDTO{OK: true, FleetScanLimit: fleetInvariantScanLimit}, rows.Err()
+	return InvariantDTO{OK: true, FleetScanLimit: fleetInvariantScanLimit}, nil
 }
 
 func (s *CompositeReadService) GetSummary(ctx context.Context) (SummaryDTO, error) {

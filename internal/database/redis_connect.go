@@ -3,8 +3,8 @@ package database
 import (
 	"context"
 	"fmt"
-	"net"
-	"strings"
+
+	"github.com/bidshard/ad-event-processor/pkg/netaddr"
 
 	redis "github.com/redis/go-redis/v9"
 )
@@ -14,17 +14,7 @@ func ConnectRedis(ctx context.Context, addr string, password string) (redis.Univ
 }
 
 func ConnectRedisWithBreaker(ctx context.Context, addr string, password string, breaker *RedisBreaker) (redis.UniversalClient, error) {
-	uopts := &redis.UniversalOptions{
-		Addrs:    []string{addr},
-		Password: password,
-	}
-
-	if strings.HasPrefix(addr, "/") || strings.HasSuffix(addr, ".sock") || strings.Contains(addr, ".sock") {
-		uopts.Dialer = func(ctx context.Context, _, addr string) (net.Conn, error) {
-			var netDialer net.Dialer
-			return netDialer.DialContext(ctx, "unix", addr)
-		}
-	}
+	uopts := netaddr.RedisUniversalOptions(addr, password)
 
 	rdb := redis.NewUniversalClient(uopts)
 
@@ -38,4 +28,17 @@ func ConnectRedisWithBreaker(ctx context.Context, addr string, password string, 
 	}
 
 	return rdb, nil
+}
+
+// BrokerRedisURL returns a coordinator-compatible redis URL for the first shard addr.
+func BrokerRedisURL(addrs []string, password string) string {
+	if len(addrs) == 0 {
+		return ""
+	}
+	return netaddr.RedisURLFromAddr(addrs[0], password, 0)
+}
+
+// OpenRedisFromURLOrAddr parses redis URL, unix path, or host:port.
+func OpenRedisFromURLOrAddr(raw, password string) (redis.UniversalClient, error) {
+	return netaddr.ParseRedisURL(raw, password)
 }

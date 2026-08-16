@@ -29,7 +29,12 @@ if peer_idx < 1 or peer_idx > #peers.list then
 end
 
 local peer = peers.list[peer_idx]
-local ok, err = balancer.set_current_peer(peer.host, peer.port)
+local ok, err
+if peer.unix_socket then
+    ok, err = balancer.set_current_peer(peer.unix_socket, 0)
+else
+    ok, err = balancer.set_current_peer(peer.host, peer.port)
+end
 if not ok then
     ngx.log(ngx.ERR, "edge shard balancer: set_current_peer failed: ", err or "unknown")
 end

@@ -11,6 +11,7 @@ import (
 	"github.com/bidshard/ad-event-processor/internal/edge"
 	"github.com/bidshard/ad-event-processor/internal/edge/bpf"
 	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
+	"github.com/bidshard/ad-event-processor/pkg/netaddr"
 
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/rlimit"
@@ -89,10 +90,7 @@ func ebpfEdgeAttachAllowed() bool {
 		return true
 	}
 
-	rdb := redis.NewClient(&redis.Options{
-		Addr:     redisAddr,
-		Password: os.Getenv("REDIS_PASS"),
-	})
+	rdb := redis.NewClient(netaddr.RedisClientOptions(redisAddr, os.Getenv("REDIS_PASS")))
 	defer func() { _ = rdb.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)

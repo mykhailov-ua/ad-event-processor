@@ -51,7 +51,7 @@ func TestResolveSafePageLanding(t *testing.T) {
 	assert.False(t, ok)
 }
 
-func TestTrySafePageRedirect_placementBlocked(t *testing.T) {
+func TestResolveSafePageAction_placementBlocked(t *testing.T) {
 	id := uuid.MustParse("550e8400-e29b-41d4-a716-446655440000")
 	reg := stubCampaignRegistry{
 		ok: true,
@@ -65,7 +65,76 @@ func TestTrySafePageRedirect_placementBlocked(t *testing.T) {
 		Status:     trackStatusRejected,
 		RejectKind: filterRejectPlacementBlocked,
 	}
-	url, ok := trySafePageRedirect(reg, id, out)
-	assert.True(t, ok)
+	action, url := resolveSafePageAction(reg, id, out, false)
+	assert.Equal(t, safePageActionInPlace, action)
 	assert.Equal(t, "https://safe.example/lp", url)
+}
+
+func TestResolveSafePageAction_forceSafe(t *testing.T) {
+	id := uuid.MustParse("550e8400-e29b-41d4-a716-446655440000")
+	reg := stubCampaignRegistry{
+		ok: true,
+		camp: &domain.Campaign{
+			ID:              id,
+			SafePageURL:     "https://safe.example/lp",
+			SafePageEnabled: true,
+		},
+	}
+	out := trackOutcome{Status: trackStatusAccepted}
+	action, url := resolveSafePageAction(reg, id, out, true)
+	assert.Equal(t, safePageActionInPlace, action)
+	assert.Equal(t, "https://safe.example/lp", url)
+}
+
+func TestResolveSafePageAction_cleanAccepted(t *testing.T) {
+	id := uuid.MustParse("550e8400-e29b-41d4-a716-446655440000")
+	reg := stubCampaignRegistry{
+		ok: true,
+		camp: &domain.Campaign{
+			ID:              id,
+			SafePageURL:     "https://safe.example/lp",
+			SafePageEnabled: true,
+		},
+	}
+	out := trackOutcome{Status: trackStatusAccepted}
+	action, url := resolveSafePageAction(reg, id, out, false)
+	assert.Equal(t, safePageActionNone, action)
+	assert.Empty(t, url)
+}
+
+func TestResolveSafePageAction_deliveryRedirect(t *testing.T) {
+	id := uuid.MustParse("550e8400-e29b-41d4-a716-446655440000")
+	reg := stubCampaignRegistry{
+		ok: true,
+		camp: &domain.Campaign{
+			ID:              id,
+			SafePageURL:     "https://safe.example/lp",
+			SafePageEnabled: true,
+		},
+	}
+	out := trackOutcome{
+		Status:     trackStatusRejected,
+		RejectKind: filterRejectPlacementBlocked,
+	}
+	action, url := resolveSafePageActionDelivery(reg, id, out, false, safePageDeliveryRedirect)
+	assert.Equal(t, safePageActionRedirect, action)
+	assert.Equal(t, "https://safe.example/lp", url)
+}
+
+func TestParseSafePageStubCampaignID(t *testing.T) {
+	id := uuid.MustParse("550e8400-e29b-41d4-a716-446655440000")
+	parsed, ok := parseSafePageStubCampaignID([]byte("/safe_page_stub?campaign_id=550e8400-e29b-41d4-a716-446655440000"))
+	assert.True(t, ok)
+	assert.Equal(t, id, parsed)
+}
+
+func TestHttp1MatchForceSafeHeader(t *testing.T) {
+	assert.True(t, http1MatchForceSafeHeader([]byte("X-BidShard-Force-Safe")))
+	assert.False(t, http1MatchForceSafeHeader([]byte("X-BidShard-Safe-Page")))
+}
+
+func TestHttp1ForceSafeValue(t *testing.T) {
+	assert.True(t, http1ForceSafeValue([]byte("1")))
+	assert.True(t, http1ForceSafeValue([]byte("true")))
+	assert.False(t, http1ForceSafeValue([]byte("0")))
 }
