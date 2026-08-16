@@ -21,6 +21,7 @@ func main() {
 	oversize := flag.Int("oversize-bytes", 65536, "oversize payload for invalid traffic")
 	pctBroken := flag.Int("pct-broken", 0, "business mode: broken traffic %")
 	pctGray := flag.Int("pct-gray", 0, "business mode: gray/fraud %")
+	pctClickProxy := flag.Int("pct-click-proxy", 0, "GET /click % carved out of the valid bucket (proxy delivery when campaign is configured)")
 	profile := flag.String("profile", "constant", "constant|spike")
 	baseRate := flag.Int("base-rate", 200, "spike profile base RPS")
 	spikeMult := flag.Int("spike-mult", 10, "spike profile peak multiplier")
@@ -48,6 +49,13 @@ func main() {
 	}
 
 	mix := defaultMix(*mode, *pctBroken, *pctGray)
+	if pct := *pctClickProxy; pct > 0 {
+		if pct > mix.pctValid {
+			pct = mix.pctValid
+		}
+		mix.pctValid -= pct
+		mix.pctClickProxy = pct
+	}
 	hist := newHistogram()
 	run := newRunner(bases, *edgeURL, *oversize, mix, hist)
 	run.campaignID = strings.TrimSpace(*campaignID)

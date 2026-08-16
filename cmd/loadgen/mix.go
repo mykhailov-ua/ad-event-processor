@@ -15,12 +15,13 @@ import (
 )
 
 type mixConfig struct {
-	pctOpenRTB  int
-	pctTelegram int
-	pctValid    int
-	pctFraud    int
-	pctInvalid  int
-	pctDDoS     int
+	pctOpenRTB    int
+	pctTelegram   int
+	pctValid      int
+	pctFraud      int
+	pctInvalid    int
+	pctDDoS       int
+	pctClickProxy int
 }
 
 func defaultMix(mode string, pctBroken, pctGray int) mixConfig {
@@ -107,7 +108,8 @@ func (r *runner) doOnce() {
 
 	openrtbEnd := r.mix.pctOpenRTB
 	telegramEnd := openrtbEnd + r.mix.pctTelegram
-	validEnd := telegramEnd + r.mix.pctValid
+	clickProxyEnd := telegramEnd + r.mix.pctClickProxy
+	validEnd := clickProxyEnd + r.mix.pctValid
 	fraudEnd := validEnd + r.mix.pctFraud
 	invalidEnd := fraudEnd + r.mix.pctInvalid
 	ddosEnd := invalidEnd + r.mix.pctDDoS
@@ -117,6 +119,8 @@ func (r *runner) doOnce() {
 		r.postOpenRTBBid(base, iter)
 	case roll < telegramEnd:
 		r.telegramTraffic(base, iter)
+	case roll < clickProxyEnd:
+		r.clickProxyTraffic(base, iter)
 	case roll < validEnd:
 		body := r.validBody(iter)
 		r.post(base+"/track", "application/json", body, nil)
@@ -156,6 +160,15 @@ func (r *runner) telegramTraffic(base string, iter uint64) {
 	default:
 		r.get(fmt.Sprintf("%s/tg/click?campaign_id=%s&click_id=not-a-uuid&bridge_token=%s", base, cid, token))
 	}
+}
+
+// clickProxyTraffic issues GET /click. Exercises proxy delivery only when the
+// pinned campaign is configured with click_delivery=proxy and a mock upstream;
+// otherwise it measures the redirect path.
+func (r *runner) clickProxyTraffic(base string, iter uint64) {
+	cid := r.pickCampaign(iter)
+	clickID := fmt.Sprintf("00000000-0000-4000-8000-%012x", iter)
+	r.get(fmt.Sprintf("%s/click?campaign_id=%s&click_id=%s&sub1=loadgen", base, cid, clickID))
 }
 
 func (r *runner) postOpenRTBBid(base string, iter uint64) {

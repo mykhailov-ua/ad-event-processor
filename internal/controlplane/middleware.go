@@ -42,8 +42,16 @@ func (u AuthenticatedUser) IsBuyer() bool {
 	return u.Role == RoleBuyer
 }
 
+func (u AuthenticatedUser) IsTeamLead() bool {
+	return NormalizeRole(u.Role) == RoleTeamLead
+}
+
+func (u AuthenticatedUser) IsMediaBuyer() bool {
+	return NormalizeRole(u.Role) == RoleMediaBuyer
+}
+
 func (u AuthenticatedUser) HasBoundCustomer() bool {
-	return u.IsUser() || u.IsBuyer()
+	return u.IsUser() || u.IsBuyer() || u.IsTeamLead() || u.IsMediaBuyer()
 }
 
 func GetUser(ctx context.Context) (AuthenticatedUser, bool) {

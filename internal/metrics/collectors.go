@@ -67,6 +67,46 @@ var (
 		Help: "POST /track/verify behavioral unlock to money landing HTML",
 	})
 
+	CIDRLPMMatchTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_cidr_lpm_match_total",
+		Help: "L1 CIDR/ASN pre-filter matches by feed (fixed label set: aws, gcp, azure, tor, other)",
+	}, []string{"feed"})
+
+	CIDRFeedRefreshTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_cidr_feed_refresh_total",
+		Help: "CIDR feed refresh cycles completed (success or partial)",
+	})
+
+	CIDRFeedRefreshErrorsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_cidr_feed_refresh_errors_total",
+		Help: "CIDR feed download/parse failures; previous snapshot retained",
+	}, []string{"feed"})
+
+	CIDRLPMUninitialized = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_cidr_lpm_uninitialized",
+		Help: "1 while the L1 CIDR table has no published snapshot (L1 fail-open)",
+	})
+
+	CIDRLPMPrefixes = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_cidr_lpm_prefixes",
+		Help: "Number of CIDR prefixes in the active L1 snapshot",
+	})
+
+	ClickProxyDeliverTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_click_proxy_deliver_total",
+		Help: "GET /click proxy deliveries completed (upstream streamed to client)",
+	})
+
+	ClickProxyErrorsTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_click_proxy_errors_total",
+		Help: "GET /click proxy upstream/dial/stream failures",
+	})
+
+	ClickProxyStreamBytesTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_click_proxy_stream_bytes_total",
+		Help: "Bytes streamed from upstream to client on /click proxy path",
+	})
+
 	DbWriteDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "ad_db_write_duration_seconds",
 		Help:    "Duration of database batch write operations",

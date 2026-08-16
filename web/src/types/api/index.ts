@@ -65,3 +65,4 @@ export type {
   RtbFloorsApplyResult,
 } from './rtb.js';
 export type { LicenseStatusDTO } from './license.js';
+export type { TeamOverviewDTO, TeamMemberDTO, TeamLicenseDTO } from './team.js';

@@ -10,7 +10,7 @@ mode="${1:-all}"
 ensure_golangci_lint() {
 	if [[ -z "$(which golangci-lint 2>/dev/null)" ]]; then
 		echo "Installing golangci-lint..."
-		go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.5
+		go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6
 	fi
 	GOPATH="$(go env GOPATH)"
 	if [[ -z "$GOPATH" ]]; then

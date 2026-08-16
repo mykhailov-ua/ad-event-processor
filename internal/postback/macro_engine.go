@@ -33,6 +33,9 @@ type MacroTemplate struct {
 
 func ParseTemplate(tpl string) *MacroTemplate {
 	mt := &MacroTemplate{}
+	if tpl == "" {
+		return mt
+	}
 	mt.slab = make([]byte, len(tpl))
 	copy(mt.slab, tpl)
 	owned := unsafe.String(&mt.slab[0], len(mt.slab))

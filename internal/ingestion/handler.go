@@ -617,6 +617,19 @@ type AdsPacketHandler struct {
 	brokerProducer        *BrokerProducer
 	streamProducers       []*StreamProducer
 	trackCORS             trackCORS
+	cidrTable             *CIDRTable
+	cidrMetrics           l1CIDRMetrics
+	clickProxyClient      *http.Client
+}
+
+// ConfigureCIDR attaches the L1 CIDR/ASN table (RP-M1). Nil disables the
+// hook (fail-open).
+func (h *AdsPacketHandler) ConfigureCIDR(table *CIDRTable) {
+	if h == nil {
+		return
+	}
+	h.cidrTable = table
+	h.cidrMetrics = newL1CIDRMetrics()
 }
 
 func (h *AdsPacketHandler) SetPool(p Pinger) {

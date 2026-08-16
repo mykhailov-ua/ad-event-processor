@@ -123,6 +123,9 @@ const OpsReconPage = lazy(() => import('./pages/ops_recon_page.js').then((mod) =
 const BillingPage = lazy(() => import('./pages/billing_page.js').then((mod) => ({
   default: mod.BillingPage,
 })));
+const TeamPage = lazy(() => import('./pages/team_page.js').then((mod) => ({
+  default: mod.TeamPage,
+})));
 const AuditPage = lazy(() => import('./pages/audit_page.js').then((mod) => ({
   default: mod.AuditPage,
 })));
@@ -203,6 +206,7 @@ export function AppRoutes() {
       <Route path="/ops/blacklist" element={lazyRoute(<OpsBlacklistPage />)} />
       <Route path="/ops/recon" element={lazyRoute(<OpsReconPage />)} />
       <Route path="/billing" element={lazyRoute(<BillingPage />)} />
+      <Route path="/team" element={lazyRoute(<TeamPage />)} />
       <Route path="/audit" element={lazyRoute(<AuditPage />)} />
       <Route path="*" element={<NotFoundPage />} />
       </Routes>

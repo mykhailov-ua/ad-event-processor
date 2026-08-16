@@ -1,0 +1,12 @@
+version: 1
+url_template: "https://aff.example.com/postback?click_id={click_id}&payout={payout}&status={status}&sub1={sub1}"
+placeholders:
+  - click_id
+  - payout
+  - currency
+  - status
+  - sub1
+  - sub2
+  - sub3
+  - sub4
+  - sub5

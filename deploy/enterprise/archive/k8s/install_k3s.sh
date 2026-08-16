@@ -4,7 +4,7 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 
 KUBECONFIG_DST="${HOME}/.kube/config-espx"
-while [[ $
+while [[ $# -gt 0 ]]; do
 	case "$1" in
 	--kubeconfig)
 		KUBECONFIG_DST="$2"

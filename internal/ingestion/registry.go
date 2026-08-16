@@ -58,7 +58,13 @@ type campaignReplicaDTO struct {
 	TargetCountries  []string              `json:"target_countries,omitempty"`
 	SafePageURL      string                `json:"safe_page_url,omitempty"`
 	SafePageEnabled  bool                  `json:"safe_page_enabled"`
-	RegistryStatus   string                `json:"registry_status"`
+	// L1CIDRBlockEnabled is absent in pre-M1 replicas; decode defaults to
+	// false (fail-open) until the first DB sync rewrites the file.
+	L1CIDRBlockEnabled bool   `json:"l1_cidr_block_enabled"`
+	ClickDelivery      string `json:"click_delivery,omitempty"`
+	ProxyUpstreamURL   string `json:"proxy_upstream_url,omitempty"`
+	ProxyRewriteAssets bool   `json:"proxy_rewrite_assets"`
+	RegistryStatus     string `json:"registry_status"`
 }
 
 type entitlementsSnapshot struct {
@@ -356,24 +362,28 @@ func (r *Registry) saveReplica(m map[uuid.UUID]campaignInfo) error {
 		}
 
 		dtos = append(dtos, campaignReplicaDTO{
-			ID:               info.campaign.ID,
-			CustomerID:       info.campaign.CustomerID,
-			BrandID:          info.campaign.BrandID,
-			BrandFcapKey:     info.campaign.BrandFcapKey,
-			Name:             info.campaign.Name,
-			BudgetLimit:      info.campaign.BudgetLimit,
-			CurrentSpend:     info.campaign.CurrentSpend,
-			Status:           info.campaign.Status,
-			PacingMode:       info.campaign.PacingMode,
-			DailyBudget:      info.campaign.DailyBudget,
-			DailyBudgetMicro: info.campaign.DailyBudgetMicro,
-			Timezone:         info.campaign.Timezone,
-			FreqLimit:        info.campaign.FreqLimit,
-			FreqWindow:       info.campaign.FreqWindow,
-			TargetCountries:  targetCountries,
-			SafePageURL:      info.campaign.SafePageURL,
-			SafePageEnabled:  info.campaign.SafePageEnabled,
-			RegistryStatus:   string(info.status),
+			ID:                 info.campaign.ID,
+			CustomerID:         info.campaign.CustomerID,
+			BrandID:            info.campaign.BrandID,
+			BrandFcapKey:       info.campaign.BrandFcapKey,
+			Name:               info.campaign.Name,
+			BudgetLimit:        info.campaign.BudgetLimit,
+			CurrentSpend:       info.campaign.CurrentSpend,
+			Status:             info.campaign.Status,
+			PacingMode:         info.campaign.PacingMode,
+			DailyBudget:        info.campaign.DailyBudget,
+			DailyBudgetMicro:   info.campaign.DailyBudgetMicro,
+			Timezone:           info.campaign.Timezone,
+			FreqLimit:          info.campaign.FreqLimit,
+			FreqWindow:         info.campaign.FreqWindow,
+			TargetCountries:    targetCountries,
+			SafePageURL:        info.campaign.SafePageURL,
+			SafePageEnabled:    info.campaign.SafePageEnabled,
+			L1CIDRBlockEnabled: info.campaign.L1CIDRBlockEnabled,
+			ClickDelivery:      info.campaign.ClickDelivery,
+			ProxyUpstreamURL:   info.campaign.ProxyUpstreamURL,
+			ProxyRewriteAssets: info.campaign.ProxyRewriteAssets,
+			RegistryStatus:     string(info.status),
 		})
 	}
 
@@ -480,6 +490,10 @@ func (r *Registry) loadReplica() (*campaignMapSnapshot, error) {
 				DailySpendKeyPrefix: dailySpendKeyPrefix(dto.ID),
 				SafePageURL:         dto.SafePageURL,
 				SafePageEnabled:     dto.SafePageEnabled,
+				L1CIDRBlockEnabled:  dto.L1CIDRBlockEnabled,
+				ClickDelivery:       dto.ClickDelivery,
+				ProxyUpstreamURL:    dto.ProxyUpstreamURL,
+				ProxyRewriteAssets:  dto.ProxyRewriteAssets,
 			},
 			status: db.CampaignStatusType(dto.RegistryStatus),
 		}

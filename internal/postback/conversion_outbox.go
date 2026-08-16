@@ -124,6 +124,9 @@ func buildPostbackPayloadFromEvent(evt *domain.Event, customerID uuid.UUID) Post
 	if pb.TxID == "" {
 		pb.TxID = evt.ClickID
 	}
+	if pb.EventSourceURL == "" {
+		pb.EventSourceURL = synthesizeEventSourceURL(pb, "")
+	}
 	return pb
 }
 
@@ -157,6 +160,9 @@ func mergeEventPayloadInto(pb *PostbackPayload, raw []byte) {
 	}
 	if v := readString("ttclid"); v != "" {
 		pb.TTCLID = v
+	}
+	if v := readString("event_source_url"); v != "" {
+		pb.EventSourceURL = v
 	}
 	if v := readString("email"); v != "" {
 		pb.Email = v

@@ -1,5 +1,11 @@
+version: "2"
+
 # Cold-path Go lint profile (everything except hot-path packages).
 # Run via: scripts/ci/lint_go_gate.sh cold
+run:
+  timeout: 8m
+  go: "1.25.12"
+
 linters:
   enable:
     - govet
@@ -14,69 +20,63 @@ linters:
     - contextcheck
     - errorlint
     - forbidigo
-
-run:
-  timeout: 8m
-  go: '1.25.12'
-
-linters-settings:
-  revive:
+  settings:
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+    staticcheck:
+      checks:
+        - all
+        - SA9003
+        - SA4017
+    gocritic:
+      enabled-checks:
+        - appendAssign
+        - assignOp
+        - badCond
+        - builtinShadow
+        - dupImport
+        - elseif
+        - exitAfterDefer
+        - httpNoBody
+        - ifElseChain
+        - nilValReturn
+        - octalLiteral
+        - singleCaseSwitch
+        - typeAssertChain
+        - unlambda
+        - unslice
+        - wrapperFunc
+    forbidigo:
+      forbid:
+        - pattern: '^(fmt\.Print(|f|ln)|print|println)$'
+        - pattern: 'log\.Fatal'
+        - pattern: 'panic\('
+  exclusions:
+    generated: lax
     rules:
-      - name: exported
-        disabled: true
-  staticcheck:
-    checks:
-      - all
-      - SA9003
-      - SA4017
-  gocritic:
-    enabled-checks:
-      - appendAssign
-      - assignOp
-      - badCond
-      - builtinShadow
-      - dupImport
-      - elseif
-      - exitAfterDefer
-      - httpNoBody
-      - ifElseChain
-      - nilValReturn
-      - octalLiteral
-      - singleCaseSwitch
-      - typeAssertChain
-      - unlambda
-      - unslice
-      - wrapperFunc
-  forbidigo:
-    forbid:
-      - '^(fmt\.Print(|f|ln)|print|println)$'
-      - 'log\.Fatal'
-      - 'panic\('
-
-issues:
-  exclude-use-default: false
-  exclude-rules:
-    - path: '_test\.go'
-      linters:
-        - errcheck
-        - revive
-        - noctx
-        - contextcheck
-        - forbidigo
-    - path: '(/|^)(.*/)?pb/'
-      linters:
-        - errcheck
-    - path: '(/|^)(.*/)?db/'
-      linters:
-        - errcheck
-    # CLI / installer UX: stdout is the interface.
-    - path: 'cmd/admin/'
-      linters:
-        - forbidigo
-    - path: 'internal/installer/'
-      linters:
-        - forbidigo
-    - path: 'cmd/.+/main\.go'
-      linters:
-        - gocritic
-      text: 'exitAfterDefer'
+      - path: '_test\.go'
+        linters:
+          - errcheck
+          - revive
+          - noctx
+          - contextcheck
+          - forbidigo
+      - path: '(/|^)(.*/)?pb/'
+        linters:
+          - errcheck
+      - path: '(/|^)(.*/)?db/'
+        linters:
+          - errcheck
+      # CLI / installer UX: stdout is the interface.
+      - path: 'cmd/admin/'
+        linters:
+          - forbidigo
+      - path: 'internal/installer/'
+        linters:
+          - forbidigo
+      - path: 'cmd/.+/main\.go'
+        linters:
+          - gocritic
+        text: 'exitAfterDefer'

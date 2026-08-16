@@ -1,5 +1,11 @@
+version: "2"
+
 # Default golangci-lint config (IDE + `golangci-lint run` without -c).
 # CI uses split profiles: .golangci-cold.yaml / .golangci-hot.yaml via scripts/ci/lint_go_gate.sh
+run:
+  timeout: 8m
+  go: "1.25.12"
+
 linters:
   enable:
     - govet
@@ -14,113 +20,107 @@ linters:
     - contextcheck
     - errorlint
     - forbidigo
-
-run:
-  timeout: 8m
-  go: '1.25.12'
-
-linters-settings:
-  revive:
+  settings:
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+    staticcheck:
+      checks:
+        - all
+        - SA9003
+        - SA4017
+    gocritic:
+      enabled-checks:
+        - appendAssign
+        - assignOp
+        - badCond
+        - builtinShadow
+        - dupImport
+        - elseif
+        - exitAfterDefer
+        - httpNoBody
+        - ifElseChain
+        - nilValReturn
+        - octalLiteral
+        - singleCaseSwitch
+        - typeAssertChain
+        - unlambda
+        - unslice
+        - wrapperFunc
+    forbidigo:
+      forbid:
+        - pattern: '^(fmt\.Print(|f|ln)|print|println)$'
+        - pattern: 'log\.Fatal'
+        - pattern: 'panic\('
+  exclusions:
+    generated: lax
     rules:
-      - name: exported
-        disabled: true
-  staticcheck:
-    checks:
-      - all
-      - SA9003
-      - SA4017
-  gocritic:
-    enabled-checks:
-      - appendAssign
-      - assignOp
-      - badCond
-      - builtinShadow
-      - dupImport
-      - elseif
-      - exitAfterDefer
-      - httpNoBody
-      - ifElseChain
-      - nilValReturn
-      - octalLiteral
-      - singleCaseSwitch
-      - typeAssertChain
-      - unlambda
-      - unslice
-      - wrapperFunc
-  forbidigo:
-    forbid:
-      - '^(fmt\.Print(|f|ln)|print|println)$'
-      - 'log\.Fatal'
-      - 'panic\('
-
-issues:
-  exclude-use-default: false
-  exclude-rules:
-    - path: '_test\.go'
-      linters:
-        - errcheck
-        - revive
-        - noctx
-        - contextcheck
-        - forbidigo
-    - path: '(/|^)(.*/)?pb/'
-      linters:
-        - errcheck
-    - path: '(/|^)(.*/)?db/'
-      linters:
-        - errcheck
-    - path: 'cmd/admin/'
-      linters:
-        - forbidigo
-    - path: 'internal/installer/'
-      linters:
-        - forbidigo
-    - path: 'internal/ingestion/'
-      linters:
-        - errcheck
-        - gocritic
-        - noctx
-        - bodyclose
-        - contextcheck
-        - errorlint
-        - forbidigo
-    - path: 'internal/campaignmodel/'
-      linters:
-        - errcheck
-        - gocritic
-        - noctx
-        - bodyclose
-        - contextcheck
-        - errorlint
-        - forbidigo
-    - path: 'internal/rtb/'
-      linters:
-        - errcheck
-        - gocritic
-        - noctx
-        - bodyclose
-        - contextcheck
-        - errorlint
-        - forbidigo
-    - path: 'cmd/tracker/'
-      linters:
-        - errcheck
-        - gocritic
-        - noctx
-        - bodyclose
-        - contextcheck
-        - errorlint
-        - forbidigo
-    - path: 'pkg/broker/'
-      linters:
-        - errcheck
-        - gocritic
-        - noctx
-        - bodyclose
-        - contextcheck
-        - errorlint
-        - forbidigo
-    - path: 'cmd/.+/main\.go'
-      linters:
-        - gocritic
-      text: 'exitAfterDefer'
+      - path: '_test\.go'
+        linters:
+          - errcheck
+          - revive
+          - noctx
+          - contextcheck
+          - forbidigo
+      - path: '(/|^)(.*/)?pb/'
+        linters:
+          - errcheck
+      - path: '(/|^)(.*/)?db/'
+        linters:
+          - errcheck
+      - path: 'cmd/admin/'
+        linters:
+          - forbidigo
+      - path: 'internal/installer/'
+        linters:
+          - forbidigo
+      - path: 'internal/ingestion/'
+        linters:
+          - errcheck
+          - gocritic
+          - noctx
+          - bodyclose
+          - contextcheck
+          - errorlint
+          - forbidigo
+      - path: 'internal/domain/'
+        linters:
+          - errcheck
+          - gocritic
+          - noctx
+          - bodyclose
+          - contextcheck
+          - errorlint
+          - forbidigo
+      - path: 'internal/rtb/'
+        linters:
+          - errcheck
+          - gocritic
+          - noctx
+          - bodyclose
+          - contextcheck
+          - errorlint
+          - forbidigo
+      - path: 'cmd/tracker/'
+        linters:
+          - errcheck
+          - gocritic
+          - noctx
+          - bodyclose
+          - contextcheck
+          - errorlint
+          - forbidigo
+      - path: 'pkg/broker/'
+        linters:
+          - errcheck
+          - gocritic
+          - noctx
+          - bodyclose
+          - contextcheck
+          - errorlint
+          - forbidigo
+      - path: 'cmd/.+/main\.go'
+        linters:
+          - gocritic
+        text: 'exitAfterDefer'

@@ -68,11 +68,13 @@ services:
           memory: 768M
 
   nginx:
-    depends_on: !override
+    depends_on:
       tracker-0:
         condition: service_healthy
       tracker-1:
         condition: service_healthy
+      tracker-2: null
+      tracker-3: null
     environment:
       - EDGE_BL_STALE_SEC=3600
     volumes:

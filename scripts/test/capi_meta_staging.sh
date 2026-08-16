@@ -129,6 +129,18 @@ for _ in $(seq 1 18); do
   if curl -sf "$POSTBACK_METRICS_URL" 2>/dev/null | grep -qF "$METRIC_GREP"; then
     log "success: ${METRIC_GREP} observed"
     log "next: confirm event in Meta Events Manager (test stream) within 5 min"
+    REPORT_DIR="${CAPI_LAB_REPORT_DIR:-$ROOT/var/capi-lab/$(date -u +%Y%m%dT%H%M%SZ)}"
+    mkdir -p "$REPORT_DIR"
+    {
+      echo "harness=capi_meta_staging"
+      echo "campaign_id=${CAMPAIGN_ID}"
+      echo "click_id=${CLICK_ID}"
+      echo "click_http=${CLICK_CODE}"
+      echo "track_http=${TRACK_CODE}"
+      echo "metric=${METRIC_GREP}"
+      echo "fault_proof fault=capi_meta_staging harness=capi_meta_staging provider=facebook status=success"
+    } >"$REPORT_DIR/summary.txt"
+    log "report: $REPORT_DIR/summary.txt"
     exit 0
   fi
   sleep 5

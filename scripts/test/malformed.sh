@@ -11,6 +11,7 @@ DURATION="${DURATION:-}"
 PREPARE="${PREPARE:-0}"
 PCT_BROKEN="${PCT_BROKEN:-}"
 PCT_GRAY="${PCT_GRAY:-}"
+PCT_CLICK_PROXY="${PCT_CLICK_PROXY:-}"
 OUT="$ROOT/var/load-test/$(date -u +%Y%m%dT%H%M%SZ)"
 mkdir -p "$OUT"
 
@@ -82,6 +83,7 @@ LG_ARGS=(-mode "$MODE" -out "$OUT" -trackers "$TRACKER_BASES" -edge "${EDGE_URL:
 [[ -n "$DURATION" ]] && LG_ARGS+=(-duration "$DURATION")
 [[ -n "$PCT_BROKEN" ]] && LG_ARGS+=(-pct-broken "$PCT_BROKEN")
 [[ -n "$PCT_GRAY" ]] && LG_ARGS+=(-pct-gray "$PCT_GRAY")
+[[ -n "$PCT_CLICK_PROXY" ]] && LG_ARGS+=(-pct-click-proxy "$PCT_CLICK_PROXY")
 
 log "starting loadgen (${MODE})"
 go run ./cmd/loadgen "${LG_ARGS[@]}" 2>&1 | tee "$OUT/loadgen.log"

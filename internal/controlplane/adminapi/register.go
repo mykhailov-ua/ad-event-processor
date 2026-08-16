@@ -3,31 +3,34 @@ package adminapi
 import "net/http"
 
 type RouteRegistry struct {
-	BillingHTTP      *BillingHTTPHandlers
-	OpsHTTP          *OpsHTTPHandlers
-	DoctorHTTP       *DoctorHTTPHandlers
-	ExportHTTP       *ExportHTTPHandlers
-	LicensingHTTP    *LicensingHTTPHandlers
-	ReportsHTTP      *ReportsHTTPHandlers
-	DashboardsHTTP   *DashboardsHTTPHandlers
-	ViewsHTTP        *ViewsHTTPHandlers
-	SelfServeHTTP    *SelfServeHTTPHandlers
-	PostbackHTTP     *PostbackHTTPHandlers
-	CostSyncHTTP     *CostSyncHTTPHandlers
-	MarginGuardHTTP  *MarginGuardHTTPHandlers
-	SmartAlertsHTTP  *SmartAlertsHTTPHandlers
-	DomainHealthHTTP *DomainHealthHTTPHandlers
-	RtbFloorsHTTP    *RtbFloorsHTTPHandlers
-	RtbHTTP          *RtbHTTPHandlers
-	CampaignsHTTP    *CampaignsHTTPHandlers
-	CustomersHTTP    *CustomersHTTPHandlers
-	SupportHTTP      *SupportHTTPHandlers
-	MetaHTTP         *MetaHTTPHandlers
-	EulaHTTP         *EulaHTTPHandlers
-	PlatformHTTP     *PlatformHTTPHandlers
-	CommercialHTTP   *CommercialHTTPHandlers
-	StubHTTP         *StubHTTPHandlers
-	TelegramHTTP     *TelegramHTTPHandlers
+	BillingHTTP           *BillingHTTPHandlers
+	CryptoBillingWebhook  *CryptoBillingWebhookHandlers
+	OpsHTTP               *OpsHTTPHandlers
+	DoctorHTTP            *DoctorHTTPHandlers
+	ExportHTTP            *ExportHTTPHandlers
+	LicensingHTTP         *LicensingHTTPHandlers
+	ReportsHTTP           *ReportsHTTPHandlers
+	DashboardsHTTP        *DashboardsHTTPHandlers
+	ViewsHTTP             *ViewsHTTPHandlers
+	SelfServeHTTP         *SelfServeHTTPHandlers
+	PostbackHTTP          *PostbackHTTPHandlers
+	CostSyncHTTP          *CostSyncHTTPHandlers
+	MarginGuardHTTP       *MarginGuardHTTPHandlers
+	SmartAlertsHTTP       *SmartAlertsHTTPHandlers
+	DomainHealthHTTP      *DomainHealthHTTPHandlers
+	IntegrationSchemaHTTP *IntegrationSchemaHTTPHandlers
+	TeamHTTP              *TeamHTTPHandlers
+	RtbFloorsHTTP         *RtbFloorsHTTPHandlers
+	RtbHTTP               *RtbHTTPHandlers
+	CampaignsHTTP         *CampaignsHTTPHandlers
+	CustomersHTTP         *CustomersHTTPHandlers
+	SupportHTTP           *SupportHTTPHandlers
+	MetaHTTP              *MetaHTTPHandlers
+	EulaHTTP              *EulaHTTPHandlers
+	PlatformHTTP          *PlatformHTTPHandlers
+	CommercialHTTP        *CommercialHTTPHandlers
+	StubHTTP              *StubHTTPHandlers
+	TelegramHTTP          *TelegramHTTPHandlers
 }
 
 func Catalog() []Route {
@@ -48,6 +51,7 @@ var routeCatalog = []Route{
 	{Method: "POST", Path: "/api/v1/billing/exports"},
 	{Method: "GET", Path: "/api/v1/billing/exports/{job_id}"},
 	{Method: "GET", Path: "/api/v1/billing/exports/{job_id}/download"},
+	{Method: "POST", Path: "/api/v1/billing/crypto/webhook"},
 	{Method: "GET", Path: "/api/v1/billing/invariant"},
 	{Method: "GET", Path: "/api/v1/billing/invoices"},
 	{Method: "GET", Path: "/api/v1/billing/invoices/{id}"},
@@ -131,6 +135,8 @@ var routeCatalog = []Route{
 	{Method: "DELETE", Path: "/api/v1/domains/{hostname}"},
 	{Method: "POST", Path: "/api/v1/domains/{hostname}/probe"},
 	{Method: "POST", Path: "/api/v1/domains/{hostname}/ssl/setup"},
+	{Method: "GET", Path: "/api/v1/ops/domains/tls-allowed"},
+	{Method: "GET", Path: "/api/v1/ops/domains/{hostname}/tls-allowed"},
 	{Method: "GET", Path: "/api/v1/ops/blacklist"},
 	{Method: "POST", Path: "/api/v1/ops/blacklist"},
 	{Method: "DELETE", Path: "/api/v1/ops/blacklist"},
@@ -147,7 +153,11 @@ var routeCatalog = []Route{
 	{Method: "POST", Path: "/api/v1/ops/roles/reload"},
 	{Method: "GET", Path: "/api/v1/ops/shards"},
 	{Method: "POST", Path: "/api/v1/ops/shards/0/catchup"},
-	{Method: "GET", Path: "/api/v1/postbacks/config"},
+	{Method: "GET", Path: "/api/v1/team/overview"},
+	{Method: "GET", Path: "/api/v1/integration/schemas"},
+	{Method: "POST", Path: "/api/v1/integration/schemas"},
+	{Method: "GET", Path: "/api/v1/integration/schemas/{id}"},
+	{Method: "POST", Path: "/api/v1/integration/schemas/{id}/apply"},
 	{Method: "PUT", Path: "/api/v1/postbacks/config/{campaign_id}"},
 	{Method: "GET", Path: "/api/v1/postbacks/dlq"},
 	{Method: "POST", Path: "/api/v1/postbacks/dlq/{id}/retry"},
@@ -217,6 +227,9 @@ func RegisterRoutes(mux *http.ServeMux, routes RouteRegistry) {
 	if routes.BillingHTTP != nil {
 		routes.BillingHTTP.Register(mux)
 	}
+	if routes.CryptoBillingWebhook != nil {
+		routes.CryptoBillingWebhook.Register(mux)
+	}
 	if routes.OpsHTTP != nil {
 		routes.OpsHTTP.Register(mux)
 	}
@@ -255,6 +268,12 @@ func RegisterRoutes(mux *http.ServeMux, routes RouteRegistry) {
 	}
 	if routes.DomainHealthHTTP != nil {
 		routes.DomainHealthHTTP.Register(mux)
+	}
+	if routes.IntegrationSchemaHTTP != nil {
+		routes.IntegrationSchemaHTTP.Register(mux)
+	}
+	if routes.TeamHTTP != nil {
+		routes.TeamHTTP.Register(mux)
 	}
 	if routes.RtbFloorsHTTP != nil {
 		routes.RtbFloorsHTTP.Register(mux)

@@ -62,7 +62,13 @@ func CreateCheckout(
 ) (providerRef, checkoutURL string, err error) {
 	switch provider {
 	case "crypto":
-		return createCryptoCheckout(cfg, amountMicro, idempotencyKey)
+		prov := CryptoProviderGeneric
+		if metadata != nil {
+			if p := metadata["crypto_provider"]; p != "" {
+				prov = p
+			}
+		}
+		return CreateCryptoCheckout(cfg, prov, amountMicro, idempotencyKey)
 	case "stripe", "":
 		if StripeConfigured(cfg) {
 			return createStripeCheckout(ctx, cfg, amountMicro, currency, metadata, idempotencyKey)
@@ -78,11 +84,7 @@ func createMockCheckout(idempotencyKey string) (string, string, error) {
 }
 
 func createCryptoCheckout(cfg *config.Config, amountMicro int64, idempotencyKey string) (string, string, error) {
-	minPayment := cfg.CryptoMinPaymentMicro
-	if amountMicro < minPayment {
-		return "", "", fmt.Errorf("amount %d micro is below minimum payment %d micro", amountMicro, minPayment)
-	}
-	return "tx_crypto_" + idempotencyKey, "https://checkout.crypto.dev/pay/" + idempotencyKey, nil
+	return CreateCryptoCheckout(cfg, CryptoProviderGeneric, amountMicro, idempotencyKey)
 }
 
 func createStripeCheckout(

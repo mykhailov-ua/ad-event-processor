@@ -1,6 +1,7 @@
 package postback
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/bidshard/ad-event-processor/internal/domain"
@@ -63,6 +64,9 @@ func TestBuildPostbackPayloadFromEvent(t *testing.T) {
 	}
 	if pb.GCLID != "G-9" || pb.subSlots[1] != "x" {
 		t.Fatalf("attribution %+v", pb)
+	}
+	if pb.EventSourceURL == "" || !strings.Contains(pb.EventSourceURL, "click_id=clk-1") {
+		t.Fatalf("event_source_url %q", pb.EventSourceURL)
 	}
 	if pb.PayoutMicro != 1_000_000 || pb.TxID != "clk-1" {
 		t.Fatalf("payout/tx %d %q", pb.PayoutMicro, pb.TxID)

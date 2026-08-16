@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Proof stubs for .cursor/PARSER_SECURITY_MILESTONE.md (PS-Gxx).
+// Proof stubs for parser security milestone PS-Gxx (closed — docs/MILESTONES.md §2).
 // Tests log fault_proof with gap=open|closed; they must not panic.
 
 func TestChaos_ParserSecurity_PS_G01_SlowBodyStall(t *testing.T) {

@@ -179,6 +179,10 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			LimitExportByCustomer:        h.limitExportByCustomer,
 			ResolveDisputeCustomerFilter: h.resolveDisputeCustomerFilter,
 		},
+		CryptoBillingWebhook: &adminapi.CryptoBillingWebhookHandlers{
+			Processor:           svc,
+			CryptoWebhookSecret: string(h.cfg.CryptoWebhookSecret),
+		},
 		DoctorHTTP: &adminapi.DoctorHTTPHandlers{
 			Config: h.cfg,
 			PlatformConfig: func(ctx context.Context) (platformconfig.Config, error) {
@@ -316,6 +320,24 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			Service:           svc,
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
+			TLSAskToken:       string(h.cfg.Management.CaddyTLSAskToken),
+			TLSAskAllowLocal:  h.cfg.Management.CaddyTLSAskAllowLocal,
+		},
+		IntegrationSchemaHTTP: &adminapi.IntegrationSchemaHTTPHandlers{
+			Pool:              pool,
+			EncryptionKey:     encKey,
+			ApplyRateLimit:    limit,
+			RequirePermission: perm,
+		},
+		TeamHTTP: &adminapi.TeamHTTPHandlers{
+			Team:                 &adminapi.TeamOverviewService{Pool: pool},
+			ApplyRateLimit:       limit,
+			RequireAnyPermission: permAny,
+			ResolveCustomerID:    h.resolveCampaignsCustomerID,
+			SnapshotFromRequest: func(r *http.Request) (authz.Snapshot, bool) {
+				return authz.SnapshotFromContext(r.Context())
+			},
+			WriteServiceError: writeErr,
 		},
 		CommercialHTTP: &adminapi.CommercialHTTPHandlers{
 			Commercial:              commercialAdminAdapter{svc: svc},
@@ -463,7 +485,7 @@ func (h *Handler) resolveDisputeCustomerFilter(r *http.Request) (string, error) 
 		return "", errForbidden
 	}
 	customerFilter := r.URL.Query().Get("customer_id")
-	if u.IsUser() {
+	if u.IsUser() || u.IsTeamLead() || u.IsMediaBuyer() {
 		if customerFilter != "" && customerFilter != u.CustomerID.String() {
 			return "", errForbidden
 		}

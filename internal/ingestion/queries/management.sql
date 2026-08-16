@@ -202,12 +202,14 @@ SELECT COUNT(*) FROM recon_runs;
 -- name: CountCampaigns :one
 SELECT COUNT(*) FROM campaigns
 WHERE (sqlc.narg('customer_id')::uuid IS NULL OR customer_id = sqlc.narg('customer_id')::uuid)
-  AND (sqlc.narg('status')::text IS NULL OR status::text = sqlc.narg('status')::text);
+  AND (sqlc.narg('status')::text IS NULL OR status::text = sqlc.narg('status')::text)
+  AND (sqlc.narg('owner_user_id')::uuid IS NULL OR owner_user_id = sqlc.narg('owner_user_id')::uuid);
 
 -- name: ListCampaigns :many
 SELECT * FROM campaigns
 WHERE (sqlc.narg('customer_id')::uuid IS NULL OR customer_id = sqlc.narg('customer_id')::uuid)
   AND (sqlc.narg('status')::text IS NULL OR status::text = sqlc.narg('status')::text)
+  AND (sqlc.narg('owner_user_id')::uuid IS NULL OR owner_user_id = sqlc.narg('owner_user_id')::uuid)
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2;
 
@@ -395,6 +397,9 @@ SET name = $2,
     referrer_filter = $9,
     safe_page_url = $10,
     safe_page_enabled = $11,
+    click_delivery = $12,
+    proxy_upstream_url = $13,
+    proxy_rewrite_assets = $14,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
 RETURNING *;

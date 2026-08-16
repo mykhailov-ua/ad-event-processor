@@ -12,7 +12,9 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHashSHA256_MetaParity(t *testing.T) {
@@ -90,6 +92,45 @@ func TestFacebookCAPI_Payload(t *testing.T) {
 	if ev.CustomData.Value != 1.5 || ev.CustomData.Currency != "USD" {
 		t.Fatalf("custom=%+v", ev.CustomData)
 	}
+}
+
+func TestCAPI_ProxyAttributionChain(t *testing.T) {
+	cid := uuid.MustParse("550e8400-e29b-41d4-a716-446655440000")
+	clickURL := "https://trk.example.com/click?campaign_id=" + cid.String() +
+		"&type=click&click_id=clk-proxy&gclid=GCLID99&fbclid=FB99&sub1=px"
+
+	var body FacebookCAPIPayload
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &body)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	pb := buildPostbackPayloadFromEvent(&domain.Event{
+		ClickID:    "clk-proxy",
+		CampaignID: cid,
+		Type:       "conversion",
+		Payload: []byte(`{
+			"gclid":"GCLID99",
+			"fbclid":"FB99",
+			"sub1":"px",
+			"event_source_url":"` + clickURL + `"
+		}`),
+	}, uuid.New())
+	require.Equal(t, clickURL, pb.EventSourceURL)
+	require.Equal(t, "GCLID99", pb.GCLID)
+	require.Equal(t, "FB99", pb.FBCLID)
+	require.Equal(t, "px", pb.SubID1)
+
+	a := &FacebookAdapter{}
+	require.NoError(t, a.Send(context.Background(), srv.Client(), &pb, srv.URL, "tok"))
+	require.Len(t, body.Data, 1)
+	ev := body.Data[0]
+	require.Equal(t, clickURL, ev.EventSourceURL)
+	require.True(t, strings.HasSuffix(ev.UserData.Fbc, ".FB99"))
+	t.Log("fault_proof harness=click_proxy_stream_mock ac=4_proxy_to_capi click_id+gclid+event_source_url")
 }
 
 func TestCAPI_DoubleFire_CountingAdapter(t *testing.T) {

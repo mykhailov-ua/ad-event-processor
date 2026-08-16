@@ -16,6 +16,7 @@ import (
 	db "github.com/bidshard/ad-event-processor/internal/domain/db"
 	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 	"github.com/bidshard/ad-event-processor/pkg/money"
+	"github.com/bidshard/ad-event-processor/pkg/proxyupstream"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/google/uuid"
@@ -69,14 +70,16 @@ func (s *Service) ListCampaigns(ctx context.Context, customerID uuid.UUID, statu
 	}
 
 	countParams := db.CountCampaignsParams{
-		CustomerID: cid,
-		Status:     st,
+		CustomerID:  cid,
+		Status:      st,
+		OwnerUserID: campaignOwnerUserFilter(ctx),
 	}
 	listParams := db.ListCampaignsParams{
-		Limit:      limit,
-		Offset:     offset,
-		CustomerID: cid,
-		Status:     st,
+		Limit:       limit,
+		Offset:      offset,
+		CustomerID:  cid,
+		Status:      st,
+		OwnerUserID: campaignOwnerUserFilter(ctx),
 	}
 
 	total, err := q.CountCampaigns(ctx, countParams)
@@ -103,10 +106,21 @@ func (s *Service) GetCampaign(ctx context.Context, id uuid.UUID) (CampaignDTO, e
 	if err != nil {
 		return CampaignDTO{}, mapNotFound(err, ErrCampaignNotFound)
 	}
+	if err := assertMediaBuyerCampaignAccess(ctx, c); err != nil {
+		return CampaignDTO{}, err
+	}
 	return scrubCampaignDTO(ctx, c), nil
 }
 
 func (s *Service) PatchCampaign(ctx context.Context, campaignID uuid.UUID, req adminapi.PatchCampaignRequest) (CampaignDTO, error) {
+	camp, err := s.GetCampaignRow(ctx, campaignID)
+	if err != nil {
+		return CampaignDTO{}, err
+	}
+	if err := assertMediaBuyerCampaignAccess(ctx, camp); err != nil {
+		return CampaignDTO{}, err
+	}
+
 	if req.PacingMode != nil {
 		if _, err := s.UpdateCampaignPacing(ctx, campaignID, *req.PacingMode); err != nil {
 			return CampaignDTO{}, err
@@ -116,13 +130,14 @@ func (s *Service) PatchCampaign(ctx context.Context, campaignID uuid.UUID, req a
 	adminPatch := req.Name != nil || req.DailyBudgetMicro != nil || req.Timezone != nil ||
 		req.FreqLimit != nil || req.FreqWindow != nil || req.TargetCountries != nil ||
 		req.TargetURL != nil || req.ReferrerFilter != nil ||
-		req.SafePageURL != nil || req.SafePageEnabled != nil
+		req.SafePageURL != nil || req.SafePageEnabled != nil ||
+		req.ClickDelivery != nil || req.ProxyUpstreamURL != nil || req.ProxyRewriteAssets != nil
 	if !adminPatch {
 		return s.GetCampaign(ctx, campaignID)
 	}
 
 	var updated db.Campaign
-	err := pgx.BeginFunc(ctx, s.GetPool(), func(tx pgx.Tx) error {
+	err = pgx.BeginFunc(ctx, s.GetPool(), func(tx pgx.Tx) error {
 		q := db.New(tx)
 		camp, err := q.GetCampaignForUpdate(ctx, domain.ToUUID(campaignID))
 		if err != nil {
@@ -178,19 +193,41 @@ func (s *Service) PatchCampaign(ctx context.Context, campaignID uuid.UUID, req a
 		if req.SafePageEnabled != nil {
 			safePageEnabled = *req.SafePageEnabled
 		}
+		clickDelivery := camp.ClickDelivery
+		if req.ClickDelivery != nil {
+			clickDelivery = strings.TrimSpace(*req.ClickDelivery)
+		}
+		if clickDelivery == "" {
+			clickDelivery = proxyupstream.ClickDeliveryRedirect
+		}
+		proxyUpstream := camp.ProxyUpstreamUrl
+		if req.ProxyUpstreamURL != nil {
+			proxyUpstream = strings.TrimSpace(*req.ProxyUpstreamURL)
+		}
+		proxyRewrite := camp.ProxyRewriteAssets
+		if req.ProxyRewriteAssets != nil {
+			proxyRewrite = *req.ProxyRewriteAssets
+		}
+		allowHTTP := s.cfg != nil && s.cfg.ProxyAllowHTTPInsecure
+		if err := proxyupstream.ValidateDeliveryPair(ctx, clickDelivery, proxyUpstream, allowHTTP); err != nil {
+			return err
+		}
 
 		updated, err = q.UpdateCampaignAdmin(ctx, db.UpdateCampaignAdminParams{
-			ID:              domain.ToUUID(campaignID),
-			Name:            name,
-			DailyBudget:     dailyBudget,
-			Timezone:        timezone,
-			FreqLimit:       freqLimit,
-			FreqWindow:      freqWindow,
-			TargetCountries: countries,
-			TargetUrl:       targetURL,
-			ReferrerFilter:  referrerFilter,
-			SafePageUrl:     safePageURL,
-			SafePageEnabled: safePageEnabled,
+			ID:                 domain.ToUUID(campaignID),
+			Name:               name,
+			DailyBudget:        dailyBudget,
+			Timezone:           timezone,
+			FreqLimit:          freqLimit,
+			FreqWindow:         freqWindow,
+			TargetCountries:    countries,
+			TargetUrl:          targetURL,
+			ReferrerFilter:     referrerFilter,
+			SafePageUrl:        safePageURL,
+			SafePageEnabled:    safePageEnabled,
+			ClickDelivery:      clickDelivery,
+			ProxyUpstreamUrl:   proxyUpstream,
+			ProxyRewriteAssets: proxyRewrite,
 		})
 		if err != nil {
 			return err
@@ -391,29 +428,32 @@ func scrubCampaignDTO(ctx context.Context, c db.Campaign) CampaignDTO {
 		countries = []string{}
 	}
 	dto := CampaignDTO{
-		ID:              uuid.UUID(c.ID.Bytes).String(),
-		Name:            c.Name,
-		Status:          string(c.Status),
-		BudgetLimit:     formatMicro(c.BudgetLimit),
-		CurrentSpend:    formatMicro(c.CurrentSpend),
-		CustomerID:      uuid.UUID(c.CustomerID.Bytes).String(),
-		PacingMode:      string(c.PacingMode),
-		DailyBudget:     formatMicro(c.DailyBudget),
-		Timezone:        c.Timezone,
-		FreqLimit:       c.FreqLimit.Int32,
-		FreqWindow:      c.FreqWindow.Int32,
-		TargetCountries: countries,
-		TargetURL:       c.TargetUrl,
-		SafePageURL:     c.SafePageUrl,
-		SafePageEnabled: c.SafePageEnabled,
-		BrandID:         formatOptionalUUID(c.BrandID),
-		CreativePayload: json.RawMessage(c.CreativePayload),
-		ReferrerFilter:  c.ReferrerFilter,
-		StartAt:         formatOptionalTime(c.StartAt),
-		EndAt:           formatOptionalTime(c.EndAt),
-		DaypartHours:    daypartOrEmpty(c.DaypartHours),
-		CreatedAt:       c.CreatedAt.Time.Format(time.RFC3339),
-		UpdatedAt:       c.UpdatedAt.Time.Format(time.RFC3339),
+		ID:                 uuid.UUID(c.ID.Bytes).String(),
+		Name:               c.Name,
+		Status:             string(c.Status),
+		BudgetLimit:        formatMicro(c.BudgetLimit),
+		CurrentSpend:       formatMicro(c.CurrentSpend),
+		CustomerID:         uuid.UUID(c.CustomerID.Bytes).String(),
+		PacingMode:         string(c.PacingMode),
+		DailyBudget:        formatMicro(c.DailyBudget),
+		Timezone:           c.Timezone,
+		FreqLimit:          c.FreqLimit.Int32,
+		FreqWindow:         c.FreqWindow.Int32,
+		TargetCountries:    countries,
+		TargetURL:          c.TargetUrl,
+		SafePageURL:        c.SafePageUrl,
+		SafePageEnabled:    c.SafePageEnabled,
+		ClickDelivery:      c.ClickDelivery,
+		ProxyUpstreamURL:   c.ProxyUpstreamUrl,
+		ProxyRewriteAssets: c.ProxyRewriteAssets,
+		BrandID:            formatOptionalUUID(c.BrandID),
+		CreativePayload:    json.RawMessage(c.CreativePayload),
+		ReferrerFilter:     c.ReferrerFilter,
+		StartAt:            formatOptionalTime(c.StartAt),
+		EndAt:              formatOptionalTime(c.EndAt),
+		DaypartHours:       daypartOrEmpty(c.DaypartHours),
+		CreatedAt:          c.CreatedAt.Time.Format(time.RFC3339),
+		UpdatedAt:          c.UpdatedAt.Time.Format(time.RFC3339),
 	}
 	if snap, ok := authz.SnapshotFromContext(ctx); ok {
 		return scrubCampaignFields(dto, snap.Mask)

@@ -21,7 +21,7 @@ func roleScopeDefault(role string) authz.Scope {
 	switch NormalizeRole(role) {
 	case RoleAdmin, RoleSupport:
 		return authz.ScopeGlobal
-	case RoleBuyer:
+	case RoleBuyer, RoleTeamLead, RoleMediaBuyer:
 		return authz.ScopeTeam
 	default:
 		return authz.ScopeCustomer

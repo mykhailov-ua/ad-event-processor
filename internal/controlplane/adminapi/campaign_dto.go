@@ -21,30 +21,33 @@ func ForecastRetryAfterSec() int {
 }
 
 type CampaignDTO struct {
-	ID              string          `json:"id"`
-	Name            string          `json:"name"`
-	Status          string          `json:"status"`
-	BudgetLimit     string          `json:"budget_limit"`
-	CurrentSpend    string          `json:"current_spend"`
-	CustomerID      string          `json:"customer_id"`
-	PacingMode      string          `json:"pacing_mode"`
-	DailyBudget     string          `json:"daily_budget"`
-	Timezone        string          `json:"timezone"`
-	FreqLimit       int32           `json:"freq_limit"`
-	FreqWindow      int32           `json:"freq_window"`
-	TargetCountries []string        `json:"target_countries"`
-	TargetURL       string          `json:"target_url,omitempty"`
-	SafePageURL     string          `json:"safe_page_url,omitempty"`
-	SafePageEnabled bool            `json:"safe_page_enabled"`
-	BrandID         string          `json:"brand_id,omitempty"`
-	CreativePayload json.RawMessage `json:"creative_payload,omitempty"`
-	ReferrerFilter  string          `json:"referrer_filter,omitempty"`
-	StartAt         string          `json:"start_at,omitempty"`
-	EndAt           string          `json:"end_at,omitempty"`
-	DaypartHours    []int16         `json:"daypart_hours"`
-	CreatedAt       string          `json:"created_at"`
-	UpdatedAt       string          `json:"updated_at"`
-	MarginBreach    bool            `json:"margin_breach,omitempty"`
+	ID                 string          `json:"id"`
+	Name               string          `json:"name"`
+	Status             string          `json:"status"`
+	BudgetLimit        string          `json:"budget_limit"`
+	CurrentSpend       string          `json:"current_spend"`
+	CustomerID         string          `json:"customer_id"`
+	PacingMode         string          `json:"pacing_mode"`
+	DailyBudget        string          `json:"daily_budget"`
+	Timezone           string          `json:"timezone"`
+	FreqLimit          int32           `json:"freq_limit"`
+	FreqWindow         int32           `json:"freq_window"`
+	TargetCountries    []string        `json:"target_countries"`
+	TargetURL          string          `json:"target_url,omitempty"`
+	SafePageURL        string          `json:"safe_page_url,omitempty"`
+	SafePageEnabled    bool            `json:"safe_page_enabled"`
+	ClickDelivery      string          `json:"click_delivery,omitempty"`
+	ProxyUpstreamURL   string          `json:"proxy_upstream_url,omitempty"`
+	ProxyRewriteAssets bool            `json:"proxy_rewrite_assets"`
+	BrandID            string          `json:"brand_id,omitempty"`
+	CreativePayload    json.RawMessage `json:"creative_payload,omitempty"`
+	ReferrerFilter     string          `json:"referrer_filter,omitempty"`
+	StartAt            string          `json:"start_at,omitempty"`
+	EndAt              string          `json:"end_at,omitempty"`
+	DaypartHours       []int16         `json:"daypart_hours"`
+	CreatedAt          string          `json:"created_at"`
+	UpdatedAt          string          `json:"updated_at"`
+	MarginBreach       bool            `json:"margin_breach,omitempty"`
 }
 
 type BlacklistDTO struct {
@@ -164,17 +167,20 @@ type AuditLogListResponse struct {
 }
 
 type PatchCampaignRequest struct {
-	Name             *string  `json:"name,omitempty"`
-	PacingMode       *string  `json:"pacing_mode,omitempty"`
-	DailyBudgetMicro *int64   `json:"daily_budget_micro,omitempty"`
-	Timezone         *string  `json:"timezone,omitempty"`
-	FreqLimit        *int32   `json:"freq_limit,omitempty"`
-	FreqWindow       *int32   `json:"freq_window,omitempty"`
-	TargetCountries  []string `json:"target_countries,omitempty"`
-	TargetURL        *string  `json:"target_url,omitempty"`
-	SafePageURL      *string  `json:"safe_page_url,omitempty"`
-	SafePageEnabled  *bool    `json:"safe_page_enabled,omitempty"`
-	ReferrerFilter   *string  `json:"referrer_filter,omitempty"`
+	Name               *string  `json:"name,omitempty"`
+	PacingMode         *string  `json:"pacing_mode,omitempty"`
+	DailyBudgetMicro   *int64   `json:"daily_budget_micro,omitempty"`
+	Timezone           *string  `json:"timezone,omitempty"`
+	FreqLimit          *int32   `json:"freq_limit,omitempty"`
+	FreqWindow         *int32   `json:"freq_window,omitempty"`
+	TargetCountries    []string `json:"target_countries,omitempty"`
+	TargetURL          *string  `json:"target_url,omitempty"`
+	SafePageURL        *string  `json:"safe_page_url,omitempty"`
+	SafePageEnabled    *bool    `json:"safe_page_enabled,omitempty"`
+	ReferrerFilter     *string  `json:"referrer_filter,omitempty"`
+	ClickDelivery      *string  `json:"click_delivery,omitempty"`
+	ProxyUpstreamURL   *string  `json:"proxy_upstream_url,omitempty"`
+	ProxyRewriteAssets *bool    `json:"proxy_rewrite_assets,omitempty"`
 }
 
 type CampaignEventDTO struct {

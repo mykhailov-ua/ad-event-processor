@@ -13,10 +13,36 @@ export function isTenantUser(role: string | null | undefined): boolean {
 }
 
 /**
- * Test whether the role is a buyer.
+ * Test whether the role is a buyer (masked portfolio).
  */
 export function isBuyer(role: string | null | undefined): boolean {
   return role === 'B';
+}
+
+/**
+ * Test whether the role is a team lead.
+ */
+export function isTeamLead(role: string | null | undefined): boolean {
+  return role === 'TL';
+}
+
+/**
+ * Test whether the role is a media buyer (scoped campaign owner).
+ */
+export function isMediaBuyer(role: string | null | undefined): boolean {
+  return role === 'MB';
+}
+
+/**
+ * Test whether billing views should be read-only (no top-up / exports).
+ */
+export function isBillingReadOnly(
+  permissions: string[] | null | undefined,
+  role: string | null | undefined,
+): boolean {
+  if (isMediaBuyer(role)) return true;
+  const perms = permissions ?? [];
+  return perms.includes('billing:read') && !perms.includes('billing:write');
 }
 
 /**

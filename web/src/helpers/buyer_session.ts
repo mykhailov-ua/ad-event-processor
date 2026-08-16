@@ -1,10 +1,10 @@
-import { isBuyer, isTenantUser } from './permissions.js';
+import { isBuyer, isMediaBuyer, isTeamLead, isTenantUser } from './permissions.js';
 
 /**
  * Test whether the session role is bound to a single customer account.
  */
 export function hasBoundCustomer(role?: string | null): boolean {
-  return isTenantUser(role) || isBuyer(role);
+  return isTenantUser(role) || isBuyer(role) || isTeamLead(role) || isMediaBuyer(role);
 }
 
 /**

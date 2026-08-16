@@ -606,6 +606,14 @@ func main() {
 		slog.Info("tcp routing snapshot client enabled", "control_addr", cfg.TCPControlAddr)
 	}
 	gnetHandler.ConfigureIngestGeo(geoProvider)
+	if cfg.CIDRL1Enabled {
+		cidrTable := ingestion.NewCIDRTable()
+		gnetHandler.ConfigureCIDR(cidrTable)
+		if cidrLoader := ingestion.NewCIDRFeedLoader(cfg, cidrTable); cidrLoader != nil {
+			go cidrLoader.Start(ctx)
+			slog.Info("cidr l1 loader started", "dir", cfg.CIDRFeedDir, "refresh", cfg.CIDRFeedRefresh, "download", cfg.CIDRFeedDownloadEnable)
+		}
+	}
 	if rtbCatalog != nil {
 		gnetHandler.ConfigureRtb(rtbCatalog, geoProvider, unifiedFilter, settingsWatcher)
 	}

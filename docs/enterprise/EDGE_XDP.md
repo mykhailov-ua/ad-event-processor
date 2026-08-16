@@ -2,7 +2,7 @@
 
 **Not part of appliance SKU.** Default perimeter is **Nginx OpenResty Lua** (`deploy/nginx/lua/access_check.lua`). XDP adds optional NIC-level drop for blacklisted IPs before traffic reaches userspace.
 
-**Parser security boundary:** XDP is **out of scope** for [PARSER_SECURITY.md](../PARSER_SECURITY.md) (no HTTP/JSON parse). See §9.3 there and milestone `.cursor/PARSER_SECURITY_MILESTONE.md` §7.
+**Parser security boundary:** XDP is **out of scope** for [PARSER_SECURITY.md](../PARSER_SECURITY.md) (no HTTP/JSON parse). See §9.3 there; closed milestone [MILESTONES.md](../MILESTONES.md) §2.
 
 See: [FROZEN_FEATURES.md](../FROZEN_FEATURES.md), [ARCHITECTURE.md](../ARCHITECTURE.md) §1.
 

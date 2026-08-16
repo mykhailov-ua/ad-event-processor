@@ -477,6 +477,11 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 	ip := extractClientIPGnet(ctx, &req, c, h.cfg.TrustedProxies)
 	ua := unsafeString(req.UserAgent)
 
+	if matched, feed := h.l1CIDRShouldSafeView(ip, parsed.campaignID); matched {
+		h.writeGnetSafeViewCIDR(c, ctx, startMono, feed)
+		return gnet.None
+	}
+
 	id := NewFastUUID()
 	wReqID := &ctx.wReqID
 	wReqID.buf = wReqID.buf[:0]
@@ -566,13 +571,23 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 		landing = ResolveLandingURLBytes(h.registry, h.creativeStore, evt)
 	}
 
-	if len(landing) == 0 {
-		h.write(c, respClickNoLanding, ctx)
-		h.recordMetrics(startMono, http.StatusNotFound)
-		return gnet.None
-	}
-
 	evt.Payload = appendAttributionPayload(evt.Payload[:0], nil, parsed.subs, parsed.fbclid, parsed.gclid, parsed.ttclid)
+
+	if camp, ok := h.registry.GetCampaign(evt.CampaignID); ok {
+		if proxyOn, upstream, rewrite := campaignClickProxyEnabled(camp); proxyOn {
+			pt := appendClickProxyPassthrough(ctx.extraBuf[:0], clickID, parsed.subs, parsed.passthrough, parsed.fbclid, parsed.gclid, parsed.ttclid)
+			h.trackMetrics.decisionAccepted.Inc()
+			writeAuditLog(h.logger, &h.auditLogSeq, h.auditLogSampleMask, ctx.shardID, evt)
+			return h.clickProxyDeliver(c, ctx, clickProxyJob{
+				upstream:    upstream,
+				clientIP:    ip,
+				userAgent:   ua,
+				passthrough: pt,
+				rewrite:     rewrite,
+				startMono:   startMono,
+			})
+		}
+	}
 
 	passthrough := parsed.passthrough
 	if parsed.fbclid != "" || parsed.gclid != "" || parsed.ttclid != "" {
@@ -581,6 +596,12 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 			buf = append(buf, passthrough...)
 		}
 		passthrough = appendAttributionPassthrough(buf, parsed.fbclid, parsed.gclid, parsed.ttclid)
+	}
+
+	if len(landing) == 0 {
+		h.write(c, respClickNoLanding, ctx)
+		h.recordMetrics(startMono, http.StatusNotFound)
+		return gnet.None
 	}
 
 	loc, ok := buildRedirectLocation(ctx.extraBuf[:0], landing, clickID, parsed.userID, parsed.subs, passthrough)

@@ -10,6 +10,8 @@ const (
 	PermCampaignsReadMasked  = "campaigns:read:masked"
 	PermCampaignsWriteMasked = "campaigns:write:masked"
 	PermCampaignsPause       = "campaigns:pause"
+	PermBillingRead          = "billing:read"
+	PermBillingWrite         = "billing:write"
 	PermBrandsRead           = "brands:read"
 	PermBrandsWrite          = "brands:write"
 	PermSettingsRead         = "settings:read"
@@ -26,15 +28,18 @@ const (
 )
 
 const (
-	RoleAdmin   = "A"
-	RoleManager = "M"
-	RoleUser    = "U"
-	RoleBuyer   = "B"
-	RoleSupport = "S"
+	RoleAdmin      = "A"
+	RoleManager    = "M"
+	RoleUser       = "U"
+	RoleBuyer      = "B"
+	RoleSupport    = "S"
+	RoleTeamLead   = "TL"
+	RoleMediaBuyer = "MB"
 )
 
 var rolePermissions = map[string][]string{
 	RoleAdmin: {
+		"*",
 		"customers:write", "customers:read",
 		"campaigns:write", "campaigns:read",
 		"brands:write", "brands:read",
@@ -62,6 +67,14 @@ var rolePermissions = map[string][]string{
 	RoleSupport: {
 		"campaigns:read:masked", "audit:read",
 	},
+	RoleTeamLead: {
+		PermCampaignsRead, PermCampaignsWrite, PermCampaignsPause,
+		PermCustomersRead, PermBillingRead,
+	},
+	RoleMediaBuyer: {
+		PermCampaignsRead, PermCampaignsWrite,
+		PermCustomersRead,
+	},
 }
 
 func NormalizeRole(role string) string {
@@ -74,6 +87,12 @@ func NormalizeRole(role string) string {
 		return RoleUser
 	case "BUYER", "B":
 		return RoleBuyer
+	case "TEAM_LEAD", "TEAMLEAD", "TL":
+		return RoleTeamLead
+	case "MEDIA_BUYER", "MEDIABUYER", "MB":
+		return RoleMediaBuyer
+	case "ADMINISTRATOR":
+		return RoleAdmin
 	case "SUPPORT", "S":
 		return RoleSupport
 	default:
@@ -91,7 +110,7 @@ func GetPermissionsForRole(role string) []string {
 
 func HasPermission(role, permission string) bool {
 	for _, p := range rolePermissions[NormalizeRole(role)] {
-		if p == permission {
+		if p == permission || p == "*" {
 			return true
 		}
 	}

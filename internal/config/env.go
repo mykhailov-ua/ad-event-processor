@@ -191,6 +191,8 @@ type Config struct {
 		DomainSSLSetupEnabled       bool
 		DomainSSLSetupScript        string
 		DomainSSLAcmeEmail          string
+		CaddyTLSAskToken            Secret
+		CaddyTLSAskAllowLocal       bool
 	}
 	Control struct {
 		EnableAuth        bool
@@ -333,16 +335,26 @@ type Config struct {
 	MigrationFenceEnabled         bool
 	SlotMigrationDualWriteEnabled bool
 	SlotMigrationLagEpsilon       int64
-	SlotMigrationLagThreshold     int64
-	ElasticShardingEnabled        bool
-	ShardOrchestratorEnabled      bool
-	ShardOrchestratorIntervalMs   int
-	TCPControlEnabled             bool
-	TCPControlHMACSecret          Secret
-	TCPControlBindAddr            string
-	TCPControlAddr                string
-	TCPTrackerAddrs               []string
-	ManagementURL                 string
+
+	CIDRL1Enabled               bool
+	CIDRFeedDir                 string
+	CIDRFeedRefresh             time.Duration
+	CIDRFeedURLAWS              string
+	CIDRFeedURLGCP              string
+	CIDRFeedURLAzure            string
+	CIDRFeedURLTor              string
+	CIDRFeedDownloadEnable      bool
+	ProxyAllowHTTPInsecure      bool
+	SlotMigrationLagThreshold   int64
+	ElasticShardingEnabled      bool
+	ShardOrchestratorEnabled    bool
+	ShardOrchestratorIntervalMs int
+	TCPControlEnabled           bool
+	TCPControlHMACSecret        Secret
+	TCPControlBindAddr          string
+	TCPControlAddr              string
+	TCPTrackerAddrs             []string
+	ManagementURL               string
 
 	LuaFastPathEnabled bool
 

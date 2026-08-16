@@ -76,6 +76,10 @@ func CampaignFromDBRow(row db.Campaign) *Campaign {
 		MigrationGen:           row.MigrationGen,
 		SafePageURL:            row.SafePageUrl,
 		SafePageEnabled:        row.SafePageEnabled,
+		L1CIDRBlockEnabled:     row.L1CidrBlockEnabled,
+		ClickDelivery:          row.ClickDelivery,
+		ProxyUpstreamURL:       row.ProxyUpstreamUrl,
+		ProxyRewriteAssets:     row.ProxyRewriteAssets,
 	}
 	applyCampaignSegmentFields(camp, row.RetargetSegmentID, row.SegmentInclude, row.SegmentExclude, row.SegmentTtlHours)
 	return camp
@@ -141,6 +145,10 @@ func CampaignFromGetCampaignFullRow(row db.GetCampaignFullRow) *Campaign {
 		MigrationGen:           row.MigrationGen,
 		SafePageURL:            row.SafePageUrl,
 		SafePageEnabled:        row.SafePageEnabled,
+		L1CIDRBlockEnabled:     row.L1CidrBlockEnabled,
+		ClickDelivery:          row.ClickDelivery,
+		ProxyUpstreamURL:       row.ProxyUpstreamUrl,
+		ProxyRewriteAssets:     row.ProxyRewriteAssets,
 	}
 	applyCampaignSegmentFields(camp, row.RetargetSegmentID, row.SegmentInclude, row.SegmentExclude, row.SegmentTtlHours)
 
@@ -220,6 +228,10 @@ func CampaignFromListActiveCampaignsRow(row db.ListActiveCampaignsRow) *Campaign
 		MigrationGen:           row.MigrationGen,
 		SafePageURL:            row.SafePageUrl,
 		SafePageEnabled:        row.SafePageEnabled,
+		L1CIDRBlockEnabled:     row.L1CidrBlockEnabled,
+		ClickDelivery:          row.ClickDelivery,
+		ProxyUpstreamURL:       row.ProxyUpstreamUrl,
+		ProxyRewriteAssets:     row.ProxyRewriteAssets,
 	}
 	applyCampaignSegmentFields(camp, row.RetargetSegmentID, row.SegmentInclude, row.SegmentExclude, row.SegmentTtlHours)
 

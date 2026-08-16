@@ -6,7 +6,7 @@ cd "$ROOT"
 
 SKIP_BUILD=0
 SKIP_INFRA=0
-while [[ $
+while [[ $# -gt 0 ]]; do
 	case "$1" in
 	--skip-build) SKIP_BUILD=1; shift ;;
 	--skip-infra) SKIP_INFRA=1; shift ;;

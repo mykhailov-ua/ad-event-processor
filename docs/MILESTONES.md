@@ -62,7 +62,7 @@ bash scripts/fault/parser_chaos_drill.sh
 go test ./internal/ingestion/ -run=TestChaos_CrossHop_NginxGnet -count=1
 ```
 
-Engineering catalog: `.cursor/PARSER_SECURITY_MILESTONE.md`.
+Engineering catalog: git history `.cursor/PARSER_SECURITY_MILESTONE.md` (removed 2026-08-16); gap IDs in table above.
 
 ---
 
@@ -238,3 +238,27 @@ bash scripts/ops/verify_redis_topology.sh
 | Local quanta + Redis SIGKILL | Budget invariant fault test | [EDGE_CASES.md](EDGE_CASES.md) |
 | Cold-path JSON limits | `pkg/coldpath` + `cold_path_json_gate.sh` | [COLD_PATH_JSON.md](COLD_PATH_JSON.md) |
 | Path-based ingress | Separate `/track`, `/click`, `/openrtb/bid`, `/tg/*`; optional edge expose | [TRAFFIC_INTEGRATION.md](TRAFFIC_INTEGRATION.md), [ARCHITECTURE.md §1.1](ARCHITECTURE.md) |
+
+---
+
+## 13. Single-VPS installer (Tier 0–2) — CLOSED (2026-08)
+
+**Goal:** one-path appliance install without host Go; Caddy ingress; GHCR release images.
+
+| Tier | Outcome |
+| :--- | :--- |
+| 0 | Docker build runs codegen; `--yes` install; doctor; QUICKSTART |
+| 1 | GHCR images; release tarball; `get.sh` bootstrap |
+| 2 | Caddy ingress profile; install done UI; kernel preflight WARN |
+
+**Operator doc:** [QUICKSTART.md](QUICKSTART.md). Agent spec removed from `.cursor/INSTALLER.md` (2026-08-16).
+
+---
+
+## 14. Cold-path isolation queue (ISO-01–ISO-18) — CLOSED (2026-08-14)
+
+**Goal:** PG/Redis consistency, outbox ordering, N+1 batching on cold paths without hot-path regression.
+
+All items **Done** (recon adjust, quota repair, outbox ordering, shard-0 catch-up policy, postback in-flight claim, etc.). Engineering queue removed from `.cursor/ISOLATION.md` (2026-08-16).
+
+**Verification:** `make test-integration`; `bash scripts/ci/pr_fast.sh`.

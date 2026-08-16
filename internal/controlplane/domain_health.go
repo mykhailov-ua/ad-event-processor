@@ -122,6 +122,14 @@ func (s *Service) SetupDomainSSL(ctx context.Context, hostname string) (adminapi
 	if host == "" {
 		return adminapi.DomainSSLSetupResult{}, fmt.Errorf("hostname is required")
 	}
+	var exists int
+	err := s.pool.QueryRow(ctx, `SELECT 1 FROM domain_health_status WHERE hostname = $1`, host).Scan(&exists)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return adminapi.DomainSSLSetupResult{}, fmt.Errorf("domain not registered")
+		}
+		return adminapi.DomainSSLSetupResult{}, err
+	}
 
 	script := s.cfg.Management.DomainSSLSetupScript
 	if script == "" {
@@ -331,4 +339,28 @@ func scanDomainHealth(row domainHealthScanner) (adminapi.DomainHealthDTO, error)
 		dto.LastProbeAt = &t
 	}
 	return dto, nil
+}
+
+// IsTLSAllowed reports whether Caddy may issue an on-demand certificate for hostname.
+// Only tracking and custom buyer domains are permitted (admin role excluded).
+func (s *Service) IsTLSAllowed(ctx context.Context, hostname string) (bool, error) {
+	if s == nil || s.pool == nil {
+		return false, fmt.Errorf("service unavailable")
+	}
+	host := platformconfig.ResolveHost(hostname)
+	if host == "" {
+		return false, nil
+	}
+	var one int
+	err := s.pool.QueryRow(ctx, `
+		SELECT 1 FROM domain_health_status
+		WHERE hostname = $1 AND role IN ('custom', 'tracking')
+		LIMIT 1`, host).Scan(&one)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }

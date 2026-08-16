@@ -3,7 +3,7 @@ set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 
-if [[ $
+if [[ $# -lt 2 ]]; then
 	echo "usage: perf_baseline_gate.sh <baseline.txt> <current.txt>" >&2
 	exit 2
 fi

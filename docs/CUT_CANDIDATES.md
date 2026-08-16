@@ -16,7 +16,7 @@ Classification categories:
 
 This document is intended strictly for engineering personnel.
 
-Related documents: [QUICKSTART.md](QUICKSTART.md), [ARCHITECTURE.md](ARCHITECTURE.md), [TRADEOFFS.md](TRADEOFFS.md), `.cursor/INSTALLER.md`.
+Related documents: [QUICKSTART.md](QUICKSTART.md), [ARCHITECTURE.md](ARCHITECTURE.md), [TRADEOFFS.md](TRADEOFFS.md).
 
 ---
 

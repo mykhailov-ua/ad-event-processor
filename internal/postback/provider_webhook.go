@@ -3,7 +3,6 @@ package postback
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"sync"
 
@@ -53,8 +52,7 @@ func (a *WebhookAdapter) Send(ctx context.Context, client *http.Client, payload 
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-		return fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(body))
+		return checkHTTPResponse(resp)
 	}
 
 	return nil

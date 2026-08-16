@@ -1,0 +1,127 @@
+// L1 CIDR lookup benches (harness: cidr_lpm_rcu).
+// RCU snapshot is fully in-memory: no Redis, no Lua, no PG on the read path.
+package ingestion
+
+import (
+	"math/rand"
+	"net/netip"
+	"testing"
+
+	"github.com/bidshard/ad-event-processor/internal/domain"
+
+	"github.com/google/uuid"
+)
+
+var (
+	cidrBenchSinkBool  bool
+	cidrBenchSinkUint8 uint8
+
+	cidrBenchCampaign = domain.Campaign{L1CIDRBlockEnabled: true}
+)
+
+func benchCIDRTable(tb testing.TB, n int) (*CIDRTable, [][4]byte, [][16]byte) {
+	tb.Helper()
+	rng := rand.New(rand.NewSource(2026))
+	var b cidrBuilder
+	root4, root6 := int32(cidrNoIndex), int32(cidrNoIndex)
+	for i := 0; i < n; i++ {
+		if i%4 == 3 {
+			var a [16]byte
+			rng.Read(a[:])
+			a[0], a[1] = 0x26, 0x20 // global unicast-ish
+			b.insert(&root6, a, uint8(16+rng.Intn(49)), uint8(i%int(CIDRFeedCount)))
+			continue
+		}
+		var a [4]byte
+		rng.Read(a[:])
+		var key [16]byte
+		copy(key[:4], a[:])
+		b.insert(&root4, key, uint8(8+rng.Intn(25)), uint8(i%int(CIDRFeedCount)))
+	}
+	table := NewCIDRTable()
+	table.Publish(b.snapshot(root4, root6, 1))
+
+	probe4 := make([][4]byte, 64)
+	probe6 := make([][16]byte, 64)
+	for i := range probe4 {
+		rng.Read(probe4[i][:])
+		rng.Read(probe6[i][:])
+		probe6[i][0], probe6[i][1] = 0x26, 0x20
+	}
+	return table, probe4, probe6
+}
+
+// BenchmarkCIDR_LPM_Lookup_IPv4 (harness: cidr_lpm_rcu) — B-M1-1, < 50 ns.
+func BenchmarkCIDR_LPM_Lookup_IPv4(b *testing.B) {
+	table, probe4, _ := benchCIDRTable(b, 50_000)
+	b.ReportAllocs()
+	b.ResetTimer()
+	var hit bool
+	var feed uint8
+	for i := 0; i < b.N; i++ {
+		hit, feed = table.Match4(probe4[i&63])
+	}
+	cidrBenchSinkUint8 += feed
+	cidrBenchSinkBool = cidrBenchSinkBool || hit
+}
+
+// BenchmarkCIDR_LPM_Lookup_IPv6 (harness: cidr_lpm_rcu) — B-M1-2, < 80 ns.
+func BenchmarkCIDR_LPM_Lookup_IPv6(b *testing.B) {
+	table, _, probe6 := benchCIDRTable(b, 50_000)
+	b.ReportAllocs()
+	b.ResetTimer()
+	var hit bool
+	var feed uint8
+	for i := 0; i < b.N; i++ {
+		hit, feed = table.Match6(probe6[i&63])
+	}
+	cidrBenchSinkUint8 += feed
+	cidrBenchSinkBool = cidrBenchSinkBool || hit
+}
+
+// BenchmarkCIDR_LPM_Lookup_ParseIP (harness: cidr_lpm_rcu) — ASCII parse +
+// match, the exact form used by the /click hook.
+func BenchmarkCIDR_LPM_Lookup_ParseIP(b *testing.B) {
+	table, _, _ := benchCIDRTable(b, 50_000)
+	ips := []string{
+		"54.230.17.9", "2001:4860:4860::8888", "203.0.113.7",
+		"142.250.74.46", "2606:4700:4700::1111", "198.51.100.23",
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	var hit bool
+	var feed uint8
+	for i := 0; i < b.N; i++ {
+		hit, feed = table.MatchIP(ips[i%len(ips)])
+	}
+	cidrBenchSinkUint8 += feed
+	cidrBenchSinkBool = cidrBenchSinkBool || hit
+}
+
+// BenchmarkCIDR_MatchBranch_SafeView (harness: cidr_lpm_rcu) — B-M1-3,
+// < 1 µs. Measures the full hook decision (registry flag check + LPM match +
+// pre-bound counter) as executed from reactClickRedirect, minus the socket
+// write.
+func BenchmarkCIDR_MatchBranch_SafeView(b *testing.B) {
+	table, probe4, _ := benchCIDRTable(b, 50_000)
+	h := &AdsPacketHandler{
+		registry: stubCampaignRegistry{
+			camp: &cidrBenchCampaign,
+			ok:   true,
+		},
+		cidrTable:   table,
+		cidrMetrics: newL1CIDRMetrics(),
+	}
+	cid := uuid.MustParse("00000000-0000-4000-8000-000000000001")
+	ipStrs := make([]string, len(probe4))
+	for i := range probe4 {
+		ipStrs[i] = netip.AddrFrom4(probe4[i]).String()
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	var hit bool
+	for i := 0; i < b.N; i++ {
+		hit, _ = h.l1CIDRShouldSafeView(ipStrs[i&63], cid)
+	}
+	cidrBenchSinkBool = cidrBenchSinkBool || hit
+}

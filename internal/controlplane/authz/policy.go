@@ -28,6 +28,9 @@ const (
 	PermCampaignsWrite      = "campaigns:write"
 	PermCampaignsWriteMask  = "campaigns:write:masked"
 	PermCampaignsPause      = "campaigns:pause"
+	PermBillingRead         = "billing:read"
+	PermBillingWrite        = "billing:write"
+	PermSystemBlacklist     = "blacklist:write"
 )
 
 type Snapshot struct {

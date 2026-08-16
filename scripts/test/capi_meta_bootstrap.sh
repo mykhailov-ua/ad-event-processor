@@ -57,11 +57,15 @@ psql_exec() {
 }
 
 ensure_stack() {
-  log "ensuring db/redis/tracker/processor/control (REDIS_ADDRS=${REDIS_ADDRS})"
-  CH_ENABLED="$CH_ENABLED" REDIS_ADDRS="$REDIS_ADDRS" TRACKER_INGRESS_SCHEMA="$TRACKER_INGRESS_SCHEMA" \
+  log "ensuring db/redis/tracker/processor/control (REDIS_ADDRS=${REDIS_ADDRS}, CH_INGEST_SOURCE=${CH_INGEST_SOURCE})"
+  CH_ENABLED="${CH_ENABLED}" REDIS_ADDRS="$REDIS_ADDRS" TRACKER_INGRESS_SCHEMA="$TRACKER_INGRESS_SCHEMA" \
     CH_INGEST_SOURCE="$CH_INGEST_SOURCE" \
-    docker compose up -d --force-recreate tracker-0 processor control >/dev/null
-  docker compose up -d db redis-0 redis-1 redis-2 redis-3 >/dev/null
+    docker compose up -d db redis-0 redis-1 redis-2 redis-3 >/dev/null
+  # Broker optional for CAPI lab — tracker/processor ingest via Redis when CH_INGEST_SOURCE=redis.
+  CH_ENABLED="${CH_ENABLED}" CH_INGEST_SOURCE="$CH_INGEST_SOURCE" REDIS_ADDRS="$REDIS_ADDRS" \
+    docker compose up -d --no-deps control >/dev/null || true
+  CH_INGEST_SOURCE="$CH_INGEST_SOURCE" REDIS_ADDRS="$REDIS_ADDRS" TRACKER_INGRESS_SCHEMA="$TRACKER_INGRESS_SCHEMA" \
+    docker compose up -d --no-deps processor tracker-0 >/dev/null
   for _ in $(seq 1 30); do
     curl -sf -m 2 "${TRACK_URL%/}/health" >/dev/null 2>&1 && break
     sleep 2
@@ -78,6 +82,10 @@ db_prep() {
   log "applying postback + safe_page migrations if missing"
   psql_exec "ALTER TABLE postback_configs ADD COLUMN IF NOT EXISTS test_event_code TEXT NOT NULL DEFAULT '';" >/dev/null
   psql_exec "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS safe_page_url TEXT NOT NULL DEFAULT '', ADD COLUMN IF NOT EXISTS safe_page_enabled BOOLEAN NOT NULL DEFAULT false;" >/dev/null
+  psql_exec "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS l1_cidr_block_enabled BOOLEAN NOT NULL DEFAULT true;" >/dev/null 2>&1 || true
+  psql_exec "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS click_delivery TEXT NOT NULL DEFAULT 'redirect';" >/dev/null 2>&1 || true
+  psql_exec "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS proxy_upstream_url TEXT NOT NULL DEFAULT '';" >/dev/null 2>&1 || true
+  psql_exec "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS proxy_rewrite_assets BOOLEAN NOT NULL DEFAULT false;" >/dev/null 2>&1 || true
 
   log "ensuring brand + landing creative for /click redirect"
   psql_exec "

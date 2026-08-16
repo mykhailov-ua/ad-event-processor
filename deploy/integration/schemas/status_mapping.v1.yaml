@@ -1,0 +1,7 @@
+version: 1
+status_map:
+  lead: pending
+  sale: approved
+  rejected: rejected
+  hold: hold
+  chargeback: rejected

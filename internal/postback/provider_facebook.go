@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -16,10 +15,11 @@ import (
 type FacebookAdapter struct{}
 
 type FacebookEvent struct {
-	EventName  string             `json:"event_name"`
-	EventTime  int64              `json:"event_time"`
-	UserData   FacebookUserData   `json:"user_data"`
-	CustomData FacebookCustomData `json:"custom_data,omitempty"`
+	EventName      string             `json:"event_name"`
+	EventTime      int64              `json:"event_time"`
+	EventSourceURL string             `json:"event_source_url,omitempty"`
+	UserData       FacebookUserData   `json:"user_data"`
+	CustomData     FacebookCustomData `json:"custom_data,omitempty"`
 }
 
 type FacebookUserData struct {
@@ -90,8 +90,9 @@ func (a *FacebookAdapter) Send(ctx context.Context, client *http.Client, payload
 	}
 
 	fbEvent := FacebookEvent{
-		EventName: eventName,
-		EventTime: time.Now().Unix(),
+		EventName:      eventName,
+		EventTime:      time.Now().Unix(),
+		EventSourceURL: strings.TrimSpace(payload.EventSourceURL),
 		UserData: FacebookUserData{
 			Em:  ems,
 			Ph:  phs,
@@ -133,8 +134,7 @@ func (a *FacebookAdapter) Send(ctx context.Context, client *http.Client, payload
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-		return fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(body))
+		return checkHTTPResponse(resp)
 	}
 
 	return nil

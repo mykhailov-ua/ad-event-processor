@@ -213,7 +213,7 @@ Alert idea: page on rising `ListenOverflows` even when tracker “healthy” and
 
 Parser hardening (**P0–P3**: **PS-G01–G13**, **PS-H01–H06**) and infrastructure stress (purgatory, listen overflow, netem) answer different questions. Use this table before filing a hot-path parser regression.
 
-**Canonical docs:** [PARSER_SECURITY.md](PARSER_SECURITY.md), `.cursor/PARSER_SECURITY_MILESTONE.md` (gap catalog + DoD). **Verification:** `bash scripts/fault/parser_chaos_drill.sh`; slow-body isolation: `bash scripts/fault/parser_slow_body_drill.sh`.
+**Canonical docs:** [PARSER_SECURITY.md](PARSER_SECURITY.md), [MILESTONES.md](MILESTONES.md) §2. **Verification:** `bash scripts/fault/parser_chaos_drill.sh`; slow-body isolation: `bash scripts/fault/parser_slow_body_drill.sh`.
 
 | Symptom | Likely layer | First checks |
 | :--- | :--- | :--- |

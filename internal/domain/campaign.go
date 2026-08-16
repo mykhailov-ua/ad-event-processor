@@ -84,6 +84,15 @@ type Campaign struct {
 
 	SafePageURL     string
 	SafePageEnabled bool
+
+	// L1CIDRBlockEnabled gates the pre-FilterEngine L1 CIDR/ASN Safe View
+	// branch (RP-M1). Default true; replicated to the tracker hot path.
+	L1CIDRBlockEnabled bool
+
+	// Click delivery (RP-M3): redirect (default) or reverse-proxy upstream.
+	ClickDelivery      string
+	ProxyUpstreamURL   string
+	ProxyRewriteAssets bool
 }
 
 func (c *Campaign) LuaRoutingEpoch() int64 {

@@ -18,6 +18,7 @@ const ROUTE_ACCESS: Record<string, RouteAccess> = {
   '/campaigns/:id/telegram': { perms: ['campaigns:read'], altPerm: 'campaigns:read:masked' },
   '/billing': { perms: ['customers:read', 'billing:read', 'campaigns:read:masked'] },
   '/billing/invoices/:id': { perms: ['customers:read', 'billing:read', 'campaigns:read:masked'] },
+  '/team': { perms: ['campaigns:read', 'billing:read'] },
   '/reports/placements': { perms: ['campaigns:read'], altPerm: 'campaigns:read:masked' },
   '/reports/keywords': { perms: ['campaigns:read'], altPerm: 'campaigns:read:masked' },
   '/reports': { perms: ['campaigns:read'], altPerm: 'campaigns:read:masked' },

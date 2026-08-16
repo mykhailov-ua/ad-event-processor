@@ -529,6 +529,8 @@ services:
       - CH_ENABLED=${CH_ENABLED:-1}
       - MULTI_REGION_ENABLED=${MULTI_REGION_ENABLED:-0}
       - ESPX_REGION_CODE=${ESPX_REGION_CODE:-0}
+      - CADDY_TLS_ASK_TOKEN=${CADDY_TLS_ASK_TOKEN:-}
+      - CADDY_TLS_ASK_ALLOW_LOCAL=${CADDY_TLS_ASK_ALLOW_LOCAL:-1}
     deploy:
       resources:
         limits:

@@ -3,7 +3,9 @@ package adminapi
 import (
 	"context"
 	"encoding/json"
+	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/bidshard/ad-event-processor/pkg/coldpath"
@@ -16,6 +18,7 @@ type DomainHealthService interface {
 	DeleteCustomDomain(ctx context.Context, hostname string) error
 	ProbeDomainNow(ctx context.Context, hostname string) (DomainHealthDTO, error)
 	SetupDomainSSL(ctx context.Context, hostname string) (DomainSSLSetupResult, error)
+	IsTLSAllowed(ctx context.Context, hostname string) (bool, error)
 }
 
 type DomainHealthDTO struct {
@@ -38,10 +41,16 @@ type DomainSSLSetupResult struct {
 	Output   string `json:"output,omitempty"`
 }
 
+type DomainTLSAllowedResponse struct {
+	Allowed bool `json:"allowed"`
+}
+
 type DomainHealthHTTPHandlers struct {
 	Service           DomainHealthService
 	ApplyRateLimit    func(http.HandlerFunc) http.HandlerFunc
 	RequirePermission func(string, http.HandlerFunc) http.HandlerFunc
+	TLSAskToken       string
+	TLSAskAllowLocal  bool
 }
 
 func (h *DomainHealthHTTPHandlers) Register(mux *http.ServeMux) {
@@ -61,6 +70,9 @@ func (h *DomainHealthHTTPHandlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/v1/domains/{hostname}", limit(perm("settings:write", h.deleteDomain)))
 	mux.HandleFunc("POST /api/v1/domains/{hostname}/probe", limit(perm("settings:write", h.probeDomain)))
 	mux.HandleFunc("POST /api/v1/domains/{hostname}/ssl/setup", limit(perm("settings:write", h.setupSSL)))
+	// Caddy on_demand_tls ask appends ?domain=<hostname> to a fixed URL (no path placeholder).
+	mux.HandleFunc("GET /api/v1/ops/domains/tls-allowed", limit(h.tlsAllowed))
+	mux.HandleFunc("GET /api/v1/ops/domains/{hostname}/tls-allowed", limit(h.tlsAllowed))
 }
 
 func (h *DomainHealthHTTPHandlers) listDomains(w http.ResponseWriter, r *http.Request) {
@@ -134,4 +146,65 @@ func (h *DomainHealthHTTPHandlers) setupSSL(w http.ResponseWriter, r *http.Reque
 		status = http.StatusBadGateway
 	}
 	httpresponse.JSON(w, status, result)
+}
+
+func (h *DomainHealthHTTPHandlers) tlsAllowed(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		httpresponse.Error(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "GET only")
+		return
+	}
+	if !h.authorizeTLSAsk(r) {
+		httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "invalid tls ask credentials")
+		return
+	}
+	host := tlsAskHostname(r)
+	if host == "" {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "hostname required")
+		return
+	}
+	allowed, err := h.Service.IsTLSAllowed(r.Context(), host)
+	if err != nil {
+		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		return
+	}
+	if !allowed {
+		httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "tls not allowed for hostname")
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, DomainTLSAllowedResponse{Allowed: true})
+}
+
+func tlsAskHostname(r *http.Request) string {
+	host := strings.TrimSpace(r.PathValue("hostname"))
+	if host != "" {
+		return host
+	}
+	return strings.TrimSpace(r.URL.Query().Get("domain"))
+}
+
+func (h *DomainHealthHTTPHandlers) authorizeTLSAsk(r *http.Request) bool {
+	if h == nil {
+		return false
+	}
+	if token := strings.TrimSpace(h.TLSAskToken); token != "" {
+		got := strings.TrimSpace(r.Header.Get("X-Caddy-Ask-Token"))
+		if got == "" {
+			if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
+				got = strings.TrimSpace(strings.TrimPrefix(auth, "Bearer "))
+			}
+		}
+		if got == "" {
+			got = strings.TrimSpace(r.URL.Query().Get("token"))
+		}
+		return got != "" && got == token
+	}
+	if !h.TLSAskAllowLocal {
+		return false
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }

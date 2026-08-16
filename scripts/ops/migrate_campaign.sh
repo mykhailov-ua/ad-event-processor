@@ -6,7 +6,7 @@ cd "$ROOT"
 ENV_FILE="${ENV_FILE:-$ROOT/.env}"
 SHARD_COUNT="${REDIS_SHARD_COUNT:-4}"
 
-if [[ $
+if [[ $# -lt 1 ]]; then
 	echo "usage: $0 <campaign_uuid> [source_shard] [target_shard]" >&2
 	exit 1
 fi

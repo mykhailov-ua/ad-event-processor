@@ -32,9 +32,11 @@ test-fault: gen fmt
 
 test-alloc-gate: gen fmt
 	go test -short -count=1 -run 'ZeroAlloc|zeroAlloc_fraudScoring|FraudScoring_LatencySLA|BrokerProducer|ApplyRtbAuction_shadow_zeroAlloc|RecordRtbShadow|HTTP1Parse|OpenRTB26_Exchange|Check_zeroAlloc_localQuantaFullSkip' ./internal/ingestion/...
-	go test -run='^$$' -bench='Benchmark(HTTP1Parse$$|TrackRequest_ParseJSONOpt$$|Auction$$|ParseOpenRTB26Split_hotOnly$$|RunOpenRTBExchangeParsed$$|TrackerToBroker$$)' -benchmem -count=1 ./internal/ingestion/... ./internal/rtb/
+	go test -run='^$$' -bench='Benchmark(HTTP1Parse$$|TrackRequest_ParseJSONOpt$$|Auction$$|ParseOpenRTB26Split_hotOnly$$|RunOpenRTBExchangeParsed$$|TrackerToBroker$$|CIDR_LPM_Lookup_IPv4$$|CIDR_LPM_Lookup_IPv6$$|ClickProxy_Stream$$)' -benchmem -count=1 ./internal/ingestion/... ./internal/rtb/
 	bash scripts/test/openrtb_fuzz_smoke.sh
 	bash scripts/test/telegram_fuzz_smoke.sh
+	bash scripts/test/cidr_fuzz_smoke.sh
+	bash scripts/test/click_proxy_fuzz_smoke.sh
 
 management-domain-coverage:
 	bash scripts/ci/management_domain_coverage.sh

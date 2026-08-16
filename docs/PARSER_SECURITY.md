@@ -6,7 +6,7 @@ The ad-event-processor tracker parses every byte of HTTP traffic on the hot path
 
 **Related:** [ARCHITECTURE.md](ARCHITECTURE.md) (request lifecycle), [DEVELOPMENT.md](DEVELOPMENT.md) §7 (fault drills), [BENCHMARKS.md](BENCHMARKS.md) (micro-bench gates), [EDGE_CASES.md](EDGE_CASES.md) §9 (parser vs OS/network failures), [COLD_PATH_JSON.md](COLD_PATH_JSON.md) (admin JSON — out of scope).
 
-Milestone status: **closed** — [MILESTONES.md](MILESTONES.md) §2. Gap catalog: `.cursor/PARSER_SECURITY_MILESTONE.md` (phases **P0–P3**, **PS-G01–G13**, **PS-H01–H06**).
+Milestone status: **closed** — [MILESTONES.md](MILESTONES.md) §2. Gap catalog: git history `.cursor/PARSER_SECURITY_MILESTONE.md` (phases **P0–P3**, **PS-G01–G13**, **PS-H01–H06**).
 
 ---
 
@@ -234,7 +234,7 @@ Every chaos test emits a `fault_proof` line (`gap=open|closed`) for CI grep gate
 | P3 | PS-H04 | ORTB3 key-scan escape walk | closed |
 | P3 | PS-H05 | Strict UTF-8 in JSON string values | closed |
 
-DoD detail: `.cursor/PARSER_SECURITY_MILESTONE.md` §6 (PS-H), §1 (PS-G).
+DoD detail: [MILESTONES.md](MILESTONES.md) §2 and git history `.cursor/PARSER_SECURITY_MILESTONE.md`.
 
 ### JSON parse budgets (PS-G09–G13, PS-H02)
 

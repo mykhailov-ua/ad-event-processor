@@ -530,6 +530,10 @@ func (service *Service) ProcessCryptoWebhook(ctx context.Context, eventID string
 			slog.Info("created crypto hold", "hold_id", holdID, "intent_id", uuid.UUID(intent.ID.Bytes), "release_at", releaseAt)
 		}
 
+		if err := maybeActivateLicenseFromIntent(ctx, tx, intent); err != nil {
+			return fmt.Errorf("license activation: %w", err)
+		}
+
 		return updateCryptoWebhookStatus(ctx, txQueries, eventID, db.PaymentWebhookEventStatusPROCESSED, "")
 	})
 	if err == nil {

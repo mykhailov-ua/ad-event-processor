@@ -6,7 +6,7 @@ cd "$ROOT"
 
 SKIP_BUILD=0
 SKIP_SYNC=0
-while [[ $
+while [[ $# -gt 0 ]]; do
 	case "$1" in
 	--skip-build) SKIP_BUILD=1; shift ;;
 	--skip-sync) SKIP_SYNC=1; shift ;;

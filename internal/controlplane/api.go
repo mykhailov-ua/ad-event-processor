@@ -90,6 +90,9 @@ func (h *Handler) ensureCampaignAccess(r *http.Request, campaignID uuid.UUID) er
 	if uuid.UUID(camp.CustomerID.Bytes) != u.CustomerID {
 		return errForbidden
 	}
+	if err := assertMediaBuyerCampaignAccess(r.Context(), camp); err != nil {
+		return err
+	}
 	return nil
 }
 

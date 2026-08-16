@@ -9,7 +9,7 @@ import type {
 } from '../types/api/index.js';
 import * as auth from '../helpers/auth.js';
 import * as storage from '../helpers/storage.js';
-import { isBuyer, can } from '../helpers/permissions.js';
+import { isBuyer, can, isBillingReadOnly, isMediaBuyer } from '../helpers/permissions.js';
 import { hasBoundCustomer, boundCustomerId } from '../helpers/buyer_session.js';
 import { formatAmountMicro, formatDecimalDisplay } from '../helpers/money.js';
 import {
@@ -97,7 +97,9 @@ export function BillingPage() {
   const user = auth.getUser();
   const sessionScoped = hasBoundCustomer(user?.role);
   const buyerView = isBuyer(user?.role);
-  const canReadCustomers = can(user?.permissions ?? [], 'customers:read');
+  const mediaBuyerView = isMediaBuyer(user?.role);
+  const billingReadOnly = isBillingReadOnly(user?.permissions ?? [], user?.role);
+  const canReadCustomers = can(user?.permissions ?? [], 'customers:read') && !mediaBuyerView;
 
   const tab = parseTab(searchParams.get('tab'));
   const [ledgerPage, setLedgerPage] = useState(0);
@@ -326,8 +328,14 @@ export function BillingPage() {
               </div>
             </div>
           ) : null}
-          {sessionScoped ? (
+          {sessionScoped && customerId && !billingReadOnly ? (
             <BillingSelfServeSection customerId={customerId} buyerMode={buyerView} />
+          ) : null}
+          {sessionScoped && billingReadOnly ? (
+            <AlertBanner
+              variant="info"
+              message="Wallet top-up is not available for your role. View balance only."
+            />
           ) : null}
         </div>
       ) : null}

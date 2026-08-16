@@ -25,6 +25,7 @@ vendor/
 /broker
 /region-proxy
 /log-shipper
+/loadgen
 /edge-xdp
 !deploy/vendor/
 deploy/vendor/license_private.key

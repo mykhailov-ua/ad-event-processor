@@ -511,3 +511,92 @@ func TestPostbackIntegration_DLQMovement(t *testing.T) {
 	require.Equal(t, "click_dlq_test", dlqs[0].ClickID)
 	t.Logf("fault_proof fault=postback_external_timeout ingest_p99_ok=true")
 }
+
+func TestCAPI_DLQRetry_AdminReenqueueDispatchSuccess(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	pool, cleanup := setupPostgresInfra(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	customerID := uuid.New()
+	campaignID := uuid.New()
+
+	var requestCount int32
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&requestCount, 1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer mockServer.Close()
+
+	key := []byte("postback-encryption-secret-key32")
+	encryptedToken, err := EncryptAESGCM([]byte("tok"), key)
+	require.NoError(t, err)
+
+	q := db.New(pool)
+	err = q.UpsertPostbackConfig(ctx, db.UpsertPostbackConfigParams{
+		CampaignID:        pgtype.UUID{Bytes: campaignID, Valid: true},
+		Provider:          "facebook",
+		UrlTemplate:       mockServer.URL,
+		ApiTokenEncrypted: encryptedToken,
+		TargetEvent:       "conversion",
+	})
+	require.NoError(t, err)
+
+	payload := PostbackPayload{
+		CustomerID: customerID,
+		CampaignID: campaignID,
+		ClickID:    "click_dlq_admin_retry",
+		EventType:  "conversion",
+		FBCLID:     "fb.retry",
+	}
+	payloadBytes, err := json.Marshal(payload)
+	require.NoError(t, err)
+
+	dlqRow, err := q.InsertPostbackDLQ(ctx, db.InsertPostbackDLQParams{
+		OutboxEventID: 9001,
+		CampaignID:    pgtype.UUID{Bytes: campaignID, Valid: true},
+		ClickID:       payload.ClickID,
+		EventType:     payload.EventType,
+		Payload:       payloadBytes,
+		FailuresCount: 5,
+		LastError:     pgtype.Text{String: "timeout after 5 attempts", Valid: true},
+		Status:        "FAILED",
+	})
+	require.NoError(t, err)
+
+	// Mirror adminapi postbacks_handlers.retryDLQ: re-enqueue outbox + mark RETRIED.
+	tx, err := pool.Begin(ctx)
+	require.NoError(t, err)
+	defer func() { _ = tx.Rollback(ctx) }()
+	txQ := db.New(tx)
+	_, err = txQ.CreateOutboxEvent(ctx, db.CreateOutboxEventParams{
+		EventType: "SEND_POSTBACK",
+		Payload:   payloadBytes,
+	})
+	require.NoError(t, err)
+	err = txQ.UpdatePostbackDLQ(ctx, db.UpdatePostbackDLQParams{
+		ID:            dlqRow.ID,
+		FailuresCount: dlqRow.FailuresCount,
+		LastError:     pgtype.Text{String: "Manual retry triggered", Valid: true},
+		Status:        "RETRIED",
+	})
+	require.NoError(t, err)
+	require.NoError(t, tx.Commit(ctx))
+
+	worker := NewPostbackWorker(pool, key)
+	require.NoError(t, worker.ProcessBatch(ctx))
+	require.Equal(t, int32(1), atomic.LoadInt32(&requestCount))
+
+	dlqUpdated, err := q.GetPostbackDLQ(ctx, dlqRow.ID)
+	require.NoError(t, err)
+	require.Equal(t, "RETRIED", dlqUpdated.Status)
+
+	hash := postbackIdempotencyHash(payload)
+	dispatch, err := q.GetPostbackDispatch(ctx, hash)
+	require.NoError(t, err)
+	require.Equal(t, postbackDispatchStatusSent, dispatch.Status)
+	t.Logf("fault_proof fault=capi_dlq_admin_retry dispatch_success=true harness=postgres_integration")
+}

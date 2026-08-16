@@ -25,6 +25,8 @@ import (
 	"golang.org/x/time/rate"
 )
 
+const postbackMaxRetries = 5
+
 var (
 	ErrDuplicateEvent          = errors.New("duplicate postback event ignored")
 	ErrDispatchFinalizePending = errors.New("dispatch delivered awaiting finalize")
@@ -280,13 +282,18 @@ func (w *PostbackWorker) ProcessEvent(ctx context.Context, ev db.OutboxEvent, pr
 	if err != nil {
 		recordDispatch(provider, "fail", elapsed)
 		slog.Error("Postback dispatch failed completely, moving to DLQ", "error", err, "payload", payload)
+		failuresCount := int32(postbackMaxRetries)
+		var httpErr *DispatchHTTPError
+		if errors.As(err, &httpErr) && httpErr.Permanent() {
+			failuresCount = 1
+		}
 		_, dlqErr := q.InsertPostbackDLQ(ctx, db.InsertPostbackDLQParams{
 			OutboxEventID: ev.ID,
 			CampaignID:    pgtype.UUID{Bytes: payload.CampaignID, Valid: true},
 			ClickID:       payload.ClickID,
 			EventType:     payload.EventType,
 			Payload:       ev.Payload,
-			FailuresCount: 5,
+			FailuresCount: failuresCount,
 			LastError:     pgtype.Text{String: err.Error(), Valid: true},
 			Status:        "FAILED",
 		})
@@ -316,7 +323,7 @@ func (w *PostbackWorker) ProcessEvent(ctx context.Context, ev db.OutboxEvent, pr
 
 func (w *PostbackWorker) dispatchWithRetry(ctx context.Context, adapter PostbackAdapter, payload *PostbackPayload, urlTemplate, token string, onDelivered func() error) error {
 	var lastErr error
-	maxRetries := 5
+	maxRetries := postbackMaxRetries
 
 	for attempt := range maxRetries {
 		if attempt > 0 {
@@ -342,6 +349,11 @@ func (w *PostbackWorker) dispatchWithRetry(ctx context.Context, adapter Postback
 			return nil
 		}
 		lastErr = err
+
+		var httpErr *DispatchHTTPError
+		if errors.As(err, &httpErr) && httpErr.Permanent() {
+			return fmt.Errorf("permanent client error: %w", err)
+		}
 
 		slog.Warn("Postback dispatch attempt failed", "attempt", attempt+1, "error", err)
 	}

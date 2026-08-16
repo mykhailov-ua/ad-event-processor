@@ -40,6 +40,20 @@ roles:
     permissions:
       - campaigns:read:masked
       - campaigns:pause
+  TL:
+    scope: team
+    permissions:
+      - campaigns:read
+      - campaigns:write
+      - campaigns:pause
+      - customers:read
+      - billing:read
+  MB:
+    scope: team
+    permissions:
+      - campaigns:read
+      - campaigns:write
+      - customers:read
   S:
     scope: global
     permissions:

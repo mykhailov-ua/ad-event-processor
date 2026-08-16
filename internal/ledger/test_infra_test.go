@@ -47,7 +47,7 @@ func setupBillingTestDB(t testing.TB) (*pgxpool.Pool, func()) {
 	_, filename, _, _ := runtime.Caller(0)
 	baseDir := filepath.Join(filepath.Dir(filename), "..", "..")
 	applyBillingMigrations(t, pool, filepath.Join(baseDir, "internal/ingestion/migrations"))
-	applyBillingMigrations(t, pool, filepath.Join(baseDir, "internal/billing/migrations"))
+	applyBillingMigrations(t, pool, filepath.Join(baseDir, "internal/ledger/migrations"))
 
 	return pool, func() {
 		pool.Close()

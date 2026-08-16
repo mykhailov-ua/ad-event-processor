@@ -1,6 +1,12 @@
+version: "2"
+
 # Hot-path Go lint profile (ingestion, rtb auction, tracker, broker).
 # Run via: scripts/ci/lint_go_gate.sh hot
 # Intentionally omits errcheck, noctx, contextcheck, bodyclose — zero-alloc / monotonic-deadline rules.
+run:
+  timeout: 5m
+  go: "1.25.12"
+
 linters:
   enable:
     - govet
@@ -10,40 +16,34 @@ linters:
     - gocritic
     - forbidigo
     - errorlint
-
-run:
-  timeout: 5m
-  go: '1.25.12'
-
-linters-settings:
-  staticcheck:
-    checks:
-      - all
-      - SA9003
-      - SA4017
-  gocritic:
-    enabled-checks:
-      - badCond
-      - dupImport
-      - nilValReturn
-      - singleCaseSwitch
-  forbidigo:
-    forbid:
-      - 'log\.Fatal'
-      - 'panic\('
-
-issues:
-  exclude-use-default: false
-  exclude-rules:
-    - path: '_test\.go'
-      linters:
-        - forbidigo
-        - gocritic
-        - errorlint
-    - path: '(/|^)(.*/)?pb/'
-      linters:
-        - gocritic
-    - path: 'cmd/tracker/main\.go'
-      linters:
-        - gocritic
-      text: 'exitAfterDefer'
+  settings:
+    staticcheck:
+      checks:
+        - all
+        - SA9003
+        - SA4017
+    gocritic:
+      enabled-checks:
+        - badCond
+        - dupImport
+        - nilValReturn
+        - singleCaseSwitch
+    forbidigo:
+      forbid:
+        - pattern: 'log\.Fatal'
+        - pattern: 'panic\('
+  exclusions:
+    generated: lax
+    rules:
+      - path: '_test\.go'
+        linters:
+          - forbidigo
+          - gocritic
+          - errorlint
+      - path: '(/|^)(.*/)?pb/'
+        linters:
+          - gocritic
+      - path: 'cmd/tracker/main\.go'
+        linters:
+          - gocritic
+        text: 'exitAfterDefer'

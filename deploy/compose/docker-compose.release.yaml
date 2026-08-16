@@ -4,10 +4,10 @@
 services:
   tracker-0:
     image: ${AD_EVENT_PROCESSOR_APP_IMAGE}
-    build: !reset null
+    build: null
   processor:
     image: ${AD_EVENT_PROCESSOR_APP_IMAGE}
-    build: !reset null
+    build: null
   control:
     image: ${AD_EVENT_PROCESSOR_APP_IMAGE}
-    build: !reset null
+    build: null

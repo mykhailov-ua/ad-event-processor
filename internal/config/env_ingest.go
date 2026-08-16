@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -113,6 +114,26 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 	if cfg.BudgetDeltaTopic == "" {
 		cfg.BudgetDeltaTopic = "budget-deltas"
 	}
+
+	cfg.CIDRL1Enabled = getEnvBool("CIDR_L1_ENABLED", true)
+	cfg.CIDRFeedDir = os.Getenv("CIDR_FEED_DIR")
+	if cfg.CIDRFeedDir == "" {
+		cfg.CIDRFeedDir = "/var/lib/ad-event-processor/cidr"
+	}
+	cfg.CIDRFeedRefresh = 24 * time.Hour
+	if raw := os.Getenv("CIDR_FEED_REFRESH_INTERVAL"); raw != "" {
+		if d, err := time.ParseDuration(raw); err == nil && d > 0 {
+			cfg.CIDRFeedRefresh = d
+		} else if n, err := strconv.Atoi(raw); err == nil && n > 0 {
+			cfg.CIDRFeedRefresh = time.Duration(n) * time.Second
+		}
+	}
+	cfg.CIDRFeedURLAWS = os.Getenv("CIDR_FEED_URL_AWS")
+	cfg.CIDRFeedURLGCP = os.Getenv("CIDR_FEED_URL_GCP")
+	cfg.CIDRFeedURLAzure = os.Getenv("CIDR_FEED_URL_AZURE")
+	cfg.CIDRFeedURLTor = os.Getenv("CIDR_FEED_URL_TOR")
+	cfg.CIDRFeedDownloadEnable = getEnvBool("CIDR_FEED_DOWNLOAD_ENABLED", false)
+	cfg.ProxyAllowHTTPInsecure = getEnvBool("PROXY_ALLOW_HTTP_INSECURE", false)
 
 	cfg.SlotMapReloadTopic = os.Getenv("SLOT_MAP_RELOAD_TOPIC")
 	if cfg.SlotMapReloadTopic == "" {

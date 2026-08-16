@@ -148,6 +148,8 @@ func loadManagementModules(cfg *Config) {
 	cfg.Management.DomainSSLSetupEnabled = getEnvBool("DOMAIN_SSL_SETUP_ENABLED", true)
 	cfg.Management.DomainSSLSetupScript = strings.TrimSpace(os.Getenv("DOMAIN_SSL_SETUP_SCRIPT"))
 	cfg.Management.DomainSSLAcmeEmail = strings.TrimSpace(os.Getenv("CADDY_ACME_EMAIL"))
+	cfg.Management.CaddyTLSAskToken = Secret(strings.TrimSpace(os.Getenv("CADDY_TLS_ASK_TOKEN")))
+	cfg.Management.CaddyTLSAskAllowLocal = getEnvBool("CADDY_TLS_ASK_ALLOW_LOCAL", true)
 
 	cfg.Control.EnableAuth = getEnvBool("CONTROL_ENABLE_AUTH", true)
 	cfg.Control.EnableManagement = getEnvBool("CONTROL_ENABLE_MANAGEMENT", true)

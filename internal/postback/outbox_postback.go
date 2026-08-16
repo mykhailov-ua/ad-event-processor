@@ -9,21 +9,22 @@ import (
 )
 
 type PostbackPayload struct {
-	CustomerID    uuid.UUID `json:"customer_id"`
-	CampaignID    uuid.UUID `json:"campaign_id"`
-	ClickID       string    `json:"click_id"`
-	EventType     string    `json:"event_type"`
-	PayoutMicro   int64     `json:"payout_micro"`
-	TxID          string    `json:"tx_id"`
-	SubID1        string    `json:"subid1"`
-	Param10       string    `json:"param10"`
-	Email         string    `json:"email"`
-	Phone         string    `json:"phone"`
-	FBCLID        string    `json:"fbclid"`
-	GCLID         string    `json:"gclid"`
-	TTCLID        string    `json:"ttclid"`
-	TestEventCode string    `json:"test_event_code,omitempty"`
-	subSlots      [maxSubMacroSlots]string
+	CustomerID     uuid.UUID `json:"customer_id"`
+	CampaignID     uuid.UUID `json:"campaign_id"`
+	ClickID        string    `json:"click_id"`
+	EventType      string    `json:"event_type"`
+	PayoutMicro    int64     `json:"payout_micro"`
+	TxID           string    `json:"tx_id"`
+	SubID1         string    `json:"subid1"`
+	Param10        string    `json:"param10"`
+	Email          string    `json:"email"`
+	Phone          string    `json:"phone"`
+	FBCLID         string    `json:"fbclid"`
+	GCLID          string    `json:"gclid"`
+	TTCLID         string    `json:"ttclid"`
+	EventSourceURL string    `json:"event_source_url,omitempty"`
+	TestEventCode  string    `json:"test_event_code,omitempty"`
+	subSlots       [maxSubMacroSlots]string
 }
 
 func (p *PostbackPayload) SubIDs() [maxSubMacroSlots]string {
