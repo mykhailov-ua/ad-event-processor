@@ -33,4 +33,5 @@ bash scripts/ci/release_strings_gate.sh "$OUT/tracker"
 echo "license_red_team_garbled: running license-red-team unit gates"
 bash scripts/security/license_red_team.sh
 
+echo "fault_proof fault=license_red_team_garbled harness=release_qa_garbled_red_team pass=1"
 echo "license_red_team_garbled: OK"

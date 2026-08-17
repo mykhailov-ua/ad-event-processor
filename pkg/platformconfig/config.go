@@ -1,3 +1,4 @@
+// Package platformconfig implements platformconfig support for BidShard.
 package platformconfig
 
 import (

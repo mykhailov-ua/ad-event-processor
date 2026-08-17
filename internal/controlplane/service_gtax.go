@@ -69,7 +69,7 @@ func (s *Service) ApplyCTVSettlement(
 	return result, nil
 }
 
-func (w *OutboxWorker) handleApplyGTVSettlement(ctx context.Context, payload []byte) error {
+func (worker *OutboxWorker) handleApplyGTVSettlement(ctx context.Context, payload []byte) error {
 	p, err := coldpath.UnmarshalStrict[ctvGtaxSettlementPayload](payload)
 	if err != nil {
 		return err
@@ -82,6 +82,6 @@ func (w *OutboxWorker) handleApplyGTVSettlement(ctx context.Context, payload []b
 	if err != nil {
 		return fmt.Errorf("invalid campaign id: %w", err)
 	}
-	_, err = domain.ApplyCTVSettlement(ctx, w.svc.GetPool(), p.SettlementID, customerID, campaignID, p.SpendMicro)
+	_, err = domain.ApplyCTVSettlement(ctx, worker.svc.GetPool(), p.SettlementID, customerID, campaignID, p.SpendMicro)
 	return err
 }

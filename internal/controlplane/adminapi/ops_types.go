@@ -69,13 +69,73 @@ type ShardHealthReport struct {
 }
 
 type IncidentSnapshotDTO struct {
-	EmergencyBreaker string              `json:"emergency_breaker"`
-	Shards           []ShardHealthStatus `json:"shards"`
-	Outbox           OutboxHealthSummary `json:"outbox"`
-	StreamLag        []ShardStreamLag    `json:"stream_lag"`
-	BreakerStates    map[string]string   `json:"breaker_states"`
-	Partial          bool                `json:"partial"`
-	Errors           []FanOutSourceError `json:"errors,omitempty"`
+	EmergencyBreaker  string                `json:"emergency_breaker"`
+	Shards            []ShardHealthStatus   `json:"shards"`
+	Outbox            OutboxHealthSummary   `json:"outbox"`
+	StreamLag         []ShardStreamLag      `json:"stream_lag"`
+	BreakerStates     map[string]string     `json:"breaker_states"`
+	Partial           bool                  `json:"partial"`
+	Errors            []FanOutSourceError   `json:"errors,omitempty"`
+	StaleDashboard    bool                  `json:"stale_dashboard,omitempty"`
+	AffectedCampaigns []AffectedCampaignDTO `json:"affected_campaigns,omitempty"`
+}
+
+type AffectedCampaignDTO struct {
+	CampaignID string `json:"campaign_id"`
+	Name       string `json:"name,omitempty"`
+}
+
+type DLQInboxEntryDTO struct {
+	ID         string `json:"id"`
+	Source     string `json:"source"`
+	CampaignID string `json:"campaign_id,omitempty"`
+	EventType  string `json:"event_type,omitempty"`
+	Error      string `json:"error,omitempty"`
+	FailedAt   string `json:"failed_at,omitempty"`
+	Status     string `json:"status,omitempty"`
+	RetryCount int32  `json:"retry_count,omitempty"`
+	ShardID    int    `json:"shard_id,omitempty"`
+	StreamID   string `json:"stream_id,omitempty"`
+	EntryID    string `json:"entry_id,omitempty"`
+	ClickID    string `json:"click_id,omitempty"`
+	Provider   string `json:"provider,omitempty"`
+}
+
+type DLQInboxListResult struct {
+	Items      []DLQInboxEntryDTO  `json:"items"`
+	NextCursor string              `json:"next_cursor,omitempty"`
+	Partial    bool                `json:"partial,omitempty"`
+	Errors     []FanOutSourceError `json:"errors,omitempty"`
+}
+
+type ConsentProofDTO struct {
+	ID         int64  `json:"id"`
+	UserIDHash string `json:"user_id_hash"`
+	Purposes   int16  `json:"purposes"`
+	Source     string `json:"source"`
+	RecordedAt string `json:"recorded_at"`
+	AdStorage  bool   `json:"ad_storage"`
+	Analytics  bool   `json:"analytics_storage"`
+}
+
+type ConsentProofListResult struct {
+	Items      []ConsentProofDTO `json:"items"`
+	NextCursor string            `json:"next_cursor,omitempty"`
+}
+
+type DomainRotationHostDTO struct {
+	Hostname            string `json:"hostname"`
+	Role                string `json:"role"`
+	HealthStatus        string `json:"health_status"`
+	SSLStatus           string `json:"ssl_status,omitempty"`
+	PoolID              string `json:"pool_id,omitempty"`
+	PoolDomainStatus    string `json:"pool_domain_status,omitempty"`
+	DmrCampaignCount    int64  `json:"dmr_campaign_count"`
+	ActiveCampaignCount int64  `json:"active_campaign_count"`
+}
+
+type DomainRotationListResult struct {
+	Hosts []DomainRotationHostDTO `json:"hosts"`
 }
 
 type ShardHealthAPIResponse struct {
@@ -110,7 +170,11 @@ type ManagementOpsReader interface {
 	GetIncidentSnapshot(ctx context.Context) (IncidentSnapshotDTO, error)
 	ListOutboxEvents(ctx context.Context, status, eventType, cursor string, limit int32) (OutboxListResult, error)
 	ListDLQEntries(ctx context.Context, cursor string, limit int) (FanOutResult[DLQEntryDTO], error)
+	ListDLQInbox(ctx context.Context, source, cursor string, limit int) (DLQInboxListResult, error)
+	RetryDLQInbox(ctx context.Context, source, id, idempotencyKey string) error
 	EnqueueDLQRetry(ctx context.Context, payload DLQRetryPayload, idempotencyKey string) error
+	ListConsentProofs(ctx context.Context, userID, cursor string, limit int32) (ConsentProofListResult, error)
+	ListDomainRotation(ctx context.Context) (DomainRotationListResult, error)
 	GetShardHealthFanOut(ctx context.Context) (ShardHealthAPIResponse, error)
 	ExportAuditCSV(ctx context.Context, cursor string, redactPII bool, w io.Writer) (AuditExportResult, error)
 	LookupLedgerIDForPaymentIntent(ctx context.Context, intentID string) (string, error)

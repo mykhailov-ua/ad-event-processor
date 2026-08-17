@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSealedBPF_ValidMCKLoadsCollection(t *testing.T) {
+func TestEdgeSealed_ValidLicenseLoadsCollection(t *testing.T) {
 	requireBPF(t)
 
 	cleanup := setupSealedLicenseFixture(t)
@@ -38,9 +38,9 @@ func TestSealedBPF_ValidMCKLoadsCollection(t *testing.T) {
 	require.NotNil(t, objs.BlocklistV4)
 }
 
-func TestSealedBPF_ValidLicenseAttachBaseline(t *testing.T) {
+func TestEdgeSealed_XDPAttachMatchesBaseline(t *testing.T) {
 	if os.Getenv("SEALED_BPF_XDP_SMOKE") != "1" {
-		t.Skip("set SEALED_BPF_XDP_SMOKE=1 for V2-B.D2 lab attach smoke")
+		t.Skip("set SEALED_BPF_XDP_SMOKE=1 for sealed BPF XDP attach lab smoke")
 	}
 	requireBPF(t)
 	if os.Geteuid() != 0 {
@@ -68,6 +68,9 @@ func TestSealedBPF_ValidLicenseAttachBaseline(t *testing.T) {
 	require.Equal(t, baselineAction, sealedAction, "sealed prog.Test must match unsealed baseline")
 
 	sealedLink := attachLoGeneric(t, sealed.XdpEdgeFilter)
+	info, err := sealedLink.Info()
+	require.NoError(t, err)
+	require.NotZero(t, info.ID, "sealed program attached on lo")
 	require.NoError(t, sealedLink.Close())
 	sealed.Close()
 

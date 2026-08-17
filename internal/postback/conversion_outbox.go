@@ -1,3 +1,4 @@
+// Package postback implements postback support for BidShard.
 package postback
 
 import (

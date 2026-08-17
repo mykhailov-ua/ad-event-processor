@@ -66,18 +66,6 @@ type regionIngestBatchJSON struct {
 	OpID        string `json:"op_id,omitempty"`
 }
 
-func parseAPIPagination(r *http.Request) (int32, int32) {
-	limit := int32(50)
-	if l, err := strconv.ParseInt(r.URL.Query().Get("limit"), 10, 32); err == nil && l > 0 {
-		limit = int32(l)
-	}
-	offset := int32(0)
-	if o, err := strconv.ParseInt(r.URL.Query().Get("offset"), 10, 32); err == nil && o > 0 {
-		offset = int32(o)
-	}
-	return coldpath.ClampLimitOffset(limit, offset, 50, 1000)
-}
-
 func (h *Handler) ensureCampaignAccess(r *http.Request, campaignID uuid.UUID) error {
 	u, ok := GetUser(r.Context())
 	if !ok || !u.HasBoundCustomer() {
@@ -130,7 +118,7 @@ func writeForecastError(w http.ResponseWriter, err error) {
 	writeServiceError(w, err)
 }
 
-func (handler *Handler) resolveForecastCustomerID(r *http.Request, bodyCustomerID *uuid.UUID) (*uuid.UUID, error) {
+func (h *Handler) resolveForecastCustomerID(r *http.Request, bodyCustomerID *uuid.UUID) (*uuid.UUID, error) {
 	u, ok := GetUser(r.Context())
 	if !ok {
 		return nil, errForbidden
@@ -148,14 +136,14 @@ func (handler *Handler) resolveForecastCustomerID(r *http.Request, bodyCustomerI
 	return nil, nil
 }
 
-func (handler *Handler) selfServePerm(next http.HandlerFunc, permission string) http.HandlerFunc {
-	if handler.authMiddleware != nil {
-		return handler.authMiddleware.RequireSelfServe(permission)(next)
+func (h *Handler) selfServePerm(next http.HandlerFunc, permission string) http.HandlerFunc {
+	if h.authMiddleware != nil {
+		return h.authMiddleware.RequireSelfServe(permission)(next)
 	}
-	return handler.perm(next, permission)
+	return h.perm(next, permission)
 }
 
-func (handler *Handler) resolveSelfServeCustomerID(r *http.Request, bodyCustomerID *uuid.UUID) (uuid.UUID, error) {
+func (h *Handler) resolveSelfServeCustomerID(r *http.Request, bodyCustomerID *uuid.UUID) (uuid.UUID, error) {
 	u, ok := GetUser(r.Context())
 	if !ok {
 		return uuid.Nil, errForbidden
@@ -336,6 +324,14 @@ func mapServiceError(err error) (status int, code, message string) {
 		return http.StatusBadRequest, "BAD_REQUEST", string(ve)
 	}
 
+	if errors.Is(err, ErrBudgetApprovalRequired) {
+		return http.StatusConflict, "APPROVAL_REQUIRED", err.Error()
+	}
+
+	if errors.Is(err, ErrPublisherScopeRequired) {
+		return http.StatusForbidden, "FORBIDDEN", err.Error()
+	}
+
 	if isNotFoundError(err) {
 		return http.StatusNotFound, "NOT_FOUND", "resource not found"
 	}
@@ -363,6 +359,7 @@ func isNotFoundError(err error) bool {
 		errors.Is(err, ErrBrandNotFound) ||
 		errors.Is(err, ErrCreativeNotFound) ||
 		errors.Is(err, ErrTemplateNotFound) ||
+		errors.Is(err, ErrTeamMemberNotFound) ||
 		errors.Is(err, ErrRtbDealNotFound) ||
 		errors.Is(err, ErrDealCustomerMissing) ||
 		errors.Is(err, ErrSellerNotFound) ||

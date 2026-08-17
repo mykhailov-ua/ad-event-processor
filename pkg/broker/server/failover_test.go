@@ -36,8 +36,7 @@ func TestFault_SafeFailover_LaggingLeaderNotReady(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	s := NewServer("127.0.0.1:0", dir, 10*1024*1024, 4096)
 	if err := s.Start(); err != nil {
 		t.Fatal(err)
@@ -74,7 +73,7 @@ func TestFault_SafeFailover_LaggingLeaderNotReady(t *testing.T) {
 	if err := cli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	_, err = cli.Produce(context.Background(), topic, 0, []byte("should-wait"))
 	if err == nil {

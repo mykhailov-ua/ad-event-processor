@@ -272,13 +272,13 @@ func TestToPlacementReportRowDTO(t *testing.T) {
 
 	tests := []struct {
 		name string
-		row  placementReportCHRow
+		row  reportMetricsCHRow
 		want PlacementReportRowDTO
 	}{
 		{
 			name: "profit and roi",
-			row: placementReportCHRow{
-				PlacementID:  "zone_1001",
+			row: reportMetricsCHRow{
+				Dimension:    "zone_1001",
 				CampaignID:   "camp-1",
 				Impressions:  10000,
 				Clicks:       500,
@@ -302,9 +302,9 @@ func TestToPlacementReportRowDTO(t *testing.T) {
 		},
 		{
 			name: "zero spend skips roi",
-			row: placementReportCHRow{
-				PlacementID: "zone_0",
-				CampaignID:  "camp-2",
+			row: reportMetricsCHRow{
+				Dimension:  "zone_0",
+				CampaignID: "camp-2",
 			},
 			want: PlacementReportRowDTO{
 				PlacementID: "zone_0",
@@ -326,13 +326,13 @@ func TestToKeywordReportRowDTO(t *testing.T) {
 
 	tests := []struct {
 		name string
-		row  keywordReportCHRow
+		row  reportMetricsCHRow
 		want KeywordReportRowDTO
 	}{
 		{
 			name: "profit and roi",
-			row: keywordReportCHRow{
-				Keyword:      "insurance",
+			row: reportMetricsCHRow{
+				Dimension:    "insurance",
 				CampaignID:   "camp-1",
 				Impressions:  5000,
 				Clicks:       200,

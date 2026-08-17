@@ -1,3 +1,4 @@
+// Package payment implements payment support for BidShard.
 package payment
 
 import "fmt"

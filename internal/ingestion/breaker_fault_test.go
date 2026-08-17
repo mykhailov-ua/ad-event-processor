@@ -177,7 +177,7 @@ func TestFaultInjection_StreamConsumerPoisonPillToDLQ(t *testing.T) {
 	assert.Equal(t, int64(0), pending.Count, "DLQ'ed message must be deleted from main stream")
 
 	consumer.Close()
-	consumer.Wait(ctx)
+	require.NoError(t, consumer.Wait(ctx))
 
 	faultproof.Log(t, "stream_poison_pill_dlq", map[string]string{
 		"subsystem": "ads",

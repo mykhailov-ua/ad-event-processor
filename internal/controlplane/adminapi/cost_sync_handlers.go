@@ -259,8 +259,7 @@ func (costSync *CostSyncHTTPHandlers) listHistory(w http.ResponseWriter, r *http
 		cust = pgtype.UUID{Bytes: cid, Valid: true}
 	}
 
-	limit := int32(50)
-	offset := int32(0)
+	limit, offset := coldpath.ParseAPIPagination(r)
 	rows, err := db.New(costSync.Pool).ListCostSyncRuns(r.Context(), db.ListCostSyncRunsParams{
 		Column1: cust,
 		Limit:   limit,

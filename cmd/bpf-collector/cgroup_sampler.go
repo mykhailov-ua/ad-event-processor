@@ -12,7 +12,7 @@ import (
 )
 
 type cgroupSampleRow struct {
-	TsNs             int64  `json:"ts_ns"`
+	TSNs             int64  `json:"ts_ns"`
 	PID              uint32 `json:"pid"`
 	Name             string `json:"name"`
 	Role             string `json:"role"`
@@ -82,7 +82,7 @@ func (r *probeRun) cgroupSampleLoop(ctx context.Context) {
 
 func readCgroupSample(t targetEntry, ts int64) (cgroupSampleRow, error) {
 	row := cgroupSampleRow{
-		TsNs: ts,
+		TSNs: ts,
 		PID:  t.PID,
 		Name: t.Name,
 		Role: roleName(t.Role),

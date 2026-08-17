@@ -209,7 +209,7 @@ func (s *PostgresStore) StoreBatch(ctx context.Context, events []*domain.Event) 
 		cancel()
 
 		if err == nil {
-			metrics.DbWriteDuration.WithLabelValues("postgres").Observe(duration)
+			metrics.DBWriteDuration.WithLabelValues("postgres").Observe(duration)
 			return nil
 		}
 
@@ -228,7 +228,7 @@ func (s *PostgresStore) StoreBatch(ctx context.Context, events []*domain.Event) 
 		}
 	}
 
-	metrics.DbWriteErrors.WithLabelValues("postgres").Inc()
+	metrics.DBWriteErrors.WithLabelValues("postgres").Inc()
 	return err
 }
 
@@ -262,7 +262,7 @@ func (s *PostgresStore) StoreStatsBatch(ctx context.Context, events []*domain.Ev
 		cancel()
 
 		if err == nil {
-			metrics.DbWriteDuration.WithLabelValues("postgres_stats").Observe(duration)
+			metrics.DBWriteDuration.WithLabelValues("postgres_stats").Observe(duration)
 			metrics.SettlementStatsCampaignsFlushed.Add(float64(len(campaignIDs)))
 			return nil
 		}
@@ -282,7 +282,7 @@ func (s *PostgresStore) StoreStatsBatch(ctx context.Context, events []*domain.Ev
 		}
 	}
 
-	metrics.DbWriteErrors.WithLabelValues("postgres_stats").Inc()
+	metrics.DBWriteErrors.WithLabelValues("postgres_stats").Inc()
 	return err
 }
 

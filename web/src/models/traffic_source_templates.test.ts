@@ -44,4 +44,21 @@ describe('traffic_source_templates', () => {
     assert.ok(url.includes('ad_campaign_id={{campaign.id}}'));
     assert.ok(!url.includes('%7B%7Bcampaign.id%7D%7D'));
   });
+
+  it('appends dmr=1 and UTM params (CPA-M4 fixture)', () => {
+    const fb = trafficSourceById('meta-facebook')!;
+    const url = buildTemplatedClickURL(
+      'https://trk.example.com/click?campaign_id={campaign_id}&sub1={sub1}',
+      '550e8400-e29b-41d4-a716-446655440000',
+      templateParamMap(fb),
+      {
+        dmr: true,
+        utm: { utm_source: 'facebook', utm_medium: 'cpc', utm_campaign: 'summer' },
+      },
+    );
+    assert.ok(url.includes('dmr=1'));
+    assert.ok(url.includes('utm_source=facebook'));
+    assert.ok(url.includes('utm_campaign=summer'));
+    assert.ok(url.indexOf('dmr=1') < url.indexOf('utm_source='));
+  });
 });

@@ -1,3 +1,4 @@
+// Package gtax computes tax amounts from spend micro-units and basis points.
 package gtax
 
 func ComputeMicro(spendMicro int64, rateBPS int32) int64 {

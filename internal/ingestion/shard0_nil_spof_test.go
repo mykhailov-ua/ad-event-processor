@@ -157,7 +157,7 @@ func TestShard0Nil_BrandCreativeStoreLoadsFromHealthyShard(t *testing.T) {
 
 	store := NewBrandCreativeStore(firstConnectedRedisShard(rdbs), 0)
 	store.LoadFromRedis(ctx, brandID)
-	assert.Equal(t, "https://example.com", store.SelectLandingURL(brandID, "user", nil))
+	assert.Equal(t, "https://example.com", store.SelectLandingURL(context.Background(), brandID, "user", nil))
 }
 
 func TestShard0Nil_DealFloorCacheRefreshFromHealthyShard(t *testing.T) {

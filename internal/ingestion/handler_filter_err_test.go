@@ -28,10 +28,10 @@ func TestClassifyFilterErr_HandlerMatrix(t *testing.T) {
 				timeout = 50 * time.Millisecond
 			}
 			var filter EventFilter
-			switch {
-			case tc.name == "filter_timeout":
+			switch tc.name {
+			case "filter_timeout":
 				filter = &slowFilter{delay: 200 * time.Millisecond}
-			case tc.name == "redis_circuit":
+			case "redis_circuit":
 				filter = &errFilter{err: database.ErrRedisCircuitOpen}
 			default:
 				filter = tc.filter

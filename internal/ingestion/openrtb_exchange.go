@@ -134,12 +134,12 @@ func (h *AdsPacketHandler) reactOpenRTBBidCore(req parsedHTTPRequest, c gnet.Con
 			n, err = openrtb.WriteBidsHTTPResponse(buf, outcome.ResponseWire, httpOpts)
 		}
 		if err != nil {
-			return h.writeOpenRTBNoBid(req, c, ctx, parsed.OpenRTB26Hot.RequestID[:parsed.OpenRTB26Hot.RequestIDLen], rtb.NoBidInvalidRequest, 0)
+			return h.writeOpenRTBNoBid(req, c, ctx, parsed.RequestID[:parsed.RequestIDLen], rtb.NoBidInvalidRequest, 0)
 		}
 		h.write(c, buf[:n], ctx)
 		return gnet.None
 	}
-	return h.writeOpenRTBNoBid(req, c, ctx, parsed.OpenRTB26Hot.RequestID[:parsed.OpenRTB26Hot.RequestIDLen], outcome.NoBid, 0)
+	return h.writeOpenRTBNoBid(req, c, ctx, parsed.RequestID[:parsed.RequestIDLen], outcome.NoBid, 0)
 }
 
 func parsedRequestIDBytes(hot *OpenRTB26Hot) []byte {
@@ -184,7 +184,7 @@ func runOpenRTBExchangeParsed(proc trackProcessor, hot *OpenRTB26Hot, cold *Open
 		seatOne = []byte("1")
 	}
 	var outcome openrtbExchangeOutcome
-	var lastReason rtb.NoBidReason = rtb.NoBidNone
+	lastReason := rtb.NoBidNone
 	currencyUSD := hot.Flags&openrtb26FlagEUR == 0
 
 	for i := 0; i < impCount; i++ {
@@ -331,7 +331,7 @@ func runOpenRTBExchange(proc trackProcessor, wireReq openrtb.BidRequest, bidID [
 	copy(parsed.ImpID[:], targeting.ImpIDBuf[:targeting.ImpIDLen])
 	parsed.DealIDLen = targeting.Input.DealIDLen
 	copy(parsed.DealID[:], targeting.Input.DealIDBuf[:targeting.Input.DealIDLen])
-	parsed.OpenRTB26Cold.Schain = targeting.Input.Schain
+	parsed.Schain = targeting.Input.Schain
 	parsed.FcapUserHash = targeting.Input.FcapUserHash
 	if wireReq.Test == 1 {
 		parsed.Flags |= openrtb26FlagTest

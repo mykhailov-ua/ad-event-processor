@@ -204,7 +204,7 @@ export function ShellLayout({ children }: ShellLayoutProps) {
   const [theme, setTheme] = useState(() => storage.getTheme());
   const themeIcon = theme === 'dark' ? 'sun' : 'moon';
   const collapseIcon = sidebarCollapsed ? 'panel-left-open' : 'panel-left-close';
-  const navGroups = visibleNavGroups(permissions);
+  const navGroups = visibleNavGroups(permissions, user?.role);
   const bounds = getSidebarWidthBounds();
 
   const sidebarStyle = sidebarCollapsed

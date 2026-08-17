@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/bidshard/ad-event-processor/pkg/broker/protocol"
+	"github.com/stretchr/testify/require"
 )
 
 func TestProduceBatch_AfterWireRegister_SameConn(t *testing.T) {
@@ -14,8 +15,7 @@ func TestProduceBatch_AfterWireRegister_SameConn(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	s := NewServer("127.0.0.1:0", dir, 10*1024*1024, 4096)
 	if err := s.Start(); err != nil {
 		t.Fatal(err)
@@ -27,7 +27,7 @@ func TestProduceBatch_AfterWireRegister_SameConn(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	writeBuf := make([]byte, 4096)
 	readBuf := make([]byte, 4096)
@@ -75,8 +75,7 @@ func TestProduceBatch_AfterWireRegister_SeparateConn(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	s := NewServer("127.0.0.1:0", dir, 10*1024*1024, 4096)
 	if err := s.Start(); err != nil {
 		t.Fatal(err)
@@ -97,7 +96,7 @@ func TestProduceBatch_AfterWireRegister_SeparateConn(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, _, respPayload, err := protocol.ReadFrame(regConn, readBuf, lenBuf)
-	regConn.Close()
+	require.NoError(t, regConn.Close())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +112,7 @@ func TestProduceBatch_AfterWireRegister_SeparateConn(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer batchConn.Close()
+	defer func() { _ = batchConn.Close() }()
 
 	var batch []byte
 	batch = protocol.AppendBatchMessage(batch, topicID, []byte("m0"))
@@ -141,8 +140,7 @@ func TestProduceBatch_PartialCommitCount(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	s := NewServer("127.0.0.1:0", dir, 10*1024*1024, 4096)
 	if err := s.Start(); err != nil {
 		t.Fatal(err)
@@ -159,7 +157,7 @@ func TestProduceBatch_PartialCommitCount(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	writeBuf := make([]byte, 4096)
 	readBuf := make([]byte, 4096)
@@ -198,8 +196,7 @@ func TestRegisterTopic_WireRoundtrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	s := NewServer("127.0.0.1:0", dir, 10*1024*1024, 4096)
 	if err := s.Start(); err != nil {
 		t.Fatal(err)
@@ -211,7 +208,7 @@ func TestRegisterTopic_WireRoundtrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	writeBuf := make([]byte, 4096)
 	readBuf := make([]byte, 4096)
@@ -245,8 +242,7 @@ func TestLeaderz_StandaloneOK(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	s := NewServer("127.0.0.1:0", dir, 10*1024*1024, 4096)
 	s.SetHealthAddr("127.0.0.1:0")
 	if err := s.Start(); err != nil {

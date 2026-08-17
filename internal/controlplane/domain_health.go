@@ -273,6 +273,16 @@ func (s *Service) probeAndStore(ctx context.Context, target domainTarget) error 
 	probeCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 	res := domainhealth.Probe(probeCtx, target.Hostname, target.Role)
+
+	if rep := s.reputationChecker(); rep != nil && rep.Enabled() {
+		unsafe, detail, repErr := rep.Check(probeCtx, target.Hostname)
+		if repErr != nil {
+			slog.Warn("domain health: reputation probe failed", "host", target.Hostname, "err", repErr)
+		} else {
+			applyReputationToProbe(&res, unsafe, detail)
+		}
+	}
+
 	now := time.Now().UTC()
 
 	var sslNotAfter pgtype.Timestamptz
@@ -312,6 +322,18 @@ func (s *Service) probeAndStore(ctx context.Context, target domainTarget) error 
 		}
 	}
 	return nil
+}
+
+func applyReputationToProbe(res *domainhealth.Result, unsafe bool, detail string) {
+	if res == nil || !unsafe {
+		return
+	}
+	res.HealthStatus = domainhealth.HealthDown
+	if detail != "" {
+		res.ProbeDetail = "reputation:" + detail
+	} else {
+		res.ProbeDetail = "reputation:unsafe"
+	}
 }
 
 type domainHealthScanner interface {

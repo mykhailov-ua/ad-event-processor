@@ -10,13 +10,13 @@ import (
 	"strings"
 )
 
-type TcpListenCounters struct {
+type TCPListenCounters struct {
 	ListenOverflows uint64
 	ListenDrops     uint64
 }
 
-func (c TcpListenCounters) Delta(after TcpListenCounters) TcpListenCounters {
-	return TcpListenCounters{
+func (c TCPListenCounters) Delta(after TCPListenCounters) TCPListenCounters {
+	return TCPListenCounters{
 		ListenOverflows: saturatingSub(after.ListenOverflows, c.ListenOverflows),
 		ListenDrops:     saturatingSub(after.ListenDrops, c.ListenDrops),
 	}
@@ -29,35 +29,35 @@ func saturatingSub(a, b uint64) uint64 {
 	return a - b
 }
 
-func ReadTcpListenCounters() (TcpListenCounters, error) {
+func ReadTCPListenCounters() (TCPListenCounters, error) {
 	f, err := os.Open("/proc/net/netstat")
 	if err != nil {
-		return TcpListenCounters{}, err
+		return TCPListenCounters{}, err
 	}
 	defer func() { _ = f.Close() }()
-	return ParseTcpListenCounters(f)
+	return ParseTCPListenCounters(f)
 }
 
-func ParseTcpListenCounters(r io.Reader) (TcpListenCounters, error) {
-	values, err := parseTcpExtFieldMap(r)
+func ParseTCPListenCounters(r io.Reader) (TCPListenCounters, error) {
+	values, err := parseTCPExtFieldMap(r)
 	if err != nil {
-		return TcpListenCounters{}, err
+		return TCPListenCounters{}, err
 	}
 	overflows, ok := values["ListenOverflows"]
 	if !ok {
-		return TcpListenCounters{}, fmt.Errorf("ListenOverflows not found in /proc/net/netstat")
+		return TCPListenCounters{}, fmt.Errorf("ListenOverflows not found in /proc/net/netstat")
 	}
 	drops, ok := values["ListenDrops"]
 	if !ok {
-		return TcpListenCounters{}, fmt.Errorf("ListenDrops not found in /proc/net/netstat")
+		return TCPListenCounters{}, fmt.Errorf("ListenDrops not found in /proc/net/netstat")
 	}
-	return TcpListenCounters{
+	return TCPListenCounters{
 		ListenOverflows: overflows,
 		ListenDrops:     drops,
 	}, nil
 }
 
-func parseTcpExtFieldMap(r io.Reader) (map[string]uint64, error) {
+func parseTCPExtFieldMap(r io.Reader) (map[string]uint64, error) {
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 
@@ -95,6 +95,6 @@ func parseTcpExtFieldMap(r io.Reader) (map[string]uint64, error) {
 	return nil, fmt.Errorf("TcpExt counter block not found")
 }
 
-func parseTcpListenCountersFromBytes(data []byte) (TcpListenCounters, error) {
-	return ParseTcpListenCounters(bytes.NewReader(data))
+func parseTCPListenCountersFromBytes(data []byte) (TCPListenCounters, error) {
+	return ParseTCPListenCounters(bytes.NewReader(data))
 }

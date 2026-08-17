@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -44,9 +45,9 @@ func TestOffsetStore_MinCommitted(t *testing.T) {
 	_, _ = store.Commit(ctx, "t", "g1", 50)
 	_, _ = store.Commit(ctx, "t", "g2", 30)
 
-	min, ok, err := store.MinCommitted(ctx, "t")
-	if err != nil || !ok || min != 30 {
-		t.Fatalf("min=%d ok=%v err=%v", min, ok, err)
+	minOffset, ok, err := store.MinCommitted(ctx, "t")
+	if err != nil || !ok || minOffset != 30 {
+		t.Fatalf("min=%d ok=%v err=%v", minOffset, ok, err)
 	}
 }
 
@@ -107,7 +108,7 @@ func TestConsumerRunAndResume(t *testing.T) {
 		return nil
 	})
 
-	if err := c.Run(ctx); err != nil && err != context.Canceled {
+	if err := c.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
 		t.Fatalf("consumer run: %v", err)
 	}
 	if len(seen) < 2 {
@@ -130,7 +131,7 @@ func TestConsumerRunAndResume(t *testing.T) {
 		}
 		return nil
 	})
-	if err := resume.Run(ctx2); err != nil && err != context.Canceled {
+	if err := resume.Run(ctx2); err != nil && !errors.Is(err, context.Canceled) {
 		t.Fatalf("resume run: %v", err)
 	}
 	if len(seen) < 4 {

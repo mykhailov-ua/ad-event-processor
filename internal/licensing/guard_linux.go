@@ -68,6 +68,13 @@ func guardLoop(ctx context.Context) {
 	}
 }
 
+func tripGuard(reason string) {
+	if guardTripped.CompareAndSwap(0, 1) {
+		InvalidateLicenseEpoch()
+		recordGuardTrip(reason)
+	}
+}
+
 func runGuardProbe() bool {
 	if pid, err := guardTracerPidReader(); err == nil && pid > 0 {
 		tripGuard("tracer_pid")

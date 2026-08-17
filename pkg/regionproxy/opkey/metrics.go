@@ -1,3 +1,4 @@
+// Package opkey implements regionproxy opkey helpers.
 package opkey
 
 var (

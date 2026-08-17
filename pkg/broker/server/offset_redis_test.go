@@ -36,10 +36,10 @@ func TestRedisOffsetStore_Roundtrip(t *testing.T) {
 	assert.Equal(t, uint64(25), got)
 
 	_, _ = store.Commit(ctx, "tracker-logs", "g2", 15)
-	min, ok, err := store.MinCommitted(ctx, "tracker-logs")
+	minOffset, ok, err := store.MinCommitted(ctx, "tracker-logs")
 	require.NoError(t, err)
 	require.True(t, ok)
-	assert.Equal(t, uint64(15), min)
+	assert.Equal(t, uint64(15), minOffset)
 
 	groups, err := store.ListGroups(ctx, "tracker-logs")
 	require.NoError(t, err)

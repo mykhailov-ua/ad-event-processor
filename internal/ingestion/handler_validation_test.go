@@ -45,7 +45,7 @@ func TestAdsPacketHandler_Validation(t *testing.T) {
 	})
 
 	t.Run("POST /track too large -> 413 Payload Too Large", func(t *testing.T) {
-		before413 := testutil.ToFloat64(metrics.HttpRequestsTotal.WithLabelValues("POST", "/track", "413"))
+		before413 := testutil.ToFloat64(metrics.HTTPRequestsTotal.WithLabelValues("POST", "/track", "413"))
 		body := make([]byte, 105)
 		req := []byte("POST /track HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: 105\r\n\r\n")
 		req = append(req, body...)
@@ -53,7 +53,7 @@ func TestAdsPacketHandler_Validation(t *testing.T) {
 		act := handler.OnTraffic(conn)
 		assert.Equal(t, gnet.Close, act)
 		assert.True(t, bytes.Equal(conn.Written(), respPayloadTooLarge))
-		assert.Equal(t, before413+1, testutil.ToFloat64(metrics.HttpRequestsTotal.WithLabelValues("POST", "/track", "413")))
+		assert.Equal(t, before413+1, testutil.ToFloat64(metrics.HTTPRequestsTotal.WithLabelValues("POST", "/track", "413")))
 	})
 
 	t.Run("POST /track missing Content-Length -> 400 Bad Request", func(t *testing.T) {

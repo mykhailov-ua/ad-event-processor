@@ -1,3 +1,4 @@
+// Package costsync implements costsync support for BidShard.
 package costsync
 
 import (

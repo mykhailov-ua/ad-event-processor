@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -34,8 +35,7 @@ func TestBrokerIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tempDir)
-
+	defer func() { _ = os.RemoveAll(tempDir) }()
 	s := NewServer("127.0.0.1:0", tempDir, 10*1024*1024, 4096)
 	if err := s.Start(); err != nil {
 		t.Fatal(err)
@@ -47,7 +47,7 @@ func TestBrokerIntegration(t *testing.T) {
 	if err := cli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	topic := "events-test"
 	msgCount := 50
@@ -133,8 +133,7 @@ func TestBrokerCrashRecovery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tempDir)
-
+	defer func() { _ = os.RemoveAll(tempDir) }()
 	topic := "recovery-topic"
 
 	{
@@ -171,7 +170,7 @@ func TestBrokerCrashRecovery(t *testing.T) {
 		if err := cli.Connect(); err != nil {
 			t.Fatal(err)
 		}
-		defer cli.Close()
+		defer func() { _ = cli.Close() }()
 
 		iter, err := cli.Fetch(context.Background(), topic, 0, 0, 1024*1024)
 		if err != nil {
@@ -198,12 +197,11 @@ func TestTornWrite_RecoverTruncatesPartialRecord(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	const maxSegSize = 1024 * 1024
 	const indexInterval = 128
 
-	pl, err := log.NewPartitionLog(dir, maxSegSize, indexInterval)
+	pl, err := log.NewPartitionLog(context.Background(), dir, maxSegSize, indexInterval)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,7 +224,7 @@ func TestTornWrite_RecoverTruncatesPartialRecord(t *testing.T) {
 	cleanSize := fi.Size()
 	t.Logf("clean log size: %d bytes", cleanSize)
 
-	f, err := os.OpenFile(logPath, os.O_RDWR|os.O_APPEND, 0644)
+	f, err := os.OpenFile(logPath, os.O_RDWR|os.O_APPEND, 0o644)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -239,11 +237,11 @@ func TestTornWrite_RecoverTruncatesPartialRecord(t *testing.T) {
 	}
 	_ = f.Close()
 
-	pl2, err := log.NewPartitionLog(dir, maxSegSize, indexInterval)
+	pl2, err := log.NewPartitionLog(context.Background(), dir, maxSegSize, indexInterval)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer pl2.Close()
+	defer func() { _ = pl2.Close() }()
 
 	if pl2.NextOffset() != 5 {
 		t.Errorf("expected nextOffset=5 after recover, got %d", pl2.NextOffset())
@@ -264,13 +262,13 @@ func TestENOSPC_IndexWriteFails(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		_ = os.Chmod(dir, 0755)
-		os.RemoveAll(dir)
+		_ = os.Chmod(dir, 0o755)
+		_ = os.RemoveAll(dir)
 	}()
 
 	const maxSegSize = 1024 * 1024
 
-	pl, err := log.NewPartitionLog(dir, maxSegSize, 1)
+	pl, err := log.NewPartitionLog(context.Background(), dir, maxSegSize, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -278,7 +276,7 @@ func TestENOSPC_IndexWriteFails(t *testing.T) {
 		t.Fatal("initial append failed:", err)
 	}
 
-	if err := os.Chmod(dir, 0555); err != nil {
+	if err := os.Chmod(dir, 0o555); err != nil {
 		t.Skip("cannot chmod dir, skipping ENOSPC simulation:", err)
 	}
 
@@ -299,8 +297,7 @@ func TestSlowloris_DoesNotBlockOtherClients(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	s := NewServer("127.0.0.1:0", dir, 10*1024*1024, 4096)
 	if err := s.Start(); err != nil {
 		t.Fatal(err)
@@ -311,7 +308,7 @@ func TestSlowloris_DoesNotBlockOtherClients(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer slowConn.Close()
+	defer func() { _ = slowConn.Close() }()
 
 	if _, err := slowConn.Write([]byte{0x00, 0x00}); err != nil {
 		t.Fatal(err)
@@ -323,7 +320,7 @@ func TestSlowloris_DoesNotBlockOtherClients(t *testing.T) {
 	if err := cli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	const msgCount = 100
 	for i := range msgCount {
@@ -355,8 +352,7 @@ func TestFDExhaustion_ServerHandlesGracefully(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	s := NewServer("127.0.0.1:0", dir, 10*1024*1024, 4096)
 	if err := s.Start(); err != nil {
 		t.Fatal(err)
@@ -409,7 +405,7 @@ func TestFDExhaustion_ServerHandlesGracefully(t *testing.T) {
 	if err := cli2.Connect(); err != nil {
 		t.Fatalf("server failed to accept after FD release: %v", err)
 	}
-	defer cli2.Close()
+	defer func() { _ = cli2.Close() }()
 
 	if _, err := cli2.Produce(context.Background(), "fd-test", 0, []byte("recovery-msg")); err != nil {
 		t.Errorf("produce failed after FD recovery: %v", err)
@@ -422,14 +418,12 @@ func TestSplitBrain_IsolatedLogsNoCorruption(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dirA)
-
+	defer func() { _ = os.RemoveAll(dirA) }()
 	dirB, err := os.MkdirTemp("", "splitbrain-B-*")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dirB)
-
+	defer func() { _ = os.RemoveAll(dirB) }()
 	sA := NewServer("127.0.0.1:0", dirA, 10*1024*1024, 4096)
 	if err := sA.Start(); err != nil {
 		t.Fatal(err)
@@ -463,7 +457,7 @@ func TestSplitBrain_IsolatedLogsNoCorruption(t *testing.T) {
 	if err := cliB.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	defer cliB.Close()
+	defer func() { _ = cliB.Close() }()
 
 	for i := range 5 {
 		if _, err := cliB.Produce(context.Background(), topic, 0, []byte(fmt.Sprintf("B-msg-%d", i))); err != nil {
@@ -500,7 +494,7 @@ func TestSplitBrain_IsolatedLogsNoCorruption(t *testing.T) {
 	if err := cliA2.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	defer cliA2.Close()
+	defer func() { _ = cliA2.Close() }()
 
 	iterA, err := cliA2.Fetch(context.Background(), topic, 0, 0, 1024*1024)
 	if err != nil {
@@ -524,8 +518,7 @@ func TestConcurrentProduceFetch_NoRace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	s := NewServer("127.0.0.1:0", dir, 64*1024*1024, 4096)
 	if err := s.Start(); err != nil {
 		t.Fatal(err)
@@ -549,7 +542,7 @@ func TestConcurrentProduceFetch_NoRace(t *testing.T) {
 				produceErrors.Add(1)
 				return
 			}
-			defer cli.Close()
+			defer func() { _ = cli.Close() }()
 			for i := range messagesPerProducer {
 				payload := []byte(fmt.Sprintf("p%d-m%d", pid, i))
 				if _, err := cli.Produce(context.Background(), topic, 0, payload); err != nil {
@@ -570,7 +563,7 @@ func TestConcurrentProduceFetch_NoRace(t *testing.T) {
 				fetchErrors.Add(1)
 				return
 			}
-			defer cli.Close()
+			defer func() { _ = cli.Close() }()
 			for offset := uint64(0); offset < 50; offset += 10 {
 				_, err := cli.Fetch(context.Background(), topic, 0, offset, 4096)
 				if err != nil {
@@ -592,8 +585,7 @@ func TestSegmentRoll_CrossSegmentFetch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	const maxSeg = 4 * 1024
 	s := NewServer("127.0.0.1:0", dir, maxSeg, 64)
 	if err := s.Start(); err != nil {
@@ -605,7 +597,7 @@ func TestSegmentRoll_CrossSegmentFetch(t *testing.T) {
 	if err := cli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	topic := "roll-topic"
 	payload := make([]byte, 300)
@@ -661,8 +653,7 @@ func TestMalformedFrames_ServerDoesNotPanic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	s := NewServer("127.0.0.1:0", dir, 10*1024*1024, 4096)
 	if err := s.Start(); err != nil {
 		t.Fatal(err)
@@ -705,7 +696,7 @@ func TestMalformedFrames_ServerDoesNotPanic(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer conn.Close()
+			defer func() { _ = conn.Close() }()
 
 			_ = conn.SetDeadline(time.Now().Add(500 * time.Millisecond))
 			_, _ = conn.Write(tc.frame)
@@ -719,7 +710,7 @@ func TestMalformedFrames_ServerDoesNotPanic(t *testing.T) {
 	if err := cli.Connect(); err != nil {
 		t.Fatal("server died after malformed frames:", err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	if _, err := cli.Produce(context.Background(), "survival-topic", 0, []byte("alive")); err != nil {
 		t.Error("server did not survive malformed frame attacks:", err)
@@ -731,8 +722,7 @@ func TestSegmentRoll_FetchDuringRoll_NoUseAfterFree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	const segSize = 1024
 	s := NewServer("127.0.0.1:0", dir, segSize, 64)
 	if err := s.Start(); err != nil {
@@ -766,7 +756,7 @@ func TestSegmentRoll_FetchDuringRoll_NoUseAfterFree(t *testing.T) {
 				produceErr.Add(1)
 				return
 			}
-			defer cli.Close()
+			defer func() { _ = cli.Close() }()
 			payload := make([]byte, 200)
 			for range 50 {
 				if _, err := cli.Produce(context.Background(), topic, 0, payload); err != nil {
@@ -786,7 +776,7 @@ func TestSegmentRoll_FetchDuringRoll_NoUseAfterFree(t *testing.T) {
 				fetchErr.Add(1)
 				return
 			}
-			defer cli.Close()
+			defer func() { _ = cli.Close() }()
 			for i := range 50 {
 				_, err := cli.Fetch(context.Background(), topic, 0, uint64(i), 2048)
 				if err != nil {
@@ -808,8 +798,7 @@ func TestConnectionCounter_TracksClients(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	s := NewServer("127.0.0.1:0", dir, 10*1024*1024, 4096)
 	if err := s.Start(); err != nil {
 		t.Fatal(err)
@@ -851,14 +840,13 @@ func TestReadRawMessages_SliceValidAfterRoll(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	const segSize = 1024
-	pl, err := log.NewPartitionLog(dir, segSize, 64)
+	pl, err := log.NewPartitionLog(context.Background(), dir, segSize, 64)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer pl.Close()
+	defer func() { _ = pl.Close() }()
 
 	payload := make([]byte, 200)
 	for i := range payload {
@@ -917,8 +905,7 @@ func TestHealthz_NoSyscallUnderLoad(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	s := NewServer("127.0.0.1:0", dir, 10*1024*1024, 4096)
 	s.SetHealthAddr("127.0.0.1:0")
 	if err := s.Start(); err != nil {
@@ -954,8 +941,7 @@ func TestConcurrentRollFetchHealth_NoDataRace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	const segSize = 2048
 	s := NewServer("127.0.0.1:0", dir, segSize, 64)
 	s.SetHealthAddr("127.0.0.1:0")
@@ -980,7 +966,7 @@ func TestConcurrentRollFetchHealth_NoDataRace(t *testing.T) {
 				errs.Add(1)
 				return
 			}
-			defer cli.Close()
+			defer func() { _ = cli.Close() }()
 			payload := make([]byte, 400)
 			for range 100 {
 				if _, err := cli.Produce(context.Background(), topic, 0, payload); err != nil {
@@ -1000,7 +986,7 @@ func TestConcurrentRollFetchHealth_NoDataRace(t *testing.T) {
 				errs.Add(1)
 				return
 			}
-			defer cli.Close()
+			defer func() { _ = cli.Close() }()
 			for range 100 {
 				_, _ = cli.Fetch(context.Background(), topic, 0, 0, 4096)
 			}
@@ -1036,8 +1022,7 @@ func TestTopicRegistry_TransientNameStableID(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	s := NewServer("127.0.0.1:0", dir, 1024*1024, 4096)
 
 	buf := []byte("transient-topic-name-12345")
@@ -1072,10 +1057,9 @@ func TestLocateMessages_RejectsMalformedLength(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	const maxSeg = 1024 * 1024
-	pl, err := log.NewPartitionLog(dir, maxSeg, 128)
+	pl, err := log.NewPartitionLog(context.Background(), dir, maxSeg, 128)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1086,7 +1070,7 @@ func TestLocateMessages_RejectsMalformedLength(t *testing.T) {
 	_ = pl.Close()
 
 	logPath := filepath.Join(dir, "00000000000000000000.log")
-	f, err := os.OpenFile(logPath, os.O_RDWR|os.O_APPEND, 0644)
+	f, err := os.OpenFile(logPath, os.O_RDWR|os.O_APPEND, 0o644)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1098,14 +1082,14 @@ func TestLocateMessages_RejectsMalformedLength(t *testing.T) {
 	}
 	_ = f.Close()
 
-	pl2, err := log.NewPartitionLog(dir, maxSeg, 128)
+	pl2, err := log.NewPartitionLog(context.Background(), dir, maxSeg, 128)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer pl2.Close()
+	defer func() { _ = pl2.Close() }()
 
 	_, bufPtr, err := pl2.ReadRawMessages(0, 1024)
-	if err != nil && err != io.EOF {
+	if err != nil && !errors.Is(err, io.EOF) {
 		t.Fatalf("expected EOF or success, got error: %v", err)
 	}
 	if bufPtr != nil {
@@ -1132,8 +1116,8 @@ func unsafeString(b []byte) string {
 
 func TestBrokerPipeAllocs(t *testing.T) {
 	c1, c2 := net.Pipe()
-	defer c1.Close()
-	defer c2.Close()
+	defer func() { _ = c1.Close() }()
+	defer func() { _ = c2.Close() }()
 
 	topic := "t"
 	payload := []byte("hello")
@@ -1176,8 +1160,7 @@ func TestBrokerE2EAllocs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tempDir)
-
+	defer func() { _ = os.RemoveAll(tempDir) }()
 	s := NewServer("127.0.0.1:0", tempDir, 64*1024*1024, 4096)
 	if err := s.Start(); err != nil {
 		t.Fatal(err)
@@ -1188,7 +1171,7 @@ func TestBrokerE2EAllocs(t *testing.T) {
 	if err := cli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	topic := "alloc-topic"
 	payload := []byte("hello")
@@ -1227,8 +1210,7 @@ func BenchmarkBrokerThroughput(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer os.RemoveAll(tempDir)
-
+	defer func() { _ = os.RemoveAll(tempDir) }()
 	s := NewServer("127.0.0.1:0", tempDir, 64*1024*1024, 4096)
 	if err := s.Start(); err != nil {
 		b.Fatal(err)
@@ -1240,7 +1222,7 @@ func BenchmarkBrokerThroughput(b *testing.B) {
 	if err := cli.Connect(); err != nil {
 		b.Fatal(err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	topic := "bench-topic"
 	payload := make([]byte, 256)

@@ -162,18 +162,3 @@ func (s *Service) markPoolDomainBanned(ctx context.Context, hostname string) err
 		WHERE hostname = $1 AND status <> 'banned'`, host)
 	return err
 }
-
-func (s *Service) activatePoolDomain(ctx context.Context, hostname string) error {
-	if s == nil || s.pool == nil {
-		return nil
-	}
-	host := platformconfig.ResolveHost(hostname)
-	if host == "" {
-		return nil
-	}
-	_, err := s.pool.Exec(ctx, `
-		UPDATE domain_pool_domains
-		SET status = 'active', updated_at = now()
-		WHERE hostname = $1 AND status = 'pending'`, host)
-	return err
-}

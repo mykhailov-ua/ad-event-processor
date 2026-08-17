@@ -2,6 +2,7 @@ package ingestion
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"net"
@@ -57,7 +58,7 @@ func (c *TCPControlClient) RequestSnapshot(ctx context.Context) error {
 		metrics.TCPControlSnapshotErrorsTotal.Inc()
 		return err
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	_ = conn.SetDeadline(time.Now().Add(c.dialTO))
 
 	var reqHdr TCPControlHeader
@@ -86,7 +87,7 @@ func (c *TCPControlClient) RequestSnapshot(ctx context.Context) error {
 		m, rerr := conn.Read(frame[n:])
 		n += m
 		if rerr != nil {
-			if rerr == io.EOF {
+			if errors.Is(rerr, io.EOF) {
 				break
 			}
 			metrics.TCPControlSnapshotErrorsTotal.Inc()

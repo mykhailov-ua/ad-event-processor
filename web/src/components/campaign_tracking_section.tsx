@@ -20,6 +20,7 @@ import {
 import { buildTemplatedClickURL } from '../helpers/traffic_source_url.js';
 import { SectionCard } from './section_card.js';
 import { IntegrationCopyRow } from './integration_copy_row.js';
+import { CampaignApplyTemplatesPanel } from './campaign_apply_templates_panel.js';
 
 type PlatformState = {
   clickTemplate: string;
@@ -39,6 +40,7 @@ const EXTENDED_SUB_KEYS = Array.from({ length: 20 }, (_, i) => `sub${i + 11}`);
 
 export type CampaignTrackingSectionProps = {
   campaignId: string;
+  canWrite?: boolean;
 };
 
 function RtbTrackSection({ platform, trackURL }: { platform: PlatformState; trackURL: string }) {
@@ -79,9 +81,14 @@ function RtbTrackSection({ platform, trackURL }: { platform: PlatformState; trac
 /**
  * Per-campaign traffic integration kit (click URL, templates, postback, macros).
  */
-export function CampaignTrackingSection({ campaignId }: CampaignTrackingSectionProps) {
+export function CampaignTrackingSection({ campaignId, canWrite = false }: CampaignTrackingSectionProps) {
   const [params, setParams] = useState<Record<string, string>>({});
   const [selectedTemplateId, setSelectedTemplateId] = useState('direct-custom');
+  const [dmrEnabled, setDmrEnabled] = useState(false);
+  const [utmEnabled, setUtmEnabled] = useState(false);
+  const [utmSource, setUtmSource] = useState('');
+  const [utmMedium, setUtmMedium] = useState('');
+  const [utmCampaign, setUtmCampaign] = useState('');
   const [platform, setPlatform] = useState<PlatformState>({
     clickTemplate: defaultClickTemplate(''),
     trackingDomain: '',
@@ -129,8 +136,26 @@ export function CampaignTrackingSection({ campaignId }: CampaignTrackingSectionP
       platform.clickTemplate || platform.trackingDomain,
       campaignId,
       params,
+      {
+        dmr: dmrEnabled,
+        utm: utmEnabled ? {
+          utm_source: utmSource || undefined,
+          utm_medium: utmMedium || undefined,
+          utm_campaign: utmCampaign || campaignId,
+        } : undefined,
+      },
     ),
-    [platform.clickTemplate, platform.trackingDomain, campaignId, params],
+    [
+      platform.clickTemplate,
+      platform.trackingDomain,
+      campaignId,
+      params,
+      dmrEnabled,
+      utmEnabled,
+      utmSource,
+      utmMedium,
+      utmCampaign,
+    ],
   );
 
   const trackURL = buildTrackPostbackURL(platform.trackingDomain);
@@ -274,6 +299,61 @@ export function CampaignTrackingSection({ campaignId }: CampaignTrackingSectionP
             ))}
           </div>
         </details>
+        <div className="toolbar-row" data-testid="integration-click-url-options">
+          <label className="form-field form-field--inline">
+            <input
+              type="checkbox"
+              data-testid="integration-dmr-toggle"
+              checked={dmrEnabled}
+              onChange={(e) => setDmrEnabled(e.target.checked)}
+            />
+            DMR referer hiding (<code className="code-inline">dmr=1</code>)
+          </label>
+          <label className="form-field form-field--inline">
+            <input
+              type="checkbox"
+              data-testid="integration-utm-toggle"
+              checked={utmEnabled}
+              onChange={(e) => setUtmEnabled(e.target.checked)}
+            />
+            Append UTM
+          </label>
+        </div>
+        {utmEnabled ? (
+          <div className="stack" data-testid="integration-utm-fields">
+            <label className="form-field" htmlFor="utm-source">
+              utm_source
+              <input
+                id="utm-source"
+                className="form-input form-input--sm"
+                data-testid="integration-utm-source"
+                value={utmSource}
+                onChange={(e) => setUtmSource(e.target.value)}
+              />
+            </label>
+            <label className="form-field" htmlFor="utm-medium">
+              utm_medium
+              <input
+                id="utm-medium"
+                className="form-input form-input--sm"
+                data-testid="integration-utm-medium"
+                value={utmMedium}
+                onChange={(e) => setUtmMedium(e.target.value)}
+              />
+            </label>
+            <label className="form-field" htmlFor="utm-campaign">
+              utm_campaign
+              <input
+                id="utm-campaign"
+                className="form-input form-input--sm"
+                data-testid="integration-utm-campaign"
+                placeholder={campaignId}
+                value={utmCampaign}
+                onChange={(e) => setUtmCampaign(e.target.value)}
+              />
+            </label>
+          </div>
+        ) : null}
         <IntegrationCopyRow label="Click URL" value={link} testId="integration-click-url" />
       </SectionCard>
 
@@ -314,6 +394,12 @@ export function CampaignTrackingSection({ campaignId }: CampaignTrackingSectionP
       </SectionCard>
 
       <RtbTrackSection platform={platform} trackURL={trackURL} />
+
+      <CampaignApplyTemplatesPanel
+        campaignId={campaignId}
+        canWrite={canWrite}
+        trackingDomain={platform.trackingDomain}
+      />
 
       {platform.edgeOpenRTB ? (
         <SectionCard

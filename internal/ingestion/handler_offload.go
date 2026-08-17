@@ -19,6 +19,8 @@ func pinParsedHTTPRequest(ctx *connContext, req parsedHTTPRequest) parsedHTTPReq
 		Accept:           pin(req.Accept),
 		AcceptEncoding:   pin(req.AcceptEncoding),
 		TLSHash:          pin(req.TLSHash),
+		TLSJA3:           pin(req.TLSJA3),
+		TLSJA4:           pin(req.TLSJA4),
 		SecCHUA:          pin(req.SecCHUA),
 		AcceptLang:       pin(req.AcceptLang),
 		Body:             pin(req.Body),

@@ -1,3 +1,4 @@
+// Package httpresponse implements httpresponse support for BidShard.
 package httpresponse
 
 import (

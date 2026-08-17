@@ -10,12 +10,12 @@ import (
 )
 
 func TestStreamProducerAdmissionRaceWithoutReserve(t *testing.T) {
-	const cap = 32
+	const queueCapLimit = 32
 	const admissionPct = 75
 
 	p := &StreamProducer{
-		queue:    make(chan *[]byte, cap),
-		queueCap: cap,
+		queue:    make(chan *[]byte, queueCapLimit),
+		queueCap: queueCapLimit,
 	}
 	for i := 0; i < 23; i++ {
 		buf := make([]byte, 1, 4)
@@ -49,12 +49,12 @@ func TestStreamProducerAdmissionRaceWithoutReserve(t *testing.T) {
 }
 
 func TestStreamProducerReservePreventsQueueFull(t *testing.T) {
-	const cap = 32
+	const queueCapLimit = 32
 	const admissionPct = 75
 
 	p := &StreamProducer{
-		queue:    make(chan *[]byte, cap),
-		queueCap: cap,
+		queue:    make(chan *[]byte, queueCapLimit),
+		queueCap: queueCapLimit,
 	}
 	for i := 0; i < 20; i++ {
 		buf := make([]byte, 1, 4)

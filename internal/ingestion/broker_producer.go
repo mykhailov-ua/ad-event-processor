@@ -182,26 +182,26 @@ func (bp *BrokerProducer) QueueCapacity() int {
 }
 
 func (bp *BrokerProducer) QueuePressurePct() int {
-	cap := int(bp.mask) + 1
-	if cap == 0 {
+	queueCap := int(bp.mask) + 1
+	if queueCap == 0 {
 		return 0
 	}
 	occupied := int(bp.occupied())
 	if occupied < 0 {
 		return 100
 	}
-	return occupied * 100 / cap
+	return occupied * 100 / queueCap
 }
 
 func (bp *BrokerProducer) admissionLimit(admissionPct int) uint64 {
-	cap := bp.mask + 1
+	ringCap := bp.mask + 1
 	if admissionPct <= 0 {
-		return cap
+		return ringCap
 	}
 	if admissionPct > 100 {
 		admissionPct = 100
 	}
-	limit := cap * uint64(admissionPct) / 100
+	limit := ringCap * uint64(admissionPct) / 100
 	if limit == 0 {
 		return 1
 	}

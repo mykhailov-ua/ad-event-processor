@@ -1,3 +1,4 @@
+// Package webstatic embeds the compiled admin UI assets.
 package webstatic
 
 import (

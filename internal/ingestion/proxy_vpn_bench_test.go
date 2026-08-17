@@ -79,3 +79,17 @@ func BenchmarkProxyVPN_MatchBranch_SafeView(b *testing.B) {
 	}
 	proxyVPNBenchSink.match = proxyVPNBenchSink.match || hit
 }
+
+// BenchmarkProxyVPN_Extended_Lookup (harness: proxy_vpn_lpm) — B-GMA-M2 conn-type bitmask path.
+func BenchmarkProxyVPN_Extended_Lookup(b *testing.B) {
+	table, probes := benchProxyVPNTable(b, 10_000)
+	b.ReportAllocs()
+	b.ResetTimer()
+	var match bool
+	var connType uint8
+	for i := 0; i < b.N; i++ {
+		match, connType, _ = table.Lookup4(probes[i&63])
+		_ = connTypePolicyBlocks(domain.ConnTypeMobileOnly, match, connType)
+	}
+	proxyVPNBenchSink.match = proxyVPNBenchSink.match || match
+}

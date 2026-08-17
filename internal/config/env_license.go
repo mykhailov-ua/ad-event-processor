@@ -33,7 +33,7 @@ func LicenseProbeEnabled() bool {
 	return LicenseRequiredFromEnv() || LicenseFilePresent()
 }
 
-// License mode and sealed asset policy (cold path).
+// LicenseMode returns the license enforcement mode and sealed asset policy (cold path).
 func LicenseMode() string {
 	return strings.ToLower(strings.TrimSpace(LicenseEnv("MODE")))
 }

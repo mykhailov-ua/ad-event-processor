@@ -69,10 +69,10 @@ func TestSettingsWatcher_shardFailover(t *testing.T) {
 	}
 
 	rdbDead := redis.NewUniversalClient(&redis.UniversalOptions{Addrs: []string{"127.0.0.1:1"}})
-	defer rdbDead.Close()
+	defer func() { _ = rdbDead.Close() }()
 
 	rdbLive := redis.NewUniversalClient(&redis.UniversalOptions{Addrs: []string{endpoint}, DB: 3})
-	defer rdbLive.Close()
+	defer func() { _ = rdbLive.Close() }()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

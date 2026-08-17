@@ -108,18 +108,18 @@ func (c *ProcessorWeightController) Start(ctx context.Context) {
 func (c *ProcessorWeightController) refreshLoop(ctx context.Context) {
 	ticker := time.NewTicker(c.cfg.EpochInterval)
 	defer ticker.Stop()
-	c.refresh()
+	c.refresh(ctx)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			c.refresh()
+			c.refresh(ctx)
 		}
 	}
 }
 
-func (c *ProcessorWeightController) refresh() {
+func (c *ProcessorWeightController) refresh(ctx context.Context) {
 	weight := c.LocalWeight()
 	if weight <= 0 {
 		weight = 1.0
@@ -129,7 +129,7 @@ func (c *ProcessorWeightController) refresh() {
 			weight = w
 		}
 	} else if c.cfg.WeightsURL != "" {
-		if w := c.pollHTTPWeights(); w > 0 {
+		if w := c.pollHTTPWeights(ctx); w > 0 {
 			weight = w
 		}
 	}
@@ -141,8 +141,8 @@ func (c *ProcessorWeightController) refresh() {
 	metrics.ProcessorWeight.WithLabelValues(c.cfg.InstanceLabel).Set(weight)
 }
 
-func (c *ProcessorWeightController) pollHTTPWeights() float64 {
-	req, err := http.NewRequest(http.MethodGet, c.cfg.WeightsURL, nil)
+func (c *ProcessorWeightController) pollHTTPWeights(ctx context.Context) float64 {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.cfg.WeightsURL, http.NoBody)
 	if err != nil {
 		return 0
 	}
@@ -150,7 +150,7 @@ func (c *ProcessorWeightController) pollHTTPWeights() float64 {
 	if err != nil {
 		return 0
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return 0
 	}

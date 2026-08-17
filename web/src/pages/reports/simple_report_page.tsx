@@ -9,12 +9,26 @@ import { validateReportRange } from '../../helpers/validators.js';
 import { REPORT_DATE_PRESETS } from '../../helpers/date_presets.js';
 import { tenantReportQueryString } from '../../helpers/tenant_url.js';
 import { formatMoney } from '../../helpers/money.js';
+import { reportCompareLabel, formatSpendDelta } from '../../helpers/report_compare.js';
+import { ReportRowActions } from '../../components/report_row_actions.js';
 import { AlertBanner } from '../../components/alert_banner.js';
 import { Button } from '../../components/button.js';
 import { ErrorBlock } from '../../components/error_block.js';
 import { FormField } from '../../components/form_field.js';
 import { FreshnessBadge } from '../../components/freshness_badge.js';
 import type { SimpleReportColumn } from './report_configs.js';
+
+const COMPARE_ENDPOINTS = new Set([
+  'daypart-heatmap',
+  'source-quality',
+  'true-roi',
+]);
+
+const ACTION_ENDPOINTS = new Set([
+  'source-quality',
+  'true-roi',
+  'discrepancy-buy-sell',
+]);
 
 function formatCell(row: ReportRow, col: SimpleReportColumn) {
   const v = row[col.key];
@@ -52,6 +66,9 @@ export function SimpleReportPage({ title, endpoint, columns }: SimpleReportPageP
   const [freshness, setFreshness] = useState<DataFreshness | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [comparePeriod, setComparePeriod] = useState(false);
+  const enableCompare = COMPARE_ENDPOINTS.has(endpoint);
+  const enableActions = ACTION_ENDPOINTS.has(endpoint);
 
   const load = useCallback(async () => {
     const cid = sessionScoped ? boundCustomerId(user) : customerInput.trim();
@@ -72,6 +89,7 @@ export function SimpleReportPage({ title, endpoint, columns }: SimpleReportPageP
     setLoading(true);
     setError(null);
     const params = new URLSearchParams({ customer_id: cid, from, to: rangeTo, limit: '100' });
+    if (comparePeriod && enableCompare) params.set('compare', 'previous');
     const [res, err] = await to(api<ReportEnvelope>(`/api/v1/reports/${endpoint}?${params.toString()}`));
     setLoading(false);
     if (err) {
@@ -85,7 +103,7 @@ export function SimpleReportPage({ title, endpoint, columns }: SimpleReportPageP
       const qs = tenantReportQueryString({ customer_id: cid, from, to: rangeTo });
       window.history.replaceState(null, '', `/reports/${endpoint}?${qs}`);
     }
-  }, [sessionScoped, user, customerInput, from, rangeTo, endpoint]);
+  }, [sessionScoped, user, customerInput, from, rangeTo, endpoint, comparePeriod, enableCompare]);
 
   useEffect(() => {
     void load();
@@ -140,6 +158,16 @@ export function SimpleReportPage({ title, endpoint, columns }: SimpleReportPageP
             onChange={(e) => setRangeTo(e.target.value)}
           />
         </FormField>
+        {enableCompare ? (
+          <label className="form-checkbox form-checkbox--block">
+            <input
+              type="checkbox"
+              checked={comparePeriod}
+              onChange={(e) => setComparePeriod(e.target.checked)}
+            />
+            <span>{reportCompareLabel()}</span>
+          </label>
+        ) : null}
         <Button label="Load" variant="primary" type="submit" loading={loading} disabled={loading} />
       </form>
 
@@ -170,6 +198,8 @@ export function SimpleReportPage({ title, endpoint, columns }: SimpleReportPageP
             <thead>
               <tr>
                 {columns.map((c) => <th key={c.key} scope="col">{c.label}</th>)}
+                {comparePeriod && enableCompare ? <th scope="col">Δ spend</th> : null}
+                {enableActions ? <th scope="col">Actions</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -178,6 +208,14 @@ export function SimpleReportPage({ title, endpoint, columns }: SimpleReportPageP
                   {columns.map((c) => (
                     <td key={c.key}>{formatCell(row, c)}</td>
                   ))}
+                  {comparePeriod && enableCompare ? (
+                    <td className="font-mono">{formatSpendDelta(row)}</td>
+                  ) : null}
+                  {enableActions ? (
+                    <td>
+                      <ReportRowActions row={row} customerId={cid} reportEndpoint={endpoint} />
+                    </td>
+                  ) : null}
                 </tr>
               ))}
             </tbody>

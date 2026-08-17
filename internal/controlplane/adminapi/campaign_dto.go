@@ -21,34 +21,44 @@ func ForecastRetryAfterSec() int {
 }
 
 type CampaignDTO struct {
-	ID                 string          `json:"id"`
-	Name               string          `json:"name"`
-	Status             string          `json:"status"`
-	BudgetLimit        string          `json:"budget_limit"`
-	CurrentSpend       string          `json:"current_spend"`
-	CustomerID         string          `json:"customer_id"`
-	PacingMode         string          `json:"pacing_mode"`
-	DailyBudget        string          `json:"daily_budget"`
-	Timezone           string          `json:"timezone"`
-	FreqLimit          int32           `json:"freq_limit"`
-	FreqWindow         int32           `json:"freq_window"`
-	TargetCountries    []string        `json:"target_countries"`
-	TargetURL          string          `json:"target_url,omitempty"`
-	SafePageURL        string          `json:"safe_page_url,omitempty"`
-	SafePageEnabled    bool            `json:"safe_page_enabled"`
-	ClickDelivery      string          `json:"click_delivery,omitempty"`
-	ProxyUpstreamURL   string          `json:"proxy_upstream_url,omitempty"`
-	ProxyRewriteAssets bool            `json:"proxy_rewrite_assets"`
-	BrandID            string          `json:"brand_id,omitempty"`
-	CreativePayload    json.RawMessage `json:"creative_payload,omitempty"`
-	ReferrerFilter     string          `json:"referrer_filter,omitempty"`
-	StartAt            string          `json:"start_at,omitempty"`
-	EndAt              string          `json:"end_at,omitempty"`
-	DaypartHours       []int16         `json:"daypart_hours"`
-	FlowID             string          `json:"flow_id,omitempty"`
-	CreatedAt          string          `json:"created_at"`
-	UpdatedAt          string          `json:"updated_at"`
-	MarginBreach       bool            `json:"margin_breach,omitempty"`
+	ID                         string          `json:"id"`
+	Name                       string          `json:"name"`
+	Status                     string          `json:"status"`
+	BudgetLimit                string          `json:"budget_limit"`
+	CurrentSpend               string          `json:"current_spend"`
+	CustomerID                 string          `json:"customer_id"`
+	PacingMode                 string          `json:"pacing_mode"`
+	DailyBudget                string          `json:"daily_budget"`
+	Timezone                   string          `json:"timezone"`
+	FreqLimit                  int32           `json:"freq_limit"`
+	FreqWindow                 int32           `json:"freq_window"`
+	TargetCountries            []string        `json:"target_countries"`
+	TargetURL                  string          `json:"target_url,omitempty"`
+	SafePageURL                string          `json:"safe_page_url,omitempty"`
+	SafePageEnabled            bool            `json:"safe_page_enabled"`
+	AttestationEnabled         bool            `json:"attestation_enabled"`
+	AttestationTTLSec          int32           `json:"attestation_ttl_sec"`
+	DmrEnabled                 bool            `json:"dmr_enabled"`
+	L1CIDRBlockEnabled         bool            `json:"l1_cidr_block_enabled"`
+	L15ProxyVPNBlockEnabled    bool            `json:"l15_proxy_vpn_block_enabled"`
+	TLSFingerprintBlockEnabled bool            `json:"tls_fingerprint_block_enabled"`
+	ConnTypePolicy             string          `json:"conn_type_policy,omitempty"`
+	LinkSigningEnabled         bool            `json:"link_signing_enabled"`
+	LinkSigningTTLSec          int32           `json:"link_signing_ttl_sec"`
+	ClickDelivery              string          `json:"click_delivery,omitempty"`
+	ProxyUpstreamURL           string          `json:"proxy_upstream_url,omitempty"`
+	ProxyRewriteAssets         bool            `json:"proxy_rewrite_assets"`
+	BrandID                    string          `json:"brand_id,omitempty"`
+	CreativePayload            json.RawMessage `json:"creative_payload,omitempty"`
+	ReferrerFilter             string          `json:"referrer_filter,omitempty"`
+	StartAt                    string          `json:"start_at,omitempty"`
+	EndAt                      string          `json:"end_at,omitempty"`
+	DaypartHours               []int16         `json:"daypart_hours"`
+	FlowID                     string          `json:"flow_id,omitempty"`
+	OwnerUserID                string          `json:"owner_user_id,omitempty"`
+	CreatedAt                  string          `json:"created_at"`
+	UpdatedAt                  string          `json:"updated_at"`
+	MarginBreach               bool            `json:"margin_breach,omitempty"`
 }
 
 type BlacklistDTO struct {
@@ -116,10 +126,7 @@ type CampaignStatsDTO struct {
 	Consistency  string                    `json:"consistency"`
 }
 
-type BlacklistListResponse struct {
-	Items []BlacklistDTO `json:"items"`
-	Total int64          `json:"total"`
-}
+type BlacklistListResponse = ListResponse[BlacklistDTO]
 
 type MutationPreviewDTO struct {
 	DryRun      bool            `json:"dry_run"`
@@ -162,27 +169,40 @@ type AuditLogDTO struct {
 	CreatedAt  string          `json:"created_at"`
 }
 
-type AuditLogListResponse struct {
-	Items []AuditLogDTO `json:"items"`
-	Total int64         `json:"total"`
-}
+type AuditLogListResponse = ListResponse[AuditLogDTO]
 
 type PatchCampaignRequest struct {
-	Name               *string    `json:"name,omitempty"`
-	PacingMode         *string    `json:"pacing_mode,omitempty"`
-	DailyBudgetMicro   *int64     `json:"daily_budget_micro,omitempty"`
-	Timezone           *string    `json:"timezone,omitempty"`
-	FreqLimit          *int32     `json:"freq_limit,omitempty"`
-	FreqWindow         *int32     `json:"freq_window,omitempty"`
-	TargetCountries    []string   `json:"target_countries,omitempty"`
-	TargetURL          *string    `json:"target_url,omitempty"`
-	SafePageURL        *string    `json:"safe_page_url,omitempty"`
-	SafePageEnabled    *bool      `json:"safe_page_enabled,omitempty"`
-	ReferrerFilter     *string    `json:"referrer_filter,omitempty"`
-	ClickDelivery      *string    `json:"click_delivery,omitempty"`
-	ProxyUpstreamURL   *string    `json:"proxy_upstream_url,omitempty"`
-	ProxyRewriteAssets *bool      `json:"proxy_rewrite_assets,omitempty"`
-	FlowID             *uuid.UUID `json:"flow_id,omitempty"`
+	Name                       *string    `json:"name,omitempty"`
+	Status                     *string    `json:"status,omitempty"`
+	BudgetLimitMicro           *int64     `json:"budget_limit_micro,omitempty"`
+	BudgetLimit                *string    `json:"budget_limit,omitempty"`
+	PacingMode                 *string    `json:"pacing_mode,omitempty"`
+	DailyBudgetMicro           *int64     `json:"daily_budget_micro,omitempty"`
+	Timezone                   *string    `json:"timezone,omitempty"`
+	FreqLimit                  *int32     `json:"freq_limit,omitempty"`
+	FreqWindow                 *int32     `json:"freq_window,omitempty"`
+	TargetCountries            []string   `json:"target_countries,omitempty"`
+	TargetURL                  *string    `json:"target_url,omitempty"`
+	SafePageURL                *string    `json:"safe_page_url,omitempty"`
+	SafePageEnabled            *bool      `json:"safe_page_enabled,omitempty"`
+	DmrEnabled                 *bool      `json:"dmr_enabled,omitempty"`
+	L1CIDRBlockEnabled         *bool      `json:"l1_cidr_block_enabled,omitempty"`
+	L15ProxyVPNBlockEnabled    *bool      `json:"l15_proxy_vpn_block_enabled,omitempty"`
+	TLSFingerprintBlockEnabled *bool      `json:"tls_fingerprint_block_enabled,omitempty"`
+	ConnTypePolicy             *string    `json:"conn_type_policy,omitempty"`
+	LinkSigningEnabled         *bool      `json:"link_signing_enabled,omitempty"`
+	LinkSigningTTLSec          *int32     `json:"link_signing_ttl_sec,omitempty"`
+	AttestationEnabled         *bool      `json:"attestation_enabled,omitempty"`
+	AttestationTTLSec          *int32     `json:"attestation_ttl_sec,omitempty"`
+	ReferrerFilter             *string    `json:"referrer_filter,omitempty"`
+	ClickDelivery              *string    `json:"click_delivery,omitempty"`
+	ProxyUpstreamURL           *string    `json:"proxy_upstream_url,omitempty"`
+	ProxyRewriteAssets         *bool      `json:"proxy_rewrite_assets,omitempty"`
+	StartAt                    *time.Time `json:"start_at,omitempty"`
+	EndAt                      *time.Time `json:"end_at,omitempty"`
+	DaypartHours               []int16    `json:"daypart_hours,omitempty"`
+	FlowID                     *uuid.UUID `json:"flow_id,omitempty"`
+	BrandID                    *uuid.UUID `json:"brand_id,omitempty"`
 }
 
 type CampaignEventDTO struct {
@@ -195,7 +215,4 @@ type CampaignEventDTO struct {
 	CreatedAt string          `json:"created_at"`
 }
 
-type CampaignEventListResponse struct {
-	Items []CampaignEventDTO `json:"items"`
-	Total int64              `json:"total"`
-}
+type CampaignEventListResponse = ListResponse[CampaignEventDTO]

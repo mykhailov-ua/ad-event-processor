@@ -85,16 +85,16 @@ func (s *BrandCreativeStore) LoadFromRedis(ctx context.Context, brandID uuid.UUI
 	s.cache.Store(&brandCreativeMapSnapshot{byBrand: next})
 }
 
-func (s *BrandCreativeStore) SelectLandingURL(brandID uuid.UUID, userID string, evt *domain.Event) string {
-	e, ok := s.selectCreative(brandID, userID, evt)
+func (s *BrandCreativeStore) SelectLandingURL(ctx context.Context, brandID uuid.UUID, userID string, evt *domain.Event) string {
+	e, ok := s.selectCreative(ctx, brandID, userID, evt)
 	if !ok {
 		return ""
 	}
 	return e.URL
 }
 
-func (s *BrandCreativeStore) SelectLandingURLBytes(brandID uuid.UUID, userID string, evt *domain.Event) []byte {
-	e, ok := s.selectCreative(brandID, userID, evt)
+func (s *BrandCreativeStore) SelectLandingURLBytes(ctx context.Context, brandID uuid.UUID, userID string, evt *domain.Event) []byte {
+	e, ok := s.selectCreative(ctx, brandID, userID, evt)
 	if !ok {
 		return nil
 	}
@@ -107,10 +107,10 @@ func (s *BrandCreativeStore) SelectLandingURLBytes(brandID uuid.UUID, userID str
 	return UnsafeBytes(e.URL)
 }
 
-func (s *BrandCreativeStore) selectCreative(brandID uuid.UUID, userID string, evt *domain.Event) (brandCreativeEntry, bool) {
+func (s *BrandCreativeStore) selectCreative(ctx context.Context, brandID uuid.UUID, userID string, evt *domain.Event) (brandCreativeEntry, bool) {
 	entries := s.brandCreativeSnapshot().byBrand[brandID]
 	if len(entries) == 0 && s.rdb != nil {
-		s.loadFromRedisBounded(evt, brandID)
+		s.loadFromRedisBounded(ctx, evt, brandID)
 		entries = s.brandCreativeSnapshot().byBrand[brandID]
 	}
 	if len(entries) == 0 {
@@ -143,31 +143,31 @@ func (s *BrandCreativeStore) selectCreative(brandID uuid.UUID, userID string, ev
 	return entries[len(entries)-1], true
 }
 
-func (s *BrandCreativeStore) loadFromRedisBounded(evt *domain.Event, brandID uuid.UUID) {
-	if filterDeadlineExceededEvt(evt, nil) {
+func (s *BrandCreativeStore) loadFromRedisBounded(ctx context.Context, evt *domain.Event, brandID uuid.UUID) {
+	if filterDeadlineExceededEvt(evt, ctx) {
 		brandCreativeLoadTimeout.Inc()
 		return
 	}
-	rem, hasRem := filterDeadlineRemainingEvt(evt, nil)
+	rem, hasRem := filterDeadlineRemainingEvt(evt, ctx)
 	if hasRem && rem <= 0 {
 		brandCreativeLoadTimeout.Inc()
 		return
 	}
 
-	var ctx context.Context
+	var loadCtx context.Context
 	var cancel context.CancelFunc
 	switch {
 	case hasRem:
-		ctx, cancel = context.WithTimeout(context.Background(), rem)
+		loadCtx, cancel = context.WithTimeout(ctx, rem)
 	case s.redisLoadTimeout > 0:
-		ctx, cancel = context.WithTimeout(context.Background(), s.redisLoadTimeout)
+		loadCtx, cancel = context.WithTimeout(ctx, s.redisLoadTimeout)
 	default:
-		ctx = context.Background()
+		loadCtx = ctx
 	}
 	if cancel != nil {
 		defer cancel()
 	}
-	s.LoadFromRedis(ctx, brandID)
+	s.LoadFromRedis(loadCtx, brandID)
 }
 
 type ScheduleFilter struct {

@@ -401,10 +401,19 @@ func http1AssignHeader(req *parsedHTTPRequest, key, val []byte, hFlags *uint8, c
 
 	switch kl {
 	case 6:
-		if foldKeyU32(key, 0) == 0x65636361 && httpFold[key[4]] == 'p' && httpFold[key[5]] == 't' {
-			req.Accept = val
-		} else if foldKeyU32(key, 0) == 0x6769726f && httpFold[key[4]] == 'i' && httpFold[key[5]] == 'n' {
-			req.Origin = val
+		switch foldKeyU32(key, 0) {
+		case 0x65636361:
+			if httpFold[key[4]] == 'p' && httpFold[key[5]] == 't' {
+				req.Accept = val
+			}
+		case 0x6b6f6f63:
+			if httpFold[key[4]] == 'i' && httpFold[key[5]] == 'e' {
+				req.Cookie = val
+			}
+		case 0x6769726f:
+			if httpFold[key[4]] == 'i' && httpFold[key[5]] == 'n' {
+				req.Origin = val
+			}
 		}
 	case 9:
 		switch foldKeyU32(key, 0) {
@@ -418,6 +427,15 @@ func http1AssignHeader(req *parsedHTTPRequest, key, val []byte, hFlags *uint8, c
 		case 0x2d636573:
 			if foldKeyU32(key, 4) == 0x752d6863 && httpFold[key[8]] == 'a' {
 				req.SecCHUA = val
+			}
+		case 0x6c742d78:
+			if foldKeyU32(key, 4) == 0x616a2d73 {
+				switch httpFold[key[8]] {
+				case '3':
+					req.TLSJA3 = val
+				case '4':
+					req.TLSJA4 = val
+				}
 			}
 		}
 	case 10:

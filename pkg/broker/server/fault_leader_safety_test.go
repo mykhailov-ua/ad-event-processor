@@ -51,7 +51,7 @@ func TestFault_CoordinatorUnreachable_ProduceFailsClosed(t *testing.T) {
 	if err := cli.Connect(); err != nil {
 		t.Fatalf("connect: %v", err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	if _, err := cli.Produce(context.Background(), topic, 0, []byte("must-not-persist")); err == nil {
 		t.Fatal("produce accepted while no lease is held")
@@ -106,7 +106,7 @@ func TestFault_LeaseExpiry_SelfFencesProduce(t *testing.T) {
 	if err := cli.Connect(); err != nil {
 		t.Fatalf("connect: %v", err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	if _, err := cli.Produce(context.Background(), topic, 0, []byte("leader-write")); err != nil {
 		t.Fatalf("produce under healthy lease failed: %v", err)
@@ -172,12 +172,12 @@ func TestFault_LeaderTakeover_HWMNeverRegresses(t *testing.T) {
 
 	setHWM("100")
 
-	coord.PublishLogHWM(tpKey, 50)
+	coord.PublishLogHWM(context.Background(), tpKey, 50)
 	if got := currentHWM(); got != 100 {
 		t.Fatalf("hwm regressed on lagging publish: got %d want 100", got)
 	}
 
-	coord.PublishLogHWM(tpKey, 150)
+	coord.PublishLogHWM(context.Background(), tpKey, 150)
 	if got := currentHWM(); got != 150 {
 		t.Fatalf("hwm did not advance: got %d want 150", got)
 	}
@@ -196,7 +196,7 @@ func TestFault_LeaderTakeover_HWMNeverRegresses(t *testing.T) {
 		t.Fatal("lagging leader must not be ready before catch-up")
 	}
 
-	coord.recoverLeaderReadiness(tpKey, 100, time.Now())
+	coord.recoverLeaderReadiness(context.Background(), tpKey, 100, time.Now())
 
 	if got := currentHWM(); got != 100 {
 		t.Fatalf("catch-up timeout truncated cluster hwm: got %d want 100", got)

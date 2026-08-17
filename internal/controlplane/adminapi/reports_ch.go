@@ -203,7 +203,7 @@ func queryPlacementReportRows(
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,
-) ([]placementReportCHRow, int64, error) {
+) ([]reportMetricsCHRow, int64, error) {
 	if chQuery == nil || len(campaignIDs) == 0 {
 		return nil, 0, nil
 	}
@@ -221,12 +221,12 @@ func queryPlacementReportRows(
 	}
 	defer func() { _ = rows.Close() }()
 
-	out := make([]placementReportCHRow, 0, limit)
+	out := make([]reportMetricsCHRow, 0, limit)
 	for rows.Next() {
-		var row placementReportCHRow
+		var row reportMetricsCHRow
 		var campaignID uuid.UUID
 		if err := rows.Scan(
-			&row.PlacementID, &campaignID,
+			&row.Dimension, &campaignID,
 			&row.Impressions, &row.Clicks, &row.Conversions,
 			&row.SpendMicro, &row.RevenueMicro,
 		); err != nil {
@@ -256,7 +256,7 @@ func queryKeywordReportRows(
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,
-) ([]keywordReportCHRow, int64, error) {
+) ([]reportMetricsCHRow, int64, error) {
 	if chQuery == nil || len(campaignIDs) == 0 {
 		return nil, 0, nil
 	}
@@ -274,12 +274,12 @@ func queryKeywordReportRows(
 	}
 	defer func() { _ = rows.Close() }()
 
-	out := make([]keywordReportCHRow, 0, limit)
+	out := make([]reportMetricsCHRow, 0, limit)
 	for rows.Next() {
-		var row keywordReportCHRow
+		var row reportMetricsCHRow
 		var campaignID uuid.UUID
 		if err := rows.Scan(
-			&row.Keyword, &campaignID,
+			&row.Dimension, &campaignID,
 			&row.Impressions, &row.Clicks, &row.Conversions,
 			&row.SpendMicro, &row.RevenueMicro,
 		); err != nil {
@@ -386,7 +386,7 @@ func queryPlacementIVTRates(
 			return nil, err
 		}
 		row.CampaignID = campaignID.String()
-		out[placementRowKey(row.PlacementID, row.CampaignID)] = calcIVTRate(row.IVTEvents, row.Clicks)
+		out[reportMetricsKey(row.PlacementID, row.CampaignID)] = calcIVTRate(row.IVTEvents, row.Clicks)
 	}
 	return out, rows.Err()
 }
@@ -413,7 +413,7 @@ func queryKeywordIVTRates(
 			return nil, err
 		}
 		row.CampaignID = campaignID.String()
-		out[keywordRowKey(row.Keyword, row.CampaignID)] = calcIVTRate(row.IVTEvents, row.Clicks)
+		out[reportMetricsKey(row.Keyword, row.CampaignID)] = calcIVTRate(row.IVTEvents, row.Clicks)
 	}
 	return out, rows.Err()
 }

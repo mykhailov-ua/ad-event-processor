@@ -6,8 +6,15 @@ import { to } from '../lib/to.js';
 import type {
   BillingExportCreateSpec,
   BillingExportJobDTO,
+  BillingForecastDTO,
   BillingInvariantDTO,
+  BillingStatementDTO,
+  DisputeListResponse,
   InvoiceDeliveryListResponse,
+  InvoiceLedgerLinesResponse,
+  InvoicePreviewDTO,
+  BillingSummaryDTO,
+  PaymentHistoryListResponse,
 } from '../types/api/billing.js';
 
 export type PollBillingExportOpts = {
@@ -33,6 +40,14 @@ function sleepMs(ms: number, signal?: AbortSignal): Promise<void> {
       }, { once: true });
     }
   });
+}
+
+/**
+ * Fetch fleet-wide billing summary (admin only).
+ */
+export async function fetchBillingSummary(): Promise<BillingSummaryDTO> {
+  const res = await api<BillingSummaryDTO>('/api/v1/billing/summary');
+  return res.data ?? {};
 }
 
 /**
@@ -133,4 +148,96 @@ export async function downloadBillingExport(
   anchor.download = filename;
   anchor.click();
   URL.revokeObjectURL(url);
+}
+
+/**
+ * Customer billing forecast (ledger run rate + projected month-end).
+ */
+export async function fetchBillingForecast(customerId: string): Promise<BillingForecastDTO> {
+  const res = await api<BillingForecastDTO>(
+    `/api/v1/customers/${encodeURIComponent(customerId)}/billing/forecast`,
+  );
+  return res.data ?? {};
+}
+
+/**
+ * Paginated payment disputes (scoped by customer_id when provided).
+ */
+export async function fetchDisputes(
+  customerId: string,
+  limit: number,
+  offset: number,
+): Promise<DisputeListResponse> {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+  });
+  if (customerId) params.set('customer_id', customerId);
+  const res = await api<DisputeListResponse>(`/api/v1/disputes?${params.toString()}`);
+  return res.data ?? { disputes: [], total: 0 };
+}
+
+/**
+ * Customer billing statement for a calendar month (admin).
+ */
+export async function fetchCustomerBillingStatement(
+  customerId: string,
+  month = '',
+): Promise<BillingStatementDTO> {
+  const params = new URLSearchParams();
+  if (month) params.set('month', month);
+  const qs = params.toString();
+  const path = qs
+    ? `/api/v1/customers/${encodeURIComponent(customerId)}/billing/statement?${qs}`
+    : `/api/v1/customers/${encodeURIComponent(customerId)}/billing/statement`;
+  const res = await api<BillingStatementDTO>(path);
+  return res.data ?? {};
+}
+
+/**
+ * Preview invoice totals for a customer month without persisting.
+ */
+export async function previewBillingInvoice(
+  customerId: string,
+  billingMonth: string,
+): Promise<InvoicePreviewDTO> {
+  const res = await apiConfirmed<InvoicePreviewDTO>('/api/v1/billing/invoices/preview', {
+    method: 'POST',
+    body: JSON.stringify({ customer_id: customerId, billing_month: billingMonth }),
+  });
+  return res.data ?? {};
+}
+
+/**
+ * Payment intent history for a customer (wallet top-ups).
+ */
+export async function fetchCustomerPayments(
+  customerId: string,
+  limit = 20,
+  offset = 0,
+): Promise<PaymentHistoryListResponse> {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+  });
+  const res = await api<PaymentHistoryListResponse>(
+    `/api/v1/customers/${encodeURIComponent(customerId)}/payments?${params.toString()}`,
+  );
+  return res.data ?? { items: [], total: 0 };
+}
+
+/**
+ * Invoice ledger lines (cursor-paginated).
+ */
+export async function fetchInvoiceLedgerLines(
+  invoiceId: string,
+  cursor = '',
+  limit = 50,
+): Promise<InvoiceLedgerLinesResponse> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (cursor) params.set('cursor', cursor);
+  const res = await api<InvoiceLedgerLinesResponse>(
+    `/api/v1/billing/invoices/${encodeURIComponent(invoiceId)}/ledger-lines?${params.toString()}`,
+  );
+  return res.data ?? { items: [], total: 0 };
 }

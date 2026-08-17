@@ -104,3 +104,140 @@ export type BillingExportCreateSpec = {
   to: string;
   format: 'csv' | 'ndjson';
 };
+
+/** GET /api/v1/customers/{id}/billing/forecast */
+export type BillingForecastDTO = {
+  customer_id?: string;
+  month?: string;
+  ledger_mtd_micro?: number;
+  ledger_run_rate_micro_per_day?: number;
+  projected_month_end_micro?: number;
+  days_remaining?: number;
+  low_confidence?: boolean;
+  ch_unavailable?: boolean;
+};
+
+/** GET /api/v1/disputes */
+export type DisputeRowDTO = {
+  intent_id?: string;
+  customer_id?: string;
+  amount_micro?: number;
+  currency?: string;
+  provider_dispute_id?: string;
+  updated_at?: string;
+  chargeback_ledger_entry_ids?: number[];
+};
+
+export type DisputeListResponse = {
+  disputes?: DisputeRowDTO[];
+  total?: number;
+};
+
+/** GET /api/v1/billing/invoices/{id}/ledger-lines */
+export type InvoiceLedgerLineDTO = {
+  id?: number;
+  amount_micro?: number;
+  ledger_type?: string;
+  created_at?: string;
+};
+
+export type InvoiceLedgerLinesResponse = {
+  items?: InvoiceLedgerLineDTO[];
+  total?: number;
+  next_cursor?: string;
+  limit?: number;
+};
+
+/** GET /api/v1/billing/summary — fleet MTD billing ops (admin, shards:read) */
+export type BillingSummaryDTO = {
+  invoiced_mtd_micro?: number;
+  invoice_count_mtd?: number;
+  undelivered_invoice_notifications?: number;
+  customers_with_spend_in_month?: number;
+};
+
+export type BillingPeriodBounds = {
+  from?: string;
+  to?: string;
+};
+
+export type TaxBreakdownDTO = {
+  scheme?: string;
+  rate_bps?: number;
+  tax_micro?: number;
+};
+
+export type ReconciliationDTO = {
+  invoice_total_micro?: number;
+  ledger_sum_micro?: number;
+  delta_micro?: number;
+};
+
+export type InvoiceSummaryDTO = {
+  id?: string;
+  customer_id?: string;
+  billing_month?: string;
+  subtotal_micro?: number;
+  tax_micro?: number;
+  total_micro?: number;
+  status?: string;
+  currency?: string;
+};
+
+export type PaymentSummaryDTO = {
+  ledger_id?: number;
+  amount_micro?: number;
+  payment_intent_id?: string;
+  created_at?: string;
+};
+
+/** GET /api/v1/customers/{id}/billing/statement */
+export type BillingStatementDTO = {
+  customer_id?: string;
+  period?: BillingPeriodBounds;
+  opening_balance_micro?: number;
+  closing_balance_micro?: number;
+  lines?: InvoiceLineDTO[];
+  invoices?: InvoiceSummaryDTO[];
+  payments?: PaymentSummaryDTO[];
+  tax_breakdown?: TaxBreakdownDTO;
+  reconciliation?: ReconciliationDTO;
+  currency?: string;
+};
+
+/** POST /api/v1/billing/invoices/preview */
+export type InvoicePreviewDTO = {
+  customer_id?: string;
+  billing_month?: string;
+  currency?: string;
+  subtotal_micro?: number;
+  tax_micro?: number;
+  total_micro?: number;
+  tax_scheme?: string;
+  tax_rate_bps?: number;
+  lines?: InvoiceLineDTO[];
+  would_skip?: boolean;
+  ledger_sum_micro?: number;
+};
+
+/** GET /api/v1/customers/{id}/payments */
+export type PaymentHistoryRowDTO = {
+  intent_id?: string;
+  customer_id?: string;
+  amount_micro?: number;
+  currency?: string;
+  status?: string;
+  provider?: string;
+  provider_ref?: string;
+  idempotency_key?: string;
+  ledger_entry_id?: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type PaymentHistoryListResponse = {
+  items?: PaymentHistoryRowDTO[];
+  total?: number;
+  limit?: number;
+  offset?: number;
+};

@@ -263,7 +263,7 @@ func (w *SyncWorker) stageCampaignRollup(ctx context.Context, idStr string) {
 	w.campaignRollup[id] = PendingRollup{
 		AmountMicro:         amountMicro,
 		TxID:                txID,
-		IdStr:               idStr,
+		IDStr:               idStr,
 		SyncKey:             keys.syncKey,
 		InFlightKey:         keys.inFlightKey,
 		LockKey:             keys.lockKey,
@@ -441,7 +441,7 @@ func (w *SyncWorker) handleCampaignFlushError(ctx context.Context, id uuid.UUID,
 func (w *SyncWorker) CommitRollupRedis(ctx context.Context, entry PendingRollup) {
 	w.rdb.Eval(ctx, commitSyncScript,
 		[]string{entry.InFlightKey, entry.DirtySet, entry.LockKey, entry.TxKey, entry.SyncKey},
-		entry.AmountMicro, entry.IdStr)
+		entry.AmountMicro, entry.IDStr)
 }
 
 func (w *SyncWorker) PendingCampaignRollupCount() int {

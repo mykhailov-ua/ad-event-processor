@@ -10,8 +10,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func (s *Service) RetryInvoiceDelivery(ctx context.Context, inv *domain.Invoice, idempotencyKey string) error {
-	if s == nil || s.pool == nil {
+func (service *Service) RetryInvoiceDelivery(ctx context.Context, inv *domain.Invoice, idempotencyKey string) error {
+	if service == nil || service.pool == nil {
 		return fmt.Errorf("ledger service not configured")
 	}
 	if inv == nil {
@@ -21,7 +21,7 @@ func (s *Service) RetryInvoiceDelivery(ctx context.Context, inv *domain.Invoice,
 
 	dedupKey := fmt.Sprintf("invoice:%s", inv.ID)
 	var notifID string
-	err := s.pool.QueryRow(ctx, `
+	err := service.pool.QueryRow(ctx, `
 		SELECT id::text
 		FROM notify.notifications
 		WHERE dedup_key = $1 AND status = 'FAILED'
@@ -29,12 +29,12 @@ func (s *Service) RetryInvoiceDelivery(ctx context.Context, inv *domain.Invoice,
 		LIMIT 1`, dedupKey).Scan(&notifID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return s.DeliverInvoice(ctx, *inv)
+			return service.DeliverInvoice(ctx, *inv)
 		}
 		return fmt.Errorf("lookup failed invoice delivery: %w", err)
 	}
 
-	tag, err := s.pool.Exec(ctx, `
+	tag, err := service.pool.Exec(ctx, `
 		UPDATE notify.notifications
 		SET status = 'PENDING',
 		    retry_count = 0,

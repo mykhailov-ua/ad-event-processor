@@ -1,3 +1,3 @@
-import { mountSafePageHydrator } from './safe_page_panel.ts';
+import { mountSafePageHydrator } from './safe_page_panel.js';
 
 mountSafePageHydrator();

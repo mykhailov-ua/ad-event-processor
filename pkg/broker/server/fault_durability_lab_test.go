@@ -27,7 +27,7 @@ func meanProduceLatency(t *testing.T, addr, topic string, n int) time.Duration {
 	if err := cli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	var total time.Duration
 	for i := range n {
@@ -51,8 +51,7 @@ func TestFault_SlowFsync_ProduceLatencyRises(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	cfg := log.DurabilityConfig{
 		Mode:               log.DurabilitySync,
 		FlushInterval:      100 * time.Millisecond,
@@ -86,8 +85,7 @@ func TestFault_PageCachePressure_ProduceLatencyRises(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	scratch := filepath.Join(dir, "scratch.bin")
 	f, err := os.Create(scratch)
 	if err != nil {
@@ -140,14 +138,12 @@ func TestFault_CPUThrottle_ReplicationCatchesUp(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(leaderDir)
-
+	defer func() { _ = os.RemoveAll(leaderDir) }()
 	followerDir, err := os.MkdirTemp("", "fault-cpu-follower-*")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(followerDir)
-
+	defer func() { _ = os.RemoveAll(followerDir) }()
 	leaderAddr := allocFreeTCPAddr(t)
 	leaderProc := startBrokerProcess(t, bin, leaderDir, "fault-cpu-leader", redisURL, leaderAddr)
 
@@ -257,7 +253,7 @@ func TestFault_RedisOutage_CoordinationRecovers(t *testing.T) {
 		if err := c.Connect(); err != nil {
 			return false
 		}
-		defer c.Close()
+		defer func() { _ = c.Close() }()
 		_, err := c.Produce(context.Background(), topic, 0, []byte("after-outage"))
 		return err == nil
 	}, 30*time.Second, 500*time.Millisecond, "produce must recover after redis outage")
@@ -286,8 +282,7 @@ func TestFault_RedisSentinelFailover_ProduceContinues(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	s := NewServer(allocFreeTCPAddr(t), dir, 10*1024*1024, 4096)
 	if err := s.Start(); err != nil {
 		t.Fatal(err)
@@ -331,7 +326,7 @@ func TestFault_RedisSentinelFailover_ProduceContinues(t *testing.T) {
 	if err := cli2.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	defer cli2.Close()
+	defer func() { _ = cli2.Close() }()
 
 	requireEventually(t, func() bool {
 		_, err := cli2.Produce(context.Background(), topic, 0, []byte("after-failover"))

@@ -51,6 +51,23 @@ func benchFlowRouter(tb testing.TB) (*FlowRouter, [64][16]byte) {
 	return router, users
 }
 
+// BenchmarkFlowRouter_BanditSelect (harness: bandit_router) — B-GMA-M6, < 5 µs, 0 allocs.
+func BenchmarkFlowRouter_BanditSelect(b *testing.B) {
+	router, users := benchFlowRouter(b)
+	b.ReportAllocs()
+	b.ResetTimer()
+	var sel FlowSelection
+	var url []byte
+	var ok bool
+	for i := 0; i < b.N; i++ {
+		sel, url, ok = router.BanditSelect(users[i&63][:])
+	}
+	flowRouterBenchSink = sel
+	if ok {
+		flowRouterBenchSink.PathIdx += len(url)
+	}
+}
+
 // BenchmarkFlowRouter_Select (harness: flow_router) — B-GM-M3, < 2 µs, 0 allocs.
 func BenchmarkFlowRouter_Select(b *testing.B) {
 	router, users := benchFlowRouter(b)

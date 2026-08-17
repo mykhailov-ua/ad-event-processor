@@ -2,7 +2,6 @@ package payment
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -87,25 +86,13 @@ func (a *SettlementFailedAlerter) AlertPermanentFailure(ctx context.Context, out
 func paymentIntentIDFromOutbox(outboxEvent db.PaymentPaymentOutbox) (string, bool) {
 	switch outboxEvent.EventType {
 	case "SETTLE_BALANCE":
-		var payload SettleBalancePayload
-		if err := json.Unmarshal(outboxEvent.Payload, &payload); err != nil || payload.PaymentIntentID == "" {
-			return "", false
-		}
-		return payload.PaymentIntentID, true
+		return paymentIntentIDFromPayload[SettleBalancePayload](outboxEvent.Payload)
 	case OutboxEventReverseBalance:
-		var payload ReverseBalancePayload
-		if err := json.Unmarshal(outboxEvent.Payload, &payload); err != nil || payload.PaymentIntentID == "" {
-			return "", false
-		}
-		return payload.PaymentIntentID, true
-	case OutboxEventApplyChargeback, OutboxEventReverseChargeback:
-		var payload struct {
-			PaymentIntentID string `json:"payment_intent_id"`
-		}
-		if err := json.Unmarshal(outboxEvent.Payload, &payload); err != nil || payload.PaymentIntentID == "" {
-			return "", false
-		}
-		return payload.PaymentIntentID, true
+		return paymentIntentIDFromPayload[ReverseBalancePayload](outboxEvent.Payload)
+	case OutboxEventApplyChargeback:
+		return paymentIntentIDFromPayload[ApplyChargebackPayload](outboxEvent.Payload)
+	case OutboxEventReverseChargeback:
+		return paymentIntentIDFromPayload[ReverseChargebackPayload](outboxEvent.Payload)
 	default:
 		return "", false
 	}

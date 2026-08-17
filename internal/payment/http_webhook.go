@@ -33,14 +33,14 @@ func NewWebhookHandler(service *Service, cfg *config.Config) *WebhookHandler {
 	}
 }
 
-func (h *WebhookHandler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/webhooks/stripe", h.handleStripeWebhook)
-	mux.HandleFunc("/webhooks/crypto", h.handleCryptoWebhook)
-	mux.HandleFunc("/health", h.handleHealth)
+func (webhookHandler *WebhookHandler) RegisterRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("/webhooks/stripe", webhookHandler.handleStripeWebhook)
+	mux.HandleFunc("/webhooks/crypto", webhookHandler.handleCryptoWebhook)
+	mux.HandleFunc("/health", webhookHandler.handleHealth)
 	mux.Handle("/metrics", promhttp.Handler())
 }
 
-func (h *WebhookHandler) handleHealth(w http.ResponseWriter, r *http.Request) {
+func (webhookHandler *WebhookHandler) handleHealth(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return

@@ -1,6 +1,7 @@
 package ingestion
 
 import (
+	"context"
 	"net/http"
 	"unsafe"
 
@@ -35,6 +36,7 @@ type tgQueryParsed struct {
 	premium     bool
 	motivated   bool
 	subs        [5]string
+	dmr         bool
 	passthrough []byte
 	ok          bool
 }
@@ -54,6 +56,7 @@ const (
 	tgKeySub3
 	tgKeySub4
 	tgKeySub5
+	tgKeyDMR
 	tgKeyForbidden
 )
 
@@ -75,6 +78,10 @@ func matchTgQueryKey(key []byte) tgKeyID {
 	}
 	_ = key[kl-1]
 	switch kl {
+	case 3:
+		if key[0] == 'd' && key[1] == 'm' && key[2] == 'r' {
+			return tgKeyDMR
+		}
 	case 4:
 		if key[0] == 'h' && key[1] == 'a' && key[2] == 's' && key[3] == 'h' {
 			return tgKeyForbidden
@@ -158,7 +165,7 @@ func validateBridgeToken(b []byte) bool {
 	_ = b[bn-1]
 	for i := range bn {
 		c := b[i]
-		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-') {
+		if (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') && (c < '0' || c > '9') && c != '_' && c != '-' {
 			return false
 		}
 	}
@@ -174,6 +181,7 @@ func parseTgQuery(path []byte, scratch []byte, out *tgQueryParsed) []byte {
 	out.premium = false
 	out.motivated = false
 	out.subs = [5]string{}
+	out.dmr = false
 	out.passthrough = nil
 	out.ok = false
 
@@ -272,6 +280,8 @@ func parseTgQuery(path []byte, scratch []byte, out *tgQueryParsed) []byte {
 			out.motivated = tgQueryFlagTrue(decoded)
 		case tgKeySub1, tgKeySub2, tgKeySub3, tgKeySub4, tgKeySub5:
 			out.subs[kid-tgKeySub1] = unsafeString(decoded)
+		case tgKeyDMR:
+			out.dmr = parseDmrQueryFlag(decoded)
 		}
 	}
 
@@ -359,25 +369,25 @@ func expandTgRedirectMacros(dst, base []byte, clickID, bridgeToken string, subs 
 		mid, end := dispatchTgRedirectMacro(base, i)
 		switch mid {
 		case tgRedirectMacroClickID:
-			dst = append(dst, clickB...)
+			dst = appendRedirectMacroEscaped(dst, clickB)
 			i = end
 		case tgRedirectMacroBridgeToken:
-			dst = append(dst, bridgeB...)
+			dst = appendRedirectMacroEscaped(dst, bridgeB)
 			i = end
 		case tgRedirectMacroSub1:
-			dst = append(dst, subB[0]...)
+			dst = appendRedirectMacroEscaped(dst, subB[0])
 			i = end
 		case tgRedirectMacroSub2:
-			dst = append(dst, subB[1]...)
+			dst = appendRedirectMacroEscaped(dst, subB[1])
 			i = end
 		case tgRedirectMacroSub3:
-			dst = append(dst, subB[2]...)
+			dst = appendRedirectMacroEscaped(dst, subB[2])
 			i = end
 		case tgRedirectMacroSub4:
-			dst = append(dst, subB[3]...)
+			dst = appendRedirectMacroEscaped(dst, subB[3])
 			i = end
 		case tgRedirectMacroSub5:
-			dst = append(dst, subB[4]...)
+			dst = appendRedirectMacroEscaped(dst, subB[4])
 			i = end
 		default:
 			dst = append(dst, base[i])
@@ -477,7 +487,7 @@ func (h *AdsPacketHandler) resolveTgLanding(evt *domain.Event, filtered []byte) 
 	if h.filterEngine != nil {
 		return nil
 	}
-	return ResolveLandingURLBytes(h.registry, h.creativeStore, evt)
+	return ResolveLandingURLBytes(context.Background(), h.registry, h.creativeStore, evt)
 }
 
 func (h *AdsPacketHandler) reactTgClick(req parsedHTTPRequest, c gnet.Conn, ctx *connContext) gnet.Action {
@@ -508,7 +518,7 @@ func (h *AdsPacketHandler) reactTgClick(req parsedHTTPRequest, c gnet.Conn, ctx 
 		}
 		defer lease.Release()
 		var done bool
-		filtered, done = h.applyTgTrackFilter(processTrack(h.trackProc, evt, nil), evt, c, ctx, startMono)
+		filtered, done = h.applyTgTrackFilter(processTrack(context.Background(), h.trackProc, evt, nil), evt, c, ctx, startMono)
 		if done {
 			return gnet.None
 		}
@@ -531,7 +541,7 @@ func (h *AdsPacketHandler) reactTgClick(req parsedHTTPRequest, c gnet.Conn, ctx 
 
 	h.trackMetrics.decisionAccepted.Inc()
 	writeAuditLog(h.logger, &h.auditLogSeq, h.auditLogSampleMask, ctx.shardID, evt)
-	h.writeGnetClickRedirect(ctx, c, startMono, loc)
+	h.writeGnetClickLandingRedirect(ctx, c, startMono, loc, h.clickDmrActive(evt.CampaignID, parsed.dmr))
 	return gnet.None
 }
 
@@ -561,7 +571,7 @@ func (h *AdsPacketHandler) reactTgImpression(req parsedHTTPRequest, c gnet.Conn,
 			return gnet.None
 		}
 		defer lease.Release()
-		if _, done := h.applyTgTrackFilter(processTrack(h.trackProc, evt, nil), evt, c, ctx, startMono); done {
+		if _, done := h.applyTgTrackFilter(processTrack(context.Background(), h.trackProc, evt, nil), evt, c, ctx, startMono); done {
 			return gnet.None
 		}
 	}

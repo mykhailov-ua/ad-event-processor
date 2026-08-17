@@ -2,6 +2,7 @@ package ingestion
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -136,7 +137,7 @@ func (sw *SettingsWatcher) applyFraudBoostCampaign(ctx context.Context, campaign
 	next := cloneFraudBoostMap(prev.Boosts)
 
 	valStr, err := rdb.Get(ctx, fraudScoreBoostKey(campaignID)).Result()
-	if err == redis.Nil {
+	if errors.Is(err, redis.Nil) {
 		delete(next, campaignID)
 		sw.fraudScoreBoosts.Store(&FraudScoreBoostSnapshot{Boosts: next})
 		return

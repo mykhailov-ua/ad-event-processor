@@ -1,3 +1,4 @@
+// Package doctor implements doctor support for BidShard.
 package doctor
 
 import (

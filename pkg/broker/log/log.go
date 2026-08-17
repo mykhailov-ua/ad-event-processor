@@ -87,12 +87,12 @@ func NewSegment(dir string, baseOffset uint64, maxSegSize int64, indexInterval i
 	logPath := filepath.Join(dir, logName)
 	indexPath := filepath.Join(dir, idxName)
 
-	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_RDWR, 0644)
+	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_RDWR, 0o644)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open log file %s: %w", logPath, err)
 	}
 
-	indexFile, err := os.OpenFile(indexPath, os.O_CREATE|os.O_RDWR, 0644)
+	indexFile, err := os.OpenFile(indexPath, os.O_CREATE|os.O_RDWR, 0o644)
 	if err != nil {
 		_ = logFile.Close()
 		return nil, fmt.Errorf("failed to open index file %s: %w", indexPath, err)
@@ -324,7 +324,7 @@ func (s *Segment) Recover() (uint64, error) {
 		}
 	}
 
-	var lastIdxOffset uint64 = s.baseOffset
+	lastIdxOffset := s.baseOffset
 	var lastIdxPos int64 = 0
 
 	if idxSize >= 16 {
@@ -340,10 +340,7 @@ func (s *Segment) Recover() (uint64, error) {
 	currentPos := lastIdxPos
 	mmapSize := int64(len(s.mmapData))
 
-	for {
-		if currentPos+12 > mmapSize {
-			break
-		}
+	for currentPos+12 <= mmapSize {
 
 		length := binary.BigEndian.Uint32(s.mmapData[currentPos : currentPos+4])
 		offset := binary.BigEndian.Uint64(s.mmapData[currentPos+4 : currentPos+12])
@@ -408,10 +405,7 @@ func (s *Segment) LocateMessages(indexPos int64, startOffset uint64, maxBytes ui
 	var msgCount uint32 = 0
 	var totalMsgBytes uint32 = 0
 
-	for {
-		if currentPos+12 > logSize {
-			break
-		}
+	for currentPos+12 <= logSize {
 
 		length := binary.BigEndian.Uint32(s.mmapData[currentPos : currentPos+4])
 		offset := binary.BigEndian.Uint64(s.mmapData[currentPos+4 : currentPos+12])
@@ -485,19 +479,20 @@ type PartitionLog struct {
 	durability    DurabilityConfig
 	pendingFsync  atomic.Int64
 	gate          *iogate.DiskWriteGate
+	opsCtx        context.Context
 
 	DiskOK atomic.Bool
 }
 
-func NewPartitionLog(dir string, maxSegSize int64, indexInterval int64) (*PartitionLog, error) {
-	return NewPartitionLogWithDurability(dir, maxSegSize, indexInterval, DefaultDurabilityConfig())
+func NewPartitionLog(ctx context.Context, dir string, maxSegSize int64, indexInterval int64) (*PartitionLog, error) {
+	return NewPartitionLogWithDurability(ctx, dir, maxSegSize, indexInterval, DefaultDurabilityConfig())
 }
 
-func NewPartitionLogWithDurability(dir string, maxSegSize int64, indexInterval int64, cfg DurabilityConfig) (*PartitionLog, error) {
-	return NewPartitionLogWithDurabilityAndGate(dir, maxSegSize, indexInterval, cfg, nil)
+func NewPartitionLogWithDurability(ctx context.Context, dir string, maxSegSize int64, indexInterval int64, cfg DurabilityConfig) (*PartitionLog, error) {
+	return NewPartitionLogWithDurabilityAndGate(ctx, dir, maxSegSize, indexInterval, cfg, nil)
 }
 
-func NewPartitionLogWithDurabilityAndGate(dir string, maxSegSize int64, indexInterval int64, cfg DurabilityConfig, gate *iogate.DiskWriteGate) (*PartitionLog, error) {
+func NewPartitionLogWithDurabilityAndGate(ctx context.Context, dir string, maxSegSize int64, indexInterval int64, cfg DurabilityConfig, gate *iogate.DiskWriteGate) (*PartitionLog, error) {
 	if cfg.FlushInterval <= 0 {
 		cfg.FlushInterval = 100 * time.Millisecond
 	}
@@ -505,7 +500,7 @@ func NewPartitionLogWithDurabilityAndGate(dir string, maxSegSize int64, indexInt
 		cfg.GroupCommitRecords = 64
 	}
 
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, err
 	}
 
@@ -516,6 +511,7 @@ func NewPartitionLogWithDurabilityAndGate(dir string, maxSegSize int64, indexInt
 		closeChan:     make(chan struct{}),
 		durability:    cfg,
 		gate:          gate,
+		opsCtx:        ctx,
 	}
 	p.DiskOK.Store(true)
 
@@ -619,7 +615,7 @@ func (p *PartitionLog) persistFencingEpoch(epoch uint64) error {
 	tmpPath := path + ".tmp"
 	var buf [8]byte
 	binary.BigEndian.PutUint64(buf[:], epoch)
-	if err := os.WriteFile(tmpPath, buf[:], 0644); err != nil {
+	if err := os.WriteFile(tmpPath, buf[:], 0o644); err != nil {
 		return err
 	}
 	return os.Rename(tmpPath, path)
@@ -723,8 +719,8 @@ func (p *PartitionLog) AppendFenced(epoch uint64, payload []byte) (uint64, error
 		}
 		return offset, p.applyDurabilityAfterLeaderAppend()
 	}
-	max := p.fencingEpoch.Load()
-	if epoch < max {
+	fenceEpoch := p.fencingEpoch.Load()
+	if epoch < fenceEpoch {
 		return 0, ErrStaleFencingEpoch
 	}
 	p.writeMu.Lock()
@@ -765,7 +761,7 @@ func (p *PartitionLog) syncLocked() {
 		time.Sleep(d)
 	}
 	if p.gate != nil {
-		ctx := context.Background()
+		ctx := p.opsCtx
 		if err := p.gate.AcquireFsync(ctx); err != nil {
 			p.DiskOK.Store(false)
 			return

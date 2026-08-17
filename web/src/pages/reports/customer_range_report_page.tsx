@@ -9,6 +9,8 @@ import { validateReportRange } from '../../helpers/validators.js';
 import { REPORT_DATE_PRESETS } from '../../helpers/date_presets.js';
 import { tenantReportQueryString } from '../../helpers/tenant_url.js';
 import { formatMoney } from '../../helpers/money.js';
+import { reportCompareLabel, formatSpendDelta } from '../../helpers/report_compare.js';
+import { ReportRowActions } from '../../components/report_row_actions.js';
 import { AlertBanner } from '../../components/alert_banner.js';
 import { Button } from '../../components/button.js';
 import { ErrorBlock } from '../../components/error_block.js';
@@ -25,6 +27,8 @@ export type CustomerRangeReportPageProps = {
   endpoint: string;
   urlPath: string;
   columns: CustomerRangeColumn[];
+  enableCompare?: boolean;
+  enableActions?: boolean;
 };
 
 /**
@@ -35,6 +39,8 @@ export function CustomerRangeReportPage({
   endpoint,
   urlPath,
   columns,
+  enableCompare = true,
+  enableActions = true,
 }: CustomerRangeReportPageProps) {
   const [searchParams] = useSearchParams();
   const user = auth.getUser();
@@ -51,6 +57,7 @@ export function CustomerRangeReportPage({
   const [freshness, setFreshness] = useState<DataFreshness | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [comparePeriod, setComparePeriod] = useState(false);
 
   const load = useCallback(async () => {
     const cid = sessionScoped ? boundCustomerId(user) : customerInput.trim();
@@ -71,6 +78,7 @@ export function CustomerRangeReportPage({
     setLoading(true);
     setError(null);
     const params = new URLSearchParams({ customer_id: cid, from, to: rangeTo, limit: '50' });
+    if (comparePeriod) params.set('compare', 'previous');
     const [res, err] = await to(api(`/api/v1/reports/${endpoint}?${params.toString()}`));
     setLoading(false);
     if (err) {
@@ -84,7 +92,7 @@ export function CustomerRangeReportPage({
       const qs = tenantReportQueryString({ customer_id: cid, from, to: rangeTo });
       window.history.replaceState(null, '', `${urlPath}?${qs}`);
     }
-  }, [sessionScoped, user, customerInput, from, rangeTo, endpoint, urlPath]);
+  }, [sessionScoped, user, customerInput, from, rangeTo, endpoint, urlPath, comparePeriod]);
 
   useEffect(() => {
     void load();
@@ -136,6 +144,16 @@ export function CustomerRangeReportPage({
             onChange={(e) => setRangeTo(e.target.value)}
           />
         </FormField>
+        {enableCompare ? (
+          <label className="form-checkbox form-checkbox--block">
+            <input
+              type="checkbox"
+              checked={comparePeriod}
+              onChange={(e) => setComparePeriod(e.target.checked)}
+            />
+            <span>{reportCompareLabel()}</span>
+          </label>
+        ) : null}
         <Button label="Load" variant="primary" type="submit" loading={loading} disabled={loading} />
       </form>
 
@@ -152,12 +170,22 @@ export function CustomerRangeReportPage({
             <thead>
               <tr>
                 {columns.map((col) => <th key={col.header} scope="col">{col.header}</th>)}
+                {comparePeriod ? <th scope="col">Δ spend</th> : null}
+                {enableActions ? <th scope="col">Actions</th> : null}
               </tr>
             </thead>
             <tbody>
               {rows.map((row, index) => (
                 <tr key={`row-${index}`}>
                   {columns.map((col) => <td key={col.header}>{col.render(row)}</td>)}
+                  {comparePeriod ? (
+                    <td className="font-mono">{formatSpendDelta(row)}</td>
+                  ) : null}
+                  {enableActions ? (
+                    <td>
+                      <ReportRowActions row={row} customerId={cid} reportEndpoint={endpoint} />
+                    </td>
+                  ) : null}
                 </tr>
               ))}
             </tbody>

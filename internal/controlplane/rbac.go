@@ -25,6 +25,7 @@ const (
 	PermOpsWrite             = "ops:write"
 	PermRtbRead              = "rtb:read"
 	PermRtbWrite             = "rtb:write"
+	PermSupplyReadScoped     = "supply:read:scoped"
 )
 
 const (
@@ -35,6 +36,7 @@ const (
 	RoleSupport    = "S"
 	RoleTeamLead   = "TL"
 	RoleMediaBuyer = "MB"
+	RolePublisher  = "P"
 )
 
 var rolePermissions = map[string][]string{
@@ -75,6 +77,10 @@ var rolePermissions = map[string][]string{
 		PermCampaignsRead, PermCampaignsWrite,
 		PermCustomersRead,
 	},
+	RolePublisher: {
+		PermSupplyReadScoped,
+		PermCustomersRead,
+	},
 }
 
 func NormalizeRole(role string) string {
@@ -95,6 +101,8 @@ func NormalizeRole(role string) string {
 		return RoleAdmin
 	case "SUPPORT", "S":
 		return RoleSupport
+	case "PUBLISHER", "P":
+		return RolePublisher
 	default:
 		return strings.ToUpper(strings.TrimSpace(role))
 	}

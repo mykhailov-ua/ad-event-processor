@@ -10,15 +10,15 @@ import (
 )
 
 type procSampleRow struct {
-	TsNs      int64  `json:"ts_ns"`
+	TSNs      int64  `json:"ts_ns"`
 	PID       uint32 `json:"pid"`
 	Name      string `json:"name"`
 	Role      string `json:"role"`
 	OpenFDs   uint64 `json:"open_fds"`
 	SocketFDs uint64 `json:"socket_fds"`
 	Threads   uint64 `json:"threads"`
-	VmRSSKB   uint64 `json:"vm_rss_kb"`
-	VmHWMKB   uint64 `json:"vm_hwm_kb"`
+	VMRSSKB   uint64 `json:"vm_rss_kb"`
+	VMHWMKB   uint64 `json:"vm_hwm_kb"`
 	RssAnonKB uint64 `json:"rss_anon_kb"`
 	MinFlt    uint64 `json:"minflt"`
 	MajFlt    uint64 `json:"majflt"`
@@ -77,15 +77,15 @@ func (r *probeRun) procSampleLoop(ctx context.Context) {
 				}
 				fds, socks, _, _ := readProcFDAndThreads(t.PID)
 				_ = enc.Encode(procSampleRow{
-					TsNs:      ts,
+					TSNs:      ts,
 					PID:       t.PID,
 					Name:      t.Name,
 					Role:      roleName(t.Role),
 					OpenFDs:   fds,
 					SocketFDs: socks,
 					Threads:   mem.Threads,
-					VmRSSKB:   mem.VmRSSKB,
-					VmHWMKB:   mem.VmHWMKB,
+					VMRSSKB:   mem.VMRSSKB,
+					VMHWMKB:   mem.VMHWMKB,
 					RssAnonKB: mem.RssAnonKB,
 					MinFlt:    mem.MinFlt,
 					MajFlt:    mem.MajFlt,

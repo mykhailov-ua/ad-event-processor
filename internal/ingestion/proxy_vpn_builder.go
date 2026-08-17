@@ -148,14 +148,3 @@ func (b *proxyVPNBuilder) linkChild(root *int32, parent int32, pdir uint32, node
 	}
 	b.nodes[parent].child[pdir] = node
 }
-
-func buildProxyVPNTableFromPrefixes(prefixes []netip.Prefix, connType uint8, asn uint32) *ProxyVPNTable {
-	var b proxyVPNBuilder
-	root4, root6 := int32(cidrNoIndex), int32(cidrNoIndex)
-	for _, p := range prefixes {
-		b.addPrefix(p, connType, asn, &root4, &root6)
-	}
-	table := NewProxyVPNTable()
-	table.Publish(b.snapshot(root4, root6, 1))
-	return table
-}

@@ -1,3 +1,4 @@
+// Package rtb runs in-process OpenRTB auctions for tracker traffic.
 package rtb
 
 func (registry *Registry) RunAuction(req *BidRequest) (AuctionResult, NoBidReason) {

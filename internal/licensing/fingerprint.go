@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/bidshard/ad-event-processor/internal/config"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 )
 
 func HostFingerprint() string {
@@ -33,17 +34,5 @@ func stableInstallPaths() []string {
 	if p := strings.TrimSpace(config.LicenseEnv("PATH")); p != "" {
 		paths = append(paths, filepath.Dir(filepath.Clean(p)))
 	}
-	seen := make(map[string]struct{}, len(paths))
-	out := make([]string, 0, len(paths))
-	for _, p := range paths {
-		if p == "" {
-			continue
-		}
-		if _, ok := seen[p]; ok {
-			continue
-		}
-		seen[p] = struct{}{}
-		out = append(out, p)
-	}
-	return out
+	return coldpath.UniqueSlice(paths)
 }

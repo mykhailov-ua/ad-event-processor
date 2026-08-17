@@ -4,6 +4,7 @@
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
+source "$SCRIPTS/lib/go.sh"
 cd "$ROOT"
 
 log() { printf 'billing_export_smoke: %s\n' "$*"; }

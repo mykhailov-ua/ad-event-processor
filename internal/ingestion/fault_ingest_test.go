@@ -283,7 +283,7 @@ func TestPinnedWorkerPool_queueFullReject(t *testing.T) {
 
 func TestAdsPacketHandler_workerPoolSaturated_rejectsAndCounts(t *testing.T) {
 	before := testutil.ToFloat64(metrics.WorkerPoolRejectTotal)
-	before503 := testutil.ToFloat64(metrics.HttpRequestsTotal.WithLabelValues("POST", "/track", "503"))
+	before503 := testutil.ToFloat64(metrics.HTTPRequestsTotal.WithLabelValues("POST", "/track", "503"))
 	cfg := &config.Config{MaxRequestBodySize: 1024 * 1024}
 
 	pool := NewPinnedWorkerPool(1, 1)
@@ -313,5 +313,5 @@ func TestAdsPacketHandler_workerPoolSaturated_rejectsAndCounts(t *testing.T) {
 
 	assert.True(t, bytes.Contains(conn.Written(), []byte("server overloaded")))
 	assert.Equal(t, before+1, testutil.ToFloat64(metrics.WorkerPoolRejectTotal))
-	assert.Equal(t, before503+1, testutil.ToFloat64(metrics.HttpRequestsTotal.WithLabelValues("POST", "/track", "503")))
+	assert.Equal(t, before503+1, testutil.ToFloat64(metrics.HTTPRequestsTotal.WithLabelValues("POST", "/track", "503")))
 }

@@ -533,11 +533,11 @@ func inspectStream(ctx context.Context, rdb *redis.Client, stream string, batchS
 }
 
 type EditableStreamEvent struct {
-	ClickId       string `json:"click_id"`
-	CampaignId    string `json:"campaign_id"`
+	ClickID       string `json:"click_id"`
+	CampaignID    string `json:"campaign_id"`
 	EventType     string `json:"event_type"`
 	Payload       string `json:"payload"`
-	Ip            string `json:"ip"`
+	IP            string `json:"ip"`
 	Ua            string `json:"ua"`
 	CreatedAtUnix int64  `json:"created_at_unix"`
 }
@@ -545,9 +545,9 @@ type EditableStreamEvent struct {
 type EditableDLQEvent struct {
 	ID            string              `json:"id"`
 	Error         string              `json:"error"`
-	OriginalId    string              `json:"original_id"`
+	OriginalID    string              `json:"original_id"`
 	FailedAtUnix  int64               `json:"failed_at_unix"`
-	WorkerId      string              `json:"worker_id"`
+	WorkerID      string              `json:"worker_id"`
 	RetryCount    int32               `json:"retry_count"`
 	OriginalEvent EditableStreamEvent `json:"original_event"`
 }
@@ -566,11 +566,11 @@ func toEditable(id string, pbDLQ *pb.AdDLQEvent) EditableDLQEvent {
 		}
 
 		orig = EditableStreamEvent{
-			ClickId:       ingestion.UnsafeString(pbDLQ.OriginalEvent.ClickId),
-			CampaignId:    campUUIDStr,
+			ClickID:       ingestion.UnsafeString(pbDLQ.OriginalEvent.ClickId),
+			CampaignID:    campUUIDStr,
 			EventType:     ingestion.UnsafeString(pbDLQ.OriginalEvent.EventType),
 			Payload:       ingestion.UnsafeString(pbDLQ.OriginalEvent.Payload),
-			Ip:            ingestion.UnsafeString(pbDLQ.OriginalEvent.Ip),
+			IP:            ingestion.UnsafeString(pbDLQ.OriginalEvent.Ip),
 			Ua:            ingestion.UnsafeString(pbDLQ.OriginalEvent.Ua),
 			CreatedAtUnix: pbDLQ.OriginalEvent.CreatedAtUnix,
 		}
@@ -578,9 +578,9 @@ func toEditable(id string, pbDLQ *pb.AdDLQEvent) EditableDLQEvent {
 	return EditableDLQEvent{
 		ID:            id,
 		Error:         ingestion.UnsafeString(pbDLQ.Error),
-		OriginalId:    ingestion.UnsafeString(pbDLQ.OriginalId),
+		OriginalID:    ingestion.UnsafeString(pbDLQ.OriginalId),
 		FailedAtUnix:  pbDLQ.FailedAtUnix,
-		WorkerId:      ingestion.UnsafeString(pbDLQ.WorkerId),
+		WorkerID:      ingestion.UnsafeString(pbDLQ.WorkerId),
 		RetryCount:    pbDLQ.RetryCount,
 		OriginalEvent: orig,
 	}
@@ -588,24 +588,24 @@ func toEditable(id string, pbDLQ *pb.AdDLQEvent) EditableDLQEvent {
 
 func fromEditable(edit EditableDLQEvent) *pb.AdDLQEvent {
 	var campID []byte
-	if u, err := uuid.Parse(edit.OriginalEvent.CampaignId); err == nil {
+	if u, err := uuid.Parse(edit.OriginalEvent.CampaignID); err == nil {
 		campID = u[:]
 	} else {
-		campID = ingestion.UnsafeBytes(edit.OriginalEvent.CampaignId)
+		campID = ingestion.UnsafeBytes(edit.OriginalEvent.CampaignID)
 	}
 
 	return &pb.AdDLQEvent{
 		Error:        ingestion.UnsafeBytes(edit.Error),
-		OriginalId:   ingestion.UnsafeBytes(edit.OriginalId),
+		OriginalId:   ingestion.UnsafeBytes(edit.OriginalID),
 		FailedAtUnix: edit.FailedAtUnix,
-		WorkerId:     ingestion.UnsafeBytes(edit.WorkerId),
+		WorkerId:     ingestion.UnsafeBytes(edit.WorkerID),
 		RetryCount:   edit.RetryCount,
 		OriginalEvent: &pb.AdStreamEvent{
-			ClickId:       ingestion.UnsafeBytes(edit.OriginalEvent.ClickId),
+			ClickId:       ingestion.UnsafeBytes(edit.OriginalEvent.ClickID),
 			CampaignId:    campID,
 			EventType:     ingestion.UnsafeBytes(edit.OriginalEvent.EventType),
 			Payload:       ingestion.UnsafeBytes(edit.OriginalEvent.Payload),
-			Ip:            ingestion.UnsafeBytes(edit.OriginalEvent.Ip),
+			Ip:            ingestion.UnsafeBytes(edit.OriginalEvent.IP),
 			Ua:            ingestion.UnsafeBytes(edit.OriginalEvent.Ua),
 			CreatedAtUnix: edit.OriginalEvent.CreatedAtUnix,
 		},

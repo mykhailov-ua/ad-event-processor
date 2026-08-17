@@ -1,3 +1,4 @@
+// Package edge provides edge entitlement configuration.
 package edge
 
 import (

@@ -527,7 +527,7 @@ func (s *Server) handleProduceBatch(c gnet.Conn, seq uint64, payload []byte) {
 			committed++
 		}
 		if s.coord != nil && s.coord.IsLeader(s.topicKey) && committed > 0 {
-			s.coord.PublishLogHWM(s.topicKey, s.partition.NextOffset())
+			s.coord.PublishLogHWM(context.Background(), s.topicKey, s.partition.NextOffset())
 		}
 	}
 

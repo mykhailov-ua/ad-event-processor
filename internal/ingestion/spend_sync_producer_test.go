@@ -40,7 +40,7 @@ func TestSpendSyncProducer_FlushToRegionProxy(t *testing.T) {
 	time.Sleep(150 * time.Millisecond)
 
 	client := rpclient.New(rpclient.Config{Addr: srv.Addr(), Timeout: 2 * time.Second})
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	producer := NewSpendSyncProducer(regionProxySpendSyncAdapter{client: client}, 2)
 	campID := uuid.New()
@@ -49,7 +49,7 @@ func TestSpendSyncProducer_FlushToRegionProxy(t *testing.T) {
 		entry := PendingRollup{
 			AmountMicro: 1_000,
 			TxID:        "sync-txn-" + string(rune('a'+i)),
-			IdStr:       campID.String(),
+			IDStr:       campID.String(),
 		}
 		require.NoError(t, producer.EnqueueRollup(ctx, nil, campID, entry))
 	}
@@ -58,7 +58,7 @@ func TestSpendSyncProducer_FlushToRegionProxy(t *testing.T) {
 
 	segment, err := wal.Open(dataDir, gate)
 	require.NoError(t, err)
-	defer segment.Close()
+	defer func() { _ = segment.Close() }()
 	assert.Equal(t, uint64(1), segment.NextSeq())
 
 	hdr, payload, err := segment.ReadRecord(0)

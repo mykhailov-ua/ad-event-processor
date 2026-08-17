@@ -250,6 +250,33 @@ func TestClickRedirect_ProxyMode_E2E(t *testing.T) {
 	require.NotContains(t, resp, "302 Found")
 }
 
+func TestClickRedirect_ProxySkippedWhenDMR(t *testing.T) {
+	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte("<html><body>proxy ok</body></html>"))
+	}))
+	t.Cleanup(up.Close)
+
+	h, cid, _ := setupClickRedirectHarness(t, func(c *domain.Campaign) {
+		c.ClickDelivery = proxyupstream.ClickDeliveryProxy
+		c.ProxyUpstreamURL = up.URL + "/lp"
+	})
+
+	path := "/click?campaign_id=" + cid.String() + "&type=click&sub1=px&dmr=1"
+	_, conn := ServeGnetHarness(h, BuildGnetHTTP("GET", path, map[string]string{
+		"Connection":     "keep-alive",
+		"Content-Length": "0",
+		"User-Agent":     "Mozilla/5.0",
+	}, nil))
+
+	resp := string(conn.Written())
+	require.Equal(t, http.StatusOK, ParseGnetHTTPStatus(conn.Written()))
+	require.Contains(t, resp, `window.location.replace(`)
+	require.Contains(t, resp, "lander.test/go")
+	require.NotContains(t, resp, "proxy ok")
+	require.NotContains(t, resp, "302 Found")
+}
+
 func TestCampaignClickProxyEnabled(t *testing.T) {
 	on, url, rw := campaignClickProxyEnabled(&domain.Campaign{
 		ClickDelivery:      proxyupstream.ClickDeliveryProxy,

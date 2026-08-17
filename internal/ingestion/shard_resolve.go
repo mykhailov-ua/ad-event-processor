@@ -17,11 +17,12 @@ func (f *UnifiedFilter) resolveDebitShard(campaignID uuid.UUID, userID, clickID 
 	} else if campInfo != nil && campInfo.HasTriplet {
 		hash := ComputeCompositeHashUUID(campaignID, []byte(userID))
 		pct := hash % 100
-		if pct < 40 {
+		switch {
+		case pct < 40:
 			shard = int(campInfo.PrimaryAShard)
-		} else if pct < 80 {
+		case pct < 80:
 			shard = int(campInfo.PrimaryBShard)
-		} else {
+		default:
 			shard = int(campInfo.ReserveShard)
 		}
 	}

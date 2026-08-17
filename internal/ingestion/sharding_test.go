@@ -346,12 +346,12 @@ func TestStaticSlotSharder_StoreSlotMap_concurrent(t *testing.T) {
 func TestStaticSlotSharder_MigrateSixToFour(t *testing.T) {
 	const samples = 10_000
 	old := NewStaticSlotSharder(6)
-	new := NewStaticSlotSharder(4)
+	fourShard := NewStaticSlotSharder(4)
 
 	moves := 0
 	for range samples {
 		id := uuid.New()
-		if old.GetShard(id) != new.GetShard(id) {
+		if old.GetShard(id) != fourShard.GetShard(id) {
 			moves++
 		}
 	}

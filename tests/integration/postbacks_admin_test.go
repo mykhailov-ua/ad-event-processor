@@ -53,8 +53,8 @@ func TestPostbacksAdminAPIIntegration(t *testing.T) {
 
 	configReq := adminapi.UpdatePostbackConfigRequest{
 		Provider:    "facebook",
-		UrlTemplate: "https://mock.com",
-		ApiToken:    "token123",
+		URLTemplate: "https://mock.com",
+		APIToken:    "token123",
 		TargetEvent: "conversion",
 	}
 	bodyBytes, err := json.Marshal(configReq)

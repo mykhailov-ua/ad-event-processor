@@ -106,3 +106,11 @@ export async function fetchSupplyExportPath(): Promise<string> {
   const payload = data as { path?: string } | null | undefined;
   return payload?.path ?? '';
 }
+
+/**
+ * Validate sellers.json and ads.txt exports (syntax + checksum).
+ */
+export async function fetchSupplyValidation(): Promise<import('../types/api/publisher.js').SupplyValidation> {
+  const { data } = await api('/api/v1/supply/validation');
+  return data as import('../types/api/publisher.js').SupplyValidation;
+}

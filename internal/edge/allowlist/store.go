@@ -1,3 +1,4 @@
+// Package allowlist implements edge allowlist helpers.
 package allowlist
 
 import (

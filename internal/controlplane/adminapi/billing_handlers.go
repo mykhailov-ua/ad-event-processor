@@ -48,12 +48,7 @@ type BillingHTTPHandlers struct {
 	ResolveDisputeCustomerFilter func(*http.Request) (string, error)
 }
 
-type InvoiceListResponse struct {
-	Items  []domain.Invoice `json:"items"`
-	Total  int64            `json:"total"`
-	Limit  int32            `json:"limit"`
-	Offset int32            `json:"offset"`
-}
+type InvoiceListResponse = OffsetListResponse[domain.Invoice]
 
 type SelfServeInvoiceListResponse struct {
 	Invoices []domain.Invoice `json:"invoices"`
@@ -66,12 +61,7 @@ type CustomerBalanceReader interface {
 	ExportCustomerLedgerCSV(ctx context.Context, customerID uuid.UUID, cursor int64, w io.Writer) (LedgerExportResult, error)
 }
 
-type LedgerListResponse struct {
-	Items  []BalanceLedgerDTO `json:"items"`
-	Total  int64              `json:"total"`
-	Limit  int32              `json:"limit"`
-	Offset int32              `json:"offset"`
-}
+type LedgerListResponse = OffsetListResponse[BalanceLedgerDTO]
 
 type DisputeRowDTO struct {
 	IntentID                 string  `json:"intent_id"`
@@ -112,12 +102,7 @@ type AdminInvoiceFilters struct {
 	MinTotal   int64
 }
 
-type AdminInvoiceListResult struct {
-	Items  []domain.InvoiceSummary `json:"items"`
-	Total  int64                   `json:"total"`
-	Limit  int32                   `json:"limit"`
-	Offset int32                   `json:"offset"`
-}
+type AdminInvoiceListResult = OffsetListResponse[domain.InvoiceSummary]
 
 const billingForecastCHTimeout = 1500 * time.Millisecond
 
@@ -203,7 +188,7 @@ func (billHandlers *BillingHTTPHandlers) listInvoices(w http.ResponseWriter, r *
 		}
 	}
 
-	limit, offset := parsePagination(r)
+	limit, offset := coldpath.ParseAPIPagination(r)
 	if adminList {
 		billHandlers.listInvoicesAdmin(w, r, limit, offset)
 		return
@@ -411,7 +396,7 @@ func (billHandlers *BillingHTTPHandlers) getLedgerLines(w http.ResponseWriter, r
 	if c := r.URL.Query().Get("cursor"); c != "" {
 		cursorID, _ = strconv.ParseInt(c, 10, 64)
 	}
-	limit, _ := parsePagination(r)
+	limit, _ := coldpath.ParseAPIPagination(r)
 	lines, nextCursor, total, err := billHandlers.CompositeReads.ListLedgerLines(r.Context(), customerID, month, cursorID, limit)
 	if err != nil {
 		billHandlers.writeServiceError(w, err)
@@ -699,25 +684,6 @@ func invoicePDFPath(invoiceID string) string {
 	return "/api/v1/billing/invoices/" + invoiceID + "/pdf"
 }
 
-func parsePagination(r *http.Request) (int32, int32) {
-	limit := int32(50)
-	offset := int32(0)
-	if v := r.URL.Query().Get("limit"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			limit = int32(n)
-		}
-	}
-	if limit > 1000 {
-		limit = 1000
-	}
-	if v := r.URL.Query().Get("offset"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
-			offset = int32(n)
-		}
-	}
-	return limit, offset
-}
-
 func writeBillingLocalError(w http.ResponseWriter, err error) {
 	if errors.Is(err, ledger.ErrCustomerNotFound) || errors.Is(err, ledger.ErrInvoiceNotFound) {
 		httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", err.Error())
@@ -751,7 +717,13 @@ func (s *CompositeReadService) ListInvoicesAdmin(ctx context.Context, filters Ad
 		month = pgtype.Date{Time: time.Date(m.Year(), m.Month(), m.Day(), 0, 0, 0, 0, time.UTC), Valid: true}
 	}
 
-	params := billingdb.ListInvoicesAdminParams{
+	countParams := billingdb.CountInvoicesAdminParams{
+		Column1: customer,
+		Column2: month,
+		Column3: filters.Status,
+		Column4: filters.MinTotal,
+	}
+	listParams := billingdb.ListInvoicesAdminParams{
 		Column1: customer,
 		Column2: month,
 		Column3: filters.Status,
@@ -759,36 +731,13 @@ func (s *CompositeReadService) ListInvoicesAdmin(ctx context.Context, filters Ad
 		Limit:   limit,
 		Offset:  offset,
 	}
-	rows, err := s.queries.ListInvoicesAdmin(ctx, params)
+	items, total, err := coldpath.PaginatedList(
+		func() (int64, error) { return s.queries.CountInvoicesAdmin(ctx, countParams) },
+		func() ([]billingdb.BillingInvoice, error) { return s.queries.ListInvoicesAdmin(ctx, listParams) },
+		invoiceSummaryFromRow,
+	)
 	if err != nil {
 		return AdminInvoiceListResult{}, err
-	}
-	total, err := s.queries.CountInvoicesAdmin(ctx, billingdb.CountInvoicesAdminParams{
-		Column1: customer,
-		Column2: month,
-		Column3: filters.Status,
-		Column4: filters.MinTotal,
-	})
-	if err != nil {
-		return AdminInvoiceListResult{}, err
-	}
-
-	items := make([]domain.InvoiceSummary, 0, len(rows))
-	for _, inv := range rows {
-		monthStr := ""
-		if inv.BillingMonth.Valid {
-			monthStr = inv.BillingMonth.Time.UTC().Format("2006-01")
-		}
-		items = append(items, domain.InvoiceSummary{
-			ID:            uuidString(inv.ID),
-			CustomerID:    uuidString(inv.CustomerID),
-			BillingMonth:  monthStr,
-			SubtotalMicro: inv.SubtotalMicro,
-			TaxMicro:      inv.TaxMicro,
-			TotalMicro:    inv.TotalMicro,
-			Status:        string(inv.Status),
-			Currency:      inv.Currency,
-		})
 	}
 	return AdminInvoiceListResult{
 		Items:  items,
@@ -930,62 +879,62 @@ ORDER BY hr`
 	return out, rows.Err()
 }
 
-func (h *BillingHTTPHandlers) registerBalanceRoutes(mux *http.ServeMux) {
-	if h.CustomerBalance == nil {
+func (billHandlers *BillingHTTPHandlers) registerBalanceRoutes(mux *http.ServeMux) {
+	if billHandlers.CustomerBalance == nil {
 		return
 	}
-	limit := h.ApplyRateLimit
-	perm := h.RequirePermission
-	exportLimit := h.LimitExportByCustomer
+	limit := billHandlers.ApplyRateLimit
+	perm := billHandlers.RequirePermission
+	exportLimit := billHandlers.LimitExportByCustomer
 	if exportLimit == nil {
 		exportLimit = limit
 	}
-	mux.HandleFunc("GET /api/v1/customers/{id}/balance", limit(perm("customers:read", h.getCustomerBalance)))
-	mux.HandleFunc("GET /api/v1/customers/{id}/ledger", limit(perm("customers:read", h.getCustomerLedger)))
-	mux.HandleFunc("GET /api/v1/customers/{id}/balance/export", limit(exportLimit(perm("customers:read", h.exportCustomerBalance))))
+	mux.HandleFunc("GET /api/v1/customers/{id}/balance", limit(perm("customers:read", billHandlers.getCustomerBalance)))
+	mux.HandleFunc("GET /api/v1/customers/{id}/ledger", limit(perm("customers:read", billHandlers.getCustomerLedger)))
+	mux.HandleFunc("GET /api/v1/customers/{id}/balance/export", limit(exportLimit(perm("customers:read", billHandlers.exportCustomerBalance))))
 }
 
-func (h *BillingHTTPHandlers) getCustomerBalance(w http.ResponseWriter, r *http.Request) {
+func (billHandlers *BillingHTTPHandlers) getCustomerBalance(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	customerID, err := uuid.Parse(idStr)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer id")
 		return
 	}
-	if err := h.authorizeCustomer(r, idStr); err != nil {
-		h.writeServiceError(w, err)
+	if err := billHandlers.authorizeCustomer(r, idStr); err != nil {
+		billHandlers.writeServiceError(w, err)
 		return
 	}
 
-	report, err := h.CustomerBalance.GetCustomerBalance(r.Context(), customerID)
+	report, err := billHandlers.CustomerBalance.GetCustomerBalance(r.Context(), customerID)
 	if err != nil {
-		h.writeServiceError(w, err)
+		billHandlers.writeServiceError(w, err)
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, report)
 }
 
-func (h *BillingHTTPHandlers) getCustomerLedger(w http.ResponseWriter, r *http.Request) {
+func (billHandlers *BillingHTTPHandlers) getCustomerLedger(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	customerID, err := uuid.Parse(idStr)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer id")
 		return
 	}
-	if err := h.authorizeCustomer(r, idStr); err != nil {
-		h.writeServiceError(w, err)
+	if err := billHandlers.authorizeCustomer(r, idStr); err != nil {
+		billHandlers.writeServiceError(w, err)
 		return
 	}
-	if h.CustomerBalance == nil {
+	if billHandlers.CustomerBalance == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "ledger reader not configured")
 		return
 	}
 
-	limit, offset := parsePagination(r)
+	limit, offset := coldpath.ParseAPIPagination(r)
 
-	items, total, err := h.CustomerBalance.ListCustomerLedger(r.Context(), customerID, limit, offset)
+	items, total, err := billHandlers.CustomerBalance.ListCustomerLedger(r.Context(), customerID, limit, offset)
 	if err != nil {
-		h.writeServiceError(w, err)
+		billHandlers.writeServiceError(w, err)
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, LedgerListResponse{
@@ -996,7 +945,7 @@ func (h *BillingHTTPHandlers) getCustomerLedger(w http.ResponseWriter, r *http.R
 	})
 }
 
-func (h *BillingHTTPHandlers) exportCustomerBalance(w http.ResponseWriter, r *http.Request) {
+func (billHandlers *BillingHTTPHandlers) exportCustomerBalance(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("format") != "csv" {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "format must be csv")
 		return
@@ -1008,14 +957,14 @@ func (h *BillingHTTPHandlers) exportCustomerBalance(w http.ResponseWriter, r *ht
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer id")
 		return
 	}
-	if err := h.authorizeCustomer(r, idStr); err != nil {
-		h.writeServiceError(w, err)
+	if err := billHandlers.authorizeCustomer(r, idStr); err != nil {
+		billHandlers.writeServiceError(w, err)
 		return
 	}
 
 	cursor, err := parseExportCursor(r)
 	if err != nil {
-		h.writeServiceError(w, err)
+		billHandlers.writeServiceError(w, err)
 		return
 	}
 
@@ -1023,9 +972,9 @@ func (h *BillingHTTPHandlers) exportCustomerBalance(w http.ResponseWriter, r *ht
 	w.Header().Set("Cache-Control", "no-store")
 
 	var buf bytes.Buffer
-	result, err := h.CustomerBalance.ExportCustomerLedgerCSV(r.Context(), customerID, cursor, &buf)
+	result, err := billHandlers.CustomerBalance.ExportCustomerLedgerCSV(r.Context(), customerID, cursor, &buf)
 	if err != nil {
-		h.writeServiceError(w, err)
+		billHandlers.writeServiceError(w, err)
 		return
 	}
 
@@ -1039,11 +988,11 @@ func (h *BillingHTTPHandlers) exportCustomerBalance(w http.ResponseWriter, r *ht
 	}
 }
 
-func (h *BillingHTTPHandlers) authorizeCustomer(r *http.Request, customerID string) error {
-	if h.AuthorizeCustomerAccess == nil {
+func (billHandlers *BillingHTTPHandlers) authorizeCustomer(r *http.Request, customerID string) error {
+	if billHandlers.AuthorizeCustomerAccess == nil {
 		return nil
 	}
-	return h.AuthorizeCustomerAccess(r, customerID)
+	return billHandlers.AuthorizeCustomerAccess(r, customerID)
 }
 
 type invalidExportCursorError string
@@ -1066,43 +1015,29 @@ func parseExportCursor(r *http.Request) (int64, error) {
 	return cursor, nil
 }
 
-func (h *BillingHTTPHandlers) registerDisputeRoutes(mux *http.ServeMux) {
-	if h.Disputes == nil {
+func (billHandlers *BillingHTTPHandlers) registerDisputeRoutes(mux *http.ServeMux) {
+	if billHandlers.Disputes == nil {
 		return
 	}
-	limit := h.ApplyRateLimit
-	perm := h.RequirePermission
-	mux.HandleFunc("GET /api/v1/disputes", limit(perm("customers:read", h.listDisputes)))
+	limit := billHandlers.ApplyRateLimit
+	perm := billHandlers.RequirePermission
+	mux.HandleFunc("GET /api/v1/disputes", limit(perm("customers:read", billHandlers.listDisputes)))
 }
 
-func (h *BillingHTTPHandlers) listDisputes(w http.ResponseWriter, r *http.Request) {
+func (billHandlers *BillingHTTPHandlers) listDisputes(w http.ResponseWriter, r *http.Request) {
 	customerFilter := r.URL.Query().Get("customer_id")
-	if h.ResolveDisputeCustomerFilter != nil {
-		filter, err := h.ResolveDisputeCustomerFilter(r)
+	if billHandlers.ResolveDisputeCustomerFilter != nil {
+		filter, err := billHandlers.ResolveDisputeCustomerFilter(r)
 		if err != nil {
-			h.writeServiceError(w, err)
+			billHandlers.writeServiceError(w, err)
 			return
 		}
 		customerFilter = filter
 	}
 
-	limit := int32(20)
-	offset := int32(0)
-	if v := r.URL.Query().Get("limit"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			limit = int32(n)
-		}
-	}
-	if v := r.URL.Query().Get("offset"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
-			offset = int32(n)
-		}
-	}
-	if limit > 100 {
-		limit = 100
-	}
+	limit, offset := coldpath.ParseAPIPaginationWith(r, 20, 100)
 
-	result, err := h.Disputes.ListDisputes(r.Context(), customerFilter, limit, offset)
+	result, err := billHandlers.Disputes.ListDisputes(r.Context(), customerFilter, limit, offset)
 	if err != nil {
 		if st, ok := status.FromError(err); ok && st.Code() == codes.InvalidArgument {
 			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", st.Message())
@@ -1140,9 +1075,9 @@ func NewCompositeReadService(pool *pgxpool.Pool, cfg *config.Config) *CompositeR
 	}
 }
 
-func (c *CompositeReadService) SetCHQuery(q *database.CHQuery) {
-	if c != nil {
-		c.chQuery = q
+func (s *CompositeReadService) SetCHQuery(q *database.CHQuery) {
+	if s != nil {
+		s.chQuery = q
 	}
 }
 
@@ -1429,45 +1364,29 @@ func (s *CompositeReadService) ListLedgerLines(ctx context.Context, customerID u
 	monthEnd := monthStart.AddDate(0, 1, 0)
 
 	pgCustomer := pgtype.UUID{Bytes: customerID, Valid: true}
-	total, err := s.queries.CountCustomerLedgerInWindow(ctx, billingdb.CountCustomerLedgerInWindowParams{
+	countParams := billingdb.CountCustomerLedgerInWindowParams{
 		CustomerID:  pgCustomer,
 		CreatedAt:   pgTimestamp(monthStart),
 		CreatedAt_2: pgTimestamp(monthEnd),
-	})
-	if err != nil {
-		return nil, "", 0, err
 	}
-
-	rows, err := s.queries.ListCustomerLedgerInWindow(ctx, billingdb.ListCustomerLedgerInWindowParams{
+	listParams := billingdb.ListCustomerLedgerInWindowParams{
 		CustomerID:  pgCustomer,
 		CreatedAt:   pgTimestamp(monthStart),
 		CreatedAt_2: pgTimestamp(monthEnd),
 		Column4:     cursorID,
 		Limit:       limit,
-	})
+	}
+	rows, total, err := coldpath.PaginatedQuery(
+		func() (int64, error) { return s.queries.CountCustomerLedgerInWindow(ctx, countParams) },
+		func() ([]billingdb.ListCustomerLedgerInWindowRow, error) {
+			return s.queries.ListCustomerLedgerInWindow(ctx, listParams)
+		},
+	)
 	if err != nil {
 		return nil, "", 0, err
 	}
 
-	out := make([]LedgerLineDTO, 0, len(rows))
-	var lastID int64
-	for _, row := range rows {
-		lastID = row.ID
-		createdAt := ""
-		if row.CreatedAt.Valid {
-			createdAt = row.CreatedAt.Time.UTC().Format(time.RFC3339)
-		}
-		out = append(out, LedgerLineDTO{
-			ID:          row.ID,
-			AmountMicro: row.Amount,
-			LedgerType:  string(row.Type),
-			CreatedAt:   createdAt,
-		})
-	}
-	nextCursor := ""
-	if int32(len(out)) == limit && lastID > 0 {
-		nextCursor = fmt.Sprintf("%d", lastID)
-	}
+	out, nextCursor := mapLedgerLines(rows, limit)
 	return out, nextCursor, total, nil
 }
 
@@ -1489,25 +1408,7 @@ func (s *CompositeReadService) ListLedgerLinesInWindow(ctx context.Context, cust
 	if err != nil {
 		return nil, "", err
 	}
-	out := make([]LedgerLineDTO, 0, len(rows))
-	var lastID int64
-	for _, row := range rows {
-		lastID = row.ID
-		createdAt := ""
-		if row.CreatedAt.Valid {
-			createdAt = row.CreatedAt.Time.UTC().Format(time.RFC3339)
-		}
-		out = append(out, LedgerLineDTO{
-			ID:          row.ID,
-			AmountMicro: row.Amount,
-			LedgerType:  string(row.Type),
-			CreatedAt:   createdAt,
-		})
-	}
-	next := ""
-	if int32(len(out)) == limit && lastID > 0 {
-		next = fmt.Sprintf("%d", lastID)
-	}
+	out, next := mapLedgerLines(rows, limit)
 	return out, next, nil
 }
 

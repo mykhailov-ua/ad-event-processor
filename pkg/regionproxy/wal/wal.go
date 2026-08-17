@@ -203,10 +203,7 @@ func (w *WAL) Recover() error {
 
 	pos := int64(0)
 	var seq uint64
-	for {
-		if len(w.mmap) <= int(pos)+HeaderSize {
-			break
-		}
+	for len(w.mmap) > int(pos)+HeaderSize {
 		hdr := readHeader(w.mmap[pos:])
 		if hdr.Seq == 0 && hdr.PayloadLen == 0 && hdr.Flags == 0 {
 			break
@@ -352,10 +349,7 @@ func (w *WAL) ReadRawMessages(startSeq uint64, maxBytes uint32) ([]byte, *[]byte
 	var out []byte
 	var bufPtr *[]byte
 
-	for {
-		if len(w.mmap) <= int(pos)+HeaderSize {
-			break
-		}
+	for len(w.mmap) > int(pos)+HeaderSize {
 		hdr := readHeader(w.mmap[pos:])
 		if hdr.Seq == 0 && hdr.PayloadLen == 0 && hdr.Flags == 0 {
 			break

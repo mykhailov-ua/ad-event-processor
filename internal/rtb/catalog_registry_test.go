@@ -40,7 +40,7 @@ func TestRegistry_setBudget_loadSnapshot_noCrossWrite(t *testing.T) {
 
 	tmpDir, err := os.MkdirTemp("", "rtb-snap-race-*")
 	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 	snapPath := filepath.Join(tmpDir, "snap.bin")
 	require.NoError(t, regA.SaveSnapshot(snapPath))
 
@@ -93,7 +93,7 @@ func TestRegistry_saveSnapshot_consistentUnderConcurrentSpend(t *testing.T) {
 
 	tmpDir, err := os.MkdirTemp("", "rtb-snap-pit-*")
 	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 	snapPath := filepath.Join(tmpDir, "snap.bin")
 
 	var wg sync.WaitGroup

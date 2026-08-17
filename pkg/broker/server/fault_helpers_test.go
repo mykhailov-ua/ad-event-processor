@@ -130,14 +130,14 @@ func startFaultTCPProxy(t *testing.T, target string, latency, jitter time.Durati
 }
 
 func (p *faultTCPProxy) serve(client net.Conn) {
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	upstream, err := net.DialTimeout("tcp", p.target, 5*time.Second)
 	if err != nil {
 		return
 	}
 	p.trackConn(upstream)
-	defer upstream.Close()
+	defer func() { _ = upstream.Close() }()
 
 	var wg sync.WaitGroup
 	pipe := func(dst, src net.Conn) {
@@ -296,13 +296,13 @@ func startHACluster(t *testing.T, opts haClusterOpts) *haCluster {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { os.RemoveAll(dir1) })
+	t.Cleanup(func() { _ = os.RemoveAll(dir1) })
 
 	dir2, err := os.MkdirTemp("", "fault-ha-follower-*")
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { os.RemoveAll(dir2) })
+	t.Cleanup(func() { _ = os.RemoveAll(dir2) })
 
 	leader := NewServer(allocFreeTCPAddr(t), dir1, 10*1024*1024, 4096)
 	if err := leader.Start(); err != nil {
@@ -369,7 +369,7 @@ func startHAPartitionedCluster(t *testing.T) (*haCluster, *faultTCPProxy) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { os.RemoveAll(dir1) })
+	t.Cleanup(func() { _ = os.RemoveAll(dir1) })
 
 	leader := NewServer(allocFreeTCPAddr(t), dir1, 10*1024*1024, 4096)
 	if err := leader.Start(); err != nil {
@@ -397,7 +397,7 @@ func startHAPartitionedCluster(t *testing.T) (*haCluster, *faultTCPProxy) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { os.RemoveAll(dir2) })
+	t.Cleanup(func() { _ = os.RemoveAll(dir2) })
 
 	follower := NewServer(allocFreeTCPAddr(t), dir2, 10*1024*1024, 4096)
 	if err := follower.Start(); err != nil {
@@ -448,7 +448,7 @@ func startHAClusterOrdered(t *testing.T) *haCluster {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { os.RemoveAll(dir1) })
+	t.Cleanup(func() { _ = os.RemoveAll(dir1) })
 
 	leader := NewServer(allocFreeTCPAddr(t), dir1, 10*1024*1024, 4096)
 	if err := leader.Start(); err != nil {
@@ -476,7 +476,7 @@ func startHAClusterOrdered(t *testing.T) *haCluster {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { os.RemoveAll(dir2) })
+	t.Cleanup(func() { _ = os.RemoveAll(dir2) })
 
 	follower := NewServer(allocFreeTCPAddr(t), dir2, 10*1024*1024, 4096)
 	if err := follower.Start(); err != nil {
@@ -557,7 +557,7 @@ func produceMessages(t *testing.T, addr, topic string, count int) {
 	if err := cli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	for i := range count {
 		payload := []byte(fmt.Sprintf("fault-msg-%d", i))
@@ -577,7 +577,7 @@ func verifyPartitionPayloads(t *testing.T, s *Server, topic string, expectedCoun
 	if err := cli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	iter, err := cli.Fetch(context.Background(), topic, 0, 0, 16*1024*1024)
 	if err != nil {
@@ -720,7 +720,7 @@ func fetchMessageCount(t *testing.T, addr, topic string) uint64 {
 	if err := cli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	iter, err := cli.Fetch(context.Background(), topic, 0, 0, 32*1024*1024)
 	if err != nil {

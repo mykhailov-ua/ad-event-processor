@@ -81,7 +81,7 @@ func (o *ShardOrchestrator) tick(ctx context.Context) {
 
 	alpha := 0.15
 	var maxShard int16 = -1
-	var maxEma float64 = -1.0
+	maxEma := -1.0
 
 	for i := range numShards {
 		m, err := o.metricsProvider.GetMetrics(ctx, i, o.svc.rdbs[i])
@@ -148,7 +148,7 @@ func (o *ShardOrchestrator) migrateLoad(ctx context.Context, sourceShard int16) 
 
 	sharder := domain.NewStaticSlotSharder(len(o.svc.rdbs))
 	var bestCampaign uuid.UUID
-	var maxCampaignLoad float64 = -1.0
+	maxCampaignLoad := -1.0
 
 	for _, id := range campaigns {
 		if int16(sharder.GetShard(id)) == sourceShard {
@@ -170,7 +170,7 @@ func (o *ShardOrchestrator) migrateLoad(ctx context.Context, sourceShard int16) 
 	}
 
 	var targetShard int16 = -1
-	var minEma float64 = 1e18
+	minEma := 1e18
 	for i := int16(0); i < int16(len(o.svc.rdbs)); i++ {
 		if i == sourceShard {
 			continue
@@ -534,8 +534,8 @@ func (s *Service) AutoscaleShards(ctx context.Context, provider ShardMetricsProv
 
 	var maxShard int16 = -1
 	var minShard int16 = -1
-	var maxLoadScore float64 = -1.0
-	var minLoadScore float64 = 1e18
+	maxLoadScore := -1.0
+	minLoadScore := 1e18
 
 	for i := range numShards {
 		m := shardMetrics[i]

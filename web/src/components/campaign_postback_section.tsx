@@ -6,7 +6,9 @@ import {
   fetchPostbackDlq,
   retryPostbackDlq,
   savePostbackConfig,
-  type PostbackConfigRow,
+  testPostbackConfig,
+  type PostbackDlqRow,
+  type PostbackDryRunResult,
 } from '../helpers/postback_api.js';
 import {
   normalizePostbackProvider,
@@ -46,9 +48,11 @@ export function CampaignPostbackSection({ campaignId, canWrite }: CampaignPostba
   const [targetEvent, setTargetEvent] = useState('conversion');
   const [testEventCode, setTestEventCode] = useState('');
   const [affiliatePresetId, setAffiliatePresetId] = useState('');
-  const [dlq, setDlq] = useState<PostbackConfigRow[]>([]);
+  const [dlq, setDlq] = useState<PostbackDlqRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [dryRunning, setDryRunning] = useState(false);
+  const [dryRunResult, setDryRunResult] = useState<PostbackDryRunResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -102,6 +106,24 @@ export function CampaignPostbackSection({ campaignId, canWrite }: CampaignPostba
     }
     pushToastMessage({ title: 'Retry queued', message: `DLQ #${rowId}` });
     void load();
+  };
+
+  const dryRun = async () => {
+    if (!canWrite) return;
+    setDryRunning(true);
+    setDryRunResult(null);
+    const [res, err] = await to(testPostbackConfig(campaignId));
+    setDryRunning(false);
+    if (err) {
+      if (err instanceof ConfirmCancelledError) return;
+      pushToastMessage({ title: 'Dry-run failed', message: mapServiceError(err).message });
+      return;
+    }
+    setDryRunResult(res ?? null);
+    pushToastMessage({
+      title: res?.ok ? 'Dry-run passed' : 'Dry-run failed',
+      message: res?.error || res?.rendered_url || res?.provider || '',
+    });
   };
 
   const applyAffiliatePreset = (id: string) => {
@@ -254,14 +276,31 @@ export function CampaignPostbackSection({ campaignId, canWrite }: CampaignPostba
       ) : null}
 
       {canWrite ? (
-        <Button
-          label={saving ? 'Saving…' : 'Save postback'}
-          variant="primary"
-          size="sm"
-          loading={saving}
-          disabled={saving}
-          onClick={() => void save()}
-        />
+        <div className="toolbar-row">
+          <Button
+            label={saving ? 'Saving…' : 'Save postback'}
+            variant="primary"
+            size="sm"
+            loading={saving}
+            disabled={saving}
+            onClick={() => void save()}
+          />
+          <Button
+            label={dryRunning ? 'Testing…' : 'Dry-run postback'}
+            variant="secondary"
+            size="sm"
+            loading={dryRunning}
+            disabled={dryRunning || !urlTemplate}
+            data-testid="postback-dry-run"
+            onClick={() => void dryRun()}
+          />
+        </div>
+      ) : null}
+
+      {dryRunResult ? (
+        <pre className="code-block text-sm" data-testid="postback-dry-run-result">
+          {JSON.stringify(dryRunResult, null, 2)}
+        </pre>
       ) : null}
 
       <h4 className="subsection-title mt-4">DLQ</h4>
@@ -300,6 +339,7 @@ export function CampaignPostbackSection({ campaignId, canWrite }: CampaignPostba
                           label="Retry"
                           variant="secondary"
                           size="sm"
+                          data-testid={`postback-dlq-retry-${rowId}`}
                           onClick={() => void retry(rowId)}
                         />
                       ) : null}

@@ -95,7 +95,7 @@ func buildDomainPoolSnapshotFromRows(rows []domainPoolSyncRow, gen uint64) *doma
 			pools[row.poolID] = rec
 			order = append(order, row.poolID)
 		}
-		st := domainPoolStatusActive
+		var st uint8
 		switch row.status {
 		case "banned":
 			st = domainPoolStatusBanned

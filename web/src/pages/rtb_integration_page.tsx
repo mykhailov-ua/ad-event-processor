@@ -285,6 +285,20 @@ export function RtbIntegrationPage() {
       {!loading && profile ? (
         <>
           <SectionCard
+            title="Readiness checklist"
+            icon="check-square"
+            desc="Pre-flight gates before pointing exchange traffic at this stack."
+          >
+            <ul className="plain-list" data-testid="rtb-readiness-checklist">
+              <li>{profile.openrtb_version ? '✓' : '○'} OpenRTB version declared</li>
+              <li>{profile.runtime?.rtb_enabled ? '✓' : '○'} RTB enabled in runtime</li>
+              <li>{endpoints.edge_expose_openrtb ? '✓' : '○'} Edge OpenRTB route exposed</li>
+              <li>{validateResult?.valid ? '✓' : '○'} Validate-bid smoke passed</li>
+              <li>{supported.length > 0 ? '✓' : '○'} Capability matrix loaded</li>
+            </ul>
+          </SectionCard>
+
+          <SectionCard
             title="SSP endpoint"
             icon="globe"
             desc="Point exchange partners at this URL (chunked POST body allowed)."

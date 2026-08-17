@@ -1,3 +1,4 @@
+// Package blocklist implements edge blocklist helpers.
 package blocklist
 
 import (

@@ -14,7 +14,7 @@ import (
 
 func faultWriteBytes(t *testing.T, path string, data []byte) {
 	t.Helper()
-	require.NoError(t, os.WriteFile(path, data, 0644))
+	require.NoError(t, os.WriteFile(path, data, 0o644))
 }
 
 func TestFault_EmptySnapshotFile(t *testing.T) {

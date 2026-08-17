@@ -98,7 +98,7 @@ func (l *cidrFeedLoader) Start(ctx context.Context) {
 
 // refreshOnce parses every available source and publishes one combined
 // snapshot. Per-feed failures retain the previous snapshot (fail policy from
-// ROUTING_PROXY_MILESTONE §17.1.3): the failed feed contributes nothing to
+// MILESTONE.md §9 RP-M1 / RP TZ): the failed feed contributes nothing to
 // the new build, so a partial result still beats a stale one.
 func (l *cidrFeedLoader) refreshOnce(ctx context.Context) {
 	var b cidrBuilder
@@ -141,7 +141,7 @@ func (l *cidrFeedLoader) refreshOnce(ctx context.Context) {
 }
 
 func (l *cidrFeedLoader) fetch(ctx context.Context, src cidrFeedSource) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, src.url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, src.url, http.NoBody)
 	if err != nil {
 		return err
 	}
@@ -149,7 +149,7 @@ func (l *cidrFeedLoader) fetch(ctx context.Context, src cidrFeedSource) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("http %d", resp.StatusCode)
 	}
@@ -164,11 +164,11 @@ func (l *cidrFeedLoader) fetch(ctx context.Context, src cidrFeedSource) error {
 	_, copyErr := io.Copy(f, io.LimitReader(resp.Body, 64<<20))
 	closeErr := f.Close()
 	if copyErr != nil {
-		os.Remove(tmp)
+		_ = os.Remove(tmp)
 		return copyErr
 	}
 	if closeErr != nil {
-		os.Remove(tmp)
+		_ = os.Remove(tmp)
 		return closeErr
 	}
 	return os.Rename(tmp, filepath.Join(l.dir, src.file))
@@ -182,7 +182,7 @@ func (l *cidrFeedLoader) parseFeed(src cidrFeedSource, b *cidrBuilder, root4, ro
 		}
 		return 0, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	switch src.format {
 	case cidrFormatLines:
 		return parseCIDRLines(f, src.feed, b, root4, root6)

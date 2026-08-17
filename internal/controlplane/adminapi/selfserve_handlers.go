@@ -2,10 +2,8 @@ package adminapi
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -13,7 +11,6 @@ import (
 	"github.com/bidshard/ad-event-processor/internal/identity"
 	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
-	"github.com/bidshard/ad-event-processor/pkg/money"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -46,6 +43,11 @@ type CampaignAdmin interface {
 	ResumeCampaign(ctx context.Context, campaignID uuid.UUID, reason string) error
 }
 
+type SelfServeTemplates interface {
+	ListCampaignTemplates(ctx context.Context, customerID uuid.UUID, limit, offset int32) ([]CampaignTemplateDTO, int64, error)
+	CreateCampaignFromTemplate(ctx context.Context, templateID, customerID uuid.UUID, name string, budgetLimit *int64, idempotencyKey string) (uuid.UUID, error)
+}
+
 type PaymentIntents = domain.PaymentAPI
 
 type APIKeyCreator interface {
@@ -54,42 +56,9 @@ type APIKeyCreator interface {
 
 type InvoiceLister = domain.BillingAPI
 
-func parseMoneyMicro(micro *int64, legacy float64, hasLegacy bool, field string) (int64, error) {
-	if micro != nil {
-		if *micro < 0 {
-			return 0, fmt.Errorf("invalid %s", field)
-		}
-		return *micro, nil
-	}
-	if hasLegacy {
-		v, err := money.LegacyFloatToMicro(legacy)
-		if err != nil {
-			return 0, fmt.Errorf("invalid %s", field)
-		}
-		return v, nil
-	}
-	return 0, nil
-}
-
-func parseBudgetMicro(micro *int64, legacy float64, hasLegacy bool) (int64, error) {
-	if micro != nil {
-		if *micro <= 0 {
-			return 0, fmt.Errorf("budget must be positive")
-		}
-		return *micro, nil
-	}
-	if hasLegacy {
-		v, err := money.LegacyFloatToMicro(legacy)
-		if err != nil || v <= 0 {
-			return 0, fmt.Errorf("budget must be positive")
-		}
-		return v, nil
-	}
-	return 0, fmt.Errorf("budget is required")
-}
-
 type SelfServeHTTPHandlers struct {
 	Campaigns                  CampaignAdmin
+	Templates                  SelfServeTemplates
 	PaymentIntents             PaymentIntents
 	Invoices                   InvoiceLister
 	APIKeys                    APIKeyCreator
@@ -127,6 +96,7 @@ func (selfServe *SelfServeHTTPHandlers) Register(mux *http.ServeMux) {
 	pausePerms := []string{"campaigns:write", "campaigns:pause"}
 
 	mux.HandleFunc("POST /api/v1/selfserve/campaigns", limit(perm("campaigns:write", selfServe.createCampaign)))
+	mux.HandleFunc("GET /api/v1/selfserve/templates", limit(permAny([]string{"campaigns:read", "campaigns:read:masked"}, selfServe.listTemplates)))
 	mux.HandleFunc("POST /api/v1/selfserve/campaigns/{id}/pause", limit(permAny(pausePerms, selfServe.pauseCampaign)))
 	mux.HandleFunc("POST /api/v1/selfserve/campaigns/{id}/resume", limit(permAny(pausePerms, selfServe.resumeCampaign)))
 	mux.HandleFunc("POST /api/v1/selfserve/payment-intents", limit(perm("customers:read", selfServe.createPaymentIntent)))
@@ -143,27 +113,17 @@ func (selfServe *SelfServeHTTPHandlers) createCampaign(w http.ResponseWriter, r 
 
 	req, err := coldpath.DecodeBody[struct {
 		CustomerID       *uuid.UUID `json:"customer_id,omitempty"`
-		BrandID          *uuid.UUID `json:"brand_id,omitempty"`
+		TemplateID       string     `json:"template_id"`
 		Name             string     `json:"name"`
 		BudgetLimitMicro *int64     `json:"budget_limit_micro"`
-		BudgetLimit      *float64   `json:"budget_limit"`
-		PacingMode       string     `json:"pacing_mode"`
-		DailyBudgetMicro *int64     `json:"daily_budget_micro"`
-		DailyBudget      *float64   `json:"daily_budget"`
-		Timezone         string     `json:"timezone"`
-		FreqLimit        int32      `json:"freq_limit"`
-		FreqWindow       int32      `json:"freq_window"`
-		TargetCountries  []string   `json:"target_countries"`
-		StartAt          *time.Time `json:"start_at,omitempty"`
-		EndAt            *time.Time `json:"end_at,omitempty"`
-		DaypartHours     []int16    `json:"daypart_hours,omitempty"`
 	}](body)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
 		return
 	}
-	if req.Name == "" {
-		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "name is required")
+	templateID, err := uuid.Parse(strings.TrimSpace(req.TemplateID))
+	if err != nil || templateID == uuid.Nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "template_id is required")
 		return
 	}
 
@@ -179,46 +139,22 @@ func (selfServe *SelfServeHTTPHandlers) createCampaign(w http.ResponseWriter, r 
 		return
 	}
 
-	pacing := "ASAP"
-	if req.PacingMode == "EVEN" {
-		pacing = "EVEN"
-	}
-	if req.Timezone == "" {
-		req.Timezone = "UTC"
-	}
-	if req.FreqWindow == 0 {
-		req.FreqWindow = 86400
-	}
-
-	budgetLegacy := 0.0
-	hasBudgetLegacy := req.BudgetLimit != nil
-	if hasBudgetLegacy {
-		budgetLegacy = *req.BudgetLimit
-	}
-	budgetLimitMicro, err := parseBudgetMicro(req.BudgetLimitMicro, budgetLegacy, hasBudgetLegacy)
-	if err != nil {
-		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
-		return
-	}
-
-	dailyLegacy := 0.0
-	hasDailyLegacy := req.DailyBudget != nil
-	if hasDailyLegacy {
-		dailyLegacy = *req.DailyBudget
-	}
-	dailyBudgetMicro, err := parseMoneyMicro(req.DailyBudgetMicro, dailyLegacy, hasDailyLegacy, "daily_budget")
-	if err != nil {
-		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
-		return
-	}
-
-	if selfServe.Campaigns == nil {
+	if selfServe.Templates == nil || selfServe.Campaigns == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "campaign service not configured")
 		return
 	}
-	if err := selfServe.Campaigns.EnforceSelfServeCreateLimits(r.Context(), customerID, budgetLimitMicro); err != nil {
-		selfServe.writeServiceError(w, err)
-		return
+
+	budgetMicro := int64(0)
+	if req.BudgetLimitMicro != nil {
+		if *req.BudgetLimitMicro <= 0 {
+			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "budget must be positive")
+			return
+		}
+		budgetMicro = *req.BudgetLimitMicro
+		if err := selfServe.Campaigns.EnforceSelfServeCreateLimits(r.Context(), customerID, budgetMicro); err != nil {
+			selfServe.writeServiceError(w, err)
+			return
+		}
 	}
 
 	hash, err := selfServe.Campaigns.GenerateIdempotencyHash(customerID, append(body, []byte(idempotencyKey)...))
@@ -227,27 +163,47 @@ func (selfServe *SelfServeHTTPHandlers) createCampaign(w http.ResponseWriter, r 
 		return
 	}
 
-	id, err := selfServe.Campaigns.CreateCampaign(r.Context(), CreateCampaignInput{
-		CustomerID:       customerID,
-		BrandID:          req.BrandID,
-		Name:             req.Name,
-		BudgetLimitMicro: budgetLimitMicro,
-		PacingMode:       pacing,
-		DailyBudgetMicro: dailyBudgetMicro,
-		Timezone:         req.Timezone,
-		FreqLimit:        req.FreqLimit,
-		FreqWindow:       req.FreqWindow,
-		TargetCountries:  req.TargetCountries,
-		StartAt:          req.StartAt,
-		EndAt:            req.EndAt,
-		DaypartHours:     req.DaypartHours,
-		IdempotencyKey:   hash,
-	})
+	var budgetOverride *int64
+	if req.BudgetLimitMicro != nil {
+		budgetOverride = req.BudgetLimitMicro
+	}
+
+	id, err := selfServe.Templates.CreateCampaignFromTemplate(
+		r.Context(), templateID, customerID, strings.TrimSpace(req.Name), budgetOverride, hash,
+	)
 	if err != nil {
 		selfServe.writeServiceError(w, err, slog.String("customer_id", customerID.String()))
 		return
 	}
 	httpresponse.JSON(w, http.StatusCreated, IDCreatedResponse{ID: id.String()})
+}
+
+func (selfServe *SelfServeHTTPHandlers) listTemplates(w http.ResponseWriter, r *http.Request) {
+	if selfServe.Templates == nil {
+		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "template service not configured")
+		return
+	}
+	var bodyCustomerID *uuid.UUID
+	if raw := r.URL.Query().Get("customer_id"); raw != "" {
+		parsed, err := uuid.Parse(raw)
+		if err != nil {
+			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer_id")
+			return
+		}
+		bodyCustomerID = &parsed
+	}
+	customerID, err := selfServe.resolveCustomerID(r, bodyCustomerID)
+	if err != nil {
+		selfServe.writeServiceError(w, err)
+		return
+	}
+	limit, offset := coldpath.ParseAPIPagination(r)
+	items, total, err := selfServe.Templates.ListCampaignTemplates(r.Context(), customerID, limit, offset)
+	if err != nil {
+		selfServe.writeServiceError(w, err)
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, CampaignTemplateListResponse{Items: items, Total: total})
 }
 
 func (selfServe *SelfServeHTTPHandlers) pauseCampaign(w http.ResponseWriter, r *http.Request) {
@@ -414,21 +370,7 @@ func (selfServe *SelfServeHTTPHandlers) listInvoices(w http.ResponseWriter, r *h
 		return
 	}
 
-	limit := int32(20)
-	offset := int32(0)
-	if v := r.URL.Query().Get("limit"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			limit = int32(n)
-		}
-	}
-	if v := r.URL.Query().Get("offset"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
-			offset = int32(n)
-		}
-	}
-	if limit > 100 {
-		limit = 100
-	}
+	limit, offset := coldpath.ParseAPIPaginationWith(r, 20, 100)
 
 	resp, err := selfServe.Invoices.ListInvoices(r.Context(), customerID.String(), limit, offset)
 	if err != nil {

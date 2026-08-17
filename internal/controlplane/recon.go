@@ -44,7 +44,7 @@ func reconciliationRedisAppliedKey(outboxEventID int64) string {
 	return fmt.Sprintf("recon:redis_applied:%d", outboxEventID)
 }
 
-func (w *OutboxWorker) ApplyReconciliationAdjust(ctx context.Context, eventID int64, payload []byte) error {
+func (worker *OutboxWorker) ApplyReconciliationAdjust(ctx context.Context, eventID int64, payload []byte) error {
 	p, err := parseReconciliationAdjustPayload(payload)
 	if err != nil {
 		return err
@@ -58,23 +58,23 @@ func (w *OutboxWorker) ApplyReconciliationAdjust(ctx context.Context, eventID in
 		return fmt.Errorf("invalid customer id: %w", err)
 	}
 
-	if err := w.applyReconciliationAdjustPG(ctx, eventID, p, campID, customerID); err != nil {
+	if err := worker.applyReconciliationAdjustPG(ctx, eventID, p, campID, customerID); err != nil {
 		return err
 	}
-	if err := w.applyReconciliationAdjustRedis(ctx, eventID, p, campID); err != nil {
+	if err := worker.applyReconciliationAdjustRedis(ctx, eventID, p, campID); err != nil {
 		return err
 	}
 	metrics.ReconCorrectionsAppliedTotal.Inc()
 	return nil
 }
 
-func (w *OutboxWorker) applyReconciliationAdjustPG(
+func (worker *OutboxWorker) applyReconciliationAdjustPG(
 	ctx context.Context,
 	eventID int64,
 	p ReconciliationAdjustPayload,
 	campID, customerID uuid.UUID,
 ) error {
-	tx, err := w.svc.GetPool().Begin(ctx)
+	tx, err := worker.svc.GetPool().Begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -113,13 +113,13 @@ func (w *OutboxWorker) applyReconciliationAdjustPG(
 	}
 
 	adminID := uuid.MustParse(quotaRepairSystemAdmin)
-	w.svc.AuditLog(ctx, q, adminID, "RECONCILIATION_ADJUST", "campaign",
+	worker.svc.AuditLog(ctx, q, adminID, "RECONCILIATION_ADJUST", "campaign",
 		&campID, p, auditOutboxEventMeta{OutboxEventID: eventID})
 
 	return tx.Commit(ctx)
 }
 
-func (w *OutboxWorker) applyReconciliationAdjustRedis(
+func (worker *OutboxWorker) applyReconciliationAdjustRedis(
 	ctx context.Context,
 	eventID int64,
 	p ReconciliationAdjustPayload,
@@ -128,11 +128,11 @@ func (w *OutboxWorker) applyReconciliationAdjustRedis(
 	if p.RedisDelta == 0 {
 		return nil
 	}
-	if int(p.ShardID) >= len(w.svc.rdbs) {
+	if int(p.ShardID) >= len(worker.svc.rdbs) {
 		return fmt.Errorf("invalid shard_id %d", p.ShardID)
 	}
-	rdb := w.svc.rdbs[p.ShardID]
-	recon := NewReconService(w.svc)
+	rdb := worker.svc.rdbs[p.ShardID]
+	recon := NewReconService(worker.svc)
 
 	applied, err := recon.reconciliationRedisAdjustApplied(ctx, rdb, eventID, p, campID)
 	if err != nil {
@@ -274,7 +274,7 @@ func (reconService *ReconService) ReconcileWindow(ctx context.Context, start, en
 			continue
 		}
 
-		var customerID pgtype.UUID = entry.customerID
+		customerID := entry.customerID
 
 		discrepancies++
 

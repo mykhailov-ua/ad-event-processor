@@ -1,6 +1,8 @@
 package server
 
 import (
+	"context"
+	"errors"
 	"os"
 	"testing"
 
@@ -12,13 +14,12 @@ func TestFault_Replication_GapDetection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
-	pl, err := log.NewPartitionLog(dir, 1024*1024, 4096)
+	defer func() { _ = os.RemoveAll(dir) }()
+	pl, err := log.NewPartitionLog(context.Background(), dir, 1024*1024, 4096)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer pl.Close()
+	defer func() { _ = pl.Close() }()
 
 	if _, err := pl.AppendReplicatedAt(0, []byte("leader-0")); err != nil {
 		t.Fatal(err)
@@ -28,7 +29,7 @@ func TestFault_Replication_GapDetection(t *testing.T) {
 	}
 
 	before := pl.NextOffset()
-	if _, err := pl.AppendReplicatedAt(3, []byte("skipped-2")); err != log.ErrReplicationGap {
+	if _, err := pl.AppendReplicatedAt(3, []byte("skipped-2")); !errors.Is(err, log.ErrReplicationGap) {
 		t.Fatalf("expected replication gap, got %v", err)
 	}
 	if pl.NextOffset() != before {

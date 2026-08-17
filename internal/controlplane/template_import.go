@@ -3,6 +3,7 @@ package controlplane
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -101,7 +102,7 @@ func (s *Service) resolveSchemaIDByName(ctx context.Context, name string) (uuid.
 		SELECT id FROM integration_schemas WHERE name = $1 ORDER BY version DESC LIMIT 1`, name,
 	).Scan(&id)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return uuid.Nil, fmt.Errorf("schema %q not imported", name)
 		}
 		return uuid.Nil, err
@@ -168,7 +169,7 @@ func (s *Service) applyIntegrationSchema(ctx context.Context, campaignID, schema
 	var schemaBody []byte
 	err := s.pool.QueryRow(ctx, `SELECT kind, body FROM integration_schemas WHERE id = $1`, schemaID).Scan(&kind, &schemaBody)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("schema not found")
 		}
 		return nil, err
@@ -176,7 +177,7 @@ func (s *Service) applyIntegrationSchema(ctx context.Context, campaignID, schema
 
 	q := db.New(s.pool)
 	if _, err := q.GetCampaign(ctx, pgtype.UUID{Bytes: campaignID, Valid: true}); err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("campaign not found")
 		}
 		return nil, err

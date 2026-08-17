@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/bidshard/ad-event-processor/pkg/coldpath"
@@ -181,13 +180,8 @@ func (h *SmartAlertsHTTPHandlers) listHistory(w http.ResponseWriter, r *http.Req
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer_id")
 		return
 	}
-	limit := 50
-	if raw := r.URL.Query().Get("limit"); raw != "" {
-		if n, err := strconv.Atoi(raw); err == nil && n > 0 {
-			limit = n
-		}
-	}
-	events, err := h.Service.ListSmartAlertHistory(r.Context(), custID, limit)
+	limit, _ := coldpath.ParseAPIPagination(r)
+	events, err := h.Service.ListSmartAlertHistory(r.Context(), custID, int(limit))
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return

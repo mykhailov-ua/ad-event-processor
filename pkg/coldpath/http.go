@@ -1,3 +1,4 @@
+// Package coldpath shared cold-path HTTP and pagination helpers.
 package coldpath
 
 import (
@@ -72,4 +73,22 @@ func DecodeRequest[T any](w http.ResponseWriter, r *http.Request, maxBytes int64
 func WritePaginatedJSON[T any](w http.ResponseWriter, items []T, total int64) {
 	w.Header().Set("X-Total-Count", strconv.FormatInt(total, 10))
 	httpresponse.JSON(w, http.StatusOK, items)
+}
+
+// ParseAPIPagination reads limit/offset query params for admin list endpoints.
+func ParseAPIPagination(r *http.Request) (int32, int32) {
+	return ParseAPIPaginationWith(r, 50, 1000)
+}
+
+// ParseAPIPaginationWith reads limit/offset with caller-defined default and max caps.
+func ParseAPIPaginationWith(r *http.Request, defaultLimit, maxLimit int32) (int32, int32) {
+	limit := defaultLimit
+	if l, err := strconv.ParseInt(r.URL.Query().Get("limit"), 10, 32); err == nil && l > 0 {
+		limit = int32(l)
+	}
+	offset := int32(0)
+	if o, err := strconv.ParseInt(r.URL.Query().Get("offset"), 10, 32); err == nil && o > 0 {
+		offset = int32(o)
+	}
+	return ClampLimitOffset(limit, offset, defaultLimit, maxLimit)
 }

@@ -88,7 +88,7 @@ type failingRedisClient struct {
 
 func (c *failingRedisClient) Pipelined(ctx context.Context, fn func(redis.Pipeliner) error) ([]redis.Cmder, error) {
 	failPipe := &failingPipeliner{
-		Pipeliner:      c.UniversalClient.Pipeline(),
+		Pipeliner:      c.Pipeline(),
 		failCampaignID: c.failCampaignID,
 	}
 	err := fn(failPipe)
@@ -98,7 +98,7 @@ func (c *failingRedisClient) Pipelined(ctx context.Context, fn func(redis.Pipeli
 	if failPipe.shouldFail {
 		return nil, errors.New("simulated redis pipeline failure")
 	}
-	return failPipe.Pipeliner.Exec(ctx)
+	return failPipe.Exec(ctx)
 }
 
 func (c *failingRedisClient) Publish(ctx context.Context, channel string, message interface{}) *redis.IntCmd {

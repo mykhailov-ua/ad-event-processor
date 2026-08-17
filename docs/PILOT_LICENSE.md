@@ -171,7 +171,7 @@ Install requires `--accept-eula` (non-interactive) or interactive acceptance dur
 
 First admin login shows a click-through if EULA was not recorded at bootstrap. Text: `pkg/legal/EULA.txt`, version `2026-01`.
 
-## Garble literals (V2-D.1)
+## Garble literals (Release hardening)
 
 Release garble builds apply `-literals` per binary:
 
@@ -192,7 +192,7 @@ make garble-literals-policy-gate
 
 p99 acceptance (+10% vs baseline): `make garble-literals-p99-smoke` (load-test stack + Prometheus). Size-only eval: `make garble-literals-eval`.
 
-## Sealed BPF + XDP lab smoke (V2-B.D2)
+## Sealed BPF + XDP attach lab (Sealed assets)
 
 Valid JWT on bound host must load sealed edge BPF and attach XDP like the unsealed baseline:
 

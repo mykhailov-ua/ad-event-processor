@@ -34,34 +34,36 @@ func (s *Service) ListReconRuns(ctx context.Context, service string, limit, offs
 		if err != nil {
 			return nil, 0, err
 		}
-		rows, err := q.ListManagementReconRuns(ctx, db.ListManagementReconRunsParams{
-			Limit:  limit,
-			Offset: offset,
-		})
-		if err != nil {
-			return nil, 0, err
-		}
-		for _, row := range rows {
-			totalDelta := row.TotalDelta
-			campaignsChecked := row.CampaignsChecked
-			discrepanciesFound := row.DiscrepanciesFound
-			dto := ReconRunDTO{
-				Service:            "management",
-				ID:                 row.ID,
-				PeriodStart:        row.PeriodStart.Time.UTC().Format(time.RFC3339),
-				PeriodEnd:          row.PeriodEnd.Time.UTC().Format(time.RFC3339),
-				Status:             row.Status,
-				TotalDelta:         &totalDelta,
-				CampaignsChecked:   &campaignsChecked,
-				DiscrepanciesFound: &discrepanciesFound,
-				CreatedAt:          row.CreatedAt.Time.UTC().Format(time.RFC3339),
-			}
-			if row.CompletedAt.Valid {
-				dto.CompletedAt = row.CompletedAt.Time.UTC().Format(time.RFC3339)
-			}
-			runs = append(runs, dto)
-		}
 		total += count
+		if count > 0 {
+			rows, err := q.ListManagementReconRuns(ctx, db.ListManagementReconRunsParams{
+				Limit:  limit,
+				Offset: offset,
+			})
+			if err != nil {
+				return nil, 0, err
+			}
+			for _, row := range rows {
+				totalDelta := row.TotalDelta
+				campaignsChecked := row.CampaignsChecked
+				discrepanciesFound := row.DiscrepanciesFound
+				dto := ReconRunDTO{
+					Service:            "management",
+					ID:                 row.ID,
+					PeriodStart:        row.PeriodStart.Time.UTC().Format(time.RFC3339),
+					PeriodEnd:          row.PeriodEnd.Time.UTC().Format(time.RFC3339),
+					Status:             row.Status,
+					TotalDelta:         &totalDelta,
+					CampaignsChecked:   &campaignsChecked,
+					DiscrepanciesFound: &discrepanciesFound,
+					CreatedAt:          row.CreatedAt.Time.UTC().Format(time.RFC3339),
+				}
+				if row.CompletedAt.Valid {
+					dto.CompletedAt = row.CompletedAt.Time.UTC().Format(time.RFC3339)
+				}
+				runs = append(runs, dto)
+			}
+		}
 	}
 
 	if service == "all" || service == "payment" {
@@ -94,6 +96,9 @@ func (s *Service) listPaymentReconRuns(ctx context.Context, limit, offset int32)
 			return []ReconRunDTO{}, 0, nil
 		}
 		return nil, 0, err
+	}
+	if total == 0 {
+		return []ReconRunDTO{}, 0, nil
 	}
 
 	rows, err := pool.Query(ctx, `

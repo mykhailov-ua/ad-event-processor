@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import type { CampaignDTO } from '../types/api/campaign.js';
+import type { CampaignDTO, ClickDeliveryMode } from '../types/api/campaign.js';
 import type { ReportRow } from '../types/api/report.js';
 import { to } from '../lib/to.js';
 import { api } from '../helpers/api_client.js';
@@ -32,6 +32,7 @@ import { CampaignPostbackSection } from '../components/campaign_postback_section
 import { CampaignMarginGuardSection } from '../components/campaign_margin_guard_section.js';
 import { CampaignTelegramSection } from '../components/campaign_telegram_section.js';
 import { CampaignBrandCreativesSection } from '../components/campaign_brand_creatives_section.js';
+import { CampaignOwnerSection } from '../components/campaign_owner_section.js';
 import { CommercialMetrics } from '../components/commercial_metrics.js';
 import { FreshnessBadge } from '../components/freshness_badge.js';
 import { Breadcrumbs, type BreadcrumbItem } from '../components/breadcrumbs.js';
@@ -65,6 +66,48 @@ type CampaignEventsResponse = {
 };
 
 const EVENTS_PAGE_SIZE = 50;
+
+function toDatetimeLocalValue(iso?: string): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function datetimeLocalToISO(local: string): string | undefined {
+  const trimmed = local.trim();
+  if (!trimmed) return undefined;
+  const d = new Date(trimmed);
+  if (Number.isNaN(d.getTime())) return undefined;
+  return d.toISOString();
+}
+
+function formatDaypartHours(hours: number[]): string {
+  if (!hours?.length) return '';
+  return [...hours].sort((a, b) => a - b).join(',');
+}
+
+function normalizeClickDelivery(raw?: string): ClickDeliveryMode {
+  return raw === 'proxy' ? 'proxy' : 'redirect';
+}
+
+function clickDeliveryLabel(mode: ClickDeliveryMode): string {
+  return mode === 'proxy' ? 'Reverse proxy' : 'Redirect';
+}
+
+function parseDaypartHours(raw: string): number[] {
+  if (!raw.trim()) return [];
+  const out: number[] = [];
+  for (const part of raw.split(',')) {
+    const h = Number.parseInt(part.trim(), 10);
+    if (!Number.isFinite(h) || h < 0 || h > 23) {
+      throw new Error('invalid daypart hour');
+    }
+    out.push(h);
+  }
+  return [...new Set(out)].sort((a, b) => a - b);
+}
 
 function allowedTabIds(masked: boolean): string[] {
   const list = ['overview', 'stats', 'config'];
@@ -159,6 +202,11 @@ export function CampaignDetailPage() {
     name: '',
     pacing_mode: 'ASAP',
     timezone: 'UTC',
+    budget_limit: '',
+    status: 'ACTIVE',
+    start_at: '',
+    end_at: '',
+    daypart_hours: '',
     daily_budget: '',
     target_url: '',
     geo: '',
@@ -166,6 +214,18 @@ export function CampaignDetailPage() {
     freq_window: '86400',
     safe_page_enabled: false,
     safe_page_url: '',
+    attestation_enabled: false,
+    attestation_ttl_sec: '300',
+    dmr_enabled: false,
+    click_delivery: 'redirect' as ClickDeliveryMode,
+    proxy_upstream_url: '',
+    proxy_rewrite_assets: false,
+    l1_cidr_block_enabled: true,
+    l15_proxy_vpn_block_enabled: true,
+    tls_fingerprint_block_enabled: true,
+    conn_type_policy: 'block_vpn_hosting',
+    link_signing_enabled: false,
+    link_signing_ttl_sec: '900',
     flow_id: '',
   });
 
@@ -205,6 +265,11 @@ export function CampaignDetailPage() {
       name: campaign.name ?? '',
       pacing_mode: campaign.pacing_mode ?? 'ASAP',
       timezone: campaign.timezone ?? 'UTC',
+      budget_limit: campaign.budget_limit ?? '',
+      status: (campaign.status ?? 'ACTIVE').toUpperCase(),
+      start_at: toDatetimeLocalValue(campaign.start_at),
+      end_at: toDatetimeLocalValue(campaign.end_at),
+      daypart_hours: formatDaypartHours(campaign.daypart_hours ?? []),
       daily_budget: campaign.daily_budget ?? '',
       target_url: campaign.target_url ?? '',
       geo: (campaign.target_countries ?? []).join(','),
@@ -212,6 +277,18 @@ export function CampaignDetailPage() {
       freq_window: String(campaign.freq_window ?? 86400),
       safe_page_enabled: campaign.safe_page_enabled === true,
       safe_page_url: campaign.safe_page_url ?? '',
+      attestation_enabled: campaign.attestation_enabled === true,
+      attestation_ttl_sec: String(campaign.attestation_ttl_sec ?? 300),
+      dmr_enabled: campaign.dmr_enabled === true,
+      click_delivery: normalizeClickDelivery(campaign.click_delivery),
+      proxy_upstream_url: campaign.proxy_upstream_url ?? '',
+      proxy_rewrite_assets: campaign.proxy_rewrite_assets === true,
+      l1_cidr_block_enabled: campaign.l1_cidr_block_enabled !== false,
+      l15_proxy_vpn_block_enabled: campaign.l15_proxy_vpn_block_enabled !== false,
+      tls_fingerprint_block_enabled: campaign.tls_fingerprint_block_enabled !== false,
+      conn_type_policy: campaign.conn_type_policy ?? 'block_vpn_hosting',
+      link_signing_enabled: campaign.link_signing_enabled === true,
+      link_signing_ttl_sec: String(campaign.link_signing_ttl_sec ?? 900),
       flow_id: campaign.flow_id ?? '',
     });
   }, [campaign]);
@@ -349,6 +426,27 @@ export function CampaignDetailPage() {
         return;
       }
     }
+    if (configForm.budget_limit.trim()) {
+      try {
+        body.budget_limit_micro = ParseDecimal(configForm.budget_limit.trim());
+      } catch {
+        setConfigError('Invalid total budget');
+        return;
+      }
+    }
+    if (configForm.status === 'ACTIVE' || configForm.status === 'PAUSED') {
+      body.status = configForm.status.toLowerCase();
+    }
+    const startISO = datetimeLocalToISO(configForm.start_at);
+    const endISO = datetimeLocalToISO(configForm.end_at);
+    if (startISO) body.start_at = startISO;
+    if (endISO) body.end_at = endISO;
+    try {
+      body.daypart_hours = parseDaypartHours(configForm.daypart_hours);
+    } catch {
+      setConfigError('Daypart hours must be 0–23, comma-separated');
+      return;
+    }
     const url = configForm.target_url.trim();
     if (url && !/^https?:\/\//i.test(url)) {
       setConfigError('Target URL must start with http:// or https://');
@@ -364,6 +462,34 @@ export function CampaignDetailPage() {
     if (Number.isFinite(freqWindow) && freqWindow > 0) body.freq_window = freqWindow;
     body.safe_page_enabled = configForm.safe_page_enabled;
     body.safe_page_url = configForm.safe_page_url.trim();
+    body.attestation_enabled = configForm.attestation_enabled;
+    const attTTL = Number.parseInt(configForm.attestation_ttl_sec, 10);
+    if (Number.isFinite(attTTL)) body.attestation_ttl_sec = attTTL;
+    body.dmr_enabled = configForm.dmr_enabled;
+    const clickDelivery = normalizeClickDelivery(configForm.click_delivery);
+    body.click_delivery = clickDelivery;
+    if (clickDelivery === 'proxy') {
+      const proxyURL = configForm.proxy_upstream_url.trim();
+      if (!proxyURL) {
+        setConfigError('Proxy upstream URL is required when click delivery is reverse proxy');
+        return;
+      }
+      if (!/^https?:\/\//i.test(proxyURL)) {
+        setConfigError('Proxy upstream URL must start with http:// or https://');
+        return;
+      }
+      body.proxy_upstream_url = proxyURL;
+      body.proxy_rewrite_assets = configForm.proxy_rewrite_assets;
+    }
+    body.tls_fingerprint_block_enabled = configForm.tls_fingerprint_block_enabled;
+    body.l1_cidr_block_enabled = configForm.l1_cidr_block_enabled;
+    body.l15_proxy_vpn_block_enabled = configForm.l15_proxy_vpn_block_enabled;
+    body.conn_type_policy = configForm.conn_type_policy;
+    body.link_signing_enabled = configForm.link_signing_enabled;
+    const linkTTL = Number.parseInt(configForm.link_signing_ttl_sec, 10);
+    if (Number.isFinite(linkTTL) && linkTTL >= 60 && linkTTL <= 3600) {
+      body.link_signing_ttl_sec = linkTTL;
+    }
     body.flow_id = configForm.flow_id.trim()
       ? configForm.flow_id.trim()
       : '00000000-0000-0000-0000-000000000000';
@@ -380,6 +506,24 @@ export function CampaignDetailPage() {
     pushToastMessage({
       title: 'Campaign saved',
       message: 'Config propagates to trackers within ~60s.',
+    });
+    reloadCampaign();
+  };
+
+  const linkCampaignBrand = async (brandId: string) => {
+    if (!canWriteCampaign || !brandId.trim()) return;
+    const [, err] = await to(patchCampaign(id, { brand_id: brandId.trim() }));
+    if (err) {
+      if (err instanceof ConfirmCancelledError) return;
+      pushToastMessage({
+        title: 'Brand link failed',
+        message: err.message || 'Could not link brand to campaign',
+      });
+      return;
+    }
+    pushToastMessage({
+      title: 'Brand linked',
+      message: 'Campaign uses this brand for weighted creatives. Tracker sync ~60s.',
     });
     reloadCampaign();
   };
@@ -562,10 +706,81 @@ export function CampaignDetailPage() {
 
       {tab === 'config' ? (
         <div className="section-block stack">
+          {campaign?.customer_id && canWriteCampaign && !masked ? (
+            <CampaignOwnerSection
+              campaignId={id}
+              customerId={campaign.customer_id}
+              ownerUserId={campaign.owner_user_id ?? ''}
+              canWrite={canWriteCampaign}
+              onAssigned={() => reloadCampaign()}
+            />
+          ) : null}
           {canWriteCampaign && !masked ? (
             <div className="section-card stack">
               <h3 className="subsection-title">Edit settings</h3>
               {configError ? <p className="text-danger text-sm">{configError}</p> : null}
+              <h4 className="subsection-title">Budget &amp; schedule</h4>
+              <label className="form-field" htmlFor="cfg-budget-total">
+                Total budget (USD)
+                <input
+                  id="cfg-budget-total"
+                  className="form-input form-input--sm"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  value={configForm.budget_limit}
+                  data-testid="campaign-budget-total"
+                  onChange={(e) => setConfigForm((f) => ({ ...f, budget_limit: e.target.value }))}
+                />
+              </label>
+              <label className="form-field" htmlFor="cfg-status">
+                Status
+                <select
+                  id="cfg-status"
+                  className="form-input form-input--sm"
+                  value={configForm.status}
+                  data-testid="cfg-status"
+                  onChange={(e) => setConfigForm((f) => ({ ...f, status: e.target.value }))}
+                >
+                  <option value="ACTIVE">Active</option>
+                  <option value="PAUSED">Paused</option>
+                </select>
+              </label>
+              <div className="filter-row">
+                <label className="form-field" htmlFor="cfg-start-at">
+                  Start
+                  <input
+                    id="cfg-start-at"
+                    className="form-input form-input--sm"
+                    type="datetime-local"
+                    value={configForm.start_at}
+                    data-testid="cfg-start-at"
+                    onChange={(e) => setConfigForm((f) => ({ ...f, start_at: e.target.value }))}
+                  />
+                </label>
+                <label className="form-field" htmlFor="cfg-end-at">
+                  End
+                  <input
+                    id="cfg-end-at"
+                    className="form-input form-input--sm"
+                    type="datetime-local"
+                    value={configForm.end_at}
+                    data-testid="cfg-end-at"
+                    onChange={(e) => setConfigForm((f) => ({ ...f, end_at: e.target.value }))}
+                  />
+                </label>
+              </div>
+              <label className="form-field" htmlFor="cfg-daypart">
+                Daypart hours (0–23, comma-separated; empty = all hours)
+                <input
+                  id="cfg-daypart"
+                  className="form-input form-input--sm"
+                  placeholder="9,10,11,12"
+                  value={configForm.daypart_hours}
+                  data-testid="cfg-daypart"
+                  onChange={(e) => setConfigForm((f) => ({ ...f, daypart_hours: e.target.value }))}
+                />
+              </label>
+              <h4 className="subsection-title">Delivery</h4>
               <label className="form-field" htmlFor="cfg-name">
                 Name
                 <input
@@ -702,6 +917,177 @@ export function CampaignDetailPage() {
                     onChange={(e) => setConfigForm((f) => ({ ...f, safe_page_url: e.target.value }))}
                   />
                 </label>
+                <label className="form-field checkbox-field" htmlFor="cfg-attestation-enabled">
+                  <input
+                    id="cfg-attestation-enabled"
+                    type="checkbox"
+                    checked={configForm.attestation_enabled}
+                    disabled={!configForm.safe_page_enabled}
+                    data-testid="cfg-attestation-enabled"
+                    onChange={(e) => setConfigForm((f) => ({ ...f, attestation_enabled: e.target.checked }))}
+                  />
+                  {' '}
+                  Require L2 attestation cookie (RP-M2)
+                </label>
+                {configForm.attestation_enabled ? (
+                  <label className="form-field" htmlFor="cfg-attestation-ttl">
+                    Attestation cookie TTL (seconds)
+                    <input
+                      id="cfg-attestation-ttl"
+                      className="form-input"
+                      type="number"
+                      min={60}
+                      max={900}
+                      value={configForm.attestation_ttl_sec}
+                      data-testid="cfg-attestation-ttl"
+                      onChange={(e) => setConfigForm((f) => ({ ...f, attestation_ttl_sec: e.target.value }))}
+                    />
+                  </label>
+                ) : null}
+              </div>
+              <div className="section-card stack" data-testid="campaign-click-delivery-config">
+                <h4 className="subsection-title">Click delivery (reverse proxy)</h4>
+                <p className="text-muted text-sm">
+                  Default redirect sends the browser to the landing URL. Reverse proxy mode fetches the upstream through the tracker edge (RP-M3).
+                </p>
+                <label className="form-field" htmlFor="cfg-click-delivery">
+                  Delivery mode
+                  <select
+                    id="cfg-click-delivery"
+                    className="form-input"
+                    value={configForm.click_delivery}
+                    data-testid="cfg-click-delivery"
+                    onChange={(e) => setConfigForm((f) => ({
+                      ...f,
+                      click_delivery: normalizeClickDelivery(e.target.value),
+                    }))}
+                  >
+                    <option value="redirect">Redirect (default)</option>
+                    <option value="proxy">Reverse proxy</option>
+                  </select>
+                </label>
+                {configForm.click_delivery === 'proxy' ? (
+                  <>
+                    <label className="form-field" htmlFor="cfg-proxy-upstream-url">
+                      Proxy upstream URL
+                      <input
+                        id="cfg-proxy-upstream-url"
+                        className="form-input"
+                        type="url"
+                        placeholder="https://upstream.example/offer"
+                        value={configForm.proxy_upstream_url}
+                        data-testid="cfg-proxy-upstream-url"
+                        onChange={(e) => setConfigForm((f) => ({ ...f, proxy_upstream_url: e.target.value }))}
+                      />
+                    </label>
+                    <label className="form-field checkbox-field" htmlFor="cfg-proxy-rewrite-assets">
+                      <input
+                        id="cfg-proxy-rewrite-assets"
+                        type="checkbox"
+                        checked={configForm.proxy_rewrite_assets}
+                        data-testid="cfg-proxy-rewrite-assets"
+                        onChange={(e) => setConfigForm((f) => ({ ...f, proxy_rewrite_assets: e.target.checked }))}
+                      />
+                      {' '}
+                      Rewrite asset URLs through proxy
+                    </label>
+                  </>
+                ) : null}
+              </div>
+              <div className="section-card stack" data-testid="campaign-dmr-config">
+                <h4 className="subsection-title">Referrer hiding (DMR)</h4>
+                <p className="text-muted text-sm">
+                  Serves an intermediate HTML page so the browser navigates to the landing without sending Referer. Also activates when <code>dmr=1</code> is on the click URL.
+                </p>
+                <label className="form-field checkbox-field" htmlFor="cfg-dmr-enabled">
+                  <input
+                    id="cfg-dmr-enabled"
+                    type="checkbox"
+                    checked={configForm.dmr_enabled}
+                    onChange={(e) => setConfigForm((f) => ({ ...f, dmr_enabled: e.target.checked }))}
+                  />
+                  {' '}
+                  Enable DMR for campaign clicks
+                </label>
+              </div>
+              <div className="section-card stack" data-testid="campaign-gma-config">
+                <h4 className="subsection-title">Gray-market defenses (GMA)</h4>
+                <p className="text-muted text-sm">
+                  TLS fingerprint blocklist, connection-type policy, L1/L1.5 safe-view gates, and signed offer links. Tracker env <code>LINK_SIGNING_HMAC_SECRET</code> must be set for link signing.
+                </p>
+                <label className="form-field checkbox-field" htmlFor="cfg-l1-cidr-block">
+                  <input
+                    id="cfg-l1-cidr-block"
+                    type="checkbox"
+                    checked={configForm.l1_cidr_block_enabled}
+                    data-testid="cfg-l1-cidr-block"
+                    onChange={(e) => setConfigForm((f) => ({ ...f, l1_cidr_block_enabled: e.target.checked }))}
+                  />
+                  {' '}
+                  L1 CIDR/ASN block (datacenter ranges)
+                </label>
+                <label className="form-field checkbox-field" htmlFor="cfg-l15-proxy-vpn-block">
+                  <input
+                    id="cfg-l15-proxy-vpn-block"
+                    type="checkbox"
+                    checked={configForm.l15_proxy_vpn_block_enabled}
+                    data-testid="cfg-l15-proxy-vpn-block"
+                    onChange={(e) => setConfigForm((f) => ({ ...f, l15_proxy_vpn_block_enabled: e.target.checked }))}
+                  />
+                  {' '}
+                  L1.5 proxy/VPN safe view
+                </label>
+                <label className="form-field checkbox-field" htmlFor="cfg-tls-fp-block">
+                  <input
+                    id="cfg-tls-fp-block"
+                    type="checkbox"
+                    checked={configForm.tls_fingerprint_block_enabled}
+                    data-testid="cfg-tls-fp-block"
+                    onChange={(e) => setConfigForm((f) => ({ ...f, tls_fingerprint_block_enabled: e.target.checked }))}
+                  />
+                  {' '}
+                  Block known bad TLS fingerprints (JA3/JA4)
+                </label>
+                <label className="form-field" htmlFor="cfg-conn-type-policy">
+                  Connection type policy
+                  <select
+                    id="cfg-conn-type-policy"
+                    className="form-input"
+                    value={configForm.conn_type_policy}
+                    data-testid="cfg-conn-type-policy"
+                    onChange={(e) => setConfigForm((f) => ({ ...f, conn_type_policy: e.target.value }))}
+                  >
+                    <option value="block_vpn_hosting">Block VPN/hosting (default)</option>
+                    <option value="mobile_only">Mobile only</option>
+                    <option value="residential_only">Residential only</option>
+                  </select>
+                </label>
+                <label className="form-field checkbox-field" htmlFor="cfg-link-signing">
+                  <input
+                    id="cfg-link-signing"
+                    type="checkbox"
+                    checked={configForm.link_signing_enabled}
+                    data-testid="cfg-link-signing"
+                    onChange={(e) => setConfigForm((f) => ({ ...f, link_signing_enabled: e.target.checked }))}
+                  />
+                  {' '}
+                  Sign outbound offer links (HMAC)
+                </label>
+                {configForm.link_signing_enabled ? (
+                  <label className="form-field" htmlFor="cfg-link-signing-ttl">
+                    Link signature TTL (seconds)
+                    <input
+                      id="cfg-link-signing-ttl"
+                      className="form-input"
+                      type="number"
+                      min={60}
+                      max={3600}
+                      value={configForm.link_signing_ttl_sec}
+                      data-testid="cfg-link-signing-ttl"
+                      onChange={(e) => setConfigForm((f) => ({ ...f, link_signing_ttl_sec: e.target.value }))}
+                    />
+                  </label>
+                ) : null}
               </div>
               <Button
                 label={configSaving ? 'Saving…' : 'Save changes'}
@@ -718,6 +1104,30 @@ export function CampaignDetailPage() {
             ['Customer', campaign.customer_id ?? '—'],
             ['Timezone', campaign.timezone ?? 'UTC'],
             ['Safe page', campaign.safe_page_enabled ? (campaign.safe_page_url || 'enabled (no URL)') : 'off'],
+            ['DMR', campaign.dmr_enabled ? 'on' : 'off'],
+            [
+              'Click delivery',
+              clickDeliveryLabel(normalizeClickDelivery(campaign.click_delivery)),
+            ],
+            ...(normalizeClickDelivery(campaign.click_delivery) === 'proxy'
+              ? [
+                  ['Proxy upstream', campaign.proxy_upstream_url ?? '—'] as [string, string],
+                  [
+                    'Proxy rewrite assets',
+                    campaign.proxy_rewrite_assets ? 'yes' : 'no',
+                  ] as [string, string],
+                ]
+              : []),
+            ['TLS fingerprint block', campaign.tls_fingerprint_block_enabled ? 'on' : 'off'],
+            ['L1 CIDR block', campaign.l1_cidr_block_enabled ? 'on' : 'off'],
+            ['L1.5 proxy/VPN block', campaign.l15_proxy_vpn_block_enabled ? 'on' : 'off'],
+            ['Conn type policy', campaign.conn_type_policy ?? 'block_vpn_hosting'],
+            [
+              'Link signing',
+              campaign.link_signing_enabled
+                ? `on (${campaign.link_signing_ttl_sec ?? 900}s TTL)`
+                : 'off',
+            ],
             [
               'Frequency limit',
               campaign.freq_limit
@@ -729,6 +1139,18 @@ export function CampaignDetailPage() {
               campaign.target_countries?.length
                 ? campaign.target_countries.join(', ')
                 : 'All',
+            ],
+            [
+              'Schedule',
+              campaign.start_at || campaign.end_at
+                ? `${campaign.start_at ? new Date(campaign.start_at).toLocaleString() : '—'} → ${campaign.end_at ? new Date(campaign.end_at).toLocaleString() : '—'}`
+                : 'None',
+            ],
+            [
+              'Daypart',
+              campaign.daypart_hours?.length
+                ? campaign.daypart_hours.join(', ')
+                : 'All hours',
             ],
             [
               'Created',
@@ -743,7 +1165,7 @@ export function CampaignDetailPage() {
 
       {!masked && tab === 'tracking' ? (
         <div className="section-block">
-          <CampaignTrackingSection campaignId={id} />
+          <CampaignTrackingSection campaignId={id} canWrite={canWriteCampaign} />
         </div>
       ) : null}
 
@@ -841,12 +1263,7 @@ export function CampaignDetailPage() {
               brandId={campaign.brand_id ?? ''}
               customerId={campaign.customer_id ?? ''}
               canWrite={canWriteCampaign}
-              onBrandCreated={() => {
-                pushToastMessage({
-                  title: 'Brand created',
-                  message: 'Creatives work for this session. Linking brand_id on the campaign requires API work (MILESTONE §1.2.4).',
-                });
-              }}
+              onBrandCreated={(brandId) => void linkCampaignBrand(brandId)}
             />
           </div>
         </div>

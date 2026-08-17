@@ -9,7 +9,7 @@ import (
 const DefaultFingerprintsMapPath = edge.DefaultFingerprintsMapPath
 
 type FingerprintEvent struct {
-	TsNs    uint64
+	TSNs    uint64
 	SrcIP   uint32
 	TCPHash uint32
 	Window  uint16

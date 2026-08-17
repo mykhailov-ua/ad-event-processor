@@ -97,5 +97,5 @@ func TestStreamConsumer_CircuitBreakerStopsReads(t *testing.T) {
 	}, 5*time.Second, 10*time.Millisecond, "circuit breaker should recover to closed")
 
 	consumer.Close()
-	consumer.Wait(ctx)
+	require.NoError(t, consumer.Wait(ctx))
 }

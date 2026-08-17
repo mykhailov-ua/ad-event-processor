@@ -1,12 +1,14 @@
 package ingestion
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/bidshard/ad-event-processor/internal/config"
 	"github.com/bidshard/ad-event-processor/internal/domain"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
 )
 
 func benchTgClickHandler(b testing.TB) (*AdsPacketHandler, parsedHTTPRequest, *GnetHarnessConn) {
@@ -57,6 +59,39 @@ func TestTgClickRedirectGnet_ZeroAlloc(t *testing.T) {
 	if allocs != 0.0 {
 		t.Fatalf("expected 0 allocs/op, got %v", allocs)
 	}
+}
+
+func TestTgClickRedirectGnet_DMR(t *testing.T) {
+	staticCampaignMu.Lock()
+	staticCampaign = &domain.Campaign{
+		ID:         benchClickCampaignID,
+		CustomerID: uuid.Nil,
+		BrandID:    &benchClickBrandID,
+		Location:   staticCampaign.Location,
+	}
+	staticCampaignMu.Unlock()
+	cachedMockCamp.Store(nil)
+
+	store := NewBrandCreativeStore(nil, 0)
+	store.cache.Store(&brandCreativeMapSnapshot{
+		byBrand: map[uuid.UUID][]brandCreativeEntry{
+			benchClickBrandID: brandCreativeEntriesReady([]brandCreativeEntry{{
+				URL:    "https://offer.example/lp?cid={click_id}&token={bridge_token}",
+				Weight: 100,
+			}}),
+		},
+	})
+
+	cfg := &config.Config{MaxRequestBodySize: 1 << 20}
+	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud-stream", store)
+	path := "/tg/click?campaign_id=550e8400-e29b-41d4-a716-446655440000&click_id=d5671191-236b-4e94-825e-399185a9bc8d&bridge_token=token_abc123_&dmr=1&sub1=testsub"
+	_, conn := ServeGnetHarness(h, BuildGnetHTTP("GET", path, map[string]string{
+		"Connection":     "keep-alive",
+		"Content-Length": "0",
+		"User-Agent":     "Mozilla/5.0 Telegram-Android",
+	}, nil))
+	requireGnetDmrResponse(t, conn.Written(), "offer.example/lp")
+	require.Equal(t, http.StatusOK, ParseGnetHTTPStatus(conn.Written()))
 }
 
 func BenchmarkTgClickRedirectGnet_E2E(b *testing.B) {

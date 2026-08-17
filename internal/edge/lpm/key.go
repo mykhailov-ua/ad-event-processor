@@ -1,3 +1,4 @@
+// Package lpm provides landing-page manager key helpers.
 package lpm
 
 import "encoding/binary"

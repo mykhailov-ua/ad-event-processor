@@ -72,11 +72,12 @@ var (
 )
 
 func finalizeFcapUserHash(hot *OpenRTB26Hot, cold *OpenRTB26Cold) {
-	if cold.UserIDLen > 0 {
+	switch {
+	case cold.UserIDLen > 0:
 		hot.FcapUserHash = hashUserIDBytes(cold.UserID[:cold.UserIDLen])
-	} else if cold.BuyerUIDLen > 0 {
+	case cold.BuyerUIDLen > 0:
 		hot.FcapUserHash = hashUserIDBytes(cold.BuyerUID[:cold.BuyerUIDLen])
-	} else if cold.EIDUIDLen > 0 {
+	case cold.EIDUIDLen > 0:
 		hot.FcapUserHash = hashUserIDBytes(cold.EIDUID[:cold.EIDUIDLen])
 	}
 }

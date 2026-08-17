@@ -1,3 +1,4 @@
+// Package consumer implements broker consumer helpers.
 package consumer
 
 import (

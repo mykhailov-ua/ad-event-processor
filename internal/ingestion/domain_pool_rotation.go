@@ -4,8 +4,8 @@ import (
 	"github.com/panjf2000/gnet/v2"
 )
 
-func (h *AdsPacketHandler) tryTrackingDomainRotation(req parsedHTTPRequest, ctx *connContext, c gnet.Conn, startMono int64) bool {
-	if h == nil || h.domainPoolTable == nil || len(req.Host) == 0 {
+func (h *AdsPacketHandler) tryTrackingDomainRotation(req parsedHTTPRequest, ctx *connContext, c gnet.Conn, startMono int64, parsed *clickQueryParsed) bool {
+	if h == nil || h.domainPoolTable == nil || len(req.Host) == 0 || parsed == nil {
 		return false
 	}
 	fallback, ok := h.domainPoolTable.fallbackHost(req.Host)
@@ -15,6 +15,6 @@ func (h *AdsPacketHandler) tryTrackingDomainRotation(req parsedHTTPRequest, ctx 
 	scheme := domainPoolSchemeFromHost(req.Host)
 	loc := buildTrackingDomainRotation(ctx.extraBuf[:0], scheme, fallback, req.Path)
 	ctx.extraBuf = loc
-	h.writeGnetClickRedirect(ctx, c, startMono, loc)
+	h.writeGnetClickLandingRedirect(ctx, c, startMono, loc, h.clickDmrActive(parsed.campaignID, parsed.dmr))
 	return true
 }

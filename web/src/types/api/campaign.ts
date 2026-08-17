@@ -1,3 +1,6 @@
+/** RP-M3 click delivery mode — redirect (default) or reverse-proxy upstream. */
+export type ClickDeliveryMode = 'redirect' | 'proxy';
+
 /**
  * Go: adminapi.CampaignDTO — list item and GET /campaigns/{id}.
  * Money fields are decimal strings (not micro-int).
@@ -19,12 +22,25 @@ export type CampaignDTO = {
   brand_id?: string;
   safe_page_url?: string;
   safe_page_enabled?: boolean;
+  attestation_enabled?: boolean;
+  attestation_ttl_sec?: number;
+  dmr_enabled?: boolean;
+  l1_cidr_block_enabled?: boolean;
+  l15_proxy_vpn_block_enabled?: boolean;
+  tls_fingerprint_block_enabled?: boolean;
+  conn_type_policy?: string;
+  link_signing_enabled?: boolean;
+  link_signing_ttl_sec?: number;
+  click_delivery?: ClickDeliveryMode | string;
+  proxy_upstream_url?: string;
+  proxy_rewrite_assets?: boolean;
   creative_payload?: unknown;
   referrer_filter?: string;
   start_at?: string;
   end_at?: string;
   daypart_hours: number[];
   flow_id?: string;
+  owner_user_id?: string;
   created_at: string;
   updated_at: string;
   /** Present when list API embeds margin guard summary. */
@@ -56,6 +72,7 @@ export type CampaignPatchBody = Partial<{
   name: string;
   status: string;
   budget_limit: string;
+  budget_limit_micro: number;
   daily_budget: string;
   daily_budget_micro: number;
   pacing_mode: string;
@@ -66,11 +83,24 @@ export type CampaignPatchBody = Partial<{
   target_url: string;
   safe_page_url: string;
   safe_page_enabled: boolean;
+  attestation_enabled: boolean;
+  attestation_ttl_sec: number;
+  dmr_enabled: boolean;
+  l1_cidr_block_enabled: boolean;
+  l15_proxy_vpn_block_enabled: boolean;
+  tls_fingerprint_block_enabled: boolean;
+  conn_type_policy: string;
+  link_signing_enabled: boolean;
+  link_signing_ttl_sec: number;
+  click_delivery: ClickDeliveryMode;
+  proxy_upstream_url: string;
+  proxy_rewrite_assets: boolean;
   referrer_filter: string;
   start_at: string;
   end_at: string;
   daypart_hours: number[];
   flow_id?: string | null;
+  brand_id?: string | null;
 }>;
 
 /**

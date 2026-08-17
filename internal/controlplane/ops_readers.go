@@ -59,13 +59,22 @@ func (r *opsReader) GetIncidentSnapshot(ctx context.Context) (adminapi.IncidentS
 	if err != nil {
 		return adminapi.IncidentSnapshotDTO{}, err
 	}
-	return adminapi.IncidentSnapshotDTO{
+	snap := adminapi.IncidentSnapshotDTO{
 		EmergencyBreaker: report.EmergencyBreaker,
 		Shards:           report.Shards,
 		Outbox:           report.Outbox,
 		StreamLag:        []adminapi.ShardStreamLag{},
 		BreakerStates:    map[string]string{},
-	}, nil
+	}
+	stale, _ := r.incidentDashboardStale(ctx)
+	snap.StaleDashboard = stale
+	if stale {
+		campaigns, err := r.listAffectedCampaigns(ctx, 50)
+		if err == nil && len(campaigns) > 0 {
+			snap.AffectedCampaigns = campaigns
+		}
+	}
+	return snap, nil
 }
 
 func (r *opsReader) ListOutboxEvents(ctx context.Context, status, eventType, cursor string, limit int32) (adminapi.OutboxListResult, error) {

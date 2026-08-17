@@ -1,6 +1,7 @@
 package ingestion
 
 import (
+	"bytes"
 	"net/http"
 	"testing"
 
@@ -50,12 +51,96 @@ func TestBuildRedirectLocation_sub30Macro(t *testing.T) {
 	require.Equal(t, "https://offer.test/lp?s=slot30", string(loc))
 }
 
+func TestRedirectHdrSuffix_referrerPolicy(t *testing.T) {
+	t.Parallel()
+	require.Contains(t, redirectHdrSuffix, "Referrer-Policy: no-referrer")
+}
+
 func TestBuildRedirectLocation_macrosAndPassthrough(t *testing.T) {
 	t.Parallel()
 	base := []byte("https://offer.test/lp?x=1&cid={click_id}&s={sub1}")
 	loc, ok := buildRedirectLocation(nil, base, "click-99", "user-1", SubIDSlots{"fb"}, []byte("gclid=G1"))
 	require.True(t, ok)
 	require.Equal(t, "https://offer.test/lp?x=1&cid=click-99&s=fb&gclid=G1", string(loc))
+}
+
+func TestBuildRedirectLocation_encodesMacroValues(t *testing.T) {
+	t.Parallel()
+	base := []byte("https://offer.test/lp?s={sub1}&u={user_id}")
+	loc, ok := buildRedirectLocation(nil, base, "c1", "a&b=c", SubIDSlots{"x y"}, nil)
+	require.True(t, ok)
+	require.Equal(t, "https://offer.test/lp?s=x%20y&u=a%26b%3Dc", string(loc))
+}
+
+func requireGnetDmrResponse(t *testing.T, written []byte, landingSnippet string) {
+	t.Helper()
+	require.Equal(t, http.StatusOK, ParseGnetHTTPStatus(written))
+	resp := string(written)
+	require.Contains(t, resp, "Content-Type: text/html; charset=utf-8")
+	require.Contains(t, resp, `http-equiv="refresh"`)
+	require.Contains(t, resp, `window.location.replace(`)
+	idx := bytes.Index(written, []byte("\r\n\r\n"))
+	require.True(t, idx > 0, "missing HTTP body")
+	body := written[idx+4:]
+	require.Greater(t, len(body), 80, "DMR body must include landing URL, not header-only")
+	require.Contains(t, string(body), landingSnippet)
+	require.NotContains(t, string(body), `"></script><script>`)
+}
+
+func setupClickRedirectHarness(t *testing.T, mut func(*domain.Campaign)) (*AdsPacketHandler, uuid.UUID, uuid.UUID) {
+	t.Helper()
+	cid := uuid.New()
+	brandID := uuid.New()
+	staticCampaignMu.Lock()
+	staticCampaign = &domain.Campaign{
+		ID:         cid,
+		CustomerID: uuid.Nil,
+		BrandID:    &brandID,
+		Location:   staticCampaign.Location,
+	}
+	if mut != nil {
+		mut(staticCampaign)
+	}
+	staticCampaignMu.Unlock()
+	cachedMockCamp.Store(nil)
+
+	store := NewBrandCreativeStore(nil, 0)
+	store.cache.Store(&brandCreativeMapSnapshot{
+		byBrand: map[uuid.UUID][]brandCreativeEntry{
+			brandID: brandCreativeEntriesReady([]brandCreativeEntry{{
+				URL:    "https://lander.test/go?cid={click_id}",
+				Weight: 100,
+			}}),
+		},
+	})
+
+	cfg := &config.Config{MaxRequestBodySize: 1 << 20}
+	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud-stream", store)
+	return h, cid, brandID
+}
+
+func TestClickRedirectGnet_DMR_queryFlag(t *testing.T) {
+	h, cid, _ := setupClickRedirectHarness(t, nil)
+	path := "/click?campaign_id=" + cid.String() + "&type=click&user_id=u1&dmr=1"
+	_, conn := ServeGnetHarness(h, BuildGnetHTTP("GET", path, map[string]string{
+		"Connection":     "keep-alive",
+		"Content-Length": "0",
+		"User-Agent":     "Mozilla/5.0",
+	}, nil))
+	requireGnetDmrResponse(t, conn.Written(), "lander.test/go")
+}
+
+func TestClickRedirectGnet_DMR_campaignEnabled(t *testing.T) {
+	h, cid, _ := setupClickRedirectHarness(t, func(c *domain.Campaign) {
+		c.DmrEnabled = true
+	})
+	path := "/click?campaign_id=" + cid.String() + "&type=click&user_id=u1"
+	_, conn := ServeGnetHarness(h, BuildGnetHTTP("GET", path, map[string]string{
+		"Connection":     "keep-alive",
+		"Content-Length": "0",
+		"User-Agent":     "Mozilla/5.0",
+	}, nil))
+	requireGnetDmrResponse(t, conn.Written(), "lander.test/go")
 }
 
 func TestClickRedirectGnet_302(t *testing.T) {
@@ -89,6 +174,7 @@ func TestClickRedirectGnet_302(t *testing.T) {
 	require.Equal(t, http.StatusFound, ParseGnetHTTPStatus(conn.Written()))
 	resp := string(conn.Written())
 	require.Contains(t, resp, "Location: https://lander.test/go?cid=")
+	require.Contains(t, resp, "Referrer-Policy: no-referrer")
 	require.Contains(t, resp, "gclid=GCLID1")
 }
 

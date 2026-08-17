@@ -54,7 +54,8 @@ func scanJSONStringEnd(data []byte, i, n int, b *jsonScanBudget) (int, bool) {
 				if !ok {
 					return i, false
 				}
-				if cp >= 0xD800 && cp <= 0xDBFF {
+				switch {
+				case cp >= 0xD800 && cp <= 0xDBFF:
 					// i points at the first hex digit of \uXXXX; the full pair needs 10 bytes (XXXX\uYYYY).
 					if i+10 > n || data[i+4] != '\\' || data[i+5] != 'u' {
 						return i, false
@@ -64,9 +65,9 @@ func scanJSONStringEnd(data []byte, i, n int, b *jsonScanBudget) (int, bool) {
 						return i, false
 					}
 					i += 10
-				} else if cp >= 0xDC00 && cp <= 0xDFFF {
+				case cp >= 0xDC00 && cp <= 0xDFFF:
 					return i, false
-				} else {
+				default:
 					i += 4
 				}
 			default:

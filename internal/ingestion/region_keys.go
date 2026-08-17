@@ -5,14 +5,14 @@ import (
 )
 
 func IngressDayKey(buf []byte, regionCode uint8, customerID uuid.UUID, dateStr string) []byte {
-	b := append(buf[:0], "ingress:day:"...)
+	buf = append(buf[:0], "ingress:day:"...)
 	if regionCode > 0 {
-		b = append(b, hexByte(regionCode>>4), hexByte(regionCode&0x0f), ':')
+		buf = append(buf, hexByte(regionCode>>4), hexByte(regionCode&0x0f), ':')
 	}
-	b = appendUUID(b, customerID)
-	b = append(b, ':')
-	b = append(b, dateStr...)
-	return b
+	buf = appendUUID(buf, customerID)
+	buf = append(buf, ':')
+	buf = append(buf, dateStr...)
+	return buf
 }
 
 func hexByte(n byte) byte {

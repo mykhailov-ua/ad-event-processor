@@ -42,12 +42,12 @@ func TestTopicRegistry(t *testing.T) {
 		t.Fatalf("expected topic-b, got %s", meta2.Name)
 	}
 
-	id1_again, err := registry.Register("topic-a")
+	id1Again, err := registry.Register("topic-a")
 	if err != nil {
 		t.Fatalf("failed to register topic-a again: %v", err)
 	}
-	if id1_again != id1 {
-		t.Fatalf("expected existing ID %d, got %d", id1, id1_again)
+	if id1Again != id1 {
+		t.Fatalf("expected existing ID %d, got %d", id1, id1Again)
 	}
 
 	_, found = registry.Lookup(999)

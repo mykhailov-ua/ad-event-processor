@@ -1,3 +1,4 @@
+// Package telemetry implements telemetry support for BidShard.
 package telemetry
 
 import (

@@ -1,3 +1,4 @@
+// Package adminapi registers JSON admin HTTP handlers for the control plane.
 package adminapi
 
 import (

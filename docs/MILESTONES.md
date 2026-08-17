@@ -95,11 +95,11 @@ go test -count=3 -run 'TestShard0Nil_|TestPingConnectedRedisShards' ./internal/c
 
 | Priority | Removed / fixed |
 | :--- | :--- |
-| P0 | Privacy Sandbox / CTV marketing claims; broken `scripts/deploy/*` refs; BPF path in DEVELOPMENT |
+| P0 | Privacy Sandbox / CTV marketing claims; BPF path in DEVELOPMENT |
 | P1 | `deploy/k8s/**`, `deploy/terraform/**`, orphan `deploy/management|payment/`, stale Prom targets |
 | P2 | `cmd/tracker-quic`; compose Advanced profiles; [FROZEN_FEATURES.md](FROZEN_FEATURES.md) |
 
-**k8s / k3s deployment path removed (2026-08):** scripts archived at `deploy/enterprise/archive/k8s/`; installer profile `k8s_k3s` and admin UI option removed. Appliance SKU uses `single_vps` only.
+**k8s / k3s deployment path removed (2026-08):** archive tree deleted; installer profile `k8s_k3s` and admin UI option removed. Appliance SKU uses `single_vps` only.
 
 ---
 
@@ -233,7 +233,7 @@ bash scripts/ops/verify_redis_topology.sh
 | :--- | :--- |
 | Shard 0 catch-up | `Shard0CatchupWorker`, `POST /api/v1/ops/shards/0/catchup` | [SHARDING_MILESTONE.md](SHARDING_MILESTONE.md) |
 | Redis 4-shard appliance | `redis-4`/`redis-5` behind compose profile; installer emits 4 masters | [ARCHITECTURE.md](ARCHITECTURE.md), `verify_redis_topology.sh` |
-| k8s/k3s CUT | Scripts archived `deploy/enterprise/archive/k8s/` | [CUT_CANDIDATES.md](CUT_CANDIDATES.md) |
+| k8s/k3s CUT | Archive tree removed | [CUT_CANDIDATES.md](CUT_CANDIDATES.md) |
 | Doctor probes | slot-map parity, listen backlog, license in CLI bundle | `ad-event-processor doctor` |
 | Local quanta + Redis SIGKILL | Budget invariant fault test | [EDGE_CASES.md](EDGE_CASES.md) |
 | Cold-path JSON limits | `pkg/coldpath` + `cold_path_json_gate.sh` | [COLD_PATH_JSON.md](COLD_PATH_JSON.md) |

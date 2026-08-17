@@ -51,7 +51,7 @@ func (h *FingerprintHandler) Drain(rd *ringbuf.Reader, idle time.Duration) (int,
 
 func decodeFingerprint(raw []byte) FingerprintEvent {
 	return FingerprintEvent{
-		TsNs:    binary.LittleEndian.Uint64(raw[0:8]),
+		TSNs:    binary.LittleEndian.Uint64(raw[0:8]),
 		SrcIP:   binary.LittleEndian.Uint32(raw[8:12]),
 		TCPHash: binary.LittleEndian.Uint32(raw[12:16]),
 		Window:  binary.LittleEndian.Uint16(raw[16:18]),

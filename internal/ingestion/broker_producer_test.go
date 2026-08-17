@@ -44,7 +44,7 @@ func TestBrokerProducer_ZeroAlloc(t *testing.T) {
 		Client:        mockCli,
 	})
 	require.NoError(t, err)
-	defer bp.Close()
+	defer func() { _ = bp.Close() }()
 
 	evt := domain.Event{
 		ClickID:     "018f3a5e-7a2b-7c1d-8e9f-0a1b2c3d4e5f",
@@ -81,7 +81,7 @@ func TestBrokerProducer_LatencySLA(t *testing.T) {
 		Client:        mockCli,
 	})
 	require.NoError(t, err)
-	defer bp.Close()
+	defer func() { _ = bp.Close() }()
 
 	evt := domain.Event{
 		ClickID:     "018f3a5e-7a2b-7c1d-8e9f-0a1b2c3d4e5f",
@@ -122,7 +122,7 @@ func TestBrokerProducer_EnqueueAndFlush(t *testing.T) {
 		Client:        mockCli,
 	})
 	require.NoError(t, err)
-	defer bp.Close()
+	defer func() { _ = bp.Close() }()
 
 	n := 25
 	for i := range n {
@@ -152,7 +152,7 @@ func TestBrokerProducer_StreamEventEnqueue(t *testing.T) {
 		Client:        mockCli,
 	})
 	require.NoError(t, err)
-	defer bp.Close()
+	defer func() { _ = bp.Close() }()
 
 	streamEvt := &pb.AdStreamEvent{
 		ClickId:       []byte("click-stream-1"),
@@ -181,7 +181,7 @@ func TestBrokerProducer_RingOverflow(t *testing.T) {
 		Client:        mockCli,
 	})
 	require.NoError(t, err)
-	defer bp.Close()
+	defer func() { _ = bp.Close() }()
 
 	evt := &domain.Event{
 		ClickID:   "c-1",
@@ -235,7 +235,7 @@ func BenchmarkTrackerToBroker(b *testing.B) {
 	if err != nil {
 		b.Fatalf("failed to create broker producer: %v", err)
 	}
-	defer bp.Close()
+	defer func() { _ = bp.Close() }()
 
 	evt := domain.Event{
 		ClickID:     "018f3a5e-7a2b-7c1d-8e9f-0a1b2c3d4e5f",

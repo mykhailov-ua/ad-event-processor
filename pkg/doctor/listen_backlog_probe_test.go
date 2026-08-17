@@ -10,13 +10,13 @@ import (
 )
 
 func TestListenBacklogProbe_pass(t *testing.T) {
-	reads := []TcpListenCounters{
+	reads := []TCPListenCounters{
 		{ListenOverflows: 10, ListenDrops: 2},
 		{ListenOverflows: 10, ListenDrops: 2},
 	}
 	idx := 0
 	probe := ListenBacklogProbe{
-		ReadCounters: func() (TcpListenCounters, error) {
+		ReadCounters: func() (TCPListenCounters, error) {
 			c := reads[idx]
 			idx++
 			return c, nil
@@ -29,13 +29,13 @@ func TestListenBacklogProbe_pass(t *testing.T) {
 }
 
 func TestListenBacklogProbe_warnOnDelta(t *testing.T) {
-	reads := []TcpListenCounters{
+	reads := []TCPListenCounters{
 		{ListenOverflows: 10, ListenDrops: 2},
 		{ListenOverflows: 12, ListenDrops: 5},
 	}
 	idx := 0
 	probe := ListenBacklogProbe{
-		ReadCounters: func() (TcpListenCounters, error) {
+		ReadCounters: func() (TCPListenCounters, error) {
 			c := reads[idx]
 			idx++
 			return c, nil

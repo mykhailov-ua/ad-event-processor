@@ -1,3 +1,4 @@
+// Package loadreport implements loadreport support for BidShard.
 package loadreport
 
 import (

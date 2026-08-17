@@ -716,7 +716,7 @@ Zero-alloc gate: `TestUnifiedFilter_Check_zeroAlloc_localQuantaFullSkip` (run wi
 | :--- | :--- |
 | [NAMING.md](NAMING.md) | **BidShard** (public) vs **ad-event-processor** (internal); **espx** removed |
 | [MILESTONES.md](MILESTONES.md) | **Closed** milestones (broker, parser, shard 0, GA P0/P1, admin SPA, naming, operability) |
-| `.cursor/MILESTONE.md` | **Open** backlog — UI §1 (DoD/SLA/tests), ops gates §0, enterprise §2, CUT §3 |
+| `.cursor/MILESTONE.md` | **Open** backlog (single file) — §1 CPA admin, §8 Licensing, §9 RP, §10 GMA, ops §0, CUT §2 |
 | [SHARDING_MILESTONE.md](SHARDING_MILESTONE.md) | Shard 0 failure matrix + automated catch-up runbook |
 | [PEL_DRAIN.md](PEL_DRAIN.md) | Broker cutover operator checklist |
 | [CUT_CANDIDATES.md](CUT_CANDIDATES.md) | CUT / FREEZE / KEEP inventory for appliance SKU |

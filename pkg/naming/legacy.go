@@ -1,3 +1,4 @@
+// Package naming implements naming support for BidShard.
 package naming
 
 // DeprecatedVendorEnvPrefix is the legacy vendor env prefix (split for naming lint).
@@ -40,7 +41,7 @@ func DeprecatedBPFProgramPrefix() string {
 	return DeprecatedStackSlug() + "_"
 }
 
-// DeprecatedRedisKeyPrefix is the canonical Redis coordination prefix.
+// RedisKeyPrefix is the canonical Redis coordination prefix.
 func RedisKeyPrefix() string {
 	return "ad_event_processor"
 }

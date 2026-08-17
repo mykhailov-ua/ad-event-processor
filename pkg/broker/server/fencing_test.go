@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -37,8 +38,7 @@ func TestFault_StaleLeaderFencingRejected(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	s := NewServer("127.0.0.1:0", dir, 10*1024*1024, 4096)
 	if err := s.Start(); err != nil {
 		t.Fatal(err)
@@ -74,7 +74,7 @@ func TestFault_StaleLeaderFencingRejected(t *testing.T) {
 	if err := cli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	if _, err := cli.Produce(context.Background(), topic, 0, []byte("live-leader")); err != nil {
 		t.Fatalf("produce on live leader failed: %v", err)
@@ -85,7 +85,7 @@ func TestFault_StaleLeaderFencingRejected(t *testing.T) {
 	}
 	coord.setLeaderState(pk, true, epoch, true)
 
-	if _, err := pl.AppendFenced(epoch, []byte("stale-direct")); err != log.ErrStaleFencingEpoch {
+	if _, err := pl.AppendFenced(epoch, []byte("stale-direct")); !errors.Is(err, log.ErrStaleFencingEpoch) {
 		t.Fatalf("expected direct stale fencing rejection, got %v", err)
 	}
 

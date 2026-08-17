@@ -1,3 +1,4 @@
+// Package fraud scores traffic with LightGBM and isolation-forest models.
 package fraud
 
 import (

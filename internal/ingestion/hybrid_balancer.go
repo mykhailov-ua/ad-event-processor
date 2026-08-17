@@ -151,11 +151,12 @@ func buildHybridWeightMap(campaigns []*CampaignMeta, raw []float64) map[uuid.UUI
 			continue
 		}
 		scaled := w * 1000
-		if scaled > float64(math.MaxUint32) {
+		switch {
+		case scaled > float64(math.MaxUint32):
 			out[c.ID] = math.MaxUint32
-		} else if scaled < 1 {
+		case scaled < 1:
 			out[c.ID] = 1
-		} else {
+		default:
 			out[c.ID] = uint32(scaled)
 		}
 	}

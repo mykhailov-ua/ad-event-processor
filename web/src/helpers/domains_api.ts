@@ -21,6 +21,20 @@ export type DomainSSLSetupResult = {
   output?: string;
 };
 
+export type ParkDomainRequest = {
+  domain: string;
+  cloudflare_zone_id: string;
+  pool_id?: string;
+};
+
+export type ParkDomainResponse = {
+  success: boolean;
+  dns_record_id: string;
+  ssl_status: string;
+  hostname?: string;
+  pool_id?: string;
+};
+
 export async function fetchDomains(): Promise<DomainHealthRow[]> {
   const res = await api<DomainHealthRow[]>('/api/v1/domains');
   return Array.isArray(res.data) ? res.data : [];
@@ -54,6 +68,18 @@ export async function setupDomainSSL(hostname: string): Promise<DomainSSLSetupRe
     { method: 'POST' },
   );
   return res.data;
+}
+
+export async function parkDomain(req: ParkDomainRequest): Promise<ParkDomainResponse> {
+  const res = await apiConfirmed<ParkDomainResponse>('/api/v1/domains/park', {
+    method: 'POST',
+    body: JSON.stringify(req),
+  });
+  return res.data ?? {
+    success: false,
+    dns_record_id: '',
+    ssl_status: '',
+  };
 }
 
 export function healthStatusLabel(status: string): string {

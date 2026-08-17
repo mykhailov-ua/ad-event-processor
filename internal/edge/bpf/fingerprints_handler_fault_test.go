@@ -150,7 +150,7 @@ func TestFault_FingerprintDecodeOverflowFields(t *testing.T) {
 	raw := encodeFingerprintSample(^uint64(0), ^uint32(0), ^uint32(0), ^uint16(0), 255, 255)
 	evt := decodeFingerprint(raw)
 
-	assert.Equal(t, ^uint64(0), evt.TsNs)
+	assert.Equal(t, ^uint64(0), evt.TSNs)
 	assert.Equal(t, ^uint32(0), evt.SrcIP)
 	assert.Equal(t, ^uint32(0), evt.TCPHash)
 	assert.Equal(t, ^uint16(0), evt.Window)

@@ -1,6 +1,8 @@
 package ingestion
 
 import (
+	"context"
+
 	"github.com/bidshard/ad-event-processor/internal/domain"
 )
 
@@ -13,11 +15,11 @@ func eventTypeUsesBrandLanding(eventType string) bool {
 	}
 }
 
-func ResolveLandingURL(registry domain.CampaignRegistry, store *BrandCreativeStore, evt *domain.Event) string {
-	return unsafeString(ResolveLandingURLBytes(registry, store, evt))
+func ResolveLandingURL(ctx context.Context, registry domain.CampaignRegistry, store *BrandCreativeStore, evt *domain.Event) string {
+	return unsafeString(ResolveLandingURLBytes(ctx, registry, store, evt))
 }
 
-func ResolveLandingURLBytes(registry domain.CampaignRegistry, store *BrandCreativeStore, evt *domain.Event) []byte {
+func ResolveLandingURLBytes(ctx context.Context, registry domain.CampaignRegistry, store *BrandCreativeStore, evt *domain.Event) []byte {
 	if store == nil || registry == nil || !eventTypeUsesBrandLanding(evt.Type) {
 		return nil
 	}
@@ -25,5 +27,5 @@ func ResolveLandingURLBytes(registry domain.CampaignRegistry, store *BrandCreati
 	if !ok || camp.BrandID == nil {
 		return nil
 	}
-	return store.SelectLandingURLBytes(*camp.BrandID, evt.UserID, evt)
+	return store.SelectLandingURLBytes(ctx, *camp.BrandID, evt.UserID, evt)
 }

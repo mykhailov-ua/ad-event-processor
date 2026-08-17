@@ -17,6 +17,9 @@ import type { CustomerDTO, TaxProfileDTO } from '../types/api/customer.js';
 import type { WalletBalanceDTO } from '../types/api/billing.js';
 import { createSortState, sortRows, toggleSort } from '../lib/table_sort.js';
 import { CustomerApiKeysSection } from '../components/customer_api_keys_section.js';
+import { BillingForecastWidget } from '../components/billing_forecast_widget.js';
+import { BillingStatementPanel } from '../components/billing_statement_panel.js';
+import { BillingPaymentHistoryPanel } from '../components/billing_payment_history_panel.js';
 import { useResource } from '../hooks/use_resource.js';
 import { Breadcrumbs } from '../components/breadcrumbs.js';
 import { Button, ButtonLink } from '../components/button.js';
@@ -338,6 +341,15 @@ export function CustomerDetailPage() {
           </div>
         ) : null}
       </section>
+
+      <BillingForecastWidget customerId={id} />
+
+      {can(user?.permissions ?? [], 'customers:read') ? (
+        <div className="stack section-block">
+          <BillingStatementPanel customerId={id} />
+          <BillingPaymentHistoryPanel customerId={id} />
+        </div>
+      ) : null}
 
       <section className="section-block">
         <div className="flex items-center gap-2 mb-3">

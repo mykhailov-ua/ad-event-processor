@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -63,7 +64,7 @@ func (r *Replayer) Replay(ctx context.Context) (*ReplayResult, error) {
 	hasher := sha256.New()
 
 	for _, partDir := range partDirs {
-		partLog, err := blog.NewPartitionLog(partDir, 1024*1024*1024, 4096)
+		partLog, err := blog.NewPartitionLog(ctx, partDir, 1024*1024*1024, 4096)
 		if err != nil {
 			slog.Warn("failed to open partition log", "dir", partDir, "error", err)
 			continue
@@ -80,7 +81,7 @@ func (r *Replayer) Replay(ctx context.Context) (*ReplayResult, error) {
 
 			payload, bufPtr, readErr := partLog.ReadRawMessages(offset, 1024*1024)
 			if readErr != nil {
-				if readErr == io.EOF {
+				if errors.Is(readErr, io.EOF) {
 					break
 				}
 				slog.Warn("error reading raw messages from partition", "dir", partDir, "offset", offset, "error", readErr)

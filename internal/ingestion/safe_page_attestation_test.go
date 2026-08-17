@@ -17,7 +17,11 @@ func TestSafePageAttestation_webrtcLeakDesktop(t *testing.T) {
 	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
 		remoteIP: "8.8.8.8",
 		fingerprint: safePageVerifyFingerprint{
-			Mobile: false,
+			Mobile:                 false,
+			CanvasHash:             testCanvasHash64,
+			AudioHash:              testAudioHash64,
+			NotificationPermission: "denied",
+			NotificationQuery:      "denied",
 		},
 	})
 	require.True(t, fail)
@@ -28,8 +32,12 @@ func TestSafePageAttestation_webrtcPublicMatchesRemote(t *testing.T) {
 	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
 		remoteIP: "8.8.8.8",
 		fingerprint: safePageVerifyFingerprint{
-			WebRTCLocalIP: "8.8.8.8",
-			Mobile:        false,
+			WebRTCLocalIP:          "8.8.8.8",
+			Mobile:                 false,
+			CanvasHash:             testCanvasHash64,
+			AudioHash:              testAudioHash64,
+			NotificationPermission: "denied",
+			NotificationQuery:      "denied",
 		},
 	})
 	require.True(t, fail)
@@ -40,9 +48,13 @@ func TestSafePageAttestation_timezoneMismatch(t *testing.T) {
 	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
 		country: "US",
 		fingerprint: safePageVerifyFingerprint{
-			Timezone:      "Europe/Moscow",
-			WebRTCLocalIP: "192.168.1.5",
-			Mobile:        true,
+			Timezone:               "Europe/Moscow",
+			WebRTCLocalIP:          "192.168.1.5",
+			Mobile:                 true,
+			CanvasHash:             testCanvasHash64,
+			AudioHash:              testAudioHash64,
+			NotificationPermission: "denied",
+			NotificationQuery:      "denied",
 		},
 		nowUnix: time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC).Unix(),
 	})
@@ -53,9 +65,13 @@ func TestSafePageAttestation_timezoneMismatch(t *testing.T) {
 func TestSafePageAttestation_webglAutomation(t *testing.T) {
 	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
 		fingerprint: safePageVerifyFingerprint{
-			WebGLRenderer: "Google SwiftShader",
-			WebRTCLocalIP: "10.0.0.2",
-			Mobile:        true,
+			WebGLRenderer:          "Google SwiftShader",
+			WebRTCLocalIP:          "10.0.0.2",
+			Mobile:                 true,
+			CanvasHash:             testCanvasHash64,
+			AudioHash:              testAudioHash64,
+			NotificationPermission: "denied",
+			NotificationQuery:      "denied",
 		},
 	})
 	require.True(t, fail)
@@ -66,19 +82,19 @@ func TestSafePageVerify_WebRTCLeak_SafeView(t *testing.T) {
 	h, cid := testSafePageVerifyHandler(t)
 	h.trackProc.ingestGeo = &staticGeoProvider{country: "US"}
 
-	events := make([]safePageVerifyEvent, 18)
-	for i := range events {
-		events[i] = safePageVerifyEvent{T: "mousemove", TS: int64(i)}
-	}
 	body, err := json.Marshal(safePageVerifyRequest{
 		CampaignID: cid.String(),
-		Events:     events,
+		Events:     humanMouseEvents(18),
 		Fingerprint: safePageVerifyFingerprint{
-			UA:        "Mozilla/5.0",
-			Lang:      "en",
-			Languages: []string{"en"},
-			Timezone:  "America/New_York",
-			Mobile:    false,
+			UA:                     "Mozilla/5.0",
+			Lang:                   "en",
+			Languages:              []string{"en"},
+			Timezone:               "America/New_York",
+			Mobile:                 false,
+			CanvasHash:             testCanvasHash64,
+			AudioHash:              testAudioHash64,
+			NotificationPermission: "denied",
+			NotificationQuery:      "denied",
 		},
 	})
 	require.NoError(t, err)
@@ -104,21 +120,13 @@ func TestSafePageVerify_TimezoneMismatch_SafeView(t *testing.T) {
 	h, cid := testSafePageVerifyHandler(t)
 	h.trackProc.ingestGeo = &staticGeoProvider{country: "US"}
 
-	events := make([]safePageVerifyEvent, 18)
-	for i := range events {
-		events[i] = safePageVerifyEvent{T: "mousemove", TS: int64(i)}
-	}
+	fp := validAdvancedFingerprint()
+	fp.Timezone = "Europe/Moscow"
+	fp.WebRTCLocalIP = "10.0.0.4"
 	body, err := json.Marshal(safePageVerifyRequest{
-		CampaignID: cid.String(),
-		Events:     events,
-		Fingerprint: safePageVerifyFingerprint{
-			UA:            "Mozilla/5.0",
-			Lang:          "en",
-			Languages:     []string{"en"},
-			Timezone:      "Europe/Moscow",
-			WebRTCLocalIP: "10.0.0.4",
-			Mobile:        true,
-		},
+		CampaignID:  cid.String(),
+		Events:      humanMouseEvents(18),
+		Fingerprint: fp,
 	})
 	require.NoError(t, err)
 
@@ -142,21 +150,10 @@ func TestSafePageVerify_cleanMoneyPage(t *testing.T) {
 	h, cid := testSafePageVerifyHandler(t)
 	h.trackProc.ingestGeo = &staticGeoProvider{country: "US"}
 
-	events := make([]safePageVerifyEvent, 18)
-	for i := range events {
-		events[i] = safePageVerifyEvent{T: "mousemove", TS: int64(i)}
-	}
 	body, err := json.Marshal(safePageVerifyRequest{
-		CampaignID: cid.String(),
-		Events:     events,
-		Fingerprint: safePageVerifyFingerprint{
-			UA:            "Mozilla/5.0",
-			Lang:          "en",
-			Languages:     []string{"en"},
-			Timezone:      "America/New_York",
-			WebRTCLocalIP: "192.168.1.10",
-			Mobile:        true,
-		},
+		CampaignID:  cid.String(),
+		Events:      humanMouseEvents(18),
+		Fingerprint: validAdvancedFingerprint(),
 	})
 	require.NoError(t, err)
 

@@ -1,4 +1,4 @@
-// Click reverse-proxy delivery (RP-M3). Upstream dials and io.Copy run on the
+// Package ingestion provides click reverse-proxy delivery (RP-M3). Upstream dials and io.Copy run on the
 // pinned worker thread (never the gnet reactor). harness: click_proxy_stream
 package ingestion
 
@@ -92,7 +92,7 @@ func (h *AdsPacketHandler) clickProxyDeliver(c gnet.Conn, ctx *connContext, job 
 
 	reqCtx, cancel := context.WithTimeout(context.Background(), clickProxyTotalTimeout)
 	defer cancel()
-	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, finalURL, nil)
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, finalURL, http.NoBody)
 	if err != nil {
 		h.write(c, respProxyBadGateway, ctx)
 		h.recordMetrics(job.startMono, http.StatusBadGateway)
@@ -120,7 +120,7 @@ func (h *AdsPacketHandler) clickProxyDeliver(c gnet.Conn, ctx *connContext, job 
 		metrics.ClickProxyErrorsTotal.Inc()
 		return gnet.None
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	hdr, ok := buildProxyResponseHeader(resp, clickProxyMaxHeaderBytes)
 	if !ok {
@@ -203,7 +203,6 @@ func buildProxyResponseHeader(resp *http.Response, maxBytes int) ([]byte, bool) 
 	b.WriteString("HTTP/1.1 ")
 	b.WriteString(resp.Status)
 	b.WriteString("\r\n")
-	n := b.Len()
 	for k, vals := range resp.Header {
 		lk := strings.ToLower(k)
 		if _, hop := clickProxyHopByHop[lk]; hop {
@@ -214,8 +213,7 @@ func buildProxyResponseHeader(resp *http.Response, maxBytes int) ([]byte, bool) 
 			b.WriteString(": ")
 			b.WriteString(v)
 			b.WriteString("\r\n")
-			n = b.Len()
-			if n > maxBytes {
+			if b.Len() > maxBytes {
 				return nil, false
 			}
 		}

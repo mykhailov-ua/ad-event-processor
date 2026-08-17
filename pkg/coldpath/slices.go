@@ -1,11 +1,63 @@
 package coldpath
 
+// Ptr returns a pointer to v. Useful in tests and optional API fields.
+func Ptr[T any](v T) *T {
+	return &v
+}
+
 func MapSlice[T, R any](in []T, fn func(T) R) []R {
 	out := make([]R, len(in))
 	for i, v := range in {
 		out[i] = fn(v)
 	}
 	return out
+}
+
+// Contains reports whether v is present in slice.
+func Contains[T comparable](slice []T, v T) bool {
+	for _, item := range slice {
+		if item == v {
+			return true
+		}
+	}
+	return false
+}
+
+// FilterSlice returns elements for which keep returns true.
+func FilterSlice[T any](in []T, keep func(T) bool) []T {
+	out := make([]T, 0, len(in))
+	for _, v := range in {
+		if keep(v) {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
+// UniqueSlice returns the first occurrence of each non-zero value in order.
+func UniqueSlice[T comparable](in []T) []T {
+	var zero T
+	seen := make(map[T]struct{}, len(in))
+	out := make([]T, 0, len(in))
+	for _, v := range in {
+		if v == zero {
+			continue
+		}
+		if _, ok := seen[v]; ok {
+			continue
+		}
+		seen[v] = struct{}{}
+		out = append(out, v)
+	}
+	return out
+}
+
+// AppendUnique appends v when it is not already in slice.
+func AppendUnique[T comparable](slice []T, v T) []T {
+	if Contains(slice, v) {
+		return slice
+	}
+	return append(slice, v)
 }
 
 func KeyBy[T any, K comparable](slice []T, key func(T) (K, bool)) map[K]T {

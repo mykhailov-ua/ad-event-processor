@@ -29,6 +29,16 @@ function _M.record_and_forward()
     elseif ngx.var.ssl_cipher and ngx.var.ssl_cipher ~= "" then
         ngx.req.set_header("X-TLS-Hash", ngx.var.ssl_protocol .. ":" .. ngx.var.ssl_cipher)
     end
+
+    local tls_ja3 = ngx.ctx.tls_ja3
+    if tls_ja3 and tls_ja3 ~= "" then
+        ngx.req.set_header("X-TLS-JA3", tls_ja3)
+    end
+
+    local tls_ja4 = ngx.ctx.tls_ja4
+    if tls_ja4 and tls_ja4 ~= "" then
+        ngx.req.set_header("X-TLS-JA4", tls_ja4)
+    end
 end
 
 return _M

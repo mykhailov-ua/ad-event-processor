@@ -1,3 +1,4 @@
+// Package proxyupstream implements proxyupstream support for BidShard.
 package proxyupstream
 
 import (
@@ -7,6 +8,7 @@ import (
 	"net"
 	"net/url"
 	"strings"
+	"time"
 )
 
 var (
@@ -70,12 +72,11 @@ func ValidateURL(ctx context.Context, raw string, allowHTTP bool) error {
 		}
 		return nil
 	}
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	addrs, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+	lookupCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	addrs, err := net.DefaultResolver.LookupIPAddr(lookupCtx, host)
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrLookupFailed, err)
+		return fmt.Errorf("%w: %w", ErrLookupFailed, err)
 	}
 	if len(addrs) == 0 {
 		return fmt.Errorf("%w: no addresses for %q", ErrLookupFailed, host)

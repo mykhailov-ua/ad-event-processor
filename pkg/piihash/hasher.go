@@ -1,3 +1,4 @@
+// Package piihash implements piihash support for BidShard.
 package piihash
 
 import (

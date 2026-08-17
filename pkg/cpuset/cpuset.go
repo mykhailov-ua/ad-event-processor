@@ -1,3 +1,4 @@
+// Package cpuset implements cpuset support for BidShard.
 package cpuset
 
 import (

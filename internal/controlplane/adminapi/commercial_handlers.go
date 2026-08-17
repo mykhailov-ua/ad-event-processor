@@ -110,6 +110,7 @@ type CommercialAdminService interface {
 	DeleteAdsTxtEntry(ctx context.Context, id int64) error
 	BuildSellersJSON(ctx context.Context) ([]byte, error)
 	BuildAdsTxt(ctx context.Context) (string, error)
+	ValidateSupplyFiles(ctx context.Context) (SupplyValidationDTO, error)
 	SupplyExportPath() string
 }
 
@@ -117,6 +118,7 @@ type CommercialHTTPHandlers struct {
 	Commercial              CommercialAdminService
 	ApplyRateLimit          func(http.HandlerFunc) http.HandlerFunc
 	RequirePermission       func(string, http.HandlerFunc) http.HandlerFunc
+	RequireAnyPermission    func([]string, http.HandlerFunc) http.HandlerFunc
 	AuthorizeCustomerAccess func(*http.Request, string) error
 	WriteServiceError       func(http.ResponseWriter, error)
 }
@@ -127,11 +129,15 @@ func (h *CommercialHTTPHandlers) Register(mux *http.ServeMux) {
 	}
 	limit := h.ApplyRateLimit
 	perm := h.RequirePermission
+	permAny := h.RequireAnyPermission
 	if limit == nil {
 		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 	if perm == nil {
 		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
+	}
+	if permAny == nil {
+		permAny = func(_ []string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 
 	mux.HandleFunc("GET /api/v1/brands", limit(perm("campaigns:read", h.listBrands)))
@@ -151,6 +157,7 @@ func (h *CommercialHTTPHandlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/v1/supply/ads-txt/{id}", limit(perm("settings:write", h.deleteAdsTxt)))
 	mux.HandleFunc("GET /api/v1/supply/preview/sellers.json", limit(perm("settings:read", h.previewSellersJSON)))
 	mux.HandleFunc("GET /api/v1/supply/preview/ads.txt", limit(perm("settings:read", h.previewAdsTxt)))
+	mux.HandleFunc("GET /api/v1/supply/validation", limit(permAny([]string{"settings:read", "supply:read:scoped"}, h.getSupplyValidation)))
 	mux.HandleFunc("GET /api/v1/supply/export-path", limit(perm("settings:read", h.getExportPath)))
 }
 
@@ -434,6 +441,15 @@ func (h *CommercialHTTPHandlers) previewAdsTxt(w http.ResponseWriter, r *http.Re
 
 func (h *CommercialHTTPHandlers) getExportPath(w http.ResponseWriter, r *http.Request) {
 	httpresponse.JSON(w, http.StatusOK, SupplyExportPathDTO{Path: h.Commercial.SupplyExportPath()})
+}
+
+func (h *CommercialHTTPHandlers) getSupplyValidation(w http.ResponseWriter, r *http.Request) {
+	report, err := h.Commercial.ValidateSupplyFiles(r.Context())
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, report)
 }
 
 func (h *CommercialHTTPHandlers) writeServiceError(w http.ResponseWriter, err error) {

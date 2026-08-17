@@ -44,7 +44,7 @@ func TestFault_ProcessorWeightDrain(t *testing.T) {
 	}, slowGate, nil)
 	slowDrain.SetWeightForTest(0.75)
 	slowGate.recordWait(20 * time.Millisecond)
-	slowDrain.refresh()
+	slowDrain.refresh(context.Background())
 	assert.InDelta(t, 0.05, slowDrain.LocalWeight(), 0.001)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)

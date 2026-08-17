@@ -46,7 +46,7 @@ func h2EncodeInt(dst []byte, off int, value int, prefixBits byte, prefixMask byt
 	if off >= len(dst) {
 		return off
 	}
-	dst[off] = dst[off] | prefixMask
+	dst[off] |= prefixMask
 	off++
 	value -= int(prefixMask)
 	for value >= 0x80 {

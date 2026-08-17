@@ -1,6 +1,7 @@
 package ingestion
 
 import (
+	"context"
 	"testing"
 
 	"github.com/bidshard/ad-event-processor/internal/domain"
@@ -39,6 +40,6 @@ func TestResolveLandingURLBytes_TgClick(t *testing.T) {
 		CampaignID: campID,
 		UserID:     "u1",
 	}
-	got := ResolveLandingURLBytes(&mockRegistry{}, store, evt)
+	got := ResolveLandingURLBytes(context.Background(), &mockRegistry{}, store, evt)
 	require.Equal(t, []byte("https://offer.example/lp"), got)
 }

@@ -19,8 +19,7 @@ func TestPartialFrame_ReadIdleClosesSlowDrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	s := NewServer("127.0.0.1:0", dir, 10*1024*1024, 4096)
 	s.SetConnReadIdle(2 * time.Second)
 	s.SetConnMaxLifetime(60 * time.Second)
@@ -36,7 +35,7 @@ func TestPartialFrame_ReadIdleClosesSlowDrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	done := make(chan struct{})
 	go func() {
@@ -71,8 +70,7 @@ func TestPartialFrame_ReadIdleClosesAfterSingleByte(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	s := NewServer("127.0.0.1:0", dir, 10*1024*1024, 4096)
 	s.SetConnReadIdle(1 * time.Second)
 	s.SetConnMaxLifetime(60 * time.Second)
@@ -87,7 +85,7 @@ func TestPartialFrame_ReadIdleClosesAfterSingleByte(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	if _, err := conn.Write([]byte{0x00, 0x00, 0x00, 0x10}); err != nil {
 		t.Fatal(err)
@@ -108,8 +106,7 @@ func TestPartialFrame_ReadIdle_IncrementsMetric(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	before := testutil.ToFloat64(metrics.BrokerConnIdleCloseTotal.WithLabelValues("read_idle"))
 
 	s := NewServer("127.0.0.1:0", dir, 10*1024*1024, 4096)
@@ -126,7 +123,7 @@ func TestPartialFrame_ReadIdle_IncrementsMetric(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	done := make(chan struct{})
 	go func() {
@@ -163,8 +160,7 @@ func TestMaxConnLifetime_ClosesPartialFrame(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	before := testutil.ToFloat64(metrics.BrokerConnIdleCloseTotal.WithLabelValues("max_lifetime"))
 
 	s := NewServer("127.0.0.1:0", dir, 10*1024*1024, 4096)
@@ -181,7 +177,7 @@ func TestMaxConnLifetime_ClosesPartialFrame(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	done := make(chan struct{})
 	go func() {
@@ -217,8 +213,7 @@ func TestPartialFrame_ProgressResetsReadIdle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	s := NewServer("127.0.0.1:0", dir, 10*1024*1024, 4096)
 	s.SetConnReadIdle(2 * time.Second)
 	if err := s.Start(); err != nil {
@@ -232,7 +227,7 @@ func TestPartialFrame_ProgressResetsReadIdle(t *testing.T) {
 	if err := cli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	if _, err := cli.Produce(context.Background(), "idle-reset-topic", 0, []byte("payload")); err != nil {
 		t.Fatal(err)

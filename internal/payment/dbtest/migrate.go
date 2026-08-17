@@ -1,3 +1,4 @@
+// Package dbtest provides payment database test helpers.
 package dbtest
 
 import (

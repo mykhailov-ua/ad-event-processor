@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/database"
@@ -15,15 +14,16 @@ import (
 )
 
 type TrafficSourceRowDTO struct {
-	Channel      string  `json:"channel"`
-	Impressions  int64   `json:"impressions"`
-	Clicks       int64   `json:"clicks"`
-	Conversions  int64   `json:"conversions"`
-	SpendMicro   int64   `json:"spend_micro"`
-	RevenueMicro int64   `json:"revenue_micro"`
-	ProfitMicro  int64   `json:"profit_micro"`
-	ROIPct       float64 `json:"roi_pct"`
-	CTR          float64 `json:"ctr"`
+	Channel      string               `json:"channel"`
+	Impressions  int64                `json:"impressions"`
+	Clicks       int64                `json:"clicks"`
+	Conversions  int64                `json:"conversions"`
+	SpendMicro   int64                `json:"spend_micro"`
+	RevenueMicro int64                `json:"revenue_micro"`
+	ProfitMicro  int64                `json:"profit_micro"`
+	ROIPct       float64              `json:"roi_pct"`
+	CTR          float64              `json:"ctr"`
+	Compare      *ReportCompareDeltas `json:"compare,omitempty"`
 }
 
 type TrafficSourcesReportResponse struct {
@@ -119,13 +119,7 @@ func (reports *ReportsHTTPHandlers) getTrafficSourcesReport(w http.ResponseWrite
 		reports.writeServiceError(w, err)
 		return
 	}
-	limit := int32(50)
-	if lStr := r.URL.Query().Get("limit"); lStr != "" {
-		if l, parseErr := strconv.Atoi(lStr); parseErr == nil && l > 0 {
-			limit = int32(l)
-		}
-	}
-	page, err := coldpath.Paginate(r.URL.Query().Get("cursor"), int(limit), 1000)
+	page, err := coldpath.ParseCursorPagination(r, 50, 1000)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid cursor")
 		return
@@ -148,6 +142,15 @@ func (reports *ReportsHTTPHandlers) getTrafficSourcesReport(w http.ResponseWrite
 	if err != nil {
 		reports.writeServiceError(w, err)
 		return
+	}
+	if parseComparePrevious(r) {
+		prevFrom, prevTo := previousReportRange(from, to)
+		prevRows, _, perr := queryTrafficSourceRows(chCtx, reports.CHQuery, campaignIDs, prevFrom, prevTo, page.Limit, page.Offset)
+		if perr != nil {
+			reports.writeServiceError(w, perr)
+			return
+		}
+		attachTrafficCompareDeltas(rows, prevRows)
 	}
 	var nextCursor string
 	if int64(page.Offset)+int64(len(rows)) < total {

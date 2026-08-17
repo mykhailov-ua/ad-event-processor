@@ -14,10 +14,11 @@ var (
 	ErrChargebackExceedsTopup             = errors.New("chargeback exceeds settled topup")
 	ErrChargebackReversalExceedsWithdrawn = errors.New("chargeback reversal exceeds withdrawn amount")
 
-	ErrCampaignNotFound = errors.New("campaign not found")
-	ErrBrandNotFound    = errors.New("brand not found")
-	ErrCreativeNotFound = errors.New("creative not found")
-	ErrTemplateNotFound = errors.New("template not found")
+	ErrCampaignNotFound   = errors.New("campaign not found")
+	ErrBrandNotFound      = errors.New("brand not found")
+	ErrCreativeNotFound   = errors.New("creative not found")
+	ErrTemplateNotFound   = errors.New("template not found")
+	ErrTeamMemberNotFound = errors.New("team member not found")
 
 	ErrInsufficientBalance              = errors.New("insufficient balance")
 	ErrBrandBelongsToAnotherCustomer    = errors.New("brand belongs to another customer")

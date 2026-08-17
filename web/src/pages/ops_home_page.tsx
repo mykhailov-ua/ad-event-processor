@@ -35,6 +35,7 @@ import {
 import { connectOpsLiveFeed } from '../helpers/ops_live_feed.js';
 import { fetchBillingInvariant } from '../helpers/billing_admin_api.js';
 import { fetchOpsDlqPage, isOpsDlqEntryRetryable, retryOpsDlq } from '../helpers/ops_dlq_api.js';
+import { reloadRoles } from '../helpers/ops_compliance_api.js';
 import { ConfirmCancelledError } from '../helpers/confirm_ui.js';
 import { formatAmountMicro } from '../helpers/money.js';
 import { AlertBanner } from '../components/alert_banner.js';
@@ -118,6 +119,7 @@ export function OpsHomePage() {
   const canShardsWrite = can(user?.permissions ?? [], 'shards:write');
   const canShardsRead = can(user?.permissions ?? [], 'shards:read');
   const canBillingRead = can(user?.permissions ?? [], 'customers:read');
+  const canSettingsWrite = can(user?.permissions ?? [], 'settings:write');
 
   const [tab, setTab] = useState<OpsTab>('overview');
   const [loading, setLoading] = useState(true);
@@ -155,6 +157,7 @@ export function OpsHomePage() {
   const dlqGuardRef = useRef(createGenerationGuard());
   const bundleGateRef = useRef(createInFlightGuard());
   const [bundleBusy, setBundleBusy] = useState(false);
+  const [rolesReloading, setRolesReloading] = useState(false);
   const destroyedRef = useRef(false);
   const tabRef = useRef(tab);
   tabRef.current = tab;
@@ -538,6 +541,30 @@ export function OpsHomePage() {
         />
       ) : null}
 
+      {incidents?.stale_dashboard ? (
+        <section className="section-block" data-testid="ops-stale-dashboard">
+          <AlertBanner
+            variant="warning"
+            dismissKey="ops.stale-dashboard"
+            message="ClickHouse dashboards are stale — campaign KPIs may lag behind Postgres."
+          />
+          {incidents.affected_campaigns && incidents.affected_campaigns.length > 0 ? (
+            <div className="mt-3">
+              <h2 className="subsection-title">Affected campaigns</h2>
+              <ul className="text-sm">
+                {incidents.affected_campaigns.slice(0, 12).map((c) => (
+                  <li key={c.campaign_id}>
+                    <a href={`/campaigns/${encodeURIComponent(c.campaign_id)}`} className="font-mono">
+                      {c.name ? `${c.name} (${c.campaign_id})` : c.campaign_id}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
       {loading ? <span className="text-muted">Loading…</span> : null}
 
       {!loading && summary ? (
@@ -745,6 +772,39 @@ export function OpsHomePage() {
         </section>
       ) : null}
 
+      {tab === 'overview' && canSettingsWrite ? (
+        <section className="section-block" data-testid="ops-danger-zone">
+          <h2 className="subsection-title">Danger zone</h2>
+          <p className="text-muted text-sm mb-3">
+            Reload RBAC role definitions from disk. Requires operator confirmation.
+          </p>
+          <Button
+            label={rolesReloading ? 'Reloading…' : 'Reload RBAC'}
+            variant="secondary"
+            size="sm"
+            icon="refresh-cw"
+            data-testid="roles-reload"
+            loading={rolesReloading}
+            disabled={rolesReloading}
+            onClick={() => void (async () => {
+              setRolesReloading(true);
+              try {
+                const res = await reloadRoles();
+                pushToastMessage({
+                  title: 'RBAC reloaded',
+                  message: res.path ? `Loaded ${res.path}` : res.status,
+                });
+              } catch (e) {
+                if (e instanceof ConfirmCancelledError) return;
+                pushToastMessage({ title: 'Reload failed', message: mapServiceError(e).message });
+              } finally {
+                setRolesReloading(false);
+              }
+            })()}
+          />
+        </section>
+      ) : null}
+
       {tab === 'outbox' ? (
         <div className="section-block">
           <div className="mb-4">
@@ -813,6 +873,11 @@ export function OpsHomePage() {
 
       {tab === 'dlq' ? (
         <div className="section-block" data-testid="ops-dlq-tab">
+          <div className="row gap-sm items-center mb-4">
+            <a href="/ops/dlq" className="text-muted text-sm" data-testid="ops-dlq-full-inbox-link">
+              Full DLQ inbox →
+            </a>
+          </div>
           {dlqPartialErrors.length > 0 ? (
             <div className="stub-banner mb-4">
               {`Partial shard errors: ${dlqPartialErrors.map((e) => `${e.source ?? '?'} (${e.code ?? 'err'})`).join('; ')}`}

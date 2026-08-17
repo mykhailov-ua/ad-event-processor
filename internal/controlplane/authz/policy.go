@@ -1,4 +1,7 @@
+// Package authz defines authorization helpers for control-plane routes.
 package authz
+
+// Package authz provides role and permission policy evaluation for the control plane.
 
 import (
 	"context"

@@ -2,6 +2,7 @@ package ingestion
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -139,7 +140,7 @@ func TestFault_MigrationFenceConcurrentDebit(t *testing.T) {
 			}
 			checkCtx := attachFilterDeadline(ctx, time.Second)
 			if err := f.Check(checkCtx, evt); err != nil {
-				if err == ErrMigrationFenced {
+				if errors.Is(err, ErrMigrationFenced) {
 					fenced++
 				}
 			}

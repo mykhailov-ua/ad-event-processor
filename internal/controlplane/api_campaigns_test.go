@@ -132,6 +132,77 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 		assert.Contains(t, resp.Body.String(), `"daily_budget"`)
 	})
 
+	t.Run("PatchCampaign_budgetScheduleStatus", func(t *testing.T) {
+		budgetMicro := int64(150_000_000)
+		status := "paused"
+		start := time.Now().UTC().Add(24 * time.Hour)
+		end := start.Add(7 * 24 * time.Hour)
+		daypart := []int16{9, 10, 11}
+
+		updated, err := svc.PatchCampaign(ctx, campID, adminapi.PatchCampaignRequest{
+			BudgetLimitMicro: &budgetMicro,
+			Status:           &status,
+			StartAt:          &start,
+			EndAt:            &end,
+			DaypartHours:     daypart,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, "150.00", updated.BudgetLimit)
+		assert.Equal(t, "PAUSED", updated.Status)
+		assert.Equal(t, daypart, updated.DaypartHours)
+
+		got, err := svc.GetCampaign(ctx, campID)
+		require.NoError(t, err)
+		assert.Equal(t, "150.00", got.BudgetLimit)
+		assert.Equal(t, "PAUSED", got.Status)
+	})
+
+	t.Run("PatchCampaign_GMAFields", func(t *testing.T) {
+		l1Block := false
+		l15Block := false
+		tlsBlock := false
+		connPolicy := "mobile_only"
+		linkSign := true
+		linkTTL := int32(1200)
+
+		updated, err := svc.PatchCampaign(ctx, campID, adminapi.PatchCampaignRequest{
+			L1CIDRBlockEnabled:         &l1Block,
+			L15ProxyVPNBlockEnabled:    &l15Block,
+			TLSFingerprintBlockEnabled: &tlsBlock,
+			ConnTypePolicy:             &connPolicy,
+			LinkSigningEnabled:         &linkSign,
+			LinkSigningTTLSec:          &linkTTL,
+		})
+		require.NoError(t, err)
+		assert.False(t, updated.L1CIDRBlockEnabled)
+		assert.False(t, updated.L15ProxyVPNBlockEnabled)
+		assert.False(t, updated.TLSFingerprintBlockEnabled)
+		assert.Equal(t, "mobile_only", updated.ConnTypePolicy)
+		assert.True(t, updated.LinkSigningEnabled)
+		assert.Equal(t, int32(1200), updated.LinkSigningTTLSec)
+	})
+
+	t.Run("PatchCampaign_BrandID", func(t *testing.T) {
+		brandID, err := svc.CreateBrand(ctx, custID, "Patch Brand")
+		require.NoError(t, err)
+
+		updated, err := svc.PatchCampaign(ctx, campID, adminapi.PatchCampaignRequest{
+			BrandID: &brandID,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, brandID.String(), updated.BrandID)
+
+		var fcapKey string
+		var linked uuid.UUID
+		err = pool.QueryRow(ctx,
+			"SELECT brand_id, brand_fcap_key FROM campaigns WHERE id = $1",
+			campID,
+		).Scan(&linked, &fcapKey)
+		require.NoError(t, err)
+		assert.Equal(t, brandID, linked)
+		assert.Equal(t, "fcap:b:"+brandID.String(), fcapKey)
+	})
+
 	t.Run("PatchCampaign_EmptyNameRejected", func(t *testing.T) {
 		empty := "   "
 		_, err := svc.PatchCampaign(ctx, campID, adminapi.PatchCampaignRequest{Name: &empty})

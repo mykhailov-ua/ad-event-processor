@@ -193,13 +193,9 @@ func (f *LocalQuantaFlusher) returnToRedisSlot(ctx context.Context, campaignID u
 		return fmt.Errorf("invalid shard %d", shard)
 	}
 	quotaKey := budgetQuotaKeyForDebit(campaignID, subSlot)
-	opCtx := ctx
-	if opCtx == nil {
-		var cancel context.CancelFunc
-		opCtx, cancel = context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel()
-	}
-	_, err := localQuotaReturnScript.Run(opCtx, f.rdbs[shard], []string{quotaKey}, amount).Result()
+	runCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	_, err := localQuotaReturnScript.Run(runCtx, f.rdbs[shard], []string{quotaKey}, amount).Result()
 	return err
 }
 

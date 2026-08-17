@@ -1,3 +1,4 @@
+// Package cmd implements ad-event-processor cmd helpers.
 package cmd
 
 import (

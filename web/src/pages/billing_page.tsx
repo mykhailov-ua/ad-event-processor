@@ -35,14 +35,20 @@ import { StatusBadge } from '../components/status_badge.js';
 import { TabBar } from '../components/tab_bar.js';
 import { BillingExportsSection } from '../components/billing_exports_section.js';
 import { BillingSelfServeSection } from '../components/billing_selfserve_section.js';
+import { BillingSummaryPanel } from '../components/billing_summary_panel.js';
+import { BillingStatementPanel } from '../components/billing_statement_panel.js';
+import { BillingPaymentHistoryPanel } from '../components/billing_payment_history_panel.js';
+import { InvoicePreviewPanel } from '../components/invoice_preview_panel.js';
+import type { DisputeListResponse } from '../types/api/billing.js';
 
 const LEDGER_PAGE = 50;
 const INVOICE_PAGE = 50;
+const DISPUTES_PAGE = 20;
 
-type BillingTab = 'wallet' | 'ledger' | 'invoices' | 'exports';
+type BillingTab = 'wallet' | 'ledger' | 'invoices' | 'exports' | 'disputes';
 
 function parseTab(raw: string | null): BillingTab {
-  if (raw === 'ledger' || raw === 'invoices' || raw === 'exports') return raw;
+  if (raw === 'ledger' || raw === 'invoices' || raw === 'exports' || raw === 'disputes') return raw;
   return 'wallet';
 }
 
@@ -65,6 +71,17 @@ function buildLedgerUrl(customerId: string, page: number): string | null {
     offset: String(offset),
   });
   return `/api/v1/customers/${customerId}/ledger?${params.toString()}`;
+}
+
+function buildDisputesUrl(customerId: string, page: number, adminWide: boolean): string | null {
+  if (!customerId && !adminWide) return null;
+  const offset = page * DISPUTES_PAGE;
+  const params = new URLSearchParams({
+    limit: String(DISPUTES_PAGE),
+    offset: String(offset),
+  });
+  if (customerId) params.set('customer_id', customerId);
+  return `/api/v1/disputes?${params.toString()}`;
 }
 
 function TableSkeleton({ cols, rows = 5 }: { cols: number; rows?: number }) {
@@ -100,10 +117,14 @@ export function BillingPage() {
   const mediaBuyerView = isMediaBuyer(user?.role);
   const billingReadOnly = isBillingReadOnly(user?.permissions ?? [], user?.role);
   const canReadCustomers = can(user?.permissions ?? [], 'customers:read') && !mediaBuyerView;
+  const canViewDisputes = can(user?.permissions ?? [], 'customers:read')
+    || can(user?.permissions ?? [], 'billing:read');
+  const canViewBillingSummary = can(user?.permissions ?? [], 'shards:read') && !sessionScoped;
 
   const tab = parseTab(searchParams.get('tab'));
   const [ledgerPage, setLedgerPage] = useState(0);
   const [invoicePage, setInvoicePage] = useState(0);
+  const [disputesPage, setDisputesPage] = useState(0);
   const [customerInput, setCustomerInput] = useState(() => (
     sessionScoped
       ? boundCustomerId(user)
@@ -126,11 +147,13 @@ export function BillingPage() {
   const balanceUrl = customerId ? `/api/v1/customers/${customerId}/balance` : null;
   const ledgerUrl = buildLedgerUrl(customerId, ledgerPage);
   const invoiceUrl = buildInvoiceUrl(customerId, invoicePage, !sessionScoped);
+  const disputesUrl = buildDisputesUrl(customerId, disputesPage, !sessionScoped);
 
   const wallet = useResource<WalletBalanceDTO>(walletUrl, { skip: tab !== 'wallet' || !customerId });
   const balance = useResource<WalletBalanceDTO>(balanceUrl, { skip: tab !== 'ledger' || !customerId });
   const ledger = useResource<LedgerListResponse>(ledgerUrl, { skip: tab !== 'ledger' || !ledgerUrl });
   const invoices = useResource<InvoiceListResponse>(invoiceUrl, { skip: tab !== 'invoices' || !invoiceUrl });
+  const disputes = useResource<DisputeListResponse>(disputesUrl, { skip: tab !== 'disputes' || !disputesUrl });
 
   useEffect(() => {
     if (wallet.error) surfaceServiceErrorToast(wallet.error);
@@ -144,6 +167,9 @@ export function BillingPage() {
   useEffect(() => {
     if (invoices.error) surfaceServiceErrorToast(invoices.error);
   }, [invoices.error]);
+  useEffect(() => {
+    if (disputes.error) surfaceServiceErrorToast(disputes.error);
+  }, [disputes.error]);
 
   const applyCustomerFilter = () => {
     const id = customerInput.trim();
@@ -153,6 +179,7 @@ export function BillingPage() {
     if (isCustomerUuid(id)) touchCustomerContext(id);
     setLedgerPage(0);
     setInvoicePage(0);
+    setDisputesPage(0);
     if (id) navigate(`/billing?customer_id=${encodeURIComponent(id)}${tab !== 'wallet' ? `&tab=${tab}` : ''}`);
     else navigate(tab !== 'wallet' ? `/billing?tab=${tab}` : '/billing');
   };
@@ -189,6 +216,9 @@ export function BillingPage() {
   const invoiceTotal = invoices.data?.total ?? 0;
   const invoicePages = Math.max(1, Math.ceil(invoiceTotal / INVOICE_PAGE));
   const ledgerTotal = ledger.data?.total ?? 0;
+  const disputeRows = disputes.data?.disputes ?? [];
+  const disputesTotal = disputes.data?.total ?? 0;
+  const disputesPages = Math.max(1, Math.ceil(disputesTotal / DISPUTES_PAGE));
 
   const onLedgerSort = useCallback((key: string) => {
     setLedgerSortState((prev) => {
@@ -230,6 +260,7 @@ export function BillingPage() {
 
   const tabs = [
     { id: 'wallet', label: 'Wallet' },
+    ...(canViewDisputes ? [{ id: 'disputes', label: 'Disputes' }] : []),
     ...(canReadCustomers
       ? [
         { id: 'ledger', label: 'Ledger' },
@@ -292,6 +323,8 @@ export function BillingPage() {
 
       <TabBar tabs={tabs} active={tab} onChange={(id) => setTab(id as BillingTab)} />
 
+      {canViewBillingSummary ? <BillingSummaryPanel /> : null}
+
       {tab === 'wallet' ? (
         <div className="section-block stack">
           {!customerId && !sessionScoped ? (
@@ -336,6 +369,12 @@ export function BillingPage() {
               variant="info"
               message="Wallet top-up is not available for your role. View balance only."
             />
+          ) : null}
+          {customerId && !sessionScoped ? (
+            <div className="stack mt-4">
+              <BillingStatementPanel customerId={customerId} />
+              <BillingPaymentHistoryPanel customerId={customerId} />
+            </div>
           ) : null}
         </div>
       ) : null}
@@ -421,6 +460,7 @@ export function BillingPage() {
 
       {tab === 'invoices' ? (
         <div className="section-block stack">
+          {customerId ? <InvoicePreviewPanel customerId={customerId} /> : null}
           {invoices.loading ? <span className="text-muted">Loading…</span> : null}
           <BlockingError error={invoices.error} />
           {invoices.data ? (
@@ -510,6 +550,80 @@ export function BillingPage() {
       {tab === 'exports' ? (
         <div className="section-block">
           <BillingExportsSection customerId={customerId} tenant={sessionScoped} />
+        </div>
+      ) : null}
+
+      {tab === 'disputes' ? (
+        <div className="section-block stack" data-testid="billing-disputes-panel">
+          {!customerId && !sessionScoped ? (
+            <AlertBanner variant="info" message="Enter customer_id to filter disputes, or apply empty to list all (admin)." />
+          ) : null}
+          {disputes.loading ? <span className="text-muted">Loading…</span> : null}
+          <BlockingError error={disputes.error} />
+          {disputes.data ? (
+            <div>
+              {disputesPages > 1 ? (
+                <div className="mb-4">
+                  <FilterToolbar
+                    pagination={(
+                      <PaginationBar
+                        label={`${disputesPage + 1} / ${disputesPages}`}
+                        prevDisabled={disputesPage === 0}
+                        nextDisabled={disputesPage >= disputesPages - 1}
+                        onPrev={() => setDisputesPage((p) => Math.max(0, p - 1))}
+                        onNext={() => setDisputesPage((p) => p + 1)}
+                      />
+                    )}
+                  />
+                </div>
+              ) : null}
+              <div className="table-wrapper table-wrapper--scroll elevation-raised">
+                <table className="data-table" data-testid="disputes-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Dispute ID</th>
+                      <th scope="col">Customer</th>
+                      <th scope="col">Amount</th>
+                      <th scope="col">Updated</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {disputes.loading && disputeRows.length === 0 ? <TableSkeleton cols={4} /> : null}
+                    {!disputes.loading && disputeRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={4}>
+                          <div className="empty-state">
+                            <div className="empty-state__title">No disputes</div>
+                            <div className="empty-state__desc text-muted text-sm">
+                              {customerId
+                                ? 'No payment disputes for this customer.'
+                                : 'No disputes in the current window.'}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : null}
+                    {disputeRows.map((row) => (
+                      <tr key={`${row.provider_dispute_id}-${row.intent_id}`}>
+                        <td className="font-mono text-sm" data-testid="dispute-id">
+                          {row.provider_dispute_id || row.intent_id || '—'}
+                        </td>
+                        <td>
+                          {row.customer_id ? <CopyableUuid uuid={row.customer_id} /> : '—'}
+                        </td>
+                        <td className="font-mono">
+                          {formatAmountMicro(row.amount_micro ?? 0, row.currency)}
+                        </td>
+                        <td className="text-muted text-sm">
+                          {row.updated_at ? new Date(row.updated_at).toLocaleString() : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </>

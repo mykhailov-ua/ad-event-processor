@@ -18,8 +18,7 @@ func TestMetricsEndpoint(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	s := NewServer("127.0.0.1:0", dir, 10*1024*1024, 4096)
 	s.SetHealthAddr("127.0.0.1:0")
 	if err := s.Start(); err != nil {
@@ -34,7 +33,7 @@ func TestMetricsEndpoint(t *testing.T) {
 	if err := cli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	if _, err := cli.Produce(context.Background(), topic, 0, []byte("metric-payload")); err != nil {
 		t.Fatal(err)
@@ -48,7 +47,7 @@ func TestMetricsEndpoint(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("metrics status: got %d", resp.StatusCode)
 	}

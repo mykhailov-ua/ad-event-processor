@@ -3,6 +3,7 @@ package adminapi
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
@@ -10,10 +11,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type CampaignListResponse struct {
-	Items []CampaignDTO `json:"items"`
-	Total int64         `json:"total"`
-}
+type CampaignListResponse = ListResponse[CampaignDTO]
 
 type CampaignReader interface {
 	GetCampaign(ctx context.Context, campaignID uuid.UUID) (CampaignDTO, error)
@@ -21,7 +19,9 @@ type CampaignReader interface {
 	ListCampaigns(ctx context.Context, customerID uuid.UUID, status string, limit, offset int32) ([]CampaignDTO, int64, error)
 	AttachCampaignListMarginBreach(ctx context.Context, items []CampaignDTO)
 	PatchCampaign(ctx context.Context, campaignID uuid.UUID, req PatchCampaignRequest) (CampaignDTO, error)
+	AssignCampaignOwner(ctx context.Context, campaignID, ownerUserID uuid.UUID) error
 	ListCampaignEvents(ctx context.Context, campaignID uuid.UUID, limit, offset int32) ([]CampaignEventDTO, int64, error)
+	BlockCampaignPlacement(ctx context.Context, campaignID uuid.UUID, placementID string) error
 }
 
 type CampaignsHTTPHandlers struct {
@@ -48,8 +48,10 @@ func (campaigns *CampaignsHTTPHandlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/campaigns", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, campaigns.listCampaigns)))
 	mux.HandleFunc("GET /api/v1/campaigns/{id}", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, campaigns.getCampaign)))
 	mux.HandleFunc("PATCH /api/v1/campaigns/{id}", limit(perm([]string{"campaigns:write"}, campaigns.patchCampaign)))
+	mux.HandleFunc("PUT /api/v1/campaigns/{id}/owner", limit(perm([]string{"campaigns:write"}, campaigns.assignCampaignOwner)))
 	mux.HandleFunc("GET /api/v1/campaigns/{id}/events", limit(perm([]string{"campaigns:read"}, campaigns.listCampaignEvents)))
 	mux.HandleFunc("GET /api/v1/campaigns/{id}/margin", limit(perm([]string{"campaigns:read"}, campaigns.getCampaignMargin)))
+	mux.HandleFunc("POST /api/v1/campaigns/{id}/placement-blocks", limit(perm([]string{"campaigns:write"}, campaigns.blockCampaignPlacement)))
 }
 
 func (campaigns *CampaignsHTTPHandlers) listCampaigns(w http.ResponseWriter, r *http.Request) {
@@ -75,7 +77,7 @@ func (campaigns *CampaignsHTTPHandlers) listCampaigns(w http.ResponseWriter, r *
 	}
 
 	status := q.Get("status")
-	limit, offset := parseAPIPagination(r)
+	limit, offset := coldpath.ParseAPIPagination(r)
 
 	items, total, err := campaigns.Campaigns.ListCampaigns(r.Context(), customerID, status, limit, offset)
 	if err != nil {
@@ -134,12 +136,56 @@ func (campaigns *CampaignsHTTPHandlers) patchCampaign(w http.ResponseWriter, r *
 	httpresponse.JSON(w, http.StatusOK, updated)
 }
 
+func (campaigns *CampaignsHTTPHandlers) assignCampaignOwner(w http.ResponseWriter, r *http.Request) {
+	campaignID, ok := campaigns.parseCampaignID(w, r)
+	if !ok {
+		return
+	}
+	req, ok := coldpath.DecodeRequestOrBadRequest[AssignCampaignOwnerRequest](w, r, coldpath.DefaultMaxBody)
+	if !ok {
+		return
+	}
+	ownerID, err := uuid.Parse(strings.TrimSpace(req.UserID))
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid user_id")
+		return
+	}
+	if err := campaigns.Campaigns.AssignCampaignOwner(r.Context(), campaignID, ownerID); err != nil {
+		campaigns.writeServiceError(w, err)
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (campaigns *CampaignsHTTPHandlers) blockCampaignPlacement(w http.ResponseWriter, r *http.Request) {
+	campaignID, ok := campaigns.parseCampaignID(w, r)
+	if !ok {
+		return
+	}
+	body, err := coldpath.ReadLimitedBody(w, r, coldpath.DefaultMaxBody)
+	if err != nil {
+		return
+	}
+	req, err := coldpath.DecodeBody[struct {
+		PlacementID string `json:"placement_id"`
+	}](body)
+	if err != nil || strings.TrimSpace(req.PlacementID) == "" {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
+		return
+	}
+	if err := campaigns.Campaigns.BlockCampaignPlacement(r.Context(), campaignID, req.PlacementID); err != nil {
+		campaigns.writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusAccepted)
+}
+
 func (campaigns *CampaignsHTTPHandlers) listCampaignEvents(w http.ResponseWriter, r *http.Request) {
 	campaignID, ok := campaigns.parseCampaignID(w, r)
 	if !ok {
 		return
 	}
-	limit, offset := parseAPIPagination(r)
+	limit, offset := coldpath.ParseAPIPagination(r)
 	items, total, err := campaigns.Campaigns.ListCampaignEvents(r.Context(), campaignID, limit, offset)
 	if err != nil {
 		campaigns.writeServiceError(w, err)

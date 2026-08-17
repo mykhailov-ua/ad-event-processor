@@ -10,10 +10,12 @@ import {
   deleteCustomDomain,
   fetchDomains,
   healthStatusLabel,
+  parkDomain,
   probeDomain,
   setupDomainSSL,
   sslStatusLabel,
 } from '../helpers/domains_api.js';
+import { checkTlsAllowed } from '../helpers/ops_compliance_api.js';
 import { Button } from '../components/button.js';
 import { ErrorBlock } from '../components/error_block.js';
 import { StatusBadge } from '../components/status_badge.js';
@@ -53,6 +55,12 @@ export function SettingsDomainsPage() {
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const [customHost, setCustomHost] = useState('');
+  const [tlsHost, setTlsHost] = useState('');
+  const [tlsAskToken, setTlsAskToken] = useState('');
+  const [tlsResult, setTlsResult] = useState<'allowed' | 'denied' | null>(null);
+  const [parkDomainInput, setParkDomainInput] = useState('');
+  const [parkZoneId, setParkZoneId] = useState('');
+  const [parkPoolId, setParkPoolId] = useState('');
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -134,6 +142,52 @@ export function SettingsDomainsPage() {
     }
   };
 
+  const checkTls = async () => {
+    if (!tlsHost.trim()) return;
+    setBusy(true);
+    setTlsResult(null);
+    try {
+      const allowed = await checkTlsAllowed(tlsHost.trim(), tlsAskToken);
+      setTlsResult(allowed ? 'allowed' : 'denied');
+      pushToastMessage({
+        title: allowed ? 'TLS allowed' : 'TLS denied',
+        message: tlsHost.trim(),
+      });
+    } catch (e) {
+      pushToastMessage({ title: 'TLS check failed', message: mapServiceError(e).message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const parkHost = async () => {
+    if (!canWrite || !parkDomainInput.trim() || !parkZoneId.trim()) return;
+    setBusy(true);
+    try {
+      const req = {
+        domain: parkDomainInput.trim(),
+        cloudflare_zone_id: parkZoneId.trim(),
+        ...(parkPoolId.trim() ? { pool_id: parkPoolId.trim() } : {}),
+      };
+      const result = await parkDomain(req);
+      pushToastMessage({
+        title: result.success ? 'Domain parked' : 'Park failed',
+        message: result.dns_record_id || result.ssl_status || parkDomainInput.trim(),
+      });
+      if (result.success) {
+        setParkDomainInput('');
+        setParkZoneId('');
+        setParkPoolId('');
+        await reload();
+      }
+    } catch (e) {
+      if (e instanceof ConfirmCancelledError) return;
+      pushToastMessage({ title: 'Park failed', message: mapServiceError(e).message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <>
       <header className="page-header">
@@ -164,6 +218,88 @@ export function SettingsDomainsPage() {
               onClick={() => void addCustom()}
             />
           </div>
+        </section>
+      ) : null}
+
+      <section className="card stack" data-testid="domains-tls-check">
+        <h2 className="h3">TLS on-demand allowlist</h2>
+        <p className="text-muted text-sm">
+          Probe Caddy ask endpoint (<code>GET /api/v1/ops/domains/…/tls-allowed</code>). Pass ask token when local bypass is disabled.
+        </p>
+        <div className="row gap-sm">
+          <input
+            type="text"
+            className="form-input"
+            placeholder="buyer.example.com"
+            data-testid="tls-check-host"
+            value={tlsHost}
+            disabled={busy}
+            onChange={(e) => setTlsHost(e.target.value)}
+          />
+          <input
+            type="password"
+            className="form-input"
+            placeholder="Caddy ask token (optional)"
+            data-testid="tls-check-token"
+            value={tlsAskToken}
+            disabled={busy}
+            onChange={(e) => setTlsAskToken(e.target.value)}
+          />
+          <Button
+            label="Check TLS"
+            variant="ghost"
+            disabled={busy || !tlsHost.trim()}
+            data-testid="tls-check-submit"
+            onClick={() => void checkTls()}
+          />
+        </div>
+        {tlsResult ? (
+          <p className="text-sm" data-testid="tls-check-result">
+            Result: <strong>{tlsResult === 'allowed' ? 'allowed' : 'denied'}</strong>
+          </p>
+        ) : null}
+      </section>
+
+      {canWrite ? (
+        <section className="card stack" data-testid="domains-park">
+          <h2 className="h3">Park domain (Cloudflare)</h2>
+          <p className="text-muted text-sm">
+            Create DNS for a buyer subdomain via <code>POST /api/v1/domains/park</code>.
+          </p>
+          <input
+            type="text"
+            className="form-input"
+            placeholder="track.buyer.example.com"
+            data-testid="park-domain"
+            value={parkDomainInput}
+            disabled={busy}
+            onChange={(e) => setParkDomainInput(e.target.value)}
+          />
+          <input
+            type="text"
+            className="form-input"
+            placeholder="Cloudflare zone ID"
+            data-testid="park-zone-id"
+            value={parkZoneId}
+            disabled={busy}
+            onChange={(e) => setParkZoneId(e.target.value)}
+          />
+          <input
+            type="text"
+            className="form-input"
+            placeholder="Pool ID (optional)"
+            data-testid="park-pool-id"
+            value={parkPoolId}
+            disabled={busy}
+            onChange={(e) => setParkPoolId(e.target.value)}
+          />
+          <Button
+            label="Park domain"
+            variant="primary"
+            disabled={busy || !parkDomainInput.trim() || !parkZoneId.trim()}
+            data-testid="park-submit"
+            onClick={() => void parkHost()}
+          />
         </section>
       ) : null}
 

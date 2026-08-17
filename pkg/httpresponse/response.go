@@ -18,7 +18,7 @@ type ErrorResponse struct {
 
 var (
 	newline               = []byte("\n")
-	contentTypeJsonHeader = []string{"application/json"}
+	contentTypeJSONHeader = []string{"application/json"}
 	bufferPool            = sync.Pool{
 		New: func() any {
 			return new(bytes.Buffer)
@@ -27,7 +27,7 @@ var (
 )
 
 func JSON(w http.ResponseWriter, status int, data any) {
-	w.Header()["Content-Type"] = contentTypeJsonHeader
+	w.Header()["Content-Type"] = contentTypeJSONHeader
 	w.WriteHeader(status)
 	if data != nil {
 		out, err := json.Marshal(data)
@@ -39,7 +39,7 @@ func JSON(w http.ResponseWriter, status int, data any) {
 }
 
 func Error(w http.ResponseWriter, status int, code, message string) {
-	w.Header()["Content-Type"] = contentTypeJsonHeader
+	w.Header()["Content-Type"] = contentTypeJSONHeader
 	w.WriteHeader(status)
 
 	buf := bufferPool.Get().(*bytes.Buffer)

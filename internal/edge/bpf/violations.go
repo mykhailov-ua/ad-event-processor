@@ -18,7 +18,7 @@ const DefaultSynSubnetLimit = 256
 const DefaultViolationsMapPath = edge.DefaultViolationsMapPath
 
 type ViolationEvent struct {
-	TsNs   uint64
+	TSNs   uint64
 	SrcIP  uint32
 	Reason uint8
 	_      [3]byte

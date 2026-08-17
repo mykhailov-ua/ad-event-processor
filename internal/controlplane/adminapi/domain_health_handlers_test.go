@@ -49,7 +49,7 @@ func TestDomainHealthTLSAllowed_loopbackAllowed(t *testing.T) {
 	mux := http.NewServeMux()
 	h.Register(mux)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/ops/domains/buyer.example.com/tls-allowed", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/ops/domains/buyer.example.com/tls-allowed", http.NoBody)
 	req.RemoteAddr = "127.0.0.1:12345"
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
@@ -65,7 +65,7 @@ func TestDomainHealthTLSAllowed_deniedUnknown(t *testing.T) {
 	mux := http.NewServeMux()
 	h.Register(mux)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/ops/domains/evil.example.com/tls-allowed", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/ops/domains/evil.example.com/tls-allowed", http.NoBody)
 	req.RemoteAddr = "127.0.0.1:12345"
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
@@ -83,7 +83,7 @@ func TestDomainHealthTLSAllowed_caddyAskQuery(t *testing.T) {
 	mux := http.NewServeMux()
 	h.Register(mux)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/ops/domains/tls-allowed?domain=buyer.example.com&token=secret-ask", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/ops/domains/tls-allowed?domain=buyer.example.com&token=secret-ask", http.NoBody)
 	req.RemoteAddr = "10.0.0.5:12345"
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
@@ -101,13 +101,13 @@ func TestDomainHealthTLSAllowed_tokenRequired(t *testing.T) {
 	mux := http.NewServeMux()
 	h.Register(mux)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/ops/domains/buyer.example.com/tls-allowed", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/ops/domains/buyer.example.com/tls-allowed", http.NoBody)
 	req.RemoteAddr = "10.0.0.5:12345"
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusUnauthorized, rec.Code)
 
-	req = httptest.NewRequest(http.MethodGet, "/api/v1/ops/domains/buyer.example.com/tls-allowed?token=secret-ask", nil)
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/ops/domains/buyer.example.com/tls-allowed?token=secret-ask", http.NoBody)
 	req.RemoteAddr = "10.0.0.5:12345"
 	rec = httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)

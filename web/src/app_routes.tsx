@@ -49,6 +49,18 @@ const IntegrationsSmartAlertsPage = lazy(() => import('./pages/integrations_smar
 const IntegrationsSupplyPage = lazy(() => import('./pages/integrations_supply_page.js').then((mod) => ({
   default: mod.IntegrationsSupplyPage,
 })));
+const IntegrationsPostbacksPage = lazy(() => import('./pages/integrations_postbacks_page.js').then((mod) => ({
+  default: mod.IntegrationsPostbacksPage,
+})));
+const IntegrationsTemplatesImportPage = lazy(() => import('./pages/integrations_templates_import_page.js').then((mod) => ({
+  default: mod.IntegrationsTemplatesImportPage,
+})));
+const IntegrationsSchemasPage = lazy(() => import('./pages/integrations_schemas_page.js').then((mod) => ({
+  default: mod.IntegrationsSchemasPage,
+})));
+const PublisherPage = lazy(() => import('./pages/publisher_page.js').then((mod) => ({
+  default: mod.PublisherPage,
+})));
 const ReportsHubPage = lazy(() => import('./pages/reports/reports_hub_page.js').then((mod) => ({
   default: mod.ReportsHubPage,
 })));
@@ -123,6 +135,18 @@ const OpsBlacklistPage = lazy(() => import('./pages/ops_blacklist_page.js').then
 const OpsReconPage = lazy(() => import('./pages/ops_recon_page.js').then((mod) => ({
   default: mod.OpsReconPage,
 })));
+const OpsConsentPage = lazy(() => import('./pages/ops_consent_page.js').then((mod) => ({
+  default: mod.OpsConsentPage,
+})));
+const OpsDlqPage = lazy(() => import('./pages/ops_dlq_page.js').then((mod) => ({
+  default: mod.OpsDlqPage,
+})));
+const OpsDomainRotationPage = lazy(() => import('./pages/ops_domain_rotation_page.js').then((mod) => ({
+  default: mod.OpsDomainRotationPage,
+})));
+const SupportFeedbackPage = lazy(() => import('./pages/support_feedback_page.js').then((mod) => ({
+  default: mod.SupportFeedbackPage,
+})));
 const BillingPage = lazy(() => import('./pages/billing_page.js').then((mod) => ({
   default: mod.BillingPage,
 })));
@@ -146,6 +170,18 @@ const RoleDashboardPage = lazy(() => import('./pages/role_dashboard_page.js').th
 })));
 const RtbIntegrationPage = lazy(() => import('./pages/rtb_integration_page.js').then((mod) => ({
   default: mod.RtbIntegrationPage,
+})));
+const SelfServePortfolioPage = lazy(() => import('./pages/selfserve_portfolio_page.js').then((mod) => ({
+  default: mod.SelfServePortfolioPage,
+})));
+const SelfServeBillingPage = lazy(() => import('./pages/selfserve_billing_page.js').then((mod) => ({
+  default: mod.SelfServeBillingPage,
+})));
+const SelfServeApiKeysPage = lazy(() => import('./pages/selfserve_api_keys_page.js').then((mod) => ({
+  default: mod.SelfServeApiKeysPage,
+})));
+const SelfServeCampaignCreatePage = lazy(() => import('./pages/selfserve_campaign_create_page.js').then((mod) => ({
+  default: mod.SelfServeCampaignCreatePage,
 })));
 
 function RouteFallback() {
@@ -185,6 +221,14 @@ export function AppRoutes() {
       <Route path="/integrations/smart-alerts" element={lazyRoute(<IntegrationsSmartAlertsPage />)} />
       <Route path="/smart-alerts" element={lazyRoute(<IntegrationsSmartAlertsPage />)} />
       <Route path="/integrations/supply" element={lazyRoute(<IntegrationsSupplyPage />)} />
+      <Route path="/integrations/postbacks" element={lazyRoute(<IntegrationsPostbacksPage />)} />
+      <Route path="/integration/templates/import" element={lazyRoute(<IntegrationsTemplatesImportPage />)} />
+      <Route path="/integrations/schemas" element={lazyRoute(<IntegrationsSchemasPage />)} />
+      <Route path="/publisher" element={lazyRoute(<PublisherPage />)} />
+      <Route path="/selfserve" element={lazyRoute(<SelfServePortfolioPage />)} />
+      <Route path="/selfserve/billing" element={lazyRoute(<SelfServeBillingPage />)} />
+      <Route path="/selfserve/api-keys" element={lazyRoute(<SelfServeApiKeysPage />)} />
+      <Route path="/selfserve/campaigns/new" element={lazyRoute(<SelfServeCampaignCreatePage />)} />
       <Route path="/reports" element={lazyRoute(<ReportsHubPage />)} />
       <Route path="/reports/placements" element={lazyRoute(<PlacementsReportPage />)} />
       <Route path="/reports/keywords" element={lazyRoute(<KeywordsReportPage />)} />
@@ -207,8 +251,12 @@ export function AppRoutes() {
       <Route path="/reports/:reportKey" element={lazyRoute(<ReportStubPage />)} />
       <Route path="/ops" element={lazyRoute(<OpsHomePage />)} />
       <Route path="/ops/shards" element={lazyRoute(<OpsShardsPage />)} />
+      <Route path="/ops/dlq" element={lazyRoute(<OpsDlqPage />)} />
+      <Route path="/ops/domains" element={lazyRoute(<OpsDomainRotationPage />)} />
       <Route path="/ops/blacklist" element={lazyRoute(<OpsBlacklistPage />)} />
       <Route path="/ops/recon" element={lazyRoute(<OpsReconPage />)} />
+      <Route path="/ops/consent" element={lazyRoute(<OpsConsentPage />)} />
+      <Route path="/support/feedback" element={lazyRoute(<SupportFeedbackPage />)} />
       <Route path="/billing" element={lazyRoute(<BillingPage />)} />
       <Route path="/team" element={lazyRoute(<TeamPage />)} />
       <Route path="/audit" element={lazyRoute(<AuditPage />)} />

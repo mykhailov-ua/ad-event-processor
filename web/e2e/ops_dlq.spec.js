@@ -154,3 +154,34 @@ test('ops DLQ read-only hides retry column', async ({ page }) => {
   await expect(page.getByRole('cell', { name: 'timeout' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Retry' })).toHaveCount(0);
 });
+
+test('ops DLQ inbox page lists entries and retries', async ({ page }) => {
+  await mockAuthedSession(page, ADMIN_USER);
+
+  let retryCalled = false;
+
+  await page.route('**/api/v1/ops/dlq**', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue();
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(DLQ_ROWS),
+    });
+  });
+
+  await page.route('**/api/v1/ops/dlq/shard-1-1700000000000-0/retry', async (route) => {
+    retryCalled = true;
+    await route.fulfill({ status: 202, body: '' });
+  });
+
+  await page.goto('/ops/dlq');
+  await expect(page.getByTestId('ops-dlq-inbox')).toBeVisible();
+  await expect(page.getByTestId('ops-dlq-row-shard-1-1700000000000-0')).toBeVisible();
+  await page.getByTestId('ops-dlq-retry-shard-1-1700000000000-0').click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click();
+  await expect.poll(() => retryCalled).toBe(true);
+});

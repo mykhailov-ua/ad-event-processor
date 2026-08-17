@@ -27,8 +27,13 @@ fi
 echo "== milestone §1.5: milestone e2e bundle =="
 (cd "$WEB_DIR" && node scripts/build.mjs)
 (cd "$E2E_DIR" && npx playwright test \
+  ops_compliance.spec.js \
   ops_dlq.spec.js \
   billing_exports.spec.js \
+  billing_disputes.spec.js \
+  cpa_held_out.spec.js \
+  integrations_postbacks.spec.js \
+  report_actions.spec.js \
   invoice_deliveries.spec.js \
   ops_shards_catchup.spec.js \
   ops_billing_invariant.spec.js \

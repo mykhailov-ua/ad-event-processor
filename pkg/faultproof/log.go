@@ -1,3 +1,4 @@
+// Package faultproof logs structured fault-injection proof lines for resilience drills.
 package faultproof
 
 import (

@@ -1,3 +1,4 @@
+// Package perimeter implements edge perimeter helpers.
 package perimeter
 
 import "strings"

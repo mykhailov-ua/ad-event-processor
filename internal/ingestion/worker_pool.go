@@ -124,12 +124,13 @@ func (w *Worker) start() {
 			if atomic.LoadInt32(&w.pool.closed) == 1 {
 				break
 			}
-			if spin < 10 {
+			switch {
+			case spin < 10:
 				spin++
-			} else if spin < 20 {
+			case spin < 20:
 				spin++
 				runtime.Gosched()
-			} else {
+			default:
 				time.Sleep(time.Microsecond)
 			}
 		}

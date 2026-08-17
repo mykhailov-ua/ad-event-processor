@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
 )
@@ -108,10 +109,7 @@ func aggregateWarmSegment(r io.Reader, sourceSegment, warmSHA string) ([]RollupR
 			agg.billableEventCount++
 		}
 		if len(agg.sampleClickIDs) < maxSampleClickIDs && len(evt.ClickId) > 0 {
-			clickID := string(evt.ClickId)
-			if !containsString(agg.sampleClickIDs, clickID) {
-				agg.sampleClickIDs = append(agg.sampleClickIDs, clickID)
-			}
+			agg.sampleClickIDs = coldpath.AppendUnique(agg.sampleClickIDs, string(evt.ClickId))
 		}
 	}
 
@@ -160,15 +158,6 @@ func campaignUUIDFromBytes(raw []byte) (uuid.UUID, error) {
 		return uuid.Nil, err
 	}
 	return id, nil
-}
-
-func containsString(values []string, target string) bool {
-	for _, v := range values {
-		if v == target {
-			return true
-		}
-	}
-	return false
 }
 
 func (store *LocalTierStore) ListWarm(_ context.Context, olderThan time.Time) ([]TierObject, error) {

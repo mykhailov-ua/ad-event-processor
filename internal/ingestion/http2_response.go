@@ -125,7 +125,7 @@ func parseH1ResponseForH2(h1 []byte) (status int, body, contentType []byte, ok b
 	line := 0
 	for lineStart := 0; lineStart < hdrEnd-1; {
 		lineEnd := lineStart
-		for lineEnd+1 < hdrEnd && !(h1[lineEnd] == '\r' && h1[lineEnd+1] == '\n') {
+		for lineEnd+1 < hdrEnd && (h1[lineEnd] != '\r' || h1[lineEnd+1] != '\n') {
 			lineEnd++
 		}
 		if line > 0 {

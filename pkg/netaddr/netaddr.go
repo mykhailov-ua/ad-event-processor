@@ -1,3 +1,4 @@
+// Package netaddr implements netaddr support for BidShard.
 package netaddr
 
 import (

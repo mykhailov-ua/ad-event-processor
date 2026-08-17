@@ -16,6 +16,7 @@ type safePageAttestationInput struct {
 	remoteIP    string
 	country     string
 	fingerprint safePageVerifyFingerprint
+	events      []safePageVerifyEvent
 	nowUnix     int64
 }
 
@@ -27,6 +28,18 @@ func evaluateSafePageAttestation(in safePageAttestationInput) (fail bool, code s
 		return true, code
 	}
 	if code := checkWebGLAutomation(in.fingerprint); code != "" {
+		return true, code
+	}
+	if code := checkCanvasFingerprint(in.fingerprint); code != "" {
+		return true, code
+	}
+	if code := checkAudioFingerprint(in.fingerprint); code != "" {
+		return true, code
+	}
+	if code := checkPermissionsMismatch(in.fingerprint); code != "" {
+		return true, code
+	}
+	if code := checkBezierBot(in.events); code != "" {
 		return true, code
 	}
 	return false, ""

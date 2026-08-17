@@ -1,3 +1,4 @@
+// Package log implements broker log helpers.
 package log
 
 import (

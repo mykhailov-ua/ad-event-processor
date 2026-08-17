@@ -13,7 +13,7 @@ func BenchmarkSaveSnapshot(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	snapPath := filepath.Join(tmpDir, "snapshot.bin")
 
@@ -49,7 +49,7 @@ func BenchmarkLoadSnapshot(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	snapPath := filepath.Join(tmpDir, "snapshot.bin")
 

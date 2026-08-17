@@ -61,17 +61,17 @@ func (l *deploymentRPSLimiter) resetForTests() {
 	l.burstInit.Store(0)
 }
 
-func (l *deploymentRPSLimiter) ensureBurstPool(cap uint64) {
-	if cap == 0 || l.burstInit.Load() != 0 {
+func (l *deploymentRPSLimiter) ensureBurstPool(burstCap uint64) {
+	if burstCap == 0 || l.burstInit.Load() != 0 {
 		return
 	}
 	if l.burstInit.CompareAndSwap(0, 1) {
-		l.burstRemain.Store(cap)
+		l.burstRemain.Store(burstCap)
 	}
 }
 
-func (l *deploymentRPSLimiter) refillBurst(maxRPS, cap, lastCount uint64) {
-	if cap == 0 || lastCount > maxRPS {
+func (l *deploymentRPSLimiter) refillBurst(maxRPS, burstCap, lastCount uint64) {
+	if burstCap == 0 || lastCount > maxRPS {
 		return
 	}
 	add := maxRPS * licenseRPSBurstPercent / 100
@@ -81,8 +81,8 @@ func (l *deploymentRPSLimiter) refillBurst(maxRPS, cap, lastCount uint64) {
 	for {
 		cur := l.burstRemain.Load()
 		next := cur + add
-		if next > cap {
-			next = cap
+		if next > burstCap {
+			next = burstCap
 		}
 		if next == cur || l.burstRemain.CompareAndSwap(cur, next) {
 			return
@@ -106,9 +106,9 @@ func (l *deploymentRPSLimiter) allow(maxRPS uint64) bool {
 	if maxRPS == 0 {
 		return true
 	}
-	cap := licenseRPSBurstCap(maxRPS)
+	burstCap := licenseRPSBurstCap(maxRPS)
 	soft := licenseRPSSoftCeil(maxRPS)
-	l.ensureBurstPool(cap)
+	l.ensureBurstPool(burstCap)
 
 	now := uint64(time.Now().Unix())
 	prev := l.epoch.Load()
@@ -116,7 +116,7 @@ func (l *deploymentRPSLimiter) allow(maxRPS uint64) bool {
 		if l.epoch.CompareAndSwap(prev, now) {
 			lastCount := l.count.Load()
 			l.count.Store(0)
-			l.refillBurst(maxRPS, cap, lastCount)
+			l.refillBurst(maxRPS, burstCap, lastCount)
 		}
 	}
 
@@ -135,15 +135,15 @@ func (f *LicenseRPSFilter) Check(_ context.Context, _ *domain.Event) error {
 		return nil
 	}
 	_, ent := f.registry.GetLicenseState()
-	max := ent.Limits.MaxRPS
-	if max == 0 {
+	maxRPS := ent.Limits.MaxRPS
+	if maxRPS == 0 {
 		return nil
 	}
-	if !licensing.SeedGateRPS(max) {
+	if !licensing.SeedGateRPS(maxRPS) {
 		metrics.LicenseRPSExceededTotal.Inc()
 		return ErrRateLimitExceeded
 	}
-	if !globalDeploymentRPS.allow(max) {
+	if !globalDeploymentRPS.allow(maxRPS) {
 		metrics.LicenseRPSExceededTotal.Inc()
 		return ErrRateLimitExceeded
 	}

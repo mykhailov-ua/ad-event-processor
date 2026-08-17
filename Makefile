@@ -1,4 +1,4 @@
-.PHONY: fmt gen lint test test-fast test-unit test-integration test-fault test-int test-alloc-gate management-domain-coverage test-full test-resilience test-broker-fault-lab test-sentinel-resilience build build-bin release-build release-garble release-installer proto proto-grpc check-local pr-fast tier-a fraudtrain-check check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-bpf check-scripts-layout dev-preflight-smoke perf-gate-smoke edge-phase0 openrtb-fuzz-smoke license-red-team license-verify license-alloc-gate license-differential-gate license-red-team-garbled license-garbled-alloc-gate license-red-team-extended license-gdb-guard-smoke release-strings-gate license-guard-test license-guard-off-smoke license-guard-fault-gate public-key-strings-gate asset-seal-salt-smoke hwid-strings-gate garble-literals-policy-gate garble-literals-p99-smoke bpf-edge-prereq-gate sealed-bpf-xdp-smoke
+.PHONY: fmt gen lint test test-fast test-unit test-integration test-fault test-int test-alloc-gate management-domain-coverage test-full test-resilience test-broker-fault-lab test-sentinel-resilience build build-bin release-build release-garble release-installer proto proto-grpc check-local pr-fast tier-a fraudtrain-check check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-bpf check-scripts-layout dev-preflight-smoke perf-gate-smoke edge-phase0 openrtb-fuzz-smoke license-red-team license-verify license-alloc-gate license-differential-gate license-red-team-garbled license-garbled-alloc-gate license-red-team-extended license-fuzz-nightly-gate release-qa-smoke license-gdb-guard-smoke release-strings-gate license-guard-test license-guard-off-smoke license-guard-fault-gate public-key-strings-gate asset-seal-salt-smoke hwid-strings-gate garble-literals-policy-gate garble-literals-p99-smoke bpf-edge-prereq-gate sealed-bpf-xdp-smoke
 
 BIN_DIR := bin
 BIN_TAGS := timetzdata
@@ -32,11 +32,12 @@ test-fault: gen fmt
 
 test-alloc-gate: gen fmt
 	go test -short -count=1 -run 'ZeroAlloc|zeroAlloc_fraudScoring|FraudScoring_LatencySLA|BrokerProducer|ApplyRtbAuction_shadow_zeroAlloc|RecordRtbShadow|HTTP1Parse|OpenRTB26_Exchange|Check_zeroAlloc_localQuantaFullSkip' ./internal/ingestion/...
-	go test -run='^$$' -bench='Benchmark(HTTP1Parse$$|TrackRequest_ParseJSONOpt$$|Auction$$|ParseOpenRTB26Split_hotOnly$$|RunOpenRTBExchangeParsed$$|TrackerToBroker$$|CIDR_LPM_Lookup_IPv4$$|CIDR_LPM_Lookup_IPv6$$|ClickProxy_Stream$$)' -benchmem -count=1 ./internal/ingestion/... ./internal/rtb/
+	go test -run='^$$' -bench='Benchmark(HTTP1Parse$$|TrackRequest_ParseJSONOpt$$|Auction$$|ParseOpenRTB26Split_hotOnly$$|RunOpenRTBExchangeParsed$$|TrackerToBroker$$|CIDR_LPM_Lookup_IPv4$$|CIDR_LPM_Lookup_IPv6$$|TLS_Fingerprint_|LinkSigner_Verify$$|ClickProxy_Stream$$)' -benchmem -count=1 ./internal/ingestion/... ./internal/rtb/
 	bash scripts/test/openrtb_fuzz_smoke.sh
 	bash scripts/test/telegram_fuzz_smoke.sh
 	bash scripts/test/cidr_fuzz_smoke.sh
 	bash scripts/test/click_proxy_fuzz_smoke.sh
+	bash scripts/test/gma_fuzz_smoke.sh
 
 management-domain-coverage:
 	bash scripts/ci/management_domain_coverage.sh
@@ -161,6 +162,12 @@ license-garbled-alloc-gate:
 
 license-red-team-extended:
 	bash scripts/test/license_red_team_extended.sh
+
+license-fuzz-nightly-gate:
+	bash scripts/ci/license_fuzz_nightly_gate.sh
+
+release-qa-smoke:
+	bash scripts/test/release_qa_smoke.sh
 
 license-gdb-guard-smoke:
 	bash scripts/test/license_gdb_guard_smoke.sh

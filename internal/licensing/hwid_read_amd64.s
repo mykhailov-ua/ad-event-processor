@@ -3,7 +3,7 @@
 #include "textflag.h"
 
 // func hwidRawOpenRead(pathPtr *byte, pathLen int, bufPtr *byte, bufLen int) int64
-TEXT ·hwidRawOpenRead(SB), NOSPLIT, $0-32
+TEXT ·hwidRawOpenRead(SB), NOSPLIT, $0-40
 	MOVQ $-100, DI
 	MOVQ pathPtr+0(FP), SI
 	MOVQ pathLen+8(FP), DX

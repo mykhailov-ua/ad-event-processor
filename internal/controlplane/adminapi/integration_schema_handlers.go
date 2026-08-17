@@ -221,7 +221,8 @@ func (h *IntegrationSchemaHTTPHandlers) applySchema(w http.ResponseWriter, r *ht
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}
-	defer func() { _ = tx.Rollback(r.Context()) }()
+	applyCtx := r.Context()
+	defer func() { _ = tx.Rollback(applyCtx) }()
 
 	if _, err := tx.Exec(r.Context(), `
 		UPDATE campaigns SET integration_schema_id = $2, updated_at = NOW() WHERE id = $1`,

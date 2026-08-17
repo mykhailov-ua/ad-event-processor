@@ -42,7 +42,7 @@ type spendBatchFlusher interface {
 type PendingRollup struct {
 	AmountMicro         int64
 	TxID                string
-	IdStr               string
+	IDStr               string
 	SyncKey             string
 	InFlightKey         string
 	LockKey             string

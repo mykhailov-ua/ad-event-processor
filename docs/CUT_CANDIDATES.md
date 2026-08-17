@@ -26,8 +26,8 @@ Related documents: [QUICKSTART.md](QUICKSTART.md), [ARCHITECTURE.md](ARCHITECTUR
 | :--- | :--- | :--- | :--- |
 | Claims of Privacy Sandbox / Topics / PAAPI support | `README.md`, `ARCHITECTURE.md` Section 10 (no Topics/PAAPI implementations exist; consent compliance is not Sandbox) | Inaccurate marketing claims; undermines product credibility | S |
 | Non-existent "CTV live / concurrent streams" support | Discrepancies between `README.md` and RTB/CTV checklists | Declarations without functional code implementations | S |
-| Kubernetes as standard deployment option | ~~`deploy/k8s/**`~~ **CUT (2026-08):** manifests removed; k3s scripts archived under `deploy/enterprise/archive/k8s/`; installer profile `k8s_k3s` removed | Product ships via Compose `single_vps` only | M |
-| Terraform / k3s infrastructure manifests | ~~`deploy/terraform/**`~~ removed; k3s ops scripts in `deploy/enterprise/archive/k8s/` (not in installer/CI) | Unnecessary orchestrator; out of scope for single-VPS appliance | M |
+| Kubernetes as standard deployment option | ~~`deploy/k8s/**`~~ **CUT (2026-08):** manifests and `deploy/enterprise/archive/k8s/` removed; installer profile `k8s_k3s` removed | Product ships via Compose `single_vps` only | M |
+| Terraform / k3s infrastructure manifests | ~~`deploy/terraform/**`~~ removed; k3s ops scripts removed (not in installer/CI) | Unnecessary orchestrator; out of scope for single-VPS appliance | M |
 | Abandoned environment files (orphan env stubs) | `deploy/management/`, `deploy/payment/` | Artifacts of pre-monolith architecture | S |
 | Prometheus targets for deleted microservices | `deploy/monitoring/prometheus.yaml` (targets `auth`, `payment`, `management` despite single `control` binary) | Empty metrics, misleading monitoring visibility | S |
 | `tracker-quic` binary | `cmd/tracker-quic` | TLS termination handled by Caddy/Nginx; redundant binary | S |
@@ -37,7 +37,7 @@ Related documents: [QUICKSTART.md](QUICKSTART.md), [ARCHITECTURE.md](ARCHITECTUR
 | Rendered configuration artifact stubs | `*.rendered.yaml` and similar files | Repository clutter | S |
 | Incorrect XDP path in documentation | Code generation map in `DEVELOPMENT.md` references incorrect `deploy/edge-xdp` instead of `deploy/edge/xdp/` | Initial build failure when following documentation | S |
 | Outdated installer blockers | `.cursor/INSTALLER.md` marks G1/G2 as blockers despite complete tiers | Forces agents to re-fix obsolete issues | S |
-| Broken references to deleted `scripts/deploy/*` | Invocation calls from `scripts/ops/` and tests to non-existent directories | Deployment errors during script execution | S |
+| Broken references to deleted `scripts/deploy/*` | ~~Invocation calls to non-existent `scripts/deploy/*`~~ fixed (`drill.sh` → `scripts/ops/verify_redis_topology.sh`) | Deployment errors during script execution | S |
 
 ---
 
@@ -46,7 +46,7 @@ Related documents: [QUICKSTART.md](QUICKSTART.md), [ARCHITECTURE.md](ARCHITECTUR
 | Candidate | Evidence | Governance Rule |
 | :--- | :--- | :--- |
 | Multi-region proxying (`region-proxy`) | `cmd/region-proxy`, `pkg/regionproxy/`, `deploy/broker/` | Exclude from base distribution; enable strictly under explicit Enterprise contracts |
-| `fraud-scorer` / `ivt-detector` / `deploy/ml` | `cmd/fraud-scorer`, `cmd/ivt-detector`, `cmd/ml-*`, profile `analytics-ml` | Move to optional profile; hot path relies on blocklists and boost snapshots |
+| `fraud-scorer` / `ivt-detector` / `deploy/model` | `cmd/fraud-scorer`, `cmd/ivt-detector`, `cmd/ml-*`, profile `analytics-ml` | Move to optional profile; hot path relies on blocklists and boost snapshots |
 | `edge-xdp` / `edge-bpf-sync` | `cmd/edge-xdp`, `cmd/edge-bpf-sync`, `deploy/edge/` | Omitted from `single_vps`; primary filtering handled by Nginx Lua |
 | Elastic sharding / `campaign-shard` / migrations | Environment variables `ELASTIC_SHARDING_*`, `cmd/campaign-shard`, `DEVELOPMENT.md` Section 9 | Cluster feature; appliance relies on fixed Redis masters |
 | DFA parsers for HTTP/2 and HTTP/3 in tracker | `handler_http2.go`, `http3_frame*.go` | Pause feature expansion; Edge proxies HTTP/1.1 traffic to tracker |

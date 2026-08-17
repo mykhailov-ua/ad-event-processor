@@ -2,6 +2,7 @@ package ingestion
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/domain"
@@ -53,7 +54,7 @@ func segmentMemberExists(ctx context.Context, rdbs []redis.UniversalClient, segm
 	key := unsafeString(w.buf)
 	err := rdb.Get(ctx, key).Err()
 	bufPool.Put(w)
-	if err == redis.Nil {
+	if errors.Is(err, redis.Nil) {
 		return false, nil
 	}
 	if err != nil {

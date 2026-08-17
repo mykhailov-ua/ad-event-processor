@@ -59,3 +59,8 @@ roles:
     permissions:
       - campaigns:read:masked
       - audit:read
+  P:
+    scope: customer
+    permissions:
+      - supply:read:scoped
+      - customers:read

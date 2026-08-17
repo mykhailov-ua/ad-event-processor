@@ -15,6 +15,7 @@ import {
   fetchSellers,
   fetchSellersJSONPreview,
   fetchSupplyExportPath,
+  fetchSupplyValidation,
 } from '../helpers/supply_api.js';
 import { Button } from '../components/button.js';
 import { ErrorBlock } from '../components/error_block.js';
@@ -34,7 +35,7 @@ type AdsTxtRow = {
   relationship: string;
 };
 
-type SupplyTab = 'sellers' | 'ads' | 'preview';
+type SupplyTab = 'sellers' | 'ads' | 'preview' | 'validation';
 
 function TableSkeleton({ cols, rows = 4 }: { cols: number; rows?: number }) {
   return (
@@ -62,6 +63,15 @@ export function IntegrationsSupplyPage() {
   const [exportPath, setExportPath] = useState('');
   const [sellersPreview, setSellersPreview] = useState('');
   const [adsPreview, setAdsPreview] = useState('');
+  const [validation, setValidation] = useState<{
+    sellers_json_valid: boolean;
+    sellers_checksum_sha256: string;
+    sellers_count: number;
+    ads_txt_valid: boolean;
+    ads_txt_checksum_sha256: string;
+    ads_txt_line_count: number;
+    issues?: string[];
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
@@ -108,13 +118,19 @@ export function IntegrationsSupplyPage() {
     setAdsPreview(a[1] ? `Error: ${a[1].message}` : (a[0] ?? ''));
   }, []);
 
+  const loadValidation = useCallback(async () => {
+    const [res, err] = await to(fetchSupplyValidation());
+    setValidation(err ? null : (res ?? null));
+  }, []);
+
   useEffect(() => {
     void reload();
   }, [reload]);
 
   useEffect(() => {
     if (tab === 'preview') void loadPreviews();
-  }, [tab, loadPreviews]);
+    if (tab === 'validation') void loadValidation();
+  }, [tab, loadPreviews, loadValidation]);
 
   const addSeller = async () => {
     if (!canWrite) return;
@@ -182,6 +198,12 @@ export function IntegrationsSupplyPage() {
           variant={tab === 'preview' ? 'primary' : 'secondary'}
           size="sm"
           onClick={() => setTab('preview')}
+        />
+        <Button
+          label="Validation"
+          variant={tab === 'validation' ? 'primary' : 'secondary'}
+          size="sm"
+          onClick={() => setTab('validation')}
         />
       </div>
 
@@ -368,6 +390,37 @@ export function IntegrationsSupplyPage() {
           <pre className="code-block text-sm">{sellersPreview || 'Loading…'}</pre>
           <h3 className="subsection-title">ads.txt</h3>
           <pre className="code-block text-sm">{adsPreview || 'Loading…'}</pre>
+        </div>
+      ) : null}
+
+      {tab === 'validation' ? (
+        <div className="section-card stack" data-testid="supply-validation-panel">
+          <h3 className="subsection-title">Export validation</h3>
+          {validation ? (
+            <dl className="definition-list">
+              <dt>sellers.json</dt>
+              <dd>
+                {validation.sellers_json_valid ? 'valid' : 'invalid'}
+                {' · '}
+                {validation.sellers_count}
+                {' sellers · SHA-256 '}
+                <code className="code-inline">{validation.sellers_checksum_sha256}</code>
+              </dd>
+              <dt>ads.txt</dt>
+              <dd>
+                {validation.ads_txt_valid ? 'valid' : 'invalid'}
+                {' · '}
+                {validation.ads_txt_line_count}
+                {' lines · SHA-256 '}
+                <code className="code-inline">{validation.ads_txt_checksum_sha256}</code>
+              </dd>
+              {(validation.issues ?? []).map((issue) => (
+                <dd key={issue} className="text-muted">{issue}</dd>
+              ))}
+            </dl>
+          ) : (
+            <p className="text-muted">Loading validation…</p>
+          )}
         </div>
       ) : null}
     </section>

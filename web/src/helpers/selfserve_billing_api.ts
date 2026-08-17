@@ -1,6 +1,7 @@
 import { api } from './api_client.js';
 import { apiConfirmed } from './confirmed_api.js';
 import { getOrCreate } from './idempotency.js';
+import type { BillingStatementDTO } from '../types/api/billing.js';
 
 export type PaymentIntentResult = {
   intent_id: string;
@@ -12,14 +13,7 @@ export type PaymentIntentResult = {
   deposit_qr_svg?: string;
 };
 
-export type BillingStatementDTO = {
-  customer_id?: string;
-  period?: { from?: string; to?: string };
-  opening_balance_micro?: number;
-  closing_balance_micro?: number;
-  currency?: string;
-  [key: string]: unknown;
-};
+export type { BillingStatementDTO };
 
 /**
  * Create a self-serve wallet top-up payment intent.

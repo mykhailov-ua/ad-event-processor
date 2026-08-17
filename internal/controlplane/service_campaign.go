@@ -82,22 +82,11 @@ func (s *Service) ListCampaigns(ctx context.Context, customerID uuid.UUID, statu
 		OwnerUserID: campaignOwnerUserFilter(ctx),
 	}
 
-	total, err := q.CountCampaigns(ctx, countParams)
-	if err != nil {
-		return nil, 0, err
-	}
-	if total == 0 {
-		return []CampaignDTO{}, 0, nil
-	}
-	rows, err := q.ListCampaigns(ctx, listParams)
-	if err != nil {
-		return nil, 0, err
-	}
-	out := make([]CampaignDTO, 0, len(rows))
-	for _, c := range rows {
-		out = append(out, scrubCampaignDTO(ctx, c))
-	}
-	return out, total, nil
+	return coldpath.PaginatedList(
+		func() (int64, error) { return q.CountCampaigns(ctx, countParams) },
+		func() ([]db.Campaign, error) { return q.ListCampaigns(ctx, listParams) },
+		func(c db.Campaign) CampaignDTO { return scrubCampaignDTO(ctx, c) },
+	)
 }
 
 func (s *Service) GetCampaign(ctx context.Context, id uuid.UUID) (CampaignDTO, error) {
@@ -131,130 +120,250 @@ func (s *Service) PatchCampaign(ctx context.Context, campaignID uuid.UUID, req a
 		}
 	}
 
+	if req.BrandID != nil {
+		if err := s.AssignCampaignBrand(ctx, campaignID, *req.BrandID); err != nil {
+			return CampaignDTO{}, err
+		}
+	}
+
 	if req.PacingMode != nil {
 		if _, err := s.UpdateCampaignPacing(ctx, campaignID, *req.PacingMode); err != nil {
 			return CampaignDTO{}, err
 		}
 	}
 
+	budgetMicro, err := resolvePatchBudgetLimitMicro(req)
+	if err != nil {
+		return CampaignDTO{}, err
+	}
+	statusWant, statusSet, err := parsePatchStatus(req.Status)
+	if err != nil {
+		return CampaignDTO{}, err
+	}
+	schedulePatch := req.StartAt != nil || req.EndAt != nil || req.DaypartHours != nil
+
 	adminPatch := req.Name != nil || req.DailyBudgetMicro != nil || req.Timezone != nil ||
 		req.FreqLimit != nil || req.FreqWindow != nil || req.TargetCountries != nil ||
 		req.TargetURL != nil || req.ReferrerFilter != nil ||
-		req.SafePageURL != nil || req.SafePageEnabled != nil ||
+		req.SafePageURL != nil || req.SafePageEnabled != nil || req.AttestationEnabled != nil || req.AttestationTTLSec != nil || req.DmrEnabled != nil ||
+		req.L1CIDRBlockEnabled != nil || req.L15ProxyVPNBlockEnabled != nil ||
+		req.TLSFingerprintBlockEnabled != nil || req.ConnTypePolicy != nil ||
+		req.LinkSigningEnabled != nil || req.LinkSigningTTLSec != nil ||
 		req.ClickDelivery != nil || req.ProxyUpstreamURL != nil || req.ProxyRewriteAssets != nil
-	if !adminPatch {
+	if !adminPatch && budgetMicro == nil && !statusSet && !schedulePatch {
 		return s.GetCampaign(ctx, campaignID)
 	}
 
 	var updated db.Campaign
 	err = pgx.BeginFunc(ctx, s.GetPool(), func(tx pgx.Tx) error {
 		q := db.New(tx)
-		camp, err := q.GetCampaignForUpdate(ctx, domain.ToUUID(campaignID))
+		locked, err := q.GetCampaignForUpdate(ctx, domain.ToUUID(campaignID))
 		if err != nil {
 			return mapNotFound(err, ErrCampaignNotFound)
 		}
 
-		name := camp.Name
-		if req.Name != nil {
-			name = strings.TrimSpace(*req.Name)
-			if name == "" {
-				return fmt.Errorf("name is required")
+		if budgetMicro != nil {
+			if err := s.applyCampaignBudgetPatch(ctx, q, locked, *budgetMicro); err != nil {
+				return err
+			}
+			locked, err = q.GetCampaignForUpdate(ctx, domain.ToUUID(campaignID))
+			if err != nil {
+				return err
 			}
 		}
-		dailyBudget := camp.DailyBudget
-		if req.DailyBudgetMicro != nil {
-			if *req.DailyBudgetMicro < 0 {
-				return fmt.Errorf("invalid daily_budget")
+
+		if schedulePatch {
+			startAt := timestamptzPtr(locked.StartAt)
+			endAt := timestamptzPtr(locked.EndAt)
+			if req.StartAt != nil {
+				startAt = req.StartAt
 			}
-			dailyBudget = *req.DailyBudgetMicro
-		}
-		timezone := camp.Timezone
-		if req.Timezone != nil {
-			timezone = strings.TrimSpace(*req.Timezone)
-			if timezone == "" {
-				timezone = "UTC"
+			if req.EndAt != nil {
+				endAt = req.EndAt
+			}
+			daypart := locked.DaypartHours
+			if req.DaypartHours != nil {
+				daypart = req.DaypartHours
+			}
+			if err := s.applyCampaignSchedulePatch(ctx, q, campaignID, locked, startAt, endAt, daypart); err != nil {
+				return err
+			}
+			locked, err = q.GetCampaignForUpdate(ctx, domain.ToUUID(campaignID))
+			if err != nil {
+				return err
 			}
 		}
-		freqLimit := camp.FreqLimit
-		if req.FreqLimit != nil {
-			freqLimit = pgtype.Int4{Int32: *req.FreqLimit, Valid: true}
-		}
-		freqWindow := camp.FreqWindow
-		if req.FreqWindow != nil {
-			freqWindow = pgtype.Int4{Int32: *req.FreqWindow, Valid: true}
-		}
-		countries := camp.TargetCountries
-		if req.TargetCountries != nil {
-			countries = countriesOrEmpty(req.TargetCountries)
-		}
-		targetURL := camp.TargetUrl
-		if req.TargetURL != nil {
-			targetURL = *req.TargetURL
-		}
-		referrerFilter := camp.ReferrerFilter
-		if req.ReferrerFilter != nil {
-			referrerFilter = *req.ReferrerFilter
-		}
-		safePageURL := camp.SafePageUrl
-		if req.SafePageURL != nil {
-			safePageURL = *req.SafePageURL
-		}
-		safePageEnabled := camp.SafePageEnabled
-		if req.SafePageEnabled != nil {
-			safePageEnabled = *req.SafePageEnabled
-		}
-		clickDelivery := camp.ClickDelivery
-		if req.ClickDelivery != nil {
-			clickDelivery = strings.TrimSpace(*req.ClickDelivery)
-		}
-		if clickDelivery == "" {
-			clickDelivery = proxyupstream.ClickDeliveryRedirect
-		}
-		proxyUpstream := camp.ProxyUpstreamUrl
-		if req.ProxyUpstreamURL != nil {
-			proxyUpstream = strings.TrimSpace(*req.ProxyUpstreamURL)
-		}
-		proxyRewrite := camp.ProxyRewriteAssets
-		if req.ProxyRewriteAssets != nil {
-			proxyRewrite = *req.ProxyRewriteAssets
-		}
-		allowHTTP := s.cfg != nil && s.cfg.ProxyAllowHTTPInsecure
-		if err := proxyupstream.ValidateDeliveryPair(ctx, clickDelivery, proxyUpstream, allowHTTP); err != nil {
-			return err
+
+		if adminPatch {
+			name := locked.Name
+			if req.Name != nil {
+				name = strings.TrimSpace(*req.Name)
+				if name == "" {
+					return fmt.Errorf("name is required")
+				}
+			}
+			dailyBudget := locked.DailyBudget
+			if req.DailyBudgetMicro != nil {
+				if *req.DailyBudgetMicro < 0 {
+					return fmt.Errorf("invalid daily_budget")
+				}
+				dailyBudget = *req.DailyBudgetMicro
+			}
+			timezone := locked.Timezone
+			if req.Timezone != nil {
+				timezone = strings.TrimSpace(*req.Timezone)
+				if timezone == "" {
+					timezone = "UTC"
+				}
+			}
+			freqLimit := locked.FreqLimit
+			if req.FreqLimit != nil {
+				freqLimit = pgtype.Int4{Int32: *req.FreqLimit, Valid: true}
+			}
+			freqWindow := locked.FreqWindow
+			if req.FreqWindow != nil {
+				freqWindow = pgtype.Int4{Int32: *req.FreqWindow, Valid: true}
+			}
+			countries := locked.TargetCountries
+			if req.TargetCountries != nil {
+				countries = countriesOrEmpty(req.TargetCountries)
+			}
+			targetURL := locked.TargetUrl
+			if req.TargetURL != nil {
+				targetURL = *req.TargetURL
+			}
+			referrerFilter := locked.ReferrerFilter
+			if req.ReferrerFilter != nil {
+				referrerFilter = *req.ReferrerFilter
+			}
+			safePageURL := locked.SafePageUrl
+			if req.SafePageURL != nil {
+				safePageURL = *req.SafePageURL
+			}
+			safePageEnabled := locked.SafePageEnabled
+			if req.SafePageEnabled != nil {
+				safePageEnabled = *req.SafePageEnabled
+			}
+			attestationEnabled := locked.AttestationEnabled
+			if req.AttestationEnabled != nil {
+				attestationEnabled = *req.AttestationEnabled
+			}
+			attestationTTL := locked.AttestationTtlSec
+			if req.AttestationTTLSec != nil {
+				parsed, _, err := parsePatchAttestationTTLSec(req.AttestationTTLSec)
+				if err != nil {
+					return err
+				}
+				attestationTTL = parsed
+			}
+			if attestationEnabled && !safePageEnabled {
+				return fmt.Errorf("attestation_enabled requires safe_page_enabled")
+			}
+			dmrEnabled := locked.DmrEnabled
+			if req.DmrEnabled != nil {
+				dmrEnabled = *req.DmrEnabled
+			}
+			l1CidrBlock := locked.L1CidrBlockEnabled
+			if req.L1CIDRBlockEnabled != nil {
+				l1CidrBlock = *req.L1CIDRBlockEnabled
+			}
+			l15ProxyVPNBlock := locked.L15ProxyVpnBlockEnabled
+			if req.L15ProxyVPNBlockEnabled != nil {
+				l15ProxyVPNBlock = *req.L15ProxyVPNBlockEnabled
+			}
+			tlsFingerprintBlock := locked.TlsFingerprintBlockEnabled
+			if req.TLSFingerprintBlockEnabled != nil {
+				tlsFingerprintBlock = *req.TLSFingerprintBlockEnabled
+			}
+			connTypePolicy := locked.ConnTypePolicy
+			if req.ConnTypePolicy != nil {
+				parsed, _, err := parsePatchConnTypePolicy(req.ConnTypePolicy)
+				if err != nil {
+					return err
+				}
+				connTypePolicy = parsed
+			}
+			linkSigningEnabled := locked.LinkSigningEnabled
+			if req.LinkSigningEnabled != nil {
+				linkSigningEnabled = *req.LinkSigningEnabled
+			}
+			linkSigningTTL := locked.LinkSigningTtlSec
+			if req.LinkSigningTTLSec != nil {
+				parsed, _, err := parsePatchLinkSigningTTLSec(req.LinkSigningTTLSec)
+				if err != nil {
+					return err
+				}
+				linkSigningTTL = parsed
+			}
+			clickDelivery := locked.ClickDelivery
+			if req.ClickDelivery != nil {
+				clickDelivery = strings.TrimSpace(*req.ClickDelivery)
+			}
+			if clickDelivery == "" {
+				clickDelivery = proxyupstream.ClickDeliveryRedirect
+			}
+			proxyUpstream := locked.ProxyUpstreamUrl
+			if req.ProxyUpstreamURL != nil {
+				proxyUpstream = strings.TrimSpace(*req.ProxyUpstreamURL)
+			}
+			proxyRewrite := locked.ProxyRewriteAssets
+			if req.ProxyRewriteAssets != nil {
+				proxyRewrite = *req.ProxyRewriteAssets
+			}
+			allowHTTP := s.cfg != nil && s.cfg.ProxyAllowHTTPInsecure
+			if err := proxyupstream.ValidateDeliveryPair(ctx, clickDelivery, proxyUpstream, allowHTTP); err != nil {
+				return err
+			}
+
+			locked, err = q.UpdateCampaignAdmin(ctx, db.UpdateCampaignAdminParams{
+				ID:                         domain.ToUUID(campaignID),
+				Name:                       name,
+				DailyBudget:                dailyBudget,
+				Timezone:                   timezone,
+				FreqLimit:                  freqLimit,
+				FreqWindow:                 freqWindow,
+				TargetCountries:            countries,
+				TargetUrl:                  targetURL,
+				ReferrerFilter:             referrerFilter,
+				SafePageUrl:                safePageURL,
+				SafePageEnabled:            safePageEnabled,
+				AttestationEnabled:         attestationEnabled,
+				AttestationTtlSec:          attestationTTL,
+				DmrEnabled:                 dmrEnabled,
+				ClickDelivery:              clickDelivery,
+				ProxyUpstreamUrl:           proxyUpstream,
+				ProxyRewriteAssets:         proxyRewrite,
+				TlsFingerprintBlockEnabled: tlsFingerprintBlock,
+				ConnTypePolicy:             connTypePolicy,
+				LinkSigningEnabled:         linkSigningEnabled,
+				LinkSigningTtlSec:          linkSigningTTL,
+				L1CidrBlockEnabled:         l1CidrBlock,
+				L15ProxyVpnBlockEnabled:    l15ProxyVPNBlock,
+			})
+			if err != nil {
+				return err
+			}
+
+			var uid uuid.UUID
+			if u, ok := GetUser(ctx); ok {
+				uid = u.UserID
+			}
+			s.AuditLog(ctx, q, uid, "PATCH_CAMPAIGN", "campaign", &campaignID, auditCampaignAdminChange{
+				Name:            name,
+				DailyBudget:     dailyBudget,
+				Timezone:        timezone,
+				TargetCountries: countries,
+			}, nil)
 		}
 
-		updated, err = q.UpdateCampaignAdmin(ctx, db.UpdateCampaignAdminParams{
-			ID:                 domain.ToUUID(campaignID),
-			Name:               name,
-			DailyBudget:        dailyBudget,
-			Timezone:           timezone,
-			FreqLimit:          freqLimit,
-			FreqWindow:         freqWindow,
-			TargetCountries:    countries,
-			TargetUrl:          targetURL,
-			ReferrerFilter:     referrerFilter,
-			SafePageUrl:        safePageURL,
-			SafePageEnabled:    safePageEnabled,
-			ClickDelivery:      clickDelivery,
-			ProxyUpstreamUrl:   proxyUpstream,
-			ProxyRewriteAssets: proxyRewrite,
-		})
-		if err != nil {
-			return err
+		if statusSet {
+			if err := s.applyCampaignStatusPatch(ctx, q, locked, statusWant, "patch"); err != nil {
+				return err
+			}
 		}
 
-		var uid uuid.UUID
-		if u, ok := GetUser(ctx); ok {
-			uid = u.UserID
-		}
-		s.AuditLog(ctx, q, uid, "PATCH_CAMPAIGN", "campaign", &campaignID, auditCampaignAdminChange{
-			Name:            name,
-			DailyBudget:     dailyBudget,
-			Timezone:        timezone,
-			TargetCountries: countries,
-		}, nil)
-
-		return nil
+		updated, err = q.GetCampaign(ctx, domain.ToUUID(campaignID))
+		return err
 	})
 	if err != nil {
 		return CampaignDTO{}, err
@@ -264,51 +373,80 @@ func (s *Service) PatchCampaign(ctx context.Context, campaignID uuid.UUID, req a
 	return scrubCampaignDTO(ctx, updated), nil
 }
 
+func (s *Service) AssignCampaignBrand(ctx context.Context, campaignID, brandID uuid.UUID) error {
+	if s == nil || s.pool == nil {
+		return fmt.Errorf("service unavailable")
+	}
+	if campaignID == uuid.Nil {
+		return fmt.Errorf("campaign id required")
+	}
+	camp, err := s.GetCampaignRow(ctx, campaignID)
+	if err != nil {
+		return err
+	}
+	customerID := uuid.UUID(camp.CustomerID.Bytes)
+
+	brandFcapKey := "fcap:c:" + campaignID.String()
+	brandArg := brandIDOrNil(uuid.Nil)
+	auditBrandID := ""
+	if brandID != uuid.Nil {
+		q := db.New(s.GetPool())
+		brand, err := q.GetBrand(ctx, domain.ToUUID(brandID))
+		if err != nil {
+			return mapNotFound(err, ErrBrandNotFound)
+		}
+		if uuid.UUID(brand.CustomerID.Bytes) != customerID {
+			return ErrBrandBelongsToAnotherCustomer
+		}
+		brandFcapKey = "fcap:b:" + brandID.String()
+		brandArg = brandID
+		auditBrandID = brandID.String()
+	}
+
+	tag, err := s.pool.Exec(ctx,
+		`UPDATE campaigns SET brand_id = $2, brand_fcap_key = $3, updated_at = now() WHERE id = $1 AND deleted_at IS NULL`,
+		campaignID, brandArg, brandFcapKey,
+	)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrCampaignNotFound
+	}
+
+	var uid uuid.UUID
+	if u, ok := GetUser(ctx); ok {
+		uid = u.UserID
+	}
+	s.AuditLog(ctx, db.New(s.GetPool()), uid, "PATCH_CAMPAIGN", "campaign", &campaignID, auditCampaignBrandChange{
+		BrandID: auditBrandID,
+	}, nil)
+
+	_ = s.publishCampaignUpdate(ctx, campaignID.String())
+	return nil
+}
+
+func brandIDOrNil(id uuid.UUID) any {
+	if id == uuid.Nil {
+		return nil
+	}
+	return id
+}
+
 func (s *Service) ListCampaignEvents(ctx context.Context, campaignID uuid.UUID, limit, offset int32) ([]adminapi.CampaignEventDTO, int64, error) {
 	q := db.New(s.GetPool())
 	cid := domain.ToUUID(campaignID)
-	total, err := q.CountCampaignEvents(ctx, cid)
-	if err != nil {
-		return nil, 0, err
-	}
-	if total == 0 {
-		return []adminapi.CampaignEventDTO{}, 0, nil
-	}
-	rows, err := q.ListCampaignEvents(ctx, db.ListCampaignEventsParams{
-		CampaignID: cid,
-		Limit:      limit,
-		Offset:     offset,
-	})
-	if err != nil {
-		return nil, 0, err
-	}
-	out := make([]adminapi.CampaignEventDTO, 0, len(rows))
-	for _, row := range rows {
-		var ip, ua, userID string
-		if row.IpAddress.Valid {
-			ip = row.IpAddress.String
-		}
-		if row.UserAgent.Valid {
-			ua = row.UserAgent.String
-		}
-		if row.UserID.Valid {
-			userID = row.UserID.String
-		}
-		createdAt := ""
-		if row.CreatedAt.Valid {
-			createdAt = row.CreatedAt.Time.UTC().Format(time.RFC3339)
-		}
-		out = append(out, adminapi.CampaignEventDTO{
-			ClickID:   row.ClickID,
-			EventType: row.EventType,
-			UserID:    userID,
-			IP:        ip,
-			UserAgent: ua,
-			Payload:   json.RawMessage(row.Payload),
-			CreatedAt: createdAt,
-		})
-	}
-	return out, total, nil
+	return coldpath.PaginatedList(
+		func() (int64, error) { return q.CountCampaignEvents(ctx, cid) },
+		func() ([]db.ListCampaignEventsRow, error) {
+			return q.ListCampaignEvents(ctx, db.ListCampaignEventsParams{
+				CampaignID: cid,
+				Limit:      limit,
+				Offset:     offset,
+			})
+		},
+		campaignEventToDTO,
+	)
 }
 
 func (s *Service) ListStatusHistory(ctx context.Context, campaignID uuid.UUID, limit, offset int32) ([]StatusHistoryDTO, int64, error) {
@@ -320,33 +458,11 @@ func (s *Service) ListStatusHistory(ctx context.Context, campaignID uuid.UUID, l
 		Limit:      limit,
 		Offset:     offset,
 	}
-	total, err := q.CountStatusHistory(ctx, cid)
-	if err != nil {
-		return nil, 0, err
-	}
-	if total == 0 {
-		return []StatusHistoryDTO{}, 0, nil
-	}
-	historyRows, err := q.ListStatusHistory(ctx, listParams)
-	if err != nil {
-		return nil, 0, err
-	}
-	out := make([]StatusHistoryDTO, 0, len(historyRows))
-	for _, r := range historyRows {
-		var oldStatus string
-		if r.OldStatus.Valid {
-			oldStatus = string(r.OldStatus.CampaignStatusType)
-		}
-		out = append(out, StatusHistoryDTO{
-			ID:         r.ID,
-			CampaignID: uuid.UUID(r.CampaignID.Bytes).String(),
-			OldStatus:  oldStatus,
-			NewStatus:  string(r.NewStatus),
-			Reason:     r.Reason.String,
-			CreatedAt:  r.CreatedAt.Time.Format(time.RFC3339),
-		})
-	}
-	return out, total, nil
+	return coldpath.PaginatedList(
+		func() (int64, error) { return q.CountStatusHistory(ctx, cid) },
+		func() ([]db.CampaignStatusHistory, error) { return q.ListStatusHistory(ctx, listParams) },
+		statusHistoryToDTO,
+	)
 }
 
 func (s *Service) UpdateCampaignPacing(ctx context.Context, campaignID uuid.UUID, newMode string) (CampaignDTO, error) {
@@ -438,32 +554,42 @@ func scrubCampaignDTO(ctx context.Context, c db.Campaign) CampaignDTO {
 		countries = []string{}
 	}
 	dto := CampaignDTO{
-		ID:                 uuid.UUID(c.ID.Bytes).String(),
-		Name:               c.Name,
-		Status:             string(c.Status),
-		BudgetLimit:        formatMicro(c.BudgetLimit),
-		CurrentSpend:       formatMicro(c.CurrentSpend),
-		CustomerID:         uuid.UUID(c.CustomerID.Bytes).String(),
-		PacingMode:         string(c.PacingMode),
-		DailyBudget:        formatMicro(c.DailyBudget),
-		Timezone:           c.Timezone,
-		FreqLimit:          c.FreqLimit.Int32,
-		FreqWindow:         c.FreqWindow.Int32,
-		TargetCountries:    countries,
-		TargetURL:          c.TargetUrl,
-		SafePageURL:        c.SafePageUrl,
-		SafePageEnabled:    c.SafePageEnabled,
-		ClickDelivery:      c.ClickDelivery,
-		ProxyUpstreamURL:   c.ProxyUpstreamUrl,
-		ProxyRewriteAssets: c.ProxyRewriteAssets,
-		BrandID:            formatOptionalUUID(c.BrandID),
-		CreativePayload:    json.RawMessage(c.CreativePayload),
-		ReferrerFilter:     c.ReferrerFilter,
-		StartAt:            formatOptionalTime(c.StartAt),
-		EndAt:              formatOptionalTime(c.EndAt),
-		DaypartHours:       daypartOrEmpty(c.DaypartHours),
-		CreatedAt:          c.CreatedAt.Time.Format(time.RFC3339),
-		UpdatedAt:          c.UpdatedAt.Time.Format(time.RFC3339),
+		ID:                         uuid.UUID(c.ID.Bytes).String(),
+		Name:                       c.Name,
+		Status:                     string(c.Status),
+		BudgetLimit:                formatMicro(c.BudgetLimit),
+		CurrentSpend:               formatMicro(c.CurrentSpend),
+		CustomerID:                 uuid.UUID(c.CustomerID.Bytes).String(),
+		PacingMode:                 string(c.PacingMode),
+		DailyBudget:                formatMicro(c.DailyBudget),
+		Timezone:                   c.Timezone,
+		FreqLimit:                  c.FreqLimit.Int32,
+		FreqWindow:                 c.FreqWindow.Int32,
+		TargetCountries:            countries,
+		TargetURL:                  c.TargetUrl,
+		SafePageURL:                c.SafePageUrl,
+		SafePageEnabled:            c.SafePageEnabled,
+		AttestationEnabled:         c.AttestationEnabled,
+		AttestationTTLSec:          c.AttestationTtlSec,
+		DmrEnabled:                 c.DmrEnabled,
+		L1CIDRBlockEnabled:         c.L1CidrBlockEnabled,
+		L15ProxyVPNBlockEnabled:    c.L15ProxyVpnBlockEnabled,
+		TLSFingerprintBlockEnabled: c.TlsFingerprintBlockEnabled,
+		ConnTypePolicy:             c.ConnTypePolicy,
+		LinkSigningEnabled:         c.LinkSigningEnabled,
+		LinkSigningTTLSec:          c.LinkSigningTtlSec,
+		ClickDelivery:              c.ClickDelivery,
+		ProxyUpstreamURL:           c.ProxyUpstreamUrl,
+		ProxyRewriteAssets:         c.ProxyRewriteAssets,
+		BrandID:                    formatOptionalUUID(c.BrandID),
+		CreativePayload:            json.RawMessage(c.CreativePayload),
+		ReferrerFilter:             c.ReferrerFilter,
+		StartAt:                    formatOptionalTime(c.StartAt),
+		EndAt:                      formatOptionalTime(c.EndAt),
+		DaypartHours:               daypartOrEmpty(c.DaypartHours),
+		OwnerUserID:                formatOptionalUUID(c.OwnerUserID),
+		CreatedAt:                  c.CreatedAt.Time.Format(time.RFC3339),
+		UpdatedAt:                  c.UpdatedAt.Time.Format(time.RFC3339),
 	}
 	if snap, ok := authz.SnapshotFromContext(ctx); ok {
 		return scrubCampaignFields(dto, snap.Mask)
@@ -1082,7 +1208,7 @@ func (s *Service) DeleteSeller(ctx context.Context, id int64) error {
 		if u, ok := GetUser(ctx); ok {
 			uid = u.UserID
 		}
-		s.AuditLog(ctx, q, uid, "DELETE_SELLER", "supply", nil, auditIdChange{ID: id}, nil)
+		s.AuditLog(ctx, q, uid, "DELETE_SELLER", "supply", nil, auditIDChange{ID: id}, nil)
 		return s.enqueueSupplyFilesUpdate(ctx, q, "delete_seller")
 	})
 }
@@ -1202,7 +1328,7 @@ func (s *Service) UpdateAdsTxtEntry(ctx context.Context, id int64, spec AdsTxtEn
 		if u, ok := GetUser(ctx); ok {
 			uid = u.UserID
 		}
-		s.AuditLog(ctx, q, uid, "UPDATE_ADS_TXT", "supply", nil, auditIdChange{ID: id}, nil)
+		s.AuditLog(ctx, q, uid, "UPDATE_ADS_TXT", "supply", nil, auditIDChange{ID: id}, nil)
 
 		if err := s.enqueueSupplyFilesUpdate(ctx, q, "update_ads_txt"); err != nil {
 			return err
@@ -1236,7 +1362,7 @@ func (s *Service) DeleteAdsTxtEntry(ctx context.Context, id int64) error {
 		if u, ok := GetUser(ctx); ok {
 			uid = u.UserID
 		}
-		s.AuditLog(ctx, q, uid, "DELETE_ADS_TXT", "supply", nil, auditIdChange{ID: id}, nil)
+		s.AuditLog(ctx, q, uid, "DELETE_ADS_TXT", "supply", nil, auditIDChange{ID: id}, nil)
 		return s.enqueueSupplyFilesUpdate(ctx, q, "delete_ads_txt")
 	})
 }
@@ -1804,48 +1930,7 @@ func (s *Service) UpdateCampaignSchedule(ctx context.Context, campaignID uuid.UU
 		if err != nil {
 			return err
 		}
-		_, err = q.UpdateCampaignSchedule(ctx, db.UpdateCampaignScheduleParams{
-			ID:           domain.ToUUID(campaignID),
-			StartAt:      toTimestamptz(startAt),
-			EndAt:        toTimestamptz(endAt),
-			DaypartHours: daypartOrEmpty(daypartHours),
-		})
-		if err != nil {
-			return err
-		}
-
-		var uid uuid.UUID
-		if u, ok := GetUser(ctx); ok {
-			uid = u.UserID
-		}
-		s.AuditLog(ctx, q, uid, "UPDATE_CAMPAIGN_SCHEDULE", "campaign", &campaignID, auditCampaignScheduleChange{
-			StartAt:      startAt,
-			EndAt:        endAt,
-			DaypartHours: daypartHours,
-		}, nil)
-
-		payload, err := coldpath.MarshalOutbox(campaignScheduleOutboxPayload{
-			CampaignID:   campaignID.String(),
-			StartAt:      startAt,
-			EndAt:        endAt,
-			DaypartHours: daypartHours,
-		})
-		if err != nil {
-			return fmt.Errorf("marshal update campaign schedule outbox payload: %w", err)
-		}
-		_, err = q.CreateOutboxEvent(ctx, db.CreateOutboxEventParams{EventType: "UPDATE_CAMPAIGN_SCHEDULE", Payload: payload})
-		if err != nil {
-			return err
-		}
-
-		desired := resolveScheduleStatus(time.Now(), startAt, endAt)
-		if desired == db.CampaignStatusTypePAUSED && locked.Status == db.CampaignStatusTypeACTIVE {
-			return s.transitionCampaignStatus(ctx, q, campaignID, locked.Status, db.CampaignStatusTypePAUSED, "schedule_window", locked.BudgetLimit)
-		}
-		if desired == db.CampaignStatusTypeACTIVE && locked.Status == db.CampaignStatusTypePAUSED {
-			return s.transitionCampaignStatus(ctx, q, campaignID, locked.Status, db.CampaignStatusTypeACTIVE, "schedule_window", locked.BudgetLimit)
-		}
-		return nil
+		return s.applyCampaignSchedulePatch(ctx, q, campaignID, locked, startAt, endAt, daypartHours)
 	})
 }
 
@@ -1908,49 +1993,83 @@ func (s *Service) ListCampaignTemplates(ctx context.Context, customerID uuid.UUI
 		Limit:      limit,
 		Offset:     offset,
 	}
-	total, err := q.CountCampaignTemplates(ctx, cid)
-	if err != nil {
-		return nil, 0, err
+	return coldpath.PaginatedList(
+		func() (int64, error) { return q.CountCampaignTemplates(ctx, cid) },
+		func() ([]db.CampaignTemplate, error) { return q.ListCampaignTemplates(ctx, listParams) },
+		campaignTemplateToDTO,
+	)
+}
+
+func campaignEventToDTO(row db.ListCampaignEventsRow) adminapi.CampaignEventDTO {
+	var ip, ua, userID string
+	if row.IpAddress.Valid {
+		ip = row.IpAddress.String
 	}
-	if total == 0 {
-		return []CampaignTemplateDTO{}, 0, nil
+	if row.UserAgent.Valid {
+		ua = row.UserAgent.String
 	}
-	templateRows, err := q.ListCampaignTemplates(ctx, listParams)
-	if err != nil {
-		return nil, 0, err
+	if row.UserID.Valid {
+		userID = row.UserID.String
 	}
-	out := make([]CampaignTemplateDTO, 0, len(templateRows))
-	for _, t := range templateRows {
-		countries := t.TargetCountries
-		if countries == nil {
-			countries = []string{}
-		}
-		hours := t.DaypartHours
-		if hours == nil {
-			hours = []int16{}
-		}
-		var brandID string
-		if t.BrandID.Valid {
-			brandID = uuid.UUID(t.BrandID.Bytes).String()
-		}
-		out = append(out, CampaignTemplateDTO{
-			ID:              uuid.UUID(t.ID.Bytes).String(),
-			CustomerID:      uuid.UUID(t.CustomerID.Bytes).String(),
-			Name:            t.Name,
-			BudgetLimit:     formatMicro(t.BudgetLimit),
-			PacingMode:      string(t.PacingMode),
-			DailyBudget:     formatMicro(t.DailyBudget),
-			Timezone:        t.Timezone,
-			FreqLimit:       t.FreqLimit,
-			FreqWindow:      t.FreqWindow,
-			TargetCountries: countries,
-			BrandID:         brandID,
-			DaypartHours:    hours,
-			CreatedAt:       t.CreatedAt.Time.Format(time.RFC3339),
-			UpdatedAt:       t.UpdatedAt.Time.Format(time.RFC3339),
-		})
+	createdAt := ""
+	if row.CreatedAt.Valid {
+		createdAt = row.CreatedAt.Time.UTC().Format(time.RFC3339)
 	}
-	return out, total, nil
+	return adminapi.CampaignEventDTO{
+		ClickID:   row.ClickID,
+		EventType: row.EventType,
+		UserID:    userID,
+		IP:        ip,
+		UserAgent: ua,
+		Payload:   json.RawMessage(row.Payload),
+		CreatedAt: createdAt,
+	}
+}
+
+func statusHistoryToDTO(r db.CampaignStatusHistory) StatusHistoryDTO {
+	var oldStatus string
+	if r.OldStatus.Valid {
+		oldStatus = string(r.OldStatus.CampaignStatusType)
+	}
+	return StatusHistoryDTO{
+		ID:         r.ID,
+		CampaignID: uuid.UUID(r.CampaignID.Bytes).String(),
+		OldStatus:  oldStatus,
+		NewStatus:  string(r.NewStatus),
+		Reason:     r.Reason.String,
+		CreatedAt:  r.CreatedAt.Time.Format(time.RFC3339),
+	}
+}
+
+func campaignTemplateToDTO(t db.CampaignTemplate) CampaignTemplateDTO {
+	countries := t.TargetCountries
+	if countries == nil {
+		countries = []string{}
+	}
+	hours := t.DaypartHours
+	if hours == nil {
+		hours = []int16{}
+	}
+	var brandID string
+	if t.BrandID.Valid {
+		brandID = uuid.UUID(t.BrandID.Bytes).String()
+	}
+	return CampaignTemplateDTO{
+		ID:              uuid.UUID(t.ID.Bytes).String(),
+		CustomerID:      uuid.UUID(t.CustomerID.Bytes).String(),
+		Name:            t.Name,
+		BudgetLimit:     formatMicro(t.BudgetLimit),
+		PacingMode:      string(t.PacingMode),
+		DailyBudget:     formatMicro(t.DailyBudget),
+		Timezone:        t.Timezone,
+		FreqLimit:       t.FreqLimit,
+		FreqWindow:      t.FreqWindow,
+		TargetCountries: countries,
+		BrandID:         brandID,
+		DaypartHours:    hours,
+		CreatedAt:       t.CreatedAt.Time.Format(time.RFC3339),
+		UpdatedAt:       t.UpdatedAt.Time.Format(time.RFC3339),
+	}
 }
 
 func (s *Service) CreateCampaignFromTemplate(ctx context.Context, templateID uuid.UUID, customerID uuid.UUID, name string, budgetLimit *int64, idempotencyKey string) (uuid.UUID, error) {
@@ -2246,6 +2365,7 @@ func (s *Service) RunDeliveryOptimizerTick(ctx context.Context, syncWorkers []*d
 
 		merge := make(deliveryOutboxMerge)
 		var mabBrands []uuid.UUID
+		var flowBanditCampaigns []uuid.UUID
 
 		err := pgx.BeginFunc(opCtx, s.GetPool(), func(tx pgx.Tx) error {
 			if err := s.closedLoopPacingControllerTx(opCtx, tx, merge); err != nil {
@@ -2260,6 +2380,11 @@ func (s *Service) RunDeliveryOptimizerTick(ctx context.Context, syncWorkers []*d
 					return err
 				}
 				mabBrands = brands
+				campaigns, err := s.optimizeFlowBanditTx(opCtx, tx)
+				if err != nil {
+					return err
+				}
+				flowBanditCampaigns = campaigns
 			}
 			if err := merge.flush(opCtx, tx); err != nil {
 				return err
@@ -2273,6 +2398,9 @@ func (s *Service) RunDeliveryOptimizerTick(ctx context.Context, syncWorkers []*d
 		})
 		if err != nil {
 			return err
+		}
+		for _, campID := range flowBanditCampaigns {
+			_ = s.publishCampaignUpdate(opCtx, campID.String())
 		}
 		return nil
 	})

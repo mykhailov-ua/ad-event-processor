@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
 
 	"github.com/google/uuid"
@@ -20,10 +21,7 @@ type CustomerDTO struct {
 	UpdatedAt       string `json:"updated_at"`
 }
 
-type CustomerListResponse struct {
-	Items []CustomerDTO `json:"items"`
-	Total int64         `json:"total"`
-}
+type CustomerListResponse = ListResponse[CustomerDTO]
 
 type CustomerReader interface {
 	ListCustomers(ctx context.Context, limit, offset int32) ([]CustomerDTO, int64, error)
@@ -55,7 +53,7 @@ func (h *CustomersHTTPHandlers) Register(mux *http.ServeMux) {
 }
 
 func (h *CustomersHTTPHandlers) listCustomers(w http.ResponseWriter, r *http.Request) {
-	limit, offset := parseAPIPagination(r)
+	limit, offset := coldpath.ParseAPIPagination(r)
 	items, total, err := h.Customers.ListCustomers(r.Context(), limit, offset)
 	if err != nil {
 		h.writeServiceError(w, err)

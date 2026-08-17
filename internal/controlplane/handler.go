@@ -46,46 +46,46 @@ func NewHandler(svc *Service, cfg *config.Config, authMiddleware *AuthMiddleware
 	return h
 }
 
-func (handler *Handler) RegisterRoutes(mux *http.ServeMux) {
-	if handler.svc != nil && handler.svc.GetPool() != nil {
-		adminapi.RegisterRoutes(mux, handler.BuildAdminAPIRegistry(handler.svc.GetPool(), handler.svc.RedisShards()))
+func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
+	if h.svc != nil && h.svc.GetPool() != nil {
+		adminapi.RegisterRoutes(mux, h.BuildAdminAPIRegistry(h.svc.GetPool(), h.svc.RedisShards()))
 	}
 
 	registerAdminGoneRoutes(mux)
-	registerRootRoute(mux, NewAdminUIGate(handler.authMiddleware))
-	handler.registerRegionIngestRoutes(mux)
+	registerRootRoute(mux, NewAdminUIGate(h.authMiddleware))
+	h.registerRegionIngestRoutes(mux)
 }
 
-func (handler *Handler) limit(next http.HandlerFunc) http.HandlerFunc {
-	return handler.limitByIP(handler.pgHigh(next))
+func (h *Handler) limit(next http.HandlerFunc) http.HandlerFunc {
+	return h.limitByIP(h.pgHigh(next))
 }
 
-func (handler *Handler) pgHigh(next http.HandlerFunc) http.HandlerFunc {
+func (h *Handler) pgHigh(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if handler.svc == nil || handler.svc.pgGate == nil {
+		if h.svc == nil || h.svc.pgGate == nil {
 			next(w, r)
 			return
 		}
-		if err := handler.svc.pgGate.AcquireHigh(r.Context()); err != nil {
+		if err := h.svc.pgGate.AcquireHigh(r.Context()); err != nil {
 			httpresponse.Error(w, http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", "database busy")
 			return
 		}
-		defer handler.svc.pgGate.ReleaseHigh()
+		defer h.svc.pgGate.ReleaseHigh()
 		next(w, r)
 	}
 }
 
-func (handler *Handler) perm(next http.HandlerFunc, permission string) http.HandlerFunc {
-	if handler.authMiddleware != nil {
-		return handler.authMiddleware.RequirePermission(permission)(next)
+func (h *Handler) perm(next http.HandlerFunc, permission string) http.HandlerFunc {
+	if h.authMiddleware != nil {
+		return h.authMiddleware.RequirePermission(permission)(next)
 	}
-	return handler.authFallback(next)
+	return h.authFallback(next)
 }
 
-func (handler *Handler) authFallback(next http.HandlerFunc) http.HandlerFunc {
+func (h *Handler) authFallback(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		key := r.Header.Get("X-Admin-API-Key")
-		if key == "" || handler.cfg == nil || key != string(handler.cfg.AdminAPIKey) {
+		if key == "" || h.cfg == nil || key != string(h.cfg.AdminAPIKey) {
 			httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
 			return
 		}

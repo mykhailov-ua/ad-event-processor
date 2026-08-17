@@ -1,5 +1,7 @@
 package ingestion
 
+import "errors"
+
 const h2MaxHeaderBlock = 16 << 10 // cap assembled HPACK block per request
 
 type h2ConnState struct {
@@ -75,7 +77,7 @@ func parseH2Ingress(buf []byte, st *h2ConnState, maxBody int64) (consumed int, r
 	for off < n {
 		fr, frameLen, ferr := decodeH2FrameHeader(buf[off:])
 		if ferr != nil {
-			if st.settingsSent && off == h2ClientPrefaceLen && ferr == errIncompleteRequest {
+			if st.settingsSent && off == h2ClientPrefaceLen && errors.Is(ferr, errIncompleteRequest) {
 				return off, req, 0, settingsOut, errIncompleteRequest
 			}
 			return off, req, 0, settingsOut, ferr

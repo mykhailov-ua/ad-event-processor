@@ -169,6 +169,22 @@ func (a commercialAdminAdapter) SupplyExportPath() string {
 	return a.svc.SupplyExportPath()
 }
 
+func (a commercialAdminAdapter) ValidateSupplyFiles(ctx context.Context) (adminapi.SupplyValidationDTO, error) {
+	report, err := a.svc.ValidateSupplyFiles(ctx)
+	if err != nil {
+		return adminapi.SupplyValidationDTO{}, err
+	}
+	return adminapi.SupplyValidationDTO{
+		SellersJSONValid:      report.SellersJSONValid,
+		SellersChecksumSHA256: report.SellersChecksumSHA256,
+		SellersCount:          report.SellersCount,
+		AdsTxtValid:           report.AdsTxtValid,
+		AdsTxtChecksumSHA256:  report.AdsTxtChecksumSHA256,
+		AdsTxtLineCount:       report.AdsTxtLineCount,
+		Issues:                report.Issues,
+	}, nil
+}
+
 func mapSellerDTO(r SellerDTO) adminapi.SellerDTO {
 	return adminapi.SellerDTO{
 		ID:             r.ID,

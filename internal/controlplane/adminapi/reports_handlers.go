@@ -143,20 +143,9 @@ func parseStatsQuery(r *http.Request) (from, to time.Time, granularity string, e
 	return from, to, granularity, nil
 }
 
-func parseAPIPagination(r *http.Request) (int32, int32) {
-	limit := int32(50)
-	if l, err := strconv.ParseInt(r.URL.Query().Get("limit"), 10, 32); err == nil && l > 0 {
-		limit = int32(l)
-	}
-	offset := int32(0)
-	if o, err := strconv.ParseInt(r.URL.Query().Get("offset"), 10, 32); err == nil && o > 0 {
-		offset = int32(o)
-	}
-	return coldpath.ClampLimitOffset(limit, offset, 50, 1000)
-}
-
-type placementReportCHRow struct {
-	PlacementID  string
+// reportMetricsCHRow is a ClickHouse report aggregate keyed by dimension (placement_id or keyword).
+type reportMetricsCHRow struct {
+	Dimension    string
 	CampaignID   string
 	Impressions  int64
 	Clicks       int64
@@ -165,49 +154,68 @@ type placementReportCHRow struct {
 	RevenueMicro int64
 }
 
-type keywordReportCHRow struct {
-	Keyword      string
-	CampaignID   string
+type reportMetricsComputed struct {
 	Impressions  int64
 	Clicks       int64
 	Conversions  int64
 	SpendMicro   int64
 	RevenueMicro int64
+	ProfitMicro  int64
+	ROIPct       float64
+	CPAMicro     int64
+	CTR          float64
+	IVTRate      float64
 }
 
-func toPlacementReportRowDTO(row placementReportCHRow, ivtRate float64) PlacementReportRowDTO {
+func computeReportMetrics(row reportMetricsCHRow, ivtRate float64) reportMetricsComputed {
 	profit := row.RevenueMicro - row.SpendMicro
+	return reportMetricsComputed{
+		Impressions:  row.Impressions,
+		Clicks:       row.Clicks,
+		Conversions:  row.Conversions,
+		SpendMicro:   row.SpendMicro,
+		RevenueMicro: row.RevenueMicro,
+		ProfitMicro:  profit,
+		ROIPct:       calcROIPct(profit, row.SpendMicro),
+		CPAMicro:     calcCPAMicro(row.SpendMicro, row.Conversions),
+		CTR:          calcCTR(row.Clicks, row.Impressions),
+		IVTRate:      ivtRate,
+	}
+}
+
+func toPlacementReportRowDTO(row reportMetricsCHRow, ivtRate float64) PlacementReportRowDTO {
+	m := computeReportMetrics(row, ivtRate)
 	return PlacementReportRowDTO{
-		PlacementID:  row.PlacementID,
+		PlacementID:  row.Dimension,
 		CampaignID:   row.CampaignID,
-		Impressions:  row.Impressions,
-		Clicks:       row.Clicks,
-		Conversions:  row.Conversions,
-		SpendMicro:   row.SpendMicro,
-		RevenueMicro: row.RevenueMicro,
-		ProfitMicro:  profit,
-		ROIPct:       calcROIPct(profit, row.SpendMicro),
-		CPAMicro:     calcCPAMicro(row.SpendMicro, row.Conversions),
-		CTR:          calcCTR(row.Clicks, row.Impressions),
-		IVTRate:      ivtRate,
+		Impressions:  m.Impressions,
+		Clicks:       m.Clicks,
+		Conversions:  m.Conversions,
+		SpendMicro:   m.SpendMicro,
+		RevenueMicro: m.RevenueMicro,
+		ProfitMicro:  m.ProfitMicro,
+		ROIPct:       m.ROIPct,
+		CPAMicro:     m.CPAMicro,
+		CTR:          m.CTR,
+		IVTRate:      m.IVTRate,
 	}
 }
 
-func toKeywordReportRowDTO(row keywordReportCHRow, ivtRate float64) KeywordReportRowDTO {
-	profit := row.RevenueMicro - row.SpendMicro
+func toKeywordReportRowDTO(row reportMetricsCHRow, ivtRate float64) KeywordReportRowDTO {
+	m := computeReportMetrics(row, ivtRate)
 	return KeywordReportRowDTO{
-		Keyword:      row.Keyword,
+		Keyword:      row.Dimension,
 		CampaignID:   row.CampaignID,
-		Impressions:  row.Impressions,
-		Clicks:       row.Clicks,
-		Conversions:  row.Conversions,
-		SpendMicro:   row.SpendMicro,
-		RevenueMicro: row.RevenueMicro,
-		ProfitMicro:  profit,
-		ROIPct:       calcROIPct(profit, row.SpendMicro),
-		CPAMicro:     calcCPAMicro(row.SpendMicro, row.Conversions),
-		CTR:          calcCTR(row.Clicks, row.Impressions),
-		IVTRate:      ivtRate,
+		Impressions:  m.Impressions,
+		Clicks:       m.Clicks,
+		Conversions:  m.Conversions,
+		SpendMicro:   m.SpendMicro,
+		RevenueMicro: m.RevenueMicro,
+		ProfitMicro:  m.ProfitMicro,
+		ROIPct:       m.ROIPct,
+		CPAMicro:     m.CPAMicro,
+		CTR:          m.CTR,
+		IVTRate:      m.IVTRate,
 	}
 }
 
@@ -309,12 +317,7 @@ func (reports *ReportsHTTPHandlers) getPlacementsReport(w http.ResponseWriter, r
 	}
 
 	limit := int32(10)
-	if lStr := r.URL.Query().Get("limit"); lStr != "" {
-		if l, err := strconv.Atoi(lStr); err == nil && l > 0 {
-			limit = int32(l)
-		}
-	}
-	page, err := coldpath.Paginate(r.URL.Query().Get("cursor"), int(limit), 1000)
+	page, err := coldpath.ParseCursorPagination(r, int(limit), 1000)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid cursor")
 		return
@@ -364,11 +367,10 @@ func (reports *ReportsHTTPHandlers) getPlacementsReport(w http.ResponseWriter, r
 		return
 	}
 
-	rows := make([]PlacementReportRowDTO, 0, len(chRows))
-	for _, row := range chRows {
-		ivt := ivtRates[placementRowKey(row.PlacementID, row.CampaignID)]
-		rows = append(rows, toPlacementReportRowDTO(row, ivt))
-	}
+	rows := coldpath.MapSlice(chRows, func(row reportMetricsCHRow) PlacementReportRowDTO {
+		ivt := ivtRates[reportMetricsKey(row.Dimension, row.CampaignID)]
+		return toPlacementReportRowDTO(row, ivt)
+	})
 
 	if parseComparePrevious(r) {
 		prevFrom, prevTo := previousReportRange(from, to)
@@ -411,12 +413,7 @@ func (reports *ReportsHTTPHandlers) getKeywordsReport(w http.ResponseWriter, r *
 	}
 
 	limit := int32(10)
-	if lStr := r.URL.Query().Get("limit"); lStr != "" {
-		if l, parseErr := strconv.Atoi(lStr); parseErr == nil && l > 0 {
-			limit = int32(l)
-		}
-	}
-	page, err := coldpath.Paginate(r.URL.Query().Get("cursor"), int(limit), 1000)
+	page, err := coldpath.ParseCursorPagination(r, int(limit), 1000)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid cursor")
 		return
@@ -466,11 +463,10 @@ func (reports *ReportsHTTPHandlers) getKeywordsReport(w http.ResponseWriter, r *
 		return
 	}
 
-	rows := make([]KeywordReportRowDTO, 0, len(chRows))
-	for _, row := range chRows {
-		ivt := ivtRates[keywordRowKey(row.Keyword, row.CampaignID)]
-		rows = append(rows, toKeywordReportRowDTO(row, ivt))
-	}
+	rows := coldpath.MapSlice(chRows, func(row reportMetricsCHRow) KeywordReportRowDTO {
+		ivt := ivtRates[reportMetricsKey(row.Dimension, row.CampaignID)]
+		return toKeywordReportRowDTO(row, ivt)
+	})
 
 	if parseComparePrevious(r) {
 		prevFrom, prevTo := previousReportRange(from, to)
@@ -499,14 +495,14 @@ const (
 	forecastHandlerTimeout = 2 * time.Second
 )
 
-func (h *ReportsHTTPHandlers) registerCampaignStats(mux *http.ServeMux) {
-	if h.CampaignStats == nil {
+func (reports *ReportsHTTPHandlers) registerCampaignStats(mux *http.ServeMux) {
+	if reports.CampaignStats == nil {
 		return
 	}
-	limit := h.ApplyRateLimit
-	permAny := h.RequireAnyPermission
+	limit := reports.ApplyRateLimit
+	permAny := reports.RequireAnyPermission
 	if permAny == nil {
-		perm := h.RequirePermission
+		perm := reports.RequirePermission
 		permAny = func(perms []string, next http.HandlerFunc) http.HandlerFunc {
 			if len(perms) == 0 {
 				return next
@@ -514,10 +510,10 @@ func (h *ReportsHTTPHandlers) registerCampaignStats(mux *http.ServeMux) {
 			return perm(perms[0], next)
 		}
 	}
-	mux.HandleFunc("GET /api/v1/campaigns/{id}/stats", limit(permAny([]string{"campaigns:read", "campaigns:read:masked"}, h.getCampaignStats)))
+	mux.HandleFunc("GET /api/v1/campaigns/{id}/stats", limit(permAny([]string{"campaigns:read", "campaigns:read:masked"}, reports.getCampaignStats)))
 }
 
-func (h *ReportsHTTPHandlers) getCampaignStats(w http.ResponseWriter, r *http.Request) {
+func (reports *ReportsHTTPHandlers) getCampaignStats(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	campaignID, err := uuid.Parse(idStr)
 	if err != nil {
@@ -525,38 +521,38 @@ func (h *ReportsHTTPHandlers) getCampaignStats(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	if h.AuthorizeCampaignAccess != nil {
-		if err := h.AuthorizeCampaignAccess(r, campaignID); err != nil {
-			h.writeServiceError(w, err)
+	if reports.AuthorizeCampaignAccess != nil {
+		if err := reports.AuthorizeCampaignAccess(r, campaignID); err != nil {
+			reports.writeServiceError(w, err)
 			return
 		}
 	}
 
 	from, to, granularity, err := parseStatsQuery(r)
 	if err != nil {
-		h.writeServiceError(w, err)
+		reports.writeServiceError(w, err)
 		return
 	}
 
-	report, err := h.CampaignStats.GetCampaignStats(r.Context(), campaignID, from, to, granularity)
+	report, err := reports.CampaignStats.GetCampaignStats(r.Context(), campaignID, from, to, granularity)
 	if err != nil {
-		h.writeServiceError(w, err)
+		reports.writeServiceError(w, err)
 		return
 	}
 
 	httpresponse.JSON(w, http.StatusOK, report)
 }
 
-func (h *ReportsHTTPHandlers) registerCampaignForecast(mux *http.ServeMux) {
-	if h.CampaignForecaster == nil {
+func (reports *ReportsHTTPHandlers) registerCampaignForecast(mux *http.ServeMux) {
+	if reports.CampaignForecaster == nil {
 		return
 	}
-	limit := h.ApplyRateLimit
-	perm := h.RequirePermission
-	mux.HandleFunc("POST /api/v1/forecast/campaign", limit(perm("campaigns:read", h.forecastCampaign)))
+	limit := reports.ApplyRateLimit
+	perm := reports.RequirePermission
+	mux.HandleFunc("POST /api/v1/forecast/campaign", limit(perm("campaigns:read", reports.forecastCampaign)))
 }
 
-func (h *ReportsHTTPHandlers) forecastCampaign(w http.ResponseWriter, r *http.Request) {
+func (reports *ReportsHTTPHandlers) forecastCampaign(w http.ResponseWriter, r *http.Request) {
 	body, err := coldpath.ReadLimitedBody(w, r, coldpath.DefaultMaxBody)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "failed to read request body")
@@ -579,9 +575,9 @@ func (h *ReportsHTTPHandlers) forecastCampaign(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	customerID, err := h.resolveForecastCustomerID(r, req.CustomerID)
+	customerID, err := reports.resolveForecastCustomerID(r, req.CustomerID)
 	if err != nil {
-		h.writeServiceError(w, err)
+		reports.writeServiceError(w, err)
 		return
 	}
 
@@ -592,7 +588,7 @@ func (h *ReportsHTTPHandlers) forecastCampaign(w http.ResponseWriter, r *http.Re
 	}
 	budgetMicro, err := forecastParseBudgetMicro(req.BudgetLimitMicro, budgetLegacy, hasLegacy)
 	if err != nil {
-		h.writeServiceError(w, err)
+		reports.writeServiceError(w, err)
 		return
 	}
 
@@ -609,7 +605,7 @@ func (h *ReportsHTTPHandlers) forecastCampaign(w http.ResponseWriter, r *http.Re
 	ctx, cancel := context.WithTimeout(r.Context(), forecastHandlerTimeout)
 	defer cancel()
 
-	out, err := h.CampaignForecaster.ForecastCampaign(ctx, CampaignForecastInput{
+	out, err := reports.CampaignForecaster.ForecastCampaign(ctx, CampaignForecastInput{
 		CustomerID:       customerID,
 		BudgetLimitMicro: budgetMicro,
 		TargetCountries:  req.TargetCountries,
@@ -627,11 +623,11 @@ func (h *ReportsHTTPHandlers) forecastCampaign(w http.ResponseWriter, r *http.Re
 	httpresponse.JSON(w, http.StatusOK, out)
 }
 
-func (h *ReportsHTTPHandlers) resolveForecastCustomerID(r *http.Request, bodyCustomerID *uuid.UUID) (*uuid.UUID, error) {
-	if h.ResolveForecastCustomerID == nil {
+func (reports *ReportsHTTPHandlers) resolveForecastCustomerID(r *http.Request, bodyCustomerID *uuid.UUID) (*uuid.UUID, error) {
+	if reports.ResolveForecastCustomerID == nil {
 		return bodyCustomerID, nil
 	}
-	return h.ResolveForecastCustomerID(r, bodyCustomerID)
+	return reports.ResolveForecastCustomerID(r, bodyCustomerID)
 }
 
 func forecastParseBudgetMicro(micro *int64, legacy float64, hasLegacy bool) (int64, error) {

@@ -25,7 +25,7 @@ type tgBidRequest struct {
 	production  bool
 }
 
-func parseAsciiInt(b []byte) int {
+func parseASCIIInt(b []byte) int {
 	res := 0
 	for i := range b {
 		c := b[i]
@@ -36,7 +36,7 @@ func parseAsciiInt(b []byte) int {
 	return res
 }
 
-func parseAsciiFloat(b []byte) float64 {
+func parseASCIIFloat(b []byte) float64 {
 	res := 0.0
 	dec := -1.0
 	for i := range b {
@@ -45,7 +45,7 @@ func parseAsciiFloat(b []byte) float64 {
 			if dec < 0 {
 				res = res*10.0 + float64(c-'0')
 			} else {
-				res = res + float64(c-'0')*dec
+				res += float64(c-'0') * dec
 				dec *= 0.1
 			}
 		} else if c == '.' {
@@ -96,15 +96,16 @@ func parseTgBidRequest(body []byte, out *tgBidRequest) bool {
 			}
 			val := body[valStart:i]
 			i++
-			if bytes.Equal(key, []byte("ip")) {
+			switch {
+			case bytes.Equal(key, []byte("ip")):
 				out.ip = val
-			} else if bytes.Equal(key, []byte("user_agent")) || bytes.Equal(key, []byte("ua")) {
+			case bytes.Equal(key, []byte("user_agent")), bytes.Equal(key, []byte("ua")):
 				out.ua = val
-			} else if bytes.Equal(key, []byte("publisher_id")) {
+			case bytes.Equal(key, []byte("publisher_id")):
 				out.publisherID = val
-			} else if bytes.Equal(key, []byte("telegram_id")) {
+			case bytes.Equal(key, []byte("telegram_id")):
 				out.telegramID = val
-			} else if bytes.Equal(key, []byte("widget_id")) {
+			case bytes.Equal(key, []byte("widget_id")):
 				out.widgetID = val
 			}
 		} else {
@@ -113,18 +114,19 @@ func parseTgBidRequest(body []byte, out *tgBidRequest) bool {
 				i++
 			}
 			val := body[valStart:i]
-			if bytes.Equal(key, []byte("premium")) {
+			switch {
+			case bytes.Equal(key, []byte("premium")):
 				out.premium = bytes.Equal(val, []byte("true"))
-			} else if bytes.Equal(key, []byte("motivated")) {
+			case bytes.Equal(key, []byte("motivated")):
 				out.motivated = bytes.Equal(val, []byte("true"))
-			} else if bytes.Equal(key, []byte("production")) {
+			case bytes.Equal(key, []byte("production")):
 				out.production = bytes.Equal(val, []byte("true"))
-			} else if bytes.Equal(key, []byte("bid_floor")) {
-				out.bidFloor = parseAsciiFloat(val)
-			} else if bytes.Equal(key, []byte("width")) {
-				out.width = int32(parseAsciiInt(val))
-			} else if bytes.Equal(key, []byte("height")) {
-				out.height = int32(parseAsciiInt(val))
+			case bytes.Equal(key, []byte("bid_floor")):
+				out.bidFloor = parseASCIIFloat(val)
+			case bytes.Equal(key, []byte("width")):
+				out.width = int32(parseASCIIInt(val))
+			case bytes.Equal(key, []byte("height")):
+				out.height = int32(parseASCIIInt(val))
 			}
 		}
 	}

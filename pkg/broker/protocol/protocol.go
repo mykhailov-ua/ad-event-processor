@@ -300,16 +300,12 @@ func ReadFrameConn(c net.Conn, buf []byte, lenBuf []byte) (uint16, uint64, []byt
 	return parseFrame(readBuf, length)
 }
 
-func readFullTCPLoop(c *net.TCPConn, buf []byte) error {
-	return readFullConn(c, buf)
-}
-
 func readFullConn(c net.Conn, buf []byte) error {
 	for n := 0; n < len(buf); {
 		nn, err := c.Read(buf[n:])
 		n += nn
 		if err != nil {
-			if err == io.EOF && n < len(buf) {
+			if errors.Is(err, io.EOF) && n < len(buf) {
 				return io.ErrUnexpectedEOF
 			}
 			return err
@@ -353,7 +349,7 @@ func readFullBufio(br *bufio.Reader, buf []byte) error {
 		nn, err := br.Read(buf[n:])
 		n += nn
 		if err != nil {
-			if err == io.EOF && n < len(buf) {
+			if errors.Is(err, io.EOF) && n < len(buf) {
 				return io.ErrUnexpectedEOF
 			}
 			return err

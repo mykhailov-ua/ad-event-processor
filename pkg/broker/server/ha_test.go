@@ -37,14 +37,12 @@ func TestHAClusterFailoverAndReplication(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir1)
-
+	defer func() { _ = os.RemoveAll(dir1) }()
 	dir2, err := os.MkdirTemp("", "broker-ha-2-*")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir2)
-
+	defer func() { _ = os.RemoveAll(dir2) }()
 	s1 := NewServer("127.0.0.1:0", dir1, 10*1024*1024, 4096)
 	if err := s1.Start(); err != nil {
 		t.Fatal(err)
@@ -108,7 +106,7 @@ func TestHAClusterFailoverAndReplication(t *testing.T) {
 	if err := cli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	msgCount := 20
 	for i := range msgCount {

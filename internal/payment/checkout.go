@@ -92,14 +92,6 @@ func createMockCheckout(idempotencyKey string) (string, string, error) {
 	return "pi_mock_" + idempotencyKey, "https://checkout.stripe.dev/pay/mock_" + idempotencyKey, nil
 }
 
-func createCryptoCheckout(cfg *config.Config, amountMicro int64, idempotencyKey string) (string, string, error) {
-	result, err := CreateCryptoCheckout(cfg, CryptoProviderGeneric, amountMicro, idempotencyKey)
-	if err != nil {
-		return "", "", err
-	}
-	return result.ProviderRef, result.CheckoutURL, nil
-}
-
 func createStripeCheckout(
 	ctx context.Context,
 	cfg *config.Config,

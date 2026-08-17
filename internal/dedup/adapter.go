@@ -1,3 +1,4 @@
+// Package dedup implements dedup support for BidShard.
 package dedup
 
 import (

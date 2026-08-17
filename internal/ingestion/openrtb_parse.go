@@ -15,22 +15,22 @@ func parseDecimalMicro(b []byte) int64 {
 	hasDec := false
 	for i < n {
 		c := b[i]
-		if c >= '0' && c <= '9' {
+		switch {
+		case c >= '0' && c <= '9':
 			if !hasDec {
 				val = val*10 + int64(c-'0')
-			} else {
-				if decDigits < 6 {
-					dec = dec*10 + int64(c-'0')
-					decDigits++
-				}
+			} else if decDigits < 6 {
+				dec = dec*10 + int64(c-'0')
+				decDigits++
 			}
-		} else if c == '.' {
+		case c == '.':
 			hasDec = true
-		} else {
-			break
+		default:
+			goto doneParse
 		}
 		i++
 	}
+doneParse:
 	for decDigits < 6 {
 		dec *= 10
 		decDigits++

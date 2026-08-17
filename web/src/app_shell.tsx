@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, type ReactNode } from 'react';
 import { BrowserRouter, useLocation, useNavigate } from 'react-router-dom';
 import { memoryWatchOnRouteLeave } from './helpers/memory_watch.js';
 import { setSpaNavigate } from './helpers/spa_navigate.js';
@@ -8,6 +8,27 @@ import { AppRoutes } from './app_routes.js';
 const ShellLayout = lazy(() => import('./components/shell_layout.js').then((mod) => ({
   default: mod.ShellLayout,
 })));
+
+const SelfServeShellLayout = lazy(() => import('./components/selfserve_shell_layout.js').then((mod) => ({
+  default: mod.SelfServeShellLayout,
+})));
+
+function LayoutSwitcher({ children }: { children: ReactNode }) {
+  const location = useLocation();
+  const selfServe = location.pathname === '/selfserve' || location.pathname.startsWith('/selfserve/');
+  if (selfServe) {
+    return (
+      <Suspense fallback={<span className="text-muted">Loading…</span>}>
+        <SelfServeShellLayout>{children}</SelfServeShellLayout>
+      </Suspense>
+    );
+  }
+  return (
+    <Suspense fallback={<span className="text-muted">Loading…</span>}>
+      <ShellLayout>{children}</ShellLayout>
+    </Suspense>
+  );
+}
 
 /**
  * Mirror legacy router link interception for plain anchor tags.
@@ -58,11 +79,9 @@ export function AppShell() {
     <BrowserRouter>
       <SpaLinkInterceptor />
       <RouteChangeEmitter />
-      <Suspense fallback={<span className="text-muted">Loading…</span>}>
-        <ShellLayout>
-          <AppRoutes />
-        </ShellLayout>
-      </Suspense>
+      <LayoutSwitcher>
+        <AppRoutes />
+      </LayoutSwitcher>
     </BrowserRouter>
   );
 }

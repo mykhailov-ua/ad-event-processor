@@ -313,7 +313,7 @@ func (s *Server) runDiskHealthWorker() {
 
 func (s *Server) probeDisk() bool {
 	testFile := filepath.Join(s.dataDir, ".healthcheck")
-	f, err := os.OpenFile(testFile, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0600)
+	f, err := os.OpenFile(testFile, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0o600)
 	if err != nil {
 		return false
 	}
@@ -408,14 +408,14 @@ func (s *Server) OnBoot(eng gnet.Engine) gnet.Action {
 }
 
 func (s *Server) OnOpen(c gnet.Conn) ([]byte, gnet.Action) {
-	new := s.connCount.Add(1)
-	if s.maxConnections > 0 && new > s.maxConnections {
+	connNum := s.connCount.Add(1)
+	if s.maxConnections > 0 && connNum > s.maxConnections {
 		remaining := s.connCount.Add(-1)
 		metrics.BrokerActiveConnections.Set(float64(remaining))
 		metrics.BrokerConnectionsRejected.Inc()
 		return nil, gnet.Close
 	}
-	metrics.BrokerActiveConnections.Set(float64(new))
+	metrics.BrokerActiveConnections.Set(float64(connNum))
 	ctx := s.newConnState()
 	gnetutil.OpenConn(c, s.connPolicy(), ctx)
 	return nil, gnet.None
@@ -427,11 +427,11 @@ func (s *Server) OnClose(c gnet.Conn, err error) gnet.Action {
 }
 
 func (s *Server) isAdmissionShedding() bool {
-	max := s.maxConnections
-	if max <= 0 {
+	maxConns := s.maxConnections
+	if maxConns <= 0 {
 		return false
 	}
-	threshold := max * 9 / 10
+	threshold := maxConns * 9 / 10
 	if threshold < 1 {
 		threshold = 1
 	}
@@ -707,7 +707,7 @@ func (s *Server) appendLeader(topic string, pl *log.PartitionLog, payload []byte
 		return 0, 0, err
 	}
 	if s.coord != nil && s.coord.IsLeader(topic) {
-		s.coord.PublishLogHWM(topic, offset+1)
+		s.coord.PublishLogHWM(context.Background(), topic, offset+1)
 	}
 	return offset, 0, nil
 }
@@ -806,7 +806,7 @@ func (s *Server) getOrCreatePartition(partitionKey string) (*log.PartitionLog, e
 
 	parts := strings.Split(partitionKey, "/")
 	dir := filepath.Join(append([]string{s.dataDir}, parts...)...)
-	pl, err := log.NewPartitionLogWithDurabilityAndGate(dir, s.maxSegSize, s.indexInterval, s.durability, s.diskGate)
+	pl, err := log.NewPartitionLogWithDurabilityAndGate(context.Background(), dir, s.maxSegSize, s.indexInterval, s.durability, s.diskGate)
 	if err != nil {
 		return nil, err
 	}

@@ -11,6 +11,71 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestFlowRouter_BanditWeightsApplied(t *testing.T) {
+	t.Parallel()
+	landerA := uuid.MustParse("00000000-0000-4000-8000-000000000001")
+	landerB := uuid.MustParse("00000000-0000-4000-8000-000000000002")
+	offerA := uuid.MustParse("00000000-0000-4000-8000-000000000101")
+	snap := &FlowPathSnapshot{
+		Paths: []FlowPath{{
+			Weight: 100,
+			Landers: []FlowLanderEntry{
+				{LanderID: landerA, Weight: 90, URL: []byte("https://lander-a.test/lp")},
+				{LanderID: landerB, Weight: 10, URL: []byte("https://lander-b.test/lp")},
+			},
+			Offers: []FlowOfferEntry{{OfferID: offerA, Weight: 100}},
+		}},
+	}
+	counts := map[uuid.UUID]int{}
+	for i := 0; i < 10000; i++ {
+		sel, _, ok := BanditSelect(snap, []byte(fmt.Sprintf("bandit-user-%d", i)))
+		require.True(t, ok)
+		counts[sel.LanderID]++
+	}
+	ratio := float64(counts[landerA]) / 10000
+	require.InDelta(t, 0.90, ratio, 0.05)
+}
+
+func TestBanditSelect_ZeroAlloc(t *testing.T) {
+	router, users := benchFlowRouterForTest()
+	allocs := testing.AllocsPerRun(1000, func() {
+		_, _, ok := router.BanditSelect(users[0][:])
+		if !ok {
+			t.Fatal("select failed")
+		}
+	})
+	if allocs != 0 {
+		t.Fatalf("BanditSelect allocs per run = %v, want 0", allocs)
+	}
+}
+
+func benchFlowRouterForTest() (*FlowRouter, [64][16]byte) {
+	landerA := uuid.MustParse("00000000-0000-4000-8000-000000000001")
+	landerB := uuid.MustParse("00000000-0000-4000-8000-000000000002")
+	offerA := uuid.MustParse("00000000-0000-4000-8000-000000000101")
+	offerB := uuid.MustParse("00000000-0000-4000-8000-000000000102")
+	snap := &FlowPathSnapshot{
+		Paths: []FlowPath{
+			{
+				Weight: 70,
+				Landers: []FlowLanderEntry{
+					{LanderID: landerA, Weight: 70, URL: []byte("https://lander-a.test/lp")},
+					{LanderID: landerB, Weight: 30, URL: []byte("https://lander-b.test/lp")},
+				},
+				Offers: []FlowOfferEntry{
+					{OfferID: offerA, Weight: 50},
+					{OfferID: offerB, Weight: 50},
+				},
+			},
+		},
+	}
+	router := NewFlowRouter()
+	router.Publish(snap)
+	var users [64][16]byte
+	users[0][0] = 'u'
+	return router, users
+}
+
 func TestFlowRouter_LanderWeightSplit(t *testing.T) {
 	t.Parallel()
 	landerA := uuid.MustParse("00000000-0000-4000-8000-000000000001")

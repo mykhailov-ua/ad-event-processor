@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/database"
@@ -134,13 +133,7 @@ func (reports *ReportsHTTPHandlers) getIVTBySourceReport(w http.ResponseWriter, 
 		reports.writeServiceError(w, err)
 		return
 	}
-	limit := int32(50)
-	if lStr := r.URL.Query().Get("limit"); lStr != "" {
-		if l, parseErr := strconv.Atoi(lStr); parseErr == nil && l > 0 {
-			limit = int32(l)
-		}
-	}
-	page, err := coldpath.Paginate(r.URL.Query().Get("cursor"), int(limit), 1000)
+	page, err := coldpath.ParseCursorPagination(r, 50, 1000)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid cursor")
 		return

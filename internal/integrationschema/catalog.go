@@ -1,3 +1,4 @@
+// Package integrationschema implements integrationschema support for BidShard.
 package integrationschema
 
 import (

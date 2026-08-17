@@ -19,7 +19,7 @@ func TestPublishCampaignUpdateRedis(t *testing.T) {
 	campID := uuid.New().String()
 
 	pubsub := rdb.Subscribe(context.Background(), channel)
-	defer pubsub.Close()
+	defer func() { _ = pubsub.Close() }()
 
 	require.NoError(t, PublishCampaignUpdateRedis(context.Background(), []redis.UniversalClient{rdb}, channel, campID))
 

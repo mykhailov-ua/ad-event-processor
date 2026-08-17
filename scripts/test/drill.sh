@@ -36,7 +36,7 @@ case "$MODE" in
 check)
 	log "=== resilience drill check $STAMP ==="
 	bash scripts/ci/deps.sh 2>&1 | tee -a "$LOG"
-	bash scripts/deploy/verify_redis_topology.sh 2>&1 | tee -a "$LOG"
+	bash scripts/ops/verify_redis_topology.sh 2>&1 | tee -a "$LOG"
 	docker compose ps 2>&1 | tee -a "$LOG"
 	print_scenarios | tee -a "$LOG"
 	log "log file: $LOG"

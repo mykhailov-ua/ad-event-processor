@@ -2,7 +2,9 @@ package ingestion
 
 import (
 	"bytes"
+	"context"
 	"net/http"
+	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/telemetry"
 
@@ -14,7 +16,7 @@ const (
 	clickPathPrefix      = "/click"
 	clickDefaultType     = "click"
 	redirectHdrPrefix    = "HTTP/1.1 302 Found\r\nLocation: "
-	redirectHdrSuffix    = "\r\nCache-Control: no-store\r\nContent-Length: 0\r\nConnection: keep-alive\r\n\r\n"
+	redirectHdrSuffix    = "\r\nReferrer-Policy: no-referrer\r\nCache-Control: no-store\r\nContent-Length: 0\r\nConnection: keep-alive\r\n\r\n"
 	maxClickQueryValue   = 2048
 	maxRedirectLocation  = 4096
 	clickQueryScratchCap = 512
@@ -39,6 +41,9 @@ const (
 	clickKeyFBCLID
 	clickKeyGCLID
 	clickKeyTTCLID
+	clickKeyDMR
+	clickKeyExpires
+	clickKeySig
 )
 
 const (
@@ -79,6 +84,9 @@ type clickQueryParsed struct {
 	gclid       string
 	ttclid      string
 	passthrough []byte
+	dmr         bool
+	linkExpires int64
+	linkSig     string
 	ok          bool
 }
 
@@ -93,12 +101,22 @@ func (p *clickQueryParsed) reset() {
 	p.gclid = ""
 	p.ttclid = ""
 	p.passthrough = nil
+	p.dmr = false
+	p.linkExpires = 0
+	p.linkSig = ""
 	p.ok = false
 }
 
 func matchClickQueryKey(key []byte) clickQueryKeyID {
 	switch len(key) {
+	case 3:
+		if key[0] == 'd' && key[1] == 'm' && key[2] == 'r' {
+			return clickKeyDMR
+		}
 	case 4:
+		if key[0] == '_' && key[1] == 's' && key[2] == 'i' && key[3] == 'g' {
+			return clickKeySig
+		}
 		switch loadU32(key) {
 		case u32Type:
 			return clickKeyType
@@ -135,6 +153,10 @@ func matchClickQueryKey(key []byte) clickQueryKeyID {
 			}
 		}
 	case 7:
+		if key[0] == 'e' && key[1] == 'x' && key[2] == 'p' && key[3] == 'i' &&
+			key[4] == 'r' && key[5] == 'e' && key[6] == 's' {
+			return clickKeyExpires
+		}
 		if loadU32(key) == u32User && key[4] == '_' && key[5] == 'i' && key[6] == 'd' {
 			return clickKeyUserID
 		}
@@ -302,6 +324,14 @@ func parseClickQuery(path []byte, scratch []byte, out *clickQueryParsed) []byte 
 			out.gclid = unsafeString(decoded)
 		case clickKeyTTCLID:
 			out.ttclid = unsafeString(decoded)
+		case clickKeyDMR:
+			out.dmr = parseDmrQueryFlag(decoded)
+		case clickKeyExpires:
+			if exp, ok := parseLinkExpires(decoded); ok {
+				out.linkExpires = exp
+			}
+		case clickKeySig:
+			out.linkSig = unsafeString(decoded)
 		}
 	}
 
@@ -372,6 +402,36 @@ func dispatchRedirectMacro(base []byte, i int) (redirectMacroID, int) {
 	return redirectMacroNone, i
 }
 
+const redirectMacroHex = "0123456789ABCDEF"
+
+func redirectMacroByteUnreserved(c byte) bool {
+	switch {
+	case c >= 'a' && c <= 'z', c >= 'A' && c <= 'Z', c >= '0' && c <= '9':
+		return true
+	case c == '-', c == '_', c == '.', c == '~':
+		return true
+	default:
+		return false
+	}
+}
+
+func appendRedirectMacroEscaped(dst, src []byte) []byte {
+	n := len(src)
+	if n == 0 {
+		return dst
+	}
+	_ = src[n-1]
+	for i := 0; i < n; i++ {
+		c := src[i]
+		if redirectMacroByteUnreserved(c) {
+			dst = append(dst, c)
+			continue
+		}
+		dst = append(dst, '%', redirectMacroHex[c>>4], redirectMacroHex[c&0x0f])
+	}
+	return dst
+}
+
 func expandRedirectMacros(dst, base []byte, clickID, userID string, subs SubIDSlots) []byte {
 	clickB := UnsafeBytes(clickID)
 	userB := UnsafeBytes(userID)
@@ -396,14 +456,14 @@ func expandRedirectMacros(dst, base []byte, clickID, userID string, subs SubIDSl
 		mid, end := dispatchRedirectMacro(base, i)
 		switch mid {
 		case redirectMacroClickID:
-			dst = append(dst, clickB...)
+			dst = appendRedirectMacroEscaped(dst, clickB)
 			i = end
 		case redirectMacroUserID:
-			dst = append(dst, userB...)
+			dst = appendRedirectMacroEscaped(dst, userB)
 			i = end
 		default:
 			if mid >= redirectMacroSub1 && mid < redirectMacroSub1+redirectMacroID(MaxSubIDs) {
-				dst = append(dst, subB[mid-redirectMacroSub1]...)
+				dst = appendRedirectMacroEscaped(dst, subB[mid-redirectMacroSub1])
 				i = end
 				continue
 			}
@@ -474,12 +534,17 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 		return gnet.None
 	}
 
-	if h.tryTrackingDomainRotation(req, ctx, c, startMono) {
+	if h.tryTrackingDomainRotation(req, ctx, c, startMono, parsed) {
 		return gnet.None
 	}
 
 	ip := extractClientIPGnet(ctx, &req, c, h.cfg.TrustedProxies)
 	ua := unsafeString(req.UserAgent)
+
+	if matched, kind := h.tlsFingerprintShouldSafeView(req.TLSJA3, req.TLSJA4, parsed.campaignID); matched {
+		h.writeGnetSafeViewTLS(c, ctx, startMono, kind)
+		return gnet.None
+	}
 
 	if matched, feed := h.l1CIDRShouldSafeView(ip, parsed.campaignID); matched {
 		h.writeGnetSafeViewCIDR(c, ctx, startMono, feed)
@@ -488,6 +553,22 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 	if matched, connType := h.l15ProxyVPNShouldSafeView(ip, parsed.campaignID); matched {
 		h.writeGnetSafeViewL15(c, ctx, startMono, connType)
 		return gnet.None
+	}
+
+	if h.attestationRequired(parsed.campaignID) && !h.verifyAttestationCookie(req.Cookie, parsed.campaignID, ip, time.Now().Unix()) {
+		writeSafePageStubResponse(h, c, ctx, parsed.campaignID)
+		h.recordMetrics(startMono, http.StatusOK)
+		return gnet.None
+	}
+
+	if parsed.linkSig != "" {
+		clickIDBytes := UnsafeBytes(parsed.clickID)
+		sigBytes := UnsafeBytes(parsed.linkSig)
+		if !h.verifyLinkSignature(clickIDBytes, sigBytes, parsed.linkExpires, time.Now().Unix()) {
+			h.write(c, respLinkSigForbidden, ctx)
+			h.recordMetrics(startMono, http.StatusForbidden)
+			return gnet.None
+		}
 	}
 
 	id := NewFastUUID()
@@ -537,7 +618,7 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 			return gnet.None
 		}
 		defer lease.Release()
-		outcome := processTrack(h.trackProc, evt, nil)
+		outcome := processTrack(context.Background(), h.trackProc, evt, nil)
 		action, safeURL := resolveSafePageAction(h.registry, evt.CampaignID, outcome, req.ForceSafe)
 		switch action {
 		case safePageActionInPlace:
@@ -576,7 +657,7 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 			}
 		}
 	} else {
-		landing = ResolveLandingURLBytes(h.registry, h.creativeStore, evt)
+		landing = ResolveLandingURLBytes(context.Background(), h.registry, h.creativeStore, evt)
 	}
 
 	var flowSel FlowSelection
@@ -591,7 +672,7 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 	}
 
 	if camp, ok := h.registry.GetCampaign(evt.CampaignID); ok {
-		if proxyOn, upstream, rewrite := campaignClickProxyEnabled(camp); proxyOn {
+		if proxyOn, upstream, rewrite := campaignClickProxyEnabled(camp); proxyOn && !h.clickDmrActive(evt.CampaignID, parsed.dmr) {
 			pt := appendClickProxyPassthrough(ctx.extraBuf[:0], clickID, parsed.subs, parsed.passthrough, parsed.fbclid, parsed.gclid, parsed.ttclid)
 			h.trackMetrics.decisionAccepted.Inc()
 			writeAuditLog(h.logger, &h.auditLogSeq, h.auditLogSampleMask, ctx.shardID, evt)
@@ -627,10 +708,14 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 		h.recordMetrics(startMono, http.StatusBadRequest)
 		return gnet.None
 	}
+	if camp, ok := h.registry.GetCampaign(evt.CampaignID); ok && camp != nil && camp.LinkSigningEnabled && len(h.linkSigningSecret) > 0 {
+		expires := LinkSigningExpires(time.Now(), camp.LinkSigningTTLSec)
+		loc = AppendLinkSignature(loc, h.linkSigningSecret, UnsafeBytes(clickID), expires)
+	}
 	ctx.extraBuf = loc
 
 	h.trackMetrics.decisionAccepted.Inc()
 	writeAuditLog(h.logger, &h.auditLogSeq, h.auditLogSampleMask, ctx.shardID, evt)
-	h.writeGnetClickRedirect(ctx, c, startMono, loc)
+	h.writeGnetClickLandingRedirect(ctx, c, startMono, loc, h.clickDmrActive(evt.CampaignID, parsed.dmr))
 	return gnet.None
 }

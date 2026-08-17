@@ -7,6 +7,33 @@ import (
 	"github.com/google/uuid"
 )
 
+// ListResponse is the standard admin list envelope (items + total).
+type ListResponse[T any] struct {
+	Items []T   `json:"items"`
+	Total int64 `json:"total"`
+}
+
+// OffsetListResponse adds limit/offset pagination metadata.
+type OffsetListResponse[T any] struct {
+	Items  []T   `json:"items"`
+	Total  int64 `json:"total"`
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+// CursorListResponse is for cursor-paginated lists.
+type CursorListResponse[T any] struct {
+	Items      []T    `json:"items"`
+	Total      int64  `json:"total"`
+	NextCursor string `json:"next_cursor"`
+	Limit      int32  `json:"limit"`
+}
+
+// ItemsResponse wraps a list without total count.
+type ItemsResponse[T any] struct {
+	Items []T `json:"items"`
+}
+
 type CampaignMarginDTO struct {
 	CampaignID           string `json:"campaign_id"`
 	WindowStart          string `json:"window_start"`
@@ -31,12 +58,7 @@ type MarginGuardActivityRow struct {
 	CreatedAt   time.Time       `json:"created_at"`
 }
 
-type PaymentIntentListResponse struct {
-	Items  []PaymentHistoryRow `json:"items"`
-	Total  int64               `json:"total"`
-	Limit  int32               `json:"limit"`
-	Offset int32               `json:"offset"`
-}
+type PaymentIntentListResponse = OffsetListResponse[PaymentHistoryRow]
 
 type PaymentIntentCreatedResponse struct {
 	IntentID       string `json:"intent_id"`
@@ -63,13 +85,6 @@ type APIKeyCreatedResponse struct {
 	ExpiresAt string `json:"expires_at,omitempty"`
 }
 
-type DeliveryListResponse struct {
-	Items []DeliveryDTO `json:"items"`
-}
+type DeliveryListResponse = ItemsResponse[DeliveryDTO]
 
-type LedgerLinesListResponse struct {
-	Items      []LedgerLineDTO `json:"items"`
-	Total      int64           `json:"total"`
-	NextCursor string          `json:"next_cursor"`
-	Limit      int32           `json:"limit"`
-}
+type LedgerLinesListResponse = CursorListResponse[LedgerLineDTO]

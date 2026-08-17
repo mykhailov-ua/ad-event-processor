@@ -254,6 +254,7 @@ function AccountantBody({
 }) {
   const close = data.close ?? {};
   const jobs = Array.isArray(data.export_jobs) ? data.export_jobs : [];
+  const customerId = data.customer_id ?? '';
 
   return (
     <div className="stack section-block">
@@ -267,6 +268,16 @@ function AccountantBody({
         <dt>Tax scheme</dt>
         <dd>{data.tax_scheme ?? data.tax_vat_id ?? '—'}</dd>
       </dl>
+      {customerId ? (
+        <p className="text-sm">
+          <ButtonLink
+            label="Open ledger exports"
+            href={`/billing?customer_id=${encodeURIComponent(customerId)}&tab=exports`}
+            variant="secondary"
+            size="sm"
+          />
+        </p>
+      ) : null}
       <Subsection title="Export jobs">
         {jobs.length === 0 ? (
           <EmptyBlock

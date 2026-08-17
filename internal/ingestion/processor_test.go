@@ -77,7 +77,7 @@ func TestStreamConsumer_BatchFlushing(t *testing.T) {
 	}, 5*time.Second, 10*time.Millisecond, "StoreBatch flush hook must record at least one batch")
 
 	proc.Close()
-	proc.Wait(context.Background())
+	require.NoError(t, proc.Wait(context.Background()))
 }
 
 func TestStreamConsumer_DLQ(t *testing.T) {
@@ -116,5 +116,5 @@ func TestStreamConsumer_DLQ(t *testing.T) {
 	assert.Equal(t, int64(0), pending.Count)
 
 	proc.Close()
-	proc.Wait(ctx)
+	require.NoError(t, proc.Wait(ctx))
 }

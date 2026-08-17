@@ -63,7 +63,7 @@ func (r *Registry) StartLicenseRecheck(ctx context.Context, cfg RegistryLicenseC
 		Threshold: config.LicenseSkewWatchThreshold(),
 	})
 	licensing.StartSkewWatch(ctx)
-	r.recheckLicenseFile(cfg.Path, cfg.PubKey)
+	r.recheckLicenseFile(ctx, cfg.Path, cfg.PubKey)
 
 	r.wg.Add(1)
 	go func() {
@@ -75,13 +75,13 @@ func (r *Registry) StartLicenseRecheck(ctx context.Context, cfg RegistryLicenseC
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				r.recheckLicenseFile(cfg.Path, cfg.PubKey)
+				r.recheckLicenseFile(ctx, cfg.Path, cfg.PubKey)
 			}
 		}
 	}()
 }
 
-func (r *Registry) recheckLicenseFile(path string, pubKey ed25519.PublicKey) {
+func (r *Registry) recheckLicenseFile(ctx context.Context, path string, pubKey ed25519.PublicKey) {
 	now := time.Now()
 	hostFP := licensing.HostFingerprint()
 	licensing.SetSeedCouplingRequired(config.LicenseSeedCouplingEnabled())
@@ -99,7 +99,7 @@ func (r *Registry) recheckLicenseFile(path string, pubKey ed25519.PublicKey) {
 	}
 	verified, err := licensing.VerifyLicenseFile(path, pubKey, hostFP, now)
 	if err == nil && verified.Claims != nil && r.pool != nil {
-		if actErr := licensing.CheckHostActivation(context.Background(), r.pool, verified.Claims, hostFP); actErr != nil {
+		if actErr := licensing.CheckHostActivation(ctx, r.pool, verified.Claims, hostFP); actErr != nil {
 			err = actErr
 		}
 	}

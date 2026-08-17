@@ -1,17 +1,26 @@
 #!/usr/bin/env bash
-# V2-D.D1b: compare tracker p99 with garble literals=0 vs forced literals=1 under load.
-# Harness: docker compose load-test stack + Prometheus histogram_quantile(0.99).
+# Release hardening — garble p99 lab: tracker with literals=0 vs forced literals=1 under load.
+# Acceptance: literals p99 <= baseline * (1 + GARBLE_LITERALS_P99_BUDGET_PCT/100), default +10%.
+# Harness: load-test stack + Prometheus histogram_quantile(0.99).
 # Skips exit 0 when docker/prometheus/stack unavailable.
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
+if [[ -f "$ROOT/.env" ]]; then
+	set -a
+	# shellcheck disable=SC1091
+	source "$ROOT/.env" 2>/dev/null || true
+	set +a
+fi
+
 PROMETHEUS_URL="${PROMETHEUS_URL:-http://127.0.0.1:9190}"
 BUDGET_PCT="${GARBLE_LITERALS_P99_BUDGET_PCT:-10}"
 DURATION="${GARBLE_LITERALS_LOAD_DURATION:-25s}"
 OUT="${OUT:-$ROOT/var/garble_literals_eval/$(date -u +%Y%m%dT%H%M%SZ)}"
 COMPOSE=(docker compose -f docker-compose.yaml -f docker-compose.load-test.yaml)
+export GARBLE_SEED="${GARBLE_SEED:-garble-p99-smoke-seed}"
 
 log() { printf 'garble_literals_p99_smoke: %s\n' "$*"; }
 die() { printf 'garble_literals_p99_smoke: ERROR: %s\n' "$*" >&2; exit 1; }
@@ -52,13 +61,13 @@ if ! command -v docker >/dev/null 2>&1 || ! docker info >/dev/null 2>&1; then
 fi
 
 if ! curl -sf --max-time 3 "${PROMETHEUS_URL%/}/-/ready" >/dev/null 2>&1; then
-	log "skip (prometheus not ready at $PROMETHEUS_URL)"
+	log "skip (prometheus not ready at $PROMETHEUS_URL — run: bash scripts/test/prepare_constrained_stack.sh)"
 	exit 0
 fi
 
 cid="$("${COMPOSE[@]}" ps -q tracker-0 2>/dev/null || true)"
 if [[ -z "$cid" ]]; then
-	log "skip (tracker-0 not running — start load-test stack first)"
+	log "skip (tracker-0 not running — run: bash scripts/test/prepare_constrained_stack.sh)"
 	exit 0
 fi
 
@@ -113,6 +122,9 @@ swap_tracker "$BUILD_DIR/literals/tracker"
 run_load literals
 measure_p99 literals
 
+swap_tracker "$BUILD_DIR/baseline/tracker"
+log "restored baseline tracker binary in container"
+
 baseline_p99="$(cat "$OUT/p99-baseline.txt")"
 literals_p99="$(cat "$OUT/p99-literals.txt")"
 max_allowed="$(python3 - <<PY
@@ -122,15 +134,7 @@ print(f"{b * (1.0 + pct / 100.0):.4f}")
 PY
 )"
 
-{
-	echo "harness=garble_literals_p99_smoke"
-	echo "baseline_p99_ms=$baseline_p99"
-	echo "literals_p99_ms=$literals_p99"
-	echo "budget_pct=$BUDGET_PCT"
-	echo "max_allowed_p99_ms=$max_allowed"
-	echo "out_dir=$OUT"
-} | tee "$OUT/summary.txt"
-
+pass=0
 if python3 - <<PY
 lit = float("$literals_p99")
 cap = float("$max_allowed")
@@ -138,7 +142,21 @@ import sys
 sys.exit(0 if lit <= cap else 1)
 PY
 then
-	log "ok — literals p99 within +${BUDGET_PCT}% of baseline"
-else
-	die "literals p99 ${literals_p99}ms exceeds budget ${max_allowed}ms (+${BUDGET_PCT}%)"
+	pass=1
 fi
+
+{
+	echo "harness=garble_literals_p99_smoke"
+	echo "baseline_p99_ms=$baseline_p99"
+	echo "literals_p99_ms=$literals_p99"
+	echo "budget_pct=$BUDGET_PCT"
+	echo "max_allowed_p99_ms=$max_allowed"
+	echo "out_dir=$OUT"
+	echo "fault_proof fault=garble_literals_p99_smoke harness=garble_literals_p99_smoke baseline_ms=${baseline_p99} literals_ms=${literals_p99} budget_pct=${BUDGET_PCT} pass=${pass}"
+} | tee "$OUT/summary.txt"
+
+if [[ "$pass" -eq 1 ]]; then
+	log "ok — literals p99 within +${BUDGET_PCT}% of baseline"
+	exit 0
+fi
+die "literals p99 ${literals_p99}ms exceeds budget ${max_allowed}ms (+${BUDGET_PCT}%)"

@@ -62,6 +62,7 @@ export function IntegrationsCostSyncPage() {
   const tenantCustomerId = boundCustomerId(user);
 
   const qsCustomer = searchParams.get('customer_id') || '';
+  const drillCampaignId = searchParams.get('campaign_id') || '';
   const [customerId, setCustomerId] = useState(sessionScoped ? tenantCustomerId : qsCustomer);
   const [credentials, setCredentials] = useState<CostSyncCredential[]>([]);
   const [history, setHistory] = useState<CostSyncHistoryRow[]>([]);
@@ -176,6 +177,14 @@ export function IntegrationsCostSyncPage() {
           <a href="/reports/true-roi">True ROI</a> for Ad Spend / True Profit / True ROI / True CPA.
         </p>
       </div>
+
+      {drillCampaignId ? (
+        <p className="text-muted text-sm" data-testid="cost-sync-drill-campaign">
+          Discrepancy drill-down for campaign{' '}
+          <span className="font-mono">{drillCampaignId}</span>
+          {' '}— review import history below.
+        </p>
+      ) : null}
 
       {!sessionScoped ? (
         <label className="form-field" htmlFor="cost-sync-customer">

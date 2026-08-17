@@ -10,6 +10,7 @@ import (
 
 	"github.com/bidshard/ad-event-processor/internal/config"
 	"github.com/bidshard/ad-event-processor/internal/database"
+	db "github.com/bidshard/ad-event-processor/internal/domain/db"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -42,7 +43,7 @@ func TestSelfServe_CreateCampaign_requiresIdempotencyKey(t *testing.T) {
 	h.RegisterRoutes(mux)
 
 	body, _ := json.Marshal(map[string]any{
-		"name":               "Self-serve camp",
+		"template_id":        uuid.New().String(),
 		"budget_limit_micro": int64(5_000_000),
 	})
 	req, _ := http.NewRequest("POST", "/api/v1/selfserve/campaigns", bytes.NewReader(body))
@@ -76,12 +77,14 @@ func TestSelfServe_CreateCampaign_insufficientBalance(t *testing.T) {
 
 	custID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(context.Background(), custID, "Poor", 1_000_000, "USD"))
+	tplID, err := svc.CreateCampaignTemplate(context.Background(), custID, "Big spend", 50_000_000, db.PacingModeTypeASAP, 0, "UTC", 0, 86400, nil, nil, nil)
+	require.NoError(t, err)
 
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 
 	body, _ := json.Marshal(map[string]any{
-		"name":               "Too big",
+		"template_id":        tplID.String(),
 		"budget_limit_micro": int64(50_000_000),
 	})
 	req, _ := http.NewRequest("POST", "/api/v1/selfserve/campaigns", bytes.NewReader(body))

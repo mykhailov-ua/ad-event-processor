@@ -15,8 +15,7 @@ func TestMaxConnections_RejectsExcessClients(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	s := NewServer("127.0.0.1:0", dir, 10*1024*1024, 4096)
 	s.SetMaxConnections(2)
 	if err := s.Start(); err != nil {
@@ -47,7 +46,7 @@ func TestMaxConnections_RejectsExcessClients(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dial extra: %v", err)
 	}
-	defer extra.Close()
+	defer func() { _ = extra.Close() }()
 
 	buf := make([]byte, 1)
 	_ = extra.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
@@ -65,8 +64,7 @@ func TestAdmissionShedding_ProduceOverloaded(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	s := NewServer("127.0.0.1:0", dir, 10*1024*1024, 4096)
 	s.SetMaxConnections(10)
 	if err := s.Start(); err != nil {
@@ -110,8 +108,7 @@ func TestFault_ConnectionLimit_HealthyClientUnaffected(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	s := NewServer("127.0.0.1:0", dir, 10*1024*1024, 4096)
 	s.SetMaxConnections(100)
 	if err := s.Start(); err != nil {
@@ -125,7 +122,7 @@ func TestFault_ConnectionLimit_HealthyClientUnaffected(t *testing.T) {
 	if err := cli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	if _, err := cli.Produce(context.Background(), "fault-conn-topic", 0, []byte("ok")); err != nil {
 		t.Fatal(err)

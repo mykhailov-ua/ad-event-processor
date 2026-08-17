@@ -6,5 +6,6 @@ globals = {
     "KEYS",
     "ARGV",
     "bit",
+    "arg",
 }
 max_line_length = false

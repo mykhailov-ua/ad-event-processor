@@ -11,6 +11,7 @@
   ],
   "workspace.checkThirdParty": true,
   "diagnostics.globals": [
+    "ngx",
     "redis",
     "KEYS",
     "ARGV",

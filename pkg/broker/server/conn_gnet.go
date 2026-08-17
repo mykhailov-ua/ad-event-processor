@@ -1,3 +1,4 @@
+// Package server implements broker server helpers.
 package server
 
 import (

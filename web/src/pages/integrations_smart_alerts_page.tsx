@@ -70,6 +70,19 @@ export function IntegrationsSmartAlertsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [ruleForm, setRuleForm] = useState({ ...DEFAULT_RULE_FORM });
 
+  useEffect(() => {
+    if (searchParams.get('prefill') !== '1') return;
+    setRuleForm((prev) => ({
+      ...prev,
+      name: searchParams.get('name') || prev.name,
+      campaign_id: searchParams.get('campaign_id') || prev.campaign_id,
+      metric: (searchParams.get('metric') as SmartAlertMetric) || prev.metric,
+      operator: (searchParams.get('operator') as SmartAlertOperator) || prev.operator,
+      threshold: Number(searchParams.get('threshold') || prev.threshold),
+    }));
+    setEditingId(null);
+  }, [searchParams]);
+
   const resetForm = () => {
     setEditingId(null);
     setRuleForm({ ...DEFAULT_RULE_FORM });

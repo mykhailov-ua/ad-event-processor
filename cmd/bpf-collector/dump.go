@@ -368,7 +368,7 @@ func (r *probeRun) enrichRunqueueP99(stats []dumpedPIDStats) {
 		return
 	}
 	for i := range stats {
-		var key uint32 = stats[i].PID
+		key := stats[i].PID
 		var perCPU []bpfprobe.Hist
 		if err := m.Lookup(key, &perCPU); err != nil {
 			continue

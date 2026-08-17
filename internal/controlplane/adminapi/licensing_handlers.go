@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/ledger/db"
+	"github.com/bidshard/ad-event-processor/internal/licensing"
 	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
 
@@ -14,10 +15,16 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+const licenseStateUnconfigured = "UNCONFIGURED"
+
 type LicenseStatusResponse struct {
-	DeploymentID string `json:"deployment_id"`
-	State        string `json:"state"`
-	ValidUntil   string `json:"valid_until"`
+	DeploymentID    string `json:"deployment_id"`
+	State           string `json:"state"`
+	ValidUntil      string `json:"valid_until,omitempty"`
+	HostFingerprint string `json:"host_fingerprint,omitempty"`
+	HWIDv2          string `json:"hwid_v2,omitempty"`
+	HWIDMatch       *bool  `json:"hwid_match,omitempty"`
+	DaysToExpiry    int    `json:"days_to_expiry,omitempty"`
 }
 
 type ApplyLicenseRequest struct {
@@ -28,9 +35,12 @@ type LicenseService interface {
 	ApplyLicenseToken(ctx context.Context, token string) error
 }
 
+type LicenseDiagnosticsProvider func() (licensing.LicenseDiagnostics, bool)
+
 type LicensingHTTPHandlers struct {
 	Pool                  *pgxpool.Pool
 	LicenseService        LicenseService
+	LicenseDiagnostics    LicenseDiagnosticsProvider
 	ApplyRateLimit        func(http.HandlerFunc) http.HandlerFunc
 	LicenseApplyRateLimit func(http.HandlerFunc) http.HandlerFunc
 	RequirePermission     func(string, http.HandlerFunc) http.HandlerFunc
@@ -65,20 +75,20 @@ func (licensing *LicensingHTTPHandlers) getLicenseStatus(w http.ResponseWriter, 
 	licRow, err := q.GetLicenseStatus(r.Context())
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "license not configured")
+			httpresponse.JSON(w, http.StatusOK, toLicenseStatusResponse("", licenseStateUnconfigured, time.Time{}, false, licensing.LicenseDiagnostics))
 			return
 		}
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}
 
-	resp := LicenseStatusResponse{
-		DeploymentID: licRow.DeploymentID.String(),
-		State:        licRow.State,
-	}
-	if licRow.ValidUntil.Valid {
-		resp.ValidUntil = licRow.ValidUntil.Time.Format(time.RFC3339)
-	}
+	resp := toLicenseStatusResponse(
+		licRow.DeploymentID.String(),
+		licRow.State,
+		licRow.ValidUntil.Time,
+		licRow.ValidUntil.Valid,
+		licensing.LicenseDiagnostics,
+	)
 	httpresponse.JSON(w, http.StatusOK, resp)
 }
 
@@ -103,15 +113,54 @@ func (licensing *LicensingHTTPHandlers) postLicenseApply(w http.ResponseWriter, 
 	q := db.New(licensing.Pool)
 	licRow, err := q.GetLicenseStatus(r.Context())
 	if err != nil {
-		httpresponse.JSON(w, http.StatusOK, map[string]string{"status": "applied"})
+		if errors.Is(err, pgx.ErrNoRows) {
+			httpresponse.JSON(w, http.StatusOK, toLicenseStatusResponse("", licenseStateUnconfigured, time.Time{}, false, licensing.LicenseDiagnostics))
+			return
+		}
+		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}
-	resp := LicenseStatusResponse{
-		DeploymentID: licRow.DeploymentID.String(),
-		State:        licRow.State,
-	}
-	if licRow.ValidUntil.Valid {
-		resp.ValidUntil = licRow.ValidUntil.Time.Format(time.RFC3339)
-	}
+	resp := toLicenseStatusResponse(
+		licRow.DeploymentID.String(),
+		licRow.State,
+		licRow.ValidUntil.Time,
+		licRow.ValidUntil.Valid,
+		licensing.LicenseDiagnostics,
+	)
 	httpresponse.JSON(w, http.StatusOK, resp)
+}
+
+func toLicenseStatusResponse(deploymentID, state string, validUntil time.Time, validUntilSet bool, diagFn LicenseDiagnosticsProvider) LicenseStatusResponse {
+	resp := LicenseStatusResponse{
+		DeploymentID: deploymentID,
+		State:        state,
+	}
+	if validUntilSet && !validUntil.IsZero() {
+		resp.ValidUntil = validUntil.UTC().Format(time.RFC3339)
+	}
+
+	var diag licensing.LicenseDiagnostics
+	diagOK := false
+	if diagFn != nil {
+		diag, diagOK = diagFn()
+	}
+	if diagOK {
+		if resp.DeploymentID == "" && diag.DeploymentID != "" {
+			resp.DeploymentID = diag.DeploymentID
+		}
+		resp.HostFingerprint = diag.HostFingerprint
+		resp.HWIDv2 = diag.HostHWID
+		if diag.DaysToExpiry > 0 {
+			resp.DaysToExpiry = diag.DaysToExpiry
+		}
+		if licensing.BindModeHard(diag.BindMode) && (diag.BindHWIDHash != "" || diag.BindFingerprint != "") {
+			match := diag.HWIDMatch
+			resp.HWIDMatch = &match
+		}
+		return resp
+	}
+
+	resp.HostFingerprint = licensing.HostFingerprint()
+	resp.HWIDv2 = licensing.HostHWID()
+	return resp
 }

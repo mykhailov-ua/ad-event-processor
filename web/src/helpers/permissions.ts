@@ -34,6 +34,25 @@ export function isMediaBuyer(role: string | null | undefined): boolean {
 }
 
 /**
+ * Test whether the role is a scoped publisher (supply portal).
+ */
+export function isPublisher(role: string | null | undefined): boolean {
+  return role === 'P';
+}
+
+/**
+ * Publisher portal users see only supply-scoped navigation.
+ */
+export function isPublisherPortal(
+  permissions: string[] | null | undefined,
+  role: string | null | undefined,
+): boolean {
+  if (isPublisher(role)) return true;
+  const perms = permissions ?? [];
+  return perms.includes('supply:read:scoped') && !perms.includes('campaigns:read') && !perms.includes('campaigns:read:masked');
+}
+
+/**
  * Test whether billing views should be read-only (no top-up / exports).
  */
 export function isBillingReadOnly(

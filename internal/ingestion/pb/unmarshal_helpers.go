@@ -1,3 +1,4 @@
+// Package pb holds vtproto helpers for ingestion wire messages.
 package pb
 
 func appendReuseBytes(dst [][]byte, src []byte) [][]byte {

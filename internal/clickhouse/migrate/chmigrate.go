@@ -1,3 +1,4 @@
+// Package migrate implements clickhouse migrate helpers.
 package migrate
 
 import (

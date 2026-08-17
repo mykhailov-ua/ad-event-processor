@@ -283,12 +283,12 @@ func (p *StreamProducer) QueueCapacity() int {
 }
 
 func (p *StreamProducer) QueuePressurePct() int {
-	cap := int(p.queueCap)
-	if cap == 0 {
+	queueCapLimit := int(p.queueCap)
+	if queueCapLimit == 0 {
 		return 0
 	}
 	depth := int(p.occupied())
-	return depth * 100 / cap
+	return depth * 100 / queueCapLimit
 }
 
 func (p *StreamProducer) dequeueOne() {

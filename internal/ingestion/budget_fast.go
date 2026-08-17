@@ -114,7 +114,7 @@ func (f *UnifiedFilter) runBudgetFastLua(
 	keyArgs[5] = &dirtyCustomersKeyVal
 	keyArgs[6] = &f.streamKeyVal
 	keyArgs[9] = &kv[9]
-	maxRPDAny := f.fillLuaPrecheckKeys(evt, campInfo, now, precheck, kv[:], keyArgs[:], 11, 10)
+	maxRPDAny := f.fillLuaPrecheckKeys(evt, campInfo, now, precheck, kv, keyArgs[:], 11, 10)
 
 	wrappers.clickID.s = evt.ClickID
 	wrappers.evtType.s = evt.Type
@@ -251,11 +251,11 @@ func (f *UnifiedFilter) evalFastScript(ctx context.Context, rdb redis.UniversalC
 		incRedisLuaNoScript(f.luaNoScriptCounters, shard)
 		slog.Warn("redis lua NOSCRIPT encountered (fast script)", "shard", shard, "error", err)
 
-		go func() {
-			ctxPreheat, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		go func(parent context.Context) {
+			ctxPreheat, cancel := context.WithTimeout(parent, 2*time.Second)
 			defer cancel()
 			_ = f.PreloadScripts(ctxPreheat)
-		}()
+		}(ctx)
 
 		if f.evalFallbackGate != nil {
 			select {

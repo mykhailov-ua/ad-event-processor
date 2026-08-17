@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -23,14 +24,12 @@ func TestFault_Replication_HighLatency(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir1)
-
+	defer func() { _ = os.RemoveAll(dir1) }()
 	dir2, err := os.MkdirTemp("", "fault-lat-follower-*")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir2)
-
+	defer func() { _ = os.RemoveAll(dir2) }()
 	leader := NewServer(allocFreeTCPAddr(t), dir1, 10*1024*1024, 4096)
 	if err := leader.Start(); err != nil {
 		t.Fatal(err)
@@ -114,14 +113,12 @@ func TestFault_Replication_PacketLoss(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir1)
-
+	defer func() { _ = os.RemoveAll(dir1) }()
 	dir2, err := os.MkdirTemp("", "fault-loss-follower-*")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir2)
-
+	defer func() { _ = os.RemoveAll(dir2) }()
 	leader := NewServer(allocFreeTCPAddr(t), dir1, 10*1024*1024, 4096)
 	if err := leader.Start(); err != nil {
 		t.Fatal(err)
@@ -202,7 +199,7 @@ func TestFault_RedisLatency_LeaderStability(t *testing.T) {
 	if err := cli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	deadline := time.Now().Add(15 * time.Second)
 	for time.Now().Before(deadline) {
@@ -240,14 +237,12 @@ func TestFault_KillLeaderMidReplication(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(leaderDir)
-
+	defer func() { _ = os.RemoveAll(leaderDir) }()
 	followerDir, err := os.MkdirTemp("", "fault-kill-follower-*")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(followerDir)
-
+	defer func() { _ = os.RemoveAll(followerDir) }()
 	leaderAddr := allocFreeTCPAddr(t)
 	leaderProc := startBrokerProcess(t, bin, leaderDir, "fault-kill-leader", redisURL, leaderAddr)
 
@@ -306,7 +301,7 @@ func TestFault_KillLeaderMidReplication(t *testing.T) {
 		if err := cli.Connect(); err != nil {
 			return
 		}
-		defer cli.Close()
+		defer func() { _ = cli.Close() }()
 		for i := 0; ; i++ {
 			select {
 			case <-stopProduce:
@@ -347,7 +342,7 @@ func TestFault_KillLeaderMidReplication(t *testing.T) {
 	if err := cli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	tail := partitionOffset(t, follower, topic)
 	if _, err := cli.Produce(context.Background(), topic, 0, []byte("after-failover")); err != nil {
@@ -407,7 +402,7 @@ func TestFault_SplitBrain_FencingPreventsDualWrite(t *testing.T) {
 	if err := staleCli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	defer staleCli.Close()
+	defer func() { _ = staleCli.Close() }()
 
 	staleRejected := false
 	for range 3 {
@@ -425,13 +420,13 @@ func TestFault_SplitBrain_FencingPreventsDualWrite(t *testing.T) {
 	if err := liveCli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	defer liveCli.Close()
+	defer func() { _ = liveCli.Close() }()
 
 	off, err := liveCli.Produce(context.Background(), topic, 0, []byte("live-brain"))
 	if err != nil {
 		t.Fatalf("live leader produce failed: %v", err)
 	}
-	if _, err := followerPL.AppendFenced(epoch, []byte("direct-stale")); err != log.ErrStaleFencingEpoch {
+	if _, err := followerPL.AppendFenced(epoch, []byte("direct-stale")); !errors.Is(err, log.ErrStaleFencingEpoch) {
 		t.Fatalf("expected stale direct append rejection, got %v", err)
 	}
 
@@ -449,8 +444,7 @@ func TestFault_AsyncDurability_RPOOnKill9(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-
+	defer func() { _ = os.RemoveAll(dir) }()
 	addr := allocFreeTCPAddr(t)
 	topic := "rpo-fault-topic"
 	const msgCount = 50
@@ -500,7 +494,7 @@ func verifyKillMidReplicationPrefix(t *testing.T, addr, topic string, count, fir
 	if err := cli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	iter, err := cli.Fetch(context.Background(), topic, 0, 0, 32*1024*1024)
 	if err != nil {
@@ -532,7 +526,7 @@ func verifyRPOContiguousPrefix(t *testing.T, addr, topic string, count uint64) {
 	if err := cli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	iter, err := cli.Fetch(context.Background(), topic, 0, 0, 32*1024*1024)
 	if err != nil {

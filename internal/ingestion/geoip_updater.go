@@ -89,7 +89,7 @@ func (u *GeoIPUpdater) downloadAndInstall(ctx context.Context) error {
 		u.cfg.LicenseKey,
 	)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return err
 	}
@@ -98,7 +98,7 @@ func (u *GeoIPUpdater) downloadAndInstall(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("download maxmind archive: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
@@ -130,13 +130,13 @@ func (u *GeoIPUpdater) downloadAndInstall(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer archive.Close()
+	defer func() { _ = archive.Close() }()
 
 	gzr, err := gzip.NewReader(archive)
 	if err != nil {
 		return fmt.Errorf("gzip reader: %w", err)
 	}
-	defer gzr.Close()
+	defer func() { _ = gzr.Close() }()
 
 	tr := tar.NewReader(gzr)
 	var extracted bool

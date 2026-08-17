@@ -507,10 +507,10 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 	server := &http.Server{
 		Addr:              ":" + cfg.ManagementPort,
 		Handler:           gatewayHandler,
-		ReadHeaderTimeout: time.Duration(cfg.HttpReadHeaderTimeoutMs) * time.Millisecond,
-		ReadTimeout:       time.Duration(cfg.HttpReadTimeoutMs) * time.Millisecond,
-		WriteTimeout:      time.Duration(cfg.HttpWriteTimeoutMs) * time.Millisecond,
-		IdleTimeout:       time.Duration(cfg.HttpIdleTimeoutMs) * time.Millisecond,
+		ReadHeaderTimeout: time.Duration(cfg.HTTPReadHeaderTimeoutMs) * time.Millisecond,
+		ReadTimeout:       time.Duration(cfg.HTTPReadTimeoutMs) * time.Millisecond,
+		WriteTimeout:      time.Duration(cfg.HTTPWriteTimeoutMs) * time.Millisecond,
+		IdleTimeout:       time.Duration(cfg.HTTPIdleTimeoutMs) * time.Millisecond,
 	}
 
 	var unixSrv *http.Server

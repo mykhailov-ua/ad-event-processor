@@ -119,9 +119,6 @@ func openCoordRedis(redisURL string) (redis.UniversalClient, error) {
 }
 
 func (c *Coordinator) Start(ctx context.Context) {
-	if ctx == nil {
-		ctx = context.Background()
-	}
 	c.wg.Add(1)
 	go func() {
 		defer c.wg.Done()
@@ -131,14 +128,29 @@ func (c *Coordinator) Start(ctx context.Context) {
 	c.wg.Add(1)
 	go func() {
 		defer c.wg.Done()
-		c.runCoordinationLoop()
+		c.runCoordinationLoop(ctx)
 	}()
 
 	c.wg.Add(1)
 	go func() {
 		defer c.wg.Done()
-		c.runClaimLoop()
+		c.runClaimLoop(ctx)
 	}()
+}
+
+func (c *Coordinator) runClaimLoop(ctx context.Context) {
+	for {
+		select {
+		case <-c.closeChan:
+			return
+		case <-ctx.Done():
+			return
+		case topic := <-c.claimCh:
+			claimCtx, cancel := context.WithTimeout(ctx, time.Second)
+			c.claimTopic(claimCtx, topic)
+			cancel()
+		}
+	}
 }
 
 func (c *Coordinator) Redis() redis.UniversalClient {
@@ -194,10 +206,10 @@ redis.call('SET', KEYS[1], ARGV[1])
 return ARGV[1]
 `)
 
-func (c *Coordinator) PublishLogHWM(topic string, hwm uint64) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+func (c *Coordinator) PublishLogHWM(ctx context.Context, topic string, hwm uint64) {
+	pubCtx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
-	_ = publishHWMScript.Run(ctx, c.rdb, []string{logHWMKey(topic)}, strconv.FormatUint(hwm, 10)).Err()
+	_ = publishHWMScript.Run(pubCtx, c.rdb, []string{logHWMKey(topic)}, strconv.FormatUint(hwm, 10)).Err()
 }
 
 // RequestClaim asks the claim loop to try acquiring leadership for a topic that
@@ -210,19 +222,6 @@ func (c *Coordinator) RequestClaim(topic string) {
 	select {
 	case c.claimCh <- strings.Clone(topic):
 	default:
-	}
-}
-
-func (c *Coordinator) runClaimLoop() {
-	for {
-		select {
-		case <-c.closeChan:
-			return
-		case topic := <-c.claimCh:
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			c.claimTopic(ctx, topic)
-			cancel()
-		}
 	}
 }
 
@@ -287,7 +286,7 @@ func (c *Coordinator) runHeartbeatLoop(ctx context.Context) {
 	}
 }
 
-func (c *Coordinator) runCoordinationLoop() {
+func (c *Coordinator) runCoordinationLoop(ctx context.Context) {
 	interval := c.cfg.Interval
 	if interval <= 0 {
 		interval = 3 * time.Second
@@ -311,9 +310,9 @@ func (c *Coordinator) runCoordinationLoop() {
 				return true
 			})
 
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			loopCtx, cancel := context.WithTimeout(ctx, time.Second)
 			for _, topic := range topics {
-				c.coordTopic(ctx, topic, replications)
+				c.coordTopic(loopCtx, topic, replications)
 			}
 			cancel()
 		}
@@ -363,7 +362,7 @@ func (c *Coordinator) coordTopic(ctx context.Context, topic string, replications
 		}
 		if prev.ready {
 			if pl, plErr := c.host.CoordGetOrCreatePartition(topic); plErr == nil {
-				c.PublishLogHWM(topic, pl.NextOffset())
+				c.PublishLogHWM(ctx, topic, pl.NextOffset())
 			}
 		}
 		c.setLeaderState(topic, true, epoch, prev.ready)
@@ -381,10 +380,10 @@ func (c *Coordinator) coordTopic(ctx context.Context, topic string, replications
 	stopCh := make(chan struct{})
 	replications[topic] = stopCh
 	c.wg.Add(1)
-	go func(t string, leaderID string, sCh chan struct{}) {
+	go func(parent context.Context, t string, leaderID string, sCh chan struct{}) {
 		defer c.wg.Done()
-		c.replicate(t, leaderID, sCh)
-	}(topic, currentLeader, stopCh)
+		c.replicate(parent, t, leaderID, sCh)
+	}(ctx, topic, currentLeader, stopCh)
 
 	c.updateTopicMetrics(ctx, topic)
 }
@@ -519,21 +518,21 @@ func (c *Coordinator) onAcquiredLeadership(ctx context.Context, topic string, ep
 	ready := local >= hwm
 	c.setLeaderState(topic, true, epoch, ready)
 	if ready {
-		c.PublishLogHWM(topic, local)
+		c.PublishLogHWM(ctx, topic, local)
 	}
 	slog.Info("Acquired topic leadership", "topic", topic, "epoch", epoch, "local", local, "hwm", hwm, "ready", ready)
 
 	if !ready {
 		c.wg.Add(1)
-		go func() {
+		go func(parent context.Context) {
 			defer c.wg.Done()
-			c.recoverLeaderReadiness(topic, hwm, time.Now())
-		}()
+			c.recoverLeaderReadiness(parent, topic, hwm, time.Now())
+		}(ctx)
 	}
 	c.updateTopicMetrics(ctx, topic)
 }
 
-func (c *Coordinator) recoverLeaderReadiness(topic string, targetHWM uint64, started time.Time) {
+func (c *Coordinator) recoverLeaderReadiness(ctx context.Context, topic string, targetHWM uint64, started time.Time) {
 	const timeout = 5 * time.Second
 	deadline := time.Now().Add(timeout)
 
@@ -542,8 +541,8 @@ func (c *Coordinator) recoverLeaderReadiness(topic string, targetHWM uint64, sta
 		if err == nil && pl.NextOffset() >= targetHWM {
 			c.setLeaderReady(topic, true)
 			metrics.BrokerReplicationCatchupSeconds.WithLabelValues(topic).Observe(time.Since(started).Seconds())
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			c.updateTopicMetrics(ctx, topic)
+			metricsCtx, cancel := context.WithTimeout(ctx, time.Second)
+			c.updateTopicMetrics(metricsCtx, topic)
 			cancel()
 			slog.Info("Leader ready after catch-up", "topic", topic, "offset", pl.NextOffset())
 			return
@@ -555,8 +554,8 @@ func (c *Coordinator) recoverLeaderReadiness(topic string, targetHWM uint64, sta
 	if err != nil {
 		c.setLeaderReady(topic, true)
 		metrics.BrokerReplicationCatchupSeconds.WithLabelValues(topic).Observe(time.Since(started).Seconds())
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		c.updateTopicMetrics(ctx, topic)
+		metricsCtx, cancel := context.WithTimeout(ctx, time.Second)
+		c.updateTopicMetrics(metricsCtx, topic)
 		cancel()
 		return
 	}
@@ -567,8 +566,8 @@ func (c *Coordinator) recoverLeaderReadiness(topic string, targetHWM uint64, sta
 	recordReplicationError(topic, "catchup_gap")
 	c.setLeaderReady(topic, true)
 	metrics.BrokerReplicationCatchupSeconds.WithLabelValues(topic).Observe(time.Since(started).Seconds())
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	c.updateTopicMetrics(ctx, topic)
+	metricsCtx, cancel := context.WithTimeout(ctx, time.Second)
+	c.updateTopicMetrics(metricsCtx, topic)
 	cancel()
 	slog.Warn("Leader readiness accepted with replication gap",
 		"topic", topic, "local", local, "target_hwm", targetHWM)
@@ -633,7 +632,7 @@ func (c *Coordinator) setLeaderReady(topic string, ready bool) {
 	}
 }
 
-func (c *Coordinator) replicate(topic string, leaderID string, stopCh chan struct{}) {
+func (c *Coordinator) replicate(ctx context.Context, topic string, leaderID string, stopCh chan struct{}) {
 	slog.Info("Starting replication", "topic", topic, "leader", leaderID)
 	defer slog.Info("Stopped replication", "topic", topic)
 
@@ -657,9 +656,9 @@ func (c *Coordinator) replicate(topic string, leaderID string, stopCh chan struc
 			return
 		case <-ticker.C:
 			func() {
-				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				repCtx, cancel := context.WithTimeout(ctx, time.Second)
 				defer cancel()
-				leaderAddr, err := c.rdb.Get(ctx, "ad_event_processor:brokers:"+leaderID).Result()
+				leaderAddr, err := c.rdb.Get(repCtx, "ad_event_processor:brokers:"+leaderID).Result()
 				if err != nil {
 					if cli != nil {
 						_ = cli.Close()

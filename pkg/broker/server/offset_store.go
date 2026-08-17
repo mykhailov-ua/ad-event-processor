@@ -55,15 +55,15 @@ func (s *MemoryOffsetStore) MinCommitted(_ context.Context, topic string) (uint6
 	if !ok || len(groups) == 0 {
 		return 0, false, nil
 	}
-	var min uint64
+	var minOffset uint64
 	first := true
 	for _, off := range groups {
-		if first || off < min {
-			min = off
+		if first || off < minOffset {
+			minOffset = off
 			first = false
 		}
 	}
-	return min, true, nil
+	return minOffset, true, nil
 }
 
 func (s *MemoryOffsetStore) ListGroups(_ context.Context, topic string) (map[string]uint64, error) {

@@ -60,7 +60,7 @@ func (store *EvacuatorCheckpointStore) Save(record EvacuatorCheckpointRecord) er
 	}
 
 	writer := bufio.NewWriter(file)
-	if _, err := writer.WriteString(fmt.Sprintf("%s|%s|1\n", record.FileName, record.SHA256)); err != nil {
+	if _, err := fmt.Fprintf(writer, "%s|%s|1\n", record.FileName, record.SHA256); err != nil {
 		_ = file.Close()
 		_ = os.Remove(tmpPath)
 		return err

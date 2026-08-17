@@ -45,6 +45,8 @@ bash "$SCRIPTS/ci/check_web_security.sh"
 
 echo "== admin: forbidden chart libs / size =="
 bash "$SCRIPTS/ci/admin_bundle_gate.sh"
+bash "$SCRIPTS/ci/selfserve_nav_gate.sh"
+bash "$SCRIPTS/ci/selfserve_nav_gate.sh"
 
 echo "== admin: micro-benchmarks =="
 bash "$SCRIPTS/ci/web_bench.sh"

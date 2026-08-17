@@ -14,4 +14,5 @@ func RunGuardProbeForTest() bool { return false }
 
 func resetGuardHooksForTest() {}
 
+//nolint:unused // stub when license_guard is not compiled in
 func recordGuardTrip(string) {}

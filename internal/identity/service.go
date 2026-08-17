@@ -353,11 +353,11 @@ func (service *Service) Login(ctx context.Context, email, password, userAgent, c
 		return LoginDTO{}, ErrEmailNotVerified
 	}
 
-	refreshTokenId := uuid.Must(uuid.NewV7())
+	refreshTokenID := uuid.Must(uuid.NewV7())
 
 	accessToken, err := service.tokenMaker.CreateToken(
 		uuid.UUID(user.ID.Bytes),
-		refreshTokenId,
+		refreshTokenID,
 		user.Role,
 		uuid.UUID(user.CustomerID.Bytes),
 		duration,
@@ -374,7 +374,7 @@ func (service *Service) Login(ctx context.Context, email, password, userAgent, c
 
 	err = service.repo.ExecTx(ctx, func(q db.Querier) error {
 		if _, err = q.CreateSession(ctx, db.CreateSessionParams{
-			ID:           pgtype.UUID{Bytes: refreshTokenId, Valid: true},
+			ID:           pgtype.UUID{Bytes: refreshTokenID, Valid: true},
 			UserID:       user.ID,
 			RefreshToken: refreshTokenStr,
 			UserAgent:    userAgent,
@@ -500,11 +500,11 @@ func (service *Service) RefreshToken(ctx context.Context, refreshTokenStr string
 			return err
 		}
 
-		newRefreshTokenId := uuid.Must(uuid.NewV7())
+		newRefreshTokenID := uuid.Must(uuid.NewV7())
 
 		accessToken, err = service.tokenMaker.CreateToken(
 			uuid.UUID(user.ID.Bytes),
-			newRefreshTokenId,
+			newRefreshTokenID,
 			user.Role,
 			uuid.UUID(user.CustomerID.Bytes),
 			duration,
@@ -518,7 +518,7 @@ func (service *Service) RefreshToken(ctx context.Context, refreshTokenStr string
 		expiresAt := time.Now().Add(7 * 24 * time.Hour)
 
 		if _, err = q.CreateSession(ctx, db.CreateSessionParams{
-			ID:           pgtype.UUID{Bytes: newRefreshTokenId, Valid: true},
+			ID:           pgtype.UUID{Bytes: newRefreshTokenID, Valid: true},
 			UserID:       user.ID,
 			RefreshToken: newRefreshTokenStr,
 			UserAgent:    session.UserAgent,

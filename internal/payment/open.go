@@ -157,10 +157,10 @@ func (m *Module) startWebhookServer(ctx context.Context) {
 	httpServer := &http.Server{
 		Addr:              ":" + m.cfg.PaymentWebhookPort,
 		Handler:           mux,
-		ReadHeaderTimeout: time.Duration(m.cfg.HttpReadHeaderTimeoutMs) * time.Millisecond,
-		ReadTimeout:       time.Duration(m.cfg.HttpReadTimeoutMs) * time.Millisecond,
-		WriteTimeout:      time.Duration(m.cfg.HttpWriteTimeoutMs) * time.Millisecond,
-		IdleTimeout:       time.Duration(m.cfg.HttpIdleTimeoutMs) * time.Millisecond,
+		ReadHeaderTimeout: time.Duration(m.cfg.HTTPReadHeaderTimeoutMs) * time.Millisecond,
+		ReadTimeout:       time.Duration(m.cfg.HTTPReadTimeoutMs) * time.Millisecond,
+		WriteTimeout:      time.Duration(m.cfg.HTTPWriteTimeoutMs) * time.Millisecond,
+		IdleTimeout:       time.Duration(m.cfg.HTTPIdleTimeoutMs) * time.Millisecond,
 	}
 
 	go func() {

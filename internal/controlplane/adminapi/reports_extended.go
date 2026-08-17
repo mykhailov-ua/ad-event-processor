@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/database"
@@ -148,19 +147,19 @@ func (reports *ReportsHTTPHandlers) registerExtendedReports(mux *http.ServeMux) 
 }
 
 func (reports *ReportsHTTPHandlers) getSpendVelocityReport(w http.ResponseWriter, r *http.Request) {
-	reports.writeCHReportRows(w, r, querySpendVelocityRows)
+	reports.writeCHReportRows(w, r, querySpendVelocityRows, nil)
 }
 
 func (reports *ReportsHTTPHandlers) getTrueROIReport(w http.ResponseWriter, r *http.Request) {
-	reports.writeCHReportRows(w, r, queryTrueROIRows)
+	reports.writeCHReportRows(w, r, queryTrueROIRows, []string{"campaign_id"})
 }
 
 func (reports *ReportsHTTPHandlers) getDaypartHeatmapReport(w http.ResponseWriter, r *http.Request) {
-	reports.writeCHReportRows(w, r, queryDaypartHeatmapRows)
+	reports.writeCHReportRows(w, r, queryDaypartHeatmapRows, []string{"hour"})
 }
 
 func (reports *ReportsHTTPHandlers) getCampaignGeoDeviceReport(w http.ResponseWriter, r *http.Request) {
-	reports.writeCHReportRows(w, r, queryGeoDeviceRows)
+	reports.writeCHReportRows(w, r, queryGeoDeviceRows, nil)
 }
 
 func (reports *ReportsHTTPHandlers) getSourceQualityReport(w http.ResponseWriter, r *http.Request) {
@@ -177,7 +176,12 @@ func (reports *ReportsHTTPHandlers) getSourceQualityReport(w http.ResponseWriter
 		reports.writeServiceError(w, err)
 		return
 	}
-	limit, offset := reportPageLimitOffset(r)
+	page, err := coldpath.ParseCursorPagination(r, 50, 1000)
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid cursor")
+		return
+	}
+	limit, offset := page.Limit, page.Offset
 	campaignIDs, err := listCustomerCampaignIDs(r.Context(), reports.Pool, customerID)
 	if err != nil {
 		reports.writeServiceError(w, err)
@@ -201,7 +205,7 @@ func (reports *ReportsHTTPHandlers) getSourceQualityReport(w http.ResponseWriter
 	}
 	out := make([]map[string]any, 0, len(chRows))
 	for _, row := range chRows {
-		ivt := ivtRates[placementRowKey(row.PlacementID, row.CampaignID)]
+		ivt := ivtRates[reportMetricsKey(row.Dimension, row.CampaignID)]
 		dto := toPlacementReportRowDTO(row, ivt)
 		out = append(out, map[string]any{
 			"placement_id":  dto.PlacementID,
@@ -216,6 +220,37 @@ func (reports *ReportsHTTPHandlers) getSourceQualityReport(w http.ResponseWriter
 			"ivt_rate":      dto.IVTRate,
 		})
 	}
+	if parseComparePrevious(r) {
+		prevFrom, prevTo := previousReportRange(from, to)
+		prevRows, _, perr := queryPlacementReportRows(chCtx, reports.CHQuery, campaignIDs, prevFrom, prevTo, limit, offset)
+		if perr != nil {
+			reports.writeServiceError(w, perr)
+			return
+		}
+		prevIVT, perr := queryPlacementIVTRates(chCtx, reports.CHQuery, campaignIDs, prevFrom, prevTo)
+		if perr != nil {
+			reports.writeServiceError(w, perr)
+			return
+		}
+		prevOut := make([]map[string]any, 0, len(prevRows))
+		for _, row := range prevRows {
+			ivt := prevIVT[reportMetricsKey(row.Dimension, row.CampaignID)]
+			dto := toPlacementReportRowDTO(row, ivt)
+			prevOut = append(prevOut, map[string]any{
+				"placement_id":  dto.PlacementID,
+				"campaign_id":   dto.CampaignID,
+				"impressions":   dto.Impressions,
+				"clicks":        dto.Clicks,
+				"conversions":   dto.Conversions,
+				"spend_micro":   dto.SpendMicro,
+				"revenue_micro": dto.RevenueMicro,
+				"roi_pct":       dto.ROIPct,
+				"ctr":           dto.CTR,
+				"ivt_rate":      dto.IVTRate,
+			})
+		}
+		attachMapCompareDeltas(out, prevOut, "placement_id", "campaign_id")
+	}
 	var nextCursor string
 	if int64(offset)+int64(len(out)) < total {
 		nextCursor = coldpath.EncodeCursor(offset + limit)
@@ -228,7 +263,7 @@ func (reports *ReportsHTTPHandlers) getSourceQualityReport(w http.ResponseWriter
 }
 
 func (reports *ReportsHTTPHandlers) getDiscrepancyBuySellReport(w http.ResponseWriter, r *http.Request) {
-	reports.writeCHReportRows(w, r, queryDiscrepancyRows)
+	reports.writeCHReportRows(w, r, queryDiscrepancyRows, nil)
 }
 
 func (reports *ReportsHTTPHandlers) getCampaignOverviewReport(w http.ResponseWriter, r *http.Request) {
@@ -311,7 +346,12 @@ func (reports *ReportsHTTPHandlers) getCustomerPortfolioReport(w http.ResponseWr
 
 type chReportRowsFunc func(ctx context.Context, chQuery *database.CHQuery, campaignIDs []uuid.UUID, from, to time.Time, limit, offset int) ([]map[string]any, int64, error)
 
-func (reports *ReportsHTTPHandlers) writeCHReportRows(w http.ResponseWriter, r *http.Request, queryFn chReportRowsFunc) {
+func (reports *ReportsHTTPHandlers) writeCHReportRows(
+	w http.ResponseWriter,
+	r *http.Request,
+	queryFn chReportRowsFunc,
+	compareKeyFields []string,
+) {
 	customerID, ok := reports.resolveReportCustomerID(w, r)
 	if !ok {
 		return
@@ -325,7 +365,12 @@ func (reports *ReportsHTTPHandlers) writeCHReportRows(w http.ResponseWriter, r *
 		reports.writeServiceError(w, err)
 		return
 	}
-	limit, offset := reportPageLimitOffset(r)
+	page, err := coldpath.ParseCursorPagination(r, 50, 1000)
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid cursor")
+		return
+	}
+	limit, offset := page.Limit, page.Offset
 	campaignIDs, err := listCustomerCampaignIDs(r.Context(), reports.Pool, customerID)
 	if err != nil {
 		reports.writeServiceError(w, err)
@@ -342,6 +387,15 @@ func (reports *ReportsHTTPHandlers) writeCHReportRows(w http.ResponseWriter, r *
 		reports.writeServiceError(w, err)
 		return
 	}
+	if parseComparePrevious(r) && len(compareKeyFields) > 0 {
+		prevFrom, prevTo := previousReportRange(from, to)
+		prevRows, _, perr := queryFn(chCtx, reports.CHQuery, campaignIDs, prevFrom, prevTo, limit, offset)
+		if perr != nil {
+			reports.writeServiceError(w, perr)
+			return
+		}
+		attachMapCompareDeltas(rows, prevRows, compareKeyFields...)
+	}
 	var nextCursor string
 	if int64(offset)+int64(len(rows)) < total {
 		nextCursor = coldpath.EncodeCursor(offset + limit)
@@ -351,20 +405,6 @@ func (reports *ReportsHTTPHandlers) writeCHReportRows(w http.ResponseWriter, r *
 		Freshness:  reports.reportFreshness(r.Context()),
 		NextCursor: nextCursor,
 	})
-}
-
-func reportPageLimitOffset(r *http.Request) (limit, offset int) {
-	limit = 50
-	if lStr := r.URL.Query().Get("limit"); lStr != "" {
-		if l, err := strconv.Atoi(lStr); err == nil && l > 0 {
-			limit = l
-		}
-	}
-	page, err := coldpath.Paginate(r.URL.Query().Get("cursor"), limit, 1000)
-	if err != nil {
-		return limit, 0
-	}
-	return page.Limit, page.Offset
 }
 
 func querySpendVelocityRows(

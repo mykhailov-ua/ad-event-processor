@@ -168,12 +168,12 @@ func (chStore *ClickHouseStore) StoreBatch(ctx context.Context, events []*domain
 	}
 
 	if chStore.spool == nil {
-		metrics.DbWriteErrors.WithLabelValues("clickhouse").Inc()
+		metrics.DBWriteErrors.WithLabelValues("clickhouse").Inc()
 		return err
 	}
 
 	if spoolErr := chStore.spool.AppendDurably(token, events); spoolErr != nil {
-		metrics.DbWriteErrors.WithLabelValues("clickhouse_spool").Inc()
+		metrics.DBWriteErrors.WithLabelValues("clickhouse_spool").Inc()
 		return fmt.Errorf("clickhouse write failed and spool append failed: ch=%w spool=%w", err, spoolErr)
 	}
 
@@ -305,7 +305,8 @@ func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, e
 
 	for _, e := range evts {
 		pii := hashEventPII(chStore.piiHasher, e)
-		if table == "fraud_aggregate_spikes" {
+		switch {
+		case table == "fraud_aggregate_spikes":
 			count, windowMs := fraudAggregateFields(e)
 			err = batch.Append(
 				piihash.FixedString16(pii.subnetHash),
@@ -314,7 +315,7 @@ func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, e
 				windowMs,
 				e.CreatedAt,
 			)
-		} else if isFraud {
+		case isFraud:
 			err = batch.Append(
 				e.ClickID,
 				e.CampaignID,
@@ -329,7 +330,7 @@ func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, e
 				fraudGhostFlag(e),
 				e.CreatedAt,
 			)
-		} else if table == "clicks" {
+		case table == "clicks":
 			err = batch.Append(
 				e.ClickID,
 				e.CampaignID,
@@ -341,7 +342,7 @@ func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, e
 				unsafeString(e.Payload),
 				e.CreatedAt,
 			)
-		} else if table == "tg_events_raw" {
+		case table == "tg_events_raw":
 			var p tgEventPayload
 			if len(e.Payload) > 0 {
 				_ = json.Unmarshal(e.Payload, &p)
@@ -368,7 +369,7 @@ func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, e
 				e.CreatedAt,
 				e.Type,
 			)
-		} else {
+		default:
 			err = batch.Append(
 				e.ClickID,
 				e.CampaignID,
@@ -390,7 +391,7 @@ func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, e
 	}
 
 	duration := time.Since(start).Seconds()
-	metrics.DbWriteDuration.WithLabelValues("clickhouse").Observe(duration)
+	metrics.DBWriteDuration.WithLabelValues("clickhouse").Observe(duration)
 
 	return nil
 }
@@ -530,7 +531,7 @@ func (chStore *ClickHouseStore) insertToClickHouse(ctx context.Context, events [
 	}
 
 	duration := time.Since(start).Seconds()
-	metrics.DbWriteDuration.WithLabelValues("clickhouse").Observe(duration)
+	metrics.DBWriteDuration.WithLabelValues("clickhouse").Observe(duration)
 
 	return nil
 }

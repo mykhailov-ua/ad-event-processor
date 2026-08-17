@@ -13,6 +13,7 @@ import (
 	"github.com/bidshard/ad-event-processor/internal/config"
 	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 	"github.com/bidshard/ad-event-processor/pkg/platformconfig"
 
 	"github.com/redis/go-redis/v9"
@@ -92,7 +93,7 @@ func TestManagementAPI_PlatformSettingsCycle(t *testing.T) {
 
 	t.Run("PATCH restart required", func(t *testing.T) {
 		patch := platformconfig.Patch{
-			IngressSchema: strPtr(platformconfig.IngressOpenRTB3),
+			IngressSchema: coldpath.Ptr(platformconfig.IngressOpenRTB3),
 		}
 		body, err := json.Marshal(patch)
 		require.NoError(t, err)
@@ -138,5 +139,3 @@ func TestManagementAPI_PlatformSettingsCycle(t *testing.T) {
 		assert.Empty(t, view.RestartRequired)
 	})
 }
-
-func strPtr(s string) *string { return &s }

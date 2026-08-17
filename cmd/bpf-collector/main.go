@@ -38,7 +38,7 @@ func main() {
 	slowUs := flag.Uint("slow-us", 10000, "slow syscall threshold microseconds")
 	discoverLoadgen := flag.Bool("discover-loadgen", true, "watch for load generator PIDs by /proc comm")
 	loadgenComms := flag.String("loadgen-comms", "", "comma-separated /proc comm names (default loadgen; env ADSTACK_BPF_LOADGEN_COMM)")
-	discoverSec := flag.Duration("discover-interval", 2*time.Second, "dynamic target scan interval")
+	discoverInterval := flag.Duration("discover-interval", 2*time.Second, "dynamic target scan interval")
 	dumpInterval := flag.Duration("dump-interval", 0, "periodic maps/summary.json dump (0=disabled)")
 	metricsAddr := flag.String("metrics-addr", "", "Prometheus /metrics listen address (empty=disabled)")
 	refreshTargets := flag.Duration("refresh-targets", 0, "re-resolve docker/native targets interval (0=disabled)")
@@ -81,7 +81,7 @@ func main() {
 		slowNs:          uint64(*slowUs) * 1000,
 		discoverLoadgen: discover,
 		loadgenComms:    parseLoadgenComms(comms),
-		discoverTick:    *discoverSec,
+		discoverTick:    *discoverInterval,
 		dumpInterval:    *dumpInterval,
 		metricsAddr:     *metricsAddr,
 		refreshTargets:  *refreshTargets,
@@ -183,8 +183,8 @@ func (r *probeRun) start(ctx context.Context) error {
 		r.links = append(r.links, l)
 	}
 
-	if coll.Progs.TcpRetransmit != nil {
-		if l, err := link.Kprobe("tcp_retransmit_skb", coll.Progs.TcpRetransmit, nil); err != nil {
+	if coll.Progs.TCPRetransmit != nil {
+		if l, err := link.Kprobe("tcp_retransmit_skb", coll.Progs.TCPRetransmit, nil); err != nil {
 			slog.Warn("kprobe attach skipped", "symbol", "tcp_retransmit_skb", "error", err)
 		} else {
 			r.links = append(r.links, l)

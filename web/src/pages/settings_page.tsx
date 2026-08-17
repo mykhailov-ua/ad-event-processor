@@ -20,6 +20,7 @@ import {
 import { devModeEnabled, setDevMode } from '../helpers/dev_mode.js';
 import type { OpsDoctorSummary } from '../types/api/ops.js';
 import { humanizeTechnicalDetail } from '../helpers/technical_labels.js';
+import { reloadRoles } from '../helpers/ops_compliance_api.js';
 import { useResource } from '../hooks/use_resource.js';
 import { AlertBanner } from '../components/alert_banner.js';
 import { Button } from '../components/button.js';
@@ -95,6 +96,7 @@ export function SettingsPage() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [doctorSummary, setDoctorSummary] = useState<OpsDoctorSummary | null>(null);
   const [doctorLoading, setDoctorLoading] = useState(false);
+  const [rolesReloading, setRolesReloading] = useState(false);
   const [devMode, setDevModeState] = useState(devModeEnabled());
 
   useEffect(() => {
@@ -507,6 +509,39 @@ export function SettingsPage() {
               </div>
             ) : null}
           </SectionCard>
+
+          {canWrite ? (
+            <SectionCard
+              icon="users"
+              title="RBAC roles file"
+              desc="Reload role definitions from disk without restarting management."
+            >
+              <Button
+                label={rolesReloading ? 'Reloading…' : 'Reload RBAC'}
+                variant="secondary"
+                size="sm"
+                icon="refresh-cw"
+                data-testid="roles-reload"
+                loading={rolesReloading}
+                disabled={rolesReloading}
+                onClick={() => void (async () => {
+                  setRolesReloading(true);
+                  try {
+                    const res = await reloadRoles();
+                    pushToastMessage({
+                      title: 'RBAC reloaded',
+                      message: res.path ? `Loaded ${res.path}` : res.status,
+                    });
+                  } catch (e) {
+                    if (e instanceof ConfirmCancelledError) return;
+                    pushToastMessage({ title: 'Reload failed', message: mapServiceError(e).message });
+                  } finally {
+                    setRolesReloading(false);
+                  }
+                })()}
+              />
+            </SectionCard>
+          ) : null}
 
           <SectionCard
             icon="shield"

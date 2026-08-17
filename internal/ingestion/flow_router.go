@@ -62,6 +62,16 @@ func (r *FlowRouter) Select(userID []byte) (sel FlowSelection, ok bool) {
 	return sel, ok
 }
 
+// BanditSelect reads RCU-published bandit weights and selects without allocation.
+func BanditSelect(snap *FlowPathSnapshot, userID []byte) (sel FlowSelection, landerURL []byte, ok bool) {
+	return SelectSnapshot(snap, userID)
+}
+
+// BanditSelect on FlowRouter is the hot-path entry for GMA-M6 weighted routing.
+func (r *FlowRouter) BanditSelect(userID []byte) (sel FlowSelection, landerURL []byte, ok bool) {
+	return BanditSelect(r.active.Load(), userID)
+}
+
 // SelectSnapshot performs weighted flow selection on an immutable snapshot.
 func SelectSnapshot(snap *FlowPathSnapshot, userID []byte) (sel FlowSelection, landerURL []byte, ok bool) {
 	if snap == nil || len(snap.Paths) == 0 {

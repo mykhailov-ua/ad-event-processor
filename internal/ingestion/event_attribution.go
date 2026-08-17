@@ -5,16 +5,17 @@ import "github.com/google/uuid"
 // appendAttributionPayload writes sub slots and ad-network click ids into evt.Payload JSON.
 func appendAttributionPayload(dst, payload []byte, subs SubIDSlots, fbclid, gclid, ttclid string) []byte {
 	dst = dst[:0]
-	if len(payload) > 0 && payload[0] == '{' {
+	switch {
+	case len(payload) > 0 && payload[0] == '{':
 		if len(payload) > 1 && payload[len(payload)-1] == '}' {
 			dst = append(dst, payload[:len(payload)-1]...)
 		} else {
 			dst = append(dst, payload...)
 		}
-	} else if len(payload) > 0 {
+	case len(payload) > 0:
 		dst = append(dst, '{')
 		dst = appendJSONKeyString(dst, "payload", payload)
-	} else {
+	default:
 		dst = append(dst, '{')
 	}
 
@@ -94,13 +95,14 @@ func appendFlowAttribution(dst []byte, landerID, offerID uuid.UUID) []byte {
 	if landerID == uuid.Nil && offerID == uuid.Nil {
 		return dst
 	}
-	if len(dst) == 0 {
+	switch {
+	case len(dst) == 0:
 		dst = append(dst, '{')
-	} else if dst[0] != '{' {
+	case dst[0] != '{':
 		dst = append(dst, '{')
-	} else if len(dst) > 1 && dst[len(dst)-1] == '}' {
+	case len(dst) > 1 && dst[len(dst)-1] == '}':
 		dst = dst[:len(dst)-1]
-	} else {
+	default:
 		dst = append(dst, '{')
 	}
 	if landerID != uuid.Nil {

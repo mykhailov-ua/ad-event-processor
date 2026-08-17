@@ -1,3 +1,4 @@
+// Package broker provides the log broker client and server protocol.
 package broker
 
 import (

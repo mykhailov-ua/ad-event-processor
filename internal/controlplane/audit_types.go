@@ -11,7 +11,7 @@ type auditReasonChange struct {
 	Reason string `json:"reason"`
 }
 
-type auditIdChange struct {
+type auditIDChange struct {
 	ID int64 `json:"id"`
 }
 
@@ -83,6 +83,15 @@ type auditCampaignAdminChange struct {
 	DailyBudget     int64    `json:"daily_budget_micro"`
 	Timezone        string   `json:"timezone"`
 	TargetCountries []string `json:"target_countries,omitempty"`
+}
+
+type auditCampaignBrandChange struct {
+	BrandID string `json:"brand_id,omitempty"`
+}
+
+type auditCampaignBudgetChange struct {
+	OldBudget int64 `json:"old_budget_micro"`
+	NewBudget int64 `json:"new_budget_micro"`
 }
 
 type auditBrandFcapChange struct {

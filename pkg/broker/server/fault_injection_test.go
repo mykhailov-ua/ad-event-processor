@@ -14,7 +14,7 @@ func TestFault_ReadonlyDataDir_HealthzUnavailable(t *testing.T) {
 	}
 	defer func() {
 		_ = os.Chmod(dir, 0o755)
-		os.RemoveAll(dir)
+		_ = os.RemoveAll(dir)
 	}()
 
 	s := NewServer("127.0.0.1:0", dir, 10*1024*1024, 4096)

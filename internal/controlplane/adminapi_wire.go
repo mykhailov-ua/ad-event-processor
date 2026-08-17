@@ -247,6 +247,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 		LicensingHTTP: &adminapi.LicensingHTTPHandlers{
 			Pool:                  pool,
 			LicenseService:        svc,
+			LicenseDiagnostics:    licenseWatcherDiagnostics,
 			ApplyRateLimit:        limit,
 			LicenseApplyRateLimit: h.limitLicenseApply,
 			RequirePermission:     perm,
@@ -292,6 +293,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 		},
 		SelfServeHTTP: &adminapi.SelfServeHTTPHandlers{
 			Campaigns:                  svc,
+			Templates:                  selfServeTemplatesAdapter{svc: svc},
 			PaymentIntents:             h.payment,
 			Invoices:                   h.billing,
 			APIKeys:                    h.authClient,
@@ -362,11 +364,27 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 		},
 		TeamHTTP: &adminapi.TeamHTTPHandlers{
 			Team:                 &adminapi.TeamOverviewService{Pool: pool},
+			Governance:           svc,
 			ApplyRateLimit:       limit,
 			RequireAnyPermission: permAny,
+			RequireTeamWrite:     h.adminRequireTeamWrite(),
 			ResolveCustomerID:    h.resolveCampaignsCustomerID,
 			SnapshotFromRequest: func(r *http.Request) (authz.Snapshot, bool) {
 				return authz.SnapshotFromContext(r.Context())
+			},
+			ActorUserID: func(r *http.Request) (uuid.UUID, bool) {
+				u, ok := GetUser(r.Context())
+				return u.UserID, ok
+			},
+			WriteServiceError: writeErr,
+		},
+		PublisherHTTP: &adminapi.PublisherHTTPHandlers{
+			Publisher:            publisherAdminAdapter{svc: svc},
+			ApplyRateLimit:       limit,
+			RequireAnyPermission: permAny,
+			ActorUserID: func(r *http.Request) (uuid.UUID, bool) {
+				u, ok := GetUser(r.Context())
+				return u.UserID, ok
 			},
 			WriteServiceError: writeErr,
 		},
@@ -374,6 +392,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			Commercial:              commercialAdminAdapter{svc: svc},
 			ApplyRateLimit:          limit,
 			RequirePermission:       perm,
+			RequireAnyPermission:    permAny,
 			AuthorizeCustomerAccess: authCustomer,
 			WriteServiceError:       writeErr,
 		},
@@ -523,6 +542,27 @@ func (h *Handler) resolveDisputeCustomerFilter(r *http.Request) (string, error) 
 		return u.CustomerID.String(), nil
 	}
 	return customerFilter, nil
+}
+
+func (h *Handler) adminRequireTeamWrite() func(http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			u, ok := GetUser(r.Context())
+			if !ok {
+				writeServiceError(w, errForbidden)
+				return
+			}
+			if u.IsMediaBuyer() {
+				writeServiceError(w, errForbidden)
+				return
+			}
+			if u.IsTeamLead() || HasPermission(u.Role, PermUsersWrite) {
+				next(w, r)
+				return
+			}
+			writeServiceError(w, errForbidden)
+		}
+	}
 }
 
 func (h *Handler) resolveCampaignsCustomerID(r *http.Request, bodyCustomerID *uuid.UUID) (uuid.UUID, error) {

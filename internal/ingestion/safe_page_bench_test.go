@@ -84,23 +84,15 @@ func BenchmarkSafePageStubGnet_E2E(b *testing.B) {
 
 func BenchmarkTrackVerifyGnet_E2E(b *testing.B) {
 	h, cid := benchSafePageCampaign(b)
-	events := make([]safePageVerifyEvent, 15)
-	for i := range events {
-		events[i] = safePageVerifyEvent{T: "mousemove", TS: int64(i)}
-	}
+	events := humanMouseEvents(15)
 	events = append(events,
 		safePageVerifyEvent{T: "touchstart", TS: 100},
 		safePageVerifyEvent{T: "scroll", TS: 101},
 	)
 	body, err := json.Marshal(safePageVerifyRequest{
-		CampaignID: cid.String(),
-		Events:     events,
-		Fingerprint: safePageVerifyFingerprint{
-			UA:        "Mozilla/5.0",
-			Lang:      "en",
-			Languages: []string{"en"},
-			Webdriver: false,
-		},
+		CampaignID:  cid.String(),
+		Events:      events,
+		Fingerprint: validAdvancedFingerprint(),
 	})
 	if err != nil {
 		b.Fatal(err)

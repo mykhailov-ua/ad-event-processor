@@ -210,7 +210,7 @@ func main() {
 		slog.Warn("MaxMind DB load failed, using mock geo provider (development only)", "error", err)
 		geoProvider = &ingestion.MockGeoProvider{}
 	}
-	defer geoProvider.Close()
+	defer func() { _ = geoProvider.Close() }()
 
 	if mm, ok := geoProvider.(*ingestion.MaxMindProvider); ok {
 		metrics.GeoProviderStatus.Set(1)
@@ -485,7 +485,7 @@ func main() {
 				defer func() {
 					dealWriter.Close()
 					exchangeWriter.Close()
-					chConn.Close()
+					_ = chConn.Close()
 				}()
 				slog.Info("rtb clickhouse writers enabled", "flush_ms", cfg.RtbDealOutcomeFlushMs)
 			}
@@ -577,7 +577,7 @@ func main() {
 			slog.Error("udp control start failed", "error", err)
 			os.Exit(1)
 		}
-		defer udpCtrl.Close()
+		defer func() { _ = udpCtrl.Close() }()
 		gnetHandler.SetUDPControl(udpCtrl)
 		slog.Info("udp ingress control enabled", "fail_closed", cfg.UDPFailClosed)
 	}
@@ -621,6 +621,29 @@ func main() {
 			go proxyLoader.Start(ctx)
 			slog.Info("proxy vpn l1.5 loader started", "dir", cfg.ProxyVPNFeedDir, "refresh", cfg.ProxyVPNFeedRefresh)
 		}
+	}
+	if cfg.TLSFingerprintL1Enabled {
+		tlsTable := ingestion.NewTLSFingerprintTable()
+		gnetHandler.ConfigureTLSFingerprint(tlsTable)
+		if tlsLoader := ingestion.NewTLSFingerprintFeedLoader(cfg, tlsTable); tlsLoader != nil {
+			go tlsLoader.Start(ctx)
+			slog.Info("tls fingerprint l1 loader started", "dir", cfg.TLSFingerprintFeedDir, "refresh", cfg.TLSFingerprintFeedRefresh)
+		}
+	}
+	if secret := string(cfg.LinkSigningHMACSecret); secret != "" {
+		gnetHandler.ConfigureLinkSigning([]byte(secret))
+		slog.Info("link signing enabled")
+	}
+	var attestationSecrets [][]byte
+	if secret := string(cfg.AttestationHMACSecret); secret != "" {
+		attestationSecrets = append(attestationSecrets, []byte(secret))
+	}
+	if prev := string(cfg.AttestationHMACSecretPrev); prev != "" {
+		attestationSecrets = append(attestationSecrets, []byte(prev))
+	}
+	if len(attestationSecrets) > 0 {
+		gnetHandler.ConfigureAttestation(attestationSecrets)
+		slog.Info("l2 attestation cookie verify enabled")
 	}
 	if cfg.DomainPoolEnabled {
 		domainPoolTable := ingestion.NewDomainPoolTable()

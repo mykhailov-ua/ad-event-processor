@@ -34,7 +34,7 @@ func TestTrackOPTIONS_NetHTTPPreflight(t *testing.T) {
 		TrackCORSOrigins:   []string{"https://lp.example"},
 	}
 	router := NewRouter(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud", nil, nil, nil)
-	req := httptest.NewRequest(http.MethodOptions, "/track", nil)
+	req := httptest.NewRequest(http.MethodOptions, "/track", http.NoBody)
 	req.Header.Set("Origin", "https://lp.example")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)

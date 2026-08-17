@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { to } from '../lib/to.js';
 import { apiConfirmed } from '../helpers/confirmed_api.js';
@@ -14,9 +14,15 @@ import { pushToastMessage } from '../helpers/toast_ui.js';
 import { surfaceServiceErrorToast } from '../helpers/service_error_toast.js';
 import {
   fetchInvoiceDeliveries,
+  fetchInvoiceLedgerLines,
   retryInvoiceDelivery,
 } from '../helpers/billing_admin_api.js';
-import type { InvoiceDTO, InvoiceDeliveryDTO, InvoiceLineDTO } from '../types/api/index.js';
+import type {
+  InvoiceDTO,
+  InvoiceDeliveryDTO,
+  InvoiceLedgerLineDTO,
+  InvoiceLineDTO,
+} from '../types/api/index.js';
 import { shortCustomerId } from '../helpers/customer_context.js';
 import { displayLabel } from '../helpers/display_labels.js';
 import { useResource } from '../hooks/use_resource.js';
@@ -40,6 +46,10 @@ export function InvoiceDetailPage() {
   const [deliveriesLoading, setDeliveriesLoading] = useState(false);
   const [deliveryRetryLoading, setDeliveryRetryLoading] = useState(false);
   const [deliveriesLoaded, setDeliveriesLoaded] = useState(false);
+  const [ledgerLines, setLedgerLines] = useState<InvoiceLedgerLineDTO[]>([]);
+  const [ledgerLinesLoading, setLedgerLinesLoading] = useState(false);
+  const [ledgerLinesTotal, setLedgerLinesTotal] = useState(0);
+  const [ledgerNextCursor, setLedgerNextCursor] = useState('');
 
   const { data: invoice, loading, error, reload } = useResource<InvoiceDTO>(
     id ? `/api/v1/billing/invoices/${id}` : null,
@@ -69,6 +79,34 @@ export function InvoiceDetailPage() {
       void loadDeliveries();
     }
   }, [invoice, deliveriesLoaded, deliveriesLoading, loadDeliveries]);
+
+  const loadLedgerLines = useCallback(async (cursor = '', append = false) => {
+    if (!id) return;
+    setLedgerLinesLoading(true);
+    const [res, err] = await to(fetchInvoiceLedgerLines(id, cursor));
+    setLedgerLinesLoading(false);
+    if (err) {
+      if (!append) {
+        setLedgerLines([]);
+        setLedgerLinesTotal(0);
+      }
+      setLedgerNextCursor('');
+      const view = mapServiceError(err);
+      pushToastMessage({ title: view.title, message: view.message, code: view.code });
+      return;
+    }
+    const items = res?.items ?? [];
+    setLedgerLines((prev) => (append ? [...prev, ...items] : items));
+    setLedgerLinesTotal(res?.total ?? 0);
+    setLedgerNextCursor(res?.next_cursor ?? '');
+  }, [id]);
+
+  const ledgerLoadedRef = useRef(false);
+  useEffect(() => {
+    if (!invoice || ledgerLoadedRef.current) return;
+    ledgerLoadedRef.current = true;
+    void loadLedgerLines('');
+  }, [invoice, loadLedgerLines]);
 
   const handleVoid = async () => {
     setVoidLoading(true);
@@ -203,6 +241,65 @@ export function InvoiceDetailPage() {
           </table>
         </div>
       ) : null}
+
+      <section className="section-block" data-testid="invoice-ledger-lines">
+        <h2 className="subsection-title">Ledger lines</h2>
+        {ledgerLinesLoading ? <span className="text-muted">Loading…</span> : null}
+        <div className="table-wrapper elevation-raised">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th scope="col">ID</th>
+                <th scope="col">Type</th>
+                <th scope="col">Amount</th>
+                <th scope="col">Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ledgerLines.length === 0 && !ledgerLinesLoading ? (
+                <tr>
+                  <td colSpan={4} className="data-table__empty">
+                    <div className="empty-state">
+                      <div className="empty-state__title">No ledger lines</div>
+                      <div className="empty-state__desc text-muted text-sm">
+                        No matching balance_ledger rows for this invoice month.
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              ) : null}
+              {ledgerLines.map((line) => (
+                <tr key={line.id}>
+                  <td className="font-mono">{String(line.id ?? '—')}</td>
+                  <td>{displayLabel(line.ledger_type)}</td>
+                  <td className="font-mono">
+                    {formatAmountMicro(line.amount_micro ?? 0, invoice.currency)}
+                  </td>
+                  <td className="text-muted text-sm">
+                    {line.created_at ? new Date(line.created_at).toLocaleString() : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {ledgerLinesTotal > 0 ? (
+          <p className="text-muted text-sm mt-2">
+            Showing {ledgerLines.length} of {ledgerLinesTotal} lines
+          </p>
+        ) : null}
+        {ledgerNextCursor ? (
+          <Button
+            label="Load more"
+            variant="secondary"
+            size="sm"
+            className="mt-2"
+            loading={ledgerLinesLoading}
+            disabled={ledgerLinesLoading}
+            onClick={() => void loadLedgerLines(ledgerNextCursor, true)}
+          />
+        ) : null}
+      </section>
 
       <section className="section-block" data-testid="invoice-deliveries">
         <div className="flex items-center gap-2 mb-3">

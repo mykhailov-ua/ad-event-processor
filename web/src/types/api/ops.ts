@@ -41,6 +41,8 @@ export type IncidentSnapshot = {
   breaker_states?: Record<string, string>;
   partial?: boolean;
   errors?: Array<{ source: string; code: string }>;
+  stale_dashboard?: boolean;
+  affected_campaigns?: Array<{ campaign_id: string; name?: string }>;
 };
 
 /** GET /ops/dashboard/summary */

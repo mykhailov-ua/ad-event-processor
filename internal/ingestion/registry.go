@@ -41,31 +41,38 @@ func (r *Registry) campaignMapSnapshot() *campaignMapSnapshot {
 }
 
 type campaignReplicaDTO struct {
-	ID               uuid.UUID             `json:"id"`
-	CustomerID       uuid.UUID             `json:"customer_id"`
-	BrandID          *uuid.UUID            `json:"brand_id,omitempty"`
-	BrandFcapKey     string                `json:"brand_fcap_key,omitempty"`
-	Name             string                `json:"name"`
-	BudgetLimit      int64                 `json:"budget_limit"`
-	CurrentSpend     int64                 `json:"current_spend"`
-	Status           domain.CampaignStatus `json:"status"`
-	PacingMode       domain.PacingMode     `json:"pacing_mode"`
-	DailyBudget      int64                 `json:"daily_budget"`
-	DailyBudgetMicro int64                 `json:"daily_budget_micro"`
-	Timezone         string                `json:"timezone"`
-	FreqLimit        int32                 `json:"freq_limit"`
-	FreqWindow       int32                 `json:"freq_window"`
-	TargetCountries  []string              `json:"target_countries,omitempty"`
-	SafePageURL      string                `json:"safe_page_url,omitempty"`
-	SafePageEnabled  bool                  `json:"safe_page_enabled"`
+	ID                 uuid.UUID             `json:"id"`
+	CustomerID         uuid.UUID             `json:"customer_id"`
+	BrandID            *uuid.UUID            `json:"brand_id,omitempty"`
+	BrandFcapKey       string                `json:"brand_fcap_key,omitempty"`
+	Name               string                `json:"name"`
+	BudgetLimit        int64                 `json:"budget_limit"`
+	CurrentSpend       int64                 `json:"current_spend"`
+	Status             domain.CampaignStatus `json:"status"`
+	PacingMode         domain.PacingMode     `json:"pacing_mode"`
+	DailyBudget        int64                 `json:"daily_budget"`
+	DailyBudgetMicro   int64                 `json:"daily_budget_micro"`
+	Timezone           string                `json:"timezone"`
+	FreqLimit          int32                 `json:"freq_limit"`
+	FreqWindow         int32                 `json:"freq_window"`
+	TargetCountries    []string              `json:"target_countries,omitempty"`
+	SafePageURL        string                `json:"safe_page_url,omitempty"`
+	SafePageEnabled    bool                  `json:"safe_page_enabled"`
+	AttestationEnabled bool                  `json:"attestation_enabled"`
+	AttestationTTLSec  int32                 `json:"attestation_ttl_sec"`
+	DmrEnabled         bool                  `json:"dmr_enabled"`
 	// L1CIDRBlockEnabled is absent in pre-M1 replicas; decode defaults to
 	// false (fail-open) until the first DB sync rewrites the file.
-	L1CIDRBlockEnabled      bool   `json:"l1_cidr_block_enabled"`
-	L15ProxyVPNBlockEnabled bool   `json:"l15_proxy_vpn_block_enabled"`
-	ClickDelivery           string `json:"click_delivery,omitempty"`
-	ProxyUpstreamURL        string `json:"proxy_upstream_url,omitempty"`
-	ProxyRewriteAssets      bool   `json:"proxy_rewrite_assets"`
-	RegistryStatus          string `json:"registry_status"`
+	L1CIDRBlockEnabled         bool   `json:"l1_cidr_block_enabled"`
+	L15ProxyVPNBlockEnabled    bool   `json:"l15_proxy_vpn_block_enabled"`
+	TLSFingerprintBlockEnabled bool   `json:"tls_fingerprint_block_enabled"`
+	ConnTypePolicy             string `json:"conn_type_policy,omitempty"`
+	LinkSigningEnabled         bool   `json:"link_signing_enabled"`
+	LinkSigningTTLSec          int32  `json:"link_signing_ttl_sec"`
+	ClickDelivery              string `json:"click_delivery,omitempty"`
+	ProxyUpstreamURL           string `json:"proxy_upstream_url,omitempty"`
+	ProxyRewriteAssets         bool   `json:"proxy_rewrite_assets"`
+	RegistryStatus             string `json:"registry_status"`
 }
 
 type entitlementsSnapshot struct {
@@ -363,29 +370,36 @@ func (r *Registry) saveReplica(m map[uuid.UUID]campaignInfo) error {
 		}
 
 		dtos = append(dtos, campaignReplicaDTO{
-			ID:                      info.campaign.ID,
-			CustomerID:              info.campaign.CustomerID,
-			BrandID:                 info.campaign.BrandID,
-			BrandFcapKey:            info.campaign.BrandFcapKey,
-			Name:                    info.campaign.Name,
-			BudgetLimit:             info.campaign.BudgetLimit,
-			CurrentSpend:            info.campaign.CurrentSpend,
-			Status:                  info.campaign.Status,
-			PacingMode:              info.campaign.PacingMode,
-			DailyBudget:             info.campaign.DailyBudget,
-			DailyBudgetMicro:        info.campaign.DailyBudgetMicro,
-			Timezone:                info.campaign.Timezone,
-			FreqLimit:               info.campaign.FreqLimit,
-			FreqWindow:              info.campaign.FreqWindow,
-			TargetCountries:         targetCountries,
-			SafePageURL:             info.campaign.SafePageURL,
-			SafePageEnabled:         info.campaign.SafePageEnabled,
-			L1CIDRBlockEnabled:      info.campaign.L1CIDRBlockEnabled,
-			L15ProxyVPNBlockEnabled: info.campaign.L15ProxyVPNBlockEnabled,
-			ClickDelivery:           info.campaign.ClickDelivery,
-			ProxyUpstreamURL:        info.campaign.ProxyUpstreamURL,
-			ProxyRewriteAssets:      info.campaign.ProxyRewriteAssets,
-			RegistryStatus:          string(info.status),
+			ID:                         info.campaign.ID,
+			CustomerID:                 info.campaign.CustomerID,
+			BrandID:                    info.campaign.BrandID,
+			BrandFcapKey:               info.campaign.BrandFcapKey,
+			Name:                       info.campaign.Name,
+			BudgetLimit:                info.campaign.BudgetLimit,
+			CurrentSpend:               info.campaign.CurrentSpend,
+			Status:                     info.campaign.Status,
+			PacingMode:                 info.campaign.PacingMode,
+			DailyBudget:                info.campaign.DailyBudget,
+			DailyBudgetMicro:           info.campaign.DailyBudgetMicro,
+			Timezone:                   info.campaign.Timezone,
+			FreqLimit:                  info.campaign.FreqLimit,
+			FreqWindow:                 info.campaign.FreqWindow,
+			TargetCountries:            targetCountries,
+			SafePageURL:                info.campaign.SafePageURL,
+			SafePageEnabled:            info.campaign.SafePageEnabled,
+			AttestationEnabled:         info.campaign.AttestationEnabled,
+			AttestationTTLSec:          info.campaign.AttestationTTLSec,
+			DmrEnabled:                 info.campaign.DmrEnabled,
+			L1CIDRBlockEnabled:         info.campaign.L1CIDRBlockEnabled,
+			L15ProxyVPNBlockEnabled:    info.campaign.L15ProxyVPNBlockEnabled,
+			TLSFingerprintBlockEnabled: info.campaign.TLSFingerprintBlockEnabled,
+			ConnTypePolicy:             string(info.campaign.ConnTypePolicy),
+			LinkSigningEnabled:         info.campaign.LinkSigningEnabled,
+			LinkSigningTTLSec:          info.campaign.LinkSigningTTLSec,
+			ClickDelivery:              info.campaign.ClickDelivery,
+			ProxyUpstreamURL:           info.campaign.ProxyUpstreamURL,
+			ProxyRewriteAssets:         info.campaign.ProxyRewriteAssets,
+			RegistryStatus:             string(info.status),
 		})
 	}
 
@@ -395,12 +409,12 @@ func (r *Registry) saveReplica(m map[uuid.UUID]campaignInfo) error {
 	}
 
 	tempFile := r.replicaPath + ".tmp"
-	f, err := os.OpenFile(tempFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	f, err := os.OpenFile(tempFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
 	if err != nil {
 		if !strings.HasPrefix(r.replicaPath, "/tmp/") {
 			r.replicaPath = "/tmp/campaigns_replica.json"
 			tempFile = r.replicaPath + ".tmp"
-			f, err = os.OpenFile(tempFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+			f, err = os.OpenFile(tempFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
 		}
 		if err != nil {
 			return err
@@ -462,41 +476,48 @@ func (r *Registry) loadReplica() (*campaignMapSnapshot, error) {
 
 		m[dto.ID] = campaignInfo{
 			campaign: &domain.Campaign{
-				ID:                      dto.ID,
-				IDStr:                   idStr,
-				IDStrAny:                idStr,
-				CustomerID:              dto.CustomerID,
-				CustomerIDStr:           customerIDStr,
-				CustomerIDStrAny:        customerIDStr,
-				BrandID:                 dto.BrandID,
-				BrandFcapKey:            dto.BrandFcapKey,
-				Name:                    dto.Name,
-				BudgetLimit:             dto.BudgetLimit,
-				CurrentSpend:            dto.CurrentSpend,
-				Status:                  dto.Status,
-				PacingMode:              dto.PacingMode,
-				DailyBudget:             dto.DailyBudget,
-				DailyBudgetMicro:        dto.DailyBudgetMicro,
-				DailyBudgetMicroAny:     dto.DailyBudgetMicro,
-				Timezone:                dto.Timezone,
-				Location:                loc,
-				FreqLimit:               dto.FreqLimit,
-				FreqLimitAny:            dto.FreqLimit,
-				FreqWindow:              dto.FreqWindow,
-				FreqWindowAny:           dto.FreqWindow,
-				TargetCountries:         countries,
-				BudgetCampaignKey:       budgetCampaignKey(dto.ID),
-				CampaignSyncKey:         campaignSyncKey(dto.ID),
-				CustomerSyncKey:         customerSyncKey(dto.ID, dto.CustomerID),
-				FcapKeyPrefix:           fcapPrefix,
-				DailySpendKeyPrefix:     dailySpendKeyPrefix(dto.ID),
-				SafePageURL:             dto.SafePageURL,
-				SafePageEnabled:         dto.SafePageEnabled,
-				L1CIDRBlockEnabled:      dto.L1CIDRBlockEnabled,
-				L15ProxyVPNBlockEnabled: dto.L15ProxyVPNBlockEnabled,
-				ClickDelivery:           dto.ClickDelivery,
-				ProxyUpstreamURL:        dto.ProxyUpstreamURL,
-				ProxyRewriteAssets:      dto.ProxyRewriteAssets,
+				ID:                         dto.ID,
+				IDStr:                      idStr,
+				IDStrAny:                   idStr,
+				CustomerID:                 dto.CustomerID,
+				CustomerIDStr:              customerIDStr,
+				CustomerIDStrAny:           customerIDStr,
+				BrandID:                    dto.BrandID,
+				BrandFcapKey:               dto.BrandFcapKey,
+				Name:                       dto.Name,
+				BudgetLimit:                dto.BudgetLimit,
+				CurrentSpend:               dto.CurrentSpend,
+				Status:                     dto.Status,
+				PacingMode:                 dto.PacingMode,
+				DailyBudget:                dto.DailyBudget,
+				DailyBudgetMicro:           dto.DailyBudgetMicro,
+				DailyBudgetMicroAny:        dto.DailyBudgetMicro,
+				Timezone:                   dto.Timezone,
+				Location:                   loc,
+				FreqLimit:                  dto.FreqLimit,
+				FreqLimitAny:               dto.FreqLimit,
+				FreqWindow:                 dto.FreqWindow,
+				FreqWindowAny:              dto.FreqWindow,
+				TargetCountries:            countries,
+				BudgetCampaignKey:          budgetCampaignKey(dto.ID),
+				CampaignSyncKey:            campaignSyncKey(dto.ID),
+				CustomerSyncKey:            customerSyncKey(dto.ID, dto.CustomerID),
+				FcapKeyPrefix:              fcapPrefix,
+				DailySpendKeyPrefix:        dailySpendKeyPrefix(dto.ID),
+				SafePageURL:                dto.SafePageURL,
+				SafePageEnabled:            dto.SafePageEnabled,
+				AttestationEnabled:         dto.AttestationEnabled,
+				AttestationTTLSec:          dto.AttestationTTLSec,
+				DmrEnabled:                 dto.DmrEnabled,
+				L1CIDRBlockEnabled:         dto.L1CIDRBlockEnabled,
+				L15ProxyVPNBlockEnabled:    dto.L15ProxyVPNBlockEnabled,
+				TLSFingerprintBlockEnabled: dto.TLSFingerprintBlockEnabled,
+				ConnTypePolicy:             domain.ConnTypePolicyFromString(dto.ConnTypePolicy),
+				LinkSigningEnabled:         dto.LinkSigningEnabled,
+				LinkSigningTTLSec:          dto.LinkSigningTTLSec,
+				ClickDelivery:              dto.ClickDelivery,
+				ProxyUpstreamURL:           dto.ProxyUpstreamURL,
+				ProxyRewriteAssets:         dto.ProxyRewriteAssets,
 			},
 			status: db.CampaignStatusType(dto.RegistryStatus),
 		}
@@ -529,7 +550,7 @@ func (r *Registry) StartSync(ctx context.Context, interval time.Duration) {
 
 func (r *Registry) watchPubSubOnce(ctx context.Context, rdb redis.UniversalClient, channel string, staleDriver bool) error {
 	pubsub := rdb.Subscribe(ctx, channel)
-	defer pubsub.Close()
+	defer func() { _ = pubsub.Close() }()
 
 	if _, err := pubsub.Receive(ctx); err != nil {
 		return err

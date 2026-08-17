@@ -3,6 +3,7 @@ package ingestion
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -139,7 +140,7 @@ func (sr *SnapshotReplicator) ReplayTelemetrySince(ctx context.Context, since ti
 		err = f.Check(ctx, e)
 		if err != nil {
 
-			if err == ErrBudgetExhausted {
+			if errors.Is(err, ErrBudgetExhausted) {
 				continue
 			}
 			return replayedCount, fmt.Errorf("failed to replay event %s: %w", e.ClickID, err)

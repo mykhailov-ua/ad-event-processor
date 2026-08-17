@@ -73,7 +73,7 @@ func TestRegistry_licenseRecheck_clockSkewBlocksIngest(t *testing.T) {
 
 	mono = 2 * time.Hour
 	wall = wall.Add(-30 * 24 * time.Hour)
-	registry.recheckLicenseFile(path, pub)
+	registry.recheckLicenseFile(context.Background(), path, pub)
 
 	err = filter.Check(ctx, &domain.Event{})
 	require.ErrorIs(t, err, ErrLicenseExpired)

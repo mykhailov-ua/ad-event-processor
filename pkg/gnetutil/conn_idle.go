@@ -1,3 +1,4 @@
+// Package gnetutil provides gnet connection helpers for the tracker hot path.
 package gnetutil
 
 import (

@@ -1,3 +1,4 @@
+// Package config loads environment-based service configuration.
 package config
 
 import (
@@ -118,10 +119,10 @@ type Config struct {
 	RegistrySyncIntervalMs          int
 	BudgetSyncIntervalMs            int
 	LedgerBatchFlushMs              int
-	HttpReadHeaderTimeoutMs         int
-	HttpReadTimeoutMs               int
-	HttpWriteTimeoutMs              int
-	HttpIdleTimeoutMs               int
+	HTTPReadHeaderTimeoutMs         int
+	HTTPReadTimeoutMs               int
+	HTTPWriteTimeoutMs              int
+	HTTPIdleTimeoutMs               int
 	DefaultTokenDurationHrs         int
 	StreamMaxLen                    int
 	StreamProducerAdmissionPct      int
@@ -198,6 +199,10 @@ type Config struct {
 		CloudflareAPIToken          Secret
 		CloudflareAPIBase           string
 		CloudflareDNSTarget         string
+		DomainReputationEnabled     bool
+		SafeBrowsingAPIKey          Secret
+		FacebookGraphAccessToken    Secret
+		FacebookGraphAPIBase        string
 	}
 	Control struct {
 		EnableAuth        bool
@@ -352,6 +357,12 @@ type Config struct {
 	ProxyVPNL15Enabled          bool
 	ProxyVPNFeedDir             string
 	ProxyVPNFeedRefresh         time.Duration
+	TLSFingerprintL1Enabled     bool
+	TLSFingerprintFeedDir       string
+	TLSFingerprintFeedRefresh   time.Duration
+	LinkSigningHMACSecret       Secret
+	AttestationHMACSecret       Secret
+	AttestationHMACSecretPrev   Secret
 	DomainPoolEnabled           bool
 	DomainPoolSyncInterval      time.Duration
 	FlowRoutingEnabled          bool
@@ -640,10 +651,10 @@ func Load() (*Config, error) {
 		RegistrySyncIntervalMs:          getEnvInt("REGISTRY_SYNC_INTERVAL_MS", 60000),
 		BudgetSyncIntervalMs:            getEnvInt("BUDGET_SYNC_INTERVAL_MS", 5000),
 		LedgerBatchFlushMs:              getEnvInt("LEDGER_BATCH_FLUSH_MS", 10000),
-		HttpReadHeaderTimeoutMs:         getEnvInt("HTTP_READ_HEADER_TIMEOUT_MS", 2000),
-		HttpReadTimeoutMs:               getEnvInt("HTTP_READ_TIMEOUT_MS", 5000),
-		HttpWriteTimeoutMs:              getEnvInt("HTTP_WRITE_TIMEOUT_MS", 10000),
-		HttpIdleTimeoutMs:               getEnvInt("HTTP_IDLE_TIMEOUT_MS", 30000),
+		HTTPReadHeaderTimeoutMs:         getEnvInt("HTTP_READ_HEADER_TIMEOUT_MS", 2000),
+		HTTPReadTimeoutMs:               getEnvInt("HTTP_READ_TIMEOUT_MS", 5000),
+		HTTPWriteTimeoutMs:              getEnvInt("HTTP_WRITE_TIMEOUT_MS", 10000),
+		HTTPIdleTimeoutMs:               getEnvInt("HTTP_IDLE_TIMEOUT_MS", 30000),
 		DefaultTokenDurationHrs:         getEnvInt("DEFAULT_TOKEN_DURATION_HRS", 24),
 		ClickAmount:                     getEnvMicro("CLICK_AMOUNT", 100_000),
 		ImpressionAmount:                getEnvMicro("IMPRESSION_AMOUNT", 10_000),

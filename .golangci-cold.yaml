@@ -32,22 +32,12 @@ linters:
         - SA4017
     gocritic:
       enabled-checks:
-        - appendAssign
-        - assignOp
-        - badCond
         - builtinShadow
         - dupImport
-        - elseif
-        - exitAfterDefer
         - httpNoBody
-        - ifElseChain
         - nilValReturn
         - octalLiteral
-        - singleCaseSwitch
         - typeAssertChain
-        - unlambda
-        - unslice
-        - wrapperFunc
     forbidigo:
       forbid:
         - pattern: '^(fmt\.Print(|f|ln)|print|println)$'

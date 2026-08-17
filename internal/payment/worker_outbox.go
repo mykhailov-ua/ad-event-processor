@@ -2,7 +2,6 @@ package payment
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -252,9 +251,9 @@ func (outboxWorker *OutboxWorker) markOutboxEventRetryable(ctx context.Context, 
 				return err
 			}
 
-			var payload SettleBalancePayload
 			if outboxEvent.EventType == "SETTLE_BALANCE" {
-				if err := json.Unmarshal(outboxEvent.Payload, &payload); err != nil {
+				payload, err := decodeOutboxPayload[SettleBalancePayload](outboxEvent, "settle balance")
+				if err != nil {
 					slog.Warn("settlement failed outbox payload decode", "error", err, "outbox_id", outboxEvent.ID)
 				} else {
 					intentUUID, parseErr := uuid.Parse(payload.PaymentIntentID)
@@ -306,112 +305,49 @@ func (outboxWorker *OutboxWorker) handleOutboxEvent(ctx context.Context, outboxE
 }
 
 func (outboxWorker *OutboxWorker) handleSettleBalance(ctx context.Context, outboxEvent db.PaymentPaymentOutbox) error {
-
-	var payload SettleBalancePayload
-	if err := json.Unmarshal(outboxEvent.Payload, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal outbox payload: %w", err)
-	}
-
-	api := outboxWorker.getSettlementAPI()
-	if api == nil {
-		return fmt.Errorf("settlement client not connected")
-	}
-
-	customerID, err := uuid.Parse(payload.CustomerID)
-	if err != nil {
-		return fmt.Errorf("invalid customer id: %w", err)
-	}
-	paymentIntentID, err := uuid.Parse(payload.PaymentIntentID)
-	if err != nil {
-		return fmt.Errorf("invalid payment intent id: %w", err)
-	}
-
-	_, _, err = api.ApplyPaymentCredit(ctx, customerID, payload.AmountMicro, payload.LedgerIdempotencyKey, paymentIntentID, payload.Provider, payload.ProviderRef)
-	if err != nil {
-		return fmt.Errorf("management SettlementService call failed: %w", err)
-	}
-
-	return nil
+	return applySettlementOutbox(ctx, outboxWorker, outboxEvent, "settle balance",
+		func(api domain.PaymentSettlement, customerID, paymentIntentID uuid.UUID, payload SettleBalancePayload) error {
+			_, _, err := api.ApplyPaymentCredit(ctx, customerID, payload.AmountMicro, payload.LedgerIdempotencyKey, paymentIntentID, payload.Provider, payload.ProviderRef)
+			if err != nil {
+				return fmt.Errorf("management SettlementService call failed: %w", err)
+			}
+			return nil
+		},
+	)
 }
 
 func (outboxWorker *OutboxWorker) handleReverseBalance(ctx context.Context, outboxEvent db.PaymentPaymentOutbox) error {
-	var payload ReverseBalancePayload
-	if err := json.Unmarshal(outboxEvent.Payload, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal reverse balance payload: %w", err)
-	}
-
-	api := outboxWorker.getSettlementAPI()
-	if api == nil {
-		return fmt.Errorf("settlement client not connected")
-	}
-
-	customerID, err := uuid.Parse(payload.CustomerID)
-	if err != nil {
-		return fmt.Errorf("invalid customer id: %w", err)
-	}
-	paymentIntentID, err := uuid.Parse(payload.PaymentIntentID)
-	if err != nil {
-		return fmt.Errorf("invalid payment intent id: %w", err)
-	}
-
-	_, _, err = api.ApplyPaymentRefund(ctx, customerID, payload.AmountMicro, payload.LedgerIdempotencyKey, paymentIntentID, payload.Provider, payload.ProviderRefundID)
-	if err != nil {
-		return fmt.Errorf("management SettlementService refund call failed: %w", err)
-	}
-
-	return nil
+	return applySettlementOutbox(ctx, outboxWorker, outboxEvent, "reverse balance",
+		func(api domain.PaymentSettlement, customerID, paymentIntentID uuid.UUID, payload ReverseBalancePayload) error {
+			_, _, err := api.ApplyPaymentRefund(ctx, customerID, payload.AmountMicro, payload.LedgerIdempotencyKey, paymentIntentID, payload.Provider, payload.ProviderRefundID)
+			if err != nil {
+				return fmt.Errorf("management SettlementService refund call failed: %w", err)
+			}
+			return nil
+		},
+	)
 }
 
 func (outboxWorker *OutboxWorker) handleApplyChargeback(ctx context.Context, outboxEvent db.PaymentPaymentOutbox) error {
-	var payload ApplyChargebackPayload
-	if err := json.Unmarshal(outboxEvent.Payload, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal apply chargeback payload: %w", err)
-	}
-
-	api := outboxWorker.getSettlementAPI()
-	if api == nil {
-		return fmt.Errorf("settlement client not connected")
-	}
-
-	customerID, err := uuid.Parse(payload.CustomerID)
-	if err != nil {
-		return fmt.Errorf("invalid customer id: %w", err)
-	}
-	paymentIntentID, err := uuid.Parse(payload.PaymentIntentID)
-	if err != nil {
-		return fmt.Errorf("invalid payment intent id: %w", err)
-	}
-
-	_, _, err = api.ApplyPaymentChargeback(ctx, customerID, payload.AmountMicro, payload.LedgerIdempotencyKey, paymentIntentID, payload.Provider, payload.ProviderDisputeID)
-	if err != nil {
-		return fmt.Errorf("management SettlementService chargeback call failed: %w", err)
-	}
-	return nil
+	return applySettlementOutbox(ctx, outboxWorker, outboxEvent, "apply chargeback",
+		func(api domain.PaymentSettlement, customerID, paymentIntentID uuid.UUID, payload ApplyChargebackPayload) error {
+			_, _, err := api.ApplyPaymentChargeback(ctx, customerID, payload.AmountMicro, payload.LedgerIdempotencyKey, paymentIntentID, payload.Provider, payload.ProviderDisputeID)
+			if err != nil {
+				return fmt.Errorf("management SettlementService chargeback call failed: %w", err)
+			}
+			return nil
+		},
+	)
 }
 
 func (outboxWorker *OutboxWorker) handleReverseChargeback(ctx context.Context, outboxEvent db.PaymentPaymentOutbox) error {
-	var payload ReverseChargebackPayload
-	if err := json.Unmarshal(outboxEvent.Payload, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal reverse chargeback payload: %w", err)
-	}
-
-	api := outboxWorker.getSettlementAPI()
-	if api == nil {
-		return fmt.Errorf("settlement client not connected")
-	}
-
-	customerID, err := uuid.Parse(payload.CustomerID)
-	if err != nil {
-		return fmt.Errorf("invalid customer id: %w", err)
-	}
-	paymentIntentID, err := uuid.Parse(payload.PaymentIntentID)
-	if err != nil {
-		return fmt.Errorf("invalid payment intent id: %w", err)
-	}
-
-	_, _, err = api.ApplyPaymentChargebackReversal(ctx, customerID, payload.AmountMicro, payload.LedgerIdempotencyKey, paymentIntentID, payload.Provider, payload.ProviderDisputeID)
-	if err != nil {
-		return fmt.Errorf("management SettlementService chargeback reversal call failed: %w", err)
-	}
-	return nil
+	return applySettlementOutbox(ctx, outboxWorker, outboxEvent, "reverse chargeback",
+		func(api domain.PaymentSettlement, customerID, paymentIntentID uuid.UUID, payload ReverseChargebackPayload) error {
+			_, _, err := api.ApplyPaymentChargebackReversal(ctx, customerID, payload.AmountMicro, payload.LedgerIdempotencyKey, paymentIntentID, payload.Provider, payload.ProviderDisputeID)
+			if err != nil {
+				return fmt.Errorf("management SettlementService chargeback reversal call failed: %w", err)
+			}
+			return nil
+		},
+	)
 }

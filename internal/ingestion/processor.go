@@ -208,7 +208,7 @@ func (consumer *StreamConsumer) worker(ctx context.Context, workerIdx int) {
 		}
 	}()
 
-	initCtx, initCancel := context.WithTimeout(context.Background(), consumer.writeTimeout*2)
+	initCtx, initCancel := context.WithTimeout(ctx, consumer.writeTimeout*2)
 	consumer.recoverPending(initCtx, workerID)
 	initCancel()
 
@@ -232,7 +232,7 @@ func (consumer *StreamConsumer) worker(ctx context.Context, workerIdx int) {
 
 		select {
 		case <-ctx.Done():
-			drainCtx, drainCancel := context.WithTimeout(context.Background(), consumer.drainTimeout)
+			drainCtx, drainCancel := context.WithTimeout(context.WithoutCancel(ctx), consumer.drainTimeout)
 			if len(batch) > 0 {
 				if err := consumer.flushBatch(drainCtx, batch, msgIDs, workerID); err == nil {
 					for _, e := range batch {
@@ -289,7 +289,7 @@ func (consumer *StreamConsumer) worker(ctx context.Context, workerIdx int) {
 		streams, err := consumer.rdb.XReadGroup(ctx, xreadArgs).Result()
 
 		if err != nil {
-			if err == redis.Nil || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			if errors.Is(err, redis.Nil) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 				if len(batch) > 0 && time.Since(lastFlush) >= consumer.flushInt {
 					consumer.tryFlush(ctx, &batch, &msgIDs, &retryCount, workerID, nil, &retryWait)
 					lastFlush = time.Now()
@@ -450,7 +450,7 @@ func (consumer *StreamConsumer) tryFlush(ctx context.Context, batch *[]*domain.E
 		}
 
 		if len(successfulMsgIDs) > 0 {
-			ackCtx, ackCancel := context.WithTimeout(context.Background(), consumer.writeTimeout)
+			ackCtx, ackCancel := context.WithTimeout(ctx, consumer.writeTimeout)
 			_ = consumer.rdb.XAck(ackCtx, consumer.streamName, consumer.groupName, successfulMsgIDs...).Err()
 			_ = consumer.rdb.HDel(ackCtx, "ad:events:retries", successfulMsgIDs...).Err()
 			ackCancel()
@@ -547,7 +547,7 @@ func (consumer *StreamConsumer) moveToDLQ(ctx context.Context, batch []*domain.E
 		}
 	}()
 
-	execCtx, execCancel := context.WithTimeout(context.Background(), consumer.writeTimeout)
+	execCtx, execCancel := context.WithTimeout(ctx, consumer.writeTimeout)
 	defer execCancel()
 
 	for i, e := range batch {
@@ -631,7 +631,7 @@ func (consumer *StreamConsumer) moveToDLQ(ctx context.Context, batch []*domain.E
 	pipeAck := consumer.rdb.Pipeline()
 	ackedMsgIDs := make([]string, 0, len(batch))
 
-	ackCtx, ackCancel := context.WithTimeout(context.Background(), consumer.writeTimeout)
+	ackCtx, ackCancel := context.WithTimeout(ctx, consumer.writeTimeout)
 	defer ackCancel()
 
 	for i, cmder := range cmders {
@@ -941,7 +941,7 @@ func (consumer *StreamConsumer) drainNewMessages(ctx context.Context, consumerID
 			}).Result()
 
 			if err != nil {
-				if err == redis.Nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, redis.ErrClosed) || strings.Contains(err.Error(), "client is closed") {
+				if errors.Is(err, redis.Nil) || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, redis.ErrClosed) || strings.Contains(err.Error(), "client is closed") {
 					return
 				}
 				slog.Error("drain: failed to read from stream", "error", err, "group", consumer.groupName, "worker", consumerID)
@@ -1014,7 +1014,7 @@ func (consumer *StreamConsumer) claimStuckMessages(ctx context.Context) {
 		}).Result()
 
 		if err != nil {
-			if err != redis.Nil && !errors.Is(err, context.Canceled) {
+			if !errors.Is(err, redis.Nil) && !errors.Is(err, context.Canceled) {
 				slog.Error("autoclaim failed", "error", err, "group", consumer.groupName)
 			}
 			return
@@ -1098,7 +1098,7 @@ func (consumer *StreamConsumer) dlqMonitor(ctx context.Context) {
 		case <-ticker.C:
 			size, err := consumer.rdb.XLen(ctx, consumer.dlqStream()).Result()
 			if err != nil {
-				if err != redis.Nil && !errors.Is(err, context.Canceled) {
+				if !errors.Is(err, redis.Nil) && !errors.Is(err, context.Canceled) {
 					slog.Error("failed to get DLQ size", "error", err)
 				}
 				continue

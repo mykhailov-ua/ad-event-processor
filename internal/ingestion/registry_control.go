@@ -12,25 +12,25 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-func (registry *Registry) StartWatchShards(ctx context.Context, rdbs []redis.UniversalClient, channel string) {
+func (r *Registry) StartWatchShards(ctx context.Context, rdbs []redis.UniversalClient, channel string) {
 	for shardIdx, rdb := range rdbs {
 		if rdb == nil {
 			continue
 		}
-		registry.wg.Add(1)
+		r.wg.Add(1)
 		staleDriver := true
-		go registry.runShardPubSubWatch(ctx, rdb, channel, shardIdx, staleDriver)
+		go r.runShardPubSubWatch(ctx, rdb, channel, shardIdx, staleDriver)
 	}
 }
 
-func (registry *Registry) runShardPubSubWatch(ctx context.Context, rdb redis.UniversalClient, channel string, shardIdx int, staleDriver bool) {
-	defer registry.wg.Done()
+func (r *Registry) runShardPubSubWatch(ctx context.Context, rdb redis.UniversalClient, channel string, shardIdx int, staleDriver bool) {
+	defer r.wg.Done()
 	backoff := time.Second
 	for {
 		if ctx.Err() != nil {
 			return
 		}
-		err := registry.watchPubSubOnce(ctx, rdb, channel, staleDriver)
+		err := r.watchPubSubOnce(ctx, rdb, channel, staleDriver)
 		if ctx.Err() != nil {
 			return
 		}
@@ -46,14 +46,14 @@ func (registry *Registry) runShardPubSubWatch(ctx context.Context, rdb redis.Uni
 	}
 }
 
-func (registry *Registry) StartEpochPoll(ctx context.Context, rdbs []redis.UniversalClient, interval time.Duration) {
+func (r *Registry) StartEpochPoll(ctx context.Context, rdbs []redis.UniversalClient, interval time.Duration) {
 	if interval <= 0 || len(rdbs) == 0 {
 		return
 	}
 	epochs := make([]atomic.Uint64, len(rdbs))
-	registry.wg.Add(1)
+	r.wg.Add(1)
 	go func() {
-		defer registry.wg.Done()
+		defer r.wg.Done()
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 		for {
@@ -61,13 +61,13 @@ func (registry *Registry) StartEpochPoll(ctx context.Context, rdbs []redis.Unive
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				registry.pollRegistryEpochs(ctx, rdbs, epochs)
+				r.pollRegistryEpochs(ctx, rdbs, epochs)
 			}
 		}
 	}()
 }
 
-func (registry *Registry) pollRegistryEpochs(ctx context.Context, rdbs []redis.UniversalClient, epochs []atomic.Uint64) {
+func (r *Registry) pollRegistryEpochs(ctx context.Context, rdbs []redis.UniversalClient, epochs []atomic.Uint64) {
 	var maxEpoch uint64
 	for shardIdx, rdb := range rdbs {
 		if rdb == nil {
@@ -83,11 +83,11 @@ func (registry *Registry) pollRegistryEpochs(ctx context.Context, rdbs []redis.U
 		local := epochs[shardIdx].Load()
 		if val > local {
 			epochs[shardIdx].Store(val)
-			if _, err := registry.ReloadFullSnapshot(ctx); err != nil {
+			if _, err := r.ReloadFullSnapshot(ctx); err != nil {
 				slog.Error("campaign registry epoch poll reload failed", "shard", shardIdx, "error", err)
 				continue
 			}
-			registry.MarkPubSubOK()
+			r.MarkPubSubOK()
 			slog.Debug("campaign registry epoch poll reload", "shard", strconv.Itoa(shardIdx), "epoch", val)
 		}
 	}
@@ -96,9 +96,9 @@ func (registry *Registry) pollRegistryEpochs(ctx context.Context, rdbs []redis.U
 	}
 }
 
-func (registry *Registry) StartWatch(ctx context.Context, rdb redis.UniversalClient, channel string) {
+func (r *Registry) StartWatch(ctx context.Context, rdb redis.UniversalClient, channel string) {
 	if rdb == nil {
 		return
 	}
-	registry.StartWatchShards(ctx, []redis.UniversalClient{rdb}, channel)
+	r.StartWatchShards(ctx, []redis.UniversalClient{rdb}, channel)
 }

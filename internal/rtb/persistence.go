@@ -53,7 +53,7 @@ func (registry *Registry) LoadSnapshot(path string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	reader := bufio.NewReader(f)
 
@@ -296,7 +296,7 @@ func (c snapshotCapture) stale(registry *Registry) bool {
 
 func writeSnapshotFile(path string, captured snapshotCapture) error {
 	tmpPath := path + ".tmp"
-	f, err := os.OpenFile(tmpPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	f, err := os.OpenFile(tmpPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
 	if err != nil {
 		return err
 	}

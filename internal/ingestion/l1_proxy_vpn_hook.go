@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/bidshard/ad-event-processor/internal/metrics"
 
 	"github.com/google/uuid"
@@ -45,18 +46,42 @@ func (m *l15ProxyVPNMetrics) recordMatch(connType uint8) {
 	}
 }
 
+func connTypePolicyBlocks(policy domain.ConnTypePolicy, match bool, connType uint8) bool {
+	switch policy {
+	case domain.ConnTypeMobileOnly:
+		if !match {
+			return true
+		}
+		return connType&ProxyVPNConnMobile == 0
+	case domain.ConnTypeResidentialOnly:
+		if !match {
+			return true
+		}
+		if connType&(ProxyVPNConnVPN|ProxyVPNConnHosting|ProxyVPNConnMobile) != 0 {
+			return true
+		}
+		return connType&ProxyVPNConnISP == 0
+	default:
+		return match && proxyVPNConnTypeBlocks(connType)
+	}
+}
+
 func (h *AdsPacketHandler) l15ProxyVPNShouldSafeView(ip string, campaignID uuid.UUID) (bool, uint8) {
 	t := h.proxyVPNTable
 	if t == nil || !t.Ready() {
 		return false, 0
 	}
+	policy := domain.ConnTypeBlockVPNHosting
 	if h.registry != nil {
-		if camp, ok := h.registry.GetCampaign(campaignID); ok && camp != nil && !camp.L15ProxyVPNBlockEnabled {
-			return false, 0
+		if camp, ok := h.registry.GetCampaign(campaignID); ok && camp != nil {
+			if !camp.L15ProxyVPNBlockEnabled {
+				return false, 0
+			}
+			policy = camp.ConnTypePolicy
 		}
 	}
 	match, connType, _ := t.MatchIP(ip)
-	if !match || !proxyVPNConnTypeBlocks(connType) {
+	if !connTypePolicyBlocks(policy, match, connType) {
 		return false, 0
 	}
 	return true, connType

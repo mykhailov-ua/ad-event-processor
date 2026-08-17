@@ -89,11 +89,11 @@ func (s *Server) retentionFloorForTopic(tpKey string) uint64 {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), offsetStoreTimeout())
 	defer cancel()
-	min, ok, err := s.offsetStore.MinCommitted(ctx, tpKey)
+	minOffset, ok, err := s.offsetStore.MinCommitted(ctx, tpKey)
 	if err != nil || !ok {
 		return 0
 	}
-	return min
+	return minOffset
 }
 
 func (s *Server) updateConsumerLag(tpKey, group string) {

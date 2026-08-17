@@ -1,3 +1,4 @@
+// Package fingerprint implements edge fingerprint helpers.
 package fingerprint
 
 import (

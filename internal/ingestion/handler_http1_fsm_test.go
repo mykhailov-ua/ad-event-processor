@@ -346,26 +346,27 @@ func parseHTTPLegacy(data []byte, maxBody int64) (int, parsedHTTPRequest, error)
 }
 
 func assignHTTPHeaderLegacy(req *parsedHTTPRequest, key, val []byte) {
-	if equalFoldBytes(key, []byte("content-length")) {
+	switch {
+	case equalFoldBytes(key, []byte("content-length")):
 		req.ContentLength = parseDecimal(val)
 		req.HasContentLength = true
-	} else if equalFoldBytes(key, []byte("content-type")) {
+	case equalFoldBytes(key, []byte("content-type")):
 		req.ContentType = val
-	} else if equalFoldBytes(key, []byte("x-forwarded-for")) {
+	case equalFoldBytes(key, []byte("x-forwarded-for")):
 		req.ClientIP = val
-	} else if equalFoldBytes(key, []byte("x-real-ip")) {
+	case equalFoldBytes(key, []byte("x-real-ip")):
 		if len(req.ClientIP) == 0 {
 			req.ClientIP = val
 		}
-	} else if equalFoldBytes(key, []byte("user-agent")) {
+	case equalFoldBytes(key, []byte("user-agent")):
 		req.UserAgent = val
-	} else if equalFoldBytes(key, []byte("accept")) {
+	case equalFoldBytes(key, []byte("accept")):
 		req.Accept = val
-	} else if equalFoldBytes(key, []byte("x-tls-hash")) {
+	case equalFoldBytes(key, []byte("x-tls-hash")):
 		req.TLSHash = val
-	} else if equalFoldBytes(key, []byte("sec-ch-ua")) {
+	case equalFoldBytes(key, []byte("sec-ch-ua")):
 		req.SecCHUA = val
-	} else if equalFoldBytes(key, []byte("accept-language")) {
+	case equalFoldBytes(key, []byte("accept-language")):
 		req.AcceptLang = val
 	}
 }

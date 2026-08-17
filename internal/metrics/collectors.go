@@ -6,12 +6,12 @@ import (
 )
 
 var (
-	HttpRequestsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+	HTTPRequestsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ad_http_requests_total",
 		Help: "Total number of HTTP requests by status code",
 	}, []string{"method", "path", "status"})
 
-	HttpRequestDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
+	HTTPRequestDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "ad_http_request_duration_seconds",
 		Help:    "Latency of HTTP requests in seconds",
 		Buckets: prometheus.DefBuckets,
@@ -117,6 +117,36 @@ var (
 		Help: "Number of prefixes in the active L1.5 proxy/VPN snapshot",
 	})
 
+	TLSFingerprintMatchTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_tls_fingerprint_match_total",
+		Help: "L1 TLS JA3/JA4 blocklist matches (labels: ja3, ja4)",
+	}, []string{"kind"})
+
+	TLSFingerprintFeedRefreshTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_tls_fingerprint_feed_refresh_total",
+		Help: "TLS fingerprint blocklist feed refresh cycles completed",
+	})
+
+	TLSFingerprintFeedRefreshErrorsTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_tls_fingerprint_feed_refresh_errors_total",
+		Help: "TLS fingerprint feed read/parse failures; previous snapshot retained",
+	})
+
+	TLSFingerprintUninitialized = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_tls_fingerprint_uninitialized",
+		Help: "1 while the TLS fingerprint table has no published snapshot",
+	})
+
+	TLSFingerprintBlocklistJA3 = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_tls_fingerprint_blocklist_ja3",
+		Help: "Blocked JA3 hash count in the active TLS fingerprint snapshot",
+	})
+
+	TLSFingerprintBlocklistJA4 = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_tls_fingerprint_blocklist_ja4",
+		Help: "Blocked JA4 hash count in the active TLS fingerprint snapshot",
+	})
+
 	ClickProxyDeliverTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_click_proxy_deliver_total",
 		Help: "GET /click proxy deliveries completed (upstream streamed to client)",
@@ -132,13 +162,13 @@ var (
 		Help: "Bytes streamed from upstream to client on /click proxy path",
 	})
 
-	DbWriteDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
+	DBWriteDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "ad_db_write_duration_seconds",
 		Help:    "Duration of database batch write operations",
 		Buckets: []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5},
 	}, []string{"type"})
 
-	DbWriteErrors = promauto.NewCounterVec(prometheus.CounterOpts{
+	DBWriteErrors = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ad_db_write_errors_total",
 		Help: "Total number of database write errors",
 	}, []string{"type"})
@@ -254,7 +284,7 @@ var (
 		Name: "ad_gnet_bytes_sent_total",
 		Help: "Total number of bytes sent via gnet",
 	})
-	HttpParseErrors = promauto.NewCounterVec(prometheus.CounterOpts{
+	HTTPParseErrors = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ad_http_parse_errors_total",
 		Help: "Total number of HTTP/1.1 parsing errors",
 	}, []string{"error_type"})
@@ -319,7 +349,7 @@ var (
 		Name: "ad_h2_hostile_disconnect_total",
 		Help: "HTTP/2 connections closed after H2_INCOMPLETE_MAX zero-progress spins or incomplete read idle / max lifetime",
 	})
-	Http1IncompleteCloseTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+	HTTP1IncompleteCloseTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ad_http1_incomplete_close_total",
 		Help: "HTTP/1 connections closed due to incomplete request policy (spin, idle, or buffer cap)",
 	}, []string{"reason"})

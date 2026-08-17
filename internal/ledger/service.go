@@ -9,6 +9,7 @@ import (
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/bidshard/ad-event-processor/internal/ledger/db"
 	"github.com/bidshard/ad-event-processor/internal/notify"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -210,16 +211,16 @@ func (service *Service) ListInvoices(ctx context.Context, customerID uuid.UUID, 
 		offset = 0
 	}
 
-	total, err := service.queries.CountCustomerInvoices(ctx, pgtype.UUID{Bytes: customerID, Valid: true})
-	if err != nil {
-		return nil, 0, fmt.Errorf("count invoices: %w", err)
-	}
-
-	rows, err := service.queries.ListCustomerInvoices(ctx, db.ListCustomerInvoicesParams{
-		CustomerID: pgtype.UUID{Bytes: customerID, Valid: true},
+	custUUID := pgtype.UUID{Bytes: customerID, Valid: true}
+	listParams := db.ListCustomerInvoicesParams{
+		CustomerID: custUUID,
 		Limit:      limit,
 		Offset:     offset,
-	})
+	}
+	rows, total, err := coldpath.PaginatedQuery(
+		func() (int64, error) { return service.queries.CountCustomerInvoices(ctx, custUUID) },
+		func() ([]db.BillingInvoice, error) { return service.queries.ListCustomerInvoices(ctx, listParams) },
+	)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list invoices: %w", err)
 	}

@@ -177,7 +177,7 @@ func (w *SettlementWorker) Wait(ctx context.Context) error {
 
 func (w *SettlementWorker) readLoop(ctx context.Context) {
 	workerID := w.consumerID + "-reader"
-	initCtx, initCancel := context.WithTimeout(context.Background(), w.consumer.writeTimeout*2)
+	initCtx, initCancel := context.WithTimeout(ctx, w.consumer.writeTimeout*2)
 	w.consumer.recoverPending(initCtx, workerID)
 	initCancel()
 
@@ -205,7 +205,7 @@ func (w *SettlementWorker) readLoop(ctx context.Context) {
 
 		streams, err := w.consumer.rdb.XReadGroup(ctx, xreadArgs).Result()
 		if err != nil {
-			if err == redis.Nil || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			if errors.Is(err, redis.Nil) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 				continue
 			}
 			slog.Error("settlement read loop failed", "error", err)

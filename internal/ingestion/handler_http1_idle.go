@@ -20,12 +20,12 @@ func http1HeadersComplete(data []byte) bool {
 }
 
 func (h *AdsPacketHandler) http1IncompleteMax() uint8 {
-	max := uint8(3)
+	limit := uint8(3)
 	if h == nil || h.cfg == nil {
-		return max
+		return limit
 	}
 	if h.cfg.HTTP1IncompleteMax <= 0 {
-		return max
+		return limit
 	}
 	if h.cfg.HTTP1IncompleteMax > 255 {
 		return 255
@@ -103,7 +103,7 @@ func (h *AdsPacketHandler) http1CheckBodyIdle(c gnet.Conn, ctx *connContext) gne
 	maxLife := h.http1MaxConnLifetimeDuration()
 	if maxLife > 0 && ctx.http1ConnOpenedMono > 0 &&
 		monotonicNano()-ctx.http1ConnOpenedMono >= maxLife.Nanoseconds() {
-		metrics.Http1IncompleteCloseTotal.WithLabelValues("idle").Inc()
+		metrics.HTTP1IncompleteCloseTotal.WithLabelValues("idle").Inc()
 		h.http1ResetIncompleteState(ctx, c)
 		return gnet.Close
 	}
@@ -113,20 +113,20 @@ func (h *AdsPacketHandler) http1CheckBodyIdle(c gnet.Conn, ctx *connContext) gne
 	if monotonicNano() < ctx.http1BodyIdleDeadline {
 		return gnet.None
 	}
-	metrics.Http1IncompleteCloseTotal.WithLabelValues("idle").Inc()
+	metrics.HTTP1IncompleteCloseTotal.WithLabelValues("idle").Inc()
 	h.http1ResetIncompleteState(ctx, c)
 	return gnet.Close
 }
 
 func (h *AdsPacketHandler) http1HandleIncomplete(c gnet.Conn, ctx *connContext, buf []byte, consumed int) gnet.Action {
-	metrics.HttpParseErrors.WithLabelValues("incomplete").Inc()
+	metrics.HTTPParseErrors.WithLabelValues("incomplete").Inc()
 
 	if consumed > 0 {
 		return gnet.None
 	}
 
 	if int64(len(buf)) > h.http1MaxBufferedBytes() {
-		metrics.Http1IncompleteCloseTotal.WithLabelValues("buffer").Inc()
+		metrics.HTTP1IncompleteCloseTotal.WithLabelValues("buffer").Inc()
 		h.http1ResetIncompleteState(ctx, c)
 		return gnet.Close
 	}
@@ -137,7 +137,7 @@ func (h *AdsPacketHandler) http1HandleIncomplete(c gnet.Conn, ctx *connContext, 
 
 	ctx.http1IncompleteSpin++
 	if ctx.http1IncompleteSpin >= h.http1IncompleteMax() {
-		metrics.Http1IncompleteCloseTotal.WithLabelValues("spin").Inc()
+		metrics.HTTP1IncompleteCloseTotal.WithLabelValues("spin").Inc()
 		h.http1ResetIncompleteState(ctx, c)
 		return gnet.Close
 	}

@@ -11,7 +11,7 @@ import (
 const listenCounterSampleInterval = 250 * time.Millisecond
 
 type ListenBacklogProbe struct {
-	ReadCounters func() (TcpListenCounters, error)
+	ReadCounters func() (TCPListenCounters, error)
 	SampleWait   func(context.Context, time.Duration) error
 }
 
@@ -32,7 +32,7 @@ func (p ListenBacklogProbe) Run(ctx context.Context) Result {
 
 	read := p.ReadCounters
 	if read == nil {
-		read = ReadTcpListenCounters
+		read = ReadTCPListenCounters
 	}
 	wait := p.SampleWait
 	if wait == nil {

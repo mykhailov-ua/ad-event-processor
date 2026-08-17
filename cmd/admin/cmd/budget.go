@@ -1,3 +1,4 @@
+// Package cmd implements admin cmd helpers.
 package cmd
 
 import (

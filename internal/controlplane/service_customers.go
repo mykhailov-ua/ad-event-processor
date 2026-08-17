@@ -11,6 +11,7 @@ import (
 	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 	"github.com/bidshard/ad-event-processor/pkg/money"
 
 	"github.com/google/uuid"
@@ -40,15 +41,12 @@ func formatMicro(m int64) string {
 
 func (s *Service) ListCustomers(ctx context.Context, limit, offset int32) ([]CustomerDTO, int64, error) {
 	q := db.New(s.GetPool())
-	total, err := q.CountCustomers(ctx)
-	if err != nil {
-		return nil, 0, err
-	}
-	if total == 0 {
-		return []CustomerDTO{}, 0, nil
-	}
-
-	rows, err := q.ListCustomers(ctx, db.ListCustomersParams{Limit: limit, Offset: offset})
+	rows, total, err := coldpath.PaginatedQuery(
+		func() (int64, error) { return q.CountCustomers(ctx) },
+		func() ([]db.Customer, error) {
+			return q.ListCustomers(ctx, db.ListCustomersParams{Limit: limit, Offset: offset})
+		},
+	)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -70,11 +68,10 @@ func (s *Service) ListCustomers(ctx context.Context, limit, offset int32) ([]Cus
 		}
 	}
 
-	out := make([]CustomerDTO, 0, len(rows))
-	for _, r := range rows {
+	return coldpath.MapSlice(rows, func(r db.Customer) CustomerDTO {
 		uid := uuid.UUID(r.ID.Bytes)
 		st := statsMap[uid]
-		out = append(out, CustomerDTO{
+		return CustomerDTO{
 			ID:              uid.String(),
 			Name:            r.Name,
 			Balance:         formatMicro(r.Balance),
@@ -83,9 +80,8 @@ func (s *Service) ListCustomers(ctx context.Context, limit, offset int32) ([]Cus
 			TotalSpend:      formatMicro(st.TotalSpend),
 			CreatedAt:       r.CreatedAt.Time.Format(time.RFC3339),
 			UpdatedAt:       r.UpdatedAt.Time.Format(time.RFC3339),
-		})
-	}
-	return out, total, nil
+		}
+	}), total, nil
 }
 
 func (s *Service) GetCustomerDTO(ctx context.Context, id uuid.UUID) (CustomerDTO, error) {
@@ -125,34 +121,27 @@ func (s *Service) ListCustomerLedger(ctx context.Context, customerID uuid.UUID, 
 		Limit:      limit,
 		Offset:     offset,
 	}
-	total, err := q.CountCustomerLedger(ctx, tid)
-	if err != nil {
-		return nil, 0, err
+	return coldpath.PaginatedList(
+		func() (int64, error) { return q.CountCustomerLedger(ctx, tid) },
+		func() ([]db.BalanceLedger, error) { return q.ListCustomerLedger(ctx, listParams) },
+		customerLedgerToDTO,
+	)
+}
+
+func customerLedgerToDTO(r db.BalanceLedger) LedgerDTO {
+	var campID string
+	if r.CampaignID.Valid {
+		campID = uuid.UUID(r.CampaignID.Bytes).String()
 	}
-	if total == 0 {
-		return []LedgerDTO{}, 0, nil
+	return LedgerDTO{
+		ID:              r.ID,
+		CustomerID:      uuid.UUID(r.CustomerID.Bytes).String(),
+		CampaignID:      campID,
+		Amount:          formatMicro(r.Amount),
+		Type:            string(r.Type),
+		IdempotencyHash: r.IdempotencyHash.String,
+		CreatedAt:       r.CreatedAt.Time.Format(time.RFC3339),
 	}
-	ledgerRows, err := q.ListCustomerLedger(ctx, listParams)
-	if err != nil {
-		return nil, 0, err
-	}
-	out := make([]LedgerDTO, 0, len(ledgerRows))
-	for _, r := range ledgerRows {
-		var campID string
-		if r.CampaignID.Valid {
-			campID = uuid.UUID(r.CampaignID.Bytes).String()
-		}
-		out = append(out, LedgerDTO{
-			ID:              r.ID,
-			CustomerID:      uuid.UUID(r.CustomerID.Bytes).String(),
-			CampaignID:      campID,
-			Amount:          formatMicro(r.Amount),
-			Type:            string(r.Type),
-			IdempotencyHash: r.IdempotencyHash.String,
-			CreatedAt:       r.CreatedAt.Time.Format(time.RFC3339),
-		})
-	}
-	return out, total, nil
 }
 
 func (s *Service) GetCustomerBalance(ctx context.Context, customerID uuid.UUID) (CustomerBalanceDTO, error) {

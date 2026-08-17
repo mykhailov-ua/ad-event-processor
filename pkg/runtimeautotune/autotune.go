@@ -1,3 +1,4 @@
+// Package runtimeautotune implements runtimeautotune support for BidShard.
 package runtimeautotune
 
 import (

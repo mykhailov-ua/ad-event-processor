@@ -1,3 +1,4 @@
+// Package clientip extracts client IP addresses from HTTP requests and proxy headers.
 package clientip
 
 import (

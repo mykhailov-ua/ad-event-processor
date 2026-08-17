@@ -134,10 +134,13 @@ func parseHTTP1ChunkedBody(data []byte, off int, maxBody int64, scratchPtr *[]by
 		if firstStart < 0 {
 			firstStart = pos
 			contiguousEnd = pos + size
-		} else if pos != contiguousEnd {
-			contiguousEnd = -1
 		} else {
-			contiguousEnd = pos + size
+			switch pos == contiguousEnd {
+			case true:
+				contiguousEnd = pos + size
+			case false:
+				contiguousEnd = -1
+			}
 		}
 		totalLen += size
 		pos += size + 2

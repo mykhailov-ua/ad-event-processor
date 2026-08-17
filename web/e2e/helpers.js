@@ -36,6 +36,27 @@ export const TENANT_USER = {
   permissions: ['customers:read', 'campaigns:read'],
 };
 
+export const TEAM_LEAD_USER = {
+  id: 'tl-1',
+  email: 'lead@test.local',
+  role: 'TL',
+  customer_id: 'cust-team-1',
+  permissions: [
+    'campaigns:read',
+    'campaigns:write',
+    'billing:read',
+    'customers:read',
+  ],
+};
+
+export const PUBLISHER_USER = {
+  id: 'pub-1',
+  email: 'publisher@test.local',
+  role: 'P',
+  customer_id: 'cust-pub-1',
+  permissions: ['supply:read:scoped', 'customers:read'],
+};
+
 /**
  * @param {import('@playwright/test').Page} page
  * @param {object} user

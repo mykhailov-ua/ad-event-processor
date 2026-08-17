@@ -25,6 +25,14 @@ func TestParseTgQuery(t *testing.T) {
 		require.Equal(t, "testsub", parsed.subs[0])
 	})
 
+	t.Run("dmr query flag", func(t *testing.T) {
+		path := []byte("/tg/click?campaign_id=550e8400-e29b-41d4-a716-446655440000&click_id=d5671191-236b-4e94-825e-399185a9bc8d&bridge_token=token_abc123_&dmr=1")
+		parsed := &tgQueryParsed{}
+		_ = parseTgQuery(path, nil, parsed)
+		require.True(t, parsed.ok)
+		require.True(t, parsed.dmr)
+	})
+
 	t.Run("Forbidden parameters immediately reject", func(t *testing.T) {
 		forbiddenPaths := [][]byte{
 			[]byte("/tg/click?campaign_id=550e8400-e29b-41d4-a716-446655440000&click_id=d5671191-236b-4e94-825e-399185a9bc8d&hash=something"),
@@ -47,6 +55,14 @@ func TestBuildTgRedirectLocation(t *testing.T) {
 	loc, ok := buildTgRedirectLocation(nil, base, "d5671191-236b-4e94-825e-399185a9bc8d", "bridge_abc123", [5]string{"subval"}, []byte("extra=1"))
 	require.True(t, ok)
 	require.Equal(t, "https://my-app.com/start?click_id=d5671191-236b-4e94-825e-399185a9bc8d&token=bridge_abc123&sub=subval&extra=1", string(loc))
+}
+
+func TestBuildTgRedirectLocation_encodesMacroValues(t *testing.T) {
+	t.Parallel()
+	base := []byte("https://my-app.com/start?sub={sub1}&token={bridge_token}")
+	loc, ok := buildTgRedirectLocation(nil, base, "click-id", "a&b=c", [5]string{"x y"}, nil)
+	require.True(t, ok)
+	require.Equal(t, "https://my-app.com/start?sub=x%20y&token=a%26b%3Dc", string(loc))
 }
 
 func FuzzParseTgClickQuery(f *testing.F) {

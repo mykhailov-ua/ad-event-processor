@@ -74,7 +74,7 @@ func (m *ingressQuotaMap) tryAcquire(shard, worker int) bool {
 		return true
 	}
 	if worker >= int(m.numWorkers) {
-		worker = worker % int(m.numWorkers)
+		worker %= int(m.numWorkers)
 	}
 	idx := shard*int(m.numWorkers) + worker
 	if idx >= len(m.cells) {

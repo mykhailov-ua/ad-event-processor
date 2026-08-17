@@ -13,13 +13,6 @@ func GuardTripped() bool {
 	return guardTripped.Load() == 1
 }
 
-func tripGuard(reason string) {
-	if guardTripped.CompareAndSwap(0, 1) {
-		InvalidateLicenseEpoch()
-		recordGuardTrip(reason)
-	}
-}
-
 func ResetGuardForTest() {
 	guardTripped.Store(0)
 	resetLicenseEpochForTest()

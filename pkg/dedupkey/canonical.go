@@ -1,3 +1,4 @@
+// Package dedupkey implements dedupkey support for BidShard.
 package dedupkey
 
 import (

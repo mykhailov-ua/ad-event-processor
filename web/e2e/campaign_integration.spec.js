@@ -132,7 +132,7 @@ test('CAPI tab loads and links back to Integration', async ({ page }) => {
   await page.goto(`/campaigns/${CAMPAIGN_ID}?tab=postbacks`);
   await expect(page.getByRole('tab', { name: 'CAPI & Postbacks' })).toBeVisible();
   await expect(page.getByTestId('campaign-capi-panel')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Integration' })).toBeVisible();
+  await expect(page.getByTestId('campaign-capi-panel').getByRole('link', { name: 'Integration' })).toBeVisible();
 });
 
 test('CAPI tab shows test event code for Meta', async ({ page }) => {

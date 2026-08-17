@@ -97,7 +97,7 @@ func (h *redisShardPreloadHook) DialHook(next redis.DialHook) redis.DialHook {
 	return func(ctx context.Context, network, addr string) (net.Conn, error) {
 		conn, err := next(ctx, network, addr)
 		if err == nil {
-			h.schedulePreload()
+			h.schedulePreload(ctx)
 		}
 		return conn, err
 	}
@@ -111,7 +111,10 @@ func (h *redisShardPreloadHook) ProcessPipelineHook(next redis.ProcessPipelineHo
 	return next
 }
 
-func (h *redisShardPreloadHook) schedulePreload() {
+func (h *redisShardPreloadHook) schedulePreload(ctx context.Context) {
+	if ctx == nil {
+		return
+	}
 	h.mu.Lock()
 	if time.Since(h.last) < time.Second {
 		h.mu.Unlock()
@@ -122,8 +125,8 @@ func (h *redisShardPreloadHook) schedulePreload() {
 	shard := h.shard
 	h.mu.Unlock()
 
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	go func(parent context.Context) {
+		preloadCtx, cancel := context.WithTimeout(parent, 2*time.Second)
 		defer cancel()
 		if filter == nil || shard < 0 || shard >= len(filter.rdbs) {
 			return
@@ -132,10 +135,10 @@ func (h *redisShardPreloadHook) schedulePreload() {
 		if rdb == nil {
 			return
 		}
-		if err := filter.preloadScriptsShard(ctx, shard, rdb); err != nil {
+		if err := filter.preloadScriptsShard(preloadCtx, shard, rdb); err != nil {
 			slog.Warn("redis lua reconnect preload failed", "shard", shard, "error", err)
 		}
-	}()
+	}(ctx)
 }
 
 func (f *UnifiedFilter) evalScript(ctx context.Context, rdb redis.UniversalClient, shard int, evt *domain.Event, keyArgs [unifiedFilterKeyCount]any, args []any) (int64, error) {
@@ -144,11 +147,11 @@ func (f *UnifiedFilter) evalScript(ctx context.Context, rdb redis.UniversalClien
 		incRedisLuaNoScript(f.luaNoScriptCounters, shard)
 		slog.Warn("redis lua NOSCRIPT encountered", "shard", shard, "error", err)
 
-		go func() {
-			ctxPreheat, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		go func(parent context.Context) {
+			ctxPreheat, cancel := context.WithTimeout(parent, 2*time.Second)
 			defer cancel()
 			_ = f.PreloadScripts(ctxPreheat)
-		}()
+		}(ctx)
 
 		if f.evalFallbackGate != nil {
 			select {

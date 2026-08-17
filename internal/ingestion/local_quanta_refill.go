@@ -3,6 +3,7 @@ package ingestion
 import (
 	"context"
 	_ "embed"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math/rand/v2"
@@ -215,7 +216,7 @@ func (w *QuotaRefillWorker) tryRefillSlot(campaignID uuid.UUID, shard, subSlot i
 
 	quotaKey := budgetQuotaKeyForDebit(campaignID, subSlot)
 	remaining, err := rdb.Get(ctx, quotaKey).Int64()
-	if err == redis.Nil {
+	if errors.Is(err, redis.Nil) {
 		remaining = 0
 		err = nil
 	}

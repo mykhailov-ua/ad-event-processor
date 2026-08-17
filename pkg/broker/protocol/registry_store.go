@@ -22,7 +22,7 @@ type FileRegistryStore struct {
 
 func NewFileRegistryStore(dataDir string) (*FileRegistryStore, error) {
 	dir := filepath.Join(dataDir, ".topics")
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, fmt.Errorf("create topics dir: %w", err)
 	}
 	return &FileRegistryStore{path: filepath.Join(dir, "registry.json")}, nil
@@ -61,7 +61,7 @@ func (s *FileRegistryStore) Save(snap RegistrySnapshot) error {
 		return err
 	}
 	tmp := s.path + ".tmp"
-	if err := os.WriteFile(tmp, data, 0644); err != nil {
+	if err := os.WriteFile(tmp, data, 0o644); err != nil {
 		return err
 	}
 	return os.Rename(tmp, s.path)

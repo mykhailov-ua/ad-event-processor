@@ -1,8 +1,11 @@
+// Package licensing implements licensing support for BidShard.
 package licensing
 
 import (
 	"errors"
 	"time"
+
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 )
 
 const HeartbeatJWTMaxTTL = 72 * time.Hour
@@ -117,15 +120,12 @@ func EvaluateHeartbeat(fingerprint string, licenseKey string, activations []Acti
 }
 
 func distinctFingerprints(activations []ActivationRecord, extra string) int {
-	seen := make(map[string]struct{}, len(activations)+1)
+	fps := make([]string, 0, len(activations)+1)
 	for _, act := range activations {
-		if act.Fingerprint == "" {
-			continue
-		}
-		seen[act.Fingerprint] = struct{}{}
+		fps = append(fps, act.Fingerprint)
 	}
 	if extra != "" {
-		seen[extra] = struct{}{}
+		fps = append(fps, extra)
 	}
-	return len(seen)
+	return len(coldpath.UniqueSlice(fps))
 }

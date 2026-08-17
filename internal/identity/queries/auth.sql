@@ -1,10 +1,10 @@
 -- name: GetUserByEmail :one
-SELECT id, email, password_hash, role, customer_id, created_at, updated_at, is_blocked, email_verified
+SELECT id, email, password_hash, role, customer_id, created_at, updated_at, is_blocked, email_verified, seller_id, publisher_account_id
 FROM users
 WHERE email = $1;
 
 -- name: GetUserByID :one
-SELECT id, email, password_hash, role, customer_id, created_at, updated_at, is_blocked, email_verified
+SELECT id, email, password_hash, role, customer_id, created_at, updated_at, is_blocked, email_verified, seller_id, publisher_account_id
 FROM users
 WHERE id = $1;
 

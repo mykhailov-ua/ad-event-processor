@@ -1,3 +1,4 @@
+// Package wal implements regionproxy wal helpers.
 package wal
 
 import (

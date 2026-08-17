@@ -39,8 +39,7 @@ func (s *Service) ListAuditLogs(ctx context.Context, limit, offset int32, redact
 	if err != nil {
 		return nil, 0, err
 	}
-	out := make([]AuditLogDTO, len(rows))
-	for i, row := range rows {
+	return coldpath.MapSlice(rows, func(row db.AdminAuditLog) AuditLogDTO {
 		changes := row.Changes
 		metadata := row.Metadata
 		if redactPII {
@@ -64,9 +63,8 @@ func (s *Service) ListAuditLogs(ctx context.Context, limit, offset int32, redact
 		if row.CreatedAt.Valid {
 			dto.CreatedAt = row.CreatedAt.Time.UTC().Format("2006-01-02T15:04:05Z")
 		}
-		out[i] = dto
-	}
-	return out, total, nil
+		return dto
+	}), total, nil
 }
 
 func redactJSONPII(raw []byte) []byte {
@@ -710,14 +708,6 @@ func (s *Service) AttachCampaignListMarginBreach(ctx context.Context, items []Ca
 	}
 }
 
-func (s *Service) campaignMarginBreach(ctx context.Context, campaignID uuid.UUID) (bool, error) {
-	breaches, err := s.batchCampaignMarginBreach(ctx, []uuid.UUID{campaignID})
-	if err != nil {
-		return false, err
-	}
-	return breaches[campaignID], nil
-}
-
 func (s *Service) GetMarginGuardActivity(ctx context.Context, campaignID uuid.UUID) ([]adminapi.MarginGuardActivityRow, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, policy_id, campaign_id, placement_id, action, reason, metrics, created_at
@@ -753,6 +743,24 @@ func (s *Service) RemovePlacementOverride(ctx context.Context, campaignID uuid.U
 		CampaignID:  campaignID.String(),
 		PlacementID: placementID,
 		Action:      "remove",
+	})
+	if err != nil {
+		return err
+	}
+	_, err = s.pool.Exec(ctx, `
+		INSERT INTO outbox_events (event_type, payload)
+		VALUES ($1, $2)`, "PAUSE_PLACEMENT", payload)
+	return err
+}
+
+func (s *Service) BlockCampaignPlacement(ctx context.Context, campaignID uuid.UUID, placementID string) error {
+	placementID = strings.TrimSpace(placementID)
+	if placementID == "" {
+		return fmt.Errorf("placement_id required")
+	}
+	payload, err := coldpath.MarshalOutbox(PausePlacementPayload{
+		CampaignID:  campaignID.String(),
+		PlacementID: placementID,
 	})
 	if err != nil {
 		return err
@@ -1043,10 +1051,10 @@ func (s *Service) autoscaleBudgetsTx(ctx context.Context, tx pgx.Tx, merge deliv
 		}
 
 		var bestCamp *db.GetAllActiveCampaignsWithStatsRow
-		var bestCTR float64 = -1.0
+		bestCTR := -1.0
 
 		var worstCamp *db.GetAllActiveCampaignsWithStatsRow
-		var worstCTR float64 = 2.0
+		worstCTR := 2.0
 
 		for i := range campaigns {
 			c := &campaigns[i]
@@ -1523,31 +1531,24 @@ func normalizeSystemSettings(settings map[string]string) (map[string]string, err
 func (s *Service) ListBlacklist(ctx context.Context, limit, offset int32) ([]BlacklistDTO, int64, error) {
 	q := db.New(s.GetPool())
 	listParams := db.ListBlacklistParams{Limit: limit, Offset: offset}
-	total, err := q.CountBlacklist(ctx)
-	if err != nil {
-		return nil, 0, err
+	return coldpath.PaginatedList(
+		func() (int64, error) { return q.CountBlacklist(ctx) },
+		func() ([]db.IpBlacklist, error) { return q.ListBlacklist(ctx, listParams) },
+		blacklistToDTO,
+	)
+}
+
+func blacklistToDTO(r db.IpBlacklist) BlacklistDTO {
+	dto := BlacklistDTO{
+		ID:        r.ID,
+		IP:        r.Ip,
+		Reason:    r.Reason,
+		CreatedAt: r.CreatedAt.Time.Format(time.RFC3339),
 	}
-	if total == 0 {
-		return []BlacklistDTO{}, 0, nil
+	if r.ExpiresAt.Valid {
+		dto.ExpiresAt = r.ExpiresAt.Time.UTC().Format(time.RFC3339)
 	}
-	blacklistRows, err := q.ListBlacklist(ctx, listParams)
-	if err != nil {
-		return nil, 0, err
-	}
-	out := make([]BlacklistDTO, 0, len(blacklistRows))
-	for _, r := range blacklistRows {
-		dto := BlacklistDTO{
-			ID:        r.ID,
-			IP:        r.Ip,
-			Reason:    r.Reason,
-			CreatedAt: r.CreatedAt.Time.Format(time.RFC3339),
-		}
-		if r.ExpiresAt.Valid {
-			dto.ExpiresAt = r.ExpiresAt.Time.UTC().Format(time.RFC3339)
-		}
-		out = append(out, dto)
-	}
-	return out, total, nil
+	return dto
 }
 
 func (s *Service) GetSettings(ctx context.Context) (map[string]string, error) {

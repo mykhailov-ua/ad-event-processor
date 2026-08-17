@@ -1,3 +1,4 @@
+// Package metrics implements metrics support for BidShard.
 package metrics
 
 import blog "github.com/bidshard/ad-event-processor/pkg/broker/log"

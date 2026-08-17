@@ -1,3 +1,4 @@
+// Package branding provides product naming helpers.
 package branding
 
 import (

@@ -2,6 +2,7 @@ package ingestion
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net"
 	"sync"
@@ -380,7 +381,8 @@ func (c *UDPControl) recvLoop(ctx context.Context) {
 		_ = c.conn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
 		n, err := c.conn.Read(buf)
 		if err != nil {
-			if ne, ok := err.(net.Error); ok && ne.Timeout() {
+			var ne net.Error
+			if errors.As(err, &ne) && ne.Timeout() {
 				continue
 			}
 			if ctx.Err() != nil {

@@ -1,3 +1,4 @@
+// Package faultinject drives edge XDP fault-injection drills in lab environments.
 package faultinject
 
 import (

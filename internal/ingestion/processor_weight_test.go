@@ -52,7 +52,7 @@ func TestProcessorWeight_HTTPPoll(t *testing.T) {
 		EpochInterval: time.Hour,
 		WeightsURL:    srv.URL + "/ops/processor-weights",
 	}, nil, nil)
-	ctrl.refresh()
+	ctrl.refresh(context.Background())
 	assert.InDelta(t, 0.35, ctrl.LocalWeight(), 0.001)
 }
 
@@ -69,7 +69,7 @@ func TestProcessorWeight_PgGateDrain(t *testing.T) {
 	ctrl.SetWeightForTest(0.8)
 
 	gate.recordWait(25 * time.Millisecond)
-	ctrl.refresh()
+	ctrl.refresh(context.Background())
 	assert.InDelta(t, 0.05, ctrl.LocalWeight(), 0.001)
 }
 

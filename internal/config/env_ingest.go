@@ -141,6 +141,28 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 		cfg.ProxyVPNFeedDir = "/var/lib/ad-event-processor/proxy-vpn"
 	}
 	cfg.ProxyVPNFeedRefresh = 24 * time.Hour
+	cfg.TLSFingerprintL1Enabled = getEnvBool("TLS_FINGERPRINT_L1_ENABLED", true)
+	cfg.TLSFingerprintFeedDir = os.Getenv("TLS_FINGERPRINT_FEED_DIR")
+	if cfg.TLSFingerprintFeedDir == "" {
+		cfg.TLSFingerprintFeedDir = "/var/lib/ad-event-processor/tls-fingerprint"
+	}
+	cfg.TLSFingerprintFeedRefresh = 24 * time.Hour
+	if raw := os.Getenv("TLS_FINGERPRINT_FEED_REFRESH_INTERVAL"); raw != "" {
+		if d, err := time.ParseDuration(raw); err == nil {
+			cfg.TLSFingerprintFeedRefresh = d
+		} else if n, err := strconv.Atoi(raw); err == nil {
+			cfg.TLSFingerprintFeedRefresh = time.Duration(n) * time.Second
+		}
+	}
+	if raw := os.Getenv("LINK_SIGNING_HMAC_SECRET"); raw != "" {
+		cfg.LinkSigningHMACSecret = Secret(raw)
+	}
+	if raw := os.Getenv("ATTESTATION_HMAC_SECRET"); raw != "" {
+		cfg.AttestationHMACSecret = Secret(raw)
+	}
+	if raw := os.Getenv("ATTESTATION_HMAC_SECRET_PREV"); raw != "" {
+		cfg.AttestationHMACSecretPrev = Secret(raw)
+	}
 	if raw := os.Getenv("PROXY_VPN_FEED_REFRESH_INTERVAL"); raw != "" {
 		if d, err := time.ParseDuration(raw); err == nil && d > 0 {
 			cfg.ProxyVPNFeedRefresh = d

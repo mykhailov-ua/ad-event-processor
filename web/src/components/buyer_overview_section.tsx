@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import type { BuyerPortfolioVM } from '../helpers/buyer_dashboard.js';
+import { fetchSmartAlertHistory, type SmartAlertEvent } from '../helpers/smart_alerts_api.js';
 import { buyerEmptyCopy } from '../models/empty_state.js';
 import type { RecommendationCard } from '../types/recommendation.js';
 import { can } from '../helpers/permissions.js';
@@ -89,6 +91,17 @@ export function BuyerOverviewSection({
   const customerId = boundCustomerId(user);
 
   const portfolioAlerts = (portfolio?.alerts ?? []) as HomeAlertCard[];
+  const [openSmartAlerts, setOpenSmartAlerts] = useState<SmartAlertEvent[]>([]);
+
+  useEffect(() => {
+    if (!customerId) {
+      setOpenSmartAlerts([]);
+      return;
+    }
+    void fetchSmartAlertHistory(customerId).then((events) => {
+      setOpenSmartAlerts(events.filter((e) => !e.acked_at).slice(0, 5));
+    }).catch(() => setOpenSmartAlerts([]));
+  }, [customerId]);
 
   if (loading) {
     return (
@@ -155,16 +168,24 @@ export function BuyerOverviewSection({
         <dt>Campaigns in portfolio</dt>
         <dd>{String(portfolio.sampled)}</dd>
       </dl>
-      <div className="stack stack--sm">
+      <div className="stack stack--sm" data-testid="portfolio-attention-panel">
         <h3 className="subsection-title">Needs attention</h3>
-        {portfolio.attention.length === 0 ? (
-          <p className="text-muted text-sm">No paused campaigns or pacing flags in the current page.</p>
+        {portfolio.attention.length === 0 && openSmartAlerts.length === 0 ? (
+          <p className="text-muted text-sm">No paused campaigns, pacing flags, or open smart alerts.</p>
         ) : (
           <ul className="plain-list">
             {portfolio.attention.map((row) => (
               <li key={row.id} className="plain-list__item">
                 <a href={`/campaigns/${row.id}`}>{row.name}</a>
                 {` — ${row.reason}`}
+              </li>
+            ))}
+            {openSmartAlerts.map((evt) => (
+              <li key={evt.id} className="plain-list__item" data-testid="attention-smart-alert">
+                <a href={`/integrations/smart-alerts?customer_id=${encodeURIComponent(customerId ?? '')}`}>
+                  Smart alert
+                </a>
+                {` — ${evt.metric} ${evt.operator} ${evt.threshold} (observed ${evt.observed_value})`}
               </li>
             ))}
           </ul>

@@ -1,6 +1,7 @@
 package log
 
 import (
+	"context"
 	"os"
 	"testing"
 	"time"
@@ -36,18 +37,18 @@ func TestDurability_GroupCommitThreshold(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
+	defer func() { _ = os.RemoveAll(dir) }()
 
 	cfg := DurabilityConfig{
 		Mode:               DurabilityGroupCommit,
 		FlushInterval:      time.Hour,
 		GroupCommitRecords: 2,
 	}
-	pl, err := NewPartitionLogWithDurability(dir, 1024*1024, 4096, cfg)
+	pl, err := NewPartitionLogWithDurability(context.Background(), dir, 1024*1024, 4096, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer pl.Close()
+	defer func() { _ = pl.Close() }()
 
 	if _, err := pl.Append([]byte("a")); err != nil {
 		t.Fatal(err)
@@ -68,17 +69,17 @@ func TestDurability_SyncModeClearsPending(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
+	defer func() { _ = os.RemoveAll(dir) }()
 
 	cfg := DurabilityConfig{
 		Mode:          DurabilitySync,
 		FlushInterval: time.Hour,
 	}
-	pl, err := NewPartitionLogWithDurability(dir, 1024*1024, 4096, cfg)
+	pl, err := NewPartitionLogWithDurability(context.Background(), dir, 1024*1024, 4096, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer pl.Close()
+	defer func() { _ = pl.Close() }()
 
 	if _, err := pl.Append([]byte("synced")); err != nil {
 		t.Fatal(err)

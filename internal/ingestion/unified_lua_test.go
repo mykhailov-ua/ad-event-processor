@@ -116,7 +116,7 @@ func TestFilterRedisOptions_realClientRespectsReadTimeout(t *testing.T) {
 	require.True(t, ok, "expected single-node redis client")
 	opts := FilterRedisOptions([]string{client.Options().Addr}, "", 4, filterMs)
 	slow := redis.NewUniversalClient(opts)
-	defer slow.Close()
+	defer func() { _ = slow.Close() }()
 
 	require.NoError(t, slow.Ping(ctx).Err())
 	require.NoError(t, rdb.Do(ctx, "CLIENT", "PAUSE", 2000).Err())

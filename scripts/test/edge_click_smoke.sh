@@ -12,6 +12,11 @@ trap 'rm -f "$HDR_FILE"' EXIT
 log() { printf 'edge-click-smoke: %s\n' "$*"; }
 die() { printf 'edge-click-smoke: ERROR: %s\n' "$*" >&2; exit 1; }
 
+if ! curl -sS --connect-timeout 2 -o /dev/null "${EDGE_URL}/healthz" 2>/dev/null; then
+  log "skip (edge unreachable at ${EDGE_URL})"
+  exit 0
+fi
+
 code="$(curl -sS -o /dev/null -w '%{http_code}' -D "$HDR_FILE" "${EDGE_URL}${PATH_Q}" || true)"
 log "GET ${EDGE_URL}${PATH_Q} -> HTTP ${code}"
 

@@ -21,6 +21,7 @@ type RouteRegistry struct {
 	FlowHTTP              *FlowHTTPHandlers
 	IntegrationSchemaHTTP *IntegrationSchemaHTTPHandlers
 	TeamHTTP              *TeamHTTPHandlers
+	PublisherHTTP         *PublisherHTTPHandlers
 	RtbFloorsHTTP         *RtbFloorsHTTPHandlers
 	RtbHTTP               *RtbHTTPHandlers
 	CampaignsHTTP         *CampaignsHTTPHandlers
@@ -68,10 +69,12 @@ var routeCatalog = []Route{
 	{Method: "GET", Path: "/api/v1/campaigns"},
 	{Method: "GET", Path: "/api/v1/campaigns/{id}"},
 	{Method: "PATCH", Path: "/api/v1/campaigns/{id}"},
+	{Method: "POST", Path: "/api/v1/campaigns/{id}/placement-blocks"},
 	{Method: "GET", Path: "/api/v1/campaigns/{id}/events"},
 	{Method: "GET", Path: "/api/v1/campaigns/{id}/margin"},
 	{Method: "GET", Path: "/api/v1/campaigns/{id}/stats"},
 	{Method: "POST", Path: "/api/v1/consent"},
+	{Method: "GET", Path: "/api/v1/ops/consent/proofs"},
 	{Method: "GET", Path: "/api/v1/cost-sync/credentials"},
 	{Method: "PUT", Path: "/api/v1/cost-sync/credentials/{network}"},
 	{Method: "DELETE", Path: "/api/v1/cost-sync/credentials/{network}"},
@@ -93,7 +96,10 @@ var routeCatalog = []Route{
 	{Method: "DELETE", Path: "/api/v1/supply/ads-txt/{id}"},
 	{Method: "GET", Path: "/api/v1/supply/preview/sellers.json"},
 	{Method: "GET", Path: "/api/v1/supply/preview/ads.txt"},
+	{Method: "GET", Path: "/api/v1/supply/validation"},
 	{Method: "GET", Path: "/api/v1/supply/export-path"},
+	{Method: "GET", Path: "/api/v1/publisher/dashboard"},
+	{Method: "GET", Path: "/api/v1/publisher/statements"},
 	{Method: "GET", Path: "/api/v1/customers/{id}/balance"},
 	{Method: "GET", Path: "/api/v1/customers/{id}/ledger"},
 	{Method: "GET", Path: "/api/v1/customers/{id}/balance/export"},
@@ -153,7 +159,10 @@ var routeCatalog = []Route{
 	{Method: "GET", Path: "/api/v1/ops/dashboard/summary"},
 	{Method: "GET", Path: "/api/v1/ops/doctor"},
 	{Method: "GET", Path: "/api/v1/ops/dlq"},
+	{Method: "GET", Path: "/api/v1/ops/dlq/inbox"},
 	{Method: "POST", Path: "/api/v1/ops/dlq/{id}/retry"},
+	{Method: "POST", Path: "/api/v1/ops/dlq/inbox/{id}/retry"},
+	{Method: "GET", Path: "/api/v1/ops/domains/rotation"},
 	{Method: "GET", Path: "/api/v1/ops/incidents"},
 	{Method: "GET", Path: "/api/v1/ops/outbox"},
 	{Method: "POST", Path: "/api/v1/ops/rum"},
@@ -162,6 +171,12 @@ var routeCatalog = []Route{
 	{Method: "GET", Path: "/api/v1/ops/shards"},
 	{Method: "POST", Path: "/api/v1/ops/shards/0/catchup"},
 	{Method: "GET", Path: "/api/v1/team/overview"},
+	{Method: "POST", Path: "/api/v1/team/members"},
+	{Method: "PATCH", Path: "/api/v1/team/members/{id}"},
+	{Method: "GET", Path: "/api/v1/team/budget-approvals"},
+	{Method: "POST", Path: "/api/v1/team/budget-approvals/{id}/approve"},
+	{Method: "POST", Path: "/api/v1/team/budget-approvals/{id}/deny"},
+	{Method: "PUT", Path: "/api/v1/campaigns/{id}/owner"},
 	{Method: "GET", Path: "/api/v1/integration/schemas"},
 	{Method: "POST", Path: "/api/v1/integration/schemas"},
 	{Method: "GET", Path: "/api/v1/integration/schemas/{id}"},
@@ -172,6 +187,8 @@ var routeCatalog = []Route{
 	{Method: "PUT", Path: "/api/v1/postbacks/config/{campaign_id}"},
 	{Method: "GET", Path: "/api/v1/postbacks/dlq"},
 	{Method: "POST", Path: "/api/v1/postbacks/dlq/{id}/retry"},
+	{Method: "GET", Path: "/api/v1/postbacks/campaign-status"},
+	{Method: "POST", Path: "/api/v1/postbacks/config/{campaign_id}/test"},
 	{Method: "POST", Path: "/api/v1/rtb/floors/apply"},
 	{Method: "POST", Path: "/api/v1/rtb/validate-bid-request"},
 	{Method: "GET", Path: "/api/v1/rtb/integration-profile"},
@@ -198,12 +215,14 @@ var routeCatalog = []Route{
 	{Method: "GET", Path: "/api/v1/reports/source-quality"},
 	{Method: "GET", Path: "/api/v1/reports/spend-velocity"},
 	{Method: "GET", Path: "/api/v1/reports/traffic-sources"},
+	{Method: "GET", Path: "/api/v1/reports/true-roi"},
 	{Method: "POST", Path: "/api/v1/selfserve/api-keys"},
 	{Method: "GET", Path: "/api/v1/selfserve/billing/statement"},
 	{Method: "POST", Path: "/api/v1/selfserve/campaigns"},
 	{Method: "POST", Path: "/api/v1/selfserve/campaigns/{id}/pause"},
 	{Method: "POST", Path: "/api/v1/selfserve/campaigns/{id}/resume"},
 	{Method: "GET", Path: "/api/v1/selfserve/invoices"},
+	{Method: "GET", Path: "/api/v1/selfserve/templates"},
 	{Method: "POST", Path: "/api/v1/selfserve/payment-intents"},
 	{Method: "GET", Path: "/api/v1/support/feedback/meta"},
 	{Method: "POST", Path: "/api/v1/support/feedback"},
@@ -288,6 +307,9 @@ func RegisterRoutes(mux *http.ServeMux, routes RouteRegistry) {
 	}
 	if routes.TeamHTTP != nil {
 		routes.TeamHTTP.Register(mux)
+	}
+	if routes.PublisherHTTP != nil {
+		routes.PublisherHTTP.Register(mux)
 	}
 	if routes.RtbFloorsHTTP != nil {
 		routes.RtbFloorsHTTP.Register(mux)

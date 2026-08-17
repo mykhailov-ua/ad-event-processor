@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -37,7 +38,7 @@ func TestFault_NetworkPartition_StaleLeaderRejected(t *testing.T) {
 	if err := staleCli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	defer staleCli.Close()
+	defer func() { _ = staleCli.Close() }()
 
 	staleAccepted := false
 	for range 5 {
@@ -53,7 +54,7 @@ func TestFault_NetworkPartition_StaleLeaderRejected(t *testing.T) {
 	if err := liveCli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	defer liveCli.Close()
+	defer func() { _ = liveCli.Close() }()
 
 	if _, err := liveCli.Produce(context.Background(), topic, 0, []byte("live-after-partition")); err != nil {
 		t.Fatalf("new leader produce failed: %v", err)
@@ -88,14 +89,12 @@ func TestFault_LeaseExpiry_FrozenLeaderRejected(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(leaderDir)
-
+	defer func() { _ = os.RemoveAll(leaderDir) }()
 	followerDir, err := os.MkdirTemp("", "fault-freeze-follower-*")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(followerDir)
-
+	defer func() { _ = os.RemoveAll(followerDir) }()
 	leaderAddr := allocFreeTCPAddr(t)
 	leaderProc := startBrokerProcess(t, bin, leaderDir, "fault-freeze-leader", redisURL, leaderAddr)
 
@@ -181,7 +180,7 @@ func TestFault_LeaseExpiry_FrozenLeaderRejected(t *testing.T) {
 	if err := staleCli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	defer staleCli.Close()
+	defer func() { _ = staleCli.Close() }()
 
 	staleRejected := false
 	for range 5 {
@@ -200,7 +199,7 @@ func TestFault_LeaseExpiry_FrozenLeaderRejected(t *testing.T) {
 	if err := liveCli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	defer liveCli.Close()
+	defer func() { _ = liveCli.Close() }()
 
 	if _, err := liveCli.Produce(context.Background(), topic, 0, []byte("live-after-freeze")); err != nil {
 		t.Fatalf("new leader produce: %v", err)
@@ -234,7 +233,7 @@ func TestFault_ClientRedirect_AfterFailover(t *testing.T) {
 	if err := cli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	leaderCoord.Stop()
 	leaderSrv.Stop()
@@ -318,7 +317,7 @@ func TestFault_ConsumerResume_AfterLeaderKill(t *testing.T) {
 	consWg.Add(1)
 	go func() {
 		defer consWg.Done()
-		if err := cons.Run(ctx); err != nil && err != context.Canceled {
+		if err := cons.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
 			consErr.Store(err)
 		}
 	}()
@@ -382,7 +381,7 @@ func verifyFreezeLeasePrefix(t *testing.T, addr, topic string, wantCount int) {
 	if err := cli.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	iter, err := cli.Fetch(context.Background(), topic, 0, 0, 32*1024*1024)
 	if err != nil {

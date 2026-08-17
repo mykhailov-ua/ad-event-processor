@@ -113,7 +113,7 @@ func recordSampledCampaignOp(o *redisShardObservability, shard int, campaignID u
 		shard = 0
 	}
 	if shard >= len(o.sampledCampaignCounters) {
-		shard = shard % len(o.sampledCampaignCounters)
+		shard %= len(o.sampledCampaignCounters)
 	}
 	bucket := sampledCampaignBucket(campaignID)
 	o.sampledCampaignCounters[shard][bucket].Inc()
@@ -127,7 +127,7 @@ func recordSampledCampaignSpend(o *redisShardObservability, shard int, campaignI
 		shard = 0
 	}
 	if shard >= len(o.sampledSpendCounters) {
-		shard = shard % len(o.sampledSpendCounters)
+		shard %= len(o.sampledSpendCounters)
 	}
 	bucket := sampledCampaignBucket(campaignID)
 	o.sampledSpendCounters[shard][bucket].Add(float64(spendMicro))

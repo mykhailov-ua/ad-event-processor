@@ -1,3 +1,4 @@
+// Package bpfprobe implements bpf-collector bpfprobe helpers.
 package bpfprobe
 
 import (
@@ -81,7 +82,7 @@ type Programs struct {
 	SchedWakeup      *ebpf.Program
 	SchedSwitch      *ebpf.Program
 	PageFaultUser    *ebpf.Program
-	TcpRetransmit    *ebpf.Program
+	TCPRetransmit    *ebpf.Program
 	SchedProcessFork *ebpf.Program
 	SchedProcessExit *ebpf.Program
 	TraceEnter       *ebpf.Program
@@ -130,7 +131,7 @@ func Load(objectPath string) (*Collection, error) {
 			SchedWakeup:      coll.Programs[bpfProgramName("sched_wakeup")],
 			SchedSwitch:      coll.Programs[bpfProgramName("sched_switch")],
 			PageFaultUser:    coll.Programs[bpfProgramName("page_fault_user")],
-			TcpRetransmit:    coll.Programs[bpfProgramName("tcp_retransmit")],
+			TCPRetransmit:    coll.Programs[bpfProgramName("tcp_retransmit")],
 			SchedProcessFork: coll.Programs[bpfProgramName("sched_process_fork")],
 			SchedProcessExit: coll.Programs[bpfProgramName("sched_process_exit")],
 			TraceEnter:       coll.Programs[bpfProgramName("trace_enter")],

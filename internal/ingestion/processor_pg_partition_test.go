@@ -98,7 +98,7 @@ func TestFault_AdsProcessorPGNetworkPartition(t *testing.T) {
 
 	finalRows := countFaultCampaignEvents(t, infra.Pool, stack.CampaignID)
 	distinctClickIDs := countDistinctFaultClickIDs(t, infra.Pool, stack.CampaignID)
-	idempotencyOK := finalRows == distinctClickIDs && finalRows == expectedRows
+	idempotencyOK := finalRows == expectedRows && distinctClickIDs == expectedRows
 	require.True(t, idempotencyOK,
 		"exactly-once in PG: rows=%d distinct_click_ids=%d expected=%d",
 		finalRows, distinctClickIDs, expectedRows)

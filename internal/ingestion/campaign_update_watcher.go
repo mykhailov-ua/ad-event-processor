@@ -72,7 +72,7 @@ func (w *CampaignUpdateWatcher) consumeOnce(ctx context.Context) error {
 	if err := cli.Connect(); err != nil {
 		return err
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	const partition uint16 = 0
 	start, err := cli.CommittedOffset(w.cfg.BrokerTopic, partition, w.cfg.BrokerGroup)

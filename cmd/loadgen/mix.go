@@ -24,6 +24,7 @@ type mixConfig struct {
 	pctClickProxy int
 	pctProxyVPN   int
 	pctFlowRoute  int
+	pctJA3Block   int
 }
 
 func defaultMix(mode string, pctBroken, pctGray int) mixConfig {
@@ -113,7 +114,8 @@ func (r *runner) doOnce() {
 	clickProxyEnd := telegramEnd + r.mix.pctClickProxy
 	proxyVPNEnd := clickProxyEnd + r.mix.pctProxyVPN
 	flowRouteEnd := proxyVPNEnd + r.mix.pctFlowRoute
-	validEnd := flowRouteEnd + r.mix.pctValid
+	ja3BlockEnd := flowRouteEnd + r.mix.pctJA3Block
+	validEnd := ja3BlockEnd + r.mix.pctValid
 	fraudEnd := validEnd + r.mix.pctFraud
 	invalidEnd := fraudEnd + r.mix.pctInvalid
 	ddosEnd := invalidEnd + r.mix.pctDDoS
@@ -129,6 +131,8 @@ func (r *runner) doOnce() {
 		r.proxyVPNTraffic(base, iter)
 	case roll < flowRouteEnd:
 		r.flowRouteTraffic(base, iter)
+	case roll < ja3BlockEnd:
+		r.ja3BlockTraffic(base, iter)
 	case roll < validEnd:
 		body := r.validBody(iter)
 		r.post(base+"/track", "application/json", body, nil)
@@ -198,6 +202,17 @@ func (r *runner) flowRouteTraffic(base string, iter uint64) {
 	clickID := fmt.Sprintf("00000000-0000-4000-8000-%012x", iter)
 	flowID := fmt.Sprintf("flow-%d", iter%8)
 	r.get(fmt.Sprintf("%s/click?campaign_id=%s&click_id=%s&flow_id=%s&sub1=loadgen-flow", base, cid, clickID, flowID))
+}
+
+// ja3BlockTraffic issues GET /click with X-TLS-JA3 for GMA-M1 L1 blocklist drills.
+func (r *runner) ja3BlockTraffic(base string, iter uint64) {
+	cid := r.pickCampaign(iter)
+	clickID := fmt.Sprintf("00000000-0000-4000-8000-%012x", iter)
+	ja3 := fmt.Sprintf("771,4865-%d", iter%5000)
+	r.getWithHeaders(fmt.Sprintf("%s/click?campaign_id=%s&click_id=%s&sub1=loadgen-ja3", base, cid, clickID), map[string]string{
+		"X-TLS-JA3":  ja3,
+		"User-Agent": "Mozilla/5.0 (loadgen)",
+	})
 }
 
 func proxyVPNClientIP(iter uint64) string {
@@ -301,6 +316,14 @@ func (r *runner) edgeTraffic(base string, iter uint64) {
 
 func (r *runner) get(url string) {
 	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, url, http.NoBody)
+	r.exec(req)
+}
+
+func (r *runner) getWithHeaders(url string, extra map[string]string) {
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, url, http.NoBody)
+	for k, v := range extra {
+		req.Header.Set(k, v)
+	}
 	r.exec(req)
 }
 

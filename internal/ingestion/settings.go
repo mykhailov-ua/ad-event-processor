@@ -2,6 +2,7 @@ package ingestion
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -267,7 +268,7 @@ func (sw *SettingsWatcher) readConfigVersion(ctx context.Context) (int64, redis.
 		if err == nil {
 			return v, rdb, nil
 		}
-		if err != redis.Nil {
+		if !errors.Is(err, redis.Nil) {
 			slog.Warn("failed to check config version on redis shard", "shard", i, "error", err)
 		}
 	}
@@ -297,7 +298,7 @@ func (sw *SettingsWatcher) readConfigValues(ctx context.Context, preferred redis
 func (sw *SettingsWatcher) sync(ctx context.Context) {
 	v, rdb, err := sw.readConfigVersion(ctx)
 	if err != nil {
-		if err != redis.Nil {
+		if !errors.Is(err, redis.Nil) {
 			slog.Error("failed to check config version on all redis shards", "error", err)
 		}
 		sw.trySyncFromPG(ctx)

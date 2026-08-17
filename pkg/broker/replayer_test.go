@@ -36,7 +36,7 @@ func TestBrokerReplay_Integrity(t *testing.T) {
 	topic := "ad-events"
 	partDir := filepath.Join(dataDir, topic, "partition_0")
 
-	partLog, err := blog.NewPartitionLog(partDir, 1024*1024*1024, 4096)
+	partLog, err := blog.NewPartitionLog(context.Background(), partDir, 1024*1024*1024, 4096)
 	require.NoError(t, err)
 
 	expectedHasher := sha256.New()
@@ -96,7 +96,7 @@ func TestBrokerReplay_TimestampFiltering(t *testing.T) {
 	topic := "ad-events-filter"
 	partDir := filepath.Join(dataDir, topic, "partition_0")
 
-	partLog, err := blog.NewPartitionLog(partDir, 1024*1024*1024, 4096)
+	partLog, err := blog.NewPartitionLog(context.Background(), partDir, 1024*1024*1024, 4096)
 	require.NoError(t, err)
 
 	baseTime := time.Date(2026, 8, 8, 12, 0, 0, 0, time.UTC)

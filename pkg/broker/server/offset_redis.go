@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -57,7 +58,7 @@ func (s *RedisOffsetStore) Committed(ctx context.Context, topic, group string) (
 		return 0, err
 	}
 	val, err := s.rdb.HGet(ctx, redisOffsetsKey(topic), group).Result()
-	if err == redis.Nil {
+	if errors.Is(err, redis.Nil) {
 		return 0, nil
 	}
 	if err != nil {
@@ -78,15 +79,15 @@ func (s *RedisOffsetStore) MinCommitted(ctx context.Context, topic string) (uint
 	if len(groups) == 0 {
 		return 0, false, nil
 	}
-	var min uint64
+	var minOffset uint64
 	first := true
 	for _, off := range groups {
-		if first || off < min {
-			min = off
+		if first || off < minOffset {
+			minOffset = off
 			first = false
 		}
 	}
-	return min, true, nil
+	return minOffset, true, nil
 }
 
 func (s *RedisOffsetStore) ListGroups(ctx context.Context, topic string) (map[string]uint64, error) {

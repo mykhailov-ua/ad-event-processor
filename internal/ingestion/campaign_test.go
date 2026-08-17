@@ -127,7 +127,7 @@ func TestRegistry_StartSync(t *testing.T) {
 	}, 200*time.Millisecond, 20*time.Millisecond)
 
 	cancel()
-	r.Wait(ctx)
+	require.NoError(t, r.Wait(ctx))
 }
 
 func TestCampaignFromDBRow_FraudConfig(t *testing.T) {

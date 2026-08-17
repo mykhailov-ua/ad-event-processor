@@ -76,12 +76,16 @@ func CampaignFromDBRow(row db.Campaign) *Campaign {
 		MigrationGen:            row.MigrationGen,
 		SafePageURL:             row.SafePageUrl,
 		SafePageEnabled:         row.SafePageEnabled,
+		AttestationEnabled:      row.AttestationEnabled,
+		AttestationTTLSec:       row.AttestationTtlSec,
+		DmrEnabled:              row.DmrEnabled,
 		L1CIDRBlockEnabled:      row.L1CidrBlockEnabled,
 		L15ProxyVPNBlockEnabled: row.L15ProxyVpnBlockEnabled,
 		ClickDelivery:           row.ClickDelivery,
 		ProxyUpstreamURL:        row.ProxyUpstreamUrl,
 		ProxyRewriteAssets:      row.ProxyRewriteAssets,
 	}
+	applyCampaignGMAFields(camp, row.TlsFingerprintBlockEnabled, row.ConnTypePolicy, row.LinkSigningEnabled, row.LinkSigningTtlSec)
 	applyCampaignSegmentFields(camp, row.RetargetSegmentID, row.SegmentInclude, row.SegmentExclude, row.SegmentTtlHours)
 	return camp
 }
@@ -146,12 +150,16 @@ func CampaignFromGetCampaignFullRow(row db.GetCampaignFullRow) *Campaign {
 		MigrationGen:            row.MigrationGen,
 		SafePageURL:             row.SafePageUrl,
 		SafePageEnabled:         row.SafePageEnabled,
+		AttestationEnabled:      row.AttestationEnabled,
+		AttestationTTLSec:       row.AttestationTtlSec,
+		DmrEnabled:              row.DmrEnabled,
 		L1CIDRBlockEnabled:      row.L1CidrBlockEnabled,
 		L15ProxyVPNBlockEnabled: row.L15ProxyVpnBlockEnabled,
 		ClickDelivery:           row.ClickDelivery,
 		ProxyUpstreamURL:        row.ProxyUpstreamUrl,
 		ProxyRewriteAssets:      row.ProxyRewriteAssets,
 	}
+	applyCampaignGMAFields(camp, row.TlsFingerprintBlockEnabled, row.ConnTypePolicy, row.LinkSigningEnabled, row.LinkSigningTtlSec)
 	applyCampaignSegmentFields(camp, row.RetargetSegmentID, row.SegmentInclude, row.SegmentExclude, row.SegmentTtlHours)
 
 	if row.PrimaryAShard.Valid {
@@ -230,12 +238,16 @@ func CampaignFromListActiveCampaignsRow(row db.ListActiveCampaignsRow) *Campaign
 		MigrationGen:            row.MigrationGen,
 		SafePageURL:             row.SafePageUrl,
 		SafePageEnabled:         row.SafePageEnabled,
+		AttestationEnabled:      row.AttestationEnabled,
+		AttestationTTLSec:       row.AttestationTtlSec,
+		DmrEnabled:              row.DmrEnabled,
 		L1CIDRBlockEnabled:      row.L1CidrBlockEnabled,
 		L15ProxyVPNBlockEnabled: row.L15ProxyVpnBlockEnabled,
 		ClickDelivery:           row.ClickDelivery,
 		ProxyUpstreamURL:        row.ProxyUpstreamUrl,
 		ProxyRewriteAssets:      row.ProxyRewriteAssets,
 	}
+	applyCampaignGMAFields(camp, row.TlsFingerprintBlockEnabled, row.ConnTypePolicy, row.LinkSigningEnabled, row.LinkSigningTtlSec)
 	applyCampaignSegmentFields(camp, row.RetargetSegmentID, row.SegmentInclude, row.SegmentExclude, row.SegmentTtlHours)
 
 	if row.PrimaryAShard.Valid {
@@ -596,7 +608,7 @@ func (r *CustomerRepo) UpdateBalance(ctx context.Context, id uuid.UUID, amount i
 		defer func() { _ = tx.Rollback(ctx) }()
 	}
 
-	var exec db.DBTX = dbtx
+	exec := dbtx
 	if tx != nil {
 		exec = tx
 	}
@@ -610,7 +622,7 @@ func (r *CustomerRepo) UpdateBalance(ctx context.Context, id uuid.UUID, amount i
 		return nil
 	}
 
-	var q db.Querier = r.queries
+	q := r.queries
 	if tx != nil {
 		if concreteQueries, ok := r.queries.(*db.Queries); ok {
 			q = concreteQueries.WithTx(tx)

@@ -22,6 +22,33 @@ type TeamMemberDTO struct {
 	Role           string `json:"role"`
 	CampaignsOwned int64  `json:"campaigns_owned"`
 	CreatedAt      string `json:"created_at,omitempty"`
+	IsBlocked      bool   `json:"is_blocked,omitempty"`
+	SpendCapMicro  int64  `json:"spend_cap_micro,omitempty"`
+}
+
+type TeamBudgetApprovalDTO struct {
+	ID                   string `json:"id"`
+	UserID               string `json:"user_id"`
+	CampaignID           string `json:"campaign_id"`
+	RequestedBudgetMicro int64  `json:"requested_budget_micro"`
+	PreviousBudgetMicro  int64  `json:"previous_budget_micro"`
+	Status               string `json:"status"`
+	CreatedAt            string `json:"created_at,omitempty"`
+}
+
+type InviteTeamMemberRequest struct {
+	Email string `json:"email"`
+	Role  string `json:"role"`
+}
+
+type UpdateTeamMemberRequest struct {
+	Role          *string `json:"role,omitempty"`
+	IsBlocked     *bool   `json:"is_blocked,omitempty"`
+	SpendCapMicro *int64  `json:"spend_cap_micro,omitempty"`
+}
+
+type AssignCampaignOwnerRequest struct {
+	UserID string `json:"user_id"`
 }
 
 type TeamLicenseDTO struct {
@@ -45,13 +72,18 @@ type TeamOverviewReader interface {
 
 type TeamHTTPHandlers struct {
 	Team                 TeamOverviewReader
+	Governance           TeamGovernance
 	ApplyRateLimit       func(http.HandlerFunc) http.HandlerFunc
 	RequireAnyPermission func([]string, http.HandlerFunc) http.HandlerFunc
+	RequireTeamWrite     func(http.HandlerFunc) http.HandlerFunc
 	ResolveCustomerID    func(*http.Request, *uuid.UUID) (uuid.UUID, error)
 	SnapshotFromRequest  func(*http.Request) (authz.Snapshot, bool)
+	ActorUserID          func(*http.Request) (uuid.UUID, bool)
 	WriteServiceError    func(http.ResponseWriter, error)
 }
 
+// Register registers team governance HTTP routes. Team governance handlers (CPA-M5). Row-level scope: ResolveCustomerID binds tenant;
+// MB cannot mutate team (RequireTeamWrite); campaign owner assignment validates same customer.
 func (h *TeamHTTPHandlers) Register(mux *http.ServeMux) {
 	if h == nil || h.Team == nil {
 		return
@@ -68,6 +100,7 @@ func (h *TeamHTTPHandlers) Register(mux *http.ServeMux) {
 		[]string{"campaigns:read", "billing:read"},
 		h.getOverview,
 	)))
+	h.registerTeamGovernanceRoutes(mux, limit, perm)
 }
 
 func (h *TeamHTTPHandlers) getOverview(w http.ResponseWriter, r *http.Request) {
@@ -164,10 +197,12 @@ func (s *TeamOverviewService) GetTeamOverview(ctx context.Context, customerID uu
 	}
 
 	rows, err := s.Pool.Query(ctx, `
-		SELECT u.id, u.email, u.role, u.created_at,
+		SELECT u.id, u.email, u.role, u.created_at, u.is_blocked,
 			(SELECT COUNT(*)::bigint FROM campaigns c
-			 WHERE c.customer_id = u.customer_id AND c.owner_user_id = u.id) AS campaigns_owned
+			 WHERE c.customer_id = u.customer_id AND c.owner_user_id = u.id) AS campaigns_owned,
+			COALESCE(l.spend_cap_micro, 0)
 		FROM users u
+		LEFT JOIN team_member_limits l ON l.user_id = u.id
 		WHERE u.customer_id = $1
 		ORDER BY u.email`, customerID)
 	if err != nil {
@@ -179,7 +214,7 @@ func (s *TeamOverviewService) GetTeamOverview(ctx context.Context, customerID uu
 		var member TeamMemberDTO
 		var userID uuid.UUID
 		var created time.Time
-		if err := rows.Scan(&userID, &member.Email, &member.Role, &created, &member.CampaignsOwned); err != nil {
+		if err := rows.Scan(&userID, &member.Email, &member.Role, &created, &member.IsBlocked, &member.CampaignsOwned, &member.SpendCapMicro); err != nil {
 			return TeamOverviewDTO{}, err
 		}
 		member.UserID = userID.String()

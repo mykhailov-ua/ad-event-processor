@@ -20,9 +20,9 @@ type procMemSnapshot struct {
 	PID             uint32 `json:"pid"`
 	Name            string `json:"name"`
 	Role            string `json:"role"`
-	VmRSSKB         uint64 `json:"vm_rss_kb"`
-	VmHWMKB         uint64 `json:"vm_hwm_kb"`
-	VmDataKB        uint64 `json:"vm_data_kb"`
+	VMRSSKB         uint64 `json:"vm_rss_kb"`
+	VMHWMKB         uint64 `json:"vm_hwm_kb"`
+	VMDataKB        uint64 `json:"vm_data_kb"`
 	RssAnonKB       uint64 `json:"rss_anon_kb"`
 	Threads         uint64 `json:"threads"`
 	OpenFDs         uint64 `json:"open_fds"`
@@ -84,19 +84,19 @@ func readProcMem(t targetEntry) (procMemSnapshot, error) {
 			fields := strings.Fields(line)
 			if len(fields) >= 2 {
 				v, _ := strconv.ParseUint(fields[1], 10, 64)
-				row.VmRSSKB = v
+				row.VMRSSKB = v
 			}
 		case strings.HasPrefix(line, "VmHWM:"):
 			fields := strings.Fields(line)
 			if len(fields) >= 2 {
 				v, _ := strconv.ParseUint(fields[1], 10, 64)
-				row.VmHWMKB = v
+				row.VMHWMKB = v
 			}
 		case strings.HasPrefix(line, "VmData:"):
 			fields := strings.Fields(line)
 			if len(fields) >= 2 {
 				v, _ := strconv.ParseUint(fields[1], 10, 64)
-				row.VmDataKB = v
+				row.VMDataKB = v
 			}
 		case strings.HasPrefix(line, "RssAnon:"):
 			fields := strings.Fields(line)

@@ -22,6 +22,14 @@ const (
 	PacingModeVpp  PacingMode = "VPP"
 )
 
+type ConnTypePolicy string
+
+const (
+	ConnTypeBlockVPNHosting ConnTypePolicy = "block_vpn_hosting"
+	ConnTypeMobileOnly      ConnTypePolicy = "mobile_only"
+	ConnTypeResidentialOnly ConnTypePolicy = "residential_only"
+)
+
 type Campaign struct {
 	ID                  uuid.UUID
 	CustomerID          uuid.UUID
@@ -82,8 +90,11 @@ type Campaign struct {
 	SegmentIncludeID  uuid.UUID
 	SegmentExcludeID  uuid.UUID
 
-	SafePageURL     string
-	SafePageEnabled bool
+	SafePageURL        string
+	SafePageEnabled    bool
+	AttestationEnabled bool
+	AttestationTTLSec  int32
+	DmrEnabled         bool
 
 	// L1CIDRBlockEnabled gates the pre-FilterEngine L1 CIDR/ASN Safe View
 	// branch (RP-M1). Default true; replicated to the tracker hot path.
@@ -92,6 +103,16 @@ type Campaign struct {
 	// L15ProxyVPNBlockEnabled gates the pre-FilterEngine L1.5 proxy/VPN Safe View
 	// branch (GM-M1). Default true; replicated to the tracker hot path.
 	L15ProxyVPNBlockEnabled bool
+
+	// TLSFingerprintBlockEnabled gates the pre-FilterEngine JA3/JA4 blocklist (GMA-M1).
+	TLSFingerprintBlockEnabled bool
+
+	// ConnTypePolicy selects L1.5 connection-type routing (GMA-M2).
+	ConnTypePolicy ConnTypePolicy
+
+	// LinkSigningEnabled appends HMAC _sig on outbound offer redirects (GMA-M4).
+	LinkSigningEnabled bool
+	LinkSigningTTLSec  int32
 
 	// Click delivery (RP-M3): redirect (default) or reverse-proxy upstream.
 	ClickDelivery      string

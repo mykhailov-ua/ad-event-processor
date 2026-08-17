@@ -1,3 +1,4 @@
+// Package protocol implements broker protocol helpers.
 package protocol
 
 import (

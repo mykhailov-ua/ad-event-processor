@@ -71,8 +71,8 @@ HWID v2 bind uses `hwid_hash` when present; legacy `bind.fingerprint` when `hwid
 | P-C6-03 | Seal/open round-trip; wrong MCK ⇒ open fails | `TestSealAsset_roundTrip`, `TestSealAsset_wrongMCK`, `TestSealAsset_bitFlipRejected` |
 | P-C6-04 | Feature seed coupling gates RPS/OpenRTB when enabled | `TestFeatureSeed_couplingGates`, `TestLicenseRPSFilter_seedCouplingBlocksWithoutValidSeed`, `TestOpenRTBLicenseAllowed_seedCouplingBlocksActiveLicense` |
 | P-C6-05 | Per-release `ASSET_SEAL_SALT` mixed into AEAD HKDF | `TestDeriveReleaseAssetSealSalt_matchesCIFormula`, `TestSealAsset_releaseSaltRoundTrip`, `TestSealAsset_wrongReleaseSaltRejected` |
-| P-C6-08 | Valid license + sealed blob → `ebpf.NewCollection` | `TestSealedBPF_ValidMCKLoadsCollection` (linux + bpf2go) |
-| P-C6-09 | Sealed vs unsealed XDP attach on lab host (V2-B.D2) | `bash scripts/test/sealed_bpf_xdp_smoke.sh` (`harness=kernel_xdp_attach_lo_generic`) |
+| P-C6-08 | Valid license + sealed blob → `ebpf.NewCollection` | `TestEdgeSealed_ValidLicenseLoadsCollection` (linux + bpf2go) |
+| P-C6-09 | Sealed vs unsealed XDP attach on lab host (Sealed assets) | `bash scripts/test/sealed_bpf_xdp_smoke.sh` (`harness=kernel_xdp_attach_lo_generic`) |
 | P-C6-10 | Sealed `unified-filter.lua` decrypt at tracker startup (V2-B.4) | `TestResolveUnifiedFilterLua_*`; `license_lua_seal_fail_total` on failure |
 
 Dev mode (`AD_EVENT_PROCESSOR_LICENSE_MODE=dev`) skips seed coupling and uses unsealed assets (`TestLicenseAssetsUnsealed_devMode`).
@@ -116,16 +116,16 @@ Dev/CI builds omit `license_guard` tag; release-garble enables it (`scripts/ci/r
 
 `IngestAllowed` remains for P-C3-03 property tests only (`ingest_gate.go`).
 
-## Garble literals policy (V2-D.1)
+## Garble literals policy (Release hardening)
 
 | ID | Property | Test / gate |
 | --- | --- | --- |
 | P-D1-01 | Default: tracker `literals=0`, control/processor `literals=1` | `bash scripts/ci/garble_literals_policy_gate.sh` |
 | P-D1-02 | `GARBLE_LITERALS` overrides all binaries | `garble_literals_policy_gate.sh` |
 | P-D1-03 | `internal/ingestion` package `//garble:ignore` for tracker literals eval | `internal/ingestion/garble_policy.go` |
-| P-D1-04 | Tracker size delta with `-literals` (manual) | `make garble-literals-eval` |
+| P-D1-04 | Tracker p99 with `-literals` within +10% baseline (lab) | `bash scripts/test/garble_literals_p99_smoke.sh` (`harness=garble_literals_p99_smoke`) |
 
-Tracker p99 (+10% budget) requires `make load-test-bpf` on literals tracker — not automated in eval script.
+Tracker size delta (manual): `make garble-literals-eval`. p99 acceptance (+10%): `make garble-literals-p99-smoke` after `prepare_constrained_stack.sh`.
 
 ## Garbled release license math (V2-D.5)
 
@@ -134,6 +134,17 @@ Tracker p99 (+10% budget) requires `make load-test-bpf` on literals tracker — 
 | P-D5-01 | Garbled tracker/processor/control build | `RELEASE_GARBLE=1 bash scripts/ci/release_garble.sh` |
 | P-D5-02 | Garbled binary strings gate | `bash scripts/ci/release_strings_gate.sh bin/garbled-release/tracker` |
 | P-D5-03 | License math after garble build | `make license-red-team-garbled` |
+
+## Release QA (garbled smoke + fuzz)
+
+| ID | Property | Test / gate |
+| --- | --- | --- |
+| P-QA-01 | Nightly fuzz workflow documents JWT/HWID targets | `bash scripts/ci/license_fuzz_nightly_gate.sh` |
+| P-QA-02 | Short fuzz smoke (10s/5s) + extended red-team | `bash scripts/test/release_qa_smoke.sh` (`harness=release_qa_fuzz_smoke`) |
+| P-QA-03 | Garbled tracker build + license alloc subset | `bash scripts/ci/license_garbled_alloc_gate.sh` (`harness=release_qa_garbled_alloc`) |
+| P-QA-04 | Full garbled release (tracker/processor/control) | `LICENSE_VERIFY_GARBLED=1 make license-verify` (`harness=release_qa_garbled_red_team`) |
+
+Nightly CI: `.github/workflows/license-fuzz-nightly.yaml` (Mon 04:00 UTC, 10m + 5m + 5m fuzz). Formal TLC/Alloy models optional under `docs/formal/`.
 
 Non-goals: unbreakable protection on root-owned hosts; hot-path per-request HWID or pubkey decode (startup/recheck only).
 
@@ -146,6 +157,6 @@ Consolidated gate: `make license-verify` (`scripts/ci/license_verify_tier.sh`).
 | M0 | Baseline P-C2/C3/C4 + red-team | M0.2–M0.6 |
 | M1 | Crypto rigor (HWID, rapid) | M1.2–M1.4; M1.1 HKDF vectors; M1.5 fuzz when `LICENSE_VERIFY_FUZZ=1` |
 | M2 | MCK, seal, BPF, Lua, seed | M2.1–M2.5; M2.6 OpenSSL HKDF when `openssl kdf` available |
-| M3 | Release / formal | M3.3 when `LICENSE_VERIFY_GARBLED=1`; TLC/Alloy manual |
+| M3 | Release / formal | M3.4 nightly workflow; M3.5 extended red-team; M3.6 when `LICENSE_VERIFY_RELEASE_QA=1`; M3.3 when `LICENSE_VERIFY_GARBLED=1`; TLC/Alloy manual |
 
 Hot-path alloc subset (V2-C.D6): `make license-alloc-gate`. Full ingest alloc gate: `make test-alloc-gate`.

@@ -39,7 +39,7 @@ func runServe(args []string) {
 	}
 	if *redisURL == "" {
 		if raw := os.Getenv("REDIS_ADDRS"); raw != "" {
-			first := raw
+			var first string
 			if i := strings.Index(raw, ","); i >= 0 {
 				first = strings.TrimSpace(raw[:i])
 			} else {
@@ -65,11 +65,11 @@ func runServe(args []string) {
 	srv.SetDurability(log.DefaultDurabilityConfig())
 
 	ctx, stop := lifecycle.NotifyContext(context.Background())
-	defer stop()
 	coord.Start(ctx)
 
 	if err := srv.Start(); err != nil {
 		slog.Error("broker server start failed", "error", err)
+		stop()
 		os.Exit(1)
 	}
 
@@ -85,5 +85,6 @@ func runServe(args []string) {
 
 	srv.Stop()
 	coord.Stop()
+	stop()
 	slog.Info("broker shutdown complete")
 }

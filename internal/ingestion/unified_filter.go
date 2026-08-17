@@ -171,7 +171,7 @@ type UnifiedFilter struct {
 	clickAmountMicroHalfAny      any
 	impressionAmountMicroHalfAny any
 	ttcMinMsAny                  any
-	impTsTTLAny                  any
+	impTSTTLAny                  any
 	ttcFailClosedAny             any
 	skipBudgetDebitAny           any
 	quotaEnabledAny              any
@@ -232,7 +232,7 @@ func (f *UnifiedFilter) SetSettingsWatcher(sw *SettingsWatcher) {
 
 func (f *UnifiedFilter) SetTTCMin(d time.Duration) {
 	f.ttcMinMsAny = d.Milliseconds()
-	f.impTsTTLAny = int((10 * time.Minute).Seconds())
+	f.impTSTTLAny = int((10 * time.Minute).Seconds())
 }
 
 func (f *UnifiedFilter) SetTTCFailClosed(v bool) {
@@ -688,14 +688,14 @@ func (f *UnifiedFilter) Check(ctx context.Context, evt *domain.Event) error {
 		if err == nil {
 			if campInfo.FreqLimit > 0 && evt.UserID != "" {
 				fcapKey := campInfo.FcapKeyPrefix + evt.UserID
-				go func() {
-					ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+				go func(parent context.Context, key string, window int32) {
+					fcapCtx, cancel := context.WithTimeout(parent, 20*time.Millisecond)
 					defer cancel()
 					pipe := rdb.Pipeline()
-					pipe.Incr(ctx, fcapKey)
-					pipe.Expire(ctx, fcapKey, time.Duration(campInfo.FreqWindow)*time.Second)
-					_, _ = pipe.Exec(ctx)
-				}()
+					pipe.Incr(fcapCtx, key)
+					pipe.Expire(fcapCtx, key, time.Duration(window)*time.Second)
+					_, _ = pipe.Exec(fcapCtx)
+				}(ctx, fcapKey, campInfo.FreqWindow)
 			}
 		}
 		return err
@@ -840,7 +840,7 @@ func (f *UnifiedFilter) runUnifiedLua(
 	keyArgs[14] = &refillNeededKeyVal
 	keyArgs[15] = &kv[14]
 	keyArgs[16] = &kv[15]
-	maxRPDAny := f.fillLuaPrecheckKeys(evt, campInfo, now, precheck, kv[:], keyArgs[:], 17, 18)
+	maxRPDAny := f.fillLuaPrecheckKeys(evt, campInfo, now, precheck, kv, keyArgs[:], 17, 18)
 	if evt.UserID != "" {
 		kv[10].s = unsafeString(wFcap.buf)
 		keyArgs[10] = &kv[10]
@@ -890,7 +890,7 @@ func (f *UnifiedFilter) runUnifiedLua(
 	args[18] = campInfo.FreqWindowAny
 	args[19] = f.ttcMinMsAny
 	args[20] = cachedUnixMilliAny.Load()
-	args[21] = f.impTsTTLAny
+	args[21] = f.impTSTTLAny
 	args[22] = f.ttcFailClosedAny
 	args[23] = f.skipBudgetDebitAny
 	args[24] = f.quotaEnabledAny

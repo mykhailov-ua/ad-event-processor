@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -84,4 +85,12 @@ func TestCampaignList_MediaBuyerScope(t *testing.T) {
 	recGet := httptest.NewRecorder()
 	mux.ServeHTTP(recGet, reqGet)
 	require.Equal(t, http.StatusForbidden, recGet.Code)
+
+	patchBody := `{"name":"hijack"}`
+	reqPatch, _ := http.NewRequest(http.MethodPatch, "/api/v1/campaigns/"+campB.String(), strings.NewReader(patchBody))
+	reqPatch.Header.Set("Content-Type", "application/json")
+	reqPatch.AddCookie(&http.Cookie{Name: "accessToken", Value: token})
+	recPatch := httptest.NewRecorder()
+	mux.ServeHTTP(recPatch, reqPatch)
+	require.Equal(t, http.StatusForbidden, recPatch.Code)
 }

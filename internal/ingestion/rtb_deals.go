@@ -65,7 +65,7 @@ func StartRtbCatalogReloadWatch(
 
 	go func() {
 		pubsub := rdb.Subscribe(ctx, channel)
-		defer pubsub.Close()
+		defer func() { _ = pubsub.Close() }()
 
 		ch := pubsub.Channel(redis.WithChannelSize(64))
 		trigger := make(chan struct{}, 1)

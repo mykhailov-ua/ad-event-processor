@@ -122,10 +122,10 @@ func TestFault_HTTP1_OnTrafficMalformed(t *testing.T) {
 			if tc.wantStatus != 0 {
 				assert.Equal(t, tc.wantStatus, status)
 			}
-			switch {
-			case status == http.StatusAccepted:
+			switch status {
+			case http.StatusAccepted:
 				accepted++
-			case status == 0:
+			case 0:
 				incomplete++
 			default:
 				rejected++

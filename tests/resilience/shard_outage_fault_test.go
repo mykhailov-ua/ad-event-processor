@@ -120,10 +120,7 @@ func TestFault_Shard0Outage(t *testing.T) {
 	assert.Contains(t, bodyShard0, "shard_unavailable", "explicit shard_unavailable body, got %q", bodyShard0)
 
 	unknownID := uuid.New()
-	for {
-		if sharder.GetShard(unknownID) != 0 {
-			break
-		}
+	for sharder.GetShard(unknownID) == 0 {
 		unknownID = uuid.New()
 	}
 	registry.ConfigureStaleMode(1 * time.Millisecond)

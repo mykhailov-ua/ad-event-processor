@@ -63,7 +63,7 @@ var (
 	statusStrings          [600]string
 	maxPoolObjectSize      = 64 * 1024
 	contentTypeProtoHeader = []string{"application/x-protobuf"}
-	contentTypeJsonHeader  = []string{"application/json"}
+	contentTypeJSONHeader  = []string{"application/json"}
 )
 
 type connContext struct {
@@ -203,10 +203,10 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 	mux := http.NewServeMux()
 	trackCORS := newTrackCORS(cfg.TrackCORSOrigins)
 
-	trackDurationObserver := metrics.HttpRequestDuration.WithLabelValues("POST", "/track")
+	trackDurationObserver := metrics.HTTPRequestDuration.WithLabelValues("POST", "/track")
 	var trackStatusCounters [600]prometheus.Counter
 	for i := range 600 {
-		trackStatusCounters[i] = metrics.HttpRequestsTotal.WithLabelValues("POST", "/track", statusStrings[i])
+		trackStatusCounters[i] = metrics.HTTPRequestsTotal.WithLabelValues("POST", "/track", statusStrings[i])
 	}
 
 	trackLatencyRing := NewLatencyRing(defaultLatencyRingCap)
@@ -257,13 +257,13 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 			if status >= 0 && status < 600 {
 				trackStatusCounters[status].Inc()
 			} else {
-				metrics.HttpRequestsTotal.WithLabelValues("POST", "/track", strconv.Itoa(status)).Inc()
+				metrics.HTTPRequestsTotal.WithLabelValues("POST", "/track", strconv.Itoa(status)).Inc()
 			}
 			trackLatencyRing.RecordMono(startMono)
 		}()
 
 		if r.ContentLength > cfg.MaxRequestBodySize {
-			metrics.HttpParseErrors.WithLabelValues("payload_too_large").Inc()
+			metrics.HTTPParseErrors.WithLabelValues("payload_too_large").Inc()
 			status = http.StatusBadRequest
 			http.Error(w, "invalid body", status)
 			return
@@ -298,7 +298,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 			defer putBuffer(buf)
 
 			if _, err := io.Copy(buf, r.Body); err != nil {
-				metrics.HttpParseErrors.WithLabelValues("read_body").Inc()
+				metrics.HTTPParseErrors.WithLabelValues("read_body").Inc()
 				status = http.StatusBadRequest
 				http.Error(w, "invalid body", status)
 				return
@@ -308,7 +308,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 			defer putAdEvent(pbReq)
 
 			if err := unmarshalAdEventVT(pbReq, buf.Bytes()); err != nil {
-				metrics.HttpParseErrors.WithLabelValues("invalid_proto").Inc()
+				metrics.HTTPParseErrors.WithLabelValues("invalid_proto").Inc()
 				status = http.StatusBadRequest
 				http.Error(w, "invalid protobuf", status)
 				return
@@ -316,7 +316,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 
 			var cid uuid.UUID
 			if !ParseUUID(pbReq.CampaignId, &cid) {
-				metrics.HttpParseErrors.WithLabelValues("invalid_campaign_id").Inc()
+				metrics.HTTPParseErrors.WithLabelValues("invalid_campaign_id").Inc()
 				status = http.StatusBadRequest
 				http.Error(w, "invalid campaign_id", status)
 				return
@@ -342,7 +342,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 			defer putBuffer(buf)
 
 			if _, err := io.Copy(buf, r.Body); err != nil {
-				metrics.HttpParseErrors.WithLabelValues("read_body").Inc()
+				metrics.HTTPParseErrors.WithLabelValues("read_body").Inc()
 				status = http.StatusBadRequest
 				http.Error(w, "invalid body", status)
 				return
@@ -359,7 +359,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 				err = ParseTrackRequestJSONOpt(req, buf.Bytes())
 			}
 			if err != nil {
-				metrics.HttpParseErrors.WithLabelValues("invalid_json").Inc()
+				metrics.HTTPParseErrors.WithLabelValues("invalid_json").Inc()
 				status = http.StatusBadRequest
 				http.Error(w, "invalid json", status)
 				return
@@ -411,7 +411,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 			}
 			defer lease.Release()
 
-			outcome := processTrack(trackProc, evt, nil)
+			outcome := processTrack(r.Context(), trackProc, evt, nil)
 			switch outcome.Status {
 			case trackStatusFraudAccepted:
 				recordHTTPFilterReject(outcome.RejectKind)
@@ -449,7 +449,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 			}
 		} else {
 			releaseOpenRTB3Scratch(evt)
-			landing = ResolveLandingURL(registry, creativeStore, evt)
+			landing = ResolveLandingURL(r.Context(), registry, creativeStore, evt)
 		}
 		domain.EventPool.Put(evt)
 
@@ -576,6 +576,7 @@ var (
 	respPlacementBlocked   = []byte("HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\nContent-Length: 17\r\nConnection: keep-alive\r\n\r\nplacement blocked")
 	respSegmentExcluded    = []byte("HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\nContent-Length: 16\r\nConnection: keep-alive\r\n\r\nsegment excluded")
 	respSegmentNotIncluded = []byte("HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\nContent-Length: 21\r\nConnection: keep-alive\r\n\r\nsegment not included")
+	respLinkSigForbidden   = []byte("HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\nContent-Length: 19\r\nConnection: keep-alive\r\n\r\ninvalid link signature")
 	respRegistryStale      = []byte("HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nRetry-After: 1\r\nContent-Length: 14\r\nConnection: keep-alive\r\n\r\nregistry_stale")
 	respShardUnavailable   = []byte("HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nRetry-After: 1\r\nContent-Length: 17\r\nConnection: keep-alive\r\n\r\nshard_unavailable")
 	respHealthzOK          = []byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: keep-alive\r\n\r\nOK")
@@ -588,42 +589,50 @@ var (
 
 type AdsPacketHandler struct {
 	*gnet.BuiltinEventEngine
-	eng                   *gnet.Engine
-	filterEngine          *FilterEngine
-	registry              domain.CampaignRegistry
-	creativeStore         *BrandCreativeStore
-	cfg                   *config.Config
-	pool                  Pinger
-	rdbs                  []redis.UniversalClient
-	sharder               Sharder
-	fraudStream           string
-	trackDurationObserver prometheus.Observer
-	trackStatusCounters   [600]prometheus.Counter
-	trackMetrics          preboundTrackMetrics
-	trackLatencyRing      *LatencyRing
-	healthy               atomic.Int32
-	healthzHits           atomic.Uint64
-	startedAtNano         atomic.Int64
-	rdbsHealthy           []atomic.Int32
-	logger                *logger.Logger
-	loggerShardCounter    atomic.Uint64
-	auditLogSeq           atomic.Uint64
-	auditLogSampleMask    uint64
-	fraudWriter           *FraudStreamWriter
-	trackProc             trackProcessor
-	contextPool           sync.Pool
-	workerPool            *PinnedWorkerPool
-	udpControl            *UDPControl
-	brokerProducer        *BrokerProducer
-	streamProducers       []*StreamProducer
-	trackCORS             trackCORS
-	cidrTable             *CIDRTable
-	cidrMetrics           l1CIDRMetrics
-	proxyVPNTable         *ProxyVPNTable
-	l15ProxyVPNMetrics    l15ProxyVPNMetrics
-	domainPoolTable       *DomainPoolTable
-	campaignFlowTable     *CampaignFlowTable
-	clickProxyClient      *http.Client
+	eng                     *gnet.Engine
+	filterEngine            *FilterEngine
+	registry                domain.CampaignRegistry
+	creativeStore           *BrandCreativeStore
+	cfg                     *config.Config
+	pool                    Pinger
+	rdbs                    []redis.UniversalClient
+	sharder                 Sharder
+	fraudStream             string
+	trackDurationObserver   prometheus.Observer
+	trackStatusCounters     [600]prometheus.Counter
+	trackMetrics            preboundTrackMetrics
+	trackLatencyRing        *LatencyRing
+	healthy                 atomic.Int32
+	healthzHits             atomic.Uint64
+	startedAtNano           atomic.Int64
+	rdbsHealthy             []atomic.Int32
+	logger                  *logger.Logger
+	loggerShardCounter      atomic.Uint64
+	auditLogSeq             atomic.Uint64
+	auditLogSampleMask      uint64
+	fraudWriter             *FraudStreamWriter
+	trackProc               trackProcessor
+	contextPool             sync.Pool
+	workerPool              *PinnedWorkerPool
+	udpControl              *UDPControl
+	brokerProducer          *BrokerProducer
+	streamProducers         []*StreamProducer
+	trackCORS               trackCORS
+	cidrTable               *CIDRTable
+	cidrMetrics             l1CIDRMetrics
+	tlsFingerprintTable     *TLSFingerprintTable
+	tlsFingerprintMetrics   tlsFingerprintMetrics
+	proxyVPNTable           *ProxyVPNTable
+	l15ProxyVPNMetrics      l15ProxyVPNMetrics
+	attestationKeys         []attestationHMACKey
+	attestationInnerScratch [linkHMACBlockSize + attestationPayloadLen]byte
+	linkSigningSecret       []byte
+	linkHMACIpad            [linkHMACBlockSize]byte
+	linkHMACOpad            [linkHMACBlockSize]byte
+	linkSignInnerScratch    [linkSignInnerScratchLen]byte
+	domainPoolTable         *DomainPoolTable
+	campaignFlowTable       *CampaignFlowTable
+	clickProxyClient        *http.Client
 }
 
 // ConfigureCIDR attaches the L1 CIDR/ASN table (RP-M1). Nil disables the
@@ -634,6 +643,27 @@ func (h *AdsPacketHandler) ConfigureCIDR(table *CIDRTable) {
 	}
 	h.cidrTable = table
 	h.cidrMetrics = newL1CIDRMetrics()
+}
+
+// ConfigureTLSFingerprint attaches the L1 TLS JA3/JA4 blocklist (GMA-M1).
+func (h *AdsPacketHandler) ConfigureTLSFingerprint(table *TLSFingerprintTable) {
+	if h == nil {
+		return
+	}
+	h.tlsFingerprintTable = table
+	h.tlsFingerprintMetrics = newTLSFingerprintMetrics()
+}
+
+// ConfigureLinkSigning sets the global HMAC secret for offer-link signing (GMA-M4).
+func (h *AdsPacketHandler) ConfigureLinkSigning(secret []byte) {
+	if h == nil {
+		return
+	}
+	h.linkSigningSecret = append([]byte(nil), secret...)
+	if len(h.linkSigningSecret) == 0 {
+		return
+	}
+	linkInitHMACPads(h.linkSigningSecret, &h.linkHMACIpad, &h.linkHMACOpad)
 }
 
 // ConfigureProxyVPN attaches the L1.5 proxy/VPN table (GM-M1). Nil disables the hook.
@@ -776,10 +806,10 @@ func (h *AdsPacketHandler) write(c gnet.Conn, data []byte, ctx *connContext) {
 }
 
 func NewAdsPacketHandler(cfg *config.Config, registry domain.CampaignRegistry, filterEngine *FilterEngine, pool Pinger, rdbs []redis.UniversalClient, sharder Sharder, fraudStream string, creativeStore *BrandCreativeStore) *AdsPacketHandler {
-	trackDurationObserver := metrics.HttpRequestDuration.WithLabelValues("POST", "/track")
+	trackDurationObserver := metrics.HTTPRequestDuration.WithLabelValues("POST", "/track")
 	var trackStatusCounters [600]prometheus.Counter
 	for i := range 600 {
-		trackStatusCounters[i] = metrics.HttpRequestsTotal.WithLabelValues("POST", "/track", statusStrings[i])
+		trackStatusCounters[i] = metrics.HTTPRequestsTotal.WithLabelValues("POST", "/track", statusStrings[i])
 	}
 
 	h := &AdsPacketHandler{
@@ -855,7 +885,7 @@ func (h *AdsPacketHandler) recordTrackStatus(status int) {
 		h.trackStatusCounters[status].Inc()
 		return
 	}
-	metrics.HttpRequestsTotal.WithLabelValues("POST", "/track", strconv.Itoa(status)).Inc()
+	metrics.HTTPRequestsTotal.WithLabelValues("POST", "/track", strconv.Itoa(status)).Inc()
 }
 
 func (h *AdsPacketHandler) recordMetrics(startMono int64, status int) {
@@ -1044,7 +1074,7 @@ func writeHTTPTrackAccepted(w http.ResponseWriter, wReqID *bufWrapper, requestID
 		return
 	}
 
-	w.Header()["Content-Type"] = contentTypeJsonHeader
+	w.Header()["Content-Type"] = contentTypeJSONHeader
 	w.WriteHeader(http.StatusAccepted)
 	buf := bufferPool.Get().(*bytes.Buffer)
 	defer putBuffer(buf)
@@ -1202,12 +1232,12 @@ func (h *AdsPacketHandler) OnTraffic(c gnet.Conn) (action gnet.Action) {
 				break
 			}
 			if errors.Is(err, errPayloadTooLarge) {
-				metrics.HttpParseErrors.WithLabelValues("payload_too_large").Inc()
+				metrics.HTTPParseErrors.WithLabelValues("payload_too_large").Inc()
 				_, _ = c.Write(respPayloadTooLarge)
 				h.recordTrackStatus(http.StatusRequestEntityTooLarge)
 				return gnet.Close
 			}
-			metrics.HttpParseErrors.WithLabelValues("invalid").Inc()
+			metrics.HTTPParseErrors.WithLabelValues("invalid").Inc()
 			_, _ = c.Write(respBadRequestClose)
 			return gnet.Close
 		}
@@ -1309,6 +1339,8 @@ type parsedHTTPRequest struct {
 	Accept           []byte
 	AcceptEncoding   []byte
 	TLSHash          []byte
+	TLSJA3           []byte
+	TLSJA4           []byte
 	SecCHUA          []byte
 	AcceptLang       []byte
 	Body             []byte
@@ -1317,6 +1349,7 @@ type parsedHTTPRequest struct {
 	ContentLength    int
 	HasContentLength bool
 	ForceSafe        bool
+	Cookie           []byte
 }
 
 var (
@@ -1467,6 +1500,11 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 		return gnet.None
 	}
 
+	if matched, kind := h.tlsFingerprintShouldSafeView(req.TLSJA3, req.TLSJA4, fields.campaignID); matched {
+		h.writeGnetSafeViewTLS(c, ctx, startMono, kind)
+		return gnet.None
+	}
+
 	if matched, connType := h.l15ProxyVPNShouldSafeView(ip, fields.campaignID); matched {
 		h.writeGnetSafeViewL15(c, ctx, startMono, connType)
 		return gnet.None
@@ -1515,7 +1553,7 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 
 		go func(l streamAdmissionLease) {
 			defer l.Release()
-			outcome := processTrack(h.trackProc, evt, fields.deviceType)
+			outcome := processTrack(context.Background(), h.trackProc, evt, fields.deviceType)
 			_ = h.deliverGnetTrack(ctx, acceptStr, originStr, c, evt, startMono, wReqID, requestIDStr, outcome, &l)
 		}(lease)
 
@@ -1542,7 +1580,7 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 		h.trackMetrics.recordFilterReject(filterRejectProducerOverload)
 		return gnet.None
 	}
-	landing := ResolveLandingURL(h.registry, h.creativeStore, &ctx.evt)
+	landing := ResolveLandingURL(context.Background(), h.registry, h.creativeStore, &ctx.evt)
 	h.writeGnetTrackAccepted(ctx, string(req.Accept), string(req.Origin), c, startMono, wReqID, requestIDStr, landing)
 	return gnet.None
 }

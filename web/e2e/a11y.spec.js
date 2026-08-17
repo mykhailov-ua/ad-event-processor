@@ -115,6 +115,7 @@ test.describe('accessibility', () => {
   test('confirm dialog has no critical axe violations', async ({ page }) => {
     await page.goto('/settings');
     await page.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
     const results = await new AxeBuilder({ page })
       .include('[role="dialog"]')
       .analyze();

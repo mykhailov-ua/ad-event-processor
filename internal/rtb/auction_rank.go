@@ -11,13 +11,13 @@ func GeoBitFromHash(geoHash uint32) uint64 {
 
 func (registry *Registry) catalogSlicesValid(reg *CampaignAuctionRegistry) bool {
 	count := reg.Count
-	if !(count <= len(reg.CampaignIDs) && count <= len(reg.Bids) &&
-		count <= len(reg.CTRPPM) && count <= len(reg.Reserves) &&
-		count <= len(reg.DailyBudgets) && count <= len(reg.PacingOpen) &&
-		count <= len(reg.DeviceMasks) && count <= len(reg.CategoryMasks) &&
-		count <= len(reg.GeoHashes) && count <= len(reg.Weights) &&
-		count <= len(reg.BoostPPM) &&
-		count <= len(reg.BudgetIndices) && count <= len(reg.CustomerBudgetIndices)) {
+	if count > len(reg.CampaignIDs) || count > len(reg.Bids) ||
+		count > len(reg.CTRPPM) || count > len(reg.Reserves) ||
+		count > len(reg.DailyBudgets) || count > len(reg.PacingOpen) ||
+		count > len(reg.DeviceMasks) || count > len(reg.CategoryMasks) ||
+		count > len(reg.GeoHashes) || count > len(reg.Weights) ||
+		count > len(reg.BoostPPM) ||
+		count > len(reg.BudgetIndices) || count > len(reg.CustomerBudgetIndices) {
 		return false
 	}
 	geoEnd := reg.GeoBucketSoA.len()
@@ -216,7 +216,8 @@ func (registry *Registry) rankCandidates(
 		if winnerIdx >= 0 && secondBid >= 0 && score < maxScore {
 			break
 		}
-		if score > maxScore {
+		switch {
+		case score > maxScore:
 			if winnerIdx >= 0 {
 				secondBid = winnerBid
 			}
@@ -225,7 +226,7 @@ func (registry *Registry) rankCandidates(
 			winnerBid = bid
 			winnerWeight = weights[pos]
 			winnerCreative = creativeIDs[pos]
-		} else if score == maxScore && winnerIdx >= 0 {
+		case score == maxScore && winnerIdx >= 0:
 			if weights[pos] > winnerWeight {
 				secondBid = winnerBid
 				winnerIdx = i
@@ -236,7 +237,7 @@ func (registry *Registry) rankCandidates(
 			if bid > secondBid {
 				secondBid = bid
 			}
-		} else if winnerIdx >= 0 && bid > secondBid {
+		case winnerIdx >= 0 && bid > secondBid:
 			secondBid = bid
 		}
 	}

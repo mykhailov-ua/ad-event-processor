@@ -151,6 +151,10 @@ func loadManagementModules(cfg *Config) {
 	cfg.Management.CloudflareAPIToken = Secret(strings.TrimSpace(os.Getenv("CLOUDFLARE_API_TOKEN")))
 	cfg.Management.CloudflareAPIBase = strings.TrimSpace(os.Getenv("CLOUDFLARE_API_BASE"))
 	cfg.Management.CloudflareDNSTarget = strings.TrimSpace(os.Getenv("CLOUDFLARE_DNS_TARGET"))
+	cfg.Management.DomainReputationEnabled = getEnvBool("DOMAIN_REPUTATION_ENABLED", true)
+	cfg.Management.SafeBrowsingAPIKey = Secret(strings.TrimSpace(os.Getenv("SAFE_BROWSING_API_KEY")))
+	cfg.Management.FacebookGraphAccessToken = Secret(strings.TrimSpace(os.Getenv("FACEBOOK_GRAPH_ACCESS_TOKEN")))
+	cfg.Management.FacebookGraphAPIBase = strings.TrimSpace(os.Getenv("FACEBOOK_GRAPH_API_BASE"))
 	cfg.Management.CaddyTLSAskToken = Secret(strings.TrimSpace(os.Getenv("CADDY_TLS_ASK_TOKEN")))
 	cfg.Management.CaddyTLSAskAllowLocal = getEnvBool("CADDY_TLS_ASK_ALLOW_LOCAL", true)
 

@@ -1,0 +1,65 @@
+// TLS JA3/JA4 blocklist benches (harness: ja3_ja4_filter).
+package ingestion
+
+import (
+	"testing"
+
+	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/google/uuid"
+)
+
+var tlsFingerprintBenchSink bool
+
+func benchTLSFingerprintTable(tb testing.TB, n int) (*TLSFingerprintTable, [][]byte) {
+	tb.Helper()
+	lines := make([]byte, 0, n*32)
+	for i := 0; i < n; i++ {
+		lines = append(lines, "ja3:771,4865-"...)
+		lines = appendInt64(lines, int64(i))
+		lines = append(lines, '\n')
+	}
+	ja3, ja4 := parseTLSFingerprintFeed(lines)
+	table := NewTLSFingerprintTable()
+	table.Publish(buildTLSFingerprintSnapshot(ja3, ja4, 1))
+
+	probes := make([][]byte, 64)
+	for i := range probes {
+		probes[i] = appendInt64(nil, int64(i))
+	}
+	return table, probes
+}
+
+// BenchmarkTLS_Fingerprint_Lookup (harness: ja3_ja4_filter) — B-GMA-M1, < 50 ns, 0 allocs.
+func BenchmarkTLS_Fingerprint_Lookup(b *testing.B) {
+	table, probes := benchTLSFingerprintTable(b, 10_000)
+	ja3 := []byte("771,4865-42")
+	b.ReportAllocs()
+	b.ResetTimer()
+	var hit bool
+	for i := 0; i < b.N; i++ {
+		hit = table.MatchJA3(probes[i&63]) || table.MatchJA3(ja3)
+	}
+	tlsFingerprintBenchSink = tlsFingerprintBenchSink || hit
+}
+
+// BenchmarkTLS_Fingerprint_MatchBranch_SafeView (harness: ja3_ja4_filter) — B-GMA-M1b hook path.
+func BenchmarkTLS_Fingerprint_MatchBranch_SafeView(b *testing.B) {
+	table, probes := benchTLSFingerprintTable(b, 50_000)
+	h := &AdsPacketHandler{
+		tlsFingerprintTable:   table,
+		tlsFingerprintMetrics: newTLSFingerprintMetrics(),
+		registry: stubCampaignRegistry{
+			camp: &domain.Campaign{TLSFingerprintBlockEnabled: true},
+			ok:   true,
+		},
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	var hit bool
+	for i := 0; i < b.N; i++ {
+		hit, _ = h.tlsFingerprintShouldSafeView(probes[i&63], nil, uuidNil)
+	}
+	tlsFingerprintBenchSink = tlsFingerprintBenchSink || hit
+}
+
+var uuidNil = uuid.MustParse("00000000-0000-4000-8000-000000000001")

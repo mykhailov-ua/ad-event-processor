@@ -2,6 +2,7 @@ package ingestion
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -110,7 +111,7 @@ func TestFault_LocalQuantaFullSkip_BudgetInvariant(t *testing.T) {
 
 	syncKey := "budget:sync:campaign:" + campaignID.String()
 	syncDelta, err := counter.Get(ctx, syncKey).Int64()
-	if err == redis.Nil {
+	if errors.Is(err, redis.Nil) {
 		syncDelta = 0
 	} else {
 		require.NoError(t, err)

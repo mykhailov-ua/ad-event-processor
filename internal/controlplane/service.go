@@ -17,6 +17,7 @@ import (
 	db "github.com/bidshard/ad-event-processor/internal/domain/db"
 	"github.com/bidshard/ad-event-processor/internal/metrics"
 	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"github.com/bidshard/ad-event-processor/pkg/domainhealth"
 	"github.com/bidshard/ad-event-processor/pkg/money"
 	"github.com/bidshard/ad-event-processor/pkg/pgfailover"
 
@@ -55,6 +56,7 @@ type Service struct {
 	globalSpend     *GlobalSpendReconciler
 	rtbBidShadeSim  RtbBidShadeSimulator
 	cloudflare      CloudflareAPI
+	reputation      *domainhealth.ReputationChecker
 	shard0Mu        sync.Mutex
 }
 

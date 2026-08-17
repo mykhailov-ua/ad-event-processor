@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/database"
@@ -15,17 +14,18 @@ import (
 )
 
 type GeoROIRowDTO struct {
-	Country      string  `json:"country"`
-	Impressions  int64   `json:"impressions"`
-	Clicks       int64   `json:"clicks"`
-	Conversions  int64   `json:"conversions"`
-	IVTEvents    int64   `json:"ivt_events"`
-	IVTRate      float64 `json:"ivt_rate"`
-	SpendMicro   int64   `json:"spend_micro"`
-	RevenueMicro int64   `json:"revenue_micro"`
-	ProfitMicro  int64   `json:"profit_micro"`
-	ROIPct       float64 `json:"roi_pct"`
-	CTR          float64 `json:"ctr"`
+	Country      string               `json:"country"`
+	Impressions  int64                `json:"impressions"`
+	Clicks       int64                `json:"clicks"`
+	Conversions  int64                `json:"conversions"`
+	IVTEvents    int64                `json:"ivt_events"`
+	IVTRate      float64              `json:"ivt_rate"`
+	SpendMicro   int64                `json:"spend_micro"`
+	RevenueMicro int64                `json:"revenue_micro"`
+	ProfitMicro  int64                `json:"profit_micro"`
+	ROIPct       float64              `json:"roi_pct"`
+	CTR          float64              `json:"ctr"`
+	Compare      *ReportCompareDeltas `json:"compare,omitempty"`
 }
 
 type GeoROIReportResponse struct {
@@ -133,13 +133,7 @@ func (reports *ReportsHTTPHandlers) getGeoROIReport(w http.ResponseWriter, r *ht
 		reports.writeServiceError(w, err)
 		return
 	}
-	limit := int32(50)
-	if lStr := r.URL.Query().Get("limit"); lStr != "" {
-		if l, parseErr := strconv.Atoi(lStr); parseErr == nil && l > 0 {
-			limit = int32(l)
-		}
-	}
-	page, err := coldpath.Paginate(r.URL.Query().Get("cursor"), int(limit), 1000)
+	page, err := coldpath.ParseCursorPagination(r, 50, 1000)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid cursor")
 		return
@@ -162,6 +156,15 @@ func (reports *ReportsHTTPHandlers) getGeoROIReport(w http.ResponseWriter, r *ht
 	if err != nil {
 		reports.writeServiceError(w, err)
 		return
+	}
+	if parseComparePrevious(r) {
+		prevFrom, prevTo := previousReportRange(from, to)
+		prevRows, _, perr := queryGeoROIRows(chCtx, reports.CHQuery, campaignIDs, prevFrom, prevTo, page.Limit, page.Offset)
+		if perr != nil {
+			reports.writeServiceError(w, perr)
+			return
+		}
+		attachGeoCompareDeltas(rows, prevRows)
 	}
 	var nextCursor string
 	if int64(page.Offset)+int64(len(rows)) < total {

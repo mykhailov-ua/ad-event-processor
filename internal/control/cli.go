@@ -1,3 +1,4 @@
+// Package control implements control support for BidShard.
 package control
 
 import (

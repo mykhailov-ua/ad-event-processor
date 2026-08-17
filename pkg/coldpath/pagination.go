@@ -3,6 +3,7 @@ package coldpath
 import (
 	"encoding/base64"
 	"fmt"
+	"net/http"
 	"strconv"
 )
 
@@ -61,4 +62,18 @@ func ClampLimitOffset(limit, offset, defaultLimit, maxLimit int32) (int32, int32
 		offset = 0
 	}
 	return limit, offset
+}
+
+// ParseCursorPagination reads limit from the query string and decodes cursor into offset/limit.
+func ParseCursorPagination(r *http.Request, defaultLimit, maxLimit int) (Page, error) {
+	if r == nil {
+		return Page{}, ErrNilRequest
+	}
+	limit := defaultLimit
+	if lStr := r.URL.Query().Get("limit"); lStr != "" {
+		if l, err := strconv.Atoi(lStr); err == nil && l > 0 {
+			limit = l
+		}
+	}
+	return Paginate(r.URL.Query().Get("cursor"), limit, maxLimit)
 }

@@ -10,11 +10,19 @@ const COMPLETED_JOB = {
   customer_id: CUSTOMER_ID,
   format: 'csv',
   status: 'COMPLETED',
-  bytes: 4096,
+  bytes: 0,
   download_url: `/api/v1/billing/exports/${JOB_ID}/download`,
   created_at: '2026-08-12T10:00:00Z',
   completed_at: '2026-08-12T10:00:05Z',
 };
+
+const LEDGER_CSV = [
+  'id,amount_micro,ledger_type,created_at',
+  '42,1500000,TOPUP,2026-08-12T10:00:00Z',
+  '',
+].join('\n');
+
+COMPLETED_JOB.bytes = LEDGER_CSV.length;
 
 test('billing exports create, poll, and show download', async ({ page }) => {
   await mockAuthedSession(page, ADMIN_USER);
@@ -22,6 +30,7 @@ test('billing exports create, poll, and show download', async ({ page }) => {
   let createCalled = false;
   let pollCount = 0;
   let downloadCalled = false;
+  let downloadBody = '';
 
   await page.route('**/api/v1/billing/exports', async (route) => {
     if (route.request().method() === 'POST') {
@@ -54,10 +63,11 @@ test('billing exports create, poll, and show download', async ({ page }) => {
 
   await page.route(`**/api/v1/billing/exports/${JOB_ID}/download`, async (route) => {
     downloadCalled = true;
+    downloadBody = LEDGER_CSV;
     await route.fulfill({
       status: 200,
       headers: { 'content-type': 'text/csv' },
-      body: 'id,amount_micro,ledger_type,created_at\n',
+      body: LEDGER_CSV,
     });
   });
 
@@ -73,8 +83,13 @@ test('billing exports create, poll, and show download', async ({ page }) => {
   await expect(page.getByText('Export queued')).toBeVisible();
   await expect.poll(() => pollCount).toBeGreaterThanOrEqual(2);
   await expect(page.getByTestId(`billing-export-download-${JOB_ID}`)).toBeVisible();
-  await expect(page.getByText('4096')).toBeVisible();
+  await expect(page.getByText(String(COMPLETED_JOB.bytes))).toBeVisible();
 
   await page.getByTestId(`billing-export-download-${JOB_ID}`).click();
   await expect.poll(() => downloadCalled).toBe(true);
+  const csvLines = downloadBody.trim().split('\n');
+  expect(csvLines.length).toBeGreaterThanOrEqual(2);
+  expect(csvLines[0]).toBe('id,amount_micro,ledger_type,created_at');
+  expect(downloadBody).toContain('TOPUP');
+  expect(downloadBody).toContain('1500000');
 });

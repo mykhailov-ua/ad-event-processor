@@ -18,14 +18,14 @@ func TestClient_DialFailure(t *testing.T) {
 func TestClient_TimeoutExpiry(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 
 	go func() {
 		conn, acceptErr := ln.Accept()
 		if acceptErr != nil {
 			return
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 		time.Sleep(200 * time.Millisecond)
 	}()
 
@@ -39,14 +39,14 @@ func TestClient_TimeoutExpiry(t *testing.T) {
 func TestClient_HungServer(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 
 	go func() {
 		conn, acceptErr := ln.Accept()
 		if acceptErr != nil {
 			return
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 		buf := make([]byte, 64)
 		_, _ = conn.Read(buf)
 	}()

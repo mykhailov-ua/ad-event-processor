@@ -3,6 +3,7 @@ package platformconfig
 import (
 	"testing"
 
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -34,9 +35,9 @@ func TestPatchPreservesSecrets(t *testing.T) {
 	base.Stripe.SecretKey = "sk_live_secret"
 
 	patch := Patch{
-		TrackingDomain: strPtr("trk.new.com"),
+		TrackingDomain: coldpath.Ptr("trk.new.com"),
 		Stripe: &StripePatch{
-			Enabled: boolPtr(true),
+			Enabled: coldpath.Ptr(true),
 		},
 	}
 	got, err := patch.Apply(base)
@@ -92,6 +93,3 @@ func TestValidate_rejectsRemovedK8sProfile(t *testing.T) {
 	cfg.Profile = "k8s_k3s"
 	require.Error(t, cfg.Validate())
 }
-
-func strPtr(s string) *string { return &s }
-func boolPtr(b bool) *bool    { return &b }

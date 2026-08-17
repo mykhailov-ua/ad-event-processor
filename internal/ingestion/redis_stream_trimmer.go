@@ -2,6 +2,7 @@ package ingestion
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -83,7 +84,7 @@ func (t *RedisStreamTrimmer) TrimOnce(ctx context.Context) {
 				continue
 			}
 			cmd := rdb.XTrimMaxLenApprox(ctx, stream, int64(t.cfg.MaxLen), 0)
-			if err := cmd.Err(); err != nil && err != redis.Nil {
+			if err := cmd.Err(); err != nil && !errors.Is(err, redis.Nil) {
 				slog.Debug("redis stream xtrim error", "shard", i, "stream", stream, "error", err)
 			}
 		}

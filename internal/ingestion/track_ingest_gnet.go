@@ -3,7 +3,6 @@ package ingestion
 import (
 	"context"
 	"net/http"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
@@ -160,9 +159,7 @@ func (h *AdsPacketHandler) deliverGnetTrack(
 		if lease != nil {
 			if !h.publishAcceptedTrack(evt, lease) {
 				if h.filterEngine != nil {
-					rbCtx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
-					h.filterEngine.RollbackDebit(rbCtx, evt, h.registry)
-					cancel()
+					h.filterEngine.RollbackDebit(context.Background(), evt, h.registry)
 				}
 				spec := filterRejectSpecs[filterRejectProducerOverload]
 				h.trackMetrics.recordFilterReject(filterRejectProducerOverload)
@@ -172,9 +169,7 @@ func (h *AdsPacketHandler) deliverGnetTrack(
 			}
 		} else if !h.publishAcceptedTrack(evt, nil) {
 			if h.filterEngine != nil {
-				rbCtx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
-				h.filterEngine.RollbackDebit(rbCtx, evt, h.registry)
-				cancel()
+				h.filterEngine.RollbackDebit(context.Background(), evt, h.registry)
 			}
 			spec := filterRejectSpecs[filterRejectProducerOverload]
 			h.trackMetrics.recordFilterReject(filterRejectProducerOverload)

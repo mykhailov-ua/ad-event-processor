@@ -24,6 +24,7 @@ func main() {
 	pctClickProxy := flag.Int("pct-click-proxy", 0, "GET /click % carved out of the valid bucket (proxy delivery when campaign is configured)")
 	pctProxyVPN := flag.Int("pct-proxy-vpn", 0, "POST /track % with mock proxy/VPN X-Forwarded-For (carved from valid bucket)")
 	pctFlowRoute := flag.Int("pct-flow-route", 0, "GET /click % with flow_id query (carved from valid bucket; GM-M3 drill)")
+	pctJA3Block := flag.Int("pct-ja3-block", 0, "GET /click % with X-TLS-JA3 header (carved from valid bucket; GMA-M1 drill)")
 	profile := flag.String("profile", "constant", "constant|spike")
 	baseRate := flag.Int("base-rate", 200, "spike profile base RPS")
 	spikeMult := flag.Int("spike-mult", 10, "spike profile peak multiplier")
@@ -71,6 +72,13 @@ func main() {
 		}
 		mix.pctValid -= pct
 		mix.pctFlowRoute = pct
+	}
+	if pct := *pctJA3Block; pct > 0 {
+		if pct > mix.pctValid {
+			pct = mix.pctValid
+		}
+		mix.pctValid -= pct
+		mix.pctJA3Block = pct
 	}
 	hist := newHistogram()
 	run := newRunner(bases, *edgeURL, *oversize, mix, hist)

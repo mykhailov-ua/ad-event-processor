@@ -58,8 +58,8 @@ func TestCalcQualityFromDrift_monotone(t *testing.T) {
 
 func TestToPlacementReportRowDTO_math(t *testing.T) {
 	t.Parallel()
-	row := toPlacementReportRowDTO(placementReportCHRow{
-		PlacementID:  "p1",
+	row := toPlacementReportRowDTO(reportMetricsCHRow{
+		Dimension:    "p1",
 		CampaignID:   "c1",
 		Impressions:  1000,
 		Clicks:       50,

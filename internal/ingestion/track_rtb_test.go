@@ -1,6 +1,7 @@
 package ingestion
 
 import (
+	"context"
 	"testing"
 
 	"github.com/bidshard/ad-event-processor/internal/domain"
@@ -34,7 +35,7 @@ func TestProcessTrack_rtbLiveSelectsWinner(t *testing.T) {
 		Type:       "click",
 	}
 
-	out := processTrack(proc, evt, []byte("desktop"))
+	out := processTrack(context.Background(),proc, evt, []byte("desktop"))
 	assert.Equal(t, trackStatusAccepted, out.Status)
 	assert.Equal(t, winnerID, evt.CampaignID)
 }
@@ -50,7 +51,7 @@ func TestProcessTrack_rtbLiveNoBidRejects(t *testing.T) {
 	}
 	evt := &domain.Event{CampaignID: uuid.New(), Type: "click"}
 
-	out := processTrack(proc, evt, nil)
+	out := processTrack(context.Background(),proc, evt, nil)
 	require.Equal(t, trackStatusRejected, out.Status)
 	assert.Equal(t, filterRejectBidFloor, out.RejectKind)
 }
@@ -76,7 +77,7 @@ func TestProcessTrack_rtbShadowKeepsClientCampaign(t *testing.T) {
 	}
 	evt := &domain.Event{CampaignID: clientID, IP: "8.8.8.8", Type: "click"}
 
-	out := processTrack(proc, evt, nil)
+	out := processTrack(context.Background(),proc, evt, nil)
 	assert.Equal(t, trackStatusAccepted, out.Status)
 	assert.Equal(t, clientID, evt.CampaignID)
 }

@@ -447,7 +447,8 @@ func parseTrackJSONLegacy(v *TrackRequest, data []byte) error {
 			}
 		}
 
-		if isCampaignID || isUserID || isType || isClickID || isPlacementID {
+		switch {
+		case isCampaignID || isUserID || isType || isClickID || isPlacementID:
 			if data[i] != '"' {
 				return errMalformedJSON
 			}
@@ -467,20 +468,21 @@ func parseTrackJSONLegacy(v *TrackRequest, data []byte) error {
 			i++
 
 			valBytes := data[valStart:valEnd]
-			if isCampaignID {
+			switch {
+			case isCampaignID:
 				if !ParseUUID(valBytes, &v.CampaignID) {
 					return errMalformedJSON
 				}
-			} else if isUserID {
+			case isUserID:
 				v.UserID = unsafeString(valBytes)
-			} else if isType {
+			case isType:
 				v.Type = unsafeString(valBytes)
-			} else if isClickID {
+			case isClickID:
 				v.ClickID = unsafeString(valBytes)
-			} else if isPlacementID {
+			case isPlacementID:
 				v.PlacementID = unsafeString(valBytes)
 			}
-		} else if isPayload {
+		case isPayload:
 			valStart := i
 			valEnd, err := skipJSONValue(data, i)
 			if err != nil {
@@ -488,7 +490,7 @@ func parseTrackJSONLegacy(v *TrackRequest, data []byte) error {
 			}
 			v.Payload = data[valStart:valEnd]
 			i = valEnd
-		} else {
+		default:
 			valEnd, err := skipJSONValue(data, i)
 			if err != nil {
 				return err

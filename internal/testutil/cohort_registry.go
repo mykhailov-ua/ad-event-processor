@@ -1,3 +1,4 @@
+// Package testutil implements testutil support for BidShard.
 package testutil
 
 import (

@@ -1,6 +1,7 @@
 package ingestion
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -110,7 +111,7 @@ func TestParseBrokerPayloadStream_RawVTProto(t *testing.T) {
 
 func TestParseBrokerPayload_Unrecognized(t *testing.T) {
 	_, err := ParseBrokerPayload([]byte("not-a-proto"))
-	if err != ErrBrokerPayloadUnrecognized {
+	if !errors.Is(err, ErrBrokerPayloadUnrecognized) {
 		t.Fatalf("expected ErrBrokerPayloadUnrecognized, got %v", err)
 	}
 }

@@ -1,3 +1,4 @@
+// Package client implements broker client helpers.
 package client
 
 import (

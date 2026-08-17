@@ -31,5 +31,7 @@ func TestAuthenticatedUser_HasBoundCustomer(t *testing.T) {
 	t.Parallel()
 	require.True(t, (AuthenticatedUser{Role: RoleUser}).HasBoundCustomer())
 	require.True(t, (AuthenticatedUser{Role: RoleBuyer}).HasBoundCustomer())
+	require.True(t, (AuthenticatedUser{Role: RoleMediaBuyer}).HasBoundCustomer())
+	require.True(t, (AuthenticatedUser{Role: RolePublisher}).HasBoundCustomer())
 	require.False(t, (AuthenticatedUser{Role: RoleAdmin}).HasBoundCustomer())
 }

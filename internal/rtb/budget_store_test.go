@@ -87,7 +87,7 @@ func TestBudgetStore_getBudget_noPanicUnderSnapshotRace(t *testing.T) {
 
 	tmpDir, err := os.MkdirTemp("", "rtb-budget-panic-*")
 	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 	snapPath := filepath.Join(tmpDir, "snap.bin")
 	require.NoError(t, reg.SaveSnapshot(snapPath))
 

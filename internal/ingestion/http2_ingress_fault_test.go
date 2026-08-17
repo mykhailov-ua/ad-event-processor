@@ -54,8 +54,8 @@ func buildH2WireAfterPreface(frames []byte) []byte {
 func buildH2Frame(streamID uint32, typ, flags byte, payload []byte) []byte {
 	hdr := make([]byte, 9)
 	encodeH2FrameHeader(hdr, uint32(len(payload)), typ, flags, streamID)
-	out := append(hdr, payload...)
-	return out
+	hdr = append(hdr, payload...)
+	return hdr
 }
 
 func buildH2HeadersDataFrames(streamID uint32, hdrBlock, body []byte) []byte {

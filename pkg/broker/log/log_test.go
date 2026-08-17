@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestSegmentWriteAndRead(t *testing.T) {
@@ -12,13 +14,13 @@ func TestSegmentWriteAndRead(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
+	defer func() { _ = os.RemoveAll(dir) }()
 
 	seg, err := NewSegment(dir, 0, 1024*1024, 4096, true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer seg.Close()
+	defer func() { _ = seg.Close() }()
 
 	payload := []byte("hello world")
 	pos, err := seg.Write(100, payload)
@@ -52,7 +54,7 @@ func BenchmarkSegmentWrite(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
+	defer func() { _ = os.RemoveAll(dir) }()
 
 	maxSize := int64(b.N) * 100
 	if maxSize < 1024*1024 {
@@ -62,7 +64,7 @@ func BenchmarkSegmentWrite(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer seg.Close()
+	defer func() { _ = seg.Close() }()
 
 	payload := []byte("hello world")
 
@@ -82,7 +84,7 @@ func TestSegmentRecoveryWithMalformedTail(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
+	defer func() { _ = os.RemoveAll(dir) }()
 
 	seg, err := NewSegment(dir, 0, 1024*1024, 4096, true)
 	if err != nil {
@@ -107,7 +109,7 @@ func TestSegmentRecoveryWithMalformedTail(t *testing.T) {
 	}
 
 	logPath := filepath.Join(dir, fmt.Sprintf("%020d.log", 0))
-	f, err := os.OpenFile(logPath, os.O_WRONLY|os.O_APPEND, 0644)
+	f, err := os.OpenFile(logPath, os.O_WRONLY|os.O_APPEND, 0o644)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,13 +118,13 @@ func TestSegmentRecoveryWithMalformedTail(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.Close()
+	require.NoError(t, f.Close())
 
 	seg2, err := NewSegment(dir, 0, 1024*1024, 4096, true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer seg2.Close()
+	defer func() { _ = seg2.Close() }()
 
 	nextOffset, err := seg2.Recover()
 	if err != nil {

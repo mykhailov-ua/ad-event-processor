@@ -3,6 +3,7 @@ package controlplane
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -147,7 +148,7 @@ func (s *Service) AssignCampaignFlow(ctx context.Context, campaignID, flowID uui
 		var one int
 		err := s.pool.QueryRow(ctx, `SELECT 1 FROM flows WHERE id = $1`, flowID).Scan(&one)
 		if err != nil {
-			if err == pgx.ErrNoRows {
+			if errors.Is(err, pgx.ErrNoRows) {
 				return fmt.Errorf("flow not found")
 			}
 			return err

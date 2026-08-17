@@ -26,9 +26,9 @@ func TestChaos_ParserSecurity_PS_G09_UnicodeKeyRejected(t *testing.T) {
 func TestChaos_ParserSecurity_PS_G10_DuplicateKeyLastWins(t *testing.T) {
 	body := []byte(`{"id":"first","id":"second","imp":[{"id":"imp-b"}]}`)
 	parsed := ParseOpenRTB26(body)
-	require.True(t, parsed.OpenRTB26Hot.OK)
-	require.Equal(t, "second", string(parsed.OpenRTB26Hot.RequestID[:parsed.OpenRTB26Hot.RequestIDLen]))
-	require.Equal(t, "imp-b", string(parsed.OpenRTB26Hot.ImpID[:parsed.OpenRTB26Hot.ImpIDLen]))
+	require.True(t, parsed.OK)
+	require.Equal(t, "second", string(parsed.RequestID[:parsed.RequestIDLen]))
+	require.Equal(t, "imp-b", string(parsed.ImpID[:parsed.ImpIDLen]))
 	faultproof.Log(t, "parser_security_ps_g10", map[string]string{
 		"gap_id": "PS-G10",
 		"gap":    "closed",

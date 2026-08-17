@@ -1,3 +1,4 @@
+// Package xdpstats reads pinned BPF map counters for edge XDP diagnostics.
 package xdpstats
 
 import (

@@ -1,6 +1,7 @@
 package log
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -15,7 +16,7 @@ func openTestPartition(t *testing.T, maxSegSize int64) (*PartitionLog, string) {
 	}
 	t.Cleanup(func() { _ = os.RemoveAll(dir) })
 
-	pl, err := NewPartitionLog(dir, maxSegSize, 4096)
+	pl, err := NewPartitionLog(context.Background(), dir, maxSegSize, 4096)
 	if err != nil {
 		t.Fatal(err)
 	}

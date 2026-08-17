@@ -18,7 +18,7 @@ func TestFetch_MaxBytesBoundary(t *testing.T) {
 
 	cli := client.NewClient(srv.Addr(), 2*time.Second)
 	require.NoError(t, cli.Connect())
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	small := make([]byte, 32)
 	large := make([]byte, 256)
