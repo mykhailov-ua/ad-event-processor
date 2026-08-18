@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# RP-M4 smoke: Caddy on-demand TLS ask endpoint + optional live SNI probe.
+# On-demand TLS smoke: Caddy on-demand TLS ask endpoint + optional live SNI probe.
 # Usage:
 #   CONTROL_URL=http://127.0.0.1:8188 bash scripts/test/domain_on_demand_tls_smoke.sh
 #   DOMAIN_TLS_SMOKE_HOST=buyer.example.com CONTROL_URL=... bash scripts/test/domain_on_demand_tls_smoke.sh

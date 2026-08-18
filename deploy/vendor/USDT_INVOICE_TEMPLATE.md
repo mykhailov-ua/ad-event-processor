@@ -36,7 +36,7 @@ Invoice for your on-prem BidShard license (**{{TIER}}** / SKU `{{SKU_CODE}}`). O
 1. Admin UI → **Settings** → License → paste JWT → **Apply**, or  
 2. `bash scripts/install/ad-event-processor-install.sh license-apply '<JWT>'`
 
-Docs: [PILOT_LICENSE.md](../../docs/PILOT_LICENSE.md) · [QUICKSTART § upgrade](../../docs/QUICKSTART.md#license-tier-upgrade-no-reinstall)
+Docs: [LICENSE.md](../../docs/LICENSE.md) · [QUICKSTART § upgrade](../../docs/QUICKSTART.md#license-tier-upgrade-no-reinstall)
 
 Tier limits reference: [sku.yaml](./sku.yaml) · internal ladder: [SALES_KIT.md](./SALES_KIT.md)
 

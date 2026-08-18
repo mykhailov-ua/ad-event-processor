@@ -22,7 +22,7 @@ import (
 
 func TestPaymentService_Integration(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping testcontainers integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := dbtest.SetupTestDB(t)

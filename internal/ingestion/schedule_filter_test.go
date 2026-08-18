@@ -86,7 +86,7 @@ func TestScheduleFilter_BlocksOutsideDaypart(t *testing.T) {
 
 func TestBrandCreativeStore_LoadFromRedis(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	store := NewBrandCreativeStore(nil, 0)

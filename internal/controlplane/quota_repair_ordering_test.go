@@ -74,7 +74,7 @@ func (m *incrFailOnceQuotaRedis) Set(ctx context.Context, key string, value inte
 
 func TestApplyQuotaRepair_topUpRedis_pgFailurePreservesQuotaKey(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()
@@ -111,7 +111,7 @@ func TestApplyQuotaRepair_topUpRedis_pgFailurePreservesQuotaKey(t *testing.T) {
 
 func TestApplyQuotaRepair_topUpRedis_retryAfterPgCommit(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()

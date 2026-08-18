@@ -13,7 +13,7 @@ import (
 
 func TestMLManualLabels_customerScoped(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -56,7 +56,7 @@ func TestMLManualLabels_customerScoped(t *testing.T) {
 
 func TestBulkUpsertMLManualLabelsForCustomer(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)

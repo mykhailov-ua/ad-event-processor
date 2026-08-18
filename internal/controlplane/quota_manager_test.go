@@ -41,7 +41,7 @@ func TestQuotaManager_refillCampaign_modes(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			if testing.Short() {
-				t.Skip("integration test")
+				t.Skip("integration: run make test-integration (Docker testcontainers)")
 			}
 
 			ctx := context.Background()

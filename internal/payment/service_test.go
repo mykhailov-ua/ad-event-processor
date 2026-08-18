@@ -16,7 +16,7 @@ import (
 
 func TestProcessStripeWebhook_noDoubleSettlement(t *testing.T) {
 	if testing.Short() {
-		t.Skip("requires testcontainers")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := dbtest.SetupTestDB(t)
@@ -55,7 +55,7 @@ func TestProcessStripeWebhook_noDoubleSettlement(t *testing.T) {
 
 func TestProcessStripeWebhook_zeroAmountRejected(t *testing.T) {
 	if testing.Short() {
-		t.Skip("requires testcontainers")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := dbtest.SetupTestDB(t)
@@ -86,7 +86,7 @@ func TestProcessStripeWebhook_zeroAmountRejected(t *testing.T) {
 
 func TestProcessStripeWebhook_amountMismatch(t *testing.T) {
 	if testing.Short() {
-		t.Skip("requires testcontainers")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := dbtest.SetupTestDB(t)

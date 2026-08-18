@@ -26,7 +26,7 @@ func (g stubOpKeyGate) ShouldShed() bool { return g.shed }
 func TestOperationLeaseConditions(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	cases := []struct {

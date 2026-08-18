@@ -21,7 +21,7 @@ import (
 
 func TestGetShardHealth_reportsPingAndConfigVersion(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -59,7 +59,7 @@ func TestGetShardHealth_reportsPingAndConfigVersion(t *testing.T) {
 
 func TestGetShardHealth_configVersionLag(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -96,7 +96,7 @@ func TestGetShardHealth_configVersionLag(t *testing.T) {
 
 func TestHandler_OpsShards_requiresPermShardsRead(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -128,7 +128,7 @@ func TestHandler_OpsShards_requiresPermShardsRead(t *testing.T) {
 
 func TestHandler_OpsShards_roleUserForbidden(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)

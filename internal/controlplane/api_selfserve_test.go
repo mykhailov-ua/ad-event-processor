@@ -20,7 +20,7 @@ import (
 
 func TestSelfServe_CreateCampaign_requiresIdempotencyKey(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -57,7 +57,7 @@ func TestSelfServe_CreateCampaign_requiresIdempotencyKey(t *testing.T) {
 
 func TestSelfServe_CreateCampaign_insufficientBalance(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -99,7 +99,7 @@ func TestSelfServe_CreateCampaign_insufficientBalance(t *testing.T) {
 
 func TestSelfServe_APIKey_requiresAuthService(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -127,7 +127,7 @@ func TestSelfServe_APIKey_requiresAuthService(t *testing.T) {
 
 func TestSelfServe_PauseResume(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -169,7 +169,7 @@ func TestSelfServe_PauseResume(t *testing.T) {
 
 func TestSelfServe_PaymentIntent_requiresIdempotencyKey(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)

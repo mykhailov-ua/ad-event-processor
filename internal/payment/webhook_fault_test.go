@@ -11,7 +11,7 @@ import (
 
 func TestFault_PaymentWebhookExpiredSignatureRejected(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	secret := "stripe_fault_wh_secret"

@@ -39,7 +39,7 @@ func countReconFindingsByKind(t *testing.T, pool *pgxpool.Pool, runID int64, kin
 
 func TestFinancialReconRun_persistsRunAndFindings(t *testing.T) {
 	if testing.Short() {
-		t.Skip("requires testcontainers")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := dbtest.SetupTestDB(t)
@@ -63,7 +63,7 @@ func TestFinancialReconRun_persistsRunAndFindings(t *testing.T) {
 
 func TestFinancialReconRun_missingTopupAfterWebhook(t *testing.T) {
 	if testing.Short() {
-		t.Skip("requires testcontainers")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := dbtest.SetupTestDB(t)

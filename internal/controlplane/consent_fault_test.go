@@ -30,7 +30,7 @@ func signConsentBody(secret []byte, body []byte) string {
 func TestFault_ConsentWebhookReplay(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 	secret := []byte("consent-test-secret")
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -68,7 +68,7 @@ func TestFault_ConsentWebhookReplay(t *testing.T) {
 func TestFault_ConsentReadYourWrites(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 	ctx := context.Background()
 	secret := []byte("consent-ryw-secret")
@@ -107,7 +107,7 @@ func TestFault_ConsentReadYourWrites(t *testing.T) {
 func TestFault_ErasurePartialShardFailure(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)

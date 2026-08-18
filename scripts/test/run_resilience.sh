@@ -45,4 +45,4 @@ MIN_MR_PROOFS="${RESILIENCE_MIN_PROOFS_MR:-12}"
 echo "mr fault_proof lines: $MR_PROOFS (min $MIN_MR_PROOFS)"
 test "$MR_PROOFS" -ge "$MIN_MR_PROOFS"
 
-bash "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/fault/milestone_gates.sh" "$LOG"
+bash "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/fault/resilience_fault_gates.sh" "$LOG"

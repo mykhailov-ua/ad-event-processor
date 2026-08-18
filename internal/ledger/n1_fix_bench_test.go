@@ -91,7 +91,7 @@ func seedInvoicesWithLines(t testing.TB, pool *pgxpool.Pool, customerID uuid.UUI
 
 func TestN1Fix_ListInvoices_QueryCount(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, counter, cleanup := setupLedgerDBWithQueryCounter(t)
 	defer cleanup()
@@ -205,7 +205,7 @@ func seedLedgerMarginPolicies(t testing.TB, pool *pgxpool.Pool, n int) []*Policy
 
 func TestN1Fix_LedgerMarginGuard_QueryCount(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, counter, cleanup := database.SetupTestDBWithQueryCounter(t)
 	defer cleanup()

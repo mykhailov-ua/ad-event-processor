@@ -13,7 +13,7 @@ import (
 
 func TestService_GenerateInvoice(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := setupBillingTestDB(t)
@@ -40,7 +40,7 @@ func TestService_GenerateInvoice(t *testing.T) {
 
 func TestService_GenerateInvoiceConcurrent(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := setupBillingTestDB(t)

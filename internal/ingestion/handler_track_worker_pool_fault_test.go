@@ -125,7 +125,7 @@ func TestFault_FraudStreamRingOverflowSpike(t *testing.T) {
 
 func TestFault_TrackUnderWorkerPoolSpike(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	ctx := context.Background()

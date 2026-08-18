@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# RP-M6 smoke: integration schema API (create + apply outbound webhook template).
+# Integration schema smoke: integration schema API (create + apply outbound webhook template).
 #
 # Usage:
 #   bash scripts/test/integration_schema_smoke.sh

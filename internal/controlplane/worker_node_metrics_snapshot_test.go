@@ -29,7 +29,7 @@ func TestNodeMetricDailyP99(t *testing.T) {
 func TestNodeMetricsSnapshotWorker_RunOnce(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()
@@ -88,7 +88,7 @@ func TestNodeMetricsSnapshotWorker_RunOnce(t *testing.T) {
 func TestLookupHistoricalDaily_ReadsPreviousDay(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()

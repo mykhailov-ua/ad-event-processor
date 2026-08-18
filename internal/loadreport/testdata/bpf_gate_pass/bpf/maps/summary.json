@@ -1,0 +1,78 @@
+{
+  "duration_sec": 120,
+  "pid_stats": [
+    {
+      "pid": 100,
+      "name": "tracker",
+      "role": "tracker",
+      "voluntary_ctx": 10000,
+      "involuntary_ctx": 2000,
+      "oncpu_ns": 90000000000
+    },
+    {
+      "pid": 200,
+      "name": "loadgen",
+      "role": "loadgen",
+      "oncpu_ns": 5000000000
+    }
+  ],
+  "hot_syscalls": [
+    {
+      "pid": 100,
+      "role": "tracker",
+      "syscall": "futex",
+      "count": 120000,
+      "avg_us": 1.2,
+      "p99_us": 8.0,
+      "max_us": 40.0
+    }
+  ],
+  "syscalls": [
+    {
+      "pid": 100,
+      "role": "tracker",
+      "syscall": "epoll_wait",
+      "count": 50000,
+      "avg_us": 120.0,
+      "p99_us": 800.0,
+      "max_us": 2000.0,
+      "wall_pct": 28.5
+    }
+  ],
+  "markers": [
+    {
+      "role": "tracker",
+      "marker": "filter_check",
+      "count": 50000,
+      "avg_us": 45.0,
+      "p99_us": 320.0,
+      "max_us": 900.0
+    },
+    {
+      "role": "tracker",
+      "marker": "process_track",
+      "count": 25000,
+      "avg_us": 280.0,
+      "p99_us": 1800.0,
+      "max_us": 4200.0
+    }
+  ],
+  "cgroup_samples": [
+    {
+      "pid": 100,
+      "name": "tracker-0",
+      "role": "tracker",
+      "throttle_pct": 1.5,
+      "memory_max_events": 0
+    }
+  ],
+  "network": [
+    {
+      "name": "tracker",
+      "role": "tracker",
+      "connect_avg_us": 0,
+      "connects": 0,
+      "retrans": 0
+    }
+  ]
+}

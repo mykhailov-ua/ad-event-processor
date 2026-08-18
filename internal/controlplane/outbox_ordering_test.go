@@ -17,7 +17,7 @@ import (
 func TestOutboxWorker_strictOrderHaltsOnFailure(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()
@@ -67,7 +67,7 @@ func TestOutboxWorker_strictOrderHaltsOnFailure(t *testing.T) {
 func TestOutboxWorker_strictOrderSucceedsInSequence(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()

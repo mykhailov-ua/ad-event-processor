@@ -35,7 +35,7 @@ func (p *mockShardMetricsProvider) GetMetrics(ctx context.Context, shardID int16
 
 func TestFault_ShardAutoscale_SuddenLoadSpike(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()
@@ -123,7 +123,7 @@ func TestFault_ShardAutoscale_SuddenLoadSpike(t *testing.T) {
 
 func TestFault_ShardAutoscale_ShuffledShards(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()
@@ -206,7 +206,7 @@ func TestFault_ShardAutoscale_ShuffledShards(t *testing.T) {
 
 func TestFault_ShardAutoscale_ConcurrentAutoscaleDeadlock(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()

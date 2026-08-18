@@ -18,7 +18,7 @@ import (
 
 func TestClosedLoopPacingController(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -90,7 +90,7 @@ func TestClosedLoopPacingController(t *testing.T) {
 
 func TestClosedLoopPacingController_EdgeCases(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)

@@ -1,0 +1,2 @@
+# Known batch/migration paths exempt from PR N+1 grep (justify each entry).
+internal/controlplane/service_slot_migration.go

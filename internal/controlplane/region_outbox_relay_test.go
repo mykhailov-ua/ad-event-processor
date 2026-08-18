@@ -24,7 +24,7 @@ import (
 func TestRegionCellIsolation(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()
@@ -53,7 +53,7 @@ func TestRegionCellIsolation(t *testing.T) {
 func TestRegionOutboxRelay(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()
@@ -136,7 +136,7 @@ func TestRegionOutboxRelay(t *testing.T) {
 func TestRegionOutboxRelay_WithOperationLease(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()

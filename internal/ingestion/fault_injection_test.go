@@ -23,7 +23,7 @@ const (
 
 func TestFault_AdsRedisTerminateStopsTrack(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := setupAdsFaultInfra(t)
@@ -66,7 +66,7 @@ func TestFault_AdsRedisTerminateStopsTrack(t *testing.T) {
 
 func TestFault_AdsPGKillOpensConsumerCircuit(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := setupAdsFaultInfra(t)
@@ -119,7 +119,7 @@ func TestFault_AdsPGKillOpensConsumerCircuit(t *testing.T) {
 
 func TestFault_AdsStreamBacklogUnderPostgresOutage(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := setupAdsFaultInfra(t)
@@ -171,7 +171,7 @@ func TestFault_AdsStreamBacklogUnderPostgresOutage(t *testing.T) {
 
 func TestFault_AdsRedisStopStartTrackRecovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := setupAdsFaultInfra(t)
@@ -219,7 +219,7 @@ func TestFault_AdsRedisStopStartTrackRecovery(t *testing.T) {
 
 func TestFault_AdsPGStopStartConsumerRecovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := setupAdsFaultInfra(t)
@@ -281,7 +281,7 @@ func TestFault_AdsPGStopStartConsumerRecovery(t *testing.T) {
 
 func TestFault_AdsConcurrentTrackDuringRedisOutage(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := setupAdsFaultInfra(t)

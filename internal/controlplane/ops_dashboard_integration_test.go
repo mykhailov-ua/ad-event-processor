@@ -18,7 +18,7 @@ import (
 
 func TestOpsDashboard_insertSample_queryAPI(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := database.SetupTestDB(t)
@@ -54,7 +54,7 @@ func TestOpsDashboard_insertSample_queryAPI(t *testing.T) {
 
 func TestOpsDashboard_metricsQuery_10kSamples_under200ms(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := database.SetupTestDB(t)

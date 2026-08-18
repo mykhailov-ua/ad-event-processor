@@ -126,3 +126,47 @@ jobs:
         with:
           path: .ci-baselines/broker
           key: nightly-broker-${{ github.sha }}
+
+  cache-miss-ab:
+    name: Hot path cache-miss A/B (perf stat)
+    runs-on: ${{ vars.PERF_RUNNER_LABEL || 'ubuntu-latest' }}
+    timeout-minutes: 20
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.12'
+          cache: true
+
+      - name: Restore cache-miss baseline
+        if: vars.PERF_RUNNER_LABEL != ''
+        uses: actions/cache@v4
+        with:
+          path: .ci-baselines/cache-miss
+          key: nightly-cache-miss-${{ github.sha }}
+          restore-keys: |
+            nightly-cache-miss-
+
+      - name: Stabilize CPU
+        if: vars.PERF_RUNNER_LABEL != ''
+        run: bash scripts/perf/stabilize_cpu.sh
+
+      - name: perf stat cache-miss gate
+        run: bash scripts/perf/cache_miss_nightly_job.sh
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cache-miss-ab
+          path: |
+            cache_miss_perf_stat.txt
+            .ci-baselines/cache-miss/current.txt
+          if-no-files-found: ignore
+
+      - name: Save cache-miss baseline
+        if: vars.PERF_RUNNER_LABEL != ''
+        uses: actions/cache/save@v4
+        with:
+          path: .ci-baselines/cache-miss
+          key: nightly-cache-miss-${{ github.sha }}

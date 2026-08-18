@@ -18,7 +18,7 @@ import (
 
 func TestFault_BatchSettlementDrain(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -81,7 +81,7 @@ func TestFault_BatchSettlementDrain(t *testing.T) {
 
 func TestFault_SlotMigrationCutoverInvariant(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	rdb, cleanupRedis := database.SetupTestRedis(t)

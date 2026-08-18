@@ -42,7 +42,7 @@ func ensureBillingCTVProfileSchema(t *testing.T, pool *pgxpool.Pool) {
 
 func TestFault_CTVGtaxSettlementReplay(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()

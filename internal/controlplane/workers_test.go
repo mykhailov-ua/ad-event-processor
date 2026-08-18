@@ -17,7 +17,7 @@ import (
 
 func TestProcessScheduleTickSkipsAlreadyAligned(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -54,7 +54,7 @@ func TestProcessScheduleTickSkipsAlreadyAligned(t *testing.T) {
 
 func TestCreateCampaignRejectsIncompleteIdempotencyLedger(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -101,7 +101,7 @@ func TestServiceCloseGuardsLateWorkerStart(t *testing.T) {
 
 func TestUpdateSettingsOutboxVersionIsIdempotent(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)

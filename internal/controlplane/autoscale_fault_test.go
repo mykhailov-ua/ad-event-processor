@@ -23,7 +23,7 @@ import (
 func TestFault_AutoscaleNoDoubleFreeze(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)

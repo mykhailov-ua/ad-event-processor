@@ -38,7 +38,7 @@ func TestRenderInvoicePDF_nonEmpty(t *testing.T) {
 
 func TestService_GenerateInvoice_skipsEmptySpend(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := setupBillingTestDB(t)

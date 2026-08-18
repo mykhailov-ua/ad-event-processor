@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# §0 ops gate (automatable subset) — see .cursor/MILESTONE.md §0.
+# Ops gate (automatable subset).
 #
 # Local / CI wiring checks before v1.0.0-pilot-gray:
 #   bash scripts/ops/section0_gate.sh

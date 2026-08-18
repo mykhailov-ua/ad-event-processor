@@ -1,4 +1,4 @@
-.PHONY: fmt fmt-check gen lint test test-fast test-unit test-integration test-fault test-int test-alloc-gate management-domain-coverage test-full test-resilience test-broker-fault-lab test-sentinel-resilience build build-bin release-build release-garble release-installer proto proto-grpc check-local pr-fast tier-a fraudtrain-check check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-bpf check-scripts-layout dev-preflight-smoke perf-gate-smoke edge-phase0 openrtb-fuzz-smoke license-red-team license-verify license-alloc-gate license-differential-gate license-red-team-garbled license-garbled-alloc-gate license-red-team-extended license-fuzz-nightly-gate release-qa-smoke license-gdb-guard-smoke release-strings-gate license-guard-test license-guard-off-smoke license-guard-fault-gate public-key-strings-gate asset-seal-salt-smoke hwid-strings-gate garble-literals-policy-gate garble-literals-p99-smoke bpf-edge-prereq-gate sealed-bpf-xdp-smoke
+.PHONY: fmt fmt-check gen lint test test-fast test-unit test-integration test-fault test-int test-alloc-gate management-domain-coverage test-full test-resilience test-broker-fault-lab test-sentinel-resilience build build-bin release-build release-garble release-installer proto proto-grpc check-local pr-fast tier-a fraudtrain-check check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-bpf bpf-resource-gate bpf-nightly-gate cache-miss-gate escape-heap-gate cold-path-gates check-scripts-layout dev-preflight-smoke perf-gate-smoke edge-phase0 openrtb-fuzz-smoke license-red-team license-verify license-alloc-gate license-differential-gate license-red-team-garbled license-garbled-alloc-gate license-red-team-extended license-fuzz-nightly-gate release-qa-smoke license-gdb-guard-smoke release-strings-gate license-guard-test license-guard-off-smoke license-guard-fault-gate public-key-strings-gate asset-seal-salt-smoke hwid-strings-gate garble-literals-policy-gate garble-literals-p99-smoke bpf-edge-prereq-gate sealed-bpf-xdp-smoke
 
 BIN_DIR := bin
 BIN_TAGS := timetzdata
@@ -204,6 +204,26 @@ bpf-session-stop:
 
 load-test-bpf: bpf-dev
 	sudo ESPX_BPF_PROBE=1 ESPX_BPF_SAMPLE_RATE=$${ESPX_BPF_SAMPLE_RATE:-10} bash scripts/test/malformed.sh business
+
+bpf-resource-gate:
+	BPF_GATE_STRICT=true bash scripts/ci/bpf_resource_gate.sh
+
+bpf-nightly-gate:
+	BPF_GATE_STRICT=true bash scripts/test/bpf_nightly_job.sh hot
+	BPF_GATE_STRICT=true bash scripts/test/bpf_nightly_job.sh cold
+
+cache-miss-gate:
+	bash scripts/perf/cache_miss_nightly_job.sh
+
+cold-path-gates:
+	bash scripts/ci/anti_slop_gate.sh
+	bash scripts/ci/diff_assertion_gate.sh
+	bash scripts/ci/sql_safety_gate.sh
+	bash scripts/ci/hot_path_static_gate.sh
+	bash scripts/ci/cold_path_static_gate.sh
+
+escape-heap-gate:
+	bash scripts/ci/escape_heap_gate.sh
 
 check-scripts-layout:
 	bash scripts/ci/check_scripts_layout.sh

@@ -1,3 +1,4 @@
+// Package client implements the broker wire client used by tracker and processor.
 package client
 
 import (

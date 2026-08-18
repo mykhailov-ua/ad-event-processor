@@ -49,7 +49,7 @@ strict_check() {
 
 strict_check "README.md" "$ROOT/README.md"
 strict_check "docs/QUICKSTART.md" "$ROOT/docs/QUICKSTART.md"
-strict_check "docs/PILOT_LICENSE.md" "$ROOT/docs/PILOT_LICENSE.md"
+strict_check "docs/LICENSE.md" "$ROOT/docs/LICENSE.md"
 strict_check "web/src" "$ROOT/web/src"
 strict_check "web/e2e" "$ROOT/web/e2e" --glob '!**/node_modules/**'
 

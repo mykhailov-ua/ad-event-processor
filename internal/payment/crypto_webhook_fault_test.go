@@ -16,7 +16,7 @@ import (
 
 func TestFault_CryptoWebhookStormIdempotent(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)
@@ -87,7 +87,7 @@ func TestFault_CryptoWebhookStormIdempotent(t *testing.T) {
 
 func TestFault_CryptoWebhookReplay(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)

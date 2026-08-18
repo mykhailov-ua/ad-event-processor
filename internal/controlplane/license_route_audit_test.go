@@ -51,7 +51,7 @@ func TestLicense_VERIFYCatalog_coversBaselineProperties(t *testing.T) {
 func TestLicense_PilotDocReferencesStatusAndHostIdentity(t *testing.T) {
 	t.Parallel()
 	root := repoRoot(t)
-	pilot := readRepoFile(t, root, "docs/PILOT_LICENSE.md")
+	pilot := readRepoFile(t, root, "docs/LICENSE.md")
 	require.Contains(t, pilot, "/api/v1/license/status")
 	require.True(t, strings.Contains(pilot, "hwid_v2") || strings.Contains(pilot, "HWID v2"))
 }

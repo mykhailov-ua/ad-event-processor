@@ -442,7 +442,7 @@ func TestFault_HTTP1_PipelinedMalformedMix(t *testing.T) {
 
 func TestFault_HTTP1_PipelinedKeepAliveBudget(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	ctx := context.Background()

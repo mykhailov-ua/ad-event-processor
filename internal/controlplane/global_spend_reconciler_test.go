@@ -21,7 +21,7 @@ import (
 func setupGlobalSpendTest(t *testing.T) (context.Context, *pgxpool.Pool, redis.UniversalClient, uuid.UUID) {
 	t.Helper()
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)

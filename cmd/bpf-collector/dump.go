@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"time"
 
-
 	"github.com/cilium/ebpf"
 )
 
@@ -75,6 +74,7 @@ type dumpBundle struct {
 	Syscalls      []dumpedSyscall    `json:"syscalls"`
 	Network       []map[string]any   `json:"network"`
 	Markers       []dumpedMarker     `json:"markers"`
+	HardwarePerf  []map[string]any   `json:"hardware_perf,omitempty"`
 }
 
 func (r *probeRun) dumpMaps() error {
@@ -120,6 +120,7 @@ func (r *probeRun) dumpMaps() error {
 		Syscalls:      syscalls,
 		Network:       netStats,
 		Markers:       markers,
+		HardwarePerf:  r.collectHardwarePerf(pidStats),
 	}
 	data, err := json.MarshalIndent(bundle, "", "  ")
 	if err != nil {
@@ -342,6 +343,8 @@ func (r *probeRun) aggregateNet() ([]map[string]any, error) {
 			agg.Connects += v.Connects
 			agg.ConnectNsSum += v.ConnectNsSum
 			agg.ConnectSamples += v.ConnectSamples
+			agg.SendtoCalls += v.SendtoCalls
+			agg.SendtoBytes += v.SendtoBytes
 		}
 		name, role := r.lookupTarget(key.PID, 0)
 		connectAvgUs := float64(0)
@@ -356,6 +359,8 @@ func (r *probeRun) aggregateNet() ([]map[string]any, error) {
 			"retrans":        agg.Retrans,
 			"connects":       agg.Connects,
 			"connect_avg_us": connectAvgUs,
+			"sendto_calls":   agg.SendtoCalls,
+			"sendto_bytes":   agg.SendtoBytes,
 		})
 	}
 	return out, iter.Err()

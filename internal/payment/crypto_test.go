@@ -21,7 +21,7 @@ import (
 
 func TestCryptoGateway_EndToEnd(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)
@@ -139,7 +139,7 @@ func TestCryptoGateway_EndToEnd(t *testing.T) {
 
 func TestCryptoGateway_UnderpayRejected(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)
@@ -196,7 +196,7 @@ func TestCryptoGateway_UnderpayRejected(t *testing.T) {
 
 func TestCryptoGateway_FraudGateBlocksRelease(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)
@@ -274,7 +274,7 @@ func TestCryptoGateway_FraudGateBlocksRelease(t *testing.T) {
 
 func TestCryptoGateway_WebhookHTTPHandler(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)

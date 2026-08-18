@@ -19,7 +19,7 @@ import (
 
 func TestReconcileWindow_skipsAutoAdjustWhenDeltaExceedsChunk(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -75,7 +75,7 @@ func TestReconcileWindow_skipsAutoAdjustWhenDeltaExceedsChunk(t *testing.T) {
 
 func TestReconcileWindow_autoAdjustsWithinChunk(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -164,7 +164,7 @@ func TestAlertStaleUnresolvedDiscrepancies_notifiesOps(t *testing.T) {
 func TestFault_ReconStaleDiscrepancyOpsAlert(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	stub := &stubNotifierAPITest{}

@@ -22,7 +22,7 @@ func TestCampaignShardID_oneCampaignOneShard(t *testing.T) {
 
 func TestQuotaRepo_ReserveChunk(t *testing.T) {
 	if testing.Short() {
-		t.Skip("requires postgres")
+		t.Skip("integration: postgres testcontainers (run make test-integration)")
 	}
 
 	ctx := context.Background()

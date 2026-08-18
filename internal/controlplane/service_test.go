@@ -17,7 +17,7 @@ import (
 
 func TestManagementService_CancelCampaign(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -66,7 +66,7 @@ func TestManagementService_CancelCampaign(t *testing.T) {
 
 func TestManagementService_Idempotency(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)

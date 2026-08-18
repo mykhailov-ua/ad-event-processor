@@ -177,7 +177,7 @@ func BenchmarkKeyFormatting_DuplicateEventFilter(b *testing.B) {
 	}
 }
 
-func BenchmarkUnifiedFilter_Check(b *testing.B) {
+func BenchmarkUnifiedFilter_Check_mock(b *testing.B) {
 	rdb := &mockRedisClient{}
 	sharder := NewJumpHashSharder(1)
 	registry := &mockRegistry{}

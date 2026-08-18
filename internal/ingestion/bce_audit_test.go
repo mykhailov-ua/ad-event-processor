@@ -158,12 +158,12 @@ func TestUnsafeAudit_tgClickScratchLifetime(t *testing.T) {
 
 func TestBCEAudit_docPresent(t *testing.T) {
 	for _, p := range []string{
-		"../../docs/BENCHMARKS.md",
-		"docs/BENCHMARKS.md",
+		"../../docs/ARCHITECTURE.md",
+		"docs/ARCHITECTURE.md",
 	} {
 		if _, err := os.Stat(p); err == nil {
 			return
 		}
 	}
-	t.Fatal("docs/BENCHMARKS.md missing")
+	t.Fatal("docs/ARCHITECTURE.md missing")
 }

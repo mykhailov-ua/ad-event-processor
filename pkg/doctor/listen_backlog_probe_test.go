@@ -64,5 +64,5 @@ func TestRunOnlyListenFilter(t *testing.T) {
 
 func TestCheckHint_listen(t *testing.T) {
 	hint := CheckHint("listen")
-	require.Contains(t, hint, "EDGE_CASES.md")
+	require.Contains(t, hint, "somaxconn")
 }

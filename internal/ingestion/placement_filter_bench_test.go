@@ -68,7 +68,7 @@ func TestPlacementBlacklistFilter_zeroAlloc(t *testing.T) {
 
 func TestPlacementBlacklistFilter_escapeClean(t *testing.T) {
 	if testing.Short() {
-		t.Skip("escape analysis build")
+		t.Skip("integration: escape analysis bench (run make test-integration)")
 	}
 	root := moduleRootAds(t)
 	cmd := exec.Command("go", "build", "-gcflags=-m", "-o", "/dev/null", "./internal/ingestion")

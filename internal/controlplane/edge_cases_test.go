@@ -254,7 +254,7 @@ func TestEdge_OutboxWorkerRecoveryOfProcessingEvents(t *testing.T) {
 
 func TestEdge_OutboxSetsRemainingBudget(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)

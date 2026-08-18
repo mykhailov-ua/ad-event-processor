@@ -20,7 +20,7 @@ import (
 func TestFault_QuotaDriftRepair(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	ctx := context.Background()
@@ -93,7 +93,7 @@ func TestFault_QuotaDriftRepair(t *testing.T) {
 func TestFault_QuotaDeadShardTransientBlip(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := setupControlFaultInfra(t)

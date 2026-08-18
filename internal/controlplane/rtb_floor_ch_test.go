@@ -16,7 +16,7 @@ import (
 
 func TestQueryClickHousePlacementFloorBuckets(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	conn, cleanupCH := setupClickHouseStatsTest(t)
@@ -71,7 +71,7 @@ GROUP BY deal_id, floor_bucket_micro`)
 
 func TestRunFloorOptimizer_persistsSuggestions(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -108,7 +108,7 @@ func TestRunFloorOptimizer_persistsSuggestions(t *testing.T) {
 
 func TestApplyRtbFloorSuggestions_dryRunWritesNoRedisOrOutbox(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)

@@ -18,7 +18,7 @@ import (
 
 func TestFault_Shard0PubsubDown(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	const numShards = 4

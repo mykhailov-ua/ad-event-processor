@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Milestone phase 3: compare peak Redis used_memory dual-path vs broker-only cutover.
+# Compare peak Redis used_memory dual-path vs broker-only cutover.
 #
 # Usage:
 #   bash scripts/perf/redis_ram_cutover_compare.sh

@@ -145,7 +145,7 @@ func TestRtbDealsAPI_invalidSeats(t *testing.T) {
 
 func TestRtbDeals_ExplainAnalyze(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping rtb_deals EXPLAIN ANALYZE in short mode")
+		t.Skip("integration: rtb_deals EXPLAIN ANALYZE (run make test-integration)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)

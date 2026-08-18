@@ -13,7 +13,7 @@ import (
 
 func TestMarginSettlement_MultiLegPreservesInvariants(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	infra, cleanup := setupAdsFaultInfra(t)

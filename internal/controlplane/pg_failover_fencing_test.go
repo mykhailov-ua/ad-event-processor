@@ -42,7 +42,7 @@ func wireStalePgFencingEpoch(t *testing.T, svc *Service, rdb redis.UniversalClie
 func TestTopUpBalance_rejectsStalePgFencingEpoch(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()
@@ -70,7 +70,7 @@ func TestTopUpBalance_rejectsStalePgFencingEpoch(t *testing.T) {
 func TestApplyPaymentCredit_rejectsStalePgFencingEpoch(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()

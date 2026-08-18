@@ -71,7 +71,7 @@ func newIsolatedRedisShards(t *testing.T) []redis.UniversalClient {
 
 func TestPublishCampaignUpdate_FanOutAllShards(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping multi-container redis test")
+		t.Skip("integration: multi-container redis (run make test-integration)")
 	}
 
 	shards := newDedicatedRedisShards(t, testPubSubShards)
@@ -100,7 +100,7 @@ func TestPublishCampaignUpdate_FanOutAllShards(t *testing.T) {
 
 func TestOutboxScheduleUpdate_PubSubOnAllShards(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping multi-container redis test")
+		t.Skip("integration: multi-container redis (run make test-integration)")
 	}
 
 	shards := newDedicatedRedisShards(t, testPubSubShards)
@@ -135,7 +135,7 @@ func TestOutboxScheduleUpdate_PubSubOnAllShards(t *testing.T) {
 
 func TestOutboxCreateCampaign_BudgetOnCampaignShard(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)

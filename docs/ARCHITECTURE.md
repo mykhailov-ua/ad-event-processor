@@ -69,7 +69,7 @@ flowchart TB
     FS -->|HTTP ops API| CTRL
 ```
 
-**Appliance default:** Nginx Lua perimeter only (`single_vps`). **Enterprise optional** (license + compose profile): `edge-xdp` on ingress NIC; `region-proxy` for geo/quorum WAL — see [FROZEN_FEATURES.md](FROZEN_FEATURES.md).
+**Appliance default:** Nginx Lua perimeter only (`single_vps`). **Enterprise optional** (license + compose profile): `edge-xdp` on ingress NIC; `region-proxy` for geo/quorum WAL — see [section 11](#11-enterprise-optional).
 
 ### 1.1 Edge routing (what hits where)
 
@@ -121,7 +121,7 @@ Infrastructure (compose defaults): PostgreSQL `5430`, Redis host ports `6479–6
 
 Body parsers apply bounded work: OpenRTB scan caps (`ORTB_SCAN_MAX_BYTES`, `ORTB_MAX_QUOTE_CHECKS`), protobuf field budget (`PROTO_MAX_FIELDS`), and HPACK continuation limits on HTTP/2.
 
-**Operator guide:** [PARSER_SECURITY.md](PARSER_SECURITY.md). **Out of scope:** admin/cold-path JSON ([COLD_PATH_JSON.md](COLD_PATH_JSON.md)), XDP, fraud ML — [PARSER_SECURITY.md](PARSER_SECURITY.md) §9. **Verification:** `bash scripts/fault/parser_chaos_drill.sh`.
+**Operator guide:** [PARSER.md](PARSER.md). **Out of scope:** admin/cold-path JSON (`pkg/coldpath`), XDP, fraud ML — [PARSER.md](PARSER.md) section 8. **Verification:** `bash scripts/fault/parser_chaos_drill.sh`.
 
 ---
 
@@ -180,7 +180,7 @@ sequenceDiagram
 **Step-by-step (code path)**
 
 1. **Ingress** — `cmd/tracker/main.go` runs `gnet.Run(AdsPacketHandler)`. `OnTraffic` reads the socket ring buffer; optional `PinnedWorkerPool` offloads parse to worker goroutines (`handler.go`).
-2. **Parse** — `parseTrackIngest`: JSON (`ad_event_processor_native` or OpenRTB3 ingress) or protobuf `AdEvent` vtproto; zero-alloc DFA on the hot path (`track_ingest_gnet.go`). Wire policy for `POST /track` matches nginx (see §1.3 and [PARSER_SECURITY.md](PARSER_SECURITY.md)).
+2. **Parse** — `parseTrackIngest`: JSON (`ad_event_processor_native` or OpenRTB3 ingress) or protobuf `AdEvent` vtproto; zero-alloc DFA on the hot path (`track_ingest_gnet.go`). Wire policy for `POST /track` matches nginx (see §1.3 and [PARSER.md](PARSER.md)).
 3. **RTB (optional)** — `applyRtbAuction` (`rtb_track.go`) **before** filters:
    - `RTB_MODE=off` — skip.
    - `shadow` — `RunAuction`, metrics only.
@@ -202,7 +202,7 @@ sequenceDiagram
 
 #### Design rationale (why this shape)
 
-Full trade-off narrative: [TRADEOFFS.md — Hot-path ingest strategy](TRADEOFFS.md#hot-path-ingest-strategy-rejected-alternatives-verification). Condensed:
+Condensed design rationale (full narrative removed from docs; see git history if needed):
 
 | Decision | Rationale |
 | :--- | :--- |
@@ -442,16 +442,41 @@ Shared `RunAuction` (`internal/rtb/auction.go`) for `/track` (optional), `POST /
 
 - **PII**: `piihash` rolling hash → `ip_hash` / `ua_hash` in CH; raw IP/UA not stored in analytics tables.
 - **Edge (default)**: Nginx Lua blacklist and rate limits on appliance path.
-- **XDP (Enterprise)**: optional passive drop at NIC (`edge-xdp`); sync from outbox → Redis shard 0 → BPF maps — see [enterprise/EDGE_XDP.md](enterprise/EDGE_XDP.md).
+- **XDP (Enterprise)**: optional passive drop at NIC (`edge-xdp`); sync from outbox → Redis shard 0 → BPF maps — see [XDP.md](XDP.md).
 - **Audit**: `admin_audit_log` in same TX as admin mutations.
 
 ---
 
 ## 10. Programmatic & Privacy (2026 scope)
 
-- **OpenRTB 2.6** exchange: `POST /openrtb/bid` on tracker; codec `internal/openrtb/`. See **[RTB Features](RTB.md)** for a detailed list.
+- **OpenRTB 2.6** exchange: `POST /openrtb/bid` on tracker; codec `internal/openrtb/`. Runbook: [RTB.md](RTB.md).
 - **Supply chain**: tolerant `schain` parse; optional Postgres allowlist.
-- **Runbook**: [RTB_PRODUCTION_RUNBOOK.md](RTB_PRODUCTION_RUNBOOK.md).
+- **Runbook**: [RTB.md](RTB.md).
+
+---
+
+## 11. Enterprise (optional)
+
+Appliance SKU (`single_vps`, pilot license) ships **without** multi-region proxy and NIC-level XDP. Code, fault tests, and compose profiles remain in git for Enterprise contracts.
+
+| Feature | License JWT (`features.*`) | Installer profile | Compose | Runbook |
+| :--- | :--- | :--- | :--- | :--- |
+| **Multi-region / `region-proxy`** | `multi_region: true` | `multi_region: true` (blocked in `compose_dev`) | `--profile multi-region` | [REGIONS.md](REGIONS.md) |
+| **XDP edge (`edge-xdp`)** | `ebpf_xdp_edge: true` | `edge_xdp: true` (BTF preflight) | `--profile enterprise-xdp` (not `single_vps`) | [XDP.md](XDP.md) |
+
+Pilot defaults: `deploy/vendor/sku.yaml` — both features `false`.
+
+Runtime checks:
+
+- `control` refuses start when `MULTI_REGION_ENABLED=1` without `multi_region` entitlement (`internal/controlplane/serve.go`).
+- `edge-xdp` pins BPF maps but **skips XDP attach** when Redis `entitlement:deployment` `ebpf_xdp_edge` is `0` (`internal/edge/entitlement.go`, `cmd/edge-xdp`).
+- `edge-bpf-sync` idles without `ebpf_xdp_edge` (`cmd/edge-bpf-sync`; shared `edge.EbpfEdgeLicensed`).
+- Doctor `edge_xdp` probe (when platform `edge_xdp: true`) reports BTF, pinned maps, systemd units, stats snapshot age (`pkg/doctor/xdp_probe.go`).
+- Release pilot images exclude `region-proxy` binary (`.github/workflows/release-images.yaml`).
+
+**Appliance default perimeter:** Nginx OpenResty Lua (`deploy/nginx/lua/`) — blacklist, rate limit, shard pick. Redis Sentinel overlay (`deploy/compose/docker-compose.sentinel.yaml`) is HA lab only, not product multi-region. Hot-path ingestion does **not** import `pkg/regionproxy`.
+
+Enterprise drills (do not block PR merge): `mr_*` fault proofs in `scripts/test/run_resilience.sh`; `bash scripts/test/mr_resilience_drill.sh` (manual / `enterprise-resilience` workflow); XDP compliance fingerprint in `scripts/ci/compliance.sh`.
 
 ---
 
@@ -470,7 +495,7 @@ Shared `RunAuction` (`internal/rtb/auction.go`) for `/track` (optional), `POST /
 | Who writes `ad:events:stream` on tracker? | **`BrokerProducer`** when `CH_INGEST_SOURCE=broker` (default appliance); else **`StreamProducer`** with Lua defer `fcap:ignored`. |
 | Can budget debit without logged event? | **No** on the happy path (reservation + rollback on enqueue failure). Monitor `ad_stream_producer_post_debit_rejected_total`. |
 
-Benchmark numbers (micro + purgatory): [BENCHMARKS.md](BENCHMARKS.md). OS/TCP/accept edge cases: [EDGE_CASES.md](EDGE_CASES.md). Parser security and ingress limits: [PARSER_SECURITY.md](PARSER_SECURITY.md).
+Parser security and ingress limits: [PARSER.md](PARSER.md). Production SLAs: handler p95 < 50 ms, p99 < 80 ms (see `.cursor/rules/global/core.mdc`). Lab benches: `make test-alloc-gate`, `bash scripts/test/gate_bench.sh`.
 
 ### HTTP status codes (`POST /track`)
 

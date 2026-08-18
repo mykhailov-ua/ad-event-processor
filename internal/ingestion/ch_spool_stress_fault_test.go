@@ -71,7 +71,7 @@ func startStressNgOnDir(t *testing.T, dir string, duration time.Duration) *exec.
 
 func TestFault_CHSpoolStressNgNoDState(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 	if !stressNgAvailable() {
 		t.Skip("stress-ng not installed")

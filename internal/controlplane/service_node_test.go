@@ -16,7 +16,7 @@ import (
 func TestNodeCapacityScorer_TickWritesScores(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()
@@ -107,7 +107,7 @@ func TestNodeCapacityScorer_TickWritesScores(t *testing.T) {
 func TestNodeCapacityScorer_noCrossRegionMixing(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()

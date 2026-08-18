@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Milestone phase 5: Redis UDS transport latency proof (unix socket vs TCP loopback).
+# Redis UDS transport latency proof (unix socket vs TCP loopback).
 #
 # Usage:
 #   bash scripts/perf/redis_uds_benchmark.sh

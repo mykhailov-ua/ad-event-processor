@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# CPA-M7: self-serve shell must not link operator routes (G4).
+# Self-serve shell must not link operator routes.
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

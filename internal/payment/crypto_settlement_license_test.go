@@ -14,7 +14,7 @@ import (
 
 func TestCryptoGateway_SettlementAndLicenseActivation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)

@@ -45,7 +45,7 @@ func countLinuxFDs(t *testing.T) int {
 
 func TestFault_ProcessorPgGate_Overflow(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := setupAdsFaultInfra(t)
@@ -110,7 +110,7 @@ func TestFault_ProcessorPgGate_Overflow(t *testing.T) {
 
 func TestFault_SyncWorker_PgGateOverflow(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := setupAdsFaultInfra(t)
@@ -167,7 +167,7 @@ func TestFault_SyncWorker_PgGateOverflow(t *testing.T) {
 
 func TestFault_CHSpool_Rotation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	conn, chCleanup := setupClickHouseIntegration(t)
@@ -215,7 +215,7 @@ func TestFault_CHSpool_Rotation(t *testing.T) {
 
 func TestFault_CHSpool_MaxSegments(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	dir := t.TempDir()
@@ -256,7 +256,7 @@ func TestFault_CHSpool_MaxSegments(t *testing.T) {
 
 func TestFault_CHSpool_FdRelease(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 	if runtime.GOOS != "linux" {
 		t.Skip("linux fd test")
@@ -300,7 +300,7 @@ func TestFault_CHSpool_FdRelease(t *testing.T) {
 
 func TestFault_WritePath_DBFailurePreAck(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := setupAdsFaultInfra(t)

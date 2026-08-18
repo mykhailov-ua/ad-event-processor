@@ -148,7 +148,7 @@ func countLedgerDuplicates(t *testing.T, pool *pgxpool.Pool) int {
 
 func TestFault_PostgresMasterFailover(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	ctx := context.Background()

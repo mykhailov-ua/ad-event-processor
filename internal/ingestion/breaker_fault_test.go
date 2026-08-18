@@ -131,7 +131,7 @@ func TestFaultInjection_PostgresCrashOnBudgetMiss(t *testing.T) {
 
 func TestFaultInjection_StreamConsumerPoisonPillToDLQ(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping testcontainers-based integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	rdb, cleanup := setupTestRedis(t)

@@ -121,7 +121,7 @@ func seedFleetInvariantCustomers(t testing.TB, pool *pgxpool.Pool, n int) {
 
 func TestN1Fix_MarginBreach_QueryCount(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, counter, cleanup := database.SetupTestDBWithQueryCounter(t)
 	defer cleanup()
@@ -147,7 +147,7 @@ func TestN1Fix_MarginBreach_QueryCount(t *testing.T) {
 
 func TestN1Fix_FleetInvariant_QueryCount(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, counter, cleanup := database.SetupTestDBWithQueryCounter(t)
 	defer cleanup()
@@ -216,7 +216,7 @@ func BenchmarkN1Fix_MarginBreach_Batched(b *testing.B) {
 
 func TestN1Fix_BuyerPortfolio_Margin_QueryCount(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, counter, cleanup := database.SetupTestDBWithQueryCounter(t)
 	defer cleanup()
@@ -236,7 +236,7 @@ func TestN1Fix_BuyerPortfolio_Margin_QueryCount(t *testing.T) {
 
 func TestN1Fix_Recon_DiscrepancyCustomerLookup(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, counter, cleanup := database.SetupTestDBWithQueryCounter(t)
 	defer cleanup()
@@ -319,7 +319,7 @@ func seedCreditScoringCustomers(t testing.TB, pool *pgxpool.Pool, n int) {
 
 func TestN1Fix_CreditScoringReconLag_QueryCount(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, counter, cleanup := database.SetupTestDBWithQueryCounter(t)
 	defer cleanup()
@@ -400,7 +400,7 @@ func seedSmartAlertRules(t testing.TB, pool *pgxpool.Pool, customerID uuid.UUID,
 
 func TestN1Fix_SmartAlertsCampaignResolve_QueryCount(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, counter, cleanup := database.SetupTestDBWithQueryCounter(t)
 	defer cleanup()
@@ -443,7 +443,7 @@ const n1ReconLedgerIntents = 10
 
 func TestN1Fix_FinancialReconLedger_QueryCount(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, counter, cleanup := database.SetupTestDBWithQueryCounter(t)
 	defer cleanup()
@@ -551,7 +551,7 @@ func seedPostbackCampaignStatus(t testing.TB, pool *pgxpool.Pool, n int) {
 
 func TestN1Fix_PostbackCampaignStatus_QueryCount(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, counter, cleanup := database.SetupTestDBWithQueryCounter(t)
 	defer cleanup()
@@ -673,7 +673,7 @@ func seedTeamMembersWithCampaigns(t testing.TB, pool *pgxpool.Pool, n int) uuid.
 
 func TestN1Fix_TeamOverviewCampaignCount_QueryCount(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, counter, cleanup := database.SetupTestDBWithQueryCounter(t)
 	defer cleanup()

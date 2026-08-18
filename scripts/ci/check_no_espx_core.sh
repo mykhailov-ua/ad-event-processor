@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Strict naming gate: zero legacy espx strings in core Go/Lua trees (MILESTONE §7.7).
+# Strict naming gate: zero legacy espx strings in core Go/Lua trees.
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

@@ -24,11 +24,11 @@ fi
 log "default CI build omits license_guard tag"
 go test ./internal/licensing/ -run 'TestGuard_NotCompiledInDefaultBuild' -count=1
 
-if ! grep -q 'AD_EVENT_PROCESSOR_LICENSE_GUARD=0' docs/PILOT_LICENSE.md; then
-  die "docs/PILOT_LICENSE.md missing LICENSE_GUARD=0 ops note"
+if ! grep -q 'AD_EVENT_PROCESSOR_LICENSE_GUARD=0' docs/LICENSE.md; then
+  die "docs/LICENSE.md missing LICENSE_GUARD=0 ops note"
 fi
-if ! grep -q 'LICENSE_GUARD_PTRACE=0' docs/PILOT_LICENSE.md; then
-  die "docs/PILOT_LICENSE.md missing LICENSE_GUARD_PTRACE=0 ops note"
+if ! grep -q 'LICENSE_GUARD_PTRACE=0' docs/LICENSE.md; then
+  die "docs/LICENSE.md missing LICENSE_GUARD_PTRACE=0 ops note"
 fi
 
 log "ok — set AD_EVENT_PROCESSOR_LICENSE_GUARD=0 (or GUARD_PTRACE=0) before gdb/strace/delve on release builds"

@@ -92,7 +92,7 @@ func TestWarmCampaignBudget_noOutboxOrPubsub(t *testing.T) {
 
 func TestWarmBudget_ExplainAnalyze(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping warm-budget EXPLAIN ANALYZE in short mode")
+		t.Skip("integration: warm-budget EXPLAIN ANALYZE (run make test-integration)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# RP-M4 DNS lab: /etc/hosts SNI + Caddy on-demand TLS (internal issuer on INGRESS_HTTPS_PORT).
+# DNS lab: /etc/hosts SNI + Caddy on-demand TLS (internal issuer on INGRESS_HTTPS_PORT).
 #
 # Prerequisites (auto with DNS_LAB_BRINGUP=1):
 #   docker compose: db, redis-0, control, tracker-0, nginx, ingress (profile)
@@ -206,7 +206,7 @@ if ! grep -qi "$DNS_LAB_HOST" "$REPORT_DIR/tls-subject.txt" 2> /dev/null; then
 fi
 
 if ((tls_ms > 5000)); then
-  die "AC-3 SLA-M4-01 exceeded: ${tls_ms}ms > 5000ms"
+  die "TLS handshake SLA exceeded: ${tls_ms}ms > 5000ms"
 fi
 
 evil_tls="$(probe_tls_ms "$DNS_LAB_EVIL" 2> /dev/null | head -1 || echo fail)"

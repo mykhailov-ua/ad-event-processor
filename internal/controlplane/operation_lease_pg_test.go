@@ -19,7 +19,7 @@ import (
 
 func TestOperationLeaseClaimExecuting_SingleWinnerUnderContention(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := database.SetupTestDB(t)
@@ -88,7 +88,7 @@ func TestOperationLeaseClaimExecuting_SingleWinnerUnderContention(t *testing.T) 
 
 func TestOperationLease_CompleteAndExpire(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := database.SetupTestDB(t)

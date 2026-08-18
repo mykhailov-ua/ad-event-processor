@@ -325,32 +325,6 @@ func (s *Service) listRecentMLLabelsForCustomer(ctx context.Context, customerID 
 	return s.ListMLManualLabelsForCustomer(ctx, customerID, limit)
 }
 
-func (s *Service) listRecentMLLabels(ctx context.Context, limit int) ([]MLManualLabelDTO, error) {
-	if limit <= 0 {
-		limit = 5
-	}
-	rows, err := s.GetPool().Query(ctx, `
-		SELECT ip_hash, label, reason, source, created_at
-		FROM ml_manual_labels
-		ORDER BY created_at DESC
-		LIMIT $1`, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	out := make([]MLManualLabelDTO, 0, limit)
-	for rows.Next() {
-		var row MLManualLabelDTO
-		var createdAt time.Time
-		if err := rows.Scan(&row.IPHash, &row.Label, &row.Reason, &row.Source, &createdAt); err != nil {
-			return nil, err
-		}
-		row.CreatedAt = createdAt.UTC().Format(time.RFC3339)
-		out = append(out, row)
-	}
-	return out, rows.Err()
-}
-
 func (s *Service) fraudGeoHints(ctx context.Context, customerID uuid.UUID, from, to time.Time) []FraudGeoHintDTO {
 	if s.chQuery == nil {
 		return nil

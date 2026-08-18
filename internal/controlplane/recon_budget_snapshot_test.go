@@ -19,7 +19,7 @@ import (
 
 func TestReconcileBudgetSnapshot_detectsDriftAndEnqueuesAdjust(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()
@@ -67,7 +67,7 @@ func TestReconcileBudgetSnapshot_detectsDriftAndEnqueuesAdjust(t *testing.T) {
 
 func TestReconcileBudgetSnapshot_skipsInflightGrace(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()
@@ -108,7 +108,7 @@ func TestReconcileBudgetSnapshot_skipsInflightGrace(t *testing.T) {
 
 func TestReconcileBudgetSnapshot_skipsMigrationFence(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()
@@ -157,7 +157,7 @@ func TestReconGraceWindow_fromConfig(t *testing.T) {
 func TestFault_ReconUnderLoad(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	ctx := context.Background()

@@ -62,6 +62,25 @@ struct espx_pid_stats {
 #define ESPX_NR_futex 202
 #define ESPX_NR_epoll_wait 232
 
+#define ESPX_AF_INET 2
+#define ESPX_PG_PORT 5432
+
+static __always_inline __u16 espx_read_sockaddr_port(void *addr)
+{
+	__u16 family;
+	__u16 port_be;
+
+	if (!addr)
+		return 0;
+	if (bpf_probe_read_user(&family, sizeof(family), addr) < 0)
+		return 0;
+	if (family != ESPX_AF_INET)
+		return 0;
+	if (bpf_probe_read_user(&port_be, sizeof(port_be), (char *)addr + 2) < 0)
+		return 0;
+	return bpf_ntohs(port_be);
+}
+
 static __always_inline int espx_is_hot_syscall(long syscall_id)
 {
 	switch (syscall_id) {
@@ -143,6 +162,14 @@ struct espx_net_stats {
 	__u64 connect_samples;
 	__u64 retrans;
 	__u64 rst;
+	__u64 sendto_calls;
+	__u64 sendto_bytes;
+};
+
+struct espx_syscall_peer {
+	__u16 dport;
+	__u16 _pad;
+	__u32 sendto_len;
 };
 
 struct espx_slow_event {

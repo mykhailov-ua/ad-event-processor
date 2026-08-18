@@ -121,7 +121,7 @@ escape_report.txt
 /sentinel.log
 /mr-resilience.log
 /xdp-resilience.log
-/milestone-compose.log
+/compose-fault.log
 
 # Load-test / BPF / resilience report artifacts (also under var/)
 fault_proof.txt

@@ -34,6 +34,22 @@ make gen bpf-dev  # Compiles BPF programs for development probes (requires clang
 | `api/*.proto` | `make proto` | `internal/*/pb/*.pb.go`, `*_vtproto.pb.go` |
 | `deploy/edge/xdp/bpf/*.c` | `make gen bpf-dev` | `internal/edge/bpf_edge_bpf*.go` |
 
+### Service and integration test scaffolding
+
+```bash
+task scaffold -- my-service      # internal/my-service, cmd/my-service, sqlc entry, init migration
+task gen                        # sqlc for the new service
+task test-gen -- internal/my-service
+```
+
+`task test-gen` writes `{service}_integration_test.go` plus `integration_helpers_test.go` when needed. Generated tests:
+
+- skip under `-short` with an explicit integration reason (merge gate)
+- wire real Postgres/Redis via `internal/testutil` or existing package helpers (no DB mocks)
+- include a held-out negative case (validation or schema invariant)
+
+`bash scripts/ci/integration_test_slop_gate.sh` rejects placeholder or mock-only integration tests; it runs in `pr_fast.sh`.
+
 ### vtproto Memory Patch
 Running `make proto` automatically executes the `patch-vtproto-hotpath` utility (`cmd/patch-vtproto-hotpath/main.go`). This tool replaces standard `make+copy` slices with the optimized `appendReuseBytes` helper for repeated Protobuf fields (`EventMetadata.ExtraKeys` / `ExtraValues`). This optimization is mandatory to maintain zero heap allocations on the hot path.
 
@@ -152,9 +168,9 @@ Embedded SPA routes (see `web/src/lib/routes.ts`, nav in `web/src/helpers/nav_co
 | Ops | `/ops`, `/ops/shards`, `/ops/blacklist` |
 | Settings | `/settings`, `/settings/domains` |
 
-Closed milestone detail: [MILESTONES.md §8–10](MILESTONES.md#8-september-2026-ga-appliance-p0--closed-2026-08-12). Traffic macros and CAPI: [TRAFFIC_INTEGRATION.md](TRAFFIC_INTEGRATION.md).
+Shipped admin surface: see `web/DESIGN.md` and `web/src/lib/routes.ts`. Traffic macros and CAPI: [TRAFFIC.md](TRAFFIC.md).
 
-**Open UI backlog:** [`.cursor/MILESTONE.md`](../.cursor/MILESTONE.md) §1 — DoD, SLA, tests, **anti-slop** (§1.0); UX honesty: [web/DESIGN.md §11](../web/DESIGN.md#11-anti-slop-and-honesty-2026-admin-ui).
+UX honesty rules: [web/DESIGN.md section 11](../web/DESIGN.md#11-anti-slop-and-honesty-2026-admin-ui).
 
 #### Admin UI release gate (pre-tag `admin-ui-ga`)
 
@@ -164,7 +180,7 @@ Before tagging a production admin UI release:
 cd web && npm ci && npm run build && cd ..
 go test ./internal/controlplane/ -run TestAdminStaticRoutes -count=1
 bash scripts/ci/admin_web.sh          # typecheck + unit + slop gates; e2e skipped (ADMIN_SKIP_E2E=1 default)
-MILESTONE_SKIP_E2E=0 bash scripts/ci/milestone_ui_gate.sh  # required once before tag — full Playwright bundle
+ADMIN_RELEASE_SKIP_E2E=0 bash scripts/ci/admin_ui_release_gate.sh  # full Playwright bundle before tag
 bash scripts/ci/admin_release_gate.sh # confirm audit + security literals + govulncheck
 bash scripts/test/admin_stack_e2e.sh  # optional: live stack on :8188
 ```
@@ -241,7 +257,7 @@ These constraints apply to `internal/ingestion`, hot paths in `pkg/broker`, and 
 
 ### Performance benchmarks
 
-Full laptop numbers: [BENCHMARKS.md](BENCHMARKS.md). Production SLAs: handler p95 &lt; 50 ms, Redis unified-filter Lua p99 &lt; 10 ms/shard (`platform-sla.mdc`). Bench harness honesty (PR claims, mock vs truth): [.cursor/skills/bidshard-fuzz-benchmark/ai-slop-benchmarks.md](../.cursor/skills/bidshard-fuzz-benchmark/ai-slop-benchmarks.md).
+Production SLAs: handler p95 &lt; 50 ms, Redis unified-filter Lua p99 &lt; 10 ms/shard (`platform-sla.mdc`). Bench harness honesty (PR claims, mock vs truth): [.cursor/skills/bidshard-fuzz-benchmark/ai-slop-benchmarks.md](../.cursor/skills/bidshard-fuzz-benchmark/ai-slop-benchmarks.md). Run `make test-alloc-gate` before citing ns/op.
 
 **Micro only — not Lua SLA** (`mockRedisClient.EvalSha` never runs Lua; measures Go wrapper overhead only):
 
@@ -400,7 +416,7 @@ Scripts log `skip (…)` and **exit 0** when preconditions are missing — citin
 
 **Smoke `fault_proof` contract:** `status=ok` means the named harness invariant ran (e.g. `TlsTxSw` delta, compose cpuset pin, processor log markers). `status=partial` means config/unit gates only — live stack absent or skipped. Smokes do **not** assert kTLS or CPU-isolation p99/CPU percent wins; use load-test + Prometheus for perf claims.
 
-MILESTONE verification blocks should link here instead of bare script names.
+Script verification blocks in PR descriptions should link to this skip matrix instead of bare script names.
 
 Production perf claims require `PERF_GATE_STRICT=true bash scripts/test/gate_run.sh` or `make test-alloc-gate` — smoke `gate_run.sh` prints `alloc gate NOT run` and is not sufficient alone.
 
@@ -416,6 +432,54 @@ Failed CI uploads logs: `merge-race-short-log`, `merge-integration-log`, `merge-
 
 To silence existing Dependabot PRs: close them; new ones appear at most monthly. To disable version PRs entirely, delete `.github/dependabot.yml` and rely on govulncheck + manual `go get -u`.
 
+### BPF resource gate matrices {#bpf-gates}
+
+eBPF load-test probe (`cmd/bpf-collector`, `deploy/dev/bpf/loadtest_probe.bpf.c`) complements `go test -bench` and Prometheus. Enable: `ESPX_BPF_PROBE=1 bash scripts/test/malformed.sh business`. Self-hosted runner setup: [scripts/ci/BPF_RUNNER.md](../scripts/ci/BPF_RUNNER.md).
+
+#### BPF target architecture {#bpf-ci-arch}
+
+| Layer | Scope | Blocks merge |
+| :--- | :--- | :--- |
+| A — static / fast | alloc-gate, race-short, integration, anti-slop, sqlc | Yes (PR) |
+| B — microbench | `gate_bench.sh`, perf-gate +12% CPU | PR smoke; main strict |
+| C — eBPF + compose load | `bpf_probe_session` → `load-report bpf-gate` | When `PERF_RUNNER_LABEL` set |
+| D — cold soak | admin API, query budget, goleak | Nightly / main |
+| E — security | parser fuzz, SQL safety, parser drills | Parallel track |
+
+#### BPF hot-path runtime gate {#bpf-hot-gate}
+
+Scenario: `malformed.sh business`, 5–15 min, `ESPX_BPF_PROBE=1`.
+
+| Metric | WARN | FAIL |
+| :--- | ---: | ---: |
+| `filter_check` uprobe p99 | > 500 µs | > 1 ms |
+| `process_track` uprobe p99 | > 2 ms | > 5 ms |
+| tracker handler p99 (Prometheus) | > 50 ms | **≥ 80 ms** |
+| Redis Lua p99 / shard | > 5 ms | **≥ 10 ms** |
+| `tracker_outbound_connect` (BPF) | — | **> 0** |
+| loadgen on-CPU % | > 15% | > 25% |
+
+#### Hot-path static gate {#bpf-hot-static}
+
+`scripts/ci/hot_path_static_gate.sh`: forbid `fmt.Sprintf`, `context.With*`, hot-path `defer` in ingestion/domain/rtb/tracker/broker packages.
+
+#### Cold-path resource gate {#bpf-cold-gate}
+
+| Metric | FAIL |
+| :--- | :--- |
+| `fd_delta` after settle | **> 0** |
+| `thread_delta` monotonic growth | goroutine leak |
+| PG queries / paginated list | > 3 per request (budget tests) |
+| Admin handler p99 | > 500 ms |
+
+#### Anti-slop gates {#anti-slop}
+
+`scripts/ci/anti_slop_gate.sh` (in `pr_fast.sh`): bare `t.Skip()`, `_ = err` in production code, bench harness naming, UI slop (`check_ui_slop.sh`). Integration skips must cite `integration: run make test-integration`.
+
+#### SQL safety {#sql-safety}
+
+`scripts/ci/sql_safety_gate.sh`: no raw `fmt.Sprintf` SQL in `internal/`; use sqlc queries under `internal/*/queries/`. Parser wire limits: [PARSER.md](PARSER.md), `parser_chaos_drill.sh`.
+
 ---
 
 ## 7. Fault Injection and Resilience
@@ -428,7 +492,7 @@ Fault injection scenarios are executed via `scripts/fault/run.sh` (wrapper over 
 
 ### Shard 0 degradation runbook
 
-Full failure matrix and proof tests: [SHARDING_MILESTONE.md](./SHARDING_MILESTONE.md).
+Full failure matrix and proof tests: [SHARDING.md](./SHARDING.md).
 
 When Redis shard 0 (pub/sub hub, global keys, edge blacklist source) is unavailable:
 
@@ -473,35 +537,26 @@ Fault proof: `bash scripts/fault/run.sh` scenario `shard_0_outage` (`tests/resil
 
 Successful scenarios output a `fault_proof fault=<name>` log line, which is verified by the CI runner.
 
-**Milestone gates E/F/G:** after `bash scripts/fault/run.sh`, `scripts/fault/milestone_gates.sh` requires `fault_proof` lines for `noscript_storm`, `spool_disk_block`, and `sentinel_promotion_isolation`. Standalone:
+After `bash scripts/fault/run.sh`, `scripts/fault/resilience_fault_gates.sh` requires `fault_proof` lines for `noscript_storm`, `spool_disk_block`, and `sentinel_promotion_isolation`. Standalone:
 
 ```bash
 go test -run 'TestFault_(NOSCRIPTStorm|CHSpoolDiskBlock)' ./internal/ingestion/
 go test -run TestFault_SentinelPromotionIsolation ./internal/database/
-bash scripts/fault/milestone_gates.sh /tmp/milestone-fault.log
+bash scripts/fault/resilience_fault_gates.sh /tmp/resilience-fault.log
 ```
 
-Compose+loadgen drills: `bash scripts/fault/milestone_compose_drill.sh all` (RAM proof, cutover compare, E/F/G, TCP). Nightly/manual CI: `.github/workflows/milestone-compose-nightly.yaml`. Unit gates E/F/G run in CI `resilience` job via `scripts/fault/milestone_gates.sh`.
+Compose drills: `bash scripts/fault/compose_fault_drill.sh all`. Nightly CI: `.github/workflows/compose-fault-nightly.yaml`.
 
 ### Parser security and ingress hardening
 
-The tracker enforces wire and body parser limits aligned with the nginx edge (2026 threat model). All proof gaps in phases **P0–P3** (**PS-G01–G13**, **PS-H01–H06**) are closed in code/CI.
-
-**Full guide:** [PARSER_SECURITY.md](PARSER_SECURITY.md)
+The tracker enforces wire and body parser limits aligned with the nginx edge. See [PARSER.md](PARSER.md).
 
 **Quick verification:**
 
 ```bash
-# Proof stubs for each gap (PS-G01–G08)
 go test ./internal/ingestion/ -run=TestChaos_ParserSecurity -count=1 -v
-
-# Edge ↔ gnet parity (237 vectors, zero differentials)
 go test ./internal/ingestion/ -run=TestChaos_CrossHop_NginxGnet -count=1
-
-# Full drill: ingress chaos, security proofs, cross-hop, slow-body, phase P2 wire, load mix, benches
 bash scripts/fault/parser_chaos_drill.sh
-
-# Sustained mixed load (default 5 min; use --duration=8s for a quick smoke)
 bash scripts/fault/parser_chaos_load.sh --duration=300s --rps=5000 --chaos-pct=10
 ```
 
@@ -521,17 +576,8 @@ bash scripts/fault/parser_chaos_load.sh --duration=300s --rps=5000 --chaos-pct=1
 | Script | Role |
 | :--- | :--- |
 | `parser_chaos_drill.sh` | PR/nightly: unit chaos, security proofs, cross-hop, slow-body, TE/proto/HPACK, 8 s load mix, fuzz smoke, `gate_bench.sh` |
-| `parser_slow_body_drill.sh` | PS-G01 slow-body integration proof |
-| `parser_chaos_load.sh` | PS-G08 sustained valid + chaos mix; greps `fault_proof fault=parser_chaos_load gap=closed` |
-
-**Parser security phases P0–P3:** all gaps closed — [MILESTONES.md](MILESTONES.md) §2.
-
-| Phase | Gap IDs | Topic (summary) |
-| :--- | :--- | :--- |
-| P0 | PS-G01 | Slow-body / incomplete HTTP/1 |
-| P1 | PS-G02–G04, PS-H01 | Framing, ORTB scan, edge parity, pool cap |
-| P2 | PS-G05–G13, PS-H02–H03, PS-H06 | Wire bombs, JSON budgets, key-pair cap, fuzz smoke |
-| P3 | PS-H04–H05 | ORTB literal keys, UTF-8 values |
+| `parser_slow_body_drill.sh` | Slow-body integration proof |
+| `parser_chaos_load.sh` | Sustained valid + chaos mix; greps `fault_proof fault=parser_chaos_load gap=closed` |
 
 **Nightly fuzz (pre-release, dedicated runner):**
 
@@ -542,15 +588,11 @@ go test ./internal/ingestion/ -fuzz=FuzzHTTP1Chunked -fuzztime=2h -count=1
 go test ./internal/ingestion/ -fuzz=FuzzParseOpenRTB3FSM -fuzztime=2h -count=1
 ```
 
-Engineering detail and SLAs: [PARSER_SECURITY.md](PARSER_SECURITY.md), [BENCHMARKS.md](BENCHMARKS.md). Historical agent catalog: git `.cursor/PARSER_SECURITY_MILESTONE.md`.
-
-**Out of scope** (not tracker parser gaps): cold-path admin JSON → [COLD_PATH_JSON.md](COLD_PATH_JSON.md); XDP → [enterprise/EDGE_XDP.md](enterprise/EDGE_XDP.md); TCP/netem → [EDGE_CASES.md](EDGE_CASES.md) §9.
-
-**Nightly fuzz CI:** `.github/workflows/parser-fuzz-nightly.yaml` (Sunday 05:00 UTC, 2 h per target; `workflow_dispatch` for manual runs).
+Engineering detail: [PARSER.md](PARSER.md). `.github/workflows/parser-fuzz-nightly.yaml` (Sunday 05:00 UTC, 2 h per target; `workflow_dispatch` for manual runs).
 
 #### Edge nginx: slow-body and drip-rate limits
 
-The tracker closes incomplete HTTP/1 bodies via `HTTP1_INCOMPLETE_MAX` and `HTTP1_BODY_IDLE_MS` (PS-G01). On the **edge**, complement tracker policy so slow clients never reach `:8181` on paths that bypass Lua (misconfig, direct port exposure):
+The tracker closes incomplete HTTP/1 bodies via `HTTP1_INCOMPLETE_MAX` and `HTTP1_BODY_IDLE_MS`. On the **edge**, complement tracker policy so slow clients never reach `:8181` on paths that bypass Lua (misconfig, direct port exposure):
 
 | Directive | Recommended (appliance) | Role |
 | :--- | :--- | :--- |
@@ -577,9 +619,30 @@ Tiered event bus: tracker → mmap WAL (`pkg/broker`) → processor → ClickHou
 
 1. Deploy broker (`deploy/broker/docker-compose.yaml` or appliance profile). Set `BROKER_URL` on tracker + processor.
 2. Run with `CH_INGEST_SOURCE=` (empty) and `BROKER_SHADOW_MODE=1` — verify `ad_broker_ingest_divergence_high` stays 0.
-3. Set `BROKER_SHADOW_MODE=0`, keep dual-path until PEL lag on `_ch` drains to 0. **Operator checklist:** [PEL_DRAIN.md](PEL_DRAIN.md).
+3. Set `BROKER_SHADOW_MODE=0`, keep dual-path until PEL lag on `_ch` drains to 0 (see [PEL drain](#pel-drain) below).
 4. Set `CH_INGEST_SOURCE=broker` on tracker + processor; restart. Redis `_ch` consumer stops; broker `_ch_broker` is sole CH ingest.
 5. Optional rollback: unset `CH_INGEST_SOURCE`, re-enable Redis consumers; broker offsets remain on disk under `LOGGER_DIR/offsets`.
+
+#### PEL drain {#pel-drain}
+
+Drain Redis Stream **Pending Entries List (PEL)** on `_ch` / `_pg` before step 4. **Do not** set `CH_INGEST_SOURCE=broker` until `_ch` PEL `count = 0` on every shard (or ops accepts gap).
+
+| Check | Command / signal |
+| :--- | :--- |
+| Broker healthy | `curl -sf http://127.0.0.1:8084/health` |
+| Shadow divergence | `ad_broker_ingest_divergence_high` = 0 when `BROKER_SHADOW_MODE=1` |
+| Processor up | `curl -sf http://127.0.0.1:8186/health` |
+| Redis shards | `redis-cli -a $REDIS_PASSWORD PING` on shards 0–3 |
+
+```bash
+redis-cli -a "$REDIS_PASSWORD" -p 6479 XPENDING ad:events:ch:0 processor-ch-group
+for i in 0 1 2 3; do
+  port=$((6479 + i))
+  redis-cli -a "$REDIS_PASSWORD" -p "$port" XPENDING "ad:events:ch:${i}" processor-ch-group
+done
+```
+
+Poll every 30s while `CH_INGEST_SOURCE=` stays empty. Stuck PEL: fix CH/spool first; avoid `XGROUP DESTROY` in prod. Post-cutover: `bash scripts/perf/redis_ram_proof.sh`.
 
 **Redis UDS (single-VPS):** set `REDIS_ADDRS` to unix socket paths (e.g. `/run/ad-event-processor/redis/redis-0.sock`) — `internal/database/redis_shards.go` and `redis_connect.go` dial `unix` when the address starts with `/` or contains `.sock`. Compose mounts shared volume `ad_event_processor_run:/run/ad-event-processor` on db, redis shards, tracker, and processor.
 
@@ -595,13 +658,23 @@ Tiered event bus: tracker → mmap WAL (`pkg/broker`) → processor → ClickHou
 
 ---
 
-## 8. Enterprise optional features (frozen in appliance SKU)
+## 8. Enterprise optional features
 
-Multi-region proxy and NIC-level XDP are **not** part of the default single-VPS path. Enable paths, licenses, and operator drills:
+Multi-region proxy and NIC-level XDP are **not** part of the default single-VPS path. Policy: [ARCHITECTURE.md](ARCHITECTURE.md) section 11. Runbooks:
 
-- [FROZEN_FEATURES.md](./FROZEN_FEATURES.md)
-- [enterprise/MULTI_REGION.md](./enterprise/MULTI_REGION.md) — quarterly MR drill, WAL, compose profile
-- [enterprise/EDGE_XDP.md](./enterprise/EDGE_XDP.md) — BTF, `edge-xdp`, blacklist sync
+- [REGIONS.md](REGIONS.md) — region-proxy, WAL, quarterly MR drill
+- [XDP.md](XDP.md) — BTF, `edge-xdp`, blacklist sync
+
+### ML stack (offline)
+
+| Layer | Path |
+| :--- | :--- |
+| Train / eval | `model/` |
+| Inference | `cmd/fraud-scorer`, `internal/fraud/` |
+| Admin API | `internal/controlplane/adminapi/` |
+| Buyer UI | `web/src/pages/` |
+
+Hot path reads Redis `ml:score:boost:*` snapshots only — no ONNX on `/track`. Fraud campaign thresholds: `GET/PATCH /api/v1/campaigns/{id}/fraud`.
 
 ---
 
@@ -691,7 +764,7 @@ When `LOCAL_QUOTA_MODE=live` is configured:
 
 When `StreamProducer` is enabled (default Redis ingest path), `SetDeferStreamToProducer(true)` routes stream `XADD` through the async producer only — local-quanta lane stream name becomes `fcap:ignored` to prevent duplicate events.
 
-**Rationale and verification:** [TRADEOFFS.md — Hot-path ingest strategy](TRADEOFFS.md#hot-path-ingest-strategy-rejected-alternatives-verification), [§18 Async Stream Producer](TRADEOFFS.md#18-async-stream-producer-admission-and-budget-rollback).
+**Rationale and verification:** [ARCHITECTURE.md](ARCHITECTURE.md) section 2.1 design rationale table; `go test ./internal/ingestion/ -run='TestStreamProducer|TestUnifiedFilter_SetDefer|TestUnifiedFilter_Rollback' -v`.
 
 ### Stream producer admission
 
@@ -719,14 +792,18 @@ Zero-alloc gate: `TestUnifiedFilter_Check_zeroAlloc_localQuantaFullSkip` (run wi
 
 ---
 
-## 13. Milestones and backlog routing
+## 13. Doc routing
 
 | Document | Role |
 | :--- | :--- |
-| [NAMING.md](NAMING.md) | **BidShard** (public) vs **ad-event-processor** (internal); **espx** removed |
-| [MILESTONES.md](MILESTONES.md) | **Closed** milestones (broker, parser, shard 0, GA P0/P1, admin SPA, naming, operability) |
-| `.cursor/MILESTONE.md` | **Open** backlog (single file) — §1 CPA admin, §8 Licensing, §9 RP, §10 GMA, ops §0, CUT §2 |
-| [SHARDING_MILESTONE.md](SHARDING_MILESTONE.md) | Shard 0 failure matrix + automated catch-up runbook |
-| [PEL_DRAIN.md](PEL_DRAIN.md) | Broker cutover operator checklist |
-| [CUT_CANDIDATES.md](CUT_CANDIDATES.md) | CUT / FREEZE / KEEP inventory for appliance SKU |
-| [TRAFFIC_INTEGRATION.md](TRAFFIC_INTEGRATION.md) | Buyer integration guide (click, track, CAPI, Cost Sync, zero-redirect) |
+| [README.md](README.md) | Documentation index |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Topology, hot/cold path, enterprise policy (section 11) |
+| [DEVELOPMENT.md](DEVELOPMENT.md) | Dev, CI gates, BPF matrices, broker PEL drain |
+| [NAMING.md](NAMING.md) | **BidShard** (public) vs **ad-event-processor** (internal) |
+| [QUICKSTART.md](QUICKSTART.md) | Single-VPS installer |
+| [TRAFFIC.md](TRAFFIC.md) | Buyer integration (click, track, CAPI, DMR) |
+| [LICENSE.md](LICENSE.md) | Offline JWT license |
+| [PARSER.md](PARSER.md) | Ingress wire policy and chaos drills |
+| [SHARDING.md](SHARDING.md) | Shard 0 failure matrix |
+| [RTB.md](RTB.md) | OpenRTB shadow to live |
+| [XDP.md](XDP.md) / [REGIONS.md](REGIONS.md) | Enterprise runbooks |

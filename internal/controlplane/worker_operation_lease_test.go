@@ -20,7 +20,7 @@ import (
 
 func TestOperationLeaseWorker_BookedExecutingCompleted(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()
@@ -71,7 +71,7 @@ func TestOperationLeaseWorker_BookedExecutingCompleted(t *testing.T) {
 
 func TestOperationLeaseWorker_DualCASOneExecutor(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()

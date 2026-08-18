@@ -14,7 +14,7 @@ import (
 
 func TestLedgerBatch_ConsolidatesDeltas(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	infra, cleanup := setupAdsFaultInfra(t)
@@ -80,7 +80,7 @@ func TestLedgerBatch_ConsolidatesDeltas(t *testing.T) {
 
 func TestLedgerBatch_ZeroBalancePausesCampaign(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	infra, cleanup := setupAdsFaultInfra(t)
@@ -115,7 +115,7 @@ func TestLedgerBatch_ZeroBalancePausesCampaign(t *testing.T) {
 
 func TestLedgerBatch_MultiCampaignSingleTxn(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	infra, cleanup := setupAdsFaultInfra(t)
@@ -165,7 +165,7 @@ func TestLedgerBatch_MultiCampaignSingleTxn(t *testing.T) {
 
 func TestLedgerBatch_AuditSampling(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	infra, cleanup := setupAdsFaultInfra(t)

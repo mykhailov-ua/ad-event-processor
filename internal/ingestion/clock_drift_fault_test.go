@@ -25,7 +25,7 @@ const (
 
 func TestFault_ClockDriftMonotonicTTC(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := setupAdsFaultInfra(t)
@@ -85,7 +85,7 @@ func TestFault_ClockDriftMonotonicTTC(t *testing.T) {
 
 func TestFault_ClockDrift_UDPTimePacket(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := setupAdsFaultInfra(t)

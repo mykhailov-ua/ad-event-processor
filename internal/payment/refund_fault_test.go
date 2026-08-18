@@ -20,7 +20,7 @@ import (
 
 func TestFault_PaymentRefundConcurrentWebhookSameEventID(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)
@@ -71,7 +71,7 @@ func TestFault_PaymentRefundConcurrentWebhookSameEventID(t *testing.T) {
 
 func TestFault_PaymentRefundDualOutboxWorkerRace(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)
@@ -116,7 +116,7 @@ func TestFault_PaymentRefundDualOutboxWorkerRace(t *testing.T) {
 
 func TestFault_PaymentRefundPostSettlementMarkGap(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)
@@ -164,7 +164,7 @@ func TestFault_PaymentRefundPostSettlementMarkGap(t *testing.T) {
 
 func TestFault_PaymentPartialRefundThenFull(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)
@@ -207,7 +207,7 @@ func TestFault_PaymentPartialRefundThenFull(t *testing.T) {
 
 func TestFault_PaymentRefundExceedsIntentIgnored(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)
@@ -241,7 +241,7 @@ func TestFault_PaymentRefundExceedsIntentIgnored(t *testing.T) {
 
 func TestFault_PaymentRefundWithoutTopupDead(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)

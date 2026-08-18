@@ -19,7 +19,7 @@ import (
 
 func TestFault_SettlementFailedNotifier(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)

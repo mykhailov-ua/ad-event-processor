@@ -22,7 +22,7 @@ import (
 
 func TestManagementAPI_DeliveryRoutes(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -112,7 +112,7 @@ func TestManagementAPI_DeliveryRoutes(t *testing.T) {
 
 func TestManagementAPI_RoleUserForbiddenSettings(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -147,7 +147,7 @@ func TestManagementAPI_RoleUserForbiddenSettings(t *testing.T) {
 
 func TestManagementAPI_RoleUserForbiddenBlacklist(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -178,7 +178,7 @@ func TestManagementAPI_RoleUserForbiddenBlacklist(t *testing.T) {
 
 func TestManagementAPI_RoleUserForbiddenEmergencyBreaker(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)

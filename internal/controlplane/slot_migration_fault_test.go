@@ -140,7 +140,7 @@ func prepareMigratingVersion(t *testing.T, ctx context.Context, mapRepo *domain.
 
 func TestFault_SlotMigrationActivateBeforeCopyRejected(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	rdb, cleanup := database.SetupTestRedis(t)
@@ -170,7 +170,7 @@ func TestFault_SlotMigrationActivateBeforeCopyRejected(t *testing.T) {
 
 func TestFault_SlotMigrationCopyRedisPartition(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	rdb, cleanup := database.SetupTestRedis(t)
@@ -210,7 +210,7 @@ func TestFault_SlotMigrationCopyRedisPartition(t *testing.T) {
 
 func TestFault_SlotMigrationCopySlowEventuallySucceeds(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	rdb, cleanup := database.SetupTestRedis(t)
@@ -253,7 +253,7 @@ func TestFault_SlotMigrationCopySlowEventuallySucceeds(t *testing.T) {
 
 func TestFault_SlotMigrationConcurrentCopySameSlot(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	rdb, cleanup := database.SetupTestRedis(t)
@@ -302,7 +302,7 @@ func TestFault_SlotMigrationConcurrentCopySameSlot(t *testing.T) {
 
 func TestFault_SlotMigrationConcurrentActivate(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	rdb, cleanup := database.SetupTestRedis(t)
@@ -357,7 +357,7 @@ func TestFault_SlotMigrationConcurrentActivate(t *testing.T) {
 
 func TestFault_SlotMapMetaLockContention(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	rdb, cleanup := database.SetupTestRedis(t)
@@ -406,7 +406,7 @@ func TestFault_SlotMapMetaLockContention(t *testing.T) {
 
 func TestFault_SlotMapPGDeadlockRecovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -465,7 +465,7 @@ func TestFault_SlotMapPGDeadlockRecovery(t *testing.T) {
 
 func TestFault_SlotMigrationCopyIdempotentRetry(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	rdb, cleanup := database.SetupTestRedis(t)
@@ -512,7 +512,7 @@ func TestFault_SlotMigrationCopyIdempotentRetry(t *testing.T) {
 
 func TestFault_SlotMigrationRollbackAfterActivate(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	rdb, cleanup := database.SetupTestRedis(t)
@@ -549,7 +549,7 @@ func TestFault_SlotMigrationRollbackAfterActivate(t *testing.T) {
 
 func TestFault_DebitFencedDuringSlotCopy(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	ctx := context.Background()
@@ -596,7 +596,7 @@ func TestFault_DebitFencedDuringSlotCopy(t *testing.T) {
 
 func TestFault_SlotMigrationPGRewarmCutover(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	rdb, cleanup := database.SetupTestRedis(t)
@@ -633,7 +633,7 @@ func TestFault_SlotMigrationPGRewarmCutover(t *testing.T) {
 
 func TestFault_SlotMigrationDualWriteCutover(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	rdb, cleanup := database.SetupTestRedis(t)
@@ -676,7 +676,7 @@ func TestFault_SlotMigrationDualWriteCutover(t *testing.T) {
 
 func TestFault_SlotMigrationPGRewarmColdStart(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	rdb, cleanup := database.SetupTestRedis(t)

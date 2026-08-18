@@ -10,8 +10,8 @@ const LEDGER_CSV = [
   '',
 ].join('\n');
 
-test.describe('CPA held-out — ledger export (M2)', () => {
-  test('CPA-M2: ledger CSV download has header + data row with TOPUP', async ({ page }) => {
+test.describe('CPA held-out — ledger export', () => {
+  test('ledger CSV download has header + data row with TOPUP', async ({ page }) => {
     await mockAuthedSession(page, ADMIN_USER);
 
     let downloadBody = '';
@@ -74,7 +74,7 @@ test.describe('CPA held-out — ledger export (M2)', () => {
 });
 
 test.describe('CPA held-out — campaign PATCH honesty', () => {
-  test.fixme('CPA-M1: budget save persists after reload', async ({ page }) => {
+  test.fixme('budget save persists after reload', async ({ page }) => {
     await page.goto('/campaigns/00000000-0000-4000-8000-000000000001');
     await page.getByTestId('campaign-budget-total').fill('1000');
     await page.getByRole('button', { name: 'Save' }).click();
@@ -84,7 +84,7 @@ test.describe('CPA held-out — campaign PATCH honesty', () => {
 });
 
 test.describe('CPA held-out — report actions', () => {
-  test('CPA-M3: pause campaign POST before success toast', async ({ page }) => {
+  test('pause campaign POST before success toast', async ({ page }) => {
     await mockAuthedSession(page, ADMIN_USER);
     const CAMPAIGN_ID = '550e8400-e29b-41d4-a716-446655440099';
     let sawPause = false;
@@ -118,8 +118,8 @@ test.describe('CPA held-out — report actions', () => {
   });
 });
 
-test.describe('CPA held-out — integration kit (M4)', () => {
-  test('CPA-M4: click URL includes dmr=1 when toggled', async ({ page }) => {
+test.describe('CPA held-out — integration kit', () => {
+  test('click URL includes dmr=1 when toggled', async ({ page }) => {
     await mockAuthedSession(page, ADMIN_USER);
     const CAMPAIGN_ID = '550e8400-e29b-41d4-a716-446655440000';
 
@@ -163,8 +163,8 @@ test.describe('CPA held-out — integration kit (M4)', () => {
   });
 });
 
-test.describe('CPA held-out — publisher scope (M6)', () => {
-  test('CPA-M6: publisher dashboard loads with scoped fixture', async ({ page }) => {
+test.describe('CPA held-out — publisher scope', () => {
+  test('publisher dashboard loads with scoped fixture', async ({ page }) => {
     await mockAuthedSession(page, PUBLISHER_USER);
 
     await page.route('**/api/v1/publisher/dashboard**', async (route) => {
@@ -221,7 +221,7 @@ test.describe('CPA held-out — publisher scope (M6)', () => {
     await expect(page.getByText('1200')).toBeVisible();
   });
 
-  test('CPA-M6: publisher nav hides campaigns', async ({ page }) => {
+  test('publisher nav hides campaigns', async ({ page }) => {
     await mockAuthedSession(page, PUBLISHER_USER);
     await page.route('**/api/v1/publisher/dashboard**', async (route) => {
       await route.fulfill({
@@ -261,8 +261,8 @@ test.describe('CPA held-out — publisher scope (M6)', () => {
   });
 });
 
-test.describe('CPA held-out — self-serve portal (M7)', () => {
-  test('CPA-M7: billing statement and payment intent in selfserve shell', async ({ page }) => {
+test.describe('CPA held-out — self-serve portal', () => {
+  test('billing statement and payment intent in selfserve shell', async ({ page }) => {
     await mockAuthedSession(page, BUYER_USER);
 
     await page.route('**/api/v1/dashboards/buyer**', async (route) => {
@@ -323,8 +323,8 @@ test.describe('CPA held-out — self-serve portal (M7)', () => {
   });
 });
 
-test.describe('CPA held-out — ops consolidation (M8)', () => {
-  test('CPA-M8: consent browser is read-only list', async ({ page }) => {
+test.describe('CPA held-out — ops consolidation', () => {
+  test('consent browser is read-only list', async ({ page }) => {
     await mockAuthedSession(page, ADMIN_USER);
 
     await page.route('**/api/v1/ops/consent/proofs**', async (route) => {
@@ -353,7 +353,7 @@ test.describe('CPA held-out — ops consolidation (M8)', () => {
     await expect(page.getByTestId('consent-submit')).toHaveCount(0);
   });
 
-  test('CPA-M8: unified DLQ inbox retries with source body', async ({ page }) => {
+  test('unified DLQ inbox retries with source body', async ({ page }) => {
     await mockAuthedSession(page, ADMIN_USER);
 
     let retryBody = null;
@@ -393,7 +393,7 @@ test.describe('CPA held-out — ops consolidation (M8)', () => {
     await expect.poll(() => retryBody?.source).toBe('capi');
   });
 
-  test('CPA-M8: stale dashboard shows affected campaigns', async ({ page }) => {
+  test('stale dashboard shows affected campaigns', async ({ page }) => {
     await mockAuthedSession(page, ADMIN_USER);
 
     await page.route('**/api/v1/ops/incidents', async (route) => {

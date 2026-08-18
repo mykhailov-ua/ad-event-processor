@@ -18,7 +18,7 @@ import (
 
 func TestCustomersList_Handler(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -124,7 +124,7 @@ func TestCustomersList_Handler(t *testing.T) {
 
 func TestCampaignsList_Handler(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)

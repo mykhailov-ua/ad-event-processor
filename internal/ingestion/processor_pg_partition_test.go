@@ -35,7 +35,7 @@ type adsProcessorPartitionInfra struct {
 
 func TestFault_AdsProcessorPGNetworkPartition(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := setupAdsProcessorPartitionInfra(t)

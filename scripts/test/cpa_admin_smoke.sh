@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# CPA-M0.5 admin smoke — cold-path UI + handler gates (no Docker).
+# CPA admin smoke — cold-path UI + handler gates (no Docker).
 # Skip: none (requires web/node_modules for admin_web typecheck).
 set -euo pipefail
 cd "$(dirname "$0")/../.."

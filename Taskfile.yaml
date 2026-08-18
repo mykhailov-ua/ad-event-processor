@@ -12,9 +12,96 @@ tasks:
       - task --list
 
   gen:
-    desc: Generate SQL, templ, and gRPC code
+    desc: Generate SQL, protobuf, and BPF code
     cmds:
-      - bash scripts/ci/gen.sh --all
+      - task: gen-sql
+      - task: gen-proto
+      - task: gen-bpf-dev
+
+  gen-sql:
+    desc: Generate sqlc code for all services
+    cmds:
+      - make gen
+
+  gen-proto:
+    desc: Generate protobuf/gRPC code
+    cmds:
+      - make proto
+
+  gen-bpf-dev:
+    desc: Compile BPF programs for development probes
+    cmds:
+      - make gen bpf-dev
+
+  up:
+    desc: Start the full development stack
+    cmds:
+      - bash scripts/dev/stack.sh full
+
+  down:
+    desc: Stop the development stack
+    cmds:
+      - bash scripts/dev/stack.sh down
+
+  preflight:
+    desc: Verify service health
+    cmds:
+      - bash scripts/dev/preflight.sh
+
+  test:
+    desc: Run fast tests
+    cmds:
+      - bash scripts/ci/pr_fast.sh
+
+  test-integration:
+    desc: Run integration tests (requires Docker)
+    cmds:
+      - bash scripts/ci/integration_test.sh
+
+  test-race:
+    desc: Run race detector on short tests
+    cmds:
+      - bash scripts/ci/race_short.sh
+
+  lint:
+    desc: Run golangci-lint
+    cmds:
+      - golangci-lint run
+
+  ui-dev:
+    desc: Start admin UI development server
+    dir: web
+    cmds:
+      - npm run dev
+
+  ui-build:
+    desc: Build admin UI
+    dir: web
+    cmds:
+      - npm run build
+
+  scaffold:
+    desc: Create a new service boilerplate
+    summary: |
+      Usage: task scaffold -- <service-name>
+      Example: task scaffold -- my-new-service
+    cmds:
+      - bash scripts/dev/scaffold_service.sh {{.CLI_ARGS}}
+
+  test-gen:
+    desc: Generate integration test boilerplate for a package
+    summary: |
+      Usage: task test-gen -- internal/<service> [--scenario <name>] [--force]
+      Example: task test-gen -- internal/notify
+    cmds:
+      - bash scripts/dev/scaffold_test.sh {{.CLI_ARGS}}
+
+  deps-install:
+    desc: Install all development dependencies (Linux only)
+    cmds:
+      - sudo apt-get update && sudo apt-get install -y clang llvm libelf-dev gcc-multilib linux-headers-$(uname -r) bpftool
+      - go install github.com/kyleconroy/sqlc/cmd/sqlc@latest
+      - go install github.com/bufbuild/buf/cmd/buf@latest
 
   docker-up:
     desc: Start required service containers

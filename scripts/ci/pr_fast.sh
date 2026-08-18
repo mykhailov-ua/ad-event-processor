@@ -11,6 +11,13 @@ bash "$SCRIPTS/ci/compliance.sh"
 bash "$SCRIPTS/ci/ch_direct.sh"
 bash "$SCRIPTS/ci/lint_go_gate.sh" all
 bash "$SCRIPTS/ci/integration_skip_reason_gate.sh"
+bash "$SCRIPTS/ci/integration_test_slop_gate.sh"
+bash "$SCRIPTS/ci/anti_slop_gate.sh"
+bash "$SCRIPTS/ci/diff_assertion_gate.sh"
+bash "$SCRIPTS/ci/sql_safety_gate.sh"
+bash "$SCRIPTS/ci/hot_path_static_gate.sh"
+bash "$SCRIPTS/ci/cold_path_static_gate.sh"
+bash "$SCRIPTS/ci/escape_heap_gate.sh"
 make test-alloc-gate
 make test-fast
 bash "$SCRIPTS/ci/shard0_nil_gate.sh"

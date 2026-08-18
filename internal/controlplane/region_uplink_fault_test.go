@@ -19,7 +19,7 @@ import (
 func TestFault_RegionUplinkDedup(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()
@@ -73,7 +73,7 @@ func TestFault_RegionUplinkDedup(t *testing.T) {
 func TestRegionIngestBatch_FactorMismatchRejected(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()

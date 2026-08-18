@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Helpers for RP-M4 DNS lab (/etc/hosts → 127.0.0.1, no public DNS).
+# Helpers for DNS lab (/etc/hosts -> 127.0.0.1, no public DNS).
 dns_lab_hosts_resolve() {
   local host="$1"
   getent ahosts "$host" 2> /dev/null | awk '{print $1}' | head -1

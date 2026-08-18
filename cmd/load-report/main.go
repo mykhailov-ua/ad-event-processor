@@ -94,6 +94,37 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
+	case "bpf-gate":
+		sessionDir, promURL, err := parseSessionFlags(os.Args[2:])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			usage()
+			os.Exit(1)
+		}
+		if err := runBPFGate(sessionDir, promURL); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+	case "bpf-gate-compare":
+		if len(os.Args) < 4 {
+			fmt.Fprintln(os.Stderr, "load-report bpf-gate-compare: baseline-dir session-dir required")
+			usage()
+			os.Exit(1)
+		}
+		promURL := os.Getenv("PROMETHEUS_URL")
+		if promURL == "" {
+			promURL = defaultPromURL
+		}
+		for i := 4; i < len(os.Args); i++ {
+			if os.Args[i] == "--prom" && i+1 < len(os.Args) {
+				promURL = os.Args[i+1]
+				break
+			}
+		}
+		if err := runBPFGateCompare(os.Args[2], os.Args[3], promURL); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	case "strict":
 		sessionDir, promURL, err := parseSessionFlags(os.Args[2:])
 		if err != nil {
@@ -187,6 +218,24 @@ func runSLA(sessionDir, promURL string) error {
 	return nil
 }
 
+func runBPFGate(sessionDir, promURL string) error {
+	path, err := loadreport.WriteBPFGateReport(sessionDir, promURL)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(os.Stderr, "load-report bpf-gate: wrote %s\n", path)
+	return nil
+}
+
+func runBPFGateCompare(baselineDir, sessionDir, promURL string) error {
+	path, err := loadreport.WriteBPFGateCompareReport(baselineDir, sessionDir, promURL)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(os.Stderr, "load-report bpf-gate-compare: wrote %s\n", path)
+	return nil
+}
+
 func runStrict(sessionDir, promURL string) error {
 	path, err := loadreport.WriteStrictContentionReport(sessionDir, promURL)
 	if err != nil {
@@ -209,6 +258,8 @@ func usage() {
 	fmt.Fprintf(os.Stderr, `Usage:
   load-report prom <session-dir> [--prom URL]
   load-report bpf <session-dir>
+  load-report bpf-gate <session-dir> [--prom URL]
+  load-report bpf-gate-compare <baseline-dir> <session-dir> [--prom URL]
   load-report sla <session-dir> [--prom URL]
   load-report strict <session-dir> [--prom URL]
   load-report strict-compare <baseline-dir> <treatment-dir>
@@ -218,5 +269,6 @@ func usage() {
 Default Prometheus URL: %s (override with PROMETHEUS_URL or --prom)
 Set LOAD_SLA_GATE=1 to fail load-report all on SLA breach.
 Set LOAD_TG_GATE=1 to fail load-report all on Telegram T9 gate breach.
+Set BPF_GATE_STRICT=1 to fail bpf-gate when bpf/maps/summary.json is missing.
 `, defaultPromURL)
 }

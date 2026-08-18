@@ -14,7 +14,7 @@ import (
 
 func TestApplyBlacklistPayload_publishesQuarantine(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

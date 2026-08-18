@@ -41,7 +41,7 @@ func TestResolveScheduleStatus(t *testing.T) {
 
 func TestCampaignTemplateCloneAndPauseResume(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
@@ -80,7 +80,7 @@ func TestCampaignTemplateCloneAndPauseResume(t *testing.T) {
 
 func TestScheduledCampaignStartsPaused(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()

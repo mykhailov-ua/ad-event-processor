@@ -1,66 +1,89 @@
-# Real-Time Bidding (RTB) Engine
+# RTB production runbook (OpenRTB 2.6 SMB)
 
-BidShard features a high-performance, in-process RTB engine designed for the 2026 programmatic landscape. It provides a private, self-hosted alternative to expensive SaaS ad servers, giving you complete data ownership and sub-millisecond auction latencies.
+Shadow → live checklist for `POST /openrtb/bid` on tracker. Scope: display + video, single-imp (default), PMP deals, reconcile export — not OpenRTB 3.0 / CTV pods / DOOH.
 
-## 1. Executive Summary for Media Buyers
+## Prerequisites
 
-For media buying teams and arbitrageurs, BidShard’s RTB engine is built to maximize ROI by eliminating the "SaaS tax" and providing unparalleled speed.
+- Tracker with `RTB_MODE=shadow` or `live`, `CH_DSN` set, processor running (CH migrations applied).
+- Control plane `/api/v1` with `rtb:read` / `rtb:write` for operator.
+- Partner SSP endpoint points at `https://<tracking-domain>/openrtb/bid`.
 
-*   **Zero Volume-Based Fees**: Unlike SaaS trackers that charge more as you scale, BidShard is self-hosted. You process billions of bid requests for the flat cost of your hosting.
-*   **Total Data Privacy**: Your winning angles, PMP deals, and bidding strategies never leave your infrastructure. No SaaS provider can "spy" on your profitable setups.
-*   **Instant Budget Protection**: Our engine uses atomic Redis locks to stop spending the millisecond a budget limit is reached, eliminating the "afterburn" common in other platforms.
-*   **High-Fidelity Fraud Defense**: Integrated ML-scoring and pre-bid IVT filtering ensure you only bid on high-quality human traffic, saving your budget for real conversions.
-*   **PMP & Direct Deals**: Secure premium inventory through Private Marketplace (PMP) deals with full support for Deal IDs and floor price enforcement.
+Env reference: `deploy/rtb/env.example`, `.env.example` (RTB exchange + CH retention).
 
-## 2. Technical Feature List (Engineering Deep-Dive)
+## 1. Validate integration profile
 
-For engineers, BidShard provides a zero-alloc, low-latency auction environment that scales horizontally across bare-metal or cloud instances.
+```bash
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  https://control.example/api/v1/rtb/integration-profile | jq .
+```
 
-### 2.1 Performance & Scale
-*   **Sub-15µs Auction Latency**: The core `RunAuction` logic executes in under 15 microseconds (p99) on standard hardware, leaving maximum headroom for network I/O.
-*   **Zero-Allocation Path**: The hot path for parsing OpenRTB 2.6 and running the auction produces 0 heap allocations, minimizing GC pressure and Stop-The-World pauses.
-*   **DFA-Based Parsing**: High-speed, security-hardened DFA parsers for OpenRTB JSON and Protobuf ingress, with strict scan budgets (`ORTB_SCAN_MAX_BYTES`) to prevent CPU exhaustion attacks.
-*   **Structure of Arrays (SoA) Catalog**: Campaign and creative metadata are materialized into parallel slices (SoA) for cache-friendly linear scans and early-exit optimization.
+Confirm supported objects match partner contract (§0.2 in `OPENRTB-FULL.md`).
 
-### 2.2 OpenRTB & Integration
-*   **OpenRTB 2.6 Exchange**: A dedicated `POST /openrtb/bid` endpoint for SSP/Exchange partners, supporting Display and Video (VAST/VPAID) formats.
-*   **Dual-Path RTB**:
-    *   **Direct Ingest**: Add RTB auctions to your standard `/track` endpoints via `RTB_MODE=live`.
-    *   **Exchange Path**: Use the tracker as a standalone OpenRTB exchange for external demand partners.
-*   **Flexible Budget Authority**:
-    *   `redis`: High-speed Lua-based budgeting (default).
-    *   `rtb`: In-process CAS (Compare-and-Swap) for ultra-low latency budget debits, bypassing Redis round-trips.
-*   **Standard Macro Support**: Full support for OpenRTB macros (`{AUCTION_ID}`, `{CLICK_URL}`, `{PRICE}`, etc.) in creative and tracking URLs.
+## 2. Lint sample bid requests
 
-### 2.3 Smart Targeting & Filtering
-*   **Multi-Dimensional Targeting**: In-process targeting for Geo (MaxMind), Device, Category (BCAT), and custom segments.
-*   **ML-Driven Boosts**: Injects fraud scores and quality signals from offline ML models (LightGBM/ONNX) directly into the auction ranking logic.
-*   **Pre-Bid IVT Rejection**: Automatically rejects datacenter, proxy, and known bot IPs before the auction even begins, saving CPU cycles and partner QPS.
-*   **Frequency Capping & Pacing**: Real-time frequency cap enforcement and daily pacing snapshots to smooth out delivery over 24 hours.
+```bash
+curl -sS -X POST -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  --data-binary @internal/openrtb/testdata/bid_request_min.json \
+  https://control.example/api/v1/rtb/validate-bid-request | jq .
+```
 
-### 2.4 Operational Excellence
-*   **Tie-Breaking & Clearing**: Sophisticated tie-breaking (Weight > Bid) and configurable clearing modes (`first-price`, `second-price`, or `reserve-only`).
-*   **Snapshot Recovery**: Auction state and catalogs can be snapshotted to disk (v4 wire format) for rapid recovery and shard consistency.
-*   **Shadow Mode (`shadow`)**: Run the auction in production, log the winners, and analyze performance without spending live budget or returning bids.
-*   **Shadow-Diff Analysis**: Compare shadow auction results against live data to tune floors and targeting before going live.
-*   **Async ClickHouse Logging**: All auction outcomes, bid requests, and exchange errors are logged asynchronously to ClickHouse for massive-scale analytics.
-*   **Reconcile API**: Export transaction-level logs for partner reconciliation and discrepancy resolution.
-*   **Doctor API Integration**: Real-time health checks for the RTB catalog, budget store, and exchange QPS throttlers.
+Fix validation errors before sending traffic to tracker.
 
-## 3. Getting Started
+## 3. Shadow mode soak
 
-*   **Deployment**: See the [Quick Start Guide](QUICKSTART.md).
-*   **Operations**: Refer to the [RTB Production Runbook](RTB_PRODUCTION_RUNBOOK.md) for shadow→live promotion and reconciliation.
-*   **Security**: Review [Parser Security](PARSER_SECURITY.md) for ingress hardening details.
+1. Set `RTB_MODE=shadow` on tracker; reload.
+2. Send partner traffic (or replay fixtures) to `/openrtb/bid`.
+3. Watch metrics: `ad_rtb_exchange_request_total`, `ad_rtb_exchange_duration_seconds`, `ad_rtb_shadow_winner_mismatch_total`.
+4. Compare shadow vs live gate:
 
-## 4. Admin UI (onboarding)
+```bash
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  'https://control.example/api/v1/rtb/shadow-diff?window=1h' | jq .
+```
 
-| Route | Purpose |
-| :--- | :--- |
-| `/rtb/integration` | Integration profile, `POST /openrtb/bid` URL + copy, edge expose hint, read-only `RTB_MODE`, validate-bid smoke fixture, shadow-diff summary |
-| `/rtb/deals` | PMP deal list (API wired; full CRUD UI backlog — see [`.cursor/MILESTONE.md`](../.cursor/MILESTONE.md) §1.3) |
-| Campaign → **Integration** | `/track` RTB_MODE readout vs exchange endpoint; distinct from OpenRTB partner path |
+Gate criteria (tune per partner): low `mismatch_rate`, stable `parity_rate`, no budget invariant violations in Postgres.
 
-Enable optional edge path: **Platform settings → Expose OpenRTB bid endpoint on edge** — [TRAFFIC_INTEGRATION.md §5](TRAFFIC_INTEGRATION.md#5-enabling-optional-edge-paths).
+## 4. Configure deals and floors
 
-**APIs without dedicated UI yet:** `POST /api/v1/rtb/floors/apply`, `GET /api/v1/rtb/reconcile/export` — use CLI/runbook until UI ships.
+- Create PMP deals: `POST /api/v1/rtb/deals` (audited).
+- Optional floor optimizer: `POST /api/v1/rtb/floors/apply` (uses `rtb_deal_outcomes` in CH).
+
+## 5. Enable live exchange
+
+1. Set `RTB_MODE=live`, `RTB_BUDGET_AUTHORITY` per your deployment (`redis` default).
+2. Set `RTB_EXCHANGE_MAX_QPS` to partner contract (non-zero in production).
+3. Set `RTB_EXCHANGE_NO_BID_MODE` (`204` or `nbr`) per SSP.
+4. Optional: `RTB_PREBID_IVT=true` rejects datacenter/proxy IPs before auction (same gate as `/track` RTB).
+5. Roll one tracker node; verify bids return `x-openrtb-version: 2.6`.
+6. Run E2E budget tests: `go test ./tests/e2e/... -run 'RtbLive|OpenRTB26'` (needs Postgres + Redis).
+
+## 6. Reconcile with partner
+
+Export window stats (all requests or single `request.id`):
+
+```bash
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  'https://control.example/api/v1/rtb/reconcile/export?window=24h&request_id=PARTNER-BID-ID' | jq .
+```
+
+Fields: `bids`, `wins`, `spend_micro` from `rtb_exchange_log` (CH). Compare to partner dashboard for the same window.
+
+## 7. Observability and retention
+
+| Check | Command / metric |
+|-------|------------------|
+| Doctor RTB knobs | `GET /api/v1/ops/doctor` → `rtb_config` |
+| Exchange errors | `ad_rtb_exchange_validate_errors_total` |
+| QPS throttle | `ad_rtb_exchange_throttle_total` |
+| CH janitor | `CH_JANITOR_ENABLED=true`, `CH_JANITOR_INTERVAL_H`, retention days for `rtb_deal_outcomes` / `rtb_exchange_log` |
+
+## Rollback
+
+1. Set `RTB_MODE=shadow` or `off` on tracker.
+2. Drain in-flight; partner receives no-bid (`204` or `nbr`).
+3. Investigate via reconcile export + shadow-diff before re-enabling live.
+
+## Deferred
+
+OpenRTB 3.0, multi-imp >1, gzip responses, async `lurl` worker — see `OPENRTB-FULL.md`.

@@ -31,28 +31,28 @@ linters:
         - SA9003
         - SA4017
     gocritic:
-      enabled-checks:
-        - appendAssign
-        - assignOp
-        - badCond
-        - builtinShadow
-        - dupImport
-        - elseif
-        - exitAfterDefer
-        - httpNoBody
-        - ifElseChain
-        - nilValReturn
-        - octalLiteral
-        - singleCaseSwitch
-        - typeAssertChain
-        - unlambda
-        - unslice
-        - wrapperFunc
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
     forbidigo:
+      analyze-types: true
       forbid:
         - pattern: '^(fmt\.Print(|f|ln)|print|println)$'
+          msg: "use logger instead of fmt.Print"
         - pattern: 'log\.Fatal'
+          msg: "do not use log.Fatal in library code"
         - pattern: 'panic\('
+          msg: "avoid panics"
+        - pattern: 'fmt\.Sprintf'
+          pkg: '^github.com/bidshard/ad-event-processor/(internal/(ingestion|domain|rtb)|cmd/tracker|pkg/broker)(/|$)'
+          msg: "fmt.Sprintf is forbidden on the hot path (allocates)"
+        - pattern: 'context\.(WithTimeout|WithCancel|WithValue)'
+          pkg: '^github.com/bidshard/ad-event-processor/(internal/(ingestion|domain|rtb)|cmd/tracker|pkg/broker)(/|$)'
+          msg: "context manipulation is forbidden on the hot path"
+        - pattern: 'defer\s'
+          pkg: '^github.com/bidshard/ad-event-processor/(internal/(ingestion|domain|rtb)|cmd/tracker|pkg/broker)(/|$)'
+          msg: "defer is forbidden on the hot path (allocates in old Go, discouraged in BidShard)"
   exclusions:
     generated: lax
     rules:

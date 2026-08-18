@@ -45,6 +45,13 @@ struct {
 } syscall_enter SEC(".maps");
 
 struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 8192);
+	__type(key, __u64);
+	__type(value, struct espx_syscall_peer);
+} syscall_peer SEC(".maps");
+
+struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_HASH);
 	__uint(max_entries, 4096);
 	__type(key, struct espx_syscall_hist_key);
@@ -105,6 +112,22 @@ static __always_inline struct espx_config *probe_config(void)
 	return bpf_map_lookup_elem(&config, &key);
 }
 
+static __always_inline struct espx_net_stats *net_stats_mut(__u32 pid, __u16 dport)
+{
+	struct espx_net_key nkey = {};
+	struct espx_net_stats *nst;
+	struct espx_net_stats nfresh = {};
+
+	nkey.pid = pid;
+	nkey.dport = dport;
+	nst = bpf_map_lookup_elem(&net_stats, &nkey);
+	if (!nst) {
+		bpf_map_update_elem(&net_stats, &nkey, &nfresh, BPF_NOEXIST);
+		nst = bpf_map_lookup_elem(&net_stats, &nkey);
+	}
+	return nst;
+}
+
 static __always_inline struct espx_pid_stats *pid_stats_mut(__u32 pid, __u8 role)
 {
 	struct espx_pid_stats *st;
@@ -159,6 +182,19 @@ int espx_sys_enter(struct trace_event_raw_sys_enter *ctx)
 
 	ts = bpf_ktime_get_ns();
 	bpf_map_update_elem(&syscall_enter, &pid_tgid, &ts, BPF_ANY);
+
+	if (syscall_id == ESPX_NR_connect || syscall_id == ESPX_NR_sendto) {
+		struct espx_syscall_peer peer = {};
+		void *addr;
+
+		addr = (void *)ctx->args[1];
+		if (syscall_id == ESPX_NR_sendto)
+			addr = (void *)ctx->args[4];
+		peer.dport = espx_read_sockaddr_port(addr);
+		if (syscall_id == ESPX_NR_sendto)
+			peer.sendto_len = (__u32)ctx->args[2];
+		bpf_map_update_elem(&syscall_peer, &pid_tgid, &peer, BPF_ANY);
+	}
 	return 0;
 }
 
@@ -214,22 +250,30 @@ int espx_sys_exit(struct trace_event_raw_sys_exit *ctx)
 	if (hist)
 		espx_hist_record(hist, delta);
 
-	if (syscall_id == ESPX_NR_connect) {
-		struct espx_net_key nkey = {};
+	if (syscall_id == ESPX_NR_connect || syscall_id == ESPX_NR_sendto) {
+		struct espx_syscall_peer *peer;
 		struct espx_net_stats *nst;
-		struct espx_net_stats nfresh = {};
+		__u16 dport = 0;
 
-		nkey.pid = pid;
-		nkey.dport = 0;
-		nst = bpf_map_lookup_elem(&net_stats, &nkey);
-		if (!nst) {
-			bpf_map_update_elem(&net_stats, &nkey, &nfresh, BPF_NOEXIST);
-			nst = bpf_map_lookup_elem(&net_stats, &nkey);
+		peer = bpf_map_lookup_elem(&syscall_peer, &pid_tgid);
+		if (peer)
+			dport = peer->dport;
+		bpf_map_delete_elem(&syscall_peer, &pid_tgid);
+
+		if (syscall_id == ESPX_NR_connect && syscall_ret == 0) {
+			nst = net_stats_mut(pid, dport);
+			if (nst) {
+				nst->connects++;
+				nst->connect_ns_sum += delta;
+				nst->connect_samples++;
+			}
 		}
-		if (nst) {
-			nst->connects++;
-			nst->connect_ns_sum += delta;
-			nst->connect_samples++;
+		if (syscall_id == ESPX_NR_sendto && syscall_ret > 0 && dport == ESPX_PG_PORT) {
+			nst = net_stats_mut(pid, ESPX_PG_PORT);
+			if (nst) {
+				nst->sendto_calls++;
+				nst->sendto_bytes += (__u64)syscall_ret;
+			}
 		}
 	}
 

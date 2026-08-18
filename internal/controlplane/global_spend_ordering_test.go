@@ -85,7 +85,7 @@ func makeGlobalSpendTxns(campaignID uuid.UUID, count int) []dedupkey.SpendSyncTx
 
 func TestGlobalSpendApplyBatch_pgFailurePreservesRedisBudget(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()
@@ -116,7 +116,7 @@ func TestGlobalSpendApplyBatch_pgFailurePreservesRedisBudget(t *testing.T) {
 
 func TestGlobalSpendApplyBatch_redisRetryAfterPgCommit(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()

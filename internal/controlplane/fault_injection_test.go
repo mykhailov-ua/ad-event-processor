@@ -25,7 +25,7 @@ import (
 
 func TestFault_DualOutboxWorkerRace(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -89,7 +89,7 @@ func TestFault_DualOutboxWorkerRace(t *testing.T) {
 
 func TestFault_PGDeadlockRecovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -149,7 +149,7 @@ func TestFault_PGDeadlockRecovery(t *testing.T) {
 
 func TestFault_RedisSlowEventuallySucceeds(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -188,7 +188,7 @@ func TestFault_RedisSlowEventuallySucceeds(t *testing.T) {
 
 func TestFault_ScheduleTickRace(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -247,7 +247,7 @@ func TestFault_ScheduleTickRace(t *testing.T) {
 
 func TestFault_ConcurrentBalanceDepletion(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -312,7 +312,7 @@ func TestFault_ConcurrentBalanceDepletion(t *testing.T) {
 
 func TestFault_AutoscaleInsufficientTotalBudget(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -381,7 +381,7 @@ func TestFault_AutoscaleInsufficientTotalBudget(t *testing.T) {
 
 func TestFault_DualOutboxWorkerManyEvents(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)

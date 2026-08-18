@@ -2,7 +2,7 @@
 
 Enterprise perimeter extension — **not** part of the default `single_vps` appliance SKU. Default perimeter remains Nginx OpenResty Lua (`deploy/nginx/lua/access_check.lua`).
 
-Operator overview: [docs/enterprise/EDGE_XDP.md](../../docs/enterprise/EDGE_XDP.md).
+Operator overview: [docs/XDP.md](../../docs/XDP.md).
 
 ---
 
@@ -151,7 +151,7 @@ docker compose --profile enterprise-xdp up -d redis-0 edge-xdp
 bash scripts/test/edge_xdp_compose_smoke.sh   # BTF host: attach + sync smoke
 ```
 
-Constraints: `privileged: true`, `network_mode: host`, `pid: host`, `seccomp:unconfined`, mounts `/sys/fs/bpf` and `/sys/kernel/btf`. On kernels where `xdp_syn_cookie` fails verifier load, `edge-xdp` retries without that program (SYN cookies unavailable until §2.2.7 portability work).
+Constraints: `privileged: true`, `network_mode: host`, `pid: host`, `seccomp:unconfined`, mounts `/sys/fs/bpf` and `/sys/kernel/btf`. On kernels where `xdp_syn_cookie` fails verifier load, `edge-xdp` retries without that program (SYN cookies unavailable until portability work lands).
 
 ---
 
@@ -212,7 +212,7 @@ No tracker or processor restart required.
 | BTF present | `test -r /sys/kernel/btf/vmlinux && echo ok` |
 | Sync lag | `edge-bpf-sync` logs; Redis `blacklist:*` keys; ops XDP panel when snapshot present |
 
-Bench reference (lab): [docs/BENCHMARKS.md](../../docs/BENCHMARKS.md) §A.10.
+Bench reference (lab): `go test ./internal/edge/ -bench='BenchmarkXDP_' -benchmem` (harness `xdp_prog_test`).
 
 ---
 
@@ -254,7 +254,7 @@ Do **not** set `offload` on appliance pilot SKU; use `generic` unless Enterprise
 
 ### Verification (Tier D lab)
 
-Perf: `BenchmarkXDP_*` = prog test only (harness `xdp_prog_test`); kernel proof = `edge-xdp-fault` / `scripts/test/xdp_resilience_drill.sh` — see [EDGE_XDP.md](../../docs/enterprise/EDGE_XDP.md) Tier D lab verification.
+Perf: `BenchmarkXDP_*` = prog test only (harness `xdp_prog_test`); kernel proof = `edge-xdp-fault` / `scripts/test/xdp_resilience_drill.sh` — see [XDP.md](../../docs/XDP.md) Tier D lab verification.
 
 ```bash
 bash scripts/ci/compliance.sh
@@ -262,13 +262,13 @@ go test ./internal/edge/... -count=1
 bash scripts/test/edge_xdp_bench_gate.sh   # skips without BTF
 ```
 
-Compliance and `BenchmarkXDP_*` baselines use **generic** userspace program tests (`internal/edge/bench_test.go`, harness `xdp_prog_test`) — not kernel RX; unchanged by offload path. See [BENCHMARKS.md](../../docs/BENCHMARKS.md) §A.10.
+Compliance and `BenchmarkXDP_*` baselines use **generic** userspace program tests (`internal/edge/bench_test.go`, harness `xdp_prog_test`) — not kernel RX; unchanged by offload path.
 
-### Known detection limits (§2.2.10)
+### Known detection limits
 
-XDP is defense-in-depth only. Accepted gaps **X-06** (low-volume /24 rotation) and **X-07** (fingerprint off/congested) — backstop: Lua rate limit, tracker filters, IVT, fraud-scorer. Details: [EDGE_XDP.md](../../docs/enterprise/EDGE_XDP.md) §Known detection limits.
+XDP is defense-in-depth only. Low-volume /24 rotation and fingerprint-off/congested paths remain accepted limits — backstop: Lua rate limit, tracker filters, IVT, fraud-scorer. Details: [XDP.md](../../docs/XDP.md) Known detection limits.
 
-### Lab fault injector (§2.2.8)
+### Lab fault injector
 
 Enterprise lab only — **not** installed on appliance default (`edge_xdp: false`).
 

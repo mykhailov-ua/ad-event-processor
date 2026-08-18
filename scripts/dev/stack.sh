@@ -36,7 +36,7 @@ espx_stack_hardening() {
     else
       if ! bash "$SCRIPTS/ops/sysctl.sh" verify 2> /dev/null; then
         echo "stack.sh: WARN sysctl not applied — run: sudo bash scripts/ops/sysctl.sh apply" >&2
-        echo "stack.sh: WARN recreate listeners after somaxconn change (see docs/EDGE_CASES.md)" >&2
+        echo "stack.sh: WARN recreate listeners after somaxconn change (see deploy/edge/99-ad-event-processor-sysctl.conf)" >&2
       fi
     fi
   else

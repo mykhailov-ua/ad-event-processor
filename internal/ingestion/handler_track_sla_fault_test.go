@@ -58,7 +58,7 @@ func (h *redisLatencyHook) ProcessPipelineHook(next redis.ProcessPipelineHook) r
 
 func TestFault_FilterChainRedisLatency(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := setupAdsFaultInfra(t)
@@ -208,7 +208,7 @@ func TestFault_HandlerRejectMatrix(t *testing.T) {
 
 func TestFault_StaticSlotReloadInflight(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := setupAdsFaultInfra(t)
@@ -299,7 +299,7 @@ func TestFault_StaticSlotReloadInflight(t *testing.T) {
 
 func TestFault_ScriptFlushUnderTrackRPS(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	ctx := context.Background()
@@ -387,7 +387,7 @@ func TestFault_ScriptFlushUnderTrackRPS(t *testing.T) {
 
 func TestFault_ProductionFilterChainRedisLatency(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	ctx := context.Background()

@@ -144,7 +144,7 @@ Tracker size delta (manual): `make garble-literals-eval`. p99 acceptance (+10%):
 | P-QA-03 | Garbled tracker build + license alloc subset | `bash scripts/ci/license_garbled_alloc_gate.sh` (`harness=release_qa_garbled_alloc`) |
 | P-QA-04 | Full garbled release (tracker/processor/control) | `LICENSE_VERIFY_GARBLED=1 make license-verify` (`harness=release_qa_garbled_red_team`) |
 
-Nightly CI: `.github/workflows/license-fuzz-nightly.yaml` (Mon 04:00 UTC, 10m + 5m + 5m fuzz). Formal TLC/Alloy models optional under `docs/formal/`.
+Nightly CI: `.github/workflows/license-fuzz-nightly.yaml` (Mon 04:00 UTC, 10m + 5m + 5m fuzz). Formal TLC/Alloy models are not vendored in the tree.
 
 Non-goals: unbreakable protection on root-owned hosts; hot-path per-request HWID or pubkey decode (startup/recheck only).
 

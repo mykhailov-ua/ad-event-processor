@@ -72,7 +72,7 @@ func seedPostbackBatchEvents(t testing.TB, pool *pgxpool.Pool, n int) ([]db.Outb
 
 func TestN1Fix_PostbackConfigPreload_QueryCount(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, counter, cleanup := database.SetupTestDBWithQueryCounter(t)
 	defer cleanup()
@@ -103,7 +103,7 @@ func TestN1Fix_PostbackConfigPreload_QueryCount(t *testing.T) {
 
 func TestN1Fix_PostbackOutboxBatchUpdate_QueryCount(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, counter, cleanup := database.SetupTestDBWithQueryCounter(t)
 	defer cleanup()
@@ -168,7 +168,7 @@ func legacyConversionOnBatchStored(ctx context.Context, q *db.Queries, events []
 
 func TestN1Fix_ConversionOutboxBatch_QueryCount(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, counter, cleanup := database.SetupTestDBWithQueryCounter(t)
 	defer cleanup()

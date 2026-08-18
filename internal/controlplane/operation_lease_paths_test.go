@@ -16,7 +16,7 @@ import (
 func TestProxyUplink_IngestUsesOperationLease(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()

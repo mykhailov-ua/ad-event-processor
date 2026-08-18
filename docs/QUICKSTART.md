@@ -14,10 +14,10 @@ Target path for self-hosted media-buying teams (offline JWT, no SaaS callback):
 
 1. Provision a clean Ubuntu 22.04 VM (Hetzner / Contabo / equivalent), open `443` + admin port as needed.
 2. Install with the one-liner or git path below; set `TRACKING_DOMAIN` / admin password in `deploy/installer/install.env`.
-3. Paste the vendor-issued JWT (Settings → License, or `license-apply`) — see [PILOT_LICENSE.md](./PILOT_LICENSE.md). Entitlements reload without restart.
+3. Paste the vendor-issued JWT (Settings → License, or `license-apply`) — see [LICENSE.md](./LICENSE.md). Entitlements reload without restart.
 4. Keep product telemetry off (`AD_EVENT_PROCESSOR_TELEMETRY_OPT_IN=0`, `TELEMETRY_ENABLED=false` / `VENDOR_TELEMETRY_ENABLED=false`) so the appliance stays closed-contour.
 5. Configure Telegram support channel for ops alerts via notifier settings (vendor channel ID is on the invoice / sales kit).
-6. Bootstrap admin → create first campaign → enable edge **Expose click URL** → smoke `GET /click` (see [TRAFFIC_INTEGRATION.md](./TRAFFIC_INTEGRATION.md)).
+6. Bootstrap admin → create first campaign → enable edge **Expose click URL** → smoke `GET /click` (see [TRAFFIC.md](./TRAFFIC.md)).
 7. Optional: **Settings → Domains** — verify tracking host health and run **Setup SSL** after DNS propagates.
 
 Fresh VM goal: install → first campaign click through edge in **&lt; 45 min**. License renewal is JWT-only ([License tier upgrade](#license-tier-upgrade-no-reinstall)).
@@ -93,7 +93,7 @@ make build-bin          # bin/tracker, bin/control, bin/ad-event-processor-insta
 bin/ad-event-processor-install preflight
 ```
 
-**Pilot on-prem license (offline JWT, monthly renewal):** [docs/PILOT_LICENSE.md](./PILOT_LICENSE.md)
+**Pilot on-prem license (offline JWT, monthly renewal):** [docs/LICENSE.md](./LICENSE.md)
 
 Commercial tiers and USDT sales flow (vendor): [deploy/vendor/SALES_KIT.md](../deploy/vendor/SALES_KIT.md).
 
@@ -130,4 +130,4 @@ bash scripts/dev/stack.sh single-vps
 
 See `deploy/installer/install.yaml.example` and `docs/DEVELOPMENT.md` for other compose profiles.
 
-**Direct tracker access (`:8181`):** In development you can bypass nginx and post to gnet directly. `POST /track` still requires `Content-Length` and rejects chunked bodies — the same rules nginx enforces in production. See [PARSER_SECURITY.md](PARSER_SECURITY.md).
+**Direct tracker access (`:8181`):** In development you can bypass nginx and post to gnet directly. `POST /track` still requires `Content-Length` and rejects chunked bodies — the same rules nginx enforces in production. See [PARSER.md](PARSER.md).

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# GMA-M5 domain health smoke: Cloudflare mock tests + reputation + ban integration.
+# Domain health smoke: Cloudflare mock tests + reputation + ban integration.
 # Skip (no go): not applicable.
 set -euo pipefail
 

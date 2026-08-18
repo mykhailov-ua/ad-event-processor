@@ -34,7 +34,7 @@ func (s *platformAuthStub) Register(_ context.Context, _, email, password, role,
 
 func TestManagementAPI_PlatformSettingsCycle(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)

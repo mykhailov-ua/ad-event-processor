@@ -18,7 +18,7 @@ import (
 
 func TestOperationLeaseRenew_WithoutRenewExpires(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()
@@ -49,7 +49,7 @@ func TestOperationLeaseRenew_WithoutRenewExpires(t *testing.T) {
 
 func TestOperationLeaseRenew_ManualRenewPreventsExpiry(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()
@@ -94,7 +94,7 @@ func TestOperationLeaseRenew_ManualRenewPreventsExpiry(t *testing.T) {
 
 func TestOperationLeaseRenew_HeartbeatSurvivesSlowExecute(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()

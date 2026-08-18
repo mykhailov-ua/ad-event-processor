@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Lab-only XDP fault injector drill (MILESTONE §2.2.8). Not part of appliance default.
+# Lab-only XDP fault injector drill. Not part of appliance default.
 # Precondition: BTF vmlinux, clang, BPF objects — skips exit 0 when BTF/clang/BPF build missing.
 set -euo pipefail
 

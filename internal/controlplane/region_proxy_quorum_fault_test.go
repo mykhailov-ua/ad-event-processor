@@ -25,7 +25,7 @@ import (
 func TestFault_RegionProxyQuorumBook_1of3NoExecute(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()
@@ -99,7 +99,7 @@ func TestFault_RegionProxyQuorumBook_1of3NoExecute(t *testing.T) {
 func TestFault_RegionProxyQuorumBook_Kill2of3Simulated(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()
@@ -142,7 +142,7 @@ func TestFault_RegionProxyQuorumBook_Kill2of3Simulated(t *testing.T) {
 
 func TestFault_QuorumBook_WithPGDown(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()

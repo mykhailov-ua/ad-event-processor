@@ -14,7 +14,7 @@ import (
 
 func TestSettingsWatcher(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	rdb, cleanup := database.SetupTestRedis(t)
@@ -54,7 +54,7 @@ func TestSettingsWatcher(t *testing.T) {
 
 func TestSettingsWatcher_shardFailover(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	rdb, cleanup := database.SetupTestRedis(t)

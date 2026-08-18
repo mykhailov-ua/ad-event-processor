@@ -81,7 +81,9 @@ func (h *CryptoBillingWebhookHandlers) handleCryptoWebhook(w http.ResponseWriter
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte(`{"status":"ok"}`))
+	if _, err := w.Write([]byte(`{"status":"ok"}`)); err != nil {
+		slog.Error("billing crypto webhook response write failed", "error", err)
+	}
 }
 
 func (h *CryptoBillingWebhookHandlers) verifySignature(body []byte, r *http.Request) bool {

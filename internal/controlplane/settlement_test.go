@@ -17,7 +17,7 @@ import (
 
 func TestSettlementHandler_GetLedgerEntry(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)

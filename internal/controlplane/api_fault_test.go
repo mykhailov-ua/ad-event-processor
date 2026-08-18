@@ -34,7 +34,7 @@ const (
 func TestFault_APITenantIsolation(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -123,7 +123,7 @@ func TestFault_APITenantIsolation(t *testing.T) {
 func TestFault_APIChLagStaleOK(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	conn, chContainer, cleanupCH := setupClickHouseStatsContainer(t)
@@ -228,7 +228,7 @@ func TestFault_APIChLagStaleOK(t *testing.T) {
 func TestFault_LedgerExportCursor(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)

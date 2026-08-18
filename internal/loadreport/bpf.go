@@ -1,3 +1,4 @@
+// Package loadreport renders BPF load-test session reports and gate checks.
 package loadreport
 
 import (
@@ -25,6 +26,15 @@ type bpfSummary struct {
 	Markers       []markerStat   `json:"markers"`
 	Syscalls      []syscallStat  `json:"syscalls"`
 	Network       []networkStat  `json:"network"`
+	HardwarePerf  []hwPerfStat   `json:"hardware_perf,omitempty"`
+}
+
+type hwPerfStat struct {
+	PID          int    `json:"pid"`
+	Name         string `json:"name"`
+	Role         string `json:"role"`
+	CacheMisses  uint64 `json:"cache_misses"`
+	BranchMisses uint64 `json:"branch_misses"`
 }
 
 type pidStat struct {
@@ -103,9 +113,12 @@ type markerStat struct {
 type networkStat struct {
 	Name         string  `json:"name"`
 	Role         string  `json:"role"`
+	Dport        uint16  `json:"dport"`
 	ConnectAvgUs float64 `json:"connect_avg_us"`
 	Connects     int64   `json:"connects"`
 	Retrans      int64   `json:"retrans"`
+	SendtoCalls  int64   `json:"sendto_calls"`
+	SendtoBytes  int64   `json:"sendto_bytes"`
 }
 
 type bpfTimeline struct {
@@ -637,18 +650,21 @@ func writeSlowEventsSection(b *strings.Builder, bpfDir string) {
 
 func writeNetworkSection(b *strings.Builder, network []networkStat) {
 	b.WriteString("## Network (connect latency & TCP retrans)\n\n")
-	b.WriteString("| process | role | connect avg (µs) | connects | retrans |\n")
-	b.WriteString("|---------|------|------------------|----------|---------|\n")
+	b.WriteString("| process | role | dport | connect avg (µs) | connects | sendto calls | sendto bytes | retrans |\n")
+	b.WriteString("|---------|------|-------|------------------|----------|--------------|--------------|---------|\n")
 	sorted := append([]networkStat(nil), network...)
 	sort.Slice(sorted, func(i, j int) bool {
+		if sorted[i].Retrans == sorted[j].Retrans {
+			return sorted[i].SendtoBytes > sorted[j].SendtoBytes
+		}
 		return sorted[i].Retrans > sorted[j].Retrans
 	})
 	for _, n := range sorted {
-		if n.Retrans == 0 && n.Connects == 0 {
+		if n.Retrans == 0 && n.Connects == 0 && n.SendtoCalls == 0 {
 			continue
 		}
-		fmt.Fprintf(b, "| %s | %s | %.1f | %d | %d |\n",
-			n.Name, n.Role, n.ConnectAvgUs, n.Connects, n.Retrans)
+		fmt.Fprintf(b, "| %s | %s | %d | %.1f | %d | %d | %d | %d |\n",
+			n.Name, n.Role, n.Dport, n.ConnectAvgUs, n.Connects, n.SendtoCalls, n.SendtoBytes, n.Retrans)
 	}
 	b.WriteString("\n")
 }

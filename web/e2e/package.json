@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "test:e2e": "playwright test",
-    "test:e2e:m8": "playwright test cpa_held_out.spec.js --grep CPA-M8 && playwright test ops_compliance.spec.js"
+    "test:e2e:m8": "playwright test cpa_held_out.spec.js --grep 'ops consolidation' && playwright test ops_compliance.spec.js"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.1",

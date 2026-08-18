@@ -98,5 +98,5 @@ func TestSlotMapProbe_failOnTableDrift(t *testing.T) {
 
 func TestCheckHint_slotmap(t *testing.T) {
 	hint := CheckHint("slotmap")
-	require.Contains(t, hint, "TRADEOFFS.md")
+	require.Contains(t, hint, "ARCHITECTURE.md")
 }

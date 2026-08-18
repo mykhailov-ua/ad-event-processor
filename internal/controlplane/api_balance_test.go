@@ -22,7 +22,7 @@ import (
 
 func TestAPI_GetCustomerBalance(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -77,7 +77,7 @@ func TestAPI_GetCustomerBalance(t *testing.T) {
 
 func TestAPI_GetCustomerBalance_TenantIsolation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -108,7 +108,7 @@ func TestAPI_GetCustomerBalance_TenantIsolation(t *testing.T) {
 
 func TestAPI_ExportCustomerBalance_CSV(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -147,7 +147,7 @@ func TestAPI_ExportCustomerBalance_CSV(t *testing.T) {
 
 func TestAPI_ExportCustomerBalance_BufferOverflowCap(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -221,7 +221,7 @@ func TestAPI_ExportCustomerBalance_RateLimit(t *testing.T) {
 
 func TestAPI_ExportCustomerBalance_CursorResume(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)

@@ -24,10 +24,8 @@ linters:
         - SA4017
     gocritic:
       enabled-checks:
-        - badCond
         - dupImport
         - nilValReturn
-        - singleCaseSwitch
     forbidigo:
       forbid:
         - pattern: 'log\.Fatal'

@@ -68,7 +68,7 @@ func (m *evalFailOnceRedis) Set(ctx context.Context, key string, value interface
 
 func TestApplyReconciliationAdjust_pgFailurePreservesRedis(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()
@@ -113,7 +113,7 @@ func TestApplyReconciliationAdjust_pgFailurePreservesRedis(t *testing.T) {
 
 func TestApplyReconciliationAdjust_redisRetryAfterPgCommit(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Milestone phase 3: prove Redis RAM stays below budget under sustained /track load
+# Prove Redis RAM stays below budget under sustained /track load.
 # with broker-primary ingest (CH_INGEST_SOURCE=broker) and aggressive stream trim.
 #
 # Usage:

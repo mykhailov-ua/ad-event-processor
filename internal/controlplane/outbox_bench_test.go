@@ -21,7 +21,7 @@ import (
 
 func TestOutboxPerformanceMetrics(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping outbox performance metrics in short mode")
+		t.Skip("integration: outbox performance metrics (run make test-integration)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -132,7 +132,7 @@ func seedEvents(t *testing.T, pool *pgxpool.Pool, count int) {
 
 func TestOutboxExplainAnalyze(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping outbox EXPLAIN ANALYZE in short mode")
+		t.Skip("integration: outbox EXPLAIN ANALYZE (run make test-integration)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)

@@ -21,7 +21,7 @@ import (
 
 func TestFault_ShardOrchestrator_NoFalseMigrate(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()
@@ -84,7 +84,7 @@ func TestFault_ShardOrchestrator_NoFalseMigrate(t *testing.T) {
 
 func TestFault_ShardOrchestrator_CampaignRoutingMigration(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()

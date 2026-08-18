@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Milestone phase 6: prove no TcpExtListenOverflows / ListenDrops under loadgen
+# Prove no TcpExtListenOverflows / ListenDrops under loadgen.
 # when host backlog is tuned (deploy/sysctl/99-bidshard-sysctl.conf) and Redis uses
 # --tcp-backlog 2048.
 #

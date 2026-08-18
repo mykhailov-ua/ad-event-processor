@@ -1,0 +1,42 @@
+{
+  "name": "BidShard Dev Environment",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "enableNonRootDocker": "true",
+      "moby": "true"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "redhat.vscode-yaml",
+        "tamasfe.even-better-toml",
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        "ms-azuretools.vscode-docker",
+        "mhutchie.git-graph",
+        "christian-kohler.path-intellisense",
+        "bufbuild.vscode-buf",
+        "sqlc.sqlc"
+      ],
+      "settings": {
+        "go.toolsManagement.checkForUpdates": "proxy",
+        "go.useLanguageServer": true,
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": "explicit"
+        },
+        "go.lintTool": "golangci-lint",
+        "go.lintOnSave": "package"
+      }
+    }
+  },
+  "forwardPorts": [8181, 8182, 8183, 8184, 8188, 6479, 5430, 9000, 5173],
+  "postCreateCommand": "go mod download && npm install --prefix web && task gen",
+  "remoteUser": "vscode"
+}

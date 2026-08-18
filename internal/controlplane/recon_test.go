@@ -97,7 +97,7 @@ func TestRecon_RaceConcurrentAdjustments(t *testing.T) {
 
 func TestRecon_AdjustRealRedis(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	rdb, cleanup := database.SetupTestRedis(t)

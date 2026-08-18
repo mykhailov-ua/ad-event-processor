@@ -33,7 +33,7 @@ func countReconFindingsByKind(t *testing.T, pool *pgxpool.Pool, runID int64, kin
 
 func TestFault_FinancialReconCleanSettlement(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)
@@ -59,7 +59,7 @@ func TestFault_FinancialReconCleanSettlement(t *testing.T) {
 
 func TestFault_FinancialReconMissingTopup(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)
@@ -85,7 +85,7 @@ func TestFault_FinancialReconMissingTopup(t *testing.T) {
 
 func TestFault_FinancialReconDeadOutbox(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)
@@ -123,7 +123,7 @@ func TestFault_FinancialReconDeadOutbox(t *testing.T) {
 
 func TestFault_FinancialReconRefundDrift(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)
@@ -151,7 +151,7 @@ func TestFault_FinancialReconRefundDrift(t *testing.T) {
 
 func TestFault_FinancialReconSettlementFailedIntent(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)
@@ -186,7 +186,7 @@ func TestFault_FinancialReconSettlementFailedIntent(t *testing.T) {
 
 func TestFault_FinancialReconConcurrentRuns(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)
@@ -224,7 +224,7 @@ func TestFault_FinancialReconConcurrentRuns(t *testing.T) {
 
 func TestFault_FinancialReconOpsAlert(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)

@@ -45,7 +45,7 @@ func (r *segmentTestRepo) GetByID(context.Context, uuid.UUID) (*domain.Campaign,
 
 func TestSegmentIntegration_conversionExcludeAndTTL(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()
@@ -187,7 +187,7 @@ func TestSegmentCheck_zeroAlloc(t *testing.T) {
 
 func TestSegmentCheck_escapeClean(t *testing.T) {
 	if testing.Short() {
-		t.Skip("escape analysis build")
+		t.Skip("integration: escape analysis bench (run make test-integration)")
 	}
 	root := moduleRootAds(t)
 	cmd := exec.Command("go", "build", "-gcflags=-m", "-o", "/dev/null", "./internal/ingestion")

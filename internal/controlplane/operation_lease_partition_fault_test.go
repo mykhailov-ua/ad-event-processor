@@ -28,7 +28,7 @@ const leaseFaultContainerStopTimeout = 10 * time.Second
 func TestFault_OperationLease_PGPartition(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()
@@ -78,7 +78,7 @@ func TestFault_OperationLease_PGPartition(t *testing.T) {
 
 func TestFault_OperationLease_PGStopDuringExecuting(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()
@@ -159,7 +159,7 @@ func TestFault_OperationLease_PGStopDuringExecuting(t *testing.T) {
 func TestFault_OperationLease_GhostExecutor(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()
@@ -231,7 +231,7 @@ func TestFault_OperationLease_GhostExecutor(t *testing.T) {
 func TestFault_OperationLease_DualCAS(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()

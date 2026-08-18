@@ -111,7 +111,7 @@ func TestBumpMigrationFences_setsRedisAndPG(t *testing.T) {
 
 func TestFault_MigrationFenceConcurrentDebit(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := setupTestRedis(t)

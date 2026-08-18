@@ -32,7 +32,7 @@ func (s *swappableRedis) swap(c redis.UniversalClient) {
 
 func TestFault_LocalQuantaRedisSIGKILL_BudgetInvariant(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	t.Setenv("LOCAL_QUOTA_MODE", "live")

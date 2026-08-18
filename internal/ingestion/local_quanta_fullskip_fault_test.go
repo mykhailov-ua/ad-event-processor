@@ -19,7 +19,7 @@ import (
 
 func TestFault_LocalQuantaFullSkip_BudgetInvariant(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	const iterations = 10_000

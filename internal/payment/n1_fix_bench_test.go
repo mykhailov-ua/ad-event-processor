@@ -117,7 +117,7 @@ func pgtypeText(s string) pgtype.Text {
 
 func TestN1Fix_ListDisputes_QueryCount(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	pool, counter, cleanup := setupPaymentDBWithQueryCounter(t)
 	defer cleanup()

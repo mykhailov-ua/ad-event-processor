@@ -17,7 +17,7 @@ import (
 
 func TestEmergencyCircuitBreaker_Filter(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	rdb, cleanupRedis := database.SetupTestRedis(t)

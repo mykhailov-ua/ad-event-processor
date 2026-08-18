@@ -144,4 +144,4 @@ go run ./cmd/license-issue \
   --out /tmp/acme-pro.jwt
 ```
 
-Send [USDT invoice](./USDT_INVOICE_TEMPLATE.md) first for new paid tiers (license line only — no setup fee row). After on-chain confirm, email JWT + renewal instructions ([PILOT_LICENSE.md](../../docs/PILOT_LICENSE.md)).
+Send [USDT invoice](./USDT_INVOICE_TEMPLATE.md) first for new paid tiers (license line only — no setup fee row). After on-chain confirm, email JWT + renewal instructions ([LICENSE.md](../../docs/LICENSE.md)).

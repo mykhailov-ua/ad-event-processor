@@ -261,7 +261,7 @@ func TestAuthHandler_Me(t *testing.T) {
 
 func TestAuthHandler_MeRedisOutage(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	rdb, cleanupRedis := database.SetupTestRedis(t)

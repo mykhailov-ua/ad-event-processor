@@ -7,7 +7,7 @@ import (
 )
 
 func TestParseVASTXML_corpus(t *testing.T) {
-	dir := filepath.Join("testdata")
+	dir := "testdata"
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("read corpus: %v", err)

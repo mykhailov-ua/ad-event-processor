@@ -22,7 +22,7 @@ const paymentFaultWorkers = 20
 
 func TestFault_PaymentDualOutboxWorkerRace(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)
@@ -65,7 +65,7 @@ func TestFault_PaymentDualOutboxWorkerRace(t *testing.T) {
 
 func TestFault_PaymentConcurrentCreateIdempotencyKey(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)
@@ -107,7 +107,7 @@ func TestFault_PaymentConcurrentCreateIdempotencyKey(t *testing.T) {
 
 func TestFault_PaymentConcurrentWebhookSameEventID(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)
@@ -158,7 +158,7 @@ func TestFault_PaymentConcurrentWebhookSameEventID(t *testing.T) {
 
 func TestFault_PaymentStaleLeaseReclaim(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)
@@ -194,7 +194,7 @@ func TestFault_PaymentStaleLeaseReclaim(t *testing.T) {
 
 func TestFault_PaymentPostSettlementMarkGap(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)
@@ -238,7 +238,7 @@ func TestFault_PaymentPostSettlementMarkGap(t *testing.T) {
 
 func TestFault_PaymentMissingCustomerSettlementDead(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)

@@ -15,7 +15,7 @@ import (
 
 func TestProcessStripeDisputeWebhook_noDoubleChargeback(t *testing.T) {
 	if testing.Short() {
-		t.Skip("requires testcontainers")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := dbtest.SetupTestDB(t)

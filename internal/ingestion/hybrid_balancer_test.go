@@ -156,7 +156,7 @@ func BenchmarkHybridBalancer_SelectAndShard(b *testing.B) {
 
 func TestHybridBalancer_Pprof(t *testing.T) {
 	if os.Getenv("RUN_PPROF") != "true" {
-		t.Skip("Skipping pprof CPU profiling hook")
+		t.Skip("integration: pprof CPU profiling (run make test-integration)")
 	}
 
 	c1 := &CampaignMeta{

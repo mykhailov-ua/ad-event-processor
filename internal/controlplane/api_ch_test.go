@@ -67,7 +67,7 @@ func setupClickHouseStatsContainer(t *testing.T) (driver.Conn, testcontainers.Co
 
 func TestHandlerAPI_CampaignStatsClickHouseExplain(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	conn, cleanup := setupClickHouseStatsTest(t)

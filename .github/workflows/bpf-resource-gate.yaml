@@ -1,0 +1,71 @@
+name: BPF Resource Gate
+
+on:
+  pull_request:
+    paths:
+      - 'internal/ingestion/**'
+      - 'internal/controlplane/**'
+      - 'internal/loadreport/**'
+      - 'cmd/bpf-collector/**'
+      - 'cmd/load-report/**'
+      - 'cmd/loadgen/**'
+      - 'deploy/dev/bpf/**'
+      - 'scripts/test/bpf_*.sh'
+      - 'scripts/test/malformed.sh'
+      - 'scripts/ci/bpf_resource_gate.sh'
+      - 'scripts/lib/bpf_collector.sh'
+  push:
+    branches: [main]
+    paths:
+      - 'internal/ingestion/**'
+      - 'internal/controlplane/**'
+      - 'internal/loadreport/**'
+      - 'cmd/bpf-collector/**'
+      - 'cmd/load-report/**'
+      - 'deploy/dev/bpf/**'
+      - 'scripts/ci/bpf_resource_gate.sh'
+  workflow_dispatch:
+
+concurrency:
+  group: bpf-resource-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bpf-resource-gate:
+    name: Gate · bpf-resource
+    if: ${{ vars.PERF_RUNNER_LABEL != '' }}
+    runs-on: ${{ vars.PERF_RUNNER_LABEL }}
+    timeout-minutes: 45
+    env:
+      BPF_GATE_STRICT: 'true'
+      BPF_GATE_MODE: smoke
+      BPF_GATE_DURATION: 90s
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.12'
+          cache: true
+
+      - name: Stabilize CPU
+        run: bash scripts/perf/stabilize_cpu.sh
+
+      - name: Run BPF resource gate
+        run: bash scripts/ci/bpf_resource_gate.sh 2>&1 | tee bpf_resource_gate.log
+
+      - name: Upload BPF gate artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bpf-resource-gate
+          path: |
+            bpf_resource_gate.log
+            var/bpf-gate/**/*
+            var/load-test/**/bpf-gate.md
+            var/load-test/**/bpf/maps/summary.json
+            var/load-test/**/bpf/events.ndjson
+          retention-days: 14
+          if-no-files-found: ignore

@@ -66,6 +66,8 @@ type NetStats struct {
 	ConnectSamples uint64
 	Retrans        uint64
 	Rst            uint64
+	SendtoCalls    uint64
+	SendtoBytes    uint64
 }
 
 type MarkerHistKey struct {

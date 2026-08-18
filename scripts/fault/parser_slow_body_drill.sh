@@ -29,7 +29,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-echo "parser-slow-body: unit proof (PS-G01 spin close, phase P0)"
+echo "parser-slow-body: unit proof (spin close)"
 go test ./internal/ingestion/ -run='TestChaos_ParserSecurity_PS_G01|TestHTTP1Incomplete' -count=1 -timeout=5m -v
 
 echo "parser-slow-body: in-process p99 isolation (control cohort under ${CONNECTIONS} slow drips)"

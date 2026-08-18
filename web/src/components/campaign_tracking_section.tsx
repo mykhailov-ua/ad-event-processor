@@ -73,7 +73,7 @@ function RtbTrackSection({ platform, trackURL }: { platform: PlatformState; trac
     >
       <p className="text-muted text-sm">
         SDK / single-endpoint flows only. Exchange partners use POST /openrtb/bid — see section
-        below. Wire comparison is in the appliance guide docs/TRAFFIC_INTEGRATION.md §2.1.
+        below. Wire comparison is in the appliance guide docs/TRAFFIC.md §2.1.
       </p>
       <dl className="definition-list">
         <dt>RTB_MODE (tracker)</dt>
@@ -227,7 +227,7 @@ export function CampaignTrackingSection({
         <div className="stack text-sm">
           <p>
             Full wire contracts ship with the appliance as{' '}
-            <code className="code-inline">docs/TRAFFIC_INTEGRATION.md</code> (also in the operator
+            <code className="code-inline">docs/TRAFFIC.md</code> (also in the operator
             bundle). Summary:
           </p>
           <ul className="list-plain">

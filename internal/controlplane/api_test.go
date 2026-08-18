@@ -23,7 +23,7 @@ import (
 
 func TestAPI_GetCampaignStats_PostgresOnly(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -86,7 +86,7 @@ func TestAPI_GetCampaignStats_PostgresOnly(t *testing.T) {
 
 func TestAPI_GetCampaignStats_TenantIsolation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -126,7 +126,7 @@ func TestAPI_GetCampaignStats_TenantIsolation(t *testing.T) {
 
 func TestAPI_GetCampaignStats_ClickHouseStaleOK(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	conn, cleanupCH := setupClickHouseStatsTest(t)
@@ -210,7 +210,7 @@ func TestAPI_GetCampaignStats_InvalidGranularity(t *testing.T) {
 
 func TestSumCampaignStatsInRange_Explain(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)

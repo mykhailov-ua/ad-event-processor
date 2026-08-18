@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# RP-M2 fuzz smoke: attestation token parse + HMAC verify.
+# Attestation fuzz smoke: attestation token parse + HMAC verify.
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"

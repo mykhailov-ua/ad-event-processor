@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Billing export held-out smoke (MILESTONE §1.1.2): ledger rows → non-zero export bytes.
+# Billing export held-out smoke: ledger rows -> non-zero export bytes.
 # Precondition: Docker daemon for Postgres testcontainer — skips exit 0 when docker unavailable.
 set -euo pipefail
 

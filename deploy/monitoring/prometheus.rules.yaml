@@ -120,6 +120,33 @@ groups:
           description: 'Shard {{ $labels.shard }} missing SCRIPT LOAD for unified-filter.lua.'
           runbook_url: 'https://github.com/mykhailov-ua/espx/blob/main/docs/DEVELOPMENT.md#redis-restart-runbook'
 
+      - alert: BPFLoadgenOnCPUHigh
+        expr: ad_event_processor_bpf_oncpu_pct{role="loadgen"} > 25
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'BPF loadgen on-CPU above gate threshold (25%)'
+          description: 'Load generator {{ $labels.name }} is competing with SUT during BPF session (DEVELOPMENT.md#bpf-hot-gate).'
+
+      - alert: BPFTCPRetransDetected
+        expr: increase(ad_event_processor_bpf_tcp_retrans_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'BPF observed TCP retransmits during session'
+          description: 'Role {{ $labels.role }} {{ $labels.name }} saw retransmits; check network or Redis RTT.'
+
+      - alert: BPFTrackerRunqueueHigh
+        expr: ad_event_processor_bpf_runqueue_p99_us{role="tracker"} > 5000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'BPF tracker runqueue p99 above 5ms'
+          description: 'Tracker {{ $labels.name }} runqueue wait p99 exceeds 5ms during BPF observation.'
+
       - alert: ReconciliationFailed
         expr: rate(ad_reconciliation_runs_total{status="failed"}[5m]) > 0
         for: 1m

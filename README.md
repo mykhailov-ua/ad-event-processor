@@ -16,7 +16,7 @@ BidShard is a private, high-performance alternative to expensive SaaS trackers a
 - **100% Spy-Proof Data Privacy**: SaaS trackers can spy on your profitable campaign angles, landers, and offers. With a self-hosted instance, your campaign data is entirely private and secure.
 
 ### For Ad Networks & Publishers
-- **OpenRTB 2.6 exchange**: `POST /openrtb/bid` on tracker for SSP partners (display + video, PMP deals, shadow→live). See [RTB production runbook](docs/RTB_PRODUCTION_RUNBOOK.md).
+- **OpenRTB 2.6 exchange**: `POST /openrtb/bid` on tracker for SSP partners (display + video, PMP deals, shadow→live). See [RTB production runbook](docs/RTB.md).
 - **ML-Driven Traffic Scoring**: Run offline and near-real-time batch analysis using LightGBM and ONNX Isolation Forest models to score traffic quality, update blocklists, or execute silent "ghost" invalid traffic (IVT) drop actions.
 - **Supply Path Optimization (SPO)**: Integrated `sellers.json` and SupplyChain object support to provide full transparency to buyers and attract premium demand.
 - **Integrated Payment Gateways**: Accept deposits automatically via Stripe (credit cards) or directly via cryptocurrency (USDT ERC-20/TRC-20) with automated ledger updates and fraud holds.
@@ -45,7 +45,7 @@ BidShard is a private, high-performance alternative to expensive SaaS trackers a
 - **Telegram Mini App Integration**: Built-in edge-proxy and anti-fraud layer for Telegram Mini App and bot traffic. Validates `initData` HMAC/Ed25519 signatures, maps users, runs tracking redirects via `GET /tg/click`, and provides specialized performance reports (KPIs, funnels, premium breakdowns).
 - **Click Redirect (`GET /click`)**: Server-side `302` redirects for arbitrage and affiliate traffic. Runs the same `FilterEngine` as `POST /track`, resolves brand creative landing URLs with macros (`{click_id}`, `{sub1}`-`{sub5}`, `{user_id}`), and forwards attribution query parameters (`gclid`, `ttclid`, UTM) to the destination.
 - **Atomic Budgeting**: Real-time budget tracking, frequency capping, and pacing executed directly inside Redis memory.
-- **Edge filtering (default)**: Nginx OpenResty Lua blacklist, rate limits, and shard routing on the appliance path. Optional **Enterprise** NIC-level eBPF/XDP — see [FROZEN_FEATURES.md](docs/FROZEN_FEATURES.md).
+- **Edge filtering (default)**: Nginx OpenResty Lua blacklist, rate limits, and shard routing on the appliance path. Optional **Enterprise** NIC-level eBPF/XDP — see [ARCHITECTURE.md#11-enterprise-optional](docs/ARCHITECTURE.md#11-enterprise-optional).
 - **Transactional Ledger**: A double-entry accounting system stores all advertiser balances in micro-units, preventing rounding errors and financial discrepancies.
 - **Columnar Analytics**: Powered by ClickHouse for lightning-fast reporting over billions of raw events.
 
@@ -55,10 +55,11 @@ BidShard is a private, high-performance alternative to expensive SaaS trackers a
 
 If you are a developer, system administrator, or DevOps engineer looking to deploy, configure, or modify BidShard, please refer to our technical documentation:
 
-- **[Quick Start (single VPS install)](docs/QUICKSTART.md)**: Interactive installer script, platform config bootstrap, and Doctor API.
-- **[RTB Features & Capabilities](docs/RTB.md)**: Executive summary for buyers and technical deep-dive for engineers.
-- **[RTB production runbook](docs/RTB_PRODUCTION_RUNBOOK.md)**: OpenRTB 2.6 shadow→live, reconcile export, CH retention.
-- **[System Architecture & Data Flow](docs/ARCHITECTURE.md)**: Deep dive into the network topology, Redis sharding, PostgreSQL ledger, ClickHouse spooling, and the request lifecycle.
-- **[Development & Deployment Guide](docs/DEVELOPMENT.md)**: Local setup, codegen, Docker Compose profiles, and testing (appliance default path).
-- **[Parser security & ingress hardening](docs/PARSER_SECURITY.md)**: Edge ↔ tracker wire policy, slow-body limits, scan budgets, chaos drills (PS-G01–G08).
-- **[Frozen / Enterprise features](docs/FROZEN_FEATURES.md)**: Multi-region proxy and XDP — license, compose profiles, operator runbooks.
+- **[Documentation Index (docs/README.md)](docs/README.md)**: Central hub for all technical documentation.
+- **[Development & Deployment Guide](docs/DEVELOPMENT.md)**: Local setup, codegen, Docker Compose profiles, and testing.
+- **[Dev Container Support](.devcontainer/README.md)**: Spin up a full Linux development environment with one click (requires VS Code + Docker).
+
+### Quick Links
+- **[Architecture Deep Dive](docs/ARCHITECTURE.md)**: Request lifecycles, sharding, and components.
+- **[Parser security](docs/PARSER.md)**: Ingress hardening and chaos drills.
+- **Performance**: `make test-alloc-gate` and `.cursor/rules/global/core.mdc` SLAs.

@@ -134,7 +134,7 @@ func (m *MockClickHouseDB) LogEvent(e *domain.Event) {
 
 func TestSnapshotRecovery_DisasterStressReplay(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping heavy HA/DR PITR stress integration test")
+		t.Skip("integration: HA/DR PITR stress (run make test-integration)")
 	}
 
 	campID := uuid.New()

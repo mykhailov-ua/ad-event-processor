@@ -18,6 +18,6 @@ bash "$SCRIPTS/ci/admin_lighthouse_checklist.sh"
 
 echo "== admin release: pre-tag UI e2e (manual — not run in this gate) =="
 echo "Before release tag, run once locally with Playwright installed:"
-echo "  MILESTONE_SKIP_E2E=0 bash scripts/ci/milestone_ui_gate.sh"
+echo "  ADMIN_RELEASE_SKIP_E2E=0 bash scripts/ci/admin_ui_release_gate.sh"
 
 echo "Admin release security gate PASSED."

@@ -18,7 +18,7 @@ import (
 
 func TestRegistry_licenseRecheck_clockSkewBlocksIngest(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping registry skew integration test")
+		t.Skip("integration: registry skew (run make test-integration)")
 	}
 
 	licensing.ResetSkewWatchForTest()

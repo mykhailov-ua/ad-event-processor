@@ -12,7 +12,7 @@ import (
 
 func TestChaos_ParserLoad_CX02(t *testing.T) {
 	if testing.Short() {
-		t.Skip("chaos load test skipped in -short mode")
+		t.Skip("integration: parser chaos load (run make test-integration)")
 	}
 
 	cfg := chaosLoadConfigFromEnv()

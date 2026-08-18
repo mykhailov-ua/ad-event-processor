@@ -17,7 +17,7 @@ import (
 
 func TestIntegrationSchemaHandlers_createAndApply(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()
@@ -76,7 +76,7 @@ func TestIntegrationSchemaHandlers_createAndApply(t *testing.T) {
 
 func TestIntegrationSchemaHandlers_invalidSchema400(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	cfg := testutil.DefaultPostgresConfig()

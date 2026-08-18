@@ -16,7 +16,7 @@ import (
 
 func TestMLGhostAndBlacklist_EndToEnd(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)

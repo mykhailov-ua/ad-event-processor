@@ -19,7 +19,7 @@ import (
 
 func TestFault_RBACMaskEnforced(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -79,7 +79,7 @@ func TestFault_RBACMaskEnforced(t *testing.T) {
 
 func TestAPI_GetCampaign_BuyerMasking(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)

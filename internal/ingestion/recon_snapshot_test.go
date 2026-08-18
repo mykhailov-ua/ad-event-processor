@@ -13,7 +13,7 @@ import (
 
 func TestFetchBudgetReconSnapshot_atomic(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
 	rdb, cleanup := database.SetupTestRedis(t)

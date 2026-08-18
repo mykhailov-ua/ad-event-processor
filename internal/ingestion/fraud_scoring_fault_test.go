@@ -33,7 +33,7 @@ func runAtModuleRoot(t *testing.T, name string, args ...string) ([]byte, error) 
 
 func TestFault_MLWorkerDown(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	out, err := runAtModuleRoot(t, "go", "list", "-deps", "./cmd/tracker")
@@ -74,7 +74,7 @@ func TestFault_MLWorkerDown(t *testing.T) {
 
 func TestFault_MLHotPathZeroAlloc(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	engine, evt, ctx := setupFilterFraudBoostBench(t)

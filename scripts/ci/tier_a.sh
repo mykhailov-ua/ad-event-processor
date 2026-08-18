@@ -7,7 +7,7 @@ cd "$ROOT"
 fail=0
 
 echo "tier_a: check docs layout..."
-for forbidden in docs/MULTI_REGION.md docs/COMPLIANCE_MATRIX.md docs/MILESTONE.md docs/SELF_HOSTED.md docs/PROTECTION.md; do
+for forbidden in docs/COMPLIANCE_MATRIX.md docs/MILESTONE.md docs/SELF_HOSTED.md docs/PROTECTION.md; do
   if [[ -f "$forbidden" ]]; then
     echo "docs layout: $forbidden must not exist" >&2
     fail=1
@@ -22,24 +22,18 @@ for required in docs/ARCHITECTURE.md docs/DEVELOPMENT.md; do
 done
 
 allowed_docs=(
+  README.md
   ARCHITECTURE.md
-  BENCHMARKS.md
-  COLD_PATH_JSON.md
-  CUT_CANDIDATES.md
   DEVELOPMENT.md
-  EDGE_CASES.md
-  FROZEN_FEATURES.md
-  MILESTONES.md
+  LICENSE.md
   NAMING.md
-  PARSER_SECURITY.md
-  PEL_DRAIN.md
-  PILOT_LICENSE.md
+  PARSER.md
   QUICKSTART.md
+  REGIONS.md
   RTB.md
-  RTB_PRODUCTION_RUNBOOK.md
-  SHARDING_MILESTONE.md
-  TRADEOFFS.md
-  TRAFFIC_INTEGRATION.md
+  SHARDING.md
+  TRAFFIC.md
+  XDP.md
 )
 
 for path in docs/*.md; do

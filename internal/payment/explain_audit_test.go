@@ -14,7 +14,7 @@ import (
 
 func TestExplainAudit_PaymentIntentQueries(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping payment EXPLAIN audit in short mode")
+		t.Skip("integration: payment EXPLAIN audit (run make test-integration)")
 	}
 	if os.Getenv("EXPLAIN_AUDIT") == "" {
 		t.Skip("set EXPLAIN_AUDIT=1 to run payment query plan audit")

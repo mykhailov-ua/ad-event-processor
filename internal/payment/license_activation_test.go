@@ -14,7 +14,7 @@ import (
 
 func TestCryptoWebhook_LicenseActivation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)

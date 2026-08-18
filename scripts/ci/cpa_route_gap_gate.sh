@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# CPA-M0.1 route/report gap audit — live reports must have API + UI routes.
+# Route/report gap audit — live reports must have API + UI routes.
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"

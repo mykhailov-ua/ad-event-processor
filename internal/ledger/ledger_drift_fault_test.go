@@ -12,7 +12,7 @@ import (
 
 func TestFault_LedgerDriftCheck(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	pool, cleanup := setupBillingTestDB(t)

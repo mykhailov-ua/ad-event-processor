@@ -23,7 +23,7 @@ import (
 
 func TestFault_OutboxBudgetFreezePriority(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -80,7 +80,7 @@ func TestFault_OutboxBudgetFreezePriority(t *testing.T) {
 
 func TestFault_SlotMigrationFence(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	ctx := context.Background()

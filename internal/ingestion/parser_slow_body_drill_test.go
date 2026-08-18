@@ -12,7 +12,7 @@ import (
 
 func TestParserSlowBodyDrill_P99Isolation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("slow-body drill skipped in -short mode")
+		t.Skip("integration: parser slow-body drill (run make test-integration)")
 	}
 
 	cfg := slowBodyDrillConfigFromEnv()

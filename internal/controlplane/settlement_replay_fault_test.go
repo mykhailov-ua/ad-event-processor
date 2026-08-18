@@ -13,7 +13,7 @@ import (
 
 func TestFault_SettlementReplay(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	cfg := testutil.DefaultPostgresConfig()

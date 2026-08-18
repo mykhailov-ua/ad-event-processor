@@ -81,7 +81,7 @@ func setupPostgresInfra(t *testing.T) (*pgxpool.Pool, func()) {
 
 func TestPostbackIntegration_IdempotencyAndEgress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := setupPostgresInfra(t)
@@ -169,7 +169,7 @@ func TestPostbackIntegration_IdempotencyAndEgress(t *testing.T) {
 
 func TestCAPI_DoubleFire(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := setupPostgresInfra(t)
@@ -239,7 +239,7 @@ func TestCAPI_DoubleFire(t *testing.T) {
 
 func TestProcessBatch_claimsInFlightBeforeHTTP(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := setupPostgresInfra(t)
@@ -314,7 +314,7 @@ func TestProcessBatch_claimsInFlightBeforeHTTP(t *testing.T) {
 
 func TestPostback_DeliveredSkipsSecondHTTP(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := setupPostgresInfra(t)
@@ -383,7 +383,7 @@ func TestPostback_DeliveredSkipsSecondHTTP(t *testing.T) {
 
 func TestProcessBatch_reclaimsStaleProcessing(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := setupPostgresInfra(t)
@@ -449,7 +449,7 @@ func TestProcessBatch_reclaimsStaleProcessing(t *testing.T) {
 
 func TestPostbackIntegration_DLQMovement(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := setupPostgresInfra(t)
@@ -513,7 +513,7 @@ func TestPostbackIntegration_DLQMovement(t *testing.T) {
 
 func TestCAPI_DLQRetry_AdminReenqueueDispatchSuccess(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := setupPostgresInfra(t)

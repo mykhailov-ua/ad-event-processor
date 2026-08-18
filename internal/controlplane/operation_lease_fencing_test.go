@@ -70,7 +70,7 @@ func TestOperationLease_StaleFencingEpochRejectsExecutor(t *testing.T) {
 func TestFault_OperationLease_GhostExecutorFencingProof(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()

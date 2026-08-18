@@ -19,7 +19,7 @@ import (
 
 func TestFault_floor_optimizer_dry_run(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -67,7 +67,7 @@ func TestFault_floor_optimizer_dry_run(t *testing.T) {
 
 func TestApplyRtbFloorSuggestions_liveWritesRedisAndOutbox(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)

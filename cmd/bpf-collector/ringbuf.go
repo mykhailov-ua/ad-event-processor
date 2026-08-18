@@ -8,11 +8,10 @@ import (
 	"os"
 	"path/filepath"
 
-
 	"github.com/cilium/ebpf/ringbuf"
 )
 
-func drainRingbufRecords(ctx context.Context, rd *ringbuf.Reader, sessionDir string) {
+func drainRingbufRecords(ctx context.Context, rd *ringbuf.Reader, sessionDir string, otel *otelLogExporter) {
 	outPath := filepath.Join(sessionDir, "events.ndjson")
 	f, err := os.OpenFile(outPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	if err != nil {
@@ -49,6 +48,9 @@ func drainRingbufRecords(ctx context.Context, rd *ringbuf.Reader, sessionDir str
 			"marker_name":   markerName(markerID),
 		}
 		_ = enc.Encode(row)
+		if otel != nil {
+			otel.emit(otelLogRecord(row))
+		}
 	}
 }
 

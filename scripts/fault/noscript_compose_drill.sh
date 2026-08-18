@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Milestone scenario E (compose): SCRIPT FLUSH under /track load.
+# Compose drill: SCRIPT FLUSH under /track load.
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

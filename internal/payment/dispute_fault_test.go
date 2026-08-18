@@ -20,7 +20,7 @@ import (
 
 func TestFault_PaymentDisputeConcurrentWebhookSameEventID(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)
@@ -70,7 +70,7 @@ func TestFault_PaymentDisputeConcurrentWebhookSameEventID(t *testing.T) {
 
 func TestFault_PaymentChargebackDualOutboxWorkerRace(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)
@@ -116,7 +116,7 @@ func TestFault_PaymentChargebackDualOutboxWorkerRace(t *testing.T) {
 
 func TestFault_PaymentChargebackPostSettlementMarkGap(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)
@@ -166,7 +166,7 @@ func TestFault_PaymentChargebackPostSettlementMarkGap(t *testing.T) {
 
 func TestFault_PaymentDisputeWithdrawnThenReinstated(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)
@@ -217,7 +217,7 @@ func TestFault_PaymentDisputeWithdrawnThenReinstated(t *testing.T) {
 
 func TestFault_PaymentChargebackExceedsIntentIgnored(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)
@@ -244,7 +244,7 @@ func TestFault_PaymentChargebackExceedsIntentIgnored(t *testing.T) {
 
 func TestFault_PaymentChargebackWithoutTopupDead(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)

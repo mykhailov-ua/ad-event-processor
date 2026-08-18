@@ -18,7 +18,7 @@ import (
 
 func TestOpsReader_GetMLModelStatus(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -113,7 +113,7 @@ func TestOpsReader_GetMLModelStatus(t *testing.T) {
 
 func TestOpsReader_AddMLManualLabel_Validation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)

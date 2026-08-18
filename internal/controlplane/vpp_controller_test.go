@@ -48,7 +48,7 @@ func TestPipelineWriteVPPRatios_batchesPerShard(t *testing.T) {
 
 func TestRunVPPPacingController_writesRedisRatio(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -98,7 +98,7 @@ func TestRunVPPPacingController_writesRedisRatio(t *testing.T) {
 
 func TestRunVPPPacingController_onPaceWritesFullRatio(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -144,7 +144,7 @@ func TestRunVPPPacingController_onPaceWritesFullRatio(t *testing.T) {
 
 func TestRunVPPPacingController_skipsNonVPP(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)

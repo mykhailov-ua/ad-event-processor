@@ -17,7 +17,7 @@ import (
 
 func TestFault_PaymentPGStopOutboxClaimBlocked(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)
@@ -55,7 +55,7 @@ func TestFault_PaymentPGStopOutboxClaimBlocked(t *testing.T) {
 
 func TestFault_PaymentPGStopStartOutboxRecovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)
@@ -98,7 +98,7 @@ func TestFault_PaymentPGStopStartOutboxRecovery(t *testing.T) {
 
 func TestFault_PaymentSettlementDownOutboxStaysPending(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)
@@ -128,7 +128,7 @@ func TestFault_PaymentSettlementDownOutboxStaysPending(t *testing.T) {
 
 func TestFault_PaymentSettlementDownThenRecovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)
@@ -167,7 +167,7 @@ func TestFault_PaymentSettlementDownThenRecovery(t *testing.T) {
 
 func TestFault_PaymentPGTerminateDuringWebhook(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := SetupPaymentFaultInfra(t)

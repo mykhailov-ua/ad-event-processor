@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Milestone scenario F (compose): ClickHouse down → processor spool; tracker stays healthy.
+# Compose drill: ClickHouse down -> processor spool; tracker stays healthy.
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# GMA-M0 fuzz smoke: 30s JA3 parse + link signer fuzz targets.
+# GMA fuzz smoke: 30s JA3 parse + link signer fuzz targets.
 # Skip (no go binary): not applicable.
 set -euo pipefail
 

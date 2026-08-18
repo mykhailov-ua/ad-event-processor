@@ -29,7 +29,7 @@ func TestResolveFraudThresholds_defaultsWhenNil(t *testing.T) {
 
 func TestFraudModelSync_EndToEnd(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -138,7 +138,7 @@ func TestFraudModelSync_EndToEnd(t *testing.T) {
 
 func TestFraudModelSync_CanaryRollback(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -191,7 +191,7 @@ func TestFraudModelSync_CanaryRollback(t *testing.T) {
 
 func TestFraudModelSync_StaleEpochTighten(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)

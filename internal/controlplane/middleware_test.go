@@ -125,7 +125,7 @@ func TestAuthMiddleware_RequireAuth(t *testing.T) {
 
 func TestAuthMiddleware_RedisOutage(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	rdb, cleanupRedis := database.SetupTestRedis(t)

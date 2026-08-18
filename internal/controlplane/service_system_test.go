@@ -15,7 +15,7 @@ import (
 
 func TestBlockIPUsesOutbox(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -44,7 +44,7 @@ func TestBlockIPUsesOutbox(t *testing.T) {
 
 func TestBlockIP_ProtectedAndAudit(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)

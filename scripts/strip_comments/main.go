@@ -46,8 +46,7 @@ func main() {
 			return nil
 		}
 		base := filepath.Base(path)
-		switch {
-		case base == "Makefile" || base == "Dockerfile" || strings.HasSuffix(base, ".mk"):
+		if base == "Makefile" || base == "Dockerfile" || strings.HasSuffix(base, ".mk") {
 			ok, err := stripShellFile(path)
 			if err != nil {
 				return fmt.Errorf("%s: %w", path, err)

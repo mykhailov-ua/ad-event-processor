@@ -18,7 +18,7 @@ import (
 
 func TestExplainAudit_PgFailoverQueries(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping pg failover EXPLAIN in short mode")
+		t.Skip("integration: pg failover EXPLAIN (run make test-integration)")
 	}
 
 	ctx := context.Background()

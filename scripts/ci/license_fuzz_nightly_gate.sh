@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Release QA — nightly fuzz workflow contract (MILESTONE §8 / M3.4).
+# Release QA — nightly fuzz workflow contract.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 go test ./internal/licensing/ -run '^TestReleaseQA_' -count=1

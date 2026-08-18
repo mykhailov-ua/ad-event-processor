@@ -126,6 +126,7 @@ type probeRun struct {
 
 	coll     *Collection
 	links    []link.Link
+	otel     *otelLogExporter
 	ringWG   sync.WaitGroup
 	sampleWG sync.WaitGroup
 	cancel   context.CancelFunc
@@ -192,6 +193,11 @@ func (r *probeRun) start(ctx context.Context) error {
 
 	r.attachUprobes()
 
+	r.otel = newOTelLogExporter(otelEndpointFromEnv())
+	if r.otel != nil {
+		slog.Info("otel log export enabled", "endpoint", r.otel.endpoint)
+	}
+
 	ringCtx, ringCancel := context.WithCancel(ctx)
 	r.cancel = ringCancel
 	r.ringWG.Add(1)
@@ -228,6 +234,9 @@ func (r *probeRun) stop() {
 	}
 	r.ringWG.Wait()
 	r.sampleWG.Wait()
+	if r.otel != nil {
+		r.otel.close()
+	}
 	for _, l := range r.links {
 		_ = l.Close()
 	}
@@ -267,7 +276,7 @@ func (r *probeRun) drainRingbuf(ctx context.Context, m *ebpf.Map) {
 		return
 	}
 	defer func() { _ = rd.Close() }()
-	drainRingbufRecords(ctx, rd, r.session.Dir)
+	drainRingbufRecords(ctx, rd, r.session.Dir, r.otel)
 }
 
 func (r *probeRun) writeTimeline() error {

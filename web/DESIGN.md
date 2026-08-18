@@ -275,7 +275,7 @@ Goals: keep `main.js` tiny (shell + router), push heavy pages and chart vendors 
 
 ## 11. Anti-slop and honesty (2026 admin UI)
 
-Operators and buyers must never think a screen works when it does not. This section is the **product honesty** bar for `web/` — complementary to engineering DoD in [`.cursor/MILESTONE.md`](../.cursor/MILESTONE.md) §1.0.
+Operators and buyers must never think a screen works when it does not. This section is the **product honesty** bar for `web/`.
 
 ### 11.1 What counts as slop / lying
 
@@ -286,9 +286,9 @@ Operators and buyers must never think a screen works when it does not. This sect
 | **Skeleton in prod copy** | Page desc “(skeleton)” while linked from `nav_config.ts` | Admits placeholder in GA chrome |
 | **Silent failure** | `catch` → empty table with no `renderErrorBlock` / toast | Hides outage as “no data” |
 | **Fake save** | Toast “Saved” before `apiConfirmed` resolves 2xx | User believes mutation persisted |
-| **Phantom fields** | Form submits `budget_limit` when `PatchCampaignRequest` has no such field | UI lies about server contract — see MILESTONE §1.2.4 |
+| **Phantom fields** | Form submits `budget_limit` when `PatchCampaignRequest` has no such field | UI lies about server contract |
 | **Demo KPIs** | Hardcoded `metric-card` numbers not from API | Fraudulent dashboard |
-| **Docs ≠ routes** | MILESTONE/DESIGN “shipped” without `app_routes.tsx` + e2e | Agent/human marketing drift |
+| **Docs ≠ routes** | DESIGN claims shipped without `app_routes.tsx` + e2e | Agent/human marketing drift |
 | **Mock e2e overclaim** | Playwright mock cited as backend/CH/PG proof | Spec `harness=mock_api`; use stack smoke or Go integration test |
 | **Marketing filler** | “Seamless”, “cutting-edge”, “revolutionize” in operator UI | AI boilerplate; no signal |
 | **Secret echo** | Show `api_token`, JWT, webhook secret after save | Security + fake “configured” state |
