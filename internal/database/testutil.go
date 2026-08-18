@@ -75,6 +75,18 @@ func applyIngestionMigrations(t testing.TB, pool *pgxpool.Pool) {
 	}
 }
 
+// ApplyLedgerMigrations applies internal/ledger/migrations on a test pool (vendor.*, billing.*).
+func ApplyLedgerMigrations(t testing.TB, pool *pgxpool.Pool) {
+	t.Helper()
+	ctx := context.Background()
+	_, filename, _, _ := runtime.Caller(0)
+	baseDir := filepath.Join(filepath.Dir(filename), "..", "..")
+	migrationsDir := filepath.Join(baseDir, "internal/ledger/migrations")
+	if err := coldpath.ApplyTrackedSchemaMigrations(ctx, pool, migrationsDir); err != nil {
+		t.Fatalf("failed to apply ledger migrations: %s", err)
+	}
+}
+
 func SetupTestRedis(t testing.TB) (redis.UniversalClient, func()) {
 	ctx := context.Background()
 

@@ -18,6 +18,7 @@ var (
 	vendorName      string
 	siteURL         string
 	supportEmail    string
+	supportURL      string
 	adminConsoleURL string
 	once            sync.Once
 )
@@ -27,6 +28,7 @@ func initFromEnv() {
 	vendorName = envOr("BRAND_VENDOR_NAME", defaultVendorName)
 	siteURL = strings.TrimSpace(os.Getenv("BRAND_SITE_URL"))
 	supportEmail = strings.TrimSpace(os.Getenv("BRAND_SUPPORT_EMAIL"))
+	supportURL = strings.TrimSpace(os.Getenv("BRAND_SUPPORT_URL"))
 	adminConsoleURL = strings.TrimSpace(os.Getenv("BRAND_ADMIN_URL"))
 }
 
@@ -55,6 +57,15 @@ func SiteURL() string {
 func SupportEmail() string {
 	once.Do(initFromEnv)
 	return supportEmail
+}
+
+// SupportURL returns vendor support link (Telegram, site). Falls back to SiteURL.
+func SupportURL() string {
+	once.Do(initFromEnv)
+	if supportURL != "" {
+		return supportURL
+	}
+	return siteURL
 }
 
 func AdminConsoleURL() string {

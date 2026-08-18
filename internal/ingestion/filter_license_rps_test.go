@@ -62,6 +62,21 @@ func TestLicenseRPSFilter_burstConsumesCredits(t *testing.T) {
 	assert.Equal(t, uint64(0), globalDeploymentRPS.burstRemain.Load())
 }
 
+func TestLicenseRPSFilter_pilotCap(t *testing.T) {
+	globalDeploymentRPS.resetForTests()
+
+	const pilotRPS = uint64(5000)
+	f := NewLicenseRPSFilter(&stubLicenseRPSRegistry{maxRPS: pilotRPS})
+	ctx := context.Background()
+	evt := &domain.Event{}
+
+	ceil := licenseRPSSoftCeil(pilotRPS)
+	for i := uint64(0); i < ceil; i++ {
+		require.NoError(t, f.Check(ctx, evt), "request %d", i+1)
+	}
+	require.ErrorIs(t, f.Check(ctx, evt), ErrRateLimitExceeded)
+}
+
 func TestLicenseRPSFilter_zeroUnlimited(t *testing.T) {
 	f := NewLicenseRPSFilter(&stubLicenseRPSRegistry{maxRPS: 0})
 	for range 5 {

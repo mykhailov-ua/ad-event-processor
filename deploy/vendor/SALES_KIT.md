@@ -105,7 +105,7 @@ Starter is priced above Keitaro on purpose: filters non-payers and funds real su
 
 | Phase | Price | Duration | JWT SKU |
 | :--- | :--- | :--- | :--- |
-| **Pilot** | $0 | **10–14 days** | `pilot` (JWT `valid_days` = 14, hard bind) |
+| **Pilot** | $0 | **10 days** | `pilot` (`valid_days` = 10, 5k RPS, OpenRTB off, hard bind) |
 | **Conversion** | tier table | month 1+ | `starter` / `pro` / … — **not** `pilot` limits |
 
 Pilot goal: latency, stability, Cost Sync / CAPI smoke — not a free month of media buying. At day 10: convert or revoke; no automatic 30-day extension.

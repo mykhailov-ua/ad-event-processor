@@ -151,14 +151,14 @@ skus:
       mode: multi
 
   - code: pilot
-    display_name: Pilot on-prem (14-day JWT)
+    display_name: Pilot on-prem (10-day JWT)
     price_usd_monthly: 0
-    valid_days: 14
+    valid_days: 10
     grace_days: 7
     offline_grace_days: 0
     features:
-      rtb_live: true
-      openrtb_engine: true
+      rtb_live: false
+      openrtb_engine: false
       ebpf_xdp_edge: false
       ivt_ml_detector: false
       ml_fraud_boost: false
@@ -168,13 +168,13 @@ skus:
     limits:
       max_activations: 1
       max_regions: 1
-      max_api_keys: 20
-      max_rps: 50000
+      max_api_keys: 3
+      max_rps: 5000
       max_requests_per_day: 0
       max_active_campaigns: 0
-      max_tenants: 50
+      max_tenants: 1
       max_events_per_month: 0
-      max_export_chunk_bytes: 104857600
+      max_export_chunk_bytes: 0
     bind:
       mode: hard
 

@@ -29,6 +29,7 @@ vendor/
 /edge-xdp
 !deploy/vendor/
 deploy/vendor/license_private.key
+deploy/vendor/trial_registry.json
 deploy/vendor/keys/*/license_private.key
 license.jwt
 .license-*.jwt

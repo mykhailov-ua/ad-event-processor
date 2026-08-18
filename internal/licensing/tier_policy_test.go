@@ -1,6 +1,7 @@
 package licensing
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -24,6 +25,50 @@ func TestSanitizeFeaturesForSKU_proAllowsRTBBlocksXDP(t *testing.T) {
 	out := SanitizeFeaturesForSKU(SKUCodePro, in)
 	require.True(t, out.OpenRTBEnabled())
 	require.False(t, out.EbpfEdgeEnabled())
+}
+
+func TestSanitizeFeaturesForSKU_pilotBlocksOpenRTB(t *testing.T) {
+	in := FeatureSet{
+		RtbLive:       true,
+		OpenRTBEngine: true,
+		EbpfXDPEdge:   true,
+		MlFraudBoost:  true,
+		MultiRegion:   true,
+		SlotMigration: true,
+		IvtMLDetector: true,
+		MarginGuard:   true,
+	}
+	out := SanitizeFeaturesForSKU(SKUCodePilot, in)
+	require.False(t, out.OpenRTBEnabled())
+	require.False(t, out.EbpfEdgeEnabled())
+	require.False(t, out.MlFraudBoostEnabled())
+	require.False(t, out.MultiRegionEnabled())
+	require.False(t, out.SlotMigration)
+	require.False(t, out.IvtMLEnabled())
+	require.True(t, out.MarginGuard)
+}
+
+func TestLoadSKUFile_pilotSmokeLimits(t *testing.T) {
+	doc, err := LoadSKUFile(filepath.Join("..", "..", "deploy", "vendor", "sku.yaml"))
+	require.NoError(t, err)
+	sku, err := doc.GetSKU(SKUCodePilot)
+	require.NoError(t, err)
+	require.Equal(t, 10, sku.ValidDays)
+	require.Equal(t, uint64(5000), sku.Limits.MaxRPS)
+	require.Equal(t, uint64(3), sku.Limits.MaxAPIKeys)
+	require.Equal(t, uint64(1), sku.Limits.MaxTenants)
+	require.Equal(t, uint64(0), sku.Limits.MaxExportChunkBytes)
+	require.False(t, sku.Features.RtbLive)
+	require.False(t, sku.Features.OpenRTBEngine)
+	require.True(t, sku.Features.MarginGuard)
+
+	claims := sku.BuildClaims(IssueLicenseInput{
+		CustomerName: "Trial",
+		DeploymentID: "dep-pilot",
+		LicenseID:    "lic-pilot",
+	})
+	sanitized := SanitizeFeaturesForSKU(claims.SKU, claims.Features)
+	require.False(t, sanitized.OpenRTBEnabled())
 }
 
 func TestOpenRTBAllowed_requiresActiveLicense(t *testing.T) {

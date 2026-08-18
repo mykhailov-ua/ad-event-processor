@@ -15,7 +15,7 @@ const (
 func SanitizeFeaturesForSKU(sku string, features FeatureSet) FeatureSet {
 	out := features.Normalized()
 	switch strings.ToLower(strings.TrimSpace(sku)) {
-	case SKUCodeStarter, "solo":
+	case SKUCodePilot, SKUCodeStarter, "solo":
 		out.RtbLive = false
 		out.OpenRTBEngine = false
 		out.EbpfXDPEdge = false
@@ -27,8 +27,6 @@ func SanitizeFeaturesForSKU(sku string, features FeatureSet) FeatureSet {
 		out.EbpfXDPEdge = false
 	case SKUCodeNetwork:
 
-		out.EbpfXDPEdge = false
-	case SKUCodePilot:
 		out.EbpfXDPEdge = false
 	}
 	return out

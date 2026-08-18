@@ -208,10 +208,14 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 		if err := startLicenseWatcher(ctx, pool, rdbs, pubKey, svc); err != nil {
 			return err
 		}
+		svc.StartLicenseRevokeQueueWorker(defaultLicenseRevokePoll)
+		slog.Info("started license revoke queue worker", "interval", defaultLicenseRevokePoll)
 	} else if pubKey, err := licensing.ResolvePublicKey(); err == nil {
 		if err := startLicenseWatcher(ctx, pool, rdbs, pubKey, svc); err != nil {
 			return err
 		}
+		svc.StartLicenseRevokeQueueWorker(defaultLicenseRevokePoll)
+		slog.Info("started license revoke queue worker", "interval", defaultLicenseRevokePoll)
 	} else if config.LicenseRequiredFromEnv() {
 		slog.Error("license required but public key missing", "error", err)
 		return err

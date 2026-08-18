@@ -32,6 +32,7 @@ type MetaResponseDTO struct {
 	ProductName       string          `json:"product_name"`
 	VendorName        string          `json:"vendor_name"`
 	SiteURL           string          `json:"site_url"`
+	SupportURL        string          `json:"support_url,omitempty"`
 	Version           string          `json:"version"`
 	IngressSchemas    []string        `json:"ingress_schemas"`
 	DeploymentID      string          `json:"deployment_id,omitempty"`
@@ -75,6 +76,7 @@ func (h *MetaHTTPHandlers) getMeta(w http.ResponseWriter, r *http.Request) {
 		ProductName:    branding.ProductName(),
 		VendorName:     branding.VendorName(),
 		SiteURL:        branding.SiteURL(),
+		SupportURL:     branding.SupportURL(),
 		Version:        branding.Version(),
 		IngressSchemas: config.SupportedIngressSchemas(),
 	}

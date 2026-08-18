@@ -29,6 +29,59 @@ go run ./cmd/license-issue \
 
 Record `deployment_id` per customer — reuse the same ID on renewal JWTs.
 
+### Pilot trial registry (repeat-trial gate)
+
+Pilot issue checks a **vendor-local** file registry (`deploy/vendor/trial_registry.json` by default). See [TRIAL_ABUSE.md](TRIAL_ABUSE.md).
+
+```bash
+export BIDSHARD_VENDOR_TRIAL_REGISTRY=deploy/vendor/trial_registry.json
+
+go run ./cmd/license-issue \
+  --sku pilot \
+  --customer "Acme Media" \
+  --telegram-id "<buyer-telegram-user-id>" \
+  --deployment-id "<uuid>" \
+  --out /tmp/acme-pilot.jwt
+
+# After bundle: record hwid anchor
+go run ./cmd/license-issue \
+  --record-hwid \
+  --deployment-id "<uuid>" \
+  --hwid-v2 "<hwid_v2-from-support-bundle>"
+
+# Pilot ended without conversion
+go run ./cmd/license-issue \
+  --trial-mark-expired \
+  --deployment-id "<uuid>"
+
+# Bulk expire stale pilots (cron on vendor host)
+go run ./cmd/trial-registry expire-stale
+
+# Optional: Telegram capture bot (vendor workstation; no signing key on bot host)
+export BIDSHARD_VENDOR_TRIAL_BOT_TOKEN="<from @BotFather>"
+go run ./cmd/vendor-trial-bot run
+
+# Review queue and issue pilot JWT
+go run ./cmd/trial-registry list-pending
+go run ./cmd/license-issue \
+  --approve-pending "<pending-id>" \
+  --out /tmp/acme-pilot.jwt
+
+# Reject spam signups
+go run ./cmd/trial-registry reject-pending --id "<pending-id>" --reason "spam"
+
+# Paid conversion: same deployment_id, then mark converted
+go run ./cmd/license-issue \
+  --sku starter \
+  --customer "Acme Media" \
+  --deployment-id "<uuid>" \
+  --hwid-v2 "<hwid_v2>" \
+  --mark-converted \
+  --out /tmp/acme-starter.jwt
+```
+
+Force re-issue (audit): `BIDSHARD_VENDOR_TRIAL_FORCE=1` plus `--force --force-reason "..."`.
+
 ## Customer — first install
 
 In `deploy/installer/install.env`:
@@ -76,7 +129,7 @@ No restart required — entitlements reload immediately.
 | GRACE | JWT expired but within `grace_days` (7) — renew soon |
 | EXPIRED | Tracking blocked |
 
-Pilot SKU (`deploy/vendor/sku.yaml`): 14-day validity, 7-day grace, **hard bind** (host fingerprint).
+Pilot SKU (`deploy/vendor/sku.yaml`): 10-day validity, 5k RPS cap, OpenRTB off, 7-day grace, **hard bind** (host fingerprint).
 
 ## Host fingerprint (hard bind)
 

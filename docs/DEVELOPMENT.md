@@ -807,3 +807,359 @@ Zero-alloc gate: `TestUnifiedFilter_Check_zeroAlloc_localQuantaFullSkip` (run wi
 | [SHARDING.md](SHARDING.md) | Shard 0 failure matrix |
 | [RTB.md](RTB.md) | OpenRTB shadow to live |
 | [XDP.md](XDP.md) / [REGIONS.md](REGIONS.md) | Enterprise runbooks |
+| [TRIAL_ABUSE.md](TRIAL_ABUSE.md) | Pilot repeat-trial policy (no CRM) |
+
+---
+
+## 14. Open backlog: trial abuse (no CRM)
+
+Policy: [TRIAL_ABUSE.md](TRIAL_ABUSE.md). Check boxes when done. Do not claim a task complete without the listed tests green.
+
+---
+
+### Phase 0 -- Manual vendor ops (no code)
+
+**Goal:** Enforce repeat-trial policy before automation ships.
+
+#### 0.1 SALES_KIT pilot numbers locked
+
+- [ ] Starter-facing pilot duration and RPS caps agreed and written in [SALES_KIT.md](../deploy/vendor/SALES_KIT.md) (replace "TBD").
+- [ ] [sku.yaml](../deploy/vendor/sku.yaml) `pilot` row updated to match SALES_KIT (not the reverse).
+
+**Requirements**
+
+- Pilot `max_rps` must stay below Starter (`10000` today).
+- `valid_days` within SALES_KIT GTM band (10-14 days).
+- Document decision in SALES_KIT "Pilot -> paid" table.
+
+**DoD**
+
+- `deploy/vendor/sku.yaml` and SALES_KIT pilot table show the same numbers.
+- No drift between commercial doc and JWT catalog.
+
+**Testing**
+
+- `go test ./internal/licensing/ -run TestLoadSKUFile -count=1`
+- Manual: `go run ./cmd/license-issue --sku pilot --customer test --out /tmp/p.jwt` and decode JWT; `limits.max_rps` and `valid_until - valid_from` match sku.yaml.
+
+---
+
+#### 0.2 Vendor issue checklist (spreadsheet or notes)
+
+- [ ] Runbook added to [LICENSE.md](LICENSE.md) vendor section: record `telegram_user_id`, `deployment_id`, optional `hwid_v2` before/after install.
+- [ ] Rule: second `pilot` for same Telegram or HWID requires written reason in vendor notes.
+
+**Requirements**
+
+- No CRM; a spreadsheet column or `notes` field is enough for Phase 0.
+- Reuse same `deployment_id` on paid `starter` JWT ([LICENSE.md](LICENSE.md) renewal checklist).
+
+**DoD**
+
+- LICENSE.md lists mandatory fields for pilot issue and renewal.
+- Team can issue pilot without re-reading TRIAL_ABUSE.md.
+
+**Testing**
+
+- Desk check: mock support ticket with duplicate Telegram; checklist says reject or document override.
+
+---
+
+### Phase 1 -- Vendor trial registry + `license-issue` gate
+
+**Goal:** Cross-customer repeat-trial block at JWT sign time on the **vendor plane** (not buyer Postgres).
+
+#### 1.1 Trial registry package
+
+- [x] Add `internal/trialregistry/` with file-backed store (default path `deploy/vendor/trial_registry.json`, override via `BIDSHARD_VENDOR_TRIAL_REGISTRY`).
+- [x] Types: `AnchorType` (`telegram`, `deployment_id`, `hwid`, `usdt_tx`), `AnchorRecord`, `Status` (`active`, `expired`, `converted`, `revoked`).
+- [x] API: `CheckPilotEligible(CheckInput) error`, `RecordPilotIssue(RecordInput) error`, `MarkConverted(deploymentID)`, `MarkExpired(deploymentID)`, `RecordHWID(deploymentID, hwid)`.
+- [x] Sentinel errors: `ErrTrialTelegramUsed`, `ErrTrialHWIDUsed`, `ErrTrialWalletUsed` (wrap with anchor id in message).
+
+**Requirements**
+
+- Store lives on vendor workstation only; **not** in `internal/ledger/migrations/` (buyer appliance DB).
+- File writes must be atomic (write temp + rename).
+- `CheckPilotEligible` runs only when `sku == pilot`; paid SKUs skip anchor deny (still may record conversion).
+
+**How to implement**
+
+1. `store.go`: JSON file schema `{"anchors":[...],"overrides":[...]}` or newline JSONL append log + snapshot; pick one and document in package doc comment.
+2. `eligibility.go`: pure rules from [TRIAL_ABUSE.md](TRIAL_ABUSE.md) (telegram: deny if prior `active|expired` pilot; hwid: deny if same hash with `issued_at` inside configurable cooldown default 60d).
+3. `config.go`: env `BIDSHARD_VENDOR_TRIAL_HWID_COOLDOWN_DAYS` (default `60`).
+
+**DoD**
+
+- Package has no import of `internal/ingestion` or hot-path code.
+- `go test ./internal/trialregistry/...` passes with `-race`.
+
+**Testing**
+
+```bash
+go test ./internal/trialregistry/... -race -count=1
+```
+
+Held-out cases (table-driven):
+
+- First pilot for new telegram: allow.
+- Second pilot same telegram: `ErrTrialTelegramUsed`.
+- Same hwid inside cooldown: deny; outside cooldown: allow.
+- `starter` issue does not call telegram deny.
+- Concurrent `RecordPilotIssue` does not corrupt file (`-race`).
+
+---
+
+#### 1.2 Wire `license-issue`
+
+- [x] Flags: `--telegram-id`, `--record-hwid` (post-install update), `--trial-registry` (path override).
+- [x] Before `SignJWT` for `--sku pilot`: call `CheckPilotEligible`; on success `RecordPilotIssue` after sign.
+- [x] `--record-hwid --deployment-id <uuid> --hwid-v2 <hash>` flag combo to append hwid anchor without issuing JWT.
+- [x] Exit code `2` on eligibility deny (distinct from flag parse `2`).
+
+**Requirements**
+
+- Existing flags unchanged for non-pilot SKUs.
+- Stderr prints `deployment_id` and deny reason on reject.
+- Issuing `starter`/`pro` with `--mark-converted --deployment-id` updates registry (new flag).
+
+**How to implement**
+
+1. Extend [cmd/license-issue/main.go](../cmd/license-issue/main.go): load registry path, branch on `skuCode`.
+2. Keep signing logic in `internal/licensing`; registry only in `internal/trialregistry`.
+
+**DoD**
+
+- `go run ./cmd/license-issue --sku pilot ...` creates/updates registry file.
+- Repeat issue with same `--telegram-id` fails without `--force`.
+
+**Testing**
+
+```bash
+go test ./cmd/license-issue/... -count=1   # add main_test.go with registry in t.TempDir()
+```
+
+Manual:
+
+```bash
+export BIDSHARD_VENDOR_TRIAL_REGISTRY=/tmp/trial.json
+go run ./cmd/license-issue --sku pilot --customer "A" --telegram-id 111 --out /tmp/a.jwt
+go run ./cmd/license-issue --sku pilot --customer "B" --telegram-id 111 --out /tmp/b.jwt # expect deny
+```
+
+---
+
+#### 1.3 Force override + audit
+
+- [x] Flag `--force` allowed only when `BIDSHARD_VENDOR_TRIAL_FORCE=1` in environment.
+- [x] Required with `--force`: `--force-reason "<text>"` (non-empty).
+- [x] Append to `overrides` array in registry file: `{deployment_id, reason, operator, at}`.
+
+**Requirements**
+
+- Force bypasses `CheckPilotEligible` but still records issue.
+- Never delete anchor rows on force.
+
+**DoD**
+
+- Without env var, `--force` exits non-zero with clear error.
+- Override row visible in registry file after forced issue.
+
+**Testing**
+
+- Unit test: force without env fails; with env + reason succeeds and logs override.
+
+---
+
+### Phase 2 -- Pilot SKU + runtime tier alignment
+
+**Goal:** Pilot JWT entitlements match SALES_KIT; runtime sanitization consistent.
+
+#### 2.1 `sku.yaml` pilot row
+
+- [x] Update `pilot` limits/features per Phase 0.1 decision.
+- [x] If RTB disabled on pilot: set `rtb_live: false` and `openrtb_engine: false` in sku.yaml.
+
+**DoD**
+
+- `make license-red-team` or `go test ./tests/integration/ -run License -count=1` still pass.
+- Golden JWT vectors updated if repo stores them.
+
+**Testing**
+
+```bash
+go test ./internal/licensing/... -count=1
+go test ./tests/integration/ -run TestIntegration_License -count=1
+```
+
+---
+
+#### 2.2 `SanitizeFeaturesForSKU` for pilot
+
+- [x] If product disables RTB on pilot, extend [internal/licensing/tier_policy.go](../internal/licensing/tier_policy.go) `SKUCodePilot` branch (mirror Starter RTB off).
+- [x] Test in [tier_policy_test.go](../internal/licensing/tier_policy_test.go).
+
+**Requirements**
+
+- Hot path already calls `SanitizeFeaturesForSKU` in watcher and activation; no new ingest imports.
+
+**DoD**
+
+- `TestSanitizeFeaturesForSKU_pilot*` documents expected pilot feature mask.
+
+**Testing**
+
+```bash
+go test ./internal/licensing/ -run TestSanitizeFeaturesForSKU -count=1
+```
+
+---
+
+#### 2.3 License RPS gate respects pilot cap
+
+- [x] Confirm [LicenseRPSFilter](../internal/licensing/) (or ingest license filter) reads `limits.max_rps` from active JWT after sku change.
+- [x] Load test or unit test at new pilot RPS ceiling.
+
+**DoD**
+
+- Pilot JWT with reduced `max_rps` returns 429 above cap (existing RPS filter path).
+
+**Testing**
+
+```bash
+go test ./internal/licensing/... -run RPS -count=1
+go test ./internal/ingestion/ -run License -count=1
+```
+
+---
+
+### Phase 3 -- Lifecycle: expire and convert anchors
+
+**Goal:** Registry `status` reflects commercial state; vendor CLI supports paid transition.
+
+#### 3.1 Mark expired pilots
+
+- [x] `license-issue --trial-mark-expired --deployment-id <uuid>` or vendor script reads JWT `valid_until` and updates registry.
+- [x] Optional: `cmd/trial-registry expire-stale` sets `expired` where `valid_until < now()` and status was `active`.
+
+**DoD**
+
+- Stale pilots flip to `expired` without manual JSON edit.
+- Telegram anchor on expired deployment still blocks new pilot (per policy).
+
+**Testing**
+
+- Unit test with clock injection or fixed `valid_until` in fixture file.
+
+---
+
+#### 3.2 Mark converted on paid issue
+
+- [x] `license-issue --sku starter|pro|... --mark-converted --deployment-id <uuid>` updates all anchors for deployment to `converted`.
+- [x] Paid issue without `--mark-converted` logs warning to stderr (not fail).
+
+**DoD**
+
+- After starter issue + mark-converted, same telegram can not get another pilot (policy: converted buyers go paid only).
+
+**Testing**
+
+- Table test: active pilot -> starter + mark-converted -> pilot deny.
+
+---
+
+### Phase 4 -- Buyer-facing expiry nudge (customer plane)
+
+**Goal:** Remind before JWT expiry; no new abuse-control logic on customer DB.
+
+#### 4.1 License banner wiring
+
+- [x] [web/src/components/license_banner.tsx](../web/src/components/license_banner.tsx): show upgrade CTA when `sku === 'pilot'` and `valid_until` within 5 days (configurable constant).
+- [x] Link target: docs or Telegram support URL from env/meta endpoint.
+
+**Requirements**
+
+- JSDoc on new constants and handlers per `web/**` rules.
+- No fake KPI cards; reuse existing license meta from doctor/status API.
+
+**DoD**
+
+- `bash scripts/ci/admin_web.sh` green.
+- E2E or component test for banner visibility when pilot near expiry.
+
+**Testing**
+
+```bash
+bash scripts/ci/admin_web.sh
+cd web && npm test -- --run license_banner  # if test file added
+```
+
+---
+
+### Phase 5 -- Optional automation (defer until Phase 1-3 stable)
+
+#### 5.1 Vendor Telegram capture bot
+
+- [x] Small bot (separate `cmd/vendor-trial-bot` or external script) writes `telegram_id` + requested `deployment_id` into registry pending queue.
+- [x] Human or `license-issue` approves pending row.
+
+**DoD**
+
+- Bot does not hold private signing key.
+- Document bot token storage outside git.
+
+**Testing**
+
+- Manual staging test with test bot; no production key in CI.
+
+```bash
+go test ./cmd/vendor-trial-bot/... -count=1
+go test ./internal/trialregistry/ -run Pending -count=1
+```
+
+---
+
+#### 5.2 USDT deposit anchor (commercial experiment)
+
+- [x] Design doc section in TRIAL_ABUSE.md updated when bridge exists: how USDT tx maps to `usdt_tx` anchor before pilot JWT.
+- [x] **Not** wired to `selfserve/payment-intents` until on-prem buyer has `customer_id`.
+
+**DoD**
+
+- Explicit bridge design reviewed; no accidental coupling to buyer appliance billing schema.
+
+---
+
+### Phase 6 -- Deferred / separate concern
+
+#### 6.1 `license_revoke_queue` worker
+
+- [x] Consumer in control-plane worker polls `vendor.license_revoke_queue` and calls license reload/revoke path.
+
+**Note:** Table exists in buyer PG ([00005_license_activations.sql](../internal/ledger/migrations/00005_license_activations.sql)). This is **not** a cross-trial control; track separately from trial registry.
+
+**DoD**
+
+- Integration test inserts queue row; worker processes and sets `processed_at`.
+
+**Testing**
+
+```bash
+go test ./internal/controlplane/ -run RevokeQueue -count=1
+```
+
+---
+
+### CI gate for trial abuse work
+
+Before merge of any Phase 1+ PR:
+
+```bash
+go test ./internal/trialregistry/... -race -count=1
+go test ./internal/licensing/... -count=1
+go test ./cmd/license-issue/... -count=1
+make license-red-team   # if license paths touched
+bash scripts/ci/pr_fast.sh
+```
+
+**Out of scope for this backlog:** customer-plane `trial_anchors` table, CRM integrations, IP-only blocks, invented Prometheus metrics without code.
+

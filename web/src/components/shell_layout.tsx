@@ -26,6 +26,7 @@ import { VersionBanner } from './version_banner.js';
 type MetaPayload = {
   version?: string;
   license?: LicenseInfo;
+  support_url?: string;
   bootstrap_complete?: boolean;
 };
 
@@ -43,6 +44,7 @@ export function ShellLayout({ children }: ShellLayoutProps) {
   const [opsOutboxPending, setOpsOutboxPending] = useState(0);
   const [version, setVersion] = useState<string | null>(null);
   const [license, setLicense] = useState<LicenseInfo | null>(null);
+  const [supportUrl, setSupportUrl] = useState<string | undefined>(undefined);
   const [bootstrapComplete, setBootstrapComplete] = useState(true);
   const [resizing, setResizing] = useState(false);
 
@@ -80,6 +82,7 @@ export function ShellLayout({ children }: ShellLayoutProps) {
         const data = res?.data as MetaPayload | null | undefined;
         if (data?.version) setVersion(data.version);
         if (data?.license) setLicense(data.license);
+        if (data?.support_url) setSupportUrl(data.support_url);
         if (typeof data?.bootstrap_complete === 'boolean') {
           setBootstrapComplete(data.bootstrap_complete);
         }
@@ -355,7 +358,7 @@ export function ShellLayout({ children }: ShellLayoutProps) {
             <IdempotencyRecoveryBanner />
             <VersionBanner serverVersion={version} />
             <BootstrapBanner bootstrapComplete={bootstrapComplete} />
-            <LicenseBanner license={license} />
+            <LicenseBanner license={license} supportUrl={supportUrl} />
           </div>
           <div id="app-outlet">{children}</div>
         </div>

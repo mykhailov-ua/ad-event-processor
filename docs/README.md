@@ -21,6 +21,7 @@ Single-word index for `docs/`. Engineering stack id: **ad-event-processor** — 
 | [NAMING.md](NAMING.md) | BidShard vs ad-event-processor |
 | [TRAFFIC.md](TRAFFIC.md) | `/click`, `/track`, CAPI, macros, DMR |
 | [LICENSE.md](LICENSE.md) | Offline JWT license |
+| [TRIAL_ABUSE.md](TRIAL_ABUSE.md) | Pilot repeat-trial policy (no CRM) |
 | [PARSER.md](PARSER.md) | Ingress wire policy, chaos drills |
 | [SHARDING.md](SHARDING.md) | Shard 0 failure matrix |
 | [RTB.md](RTB.md) | OpenRTB shadow to live |

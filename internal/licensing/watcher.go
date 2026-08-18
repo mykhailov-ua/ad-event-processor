@@ -233,7 +233,16 @@ func (w *LicenseWatcher) verifyAndReload(ctx context.Context) error {
 	w.mu.Lock()
 	offlineSince := w.offlineSince
 	w.mu.Unlock()
-	state := DetermineEffectiveState(claims, now, claims.Revoked, offlineSince, heartbeatOffline, w.policy)
+
+	dbRevoked := false
+	if w.pool != nil {
+		if revoked, err := VendorLicenseRevoked(ctx, w.pool, ActivationLicenseKey(claims)); err != nil {
+			slog.Warn("vendor license revoke lookup failed", "error", err)
+		} else {
+			dbRevoked = revoked
+		}
+	}
+	state := DetermineEffectiveState(claims, now, dbRevoked, offlineSince, heartbeatOffline, w.policy)
 	offlineDays := 0
 	if heartbeatOffline {
 		offlineDays = OfflineDays(offlineSince, now)
