@@ -11,15 +11,7 @@ export type CampaignHourlyChartProps = {
   className?: string;
 };
 
-/**
- * uPlot time-series for campaign hourly stats (lazy-loaded).
- */
-export function CampaignHourlyChart({
-  hourly,
-  field,
-  label,
-  className,
-}: CampaignHourlyChartProps) {
+export function CampaignHourlyChart({ hourly, field, label, className }: CampaignHourlyChartProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const handleRef = useRef<{ destroy: () => void } | null>(null);
 
@@ -49,9 +41,6 @@ export type CampaignSpendCurveChartProps = {
   className?: string;
 };
 
-/**
- * Forecast spend-curve line chart (uPlot).
- */
 export function CampaignSpendCurveChart({
   curve,
   field = 'impressions',

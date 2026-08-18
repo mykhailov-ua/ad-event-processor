@@ -45,7 +45,7 @@ func teValueOnlyChunked(val []byte) bool {
 
 const (
 	chunkScratchInitCap   = 4096
-	chunkScratchRetainCap = 64 << 10 // align with maxPoolObjectSize
+	chunkScratchRetainCap = 64 << 10
 )
 
 func growChunkScratch(scratchPtr *[]byte, totalLen int) []byte {
@@ -62,7 +62,6 @@ func growChunkScratch(scratchPtr *[]byte, totalLen int) []byte {
 	return buf
 }
 
-// resetChunkScratch drops oversized per-connection chunked reassembly buffers (PS-H03).
 func resetChunkScratch(scratchPtr *[]byte) {
 	if scratchPtr == nil {
 		return

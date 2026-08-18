@@ -1,9 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  AFFILIATE_POSTBACK_PRESETS,
-  affiliatePostbackById,
-} from './affiliate_postback_presets.js';
+import { AFFILIATE_POSTBACK_PRESETS, affiliatePostbackById } from './affiliate_postback_presets.js';
 
 describe('affiliate_postback_presets', () => {
   it('ships exactly 36 presets with unique ids', () => {

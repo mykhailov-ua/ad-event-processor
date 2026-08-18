@@ -1,14 +1,14 @@
 package logpipeline
 
 import (
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
-
 	"bytes"
 	"context"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
 

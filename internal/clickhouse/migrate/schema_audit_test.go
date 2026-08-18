@@ -19,9 +19,12 @@ func TestSchemaAudit_initSQL_noRawPIIColumns(t *testing.T) {
 	initPath := filepath.Join(filepath.Dir(filename), "..", "..", "..", "deploy", "clickhouse", "init.sql")
 	initBody, err := os.ReadFile(initPath)
 	require.NoError(t, err)
+	bootstrapBody, err := migrate.BootstrapMigrationSQL()
+	require.NoError(t, err)
 
 	violations := migrate.AuditSchemaDDL(map[string]string{
-		"deploy/clickhouse/init.sql": string(initBody),
+		"deploy/clickhouse/init.sql":     string(initBody),
+		migrate.BootstrapMigrationFile(): bootstrapBody,
 	})
 	for _, v := range violations {
 		t.Errorf("forbidden PII column %s.%s in %s", v.Table, v.Column, v.File)
@@ -29,7 +32,7 @@ func TestSchemaAudit_initSQL_noRawPIIColumns(t *testing.T) {
 }
 
 func TestMigration00010_dropsRawPIIColumns(t *testing.T) {
-	body, err := fs.ReadFile(migrate.ClickHouseMigrationFS(), "migrations/00010_pii_hash_columns.sql")
+	body, err := fs.ReadFile(migrate.ClickHouseMigrationFS(), "00010_pii_hash_columns.sql")
 	require.NoError(t, err)
 	sql := strings.ToLower(string(body))
 	for _, col := range migrate.ForbiddenCHColumns {

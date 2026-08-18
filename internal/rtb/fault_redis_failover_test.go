@@ -1,12 +1,12 @@
 package rtb
 
 import (
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
-
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"github.com/stretchr/testify/assert"
 )

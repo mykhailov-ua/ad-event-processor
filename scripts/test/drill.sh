@@ -13,7 +13,7 @@ mkdir -p "$OUT"
 log() { printf '%s\n' "$*" | tee -a "$LOG"; }
 
 print_scenarios() {
-	cat <<'EOF'
+  cat << 'EOF'
 
 | ID | Fault | Manual steps | CI analogue |
 |----|-------|--------------|-------------|
@@ -33,33 +33,33 @@ EOF
 }
 
 case "$MODE" in
-check)
-	log "=== resilience drill check $STAMP ==="
-	bash scripts/ci/deps.sh 2>&1 | tee -a "$LOG"
-	bash scripts/ops/verify_redis_topology.sh 2>&1 | tee -a "$LOG"
-	docker compose ps 2>&1 | tee -a "$LOG"
-	print_scenarios | tee -a "$LOG"
-	log "log file: $LOG"
-	;;
-spike)
-	log "=== spike load ==="
-	bash scripts/test/spike.sh 2>&1 | tee -a "$LOG"
-	;;
-malformed)
-	log "=== malformed traffic soak ==="
-	bash scripts/test/malformed.sh smoke 2>&1 | tee -a "$LOG"
-	;;
-legacy-dirty|dirty)
-	log "=== malformed traffic soak (legacy mode name: dirty) ==="
-	bash scripts/test/malformed.sh smoke 2>&1 | tee -a "$LOG"
-	;;
-all)
-	bash "$0" check
-	bash "$0" malformed
-	bash "$0" spike
-	;;
-*)
-	printf 'usage: %s check|spike|malformed|all (dirty is deprecated alias for malformed)\n' "$0" >&2
-	exit 1
-	;;
+  check)
+    log "=== resilience drill check $STAMP ==="
+    bash scripts/ci/deps.sh 2>&1 | tee -a "$LOG"
+    bash scripts/ops/verify_redis_topology.sh 2>&1 | tee -a "$LOG"
+    docker compose ps 2>&1 | tee -a "$LOG"
+    print_scenarios | tee -a "$LOG"
+    log "log file: $LOG"
+    ;;
+  spike)
+    log "=== spike load ==="
+    bash scripts/test/spike.sh 2>&1 | tee -a "$LOG"
+    ;;
+  malformed)
+    log "=== malformed traffic soak ==="
+    bash scripts/test/malformed.sh smoke 2>&1 | tee -a "$LOG"
+    ;;
+  legacy-dirty | dirty)
+    log "=== malformed traffic soak (legacy mode name: dirty) ==="
+    bash scripts/test/malformed.sh smoke 2>&1 | tee -a "$LOG"
+    ;;
+  all)
+    bash "$0" check
+    bash "$0" malformed
+    bash "$0" spike
+    ;;
+  *)
+    printf 'usage: %s check|spike|malformed|all (dirty is deprecated alias for malformed)\n' "$0" >&2
+    exit 1
+    ;;
 esac

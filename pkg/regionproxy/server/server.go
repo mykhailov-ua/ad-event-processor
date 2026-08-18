@@ -152,12 +152,10 @@ func (s *Server) SetShutdownTimeout(d time.Duration) {
 	}
 }
 
-// SetConnReadIdle bounds how long a peer may drip partial length-prefixed frames (default 30s).
 func (s *Server) SetConnReadIdle(d time.Duration) {
 	s.connReadIdle = d
 }
 
-// SetConnMaxLifetime is the maximum wall time for a TCP connection (default 120s).
 func (s *Server) SetConnMaxLifetime(d time.Duration) {
 	s.connMaxLifetime = d
 }

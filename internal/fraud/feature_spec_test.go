@@ -75,5 +75,5 @@ func fraudMLFixtureDir(t *testing.T) string {
 	t.Helper()
 	_, file, _, ok := runtime.Caller(0)
 	require.True(t, ok)
-	return filepath.Join(filepath.Dir(file), "testdata", "ml")
+	return filepath.Join(filepath.Dir(file), "testdata")
 }

@@ -12,9 +12,6 @@ const EN: Record<string, string> = {
   'report.compare': 'Compare with previous period',
 };
 
-/**
- * Resolve a UI string from the English catalog.
- */
 export function t(key: string, fallback = key): string {
   return EN[key] ?? fallback;
 }

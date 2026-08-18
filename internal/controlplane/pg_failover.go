@@ -94,9 +94,6 @@ func (s *Service) StartPgFailover(ctx context.Context) *PgFailoverRuntime {
 }
 
 func buildPgFailoverPromoter(s *Service, reconnect func(*pgxpool.Pool)) pgfailover.Promoter {
-	// When PgPromoteCommand is empty, the coordinator assumes the standby is already promoted
-	// or will become writable without running a local command; operators must run promote
-	// out of band (e.g. pg_ctl promote) or set PgPromoteCommand.
 	if s.cfg.PgPromoteCommand == "" && !s.cfg.PgFailoverSnapshotSync {
 		return pgfailover.PromoteFunc(func(ctx context.Context) (string, error) {
 			pool, err := database.Connect(ctx, string(s.cfg.PgStandbyDSN), s.cfg.DBTrackerMaxConns, s.cfg.DBMinConns)

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { LicenseStatusDTO } from '../types/api/license.js';
+import type { LicenseStatusDTO } from '../types/license.js';
 import * as auth from '../helpers/auth.js';
 import { can } from '../helpers/permissions.js';
 import { apiConfirmed } from '../helpers/confirmed_api.js';
@@ -8,7 +8,7 @@ import { mapServiceError } from '../helpers/service_error.js';
 import { pushToastMessage } from '../helpers/toast_ui.js';
 import { ConfirmCancelledError } from '../helpers/confirm_ui.js';
 import { surfaceServiceErrorToast } from '../helpers/service_error_toast.js';
-import { useResource } from '../hooks/use_resource.js';
+import { useResource } from '../helpers/use_resource.js';
 import { Breadcrumbs } from '../components/breadcrumbs.js';
 import { Button } from '../components/button.js';
 import { ErrorBlock } from '../components/error_block.js';
@@ -16,9 +16,6 @@ import { Icon } from '../components/icon.js';
 import { StatusBadge } from '../components/status_badge.js';
 import { AlertBanner } from '../components/alert_banner.js';
 
-/**
- * License status, host identity for vendor renewal, and JWT apply.
- */
 export function SettingsLicensePage() {
   const user = auth.getUser();
   const canWrite = can(user?.permissions ?? [], 'settings:write');
@@ -38,10 +35,12 @@ export function SettingsLicensePage() {
       return;
     }
     setApplying(true);
-    const [res, err] = await to(apiConfirmed('/api/v1/license/apply', {
-      method: 'POST',
-      body: JSON.stringify({ token }),
-    }));
+    const [res, err] = await to(
+      apiConfirmed('/api/v1/license/apply', {
+        method: 'POST',
+        body: JSON.stringify({ token }),
+      })
+    );
     if (err) {
       if (err instanceof ConfirmCancelledError) {
         setApplying(false);
@@ -68,11 +67,7 @@ export function SettingsLicensePage() {
   return (
     <>
       <div className="page-header">
-        <Breadcrumbs items={[
-          { label: 'Settings', href: '/settings' },
-          { label: 'License' },
-        ]}
-        />
+        <Breadcrumbs items={[{ label: 'Settings', href: '/settings' }, { label: 'License' }]} />
         <div className="page-header__row">
           <div className="flex items-center gap-2">
             <Icon name="key" size={20} className="text-muted" />
@@ -101,9 +96,7 @@ export function SettingsLicensePage() {
             <dt>State</dt>
             <dd>{data.state ? <StatusBadge status={data.state} /> : '—'}</dd>
             <dt>Valid until</dt>
-            <dd>
-              {data.valid_until ? new Date(data.valid_until).toLocaleString() : '—'}
-            </dd>
+            <dd>{data.valid_until ? new Date(data.valid_until).toLocaleString() : '—'}</dd>
             {data.days_to_expiry != null && data.days_to_expiry > 0 ? (
               <>
                 <dt>Days to expiry</dt>
@@ -121,9 +114,7 @@ export function SettingsLicensePage() {
             {data.hwid_match != null ? (
               <>
                 <dt>Bind match</dt>
-                <dd data-testid="license-hwid-match">
-                  {data.hwid_match ? 'Match' : 'Mismatch'}
-                </dd>
+                <dd data-testid="license-hwid-match">{data.hwid_match ? 'Match' : 'Mismatch'}</dd>
               </>
             ) : null}
           </dl>

@@ -20,15 +20,13 @@ const (
 	reputationClientVersion = "1.0"
 )
 
-// ReputationConfig holds cold-path API credentials for domain reputation probes.
 type ReputationConfig struct {
 	SafeBrowsingAPIKey string
-	SafeBrowsingAPIURL string // optional override (tests); default Google v4 endpoint
+	SafeBrowsingAPIURL string
 	FacebookToken      string
 	FacebookGraphBase  string
 }
 
-// ReputationChecker queries Safe Browsing and optional Facebook Graph scrape (cold path only).
 type ReputationChecker struct {
 	cfg  ReputationConfig
 	http *http.Client
@@ -54,7 +52,6 @@ func (r *ReputationChecker) Enabled() bool {
 	return r != nil
 }
 
-// Check reports whether hostname is flagged unsafe by configured providers.
 func (r *ReputationChecker) Check(ctx context.Context, hostname string) (unsafe bool, detail string, err error) {
 	if r == nil {
 		return false, "", nil

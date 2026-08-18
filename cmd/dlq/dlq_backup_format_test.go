@@ -21,8 +21,6 @@ func dlqExploratoryLogf(t *testing.T, format string, args ...any) {
 	t.Logf("harness=exploratory_not_gate "+format, args...)
 }
 
-// TestDLQBackupFormatComparison logs JSON vs binary backup size and throughput.
-// Exploratory only — not a perf gate (not in gate_bench.sh / test-alloc-gate).
 func TestDLQBackupFormatComparison(t *testing.T) {
 	const count = 10000
 	dlqExploratoryLogf(t, "generating %d mock DLQ events for format comparison...", count)

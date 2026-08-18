@@ -1,4 +1,3 @@
-/** harness=mock_api — CPA-M8 ops/compliance surfaces; does not prove HMAC or Cloudflare. */
 import { test, expect } from '@playwright/test';
 import { mockAuthedSession, ADMIN_USER } from './helpers.js';
 
@@ -10,15 +9,17 @@ test('consent proof browser lists read-only proofs', async ({ page }) => {
       status: 200,
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        items: [{
-          id: 42,
-          user_id_hash: 'abc123',
-          purposes: 1,
-          source: 'cmp',
-          recorded_at: '2026-08-12T10:00:00Z',
-          ad_storage: true,
-          analytics_storage: false,
-        }],
+        items: [
+          {
+            id: 42,
+            user_id_hash: 'abc123',
+            purposes: 1,
+            source: 'cmp',
+            recorded_at: '2026-08-12T10:00:00Z',
+            ad_storage: true,
+            analytics_storage: false,
+          },
+        ],
       }),
     });
   });
@@ -157,15 +158,17 @@ test('unified DLQ inbox retries postback source', async ({ page }) => {
       status: 200,
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        items: [{
-          id: '7',
-          source: 'postback',
-          campaign_id: 'camp-1',
-          event_type: 'conversion',
-          error: 'timeout',
-          failed_at: '2026-08-12T10:00:00Z',
-          status: 'FAILED',
-        }],
+        items: [
+          {
+            id: '7',
+            source: 'postback',
+            campaign_id: 'camp-1',
+            event_type: 'conversion',
+            error: 'timeout',
+            failed_at: '2026-08-12T10:00:00Z',
+            status: 'FAILED',
+          },
+        ],
       }),
     });
   });

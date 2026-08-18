@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 )
 
 func refreshMetaOAuth(ctx context.Context, client *http.Client, appID, appSecret string, cred Credential) (string, time.Time, error) {
@@ -32,10 +34,14 @@ func refreshMetaOAuth(ctx context.Context, client *http.Client, appID, appSecret
 	}
 	resp, err := client.Do(req)
 	if err != nil {
+		coldpath.CloseHTTPResponse(resp)
 		return "", time.Time{}, err
 	}
-	defer func() { _ = resp.Body.Close() }()
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	defer coldpath.CloseHTTPResponse(resp)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("meta oauth refresh: read body: %w", err)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return "", time.Time{}, fmt.Errorf("meta oauth refresh: status %d: %s", resp.StatusCode, string(body))
 	}
@@ -73,10 +79,14 @@ func refreshGoogleOAuth(ctx context.Context, client *http.Client, clientID, clie
 
 	resp, err := client.Do(req)
 	if err != nil {
+		coldpath.CloseHTTPResponse(resp)
 		return "", time.Time{}, err
 	}
-	defer func() { _ = resp.Body.Close() }()
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	defer coldpath.CloseHTTPResponse(resp)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("meta oauth refresh: read body: %w", err)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return "", time.Time{}, fmt.Errorf("google oauth refresh: status %d: %s", resp.StatusCode, string(body))
 	}

@@ -7,9 +7,6 @@ export type CategoryPieChartProps = {
   className?: string;
 };
 
-/**
- * Donut chart with HTML legend (lazy-loads canvas pie adapter).
- */
 export function CategoryPieChart({
   items,
   ariaLabel = 'Donut chart',

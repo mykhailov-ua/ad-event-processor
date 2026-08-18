@@ -18,10 +18,10 @@ import {
   timezoneSelectOptions,
 } from '../helpers/display_labels.js';
 import { devModeEnabled, setDevMode } from '../helpers/dev_mode.js';
-import type { OpsDoctorSummary } from '../types/api/ops.js';
+import type { OpsDoctorSummary } from '../types/ops.js';
 import { humanizeTechnicalDetail } from '../helpers/technical_labels.js';
 import { reloadRoles } from '../helpers/ops_compliance_api.js';
-import { useResource } from '../hooks/use_resource.js';
+import { useResource } from '../helpers/use_resource.js';
 import { AlertBanner } from '../components/alert_banner.js';
 import { Button } from '../components/button.js';
 import { Checkbox } from '../components/checkbox.js';
@@ -74,17 +74,17 @@ function SettingsSummaryItem({ label, children }: { label: string; children: Rea
   );
 }
 
-/**
- * Platform settings with save, apply, and license renewal.
- */
 export function SettingsPage() {
   const user = auth.getUser();
   const canWrite = can(user?.permissions ?? [], 'settings:write');
   const canCreateApiKey = can(user?.permissions ?? [], 'campaigns:write');
 
-  const { data: view, loading, error, reload } = useResource<PlatformSettingsResponse>(
-    '/api/v1/settings/platform',
-  );
+  const {
+    data: view,
+    loading,
+    error,
+    reload,
+  } = useResource<PlatformSettingsResponse>('/api/v1/settings/platform');
 
   const [form, setForm] = useState<PlatformConfig | null>(null);
   const [saving, setSaving] = useState(false);
@@ -153,10 +153,12 @@ export function SettingsPage() {
       stripe: stripePatch,
     };
 
-    const [savedRes, saveErr] = await to(apiConfirmed('/api/v1/settings/platform', {
-      method: 'PATCH',
-      body: JSON.stringify(patch),
-    }));
+    const [savedRes, saveErr] = await to(
+      apiConfirmed('/api/v1/settings/platform', {
+        method: 'PATCH',
+        body: JSON.stringify(patch),
+      })
+    );
     if (saveErr) {
       if (saveErr instanceof ConfirmCancelledError) {
         setSaving(false);
@@ -187,10 +189,12 @@ export function SettingsPage() {
       pushToastMessage({ title: 'License', message: 'Paste the license JWT from your vendor' });
       return;
     }
-    const [res, err] = await to(apiConfirmed('/api/v1/license/apply', {
-      method: 'POST',
-      body: JSON.stringify({ token }),
-    }));
+    const [res, err] = await to(
+      apiConfirmed('/api/v1/license/apply', {
+        method: 'POST',
+        body: JSON.stringify({ token }),
+      })
+    );
     if (err) {
       if (err instanceof ConfirmCancelledError) return;
       const v = mapServiceError(err);
@@ -209,7 +213,9 @@ export function SettingsPage() {
   const handleApply = async () => {
     if (!canWrite) return;
     setApplying(true);
-    const [, applyErr] = await to(apiConfirmed('/api/v1/settings/platform/apply', { method: 'POST' }));
+    const [, applyErr] = await to(
+      apiConfirmed('/api/v1/settings/platform/apply', { method: 'POST' })
+    );
     if (applyErr) {
       if (applyErr instanceof ConfirmCancelledError) {
         setApplying(false);
@@ -236,7 +242,8 @@ export function SettingsPage() {
 
   if (!view) return null;
 
-  const restartBanner = restartRequired.length > 0 ? restartRequired : (view.restart_required ?? []);
+  const restartBanner =
+    restartRequired.length > 0 ? restartRequired : (view.restart_required ?? []);
 
   return (
     <div className="settings-layout">
@@ -253,9 +260,8 @@ export function SettingsPage() {
           )}
         </div>
         <p className="settings-layout__intro">
-          Configure tracking, deployment profile, edge features, and payment integration.
-          {' '}
-          Save updates the platform record; Apply writes configuration to disk on the host.
+          Configure tracking, deployment profile, edge features, and payment integration. Save
+          updates the platform record; Apply writes configuration to disk on the host.
         </p>
       </div>
 
@@ -274,21 +280,31 @@ export function SettingsPage() {
       ) : null}
 
       <div className="settings-summary">
-        <SettingsSummaryItem label="Deployment profile">{displayLabel(cfg.profile)}</SettingsSummaryItem>
-        <SettingsSummaryItem label="Traffic format">{displayLabel(cfg.ingress_schema)}</SettingsSummaryItem>
+        <SettingsSummaryItem label="Deployment profile">
+          {displayLabel(cfg.profile)}
+        </SettingsSummaryItem>
+        <SettingsSummaryItem label="Traffic format">
+          {displayLabel(cfg.ingress_schema)}
+        </SettingsSummaryItem>
         <SettingsSummaryItem label="Timezone">{cfg.timezone ?? '—'}</SettingsSummaryItem>
         <SettingsSummaryItem label="Click URL">
           {view.click_url_template ? (
             <code className="settings-summary__code" title={view.click_url_template}>
               {view.click_url_template}
             </code>
-          ) : '—'}
+          ) : (
+            '—'
+          )}
         </SettingsSummaryItem>
       </div>
 
       <form className="settings-form" onSubmit={(e) => void handleSave(e)}>
         <div className="settings-grid">
-          <SectionCard icon="globe" title="General" desc="Defaults used across campaigns and billing.">
+          <SectionCard
+            icon="globe"
+            title="General"
+            desc="Defaults used across campaigns and billing."
+          >
             <FormField
               label="Tracking domain"
               error={fieldErrors.tracking_domain}
@@ -325,7 +341,9 @@ export function SettingsPage() {
                 }}
               >
                 {currencySelectOptions(cfg.default_currency).map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
                 ))}
               </select>
             </FormField>
@@ -337,7 +355,9 @@ export function SettingsPage() {
                 onChange={(e) => updateField('timezone', e.target.value)}
               >
                 {timezoneSelectOptions(cfg.timezone).map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
                 ))}
               </select>
             </FormField>
@@ -356,7 +376,9 @@ export function SettingsPage() {
                 onChange={(e) => updateField('profile', e.target.value)}
               >
                 {PROFILE_SELECT_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
                 ))}
               </select>
             </FormField>
@@ -368,7 +390,9 @@ export function SettingsPage() {
                 onChange={(e) => updateField('ingress_schema', e.target.value)}
               >
                 {INGRESS_SELECT_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
                 ))}
               </select>
             </FormField>
@@ -385,7 +409,11 @@ export function SettingsPage() {
             </FormField>
           </SectionCard>
 
-          <SectionCard icon="toggle-left" title="Features" desc="Optional telemetry and edge acceleration.">
+          <SectionCard
+            icon="toggle-left"
+            title="Features"
+            desc="Optional telemetry and edge acceleration."
+          >
             <div className="settings-check-group">
               <Checkbox
                 label="Telemetry enabled — export metrics to configured sinks"
@@ -401,12 +429,15 @@ export function SettingsPage() {
               />
               <p className="text-muted text-sm">
                 Requires Enterprise license (ebpf_xdp_edge), kernel BTF (6.1+), and installer units{' '}
-                <code>ad-event-processor-edge-xdp</code> / <code>ad-event-processor-edge-bpf-sync</code>.
-                Saving updates platform YAML only — use Apply on the host, then verify Doctor on Ops.
+                <code>ad-event-processor-edge-xdp</code> /{' '}
+                <code>ad-event-processor-edge-bpf-sync</code>. Saving updates platform YAML only —
+                use Apply on the host, then verify Doctor on Ops.
               </p>
               {cfg.edge_xdp ? (
                 doctorLoading && !edgeXdpDoctorCheck ? (
-                  <p className="text-muted text-sm settings-edge-xdp__status">Checking host runtime…</p>
+                  <p className="text-muted text-sm settings-edge-xdp__status">
+                    Checking host runtime…
+                  </p>
                 ) : !edgeXdpDoctorCheck || edgeXdpDoctorCheck.status === 'skip' ? (
                   <AlertBanner
                     variant="info"
@@ -432,8 +463,9 @@ export function SettingsPage() {
                   <AlertBanner
                     variant={edgeXdpDoctorCheck.status === 'warn' ? 'warning' : 'error'}
                     message={
-                      humanizeTechnicalDetail(edgeXdpDoctorCheck.message ?? 'Edge XDP host runtime not ready')
-                      ?? 'Edge XDP host runtime not ready'
+                      humanizeTechnicalDetail(
+                        edgeXdpDoctorCheck.message ?? 'Edge XDP host runtime not ready'
+                      ) ?? 'Edge XDP host runtime not ready'
                     }
                   />
                 )
@@ -492,7 +524,7 @@ export function SettingsPage() {
                 onChange={(e) => setStripeWebhookInput(e.target.value)}
               />
             </FormField>
-            {(view.secrets?.stripe_secret_key || view.secrets?.stripe_webhook_secret) ? (
+            {view.secrets?.stripe_secret_key || view.secrets?.stripe_webhook_secret ? (
               <div className="settings-secrets">
                 {view.secrets?.stripe_secret_key ? (
                   <div className="settings-secrets__row">
@@ -524,21 +556,26 @@ export function SettingsPage() {
                 data-testid="roles-reload"
                 loading={rolesReloading}
                 disabled={rolesReloading}
-                onClick={() => void (async () => {
-                  setRolesReloading(true);
-                  try {
-                    const res = await reloadRoles();
-                    pushToastMessage({
-                      title: 'RBAC reloaded',
-                      message: res.path ? `Loaded ${res.path}` : res.status,
-                    });
-                  } catch (e) {
-                    if (e instanceof ConfirmCancelledError) return;
-                    pushToastMessage({ title: 'Reload failed', message: mapServiceError(e).message });
-                  } finally {
-                    setRolesReloading(false);
-                  }
-                })()}
+                onClick={() =>
+                  void (async () => {
+                    setRolesReloading(true);
+                    try {
+                      const res = await reloadRoles();
+                      pushToastMessage({
+                        title: 'RBAC reloaded',
+                        message: res.path ? `Loaded ${res.path}` : res.status,
+                      });
+                    } catch (e) {
+                      if (e instanceof ConfirmCancelledError) return;
+                      pushToastMessage({
+                        title: 'Reload failed',
+                        message: mapServiceError(e).message,
+                      });
+                    } finally {
+                      setRolesReloading(false);
+                    }
+                  })()
+                }
               />
             </SectionCard>
           ) : null}
@@ -576,7 +613,8 @@ export function SettingsPage() {
         {canWrite ? (
           <div className="settings-actions">
             <p className="settings-actions__hint">
-              Save persists to the database. Apply writes YAML to disk and may require service restart.
+              Save persists to the database. Apply writes YAML to disk and may require service
+              restart.
             </p>
             <div className="settings-actions__buttons">
               <Button

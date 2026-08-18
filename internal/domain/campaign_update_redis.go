@@ -8,7 +8,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// PublishCampaignUpdateRedis notifies trackers on every connected Redis shard.
 func PublishCampaignUpdateRedis(ctx context.Context, rdbs []redis.UniversalClient, channel, campaignID string) error {
 	if channel == "" {
 		channel = "campaigns:update"
@@ -23,7 +22,6 @@ func PublishCampaignUpdateRedis(ctx context.Context, rdbs []redis.UniversalClien
 	})
 }
 
-// DefaultCampaignUpdateChannel returns the configured channel or the product default.
 func DefaultCampaignUpdateChannel(channel string) string {
 	if channel != "" {
 		return channel

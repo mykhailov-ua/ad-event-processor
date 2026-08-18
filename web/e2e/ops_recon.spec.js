@@ -1,4 +1,3 @@
-/** harness=mock_api — Playwright route.fulfill; does not prove Go handler or CH/PG. */
 import { test, expect } from '@playwright/test';
 import { mockAuthedSession } from './helpers.js';
 
@@ -48,7 +47,11 @@ test('ops recon lists runs with pagination header', async ({ page }) => {
   await page.goto('/ops/recon');
   await expect(page.getByTestId('ops-recon-view')).toBeVisible();
   await expect(page.getByTestId('ops-recon-table')).toBeVisible();
-  await expect(page.getByTestId('ops-recon-table').getByRole('cell', { name: 'management' })).toBeVisible();
-  await expect(page.getByTestId('ops-recon-table').getByRole('cell', { name: 'payment' })).toBeVisible();
+  await expect(
+    page.getByTestId('ops-recon-table').getByRole('cell', { name: 'management' })
+  ).toBeVisible();
+  await expect(
+    page.getByTestId('ops-recon-table').getByRole('cell', { name: 'payment' })
+  ).toBeVisible();
   await expect(page.getByText('COMPLETED', { exact: true })).toBeVisible();
 });

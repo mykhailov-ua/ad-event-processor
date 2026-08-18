@@ -82,7 +82,6 @@ func TestStreamConsumer_CircuitBreakerStopsReads(t *testing.T) {
 
 	callsAtOpen := failStore.calls.Load()
 
-	// CI budget: 500ms poll window — no fixed sleep before primary assertion.
 	assert.Eventually(t, func() bool {
 		extra := failStore.calls.Load() - callsAtOpen
 		return extra <= 4
@@ -91,7 +90,6 @@ func TestStreamConsumer_CircuitBreakerStopsReads(t *testing.T) {
 
 	failStore.Heal()
 
-	// CI budget: 5s max wait for half-open probe success after heal.
 	assert.Eventually(t, func() bool {
 		return consumer.cb.State() == CircuitClosed
 	}, 5*time.Second, 10*time.Millisecond, "circuit breaker should recover to closed")

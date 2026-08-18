@@ -21,9 +21,6 @@ export type ServiceErrorView = {
   retryAfterSec?: number;
 };
 
-/**
- * Map an API or network error to a UI-facing service error view.
- */
 export function mapServiceError(err: unknown): ServiceErrorView {
   if (err instanceof AuthError) {
     return {
@@ -122,7 +119,7 @@ export function mapServiceError(err: unknown): ServiceErrorView {
         title: 'Rate limited',
         message: retryAfterSec
           ? `Retry after ${retryAfterSec}s`
-          : (err.message || 'too many requests'),
+          : err.message || 'too many requests',
         retryAfterSec,
       };
     case 'NOT_IMPLEMENTED':
@@ -170,9 +167,6 @@ export function mapServiceError(err: unknown): ServiceErrorView {
   }
 }
 
-/**
- * Extract a partial 503 error message from an ApiError payload.
- */
 function partial503Message(err: ApiError): string | null {
   const errors = err.payload?.errors;
   if (Array.isArray(errors) && errors.length > 0) {
@@ -181,18 +175,12 @@ function partial503Message(err: ApiError): string | null {
   return null;
 }
 
-/**
- * Parse a Retry-After header into seconds.
- */
 function parseRetryAfter(header: string | null | undefined): number | undefined {
   if (!header) return undefined;
   const n = Number.parseInt(header, 10);
   return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
-/**
- * Test whether a service error view should block the entire page.
- */
 export function isPageBlockingError(view: ServiceErrorView): boolean {
   return view.kind === 'page' || view.kind === 'unavailable';
 }

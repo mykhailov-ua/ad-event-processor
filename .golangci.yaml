@@ -1,7 +1,7 @@
 version: "2"
 
-# Default golangci-lint config (IDE + `golangci-lint run` without -c).
-# CI uses split profiles: .golangci-cold.yaml / .golangci-hot.yaml via scripts/ci/lint_go_gate.sh
+
+
 run:
   timeout: 8m
   go: "1.25.12"

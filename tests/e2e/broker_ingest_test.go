@@ -22,7 +22,6 @@ func TestE2E_BrokerIngest(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping broker e2e")
 	}
-	// Broker-primary PG settlement (_pg_broker consumer group).
 
 	pool, cleanupDB := testutil.SetupAdsPostgres(t)
 	defer cleanupDB()

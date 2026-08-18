@@ -1,14 +1,14 @@
 package notify
 
 import (
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
-
 	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"github.com/bidshard/ad-event-processor/internal/notify/db"
 

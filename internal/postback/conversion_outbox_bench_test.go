@@ -69,6 +69,37 @@ type benchPostbackQuerier struct {
 	hasConfig bool
 }
 
+func (q *benchPostbackQuerier) ListPostbackConfigsByCampaignIDs(ctx context.Context, ids []pgtype.UUID) ([]db.PostbackConfig, error) {
+	if !q.hasConfig {
+		return nil, nil
+	}
+	out := make([]db.PostbackConfig, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, db.PostbackConfig{
+			CampaignID:  id,
+			Provider:    "facebook",
+			UrlTemplate: "1234567890",
+			TargetEvent: "conversion",
+		})
+	}
+	return out, nil
+}
+
+func (q *benchPostbackQuerier) ListCampaignsByIDs(ctx context.Context, ids []pgtype.UUID) ([]db.Campaign, error) {
+	out := make([]db.Campaign, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, db.Campaign{
+			ID:         id,
+			CustomerID: pgtype.UUID{Bytes: benchCustomerID, Valid: true},
+		})
+	}
+	return out, nil
+}
+
+func (q *benchPostbackQuerier) CreateOutboxEventsBatch(ctx context.Context, arg db.CreateOutboxEventsBatchParams) error {
+	return nil
+}
+
 func (q *benchPostbackQuerier) GetPostbackConfig(ctx context.Context, id pgtype.UUID) (db.PostbackConfig, error) {
 	if !q.hasConfig {
 		return db.PostbackConfig{}, pgx.ErrNoRows

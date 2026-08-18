@@ -1,3 +1,2 @@
-
 unix_socket: /run/ad-event-processor/clickhouse/native.sock
 unix_socket_permissions: 777

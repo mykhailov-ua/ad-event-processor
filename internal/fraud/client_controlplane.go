@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 )
 
 type BlacklistBlocker interface {
@@ -62,9 +64,10 @@ func (client *ControlplaneClient) BlockIP(ctx context.Context, ip string) error 
 
 	resp, err := client.httpClient.Do(req)
 	if err != nil {
+		coldpath.CloseHTTPResponse(resp)
 		return fmt.Errorf("%w: %w", ErrManagementUnavailable, err)
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer coldpath.CloseHTTPResponse(resp)
 
 	if resp.StatusCode == http.StatusCreated {
 		return nil
@@ -106,9 +109,10 @@ func (client *ControlplaneClient) EnqueueFraudThreat(ctx context.Context, action
 
 	resp, err := client.httpClient.Do(req)
 	if err != nil {
+		coldpath.CloseHTTPResponse(resp)
 		return fmt.Errorf("%w: %w", ErrManagementUnavailable, err)
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer coldpath.CloseHTTPResponse(resp)
 
 	if resp.StatusCode == http.StatusOK {
 		return nil

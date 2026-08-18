@@ -5,9 +5,6 @@ type RateLimitedDetail = {
   retryAfterSec?: number;
 };
 
-/**
- * Offline + rate-limit banners for the shell main content slot.
- */
 export function ShellStatusBanners() {
   const [offline, setOffline] = useState(() => !navigator.onLine);
   const [rateLimitDismissed, setRateLimitDismissed] = useState(false);

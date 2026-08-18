@@ -1,4 +1,3 @@
-// Package migrate implements clickhouse migrate helpers.
 package migrate
 
 import (
@@ -14,7 +13,7 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 )
 
-//go:embed migrations/*.sql
+//go:embed *.sql
 var clickHouseMigrations embed.FS
 
 func ClickHouseMigrationFS() fs.FS {
@@ -22,7 +21,7 @@ func ClickHouseMigrationFS() fs.FS {
 }
 
 func ApplyClickHouseMigrations(ctx context.Context, conn driver.Conn) error {
-	entries, err := fs.Glob(clickHouseMigrations, "migrations/*.sql")
+	entries, err := fs.Glob(clickHouseMigrations, "*.sql")
 	if err != nil {
 		return fmt.Errorf("list clickhouse migrations: %w", err)
 	}

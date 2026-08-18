@@ -1,4 +1,3 @@
-// Package openrtb implements OpenRTB 2.x wire encode/decode and validation helpers.
 package openrtb
 
 import (

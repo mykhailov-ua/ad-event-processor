@@ -3,7 +3,7 @@ import { to } from '../lib/to.js';
 import { mapServiceError } from '../helpers/service_error.js';
 import { pushToastMessage } from '../helpers/toast_ui.js';
 import { previewBillingInvoice } from '../helpers/billing_admin_api.js';
-import type { InvoicePreviewDTO } from '../types/api/billing.js';
+import type { InvoicePreviewDTO } from '../types/billing.js';
 import { formatAmountMicro } from '../helpers/money.js';
 import { Button } from './button.js';
 import { AlertBanner } from './alert_banner.js';
@@ -12,9 +12,6 @@ export type InvoicePreviewPanelProps = {
   customerId: string;
 };
 
-/**
- * Dry-run invoice preview (POST /billing/invoices/preview).
- */
 export function InvoicePreviewPanel({ customerId }: InvoicePreviewPanelProps) {
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [loading, setLoading] = useState(false);
@@ -59,7 +56,10 @@ export function InvoicePreviewPanel({ customerId }: InvoicePreviewPanelProps) {
         onClick={() => void runPreview()}
       />
       {preview?.would_skip ? (
-        <AlertBanner variant="info" message="Preview indicates invoice would be skipped (zero spend or already issued)." />
+        <AlertBanner
+          variant="info"
+          message="Preview indicates invoice would be skipped (zero spend or already issued)."
+        />
       ) : null}
       {preview ? (
         <div className="stack mt-2" data-testid="invoice-preview-result">

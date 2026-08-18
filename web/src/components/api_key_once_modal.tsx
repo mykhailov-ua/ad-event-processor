@@ -10,22 +10,16 @@ export type ApiKeyOnceModalProps = {
   onClose: () => void;
 };
 
-/**
- * One-time API key reveal (raw_key is not stored client-side after close).
- */
-export function ApiKeyOnceModal({
-  open,
-  name,
-  rawKey,
-  expiresAt,
-  onClose,
-}: ApiKeyOnceModalProps) {
+export function ApiKeyOnceModal({ open, name, rawKey, expiresAt, onClose }: ApiKeyOnceModalProps) {
   const copyKey = () => {
-    navigator.clipboard?.writeText(rawKey).then(() => {
-      pushToastMessage({ title: 'Copied', message: 'API key copied to clipboard' });
-    }).catch(() => {
-      pushToastMessage({ title: 'Copy failed', message: 'Select the key and copy manually' });
-    });
+    navigator.clipboard
+      ?.writeText(rawKey)
+      .then(() => {
+        pushToastMessage({ title: 'Copied', message: 'API key copied to clipboard' });
+      })
+      .catch(() => {
+        pushToastMessage({ title: 'Copy failed', message: 'Select the key and copy manually' });
+      });
   };
 
   return (
@@ -35,12 +29,12 @@ export function ApiKeyOnceModal({
       description={`Key "${name}" is shown once. Store it securely — it cannot be retrieved later.`}
       onClose={onClose}
       testId="api-key-once-modal"
-      actions={(
+      actions={
         <>
           <Button label="Copy to clipboard" variant="secondary" onClick={copyKey} />
           <Button label="I saved the key" variant="primary" onClick={onClose} />
         </>
-      )}
+      }
     >
       <label className="form-field" htmlFor="api-key-raw">
         Secret key
@@ -52,9 +46,7 @@ export function ApiKeyOnceModal({
           onFocus={(e) => e.currentTarget.select()}
         />
       </label>
-      {expiresAt ? (
-        <p className="text-muted text-sm">{`Expires: ${expiresAt}`}</p>
-      ) : null}
+      {expiresAt ? <p className="text-muted text-sm">{`Expires: ${expiresAt}`}</p> : null}
     </Modal>
   );
 }

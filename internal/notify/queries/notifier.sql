@@ -1,14 +1,11 @@
--- name: CreateNotification :one
 INSERT INTO notifier.notifications (
   id, provider, recipient, title, body, status, delivery_mode, broadcast_providers, dedup_key,
   template_id, template_vars, attachment_url
 ) VALUES ($1, $2, $3, $4, $5, 'PENDING', $6, $7, $8, $9, $10, $11)
 RETURNING *;
 
--- name: GetTemplate :one
 SELECT * FROM notifier.templates WHERE id = $1;
 
--- name: RetryNotification :one
 UPDATE notifier.notifications
 SET status = 'PENDING',
     retry_count = 0,
@@ -18,7 +15,6 @@ SET status = 'PENDING',
 WHERE id = $1 AND status = 'FAILED'
 RETURNING *;
 
--- name: FindActiveNotificationByDedupKey :one
 SELECT * FROM notifier.notifications
 WHERE dedup_key = $1
   AND status IN ('PENDING', 'PROCESSING')
@@ -26,11 +22,9 @@ WHERE dedup_key = $1
 ORDER BY created_at DESC
 LIMIT 1;
 
--- name: GetNotification :one
 SELECT * FROM notifier.notifications
 WHERE id = $1;
 
--- name: ReclaimStaleProcessing :execrows
 UPDATE notifier.notifications
 SET status = 'PENDING',
     claimed_at = NULL,
@@ -39,7 +33,6 @@ WHERE status = 'PROCESSING'
   AND claimed_at IS NOT NULL
   AND claimed_at < NOW() - ($1::bigint * interval '1 second');
 
--- name: ClaimPendingNotifications :many
 WITH due AS (
   SELECT id FROM notifier.notifications
   WHERE status = 'PENDING'
@@ -59,7 +52,6 @@ FROM due
 WHERE n.id = due.id
 RETURNING n.*;
 
--- name: UpdateNotificationStatus :one
 UPDATE notifier.notifications
 SET status = $2,
     provider = COALESCE(sqlc.narg('provider')::notifier.provider, provider),

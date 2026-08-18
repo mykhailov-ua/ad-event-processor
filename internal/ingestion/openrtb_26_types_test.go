@@ -16,7 +16,6 @@ func TestOpenRTB26HotSize(t *testing.T) {
 }
 
 func TestOpenRTB26ColdNotOnAuctionStack(t *testing.T) {
-
 	const schainMin = 900
 	if sz := int(unsafe.Sizeof(OpenRTB26Cold{}.Schain)); sz < schainMin {
 		t.Fatalf("expected SchainNodes >= %d bytes, got %d", schainMin, sz)

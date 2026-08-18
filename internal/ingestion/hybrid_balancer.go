@@ -38,7 +38,6 @@ func NewHybridBalancer(totalShards int, maxRpsPerNode int) *HybridBalancer {
 }
 
 func (hb *HybridBalancer) UpdateCampaigns(campaigns []*CampaignMeta, secondsElapsed int64, totalSeconds int64) {
-
 	validCampaigns := make([]*CampaignMeta, 0, len(campaigns))
 	for _, c := range campaigns {
 		if c != nil {

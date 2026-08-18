@@ -8,16 +8,16 @@ export type IntegrationCopyRowProps = {
 };
 
 function copyText(label: string, text: string): void {
-  navigator.clipboard?.writeText(text).then(() => {
-    pushToastMessage({ title: 'Copied', message: `${label} copied to clipboard` });
-  }).catch(() => {
-    pushToastMessage({ title: 'Copy failed', message: text || '(empty)' });
-  });
+  navigator.clipboard
+    ?.writeText(text)
+    .then(() => {
+      pushToastMessage({ title: 'Copied', message: `${label} copied to clipboard` });
+    })
+    .catch(() => {
+      pushToastMessage({ title: 'Copy failed', message: text || '(empty)' });
+    });
 }
 
-/**
- * Copyable code block with label and copy button.
- */
 export function IntegrationCopyRow({ label, value, testId }: IntegrationCopyRowProps) {
   return (
     <div className="integration-copy-row" data-testid={testId}>

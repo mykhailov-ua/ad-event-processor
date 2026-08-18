@@ -4,9 +4,9 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 
 if [[ -f "$ROOT/.env" ]]; then
-	set -a
-	source "$ROOT/.env"
-	set +a
+  set -a
+  source "$ROOT/.env"
+  set +a
 fi
 
 DB_PORT="${DB_PORT:-5430}"
@@ -17,11 +17,11 @@ COMPOSE=(docker compose -f docker-compose.yaml -f docker-compose.load-test.yaml)
 log() { printf 'reconcile-ingestion-migrations: %s\n' "$*"; }
 
 psql_exec() {
-	"${COMPOSE[@]}" exec -T db psql -h localhost -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" "$@"
+  "${COMPOSE[@]}" exec -T db psql -h localhost -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" "$@"
 }
 
 log "marking 00020 applied when campaigns.budget_limit is already bigint"
-psql_exec -v ON_ERROR_STOP=1 <<'SQL'
+psql_exec -v ON_ERROR_STOP=1 << 'SQL'
 INSERT INTO public.espx_migrations (filename)
 SELECT '00020_change_money_to_bigint.sql'
 WHERE NOT EXISTS (
@@ -38,13 +38,13 @@ AND EXISTS (
 SQL
 
 log "repairing events.user_id (00010 drift on partitioned events)"
-psql_exec -v ON_ERROR_STOP=1 <<'SQL'
+psql_exec -v ON_ERROR_STOP=1 << 'SQL'
 ALTER TABLE events ADD COLUMN IF NOT EXISTS user_id TEXT;
 CREATE INDEX IF NOT EXISTS idx_events_user_id ON events(user_id);
 SQL
 
 log "repairing campaigns.fraud columns (00026 drift)"
-psql_exec -v ON_ERROR_STOP=1 <<'SQL'
+psql_exec -v ON_ERROR_STOP=1 << 'SQL'
 ALTER TABLE campaigns
     ADD COLUMN IF NOT EXISTS fraud_threshold_pass SMALLINT NOT NULL DEFAULT 30,
     ADD COLUMN IF NOT EXISTS fraud_threshold_suspect SMALLINT NOT NULL DEFAULT 60,

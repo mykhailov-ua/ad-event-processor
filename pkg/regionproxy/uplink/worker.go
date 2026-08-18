@@ -1,4 +1,3 @@
-// Package uplink implements regionproxy uplink helpers.
 package uplink
 
 import (

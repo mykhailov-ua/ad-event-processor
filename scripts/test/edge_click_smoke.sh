@@ -10,9 +10,12 @@ HDR_FILE="$(mktemp)"
 trap 'rm -f "$HDR_FILE"' EXIT
 
 log() { printf 'edge-click-smoke: %s\n' "$*"; }
-die() { printf 'edge-click-smoke: ERROR: %s\n' "$*" >&2; exit 1; }
+die() {
+  printf 'edge-click-smoke: ERROR: %s\n' "$*" >&2
+  exit 1
+}
 
-if ! curl -sS --connect-timeout 2 -o /dev/null "${EDGE_URL}/healthz" 2>/dev/null; then
+if ! curl -sS --connect-timeout 2 -o /dev/null "${EDGE_URL}/healthz" 2> /dev/null; then
   log "skip (edge unreachable at ${EDGE_URL})"
   exit 0
 fi
@@ -21,14 +24,14 @@ code="$(curl -sS -o /dev/null -w '%{http_code}' -D "$HDR_FILE" "${EDGE_URL}${PAT
 log "GET ${EDGE_URL}${PATH_Q} -> HTTP ${code}"
 
 case "$code" in
-  302|301)
+  302 | 301)
     loc="$(awk 'BEGIN{IGNORECASE=1} /^Location:/{print $2}' "$HDR_FILE" | tr -d '\r' | head -1)"
     log "Location: ${loc:-<empty>}"
     ;;
   404)
     die "404 — edge_expose_click is off (Platform settings / EDGE_EXPOSE_CLICK) or path missing"
     ;;
-  400|403|429|503)
+  400 | 403 | 429 | 503)
     log "gate/filter response ${code} (edge reachable; campaign may be unknown or filtered)"
     ;;
   *)

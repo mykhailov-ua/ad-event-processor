@@ -6,7 +6,6 @@ import (
 	"net/http"
 )
 
-// DispatchHTTPError is returned when a provider receives a non-2xx HTTP response.
 type DispatchHTTPError struct {
 	StatusCode int
 	Body       string
@@ -19,7 +18,6 @@ func (e *DispatchHTTPError) Error() string {
 	return fmt.Sprintf("unexpected status code %d: %s", e.StatusCode, e.Body)
 }
 
-// Permanent reports client errors (4xx) that must not be retried.
 func (e *DispatchHTTPError) Permanent() bool {
 	return e != nil && e.StatusCode >= 400 && e.StatusCode < 500
 }

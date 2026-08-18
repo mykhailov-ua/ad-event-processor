@@ -1,4 +1,3 @@
-// TLS JA3/JA4 blocklist benches (harness: ja3_ja4_filter).
 package ingestion
 
 import (
@@ -29,7 +28,6 @@ func benchTLSFingerprintTable(tb testing.TB, n int) (*TLSFingerprintTable, [][]b
 	return table, probes
 }
 
-// BenchmarkTLS_Fingerprint_Lookup (harness: ja3_ja4_filter) — B-GMA-M1, < 50 ns, 0 allocs.
 func BenchmarkTLS_Fingerprint_Lookup(b *testing.B) {
 	table, probes := benchTLSFingerprintTable(b, 10_000)
 	ja3 := []byte("771,4865-42")
@@ -42,7 +40,6 @@ func BenchmarkTLS_Fingerprint_Lookup(b *testing.B) {
 	tlsFingerprintBenchSink = tlsFingerprintBenchSink || hit
 }
 
-// BenchmarkTLS_Fingerprint_MatchBranch_SafeView (harness: ja3_ja4_filter) — B-GMA-M1b hook path.
 func BenchmarkTLS_Fingerprint_MatchBranch_SafeView(b *testing.B) {
 	table, probes := benchTLSFingerprintTable(b, 50_000)
 	h := &AdsPacketHandler{

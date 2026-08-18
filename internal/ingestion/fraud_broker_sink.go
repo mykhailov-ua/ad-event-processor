@@ -8,7 +8,6 @@ import (
 	"github.com/bidshard/ad-event-processor/pkg/broker/client"
 )
 
-// FraudBrokerSink produces length-prefixed vtproto fraud events to a dedicated broker topic.
 type FraudBrokerSink struct {
 	client BrokerClient
 	topic  string

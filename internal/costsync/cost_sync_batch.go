@@ -13,7 +13,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// FXRateCache maps currency code to USD-per-unit micro rate for one rate date.
 type FXRateCache map[string]int64
 
 func (c *CurrencyConverter) PrepareFXCache(ctx context.Context, lines []CostLine, rateDate time.Time) (FXRateCache, error) {

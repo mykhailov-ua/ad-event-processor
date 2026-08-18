@@ -1,4 +1,3 @@
-/** harness=mock_api — integration schemas page; does not prove Postgres integration_schemas. */
 import { test, expect } from '@playwright/test';
 import { mockAuthedSession, ADMIN_USER } from './helpers.js';
 
@@ -44,8 +43,12 @@ test('integrations schemas page lists stored schemas', async ({ page }) => {
   });
 
   await page.goto('/integrations/schemas');
-  await expect(page.getByRole('table', { name: 'Integration schemas' })).toContainText('traffic_propellerads');
-  await expect(page.getByTestId('integration-template-import')).toContainText('traffic_propellerads');
+  await expect(page.getByRole('table', { name: 'Integration schemas' })).toContainText(
+    'traffic_propellerads'
+  );
+  await expect(page.getByTestId('integration-template-import')).toContainText(
+    'traffic_propellerads'
+  );
 });
 
 test('author custom schema via POST /integration/schemas', async ({ page }) => {

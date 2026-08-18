@@ -1,10 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { to } from '../lib/to.js';
 import { api } from '../helpers/api_client.js';
@@ -39,9 +33,6 @@ export type ShellLayoutProps = {
   children: ReactNode;
 };
 
-/**
- * Application shell: sidebar, banners, and main content outlet.
- */
 export function ShellLayout({ children }: ShellLayoutProps) {
   const location = useLocation();
   const path = location.pathname;
@@ -60,15 +51,18 @@ export function ShellLayout({ children }: ShellLayoutProps) {
   const searchRef = useRef<SidebarSearchHandle>(null);
   const scrollRatioRef = useRef(0);
 
-  const applySidebarWidth = useCallback((px: number) => {
-    const next = clampSidebarWidth(px);
-    setSidebarWidthState(next);
-    if (!sidebarCollapsed) {
-      const w = `${next}px`;
-      document.documentElement.style.setProperty('--sidebar-width', w);
-    }
-    return next;
-  }, [sidebarCollapsed]);
+  const applySidebarWidth = useCallback(
+    (px: number) => {
+      const next = clampSidebarWidth(px);
+      setSidebarWidthState(next);
+      if (!sidebarCollapsed) {
+        const w = `${next}px`;
+        document.documentElement.style.setProperty('--sidebar-width', w);
+      }
+      return next;
+    },
+    [sidebarCollapsed]
+  );
 
   useEffect(() => {
     if (sidebarCollapsed) {
@@ -153,6 +147,12 @@ export function ShellLayout({ children }: ShellLayoutProps) {
     });
   };
 
+  const user = auth.getUser();
+  const permissions = user?.permissions ?? [];
+  const [theme, setTheme] = useState(() => storage.getTheme());
+  const themeIcon = theme === 'dark' ? 'sun' : 'moon';
+  const collapseIcon = sidebarCollapsed ? 'panel-left-open' : 'panel-left-close';
+
   const toggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark';
     storage.setTheme(next);
@@ -199,16 +199,15 @@ export function ShellLayout({ children }: ShellLayoutProps) {
     }
   };
 
-  const user = auth.getUser();
-  const permissions = user?.permissions ?? [];
-  const [theme, setTheme] = useState(() => storage.getTheme());
-  const themeIcon = theme === 'dark' ? 'sun' : 'moon';
-  const collapseIcon = sidebarCollapsed ? 'panel-left-open' : 'panel-left-close';
   const navGroups = visibleNavGroups(permissions, user?.role);
   const bounds = getSidebarWidthBounds();
 
   const sidebarStyle = sidebarCollapsed
-    ? { width: SIDEBAR_COLLAPSED_WIDTH, minWidth: SIDEBAR_COLLAPSED_WIDTH, maxWidth: SIDEBAR_COLLAPSED_WIDTH }
+    ? {
+        width: SIDEBAR_COLLAPSED_WIDTH,
+        minWidth: SIDEBAR_COLLAPSED_WIDTH,
+        maxWidth: SIDEBAR_COLLAPSED_WIDTH,
+      }
     : { width: sidebarWidth, minWidth: sidebarWidth, maxWidth: sidebarWidth };
 
   return (
@@ -241,9 +240,10 @@ export function ShellLayout({ children }: ShellLayoutProps) {
               <div key={group.title} className="sidebar__group">
                 <div className="sidebar__group-label">{group.title}</div>
                 {group.links.map((link) => {
-                  const isActive = link.to === '/'
-                    ? path === '/'
-                    : path === link.to || path.startsWith(`${link.to}/`);
+                  const isActive =
+                    link.to === '/'
+                      ? path === '/'
+                      : path === link.to || path.startsWith(`${link.to}/`);
                   return (
                     <Link
                       key={link.to}
@@ -258,7 +258,10 @@ export function ShellLayout({ children }: ShellLayoutProps) {
                       ) : null}
                       <span className="sidebar__link-label">{link.label}</span>
                       {link.to === '/ops' && opsOutboxPending > 0 ? (
-                        <span className="sidebar__badge" aria-label={`${opsOutboxPending} outbox pending`}>
+                        <span
+                          className="sidebar__badge"
+                          aria-label={`${opsOutboxPending} outbox pending`}
+                        >
                           {String(opsOutboxPending)}
                         </span>
                       ) : null}
@@ -273,7 +276,9 @@ export function ShellLayout({ children }: ShellLayoutProps) {
         <div className="sidebar__footer">
           <div className="sidebar__account">
             {user?.email ? (
-              <span className="sidebar__email" title={user.email}>{user.email}</span>
+              <span className="sidebar__email" title={user.email}>
+                {user.email}
+              </span>
             ) : null}
             {version ? <span className="sidebar__version">{`v${version}`}</span> : null}
           </div>
@@ -286,7 +291,9 @@ export function ShellLayout({ children }: ShellLayoutProps) {
               aria-expanded={sidebarCollapsed ? 'false' : 'true'}
             >
               <Icon name={collapseIcon} size={15} />
-              <span className="sidebar__action-label">{sidebarCollapsed ? 'Expand' : 'Collapse'}</span>
+              <span className="sidebar__action-label">
+                {sidebarCollapsed ? 'Expand' : 'Collapse'}
+              </span>
             </button>
             <button
               type="button"

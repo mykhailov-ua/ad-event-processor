@@ -308,7 +308,7 @@ func copyStrToFixed(dst []byte, src string) uint8 {
 		n = len(dst)
 	}
 	if n > 0 {
-		_ = dst[n-1] // BCE hint
+		_ = dst[n-1]
 		copy(dst[:n], src)
 	}
 	return uint8(n)
@@ -320,7 +320,7 @@ func copyBytesToFixed(dst []byte, src []byte) uint8 {
 		n = len(dst)
 	}
 	if n > 0 {
-		_ = dst[n-1] // BCE hint
+		_ = dst[n-1]
 		copy(dst[:n], src)
 	}
 	return uint8(n)

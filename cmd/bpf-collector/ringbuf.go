@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/bidshard/ad-event-processor/cmd/bpf-collector/bpfprobe"
 
 	"github.com/cilium/ebpf/ringbuf"
 )
@@ -36,7 +35,7 @@ func drainRingbufRecords(ctx context.Context, rd *ringbuf.Reader, sessionDir str
 			}
 			continue
 		}
-		tsNs, pid, syscallID, durNs, role, kind, campaignSlot, markerID := bpfprobe.DecodeSlowEvent(rec.RawSample)
+		tsNs, pid, syscallID, durNs, role, kind, campaignSlot, markerID := DecodeSlowEvent(rec.RawSample)
 		row := map[string]any{
 			"ts_ns":         tsNs,
 			"pid":           pid,

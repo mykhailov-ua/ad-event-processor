@@ -53,9 +53,9 @@ internal/*/pb/*.pb.go
 internal/*/pb/*_grpc.pb.go
 internal/*/pb/*_vtproto.pb.go
 
-# bpf2go (deploy/edge-xdp/bpf/*.c → internal/edge/bpf/)
-internal/edge/bpf/edge_bpf*.go
-internal/edge/bpf/*.o
+# bpf2go (deploy/edge-xdp/bpf/*.c → internal/edge/)
+internal/edge/bpf_edge_bpf*.go
+internal/edge/*.o
 deploy/edge/xdp/bpf/*.o
 deploy/edge/xdp/bpf/*.disasm.txt
 deploy/dev/bpf/*.o

@@ -13,7 +13,7 @@ export CONTROL_ENABLE_COST_SYNC=0
 export DB_DSN="${DB_DSN:-postgres://user:pass@127.0.0.1:5432/espx?sslmode=disable}"
 export REDIS_PASSWORD="${REDIS_PASSWORD:-smoke}"
 
-docker compose --profile ingest_only config >/dev/null
+docker compose --profile ingest_only config > /dev/null
 bash "$SCRIPTS/ci/compose_profile_check.sh"
 go run ./cmd/ad-event-processor doctor --profile ingest_only
 

@@ -126,7 +126,7 @@ func BenchmarkRunAuction_MultiCreative(b *testing.B) {
 
 func mustBenchVASTWire(b *testing.B) []byte {
 	b.Helper()
-	raw, err := os.ReadFile(filepath.Join("testdata", "vast", "inline_30s.xml"))
+	raw, err := os.ReadFile(filepath.Join("testdata", "inline_30s.xml"))
 	if err != nil {
 		b.Fatal(err)
 	}

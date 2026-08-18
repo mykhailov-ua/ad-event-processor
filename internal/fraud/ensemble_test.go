@@ -3,7 +3,7 @@ package fraud
 import (
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/edge/perimeter"
+	"github.com/bidshard/ad-event-processor/internal/edge"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -46,10 +46,10 @@ func TestMapFraudScoreTier_matchesMapFraudRLTier(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotTier, gotScore := MapFraudScoreTier(tt.score)
-			edgeTier, edgeScore := perimeter.MapFraudRLTier(tt.score)
+			edgeTier, edgeScore := edge.MapFraudRLTier(tt.score)
 
 			assert.Equal(t, tt.wantTier, gotTier)
-			assert.Equal(t, edgeTier, perimeter.FraudRLTier(gotTier))
+			assert.Equal(t, edgeTier, edge.FraudRLTier(gotTier))
 			assert.Equal(t, edgeScore, gotScore)
 		})
 	}
@@ -74,11 +74,11 @@ func TestMapProbabilityTier_boundaries(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotTier, gotScore := MapProbabilityTier(tt.probability)
-			edgeTier, edgeScore := perimeter.MapFraudRLTier(tt.wantScore)
+			edgeTier, edgeScore := edge.MapFraudRLTier(tt.wantScore)
 
 			assert.Equal(t, tt.wantTier, gotTier)
 			assert.Equal(t, tt.wantScore, gotScore)
-			assert.Equal(t, edgeTier, perimeter.FraudRLTier(gotTier))
+			assert.Equal(t, edgeTier, edge.FraudRLTier(gotTier))
 			assert.Equal(t, edgeScore, gotScore)
 		})
 	}

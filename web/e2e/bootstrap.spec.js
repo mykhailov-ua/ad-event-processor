@@ -1,9 +1,8 @@
-/** harness=mock_api — Playwright route.fulfill; does not prove Go handler or CH/PG. */
 import { test, expect } from '@playwright/test';
 
 test('bootstrap page submits with strong confirm and install token', async ({ page }) => {
   let bootstrapCalled = false;
-  /** @type {Record<string, string>|null} */
+
   let bootstrapHeaders = null;
 
   await page.route('**/api/v1/settings/platform/bootstrap', async (route) => {
@@ -90,5 +89,8 @@ test('shell shows bootstrap banner when bootstrap incomplete', async ({ page }) 
 
   await page.goto('/');
   await expect(page.getByText('Platform bootstrap is not complete')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Run bootstrap' })).toHaveAttribute('href', '/bootstrap');
+  await expect(page.getByRole('link', { name: 'Run bootstrap' })).toHaveAttribute(
+    'href',
+    '/bootstrap'
+  );
 });

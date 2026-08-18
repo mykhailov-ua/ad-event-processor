@@ -335,7 +335,7 @@ When `RTB_BUDGET_AUTHORITY=rtb` is set, candidate budgets are updated directly i
 ## 9. Edge Filtering with eBPF and XDP
 
 ### How Edge Dropping Works
-We use eBPF/XDP programs running inside the Linux kernel (`internal/edge/bpf`) to evaluate incoming TCP packets directly at the network interface card (NIC).
+We use eBPF/XDP programs running inside the Linux kernel (`internal/edge`) to evaluate incoming TCP packets directly at the network interface card (NIC).
 
 Blacklisted IP addresses and malicious traffic patterns are dropped before reaching Nginx or Go user space. The XDP decision path evaluates packets in under 10 microseconds. Blacklist rules are synchronized automatically from Redis shard 0 through control plane outbox events.
 

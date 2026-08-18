@@ -10,7 +10,7 @@ mkdir -p "$OUT"
 
 COMPOSE=(docker compose)
 if [[ "$CONSTRAINED" == "1" ]]; then
-	COMPOSE+=( -f docker-compose.yaml -f docker-compose.load-test.yaml )
+  COMPOSE+=(-f docker-compose.yaml -f docker-compose.load-test.yaml)
 fi
 
 log() { printf 'load-spike: %s\n' "$*"; }
@@ -22,8 +22,8 @@ bash "$SCRIPTS/test/snapshot_runtime.sh" "$OUT/runtime-pre" || true
 
 BPF_PID=""
 if [[ "${ESPX_BPF_PROBE:-0}" == "1" ]]; then
-	bash "$SCRIPTS/test/bpf_probe_session.sh" start "$OUT" || log "WARN: BPF start failed"
-	[[ -f "$OUT/bpf/collector.pid" ]] && BPF_PID="$(cat "$OUT/bpf/collector.pid")"
+  bash "$SCRIPTS/test/bpf_probe_session.sh" start "$OUT" || log "WARN: BPF start failed"
+  [[ -f "$OUT/bpf/collector.pid" ]] && BPF_PID="$(cat "$OUT/bpf/collector.pid")"
 fi
 
 TRACKER_BASES="${TRACKER_BASES:-http://127.0.0.1:8181,http://127.0.0.1:8182}"
@@ -32,15 +32,15 @@ SPIKE_MULT="${SPIKE_MULT:-10}"
 
 log "spike profile base=${BASE_RATE} mult=${SPIKE_MULT}"
 go run ./cmd/loadgen \
-	-out "$OUT" \
-	-profile spike \
-	-base-rate "$BASE_RATE" \
-	-spike-mult "$SPIKE_MULT" \
-	-ramp-up "${RAMP_UP:-10s}" \
-	-hold "${HOLD:-30s}" \
-	-ramp-down "${RAMP_DOWN:-10s}" \
-	-trackers "$TRACKER_BASES" \
-	2>&1 | tee "$OUT/loadgen.log"
+  -out "$OUT" \
+  -profile spike \
+  -base-rate "$BASE_RATE" \
+  -spike-mult "$SPIKE_MULT" \
+  -ramp-up "${RAMP_UP:-10s}" \
+  -hold "${HOLD:-30s}" \
+  -ramp-down "${RAMP_DOWN:-10s}" \
+  -trackers "$TRACKER_BASES" \
+  2>&1 | tee "$OUT/loadgen.log"
 
 bash "$SCRIPTS/test/snapshot_runtime.sh" "$OUT/runtime-post" || true
 [[ -n "$BPF_PID" ]] && bash "$SCRIPTS/test/bpf_probe_session.sh" stop "$OUT" "$BPF_PID" || true

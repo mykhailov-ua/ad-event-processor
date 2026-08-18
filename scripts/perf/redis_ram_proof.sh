@@ -15,10 +15,10 @@ source "$SCRIPTS/lib/redis_memory.sh"
 cd "$ROOT"
 
 if [[ -f "$ROOT/.env" ]]; then
-	set -a
-	# shellcheck disable=SC1091
-	source "$ROOT/.env"
-	set +a
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT/.env"
+  set +a
 fi
 
 TARGET_RPS="${TARGET_RPS:-100000}"
@@ -36,14 +36,17 @@ mkdir -p "$OUT"
 COMPOSE=(docker compose -f docker-compose.yaml -f docker-compose.load-test.yaml)
 
 log() { printf 'redis-ram-proof: %s\n' "$*"; }
-die() { printf 'redis-ram-proof: ERROR: %s\n' "$*" >&2; exit 1; }
+die() {
+  printf 'redis-ram-proof: ERROR: %s\n' "$*" >&2
+  exit 1
+}
 
 log "artifacts → $OUT"
 log "target_rps=$TARGET_RPS duration=$DURATION ram_max_bytes=$RAM_MAX_BYTES"
 
 if [[ "${SKIP_PREPARE:-0}" != "1" ]]; then
-	log "preparing constrained stack"
-	bash "$SCRIPTS/test/prepare_constrained_stack.sh" 2>&1 | tee "$OUT/prepare.log"
+  log "preparing constrained stack"
+  bash "$SCRIPTS/test/prepare_constrained_stack.sh" 2>&1 | tee "$OUT/prepare.log"
 fi
 
 log "starting broker"
@@ -59,12 +62,12 @@ log "restarting ingest path with broker-primary env"
 "${COMPOSE[@]}" up -d --force-recreate processor tracker-0 tracker-1 2>&1 | tee -a "$OUT/compose.log"
 
 for port in 8181 8182; do
-	for _ in $(seq 1 120); do
-		if curl -sf "http://127.0.0.1:${port}/health" >/dev/null 2>&1; then
-			break
-		fi
-		sleep 1
-	done
+  for _ in $(seq 1 120); do
+    if curl -sf "http://127.0.0.1:${port}/health" > /dev/null 2>&1; then
+      break
+    fi
+    sleep 1
+  done
 done
 
 log "baseline memory snapshot"
@@ -73,40 +76,40 @@ redis_memory_snapshot_all "${COMPOSE[@]}" | tee "$OUT/memory-baseline.txt"
 LG_PID=""
 SAMPLE_PID=""
 cleanup() {
-	if [[ -n "$LG_PID" ]] && kill -0 "$LG_PID" 2>/dev/null; then
-		kill "$LG_PID" 2>/dev/null || true
-		wait "$LG_PID" 2>/dev/null || true
-	fi
-	if [[ -n "$SAMPLE_PID" ]] && kill -0 "$SAMPLE_PID" 2>/dev/null; then
-		kill "$SAMPLE_PID" 2>/dev/null || true
-		wait "$SAMPLE_PID" 2>/dev/null || true
-	fi
+  if [[ -n "$LG_PID" ]] && kill -0 "$LG_PID" 2> /dev/null; then
+    kill "$LG_PID" 2> /dev/null || true
+    wait "$LG_PID" 2> /dev/null || true
+  fi
+  if [[ -n "$SAMPLE_PID" ]] && kill -0 "$SAMPLE_PID" 2> /dev/null; then
+    kill "$SAMPLE_PID" 2> /dev/null || true
+    wait "$SAMPLE_PID" 2> /dev/null || true
+  fi
 }
 trap cleanup EXIT
 
 log "starting loadgen rate=$TARGET_RPS workers=$WORKERS"
 go run ./cmd/loadgen \
-	-out "$OUT/loadgen" \
-	-mode smoke \
-	-rate "$TARGET_RPS" \
-	-duration "$DURATION" \
-	-workers "$WORKERS" \
-	-trackers "$TRACKER_BASES" \
-	2>&1 | tee "$OUT/loadgen.log" &
+  -out "$OUT/loadgen" \
+  -mode smoke \
+  -rate "$TARGET_RPS" \
+  -duration "$DURATION" \
+  -workers "$WORKERS" \
+  -trackers "$TRACKER_BASES" \
+  2>&1 | tee "$OUT/loadgen.log" &
 LG_PID=$!
 
 (
-	while kill -0 "$LG_PID" 2>/dev/null; do
-		redis_memory_snapshot_all "${COMPOSE[@]}"
-		sleep "$SAMPLE_INTERVAL_SEC"
-	done
-) >"$OUT/memory-samples.txt" &
+  while kill -0 "$LG_PID" 2> /dev/null; do
+    redis_memory_snapshot_all "${COMPOSE[@]}"
+    sleep "$SAMPLE_INTERVAL_SEC"
+  done
+) > "$OUT/memory-samples.txt" &
 SAMPLE_PID=$!
 
 wait "$LG_PID" || log "WARN: loadgen exited non-zero"
 LG_PID=""
-kill "$SAMPLE_PID" 2>/dev/null || true
-wait "$SAMPLE_PID" 2>/dev/null || true
+kill "$SAMPLE_PID" 2> /dev/null || true
+wait "$SAMPLE_PID" 2> /dev/null || true
 SAMPLE_PID=""
 
 log "post-load memory snapshot"
@@ -114,10 +117,10 @@ redis_memory_snapshot_all "${COMPOSE[@]}" | tee "$OUT/memory-final.txt"
 
 MAX_BYTES="$(awk -F= '/used_memory_bytes=/{if($2>max)max=$2} END{print max+0}' "$OUT/memory-samples.txt")"
 if [[ "$MAX_BYTES" -eq 0 ]]; then
-	MAX_BYTES="$(redis_memory_max_shard_bytes "${COMPOSE[@]}")"
+  MAX_BYTES="$(redis_memory_max_shard_bytes "${COMPOSE[@]}")"
 fi
 
-python3 - "$OUT/report.json" "$TS" "$TARGET_RPS" "$DURATION" "$RAM_MAX_BYTES" "$MAX_BYTES" <<'PY'
+python3 - "$OUT/report.json" "$TS" "$TARGET_RPS" "$DURATION" "$RAM_MAX_BYTES" "$MAX_BYTES" << 'PY'
 import json, sys
 out, ts, rps, dur, limit, peak = sys.argv[1:7]
 report = {
@@ -134,7 +137,7 @@ print(json.dumps(report))
 PY
 
 if [[ "$MAX_BYTES" -gt "$RAM_MAX_BYTES" ]]; then
-	die "peak redis used_memory ${MAX_BYTES} bytes exceeds limit ${RAM_MAX_BYTES}"
+  die "peak redis used_memory ${MAX_BYTES} bytes exceeds limit ${RAM_MAX_BYTES}"
 fi
 
 log "PASS peak_used_memory_max_shard=${MAX_BYTES} limit=${RAM_MAX_BYTES}"

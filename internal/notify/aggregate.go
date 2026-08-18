@@ -1,4 +1,3 @@
-// Package notify implements notify support for BidShard.
 package notify
 
 import (

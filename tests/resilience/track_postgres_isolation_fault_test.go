@@ -13,8 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// /track uses the in-memory registry on the hot path; Postgres lock must not block ingestion.
-// Negative control: a direct SELECT on campaigns blocks under the same lock.
 func TestFault_TrackHotPathPostgresIsolation(t *testing.T) {
 	const workers = 24
 

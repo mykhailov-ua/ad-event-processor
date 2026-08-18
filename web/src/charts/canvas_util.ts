@@ -31,18 +31,12 @@ let remCachedAt = 0;
 const colorCache = new Map<string, string>();
 const alphaCache = new Map<number, string>();
 
-/**
- * Invalidate CSS color / rem caches (theme toggle).
- */
 export function invalidateChartThemeCache(): void {
   colorCache.clear();
   alphaCache.clear();
   remCachedAt = 0;
 }
 
-/**
- * Convert rem units to CSS pixels (cached ~250ms).
- */
 export function remPx(rem: number): number {
   const now = performance.now();
   if (now - remCachedAt > 250) {
@@ -52,10 +46,6 @@ export function remPx(rem: number): number {
   return cachedRemPx * rem;
 }
 
-/**
- * Write symmetrical chart padding into `out` (zero alloc).
- * Symmetrical left & right margins (2.25rem each) center the plot area inside the tile.
- */
 export function chartPadInto(out: PadBox, overrides: ChartPadOverrides = {}): void {
   out.top = remPx(overrides.top ?? 0.375);
   out.right = remPx(overrides.right ?? 2.25);
@@ -65,9 +55,6 @@ export function chartPadInto(out: PadBox, overrides: ChartPadOverrides = {}): vo
 
 const padReturn: PadBox = { top: 0, right: 0, bottom: 0, left: 0 };
 
-/**
- * Return chart padding (reuses module scratch; not concurrent-safe).
- */
 export function chartPad(overrides: ChartPadOverrides = {}): PadBox {
   chartPadInto(padReturn, overrides);
   return padReturn;
@@ -81,9 +68,6 @@ export const CHART_SEGMENT_COLORS: string[] = [
   '--danger',
 ];
 
-/**
- * Read a CSS custom property (cached).
- */
 export function chartColor(name: string, fallback = '#888'): string {
   let v = colorCache.get(name);
   if (v === undefined) {
@@ -93,9 +77,6 @@ export function chartColor(name: string, fallback = '#888'): string {
   return v;
 }
 
-/**
- * Resolve themed segment colors for pie / area charts (cold path).
- */
 export function segmentColors(count: number): string[] {
   const out = new Array<string>(count);
   for (let i = 0; i < count; i++) {
@@ -104,14 +85,10 @@ export function segmentColors(count: number): string[] {
   return out;
 }
 
-/**
- * Configure a canvas for HiDPI device-pixel-ratio aware crisp drawing.
- * Read phase first (geometry), then write phase (canvas + styles).
- */
 export function setupCanvas(
   wrap: HTMLElement,
   canvas: HTMLCanvasElement,
-  cssHeight?: number,
+  cssHeight?: number
 ): CanvasSurface | null {
   const ctx = canvas.getContext('2d', { alpha: true });
   if (!ctx) return null;
@@ -140,13 +117,10 @@ export function setupCanvas(
   return { ctx, width: cssWidth, height: resolvedHeight, dpr };
 }
 
-/**
- * Mount a resize-aware canvas chart shell inside an aspect-ratio viewport.
- */
 export function createChartShell(
   container: HTMLElement,
   ariaLabel: string,
-  _cssHeight = CHART_HEIGHT_DEFAULT,
+  _cssHeight = CHART_HEIGHT_DEFAULT
 ): ChartShell {
   let ro: ResizeObserver | null = null;
   let rafId = 0;

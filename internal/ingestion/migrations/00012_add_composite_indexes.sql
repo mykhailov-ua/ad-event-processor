@@ -1,4 +1,3 @@
-
 -- +goose Up
 -- +goose StatementBegin
 CREATE INDEX IF NOT EXISTS idx_campaigns_cust_status ON campaigns(customer_id, status);

@@ -1,4 +1,3 @@
-// Package quorum implements regionproxy quorum helpers.
 package quorum
 
 import (

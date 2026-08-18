@@ -1,5 +1,3 @@
-// edge-xdp-fault is a lab-only XDP fault injector (MILESTONE §2.2.8).
-// Not installed or enabled on the default appliance SKU.
 package main
 
 import (
@@ -9,7 +7,7 @@ import (
 	"net"
 	"os"
 
-	"github.com/bidshard/ad-event-processor/internal/edge/faultinject"
+	"github.com/bidshard/ad-event-processor/internal/edge"
 )
 
 func main() {
@@ -17,7 +15,7 @@ func main() {
 	iface := flag.String("iface", os.Getenv("INGRESS_INTERFACE"), "NIC for iface mode (requires CAP_NET_RAW)")
 	iters := flag.Int("iters", 1000, "Malformed packet iterations")
 	flood := flag.Int("flood", 2000, "High-rate SYN packet count")
-	dport := flag.Int("dport", faultinject.TrackerPort, "Destination TCP port")
+	dport := flag.Int("dport", edge.TrackerPort, "Destination TCP port")
 	dstIP := flag.String("dst", "10.0.0.1", "Destination IPv4 for crafted frames")
 	flag.Parse()
 
@@ -62,13 +60,13 @@ func main() {
 }
 
 func runProgram(iters, flood int, dst net.IP, dport uint16) error {
-	objs, cleanup, err := faultinject.OpenProgram()
+	objs, cleanup, err := edge.OpenProgram()
 	if err != nil {
 		return err
 	}
 	defer cleanup()
 
-	res, err := faultinject.RunProgram(objs.XdpEdgeFilter, faultinject.ProgramOptions{
+	res, err := edge.RunProgram(objs.XdpEdgeFilter, edge.ProgramOptions{
 		MalformedIters: iters,
 		FloodPackets:   flood,
 		Dst:            dst,
@@ -77,7 +75,7 @@ func runProgram(iters, flood int, dst net.IP, dport uint16) error {
 	if err != nil {
 		return err
 	}
-	faultinject.EmitProgramProofs(res)
+	edge.EmitProgramProofs(res)
 	slog.Info("program injection complete",
 		"malformed_iters", res.MalformedIters,
 		"flood_packets", res.FloodPackets,
@@ -87,7 +85,7 @@ func runProgram(iters, flood int, dst net.IP, dport uint16) error {
 }
 
 func runIface(iface string, iters, flood int, dst net.IP, dport uint16) error {
-	res, err := faultinject.RunIface(faultinject.IfaceOptions{
+	res, err := edge.RunIface(edge.IfaceOptions{
 		Iface:          iface,
 		MalformedIters: iters,
 		FloodPackets:   flood,
@@ -97,7 +95,7 @@ func runIface(iface string, iters, flood int, dst net.IP, dport uint16) error {
 	if err != nil {
 		return err
 	}
-	faultinject.EmitIfaceProof(iface, res)
+	edge.EmitIfaceProof(iface, res)
 	slog.Info("iface injection complete",
 		"iface", iface,
 		"malformed", res.SentMalformed,

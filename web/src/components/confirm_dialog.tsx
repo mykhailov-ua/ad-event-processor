@@ -15,9 +15,6 @@ export type ConfirmDialogProps = {
   onCancel: () => void;
 };
 
-/**
- * Registry confirm dialog.
- */
 export function ConfirmDialog({
   open,
   level,
@@ -71,28 +68,30 @@ export function ConfirmDialog({
       description={description}
       onClose={handleClose}
       footerClass={isVertical ? 'modal__footer--vertical' : undefined}
-      actions={isVertical ? (
-        <>
-          <Button
-            label="Confirm"
-            variant={isDestructive || isStrong ? 'danger' : 'primary'}
-            className="btn--block"
-            disabled={!canConfirm}
-            onClick={handleConfirm}
-          />
-          <Button label="Cancel" variant="ghost" className="btn--block" onClick={handleClose} />
-        </>
-      ) : (
-        <>
-          <Button label="Cancel" variant="secondary" onClick={handleClose} />
-          <Button
-            label="Confirm"
-            variant={isDestructive || isStrong ? 'danger' : 'primary'}
-            disabled={!canConfirm}
-            onClick={handleConfirm}
-          />
-        </>
-      )}
+      actions={
+        isVertical ? (
+          <>
+            <Button
+              label="Confirm"
+              variant={isDestructive || isStrong ? 'danger' : 'primary'}
+              className="btn--block"
+              disabled={!canConfirm}
+              onClick={handleConfirm}
+            />
+            <Button label="Cancel" variant="ghost" className="btn--block" onClick={handleClose} />
+          </>
+        ) : (
+          <>
+            <Button label="Cancel" variant="secondary" onClick={handleClose} />
+            <Button
+              label="Confirm"
+              variant={isDestructive || isStrong ? 'danger' : 'primary'}
+              disabled={!canConfirm}
+              onClick={handleConfirm}
+            />
+          </>
+        )
+      }
     >
       {isStrong ? (
         <div className="form-field">

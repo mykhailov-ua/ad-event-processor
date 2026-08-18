@@ -5,12 +5,7 @@ import type { MetricPoint } from '../helpers/ops_metric_series.js';
 import uPlot from 'uplot';
 import { SERIES_CAP } from './chart_math.js';
 import type { ChartHandle } from './chart_types.js';
-import {
-  createTooltipHooks,
-  themedAreaSeries,
-  themedAxes,
-  themedCursor,
-} from './uplot_theme.js';
+import { createTooltipHooks, themedAreaSeries, themedAxes, themedCursor } from './uplot_theme.js';
 
 export const CHART_HEIGHT_METRIC = 200;
 
@@ -38,9 +33,6 @@ export type MetricChartHandle = ChartHandle & {
   update: (next: MetricChartUpdate) => void;
 };
 
-/**
- * Mount a Grafana-style time-series area chart (uPlot).
- */
 export function mountMetricChart(container: HTMLElement, opts: MetricChartOpts): MetricChartHandle {
   const title = opts.title ?? 'Metric';
   let colorToken = opts.color ?? '--accent';
@@ -154,9 +146,6 @@ export function mountMetricChart(container: HTMLElement, opts: MetricChartOpts):
   };
 }
 
-/**
- * Mount an empty metric chart placeholder.
- */
 export function mountMetricChartEmpty(container: HTMLElement): ChartHandle {
   replaceChildren(container, el('p', { className: 'text-muted text-sm' }, 'No data to chart.'));
   return { destroy: () => container.replaceChildren() };

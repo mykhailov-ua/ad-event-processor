@@ -1,5 +1,5 @@
 import { api } from './api_client.js';
-import type { PublisherDashboard, PublisherStatementList } from '../types/api/publisher.js';
+import type { PublisherDashboard, PublisherStatementList } from '../types/publisher.js';
 
 export async function fetchPublisherDashboard(query = ''): Promise<PublisherDashboard> {
   const q = query ? (query.startsWith('?') ? query : `?${query}`) : '';

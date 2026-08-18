@@ -22,8 +22,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const costSyncAdvisoryLockKey = int64(0x657370785f636f73)
-const advisoryUnlockTimeout = 5 * time.Second
+const (
+	costSyncAdvisoryLockKey = int64(0x657370785f636f73)
+	advisoryUnlockTimeout   = 5 * time.Second
+)
 
 type OAuthConfig struct {
 	MetaAppID, MetaAppSecret           string
@@ -143,7 +145,6 @@ func (w *Worker) runHourlyGuarded(ctx context.Context, trigger string) {
 	}()
 }
 
-// Wait blocks until in-flight hourly sync completes (shutdown drain before pool close).
 func (w *Worker) Wait() {
 	w.cycleWG.Wait()
 }

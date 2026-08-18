@@ -6,10 +6,7 @@ import { ConfirmCancelledError } from '../helpers/confirm_ui.js';
 import { can } from '../helpers/permissions.js';
 import * as auth from '../helpers/auth.js';
 import { formatAmountMicro } from '../helpers/money.js';
-import {
-  isPageBlockingError,
-  mapServiceError,
-} from '../helpers/service_error.js';
+import { isPageBlockingError, mapServiceError } from '../helpers/service_error.js';
 import { pushToastMessage } from '../helpers/toast_ui.js';
 import { surfaceServiceErrorToast } from '../helpers/service_error_toast.js';
 import {
@@ -22,19 +19,16 @@ import type {
   InvoiceDeliveryDTO,
   InvoiceLedgerLineDTO,
   InvoiceLineDTO,
-} from '../types/api/index.js';
+} from '../types/index.js';
 import { shortCustomerId } from '../helpers/customer_context.js';
 import { displayLabel } from '../helpers/display_labels.js';
-import { useResource } from '../hooks/use_resource.js';
+import { useResource } from '../helpers/use_resource.js';
 import { Breadcrumbs, type BreadcrumbItem } from '../components/breadcrumbs.js';
 import { Button } from '../components/button.js';
 import { ErrorBlock } from '../components/error_block.js';
 import { Icon } from '../components/icon.js';
 import { StatusBadge } from '../components/status_badge.js';
 
-/**
- * Invoice detail with void action and delivery attempts.
- */
 export function InvoiceDetailPage() {
   const { id = '' } = useParams();
   const user = auth.getUser();
@@ -51,9 +45,12 @@ export function InvoiceDetailPage() {
   const [ledgerLinesTotal, setLedgerLinesTotal] = useState(0);
   const [ledgerNextCursor, setLedgerNextCursor] = useState('');
 
-  const { data: invoice, loading, error, reload } = useResource<InvoiceDTO>(
-    id ? `/api/v1/billing/invoices/${id}` : null,
-  );
+  const {
+    data: invoice,
+    loading,
+    error,
+    reload,
+  } = useResource<InvoiceDTO>(id ? `/api/v1/billing/invoices/${id}` : null);
 
   useEffect(() => {
     if (error) surfaceServiceErrorToast(error);
@@ -80,26 +77,29 @@ export function InvoiceDetailPage() {
     }
   }, [invoice, deliveriesLoaded, deliveriesLoading, loadDeliveries]);
 
-  const loadLedgerLines = useCallback(async (cursor = '', append = false) => {
-    if (!id) return;
-    setLedgerLinesLoading(true);
-    const [res, err] = await to(fetchInvoiceLedgerLines(id, cursor));
-    setLedgerLinesLoading(false);
-    if (err) {
-      if (!append) {
-        setLedgerLines([]);
-        setLedgerLinesTotal(0);
+  const loadLedgerLines = useCallback(
+    async (cursor = '', append = false) => {
+      if (!id) return;
+      setLedgerLinesLoading(true);
+      const [res, err] = await to(fetchInvoiceLedgerLines(id, cursor));
+      setLedgerLinesLoading(false);
+      if (err) {
+        if (!append) {
+          setLedgerLines([]);
+          setLedgerLinesTotal(0);
+        }
+        setLedgerNextCursor('');
+        const view = mapServiceError(err);
+        pushToastMessage({ title: view.title, message: view.message, code: view.code });
+        return;
       }
-      setLedgerNextCursor('');
-      const view = mapServiceError(err);
-      pushToastMessage({ title: view.title, message: view.message, code: view.code });
-      return;
-    }
-    const items = res?.items ?? [];
-    setLedgerLines((prev) => (append ? [...prev, ...items] : items));
-    setLedgerLinesTotal(res?.total ?? 0);
-    setLedgerNextCursor(res?.next_cursor ?? '');
-  }, [id]);
+      const items = res?.items ?? [];
+      setLedgerLines((prev) => (append ? [...prev, ...items] : items));
+      setLedgerLinesTotal(res?.total ?? 0);
+      setLedgerNextCursor(res?.next_cursor ?? '');
+    },
+    [id]
+  );
 
   const ledgerLoadedRef = useRef(false);
   useEffect(() => {
@@ -110,7 +110,9 @@ export function InvoiceDetailPage() {
 
   const handleVoid = async () => {
     setVoidLoading(true);
-    const [, voidErr] = await to(apiConfirmed(`/api/v1/billing/invoices/${id}/void`, { method: 'POST' }));
+    const [, voidErr] = await to(
+      apiConfirmed(`/api/v1/billing/invoices/${id}/void`, { method: 'POST' })
+    );
     if (voidErr) {
       if (voidErr instanceof ConfirmCancelledError) {
         setVoidLoading(false);
@@ -179,7 +181,9 @@ export function InvoiceDetailPage() {
               variant="secondary"
               size="sm"
               icon="download"
-              onClick={() => window.open(`/api/v1/billing/invoices/${id}/pdf`, '_blank', 'noopener,noreferrer')}
+              onClick={() =>
+                window.open(`/api/v1/billing/invoices/${id}/pdf`, '_blank', 'noopener,noreferrer')
+              }
             />
             {canVoid && !invoiceVoid ? (
               <Button

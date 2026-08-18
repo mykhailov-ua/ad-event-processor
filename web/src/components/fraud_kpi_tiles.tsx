@@ -2,6 +2,7 @@ import { can } from '../helpers/permissions.js';
 import * as auth from '../helpers/auth.js';
 import { boundCustomerId } from '../helpers/buyer_session.js';
 import { Icon } from './icon.js';
+import { FraudMlHealthTile } from './fraud_ml_health.js';
 
 export type FraudKpiGeoHint = {
   ivt_rate?: number;
@@ -43,9 +44,6 @@ function LinkedMetric({
   );
 }
 
-/**
- * Fraud / IVT KPI tiles with drill-down links.
- */
 export function FraudKpiTiles({ loading = false, fraud, customerId }: FraudKpiTilesProps) {
   const qs = customerId ? `?customer_id=${encodeURIComponent(customerId)}` : '';
   const highIvt = fraud?.geo_hints
@@ -54,7 +52,7 @@ export function FraudKpiTiles({ loading = false, fraud, customerId }: FraudKpiTi
 
   const ghost = loading ? '…' : String(fraud?.ghost_ivt_campaigns ?? '—');
   const blocked = loading ? '…' : String(fraud?.edge_blocked_fraud ?? '—');
-  const geo = loading ? '…' : (highIvt != null ? String(highIvt) : '—');
+  const geo = loading ? '…' : highIvt != null ? String(highIvt) : '—';
 
   return (
     <section className="fraud-kpi-section section-block" data-testid="fraud-kpi-tiles">
@@ -86,14 +84,12 @@ export function FraudKpiTiles({ loading = false, fraud, customerId }: FraudKpiTi
           href={`/reports/ivt-by-source${qs}`}
           testId="fraud-kpi-high-ivt-geo-hints"
         />
+        <FraudMlHealthTile customerId={customerId} />
       </div>
     </section>
   );
 }
 
-/**
- * Buyer overview fraud tiles with session customer id.
- */
 export function BuyerFraudKpiTiles() {
   const user = auth.getUser();
   const perms = user?.permissions ?? [];

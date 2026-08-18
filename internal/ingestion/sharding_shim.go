@@ -2,10 +2,12 @@ package ingestion
 
 import "github.com/bidshard/ad-event-processor/internal/domain"
 
-type Sharder = domain.Sharder
-type StaticSlotSharder = domain.StaticSlotSharder
-type JumpHashSharder = domain.JumpHashSharder
-type SlotMapSnapshot = domain.SlotMapSnapshot
+type (
+	Sharder           = domain.Sharder
+	StaticSlotSharder = domain.StaticSlotSharder
+	JumpHashSharder   = domain.JumpHashSharder
+	SlotMapSnapshot   = domain.SlotMapSnapshot
+)
 
 func NewStaticSlotSharder(numBuckets int) *StaticSlotSharder {
 	return domain.NewStaticSlotSharder(numBuckets)

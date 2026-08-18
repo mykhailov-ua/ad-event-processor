@@ -9,9 +9,6 @@ export type TabBarProps = {
   onChange: (id: string) => void;
 };
 
-/**
- * Horizontal tab bar for switching panel sections.
- */
 export function TabBar({ tabs, active, onChange }: TabBarProps) {
   return (
     <div className="tab-bar" role="tablist">

@@ -28,9 +28,6 @@ const state: MemoryWatchState = {
   warnings: 0,
 };
 
-/**
- * Read used JS heap size when exposed by the runtime.
- */
 function heapBytes(): number {
   if (typeof performance !== 'undefined') {
     const mem = (performance as PerformanceWithMemory).memory?.usedJSHeapSize;
@@ -39,9 +36,6 @@ function heapBytes(): number {
   return 0;
 }
 
-/**
- * Sample heap on route leave and track monotonic growth.
- */
 export function memoryWatchOnRouteLeave(): void {
   const heap = heapBytes();
   if (heap <= 0) return;
@@ -54,14 +48,13 @@ export function memoryWatchOnRouteLeave(): void {
     state.baseline = heap;
     state.startedAt = Date.now();
     if (typeof console !== 'undefined' && console.warn) {
-      console.warn(`[admin] heap growth warning: +${Math.round((heap - state.baseline) / 1024 / 1024)} MB`);
+      console.warn(
+        `[admin] heap growth warning: +${Math.round((heap - state.baseline) / 1024 / 1024)} MB`
+      );
     }
   }
 }
 
-/**
- * Return heap watch counters for telemetry export.
- */
 export function memoryWatchSnapshot(): MemoryWatchSnapshot {
   return {
     baselineBytes: state.baseline,
@@ -71,9 +64,6 @@ export function memoryWatchSnapshot(): MemoryWatchSnapshot {
   };
 }
 
-/**
- * Reset heap watch state.
- */
 export function memoryWatchReset(): void {
   state.baseline = 0;
   state.last = 0;

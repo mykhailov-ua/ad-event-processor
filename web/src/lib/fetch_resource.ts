@@ -1,11 +1,6 @@
-/**
- * Load an API URL into a reactive resource state callback.
- */
-
 import { api } from '../helpers/api_client.js';
 import { to } from './to.js';
 
-/** Default resource payload when callers omit a type parameter. */
 export type JsonObject = Record<string, unknown>;
 
 export type ResourceState<T = JsonObject> = {
@@ -19,15 +14,12 @@ export type ResourceHandle = {
   destroy: () => void;
 };
 
-/**
- * Load an API URL into a reactive resource state callback.
- */
 export function createResource<T = JsonObject>(
   getUrl: () => string | null | undefined,
   opts: {
     skip?: () => boolean;
     onUpdate: (state: ResourceState<T>) => void;
-  },
+  }
 ): ResourceHandle {
   const skip = opts.skip ?? (() => false);
   let abort: AbortController | null = null;

@@ -1,4 +1,3 @@
-// Package bandit implements Thompson sampling for flow routing experiments.
 package bandit
 
 import (
@@ -8,13 +7,11 @@ import (
 	"github.com/google/uuid"
 )
 
-// ArmStat holds click and conversion counts for one bandit arm.
 type ArmStat struct {
 	Clicks      int64
 	Conversions int64
 }
 
-// ThompsonWeights samples Beta posteriors and returns integer weights (min 1 per arm).
 func ThompsonWeights(arms map[uuid.UUID]ArmStat, rng *rand.Rand) map[uuid.UUID]int32 {
 	if len(arms) == 0 {
 		return nil

@@ -6,98 +6,98 @@ cd "$ROOT"
 
 ENV_FILE=()
 if [[ -f "$ROOT/.env.example" ]]; then
-	ENV_FILE=(--env-file "$ROOT/.env.example")
+  ENV_FILE=(--env-file "$ROOT/.env.example")
 fi
 
 echo "compose default config (no cpu-isolation overlay)"
-docker compose "${ENV_FILE[@]}" config >/dev/null
-	if ! docker compose "${ENV_FILE[@]}" config --services | grep -qx tracker-0; then
-	echo "default compose must include tracker-0 without cpu-isolation profile" >&2
-	exit 1
+docker compose "${ENV_FILE[@]}" config > /dev/null
+if ! docker compose "${ENV_FILE[@]}" config --services | grep -qx tracker-0; then
+  echo "default compose must include tracker-0 without cpu-isolation profile" >&2
+  exit 1
 fi
 if ! docker compose "${ENV_FILE[@]}" config --services | grep -qx broker; then
-	echo "default compose must include broker (CH_INGEST_SOURCE defaults to broker)" >&2
-	exit 1
+  echo "default compose must include broker (CH_INGEST_SOURCE defaults to broker)" >&2
+  exit 1
 fi
 
 echo "compose cpu-isolation overlay + profile"
 docker compose -f "$ROOT/deploy/compose/docker-compose.yaml" \
-	-f "$ROOT/deploy/compose/docker-compose.cpu-isolation.yaml" \
-	"${ENV_FILE[@]}" --profile cpu-isolation config >/dev/null
+  -f "$ROOT/deploy/compose/docker-compose.cpu-isolation.yaml" \
+  "${ENV_FILE[@]}" --profile cpu-isolation config > /dev/null
 if ! docker compose -f "$ROOT/deploy/compose/docker-compose.yaml" \
-	-f "$ROOT/deploy/compose/docker-compose.cpu-isolation.yaml" \
-	"${ENV_FILE[@]}" --profile cpu-isolation config --services | grep -qx tracker-0; then
-	echo "cpu-isolation profile must include tracker-0" >&2
-	exit 1
+  -f "$ROOT/deploy/compose/docker-compose.cpu-isolation.yaml" \
+  "${ENV_FILE[@]}" --profile cpu-isolation config --services | grep -qx tracker-0; then
+  echo "cpu-isolation profile must include tracker-0" >&2
+  exit 1
 fi
 
 echo "compose profile config: single_vps"
-docker compose --profile single_vps config >/dev/null
+docker compose --profile single_vps config > /dev/null
 
 echo "compose profile config: ingest_only"
-docker compose --profile ingest_only config >/dev/null
+docker compose --profile ingest_only config > /dev/null
 if docker compose --profile ingest_only config --services | grep -qx clickhouse; then
-	echo "ingest_only profile must not include clickhouse" >&2
-	exit 1
+  echo "ingest_only profile must not include clickhouse" >&2
+  exit 1
 fi
 if docker compose --profile ingest_only config --services | grep -qx db-payment; then
-	echo "ingest_only profile must not include db-payment" >&2
-	exit 1
+  echo "ingest_only profile must not include db-payment" >&2
+  exit 1
 fi
 
 echo "compose profile config: network_operator"
-docker compose --profile network_operator config >/dev/null
+docker compose --profile network_operator config > /dev/null
 
 echo "compose profile config: resilience"
-docker compose --profile resilience config >/dev/null
+docker compose --profile resilience config > /dev/null
 if ! docker compose --profile resilience config --services | grep -qx control; then
-	echo "resilience profile must include control" >&2
-	exit 1
+  echo "resilience profile must include control" >&2
+  exit 1
 fi
 if docker compose --profile resilience config --services | grep -qxE 'management|payment|billing|notifier'; then
-	echo "resilience profile must not include legacy sidecars" >&2
-	exit 1
+  echo "resilience profile must not include legacy sidecars" >&2
+  exit 1
 fi
 
 echo "compose profile config: crypto"
-docker compose --profile crypto config >/dev/null
+docker compose --profile crypto config > /dev/null
 if ! docker compose --profile crypto config --services | grep -qx control; then
-	echo "crypto profile must include control" >&2
-	exit 1
+  echo "crypto profile must include control" >&2
+  exit 1
 fi
 
 echo "compose profile config: analytics_ml"
-docker compose --profile analytics_ml --profile fraud-scorer config >/dev/null
+docker compose --profile analytics_ml --profile fraud-scorer config > /dev/null
 if ! docker compose --profile analytics_ml --profile fraud-scorer config --services | grep -qx clickhouse; then
-	echo "analytics_ml profile must include clickhouse" >&2
-	exit 1
+  echo "analytics_ml profile must include clickhouse" >&2
+  exit 1
 fi
 if ! docker compose --profile analytics_ml --profile fraud-scorer config --services | grep -qx ivt-detector; then
-	echo "analytics_ml profile must include ivt-detector" >&2
-	exit 1
+  echo "analytics_ml profile must include ivt-detector" >&2
+  exit 1
 fi
 if ! docker compose --profile analytics_ml --profile fraud-scorer config --services | grep -qx fraud-scorer; then
-	echo "analytics_ml profile must include fraud-scorer" >&2
-	exit 1
+  echo "analytics_ml profile must include fraud-scorer" >&2
+  exit 1
 fi
 
 echo "compose profile config: enterprise-xdp"
-docker compose --profile enterprise-xdp config >/dev/null
+docker compose --profile enterprise-xdp config > /dev/null
 if ! docker compose --profile enterprise-xdp config --services | grep -qx edge-xdp; then
-	echo "enterprise-xdp profile must include edge-xdp" >&2
-	exit 1
+  echo "enterprise-xdp profile must include edge-xdp" >&2
+  exit 1
 fi
 if docker compose --profile single_vps config --services | grep -qx edge-xdp; then
-	echo "single_vps profile must not include edge-xdp" >&2
-	exit 1
+  echo "single_vps profile must not include edge-xdp" >&2
+  exit 1
 fi
-if ! docker compose --profile enterprise-xdp config 2>/dev/null | grep -q 'privileged: true'; then
-	echo "enterprise-xdp edge-xdp service must be privileged" >&2
-	exit 1
+if ! docker compose --profile enterprise-xdp config 2> /dev/null | grep -q 'privileged: true'; then
+  echo "enterprise-xdp edge-xdp service must be privileged" >&2
+  exit 1
 fi
-if ! docker compose --profile enterprise-xdp config 2>/dev/null | grep -q 'network_mode: host'; then
-	echo "enterprise-xdp edge-xdp service must use host network" >&2
-	exit 1
+if ! docker compose --profile enterprise-xdp config 2> /dev/null | grep -q 'network_mode: host'; then
+  echo "enterprise-xdp edge-xdp service must use host network" >&2
+  exit 1
 fi
 
 echo "compose_profile_check: ok"

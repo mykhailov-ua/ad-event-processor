@@ -287,7 +287,6 @@ func (consumer *StreamConsumer) worker(ctx context.Context, workerIdx int) {
 		xreadArgs.Count = readCount
 		xreadArgs.Block = blockTime
 		streams, err := consumer.rdb.XReadGroup(ctx, xreadArgs).Result()
-
 		if err != nil {
 			if errors.Is(err, redis.Nil) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 				if len(batch) > 0 && time.Since(lastFlush) >= consumer.flushInt {
@@ -336,7 +335,7 @@ func (consumer *StreamConsumer) pauseStreamReads(ctx context.Context) bool {
 
 	wait := consumer.cb.WaitDuration()
 	if wait <= 0 {
-		// Open timeout elapsed — return false so worker calls tryFlush; Allow() transitions half-open.
+
 		metrics.ProcessorStreamBackpressureActive.WithLabelValues(consumer.groupName).Set(0)
 		return false
 	}
@@ -691,7 +690,7 @@ func (consumer *StreamConsumer) parseMessage(id string, values map[string]interf
 		DeepResetAdStreamEvent(pbEvt)
 
 		if len(raw) > 0 {
-			_ = raw[len(raw)-1] // BCE hint
+			_ = raw[len(raw)-1]
 		}
 
 		if err := pbEvt.UnmarshalVT(raw); err == nil {
@@ -797,7 +796,7 @@ func parseFlatStreamMessage(event *domain.Event, values map[string]interface{}) 
 	}
 	if raw, ok := streamFieldBytes(values, "payload"); ok {
 		if len(raw) > 0 {
-			_ = raw[len(raw)-1] // BCE hint
+			_ = raw[len(raw)-1]
 		}
 		event.Payload = append(event.Payload[:0], raw...)
 	}
@@ -939,7 +938,6 @@ func (consumer *StreamConsumer) drainNewMessages(ctx context.Context, consumerID
 				Count:    int64(consumer.batchSize),
 				Block:    50 * time.Millisecond,
 			}).Result()
-
 			if err != nil {
 				if errors.Is(err, redis.Nil) || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, redis.ErrClosed) || strings.Contains(err.Error(), "client is closed") {
 					return
@@ -1012,7 +1010,6 @@ func (consumer *StreamConsumer) claimStuckMessages(ctx context.Context) {
 			Start:    startID,
 			Count:    int64(consumer.batchSize),
 		}).Result()
-
 		if err != nil {
 			if !errors.Is(err, redis.Nil) && !errors.Is(err, context.Canceled) {
 				slog.Error("autoclaim failed", "error", err, "group", consumer.groupName)

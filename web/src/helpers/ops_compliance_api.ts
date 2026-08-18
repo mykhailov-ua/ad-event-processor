@@ -7,9 +7,8 @@ import type {
   SupportFeedbackCreateBody,
   SupportFeedbackCreateResponse,
   SupportFeedbackMetaDTO,
-} from '../types/api/ops_compliance.js';
+} from '../types/ops_compliance.js';
 
-/** HMAC-SHA256 hex digest for consent webhook body (matches server verifier). */
 export async function signConsentBody(secret: string, body: string): Promise<string> {
   const enc = new TextEncoder();
   const key = await crypto.subtle.importKey(
@@ -17,7 +16,7 @@ export async function signConsentBody(secret: string, body: string): Promise<str
     enc.encode(secret),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
-    ['sign'],
+    ['sign']
   );
   const sig = await crypto.subtle.sign('HMAC', key, enc.encode(body));
   return Array.from(new Uint8Array(sig))
@@ -28,22 +27,21 @@ export async function signConsentBody(secret: string, body: string): Promise<str
 export async function fetchConsentProofs(
   userId = '',
   cursor = '',
-  limit = 50,
+  limit = 50
 ): Promise<ConsentProofListResponse> {
   const params = new URLSearchParams({ limit: String(limit) });
   if (userId) params.set('user_id', userId);
   if (cursor) params.set('cursor', cursor);
-  const res = await api<ConsentProofListResponse>(`/api/v1/ops/consent/proofs?${params.toString()}`);
+  const res = await api<ConsentProofListResponse>(
+    `/api/v1/ops/consent/proofs?${params.toString()}`
+  );
   return {
     items: res.data?.items ?? [],
     next_cursor: res.data?.next_cursor,
   };
 }
 
-export async function postConsentRecord(
-  body: ConsentRecordBody,
-  signature: string,
-): Promise<void> {
+export async function postConsentRecord(body: ConsentRecordBody, signature: string): Promise<void> {
   const json = JSON.stringify(body);
   await api('/api/v1/consent', {
     method: 'POST',
@@ -61,7 +59,7 @@ export async function fetchSupportFeedbackMeta(): Promise<SupportFeedbackMetaDTO
 }
 
 export async function submitSupportFeedback(
-  body: SupportFeedbackCreateBody,
+  body: SupportFeedbackCreateBody
 ): Promise<SupportFeedbackCreateResponse> {
   const res = await apiConfirmed<SupportFeedbackCreateResponse>('/api/v1/support/feedback', {
     method: 'POST',

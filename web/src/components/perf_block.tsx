@@ -6,9 +6,6 @@ export type PerfBlockProps = {
   id: string;
 };
 
-/**
- * Critical-path perf overlay when ?perf is on the URL.
- */
 export function PerfBlock({ id }: PerfBlockProps) {
   const enabled = perfOverlayEnabled();
   const report = useMemo(() => (enabled ? JSON.stringify(probeReport(), null, 2) : ''), [enabled]);
@@ -16,6 +13,8 @@ export function PerfBlock({ id }: PerfBlockProps) {
   if (!enabled) return null;
 
   return (
-    <pre id={id} aria-label="Critical path metrics">{report}</pre>
+    <pre id={id} aria-label="Critical path metrics">
+      {report}
+    </pre>
   );
 }

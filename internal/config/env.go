@@ -1,4 +1,3 @@
-// Package config loads environment-based service configuration.
 package config
 
 import (
@@ -220,7 +219,7 @@ type Config struct {
 	RegistryPollMs               int
 	CampaignUpdateBrokerFallback bool
 	CampaignUpdateBrokerTopic    string
-	RedisShard0OptionalStartup   bool // when true, shard 0 connect failure leaves rdbs[0]==nil (tracker + control degraded mode)
+	RedisShard0OptionalStartup   bool
 	CampaignReplicaPath          string
 
 	AutoscaleHighCTRThreshold   float64
@@ -289,7 +288,7 @@ type Config struct {
 		FraudTopic          string
 		PartitionCount      int
 		ShadowMode          bool
-		CHIngestSource      string // "" = redis stream (default); "broker" = broker-primary, skips Redis _ch consumer
+		CHIngestSource      string
 		MaxBytes            int
 		TimeoutMs           int
 		ReconcileIntervalMs int
@@ -479,11 +478,12 @@ type Config struct {
 	}
 
 	FraudScoring struct {
-		Enabled        bool
-		ScanIntervalMs int
-		BatchSize      int
-		ModelPath      string
-		Standalone     bool
+		Enabled          bool
+		ScanIntervalMs   int
+		BatchSize        int
+		ModelPath        string
+		Standalone       bool
+		ExplainLiveScore bool
 	}
 
 	GeoIP struct {
@@ -519,7 +519,6 @@ func (c *Config) BrokerEnabled() bool {
 	return c != nil && c.Broker.URL != ""
 }
 
-// BrokerPrimaryCH skips Redis Stream consumers for main ingest; tracker uses BrokerProducer.
 func (c *Config) BrokerPrimaryCH() bool {
 	return c != nil && c.Broker.CHIngestSource == "broker"
 }
@@ -539,7 +538,6 @@ func (c *Config) ResolveRedisMasterNames() []string {
 	return names
 }
 
-// resolveControlPort prefers CONTROL_PORT; MANAGEMENT_PORT is accepted for one release.
 func resolveControlPort() string {
 	if v := strings.TrimSpace(os.Getenv("CONTROL_PORT")); v != "" {
 		return v

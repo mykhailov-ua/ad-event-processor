@@ -233,7 +233,8 @@ func ControlFailOpenEnabled(raw string) bool {
 
 func hashNodeWeights(h interface {
 	Write(p []byte) (n int, err error)
-}, weights []UDPNodeWeight) {
+}, weights []UDPNodeWeight,
+) {
 	var buf [8]byte
 	binary.LittleEndian.PutUint16(buf[:2], uint16(len(weights)))
 	_, _ = h.Write(buf[:2])

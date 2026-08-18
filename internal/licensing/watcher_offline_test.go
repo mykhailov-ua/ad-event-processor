@@ -4,11 +4,12 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
-	"github.com/bidshard/ad-event-processor/pkg/naming"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

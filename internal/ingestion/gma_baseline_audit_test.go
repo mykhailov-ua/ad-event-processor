@@ -11,7 +11,6 @@ import (
 	"github.com/bidshard/ad-event-processor/internal/domain"
 )
 
-// GMA-M0 baseline audit: TLS fingerprint, link signing, and conn-type surfaces.
 func TestGMABaseline_inventorySymbolsExist(t *testing.T) {
 	t.Helper()
 	_, file, _, ok := runtime.Caller(0)

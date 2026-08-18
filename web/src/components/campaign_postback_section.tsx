@@ -31,16 +31,16 @@ export type CampaignPostbackSectionProps = {
 };
 
 function copyText(label: string, text: string): void {
-  navigator.clipboard?.writeText(text).then(() => {
-    pushToastMessage({ title: 'Copied', message: `${label} copied to clipboard` });
-  }).catch(() => {
-    pushToastMessage({ title: 'Copy failed', message: text || '(empty)' });
-  });
+  navigator.clipboard
+    ?.writeText(text)
+    .then(() => {
+      pushToastMessage({ title: 'Copied', message: `${label} copied to clipboard` });
+    })
+    .catch(() => {
+      pushToastMessage({ title: 'Copy failed', message: text || '(empty)' });
+    });
 }
 
-/**
- * S2S postback / CAPI config and DLQ for a campaign.
- */
 export function CampaignPostbackSection({ campaignId, canWrite }: CampaignPostbackSectionProps) {
   const [provider, setProvider] = useState<PostbackProvider>('webhook');
   const [urlTemplate, setUrlTemplate] = useState('');
@@ -79,13 +79,15 @@ export function CampaignPostbackSection({ campaignId, canWrite }: CampaignPostba
     if (!canWrite) return;
     setSaving(true);
     setError(null);
-    const [, err] = await to(savePostbackConfig(campaignId, {
-      provider,
-      url_template: urlTemplate,
-      api_token: apiToken || undefined,
-      target_event: targetEvent,
-      test_event_code: testEventCode || undefined,
-    }));
+    const [, err] = await to(
+      savePostbackConfig(campaignId, {
+        provider,
+        url_template: urlTemplate,
+        api_token: apiToken || undefined,
+        target_event: targetEvent,
+        test_event_code: testEventCode || undefined,
+      })
+    );
     setSaving(false);
     if (err) {
       if (err instanceof ConfirmCancelledError) return;
@@ -142,10 +144,13 @@ export function CampaignPostbackSection({ campaignId, canWrite }: CampaignPostba
     <div className="section-card stack" data-testid="campaign-capi-panel">
       <h3 className="subsection-title">CAPI & Postbacks</h3>
       <p className="text-muted text-sm">
-        When a tracked event matches the target type, the postback worker dispatches to the provider below.
-        CAPI adapters use click IDs captured on redirect (/click) or zero-redirect /track (fbclid, gclid, ttclid).
-        Inbound affiliate S2S (partner → BidShard) is configured on the{' '}
-        <Link to={`/campaigns/${campaignId}?tab=tracking`} className="text-sm">Integration</Link> tab.
+        When a tracked event matches the target type, the postback worker dispatches to the provider
+        below. CAPI adapters use click IDs captured on redirect (/click) or zero-redirect /track
+        (fbclid, gclid, ttclid). Inbound affiliate S2S (partner → BidShard) is configured on the{' '}
+        <Link to={`/campaigns/${campaignId}?tab=tracking`} className="text-sm">
+          Integration
+        </Link>{' '}
+        tab.
       </p>
       {loading ? <p className="text-muted">Loading…</p> : null}
       {error ? <p className="text-danger text-sm">{error}</p> : null}
@@ -160,7 +165,9 @@ export function CampaignPostbackSection({ campaignId, canWrite }: CampaignPostba
           onChange={(e) => setProvider(normalizePostbackProvider(e.target.value))}
         >
           {postbackProviderIds().map((id) => (
-            <option key={id} value={id}>{POSTBACK_PROVIDER_UI[id].label}</option>
+            <option key={id} value={id}>
+              {POSTBACK_PROVIDER_UI[id].label}
+            </option>
           ))}
         </select>
       </label>
@@ -183,7 +190,9 @@ export function CampaignPostbackSection({ campaignId, canWrite }: CampaignPostba
           >
             <option value="">— Select network —</option>
             {AFFILIATE_POSTBACK_PRESETS.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
             ))}
           </select>
         </label>
@@ -191,9 +200,9 @@ export function CampaignPostbackSection({ campaignId, canWrite }: CampaignPostba
 
       {selectedPreset ? (
         <p className="text-muted text-sm" data-testid="affiliate-postback-notes">
-          {selectedPreset.notes
-            || `Network tokens: click=${selectedPreset.network_click_token}, payout=${selectedPreset.network_payout_token}. `
-              + 'Replace REPLACE_HOST with the partner postback host. Outbound macros are BidShard {click_id}/{payout}/{tx_id}.'}
+          {selectedPreset.notes ||
+            `Network tokens: click=${selectedPreset.network_click_token}, payout=${selectedPreset.network_payout_token}. ` +
+              'Replace REPLACE_HOST with the partner postback host. Outbound macros are BidShard {click_id}/{payout}/{tx_id}.'}
         </p>
       ) : null}
 
@@ -270,7 +279,8 @@ export function CampaignPostbackSection({ campaignId, canWrite }: CampaignPostba
             onChange={(e) => setTestEventCode(e.target.value)}
           />
           <span className="form-hint text-muted text-sm">
-            Routes events to the provider test stream. Use with scripts/test/capi_meta_staging.sh on staging.
+            Routes events to the provider test stream. Use with scripts/test/capi_meta_staging.sh on
+            staging.
           </span>
         </label>
       ) : null}
@@ -334,7 +344,9 @@ export function CampaignPostbackSection({ campaignId, canWrite }: CampaignPostba
                     <td>{String(row.failures_count ?? 0)}</td>
                     <td>{status || '—'}</td>
                     <td>
-                      {canWrite && status !== 'RETRIED' && (typeof rowId === 'string' || typeof rowId === 'number') ? (
+                      {canWrite &&
+                      status !== 'RETRIED' &&
+                      (typeof rowId === 'string' || typeof rowId === 'number') ? (
                         <Button
                           label="Retry"
                           variant="secondary"

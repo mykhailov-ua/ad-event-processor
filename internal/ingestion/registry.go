@@ -61,8 +61,7 @@ type campaignReplicaDTO struct {
 	AttestationEnabled bool                  `json:"attestation_enabled"`
 	AttestationTTLSec  int32                 `json:"attestation_ttl_sec"`
 	DmrEnabled         bool                  `json:"dmr_enabled"`
-	// L1CIDRBlockEnabled is absent in pre-M1 replicas; decode defaults to
-	// false (fail-open) until the first DB sync rewrites the file.
+
 	L1CIDRBlockEnabled         bool   `json:"l1_cidr_block_enabled"`
 	L15ProxyVPNBlockEnabled    bool   `json:"l15_proxy_vpn_block_enabled"`
 	TLSFingerprintBlockEnabled bool   `json:"tls_fingerprint_block_enabled"`

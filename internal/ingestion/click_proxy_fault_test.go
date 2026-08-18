@@ -1,4 +1,3 @@
-// Click proxy fault tests (harness: click_proxy_stream_mock).
 package ingestion
 
 import (

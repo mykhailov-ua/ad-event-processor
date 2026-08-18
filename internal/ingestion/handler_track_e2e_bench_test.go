@@ -61,9 +61,6 @@ func buildTrackE2EAcceptHandler(b *testing.B, campID uuid.UUID, rdb redis.Univer
 	return NewAdsPacketHandler(cfg, registry, engine, nil, rdbs, sharder, "fraud-stream", nil)
 }
 
-// BenchmarkTrackE2E_accept runs protobuf /track with license + unified filter + testcontainers Redis.
-// Harness: track_e2e_license_unified_redis. Skipped with -short. Not in gate_bench.sh (Redis RTT + allocs).
-// Use scripts/test/run_bench.sh — see docs/DEVELOPMENT.md perf section.
 func BenchmarkTrackE2E_accept(b *testing.B) {
 	if testing.Short() {
 		b.Skip()

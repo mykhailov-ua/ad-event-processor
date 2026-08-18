@@ -2,8 +2,6 @@ package coldpath
 
 import "testing"
 
-// listFirstPagination simulates the pre-refactor ListInvoicesAdmin pattern:
-// LIST always runs, then COUNT (even when the result set is empty).
 func listFirstPagination(count func() (int64, error), list func() ([]int, error)) ([]int, int64, error) {
 	rows, err := list()
 	if err != nil {

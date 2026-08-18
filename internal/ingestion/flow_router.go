@@ -28,8 +28,6 @@ type FlowPathSnapshot struct {
 	Paths []FlowPath
 }
 
-// FlowRouter holds an immutable flow/path snapshot swapped via RCU.
-// GM-M0 ships selection only; GM-M3 wires campaign registry reload.
 type FlowRouter struct {
 	active atomic.Pointer[FlowPathSnapshot]
 }
@@ -54,25 +52,20 @@ type FlowSelection struct {
 	OfferID   uuid.UUID
 }
 
-// Select chooses path, lander, and offer deterministically from userID.
-// Zero allocations when userID is a fixed []byte view.
 func (r *FlowRouter) Select(userID []byte) (sel FlowSelection, ok bool) {
 	snap := r.active.Load()
 	sel, _, ok = SelectSnapshot(snap, userID)
 	return sel, ok
 }
 
-// BanditSelect reads RCU-published bandit weights and selects without allocation.
 func BanditSelect(snap *FlowPathSnapshot, userID []byte) (sel FlowSelection, landerURL []byte, ok bool) {
 	return SelectSnapshot(snap, userID)
 }
 
-// BanditSelect on FlowRouter is the hot-path entry for GMA-M6 weighted routing.
 func (r *FlowRouter) BanditSelect(userID []byte) (sel FlowSelection, landerURL []byte, ok bool) {
 	return BanditSelect(r.active.Load(), userID)
 }
 
-// SelectSnapshot performs weighted flow selection on an immutable snapshot.
 func SelectSnapshot(snap *FlowPathSnapshot, userID []byte) (sel FlowSelection, landerURL []byte, ok bool) {
 	if snap == nil || len(snap.Paths) == 0 {
 		return FlowSelection{}, nil, false

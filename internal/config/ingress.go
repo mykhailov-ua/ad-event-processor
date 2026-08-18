@@ -8,9 +8,9 @@ import (
 const (
 	IngressSchemaOpenRTB3               = "openrtb_3"
 	IngressSchemaAdEventProcessorNative = "ad_event_processor_native"
-	// IngressAdEventProcessorNative is the canonical ingress schema (alias for API/docs).
+
 	IngressAdEventProcessorNative = IngressSchemaAdEventProcessorNative
-	// Deprecated: accepted at API/env boundary; normalized to ad_event_processor_native.
+
 	IngressSchemaNativeV1 = "native_v1"
 )
 
@@ -44,7 +44,6 @@ func (c *Config) IsAdEventProcessorNativeIngress() bool {
 	}
 }
 
-// Deprecated: use IsAdEventProcessorNativeIngress.
 func (c *Config) IsLegacyNativeIngress() bool {
 	return c.IsAdEventProcessorNativeIngress()
 }

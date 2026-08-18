@@ -1,11 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  apiPathTemplate,
-  recordApiTiming,
-  apiTimingReport,
-  apiTimingReset,
-} from './api_timing.js';
+import { apiPathTemplate, recordApiTiming, apiTimingReport, apiTimingReset } from './api_timing.js';
 
 describe('apiPathTemplate', () => {
   it('replaces UUID segments with {id}', () => {

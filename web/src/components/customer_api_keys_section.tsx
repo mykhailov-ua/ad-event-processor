@@ -11,9 +11,6 @@ export type CustomerApiKeysSectionProps = {
   canCreate: boolean;
 };
 
-/**
- * Self-serve API key creation block for customer detail and settings.
- */
 export function CustomerApiKeysSection({ canCreate }: CustomerApiKeysSectionProps) {
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -57,12 +54,17 @@ export function CustomerApiKeysSection({ canCreate }: CustomerApiKeysSectionProp
       <section className="section-block section-card stack">
         <h2 className="subsection-title">API keys</h2>
         <p className="text-muted text-sm">
-          Create integration keys for tracking and automation. The secret is shown once after creation.
+          Create integration keys for tracking and automation. The secret is shown once after
+          creation.
         </p>
         {error ? <p className="text-danger text-sm">{error}</p> : null}
         {canCreate ? (
           <div className="flex items-end gap-2 flex-wrap">
-            <label className="form-field flex-1" htmlFor="api-key-name" style={{ minWidth: '12rem' }}>
+            <label
+              className="form-field flex-1"
+              htmlFor="api-key-name"
+              style={{ minWidth: '12rem' }}
+            >
               Key name
               <input
                 id="api-key-name"

@@ -134,12 +134,10 @@ func parseInt(raw string) (int, error) {
 	return strconv.Atoi(strings.TrimSpace(raw))
 }
 
-// LegacyVendorEnvKey exposes deprecated env keys for tests and installer render.
 func LegacyVendorEnvKey(suffix string) string {
 	return naming.LegacyVendorEnvKey(suffix)
 }
 
-// LegacyIngressNativeSchema is the deprecated ingress schema accepted at API boundaries.
 func LegacyIngressNativeSchema() string {
 	return naming.DeprecatedIngressNativeSchema()
 }

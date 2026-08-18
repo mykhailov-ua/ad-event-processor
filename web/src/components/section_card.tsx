@@ -10,17 +10,7 @@ export type SectionCardProps = {
   children?: ReactNode;
 };
 
-/**
- * Raised section surface for dev gallery and future pages.
- */
-export function SectionCard({
-  title,
-  desc,
-  icon,
-  urgent,
-  className,
-  children,
-}: SectionCardProps) {
+export function SectionCard({ title, desc, icon, urgent, className, children }: SectionCardProps) {
   const urgentClass = urgent ? ` settings-panel--urgent-${urgent}` : '';
   return (
     <section className={`settings-panel${urgentClass} ${className ?? ''}`.trim()}>

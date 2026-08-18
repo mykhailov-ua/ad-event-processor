@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/database"
-	"github.com/bidshard/ad-event-processor/internal/edge/fingerprint"
+	"github.com/bidshard/ad-event-processor/internal/edge"
 	"github.com/bidshard/ad-event-processor/pkg/piihash"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
@@ -52,7 +52,7 @@ func TestTCPEdgeCorrelationRule_GhostOnImpersonation(t *testing.T) {
 
 	campaignID := seedClickWithTLS(t, conn, ip, chromeUA, pythonJA3)
 
-	require.NoError(t, fingerprint.Record(ctx, rdb, fingerprint.Entry{
+	require.NoError(t, edge.Record(ctx, rdb, edge.Entry{
 		IP:      ip,
 		TCPHash: 0xcafebabe,
 		SeenAt:  time.Now().UTC(),
@@ -91,7 +91,7 @@ func TestTCPEdgeCorrelationRule_SkipsMatchingUAJA3(t *testing.T) {
 	chromeJA3 := "chrome-ja3-fingerprint"
 
 	seedClickWithTLS(t, conn, ip, chromeUA, chromeJA3)
-	require.NoError(t, fingerprint.Record(ctx, rdb, fingerprint.Entry{
+	require.NoError(t, edge.Record(ctx, rdb, edge.Entry{
 		IP:      ip,
 		TCPHash: 0x12345678,
 		SeenAt:  time.Now().UTC(),

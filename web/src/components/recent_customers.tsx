@@ -5,9 +5,6 @@ export type RecentCustomersProps = {
   tenant?: boolean;
 };
 
-/**
- * Recent customer quick links from navigation storage.
- */
 export function RecentCustomers({ tenant }: RecentCustomersProps) {
   if (tenant) return null;
   const ids = storage.getRecentCustomerIds();

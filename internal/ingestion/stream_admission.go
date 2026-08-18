@@ -10,8 +10,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// streamAdmissionLease holds a producer queue reservation taken before filter debit.
-// Release on filter reject; Clear after successful publish enqueue.
 type streamAdmissionLease struct {
 	release func()
 }
@@ -133,8 +131,6 @@ func (h *AdsPacketHandler) tryAcquireStreamAdmission(campaignID uuid.UUID) (stre
 	return tryAcquireStreamAdmission(h.cfg, h.sharder, h.streamProducers, h.brokerProducer, campaignID)
 }
 
-// rejectIfStreamProducerOverloaded is a read-only pressure check (no reservation).
-// Prefer tryAcquireStreamAdmission on paths that debit budget then publish to StreamProducer.
 func rejectIfStreamProducerOverloaded(
 	cfg *config.Config,
 	sharder Sharder,

@@ -2,8 +2,6 @@ package ingestion
 
 import "log/slog"
 
-// BootstrapFromReplica loads the last-known campaign snapshot from disk before Redis/PG.
-// PG Sync overwrites when available; this satisfies cold-start without shard 0.
 func (r *Registry) BootstrapFromReplica() (int, error) {
 	if r == nil {
 		return 0, nil

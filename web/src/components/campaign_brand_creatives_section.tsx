@@ -47,7 +47,9 @@ function TableSkeleton({ cols, rows = 5 }: { cols: number; rows?: number }) {
       {Array.from({ length: rows }, (_, i) => (
         <tr key={`cr-skel-${i}`} className="data-table__row--skeleton" aria-hidden="true">
           {Array.from({ length: cols }, (__, j) => (
-            <td key={`cr-skel-${i}-${j}`}><span className="skeleton-bar" /></td>
+            <td key={`cr-skel-${i}-${j}`}>
+              <span className="skeleton-bar" />
+            </td>
           ))}
         </tr>
       ))}
@@ -55,9 +57,6 @@ function TableSkeleton({ cols, rows = 5 }: { cols: number; rows?: number }) {
   );
 }
 
-/**
- * Weighted brand landing URLs CRUD for a campaign.
- */
 export function CampaignBrandCreativesSection({
   brandId: initialBrandId,
   customerId,
@@ -81,7 +80,9 @@ export function CampaignBrandCreativesSection({
   }, [initialBrandId]);
 
   const markOutboxQueued = (action: string) => {
-    setOutboxHint(`${action} queued to outbox — live on tracker typically within 60s (Redis brand creatives sync).`);
+    setOutboxHint(
+      `${action} queued to outbox — live on tracker typically within 60s (Redis brand creatives sync).`
+    );
   };
 
   const load = useCallback(async () => {
@@ -93,7 +94,9 @@ export function CampaignBrandCreativesSection({
     setLoading(true);
     const [rows, err] = await to(fetchBrandCreatives(brandId));
     setLoading(false);
-    setCreatives(err ? [] : (rows ?? []).map(asCreative).filter((c): c is BrandCreativeRow => c != null));
+    setCreatives(
+      err ? [] : (rows ?? []).map(asCreative).filter((c): c is BrandCreativeRow => c != null)
+    );
   }, [brandId]);
 
   useEffect(() => {
@@ -144,12 +147,14 @@ export function CampaignBrandCreativesSection({
   const togglePause = async (creative: BrandCreativeRow) => {
     if (!canWrite) return;
     const next = creative.status === 'PAUSED' ? 'ACTIVE' : 'PAUSED';
-    const [, err] = await to(updateBrandCreative(creative.id, {
-      name: creative.name,
-      landing_url: creative.landing_url,
-      weight: creative.weight,
-      status: next,
-    }));
+    const [, err] = await to(
+      updateBrandCreative(creative.id, {
+        name: creative.name,
+        landing_url: creative.landing_url,
+        weight: creative.weight,
+        status: next,
+      })
+    );
     if (err) {
       if (err instanceof ConfirmCancelledError) return;
       pushToastMessage({ title: 'Update failed', message: mapServiceError(err).message });
@@ -178,9 +183,7 @@ export function CampaignBrandCreativesSection({
       </p>
       {outboxHint ? (
         <p className="text-sm" data-testid="creative-outbox-sync">
-          <StatusBadge status="pending" kind="service" label="Outbox sync" />
-          {' '}
-          {outboxHint}
+          <StatusBadge status="pending" kind="service" label="Outbox sync" /> {outboxHint}
         </p>
       ) : null}
       {!brandId && !canWrite ? (

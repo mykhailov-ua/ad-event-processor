@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/edge"
-	"github.com/bidshard/ad-event-processor/internal/edge/bpf"
 	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
 	"github.com/bidshard/ad-event-processor/pkg/netaddr"
 
@@ -39,14 +38,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	objs := bpf.EdgeObjects{}
-	if err := bpf.LoadEdgeObjectsLenient(&objs, nil); err != nil {
+	objs := edge.EdgeObjects{}
+	if err := edge.LoadEdgeObjectsLenient(&objs, nil); err != nil {
 		slog.Error("load bpf objects", "error", err)
 		os.Exit(1)
 	}
 	defer func() { _ = objs.Close() }()
 
-	if err := bpf.InitConfigFromEnv(objs.Config); err != nil {
+	if err := edge.InitConfigFromEnv(objs.Config); err != nil {
 		slog.Error("init bpf config", "error", err)
 		os.Exit(1)
 	}
@@ -74,7 +73,7 @@ func main() {
 			os.Exit(1)
 		}
 		defer func() { _ = xdpLink.Close() }()
-		slog.Info("edge xdp attached", "iface", *iface, "mode", attachedMode, "requested_mode", *mode, "pin_dir", *pinDir, "syn_cookie", bpf.SynCookieEnabled())
+		slog.Info("edge xdp attached", "iface", *iface, "mode", attachedMode, "requested_mode", *mode, "pin_dir", *pinDir, "syn_cookie", edge.SynCookieEnabled())
 	} else {
 		slog.Warn("ebpf_xdp_edge module not licensed; skipping XDP attach (maps pinned)", "iface", *iface, "pin_dir", *pinDir)
 	}

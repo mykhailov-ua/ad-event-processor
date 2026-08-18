@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/internal/database"
 
 	"github.com/google/uuid"
@@ -52,12 +51,12 @@ func TestCustomersList_Handler(t *testing.T) {
 		mux.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusOK, w.Code)
-		var resp adminapi.CustomerListResponse
+		var resp CustomerListResponse
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 		assert.Greater(t, resp.Total, int64(0))
 		require.NotEmpty(t, resp.Items)
 
-		var found *adminapi.CustomerDTO
+		var found *CustomerDTO
 		for i := range resp.Items {
 			if resp.Items[i].ID == custID.String() {
 				found = &resp.Items[i]
@@ -76,7 +75,7 @@ func TestCustomersList_Handler(t *testing.T) {
 		mux.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusOK, w.Code)
-		var dto adminapi.CustomerDTO
+		var dto CustomerDTO
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &dto))
 		assert.Equal(t, custID.String(), dto.ID)
 		assert.Equal(t, "250.00", dto.Balance)
@@ -167,7 +166,7 @@ func TestCampaignsList_Handler(t *testing.T) {
 		mux.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusOK, w.Code)
-		var resp adminapi.CampaignListResponse
+		var resp CampaignListResponse
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 		assert.Greater(t, resp.Total, int64(0))
 
@@ -190,7 +189,7 @@ func TestCampaignsList_Handler(t *testing.T) {
 		mux.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusOK, w.Code)
-		var resp adminapi.CampaignListResponse
+		var resp CampaignListResponse
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 		for _, c := range resp.Items {
 			assert.Equal(t, custID.String(), c.CustomerID)

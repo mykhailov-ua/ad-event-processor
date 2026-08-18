@@ -3,11 +3,9 @@ package controlplane
 import (
 	"encoding/json"
 	"net/http"
-
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 )
 
-type MutationPreview = adminapi.MutationPreviewDTO
+type MutationPreview = MutationPreviewDTO
 
 type BlockIPWouldChange struct {
 	IP          string `json:"ip"`

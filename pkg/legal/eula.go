@@ -1,4 +1,3 @@
-// Package legal embeds operator-facing license and EULA text.
 package legal
 
 import (

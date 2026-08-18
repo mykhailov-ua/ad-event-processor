@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	db "github.com/bidshard/ad-event-processor/internal/domain/db"
 	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 
@@ -64,16 +63,16 @@ func FromUUID(pg pgtype.UUID) uuid.UUID {
 	return uuid.Nil
 }
 
-func (s *TelegramServiceImpl) ValidateInitData(ctx context.Context, campaignID uuid.UUID, initData string) (adminapi.ValidateResult, error) {
+func (s *TelegramServiceImpl) ValidateInitData(ctx context.Context, campaignID uuid.UUID, initData string) (ValidateResult, error) {
 	pgCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	q := db.New(s.pool)
 	bot, err := q.GetTelegramBot(pgCtx, ToUUID(campaignID))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return adminapi.ValidateResult{Valid: false}, fmt.Errorf("bot not configured for campaign %s", campaignID)
+			return ValidateResult{Valid: false}, fmt.Errorf("bot not configured for campaign %s", campaignID)
 		}
-		return adminapi.ValidateResult{Valid: false}, err
+		return ValidateResult{Valid: false}, err
 	}
 
 	authTTL := int64(bot.AuthDateTtl)
@@ -83,7 +82,7 @@ func (s *TelegramServiceImpl) ValidateInitData(ctx context.Context, campaignID u
 
 	params, err := ValidateInitData(initData, bot.BotToken, authTTL)
 	if err != nil {
-		return adminapi.ValidateResult{Valid: false}, err
+		return ValidateResult{Valid: false}, err
 	}
 
 	userStr := params["user"]
@@ -93,7 +92,9 @@ func (s *TelegramServiceImpl) ValidateInitData(ctx context.Context, campaignID u
 		Username  string `json:"username"`
 	}
 	if userStr != "" {
-		_ = json.Unmarshal([]byte(userStr), &userObj)
+		if err := json.Unmarshal([]byte(userStr), &userObj); err != nil {
+			return ValidateResult{Valid: false}, errValidation("invalid telegram user payload")
+		}
 	}
 
 	clickID := uuid.New()
@@ -111,11 +112,14 @@ func (s *TelegramServiceImpl) ValidateInitData(ctx context.Context, campaignID u
 		WidgetID:       params["query_id"],
 		BotID:          uint64(bot.BotID),
 	}
-	metaBytes, _ := json.Marshal(meta)
+	metaBytes, err := json.Marshal(meta)
+	if err != nil {
+		return ValidateResult{Valid: false}, fmt.Errorf("marshal telegram event meta: %w", err)
+	}
 
 	rdb := s.svc.getRDB(campaignID)
 	if rdb == nil {
-		return adminapi.ValidateResult{Valid: false}, errors.New("no redis client for campaign")
+		return ValidateResult{Valid: false}, errors.New("no redis client for campaign")
 	}
 
 	redisCtx, cancelR := context.WithTimeout(ctx, 2*time.Second)
@@ -123,10 +127,10 @@ func (s *TelegramServiceImpl) ValidateInitData(ctx context.Context, campaignID u
 	redisKey := fmt.Sprintf("{%s}tg:click:%s", campaignID.String(), clickID.String())
 	err = rdb.Set(redisCtx, redisKey, metaBytes, 15*time.Minute).Err()
 	if err != nil {
-		return adminapi.ValidateResult{Valid: false}, fmt.Errorf("failed to save click to redis: %w", err)
+		return ValidateResult{Valid: false}, fmt.Errorf("failed to save click to redis: %w", err)
 	}
 
-	return adminapi.ValidateResult{
+	return ValidateResult{
 		Valid:     true,
 		ClickID:   clickID.String(),
 		ExpiresAt: expiresAt.Unix(),
@@ -134,7 +138,7 @@ func (s *TelegramServiceImpl) ValidateInitData(ctx context.Context, campaignID u
 	}, nil
 }
 
-func (s *TelegramServiceImpl) MintClick(ctx context.Context, campaignID uuid.UUID) (adminapi.ClickMintResult, error) {
+func (s *TelegramServiceImpl) MintClick(ctx context.Context, campaignID uuid.UUID) (ClickMintResult, error) {
 	clickID := uuid.New()
 	expiresAt := time.Now().Add(15 * time.Minute)
 
@@ -143,22 +147,25 @@ func (s *TelegramServiceImpl) MintClick(ctx context.Context, campaignID uuid.UUI
 		StartParam: "",
 		BotID:      0,
 	}
-	metaBytes, _ := json.Marshal(meta)
+	metaBytes, err := json.Marshal(meta)
+	if err != nil {
+		return ClickMintResult{}, fmt.Errorf("marshal telegram event meta: %w", err)
+	}
 
 	rdb := s.svc.getRDB(campaignID)
 	if rdb == nil {
-		return adminapi.ClickMintResult{}, errors.New("no redis client for campaign")
+		return ClickMintResult{}, errors.New("no redis client for campaign")
 	}
 
 	redisCtx, cancelR := context.WithTimeout(ctx, 2*time.Second)
 	defer cancelR()
 	redisKey := fmt.Sprintf("{%s}tg:click:%s", campaignID.String(), clickID.String())
-	err := rdb.Set(redisCtx, redisKey, metaBytes, 15*time.Minute).Err()
+	err = rdb.Set(redisCtx, redisKey, metaBytes, 15*time.Minute).Err()
 	if err != nil {
-		return adminapi.ClickMintResult{}, fmt.Errorf("failed to save click to redis: %w", err)
+		return ClickMintResult{}, fmt.Errorf("failed to save click to redis: %w", err)
 	}
 
-	return adminapi.ClickMintResult{
+	return ClickMintResult{
 		ClickID:   clickID.String(),
 		ExpiresAt: expiresAt.Unix(),
 	}, nil
@@ -190,7 +197,7 @@ func (s *TelegramServiceImpl) ReceiveWebhook(ctx context.Context, botID int64, s
 	err = q.TryClaimTelegramWebhookUpdate(pgCtx, update.UpdateID)
 	if err != nil {
 		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" { // unique violation
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			return nil
 		}
 		return err
@@ -212,10 +219,10 @@ func (s *TelegramServiceImpl) ReceiveWebhook(ctx context.Context, botID int64, s
 	return err
 }
 
-func (s *TelegramServiceImpl) CreateDeeplink(ctx context.Context, d adminapi.DeeplinkDTO) (adminapi.DeeplinkDTO, error) {
+func (s *TelegramServiceImpl) CreateDeeplink(ctx context.Context, d DeeplinkDTO) (DeeplinkDTO, error) {
 	token, err := GenerateBridgeToken()
 	if err != nil {
-		return adminapi.DeeplinkDTO{}, err
+		return DeeplinkDTO{}, err
 	}
 	d.Token = token
 	d.ExpiresAt = time.Now().Add(7 * 24 * time.Hour)
@@ -237,7 +244,7 @@ func (s *TelegramServiceImpl) CreateDeeplink(ctx context.Context, d adminapi.Dee
 		ExpiresAt:   pgtype.Timestamptz{Time: d.ExpiresAt, Valid: true},
 	})
 	if err != nil {
-		return adminapi.DeeplinkDTO{}, err
+		return DeeplinkDTO{}, err
 	}
 
 	rdb := s.svc.getRDB(d.CampaignID)
@@ -245,11 +252,17 @@ func (s *TelegramServiceImpl) CreateDeeplink(ctx context.Context, d adminapi.Dee
 		redisCtx, cancelR := context.WithTimeout(ctx, 2*time.Second)
 		defer cancelR()
 		redisKey := "tg:deeplink:" + token
-		dBytes, _ := json.Marshal(d)
+		dBytes, err := json.Marshal(d)
+		if err != nil {
+			return DeeplinkDTO{}, fmt.Errorf("marshal deeplink cache: %w", err)
+		}
 		set, err := rdb.SetNX(redisCtx, redisKey, dBytes, 7*24*time.Hour).Result()
 		if err == nil && !set {
 			if cached, getErr := rdb.Get(redisCtx, redisKey).Bytes(); getErr == nil {
-				_ = json.Unmarshal(cached, &d)
+				var cachedD DeeplinkDTO
+				if json.Unmarshal(cached, &cachedD) == nil {
+					d = cachedD
+				}
 			}
 		}
 	}
@@ -257,19 +270,19 @@ func (s *TelegramServiceImpl) CreateDeeplink(ctx context.Context, d adminapi.Dee
 	return d, nil
 }
 
-func (s *TelegramServiceImpl) GetDeeplink(ctx context.Context, token string) (adminapi.DeeplinkDTO, error) {
+func (s *TelegramServiceImpl) GetDeeplink(ctx context.Context, token string) (DeeplinkDTO, error) {
 	pgCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	q := db.New(s.pool)
 	row, err := q.GetTelegramDeeplink(pgCtx, token)
 	if err != nil {
-		return adminapi.DeeplinkDTO{}, err
+		return DeeplinkDTO{}, err
 	}
 	var landingTS *time.Time
 	if row.LandingTs.Valid {
 		landingTS = &row.LandingTs.Time
 	}
-	return adminapi.DeeplinkDTO{
+	return DeeplinkDTO{
 		Token:       row.Token,
 		CampaignID:  FromUUID(row.CampaignID),
 		Fbclid:      row.Fbclid.String,
@@ -284,7 +297,7 @@ func (s *TelegramServiceImpl) GetDeeplink(ctx context.Context, token string) (ad
 	}, nil
 }
 
-func (s *TelegramServiceImpl) ConfigureBot(ctx context.Context, bot adminapi.BotDTO) error {
+func (s *TelegramServiceImpl) ConfigureBot(ctx context.Context, bot BotDTO) error {
 	q := db.New(s.pool)
 	existing, err := q.GetTelegramBot(ctx, ToUUID(bot.CampaignID))
 	if err != nil {
@@ -313,15 +326,15 @@ func (s *TelegramServiceImpl) ConfigureBot(ctx context.Context, bot adminapi.Bot
 	})
 }
 
-func (s *TelegramServiceImpl) ListBots(ctx context.Context) ([]adminapi.BotDTO, error) {
+func (s *TelegramServiceImpl) ListBots(ctx context.Context) ([]BotDTO, error) {
 	q := db.New(s.pool)
 	rows, err := q.ListTelegramBots(ctx)
 	if err != nil {
 		return nil, err
 	}
-	res := make([]adminapi.BotDTO, len(rows))
+	res := make([]BotDTO, len(rows))
 	for i, row := range rows {
-		res[i] = adminapi.BotDTO{
+		res[i] = BotDTO{
 			CampaignID:  FromUUID(row.CampaignID),
 			BotID:       row.BotID,
 			BotToken:    row.BotToken,
@@ -336,13 +349,13 @@ func (s *TelegramServiceImpl) ListBots(ctx context.Context) ([]adminapi.BotDTO, 
 	return res, nil
 }
 
-func (s *TelegramServiceImpl) GetBot(ctx context.Context, campaignID uuid.UUID) (adminapi.BotDTO, error) {
+func (s *TelegramServiceImpl) GetBot(ctx context.Context, campaignID uuid.UUID) (BotDTO, error) {
 	q := db.New(s.pool)
 	row, err := q.GetTelegramBot(ctx, ToUUID(campaignID))
 	if err != nil {
-		return adminapi.BotDTO{}, err
+		return BotDTO{}, err
 	}
-	return adminapi.BotDTO{
+	return BotDTO{
 		CampaignID:  FromUUID(row.CampaignID),
 		BotID:       row.BotID,
 		BotToken:    row.BotToken,
@@ -355,7 +368,7 @@ func (s *TelegramServiceImpl) GetBot(ctx context.Context, campaignID uuid.UUID) 
 	}, nil
 }
 
-func (s *TelegramServiceImpl) CreatePostback(ctx context.Context, p adminapi.PostbackDTO) error {
+func (s *TelegramServiceImpl) CreatePostback(ctx context.Context, p PostbackDTO) error {
 	q := db.New(s.pool)
 	return q.InsertTelegramPostback(ctx, db.InsertTelegramPostbackParams{
 		ID:          ToUUID(p.ID),
@@ -372,13 +385,13 @@ func (s *TelegramServiceImpl) UpdatePostback(ctx context.Context, id uuid.UUID, 
 	})
 }
 
-func (s *TelegramServiceImpl) GetPostback(ctx context.Context, id uuid.UUID) (adminapi.PostbackDTO, error) {
+func (s *TelegramServiceImpl) GetPostback(ctx context.Context, id uuid.UUID) (PostbackDTO, error) {
 	q := db.New(s.pool)
 	row, err := q.GetTelegramPostback(ctx, ToUUID(id))
 	if err != nil {
-		return adminapi.PostbackDTO{}, err
+		return PostbackDTO{}, err
 	}
-	return adminapi.PostbackDTO{
+	return PostbackDTO{
 		ID:          FromUUID(row.ID),
 		CampaignID:  FromUUID(row.CampaignID),
 		PostbackURL: row.PostbackUrl,
@@ -387,7 +400,7 @@ func (s *TelegramServiceImpl) GetPostback(ctx context.Context, id uuid.UUID) (ad
 	}, nil
 }
 
-func (s *TelegramServiceImpl) ListPostbacks(ctx context.Context, campaignID uuid.UUID) ([]adminapi.PostbackDTO, error) {
+func (s *TelegramServiceImpl) ListPostbacks(ctx context.Context, campaignID uuid.UUID) ([]PostbackDTO, error) {
 	pgCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	q := db.New(s.pool)
@@ -395,9 +408,9 @@ func (s *TelegramServiceImpl) ListPostbacks(ctx context.Context, campaignID uuid
 	if err != nil {
 		return nil, err
 	}
-	res := make([]adminapi.PostbackDTO, len(rows))
+	res := make([]PostbackDTO, len(rows))
 	for i, row := range rows {
-		res[i] = adminapi.PostbackDTO{
+		res[i] = PostbackDTO{
 			ID:          FromUUID(row.ID),
 			CampaignID:  FromUUID(row.CampaignID),
 			PostbackURL: row.PostbackUrl,
@@ -448,9 +461,10 @@ func (s *TelegramServiceImpl) sendBotMessage(ctx context.Context, botToken strin
 
 	resp, err := client.Do(req)
 	if err != nil {
+		coldpath.CloseHTTPResponse(resp)
 		return err
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer coldpath.CloseHTTPResponse(resp)
 
 	if resp.StatusCode != http.StatusOK {
 		var errData struct {
@@ -491,9 +505,10 @@ func (s *TelegramServiceImpl) TestPostback(ctx context.Context, id uuid.UUID) er
 	}
 	resp, err := client.Do(req)
 	if err != nil {
+		coldpath.CloseHTTPResponse(resp)
 		return err
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer coldpath.CloseHTTPResponse(resp)
 	if resp.StatusCode >= 400 {
 		return fmt.Errorf("postback url returned status code %d", resp.StatusCode)
 	}

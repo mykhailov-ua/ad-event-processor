@@ -1,8 +1,3 @@
-# Production TLS overlay for docker compose.
-#   - Postgres server cert/key under ${PG_TLS_CERT_DIR} (mounted below)
-#   - Redis TLS certs under ${REDIS_TLS_CERT_DIR}; apps use REDIS_TLS_* client paths
-#   - Unique PII_SALT_HEX and REDIS_PASSWORD (not .env.example placeholders)
-
 services:
   db:
     command:
@@ -32,9 +27,9 @@ services:
     command:
       - redis-server
       - --port
-      - "0"
+      - '0'
       - --tls-port
-      - "6379"
+      - '6379'
       - --tls-cert-file
       - /tls/redis.crt
       - --tls-key-file

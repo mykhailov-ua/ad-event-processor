@@ -1,11 +1,11 @@
 package ingestion
 
 import (
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
-
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"github.com/stretchr/testify/require"
 )

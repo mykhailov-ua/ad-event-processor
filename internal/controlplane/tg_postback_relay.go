@@ -3,12 +3,12 @@ package controlplane
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"time"
 
 	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
 )
@@ -47,10 +47,10 @@ func (s *TelegramServiceImpl) relayPostbacks(ctx context.Context, campaignID uui
 		}
 		resp, err := client.Do(req)
 		if err != nil {
+			coldpath.CloseHTTPResponse(resp)
 			continue
 		}
-		_, _ = io.Copy(io.Discard, resp.Body)
-		_ = resp.Body.Close()
+		coldpath.CloseHTTPResponse(resp)
 	}
 }
 

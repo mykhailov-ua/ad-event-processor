@@ -15,7 +15,7 @@ echo "$out" | grep -q 'ad_postback_dispatch_total{provider="facebook",status="su
   exit 1
 }
 
-if CAPI_STAGING_DRY_RUN=0 bash "$SCRIPT" 2>/dev/null; then
+if CAPI_STAGING_DRY_RUN=0 bash "$SCRIPT" 2> /dev/null; then
   echo "capi_meta_staging_test: expected failure without TRACK_URL" >&2
   exit 1
 fi

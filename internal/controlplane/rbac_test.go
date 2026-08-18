@@ -31,6 +31,7 @@ func TestNormalizeRole(t *testing.T) {
 
 func TestGetPermissionsForRole(t *testing.T) {
 	adminPerms := []string{
+		"*",
 		"customers:write", "customers:read",
 		"campaigns:write", "campaigns:read",
 		"brands:write", "brands:read",

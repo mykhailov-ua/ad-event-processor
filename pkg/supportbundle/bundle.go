@@ -1,4 +1,3 @@
-// Package supportbundle collects redacted operator support artifacts.
 package supportbundle
 
 import (

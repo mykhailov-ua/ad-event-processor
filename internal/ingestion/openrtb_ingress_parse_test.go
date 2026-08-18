@@ -114,7 +114,6 @@ func TestParseOpenRTB3Ingress_RejectsESPXNative(t *testing.T) {
 }
 
 func TestParseOpenRTB3FSM_MalformedItemArrayNoHang(t *testing.T) {
-
 	payload := []byte(`{"rtb":{"ver":"","item":["id":"a","flr":1.5},{"id":"b","fr":1.l`)
 	done := make(chan struct{})
 	go func() {

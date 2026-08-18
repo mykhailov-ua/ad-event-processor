@@ -8,11 +8,6 @@ import (
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/edge"
-	"github.com/bidshard/ad-event-processor/internal/edge/allowlist"
-	"github.com/bidshard/ad-event-processor/internal/edge/blocklist"
-	"github.com/bidshard/ad-event-processor/internal/edge/bpf"
-	"github.com/bidshard/ad-event-processor/internal/edge/fingerprint"
-	"github.com/bidshard/ad-event-processor/internal/edge/xdpstats"
 	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
 	"github.com/bidshard/ad-event-processor/pkg/netaddr"
 
@@ -51,21 +46,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	denyMap, err := blocklist.LoadPinnedMap(blocklistPath)
+	denyMap, err := edge.LoadPinnedBlocklistMap(blocklistPath)
 	if err != nil {
 		slog.Error("open pinned blocklist map", "path", blocklistPath, "error", err)
 		os.Exit(1)
 	}
 	defer func() { _ = denyMap.Close() }()
 
-	allowMap, err := allowlist.LoadPinnedMap(allowlistPath)
+	allowMap, err := edge.LoadPinnedAllowlistMap(allowlistPath)
 	if err != nil {
 		slog.Error("open pinned allowlist map", "path", allowlistPath, "error", err)
 		os.Exit(1)
 	}
 	defer func() { _ = allowMap.Close() }()
 
-	statsMap, err := bpf.LoadPinnedStatsMap(statsPath)
+	statsMap, err := edge.LoadPinnedStatsMap(statsPath)
 	if err != nil {
 		slog.Warn("open pinned stats map; xdp metrics disabled", "path", statsPath, "error", err)
 	} else {
@@ -73,7 +68,7 @@ func main() {
 	}
 
 	var violationReader *ringbuf.Reader
-	violationsMap, err := bpf.LoadPinnedViolationsMap(violationsPath)
+	violationsMap, err := edge.LoadPinnedViolationsMap(violationsPath)
 	if err != nil {
 		slog.Warn("open pinned violations ringbuf; autoban disabled", "path", violationsPath, "error", err)
 	} else {
@@ -87,7 +82,7 @@ func main() {
 	}
 
 	var fingerprintReader *ringbuf.Reader
-	fingerprintsMap, err := bpf.LoadPinnedFingerprintsMap(fingerprintsPath)
+	fingerprintsMap, err := edge.LoadPinnedFingerprintsMap(fingerprintsPath)
 	if err != nil {
 		slog.Warn("open pinned fingerprints ringbuf; ivt staging disabled", "path", fingerprintsPath, "error", err)
 	} else {
@@ -108,26 +103,26 @@ func main() {
 
 	go serveMetrics(ctx, metricsPort)
 
-	denyStore := blocklist.NewStore()
-	allowStore := allowlist.NewStore()
+	denyStore := edge.NewBlocklistStore()
+	allowStore := edge.NewAllowlistStore()
 	var lastStats []uint64
 
-	violationHandler := bpf.NewViolationHandler(func(evt bpf.ViolationEvent) error {
-		ip := bpf.HostIPv4(evt.SrcIP)
-		if err := blocklist.RecordAutoBan(ctx, rdb, ip, autobanTTL); err != nil {
+	violationHandler := edge.NewViolationHandler(func(evt edge.ViolationEvent) error {
+		ip := edge.HostIPv4(evt.SrcIP)
+		if err := edge.RecordAutoBan(ctx, rdb, ip, autobanTTL); err != nil {
 			return err
 		}
 		slog.Info("xdp autoban recorded",
 			"ip", ip,
-			"reason", bpf.ViolationReasonLabel(evt.Reason),
+			"reason", edge.ViolationReasonLabel(evt.Reason),
 			"ttl", autobanTTL.String(),
 		)
 		return nil
 	})
 
-	fingerprintHandler := bpf.NewFingerprintHandler(func(evt bpf.FingerprintEvent) error {
-		return fingerprint.Record(ctx, rdb, fingerprint.Entry{
-			IP:      bpf.HostIPv4(evt.SrcIP),
+	fingerprintHandler := edge.NewFingerprintHandler(func(evt edge.FingerprintEvent) error {
+		return edge.Record(ctx, rdb, edge.Entry{
+			IP:      edge.HostIPv4(evt.SrcIP),
 			TCPHash: evt.TCPHash,
 			TTL:     evt.TTL,
 			Window:  evt.Window,
@@ -221,12 +216,12 @@ func serveMetrics(ctx context.Context, port string) {
 	}
 }
 
-func runSync(ctx context.Context, rdb *redis.Client, denyMap, allowMap *ebpf.Map, denyStore *blocklist.Store, allowStore *allowlist.Store) error {
-	denyAdded, denyRemoved, err := blocklist.SyncFromRedis(ctx, rdb, denyMap, denyStore)
+func runSync(ctx context.Context, rdb *redis.Client, denyMap, allowMap *ebpf.Map, denyStore *edge.BlocklistStore, allowStore *edge.AllowlistStore) error {
+	denyAdded, denyRemoved, err := edge.SyncBlocklistFromRedis(ctx, rdb, denyMap, denyStore)
 	if err != nil {
 		return err
 	}
-	allowAdded, allowRemoved, err := allowlist.SyncFromRedis(ctx, rdb, allowMap, allowStore)
+	allowAdded, allowRemoved, err := edge.SyncAllowlistFromRedis(ctx, rdb, allowMap, allowStore)
 	if err != nil {
 		return err
 	}
@@ -242,14 +237,14 @@ func runSync(ctx context.Context, rdb *redis.Client, denyMap, allowMap *ebpf.Map
 }
 
 func exportStats(ctx context.Context, rdb *redis.Client, statsMap *ebpf.Map, last []uint64) []uint64 {
-	last = bpf.ExportStatsToPrometheus(statsMap, last)
-	totals, err := bpf.AggregateStats(statsMap)
+	last = edge.ExportStatsToPrometheus(statsMap, last)
+	totals, err := edge.AggregateStats(statsMap)
 	if err != nil {
 		return last
 	}
-	snap := bpf.BuildSnapshot(totals)
+	snap := edge.BuildSnapshot(totals)
 	snap.UpdatedAt = time.Now().UTC()
-	if err := xdpstats.WriteRedis(ctx, rdb, snap); err != nil {
+	if err := edge.WriteRedis(ctx, rdb, snap); err != nil {
 		slog.Warn("write xdp stats snapshot", "error", err)
 	}
 	return last

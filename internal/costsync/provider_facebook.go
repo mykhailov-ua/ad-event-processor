@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 	"github.com/bidshard/ad-event-processor/pkg/money"
 )
 
@@ -66,10 +67,14 @@ func fetchFacebookCosts(ctx context.Context, client *http.Client, baseURL string
 
 	resp, err := client.Do(req)
 	if err != nil {
+		coldpath.CloseHTTPResponse(resp)
 		return nil, err
 	}
-	defer func() { _ = resp.Body.Close() }()
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	defer coldpath.CloseHTTPResponse(resp)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	if err != nil {
+		return nil, fmt.Errorf("facebook insights: read body: %w", err)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("facebook insights: status %d: %s", resp.StatusCode, string(body))
 	}

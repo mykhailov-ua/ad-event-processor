@@ -1,6 +1,3 @@
-/**
- * Parse a JSON string message and post the result (or null on failure).
- */
 type ParseJsonWorkerSelf = {
   onmessage: ((ev: MessageEvent<unknown>) => void) | null;
   postMessage: (message: unknown) => void;

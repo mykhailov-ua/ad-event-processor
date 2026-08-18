@@ -1,8 +1,6 @@
 package logpipeline
 
 import (
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
-
 	"context"
 	"errors"
 	"os"
@@ -12,6 +10,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 )
 
 type faultInjectedStore struct {

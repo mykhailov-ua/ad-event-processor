@@ -43,7 +43,9 @@ function TableSkeleton({ cols, rows = 4 }: { cols: number; rows?: number }) {
       {Array.from({ length: rows }, (_, i) => (
         <tr key={`sk-${i}`} className="data-table__row--skeleton" aria-hidden="true">
           {Array.from({ length: cols }, (__, j) => (
-            <td key={`sk-${i}-${j}`}><span className="skeleton-bar" /></td>
+            <td key={`sk-${i}-${j}`}>
+              <span className="skeleton-bar" />
+            </td>
           ))}
         </tr>
       ))}
@@ -51,9 +53,6 @@ function TableSkeleton({ cols, rows = 4 }: { cols: number; rows?: number }) {
   );
 }
 
-/**
- * Cost Sync integration admin view.
- */
 export function IntegrationsCostSyncPage() {
   const [searchParams] = useSearchParams();
   const user = auth.getUser();
@@ -112,13 +111,15 @@ export function IntegrationsCostSyncPage() {
   const saveCredential = async () => {
     if (!canWrite || !isCustomerUuid(customerId)) return;
     setBusy(true);
-    const [, err] = await to(upsertCostSyncCredential(credForm.network, {
-      customer_id: customerId,
-      account_id: credForm.account_id.trim(),
-      access_token: credForm.access_token,
-      refresh_token: credForm.refresh_token,
-      api_key: credForm.api_key,
-    }));
+    const [, err] = await to(
+      upsertCostSyncCredential(credForm.network, {
+        customer_id: customerId,
+        account_id: credForm.account_id.trim(),
+        access_token: credForm.access_token,
+        refresh_token: credForm.refresh_token,
+        api_key: credForm.api_key,
+      })
+    );
     setBusy(false);
     if (err) {
       if (err instanceof ConfirmCancelledError) return;
@@ -173,16 +174,16 @@ export function IntegrationsCostSyncPage() {
       <div className="page-header">
         <h1 className="page-header__title">Cost Sync</h1>
         <p className="page-header__desc">
-          Import network spend for reconciliation. Credentials are encrypted at rest. After sync, open{' '}
-          <a href="/reports/true-roi">True ROI</a> for Ad Spend / True Profit / True ROI / True CPA.
+          Import network spend for reconciliation. Credentials are encrypted at rest. After sync,
+          open <a href="/reports/true-roi">True ROI</a> for Ad Spend / True Profit / True ROI / True
+          CPA.
         </p>
       </div>
 
       {drillCampaignId ? (
         <p className="text-muted text-sm" data-testid="cost-sync-drill-campaign">
-          Discrepancy drill-down for campaign{' '}
-          <span className="font-mono">{drillCampaignId}</span>
-          {' '}— review import history below.
+          Discrepancy drill-down for campaign <span className="font-mono">{drillCampaignId}</span> —
+          review import history below.
         </p>
       ) : null}
 
@@ -267,7 +268,9 @@ export function IntegrationsCostSyncPage() {
                     onChange={(e) => setCredForm((f) => ({ ...f, network: e.target.value }))}
                   >
                     {COST_SYNC_NETWORKS.map((n: CostSyncNetwork) => (
-                      <option key={n.id} value={n.id}>{n.label}</option>
+                      <option key={n.id} value={n.id}>
+                        {n.label}
+                      </option>
                     ))}
                   </select>
                 </label>
@@ -335,7 +338,9 @@ export function IntegrationsCostSyncPage() {
                 onChange={(e) => setRunForm((f) => ({ ...f, network: e.target.value }))}
               >
                 {COST_SYNC_NETWORKS.map((n: CostSyncNetwork) => (
-                  <option key={n.id} value={n.id}>{n.label}</option>
+                  <option key={n.id} value={n.id}>
+                    {n.label}
+                  </option>
                 ))}
               </select>
             </label>
@@ -387,7 +392,9 @@ export function IntegrationsCostSyncPage() {
               <tbody>
                 {loading ? <TableSkeleton cols={6} /> : null}
                 {!loading && history.length === 0 ? (
-                  <tr><td colSpan={6}>No runs yet.</td></tr>
+                  <tr>
+                    <td colSpan={6}>No runs yet.</td>
+                  </tr>
                 ) : null}
                 {history.map((row, i) => (
                   <tr key={`${row.cost_date}-${row.network}-${i}`}>
@@ -395,7 +402,13 @@ export function IntegrationsCostSyncPage() {
                     <td>{row.network ?? '—'}</td>
                     <td>
                       <StatusBadge
-                        status={row.status === 'success' ? 'ACTIVE' : row.status === 'failed' ? 'ARCHIVED' : 'PAUSED'}
+                        status={
+                          row.status === 'success'
+                            ? 'ACTIVE'
+                            : row.status === 'failed'
+                              ? 'ARCHIVED'
+                              : 'PAUSED'
+                        }
                         label={row.status}
                       />
                     </td>

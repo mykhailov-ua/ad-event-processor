@@ -1,4 +1,3 @@
-/** harness=mock_api — CPA-M5 team governance; does not prove Postgres users seed. */
 import { test, expect } from '@playwright/test';
 import { mockAuthedSession, TEAM_LEAD_USER, ADMIN_USER } from './helpers.js';
 
@@ -152,9 +151,11 @@ test('team lead approves budget request', async ({ page }) => {
 
   await page.goto('/team');
   await expect(page.getByTestId('team-budget-approvals')).toBeVisible();
-  await expect.poll(async () => {
-    return await page.getByTestId('team-approval-row-appr-1').isVisible();
-  }).toBe(true);
+  await expect
+    .poll(async () => {
+      return await page.getByTestId('team-approval-row-appr-1').isVisible();
+    })
+    .toBe(true);
   await page.getByTestId('team-approval-approve-appr-1').click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click();

@@ -9,8 +9,10 @@ import (
 	"github.com/google/uuid"
 )
 
-var benchClickCampaignID = uuid.MustParse("550e8400-e29b-41d4-a716-446655440000")
-var benchClickBrandID = uuid.MustParse("660e8400-e29b-41d4-a716-446655440001")
+var (
+	benchClickCampaignID = uuid.MustParse("550e8400-e29b-41d4-a716-446655440000")
+	benchClickBrandID    = uuid.MustParse("660e8400-e29b-41d4-a716-446655440001")
+)
 
 func benchClickHandler(b *testing.B) (*AdsPacketHandler, []byte) {
 	staticCampaignMu.Lock()

@@ -12,7 +12,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
-// harness=gnet_region_proxy — slow TCP peers sending incomplete length-prefixed frames.
 func TestSlowClient_ReadIdleClosesPartialFrameDrip(t *testing.T) {
 	srv, err := NewServer("127.0.0.1:0", t.TempDir(), iogate.NewDiskWriteGate(iogate.TestGateConfig()))
 	if err != nil {

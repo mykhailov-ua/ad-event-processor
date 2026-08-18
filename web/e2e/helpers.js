@@ -1,5 +1,3 @@
-/** Shared Playwright API mocks for admin e2e. */
-
 export const ADMIN_USER = {
   id: 'admin-1',
   email: 'admin@test.local',
@@ -41,12 +39,7 @@ export const TEAM_LEAD_USER = {
   email: 'lead@test.local',
   role: 'TL',
   customer_id: 'cust-team-1',
-  permissions: [
-    'campaigns:read',
-    'campaigns:write',
-    'billing:read',
-    'customers:read',
-  ],
+  permissions: ['campaigns:read', 'campaigns:write', 'billing:read', 'customers:read'],
 };
 
 export const PUBLISHER_USER = {
@@ -57,10 +50,6 @@ export const PUBLISHER_USER = {
   permissions: ['supply:read:scoped', 'customers:read'],
 };
 
-/**
- * @param {import('@playwright/test').Page} page
- * @param {object} user
- */
 export async function mockAuthedSession(page, user) {
   await page.route('**/api/v1/auth/me', async (route) => {
     await route.fulfill({
@@ -88,9 +77,6 @@ export async function mockAuthedSession(page, user) {
   });
 }
 
-/**
- * @param {import('@playwright/test').Page} page
- */
 export async function mockLoginSuccess(page, user = ADMIN_USER) {
   await page.route('**/api/v1/auth/login', async (route) => {
     await route.fulfill({

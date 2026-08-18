@@ -2,7 +2,6 @@ package licensing
 
 import "strings"
 
-// Commercial SKU codes (deploy/vendor/sku.yaml). Used to sanitize signed JWT features at runtime.
 const (
 	SKUCodePilot      = "pilot"
 	SKUCodeStarter    = "starter"
@@ -10,10 +9,9 @@ const (
 	SKUCodeScale      = "scale"
 	SKUCodeNetwork    = "network"
 	SKUCodeEnterprise = "enterprise"
-	SKUCodeLicense    = "license" // internal unlimited
+	SKUCodeLicense    = "license"
 )
 
-// SanitizeFeaturesForSKU forces tier feature caps (HTTP redirect + track only on entry tiers).
 func SanitizeFeaturesForSKU(sku string, features FeatureSet) FeatureSet {
 	out := features.Normalized()
 	switch strings.ToLower(strings.TrimSpace(sku)) {
@@ -28,7 +26,7 @@ func SanitizeFeaturesForSKU(sku string, features FeatureSet) FeatureSet {
 	case SKUCodePro, SKUCodeScale:
 		out.EbpfXDPEdge = false
 	case SKUCodeNetwork:
-		// RTB + ML; XDP still Enterprise-only unless explicitly granted in JWT.
+
 		out.EbpfXDPEdge = false
 	case SKUCodePilot:
 		out.EbpfXDPEdge = false
@@ -36,7 +34,6 @@ func SanitizeFeaturesForSKU(sku string, features FeatureSet) FeatureSet {
 	return out
 }
 
-// OpenRTBAllowed gates /openrtb/bid and RTB auction on /track.
 func OpenRTBAllowed(state LicenseState, ent Entitlements) bool {
 	if state == StateExpired || state == StateRevoked {
 		return false
@@ -44,7 +41,6 @@ func OpenRTBAllowed(state LicenseState, ent Entitlements) bool {
 	return ent.Features.OpenRTBEnabled()
 }
 
-// EbpfEdgeAllowed gates edge XDP / edge-bpf-sync.
 func EbpfEdgeAllowed(state LicenseState, ent Entitlements) bool {
 	if state == StateExpired || state == StateRevoked {
 		return false

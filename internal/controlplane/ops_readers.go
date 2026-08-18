@@ -19,12 +19,12 @@ import (
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	db "github.com/bidshard/ad-event-processor/internal/domain/db"
 	"github.com/bidshard/ad-event-processor/internal/metrics"
 	"github.com/bidshard/ad-event-processor/internal/notify"
 	"github.com/bidshard/ad-event-processor/pkg/branding"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -54,16 +54,16 @@ func newOpsReader(svc *Service) *opsReader {
 	return &opsReader{svc: svc}
 }
 
-func (r *opsReader) GetIncidentSnapshot(ctx context.Context) (adminapi.IncidentSnapshotDTO, error) {
+func (r *opsReader) GetIncidentSnapshot(ctx context.Context) (IncidentSnapshotDTO, error) {
 	report, err := r.svc.GetShardHealth(ctx)
 	if err != nil {
-		return adminapi.IncidentSnapshotDTO{}, err
+		return IncidentSnapshotDTO{}, err
 	}
-	snap := adminapi.IncidentSnapshotDTO{
+	snap := IncidentSnapshotDTO{
 		EmergencyBreaker: report.EmergencyBreaker,
 		Shards:           report.Shards,
 		Outbox:           report.Outbox,
-		StreamLag:        []adminapi.ShardStreamLag{},
+		StreamLag:        []ShardStreamLag{},
 		BreakerStates:    map[string]string{},
 	}
 	stale, _ := r.incidentDashboardStale(ctx)
@@ -77,9 +77,9 @@ func (r *opsReader) GetIncidentSnapshot(ctx context.Context) (adminapi.IncidentS
 	return snap, nil
 }
 
-func (r *opsReader) ListOutboxEvents(ctx context.Context, status, eventType, cursor string, limit int32) (adminapi.OutboxListResult, error) {
+func (r *opsReader) ListOutboxEvents(ctx context.Context, status, eventType, cursor string, limit int32) (OutboxListResult, error) {
 	if r.svc.GetPool() == nil {
-		return adminapi.OutboxListResult{}, fmt.Errorf("postgres pool not configured")
+		return OutboxListResult{}, fmt.Errorf("postgres pool not configured")
 	}
 	if limit <= 0 {
 		limit = 50
@@ -88,7 +88,7 @@ func (r *opsReader) ListOutboxEvents(ctx context.Context, status, eventType, cur
 	if cursor != "" {
 		n, err := strconv.ParseInt(cursor, 10, 64)
 		if err != nil {
-			return adminapi.OutboxListResult{}, errInvalidQuery("invalid cursor")
+			return OutboxListResult{}, errInvalidQuery("invalid cursor")
 		}
 		cursorID = n
 	}
@@ -101,26 +101,26 @@ func (r *opsReader) ListOutboxEvents(ctx context.Context, status, eventType, cur
 		ORDER BY id DESC
 		LIMIT $4`, status, eventType, cursorID, limit+1)
 	if err != nil {
-		return adminapi.OutboxListResult{}, err
+		return OutboxListResult{}, err
 	}
 	defer rows.Close()
 
-	var items []adminapi.OutboxEventDTO
+	var items []OutboxEventDTO
 	for rows.Next() {
 		var id int64
 		var eventTypeVal, statusVal string
 		var createdAt time.Time
 		if err := rows.Scan(&id, &eventTypeVal, &statusVal, &createdAt); err != nil {
-			return adminapi.OutboxListResult{}, err
+			return OutboxListResult{}, err
 		}
-		items = append(items, adminapi.OutboxEventDTO{
+		items = append(items, OutboxEventDTO{
 			ID:        id,
 			EventType: eventTypeVal,
 			Status:    statusVal,
 			CreatedAt: createdAt.UTC().Format(time.RFC3339),
 		})
 	}
-	result := adminapi.OutboxListResult{Items: items, Total: int64(len(items))}
+	result := OutboxListResult{Items: items, Total: int64(len(items))}
 	if int32(len(items)) > limit {
 		result.Items = items[:limit]
 		result.NextCursor = strconv.FormatInt(result.Items[len(result.Items)-1].ID, 10)
@@ -128,30 +128,30 @@ func (r *opsReader) ListOutboxEvents(ctx context.Context, status, eventType, cur
 	return result, rows.Err()
 }
 
-func (r *opsReader) ListDLQEntries(ctx context.Context, cursor string, limit int) (adminapi.FanOutResult[adminapi.DLQEntryDTO], error) {
+func (r *opsReader) ListDLQEntries(ctx context.Context, cursor string, limit int) (FanOutResult[DLQEntryDTO], error) {
 	return r.listDLQEntries(ctx, cursor, limit)
 }
 
-func (r *opsReader) EnqueueDLQRetry(ctx context.Context, payload adminapi.DLQRetryPayload, idempotencyKey string) error {
+func (r *opsReader) EnqueueDLQRetry(ctx context.Context, payload DLQRetryPayload, idempotencyKey string) error {
 	return r.enqueueDLQRetry(ctx, payload, idempotencyKey)
 }
 
-func (r *opsReader) GetShardHealthFanOut(ctx context.Context) (adminapi.ShardHealthAPIResponse, error) {
+func (r *opsReader) GetShardHealthFanOut(ctx context.Context) (ShardHealthAPIResponse, error) {
 	report, err := r.svc.GetShardHealth(ctx)
 	if err != nil {
-		return adminapi.ShardHealthAPIResponse{}, err
+		return ShardHealthAPIResponse{}, err
 	}
-	return adminapi.ShardHealthAPIResponse{
+	return ShardHealthAPIResponse{
 		ShardHealthReport: report,
 	}, nil
 }
 
-func (r *opsReader) ExportAuditCSV(ctx context.Context, cursor string, redactPII bool, w io.Writer) (adminapi.AuditExportResult, error) {
+func (r *opsReader) ExportAuditCSV(ctx context.Context, cursor string, redactPII bool, w io.Writer) (AuditExportResult, error) {
 	var cursorID int64
 	if cursor != "" {
 		n, err := strconv.ParseInt(cursor, 10, 64)
 		if err != nil {
-			return adminapi.AuditExportResult{}, errInvalidQuery("invalid cursor")
+			return AuditExportResult{}, errInvalidQuery("invalid cursor")
 		}
 		cursorID = n
 	}
@@ -164,7 +164,7 @@ func (r *opsReader) ExportAuditCSV(ctx context.Context, cursor string, redactPII
 		Limit:   500,
 	})
 	if err != nil {
-		return adminapi.AuditExportResult{}, err
+		return AuditExportResult{}, err
 	}
 	var lastID int64
 	for _, row := range rows {
@@ -201,13 +201,13 @@ func (r *opsReader) ExportAuditCSV(ctx context.Context, cursor string, redactPII
 	}
 	cw.Flush()
 	if err := cw.Error(); err != nil {
-		return adminapi.AuditExportResult{}, err
+		return AuditExportResult{}, err
 	}
 	byteCount := 0
 	if buf, ok := w.(*bytes.Buffer); ok {
 		byteCount = buf.Len()
 	}
-	result := adminapi.AuditExportResult{Bytes: byteCount}
+	result := AuditExportResult{Bytes: byteCount}
 	if len(rows) >= 500 {
 		result.Truncated = true
 		result.NextCursor = strconv.FormatInt(lastID, 10)
@@ -227,7 +227,7 @@ func (r *opsReader) LookupLedgerIDForPaymentIntent(ctx context.Context, intentID
 	return strconv.FormatInt(row.ID, 10), nil
 }
 
-func (r *opsReader) ListReconRuns(ctx context.Context, service string, limit, offset int32) ([]adminapi.ReconRunDTO, int64, error) {
+func (r *opsReader) ListReconRuns(ctx context.Context, service string, limit, offset int32) ([]ReconRunDTO, int64, error) {
 	return r.svc.ListReconRuns(ctx, service, limit, offset)
 }
 
@@ -544,9 +544,10 @@ func fetchMetrics(ctx context.Context, client *http.Client, url string) ([]byte,
 	}
 	resp, err := client.Do(req)
 	if err != nil {
+		coldpath.CloseHTTPResponse(resp)
 		return nil, "", err
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer coldpath.CloseHTTPResponse(resp)
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
 	if err != nil {
 		return nil, "", err
@@ -654,21 +655,21 @@ const dashboardMetricsBucketSec = 300
 
 const mlManualLabelsListLimit = 100
 
-func (r *opsReader) GetDashboardSummary(ctx context.Context) (adminapi.DashboardSummaryDTO, error) {
+func (r *opsReader) GetDashboardSummary(ctx context.Context) (DashboardSummaryDTO, error) {
 	if r == nil || r.svc == nil {
-		return adminapi.DashboardSummaryDTO{}, fmt.Errorf("service not configured")
+		return DashboardSummaryDTO{}, fmt.Errorf("service not configured")
 	}
 	now := time.Now().UTC()
 	snap, err := r.GetIncidentSnapshot(ctx)
 	if err != nil {
-		return adminapi.DashboardSummaryDTO{}, err
+		return DashboardSummaryDTO{}, err
 	}
 	services := buildDashboardTopology(ctx, r.svc, snap)
 	driftMax, rps, err := r.readDashboardLiveSignals(ctx, now)
 	if err != nil {
-		return adminapi.DashboardSummaryDTO{}, err
+		return DashboardSummaryDTO{}, err
 	}
-	return adminapi.DashboardSummaryDTO{
+	return DashboardSummaryDTO{
 		GeneratedAt:      now.Format(time.RFC3339),
 		Services:         services,
 		DriftMicroMax:    driftMax,
@@ -679,9 +680,9 @@ func (r *opsReader) GetDashboardSummary(ctx context.Context) (adminapi.Dashboard
 	}, nil
 }
 
-func (r *opsReader) GetDashboardMetrics(ctx context.Context, rangeHours int, metricName string) (adminapi.DashboardMetricsDTO, error) {
+func (r *opsReader) GetDashboardMetrics(ctx context.Context, rangeHours int, metricName string) (DashboardMetricsDTO, error) {
 	if r == nil || r.svc == nil || r.svc.GetPool() == nil {
-		return adminapi.DashboardMetricsDTO{}, fmt.Errorf("postgres pool not configured")
+		return DashboardMetricsDTO{}, fmt.Errorf("postgres pool not configured")
 	}
 	if rangeHours <= 0 {
 		rangeHours = 24
@@ -699,22 +700,22 @@ func (r *opsReader) GetDashboardMetrics(ctx context.Context, rangeHours int, met
 		Column4: float64(dashboardMetricsBucketSec),
 	})
 	if err != nil {
-		return adminapi.DashboardMetricsDTO{}, err
+		return DashboardMetricsDTO{}, err
 	}
-	points := make([]adminapi.DashboardMetricPoint, 0, len(rows))
+	points := make([]DashboardMetricPoint, 0, len(rows))
 	for _, row := range rows {
 		ts, ok := metricSampleTime(row.Ts)
 		if !ok {
 			continue
 		}
-		points = append(points, adminapi.DashboardMetricPoint{
+		points = append(points, DashboardMetricPoint{
 			Name:       row.Name,
 			LabelsHash: row.LabelsHash,
 			Timestamp:  ts.UTC().Format(time.RFC3339),
 			Value:      row.Value,
 		})
 	}
-	return adminapi.DashboardMetricsDTO{
+	return DashboardMetricsDTO{
 		Range:       fmt.Sprintf("%dh", rangeHours),
 		BucketSec:   dashboardMetricsBucketSec,
 		Points:      points,
@@ -722,8 +723,8 @@ func (r *opsReader) GetDashboardMetrics(ctx context.Context, rangeHours int, met
 	}, nil
 }
 
-func buildDashboardTopology(ctx context.Context, svc *Service, snap adminapi.IncidentSnapshotDTO) []adminapi.DashboardServiceCard {
-	cards := []adminapi.DashboardServiceCard{
+func buildDashboardTopology(ctx context.Context, svc *Service, snap IncidentSnapshotDTO) []DashboardServiceCard {
+	cards := []DashboardServiceCard{
 		{ID: "management", Name: "Management", Status: "ok"},
 		{ID: "tracker", Name: "Tracker", Status: "unknown"},
 		{ID: "processor", Name: "Processor", Status: "unknown"},
@@ -735,9 +736,9 @@ func buildDashboardTopology(ctx context.Context, svc *Service, snap adminapi.Inc
 			status = "down"
 			detail = err.Error()
 		}
-		cards = append(cards, adminapi.DashboardServiceCard{ID: "pg", Name: "Postgres", Status: status, Detail: detail})
+		cards = append(cards, DashboardServiceCard{ID: "pg", Name: "Postgres", Status: status, Detail: detail})
 	} else {
-		cards = append(cards, adminapi.DashboardServiceCard{ID: "pg", Name: "Postgres", Status: "down"})
+		cards = append(cards, DashboardServiceCard{ID: "pg", Name: "Postgres", Status: "down"})
 	}
 	chStatus := "disabled"
 	if svc != nil && svc.cfg != nil && svc.cfg.ClickHouseEnabled() {
@@ -746,13 +747,13 @@ func buildDashboardTopology(ctx context.Context, svc *Service, snap adminapi.Inc
 			chStatus = "down"
 		}
 	}
-	cards = append(cards, adminapi.DashboardServiceCard{ID: "ch", Name: "ClickHouse", Status: chStatus})
+	cards = append(cards, DashboardServiceCard{ID: "ch", Name: "ClickHouse", Status: chStatus})
 	for _, shard := range snap.Shards {
 		status := "ok"
 		if !shard.PingOK {
 			status = "down"
 		}
-		cards = append(cards, adminapi.DashboardServiceCard{
+		cards = append(cards, DashboardServiceCard{
 			ID:     fmt.Sprintf("redis-%d", shard.ShardID),
 			Name:   fmt.Sprintf("Redis %d", shard.ShardID),
 			Status: status,
@@ -823,18 +824,18 @@ func metricSampleTime(v any) (time.Time, bool) {
 	return time.Time{}, false
 }
 
-func (r *opsReader) GetMLModelStatus(ctx context.Context) (adminapi.MLModelStatusDTO, error) {
+func (r *opsReader) GetMLModelStatus(ctx context.Context) (MLModelStatusDTO, error) {
 	if r == nil || r.svc == nil || r.svc.GetPool() == nil {
-		return adminapi.MLModelStatusDTO{}, fmt.Errorf("postgres pool not configured")
+		return MLModelStatusDTO{}, fmt.Errorf("postgres pool not configured")
 	}
 
-	status := adminapi.MLModelStatusDTO{
-		ShardSync: []adminapi.MLShardSyncDTO{},
+	status := MLModelStatusDTO{
+		ShardSync: []MLShardSyncDTO{},
 	}
 
 	active, err := r.loadMLModelVersion(ctx, "ACTIVE")
 	if err != nil {
-		return adminapi.MLModelStatusDTO{}, err
+		return MLModelStatusDTO{}, err
 	}
 	if active != nil {
 		status.ActiveVersion = active
@@ -843,7 +844,7 @@ func (r *opsReader) GetMLModelStatus(ctx context.Context) (adminapi.MLModelStatu
 
 	syncing, err := r.loadMLModelVersion(ctx, "SYNCING")
 	if err != nil {
-		return adminapi.MLModelStatusDTO{}, err
+		return MLModelStatusDTO{}, err
 	}
 	if syncing != nil {
 		status.SyncingVersion = syncing
@@ -854,13 +855,13 @@ func (r *opsReader) GetMLModelStatus(ctx context.Context) (adminapi.MLModelStatu
 
 	shardSync, err := r.loadMLShardSyncState(ctx)
 	if err != nil {
-		return adminapi.MLModelStatusDTO{}, err
+		return MLModelStatusDTO{}, err
 	}
 	status.ShardSync = shardSync
 
 	redisStatus, err := r.readMLModelRedis(ctx)
 	if err != nil {
-		return adminapi.MLModelStatusDTO{}, err
+		return MLModelStatusDTO{}, err
 	}
 	status.Redis = redisStatus
 
@@ -914,7 +915,7 @@ func (r *opsReader) readMLDriftReport() (mlEvalReport, error) {
 	return out, nil
 }
 
-func topFeatureImportance(metadata []byte, limit int) []adminapi.MLFeatureImportanceDTO {
+func topFeatureImportance(metadata []byte, limit int) []MLFeatureImportanceDTO {
 	if len(metadata) == 0 || limit <= 0 {
 		return nil
 	}
@@ -934,9 +935,9 @@ func topFeatureImportance(metadata []byte, limit int) []adminapi.MLFeatureImport
 	if len(names) > limit {
 		names = names[:limit]
 	}
-	out := make([]adminapi.MLFeatureImportanceDTO, len(names))
+	out := make([]MLFeatureImportanceDTO, len(names))
 	for i, name := range names {
-		out[i] = adminapi.MLFeatureImportanceDTO{
+		out[i] = MLFeatureImportanceDTO{
 			Name:  name,
 			Value: meta.Importance[name],
 		}
@@ -974,7 +975,7 @@ func (r *opsReader) AddMLManualLabel(ctx context.Context, ipHash string, label i
 	return err
 }
 
-func (r *opsReader) ListMLManualLabels(ctx context.Context) ([]adminapi.MLManualLabelDTO, error) {
+func (r *opsReader) ListMLManualLabels(ctx context.Context) ([]MLManualLabelDTO, error) {
 	if r == nil || r.svc == nil || r.svc.GetPool() == nil {
 		return nil, fmt.Errorf("postgres pool not configured")
 	}
@@ -988,9 +989,9 @@ func (r *opsReader) ListMLManualLabels(ctx context.Context) ([]adminapi.MLManual
 	}
 	defer rows.Close()
 
-	var out []adminapi.MLManualLabelDTO
+	var out []MLManualLabelDTO
 	for rows.Next() {
-		var row adminapi.MLManualLabelDTO
+		var row MLManualLabelDTO
 		var createdAt time.Time
 		if err := rows.Scan(&row.IPHash, &row.Label, &row.Reason, &row.Source, &createdAt); err != nil {
 			return nil, err
@@ -1001,7 +1002,7 @@ func (r *opsReader) ListMLManualLabels(ctx context.Context) ([]adminapi.MLManual
 	return out, rows.Err()
 }
 
-func (r *opsReader) loadMLModelVersion(ctx context.Context, modelStatus string) (*adminapi.MLModelVersionDTO, error) {
+func (r *opsReader) loadMLModelVersion(ctx context.Context, modelStatus string) (*MLModelVersionDTO, error) {
 	var id, artifactHash, status string
 	var metricsJSON []byte
 	var createdAt time.Time
@@ -1017,7 +1018,7 @@ func (r *opsReader) loadMLModelVersion(ctx context.Context, modelStatus string) 
 		}
 		return nil, fmt.Errorf("query ml_model_versions %s: %w", modelStatus, err)
 	}
-	return &adminapi.MLModelVersionDTO{
+	return &MLModelVersionDTO{
 		ID:               id,
 		ArtifactHash:     artifactHash,
 		Status:           status,
@@ -1026,7 +1027,7 @@ func (r *opsReader) loadMLModelVersion(ctx context.Context, modelStatus string) 
 	}, nil
 }
 
-func (r *opsReader) loadMLShardSyncState(ctx context.Context) ([]adminapi.MLShardSyncDTO, error) {
+func (r *opsReader) loadMLShardSyncState(ctx context.Context) ([]MLShardSyncDTO, error) {
 	rows, err := r.svc.GetPool().Query(ctx, `
 		SELECT shard_id, model_version, phase, started_at
 		FROM ml_shard_sync_state
@@ -1036,7 +1037,7 @@ func (r *opsReader) loadMLShardSyncState(ctx context.Context) ([]adminapi.MLShar
 	}
 	defer rows.Close()
 
-	var out []adminapi.MLShardSyncDTO
+	var out []MLShardSyncDTO
 	for rows.Next() {
 		var shardID int
 		var modelVersion, phase string
@@ -1044,7 +1045,7 @@ func (r *opsReader) loadMLShardSyncState(ctx context.Context) ([]adminapi.MLShar
 		if err := rows.Scan(&shardID, &modelVersion, &phase, &startedAt); err != nil {
 			return nil, err
 		}
-		out = append(out, adminapi.MLShardSyncDTO{
+		out = append(out, MLShardSyncDTO{
 			ShardID:      shardID,
 			ModelVersion: modelVersion,
 			Phase:        phase,
@@ -1054,10 +1055,10 @@ func (r *opsReader) loadMLShardSyncState(ctx context.Context) ([]adminapi.MLShar
 	return out, rows.Err()
 }
 
-func (r *opsReader) readMLModelRedis(ctx context.Context) (adminapi.MLModelRedisDTO, error) {
+func (r *opsReader) readMLModelRedis(ctx context.Context) (MLModelRedisDTO, error) {
 	rdbs := r.svc.rdbs
 	if len(rdbs) == 0 {
-		return adminapi.MLModelRedisDTO{}, nil
+		return MLModelRedisDTO{}, nil
 	}
 
 	type shardRedis struct {
@@ -1076,19 +1077,19 @@ func (r *opsReader) readMLModelRedis(ctx context.Context) (adminapi.MLModelRedis
 		hashCmd := pipe.Get(ctx, "ml:model:hash")
 		appliedCmd := pipe.Get(ctx, "ml:model:applied_at")
 		if _, err := pipe.Exec(ctx); err != nil && !errors.Is(err, redis.Nil) {
-			return adminapi.MLModelRedisDTO{}, fmt.Errorf("ml model redis pipeline: %w", err)
+			return MLModelRedisDTO{}, fmt.Errorf("ml model redis pipeline: %w", err)
 		}
 		version, err := verCmd.Result()
 		if err != nil && !errors.Is(err, redis.Nil) {
-			return adminapi.MLModelRedisDTO{}, fmt.Errorf("query ml:model:version: %w", err)
+			return MLModelRedisDTO{}, fmt.Errorf("query ml:model:version: %w", err)
 		}
 		hash, err := hashCmd.Result()
 		if err != nil && !errors.Is(err, redis.Nil) {
-			return adminapi.MLModelRedisDTO{}, fmt.Errorf("query ml:model:hash: %w", err)
+			return MLModelRedisDTO{}, fmt.Errorf("query ml:model:hash: %w", err)
 		}
 		appliedRaw, err := appliedCmd.Result()
 		if err != nil && !errors.Is(err, redis.Nil) {
-			return adminapi.MLModelRedisDTO{}, fmt.Errorf("query ml:model:applied_at: %w", err)
+			return MLModelRedisDTO{}, fmt.Errorf("query ml:model:applied_at: %w", err)
 		}
 		var appliedAt int64
 		if appliedRaw != "" {
@@ -1102,7 +1103,7 @@ func (r *opsReader) readMLModelRedis(ctx context.Context) (adminapi.MLModelRedis
 	}
 
 	if len(shards) == 0 {
-		return adminapi.MLModelRedisDTO{}, nil
+		return MLModelRedisDTO{}, nil
 	}
 
 	ref := shards[0]
@@ -1114,7 +1115,7 @@ func (r *opsReader) readMLModelRedis(ctx context.Context) (adminapi.MLModelRedis
 		}
 	}
 
-	out := adminapi.MLModelRedisDTO{
+	out := MLModelRedisDTO{
 		VersionID:        ref.version,
 		Hash:             ref.hash,
 		ShardsReporting:  len(shards),

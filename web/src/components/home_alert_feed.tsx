@@ -8,9 +8,6 @@ export type HomeAlertFeedProps = {
   alerts: HomeAlertCard[];
 };
 
-/**
- * Session-dismissible home alert cards.
- */
 export function HomeAlertFeed({ alerts }: HomeAlertFeedProps) {
   const [, bump] = useState(0);
 

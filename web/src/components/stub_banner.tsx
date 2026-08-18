@@ -4,9 +4,6 @@ export type StubBannerProps = {
   linkLabel?: string;
 };
 
-/**
- * 501 stub endpoint banner with optional link.
- */
 export function StubBanner({
   message = 'Endpoint not implemented (501).',
   linkTo,
@@ -16,7 +13,9 @@ export function StubBanner({
     <div className="stub-banner">
       <p className="stub-banner__message">{message}</p>
       {linkTo ? (
-        <a href={linkTo} className="stub-banner__link">{linkLabel}</a>
+        <a href={linkTo} className="stub-banner__link">
+          {linkLabel}
+        </a>
       ) : null}
     </div>
   );

@@ -1,6 +1,3 @@
-// Placement blacklist benches (harness: placement_blacklist_mock_redis).
-// placementHExistsMock stubs Redis HExists — not live Redis RTT.
-// Do not cite as tracker p99 SLA evidence.
 package ingestion
 
 import (

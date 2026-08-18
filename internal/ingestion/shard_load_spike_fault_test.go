@@ -1,8 +1,6 @@
 package ingestion
 
 import (
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
-
 	"context"
 	"encoding/json"
 	"fmt"
@@ -12,6 +10,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"

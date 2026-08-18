@@ -1,4 +1,3 @@
-/** harness=mock_api — Playwright route.fulfill; does not prove Go handler or CH/PG. */
 import { test, expect } from '@playwright/test';
 import { mockAuthedSession, ADMIN_USER } from './helpers.js';
 
@@ -23,7 +22,7 @@ test('sidebar search focus stays inside sidebar at minimum width', async ({ page
   });
 
   await page.addInitScript(() => {
-    localStorage.setItem('ui.sidebar.width', '232');
+    localStorage.setItem('ui.sidebar.width', '220');
     localStorage.setItem('ui.sidebar.collapsed', '0');
   });
 
@@ -192,8 +191,15 @@ test('telegram analytics sub-nav uses in-page tabs only', async ({ page }) => {
   });
 
   await page.goto(`/reports/telegram?${qs}`);
-  await expect(page.getByRole('navigation', { name: 'Telegram reports' }).getByRole('link', { name: 'Funnel' })).toBeVisible();
-  await page.getByRole('navigation', { name: 'Telegram reports' }).getByRole('link', { name: 'Funnel' }).click();
+  await expect(
+    page.getByRole('navigation', { name: 'Telegram reports' }).getByRole('link', { name: 'Funnel' })
+  ).toBeVisible();
+  await page
+    .getByRole('navigation', { name: 'Telegram reports' })
+    .getByRole('link', { name: 'Funnel' })
+    .click();
   await expect(page).toHaveURL(/\/reports\/telegram\/funnel/);
-  await expect(page.getByRole('navigation', { name: 'Telegram reports' }).getByRole('link', { name: 'Bots' })).toBeVisible();
+  await expect(
+    page.getByRole('navigation', { name: 'Telegram reports' }).getByRole('link', { name: 'Bots' })
+  ).toBeVisible();
 });

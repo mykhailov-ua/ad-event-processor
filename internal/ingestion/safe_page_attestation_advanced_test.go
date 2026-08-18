@@ -9,8 +9,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const testCanvasHash64 = "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
-const testAudioHash64 = "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+const (
+	testCanvasHash64 = "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+	testAudioHash64  = "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+)
 
 func validAdvancedFingerprint() safePageVerifyFingerprint {
 	return safePageVerifyFingerprint{

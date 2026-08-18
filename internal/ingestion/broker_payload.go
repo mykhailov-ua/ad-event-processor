@@ -34,7 +34,6 @@ func ParseBrokerPayloadStream(data []byte, fn func(evt *domain.Event)) error {
 		evt, err := ParseBrokerPayload(msgBytes)
 		if err != nil {
 			if !parsedAny && offset == 0 {
-				// Raw vtproto can look like a uvarint length prefix; fall back to whole blob.
 				if rawEvt, rawErr := ParseBrokerPayload(data); rawErr == nil {
 					fn(rawEvt)
 					return nil

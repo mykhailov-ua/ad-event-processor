@@ -1,4 +1,3 @@
-// Package money implements money support for BidShard.
 package money
 
 import (

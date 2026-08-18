@@ -10,7 +10,6 @@ import (
 	"time"
 )
 
-// StrictContentionSnapshot captures settlement/ingest contention signals for ISO-18 drills.
 type StrictContentionSnapshot struct {
 	SessionDir string
 	PromURL    string

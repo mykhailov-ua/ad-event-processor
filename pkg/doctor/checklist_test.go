@@ -1,9 +1,10 @@
 package doctor
 
 import (
-	"github.com/bidshard/ad-event-processor/pkg/naming"
 	"os"
 	"testing"
+
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 )
 
 func TestMVSSChecklistTelemetryDefault(t *testing.T) {

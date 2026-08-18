@@ -137,7 +137,6 @@ func main() {
 		"window_sec", cfg.IVT.WindowSec,
 	)
 
-	// Shutdown order when RunLoop exits: cancel via ctx → close Redis → PG/CH (defer LIFO).
 	if rdb != nil {
 		defer func() { _ = rdb.Close() }()
 	}

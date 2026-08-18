@@ -27,9 +27,6 @@ function ingressPct(n: number, total: number): string {
   return total > 0 ? ((n / total) * 100).toFixed(1) : '0.0';
 }
 
-/**
- * Edge ingress and block-reason metrics for the operator dashboard.
- */
 export function EdgePanel({ edge }: { edge?: EdgePanelData | null }) {
   if (!edge) return null;
 
@@ -134,9 +131,6 @@ export function EdgePanel({ edge }: { edge?: EdgePanelData | null }) {
   );
 }
 
-/**
- * XDP pass/drop panel for the operator dashboard.
- */
 export function XDPPanel({ xdp }: { xdp?: XDPPanelData | null }) {
   if (!xdp || (!xdp.pass && !xdp.fingerprints && !xdp.drops)) return null;
 

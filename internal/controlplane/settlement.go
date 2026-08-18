@@ -3,6 +3,7 @@ package controlplane
 import (
 	"context"
 	"errors"
+
 	"github.com/bidshard/ad-event-processor/internal/config"
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	db "github.com/bidshard/ad-event-processor/internal/domain/db"
@@ -53,6 +54,10 @@ func (a handlerPaymentSettlement) ApplyPaymentChargebackReversal(ctx context.Con
 func (a handlerPaymentSettlement) GetLedgerEntry(ctx context.Context, paymentIntentID uuid.UUID) (domain.PaymentLedgerEntry, error) {
 	entry, _, err := a.h.ledgerEntry(ctx, paymentIntentID)
 	return entry, err
+}
+
+func (a handlerPaymentSettlement) GetLedgerEntries(ctx context.Context, paymentIntentIDs []uuid.UUID) (map[uuid.UUID]domain.PaymentLedgerEntry, error) {
+	return a.h.service.GetLedgerEntries(ctx, paymentIntentIDs)
 }
 
 type settlementCreditParams struct {

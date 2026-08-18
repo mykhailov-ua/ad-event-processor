@@ -12,6 +12,7 @@ import (
 
 	"github.com/bidshard/ad-event-processor/internal/config"
 	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 )
 
 const (
@@ -148,9 +149,10 @@ func (c *ProcessorWeightController) pollHTTPWeights(ctx context.Context) float64
 	}
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		coldpath.CloseHTTPResponse(resp)
 		return 0
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer coldpath.CloseHTTPResponse(resp)
 	if resp.StatusCode != http.StatusOK {
 		return 0
 	}

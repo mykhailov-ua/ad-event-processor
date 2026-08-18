@@ -7,9 +7,6 @@ export type StatusBadgeProps = {
   label?: string;
 };
 
-/**
- * Colored status badge for domain-specific status values.
- */
 export function StatusBadge({ status, kind = 'campaign', label }: StatusBadgeProps) {
   const text = label ?? displayLabel(status);
   const mod = statusClassFor(status, kind);

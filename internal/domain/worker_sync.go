@@ -76,6 +76,7 @@ func (w *SyncWorker) SetSpendSyncProducer(producer SpendSyncBroker) {
 	}
 	w.spendSync = producer
 }
+
 func (w *SyncWorker) ConfigureBudgetContention(lockTTLSec int, strictThresholdMicro int64) {
 	if w == nil {
 		return

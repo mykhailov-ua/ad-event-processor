@@ -69,7 +69,6 @@ func startStressNgOnDir(t *testing.T, dir string, duration time.Duration) *exec.
 	return cmd
 }
 
-// Scenario F (phase 9): stress-ng on spool dir + async append must not block callers (0 D-state).
 func TestFault_CHSpoolStressNgNoDState(t *testing.T) {
 	if testing.Short() {
 		t.Skip("fault integration test")

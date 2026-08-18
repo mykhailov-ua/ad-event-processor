@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/internal/database"
 	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 	"github.com/bidshard/ad-event-processor/pkg/platformconfig"
@@ -55,7 +54,7 @@ func TestManagementAPI_PlatformSettingsCycle(t *testing.T) {
 	registry := h.BuildAdminAPIRegistry(pool, []redis.UniversalClient{rdb})
 	registry.PlatformHTTP.AuthClient = authStub
 	registry.PlatformHTTP.Cfg = cfg
-	adminapi.RegisterRoutes(mux, registry)
+	RegisterRoutes(mux, registry)
 
 	t.Run("GET before bootstrap", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/settings/platform", http.NoBody)

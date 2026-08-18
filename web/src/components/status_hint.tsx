@@ -8,16 +8,9 @@ export type StatusHintProps = {
   className?: string;
 };
 
-/**
- * Inline persistent feedback with tone-specific styling.
- */
-export function StatusHint({
-  tone,
-  message,
-  icon,
-  className = '',
-}: StatusHintProps) {
-  const defaultIcon = tone === 'error' ? 'alert-circle' : tone === 'success' ? 'check-circle' : 'info';
+export function StatusHint({ tone, message, icon, className = '' }: StatusHintProps) {
+  const defaultIcon =
+    tone === 'error' ? 'alert-circle' : tone === 'success' ? 'check-circle' : 'info';
   const iconName = icon ?? defaultIcon;
 
   return (

@@ -1,8 +1,6 @@
 package ingestion
 
 import (
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
-
 	"context"
 	"net/http"
 	"strconv"
@@ -10,6 +8,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"

@@ -7,25 +7,13 @@ export type CheckboxProps = {
   className?: string;
 };
 
-/**
- * Custom-styled checkbox with optional label.
- */
-export function Checkbox({
-  checked,
-  disabled,
-  onChange,
-  label,
-  id,
-  className,
-}: CheckboxProps) {
+export function Checkbox({ checked, disabled, onChange, label, id, className }: CheckboxProps) {
   const inputId = id ?? `check-${label?.replace(/\s+/g, '-').toLowerCase() ?? 'box'}`;
   return (
     <label
-      className={[
-        'check',
-        disabled ? 'check--disabled' : '',
-        className ?? '',
-      ].filter(Boolean).join(' ')}
+      className={['check', disabled ? 'check--disabled' : '', className ?? '']
+        .filter(Boolean)
+        .join(' ')}
     >
       <input
         type="checkbox"

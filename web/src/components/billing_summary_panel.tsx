@@ -2,12 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { to } from '../lib/to.js';
 import { formatAmountMicro } from '../helpers/money.js';
 import { fetchBillingSummary } from '../helpers/billing_admin_api.js';
-import type { BillingSummaryDTO } from '../types/api/billing.js';
+import type { BillingSummaryDTO } from '../types/billing.js';
 import { ErrorBlock } from './error_block.js';
 
-/**
- * Fleet-wide billing MTD summary for operators (GET /billing/summary).
- */
 export function BillingSummaryPanel() {
   const [data, setData] = useState<BillingSummaryDTO | null>(null);
   const [loading, setLoading] = useState(true);

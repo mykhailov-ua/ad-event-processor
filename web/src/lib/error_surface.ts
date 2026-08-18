@@ -2,9 +2,6 @@ import { el } from './dom.js';
 
 let mounted = false;
 
-/**
- * Install global window error / unhandledrejection banners on the app root.
- */
 export function installErrorSurface(root: HTMLElement): void {
   if (mounted) return;
   mounted = true;
@@ -19,15 +16,16 @@ export function installErrorSurface(root: HTMLElement): void {
       });
       root.prepend(banner);
     }
-    const reloadBtn = el('button', {
-      type: 'button',
-      className: 'btn btn--primary btn--sm',
-      onClick: () => window.location.reload(),
-    }, 'Reload page');
-    banner.replaceChildren(
-      el('span', {}, message),
-      reloadBtn,
+    const reloadBtn = el(
+      'button',
+      {
+        type: 'button',
+        className: 'btn btn--primary btn--sm',
+        onClick: () => window.location.reload(),
+      },
+      'Reload page'
     );
+    banner.replaceChildren(el('span', {}, message), reloadBtn);
   }
 
   window.addEventListener('error', (e) => {
@@ -35,9 +33,7 @@ export function installErrorSurface(root: HTMLElement): void {
   });
   window.addEventListener('unhandledrejection', (e) => {
     const reason = e.reason;
-    const msg = reason instanceof Error
-      ? reason.message
-      : String(reason ?? 'Unhandled rejection');
+    const msg = reason instanceof Error ? reason.message : String(reason ?? 'Unhandled rejection');
     show(msg);
   });
 }

@@ -1,4 +1,3 @@
-// Package installer implements installer support for BidShard.
 package installer
 
 import (

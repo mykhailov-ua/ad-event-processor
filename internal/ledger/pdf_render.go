@@ -3,10 +3,11 @@ package ledger
 import (
 	"bytes"
 	"fmt"
-	"github.com/bidshard/ad-event-processor/internal/domain"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/bidshard/ad-event-processor/internal/domain"
 )
 
 func RenderInvoicePDF(inv *domain.Invoice) []byte {

@@ -1,4 +1,3 @@
-/** harness=mock_api — disputes tab; does not prove Postgres payment_disputes seed. */
 import { test, expect } from '@playwright/test';
 import { mockAuthedSession, ADMIN_USER } from './helpers.js';
 

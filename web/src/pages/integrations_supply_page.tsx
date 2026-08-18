@@ -43,7 +43,9 @@ function TableSkeleton({ cols, rows = 4 }: { cols: number; rows?: number }) {
       {Array.from({ length: rows }, (_, i) => (
         <tr key={`sk-${i}`} className="data-table__row--skeleton" aria-hidden="true">
           {Array.from({ length: cols }, (__, j) => (
-            <td key={`sk-${i}-${j}`}><span className="skeleton-bar" /></td>
+            <td key={`sk-${i}-${j}`}>
+              <span className="skeleton-bar" />
+            </td>
           ))}
         </tr>
       ))}
@@ -51,9 +53,6 @@ function TableSkeleton({ cols, rows = 4 }: { cols: number; rows?: number }) {
   );
 }
 
-/**
- * Supply files admin (sellers.json + ads.txt).
- */
 export function IntegrationsSupplyPage() {
   const canWrite = can(auth.getUser()?.permissions ?? [], 'settings:write');
 
@@ -110,10 +109,7 @@ export function IntegrationsSupplyPage() {
   }, []);
 
   const loadPreviews = useCallback(async () => {
-    const [s, a] = await Promise.all([
-      to(fetchSellersJSONPreview()),
-      to(fetchAdsTxtPreview()),
-    ]);
+    const [s, a] = await Promise.all([to(fetchSellersJSONPreview()), to(fetchAdsTxtPreview())]);
     setSellersPreview(s[1] ? `Error: ${s[1].message}` : (s[0] ?? ''));
     setAdsPreview(a[1] ? `Error: ${a[1].message}` : (a[0] ?? ''));
   }, []);
@@ -149,13 +145,15 @@ export function IntegrationsSupplyPage() {
   const addAdsRow = async () => {
     if (!canWrite) return;
     setBusy(true);
-    const [, err] = await to(createAdsTxtEntry({
-      domain: adsForm.domain.trim(),
-      publisher_account_id: adsForm.publisher_account_id.trim(),
-      relationship: adsForm.relationship.trim(),
-      cert_authority_id: adsForm.cert_authority_id.trim(),
-      sort_order: Number.parseInt(adsForm.sort_order, 10) || 0,
-    }));
+    const [, err] = await to(
+      createAdsTxtEntry({
+        domain: adsForm.domain.trim(),
+        publisher_account_id: adsForm.publisher_account_id.trim(),
+        relationship: adsForm.relationship.trim(),
+        cert_authority_id: adsForm.cert_authority_id.trim(),
+        sort_order: Number.parseInt(adsForm.sort_order, 10) || 0,
+      })
+    );
     setBusy(false);
     if (err) {
       if (err instanceof ConfirmCancelledError) return;
@@ -356,7 +354,9 @@ export function IntegrationsSupplyPage() {
                   <input
                     className="form-input"
                     value={adsForm.publisher_account_id}
-                    onChange={(e) => setAdsForm((f) => ({ ...f, publisher_account_id: e.target.value }))}
+                    onChange={(e) =>
+                      setAdsForm((f) => ({ ...f, publisher_account_id: e.target.value }))
+                    }
                   />
                 </label>
                 <label className="form-field">
@@ -415,7 +415,9 @@ export function IntegrationsSupplyPage() {
                 <code className="code-inline">{validation.ads_txt_checksum_sha256}</code>
               </dd>
               {(validation.issues ?? []).map((issue) => (
-                <dd key={issue} className="text-muted">{issue}</dd>
+                <dd key={issue} className="text-muted">
+                  {issue}
+                </dd>
               ))}
             </dl>
           ) : (

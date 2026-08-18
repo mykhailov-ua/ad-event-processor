@@ -20,8 +20,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Scenario E (milestone §5): SCRIPT FLUSH under concurrent filter eval must recover via
-// NOSCRIPT fallback + preheater without tripping the whole tracker path.
 func TestFault_NOSCRIPTStorm(t *testing.T) {
 	mr, err := miniredis.Run()
 	require.NoError(t, err)
@@ -117,8 +115,6 @@ func TestFault_NOSCRIPTStorm(t *testing.T) {
 	})
 }
 
-// Scenario F (milestone §5): async spool append must not block caller goroutines on fsync
-// (D-state isolation). Compose drill: scripts/fault/spool_compose_drill.sh (+ optional stress-ng).
 func TestFault_CHSpoolDiskBlock(t *testing.T) {
 	dir := t.TempDir()
 	spool, err := OpenCHSpool(dir)

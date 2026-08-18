@@ -1,11 +1,11 @@
 package logpipeline
 
 import (
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
-
 	"context"
 	"path/filepath"
 	"testing"
+
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"github.com/stretchr/testify/require"
 )

@@ -1,15 +1,12 @@
 import { apiConfirmed } from './confirmed_api.js';
 import { getOrCreate, clearScope } from './idempotency.js';
-import type { CampaignDTO, CampaignPatchBody } from '../types/api/campaign.js';
+import type { CampaignDTO, CampaignPatchBody } from '../types/campaign.js';
 
 export type CampaignCreateResult = { id: string };
 
-/**
- * Create a campaign via self-serve API.
- */
 export async function createCampaign(
   customerId: string,
-  body: Record<string, unknown>,
+  body: Record<string, unknown>
 ): Promise<CampaignCreateResult> {
   const scope = `create-campaign:${customerId}`;
   const payload: Record<string, unknown> = { ...body, customer_id: customerId };
@@ -26,12 +23,9 @@ export async function createCampaign(
   return res.data;
 }
 
-/**
- * Patch campaign settings (admin).
- */
 export async function patchCampaign(
   campaignId: string,
-  body: CampaignPatchBody,
+  body: CampaignPatchBody
 ): Promise<CampaignDTO | unknown> {
   const res = await apiConfirmed<CampaignDTO>(`/api/v1/campaigns/${campaignId}`, {
     method: 'PATCH',

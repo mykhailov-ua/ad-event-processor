@@ -19,7 +19,6 @@ func TestValidateURL_requiresHTTPS(t *testing.T) {
 }
 
 func TestValidateURL_allowsHTTPLab(t *testing.T) {
-	// Literal public IP avoids DNS in CI/sandbox.
 	err := proxyupstream.ValidateURL(context.Background(), "http://93.184.216.34/", true)
 	require.NoError(t, err)
 }

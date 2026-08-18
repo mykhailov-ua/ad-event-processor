@@ -43,22 +43,14 @@ func benchGeoFilterWithCountries(b *testing.B, geo GeoProvider) {
 	}
 }
 
-// BenchmarkGeoFilter_lookupError measures GeoFilter with a failing geo provider.
-// Harness: geo_mock_provider (errGeoProvider). Not production MaxMind perf.
-// Production geo: BenchmarkGeoFilter_MaxMindCountry when deploy/geoip/GeoLite2-Country.mmdb present, or load test.
 func BenchmarkGeoFilter_lookupError(b *testing.B) {
 	benchGeoFilterWithCountries(b, errGeoProvider{})
 }
 
-// BenchmarkGeoFilter_lookupOK measures GeoFilter with MockGeoProvider.
-// Harness: geo_mock_provider. Not production MaxMind perf.
-// Production geo: BenchmarkGeoFilter_MaxMindCountry when .mmdb present, or load test.
 func BenchmarkGeoFilter_lookupOK(b *testing.B) {
 	benchGeoFilterWithCountries(b, &MockGeoProvider{})
 }
 
-// BenchmarkGeoFilter_MaxMindCountry measures GeoFilter with GeoLite2-Country.mmdb fixture.
-// Harness: maxmind_mmdb_fixture. Skips when deploy/geoip/GeoLite2-Country.mmdb absent.
 func BenchmarkGeoFilter_MaxMindCountry(b *testing.B) {
 	const path = "deploy/geoip/GeoLite2-Country.mmdb"
 	if _, err := os.Stat(path); err != nil {
@@ -86,8 +78,6 @@ func BenchmarkFraudFilter_DC(b *testing.B) {
 	}
 }
 
-// BenchmarkGeoFilter measures GeoFilter with MockGeoProvider and mockRegistry.
-// Harness: geo_mock_provider. Not tracker p99 SLA evidence.
 func BenchmarkGeoFilter(b *testing.B) {
 	geo := &MockGeoProvider{}
 	registry := &mockRegistry{}
@@ -187,9 +177,6 @@ func BenchmarkKeyFormatting_DuplicateEventFilter(b *testing.B) {
 	}
 }
 
-// BenchmarkUnifiedFilter_Check measures UnifiedFilter.Check Go-layer overhead only.
-// Harness: unified_filter_mock_redis — mockRedisClient.EvalSha does not execute Lua.
-// For unified-filter Lua latency use BenchmarkLuaScript_Happy (testcontainers Redis).
 func BenchmarkUnifiedFilter_Check(b *testing.B) {
 	rdb := &mockRedisClient{}
 	sharder := NewJumpHashSharder(1)
@@ -227,9 +214,6 @@ func BenchmarkUnifiedFilter_Check(b *testing.B) {
 	}
 }
 
-// BenchmarkRedisBudgetManager_CheckAndSpend measures CheckAndSpend Go-layer overhead only.
-// Harness: redis_budget_mock — mockRedisClient.EvalSha does not execute Lua.
-// For unified-filter Lua latency use BenchmarkLuaScript_Happy (testcontainers Redis).
 func BenchmarkRedisBudgetManager_CheckAndSpend(b *testing.B) {
 	rdb := &mockRedisClient{}
 	bm := NewRedisBudgetManager(rdb, nil, time.Hour)

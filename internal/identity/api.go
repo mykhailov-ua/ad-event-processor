@@ -1,4 +1,3 @@
-// Package identity implements identity support for BidShard.
 package identity
 
 import (

@@ -1,18 +1,15 @@
-
--- name: CreateCampaign :one
 INSERT INTO campaigns (id, name, budget_limit, status, customer_id, pacing_mode, daily_budget, timezone, freq_limit, freq_window, target_countries, brand_id, brand_fcap_key, start_at, end_at, daypart_hours, template_id)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 RETURNING *;
 
--- name: GetCampaign :one
 SELECT * FROM campaigns WHERE id = $1 LIMIT 1;
 
--- name: InsertEvent :exec
+SELECT * FROM campaigns WHERE id = ANY($1::uuid[]);
+
 INSERT INTO events (click_id, campaign_id, user_id, event_type, payload, ip_address, ip_hash, user_agent, created_at, created_date)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 ON CONFLICT (click_id, created_date) DO NOTHING;
 
--- name: UpdateCampaignStats :exec
 INSERT INTO campaign_stats (campaign_id, date, impressions_count, clicks_count, conversions_count)
 VALUES ($1, CURRENT_DATE, $2, $3, $4)
 ON CONFLICT (campaign_id, date) DO UPDATE SET
@@ -20,15 +17,12 @@ ON CONFLICT (campaign_id, date) DO UPDATE SET
     clicks_count = campaign_stats.clicks_count + EXCLUDED.clicks_count,
     conversions_count = campaign_stats.conversions_count + EXCLUDED.conversions_count;
 
--- name: GetCampaignStats :many
 SELECT * FROM campaign_stats 
 WHERE campaign_id = $1 
 ORDER BY date DESC;
 
--- name: ListCampaignIDs :many
 SELECT id FROM campaigns WHERE status = 'ACTIVE';
 
--- name: UpdateCampaignStatsBatch :exec
 INSERT INTO campaign_stats (campaign_id, date, impressions_count, clicks_count, conversions_count)
 SELECT 
     val.campaign_id,
@@ -49,7 +43,6 @@ ON CONFLICT (campaign_id, date) DO UPDATE SET
     clicks_count = campaign_stats.clicks_count + EXCLUDED.clicks_count,
     conversions_count = campaign_stats.conversions_count + EXCLUDED.conversions_count;
 
--- name: InsertEventsBatch :exec
 WITH inserted AS (
     INSERT INTO events (click_id, campaign_id, user_id, event_type, payload, ip_address, ip_hash, user_agent, created_at, created_date)
     SELECT 

@@ -28,6 +28,7 @@ const ROUTE_ACCESS: Record<string, RouteAccess> = {
   '/ops/dlq': { perms: ['shards:read'] },
   '/ops/domains': { perms: ['settings:read'] },
   '/ops/shards': { perms: ['shards:read'] },
+  '/ops/ml-model': { perms: ['shards:read'] },
   '/ops/blacklist': { perms: ['shards:read'] },
   '/ops/recon': { perms: ['audit:read'] },
   '/ops/consent': { perms: ['shards:read'] },
@@ -51,9 +52,6 @@ const ROUTE_ACCESS: Record<string, RouteAccess> = {
   '/dev/components': { roles: ['A'] },
 };
 
-/**
- * Match a route pattern against a pathname and extract params.
- */
 function matchPattern(pattern: string, pathname: string): Record<string, string> | null {
   const patternParts = pattern.split('/');
   const pathParts = pathname.split('/');
@@ -68,9 +66,6 @@ function matchPattern(pattern: string, pathname: string): Record<string, string>
   return params;
 }
 
-/**
- * Resolve route access rules for a pathname.
- */
 export function routeAccessFor(pathname: string): RouteAccess | null {
   const path = pathname.split('?')[0].replace(/\/$/, '') || '/';
   if (ROUTE_ACCESS[path]) return ROUTE_ACCESS[path];
@@ -82,9 +77,6 @@ export function routeAccessFor(pathname: string): RouteAccess | null {
   return null;
 }
 
-/**
- * Test whether the user may open the given admin route.
- */
 export function canAccessRoute(pathname: string, permissions: string[], role = ''): boolean {
   const rules = routeAccessFor(pathname);
   if (!rules) return true;

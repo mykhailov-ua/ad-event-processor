@@ -5,8 +5,6 @@ import (
 	"time"
 )
 
-// countryPrimaryTimezone maps ISO-3166 alpha-2 codes to a representative IANA zone.
-// Cold-path attestation only (POST /track/verify).
 var countryPrimaryTimezone = map[string]string{
 	"US": "America/New_York",
 	"GB": "Europe/London",

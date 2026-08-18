@@ -4,7 +4,6 @@ import (
 	"github.com/bidshard/ad-event-processor/pkg/domainhealth"
 )
 
-// SetReputationChecker overrides the domain reputation client (tests).
 func (s *Service) SetReputationChecker(c *domainhealth.ReputationChecker) {
 	if s == nil {
 		return

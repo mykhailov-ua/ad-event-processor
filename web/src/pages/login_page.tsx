@@ -15,9 +15,6 @@ type LoginResponse = {
   user?: AuthUser;
 };
 
-/**
- * Login form — separate chunk from authenticated shell.
- */
 export function LoginPage() {
   const [searchParams] = useSearchParams();
   const reason = searchParams.get('reason');
@@ -39,17 +36,21 @@ export function LoginPage() {
       }
       setGateLoading(false);
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const [res, err] = await to(api('/api/v1/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    }));
+    const [res, err] = await to(
+      api('/api/v1/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      })
+    );
     if (err) {
       setError(err.message || 'Login failed');
       setLoading(false);

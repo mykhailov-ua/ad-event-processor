@@ -1,18 +1,15 @@
 import { api } from './api_client.js';
-import type { ReconRunDTO } from '../types/api/ops_extra.js';
+import type { ReconRunDTO } from '../types/ops_extra.js';
 
 export type ReconRunsPage = {
   items: ReconRunDTO[];
   total: number;
 };
 
-/**
- * List reconciliation runs (management + payment).
- */
 export async function fetchReconRuns(
   service: 'all' | 'management' | 'payment' = 'all',
   limit = 50,
-  offset = 0,
+  offset = 0
 ): Promise<ReconRunsPage> {
   const params = new URLSearchParams({
     service,

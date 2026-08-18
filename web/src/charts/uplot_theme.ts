@@ -9,9 +9,6 @@ export type ThemedAxesOpts = {
   formatY?: (value: number) => string;
 };
 
-/**
- * Shared uPlot axis styling from CSS tokens.
- */
 export function themedAxes(opts: ThemedAxesOpts): uPlot.Axis[] {
   const muted = chartColor('--text-muted');
   const border = chartColor('--border-color');
@@ -32,9 +29,6 @@ export function themedAxes(opts: ThemedAxesOpts): uPlot.Axis[] {
   ];
 }
 
-/**
- * Area line series using theme accent color.
- */
 export function themedAreaSeries(colorToken = '--accent'): uPlot.Series[] {
   const accent = chartColor(colorToken);
   return [
@@ -48,9 +42,6 @@ export function themedAreaSeries(colorToken = '--accent'): uPlot.Series[] {
   ];
 }
 
-/**
- * Cursor with crosshair and hover point.
- */
 export function themedCursor(): uPlot.Cursor {
   const accent = chartColor('--accent');
   const surface = chartColor('--bg-surface');
@@ -68,13 +59,10 @@ export function themedCursor(): uPlot.Cursor {
   };
 }
 
-/**
- * HTML tooltip hooks for uPlot.
- */
 export function createTooltipHooks(
   root: HTMLElement,
   formatX: (tsSec: number) => string,
-  formatY: (value: number) => string,
+  formatY: (value: number) => string
 ): uPlot.Hooks.Arrays {
   const tip = el('div', { className: 'uplot-tooltip' }) as HTMLDivElement;
   tip.hidden = true;

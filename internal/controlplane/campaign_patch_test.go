@@ -3,7 +3,6 @@ package controlplane
 import (
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/internal/domain/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,21 +37,21 @@ func ptrString(s string) *string { return &s }
 func TestResolvePatchBudgetLimitMicro(t *testing.T) {
 	t.Parallel()
 	micro := int64(50_000_000)
-	got, err := resolvePatchBudgetLimitMicro(adminapi.PatchCampaignRequest{BudgetLimitMicro: &micro})
+	got, err := resolvePatchBudgetLimitMicro(PatchCampaignRequest{BudgetLimitMicro: &micro})
 	require.NoError(t, err)
 	require.NotNil(t, got)
 	require.Equal(t, int64(50_000_000), *got)
 
 	legacy := "25.50"
-	got, err = resolvePatchBudgetLimitMicro(adminapi.PatchCampaignRequest{BudgetLimit: &legacy})
+	got, err = resolvePatchBudgetLimitMicro(PatchCampaignRequest{BudgetLimit: &legacy})
 	require.NoError(t, err)
 	require.Equal(t, int64(25_500_000), *got)
 
-	_, err = resolvePatchBudgetLimitMicro(adminapi.PatchCampaignRequest{})
+	_, err = resolvePatchBudgetLimitMicro(PatchCampaignRequest{})
 	require.NoError(t, err)
 
 	bad := int64(0)
-	_, err = resolvePatchBudgetLimitMicro(adminapi.PatchCampaignRequest{BudgetLimitMicro: &bad})
+	_, err = resolvePatchBudgetLimitMicro(PatchCampaignRequest{BudgetLimitMicro: &bad})
 	require.Error(t, err)
 }
 

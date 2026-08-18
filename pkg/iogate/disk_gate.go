@@ -1,4 +1,3 @@
-// Package iogate gates disk and I/O heavy operations with backpressure metrics.
 package iogate
 
 import (

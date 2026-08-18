@@ -3,12 +3,9 @@ export type WorkerHandle = {
   terminate: () => void;
 };
 
-/**
- * Spawn a module worker with a message callback.
- */
 export function spawnWorker(
   workerUrl: string | URL,
-  onMessage: (data: unknown) => void,
+  onMessage: (data: unknown) => void
 ): WorkerHandle {
   const worker = new Worker(workerUrl, { type: 'module' });
   worker.onmessage = (event: MessageEvent) => onMessage(event.data);

@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/bidshard/ad-event-processor/internal/domain/db"
 	"github.com/bidshard/ad-event-processor/pkg/coldpath"
@@ -20,15 +19,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type CustomerDTO = adminapi.CustomerDTO
-
-type LedgerDTO = adminapi.BalanceLedgerDTO
-
-type CustomerBalanceDTO = adminapi.CustomerBalanceDTO
-
-type LedgerListResponse = adminapi.LedgerListResponse
-
-type LedgerExportResult = adminapi.LedgerExportResult
+type LedgerDTO = BalanceLedgerDTO
 
 const (
 	ledgerExportMaxBytes   = 10 * 1024 * 1024
@@ -248,13 +239,13 @@ done:
 	return result, nil
 }
 
-func (s *Service) ListDisputes(ctx context.Context, customerFilter string, limit, offset int32) (adminapi.DisputeListResult, error) {
+func (s *Service) ListDisputes(ctx context.Context, customerFilter string, limit, offset int32) (DisputeListResult, error) {
 	if s.payment == nil {
-		return adminapi.DisputeListResult{}, status.Error(codes.Unavailable, "payment service not configured")
+		return DisputeListResult{}, status.Error(codes.Unavailable, "payment service not configured")
 	}
 	resp, err := s.payment.ListDisputes(ctx, customerFilter, limit, offset)
 	if err != nil {
-		return adminapi.DisputeListResult{}, err
+		return DisputeListResult{}, err
 	}
 	q := db.New(s.GetPool())
 	intentIDs := make([]pgtype.UUID, 0, len(resp.Disputes))
@@ -275,9 +266,9 @@ func (s *Service) ListDisputes(ctx context.Context, customerFilter string, limit
 		}
 	}
 
-	rows := make([]adminapi.DisputeRowDTO, 0, len(resp.Disputes))
+	rows := make([]DisputeRowDTO, 0, len(resp.Disputes))
 	for _, d := range resp.Disputes {
-		item := adminapi.DisputeRowDTO{
+		item := DisputeRowDTO{
 			IntentID:          d.IntentID,
 			CustomerID:        d.CustomerID,
 			AmountMicro:       d.AmountMicro,
@@ -297,7 +288,7 @@ func (s *Service) ListDisputes(ctx context.Context, customerFilter string, limit
 		}
 		rows = append(rows, item)
 	}
-	return adminapi.DisputeListResult{Disputes: rows, Total: resp.Total}, nil
+	return DisputeListResult{Disputes: rows, Total: resp.Total}, nil
 }
 
 type limitedWriter struct {

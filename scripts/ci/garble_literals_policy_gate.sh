@@ -6,13 +6,13 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 source "$ROOT/scripts/lib/garble_literals_policy.sh"
 
 fail() {
-	echo "garble_literals_policy_gate: $*" >&2
-	exit 1
+  echo "garble_literals_policy_gate: $*" >&2
+  exit 1
 }
 
 with_clean_env() {
-	unset GARBLE_LITERALS
-	unset GARBLE_LITERALS_TRACKER GARBLE_LITERALS_PROCESSOR GARBLE_LITERALS_CONTROL
+  unset GARBLE_LITERALS
+  unset GARBLE_LITERALS_TRACKER GARBLE_LITERALS_PROCESSOR GARBLE_LITERALS_CONTROL
 }
 
 with_clean_env

@@ -26,29 +26,30 @@ fi
 
 echo "== milestone §1.5: milestone e2e bundle =="
 (cd "$WEB_DIR" && node scripts/build.mjs)
-(cd "$E2E_DIR" && npx playwright test \
-  ops_compliance.spec.js \
-  ops_dlq.spec.js \
-  billing_exports.spec.js \
-  billing_disputes.spec.js \
-  cpa_held_out.spec.js \
-  integrations_postbacks.spec.js \
-  report_actions.spec.js \
-  invoice_deliveries.spec.js \
-  ops_shards_catchup.spec.js \
-  ops_billing_invariant.spec.js \
-  campaign_config_edit.spec.js \
-  campaign_integration.spec.js \
-  customer_tax_profile.spec.js \
-  rtb_deals.spec.js \
-  audit_export.spec.js \
-  ops_recon.spec.js \
-  rtb_integration.spec.js \
-  customer_balance_export.spec.js \
-  settings_license.spec.js \
-  sidebar.spec.js \
-  billing_selfserve.spec.js \
-  milestone_regression.spec.js \
+(
+  cd "$E2E_DIR" && npx playwright test \
+    ops_compliance.spec.js \
+    ops_dlq.spec.js \
+    billing_exports.spec.js \
+    billing_disputes.spec.js \
+    cpa_held_out.spec.js \
+    integrations_postbacks.spec.js \
+    report_actions.spec.js \
+    invoice_deliveries.spec.js \
+    ops_shards_catchup.spec.js \
+    ops_billing_invariant.spec.js \
+    campaign_config_edit.spec.js \
+    campaign_integration.spec.js \
+    customer_tax_profile.spec.js \
+    rtb_deals.spec.js \
+    audit_export.spec.js \
+    ops_recon.spec.js \
+    rtb_integration.spec.js \
+    customer_balance_export.spec.js \
+    settings_license.spec.js \
+    sidebar.spec.js \
+    billing_selfserve.spec.js \
+    milestone_regression.spec.js
 )
 
 echo "Milestone UI gate PASSED (CI + e2e)."

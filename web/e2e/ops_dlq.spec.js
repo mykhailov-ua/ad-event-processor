@@ -1,4 +1,3 @@
-/** harness=mock_api — Playwright route.fulfill; does not prove Go handler or CH/PG. */
 import { test, expect } from '@playwright/test';
 import { mockAuthedSession, ADMIN_USER } from './helpers.js';
 
@@ -24,9 +23,6 @@ const READ_ONLY_USER = {
   permissions: ADMIN_USER.permissions.filter((p) => p !== 'shards:write'),
 };
 
-/**
- * @param {import('@playwright/test').Page} page
- */
 async function mockOpsShellApis(page) {
   await page.route('**/api/v1/ops/doctor', async (route) => {
     await route.fulfill({

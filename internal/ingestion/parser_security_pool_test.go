@@ -85,7 +85,6 @@ func TestChaos_ParserSecurity_PS_H05_OverlongUTF8(t *testing.T) {
 	jsonStrictUTF8Enabled.Store(true)
 	t.Cleanup(func() { jsonStrictUTF8Enabled.Store(true) })
 
-	// Overlong UTF-8 encoding of '/' inside a quoted value.
 	body := []byte(`{"campaign_id":"550e8400-e29b-41d4-a716-446655440000","user_id":"` + "\xc0\xaf" + `"}`)
 	var req TrackRequest
 	err := ParseTrackRequestJSON(&req, body)

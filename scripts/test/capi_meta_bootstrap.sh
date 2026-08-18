@@ -26,7 +26,10 @@ POSTBACK_METRICS_URL="${POSTBACK_METRICS_URL:-http://127.0.0.1:9119/metrics}"
 MOCK_PID_FILE="${TMPDIR:-/tmp}/capi-meta-mock.pid"
 
 log() { printf 'capi-bootstrap: %s\n' "$*"; }
-die() { printf 'capi-bootstrap: ERROR: %s\n' "$*" >&2; exit 1; }
+die() {
+  printf 'capi-bootstrap: ERROR: %s\n' "$*" >&2
+  exit 1
+}
 
 load_env() {
   if [[ -f "$ROOT/.env" ]]; then
@@ -60,32 +63,32 @@ ensure_stack() {
   log "ensuring db/redis/tracker/processor/control (REDIS_ADDRS=${REDIS_ADDRS}, CH_INGEST_SOURCE=${CH_INGEST_SOURCE})"
   CH_ENABLED="${CH_ENABLED}" REDIS_ADDRS="$REDIS_ADDRS" TRACKER_INGRESS_SCHEMA="$TRACKER_INGRESS_SCHEMA" \
     CH_INGEST_SOURCE="$CH_INGEST_SOURCE" \
-    docker compose up -d db redis-0 redis-1 redis-2 redis-3 >/dev/null
+    docker compose up -d db redis-0 redis-1 redis-2 redis-3 > /dev/null
   # Broker optional for CAPI lab — tracker/processor ingest via Redis when CH_INGEST_SOURCE=redis.
   CH_ENABLED="${CH_ENABLED}" CH_INGEST_SOURCE="$CH_INGEST_SOURCE" REDIS_ADDRS="$REDIS_ADDRS" \
-    docker compose up -d --no-deps control >/dev/null || true
+    docker compose up -d --no-deps control > /dev/null || true
   CH_INGEST_SOURCE="$CH_INGEST_SOURCE" REDIS_ADDRS="$REDIS_ADDRS" TRACKER_INGRESS_SCHEMA="$TRACKER_INGRESS_SCHEMA" \
-    docker compose up -d --no-deps processor tracker-0 >/dev/null
+    docker compose up -d --no-deps processor tracker-0 > /dev/null
   for _ in $(seq 1 30); do
-    curl -sf -m 2 "${TRACK_URL%/}/health" >/dev/null 2>&1 && break
+    curl -sf -m 2 "${TRACK_URL%/}/health" > /dev/null 2>&1 && break
     sleep 2
   done
-  curl -sf -m 5 "${TRACK_URL%/}/health" >/dev/null || die "tracker not healthy at ${TRACK_URL}"
+  curl -sf -m 5 "${TRACK_URL%/}/health" > /dev/null || die "tracker not healthy at ${TRACK_URL}"
   for _ in $(seq 1 30); do
-    curl -sf -m 2 "${CONTROL_URL%/}/health" >/dev/null 2>&1 && break
+    curl -sf -m 2 "${CONTROL_URL%/}/health" > /dev/null 2>&1 && break
     sleep 2
   done
-  curl -sf -m 5 "${CONTROL_URL%/}/health" >/dev/null || die "control not healthy at ${CONTROL_URL}"
-} 
+  curl -sf -m 5 "${CONTROL_URL%/}/health" > /dev/null || die "control not healthy at ${CONTROL_URL}"
+}
 
 db_prep() {
   log "applying postback + safe_page migrations if missing"
-  psql_exec "ALTER TABLE postback_configs ADD COLUMN IF NOT EXISTS test_event_code TEXT NOT NULL DEFAULT '';" >/dev/null
-  psql_exec "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS safe_page_url TEXT NOT NULL DEFAULT '', ADD COLUMN IF NOT EXISTS safe_page_enabled BOOLEAN NOT NULL DEFAULT false;" >/dev/null
-  psql_exec "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS l1_cidr_block_enabled BOOLEAN NOT NULL DEFAULT true;" >/dev/null 2>&1 || true
-  psql_exec "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS click_delivery TEXT NOT NULL DEFAULT 'redirect';" >/dev/null 2>&1 || true
-  psql_exec "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS proxy_upstream_url TEXT NOT NULL DEFAULT '';" >/dev/null 2>&1 || true
-  psql_exec "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS proxy_rewrite_assets BOOLEAN NOT NULL DEFAULT false;" >/dev/null 2>&1 || true
+  psql_exec "ALTER TABLE postback_configs ADD COLUMN IF NOT EXISTS test_event_code TEXT NOT NULL DEFAULT '';" > /dev/null
+  psql_exec "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS safe_page_url TEXT NOT NULL DEFAULT '', ADD COLUMN IF NOT EXISTS safe_page_enabled BOOLEAN NOT NULL DEFAULT false;" > /dev/null
+  psql_exec "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS l1_cidr_block_enabled BOOLEAN NOT NULL DEFAULT true;" > /dev/null 2>&1 || true
+  psql_exec "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS click_delivery TEXT NOT NULL DEFAULT 'redirect';" > /dev/null 2>&1 || true
+  psql_exec "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS proxy_upstream_url TEXT NOT NULL DEFAULT '';" > /dev/null 2>&1 || true
+  psql_exec "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS proxy_rewrite_assets BOOLEAN NOT NULL DEFAULT false;" > /dev/null 2>&1 || true
 
   log "ensuring brand + landing creative for /click redirect"
   psql_exec "
@@ -100,16 +103,16 @@ db_prep() {
       SET landing_url=EXCLUDED.landing_url, status='ACTIVE', updated_at=NOW();
     UPDATE campaigns SET brand_id='${CAPI_BRAND_ID}'::uuid
     WHERE id='${CAMPAIGN_ID}'::uuid AND brand_id IS NULL;
-  " >/dev/null
+  " > /dev/null
 
   local creatives_json='[{"id":"'"${CAPI_CREATIVE_ID}"'","url":"https://example.com/landing?cid={click_id}","weight":100}]'
   for port in 6479 6480 6481 6482; do
     docker run --rm --network host redis:7-alpine redis-cli -h 127.0.0.1 -p "$port" \
-      -a "$REDIS_PASSWORD" SET "brand:creatives:${CAPI_BRAND_ID}" "$creatives_json" >/dev/null
+      -a "$REDIS_PASSWORD" SET "brand:creatives:${CAPI_BRAND_ID}" "$creatives_json" > /dev/null
   done
 
   log "setting target_url on campaign ${CAMPAIGN_ID} (legacy fallback)"
-  psql_exec "UPDATE campaigns SET target_url='https://example.com/landing?cid={click_id}' WHERE id='${CAMPAIGN_ID}'::uuid AND length(target_url)=0;" >/dev/null
+  psql_exec "UPDATE campaigns SET target_url='https://example.com/landing?cid={click_id}' WHERE id='${CAMPAIGN_ID}'::uuid AND length(target_url)=0;" > /dev/null
 }
 
 start_mock_meta() {
@@ -119,12 +122,12 @@ start_mock_meta() {
     return
   fi
   CAPI_URL="http://127.0.0.1:${META_MOCK_PORT}/events"
-  if curl -sf -m 1 -o /dev/null "http://127.0.0.1:${META_MOCK_PORT}/health" 2>/dev/null; then
+  if curl -sf -m 1 -o /dev/null "http://127.0.0.1:${META_MOCK_PORT}/health" 2> /dev/null; then
     log "mock Meta receiver already listening on :${META_MOCK_PORT}"
     return
   fi
   log "starting mock Meta CAPI receiver on :${META_MOCK_PORT}"
-  python3 - "$META_MOCK_PORT" "$MOCK_PID_FILE" <<'PY' &
+  python3 - "$META_MOCK_PORT" "$MOCK_PID_FILE" << 'PY' &
 import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
@@ -157,7 +160,7 @@ with open(pid_file, "w", encoding="utf-8") as f:
 srv.serve_forever()
 PY
   sleep 1
-  curl -sf -m 3 "http://127.0.0.1:${META_MOCK_PORT}/health" >/dev/null || die "mock Meta receiver failed to start"
+  curl -sf -m 3 "http://127.0.0.1:${META_MOCK_PORT}/health" > /dev/null || die "mock Meta receiver failed to start"
 }
 
 configure_postback() {
@@ -172,47 +175,47 @@ configure_postback() {
     -H 'Content-Type: application/json' \
     -d "$body")"
   [[ "$code" == "200" ]] || die "postback config PUT failed (HTTP ${code})"
-  psql_exec "UPDATE postback_configs SET test_event_code='${META_TEST_EVENT_CODE}' WHERE campaign_id='${CAMPAIGN_ID}'::uuid;" >/dev/null
+  psql_exec "UPDATE postback_configs SET test_event_code='${META_TEST_EVENT_CODE}' WHERE campaign_id='${CAMPAIGN_ID}'::uuid;" > /dev/null
 }
 
 trim_event_streams() {
   log "trimming poisoned ad:events:stream batches on redis shards"
   for port in 6479 6480 6481 6482; do
     docker run --rm --network host redis:7-alpine redis-cli -h 127.0.0.1 -p "$port" \
-      -a "$REDIS_PASSWORD" XTRIM ad:events:stream MAXLEN 0 >/dev/null 2>&1 || true
+      -a "$REDIS_PASSWORD" XTRIM ad:events:stream MAXLEN 0 > /dev/null 2>&1 || true
   done
 }
 
 sync_registry() {
   log "publishing registry reload for ${CAMPAIGN_ID}"
   docker exec bidshard-redis-0-1 redis-cli -p 6379 -a "$REDIS_PASSWORD" \
-    PUBLISH campaigns:update "$CAMPAIGN_ID" >/dev/null 2>&1 || true
+    PUBLISH campaigns:update "$CAMPAIGN_ID" > /dev/null 2>&1 || true
   docker exec bidshard-redis-0-1 redis-cli -p 6379 -a "$REDIS_PASSWORD" \
-    PUBLISH campaigns:update '*' >/dev/null 2>&1 || true
+    PUBLISH campaigns:update '*' > /dev/null 2>&1 || true
   sleep 3
 }
 
 build_tracker_if_needed() {
-  if git diff --quiet HEAD -- internal/ingestion/schedule_filter.go 2>/dev/null; then
+  if git diff --quiet HEAD -- internal/ingestion/schedule_filter.go 2> /dev/null; then
     return
   fi
   log "rebuilding tracker (brand creative lazy-load)"
-  SKIP_CODEGEN=1 docker compose build tracker-0 >/dev/null
+  SKIP_CODEGEN=1 docker compose build tracker-0 > /dev/null
 }
 
 start_postback_sender() {
-  if curl -sf -m 2 "$POSTBACK_METRICS_URL" >/dev/null 2>&1; then
+  if curl -sf -m 2 "$POSTBACK_METRICS_URL" > /dev/null 2>&1; then
     log "postback-sender metrics already up"
     return
   fi
-  pkill -f '/bin/postback-sender' 2>/dev/null || true
+  pkill -f '/bin/postback-sender' 2> /dev/null || true
   [[ -x "$ROOT/bin/postback-sender" ]] || die "build postback-sender: go build -o bin/postback-sender ./cmd/postback-sender"
   log "starting postback-sender (${POSTBACK_METRICS_URL})"
   nohup env DB_DSN="$DB_DSN" POSTBACK_ENCRYPTION_KEY="$POSTBACK_ENCRYPTION_KEY" \
     POSTBACK_METRICS_ADDR="127.0.0.1:9119" \
-    "$ROOT/bin/postback-sender" >"${TMPDIR:-/tmp}/postback-sender.log" 2>&1 &
+    "$ROOT/bin/postback-sender" > "${TMPDIR:-/tmp}/postback-sender.log" 2>&1 &
   for _ in $(seq 1 15); do
-    curl -sf -m 2 "$POSTBACK_METRICS_URL" >/dev/null 2>&1 && return
+    curl -sf -m 2 "$POSTBACK_METRICS_URL" > /dev/null 2>&1 && return
     sleep 1
   done
   die "postback-sender did not expose metrics"

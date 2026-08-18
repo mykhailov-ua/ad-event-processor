@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import unquote, urlparse
@@ -53,6 +55,22 @@ def connect_client(config: CHConfig | None = None) -> Any:
         password=resolved_config.password,
         database=resolved_config.database,
     )
+
+
+def close_client(client: Any) -> None:
+    close = getattr(client, "close", None)
+    if callable(close):
+        close()
+
+
+@contextmanager
+def ch_client(config: CHConfig | None = None) -> Iterator[Any]:
+    """Open a ClickHouse client and close it when the block exits."""
+    client = connect_client(config)
+    try:
+        yield client
+    finally:
+        close_client(client)
 
 
 def ping_client(client: Any) -> bool:

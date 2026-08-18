@@ -3,12 +3,13 @@ package installer
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/bidshard/ad-event-processor/pkg/naming"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 )
 
 func TestProfileValidation(t *testing.T) {
@@ -196,7 +197,7 @@ func TestGoldenRenderSystemd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	want, err := os.ReadFile("testdata/golden/ad-event-processor-tracker.service")
+	want, err := os.ReadFile("testdata/ad-event-processor-tracker.service")
 	if err != nil {
 		t.Fatal(err)
 	}

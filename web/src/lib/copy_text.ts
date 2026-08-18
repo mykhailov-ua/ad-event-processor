@@ -1,9 +1,9 @@
 import { pushToastMessage } from '../helpers/toast_ui.js';
 
-/**
- * Copy text to clipboard with instant visual feedback.
- */
-export async function copyToClipboard(text: string, label = 'Copied to clipboard'): Promise<boolean> {
+export async function copyToClipboard(
+  text: string,
+  label = 'Copied to clipboard'
+): Promise<boolean> {
   if (!text) return false;
   try {
     if (navigator.clipboard?.writeText) {

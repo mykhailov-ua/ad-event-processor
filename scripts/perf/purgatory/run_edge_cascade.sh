@@ -13,10 +13,10 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 export PATH="${ROOT}/bin:${PATH}"
 
 if [[ -f "${ROOT}/.env" ]]; then
-	set -a
-	# shellcheck disable=SC1091
-	source "${ROOT}/.env"
-	set +a
+  set -a
+  # shellcheck disable=SC1091
+  source "${ROOT}/.env"
+  set +a
 fi
 
 TS="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -54,82 +54,82 @@ require_cmd docker taskset curl python3
 PRIV_CTR="${PRIV_CTR:-espx-purgatory-priv}"
 
 ensure_priv() {
-	if docker inspect -f '{{.State.Running}}' "$PRIV_CTR" 2>/dev/null | grep -q true; then
-		return 0
-	fi
-	docker rm -f "$PRIV_CTR" >/dev/null 2>&1 || true
-	log "starting privileged helper ${PRIV_CTR}"
-	docker run -d --name "$PRIV_CTR" --privileged --pid=host --network=host \
-		-v /sys/fs/cgroup:/sys/fs/cgroup \
-		-v /sys/kernel/tracing:/sys/kernel/tracing \
-		-v /sys/kernel/debug:/sys/kernel/debug \
-		-v "${ROOT}:${ROOT}" \
-		-v /lib/modules:/lib/modules:ro \
-		-v /var/run/docker.sock:/var/run/docker.sock \
-		ubuntu:24.04 \
-		bash -lc 'export DEBIAN_FRONTEND=noninteractive
+  if docker inspect -f '{{.State.Running}}' "$PRIV_CTR" 2> /dev/null | grep -q true; then
+    return 0
+  fi
+  docker rm -f "$PRIV_CTR" > /dev/null 2>&1 || true
+  log "starting privileged helper ${PRIV_CTR}"
+  docker run -d --name "$PRIV_CTR" --privileged --pid=host --network=host \
+    -v /sys/fs/cgroup:/sys/fs/cgroup \
+    -v /sys/kernel/tracing:/sys/kernel/tracing \
+    -v /sys/kernel/debug:/sys/kernel/debug \
+    -v "${ROOT}:${ROOT}" \
+    -v /lib/modules:/lib/modules:ro \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    ubuntu:24.04 \
+    bash -lc 'export DEBIAN_FRONTEND=noninteractive
 mount -t tracefs tracefs /sys/kernel/tracing 2>/dev/null || true
 mount -t debugfs debugfs /sys/kernel/debug 2>/dev/null || true
 apt-get update -qq && apt-get install -y -qq iproute2 procps >/dev/null && exec sleep infinity' \
-		>/dev/null
-	for _ in $(seq 1 120); do
-		if docker exec "$PRIV_CTR" bash -lc 'command -v tc >/dev/null' 2>/dev/null; then
-			return 0
-		fi
-		sleep 1
-	done
-	die "privileged helper failed to become ready"
+    > /dev/null
+  for _ in $(seq 1 120); do
+    if docker exec "$PRIV_CTR" bash -lc 'command -v tc >/dev/null' 2> /dev/null; then
+      return 0
+    fi
+    sleep 1
+  done
+  die "privileged helper failed to become ready"
 }
 
 priv() {
-	ensure_priv
-	docker exec "$PRIV_CTR" bash -lc "$*"
+  ensure_priv
+  docker exec "$PRIV_CTR" bash -lc "$*"
 }
 
 SYSCTL_KEYS=(
-	net.core.rmem_max net.core.wmem_max
-	net.ipv4.tcp_rmem net.ipv4.tcp_wmem
-	net.ipv4.tcp_max_syn_backlog net.core.somaxconn
+  net.core.rmem_max net.core.wmem_max
+  net.ipv4.tcp_rmem net.ipv4.tcp_wmem
+  net.ipv4.tcp_max_syn_backlog net.core.somaxconn
 )
-: >"${OUT}/sysctl.backup"
+: > "${OUT}/sysctl.backup"
 for k in "${SYSCTL_KEYS[@]}"; do
-	printf '%s=%s\n' "$k" "$(sysctl -n "$k")" >>"${OUT}/sysctl.backup"
+  printf '%s=%s\n' "$k" "$(sysctl -n "$k")" >> "${OUT}/sysctl.backup"
 done
-tc qdisc show dev lo >"${OUT}/tc.backup" || true
+tc qdisc show dev lo > "${OUT}/tc.backup" || true
 
 snapshot_listen() {
-	local dest=$1
-	{
-		echo "# at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-		# Prefer nstat absolute counters when available.
-		nstat -az 2>/dev/null | rg 'ListenOverflows|ListenDrops|TCPBacklogDrop|SyncookiesFailed|TCPFastOpenListenOverflow' || true
-		ss -ltn 2>/dev/null | rg ':8181|:8180' || true
-	} >"$dest"
+  local dest=$1
+  {
+    echo "# at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    # Prefer nstat absolute counters when available.
+    nstat -az 2> /dev/null | rg 'ListenOverflows|ListenDrops|TCPBacklogDrop|SyncookiesFailed|TCPFastOpenListenOverflow' || true
+    ss -ltn 2> /dev/null | rg ':8181|:8180' || true
+  } > "$dest"
 }
 
 cleanup() {
-	local ec=$?
-	log "cleanup (exit=${ec})"
-	if [[ -f "${OUT}/stress-ng.pid" ]]; then
-		kill "$(cat "${OUT}/stress-ng.pid")" 2>/dev/null || true
-	fi
-	pkill -f 'stress-ng --cache' 2>/dev/null || true
-	if [[ -f "${OUT}/bpf/collector.pid" ]]; then
-		priv "kill -TERM $(cat "${OUT}/bpf/collector.pid") 2>/dev/null || true" || true
-	fi
-	priv 'tc qdisc del dev lo root 2>/dev/null || true; tc qdisc add dev lo root noqueue 2>/dev/null || true' || true
-	if [[ -f "${OUT}/sysctl.backup" ]]; then
-		while IFS= read -r line; do
-			[[ -z "$line" ]] && continue
-			priv "sysctl -w '${line}' >/dev/null" || true
-		done <"${OUT}/sysctl.backup"
-	fi
-	docker update --cpus=2 --memory=536870912 --memory-swap=536870912 "$TRACKER_CTR" >/dev/null 2>&1 || true
-	docker compose -f "${ROOT}/docker-compose.yaml" -f "${ROOT}/docker-compose.load-test.yaml" \
-		up -d --no-build --force-recreate --no-deps tracker-0 >/dev/null 2>&1 || true
-	priv "rmdir /sys/fs/cgroup/purgatory 2>/dev/null || true" || true
-	docker rm -f "$PRIV_CTR" >/dev/null 2>&1 || true
-	return "$ec"
+  local ec=$?
+  log "cleanup (exit=${ec})"
+  if [[ -f "${OUT}/stress-ng.pid" ]]; then
+    kill "$(cat "${OUT}/stress-ng.pid")" 2> /dev/null || true
+  fi
+  pkill -f 'stress-ng --cache' 2> /dev/null || true
+  if [[ -f "${OUT}/bpf/collector.pid" ]]; then
+    priv "kill -TERM $(cat "${OUT}/bpf/collector.pid") 2>/dev/null || true" || true
+  fi
+  priv 'tc qdisc del dev lo root 2>/dev/null || true; tc qdisc add dev lo root noqueue 2>/dev/null || true' || true
+  if [[ -f "${OUT}/sysctl.backup" ]]; then
+    while IFS= read -r line; do
+      [[ -z "$line" ]] && continue
+      priv "sysctl -w '${line}' >/dev/null" || true
+    done < "${OUT}/sysctl.backup"
+  fi
+  docker update --cpus=2 --memory=536870912 --memory-swap=536870912 "$TRACKER_CTR" > /dev/null 2>&1 || true
+  docker compose -f "${ROOT}/docker-compose.yaml" -f "${ROOT}/docker-compose.load-test.yaml" \
+    up -d --no-build --force-recreate --no-deps tracker-0 > /dev/null 2>&1 || true
+  priv "rmdir /sys/fs/cgroup/purgatory 2>/dev/null || true" || true
+  docker rm -f "$PRIV_CTR" > /dev/null 2>&1 || true
+  return "$ec"
 }
 trap cleanup EXIT
 
@@ -137,7 +137,7 @@ trap cleanup EXIT
 # 1) Tracker with prod-like FILTER_TIMEOUT + LOCAL_QUOTA=off
 # ---------------------------------------------------------------------------
 OVERRIDES="${OUT}/compose.edge.yaml"
-cat >"$OVERRIDES" <<EOF
+cat > "$OVERRIDES" << EOF
 services:
   tracker-0:
     environment:
@@ -168,12 +168,12 @@ tc qdisc show dev lo"
 log "recreating ${TRACKER_CTR} after somaxconn (listen backlog picks up 128)"
 "${COMPOSE[@]}" up -d --no-build --force-recreate --no-deps tracker-0
 for _ in $(seq 1 90); do
-	if docker inspect -f '{{.State.Health.Status}}' "$TRACKER_CTR" 2>/dev/null | grep -q healthy; then
-		break
-	fi
-	sleep 1
+  if docker inspect -f '{{.State.Health.Status}}' "$TRACKER_CTR" 2> /dev/null | grep -q healthy; then
+    break
+  fi
+  sleep 1
 done
-bash "${SCRIPTS}/test/sync_tracker_registry.sh" >/dev/null 2>&1 || warn "registry sync skipped"
+bash "${SCRIPTS}/test/sync_tracker_registry.sh" > /dev/null 2>&1 || warn "registry sync skipped"
 
 log "limits cpus=${CPUS} mem=${MEM_BYTES}"
 docker update --cpus="$CPUS" --memory="${MEM_BYTES}" --memory-swap="${MEM_BYTES}" "$TRACKER_CTR"
@@ -181,29 +181,29 @@ sleep 1
 docker inspect -f '{{.State.Running}}' "$TRACKER_CTR" | grep -q true || die "tracker dead after limits"
 
 TRACKER_PID="$(docker inspect -f '{{.State.Pid}}' "$TRACKER_CTR")"
-echo "${TRACKER_PID}" >"${OUT}/tracker.pid"
+echo "${TRACKER_PID}" > "${OUT}/tracker.pid"
 CID="$(docker inspect -f '{{.Id}}' "$TRACKER_CTR")"
 CG_PATH=""
 for cand in \
-	"/sys/fs/cgroup/system.slice/docker-${CID}.scope" \
-	"/sys/fs/cgroup/docker/${CID}"; do
-	if [[ -f "${cand}/cpu.stat" ]]; then
-		CG_PATH="$cand"
-		break
-	fi
+  "/sys/fs/cgroup/system.slice/docker-${CID}.scope" \
+  "/sys/fs/cgroup/docker/${CID}"; do
+  if [[ -f "${cand}/cpu.stat" ]]; then
+    CG_PATH="$cand"
+    break
+  fi
 done
-echo "${CG_PATH:-}" >"${OUT}/tracker.cgroup.path"
+echo "${CG_PATH:-}" > "${OUT}/tracker.cgroup.path"
 [[ -n "$CG_PATH" ]] && cp "${CG_PATH}/cpu.stat" "${OUT}/cpu.stat.before" || true
 ss -ltn | rg ':8181' | tee "${OUT}/listen.bind.txt" || true
 
 log "stress-ng L3 on CPU 1"
 taskset -c 1 "${ROOT}/bin/stress-ng" --cache 1 --cache-level 3 --aggressive --timeout 0 \
-	>"${OUT}/stress-ng.log" 2>&1 &
-echo $! >"${OUT}/stress-ng.pid"
+  > "${OUT}/stress-ng.log" 2>&1 &
+echo $! > "${OUT}/stress-ng.pid"
 sleep 0.5
-kill -0 "$(cat "${OUT}/stress-ng.pid")" 2>/dev/null || {
-	taskset -c 1 "${ROOT}/bin/stress-ng" --cache 1 --timeout 0 >"${OUT}/stress-ng.log" 2>&1 &
-	echo $! >"${OUT}/stress-ng.pid"
+kill -0 "$(cat "${OUT}/stress-ng.pid")" 2> /dev/null || {
+  taskset -c 1 "${ROOT}/bin/stress-ng" --cache 1 --timeout 0 > "${OUT}/stress-ng.log" 2>&1 &
+  echo $! > "${OUT}/stress-ng.pid"
 }
 
 # ---------------------------------------------------------------------------
@@ -212,7 +212,7 @@ kill -0 "$(cat "${OUT}/stress-ng.pid")" 2>/dev/null || {
 BPF_DIR="${OUT}/bpf"
 mkdir -p "$BPF_DIR"
 ESPX_BPF_NATIVE=1 ESPX_BPF_TRACK_LOADGEN=1 ESPX_BPF_LOADGEN_COMM=wrk \
-	bash "${SCRIPTS}/test/bpf_resolve_targets.sh" "${BPF_DIR}/targets.json" tracker,nginx,redis,processor
+  bash "${SCRIPTS}/test/bpf_resolve_targets.sh" "${BPF_DIR}/targets.json" tracker,nginx,redis,processor
 
 log "bpf-collector start"
 priv "ulimit -l unlimited
@@ -245,14 +245,14 @@ date -u +%Y-%m-%dT%H:%M:%SZ > ${BPF_DIR}/collector.ready
 BODY='{"campaign_id":"00000000-0000-0000-0000-000000000001","type":"click"}'
 LUA_KA="${OUT}/track_ka.lua"
 LUA_CLOSE="${OUT}/track_close.lua"
-cat >"$LUA_KA" <<EOF
+cat > "$LUA_KA" << EOF
 wrk.method = "POST"
 wrk.body   = [=[${BODY}]=]
 wrk.headers["Content-Type"] = "application/json"
 wrk.headers["Connection"]   = "keep-alive"
 wrk.headers["Accept"]       = "application/json"
 EOF
-cat >"$LUA_CLOSE" <<EOF
+cat > "$LUA_CLOSE" << EOF
 wrk.method = "POST"
 wrk.body   = [=[${BODY}]=]
 wrk.headers["Content-Type"] = "application/json"
@@ -260,18 +260,18 @@ wrk.headers["Connection"]   = "close"
 wrk.headers["Accept"]       = "application/json"
 EOF
 
-ulimit -n 1048576 2>/dev/null || ulimit -n 65536 || true
+ulimit -n 1048576 2> /dev/null || ulimit -n 65536 || true
 METRICS_PORT="${METRICS_PORT:-9101}"
 PROM_URL="${PROMETHEUS_URL:-http://127.0.0.1:9190}"
 
 snapshot_tracker_metrics() {
-	local dest=$1
-	{
-		echo "# scraped_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-		curl -fsS --max-time 3 "http://127.0.0.1:${METRICS_PORT}/metrics" \
-			| rg 'ad_redis_lua_|ad_http_request_duration|ad_events_processed|ad_filter_decisions|ad_redis_lua_noscript|ad_redis_breaker|ad_tracker_health|ad_filter_timeout|ad_filter_reject|ad_worker_pool' \
-			|| true
-	} >"$dest"
+  local dest=$1
+  {
+    echo "# scraped_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    curl -fsS --max-time 3 "http://127.0.0.1:${METRICS_PORT}/metrics" \
+      | rg 'ad_redis_lua_|ad_http_request_duration|ad_events_processed|ad_filter_decisions|ad_redis_lua_noscript|ad_redis_breaker|ad_tracker_health|ad_filter_timeout|ad_filter_reject|ad_worker_pool' \
+      || true
+  } > "$dest"
 }
 
 snapshot_listen "${OUT}/listen.before.txt"
@@ -280,60 +280,60 @@ snapshot_tracker_metrics "${OUT}/metrics.before.txt"
 log "primary wrk KA -t${BENCH_THREADS} -c${BENCH_CONNECTIONS} -d${BENCH_DURATION}"
 set +e
 "${ROOT}/bin/wrk" -t"$BENCH_THREADS" -c"$BENCH_CONNECTIONS" -d"$BENCH_DURATION" \
-	--latency -s "$LUA_KA" "$TARGET_URL" >"${OUT}/loadgen.log" 2>&1 &
+  --latency -s "$LUA_KA" "$TARGET_URL" > "${OUT}/loadgen.log" 2>&1 &
 WRK_PID=$!
 set -e
 
 # Mid-flight: close-burst (accept pressure) then SCRIPT FLUSH (NOSCRIPT herd)
 (
-	sleep "$BURST_AT_SEC"
-	date -u +%Y-%m-%dT%H:%M:%SZ >"${OUT}/burst.at"
-	log "BURST Connection:close -c${BURST_CONNECTIONS} -d${BURST_DURATION}"
-	set +e
-	"${ROOT}/bin/wrk" -t2 -c"$BURST_CONNECTIONS" -d"$BURST_DURATION" \
-		--latency -s "$LUA_CLOSE" "$TARGET_URL" | tee "${OUT}/burst.log"
-	set -e
+  sleep "$BURST_AT_SEC"
+  date -u +%Y-%m-%dT%H:%M:%SZ > "${OUT}/burst.at"
+  log "BURST Connection:close -c${BURST_CONNECTIONS} -d${BURST_DURATION}"
+  set +e
+  "${ROOT}/bin/wrk" -t2 -c"$BURST_CONNECTIONS" -d"$BURST_DURATION" \
+    --latency -s "$LUA_CLOSE" "$TARGET_URL" | tee "${OUT}/burst.log"
+  set -e
 ) &
 BURST_BG=$!
 
 (
-	sleep "$FLUSH_AT_SEC"
-	date -u +%Y-%m-%dT%H:%M:%SZ >"${OUT}/flush.at"
-	log "SCRIPT FLUSH on ${REDIS_SHARD_CTR}"
-	{
-		echo "# flush_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-		echo "# redis_ctr=${REDIS_SHARD_CTR}"
-		if out="$(docker exec "$REDIS_SHARD_CTR" redis-cli -a "$REDIS_PASS" --no-auth-warning SCRIPT FLUSH SYNC 2>&1)"; then
-			echo "flush_out=${out}"
-			echo "flush_ec=0"
-		else
-			echo "flush_out=${out}"
-			echo "flush_ec=$?"
-		fi
-		# Optional brief event-loop stall if DEBUG allowed.
-		if dout="$(docker exec "$REDIS_SHARD_CTR" redis-cli -a "$REDIS_PASS" --no-auth-warning DEBUG SLEEP 0.05 2>&1)" \
-			&& ! grep -qiE 'ERR|error' <<<"$dout"; then
-			echo "debug_sleep=ok out=${dout}"
-		else
-			echo "debug_sleep=skipped out=${dout}"
-		fi
-	} | tee "${OUT}/redis.flush.log"
-	snapshot_listen "${OUT}/listen.after_flush.txt"
-	snapshot_tracker_metrics "${OUT}/metrics.after_flush.txt"
+  sleep "$FLUSH_AT_SEC"
+  date -u +%Y-%m-%dT%H:%M:%SZ > "${OUT}/flush.at"
+  log "SCRIPT FLUSH on ${REDIS_SHARD_CTR}"
+  {
+    echo "# flush_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    echo "# redis_ctr=${REDIS_SHARD_CTR}"
+    if out="$(docker exec "$REDIS_SHARD_CTR" redis-cli -a "$REDIS_PASS" --no-auth-warning SCRIPT FLUSH SYNC 2>&1)"; then
+      echo "flush_out=${out}"
+      echo "flush_ec=0"
+    else
+      echo "flush_out=${out}"
+      echo "flush_ec=$?"
+    fi
+    # Optional brief event-loop stall if DEBUG allowed.
+    if dout="$(docker exec "$REDIS_SHARD_CTR" redis-cli -a "$REDIS_PASS" --no-auth-warning DEBUG SLEEP 0.05 2>&1)" \
+      && ! grep -qiE 'ERR|error' <<< "$dout"; then
+      echo "debug_sleep=ok out=${dout}"
+    else
+      echo "debug_sleep=skipped out=${dout}"
+    fi
+  } | tee "${OUT}/redis.flush.log"
+  snapshot_listen "${OUT}/listen.after_flush.txt"
+  snapshot_tracker_metrics "${OUT}/metrics.after_flush.txt"
 ) &
 FLUSH_BG=$!
 
 wait "$WRK_PID"
 WRK_EC=$?
 log "primary wrk exit=${WRK_EC}"
-wait "$BURST_BG" 2>/dev/null || true
-wait "$FLUSH_BG" 2>/dev/null || true
+wait "$BURST_BG" 2> /dev/null || true
+wait "$FLUSH_BG" 2> /dev/null || true
 
 snapshot_listen "${OUT}/listen.after.txt"
 snapshot_tracker_metrics "${OUT}/metrics.after.txt"
 
 # Lua quantiles
-python3 - "${OUT}/metrics.after.txt" "${OUT}/lua_quantiles.json" <<'PY' || true
+python3 - "${OUT}/metrics.after.txt" "${OUT}/lua_quantiles.json" << 'PY' || true
 import re, json, sys
 from pathlib import Path
 text = Path(sys.argv[1]).read_text()
@@ -365,7 +365,7 @@ print(json.dumps(out, indent=2))
 PY
 
 # NOSCRIPT delta
-python3 - "${OUT}/metrics.before.txt" "${OUT}/metrics.after.txt" "${OUT}/noscript.delta.txt" <<'PY' || true
+python3 - "${OUT}/metrics.before.txt" "${OUT}/metrics.after.txt" "${OUT}/noscript.delta.txt" << 'PY' || true
 import re, sys
 from pathlib import Path
 def noscript(path):
@@ -381,63 +381,68 @@ PY
 
 [[ -n "$CG_PATH" ]] && cp "${CG_PATH}/cpu.stat" "${OUT}/cpu.stat.after" || true
 docker inspect -f '{{.State.Status}} OOM={{.State.OOMKilled}} Exit={{.State.ExitCode}}' "$TRACKER_CTR" \
-	| tee "${OUT}/tracker.state.txt"
+  | tee "${OUT}/tracker.state.txt"
 
 # Stop BPF + reports
 if [[ -f "${BPF_DIR}/collector.pid" ]]; then
-	BPID="$(cat "${BPF_DIR}/collector.pid")"
-	priv "kill -TERM ${BPID} 2>/dev/null || true
+  BPID="$(cat "${BPF_DIR}/collector.pid")"
+  priv "kill -TERM ${BPID} 2>/dev/null || true
 	for i in \$(seq 1 30); do kill -0 ${BPID} 2>/dev/null || break; sleep 0.2; done
 	kill -KILL ${BPID} 2>/dev/null || true" || true
 fi
 sleep 1
 if [[ -f "${BPF_DIR}/maps/summary.json" ]]; then
-	(cd "$ROOT" && go run ./cmd/load-report bpf "$OUT") >"${OUT}/bpf-report.md" 2>"${OUT}/bpf-report.err" \
-		|| warn "load-report bpf failed"
+  (cd "$ROOT" && go run ./cmd/load-report bpf "$OUT") > "${OUT}/bpf-report.md" 2> "${OUT}/bpf-report.err" \
+    || warn "load-report bpf failed"
 else
-	warn "no BPF summary — see ${BPF_DIR}/collector.log"
-	tail -80 "${BPF_DIR}/collector.log" | tee "${OUT}/bpf-collector.tail.txt" || true
+  warn "no BPF summary — see ${BPF_DIR}/collector.log"
+  tail -80 "${BPF_DIR}/collector.log" | tee "${OUT}/bpf-collector.tail.txt" || true
 fi
 (cd "$ROOT" && go run ./cmd/load-report prom "$OUT" --prom "$PROM_URL") \
-	>"${OUT}/load-report-prom.log" 2>&1 || warn "load-report prom failed"
+  > "${OUT}/load-report-prom.log" 2>&1 || warn "load-report prom failed"
 (cd "$ROOT" && LOAD_SLA_GATE=0 go run ./cmd/load-report all "$OUT" --prom "$PROM_URL") \
-	>"${OUT}/load-report-all.log" 2>&1 || true
+  > "${OUT}/load-report-all.log" 2>&1 || true
 
 {
-	echo "=== ESPX Edge Cascade + eBPF (${TS}) ==="
-	echo "netem: delay=${NETEM_DELAY} loss=${NETEM_LOSS} dup=${NETEM_DUPLICATE}"
-	echo "FILTER_TIMEOUT_MS=${FILTER_TIMEOUT_MS} LOCAL_QUOTA=off GOMAXPROCS=${GOMAXPROCS_PIN} cpus=${CPUS}"
-	echo "inject: burst@${BURST_AT_SEC}s close-c=${BURST_CONNECTIONS}; SCRIPT FLUSH@${FLUSH_AT_SEC}s on ${REDIS_SHARD_CTR}"
-	echo
-	echo "-- tracker --"
-	cat "${OUT}/tracker.state.txt" 2>/dev/null || true
-	echo
-	echo "-- noscript --"
-	cat "${OUT}/noscript.delta.txt" 2>/dev/null || true
-	echo
-	echo "-- listen counters --"
-	echo "BEFORE:"; cat "${OUT}/listen.before.txt" 2>/dev/null || true
-	echo "AFTER_FLUSH:"; cat "${OUT}/listen.after_flush.txt" 2>/dev/null || true
-	echo "AFTER:"; cat "${OUT}/listen.after.txt" 2>/dev/null || true
-	echo
-	echo "-- redis flush --"
-	cat "${OUT}/redis.flush.log" 2>/dev/null || true
-	echo
-	echo "-- Lua quantiles --"
-	cat "${OUT}/lua_quantiles.json" 2>/dev/null || true
-	echo
-	echo "-- cpu.stat --"
-	echo BEFORE; cat "${OUT}/cpu.stat.before" 2>/dev/null || true
-	echo AFTER; cat "${OUT}/cpu.stat.after" 2>/dev/null || true
-	echo
-	echo "-- bottleneck excerpt --"
-	head -n 80 "${OUT}/bottleneck-report.md" 2>/dev/null || echo missing
-	echo
-	echo "-- primary wrk --"
-	cat "${OUT}/loadgen.log" 2>/dev/null || true
-	echo
-	echo "-- burst wrk --"
-	cat "${OUT}/burst.log" 2>/dev/null || true
+  echo "=== ESPX Edge Cascade + eBPF (${TS}) ==="
+  echo "netem: delay=${NETEM_DELAY} loss=${NETEM_LOSS} dup=${NETEM_DUPLICATE}"
+  echo "FILTER_TIMEOUT_MS=${FILTER_TIMEOUT_MS} LOCAL_QUOTA=off GOMAXPROCS=${GOMAXPROCS_PIN} cpus=${CPUS}"
+  echo "inject: burst@${BURST_AT_SEC}s close-c=${BURST_CONNECTIONS}; SCRIPT FLUSH@${FLUSH_AT_SEC}s on ${REDIS_SHARD_CTR}"
+  echo
+  echo "-- tracker --"
+  cat "${OUT}/tracker.state.txt" 2> /dev/null || true
+  echo
+  echo "-- noscript --"
+  cat "${OUT}/noscript.delta.txt" 2> /dev/null || true
+  echo
+  echo "-- listen counters --"
+  echo "BEFORE:"
+  cat "${OUT}/listen.before.txt" 2> /dev/null || true
+  echo "AFTER_FLUSH:"
+  cat "${OUT}/listen.after_flush.txt" 2> /dev/null || true
+  echo "AFTER:"
+  cat "${OUT}/listen.after.txt" 2> /dev/null || true
+  echo
+  echo "-- redis flush --"
+  cat "${OUT}/redis.flush.log" 2> /dev/null || true
+  echo
+  echo "-- Lua quantiles --"
+  cat "${OUT}/lua_quantiles.json" 2> /dev/null || true
+  echo
+  echo "-- cpu.stat --"
+  echo BEFORE
+  cat "${OUT}/cpu.stat.before" 2> /dev/null || true
+  echo AFTER
+  cat "${OUT}/cpu.stat.after" 2> /dev/null || true
+  echo
+  echo "-- bottleneck excerpt --"
+  head -n 80 "${OUT}/bottleneck-report.md" 2> /dev/null || echo missing
+  echo
+  echo "-- primary wrk --"
+  cat "${OUT}/loadgen.log" 2> /dev/null || true
+  echo
+  echo "-- burst wrk --"
+  cat "${OUT}/burst.log" 2> /dev/null || true
 } | tee "${OUT}/REPORT.txt"
 
 log "done → ${OUT}/REPORT.txt"

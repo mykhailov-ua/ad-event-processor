@@ -1,8 +1,12 @@
 import { useEffect, useRef } from 'react';
-import type { DashboardSummary } from '../types/api/index.js';
+import type { DashboardSummary } from '../types/index.js';
 import type { EdgePanelData, XDPPanelData } from './edge_panel.js';
 import { displayLabel } from '../helpers/display_labels.js';
-import { formatChartTick, formatClockTime, formatRefreshCountdown } from '../helpers/chart_format.js';
+import {
+  formatChartTick,
+  formatClockTime,
+  formatRefreshCountdown,
+} from '../helpers/chart_format.js';
 import {
   metricColorToken,
   OPS_CHART_RANGE_OPTIONS,
@@ -29,14 +33,11 @@ export type OpsMetricSpec = {
   displayValue?: string;
 };
 
-/**
- * Build chart card specs from dashboard summary and operator dash.
- */
 export function buildOpsMetricSpecs(
   summary: DashboardSummary | null,
   operatorDash: OperatorDashCharts | null,
   metricSeries: Record<string, MetricPoint[]>,
-  chartsRangeHours: number,
+  chartsRangeHours: number
 ): OpsMetricSpec[] {
   const specs: OpsMetricSpec[] = [];
   let dropIndex = 0;
@@ -48,7 +49,8 @@ export function buildOpsMetricSpecs(
       id: 'outbox-pending',
       title: 'Outbox pending',
       value: outboxVal,
-      points: metricSeries['outbox-pending'] ?? snapshotSeries('outbox-pending', outboxVal, rangeMs),
+      points:
+        metricSeries['outbox-pending'] ?? snapshotSeries('outbox-pending', outboxVal, rangeMs),
       color: metricColorToken('outbox-pending'),
       displayValue: formatChartTick(outboxVal),
     });
@@ -103,8 +105,16 @@ export function buildOpsMetricSpecs(
     }
     const botSignals = [
       { id: 'edge-tarpit', title: 'Edge tarpit', value: Number(edge.tarpit_total) || 0 },
-      { id: 'edge-blacklist-stale', title: 'Blacklist stale', value: Number(edge.blacklist_stale) || 0 },
-      { id: 'edge-fraud-tier', title: 'Fraud tier blocks', value: Number(edge.blocked?.fraud_tier) || 0 },
+      {
+        id: 'edge-blacklist-stale',
+        title: 'Blacklist stale',
+        value: Number(edge.blacklist_stale) || 0,
+      },
+      {
+        id: 'edge-fraud-tier',
+        title: 'Fraud tier blocks',
+        value: Number(edge.blocked?.fraud_tier) || 0,
+      },
     ];
     for (let i = 0; i < botSignals.length; i++) {
       const item = botSignals[i];
@@ -137,13 +147,7 @@ export function buildOpsMetricSpecs(
   return specs;
 }
 
-function MetricChartCard({
-  spec,
-  rangeHours,
-}: {
-  spec: OpsMetricSpec;
-  rangeHours: number;
-}) {
+function MetricChartCard({ spec, rangeHours }: { spec: OpsMetricSpec; rangeHours: number }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const handleRef = useRef<MetricChartHandle | null>(null);
 
@@ -173,19 +177,19 @@ function MetricChartCard({
     };
   }, [spec.title, spec.points, spec.value, spec.max, spec.color, spec.formatValue, rangeHours]);
 
-  useEffect(() => () => {
-    handleRef.current?.destroy?.();
-    handleRef.current = null;
-  }, []);
+  useEffect(
+    () => () => {
+      handleRef.current?.destroy?.();
+      handleRef.current = null;
+    },
+    []
+  );
 
   return (
     <article className="metric-chart-card">
       <div className="metric-chart-card__head">
         <h3 className="metric-chart-card__title">{spec.title}</h3>
-        <span
-          className="metric-chart-card__value"
-          style={{ color: `var(${spec.color})` }}
-        >
+        <span className="metric-chart-card__value" style={{ color: `var(${spec.color})` }}>
           {spec.displayValue ?? formatChartTick(spec.value)}
         </span>
       </div>
@@ -205,9 +209,6 @@ export type OpsMetricChartsProps = {
   onRangeChange: (hours: number) => void;
 };
 
-/**
- * Operations metrics grid with range/layout controls and live status bar.
- */
 export function OpsMetricCharts({
   specs,
   chartsLayout,
@@ -272,10 +273,7 @@ export function OpsMetricCharts({
           {`Next refresh in ${formatRefreshCountdown(nextRefreshAt - now)}`}
         </span>
       </div>
-      <div
-        className={`ops-charts-grid ops-charts-grid--${chartsLayout}`}
-        data-ops-charts-grid=""
-      >
+      <div className={`ops-charts-grid ops-charts-grid--${chartsLayout}`} data-ops-charts-grid="">
         {specs.map((spec) => (
           <MetricChartCard key={spec.id} spec={spec} rangeHours={chartsRangeHours} />
         ))}

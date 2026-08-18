@@ -186,22 +186,32 @@ func (recon *ReconService) collectFindings(ctx context.Context) ([]FinancialReco
 	var findings []FinancialReconFinding
 	seenTopupIntents := make(map[uuid.UUID]struct{}, len(intents))
 
+	intentIDs := make([]uuid.UUID, 0, len(intents))
+	for _, intent := range intents {
+		intentIDs = append(intentIDs, uuid.UUID(intent.ID.Bytes))
+	}
+
+	ledgerByIntent := make(map[uuid.UUID]PaymentIntentLedger)
+	if recon.ledger != nil && len(intentIDs) > 0 {
+		var ledgerErr error
+		ledgerByIntent, ledgerErr = recon.ledger.GetPaymentIntentLedgers(ctx, intentIDs)
+		if ledgerErr != nil {
+			return nil, 0, ledgerErr
+		}
+	}
+
 	for _, intent := range intents {
 		intentID := uuid.UUID(intent.ID.Bytes)
 		customerID := uuid.UUID(intent.CustomerID.Bytes)
 		seenTopupIntents[intentID] = struct{}{}
 
-		if recon.ledger != nil {
-			ledgerState, ledgerErr := recon.ledger.GetPaymentIntentLedger(ctx, intentID)
-			if ledgerErr != nil {
-				return nil, 0, ledgerErr
+		if state, ok := ledgerByIntent[intentID]; ok {
+			if state.HasTopup {
+				topups[intentID] = state.TopupMicro
 			}
-			if ledgerState.HasTopup {
-				topups[intentID] = ledgerState.TopupMicro
-			}
-			refundLedger[intentID] = ledgerState.RefundMicro
-			chargebackLedger[intentID] = ledgerState.ChargebackMicro
-			reversalLedger[intentID] = ledgerState.ChargebackReversalMicro
+			refundLedger[intentID] = state.RefundMicro
+			chargebackLedger[intentID] = state.ChargebackMicro
+			reversalLedger[intentID] = state.ChargebackReversalMicro
 		}
 
 		if intent.Status == db.PaymentPaymentIntentStatusSETTLEMENTFAILED {

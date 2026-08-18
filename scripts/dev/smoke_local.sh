@@ -40,9 +40,9 @@ echo "BidShard local smoke"
 check "tracker /health (${TRACKER_PORT})" test "$(http_code "http://127.0.0.1:${TRACKER_PORT}/health")" = "200"
 check "processor /health (${PROCESSOR_PORT})" test "$(http_code "http://127.0.0.1:${PROCESSOR_PORT}/health")" = "200"
 
-if command -v redis-cli >/dev/null 2>&1 && [[ -n "${REDIS_PASSWORD}" ]]; then
-  check "redis ping (:${REDIS_PORT})" redis-cli -p "${REDIS_PORT}" -a "${REDIS_PASSWORD}" ping 2>/dev/null | grep -q PONG
-  check "redis AOF enabled" redis-cli -p "${REDIS_PORT}" -a "${REDIS_PASSWORD}" INFO persistence 2>/dev/null | grep -q 'aof_enabled:1'
+if command -v redis-cli > /dev/null 2>&1 && [[ -n "${REDIS_PASSWORD}" ]]; then
+  check "redis ping (:${REDIS_PORT})" redis-cli -p "${REDIS_PORT}" -a "${REDIS_PASSWORD}" ping 2> /dev/null | grep -q PONG
+  check "redis AOF enabled" redis-cli -p "${REDIS_PORT}" -a "${REDIS_PASSWORD}" INFO persistence 2> /dev/null | grep -q 'aof_enabled:1'
 else
   echo "SKIP  redis checks (redis-cli or REDIS_PASSWORD missing)"
 fi

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/database"
-	"github.com/bidshard/ad-event-processor/internal/edge/fingerprint"
+	"github.com/bidshard/ad-event-processor/internal/edge"
 	"github.com/bidshard/ad-event-processor/internal/testutil"
 
 	"github.com/redis/go-redis/v9"
@@ -34,7 +34,7 @@ func TestFault_IVTCorrelationGhostOnly(t *testing.T) {
 	pythonJA3 := "37b37375c33a2e6a17b2b6400c436321"
 
 	seedClickWithTLS(t, conn, ip, chromeUA, pythonJA3)
-	require.NoError(t, fingerprint.Record(ctx, rdb, fingerprint.Entry{
+	require.NoError(t, edge.Record(ctx, rdb, edge.Entry{
 		IP:      ip,
 		TCPHash: 0xdeadbeef,
 		SeenAt:  time.Now().UTC(),
@@ -81,7 +81,7 @@ func TestFault_IVTCorrelationConcurrentFind(t *testing.T) {
 	pythonJA3 := "37b37375c33a2e6a17b2b6400c436321"
 
 	seedClickWithTLS(t, conn, ip, chromeUA, pythonJA3)
-	require.NoError(t, fingerprint.Record(ctx, rdb, fingerprint.Entry{
+	require.NoError(t, edge.Record(ctx, rdb, edge.Entry{
 		IP:      ip,
 		TCPHash: 0xabad1dea,
 		SeenAt:  time.Now().UTC(),
@@ -158,7 +158,7 @@ func TestFault_IVTCorrelationCorruptRedis(t *testing.T) {
 			Member: m,
 		}).Err())
 	}
-	require.NoError(t, fingerprint.Record(ctx, rdb, fingerprint.Entry{
+	require.NoError(t, edge.Record(ctx, rdb, edge.Entry{
 		IP:      ip,
 		TCPHash: 0xfeedface,
 		SeenAt:  time.Now().UTC(),
@@ -194,7 +194,7 @@ func TestFault_IVTCorrelationMissingClickHouse(t *testing.T) {
 	defer cleanupRedis()
 
 	ctx := context.Background()
-	require.NoError(t, fingerprint.Record(ctx, rdb, fingerprint.Entry{
+	require.NoError(t, edge.Record(ctx, rdb, edge.Entry{
 		IP:      "203.0.113.79",
 		TCPHash: 0x12345678,
 		SeenAt:  time.Now().UTC(),
@@ -234,7 +234,7 @@ func TestFault_IVTCorrelationBrokenTLSData(t *testing.T) {
 	seedClickWithTLS(t, conn, "203.0.113.82", "Mozilla/5.0 Chrome/120.0.0.0", "37b37375c33a2e6a17b2b6400c436321")
 
 	for _, ip := range []string{"203.0.113.80", "203.0.113.81", "203.0.113.82"} {
-		require.NoError(t, fingerprint.Record(ctx, rdb, fingerprint.Entry{
+		require.NoError(t, edge.Record(ctx, rdb, edge.Entry{
 			IP:      ip,
 			TCPHash: 0x11111111,
 			SeenAt:  time.Now().UTC(),

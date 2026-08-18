@@ -12,7 +12,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// DryRunResult is the structured admin test response for a postback/CAPI config.
 type DryRunResult struct {
 	OK          bool   `json:"ok"`
 	Provider    string `json:"provider"`
@@ -32,7 +31,6 @@ func postbackAdapters() map[string]PostbackAdapter {
 	}
 }
 
-// DryRunConfig exercises the configured provider with a synthetic payload (no outbox write).
 func DryRunConfig(
 	ctx context.Context,
 	provider, urlTemplate, apiToken, targetEvent, testEventCode string,

@@ -10,10 +10,10 @@ export DB_DSN="${DB_DSN:-postgres://user:pass@127.0.0.1:5432/espx?sslmode=disabl
 export REDIS_PASSWORD="${REDIS_PASSWORD:-smoke}"
 export ADMIN_API_KEY="${ADMIN_API_KEY:-smoke-admin-key}"
 
-docker compose --profile analytics_ml --profile fraud-scorer config >/dev/null
-services=$(docker compose --profile analytics_ml --profile fraud-scorer config --services 2>/dev/null)
+docker compose --profile analytics_ml --profile fraud-scorer config > /dev/null
+services=$(docker compose --profile analytics_ml --profile fraud-scorer config --services 2> /dev/null)
 for svc in clickhouse ivt-detector fraud-scorer; do
-	echo "$services" | grep -qx "$svc"
+  echo "$services" | grep -qx "$svc"
 done
 
 go run ./cmd/ad-event-processor doctor --profile analytics_ml

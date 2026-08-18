@@ -317,9 +317,7 @@ func (b *BrokerStreamConsumer) flushAndCommit(ctx context.Context, batch []*doma
 	}
 
 commitOffset:
-	// Shadow mode never persists the group offset: a committed offset would make
-	// the later live cutover resume past events that were only counted, never
-	// stored, losing every event observed during the shadow window.
+
 	if b.cfg.ShadowMode {
 		return nextCommit, nil
 	}

@@ -1,6 +1,3 @@
-// L1 CIDR fault/resilience tests (harness: cidr_lpm_rcu).
-// fault_proof: RCU swap under concurrent readers; feed refresh failure keeps
-// the last good snapshot.
 package ingestion
 
 import (
@@ -16,10 +13,6 @@ import (
 	"github.com/bidshard/ad-event-processor/internal/config"
 )
 
-// TestCIDR_RCUSwap_ConcurrentReaders hammers Match* from multiple goroutines
-// while the publisher swaps snapshots 1000x; lookups must never panic, never
-// observe a torn snapshot, and results must always be consistent with one of
-// the two published generations.
 func TestCIDR_RCUSwap_ConcurrentReaders(t *testing.T) {
 	tableA, prefsA := buildTestTable(t, "10.0.0.0/8", "54.0.0.0/8")
 	tableB, prefsB := buildTestTable(t, "10.0.0.0/8", "54.0.0.0/8", "185.220.0.0/16")
@@ -66,8 +59,6 @@ func TestCIDR_RCUSwap_ConcurrentReaders(t *testing.T) {
 	t.Log("fault_proof fault=rcu_swap_1000x harness=cidr_lpm_rcu readers=8")
 }
 
-// mustSnapshotGen re-publishes a table's active snapshot with an explicit
-// generation marker so readers can distinguish generations in the race test.
 func mustSnapshotGen(t *testing.T, src *CIDRTable, gen uint64) *cidrSnapshot {
 	t.Helper()
 	snap := src.active.Load()
@@ -77,8 +68,6 @@ func mustSnapshotGen(t *testing.T, src *CIDRTable, gen uint64) *cidrSnapshot {
 	return &cidrSnapshot{gen: gen, root4: snap.root4, root6: snap.root6, nodes: snap.nodes, prefs: snap.prefs}
 }
 
-// TestCIDR_FeedRefreshFailClosed_RetainsSnapshot: corrupting every feed file
-// after a successful publish must keep the previous snapshot active.
 func TestCIDR_FeedRefreshFailClosed_RetainsSnapshot(t *testing.T) {
 	dir := t.TempDir()
 	writeFeedFile(t, dir, "aws.json", `{"prefixes":[{"ip_prefix":"54.0.0.0/8"}]}`)
@@ -102,8 +91,6 @@ func TestCIDR_FeedRefreshFailClosed_RetainsSnapshot(t *testing.T) {
 		t.Fatalf("expected aws match for 54.1.2.3, got ok=%v feed=%d", ok, feed)
 	}
 
-	// Corrupt the only feed: JSON syntax error. Refresh must fail for that
-	// feed and retain the previous snapshot (no data wipe).
 	writeFeedFile(t, dir, "aws.json", `{not json`)
 	loader.refreshOnce(context.Background())
 	if !table.Ready() {
@@ -115,8 +102,6 @@ func TestCIDR_FeedRefreshFailClosed_RetainsSnapshot(t *testing.T) {
 	t.Log("fault_proof fault=feed_corrupt_retain_snapshot harness=cidr_lpm_rcu")
 }
 
-// TestCIDR_FeedRefreshFailClosed_FirstBootFailOpen: with no feed data at all
-// the table stays unpublished and Match* returns false (fail-open).
 func TestCIDR_FeedRefreshFailClosed_FirstBootFailOpen(t *testing.T) {
 	dir := t.TempDir()
 	cfg := &config.Config{
@@ -136,8 +121,6 @@ func TestCIDR_FeedRefreshFailClosed_FirstBootFailOpen(t *testing.T) {
 	t.Log("fault_proof fault=first_boot_no_feeds_fail_open harness=cidr_lpm_rcu")
 }
 
-// TestCIDR_FeedLoader_LineFormats covers the lines/JSON parsers incl. host
-// routes, comments, and junk tolerance.
 func TestCIDR_FeedLoader_LineFormats(t *testing.T) {
 	dir := t.TempDir()
 	writeFeedFile(t, dir, "tor.txt", "# exit nodes\n185.220.101.1\n185.220.101.2  # inline\njunk line\n2001:db8::1\n")
@@ -167,7 +150,6 @@ func TestCIDR_FeedLoader_LineFormats(t *testing.T) {
 	}
 }
 
-// TestCIDR_FeedLoader_AzureJSON covers the Azure addressPrefixes schema.
 func TestCIDR_FeedLoader_AzureJSON(t *testing.T) {
 	dir := t.TempDir()
 	writeFeedFile(t, dir, "azure.json", `{"values":[{"properties":{"addressPrefixes":["20.190.128.0/18","2603:1000::/24"]}}]}`)
@@ -197,9 +179,6 @@ func writeFeedFile(t *testing.T, dir, name, content string) {
 	}
 }
 
-// Guard against silent rename of the loader constructor used by tracker
-// startup: NewCIDRFeedLoader must return nil only when disabled or cfg/table
-// are nil.
 func TestCIDR_FeedLoader_DisabledWhenConfigOff(t *testing.T) {
 	if l := NewCIDRFeedLoader(nil, NewCIDRTable()); l != nil {
 		t.Fatal("nil config must disable loader")

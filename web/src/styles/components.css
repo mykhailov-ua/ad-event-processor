@@ -1,10 +1,3 @@
-/**
- * Milestone 4 — UI standardization (controls, states, layout containment).
- * Spec: .cursor/UX_TASKS.md § Milestone 4, web/DESIGN.md
- */
-
-/* --- Layout containment (overflow / CLS) --- */
-
 .settings-panel,
 .settings-panel__body,
 .settings-panel__header,
@@ -29,15 +22,12 @@
   max-width: 100%;
 }
 
-/* Long opaque strings (JWT, UUID, secrets) */
 .settings-secrets__row span,
 .table-cell--mono,
 .font-mono.truncate-safe {
   overflow-wrap: anywhere;
   word-break: break-all;
 }
-
-/* --- Unified focus (state matrix) --- */
 
 .btn:focus-visible,
 .form-input:focus-visible,
@@ -58,8 +48,6 @@
 .btn:focus:not(:focus-visible) {
   box-shadow: none;
 }
-
-/* --- Buttons (size tokens + loading) --- */
 
 .btn {
   min-height: var(--control-height-md);
@@ -136,7 +124,7 @@
 .btn--secondary:disabled,
 .btn--ghost:disabled {
   border-color: var(--border-color);
-  background-color: var(--bg-surface);
+  background-color: transparent;
 }
 
 .btn--loading {
@@ -171,10 +159,11 @@
 }
 
 @keyframes ui-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-/* Action rows: equal-height controls */
 .cluster--actions,
 .settings-actions__buttons {
   display: flex;
@@ -189,8 +178,6 @@
 .settings-actions__buttons > .btn {
   flex-shrink: 0;
 }
-
-/* --- Forms (input height parity + error state) --- */
 
 .form-input,
 .form-select,
@@ -210,7 +197,6 @@
   line-height: 1;
 }
 
-/* Same height tier in toolbars: input + chip + button must align */
 .filter-toolbar :is(.form-input, .form-select, .select__trigger, .chip, .btn),
 .filter-toolbar__leading :is(.form-input, .form-select, .btn),
 .filter-toolbar__actions :is(.btn),

@@ -1,10 +1,8 @@
 package controlplane
 
-import "github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
-
 type rumStoreAdapter struct{}
 
-func (rumStoreAdapter) AppendClientRUM(ev adminapi.ClientRUMIngestDTO) {
+func (rumStoreAdapter) AppendClientRUM(ev ClientRUMIngestDTO) {
 	appendRUMEvent(ClientRUMEvent{
 		Path:   ev.Path,
 		Vitals: ev.Vitals,

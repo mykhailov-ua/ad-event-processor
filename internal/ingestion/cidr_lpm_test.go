@@ -93,11 +93,11 @@ func TestCIDRTable_NestedPrefixes(t *testing.T) {
 		ip    string
 		match bool
 	}{
-		{"10.0.0.1", true},   // /8, /16
-		{"10.0.200.1", true}, // /8, /16, /17
-		{"10.0.64.1", true},  // /8, /16 only
-		{"10.200.1.1", true}, // /8, /9
-		{"10.64.0.1", true},  // /8 only
+		{"10.0.0.1", true},
+		{"10.0.200.1", true},
+		{"10.0.64.1", true},
+		{"10.200.1.1", true},
+		{"10.64.0.1", true},
 		{"11.0.0.1", false},
 		{"9.255.255.255", false},
 	}
@@ -151,7 +151,7 @@ func TestCIDRTable_EmptyAndNil(t *testing.T) {
 		t.Fatal("uninitialized table must fail open (no match)")
 	}
 	table.Publish(&cidrSnapshot{root4: cidrNoIndex, root6: cidrNoIndex, nodes: []cidrNode{}})
-	// nodes empty: lookup must not run with empty slice
+
 	if table.Ready() != true {
 		t.Fatal("published empty snapshot must report ready")
 	}
@@ -232,7 +232,7 @@ func TestCIDRTable_InsertOrderInvariant(t *testing.T) {
 func TestCIDRTable_OracleDenseSameLength(t *testing.T) {
 	rng := rand.New(rand.NewSource(7))
 	var cidrs []string
-	// dense /24s in one /8: stresses branch fan-out under one prefix
+
 	for i := 0; i < 200; i++ {
 		p := netip.PrefixFrom(netip.AddrFrom4([4]byte{54, byte(rng.Intn(256)), byte(rng.Intn(256)), 0}), 24).Masked()
 		cidrs = append(cidrs, p.String())

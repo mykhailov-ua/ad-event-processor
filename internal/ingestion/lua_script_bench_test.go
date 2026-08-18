@@ -20,12 +20,14 @@ type benchWorstRegistry struct {
 func (r *benchWorstRegistry) Exists(uuid.UUID) bool { return true }
 func (r *benchWorstRegistry) Add(uuid.UUID, uuid.UUID, *uuid.UUID, string, domain.PacingMode, int64, string, int32, int32, []string) {
 }
+
 func (r *benchWorstRegistry) GetCustomerID(uuid.UUID) (uuid.UUID, bool) {
 	if r.customerID == uuid.Nil {
 		r.customerID = uuid.New()
 	}
 	return r.customerID, true
 }
+
 func (r *benchWorstRegistry) GetCampaign(id uuid.UUID) (*domain.Campaign, bool) {
 	if r.camp != nil && r.camp.ID == id {
 		return r.camp, true

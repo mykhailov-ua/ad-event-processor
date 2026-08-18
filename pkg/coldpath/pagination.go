@@ -64,7 +64,6 @@ func ClampLimitOffset(limit, offset, defaultLimit, maxLimit int32) (int32, int32
 	return limit, offset
 }
 
-// ParseCursorPagination reads limit from the query string and decodes cursor into offset/limit.
 func ParseCursorPagination(r *http.Request, defaultLimit, maxLimit int) (Page, error) {
 	if r == nil {
 		return Page{}, ErrNilRequest

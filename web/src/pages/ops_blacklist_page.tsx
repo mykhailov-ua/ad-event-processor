@@ -5,7 +5,7 @@ import { apiConfirmed } from '../helpers/confirmed_api.js';
 import { ConfirmCancelledError } from '../helpers/confirm_ui.js';
 import { mapServiceError } from '../helpers/service_error.js';
 import { pushToastMessage } from '../helpers/toast_ui.js';
-import type { BlacklistEntryDTO, BlacklistListResponse } from '../types/api/index.js';
+import type { BlacklistEntryDTO, BlacklistListResponse } from '../types/index.js';
 import { Button } from '../components/button.js';
 import { ErrorBlock } from '../components/error_block.js';
 import { FilterToolbar } from '../components/filter_toolbar.js';
@@ -20,7 +20,9 @@ function TableSkeleton({ cols }: { cols: number }) {
       {Array.from({ length: 5 }, (_, rowIndex) => (
         <tr key={`sk-${rowIndex}`} className="data-table__row--skeleton" aria-hidden="true">
           {Array.from({ length: cols }, (__, colIndex) => (
-            <td key={`sk-${rowIndex}-${colIndex}`}><span className="skeleton-bar" /></td>
+            <td key={`sk-${rowIndex}-${colIndex}`}>
+              <span className="skeleton-bar" />
+            </td>
           ))}
         </tr>
       ))}
@@ -28,9 +30,6 @@ function TableSkeleton({ cols }: { cols: number }) {
   );
 }
 
-/**
- * Ops IP blacklist management.
- */
 export function OpsBlacklistPage() {
   const [page, setPage] = useState(0);
   const [items, setItems] = useState<BlacklistEntryDTO[]>([]);
@@ -46,9 +45,9 @@ export function OpsBlacklistPage() {
   const load = useCallback(async () => {
     setLoading(true);
     const offset = page * PAGE_SIZE;
-    const [res, err] = await to(api<BlacklistListResponse>(
-      `/api/v1/ops/blacklist?limit=${PAGE_SIZE}&offset=${offset}`,
-    ));
+    const [res, err] = await to(
+      api<BlacklistListResponse>(`/api/v1/ops/blacklist?limit=${PAGE_SIZE}&offset=${offset}`)
+    );
     setLoading(false);
     if (err) {
       setError(err);
@@ -57,7 +56,7 @@ export function OpsBlacklistPage() {
     setError(null);
     const data = res?.data ?? {};
     setItems(data.items ?? []);
-    setTotal(data.total ?? (data.items?.length ?? 0));
+    setTotal(data.total ?? data.items?.length ?? 0);
   }, [page]);
 
   useEffect(() => {
@@ -66,15 +65,17 @@ export function OpsBlacklistPage() {
 
   const dryRun = async () => {
     setPreview(null);
-    const [res, err] = await to(api('/api/v1/ops/blacklist', {
-      method: 'POST',
-      headers: { 'X-Dry-Run': '1' },
-      body: JSON.stringify({
-        ip: ip.trim(),
-        source: source.trim() || 'manual',
-        ttl_seconds: ttl ? Number(ttl) : undefined,
-      }),
-    }));
+    const [res, err] = await to(
+      api('/api/v1/ops/blacklist', {
+        method: 'POST',
+        headers: { 'X-Dry-Run': '1' },
+        body: JSON.stringify({
+          ip: ip.trim(),
+          source: source.trim() || 'manual',
+          ttl_seconds: ttl ? Number(ttl) : undefined,
+        }),
+      })
+    );
     if (err) {
       pushToastMessage({ title: 'Preview failed', message: mapServiceError(err).message });
       return;
@@ -84,14 +85,16 @@ export function OpsBlacklistPage() {
 
   const block = async () => {
     setBusy(true);
-    const [, err] = await to(apiConfirmed('/api/v1/ops/blacklist', {
-      method: 'POST',
-      body: JSON.stringify({
-        ip: ip.trim(),
-        source: source.trim() || 'manual',
-        ttl_seconds: ttl ? Number(ttl) : undefined,
-      }),
-    }));
+    const [, err] = await to(
+      apiConfirmed('/api/v1/ops/blacklist', {
+        method: 'POST',
+        body: JSON.stringify({
+          ip: ip.trim(),
+          source: source.trim() || 'manual',
+          ttl_seconds: ttl ? Number(ttl) : undefined,
+        }),
+      })
+    );
     setBusy(false);
     if (err) {
       if (err instanceof ConfirmCancelledError) return;
@@ -105,10 +108,12 @@ export function OpsBlacklistPage() {
   };
 
   const unblock = async (rowIp: string | undefined, rowSource: string | undefined) => {
-    const [, err] = await to(apiConfirmed('/api/v1/ops/blacklist', {
-      method: 'DELETE',
-      body: JSON.stringify({ ip: rowIp, source: rowSource }),
-    }));
+    const [, err] = await to(
+      apiConfirmed('/api/v1/ops/blacklist', {
+        method: 'DELETE',
+        body: JSON.stringify({ ip: rowIp, source: rowSource }),
+      })
+    );
     if (err) {
       if (err instanceof ConfirmCancelledError) return;
       pushToastMessage({ title: 'Unblock failed', message: mapServiceError(err).message });
@@ -158,7 +163,12 @@ export function OpsBlacklistPage() {
           />
         </FormField>
         <div className="cluster--actions">
-          <Button label="Dry-run preview" variant="secondary" size="sm" onClick={() => void dryRun()} />
+          <Button
+            label="Dry-run preview"
+            variant="secondary"
+            size="sm"
+            onClick={() => void dryRun()}
+          />
           <Button
             label={busy ? 'Blocking…' : 'Block IP'}
             variant="danger"
@@ -174,15 +184,17 @@ export function OpsBlacklistPage() {
       </div>
 
       <FilterToolbar
-        pagination={totalPages > 1 ? (
-          <PaginationBar
-            label={`${page + 1} / ${totalPages}`}
-            prevDisabled={page === 0}
-            nextDisabled={page >= totalPages - 1}
-            onPrev={() => setPage((p) => Math.max(0, p - 1))}
-            onNext={() => setPage((p) => p + 1)}
-          />
-        ) : null}
+        pagination={
+          totalPages > 1 ? (
+            <PaginationBar
+              label={`${page + 1} / ${totalPages}`}
+              prevDisabled={page === 0}
+              nextDisabled={page >= totalPages - 1}
+              onPrev={() => setPage((p) => Math.max(0, p - 1))}
+              onNext={() => setPage((p) => p + 1)}
+            />
+          ) : null
+        }
       />
 
       <div className="table-wrapper table-wrapper--scroll elevation-raised">

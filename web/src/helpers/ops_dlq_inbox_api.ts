@@ -2,7 +2,7 @@ import { to } from '../lib/to.js';
 import { api, ApiError } from './api_client.js';
 import { apiConfirmed } from './confirmed_api.js';
 import { getOrCreate } from './idempotency.js';
-import type { FanOutSourceError } from '../types/api/ops_extra.js';
+import type { FanOutSourceError } from '../types/ops_extra.js';
 
 export type DLQInboxSource = 'stream' | 'postback' | 'capi' | '';
 
@@ -51,9 +51,11 @@ export function buildDlqInboxListUrl(source: DLQInboxSource = '', cursor = '', l
 export async function fetchDlqInboxPage(
   source: DLQInboxSource = '',
   cursor = '',
-  limit = 50,
+  limit = 50
 ): Promise<DlqInboxFetchResult> {
-  const [res, err] = await to(api<DLQInboxListResponse>(buildDlqInboxListUrl(source, cursor, limit)));
+  const [res, err] = await to(
+    api<DLQInboxListResponse>(buildDlqInboxListUrl(source, cursor, limit))
+  );
   if (err) {
     if (err instanceof ApiError && err.status === 503 && err.payload) {
       const payload = err.payload as DLQInboxListResponse;

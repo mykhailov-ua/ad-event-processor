@@ -6,7 +6,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// SettingsPGSync loads dynamic config from Postgres when Redis shard 0 is degraded.
 func SettingsPGSync(pool *pgxpool.Pool) func(context.Context) (map[string]string, int64, error) {
 	if pool == nil {
 		return nil

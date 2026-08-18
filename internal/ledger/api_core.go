@@ -2,8 +2,9 @@ package ledger
 
 import (
 	"context"
-	"github.com/bidshard/ad-event-processor/internal/domain"
 	"time"
+
+	"github.com/bidshard/ad-event-processor/internal/domain"
 
 	"github.com/google/uuid"
 )

@@ -2,7 +2,6 @@ package ingestion
 
 import "encoding/binary"
 
-// brokerConcatLengthPrefixedMessages packs vtproto payloads for a single broker Produce call.
 func brokerConcatLengthPrefixedMessages(payloads [][]byte) []byte {
 	if len(payloads) == 0 {
 		return nil

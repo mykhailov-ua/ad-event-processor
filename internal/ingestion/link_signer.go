@@ -15,10 +15,11 @@ const (
 	linkSignInnerScratchLen = linkHMACBlockSize + maxClickQueryValue + 1 + 20
 )
 
-var linkSignColon = [...]byte{':'}
-var linkSignDigit0 = [...]byte{'0'}
+var (
+	linkSignColon  = [...]byte{':'}
+	linkSignDigit0 = [...]byte{'0'}
+)
 
-// AppendLinkSignature appends &expires=&_sig= to dst URL bytes (cold path; may grow dst).
 func AppendLinkSignature(dst, secret []byte, clickID []byte, expiresUnix int64) []byte {
 	if len(secret) == 0 || len(clickID) == 0 {
 		return dst
@@ -109,7 +110,8 @@ func linkSignMACIntoPads(ipad, opad *[linkHMACBlockSize]byte, scratch []byte, cl
 
 func writeInt64ToMAC(mac interface {
 	Write(p []byte) (n int, err error)
-}, v int64) {
+}, v int64,
+) {
 	if v == 0 {
 		_, _ = mac.Write(linkSignDigit0[:])
 		return
@@ -168,7 +170,6 @@ func linkAppendHex16(dst, src []byte) []byte {
 	return dst
 }
 
-// VerifyLinkSignature checks HMAC over click_id:expires (hot path when sig is pre-parsed).
 func VerifyLinkSignature(secret, clickID, sig []byte, expiresUnix, nowUnix int64) bool {
 	if len(secret) == 0 || len(clickID) == 0 || expiresUnix <= 0 {
 		return false
@@ -242,7 +243,6 @@ func linkHexByte(c byte) (byte, bool) {
 	}
 }
 
-// LinkSigningExpires returns unix expiry for campaign TTL (seconds).
 func LinkSigningExpires(now time.Time, ttlSec int32) int64 {
 	if ttlSec <= 0 {
 		ttlSec = 900
@@ -253,7 +253,6 @@ func LinkSigningExpires(now time.Time, ttlSec int32) int64 {
 	return now.Unix() + int64(ttlSec)
 }
 
-// parseLinkExpires parses a decimal unix expiry from click query bytes.
 func parseLinkExpires(b []byte) (int64, bool) {
 	if len(b) == 0 {
 		return 0, false

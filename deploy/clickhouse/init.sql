@@ -1,4 +1,7 @@
-
+-- Compose/docker bootstrap for ClickHouse (deploy/compose clickhouse service).
+-- Base-table DDL canon: internal/clickhouse/migrate/00000_bootstrap_tables.sql
+-- Incremental schema: internal/clickhouse/migrate/00001_*.sql (ApplyClickHouseMigrations in tracker/processor/control).
+-- Keep table section in sync: go test ./internal/clickhouse/migrate/ -run TestBootstrapInitSQLMatchesMigration
 CREATE DATABASE IF NOT EXISTS ad_event_processor;
 USE ad_event_processor;
 

@@ -17,12 +17,14 @@ import (
 )
 
 type MockPostgresDB struct {
-	mu           sync.RWMutex
-	spends       map[uuid.UUID]int64
-	limits       map[uuid.UUID]int64
-	idempotency  map[string]bool
-	Healthy      atomic.Bool
-	NetworkDelay atomic.Int64
+	mu                  sync.RWMutex
+	spends              map[uuid.UUID]int64
+	limits              map[uuid.UUID]int64
+	idempotency         map[string]bool
+	Healthy             atomic.Bool
+	NetworkDelay        atomic.Int64
+	getSpendCalls       atomic.Int64
+	getSpendsBatchCalls atomic.Int64
 }
 
 func (m *MockPostgresDB) UpdateCampaignSpend(ctx context.Context, campaignID uuid.UUID, currentSpend int64) error {
@@ -45,12 +47,27 @@ func (m *MockPostgresDB) GetCampaignBudgetLimit(ctx context.Context, campaignID 
 }
 
 func (m *MockPostgresDB) GetCampaignSpend(ctx context.Context, campaignID uuid.UUID) (int64, error) {
+	m.getSpendCalls.Add(1)
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	if !m.Healthy.Load() {
 		return 0, errors.New("postgres connection timeout")
 	}
 	return m.spends[campaignID], nil
+}
+
+func (m *MockPostgresDB) GetCampaignSpends(ctx context.Context, campaignIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
+	m.getSpendsBatchCalls.Add(1)
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if !m.Healthy.Load() {
+		return nil, errors.New("postgres connection timeout")
+	}
+	out := make(map[uuid.UUID]int64, len(campaignIDs))
+	for _, id := range campaignIDs {
+		out[id] = m.spends[id]
+	}
+	return out, nil
 }
 
 func (m *MockPostgresDB) MarkEventIdempotent(ctx context.Context, clickID string) (bool, error) {

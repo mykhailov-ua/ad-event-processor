@@ -1,4 +1,3 @@
-/** harness=mock_api — Playwright route.fulfill; does not prove Go handler or CH/PG. */
 import { test, expect } from '@playwright/test';
 import { mockAuthedSession } from './helpers.js';
 
@@ -90,7 +89,9 @@ test('settings read-only without settings:write', async ({ page }) => {
   });
 
   await page.goto('/settings');
-  await expect(page.getByText('Read-only access — you can view settings but cannot save or apply changes.')).toBeVisible();
+  await expect(
+    page.getByText('Read-only access — you can view settings but cannot save or apply changes.')
+  ).toBeVisible();
   await expect(page.getByRole('button', { name: 'Save' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Apply to disk' })).toHaveCount(0);
   await expect(page.locator('input.form-input').first()).toBeDisabled();

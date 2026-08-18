@@ -69,7 +69,6 @@ func TestHTTP1Incomplete_BufferCapCloses(t *testing.T) {
 	}
 	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud", nil)
 
-	// Headers + partial body exceeding max buffered (64 + 8192 overhead still allows headers; use huge incomplete body buffer)
 	payload := make([]byte, 0, 9000)
 	payload = append(payload, []byte("POST /track HTTP/1.1\r\nContent-Length: 99999\r\n\r\n")...)
 	payload = append(payload, make([]byte, 9000-len(payload))...)
@@ -101,7 +100,6 @@ func TestHTTP1Incomplete_ResetsOnCompleteRequest(t *testing.T) {
 }
 
 func TestHTTP1Incomplete_BodyIdleDripDoesNotRearm(t *testing.T) {
-	// harness=handler_http1_idle_gnet — drip bytes must not extend body idle deadline.
 	cfg := &config.Config{
 		MaxRequestBodySize: 1 << 20,
 		HTTP1IncompleteMax: 100,
@@ -127,7 +125,6 @@ func TestHTTP1Incomplete_BodyIdleDripDoesNotRearm(t *testing.T) {
 }
 
 func TestHTTP1Incomplete_DripClosesWithoutFullBody(t *testing.T) {
-	// harness=handler_http1_idle_gnet — scaled QUEUE case: 5s idle, 2s drip → close before full body.
 	cfg := &config.Config{
 		MaxRequestBodySize: 1 << 20,
 		HTTP1IncompleteMax: 100,

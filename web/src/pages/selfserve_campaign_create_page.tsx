@@ -11,13 +11,12 @@ import { to } from '../lib/to.js';
 import { Button } from '../components/button.js';
 import { ErrorBlock } from '../components/error_block.js';
 
-/**
- * Template-only campaign create (M7.5 — no operator settings).
- */
 export function SelfServeCampaignCreatePage() {
   const navigate = useNavigate();
   const canWrite = can(auth.getUser()?.permissions ?? [], 'campaigns:write');
-  const [templates, setTemplates] = useState<Array<{ id: string; name: string; budget_limit: string }>>([]);
+  const [templates, setTemplates] = useState<
+    Array<{ id: string; name: string; budget_limit: string }>
+  >([]);
   const [templateId, setTemplateId] = useState('');
   const [name, setName] = useState('');
   const [budgetInput, setBudgetInput] = useState('');
@@ -48,7 +47,10 @@ export function SelfServeCampaignCreatePage() {
       try {
         body.budget_limit_micro = ParseDecimal(budgetInput.trim());
       } catch {
-        pushToastMessage({ title: 'Invalid budget', message: 'Enter a positive decimal or leave blank.' });
+        pushToastMessage({
+          title: 'Invalid budget',
+          message: 'Enter a positive decimal or leave blank.',
+        });
         return;
       }
     }
@@ -72,7 +74,9 @@ export function SelfServeCampaignCreatePage() {
     <section className="stack" data-testid="selfserve-campaign-create">
       <div className="page-header">
         <h1 className="page-header__title">Create campaign</h1>
-        <p className="page-header__desc">Pick an approved template. Operator-only settings are not exposed here.</p>
+        <p className="page-header__desc">
+          Pick an approved template. Operator-only settings are not exposed here.
+        </p>
       </div>
       <div className="section-card stack">
         {loading ? <p className="text-muted">Loading templates…</p> : null}
@@ -87,7 +91,9 @@ export function SelfServeCampaignCreatePage() {
                 onChange={(e) => setTemplateId(e.target.value)}
               >
                 {templates.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name} (budget {t.budget_limit})</option>
+                  <option key={t.id} value={t.id}>
+                    {t.name} (budget {t.budget_limit})
+                  </option>
                 ))}
               </select>
             </label>

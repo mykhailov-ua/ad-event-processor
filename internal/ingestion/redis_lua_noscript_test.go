@@ -56,19 +56,15 @@ func TestRedisLua_NOSCRIPT_FallbackAndPreload(t *testing.T) {
 
 	ctx := context.Background()
 
-	// 1. Initial script load
 	require.NoError(t, filter.PreloadScripts(ctx))
 
-	// 2. Flush script cache in Redis to simulate NOSCRIPT condition
 	mr.FlushDB()
 
-	// 3. Start preheater worker
 	ctxCancel, cancel := context.WithCancel(ctx)
 	filter.StartScriptPreheater(ctxCancel, 100*time.Millisecond)
 
 	time.Sleep(150 * time.Millisecond)
 
-	// 4. Perform check, scripts should be re-primed and evaluation succeeds
 	evt := &domain.Event{
 		CampaignID: campID,
 		UserID:     "user1",

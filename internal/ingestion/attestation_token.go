@@ -18,7 +18,7 @@ const (
 	attestationPayloadLen     = 49
 	attestationMACLen         = 16
 	attestationTokenBinaryLen = attestationPayloadLen + attestationMACLen
-	attestationTokenB64Len    = 87 // base64.RawURLEncoding.EncodedLen(attestationTokenBinaryLen)
+	attestationTokenB64Len    = 87
 	attestationCookiePrefix   = "Attestation-Token="
 	attestationDefaultTTL     = 300
 	attestationMinTTL         = 60
@@ -31,7 +31,6 @@ type attestationHMACKey struct {
 	opad   [linkHMACBlockSize]byte
 }
 
-// MintAttestationToken builds a base64url cookie value (cold path).
 func MintAttestationToken(secret []byte, campaignID uuid.UUID, clientIP string, ttlSec int32, nowUnix int64) (string, error) {
 	if len(secret) == 0 {
 		return "", errAttestationNoSecret
@@ -123,7 +122,7 @@ func buildAttestationSetCookie(token string, maxAge int32) []byte {
 	if token == "" || maxAge <= 0 {
 		return nil
 	}
-	// Set-Cookie: Attestation-Token=...; Path=/click; Max-Age=N; HttpOnly; SameSite=Lax
+
 	prefix := []byte("Set-Cookie: Attestation-Token=")
 	suffix := []byte("; Path=/click; Max-Age=")
 	mid := []byte(token)

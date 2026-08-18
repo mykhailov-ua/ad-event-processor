@@ -12,12 +12,10 @@ import (
 	"github.com/google/uuid"
 )
 
-// SpendSyncBatchResult is the commit outcome from a regional spend-sync transport.
 type SpendSyncBatchResult struct {
 	Committed uint32
 }
 
-// SpendSyncTransport pushes encoded spend-sync batches to region-proxy (Enterprise).
 type SpendSyncTransport interface {
 	ProduceSpendSyncPayload(payload []byte) (SpendSyncBatchResult, error)
 }

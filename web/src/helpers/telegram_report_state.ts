@@ -23,14 +23,13 @@ export type TelegramCampaignOption = {
 
 export function createTelegramReportState(
   query: URLSearchParams,
-  opts: TelegramReportStateOpts = {},
+  opts: TelegramReportStateOpts = {}
 ): TelegramReportState {
   const preset = REPORT_DATE_PRESETS[1] ?? REPORT_DATE_PRESETS[0];
   const sessionScoped = Boolean(opts.sessionScoped);
   const user = opts.user;
   return {
-    customerInput: query.get('customer_id')
-      || (sessionScoped && user ? boundCustomerId(user) : ''),
+    customerInput: query.get('customer_id') || (sessionScoped && user ? boundCustomerId(user) : ''),
     campaignInput: query.get('campaign_id') || '',
     from: query.get('from') || preset.from(),
     to: query.get('to') || preset.to(),
@@ -41,7 +40,7 @@ export function createTelegramReportState(
 export function resolveTelegramCustomerId(
   state: TelegramReportState,
   sessionScoped: boolean,
-  user: { customer_id?: string } | null | undefined,
+  user: { customer_id?: string } | null | undefined
 ): string {
   return sessionScoped ? boundCustomerId(user) : state.customerInput.trim();
 }
@@ -49,7 +48,7 @@ export function resolveTelegramCustomerId(
 export function buildTelegramReportParams(
   state: TelegramReportState,
   sessionScoped: boolean,
-  user: { customer_id?: string } | null | undefined,
+  user: { customer_id?: string } | null | undefined
 ): TelegramReportQuery {
   const params: TelegramReportQuery = { from: state.from, to: state.to };
   const customerId = resolveTelegramCustomerId(state, sessionScoped, user);
@@ -61,7 +60,7 @@ export function buildTelegramReportParams(
 
 export function applyTelegramPreset(
   state: TelegramReportState,
-  preset: { id: string; from: () => string; to: () => string },
+  preset: { id: string; from: () => string; to: () => string }
 ): TelegramReportState {
   return {
     ...state,
@@ -81,9 +80,7 @@ export function syncTelegramReportUrl(path: string, state: TelegramReportState) 
       preset: state.activePreset,
     });
     window.history.replaceState(null, '', qs ? `${path}?${qs}` : path);
-  } catch {
-    // ignore
-  }
+  } catch {}
 }
 
 export function telegramReportHref(path: string, state: TelegramReportState): string {

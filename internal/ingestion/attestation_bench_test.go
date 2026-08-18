@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// harness: attestation_hmac
 func BenchmarkAttestation_VerifyCookie(b *testing.B) {
 	secret := []byte("0123456789abcdef0123456789abcdef")
 	cid := uuid.New()

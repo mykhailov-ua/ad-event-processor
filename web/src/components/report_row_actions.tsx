@@ -6,7 +6,7 @@ import * as auth from '../helpers/auth.js';
 import { mapServiceError } from '../helpers/service_error.js';
 import { pushToastMessage } from '../helpers/toast_ui.js';
 import { ConfirmCancelledError } from '../helpers/confirm_ui.js';
-import type { ReportRow } from '../types/api/report.js';
+import type { ReportRow } from '../types/report.js';
 import {
   blockReportSource,
   costSyncDrillHref,
@@ -38,9 +38,6 @@ function actionContext(row: ReportRow, customerId?: string): ReportRowActionCont
   };
 }
 
-/**
- * Row-level buyer actions for live reports (pause, alert, block source).
- */
 export function ReportRowActions({ row, customerId, reportEndpoint }: ReportRowActionsProps) {
   const user = auth.getUser();
   const perms = user?.permissions ?? [];
@@ -90,7 +87,9 @@ export function ReportRowActions({ row, customerId, reportEndpoint }: ReportRowA
               action="pause"
               disabled={busy}
               data-testid="report-action-pause"
-              onClick={() => void run(() => pauseReportCampaign(ctx.campaignId!), 'Campaign paused')}
+              onClick={() =>
+                void run(() => pauseReportCampaign(ctx.campaignId!), 'Campaign paused')
+              }
             />
           ) : null}
           {customerId ? (
@@ -110,10 +109,12 @@ export function ReportRowActions({ row, customerId, reportEndpoint }: ReportRowA
               action="block"
               disabled={busy}
               data-testid="report-action-block"
-              onClick={() => void run(
-                () => blockReportSource(ctx),
-                ctx.placementId ? 'Placement block queued' : 'Source block queued',
-              )}
+              onClick={() =>
+                void run(
+                  () => blockReportSource(ctx),
+                  ctx.placementId ? 'Placement block queued' : 'Source block queued'
+                )
+              }
             />
           ) : null}
           {reportEndpoint === 'discrepancy-buy-sell' && hasCampaign ? (

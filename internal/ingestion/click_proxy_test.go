@@ -77,7 +77,7 @@ func TestClickProxyDeliver_streamsBodyAndHeaders(t *testing.T) {
 }
 
 func TestClickProxyDeliver_largeBodyStreams(t *testing.T) {
-	const bodySize = 1 << 20 // 1 MiB EXIT-M3 integration gate
+	const bodySize = 1 << 20
 	payload := strings.Repeat("x", bodySize)
 	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
@@ -185,7 +185,6 @@ func TestClickProxy_AttributionPassthrough_AC4(t *testing.T) {
 	t.Log("fault_proof harness=click_proxy_stream_mock ac=4_proxy_leg click_id+gclid+sub1 upstream")
 }
 
-// streamCaptureConn appends every Write (GnetHarnessConn keeps only the last chunk).
 type streamCaptureConn struct {
 	*GnetHarnessConn
 	buf []byte
@@ -291,5 +290,4 @@ func TestCampaignClickProxyEnabled(t *testing.T) {
 	require.False(t, on)
 }
 
-// Ensure context import used in tests that may add timeout cases later.
 var _ = context.Background

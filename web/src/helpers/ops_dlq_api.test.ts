@@ -1,10 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  buildDlqListUrl,
-  isOpsDlqEntryRetryable,
-} from './ops_dlq_api.js';
-import type { DLQEntryDTO } from '../types/api/ops_extra.js';
+import { buildDlqListUrl, isOpsDlqEntryRetryable } from './ops_dlq_api.js';
+import type { DLQEntryDTO } from '../types/ops_extra.js';
 
 const SAMPLE_ENTRY: DLQEntryDTO = {
   id: 'shard-1-1700000000000-0',
@@ -32,9 +29,6 @@ describe('isOpsDlqEntryRetryable', () => {
   });
 
   it('blocks retry after RETRIED status', () => {
-    assert.equal(
-      isOpsDlqEntryRetryable({ ...SAMPLE_ENTRY, status: 'RETRIED' }),
-      false,
-    );
+    assert.equal(isOpsDlqEntryRetryable({ ...SAMPLE_ENTRY, status: 'RETRIED' }), false);
   });
 });

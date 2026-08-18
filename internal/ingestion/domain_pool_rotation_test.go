@@ -30,7 +30,6 @@ func TestClickRedirect_DomainRotation(t *testing.T) {
 	runDomainBanRotationClickTest(t)
 }
 
-// TestDomainHealth_BanTriggersRotation is the AC-GMA-5 harness alias.
 func TestDomainHealth_BanTriggersRotation(t *testing.T) {
 	runDomainBanRotationClickTest(t)
 }

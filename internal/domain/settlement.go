@@ -27,6 +27,7 @@ type PaymentSettlement interface {
 	ApplyPaymentChargeback(ctx context.Context, customerID uuid.UUID, amountMicro int64, ledgerIdempotencyKey string, paymentIntentID uuid.UUID, provider string, providerDisputeID string) (applied bool, ledgerEntryID int64, err error)
 	ApplyPaymentChargebackReversal(ctx context.Context, customerID uuid.UUID, amountMicro int64, ledgerIdempotencyKey string, paymentIntentID uuid.UUID, provider string, providerDisputeID string) (applied bool, ledgerEntryID int64, err error)
 	GetLedgerEntry(ctx context.Context, paymentIntentID uuid.UUID) (PaymentLedgerEntry, error)
+	GetLedgerEntries(ctx context.Context, paymentIntentIDs []uuid.UUID) (map[uuid.UUID]PaymentLedgerEntry, error)
 }
 
 func IsSettlementNotFound(err error) bool {

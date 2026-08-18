@@ -98,7 +98,7 @@ func main() {
 	srv.LogStart()
 	sig := lifecycle.WaitSignal()
 	slog.Info("region-proxy shutting down", "signal", sig.String())
-	// coord first (HA deregister), then gnet + metrics HTTP drain.
+
 	coord.Stop()
 	srv.Stop()
 }

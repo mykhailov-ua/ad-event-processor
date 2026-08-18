@@ -133,3 +133,71 @@ func TestN1Fix_PostbackOutboxBatchUpdate_QueryCount(t *testing.T) {
 	require.Equal(t, int64(n1PostbackBatchSize), before)
 	require.Equal(t, int64(1), after)
 }
+
+func legacyConversionOnBatchStored(ctx context.Context, q *db.Queries, events []*domain.Event) {
+	for _, evt := range events {
+		if evt == nil {
+			continue
+		}
+		cfg, err := q.GetPostbackConfig(ctx, pgtype.UUID{Bytes: evt.CampaignID, Valid: true})
+		if err != nil {
+			continue
+		}
+		if !eventTypeMatches(evt.Type, cfg.TargetEvent) {
+			continue
+		}
+		camp, err := q.GetCampaign(ctx, pgtype.UUID{Bytes: evt.CampaignID, Valid: true})
+		if err != nil || !camp.CustomerID.Valid {
+			continue
+		}
+		customerID, err := uuid.FromBytes(camp.CustomerID.Bytes[:])
+		if err != nil {
+			continue
+		}
+		payload := buildPostbackPayloadFromEvent(evt, customerID)
+		raw, err := json.Marshal(payload)
+		if err != nil {
+			continue
+		}
+		_, _ = q.CreateOutboxEvent(ctx, db.CreateOutboxEventParams{
+			EventType: outboxEventSendPostback,
+			Payload:   raw,
+		})
+	}
+}
+
+func TestN1Fix_ConversionOutboxBatch_QueryCount(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration")
+	}
+	pool, counter, cleanup := database.SetupTestDBWithQueryCounter(t)
+	defer cleanup()
+	ctx := context.Background()
+
+	events := make([]*domain.Event, 0, n1PostbackBatchSize)
+	for i := range n1PostbackBatchSize {
+		events = append(events, &domain.Event{
+			ClickID:    fmt.Sprintf("click-%d", i),
+			CampaignID: uuid.New(),
+			Type:       "conversion",
+		})
+	}
+	_, campaignID := seedPostbackBatchEvents(t, pool, 1)
+	for i := range events {
+		events[i].CampaignID = campaignID
+	}
+	q := db.New(pool)
+	enq := NewConversionPostbackEnqueuer(q)
+
+	counter.Reset()
+	legacyConversionOnBatchStored(ctx, q, events)
+	before := counter.Snapshot()
+
+	counter.Reset()
+	enq.OnBatchStored(ctx, events)
+	after := counter.Snapshot()
+
+	t.Logf("6_conversion_outbox queries: before=%d after=%d (events=%d)", before, after, n1PostbackBatchSize)
+	require.Equal(t, int64(n1PostbackBatchSize*3), before)
+	require.Equal(t, int64(3), after)
+}

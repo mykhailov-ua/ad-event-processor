@@ -17,9 +17,6 @@ export type CampaignApplyTemplatesPanelProps = {
   trackingDomain?: string;
 };
 
-/**
- * Apply GM-M4 bundled integration templates to a campaign.
- */
 export function CampaignApplyTemplatesPanel({
   campaignId,
   canWrite,
@@ -84,7 +81,9 @@ export function CampaignApplyTemplatesPanel({
           >
             <option value="">— none —</option>
             {BUNDLED_TRAFFIC_TEMPLATES.map((t) => (
-              <option key={t.value} value={t.value}>{t.label}</option>
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
             ))}
           </select>
         </label>
@@ -99,7 +98,9 @@ export function CampaignApplyTemplatesPanel({
           >
             <option value="">— none —</option>
             {BUNDLED_AFFILIATE_TEMPLATES.map((t) => (
-              <option key={t.value} value={t.value}>{t.label}</option>
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
             ))}
           </select>
         </label>

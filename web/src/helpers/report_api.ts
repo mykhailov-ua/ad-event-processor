@@ -54,22 +54,21 @@ export type SubmitReportExportSpec = {
   signal?: AbortSignal;
 };
 
-/**
- * Parse Retry-After header from an API error into milliseconds.
- */
-export function parseRetryAfterMs(err: {
-  status?: number;
-  responseHeaders?: Headers | null;
-} | null | undefined): number {
+export function parseRetryAfterMs(
+  err:
+    | {
+        status?: number;
+        responseHeaders?: Headers | null;
+      }
+    | null
+    | undefined
+): number {
   const raw = err?.responseHeaders?.get?.('Retry-After');
   const sec = raw ? Number.parseInt(raw, 10) : 0;
   if (Number.isFinite(sec) && sec > 0) return sec * 1000;
   return 2500;
 }
 
-/**
- * Pause until the given number of milliseconds elapse.
- */
 function sleepMs(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) {
@@ -78,20 +77,21 @@ function sleepMs(ms: number, signal?: AbortSignal): Promise<void> {
     }
     const timer = setTimeout(resolve, ms);
     if (signal) {
-      signal.addEventListener('abort', () => {
-        clearTimeout(timer);
-        reject(new Error('aborted'));
-      }, { once: true });
+      signal.addEventListener(
+        'abort',
+        () => {
+          clearTimeout(timer);
+          reject(new Error('aborted'));
+        },
+        { once: true }
+      );
     }
   });
 }
 
-/**
- * Probe a planned report endpoint (expected 501 until backend ships).
- */
 export async function probeStubReport(
   reportKey: string,
-  customerId = '',
+  customerId = ''
 ): Promise<StubProbeResult> {
   const path = stubReportPath(reportKey);
   if (!path) {
@@ -120,9 +120,6 @@ export async function probeStubReport(
   };
 }
 
-/**
- * Download a completed report export job as CSV.
- */
 export async function downloadReportExport(jobId: string, filename = 'report.csv'): Promise<void> {
   const { apiBlob } = await import('./api_blob.js');
   const blob = await apiBlob(`/api/v1/reports/jobs/${jobId}/download`);
@@ -134,12 +131,9 @@ export async function downloadReportExport(jobId: string, filename = 'report.csv
   URL.revokeObjectURL(url);
 }
 
-/**
- * Poll report export job status until terminal state.
- */
 export async function pollReportJob(
   jobId: string,
-  opts: PollReportJobOpts = {},
+  opts: PollReportJobOpts = {}
 ): Promise<ReportJobPollResult> {
   const intervalMs = opts.intervalMs ?? 1500;
   const maxAttempts = opts.maxAttempts ?? 20;
@@ -182,11 +176,8 @@ export async function pollReportJob(
   return { ok: false, status: 'TIMEOUT', message: 'Export job polling timed out' };
 }
 
-/**
- * Submit an async report export job.
- */
 export async function submitReportExport(
-  spec: SubmitReportExportSpec,
+  spec: SubmitReportExportSpec
 ): Promise<ReportExportSubmitResult> {
   const probe = probeStart('report.export.submit');
   const body = {
@@ -196,12 +187,14 @@ export async function submitReportExport(
     to: spec.to,
     format: 'csv',
   };
-  const [res, err] = await to(api('/api/v1/reports/jobs', {
-    method: 'POST',
-    body: JSON.stringify(body),
-    idempotencyScope: `report-export:${spec.customerId}:${spec.reportKey}`,
-    signal: spec.signal,
-  }));
+  const [res, err] = await to(
+    api('/api/v1/reports/jobs', {
+      method: 'POST',
+      body: JSON.stringify(body),
+      idempotencyScope: `report-export:${spec.customerId}:${spec.reportKey}`,
+      signal: spec.signal,
+    })
+  );
   if (!err) {
     probeEnd(probe, { allocs: 1, bytes: 96 });
     const payload = res?.data as { job_id?: string; id?: string } | null | undefined;
@@ -235,9 +228,6 @@ export async function submitReportExport(
   };
 }
 
-/**
- * List saved report views for a customer.
- */
 export async function listSavedViews(customerId: string): Promise<unknown[]> {
   const probe = probeStart('views.list');
   const params = new URLSearchParams({ customer_id: customerId });
@@ -248,9 +238,6 @@ export async function listSavedViews(customerId: string): Promise<unknown[]> {
   return items;
 }
 
-/**
- * Create a saved report view preset.
- */
 export async function createSavedView(input: SavedViewInput): Promise<unknown> {
   const probe = probeStart('views.create');
   const { data } = await apiConfirmed('/api/v1/views', {
@@ -267,24 +254,19 @@ export async function createSavedView(input: SavedViewInput): Promise<unknown> {
   return data;
 }
 
-/**
- * Delete a saved report view preset.
- */
 export async function deleteSavedView(viewId: string): Promise<void> {
   await apiConfirmed(`/api/v1/views/${encodeURIComponent(viewId)}`, { method: 'DELETE' });
 }
 
-/**
- * Build report route href from a saved view row.
- */
 export function savedViewHref(view: SavedViewRow): string {
   const base = `/reports/${view.report_key ?? 'placements'}`;
   let spec: Record<string, unknown> = {};
   if (view.spec) {
     try {
-      spec = typeof view.spec === 'string'
-        ? (JSON.parse(view.spec) as Record<string, unknown>)
-        : view.spec;
+      spec =
+        typeof view.spec === 'string'
+          ? (JSON.parse(view.spec) as Record<string, unknown>)
+          : view.spec;
     } catch {
       spec = {};
     }

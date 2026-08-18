@@ -48,10 +48,10 @@ type IDRingBuffer struct {
 	buffer []PregeneratedID
 	size   uint32
 	mask   uint32
-	_      [56]byte // padding against false sharing
-	head   uint32   // consumer index
-	_      [56]byte // padding
-	tail   uint32   // producer index
+	_      [56]byte
+	head   uint32
+	_      [56]byte
+	tail   uint32
 }
 
 func NewIDRingBuffer(size uint32) *IDRingBuffer {
@@ -255,9 +255,8 @@ func (p *StreamProducer) process(evt *domain.Event, reserved bool) error {
 		return err
 	}
 	data := buf[:n]
-	*bufPtr = data // update pointer to exact slice for worker
+	*bufPtr = data
 
-	// Clean up proto resources
 	ClearAdStreamEvent(pbEvt)
 	streamEventPool.Put(pbEvt)
 
@@ -266,7 +265,7 @@ func (p *StreamProducer) process(evt *domain.Event, reserved bool) error {
 		p.queueDepth.Add(1)
 		return nil
 	default:
-		*bufPtr = buf[:cap(buf)] // reset to full capacity before return
+		*bufPtr = buf[:cap(buf)]
 		byteBufPool.Put(bufPtr)
 		metrics.EventsDropped.Inc()
 		telemetry.RecordRejected()
@@ -386,14 +385,12 @@ func (p *StreamProducer) flushBatch(batch []*[]byte) {
 
 	pipe := p.rdb.Pipeline()
 
-	// Use stack-allocated arrays for pointers to avoid heap churn
-	// 500 pointers = 4000 bytes, fits well within default stack frame
 	var wraps [500]*ByteSliceValue
 	var valuesPtrs [500]*[]any
 
 	n := len(batch)
 	if n > 500 {
-		n = 500 // safety cap
+		n = 500
 	}
 
 	for i := 0; i < n; i++ {
@@ -417,10 +414,9 @@ func (p *StreamProducer) flushBatch(batch []*[]byte) {
 
 	_, err := pipe.Exec(ctx)
 
-	// Return resources to pools
 	for i := 0; i < n; i++ {
 		bufPtr := batch[i]
-		*bufPtr = (*bufPtr)[:cap(*bufPtr)] // reset to full capacity
+		*bufPtr = (*bufPtr)[:cap(*bufPtr)]
 		byteBufPool.Put(bufPtr)
 		byteSliceValuePool.Put(wraps[i])
 		producerValuesPool.Put(valuesPtrs[i])

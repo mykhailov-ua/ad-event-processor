@@ -1,4 +1,3 @@
-
 -- +goose Up
 -- +goose StatementBegin
 ALTER TABLE rtb_deals

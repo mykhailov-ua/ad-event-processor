@@ -11,9 +11,6 @@ type ButtonClassOpts = {
   className?: string;
 };
 
-/**
- * Build shared button class names.
- */
 export function buttonClasses(opts: ButtonClassOpts): string {
   const variant = opts.variant ?? 'secondary';
   const size = opts.size ?? 'md';
@@ -23,7 +20,9 @@ export function buttonClasses(opts: ButtonClassOpts): string {
     size !== 'md' ? `btn--${size}` : '',
     opts.loading ? 'btn--loading' : '',
     opts.className ?? '',
-  ].filter(Boolean).join(' ');
+  ]
+    .filter(Boolean)
+    .join(' ');
 }
 
 export type ButtonProps = {
@@ -37,9 +36,6 @@ export type ButtonProps = {
   children?: ReactNode;
 } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'>;
 
-/**
- * Standardized button (Geist tokens via CSS classes).
- */
 export function Button({
   label,
   variant,
@@ -78,9 +74,6 @@ export type ButtonLinkProps = {
   iconSize?: number;
 } & Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'children'>;
 
-/**
- * Anchor styled as a button.
- */
 export function ButtonLink({
   label,
   href,

@@ -33,9 +33,7 @@ describe('buildHomeAlerts', () => {
       },
       buyerPortfolio: {
         overspendCount: 2,
-        campaigns: [
-          { id: 'c1', status: 'ACTIVE', utilization_pct: LOW_BUDGET_UTIL_PCT + 5 },
-        ],
+        campaigns: [{ id: 'c1', status: 'ACTIVE', utilization_pct: LOW_BUDGET_UTIL_PCT + 5 }],
         alerts: [{ id: 'buyer-custom', level: 'warning', title: 'Budget', detail: 'Near limit' }],
       },
     });

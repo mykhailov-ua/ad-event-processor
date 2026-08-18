@@ -8,14 +8,14 @@ BENCH_PATTERN='Benchmark(AdsPacketHandlerProto$$|AdsPacketHandlerProto_NoExtra|A
 
 BENCH_COUNT=10
 if [[ "${PERF_GATE_STRICT:-}" != "true" ]]; then
-	BENCH_COUNT=2
+  BENCH_COUNT=2
 fi
 
 export GOMAXPROCS=1
 exec go test -run='^$' \
-	-bench="$BENCH_PATTERN" \
-	-benchmem \
-	-benchtime=200ms \
-	-count="$BENCH_COUNT" \
-	-cpu=1 \
-	./internal/ingestion ./internal/rtb
+  -bench="$BENCH_PATTERN" \
+  -benchmem \
+  -benchtime=200ms \
+  -count="$BENCH_COUNT" \
+  -cpu=1 \
+  ./internal/ingestion ./internal/rtb

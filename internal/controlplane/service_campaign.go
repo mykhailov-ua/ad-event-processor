@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/internal/controlplane/authz"
 	"github.com/bidshard/ad-event-processor/internal/database"
 	"github.com/bidshard/ad-event-processor/internal/domain"
@@ -23,8 +22,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
-
-type CampaignDTO = adminapi.CampaignDTO
 
 type StatusHistoryDTO struct {
 	ID         int64  `json:"id"`
@@ -105,7 +102,7 @@ func (s *Service) GetCampaign(ctx context.Context, id uuid.UUID) (CampaignDTO, e
 	return dto, nil
 }
 
-func (s *Service) PatchCampaign(ctx context.Context, campaignID uuid.UUID, req adminapi.PatchCampaignRequest) (CampaignDTO, error) {
+func (s *Service) PatchCampaign(ctx context.Context, campaignID uuid.UUID, req PatchCampaignRequest) (CampaignDTO, error) {
 	camp, err := s.GetCampaignRow(ctx, campaignID)
 	if err != nil {
 		return CampaignDTO{}, err
@@ -433,7 +430,7 @@ func brandIDOrNil(id uuid.UUID) any {
 	return id
 }
 
-func (s *Service) ListCampaignEvents(ctx context.Context, campaignID uuid.UUID, limit, offset int32) ([]adminapi.CampaignEventDTO, int64, error) {
+func (s *Service) ListCampaignEvents(ctx context.Context, campaignID uuid.UUID, limit, offset int32) ([]CampaignEventDTO, int64, error) {
 	q := db.New(s.GetPool())
 	cid := domain.ToUUID(campaignID)
 	return coldpath.PaginatedList(
@@ -523,7 +520,6 @@ func (s *Service) UpdateCampaignPacing(ctx context.Context, campaignID uuid.UUID
 
 		return nil
 	})
-
 	if err != nil {
 		return CampaignDTO{}, err
 	}
@@ -532,10 +528,6 @@ func (s *Service) UpdateCampaignPacing(ctx context.Context, campaignID uuid.UUID
 }
 
 const clickHouseStaleThreshold = 5 * time.Minute
-
-type CampaignMetricsDTO = adminapi.CampaignMetricsDTO
-type CampaignHourlyBucketDTO = adminapi.CampaignHourlyBucketDTO
-type CampaignStatsDTO = adminapi.CampaignStatsDTO
 
 func scrubCampaignFields(c CampaignDTO, level authz.MaskLevel) CampaignDTO {
 	if level == authz.MaskFull {
@@ -783,16 +775,6 @@ SELECT max(latest) FROM (
 	return lag, nil
 }
 
-type BrandDTO struct {
-	ID         string `json:"id"`
-	CustomerID string `json:"customer_id"`
-	Name       string `json:"name"`
-	CreatedAt  string `json:"created_at"`
-	UpdatedAt  string `json:"updated_at"`
-	FreqLimit  int32  `json:"freq_limit"`
-	FreqWindow int32  `json:"freq_window"`
-}
-
 func (s *Service) CreateBrand(ctx context.Context, customerID uuid.UUID, name string) (uuid.UUID, error) {
 	brandID, err := uuid.NewV7()
 	if err != nil {
@@ -926,17 +908,6 @@ type SupplyChainNode struct {
 	HP  int    `json:"hp"`
 }
 
-type SellerDTO struct {
-	ID             int64  `json:"id"`
-	SellerID       string `json:"seller_id"`
-	Domain         string `json:"domain"`
-	SellerType     string `json:"seller_type"`
-	Name           string `json:"name"`
-	IsConfidential bool   `json:"is_confidential"`
-	CreatedAt      string `json:"created_at"`
-	UpdatedAt      string `json:"updated_at"`
-}
-
 type SellerCreateSpec struct {
 	SellerID       string `json:"seller_id"`
 	Domain         string `json:"domain"`
@@ -951,17 +922,6 @@ type SellerUpdateSpec struct {
 	SellerType     string `json:"seller_type"`
 	Name           string `json:"name"`
 	IsConfidential bool   `json:"is_confidential"`
-}
-
-type AdsTxtEntryDTO struct {
-	ID                 int64  `json:"id"`
-	Domain             string `json:"domain"`
-	PublisherAccountID string `json:"publisher_account_id"`
-	Relationship       string `json:"relationship"`
-	CertAuthorityID    string `json:"cert_authority_id,omitempty"`
-	SortOrder          int32  `json:"sort_order"`
-	CreatedAt          string `json:"created_at"`
-	UpdatedAt          string `json:"updated_at"`
 }
 
 type AdsTxtEntryCreateSpec struct {
@@ -2000,7 +1960,7 @@ func (s *Service) ListCampaignTemplates(ctx context.Context, customerID uuid.UUI
 	)
 }
 
-func campaignEventToDTO(row db.ListCampaignEventsRow) adminapi.CampaignEventDTO {
+func campaignEventToDTO(row db.ListCampaignEventsRow) CampaignEventDTO {
 	var ip, ua, userID string
 	if row.IpAddress.Valid {
 		ip = row.IpAddress.String
@@ -2015,7 +1975,7 @@ func campaignEventToDTO(row db.ListCampaignEventsRow) adminapi.CampaignEventDTO 
 	if row.CreatedAt.Valid {
 		createdAt = row.CreatedAt.Time.UTC().Format(time.RFC3339)
 	}
-	return adminapi.CampaignEventDTO{
+	return CampaignEventDTO{
 		ClickID:   row.ClickID,
 		EventType: row.EventType,
 		UserID:    userID,

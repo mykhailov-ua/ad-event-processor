@@ -1,12 +1,12 @@
 package ingestion
 
 import (
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
-
 	"context"
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/google/uuid"
@@ -109,7 +109,6 @@ func TestFaultInjection_RedisTimeoutDuringIngestion(t *testing.T) {
 }
 
 func TestFaultInjection_PostgresCrashOnBudgetMiss(t *testing.T) {
-
 	rdb := &FailingRedisClient{
 		failEval: false,
 	}

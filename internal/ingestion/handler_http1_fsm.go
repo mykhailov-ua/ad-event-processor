@@ -370,7 +370,7 @@ func trimHTTPVal(b []byte) []byte {
 }
 
 func foldKeyU32(key []byte, off int) uint32 {
-	_ = key[off+3] // BCE: callers pass off with len(key) >= off+4
+	_ = key[off+3]
 	return uint32(httpFold[key[off]]) |
 		uint32(httpFold[key[off+1]])<<8 |
 		uint32(httpFold[key[off+2]])<<16 |
@@ -378,7 +378,7 @@ func foldKeyU32(key []byte, off int) uint32 {
 }
 
 func foldKeyU64(key []byte, off int) uint64 {
-	_ = key[off+7] // BCE: callers pass off with len(key) >= off+8
+	_ = key[off+7]
 	return uint64(foldKeyU32(key, off)) |
 		uint64(foldKeyU32(key, off+4))<<32
 }

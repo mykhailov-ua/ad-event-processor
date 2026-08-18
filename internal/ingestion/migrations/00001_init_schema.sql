@@ -1,4 +1,3 @@
-
 -- +goose Up
 -- +goose StatementBegin
 CREATE TABLE campaigns (

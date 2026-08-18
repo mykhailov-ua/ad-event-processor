@@ -4,9 +4,6 @@ import { installErrorSurface } from '../lib/error_surface.js';
 import { ConfirmProvider } from './confirm_provider.js';
 import { ToastStack } from './toast_stack.js';
 
-/**
- * Global overlays: confirm, toast, scrollbars, error surface.
- */
 export function AppProviders({ children }: { children: ReactNode }) {
   useEffect(() => {
     const root = document.getElementById('root');

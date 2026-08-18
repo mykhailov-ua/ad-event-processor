@@ -176,15 +176,12 @@ func TestUnifiedFilter_localQuantaEligible_fcap_settingsWatcher(t *testing.T) {
 	}
 	click := &domain.Event{Type: "click", CampaignID: uuid.New(), UserID: "u1"}
 
-	// Eligible now because SettingsWatcher is available!
 	require.True(t, f.localQuantaEligible(click, camp))
 
-	// Under limit (count = 0)
 	exceeded, err := f.checkFreqLimitGo(click, camp)
 	require.NoError(t, err)
 	require.False(t, exceeded)
 
-	// Set count above limit in the snapshot
 	prefixHash := rtb.HashBytes64([]byte(camp.FcapKeyPrefix))
 	userHash := rtb.HashBytes64([]byte(click.UserID))
 	lookup := rtb.FcapLookupKey(prefixHash, userHash)
@@ -192,7 +189,6 @@ func TestUnifiedFilter_localQuantaEligible_fcap_settingsWatcher(t *testing.T) {
 		lookup: 2,
 	}))
 
-	// Should be exceeded!
 	exceeded, err = f.checkFreqLimitGo(click, camp)
 	require.ErrorIs(t, err, ErrFreqLimitExceeded)
 	require.True(t, exceeded)

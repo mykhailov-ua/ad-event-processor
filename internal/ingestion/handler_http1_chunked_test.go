@@ -56,7 +56,6 @@ func TestHTTP1ChunkedRejectExtension(t *testing.T) {
 }
 
 func TestChaos_ChunkExt_CRLFInExtension(t *testing.T) {
-	// Netty-class differential: premature CRLF inside chunk-extension field.
 	wire := []byte("POST /track HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n" +
 		"5;foo\r\n" +
 		"5\r\n" +
@@ -67,7 +66,6 @@ func TestChaos_ChunkExt_CRLFInExtension(t *testing.T) {
 }
 
 func TestHTTP1ChunkedRejectOversizedHexSize(t *testing.T) {
-	// Hex size line overflow must reject before size*16 wraps (P3).
 	payload := []byte("POST /openrtb/bid HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n" +
 		"ffffffffffffffff\r\n" +
 		"0\r\n\r\n")

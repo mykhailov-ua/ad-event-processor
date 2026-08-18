@@ -8,4 +8,4 @@ Manual checklist before release (target ~30 min session):
 4. Open `/ops`, switch tabs (summary / outbox / doctor).
 5. In DevTools Performance: heap after navigation should not grow monotonically across loops.
 
-Automated guards: `scripts/ci/admin_bundle_gate.sh` (main chunk gzip budget, no chart.js).
+Automated guards: `scripts/ci/admin_bundle_gate.sh` (generous uncompressed JS limits; lazy chunks allowed).

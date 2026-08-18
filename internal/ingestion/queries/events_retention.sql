@@ -1,5 +1,3 @@
-
--- name: DeleteEventsOlderThanBatch :execrows
 WITH doomed AS (
     SELECT e.click_id, e.created_date
     FROM events e

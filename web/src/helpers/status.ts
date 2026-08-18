@@ -1,8 +1,5 @@
 export type StatusTone = 'success' | 'warning' | 'neutral' | 'critical' | 'info';
 
-/**
- * Map a campaign status string to a status-badge modifier class.
- */
 export function campaignStatusClass(status: string): StatusTone {
   const v = (status || '').toLowerCase();
   if (v === 'active') return 'success';
@@ -12,9 +9,6 @@ export function campaignStatusClass(status: string): StatusTone {
   return 'info';
 }
 
-/**
- * Map a service health status string to a status-badge modifier class.
- */
 export function serviceStatusClass(status: string): 'success' | 'warning' | 'critical' {
   const v = (status || '').toLowerCase();
   if (v === 'ok' || v === 'healthy' || v === 'up' || v === 'pass' || v === 'live') return 'success';
@@ -22,9 +16,6 @@ export function serviceStatusClass(status: string): 'success' | 'warning' | 'cri
   return 'critical';
 }
 
-/**
- * Map an invoice status string to a status-badge modifier class.
- */
 export function invoiceStatusClass(status: string): 'success' | 'info' | 'critical' {
   const v = (status || '').toLowerCase();
   if (v === 'paid' || v === 'finalized') return 'success';
@@ -33,12 +24,9 @@ export function invoiceStatusClass(status: string): 'success' | 'info' | 'critic
   return 'info';
 }
 
-/**
- * Resolve a status-badge modifier class for the given domain kind.
- */
 export function statusClassFor(
   status: string,
-  kind: 'campaign' | 'service' | 'invoice',
+  kind: 'campaign' | 'service' | 'invoice'
 ): StatusTone {
   if (kind === 'service') return serviceStatusClass(status);
   if (kind === 'invoice') return invoiceStatusClass(status);

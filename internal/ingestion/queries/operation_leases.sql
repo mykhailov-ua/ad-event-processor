@@ -1,5 +1,3 @@
-
--- name: InsertOperationLease :one
 INSERT INTO operation_leases (
     op_id,
     region_code,
@@ -15,7 +13,6 @@ INSERT INTO operation_leases (
 )
 RETURNING *;
 
--- name: BookOperationLease :one
 INSERT INTO operation_leases (
     op_id,
     region_code,
@@ -32,10 +29,8 @@ INSERT INTO operation_leases (
 )
 RETURNING *;
 
--- name: GetOperationLease :one
 SELECT * FROM operation_leases WHERE op_id = $1;
 
--- name: ListBookedOperationLeasesForNode :many
 SELECT ol.op_id, ol.region_code, ol.role, ol.replica_set_id, ol.attempt,
        ol.factor_u, ol.dedup_scope, ol.lease_state, ol.executor_node_id,
        ol.fencing_epoch, ol.deadline_at, ol.renew_count, ol.completed_at, ol.created_at
@@ -47,22 +42,18 @@ WHERE r.node_id = sqlc.arg(node_id)
 ORDER BY ol.created_at ASC
 LIMIT sqlc.arg(row_limit);
 
--- name: InsertOperationLeaseReplica :exec
 INSERT INTO operation_lease_replicas (op_id, node_id)
 VALUES ($1, $2)
 ON CONFLICT (op_id, node_id) DO NOTHING;
 
--- name: CountOperationLeaseReplicas :one
 SELECT COUNT(*)::INT AS replica_count
 FROM operation_lease_replicas
 WHERE op_id = $1;
 
--- name: CountOperationLeaseBookAcks :one
 SELECT COUNT(*)::INT AS ack_count
 FROM operation_lease_replicas
 WHERE op_id = $1 AND book_ack_at IS NOT NULL;
 
--- name: RenewOperationLease :one
 UPDATE operation_leases
 SET deadline_at = NOW() + (sqlc.arg(timeout_sec)::INT * INTERVAL '1 second'),
     renew_count = renew_count + 1
@@ -73,7 +64,6 @@ WHERE op_id = sqlc.arg(op_id)
   AND deadline_at > NOW()
 RETURNING *;
 
--- name: OperationLeaseClaimExecuting :many
 SELECT ol.lease_state, ol.deadline_at
 FROM operation_lease_claim_executing(
     sqlc.arg(op_id),
@@ -81,7 +71,6 @@ FROM operation_lease_claim_executing(
     sqlc.arg(fencing_epoch)
 ) AS ol(lease_state, deadline_at);
 
--- name: CompleteOperationLease :one
 UPDATE operation_leases
 SET lease_state = 'completed',
     completed_at = NOW()
@@ -89,10 +78,8 @@ WHERE op_id = $1
   AND lease_state = 'executing'
 RETURNING *;
 
--- name: OperationLeaseExpireStale :one
 SELECT operation_lease_expire_stale(sqlc.arg(expire_limit)::INT) AS expired_count;
 
--- name: UpsertOperationLeaseReplicaBookAck :exec
 INSERT INTO operation_lease_replicas (op_id, node_id, book_ack_at)
 VALUES ($1, $2, NOW())
 ON CONFLICT (op_id, node_id) DO UPDATE

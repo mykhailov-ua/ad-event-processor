@@ -163,24 +163,18 @@ func TestRedisBreaker_FastFailWhenOpen(t *testing.T) {
 }
 
 func TestRedisBreaker_AdaptiveEWMAThreshold(t *testing.T) {
-	// minFailThreshold = 100, failRateRatio = 0.20
 	b := NewAdaptiveRedisBreaker(100, 2, 50*time.Millisecond, 0.20)
 
-	// Simulate 1 second of 10,000 successful requests to establish EWMA RPS ~ 10,000
 	for range 10000 {
 		b.RecordSuccess()
 	}
 
-	// Move to next second window
 	time.Sleep(1100 * time.Millisecond)
 
-	// Record 1 success to trigger EWMA window calculation
 	b.RecordSuccess()
 	ewma := b.EWMARPS()
 	assert.Greater(t, ewma, 5000.0, "EWMA RPS should reflect past window volume")
 
-	// Dynamic threshold should be ~20% of 10k = 2000 failures.
-	// 200 failures under 10k EWMA RPS should NOT trip the breaker.
 	for range 200 {
 		b.RecordFailure()
 	}
@@ -190,13 +184,11 @@ func TestRedisBreaker_AdaptiveEWMAThreshold(t *testing.T) {
 func TestRedisBreaker_AdaptiveTripsOnSustainedOutage(t *testing.T) {
 	b := NewAdaptiveRedisBreaker(50, 2, 50*time.Millisecond, 0.20)
 
-	// Establish low EWMA RPS
 	for range 100 {
 		b.RecordSuccess()
 	}
 	time.Sleep(1100 * time.Millisecond)
 
-	// Exceed minimum failure threshold (50 failures)
 	for range 60 {
 		b.RecordFailure()
 	}

@@ -30,8 +30,10 @@ func dailySpendKeyPrefix(campaignID uuid.UUID) string {
 	return domain.DailySpendKeyPrefix(campaignID)
 }
 
-const MigrationFenceKeyPrefix = domain.MigrationFenceKeyPrefix
-const BudgetFrozenKeyPrefix = domain.BudgetFrozenKeyPrefix
+const (
+	MigrationFenceKeyPrefix = domain.MigrationFenceKeyPrefix
+	BudgetFrozenKeyPrefix   = domain.BudgetFrozenKeyPrefix
+)
 
 func appendCampaignHashTag(dst []byte, id uuid.UUID) []byte {
 	return domain.AppendCampaignHashTag(dst, id)

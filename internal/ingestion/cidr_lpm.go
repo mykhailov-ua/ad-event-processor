@@ -6,7 +6,6 @@ import (
 	"sync/atomic"
 )
 
-// Feed identifiers double as indexes into prebound metric counters.
 const (
 	CIDRFeedAWS uint8 = iota
 	CIDRFeedGCP
@@ -20,8 +19,6 @@ var cidrFeedNames = [CIDRFeedCount]string{"aws", "gcp", "azure", "tor", "other"}
 
 const cidrNoIndex = -1
 
-// critbit == cidrLeafBit marks a terminal leaf; internal nodes test one bit and
-// may additionally carry a terminal prefix ending exactly at critbit.
 type cidrNode struct {
 	child   [2]int32
 	pref    int32
@@ -34,7 +31,6 @@ type cidrPrefix struct {
 	feed uint8
 }
 
-// cidrSnapshot is immutable after Publish; readers never mutate it.
 type cidrSnapshot struct {
 	gen   uint64
 	root4 int32
@@ -43,7 +39,6 @@ type cidrSnapshot struct {
 	prefs []cidrPrefix
 }
 
-// CIDRTable is the RCU container swapped wholesale by the feed loader.
 type CIDRTable struct {
 	active atomic.Pointer[cidrSnapshot]
 }
@@ -86,8 +81,6 @@ func (t *CIDRTable) Match6(ip [16]byte) (bool, uint8) {
 	return snap.lookup(snap.root6, &ip)
 }
 
-// MatchIP parses an ASCII address without allocation (netip.ParseAddr) and
-// matches IPv4-in-IPv6 forms against the IPv4 tree.
 func (t *CIDRTable) MatchIP(s string) (bool, uint8) {
 	snap := t.active.Load()
 	if snap == nil {
@@ -175,13 +168,11 @@ func cidrFirstDiff(a *[16]byte, abits uint8, b *[16]byte, bbits uint8) int32 {
 	return -1
 }
 
-// cidrBuilder is cold-path only; not safe for concurrent use.
 type cidrBuilder struct {
 	nodes []cidrNode
 	prefs []cidrPrefix
 }
 
-// addPrefix routes p into the v4 or v6 tree. p must be Masked().
 func (b *cidrBuilder) addPrefix(p netip.Prefix, feed uint8, root4, root6 *int32) {
 	if p.Addr().Is4() {
 		a4 := p.Addr().As4()
@@ -213,10 +204,6 @@ func (b *cidrBuilder) repPrefix(cur int32) cidrPrefix {
 	return b.prefs[b.nodes[cur].pref]
 }
 
-// insert adds addr/bits to the tree rooted at *root. Nested prefixes attach a
-// terminal to the highest internal node every covered address descends
-// through; lookup verifies stored prefix bits, so untested skipped bits
-// cannot produce false positives.
 func (b *cidrBuilder) insert(root *int32, addr [16]byte, nbits uint8, feed uint8) {
 	prefIdx := int32(len(b.prefs))
 	b.prefs = append(b.prefs, cidrPrefix{addr: addr, bits: nbits, feed: feed})
@@ -244,10 +231,6 @@ func (b *cidrBuilder) insert(root *int32, addr [16]byte, nbits uint8, feed uint8
 	rep := b.repPrefix(cur)
 	d := cidrFirstDiff(&addr, nbits, &rep.addr, rep.bits)
 	if missing {
-		// Bits between parent.critbit and cur.critbit are untested: the new
-		// prefix may diverge from this subtree above cur. Attach directly only
-		// when the divergence is exactly cur's branch bit (or, defensively,
-		// deeper); otherwise fall through to a split above cur.
 		if d < 0 || d >= b.nodes[cur].critbit {
 			b.nodes[cur].child[pdir] = b.addLeaf(prefIdx)
 			return
@@ -269,8 +252,7 @@ func (b *cidrBuilder) insert(root *int32, addr [16]byte, nbits uint8, feed uint8
 			}
 			d = int32(nbits)
 		default:
-			// nbits > rep.bits: cur is the leaf holding rep; the shorter
-			// prefix must move onto the split node so both children see it.
+
 			repLeaf := b.nodes[cur]
 			split := b.addNode(int32(rep.bits), repLeaf.pref)
 			b.nodes[split].child[cidrBitAt(&addr, int32(rep.bits))] = b.addLeaf(prefIdx)
@@ -280,14 +262,13 @@ func (b *cidrBuilder) insert(root *int32, addr [16]byte, nbits uint8, feed uint8
 	}
 
 	if d >= int32(nbits) {
-		// nbits < rep.bits path above: terminal split visible to both subtrees.
+
 		split := b.addNode(d, prefIdx)
 		b.nodes[split].child[cidrBitAt(&rep.addr, d)] = cur
 		b.linkChild(root, parent, pdir, split)
 		return
 	}
 
-	// Genuine divergence inside the new prefix length: plain branch node.
 	walk := *root
 	wparent := int32(cidrNoIndex)
 	var wpdir uint32
@@ -307,8 +288,6 @@ func (b *cidrBuilder) insert(root *int32, addr [16]byte, nbits uint8, feed uint8
 	b.nodes[wparent].child[wpdir] = split
 }
 
-// snapshot freezes the builder state into an immutable snapshot. The builder
-// must not be reused afterwards.
 func (b *cidrBuilder) snapshot(root4, root6 int32, gen uint64) *cidrSnapshot {
 	return &cidrSnapshot{
 		gen:   gen,

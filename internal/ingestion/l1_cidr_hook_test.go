@@ -47,8 +47,6 @@ func l1TestTable(t *testing.T, cidrs ...string) *CIDRTable {
 	return table
 }
 
-// TestClickRedirect_L1Match_SafeView (EXIT-M1 unit gate): cloud CIDR hit →
-// HTTP 200 Safe View with a real body, FilterEngine never invoked.
 func TestClickRedirect_L1Match_SafeView(t *testing.T) {
 	filter := &countingFilter{}
 	h, cid := l1HookHandler(t, true, filter)
@@ -86,7 +84,7 @@ func TestClickRedirect_L1CampaignDisabled_FallsThrough(t *testing.T) {
 func TestClickRedirect_L1TableNil_FailOpen(t *testing.T) {
 	filter := &countingFilter{}
 	h, cid := l1HookHandler(t, true, filter)
-	// No ConfigureCIDR: handler.cidrTable nil → fail-open.
+
 	conn := serveClickFromIP(h, cid, "54.230.17.9")
 	require.NotContains(t, string(conn.Written()), "X-BidShard-Safe-View")
 	require.Equal(t, 1, filter.calls)
@@ -95,7 +93,7 @@ func TestClickRedirect_L1TableNil_FailOpen(t *testing.T) {
 func TestClickRedirect_L1TableUnpublished_FailOpen(t *testing.T) {
 	filter := &countingFilter{}
 	h, cid := l1HookHandler(t, true, filter)
-	h.ConfigureCIDR(NewCIDRTable()) // no snapshot published yet
+	h.ConfigureCIDR(NewCIDRTable())
 	conn := serveClickFromIP(h, cid, "54.230.17.9")
 	require.NotContains(t, string(conn.Written()), "X-BidShard-Safe-View")
 	require.Equal(t, 1, filter.calls)

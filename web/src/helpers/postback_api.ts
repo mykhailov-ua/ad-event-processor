@@ -34,21 +34,15 @@ export type PostbackDryRunResult = {
   test_event?: boolean;
 };
 
-/**
- * Load postback config for a campaign.
- */
 export async function fetchPostbackConfig(campaignId: string): Promise<PostbackConfigRow | null> {
   const res = await api('/api/v1/postbacks/config');
   const rows = Array.isArray(res.data) ? (res.data as PostbackConfigRow[]) : [];
   return rows.find((row) => row.campaign_id === campaignId) ?? null;
 }
 
-/**
- * Save postback config for a campaign.
- */
 export async function savePostbackConfig(
   campaignId: string,
-  body: Record<string, unknown>,
+  body: Record<string, unknown>
 ): Promise<void> {
   await apiConfirmed(`/api/v1/postbacks/config/${campaignId}`, {
     method: 'PUT',
@@ -56,9 +50,6 @@ export async function savePostbackConfig(
   });
 }
 
-/**
- * List postback DLQ rows, optionally filtered by campaign.
- */
 export async function fetchPostbackDlq(campaignId?: string): Promise<PostbackDlqRow[]> {
   const res = await api('/api/v1/postbacks/dlq');
   const rows = Array.isArray(res.data) ? (res.data as PostbackDlqRow[]) : [];
@@ -66,28 +57,19 @@ export async function fetchPostbackDlq(campaignId?: string): Promise<PostbackDlq
   return rows.filter((row) => row.campaign_id === campaignId);
 }
 
-/**
- * CAPI dispatch health per configured campaign.
- */
 export async function fetchPostbackCampaignStatus(): Promise<PostbackCampaignStatusRow[]> {
   const res = await api<PostbackCampaignStatusRow[]>('/api/v1/postbacks/campaign-status');
   return res.data ?? [];
 }
 
-/**
- * Retry a postback DLQ entry.
- */
 export async function retryPostbackDlq(id: number | string): Promise<void> {
   await apiConfirmed(`/api/v1/postbacks/dlq/${id}/retry`, { method: 'POST', body: '{}' });
 }
 
-/**
- * Dry-run outbound postback/CAPI config (synthetic payload, no outbox write).
- */
 export async function testPostbackConfig(campaignId: string): Promise<PostbackDryRunResult> {
   const res = await apiConfirmed<PostbackDryRunResult>(
     `/api/v1/postbacks/config/${encodeURIComponent(campaignId)}/test`,
-    { method: 'POST', body: '{}' },
+    { method: 'POST', body: '{}' }
   );
   return res.data ?? { ok: false, provider: 'unknown', error: 'empty response' };
 }

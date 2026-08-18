@@ -8,17 +8,11 @@ export type ApiBlobResult = {
   bytes: number | null;
 };
 
-/**
- * Fetch a binary response from the API with CSRF on mutations.
- */
 export async function apiBlob(path: string, init: RequestInit = {}): Promise<Blob> {
   const result = await apiBlobResult(path, init);
   return result.blob;
 }
 
-/**
- * Fetch a binary response and return export metadata headers when present.
- */
 export async function apiBlobResult(path: string, init: RequestInit = {}): Promise<ApiBlobResult> {
   const headers = new Headers(init.headers || {});
   const method = (init.method || 'GET').toUpperCase();
@@ -33,19 +27,11 @@ export async function apiBlobResult(path: string, init: RequestInit = {}): Promi
     if (ct.includes('application/json')) {
       try {
         body = await res.json();
-      } catch {
-        // ignore
-      }
+      } catch {}
     }
     const code = body?.error?.code ?? 'UNKNOWN';
     const msg = body?.error?.message ?? res.statusText;
-    throw new ApiError(
-      res.status,
-      code,
-      msg,
-      res.headers.get('X-API-Stub') === 'true',
-      body,
-    );
+    throw new ApiError(res.status, code, msg, res.headers.get('X-API-Stub') === 'true', body);
   }
   const bytesHdr = res.headers.get('X-Export-Bytes');
   return {

@@ -47,9 +47,6 @@ async function copyText(text: string): Promise<void> {
   }
 }
 
-/**
- * Telegram Mini App configuration for a campaign.
- */
 export function CampaignTelegramSection({ campaignId, canWrite }: CampaignTelegramSectionProps) {
   const gateRef = useRef(createInFlightGuard());
   const [loading, setLoading] = useState(true);
@@ -132,14 +129,16 @@ export function CampaignTelegramSection({ campaignId, canWrite }: CampaignTelegr
     setSaving(true);
     const token = tokenInput.trim() || storedToken;
     const secret = secretInput.trim() || storedSecret;
-    const [, err] = await to(saveTelegramBot(campaignId, {
-      bot_id: Number(bot.bot_id) || 0,
-      bot_token: token,
-      webhook_url: bot.webhook_url,
-      mini_app_url: bot.mini_app_url,
-      secret_token: secret,
-      auth_date_ttl: Number(bot.auth_date_ttl) || 300,
-    }));
+    const [, err] = await to(
+      saveTelegramBot(campaignId, {
+        bot_id: Number(bot.bot_id) || 0,
+        bot_token: token,
+        webhook_url: bot.webhook_url,
+        mini_app_url: bot.mini_app_url,
+        secret_token: secret,
+        auth_date_ttl: Number(bot.auth_date_ttl) || 300,
+      })
+    );
     setSaving(false);
     gateRef.current.release();
     if (err) {
@@ -156,10 +155,12 @@ export function CampaignTelegramSection({ campaignId, canWrite }: CampaignTelegr
 
   const handleCreateDeeplink = async () => {
     if (!canWrite || !gateRef.current.tryAcquire()) return;
-    const [dl, err] = await to(createTelegramDeeplink(campaignId, {
-      utm_source: utmSource,
-      utm_campaign: utmCampaign,
-    }));
+    const [dl, err] = await to(
+      createTelegramDeeplink(campaignId, {
+        utm_source: utmSource,
+        utm_campaign: utmCampaign,
+      })
+    );
     gateRef.current.release();
     if (err) {
       if (err instanceof ConfirmCancelledError) return;
@@ -273,7 +274,9 @@ export function CampaignTelegramSection({ campaignId, canWrite }: CampaignTelegr
           </label>
           <label className="form-field" htmlFor="tg-webhook-url">
             Webhook URL
-            <span className="form-hint text-muted text-sm">Public URL registered with Telegram via setWebhook</span>
+            <span className="form-hint text-muted text-sm">
+              Public URL registered with Telegram via setWebhook
+            </span>
             <input
               id="tg-webhook-url"
               className="form-input"
@@ -287,7 +290,12 @@ export function CampaignTelegramSection({ campaignId, canWrite }: CampaignTelegr
             <div className="toolbar-row text-sm">
               <span className="text-muted">BidShard ingest URL:</span>
               <code className="code-inline flex-1">{ingestUrl}</code>
-              <Button label="Copy" variant="secondary" size="sm" onClick={() => void copyText(ingestUrl)} />
+              <Button
+                label="Copy"
+                variant="secondary"
+                size="sm"
+                onClick={() => void copyText(ingestUrl)}
+              />
             </div>
           ) : null}
           <label className="form-field" htmlFor="tg-secret-token">
@@ -299,7 +307,9 @@ export function CampaignTelegramSection({ campaignId, canWrite }: CampaignTelegr
                 type="password"
                 autoComplete="off"
                 disabled={!canWrite}
-                placeholder={configured ? 'Leave blank to keep current' : 'X-Telegram-Bot-Api-Secret-Token'}
+                placeholder={
+                  configured ? 'Leave blank to keep current' : 'X-Telegram-Bot-Api-Secret-Token'
+                }
                 value={secretInput}
                 onChange={(e) => setSecretInput(e.target.value)}
               />
@@ -326,7 +336,9 @@ export function CampaignTelegramSection({ campaignId, canWrite }: CampaignTelegr
           </label>
           <label className="form-field" htmlFor="tg-auth-ttl">
             Session validation window
-            <span className="form-hint text-muted text-sm">How long Telegram login data stays valid, in seconds</span>
+            <span className="form-hint text-muted text-sm">
+              How long Telegram login data stays valid, in seconds
+            </span>
             <input
               id="tg-auth-ttl"
               className="form-input"
@@ -389,9 +401,7 @@ export function CampaignTelegramSection({ campaignId, canWrite }: CampaignTelegr
               </p>
               <p className="text-muted">
                 Expires:{' '}
-                {deeplink.expires_at
-                  ? new Date(deeplink.expires_at).toLocaleString()
-                  : '—'}
+                {deeplink.expires_at ? new Date(deeplink.expires_at).toLocaleString() : '—'}
               </p>
               <div className="toolbar-row">
                 <code className="code-inline flex-1">{clickBridgeUrl(deeplink.token)}</code>
@@ -424,7 +434,9 @@ export function CampaignTelegramSection({ campaignId, canWrite }: CampaignTelegr
                 <tbody>
                   {postbacks.map((row) => (
                     <tr key={String(row.id)}>
-                      <td><code className="code-inline">{row.postback_url}</code></td>
+                      <td>
+                        <code className="code-inline">{row.postback_url}</code>
+                      </td>
                       <td>
                         {canWrite ? (
                           <div className="cluster--actions">

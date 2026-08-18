@@ -15,7 +15,7 @@ go test ./internal/ingestion/ -run='TestChaos_ParserSecurity_PS_G09|TestChaos_Pa
 
 echo "parser-chaos: sustained load mix (PS-G08 / C-X02)"
 CHAOS_LOAD_DURATION=8s CHAOS_LOAD_RPS=3000 CHAOS_LOAD_WORKERS=4 \
-	bash scripts/fault/parser_chaos_load.sh --duration=8s --rps=3000 --workers=4 --log=/tmp/parser-chaos-load-drill.log
+  bash scripts/fault/parser_chaos_load.sh --duration=8s --rps=3000 --workers=4 --log=/tmp/parser-chaos-load-drill.log
 
 echo "parser-chaos: cross-hop nginx↔gnet (PS-G04, phase P1)"
 go test ./internal/ingestion/ -run='TestChaos_CrossHop_NginxGnet' -count=1 -timeout=2m -v
@@ -31,7 +31,7 @@ go test ./internal/ingestion/ -run='TestRequestBufferPool|TestChaos_ParserSecuri
 
 echo "parser-chaos: fuzz smoke (PS-H06, phase P2)"
 go test ./internal/ingestion/ -fuzz=FuzzParseTrackJSON -fuzztime=10s -count=1 || true
-go test ./internal/ingestion/ -fuzz=FuzzParseOpenRTB3FSM -fuzztime=10s -count=1 2>/dev/null || true
+go test ./internal/ingestion/ -fuzz=FuzzParseOpenRTB3FSM -fuzztime=10s -count=1 2> /dev/null || true
 go test ./internal/ingestion/ -fuzz=FuzzSkipJSONValueBudget -fuzztime=10s -count=1 || true
 go test ./internal/ingestion/ -fuzz=FuzzHTTP1Chunked -fuzztime=10s -count=1 || true
 

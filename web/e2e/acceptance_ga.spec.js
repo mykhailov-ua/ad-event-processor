@@ -1,4 +1,3 @@
-/** harness=mock_api — Playwright route.fulfill; does not prove Go handler or CH/PG. */
 import { test, expect } from '@playwright/test';
 import { mockAuthedSession, ADMIN_USER } from './helpers.js';
 
@@ -21,9 +20,6 @@ const CAMPAIGN = {
   pacing_mode: 'even',
 };
 
-/**
- * @param {import('@playwright/test').Page} page
- */
 async function mockCampaignDetailApis(page) {
   await page.route('**/api/v1/campaigns/camp-ga-1**', async (route) => {
     if (route.request().method() !== 'GET') {
@@ -82,8 +78,12 @@ test('buyer integration tab surfaces click and track URLs', async ({ page }) => 
   await page.getByRole('tab', { name: 'Integration' }).click();
   await expect(page.getByText('Click URL (campaign traffic)')).toBeVisible();
   await expect(page.getByTestId('integration-inbound-url')).toContainText('Postback URL');
-  await expect(page.locator('.integration-copy-row code').filter({ hasText: '/click' })).toBeVisible();
-  await expect(page.locator('.integration-copy-row code').filter({ hasText: '/track' }).first()).toBeVisible();
+  await expect(
+    page.locator('.integration-copy-row code').filter({ hasText: '/click' })
+  ).toBeVisible();
+  await expect(
+    page.locator('.integration-copy-row code').filter({ hasText: '/track' }).first()
+  ).toBeVisible();
 });
 
 test('campaign list bulk pause is available when rows selected', async ({ page }) => {
@@ -95,8 +95,18 @@ test('campaign list bulk pause is available when rows selected', async ({ page }
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         items: [
-          { id: 'c-bulk-1', name: 'Bulk One', status: 'ACTIVE', customer_id: '11111111-1111-1111-1111-111111111111' },
-          { id: 'c-bulk-2', name: 'Bulk Two', status: 'PAUSED', customer_id: '11111111-1111-1111-1111-111111111111' },
+          {
+            id: 'c-bulk-1',
+            name: 'Bulk One',
+            status: 'ACTIVE',
+            customer_id: '11111111-1111-1111-1111-111111111111',
+          },
+          {
+            id: 'c-bulk-2',
+            name: 'Bulk Two',
+            status: 'PAUSED',
+            customer_id: '11111111-1111-1111-1111-111111111111',
+          },
         ],
         total: 2,
       }),
@@ -147,7 +157,9 @@ test('buyer overview shows fraud KPI tiles without opening fraud dashboard', asy
   await page.goto('/');
   await expect(page.getByTestId('fraud-kpi-tiles')).toBeVisible();
   await expect(page.getByTestId('fraud-kpi-ghost-ivt-campaigns')).toBeVisible();
-  await expect(page.getByTestId('fraud-kpi-tiles').getByRole('link', { name: /High-IVT geo hints/i })).toBeVisible();
+  await expect(
+    page.getByTestId('fraud-kpi-tiles').getByRole('link', { name: /High-IVT geo hints/i })
+  ).toBeVisible();
 });
 
 test('live report campaign-overview does not mount stub banner', async ({ page }) => {
@@ -164,7 +176,9 @@ test('live report campaign-overview does not mount stub banner', async ({ page }
     });
   });
 
-  await page.goto('/reports/campaign-overview?customer_id=11111111-1111-1111-1111-111111111111&from=2026-01-01&to=2026-01-31');
+  await page.goto(
+    '/reports/campaign-overview?customer_id=11111111-1111-1111-1111-111111111111&from=2026-01-01&to=2026-01-31'
+  );
   await expect(page.getByRole('heading', { name: 'Campaign overview' })).toBeVisible();
   await expect(page.getByText('Planned API')).toHaveCount(0);
 });

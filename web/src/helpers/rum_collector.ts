@@ -22,16 +22,10 @@ let flushTimer: ReturnType<typeof setInterval> | null = null;
 
 const vitalsBuffer: VitalSample[] = [];
 
-/**
- * Return whether this session should sample RUM events.
- */
 function shouldSample(): boolean {
   return Math.random() < SAMPLE_RATE;
 }
 
-/**
- * Observe Web Vitals when supported by the browser.
- */
 function observeVitals(): void {
   if (typeof PerformanceObserver === 'undefined') return;
 
@@ -42,7 +36,7 @@ function observeVitals(): void {
       if (last) vitalsBuffer.push({ name: 'LCP', valueMs: Math.round(last.startTime) });
     });
     lcp.observe({ type: 'largest-contentful-paint', buffered: true });
-  } catch { /* unsupported */ }
+  } catch {}
 
   try {
     const cls = new PerformanceObserver((list) => {
@@ -54,7 +48,7 @@ function observeVitals(): void {
       if (score > 0) vitalsBuffer.push({ name: 'CLS', value: Number(score.toFixed(4)) });
     });
     cls.observe({ type: 'layout-shift', buffered: true });
-  } catch { /* unsupported */ }
+  } catch {}
 
   try {
     const inp = new PerformanceObserver((list) => {
@@ -64,13 +58,14 @@ function observeVitals(): void {
         vitalsBuffer.push({ name: 'INP', valueMs: Math.round(delay) });
       }
     });
-    inp.observe({ type: 'event', buffered: true, durationThreshold: 40 } as PerformanceObserverInit);
-  } catch { /* unsupported */ }
+    inp.observe({
+      type: 'event',
+      buffered: true,
+      durationThreshold: 40,
+    } as PerformanceObserverInit);
+  } catch {}
 }
 
-/**
- * Flush buffered vitals and telemetry to the control plane.
- */
 async function flushRUM(): Promise<void> {
   if (!shouldSample()) return;
   const snapshot: TelemetrySnapshot = buildTelemetrySnapshot();
@@ -83,18 +78,13 @@ async function flushRUM(): Promise<void> {
       method: 'POST',
       body: JSON.stringify(snapshot),
     });
-  } catch {
-    // RUM must not break the admin UI.
-  }
+  } catch {}
 }
 
 export type RumCollectorHandle = {
   stop: () => void;
 };
 
-/**
- * Start periodic RUM sampling for the admin session.
- */
 export function startRUMCollector(): RumCollectorHandle {
   observeVitals();
   if (flushTimer) clearInterval(flushTimer);
@@ -109,9 +99,6 @@ export function startRUMCollector(): RumCollectorHandle {
   };
 }
 
-/**
- * Force an immediate RUM flush (e.g. before support bundle download).
- */
 export function flushRUMNow(): Promise<void> {
   return flushRUM();
 }

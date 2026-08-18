@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/internal/database"
 
 	"github.com/google/uuid"
@@ -55,7 +54,7 @@ func TestHandlerAudit_pagination(t *testing.T) {
 		require.Equal(t, http.StatusOK, resp.Code)
 		assert.Equal(t, "55", resp.Header().Get("X-Total-Count"))
 
-		var items []adminapi.AuditLogDTO
+		var items []AuditLogDTO
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&items))
 		assert.Len(t, items, 50)
 	})
@@ -69,7 +68,7 @@ func TestHandlerAudit_pagination(t *testing.T) {
 		require.Equal(t, http.StatusOK, resp.Code)
 		assert.Equal(t, "55", resp.Header().Get("X-Total-Count"))
 
-		var items []adminapi.AuditLogDTO
+		var items []AuditLogDTO
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&items))
 		assert.Len(t, items, 5)
 	})
@@ -82,7 +81,7 @@ func TestHandlerAudit_pagination(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, resp.Code)
 
-		var items []adminapi.AuditLogDTO
+		var items []AuditLogDTO
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&items))
 		assert.Len(t, items, 55)
 	})

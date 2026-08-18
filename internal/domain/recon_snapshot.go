@@ -62,7 +62,6 @@ type redisPipeliner interface {
 	Pipeline() redis.Pipeliner
 }
 
-// BatchFetchBudgetReconSnapshots pipelines recon snapshot EVAL per campaign on one Redis connection.
 func BatchFetchBudgetReconSnapshots(ctx context.Context, rdb redis.Cmdable, campaignIDs []uuid.UUID, quotaMode bool) (map[uuid.UUID]BudgetReconSnapshot, error) {
 	out := make(map[uuid.UUID]BudgetReconSnapshot, len(campaignIDs))
 	if len(campaignIDs) == 0 {

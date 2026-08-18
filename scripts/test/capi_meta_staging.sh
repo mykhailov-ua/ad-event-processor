@@ -31,7 +31,10 @@ FBCLID="fb.staging.${CLICK_ID}"
 METRIC_GREP='ad_postback_dispatch_total{provider="facebook",status="success"}'
 
 log() { printf 'capi-meta-staging: %s\n' "$*"; }
-die() { printf 'capi-meta-staging: ERROR: %s\n' "$*" >&2; exit 1; }
+die() {
+  printf 'capi-meta-staging: ERROR: %s\n' "$*" >&2
+  exit 1
+}
 
 if [[ "${CAPI_STAGING_DRY_RUN:-}" == "1" ]]; then
   log "dry-run — would:"
@@ -54,7 +57,8 @@ log "GET /click -> HTTP ${CLICK_CODE}"
   || die "click failed with HTTP ${CLICK_CODE}"
 
 log "step 2: conversion POST /track"
-CONV_BODY="$(cat <<EOF
+CONV_BODY="$(
+  cat << EOF
 {"campaign_id":"${CAMPAIGN_ID}","type":"conversion","click_id":"${CLICK_ID}","user_id":"u-staging","fbclid":"${FBCLID}","payload":{"email":"staging@example.com"}}
 EOF
 )"
@@ -68,7 +72,7 @@ log "POST /track -> HTTP ${TRACK_CODE}"
 
 if [[ "${CAPI_SEED_OUTBOX:-1}" == "1" && -n "${CAPI_BOOTSTRAP_DB:-}" ]]; then
   log "seeding SEND_POSTBACK outbox row (local smoke fallback)"
-  python3 - "$CAMPAIGN_ID" "$CLICK_ID" "$FBCLID" <<'PY'
+  python3 - "$CAMPAIGN_ID" "$CLICK_ID" "$FBCLID" << 'PY'
 import json, subprocess, sys
 
 campaign_id, click_id, fbclid = sys.argv[1:4]
@@ -111,7 +115,7 @@ if [[ -n "$ADMIN_API_KEY" && -n "$META_TEST_EVENT_CODE" ]]; then
   elif [[ -n "${CAPI_BOOTSTRAP_DB:-}" ]]; then
     db_code="$(docker exec bidshard-db-1 psql -h /run/ad-event-processor/postgresql -p 5430 \
       -U ad_event_processor_user -d ad_event_processor -t -A -c \
-      "SELECT test_event_code FROM postback_configs WHERE campaign_id='${CAMPAIGN_ID}'::uuid;" 2>/dev/null | tr -d '[:space:]' || true)"
+      "SELECT test_event_code FROM postback_configs WHERE campaign_id='${CAMPAIGN_ID}'::uuid;" 2> /dev/null | tr -d '[:space:]' || true)"
     if [[ "$db_code" == "$META_TEST_EVENT_CODE" ]]; then
       verified=1
       log "postback config test_event_code=${META_TEST_EVENT_CODE} (verified via Postgres; control API may need rebuild)"
@@ -126,7 +130,7 @@ fi
 
 log "step 4: wait for postback metrics (up to 90s) on ${POSTBACK_METRICS_URL}"
 for _ in $(seq 1 18); do
-  if curl -sf "$POSTBACK_METRICS_URL" 2>/dev/null | grep -qF "$METRIC_GREP"; then
+  if curl -sf "$POSTBACK_METRICS_URL" 2> /dev/null | grep -qF "$METRIC_GREP"; then
     log "success: ${METRIC_GREP} observed"
     log "next: confirm event in Meta Events Manager (test stream) within 5 min"
     REPORT_DIR="${CAPI_LAB_REPORT_DIR:-$ROOT/var/capi-lab/$(date -u +%Y%m%dT%H%M%SZ)}"
@@ -139,7 +143,7 @@ for _ in $(seq 1 18); do
       echo "track_http=${TRACK_CODE}"
       echo "metric=${METRIC_GREP}"
       echo "fault_proof fault=capi_meta_staging harness=capi_meta_staging provider=facebook status=success"
-    } >"$REPORT_DIR/summary.txt"
+    } > "$REPORT_DIR/summary.txt"
     log "report: $REPORT_DIR/summary.txt"
     exit 0
   fi

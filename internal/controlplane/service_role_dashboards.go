@@ -2,13 +2,11 @@ package controlplane
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"os"
+	"fmt"
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/bidshard/ad-event-processor/internal/ledger"
 
@@ -16,8 +14,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func (s *Service) compositeReads() *adminapi.CompositeReadService {
-	cr := adminapi.NewCompositeReadService(s.GetPool(), s.cfg)
+func (s *Service) compositeReads() *CompositeReadService {
+	cr := NewCompositeReadService(s.GetPool(), s.cfg)
 	if s.chQuery != nil {
 		cr.SetCHQuery(s.chQuery)
 	}
@@ -71,12 +69,6 @@ func sumAllDisputes(ctx context.Context, s *Service, customerID uuid.UUID) int64
 	return totalMicro
 }
 
-type AdOpsDashboardDTO = adminapi.AdOpsDashboardDTO
-type CFODashboardDTO = adminapi.CFODashboardDTO
-type AccountantDashboardDTO = adminapi.AccountantDashboardDTO
-type FraudDashboardDTO = adminapi.FraudDashboardDTO
-
-// GetAdOpsDashboard returns unit economics and worst sources for a customer.
 func (s *Service) GetAdOpsDashboard(ctx context.Context, customerID uuid.UUID) (AdOpsDashboardDTO, error) {
 	portfolio, err := s.GetBuyerPortfolio(ctx, customerID)
 	if err != nil {
@@ -85,13 +77,13 @@ func (s *Service) GetAdOpsDashboard(ctx context.Context, customerID uuid.UUID) (
 	resp := AdOpsDashboardDTO{
 		CustomerID: customerID.String(),
 		Period:     portfolio.Period,
-		Campaigns:  make([]adminapi.BuyerCampaignRowDTO, 0, len(portfolio.Campaigns)),
+		Campaigns:  make([]BuyerCampaignRowDTO, 0, len(portfolio.Campaigns)),
 	}
 	if portfolio.KPIs != nil {
 		resp.KPIs = *portfolio.KPIs
 	}
 	for _, c := range portfolio.Campaigns {
-		resp.Campaigns = append(resp.Campaigns, adminapi.BuyerCampaignRowDTO{
+		resp.Campaigns = append(resp.Campaigns, BuyerCampaignRowDTO{
 			ID:             c.ID,
 			Name:           c.Name,
 			Status:         c.Status,
@@ -107,9 +99,9 @@ func (s *Service) GetAdOpsDashboard(ctx context.Context, customerID uuid.UUID) (
 	return resp, nil
 }
 
-func (s *Service) worstIVTSources(ctx context.Context, customerID uuid.UUID, period adminapi.PeriodDTO) []adminapi.SourceRowDTO {
+func (s *Service) worstIVTSources(ctx context.Context, customerID uuid.UUID, period PeriodDTO) []SourceRowDTO {
 	if s.chQuery == nil {
-		return []adminapi.SourceRowDTO{}
+		return []SourceRowDTO{}
 	}
 	from, err := time.Parse(time.RFC3339, period.From)
 	if err != nil {
@@ -119,22 +111,22 @@ func (s *Service) worstIVTSources(ctx context.Context, customerID uuid.UUID, per
 	if err != nil {
 		return nil
 	}
-	campaignIDs, err := adminapi.ListCustomerCampaignIDs(ctx, s.GetPool(), customerID)
+	campaignIDs, err := ListCustomerCampaignIDs(ctx, s.GetPool(), customerID)
 	if err != nil || len(campaignIDs) == 0 {
 		return nil
 	}
-	chCtx, cancel := context.WithTimeout(ctx, adminapi.ReportCHQueryTimeout())
+	chCtx, cancel := context.WithTimeout(ctx, ReportCHQueryTimeout())
 	defer cancel()
-	sources, err := adminapi.QueryWorstIVTSources(chCtx, s.chQuery, campaignIDs, from, to, 5)
+	sources, err := QueryWorstIVTSources(chCtx, s.chQuery, campaignIDs, from, to, 5)
 	if err != nil || len(sources) == 0 {
 		return nil
 	}
 	return sources
 }
 
-func worstSourcesFromCampaigns(campaigns []adminapi.BuyerCampaignRowDTO) []adminapi.SourceRowDTO {
+func worstSourcesFromCampaigns(campaigns []BuyerCampaignRowDTO) []SourceRowDTO {
 	type scored struct {
-		row   adminapi.SourceRowDTO
+		row   SourceRowDTO
 		score float64
 	}
 	scoredRows := make([]scored, 0, len(campaigns))
@@ -148,12 +140,12 @@ func worstSourcesFromCampaigns(campaigns []adminapi.BuyerCampaignRowDTO) []admin
 			score += 25
 		}
 		scoredRows = append(scoredRows, scored{
-			row: adminapi.SourceRowDTO{
+			row: SourceRowDTO{
 				CampaignID:   c.ID,
 				Sub1:         c.Name,
 				SpendMicro:   c.SpendMicro,
 				IVTRate:      0,
-				QualityScore: adminapi.CalcQualityFromDrift(c.PacingDriftPct),
+				QualityScore: CalcQualityFromDrift(c.PacingDriftPct),
 			},
 			score: score,
 		})
@@ -165,14 +157,13 @@ func worstSourcesFromCampaigns(campaigns []adminapi.BuyerCampaignRowDTO) []admin
 			}
 		}
 	}
-	out := make([]adminapi.SourceRowDTO, 0, 5)
+	out := make([]SourceRowDTO, 0, 5)
 	for i := 0; i < len(scoredRows) && i < 5; i++ {
 		out = append(out, scoredRows[i].row)
 	}
 	return out
 }
 
-// GetCFODashboard returns billed totals and dispute exposure for a customer.
 func (s *Service) GetCFODashboard(ctx context.Context, customerID uuid.UUID) (CFODashboardDTO, error) {
 	if customerID == uuid.Nil {
 		return CFODashboardDTO{}, errValidation("customer_id is required")
@@ -197,7 +188,7 @@ func (s *Service) GetCFODashboard(ctx context.Context, customerID uuid.UUID) (CF
 
 	return CFODashboardDTO{
 		CustomerID: customerID.String(),
-		Period: adminapi.PeriodDTO{
+		Period: PeriodDTO{
 			From: from.Format(time.RFC3339),
 			To:   now.Format(time.RFC3339),
 		},
@@ -205,9 +196,9 @@ func (s *Service) GetCFODashboard(ctx context.Context, customerID uuid.UUID) (CF
 		ARAgingMicro:         arAging,
 		FeeTotalMicro:        feeMicro,
 		DisputeExposureMicro: sumAllDisputes(ctx, s, customerID),
-		KPIs: adminapi.MetricsBlockDTO{
+		KPIs: MetricsBlockDTO{
 			SpendMicro: spendMicro,
-			Freshness: adminapi.DataFreshnessDTO{
+			Freshness: DataFreshnessDTO{
 				AsOf:        now.Format(time.RFC3339),
 				Consistency: "strong",
 				Stale:       s.chQuery == nil,
@@ -216,7 +207,6 @@ func (s *Service) GetCFODashboard(ctx context.Context, customerID uuid.UUID) (CF
 	}, nil
 }
 
-// GetAccountantDashboard returns close checklist and export job status.
 func (s *Service) GetAccountantDashboard(ctx context.Context, customerID uuid.UUID) (AccountantDashboardDTO, error) {
 	if customerID == uuid.Nil {
 		return AccountantDashboardDTO{}, errValidation("customer_id is required")
@@ -242,11 +232,11 @@ func (s *Service) GetAccountantDashboard(ctx context.Context, customerID uuid.UU
 
 	return AccountantDashboardDTO{
 		CustomerID: customerID.String(),
-		Period: adminapi.PeriodDTO{
+		Period: PeriodDTO{
 			From: now.Add(-30 * 24 * time.Hour).Format(time.RFC3339),
 			To:   now.Format(time.RFC3339),
 		},
-		Close: adminapi.AccountantCloseDTO{
+		Close: AccountantCloseDTO{
 			CustomerID:          customerID.String(),
 			BillingMonth:        month,
 			InvariantOK:         inv.OK,
@@ -254,17 +244,12 @@ func (s *Service) GetAccountantDashboard(ctx context.Context, customerID uuid.UU
 		},
 		TaxCountry: countryCode,
 		TaxScheme:  taxScheme,
-		ExportJobs: []adminapi.ExportJobStatusDTO{},
+		ExportJobs: []ExportJobStatusDTO{},
 	}, nil
 }
 
-const (
-	fraudTierPassMax    = 30
-	fraudTierSuspectMax = 60
-	fraudTierIVTMax     = 80
-)
+const fraudTierThresholdScopePlatformDefault = "platform_default"
 
-// GetFraudDashboard returns ML and IVT campaign signals for a customer.
 func (s *Service) GetFraudDashboard(ctx context.Context, customerID uuid.UUID) (FraudDashboardDTO, error) {
 	if customerID == uuid.Nil {
 		return FraudDashboardDTO{}, errValidation("customer_id is required")
@@ -282,72 +267,65 @@ func (s *Service) GetFraudDashboard(ctx context.Context, customerID uuid.UUID) (
 	}
 
 	var labelsPending int
-	_ = s.GetPool().QueryRow(ctx, `
+	if err := s.GetPool().QueryRow(ctx, `
 		SELECT count(*)::int FROM ml_manual_labels
-		WHERE created_at >= $1`, from).Scan(&labelsPending)
+		WHERE customer_id = $1 AND created_at >= $2`, domain.ToUUID(customerID), from).Scan(&labelsPending); err != nil {
+		return FraudDashboardDTO{}, fmt.Errorf("count pending ml labels: %w", err)
+	}
 
-	mlVersionID, mlHash, mlPrecision, mlRecall, mlDrift := s.fraudMLSnapshot(ctx)
+	mlSnap, err := s.fraudMLSnapshot(ctx)
+	if err != nil {
+		return FraudDashboardDTO{}, err
+	}
 
-	recentLabels, _ := s.listRecentMLLabels(ctx, 5)
+	recentLabels, err := s.listRecentMLLabelsForCustomer(ctx, customerID, 5)
+	if err != nil {
+		return FraudDashboardDTO{}, fmt.Errorf("list recent ml labels: %w", err)
+	}
 
 	geoHints := s.fraudGeoHints(ctx, customerID, from, now)
 
-	edge, _ := FetchEdgeMetrics(ctx)
+	edge, err := FetchEdgeMetrics(ctx)
+	if err != nil {
+		return FraudDashboardDTO{}, fmt.Errorf("fetch edge metrics: %w", err)
+	}
 	return FraudDashboardDTO{
 		CustomerID: customerID.String(),
-		Period: adminapi.PeriodDTO{
+		Period: PeriodDTO{
 			From: from.Format(time.RFC3339),
 			To:   now.Format(time.RFC3339),
 		},
-		GhostIVTCampaigns: ghost,
-		LabelsPending:     labelsPending,
-		EdgeBlockedFraud:  edge.Blocked["fraud_tier"],
-		MLActiveVersionID: mlVersionID,
-		MLArtifactHash:    mlHash,
-		MLPrecision:       mlPrecision,
-		MLRecall:          mlRecall,
-		MLDriftDetected:   mlDrift,
-		FraudTierThresholds: adminapi.FraudTierThresholdsDTO{
-			PassMax:    fraudTierPassMax,
-			SuspectMax: fraudTierSuspectMax,
-			IVTMax:     fraudTierIVTMax,
-			BlockAbove: fraudTierIVTMax,
+		GhostIVTCampaigns:  ghost,
+		LabelsPending:      labelsPending,
+		EdgeBlockedFraud:   edge.Blocked["fraud_tier"],
+		MLActiveVersionID:  mlSnap.VersionID,
+		MLArtifactHash:     mlSnap.ArtifactHash,
+		MLPrecision:        mlSnap.Precision,
+		MLRecall:           mlSnap.Recall,
+		MLDriftDetected:    mlSnap.DriftDetected,
+		MLDriftSummary:     mlSnap.DriftSummary,
+		MLEvalGeneratedAt:  mlSnap.EvalGeneratedAt,
+		MLEvalStatus:       mlSnap.EvalStatus,
+		MLEvalStale:        mlSnap.EvalStale,
+		MLLabelMethod:      mlSnap.LabelMethod,
+		MLShardsConsistent: mlSnap.ShardsConsistent,
+		FraudTierThresholds: FraudTierThresholdsDTO{
+			Scope:      fraudTierThresholdScopePlatformDefault,
+			PassMax:    int(domain.DefaultFraudThresholdPass),
+			SuspectMax: int(domain.DefaultFraudThresholdSuspect),
+			IVTMax:     int(domain.DefaultFraudThresholdIVT),
+			BlockAbove: int(domain.DefaultFraudThresholdBlock),
 		},
 		GeoHints:     geoHints,
 		RecentLabels: recentLabels,
 	}, nil
 }
 
-func (s *Service) fraudMLSnapshot(ctx context.Context) (versionID, artifactHash string, precision, recall float64, driftDetected bool) {
-	err := s.GetPool().QueryRow(ctx, `
-		SELECT id, artifact_hash FROM ml_model_versions
-		WHERE status = 'ACTIVE' ORDER BY created_at DESC LIMIT 1`,
-	).Scan(&versionID, &artifactHash)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return "", "", 0, 0, false
-	}
-	path := os.Getenv("FRAUD_EVAL_REPORT_PATH")
-	if path == "" {
-		path = "var/fraudscore/shadow_eval_report.json"
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return versionID, artifactHash, 0, 0, false
-	}
-	var report struct {
-		Precision     float64 `json:"precision"`
-		Recall        float64 `json:"recall"`
-		DriftDetected bool    `json:"drift_detected"`
-	}
-	if json.Unmarshal(data, &report) == nil {
-		precision = report.Precision
-		recall = report.Recall
-		driftDetected = report.DriftDetected
-	}
-	return versionID, artifactHash, precision, recall, driftDetected
+func (s *Service) listRecentMLLabelsForCustomer(ctx context.Context, customerID uuid.UUID, limit int) ([]MLManualLabelDTO, error) {
+	return s.ListMLManualLabelsForCustomer(ctx, customerID, limit)
 }
 
-func (s *Service) listRecentMLLabels(ctx context.Context, limit int) ([]adminapi.MLManualLabelDTO, error) {
+func (s *Service) listRecentMLLabels(ctx context.Context, limit int) ([]MLManualLabelDTO, error) {
 	if limit <= 0 {
 		limit = 5
 	}
@@ -360,9 +338,9 @@ func (s *Service) listRecentMLLabels(ctx context.Context, limit int) ([]adminapi
 		return nil, err
 	}
 	defer rows.Close()
-	out := make([]adminapi.MLManualLabelDTO, 0, limit)
+	out := make([]MLManualLabelDTO, 0, limit)
 	for rows.Next() {
-		var row adminapi.MLManualLabelDTO
+		var row MLManualLabelDTO
 		var createdAt time.Time
 		if err := rows.Scan(&row.IPHash, &row.Label, &row.Reason, &row.Source, &createdAt); err != nil {
 			return nil, err
@@ -373,17 +351,17 @@ func (s *Service) listRecentMLLabels(ctx context.Context, limit int) ([]adminapi
 	return out, rows.Err()
 }
 
-func (s *Service) fraudGeoHints(ctx context.Context, customerID uuid.UUID, from, to time.Time) []adminapi.FraudGeoHintDTO {
+func (s *Service) fraudGeoHints(ctx context.Context, customerID uuid.UUID, from, to time.Time) []FraudGeoHintDTO {
 	if s.chQuery == nil {
 		return nil
 	}
-	campaignIDs, err := adminapi.ListCustomerCampaignIDs(ctx, s.GetPool(), customerID)
+	campaignIDs, err := ListCustomerCampaignIDs(ctx, s.GetPool(), customerID)
 	if err != nil || len(campaignIDs) == 0 {
 		return nil
 	}
-	chCtx, cancel := context.WithTimeout(ctx, adminapi.ReportCHQueryTimeout())
+	chCtx, cancel := context.WithTimeout(ctx, ReportCHQueryTimeout())
 	defer cancel()
-	hints, err := adminapi.QueryWorstIVTCountries(chCtx, s.chQuery, campaignIDs, from, to, 5)
+	hints, err := QueryWorstIVTCountries(chCtx, s.chQuery, campaignIDs, from, to, 5)
 	if err != nil {
 		return nil
 	}

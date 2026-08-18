@@ -424,10 +424,6 @@ func buildTgRedirectLocation(dst, base []byte, clickID, bridgeToken string, subs
 	return dst, true
 }
 
-// fillTgEventFromParsed maps parsedHTTPRequest header slices into evt string fields.
-// req.* slices alias the gnet read buffer and are valid for the current OnTraffic call only.
-// parsed string fields alias ctx.wCamp.buf scratch; callers must not mutate scratch until
-// redirect URL assembly completes.
 func fillTgEventFromParsed(evt *domain.Event, eventType string, parsed *tgQueryParsed, req parsedHTTPRequest) {
 	evt.Reset()
 	evt.ClickID = parsed.clickIDStr

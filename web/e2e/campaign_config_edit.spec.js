@@ -1,4 +1,3 @@
-/** harness=mock_api — Playwright route.fulfill; does not prove Go handler or CH/PG. */
 import { test, expect } from '@playwright/test';
 import { mockAuthedSession, ADMIN_USER } from './helpers.js';
 
@@ -21,9 +20,6 @@ const CAMPAIGN = {
   updated_at: '2026-01-01T00:00:00Z',
 };
 
-/**
- * @param {import('@playwright/test').Page} page
- */
 async function mockCampaignDetailApis(page) {
   await page.route('**/api/v1/campaigns/camp-edit-1', async (route) => {
     if (route.request().method() === 'GET') {
@@ -357,7 +353,9 @@ test('campaign config rejects proxy mode without upstream URL', async ({ page })
   await page.getByTestId('cfg-click-delivery').selectOption('proxy');
   await page.getByRole('button', { name: 'Save changes' }).click();
 
-  await expect(page.getByText('Proxy upstream URL is required when click delivery is reverse proxy')).toBeVisible();
+  await expect(
+    page.getByText('Proxy upstream URL is required when click delivery is reverse proxy')
+  ).toBeVisible();
   expect(patchCalled).toBe(false);
 });
 
@@ -432,7 +430,10 @@ test('campaign tracking apply-templates POST sends traffic_source', async ({ pag
 
   await page.goto('/campaigns/camp-edit-1?tab=tracking');
   await page.getByTestId('apply-traffic-source').selectOption('traffic_propellerads');
-  await page.getByTestId('apply-campaign-templates').getByRole('button', { name: 'Apply templates to campaign' }).click();
+  await page
+    .getByTestId('apply-campaign-templates')
+    .getByRole('button', { name: 'Apply templates to campaign' })
+    .click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click();
 

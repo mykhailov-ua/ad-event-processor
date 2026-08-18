@@ -46,24 +46,20 @@ const samples = new Map<string, ProbeSample>();
 
 let devtoolsInstalled = false;
 
-/**
- * Expose probe report on window in dev builds only.
- */
 function installDevtoolsProbe(): void {
   if (devtoolsInstalled || typeof window === 'undefined') return;
   devtoolsInstalled = true;
   const host = window.location?.hostname ?? '';
   if (host === 'localhost' || host === '127.0.0.1') {
-    (window as Window & { __AD_EVENT_PROCESSOR_PROBE__?: ProbeDevtools }).__AD_EVENT_PROCESSOR_PROBE__ = {
+    (
+      window as Window & { __AD_EVENT_PROCESSOR_PROBE__?: ProbeDevtools }
+    ).__AD_EVENT_PROCESSOR_PROBE__ = {
       report: () => probeReport(),
       reset: () => probeReset(),
     };
   }
 }
 
-/**
- * Start a critical-path timing probe.
- */
 export function probeStart(name: string): ProbeHandle {
   installDevtoolsProbe();
   return {
@@ -73,9 +69,6 @@ export function probeStart(name: string): ProbeHandle {
   };
 }
 
-/**
- * Record probe duration and optional heap delta.
- */
 export function probeEnd(handle: ProbeHandle, meta: ProbeEndMeta = {}): ProbeEndResult {
   const ns = Math.round((performance.now() - handle.t0) * 1e6);
   const heapDelta = heapBytes() - handle.heap0;
@@ -90,9 +83,6 @@ export function probeEnd(handle: ProbeHandle, meta: ProbeEndMeta = {}): ProbeEnd
   return { name: handle.name, ns, heapDelta, allocs, bytes };
 }
 
-/**
- * Return aggregated probe metrics keyed by operation name.
- */
 export function probeReport(): ProbeReport {
   const out: ProbeReport = {};
   for (const [name, row] of samples.entries()) {
@@ -107,37 +97,22 @@ export function probeReport(): ProbeReport {
   return out;
 }
 
-/**
- * Reset all stored probe samples.
- */
 export function probeReset(): void {
   samples.clear();
 }
 
-/**
- * Record a route navigation probe.
- */
 export function probeRouteChange(path: string): void {
   probeEnd(probeStart(`route:${path}`));
 }
 
-/**
- * Record a chart mount probe.
- */
 export function probeChartMount(chartName: string, pointCount = 0): void {
   probeEnd(probeStart(`chart:${chartName}`), { bytes: pointCount });
 }
 
-/**
- * Record a worker round-trip probe.
- */
 export function probeWorkerRoundTrip(workerName: string, bytes = 0): void {
   probeEnd(probeStart(`worker:${workerName}`), { bytes });
 }
 
-/**
- * Read heap usage when the runtime exposes it.
- */
 function heapBytes(): number {
   if (typeof performance !== 'undefined') {
     const mem = (performance as PerformanceWithMemory).memory?.usedJSHeapSize;

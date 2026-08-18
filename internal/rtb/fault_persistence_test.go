@@ -1,12 +1,12 @@
 package rtb
 
 import (
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
-
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

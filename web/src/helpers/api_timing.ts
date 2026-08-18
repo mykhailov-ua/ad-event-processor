@@ -2,16 +2,10 @@ const durations = new Map<string, number[]>();
 
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 
-/**
- * Normalize API paths for timing aggregation.
- */
 export function apiPathTemplate(path: string): string {
   return path.split('?')[0].replace(UUID_RE, '{id}');
 }
 
-/**
- * Record one API round-trip duration in milliseconds.
- */
 export function recordApiTiming(path: string, ms: number): void {
   const key = apiPathTemplate(path);
   const bucket = durations.get(key) ?? [];
@@ -20,9 +14,6 @@ export function recordApiTiming(path: string, ms: number): void {
   durations.set(key, bucket);
 }
 
-/**
- * Compute percentile from a sorted numeric array.
- */
 function percentile(sorted: number[], p: number): number {
   if (sorted.length === 0) return 0;
   const idx = Math.ceil((p / 100) * sorted.length) - 1;
@@ -40,9 +31,6 @@ export type ApiTimingReport = {
   slowPaths: string[];
 };
 
-/**
- * Return p50/p95 per path template and flag slow endpoints.
- */
 export function apiTimingReport(): ApiTimingReport {
   const paths: Record<string, ApiTimingPathStats> = {};
   const slowPaths: string[] = [];
@@ -56,9 +44,6 @@ export function apiTimingReport(): ApiTimingReport {
   return { paths, slowPaths };
 }
 
-/**
- * Reset stored API timings.
- */
 export function apiTimingReset(): void {
   durations.clear();
 }

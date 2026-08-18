@@ -27,6 +27,7 @@ type PostgresConn interface {
 	UpdateCampaignSpend(ctx context.Context, campaignID uuid.UUID, currentSpend int64) error
 	GetCampaignBudgetLimit(ctx context.Context, campaignID uuid.UUID) (int64, error)
 	GetCampaignSpend(ctx context.Context, campaignID uuid.UUID) (int64, error)
+	GetCampaignSpends(ctx context.Context, campaignIDs []uuid.UUID) (map[uuid.UUID]int64, error)
 	MarkEventIdempotent(ctx context.Context, clickID string) (bool, error)
 }
 
@@ -133,7 +134,6 @@ func (sr *SnapshotReplicator) ReplayTelemetrySince(ctx context.Context, since ti
 			return replayedCount, fmt.Errorf("failed to execute idempotency check for %s: %w", e.ClickID, err)
 		}
 		if !isNew {
-
 			continue
 		}
 

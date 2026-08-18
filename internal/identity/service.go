@@ -44,9 +44,7 @@ func (e *idempotentResultError) Error() string {
 	return "idempotency hit"
 }
 
-var (
-	emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
-)
+var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
 
 var (
 	AuthLoginAttempts = prometheus.NewCounterVec(
@@ -179,7 +177,6 @@ func (service *Service) Register(ctx context.Context, req RegisterDTO) (uuid.UUI
 			PasswordHash: hashedPassword,
 		})
 	})
-
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
@@ -290,7 +287,6 @@ func (service *Service) Login(ctx context.Context, email, password, userAgent, c
 			if errInc != nil {
 				slog.Error("failed to increment lockout count", slog.String("ip", clientIP), slog.String("email", email), slog.Any("error", errInc))
 			} else if res == -1 {
-
 				slog.Warn("security_audit_event", slog.String("event", "global_lockout_increment"), slog.String("ip", clientIP), slog.String("email", email), slog.String("reason", "global lockout increment reached limit"))
 			}
 		}
@@ -386,7 +382,6 @@ func (service *Service) Login(ctx context.Context, email, password, userAgent, c
 		}
 		return nil
 	})
-
 	if err != nil {
 		slog.Error("failed to create session", slog.String("email", user.Email), slog.Any("error", err))
 		return LoginDTO{}, err
@@ -532,7 +527,6 @@ func (service *Service) RefreshToken(ctx context.Context, refreshTokenStr string
 
 		return nil
 	})
-
 	if err != nil {
 		var idmpErr *idempotentResultError
 		if errors.As(err, &idmpErr) {

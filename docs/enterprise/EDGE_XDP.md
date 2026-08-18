@@ -41,7 +41,7 @@ XDP is **not** a service in default `deploy/compose/docker-compose.yaml` (`singl
 3. `edge-xdp` attached to ingress NIC drops packets for blacklisted IPs (pass otherwise).
 4. Clean traffic continues to Nginx → tracker as in appliance diagram.
 
-Hot path (`tracker`, `processor`) does **not** import `internal/edge/bpf` — isolation via separate `cmd/` binaries only.
+Hot path (`tracker`, `processor`) does **not** import `internal/edge` — isolation via separate `cmd/` binaries only.
 
 ---
 
@@ -100,7 +100,7 @@ Not appliance pilot scope. Tier A–C behavior is validated in **generic** XDP m
 ### CO-RE / BTF build
 
 - **Host:** kernel 6.1+ LTS with BTF (`/sys/kernel/btf/vmlinux`).
-- **Build:** `go generate ./internal/edge/bpf/` (bpf2go + clang); local shortcut `make bpf-dev`.
+- **Build:** `go generate ./internal/edge/` (bpf2go + clang); local shortcut `make bpf-dev`.
 - **Runtime:** embedded BPF objects loaded via cilium/ebpf against host BTF — no separate `.o` on disk for appliance units.
 
 Details: [deploy/edge/README.md](../../deploy/edge/README.md) §Tier D.
@@ -120,12 +120,12 @@ sudo ./bin/edge-xdp -iface eth0 -mode offload
 
 ### Lab verification
 
-Perf: `BenchmarkXDP_*` = **prog test only** (harness `xdp_prog_test`; userspace `prog.Run` in `internal/edge/bpf/bench_test.go`). Not kernel NIC RX or pinned-attach drop rates. Kernel drop proof: `cmd/edge-xdp-fault`, `scripts/test/xdp_resilience_drill.sh`, pinned attach drills on lab NIC.
+Perf: `BenchmarkXDP_*` = **prog test only** (harness `xdp_prog_test`; userspace `prog.Run` in `internal/edge/bench_test.go`). Not kernel NIC RX or pinned-attach drop rates. Kernel drop proof: `cmd/edge-xdp-fault`, `scripts/test/xdp_resilience_drill.sh`, pinned attach drills on lab NIC.
 
 ```bash
 bash scripts/ci/compliance.sh
 bash scripts/test/edge_xdp_bench_gate.sh
-go test -run='^$' -bench='BenchmarkXDP_' -benchmem ./internal/edge/bpf/ -count=5
+go test -run='^$' -bench='BenchmarkXDP_' -benchmem ./internal/edge/ -count=5
 ```
 
 ---
@@ -141,7 +141,7 @@ XDP is **not** the sole perimeter. Nginx Lua (`access_check.lua`), tracker `Filt
 
 High-volume /24 bursts **are** dropped when the subnet cap is exceeded (see `TestXDP_dropSynSubnetFlood`, `TestFraudScenarios_X06_HighVolumeSubnetBurstDrops`). Operators may lower `syn_subnet_limit` via BPF `config` map for stricter Enterprise contracts — re-run `BenchmarkXDP_*` (harness `xdp_prog_test`) after changes.
 
-Scenario corpus: `internal/edge/bpf/edge_filter_fraud_scenarios_test.go`.
+Scenario corpus: `internal/edge/edge_filter_fraud_scenarios_test.go`.
 
 ---
 

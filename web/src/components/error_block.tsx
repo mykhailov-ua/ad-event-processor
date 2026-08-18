@@ -6,9 +6,6 @@ export type ErrorBlockProps = {
   fallbackTitle?: string;
 };
 
-/**
- * Centered page-level error block from an API or network error.
- */
 export function ErrorBlock({ error, fallbackTitle = 'Error' }: ErrorBlockProps) {
   if (!error) return null;
   const view = mapServiceError(error);

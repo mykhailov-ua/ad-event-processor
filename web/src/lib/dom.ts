@@ -1,7 +1,3 @@
-/**
- * DOM helpers for the admin SPA (TypeScript — §12 migration seed).
- */
-
 type Child = Node | string | number | null | undefined | false | Child[];
 
 type ElProps = Record<string, unknown> & {
@@ -14,9 +10,6 @@ type ElProps = Record<string, unknown> & {
   disabled?: boolean;
 };
 
-/**
- * Create an HTMLElement with optional props and children.
- */
 export function el(tag: string, props?: ElProps | null, ...children: Child[]): HTMLElement {
   const node = document.createElement(tag);
   let defaultValue: string | undefined;
@@ -41,9 +34,9 @@ export function el(tag: string, props?: ElProps | null, ...children: Child[]): H
   appendChildren(node, children);
   if (defaultValue !== undefined) {
     if (
-      node instanceof HTMLInputElement
-      || node instanceof HTMLTextAreaElement
-      || node instanceof HTMLSelectElement
+      node instanceof HTMLInputElement ||
+      node instanceof HTMLTextAreaElement ||
+      node instanceof HTMLSelectElement
     ) {
       node.value = defaultValue;
     }
@@ -51,9 +44,6 @@ export function el(tag: string, props?: ElProps | null, ...children: Child[]): H
   return node;
 }
 
-/**
- * Append mixed children to a parent node.
- */
 export function appendChildren(parent: HTMLElement, children: Child[] | Child): void {
   const list = Array.isArray(children) ? children : [children];
   for (const child of list) {
@@ -65,35 +55,27 @@ export function appendChildren(parent: HTMLElement, children: Child[] | Child): 
   }
 }
 
-/**
- * Replace all children of a node.
- */
 export function replaceChildren(node: HTMLElement, ...children: Child[]): void {
   node.replaceChildren();
   appendChildren(node, children);
 }
 
-/**
- * Span with monospace class.
- */
 export function monoEl(text: string, props: ElProps = {}): HTMLElement {
   return el('span', { className: 'font-mono', ...props }, text);
 }
 
-/**
- * Return the string value of an input, textarea, or select event target.
- */
 export function eventTargetValue(e: Event): string {
   const t = e.target;
-  if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement) {
+  if (
+    t instanceof HTMLInputElement ||
+    t instanceof HTMLTextAreaElement ||
+    t instanceof HTMLSelectElement
+  ) {
     return t.value;
   }
   return '';
 }
 
-/**
- * Return whether a checkbox/radio event target is checked.
- */
 export function eventTargetChecked(e: Event): boolean {
   const t = e.target;
   return t instanceof HTMLInputElement ? t.checked : false;

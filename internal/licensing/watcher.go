@@ -168,7 +168,6 @@ func (w *LicenseWatcher) Start(ctx context.Context) error {
 	return nil
 }
 
-// Reload re-reads the local license file and updates DB/Redis entitlements.
 func (w *LicenseWatcher) Reload(ctx context.Context) error {
 	return w.verifyAndReload(ctx)
 }

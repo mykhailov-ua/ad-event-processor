@@ -28,9 +28,8 @@ export function smartAlertPrefillHref(ctx: ReportRowActionContext): string {
   params.set('prefill', '1');
   params.set('metric', ctx.ivtRate != null && ctx.ivtRate > 0.1 ? 'bot_clicks' : 'clicks');
   params.set('operator', 'gt');
-  const threshold = ctx.ivtRate != null && ctx.ivtRate > 0
-    ? Math.max(1, Math.round(ctx.ivtRate * 100))
-    : 100;
+  const threshold =
+    ctx.ivtRate != null && ctx.ivtRate > 0 ? Math.max(1, Math.round(ctx.ivtRate * 100)) : 100;
   params.set('threshold', String(threshold));
   const label = ctx.placementId || ctx.sub1 || ctx.campaignId || 'report';
   params.set('name', `Alert: ${label}`);

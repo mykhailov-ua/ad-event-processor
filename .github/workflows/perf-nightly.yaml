@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  GOMAXPROCS: "1"
+  GOMAXPROCS: '1'
 
 jobs:
   escape-report:
@@ -126,4 +126,3 @@ jobs:
         with:
           path: .ci-baselines/broker
           key: nightly-broker-${{ github.sha }}
-

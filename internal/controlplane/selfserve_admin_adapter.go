@@ -3,8 +3,6 @@ package controlplane
 import (
 	"context"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
-
 	"github.com/google/uuid"
 )
 
@@ -16,12 +14,12 @@ func (a selfServeTemplatesAdapter) ListCampaignTemplates(
 	ctx context.Context,
 	customerID uuid.UUID,
 	limit, offset int32,
-) ([]adminapi.CampaignTemplateDTO, int64, error) {
+) ([]CampaignTemplateDTO, int64, error) {
 	items, total, err := a.svc.ListCampaignTemplates(ctx, customerID, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}
-	out := make([]adminapi.CampaignTemplateDTO, len(items))
+	out := make([]CampaignTemplateDTO, len(items))
 	for i, row := range items {
 		out[i] = mapCampaignTemplateAdminDTO(row)
 	}
@@ -38,8 +36,8 @@ func (a selfServeTemplatesAdapter) CreateCampaignFromTemplate(
 	return a.svc.CreateCampaignFromTemplate(ctx, templateID, customerID, name, budgetLimit, idempotencyKey)
 }
 
-func mapCampaignTemplateAdminDTO(row CampaignTemplateDTO) adminapi.CampaignTemplateDTO {
-	return adminapi.CampaignTemplateDTO{
+func mapCampaignTemplateAdminDTO(row CampaignTemplateDTO) CampaignTemplateDTO {
+	return CampaignTemplateDTO{
 		ID:              row.ID,
 		CustomerID:      row.CustomerID,
 		Name:            row.Name,

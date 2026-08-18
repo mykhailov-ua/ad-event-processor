@@ -13,8 +13,11 @@ const SRC = join(ROOT, 'src');
 const { parseIsoUnixSeconds } = await import(pathToFileURL(join(SRC, 'helpers/iso_time.js')).href);
 const { seriesFromHourly } = await import(pathToFileURL(join(SRC, 'helpers/chart_pool.js')).href);
 const { appendReportRows } = await import(pathToFileURL(join(SRC, 'helpers/report_rows.js')).href);
-const { mapBuyerDashboard, sortPortfolioByDrift, filterPortfolioCampaigns, pacingDriftScore } = await import(pathToFileURL(join(SRC, 'models/buyer.js')).href);
-const { sortRows, createSortState } = await import(pathToFileURL(join(SRC, 'lib/table_sort.js')).href);
+const { mapBuyerDashboard, sortPortfolioByDrift, filterPortfolioCampaigns, pacingDriftScore } =
+  await import(pathToFileURL(join(SRC, 'models/buyer.js')).href);
+const { sortRows, createSortState } = await import(
+  pathToFileURL(join(SRC, 'lib/table_sort.js')).href
+);
 
 /**
  * Build synthetic hourly metrics for chart benchmarks.
@@ -205,53 +208,113 @@ const accessors = {
 const sortCache = {};
 
 const benches = [
-  bench('parseIsoUnixSeconds x168', () => {
-    for (let i = 0; i < hourly168.length; i++) parseIsoUnixSeconds(hourly168[i].hour);
-  }, { iterations: 5000 }),
-  bench('Date.parse path x168 (baseline)', () => {
-    for (let i = 0; i < hourly168.length; i++) {
-      new Date(hourly168[i].hour).getTime();
-    }
-  }, { iterations: 5000 }),
-  bench('seriesFromHourly optimized n=168', () => {
-    seriesFromHourly(hourly168, 'impressions');
-  }, { iterations: 2000 }),
-  bench('seriesFromHourly naive n=168', () => {
-    seriesFromHourlyNaive(hourly168);
-  }, { iterations: 2000 }),
-  bench('seriesFromHourly optimized n=2048', () => {
-    seriesFromHourly(hourly2048, 'impressions');
-  }, { iterations: 400 }),
-  bench('seriesFromHourly naive n=2048', () => {
-    seriesFromHourlyNaive(hourly2048);
-  }, { iterations: 400 }),
-  bench('appendReportRows push n=500+50', () => {
-    appendReportRows(reportA.slice(), reportB);
-  }, { iterations: 300 }),
-  bench('merge spread n=500+50 (baseline)', () => {
-    mergeReportRowsNaive(reportA, reportB);
-  }, { iterations: 300 }),
-  bench('mapBuyerDashboard n=50', () => {
-    mapBuyerDashboard(buyerDashboard50);
-  }, { iterations: 20000 }),
-  bench('mapBuyerDashboard naive n=50 (baseline)', () => {
-    mapBuyerDashboardNaive(buyerDashboard50);
-  }, { iterations: 20000 }),
-  bench('filterPortfolioCampaigns n=50', () => {
-    filterPortfolioCampaigns(portfolioRows50, 'ACTIVE');
-  }, { iterations: 20000 }),
-  bench('sortPortfolioByDrift n=50', () => {
-    sortPortfolioByDrift(portfolioRows50);
-  }, { iterations: 20000 }),
-  bench('pacingDriftScore x50', () => {
-    for (let i = 0; i < portfolioRows50.length; i++) pacingDriftScore(portfolioRows50[i]);
-  }, { iterations: 20000 }),
-  bench('sortRows cached n=50 desc', () => {
-    sortRows(campaigns50, sortState, accessors, sortCache);
-  }, { iterations: 5000 }),
-  bench('sortRows naive n=50 desc (baseline)', () => {
-    sortRowsNaive(campaigns50, 'name');
-  }, { iterations: 5000 }),
+  bench(
+    'parseIsoUnixSeconds x168',
+    () => {
+      for (let i = 0; i < hourly168.length; i++) parseIsoUnixSeconds(hourly168[i].hour);
+    },
+    { iterations: 5000 }
+  ),
+  bench(
+    'Date.parse path x168 (baseline)',
+    () => {
+      for (let i = 0; i < hourly168.length; i++) {
+        new Date(hourly168[i].hour).getTime();
+      }
+    },
+    { iterations: 5000 }
+  ),
+  bench(
+    'seriesFromHourly optimized n=168',
+    () => {
+      seriesFromHourly(hourly168, 'impressions');
+    },
+    { iterations: 2000 }
+  ),
+  bench(
+    'seriesFromHourly naive n=168',
+    () => {
+      seriesFromHourlyNaive(hourly168);
+    },
+    { iterations: 2000 }
+  ),
+  bench(
+    'seriesFromHourly optimized n=2048',
+    () => {
+      seriesFromHourly(hourly2048, 'impressions');
+    },
+    { iterations: 400 }
+  ),
+  bench(
+    'seriesFromHourly naive n=2048',
+    () => {
+      seriesFromHourlyNaive(hourly2048);
+    },
+    { iterations: 400 }
+  ),
+  bench(
+    'appendReportRows push n=500+50',
+    () => {
+      appendReportRows(reportA.slice(), reportB);
+    },
+    { iterations: 300 }
+  ),
+  bench(
+    'merge spread n=500+50 (baseline)',
+    () => {
+      mergeReportRowsNaive(reportA, reportB);
+    },
+    { iterations: 300 }
+  ),
+  bench(
+    'mapBuyerDashboard n=50',
+    () => {
+      mapBuyerDashboard(buyerDashboard50);
+    },
+    { iterations: 20000 }
+  ),
+  bench(
+    'mapBuyerDashboard naive n=50 (baseline)',
+    () => {
+      mapBuyerDashboardNaive(buyerDashboard50);
+    },
+    { iterations: 20000 }
+  ),
+  bench(
+    'filterPortfolioCampaigns n=50',
+    () => {
+      filterPortfolioCampaigns(portfolioRows50, 'ACTIVE');
+    },
+    { iterations: 20000 }
+  ),
+  bench(
+    'sortPortfolioByDrift n=50',
+    () => {
+      sortPortfolioByDrift(portfolioRows50);
+    },
+    { iterations: 20000 }
+  ),
+  bench(
+    'pacingDriftScore x50',
+    () => {
+      for (let i = 0; i < portfolioRows50.length; i++) pacingDriftScore(portfolioRows50[i]);
+    },
+    { iterations: 20000 }
+  ),
+  bench(
+    'sortRows cached n=50 desc',
+    () => {
+      sortRows(campaigns50, sortState, accessors, sortCache);
+    },
+    { iterations: 5000 }
+  ),
+  bench(
+    'sortRows naive n=50 desc (baseline)',
+    () => {
+      sortRowsNaive(campaigns50, 'name');
+    },
+    { iterations: 5000 }
+  ),
 ];
 
 console.log('Admin UI benchmarks (node --expose-gc)');
@@ -271,9 +334,21 @@ const speedup = (after, before) => {
 
 console.log('');
 console.log('Speedups (baseline / optimized):');
-console.log(`  series n=168: ${speedup('seriesFromHourly optimized n=168', 'seriesFromHourly naive n=168')}x`);
-console.log(`  series n=2048: ${speedup('seriesFromHourly optimized n=2048', 'seriesFromHourly naive n=2048')}x`);
-console.log(`  report merge: ${speedup('appendReportRows push n=500+50', 'merge spread n=500+50 (baseline)')}x`);
-console.log(`  buyer dashboard map: ${speedup('mapBuyerDashboard n=50', 'mapBuyerDashboard naive n=50 (baseline)')}x`);
-console.log(`  sort n=50: ${speedup('sortRows cached n=50 desc', 'sortRows naive n=50 desc (baseline)')}x`);
-console.log(`  iso parse vs Date: ${speedup('parseIsoUnixSeconds x168', 'Date.parse path x168 (baseline)')}x per field`);
+console.log(
+  `  series n=168: ${speedup('seriesFromHourly optimized n=168', 'seriesFromHourly naive n=168')}x`
+);
+console.log(
+  `  series n=2048: ${speedup('seriesFromHourly optimized n=2048', 'seriesFromHourly naive n=2048')}x`
+);
+console.log(
+  `  report merge: ${speedup('appendReportRows push n=500+50', 'merge spread n=500+50 (baseline)')}x`
+);
+console.log(
+  `  buyer dashboard map: ${speedup('mapBuyerDashboard n=50', 'mapBuyerDashboard naive n=50 (baseline)')}x`
+);
+console.log(
+  `  sort n=50: ${speedup('sortRows cached n=50 desc', 'sortRows naive n=50 desc (baseline)')}x`
+);
+console.log(
+  `  iso parse vs Date: ${speedup('parseIsoUnixSeconds x168', 'Date.parse path x168 (baseline)')}x per field`
+);

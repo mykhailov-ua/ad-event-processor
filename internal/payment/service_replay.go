@@ -36,10 +36,24 @@ func (service *Service) ListDisputes(ctx context.Context, customerID *uuid.UUID,
 	}
 
 	items := make([]DisputeListItem, 0, len(intents))
+	if len(intents) == 0 {
+		return items, total, nil
+	}
+	intentIDs := make([]pgtype.UUID, len(intents))
+	for i, intent := range intents {
+		intentIDs[i] = intent.ID
+	}
+	disputes, err := q.ListLatestDisputesForIntents(ctx, intentIDs)
+	if err != nil {
+		return nil, 0, err
+	}
+	disputeByIntent := make(map[[16]byte]db.PaymentPaymentDispute, len(disputes))
+	for _, dispute := range disputes {
+		disputeByIntent[dispute.PaymentIntentID.Bytes] = dispute
+	}
 	for _, intent := range intents {
 		item := DisputeListItem{Intent: intent}
-		dispute, derr := q.GetLatestDisputeForIntent(ctx, intent.ID)
-		if derr == nil {
+		if dispute, ok := disputeByIntent[intent.ID.Bytes]; ok {
 			item.ProviderDisputeID = dispute.ProviderDisputeID
 		}
 		items = append(items, item)

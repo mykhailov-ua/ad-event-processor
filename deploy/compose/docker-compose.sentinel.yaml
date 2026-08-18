@@ -1,5 +1,3 @@
-# Sentinel failover overlay for milestone scenario G (scripts/test/sentinel.sh).
-# Usage: docker compose -f docker-compose.yaml -f deploy/compose/docker-compose.sentinel.yaml up -d ...
 services:
   redis-0-replica:
     image: redis:${REDIS_VERSION}
@@ -8,23 +6,23 @@ services:
     command:
       - redis-server
       - --port
-      - "6379"
+      - '6379'
       - --requirepass
       - ${REDIS_PASSWORD}
       - --masterauth
       - ${REDIS_PASSWORD}
       - --replicaof
       - redis-0
-      - "6379"
+      - '6379'
       - --tcp-backlog
-      - "2048"
+      - '2048'
     networks:
       - database
     depends_on:
       redis-0:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "6379", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ['CMD', 'redis-cli', '-p', '6379', '-a', '${REDIS_PASSWORD}', 'ping']
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
@@ -36,23 +34,23 @@ services:
     command:
       - redis-server
       - --port
-      - "6379"
+      - '6379'
       - --requirepass
       - ${REDIS_PASSWORD}
       - --masterauth
       - ${REDIS_PASSWORD}
       - --replicaof
       - redis-1
-      - "6379"
+      - '6379'
       - --tcp-backlog
-      - "2048"
+      - '2048'
     networks:
       - database
     depends_on:
       redis-1:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "6379", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ['CMD', 'redis-cli', '-p', '6379', '-a', '${REDIS_PASSWORD}', 'ping']
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
@@ -64,23 +62,23 @@ services:
     command:
       - redis-server
       - --port
-      - "6379"
+      - '6379'
       - --requirepass
       - ${REDIS_PASSWORD}
       - --masterauth
       - ${REDIS_PASSWORD}
       - --replicaof
       - redis-2
-      - "6379"
+      - '6379'
       - --tcp-backlog
-      - "2048"
+      - '2048'
     networks:
       - database
     depends_on:
       redis-2:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "6379", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ['CMD', 'redis-cli', '-p', '6379', '-a', '${REDIS_PASSWORD}', 'ping']
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
@@ -92,23 +90,23 @@ services:
     command:
       - redis-server
       - --port
-      - "6379"
+      - '6379'
       - --requirepass
       - ${REDIS_PASSWORD}
       - --masterauth
       - ${REDIS_PASSWORD}
       - --replicaof
       - redis-3
-      - "6379"
+      - '6379'
       - --tcp-backlog
-      - "2048"
+      - '2048'
     networks:
       - database
     depends_on:
       redis-3:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "6379", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ['CMD', 'redis-cli', '-p', '6379', '-a', '${REDIS_PASSWORD}', 'ping']
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
@@ -117,12 +115,12 @@ services:
     image: redis:${REDIS_VERSION}
     env_file:
       - ../../.env
-    entrypoint: ["/bin/sh", "/sentinel-entrypoint.sh"]
+    entrypoint: ['/bin/sh', '/sentinel-entrypoint.sh']
     volumes:
       - ../redis/sentinel-entrypoint.sh:/sentinel-entrypoint.sh:ro
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
-      REDIS_SHARD_COUNT: "4"
+      REDIS_SHARD_COUNT: '4'
     networks:
       - database
     depends_on:
@@ -135,7 +133,7 @@ services:
       redis-3:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "26379", "ping"]
+      test: ['CMD', 'redis-cli', '-p', '26379', 'ping']
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
@@ -144,19 +142,19 @@ services:
     image: redis:${REDIS_VERSION}
     env_file:
       - ../../.env
-    entrypoint: ["/bin/sh", "/sentinel-entrypoint.sh"]
+    entrypoint: ['/bin/sh', '/sentinel-entrypoint.sh']
     volumes:
       - ../redis/sentinel-entrypoint.sh:/sentinel-entrypoint.sh:ro
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
-      REDIS_SHARD_COUNT: "4"
+      REDIS_SHARD_COUNT: '4'
     networks:
       - database
     depends_on:
       sentinel-0:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "26379", "ping"]
+      test: ['CMD', 'redis-cli', '-p', '26379', 'ping']
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
@@ -165,19 +163,19 @@ services:
     image: redis:${REDIS_VERSION}
     env_file:
       - ../../.env
-    entrypoint: ["/bin/sh", "/sentinel-entrypoint.sh"]
+    entrypoint: ['/bin/sh', '/sentinel-entrypoint.sh']
     volumes:
       - ../redis/sentinel-entrypoint.sh:/sentinel-entrypoint.sh:ro
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
-      REDIS_SHARD_COUNT: "4"
+      REDIS_SHARD_COUNT: '4'
     networks:
       - database
     depends_on:
       sentinel-0:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "26379", "ping"]
+      test: ['CMD', 'redis-cli', '-p', '26379', 'ping']
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}

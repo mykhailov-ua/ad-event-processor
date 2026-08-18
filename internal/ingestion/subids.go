@@ -10,7 +10,6 @@ func (s *SubIDSlots) reset() {
 	}
 }
 
-// subKeyIndex returns 1-based sub index for keys sub1..sub30.
 func subKeyIndex(key []byte) (int, bool) {
 	n := len(key)
 	if n < 4 || n > 5 {

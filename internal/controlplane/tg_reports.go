@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
-
 	"github.com/google/uuid"
 )
 
@@ -88,13 +86,13 @@ func (s *TelegramServiceImpl) reportFreshness(ctx context.Context) TelegramRepor
 
 func (s *TelegramServiceImpl) resolveTelegramCampaignIDs(
 	ctx context.Context,
-	filter adminapi.TelegramReportFilter,
+	filter TelegramReportFilter,
 ) ([]uuid.UUID, error) {
 	if filter.CampaignID != nil {
 		return []uuid.UUID{*filter.CampaignID}, nil
 	}
 	if filter.CustomerID != nil {
-		return adminapi.ListCustomerCampaignIDs(ctx, s.pool, *filter.CustomerID)
+		return ListCustomerCampaignIDs(ctx, s.pool, *filter.CustomerID)
 	}
 	return nil, nil
 }
@@ -143,7 +141,7 @@ func (s *TelegramServiceImpl) queryTelegramCounts(
 func (s *TelegramServiceImpl) GetTelegramSummaryReport(
 	ctx context.Context,
 	from, to time.Time,
-	filter adminapi.TelegramReportFilter,
+	filter TelegramReportFilter,
 ) ([]byte, error) {
 	campaignIDs, err := s.resolveTelegramCampaignIDs(ctx, filter)
 	if err != nil {
@@ -171,7 +169,7 @@ func (s *TelegramServiceImpl) GetTelegramSummaryReport(
 func (s *TelegramServiceImpl) GetTelegramFunnelReport(
 	ctx context.Context,
 	from, to time.Time,
-	filter adminapi.TelegramReportFilter,
+	filter TelegramReportFilter,
 ) ([]byte, error) {
 	campaignIDs, err := s.resolveTelegramCampaignIDs(ctx, filter)
 	if err != nil {
@@ -223,7 +221,7 @@ func (s *TelegramServiceImpl) GetTelegramFunnelReport(
 func (s *TelegramServiceImpl) GetTelegramBotsReport(
 	ctx context.Context,
 	from, to time.Time,
-	filter adminapi.TelegramReportFilter,
+	filter TelegramReportFilter,
 ) ([]byte, error) {
 	campaignIDs, err := s.resolveTelegramCampaignIDs(ctx, filter)
 	if err != nil {
@@ -275,7 +273,7 @@ func (s *TelegramServiceImpl) GetTelegramBotsReport(
 func (s *TelegramServiceImpl) GetTelegramPremiumReport(
 	ctx context.Context,
 	from, to time.Time,
-	filter adminapi.TelegramReportFilter,
+	filter TelegramReportFilter,
 ) ([]byte, error) {
 	campaignIDs, err := s.resolveTelegramCampaignIDs(ctx, filter)
 	if err != nil {
@@ -321,7 +319,7 @@ func (s *TelegramServiceImpl) GetTelegramPremiumReport(
 func (s *TelegramServiceImpl) GetTelegramFraudReport(
 	ctx context.Context,
 	from, to time.Time,
-	filter adminapi.TelegramReportFilter,
+	filter TelegramReportFilter,
 ) ([]byte, error) {
 	campaignIDs, err := s.resolveTelegramCampaignIDs(ctx, filter)
 	if err != nil {
@@ -358,11 +356,10 @@ func (s *TelegramServiceImpl) GetTelegramFraudReport(
 	return json.Marshal(report)
 }
 
-// GetTelegramReport keeps the legacy single-endpoint response shape.
 func (s *TelegramServiceImpl) GetTelegramReport(
 	ctx context.Context,
 	from, to time.Time,
-	filter adminapi.TelegramReportFilter,
+	filter TelegramReportFilter,
 ) ([]byte, error) {
 	return s.GetTelegramSummaryReport(ctx, from, to, filter)
 }

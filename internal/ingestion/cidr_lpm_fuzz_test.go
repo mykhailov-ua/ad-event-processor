@@ -1,4 +1,3 @@
-// L1 CIDR fuzz targets (harness: cidr_lpm_rcu).
 package ingestion
 
 import (
@@ -8,8 +7,6 @@ import (
 	"testing"
 )
 
-// FuzzCIDRParse (F-M1-1): feed-entry parsing must never panic and must reject
-// malformed input with an error, not a zero prefix.
 func FuzzCIDRParse(f *testing.F) {
 	seeds := []string{
 		"10.0.0.0/8", "192.168.1.1", "2001:db8::/32", "::1", "54.0.0.0/8",
@@ -35,8 +32,6 @@ func FuzzCIDRParse(f *testing.F) {
 	})
 }
 
-// FuzzCIDRMatch (F-M1-2): lookup over a fixed public+private table must be
-// panic-free and must agree with the netip.Prefix oracle.
 func FuzzCIDRMatch(f *testing.F) {
 	table, prefs := buildTestTable(f,
 		"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
@@ -71,8 +66,6 @@ func FuzzCIDRMatch(f *testing.F) {
 	})
 }
 
-// FuzzCIDRBuild feeds random prefix sets into the builder and oracle-checks
-// random probes; guards the insertion paths (split/terminal/nested).
 func FuzzCIDRBuild(f *testing.F) {
 	f.Add(uint64(1), uint64(2))
 	f.Add(uint64(0xdeadbeef), uint64(42))

@@ -1,4 +1,3 @@
-// Package licensing implements licensing support for BidShard.
 package licensing
 
 import (

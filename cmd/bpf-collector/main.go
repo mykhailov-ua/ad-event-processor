@@ -18,7 +18,6 @@ import (
 	"github.com/cilium/ebpf/ringbuf"
 	"github.com/cilium/ebpf/rlimit"
 
-	"github.com/bidshard/ad-event-processor/cmd/bpf-collector/bpfprobe"
 	"github.com/bidshard/ad-event-processor/internal/config"
 	"github.com/bidshard/ad-event-processor/pkg/naming"
 )
@@ -125,7 +124,7 @@ type probeRun struct {
 	bpfObject       string
 	trackerBinary   string
 
-	coll     *bpfprobe.Collection
+	coll     *Collection
 	links    []link.Link
 	ringWG   sync.WaitGroup
 	sampleWG sync.WaitGroup
@@ -135,13 +134,13 @@ type probeRun struct {
 }
 
 func (r *probeRun) start(ctx context.Context) error {
-	coll, err := bpfprobe.Load(r.bpfObject)
+	coll, err := Load(r.bpfObject)
 	if err != nil {
 		return err
 	}
 	r.coll = coll
 
-	cfg := bpfprobe.Config{
+	cfg := Config{
 		SampleRate:    r.sampleRate,
 		SlowSyscallNs: uint32(minU64(r.slowNs, 0xffffffff)),
 		Enabled:       1,

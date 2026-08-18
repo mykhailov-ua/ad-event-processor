@@ -9,9 +9,6 @@ export type EulaGateProps = {
   onAccepted: () => void;
 };
 
-/**
- * Block the admin shell until the current EULA is accepted.
- */
 export function EulaGate({ version, text, onAccepted }: EulaGateProps) {
   const [checked, setChecked] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -22,10 +19,12 @@ export function EulaGate({ version, text, onAccepted }: EulaGateProps) {
     if (!checked) return;
     setLoading(true);
     setError(null);
-    const [, err] = await to(api('/api/v1/eula/accept', {
-      method: 'POST',
-      body: JSON.stringify({ version }),
-    }));
+    const [, err] = await to(
+      api('/api/v1/eula/accept', {
+        method: 'POST',
+        body: JSON.stringify({ version }),
+      })
+    );
     setLoading(false);
     if (err) {
       setError(err.message || 'Failed to record acceptance');

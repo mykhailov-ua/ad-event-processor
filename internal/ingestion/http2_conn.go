@@ -2,7 +2,7 @@ package ingestion
 
 import "errors"
 
-const h2MaxHeaderBlock = 16 << 10 // cap assembled HPACK block per request
+const h2MaxHeaderBlock = 16 << 10
 
 type h2ConnState struct {
 	established            bool

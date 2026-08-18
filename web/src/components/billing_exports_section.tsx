@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { BillingExportJobDTO } from '../types/api/billing.js';
+import type { BillingExportJobDTO } from '../types/billing.js';
 import { ConfirmCancelledError } from '../helpers/confirm_ui.js';
 import { mapServiceError } from '../helpers/service_error.js';
 import { pushToastMessage } from '../helpers/toast_ui.js';
@@ -20,12 +20,11 @@ export type BillingExportsSectionProps = {
 type ExportJobRow = BillingExportJobDTO & { localId: string };
 
 function exportJobStatus(job: Pick<BillingExportJobDTO, 'status'>): string {
-  return String(job.status ?? '').trim().toUpperCase();
+  return String(job.status ?? '')
+    .trim()
+    .toUpperCase();
 }
 
-/**
- * Billing ledger export form and job list.
- */
 export function BillingExportsSection({ customerId, tenant }: BillingExportsSectionProps) {
   const [fromDate, setFromDate] = useState(() => isoDaysAgo(90).slice(0, 10));
   const [toDate, setToDate] = useState(() => toIsoNow().slice(0, 10));
@@ -34,18 +33,19 @@ export function BillingExportsSection({ customerId, tenant }: BillingExportsSect
   const [jobs, setJobs] = useState<ExportJobRow[]>([]);
   const pollAbortRef = useRef<AbortController | null>(null);
 
-  useEffect(() => () => {
-    pollAbortRef.current?.abort();
-    pollAbortRef.current = null;
-  }, []);
+  useEffect(
+    () => () => {
+      pollAbortRef.current?.abort();
+      pollAbortRef.current = null;
+    },
+    []
+  );
 
   const downloadJob = async (job: ExportJobRow) => {
     const ext = job.format === 'ndjson' ? 'ndjson' : 'csv';
-    const [, err] = await to(downloadBillingExport(
-      job.id,
-      `ledger-${job.customer_id}.${ext}`,
-      job.download_url ?? '',
-    ));
+    const [, err] = await to(
+      downloadBillingExport(job.id, `ledger-${job.customer_id}.${ext}`, job.download_url ?? '')
+    );
     if (err) {
       const view = mapServiceError(err);
       pushToastMessage({ title: view.title, message: view.message, code: view.code });
@@ -60,14 +60,16 @@ export function BillingExportsSection({ customerId, tenant }: BillingExportsSect
       if (pollErr instanceof ConfirmCancelledError) return;
       const view = mapServiceError(pollErr);
       pushToastMessage({ title: view.title, message: view.message, code: view.code });
-      setJobs((prev) => prev.map((j) => (
-        j.localId === localId ? { ...j, status: 'FAILED', error: view.message } : j
-      )));
+      setJobs((prev) =>
+        prev.map((j) =>
+          j.localId === localId ? { ...j, status: 'FAILED', error: view.message } : j
+        )
+      );
       return;
     }
-    setJobs((prev) => prev.map((j) => (
-      j.localId === localId && finalJob ? { ...j, ...finalJob } : j
-    )));
+    setJobs((prev) =>
+      prev.map((j) => (j.localId === localId && finalJob ? { ...j, ...finalJob } : j))
+    );
     if (finalJob?.status && exportJobStatus(finalJob) === 'COMPLETED') {
       pushToastMessage({ title: 'Export ready', message: 'Download is available below.' });
     }
@@ -79,12 +81,14 @@ export function BillingExportsSection({ customerId, tenant }: BillingExportsSect
     setSubmitting(true);
     pollAbortRef.current?.abort();
     pollAbortRef.current = new AbortController();
-    const [jobId, createErr] = await to(createBillingExport({
-      customer_id: cid,
-      from: fromDate,
-      to: toDate,
-      format,
-    }));
+    const [jobId, createErr] = await to(
+      createBillingExport({
+        customer_id: cid,
+        from: fromDate,
+        to: toDate,
+        format,
+      })
+    );
     if (createErr) {
       setSubmitting(false);
       if (createErr instanceof ConfirmCancelledError) return;
@@ -93,14 +97,17 @@ export function BillingExportsSection({ customerId, tenant }: BillingExportsSect
       return;
     }
     const localId = `local-${Date.now()}`;
-    setJobs((prev) => [{
-      localId,
-      id: jobId ?? '',
-      customer_id: cid,
-      format,
-      status: 'PENDING',
-      created_at: new Date().toISOString(),
-    }, ...prev]);
+    setJobs((prev) => [
+      {
+        localId,
+        id: jobId ?? '',
+        customer_id: cid,
+        format,
+        status: 'PENDING',
+        created_at: new Date().toISOString(),
+      },
+      ...prev,
+    ]);
     pushToastMessage({ title: 'Export queued', message: jobId ?? '' });
     if (jobId) void pollJob(jobId, localId);
   };
@@ -108,9 +115,7 @@ export function BillingExportsSection({ customerId, tenant }: BillingExportsSect
   if (!customerId) {
     return (
       <p className="text-muted text-sm">
-        {tenant
-          ? 'Customer context missing.'
-          : 'Enter customer_id above to export ledger lines.'}
+        {tenant ? 'Customer context missing.' : 'Enter customer_id above to export ledger lines.'}
       </p>
     );
   }
@@ -118,8 +123,8 @@ export function BillingExportsSection({ customerId, tenant }: BillingExportsSect
   return (
     <div className="stack" data-testid="billing-exports-panel">
       <p className="text-muted text-sm">
-        Exports ledger lines for the selected customer and date range (UTC).
-        Large windows may take up to two minutes.
+        Exports ledger lines for the selected customer and date range (UTC). Large windows may take
+        up to two minutes.
       </p>
       <div className="filter-row">
         <label className="form-field">

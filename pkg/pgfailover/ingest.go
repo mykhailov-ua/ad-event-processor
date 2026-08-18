@@ -9,10 +9,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// IngestRuntime subscribes tracker/processor binaries to global PG DSN updates in Redis.
-// Reconnect uses a hard pool swap: onReconnect receives a new pool, callers rewire dependents,
-// then the previous pool is closed. In-flight queries on the old pool may fail until swap
-// completes; /track does not use per-request PG fencing.
 type IngestRuntime struct {
 	mu          sync.Mutex
 	subscribers []*Subscriber
@@ -51,7 +47,6 @@ type IngestSubscriberConfig struct {
 	Interval time.Duration
 }
 
-// StartIngestSubscribers mirrors control-plane PG failover subscription on ingest binaries.
 func StartIngestSubscribers(
 	ctx context.Context,
 	rdbs []redis.UniversalClient,

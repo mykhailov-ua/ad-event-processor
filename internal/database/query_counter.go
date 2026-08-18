@@ -13,7 +13,6 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-// QueryCounter traces pgx queries for integration benchmarks.
 type QueryCounter struct {
 	count atomic.Int64
 }

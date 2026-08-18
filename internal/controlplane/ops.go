@@ -86,7 +86,11 @@ func RegisterOpsRoutes(ctx context.Context, mux *http.ServeMux, pool *pgxpool.Po
 			http.Error(w, "slot map meta unavailable", http.StatusServiceUnavailable)
 			return
 		}
-		meta, _ := repo.GetSlotMapMeta(ctx)
+		meta, err := repo.GetSlotMapMeta(ctx)
+		if err != nil {
+			http.Error(w, "slot map meta unavailable", http.StatusServiceUnavailable)
+			return
+		}
 		rows, err := repo.ListVersion(ctx, active)
 		if err != nil {
 			http.Error(w, "slot map unavailable", http.StatusServiceUnavailable)

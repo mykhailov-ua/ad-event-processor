@@ -104,13 +104,15 @@ if (existsSync(join(SRC, 'static'))) {
 writeFileSync(join(DIST, 'index.html'), INDEX_HTML, 'utf8');
 writeFileSync(join(DIST, 'login.html'), LOGIN_HTML, 'utf8');
 
-console.log('dist: esbuild bundle → dist/src/{main,login,workers,chunks} + styles/static + HTML shells');
+console.log(
+  'dist: esbuild bundle → dist/src/{main,login,workers,chunks} + styles/static + HTML shells'
+);
 
 const HYDRATOR_OUT = resolve(ROOT, '..', 'internal', 'ingestion', 'safe_page_hydrator.js');
 
 await esbuild.build({
   absWorkingDir: ROOT,
-  entryPoints: [join(SRC, 'panels', 'safe_page_hydrator_entry.ts')],
+  entryPoints: [join(SRC, 'safe_page_hydrator_entry.ts')],
   bundle: true,
   format: 'iife',
   platform: 'browser',

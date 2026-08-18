@@ -1,4 +1,3 @@
-// Package webstatic embeds the compiled admin UI assets.
 package webstatic
 
 import (
@@ -13,7 +12,6 @@ func FS() (fs.FS, error) {
 	return fs.Sub(dist, "dist")
 }
 
-// DistFS is an alias for FS (embedded production/stub dist tree).
 func DistFS() (fs.FS, error) {
 	return FS()
 }

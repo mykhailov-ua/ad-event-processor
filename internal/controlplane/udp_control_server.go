@@ -206,9 +206,6 @@ func (s *UDPControlServer) sendSnapshotBurst(ctx context.Context, addr *net.UDPA
 	metrics.UDPControlPublishTotal.Add(float64(count))
 }
 
-// buildLimits loads license entitlements and optional per-region RPD cap from Postgres.
-// On ctx deadline or query error, shard RPS falls back to UDPDefaultShardRPS (or 50_000)
-// and MaxRPD adjustment is skipped.
 func (s *UDPControlServer) buildLimits(ctx context.Context) *domain.UDPControlLimits {
 	n := s.numShards
 	if n <= 0 {

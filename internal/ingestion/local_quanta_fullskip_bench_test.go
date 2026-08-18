@@ -1,9 +1,5 @@
 //go:build !race
 
-// Local quanta full-skip benchmarks (harness: local_quanta_noop_redis).
-// benchNoopRedis intentionally bypasses Redis RTT; LocalQuantaStreamPublisher drains in-process.
-// Applies when SetLocalQuantaMode("live") and LocalQuantaDeps are wired (LOCAL_QUOTA_MODE=live) —
-// not the default compose tracker path unless that env is set. Fast-path only; not Redis Lua SLA.
 package ingestion
 
 import (

@@ -44,7 +44,6 @@ func cryptomusSignFromBody(body []byte, apiKey string) (string, bool) {
 	return hex.EncodeToString(sum[:]), true
 }
 
-// SignCryptomusWebhookFields returns signed JSON and the sign header value.
 func SignCryptomusWebhookFields(fields map[string]any, apiKey string) ([]byte, string, error) {
 	unsigned, err := json.Marshal(fields)
 	if err != nil {

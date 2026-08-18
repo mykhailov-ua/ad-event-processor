@@ -1,4 +1,3 @@
-/** harness=mock_api — Playwright route.fulfill; does not prove Go handler or CH/PG. */
 import { test, expect } from '@playwright/test';
 import { mockAuthedSession } from './helpers.js';
 
@@ -60,18 +59,21 @@ test('RTB deals lists rows, creates, and deletes', async ({ page }) => {
     if (method === 'POST') {
       createCalled = true;
       const body = route.request().postDataJSON();
-      deals = [...deals, {
-        id: 3,
-        deal_id: body.deal_id,
-        floor_micro: body.floor_micro,
-        geo_mask: 0,
-        cat_mask: 0,
-        pacing: body.pacing ?? 'even',
-        seats: body.seats ?? 1,
-        customer_id: body.customer_id,
-        created_at: '2026-01-04T00:00:00Z',
-        updated_at: '2026-01-04T00:00:00Z',
-      }];
+      deals = [
+        ...deals,
+        {
+          id: 3,
+          deal_id: body.deal_id,
+          floor_micro: body.floor_micro,
+          geo_mask: 0,
+          cat_mask: 0,
+          pacing: body.pacing ?? 'even',
+          seats: body.seats ?? 1,
+          customer_id: body.customer_id,
+          created_at: '2026-01-04T00:00:00Z',
+          updated_at: '2026-01-04T00:00:00Z',
+        },
+      ];
       await route.fulfill({
         status: 200,
         headers: { 'content-type': 'application/json' },
@@ -101,9 +103,15 @@ test('RTB deals lists rows, creates, and deletes', async ({ page }) => {
   await page.locator('#deal-customer').fill('cust-3');
   await page.locator('#deal-floor').fill('500000');
   await page.getByTestId('rtb-deal-modal').getByRole('button', { name: 'Save' }).click();
-  await page.getByRole('dialog').filter({ hasText: 'Confirm action' }).getByRole('button', { name: 'Confirm' }).click();
+  await page
+    .getByRole('dialog')
+    .filter({ hasText: 'Confirm action' })
+    .getByRole('button', { name: 'Confirm' })
+    .click();
   await expect.poll(() => createCalled).toBe(true);
-  await expect(page.getByTestId('rtb-deals-table').getByRole('cell', { name: 'deal-new' })).toBeVisible();
+  await expect(
+    page.getByTestId('rtb-deals-table').getByRole('cell', { name: 'deal-new' })
+  ).toBeVisible();
 
   await page.getByTestId('rtb-deal-delete-1').click();
   await expect(page.getByRole('dialog')).toBeVisible();

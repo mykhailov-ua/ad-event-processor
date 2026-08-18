@@ -1,4 +1,3 @@
-// Package netaddr implements netaddr support for BidShard.
 package netaddr
 
 import (
@@ -13,7 +12,6 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-// IsUnixSocketPath reports whether addr is a filesystem unix socket path.
 func IsUnixSocketPath(addr string) bool {
 	if addr == "" {
 		return false
@@ -21,7 +19,6 @@ func IsUnixSocketPath(addr string) bool {
 	return strings.HasPrefix(addr, "/") || strings.HasSuffix(addr, ".sock") || strings.Contains(addr, ".sock")
 }
 
-// GnetListenURI returns a gnet listen URI (tcp:// or unix://).
 func GnetListenURI(addr string) string {
 	if strings.HasPrefix(addr, "tcp://") || strings.HasPrefix(addr, "unix://") {
 		return addr
@@ -35,7 +32,6 @@ func GnetListenURI(addr string) string {
 	return "tcp://" + addr
 }
 
-// DialTimeout dials a TCP host:port or unix socket path.
 func DialTimeout(addr string, timeout time.Duration) (net.Conn, error) {
 	if IsUnixSocketPath(addr) {
 		var d net.Dialer
@@ -47,7 +43,6 @@ func DialTimeout(addr string, timeout time.Duration) (net.Conn, error) {
 	return net.DialTimeout("tcp", addr, timeout)
 }
 
-// PrepareUnixSocket removes a stale socket file and ensures parent dir exists.
 func PrepareUnixSocket(path string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return fmt.Errorf("mkdir socket parent: %w", err)
@@ -58,7 +53,6 @@ func PrepareUnixSocket(path string) error {
 	return nil
 }
 
-// ListenUnix prepares path and listens on unix.
 func ListenUnix(path string) (net.Listener, error) {
 	if err := PrepareUnixSocket(path); err != nil {
 		return nil, err
@@ -66,7 +60,6 @@ func ListenUnix(path string) (net.Listener, error) {
 	return net.Listen("unix", path)
 }
 
-// ResolveListenAddr prefers unixPath when set, otherwise tcpAddr.
 func ResolveListenAddr(tcpAddr, unixPath string) string {
 	if strings.TrimSpace(unixPath) != "" {
 		return unixPath
@@ -74,7 +67,6 @@ func ResolveListenAddr(tcpAddr, unixPath string) string {
 	return tcpAddr
 }
 
-// RedisUniversalOptions builds go-redis options for TCP or unix socket addr.
 func RedisUniversalOptions(addr, password string) *redis.UniversalOptions {
 	uopts := &redis.UniversalOptions{
 		Addrs:    []string{addr},
@@ -89,7 +81,6 @@ func RedisUniversalOptions(addr, password string) *redis.UniversalOptions {
 	return uopts
 }
 
-// RedisClientOptions builds a single-shard client options for TCP or unix.
 func RedisClientOptions(addr, password string) *redis.Options {
 	if IsUnixSocketPath(addr) {
 		return &redis.Options{
@@ -104,7 +95,6 @@ func RedisClientOptions(addr, password string) *redis.Options {
 	}
 }
 
-// ParseRedisURL opens redis from URL, unix:// path, or raw socket path.
 func ParseRedisURL(raw string, password string) (redis.UniversalClient, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -130,7 +120,6 @@ func ParseRedisURL(raw string, password string) (redis.UniversalClient, error) {
 	return redis.NewClient(opts), nil
 }
 
-// RedisURLFromAddr builds a redis URL for coordinator wiring.
 func RedisURLFromAddr(addr, password string, db int) string {
 	if IsUnixSocketPath(addr) {
 		if password != "" {
@@ -144,7 +133,6 @@ func RedisURLFromAddr(addr, password string, db int) string {
 	return fmt.Sprintf("redis://%s/%d", addr, db)
 }
 
-// HTTPProbeTarget returns a URL suitable for GET health probes (http or unix).
 func HTTPProbeTarget(tcpURL, unixSocket string) string {
 	if strings.TrimSpace(unixSocket) != "" {
 		return "http://unix/health#" + unixSocket

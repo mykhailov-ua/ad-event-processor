@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/pkg/platformconfig"
 
 	"github.com/google/uuid"
@@ -15,7 +14,6 @@ import (
 
 const defaultDomainPoolName = "default"
 
-// SetCloudflareAPI overrides the Cloudflare client (tests).
 func (s *Service) SetCloudflareAPI(api CloudflareAPI) {
 	if s == nil {
 		return
@@ -36,40 +34,40 @@ func (s *Service) cloudflareClient() CloudflareAPI {
 	return NewCloudflareClient(string(s.cfg.Management.CloudflareAPIToken), s.cfg.Management.CloudflareAPIBase)
 }
 
-func (s *Service) ParkDomain(ctx context.Context, req adminapi.ParkDomainRequest) (adminapi.ParkDomainResponse, error) {
+func (s *Service) ParkDomain(ctx context.Context, req ParkDomainRequest) (ParkDomainResponse, error) {
 	if s == nil || s.pool == nil {
-		return adminapi.ParkDomainResponse{}, fmt.Errorf("service unavailable")
+		return ParkDomainResponse{}, fmt.Errorf("service unavailable")
 	}
 	host := platformconfig.ResolveHost(req.Domain)
 	if host == "" {
-		return adminapi.ParkDomainResponse{}, fmt.Errorf("domain is required")
+		return ParkDomainResponse{}, fmt.Errorf("domain is required")
 	}
 	zoneID := strings.TrimSpace(req.CloudflareZoneID)
 	if zoneID == "" {
-		return adminapi.ParkDomainResponse{}, fmt.Errorf("cloudflare_zone_id is required")
+		return ParkDomainResponse{}, fmt.Errorf("cloudflare_zone_id is required")
 	}
 	target := ""
 	if s.cfg != nil {
 		target = strings.TrimSpace(s.cfg.Management.CloudflareDNSTarget)
 	}
 	if target == "" {
-		return adminapi.ParkDomainResponse{}, fmt.Errorf("cloudflare dns target not configured")
+		return ParkDomainResponse{}, fmt.Errorf("cloudflare dns target not configured")
 	}
 
 	poolID, err := s.resolveDomainPoolID(ctx, req.PoolID)
 	if err != nil {
-		return adminapi.ParkDomainResponse{}, err
+		return ParkDomainResponse{}, err
 	}
 
 	cf := s.cloudflareClient()
 	if cf == nil {
-		return adminapi.ParkDomainResponse{}, fmt.Errorf("cloudflare api not configured")
+		return ParkDomainResponse{}, fmt.Errorf("cloudflare api not configured")
 	}
 
 	recordType := cloudflareRecordTypeForTarget(target)
 	recordID, err := cf.CreateDNSRecord(ctx, zoneID, host, recordType, target, true)
 	if err != nil {
-		return adminapi.ParkDomainResponse{}, err
+		return ParkDomainResponse{}, err
 	}
 	sslStatus, err := cf.ZoneSSLStatus(ctx, zoneID)
 	if err != nil {
@@ -78,7 +76,7 @@ func (s *Service) ParkDomain(ctx context.Context, req adminapi.ParkDomainRequest
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return adminapi.ParkDomainResponse{}, err
+		return ParkDomainResponse{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
@@ -87,7 +85,7 @@ func (s *Service) ParkDomain(ctx context.Context, req adminapi.ParkDomainRequest
 		SELECT COALESCE(MAX(sort_order), -1) + 1
 		FROM domain_pool_domains WHERE pool_id = $1`, poolID).Scan(&sortOrder)
 	if err != nil {
-		return adminapi.ParkDomainResponse{}, err
+		return ParkDomainResponse{}, err
 	}
 
 	_, err = tx.Exec(ctx, `
@@ -101,7 +99,7 @@ func (s *Service) ParkDomain(ctx context.Context, req adminapi.ParkDomainRequest
 			updated_at = now()`,
 		poolID, host, sortOrder, zoneID, recordID, sslStatus)
 	if err != nil {
-		return adminapi.ParkDomainResponse{}, err
+		return ParkDomainResponse{}, err
 	}
 
 	_, err = tx.Exec(ctx, `
@@ -109,14 +107,14 @@ func (s *Service) ParkDomain(ctx context.Context, req adminapi.ParkDomainRequest
 		VALUES ($1, 'custom')
 		ON CONFLICT (hostname) DO UPDATE SET updated_at = now()`, host)
 	if err != nil {
-		return adminapi.ParkDomainResponse{}, err
+		return ParkDomainResponse{}, err
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return adminapi.ParkDomainResponse{}, err
+		return ParkDomainResponse{}, err
 	}
 
-	return adminapi.ParkDomainResponse{
+	return ParkDomainResponse{
 		Success:     true,
 		DNSRecordID: recordID,
 		SSLStatus:   sslStatus,

@@ -103,9 +103,6 @@ func connectStandby(ctx context.Context, dsn string, maxConns, minConns int) (*p
 	return pool, nil
 }
 
-// EnsureWritablePrimary blocks until pg_is_in_recovery() is false on the target pool.
-// When PgPromoteCommand is empty, operators must promote the standby out of band before
-// failover can succeed; otherwise this returns standby not writable after promote timeout.
 func EnsureWritablePrimary(ctx context.Context, pool *pgxpool.Pool) error {
 	return waitStandbyWritable(ctx, pool)
 }

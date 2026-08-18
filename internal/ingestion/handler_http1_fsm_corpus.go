@@ -1,6 +1,5 @@
 package ingestion
 
-// nginxTrackCorpus is the worst-case edge-shaped POST /track request used by DFA benches and ingress parity tests.
 var nginxTrackCorpus = []byte(
 	"POST /track HTTP/1.1\r\n" +
 		"Host: edge.local\r\n" +

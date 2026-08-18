@@ -10,21 +10,21 @@ cd "$ROOT"
 log() { printf 'license_gdb_guard_smoke: %s\n' "$*"; }
 
 if [[ "$(uname -s)" != "Linux" ]]; then
-	log "skip (linux only)"
-	exit 0
+  log "skip (linux only)"
+  exit 0
 fi
 
-if ! command -v gdb >/dev/null 2>&1; then
-	log "skip (gdb not in PATH)"
-	exit 0
+if ! command -v gdb > /dev/null 2>&1; then
+  log "skip (gdb not in PATH)"
+  exit 0
 fi
 
 export LICENSE_GDB_SMOKE=1
 log "running gdb attach smoke (harness=license_guard_release)"
 go test -tags=license_guard ./internal/licensing/ \
-	-run '^TestGuard_GDBAttachDenied$' \
-	-count=1 \
-	-timeout=2m \
-	-v
+  -run '^TestGuard_GDBAttachDenied$' \
+  -count=1 \
+  -timeout=2m \
+  -v
 
 log "ok"

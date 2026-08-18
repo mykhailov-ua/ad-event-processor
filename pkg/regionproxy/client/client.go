@@ -1,4 +1,3 @@
-// Package client implements regionproxy client helpers.
 package client
 
 import (

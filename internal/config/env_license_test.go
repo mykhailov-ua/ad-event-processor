@@ -1,15 +1,14 @@
 package config_test
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/bidshard/ad-event-processor/pkg/naming"
 
 	"github.com/bidshard/ad-event-processor/internal/config"
-
-	"os"
-	"path/filepath"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

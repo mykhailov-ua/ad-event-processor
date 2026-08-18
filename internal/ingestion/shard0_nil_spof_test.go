@@ -30,8 +30,6 @@ func rdbsWithNilShard0(t *testing.T, n int) []redis.UniversalClient {
 	return rdbs
 }
 
-// --- P0 regression (fixed) ---
-
 func TestShard0Nil_TrackerHealthSkipsNilShard0(t *testing.T) {
 	rdbs := rdbsWithNilShard0(t, 4)
 	ok := pingConnectedRedisShards(context.Background(), rdbs)

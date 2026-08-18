@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/bidshard/ad-event-processor/internal/domain/db"
 	"github.com/bidshard/ad-event-processor/internal/metrics"
@@ -362,12 +361,6 @@ func heldFor(since time.Time, now time.Time, d time.Duration) bool {
 	return !since.IsZero() && now.Sub(since) >= d
 }
 
-type OutboxHealthSummary = adminapi.OutboxHealthSummary
-
-type ShardHealthStatus = adminapi.ShardHealthStatus
-
-type ShardHealthReport = adminapi.ShardHealthReport
-
 func (s *Service) GetShardHealth(ctx context.Context) (ShardHealthReport, error) {
 	var report ShardHealthReport
 	report.Shards = make([]ShardHealthStatus, 0, len(s.rdbs))
@@ -625,7 +618,9 @@ func (s *Service) AutoscaleShards(ctx context.Context, provider ShardMetricsProv
 		return 0, fmt.Errorf("failed to activate new slot map version: %w", err)
 	}
 
-	_ = s.DrainMigratingSlots(ctx, draftVer)
+	if err := s.DrainMigratingSlots(ctx, draftVer); err != nil {
+		return draftVer, fmt.Errorf("slot map activated but drain migrating slots failed: %w", err)
+	}
 
 	return draftVer, nil
 }

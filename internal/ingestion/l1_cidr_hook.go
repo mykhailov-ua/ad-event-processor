@@ -11,10 +11,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// Pre-built L1 Safe View response (RP-M1 §17.1.4): fully static bytes, no
-// per-request Sprintf/Marshal. Body is a dedicated minimal HTML page — not
-// the header-only respClickSafePage stub — so byte-count assertions in
-// EXIT-M1 distinguish a real Safe View from a stub.
 var respClickSafeViewCIDR = buildSafeViewCIDRResponse()
 
 var safeViewCIDRBody = []byte(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Loading</title></head><body><main><p>Please wait&hellip;</p></main></body></html>`)
@@ -49,11 +45,6 @@ func (m *l1CIDRMetrics) recordMatch(feed uint8) {
 	m.match[CIDRFeedOther].Inc()
 }
 
-// l1CIDRShouldSafeView reports whether the request must short-circuit to the
-// pre-built Safe View before FilterEngine / Redis (RP-M1). Nil table or
-// unpublished snapshot = fail-open. The per-campaign flag comes from the
-// replicated registry snapshot; unknown campaigns stay enabled (fail-open is
-// the table, not the campaign).
 func (h *AdsPacketHandler) l1CIDRShouldSafeView(ip string, campaignID uuid.UUID) (bool, uint8) {
 	t := h.cidrTable
 	if t == nil || !t.Ready() {
@@ -67,8 +58,6 @@ func (h *AdsPacketHandler) l1CIDRShouldSafeView(ip string, campaignID uuid.UUID)
 	return t.MatchIP(ip)
 }
 
-// writeGnetSafeViewCIDR writes the pre-built 200 Safe View and records
-// metrics. Never touches Redis, Lua, or PG (data-layer rule M1.b).
 func (h *AdsPacketHandler) writeGnetSafeViewCIDR(c gnet.Conn, ctx *connContext, startMono int64, feed uint8) {
 	h.cidrMetrics.recordMatch(feed)
 	h.write(c, respClickSafeViewCIDR, ctx)

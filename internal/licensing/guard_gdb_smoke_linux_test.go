@@ -19,8 +19,6 @@ import (
 
 const guardGDBChildEnv = "LICENSE_GUARD_GDB_CHILD"
 
-// V2-C.D1 lab smoke: external gdb attach fails when ptrace watchdog occupies tracer slot.
-// Harness: license_guard_release (in-process test binary, not full tracker).
 func TestGuard_GDBAttachDenied(t *testing.T) {
 	if os.Getenv("LICENSE_GDB_SMOKE") != "1" {
 		t.Skip("set LICENSE_GDB_SMOKE=1 for gdb attach lab smoke")

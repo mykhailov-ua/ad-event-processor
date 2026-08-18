@@ -26,8 +26,10 @@ type rateLimiterEntry struct {
 	lastSeen time.Time
 }
 
-const rateLimiterMaxEntries = 50_000
-const rateLimiterEvictAfter = 10 * time.Minute
+const (
+	rateLimiterMaxEntries = 50_000
+	rateLimiterEvictAfter = 10 * time.Minute
+)
 
 type ipRateLimiter struct {
 	mu      sync.Mutex
@@ -98,14 +100,30 @@ func (h *Handler) limitLicenseApply(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-const customerExportRPS = 1.0
-const customerExportBurst = 3
+const (
+	customerExportRPS   = 1.0
+	customerExportBurst = 3
+)
 
-const licenseApplyRPS = 1.0 / 30.0
-const licenseApplyBurst = 3
+const (
+	fraudDecisionRPS   = 30.0 / 60.0
+	fraudDecisionBurst = 10
+)
 
-const defaultAPIKeyRPS = 30.0
-const defaultAPIKeyBurst = 60
+const (
+	fraudPreviewRPS   = 10.0 / 60.0
+	fraudPreviewBurst = 5
+)
+
+const (
+	licenseApplyRPS   = 1.0 / 30.0
+	licenseApplyBurst = 3
+)
+
+const (
+	defaultAPIKeyRPS   = 30.0
+	defaultAPIKeyBurst = 60
+)
 
 type apiKeyRateLimiter struct {
 	mu      sync.Mutex
@@ -179,6 +197,36 @@ func (l *customerRateLimiter) allow(customerID string) bool {
 	}
 	e.lastSeen = now
 	return e.lim.Allow()
+}
+
+func newFraudDecisionLimiter() *customerRateLimiter {
+	return &customerRateLimiter{
+		limit:   fraudDecisionRPS,
+		burst:   fraudDecisionBurst,
+		entries: make(map[string]*rateLimiterEntry),
+	}
+}
+
+func newFraudPreviewLimiter() *customerRateLimiter {
+	return &customerRateLimiter{
+		limit:   fraudPreviewRPS,
+		burst:   fraudPreviewBurst,
+		entries: make(map[string]*rateLimiterEntry),
+	}
+}
+
+func (h *Handler) allowFraudPreview(campaignID string) bool {
+	if h.fraudPreviewLimiter == nil || campaignID == "" {
+		return true
+	}
+	return h.fraudPreviewLimiter.allow(campaignID)
+}
+
+func (h *Handler) allowFraudDecision(customerID string) bool {
+	if h.fraudDecisionLimiter == nil || customerID == "" {
+		return true
+	}
+	return h.fraudDecisionLimiter.allow(customerID)
 }
 
 func (h *Handler) limitExportByCustomer(next http.HandlerFunc) http.HandlerFunc {

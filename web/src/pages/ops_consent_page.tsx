@@ -3,7 +3,7 @@ import { Button } from '../components/button.js';
 import { ErrorBlock } from '../components/error_block.js';
 import { FormField } from '../components/form_field.js';
 import { fetchConsentProofs } from '../helpers/ops_compliance_api.js';
-import type { ConsentProofDTO } from '../types/api/ops_compliance.js';
+import type { ConsentProofDTO } from '../types/ops_compliance.js';
 
 function purposeLabel(purposes: number): string {
   const bits: string[] = [];
@@ -12,9 +12,6 @@ function purposeLabel(purposes: number): string {
   return bits.length > 0 ? bits.join(', ') : 'none';
 }
 
-/**
- * CPA-M8 consent proof browser — read-only audit of recorded consent events.
- */
 export function OpsConsentPage() {
   const [userFilter, setUserFilter] = useState('');
   const [activeUser, setActiveUser] = useState('');
@@ -52,14 +49,19 @@ export function OpsConsentPage() {
       <header className="page-header">
         <h1 className="h2">Consent proofs</h1>
         <p className="text-muted">
-          Read-only browser for <code>POST /api/v1/consent</code> receipts. Records are immutable — no delete in UI.
+          Read-only browser for <code>POST /api/v1/consent</code> receipts. Records are immutable —
+          no delete in UI.
         </p>
       </header>
 
       {error ? <ErrorBlock error={error} /> : null}
 
       <section className="card stack" data-testid="consent-browser">
-        <FormField label="Search by user_id" htmlFor="consent-user-filter" hint="Server hashes user_id before lookup">
+        <FormField
+          label="Search by user_id"
+          htmlFor="consent-user-filter"
+          hint="Server hashes user_id before lookup"
+        >
           <div className="row gap-sm">
             <input
               id="consent-user-filter"
@@ -74,7 +76,9 @@ export function OpsConsentPage() {
         </FormField>
 
         {loading && items.length === 0 ? (
-          <p className="text-muted" data-testid="consent-loading">Loading proofs…</p>
+          <p className="text-muted" data-testid="consent-loading">
+            Loading proofs…
+          </p>
         ) : null}
 
         <div className="table-wrapper elevation-raised">
@@ -100,7 +104,8 @@ export function OpsConsentPage() {
                     {row.recorded_at ? new Date(row.recorded_at).toLocaleString() : '—'}
                   </td>
                   <td className="text-sm text-muted">
-                    {row.ad_storage ? 'ad' : ''}{row.ad_storage && row.analytics_storage ? ' · ' : ''}
+                    {row.ad_storage ? 'ad' : ''}
+                    {row.ad_storage && row.analytics_storage ? ' · ' : ''}
                     {row.analytics_storage ? 'analytics' : ''}
                     {!row.ad_storage && !row.analytics_storage ? '—' : ''}
                   </td>

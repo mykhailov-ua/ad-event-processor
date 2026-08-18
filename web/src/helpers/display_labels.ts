@@ -1,33 +1,23 @@
-/**
- * Human-readable labels for technical enum values in the admin UI.
- * API payloads keep machine values; only the display layer uses this module.
- */
-
 const EXACT: Record<string, string> = {
-  // Deployment profiles
   single_vps: 'Single VPS',
   compose_dev: 'Docker Compose (development)',
 
-  // Ingress / traffic
   ad_event_processor_native: 'BidShard native',
   espx_native: 'BidShard native (legacy)',
   native_v1: 'BidShard native (legacy)',
   openrtb_3: 'OpenRTB 3.0',
 
-  // Campaign status
   ACTIVE: 'Active',
   PAUSED: 'Paused',
   ARCHIVED: 'Archived',
   DRAFT: 'Draft',
   DELETED: 'Deleted',
 
-  // Pacing
   EVEN: 'Even delivery',
   ASAP: 'As fast as possible',
   even: 'Even delivery',
   asap: 'As fast as possible',
 
-  // Service health
   ok: 'OK',
   OK: 'OK',
   pass: 'Pass',
@@ -47,7 +37,6 @@ const EXACT: Record<string, string> = {
   active: 'Active',
   initialized: 'Initialized',
 
-  // Invoice / ledger
   paid: 'Paid',
   draft: 'Draft',
   void: 'Void',
@@ -55,7 +44,6 @@ const EXACT: Record<string, string> = {
   finalized: 'Finalized',
   open: 'Open',
 
-  // Common services (doctor / ops)
   management: 'Management API',
   tracker: 'Tracker',
   postgres: 'PostgreSQL',
@@ -67,20 +55,29 @@ const EXACT: Record<string, string> = {
   kernel: 'Kernel',
   sysctl: 'Kernel limits',
 
-  // Booleans
   yes: 'Yes',
   no: 'No',
   true: 'Yes',
   false: 'No',
 };
 
-const ACRONYMS = new Set(['vps', 'xdp', 'rtb', 'ivt', 'api', 'url', 'uuid', 'cpa', 'roi', 'rps', 'pg', 'ch']);
+const ACRONYMS = new Set([
+  'vps',
+  'xdp',
+  'rtb',
+  'ivt',
+  'api',
+  'url',
+  'uuid',
+  'cpa',
+  'roi',
+  'rps',
+  'pg',
+  'ch',
+]);
 
 export type SelectOption = { value: string; label: string };
 
-/**
- * Title-case one token, preserving known acronyms.
- */
 function titleWord(word: string): string {
   const w = word.toLowerCase();
   if (w === 'k3s') return 'K3s';
@@ -88,9 +85,6 @@ function titleWord(word: string): string {
   return w.charAt(0).toUpperCase() + w.slice(1);
 }
 
-/**
- * Convert snake_case or SCREAMING_SNAKE_CASE to a readable phrase.
- */
 export function humanizeToken(value: string): string {
   const s = String(value).trim();
   if (!s) return '—';
@@ -102,12 +96,9 @@ export function humanizeToken(value: string): string {
     .join(' ');
 }
 
-/**
- * Resolve a human-readable label for a technical value.
- */
 export function displayLabel(
   value: string | number | boolean | null | undefined,
-  fallback = '—',
+  fallback = '—'
 ): string {
   if (value == null || value === '') return fallback;
   const s = String(value);
@@ -117,17 +108,11 @@ export function displayLabel(
   return humanizeToken(s);
 }
 
-/**
- * Format a boolean as Yes/No.
- */
 export function formatYesNo(value: boolean | null | undefined): string {
   if (value == null) return '—';
   return value ? 'Yes' : 'No';
 }
 
-/**
- * Build select options with readable labels while preserving API values.
- */
 export function labeledOptions(values: string[]): SelectOption[] {
   return values.map((value) => ({ value, label: displayLabel(value) }));
 }
@@ -135,7 +120,6 @@ export function labeledOptions(values: string[]): SelectOption[] {
 export const PROFILE_SELECT_OPTIONS = labeledOptions(['single_vps', 'compose_dev']);
 export const INGRESS_SELECT_OPTIONS = labeledOptions(['ad_event_processor_native', 'openrtb_3']);
 
-/** Major ISO currencies for settings (RUB excluded). */
 export const CURRENCY_SELECT_OPTIONS: SelectOption[] = [
   { value: 'USD', label: 'US Dollar (USD)' },
   { value: 'EUR', label: 'Euro (EUR)' },
@@ -161,11 +145,10 @@ export const CURRENCY_SELECT_OPTIONS: SelectOption[] = [
   { value: 'DKK', label: 'Danish Krone (DKK)' },
 ];
 
-/**
- * Currency select options, preserving a saved code outside the default list.
- */
 export function currencySelectOptions(current = ''): SelectOption[] {
-  const code = String(current || '').trim().toUpperCase();
+  const code = String(current || '')
+    .trim()
+    .toUpperCase();
   const known = new Set(CURRENCY_SELECT_OPTIONS.map((o) => o.value));
   if (code && !known.has(code)) {
     return [{ value: code, label: `${code} (saved)` }, ...CURRENCY_SELECT_OPTIONS];
@@ -173,7 +156,6 @@ export function currencySelectOptions(current = ''): SelectOption[] {
   return CURRENCY_SELECT_OPTIONS;
 }
 
-/** Common IANA timezones for platform settings. */
 export const TIMEZONE_SELECT_OPTIONS: SelectOption[] = [
   { value: 'UTC', label: 'UTC — Coordinated Universal Time' },
   { value: 'Europe/London', label: 'Europe/London' },
@@ -194,9 +176,6 @@ export const TIMEZONE_SELECT_OPTIONS: SelectOption[] = [
   { value: 'America/Sao_Paulo', label: 'America/Sao_Paulo' },
 ];
 
-/**
- * Timezone select options, preserving a saved zone outside the default list.
- */
 export function timezoneSelectOptions(current = ''): SelectOption[] {
   const tz = String(current || '').trim();
   const known = new Set(TIMEZONE_SELECT_OPTIONS.map((o) => o.value));

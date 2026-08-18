@@ -5,7 +5,6 @@ import (
 	"strings"
 )
 
-// InstallToken verifies and atomically writes a license JWT to path (0600).
 func InstallToken(path, token string, pubKey ed25519.PublicKey) error {
 	token = strings.TrimSpace(token)
 	if token == "" {

@@ -226,7 +226,7 @@ Tier A–C (blocklist, SYN/PPS limits, ringbufs) ship in `edge_filter.c` and are
 | :--- | :--- |
 | Host kernel | **6.1+ LTS** with `CONFIG_DEBUG_INFO_BTF=y` (`/sys/kernel/btf/vmlinux` readable) |
 | Build deps | `clang`, `llvm`, `libbpf-dev`, `linux-libc-dev` (see `deploy/edge/xdp/Dockerfile` builder stage) |
-| Generate + compile | `go generate ./internal/edge/bpf/` (bpf2go embeds `edge_filter.c` for `bpfel`/`bpfeb`) |
+| Generate + compile | `go generate ./internal/edge/` (bpf2go embeds `edge_filter.c` for `bpfel`/`bpfeb`) |
 | Local dev | `make bpf-dev` then `go build -o bin/edge-xdp ./cmd/edge-xdp` |
 | Loader | cilium/ebpf attaches using host BTF; no separate `.o` deploy on appliance (objects embedded in binary) |
 
@@ -258,11 +258,11 @@ Perf: `BenchmarkXDP_*` = prog test only (harness `xdp_prog_test`); kernel proof 
 
 ```bash
 bash scripts/ci/compliance.sh
-go test ./internal/edge/bpf/... -count=1
+go test ./internal/edge/... -count=1
 bash scripts/test/edge_xdp_bench_gate.sh   # skips without BTF
 ```
 
-Compliance and `BenchmarkXDP_*` baselines use **generic** userspace program tests (`internal/edge/bpf/bench_test.go`, harness `xdp_prog_test`) — not kernel RX; unchanged by offload path. See [BENCHMARKS.md](../../docs/BENCHMARKS.md) §A.10.
+Compliance and `BenchmarkXDP_*` baselines use **generic** userspace program tests (`internal/edge/bench_test.go`, harness `xdp_prog_test`) — not kernel RX; unchanged by offload path. See [BENCHMARKS.md](../../docs/BENCHMARKS.md) §A.10.
 
 ### Known detection limits (§2.2.10)
 
@@ -284,4 +284,4 @@ sudo ./bin/edge-xdp-fault -mode iface -iface eth0 -dst 10.0.0.1   # raw socket; 
 bash scripts/fault/xdp_injector_drill.sh
 ```
 
-`internal/edge/bpf/*_fault_test.go` also emit `fault_proof fault=xdp_*` for `scripts/fault/run.sh` when `./internal/edge/bpf/...` is included.
+`internal/edge/*_fault_test.go` also emit `fault_proof fault=xdp_*` for `scripts/fault/run.sh` when `./internal/edge/...` is included.

@@ -1,4 +1,3 @@
-/** harness=mock_api — DLQ retry must POST before success toast (CPA-M4 EXIT). */
 import { test, expect } from '@playwright/test';
 import { mockAuthedSession, ADMIN_USER } from './helpers.js';
 
@@ -15,14 +14,16 @@ test.describe('Integrations postbacks page', () => {
       await route.fulfill({
         status: 200,
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify([{
-          id: DLQ_ID,
-          campaign_id: CAMPAIGN_ID,
-          event_type: 'conversion',
-          failures_count: 2,
-          status: 'FAILED',
-          last_error: 'timeout',
-        }]),
+        body: JSON.stringify([
+          {
+            id: DLQ_ID,
+            campaign_id: CAMPAIGN_ID,
+            event_type: 'conversion',
+            failures_count: 2,
+            status: 'FAILED',
+            last_error: 'timeout',
+          },
+        ]),
       });
     });
 
@@ -30,11 +31,13 @@ test.describe('Integrations postbacks page', () => {
       await route.fulfill({
         status: 200,
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify([{
-          campaign_id: CAMPAIGN_ID,
-          provider: 'webhook',
-          dlq_pending_count: 1,
-        }]),
+        body: JSON.stringify([
+          {
+            campaign_id: CAMPAIGN_ID,
+            provider: 'webhook',
+            dlq_pending_count: 1,
+          },
+        ]),
       });
     });
 

@@ -1,4 +1,3 @@
-/** Required mutation paths for confirm_registry audit. */
 export const REQUIRED_CONFIRM_KEYS = [
   'POST /auth/login',
   'POST /auth/logout',
@@ -8,6 +7,9 @@ export const REQUIRED_CONFIRM_KEYS = [
   'POST /settings/platform/apply',
   'POST /selfserve/campaigns',
   'PATCH /campaigns/{id}',
+  'PATCH /campaigns/{id}/fraud',
+  'POST /fraud/labels',
+  'POST /fraud/labels/bulk',
   'POST /selfserve/campaigns/{id}/pause',
   'POST /selfserve/campaigns/{id}/resume',
   'POST /selfserve/payment-intents',

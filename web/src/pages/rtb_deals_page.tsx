@@ -6,29 +6,21 @@ import { ConfirmCancelledError } from '../helpers/confirm_ui.js';
 import { mapServiceError } from '../helpers/service_error.js';
 import { displayLabel } from '../helpers/display_labels.js';
 import { formatAmountMicro } from '../helpers/money.js';
-import {
-  createRtbDeal,
-  deleteRtbDeal,
-  fetchRtbDeals,
-  patchRtbDeal,
-} from '../helpers/rtb_api.js';
-import type { RtbDealCreateSpec, RtbDealDTO } from '../types/api/rtb.js';
+import { createRtbDeal, deleteRtbDeal, fetchRtbDeals, patchRtbDeal } from '../helpers/rtb_api.js';
+import type { RtbDealCreateSpec, RtbDealDTO } from '../types/rtb.js';
 import { to } from '../lib/to.js';
-import { useToast } from '../hooks/use_toast.js';
+import { useToast } from '../helpers/use_toast.js';
 import { Breadcrumbs } from '../components/breadcrumbs.js';
 import { Button } from '../components/button.js';
 import { ErrorBlock } from '../components/error_block.js';
 import { FormField } from '../components/form_field.js';
 import { Modal } from '../components/modal.js';
 
-/**
- * RTB PMP deals list with CRUD modal.
- */
 export function RtbDealsPage() {
   const pushToast = useToast();
   const user = auth.getUser();
-  const canWrite = can(user?.permissions ?? [], 'rtb:write')
-    || can(user?.permissions ?? [], 'settings:write');
+  const canWrite =
+    can(user?.permissions ?? [], 'rtb:write') || can(user?.permissions ?? [], 'settings:write');
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown | null>(null);
@@ -141,7 +133,7 @@ export function RtbDealsPage() {
   }
 
   return (
-    <section data-testid="rtb-deals-view">
+    <section className="stack" data-testid="rtb-deals-view">
       <div className="page-header">
         <Breadcrumbs items={[{ label: 'RTB', href: '/rtb/integration' }, { label: 'Deals' }]} />
         <div className="page-header__row">
@@ -183,7 +175,12 @@ export function RtbDealsPage() {
                       Create a PMP deal to bind floor pricing to a customer.
                     </div>
                     {canWrite ? (
-                      <Button label="Create deal" variant="secondary" size="sm" onClick={openCreate} />
+                      <Button
+                        label="Create deal"
+                        variant="secondary"
+                        size="sm"
+                        onClick={openCreate}
+                      />
                     ) : null}
                   </div>
                 </td>
@@ -202,8 +199,12 @@ export function RtbDealsPage() {
                 </td>
                 {canWrite ? (
                   <td>
-                    <Button label="Edit" variant="secondary" size="sm" onClick={() => openEdit(deal)} />
-                    {' '}
+                    <Button
+                      label="Edit"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => openEdit(deal)}
+                    />{' '}
                     <Button
                       label="Delete"
                       variant="danger"
@@ -224,9 +225,15 @@ export function RtbDealsPage() {
         title={editing ? 'Edit deal' : 'Create deal'}
         onClose={closeModal}
         testId="rtb-deal-modal"
-        actions={(
+        actions={
           <>
-            <Button label="Cancel" variant="secondary" size="sm" type="button" onClick={closeModal} />
+            <Button
+              label="Cancel"
+              variant="secondary"
+              size="sm"
+              type="button"
+              onClick={closeModal}
+            />
             <Button
               label="Save"
               variant="primary"
@@ -237,7 +244,7 @@ export function RtbDealsPage() {
               disabled={saving}
             />
           </>
-        )}
+        }
       >
         <form id="rtb-deal-form" className="stack" onSubmit={(e) => void saveModal(e)}>
           <FormField label="Deal ID">

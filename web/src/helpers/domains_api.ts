@@ -57,7 +57,7 @@ export async function deleteCustomDomain(hostname: string): Promise<void> {
 export async function probeDomain(hostname: string): Promise<DomainHealthRow> {
   const res = await apiConfirmed<DomainHealthRow>(
     `/api/v1/domains/${encodeURIComponent(hostname)}/probe`,
-    { method: 'POST' },
+    { method: 'POST' }
   );
   return res.data;
 }
@@ -65,7 +65,7 @@ export async function probeDomain(hostname: string): Promise<DomainHealthRow> {
 export async function setupDomainSSL(hostname: string): Promise<DomainSSLSetupResult> {
   const res = await apiConfirmed<DomainSSLSetupResult>(
     `/api/v1/domains/${encodeURIComponent(hostname)}/ssl/setup`,
-    { method: 'POST' },
+    { method: 'POST' }
   );
   return res.data;
 }
@@ -75,28 +75,39 @@ export async function parkDomain(req: ParkDomainRequest): Promise<ParkDomainResp
     method: 'POST',
     body: JSON.stringify(req),
   });
-  return res.data ?? {
-    success: false,
-    dns_record_id: '',
-    ssl_status: '',
-  };
+  return (
+    res.data ?? {
+      success: false,
+      dns_record_id: '',
+      ssl_status: '',
+    }
+  );
 }
 
 export function healthStatusLabel(status: string): string {
   switch (status) {
-    case 'healthy': return 'Healthy';
-    case 'degraded': return 'Degraded';
-    case 'down': return 'Down';
-    default: return 'Unknown';
+    case 'healthy':
+      return 'Healthy';
+    case 'degraded':
+      return 'Degraded';
+    case 'down':
+      return 'Down';
+    default:
+      return 'Unknown';
   }
 }
 
 export function sslStatusLabel(status: string): string {
   switch (status) {
-    case 'valid': return 'Valid';
-    case 'expiring': return 'Expiring';
-    case 'expired': return 'Expired';
-    case 'missing': return 'Missing';
-    default: return 'Unknown';
+    case 'valid':
+      return 'Valid';
+    case 'expiring':
+      return 'Expiring';
+    case 'expired':
+      return 'Expired';
+    case 'missing':
+      return 'Missing';
+    default:
+      return 'Unknown';
   }
 }

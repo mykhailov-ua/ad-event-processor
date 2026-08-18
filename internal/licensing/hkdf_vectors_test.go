@@ -24,7 +24,7 @@ func hkdfSHA256(ikm, salt, info []byte, length int) ([]byte, error) {
 }
 
 func TestHKDF_RFC5869Vectors(t *testing.T) {
-	path := filepath.Join("testdata", "vectors", "hkdf_rfc5869.json")
+	path := filepath.Join("testdata", "hkdf_rfc5869.json")
 	raw, err := os.ReadFile(path)
 	require.NoError(t, err)
 	var doc struct {
@@ -60,7 +60,6 @@ func TestHKDF_RFC5869Vectors(t *testing.T) {
 	}
 }
 
-// MCK derivation uses the same HKDF primitive as hkdfSHA256 (deriveMCKBytes).
 func TestDeriveMCK_usesHKDFPrimitive(t *testing.T) {
 	ikm := []byte("sig-bytes-payload-bytes-hwid")
 	salt := []byte("deployment-abc")

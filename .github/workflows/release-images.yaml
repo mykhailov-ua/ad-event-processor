@@ -144,7 +144,6 @@ jobs:
           TAG="${TAG#v}"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
       - run: make release-installer VERSION=${{ steps.meta.outputs.tag }}
-
       - name: Summary
         run: |
           echo "Published pilot images:"

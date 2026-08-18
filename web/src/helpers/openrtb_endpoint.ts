@@ -28,11 +28,13 @@ export const VALIDATE_BID_FIXTURE = {
   id: 'req-smoke-001',
   tmax: 250,
   cur: ['USD'],
-  imp: [{
-    id: 'imp-1',
-    bidfloor: 1.25,
-    banner: { w: 300, h: 250 },
-  }],
+  imp: [
+    {
+      id: 'imp-1',
+      bidfloor: 1.25,
+      banner: { w: 300, h: 250 },
+    },
+  ],
   site: { domain: 'example.com', page: 'https://example.com/' },
   device: {
     ip: '203.0.113.1',

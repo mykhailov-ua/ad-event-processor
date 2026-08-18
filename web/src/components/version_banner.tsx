@@ -8,9 +8,6 @@ export type VersionBannerProps = {
   serverVersion?: string | null;
 };
 
-/**
- * Reload prompt when the server version changes mid-session.
- */
 export function VersionBanner({ serverVersion }: VersionBannerProps) {
   const content = useMemo(() => {
     const version = serverVersion?.trim() ?? '';
@@ -25,9 +22,7 @@ export function VersionBanner({ serverVersion }: VersionBannerProps) {
 
     try {
       sessionStorage.setItem(STORAGE_KEY, version);
-    } catch {
-      // ignore quota / private mode
-    }
+    } catch {}
 
     if (!prev || prev === version) return null;
 
@@ -47,7 +42,12 @@ export function VersionBanner({ serverVersion }: VersionBannerProps) {
       style={{ borderColor: 'var(--warning)' }}
     >
       <span>{content.message}</span>
-      <Button label="Reload" variant="secondary" size="sm" onClick={() => window.location.reload()} />
+      <Button
+        label="Reload"
+        variant="secondary"
+        size="sm"
+        onClick={() => window.location.reload()}
+      />
     </div>
   );
 }

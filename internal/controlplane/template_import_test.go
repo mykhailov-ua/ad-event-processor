@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/bidshard/ad-event-processor/internal/controlplane"
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/internal/testutil"
 	"github.com/stretchr/testify/require"
 
@@ -35,7 +34,7 @@ func TestGMM4_ImportAndApplyCampaignTemplates(t *testing.T) {
 	require.NoError(t, err)
 
 	svc := controlplane.NewService(ctx, pool, nil, nil, nil)
-	h := &adminapi.IntegrationSchemaHTTPHandlers{
+	h := &controlplane.IntegrationSchemaHTTPHandlers{
 		Pool:            pool,
 		TemplateCatalog: svc,
 		ResolveTrackingDomain: func(context.Context) string {
@@ -45,17 +44,17 @@ func TestGMM4_ImportAndApplyCampaignTemplates(t *testing.T) {
 	mux := http.NewServeMux()
 	h.Register(mux)
 
-	importBody, _ := json.Marshal(adminapi.ImportTemplatesRequest{})
+	importBody, _ := json.Marshal(controlplane.ImportTemplatesRequest{})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/integration/templates/import", bytes.NewReader(importBody))
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 
-	var imported []adminapi.IntegrationSchemaDTO
+	var imported []controlplane.IntegrationSchemaDTO
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &imported))
 	require.GreaterOrEqual(t, len(imported), 7)
 
-	applyBody, _ := json.Marshal(adminapi.ApplyCampaignTemplatesRequest{
+	applyBody, _ := json.Marshal(controlplane.ApplyCampaignTemplatesRequest{
 		TrafficSource:    "traffic_propellerads",
 		AffiliateNetwork: "affiliate_everad",
 		TrackingDomain:   "trk.example.com",

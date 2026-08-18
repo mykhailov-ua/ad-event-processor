@@ -7,7 +7,7 @@ import { can } from '../helpers/permissions.js';
 import * as auth from '../helpers/auth.js';
 import { mapServiceError } from '../helpers/service_error.js';
 import { pushToastMessage } from '../helpers/toast_ui.js';
-import type { IncidentSnapshot, ShardHealthStatus } from '../types/api/index.js';
+import type { IncidentSnapshot, ShardHealthStatus } from '../types/index.js';
 import { formatYesNo } from '../helpers/display_labels.js';
 import { Breadcrumbs } from '../components/breadcrumbs.js';
 import { Button } from '../components/button.js';
@@ -19,9 +19,6 @@ type CatchupMetricResponse = {
   points?: Array<{ ts?: string; value?: number }>;
 };
 
-/**
- * Redis shard health report with optional shard-0 catch-up.
- */
 export function OpsShardsPage() {
   const user = auth.getUser();
   const canCatchup = can(user?.permissions ?? [], 'shards:write');
@@ -33,9 +30,11 @@ export function OpsShardsPage() {
   const [catchupLastSuccess, setCatchupLastSuccess] = useState<string | null>(null);
 
   const loadCatchupMetric = useCallback(async () => {
-    const [res] = await to(api<CatchupMetricResponse>(
-      '/api/v1/ops/dashboard/metrics?range=24h&name=ad_shard0_catchup_last_success_timestamp',
-    ));
+    const [res] = await to(
+      api<CatchupMetricResponse>(
+        '/api/v1/ops/dashboard/metrics?range=24h&name=ad_shard0_catchup_last_success_timestamp'
+      )
+    );
     const points = res?.data?.points ?? [];
     let latest = 0;
     for (const point of points) {
@@ -74,7 +73,9 @@ export function OpsShardsPage() {
   const runCatchup = async () => {
     if (!canCatchup || catchupLoading) return;
     setCatchupLoading(true);
-    const [, err] = await to(apiConfirmed('/api/v1/ops/shards/0/catchup', { method: 'POST', body: '{}' }));
+    const [, err] = await to(
+      apiConfirmed('/api/v1/ops/shards/0/catchup', { method: 'POST', body: '{}' })
+    );
     setCatchupLoading(false);
     if (err) {
       if (err instanceof ConfirmCancelledError) return;
@@ -92,11 +93,7 @@ export function OpsShardsPage() {
   return (
     <>
       <div className="page-header">
-        <Breadcrumbs items={[
-          { label: 'Operations', href: '/ops' },
-          { label: 'Redis shards' },
-        ]}
-        />
+        <Breadcrumbs items={[{ label: 'Operations', href: '/ops' }, { label: 'Redis shards' }]} />
         <div className="page-header__row">
           <h1 className="page-header__title">Redis shards</h1>
           {catchupTarget && canCatchup ? (
@@ -146,7 +143,9 @@ export function OpsShardsPage() {
           <tbody>
             {shards.length === 0 ? (
               <tr>
-                <td colSpan={5} className="text-muted text-center p-6">No data</td>
+                <td colSpan={5} className="text-muted text-center p-6">
+                  No data
+                </td>
               </tr>
             ) : null}
             {shards.map((s: ShardHealthStatus) => (

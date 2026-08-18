@@ -16,15 +16,15 @@ log "alloc gate (telegram paths)"
 go test -short -count=1 -run 'TgClick|ParseTgClick|DecodeTgBid|Check_zeroAlloc_localQuantaFullSkip' ./internal/ingestion/...
 
 if [[ -n "$SESSION_DIR" && -d "$SESSION_DIR" ]]; then
-	log "telegram gate report — $SESSION_DIR"
-	go run ./cmd/load-report telegram "$SESSION_DIR" --prom "$PROM_URL"
+  log "telegram gate report — $SESSION_DIR"
+  go run ./cmd/load-report telegram "$SESSION_DIR" --prom "$PROM_URL"
 else
-	log "soak (optional stack must be up; set PREPARE=1 to bootstrap)"
-	PREPARE="${PREPARE:-0}" bash "$SCRIPTS/test/tg_hotpath_soak.sh"
-	LATEST="$(ls -td "$ROOT"/var/load-test/tg-* 2>/dev/null | head -1 || true)"
-	if [[ -n "$LATEST" ]]; then
-		go run ./cmd/load-report telegram "$LATEST" --prom "$PROM_URL" || log "WARN: telegram gate skipped (no BPF/Prom)"
-	fi
+  log "soak (optional stack must be up; set PREPARE=1 to bootstrap)"
+  PREPARE="${PREPARE:-0}" bash "$SCRIPTS/test/tg_hotpath_soak.sh"
+  LATEST="$(ls -td "$ROOT"/var/load-test/tg-* 2> /dev/null | head -1 || true)"
+  if [[ -n "$LATEST" ]]; then
+    go run ./cmd/load-report telegram "$LATEST" --prom "$PROM_URL" || log "WARN: telegram gate skipped (no BPF/Prom)"
+  fi
 fi
 
 log "PASS"

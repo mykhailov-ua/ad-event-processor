@@ -16,25 +16,16 @@ export type SelfServeInvoice = {
   created_at?: string;
 };
 
-/**
- * List campaign templates available for self-serve create.
- */
 export async function fetchSelfServeTemplates(): Promise<SelfServeTemplate[]> {
   const { data } = await api<{ items?: SelfServeTemplate[] }>('/api/v1/selfserve/templates');
   return data?.items ?? [];
 }
 
-/**
- * List self-serve invoices for the session customer.
- */
 export async function fetchSelfServeInvoices(): Promise<SelfServeInvoice[]> {
   const { data } = await api<{ invoices?: SelfServeInvoice[] }>('/api/v1/selfserve/invoices');
   return data?.invoices ?? [];
 }
 
-/**
- * Create a campaign from a template via self-serve API.
- */
 export async function createSelfServeCampaign(body: {
   template_id: string;
   name?: string;

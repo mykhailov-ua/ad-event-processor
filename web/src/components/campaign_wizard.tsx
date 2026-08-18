@@ -15,15 +15,7 @@ export type CampaignWizardProps = {
   onCreated: (id: string) => void;
 };
 
-/**
- * Campaign create wizard (budget reserved from customer balance on create).
- */
-export function CampaignWizard({
-  open,
-  customerId,
-  onClose,
-  onCreated,
-}: CampaignWizardProps) {
+export function CampaignWizard({ open, customerId, onClose, onCreated }: CampaignWizardProps) {
   const [name, setName] = useState('');
   const [budget, setBudget] = useState('100.00');
   const [pacing, setPacing] = useState('ASAP');
@@ -57,14 +49,19 @@ export function CampaignWizard({
     }
     setBusy(true);
     setError(null);
-    const countryList = countries.split(',').map((c) => c.trim().toUpperCase()).filter(Boolean);
-    const [data, err] = await to(createCampaign(customerId, {
-      name: name.trim(),
-      budget_limit: budgetNum,
-      pacing_mode: pacing,
-      timezone: timezone.trim() || 'UTC',
-      target_countries: countryList,
-    }));
+    const countryList = countries
+      .split(',')
+      .map((c) => c.trim().toUpperCase())
+      .filter(Boolean);
+    const [data, err] = await to(
+      createCampaign(customerId, {
+        name: name.trim(),
+        budget_limit: budgetNum,
+        pacing_mode: pacing,
+        timezone: timezone.trim() || 'UTC',
+        target_countries: countryList,
+      })
+    );
     if (err) {
       if (err instanceof ConfirmCancelledError) {
         setBusy(false);
@@ -96,7 +93,7 @@ export function CampaignWizard({
       description="Budget is reserved from customer balance on create."
       onClose={onClose}
       testId="campaign-wizard-modal"
-      actions={(
+      actions={
         <>
           <Button label="Cancel" variant="secondary" disabled={busy} onClick={onClose} />
           <Button
@@ -107,7 +104,7 @@ export function CampaignWizard({
             onClick={() => void submit()}
           />
         </>
-      )}
+      }
     >
       {error ? <p className="text-danger text-sm">{error}</p> : null}
       <label className="form-field" htmlFor="wiz-name">
@@ -180,9 +177,6 @@ export function CampaignWizard({
   );
 }
 
-/**
- * Hook for opening the campaign create wizard from list pages.
- */
 export function useCampaignWizard() {
   const [customerId, setCustomerId] = useState<string | null>(null);
   return {

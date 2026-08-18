@@ -55,7 +55,7 @@ func goHKDF(ikm, salt, info []byte, length int) ([]byte, error) {
 }
 
 func TestHKDF_DifferentialOpenSSL_RFC5869(t *testing.T) {
-	path := filepath.Join("testdata", "vectors", "hkdf_rfc5869.json")
+	path := filepath.Join("testdata", "hkdf_rfc5869.json")
 	raw, err := os.ReadFile(path)
 	require.NoError(t, err)
 	var doc struct {

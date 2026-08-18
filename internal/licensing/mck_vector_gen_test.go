@@ -54,22 +54,23 @@ func TestGenMCKVectorArtifacts(t *testing.T) {
 			MCKHex         string `json:"mck_hex"`
 			FeatureSeedHex string `json:"feature_seed_hex"`
 		} `json:"fixtures"`
-	}{Fixtures: []struct {
-		Name           string `json:"name"`
-		Token          string `json:"token"`
-		HWID           string `json:"hwid"`
-		MCKHex         string `json:"mck_hex"`
-		FeatureSeedHex string `json:"feature_seed_hex"`
-	}{{
-		Name:           "deterministic_fixture",
-		Token:          token,
-		HWID:           hwid,
-		MCKHex:         hex.EncodeToString(mck[:]),
-		FeatureSeedHex: fmt.Sprintf("%08x", seedU32),
-	}},
+	}{
+		Fixtures: []struct {
+			Name           string `json:"name"`
+			Token          string `json:"token"`
+			HWID           string `json:"hwid"`
+			MCKHex         string `json:"mck_hex"`
+			FeatureSeedHex string `json:"feature_seed_hex"`
+		}{{
+			Name:           "deterministic_fixture",
+			Token:          token,
+			HWID:           hwid,
+			MCKHex:         hex.EncodeToString(mck[:]),
+			FeatureSeedHex: fmt.Sprintf("%08x", seedU32),
+		}},
 	}
 	raw, err := json.MarshalIndent(out, "", "  ")
 	require.NoError(t, err)
-	path := filepath.Join("testdata", "vectors", "mck_derivation.json")
+	path := filepath.Join("testdata", "mck_derivation.json")
 	require.NoError(t, os.WriteFile(path, append(raw, '\n'), 0o644))
 }

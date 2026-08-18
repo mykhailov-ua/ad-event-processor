@@ -16,8 +16,6 @@ import (
 	"github.com/bidshard/ad-event-processor/internal/domain"
 )
 
-// GM-M0.a baseline audit: documents current IP/ASN classification surfaces and
-// gaps vs GRAY_MARKET_MILESTONE §2 before GM-M1 work lands.
 func TestGrayMarketBaseline_inventorySymbolsExist(t *testing.T) {
 	t.Helper()
 	_, file, _, ok := runtime.Caller(0)
@@ -98,7 +96,6 @@ func TestGrayMarketBaseline_flowRouterHarness_ready(t *testing.T) {
 }
 
 func TestGrayMarketBaseline_productScopeGates(t *testing.T) {
-	// G1–G4 from GRAY_MARKET_MILESTONE §3 — acknowledged in first GM PR.
 	const (
 		gateNoVisualEditors   = "no_grapejs_lp_builder"
 		gateNoLocalLanders    = "redirect_and_proxy_only"

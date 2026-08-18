@@ -24,7 +24,6 @@ type domainPoolSync struct {
 	gen      atomic.Uint64
 }
 
-// NewDomainPoolSync builds the cold-path PG sync worker. Returns nil when disabled.
 func NewDomainPoolSync(pool *pgxpool.Pool, table *DomainPoolTable, interval time.Duration) *domainPoolSync {
 	if pool == nil || table == nil {
 		return nil

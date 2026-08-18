@@ -2,8 +2,6 @@ package ingestion
 
 import "errors"
 
-// http1TrackEdgePolicy mirrors deploy/nginx/lua/edge-phase2.lua wire policy for POST /track:
-// Content-Length is required (no chunked transfer on the edge path).
 func http1TrackEdgePolicy(req *parsedHTTPRequest, hFlags uint8) error {
 	if req == nil || !isPOSTTrack(req) {
 		return nil
@@ -23,7 +21,6 @@ func isPOSTTrack(req *parsedHTTPRequest) bool {
 		httpPathHasPrefix(req.Path, "/track")
 }
 
-// IngressVerdict is the normalized accept/reject outcome for cross-hop parity tests.
 type IngressVerdict string
 
 const (
@@ -56,18 +53,15 @@ func dispositionFromHTTP1Parse(n int, req parsedHTTPRequest, err error) ingressD
 	}
 }
 
-// edgeHTTP1Disposition models nginx edge-phase2 + tracker parse for /track ingress.
 func edgeHTTP1Disposition(wire []byte, maxBody int64) ingressDisposition {
 	return gnetHTTP1Disposition(wire, maxBody)
 }
 
-// gnetHTTP1Disposition is the tracker gnet parse outcome.
 func gnetHTTP1Disposition(wire []byte, maxBody int64) ingressDisposition {
 	n, req, err := parseHTTP1(wire, maxBody, nil)
 	return dispositionFromHTTP1Parse(n, req, err)
 }
 
-// http1IngressCanonical compares edge and gnet dispositions (must match after shared policy).
 func http1IngressCanonical(wire []byte, maxBody int64) (edge, gnet ingressDisposition, differential bool) {
 	edge = edgeHTTP1Disposition(wire, maxBody)
 	gnet = gnetHTTP1Disposition(wire, maxBody)

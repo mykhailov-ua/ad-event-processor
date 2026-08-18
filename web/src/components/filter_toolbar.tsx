@@ -17,9 +17,6 @@ export type FilterToolbarProps = {
   pagination?: ReactNode;
 };
 
-/**
- * Filter toolbar with search, chips, and optional pagination slot.
- */
 export function FilterToolbar({
   search,
   searchPlaceholder = 'Search…',
@@ -47,7 +44,11 @@ export function FilterToolbar({
         </div>
       ) : null}
       {chips?.length ? (
-        <div className="filter-toolbar__chips chip-row" role="radiogroup" aria-label="Filter options">
+        <div
+          className="filter-toolbar__chips chip-row"
+          role="radiogroup"
+          aria-label="Filter options"
+        >
           {chips.map((chip) => {
             const selected = chip.value === chipSelected;
             return (

@@ -13,10 +13,10 @@ source "$SCRIPTS/lib/redis_memory.sh"
 cd "$ROOT"
 
 if [[ -f "$ROOT/.env" ]]; then
-	set -a
-	# shellcheck disable=SC1091
-	source "$ROOT/.env"
-	set +a
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT/.env"
+  set +a
 fi
 
 TARGET_RPS="${TARGET_RPS:-50000}"
@@ -31,57 +31,60 @@ mkdir -p "$OUT"
 COMPOSE=(docker compose -f docker-compose.yaml -f docker-compose.load-test.yaml)
 
 log() { printf 'redis-ram-cutover-compare: %s\n' "$*"; }
-die() { printf 'redis-ram-cutover-compare: ERROR: %s\n' "$*" >&2; exit 1; }
+die() {
+  printf 'redis-ram-cutover-compare: ERROR: %s\n' "$*" >&2
+  exit 1
+}
 
 run_phase() {
-	local phase="$1"
-	local ingest_mode="$2"
-	local shadow="$3"
-	local out_dir="$OUT/$phase"
-	mkdir -p "$out_dir"
+  local phase="$1"
+  local ingest_mode="$2"
+  local shadow="$3"
+  local out_dir="$OUT/$phase"
+  mkdir -p "$out_dir"
 
-	log "phase=$phase CH_INGEST_SOURCE=${ingest_mode:-<empty>} BROKER_SHADOW_MODE=$shadow"
-	export BROKER_URL="${BROKER_URL:-127.0.0.1:9092}"
-	export CH_INGEST_SOURCE="${ingest_mode}"
-	export BROKER_SHADOW_MODE="$shadow"
-	export STREAM_MAX_LEN="${STREAM_MAX_LEN:-10000}"
-	export REDIS_STREAM_TRIM_INTERVAL_MS="${REDIS_STREAM_TRIM_INTERVAL_MS:-10000}"
+  log "phase=$phase CH_INGEST_SOURCE=${ingest_mode:-<empty>} BROKER_SHADOW_MODE=$shadow"
+  export BROKER_URL="${BROKER_URL:-127.0.0.1:9092}"
+  export CH_INGEST_SOURCE="${ingest_mode}"
+  export BROKER_SHADOW_MODE="$shadow"
+  export STREAM_MAX_LEN="${STREAM_MAX_LEN:-10000}"
+  export REDIS_STREAM_TRIM_INTERVAL_MS="${REDIS_STREAM_TRIM_INTERVAL_MS:-10000}"
 
-	"${COMPOSE[@]}" up -d broker processor tracker-0 tracker-1 2>&1 | tee "$out_dir/compose.log"
-	for port in 8181 8182; do
-		for _ in $(seq 1 90); do
-			curl -sf "http://127.0.0.1:${port}/health" >/dev/null 2>&1 && break
-			sleep 1
-		done
-	done
+  "${COMPOSE[@]}" up -d broker processor tracker-0 tracker-1 2>&1 | tee "$out_dir/compose.log"
+  for port in 8181 8182; do
+    for _ in $(seq 1 90); do
+      curl -sf "http://127.0.0.1:${port}/health" > /dev/null 2>&1 && break
+      sleep 1
+    done
+  done
 
-	redis_memory_snapshot_all "${COMPOSE[@]}" | tee "$out_dir/memory-before.txt"
+  redis_memory_snapshot_all "${COMPOSE[@]}" | tee "$out_dir/memory-before.txt"
 
-	go run ./cmd/loadgen \
-		-out "$out_dir/loadgen" \
-		-mode smoke \
-		-rate "$TARGET_RPS" \
-		-duration "$DURATION" \
-		-workers "$WORKERS" \
-		-trackers "$TRACKER_BASES" \
-		2>&1 | tee "$out_dir/loadgen.log" || log "WARN: loadgen non-zero in $phase"
+  go run ./cmd/loadgen \
+    -out "$out_dir/loadgen" \
+    -mode smoke \
+    -rate "$TARGET_RPS" \
+    -duration "$DURATION" \
+    -workers "$WORKERS" \
+    -trackers "$TRACKER_BASES" \
+    2>&1 | tee "$out_dir/loadgen.log" || log "WARN: loadgen non-zero in $phase"
 
-	redis_memory_snapshot_all "${COMPOSE[@]}" | tee "$out_dir/memory-after.txt"
-	awk -F= '/used_memory_bytes=/{if($2>max)max=$2} END{print max+0}' \
-		"$out_dir/memory-before.txt" "$out_dir/memory-after.txt"
+  redis_memory_snapshot_all "${COMPOSE[@]}" | tee "$out_dir/memory-after.txt"
+  awk -F= '/used_memory_bytes=/{if($2>max)max=$2} END{print max+0}' \
+    "$out_dir/memory-before.txt" "$out_dir/memory-after.txt"
 }
 
 log "artifacts → $OUT"
 log "target_rps=$TARGET_RPS duration=$DURATION"
 
 if [[ "${SKIP_PREPARE:-0}" != "1" ]]; then
-	bash "$SCRIPTS/test/prepare_constrained_stack.sh" 2>&1 | tee "$OUT/prepare.log"
+  bash "$SCRIPTS/test/prepare_constrained_stack.sh" 2>&1 | tee "$OUT/prepare.log"
 fi
 
 DUAL_PEAK="$(run_phase dual "" 1)"
 BROKER_PEAK="$(run_phase broker-only broker 0)"
 
-python3 - "$OUT/report.json" "$TS" "$TARGET_RPS" "$DURATION" "$DUAL_PEAK" "$BROKER_PEAK" <<'PY'
+python3 - "$OUT/report.json" "$TS" "$TARGET_RPS" "$DURATION" "$DUAL_PEAK" "$BROKER_PEAK" << 'PY'
 import json, sys
 out, ts, rps, dur, dual, broker = sys.argv[1:7]
 dual_i, broker_i = int(dual), int(broker)
@@ -104,5 +107,5 @@ PY
 
 log "dual_peak=${DUAL_PEAK} broker_peak=${BROKER_PEAK}"
 echo "fault_proof fault=redis_ram_cutover_compare status=passed dual_peak_bytes=${DUAL_PEAK} broker_peak_bytes=${BROKER_PEAK} target_rps=${TARGET_RPS} baseline_ok=true" \
-	| tee "$OUT/fault_proof.txt"
+  | tee "$OUT/fault_proof.txt"
 log "PASS cutover RAM compare"

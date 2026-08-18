@@ -2,7 +2,7 @@ import { to } from '../lib/to.js';
 import { api, ApiError } from './api_client.js';
 import { apiConfirmed } from './confirmed_api.js';
 import { getOrCreate } from './idempotency.js';
-import type { DLQEntryDTO, DLQListResponse, FanOutSourceError } from '../types/api/ops_extra.js';
+import type { DLQEntryDTO, DLQListResponse, FanOutSourceError } from '../types/ops_extra.js';
 
 export type DlqFetchResult = {
   items: DLQEntryDTO[];
@@ -11,27 +11,18 @@ export type DlqFetchResult = {
   error?: unknown;
 };
 
-/**
- * Build the ops DLQ list URL with optional cursor pagination.
- */
 export function buildDlqListUrl(cursor = '', limit = 50): string {
   const params = new URLSearchParams({ limit: String(limit) });
   if (cursor) params.set('cursor', cursor);
   return `/api/v1/ops/dlq?${params.toString()}`;
 }
 
-/**
- * Return whether an ops DLQ row should show the retry action.
- */
 export function isOpsDlqEntryRetryable(entry: DLQEntryDTO): boolean {
   if (!entry.id) return false;
   const status = typeof entry.status === 'string' ? entry.status.trim().toUpperCase() : '';
   return status !== 'RETRIED' && status !== 'SUCCESS' && status !== 'SUCCEEDED';
 }
 
-/**
- * Fetch one page of stream DLQ entries (handles partial 503 fan-out).
- */
 export async function fetchOpsDlqPage(cursor = '', limit = 50): Promise<DlqFetchResult> {
   const [res, err] = await to(api<DLQListResponse>(buildDlqListUrl(cursor, limit)));
   if (err) {
@@ -53,9 +44,6 @@ export async function fetchOpsDlqPage(cursor = '', limit = 50): Promise<DlqFetch
   };
 }
 
-/**
- * List stream DLQ entries from all Redis shards.
- */
 export async function fetchOpsDlq(cursor = '', limit = 50): Promise<DLQListResponse> {
   const page = await fetchOpsDlqPage(cursor, limit);
   if (page.error) throw page.error;
@@ -66,9 +54,6 @@ export async function fetchOpsDlq(cursor = '', limit = 50): Promise<DLQListRespo
   };
 }
 
-/**
- * Retry a failed stream DLQ entry (enqueue only).
- */
 export async function retryOpsDlq(id: string): Promise<void> {
   const scope = `ops-dlq-retry:${id}`;
   await apiConfirmed(`/api/v1/ops/dlq/${encodeURIComponent(id)}/retry`, {

@@ -17,15 +17,11 @@ import (
 
 	"github.com/bidshard/ad-event-processor/internal/config"
 	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// Feed file formats auto-detected by content:
-//   - lines: one CIDR or bare IP per line, '#' comments (Tor exit list, vendor
-//     static files under deploy/feeds/, local operator files)
-//   - AWS/GCP JSON: {"prefixes":[{"ip_prefix"|"ipv6_prefix": "…"}]}
-//   - Azure JSON:   {"values":[{"properties":{"addressPrefixes":["…"]}}]}
 const (
 	cidrFormatLines = iota
 	cidrFormatAWSGCP
@@ -35,8 +31,8 @@ const (
 type cidrFeedSource struct {
 	feed   uint8
 	name   string
-	file   string // cache file name inside the feed dir
-	url    string // optional; fetched only when downloads are enabled
+	file   string
+	url    string
 	format int
 }
 
@@ -52,8 +48,6 @@ type cidrFeedLoader struct {
 	lastPrefixes atomic.Int64
 }
 
-// NewCIDRFeedLoader builds the cold-path loader. Returns nil when L1 is
-// disabled via CIDR_L1_ENABLED=false.
 func NewCIDRFeedLoader(cfg *config.Config, table *CIDRTable) *cidrFeedLoader {
 	if cfg == nil || !cfg.CIDRL1Enabled || table == nil {
 		return nil
@@ -81,7 +75,6 @@ func NewCIDRFeedLoader(cfg *config.Config, table *CIDRTable) *cidrFeedLoader {
 	return l
 }
 
-// Start runs the refresh loop until ctx is cancelled. Cold path only.
 func (l *cidrFeedLoader) Start(ctx context.Context) {
 	l.refreshOnce(ctx)
 	ticker := time.NewTicker(l.refresh)
@@ -96,10 +89,6 @@ func (l *cidrFeedLoader) Start(ctx context.Context) {
 	}
 }
 
-// refreshOnce parses every available source and publishes one combined
-// snapshot. Per-feed failures retain the previous snapshot (fail policy from
-// MILESTONE.md §9 RP-M1 / RP TZ): the failed feed contributes nothing to
-// the new build, so a partial result still beats a stale one.
 func (l *cidrFeedLoader) refreshOnce(ctx context.Context) {
 	var b cidrBuilder
 	root4, root6 := int32(cidrNoIndex), int32(cidrNoIndex)
@@ -147,9 +136,10 @@ func (l *cidrFeedLoader) fetch(ctx context.Context, src cidrFeedSource) error {
 	}
 	resp, err := l.httpClient.Do(req)
 	if err != nil {
+		coldpath.CloseHTTPResponse(resp)
 		return err
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer coldpath.CloseHTTPResponse(resp)
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("http %d", resp.StatusCode)
 	}
@@ -207,7 +197,7 @@ func parseCIDRLines(r io.Reader, feed uint8, b *cidrBuilder, root4, root6 *int32
 		}
 		p, err := cidrParseEntry(line)
 		if err != nil {
-			continue // tolerate junk lines in vendor lists
+			continue
 		}
 		b.addPrefix(p, feed, root4, root6)
 		n++
@@ -215,7 +205,6 @@ func parseCIDRLines(r io.Reader, feed uint8, b *cidrBuilder, root4, root6 *int32
 	return n, sc.Err()
 }
 
-// cidrParseEntry accepts "10.0.0.0/8" or a bare "10.0.0.1" (host route).
 func cidrParseEntry(s string) (netip.Prefix, error) {
 	if p, err := netip.ParsePrefix(s); err == nil {
 		return p.Masked(), nil

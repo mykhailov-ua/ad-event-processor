@@ -385,7 +385,6 @@ func NewUnifiedFilter(
 	return f
 }
 
-// SetDeferStreamToProducer disables Lua XADD when the async Go StreamProducer writes events.
 func (f *UnifiedFilter) SetDeferStreamToProducer(deferWrite bool) {
 	if f == nil {
 		return
@@ -408,7 +407,6 @@ func (f *UnifiedFilter) StartScriptPreheater(ctx context.Context, interval time.
 		interval = 30 * time.Second
 	}
 	go func() {
-		// Run initial preload on start
 		_ = f.PreloadScripts(ctx)
 
 		ticker := time.NewTicker(interval)
@@ -489,7 +487,6 @@ func (f *UnifiedFilter) StartSLASentinel(ctx context.Context, interval time.Dura
 				pingCancel()
 				latency := float64(time.Since(start).Milliseconds())
 				if err != nil {
-
 					latency = f.p95ThresholdMs + 1000
 				}
 
@@ -526,7 +523,6 @@ func (f *UnifiedFilter) StartSLASentinel(ctx context.Context, interval time.Dura
 					}
 					f.slaPenaltyActive.Store(true)
 				} else if isActive {
-
 					if f.currentEma < f.recoveryEmaMs {
 						if f.recoveryStartTime.IsZero() {
 							f.recoveryStartTime = time.Now()

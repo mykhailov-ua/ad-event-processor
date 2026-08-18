@@ -1,9 +1,10 @@
 package config
 
 import (
-	"github.com/bidshard/ad-event-processor/pkg/naming"
 	"os"
 	"testing"
+
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 )
 
 func TestTelemetryOptInFromEnv(t *testing.T) {

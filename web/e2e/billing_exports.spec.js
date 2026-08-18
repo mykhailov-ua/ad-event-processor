@@ -1,4 +1,3 @@
-/** harness=mock_api — Playwright route.fulfill; does not prove Go handler or CH/PG. */
 import { test, expect } from '@playwright/test';
 import { mockAuthedSession, ADMIN_USER } from './helpers.js';
 
@@ -51,9 +50,10 @@ test('billing exports create, poll, and show download', async ({ page }) => {
       return;
     }
     pollCount += 1;
-    const body = pollCount < 2
-      ? { ...COMPLETED_JOB, status: 'RUNNING', bytes: 0, download_url: '' }
-      : COMPLETED_JOB;
+    const body =
+      pollCount < 2
+        ? { ...COMPLETED_JOB, status: 'RUNNING', bytes: 0, download_url: '' }
+        : COMPLETED_JOB;
     await route.fulfill({
       status: 200,
       headers: { 'content-type': 'application/json' },

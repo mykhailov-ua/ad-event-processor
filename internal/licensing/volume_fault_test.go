@@ -6,11 +6,12 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
-	"github.com/bidshard/ad-event-processor/pkg/naming"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

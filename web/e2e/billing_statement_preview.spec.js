@@ -1,4 +1,3 @@
-/** harness=mock_api — admin statement, invoice preview, payments; does not prove Postgres ledger. */
 import { test, expect } from '@playwright/test';
 import { mockAuthedSession, ADMIN_USER } from './helpers.js';
 
@@ -11,13 +10,15 @@ const STATEMENT = {
   closing_balance_micro: 35_000_000,
   currency: 'USD',
   reconciliation: { invoice_total_micro: 15_000_000, ledger_sum_micro: 15_000_000, delta_micro: 0 },
-  invoices: [{
-    id: 'inv-stmt-1',
-    billing_month: '2026-08',
-    status: 'ISSUED',
-    total_micro: 15_000_000,
-    currency: 'USD',
-  }],
+  invoices: [
+    {
+      id: 'inv-stmt-1',
+      billing_month: '2026-08',
+      status: 'ISSUED',
+      total_micro: 15_000_000,
+      currency: 'USD',
+    },
+  ],
 };
 
 const PREVIEW = {
@@ -32,15 +33,17 @@ const PREVIEW = {
 };
 
 const PAYMENTS = {
-  items: [{
-    intent_id: 'pi-p5-1',
-    customer_id: CUSTOMER_ID,
-    amount_micro: 100_000_000,
-    currency: 'USD',
-    status: 'PAYMENT_INTENT_STATUS_SUCCEEDED',
-    provider: 'stripe',
-    created_at: '2026-08-10T12:00:00Z',
-  }],
+  items: [
+    {
+      intent_id: 'pi-p5-1',
+      customer_id: CUSTOMER_ID,
+      amount_micro: 100_000_000,
+      currency: 'USD',
+      status: 'PAYMENT_INTENT_STATUS_SUCCEEDED',
+      provider: 'stripe',
+      created_at: '2026-08-10T12:00:00Z',
+    },
+  ],
   total: 1,
   limit: 10,
   offset: 0,

@@ -27,7 +27,6 @@ type proxyVPNSnapshot struct {
 	prefs []proxyVPNPrefix
 }
 
-// ProxyVPNTable is the RCU container for L1.5 ASN / connection-type lookups.
 type ProxyVPNTable struct {
 	active atomic.Pointer[proxyVPNSnapshot]
 }

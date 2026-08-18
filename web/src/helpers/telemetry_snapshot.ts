@@ -12,9 +12,6 @@ export type TelemetrySnapshot = {
   vitals?: unknown[];
 };
 
-/**
- * Build a client telemetry snapshot for RUM ingest and support bundle.
- */
 export function buildTelemetrySnapshot(path = ''): TelemetrySnapshot {
   return {
     path: path || (typeof window !== 'undefined' ? window.location.pathname : ''),

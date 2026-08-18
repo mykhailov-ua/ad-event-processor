@@ -1,4 +1,3 @@
-// Package lifecycle implements lifecycle support for BidShard.
 package lifecycle
 
 import (

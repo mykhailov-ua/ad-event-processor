@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/internal/database"
 	"github.com/bidshard/ad-event-processor/internal/domain/db"
 
@@ -105,7 +104,7 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 		freqLimit := int32(10)
 		freqWindow := int32(7200)
 
-		updated, err := svc.PatchCampaign(ctx, campID, adminapi.PatchCampaignRequest{
+		updated, err := svc.PatchCampaign(ctx, campID, PatchCampaignRequest{
 			Name:             &name,
 			DailyBudgetMicro: &dailyMicro,
 			TargetURL:        &targetURL,
@@ -139,7 +138,7 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 		end := start.Add(7 * 24 * time.Hour)
 		daypart := []int16{9, 10, 11}
 
-		updated, err := svc.PatchCampaign(ctx, campID, adminapi.PatchCampaignRequest{
+		updated, err := svc.PatchCampaign(ctx, campID, PatchCampaignRequest{
 			BudgetLimitMicro: &budgetMicro,
 			Status:           &status,
 			StartAt:          &start,
@@ -165,7 +164,7 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 		linkSign := true
 		linkTTL := int32(1200)
 
-		updated, err := svc.PatchCampaign(ctx, campID, adminapi.PatchCampaignRequest{
+		updated, err := svc.PatchCampaign(ctx, campID, PatchCampaignRequest{
 			L1CIDRBlockEnabled:         &l1Block,
 			L15ProxyVPNBlockEnabled:    &l15Block,
 			TLSFingerprintBlockEnabled: &tlsBlock,
@@ -186,7 +185,7 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 		brandID, err := svc.CreateBrand(ctx, custID, "Patch Brand")
 		require.NoError(t, err)
 
-		updated, err := svc.PatchCampaign(ctx, campID, adminapi.PatchCampaignRequest{
+		updated, err := svc.PatchCampaign(ctx, campID, PatchCampaignRequest{
 			BrandID: &brandID,
 		})
 		require.NoError(t, err)
@@ -205,7 +204,7 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 
 	t.Run("PatchCampaign_EmptyNameRejected", func(t *testing.T) {
 		empty := "   "
-		_, err := svc.PatchCampaign(ctx, campID, adminapi.PatchCampaignRequest{Name: &empty})
+		_, err := svc.PatchCampaign(ctx, campID, PatchCampaignRequest{Name: &empty})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "name is required")
 	})

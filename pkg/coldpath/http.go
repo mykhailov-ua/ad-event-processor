@@ -1,4 +1,3 @@
-// Package coldpath shared cold-path HTTP and pagination helpers.
 package coldpath
 
 import (
@@ -14,15 +13,14 @@ import (
 )
 
 const (
-	// DefaultMaxBody is the standard admin /api/v1 JSON ingress cap (64 KiB).
 	DefaultMaxBody = 65536
-	// SelfServePaymentIntentMaxBody caps POST /api/v1/selfserve/payment-intents.
+
 	SelfServePaymentIntentMaxBody = 16 * 1024
-	// PaymentWebhookMaxBody caps Stripe/crypto payment webhook bodies.
+
 	PaymentWebhookMaxBody = DefaultMaxBody
-	// AlertmanagerWebhookMaxBody caps POST /ops/alertmanager/webhook.
+
 	AlertmanagerWebhookMaxBody = 1 << 20
-	// RegionIngestMaxBody caps POST /api/v1/region/ingest/batch.
+
 	RegionIngestMaxBody = 4 * 1024 * 1024
 )
 
@@ -75,12 +73,18 @@ func WritePaginatedJSON[T any](w http.ResponseWriter, items []T, total int64) {
 	httpresponse.JSON(w, http.StatusOK, items)
 }
 
-// ParseAPIPagination reads limit/offset query params for admin list endpoints.
+func CloseHTTPResponse(resp *http.Response) {
+	if resp == nil || resp.Body == nil {
+		return
+	}
+	_, _ = io.Copy(io.Discard, resp.Body)
+	_ = resp.Body.Close()
+}
+
 func ParseAPIPagination(r *http.Request) (int32, int32) {
 	return ParseAPIPaginationWith(r, 50, 1000)
 }
 
-// ParseAPIPaginationWith reads limit/offset with caller-defined default and max caps.
 func ParseAPIPaginationWith(r *http.Request, defaultLimit, maxLimit int32) (int32, int32) {
 	limit := defaultLimit
 	if l, err := strconv.ParseInt(r.URL.Query().Get("limit"), 10, 32); err == nil && l > 0 {

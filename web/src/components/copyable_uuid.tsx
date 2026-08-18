@@ -6,9 +6,6 @@ export type CopyableUuidProps = {
   className?: string;
 };
 
-/**
- * UUID with middle truncation; click copies full value.
- */
 export function CopyableUuid({ uuid, className }: CopyableUuidProps) {
   if (!uuid) return <span className="text-muted">—</span>;
   const truncated = uuid.length > 16 ? `${uuid.slice(0, 8)}…${uuid.slice(-8)}` : uuid;

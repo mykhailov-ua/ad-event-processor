@@ -6,7 +6,7 @@ import { can } from '../helpers/permissions.js';
 import * as auth from '../helpers/auth.js';
 import { mapServiceError } from '../helpers/service_error.js';
 import { pushToastMessage } from '../helpers/toast_ui.js';
-import type { AuditLogRow } from '../types/api/index.js';
+import type { AuditLogRow } from '../types/index.js';
 import { Button } from '../components/button.js';
 import { Checkbox } from '../components/checkbox.js';
 import { ErrorBlock } from '../components/error_block.js';
@@ -30,7 +30,9 @@ function TableSkeleton({ cols }: { cols: number }) {
       {Array.from({ length: 5 }, (_, rowIndex) => (
         <tr key={`sk-${rowIndex}`} className="data-table__row--skeleton" aria-hidden="true">
           {Array.from({ length: cols }, (__, colIndex) => (
-            <td key={`sk-${rowIndex}-${colIndex}`}><span className="skeleton-bar" /></td>
+            <td key={`sk-${rowIndex}-${colIndex}`}>
+              <span className="skeleton-bar" />
+            </td>
           ))}
         </tr>
       ))}
@@ -38,9 +40,6 @@ function TableSkeleton({ cols }: { cols: number }) {
   );
 }
 
-/**
- * Audit log viewer with PII redaction toggle and CSV export.
- */
 export function AuditPage() {
   const user = auth.getUser();
   const canExport = can(user?.permissions ?? [], 'audit:read');
@@ -71,7 +70,7 @@ export function AuditPage() {
     setError(null);
     setRows(Array.isArray(res?.data) ? res.data : []);
     const hdr = res?.headers?.get?.('X-Total-Count');
-    setTotal(hdr ? Number(hdr) : (Array.isArray(res?.data) ? res.data.length : 0));
+    setTotal(hdr ? Number(hdr) : Array.isArray(res?.data) ? res.data.length : 0);
   }, [page, redactPii]);
 
   useEffect(() => {
@@ -140,15 +139,17 @@ export function AuditPage() {
       />
 
       <FilterToolbar
-        pagination={totalPages > 1 ? (
-          <PaginationBar
-            label={`${page + 1} / ${totalPages}`}
-            prevDisabled={page === 0}
-            nextDisabled={page >= totalPages - 1}
-            onPrev={() => setPage((p) => Math.max(0, p - 1))}
-            onNext={() => setPage((p) => p + 1)}
-          />
-        ) : null}
+        pagination={
+          totalPages > 1 ? (
+            <PaginationBar
+              label={`${page + 1} / ${totalPages}`}
+              prevDisabled={page === 0}
+              nextDisabled={page >= totalPages - 1}
+              onPrev={() => setPage((p) => Math.max(0, p - 1))}
+              onNext={() => setPage((p) => p + 1)}
+            />
+          ) : null
+        }
       />
 
       <div className="table-wrapper table-wrapper--scroll elevation-raised">

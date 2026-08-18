@@ -1,4 +1,3 @@
-
 -- +goose Up
 -- +goose StatementBegin
 ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS migration_gen BIGINT NOT NULL DEFAULT 0;

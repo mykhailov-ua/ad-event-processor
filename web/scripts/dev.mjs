@@ -66,7 +66,7 @@ function proxyApi(req, res) {
     (proxyRes) => {
       res.writeHead(proxyRes.statusCode ?? 502, proxyRes.headers);
       proxyRes.pipe(res);
-    },
+    }
   );
   upstream.on('error', () => {
     res.writeHead(502);

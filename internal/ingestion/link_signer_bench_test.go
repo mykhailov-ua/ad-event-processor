@@ -1,4 +1,3 @@
-// Link signing benches (harness: link_signer).
 package ingestion
 
 import (
@@ -8,7 +7,6 @@ import (
 
 var linkSignerBenchSink bool
 
-// BenchmarkLinkSigner_Sign (harness: link_signer) — cold-path append; labeled cold-only.
 func BenchmarkLinkSigner_Sign(b *testing.B) {
 	secret := []byte("bench-link-secret")
 	clickID := []byte("bench-click-id")
@@ -22,7 +20,6 @@ func BenchmarkLinkSigner_Sign(b *testing.B) {
 	linkSignerBenchSink = len(dst) > 0
 }
 
-// BenchmarkLinkSigner_Verify (harness: link_signer) — B-GMA-M4 hot verify, 0 allocs target.
 func BenchmarkLinkSigner_Verify(b *testing.B) {
 	h := &AdsPacketHandler{}
 	h.ConfigureLinkSigning([]byte("bench-link-secret"))

@@ -1,0 +1,43 @@
+package edge
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/cilium/ebpf"
+	"github.com/redis/go-redis/v9"
+)
+
+const (
+	redisKeyBlacklistManual  = "blacklist:manual"
+	redisKeyBlacklistAuto    = "blacklist:auto"
+	redisKeyBlacklistFraud   = "blacklist:fraud"
+	redisKeyBlacklistAutoTTL = "blacklist:auto:ttl"
+)
+
+type denySetReader interface {
+	SMembers(ctx context.Context, key string) *redis.StringSliceCmd
+}
+
+type autoBanReader interface {
+	denySetReader
+	ZScore(ctx context.Context, key, member string) *redis.FloatCmd
+	SRem(ctx context.Context, key string, members ...interface{}) *redis.IntCmd
+	ZRem(ctx context.Context, key string, members ...interface{}) *redis.IntCmd
+}
+
+func SyncBlocklistFromRedis(ctx context.Context, rdb denySetReader, m *ebpf.Map, store *BlocklistStore) (added, removed int, err error) {
+	manual, err := rdb.SMembers(ctx, redisKeyBlacklistManual).Result()
+	if err != nil {
+		return 0, 0, fmt.Errorf("smembers %s: %w", redisKeyBlacklistManual, err)
+	}
+	auto, err := loadAutoBans(ctx, rdb)
+	if err != nil {
+		return 0, 0, fmt.Errorf("active %s: %w", redisKeyBlacklistAuto, err)
+	}
+	fraud, err := rdb.SMembers(ctx, redisKeyBlacklistFraud).Result()
+	if err != nil {
+		return 0, 0, fmt.Errorf("smembers %s: %w", redisKeyBlacklistFraud, err)
+	}
+	return store.ApplyDiff(m, manual, auto, fraud)
+}

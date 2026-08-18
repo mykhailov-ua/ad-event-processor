@@ -2,7 +2,7 @@ import { api } from './api_client.js';
 import { coalesce } from './request_multiplex.js';
 import { probeStart, probeEnd } from './perf_probe.js';
 import { mapBuyerDashboard } from '../models/buyer.js';
-import type { BuyerPortfolioResponse } from '../types/api/campaign.js';
+import type { BuyerPortfolioResponse } from '../types/campaign.js';
 
 const DASHBOARD_TTL_MS = 60_000;
 
@@ -15,9 +15,6 @@ type DashboardCacheEntry = {
 
 const dashboardCache = new Map<string, DashboardCacheEntry>();
 
-/**
- * Drop cached buyer dashboard payload (all customers when id omitted).
- */
 export function invalidateBuyerDashboard(customerId = ''): void {
   if (customerId) {
     dashboardCache.delete(cacheKey(customerId));
@@ -26,16 +23,10 @@ export function invalidateBuyerDashboard(customerId = ''): void {
   dashboardCache.clear();
 }
 
-/**
- * Build a cache key for a customer id.
- */
 function cacheKey(customerId: string): string {
   return customerId || '_session';
 }
 
-/**
- * Fetch buyer dashboard from network and update cache.
- */
 async function fetchBuyerDashboardNetwork(customerId: string): Promise<BuyerPortfolioVM> {
   const probe = probeStart('buyer.dashboard');
   const params = new URLSearchParams();
@@ -49,9 +40,6 @@ async function fetchBuyerDashboardNetwork(customerId: string): Promise<BuyerPort
   return mapped;
 }
 
-/**
- * Fetch buyer portfolio from the dashboards API (coalesced, TTL-cached).
- */
 export async function fetchBuyerDashboard(customerId = ''): Promise<BuyerPortfolioVM> {
   const key = cacheKey(customerId);
   const hit = dashboardCache.get(key);
@@ -61,9 +49,6 @@ export async function fetchBuyerDashboard(customerId = ''): Promise<BuyerPortfol
   return coalesce(`buyer-dashboard:${key}`, () => fetchBuyerDashboardNetwork(customerId));
 }
 
-/**
- * Fetch buyer dashboard for table stat lookups (cached/coalesced).
- */
 export function loadBuyerDashboard(customerId = ''): Promise<BuyerPortfolioVM> {
   return fetchBuyerDashboard(customerId);
 }

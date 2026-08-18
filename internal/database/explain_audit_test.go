@@ -65,9 +65,11 @@ SELECT * FROM balance_ledger WHERE idempotency_hash = $1`, args: []any{hash}},
 SELECT * FROM outbox_events WHERE status = 'PENDING'
 ORDER BY CASE event_type WHEN 'UPDATE_BLACKLIST' THEN 0 WHEN 'PAUSE_CAMPAIGN' THEN 0 ELSE 1 END, created_at ASC
 LIMIT 100 FOR UPDATE SKIP LOCKED`},
-		{name: "controlplane.GetDrainingCampaignsForUpdate", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+		{
+			name: "controlplane.GetDrainingCampaignsForUpdate", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 SELECT * FROM campaigns WHERE status = 'DRAINING' AND updated_at < $1 ORDER BY updated_at ASC LIMIT 50 FOR UPDATE SKIP LOCKED`,
-			args: []any{time.Now()}},
+			args: []any{time.Now()},
+		},
 		{name: "controlplane.ListCustomersForScoring", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 SELECT c.id, COALESCE(FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - c.created_at)) / 86400), 0)::integer AS age_days,
 COALESCE(SUM(l.amount), 0)::bigint AS topup_sum_30d
@@ -82,17 +84,21 @@ WHERE c.customer_id = $1 AND c.status = 'ACTIVE' GROUP BY c.id`, args: []any{cus
 SELECT c.id, c.name, c.status, c.budget_limit, c.created_at, c.updated_at, c.customer_id, c.current_spend, c.deleted_at, c.pacing_mode, c.daily_budget, c.timezone, c.freq_limit, c.freq_window, c.target_countries, c.brand_id, c.brand_fcap_key, c.daypart_hours,
 COALESCE(SUM(s.impressions_count), 0)::bigint, COALESCE(SUM(s.clicks_count), 0)::bigint, COALESCE(SUM(s.conversions_count), 0)::bigint
 FROM campaigns c LEFT JOIN campaign_stats s ON c.id = s.campaign_id WHERE c.status = 'ACTIVE' GROUP BY c.id`},
-		{name: "partial.idx_ledger_fee_created", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+		{
+			name: "partial.idx_ledger_fee_created", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 SELECT campaign_id, COALESCE(SUM(ABS(amount)), 0)::bigint FROM balance_ledger
 WHERE type = 'FEE' AND created_at >= $1 AND created_at < $2 GROUP BY campaign_id`,
-			args: []any{time.Now().Add(-24 * time.Hour), time.Now()}},
+			args: []any{time.Now().Add(-24 * time.Hour), time.Now()},
+		},
 		{name: "partial.idx_ledger_topup_recent", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 SELECT customer_id, amount, created_at FROM balance_ledger
 WHERE type IN ('TOPUP', 'PAYMENT_TOPUP') AND customer_id = $1
 ORDER BY created_at DESC LIMIT 50`, args: []any{custID}},
-		{name: "partial.idx_campaigns_draining_updated", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+		{
+			name: "partial.idx_campaigns_draining_updated", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 SELECT * FROM campaigns WHERE status = 'DRAINING' AND updated_at < $1 ORDER BY updated_at ASC LIMIT 50 FOR UPDATE SKIP LOCKED`,
-			args: []any{time.Now()}},
+			args: []any{time.Now()},
+		},
 		{name: "controlplane.ListAuditPaginated", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 SELECT * FROM admin_audit_log ORDER BY created_at DESC LIMIT 50 OFFSET 0`},
 		{name: "controlplane.CountAuditLogs", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT) SELECT COUNT(*) FROM admin_audit_log`},
@@ -101,24 +107,32 @@ SELECT * FROM balance_ledger WHERE customer_id = $1 ORDER BY created_at DESC LIM
 		{name: "controlplane.ListCampaigns", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 SELECT * FROM campaigns WHERE customer_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 50 OFFSET 0`, args: []any{custID}},
 		{name: "controlplane.GetAllBlacklist", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT) SELECT ip, reason FROM ip_blacklist`},
-		{name: "controlplane.SumCampaignStatsInRange", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+		{
+			name: "controlplane.SumCampaignStatsInRange", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 SELECT COALESCE(SUM(impressions_count),0)::bigint, COALESCE(SUM(clicks_count),0)::bigint, COALESCE(SUM(conversions_count),0)::bigint
 FROM campaign_stats WHERE campaign_id = $1 AND date >= $2::date AND date < $3::date`,
-			args: []any{campID, time.Now().Add(-7 * 24 * time.Hour), time.Now()}},
-		{name: "events.UpdateCampaignStatsBatch", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+			args: []any{campID, time.Now().Add(-7 * 24 * time.Hour), time.Now()},
+		},
+		{
+			name: "events.UpdateCampaignStatsBatch", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 INSERT INTO campaign_stats (campaign_id, date, impressions_count, clicks_count, conversions_count)
 SELECT val.campaign_id, CURRENT_DATE, val.impression, val.click, val.conversion
 FROM (SELECT unnest($1::uuid[]) AS campaign_id, unnest($2::bigint[]) AS impression, unnest($3::bigint[]) AS click, unnest($4::bigint[]) AS conversion) val
 ORDER BY val.campaign_id
 ON CONFLICT (campaign_id, date) DO UPDATE SET impressions_count = campaign_stats.impressions_count + EXCLUDED.impressions_count`,
-			args: []any{[]uuid.UUID{campID}, []int64{10}, []int64{1}, []int64{0}}},
-		{name: "cost_sync.InsertCampaignCost", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+			args: []any{[]uuid.UUID{campID}, []int64{10}, []int64{1}, []int64{0}},
+		},
+		{
+			name: "cost_sync.InsertCampaignCost", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 INSERT INTO campaign_costs (customer_id, campaign_id, cost_date, network, placement_id, amount_micro, currency, line_type)
 VALUES ($1,$2,$3,'facebook','zone-1',1000000,'USD','spend') ON CONFLICT DO NOTHING`,
-			args: []any{custID, campID, time.Now().UTC().Truncate(24 * time.Hour)}},
-		{name: "cost_sync.SumCampaignCostsUSDForDate", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+			args: []any{custID, campID, time.Now().UTC().Truncate(24 * time.Hour)},
+		},
+		{
+			name: "cost_sync.SumCampaignCostsUSDForDate", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 SELECT COALESCE(SUM(amount_micro),0)::bigint FROM campaign_costs WHERE customer_id = $1 AND cost_date = $2`,
-			args: []any{custID, time.Now().UTC().Truncate(24 * time.Hour)}},
+			args: []any{custID, time.Now().UTC().Truncate(24 * time.Hour)},
+		},
 		{name: "postback.GetPendingPostbackEventsForUpdate", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 SELECT * FROM outbox_events WHERE status = 'PENDING' AND event_type = 'SEND_POSTBACK' ORDER BY created_at ASC LIMIT 50 FOR UPDATE SKIP LOCKED`},
 		{name: "node_metrics.ListNodeCapacityScoresByRegionRole", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)

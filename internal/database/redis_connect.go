@@ -30,7 +30,6 @@ func ConnectRedisWithBreaker(ctx context.Context, addr string, password string, 
 	return rdb, nil
 }
 
-// BrokerRedisURL returns a coordinator-compatible redis URL for the first shard addr.
 func BrokerRedisURL(addrs []string, password string) string {
 	if len(addrs) == 0 {
 		return ""
@@ -38,7 +37,6 @@ func BrokerRedisURL(addrs []string, password string) string {
 	return netaddr.RedisURLFromAddr(addrs[0], password, 0)
 }
 
-// OpenRedisFromURLOrAddr parses redis URL, unix path, or host:port.
 func OpenRedisFromURLOrAddr(raw, password string) (redis.UniversalClient, error) {
 	return netaddr.ParseRedisURL(raw, password)
 }

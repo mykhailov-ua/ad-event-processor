@@ -12,9 +12,9 @@ import (
 
 const (
 	assetSealVersion byte = 1
-	// AssetLabelEdge seals edge BPF objects for enterprise images.
+
 	AssetLabelEdge = "edge-bpf"
-	// AssetLabelUnifiedFilter seals tracker unified-filter.lua for enterprise images.
+
 	AssetLabelUnifiedFilter = "unified-filter"
 )
 

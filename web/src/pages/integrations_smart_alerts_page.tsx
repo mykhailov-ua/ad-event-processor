@@ -42,7 +42,9 @@ function TableSkeleton({ cols, rows = 3 }: { cols: number; rows?: number }) {
       {Array.from({ length: rows }, (_, i) => (
         <tr key={`sk-${i}`} className="data-table__row--skeleton" aria-hidden="true">
           {Array.from({ length: cols }, (__, j) => (
-            <td key={`sk-${i}-${j}`}><span className="skeleton-bar" /></td>
+            <td key={`sk-${i}-${j}`}>
+              <span className="skeleton-bar" />
+            </td>
           ))}
         </tr>
       ))}
@@ -50,9 +52,6 @@ function TableSkeleton({ cols, rows = 3 }: { cols: number; rows?: number }) {
   );
 }
 
-/**
- * Smart Alerts integration — metric threshold rules with webhook delivery.
- */
 export function IntegrationsSmartAlertsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const user = auth.getUser();
@@ -249,10 +248,14 @@ export function IntegrationsSmartAlertsPage() {
               <select
                 disabled={!canWrite || busy}
                 value={ruleForm.metric}
-                onChange={(e) => setRuleForm((f) => ({ ...f, metric: e.target.value as SmartAlertMetric }))}
+                onChange={(e) =>
+                  setRuleForm((f) => ({ ...f, metric: e.target.value as SmartAlertMetric }))
+                }
               >
                 {SMART_ALERT_METRICS.map((m) => (
-                  <option key={m.value} value={m.value}>{m.label}</option>
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
                 ))}
               </select>
             </label>
@@ -261,10 +264,14 @@ export function IntegrationsSmartAlertsPage() {
               <select
                 disabled={!canWrite || busy}
                 value={ruleForm.operator}
-                onChange={(e) => setRuleForm((f) => ({ ...f, operator: e.target.value as SmartAlertOperator }))}
+                onChange={(e) =>
+                  setRuleForm((f) => ({ ...f, operator: e.target.value as SmartAlertOperator }))
+                }
               >
                 {SMART_ALERT_OPERATORS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
                 ))}
               </select>
             </label>
@@ -288,7 +295,9 @@ export function IntegrationsSmartAlertsPage() {
                 max={1440}
                 value={String(ruleForm.window_minutes)}
                 disabled={!canWrite || busy}
-                onChange={(e) => setRuleForm((f) => ({ ...f, window_minutes: Number(e.target.value) }))}
+                onChange={(e) =>
+                  setRuleForm((f) => ({ ...f, window_minutes: Number(e.target.value) }))
+                }
               />
             </label>
           </div>
@@ -333,12 +342,7 @@ export function IntegrationsSmartAlertsPage() {
               />
             ) : null}
             {editingId ? (
-              <Button
-                label="Cancel edit"
-                variant="ghost"
-                disabled={busy}
-                onClick={resetForm}
-              />
+              <Button label="Cancel edit" variant="ghost" disabled={busy} onClick={resetForm} />
             ) : null}
           </div>
         </section>
@@ -347,7 +351,13 @@ export function IntegrationsSmartAlertsPage() {
       {ready ? (
         <section className="card stack" data-testid="smart-alerts-rules">
           <h2 className="h3">Rules</h2>
-          {loading ? <table className="data-table"><tbody><TableSkeleton cols={5} /></tbody></table> : null}
+          {loading ? (
+            <table className="data-table">
+              <tbody>
+                <TableSkeleton cols={5} />
+              </tbody>
+            </table>
+          ) : null}
           {!loading && rules.length === 0 ? (
             <div className="empty-state">
               <div className="empty-state__title">No alert rules yet</div>
@@ -378,7 +388,9 @@ export function IntegrationsSmartAlertsPage() {
                       ) : null}
                     </td>
                     <td>{`${rule.window_minutes} min`}</td>
-                    <td><StatusBadge status={rule.enabled ? 'ACTIVE' : 'PAUSED'} /></td>
+                    <td>
+                      <StatusBadge status={rule.enabled ? 'ACTIVE' : 'PAUSED'} />
+                    </td>
                     <td className="row gap-xs">
                       {canWrite ? (
                         <Button
@@ -410,7 +422,13 @@ export function IntegrationsSmartAlertsPage() {
       {ready ? (
         <section className="card stack" data-testid="smart-alerts-history">
           <h2 className="h3">History</h2>
-          {loading ? <table className="data-table"><tbody><TableSkeleton cols={6} /></tbody></table> : null}
+          {loading ? (
+            <table className="data-table">
+              <tbody>
+                <TableSkeleton cols={6} />
+              </tbody>
+            </table>
+          ) : null}
           {!loading && history.length === 0 ? (
             <div className="empty-state">
               <div className="empty-state__title">No fired alerts yet</div>
@@ -437,7 +455,9 @@ export function IntegrationsSmartAlertsPage() {
                     <td>{new Date(ev.fired_at).toLocaleString()}</td>
                     <td>{`${ev.metric} ${ev.operator} ${ev.threshold}`}</td>
                     <td>{String(ev.observed_value)}</td>
-                    <td><StatusBadge status={ev.webhook_status.toUpperCase()} /></td>
+                    <td>
+                      <StatusBadge status={ev.webhook_status.toUpperCase()} />
+                    </td>
                     <td>{ev.acked_at ? 'Acked' : '—'}</td>
                     <td>
                       {canWrite && !ev.acked_at ? (

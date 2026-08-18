@@ -132,8 +132,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
-      GOMAXPROCS: "1"
-      PERF_GATE_STRICT: "false"
+      GOMAXPROCS: '1'
+      PERF_GATE_STRICT: 'false'
     steps:
       - uses: actions/checkout@v4
         with:

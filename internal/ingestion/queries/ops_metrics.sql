@@ -1,14 +1,10 @@
-
--- name: InsertOpsMetricSample :exec
 INSERT INTO ops.metric_samples (name, labels_hash, ts, value)
 VALUES ($1, $2, $3, $4)
 ON CONFLICT (name, labels_hash, ts) DO UPDATE SET value = EXCLUDED.value;
 
--- name: DeleteExpiredOpsMetricSamples :execrows
 DELETE FROM ops.metric_samples
 WHERE ts < $1;
 
--- name: ListOpsMetricSamplesWindow :many
 SELECT name, labels_hash, ts, value
 FROM ops.metric_samples
 WHERE ts >= $1
@@ -16,7 +12,6 @@ WHERE ts >= $1
   AND ($3::text = '' OR name = $3)
 ORDER BY ts ASC, name, labels_hash;
 
--- name: ListOpsMetricSamplesDownsampled :many
 SELECT
     name,
     labels_hash,
@@ -29,7 +24,6 @@ WHERE ts >= $1
 GROUP BY name, labels_hash, floor(extract(epoch FROM ts) / $4::double precision)
 ORDER BY ts ASC, name, labels_hash;
 
--- name: GetLatestOpsMetricSample :one
 SELECT name, labels_hash, ts, value
 FROM ops.metric_samples
 WHERE name = $1

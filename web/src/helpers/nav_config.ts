@@ -13,6 +13,76 @@ export type NavGroup = {
   links: NavLink[];
 };
 
+export const NAV_OVERFLOW_LINKS: NavLink[] = [
+  {
+    to: '/dashboards/cfo',
+    label: 'CFO dashboard',
+    icon: 'file-spreadsheet',
+    perm: 'customers:read',
+  },
+  {
+    to: '/dashboards/accountant',
+    label: 'Accountant dashboard',
+    icon: 'receipt',
+    perm: 'customers:read',
+  },
+  {
+    to: '/dashboards/fraud',
+    label: 'Fraud dashboard',
+    icon: 'alert-triangle',
+    perm: 'audit:read',
+  },
+  { to: '/ops/shards', label: 'Shards', icon: 'server', perm: 'shards:read' },
+  { to: '/ops/ml-model', label: 'ML model', icon: 'bar-chart', perm: 'shards:read' },
+  { to: '/ops/dlq', label: 'DLQ inbox', icon: 'package', perm: 'shards:read' },
+  { to: '/ops/domains', label: 'Domain rotation', icon: 'globe', perm: 'settings:read' },
+  { to: '/ops/recon', label: 'Reconciliation', icon: 'git-compare', perm: 'audit:read' },
+  { to: '/ops/blacklist', label: 'Blacklist', icon: 'shield-ban', perm: 'blacklist:read' },
+  { to: '/ops/consent', label: 'Consent proof', icon: 'shield', perm: 'shards:read' },
+  {
+    to: '/integrations/cost-sync',
+    label: 'Cost Sync',
+    icon: 'refresh-cw',
+    perm: 'campaigns:read',
+    altPerm: 'campaigns:read:masked',
+  },
+  {
+    to: '/margin-guard',
+    label: 'Margin Guard',
+    icon: 'trending-down',
+    perm: 'campaigns:read',
+    altPerm: 'campaigns:read:masked',
+  },
+  {
+    to: '/integrations/smart-alerts',
+    label: 'Smart Alerts',
+    icon: 'bell',
+    perm: 'campaigns:read',
+    altPerm: 'campaigns:read:masked',
+  },
+  {
+    to: '/integration/templates/import',
+    label: 'Integration templates',
+    icon: 'file-text',
+    perm: 'campaigns:read',
+    altPerm: 'campaigns:read:masked',
+  },
+  {
+    to: '/integrations/supply',
+    label: 'Supply files',
+    icon: 'package',
+    perm: 'settings:read',
+  },
+  {
+    to: '/integrations/schemas',
+    label: 'Integration schemas',
+    icon: 'plug',
+    perm: 'campaigns:read',
+    altPerm: 'campaigns:read:masked',
+  },
+  { to: '/support/feedback', label: 'Support feedback', icon: 'send' },
+];
+
 export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Overview',
@@ -65,41 +135,20 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    title: 'Dashboards',
+    title: 'Analytics',
     links: [
       {
         to: '/dashboards/adops',
-        label: 'AdOps',
+        label: 'Dashboards',
         icon: 'zap',
         perm: 'campaigns:read',
         altPerm: 'campaigns:read:masked',
       },
-      {
-        to: '/dashboards/cfo',
-        label: 'CFO',
-        icon: 'file-spreadsheet',
-        perm: 'customers:read',
-      },
-      {
-        to: '/dashboards/accountant',
-        label: 'Accountant',
-        icon: 'receipt',
-        perm: 'customers:read',
-      },
-      {
-        to: '/dashboards/fraud',
-        label: 'Fraud',
-        icon: 'alert-triangle',
-        perm: 'audit:read',
-      },
+      ...sidebarReportsNavLinks(),
     ],
   },
   {
-    title: 'Reports',
-    links: sidebarReportsNavLinks(),
-  },
-  {
-    title: 'Deals',
+    title: 'RTB',
     links: [
       {
         to: '/rtb/integration',
@@ -119,25 +168,28 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     title: 'Operations',
+    links: [{ to: '/ops', label: 'Operations', icon: 'activity', perm: 'shards:read' }],
+  },
+  {
+    title: 'Integrations',
     links: [
-      { to: '/ops', label: 'Operations', icon: 'activity', perm: 'shards:read' },
-      { to: '/ops/shards', label: 'Shards', icon: 'server', perm: 'shards:read' },
-      { to: '/ops/dlq', label: 'DLQ inbox', icon: 'package', perm: 'shards:read' },
-      { to: '/ops/domains', label: 'Domain rotation', icon: 'globe', perm: 'settings:read' },
-      { to: '/ops/recon', label: 'Reconciliation', icon: 'git-compare', perm: 'audit:read' },
-      { to: '/ops/blacklist', label: 'Blacklist', icon: 'shield-ban', perm: 'blacklist:read' },
-      { to: '/ops/consent', label: 'Consent proof', icon: 'shield', perm: 'shards:read' },
+      {
+        to: '/integrations/postbacks',
+        label: 'Integrations',
+        icon: 'plug',
+        perm: 'campaigns:read',
+        altPerm: 'campaigns:read:masked',
+      },
     ],
   },
   {
-    title: 'Help',
+    title: 'Admin',
     links: [
-      { to: '/support/feedback', label: 'Support feedback', icon: 'send' },
+      { to: '/audit', label: 'Audit log', icon: 'scroll-text', perm: 'audit:read' },
+      { to: '/settings', label: 'Platform', icon: 'settings', perm: 'settings:read' },
+      { to: '/settings/license', label: 'License', icon: 'key', perm: 'customers:read' },
+      { to: '/settings/domains', label: 'Domains', icon: 'globe', perm: 'settings:read' },
     ],
-  },
-  {
-    title: 'Security',
-    links: [{ to: '/audit', label: 'Audit log', icon: 'scroll-text', perm: 'audit:read' }],
   },
   {
     title: 'Publisher',
@@ -150,72 +202,8 @@ export const NAV_GROUPS: NavGroup[] = [
       },
     ],
   },
-  {
-    title: 'Integrations',
-    links: [
-      {
-        to: '/integrations/cost-sync',
-        label: 'Cost Sync',
-        icon: 'refresh-cw',
-        perm: 'campaigns:read',
-        altPerm: 'campaigns:read:masked',
-      },
-      {
-        to: '/margin-guard',
-        label: 'Margin Guard',
-        icon: 'trending-down',
-        perm: 'campaigns:read',
-        altPerm: 'campaigns:read:masked',
-      },
-      {
-        to: '/integrations/smart-alerts',
-        label: 'Smart Alerts',
-        icon: 'bell',
-        perm: 'campaigns:read',
-        altPerm: 'campaigns:read:masked',
-      },
-      {
-        to: '/integrations/postbacks',
-        label: 'Postbacks & CAPI',
-        icon: 'send',
-        perm: 'campaigns:read',
-        altPerm: 'campaigns:read:masked',
-      },
-      {
-        to: '/integration/templates/import',
-        label: 'Integration templates',
-        icon: 'file-text',
-        perm: 'campaigns:read',
-        altPerm: 'campaigns:read:masked',
-      },
-      {
-        to: '/integrations/supply',
-        label: 'Supply files',
-        icon: 'package',
-        perm: 'settings:read',
-      },
-      {
-        to: '/integrations/schemas',
-        label: 'Integration schemas',
-        icon: 'plug',
-        perm: 'campaigns:read',
-        altPerm: 'campaigns:read:masked',
-      },
-    ],
-  },
-  {
-    title: 'Settings',
-    links: [
-      { to: '/settings', label: 'Platform', icon: 'settings', perm: 'settings:read' },
-      { to: '/settings/license', label: 'License', icon: 'key', perm: 'customers:read' },
-      { to: '/settings/domains', label: 'Domains', icon: 'globe', perm: 'settings:read' },
-    ],
-  },
 ];
 
-/**
- * Test whether a nav link is visible for the given permissions.
- */
 export function navLinkVisible(permissions: string[], link: NavLink): boolean {
   if (!link.perm) return true;
   if (permissions.includes(link.perm)) return true;
@@ -223,24 +211,29 @@ export function navLinkVisible(permissions: string[], link: NavLink): boolean {
   return false;
 }
 
-/**
- * Filter nav groups to links visible for the given permissions.
- */
 export function visibleNavGroups(permissions: string[], role = ''): NavGroup[] {
-  const pubOnly = role === 'P'
-    || (permissions.includes('supply:read:scoped')
-      && !permissions.includes('campaigns:read')
-      && !permissions.includes('campaigns:read:masked'));
+  const pubOnly =
+    role === 'P' ||
+    (permissions.includes('supply:read:scoped') &&
+      !permissions.includes('campaigns:read') &&
+      !permissions.includes('campaigns:read:masked'));
   if (pubOnly) {
-    return [{
-      title: 'Publisher',
-      links: [{ to: '/publisher', label: 'Publisher dashboard', icon: 'bar-chart-2', perm: 'supply:read:scoped' }],
-    }];
+    return [
+      {
+        title: 'Publisher',
+        links: [
+          {
+            to: '/publisher',
+            label: 'Publisher dashboard',
+            icon: 'bar-chart-2',
+            perm: 'supply:read:scoped',
+          },
+        ],
+      },
+    ];
   }
-  return NAV_GROUPS
-    .map((group) => ({
-      ...group,
-      links: group.links.filter((l) => navLinkVisible(permissions, l)),
-    }))
-    .filter((group) => group.links.length > 0);
+  return NAV_GROUPS.map((group) => ({
+    ...group,
+    links: group.links.filter((l) => navLinkVisible(permissions, l)),
+  })).filter((group) => group.links.length > 0);
 }

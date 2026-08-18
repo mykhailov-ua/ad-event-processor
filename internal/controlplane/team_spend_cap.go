@@ -11,7 +11,6 @@ import (
 
 var ErrBudgetApprovalRequired = errors.New("budget approval required")
 
-// memberBudgetAllocationMicro sums budget_limit for campaigns owned by userID (optionally replacing one campaign limit).
 func memberBudgetAllocationMicro(
 	ctx context.Context,
 	pool *pgxpool.Pool,
@@ -60,7 +59,6 @@ func memberSpendCapMicro(ctx context.Context, pool *pgxpool.Pool, userID uuid.UU
 	return spendCap, true, nil
 }
 
-// checkMediaBuyerBudgetCap returns ErrBudgetApprovalRequired when a budget increase exceeds the member cap.
 func (s *Service) checkMediaBuyerBudgetCap(
 	ctx context.Context,
 	userID uuid.UUID,

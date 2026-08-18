@@ -1,4 +1,3 @@
-// Package database implements database support for BidShard.
 package database
 
 import (

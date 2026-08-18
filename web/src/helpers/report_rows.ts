@@ -16,9 +16,6 @@ export type VisibleReportRows = {
 
 let aggregateWorker: Worker | null = null;
 
-/**
- * Return a shared report aggregate worker instance.
- */
 function getAggregateWorker(): Worker | null {
   if (typeof Worker === 'undefined') return null;
   if (!aggregateWorker) {
@@ -27,9 +24,6 @@ function getAggregateWorker(): Worker | null {
   return aggregateWorker;
 }
 
-/**
- * Append report rows in place when the batch is small enough for the main thread.
- */
 export function appendReportRows(existing: ReportRow[], batch: ReportRow[]): ReportRow[] {
   if (batch.length === 0) return existing;
   if (existing.length === 0) return batch.slice();
@@ -44,9 +38,6 @@ export function appendReportRows(existing: ReportRow[], batch: ReportRow[]): Rep
   return existing;
 }
 
-/**
- * Enrich report rows with roi_pct in place (main-thread, no structured clone).
- */
 export function enrichReportRowsInPlace(rows: ReportRow[]): ReportRow[] {
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -57,9 +48,6 @@ export function enrichReportRowsInPlace(rows: ReportRow[]): ReportRow[] {
   return rows;
 }
 
-/**
- * Run ROI enrichment in a worker when the row count exceeds the threshold.
- */
 function enrichRowsWithWorker(rows: ReportRow[]): Promise<ReportRow[]> {
   const worker = getAggregateWorker();
   if (!worker) return Promise.resolve(enrichReportRowsInPlace(rows));
@@ -80,9 +68,6 @@ function enrichRowsWithWorker(rows: ReportRow[]): Promise<ReportRow[]> {
   });
 }
 
-/**
- * Merge report row batches and enrich ROI (inline up to ROW_WORKER_THRESHOLD).
- */
 export function mergeReportRows(existing: ReportRow[], batch: ReportRow[]): Promise<ReportRow[]> {
   const merged = appendReportRows(existing, batch);
   if (merged.length <= ROW_WORKER_THRESHOLD) {
@@ -91,9 +76,6 @@ export function mergeReportRows(existing: ReportRow[], batch: ReportRow[]): Prom
   return enrichRowsWithWorker(merged);
 }
 
-/**
- * Return the tail slice of rows to render in the DOM table.
- */
 export function visibleReportRows(rows: ReportRow[]): VisibleReportRows {
   if (rows.length <= DISPLAY_ROW_WINDOW) {
     return { visible: rows, truncated: 0 };

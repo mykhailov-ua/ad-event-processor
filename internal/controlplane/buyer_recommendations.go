@@ -3,8 +3,6 @@ package controlplane
 import (
 	"fmt"
 	"time"
-
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 )
 
 func enrichBuyerPortfolioCommercial(resp *BuyerPortfolioDTO) {
@@ -12,12 +10,12 @@ func enrichBuyerPortfolioCommercial(resp *BuyerPortfolioDTO) {
 		return
 	}
 	now := time.Now().UTC()
-	resp.Recommendations = make([]adminapi.RecommendationCardDTO, 0, 4)
-	resp.Alerts = make([]adminapi.AlertCardDTO, 0, 4)
+	resp.Recommendations = make([]RecommendationCardDTO, 0, 4)
+	resp.Alerts = make([]AlertCardDTO, 0, 4)
 
 	for _, c := range resp.Campaigns {
 		if c.OverspendRisk {
-			resp.Recommendations = append(resp.Recommendations, adminapi.RecommendationCardDTO{
+			resp.Recommendations = append(resp.Recommendations, RecommendationCardDTO{
 				ID:          fmt.Sprintf("pause-%s", c.ID),
 				Type:        "pause_overspend",
 				CampaignID:  c.ID,
@@ -26,11 +24,11 @@ func enrichBuyerPortfolioCommercial(resp *BuyerPortfolioDTO) {
 				Confidence:  0.85,
 				ImpactMicro: c.SpendMicro / 10,
 				CreatedAt:   now.Format(time.RFC3339),
-				Actions: []adminapi.ActionDTO{
+				Actions: []ActionDTO{
 					{ID: "pause", Label: "Pause campaign", RequiresConfirm: true},
 				},
 			})
-			resp.Alerts = append(resp.Alerts, adminapi.AlertCardDTO{
+			resp.Alerts = append(resp.Alerts, AlertCardDTO{
 				ID:     fmt.Sprintf("overspend-%s", c.ID),
 				Level:  "warning",
 				Title:  "Overspend risk",
@@ -39,7 +37,7 @@ func enrichBuyerPortfolioCommercial(resp *BuyerPortfolioDTO) {
 			})
 		}
 		if c.Status == "PAUSED" && pausedUnderDelivery(c.Impressions7d, c.BudgetMicro) {
-			resp.Recommendations = append(resp.Recommendations, adminapi.RecommendationCardDTO{
+			resp.Recommendations = append(resp.Recommendations, RecommendationCardDTO{
 				ID:         fmt.Sprintf("resume-%s", c.ID),
 				Type:       "resume_under_delivery",
 				CampaignID: c.ID,
@@ -47,13 +45,13 @@ func enrichBuyerPortfolioCommercial(resp *BuyerPortfolioDTO) {
 				Detail:     fmt.Sprintf("%s had low delivery before pause (%d impr/7d)", c.Name, c.Impressions7d),
 				Confidence: 0.7,
 				CreatedAt:  now.Format(time.RFC3339),
-				Actions: []adminapi.ActionDTO{
+				Actions: []ActionDTO{
 					{ID: "resume", Label: "Resume campaign", RequiresConfirm: true},
 				},
 			})
 		}
 		if c.Status == "ACTIVE" && c.UtilizationPct < 40 && c.BudgetMicro > 0 {
-			resp.Recommendations = append(resp.Recommendations, adminapi.RecommendationCardDTO{
+			resp.Recommendations = append(resp.Recommendations, RecommendationCardDTO{
 				ID:          fmt.Sprintf("budget-%s", c.ID),
 				Type:        "budget_bump",
 				CampaignID:  c.ID,
@@ -62,14 +60,14 @@ func enrichBuyerPortfolioCommercial(resp *BuyerPortfolioDTO) {
 				Confidence:  0.55,
 				ImpactMicro: c.BudgetMicro / 5,
 				CreatedAt:   now.Format(time.RFC3339),
-				Actions: []adminapi.ActionDTO{
+				Actions: []ActionDTO{
 					{ID: "edit_budget", Label: "Open campaign", RequiresConfirm: false},
 				},
 			})
 		}
 	}
 	if resp.OverspendCount > 0 {
-		resp.Alerts = append(resp.Alerts, adminapi.AlertCardDTO{
+		resp.Alerts = append(resp.Alerts, AlertCardDTO{
 			ID:     "portfolio-overspend",
 			Level:  "critical",
 			Title:  "Portfolio overspend",

@@ -2,9 +2,9 @@ package controlplane
 
 import (
 	"context"
+	"fmt"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	db "github.com/bidshard/ad-event-processor/internal/domain/db"
 	"github.com/bidshard/ad-event-processor/pkg/money"
@@ -13,11 +13,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type BuyerPortfolioDTO = adminapi.BuyerPortfolioDTO
-type BuyerAttentionDTO = adminapi.BuyerAttentionDTO
-type BuyerCampaignPortfolioRowDTO = adminapi.BuyerCampaignPortfolioRowDTO
-
-// GetBuyerPortfolio returns buyer portfolio counters and per-campaign 7d stats.
 func (s *Service) GetBuyerPortfolio(ctx context.Context, customerID uuid.UUID) (BuyerPortfolioDTO, error) {
 	if customerID == uuid.Nil {
 		return BuyerPortfolioDTO{}, errValidation("customer_id is required")
@@ -47,14 +42,14 @@ func (s *Service) GetBuyerPortfolio(ctx context.Context, customerID uuid.UUID) (
 
 	resp := BuyerPortfolioDTO{
 		CustomerID: customerID.String(),
-		Period: adminapi.PeriodDTO{
+		Period: PeriodDTO{
 			From: from.Format(time.RFC3339),
 			To:   to.Format(time.RFC3339),
 		},
 		Attention: make([]BuyerAttentionDTO, 0, 4),
 		Campaigns: make([]BuyerCampaignPortfolioRowDTO, 0, len(campaigns)),
-		KPIs: &adminapi.MetricsBlockDTO{
-			Freshness: adminapi.DataFreshnessDTO{
+		KPIs: &MetricsBlockDTO{
+			Freshness: DataFreshnessDTO{
 				AsOf:        to.Format(time.RFC3339),
 				Consistency: "strong",
 				Stale:       s.chQuery == nil,
@@ -73,7 +68,10 @@ func (s *Service) GetBuyerPortfolio(ctx context.Context, customerID uuid.UUID) (
 			}
 		}
 	}
-	marginBreaches, _ := s.batchCampaignMarginBreach(ctx, activeCampaignIDs)
+	marginBreaches, err := s.batchCampaignMarginBreach(ctx, activeCampaignIDs)
+	if err != nil {
+		return BuyerPortfolioDTO{}, fmt.Errorf("batch campaign margin breach: %w", err)
+	}
 	marginBreachByID := make(map[string]bool, len(activeCampaignIDs))
 	for _, id := range activeCampaignIDs {
 		marginBreachByID[id.String()] = marginBreaches[id]
@@ -101,8 +99,14 @@ func (s *Service) GetBuyerPortfolio(ctx context.Context, customerID uuid.UUID) (
 		resp.Clicks7d += st.Clicks
 		totalConversions += st.Conversions
 
-		spendMicro, _ := money.ParseDecimal(c.CurrentSpend)
-		budgetMicro, _ := money.ParseDecimal(c.BudgetLimit)
+		spendMicro, err := money.ParseDecimal(c.CurrentSpend)
+		if err != nil {
+			return BuyerPortfolioDTO{}, fmt.Errorf("campaign %s current_spend: %w", c.ID, err)
+		}
+		budgetMicro, err := money.ParseDecimal(c.BudgetLimit)
+		if err != nil {
+			return BuyerPortfolioDTO{}, fmt.Errorf("campaign %s budget_limit: %w", c.ID, err)
+		}
 		totalSpendMicro += spendMicro
 		util := campaignUtilizationPct(spendMicro, budgetMicro)
 		drift := pacingDriftPct(st.Impressions, c.Status)

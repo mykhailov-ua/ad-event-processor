@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-// TelegramRateLimiter controls outbound Telegram Bot API requests based on official rate limits.
 type TelegramRateLimiter struct {
 	mu           sync.Mutex
 	globalTokens float64
@@ -16,7 +15,6 @@ type TelegramRateLimiter struct {
 	chatLast   map[int64]time.Time
 }
 
-// NewTelegramRateLimiter creates a thread-safe Telegram Bot rate limiter.
 func NewTelegramRateLimiter() *TelegramRateLimiter {
 	return &TelegramRateLimiter{
 		globalTokens: 30.0,
@@ -26,13 +24,11 @@ func NewTelegramRateLimiter() *TelegramRateLimiter {
 	}
 }
 
-// Wait blocks until both the global limit (30 rps) and the chat-specific limit (1 rps for private, 20/min for groups) are satisfied.
 func (l *TelegramRateLimiter) Wait(ctx context.Context, chatID int64, isGroup bool) error {
 	for {
 		l.mu.Lock()
 		now := time.Now()
 
-		// Global token bucket (replenish at 30/sec, max 30)
 		elapsedGlobal := now.Sub(l.globalLast).Seconds()
 		l.globalTokens += elapsedGlobal * 30.0
 		if l.globalTokens > 30.0 {
@@ -40,11 +36,10 @@ func (l *TelegramRateLimiter) Wait(ctx context.Context, chatID int64, isGroup bo
 		}
 		l.globalLast = now
 
-		// Chat token bucket
-		rate := 1.0 // 1 req/sec for private chats
+		rate := 1.0
 		maxTokens := 1.0
 		if isGroup {
-			rate = 20.0 / 60.0 // 20 req/min for group/channels
+			rate = 20.0 / 60.0
 			maxTokens = 20.0
 		}
 
@@ -69,7 +64,6 @@ func (l *TelegramRateLimiter) Wait(ctx context.Context, chatID int64, isGroup bo
 			return nil
 		}
 
-		// Calculate wait time
 		var waitTime time.Duration
 		if l.globalTokens < 1.0 {
 			neededGlobal := (1.0 - l.globalTokens) / 30.0
@@ -96,7 +90,6 @@ func (l *TelegramRateLimiter) Wait(ctx context.Context, chatID int64, isGroup bo
 	}
 }
 
-// BackoffChat forces a specific chat to wait for the duration specified by Telegram.
 func (l *TelegramRateLimiter) BackoffChat(chatID int64, retryAfter time.Duration) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -105,7 +98,6 @@ func (l *TelegramRateLimiter) BackoffChat(chatID int64, retryAfter time.Duration
 	l.chatLast[chatID] = time.Now()
 }
 
-// BackoffGlobal forces all outbound requests to backoff for the duration specified by Telegram.
 func (l *TelegramRateLimiter) BackoffGlobal(retryAfter time.Duration) {
 	l.mu.Lock()
 	defer l.mu.Unlock()

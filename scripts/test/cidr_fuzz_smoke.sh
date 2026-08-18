@@ -7,8 +7,8 @@ cd "$ROOT"
 FUZZTIME="${CIDR_FUZZ_TIME:-5s}"
 
 for name in CIDRParse CIDRMatch CIDRBuild; do
-	echo "cidr_fuzz_smoke: Fuzz${name} ($FUZZTIME)"
-	go test -run='^$' -fuzz="Fuzz${name}" -fuzztime="$FUZZTIME" ./internal/ingestion/
+  echo "cidr_fuzz_smoke: Fuzz${name} ($FUZZTIME)"
+  go test -run='^$' -fuzz="Fuzz${name}" -fuzztime="$FUZZTIME" ./internal/ingestion/
 done
 
 echo "cidr_fuzz_smoke: PASS"

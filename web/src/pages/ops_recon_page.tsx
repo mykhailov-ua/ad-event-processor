@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { to } from '../lib/to.js';
 import { fetchReconRuns } from '../helpers/ops_recon_api.js';
-import type { ReconRunDTO } from '../types/api/ops_extra.js';
+import type { ReconRunDTO } from '../types/ops_extra.js';
 import { ErrorBlock } from '../components/error_block.js';
 import { FilterToolbar } from '../components/filter_toolbar.js';
 import { PaginationBar } from '../components/pagination_bar.js';
@@ -31,7 +31,9 @@ function TableSkeleton({ cols }: { cols: number }) {
       {Array.from({ length: 5 }, (_, rowIndex) => (
         <tr key={`sk-${rowIndex}`} className="data-table__row--skeleton" aria-hidden="true">
           {Array.from({ length: cols }, (__, colIndex) => (
-            <td key={`sk-${rowIndex}-${colIndex}`}><span className="skeleton-bar" /></td>
+            <td key={`sk-${rowIndex}-${colIndex}`}>
+              <span className="skeleton-bar" />
+            </td>
           ))}
         </tr>
       ))}
@@ -39,9 +41,6 @@ function TableSkeleton({ cols }: { cols: number }) {
   );
 }
 
-/**
- * Reconciliation runs list for operators.
- */
 export function OpsReconPage() {
   const [page, setPage] = useState(0);
   const [service, setService] = useState<ServiceFilter>('all');
@@ -62,7 +61,7 @@ export function OpsReconPage() {
     }
     setError(null);
     setRows(res?.items ?? []);
-    setTotal(res?.total ?? (res?.items?.length ?? 0));
+    setTotal(res?.total ?? res?.items?.length ?? 0);
   }, [service, page]);
 
   useEffect(() => {
@@ -100,15 +99,17 @@ export function OpsReconPage() {
       </label>
 
       <FilterToolbar
-        pagination={totalPages > 1 ? (
-          <PaginationBar
-            label={`${page + 1} / ${totalPages}`}
-            prevDisabled={page === 0}
-            nextDisabled={page >= totalPages - 1}
-            onPrev={() => setPage((p) => Math.max(0, p - 1))}
-            onNext={() => setPage((p) => p + 1)}
-          />
-        ) : null}
+        pagination={
+          totalPages > 1 ? (
+            <PaginationBar
+              label={`${page + 1} / ${totalPages}`}
+              prevDisabled={page === 0}
+              nextDisabled={page >= totalPages - 1}
+              onPrev={() => setPage((p) => Math.max(0, p - 1))}
+              onNext={() => setPage((p) => p + 1)}
+            />
+          ) : null
+        }
       />
 
       <div className="table-wrapper elevation-raised">

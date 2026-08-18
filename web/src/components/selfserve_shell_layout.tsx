@@ -14,9 +14,6 @@ export type SelfServeShellLayoutProps = {
   children: ReactNode;
 };
 
-/**
- * Reduced buyer shell (G4): portfolio, billing, API keys — no operator nav.
- */
 export function SelfServeShellLayout({ children }: SelfServeShellLayoutProps) {
   const location = useLocation();
   const user = auth.getUser();
@@ -33,8 +30,9 @@ export function SelfServeShellLayout({ children }: SelfServeShellLayoutProps) {
         <div className="sidebar__body">
           <ul className="sidebar-nav">
             {SELF_SERVE_LINKS.map((link) => {
-              const active = location.pathname === link.to
-                || (link.to !== '/selfserve' && location.pathname.startsWith(link.to));
+              const active =
+                location.pathname === link.to ||
+                (link.to !== '/selfserve' && location.pathname.startsWith(link.to));
               return (
                 <li key={link.to}>
                   <Link
@@ -49,13 +47,9 @@ export function SelfServeShellLayout({ children }: SelfServeShellLayoutProps) {
             })}
           </ul>
         </div>
-        <div className="sidebar__foot text-muted text-sm">
-          {user?.email ?? ''}
-        </div>
+        <div className="sidebar__foot text-muted text-sm">{user?.email ?? ''}</div>
       </nav>
-      <main className="main-content">
-        {children}
-      </main>
+      <main className="main-content">{children}</main>
     </div>
   );
 }

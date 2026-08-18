@@ -26,13 +26,18 @@ export function clickBaseURL(templateOrHost: string): string {
       /* fall through */
     }
   }
-  const host = raw.replace(/^https?:\/\//i, '').replace(/\/+$/, '').split('/')[0]!;
+  const host = raw
+    .replace(/^https?:\/\//i, '')
+    .replace(/\/+$/, '')
+    .split('/')[0]!;
   return `https://${host}/click`;
 }
 
 export type ClickUrlOptions = {
   dmr?: boolean;
-  utm?: Partial<Record<'utm_source' | 'utm_medium' | 'utm_campaign' | 'utm_term' | 'utm_content', string>>;
+  utm?: Partial<
+    Record<'utm_source' | 'utm_medium' | 'utm_campaign' | 'utm_term' | 'utm_content', string>
+  >;
 };
 
 /**
@@ -43,7 +48,7 @@ export function buildTemplatedClickURL(
   templateOrHost: string,
   campaignId: string,
   params: Record<string, string>,
-  options?: ClickUrlOptions,
+  options?: ClickUrlOptions
 ): string {
   const base = clickBaseURL(templateOrHost);
   const parts: string[] = [`campaign_id=${encodeURIComponent(campaignId)}`];

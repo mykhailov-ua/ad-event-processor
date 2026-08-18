@@ -6,11 +6,8 @@ import { Checkbox } from '../components/checkbox.js';
 import { mapServiceError } from '../helpers/service_error.js';
 import { pushToastMessage } from '../helpers/toast_ui.js';
 import { ConfirmCancelledError } from '../helpers/confirm_ui.js';
-import {
-  fetchSupportFeedbackMeta,
-  submitSupportFeedback,
-} from '../helpers/ops_compliance_api.js';
-import type { SupportFeedbackMetaDTO } from '../types/api/ops_compliance.js';
+import { fetchSupportFeedbackMeta, submitSupportFeedback } from '../helpers/ops_compliance_api.js';
+import type { SupportFeedbackMetaDTO } from '../types/ops_compliance.js';
 
 const FEEDBACK_TYPES = [
   { value: 'bug', label: 'Bug report' },
@@ -18,9 +15,6 @@ const FEEDBACK_TYPES = [
   { value: 'feature', label: 'Feature idea' },
 ];
 
-/**
- * CPA-M8 support feedback — operator bug reports with optional redacted bundle.
- */
 export function SupportFeedbackPage() {
   const [meta, setMeta] = useState<SupportFeedbackMetaDTO | null>(null);
   const [loading, setLoading] = useState(true);
@@ -82,18 +76,25 @@ export function SupportFeedbackPage() {
       <header className="page-header">
         <h1 className="h2">Support feedback</h1>
         <p className="text-muted">
-          Send operator feedback to the deployment vendor. Optional bundle includes redacted logs only.
+          Send operator feedback to the deployment vendor. Optional bundle includes redacted logs
+          only.
         </p>
       </header>
 
       {error ? <ErrorBlock error={error} /> : null}
 
       {loading ? (
-        <p className="text-muted" data-testid="feedback-loading">Loading deployment info…</p>
+        <p className="text-muted" data-testid="feedback-loading">
+          Loading deployment info…
+        </p>
       ) : meta ? (
         <section className="card stack text-sm text-muted" data-testid="feedback-meta">
-          <div>Deployment: <span className="font-mono">{meta.deployment_id || '—'}</span></div>
-          <div>Binary: <span className="font-mono">{meta.binary_version || '—'}</span></div>
+          <div>
+            Deployment: <span className="font-mono">{meta.deployment_id || '—'}</span>
+          </div>
+          <div>
+            Binary: <span className="font-mono">{meta.binary_version || '—'}</span>
+          </div>
         </section>
       ) : null}
 
@@ -108,7 +109,9 @@ export function SupportFeedbackPage() {
             onChange={(e) => setType(e.target.value)}
           >
             {FEEDBACK_TYPES.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
             ))}
           </select>
         </FormField>

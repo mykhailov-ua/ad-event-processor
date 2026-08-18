@@ -25,8 +25,6 @@ type settlementSnapshot struct {
 	Impressions int64
 }
 
-// TestE2E_BrokerPGSettlementParity verifies Redis _pg and broker _pg_broker consumers
-// apply identical campaign_stats settlement for the same AdStreamEvent mix.
 func TestE2E_BrokerPGSettlementParity(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping broker pg settlement parity e2e")

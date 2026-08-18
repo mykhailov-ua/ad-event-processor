@@ -7,7 +7,7 @@ import (
 )
 
 func TestParseVASTXML_corpus(t *testing.T) {
-	dir := filepath.Join("testdata", "vast")
+	dir := filepath.Join("testdata")
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("read corpus: %v", err)
@@ -54,7 +54,7 @@ func TestRunAuction_multiCreativeWinner(t *testing.T) {
 		Weight:       1,
 		Budget:       1_000_000,
 	}}
-	raw, err := os.ReadFile(filepath.Join("testdata", "vast", "inline_30s.xml"))
+	raw, err := os.ReadFile(filepath.Join("testdata", "inline_30s.xml"))
 	if err != nil {
 		t.Fatal(err)
 	}

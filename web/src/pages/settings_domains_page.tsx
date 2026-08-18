@@ -22,10 +22,14 @@ import { StatusBadge } from '../components/status_badge.js';
 
 function healthBadgeClass(status: string): string {
   switch (status) {
-    case 'healthy': return 'ACTIVE';
-    case 'degraded': return 'PAUSED';
-    case 'down': return 'FAILED';
-    default: return 'UNKNOWN';
+    case 'healthy':
+      return 'ACTIVE';
+    case 'degraded':
+      return 'PAUSED';
+    case 'down':
+      return 'FAILED';
+    default:
+      return 'UNKNOWN';
   }
 }
 
@@ -35,7 +39,9 @@ function TableSkeleton({ cols, rows = 3 }: { cols: number; rows?: number }) {
       {Array.from({ length: rows }, (_, i) => (
         <tr key={`sk-${i}`} className="data-table__row--skeleton" aria-hidden="true">
           {Array.from({ length: cols }, (__, j) => (
-            <td key={`sk-${i}-${j}`}><span className="skeleton-bar" /></td>
+            <td key={`sk-${i}-${j}`}>
+              <span className="skeleton-bar" />
+            </td>
           ))}
         </tr>
       ))}
@@ -43,9 +49,6 @@ function TableSkeleton({ cols, rows = 3 }: { cols: number; rows?: number }) {
   );
 }
 
-/**
- * Domain health and SSL setup for tracking/admin/custom hosts.
- */
 export function SettingsDomainsPage() {
   const user = auth.getUser();
   const canWrite = can(user?.permissions ?? [], 'settings:write');
@@ -193,7 +196,8 @@ export function SettingsDomainsPage() {
       <header className="page-header">
         <h1 className="h2">Domains</h1>
         <p className="text-muted">
-          Health probes every 5 minutes (HTTP + TLS). Tracking and admin hosts sync from platform config.
+          Health probes every 5 minutes (HTTP + TLS). Tracking and admin hosts sync from platform
+          config.
         </p>
       </header>
 
@@ -224,7 +228,8 @@ export function SettingsDomainsPage() {
       <section className="card stack" data-testid="domains-tls-check">
         <h2 className="h3">TLS on-demand allowlist</h2>
         <p className="text-muted text-sm">
-          Probe Caddy ask endpoint (<code>GET /api/v1/ops/domains/…/tls-allowed</code>). Pass ask token when local bypass is disabled.
+          Probe Caddy ask endpoint (<code>GET /api/v1/ops/domains/…/tls-allowed</code>). Pass ask
+          token when local bypass is disabled.
         </p>
         <div className="row gap-sm">
           <input
@@ -307,10 +312,14 @@ export function SettingsDomainsPage() {
         <h2 className="h3">Monitored domains</h2>
         {loading ? (
           <table className="data-table">
-            <tbody><TableSkeleton cols={7} /></tbody>
+            <tbody>
+              <TableSkeleton cols={7} />
+            </tbody>
           </table>
         ) : rows.length === 0 ? (
-          <p className="text-muted">No domains configured yet. Set tracking domain in Platform settings.</p>
+          <p className="text-muted">
+            No domains configured yet. Set tracking domain in Platform settings.
+          </p>
         ) : (
           <table className="data-table">
             <thead>

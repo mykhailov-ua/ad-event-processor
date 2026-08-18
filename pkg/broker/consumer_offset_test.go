@@ -27,7 +27,6 @@ func TestConsumerOffsetTracker_CommitAndRead(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, uint64(50000), off)
 
-	// Submitting a lower offset should be ignored
 	require.NoError(t, tracker.CommitOffset(topic, partition, group, 25000))
 
 	off, err = tracker.GetCommittedOffset(topic, partition, group)
@@ -43,7 +42,6 @@ func TestConsumerOffsetTracker_PersistenceAcrossRestarts(t *testing.T) {
 	require.NoError(t, tracker1.CommitOffset("ad-events", 0, "ch_group", 125000))
 	require.NoError(t, tracker1.CommitOffset("ad-events", 1, "ch_group", 80000))
 
-	// Re-open from disk
 	tracker2, err := NewConsumerOffsetTracker(dir)
 	require.NoError(t, err)
 

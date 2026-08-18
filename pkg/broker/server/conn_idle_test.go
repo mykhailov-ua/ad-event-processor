@@ -13,7 +13,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
-// harness=gnet_partial_frame_drip — slow TCP peers sending incomplete length-prefixed frames.
 func TestPartialFrame_ReadIdleClosesSlowDrip(t *testing.T) {
 	dir, err := os.MkdirTemp("", "broker-idle-drip-*")
 	if err != nil {

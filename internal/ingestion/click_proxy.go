@@ -1,5 +1,3 @@
-// Package ingestion provides click reverse-proxy delivery (RP-M3). Upstream dials and io.Copy run on the
-// pinned worker thread (never the gnet reactor). harness: click_proxy_stream
 package ingestion
 
 import (
@@ -73,8 +71,6 @@ func (h *AdsPacketHandler) initClickProxyClient() {
 	}
 }
 
-// clickProxyDeliver streams the upstream HTTP response to the client. Caller
-// must have already accepted the click through FilterEngine.
 func (h *AdsPacketHandler) clickProxyDeliver(c gnet.Conn, ctx *connContext, job clickProxyJob) gnet.Action {
 	h.initClickProxyClient()
 	finalURL, err := buildProxyUpstreamURL(job.upstream, job.passthrough)
@@ -225,8 +221,6 @@ func buildProxyResponseHeader(resp *http.Response, maxBytes int) ([]byte, bool) 
 	return []byte(b.String()), true
 }
 
-// campaignClickProxyEnabled reports whether the campaign snapshot selects proxy
-// delivery with a non-empty upstream URL (validated at PATCH).
 func campaignClickProxyEnabled(camp *domain.Campaign) (bool, string, bool) {
 	if camp == nil {
 		return false, "", false
@@ -241,8 +235,6 @@ func campaignClickProxyEnabled(camp *domain.Campaign) (bool, string, bool) {
 	return true, up, camp.ProxyRewriteAssets
 }
 
-// proxyAssetRewriter is a stub streaming pass-through until M3.4 full HTML
-// rewrite lands; keeps the flag wired without buffering the full body.
 type proxyAssetRewriter struct {
 	src io.Reader
 }
@@ -259,8 +251,6 @@ func appendProxyUpstreamQuery(base string, passthrough []byte) (string, error) {
 	return buildProxyUpstreamURL(base, passthrough)
 }
 
-// appendClickProxyPassthrough builds upstream query params for proxy mode
-// (click_id, sub*, ad-network ids, and unknown passthrough keys).
 func appendClickProxyPassthrough(dst []byte, clickID string, subs SubIDSlots, extra []byte, fbclid, gclid, ttclid string) []byte {
 	dst = dst[:0]
 	if len(extra) > 0 {

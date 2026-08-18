@@ -1,4 +1,3 @@
-
 CREATE TABLE IF NOT EXISTS margin_guard_policies (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     campaign_id UUID NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,

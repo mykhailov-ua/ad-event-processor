@@ -1,11 +1,7 @@
 import * as auth from './auth.js';
 import { clearScope, getOrCreate } from './idempotency.js';
 import { removeIdempotencyPending, setIdempotencyPending } from './storage.js';
-import {
-  isAuthMutationPath,
-  redirectToLogin,
-  tryRefreshSession,
-} from './session.js';
+import { isAuthMutationPath, redirectToLogin, tryRefreshSession } from './session.js';
 import { recordApiTiming } from './api_timing.js';
 
 const LARGE_BODY_THRESHOLD = 32_000;
@@ -28,7 +24,6 @@ export type ErrorPayload = {
   [key: string]: unknown;
 } | null;
 
-/** HTTP API error with status, code, and optional stub flag. */
 export class ApiError extends Error {
   status: number;
   code: string;
@@ -42,7 +37,7 @@ export class ApiError extends Error {
     message: string,
     stub = false,
     payload: ErrorPayload = null,
-    responseHeaders: Headers | null = null,
+    responseHeaders: Headers | null = null
   ) {
     super(message || code);
     this.status = status;
@@ -53,14 +48,12 @@ export class ApiError extends Error {
   }
 }
 
-/** Session expired or missing credentials. */
 export class AuthError extends Error {
   constructor() {
     super('unauthorized');
   }
 }
 
-/** Network or fetch-layer failure. */
 export class NetworkError extends Error {
   constructor(message = 'network request failed') {
     super(message);
@@ -68,9 +61,6 @@ export class NetworkError extends Error {
   }
 }
 
-/**
- * Perform a same-origin API request with CSRF, idempotency, and session recovery.
- */
 export async function api<T = unknown>(path: string, init: ApiInit = {}): Promise<ApiResult<T>> {
   const method = (init.method || 'GET').toUpperCase();
   const headers = new Headers(init.headers || {});
@@ -125,9 +115,7 @@ export async function api<T = unknown>(path: string, init: ApiInit = {}): Promis
     } else if (text) {
       try {
         body = JSON.parse(text);
-      } catch {
-        // ignore malformed JSON
-      }
+      } catch {}
     }
   }
 
@@ -146,9 +134,11 @@ export async function api<T = unknown>(path: string, init: ApiInit = {}): Promis
     if (res.status === 429 || code === 'RATE_LIMITED' || code === 'TOO_MANY_REQUESTS') {
       const retryRaw = res.headers.get('Retry-After');
       const retryAfterSec = retryRaw ? Number.parseInt(retryRaw, 10) : 0;
-      window.dispatchEvent(new CustomEvent('admin:rate-limited', {
-        detail: { retryAfterSec: Number.isFinite(retryAfterSec) ? retryAfterSec : 0 },
-      }));
+      window.dispatchEvent(
+        new CustomEvent('admin:rate-limited', {
+          detail: { retryAfterSec: Number.isFinite(retryAfterSec) ? retryAfterSec : 0 },
+        })
+      );
     }
     throw new ApiError(res.status, code, msg, stub, errBody, res.headers);
   }
@@ -158,9 +148,6 @@ export async function api<T = unknown>(path: string, init: ApiInit = {}): Promis
 
 let parseJsonWorker: Worker | null = null;
 
-/**
- * Return a shared JSON parse worker instance.
- */
 function getParseJsonWorker(): Worker | null {
   if (typeof Worker === 'undefined') return null;
   if (!parseJsonWorker) {
@@ -169,9 +156,6 @@ function getParseJsonWorker(): Worker | null {
   return parseJsonWorker;
 }
 
-/**
- * Parse a large JSON payload in a Web Worker when available.
- */
 async function parseInWorker(text: string): Promise<unknown> {
   if (typeof Worker === 'undefined') {
     try {
@@ -205,20 +189,14 @@ async function parseInWorker(text: string): Promise<unknown> {
   });
 }
 
-/**
- * Test whether an HTTP method is a mutation.
- */
 function isMutation(method: string): boolean {
   return MUTATION_METHODS.has(method.toUpperCase());
 }
 
 export { isMutation };
 
-/**
- * Hash a request body for idempotency crash recovery.
- */
 async function hashRequestBody(body: BodyInit | null | undefined): Promise<string> {
-  const text = body == null ? '' : (typeof body === 'string' ? body : String(body));
+  const text = body == null ? '' : typeof body === 'string' ? body : String(body);
   if (typeof crypto !== 'undefined' && crypto.subtle) {
     const data = new TextEncoder().encode(text);
     const buf = await crypto.subtle.digest('SHA-256', data);

@@ -75,9 +75,6 @@ function RecommendationCards({
   );
 }
 
-/**
- * Buyer portfolio summary on the home overview page.
- */
 export function BuyerOverviewSection({
   loading = false,
   portfolio,
@@ -98,9 +95,11 @@ export function BuyerOverviewSection({
       setOpenSmartAlerts([]);
       return;
     }
-    void fetchSmartAlertHistory(customerId).then((events) => {
-      setOpenSmartAlerts(events.filter((e) => !e.acked_at).slice(0, 5));
-    }).catch(() => setOpenSmartAlerts([]));
+    void fetchSmartAlertHistory(customerId)
+      .then((events) => {
+        setOpenSmartAlerts(events.filter((e) => !e.acked_at).slice(0, 5));
+      })
+      .catch(() => setOpenSmartAlerts([]));
   }, [customerId]);
 
   if (loading) {
@@ -171,7 +170,9 @@ export function BuyerOverviewSection({
       <div className="stack stack--sm" data-testid="portfolio-attention-panel">
         <h3 className="subsection-title">Needs attention</h3>
         {portfolio.attention.length === 0 && openSmartAlerts.length === 0 ? (
-          <p className="text-muted text-sm">No paused campaigns, pacing flags, or open smart alerts.</p>
+          <p className="text-muted text-sm">
+            No paused campaigns, pacing flags, or open smart alerts.
+          </p>
         ) : (
           <ul className="plain-list">
             {portfolio.attention.map((row) => (
@@ -182,7 +183,9 @@ export function BuyerOverviewSection({
             ))}
             {openSmartAlerts.map((evt) => (
               <li key={evt.id} className="plain-list__item" data-testid="attention-smart-alert">
-                <a href={`/integrations/smart-alerts?customer_id=${encodeURIComponent(customerId ?? '')}`}>
+                <a
+                  href={`/integrations/smart-alerts?customer_id=${encodeURIComponent(customerId ?? '')}`}
+                >
                   Smart alert
                 </a>
                 {` — ${evt.metric} ${evt.operator} ${evt.threshold} (observed ${evt.observed_value})`}
@@ -194,11 +197,21 @@ export function BuyerOverviewSection({
       <div className="stack stack--sm">
         <h3 className="subsection-title">Next steps</h3>
         <ul className="plain-list">
-          <li className="plain-list__item"><a href="/campaigns/portfolio">Portfolio view (drift sort)</a></li>
-          <li className="plain-list__item"><a href="/campaigns">Review campaign delivery</a></li>
-          <li className="plain-list__item"><a href="/reports">Reports</a></li>
-          <li className="plain-list__item"><a href="/reports/placements">Check placement report</a></li>
-          <li className="plain-list__item"><a href="/reports/keywords">Check keyword report</a></li>
+          <li className="plain-list__item">
+            <a href="/campaigns/portfolio">Portfolio view (drift sort)</a>
+          </li>
+          <li className="plain-list__item">
+            <a href="/campaigns">Review campaign delivery</a>
+          </li>
+          <li className="plain-list__item">
+            <a href="/reports">Reports</a>
+          </li>
+          <li className="plain-list__item">
+            <a href="/reports/placements">Check placement report</a>
+          </li>
+          <li className="plain-list__item">
+            <a href="/reports/keywords">Check keyword report</a>
+          </li>
           {can(perms, 'audit:read') && customerId ? (
             <li className="plain-list__item">
               <a href={`/reports/ivt-by-source?customer_id=${encodeURIComponent(customerId)}`}>

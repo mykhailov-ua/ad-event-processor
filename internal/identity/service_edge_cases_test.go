@@ -41,7 +41,6 @@ func TestChangePassword_EdgeCases(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		err := service.ChangePassword(context.Background(), userID, goodPwd, newPwd, "1.2.3.4", "ua")
 		assert.NoError(t, err)
-
 	})
 
 	t.Run("WeakNewPassword", func(t *testing.T) {

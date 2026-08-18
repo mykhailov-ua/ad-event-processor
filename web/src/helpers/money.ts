@@ -1,12 +1,8 @@
-/** Integer micro-units (1 USD = 1_000_000 micro). */
 export type MoneyMicro = number;
 
 const MICRO = 1_000_000;
 const MAX_FRAC_DIGITS = 6;
 
-/**
- * Parse a decimal string into integer micro-units.
- */
 export function ParseDecimal(s: string): MoneyMicro {
   if (typeof s !== 'string' || s.trim() === '') throw new Error('invalid decimal: empty');
   const trimmed = s.trim();
@@ -29,9 +25,6 @@ export function ParseDecimal(s: string): MoneyMicro {
   return Number(micro);
 }
 
-/**
- * Format micro-units as a dollar amount with two decimal places by default ($00.00).
- */
 export function formatMicro(micro: MoneyMicro): string {
   const abs = Math.abs(micro);
   const dollars = Math.floor(abs / MICRO);
@@ -40,18 +33,12 @@ export function formatMicro(micro: MoneyMicro): string {
   return `${sign}${dollars}.${String(cents).padStart(2, '0')}`;
 }
 
-/**
- * Format micro-units as a USD string for report tables.
- */
 export function formatMoney(micro: number | string | null | undefined): string {
   const n = Number(micro);
   if (!Number.isFinite(n)) return '—';
   return `$${formatMicro(n)}`;
 }
 
-/**
- * Format micro-units as a dollar amount with six decimal places ($00.000000).
- */
 export function formatMicroFull(micro: MoneyMicro): string {
   const abs = Math.abs(micro);
   const dollars = Math.floor(abs / MICRO);
@@ -60,28 +47,19 @@ export function formatMicroFull(micro: MoneyMicro): string {
   return `${sign}${dollars}.${String(frac).padStart(6, '0')}`;
 }
 
-/**
- * Format micro-units with an optional currency suffix.
- */
 export function formatAmountMicro(micro: number, currency = ''): string {
   const amt = formatMicro(micro);
   return currency ? `${amt} ${currency}` : amt;
 }
 
-/**
- * Format a decimal string for display, using an em dash when empty.
- */
 export function formatDecimalDisplay(decimal: string): string {
   if (!decimal) return '—';
   return decimal;
 }
 
-/**
- * Format a USD decimal field for display.
- */
 export function formatUsdDecimal(
   decimal: string | number | null | undefined,
-  options: { full?: boolean; currency?: boolean } = {},
+  options: { full?: boolean; currency?: boolean } = {}
 ): string {
   if (decimal == null || decimal === '') return '—';
   const num = Number(decimal);

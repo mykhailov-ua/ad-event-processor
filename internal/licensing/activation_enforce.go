@@ -26,7 +26,6 @@ func stringsTrim(s string) string {
 	return strings.TrimSpace(s)
 }
 
-// CheckHostActivation verifies bind mode (hard fingerprint or multi-host activation cap).
 func CheckHostActivation(ctx context.Context, pool *pgxpool.Pool, claims *LicenseClaims, fingerprint string) error {
 	if claims == nil {
 		return ErrInvalidTokenFormat

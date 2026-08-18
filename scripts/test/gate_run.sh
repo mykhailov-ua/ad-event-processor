@@ -10,10 +10,10 @@ OUTDIR="${OUTDIR:-$ROOT}"
 STRICT="${PERF_GATE_STRICT:-true}"
 
 if [[ "$BASELINE_WORKTREE" != /* ]]; then
-	BASELINE_WORKTREE="$ROOT/$BASELINE_WORKTREE"
+  BASELINE_WORKTREE="$ROOT/$BASELINE_WORKTREE"
 fi
 if [[ "$STRICT" == "true" ]]; then
-	BASELINE_WORKTREE="$(safe_worktree_dir "$BASELINE_WORKTREE")"
+  BASELINE_WORKTREE="$(safe_worktree_dir "$BASELINE_WORKTREE")"
 fi
 
 PR_BENCH="$OUTDIR/pr_bench.txt"
@@ -24,12 +24,12 @@ GATE_REPORT="$OUTDIR/gate_report.txt"
 
 echo "perf-gate-run: generating sqlc on current tree..."
 go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.28.0 generate
-"$SCRIPTS/test/gate_bench.sh" >"$PR_BENCH"
+"$SCRIPTS/test/gate_bench.sh" > "$PR_BENCH"
 
 if [[ "$STRICT" != "true" ]]; then
-	echo "perf-gate-run: smoke mode — alloc gate NOT run (set PERF_GATE_STRICT=true for strict benchstat + alloc regression)"
-	tail -5 "$PR_BENCH"
-	exit 0
+  echo "perf-gate-run: smoke mode — alloc gate NOT run (set PERF_GATE_STRICT=true for strict benchstat + alloc regression)"
+  tail -5 "$PR_BENCH"
+  exit 0
 fi
 
 echo "perf-gate-run: strict mode — baseline ref=$BASELINE_REF worktree=$BASELINE_WORKTREE"
@@ -38,12 +38,12 @@ safe_rm_rf "$BASELINE_WORKTREE"
 git worktree add --detach "$BASELINE_WORKTREE" "$BASELINE_REF"
 
 (
-	cd "$BASELINE_WORKTREE"
-	go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.28.0 generate
-	"$SCRIPTS/test/gate_bench.sh" >"$BASELINE_BENCH"
+  cd "$BASELINE_WORKTREE"
+  go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.28.0 generate
+  "$SCRIPTS/test/gate_bench.sh" > "$BASELINE_BENCH"
 )
 
-git worktree remove --force "$BASELINE_WORKTREE" 2>/dev/null || safe_rm_rf "$BASELINE_WORKTREE"
+git worktree remove --force "$BASELINE_WORKTREE" 2> /dev/null || safe_rm_rf "$BASELINE_WORKTREE"
 
-go run ./cmd/perf-gate "$BASELINE_BENCH" "$PR_BENCH" >"$GATE_REPORT"
+go run ./cmd/perf-gate "$BASELINE_BENCH" "$PR_BENCH" > "$GATE_REPORT"
 cat "$GATE_REPORT"

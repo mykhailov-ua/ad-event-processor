@@ -49,7 +49,7 @@ func (t *RedisStreamTrimmer) Start(ctx context.Context) {
 	t.wg.Add(1)
 	go func() {
 		defer t.wg.Done()
-		// Perform initial trim on startup
+
 		t.TrimOnce(runCtx)
 
 		ticker := time.NewTicker(t.cfg.TrimInterval)
@@ -78,7 +78,6 @@ func (t *RedisStreamTrimmer) TrimOnce(ctx context.Context) {
 		}
 		shardLabel := strconv.Itoa(i)
 
-		// 1. Trim configured streams
 		for _, stream := range t.cfg.Streams {
 			if stream == "" {
 				continue
@@ -89,7 +88,6 @@ func (t *RedisStreamTrimmer) TrimOnce(ctx context.Context) {
 			}
 		}
 
-		// 2. Query Redis memory info and update telemetry metric ad_redis_memory_used_bytes
 		infoCmd := rdb.Info(ctx, "memory")
 		if res, err := infoCmd.Result(); err == nil {
 			if usedBytes := parseRedisUsedMemory(res); usedBytes >= 0 {

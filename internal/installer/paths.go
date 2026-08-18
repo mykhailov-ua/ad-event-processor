@@ -1,9 +1,10 @@
 package installer
 
 import (
-	"github.com/bidshard/ad-event-processor/pkg/naming"
 	"os"
 	"path/filepath"
+
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 
 	"github.com/bidshard/ad-event-processor/internal/config"
 	"github.com/bidshard/ad-event-processor/pkg/runtimepaths"

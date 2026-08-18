@@ -29,7 +29,6 @@ func parseConnTypePolicy(s string) ConnTypePolicy {
 	return ConnTypePolicyFromString(s)
 }
 
-// ConnTypePolicyFromString maps DB/replica values to a known policy (default block_vpn_hosting).
 func ConnTypePolicyFromString(s string) ConnTypePolicy {
 	switch ConnTypePolicy(s) {
 	case ConnTypeMobileOnly, ConnTypeResidentialOnly, ConnTypeBlockVPNHosting:

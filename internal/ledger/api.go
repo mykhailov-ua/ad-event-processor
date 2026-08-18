@@ -1,4 +1,3 @@
-// Package ledger implements ledger support for BidShard.
 package ledger
 
 import (

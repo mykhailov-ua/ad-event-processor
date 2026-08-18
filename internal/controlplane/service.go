@@ -15,6 +15,7 @@ import (
 	"github.com/bidshard/ad-event-processor/internal/database"
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/internal/fraud"
 	"github.com/bidshard/ad-event-processor/internal/metrics"
 	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 	"github.com/bidshard/ad-event-processor/pkg/domainhealth"
@@ -30,34 +31,37 @@ import (
 )
 
 type Service struct {
-	pool            *pgxpool.Pool
-	settlePoolField *pgxpool.Pool
-	rdbs            []redis.UniversalClient
-	sharder         domain.Sharder
-	cfg             *config.Config
-	pgGate          *PostgresGate
-	alerter         *OpsAlerter
-	chWrite         driver.Conn
-	chQuery         *database.CHQuery
-	paymentPool     *pgxpool.Pool
-	payment         domain.PaymentAPI
-	ctx             context.Context
-	cancel          context.CancelFunc
-	wg              sync.WaitGroup
-	workerMu        sync.Mutex
-	closed          atomic.Bool
-	locCache        sync.Map
-	brokerDeltas    BrokerPendingDeltaReader
-	tcpControl      *TCPControlServer
-	nodeMetrics     *NodeMetricsWorker
-	scoringWeights  *ScoringWeightsStore
-	leaseWorker     *OperationLeaseWorker
-	pgFencing       *pgfailover.FencingGate
-	globalSpend     *GlobalSpendReconciler
-	rtbBidShadeSim  RtbBidShadeSimulator
-	cloudflare      CloudflareAPI
-	reputation      *domainhealth.ReputationChecker
-	shard0Mu        sync.Mutex
+	pool              *pgxpool.Pool
+	settlePoolField   *pgxpool.Pool
+	rdbs              []redis.UniversalClient
+	sharder           domain.Sharder
+	cfg               *config.Config
+	pgGate            *PostgresGate
+	alerter           *OpsAlerter
+	chWrite           driver.Conn
+	chQuery           *database.CHQuery
+	paymentPool       *pgxpool.Pool
+	payment           domain.PaymentAPI
+	ctx               context.Context
+	cancel            context.CancelFunc
+	wg                sync.WaitGroup
+	workerMu          sync.Mutex
+	closed            atomic.Bool
+	locCache          sync.Map
+	brokerDeltas      BrokerPendingDeltaReader
+	explainScorerInst fraud.Scorer
+	explainScorerErr  error
+	explainScorerMu   sync.Mutex
+	tcpControl        *TCPControlServer
+	nodeMetrics       *NodeMetricsWorker
+	scoringWeights    *ScoringWeightsStore
+	leaseWorker       *OperationLeaseWorker
+	pgFencing         *pgfailover.FencingGate
+	globalSpend       *GlobalSpendReconciler
+	rtbBidShadeSim    RtbBidShadeSimulator
+	cloudflare        CloudflareAPI
+	reputation        *domainhealth.ReputationChecker
+	shard0Mu          sync.Mutex
 }
 
 func (s *Service) SetRtbBidShadeSimulator(sim RtbBidShadeSimulator) {
@@ -198,6 +202,9 @@ func NewService(ctx context.Context, pool *pgxpool.Pool, rdbs []redis.UniversalC
 	})
 	s.startWorker(func() {
 		NewSystemStateWorker(s).Start(ctx)
+	})
+	s.startWorker(func() {
+		NewMLEvalMetricsWorker(s).Start(ctx)
 	})
 	return s
 }
@@ -862,6 +869,40 @@ func (s *Service) GetLedgerEntry(ctx context.Context, paymentIntentID uuid.UUID)
 		return false, db.BalanceLedger{}, 0, 0, 0, err
 	}
 	return found, entry, refundTotal, chargebackTotal, reversalTotal, nil
+}
+
+func (s *Service) GetLedgerEntries(ctx context.Context, paymentIntentIDs []uuid.UUID) (map[uuid.UUID]domain.PaymentLedgerEntry, error) {
+	out := make(map[uuid.UUID]domain.PaymentLedgerEntry, len(paymentIntentIDs))
+	if len(paymentIntentIDs) == 0 {
+		return out, nil
+	}
+	pgIDs := make([]pgtype.UUID, len(paymentIntentIDs))
+	for i, id := range paymentIntentIDs {
+		pgIDs[i] = domain.ToUUID(id)
+	}
+	rows, err := db.New(s.pool).SumPaymentLedgerTotalsByIntentIDs(ctx, pgIDs)
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		id, err := uuid.FromBytes(row.PaymentIntentID.Bytes[:])
+		if err != nil {
+			continue
+		}
+		entry := domain.PaymentLedgerEntry{
+			Found:                        row.HasTopup,
+			HasTopup:                     row.HasTopup,
+			TopupAmountMicro:             row.TopupMicro,
+			RefundTotalMicro:             row.RefundMicro,
+			ChargebackTotalMicro:         row.ChargebackMicro,
+			ChargebackReversalTotalMicro: row.ChargebackReversalMicro,
+		}
+		if row.TopupMicro != 0 || row.RefundMicro != 0 || row.ChargebackMicro != 0 || row.ChargebackReversalMicro != 0 {
+			entry.Found = true
+		}
+		out[id] = entry
+	}
+	return out, nil
 }
 
 func (s *Service) UpdateOverdraft(ctx context.Context, id uuid.UUID, newOverdraft int64) error {

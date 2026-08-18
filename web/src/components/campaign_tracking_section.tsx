@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { to } from '../lib/to.js';
 import { api } from '../helpers/api_client.js';
-import type { OpsDoctorSummary } from '../types/api/ops.js';
+import type { OpsDoctorSummary } from '../types/ops.js';
 import { defaultClickTemplate } from '../helpers/tracking_link.js';
 import {
   buildInboundS2SBodyTemplate,
@@ -32,8 +32,20 @@ type PlatformState = {
 };
 
 const EDITABLE_KEYS = [
-  'sub1', 'sub2', 'sub3', 'sub4', 'sub5', 'sub6', 'sub7', 'sub8', 'sub9', 'sub10',
-  'ad_campaign_id', 'fbclid', 'gclid', 'ttclid',
+  'sub1',
+  'sub2',
+  'sub3',
+  'sub4',
+  'sub5',
+  'sub6',
+  'sub7',
+  'sub8',
+  'sub9',
+  'sub10',
+  'ad_campaign_id',
+  'fbclid',
+  'gclid',
+  'ttclid',
 ];
 
 const EXTENDED_SUB_KEYS = Array.from({ length: 20 }, (_, i) => `sub${i + 11}`);
@@ -47,7 +59,8 @@ function RtbTrackSection({ platform, trackURL }: { platform: PlatformState; trac
   const mode = platform.rtbMode || 'off';
   const modeDesc: Record<string, string> = {
     off: 'In-process auction on /track is disabled. campaign_id must be present in the postback body.',
-    shadow: 'Auction runs before filters for metrics only — campaign_id in the body is unchanged. Use before promoting to live.',
+    shadow:
+      'Auction runs before filters for metrics only — campaign_id in the body is unchanged. Use before promoting to live.',
     live: 'Auction may rewrite campaign_id to the winning line item before FilterEngine. No-bid rejects skip filters.',
   };
   const desc = modeDesc[mode] || modeDesc.off;
@@ -59,8 +72,8 @@ function RtbTrackSection({ platform, trackURL }: { platform: PlatformState; trac
       desc="Optional RTB_MODE=shadow|live — not a replacement for the OpenRTB exchange endpoint."
     >
       <p className="text-muted text-sm">
-        SDK / single-endpoint flows only. Exchange partners use POST /openrtb/bid — see section below.
-        Wire comparison is in the appliance guide docs/TRAFFIC_INTEGRATION.md §2.1.
+        SDK / single-endpoint flows only. Exchange partners use POST /openrtb/bid — see section
+        below. Wire comparison is in the appliance guide docs/TRAFFIC_INTEGRATION.md §2.1.
       </p>
       <dl className="definition-list">
         <dt>RTB_MODE (tracker)</dt>
@@ -78,10 +91,10 @@ function RtbTrackSection({ platform, trackURL }: { platform: PlatformState; trac
   );
 }
 
-/**
- * Per-campaign traffic integration kit (click URL, templates, postback, macros).
- */
-export function CampaignTrackingSection({ campaignId, canWrite = false }: CampaignTrackingSectionProps) {
+export function CampaignTrackingSection({
+  campaignId,
+  canWrite = false,
+}: CampaignTrackingSectionProps) {
   const [params, setParams] = useState<Record<string, string>>({});
   const [selectedTemplateId, setSelectedTemplateId] = useState('direct-custom');
   const [dmrEnabled, setDmrEnabled] = useState(false);
@@ -103,14 +116,16 @@ export function CampaignTrackingSection({ campaignId, canWrite = false }: Campai
     void (async () => {
       const [docRes, platRes] = await Promise.all([
         to(api<OpsDoctorSummary>('/api/v1/ops/doctor')),
-        to(api<{
-          config?: {
-            tracking_domain?: string;
-            edge_expose_click?: boolean;
-            edge_expose_openrtb?: boolean;
-          };
-          click_url_template?: string;
-        }>('/api/v1/settings/platform')),
+        to(
+          api<{
+            config?: {
+              tracking_domain?: string;
+              edge_expose_click?: boolean;
+              edge_expose_openrtb?: boolean;
+            };
+            click_url_template?: string;
+          }>('/api/v1/settings/platform')
+        ),
       ]);
       if (cancelled) return;
       const doc = docRes[0]?.data;
@@ -121,30 +136,36 @@ export function CampaignTrackingSection({ campaignId, canWrite = false }: Campai
         edgeOpenRTB: plat?.config?.edge_expose_openrtb ?? false,
         rtbMode: String(doc?.rtb_mode || 'off').toLowerCase(),
         rtbEnabled: doc?.rtb_enabled === true,
-        clickTemplate: doc?.click_url_template
-          || plat?.click_url_template
-          || defaultClickTemplate(plat?.config?.tracking_domain ?? doc?.tracking_domain ?? ''),
+        clickTemplate:
+          doc?.click_url_template ||
+          plat?.click_url_template ||
+          defaultClickTemplate(plat?.config?.tracking_domain ?? doc?.tracking_domain ?? ''),
       });
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const selected = trafficSourceById(selectedTemplateId);
 
   const link = useMemo(
-    () => buildTemplatedClickURL(
-      platform.clickTemplate || platform.trackingDomain,
-      campaignId,
-      params,
-      {
-        dmr: dmrEnabled,
-        utm: utmEnabled ? {
-          utm_source: utmSource || undefined,
-          utm_medium: utmMedium || undefined,
-          utm_campaign: utmCampaign || campaignId,
-        } : undefined,
-      },
-    ),
+    () =>
+      buildTemplatedClickURL(
+        platform.clickTemplate || platform.trackingDomain,
+        campaignId,
+        params,
+        {
+          dmr: dmrEnabled,
+          utm: utmEnabled
+            ? {
+                utm_source: utmSource || undefined,
+                utm_medium: utmMedium || undefined,
+                utm_campaign: utmCampaign || campaignId,
+              }
+            : undefined,
+        }
+      ),
     [
       platform.clickTemplate,
       platform.trackingDomain,
@@ -155,7 +176,7 @@ export function CampaignTrackingSection({ campaignId, canWrite = false }: Campai
       utmSource,
       utmMedium,
       utmCampaign,
-    ],
+    ]
   );
 
   const trackURL = buildTrackPostbackURL(platform.trackingDomain);
@@ -206,17 +227,23 @@ export function CampaignTrackingSection({ campaignId, canWrite = false }: Campai
         <div className="stack text-sm">
           <p>
             Full wire contracts ship with the appliance as{' '}
-            <code className="code-inline">docs/TRAFFIC_INTEGRATION.md</code>
-            {' '}(also in the operator bundle). Summary:
+            <code className="code-inline">docs/TRAFFIC_INTEGRATION.md</code> (also in the operator
+            bundle). Summary:
           </p>
           <ul className="list-plain">
             <li>Campaign traffic → Click URL (GET /click).</li>
-            <li>Affiliate / CRM conversion → inbound S2S POST /track (JSON, Content-Length required).</li>
+            <li>
+              Affiliate / CRM conversion → inbound S2S POST /track (JSON, Content-Length required).
+            </li>
             <li>Lander pixel → zero-redirect fetch() to the same /track URL.</li>
-            <li>Ad platforms (Meta/Google/TikTok) → configure on CAPI & Postbacks; BidShard forwards after settlement.</li>
+            <li>
+              Ad platforms (Meta/Google/TikTok) → configure on CAPI & Postbacks; BidShard forwards
+              after settlement.
+            </li>
           </ul>
           <p className="text-muted">
-            Edge tip: enable “Expose click URL on edge” in Platform settings so buyers hit :443 instead of tracker ports.
+            Edge tip: enable “Expose click URL on edge” in Platform settings so buyers hit :443
+            instead of tracker ports.
           </p>
         </div>
       </details>
@@ -227,8 +254,8 @@ export function CampaignTrackingSection({ campaignId, canWrite = false }: Campai
         desc="Lightweight cloak companion: suspicious traffic can 302 to a safe URL while clean clicks reach brand landings."
       >
         <p className="text-muted text-sm" data-testid="integration-safe-page-hint">
-          Money URL: weighted brand creatives (Creative tab) or campaign target URL.
-          Safe URL: white-page for IVT / placement blacklist hits when enabled under Configuration.
+          Money URL: weighted brand creatives (Creative tab) or campaign target URL. Safe URL:
+          white-page for IVT / placement blacklist hits when enabled under Configuration.
         </p>
         <p>
           <Link to={`/campaigns/${campaignId}?tab=config`} className="text-sm">
@@ -240,9 +267,11 @@ export function CampaignTrackingSection({ campaignId, canWrite = false }: Campai
       <SectionCard
         icon="globe"
         title="Click URL (campaign traffic)"
-        desc={platform.edgeClick
-          ? 'Served on the edge (:8180/:443) with shard routing. Pick a traffic-source template to pre-fill network macros.'
-          : 'Enable “Expose click URL on edge” in Platform settings, or point traffic at tracker ports :8181–8184.'}
+        desc={
+          platform.edgeClick
+            ? 'Served on the edge (:8180/:443) with shard routing. Pick a traffic-source template to pre-fill network macros.'
+            : 'Enable “Expose click URL on edge” in Platform settings, or point traffic at tracker ports :8181–8184.'
+        }
       >
         <label
           className="form-field"
@@ -258,12 +287,16 @@ export function CampaignTrackingSection({ campaignId, canWrite = false }: Campai
             onChange={(e) => applyTemplate(e.target.value)}
           >
             {TRAFFIC_SOURCE_TEMPLATES.map((tpl) => (
-              <option key={tpl.id} value={tpl.id}>{tpl.name}</option>
+              <option key={tpl.id} value={tpl.id}>
+                {tpl.name}
+              </option>
             ))}
           </select>
         </label>
         {selected?.notes ? (
-          <p className="text-muted text-sm" data-testid="traffic-source-notes">{selected.notes}</p>
+          <p className="text-muted text-sm" data-testid="traffic-source-notes">
+            {selected.notes}
+          </p>
         ) : null}
         {selected?.cost_sync ? (
           <p className="text-muted text-sm">
@@ -362,12 +395,25 @@ export function CampaignTrackingSection({ campaignId, canWrite = false }: Campai
         title="Affiliate inbound S2S postback"
         desc="Give this URL to the affiliate network or offer partner. They POST JSON when a conversion settles — distinct from CAPI outbound to Meta/Google/TikTok."
       >
-        <IntegrationCopyRow label="Postback URL" value={trackURL} testId="integration-inbound-url" />
-        <IntegrationCopyRow label="JSON body template" value={inboundBody} testId="integration-inbound-body" />
-        <IntegrationCopyRow label="Test with curl" value={inboundCurl} testId="integration-inbound-curl" />
+        <IntegrationCopyRow
+          label="Postback URL"
+          value={trackURL}
+          testId="integration-inbound-url"
+        />
+        <IntegrationCopyRow
+          label="JSON body template"
+          value={inboundBody}
+          testId="integration-inbound-body"
+        />
+        <IntegrationCopyRow
+          label="Test with curl"
+          value={inboundCurl}
+          testId="integration-inbound-curl"
+        />
         <p className="text-muted text-sm">
-          Map network tokens to BidShard fields: click id → click_id, payout → payout_micro (micro-units) or omit and settle later.
-          Requires Content-Length; chunked encoding is rejected on /track.
+          Map network tokens to BidShard fields: click id → click_id, payout → payout_micro
+          (micro-units) or omit and settle later. Requires Content-Length; chunked encoding is
+          rejected on /track.
         </p>
       </SectionCard>
 
@@ -376,7 +422,11 @@ export function CampaignTrackingSection({ campaignId, canWrite = false }: Campai
         title="Zero-redirect (browser pixel)"
         desc="Fire /track from the landing page via fetch(). Set TRACK_CORS_ORIGINS on the tracker to include your LP origin."
       >
-        <IntegrationCopyRow label="Landing page snippet" value={directSnippet} testId="integration-direct-snippet" />
+        <IntegrationCopyRow
+          label="Landing page snippet"
+          value={directSnippet}
+          testId="integration-direct-snippet"
+        />
         <p className="text-muted text-sm">
           Module loads bidshard-track.js; auto-picks fbclid/gclid/ttclid from the page query string.
         </p>
@@ -387,7 +437,11 @@ export function CampaignTrackingSection({ campaignId, canWrite = false }: Campai
         title="Impression / event examples"
         desc="Same POST /track URL as inbound S2S. Native JSON or protobuf (Content-Type application/x-protobuf)."
       >
-        <IntegrationCopyRow label="Impression JSON example" value={impressionJSON} testId="integration-impression-json" />
+        <IntegrationCopyRow
+          label="Impression JSON example"
+          value={impressionJSON}
+          testId="integration-impression-json"
+        />
         <p className="text-muted text-sm">
           Conversion body is in the Affiliate inbound S2S section above.
         </p>
@@ -407,14 +461,21 @@ export function CampaignTrackingSection({ campaignId, canWrite = false }: Campai
           title="OpenRTB exchange (SSP partners)"
           desc="Separate from /track RTB_MODE. SSPs POST OpenRTB 2.6 bid requests here — not the SDK /track path."
         >
-          <IntegrationCopyRow label="Bid endpoint" value={openrtbURL} testId="integration-openrtb-url" />
+          <IntegrationCopyRow
+            label="Bid endpoint"
+            value={openrtbURL}
+            testId="integration-openrtb-url"
+          />
           <p>
-            <Link to="/rtb/integration" className="text-sm">RTB integration profile & validate-bid →</Link>
+            <Link to="/rtb/integration" className="text-sm">
+              RTB integration profile & validate-bid →
+            </Link>
           </p>
         </SectionCard>
       ) : (
         <p className="text-muted text-sm">
-          OpenRTB exchange: enable “Expose OpenRTB bid endpoint on edge” in Platform settings, or point partners at tracker :8181–8184/openrtb/bid.{' '}
+          OpenRTB exchange: enable “Expose OpenRTB bid endpoint on edge” in Platform settings, or
+          point partners at tracker :8181–8184/openrtb/bid.{' '}
           <Link to="/rtb/integration">Integration onboarding</Link>
         </p>
       )}
@@ -432,17 +493,24 @@ export function CampaignTrackingSection({ campaignId, canWrite = false }: Campai
             </tr>
           </thead>
           <tbody>
-            {([
-              ['{campaign_id}', 'Campaign UUID'],
-              ['{click_id}', 'Unique click id (generated on redirect)'],
-              ['{user_id}', 'Publisher user / visitor id'],
-              ['{sub1}…{sub30}', 'Arbitrary sub-ids for source tracking'],
-              ['{subid1}…{subid30}', 'Partner postback macro aliases'],
-              ['gclid, ttclid, fbclid', 'Attribution IDs — stored on event + forwarded to lander'],
-              ['ad_campaign_id', 'Network campaign id for Cost Sync join (often mirrors sub2)'],
-            ] as const).map(([macro, meaning]) => (
+            {(
+              [
+                ['{campaign_id}', 'Campaign UUID'],
+                ['{click_id}', 'Unique click id (generated on redirect)'],
+                ['{user_id}', 'Publisher user / visitor id'],
+                ['{sub1}…{sub30}', 'Arbitrary sub-ids for source tracking'],
+                ['{subid1}…{subid30}', 'Partner postback macro aliases'],
+                [
+                  'gclid, ttclid, fbclid',
+                  'Attribution IDs — stored on event + forwarded to lander',
+                ],
+                ['ad_campaign_id', 'Network campaign id for Cost Sync join (often mirrors sub2)'],
+              ] as const
+            ).map(([macro, meaning]) => (
               <tr key={macro}>
-                <td><code className="code-inline">{macro}</code></td>
+                <td>
+                  <code className="code-inline">{macro}</code>
+                </td>
                 <td>{meaning}</td>
               </tr>
             ))}

@@ -10,8 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Scenario G (milestone §5): promotion/outage on one Redis shard must not open breakers
-// on healthy shards (blast radius isolation at breaker layer).
 func TestFault_SentinelPromotionIsolation(t *testing.T) {
 	const shardCount = 4
 	breakers := make([]*RedisBreaker, shardCount)
@@ -19,7 +17,6 @@ func TestFault_SentinelPromotionIsolation(t *testing.T) {
 		breakers[i] = NewAdaptiveRedisBreaker(50, 2, 50*time.Millisecond, 0.20)
 	}
 
-	// Trip breaker on shard 1 only (simulated master kill / promotion window).
 	for range 60 {
 		breakers[1].RecordFailure()
 	}
@@ -34,7 +31,6 @@ func TestFault_SentinelPromotionIsolation(t *testing.T) {
 	}
 	require.Equal(t, 0, healthyAffected, "shards 0/2/3 must stay closed while shard 1 is open")
 
-	// Shard 1 recovers: half-open → closed after successes.
 	time.Sleep(60 * time.Millisecond)
 	require.True(t, breakers[1].Allow())
 	breakers[1].RecordSuccess()

@@ -1,31 +1,37 @@
 package fraud
 
 import (
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
-
 	"context"
 	"fmt"
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane"
 	"github.com/bidshard/ad-event-processor/internal/database"
-	"github.com/bidshard/ad-event-processor/internal/ingestion"
+	"github.com/bidshard/ad-event-processor/internal/edge"
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
-	"github.com/redis/go-redis/v9"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-type managementServiceBlocker struct {
-	svc *controlplane.Service
+type poolBlacklistBlocker struct {
+	pool *pgxpool.Pool
 }
 
-func (b *managementServiceBlocker) BlockIP(ctx context.Context, ip string) error {
-	return b.svc.BlockIP(ctx, ip, "fraud")
+func (blocker *poolBlacklistBlocker) BlockIP(ctx context.Context, ip string) error {
+	if edge.IsProtected(ip) {
+		return fmt.Errorf("IP %s is protected by allowlist", ip)
+	}
+	_, err := blocker.pool.Exec(ctx, `
+		INSERT INTO ip_blacklist (ip, reason)
+		VALUES ($1, 'fraud')
+		ON CONFLICT (ip) DO NOTHING
+	`, ip)
+	return err
 }
 
-func (b *managementServiceBlocker) EnqueueFraudThreat(context.Context, string, string, string, float64, int32, int64) error {
+func (blocker *poolBlacklistBlocker) EnqueueFraudThreat(context.Context, string, string, string, float64, int32, int64) error {
 	return fmt.Errorf("not implemented")
 }
 
@@ -36,8 +42,6 @@ func TestFault_ivtIntervalAutoblock(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
-	defer cleanupRedis()
 
 	conn, cleanupCH := setupClickHouseTest(t)
 	defer cleanupCH()
@@ -74,10 +78,9 @@ func TestFault_ivtIntervalAutoblock(t *testing.T) {
 	require.True(t, foundProtected, "expected protected timer bot in candidates")
 	require.True(t, foundBot, "expected open timer bot in candidates")
 
-	svc := controlplane.NewService(context.Background(), pool, []redis.UniversalClient{rdb}, ingestion.NewJumpHashSharder(1), nil)
-	defer svc.Close()
+	blocker := &poolBlacklistBlocker{pool: pool}
 
-	err = svc.BlockIP(ctx, protectedIP, "fraud")
+	err = blocker.BlockIP(ctx, protectedIP)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "protected by allowlist")
 
@@ -86,7 +89,7 @@ func TestFault_ivtIntervalAutoblock(t *testing.T) {
 			{IP: botIP, Reason: intervalBotReason, Score: 0.0},
 		}},
 		NewIdempotencyStore(pool),
-		&managementServiceBlocker{svc: svc},
+		blocker,
 		pool,
 		DetectorConfig{OutboxPendingLimit: 0},
 	)

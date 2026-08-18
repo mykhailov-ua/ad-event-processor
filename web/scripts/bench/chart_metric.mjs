@@ -160,13 +160,17 @@ function benchCanvas(mod, container, points) {
     color: '--accent',
   });
   const rangeMs = 24 * 60 * 60 * 1000;
-  const updateBench = bench('canvas metric update n=200', () => {
-    handle.update({
-      points: makeMetricPoints(200, rangeMs, Math.random() * 1000),
-      value: 100,
-      rangeHours: 24,
-    });
-  }, { iterations: 150, warmup: 10 });
+  const updateBench = bench(
+    'canvas metric update n=200',
+    () => {
+      handle.update({
+        points: makeMetricPoints(200, rangeMs, Math.random() * 1000),
+        value: 100,
+        rangeHours: 24,
+      });
+    },
+    { iterations: 150, warmup: 10 }
+  );
   handle.destroy();
   return updateBench;
 }
@@ -185,13 +189,17 @@ function benchUplot(mod, container, points) {
     color: '--accent',
   });
   const rangeMs = 24 * 60 * 60 * 1000;
-  const updateBench = bench('uplot metric update n=200', () => {
-    handle.update({
-      points: makeMetricPoints(200, rangeMs, Math.random() * 1000),
-      value: 100,
-      rangeHours: 24,
-    });
-  }, { iterations: 150, warmup: 10 });
+  const updateBench = bench(
+    'uplot metric update n=200',
+    () => {
+      handle.update({
+        points: makeMetricPoints(200, rangeMs, Math.random() * 1000),
+        value: 100,
+        rangeHours: 24,
+      });
+    },
+    { iterations: 150, warmup: 10 }
+  );
   handle.destroy();
   return updateBench;
 }
@@ -199,7 +207,9 @@ function benchUplot(mod, container, points) {
 setupBenchDom();
 const { doc } = { doc: globalThis.document };
 
-const canvasMod = await import(pathToFileURL(join(ROOT, 'scripts/bench/metric_chart_canvas.js')).href);
+const canvasMod = await import(
+  pathToFileURL(join(ROOT, 'scripts/bench/metric_chart_canvas.js')).href
+);
 const uplotMod = await import(pathToFileURL(join(SRC, 'charts/metric_chart_uplot.js')).href);
 
 const rangeMs = 24 * 60 * 60 * 1000;
@@ -218,7 +228,7 @@ const uplotResult = benchUplot(uplotMod, uplotContainer, points);
 
 await new Promise((r) => setTimeout(r, 0));
 
-const regressionPct = ((uplotResult.nsPerOp / canvasResult.nsPerOp) - 1) * 100;
+const regressionPct = (uplotResult.nsPerOp / canvasResult.nsPerOp - 1) * 100;
 const verdict = regressionPct <= 30 ? 'OK (within 30% budget)' : 'REGRESSION (>30%)';
 
 console.log('Metric chart benchmark (node --expose-gc, synthetic DOM + node-canvas 2d)');
@@ -228,5 +238,7 @@ console.log('|----------------|------:|---------------:|');
 console.log(`| canvas (baseline) | ${canvasResult.nsPerOp} | ${canvasResult.heapDeltaBytes} |`);
 console.log(`| uplot | ${uplotResult.nsPerOp} | ${uplotResult.heapDeltaBytes} |`);
 console.log('');
-console.log(`Regression vs canvas: ${regressionPct >= 0 ? '+' : ''}${regressionPct.toFixed(1)}% → ${verdict}`);
+console.log(
+  `Regression vs canvas: ${regressionPct >= 0 ? '+' : ''}${regressionPct.toFixed(1)}% → ${verdict}`
+);
 process.exit(regressionPct <= 30 ? 0 : 1);

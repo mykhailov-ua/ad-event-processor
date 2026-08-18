@@ -14,10 +14,10 @@ log "ingestion license paths (no license_guard tag)"
 go test ./internal/ingestion/ -run 'License' -short -count=1 -timeout=120s
 
 log "malformed traffic soak is optional (docker + stack); dev builds omit license_guard"
-if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
-	log "skip malformed.sh in gate (run manually: bash scripts/test/malformed.sh smoke)"
+if command -v docker > /dev/null 2>&1 && docker info > /dev/null 2>&1; then
+  log "skip malformed.sh in gate (run manually: bash scripts/test/malformed.sh smoke)"
 else
-	log "skip malformed.sh (docker unavailable)"
+  log "skip malformed.sh (docker unavailable)"
 fi
 
 log "ok"

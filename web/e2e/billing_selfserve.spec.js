@@ -1,4 +1,3 @@
-/** harness=mock_api — Playwright route.fulfill; does not prove Go handler or CH/PG. */
 import { test, expect } from '@playwright/test';
 import { mockAuthedSession, BUYER_USER } from './helpers.js';
 
@@ -31,7 +30,8 @@ test('buyer billing wallet top-up creates payment intent', async ({ page }) => {
         provider_ref: 'tx_crypto_e2e',
         deposit_address: 'TTestDepositAddressForE2E123456789',
         deposit_network: 'USDT TRC-20',
-        deposit_qr_svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3 3"><rect width="3" height="3" fill="#fff"/><rect x="1" y="1" width="1" height="1" fill="#000"/></svg>',
+        deposit_qr_svg:
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3 3"><rect width="3" height="3" fill="#fff"/><rect x="1" y="1" width="1" height="1" fill="#000"/></svg>',
       }),
     });
   });

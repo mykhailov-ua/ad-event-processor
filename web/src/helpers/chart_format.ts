@@ -1,6 +1,3 @@
-/**
- * Format a numeric axis tick for charts.
- */
 export function formatChartTick(n: number): string {
   const abs = Math.abs(n);
   if (abs >= 1_000_000) return `${(n / 1_000_000).toFixed(abs >= 10_000_000 ? 0 : 1)}M`;
@@ -12,9 +9,6 @@ export function formatChartTick(n: number): string {
 
 const axisDate = new Date(0);
 
-/**
- * Format a short time label for chart X-axis ticks (reuses scratch Date).
- */
 export function formatChartAxisTime(ts: number, rangeMs = 24 * 60 * 60 * 1000): string {
   axisDate.setTime(ts);
   const hh = String(axisDate.getHours()).padStart(2, '0');
@@ -26,9 +20,6 @@ export function formatChartAxisTime(ts: number, rangeMs = 24 * 60 * 60 * 1000): 
   return `${hh}:${mm}`;
 }
 
-/**
- * Format a chart tooltip / status timestamp with second precision.
- */
 export function formatChartTime(ts: number): string {
   const d = new Date(ts);
   const y = d.getFullYear();
@@ -40,17 +31,11 @@ export function formatChartTime(ts: number): string {
   return `${y}-${mo}-${day} ${hh}:${mm}:${ss}`;
 }
 
-/**
- * Format a wall-clock timestamp for status badges (second precision).
- */
 export function formatClockTime(ts: number): string {
   if (!Number.isFinite(ts) || ts <= 0) return '—';
   return formatChartTime(ts);
 }
 
-/**
- * Format milliseconds until the next refresh as m:ss.
- */
 export function formatRefreshCountdown(msRemaining: number): string {
   if (msRemaining <= 0) return '0:00';
   const sec = Math.ceil(msRemaining / 1000);

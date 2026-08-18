@@ -29,9 +29,6 @@ func partitionNextOffset(t *testing.T, s *Server, tpKey string) uint64 {
 	return pl.NextOffset()
 }
 
-// TestFault_CoordinatorUnreachable_ProduceFailsClosed pins the fail-closed
-// contract: with coordination Redis down the node holds no lease, so it must
-// reject writes instead of appending to a log no future leader will replay.
 func TestFault_CoordinatorUnreachable_ProduceFailsClosed(t *testing.T) {
 	s := newLeaderSafetyServer(t)
 
@@ -71,9 +68,6 @@ func TestFault_CoordinatorUnreachable_ProduceFailsClosed(t *testing.T) {
 	})
 }
 
-// TestFault_LeaseExpiry_SelfFencesProduce covers the coordination outage window:
-// once the lease cannot be renewed the node must fence itself, even though its
-// last known local state said leader.
 func TestFault_LeaseExpiry_SelfFencesProduce(t *testing.T) {
 	redisURL, redisCleanup := startFaultRedis(t)
 	redisAlive := true
@@ -138,9 +132,6 @@ func TestFault_LeaseExpiry_SelfFencesProduce(t *testing.T) {
 	})
 }
 
-// TestFault_LeaderTakeover_HWMNeverRegresses guards the catch-up target: a
-// lagging leader may accept traffic after the catch-up budget, but the recorded
-// cluster tail must survive so the gap stays visible to the next failover.
 func TestFault_LeaderTakeover_HWMNeverRegresses(t *testing.T) {
 	redisURL, redisCleanup := startFaultRedis(t)
 	defer redisCleanup()

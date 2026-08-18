@@ -4,7 +4,7 @@ import { mapServiceError } from '../helpers/service_error.js';
 import { pushToastMessage } from '../helpers/toast_ui.js';
 import { ConfirmCancelledError } from '../helpers/confirm_ui.js';
 import { assignCampaignOwner, fetchTeamOverview } from '../helpers/team_api.js';
-import type { TeamMemberDTO } from '../types/api/team.js';
+import type { TeamMemberDTO } from '../types/team.js';
 import { SectionCard } from './section_card.js';
 
 export type CampaignOwnerSectionProps = {
@@ -15,9 +15,6 @@ export type CampaignOwnerSectionProps = {
   onAssigned?: (userId: string) => void;
 };
 
-/**
- * Assign campaign owner from team members (PUT /campaigns/{id}/owner).
- */
 export function CampaignOwnerSection({
   campaignId,
   customerId,
@@ -47,7 +44,9 @@ export function CampaignOwnerSection({
       }
       setMembers(overview?.members ?? []);
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [customerId]);
 
   const saveOwner = async (userId: string) => {
@@ -77,34 +76,38 @@ export function CampaignOwnerSection({
         title="Campaign owner"
         desc="Media buyer accountable for spend and portfolio filters (CPA-M5)."
       >
-      {loading ? <p className="text-muted text-sm">Loading team…</p> : null}
-      {!loading && members.length === 0 ? (
-        <p className="text-muted text-sm">No team members for this customer.</p>
-      ) : null}
-      {!loading && members.length > 0 ? (
-        <label className="form-field" htmlFor="campaign-owner-select">
-          Owner
-          <select
-            id="campaign-owner-select"
-            className="form-input form-input--sm"
-            value={selected}
-            disabled={saving}
-            data-testid="campaign-owner-select"
-            onChange={(e) => {
-              const next = e.target.value;
-              setSelected(next);
-              if (next) void saveOwner(next);
-            }}
-          >
-            {!selected ? <option value="" disabled>Select owner…</option> : null}
-            {members.map((m) => (
-              <option key={m.user_id} value={m.user_id}>
-                {m.email} ({m.role})
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : null}
+        {loading ? <p className="text-muted text-sm">Loading team…</p> : null}
+        {!loading && members.length === 0 ? (
+          <p className="text-muted text-sm">No team members for this customer.</p>
+        ) : null}
+        {!loading && members.length > 0 ? (
+          <label className="form-field" htmlFor="campaign-owner-select">
+            Owner
+            <select
+              id="campaign-owner-select"
+              className="form-input form-input--sm"
+              value={selected}
+              disabled={saving}
+              data-testid="campaign-owner-select"
+              onChange={(e) => {
+                const next = e.target.value;
+                setSelected(next);
+                if (next) void saveOwner(next);
+              }}
+            >
+              {!selected ? (
+                <option value="" disabled>
+                  Select owner…
+                </option>
+              ) : null}
+              {members.map((m) => (
+                <option key={m.user_id} value={m.user_id}>
+                  {m.email} ({m.role})
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
       </SectionCard>
     </div>
   );

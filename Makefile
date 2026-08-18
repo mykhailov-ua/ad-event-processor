@@ -1,4 +1,4 @@
-.PHONY: fmt gen lint test test-fast test-unit test-integration test-fault test-int test-alloc-gate management-domain-coverage test-full test-resilience test-broker-fault-lab test-sentinel-resilience build build-bin release-build release-garble release-installer proto proto-grpc check-local pr-fast tier-a fraudtrain-check check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-bpf check-scripts-layout dev-preflight-smoke perf-gate-smoke edge-phase0 openrtb-fuzz-smoke license-red-team license-verify license-alloc-gate license-differential-gate license-red-team-garbled license-garbled-alloc-gate license-red-team-extended license-fuzz-nightly-gate release-qa-smoke license-gdb-guard-smoke release-strings-gate license-guard-test license-guard-off-smoke license-guard-fault-gate public-key-strings-gate asset-seal-salt-smoke hwid-strings-gate garble-literals-policy-gate garble-literals-p99-smoke bpf-edge-prereq-gate sealed-bpf-xdp-smoke
+.PHONY: fmt fmt-check gen lint test test-fast test-unit test-integration test-fault test-int test-alloc-gate management-domain-coverage test-full test-resilience test-broker-fault-lab test-sentinel-resilience build build-bin release-build release-garble release-installer proto proto-grpc check-local pr-fast tier-a fraudtrain-check check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-bpf check-scripts-layout dev-preflight-smoke perf-gate-smoke edge-phase0 openrtb-fuzz-smoke license-red-team license-verify license-alloc-gate license-differential-gate license-red-team-garbled license-garbled-alloc-gate license-red-team-extended license-fuzz-nightly-gate release-qa-smoke license-gdb-guard-smoke release-strings-gate license-guard-test license-guard-off-smoke license-guard-fault-gate public-key-strings-gate asset-seal-salt-smoke hwid-strings-gate garble-literals-policy-gate garble-literals-p99-smoke bpf-edge-prereq-gate sealed-bpf-xdp-smoke
 
 BIN_DIR := bin
 BIN_TAGS := timetzdata
@@ -7,11 +7,14 @@ RELEASE_LDFLAGS := -trimpath $(BIN_LDFLAGS)
 RELEASE_GARBLE_CMDS := tracker processor control
 PILOT_IMAGE_CMDS := tracker processor control
 GARBLE_VERSION ?= v0.15.0
-# Match deploy/docker/Dockerfile multi-binary image + local installer CLI.
+
 BIN_CMDS := tracker processor control ivt-detector fraud-scorer broker region-proxy log-shipper alertmanager-telegram log-evacuator log-compactor edge-xdp edge-bpf-sync
 
 fmt:
-	go fmt ./...
+	bash scripts/ci/format.sh
+
+fmt-check:
+	bash scripts/ci/format.sh --check
 
 gen:
 	bash scripts/ci/gen.sh --proto
@@ -95,7 +98,7 @@ release-build: gen fmt
 	@mkdir -p $(BIN_DIR)
 	@set -e; \
 	for platform in $(RELEASE_PLATFORMS); do \
-	  GOOS=$${platform%/*}; GOARCH=$${platform#*/}; \
+	  GOOS=$${platform%/*}; GOARCH=$${platform
 	  for cmd in $(RELEASE_GARBLE_CMDS); do \
 	    echo "release-build: $$cmd $$GOOS/$$GOARCH -> $(BIN_DIR)/$${cmd}-$${GOOS}-$${GOARCH}"; \
 	    CGO_ENABLED=0 GOOS=$$GOOS GOARCH=$$GOARCH go build -tags $(BIN_TAGS) $(RELEASE_LDFLAGS) \
@@ -111,7 +114,7 @@ release-garble-all-platforms: gen fmt
 	@chmod +x scripts/ci/release_garble.sh
 	@set -e; \
 	for platform in $(RELEASE_PLATFORMS); do \
-	  GOOS=$${platform%/*}; GOARCH=$${platform#*/}; \
+	  GOOS=$${platform%/*}; GOARCH=$${platform
 	  out="$(BIN_DIR)/release-$${GOOS}-$${GOARCH}"; \
 	  mkdir -p "$$out"; \
 	  echo "release-garble-all-platforms: $$GOOS/$$GOARCH -> $$out"; \

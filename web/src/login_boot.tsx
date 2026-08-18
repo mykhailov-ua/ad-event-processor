@@ -5,9 +5,6 @@ import { installCustomScrollbars } from './lib/custom_scrollbars.js';
 import { ToastStack } from './components/toast_stack.js';
 import { LoginPage } from './pages/login_page.js';
 
-/**
- * Login entry boot — theme + toast, no authenticated shell.
- */
 export function LoginBoot() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', storage.getTheme());

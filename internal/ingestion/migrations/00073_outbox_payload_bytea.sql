@@ -1,6 +1,5 @@
 -- +goose Up
 -- +goose StatementBegin
--- Protobuf payloads are opaque bytes; legacy JSON rows remain valid UTF-8 JSON.
 ALTER TABLE outbox_events
   ALTER COLUMN payload TYPE BYTEA USING convert_to(payload::text, 'UTF8');
 -- +goose StatementEnd

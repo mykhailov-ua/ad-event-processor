@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/internal/database"
 
 	"github.com/google/uuid"
@@ -22,7 +21,7 @@ func (r *opsReader) incidentDashboardStale(ctx context.Context) (bool, int) {
 	return stale, lagSec
 }
 
-func (r *opsReader) listAffectedCampaigns(ctx context.Context, limit int) ([]adminapi.AffectedCampaignDTO, error) {
+func (r *opsReader) listAffectedCampaigns(ctx context.Context, limit int) ([]AffectedCampaignDTO, error) {
 	if r == nil || r.svc == nil || r.svc.GetPool() == nil {
 		return nil, nil
 	}
@@ -40,14 +39,14 @@ func (r *opsReader) listAffectedCampaigns(ctx context.Context, limit int) ([]adm
 	}
 	defer rows.Close()
 
-	var out []adminapi.AffectedCampaignDTO
+	var out []AffectedCampaignDTO
 	for rows.Next() {
 		var id uuid.UUID
 		var name string
 		if err := rows.Scan(&id, &name); err != nil {
 			return nil, err
 		}
-		out = append(out, adminapi.AffectedCampaignDTO{
+		out = append(out, AffectedCampaignDTO{
 			CampaignID: id.String(),
 			Name:       name,
 		})

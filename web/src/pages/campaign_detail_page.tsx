@@ -1,16 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import type { CampaignDTO, ClickDeliveryMode } from '../types/api/campaign.js';
-import type { ReportRow } from '../types/api/report.js';
+import type { CampaignDTO, ClickDeliveryMode } from '../types/campaign.js';
+import type { ReportRow } from '../types/report.js';
 import { to } from '../lib/to.js';
 import { api } from '../helpers/api_client.js';
 import * as auth from '../helpers/auth.js';
 import { can, maskLevel } from '../helpers/permissions.js';
-import {
-  pauseCampaign,
-  resumeCampaign,
-  pollCampaignStatus,
-} from '../helpers/campaign_actions.js';
+import { pauseCampaign, resumeCampaign, pollCampaignStatus } from '../helpers/campaign_actions.js';
 import { ConfirmCancelledError } from '../helpers/confirm_ui.js';
 import { pushToastMessage } from '../helpers/toast_ui.js';
 import { formatUsdDecimal, ParseDecimal } from '../helpers/money.js';
@@ -29,6 +25,7 @@ import type { HourlyMetricRow } from '../helpers/chart_pool.js';
 import { CampaignFiltersSection } from '../components/campaign_filters_section.js';
 import { CampaignTrackingSection } from '../components/campaign_tracking_section.js';
 import { CampaignPostbackSection } from '../components/campaign_postback_section.js';
+import { CampaignFraudSection } from '../components/campaign_fraud_section.js';
 import { CampaignMarginGuardSection } from '../components/campaign_margin_guard_section.js';
 import { CampaignTelegramSection } from '../components/campaign_telegram_section.js';
 import { CampaignBrandCreativesSection } from '../components/campaign_brand_creatives_section.js';
@@ -43,7 +40,7 @@ import { Icon } from '../components/icon.js';
 import { PaginationBar } from '../components/pagination_bar.js';
 import { StatusBadge } from '../components/status_badge.js';
 import { TabBar, type TabBarTab } from '../components/tab_bar.js';
-import { useResource } from '../hooks/use_resource.js';
+import { useResource } from '../helpers/use_resource.js';
 
 type CampaignStatsDTO = {
   metrics?: {
@@ -112,7 +109,7 @@ function parseDaypartHours(raw: string): number[] {
 function allowedTabIds(masked: boolean): string[] {
   const list = ['overview', 'stats', 'config'];
   if (!masked) {
-    list.push('tracking', 'postbacks', 'filters', 'margin', 'events', 'creative', 'telegram');
+    list.push('tracking', 'postbacks', 'fraud', 'filters', 'margin', 'events', 'creative', 'telegram');
   }
   return list;
 }
@@ -132,11 +129,12 @@ function buildTabs(masked: boolean): TabBarTab[] {
     list.push(
       { id: 'tracking', label: 'Integration' },
       { id: 'postbacks', label: 'CAPI & Postbacks' },
+      { id: 'fraud', label: 'Fraud' },
       { id: 'filters', label: 'Filters' },
       { id: 'margin', label: 'Margin guard' },
       { id: 'events', label: 'Event log' },
       { id: 'creative', label: 'Creative' },
-      { id: 'telegram', label: 'Telegram' },
+      { id: 'telegram', label: 'Telegram' }
     );
   }
   return list;
@@ -147,7 +145,9 @@ function ConfigGrid({ rows }: { rows: Array<[string, string]> }) {
     <dl className="definition-list">
       {rows.flatMap(([label, value]) => [
         <dt key={`${label}-dt`}>{label}</dt>,
-        <dd key={`${label}-dd`} className="font-mono text-secondary">{value}</dd>,
+        <dd key={`${label}-dd`} className="font-mono text-secondary">
+          {value}
+        </dd>,
       ])}
     </dl>
   );
@@ -159,7 +159,9 @@ function EventsTableSkeleton() {
       {Array.from({ length: 4 }, (_, i) => (
         <tr key={`ev-skel-${i}`} className="data-table__row--skeleton" aria-hidden="true">
           {Array.from({ length: 4 }, (__, j) => (
-            <td key={`ev-skel-${i}-${j}`}><span className="skeleton-bar" /></td>
+            <td key={`ev-skel-${i}-${j}`}>
+              <span className="skeleton-bar" />
+            </td>
           ))}
         </tr>
       ))}
@@ -317,34 +319,44 @@ export function CampaignDetailPage() {
         error: null,
       });
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
-  const setTab = useCallback((nextTab: string) => {
-    const next = new URLSearchParams(searchParams);
-    if (nextTab === 'overview') next.delete('tab');
-    else next.set('tab', nextTab);
-    setSearchParams(next, { replace: true });
-    if (nextTab === 'stats') reloadStats();
-    if (nextTab === 'events') setEventsPage(0);
-  }, [searchParams, setSearchParams, reloadStats]);
+  const setTab = useCallback(
+    (nextTab: string) => {
+      const next = new URLSearchParams(searchParams);
+      if (nextTab === 'overview') next.delete('tab');
+      else next.set('tab', nextTab);
+      setSearchParams(next, { replace: true });
+      if (nextTab === 'stats') reloadStats();
+      if (nextTab === 'events') setEventsPage(0);
+    },
+    [searchParams, setSearchParams, reloadStats]
+  );
 
-  const loadEvents = useCallback(async (page: number) => {
-    if (!id) return;
-    setEventsLoading(true);
-    const limit = EVENTS_PAGE_SIZE;
-    const offset = page * limit;
-    const [res, err] = await to(api(`/api/v1/campaigns/${id}/events?limit=${limit}&offset=${offset}`));
-    setEventsLoading(false);
-    if (err) {
-      setEventsRows([]);
-      setEventsTotal(0);
-      return;
-    }
-    const data = (res?.data ?? {}) as CampaignEventsResponse;
-    setEventsRows(data.items ?? []);
-    setEventsTotal(data.total ?? 0);
-  }, [id]);
+  const loadEvents = useCallback(
+    async (page: number) => {
+      if (!id) return;
+      setEventsLoading(true);
+      const limit = EVENTS_PAGE_SIZE;
+      const offset = page * limit;
+      const [res, err] = await to(
+        api(`/api/v1/campaigns/${id}/events?limit=${limit}&offset=${offset}`)
+      );
+      setEventsLoading(false);
+      if (err) {
+        setEventsRows([]);
+        setEventsTotal(0);
+        return;
+      }
+      const data = (res?.data ?? {}) as CampaignEventsResponse;
+      setEventsRows(data.items ?? []);
+      setEventsTotal(data.total ?? 0);
+    },
+    [id]
+  );
 
   useEffect(() => {
     if (tab !== 'events' || masked) return;
@@ -454,7 +466,10 @@ export function CampaignDetailPage() {
     }
     body.target_url = url;
     body.target_countries = configForm.geo.trim()
-      ? configForm.geo.split(',').map((c) => c.trim().toUpperCase()).filter(Boolean)
+      ? configForm.geo
+          .split(',')
+          .map((c) => c.trim().toUpperCase())
+          .filter(Boolean)
       : [];
     const freqLimit = Number.parseInt(configForm.freq_limit, 10);
     if (Number.isFinite(freqLimit) && freqLimit >= 0) body.freq_limit = freqLimit;
@@ -616,13 +631,15 @@ export function CampaignDetailPage() {
               variant="secondary"
               size="sm"
               className="shrink-0"
-              onClick={() => openForecast({
-                campaignId: id,
-                customerId: campaign.customer_id,
-                budgetMicro: Math.round(Number(campaign.budget_limit ?? 0) * 1_000_000),
-                startAt: isoDaysAgo(0),
-                endAt: toIsoNow(),
-              })}
+              onClick={() =>
+                openForecast({
+                  campaignId: id,
+                  customerId: campaign.customer_id,
+                  budgetMicro: Math.round(Number(campaign.budget_limit ?? 0) * 1_000_000),
+                  startAt: isoDaysAgo(0),
+                  endAt: toIsoNow(),
+                })
+              }
             />
           ) : null}
           {masked && campaign ? (
@@ -678,7 +695,9 @@ export function CampaignDetailPage() {
               <div className="metric-row">
                 <div className="metric-card">
                   <div className="metric-card__label">Impressions</div>
-                  <div className="metric-card__value">{String(stats.metrics?.impressions ?? 0)}</div>
+                  <div className="metric-card__value">
+                    {String(stats.metrics?.impressions ?? 0)}
+                  </div>
                 </div>
                 <div className="metric-card">
                   <div className="metric-card__label">Clicks</div>
@@ -686,7 +705,9 @@ export function CampaignDetailPage() {
                 </div>
                 <div className="metric-card">
                   <div className="metric-card__label">Conversions</div>
-                  <div className="metric-card__value">{String(stats.metrics?.conversions ?? 0)}</div>
+                  <div className="metric-card__value">
+                    {String(stats.metrics?.conversions ?? 0)}
+                  </div>
                 </div>
                 <div className="metric-card">
                   <div className="metric-card__label">Spend (API)</div>
@@ -884,7 +905,9 @@ export function CampaignDetailPage() {
                 >
                   <option value="">None (brand creatives)</option>
                   {flowOptions.map((flow) => (
-                    <option key={flow.id} value={flow.id}>{flow.name}</option>
+                    <option key={flow.id} value={flow.id}>
+                      {flow.name}
+                    </option>
                   ))}
                 </select>
               </label>
@@ -894,16 +917,18 @@ export function CampaignDetailPage() {
               <div className="section-card stack" data-testid="campaign-safe-page-config">
                 <h4 className="subsection-title">Safe page (cloak companion)</h4>
                 <p className="text-muted text-sm">
-                  When enabled, suspicious clicks (IVT / placement blacklist) redirect to the safe URL instead of the money landing. Clean traffic uses brand creatives as usual.
+                  When enabled, suspicious clicks (IVT / placement blacklist) redirect to the safe
+                  URL instead of the money landing. Clean traffic uses brand creatives as usual.
                 </p>
                 <label className="form-field checkbox-field" htmlFor="cfg-safe-page-enabled">
                   <input
                     id="cfg-safe-page-enabled"
                     type="checkbox"
                     checked={configForm.safe_page_enabled}
-                    onChange={(e) => setConfigForm((f) => ({ ...f, safe_page_enabled: e.target.checked }))}
-                  />
-                  {' '}
+                    onChange={(e) =>
+                      setConfigForm((f) => ({ ...f, safe_page_enabled: e.target.checked }))
+                    }
+                  />{' '}
                   Enable safe-page redirect
                 </label>
                 <label className="form-field" htmlFor="cfg-safe-page-url">
@@ -914,7 +939,9 @@ export function CampaignDetailPage() {
                     type="url"
                     placeholder="https://safe.example/white-page"
                     value={configForm.safe_page_url}
-                    onChange={(e) => setConfigForm((f) => ({ ...f, safe_page_url: e.target.value }))}
+                    onChange={(e) =>
+                      setConfigForm((f) => ({ ...f, safe_page_url: e.target.value }))
+                    }
                   />
                 </label>
                 <label className="form-field checkbox-field" htmlFor="cfg-attestation-enabled">
@@ -924,9 +951,10 @@ export function CampaignDetailPage() {
                     checked={configForm.attestation_enabled}
                     disabled={!configForm.safe_page_enabled}
                     data-testid="cfg-attestation-enabled"
-                    onChange={(e) => setConfigForm((f) => ({ ...f, attestation_enabled: e.target.checked }))}
-                  />
-                  {' '}
+                    onChange={(e) =>
+                      setConfigForm((f) => ({ ...f, attestation_enabled: e.target.checked }))
+                    }
+                  />{' '}
                   Require L2 attestation cookie (RP-M2)
                 </label>
                 {configForm.attestation_enabled ? (
@@ -940,7 +968,9 @@ export function CampaignDetailPage() {
                       max={900}
                       value={configForm.attestation_ttl_sec}
                       data-testid="cfg-attestation-ttl"
-                      onChange={(e) => setConfigForm((f) => ({ ...f, attestation_ttl_sec: e.target.value }))}
+                      onChange={(e) =>
+                        setConfigForm((f) => ({ ...f, attestation_ttl_sec: e.target.value }))
+                      }
                     />
                   </label>
                 ) : null}
@@ -948,7 +978,8 @@ export function CampaignDetailPage() {
               <div className="section-card stack" data-testid="campaign-click-delivery-config">
                 <h4 className="subsection-title">Click delivery (reverse proxy)</h4>
                 <p className="text-muted text-sm">
-                  Default redirect sends the browser to the landing URL. Reverse proxy mode fetches the upstream through the tracker edge (RP-M3).
+                  Default redirect sends the browser to the landing URL. Reverse proxy mode fetches
+                  the upstream through the tracker edge (RP-M3).
                 </p>
                 <label className="form-field" htmlFor="cfg-click-delivery">
                   Delivery mode
@@ -957,10 +988,12 @@ export function CampaignDetailPage() {
                     className="form-input"
                     value={configForm.click_delivery}
                     data-testid="cfg-click-delivery"
-                    onChange={(e) => setConfigForm((f) => ({
-                      ...f,
-                      click_delivery: normalizeClickDelivery(e.target.value),
-                    }))}
+                    onChange={(e) =>
+                      setConfigForm((f) => ({
+                        ...f,
+                        click_delivery: normalizeClickDelivery(e.target.value),
+                      }))
+                    }
                   >
                     <option value="redirect">Redirect (default)</option>
                     <option value="proxy">Reverse proxy</option>
@@ -977,7 +1010,9 @@ export function CampaignDetailPage() {
                         placeholder="https://upstream.example/offer"
                         value={configForm.proxy_upstream_url}
                         data-testid="cfg-proxy-upstream-url"
-                        onChange={(e) => setConfigForm((f) => ({ ...f, proxy_upstream_url: e.target.value }))}
+                        onChange={(e) =>
+                          setConfigForm((f) => ({ ...f, proxy_upstream_url: e.target.value }))
+                        }
                       />
                     </label>
                     <label className="form-field checkbox-field" htmlFor="cfg-proxy-rewrite-assets">
@@ -986,9 +1021,10 @@ export function CampaignDetailPage() {
                         type="checkbox"
                         checked={configForm.proxy_rewrite_assets}
                         data-testid="cfg-proxy-rewrite-assets"
-                        onChange={(e) => setConfigForm((f) => ({ ...f, proxy_rewrite_assets: e.target.checked }))}
-                      />
-                      {' '}
+                        onChange={(e) =>
+                          setConfigForm((f) => ({ ...f, proxy_rewrite_assets: e.target.checked }))
+                        }
+                      />{' '}
                       Rewrite asset URLs through proxy
                     </label>
                   </>
@@ -997,23 +1033,27 @@ export function CampaignDetailPage() {
               <div className="section-card stack" data-testid="campaign-dmr-config">
                 <h4 className="subsection-title">Referrer hiding (DMR)</h4>
                 <p className="text-muted text-sm">
-                  Serves an intermediate HTML page so the browser navigates to the landing without sending Referer. Also activates when <code>dmr=1</code> is on the click URL.
+                  Serves an intermediate HTML page so the browser navigates to the landing without
+                  sending Referer. Also activates when <code>dmr=1</code> is on the click URL.
                 </p>
                 <label className="form-field checkbox-field" htmlFor="cfg-dmr-enabled">
                   <input
                     id="cfg-dmr-enabled"
                     type="checkbox"
                     checked={configForm.dmr_enabled}
-                    onChange={(e) => setConfigForm((f) => ({ ...f, dmr_enabled: e.target.checked }))}
-                  />
-                  {' '}
+                    onChange={(e) =>
+                      setConfigForm((f) => ({ ...f, dmr_enabled: e.target.checked }))
+                    }
+                  />{' '}
                   Enable DMR for campaign clicks
                 </label>
               </div>
               <div className="section-card stack" data-testid="campaign-gma-config">
                 <h4 className="subsection-title">Gray-market defenses (GMA)</h4>
                 <p className="text-muted text-sm">
-                  TLS fingerprint blocklist, connection-type policy, L1/L1.5 safe-view gates, and signed offer links. Tracker env <code>LINK_SIGNING_HMAC_SECRET</code> must be set for link signing.
+                  TLS fingerprint blocklist, connection-type policy, L1/L1.5 safe-view gates, and
+                  signed offer links. Tracker env <code>LINK_SIGNING_HMAC_SECRET</code> must be set
+                  for link signing.
                 </p>
                 <label className="form-field checkbox-field" htmlFor="cfg-l1-cidr-block">
                   <input
@@ -1021,9 +1061,10 @@ export function CampaignDetailPage() {
                     type="checkbox"
                     checked={configForm.l1_cidr_block_enabled}
                     data-testid="cfg-l1-cidr-block"
-                    onChange={(e) => setConfigForm((f) => ({ ...f, l1_cidr_block_enabled: e.target.checked }))}
-                  />
-                  {' '}
+                    onChange={(e) =>
+                      setConfigForm((f) => ({ ...f, l1_cidr_block_enabled: e.target.checked }))
+                    }
+                  />{' '}
                   L1 CIDR/ASN block (datacenter ranges)
                 </label>
                 <label className="form-field checkbox-field" htmlFor="cfg-l15-proxy-vpn-block">
@@ -1032,9 +1073,13 @@ export function CampaignDetailPage() {
                     type="checkbox"
                     checked={configForm.l15_proxy_vpn_block_enabled}
                     data-testid="cfg-l15-proxy-vpn-block"
-                    onChange={(e) => setConfigForm((f) => ({ ...f, l15_proxy_vpn_block_enabled: e.target.checked }))}
-                  />
-                  {' '}
+                    onChange={(e) =>
+                      setConfigForm((f) => ({
+                        ...f,
+                        l15_proxy_vpn_block_enabled: e.target.checked,
+                      }))
+                    }
+                  />{' '}
                   L1.5 proxy/VPN safe view
                 </label>
                 <label className="form-field checkbox-field" htmlFor="cfg-tls-fp-block">
@@ -1043,9 +1088,13 @@ export function CampaignDetailPage() {
                     type="checkbox"
                     checked={configForm.tls_fingerprint_block_enabled}
                     data-testid="cfg-tls-fp-block"
-                    onChange={(e) => setConfigForm((f) => ({ ...f, tls_fingerprint_block_enabled: e.target.checked }))}
-                  />
-                  {' '}
+                    onChange={(e) =>
+                      setConfigForm((f) => ({
+                        ...f,
+                        tls_fingerprint_block_enabled: e.target.checked,
+                      }))
+                    }
+                  />{' '}
                   Block known bad TLS fingerprints (JA3/JA4)
                 </label>
                 <label className="form-field" htmlFor="cfg-conn-type-policy">
@@ -1055,7 +1104,9 @@ export function CampaignDetailPage() {
                     className="form-input"
                     value={configForm.conn_type_policy}
                     data-testid="cfg-conn-type-policy"
-                    onChange={(e) => setConfigForm((f) => ({ ...f, conn_type_policy: e.target.value }))}
+                    onChange={(e) =>
+                      setConfigForm((f) => ({ ...f, conn_type_policy: e.target.value }))
+                    }
                   >
                     <option value="block_vpn_hosting">Block VPN/hosting (default)</option>
                     <option value="mobile_only">Mobile only</option>
@@ -1068,9 +1119,10 @@ export function CampaignDetailPage() {
                     type="checkbox"
                     checked={configForm.link_signing_enabled}
                     data-testid="cfg-link-signing"
-                    onChange={(e) => setConfigForm((f) => ({ ...f, link_signing_enabled: e.target.checked }))}
-                  />
-                  {' '}
+                    onChange={(e) =>
+                      setConfigForm((f) => ({ ...f, link_signing_enabled: e.target.checked }))
+                    }
+                  />{' '}
                   Sign outbound offer links (HMAC)
                 </label>
                 {configForm.link_signing_enabled ? (
@@ -1084,7 +1136,9 @@ export function CampaignDetailPage() {
                       max={3600}
                       value={configForm.link_signing_ttl_sec}
                       data-testid="cfg-link-signing-ttl"
-                      onChange={(e) => setConfigForm((f) => ({ ...f, link_signing_ttl_sec: e.target.value }))}
+                      onChange={(e) =>
+                        setConfigForm((f) => ({ ...f, link_signing_ttl_sec: e.target.value }))
+                      }
                     />
                   </label>
                 ) : null}
@@ -1099,66 +1153,62 @@ export function CampaignDetailPage() {
               />
             </div>
           ) : null}
-          <ConfigGrid rows={[
-            ['ID', campaign.id],
-            ['Customer', campaign.customer_id ?? '—'],
-            ['Timezone', campaign.timezone ?? 'UTC'],
-            ['Safe page', campaign.safe_page_enabled ? (campaign.safe_page_url || 'enabled (no URL)') : 'off'],
-            ['DMR', campaign.dmr_enabled ? 'on' : 'off'],
-            [
-              'Click delivery',
-              clickDeliveryLabel(normalizeClickDelivery(campaign.click_delivery)),
-            ],
-            ...(normalizeClickDelivery(campaign.click_delivery) === 'proxy'
-              ? [
-                  ['Proxy upstream', campaign.proxy_upstream_url ?? '—'] as [string, string],
-                  [
-                    'Proxy rewrite assets',
-                    campaign.proxy_rewrite_assets ? 'yes' : 'no',
-                  ] as [string, string],
-                ]
-              : []),
-            ['TLS fingerprint block', campaign.tls_fingerprint_block_enabled ? 'on' : 'off'],
-            ['L1 CIDR block', campaign.l1_cidr_block_enabled ? 'on' : 'off'],
-            ['L1.5 proxy/VPN block', campaign.l15_proxy_vpn_block_enabled ? 'on' : 'off'],
-            ['Conn type policy', campaign.conn_type_policy ?? 'block_vpn_hosting'],
-            [
-              'Link signing',
-              campaign.link_signing_enabled
-                ? `on (${campaign.link_signing_ttl_sec ?? 900}s TTL)`
-                : 'off',
-            ],
-            [
-              'Frequency limit',
-              campaign.freq_limit
-                ? `${campaign.freq_limit} / ${campaign.freq_window}s`
-                : 'None',
-            ],
-            [
-              'Geo',
-              campaign.target_countries?.length
-                ? campaign.target_countries.join(', ')
-                : 'All',
-            ],
-            [
-              'Schedule',
-              campaign.start_at || campaign.end_at
-                ? `${campaign.start_at ? new Date(campaign.start_at).toLocaleString() : '—'} → ${campaign.end_at ? new Date(campaign.end_at).toLocaleString() : '—'}`
-                : 'None',
-            ],
-            [
-              'Daypart',
-              campaign.daypart_hours?.length
-                ? campaign.daypart_hours.join(', ')
-                : 'All hours',
-            ],
-            [
-              'Created',
-              campaign.created_at
-                ? new Date(campaign.created_at).toLocaleString()
-                : '—',
-            ],
-          ]}
+          <ConfigGrid
+            rows={[
+              ['ID', campaign.id],
+              ['Customer', campaign.customer_id ?? '—'],
+              ['Timezone', campaign.timezone ?? 'UTC'],
+              [
+                'Safe page',
+                campaign.safe_page_enabled ? campaign.safe_page_url || 'enabled (no URL)' : 'off',
+              ],
+              ['DMR', campaign.dmr_enabled ? 'on' : 'off'],
+              [
+                'Click delivery',
+                clickDeliveryLabel(normalizeClickDelivery(campaign.click_delivery)),
+              ],
+              ...(normalizeClickDelivery(campaign.click_delivery) === 'proxy'
+                ? [
+                    ['Proxy upstream', campaign.proxy_upstream_url ?? '—'] as [string, string],
+                    ['Proxy rewrite assets', campaign.proxy_rewrite_assets ? 'yes' : 'no'] as [
+                      string,
+                      string,
+                    ],
+                  ]
+                : []),
+              ['TLS fingerprint block', campaign.tls_fingerprint_block_enabled ? 'on' : 'off'],
+              ['L1 CIDR block', campaign.l1_cidr_block_enabled ? 'on' : 'off'],
+              ['L1.5 proxy/VPN block', campaign.l15_proxy_vpn_block_enabled ? 'on' : 'off'],
+              ['Conn type policy', campaign.conn_type_policy ?? 'block_vpn_hosting'],
+              [
+                'Link signing',
+                campaign.link_signing_enabled
+                  ? `on (${campaign.link_signing_ttl_sec ?? 900}s TTL)`
+                  : 'off',
+              ],
+              [
+                'Frequency limit',
+                campaign.freq_limit ? `${campaign.freq_limit} / ${campaign.freq_window}s` : 'None',
+              ],
+              [
+                'Geo',
+                campaign.target_countries?.length ? campaign.target_countries.join(', ') : 'All',
+              ],
+              [
+                'Schedule',
+                campaign.start_at || campaign.end_at
+                  ? `${campaign.start_at ? new Date(campaign.start_at).toLocaleString() : '—'} → ${campaign.end_at ? new Date(campaign.end_at).toLocaleString() : '—'}`
+                  : 'None',
+              ],
+              [
+                'Daypart',
+                campaign.daypart_hours?.length ? campaign.daypart_hours.join(', ') : 'All hours',
+              ],
+              [
+                'Created',
+                campaign.created_at ? new Date(campaign.created_at).toLocaleString() : '—',
+              ],
+            ]}
           />
         </div>
       ) : null}
@@ -1172,6 +1222,12 @@ export function CampaignDetailPage() {
       {!masked && tab === 'postbacks' ? (
         <div className="section-block">
           <CampaignPostbackSection campaignId={id} canWrite={canWriteCampaign} />
+        </div>
+      ) : null}
+
+      {!masked && tab === 'fraud' ? (
+        <div className="section-block">
+          <CampaignFraudSection campaignId={id} canWrite={canWriteCampaign} />
         </div>
       ) : null}
 
@@ -1197,7 +1253,7 @@ export function CampaignDetailPage() {
           {eventsTotal > EVENTS_PAGE_SIZE ? (
             <div className="mb-4">
               <FilterToolbar
-                pagination={(
+                pagination={
                   <PaginationBar
                     label={`${eventsPage + 1} / ${eventsPageCount}`}
                     prevDisabled={eventsPage === 0}
@@ -1205,7 +1261,7 @@ export function CampaignDetailPage() {
                     onPrev={() => setEventsPage((p) => p - 1)}
                     onNext={() => setEventsPage((p) => p + 1)}
                   />
-                )}
+                }
               />
             </div>
           ) : null}
@@ -1234,11 +1290,11 @@ export function CampaignDetailPage() {
                   </tr>
                 ) : null}
                 {eventsRows.map((row, index) => (
-                  <tr key={`${String(row.created_at ?? '')}-${String(row.click_id ?? '')}-${index}`}>
+                  <tr
+                    key={`${String(row.created_at ?? '')}-${String(row.click_id ?? '')}-${index}`}
+                  >
                     <td>
-                      {row.created_at
-                        ? new Date(String(row.created_at)).toLocaleString()
-                        : '—'}
+                      {row.created_at ? new Date(String(row.created_at)).toLocaleString() : '—'}
                     </td>
                     <td>{String(row.event_type ?? '—')}</td>
                     <td className="font-mono text-hint">{String(row.click_id ?? '—')}</td>
@@ -1254,10 +1310,11 @@ export function CampaignDetailPage() {
       {!masked && tab === 'creative' ? (
         <div className="section-block">
           <div className="stack">
-            <ConfigGrid rows={[
-              ['Target URL', campaign.target_url ?? '—'],
-              ['Brand ID', campaign.brand_id ?? '—'],
-            ]}
+            <ConfigGrid
+              rows={[
+                ['Target URL', campaign.target_url ?? '—'],
+                ['Brand ID', campaign.brand_id ?? '—'],
+              ]}
             />
             <CampaignBrandCreativesSection
               brandId={campaign.brand_id ?? ''}
@@ -1275,11 +1332,7 @@ export function CampaignDetailPage() {
         </div>
       ) : null}
 
-      <ForecastModal
-        open={forecastOpen}
-        opts={forecastOpts}
-        onClose={closeForecast}
-      />
+      <ForecastModal open={forecastOpen} opts={forecastOpts} onClose={closeForecast} />
     </>
   );
 }

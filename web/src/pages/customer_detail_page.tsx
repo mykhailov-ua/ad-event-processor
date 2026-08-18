@@ -12,15 +12,15 @@ import { touchCustomerContext } from '../helpers/customer_context.js';
 import { mapServiceError } from '../helpers/service_error.js';
 import { pushToastMessage } from '../helpers/toast_ui.js';
 import { formatAmountMicro, formatUsdDecimal } from '../helpers/money.js';
-import type { CampaignDTO, CampaignListResponse } from '../types/api/campaign.js';
-import type { CustomerDTO, TaxProfileDTO } from '../types/api/customer.js';
-import type { WalletBalanceDTO } from '../types/api/billing.js';
+import type { CampaignDTO, CampaignListResponse } from '../types/campaign.js';
+import type { CustomerDTO, TaxProfileDTO } from '../types/customer.js';
+import type { WalletBalanceDTO } from '../types/billing.js';
 import { createSortState, sortRows, toggleSort } from '../lib/table_sort.js';
 import { CustomerApiKeysSection } from '../components/customer_api_keys_section.js';
 import { BillingForecastWidget } from '../components/billing_forecast_widget.js';
 import { BillingStatementPanel } from '../components/billing_statement_panel.js';
 import { BillingPaymentHistoryPanel } from '../components/billing_payment_history_panel.js';
-import { useResource } from '../hooks/use_resource.js';
+import { useResource } from '../helpers/use_resource.js';
 import { Breadcrumbs } from '../components/breadcrumbs.js';
 import { Button, ButtonLink } from '../components/button.js';
 import { ErrorBlock } from '../components/error_block.js';
@@ -34,7 +34,9 @@ function TableSkeleton({ cols, rows = 3 }: { cols: number; rows?: number }) {
       {Array.from({ length: rows }, (_, rowIndex) => (
         <tr key={`skel-${rowIndex}`} className="data-table__row--skeleton" aria-hidden="true">
           {Array.from({ length: cols }, (__, colIndex) => (
-            <td key={`skel-${rowIndex}-${colIndex}`}><span className="skeleton-bar" /></td>
+            <td key={`skel-${rowIndex}-${colIndex}`}>
+              <span className="skeleton-bar" />
+            </td>
           ))}
         </tr>
       ))}
@@ -42,9 +44,6 @@ function TableSkeleton({ cols, rows = 3 }: { cols: number; rows?: number }) {
   );
 }
 
-/**
- * Customer detail with campaigns, wallet, tax profile, and API keys.
- */
 export function CustomerDetailPage() {
   const { id = '' } = useParams();
   const navigate = useNavigate();
@@ -68,21 +67,26 @@ export function CustomerDetailPage() {
     if (id) touchCustomerContext(id);
   }, [id]);
 
-  const { data: customer, loading: customerLoading, error: customerError } = useResource<CustomerDTO>(
-    id ? `/api/v1/customers/${id}` : null,
-  );
+  const {
+    data: customer,
+    loading: customerLoading,
+    error: customerError,
+  } = useResource<CustomerDTO>(id ? `/api/v1/customers/${id}` : null);
 
   const { data: campaignsData, loading: campaignsLoading } = useResource<CampaignListResponse>(
-    id ? `/api/v1/campaigns?customer_id=${encodeURIComponent(id)}&limit=10&offset=0` : null,
+    id ? `/api/v1/campaigns?customer_id=${encodeURIComponent(id)}&limit=10&offset=0` : null
   );
 
   const { data: wallet, loading: walletLoading } = useResource<WalletBalanceDTO>(
-    id ? `/api/v1/customers/${id}/wallet` : null,
+    id ? `/api/v1/customers/${id}/wallet` : null
   );
 
-  const { data: taxProfile, loading: taxLoading, error: taxError, reload: reloadTax } = useResource<TaxProfileDTO>(
-    id ? `/api/v1/customers/${id}/tax-profile` : null,
-  );
+  const {
+    data: taxProfile,
+    loading: taxLoading,
+    error: taxError,
+    reload: reloadTax,
+  } = useResource<TaxProfileDTO>(id ? `/api/v1/customers/${id}/tax-profile` : null);
 
   const taxSyncedRef = useRef<string | null>(null);
   useEffect(() => {
@@ -96,11 +100,15 @@ export function CustomerDetailPage() {
     });
   }, [taxProfile, id]);
 
-  const campaigns = useMemo(() => sortRows(campaignsData?.items ?? [], sortState, {
-    name: (c: CampaignDTO) => c.name ?? '',
-    status: (c: CampaignDTO) => c.status ?? '',
-    budget_limit: (c: CampaignDTO) => Number(c.budget_limit ?? 0),
-  }), [campaignsData?.items, sortState]);
+  const campaigns = useMemo(
+    () =>
+      sortRows(campaignsData?.items ?? [], sortState, {
+        name: (c: CampaignDTO) => c.name ?? '',
+        status: (c: CampaignDTO) => c.status ?? '',
+        budget_limit: (c: CampaignDTO) => Number(c.budget_limit ?? 0),
+      }),
+    [campaignsData?.items, sortState]
+  );
 
   const onCampaignSort = (key: string) => {
     setSortState((prev) => {
@@ -128,9 +136,9 @@ export function CustomerDetailPage() {
   const exportBalanceCsv = async () => {
     if (balanceExportBusy || !id) return;
     setBalanceExportBusy(true);
-    const [blob, err] = await to(apiBlob(
-      `/api/v1/customers/${encodeURIComponent(id)}/balance/export?format=csv`,
-    ));
+    const [blob, err] = await to(
+      apiBlob(`/api/v1/customers/${encodeURIComponent(id)}/balance/export?format=csv`)
+    );
     setBalanceExportBusy(false);
     if (err) {
       const view = mapServiceError(err);
@@ -155,10 +163,12 @@ export function CustomerDetailPage() {
       tax_rate_bps: Number.parseInt(taxForm.tax_rate_bps, 10),
     };
     setTaxSaving(true);
-    const [, err] = await to(apiConfirmed(`/api/v1/customers/${id}/tax-profile`, {
-      method: 'PUT',
-      body: JSON.stringify(body),
-    }));
+    const [, err] = await to(
+      apiConfirmed(`/api/v1/customers/${id}/tax-profile`, {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      })
+    );
     setTaxSaving(false);
     if (err) {
       if (err instanceof ConfirmCancelledError) return;
@@ -192,10 +202,11 @@ export function CustomerDetailPage() {
   return (
     <>
       <div className="page-header">
-        <Breadcrumbs items={[
-          { label: 'Customers', href: '/customers' },
-          { label: customer.name ?? 'Customer' },
-        ]}
+        <Breadcrumbs
+          items={[
+            { label: 'Customers', href: '/customers' },
+            { label: customer.name ?? 'Customer' },
+          ]}
         />
         <div className="page-header__row">
           <div className="flex items-center gap-2">
@@ -231,7 +242,9 @@ export function CustomerDetailPage() {
         </div>
         <div className="metric-card">
           <div className="metric-card__label">Total spend</div>
-          <div className="metric-card__value font-mono">{formatUsdDecimal(customer.total_spend)}</div>
+          <div className="metric-card__value font-mono">
+            {formatUsdDecimal(customer.total_spend)}
+          </div>
         </div>
       </div>
 
@@ -311,9 +324,9 @@ export function CustomerDetailPage() {
             <dt>Rate (bps)</dt>
             <dd className="font-mono">{String(taxProfile.tax_rate_bps ?? 0)}</dd>
           </dl>
-        ) : (!taxLoading && !taxError ? (
+        ) : !taxLoading && !taxError ? (
           <p className="text-muted text-sm">No tax profile on file.</p>
-        ) : null)}
+        ) : null}
       </section>
 
       <CustomerApiKeysSection canCreate={canCreateApiKey} />
@@ -364,7 +377,9 @@ export function CustomerDetailPage() {
         {campaignsLoading && campaigns.length === 0 ? (
           <div className="table-wrapper elevation-raised">
             <table className="data-table">
-              <tbody><TableSkeleton cols={3} rows={3} /></tbody>
+              <tbody>
+                <TableSkeleton cols={3} rows={3} />
+              </tbody>
             </table>
           </div>
         ) : null}
@@ -389,17 +404,29 @@ export function CustomerDetailPage() {
               <thead>
                 <tr>
                   <th scope="col">
-                    <button type="button" className="data-table__sort" onClick={() => onCampaignSort('name')}>
+                    <button
+                      type="button"
+                      className="data-table__sort"
+                      onClick={() => onCampaignSort('name')}
+                    >
                       Name
                     </button>
                   </th>
                   <th scope="col">
-                    <button type="button" className="data-table__sort" onClick={() => onCampaignSort('status')}>
+                    <button
+                      type="button"
+                      className="data-table__sort"
+                      onClick={() => onCampaignSort('status')}
+                    >
                       Status
                     </button>
                   </th>
                   <th scope="col">
-                    <button type="button" className="data-table__sort" onClick={() => onCampaignSort('budget_limit')}>
+                    <button
+                      type="button"
+                      className="data-table__sort"
+                      onClick={() => onCampaignSort('budget_limit')}
+                    >
                       Budget
                     </button>
                   </th>
@@ -421,7 +448,9 @@ export function CustomerDetailPage() {
                     }}
                   >
                     <td className="font-medium">{c.name}</td>
-                    <td><StatusBadge status={c.status} /></td>
+                    <td>
+                      <StatusBadge status={c.status} />
+                    </td>
                     <td className="font-mono">{formatUsdDecimal(c.budget_limit ?? '0.00')}</td>
                   </tr>
                 ))}

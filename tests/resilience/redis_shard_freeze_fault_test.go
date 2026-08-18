@@ -16,8 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Slow Redis on one shard must surface as filter timeout (504) without stalling other shards.
-// This harness exercises PostTrackGnetJSON + UnifiedFilter; it does not prove mmap WAL fallback.
 func TestFault_RedisShardFreezeIsolation(t *testing.T) {
 	const (
 		frozenShard   = 1

@@ -1,5 +1,5 @@
 import { deriveCampaignHealth } from '../models/campaign_health.js';
-import type { CampaignDTO } from '../types/api/campaign.js';
+import type { CampaignDTO } from '../types/campaign.js';
 
 export type CampaignHealthBadgeCtx = {
   portfolioRow?: Record<string, unknown>;
@@ -16,9 +16,6 @@ function healthMod(level: string): string {
   return 'success';
 }
 
-/**
- * Compact campaign health badge with tooltip title.
- */
 export function CampaignHealthBadge({
   campaign,
   ctx = {},
@@ -28,10 +25,7 @@ export function CampaignHealthBadge({
 }) {
   const health = deriveCampaignHealth(campaign, ctx);
   return (
-    <span
-      className={`status-badge status-badge--${healthMod(health.level)}`}
-      title={health.title}
-    >
+    <span className={`status-badge status-badge--${healthMod(health.level)}`} title={health.title}>
       {health.label}
     </span>
   );

@@ -12,7 +12,7 @@ bash scripts/ci/cpa_route_gap_gate.sh
 
 echo "== CPA-M8: go unit (no Docker) =="
 go test ./internal/controlplane/ -run 'DLQInbox|DlqInbox|CPA_M8' -short -count=1
-go test ./internal/controlplane/adminapi/ -run 'DLQInbox|ConsentProofs' -count=1
+go test ./internal/controlplane/ -run 'DLQInbox|ConsentProofs' -count=1
 
 if [ "${CPA_M8_INTEGRATION:-0}" = "1" ]; then
   echo "== CPA-M8: go integration (Docker testcontainers) =="

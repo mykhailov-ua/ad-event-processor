@@ -205,7 +205,7 @@ bash scripts/ops/verify_redis_topology.sh
 | Ops | `/ops` (doctor, outbox, metrics), `/ops/shards`, `/ops/blacklist` |
 | Settings | Platform, license apply, `/settings/domains` |
 
-**Tooling:** `web/tsconfig.json` strict; `npm run typecheck`; `web/src/types/api/` DTOs; CI `admin_web.sh` + `admin_bundle_gate.sh`.
+**Tooling:** `web/tsconfig.json` strict; `npm run typecheck`; `web/src/types/` DTOs; CI `admin_web.sh` + `admin_bundle_gate.sh`.
 
 **Open UI gaps:** [`.cursor/MILESTONE.md`](../.cursor/MILESTONE.md) §1 — detailed DoD, testing, SLA, and perf per feature (§1.0 cross-cutting, §1.5 release gate).
 

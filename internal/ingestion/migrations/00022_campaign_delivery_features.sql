@@ -1,4 +1,3 @@
-
 CREATE TABLE campaign_templates (
     id              UUID PRIMARY KEY,
     customer_id     UUID NOT NULL REFERENCES customers(id),

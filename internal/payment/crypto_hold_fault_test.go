@@ -1,11 +1,11 @@
 package payment_test
 
 import (
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
-
 	"context"
 	"sync"
 	"testing"
+
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"github.com/bidshard/ad-event-processor/internal/ingestion"
 	"github.com/bidshard/ad-event-processor/internal/payment"

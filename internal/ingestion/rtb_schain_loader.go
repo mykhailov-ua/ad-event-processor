@@ -2,6 +2,7 @@ package ingestion
 
 import (
 	"context"
+
 	db "github.com/bidshard/ad-event-processor/internal/domain/db"
 )
 

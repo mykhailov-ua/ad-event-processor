@@ -135,7 +135,7 @@ func matchClickQueryKey(key []byte) clickQueryKeyID {
 			return clickKeySubGeneric
 		}
 	case 5:
-		if loadU32(key) == 0x696c6367 && key[4] == 'd' { // gclid
+		if loadU32(key) == 0x696c6367 && key[4] == 'd' {
 			return clickKeyGCLID
 		}
 		if idx, ok := subKeyIndex(key); ok && idx >= 10 {
@@ -143,11 +143,11 @@ func matchClickQueryKey(key []byte) clickQueryKeyID {
 		}
 	case 6:
 		switch loadU32(key) {
-		case 0x6c636266: // fbcl
+		case 0x6c636266:
 			if key[4] == 'i' && key[5] == 'd' {
 				return clickKeyFBCLID
 			}
-		case 0x6c637474: // ttcl
+		case 0x6c637474:
 			if key[4] == 'i' && key[5] == 'd' {
 				return clickKeyTTCLID
 			}

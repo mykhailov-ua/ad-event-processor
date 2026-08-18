@@ -8,8 +8,10 @@ import (
 	"github.com/google/uuid"
 )
 
-const vppLookbackDays = 7
-const vppCampaignSampleBatch = 200
+const (
+	vppLookbackDays        = 7
+	vppCampaignSampleBatch = 200
+)
 
 func (s *Service) queryVPPCampaignSamplesBatch(ctx context.Context, from, to time.Time, campaignIDs []uuid.UUID) (map[uuid.UUID][]forecastHourlySample, error) {
 	if s.chQuery == nil || len(campaignIDs) == 0 {

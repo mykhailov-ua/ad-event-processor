@@ -23,9 +23,6 @@ const SOURCE_OPTIONS: Array<{ value: DLQInboxSource; label: string }> = [
   { value: 'capi', label: 'CAPI' },
 ];
 
-/**
- * CPA-M8 unified DLQ inbox — stream + postback/CAPI with source-aware retry.
- */
 export function OpsDlqPage() {
   const user = auth.getUser();
   const canRetry = can(user?.permissions ?? [], 'shards:write');
@@ -94,7 +91,8 @@ export function OpsDlqPage() {
       <header className="page-header">
         <h1 className="h2">Unified DLQ inbox</h1>
         <p className="text-muted">
-          Stream shard DLQ merged with postback and CAPI dead letters. Retry routes to the correct backend per source.
+          Stream shard DLQ merged with postback and CAPI dead letters. Retry routes to the correct
+          backend per source.
         </p>
       </header>
 
@@ -102,7 +100,7 @@ export function OpsDlqPage() {
 
       <section className="section-block" data-testid="ops-dlq-inbox">
         <FilterToolbar
-          leading={(
+          leading={
             <div className="cluster cluster--sm items-center">
               <span className="text-muted text-sm">Source</span>
               <select
@@ -114,21 +112,25 @@ export function OpsDlqPage() {
                 onChange={(e) => setSource(e.target.value as DLQInboxSource)}
               >
                 {SOURCE_OPTIONS.map((opt) => (
-                  <option key={opt.value || 'all'} value={opt.value}>{opt.label}</option>
+                  <option key={opt.value || 'all'} value={opt.value}>
+                    {opt.label}
+                  </option>
                 ))}
               </select>
             </div>
-          )}
-          pagination={cursor ? (
-            <Button
-              label="Load more"
-              variant="secondary"
-              size="sm"
-              loading={loading}
-              disabled={loading}
-              onClick={() => void loadMore()}
-            />
-          ) : undefined}
+          }
+          pagination={
+            cursor ? (
+              <Button
+                label="Load more"
+                variant="secondary"
+                size="sm"
+                loading={loading}
+                disabled={loading}
+                onClick={() => void loadMore()}
+              />
+            ) : undefined
+          }
         />
 
         {partialErrors.length > 0 ? (
@@ -137,9 +139,7 @@ export function OpsDlqPage() {
           </div>
         ) : null}
 
-        {loading && items.length === 0 ? (
-          <p className="text-muted">Loading…</p>
-        ) : null}
+        {loading && items.length === 0 ? <p className="text-muted">Loading…</p> : null}
 
         <div className="table-wrapper elevation-raised">
           <table className="data-table">

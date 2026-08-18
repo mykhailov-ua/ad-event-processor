@@ -49,7 +49,9 @@ function TableSkeleton({ cols, rows = 5 }: { cols: number; rows?: number }) {
       {Array.from({ length: rows }, (_, i) => (
         <tr key={`mg-skel-${i}`} className="data-table__row--skeleton" aria-hidden="true">
           {Array.from({ length: cols }, (__, j) => (
-            <td key={`mg-skel-${i}-${j}`}><span className="skeleton-bar" /></td>
+            <td key={`mg-skel-${i}-${j}`}>
+              <span className="skeleton-bar" />
+            </td>
           ))}
         </tr>
       ))}
@@ -57,10 +59,10 @@ function TableSkeleton({ cols, rows = 5 }: { cols: number; rows?: number }) {
   );
 }
 
-/**
- * Margin guard policies, activity, and override controls.
- */
-export function CampaignMarginGuardSection({ campaignId, canWrite }: CampaignMarginGuardSectionProps) {
+export function CampaignMarginGuardSection({
+  campaignId,
+  canWrite,
+}: CampaignMarginGuardSectionProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [policies, setPolicies] = useState<MarginGuardPolicy[]>([]);
@@ -104,7 +106,8 @@ export function CampaignMarginGuardSection({ campaignId, canWrite }: CampaignMar
       min_clicks: Number.parseInt(form.min_clicks, 10) || 0,
       roi_floor_pct: Number.parseFloat(form.roi_floor_pct) || 0,
       zero_conv_streak: Number.parseInt(form.zero_conv_streak, 10) || 0,
-      cost_over_revenue_threshold_bps: Number.parseInt(form.cost_over_revenue_threshold_bps, 10) || 500,
+      cost_over_revenue_threshold_bps:
+        Number.parseInt(form.cost_over_revenue_threshold_bps, 10) || 500,
       is_active: form.is_active,
     };
     const [, err] = await to(createMarginGuardPolicy(body));
@@ -187,7 +190,9 @@ export function CampaignMarginGuardSection({ campaignId, canWrite }: CampaignMar
             <tbody>
               {loading ? <TableSkeleton cols={5} /> : null}
               {!loading && policies.length === 0 ? (
-                <tr><td colSpan={5}>No policies yet.</td></tr>
+                <tr>
+                  <td colSpan={5}>No policies yet.</td>
+                </tr>
               ) : null}
               {policies.map((p, idx) => (
                 <tr key={`${p.name ?? ''}-${idx}`}>
@@ -253,7 +258,9 @@ export function CampaignMarginGuardSection({ campaignId, canWrite }: CampaignMar
                   className="form-input form-input--sm"
                   inputMode="numeric"
                   value={form.cost_over_revenue_threshold_bps}
-                  onChange={(e) => setForm((f) => ({ ...f, cost_over_revenue_threshold_bps: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, cost_over_revenue_threshold_bps: e.target.value }))
+                  }
                 />
               </label>
             </div>

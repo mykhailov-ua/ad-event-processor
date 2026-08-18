@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	db "github.com/bidshard/ad-event-processor/internal/domain/db"
 	"github.com/bidshard/ad-event-processor/internal/integrationschema"
 	"github.com/bidshard/ad-event-processor/internal/postback"
@@ -22,7 +21,7 @@ func (s *Service) ListBundledTemplates(_ context.Context) []integrationschema.Te
 	return integrationschema.GMM4TemplateCatalog
 }
 
-func (s *Service) ImportBundledTemplates(ctx context.Context, names []string) ([]adminapi.IntegrationSchemaDTO, error) {
+func (s *Service) ImportBundledTemplates(ctx context.Context, names []string) ([]IntegrationSchemaDTO, error) {
 	if s == nil || s.pool == nil {
 		return nil, fmt.Errorf("service unavailable")
 	}
@@ -34,7 +33,7 @@ func (s *Service) ImportBundledTemplates(ctx context.Context, names []string) ([
 			want[n] = struct{}{}
 		}
 	}
-	var out []adminapi.IntegrationSchemaDTO
+	var out []IntegrationSchemaDTO
 	for _, entry := range integrationschema.GMM4TemplateCatalog {
 		if !wantAll {
 			if _, ok := want[entry.Name]; !ok {
@@ -50,14 +49,14 @@ func (s *Service) ImportBundledTemplates(ctx context.Context, names []string) ([
 	return out, nil
 }
 
-func (s *Service) importBundledTemplate(ctx context.Context, entry integrationschema.TemplateCatalogEntry) (adminapi.IntegrationSchemaDTO, error) {
+func (s *Service) importBundledTemplate(ctx context.Context, entry integrationschema.TemplateCatalogEntry) (IntegrationSchemaDTO, error) {
 	raw, kind, parsed, err := integrationschema.LoadBundledTemplate(entry)
 	if err != nil {
-		return adminapi.IntegrationSchemaDTO{}, err
+		return IntegrationSchemaDTO{}, err
 	}
 	jsonBody, err := json.Marshal(parsed)
 	if err != nil {
-		return adminapi.IntegrationSchemaDTO{}, err
+		return IntegrationSchemaDTO{}, err
 	}
 	_ = raw
 	var id uuid.UUID
@@ -70,13 +69,13 @@ func (s *Service) importBundledTemplate(ctx context.Context, entry integrationsc
 		entry.Name, entry.Version, string(kind), jsonBody,
 	).Scan(&id)
 	if err != nil {
-		return adminapi.IntegrationSchemaDTO{}, err
+		return IntegrationSchemaDTO{}, err
 	}
 	return s.getIntegrationSchemaDTO(ctx, id)
 }
 
-func (s *Service) getIntegrationSchemaDTO(ctx context.Context, id uuid.UUID) (adminapi.IntegrationSchemaDTO, error) {
-	var dto adminapi.IntegrationSchemaDTO
+func (s *Service) getIntegrationSchemaDTO(ctx context.Context, id uuid.UUID) (IntegrationSchemaDTO, error) {
+	var dto IntegrationSchemaDTO
 	var kind string
 	var body []byte
 	var created, updated time.Time
@@ -86,7 +85,7 @@ func (s *Service) getIntegrationSchemaDTO(ctx context.Context, id uuid.UUID) (ad
 		&id, &dto.Name, &dto.Version, &kind, &body, &created, &updated,
 	)
 	if err != nil {
-		return adminapi.IntegrationSchemaDTO{}, err
+		return IntegrationSchemaDTO{}, err
 	}
 	dto.ID = id.String()
 	dto.Kind = kind
@@ -110,14 +109,14 @@ func (s *Service) resolveSchemaIDByName(ctx context.Context, name string) (uuid.
 	return id, nil
 }
 
-func (s *Service) ApplyCampaignTemplates(ctx context.Context, campaignID uuid.UUID, req adminapi.ApplyCampaignTemplatesRequest) (adminapi.ApplyCampaignTemplatesResult, error) {
+func (s *Service) ApplyCampaignTemplates(ctx context.Context, campaignID uuid.UUID, req ApplyCampaignTemplatesRequest) (ApplyCampaignTemplatesResult, error) {
 	if s == nil || s.pool == nil {
-		return adminapi.ApplyCampaignTemplatesResult{}, fmt.Errorf("service unavailable")
+		return ApplyCampaignTemplatesResult{}, fmt.Errorf("service unavailable")
 	}
 	if campaignID == uuid.Nil {
-		return adminapi.ApplyCampaignTemplatesResult{}, fmt.Errorf("campaign id required")
+		return ApplyCampaignTemplatesResult{}, fmt.Errorf("campaign id required")
 	}
-	result := adminapi.ApplyCampaignTemplatesResult{CampaignID: campaignID.String()}
+	result := ApplyCampaignTemplatesResult{CampaignID: campaignID.String()}
 
 	trackingDomain := strings.TrimSpace(req.TrackingDomain)
 	if trackingDomain == "" {
@@ -248,6 +247,6 @@ func postbackEncryptionKey(s *Service) []byte {
 	return []byte("postback-encryption-secret-key32")
 }
 
-func (s *Service) ImportGMM4Templates(ctx context.Context) ([]adminapi.IntegrationSchemaDTO, error) {
+func (s *Service) ImportGMM4Templates(ctx context.Context) ([]IntegrationSchemaDTO, error) {
 	return s.ImportBundledTemplates(ctx, nil)
 }

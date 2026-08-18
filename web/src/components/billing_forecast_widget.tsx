@@ -1,19 +1,13 @@
-import type { BillingForecastDTO } from '../types/api/billing.js';
+import type { BillingForecastDTO } from '../types/billing.js';
 import { formatAmountMicro } from '../helpers/money.js';
-import {
-  isPageBlockingError,
-  mapServiceError,
-} from '../helpers/service_error.js';
-import { useResource } from '../hooks/use_resource.js';
+import { isPageBlockingError, mapServiceError } from '../helpers/service_error.js';
+import { useResource } from '../helpers/use_resource.js';
 import { AlertBanner } from './alert_banner.js';
 
 export type BillingForecastWidgetProps = {
   customerId: string;
 };
 
-/**
- * Customer billing forecast from GET /customers/{id}/billing/forecast.
- */
 export function BillingForecastWidget({ customerId }: BillingForecastWidgetProps) {
   const forecastUrl = customerId
     ? `/api/v1/customers/${encodeURIComponent(customerId)}/billing/forecast`
@@ -23,16 +17,18 @@ export function BillingForecastWidget({ customerId }: BillingForecastWidgetProps
   if (!customerId) return null;
 
   if (loading) {
-    return <p className="text-muted text-sm" data-testid="billing-forecast-loading">Loading forecast…</p>;
+    return (
+      <p className="text-muted text-sm" data-testid="billing-forecast-loading">
+        Loading forecast…
+      </p>
+    );
   }
 
   if (error) {
     const view = mapServiceError(error);
     const message = view.message || 'Forecast unavailable.';
     if (isPageBlockingError(view)) {
-      return (
-        <AlertBanner variant="warning" message={message} />
-      );
+      return <AlertBanner variant="warning" message={message} />;
     }
     return (
       <p className="text-muted text-sm" data-testid="billing-forecast-empty">
@@ -49,9 +45,10 @@ export function BillingForecastWidget({ customerId }: BillingForecastWidgetProps
     );
   }
 
-  const hasNumbers = (data.ledger_mtd_micro ?? 0) > 0
-    || (data.projected_month_end_micro ?? 0) > 0
-    || (data.ledger_run_rate_micro_per_day ?? 0) > 0;
+  const hasNumbers =
+    (data.ledger_mtd_micro ?? 0) > 0 ||
+    (data.projected_month_end_micro ?? 0) > 0 ||
+    (data.ledger_run_rate_micro_per_day ?? 0) > 0;
 
   if (!hasNumbers && !data.low_confidence && !data.ch_unavailable) {
     return (

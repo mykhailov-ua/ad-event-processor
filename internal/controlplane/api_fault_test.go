@@ -1,8 +1,6 @@
 package controlplane
 
 import (
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
-
 	"context"
 	"encoding/json"
 	"fmt"
@@ -14,6 +12,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"github.com/bidshard/ad-event-processor/internal/clickhouse/migrate"
 	"github.com/bidshard/ad-event-processor/internal/config"

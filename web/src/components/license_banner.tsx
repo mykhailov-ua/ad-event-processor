@@ -11,22 +11,20 @@ export type LicenseBannerProps = {
   license?: LicenseInfo | null;
 };
 
-/**
- * License / tier warning banner from GET /api/v1/meta.
- */
 export function LicenseBanner({ license }: LicenseBannerProps) {
   if (!license?.state) return null;
 
   const state = license.state.toLowerCase();
   const warnings = license.tier_warnings ?? [];
   const renewDays = license.renew_days;
-  const healthyActive = (state === 'valid' || state === 'active')
-    && warnings.length === 0
-    && (renewDays == null || renewDays > 7);
+  const healthyActive =
+    (state === 'valid' || state === 'active') &&
+    warnings.length === 0 &&
+    (renewDays == null || renewDays > 7);
   if (healthyActive) return null;
 
-  const severity = license.banner_severity
-    ?? (state === 'expired' || state === 'revoked' ? 'error' : 'warning');
+  const severity =
+    license.banner_severity ?? (state === 'expired' || state === 'revoked' ? 'error' : 'warning');
   const border = severity === 'error' ? 'var(--error)' : 'var(--warning)';
 
   const parts: string[] = [];
@@ -49,7 +47,9 @@ export function LicenseBanner({ license }: LicenseBannerProps) {
       }}
     >
       <span>{parts.join(' · ')}</span>
-      <a href="/settings/license" style={{ color: 'var(--accent)', fontSize: '12px' }}>License</a>
+      <a href="/settings/license" style={{ color: 'var(--accent)', fontSize: '12px' }}>
+        License
+      </a>
     </div>
   );
 }

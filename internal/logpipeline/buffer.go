@@ -1,4 +1,3 @@
-// Package logpipeline implements logpipeline support for BidShard.
 package logpipeline
 
 const copyBufferSize = 32 * 1024

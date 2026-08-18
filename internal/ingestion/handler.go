@@ -635,8 +635,6 @@ type AdsPacketHandler struct {
 	clickProxyClient        *http.Client
 }
 
-// ConfigureCIDR attaches the L1 CIDR/ASN table (RP-M1). Nil disables the
-// hook (fail-open).
 func (h *AdsPacketHandler) ConfigureCIDR(table *CIDRTable) {
 	if h == nil {
 		return
@@ -645,7 +643,6 @@ func (h *AdsPacketHandler) ConfigureCIDR(table *CIDRTable) {
 	h.cidrMetrics = newL1CIDRMetrics()
 }
 
-// ConfigureTLSFingerprint attaches the L1 TLS JA3/JA4 blocklist (GMA-M1).
 func (h *AdsPacketHandler) ConfigureTLSFingerprint(table *TLSFingerprintTable) {
 	if h == nil {
 		return
@@ -654,7 +651,6 @@ func (h *AdsPacketHandler) ConfigureTLSFingerprint(table *TLSFingerprintTable) {
 	h.tlsFingerprintMetrics = newTLSFingerprintMetrics()
 }
 
-// ConfigureLinkSigning sets the global HMAC secret for offer-link signing (GMA-M4).
 func (h *AdsPacketHandler) ConfigureLinkSigning(secret []byte) {
 	if h == nil {
 		return
@@ -666,7 +662,6 @@ func (h *AdsPacketHandler) ConfigureLinkSigning(secret []byte) {
 	linkInitHMACPads(h.linkSigningSecret, &h.linkHMACIpad, &h.linkHMACOpad)
 }
 
-// ConfigureProxyVPN attaches the L1.5 proxy/VPN table (GM-M1). Nil disables the hook.
 func (h *AdsPacketHandler) ConfigureProxyVPN(table *ProxyVPNTable) {
 	if h == nil {
 		return
@@ -675,7 +670,6 @@ func (h *AdsPacketHandler) ConfigureProxyVPN(table *ProxyVPNTable) {
 	h.l15ProxyVPNMetrics = newL15ProxyVPNMetrics()
 }
 
-// ConfigureDomainPool attaches the GM-M2 tracking-domain rotation table.
 func (h *AdsPacketHandler) ConfigureDomainPool(table *DomainPoolTable) {
 	if h == nil {
 		return
@@ -683,7 +677,6 @@ func (h *AdsPacketHandler) ConfigureDomainPool(table *DomainPoolTable) {
 	h.domainPoolTable = table
 }
 
-// ConfigureCampaignFlow attaches the GM-M3 campaign flow router table.
 func (h *AdsPacketHandler) ConfigureCampaignFlow(table *CampaignFlowTable) {
 	if h == nil {
 		return
@@ -1184,7 +1177,6 @@ var requestBufferPool = sync.Pool{
 }
 
 func (h *AdsPacketHandler) OnTraffic(c gnet.Conn) (action gnet.Action) {
-
 	loopStart := monotonicNano()
 	defer func() {
 		metrics.GnetEventLoopWorkDuration.Add(monoElapsedSeconds(loopStart))

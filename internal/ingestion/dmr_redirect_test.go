@@ -21,13 +21,10 @@ func TestBuildDmrResponse_Correctness(t *testing.T) {
 	assert.Contains(t, string(res), "Content-Type: text/html; charset=utf-8\r\n")
 	assert.Contains(t, string(res), "Cache-Control: no-store\r\n")
 
-	// Validate HTML escaping
 	assert.Contains(t, string(res), "https://offer.com/lander?sub1=123&amp;sub2=test&quot;&amp;name=John&#39;s&lt;/script&gt;")
 
-	// Validate JS escaping
 	assert.Contains(t, string(res), "https:\\/\\/offer.com\\/lander?sub1=123&sub2=test\\\"&name=John\\'s\\x3c\\/script\\x3e")
 
-	// Validate Content-Length header accuracy
 	idx := bytes.Index(res, []byte("\r\n\r\n"))
 	require.True(t, idx > 0)
 	body := res[idx+4:]

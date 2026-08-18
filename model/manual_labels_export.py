@@ -11,6 +11,29 @@ from pathlib import Path
 EXPORT_COLUMNS = ("ip_hash", "label", "source", "reason")
 
 
+def load_manual_labels(dsn: str) -> list[tuple[str, int]]:
+    """Load ip_hash and label pairs from ml_manual_labels."""
+    import psycopg2
+
+    conn = psycopg2.connect(dsn)
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT ip_hash, label FROM ml_manual_labels")
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    out: list[tuple[str, int]] = []
+    for ip_hash, label in rows:
+        if not ip_hash:
+            continue
+        normalized = str(ip_hash).strip().lower()
+        if len(normalized) != 32:
+            continue
+        out.append((normalized, int(label)))
+    return out
+
+
 def export_manual_labels(output_path: Path, *, dsn: str) -> int:
     """Write ml_manual_labels rows to CSV; return row count."""
     import psycopg2

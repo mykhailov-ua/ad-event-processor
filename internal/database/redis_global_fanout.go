@@ -12,8 +12,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// ForEachConnectedShard runs fn on every non-nil shard. Nil slots are skipped
-// (optional shard 0 at startup). Returns an error only when no shard succeeded.
 func ForEachConnectedShard(ctx context.Context, rdbs []redis.UniversalClient, op string, fn func(shard int, rdb redis.UniversalClient) error) error {
 	if len(rdbs) == 0 {
 		return fmt.Errorf("%s: no redis client available", op)
@@ -47,7 +45,6 @@ func ForEachConnectedShard(ctx context.Context, rdbs []redis.UniversalClient, op
 	return nil
 }
 
-// ForEachConnectedShardStrict requires every shard slot to be connected and fn to succeed.
 func ForEachConnectedShardStrict(ctx context.Context, rdbs []redis.UniversalClient, op string, fn func(shard int, rdb redis.UniversalClient) error) error {
 	if len(rdbs) == 0 {
 		return fmt.Errorf("%s: no redis client available", op)
@@ -67,14 +64,12 @@ func ForEachConnectedShardStrict(ctx context.Context, rdbs []redis.UniversalClie
 	return nil
 }
 
-// SyncGlobalStringToAllShards writes the same key/value to every connected Redis shard.
 func SyncGlobalStringToAllShards(ctx context.Context, rdbs []redis.UniversalClient, key, value string, ttl time.Duration) error {
 	return ForEachConnectedShard(ctx, rdbs, "sync_global_string", func(_ int, rdb redis.UniversalClient) error {
 		return rdb.Set(ctx, key, value, ttl).Err()
 	})
 }
 
-// DeleteGlobalKeyFromAllShards removes key from every connected Redis shard.
 func DeleteGlobalKeyFromAllShards(ctx context.Context, rdbs []redis.UniversalClient, key string) error {
 	return ForEachConnectedShard(ctx, rdbs, "delete_global_key", func(_ int, rdb redis.UniversalClient) error {
 		return rdb.Del(ctx, key).Err()

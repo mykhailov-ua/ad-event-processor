@@ -16,7 +16,6 @@ var (
 	dmrHTMLSuffix = []byte("\")</script></head><body></body></html>")
 )
 
-// BuildDmrResponse writes a full HTTP/1.1 DMR HTML response into dst (may grow via dmrGrow).
 func BuildDmrResponse(dst []byte, url []byte) []byte {
 	htmlEscapedLen := dmrHTMLEscapeLen(url)
 	jsEscapedLen := dmrJsEscapeLen(url)
@@ -52,9 +51,9 @@ func dmrHTMLUnicodeLineSepLen(url []byte, i, n int) (int, int) {
 	}
 	switch url[i+2] {
 	case 0xa8:
-		return 7, 3 // &#8232;
+		return 7, 3
 	case 0xa9:
-		return 7, 3 // &#8233;
+		return 7, 3
 	default:
 		return 0, 0
 	}
@@ -310,7 +309,6 @@ func dmrResponseWireLen(url []byte) int {
 	return len(dmrHTTPPrefix) + len(lengthStr) + len(dmrHTTPMiddle) + bodyLen
 }
 
-// parseDmrQueryFlag accepts only dmr=1 or dmr=true (case-insensitive).
 func parseDmrQueryFlag(decoded []byte) bool {
 	n := len(decoded)
 	if n == 1 && decoded[0] == '1' {
@@ -368,9 +366,6 @@ func (h *AdsPacketHandler) writeGnetClickDmrRedirect(ctx *connContext, c gnet.Co
 	h.recordMetrics(startMono, http.StatusOK)
 }
 
-// dmrLocationUsesBuf reports whether location bytes live in buf's backing array.
-// tg/click stores the landing URL in ctx.bufSlice before calling this helper; building
-// the DMR response into the same array would clobber url while escaping.
 func dmrLocationUsesBuf(buf, location []byte) bool {
 	if cap(buf) == 0 || len(location) == 0 {
 		return false

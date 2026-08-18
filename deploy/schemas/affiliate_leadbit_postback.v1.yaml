@@ -1,0 +1,8 @@
+version: 1
+url_template: 'https://postback.leadbit.com/postback?click_id={sub1}&sum={payout}&status={status}'
+placeholders:
+  - click_id
+  - sub1
+  - payout
+  - status
+  - tx_id

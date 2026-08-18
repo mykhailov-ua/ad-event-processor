@@ -2,7 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as auth from '../helpers/auth.js';
 import { boundCustomerId, hasBoundCustomer } from '../helpers/buyer_session.js';
 import { fetchBuyerDashboard, invalidateBuyerDashboard } from '../helpers/buyer_dashboard.js';
-import { visiblePortfolioRows, type BuyerPortfolioVM, type PortfolioRowsCache } from '../models/buyer.js';
+import {
+  visiblePortfolioRows,
+  type BuyerPortfolioVM,
+  type PortfolioRowsCache,
+} from '../models/buyer.js';
 import { pauseCampaign, resumeCampaign } from '../helpers/campaign_actions.js';
 import { ConfirmCancelledError } from '../helpers/confirm_ui.js';
 import { isParallelSlotError, parallelAll } from '../helpers/request_multiplex.js';
@@ -32,9 +36,6 @@ async function runBulk(ids: string[], fn: (id: string) => Promise<unknown>): Pro
   return null;
 }
 
-/**
- * Self-serve portfolio (buyer dashboard, pause/resume only).
- */
 export function SelfServePortfolioPage() {
   const user = auth.getUser();
   const customerId = boundCustomerId(user);
@@ -52,7 +53,7 @@ export function SelfServePortfolioPage() {
 
   const rows = useMemo(
     () => visiblePortfolioRows(portfolio, statusFilter, rowCacheRef.current),
-    [portfolio, statusFilter],
+    [portfolio, statusFilter]
   );
 
   const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.row.id));
@@ -216,7 +217,9 @@ export function SelfServePortfolioPage() {
                     />
                   </td>
                   <td>{c.name ?? c.id}</td>
-                  <td><StatusBadge status={c.status ?? ''} /></td>
+                  <td>
+                    <StatusBadge status={c.status ?? ''} />
+                  </td>
                   <td>
                     {c.pacing_drift_pct != null
                       ? `${Number(c.pacing_drift_pct).toFixed(0)}%`

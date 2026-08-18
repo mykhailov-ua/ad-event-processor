@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	db "github.com/bidshard/ad-event-processor/internal/domain/db"
 	"github.com/bidshard/ad-event-processor/internal/identity"
 
@@ -26,32 +25,32 @@ func normalizeTeamMemberRole(role string) (string, error) {
 	}
 }
 
-func (s *Service) InviteTeamMember(ctx context.Context, customerID uuid.UUID, email, role string) (adminapi.TeamMemberDTO, error) {
+func (s *Service) InviteTeamMember(ctx context.Context, customerID uuid.UUID, email, role string) (TeamMemberDTO, error) {
 	email = strings.TrimSpace(strings.ToLower(email))
 	if email == "" {
-		return adminapi.TeamMemberDTO{}, errValidation("email required")
+		return TeamMemberDTO{}, errValidation("email required")
 	}
 	role, err := normalizeTeamMemberRole(role)
 	if err != nil {
-		return adminapi.TeamMemberDTO{}, err
+		return TeamMemberDTO{}, err
 	}
 	pool := s.GetPool()
 	if pool == nil {
-		return adminapi.TeamMemberDTO{}, errors.New("team service unavailable")
+		return TeamMemberDTO{}, errors.New("team service unavailable")
 	}
 
 	hasher, err := identity.NewPasswordHasher(32768, 2, 2)
 	if err != nil {
-		return adminapi.TeamMemberDTO{}, err
+		return TeamMemberDTO{}, err
 	}
 	tempPwd := make([]byte, 24)
 	if _, err := rand.Read(tempPwd); err != nil {
-		return adminapi.TeamMemberDTO{}, err
+		return TeamMemberDTO{}, err
 	}
 	password := base64.RawURLEncoding.EncodeToString(tempPwd)
 	hash, err := hasher.HashPassword(password)
 	if err != nil {
-		return adminapi.TeamMemberDTO{}, err
+		return TeamMemberDTO{}, err
 	}
 
 	userID := uuid.New()
@@ -61,12 +60,12 @@ func (s *Service) InviteTeamMember(ctx context.Context, customerID uuid.UUID, em
 		ON CONFLICT (email) DO NOTHING`,
 		userID, email, hash, role, customerID)
 	if err != nil {
-		return adminapi.TeamMemberDTO{}, err
+		return TeamMemberDTO{}, err
 	}
 	var gotID uuid.UUID
 	err = pool.QueryRow(ctx, `SELECT id FROM users WHERE email = $1 AND customer_id = $2`, email, customerID).Scan(&gotID)
 	if err != nil {
-		return adminapi.TeamMemberDTO{}, err
+		return TeamMemberDTO{}, err
 	}
 	return s.teamMemberDTO(ctx, customerID, gotID)
 }
@@ -77,36 +76,36 @@ type UpdateTeamMemberInput struct {
 	SpendCapMicro *int64
 }
 
-func (s *Service) UpdateTeamMember(ctx context.Context, customerID, userID uuid.UUID, in adminapi.UpdateTeamMemberRequest) (adminapi.TeamMemberDTO, error) {
+func (s *Service) UpdateTeamMember(ctx context.Context, customerID, userID uuid.UUID, in UpdateTeamMemberRequest) (TeamMemberDTO, error) {
 	pool := s.GetPool()
 	if pool == nil {
-		return adminapi.TeamMemberDTO{}, errors.New("team service unavailable")
+		return TeamMemberDTO{}, errors.New("team service unavailable")
 	}
 	var exists bool
 	err := pool.QueryRow(ctx, `SELECT TRUE FROM users WHERE id = $1 AND customer_id = $2`, userID, customerID).Scan(&exists)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return adminapi.TeamMemberDTO{}, ErrTeamMemberNotFound
+			return TeamMemberDTO{}, ErrTeamMemberNotFound
 		}
-		return adminapi.TeamMemberDTO{}, err
+		return TeamMemberDTO{}, err
 	}
 	if in.Role != nil {
 		role, err := normalizeTeamMemberRole(*in.Role)
 		if err != nil {
-			return adminapi.TeamMemberDTO{}, err
+			return TeamMemberDTO{}, err
 		}
 		if _, err := pool.Exec(ctx, `UPDATE users SET role = $1, updated_at = NOW() WHERE id = $2`, role, userID); err != nil {
-			return adminapi.TeamMemberDTO{}, err
+			return TeamMemberDTO{}, err
 		}
 	}
 	if in.IsBlocked != nil {
 		if _, err := pool.Exec(ctx, `UPDATE users SET is_blocked = $1, updated_at = NOW() WHERE id = $2`, *in.IsBlocked, userID); err != nil {
-			return adminapi.TeamMemberDTO{}, err
+			return TeamMemberDTO{}, err
 		}
 	}
 	if in.SpendCapMicro != nil {
 		if *in.SpendCapMicro < 0 {
-			return adminapi.TeamMemberDTO{}, errValidation("spend_cap_micro must be >= 0")
+			return TeamMemberDTO{}, errValidation("spend_cap_micro must be >= 0")
 		}
 		_, err := pool.Exec(ctx, `
 			INSERT INTO team_member_limits (user_id, customer_id, spend_cap_micro, updated_at)
@@ -114,27 +113,33 @@ func (s *Service) UpdateTeamMember(ctx context.Context, customerID, userID uuid.
 			ON CONFLICT (user_id) DO UPDATE SET spend_cap_micro = EXCLUDED.spend_cap_micro, updated_at = NOW()`,
 			userID, customerID, *in.SpendCapMicro)
 		if err != nil {
-			return adminapi.TeamMemberDTO{}, err
+			return TeamMemberDTO{}, err
 		}
 	}
 	return s.teamMemberDTO(ctx, customerID, userID)
 }
 
-func (s *Service) teamMemberDTO(ctx context.Context, customerID, userID uuid.UUID) (adminapi.TeamMemberDTO, error) {
+func (s *Service) teamMemberDTO(ctx context.Context, customerID, userID uuid.UUID) (TeamMemberDTO, error) {
 	pool := s.GetPool()
-	var m adminapi.TeamMemberDTO
+	var m TeamMemberDTO
 	var created time.Time
 	var blocked bool
 	err := pool.QueryRow(ctx, `
 		SELECT u.id, u.email, u.role, u.created_at, u.is_blocked,
-			(SELECT COUNT(*)::bigint FROM campaigns c WHERE c.customer_id = u.customer_id AND c.owner_user_id = u.id),
+			COALESCE(cc.campaigns_owned, 0),
 			COALESCE(l.spend_cap_micro, 0)
 		FROM users u
 		LEFT JOIN team_member_limits l ON l.user_id = u.id
+		LEFT JOIN (
+			SELECT owner_user_id, COUNT(*)::bigint AS campaigns_owned
+			FROM campaigns
+			WHERE customer_id = $2
+			GROUP BY owner_user_id
+		) cc ON cc.owner_user_id = u.id
 		WHERE u.id = $1 AND u.customer_id = $2`,
 		userID, customerID).Scan(&userID, &m.Email, &m.Role, &created, &blocked, &m.CampaignsOwned, &m.SpendCapMicro)
 	if err != nil {
-		return adminapi.TeamMemberDTO{}, err
+		return TeamMemberDTO{}, err
 	}
 	m.UserID = userID.String()
 	m.CreatedAt = created.UTC().Format(time.RFC3339)
@@ -179,7 +184,7 @@ func (s *Service) createBudgetApprovalPending(
 	return id, err
 }
 
-func (s *Service) ListTeamBudgetApprovals(ctx context.Context, customerID uuid.UUID) ([]adminapi.TeamBudgetApprovalDTO, error) {
+func (s *Service) ListTeamBudgetApprovals(ctx context.Context, customerID uuid.UUID) ([]TeamBudgetApprovalDTO, error) {
 	pool := s.GetPool()
 	rows, err := pool.Query(ctx, `
 		SELECT id, user_id, campaign_id, requested_budget_micro, previous_budget_micro, status, created_at
@@ -190,9 +195,9 @@ func (s *Service) ListTeamBudgetApprovals(ctx context.Context, customerID uuid.U
 		return nil, err
 	}
 	defer rows.Close()
-	out := make([]adminapi.TeamBudgetApprovalDTO, 0, 8)
+	out := make([]TeamBudgetApprovalDTO, 0, 8)
 	for rows.Next() {
-		var row adminapi.TeamBudgetApprovalDTO
+		var row TeamBudgetApprovalDTO
 		var id, userID, campaignID uuid.UUID
 		var created time.Time
 		if err := rows.Scan(&id, &userID, &campaignID, &row.RequestedBudgetMicro, &row.PreviousBudgetMicro, &row.Status, &created); err != nil {

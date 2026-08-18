@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-// TierUsageWarnings returns admin UI banner hints for tier caps and renewal windows.
 func TierUsageWarnings(limits Limits, activeCampaigns int, state LicenseState, validUntil, now time.Time, renewBeforeDays int) []string {
 	var w []string
 	if maxCampaigns := limits.MaxActiveCampaigns; maxCampaigns > 0 {

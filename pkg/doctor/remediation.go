@@ -1,6 +1,5 @@
 package doctor
 
-// CheckHint returns a one-line remediation command for a failed or warned check ID.
 func CheckHint(id string) string {
 	if hint, ok := checkHints[id]; ok {
 		return hint

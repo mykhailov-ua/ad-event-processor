@@ -1,4 +1,3 @@
-// Package controlplane implements the management API and platform services.
 package controlplane
 
 import (

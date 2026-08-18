@@ -4,14 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
-
 	"github.com/google/uuid"
 )
 
-func (r *opsReader) ListDomainRotation(ctx context.Context) (adminapi.DomainRotationListResult, error) {
+func (r *opsReader) ListDomainRotation(ctx context.Context) (DomainRotationListResult, error) {
 	if r == nil || r.svc == nil || r.svc.GetPool() == nil {
-		return adminapi.DomainRotationListResult{}, fmt.Errorf("postgres pool not configured")
+		return DomainRotationListResult{}, fmt.Errorf("postgres pool not configured")
 	}
 	rows, err := r.svc.GetPool().Query(ctx, `
 		SELECT d.hostname, d.role, d.health_status, COALESCE(d.ssl_status, ''),
@@ -29,11 +27,11 @@ func (r *opsReader) ListDomainRotation(ctx context.Context) (adminapi.DomainRota
 		WHERE d.role IN ('tracking', 'admin')
 		ORDER BY d.hostname ASC`)
 	if err != nil {
-		return adminapi.DomainRotationListResult{}, err
+		return DomainRotationListResult{}, err
 	}
 	defer rows.Close()
 
-	var hosts []adminapi.DomainRotationHostDTO
+	var hosts []DomainRotationHostDTO
 	for rows.Next() {
 		var (
 			hostname     string
@@ -46,9 +44,9 @@ func (r *opsReader) ListDomainRotation(ctx context.Context) (adminapi.DomainRota
 			activeCount  int64
 		)
 		if err := rows.Scan(&hostname, &role, &healthStatus, &sslStatus, &poolID, &poolStatus, &dmrCount, &activeCount); err != nil {
-			return adminapi.DomainRotationListResult{}, err
+			return DomainRotationListResult{}, err
 		}
-		row := adminapi.DomainRotationHostDTO{
+		row := DomainRotationHostDTO{
 			Hostname:            hostname,
 			Role:                role,
 			HealthStatus:        healthStatus,
@@ -63,10 +61,10 @@ func (r *opsReader) ListDomainRotation(ctx context.Context) (adminapi.DomainRota
 		hosts = append(hosts, row)
 	}
 	if err := rows.Err(); err != nil {
-		return adminapi.DomainRotationListResult{}, err
+		return DomainRotationListResult{}, err
 	}
 	if hosts == nil {
-		hosts = []adminapi.DomainRotationHostDTO{}
+		hosts = []DomainRotationHostDTO{}
 	}
-	return adminapi.DomainRotationListResult{Hosts: hosts}, nil
+	return DomainRotationListResult{Hosts: hosts}, nil
 }

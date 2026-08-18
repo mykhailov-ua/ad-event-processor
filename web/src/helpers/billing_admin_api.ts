@@ -15,7 +15,7 @@ import type {
   InvoicePreviewDTO,
   BillingSummaryDTO,
   PaymentHistoryListResponse,
-} from '../types/api/billing.js';
+} from '../types/billing.js';
 
 export type PollBillingExportOpts = {
   intervalMs?: number;
@@ -23,9 +23,6 @@ export type PollBillingExportOpts = {
   signal?: AbortSignal;
 };
 
-/**
- * Pause until the given number of milliseconds elapse.
- */
 function sleepMs(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) {
@@ -34,25 +31,23 @@ function sleepMs(ms: number, signal?: AbortSignal): Promise<void> {
     }
     const timer = setTimeout(resolve, ms);
     if (signal) {
-      signal.addEventListener('abort', () => {
-        clearTimeout(timer);
-        reject(new Error('aborted'));
-      }, { once: true });
+      signal.addEventListener(
+        'abort',
+        () => {
+          clearTimeout(timer);
+          reject(new Error('aborted'));
+        },
+        { once: true }
+      );
     }
   });
 }
 
-/**
- * Fetch fleet-wide billing summary (admin only).
- */
 export async function fetchBillingSummary(): Promise<BillingSummaryDTO> {
   const res = await api<BillingSummaryDTO>('/api/v1/billing/summary');
   return res.data ?? {};
 }
 
-/**
- * Fetch billing ledger invariant for one customer or fleet-wide.
- */
 export async function fetchBillingInvariant(customerId = ''): Promise<BillingInvariantDTO> {
   const params = new URLSearchParams();
   if (customerId) params.set('customer_id', customerId);
@@ -62,35 +57,25 @@ export async function fetchBillingInvariant(customerId = ''): Promise<BillingInv
   return res.data ?? { ok: true };
 }
 
-/**
- * List invoice delivery attempts.
- */
-export async function fetchInvoiceDeliveries(invoiceId: string): Promise<InvoiceDeliveryListResponse> {
+export async function fetchInvoiceDeliveries(
+  invoiceId: string
+): Promise<InvoiceDeliveryListResponse> {
   const res = await api<InvoiceDeliveryListResponse>(
-    `/api/v1/billing/invoices/${encodeURIComponent(invoiceId)}/deliveries`,
+    `/api/v1/billing/invoices/${encodeURIComponent(invoiceId)}/deliveries`
   );
   return res.data ?? { items: [] };
 }
 
-/**
- * Retry invoice email delivery.
- */
 export async function retryInvoiceDelivery(invoiceId: string): Promise<void> {
   const scope = `invoice-delivery-retry:${invoiceId}`;
-  await apiConfirmed(
-    `/api/v1/billing/invoices/${encodeURIComponent(invoiceId)}/deliveries/retry`,
-    {
-      method: 'POST',
-      body: '{}',
-      headers: { 'Idempotency-Key': getOrCreate(scope) },
-      idempotencyScope: scope,
-    },
-  );
+  await apiConfirmed(`/api/v1/billing/invoices/${encodeURIComponent(invoiceId)}/deliveries/retry`, {
+    method: 'POST',
+    body: '{}',
+    headers: { 'Idempotency-Key': getOrCreate(scope) },
+    idempotencyScope: scope,
+  });
 }
 
-/**
- * Enqueue a billing ledger export job.
- */
 export async function createBillingExport(spec: BillingExportCreateSpec): Promise<string> {
   const res = await apiConfirmed<{ job_id?: string }>('/api/v1/billing/exports', {
     method: 'POST',
@@ -103,12 +88,9 @@ export async function createBillingExport(spec: BillingExportCreateSpec): Promis
   return jobId;
 }
 
-/**
- * Poll billing export job until completed or failed.
- */
 export async function pollBillingExportJob(
   jobId: string,
-  opts: PollBillingExportOpts = {},
+  opts: PollBillingExportOpts = {}
 ): Promise<BillingExportJobDTO> {
   const intervalMs = opts.intervalMs ?? 2000;
   const maxAttempts = opts.maxAttempts ?? 60;
@@ -116,10 +98,11 @@ export async function pollBillingExportJob(
     if (opts.signal?.aborted) {
       throw new Error('aborted');
     }
-    const [res, err] = await to(api<BillingExportJobDTO>(
-      `/api/v1/billing/exports/${encodeURIComponent(jobId)}`,
-      { signal: opts.signal },
-    ));
+    const [res, err] = await to(
+      api<BillingExportJobDTO>(`/api/v1/billing/exports/${encodeURIComponent(jobId)}`, {
+        signal: opts.signal,
+      })
+    );
     if (err) throw err;
     const status = String(res?.data?.status ?? '').toUpperCase();
     if (status === 'COMPLETED' || status === 'FAILED') {
@@ -130,13 +113,10 @@ export async function pollBillingExportJob(
   throw new Error('export job timed out');
 }
 
-/**
- * Download a completed billing export file.
- */
 export async function downloadBillingExport(
   jobId: string,
   filename = 'ledger-export.csv',
-  downloadUrl = '',
+  downloadUrl = ''
 ): Promise<void> {
   const path = downloadUrl.startsWith('/')
     ? downloadUrl
@@ -150,23 +130,17 @@ export async function downloadBillingExport(
   URL.revokeObjectURL(url);
 }
 
-/**
- * Customer billing forecast (ledger run rate + projected month-end).
- */
 export async function fetchBillingForecast(customerId: string): Promise<BillingForecastDTO> {
   const res = await api<BillingForecastDTO>(
-    `/api/v1/customers/${encodeURIComponent(customerId)}/billing/forecast`,
+    `/api/v1/customers/${encodeURIComponent(customerId)}/billing/forecast`
   );
   return res.data ?? {};
 }
 
-/**
- * Paginated payment disputes (scoped by customer_id when provided).
- */
 export async function fetchDisputes(
   customerId: string,
   limit: number,
-  offset: number,
+  offset: number
 ): Promise<DisputeListResponse> {
   const params = new URLSearchParams({
     limit: String(limit),
@@ -177,12 +151,9 @@ export async function fetchDisputes(
   return res.data ?? { disputes: [], total: 0 };
 }
 
-/**
- * Customer billing statement for a calendar month (admin).
- */
 export async function fetchCustomerBillingStatement(
   customerId: string,
-  month = '',
+  month = ''
 ): Promise<BillingStatementDTO> {
   const params = new URLSearchParams();
   if (month) params.set('month', month);
@@ -194,12 +165,9 @@ export async function fetchCustomerBillingStatement(
   return res.data ?? {};
 }
 
-/**
- * Preview invoice totals for a customer month without persisting.
- */
 export async function previewBillingInvoice(
   customerId: string,
-  billingMonth: string,
+  billingMonth: string
 ): Promise<InvoicePreviewDTO> {
   const res = await apiConfirmed<InvoicePreviewDTO>('/api/v1/billing/invoices/preview', {
     method: 'POST',
@@ -208,36 +176,30 @@ export async function previewBillingInvoice(
   return res.data ?? {};
 }
 
-/**
- * Payment intent history for a customer (wallet top-ups).
- */
 export async function fetchCustomerPayments(
   customerId: string,
   limit = 20,
-  offset = 0,
+  offset = 0
 ): Promise<PaymentHistoryListResponse> {
   const params = new URLSearchParams({
     limit: String(limit),
     offset: String(offset),
   });
   const res = await api<PaymentHistoryListResponse>(
-    `/api/v1/customers/${encodeURIComponent(customerId)}/payments?${params.toString()}`,
+    `/api/v1/customers/${encodeURIComponent(customerId)}/payments?${params.toString()}`
   );
   return res.data ?? { items: [], total: 0 };
 }
 
-/**
- * Invoice ledger lines (cursor-paginated).
- */
 export async function fetchInvoiceLedgerLines(
   invoiceId: string,
   cursor = '',
-  limit = 50,
+  limit = 50
 ): Promise<InvoiceLedgerLinesResponse> {
   const params = new URLSearchParams({ limit: String(limit) });
   if (cursor) params.set('cursor', cursor);
   const res = await api<InvoiceLedgerLinesResponse>(
-    `/api/v1/billing/invoices/${encodeURIComponent(invoiceId)}/ledger-lines?${params.toString()}`,
+    `/api/v1/billing/invoices/${encodeURIComponent(invoiceId)}/ledger-lines?${params.toString()}`
   );
   return res.data ?? { items: [], total: 0 };
 }

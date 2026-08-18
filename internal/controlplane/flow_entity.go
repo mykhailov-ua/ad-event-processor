@@ -7,33 +7,31 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
-
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func (s *Service) CreateLander(ctx context.Context, req adminapi.CreateLanderRequest) (adminapi.LanderDTO, error) {
+func (s *Service) CreateLander(ctx context.Context, req CreateLanderRequest) (LanderDTO, error) {
 	if s == nil || s.pool == nil {
-		return adminapi.LanderDTO{}, fmt.Errorf("service unavailable")
+		return LanderDTO{}, fmt.Errorf("service unavailable")
 	}
 	name := strings.TrimSpace(req.Name)
 	url := strings.TrimSpace(req.URL)
 	if name == "" || url == "" {
-		return adminapi.LanderDTO{}, fmt.Errorf("name and url are required")
+		return LanderDTO{}, fmt.Errorf("name and url are required")
 	}
-	var dto adminapi.LanderDTO
+	var dto LanderDTO
 	err := s.pool.QueryRow(ctx, `
 		INSERT INTO landers (name, url) VALUES ($1, $2)
 		RETURNING id, name, url, created_at`, name, url).Scan(&dto.ID, &dto.Name, &dto.URL, &dto.CreatedAt)
 	if err != nil {
-		return adminapi.LanderDTO{}, err
+		return LanderDTO{}, err
 	}
 	return dto, nil
 }
 
-func (s *Service) ListLanders(ctx context.Context) ([]adminapi.LanderDTO, error) {
+func (s *Service) ListLanders(ctx context.Context) ([]LanderDTO, error) {
 	if s == nil || s.pool == nil {
 		return nil, fmt.Errorf("service unavailable")
 	}
@@ -42,9 +40,9 @@ func (s *Service) ListLanders(ctx context.Context) ([]adminapi.LanderDTO, error)
 		return nil, err
 	}
 	defer rows.Close()
-	var out []adminapi.LanderDTO
+	var out []LanderDTO
 	for rows.Next() {
-		var dto adminapi.LanderDTO
+		var dto LanderDTO
 		if err := rows.Scan(&dto.ID, &dto.Name, &dto.URL, &dto.CreatedAt); err != nil {
 			return nil, err
 		}
@@ -53,26 +51,26 @@ func (s *Service) ListLanders(ctx context.Context) ([]adminapi.LanderDTO, error)
 	return out, rows.Err()
 }
 
-func (s *Service) CreateOffer(ctx context.Context, req adminapi.CreateOfferRequest) (adminapi.OfferDTO, error) {
+func (s *Service) CreateOffer(ctx context.Context, req CreateOfferRequest) (OfferDTO, error) {
 	if s == nil || s.pool == nil {
-		return adminapi.OfferDTO{}, fmt.Errorf("service unavailable")
+		return OfferDTO{}, fmt.Errorf("service unavailable")
 	}
 	name := strings.TrimSpace(req.Name)
 	url := strings.TrimSpace(req.URL)
 	if name == "" || url == "" {
-		return adminapi.OfferDTO{}, fmt.Errorf("name and url are required")
+		return OfferDTO{}, fmt.Errorf("name and url are required")
 	}
-	var dto adminapi.OfferDTO
+	var dto OfferDTO
 	err := s.pool.QueryRow(ctx, `
 		INSERT INTO offers (name, url) VALUES ($1, $2)
 		RETURNING id, name, url, created_at`, name, url).Scan(&dto.ID, &dto.Name, &dto.URL, &dto.CreatedAt)
 	if err != nil {
-		return adminapi.OfferDTO{}, err
+		return OfferDTO{}, err
 	}
 	return dto, nil
 }
 
-func (s *Service) ListOffers(ctx context.Context) ([]adminapi.OfferDTO, error) {
+func (s *Service) ListOffers(ctx context.Context) ([]OfferDTO, error) {
 	if s == nil || s.pool == nil {
 		return nil, fmt.Errorf("service unavailable")
 	}
@@ -81,9 +79,9 @@ func (s *Service) ListOffers(ctx context.Context) ([]adminapi.OfferDTO, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []adminapi.OfferDTO
+	var out []OfferDTO
 	for rows.Next() {
-		var dto adminapi.OfferDTO
+		var dto OfferDTO
 		if err := rows.Scan(&dto.ID, &dto.Name, &dto.URL, &dto.CreatedAt); err != nil {
 			return nil, err
 		}
@@ -92,32 +90,32 @@ func (s *Service) ListOffers(ctx context.Context) ([]adminapi.OfferDTO, error) {
 	return out, rows.Err()
 }
 
-func (s *Service) CreateFlow(ctx context.Context, req adminapi.CreateFlowRequest) (adminapi.FlowDTO, error) {
+func (s *Service) CreateFlow(ctx context.Context, req CreateFlowRequest) (FlowDTO, error) {
 	if s == nil || s.pool == nil {
-		return adminapi.FlowDTO{}, fmt.Errorf("service unavailable")
+		return FlowDTO{}, fmt.Errorf("service unavailable")
 	}
 	name := strings.TrimSpace(req.Name)
 	if name == "" {
-		return adminapi.FlowDTO{}, fmt.Errorf("name is required")
+		return FlowDTO{}, fmt.Errorf("name is required")
 	}
 	if len(req.Paths) == 0 {
-		return adminapi.FlowDTO{}, fmt.Errorf("paths are required")
+		return FlowDTO{}, fmt.Errorf("paths are required")
 	}
 	raw, err := json.Marshal(req.Paths)
 	if err != nil {
-		return adminapi.FlowDTO{}, err
+		return FlowDTO{}, err
 	}
-	var dto adminapi.FlowDTO
+	var dto FlowDTO
 	err = s.pool.QueryRow(ctx, `
 		INSERT INTO flows (name, paths) VALUES ($1, $2::jsonb)
 		RETURNING id, name, paths, created_at`, name, raw).Scan(&dto.ID, &dto.Name, &dto.Paths, &dto.CreatedAt)
 	if err != nil {
-		return adminapi.FlowDTO{}, err
+		return FlowDTO{}, err
 	}
 	return dto, nil
 }
 
-func (s *Service) ListFlows(ctx context.Context) ([]adminapi.FlowDTO, error) {
+func (s *Service) ListFlows(ctx context.Context) ([]FlowDTO, error) {
 	if s == nil || s.pool == nil {
 		return nil, fmt.Errorf("service unavailable")
 	}
@@ -126,9 +124,9 @@ func (s *Service) ListFlows(ctx context.Context) ([]adminapi.FlowDTO, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []adminapi.FlowDTO
+	var out []FlowDTO
 	for rows.Next() {
-		var dto adminapi.FlowDTO
+		var dto FlowDTO
 		if err := rows.Scan(&dto.ID, &dto.Name, &dto.Paths, &dto.CreatedAt); err != nil {
 			return nil, err
 		}

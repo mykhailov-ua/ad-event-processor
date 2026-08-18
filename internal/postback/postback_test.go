@@ -222,7 +222,6 @@ func TestCAPI_DoubleFire(t *testing.T) {
 	require.NoError(t, worker.ProcessEvent(ctx, ev, nil))
 	require.Equal(t, int32(1), atomic.LoadInt32(&requestCount))
 
-	// Simulate worker kill + replay of the same outbox row: idempotency hash blocks second HTTP.
 	require.ErrorIs(t, worker.ProcessEvent(ctx, ev, nil), ErrDuplicateEvent)
 	require.Equal(t, int32(1), atomic.LoadInt32(&requestCount))
 
@@ -567,7 +566,6 @@ func TestCAPI_DLQRetry_AdminReenqueueDispatchSuccess(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// Mirror adminapi postbacks_handlers.retryDLQ: re-enqueue outbox + mark RETRIED.
 	tx, err := pool.Begin(ctx)
 	require.NoError(t, err)
 	defer func() { _ = tx.Rollback(ctx) }()

@@ -1,4 +1,3 @@
-// Package pgfailover implements pgfailover support for BidShard.
 package pgfailover
 
 import (

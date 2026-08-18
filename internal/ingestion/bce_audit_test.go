@@ -17,7 +17,6 @@ var (
 	auditTestBinaryErr  error
 )
 
-// bceHotSymbols are ingestion hot-path symbols audited for BCE (no panicIndex in main body).
 var bceHotSymbols = []string{
 	"github.com/bidshard/ad-event-processor/internal/ingestion.foldKeyU32",
 	"github.com/bidshard/ad-event-processor/internal/ingestion.foldKeyU64",
@@ -50,7 +49,7 @@ func TestBCEAudit_dispatchTgRedirectMacro_boundsChecks(t *testing.T) {
 	}
 	bin := testBinaryPath(t)
 	asm := asmMainBody(objdumpSymbol(t, bin, "github.com/bidshard/ad-event-processor/internal/ingestion.dispatchTgRedirectMacro"))
-	// Window + array-compare BCE: pre-audit baseline was 29 CMPQ BX on amd64.
+
 	cmpLen := strings.Count(asm, "CMPQ BX,")
 	if cmpLen > 12 {
 		t.Fatalf("dispatchTgRedirectMacro len CMPQ BX count = %d, want <= 12; tighten window BCE", cmpLen)
@@ -98,7 +97,6 @@ func objdumpSymbol(t *testing.T, bin, sym string) string {
 	return string(out)
 }
 
-// asmMainBody returns disassembly before the compiler's trailing panic slab.
 func asmMainBody(asm string) string {
 	lines := strings.Split(asm, "\n")
 	var buf bytes.Buffer

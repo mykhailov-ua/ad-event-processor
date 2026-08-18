@@ -1,6 +1,3 @@
-/**
- * Parse an ISO-8601 UTC timestamp to Unix seconds without allocating a Date object.
- */
 export function parseIsoUnixSeconds(iso: string): number {
   if (!iso || iso.length < 19) return Number.NaN;
   const y = Number(iso.slice(0, 4));

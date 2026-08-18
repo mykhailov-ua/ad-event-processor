@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// harness=h2_gnet_idle — H2 incomplete ingress with monotonic read idle (not HTTP/1 body path).
 func TestH2Incomplete_IdleClosesDripWithProgress(t *testing.T) {
 	cfg := &config.Config{
 		MaxRequestBodySize: 1 << 20,

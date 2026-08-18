@@ -21,10 +21,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// topicLeaderState carries the local view of a topic lease. leaseExpiresAtNano
-// bounds authority in local monotonic-ish wall time: once it passes, the node
-// must stop acting as leader even when Redis is unreachable, otherwise a
-// partitioned node keeps accepting writes that the next leader never sees.
 type topicLeaderState struct {
 	isLeader           bool
 	epoch              uint64
@@ -194,9 +190,6 @@ func (c *Coordinator) IsLeaderReady(topic string) bool {
 	return leaseHeld(st) && st.ready
 }
 
-// publishHWMScript keeps the cluster high watermark monotonic. A leader that
-// takes over while still behind must not lower the recorded tail, otherwise the
-// catch-up target for the next failover is silently truncated.
 var publishHWMScript = redis.NewScript(`
 local cur = redis.call('GET', KEYS[1])
 if cur and tonumber(cur) >= tonumber(ARGV[1]) then
@@ -212,9 +205,6 @@ func (c *Coordinator) PublishLogHWM(ctx context.Context, topic string, hwm uint6
 	_ = publishHWMScript.Run(pubCtx, c.rdb, []string{logHWMKey(topic)}, strconv.FormatUint(hwm, 10)).Err()
 }
 
-// RequestClaim asks the claim loop to try acquiring leadership for a topic that
-// received a write while unowned. Callers run on the gnet event loop, so the
-// enqueue never blocks and drops the hint when the queue is saturated.
 func (c *Coordinator) RequestClaim(topic string) {
 	if c == nil {
 		return
@@ -559,9 +549,7 @@ func (c *Coordinator) recoverLeaderReadiness(ctx context.Context, topic string, 
 		cancel()
 		return
 	}
-	// Availability wins after the catch-up budget, but the cluster HWM stays at
-	// the known tail: lowering it here would erase the catch-up target and make
-	// the truncation invisible to the next failover and to alerting.
+
 	local := pl.NextOffset()
 	recordReplicationError(topic, "catchup_gap")
 	c.setLeaderReady(topic, true)

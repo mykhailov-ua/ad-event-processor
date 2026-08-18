@@ -41,7 +41,6 @@ func embeddedProductionPublicKey() ed25519.PublicKey {
 	return embeddedPub
 }
 
-// ResolvePublicKey loads the Ed25519 verify key from AD_EVENT_PROCESSOR_LICENSE_PUBLIC_KEY or file paths.
 func ResolvePublicKey() (ed25519.PublicKey, error) {
 	if raw := strings.TrimSpace(config.LicenseEnv("PUBLIC_KEY")); raw != "" {
 		return ParsePublicKey([]byte(raw))

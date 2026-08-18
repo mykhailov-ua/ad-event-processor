@@ -19,9 +19,6 @@ type DomainRotationResponse = {
   hosts?: DomainRotationHost[];
 };
 
-/**
- * CPA-M8 domain rotation center — pool health + DMR campaign counts per host.
- */
 export function OpsDomainRotationPage() {
   const [hosts, setHosts] = useState<DomainRotationHost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,7 +74,11 @@ export function OpsDomainRotationPage() {
                   <td className="font-mono">{row.hostname}</td>
                   <td>{displayLabel(row.role)}</td>
                   <td>
-                    <StatusBadge status={row.health_status} kind="service" label={displayLabel(row.health_status)} />
+                    <StatusBadge
+                      status={row.health_status}
+                      kind="service"
+                      label={displayLabel(row.health_status)}
+                    />
                   </td>
                   <td>{row.ssl_status ? displayLabel(row.ssl_status) : '—'}</td>
                   <td>{row.pool_domain_status ? displayLabel(row.pool_domain_status) : '—'}</td>

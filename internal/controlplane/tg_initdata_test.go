@@ -17,7 +17,6 @@ func TestValidateInitData(t *testing.T) {
 	botToken := "123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"
 	now := time.Now().Unix()
 
-	// Build data check string
 	values := url.Values{}
 	values.Set("auth_date", strconv.FormatInt(now, 10))
 	values.Set("query_id", "AAHdJu1bAAAAAN0i7VvHG9Ta")
@@ -27,7 +26,6 @@ func TestValidateInitData(t *testing.T) {
 		"query_id=AAHdJu1bAAAAAN0i7VvHG9Ta\n" +
 		"user=" + `{"id":279058305,"first_name":"Vladislav","username":"vkovalenko"}`
 
-	// Generate hash
 	mac := hmac.New(sha256.New, []byte("WebAppData"))
 	mac.Write([]byte(botToken))
 	secretKey := mac.Sum(nil)
@@ -46,7 +44,6 @@ func TestValidateInitData(t *testing.T) {
 	})
 
 	t.Run("Expired auth_date", func(t *testing.T) {
-		// bot token valid but auth date old
 		expiredValues := url.Values{}
 		expiredValues.Set("auth_date", strconv.FormatInt(now-400, 10))
 		expiredValues.Set("query_id", "AAHdJu1bAAAAAN0i7VvHG9Ta")

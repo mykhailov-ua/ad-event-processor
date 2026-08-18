@@ -68,8 +68,6 @@ func (f *UnifiedFilter) preloadScriptsShard(ctx context.Context, shard int, rdb 
 	return nil
 }
 
-// AttachReconnectPreload registers DialHooks so new pooled connections SCRIPT LOAD
-// after Redis failover/reconnect (not only on NOSCRIPT eval errors).
 func (f *UnifiedFilter) AttachReconnectPreload() {
 	if f == nil {
 		return

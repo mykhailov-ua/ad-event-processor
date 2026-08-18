@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
 )
@@ -55,7 +56,10 @@ func fetchGoogleCosts(ctx context.Context, client *http.Client, baseURL string, 
 	}
 	query := "SELECT campaign.id, ad_group.id, metrics.cost_micros, segments.date FROM ad_group WHERE segments.date = '" + dateStr + "'"
 	payload := map[string]string{"query": query}
-	bodyBytes, _ := json.Marshal(payload)
+	bodyBytes, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("google ads: marshal query: %w", err)
+	}
 
 	endpoint := fmt.Sprintf("%s/customers/%s/googleAds:searchStream", strings.TrimRight(base, "/"), customerID)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(string(bodyBytes)))
@@ -70,10 +74,14 @@ func fetchGoogleCosts(ctx context.Context, client *http.Client, baseURL string, 
 
 	resp, err := client.Do(req)
 	if err != nil {
+		coldpath.CloseHTTPResponse(resp)
 		return nil, err
 	}
-	defer func() { _ = resp.Body.Close() }()
-	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	defer coldpath.CloseHTTPResponse(resp)
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	if err != nil {
+		return nil, fmt.Errorf("google ads: read body: %w", err)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("google ads: status %d: %s", resp.StatusCode, string(respBody))
 	}

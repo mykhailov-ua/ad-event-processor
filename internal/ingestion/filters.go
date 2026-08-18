@@ -77,7 +77,7 @@ func unsafeString(b []byte) string {
 	if len(b) == 0 {
 		return ""
 	}
-	// Lifetime: view must not outlive backing []byte (gnet frame or connContext scratch).
+
 	return unsafe.String(&b[0], len(b))
 }
 

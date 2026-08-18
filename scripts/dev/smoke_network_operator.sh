@@ -9,8 +9,8 @@ export REDIS_PASSWORD="${REDIS_PASSWORD:-smoke}"
 export CH_ENABLED="${CH_ENABLED:-1}"
 export CH_DSN="${CH_DSN:-clickhouse://default:@127.0.0.1:9000/default}"
 
-docker compose --profile network_operator config >/dev/null
-services=$(docker compose --profile network_operator config --services 2>/dev/null)
+docker compose --profile network_operator config > /dev/null
+services=$(docker compose --profile network_operator config --services 2> /dev/null)
 echo "$services" | grep -qx clickhouse
 echo "$services" | grep -qx control
 echo "$services" | grep -qx db-payment

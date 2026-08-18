@@ -1,4 +1,3 @@
-// Package vendorprobe runs optional third-party dependency health probes.
 package vendorprobe
 
 import (

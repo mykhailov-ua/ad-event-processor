@@ -1,4 +1,3 @@
-/** Edge fraud tier score bands (match deploy/nginx/lua/edge-fraud-tier.lua). */
 export const FRAUD_TIER_PASS_MAX = 30;
 export const FRAUD_TIER_SUSPECT_MAX = 60;
 export const FRAUD_TIER_IVT_MAX = 80;
@@ -16,9 +15,6 @@ export type FraudTierBandRow = {
   action: string;
 };
 
-/**
- * Map a fraud score 0–100 to an edge tier label.
- */
 export function fraudTierFromScore(score: number): FraudTierResult {
   let n = Number(score);
   if (!Number.isFinite(n) || n < 0) n = 0;
@@ -29,14 +25,37 @@ export function fraudTierFromScore(score: number): FraudTierResult {
   return { tier: 'block', score: n };
 }
 
-/**
- * Return human-readable tier band descriptions for the edge panel.
- */
 export function fraudTierBandRows(): FraudTierBandRow[] {
+  return fraudTierBandRowsFromThresholds(
+    FRAUD_TIER_PASS_MAX,
+    FRAUD_TIER_SUSPECT_MAX,
+    FRAUD_TIER_IVT_MAX
+  );
+}
+
+/**
+ * Build tier band table rows from campaign-specific threshold ceilings.
+ */
+export function fraudTierBandRowsFromThresholds(
+  passMax: number,
+  suspectMax: number,
+  ivtMax: number
+): FraudTierBandRow[] {
+  const pass = Math.max(0, Math.min(100, Math.round(passMax)));
+  const suspect = Math.max(pass, Math.min(100, Math.round(suspectMax)));
+  const ivt = Math.max(suspect, Math.min(100, Math.round(ivtMax)));
   return [
-    { tier: 'pass', range: `0–${FRAUD_TIER_PASS_MAX}`, action: 'Allow' },
-    { tier: 'suspect', range: `${FRAUD_TIER_PASS_MAX + 1}–${FRAUD_TIER_SUSPECT_MAX}`, action: 'Monitor' },
-    { tier: 'ivt', range: `${FRAUD_TIER_SUSPECT_MAX + 1}–${FRAUD_TIER_IVT_MAX}`, action: 'Shadow / throttle' },
-    { tier: 'block', range: `${FRAUD_TIER_IVT_MAX + 1}–100`, action: 'Block at edge' },
+    { tier: 'pass', range: `0–${pass}`, action: 'Allow' },
+    {
+      tier: 'suspect',
+      range: `${pass + 1}–${suspect}`,
+      action: 'Monitor / boost',
+    },
+    {
+      tier: 'ivt',
+      range: `${suspect + 1}–${ivt}`,
+      action: 'Ghost IVT (if enabled)',
+    },
+    { tier: 'block', range: `${ivt + 1}–100`, action: 'Block at edge' },
   ];
 }

@@ -8,13 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/internal/domain"
 )
 
-func (r *opsReader) ListConsentProofs(ctx context.Context, userID, cursor string, limit int32) (adminapi.ConsentProofListResult, error) {
+func (r *opsReader) ListConsentProofs(ctx context.Context, userID, cursor string, limit int32) (ConsentProofListResult, error) {
 	if r == nil || r.svc == nil || r.svc.GetPool() == nil {
-		return adminapi.ConsentProofListResult{}, fmt.Errorf("postgres pool not configured")
+		return ConsentProofListResult{}, fmt.Errorf("postgres pool not configured")
 	}
 	if limit <= 0 {
 		limit = 50
@@ -23,7 +22,7 @@ func (r *opsReader) ListConsentProofs(ctx context.Context, userID, cursor string
 	if cursor != "" {
 		n, err := strconv.ParseInt(cursor, 10, 64)
 		if err != nil {
-			return adminapi.ConsentProofListResult{}, errInvalidQuery("invalid cursor")
+			return ConsentProofListResult{}, errInvalidQuery("invalid cursor")
 		}
 		cursorID = n
 	}
@@ -44,11 +43,11 @@ func (r *opsReader) ListConsentProofs(ctx context.Context, userID, cursor string
 		ORDER BY ce.id DESC
 		LIMIT $3`, hashFilter, cursorID, limit+1)
 	if err != nil {
-		return adminapi.ConsentProofListResult{}, err
+		return ConsentProofListResult{}, err
 	}
 	defer rows.Close()
 
-	var items []adminapi.ConsentProofDTO
+	var items []ConsentProofDTO
 	for rows.Next() {
 		var (
 			id        int64
@@ -60,9 +59,9 @@ func (r *opsReader) ListConsentProofs(ctx context.Context, userID, cursor string
 			analytics bool
 		)
 		if err := rows.Scan(&id, &hash, &purposes, &source, &createdAt, &adStorage, &analytics); err != nil {
-			return adminapi.ConsentProofListResult{}, err
+			return ConsentProofListResult{}, err
 		}
-		items = append(items, adminapi.ConsentProofDTO{
+		items = append(items, ConsentProofDTO{
 			ID:         id,
 			UserIDHash: hex.EncodeToString(hash),
 			Purposes:   purposes,
@@ -73,16 +72,16 @@ func (r *opsReader) ListConsentProofs(ctx context.Context, userID, cursor string
 		})
 	}
 	if err := rows.Err(); err != nil {
-		return adminapi.ConsentProofListResult{}, err
+		return ConsentProofListResult{}, err
 	}
 
-	result := adminapi.ConsentProofListResult{Items: items}
+	result := ConsentProofListResult{Items: items}
 	if int32(len(items)) > limit {
 		result.Items = items[:limit]
 		result.NextCursor = strconv.FormatInt(result.Items[len(result.Items)-1].ID, 10)
 	}
 	if result.Items == nil {
-		result.Items = []adminapi.ConsentProofDTO{}
+		result.Items = []ConsentProofDTO{}
 	}
 	return result, nil
 }

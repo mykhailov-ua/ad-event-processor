@@ -22,14 +22,14 @@ fi
 
 extract_live_report_keys() {
   local report_file="$1"
-  if command -v python3 >/dev/null 2>&1; then
-    python3 - "$report_file" <<'PY'
+  if command -v python3 > /dev/null 2>&1; then
+    python3 - "$report_file" << 'PY'
 import re, sys
 src = open(sys.argv[1], encoding="utf-8").read()
 for m in re.finditer(r"\{\s*key:\s*'([^']+)'[^}]*live:\s*true", src):
     print(m.group(1))
 PY
-  elif command -v node >/dev/null 2>&1; then
+  elif command -v node > /dev/null 2>&1; then
     node -e "
 const fs = require('fs');
 const src = fs.readFileSync(process.argv[1], 'utf8');
@@ -47,8 +47,8 @@ for (const k of keys) console.log(k);
 
 live_markers=$(grep -cE 'live:[[:space:]]*true' "$REPORT_JS" || true)
 keys_tmp=$(mktemp)
-extract_live_report_keys "$REPORT_JS" >"$keys_tmp"
-key_count=$(wc -l <"$keys_tmp" | tr -d ' ')
+extract_live_report_keys "$REPORT_JS" > "$keys_tmp"
+key_count=$(wc -l < "$keys_tmp" | tr -d ' ')
 
 if [ "$live_markers" -gt 0 ] && [ "$key_count" -eq 0 ]; then
   echo "Error: found live:true in ${REPORT_JS#$ROOT/} but extracted zero keys (parser/extractor failure)"
@@ -65,7 +65,7 @@ while IFS= read -r key; do
     echo "Error: live report '${key}' has no explicit route in app_routes"
     missing=1
   fi
-done <"$keys_tmp"
+done < "$keys_tmp"
 rm -f "$keys_tmp"
 
 if [ "$missing" -ne 0 ]; then

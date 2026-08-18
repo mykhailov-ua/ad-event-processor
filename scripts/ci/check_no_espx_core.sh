@@ -8,9 +8,9 @@ cd "$ROOT"
 PATTERN='(\bespx\b|ESPX_|espx_)'
 TARGETS=(internal pkg cmd deploy/nginx)
 
-if rg -n "$PATTERN" "${TARGETS[@]}" --glob '*.go' --glob '*.lua' 2>/dev/null; then
-	echo "check_no_espx_core: forbidden legacy naming in ${TARGETS[*]}" >&2
-	exit 1
+if rg -n "$PATTERN" "${TARGETS[@]}" --glob '*.go' --glob '*.lua' 2> /dev/null; then
+  echo "check_no_espx_core: forbidden legacy naming in ${TARGETS[*]}" >&2
+  exit 1
 fi
 
 echo "check_no_espx_core: ok"

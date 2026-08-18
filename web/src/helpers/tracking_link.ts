@@ -15,7 +15,7 @@ export function defaultClickTemplate(domain: string): string {
 export function buildTrackingLink(
   template: string,
   campaignId: string,
-  subs: Record<string, string> = {},
+  subs: Record<string, string> = {}
 ): string {
   let url = template.replaceAll('{campaign_id}', encodeURIComponent(campaignId));
   for (let i = 1; i <= 30; i += 1) {

@@ -108,12 +108,10 @@ func (s *Server) SetShutdownTimeout(d time.Duration) {
 	}
 }
 
-// SetConnReadIdle bounds how long a peer may drip partial length-prefixed frames (default 30s).
 func (s *Server) SetConnReadIdle(d time.Duration) {
 	s.connReadIdle = d
 }
 
-// SetConnMaxLifetime closes broker TCP connections after wall time regardless of traffic (default 120s).
 func (s *Server) SetConnMaxLifetime(d time.Duration) {
 	s.connMaxLifetime = d
 }
@@ -668,9 +666,6 @@ func (s *Server) handleProduce(c gnet.Conn, seq uint64, payload []byte) {
 	finishProduce(c, buf, seq, tpKey, produceStart, true, 0, offset)
 }
 
-// requestTopicClaim makes an unowned topic visible to the coordinator so a
-// leader can be elected for it. The partition must exist first: the coordination
-// loop only ranges over materialized partitions.
 func (s *Server) requestTopicClaim(tpKey string) {
 	if s.coord == nil {
 		return
@@ -681,9 +676,6 @@ func (s *Server) requestTopicClaim(tpKey string) {
 	s.coord.RequestClaim(tpKey)
 }
 
-// appendLeader refuses to write unless this node holds an unexpired lease with a
-// nonzero epoch. Appending without an epoch would bypass fencing entirely and
-// let a demoted or leaderless node accept writes the next leader never replays.
 func (s *Server) appendLeader(topic string, pl *log.PartitionLog, payload []byte) (uint64, byte, error) {
 	var epoch uint64
 	if s.coord != nil {

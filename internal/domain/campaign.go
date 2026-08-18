@@ -96,25 +96,17 @@ type Campaign struct {
 	AttestationTTLSec  int32
 	DmrEnabled         bool
 
-	// L1CIDRBlockEnabled gates the pre-FilterEngine L1 CIDR/ASN Safe View
-	// branch (RP-M1). Default true; replicated to the tracker hot path.
 	L1CIDRBlockEnabled bool
 
-	// L15ProxyVPNBlockEnabled gates the pre-FilterEngine L1.5 proxy/VPN Safe View
-	// branch (GM-M1). Default true; replicated to the tracker hot path.
 	L15ProxyVPNBlockEnabled bool
 
-	// TLSFingerprintBlockEnabled gates the pre-FilterEngine JA3/JA4 blocklist (GMA-M1).
 	TLSFingerprintBlockEnabled bool
 
-	// ConnTypePolicy selects L1.5 connection-type routing (GMA-M2).
 	ConnTypePolicy ConnTypePolicy
 
-	// LinkSigningEnabled appends HMAC _sig on outbound offer redirects (GMA-M4).
 	LinkSigningEnabled bool
 	LinkSigningTTLSec  int32
 
-	// Click delivery (RP-M3): redirect (default) or reverse-proxy upstream.
 	ClickDelivery      string
 	ProxyUpstreamURL   string
 	ProxyRewriteAssets bool
@@ -165,4 +157,22 @@ const (
 	DefaultFraudThresholdSuspect uint8 = 60
 	DefaultFraudThresholdIVT     uint8 = 80
 	DefaultFraudThresholdBlock   uint8 = 100
+
+	FraudPresetConservative = "conservative"
+	FraudPresetBalanced     = "balanced"
+	FraudPresetAggressive   = "aggressive"
 )
+
+// ResolveFraudPreset maps a named sensitivity preset to ordered tier thresholds.
+func ResolveFraudPreset(name string) (pass, suspect, ivt, block uint8, ok bool) {
+	switch name {
+	case FraudPresetConservative:
+		return 40, 70, 90, 100, true
+	case FraudPresetBalanced:
+		return DefaultFraudThresholdPass, DefaultFraudThresholdSuspect, DefaultFraudThresholdIVT, DefaultFraudThresholdBlock, true
+	case FraudPresetAggressive:
+		return 20, 45, 65, 85, true
+	default:
+		return 0, 0, 0, 0, false
+	}
+}

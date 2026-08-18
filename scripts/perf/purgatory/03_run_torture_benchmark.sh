@@ -36,21 +36,21 @@ ensure_state_dir
 # Prefer wrk; accept wrk2; fall back to k6.
 LOADGEN=""
 if have_cmd wrk; then
-	LOADGEN=wrk
+  LOADGEN=wrk
 elif have_cmd wrk2; then
-	LOADGEN=wrk2
+  LOADGEN=wrk2
 elif have_cmd k6; then
-	LOADGEN=k6
+  LOADGEN=k6
 else
-	die "need wrk, wrk2, or k6. Install: apt-get install -y wrk  |  go install github.com/tsenart/vegeta@latest is NOT a substitute"
+  die "need wrk, wrk2, or k6. Install: apt-get install -y wrk  |  go install github.com/tsenart/vegeta@latest is NOT a substitute"
 fi
 log "load generator: ${LOADGEN}"
 
 # Optional cgexec presence check (used only as a soft capability probe).
 if have_cmd cgexec; then
-	log "cgexec available (will prefer cgroup.procs attach on cgroup v2)"
+  log "cgexec available (will prefer cgroup.procs attach on cgroup v2)"
 else
-	warn "cgexec not installed (cgroup-tools); using direct cgroup.procs writes"
+  warn "cgexec not installed (cgroup-tools); using direct cgroup.procs writes"
 fi
 
 TS="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -60,27 +60,27 @@ log "artifacts → ${OUT}"
 
 # Snapshot cpu.stat before load so we can delta throttle counters.
 CPU_STAT_BEFORE="${OUT}/cpu.stat.before"
-read_cpu_stat >"$CPU_STAT_BEFORE"
+read_cpu_stat > "$CPU_STAT_BEFORE"
 MEM_EVENTS_BEFORE="${OUT}/memory.events.before"
-read_memory_events >"$MEM_EVENTS_BEFORE"
+read_memory_events > "$MEM_EVENTS_BEFORE"
 OOM_BEFORE="$(oom_kill_count)"
 
 SUT_PID=""
 STARTED_BY_US=0
 
 cleanup_sut_on_exit() {
-	local ec=$?
-	if [[ "$STARTED_BY_US" -eq 1 ]] && [[ -n "$SUT_PID" ]] && kill -0 "$SUT_PID" 2>/dev/null; then
-		log "stopping SUT pid=${SUT_PID}"
-		kill -TERM "$SUT_PID" 2>/dev/null || true
-		# Brief grace, then KILL (may already be OOM-killed).
-		for _ in 1 2 3 4 5; do
-			kill -0 "$SUT_PID" 2>/dev/null || break
-			sleep 0.2
-		done
-		kill -KILL "$SUT_PID" 2>/dev/null || true
-	fi
-	return "$ec"
+  local ec=$?
+  if [[ "$STARTED_BY_US" -eq 1 ]] && [[ -n "$SUT_PID" ]] && kill -0 "$SUT_PID" 2> /dev/null; then
+    log "stopping SUT pid=${SUT_PID}"
+    kill -TERM "$SUT_PID" 2> /dev/null || true
+    # Brief grace, then KILL (may already be OOM-killed).
+    for _ in 1 2 3 4 5; do
+      kill -0 "$SUT_PID" 2> /dev/null || break
+      sleep 0.2
+    done
+    kill -KILL "$SUT_PID" 2> /dev/null || true
+  fi
+  return "$ec"
 }
 trap cleanup_sut_on_exit EXIT
 
@@ -88,67 +88,67 @@ trap cleanup_sut_on_exit EXIT
 # Start or attach SUT inside purgatory cgroup
 # ---------------------------------------------------------------------------
 if [[ "${SKIP_START:-0}" == "1" ]] || [[ -n "${TARGET_PID:-}" ]]; then
-	SUT_PID="${TARGET_PID:-}"
-	[[ -n "$SUT_PID" ]] || die "SKIP_START=1 requires TARGET_PID"
-	log "attaching existing PID ${SUT_PID} into ${CGROUP_PATH}"
-	cgroup_attach_pid "$SUT_PID"
+  SUT_PID="${TARGET_PID:-}"
+  [[ -n "$SUT_PID" ]] || die "SKIP_START=1 requires TARGET_PID"
+  log "attaching existing PID ${SUT_PID} into ${CGROUP_PATH}"
+  cgroup_attach_pid "$SUT_PID"
 else
-	[[ -x "$TARGET_BIN" ]] || die "TARGET_BIN not executable: ${TARGET_BIN} (build tracker or set TARGET_BIN / TARGET_PID)"
-	log "starting ${TARGET_BIN} inside ${CGROUP_PATH}"
-	# Hostile Go runtime defaults under 64 MiB: tight GC, single P matching cpuset.
-	export GOMAXPROCS="${GOMAXPROCS:-1}"
-	export GOMEMLIMIT="${GOMEMLIMIT:-60MiB}"
-	export GOGC="${GOGC:-50}"
+  [[ -x "$TARGET_BIN" ]] || die "TARGET_BIN not executable: ${TARGET_BIN} (build tracker or set TARGET_BIN / TARGET_PID)"
+  log "starting ${TARGET_BIN} inside ${CGROUP_PATH}"
+  # Hostile Go runtime defaults under 64 MiB: tight GC, single P matching cpuset.
+  export GOMAXPROCS="${GOMAXPROCS:-1}"
+  export GOMEMLIMIT="${GOMEMLIMIT:-60MiB}"
+  export GOGC="${GOGC:-50}"
 
-	# Spawn, then move into cgroup before it accepts much traffic.
-	# Using a pipe-sync so we know the real PID after fork.
-	FIFO="${STATE_DIR}/sut.ready.$$"
-	mkfifo "$FIFO"
-	# Extra args for the binary: TARGET_ARGS="--addr :8181" (word-split intentionally).
-	# shellcheck disable=SC2086
-	(
-		echo $$ >"${CGROUP_PATH}/cgroup.procs"
-		echo ready >"$FIFO"
-		exec "$TARGET_BIN" ${TARGET_ARGS:-}
-	) >"${OUT}/sut.stdout" 2>"${OUT}/sut.stderr" &
-	SUT_PID=$!
-	STARTED_BY_US=1
-	# Wait for child to enter cgroup (or die). Timeout avoids FIFO deadlock.
-	if ! timeout 5 cat "$FIFO" >/dev/null; then
-		rm -f "$FIFO"
-		die "SUT failed to signal readiness within 5s; see ${OUT}/sut.stderr"
-	fi
-	rm -f "$FIFO"
-	echo "$SUT_PID" >"$SUT_PID_FILE"
-	cg_path="$(awk -F: '$1=="0"{print $3}' "/proc/${SUT_PID}/cgroup" 2>/dev/null || echo '?')"
-	log "SUT pid=${SUT_PID} cgroup=${cg_path}"
+  # Spawn, then move into cgroup before it accepts much traffic.
+  # Using a pipe-sync so we know the real PID after fork.
+  FIFO="${STATE_DIR}/sut.ready.$$"
+  mkfifo "$FIFO"
+  # Extra args for the binary: TARGET_ARGS="--addr :8181" (word-split intentionally).
+  # shellcheck disable=SC2086
+  (
+    echo $$ > "${CGROUP_PATH}/cgroup.procs"
+    echo ready > "$FIFO"
+    exec "$TARGET_BIN" ${TARGET_ARGS:-}
+  ) > "${OUT}/sut.stdout" 2> "${OUT}/sut.stderr" &
+  SUT_PID=$!
+  STARTED_BY_US=1
+  # Wait for child to enter cgroup (or die). Timeout avoids FIFO deadlock.
+  if ! timeout 5 cat "$FIFO" > /dev/null; then
+    rm -f "$FIFO"
+    die "SUT failed to signal readiness within 5s; see ${OUT}/sut.stderr"
+  fi
+  rm -f "$FIFO"
+  echo "$SUT_PID" > "$SUT_PID_FILE"
+  cg_path="$(awk -F: '$1=="0"{print $3}' "/proc/${SUT_PID}/cgroup" 2> /dev/null || echo '?')"
+  log "SUT pid=${SUT_PID} cgroup=${cg_path}"
 
-	# Wait until TCP listen is up (best-effort).
-	log "waiting for ${TARGET_HOST}:${TARGET_PORT}"
-	ready=0
-	for _ in $(seq 1 100); do
-		if ! kill -0 "$SUT_PID" 2>/dev/null; then
-			die "SUT died during startup (likely OOM under 64 MiB). Check dmesg and ${OUT}/sut.stderr"
-		fi
-		if have_cmd ss; then
-			if ss -lnt "sport = :${TARGET_PORT}" 2>/dev/null | grep -q ":${TARGET_PORT}"; then
-				ready=1
-				break
-			fi
-		elif bash -c "echo >/dev/tcp/${TARGET_HOST}/${TARGET_PORT}" 2>/dev/null; then
-			ready=1
-			break
-		fi
-		sleep 0.1
-	done
-	[[ "$ready" -eq 1 ]] || warn "listen probe timed out; continuing anyway"
+  # Wait until TCP listen is up (best-effort).
+  log "waiting for ${TARGET_HOST}:${TARGET_PORT}"
+  ready=0
+  for _ in $(seq 1 100); do
+    if ! kill -0 "$SUT_PID" 2> /dev/null; then
+      die "SUT died during startup (likely OOM under 64 MiB). Check dmesg and ${OUT}/sut.stderr"
+    fi
+    if have_cmd ss; then
+      if ss -lnt "sport = :${TARGET_PORT}" 2> /dev/null | grep -q ":${TARGET_PORT}"; then
+        ready=1
+        break
+      fi
+    elif bash -c "echo >/dev/tcp/${TARGET_HOST}/${TARGET_PORT}" 2> /dev/null; then
+      ready=1
+      break
+    fi
+    sleep 0.1
+  done
+  [[ "$ready" -eq 1 ]] || warn "listen probe timed out; continuing anyway"
 fi
 
 # Confirm membership.
-if ! grep -qx "$SUT_PID" "${CGROUP_PATH}/cgroup.procs" 2>/dev/null; then
-	# Child may have re-parented threads; check any tid or warn.
-	warn "PID ${SUT_PID} not listed in cgroup.procs (threads may differ); forcing attach"
-	cgroup_attach_pid "$SUT_PID" || true
+if ! grep -qx "$SUT_PID" "${CGROUP_PATH}/cgroup.procs" 2> /dev/null; then
+  # Child may have re-parented threads; check any tid or warn.
+  warn "PID ${SUT_PID} not listed in cgroup.procs (threads may differ); forcing attach"
+  cgroup_attach_pid "$SUT_PID" || true
 fi
 
 # ---------------------------------------------------------------------------
@@ -156,7 +156,7 @@ fi
 # ---------------------------------------------------------------------------
 TRACK_BODY="{\"campaign_id\":\"${TRACK_CAMPAIGN_ID}\",\"type\":\"click\"}"
 BODY_FILE="${OUT}/track_body.json"
-printf '%s' "$TRACK_BODY" >"$BODY_FILE"
+printf '%s' "$TRACK_BODY" > "$BODY_FILE"
 
 # ---------------------------------------------------------------------------
 # Load generation — 10k keep-alive connections, 60s
@@ -165,35 +165,35 @@ LOAD_LOG="${OUT}/loadgen.log"
 log "driving ${BENCH_CONNECTIONS} connections for ${BENCH_DURATION} → ${TARGET_URL}"
 
 run_wrk() {
-	local bin=$1
-	local lua="${OUT}/track.lua"
-	# wrk Lua: POST keep-alive with fixed body.
-	cat >"$lua" <<EOF
+  local bin=$1
+  local lua="${OUT}/track.lua"
+  # wrk Lua: POST keep-alive with fixed body.
+  cat > "$lua" << EOF
 wrk.method = "POST"
 wrk.body   = [=[${TRACK_BODY}]=]
 wrk.headers["Content-Type"] = "application/json"
 wrk.headers["Connection"]   = "keep-alive"
 wrk.headers["Accept"]       = "application/json"
 EOF
-	# wrk: -c connections -t threads -d duration --latency
-	# wrk2: adds -R rate; we omit calibrated rate to maximize pressure.
-	if [[ "$bin" == "wrk2" ]]; then
-		wrk2 -t "$BENCH_THREADS" -c "$BENCH_CONNECTIONS" -d "$BENCH_DURATION" \
-			--latency -R "${BENCH_RATE:-50000}" -s "$lua" "$TARGET_URL" \
-			| tee "$LOAD_LOG"
-	else
-		wrk -t "$BENCH_THREADS" -c "$BENCH_CONNECTIONS" -d "$BENCH_DURATION" \
-			--latency -s "$lua" "$TARGET_URL" \
-			| tee "$LOAD_LOG"
-	fi
+  # wrk: -c connections -t threads -d duration --latency
+  # wrk2: adds -R rate; we omit calibrated rate to maximize pressure.
+  if [[ "$bin" == "wrk2" ]]; then
+    wrk2 -t "$BENCH_THREADS" -c "$BENCH_CONNECTIONS" -d "$BENCH_DURATION" \
+      --latency -R "${BENCH_RATE:-50000}" -s "$lua" "$TARGET_URL" \
+      | tee "$LOAD_LOG"
+  else
+    wrk -t "$BENCH_THREADS" -c "$BENCH_CONNECTIONS" -d "$BENCH_DURATION" \
+      --latency -s "$lua" "$TARGET_URL" \
+      | tee "$LOAD_LOG"
+  fi
 }
 
 run_k6() {
-	local js="${OUT}/track_k6.js"
-	# Parse duration like 60s → 60.
-	local secs
-	secs="$(echo "$BENCH_DURATION" | sed -E 's/^([0-9]+).*/\1/')"
-	cat >"$js" <<EOF
+  local js="${OUT}/track_k6.js"
+  # Parse duration like 60s → 60.
+  local secs
+  secs="$(echo "$BENCH_DURATION" | sed -E 's/^([0-9]+).*/\1/')"
+  cat > "$js" << EOF
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 
@@ -225,26 +225,26 @@ export default function () {
   check(res, { 'status is 2xx/4xx': (r) => r.status >= 200 && r.status < 500 });
 }
 EOF
-	k6 run --summary-export "${OUT}/k6_summary.json" "$js" | tee "$LOAD_LOG"
+  k6 run --summary-export "${OUT}/k6_summary.json" "$js" | tee "$LOAD_LOG"
 }
 
 case "$LOADGEN" in
-	wrk|wrk2) run_wrk "$LOADGEN" || warn "loadgen exited non-zero (SUT may have been OOM-killed)" ;;
-	k6)       run_k6 || warn "k6 exited non-zero" ;;
+  wrk | wrk2) run_wrk "$LOADGEN" || warn "loadgen exited non-zero (SUT may have been OOM-killed)" ;;
+  k6) run_k6 || warn "k6 exited non-zero" ;;
 esac
 
 # ---------------------------------------------------------------------------
 # Post-run: cgroup throttle, OOM, latency parse
 # ---------------------------------------------------------------------------
 CPU_STAT_AFTER="${OUT}/cpu.stat.after"
-read_cpu_stat >"$CPU_STAT_AFTER"
+read_cpu_stat > "$CPU_STAT_AFTER"
 MEM_EVENTS_AFTER="${OUT}/memory.events.after"
-read_memory_events >"$MEM_EVENTS_AFTER"
+read_memory_events > "$MEM_EVENTS_AFTER"
 OOM_AFTER="$(oom_kill_count)"
 
 stat_field() {
-	local file=$1 key=$2
-	awk -v k="$key" '$1 == k { print $2; found=1 } END { if (!found) print 0 }' "$file"
+  local file=$1 key=$2
+  awk -v k="$key" '$1 == k { print $2; found=1 } END { if (!found) print 0 }' "$file"
 }
 
 NR_THROTTLED_BEFORE="$(stat_field "$CPU_STAT_BEFORE" nr_throttled)"
@@ -258,35 +258,35 @@ OOM_DELTA=$((OOM_AFTER - OOM_BEFORE))
 
 # Kernel ring buffer OOM lines for this PID / binary name.
 OOM_DMESG="${OUT}/oom_dmesg.txt"
-{ dmesg -T 2>/dev/null || journalctl -k -n 200 --no-pager 2>/dev/null || true; } \
-	| grep -iE "oom|killed process|${SUT_PID}" \
-	| tail -n 50 >"$OOM_DMESG" || true
+{ dmesg -T 2> /dev/null || journalctl -k -n 200 --no-pager 2> /dev/null || true; } \
+  | grep -iE "oom|killed process|${SUT_PID}" \
+  | tail -n 50 > "$OOM_DMESG" || true
 
 SUT_ALIVE=0
-if [[ -n "$SUT_PID" ]] && kill -0 "$SUT_PID" 2>/dev/null; then
-	SUT_ALIVE=1
+if [[ -n "$SUT_PID" ]] && kill -0 "$SUT_PID" 2> /dev/null; then
+  SUT_ALIVE=1
 fi
 
 # --- Parse RPS / latency from wrk or k6 ------------------------------------
 METRICS_JSON="${OUT}/metrics.json"
 parse_wrk_metrics() {
-	# wrk --latency sample:
-	#   Requests/sec:   12345.67
-	#   Latency Distribution
-	#      50%  1.23ms
-	#      75%  ...
-	#      90%  ...
-	#      99%  ...
-	local rps p50 p95 p99 p999
-	rps="$(awk '/Requests\/sec:/ { print $2 }' "$LOAD_LOG" | tail -1)"
-	p50="$(awk '/^[[:space:]]*50%/ { print $2$3 }' "$LOAD_LOG" | tail -1)"
-	# wrk does not print p95 by default; approximate from 90/99 if present.
-	p95="$(awk '/^[[:space:]]*90%/ { print $2$3 }' "$LOAD_LOG" | tail -1)"
-	p99="$(awk '/^[[:space:]]*99%/ { print $2$3 }' "$LOAD_LOG" | tail -1)"
-	# wrk2 / hdr histograms sometimes expose 99.9
-	p999="$(awk '/^[[:space:]]*99\.9%/ { print $2$3 }' "$LOAD_LOG" | tail -1)"
-	[[ -n "$p999" ]] || p999="n/a (wrk has no p99.9; use wrk2/k6)"
-	cat >"$METRICS_JSON" <<EOF
+  # wrk --latency sample:
+  #   Requests/sec:   12345.67
+  #   Latency Distribution
+  #      50%  1.23ms
+  #      75%  ...
+  #      90%  ...
+  #      99%  ...
+  local rps p50 p95 p99 p999
+  rps="$(awk '/Requests\/sec:/ { print $2 }' "$LOAD_LOG" | tail -1)"
+  p50="$(awk '/^[[:space:]]*50%/ { print $2$3 }' "$LOAD_LOG" | tail -1)"
+  # wrk does not print p95 by default; approximate from 90/99 if present.
+  p95="$(awk '/^[[:space:]]*90%/ { print $2$3 }' "$LOAD_LOG" | tail -1)"
+  p99="$(awk '/^[[:space:]]*99%/ { print $2$3 }' "$LOAD_LOG" | tail -1)"
+  # wrk2 / hdr histograms sometimes expose 99.9
+  p999="$(awk '/^[[:space:]]*99\.9%/ { print $2$3 }' "$LOAD_LOG" | tail -1)"
+  [[ -n "$p999" ]] || p999="n/a (wrk has no p99.9; use wrk2/k6)"
+  cat > "$METRICS_JSON" << EOF
 {
   "loadgen": "${LOADGEN}",
   "rps": "${rps:-n/a}",
@@ -302,15 +302,15 @@ EOF
 }
 
 parse_k6_metrics() {
-	local summary="${OUT}/k6_summary.json"
-	if [[ ! -f "$summary" ]]; then
-		warn "k6 summary missing"
-		echo '{"loadgen":"k6","error":"no summary"}' >"$METRICS_JSON"
-		return
-	fi
-	# Prefer jq; fall back to python3.
-	if have_cmd jq; then
-		jq '{
+  local summary="${OUT}/k6_summary.json"
+  if [[ ! -f "$summary" ]]; then
+    warn "k6 summary missing"
+    echo '{"loadgen":"k6","error":"no summary"}' > "$METRICS_JSON"
+    return
+  fi
+  # Prefer jq; fall back to python3.
+  if have_cmd jq; then
+    jq '{
 		  loadgen: "k6",
 		  rps: (.metrics.http_reqs.values.rate // .metrics.http_reqs.rate // "n/a"),
 		  p50: (.metrics.http_req_duration.values["p(50)"] // "n/a"),
@@ -320,9 +320,9 @@ parse_k6_metrics() {
 		  connections: '"${BENCH_CONNECTIONS}"',
 		  duration: "'"${BENCH_DURATION}"'",
 		  url: "'"${TARGET_URL}"'"
-		}' "$summary" >"$METRICS_JSON"
-	elif have_cmd python3; then
-		python3 - "$summary" <<'PY' >"$METRICS_JSON"
+		}' "$summary" > "$METRICS_JSON"
+  elif have_cmd python3; then
+    python3 - "$summary" << 'PY' > "$METRICS_JSON"
 import json, sys
 s = json.load(open(sys.argv[1]))
 m = s.get("metrics", {})
@@ -342,51 +342,51 @@ out = {
 }
 print(json.dumps(out, indent=2))
 PY
-	else
-		warn "install jq or python3 to parse k6 summary"
-		echo '{"loadgen":"k6","note":"raw summary at k6_summary.json"}' >"$METRICS_JSON"
-	fi
+  else
+    warn "install jq or python3 to parse k6 summary"
+    echo '{"loadgen":"k6","note":"raw summary at k6_summary.json"}' > "$METRICS_JSON"
+  fi
 }
 
 case "$LOADGEN" in
-	wrk|wrk2) parse_wrk_metrics ;;
-	k6)       parse_k6_metrics ;;
+  wrk | wrk2) parse_wrk_metrics ;;
+  k6) parse_k6_metrics ;;
 esac
 
 REPORT="${OUT}/REPORT.txt"
 {
-	echo "=== ESPX Purgatory Torture Report (${TS}) ==="
-	echo
-	echo "-- SUT --"
-	echo "pid:            ${SUT_PID}"
-	echo "alive:          ${SUT_ALIVE}"
-	echo "binary:         ${TARGET_BIN}"
-	echo "cgroup:         ${CGROUP_PATH}"
-	echo "url:            ${TARGET_URL}"
-	echo
-	echo "-- CPU throttling (cgroup cpu.stat delta) --"
-	echo "nr_throttled:   ${NR_THROTTLED_DELTA}  (before=${NR_THROTTLED_BEFORE} after=${NR_THROTTLED_AFTER})"
-	echo "throttled_usec: ${THROTTLED_USEC_DELTA}  (before=${THROTTLED_USEC_BEFORE} after=${THROTTLED_USEC_AFTER})"
-	echo
-	echo "-- OOM --"
-	echo "oom_kill delta: ${OOM_DELTA}  (before=${OOM_BEFORE} after=${OOM_AFTER})"
-	if [[ "$OOM_DELTA" -gt 0 ]] || [[ "$SUT_ALIVE" -eq 0 ]]; then
-		echo "OOM_TRIGGERED:  YES (or process dead)"
-	else
-		echo "OOM_TRIGGERED:  NO"
-	fi
-	echo "dmesg snippet:  ${OOM_DMESG}"
-	echo
-	echo "-- Load metrics --"
-	cat "$METRICS_JSON"
-	echo
-	echo "-- cpu.stat (after) --"
-	cat "$CPU_STAT_AFTER"
-	echo
-	echo "-- memory.events (after) --"
-	cat "$MEM_EVENTS_AFTER"
-	echo
-	echo "artifacts: ${OUT}"
+  echo "=== ESPX Purgatory Torture Report (${TS}) ==="
+  echo
+  echo "-- SUT --"
+  echo "pid:            ${SUT_PID}"
+  echo "alive:          ${SUT_ALIVE}"
+  echo "binary:         ${TARGET_BIN}"
+  echo "cgroup:         ${CGROUP_PATH}"
+  echo "url:            ${TARGET_URL}"
+  echo
+  echo "-- CPU throttling (cgroup cpu.stat delta) --"
+  echo "nr_throttled:   ${NR_THROTTLED_DELTA}  (before=${NR_THROTTLED_BEFORE} after=${NR_THROTTLED_AFTER})"
+  echo "throttled_usec: ${THROTTLED_USEC_DELTA}  (before=${THROTTLED_USEC_BEFORE} after=${THROTTLED_USEC_AFTER})"
+  echo
+  echo "-- OOM --"
+  echo "oom_kill delta: ${OOM_DELTA}  (before=${OOM_BEFORE} after=${OOM_AFTER})"
+  if [[ "$OOM_DELTA" -gt 0 ]] || [[ "$SUT_ALIVE" -eq 0 ]]; then
+    echo "OOM_TRIGGERED:  YES (or process dead)"
+  else
+    echo "OOM_TRIGGERED:  NO"
+  fi
+  echo "dmesg snippet:  ${OOM_DMESG}"
+  echo
+  echo "-- Load metrics --"
+  cat "$METRICS_JSON"
+  echo
+  echo "-- cpu.stat (after) --"
+  cat "$CPU_STAT_AFTER"
+  echo
+  echo "-- memory.events (after) --"
+  cat "$MEM_EVENTS_AFTER"
+  echo
+  echo "artifacts: ${OUT}"
 } | tee "$REPORT"
 
 log "done. Report: ${REPORT}"

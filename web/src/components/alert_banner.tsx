@@ -9,17 +9,20 @@ export type AlertBannerProps = {
   onDismiss?: () => void;
 };
 
-/**
- * Dismissible alert banner.
- */
-export function AlertBanner({ variant = 'info', message, dismissKey, onDismiss }: AlertBannerProps) {
-  const [dismissed, setDismissed] = useState(() => (
+export function AlertBanner({
+  variant = 'info',
+  message,
+  dismissKey,
+  onDismiss,
+}: AlertBannerProps) {
+  const [dismissed, setDismissed] = useState(() =>
     dismissKey ? isAlertDismissed(dismissKey) : false
-  ));
+  );
 
   if (dismissed) return null;
 
-  const iconName = variant === 'error' ? 'alert-circle' : variant === 'warning' ? 'alert-triangle' : 'info';
+  const iconName =
+    variant === 'error' ? 'alert-circle' : variant === 'warning' ? 'alert-triangle' : 'info';
 
   return (
     <div

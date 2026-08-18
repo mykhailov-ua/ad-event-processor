@@ -21,8 +21,8 @@ import { createInFlightGuard } from '../lib/async_guard.js';
 import { isParallelSlotError, parallelAll } from '../helpers/request_multiplex.js';
 import { to } from '../lib/to.js';
 import { createSortState, sortRows, toggleSort } from '../lib/table_sort.js';
-import type { CampaignDTO, CampaignListResponse } from '../types/api/campaign.js';
-import { useResource } from '../hooks/use_resource.js';
+import type { CampaignDTO, CampaignListResponse } from '../types/campaign.js';
+import { useResource } from '../helpers/use_resource.js';
 import { AlertBanner } from '../components/alert_banner.js';
 import { Breadcrumbs } from '../components/breadcrumbs.js';
 import { Button, ButtonLink } from '../components/button.js';
@@ -43,7 +43,7 @@ const CAMPAIGNS_EMPTY = buyerEmptyCopy('campaigns_empty');
 
 async function runBulkCampaignAction(
   ids: string[],
-  fn: (id: string) => Promise<unknown>,
+  fn: (id: string) => Promise<unknown>
 ): Promise<Error | null> {
   const tasks = ids.map((id) => async () => {
     const [, err] = await to(fn(id));
@@ -79,7 +79,9 @@ function TableSkeleton({ cols, rows = 5 }: { cols: number; rows?: number }) {
       {Array.from({ length: rows }, (_, rowIndex) => (
         <tr key={`skel-${rowIndex}`} className="data-table__row--skeleton" aria-hidden="true">
           {Array.from({ length: cols }, (__, colIndex) => (
-            <td key={`skel-${rowIndex}-${colIndex}`}><span className="skeleton-bar" /></td>
+            <td key={`skel-${rowIndex}-${colIndex}`}>
+              <span className="skeleton-bar" />
+            </td>
           ))}
         </tr>
       ))}
@@ -87,17 +89,9 @@ function TableSkeleton({ cols, rows = 5 }: { cols: number; rows?: number }) {
   );
 }
 
-/**
- * Campaigns list with filters, bulk actions, and buyer/admin column layouts.
- */
 export function CampaignsPage() {
   const navigate = useNavigate();
-  const {
-    wizardOpen,
-    wizardCustomerId,
-    openWizard,
-    closeWizard,
-  } = useCampaignWizard();
+  const { wizardOpen, wizardCustomerId, openWizard, closeWizard } = useCampaignWizard();
   const [searchParams] = useSearchParams();
   const customerInputRef = useRef<HTMLInputElement>(null);
 
@@ -110,14 +104,16 @@ export function CampaignsPage() {
 
   const [page, setPage] = useState(0);
   const [customerIdInput, setCustomerIdInput] = useState(
-    sessionScoped ? tenantCustomerId : queryCustomer,
+    sessionScoped ? tenantCustomerId : queryCustomer
   );
   const [debouncedCustomerId, setDebouncedCustomerId] = useState(customerIdInput.trim());
   const [statusFilter, setStatusFilter] = useState('');
   const [showDetailedBudget, setShowDetailedBudget] = useState(false);
   const [sortState, setSortState] = useState(() => createSortState('name', 'asc'));
   const [licenseGrace, setLicenseGrace] = useState(false);
-  const [buyerDashboard, setBuyerDashboard] = useState<Awaited<ReturnType<typeof fetchBuyerDashboard>> | null>(null);
+  const [buyerDashboard, setBuyerDashboard] = useState<Awaited<
+    ReturnType<typeof fetchBuyerDashboard>
+  > | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -169,7 +165,9 @@ export function CampaignsPage() {
   }, [buyerView, skipFetch, effectiveCustomerId]);
 
   const listUrl = skipFetch ? null : buildUrl(page, effectiveCustomerId, statusFilter);
-  const { data, loading, error, reload } = useResource<CampaignListResponse>(listUrl, { skip: skipFetch });
+  const { data, loading, error, reload } = useResource<CampaignListResponse>(listUrl, {
+    skip: skipFetch,
+  });
 
   useEffect(() => {
     if (!loading && !error && isCustomerUuid(effectiveCustomerId)) {
@@ -184,50 +182,59 @@ export function CampaignsPage() {
 
   const attentionMap = useMemo(
     () => (buyerView ? attentionByCampaignId(buyerDashboard?.attention) : {}),
-    [buyerView, buyerDashboard?.attention],
+    [buyerView, buyerDashboard?.attention]
   );
 
-  const statFor = useCallback((c: CampaignDTO) => {
-    const row = buyerIndex?.[c.id];
-    const portfolioRow = row && typeof row === 'object' && !Array.isArray(row) ? row : null;
-    return buyerCampaignStat(portfolioRow);
-  }, [buyerIndex]);
+  const statFor = useCallback(
+    (c: CampaignDTO) => {
+      const row = buyerIndex?.[c.id];
+      const portfolioRow = row && typeof row === 'object' && !Array.isArray(row) ? row : null;
+      return buyerCampaignStat(portfolioRow);
+    },
+    [buyerIndex]
+  );
 
-  const sortAccessors = useMemo((): Record<string, (c: CampaignDTO) => unknown> => (
-    buyerView
-      ? {
-        name: (c: CampaignDTO) => c.name ?? '',
-        status: (c: CampaignDTO) => c.status ?? '',
-        impressions: (c: CampaignDTO) => statFor(c).impressions,
-        clicks: (c: CampaignDTO) => statFor(c).clicks,
-        pacing_mode: (c: CampaignDTO) => c.pacing_mode ?? '',
-      }
-      : {
-        name: (c: CampaignDTO) => c.name ?? '',
-        status: (c: CampaignDTO) => c.status ?? '',
-        budget_limit: (c: CampaignDTO) => Number(c.budget_limit ?? 0),
-        current_spend: (c: CampaignDTO) => Number(c.current_spend ?? 0),
-        pacing_mode: (c: CampaignDTO) => c.pacing_mode ?? '',
-        customer_id: (c: CampaignDTO) => c.customer_id ?? '',
-      }
-  ), [buyerView, statFor]);
+  const sortAccessors = useMemo(
+    (): Record<string, (c: CampaignDTO) => unknown> =>
+      buyerView
+        ? {
+            name: (c: CampaignDTO) => c.name ?? '',
+            status: (c: CampaignDTO) => c.status ?? '',
+            impressions: (c: CampaignDTO) => statFor(c).impressions,
+            clicks: (c: CampaignDTO) => statFor(c).clicks,
+            pacing_mode: (c: CampaignDTO) => c.pacing_mode ?? '',
+          }
+        : {
+            name: (c: CampaignDTO) => c.name ?? '',
+            status: (c: CampaignDTO) => c.status ?? '',
+            budget_limit: (c: CampaignDTO) => Number(c.budget_limit ?? 0),
+            current_spend: (c: CampaignDTO) => Number(c.current_spend ?? 0),
+            pacing_mode: (c: CampaignDTO) => c.pacing_mode ?? '',
+            customer_id: (c: CampaignDTO) => c.customer_id ?? '',
+          },
+    [buyerView, statFor]
+  );
 
   const campaigns = useMemo(
     () => sortRows(data?.items ?? [], sortState, sortAccessors),
-    [data?.items, sortState, sortAccessors],
+    [data?.items, sortState, sortAccessors]
   );
 
-  const healthCtxFor = useCallback((c: CampaignDTO) => {
-    const row = buyerIndex?.[c.id];
-    const portfolioRow = row && typeof row === 'object' && !Array.isArray(row) ? row : undefined;
-    return {
-      portfolioRow,
-      attentionReason: attentionMap[c.id],
-      marginBreach: !!c.margin_breach
-        || !!(portfolioRow as { margin_breach?: boolean } | undefined)?.margin_breach,
-      licenseGrace,
-    };
-  }, [buyerIndex, attentionMap, licenseGrace]);
+  const healthCtxFor = useCallback(
+    (c: CampaignDTO) => {
+      const row = buyerIndex?.[c.id];
+      const portfolioRow = row && typeof row === 'object' && !Array.isArray(row) ? row : undefined;
+      return {
+        portfolioRow,
+        attentionReason: attentionMap[c.id],
+        marginBreach:
+          !!c.margin_breach ||
+          !!(portfolioRow as { margin_breach?: boolean } | undefined)?.margin_breach,
+        licenseGrace,
+      };
+    },
+    [buyerIndex, attentionMap, licenseGrace]
+  );
 
   const bulkPause = async () => {
     if (!bulkGateRef.current.tryAcquire()) return;
@@ -286,7 +293,7 @@ export function CampaignsPage() {
 
   const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / PAGE_SIZE) || 1;
-  const colCount = bulkEnabled ? (buyerView ? 7 : 8) : (buyerView ? 6 : 7);
+  const colCount = bulkEnabled ? (buyerView ? 7 : 8) : buyerView ? 6 : 7;
 
   const onSort = (key: string) => {
     setSortState((prev) => {
@@ -299,16 +306,17 @@ export function CampaignsPage() {
   const sortHeader = (label: string, key: string) => {
     const active = sortState.key === key;
     const iconName = active
-      ? (sortState.dir === 'asc' ? 'chevron-up' : 'chevron-down')
+      ? sortState.dir === 'asc'
+        ? 'chevron-up'
+        : 'chevron-down'
       : 'arrow-up-down';
     return (
       <th
         key={key}
         scope="col"
-        className={[
-          'data-table__th--sortable',
-          active ? 'data-table__th--sorted' : '',
-        ].filter(Boolean).join(' ')}
+        className={['data-table__th--sortable', active ? 'data-table__th--sorted' : '']
+          .filter(Boolean)
+          .join(' ')}
         aria-sort={active ? (sortState.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
         tabIndex={0}
         onClick={() => onSort(key)}
@@ -329,11 +337,15 @@ export function CampaignsPage() {
     <>
       <div className="page-header">
         {effectiveCustomerId && isCustomerUuid(effectiveCustomerId) ? (
-          <Breadcrumbs items={[
-            { label: 'Customers', href: '/customers' },
-            { label: shortCustomerId(effectiveCustomerId, 14), href: `/customers/${effectiveCustomerId}` },
-            { label: 'Campaigns' },
-          ]}
+          <Breadcrumbs
+            items={[
+              { label: 'Customers', href: '/customers' },
+              {
+                label: shortCustomerId(effectiveCustomerId, 14),
+                href: `/customers/${effectiveCustomerId}`,
+              },
+              { label: 'Campaigns' },
+            ]}
           />
         ) : null}
         <div className="page-header__row cluster--actions">
@@ -342,10 +354,17 @@ export function CampaignsPage() {
             <h1 className="page-header__title">Campaigns</h1>
           </div>
           {buyerView ? (
-            <ButtonLink href="/campaigns/portfolio" label="Portfolio view" variant="secondary" size="sm" />
+            <ButtonLink
+              href="/campaigns/portfolio"
+              label="Portfolio view"
+              variant="secondary"
+              size="sm"
+            />
           ) : null}
           <Button
-            label={showDetailedBudget ? 'Precision: Micro ($00.000000)' : 'Precision: Standard ($00.00)'}
+            label={
+              showDetailedBudget ? 'Precision: Micro ($00.000000)' : 'Precision: Standard ($00.00)'
+            }
             variant="secondary"
             size="sm"
             icon="sliders"
@@ -367,18 +386,18 @@ export function CampaignsPage() {
 
       <div className="mb-4">
         <FilterToolbar
-          leading={!sessionScoped ? (
-            <input
-              ref={customerInputRef}
-              id="campaigns-customer-input"
-              type="text"
-              className="form-input form-input--sm"
-              placeholder="Customer UUID…"
-              value={customerIdInput}
-              onChange={(e) => setCustomerIdInput(e.target.value)}
-            />
-          ) : (
-            sessionScoped && effectiveCustomerId && !buyerView ? (
+          leading={
+            !sessionScoped ? (
+              <input
+                ref={customerInputRef}
+                id="campaigns-customer-input"
+                type="text"
+                className="form-input form-input--sm"
+                placeholder="Customer UUID…"
+                value={customerIdInput}
+                onChange={(e) => setCustomerIdInput(e.target.value)}
+              />
+            ) : sessionScoped && effectiveCustomerId && !buyerView ? (
               <p className="text-muted text-hint">
                 Customer:{' '}
                 <a href={`/customers/${effectiveCustomerId}`} className="font-mono">
@@ -386,7 +405,7 @@ export function CampaignsPage() {
                 </a>
               </p>
             ) : null
-          )}
+          }
           chips={[
             { value: '', label: 'All' },
             { value: 'ACTIVE', label: 'Active' },
@@ -398,21 +417,21 @@ export function CampaignsPage() {
             setStatusFilter(value);
             setPage(0);
           }}
-          pagination={totalPages > 1 ? (
-            <PaginationBar
-              label={`${page + 1} / ${totalPages}`}
-              prevDisabled={page === 0}
-              nextDisabled={page >= totalPages - 1}
-              onPrev={() => setPage((p) => Math.max(0, p - 1))}
-              onNext={() => setPage((p) => p + 1)}
-            />
-          ) : null}
+          pagination={
+            totalPages > 1 ? (
+              <PaginationBar
+                label={`${page + 1} / ${totalPages}`}
+                prevDisabled={page === 0}
+                nextDisabled={page >= totalPages - 1}
+                onPrev={() => setPage((p) => Math.max(0, p - 1))}
+                onNext={() => setPage((p) => p + 1)}
+              />
+            ) : null
+          }
         />
       </div>
 
-      {customerFilterError ? (
-        <AlertBanner variant="error" message={customerFilterError} />
-      ) : null}
+      {customerFilterError ? <AlertBanner variant="error" message={customerFilterError} /> : null}
       {!effectiveCustomerId && !sessionScoped && !loading && campaigns.length === 0 ? (
         <AlertBanner variant="info" message="Enter a customer UUID to load the campaign list." />
       ) : null}
@@ -477,7 +496,9 @@ export function CampaignsPage() {
                 <td colSpan={colCount}>
                   <div className="empty-state">
                     <div className="empty-state__title">{CAMPAIGNS_EMPTY.title}</div>
-                    <div className="empty-state__desc text-muted text-sm">{CAMPAIGNS_EMPTY.description}</div>
+                    <div className="empty-state__desc text-muted text-sm">
+                      {CAMPAIGNS_EMPTY.description}
+                    </div>
                     <Button
                       label={CAMPAIGNS_EMPTY.actionLabel ?? 'Continue'}
                       variant="secondary"
@@ -539,7 +560,9 @@ export function CampaignsPage() {
                   </td>
                 ) : null}
                 <td>{c.name}</td>
-                <td><StatusBadge status={c.status} kind="campaign" /></td>
+                <td>
+                  <StatusBadge status={c.status} kind="campaign" />
+                </td>
                 {buyerView ? (
                   <td>{String(statFor(c).impressions || '—')}</td>
                 ) : (
@@ -555,14 +578,18 @@ export function CampaignsPage() {
                   </td>
                 )}
                 <td>{displayLabel(c.pacing_mode)}</td>
-                <td><CampaignHealthBadge campaign={c} ctx={healthCtxFor(c)} /></td>
+                <td>
+                  <CampaignHealthBadge campaign={c} ctx={healthCtxFor(c)} />
+                </td>
                 {!buyerView ? (
                   <td onClick={(e) => e.stopPropagation()}>
                     {c.customer_id ? (
                       <a href={`/customers/${c.customer_id}`}>
                         <CopyableUuid uuid={c.customer_id} />
                       </a>
-                    ) : '—'}
+                    ) : (
+                      '—'
+                    )}
                   </td>
                 ) : null}
               </tr>

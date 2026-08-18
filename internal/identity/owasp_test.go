@@ -201,7 +201,6 @@ func TestOWASP_LockoutNoPostgresBlock(t *testing.T) {
 
 	mRedis := &mockRedisClient{
 		evalFunc: func(script string, keys []string, args ...interface{}) (interface{}, error) {
-
 			if len(keys) > 0 && strings.HasPrefix(keys[0], "ratelimit:ip:") {
 				return int64(1), nil
 			}
@@ -257,7 +256,6 @@ func TestOWASP_IPSpoofingXForwardedFor(t *testing.T) {
 }
 
 func TestOWASP_PasswordPolicy(t *testing.T) {
-
 	assert.Error(t, ValidatePassword("short"), "Password too short must be rejected")
 	assert.Error(t, ValidatePassword("lowercaseonly"), "Password without uppercase, digit, and special char must be rejected")
 	assert.Error(t, ValidatePassword("UPPERCASEONLY"), "Password without lowercase, digit, and special char must be rejected")

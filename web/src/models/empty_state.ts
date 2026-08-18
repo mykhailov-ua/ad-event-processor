@@ -12,9 +12,6 @@ export type BuyerEmptyCopy = {
   actionHref?: string;
 };
 
-/**
- * Return job-oriented empty-state copy for buyer workflows.
- */
 export function buyerEmptyCopy(kind: BuyerEmptyKind | string): BuyerEmptyCopy {
   switch (kind) {
     case 'campaigns_empty':
@@ -46,7 +43,8 @@ export function buyerEmptyCopy(kind: BuyerEmptyKind | string): BuyerEmptyCopy {
     case 'session_customer':
       return {
         title: 'Customer context required',
-        description: 'Sign in again or ask the operator to attach a customer to your buyer account.',
+        description:
+          'Sign in again or ask the operator to attach a customer to your buyer account.',
       };
     default:
       return {

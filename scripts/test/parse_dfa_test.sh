@@ -6,11 +6,11 @@ cd "$ROOT"
 LUA_MOUNT="/etc/nginx/lua"
 
 run_fault_tests() {
-	docker exec espx-nginx-1 /usr/local/openresty/luajit/bin/luajit "${LUA_MOUNT}/edge_parse_dfa_fault_test.lua" "${LUA_MOUNT}"
+  docker exec espx-nginx-1 /usr/local/openresty/luajit/bin/luajit "${LUA_MOUNT}/edge_parse_dfa_fault_test.lua" "${LUA_MOUNT}"
 }
 
 run_tests() {
-	docker exec espx-nginx-1 /usr/local/openresty/luajit/bin/luajit -e "
+  docker exec espx-nginx-1 /usr/local/openresty/luajit/bin/luajit -e "
 package.path = '${LUA_MOUNT}/?.lua;;'
 local dfa = require('edge-parse-dfa')
 local uuid = string.char(0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,0x10,0x11,0x12,0x13,0x14,0x15,0x16,0x17,0x18,0x19)
@@ -26,18 +26,18 @@ cid, err = dfa.extract_campaign_id(over,
 assert(err == dfa.ERR_OVERSIZE, 'campaign len')
 print('edge-parse-dfa: all tests passed')
 "
-	run_fault_tests
+  run_fault_tests
 }
 
 if docker ps --format '{{.Names}}' | grep -q '^espx-nginx-1$'; then
-	run_tests
+  run_tests
 else
-	docker run --rm -v "$ROOT/deploy/nginx/lua:${LUA_MOUNT}:ro" openresty/openresty:alpine \
-		/usr/local/openresty/luajit/bin/luajit -e "
+  docker run --rm -v "$ROOT/deploy/nginx/lua:${LUA_MOUNT}:ro" openresty/openresty:alpine \
+    /usr/local/openresty/luajit/bin/luajit -e "
 package.path = '${LUA_MOUNT}/?.lua;;'
 local dfa = require('edge-parse-dfa')
 print('edge-parse-dfa: smoke ok')
 "
-	docker run --rm -v "$ROOT/deploy/nginx/lua:${LUA_MOUNT}:ro" openresty/openresty:alpine \
-		/usr/local/openresty/luajit/bin/luajit "${LUA_MOUNT}/edge_parse_dfa_fault_test.lua" "${LUA_MOUNT}"
+  docker run --rm -v "$ROOT/deploy/nginx/lua:${LUA_MOUNT}:ro" openresty/openresty:alpine \
+    /usr/local/openresty/luajit/bin/luajit "${LUA_MOUNT}/edge_parse_dfa_fault_test.lua" "${LUA_MOUNT}"
 fi

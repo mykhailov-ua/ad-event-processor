@@ -9,9 +9,6 @@ export type SegmentedControlProps = {
   onChange: (value: string) => void;
 };
 
-/**
- * Segmented control (static pill; active state via CSS class).
- */
 export function SegmentedControl({ items, selected, onChange }: SegmentedControlProps) {
   return (
     <div className="segmented-control" role="tablist">

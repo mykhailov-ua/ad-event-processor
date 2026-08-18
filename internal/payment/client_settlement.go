@@ -35,23 +35,42 @@ type PaymentIntentLedger struct {
 }
 
 func (c *SettlementLedgerClient) GetPaymentIntentLedger(ctx context.Context, intentID uuid.UUID) (PaymentIntentLedger, error) {
-	if err := c.ensureClient(); err != nil {
+	ledgers, err := c.GetPaymentIntentLedgers(ctx, []uuid.UUID{intentID})
+	if err != nil {
 		return PaymentIntentLedger{}, err
 	}
-	entry, err := c.getAPI().GetLedgerEntry(ctx, intentID)
-	if err != nil {
-		return PaymentIntentLedger{}, fmt.Errorf("settlement GetLedgerEntry: %w", err)
+	return ledgers[intentID], nil
+}
+
+func (c *SettlementLedgerClient) GetPaymentIntentLedgers(ctx context.Context, intentIDs []uuid.UUID) (map[uuid.UUID]PaymentIntentLedger, error) {
+	out := make(map[uuid.UUID]PaymentIntentLedger, len(intentIDs))
+	if len(intentIDs) == 0 {
+		return out, nil
 	}
+	if err := c.ensureClient(); err != nil {
+		return nil, err
+	}
+	entries, err := c.getAPI().GetLedgerEntries(ctx, intentIDs)
+	if err != nil {
+		return nil, fmt.Errorf("settlement GetLedgerEntries: %w", err)
+	}
+	for id, entry := range entries {
+		out[id] = paymentIntentLedgerFromEntry(entry)
+	}
+	return out, nil
+}
+
+func paymentIntentLedgerFromEntry(entry domain.PaymentLedgerEntry) PaymentIntentLedger {
 	out := PaymentIntentLedger{
 		RefundMicro:             entry.RefundTotalMicro,
 		ChargebackMicro:         entry.ChargebackTotalMicro,
 		ChargebackReversalMicro: entry.ChargebackReversalTotalMicro,
 	}
-	if entry.Found && entry.HasTopup {
+	if entry.HasTopup {
 		out.HasTopup = true
 		out.TopupMicro = entry.TopupAmountMicro
 	}
-	return out, nil
+	return out
 }
 
 func (c *SettlementLedgerClient) Close() error {

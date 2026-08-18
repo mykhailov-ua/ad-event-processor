@@ -10,9 +10,9 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 
-#include "common/espx_pt_regs.h"
-#include "common/espx_probe.h"
-#include "common/espx_trace.h"
+#include "espx_pt_regs.h"
+#include "espx_probe.h"
+#include "espx_trace.h"
 
 char LICENSE[] SEC("license") = "GPL";
 

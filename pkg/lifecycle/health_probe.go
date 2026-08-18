@@ -14,7 +14,6 @@ import (
 
 const HealthProbeTimeout = 5 * time.Second
 
-// RunHealthProbe GETs targetURL or unix socket path and returns true when status is 200.
 func RunHealthProbe(target string) bool {
 	target = strings.TrimSpace(target)
 	if target == "" {

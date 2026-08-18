@@ -1,7 +1,7 @@
 version: "2"
 
-# Cold-path Go lint profile (everything except hot-path packages).
-# Run via: scripts/ci/lint_go_gate.sh cold
+
+
 run:
   timeout: 8m
   go: "1.25.12"
@@ -59,7 +59,7 @@ linters:
       - path: '(/|^)(.*/)?db/'
         linters:
           - errcheck
-      # CLI / installer UX: stdout is the interface.
+
       - path: 'cmd/admin/'
         linters:
           - forbidigo

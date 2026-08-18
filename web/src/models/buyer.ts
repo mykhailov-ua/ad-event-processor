@@ -1,4 +1,4 @@
-import type { BuyerCampaignPortfolioRow, BuyerPortfolioResponse } from '../types/api/campaign.js';
+import type { BuyerCampaignPortfolioRow, BuyerPortfolioResponse } from '../types/campaign.js';
 
 export type BuyerAttentionDTO = {
   id: string;
@@ -11,7 +11,6 @@ export type BuyerCampaignStatsDTO = {
   clicks: number;
 };
 
-/** @deprecated Prefer BuyerCampaignPortfolioRow from types/api */
 export type BuyerCampaignRow = BuyerCampaignPortfolioRow;
 
 export type BuyerPortfolioVM = {
@@ -39,11 +38,8 @@ type CampaignIndex = {
   [id: string]: BuyerCampaignPortfolioRow | BuyerCampaignPortfolioRow[] | null | undefined;
 };
 
-/**
- * Read 7d delivery stats from a campaign row (no duplicate map).
- */
 export function buyerCampaignStat(
-  campaign: { impressions_7d?: number; clicks_7d?: number } | null | undefined,
+  campaign: { impressions_7d?: number; clicks_7d?: number } | null | undefined
 ): BuyerCampaignStatsDTO {
   return {
     impressions: Number(campaign?.impressions_7d ?? 0),
@@ -51,12 +47,9 @@ export function buyerCampaignStat(
   };
 }
 
-/**
- * Build a campaign-id index from dashboard rows (lazy, single pass).
- */
 export function buyerCampaignIndex(
   campaigns: BuyerCampaignPortfolioRow[] | null | undefined,
-  cache: CampaignIndex | null = null,
+  cache: CampaignIndex | null = null
 ): CampaignIndex {
   if (cache && cache.__src === campaigns) return cache;
   const index: CampaignIndex = { __src: campaigns };
@@ -69,10 +62,9 @@ export function buyerCampaignIndex(
   return index;
 }
 
-/**
- * Map buyer dashboard API payload into view-model fields.
- */
-export function mapBuyerDashboard(data: BuyerPortfolioResponse | null | undefined): BuyerPortfolioVM {
+export function mapBuyerDashboard(
+  data: BuyerPortfolioResponse | null | undefined
+): BuyerPortfolioVM {
   const campaigns = data?.campaigns ?? [];
   return {
     active: Number(data?.active ?? 0),
@@ -94,18 +86,12 @@ export function mapBuyerDashboard(data: BuyerPortfolioResponse | null | undefine
   };
 }
 
-/**
- * Return server pacing drift percent for sorting (absolute value; higher = more drift).
- */
 export function portfolioDriftPct(campaign: { pacing_drift_pct?: number | null }): number | null {
   const pct = campaign?.pacing_drift_pct;
   if (pct == null || Number.isNaN(Number(pct))) return null;
   return Math.abs(Number(pct));
 }
 
-/**
- * Estimate pacing drift priority when API field is absent (higher = needs attention).
- */
 export function pacingDriftScore(campaign: {
   status?: string;
   pacing_mode?: string;
@@ -124,12 +110,9 @@ export function pacingDriftScore(campaign: {
   return score;
 }
 
-/**
- * Filter portfolio campaign rows by status (no copy when filter empty).
- */
 export function filterPortfolioCampaigns(
   campaigns: BuyerCampaignRow[],
-  statusFilter: string,
+  statusFilter: string
 ): BuyerCampaignRow[] {
   if (!statusFilter) return campaigns;
   const want = statusFilter.toUpperCase();
@@ -141,18 +124,12 @@ export function filterPortfolioCampaigns(
   return out;
 }
 
-/**
- * Sort key for portfolio rows: server pacing_drift_pct when present, else heuristic score.
- */
 export function portfolioDriftSortKey(campaign: BuyerCampaignRow): number {
   const apiPct = portfolioDriftPct(campaign);
   if (apiPct != null) return apiPct;
   return pacingDriftScore(campaign);
 }
 
-/**
- * Sort portfolio rows by pacing drift descending; scores computed once per row.
- */
 export function sortPortfolioByDrift(campaigns: BuyerCampaignRow[]): PortfolioRowVM[] {
   const n = campaigns.length;
   const decorated = new Array<PortfolioRowVM>(n);
@@ -170,13 +147,10 @@ export type PortfolioRowsCache = {
   rows: PortfolioRowVM[] | null;
 };
 
-/**
- * Memoized portfolio row list for table rendering.
- */
 export function visiblePortfolioRows(
   portfolio: BuyerPortfolioVM | null,
   statusFilter: string,
-  cache: PortfolioRowsCache,
+  cache: PortfolioRowsCache
 ): PortfolioRowVM[] {
   if (cache.portfolio === portfolio && cache.filter === statusFilter && cache.rows) {
     return cache.rows;
@@ -190,9 +164,6 @@ export function visiblePortfolioRows(
   return rows;
 }
 
-/**
- * Estimate delivery percent from impressions when budget is hidden.
- */
 export function estimateDeliveryPct(impressions7d: number, status: string): number | null {
   if (String(status).toUpperCase() === 'PAUSED') return 0;
   if (impressions7d <= 0) return 0;

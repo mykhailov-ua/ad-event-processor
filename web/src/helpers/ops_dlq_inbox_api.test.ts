@@ -1,9 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  buildDlqInboxListUrl,
-  isDlqInboxEntryRetryable,
-} from './ops_dlq_inbox_api.js';
+import { buildDlqInboxListUrl, isDlqInboxEntryRetryable } from './ops_dlq_inbox_api.js';
 
 describe('buildDlqInboxListUrl', () => {
   it('defaults limit to 50 without filters', () => {
@@ -18,16 +15,10 @@ describe('buildDlqInboxListUrl', () => {
 
 describe('isDlqInboxEntryRetryable', () => {
   it('allows retry for failed entries', () => {
-    assert.equal(
-      isDlqInboxEntryRetryable({ id: '1', source: 'postback', status: 'FAILED' }),
-      true,
-    );
+    assert.equal(isDlqInboxEntryRetryable({ id: '1', source: 'postback', status: 'FAILED' }), true);
   });
 
   it('blocks retry after RETRIED status', () => {
-    assert.equal(
-      isDlqInboxEntryRetryable({ id: '1', source: 'capi', status: 'RETRIED' }),
-      false,
-    );
+    assert.equal(isDlqInboxEntryRetryable({ id: '1', source: 'capi', status: 'RETRIED' }), false);
   });
 });

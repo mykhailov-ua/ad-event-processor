@@ -1,4 +1,3 @@
-// Fuzz targets for click proxy URL merge (harness: click_proxy_stream).
 package ingestion
 
 import (
@@ -36,7 +35,7 @@ func FuzzProxyUpstreamURL(f *testing.F) {
 		if err != nil || u.Scheme == "" || u.Host == "" {
 			return
 		}
-		// F-M3-1: SSRF validator must not panic on merged URLs (rejections are cold-path).
+
 		_ = proxyupstream.ValidateURL(context.Background(), got, true)
 	})
 }

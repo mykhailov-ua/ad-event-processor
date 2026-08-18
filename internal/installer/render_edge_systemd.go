@@ -150,7 +150,6 @@ func enableEdgeSystemdUnits() error {
 	return nil
 }
 
-// disableEdgeSystemdUnits stops edge XDP services; Nginx Lua blacklist remains active.
 func disableEdgeSystemdUnits() error {
 	for _, unit := range []string{EdgeBPFSyncSystemdUnitName, EdgeXDPSystemdUnitName} {
 		_ = exec.Command("systemctl", "stop", unit).Run()

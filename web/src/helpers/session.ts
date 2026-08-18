@@ -3,9 +3,6 @@ import { to } from '../lib/to.js';
 
 const LOGIN_PATH = '/login';
 
-/**
- * Clear local auth state and redirect to the login page.
- */
 export function redirectToLogin(reason = 'session'): void {
   auth.logoutLocal();
   if (typeof window === 'undefined') return;
@@ -13,14 +10,13 @@ export function redirectToLogin(reason = 'session'): void {
   window.location.assign(`${LOGIN_PATH}${suffix}`);
 }
 
-/**
- * Attempt to refresh the session via auth refresh and me endpoints.
- */
 export async function tryRefreshSession(): Promise<boolean> {
-  const [refreshRes, refreshErr] = await to(fetch('/api/v1/auth/refresh', {
-    method: 'POST',
-    credentials: 'same-origin',
-  }));
+  const [refreshRes, refreshErr] = await to(
+    fetch('/api/v1/auth/refresh', {
+      method: 'POST',
+      credentials: 'same-origin',
+    })
+  );
   if (refreshErr || !refreshRes?.ok) return false;
 
   const refreshCsrf = refreshRes.headers.get('X-CSRF-Token');
@@ -57,9 +53,8 @@ export async function tryRefreshSession(): Promise<boolean> {
   return true;
 }
 
-/**
- * Test whether a path is an auth mutation that must not trigger session refresh.
- */
 export function isAuthMutationPath(path: string): boolean {
-  return path.includes('/auth/login') || path.includes('/auth/register') || path.includes('/auth/logout');
+  return (
+    path.includes('/auth/login') || path.includes('/auth/register') || path.includes('/auth/logout')
+  );
 }

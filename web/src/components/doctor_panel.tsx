@@ -1,4 +1,4 @@
-import type { OpsDoctorSummary } from '../types/api/ops.js';
+import type { OpsDoctorSummary } from '../types/ops.js';
 import { displayLabel } from '../helpers/display_labels.js';
 import { humanizeTechnicalDetail } from '../helpers/technical_labels.js';
 import { StatusBadge } from './status_badge.js';
@@ -72,14 +72,16 @@ function PinnedChecks({ checks }: { checks: NonNullable<OpsDoctorSummary['checks
   const rows = PINNED_CHECK_IDS.flatMap((want) => {
     const check = checks.find((c) => c.id === want);
     if (!check) return [];
-    return [{
-      check,
-      row: {
-        title: displayLabel(check.id),
-        detail: humanizeTechnicalDetail(check.message),
-        status: check.status,
-      } satisfies StackRow,
-    }];
+    return [
+      {
+        check,
+        row: {
+          title: displayLabel(check.id),
+          detail: humanizeTechnicalDetail(check.message),
+          status: check.status,
+        } satisfies StackRow,
+      },
+    ];
   });
 
   if (rows.length === 0) return null;
@@ -101,9 +103,6 @@ function PinnedChecks({ checks }: { checks: NonNullable<OpsDoctorSummary['checks
   );
 }
 
-/**
- * Operations doctor panel with services and health checks.
- */
 export function DoctorPanel({ doctor, services, loading = false }: DoctorPanelProps) {
   const serviceList = services ?? [];
   const allChecks = doctor?.checks ?? [];

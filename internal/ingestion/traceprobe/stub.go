@@ -1,6 +1,5 @@
 //go:build !ad_event_processor_bpf_trace
 
-// Package traceprobe provides optional BPF trace hooks for ingestion.
 package traceprobe
 
 func ProcessTrackEnter(slot uint32) { _ = slot }

@@ -8,7 +8,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-// Sidecar HTTP server timeouts (metrics/health); aligned with cmd/tracker/main.go defaults.
 const (
 	SidecarReadHeaderTimeout = 2 * time.Second
 	SidecarReadTimeout       = 5 * time.Second
@@ -16,7 +15,6 @@ const (
 	SidecarIdleTimeout       = 30 * time.Second
 )
 
-// ApplySidecarHTTPServerTimeouts sets read/write/idle timeouts on metrics and health sidecars.
 func ApplySidecarHTTPServerTimeouts(srv *http.Server) {
 	if srv == nil {
 		return

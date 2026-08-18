@@ -9,9 +9,6 @@ export type BreadcrumbsProps = {
   items: BreadcrumbItem[];
 };
 
-/**
- * Breadcrumb trail for page headers.
- */
 export function Breadcrumbs({ items }: BreadcrumbsProps) {
   if (items.length === 0) return null;
   return (
@@ -22,7 +19,9 @@ export function Breadcrumbs({ items }: BreadcrumbsProps) {
             <Icon name="chevron-right" size={12} className="page-header__crumb-sep" />
           ) : null}
           {item.href ? (
-            <a href={item.href} className="page-header__crumb-link">{item.label}</a>
+            <a href={item.href} className="page-header__crumb-link">
+              {item.label}
+            </a>
           ) : (
             <span className="page-header__crumb-current">{item.label}</span>
           )}

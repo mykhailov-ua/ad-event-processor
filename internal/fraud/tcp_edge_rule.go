@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/database"
-	"github.com/bidshard/ad-event-processor/internal/edge/fingerprint"
+	"github.com/bidshard/ad-event-processor/internal/edge"
 	"github.com/bidshard/ad-event-processor/pkg/piihash"
 
 	"github.com/redis/go-redis/v9"
@@ -35,7 +35,7 @@ func (r *tcpEdgeCorrelationRule) Find(ctx context.Context) ([]SuspiciousIP, erro
 	if r == nil || r.q == nil || r.rdb == nil {
 		return nil, nil
 	}
-	entries, err := fingerprint.ListRecent(ctx, r.rdb, 128)
+	entries, err := edge.ListRecent(ctx, r.rdb, 128)
 	if err != nil {
 		return nil, fmt.Errorf("list tcp fingerprints: %w", err)
 	}

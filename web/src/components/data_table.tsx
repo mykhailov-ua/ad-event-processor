@@ -1,8 +1,5 @@
 import { useMemo, type ReactNode } from 'react';
-import {
-  sortRows,
-  type SortState,
-} from '../lib/table_sort.js';
+import { sortRows, type SortState } from '../lib/table_sort.js';
 import { Icon } from './icon.js';
 
 export type DataTableColumn<T> = {
@@ -22,9 +19,6 @@ export type DataTableProps<T> = {
   caption?: string;
 };
 
-/**
- * Sortable data table with Geist data-table classes.
- */
 export function DataTable<T>({
   columns,
   rows,
@@ -43,7 +37,7 @@ export function DataTable<T>({
 
   const sortedRows = useMemo(
     () => sortRows(rows, sortState, accessors),
-    [rows, sortState, accessors],
+    [rows, sortState, accessors]
   );
 
   return (
@@ -54,21 +48,28 @@ export function DataTable<T>({
           <tr>
             {columns.map((col) => {
               if (!col.sortable) {
-                return <th key={col.key} scope="col">{col.header}</th>;
+                return (
+                  <th key={col.key} scope="col">
+                    {col.header}
+                  </th>
+                );
               }
               const active = sortState.key === col.key;
               const iconName = active
-                ? (sortState.dir === 'asc' ? 'chevron-up' : 'chevron-down')
+                ? sortState.dir === 'asc'
+                  ? 'chevron-up'
+                  : 'chevron-down'
                 : 'arrow-up-down';
               return (
                 <th
                   key={col.key}
                   scope="col"
-                  className={[
-                    'data-table__th--sortable',
-                    active ? 'data-table__th--sorted' : '',
-                  ].filter(Boolean).join(' ')}
-                  aria-sort={active ? (sortState.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  className={['data-table__th--sortable', active ? 'data-table__th--sorted' : '']
+                    .filter(Boolean)
+                    .join(' ')}
+                  aria-sort={
+                    active ? (sortState.dir === 'asc' ? 'ascending' : 'descending') : 'none'
+                  }
                   tabIndex={0}
                   onClick={() => onSort(col.key)}
                   onKeyDown={(e) => {

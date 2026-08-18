@@ -1,14 +1,4 @@
-/**
- * Zero-redirect browser pixel: POST conversion events to /track from the landing page.
- *
- * @param {object} opts
- * @param {string} opts.endpoint - Full /track URL (https://track.example/track)
- * @param {string} opts.campaignId - Campaign UUID
- * @param {string} opts.type - Event type (e.g. conversion, impression)
- * @param {string} [opts.clickId] - Click id from query string
- * @param {string} [opts.userId] - Publisher user id
- * @param {Record<string, string>} [opts.subs] - sub1..sub30 values
- */
+/** Post a conversion or event payload to the tracker endpoint. */
 export function bidshardTrack(opts) {
   const body = {
     campaign_id: opts.campaignId,
@@ -35,13 +25,7 @@ export function bidshardTrack(opts) {
   });
 }
 
-/**
- * Build a copy-paste snippet for the integration panel.
- *
- * @param {string} trackURL
- * @param {string} campaignId
- * @returns {string}
- */
+/** Build an inline HTML script snippet for direct conversion tracking. */
 export function buildDirectTrackSnippet(trackURL, campaignId) {
   return [
     '<script type="module">',

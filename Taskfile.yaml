@@ -1,4 +1,4 @@
-# Development and CI task automation for eSPX.
+
 version: '3'
 
 vars:

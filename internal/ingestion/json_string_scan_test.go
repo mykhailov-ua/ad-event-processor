@@ -15,7 +15,6 @@ func TestParseQuotedField_tidRegression(t *testing.T) {
 }
 
 func TestScanJSONStringEnd_truncatedSurrogatePairNoPanic(t *testing.T) {
-	// High surrogate followed by incomplete \uYYYY: must reject, not panic on data[i+6:i+10].
 	const payload = `"\uD800\uDC"`
 	bud := newJSONScanBudget()
 	_, ok := scanJSONStringEnd([]byte(payload), 0, len(payload), &bud)

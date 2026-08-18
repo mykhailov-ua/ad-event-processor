@@ -341,6 +341,22 @@ var (
 		Name: "ad_fraud_stream_pel_age_seconds",
 		Help: "Oldest pending entry idle age for ad:events:stream (or fraud stream) per shard",
 	}, []string{"stream", "shard"})
+	FraudMLShadowPrecision = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "fraud_ml_shadow_precision",
+		Help: "Latest shadow eval precision from proxy labels",
+	})
+	FraudMLShadowRecall = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "fraud_ml_shadow_recall",
+		Help: "Latest shadow eval recall from proxy labels",
+	})
+	FraudMLDriftDetected = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "fraud_ml_drift_detected",
+		Help: "1 when latest shadow eval reports input drift, else 0",
+	})
+	FraudMLEvalGeneratedAtTimestamp = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "fraud_ml_eval_generated_at_timestamp",
+		Help: "Unix timestamp of the latest shadow eval report",
+	})
 	IngestFraudPath = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "ad_ingest_fraud_path",
 		Help: "Fraud ingest transport: 0 = Redis ad:fraud:stream, 1 = broker topic",

@@ -1,4 +1,3 @@
-
 -- +goose Up
 -- +goose StatementBegin
 CREATE INDEX IF NOT EXISTS idx_ledger_topup_recent

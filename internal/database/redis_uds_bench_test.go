@@ -24,7 +24,7 @@ func monotonicNano() int64
 const (
 	udsDialSamples       = 10_000
 	udsDialWarmupSamples = 2_000
-	defaultDialP50Budget = 5000 * time.Nanosecond // smoke gate; stretch 2.5 µs on governor-tuned host
+	defaultDialP50Budget = 5000 * time.Nanosecond
 )
 
 func requireUDSBenchEnv(t *testing.T) (sock, tcpAddr string) {
@@ -42,8 +42,6 @@ func requireUDSBenchEnv(t *testing.T) (sock, tcpAddr string) {
 	return sock, tcpAddr
 }
 
-// TestRedisUDS_DialLatencyGate validates unix transport dial p50 for milestone phase 5.
-// Run via scripts/perf/redis_uds_benchmark.sh (sets REDIS_UDS_SOCKET).
 func TestRedisUDS_DialLatencyGate(t *testing.T) {
 	sock, _ := requireUDSBenchEnv(t)
 
@@ -68,7 +66,6 @@ func TestRedisUDS_DialLatencyGate(t *testing.T) {
 	require.Less(t, p50, budget, "UDS dial p50 must stay under budget")
 }
 
-// TestRedisUDS_PingLatency compares PING RTT on unix vs TCP when both are provided.
 func TestRedisUDS_PingLatency(t *testing.T) {
 	sock, tcpAddr := requireUDSBenchEnv(t)
 	password := os.Getenv("REDIS_PASSWORD")
@@ -100,7 +97,6 @@ func TestRedisUDS_PingLatency(t *testing.T) {
 	require.Less(t, udsP50, tcpP50, "UDS PING p50 should beat TCP loopback on same host")
 }
 
-// TestRedisUDS_DialVsTCP compares raw transport dial cost (unix vs TCP loopback).
 func TestRedisUDS_DialVsTCP(t *testing.T) {
 	sock, tcpAddr := requireUDSBenchEnv(t)
 

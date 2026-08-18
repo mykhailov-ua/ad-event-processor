@@ -1,0 +1,10 @@
+FROM python:3.12-slim
+WORKDIR /app/model
+COPY model/requirements.txt requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+COPY model/ .
+COPY deploy/compose/fraud-eval-loop.sh /usr/local/bin/fraud-eval-loop.sh
+RUN chmod +x /usr/local/bin/fraud-eval-loop.sh
+ENV FRAUD_ARTIFACT_DIR=/var/fraudscore/artifacts
+ENV PYTHONPATH=/app/model
+ENTRYPOINT ["/usr/local/bin/fraud-eval-loop.sh"]

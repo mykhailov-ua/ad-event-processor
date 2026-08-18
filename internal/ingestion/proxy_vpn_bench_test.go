@@ -1,5 +1,3 @@
-// L1.5 proxy/VPN lookup benches (harness: proxy_vpn_lpm).
-// RCU snapshot is fully in-memory: no Redis, no external IP APIs on the read path.
 package ingestion
 
 import (
@@ -39,7 +37,6 @@ func benchProxyVPNTable(tb testing.TB, n int) (*ProxyVPNTable, [][4]byte) {
 	return table, probes
 }
 
-// BenchmarkProxyVPN_Lookup (harness: proxy_vpn_lpm) — B-GM-M1, < 100 ns, 0 allocs.
 func BenchmarkProxyVPN_Lookup(b *testing.B) {
 	table, probes := benchProxyVPNTable(b, 10_000)
 	b.ReportAllocs()
@@ -55,7 +52,6 @@ func BenchmarkProxyVPN_Lookup(b *testing.B) {
 	proxyVPNBenchSink.asn += asn
 }
 
-// BenchmarkProxyVPN_MatchBranch_SafeView (harness: proxy_vpn_lpm) — full L1.5 hook.
 func BenchmarkProxyVPN_MatchBranch_SafeView(b *testing.B) {
 	table, probes := benchProxyVPNTable(b, 50_000)
 	h := &AdsPacketHandler{
@@ -80,7 +76,6 @@ func BenchmarkProxyVPN_MatchBranch_SafeView(b *testing.B) {
 	proxyVPNBenchSink.match = proxyVPNBenchSink.match || hit
 }
 
-// BenchmarkProxyVPN_Extended_Lookup (harness: proxy_vpn_lpm) — B-GMA-M2 conn-type bitmask path.
 func BenchmarkProxyVPN_Extended_Lookup(b *testing.B) {
 	table, probes := benchProxyVPNTable(b, 10_000)
 	b.ReportAllocs()

@@ -47,7 +47,6 @@ func hashSHA256(input string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-// mapFacebookEventName maps tracker event types to Meta standard event names.
 func mapFacebookEventName(eventType string) string {
 	switch strings.ToLower(strings.TrimSpace(eventType)) {
 	case "conversion", "purchase":

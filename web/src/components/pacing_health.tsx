@@ -5,9 +5,6 @@ export type PacingHealthProps = {
   deliveryPct?: number | null;
 };
 
-/**
- * Buyer pacing health summary (no financial fields).
- */
 export function PacingHealth({
   status = '',
   pacingMode = 'even',

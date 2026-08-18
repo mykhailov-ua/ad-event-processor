@@ -14,12 +14,9 @@ export type ChartSeries = {
   length: number;
 };
 
-/**
- * Build owned time-series x/y typed arrays from hourly metrics.
- */
 export function seriesFromHourly(
   hourly: HourlyMetricRow[],
-  field: 'impressions' | 'clicks' | 'conversions' | string,
+  field: 'impressions' | 'clicks' | 'conversions' | string
 ): ChartSeries {
   const n = hourly.length;
   const x = new Float64Array(n);

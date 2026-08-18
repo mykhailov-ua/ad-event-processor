@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/internal/ingestion"
 	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
 
@@ -46,21 +45,21 @@ func dlqRouteID(shardID int, entryID string) string {
 	return fmt.Sprintf("shard-%d-%s", shardID, entryID)
 }
 
-func (r *opsReader) listDLQEntries(ctx context.Context, cursor string, limit int) (adminapi.FanOutResult[adminapi.DLQEntryDTO], error) {
+func (r *opsReader) listDLQEntries(ctx context.Context, cursor string, limit int) (FanOutResult[DLQEntryDTO], error) {
 	if r == nil || r.svc == nil {
-		return adminapi.FanOutResult[adminapi.DLQEntryDTO]{}, fmt.Errorf("ops reader not configured")
+		return FanOutResult[DLQEntryDTO]{}, fmt.Errorf("ops reader not configured")
 	}
 	if limit <= 0 {
 		limit = 50
 	}
 	rdbs := r.svc.rdbs
 	if len(rdbs) == 0 {
-		return adminapi.FanOutResult[adminapi.DLQEntryDTO]{}, fmt.Errorf("redis not configured")
+		return FanOutResult[DLQEntryDTO]{}, fmt.Errorf("redis not configured")
 	}
 
-	sourceCursors, err := adminapi.DecodeFanOutCursor(cursor)
+	sourceCursors, err := DecodeFanOutCursor(cursor)
 	if err != nil {
-		return adminapi.FanOutResult[adminapi.DLQEntryDTO]{}, errInvalidQuery("invalid cursor")
+		return FanOutResult[DLQEntryDTO]{}, errInvalidQuery("invalid cursor")
 	}
 
 	dlqStream := dlqStreamName(r.svc.cfg)
@@ -68,7 +67,7 @@ func (r *opsReader) listDLQEntries(ctx context.Context, cursor string, limit int
 
 	type shardBatch struct {
 		shardID int
-		items   []adminapi.DLQEntryDTO
+		items   []DLQEntryDTO
 		next    string
 		err     error
 	}
@@ -93,14 +92,14 @@ func (r *opsReader) listDLQEntries(ctx context.Context, cursor string, limit int
 	}
 
 	var (
-		out      adminapi.FanOutResult[adminapi.DLQEntryDTO]
-		merged   []adminapi.DLQEntryDTO
+		out      FanOutResult[DLQEntryDTO]
+		merged   []DLQEntryDTO
 		nextMap  = make(map[string]string, len(batches))
 		okShards int
 	)
 	for _, batch := range batches {
 		if batch.err != nil {
-			out.Errors = append(out.Errors, adminapi.FanOutSourceError{
+			out.Errors = append(out.Errors, FanOutSourceError{
 				Source: fmt.Sprintf("shard-%d", batch.shardID),
 				Code:   "SOURCE_UNAVAILABLE",
 			})
@@ -128,7 +127,7 @@ func (r *opsReader) listDLQEntries(ctx context.Context, cursor string, limit int
 			nextMap[strconv.Itoa(item.ShardID)] = item.EntryID
 		}
 	}
-	if encoded, encErr := adminapi.EncodeFanOutCursor(nextMap); encErr == nil {
+	if encoded, encErr := EncodeFanOutCursor(nextMap); encErr == nil {
 		out.NextCursor = encoded
 	}
 	if len(out.Errors) > 0 && okShards > 0 {
@@ -143,7 +142,7 @@ func readDLQShardPage(
 	shardID int,
 	dlqStream, eventStream, start string,
 	limit int,
-) ([]adminapi.DLQEntryDTO, string, error) {
+) ([]DLQEntryDTO, string, error) {
 	rangeStart := "-"
 	if start != "" {
 		rangeStart = "(" + start
@@ -153,7 +152,7 @@ func readDLQShardPage(
 		return nil, "", err
 	}
 
-	items := make([]adminapi.DLQEntryDTO, 0, len(msgs))
+	items := make([]DLQEntryDTO, 0, len(msgs))
 	var lastID string
 	for _, msg := range msgs {
 		dto, parseErr := dlqMessageToDTO(shardID, dlqStream, eventStream, msg)
@@ -166,11 +165,11 @@ func readDLQShardPage(
 	return items, lastID, nil
 }
 
-func dlqMessageToDTO(shardID int, dlqStream, eventStream string, msg redis.XMessage) (adminapi.DLQEntryDTO, error) {
+func dlqMessageToDTO(shardID int, dlqStream, eventStream string, msg redis.XMessage) (DLQEntryDTO, error) {
 	pbDLQ := &pb.AdDLQEvent{}
 	if raw, ok := msg.Values["d"].(string); ok {
 		if err := proto.Unmarshal(ingestion.UnsafeBytes(raw), pbDLQ); err != nil {
-			return adminapi.DLQEntryDTO{}, err
+			return DLQEntryDTO{}, err
 		}
 	} else {
 		pbStream := &pb.AdStreamEvent{}
@@ -217,7 +216,7 @@ func dlqMessageToDTO(shardID int, dlqStream, eventStream string, msg redis.XMess
 		campaignID = string(pbDLQ.OriginalEvent.CampaignId)
 	}
 
-	return adminapi.DLQEntryDTO{
+	return DLQEntryDTO{
 		ID:         dlqRouteID(shardID, msg.ID),
 		ShardID:    shardID,
 		StreamID:   eventStream,
@@ -243,7 +242,7 @@ func parseRedisStreamIDMillis(id string) (int64, bool) {
 	return ms, true
 }
 
-func (r *opsReader) enqueueDLQRetry(ctx context.Context, payload adminapi.DLQRetryPayload, idempotencyKey string) error {
+func (r *opsReader) enqueueDLQRetry(ctx context.Context, payload DLQRetryPayload, idempotencyKey string) error {
 	if r == nil || r.svc == nil {
 		return fmt.Errorf("ops reader not configured")
 	}

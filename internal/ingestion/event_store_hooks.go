@@ -13,7 +13,6 @@ type afterBatchEventStore struct {
 	after afterBatchStoreFunc
 }
 
-// WrapEventStoreAfterBatch calls after each successful StoreBatch on inner.
 func WrapEventStoreAfterBatch(inner domain.EventStore, after afterBatchStoreFunc) domain.EventStore {
 	if inner == nil || after == nil {
 		return inner

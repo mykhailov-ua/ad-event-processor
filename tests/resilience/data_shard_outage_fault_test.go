@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Non-shard-0 Redis master kill: only campaigns on the failed shard must 503; others keep tracking.
 func TestFault_DataShardOutage(t *testing.T) {
 	const (
 		killedShard = 2

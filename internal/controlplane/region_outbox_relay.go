@@ -161,8 +161,7 @@ func (r *RegionOutboxRelay) ProcessPendingWithCount(ctx context.Context, limit i
 	}
 
 	delivered := 0
-	// Strict causal order: halt the batch on first apply failure. Revert the failed
-	// row and all later claimed rows (still PROCESSING) to PENDING for ordered retry.
+
 	for i, row := range rows {
 		if err := r.applyDelivery(opCtx, ctx, row); err != nil {
 			slog.Warn("region outbox apply failed", "region", r.regionCode, "event_id", row.outboxEventID, "error", err)

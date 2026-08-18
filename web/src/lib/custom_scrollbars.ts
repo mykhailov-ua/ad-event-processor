@@ -1,10 +1,3 @@
-/**
- * Overlay square scrollbars for every scrollport.
- * Native Firefox thumbs stay rounded — hide them and track scroll live via fixed rails.
- *
- * Performance-optimized: targeted selector scanning and 0-thrash event updates.
- */
-
 const SIZE = 10;
 const MIN_THUMB = 24;
 
@@ -48,24 +41,15 @@ let mo: MutationObserver | null = null;
 
 type CssZoomStyle = CSSStyleDeclaration & { zoom?: string };
 
-/**
- * Read CSS zoom from an element style declaration.
- */
 function cssZoom(style: CSSStyleDeclaration): number {
   const raw = Number.parseFloat((style as CssZoomStyle).zoom ?? '');
   return Number.isFinite(raw) && raw > 0 ? raw : 1;
 }
 
-/**
- * Rails live on unzoomed document.body so fixed coords match visual viewport pixels.
- */
 function railMount(): HTMLElement {
   return document.body || document.documentElement;
 }
 
-/**
- * Effective CSS zoom on the app root (html * #root).
- */
 function pageZoom(): number {
   const htmlZ = cssZoom(getComputedStyle(document.documentElement));
   const rootEl = document.getElementById('root');
@@ -73,10 +57,6 @@ function pageZoom(): number {
   return htmlZ * rootZ;
 }
 
-/**
- * Visual viewport box for an element (post-zoom pixels).
- * Some engines report pre-zoom layout boxes under CSS zoom — normalize to visual.
- */
 function visualBox(el: HTMLElement): Box {
   const rect = el.getBoundingClientRect();
   const z = pageZoom();
@@ -95,10 +75,6 @@ function visualBox(el: HTMLElement): Box {
   return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
 }
 
-/**
- * Convert visual box into style pixels for fixed rails on document.body.
- * body is not under #root zoom; html zoom still scales fixed styles.
- */
 function toRailStyle(box: Box): RailStyleBox {
   const htmlZ = cssZoom(getComputedStyle(document.documentElement));
   return {
@@ -110,9 +86,6 @@ function toRailStyle(box: Box): RailStyleBox {
   };
 }
 
-/**
- * Create a scrollbar rail for the given axis.
- */
 function makeRail(axis: 'y' | 'x'): { rail: HTMLElement; thumb: HTMLElement } {
   const rail = document.createElement('div');
   rail.className = `csb-rail csb-rail--${axis}`;
@@ -124,32 +97,27 @@ function makeRail(axis: 'y' | 'x'): { rail: HTMLElement; thumb: HTMLElement } {
   return { rail, thumb };
 }
 
-/**
- * Return true when the element is one of our overlay rails/thumbs.
- */
 function isOurUi(el: Element | null | undefined): boolean {
-  return el instanceof HTMLElement
-    && (el.classList.contains('csb-rail') || el.classList.contains('csb-thumb'));
+  return (
+    el instanceof HTMLElement &&
+    (el.classList.contains('csb-rail') || el.classList.contains('csb-thumb'))
+  );
 }
 
-/**
- * Fast targeted check for scroll containers (avoid attaching every overflow:auto node).
- */
 function isScrollContainer(el: HTMLElement): boolean {
   if (!(el instanceof HTMLElement)) return false;
   if (el === document.documentElement || el === document.body) return false;
   if (el.classList.contains('no-scrollbar') || isOurUi(el)) return false;
-  return el.classList.contains('main')
-    || el.classList.contains('table-wrapper')
-    || el.classList.contains('modal__body')
-    || el.classList.contains('drawer__body')
-    || el.classList.contains('login-box__eula')
-    || el.hasAttribute('data-scrollable');
+  return (
+    el.classList.contains('main') ||
+    el.classList.contains('table-wrapper') ||
+    el.classList.contains('modal__body') ||
+    el.classList.contains('drawer__body') ||
+    el.classList.contains('login-box__eula') ||
+    el.hasAttribute('data-scrollable')
+  );
 }
 
-/**
- * Compute layout and scroll metrics for a host.
- */
 function metrics(host: Host): HostMetrics {
   if (host.viewport) {
     const de = document.documentElement;
@@ -190,9 +158,6 @@ function metrics(host: Host): HostMetrics {
   };
 }
 
-/**
- * Position rails/thumbs for one host.
- */
 function updateHost(host: Host): void {
   if (destroyed) return;
   if (!host.viewport && !host.el.isConnected) {
@@ -215,7 +180,10 @@ function updateHost(host: Host): void {
 
   if (needY) {
     const track = Math.max(m.height - (needX ? SIZE : 0), 0);
-    const thumbH = Math.min(track, Math.max(MIN_THUMB, Math.round((m.clientHeight / m.scrollHeight) * track)));
+    const thumbH = Math.min(
+      track,
+      Math.max(MIN_THUMB, Math.round((m.clientHeight / m.scrollHeight) * track))
+    );
     const maxTop = Math.max(track - thumbH, 0);
     const maxScroll = Math.max(m.scrollHeight - m.clientHeight, 1);
     const top = maxTop === 0 ? 0 : (m.scrollTop / maxScroll) * maxTop;
@@ -230,7 +198,10 @@ function updateHost(host: Host): void {
 
   if (needX) {
     const track = Math.max(m.width - (needY ? SIZE : 0), 0);
-    const thumbW = Math.min(track, Math.max(MIN_THUMB, Math.round((m.clientWidth / m.scrollWidth) * track)));
+    const thumbW = Math.min(
+      track,
+      Math.max(MIN_THUMB, Math.round((m.clientWidth / m.scrollWidth) * track))
+    );
     const maxLeft = Math.max(track - thumbW, 0);
     const maxScroll = Math.max(m.scrollWidth - m.clientWidth, 1);
     const left = maxLeft === 0 ? 0 : (m.scrollLeft / maxScroll) * maxLeft;
@@ -256,9 +227,6 @@ function scheduleUpdate(): void {
   });
 }
 
-/**
- * Detach rails for a host and drop it from the map.
- */
 function detach(host: Host): void {
   host.yRail.remove();
   host.xRail.remove();
@@ -266,9 +234,6 @@ function detach(host: Host): void {
   else hosts.delete(host.el);
 }
 
-/**
- * Attach rails to a scroll element (or the document viewport).
- */
 function attach(el: HTMLElement, opts: { viewport?: boolean } = {}): Host {
   const viewport = Boolean(opts.viewport);
   const key: HTMLElement | Window = viewport ? window : el;
@@ -301,9 +266,6 @@ function attach(el: HTMLElement, opts: { viewport?: boolean } = {}): Host {
   return host;
 }
 
-/**
- * Bind thumb/rail pointer interactions for one axis.
- */
 function bindDrag(host: Host, axis: 'y' | 'x'): void {
   const thumb = axis === 'y' ? host.yThumb : host.xThumb;
   const rail = axis === 'y' ? host.yRail : host.xRail;
@@ -327,14 +289,15 @@ function bindDrag(host: Host, axis: 'y' | 'x'): void {
     const m0 = metrics(host);
     const startScroll = axis === 'y' ? m0.scrollTop : m0.scrollLeft;
     const styleZoom = m0.styleZoom || 1;
-    const track = axis === 'y'
-      ? Math.max(m0.height - (!host.xRail.hidden ? SIZE : 0), 0)
-      : Math.max(m0.width - (!host.yRail.hidden ? SIZE : 0), 0);
+    const track =
+      axis === 'y'
+        ? Math.max(m0.height - (!host.xRail.hidden ? SIZE : 0), 0)
+        : Math.max(m0.width - (!host.yRail.hidden ? SIZE : 0), 0);
     const thumbSize = axis === 'y' ? thumb.offsetHeight : thumb.offsetWidth;
     const maxThumb = Math.max(track - thumbSize, 1);
     const maxScroll = Math.max(
-      (axis === 'y' ? m0.scrollHeight - m0.clientHeight : m0.scrollWidth - m0.clientWidth),
-      1,
+      axis === 'y' ? m0.scrollHeight - m0.clientHeight : m0.scrollWidth - m0.clientWidth,
+      1
     );
 
     const onMove = (ev: PointerEvent): void => {
@@ -358,17 +321,21 @@ function bindDrag(host: Host, axis: 'y' | 'x'): void {
     e.preventDefault();
     const rect = rail.getBoundingClientRect();
     const m0 = metrics(host);
-    const track = axis === 'y'
-      ? Math.max(m0.height - (!host.xRail.hidden ? SIZE : 0), 0)
-      : Math.max(m0.width - (!host.yRail.hidden ? SIZE : 0), 0);
+    const track =
+      axis === 'y'
+        ? Math.max(m0.height - (!host.xRail.hidden ? SIZE : 0), 0)
+        : Math.max(m0.width - (!host.yRail.hidden ? SIZE : 0), 0);
     const thumbSize = axis === 'y' ? thumb.offsetHeight : thumb.offsetWidth;
     const railVisual = axis === 'y' ? rect.height : rect.width;
     const clickVisual = axis === 'y' ? e.clientY - rect.top : e.clientX - rect.left;
     const click = railVisual > 0 ? (clickVisual / railVisual) * track : 0;
-    const ratio = Math.min(Math.max((click - thumbSize / 2) / Math.max(track - thumbSize, 1), 0), 1);
+    const ratio = Math.min(
+      Math.max((click - thumbSize / 2) / Math.max(track - thumbSize, 1), 0),
+      1
+    );
     const maxScroll = Math.max(
-      (axis === 'y' ? m0.scrollHeight - m0.clientHeight : m0.scrollWidth - m0.clientWidth),
-      0,
+      axis === 'y' ? m0.scrollHeight - m0.clientHeight : m0.scrollWidth - m0.clientWidth,
+      0
     );
     applyScroll(ratio * maxScroll);
     updateHost(host);
@@ -377,9 +344,8 @@ function bindDrag(host: Host, axis: 'y' | 'x'): void {
 
 function scan(): void {
   if (destroyed || !document.body) return;
-  // SPA shell scrolls inside .main / sidebar — skip document viewport rail.
   const candidates = document.querySelectorAll(
-    '.main, .table-wrapper, .modal__body, .drawer__body, .login-box__eula, [data-scrollable]',
+    '.main, .table-wrapper, .modal__body, .drawer__body, .login-box__eula, [data-scrollable]'
   );
   for (let i = 0; i < candidates.length; i++) {
     const el = candidates[i];
@@ -398,9 +364,6 @@ function scan(): void {
   updateAll();
 }
 
-/**
- * Install live custom square scrollbars.
- */
 export function installCustomScrollbars(): { destroy: () => void } {
   destroyed = false;
   let scanScheduled = false;
@@ -438,7 +401,6 @@ export function installCustomScrollbars(): { destroy: () => void } {
   };
   window.addEventListener('resize', onResize, { passive: true });
 
-  // childList only — watching `style` re-enters forever when rails update position.
   mo = new MutationObserver((records) => {
     for (const rec of records) {
       if (rec.type !== 'childList') continue;

@@ -2,6 +2,16 @@
 
 from __future__ import annotations
 
+# Campaign sensitivity presets (tier score bands only) live in Postgres
+# `fraud_policy_presets` and are served by GET /api/v1/fraud/presets.
+# Defaults below match internal/domain/campaign.go ResolveFraudPreset for
+# offline docs and tests only; they do not drive production tier mapping.
+FRAUD_POLICY_PRESET_DEFAULTS: dict[str, dict[str, int]] = {
+    "conservative": {"pass": 40, "suspect": 70, "ivt": 90, "block": 100},
+    "balanced": {"pass": 30, "suspect": 60, "ivt": 80, "block": 100},
+    "aggressive": {"pass": 20, "suspect": 45, "ivt": 65, "block": 85},
+}
+
 import json
 import os
 from dataclasses import asdict, dataclass, fields

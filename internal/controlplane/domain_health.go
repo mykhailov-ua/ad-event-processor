@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/pkg/domainhealth"
 	"github.com/bidshard/ad-event-processor/pkg/platformconfig"
 
@@ -25,7 +24,7 @@ type domainTarget struct {
 	Role     string
 }
 
-func (s *Service) ListDomainHealth(ctx context.Context) ([]adminapi.DomainHealthDTO, error) {
+func (s *Service) ListDomainHealth(ctx context.Context) ([]DomainHealthDTO, error) {
 	if s == nil || s.pool == nil {
 		return nil, fmt.Errorf("service unavailable")
 	}
@@ -42,7 +41,7 @@ func (s *Service) ListDomainHealth(ctx context.Context) ([]adminapi.DomainHealth
 	}
 	defer rows.Close()
 
-	var out []adminapi.DomainHealthDTO
+	var out []DomainHealthDTO
 	for rows.Next() {
 		dto, err := scanDomainHealth(rows)
 		if err != nil {
@@ -53,13 +52,13 @@ func (s *Service) ListDomainHealth(ctx context.Context) ([]adminapi.DomainHealth
 	return out, rows.Err()
 }
 
-func (s *Service) AddCustomDomain(ctx context.Context, hostname string) (adminapi.DomainHealthDTO, error) {
+func (s *Service) AddCustomDomain(ctx context.Context, hostname string) (DomainHealthDTO, error) {
 	if s == nil || s.pool == nil {
-		return adminapi.DomainHealthDTO{}, fmt.Errorf("service unavailable")
+		return DomainHealthDTO{}, fmt.Errorf("service unavailable")
 	}
 	host := platformconfig.ResolveHost(hostname)
 	if host == "" {
-		return adminapi.DomainHealthDTO{}, fmt.Errorf("hostname is required")
+		return DomainHealthDTO{}, fmt.Errorf("hostname is required")
 	}
 	row := s.pool.QueryRow(ctx, `
 		INSERT INTO domain_health_status (hostname, role)
@@ -88,21 +87,21 @@ func (s *Service) DeleteCustomDomain(ctx context.Context, hostname string) error
 	return nil
 }
 
-func (s *Service) ProbeDomainNow(ctx context.Context, hostname string) (adminapi.DomainHealthDTO, error) {
+func (s *Service) ProbeDomainNow(ctx context.Context, hostname string) (DomainHealthDTO, error) {
 	if s == nil || s.pool == nil {
-		return adminapi.DomainHealthDTO{}, fmt.Errorf("service unavailable")
+		return DomainHealthDTO{}, fmt.Errorf("service unavailable")
 	}
 	host := platformconfig.ResolveHost(hostname)
 	var role string
 	err := s.pool.QueryRow(ctx, `SELECT role FROM domain_health_status WHERE hostname = $1`, host).Scan(&role)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return adminapi.DomainHealthDTO{}, fmt.Errorf("domain not found")
+			return DomainHealthDTO{}, fmt.Errorf("domain not found")
 		}
-		return adminapi.DomainHealthDTO{}, err
+		return DomainHealthDTO{}, err
 	}
 	if err := s.probeAndStore(ctx, domainTarget{Hostname: host, Role: role}); err != nil {
-		return adminapi.DomainHealthDTO{}, err
+		return DomainHealthDTO{}, err
 	}
 	row := s.pool.QueryRow(ctx, `
 		SELECT hostname, role, health_status, ssl_status, ssl_not_after,
@@ -111,24 +110,24 @@ func (s *Service) ProbeDomainNow(ctx context.Context, hostname string) (adminapi
 	return scanDomainHealth(row)
 }
 
-func (s *Service) SetupDomainSSL(ctx context.Context, hostname string) (adminapi.DomainSSLSetupResult, error) {
+func (s *Service) SetupDomainSSL(ctx context.Context, hostname string) (DomainSSLSetupResult, error) {
 	if s == nil || s.cfg == nil {
-		return adminapi.DomainSSLSetupResult{}, fmt.Errorf("service unavailable")
+		return DomainSSLSetupResult{}, fmt.Errorf("service unavailable")
 	}
 	if !s.cfg.Management.DomainSSLSetupEnabled {
-		return adminapi.DomainSSLSetupResult{}, fmt.Errorf("ssl setup disabled on this deployment")
+		return DomainSSLSetupResult{}, fmt.Errorf("ssl setup disabled on this deployment")
 	}
 	host := platformconfig.ResolveHost(hostname)
 	if host == "" {
-		return adminapi.DomainSSLSetupResult{}, fmt.Errorf("hostname is required")
+		return DomainSSLSetupResult{}, fmt.Errorf("hostname is required")
 	}
 	var exists int
 	err := s.pool.QueryRow(ctx, `SELECT 1 FROM domain_health_status WHERE hostname = $1`, host).Scan(&exists)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return adminapi.DomainSSLSetupResult{}, fmt.Errorf("domain not registered")
+			return DomainSSLSetupResult{}, fmt.Errorf("domain not registered")
 		}
-		return adminapi.DomainSSLSetupResult{}, err
+		return DomainSSLSetupResult{}, err
 	}
 
 	script := s.cfg.Management.DomainSSLSetupScript
@@ -136,7 +135,7 @@ func (s *Service) SetupDomainSSL(ctx context.Context, hostname string) (adminapi
 		script = filepath.Join("scripts", "install", "setup_domain_ssl.sh")
 	}
 	if _, err := os.Stat(script); err != nil {
-		return adminapi.DomainSSLSetupResult{}, fmt.Errorf("ssl setup script not found: %s", script)
+		return DomainSSLSetupResult{}, fmt.Errorf("ssl setup script not found: %s", script)
 	}
 
 	cmdCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
@@ -151,7 +150,7 @@ func (s *Service) SetupDomainSSL(ctx context.Context, hostname string) (adminapi
 		"CADDY_ACME_EMAIL="+s.cfg.Management.DomainSSLAcmeEmail,
 	)
 	out, err := cmd.CombinedOutput()
-	result := adminapi.DomainSSLSetupResult{
+	result := DomainSSLSetupResult{
 		Hostname: host,
 		Output:   strings.TrimSpace(string(out)),
 	}
@@ -162,7 +161,9 @@ func (s *Service) SetupDomainSSL(ctx context.Context, hostname string) (adminapi
 	}
 	result.Status = "ok"
 	result.Message = "certificate setup completed"
-	_, _ = s.ProbeDomainNow(ctx, host)
+	if _, err := s.ProbeDomainNow(ctx, host); err != nil {
+		result.Message = result.Message + "; health probe failed: " + err.Error()
+	}
 	return result, nil
 }
 
@@ -340,8 +341,8 @@ type domainHealthScanner interface {
 	Scan(dest ...any) error
 }
 
-func scanDomainHealth(row domainHealthScanner) (adminapi.DomainHealthDTO, error) {
-	var dto adminapi.DomainHealthDTO
+func scanDomainHealth(row domainHealthScanner) (DomainHealthDTO, error) {
+	var dto DomainHealthDTO
 	var sslNotAfter pgtype.Timestamptz
 	var httpStatus pgtype.Int4
 	var probeLatency pgtype.Int4
@@ -350,7 +351,7 @@ func scanDomainHealth(row domainHealthScanner) (adminapi.DomainHealthDTO, error)
 		&dto.Hostname, &dto.Role, &dto.HealthStatus, &dto.SSLStatus, &sslNotAfter,
 		&httpStatus, &probeLatency, &dto.ProbeDetail, &lastProbe, &dto.UpdatedAt,
 	); err != nil {
-		return adminapi.DomainHealthDTO{}, err
+		return DomainHealthDTO{}, err
 	}
 	if sslNotAfter.Valid {
 		t := sslNotAfter.Time
@@ -371,8 +372,6 @@ func scanDomainHealth(row domainHealthScanner) (adminapi.DomainHealthDTO, error)
 	return dto, nil
 }
 
-// IsTLSAllowed reports whether Caddy may issue an on-demand certificate for hostname.
-// Only tracking and custom buyer domains are permitted (admin role excluded).
 func (s *Service) IsTLSAllowed(ctx context.Context, hostname string) (bool, error) {
 	if s == nil || s.pool == nil {
 		return false, fmt.Errorf("service unavailable")

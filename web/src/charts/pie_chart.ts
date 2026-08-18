@@ -8,9 +8,6 @@ import {
 } from './canvas_util.js';
 import type { ChartCategoryItem, ChartHandle } from './chart_types.js';
 
-/**
- * Draw a single donut slice between start and end angles.
- */
 function drawDonutSlice(
   ctx: CanvasRenderingContext2D,
   cx: number,
@@ -19,7 +16,7 @@ function drawDonutSlice(
   innerR: number,
   start: number,
   end: number,
-  color: string,
+  color: string
 ): void {
   ctx.beginPath();
   ctx.arc(cx, cy, outerR, start, end);
@@ -29,15 +26,14 @@ function drawDonutSlice(
   ctx.fill();
 }
 
-/**
- * Mount a HiDPI donut chart with an HTML legend.
- */
 export function mountPieChart(
   container: HTMLElement,
   items: ChartCategoryItem[] | null | undefined,
-  ariaLabel = 'Donut chart',
+  ariaLabel = 'Donut chart'
 ): ChartHandle {
-  const rows = (items ?? []).filter((item): item is ChartCategoryItem => item != null && item.label != null);
+  const rows = (items ?? []).filter(
+    (item): item is ChartCategoryItem => item != null && item.label != null
+  );
   const total = rows.reduce((sum, item) => sum + (Number(item.value) || 0), 0);
 
   if (rows.length === 0 || total <= 0) {
@@ -55,14 +51,16 @@ export function mountPieChart(
     const val = Number(item.value) || 0;
     const pct = total > 0 ? Math.round((val / total) * 100) : 0;
     legend.appendChild(
-      el('div', { className: 'chart-legend__item' },
+      el(
+        'div',
+        { className: 'chart-legend__item' },
         el('span', {
           className: 'chart-legend__swatch',
           style: { background: colors[i] },
         }),
         el('span', { className: 'chart-legend__label' }, item.label),
-        el('span', { className: 'chart-legend__value' }, `${val.toLocaleString('en-US')} (${pct}%)`),
-      ),
+        el('span', { className: 'chart-legend__value' }, `${val.toLocaleString('en-US')} (${pct}%)`)
+      )
     );
   });
 

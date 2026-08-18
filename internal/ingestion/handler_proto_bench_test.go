@@ -1,7 +1,3 @@
-// Harness: handler_proto_mock_no_filter — nil FilterEngine and mockRegistry; measures protobuf
-// parse + handler shell only, not full /track (no license, geo, unified-filter Lua).
-// Gated AdsPacketHandlerProto* benches in gate_bench.sh are this harness.
-// Full accept path: BenchmarkTrackE2E_accept (license + unified filter + testcontainers Redis).
 package ingestion
 
 import (

@@ -1,5 +1,3 @@
-// CPA held-out Playwright scenarios (MILESTONE.md §1.12.2).
-// harness=mock_api — route.fulfill; integration proof: billing_export_smoke.sh (Docker).
 import { test, expect } from '@playwright/test';
 import { mockAuthedSession, ADMIN_USER, PUBLISHER_USER, BUYER_USER } from './helpers.js';
 
@@ -95,7 +93,15 @@ test.describe('CPA held-out — report actions', () => {
         status: 200,
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          rows: [{ placement_id: 'sub-a', campaign_id: CAMPAIGN_ID, clicks: 10, ivt_rate: 0.2, roi_pct: 1 }],
+          rows: [
+            {
+              placement_id: 'sub-a',
+              campaign_id: CAMPAIGN_ID,
+              clicks: 10,
+              ivt_rate: 0.2,
+              roi_pct: 1,
+            },
+          ],
           freshness: { as_of: '2026-08-01T00:00:00Z', consistency: 'eventual', stale: false },
         }),
       });
@@ -171,14 +177,16 @@ test.describe('CPA held-out — publisher scope (M6)', () => {
           from: '2026-08-01T00:00:00Z',
           to: '2026-08-08T00:00:00Z',
           kpis: { impressions: 1200, fill_rate: 0.12, ecpm_micro: 450000, ivt_rate: 0.01 },
-          placements: [{
-            placement_id: 'seller-e2e/banner-1',
-            impressions: 1200,
-            clicks: 144,
-            fill_rate: 0.12,
-            revenue_micro: 540000,
-            ecpm_micro: 450000,
-          }],
+          placements: [
+            {
+              placement_id: 'seller-e2e/banner-1',
+              impressions: 1200,
+              clicks: 144,
+              fill_rate: 0.12,
+              revenue_micro: 540000,
+              ecpm_micro: 450000,
+            },
+          ],
         }),
       });
     });
@@ -324,15 +332,17 @@ test.describe('CPA held-out — ops consolidation (M8)', () => {
         status: 200,
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          items: [{
-            id: 99,
-            user_id_hash: 'deadbeef',
-            purposes: 1,
-            source: 'cmp',
-            recorded_at: '2026-08-12T10:00:00Z',
-            ad_storage: true,
-            analytics_storage: false,
-          }],
+          items: [
+            {
+              id: 99,
+              user_id_hash: 'deadbeef',
+              purposes: 1,
+              source: 'cmp',
+              recorded_at: '2026-08-12T10:00:00Z',
+              ad_storage: true,
+              analytics_storage: false,
+            },
+          ],
         }),
       });
     });
@@ -357,15 +367,17 @@ test.describe('CPA held-out — ops consolidation (M8)', () => {
         status: 200,
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          items: [{
-            id: '11',
-            source: 'capi',
-            campaign_id: 'camp-m8',
-            event_type: 'conversion',
-            error: '401',
-            failed_at: '2026-08-12T10:00:00Z',
-            status: 'FAILED',
-          }],
+          items: [
+            {
+              id: '11',
+              source: 'capi',
+              campaign_id: 'camp-m8',
+              event_type: 'conversion',
+              error: '401',
+              failed_at: '2026-08-12T10:00:00Z',
+              status: 'FAILED',
+            },
+          ],
         }),
       });
     });
@@ -393,10 +405,12 @@ test.describe('CPA held-out — ops consolidation (M8)', () => {
           shards: [],
           outbox: { pending: 0 },
           stale_dashboard: true,
-          affected_campaigns: [{
-            campaign_id: '550e8400-e29b-41d4-a716-446655440088',
-            name: 'Stale KPI Camp',
-          }],
+          affected_campaigns: [
+            {
+              campaign_id: '550e8400-e29b-41d4-a716-446655440088',
+              name: 'Stale KPI Camp',
+            },
+          ],
         }),
       });
     });

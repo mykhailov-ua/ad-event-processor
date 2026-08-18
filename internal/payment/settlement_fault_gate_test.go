@@ -79,3 +79,13 @@ func (g *SettlementFaultGate) GetLedgerEntry(ctx context.Context, paymentIntentI
 	}
 	return g.api.GetLedgerEntry(ctx, paymentIntentID)
 }
+
+func (g *SettlementFaultGate) GetLedgerEntries(ctx context.Context, paymentIntentIDs []uuid.UUID) (map[uuid.UUID]domain.PaymentLedgerEntry, error) {
+	g.mu.Lock()
+	down := g.down
+	g.mu.Unlock()
+	if down {
+		return nil, g.downErr()
+	}
+	return g.api.GetLedgerEntries(ctx, paymentIntentIDs)
+}

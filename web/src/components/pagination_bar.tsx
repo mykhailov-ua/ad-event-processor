@@ -8,9 +8,6 @@ export type PaginationBarProps = {
   onNext: () => void;
 };
 
-/**
- * Prev/next pagination controls.
- */
 export function PaginationBar({
   label,
   prevDisabled,

@@ -26,39 +26,6 @@ var (
 	ErrInvalidDealSeats    = errors.New("seats must be at least 1")
 )
 
-type RtbDealDTO struct {
-	ID         int64  `json:"id"`
-	DealID     string `json:"deal_id"`
-	FloorMicro int64  `json:"floor_micro"`
-	GeoMask    int64  `json:"geo_mask"`
-	CatMask    int64  `json:"cat_mask"`
-	Pacing     string `json:"pacing"`
-	Seats      int32  `json:"seats"`
-	CustomerID string `json:"customer_id"`
-	CreatedAt  string `json:"created_at"`
-	UpdatedAt  string `json:"updated_at"`
-}
-
-type RtbDealCreateSpec struct {
-	DealID     string `json:"deal_id"`
-	FloorMicro int64  `json:"floor_micro"`
-	GeoMask    int64  `json:"geo_mask"`
-	CatMask    int64  `json:"cat_mask"`
-	Pacing     string `json:"pacing"`
-	Seats      int32  `json:"seats"`
-	CustomerID string `json:"customer_id"`
-}
-
-type RtbDealUpdateSpec struct {
-	DealID     string `json:"deal_id"`
-	FloorMicro int64  `json:"floor_micro"`
-	GeoMask    int64  `json:"geo_mask"`
-	CatMask    int64  `json:"cat_mask"`
-	Pacing     string `json:"pacing"`
-	Seats      int32  `json:"seats"`
-	CustomerID string `json:"customer_id"`
-}
-
 type RtbCatalogReloadPayload struct {
 	Trigger string `json:"trigger"`
 }

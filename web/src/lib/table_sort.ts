@@ -10,16 +10,10 @@ export type SortCache = {
   sorted?: unknown[];
 };
 
-/**
- * Create an empty table sort state object.
- */
 export function createSortState(key = '', dir: 'asc' | 'desc' = 'asc'): SortState {
   return { key, dir };
 }
 
-/**
- * Toggle or set sort key and direction on a sort state object.
- */
 export function toggleSort(state: SortState, key: string): void {
   if (state.key === key) {
     state.dir = state.dir === 'asc' ? 'desc' : 'asc';
@@ -37,21 +31,20 @@ function compareValues(va: unknown, vb: unknown): number {
   return String(va).localeCompare(String(vb), undefined, { sensitivity: 'base' });
 }
 
-/**
- * Sort table rows using accessors keyed by the active sort state.
- */
 export function sortRows<T>(
   rows: T[],
   state: SortState,
   accessors: Record<string, (row: T) => unknown>,
-  cache: SortCache | null = null,
+  cache: SortCache | null = null
 ): T[] {
   if (!state.key || !accessors[state.key]) return rows;
-  if (cache
-    && cache.rows === rows
-    && cache.key === state.key
-    && cache.dir === state.dir
-    && cache.sorted) {
+  if (
+    cache &&
+    cache.rows === rows &&
+    cache.key === state.key &&
+    cache.dir === state.dir &&
+    cache.sorted
+  ) {
     return cache.sorted as T[];
   }
   const acc = accessors[state.key];

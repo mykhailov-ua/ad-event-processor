@@ -14,9 +14,7 @@ import (
 
 const mckInfoLabel = "bidshard-mck-v1"
 
-var (
-	ErrMCKDerivation = errors.New("mck derivation failed")
-)
+var ErrMCKDerivation = errors.New("mck derivation failed")
 
 func DeriveMCK(token string, hwid string) ([32]byte, error) {
 	var zero [32]byte

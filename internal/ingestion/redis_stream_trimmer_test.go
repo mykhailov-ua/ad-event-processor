@@ -34,7 +34,6 @@ func TestRedisStreamTrimmer_TrimOnceAndMetrics(t *testing.T) {
 	ctx := context.Background()
 	stream := "test:trim:stream"
 
-	// Add 50 entries to miniredis stream
 	for range 50 {
 		_, err := rdb.XAdd(ctx, &redis.XAddArgs{
 			Stream: stream,
@@ -45,7 +44,6 @@ func TestRedisStreamTrimmer_TrimOnceAndMetrics(t *testing.T) {
 
 	assert.Equal(t, int64(50), rdb.XLen(ctx, stream).Val())
 
-	// Create trimmer with MaxLen=10
 	trimmer := NewRedisStreamTrimmer(RedisStreamTrimmerConfig{
 		Rdbs:         []redis.UniversalClient{rdb},
 		Streams:      []string{stream},
@@ -55,10 +53,8 @@ func TestRedisStreamTrimmer_TrimOnceAndMetrics(t *testing.T) {
 
 	trimmer.TrimOnce(ctx)
 
-	// Stream should now be trimmed to <= 10 items
 	assert.LessOrEqual(t, rdb.XLen(ctx, stream).Val(), int64(10))
 
-	// Verify background ticker works
 	ctxCancel, cancel := context.WithCancel(context.Background())
 	trimmer.Start(ctxCancel)
 

@@ -8,9 +8,6 @@ export type GuardedRouteProps = {
   children: ReactNode;
 };
 
-/**
- * Permission guard wrapper for shell routes.
- */
 export function GuardedRoute({ children }: GuardedRouteProps) {
   const location = useLocation();
   const pathname = location.pathname.split('?')[0].replace(/\/$/, '') || '/';

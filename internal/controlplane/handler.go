@@ -5,21 +5,22 @@ import (
 	"net/http"
 
 	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
 )
 
 type Handler struct {
-	svc                 *Service
-	cfg                 *config.Config
-	ipLimiter           *ipRateLimiter
-	licenseApplyLimiter *ipRateLimiter
-	customerLimiter     *customerRateLimiter
-	authMiddleware      *AuthMiddleware
-	authClient          *AuthClient
-	payment             *PaymentClient
-	billing             *BillingClient
-	invoiceDelivery     adminapi.InvoiceRetryer
+	svc                  *Service
+	cfg                  *config.Config
+	ipLimiter            *ipRateLimiter
+	licenseApplyLimiter  *ipRateLimiter
+	customerLimiter      *customerRateLimiter
+	fraudDecisionLimiter *customerRateLimiter
+	fraudPreviewLimiter  *customerRateLimiter
+	authMiddleware       *AuthMiddleware
+	authClient           *AuthClient
+	payment              *PaymentClient
+	billing              *BillingClient
+	invoiceDelivery      InvoiceRetryer
 }
 
 func NewHandler(svc *Service, cfg *config.Config, authMiddleware *AuthMiddleware, authClient *AuthClient, paymentClient *PaymentClient, billingClient *BillingClient) *Handler {
@@ -30,15 +31,17 @@ func NewHandler(svc *Service, cfg *config.Config, authMiddleware *AuthMiddleware
 		burst = cfg.Management.RateLimitBurst
 	}
 	h := &Handler{
-		svc:                 svc,
-		cfg:                 cfg,
-		ipLimiter:           newIPRateLimiter(rps, burst),
-		licenseApplyLimiter: newIPRateLimiter(licenseApplyRPS, licenseApplyBurst),
-		customerLimiter:     newCustomerRateLimiter(),
-		authMiddleware:      authMiddleware,
-		authClient:          authClient,
-		payment:             paymentClient,
-		billing:             billingClient,
+		svc:                  svc,
+		cfg:                  cfg,
+		ipLimiter:            newIPRateLimiter(rps, burst),
+		licenseApplyLimiter:  newIPRateLimiter(licenseApplyRPS, licenseApplyBurst),
+		customerLimiter:      newCustomerRateLimiter(),
+		fraudDecisionLimiter: newFraudDecisionLimiter(),
+		fraudPreviewLimiter:  newFraudPreviewLimiter(),
+		authMiddleware:       authMiddleware,
+		authClient:           authClient,
+		payment:              paymentClient,
+		billing:              billingClient,
 	}
 	if paymentClient != nil {
 		svc.SetPayment(paymentClient)
@@ -48,7 +51,7 @@ func NewHandler(svc *Service, cfg *config.Config, authMiddleware *AuthMiddleware
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	if h.svc != nil && h.svc.GetPool() != nil {
-		adminapi.RegisterRoutes(mux, h.BuildAdminAPIRegistry(h.svc.GetPool(), h.svc.RedisShards()))
+		RegisterRoutes(mux, h.BuildAdminAPIRegistry(h.svc.GetPool(), h.svc.RedisShards()))
 	}
 
 	registerAdminGoneRoutes(mux)

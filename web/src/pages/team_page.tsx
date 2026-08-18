@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import type { TeamBudgetApprovalDTO, TeamMemberDTO, TeamOverviewDTO } from '../types/api/team.js';
+import type { TeamBudgetApprovalDTO, TeamMemberDTO, TeamOverviewDTO } from '../types/team.js';
 import * as auth from '../helpers/auth.js';
 import * as storage from '../helpers/storage.js';
 import { can, isBillingReadOnly, isMediaBuyer, isTeamLead } from '../helpers/permissions.js';
@@ -19,7 +19,7 @@ import {
   updateTeamMember,
 } from '../helpers/team_api.js';
 import { to } from '../lib/to.js';
-import { useResource } from '../hooks/use_resource.js';
+import { useResource } from '../helpers/use_resource.js';
 import { AlertBanner } from '../components/alert_banner.js';
 import { Breadcrumbs } from '../components/breadcrumbs.js';
 import { BillingForecastWidget } from '../components/billing_forecast_widget.js';
@@ -46,21 +46,18 @@ function BlockingError({ error }: { error: unknown }) {
   return <ErrorBlock error={error} />;
 }
 
-/**
- * Team members, license status, and team balance (RBAC-gated).
- */
 export function TeamPage() {
   const user = auth.getUser();
   const perms = user?.permissions ?? [];
   const sessionScoped = hasBoundCustomer(user?.role);
   const [searchParams] = useSearchParams();
-  const [customerInput, setCustomerInput] = useState(() => (
+  const [customerInput, setCustomerInput] = useState(() =>
     sessionScoped
       ? boundCustomerId(user)
       : (searchParams.get('customer_id') ?? storage.getLastCustomerId() ?? '')
-  ));
+  );
   const [customerInputError, setCustomerInputError] = useState<string | null>(null);
-  const customerId = sessionScoped ? boundCustomerId(user) : (customerInput.trim() || '');
+  const customerId = sessionScoped ? boundCustomerId(user) : customerInput.trim() || '';
   const teamLead = isTeamLead(user?.role);
   const mediaBuyer = isMediaBuyer(user?.role);
   const showBalance = can(perms, 'billing:read') || can(perms, 'customers:read');
@@ -204,15 +201,13 @@ export function TeamPage() {
               onChange={(e) => {
                 setCustomerInput(e.target.value);
                 setCustomerInputError(
-                  e.target.value.trim() ? validateCustomerIdField(e.target.value) : null,
+                  e.target.value.trim() ? validateCustomerIdField(e.target.value) : null
                 );
               }}
             />
             <Button label="Apply" variant="secondary" size="sm" onClick={applyCustomerFilter} />
           </div>
-          {customerInputError ? (
-            <AlertBanner variant="error" message={customerInputError} />
-          ) : null}
+          {customerInputError ? <AlertBanner variant="error" message={customerInputError} /> : null}
         </div>
       ) : null}
 
@@ -249,9 +244,7 @@ export function TeamPage() {
           </div>
           {mediaBuyer ? (
             <p className="text-muted text-sm">
-              <Link to="/billing">View wallet</Link>
-              {' '}
-              (read-only)
+              <Link to="/billing">View wallet</Link> (read-only)
             </p>
           ) : null}
         </section>
@@ -268,9 +261,13 @@ export function TeamPage() {
           <h2 className="subsection-title">License status</h2>
           <dl className="definition-list">
             <dt>State</dt>
-            <dd><StatusBadge status={data.license.state} /></dd>
+            <dd>
+              <StatusBadge status={data.license.state} />
+            </dd>
             <dt>Valid until</dt>
-            <dd>{data.license.valid_until ? new Date(data.license.valid_until).toLocaleString() : '—'}</dd>
+            <dd>
+              {data.license.valid_until ? new Date(data.license.valid_until).toLocaleString() : '—'}
+            </dd>
           </dl>
         </section>
       ) : null}
@@ -324,7 +321,9 @@ export function TeamPage() {
               <tbody>
                 {members.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-muted">No team members for this customer.</td>
+                    <td colSpan={7} className="text-muted">
+                      No team members for this customer.
+                    </td>
                   </tr>
                 ) : (
                   members.map((member: TeamMemberDTO) => (
@@ -347,8 +346,12 @@ export function TeamPage() {
                       </td>
                       <td className="font-mono">
                         {member.campaigns_owned > 0 ? (
-                          <Link to={`/campaigns?owner=${member.user_id}`}>{member.campaigns_owned}</Link>
-                        ) : member.campaigns_owned}
+                          <Link to={`/campaigns?owner=${member.user_id}`}>
+                            {member.campaigns_owned}
+                          </Link>
+                        ) : (
+                          member.campaigns_owned
+                        )}
                       </td>
                       <td className="font-mono">
                         {canManageTeam ? (
@@ -361,7 +364,9 @@ export function TeamPage() {
                               if (!Number.isNaN(val)) void setSpendCap(member, val);
                             }}
                           />
-                        ) : formatAmountMicro(member.spend_cap_micro ?? 0, data.currency ?? 'USD')}
+                        ) : (
+                          formatAmountMicro(member.spend_cap_micro ?? 0, data.currency ?? 'USD')
+                        )}
                       </td>
                       <td className="text-muted text-sm">
                         {member.created_at ? new Date(member.created_at).toLocaleDateString() : '—'}
@@ -413,8 +418,12 @@ export function TeamPage() {
                   {approvals.map((row) => (
                     <tr key={row.id} data-testid={`team-approval-row-${row.id}`}>
                       <td className="font-mono text-sm">{row.campaign_id}</td>
-                      <td>{formatAmountMicro(row.requested_budget_micro, data?.currency ?? 'USD')}</td>
-                      <td>{formatAmountMicro(row.previous_budget_micro, data?.currency ?? 'USD')}</td>
+                      <td>
+                        {formatAmountMicro(row.requested_budget_micro, data?.currency ?? 'USD')}
+                      </td>
+                      <td>
+                        {formatAmountMicro(row.previous_budget_micro, data?.currency ?? 'USD')}
+                      </td>
                       <td className="toolbar-row">
                         <Button
                           label="Approve"

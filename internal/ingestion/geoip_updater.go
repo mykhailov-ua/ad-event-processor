@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 )
 
 type GeoIPUpdaterConfig struct {
@@ -96,9 +97,10 @@ func (u *GeoIPUpdater) downloadAndInstall(ctx context.Context) error {
 
 	resp, err := u.cfg.HTTPClient.Do(req)
 	if err != nil {
+		coldpath.CloseHTTPResponse(resp)
 		return fmt.Errorf("download maxmind archive: %w", err)
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer coldpath.CloseHTTPResponse(resp)
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))

@@ -814,13 +814,20 @@ func (w *CreditScoringWorker) EvaluateAll(ctx context.Context) error {
 		return err
 	}
 
+	lagByCustomer := make(map[uuid.UUID]int64)
+	lagRows, err := queries.ListCustomerReconLagMicro(opCtx)
+	if err != nil {
+		slog.Error("failed to batch read recon lag", "err", err)
+	} else {
+		for _, row := range lagRows {
+			lagByCustomer[uuid.UUID(row.CustomerID.Bytes)] = row.MaxLagMicro
+		}
+	}
+
 	for _, r := range rows {
 		customerID := uuid.UUID(r.ID.Bytes)
-		reconLag, err := queries.MaxCustomerReconLagMicro(opCtx, r.ID)
-		if err != nil {
-			slog.Error("failed to read recon lag for customer", "customer_id", customerID, "err", err)
-			reconLag = 0
-		}
+		reconLag := lagByCustomer[customerID]
+
 		overdraft := w.calculateOverdraft(float64(r.AgeDays), r.TopupSum30d, reconLag)
 
 		if err := w.svc.UpdateOverdraft(opCtx, customerID, overdraft); err != nil {
@@ -1194,8 +1201,10 @@ func (nginxWorker *NginxConfigWorker) writeDenyFile(filename string, ips []strin
 	return nil
 }
 
-const snapshotRunHourUTC = 0
-const snapshotRunMinuteUTC = 15
+const (
+	snapshotRunHourUTC   = 0
+	snapshotRunMinuteUTC = 15
+)
 
 type NodeMetricsSnapshotWorker struct {
 	svc  *Service
@@ -2037,7 +2046,7 @@ func (o *FraudModelSyncOrchestrator) Tick(ctx context.Context) error {
 		states[shardID] = shardState{phase: phase, startedAt: startedAt}
 	}
 
-	var activeSyncShard = -1
+	activeSyncShard := -1
 	for id, state := range states {
 		if state.phase == "SYNC" {
 			activeSyncShard = id
@@ -2079,7 +2088,7 @@ func (o *FraudModelSyncOrchestrator) Tick(ctx context.Context) error {
 		return nil
 	}
 
-	var nextShardToSync = -1
+	nextShardToSync := -1
 	for i := range numShards {
 		state, exists := states[i]
 		if !exists || state.phase == "ROLLBACK" {
@@ -2378,10 +2387,6 @@ func (worker *OutboxWorker) ProcessOutboxWithCount(ctx context.Context, limit in
 		}
 	}
 
-	// Ordering policy (matches GetPendingOutboxEventsForUpdate):
-	// 1. UPDATE_BLACKLIST events are applied in a single batch before other types.
-	// 2. Other types run in SQL claim order (priority lane for pause/cancel/freeze/quota/ml, then created_at).
-	// 3. On first failure in the other-events lane, halt the remainder of that lane in this batch.
 	for i, ev := range otherEvents {
 		if err := worker.handleOutboxEvent(opCtx, ctx, ev); err != nil {
 			slog.Warn("redis outbox processing failed for event, halting batch lane", "id", ev.ID, "err", err)
@@ -2456,8 +2461,10 @@ func ToUUID(u uuid.UUID) pgtype.UUID {
 	return pgtype.UUID{Bytes: u, Valid: true}
 }
 
-const fraudQuarantineChannel = "fraud:quarantine"
-const blacklistUpdateChannel = "blacklist:update"
+const (
+	fraudQuarantineChannel = "fraud:quarantine"
+	blacklistUpdateChannel = "blacklist:update"
+)
 
 func (worker *OutboxWorker) applyBlacklistPayloadsBatch(ctx context.Context, events []db.OutboxEvent) error {
 	type reasonBatch struct {

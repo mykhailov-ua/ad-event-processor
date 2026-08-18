@@ -1,11 +1,10 @@
 package ingestion
 
 const (
-	// MaxJSONTotalWSkip caps cumulative whitespace skipped while parsing one JSON document.
 	MaxJSONTotalWSkip = 4096
-	// MaxJSONStringScanBytes caps bytes examined inside a single JSON string value.
+
 	MaxJSONStringScanBytes = 65536
-	// MaxJSONStringEscapes caps backslash escapes examined in one JSON string value.
+
 	MaxJSONStringEscapes = 16384
 )
 
@@ -49,7 +48,6 @@ func (b *jsonScanBudget) consumeEscape() bool {
 	return b.escLeft >= 0
 }
 
-// consumeKeyPair decrements the per-document key:value pair budget (PS-H02).
 func (b *jsonScanBudget) consumeKeyPair() bool {
 	if b == nil {
 		return true
@@ -73,7 +71,6 @@ func skipJSONWSBudget(data []byte, i, n int, b *jsonScanBudget) (int, bool) {
 	return i, true
 }
 
-// jsonTrackKeyOK requires literal unescaped ASCII keys (no Unicode homoglyphs / escapes).
 func jsonTrackKeyOK(key []byte) bool {
 	if len(key) == 0 {
 		return false

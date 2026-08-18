@@ -1,5 +1,3 @@
-// Flow router selection benches (harness: flow_router).
-// RCU snapshot is fully in-memory: no Redis, no PG on the read path.
 package ingestion
 
 import (
@@ -51,7 +49,6 @@ func benchFlowRouter(tb testing.TB) (*FlowRouter, [64][16]byte) {
 	return router, users
 }
 
-// BenchmarkFlowRouter_BanditSelect (harness: bandit_router) — B-GMA-M6, < 5 µs, 0 allocs.
 func BenchmarkFlowRouter_BanditSelect(b *testing.B) {
 	router, users := benchFlowRouter(b)
 	b.ReportAllocs()
@@ -68,7 +65,6 @@ func BenchmarkFlowRouter_BanditSelect(b *testing.B) {
 	}
 }
 
-// BenchmarkFlowRouter_Select (harness: flow_router) — B-GM-M3, < 2 µs, 0 allocs.
 func BenchmarkFlowRouter_Select(b *testing.B) {
 	router, users := benchFlowRouter(b)
 	b.ReportAllocs()

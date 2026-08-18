@@ -53,10 +53,6 @@ export type MetricChartHandle = ChartHandle & {
 const X_TICK_MAX = 5;
 const FONT_AXIS = 'var(--text-xs) var(--font-family), system-ui, sans-serif';
 
-/**
- * Mount a Grafana-style time-series area chart for a single metric.
- * Pixel-snapped grid lines (0.5px offset) eliminate staircase/aliasing artifacts.
- */
 export function mountMetricChart(container: HTMLElement, opts: MetricChartOpts): MetricChartHandle {
   const title = opts.title ?? 'Metric';
   let colorToken = opts.color ?? '--accent';
@@ -128,10 +124,19 @@ export function mountMetricChart(container: HTMLElement, opts: MetricChartOpts):
     const ySpan = yMax - yMin;
 
     const ptLen = projectSeriesSoA(
-      seriesTs, seriesVal, seriesLen,
-      xMin, xSpan, plotW,
-      yMin, ySpan, padLeft, padTop, plotH,
-      ptsX, ptsY,
+      seriesTs,
+      seriesVal,
+      seriesLen,
+      xMin,
+      xSpan,
+      plotW,
+      yMin,
+      ySpan,
+      padLeft,
+      padTop,
+      plotH,
+      ptsX,
+      ptsY
     );
 
     ctx.clearRect(0, 0, width, height);
@@ -241,9 +246,6 @@ export function mountMetricChart(container: HTMLElement, opts: MetricChartOpts):
   };
 }
 
-/**
- * Mount an empty metric chart placeholder.
- */
 export function mountMetricChartEmpty(container: HTMLElement): ChartHandle {
   replaceChildren(container, el('p', { className: 'text-muted text-sm' }, 'No data to chart.'));
   return { destroy: () => container.replaceChildren() };

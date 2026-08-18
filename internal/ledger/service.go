@@ -225,13 +225,9 @@ func (service *Service) ListInvoices(ctx context.Context, customerID uuid.UUID, 
 		return nil, 0, fmt.Errorf("list invoices: %w", err)
 	}
 
-	invoices := make([]domain.Invoice, 0, len(rows))
-	for _, row := range rows {
-		inv, err := service.invoiceFromDB(ctx, row)
-		if err != nil {
-			return nil, 0, err
-		}
-		invoices = append(invoices, inv)
+	invoices, err := service.invoicesFromDB(ctx, rows)
+	if err != nil {
+		return nil, 0, err
 	}
 	return invoices, total, nil
 }

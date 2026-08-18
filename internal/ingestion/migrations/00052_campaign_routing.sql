@@ -1,4 +1,3 @@
-
 -- +goose Up
 -- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS campaign_routing (

@@ -2,10 +2,11 @@ package controlplane
 
 import (
 	"errors"
-	"github.com/bidshard/ad-event-processor/internal/domain"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/bidshard/ad-event-processor/internal/domain"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"

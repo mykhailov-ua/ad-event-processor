@@ -12,7 +12,10 @@ import {
   fetchIntegrationSchemas,
   importBundledTemplates,
 } from '../helpers/integration_api.js';
-import type { IntegrationSchemaDTO, IntegrationTemplateCatalogEntry } from '../types/api/integration.js';
+import type {
+  IntegrationSchemaDTO,
+  IntegrationTemplateCatalogEntry,
+} from '../types/integration.js';
 import { IntegrationSchemaAuthorPanel } from '../components/integration_schema_author_panel.js';
 import { Button } from '../components/button.js';
 import { ErrorBlock } from '../components/error_block.js';
@@ -24,7 +27,9 @@ function TableSkeleton({ cols, rows = 4 }: { cols: number; rows?: number }) {
       {Array.from({ length: rows }, (_, i) => (
         <tr key={`sk-${i}`} className="data-table__row--skeleton" aria-hidden="true">
           {Array.from({ length: cols }, (__, j) => (
-            <td key={`sk-${i}-${j}`}><span className="skeleton-bar" /></td>
+            <td key={`sk-${i}-${j}`}>
+              <span className="skeleton-bar" />
+            </td>
           ))}
         </tr>
       ))}
@@ -47,7 +52,9 @@ function SchemaDetailRow({ schemaId, onClose }: { schemaId: string; onClose: () 
       if (err) setError(err);
       else setDetail(row);
     })();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [schemaId]);
 
   return (
@@ -71,9 +78,6 @@ function SchemaDetailRow({ schemaId, onClose }: { schemaId: string; onClose: () 
   );
 }
 
-/**
- * Integration schemas admin — list, import bundled YAML, author JSON, apply to campaign.
- */
 export function IntegrationsSchemasPage() {
   const user = auth.getUser();
   const canWrite = can(user?.permissions ?? [], 'campaigns:write');
@@ -139,7 +143,10 @@ export function IntegrationsSchemasPage() {
       pushToastMessage({ title: 'Import failed', message: mapServiceError(err).message });
       return;
     }
-    pushToastMessage({ title: 'Templates imported', message: 'Schemas are ready to apply to campaigns.' });
+    pushToastMessage({
+      title: 'Templates imported',
+      message: 'Schemas are ready to apply to campaigns.',
+    });
     setSelectedImport(new Set());
     void load();
   };
@@ -148,7 +155,10 @@ export function IntegrationsSchemasPage() {
     if (!canWrite || applyBusy) return;
     const campaignId = applyCampaignId.trim();
     if (!campaignId || !applySchemaId) {
-      pushToastMessage({ title: 'Missing fields', message: 'Campaign ID and schema are required.' });
+      pushToastMessage({
+        title: 'Missing fields',
+        message: 'Campaign ID and schema are required.',
+      });
       return;
     }
     setApplyBusy(true);
@@ -168,7 +178,8 @@ export function IntegrationsSchemasPage() {
       <div className="page-header">
         <h1 className="page-header__title">Integration schemas</h1>
         <p className="text-muted text-sm">
-          GM-M4 YAML presets for traffic sources and affiliate postbacks. Import bundled templates or author JSON.
+          GM-M4 YAML presets for traffic sources and affiliate postbacks. Import bundled templates
+          or author JSON.
         </p>
       </div>
 
@@ -186,8 +197,7 @@ export function IntegrationsSchemasPage() {
                   type="checkbox"
                   checked={selectedImport.has(entry.name)}
                   onChange={() => toggleImport(entry.name)}
-                />
-                {' '}
+                />{' '}
                 <span className="font-mono">{entry.name}</span>
                 <span className="text-muted text-sm">
                   {' '}
@@ -269,7 +279,9 @@ export function IntegrationsSchemasPage() {
               {loading ? <TableSkeleton cols={5} /> : null}
               {!loading && schemas.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="data-table__empty">No schemas yet — import or author one.</td>
+                  <td colSpan={5} className="data-table__empty">
+                    No schemas yet — import or author one.
+                  </td>
                 </tr>
               ) : null}
               {schemas.map((row) => (
@@ -277,7 +289,9 @@ export function IntegrationsSchemasPage() {
                   <tr data-testid={`schema-row-${row.id}`}>
                     <td className="font-mono">{row.name}</td>
                     <td>{String(row.version)}</td>
-                    <td><StatusBadge status={row.kind} kind="service" /></td>
+                    <td>
+                      <StatusBadge status={row.kind} kind="service" />
+                    </td>
                     <td>{row.updated_at ? new Date(row.updated_at).toLocaleString() : '—'}</td>
                     <td>
                       <Button
@@ -285,17 +299,14 @@ export function IntegrationsSchemasPage() {
                         variant="ghost"
                         size="sm"
                         data-testid={`schema-view-${row.id}`}
-                        onClick={() => setExpandedSchemaId(
-                          expandedSchemaId === row.id ? '' : row.id,
-                        )}
+                        onClick={() =>
+                          setExpandedSchemaId(expandedSchemaId === row.id ? '' : row.id)
+                        }
                       />
                     </td>
                   </tr>
                   {expandedSchemaId === row.id ? (
-                    <SchemaDetailRow
-                      schemaId={row.id}
-                      onClose={() => setExpandedSchemaId('')}
-                    />
+                    <SchemaDetailRow schemaId={row.id} onClose={() => setExpandedSchemaId('')} />
                   ) : null}
                 </Fragment>
               ))}

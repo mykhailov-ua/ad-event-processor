@@ -12,14 +12,14 @@ import {
   fetchIntegrationSchemas,
   importBundledTemplates,
 } from '../helpers/integration_api.js';
-import type { IntegrationSchemaDTO, IntegrationTemplateCatalogEntry } from '../types/api/integration.js';
+import type {
+  IntegrationSchemaDTO,
+  IntegrationTemplateCatalogEntry,
+} from '../types/integration.js';
 import { to } from '../lib/to.js';
 import { Button } from '../components/button.js';
 import { ErrorBlock } from '../components/error_block.js';
 
-/**
- * Import bundled traffic / affiliate YAML templates into integration_schemas.
- */
 export function IntegrationsTemplatesImportPage() {
   const canWrite = can(auth.getUser()?.permissions ?? [], 'campaigns:write');
   const [catalog, setCatalog] = useState<IntegrationTemplateCatalogEntry[]>([]);
@@ -72,7 +72,10 @@ export function IntegrationsTemplatesImportPage() {
       pushToastMessage({ title: 'Import failed', message: mapServiceError(err).message });
       return;
     }
-    pushToastMessage({ title: 'Templates imported', message: `${selected.size} schema(s) upserted` });
+    pushToastMessage({
+      title: 'Templates imported',
+      message: `${selected.size} schema(s) upserted`,
+    });
     setSelected(new Set());
     void reload();
   };
@@ -102,40 +105,44 @@ export function IntegrationsTemplatesImportPage() {
         {!loading && catalog.length === 0 ? (
           <p className="text-muted">No bundled templates on this deployment.</p>
         ) : null}
-        {!loading && presetGroups.map((group) => (
-          <div key={group.title} className="stack" data-testid={`template-group-${group.title}`}>
-            <h3 className="text-sm font-medium">{group.title}</h3>
-            <ul className="list-plain">
-              {group.items.map((item) => {
-                const inCatalog = catalog.some((c) => c.name === item.value);
-                const alreadyImported = importedNames.has(item.value);
-                return (
-                  <li key={item.value} className="toolbar-row">
-                    <label className="form-field form-field--inline">
-                      <input
-                        type="checkbox"
-                        disabled={!canWrite || !inCatalog}
-                        checked={selected.has(item.value)}
-                        data-testid={`template-import-${item.value}`}
-                        onChange={() => toggle(item.value)}
-                      />
-                      {item.label}
-                      <span className="text-muted text-sm font-mono">{item.value}</span>
-                    </label>
-                    {alreadyImported ? (
-                      <span className="text-muted text-sm" data-testid={`template-imported-${item.value}`}>
-                        imported
-                      </span>
-                    ) : null}
-                    {!inCatalog ? (
-                      <span className="text-muted text-sm">not in bundle</span>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ))}
+        {!loading &&
+          presetGroups.map((group) => (
+            <div key={group.title} className="stack" data-testid={`template-group-${group.title}`}>
+              <h3 className="text-sm font-medium">{group.title}</h3>
+              <ul className="list-plain">
+                {group.items.map((item) => {
+                  const inCatalog = catalog.some((c) => c.name === item.value);
+                  const alreadyImported = importedNames.has(item.value);
+                  return (
+                    <li key={item.value} className="toolbar-row">
+                      <label className="form-field form-field--inline">
+                        <input
+                          type="checkbox"
+                          disabled={!canWrite || !inCatalog}
+                          checked={selected.has(item.value)}
+                          data-testid={`template-import-${item.value}`}
+                          onChange={() => toggle(item.value)}
+                        />
+                        {item.label}
+                        <span className="text-muted text-sm font-mono">{item.value}</span>
+                      </label>
+                      {alreadyImported ? (
+                        <span
+                          className="text-muted text-sm"
+                          data-testid={`template-imported-${item.value}`}
+                        >
+                          imported
+                        </span>
+                      ) : null}
+                      {!inCatalog ? (
+                        <span className="text-muted text-sm">not in bundle</span>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
         {canWrite ? (
           <Button
             label={importing ? 'Importing…' : 'Import selected'}
@@ -163,15 +170,21 @@ export function IntegrationsTemplatesImportPage() {
             </thead>
             <tbody>
               {schemas.length === 0 ? (
-                <tr><td colSpan={4} className="text-muted">No schemas imported yet.</td></tr>
-              ) : schemas.map((row) => (
-                <tr key={row.id}>
-                  <td>{row.name}</td>
-                  <td>{row.kind}</td>
-                  <td>{row.version}</td>
-                  <td>{row.updated_at}</td>
+                <tr>
+                  <td colSpan={4} className="text-muted">
+                    No schemas imported yet.
+                  </td>
                 </tr>
-              ))}
+              ) : (
+                schemas.map((row) => (
+                  <tr key={row.id}>
+                    <td>{row.name}</td>
+                    <td>{row.kind}</td>
+                    <td>{row.version}</td>
+                    <td>{row.updated_at}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

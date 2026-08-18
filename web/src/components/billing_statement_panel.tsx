@@ -3,7 +3,7 @@ import { to } from '../lib/to.js';
 import { mapServiceError } from '../helpers/service_error.js';
 import { pushToastMessage } from '../helpers/toast_ui.js';
 import { fetchCustomerBillingStatement } from '../helpers/billing_admin_api.js';
-import type { BillingStatementDTO } from '../types/api/billing.js';
+import type { BillingStatementDTO } from '../types/billing.js';
 import { formatAmountMicro } from '../helpers/money.js';
 import { Button } from './button.js';
 import { StatusBadge } from './status_badge.js';
@@ -12,9 +12,6 @@ export type BillingStatementPanelProps = {
   customerId: string;
 };
 
-/**
- * Admin billing statement (GET /customers/{id}/billing/statement).
- */
 export function BillingStatementPanel({ customerId }: BillingStatementPanelProps) {
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [loading, setLoading] = useState(false);
@@ -86,9 +83,7 @@ export function BillingStatementPanel({ customerId }: BillingStatementPanelProps
               <>
                 <dt>Tax</dt>
                 <dd>
-                  {statement.tax_breakdown.scheme}
-                  {' '}
-                  ({statement.tax_breakdown.rate_bps ?? 0} bps)
+                  {statement.tax_breakdown.scheme} ({statement.tax_breakdown.rate_bps ?? 0} bps)
                   {' · '}
                   {formatAmountMicro(statement.tax_breakdown.tax_micro ?? 0, statement.currency)}
                 </dd>
@@ -109,9 +104,14 @@ export function BillingStatementPanel({ customerId }: BillingStatementPanelProps
                   {statement.invoices.map((inv) => (
                     <tr key={inv.id ?? inv.billing_month}>
                       <td>{inv.billing_month ?? '—'}</td>
-                      <td>{inv.status ? <StatusBadge status={inv.status} kind="invoice" /> : '—'}</td>
+                      <td>
+                        {inv.status ? <StatusBadge status={inv.status} kind="invoice" /> : '—'}
+                      </td>
                       <td className="font-mono">
-                        {formatAmountMicro(inv.total_micro ?? 0, inv.currency ?? statement.currency)}
+                        {formatAmountMicro(
+                          inv.total_micro ?? 0,
+                          inv.currency ?? statement.currency
+                        )}
                       </td>
                     </tr>
                   ))}

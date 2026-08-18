@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 	"github.com/bidshard/ad-event-processor/pkg/money"
 )
 
@@ -58,10 +59,14 @@ func tonicFetchEPCDaily(ctx context.Context, client *http.Client, base string, c
 
 	resp, err := client.Do(req)
 	if err != nil {
+		coldpath.CloseHTTPResponse(resp)
 		return nil, err
 	}
-	defer func() { _ = resp.Body.Close() }()
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	defer coldpath.CloseHTTPResponse(resp)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	if err != nil {
+		return nil, fmt.Errorf("tonic epc/daily: read body: %w", err)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("tonic epc/daily: status %d: %s", resp.StatusCode, string(body))
 	}
@@ -71,7 +76,10 @@ func tonicFetchEPCDaily(ctx context.Context, client *http.Client, base string, c
 		return nil, err
 	}
 
-	d, _ := time.Parse("2006-01-02", date)
+	d, err := time.Parse("2006-01-02", date)
+	if err != nil {
+		return nil, fmt.Errorf("tonic epc/daily: parse date: %w", err)
+	}
 	lines := make([]CostLine, 0, len(parsed.Data))
 	for _, row := range parsed.Data {
 		revenueMicro, err := tonicRevenueMicro(row.Revenue, row.EPC, row.Clicks)
@@ -116,10 +124,14 @@ func tonicFetchStatsByCountry(ctx context.Context, client *http.Client, base str
 
 	resp, err := client.Do(req)
 	if err != nil {
+		coldpath.CloseHTTPResponse(resp)
 		return nil, err
 	}
-	defer func() { _ = resp.Body.Close() }()
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	defer coldpath.CloseHTTPResponse(resp)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	if err != nil {
+		return nil, fmt.Errorf("tonic stats_by_country: read body: %w", err)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("tonic stats_by_country: status %d: %s", resp.StatusCode, string(body))
 	}
@@ -129,7 +141,10 @@ func tonicFetchStatsByCountry(ctx context.Context, client *http.Client, base str
 		return nil, err
 	}
 
-	d, _ := time.Parse("2006-01-02", date)
+	d, err := time.Parse("2006-01-02", date)
+	if err != nil {
+		return nil, fmt.Errorf("tonic stats_by_country: parse date: %w", err)
+	}
 	lines := make([]CostLine, 0, len(parsed.Data))
 	for _, row := range parsed.Data {
 		revenueMicro, err := money.JSONAmountToMicro(row.Revenue)
@@ -190,10 +205,14 @@ func fetchSystem1RSOCCosts(ctx context.Context, client *http.Client, baseURL str
 
 	resp, err := client.Do(req)
 	if err != nil {
+		coldpath.CloseHTTPResponse(resp)
 		return nil, err
 	}
-	defer func() { _ = resp.Body.Close() }()
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	defer coldpath.CloseHTTPResponse(resp)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	if err != nil {
+		return nil, fmt.Errorf("system1 rsoc: read body: %w", err)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("system1 rsoc: status %d: %s", resp.StatusCode, string(body))
 	}

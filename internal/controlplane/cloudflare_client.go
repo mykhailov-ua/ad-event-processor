@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 )
 
 const (
@@ -18,13 +20,11 @@ const (
 	cloudflareClientTimeout = 10 * time.Second
 )
 
-// CloudflareZone is a minimal zone descriptor from the Cloudflare API.
 type CloudflareZone struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 }
 
-// CloudflareAPI is the cold-path Cloudflare client surface (GM-M2).
 type CloudflareAPI interface {
 	ListZones(ctx context.Context) ([]CloudflareZone, error)
 	CreateDNSRecord(ctx context.Context, zoneID, name, recordType, content string, proxied bool) (recordID string, err error)
@@ -37,7 +37,6 @@ type cloudflareClient struct {
 	http    *http.Client
 }
 
-// NewCloudflareClient builds a Cloudflare API client. Returns nil when token is empty.
 func NewCloudflareClient(token, baseURL string) CloudflareAPI {
 	token = strings.TrimSpace(token)
 	if token == "" {
@@ -155,9 +154,10 @@ func (c *cloudflareClient) do(ctx context.Context, method, path string, body []b
 
 	resp, err := c.http.Do(req)
 	if err != nil {
+		coldpath.CloseHTTPResponse(resp)
 		return nil, err
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer coldpath.CloseHTTPResponse(resp)
 
 	limited := io.LimitReader(resp.Body, cloudflareMaxJSONBytes)
 	raw, err := io.ReadAll(limited)

@@ -1,8 +1,5 @@
 import { StatusBadge } from './status_badge.js';
 
-/**
- * Campaign status legend for list pages.
- */
 export function CampaignStatusLegend() {
   return (
     <div className="status-legend" aria-label="Status legend">

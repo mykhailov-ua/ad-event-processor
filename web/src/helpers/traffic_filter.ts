@@ -4,16 +4,10 @@ export type TrafficFilterRules = {
   blockEmptyReferrer: boolean;
 };
 
-/**
- * Empty traffic filter rules.
- */
 export function emptyTrafficFilterRules(): TrafficFilterRules {
   return { allowReferrers: [], blockReferrers: [], blockEmptyReferrer: false };
 }
 
-/**
- * Parse stored referrer_filter JSON (no raw Lua).
- */
 export function parseTrafficFilter(raw: string | null | undefined): TrafficFilterRules {
   if (!raw?.trim()) return emptyTrafficFilterRules();
   try {
@@ -31,9 +25,6 @@ export function parseTrafficFilter(raw: string | null | undefined): TrafficFilte
   }
 }
 
-/**
- * Serialize traffic filter rules for campaigns.referrer_filter.
- */
 export function serializeTrafficFilter(rules: TrafficFilterRules): string {
   return JSON.stringify({
     version: 1,

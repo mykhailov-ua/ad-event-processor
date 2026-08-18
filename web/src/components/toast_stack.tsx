@@ -8,9 +8,6 @@ const DISMISS_MS = 5000;
 
 type ToastItem = ToastMessage & { id: string };
 
-/**
- * Global toast stack wired to pushToastMessage.
- */
 export function ToastStack() {
   const [items, setItems] = useState<ToastItem[]>([]);
 
@@ -43,6 +40,6 @@ export function ToastStack() {
         </div>
       ))}
     </div>,
-    document.body,
+    document.body
   );
 }

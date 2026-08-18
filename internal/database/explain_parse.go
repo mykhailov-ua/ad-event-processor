@@ -216,7 +216,8 @@ func AnalyzeExplainPlan(queryName string, plan ExplainPlan, hotPath bool, smallT
 func collectExplainText(rows interface {
 	Next() bool
 	Scan(...any) error
-}) (string, error) {
+},
+) (string, error) {
 	var b strings.Builder
 	for rows.Next() {
 		var line string

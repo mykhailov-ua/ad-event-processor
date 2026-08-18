@@ -1,4 +1,3 @@
-// Package proxyupstream implements proxyupstream support for BidShard.
 package proxyupstream
 
 import (
@@ -37,7 +36,6 @@ func isBlockedIP(ip net.IP) bool {
 	return false
 }
 
-// ValidateURL checks scheme, shape, and resolved addresses (cold path — PATCH).
 func ValidateURL(ctx context.Context, raw string, allowHTTP bool) error {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -89,7 +87,6 @@ func ValidateURL(ctx context.Context, raw string, allowHTTP bool) error {
 	return nil
 }
 
-// ValidateDeliveryPair enforces proxy mode requires a validated upstream URL.
 func ValidateDeliveryPair(ctx context.Context, delivery, upstream string, allowHTTP bool) error {
 	delivery = strings.TrimSpace(delivery)
 	if delivery == "" {

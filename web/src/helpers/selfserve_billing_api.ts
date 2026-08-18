@@ -1,7 +1,7 @@
 import { api } from './api_client.js';
 import { apiConfirmed } from './confirmed_api.js';
 import { getOrCreate } from './idempotency.js';
-import type { BillingStatementDTO } from '../types/api/billing.js';
+import type { BillingStatementDTO } from '../types/billing.js';
 
 export type PaymentIntentResult = {
   intent_id: string;
@@ -15,13 +15,10 @@ export type PaymentIntentResult = {
 
 export type { BillingStatementDTO };
 
-/**
- * Create a self-serve wallet top-up payment intent.
- */
 export async function createPaymentIntent(
   amountMicro: number,
   customerId?: string,
-  currency = 'USD',
+  currency = 'USD'
 ): Promise<PaymentIntentResult> {
   const scope = `payment-intent:${customerId ?? 'session'}:${amountMicro}`;
   const body: Record<string, unknown> = { amount_micro: amountMicro, currency };
@@ -35,9 +32,6 @@ export async function createPaymentIntent(
   return res.data as PaymentIntentResult;
 }
 
-/**
- * Fetch self-serve billing statement for the current month window.
- */
 export async function fetchSelfServeStatement(month = ''): Promise<BillingStatementDTO> {
   const params = new URLSearchParams();
   if (month) params.set('month', month);
@@ -60,7 +54,10 @@ function formatPaymentStatus(status: string): string {
     case 'PAYMENT_INTENT_STATUS_FAILED':
       return 'Failed';
     default:
-      return status.replace(/^PAYMENT_INTENT_STATUS_/, '').replaceAll('_', ' ').toLowerCase();
+      return status
+        .replace(/^PAYMENT_INTENT_STATUS_/, '')
+        .replaceAll('_', ' ')
+        .toLowerCase();
   }
 }
 

@@ -1,11 +1,10 @@
 import { navigate } from './spa_navigate.js';
 import * as auth from './auth.js';
 import * as storage from './storage.js';
-import { NAV_GROUPS, navLinkVisible, type NavLink } from './nav_config.js';
+import { NAV_GROUPS, NAV_OVERFLOW_LINKS, navLinkVisible, type NavLink } from './nav_config.js';
 import { reportCommandPaletteLinks } from './nav_reports.js';
 import { isCustomerUuid, shortCustomerId } from './customer_context.js';
 
-/** Permission-only probe for palette shortcuts (to/label unused by navLinkVisible). */
 function permLink(perm: string, altPerm?: string): NavLink {
   return { to: '', label: '', perm, altPerm };
 }
@@ -17,9 +16,6 @@ export type SearchItem = {
   run: () => void;
 };
 
-/**
- * Build searchable navigation items for sidebar dropdown and Cmd+K.
- */
 export function buildSearchItems(onClose: () => void = () => {}): SearchItem[] {
   const user = auth.getUser();
   const permissions = user?.permissions ?? [];
@@ -40,6 +36,16 @@ export function buildSearchItems(onClose: () => void = () => {}): SearchItem[] {
         run: () => go(link.to),
       });
     }
+  }
+
+  for (const link of NAV_OVERFLOW_LINKS) {
+    if (!navLinkVisible(permissions, link)) continue;
+    items.push({
+      id: `nav-overflow-${link.to}`,
+      label: link.label,
+      hint: 'More',
+      run: () => go(link.to),
+    });
   }
 
   for (const link of reportCommandPaletteLinks()) {
@@ -99,21 +105,19 @@ export function buildSearchItems(onClose: () => void = () => {}): SearchItem[] {
   return items;
 }
 
-/**
- * Filter search items by query string.
- */
 export function filterSearchItems(
   items: SearchItem[],
   query: string,
   onClose: () => void = () => {},
-  limit = 12,
+  limit = 12
 ): SearchItem[] {
   const q = query.trim().toLowerCase();
   if (!q) return items.slice(0, limit);
-  const matches = items.filter((item) =>
-    item.label.toLowerCase().includes(q)
-    || (item.hint?.toLowerCase().includes(q))
-    || item.id.toLowerCase().includes(q),
+  const matches = items.filter(
+    (item) =>
+      item.label.toLowerCase().includes(q) ||
+      item.hint?.toLowerCase().includes(q) ||
+      item.id.toLowerCase().includes(q)
   );
   if (isCustomerUuid(q)) {
     const id = query.trim();

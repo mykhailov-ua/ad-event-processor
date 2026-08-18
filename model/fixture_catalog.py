@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-TRACKED_FIXTURE_DIR = REPO_ROOT / "internal" / "fraud" / "testdata" / "ml"
+TRACKED_FIXTURE_DIR = REPO_ROOT / "internal" / "fraud" / "testdata"
 EPHEMERAL_FIXTURE_DIR = REPO_ROOT / "var" / "fraudscore" / "fixtures"
 
 FIXTURE_ROWS: list[tuple[str, dict[str, int]]] = [

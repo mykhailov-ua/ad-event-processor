@@ -6,22 +6,23 @@ import type {
   LedgerEntryDTO,
   LedgerListResponse,
   WalletBalanceDTO,
-} from '../types/api/index.js';
+} from '../types/index.js';
 import * as auth from '../helpers/auth.js';
 import * as storage from '../helpers/storage.js';
 import { isBuyer, can, isBillingReadOnly, isMediaBuyer } from '../helpers/permissions.js';
 import { hasBoundCustomer, boundCustomerId } from '../helpers/buyer_session.js';
 import { formatAmountMicro, formatDecimalDisplay } from '../helpers/money.js';
-import {
-  isPageBlockingError,
-  mapServiceError,
-} from '../helpers/service_error.js';
+import { isPageBlockingError, mapServiceError } from '../helpers/service_error.js';
 import { surfaceServiceErrorToast } from '../helpers/service_error_toast.js';
-import { touchCustomerContext, isCustomerUuid, shortCustomerId } from '../helpers/customer_context.js';
+import {
+  touchCustomerContext,
+  isCustomerUuid,
+  shortCustomerId,
+} from '../helpers/customer_context.js';
 import { validateCustomerIdField } from '../helpers/validators.js';
 import { displayLabel } from '../helpers/display_labels.js';
 import { createSortState, sortRows, toggleSort } from '../lib/table_sort.js';
-import { useResource } from '../hooks/use_resource.js';
+import { useResource } from '../helpers/use_resource.js';
 import { AlertBanner } from '../components/alert_banner.js';
 import { Breadcrumbs } from '../components/breadcrumbs.js';
 import { Button } from '../components/button.js';
@@ -39,7 +40,7 @@ import { BillingSummaryPanel } from '../components/billing_summary_panel.js';
 import { BillingStatementPanel } from '../components/billing_statement_panel.js';
 import { BillingPaymentHistoryPanel } from '../components/billing_payment_history_panel.js';
 import { InvoicePreviewPanel } from '../components/invoice_preview_panel.js';
-import type { DisputeListResponse } from '../types/api/billing.js';
+import type { DisputeListResponse } from '../types/billing.js';
 
 const LEDGER_PAGE = 50;
 const INVOICE_PAGE = 50;
@@ -90,7 +91,9 @@ function TableSkeleton({ cols, rows = 5 }: { cols: number; rows?: number }) {
       {Array.from({ length: rows }, (_, rowIndex) => (
         <tr key={`skel-${rowIndex}`} className="data-table__row--skeleton" aria-hidden="true">
           {Array.from({ length: cols }, (__, colIndex) => (
-            <td key={`skel-${rowIndex}-${colIndex}`}><span className="skeleton-bar" /></td>
+            <td key={`skel-${rowIndex}-${colIndex}`}>
+              <span className="skeleton-bar" />
+            </td>
           ))}
         </tr>
       ))}
@@ -105,9 +108,6 @@ function BlockingError({ error }: { error: unknown }) {
   return <ErrorBlock error={error} />;
 }
 
-/**
- * Billing wallet / ledger / invoices / exports tabs.
- */
 export function BillingPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -117,25 +117,29 @@ export function BillingPage() {
   const mediaBuyerView = isMediaBuyer(user?.role);
   const billingReadOnly = isBillingReadOnly(user?.permissions ?? [], user?.role);
   const canReadCustomers = can(user?.permissions ?? [], 'customers:read') && !mediaBuyerView;
-  const canViewDisputes = can(user?.permissions ?? [], 'customers:read')
-    || can(user?.permissions ?? [], 'billing:read');
+  const canViewDisputes =
+    can(user?.permissions ?? [], 'customers:read') || can(user?.permissions ?? [], 'billing:read');
   const canViewBillingSummary = can(user?.permissions ?? [], 'shards:read') && !sessionScoped;
 
   const tab = parseTab(searchParams.get('tab'));
   const [ledgerPage, setLedgerPage] = useState(0);
   const [invoicePage, setInvoicePage] = useState(0);
   const [disputesPage, setDisputesPage] = useState(0);
-  const [customerInput, setCustomerInput] = useState(() => (
+  const [customerInput, setCustomerInput] = useState(() =>
     sessionScoped
       ? boundCustomerId(user)
       : (searchParams.get('customer_id') ?? storage.getLastCustomerId() ?? '')
-  ));
+  );
   const [customerInputError, setCustomerInputError] = useState<string | null>(null);
-  const [ledgerSortState, setLedgerSortState] = useState(() => createSortState('created_at', 'desc'));
-  const [invoiceSortState, setInvoiceSortState] = useState(() => createSortState('billing_month', 'desc'));
+  const [ledgerSortState, setLedgerSortState] = useState(() =>
+    createSortState('created_at', 'desc')
+  );
+  const [invoiceSortState, setInvoiceSortState] = useState(() =>
+    createSortState('billing_month', 'desc')
+  );
   const customerInputRef = useRef<HTMLInputElement>(null);
 
-  const customerId = sessionScoped ? boundCustomerId(user) : (customerInput.trim() || '');
+  const customerId = sessionScoped ? boundCustomerId(user) : customerInput.trim() || '';
 
   useEffect(() => {
     if (customerId && isCustomerUuid(customerId)) {
@@ -149,11 +153,21 @@ export function BillingPage() {
   const invoiceUrl = buildInvoiceUrl(customerId, invoicePage, !sessionScoped);
   const disputesUrl = buildDisputesUrl(customerId, disputesPage, !sessionScoped);
 
-  const wallet = useResource<WalletBalanceDTO>(walletUrl, { skip: tab !== 'wallet' || !customerId });
-  const balance = useResource<WalletBalanceDTO>(balanceUrl, { skip: tab !== 'ledger' || !customerId });
-  const ledger = useResource<LedgerListResponse>(ledgerUrl, { skip: tab !== 'ledger' || !ledgerUrl });
-  const invoices = useResource<InvoiceListResponse>(invoiceUrl, { skip: tab !== 'invoices' || !invoiceUrl });
-  const disputes = useResource<DisputeListResponse>(disputesUrl, { skip: tab !== 'disputes' || !disputesUrl });
+  const wallet = useResource<WalletBalanceDTO>(walletUrl, {
+    skip: tab !== 'wallet' || !customerId,
+  });
+  const balance = useResource<WalletBalanceDTO>(balanceUrl, {
+    skip: tab !== 'ledger' || !customerId,
+  });
+  const ledger = useResource<LedgerListResponse>(ledgerUrl, {
+    skip: tab !== 'ledger' || !ledgerUrl,
+  });
+  const invoices = useResource<InvoiceListResponse>(invoiceUrl, {
+    skip: tab !== 'invoices' || !invoiceUrl,
+  });
+  const disputes = useResource<DisputeListResponse>(disputesUrl, {
+    skip: tab !== 'disputes' || !disputesUrl,
+  });
 
   useEffect(() => {
     if (wallet.error) surfaceServiceErrorToast(wallet.error);
@@ -180,7 +194,10 @@ export function BillingPage() {
     setLedgerPage(0);
     setInvoicePage(0);
     setDisputesPage(0);
-    if (id) navigate(`/billing?customer_id=${encodeURIComponent(id)}${tab !== 'wallet' ? `&tab=${tab}` : ''}`);
+    if (id)
+      navigate(
+        `/billing?customer_id=${encodeURIComponent(id)}${tab !== 'wallet' ? `&tab=${tab}` : ''}`
+      );
     else navigate(tab !== 'wallet' ? `/billing?tab=${tab}` : '/billing');
   };
 
@@ -240,7 +257,7 @@ export function BillingPage() {
     label: string,
     key: string,
     state: ReturnType<typeof createSortState>,
-    onSort: (key: string) => void,
+    onSort: (key: string) => void
   ) => {
     const active = state.key === key;
     const dir = active ? state.dir : '';
@@ -263,10 +280,10 @@ export function BillingPage() {
     ...(canViewDisputes ? [{ id: 'disputes', label: 'Disputes' }] : []),
     ...(canReadCustomers
       ? [
-        { id: 'ledger', label: 'Ledger' },
-        { id: 'invoices', label: 'Invoices' },
-        { id: 'exports', label: 'Exports' },
-      ]
+          { id: 'ledger', label: 'Ledger' },
+          { id: 'invoices', label: 'Invoices' },
+          { id: 'exports', label: 'Exports' },
+        ]
       : []),
   ];
 
@@ -278,11 +295,12 @@ export function BillingPage() {
     <>
       <div className="page-header">
         {customerId && !sessionScoped ? (
-          <Breadcrumbs items={[
-            { label: 'Billing', href: '/billing' },
-            { label: shortCustomerId(customerId, 12) },
-          ]}
-        />
+          <Breadcrumbs
+            items={[
+              { label: 'Billing', href: '/billing' },
+              { label: shortCustomerId(customerId, 12) },
+            ]}
+          />
         ) : null}
         <div className="page-header__row">
           <div className="flex items-center gap-2">
@@ -303,20 +321,20 @@ export function BillingPage() {
               onChange={(e) => {
                 setCustomerInput(e.target.value);
                 setCustomerInputError(
-                  e.target.value.trim() ? validateCustomerIdField(e.target.value) : null,
+                  e.target.value.trim() ? validateCustomerIdField(e.target.value) : null
                 );
               }}
             />
             <Button label="Apply" variant="secondary" onClick={applyCustomerFilter} />
           </div>
         ) : null}
-        {customerInputError ? (
-          <AlertBanner variant="error" message={customerInputError} />
-        ) : null}
+        {customerInputError ? <AlertBanner variant="error" message={customerInputError} /> : null}
         {sessionScoped && customerId ? (
           <p className="text-muted text-sm mt-2">
             Customer:{' '}
-            <a href={`/customers/${customerId}`} className="font-mono">{customerId}</a>
+            <a href={`/customers/${customerId}`} className="font-mono">
+              {customerId}
+            </a>
           </p>
         ) : null}
       </div>
@@ -343,13 +361,19 @@ export function BillingPage() {
               <div className="metric-card">
                 <div className="metric-card__label">Overdraft</div>
                 <div className="metric-card__value font-mono">
-                  {formatAmountMicro(wallet.data.allowed_overdraft_micro ?? 0, wallet.data.currency)}
+                  {formatAmountMicro(
+                    wallet.data.allowed_overdraft_micro ?? 0,
+                    wallet.data.currency
+                  )}
                 </div>
               </div>
               <div className="metric-card">
                 <div className="metric-card__label">Low balance</div>
                 <div className="metric-card__value font-mono">
-                  {formatAmountMicro(wallet.data.low_balance_threshold_micro ?? 0, wallet.data.currency)}
+                  {formatAmountMicro(
+                    wallet.data.low_balance_threshold_micro ?? 0,
+                    wallet.data.currency
+                  )}
                 </div>
               </div>
               <div className="metric-card">
@@ -400,7 +424,7 @@ export function BillingPage() {
               {ledgerTotal > LEDGER_PAGE ? (
                 <div className="mb-4">
                   <FilterToolbar
-                    pagination={(
+                    pagination={
                       <PaginationBar
                         label={`${ledgerPage + 1} / ${Math.ceil(ledgerTotal / LEDGER_PAGE)}`}
                         prevDisabled={ledgerPage === 0}
@@ -408,7 +432,7 @@ export function BillingPage() {
                         onPrev={() => setLedgerPage((p) => Math.max(0, p - 1))}
                         onNext={() => setLedgerPage((p) => p + 1)}
                       />
-                    )}
+                    }
                   />
                 </div>
               ) : null}
@@ -439,12 +463,14 @@ export function BillingPage() {
                     ) : null}
                     {ledgerRows.map((row) => (
                       <tr key={row.id}>
-                        <td><CopyableUuid uuid={row.id ?? ''} /></td>
-                        <td>{displayLabel(row.type)}</td>
-                        <td className="font-mono">{formatDecimalDisplay(String(row.amount ?? ''))}</td>
                         <td>
-                          {row.campaign_id ? <CopyableUuid uuid={row.campaign_id} /> : '—'}
+                          <CopyableUuid uuid={row.id ?? ''} />
                         </td>
+                        <td>{displayLabel(row.type)}</td>
+                        <td className="font-mono">
+                          {formatDecimalDisplay(String(row.amount ?? ''))}
+                        </td>
+                        <td>{row.campaign_id ? <CopyableUuid uuid={row.campaign_id} /> : '—'}</td>
                         <td className="text-muted">
                           {row.created_at ? new Date(row.created_at).toLocaleString() : '—'}
                         </td>
@@ -468,7 +494,7 @@ export function BillingPage() {
               {invoicePages > 1 ? (
                 <div className="mb-4">
                   <FilterToolbar
-                    pagination={(
+                    pagination={
                       <PaginationBar
                         label={`${invoicePage + 1} / ${invoicePages}`}
                         prevDisabled={invoicePage === 0}
@@ -476,7 +502,7 @@ export function BillingPage() {
                         onPrev={() => setInvoicePage((p) => Math.max(0, p - 1))}
                         onNext={() => setInvoicePage((p) => p + 1)}
                       />
-                    )}
+                    }
                   />
                 </div>
               ) : null}
@@ -492,7 +518,9 @@ export function BillingPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {invoices.loading && invoiceItems.length === 0 ? <TableSkeleton cols={5} /> : null}
+                    {invoices.loading && invoiceItems.length === 0 ? (
+                      <TableSkeleton cols={5} />
+                    ) : null}
                     {!invoices.loading && invoiceItems.length === 0 ? (
                       <tr>
                         <td colSpan={5}>
@@ -535,7 +563,9 @@ export function BillingPage() {
                             <a href={`/customers/${inv.customer_id}`}>
                               <CopyableUuid uuid={inv.customer_id} />
                             </a>
-                          ) : '—'}
+                          ) : (
+                            '—'
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -556,7 +586,10 @@ export function BillingPage() {
       {tab === 'disputes' ? (
         <div className="section-block stack" data-testid="billing-disputes-panel">
           {!customerId && !sessionScoped ? (
-            <AlertBanner variant="info" message="Enter customer_id to filter disputes, or apply empty to list all (admin)." />
+            <AlertBanner
+              variant="info"
+              message="Enter customer_id to filter disputes, or apply empty to list all (admin)."
+            />
           ) : null}
           {disputes.loading ? <span className="text-muted">Loading…</span> : null}
           <BlockingError error={disputes.error} />
@@ -565,7 +598,7 @@ export function BillingPage() {
               {disputesPages > 1 ? (
                 <div className="mb-4">
                   <FilterToolbar
-                    pagination={(
+                    pagination={
                       <PaginationBar
                         label={`${disputesPage + 1} / ${disputesPages}`}
                         prevDisabled={disputesPage === 0}
@@ -573,7 +606,7 @@ export function BillingPage() {
                         onPrev={() => setDisputesPage((p) => Math.max(0, p - 1))}
                         onNext={() => setDisputesPage((p) => p + 1)}
                       />
-                    )}
+                    }
                   />
                 </div>
               ) : null}
@@ -588,7 +621,9 @@ export function BillingPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {disputes.loading && disputeRows.length === 0 ? <TableSkeleton cols={4} /> : null}
+                    {disputes.loading && disputeRows.length === 0 ? (
+                      <TableSkeleton cols={4} />
+                    ) : null}
                     {!disputes.loading && disputeRows.length === 0 ? (
                       <tr>
                         <td colSpan={4}>
@@ -608,9 +643,7 @@ export function BillingPage() {
                         <td className="font-mono text-sm" data-testid="dispute-id">
                           {row.provider_dispute_id || row.intent_id || '—'}
                         </td>
-                        <td>
-                          {row.customer_id ? <CopyableUuid uuid={row.customer_id} /> : '—'}
-                        </td>
+                        <td>{row.customer_id ? <CopyableUuid uuid={row.customer_id} /> : '—'}</td>
                         <td className="font-mono">
                           {formatAmountMicro(row.amount_micro ?? 0, row.currency)}
                         </td>

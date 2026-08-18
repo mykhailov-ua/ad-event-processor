@@ -7,9 +7,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// pingConnectedRedisShards returns true when every non-nil shard answers PING.
-// Nil slots (optional shard 0 at startup) are skipped. Returns false when all
-// slots are nil or any connected shard is unreachable.
 func pingConnectedRedisShards(ctx context.Context, rdbs []redis.UniversalClient) bool {
 	if len(rdbs) == 0 {
 		return true
@@ -28,7 +25,6 @@ func pingConnectedRedisShards(ctx context.Context, rdbs []redis.UniversalClient)
 	return checked > 0
 }
 
-// closeConnectedRedisShards closes non-nil clients; nil shard slots are skipped.
 func closeConnectedRedisShards(rdbs []redis.UniversalClient) {
 	for i, rdb := range rdbs {
 		if rdb == nil {

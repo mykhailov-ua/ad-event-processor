@@ -8,33 +8,33 @@ LOG="${RESILIENCE_LOG:-/tmp/espx-resilience.log}"
 MIN_PROOFS="${RESILIENCE_MIN_PROOFS:-52}"
 export BROKER_FAULT_LAB=1
 
-if [[ "${CI:-}" == "true" ]] && command -v apt-get >/dev/null 2>&1 && ! command -v stress-ng >/dev/null 2>&1; then
-	echo "run_resilience: installing stress-ng for CH spool fault gate"
-	sudo apt-get update -qq
-	sudo apt-get install -y -qq stress-ng
+if [[ "${CI:-}" == "true" ]] && command -v apt-get > /dev/null 2>&1 && ! command -v stress-ng > /dev/null 2>&1; then
+  echo "run_resilience: installing stress-ng for CH spool fault gate"
+  sudo apt-get update -qq
+  sudo apt-get install -y -qq stress-ng
 fi
 
 go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.28.0 generate
 go fmt ./...
 
 go test -count=1 -v -run 'Fault' -timeout 20m \
-	./tests/... \
-	./internal/database/... \
-	./internal/identity/... \
-	./internal/ingestion/... \
-	./internal/payment/... \
-	./internal/ledger/... \
-	./internal/licensing/... \
-	./internal/notify/... \
-	./internal/ivtdetector/... \
-	./internal/fraud/... \
-	./pkg/broker/server/... \
-	./internal/controlplane/... \
-	./internal/edge/bpf/... \
-	./internal/edge/perimeter/... \
-	./internal/rtb/... \
-	./internal/logevacuator/... \
-	2>&1 | tee "$LOG"
+  ./tests/... \
+  ./internal/database/... \
+  ./internal/identity/... \
+  ./internal/ingestion/... \
+  ./internal/payment/... \
+  ./internal/ledger/... \
+  ./internal/licensing/... \
+  ./internal/notify/... \
+  ./internal/ivtdetector/... \
+  ./internal/fraud/... \
+  ./pkg/broker/server/... \
+  ./internal/controlplane/... \
+  ./internal/edge/... \
+  ./internal/edge/... \
+  ./internal/rtb/... \
+  ./internal/logevacuator/... \
+  2>&1 | tee "$LOG"
 
 PROOFS="$(grep -c 'fault_proof fault=' "$LOG" || true)"
 echo "fault_proof lines: $PROOFS (min $MIN_PROOFS)"

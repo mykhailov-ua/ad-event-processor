@@ -1,4 +1,3 @@
-// Package server implements regionproxy server helpers.
 package server
 
 import (

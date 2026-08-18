@@ -22,9 +22,9 @@ const (
 type dispatchSlot int
 
 const (
-	dispatchSlotReady     dispatchSlot = iota // HTTP required
-	dispatchSlotDelivered                     // HTTP already recorded; finalize only
-	dispatchSlotDuplicate                     // terminal SENT
+	dispatchSlotReady dispatchSlot = iota
+	dispatchSlotDelivered
+	dispatchSlotDuplicate
 )
 
 func postbackIdempotencyHash(payload PostbackPayload) string {

@@ -3,13 +3,11 @@ package main
 import (
 	"log/slog"
 	"os"
-
-	"github.com/bidshard/ad-event-processor/cmd/admin/cmd"
 )
 
 func main() {
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, nil)))
-	if err := cmd.Execute(); err != nil {
+	if err := Execute(); err != nil {
 		slog.Error("admin command failed", "error", err)
 		os.Exit(1)
 	}

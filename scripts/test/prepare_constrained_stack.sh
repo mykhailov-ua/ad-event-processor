@@ -5,11 +5,11 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
 if [[ -f "$ROOT/.env" ]]; then
-	set -a
-	if ! source "$ROOT/.env" 2>/dev/null; then
-		log "WARN: .env present but not sourced (parse error); using compose defaults"
-	fi
-	set +a
+  set -a
+  if ! source "$ROOT/.env" 2> /dev/null; then
+    log "WARN: .env present but not sourced (parse error); using compose defaults"
+  fi
+  set +a
 fi
 DB_PORT="${DB_PORT:-5430}"
 DB_DSN="${DB_DSN:-postgres://${DB_USER:-ad_event_processor_user}:${DB_PASSWORD:-secure_pass_123}@127.0.0.1:${DB_PORT}/${DB_NAME:-ad_event_processor}?sslmode=${DB_SSLMODE:-disable}}"
@@ -17,21 +17,24 @@ DB_DSN="${DB_DSN:-postgres://${DB_USER:-ad_event_processor_user}:${DB_PASSWORD:-
 COMPOSE=(docker compose -f docker-compose.yaml -f docker-compose.load-test.yaml)
 export SKIP_CODEGEN="${SKIP_CODEGEN:-1}"
 DATA_SERVICES=(
-	db redis-0 redis-1 redis-2 redis-3 redis-4 redis-5 clickhouse processor prometheus grafana
+  db redis-0 redis-1 redis-2 redis-3 redis-4 redis-5 clickhouse processor prometheus grafana
 )
 TRACKER_SERVICES=(tracker-0 tracker-1 nginx)
 
 log() { printf 'prepare-constrained: %s\n' "$*"; }
-die() { printf 'prepare-constrained: ERROR: %s\n' "$*" >&2; exit 1; }
+die() {
+  printf 'prepare-constrained: ERROR: %s\n' "$*" >&2
+  exit 1
+}
 
 log "bringing up data plane"
 "${COMPOSE[@]}" up -d --remove-orphans "${DATA_SERVICES[@]}"
 
-"${COMPOSE[@]}" stop tracker-2 tracker-3 2>/dev/null || true
+"${COMPOSE[@]}" stop tracker-2 tracker-3 2> /dev/null || true
 
 log "waiting for postgres"
-until "${COMPOSE[@]}" exec -T db pg_isready -h 127.0.0.1 -p "$DB_PORT" -U ad_event_processor_user -d ad_event_processor >/dev/null 2>&1; do
-	sleep 1
+until "${COMPOSE[@]}" exec -T db pg_isready -h 127.0.0.1 -p "$DB_PORT" -U ad_event_processor_user -d ad_event_processor > /dev/null 2>&1; do
+  sleep 1
 done
 
 log "reconciling partial migration state (load-test DB drift)"
@@ -40,7 +43,7 @@ bash "$SCRIPTS/test/reconcile_ingestion_migrations.sh"
 log "applying postgres migrations (ads, auth, billing)"
 export DB_DSN
 if ! go run ./cmd/migrate-cold-path --only=ads,auth,billing; then
-	die "postgres migrations failed — registry Sync will not load campaigns"
+  die "postgres migrations failed — registry Sync will not load campaigns"
 fi
 
 log "repairing schema drift after migrations"
@@ -53,19 +56,19 @@ TRUNCATE TABLE impressions;
 TRUNCATE TABLE clicks;
 TRUNCATE TABLE conversions;
 TRUNCATE TABLE fraud_events;
-" 2>/dev/null || log "WARN: clickhouse truncate skipped"
+" 2> /dev/null || log "WARN: clickhouse truncate skipped"
 
 REDIS_PASS="${REDIS_PASSWORD:-redis_secure_pass_456}"
 log "flushing redis shards"
 for i in 0 1 2 3 4 5; do
-	"${COMPOSE[@]}" exec -T "redis-${i}" redis-cli -p 6379 -a "$REDIS_PASS" FLUSHALL >/dev/null 2>&1
+  "${COMPOSE[@]}" exec -T "redis-${i}" redis-cli -p 6379 -a "$REDIS_PASS" FLUSHALL > /dev/null 2>&1
 done
 
 log "restarting processor (clean stream consumer groups after flush)"
 "${COMPOSE[@]}" restart processor
 
 log "seeding campaigns (100 active, matches loadgen campaign IDs)"
-"${COMPOSE[@]}" exec -T db psql -h localhost -p "$DB_PORT" -U ad_event_processor_user -d ad_event_processor <<'EOF'
+"${COMPOSE[@]}" exec -T db psql -h localhost -p "$DB_PORT" -U ad_event_processor_user -d ad_event_processor << 'EOF'
 TRUNCATE TABLE events CASCADE;
 TRUNCATE TABLE campaign_stats CASCADE;
 
@@ -117,7 +120,7 @@ ON CONFLICT (id) DO UPDATE SET current_spend = 0, status = 'ACTIVE', budget_limi
 EOF
 
 log "seeding active license_status (load-test ingest gate)"
-"${COMPOSE[@]}" exec -T db psql -h localhost -p "$DB_PORT" -U ad_event_processor_user -d ad_event_processor <<'EOF'
+"${COMPOSE[@]}" exec -T db psql -h localhost -p "$DB_PORT" -U ad_event_processor_user -d ad_event_processor << 'EOF'
 INSERT INTO billing.license_status (
     deployment_id, license_id, plan_code, valid_until, state, entitlements_json, last_verified_at
 ) VALUES (
@@ -139,15 +142,15 @@ EOF
 log "starting trackers (registry Sync on boot + pub/sub watch)"
 "${COMPOSE[@]}" up -d --build --force-recreate "${TRACKER_SERVICES[@]}"
 
-"${COMPOSE[@]}" stop tracker-2 tracker-3 2>/dev/null || true
+"${COMPOSE[@]}" stop tracker-2 tracker-3 2> /dev/null || true
 
 for port in 8181 8182; do
-	for _ in $(seq 1 120); do
-		if curl -sf "http://127.0.0.1:${port}/health" >/dev/null 2>&1; then
-			break
-		fi
-		sleep 1
-	done
+  for _ in $(seq 1 120); do
+    if curl -sf "http://127.0.0.1:${port}/health" > /dev/null 2>&1; then
+      break
+    fi
+    sleep 1
+  done
 done
 
 log "full registry snapshot (campaigns:update *)"
@@ -157,4 +160,4 @@ bash "$SCRIPTS/test/seed_load_test_limits.sh"
 
 log "active campaigns:"
 "${COMPOSE[@]}" exec -T db psql -h localhost -p "$DB_PORT" -U ad_event_processor_user -d ad_event_processor \
-	-c "SELECT COUNT(*) FROM campaigns WHERE status = 'ACTIVE';"
+  -c "SELECT COUNT(*) FROM campaigns WHERE status = 'ACTIVE';"

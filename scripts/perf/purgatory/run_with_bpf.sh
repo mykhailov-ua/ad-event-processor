@@ -25,15 +25,15 @@ BENCH_THREADS="${BENCH_THREADS:-4}"
 # Strict keeps the original 64 MiB OOM envelope.
 PHASE="${PHASE:-survival}" # strict|survival
 if [[ "$PHASE" == "strict" ]]; then
-	MEM_BYTES="${MEM_BYTES:-67108864}"
-	MEM_LABEL="64MiB"
-	CPUS="${CPUS:-0.5}"
-	GOMAXPROCS_PIN="${GOMAXPROCS_PIN:-1}"
+  MEM_BYTES="${MEM_BYTES:-67108864}"
+  MEM_LABEL="64MiB"
+  CPUS="${CPUS:-0.5}"
+  GOMAXPROCS_PIN="${GOMAXPROCS_PIN:-1}"
 else
-	MEM_BYTES="${MEM_BYTES:-536870912}"
-	MEM_LABEL="512MiB"
-	CPUS="${CPUS:-1.0}"
-	GOMAXPROCS_PIN="${GOMAXPROCS_PIN:-1}"
+  MEM_BYTES="${MEM_BYTES:-536870912}"
+  MEM_LABEL="512MiB"
+  CPUS="${CPUS:-1.0}"
+  GOMAXPROCS_PIN="${GOMAXPROCS_PIN:-1}"
 fi
 # cpu.max microseconds: CPUS * 100000 period.
 CPU_MAX_QUOTA="$(awk -v c="$CPUS" 'BEGIN { printf "%d", c * 100000 + 0.5 }')"
@@ -48,83 +48,83 @@ require_cmd docker taskset
 PRIV_CTR="${PRIV_CTR:-espx-purgatory-priv}"
 
 ensure_priv() {
-	if docker inspect -f '{{.State.Running}}' "$PRIV_CTR" 2>/dev/null | grep -q true; then
-		return 0
-	fi
-	docker rm -f "$PRIV_CTR" >/dev/null 2>&1 || true
-	log "starting privileged helper ${PRIV_CTR}"
-	docker run -d --name "$PRIV_CTR" --privileged --pid=host --network=host \
-		-v /sys/fs/cgroup:/sys/fs/cgroup \
-		-v /sys/kernel/tracing:/sys/kernel/tracing \
-		-v /sys/kernel/debug:/sys/kernel/debug \
-		-v "${ROOT}:${ROOT}" \
-		-v /lib/modules:/lib/modules:ro \
-		-v /var/run/docker.sock:/var/run/docker.sock \
-		ubuntu:24.04 \
-		bash -lc 'export DEBIAN_FRONTEND=noninteractive
+  if docker inspect -f '{{.State.Running}}' "$PRIV_CTR" 2> /dev/null | grep -q true; then
+    return 0
+  fi
+  docker rm -f "$PRIV_CTR" > /dev/null 2>&1 || true
+  log "starting privileged helper ${PRIV_CTR}"
+  docker run -d --name "$PRIV_CTR" --privileged --pid=host --network=host \
+    -v /sys/fs/cgroup:/sys/fs/cgroup \
+    -v /sys/kernel/tracing:/sys/kernel/tracing \
+    -v /sys/kernel/debug:/sys/kernel/debug \
+    -v "${ROOT}:${ROOT}" \
+    -v /lib/modules:/lib/modules:ro \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    ubuntu:24.04 \
+    bash -lc 'export DEBIAN_FRONTEND=noninteractive
 mount -t tracefs tracefs /sys/kernel/tracing 2>/dev/null || true
 mount -t debugfs debugfs /sys/kernel/debug 2>/dev/null || true
 apt-get update -qq && apt-get install -y -qq iproute2 procps >/dev/null && exec sleep infinity' \
-		>/dev/null
-	# wait for apt finish
-	for _ in $(seq 1 120); do
-		if docker exec "$PRIV_CTR" bash -lc 'command -v tc >/dev/null' 2>/dev/null; then
-			return 0
-		fi
-		sleep 1
-	done
-	die "privileged helper failed to become ready"
+    > /dev/null
+  # wait for apt finish
+  for _ in $(seq 1 120); do
+    if docker exec "$PRIV_CTR" bash -lc 'command -v tc >/dev/null' 2> /dev/null; then
+      return 0
+    fi
+    sleep 1
+  done
+  die "privileged helper failed to become ready"
 }
 
 priv() {
-	ensure_priv
-	docker exec "$PRIV_CTR" bash -lc "$*"
+  ensure_priv
+  docker exec "$PRIV_CTR" bash -lc "$*"
 }
 
 # Snapshot originals for cleanup
 SYSCTL_KEYS=(
-	net.core.rmem_max net.core.wmem_max
-	net.ipv4.tcp_rmem net.ipv4.tcp_wmem
-	net.ipv4.tcp_max_syn_backlog net.core.somaxconn
+  net.core.rmem_max net.core.wmem_max
+  net.ipv4.tcp_rmem net.ipv4.tcp_wmem
+  net.ipv4.tcp_max_syn_backlog net.core.somaxconn
 )
-: >"${OUT}/sysctl.backup"
+: > "${OUT}/sysctl.backup"
 for k in "${SYSCTL_KEYS[@]}"; do
-	printf '%s=%s\n' "$k" "$(sysctl -n "$k")" >>"${OUT}/sysctl.backup"
+  printf '%s=%s\n' "$k" "$(sysctl -n "$k")" >> "${OUT}/sysctl.backup"
 done
-tc qdisc show dev lo >"${OUT}/tc.backup" || true
+tc qdisc show dev lo > "${OUT}/tc.backup" || true
 docker inspect -f '{{.HostConfig.NanoCpus}} {{.HostConfig.Memory}} {{.HostConfig.MemorySwap}}' "$TRACKER_CTR" \
-	>"${OUT}/docker.limits.backup" || true
+  > "${OUT}/docker.limits.backup" || true
 
 cleanup() {
-	local ec=$?
-	log "cleanup (exit=${ec})"
-	# stress-ng
-	if [[ -f "${OUT}/stress-ng.pid" ]]; then
-		kill "$(cat "${OUT}/stress-ng.pid")" 2>/dev/null || true
-	fi
-	pkill -f 'stress-ng --cache' 2>/dev/null || true
-	# bpf collector
-	if [[ -f "${OUT}/bpf/collector.pid" ]]; then
-		kill "$(cat "${OUT}/bpf/collector.pid")" 2>/dev/null || true
-		priv "kill -TERM $(cat "${OUT}/bpf/collector.pid") 2>/dev/null || true" || true
-	fi
-	# restore tc
-	priv 'tc qdisc del dev lo root 2>/dev/null || true; tc qdisc add dev lo root noqueue 2>/dev/null || true' || true
-	# restore sysctl
-	if [[ -f "${OUT}/sysctl.backup" ]]; then
-		while IFS= read -r line; do
-			[[ -z "$line" ]] && continue
-			priv "sysctl -w '${line}' >/dev/null" || true
-		done <"${OUT}/sysctl.backup"
-	fi
-	# restore docker limits + GOMAXPROCS to load-test defaults
-	docker update --cpus=2 --memory=536870912 --memory-swap=536870912 "$TRACKER_CTR" >/dev/null 2>&1 || true
-	docker compose -f "${ROOT}/docker-compose.yaml" -f "${ROOT}/docker-compose.load-test.yaml" \
-		up -d --no-build --force-recreate --no-deps tracker-0 >/dev/null 2>&1 || true
-	# remove host purgatory cgroup if empty
-	priv "rmdir /sys/fs/cgroup/purgatory 2>/dev/null || true" || true
-	docker rm -f "$PRIV_CTR" >/dev/null 2>&1 || true
-	return "$ec"
+  local ec=$?
+  log "cleanup (exit=${ec})"
+  # stress-ng
+  if [[ -f "${OUT}/stress-ng.pid" ]]; then
+    kill "$(cat "${OUT}/stress-ng.pid")" 2> /dev/null || true
+  fi
+  pkill -f 'stress-ng --cache' 2> /dev/null || true
+  # bpf collector
+  if [[ -f "${OUT}/bpf/collector.pid" ]]; then
+    kill "$(cat "${OUT}/bpf/collector.pid")" 2> /dev/null || true
+    priv "kill -TERM $(cat "${OUT}/bpf/collector.pid") 2>/dev/null || true" || true
+  fi
+  # restore tc
+  priv 'tc qdisc del dev lo root 2>/dev/null || true; tc qdisc add dev lo root noqueue 2>/dev/null || true' || true
+  # restore sysctl
+  if [[ -f "${OUT}/sysctl.backup" ]]; then
+    while IFS= read -r line; do
+      [[ -z "$line" ]] && continue
+      priv "sysctl -w '${line}' >/dev/null" || true
+    done < "${OUT}/sysctl.backup"
+  fi
+  # restore docker limits + GOMAXPROCS to load-test defaults
+  docker update --cpus=2 --memory=536870912 --memory-swap=536870912 "$TRACKER_CTR" > /dev/null 2>&1 || true
+  docker compose -f "${ROOT}/docker-compose.yaml" -f "${ROOT}/docker-compose.load-test.yaml" \
+    up -d --no-build --force-recreate --no-deps tracker-0 > /dev/null 2>&1 || true
+  # remove host purgatory cgroup if empty
+  priv "rmdir /sys/fs/cgroup/purgatory 2>/dev/null || true" || true
+  docker rm -f "$PRIV_CTR" > /dev/null 2>&1 || true
+  return "$ec"
 }
 trap cleanup EXIT
 
@@ -132,7 +132,7 @@ trap cleanup EXIT
 # 1) Pin GOMAXPROCS to cgroup quota, then apply docker CPU/memory limits
 # ---------------------------------------------------------------------------
 OVERRIDES="${OUT}/compose.gomax.yaml"
-cat >"$OVERRIDES" <<EOF
+cat > "$OVERRIDES" << EOF
 services:
   tracker-0:
     environment:
@@ -147,34 +147,34 @@ COMPOSE=(docker compose -f "${ROOT}/docker-compose.yaml" -f "${ROOT}/docker-comp
 "${COMPOSE[@]}" up -d --no-build --force-recreate --no-deps tracker-0
 # Wait healthy
 for _ in $(seq 1 60); do
-	if docker inspect -f '{{.State.Health.Status}}' "$TRACKER_CTR" 2>/dev/null | grep -q healthy; then
-		break
-	fi
-	sleep 1
+  if docker inspect -f '{{.State.Health.Status}}' "$TRACKER_CTR" 2> /dev/null | grep -q healthy; then
+    break
+  fi
+  sleep 1
 done
-bash "${SCRIPTS}/test/sync_tracker_registry.sh" >/dev/null 2>&1 || warn "registry sync skipped"
+bash "${SCRIPTS}/test/sync_tracker_registry.sh" > /dev/null 2>&1 || warn "registry sync skipped"
 
 log "PHASE=${PHASE} memory=${MEM_LABEL} cpus=${CPUS} GOMAXPROCS=${GOMAXPROCS_PIN} on ${TRACKER_CTR}"
 docker update --cpus="$CPUS" --memory="${MEM_BYTES}" --memory-swap="${MEM_BYTES}" "$TRACKER_CTR"
 sleep 1
 if ! docker inspect -f '{{.State.Running}}' "$TRACKER_CTR" | grep -q true; then
-	log "tracker not running after limit apply — likely OOM under ${MEM_LABEL}"
-	docker events --since 30s --until 0s --filter container="$TRACKER_CTR" 2>/dev/null | tee "${OUT}/docker.events.txt" || true
-	docker logs "$TRACKER_CTR" 2>&1 | tail -50 | tee "${OUT}/tracker.oom.log" || true
-	if [[ "$PHASE" == "strict" ]]; then
-		printf 'OOM_OR_DEAD under 64MiB\n' | tee "${OUT}/REPORT.txt"
-		exit 0
-	fi
-	die "tracker dead under survival memory — abort"
+  log "tracker not running after limit apply — likely OOM under ${MEM_LABEL}"
+  docker events --since 30s --until 0s --filter container="$TRACKER_CTR" 2> /dev/null | tee "${OUT}/docker.events.txt" || true
+  docker logs "$TRACKER_CTR" 2>&1 | tail -50 | tee "${OUT}/tracker.oom.log" || true
+  if [[ "$PHASE" == "strict" ]]; then
+    printf 'OOM_OR_DEAD under 64MiB\n' | tee "${OUT}/REPORT.txt"
+    exit 0
+  fi
+  die "tracker dead under survival memory — abort"
 fi
 
 # Confirm runtime pin (distroless has no printenv)
 docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$TRACKER_CTR" \
-	| awk -F= '$1=="GOMAXPROCS"{print $2; found=1} END{if(!found) print "unset"}' \
-	| tee "${OUT}/gomaxprocs.txt"
+  | awk -F= '$1=="GOMAXPROCS"{print $2; found=1} END{if(!found) print "unset"}' \
+  | tee "${OUT}/gomaxprocs.txt"
 GOT_GOMAX="$(cat "${OUT}/gomaxprocs.txt")"
 if [[ "$GOT_GOMAX" != "$GOMAXPROCS_PIN" ]]; then
-	warn "GOMAXPROCS want=${GOMAXPROCS_PIN} got=${GOT_GOMAX} (compose merge may have lost the pin)"
+  warn "GOMAXPROCS want=${GOMAXPROCS_PIN} got=${GOT_GOMAX} (compose merge may have lost the pin)"
 fi
 
 TRACKER_PID="$(docker inspect -f '{{.State.Pid}}' "$TRACKER_CTR")"
@@ -194,29 +194,28 @@ CID="$(docker inspect -f '{{.Id}}' "$TRACKER_CTR")"
 CG_PATH=""
 # Prefer docker scope path (reliable on systemd + cgroup v2).
 for cand in \
-	"/sys/fs/cgroup/system.slice/docker-${CID}.scope" \
-	"/sys/fs/cgroup/docker/${CID}" \
-	; do
-	if [[ -f "${cand}/cpu.stat" ]]; then
-		CG_PATH="$cand"
-		break
-	fi
+  "/sys/fs/cgroup/system.slice/docker-${CID}.scope" \
+  "/sys/fs/cgroup/docker/${CID}"; do
+  if [[ -f "${cand}/cpu.stat" ]]; then
+    CG_PATH="$cand"
+    break
+  fi
 done
 if [[ -z "$CG_PATH" ]]; then
-	CG_REL="$(awk -F: '$1=="0"{
+  CG_REL="$(awk -F: '$1=="0"{
 		line=$0; sub(/^0::?/,"",line); gsub(/^\/+/,"",line); print line
-	}' "/proc/${TRACKER_PID}/cgroup" 2>/dev/null || true)"
-	if [[ -n "$CG_REL" && -f "/sys/fs/cgroup/${CG_REL}/cpu.stat" ]]; then
-		CG_PATH="/sys/fs/cgroup/${CG_REL}"
-	fi
+	}' "/proc/${TRACKER_PID}/cgroup" 2> /dev/null || true)"
+  if [[ -n "$CG_REL" && -f "/sys/fs/cgroup/${CG_REL}/cpu.stat" ]]; then
+    CG_PATH="/sys/fs/cgroup/${CG_REL}"
+  fi
 fi
 [[ -n "$CG_PATH" ]] || warn "could not resolve tracker cgroup path (cpu.stat will be empty)"
 log "tracker cgroup path=${CG_PATH:-unknown}"
-echo "${CG_PATH:-}" >"${OUT}/tracker.cgroup.path"
+echo "${CG_PATH:-}" > "${OUT}/tracker.cgroup.path"
 if [[ -n "$CG_PATH" ]]; then
-	cp "${CG_PATH}/cpu.stat" "${OUT}/cpu.stat.before" 2>/dev/null || true
-	cp "${CG_PATH}/memory.events" "${OUT}/memory.events.before" 2>/dev/null || true
-	cp "${CG_PATH}/memory.current" "${OUT}/memory.current.before" 2>/dev/null || true
+  cp "${CG_PATH}/cpu.stat" "${OUT}/cpu.stat.before" 2> /dev/null || true
+  cp "${CG_PATH}/memory.events" "${OUT}/memory.events.before" 2> /dev/null || true
+  cp "${CG_PATH}/memory.current" "${OUT}/memory.current.before" 2> /dev/null || true
 fi
 
 # ---------------------------------------------------------------------------
@@ -235,13 +234,13 @@ tc qdisc show dev lo'
 
 log "starting stress-ng L3 polluter on CPU 1"
 taskset -c 1 "${ROOT}/bin/stress-ng" --cache 1 --cache-level 3 --aggressive --timeout 0 \
-	>"${OUT}/stress-ng.log" 2>&1 &
-echo $! >"${OUT}/stress-ng.pid"
+  > "${OUT}/stress-ng.log" 2>&1 &
+echo $! > "${OUT}/stress-ng.pid"
 sleep 0.5
-kill -0 "$(cat "${OUT}/stress-ng.pid")" 2>/dev/null || {
-	warn "cache-level failed; retrying minimal --cache"
-	taskset -c 1 "${ROOT}/bin/stress-ng" --cache 1 --timeout 0 >"${OUT}/stress-ng.log" 2>&1 &
-	echo $! >"${OUT}/stress-ng.pid"
+kill -0 "$(cat "${OUT}/stress-ng.pid")" 2> /dev/null || {
+  warn "cache-level failed; retrying minimal --cache"
+  taskset -c 1 "${ROOT}/bin/stress-ng" --cache 1 --timeout 0 > "${OUT}/stress-ng.log" 2>&1 &
+  echo $! > "${OUT}/stress-ng.pid"
 }
 
 # ---------------------------------------------------------------------------
@@ -251,7 +250,7 @@ BPF_DIR="${OUT}/bpf"
 mkdir -p "$BPF_DIR"
 log "resolving BPF targets"
 ESPX_BPF_NATIVE=1 ESPX_BPF_TRACK_LOADGEN=1 ESPX_BPF_LOADGEN_COMM=wrk \
-	bash "${SCRIPTS}/test/bpf_resolve_targets.sh" "${BPF_DIR}/targets.json" tracker,nginx,redis,processor
+  bash "${SCRIPTS}/test/bpf_resolve_targets.sh" "${BPF_DIR}/targets.json" tracker,nginx,redis,processor
 
 log "starting bpf-collector as root (privileged sidecar)"
 priv "ulimit -l unlimited
@@ -284,7 +283,7 @@ echo collector_pid=\$(cat ${BPF_DIR}/collector.pid)
 # ---------------------------------------------------------------------------
 BODY='{"campaign_id":"00000000-0000-0000-0000-000000000001","type":"click"}'
 LUA="${OUT}/track.lua"
-cat >"$LUA" <<EOF
+cat > "$LUA" << EOF
 wrk.method = "POST"
 wrk.body   = [=[${BODY}]=]
 wrk.headers["Content-Type"] = "application/json"
@@ -293,19 +292,19 @@ wrk.headers["Accept"]       = "application/json"
 EOF
 
 log "raising nofile for 10k connections"
-ulimit -n 1048576 2>/dev/null || ulimit -n 65536 || true
+ulimit -n 1048576 2> /dev/null || ulimit -n 65536 || true
 
 # Snapshot Prometheus / tracker metrics before load (Lua + handler).
 METRICS_PORT="${METRICS_PORT:-9101}"
 PROM_URL="${PROMETHEUS_URL:-http://127.0.0.1:9190}"
 snapshot_tracker_metrics() {
-	local dest=$1
-	{
-		echo "# scraped_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-		curl -fsS --max-time 3 "http://127.0.0.1:${METRICS_PORT}/metrics" \
-			| rg 'ad_redis_lua_|ad_local_quota_|ad_http_request_duration|ad_events_processed|ad_filter_decisions|ad_redis_ops|ad_filter_lua_slow|ad_redis_lua_noscript|ad_redis_lua_fast|ad_redis_lua_full|ad_redis_lua_skipped' \
-			|| true
-	} >"$dest"
+  local dest=$1
+  {
+    echo "# scraped_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    curl -fsS --max-time 3 "http://127.0.0.1:${METRICS_PORT}/metrics" \
+      | rg 'ad_redis_lua_|ad_local_quota_|ad_http_request_duration|ad_events_processed|ad_filter_decisions|ad_redis_ops|ad_filter_lua_slow|ad_redis_lua_noscript|ad_redis_lua_fast|ad_redis_lua_full|ad_redis_lua_skipped' \
+      || true
+  } > "$dest"
 }
 log "metrics snapshot before → ${OUT}/metrics.before.txt"
 snapshot_tracker_metrics "${OUT}/metrics.before.txt"
@@ -313,7 +312,7 @@ snapshot_tracker_metrics "${OUT}/metrics.before.txt"
 log "wrk -t${BENCH_THREADS} -c${BENCH_CONNECTIONS} -d${BENCH_DURATION} ${TARGET_URL}"
 set +e
 "${ROOT}/bin/wrk" -t"$BENCH_THREADS" -c"$BENCH_CONNECTIONS" -d"$BENCH_DURATION" \
-	--latency -s "$LUA" "$TARGET_URL" | tee "${OUT}/loadgen.log"
+  --latency -s "$LUA" "$TARGET_URL" | tee "${OUT}/loadgen.log"
 WRK_EC=$?
 set -e
 log "wrk exit=${WRK_EC}"
@@ -321,7 +320,7 @@ log "wrk exit=${WRK_EC}"
 log "metrics snapshot after → ${OUT}/metrics.after.txt"
 snapshot_tracker_metrics "${OUT}/metrics.after.txt"
 # Direct Lua p50/p99 from tracker histogram (no Prom job label dependency).
-python3 - "${OUT}/metrics.after.txt" "${OUT}/lua_quantiles.json" <<'PY' || true
+python3 - "${OUT}/metrics.after.txt" "${OUT}/lua_quantiles.json" << 'PY' || true
 import re, json, sys
 from pathlib import Path
 text = Path(sys.argv[1]).read_text()
@@ -372,78 +371,77 @@ Path(sys.argv[2]).write_text(json.dumps(out, indent=2))
 print(json.dumps(out, indent=2))
 PY
 
-
 # ---------------------------------------------------------------------------
 # 5) Collect metrics
 # ---------------------------------------------------------------------------
 sleep 2
-cp "${CG_PATH}/cpu.stat" "${OUT}/cpu.stat.after" 2>/dev/null || true
-cp "${CG_PATH}/memory.events" "${OUT}/memory.events.after" 2>/dev/null || true
+cp "${CG_PATH}/cpu.stat" "${OUT}/cpu.stat.after" 2> /dev/null || true
+cp "${CG_PATH}/memory.events" "${OUT}/memory.events.after" 2> /dev/null || true
 docker inspect -f '{{.State.Status}} OOM={{.State.OOMKilled}} Exit={{.State.ExitCode}}' "$TRACKER_CTR" \
-	| tee "${OUT}/tracker.state.txt"
+  | tee "${OUT}/tracker.state.txt"
 
 # Stop BPF cleanly and render report
 if [[ -f "${BPF_DIR}/collector.pid" ]]; then
-	BPID="$(cat "${BPF_DIR}/collector.pid")"
-	priv "kill -TERM ${BPID} 2>/dev/null || true
+  BPID="$(cat "${BPF_DIR}/collector.pid")"
+  priv "kill -TERM ${BPID} 2>/dev/null || true
 	for i in \$(seq 1 30); do kill -0 ${BPID} 2>/dev/null || break; sleep 0.2; done
 	kill -KILL ${BPID} 2>/dev/null || true" || true
 fi
 sleep 1
 if [[ -f "${BPF_DIR}/maps/summary.json" ]]; then
-	(cd "$ROOT" && go run ./cmd/load-report bpf "$OUT") >"${OUT}/bpf-report.md" 2>"${OUT}/bpf-report.err" \
-		|| warn "load-report bpf failed — see ${OUT}/bpf-report.err"
+  (cd "$ROOT" && go run ./cmd/load-report bpf "$OUT") > "${OUT}/bpf-report.md" 2> "${OUT}/bpf-report.err" \
+    || warn "load-report bpf failed — see ${OUT}/bpf-report.err"
 else
-	warn "no ${BPF_DIR}/maps/summary.json — check ${BPF_DIR}/collector.log"
-	tail -80 "${BPF_DIR}/collector.log" 2>/dev/null | tee "${OUT}/bpf-collector.tail.txt" || true
+  warn "no ${BPF_DIR}/maps/summary.json — check ${BPF_DIR}/collector.log"
+  tail -80 "${BPF_DIR}/collector.log" 2> /dev/null | tee "${OUT}/bpf-collector.tail.txt" || true
 fi
 
 # Prometheus bottleneck report (handler p99, Redis Lua p99/shard, …)
 log "load-report prom → ${OUT}/bottleneck-report.md (PROM=${PROM_URL})"
 (cd "$ROOT" && go run ./cmd/load-report prom "$OUT" --prom "$PROM_URL") \
-	>"${OUT}/load-report-prom.log" 2>&1 \
-	|| warn "load-report prom failed — see ${OUT}/load-report-prom.log"
+  > "${OUT}/load-report-prom.log" 2>&1 \
+  || warn "load-report prom failed — see ${OUT}/load-report-prom.log"
 # Also try `all` for SLA section without failing the run
 (cd "$ROOT" && LOAD_SLA_GATE=0 go run ./cmd/load-report all "$OUT" --prom "$PROM_URL") \
-	>"${OUT}/load-report-all.log" 2>&1 \
-	|| warn "load-report all soft-failed — see ${OUT}/load-report-all.log"
+  > "${OUT}/load-report-all.log" 2>&1 \
+  || warn "load-report all soft-failed — see ${OUT}/load-report-all.log"
 
 # Build REPORT.txt
 {
-	echo "=== ESPX Purgatory + eBPF Report (${TS}) ==="
-	echo "phase: ${PHASE} memory=${MEM_LABEL} cpus=${CPUS} GOMAXPROCS=${GOMAXPROCS_PIN}"
-	echo "url: ${TARGET_URL}"
-	echo "tracker: ${TRACKER_CTR} pid=${TRACKER_PID}"
-	echo
-	echo "-- tracker state --"
-	cat "${OUT}/tracker.state.txt" 2>/dev/null || true
-	echo "GOMAXPROCS=$(cat "${OUT}/gomaxprocs.txt" 2>/dev/null || echo '?')"
-	echo
-	echo "-- cpu.stat before --"
-	cat "${OUT}/cpu.stat.before" 2>/dev/null || true
-	echo "-- cpu.stat after --"
-	cat "${OUT}/cpu.stat.after" 2>/dev/null || true
-	if [[ -n "${CG_PATH:-}" && -f "${CG_PATH}/cpu.stat" ]]; then
-		cp "${CG_PATH}/cpu.stat" "${OUT}/cpu.stat.after.docker" 2>/dev/null || true
-		cp "${CG_PATH}/memory.events" "${OUT}/memory.events.after.docker" 2>/dev/null || true
-		cp "${CG_PATH}/memory.current" "${OUT}/memory.current.after.docker" 2>/dev/null || true
-	fi
-	echo
-	echo "-- memory.events after --"
-	cat "${OUT}/memory.events.after" 2>/dev/null || true
-	echo
-	echo "-- Lua quantiles (tracker :${METRICS_PORT} histogram) --"
-	cat "${OUT}/lua_quantiles.json" 2>/dev/null || echo "n/a"
-	echo
-	echo "-- Prometheus bottleneck (excerpt) --"
-	if [[ -f "${OUT}/bottleneck-report.md" ]]; then
-		head -n 80 "${OUT}/bottleneck-report.md"
-	else
-		echo "missing bottleneck-report.md"
-	fi
-	echo
-	echo "-- wrk --"
-	cat "${OUT}/loadgen.log" 2>/dev/null || true
+  echo "=== ESPX Purgatory + eBPF Report (${TS}) ==="
+  echo "phase: ${PHASE} memory=${MEM_LABEL} cpus=${CPUS} GOMAXPROCS=${GOMAXPROCS_PIN}"
+  echo "url: ${TARGET_URL}"
+  echo "tracker: ${TRACKER_CTR} pid=${TRACKER_PID}"
+  echo
+  echo "-- tracker state --"
+  cat "${OUT}/tracker.state.txt" 2> /dev/null || true
+  echo "GOMAXPROCS=$(cat "${OUT}/gomaxprocs.txt" 2> /dev/null || echo '?')"
+  echo
+  echo "-- cpu.stat before --"
+  cat "${OUT}/cpu.stat.before" 2> /dev/null || true
+  echo "-- cpu.stat after --"
+  cat "${OUT}/cpu.stat.after" 2> /dev/null || true
+  if [[ -n "${CG_PATH:-}" && -f "${CG_PATH}/cpu.stat" ]]; then
+    cp "${CG_PATH}/cpu.stat" "${OUT}/cpu.stat.after.docker" 2> /dev/null || true
+    cp "${CG_PATH}/memory.events" "${OUT}/memory.events.after.docker" 2> /dev/null || true
+    cp "${CG_PATH}/memory.current" "${OUT}/memory.current.after.docker" 2> /dev/null || true
+  fi
+  echo
+  echo "-- memory.events after --"
+  cat "${OUT}/memory.events.after" 2> /dev/null || true
+  echo
+  echo "-- Lua quantiles (tracker :${METRICS_PORT} histogram) --"
+  cat "${OUT}/lua_quantiles.json" 2> /dev/null || echo "n/a"
+  echo
+  echo "-- Prometheus bottleneck (excerpt) --"
+  if [[ -f "${OUT}/bottleneck-report.md" ]]; then
+    head -n 80 "${OUT}/bottleneck-report.md"
+  else
+    echo "missing bottleneck-report.md"
+  fi
+  echo
+  echo "-- wrk --"
+  cat "${OUT}/loadgen.log" 2> /dev/null || true
 } | tee "${OUT}/REPORT.txt"
 
 log "done → ${OUT}/REPORT.txt"

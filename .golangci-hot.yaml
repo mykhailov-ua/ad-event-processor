@@ -1,8 +1,8 @@
 version: "2"
 
-# Hot-path Go lint profile (ingestion, rtb auction, tracker, broker).
-# Run via: scripts/ci/lint_go_gate.sh hot
-# Intentionally omits errcheck, noctx, contextcheck, bodyclose — zero-alloc / monotonic-deadline rules.
+
+
+
 run:
   timeout: 5m
   go: "1.25.12"

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
-	"github.com/bidshard/ad-event-processor/internal/edge/xdpstats"
+	"github.com/bidshard/ad-event-processor/internal/edge"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -84,8 +84,8 @@ func TestEdgeXDPProbe_passesWhenReady(t *testing.T) {
 				return []redis.UniversalClient{rdb}, nil
 			},
 		},
-		StatsReader: func(context.Context) (xdpstats.Snapshot, error) {
-			return xdpstats.Snapshot{UpdatedAt: time.Now().UTC()}, nil
+		StatsReader: func(context.Context) (edge.Snapshot, error) {
+			return edge.Snapshot{UpdatedAt: time.Now().UTC()}, nil
 		},
 	}
 	res := probe.Run(context.Background())

@@ -1,5 +1,3 @@
-// L1 CIDR lookup benches (harness: cidr_lpm_rcu).
-// RCU snapshot is fully in-memory: no Redis, no Lua, no PG on the read path.
 package ingestion
 
 import (
@@ -28,7 +26,7 @@ func benchCIDRTable(tb testing.TB, n int) (*CIDRTable, [][4]byte, [][16]byte) {
 		if i%4 == 3 {
 			var a [16]byte
 			rng.Read(a[:])
-			a[0], a[1] = 0x26, 0x20 // global unicast-ish
+			a[0], a[1] = 0x26, 0x20
 			b.insert(&root6, a, uint8(16+rng.Intn(49)), uint8(i%int(CIDRFeedCount)))
 			continue
 		}
@@ -51,7 +49,6 @@ func benchCIDRTable(tb testing.TB, n int) (*CIDRTable, [][4]byte, [][16]byte) {
 	return table, probe4, probe6
 }
 
-// BenchmarkCIDR_LPM_Lookup_IPv4 (harness: cidr_lpm_rcu) — B-M1-1, < 50 ns.
 func BenchmarkCIDR_LPM_Lookup_IPv4(b *testing.B) {
 	table, probe4, _ := benchCIDRTable(b, 50_000)
 	b.ReportAllocs()
@@ -65,7 +62,6 @@ func BenchmarkCIDR_LPM_Lookup_IPv4(b *testing.B) {
 	cidrBenchSinkBool = cidrBenchSinkBool || hit
 }
 
-// BenchmarkCIDR_LPM_Lookup_IPv6 (harness: cidr_lpm_rcu) — B-M1-2, < 80 ns.
 func BenchmarkCIDR_LPM_Lookup_IPv6(b *testing.B) {
 	table, _, probe6 := benchCIDRTable(b, 50_000)
 	b.ReportAllocs()
@@ -79,8 +75,6 @@ func BenchmarkCIDR_LPM_Lookup_IPv6(b *testing.B) {
 	cidrBenchSinkBool = cidrBenchSinkBool || hit
 }
 
-// BenchmarkCIDR_LPM_Lookup_ParseIP (harness: cidr_lpm_rcu) — ASCII parse +
-// match, the exact form used by the /click hook.
 func BenchmarkCIDR_LPM_Lookup_ParseIP(b *testing.B) {
 	table, _, _ := benchCIDRTable(b, 50_000)
 	ips := []string{
@@ -98,10 +92,6 @@ func BenchmarkCIDR_LPM_Lookup_ParseIP(b *testing.B) {
 	cidrBenchSinkBool = cidrBenchSinkBool || hit
 }
 
-// BenchmarkCIDR_MatchBranch_SafeView (harness: cidr_lpm_rcu) — B-M1-3,
-// < 1 µs. Measures the full hook decision (registry flag check + LPM match +
-// pre-bound counter) as executed from reactClickRedirect, minus the socket
-// write.
 func BenchmarkCIDR_MatchBranch_SafeView(b *testing.B) {
 	table, probe4, _ := benchCIDRTable(b, 50_000)
 	h := &AdsPacketHandler{

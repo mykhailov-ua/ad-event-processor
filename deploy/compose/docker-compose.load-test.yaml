@@ -1,13 +1,12 @@
-
 x-go-load-test-env: &go_load_test_env
-  GOMAXPROCS: "2"
+  GOMAXPROCS: '2'
 
 x-tracker-lab-env: &tracker_lab_env
-  GOMAXPROCS: "2"
+  GOMAXPROCS: '2'
   GOMEMLIMIT: 400MiB
-  GOGC: "300"
+  GOGC: '300'
   TRACKER_INGRESS_SCHEMA: espx_native
-  ESPX_LICENSE_REQUIRED: "0"
+  ESPX_LICENSE_REQUIRED: '0'
   ENV: development
   REDIS_ADDRS: 127.0.0.1:6479,127.0.0.1:6480,127.0.0.1:6481,127.0.0.1:6482,127.0.0.1:6483,127.0.0.1:6484
 
@@ -15,30 +14,30 @@ services:
   tracker-0:
     environment:
       <<: *tracker_lab_env
-      SERVER_PORT: "8181"
-      METRICS_PORT: "9101"
+      SERVER_PORT: '8181'
+      METRICS_PORT: '9101'
     deploy:
       resources:
         limits:
-          cpus: "2.0"
+          cpus: '2.0'
           memory: 512M
 
   tracker-1:
     environment:
       <<: *tracker_lab_env
-      SERVER_PORT: "8182"
-      METRICS_PORT: "9102"
+      SERVER_PORT: '8182'
+      METRICS_PORT: '9102'
     deploy:
       resources:
         limits:
-          cpus: "2.0"
+          cpus: '2.0'
           memory: 512M
 
   tracker-2:
     deploy:
       resources:
         limits:
-          cpus: "0.5"
+          cpus: '0.5'
           memory: 448M
     environment:
       - GOMAXPROCS=1
@@ -47,7 +46,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.5"
+          cpus: '0.5'
           memory: 448M
     environment:
       - GOMAXPROCS=1
@@ -64,7 +63,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "1.75"
+          cpus: '1.75'
           memory: 768M
 
   nginx:
@@ -86,39 +85,39 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "1.0"
+          cpus: '1.0'
           memory: 512M
 
   db:
     command:
       [
-        "postgres",
-        "-p",
-        "${DB_PORT}",
-        "-c",
-        "unix_socket_directories=/run/ad-event-processor/postgresql",
-        "-c",
-        "max_connections=300",
-        "-c",
-        "shared_buffers=320MB",
-        "-c",
-        "work_mem=32MB",
-        "-c",
-        "maintenance_work_mem=96MB",
-        "-c",
-        "effective_cache_size=640MB",
+        'postgres',
+        '-p',
+        '${DB_PORT}',
+        '-c',
+        'unix_socket_directories=/run/ad-event-processor/postgresql',
+        '-c',
+        'max_connections=300',
+        '-c',
+        'shared_buffers=320MB',
+        '-c',
+        'work_mem=32MB',
+        '-c',
+        'maintenance_work_mem=96MB',
+        '-c',
+        'effective_cache_size=640MB',
       ]
     deploy:
       resources:
         limits:
-          cpus: "1.25"
+          cpus: '1.25'
           memory: 896M
 
   clickhouse:
     deploy:
       resources:
         limits:
-          cpus: "1.25"
+          cpus: '1.25'
           memory: 1152M
     volumes:
       - ../../deploy/clickhouse/config.load-test.yaml:/etc/clickhouse-server/config.d/memory_limit.yaml:ro
@@ -127,44 +126,44 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.35"
+          cpus: '0.35'
           memory: 384M
   redis-1:
     deploy:
       resources:
         limits:
-          cpus: "0.35"
+          cpus: '0.35'
           memory: 384M
   redis-2:
     deploy:
       resources:
         limits:
-          cpus: "0.35"
+          cpus: '0.35'
           memory: 384M
   redis-3:
     deploy:
       resources:
         limits:
-          cpus: "0.35"
+          cpus: '0.35'
           memory: 384M
   redis-4:
     deploy:
       resources:
         limits:
-          cpus: "0.35"
+          cpus: '0.35'
           memory: 384M
   redis-5:
     deploy:
       resources:
         limits:
-          cpus: "0.35"
+          cpus: '0.35'
           memory: 384M
 
   prometheus:
     deploy:
       resources:
         limits:
-          cpus: "0.25"
+          cpus: '0.25'
           memory: 256M
     volumes:
       - ../../deploy/monitoring/prometheus.load-test.yaml:/etc/prometheus/prometheus.yaml:ro
@@ -174,12 +173,12 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.25"
+          cpus: '0.25'
           memory: 256M
 
   alertmanager:
     deploy:
       resources:
         limits:
-          cpus: "0.1"
+          cpus: '0.1'
           memory: 128M

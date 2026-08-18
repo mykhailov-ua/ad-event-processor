@@ -8,8 +8,8 @@ import type {
   OutboxEventDTO,
   OutboxListResponse,
   ShardHealthStatus,
-} from '../types/api/index.js';
-import type { DLQListResponse } from '../types/api/ops_extra.js';
+} from '../types/index.js';
+import type { DLQListResponse } from '../types/ops_extra.js';
 import { to } from '../lib/to.js';
 import { api, ApiError, type ApiResult } from '../helpers/api_client.js';
 import { isParallelSlotError, parallelAll } from '../helpers/request_multiplex.js';
@@ -18,7 +18,11 @@ import { can } from '../helpers/permissions.js';
 import * as auth from '../helpers/auth.js';
 import { mapServiceError } from '../helpers/service_error.js';
 import { pushToastMessage } from '../helpers/toast_ui.js';
-import { createGenerationGuard, createInFlightGuard, shouldCommitAsyncResult } from '../lib/async_guard.js';
+import {
+  createGenerationGuard,
+  createInFlightGuard,
+  shouldCommitAsyncResult,
+} from '../lib/async_guard.js';
 import { apiTimingReport } from '../helpers/api_timing.js';
 import { flushRUMNow } from '../helpers/rum_collector.js';
 import { displayLabel, formatYesNo } from '../helpers/display_labels.js';
@@ -41,7 +45,12 @@ import { formatAmountMicro } from '../helpers/money.js';
 import { AlertBanner } from '../components/alert_banner.js';
 import { Button } from '../components/button.js';
 import { DoctorPanel } from '../components/doctor_panel.js';
-import { EdgePanel, XDPPanel, type EdgePanelData, type XDPPanelData } from '../components/edge_panel.js';
+import {
+  EdgePanel,
+  XDPPanel,
+  type EdgePanelData,
+  type XDPPanelData,
+} from '../components/edge_panel.js';
 import { ErrorBlock } from '../components/error_block.js';
 import { FilterToolbar } from '../components/filter_toolbar.js';
 import { Icon } from '../components/icon.js';
@@ -72,7 +81,7 @@ const OPS_POLL_MS = 30_000;
 
 function recordOpsSnapshotMetrics(
   summary: DashboardSummary | null,
-  operatorDash: OperatorDash | null,
+  operatorDash: OperatorDash | null
 ): void {
   if (summary) {
     recordSnapshot('outbox-pending', Number(summary.outbox_pending) || 0);
@@ -80,7 +89,7 @@ function recordOpsSnapshotMetrics(
     recordSnapshot('drift-alert', Number(summary.drift_micro_max) || 0);
     recordSnapshot(
       'emergency-breaker',
-      String(summary.emergency_breaker).toLowerCase() === 'open' ? 1 : 0,
+      String(summary.emergency_breaker).toLowerCase() === 'open' ? 1 : 0
     );
   }
   const edge = operatorDash?.edge;
@@ -110,9 +119,6 @@ function OpsEdgeSection({ operatorDash }: { operatorDash: OperatorDash | null })
   );
 }
 
-/**
- * Operations home — doctor, metrics, outbox, DLQ, billing invariant.
- */
 export function OpsHomePage() {
   const user = auth.getUser();
   const canBundle = can(user?.permissions ?? [], 'ops:write');
@@ -135,8 +141,12 @@ export function OpsHomePage() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState(0);
   const [nextRefreshAt, setNextRefreshAt] = useState(0);
   const [feedMode, setFeedMode] = useState('poll');
-  const [chartsLayout, setChartsLayout] = useState<OpsChartsLayout>(() => storage.getOpsChartsLayout());
-  const [chartsRangeHours, setChartsRangeHours] = useState<OpsChartsRangeHours>(() => storage.getOpsChartsRangeHours());
+  const [chartsLayout, setChartsLayout] = useState<OpsChartsLayout>(() =>
+    storage.getOpsChartsLayout()
+  );
+  const [chartsRangeHours, setChartsRangeHours] = useState<OpsChartsRangeHours>(() =>
+    storage.getOpsChartsRangeHours()
+  );
   const [clockTick, setClockTick] = useState(0);
 
   const [outboxStatus, setOutboxStatus] = useState('');
@@ -177,19 +187,23 @@ export function OpsHomePage() {
     const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timer = ctrl ? window.setTimeout(() => ctrl.abort(), 8_000) : 0;
     try {
-      const results = await Promise.all(ids.map(async (id) => {
-        const name = OPS_METRIC_API_NAMES[id];
-        const [res] = await to(api(
-          `/api/v1/ops/dashboard/metrics?range=${rangeHours}h&name=${encodeURIComponent(name)}`,
-          ctrl ? { signal: ctrl.signal } : {},
-        ));
-        let points = parseApiPoints(
-          (res?.data as MetricsSeriesResponse | undefined)?.points
-            ?? (res as MetricsSeriesResponse | null)?.points,
-        );
-        if (id === 'rps-estimate') points = toRateSeries(points);
-        return { id, points };
-      }));
+      const results = await Promise.all(
+        ids.map(async (id) => {
+          const name = OPS_METRIC_API_NAMES[id];
+          const [res] = await to(
+            api(
+              `/api/v1/ops/dashboard/metrics?range=${rangeHours}h&name=${encodeURIComponent(name)}`,
+              ctrl ? { signal: ctrl.signal } : {}
+            )
+          );
+          let points = parseApiPoints(
+            (res?.data as MetricsSeriesResponse | undefined)?.points ??
+              (res as MetricsSeriesResponse | null)?.points
+          );
+          if (id === 'rps-estimate') points = toRateSeries(points);
+          return { id, points };
+        })
+      );
 
       if (destroyedRef.current) return;
       setMetricSeries((prev) => {
@@ -205,104 +219,125 @@ export function OpsHomePage() {
     }
   }, []);
 
-  const loadOpsData = useCallback(async (opts: { quiet?: boolean } = {}) => {
-    const quiet = opts.quiet === true;
-    if (!quiet) {
-      setLoading(true);
-      setBlockError(null);
-    }
-
-    const bundleCtrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const bundleTimer = bundleCtrl ? window.setTimeout(() => bundleCtrl.abort(), 12_000) : 0;
-    const signal = bundleCtrl?.signal;
-    type OpsSlot = ApiResult | { error: unknown } | { data: unknown };
-    const [results, err] = await to(parallelAll<OpsSlot>([
-      () => api('/api/v1/ops/doctor', signal ? { signal } : {}),
-      () => api('/api/v1/ops/incidents', signal ? { signal } : {}).catch((e: unknown) => ({ error: e })),
-      () => api('/api/v1/ops/dashboard/summary', signal ? { signal } : {}),
-      () => api('/api/v1/ops/rum', signal ? { signal } : {}).catch(() => ({ data: { events: [] } })),
-      () => api('/api/v1/dashboards/operator', signal ? { signal } : {}).catch(() => ({ data: null })),
-    ], 3));
-    if (bundleTimer) window.clearTimeout(bundleTimer);
-
-    if (destroyedRef.current) return;
-
-    if (err) {
+  const loadOpsData = useCallback(
+    async (opts: { quiet?: boolean } = {}) => {
+      const quiet = opts.quiet === true;
       if (!quiet) {
-        setBlockError(err);
-        setLoading(false);
+        setLoading(true);
+        setBlockError(null);
       }
-      return;
-    }
 
-    const [docRes, incRes, sumRes, rumRes, opDashRes] = results;
+      const bundleCtrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const bundleTimer = bundleCtrl ? window.setTimeout(() => bundleCtrl.abort(), 12_000) : 0;
+      const signal = bundleCtrl?.signal;
+      type OpsSlot = ApiResult | { error: unknown } | { data: unknown };
+      const [results, err] = await to(
+        parallelAll<OpsSlot>(
+          [
+            () => api('/api/v1/ops/doctor', signal ? { signal } : {}),
+            () =>
+              api('/api/v1/ops/incidents', signal ? { signal } : {}).catch((e: unknown) => ({
+                error: e,
+              })),
+            () => api('/api/v1/ops/dashboard/summary', signal ? { signal } : {}),
+            () =>
+              api('/api/v1/ops/rum', signal ? { signal } : {}).catch(() => ({
+                data: { events: [] },
+              })),
+            () =>
+              api('/api/v1/dashboards/operator', signal ? { signal } : {}).catch(() => ({
+                data: null,
+              })),
+          ],
+          3
+        )
+      );
+      if (bundleTimer) window.clearTimeout(bundleTimer);
 
-    if (!isParallelSlotError(docRes) && 'data' in docRes && docRes.data) {
-      setDoctor(docRes.data as OpsDoctorSummary);
-    }
-    if (!isParallelSlotError(sumRes) && 'data' in sumRes && sumRes.data) {
-      setSummary(sumRes.data as DashboardSummary);
-    }
-    const nextOperatorDash = (!isParallelSlotError(opDashRes) && 'data' in opDashRes
-      ? opDashRes.data as OperatorDash | null
-      : null) ?? null;
-    setOperatorDash(nextOperatorDash);
-    operatorDashRef.current = nextOperatorDash;
+      if (destroyedRef.current) return;
 
-    const rumData = !isParallelSlotError(rumRes) && 'data' in rumRes
-      ? rumRes.data as RumResponse | null
-      : null;
-    setRumEvents(rumData?.events?.length ?? 0);
-    setSlowApiPaths(apiTimingReport().slowPaths);
-
-    const errors: PartialSourceError[] = [];
-    if (isParallelSlotError(incRes) || ('error' in incRes && incRes.error)) {
-      const incErr = (incRes as { error: unknown }).error;
-      if (incErr instanceof ApiError && incErr.payload) {
-        setIncidents(incErr.payload as IncidentSnapshot);
-        const payloadErrors = (incErr.payload as IncidentSnapshot).errors;
-        if (payloadErrors?.length) errors.push(...payloadErrors);
-      } else if (!quiet) {
-        const view = mapServiceError(incErr);
-        if (view.kind === 'page' || view.kind === 'unavailable') {
-          setBlockError(incErr);
+      if (err) {
+        if (!quiet) {
+          setBlockError(err);
           setLoading(false);
-          return;
         }
-        pushToastMessage({ title: view.title, message: view.message, code: view.code });
+        return;
       }
-    } else if (!isParallelSlotError(incRes) && 'data' in incRes && incRes.data) {
-      setIncidents(incRes.data as IncidentSnapshot);
-      const incData = incRes.data as IncidentSnapshot;
-      if (incData.errors?.length) errors.push(...incData.errors);
-    }
-    setPartialErrors(errors);
 
-    const nextSummary = !isParallelSlotError(sumRes) && 'data' in sumRes && sumRes.data
-      ? sumRes.data as DashboardSummary
-      : summaryRef.current;
-    recordOpsSnapshotMetrics(nextSummary, nextOperatorDash);
+      const [docRes, incRes, sumRes, rumRes, opDashRes] = results;
 
-    if (!quiet) setLoading(false);
-    markRefreshed();
+      if (!isParallelSlotError(docRes) && 'data' in docRes && docRes.data) {
+        setDoctor(docRes.data as OpsDoctorSummary);
+      }
+      if (!isParallelSlotError(sumRes) && 'data' in sumRes && sumRes.data) {
+        setSummary(sumRes.data as DashboardSummary);
+      }
+      const nextOperatorDash =
+        (!isParallelSlotError(opDashRes) && 'data' in opDashRes
+          ? (opDashRes.data as OperatorDash | null)
+          : null) ?? null;
+      setOperatorDash(nextOperatorDash);
+      operatorDashRef.current = nextOperatorDash;
 
-    try {
-      await loadMetricSeries(chartsRangeHours);
-    } catch {
-      // Charts stay on snapshot series when history metrics fail.
-    }
-  }, [chartsRangeHours, loadMetricSeries, markRefreshed]);
+      const rumData =
+        !isParallelSlotError(rumRes) && 'data' in rumRes
+          ? (rumRes.data as RumResponse | null)
+          : null;
+      setRumEvents(rumData?.events?.length ?? 0);
+      setSlowApiPaths(apiTimingReport().slowPaths);
 
-  const applyStreamSummary = useCallback((streamSummary: DashboardSummary, generatedAt?: string) => {
-    setSummary(streamSummary);
-    recordOpsSnapshotMetrics(streamSummary, operatorDashRef.current);
-    if (generatedAt) {
-      const ts = Date.parse(generatedAt);
-      if (Number.isFinite(ts)) setLastUpdatedAt(ts);
-    } else {
-      setLastUpdatedAt(Date.now());
-    }
-  }, []);
+      const errors: PartialSourceError[] = [];
+      if (isParallelSlotError(incRes) || ('error' in incRes && incRes.error)) {
+        const incErr = (incRes as { error: unknown }).error;
+        if (incErr instanceof ApiError && incErr.payload) {
+          setIncidents(incErr.payload as IncidentSnapshot);
+          const payloadErrors = (incErr.payload as IncidentSnapshot).errors;
+          if (payloadErrors?.length) errors.push(...payloadErrors);
+        } else if (!quiet) {
+          const view = mapServiceError(incErr);
+          if (view.kind === 'page' || view.kind === 'unavailable') {
+            setBlockError(incErr);
+            setLoading(false);
+            return;
+          }
+          pushToastMessage({ title: view.title, message: view.message, code: view.code });
+        }
+      } else if (!isParallelSlotError(incRes) && 'data' in incRes && incRes.data) {
+        setIncidents(incRes.data as IncidentSnapshot);
+        const incData = incRes.data as IncidentSnapshot;
+        if (incData.errors?.length) errors.push(...incData.errors);
+      }
+      setPartialErrors(errors);
+
+      const nextSummary =
+        !isParallelSlotError(sumRes) && 'data' in sumRes && sumRes.data
+          ? (sumRes.data as DashboardSummary)
+          : summaryRef.current;
+      recordOpsSnapshotMetrics(nextSummary, nextOperatorDash);
+
+      if (!quiet) setLoading(false);
+      markRefreshed();
+
+      try {
+        await loadMetricSeries(chartsRangeHours);
+      } catch {}
+    },
+    [chartsRangeHours, loadMetricSeries, markRefreshed]
+  );
+
+  const applyStreamSummary = useCallback(
+    (streamSummary: DashboardSummary, generatedAt?: string) => {
+      setSummary(streamSummary);
+      recordOpsSnapshotMetrics(streamSummary, operatorDashRef.current);
+      if (generatedAt) {
+        const ts = Date.parse(generatedAt);
+        if (Number.isFinite(ts)) setLastUpdatedAt(ts);
+      } else {
+        setLastUpdatedAt(Date.now());
+      }
+    },
+    []
+  );
 
   const loadOpsDataRef = useRef(loadOpsData);
   loadOpsDataRef.current = loadOpsData;
@@ -343,26 +378,32 @@ export function OpsHomePage() {
     void loadMetricSeries(chartsRangeHours);
   }, [chartsRangeHours, loadMetricSeries]);
 
-  const loadOutbox = useCallback(async (statusOverride?: string) => {
-    const status = statusOverride ?? outboxStatus;
-    const opGen = outboxGuardRef.current.next();
-    setOutboxLoading(true);
-    setOutboxItems([]);
-    setOutboxCursor('');
-    const params = new URLSearchParams();
-    if (status) params.set('status', status);
-    const [outboxRes, outboxErr] = await to(api<OutboxListResponse>(`/api/v1/ops/outbox?${params.toString()}`));
-    if (!shouldCommitAsyncResult(opGen, outboxGuardRef.current.current(), destroyedRef.current)) return;
-    if (outboxErr) {
-      const view = mapServiceError(outboxErr);
-      pushToastMessage({ title: view.title, message: view.message, code: view.code });
-    } else {
-      const data = outboxRes?.data ?? {};
-      setOutboxItems(data.items ?? []);
-      setOutboxCursor(data.next_cursor ?? '');
-    }
-    setOutboxLoading(false);
-  }, [outboxStatus]);
+  const loadOutbox = useCallback(
+    async (statusOverride?: string) => {
+      const status = statusOverride ?? outboxStatus;
+      const opGen = outboxGuardRef.current.next();
+      setOutboxLoading(true);
+      setOutboxItems([]);
+      setOutboxCursor('');
+      const params = new URLSearchParams();
+      if (status) params.set('status', status);
+      const [outboxRes, outboxErr] = await to(
+        api<OutboxListResponse>(`/api/v1/ops/outbox?${params.toString()}`)
+      );
+      if (!shouldCommitAsyncResult(opGen, outboxGuardRef.current.current(), destroyedRef.current))
+        return;
+      if (outboxErr) {
+        const view = mapServiceError(outboxErr);
+        pushToastMessage({ title: view.title, message: view.message, code: view.code });
+      } else {
+        const data = outboxRes?.data ?? {};
+        setOutboxItems(data.items ?? []);
+        setOutboxCursor(data.next_cursor ?? '');
+      }
+      setOutboxLoading(false);
+    },
+    [outboxStatus]
+  );
 
   const loadMoreOutbox = useCallback(async () => {
     if (!outboxCursor || outboxLoading) return;
@@ -371,9 +412,13 @@ export function OpsHomePage() {
     setOutboxLoading(true);
     const params = new URLSearchParams({ cursor: outboxCursor });
     if (outboxStatus) params.set('status', outboxStatus);
-    const [outboxRes, outboxErr] = await to(api<OutboxListResponse>(`/api/v1/ops/outbox?${params.toString()}`));
-    if (!shouldCommitAsyncResult(opGen, outboxGuardRef.current.current(), destroyedRef.current)
-      || cursorAtStart !== outboxCursor) {
+    const [outboxRes, outboxErr] = await to(
+      api<OutboxListResponse>(`/api/v1/ops/outbox?${params.toString()}`)
+    );
+    if (
+      !shouldCommitAsyncResult(opGen, outboxGuardRef.current.current(), destroyedRef.current) ||
+      cursorAtStart !== outboxCursor
+    ) {
       setOutboxLoading(false);
       return;
     }
@@ -395,7 +440,8 @@ export function OpsHomePage() {
     setDlqCursor('');
     setDlqPartialErrors([]);
     const page = await fetchOpsDlqPage();
-    if (!shouldCommitAsyncResult(opGen, dlqGuardRef.current.current(), destroyedRef.current)) return;
+    if (!shouldCommitAsyncResult(opGen, dlqGuardRef.current.current(), destroyedRef.current))
+      return;
     if (page.error) {
       const view = mapServiceError(page.error);
       pushToastMessage({ title: view.title, message: view.message, code: view.code });
@@ -413,8 +459,10 @@ export function OpsHomePage() {
     const cursorAtStart = dlqCursor;
     setDlqLoading(true);
     const page = await fetchOpsDlqPage(dlqCursor);
-    if (!shouldCommitAsyncResult(opGen, dlqGuardRef.current.current(), destroyedRef.current)
-      || cursorAtStart !== dlqCursor) {
+    if (
+      !shouldCommitAsyncResult(opGen, dlqGuardRef.current.current(), destroyedRef.current) ||
+      cursorAtStart !== dlqCursor
+    ) {
       setDlqLoading(false);
       return;
     }
@@ -438,19 +486,22 @@ export function OpsHomePage() {
     setDlqLoading(false);
   }, [dlqCursor, dlqLoading]);
 
-  const retryDlqEntry = useCallback(async (row: DLQEntryDTO) => {
-    setDlqLoading(true);
-    const [, err] = await to(retryOpsDlq(row.id));
-    setDlqLoading(false);
-    if (err) {
-      if (err instanceof ConfirmCancelledError) return;
-      const view = mapServiceError(err);
-      pushToastMessage({ title: view.title, message: view.message, code: view.code });
-      return;
-    }
-    pushToastMessage({ title: 'Retry queued', message: row.id });
-    void loadDlq();
-  }, [loadDlq]);
+  const retryDlqEntry = useCallback(
+    async (row: DLQEntryDTO) => {
+      setDlqLoading(true);
+      const [, err] = await to(retryOpsDlq(row.id));
+      setDlqLoading(false);
+      if (err) {
+        if (err instanceof ConfirmCancelledError) return;
+        const view = mapServiceError(err);
+        pushToastMessage({ title: view.title, message: view.message, code: view.code });
+        return;
+      }
+      pushToastMessage({ title: 'Retry queued', message: row.id });
+      void loadDlq();
+    },
+    [loadDlq]
+  );
 
   const loadInvariant = useCallback(async () => {
     setInvariantLoading(true);
@@ -495,7 +546,7 @@ export function OpsHomePage() {
 
   const metricSpecs = useMemo(
     () => buildOpsMetricSpecs(summary, operatorDash, metricSeries, chartsRangeHours),
-    [summary, operatorDash, metricSeries, chartsRangeHours],
+    [summary, operatorDash, metricSeries, chartsRangeHours]
   );
 
   const shardSnippet = incidents?.shards ?? [];
@@ -554,7 +605,10 @@ export function OpsHomePage() {
               <ul className="text-sm">
                 {incidents.affected_campaigns.slice(0, 12).map((c) => (
                   <li key={c.campaign_id}>
-                    <a href={`/campaigns/${encodeURIComponent(c.campaign_id)}`} className="font-mono">
+                    <a
+                      href={`/campaigns/${encodeURIComponent(c.campaign_id)}`}
+                      className="font-mono"
+                    >
                       {c.name ? `${c.name} (${c.campaign_id})` : c.campaign_id}
                     </a>
                   </li>
@@ -678,7 +732,9 @@ export function OpsHomePage() {
               {invariantState.ledger_sum_micro != null ? (
                 <>
                   <dt>Ledger balance (micro)</dt>
-                  <dd className="font-mono">{formatAmountMicro(invariantState.ledger_sum_micro)}</dd>
+                  <dd className="font-mono">
+                    {formatAmountMicro(invariantState.ledger_sum_micro)}
+                  </dd>
                 </>
               ) : null}
               {invariantState.diff_micro != null ? (
@@ -747,7 +803,9 @@ export function OpsHomePage() {
         <section className="section-block">
           <div className="flex items-center gap-2 mb-4">
             <h2 className="subsection-title">Shards</h2>
-            <a href="/ops/shards" className="text-muted text-xs">All shards →</a>
+            <a href="/ops/shards" className="text-muted text-xs">
+              All shards →
+            </a>
           </div>
           <div className="table-wrapper elevation-raised">
             <table className="data-table">
@@ -760,7 +818,10 @@ export function OpsHomePage() {
               </thead>
               <tbody>
                 {shardSnippet.slice(0, 8).map((s: ShardHealthStatus) => (
-                  <tr key={s.shard_id} className={!s.ping_ok ? 'data-table__row--danger' : undefined}>
+                  <tr
+                    key={s.shard_id}
+                    className={!s.ping_ok ? 'data-table__row--danger' : undefined}
+                  >
                     <td>{String(s.shard_id)}</td>
                     <td>{s.ping_ok ? 'OK' : displayLabel(s.ping_error ?? 'fail')}</td>
                     <td>{String(s.config_version_lag ?? 0)}</td>
@@ -786,21 +847,23 @@ export function OpsHomePage() {
             data-testid="roles-reload"
             loading={rolesReloading}
             disabled={rolesReloading}
-            onClick={() => void (async () => {
-              setRolesReloading(true);
-              try {
-                const res = await reloadRoles();
-                pushToastMessage({
-                  title: 'RBAC reloaded',
-                  message: res.path ? `Loaded ${res.path}` : res.status,
-                });
-              } catch (e) {
-                if (e instanceof ConfirmCancelledError) return;
-                pushToastMessage({ title: 'Reload failed', message: mapServiceError(e).message });
-              } finally {
-                setRolesReloading(false);
-              }
-            })()}
+            onClick={() =>
+              void (async () => {
+                setRolesReloading(true);
+                try {
+                  const res = await reloadRoles();
+                  pushToastMessage({
+                    title: 'RBAC reloaded',
+                    message: res.path ? `Loaded ${res.path}` : res.status,
+                  });
+                } catch (e) {
+                  if (e instanceof ConfirmCancelledError) return;
+                  pushToastMessage({ title: 'Reload failed', message: mapServiceError(e).message });
+                } finally {
+                  setRolesReloading(false);
+                }
+              })()
+            }
           />
         </section>
       ) : null}
@@ -809,7 +872,7 @@ export function OpsHomePage() {
         <div className="section-block">
           <div className="mb-4">
             <FilterToolbar
-              leading={(
+              leading={
                 <div className="cluster cluster--sm items-center">
                   <span className="text-muted text-sm">Status</span>
                   <select
@@ -828,17 +891,19 @@ export function OpsHomePage() {
                     <option value="failed">Failed</option>
                   </select>
                 </div>
-              )}
-              pagination={outboxCursor ? (
-                <Button
-                  label="Load more"
-                  variant="secondary"
-                  size="sm"
-                  loading={outboxLoading}
-                  disabled={outboxLoading}
-                  onClick={() => void loadMoreOutbox()}
-                />
-              ) : undefined}
+              }
+              pagination={
+                outboxCursor ? (
+                  <Button
+                    label="Load more"
+                    variant="secondary"
+                    size="sm"
+                    loading={outboxLoading}
+                    disabled={outboxLoading}
+                    onClick={() => void loadMoreOutbox()}
+                  />
+                ) : undefined
+              }
             />
           </div>
           {outboxLoading && outboxItems.length === 0 ? (
@@ -889,7 +954,7 @@ export function OpsHomePage() {
           {dlqCursor ? (
             <div className="mb-4">
               <FilterToolbar
-                pagination={(
+                pagination={
                   <Button
                     label="Load more"
                     variant="secondary"
@@ -898,7 +963,7 @@ export function OpsHomePage() {
                     disabled={dlqLoading}
                     onClick={() => void loadMoreDlq()}
                   />
-                )}
+                }
               />
             </div>
           ) : null}
@@ -940,7 +1005,9 @@ export function OpsHomePage() {
                     <td className="font-mono text-xs">{row.campaign_id ?? '—'}</td>
                     <td>{displayLabel(row.event_type ?? '')}</td>
                     <td className="text-xs text-muted" title={row.error ?? ''}>
-                      {row.error ? `${row.error.slice(0, 48)}${row.error.length > 48 ? '…' : ''}` : '—'}
+                      {row.error
+                        ? `${row.error.slice(0, 48)}${row.error.length > 48 ? '…' : ''}`
+                        : '—'}
                     </td>
                     <td className="text-muted text-xs">
                       {row.failed_at ? new Date(row.failed_at).toLocaleString() : '—'}

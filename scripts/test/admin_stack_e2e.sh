@@ -16,12 +16,15 @@ ADMIN_STACK_E2E_PASSWORD="${ADMIN_STACK_E2E_PASSWORD:-${ADMIN_BOOTSTRAP_PASSWORD
 INSTALL_TOKEN="${INSTALL_BOOTSTRAP_TOKEN:-}"
 
 log() { printf 'admin-stack-e2e: %s\n' "$*"; }
-die() { printf 'admin-stack-e2e: ERROR: %s\n' "$*" >&2; exit 1; }
+die() {
+  printf 'admin-stack-e2e: ERROR: %s\n' "$*" >&2
+  exit 1
+}
 
 wait_control() {
   local i=0
   while [[ $i -lt 120 ]]; do
-    if curl -sf "${CONTROL_URL}/health" >/dev/null 2>&1; then
+    if curl -sf "${CONTROL_URL}/health" > /dev/null 2>&1; then
       return 0
     fi
     sleep 2
@@ -41,8 +44,8 @@ bootstrap_if_needed() {
     return 0
   fi
   [[ -n "$INSTALL_TOKEN" ]] || die "INSTALL_BOOTSTRAP_TOKEN required for bootstrap"
-  [[ -n "$ADMIN_STACK_E2E_EMAIL" && -n "$ADMIN_STACK_E2E_PASSWORD" ]] || \
-    die "ADMIN_BOOTSTRAP_EMAIL and ADMIN_BOOTSTRAP_PASSWORD required for bootstrap"
+  [[ -n "$ADMIN_STACK_E2E_EMAIL" && -n "$ADMIN_STACK_E2E_PASSWORD" ]] \
+    || die "ADMIN_BOOTSTRAP_EMAIL and ADMIN_BOOTSTRAP_PASSWORD required for bootstrap"
 
   log "bootstrapping platform"
   curl -sf -X POST "${CONTROL_URL}/api/v1/settings/platform/bootstrap" \
@@ -67,10 +70,10 @@ bootstrap_if_needed() {
         },
         admin_email: $email,
         admin_password: $password
-      }')" >/dev/null
+      }')" > /dev/null
 }
 
-if ! curl -sf "${CONTROL_URL}/health" >/dev/null 2>&1; then
+if ! curl -sf "${CONTROL_URL}/health" > /dev/null 2>&1; then
   log "control not healthy; starting ingest-only stack"
   CH_ENABLED=0 CONTROL_ENABLE_PAYMENT=0 CONTROL_ENABLE_BILLING=0 \
     CONTROL_ENABLE_NOTIFIER=0 CONTROL_ENABLE_MARGIN_GUARD=0 CONTROL_ENABLE_COST_SYNC=0 \

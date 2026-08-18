@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 )
 
-// GenerateBridgeToken generates a cryptographically secure URL-safe base64 token.
 func GenerateBridgeToken() (string, error) {
 	b := make([]byte, 32)
 	_, err := rand.Read(b)
@@ -15,7 +14,6 @@ func GenerateBridgeToken() (string, error) {
 	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
-// ValidateBridgeTokenStr checks if the token matches the required regex pattern of URL-safe characters up to 64 chars.
 func ValidateBridgeTokenStr(token string) bool {
 	if len(token) == 0 || len(token) > 64 {
 		return false

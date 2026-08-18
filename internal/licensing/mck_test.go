@@ -16,7 +16,7 @@ import (
 )
 
 func TestDeriveMCK_GoldenVector(t *testing.T) {
-	path := filepath.Join("testdata", "vectors", "mck_derivation.json")
+	path := filepath.Join("testdata", "mck_derivation.json")
 	raw, err := os.ReadFile(path)
 	require.NoError(t, err)
 	var doc struct {

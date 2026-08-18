@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/edge"
-	"github.com/bidshard/ad-event-processor/internal/edge/xdpstats"
 )
 
 const (
@@ -28,7 +27,7 @@ var (
 type EdgeXDPProbe struct {
 	ConfigEnabled bool
 	Deps          ProbeDeps
-	StatsReader   func(context.Context) (xdpstats.Snapshot, error)
+	StatsReader   func(context.Context) (edge.Snapshot, error)
 }
 
 func (EdgeXDPProbe) Name() string { return "edge_xdp" }
@@ -62,7 +61,7 @@ func (p EdgeXDPProbe) Run(ctx context.Context) Result {
 
 	switch unitsActive, detail := edgeSystemdStatus(); {
 	case unitsActive:
-		// ok
+
 	case detail == "systemctl unavailable":
 		warns = append(warns, "systemd units not verified (systemctl unavailable)")
 	default:

@@ -1,5 +1,3 @@
-// Click proxy stream benches (harness: click_proxy_stream_mock).
-// Loopback httptest upstream; upstream RTT excluded from AC-1 / SLA-M3-01 claims.
 package ingestion
 
 import (
@@ -22,8 +20,6 @@ func benchClickProxyHandler(b *testing.B) (*AdsPacketHandler, *httptest.Server, 
 	return h, up, newStreamCaptureConn()
 }
 
-// BenchmarkClickProxy_Stream (B-M3-1) measures end-to-end proxy delivery on
-// loopback mock upstream (tracker work only for AC-1).
 func BenchmarkClickProxy_Stream(b *testing.B) {
 	h, up, conn := benchClickProxyHandler(b)
 	b.Cleanup(up.Close)
@@ -43,7 +39,6 @@ func BenchmarkClickProxy_Stream(b *testing.B) {
 	clickProxyBenchSink = len(conn.buf) > 0
 }
 
-// BenchmarkClickProxy_BuildUpstreamURL (B-M3-2 optional) — cold URL merge only.
 func BenchmarkClickProxy_BuildUpstreamURL(b *testing.B) {
 	base := "https://upstream.example/offer?cid={click_id}"
 	pt := []byte("gclid=GCLID99&sub1=loadgen&click_id=bench")

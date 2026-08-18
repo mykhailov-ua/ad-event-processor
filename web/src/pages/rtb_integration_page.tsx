@@ -10,7 +10,11 @@ import {
   applyRtbFloors,
   fetchRtbReconcileExport,
 } from '../helpers/rtb_api.js';
-import type { RtbFloorsApplyResult, RtbFloorSuggestionDTO, RtbReconcileExportDTO } from '../types/api/rtb.js';
+import type {
+  RtbFloorsApplyResult,
+  RtbFloorSuggestionDTO,
+  RtbReconcileExportDTO,
+} from '../types/rtb.js';
 import { ConfirmCancelledError } from '../helpers/confirm_ui.js';
 import { mapServiceError } from '../helpers/service_error.js';
 import { formatAmountMicro } from '../helpers/money.js';
@@ -60,11 +64,14 @@ type ValidateBidResult = {
 };
 
 function copyText(label: string, text: string) {
-  navigator.clipboard?.writeText(text).then(() => {
-    pushToastMessage({ title: 'Copied', message: `${label} copied` });
-  }).catch(() => {
-    pushToastMessage({ title: 'Copy failed', message: text });
-  });
+  navigator.clipboard
+    ?.writeText(text)
+    .then(() => {
+      pushToastMessage({ title: 'Copied', message: `${label} copied` });
+    })
+    .catch(() => {
+      pushToastMessage({ title: 'Copy failed', message: text });
+    });
 }
 
 function CopyRow({ label, value }: { label: string; value: string }) {
@@ -83,7 +90,9 @@ function BulletList({ items }: { items: string[] }) {
   return (
     <ul className="plain-list">
       {items.map((item) => (
-        <li key={item} className="plain-list__item font-mono text-sm">{item}</li>
+        <li key={item} className="plain-list__item font-mono text-sm">
+          {item}
+        </li>
       ))}
     </ul>
   );
@@ -111,8 +120,8 @@ function ShadowSummary({ data }: { data: RtbShadowDiff | null }) {
   if (!data || data.source === 'unavailable') {
     return (
       <p className="text-muted text-sm">
-        Shadow-diff metrics are recorded on tracker nodes. Control plane shows unavailable
-        when not wired to hot-path counters.
+        Shadow-diff metrics are recorded on tracker nodes. Control plane shows unavailable when not
+        wired to hot-path counters.
       </p>
     );
   }
@@ -134,9 +143,6 @@ function ShadowSummary({ data }: { data: RtbShadowDiff | null }) {
   );
 }
 
-/**
- * RTB exchange integration onboarding view.
- */
 export function RtbIntegrationPage() {
   const user = auth.getUser();
   const canWrite = can(user?.permissions ?? [], 'rtb:write');
@@ -269,7 +275,7 @@ export function RtbIntegrationPage() {
   const suggestions = floorsResult?.suggestions ?? [];
 
   return (
-    <section data-testid="rtb-integration-view">
+    <section className="stack" data-testid="rtb-integration-view">
       <div className="page-header">
         <h1 className="page-header__title">RTB integration</h1>
         <p className="page-header__desc">
@@ -308,7 +314,10 @@ export function RtbIntegrationPage() {
             {endpoints.edge_expose_openrtb ? (
               <StatusBadge status="ok" label="Edge OpenRTB enabled" />
             ) : (
-              <StatusBadge status="neutral" label="Tracker ports only — enable edge in Platform settings" />
+              <StatusBadge
+                status="neutral"
+                label="Tracker ports only — enable edge in Platform settings"
+              />
             )}
           </SectionCard>
 
@@ -373,7 +382,9 @@ export function RtbIntegrationPage() {
                 {validateResult.errors?.length ? (
                   <ul className="plain-list mt-2">
                     {validateResult.errors.map((msg) => (
-                      <li key={msg} className="plain-list__item text-sm">{msg}</li>
+                      <li key={msg} className="plain-list__item text-sm">
+                        {msg}
+                      </li>
                     ))}
                   </ul>
                 ) : null}
@@ -416,7 +427,9 @@ export function RtbIntegrationPage() {
                 />
               </div>
             ) : (
-              <p className="text-muted text-sm">settings:write required to preview or apply floors.</p>
+              <p className="text-muted text-sm">
+                settings:write required to preview or apply floors.
+              </p>
             )}
             {floorsError ? <p className="text-danger text-sm">{floorsError}</p> : null}
             {suggestions.length > 0 ? (
@@ -437,7 +450,9 @@ export function RtbIntegrationPage() {
                         <td className="font-mono text-xs">{row.placement_id}</td>
                         <td className="font-mono text-xs">{row.deal_id}</td>
                         <td className="font-mono">{formatAmountMicro(row.current_floor_micro)}</td>
-                        <td className="font-mono">{formatAmountMicro(row.suggested_floor_micro)}</td>
+                        <td className="font-mono">
+                          {formatAmountMicro(row.suggested_floor_micro)}
+                        </td>
                         <td>{`${(row.win_rate * 100).toFixed(1)}%`}</td>
                       </tr>
                     ))}

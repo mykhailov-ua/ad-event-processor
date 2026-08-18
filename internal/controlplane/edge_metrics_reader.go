@@ -11,8 +11,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 )
 
 const (
@@ -23,43 +21,42 @@ const (
 
 var edgeMetricsClient = &http.Client{Timeout: edgeMetricsTimeout}
 
-// FetchEdgeMetrics scrapes OpenResty edge Prometheus counters.
-func FetchEdgeMetrics(ctx context.Context) (adminapi.EdgeMetricsPanelDTO, error) {
+func FetchEdgeMetrics(ctx context.Context) (EdgeMetricsPanelDTO, error) {
 	rawURL := strings.TrimSpace(os.Getenv("EDGE_METRICS_URL"))
 	if rawURL == "" {
 		rawURL = "http://127.0.0.1:8180/metrics/edge"
 	}
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
-		return adminapi.EdgeMetricsPanelDTO{}, fmt.Errorf("edge metrics url: %w", err)
+		return EdgeMetricsPanelDTO{}, fmt.Errorf("edge metrics url: %w", err)
 	}
 	if parsed.Scheme != "http" && parsed.Scheme != "https" {
-		return adminapi.EdgeMetricsPanelDTO{}, fmt.Errorf("edge metrics url scheme not allowed")
+		return EdgeMetricsPanelDTO{}, fmt.Errorf("edge metrics url scheme not allowed")
 	}
 	if host := parsed.Hostname(); host != "" && host != "127.0.0.1" && host != "localhost" {
-		return adminapi.EdgeMetricsPanelDTO{}, fmt.Errorf("edge metrics host not allowed")
+		return EdgeMetricsPanelDTO{}, fmt.Errorf("edge metrics host not allowed")
 	}
 
 	reqCtx, cancel := context.WithTimeout(ctx, edgeMetricsTimeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, rawURL, http.NoBody)
 	if err != nil {
-		return adminapi.EdgeMetricsPanelDTO{}, err
+		return EdgeMetricsPanelDTO{}, err
 	}
 	res, err := edgeMetricsClient.Do(req)
 	if err != nil {
-		return adminapi.EdgeMetricsPanelDTO{}, err
+		return EdgeMetricsPanelDTO{}, err
 	}
 	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode != http.StatusOK {
-		return adminapi.EdgeMetricsPanelDTO{}, fmt.Errorf("edge metrics status %d", res.StatusCode)
+		return EdgeMetricsPanelDTO{}, fmt.Errorf("edge metrics status %d", res.StatusCode)
 	}
 	limited := io.LimitReader(res.Body, edgeMetricsMaxBody)
 	return parseEdgePrometheus(limited), nil
 }
 
-func parseEdgePrometheus(r io.Reader) adminapi.EdgeMetricsPanelDTO {
-	out := adminapi.EdgeMetricsPanelDTO{
+func parseEdgePrometheus(r io.Reader) EdgeMetricsPanelDTO {
+	out := EdgeMetricsPanelDTO{
 		Blocked:   map[string]uint64{},
 		UpdatedAt: time.Now().UTC().Format(time.RFC3339),
 	}

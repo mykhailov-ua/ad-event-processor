@@ -1,4 +1,3 @@
-// Package integrationschema implements integrationschema support for BidShard.
 package integrationschema
 
 import (
@@ -11,7 +10,6 @@ import (
 	"github.com/bidshard/ad-event-processor/pkg/platformconfig"
 )
 
-// TemplateCatalogEntry describes a bundled GM-M4 preset under deploy/integration/schemas/.
 type TemplateCatalogEntry struct {
 	Name     string `json:"name"`
 	File     string `json:"file"`
@@ -20,7 +18,6 @@ type TemplateCatalogEntry struct {
 	Kind     Kind   `json:"kind"`
 }
 
-// GMM4TemplateCatalog is the canonical GM-M4 import list (EXIT-GM-M4).
 var GMM4TemplateCatalog = []TemplateCatalogEntry{
 	{Name: "traffic_propellerads", File: "traffic_propellerads.v1.yaml", Version: 1, Category: "traffic_source", Kind: KindInboundTokens},
 	{Name: "traffic_exoclick", File: "traffic_exoclick.v1.yaml", Version: 1, Category: "traffic_source", Kind: KindInboundTokens},
@@ -43,11 +40,11 @@ func AffiliateStatusTemplateName(network string) (string, bool) {
 
 func SchemaRootDir() string {
 	if root := config.InstallRootFromEnv(); root != "" {
-		return filepath.Join(root, "deploy", "integration", "schemas")
+		return filepath.Join(root, "deploy", "schemas")
 	}
 	candidates := []string{
-		filepath.Join("deploy", "integration", "schemas"),
-		filepath.Join("..", "..", "deploy", "integration", "schemas"),
+		filepath.Join("deploy", "schemas"),
+		filepath.Join("..", "..", "deploy", "schemas"),
 	}
 	for _, c := range candidates {
 		if st, err := os.Stat(c); err == nil && st.IsDir() {
@@ -82,7 +79,6 @@ func FindCatalogEntry(name string) (TemplateCatalogEntry, bool) {
 	return TemplateCatalogEntry{}, false
 }
 
-// BuildInboundTrackingURL builds a click URL template with query tokens for operators.
 func BuildInboundTrackingURL(trackingDomain string, s *InboundTokensSchema) string {
 	host := platformconfig.ResolveHost(trackingDomain)
 	if host == "" {

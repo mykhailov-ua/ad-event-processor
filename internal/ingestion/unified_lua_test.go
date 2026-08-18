@@ -216,8 +216,6 @@ func benchUnifiedFilterCheckRealRedis(b *testing.B) {
 	}
 }
 
-// BenchmarkUnifiedFilter_Check_RealRedis runs unified-filter Lua against live Redis (testcontainers).
-// Harness: unified_filter_testcontainers. Skipped with -short. Nightly: scripts/test/nightly_bench_job.sh redis.
 func BenchmarkUnifiedFilter_Check_RealRedis(b *testing.B) {
 	if testing.Short() {
 		b.Skip()
@@ -225,9 +223,6 @@ func BenchmarkUnifiedFilter_Check_RealRedis(b *testing.B) {
 	benchUnifiedFilterCheckRealRedis(b)
 }
 
-// BenchmarkUnifiedFilter_Check_integration runs unified-filter Lua against live Redis (testcontainers).
-// Harness: unified_filter_testcontainers. Skipped with -short. Not in make test-alloc-gate;
-// use scripts/test/run_bench.sh (see docs/DEVELOPMENT.md perf section).
 func BenchmarkUnifiedFilter_Check_integration(b *testing.B) {
 	if testing.Short() {
 		b.Skip()

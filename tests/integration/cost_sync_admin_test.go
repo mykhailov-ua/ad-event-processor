@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
+	"github.com/bidshard/ad-event-processor/internal/controlplane"
 	"github.com/bidshard/ad-event-processor/internal/costsync"
 	"github.com/bidshard/ad-event-processor/internal/testutil"
 
@@ -35,7 +35,7 @@ func TestCostSyncAdminAPIIntegration(t *testing.T) {
 	mem := &costsync.MemorySnapshotInserter{}
 	worker := costsync.NewWorker(pool, key, costsync.WithMemorySnapshots(mem))
 
-	handler := &adminapi.CostSyncHTTPHandlers{
+	handler := &controlplane.CostSyncHTTPHandlers{
 		Pool:          pool,
 		EncryptionKey: key,
 		Worker:        worker,
@@ -43,7 +43,7 @@ func TestCostSyncAdminAPIIntegration(t *testing.T) {
 	mux := http.NewServeMux()
 	handler.Register(mux)
 
-	upsertBody, _ := json.Marshal(adminapi.UpsertCostSyncCredentialRequest{
+	upsertBody, _ := json.Marshal(controlplane.UpsertCostSyncCredentialRequest{
 		CustomerID:   customerID.String(),
 		AccountID:    "act_test",
 		AccessToken:  "token",
@@ -59,7 +59,7 @@ func TestCostSyncAdminAPIIntegration(t *testing.T) {
 	mux.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
 
-	runBody, _ := json.Marshal(adminapi.RunCostSyncRequest{
+	runBody, _ := json.Marshal(controlplane.RunCostSyncRequest{
 		CustomerID: customerID.String(),
 		Network:    "facebook",
 		From:       "2026-07-01",

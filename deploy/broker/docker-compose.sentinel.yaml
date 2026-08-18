@@ -1,9 +1,8 @@
-
 services:
   redis-replica:
     image: redis:7-alpine
     network_mode: host
-    command: ["redis-server", "--port", "6380", "--replicaof", "127.0.0.1", "6379"]
+    command: ['redis-server', '--port', '6380', '--replicaof', '127.0.0.1', '6379']
     depends_on:
       - redis
 

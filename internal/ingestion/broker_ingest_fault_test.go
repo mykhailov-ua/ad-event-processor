@@ -1,12 +1,12 @@
 package ingestion
 
 import (
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
-
 	"context"
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
 	"github.com/bidshard/ad-event-processor/internal/metrics"
@@ -158,9 +158,6 @@ func TestFault_BrokerLiveConsumer_ReconnectOffsetResume(t *testing.T) {
 	})
 }
 
-// TestFault_BrokerShadowCutover_NoEventLoss models the shadow-to-live cutover:
-// events observed while shadowing must still reach the store once the same
-// consumer group goes live, so the shadow window cannot silently skip settlement.
 func TestFault_BrokerShadowCutover_NoEventLoss(t *testing.T) {
 	_, addr := startBrokerFaultServer(t)
 	topic := "tracker-logs"

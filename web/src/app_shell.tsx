@@ -5,17 +5,22 @@ import { setSpaNavigate } from './helpers/spa_navigate.js';
 import { probeRouteChange } from './helpers/perf_probe.js';
 import { AppRoutes } from './app_routes.js';
 
-const ShellLayout = lazy(() => import('./components/shell_layout.js').then((mod) => ({
-  default: mod.ShellLayout,
-})));
+const ShellLayout = lazy(() =>
+  import('./components/shell_layout.js').then((mod) => ({
+    default: mod.ShellLayout,
+  }))
+);
 
-const SelfServeShellLayout = lazy(() => import('./components/selfserve_shell_layout.js').then((mod) => ({
-  default: mod.SelfServeShellLayout,
-})));
+const SelfServeShellLayout = lazy(() =>
+  import('./components/selfserve_shell_layout.js').then((mod) => ({
+    default: mod.SelfServeShellLayout,
+  }))
+);
 
 function LayoutSwitcher({ children }: { children: ReactNode }) {
   const location = useLocation();
-  const selfServe = location.pathname === '/selfserve' || location.pathname.startsWith('/selfserve/');
+  const selfServe =
+    location.pathname === '/selfserve' || location.pathname.startsWith('/selfserve/');
   if (selfServe) {
     return (
       <Suspense fallback={<span className="text-muted">Loading…</span>}>
@@ -30,9 +35,6 @@ function LayoutSwitcher({ children }: { children: ReactNode }) {
   );
 }
 
-/**
- * Mirror legacy router link interception for plain anchor tags.
- */
 function SpaLinkInterceptor() {
   const navigate = useNavigate();
 
@@ -55,9 +57,6 @@ function SpaLinkInterceptor() {
   return null;
 }
 
-/**
- * Emit routechange + perf/memory hooks consumed by shell chrome.
- */
 function RouteChangeEmitter() {
   const location = useLocation();
 
@@ -71,9 +70,6 @@ function RouteChangeEmitter() {
   return null;
 }
 
-/**
- * Authenticated admin chrome with React Router outlet.
- */
 export function AppShell() {
   return (
     <BrowserRouter>

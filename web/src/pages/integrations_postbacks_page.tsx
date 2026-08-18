@@ -22,7 +22,9 @@ function TableSkeleton({ cols, rows = 4 }: { cols: number; rows?: number }) {
       {Array.from({ length: rows }, (_, i) => (
         <tr key={`sk-${i}`} className="data-table__row--skeleton" aria-hidden="true">
           {Array.from({ length: cols }, (__, j) => (
-            <td key={`sk-${i}-${j}`}><span className="skeleton-bar" /></td>
+            <td key={`sk-${i}-${j}`}>
+              <span className="skeleton-bar" />
+            </td>
           ))}
         </tr>
       ))}
@@ -36,9 +38,6 @@ function formatTs(iso?: string): string {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
 }
 
-/**
- * Buyer-facing postback / CAPI health: DLQ retry + dispatch status.
- */
 export function IntegrationsPostbacksPage() {
   const canWrite = can(auth.getUser()?.permissions ?? [], 'campaigns:write');
   const [dlq, setDlq] = useState<PostbackDlqRow[]>([]);
@@ -90,8 +89,8 @@ export function IntegrationsPostbacksPage() {
       <header className="page-header">
         <h1 className="page-title">Postbacks & CAPI</h1>
         <p className="text-muted text-sm">
-          Failed outbound dispatches and per-campaign CAPI health. Configure providers on each campaign&apos;s{' '}
-          <Link to="/campaigns">CAPI &amp; Postbacks</Link> tab.
+          Failed outbound dispatches and per-campaign CAPI health. Configure providers on each
+          campaign&apos;s <Link to="/campaigns">CAPI &amp; Postbacks</Link> tab.
         </p>
       </header>
 
@@ -99,7 +98,9 @@ export function IntegrationsPostbacksPage() {
 
       <section className="section-card stack" data-testid="postback-campaign-status-panel">
         <h2 className="subsection-title">Dispatch status</h2>
-        <p className="text-muted text-sm">Last successful outbound dispatch and pending DLQ count per configured campaign.</p>
+        <p className="text-muted text-sm">
+          Last successful outbound dispatch and pending DLQ count per configured campaign.
+        </p>
         <div className="table-wrapper">
           <table className="data-table">
             <thead>
@@ -115,25 +116,25 @@ export function IntegrationsPostbacksPage() {
               {loading ? <TableSkeleton cols={5} rows={3} /> : null}
               {!loading && status.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-muted">No postback configs yet.</td>
-                </tr>
-              ) : null}
-              {!loading && status.map((row) => (
-                <tr key={row.campaign_id} data-testid={`postback-status-${row.campaign_id}`}>
-                  <td className="font-mono text-sm">{row.campaign_id}</td>
-                  <td>{row.provider}</td>
-                  <td>{formatTs(row.last_success_at)}</td>
-                  <td>{row.dlq_pending_count}</td>
-                  <td>
-                    <Link
-                      to={`/campaigns/${row.campaign_id}?tab=postbacks`}
-                      className="text-sm"
-                    >
-                      Open →
-                    </Link>
+                  <td colSpan={5} className="text-muted">
+                    No postback configs yet.
                   </td>
                 </tr>
-              ))}
+              ) : null}
+              {!loading &&
+                status.map((row) => (
+                  <tr key={row.campaign_id} data-testid={`postback-status-${row.campaign_id}`}>
+                    <td className="font-mono text-sm">{row.campaign_id}</td>
+                    <td>{row.provider}</td>
+                    <td>{formatTs(row.last_success_at)}</td>
+                    <td>{row.dlq_pending_count}</td>
+                    <td>
+                      <Link to={`/campaigns/${row.campaign_id}?tab=postbacks`} className="text-sm">
+                        Open →
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>
@@ -141,7 +142,9 @@ export function IntegrationsPostbacksPage() {
 
       <section className="section-card stack" data-testid="postback-dlq-panel">
         <h2 className="subsection-title">Dead letter queue</h2>
-        <p className="text-muted text-sm">Retry re-queues a failed outbound postback via the outbox worker.</p>
+        <p className="text-muted text-sm">
+          Retry re-queues a failed outbound postback via the outbox worker.
+        </p>
         <div className="table-wrapper">
           <table className="data-table">
             <thead>
@@ -159,39 +162,43 @@ export function IntegrationsPostbacksPage() {
               {loading ? <TableSkeleton cols={7} rows={4} /> : null}
               {!loading && dlq.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-muted">No failed postbacks.</td>
+                  <td colSpan={7} className="text-muted">
+                    No failed postbacks.
+                  </td>
                 </tr>
               ) : null}
-              {!loading && dlq.map((row) => {
-                const rowId = row.id;
-                const rowStatus = typeof row.status === 'string' ? row.status : '';
-                const canRetry = canWrite
-                  && rowStatus !== 'RETRIED'
-                  && (typeof rowId === 'string' || typeof rowId === 'number');
-                return (
-                  <tr key={String(rowId)} data-testid={`postback-dlq-row-${rowId}`}>
-                    <td>{String(rowId ?? '')}</td>
-                    <td className="font-mono text-sm">{String(row.campaign_id ?? '—')}</td>
-                    <td>{typeof row.event_type === 'string' ? row.event_type : '—'}</td>
-                    <td>{String(row.failures_count ?? 0)}</td>
-                    <td>{rowStatus || '—'}</td>
-                    <td className="text-sm text-muted">{String(row.last_error ?? '—')}</td>
-                    <td>
-                      {canRetry ? (
-                        <Button
-                          label="Retry"
-                          variant="secondary"
-                          size="sm"
-                          loading={retryingId === rowId}
-                          disabled={retryingId === rowId}
-                          data-testid={`postback-dlq-retry-${rowId}`}
-                          onClick={() => void retry(rowId!)}
-                        />
-                      ) : null}
-                    </td>
-                  </tr>
-                );
-              })}
+              {!loading &&
+                dlq.map((row) => {
+                  const rowId = row.id;
+                  const rowStatus = typeof row.status === 'string' ? row.status : '';
+                  const canRetry =
+                    canWrite &&
+                    rowStatus !== 'RETRIED' &&
+                    (typeof rowId === 'string' || typeof rowId === 'number');
+                  return (
+                    <tr key={String(rowId)} data-testid={`postback-dlq-row-${rowId}`}>
+                      <td>{String(rowId ?? '')}</td>
+                      <td className="font-mono text-sm">{String(row.campaign_id ?? '—')}</td>
+                      <td>{typeof row.event_type === 'string' ? row.event_type : '—'}</td>
+                      <td>{String(row.failures_count ?? 0)}</td>
+                      <td>{rowStatus || '—'}</td>
+                      <td className="text-sm text-muted">{String(row.last_error ?? '—')}</td>
+                      <td>
+                        {canRetry ? (
+                          <Button
+                            label="Retry"
+                            variant="secondary"
+                            size="sm"
+                            loading={retryingId === rowId}
+                            disabled={retryingId === rowId}
+                            data-testid={`postback-dlq-retry-${rowId}`}
+                            onClick={() => void retry(rowId!)}
+                          />
+                        ) : null}
+                      </td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         </div>

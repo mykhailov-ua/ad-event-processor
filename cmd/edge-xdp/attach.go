@@ -7,13 +7,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/bidshard/ad-event-processor/internal/edge/bpf"
+	"github.com/bidshard/ad-event-processor/internal/edge"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 )
 
-func pinMaps(objs *bpf.EdgeObjects, pinDir string) error {
+func pinMaps(objs *edge.EdgeObjects, pinDir string) error {
 	pins := map[string]*ebpf.Map{
 		"blocklist_v4":            objs.BlocklistV4,
 		"allow_v4":                objs.AllowV4,

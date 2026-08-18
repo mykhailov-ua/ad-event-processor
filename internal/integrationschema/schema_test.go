@@ -12,7 +12,7 @@ import (
 )
 
 func TestIntegrationSchema_ParseBundledYAML(t *testing.T) {
-	root := filepath.Join("..", "..", "deploy", "integration", "schemas")
+	root := filepath.Join("..", "..", "deploy", "schemas")
 	for _, file := range []string{
 		"inbound_tokens.v1.yaml",
 		"outbound_postback.v1.yaml",

@@ -32,7 +32,9 @@ function TableSkeleton({ cols, rows = 4 }: { cols: number; rows?: number }) {
       {Array.from({ length: rows }, (_, i) => (
         <tr key={`sk-${i}`} className="data-table__row--skeleton" aria-hidden="true">
           {Array.from({ length: cols }, (__, j) => (
-            <td key={`sk-${i}-${j}`}><span className="skeleton-bar" /></td>
+            <td key={`sk-${i}-${j}`}>
+              <span className="skeleton-bar" />
+            </td>
           ))}
         </tr>
       ))}
@@ -95,7 +97,10 @@ export function CampaignFlowsPage() {
       return;
     }
     if (!/^https?:\/\//i.test(url)) {
-      pushToastMessage({ title: 'Invalid URL', message: 'URL must start with http:// or https://' });
+      pushToastMessage({
+        title: 'Invalid URL',
+        message: 'URL must start with http:// or https://',
+      });
       return;
     }
     setBusy(true);
@@ -120,7 +125,10 @@ export function CampaignFlowsPage() {
       return;
     }
     if (!/^https?:\/\//i.test(url)) {
-      pushToastMessage({ title: 'Invalid URL', message: 'URL must start with http:// or https://' });
+      pushToastMessage({
+        title: 'Invalid URL',
+        message: 'URL must start with http:// or https://',
+      });
       return;
     }
     setBusy(true);
@@ -142,10 +150,18 @@ export function CampaignFlowsPage() {
     const landerWeight = Number.parseInt(flowForm.landerWeight, 10);
     const offerWeight = Number.parseInt(flowForm.offerWeight, 10);
     if (!name || !flowForm.landerId || !flowForm.offerId) {
-      pushToastMessage({ title: 'Missing fields', message: 'Name, lander, and offer are required' });
+      pushToastMessage({
+        title: 'Missing fields',
+        message: 'Name, lander, and offer are required',
+      });
       return;
     }
-    if (!Number.isFinite(landerWeight) || landerWeight <= 0 || !Number.isFinite(offerWeight) || offerWeight <= 0) {
+    if (
+      !Number.isFinite(landerWeight) ||
+      landerWeight <= 0 ||
+      !Number.isFinite(offerWeight) ||
+      offerWeight <= 0
+    ) {
       pushToastMessage({ title: 'Invalid weights', message: 'Weights must be positive integers' });
       return;
     }
@@ -157,7 +173,7 @@ export function CampaignFlowsPage() {
           landers: [{ lander_id: flowForm.landerId, weight: landerWeight }],
           offers: [{ offer_id: flowForm.offerId, weight: offerWeight }],
         },
-      ]),
+      ])
     );
     setBusy(false);
     if (err) {
@@ -241,14 +257,20 @@ export function CampaignFlowsPage() {
               <tbody>
                 {loading ? <TableSkeleton cols={3} /> : null}
                 {!loading && landers.length === 0 ? (
-                  <tr><td colSpan={3} className="text-muted">No landers yet</td></tr>
+                  <tr>
+                    <td colSpan={3} className="text-muted">
+                      No landers yet
+                    </td>
+                  </tr>
                 ) : null}
                 {!loading
                   ? landers.map((row) => (
                       <tr key={row.id}>
                         <td>{row.name}</td>
                         <td className="font-mono text-sm">{row.url}</td>
-                        <td><CopyableUuid uuid={row.id} /></td>
+                        <td>
+                          <CopyableUuid uuid={row.id} />
+                        </td>
                       </tr>
                     ))
                   : null}
@@ -305,14 +327,20 @@ export function CampaignFlowsPage() {
               <tbody>
                 {loading ? <TableSkeleton cols={3} /> : null}
                 {!loading && offers.length === 0 ? (
-                  <tr><td colSpan={3} className="text-muted">No offers yet</td></tr>
+                  <tr>
+                    <td colSpan={3} className="text-muted">
+                      No offers yet
+                    </td>
+                  </tr>
                 ) : null}
                 {!loading
                   ? offers.map((row) => (
                       <tr key={row.id}>
                         <td>{row.name}</td>
                         <td className="font-mono text-sm">{row.url}</td>
-                        <td><CopyableUuid uuid={row.id} /></td>
+                        <td>
+                          <CopyableUuid uuid={row.id} />
+                        </td>
                       </tr>
                     ))
                   : null}
@@ -328,7 +356,8 @@ export function CampaignFlowsPage() {
             <section className="section-card stack" data-testid="flow-create-form">
               <h3 className="subsection-title">Create flow</h3>
               <p className="text-muted text-sm">
-                Single-path flow with one lander and one offer. Add more landers/offers first, then combine here.
+                Single-path flow with one lander and one offer. Add more landers/offers first, then
+                combine here.
               </p>
               <label className="form-field" htmlFor="flow-name">
                 Flow name
@@ -350,7 +379,9 @@ export function CampaignFlowsPage() {
                   >
                     <option value="">Select…</option>
                     {landers.map((l) => (
-                      <option key={l.id} value={l.id}>{l.name}</option>
+                      <option key={l.id} value={l.id}>
+                        {l.name}
+                      </option>
                     ))}
                   </select>
                 </label>
@@ -376,7 +407,9 @@ export function CampaignFlowsPage() {
                   >
                     <option value="">Select…</option>
                     {offers.map((o) => (
-                      <option key={o.id} value={o.id}>{o.name}</option>
+                      <option key={o.id} value={o.id}>
+                        {o.name}
+                      </option>
                     ))}
                   </select>
                 </label>
@@ -414,14 +447,20 @@ export function CampaignFlowsPage() {
               <tbody>
                 {loading ? <TableSkeleton cols={3} /> : null}
                 {!loading && flows.length === 0 ? (
-                  <tr><td colSpan={3} className="text-muted">No flows yet</td></tr>
+                  <tr>
+                    <td colSpan={3} className="text-muted">
+                      No flows yet
+                    </td>
+                  </tr>
                 ) : null}
                 {!loading
                   ? flows.map((row) => (
                       <tr key={row.id}>
                         <td>{row.name}</td>
                         <td className="text-sm">{summarizeFlowPaths(parseFlowPaths(row.paths))}</td>
-                        <td><CopyableUuid uuid={row.id} /></td>
+                        <td>
+                          <CopyableUuid uuid={row.id} />
+                        </td>
                       </tr>
                     ))
                   : null}

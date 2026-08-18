@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/internal/dedup"
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	db "github.com/bidshard/ad-event-processor/internal/domain/db"
@@ -100,18 +99,18 @@ func (h *Handler) ensureCustomerAccess(r *http.Request, customerID string) error
 }
 
 func writeForecastError(w http.ResponseWriter, err error) {
-	if errors.Is(err, adminapi.ErrForecastClickHouseTimeout) || errors.Is(err, adminapi.ErrForecastUnavailable) {
-		w.Header().Set("Retry-After", strconv.Itoa(adminapi.ForecastRetryAfterSec()))
-		httpresponse.JSON(w, http.StatusServiceUnavailable, adminapi.ForecastUnavailableResponse{
-			Error: adminapi.ForecastErrorDetail{
+	if errors.Is(err, ErrForecastClickHouseTimeout) || errors.Is(err, ErrForecastUnavailable) {
+		w.Header().Set("Retry-After", strconv.Itoa(ForecastRetryAfterSec()))
+		httpresponse.JSON(w, http.StatusServiceUnavailable, ForecastUnavailableResponse{
+			Error: ForecastErrorDetail{
 				Code:    "FORECAST_UNAVAILABLE",
 				Message: err.Error(),
 			},
-			RetryAfter: adminapi.ForecastRetryAfterSec(),
+			RetryAfter: ForecastRetryAfterSec(),
 		})
 		return
 	}
-	if errors.Is(err, adminapi.ErrClickHouseNotConfigured) {
+	if errors.Is(err, ErrClickHouseNotConfigured) {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "CLICKHOUSE_UNAVAILABLE", "clickhouse not configured")
 		return
 	}
@@ -356,6 +355,7 @@ func isNotFoundError(err error) bool {
 		errors.Is(err, ErrCustomerNotFound) ||
 		errors.Is(err, ErrPaymentTopupNotFound) ||
 		errors.Is(err, ErrCampaignNotFound) ||
+		errors.Is(err, ErrFraudDecisionNotFound) ||
 		errors.Is(err, ErrBrandNotFound) ||
 		errors.Is(err, ErrCreativeNotFound) ||
 		errors.Is(err, ErrTemplateNotFound) ||

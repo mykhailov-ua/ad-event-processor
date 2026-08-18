@@ -111,7 +111,6 @@ func (r *Replayer) Replay(ctx context.Context) (*ReplayResult, error) {
 						return
 					}
 
-					// Compute integrity hash contribution
 					hasher.Write([]byte(evt.ClickID))
 					hasher.Write([]byte(evt.Type))
 
@@ -166,7 +165,6 @@ func findPartitionDirs(dataDir string, topic string) ([]string, error) {
 	var dirs []string
 	seen := make(map[string]bool)
 
-	// Check $dataDir/$topic/partition_*
 	if topic != "" {
 		topicDir := filepath.Join(dataDir, topic)
 		entries, err := os.ReadDir(topicDir)
@@ -183,7 +181,6 @@ func findPartitionDirs(dataDir string, topic string) ([]string, error) {
 		}
 	}
 
-	// Check direct partition_* subdirectories in $dataDir
 	entries, err := os.ReadDir(dataDir)
 	if err == nil {
 		for _, e := range entries {

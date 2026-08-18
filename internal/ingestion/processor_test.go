@@ -69,7 +69,6 @@ func TestStreamConsumer_BatchFlushing(t *testing.T) {
 	}
 	producer.Flush()
 
-	// CI budget: 5s max wait for batch flush (replaces fixed sleeps).
 	require.Eventually(t, func() bool {
 		mockStore.mu.Lock()
 		defer mockStore.mu.Unlock()

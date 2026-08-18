@@ -9,6 +9,7 @@ import (
 
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/google/uuid"
 )
 
 type ReconciliationWorker struct {
@@ -54,12 +55,17 @@ func (rw *ReconciliationWorker) Reconcile(ctx context.Context) error {
 		return fmt.Errorf("reconciliation failed to query ClickHouse aggregates: %w", err)
 	}
 
+	campaignIDs := make([]uuid.UUID, len(campaigns))
+	for i, c := range campaigns {
+		campaignIDs[i] = c.ID
+	}
+	pgSpends, err := rw.pgConn.GetCampaignSpends(ctx, campaignIDs)
+	if err != nil {
+		return fmt.Errorf("reconciliation failed to batch load Postgres spends: %w", err)
+	}
+
 	for _, c := range campaigns {
-		pgSpend, err := rw.pgConn.GetCampaignSpend(ctx, c.ID)
-		if err != nil {
-			slog.Error("Reconciliation: failed to get Postgres spend", "campaign_id", c.ID, "error", err)
-			continue
-		}
+		pgSpend := pgSpends[c.ID]
 
 		chSpend := chSpends[c.ID]
 

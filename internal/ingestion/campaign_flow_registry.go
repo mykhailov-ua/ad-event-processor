@@ -10,7 +10,6 @@ type campaignFlowRegistrySnapshot struct {
 	byCampaign map[uuid.UUID]FlowPathSnapshot
 }
 
-// CampaignFlowTable maps campaigns to resolved flow snapshots (GM-M3 RCU).
 type CampaignFlowTable struct {
 	active atomic.Pointer[campaignFlowRegistrySnapshot]
 }

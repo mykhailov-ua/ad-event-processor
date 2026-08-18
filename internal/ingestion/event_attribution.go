@@ -2,7 +2,6 @@ package ingestion
 
 import "github.com/google/uuid"
 
-// appendAttributionPayload writes sub slots and ad-network click ids into evt.Payload JSON.
 func appendAttributionPayload(dst, payload []byte, subs SubIDSlots, fbclid, gclid, ttclid string) []byte {
 	dst = dst[:0]
 	switch {

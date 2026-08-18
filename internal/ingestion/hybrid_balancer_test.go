@@ -196,7 +196,6 @@ func TestHybridBalancer_Pprof(t *testing.T) {
 }
 
 func TestHybridBalancer_EdgeCases(t *testing.T) {
-
 	t.Run("NilCampaign", func(t *testing.T) {
 		hb := NewHybridBalancer(10, 1000)
 		assert.NotPanics(t, func() {

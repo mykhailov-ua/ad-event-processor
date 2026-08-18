@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// mockRegistry is a no-op CampaignRegistry for handler tests and chaos load harnesses.
 type mockRegistry struct{}
 
 func (m *mockRegistry) Exists(id uuid.UUID) bool { return true }
@@ -25,7 +24,6 @@ var (
 	cachedMockCamp   atomic.Pointer[domain.Campaign]
 )
 
-// lockStaticCampaign mutates the shared mock campaign template for handler tests.
 func lockStaticCampaign(mut func(c *domain.Campaign)) {
 	staticCampaignMu.Lock()
 	defer staticCampaignMu.Unlock()

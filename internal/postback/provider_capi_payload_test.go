@@ -18,7 +18,6 @@ import (
 )
 
 func TestHashSHA256_MetaParity(t *testing.T) {
-	// Meta: trim + lower + SHA-256 hex
 	want := sha256.Sum256([]byte("user@example.com"))
 	if got := hashSHA256("  User@Example.Com "); got != hex.EncodeToString(want[:]) {
 		t.Fatalf("hashSHA256 = %q want %x", got, want)
@@ -134,8 +133,6 @@ func TestCAPI_ProxyAttributionChain(t *testing.T) {
 }
 
 func TestCAPI_DoubleFire_CountingAdapter(t *testing.T) {
-	// Unit-level: second Send would be blocked by worker idempotency in integration tests;
-	// here ensure Facebook adapter is safe to call twice with distinct click ids (no shared state).
 	var n atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		n.Add(1)

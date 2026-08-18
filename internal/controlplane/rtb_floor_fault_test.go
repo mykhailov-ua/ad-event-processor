@@ -2,9 +2,10 @@ package controlplane
 
 import (
 	"context"
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 	"strconv"
 	"testing"
+
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"github.com/bidshard/ad-event-processor/internal/config"
 	"github.com/bidshard/ad-event-processor/internal/database"

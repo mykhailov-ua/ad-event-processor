@@ -1,10 +1,4 @@
-export type ConfirmLevel =
-  | 'none'
-  | 'standard'
-  | 'destructive'
-  | 'financial'
-  | 'strong'
-  | 'retry';
+export type ConfirmLevel = 'none' | 'standard' | 'destructive' | 'financial' | 'strong' | 'retry';
 
 export type ConfirmEntry = {
   level: ConfirmLevel;
@@ -20,7 +14,15 @@ const registry = new Map<string, ConfirmEntry>([
   ['POST /settings/platform/apply', { level: 'destructive', label: 'Apply to disk' }],
   ['POST /selfserve/campaigns', { level: 'financial', label: 'Create campaign' }],
   ['PATCH /campaigns/{id}', { level: 'standard', label: 'Save campaign changes' }],
-  ['POST /campaigns/{id}/placement-blocks', { level: 'destructive', label: 'Block placement / sub' }],
+  ['PATCH /campaigns/{id}/fraud', { level: 'standard', label: 'Save fraud thresholds' }],
+  ['POST /fraud/labels', { level: 'standard', label: 'Save fraud label' }],
+  ['POST /fraud/labels/bulk', { level: 'standard', label: 'Import fraud labels' }],
+  ['POST /fraud/overrides', { level: 'strong', label: 'Mark false positive' }],
+  ['PATCH /ops/fraud/presets/{name}', { level: 'standard', label: 'Update fraud preset' }],
+  [
+    'POST /campaigns/{id}/placement-blocks',
+    { level: 'destructive', label: 'Block placement / sub' },
+  ],
   ['POST /selfserve/campaigns/{id}/pause', { level: 'destructive', label: 'Pause campaign' }],
   ['POST /selfserve/campaigns/{id}/resume', { level: 'standard', label: 'Resume campaign' }],
   ['POST /selfserve/payment-intents', { level: 'financial', label: 'Create payment' }],
@@ -90,15 +92,18 @@ const registry = new Map<string, ConfirmEntry>([
   ['DELETE /views/{id}', { level: 'destructive' }],
   ['POST /support/feedback', { level: 'none' }],
   ['POST /forecast/campaign', { level: 'none' }],
-  ['POST /integration/templates/import', { level: 'standard', label: 'Import integration templates' }],
+  [
+    'POST /integration/templates/import',
+    { level: 'standard', label: 'Import integration templates' },
+  ],
   ['POST /integration/schemas', { level: 'standard', label: 'Create integration schema' }],
-  ['POST /integration/schemas/{id}/apply', { level: 'standard', label: 'Apply integration schema' }],
+  [
+    'POST /integration/schemas/{id}/apply',
+    { level: 'standard', label: 'Apply integration schema' },
+  ],
   ['POST /campaigns/{id}/apply-templates', { level: 'standard', label: 'Apply GM-M4 templates' }],
 ]);
 
-/**
- * Resolve the confirm-registry entry for a method and path.
- */
 export function getConfirmLevel(method: string, path: string): ConfirmEntry {
   const key = `${method.toUpperCase()} ${path}`;
   const exact = registry.get(key);
@@ -115,9 +120,6 @@ export function getConfirmLevel(method: string, path: string): ConfirmEntry {
   return { level: 'standard' };
 }
 
-/**
- * Test whether an actual request key matches a registry pattern with placeholders.
- */
 function matchesPattern(pattern: string, actual: string): boolean {
   const reStr = pattern.replace(/\{[^}]+\}/g, '[^/]+');
   return new RegExp(`^${reStr}$`).test(actual);

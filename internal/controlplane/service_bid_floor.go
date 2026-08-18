@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/internal/database"
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	db "github.com/bidshard/ad-event-processor/internal/domain/db"
@@ -260,12 +259,12 @@ func (s *Service) listFloorSuggestions(ctx context.Context, placementIDs []strin
 	return q.ListRtbFloorSuggestionsByPlacementIDs(ctx, placementIDs)
 }
 
-func rtbFloorSuggestionDTO(row db.RtbFloorSuggestion) adminapi.RtbFloorSuggestionDTO {
+func rtbFloorSuggestionDTO(row db.RtbFloorSuggestion) RtbFloorSuggestionDTO {
 	computedAt := ""
 	if row.ComputedAt.Valid {
 		computedAt = row.ComputedAt.Time.UTC().Format(time.RFC3339)
 	}
-	return adminapi.RtbFloorSuggestionDTO{
+	return RtbFloorSuggestionDTO{
 		PlacementID:         row.PlacementID,
 		DealID:              row.DealID,
 		CurrentFloorMicro:   row.CurrentFloorMicro,
@@ -277,22 +276,22 @@ func rtbFloorSuggestionDTO(row db.RtbFloorSuggestion) adminapi.RtbFloorSuggestio
 	}
 }
 
-func (s *Service) ApplyRtbFloorSuggestions(ctx context.Context, dryRun bool, placementIDs []string) (adminapi.RtbFloorsApplyResult, error) {
+func (s *Service) ApplyRtbFloorSuggestions(ctx context.Context, dryRun bool, placementIDs []string) (RtbFloorsApplyResult, error) {
 	if len(s.rdbs) == 0 {
-		return adminapi.RtbFloorsApplyResult{}, fmt.Errorf("no redis client available")
+		return RtbFloorsApplyResult{}, fmt.Errorf("no redis client available")
 	}
 	if s.GetPool() == nil {
-		return adminapi.RtbFloorsApplyResult{}, fmt.Errorf("postgres pool not configured")
+		return RtbFloorsApplyResult{}, fmt.Errorf("postgres pool not configured")
 	}
 
 	rows, err := s.listFloorSuggestions(ctx, placementIDs)
 	if err != nil {
-		return adminapi.RtbFloorsApplyResult{}, err
+		return RtbFloorsApplyResult{}, err
 	}
 
-	result := adminapi.RtbFloorsApplyResult{
+	result := RtbFloorsApplyResult{
 		DryRun:      dryRun,
-		Suggestions: make([]adminapi.RtbFloorSuggestionDTO, len(rows)),
+		Suggestions: make([]RtbFloorSuggestionDTO, len(rows)),
 	}
 	for i, row := range rows {
 		result.Suggestions[i] = rtbFloorSuggestionDTO(row)

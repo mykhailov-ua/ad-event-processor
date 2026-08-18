@@ -11,7 +11,6 @@ import (
 )
 
 func TestChaos_ParserSecurity_PS_G09_UnicodeKeyRejected(t *testing.T) {
-	// UTF-8 U+017F (long s) homoglyph in key — must not match campaign_id.
 	key := "campa" + string([]byte{0xC5, 0xBF}) + "gn_id"
 	body := []byte(fmt.Sprintf(`{"%s":"550e8400-e29b-41d4-a716-446655440000"}`, key))
 	var req TrackRequest

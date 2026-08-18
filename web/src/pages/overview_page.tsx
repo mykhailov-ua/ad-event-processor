@@ -1,9 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type {
-  DashboardSummary,
-  IncidentSnapshot,
-  OpsDoctorSummary,
-} from '../types/api/index.js';
+import type { DashboardSummary, IncidentSnapshot, OpsDoctorSummary } from '../types/index.js';
 import { to } from '../lib/to.js';
 import { api, ApiError, type ApiResult } from '../helpers/api_client.js';
 import { isParallelSlotError, parallelAll } from '../helpers/request_multiplex.js';
@@ -78,29 +74,24 @@ function buildQuickLinks(perms: string[]): QuickLink[] {
 function deriveFreshness(
   incidents: IncidentSnapshot | null,
   summary: DashboardSummary | null,
-  doctor: OpsDoctorSummary | null,
+  doctor: OpsDoctorSummary | null
 ) {
   if (incidents?.partial) {
     return { stale: true, lagSeconds: 0 };
   }
   const chCard = summary?.services?.find((s) =>
-    (s.name || '').toLowerCase().includes('clickhouse'),
+    (s.name || '').toLowerCase().includes('clickhouse')
   );
   if (chCard?.status && chCard.status !== 'ok' && chCard.status !== 'disabled') {
     return { stale: true, lagSeconds: 0 };
   }
-  const chCheck = doctor?.checks?.find((c) =>
-    (c.id || '').toLowerCase().includes('clickhouse'),
-  );
+  const chCheck = doctor?.checks?.find((c) => (c.id || '').toLowerCase().includes('clickhouse'));
   if (chCheck?.status && chCheck.status !== 'ok' && chCheck.status !== 'pass') {
     return { stale: true, lagSeconds: 0 };
   }
   return null;
 }
 
-/**
- * Operator / buyer home overview dashboard.
- */
 export function OverviewPage() {
   const user = auth.getUser();
   const perms = user?.permissions ?? [];
@@ -123,21 +114,22 @@ export function OverviewPage() {
   const quickLinks = useMemo(() => buildQuickLinks(perms), [perms]);
 
   const homeAlerts = useMemo(
-    () => buildHomeAlerts({
-      summary,
-      doctor,
-      incidents,
-      meta,
-      buyerPortfolio: buyerPortfolio as Parameters<typeof buildHomeAlerts>[0]['buyerPortfolio'],
-      canOps,
-      buyerMode,
-    }),
-    [summary, doctor, incidents, meta, buyerPortfolio, canOps, buyerMode],
+    () =>
+      buildHomeAlerts({
+        summary,
+        doctor,
+        incidents,
+        meta,
+        buyerPortfolio: buyerPortfolio as Parameters<typeof buildHomeAlerts>[0]['buyerPortfolio'],
+        canOps,
+        buyerMode,
+      }),
+    [summary, doctor, incidents, meta, buyerPortfolio, canOps, buyerMode]
   );
 
   const freshness = useMemo(
     () => deriveFreshness(incidents, summary, doctor),
-    [incidents, summary, doctor],
+    [incidents, summary, doctor]
   );
 
   const loadData = useCallback(async () => {
@@ -152,7 +144,7 @@ export function OverviewPage() {
       tasks.push(
         () => api('/api/v1/ops/doctor'),
         () => api('/api/v1/ops/incidents').catch((err: unknown) => ({ error: err })),
-        () => api('/api/v1/ops/dashboard/summary'),
+        () => api('/api/v1/ops/dashboard/summary')
       );
     }
 
@@ -191,13 +183,21 @@ export function OverviewPage() {
       if (!isParallelSlotError(sumRes) && sumRes && 'data' in sumRes && sumRes.data) {
         setSummary(sumRes.data as DashboardSummary);
       }
-      if (!isParallelSlotError(incRes) && incRes && 'data' in incRes && incRes.data
-        && !('error' in incRes && (incRes as { error?: unknown }).error)) {
+      if (
+        !isParallelSlotError(incRes) &&
+        incRes &&
+        'data' in incRes &&
+        incRes.data &&
+        !('error' in incRes && (incRes as { error?: unknown }).error)
+      ) {
         setIncidents(incRes.data as IncidentSnapshot);
       }
 
       const errors: PartialSourceError[] = [];
-      if (isParallelSlotError(incRes) || (incRes && 'error' in incRes && (incRes as { error?: unknown }).error)) {
+      if (
+        isParallelSlotError(incRes) ||
+        (incRes && 'error' in incRes && (incRes as { error?: unknown }).error)
+      ) {
         const incErr = (incRes as { error: unknown }).error;
         if (incErr instanceof ApiError && incErr.payload?.errors?.length) {
           errors.push(...(incErr.payload.errors as PartialSourceError[]));
@@ -214,9 +214,14 @@ export function OverviewPage() {
 
     if (buyerMode && buyerTaskIndex >= 0) {
       const buyerRes = results[buyerTaskIndex];
-      if (isParallelSlotError(buyerRes) || (buyerRes && typeof buyerRes === 'object' && 'error' in buyerRes && !('data' in buyerRes))) {
+      if (
+        isParallelSlotError(buyerRes) ||
+        (buyerRes && typeof buyerRes === 'object' && 'error' in buyerRes && !('data' in buyerRes))
+      ) {
         const buyerErr = (buyerRes as { error: unknown }).error;
-        setBuyerError((buyerErr instanceof Error ? buyerErr.message : null) || 'Failed to load buyer portfolio');
+        setBuyerError(
+          (buyerErr instanceof Error ? buyerErr.message : null) || 'Failed to load buyer portfolio'
+        );
         setBuyerPortfolio(null);
         setBuyerPerf(null);
       } else {
@@ -252,31 +257,36 @@ export function OverviewPage() {
     return () => feed.destroy();
   }, [canOps]);
 
-  const handleRecommendationAction = useCallback(async (actionId: string, card: RecommendationCard) => {
-    const campaignId = card.campaign_id;
-    if (!campaignId) return;
-    if (actionId === 'edit_budget') {
-      window.location.href = `/campaigns/${campaignId}`;
-      return;
-    }
-    setRecActionLoading(true);
-    const [, err] = await to((async () => {
-      if (actionId === 'pause') await pauseCampaign(campaignId);
-      else if (actionId === 'resume') await resumeCampaign(campaignId);
-    })());
-    setRecActionLoading(false);
-    if (err && !(err instanceof ConfirmCancelledError)) {
-      pushToastMessage({ title: 'Action failed', message: err.message ?? String(err) });
-    }
-    if (!err || err instanceof ConfirmCancelledError) {
-      invalidateBuyerDashboard(boundCustomerId(user));
-      const [portfolio, loadErr] = await to(fetchBuyerDashboard(boundCustomerId(user)));
-      if (!loadErr && portfolio) {
-        setBuyerPortfolio(portfolio);
-        setBuyerPerf(probeReport());
+  const handleRecommendationAction = useCallback(
+    async (actionId: string, card: RecommendationCard) => {
+      const campaignId = card.campaign_id;
+      if (!campaignId) return;
+      if (actionId === 'edit_budget') {
+        window.location.href = `/campaigns/${campaignId}`;
+        return;
       }
-    }
-  }, [user]);
+      setRecActionLoading(true);
+      const [, err] = await to(
+        (async () => {
+          if (actionId === 'pause') await pauseCampaign(campaignId);
+          else if (actionId === 'resume') await resumeCampaign(campaignId);
+        })()
+      );
+      setRecActionLoading(false);
+      if (err && !(err instanceof ConfirmCancelledError)) {
+        pushToastMessage({ title: 'Action failed', message: err.message ?? String(err) });
+      }
+      if (!err || err instanceof ConfirmCancelledError) {
+        invalidateBuyerDashboard(boundCustomerId(user));
+        const [portfolio, loadErr] = await to(fetchBuyerDashboard(boundCustomerId(user)));
+        if (!loadErr && portfolio) {
+          setBuyerPortfolio(portfolio);
+          setBuyerPerf(probeReport());
+        }
+      }
+    },
+    [user]
+  );
 
   if (blockError) {
     return <ErrorBlock error={blockError} />;
@@ -288,11 +298,11 @@ export function OverviewPage() {
         <div className="page-header__row">
           <div className="flex items-center gap-2">
             <h1 className="page-header__title">Overview</h1>
-            {freshness ? <FreshnessBadge stale={freshness.stale} lagSeconds={freshness.lagSeconds} /> : null}
+            {freshness ? (
+              <FreshnessBadge stale={freshness.stale} lagSeconds={freshness.lagSeconds} />
+            ) : null}
           </div>
-          {meta?.version ? (
-            <span className="text-muted text-sm">{`v${meta.version}`}</span>
-          ) : null}
+          {meta?.version ? <span className="text-muted text-sm">{`v${meta.version}`}</span> : null}
         </div>
         {quickLinks.length > 0 ? (
           <div className="page-header__links">

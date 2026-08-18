@@ -17,7 +17,7 @@ func TestGoldenRenderEdgeSystemdUnits(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantXDP, err := os.ReadFile("testdata/golden/ad-event-processor-edge-xdp.service")
+	wantXDP, err := os.ReadFile("testdata/ad-event-processor-edge-xdp.service")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +29,7 @@ func TestGoldenRenderEdgeSystemdUnits(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantSync, err := os.ReadFile("testdata/golden/ad-event-processor-edge-bpf-sync.service")
+	wantSync, err := os.ReadFile("testdata/ad-event-processor-edge-bpf-sync.service")
 	if err != nil {
 		t.Fatal(err)
 	}

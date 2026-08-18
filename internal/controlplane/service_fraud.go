@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/domain"
@@ -16,17 +17,8 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-type CampaignFraudConfigDTO struct {
-	CampaignID            string `json:"campaign_id"`
-	FraudThresholdPass    uint8  `json:"fraud_threshold_pass"`
-	FraudThresholdSuspect uint8  `json:"fraud_threshold_suspect"`
-	FraudThresholdIVT     uint8  `json:"fraud_threshold_ivt"`
-	FraudThresholdBlock   uint8  `json:"fraud_threshold_block"`
-	GhostIVTEnabled       bool   `json:"ghost_ivt_enabled"`
-	BehaviorFlags         uint32 `json:"behavior_flags"`
-}
-
 type CampaignFraudConfigUpdate struct {
+	Preset                *string `json:"preset,omitempty"`
 	FraudThresholdPass    *uint8  `json:"fraud_threshold_pass,omitempty"`
 	FraudThresholdSuspect *uint8  `json:"fraud_threshold_suspect,omitempty"`
 	FraudThresholdIVT     *uint8  `json:"fraud_threshold_ivt,omitempty"`
@@ -77,6 +69,17 @@ func (s *Service) UpdateCampaignFraudConfig(ctx context.Context, campaignID uuid
 		block := uint8(locked.FraudThresholdBlock)
 		ghost := locked.GhostIvtEnabled
 		flags := locked.BehaviorFlags
+
+		if upd.Preset != nil {
+			presetPass, presetSuspect, presetIVT, presetBlock, err := s.resolveFraudPresetThresholds(ctx, *upd.Preset)
+			if err != nil {
+				return err
+			}
+			pass = presetPass
+			suspect = presetSuspect
+			ivt = presetIVT
+			block = presetBlock
+		}
 
 		if upd.FraudThresholdPass != nil {
 			pass = *upd.FraudThresholdPass
@@ -169,7 +172,153 @@ type FraudScoringOverrideRequest struct {
 	IP         *string `json:"ip,omitempty"`
 }
 
+func normalizeFraudLabelLimit(limit int) int {
+	if limit <= 0 {
+		return fraudManualLabelsDefaultLimit
+	}
+	if limit > fraudManualLabelsMaxLimit {
+		return fraudManualLabelsMaxLimit
+	}
+	return limit
+}
+
+func validateMLIPHash(ipHash string) error {
+	if ipHash == "" {
+		return errValidation("ip_hash required")
+	}
+	if len(ipHash) != 32 {
+		return errValidation("ip_hash must be 32 hex characters")
+	}
+	for _, c := range ipHash {
+		if (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F') {
+			continue
+		}
+		return errValidation("ip_hash must be 32 hex characters")
+	}
+	return nil
+}
+
+func (s *Service) ListMLManualLabelsForCustomer(ctx context.Context, customerID uuid.UUID, limit int) ([]MLManualLabelDTO, error) {
+	if customerID == uuid.Nil {
+		return nil, errValidation("customer_id is required")
+	}
+	if s == nil || s.GetPool() == nil {
+		return nil, fmt.Errorf("postgres pool not configured")
+	}
+	limit = normalizeFraudLabelLimit(limit)
+	rows, err := s.GetPool().Query(ctx, `
+		SELECT ip_hash, label, reason, source, created_at
+		FROM ml_manual_labels
+		WHERE customer_id = $1
+		ORDER BY created_at DESC
+		LIMIT $2`, domain.ToUUID(customerID), limit)
+	if err != nil {
+		return nil, fmt.Errorf("query ml_manual_labels: %w", err)
+	}
+	defer rows.Close()
+
+	out := make([]MLManualLabelDTO, 0, limit)
+	for rows.Next() {
+		var row MLManualLabelDTO
+		var createdAt time.Time
+		if err := rows.Scan(&row.IPHash, &row.Label, &row.Reason, &row.Source, &createdAt); err != nil {
+			return nil, err
+		}
+		row.CreatedAt = createdAt.UTC().Format(time.RFC3339)
+		out = append(out, row)
+	}
+	return out, rows.Err()
+}
+
+func (s *Service) UpsertMLManualLabelForCustomer(ctx context.Context, customerID uuid.UUID, ipHash string, label int, reason string) error {
+	if customerID == uuid.Nil {
+		return errValidation("customer_id is required")
+	}
+	if err := validateMLIPHash(ipHash); err != nil {
+		return err
+	}
+	if label != 0 && label != 1 {
+		return errValidation("label must be 0 or 1")
+	}
+	if s == nil || s.GetPool() == nil {
+		return fmt.Errorf("postgres pool not configured")
+	}
+	_, err := s.GetPool().Exec(ctx, `
+		INSERT INTO ml_manual_labels (ip_hash, label, reason, source, customer_id, created_at)
+		VALUES ($1, $2, $3, 'admin_ui', $4, NOW())
+		ON CONFLICT (ip_hash) DO UPDATE SET
+			label = EXCLUDED.label,
+			reason = EXCLUDED.reason,
+			source = EXCLUDED.source,
+			customer_id = EXCLUDED.customer_id,
+			created_at = NOW()`,
+		ipHash, label, reason, domain.ToUUID(customerID))
+	return err
+}
+
+type MLManualLabelInput struct {
+	IPHash string
+	Label  int
+	Reason string
+}
+
+func (s *Service) BulkUpsertMLManualLabelsForCustomer(ctx context.Context, customerID uuid.UUID, rows []MLManualLabelInput) (int, error) {
+	if customerID == uuid.Nil {
+		return 0, errValidation("customer_id is required")
+	}
+	if len(rows) == 0 {
+		return 0, errValidation("rows required")
+	}
+	if len(rows) > fraudManualLabelsBulkMax {
+		return 0, errValidation(fmt.Sprintf("max %d rows per bulk request", fraudManualLabelsBulkMax))
+	}
+	if s == nil || s.GetPool() == nil {
+		return 0, fmt.Errorf("postgres pool not configured")
+	}
+
+	var inserted int
+	err := pgx.BeginFunc(ctx, s.GetPool(), func(tx pgx.Tx) error {
+		batch := &pgx.Batch{}
+		for i, row := range rows {
+			if err := validateMLIPHash(row.IPHash); err != nil {
+				return fmt.Errorf("row %d: %w", i+1, err)
+			}
+			if row.Label != 0 && row.Label != 1 {
+				return fmt.Errorf("row %d: label must be 0 or 1", i+1)
+			}
+			batch.Queue(`
+				INSERT INTO ml_manual_labels (ip_hash, label, reason, source, customer_id, created_at)
+				VALUES ($1, $2, $3, 'admin_ui', $4, NOW())
+				ON CONFLICT (ip_hash) DO UPDATE SET
+					label = EXCLUDED.label,
+					reason = EXCLUDED.reason,
+					source = EXCLUDED.source,
+					customer_id = EXCLUDED.customer_id,
+					created_at = NOW()`,
+				row.IPHash, row.Label, row.Reason, domain.ToUUID(customerID))
+		}
+		br := tx.SendBatch(ctx, batch)
+		for range rows {
+			if _, err := br.Exec(); err != nil {
+				_ = br.Close()
+				return err
+			}
+			inserted++
+		}
+		return br.Close()
+	})
+	if err != nil {
+		return 0, err
+	}
+	return inserted, nil
+}
+
 func (s *Service) ApplyFraudScoringOverride(ctx context.Context, req FraudScoringOverrideRequest) error {
+	hasCampaign := req.CampaignID != nil && strings.TrimSpace(*req.CampaignID) != ""
+	hasIP := req.IP != nil && strings.TrimSpace(*req.IP) != ""
+	if !hasCampaign && !hasIP {
+		return errValidation("at least one of campaign_id or ip is required")
+	}
 	return pgx.BeginFunc(ctx, s.GetPool(), func(tx pgx.Tx) error {
 		q := db.New(tx)
 		var uid uuid.UUID

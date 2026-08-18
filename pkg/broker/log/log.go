@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/bidshard/ad-event-processor/pkg/iogate"
 	"io"
 	"math/bits"
 	"os"
@@ -18,6 +17,8 @@ import (
 	"syscall"
 	"time"
 	"unsafe"
+
+	"github.com/bidshard/ad-event-processor/pkg/iogate"
 )
 
 var (

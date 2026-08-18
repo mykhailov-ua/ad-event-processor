@@ -23,7 +23,6 @@ type proxyVPNFeedLoader struct {
 	gen     atomic.Uint64
 }
 
-// NewProxyVPNFeedLoader builds the cold-path loader. Returns nil when disabled.
 func NewProxyVPNFeedLoader(cfg *config.Config, table *ProxyVPNTable) *proxyVPNFeedLoader {
 	if cfg == nil || !cfg.ProxyVPNL15Enabled || table == nil {
 		return nil
@@ -103,7 +102,6 @@ func (l *proxyVPNFeedLoader) reloadOnce() {
 	slog.Info("proxy vpn feed published", "prefixes", len(snap.prefs), "gen", gen)
 }
 
-// parseProxyVPNFeedLine parses "CIDR ASN flags" e.g. "54.0.0.0/8 16509 vpn,hosting".
 func parseProxyVPNFeedLine(line string) (netip.Prefix, uint8, uint32, bool) {
 	fields := strings.Fields(line)
 	if len(fields) < 2 {

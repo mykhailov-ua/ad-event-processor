@@ -7,8 +7,8 @@ cd "$ROOT"
 FUZZTIME="${CLICK_PROXY_FUZZ_TIME:-5s}"
 
 for name in ProxyUpstreamURL ProxyResponseHeaderParse; do
-	echo "click_proxy_fuzz_smoke: Fuzz${name} ($FUZZTIME)"
-	go test -run='^$' -fuzz="Fuzz${name}" -fuzztime="$FUZZTIME" ./internal/ingestion/
+  echo "click_proxy_fuzz_smoke: Fuzz${name} ($FUZZTIME)"
+  go test -run='^$' -fuzz="Fuzz${name}" -fuzztime="$FUZZTIME" ./internal/ingestion/
 done
 
 echo "click_proxy_fuzz_smoke: PASS"

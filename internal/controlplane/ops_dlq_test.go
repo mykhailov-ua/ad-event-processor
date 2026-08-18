@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/internal/ingestion"
 	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
 
@@ -95,7 +94,7 @@ func TestEnqueueDLQRetry_requeuesAndDeletes(t *testing.T) {
 	svc := &Service{rdbs: []redis.UniversalClient{rdb}, cfg: cfg}
 	reader := newOpsReader(svc)
 
-	err = reader.EnqueueDLQRetry(context.Background(), adminapi.DLQRetryPayload{
+	err = reader.EnqueueDLQRetry(context.Background(), DLQRetryPayload{
 		ShardID: 0,
 		EntryID: msgID,
 		DLQID:   dlqRouteID(0, msgID),
@@ -134,7 +133,7 @@ func TestEnqueueDLQRetry_idempotent(t *testing.T) {
 	cfg := &config.Config{RedisStreamName: "ad:events:stream"}
 	svc := &Service{rdbs: []redis.UniversalClient{rdb}, cfg: cfg}
 	reader := newOpsReader(svc)
-	payload := adminapi.DLQRetryPayload{
+	payload := DLQRetryPayload{
 		ShardID: 0,
 		EntryID: msgID,
 		DLQID:   dlqRouteID(0, msgID),

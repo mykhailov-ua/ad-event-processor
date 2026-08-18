@@ -65,12 +65,14 @@ export const SMART_ALERT_OPERATORS: { value: SmartAlertOperator; label: string }
 
 export async function fetchSmartAlertRules(customerId: string): Promise<SmartAlertRule[]> {
   const res = await api<SmartAlertRule[]>(
-    `/api/v1/smart-alerts/rules?customer_id=${encodeURIComponent(customerId)}`,
+    `/api/v1/smart-alerts/rules?customer_id=${encodeURIComponent(customerId)}`
   );
   return Array.isArray(res.data) ? res.data : [];
 }
 
-export async function createSmartAlertRule(body: UpsertSmartAlertRuleBody): Promise<SmartAlertRule> {
+export async function createSmartAlertRule(
+  body: UpsertSmartAlertRuleBody
+): Promise<SmartAlertRule> {
   const res = await apiConfirmed<SmartAlertRule>('/api/v1/smart-alerts/rules', {
     method: 'POST',
     body: JSON.stringify(body),
@@ -80,14 +82,14 @@ export async function createSmartAlertRule(body: UpsertSmartAlertRuleBody): Prom
 
 export async function updateSmartAlertRule(
   id: string,
-  body: Omit<UpsertSmartAlertRuleBody, 'customer_id'> & { customer_id?: string },
+  body: Omit<UpsertSmartAlertRuleBody, 'customer_id'> & { customer_id?: string }
 ): Promise<SmartAlertRule> {
   const res = await apiConfirmed<SmartAlertRule>(
     `/api/v1/smart-alerts/rules/${encodeURIComponent(id)}`,
     {
       method: 'PATCH',
       body: JSON.stringify(body),
-    },
+    }
   );
   return res.data;
 }
@@ -100,17 +102,16 @@ export async function deleteSmartAlertRule(id: string): Promise<void> {
 
 export async function fetchSmartAlertHistory(
   customerId: string,
-  limit = 50,
+  limit = 50
 ): Promise<SmartAlertEvent[]> {
   const res = await api<SmartAlertEvent[]>(
-    `/api/v1/smart-alerts/history?customer_id=${encodeURIComponent(customerId)}&limit=${limit}`,
+    `/api/v1/smart-alerts/history?customer_id=${encodeURIComponent(customerId)}&limit=${limit}`
   );
   return Array.isArray(res.data) ? res.data : [];
 }
 
 export async function ackSmartAlertEvent(eventId: string): Promise<void> {
-  await apiConfirmed(
-    `/api/v1/smart-alerts/events/${encodeURIComponent(eventId)}/ack`,
-    { method: 'POST' },
-  );
+  await apiConfirmed(`/api/v1/smart-alerts/events/${encodeURIComponent(eventId)}/ack`, {
+    method: 'POST',
+  });
 }

@@ -9,7 +9,6 @@ import (
 
 const defaultEventSourceHost = "tracking.invalid"
 
-// synthesizeEventSourceURL builds the tracking-domain click URL for CAPI (not upstream proxy URL).
 func synthesizeEventSourceURL(pb PostbackPayload, trackingHost string) string {
 	if pb.CampaignID == uuid.Nil || pb.ClickID == "" {
 		return ""

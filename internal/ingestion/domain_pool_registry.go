@@ -34,7 +34,6 @@ type domainPoolSnapshot struct {
 	hosts []hostPoolEntry
 }
 
-// DomainPoolTable is the RCU container for tracking-domain rotation (GM-M2).
 type DomainPoolTable struct {
 	active atomic.Pointer[domainPoolSnapshot]
 }

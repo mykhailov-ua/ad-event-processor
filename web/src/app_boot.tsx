@@ -6,12 +6,16 @@ import { redirectToLogin } from './helpers/session.js';
 import { syncDevModeAttribute } from './helpers/dev_mode.js';
 import { to } from './lib/to.js';
 
-const AppProviders = lazy(() => import('./components/app_providers.js').then((mod) => ({
-  default: mod.AppProviders,
-})));
-const EulaGate = lazy(() => import('./components/eula_gate.js').then((mod) => ({
-  default: mod.EulaGate,
-})));
+const AppProviders = lazy(() =>
+  import('./components/app_providers.js').then((mod) => ({
+    default: mod.AppProviders,
+  }))
+);
+const EulaGate = lazy(() =>
+  import('./components/eula_gate.js').then((mod) => ({
+    default: mod.EulaGate,
+  }))
+);
 const AppShell = lazy(() => import('./app_shell.js').then((mod) => ({ default: mod.AppShell })));
 
 type EulaPayload = {
@@ -19,13 +23,8 @@ type EulaPayload = {
   text: string;
 };
 
-type BootResult =
-  | { ok: false }
-  | { ok: true; eula?: EulaPayload };
+type BootResult = { ok: false } | { ok: true; eula?: EulaPayload };
 
-/**
- * Run auth/me + optional EULA gate before rendering the app shell.
- */
 async function prepareAuthenticatedApp(): Promise<BootResult> {
   document.documentElement.setAttribute('data-theme', storage.getTheme());
   syncDevModeAttribute();
@@ -73,9 +72,6 @@ async function prepareAuthenticatedApp(): Promise<BootResult> {
   return { ok: true };
 }
 
-/**
- * Boot gate: loading screen, then React shell after session is ready.
- */
 export function AppBoot() {
   const [phase, setPhase] = useState<'loading' | 'eula' | 'ready'>('loading');
   const [eula, setEula] = useState<EulaPayload | null>(null);
@@ -104,11 +100,7 @@ export function AppBoot() {
     return (
       <Suspense fallback={<span className="text-muted">Loading…</span>}>
         <AppProviders>
-          <EulaGate
-            version={eula.version}
-            text={eula.text}
-            onAccepted={() => setPhase('ready')}
-          />
+          <EulaGate version={eula.version} text={eula.text} onAccepted={() => setPhase('ready')} />
         </AppProviders>
       </Suspense>
     );
@@ -116,11 +108,11 @@ export function AppBoot() {
 
   return (
     <Suspense
-      fallback={(
+      fallback={
         <div className="main" style={{ alignItems: 'center', justifyContent: 'center' }}>
           <span className="text-muted">Loading…</span>
         </div>
-      )}
+      }
     >
       <AppProviders>
         <AppShell />

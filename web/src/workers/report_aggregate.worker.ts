@@ -1,7 +1,3 @@
-/**
- * Enrich report rows with roi_pct in place to avoid per-row object spreads.
- */
-
 type ReportAggregateWorkerSelf = {
   onmessage: ((ev: MessageEvent<unknown>) => void) | null;
   postMessage: (message: unknown) => void;
@@ -15,9 +11,6 @@ type AggregateRow = {
 
 const reportAggregateSelf = self as unknown as ReportAggregateWorkerSelf;
 
-/**
- * Narrow unknown payload rows to mutable aggregate objects.
- */
 function asAggregateRow(value: unknown): AggregateRow | null {
   if (value === null || typeof value !== 'object') return null;
   return value as AggregateRow;

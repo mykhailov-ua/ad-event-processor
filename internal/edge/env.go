@@ -1,4 +1,3 @@
-// Package edge provides edge environment configuration.
 package edge
 
 import (

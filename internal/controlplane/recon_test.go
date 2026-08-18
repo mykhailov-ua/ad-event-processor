@@ -175,7 +175,6 @@ func TestRecon_LedgerTypeSecurity(t *testing.T) {
 	for _, typ := range allowedTypes {
 		assert.NotEmpty(t, typ)
 	}
-
 }
 
 func BenchmarkRecon_AtomicAdjustment(b *testing.B) {

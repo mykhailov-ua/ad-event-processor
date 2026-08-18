@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-// Print writes a fault_proof line to stdout for lab scripts and CLIs.
 func Print(fault string, kv map[string]string) {
 	var b strings.Builder
 	b.WriteString("fault_proof fault=")

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 	"github.com/bidshard/ad-event-processor/pkg/money"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -120,9 +121,10 @@ func (c *CurrencyConverter) fetchECBRates(ctx context.Context) (map[string]float
 	}
 	resp, err := c.client.Do(req)
 	if err != nil {
+		coldpath.CloseHTTPResponse(resp)
 		return nil, err
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer coldpath.CloseHTTPResponse(resp)
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("ecb: status %d", resp.StatusCode)
 	}

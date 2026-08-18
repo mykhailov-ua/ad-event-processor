@@ -18,7 +18,6 @@ var (
 	unifiedFilterLuaActive string
 )
 
-// InitUnifiedFilterLua resolves embedded vs sealed unified-filter.lua (cold startup only).
 func InitUnifiedFilterLua() error {
 	unifiedFilterLuaMu.RLock()
 	if unifiedFilterLuaActive != "" {

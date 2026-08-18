@@ -10,15 +10,11 @@ import (
 	"github.com/bidshard/ad-event-processor/internal/metrics"
 )
 
-// LicenseRPS burst policy: short spikes above JWT max_rps without immediate 429.
-// Sustained rate stays at max_rps; per-second ceiling is max_rps + 10%.
-// Burst credits cover the overage for ~45s of elevated traffic, then refill on quiet seconds.
 const (
 	licenseRPSBurstPercent   = 10
 	licenseRPSBurstWindowSec = 45
 )
 
-// LicenseRPSFilter enforces deployment-wide JWT max_rps on the hot path.
 type LicenseRPSFilter struct {
 	registry licenseStateReader
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	db "github.com/bidshard/ad-event-processor/internal/domain/db"
 
@@ -12,9 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type CampaignDashboardDTO = adminapi.CampaignDashboardDTO
-
-// GetCampaignDashboard returns server-authoritative campaign economics KPIs.
 func (s *Service) GetCampaignDashboard(ctx context.Context, campaignID uuid.UUID) (CampaignDashboardDTO, error) {
 	if campaignID == uuid.Nil {
 		return CampaignDashboardDTO{}, errValidation("invalid campaign id")
@@ -27,9 +23,9 @@ func (s *Service) GetCampaignDashboard(ctx context.Context, campaignID uuid.UUID
 	stale := s.chQuery == nil
 
 	if s.chQuery != nil {
-		chCtx, cancel := context.WithTimeout(ctx, adminapi.ReportCHQueryTimeout())
+		chCtx, cancel := context.WithTimeout(ctx, ReportCHQueryTimeout())
 		defer cancel()
-		econ, err := adminapi.QueryCampaignEconomicsCH(chCtx, s.chQuery, campaignID, from, now)
+		econ, err := QueryCampaignEconomicsCH(chCtx, s.chQuery, campaignID, from, now)
 		if err != nil {
 			return CampaignDashboardDTO{}, err
 		}
@@ -64,7 +60,7 @@ func (s *Service) GetCampaignDashboard(ctx context.Context, campaignID uuid.UUID
 		cpaMicro = spendMicro / conversions
 	}
 
-	freshness := adminapi.DataFreshnessDTO{
+	freshness := DataFreshnessDTO{
 		AsOf:        now.Format(time.RFC3339),
 		Consistency: "eventual",
 		Stale:       stale,
@@ -75,11 +71,11 @@ func (s *Service) GetCampaignDashboard(ctx context.Context, campaignID uuid.UUID
 
 	return CampaignDashboardDTO{
 		CampaignID: campaignID.String(),
-		KPIs: adminapi.MetricsBlockDTO{
+		KPIs: MetricsBlockDTO{
 			SpendMicro:   spendMicro,
 			RevenueMicro: revenueMicro,
 			ProfitMicro:  profitMicro,
-			ROIPct:       adminapi.CalcROIPct(profitMicro, spendMicro),
+			ROIPct:       CalcROIPct(profitMicro, spendMicro),
 			Conversions:  conversions,
 			CPAMicro:     cpaMicro,
 			Freshness:    freshness,

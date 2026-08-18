@@ -31,7 +31,6 @@ func VerifyBTCPayWebhookSignature(body []byte, sigHeader, secret string) bool {
 	return subtle.ConstantTimeCompare(sigBytes, mac.Sum(nil)) == 1
 }
 
-// SignBTCPayWebhookBody returns the BTCPay-Sig header for a webhook body.
 func SignBTCPayWebhookBody(body []byte, secret string) string {
 	mac := hmac.New(sha256.New, []byte(secret))
 	mac.Write(body)

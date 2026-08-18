@@ -9,24 +9,24 @@ RATE=1
 DURATION=8s
 
 while [[ $# -gt 0 ]]; do
-	case "$1" in
-	--connections=*)
-		CONNECTIONS="${1#*=}"
-		shift
-		;;
-	--rate=*)
-		RATE="${1#*=}"
-		shift
-		;;
-	--duration=*)
-		DURATION="${1#*=}"
-		shift
-		;;
-	*)
-		echo "usage: $0 [--connections=N] [--rate=bytes_per_sec] [--duration=8s]" >&2
-		exit 2
-		;;
-	esac
+  case "$1" in
+    --connections=*)
+      CONNECTIONS="${1#*=}"
+      shift
+      ;;
+    --rate=*)
+      RATE="${1#*=}"
+      shift
+      ;;
+    --duration=*)
+      DURATION="${1#*=}"
+      shift
+      ;;
+    *)
+      echo "usage: $0 [--connections=N] [--rate=bytes_per_sec] [--duration=8s]" >&2
+      exit 2
+      ;;
+  esac
 done
 
 echo "parser-slow-body: unit proof (PS-G01 spin close, phase P0)"

@@ -8,7 +8,7 @@ import {
   INTEGRATION_SCHEMA_STARTERS,
   type IntegrationSchemaKind,
 } from '../helpers/integration_api.js';
-import type { IntegrationSchemaDTO } from '../types/api/integration.js';
+import type { IntegrationSchemaDTO } from '../types/integration.js';
 import { SectionCard } from './section_card.js';
 import { Button } from './button.js';
 import { FormField } from './form_field.js';
@@ -24,9 +24,6 @@ export type IntegrationSchemaAuthorPanelProps = {
   onCreated?: (schema: IntegrationSchemaDTO) => void;
 };
 
-/**
- * Author a custom integration schema via POST /integration/schemas.
- */
 export function IntegrationSchemaAuthorPanel({
   canWrite,
   onCreated,
@@ -34,8 +31,8 @@ export function IntegrationSchemaAuthorPanel({
   const [name, setName] = useState('');
   const [version, setVersion] = useState('1');
   const [starterKind, setStarterKind] = useState<IntegrationSchemaKind>('outbound_postback');
-  const [schemaText, setSchemaText] = useState(
-    () => JSON.stringify(INTEGRATION_SCHEMA_STARTERS.outbound_postback, null, 2),
+  const [schemaText, setSchemaText] = useState(() =>
+    JSON.stringify(INTEGRATION_SCHEMA_STARTERS.outbound_postback, null, 2)
   );
   const [busy, setBusy] = useState(false);
 
@@ -61,7 +58,10 @@ export function IntegrationSchemaAuthorPanel({
       return;
     }
     if (!Number.isInteger(versionNum) || versionNum <= 0) {
-      pushToastMessage({ title: 'Invalid version', message: 'Version must be a positive integer.' });
+      pushToastMessage({
+        title: 'Invalid version',
+        message: 'Version must be a positive integer.',
+      });
       return;
     }
     let schemaBody: unknown;
@@ -77,11 +77,13 @@ export function IntegrationSchemaAuthorPanel({
     }
 
     setBusy(true);
-    const [created, err] = await to(createIntegrationSchema({
-      name: trimmedName,
-      version: versionNum,
-      schema: schemaBody,
-    }));
+    const [created, err] = await to(
+      createIntegrationSchema({
+        name: trimmedName,
+        version: versionNum,
+        schema: schemaBody,
+      })
+    );
     setBusy(false);
     if (err) {
       if (err instanceof ConfirmCancelledError) return;
@@ -139,7 +141,9 @@ export function IntegrationSchemaAuthorPanel({
             onChange={(e) => loadStarter(e.target.value as IntegrationSchemaKind)}
           >
             {KIND_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
             ))}
           </select>
         </FormField>
@@ -160,7 +164,9 @@ export function IntegrationSchemaAuthorPanel({
         />
       </FormField>
       {parsedPreview === null ? (
-        <p className="text-muted text-sm" data-testid="schema-author-json-error">JSON parse error</p>
+        <p className="text-muted text-sm" data-testid="schema-author-json-error">
+          JSON parse error
+        </p>
       ) : null}
       <Button
         label={busy ? 'Creating…' : 'Create schema'}

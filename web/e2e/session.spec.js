@@ -1,4 +1,3 @@
-/** harness=mock_api — Playwright route.fulfill; does not prove Go handler or CH/PG. */
 import { test, expect } from '@playwright/test';
 import { mockLoginSuccess, ADMIN_USER } from './helpers.js';
 
@@ -53,11 +52,13 @@ test('CSRF from cookie after full page reload', async ({ page }) => {
   await page.click('button[type=submit]');
   await page.waitForURL('/');
 
-  await page.context().addCookies([{
-    name: 'csrfToken',
-    value: 'cookie-csrf-token',
-    url: 'http://127.0.0.1:4173',
-  }]);
+  await page.context().addCookies([
+    {
+      name: 'csrfToken',
+      value: 'cookie-csrf-token',
+      url: 'http://127.0.0.1:4173',
+    },
+  ]);
 
   await page.route('**/api/v1/auth/me', async (route) => {
     await route.fulfill({

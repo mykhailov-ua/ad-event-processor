@@ -1,4 +1,4 @@
-"""policy_config parity vs internal/fraud/testdata/ml/policy_config_parity.json."""
+"""policy_config parity vs internal/fraud/testdata/policy_config_parity.json."""
 
 from __future__ import annotations
 

@@ -8,7 +8,7 @@ import (
 
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/google/uuid"
-	"github.com/prometheus/client_model/go"
+	io_prometheus_client "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 

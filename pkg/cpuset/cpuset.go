@@ -1,4 +1,3 @@
-// Package cpuset implements cpuset support for BidShard.
 package cpuset
 
 import (
@@ -8,7 +7,6 @@ import (
 	"strings"
 )
 
-// Count returns the number of unique CPUs in a list such as "0-3,6".
 func Count(list string) int {
 	list = strings.TrimSpace(list)
 	if list == "" {
@@ -40,7 +38,6 @@ func Count(list string) int {
 	return len(seen)
 }
 
-// EffectiveCount reads cgroup v2 cpuset.cpus.effective for the current process.
 func EffectiveCount() (int, error) {
 	paths := []string{
 		"/sys/fs/cgroup/cpuset.cpus.effective",

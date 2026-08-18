@@ -5,12 +5,7 @@ import type { HourlyMetricRow } from '../helpers/chart_pool.js';
 import uPlot from 'uplot';
 import type { ChartHandle } from './chart_types.js';
 import type { SpendCurvePoint } from './campaign_chart_types.js';
-import {
-  createTooltipHooks,
-  themedAreaSeries,
-  themedAxes,
-  themedCursor,
-} from './uplot_theme.js';
+import { createTooltipHooks, themedAreaSeries, themedAxes, themedCursor } from './uplot_theme.js';
 
 export const CHART_HEIGHT_CAMPAIGN = 220;
 
@@ -24,23 +19,23 @@ function seriesRangeMs(x: Float64Array, length: number): number {
   return Math.max((x[length - 1] - x[0]) * 1000, 60 * 60 * 1000);
 }
 
-/**
- * Mount uPlot time-series for campaign hourly metrics.
- */
 export function mountCampaignSeriesChart(
   container: HTMLElement,
   hourly: HourlyMetricRow[] | null | undefined,
-  options: CampaignChartOptions = {},
+  options: CampaignChartOptions = {}
 ): ChartHandle {
   const field = options.field ?? 'impressions';
   const label = options.label ?? field.replace(/_/g, ' ');
 
   if (!hourly?.length) {
-    replaceChildren(container,
-      el('div', { className: 'empty-state' },
+    replaceChildren(
+      container,
+      el(
+        'div',
+        { className: 'empty-state' },
         el('p', null, 'No data in period'),
-        el('p', null, 'Hourly metrics appear after traffic.'),
-      ),
+        el('p', null, 'Hourly metrics appear after traffic.')
+      )
     );
     return { destroy: () => container.replaceChildren() };
   }
@@ -120,13 +115,10 @@ export function mountCampaignSeriesChart(
   };
 }
 
-/**
- * Mount forecast spend-curve line chart.
- */
 export function mountSpendCurveChart(
   container: HTMLElement,
   curve: SpendCurvePoint[] | null | undefined,
-  field: 'impressions' | 'spend_micro' = 'impressions',
+  field: 'impressions' | 'spend_micro' = 'impressions'
 ): ChartHandle {
   const hourly: HourlyMetricRow[] = [];
   const src = curve ?? [];

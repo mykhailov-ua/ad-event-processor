@@ -37,7 +37,6 @@ func TestAuditLog(t *testing.T) {
 	})
 
 	t.Run("Cleanup", func(t *testing.T) {
-
 		oldAdminID := uuid.New()
 		_, err := pool.Exec(ctx, "INSERT INTO admin_audit_log (admin_id, action, target_type, created_at) VALUES ($1, $2, $3, $4)",
 			oldAdminID, "OLD_ACTION", "system", time.Now().AddDate(0, 0, -100))

@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// RP-M0.a baseline audit: /click, Safe Page, CAPI, domain TLS inventory symbols exist.
 func TestRPBaseline_inventorySymbolsExist(t *testing.T) {
 	t.Helper()
 	_, file, _, ok := runtime.Caller(0)

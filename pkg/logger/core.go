@@ -1,7 +1,4 @@
-// Package logger implements logger support for BidShard.
 package logger
-
-// Package logger provides structured log buffering and flush helpers.
 
 import (
 	"crypto/aes"

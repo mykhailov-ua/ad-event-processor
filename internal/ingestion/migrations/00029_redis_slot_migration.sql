@@ -1,4 +1,3 @@
-
 -- +goose Up
 -- +goose StatementBegin
 CREATE TYPE redis_slot_migration_state AS ENUM (

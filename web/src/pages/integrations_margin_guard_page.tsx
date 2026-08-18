@@ -16,7 +16,9 @@ function TableSkeleton({ cols, rows = 4 }: { cols: number; rows?: number }) {
       {Array.from({ length: rows }, (_, i) => (
         <tr key={`sk-${i}`} className="data-table__row--skeleton" aria-hidden="true">
           {Array.from({ length: cols }, (__, j) => (
-            <td key={`sk-${i}-${j}`}><span className="skeleton-bar" /></td>
+            <td key={`sk-${i}-${j}`}>
+              <span className="skeleton-bar" />
+            </td>
           ))}
         </tr>
       ))}
@@ -24,9 +26,6 @@ function TableSkeleton({ cols, rows = 4 }: { cols: number; rows?: number }) {
   );
 }
 
-/**
- * Margin Guard portfolio — lists ACTIVE campaigns with margin_breach=true.
- */
 export function IntegrationsMarginGuardPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -36,7 +35,7 @@ export function IntegrationsMarginGuardPage() {
   const tenantCustomerId = boundCustomerId(user);
 
   const [customerId, setCustomerId] = useState(
-    sessionScoped ? tenantCustomerId : (searchParams.get('customer_id')?.trim() ?? ''),
+    sessionScoped ? tenantCustomerId : (searchParams.get('customer_id')?.trim() ?? '')
   );
   const [rows, setRows] = useState<MarginBreachRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -86,7 +85,8 @@ export function IntegrationsMarginGuardPage() {
       <div className="page-header">
         <h1 className="page-header__title">Margin Guard</h1>
         <p className="page-header__desc">
-          Active campaigns where RTB cost exceeds the revenue threshold (1h window). Open a row to edit policy.
+          Active campaigns where RTB cost exceeds the revenue threshold (1h window). Open a row to
+          edit policy.
         </p>
       </div>
 
@@ -139,12 +139,16 @@ export function IntegrationsMarginGuardPage() {
           <tbody>
             {loading ? <TableSkeleton cols={6} /> : null}
             {!loading && rows.length === 0 ? (
-              <tr><td colSpan={6}>{emptyMsg}</td></tr>
+              <tr>
+                <td colSpan={6}>{emptyMsg}</td>
+              </tr>
             ) : null}
             {rows.map(({ campaign: c, margin: m }) => (
               <tr key={c.id}>
                 <td>{c.name ?? c.id}</td>
-                <td><StatusBadge status={c.status} /></td>
+                <td>
+                  <StatusBadge status={c.status} />
+                </td>
                 <td className="font-mono">${formatMicro(m.advertiser_spend_micro ?? 0)}</td>
                 <td className="font-mono">${formatMicro(m.rtb_cost_micro ?? 0)}</td>
                 <td>{String(m.threshold_bps ?? '—')}</td>

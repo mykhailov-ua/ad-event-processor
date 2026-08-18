@@ -20,9 +20,6 @@ export type SidebarSearchHandle = {
   close: () => void;
 };
 
-/**
- * Sidebar typeahead search with portaled dropdown.
- */
 export const SidebarSearch = forwardRef<SidebarSearchHandle>(function SidebarSearch(_, ref) {
   const location = useLocation();
   const anchorRef = useRef<HTMLDivElement>(null);
@@ -91,19 +88,23 @@ export const SidebarSearch = forwardRef<SidebarSearchHandle>(function SidebarSea
     };
   }, [open, hide, positionDropdown]);
 
-  useImperativeHandle(ref, () => ({
-    focus(initialQuery = '') {
-      const input = inputRef.current;
-      if (!input) return;
-      setQuery(initialQuery);
-      input.focus();
-      if (initialQuery.trim()) showDropdown();
-      else if (initialQuery) {
-        input.setSelectionRange(initialQuery.length, initialQuery.length);
-      }
-    },
-    close: hide,
-  }), [hide, showDropdown]);
+  useImperativeHandle(
+    ref,
+    () => ({
+      focus(initialQuery = '') {
+        const input = inputRef.current;
+        if (!input) return;
+        setQuery(initialQuery);
+        input.focus();
+        if (initialQuery.trim()) showDropdown();
+        else if (initialQuery) {
+          input.setSelectionRange(initialQuery.length, initialQuery.length);
+        }
+      },
+      close: hide,
+    }),
+    [hide, showDropdown]
+  );
 
   const applyQuery = (value: string) => {
     setQuery(value);
@@ -141,47 +142,47 @@ export const SidebarSearch = forwardRef<SidebarSearchHandle>(function SidebarSea
     }
   };
 
-  const dropdown = open && query.trim() ? createPortal(
-    <div
-      className="sidebar-search-dropdown"
-      role="listbox"
-      id="sidebar-search-results"
-      aria-label="Search results"
-      style={dropdownStyle as React.CSSProperties}
-    >
-      {filtered.length === 0 ? (
-        <div className="sidebar-search-dropdown__empty">No matches</div>
-      ) : (
-        filtered.map((item, i) => {
-          const showHint = item.hint && item.hint !== item.label;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              className={`sidebar-search-dropdown__item${i === highlight ? ' sidebar-search-dropdown__item--active' : ''}`}
-              role="option"
-              aria-selected={i === highlight}
-              onMouseEnter={() => setHighlight(i)}
-              onClick={() => selectItem(item)}
-            >
-              <span className="sidebar-search-dropdown__item-label">{item.label}</span>
-              {showHint ? (
-                <span className="sidebar-search-dropdown__item-hint">{item.hint}</span>
-              ) : null}
-            </button>
-          );
-        })
-      )}
-    </div>,
-    document.body,
-  ) : null;
+  const dropdown =
+    open && query.trim()
+      ? createPortal(
+          <div
+            className="sidebar-search-dropdown"
+            role="listbox"
+            id="sidebar-search-results"
+            aria-label="Search results"
+            style={dropdownStyle as React.CSSProperties}
+          >
+            {filtered.length === 0 ? (
+              <div className="sidebar-search-dropdown__empty">No matches</div>
+            ) : (
+              filtered.map((item, i) => {
+                const showHint = item.hint && item.hint !== item.label;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`sidebar-search-dropdown__item${i === highlight ? ' sidebar-search-dropdown__item--active' : ''}`}
+                    role="option"
+                    aria-selected={i === highlight}
+                    onMouseEnter={() => setHighlight(i)}
+                    onClick={() => selectItem(item)}
+                  >
+                    <span className="sidebar-search-dropdown__item-label">{item.label}</span>
+                    {showHint ? (
+                      <span className="sidebar-search-dropdown__item-hint">{item.hint}</span>
+                    ) : null}
+                  </button>
+                );
+              })
+            )}
+          </div>,
+          document.body
+        )
+      : null;
 
   return (
     <>
-      <div
-        ref={anchorRef}
-        className={`sidebar__search${open ? ' sidebar__search--open' : ''}`}
-      >
+      <div ref={anchorRef} className={`sidebar__search${open ? ' sidebar__search--open' : ''}`}>
         <Icon name="search" size={16} className="sidebar__search-icon" />
         <div className="sidebar__search-field">
           <input

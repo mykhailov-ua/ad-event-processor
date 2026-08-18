@@ -16,9 +16,6 @@ type BootstrapResponse = {
   click_url_template?: string;
 };
 
-/**
- * Platform bootstrap registration (no app shell).
- */
 export function BootstrapPage() {
   const [installToken, setInstallToken] = useState('');
   const [email, setEmail] = useState('');
@@ -32,10 +29,12 @@ export function BootstrapPage() {
 
   useEffect(() => {
     void (async () => {
-      const [res, err] = await to(fetch('/api/v1/eula', { credentials: 'same-origin' }).then(async (r) => {
-        if (!r.ok) throw new Error('eula unavailable');
-        return { data: await r.json() as EulaPayload };
-      }));
+      const [res, err] = await to(
+        fetch('/api/v1/eula', { credentials: 'same-origin' }).then(async (r) => {
+          if (!r.ok) throw new Error('eula unavailable');
+          return { data: (await r.json()) as EulaPayload };
+        })
+      );
       if (err || !res?.data) return;
       setEulaVersion(res.data.version || '');
       setEulaText(res.data.text || '');
@@ -46,31 +45,33 @@ export function BootstrapPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const [res, err] = await to(apiConfirmed('/api/v1/settings/platform/bootstrap', {
-      method: 'POST',
-      headers: {
-        'X-Install-Token': installToken,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        config: {
-          tracking_domain: trackingDomain,
-          default_currency: 'USD',
-          timezone: 'UTC',
-          ingress_schema: 'ad_event_processor_native',
-          profile: 'single_vps',
-          network_interface: 'eth0',
-          telemetry_enabled: true,
-          edge_xdp: false,
-          edge_expose_click: true,
-          edge_expose_openrtb: false,
-          stripe: { enabled: false },
+    const [res, err] = await to(
+      apiConfirmed('/api/v1/settings/platform/bootstrap', {
+        method: 'POST',
+        headers: {
+          'X-Install-Token': installToken,
+          'Content-Type': 'application/json',
         },
-        admin_email: email,
-        admin_password: password,
-        eula_version: eulaAccepted ? eulaVersion : undefined,
-      }),
-    }));
+        body: JSON.stringify({
+          config: {
+            tracking_domain: trackingDomain,
+            default_currency: 'USD',
+            timezone: 'UTC',
+            ingress_schema: 'ad_event_processor_native',
+            profile: 'single_vps',
+            network_interface: 'eth0',
+            telemetry_enabled: true,
+            edge_xdp: false,
+            edge_expose_click: true,
+            edge_expose_openrtb: false,
+            stripe: { enabled: false },
+          },
+          admin_email: email,
+          admin_password: password,
+          eula_version: eulaAccepted ? eulaVersion : undefined,
+        }),
+      })
+    );
     if (err) {
       if (err instanceof ConfirmCancelledError) {
         setLoading(false);

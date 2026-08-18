@@ -49,7 +49,7 @@ func TestHWID_VMFallback(t *testing.T) {
 }
 
 func TestHWID_GoldenVectors(t *testing.T) {
-	path := filepath.Join("testdata", "vectors", "argon2id_hwid.json")
+	path := filepath.Join("testdata", "argon2id_hwid.json")
 	raw, err := os.ReadFile(path)
 	require.NoError(t, err)
 

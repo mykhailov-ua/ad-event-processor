@@ -1,4 +1,3 @@
-// Package keygen implements regionproxy keygen helpers.
 package keygen
 
 import (

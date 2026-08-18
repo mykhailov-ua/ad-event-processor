@@ -1,11 +1,11 @@
 package controlplane
 
 import (
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
-
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/bidshard/ad-event-processor/pkg/faultproof"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

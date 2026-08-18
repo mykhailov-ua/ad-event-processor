@@ -67,8 +67,6 @@ func pickGlobalReconcileSource(ctx context.Context, rdbs []redis.UniversalClient
 	return PickHealthyControlShard(rdbs)
 }
 
-// blacklistGenerationScore sums member counts across blacklist:* sets as a tie-breaker
-// when config:version is equal across shards.
 func blacklistGenerationScore(ctx context.Context, rdb redis.UniversalClient) (int64, error) {
 	keys, err := scanRedisKeys(ctx, rdb, globalBlacklistKeyPrefix+"*")
 	if err != nil {

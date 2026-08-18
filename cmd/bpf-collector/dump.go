@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/cmd/bpf-collector/bpfprobe"
 
 	"github.com/cilium/ebpf"
 )
@@ -152,10 +151,10 @@ func (r *probeRun) aggregatePIDStats(durationSec float64) ([]dumpedPIDStats, err
 	var loadgenOnCPU, trackedOnCPU uint64
 
 	var key uint32
-	var perCPU []bpfprobe.PIDStats
+	var perCPU []PIDStats
 	iter := m.Iterate()
 	for iter.Next(&key, &perCPU) {
-		var agg bpfprobe.PIDStats
+		var agg PIDStats
 		for _, v := range perCPU {
 			agg.CtxSwitchOut += v.CtxSwitchOut
 			agg.CtxSwitchIn += v.CtxSwitchIn
@@ -242,14 +241,14 @@ func (r *probeRun) aggregateSyscalls() ([]dumpedSyscall, error) {
 	}
 
 	type acc struct {
-		hist bpfprobe.Hist
+		hist Hist
 		role uint8
 	}
 	merged := map[string]*acc{}
 	var totalWall uint64
 
-	var key bpfprobe.SyscallHistKey
-	var perCPU []bpfprobe.Hist
+	var key SyscallHistKey
+	var perCPU []Hist
 	iter := m.Iterate()
 	for iter.Next(&key, &perCPU) {
 		k := fmt.Sprintf("%d:%d", key.PID, key.SyscallID)
@@ -297,7 +296,7 @@ func (r *probeRun) aggregateSyscalls() ([]dumpedSyscall, error) {
 	return rows, nil
 }
 
-func mergeHist(dst *bpfprobe.Hist, src bpfprobe.Hist) {
+func mergeHist(dst *Hist, src Hist) {
 	dst.Count += src.Count
 	dst.SumNs += src.SumNs
 	if src.MaxNs > dst.MaxNs {
@@ -308,7 +307,7 @@ func mergeHist(dst *bpfprobe.Hist, src bpfprobe.Hist) {
 	}
 }
 
-func histP99Us(h bpfprobe.Hist) float64 {
+func histP99Us(h Hist) float64 {
 	if h.Count == 0 {
 		return 0
 	}
@@ -333,11 +332,11 @@ func (r *probeRun) aggregateNet() ([]map[string]any, error) {
 		return nil, nil
 	}
 	var out []map[string]any
-	var key bpfprobe.NetKey
-	var perCPU []bpfprobe.NetStats
+	var key NetKey
+	var perCPU []NetStats
 	iter := m.Iterate()
 	for iter.Next(&key, &perCPU) {
-		var agg bpfprobe.NetStats
+		var agg NetStats
 		for _, v := range perCPU {
 			agg.Retrans += v.Retrans
 			agg.Connects += v.Connects
@@ -369,11 +368,11 @@ func (r *probeRun) enrichRunqueueP99(stats []dumpedPIDStats) {
 	}
 	for i := range stats {
 		key := stats[i].PID
-		var perCPU []bpfprobe.Hist
+		var perCPU []Hist
 		if err := m.Lookup(key, &perCPU); err != nil {
 			continue
 		}
-		var agg bpfprobe.Hist
+		var agg Hist
 		for _, h := range perCPU {
 			mergeHist(&agg, h)
 		}
@@ -414,11 +413,11 @@ func (r *probeRun) aggregateMarkers() ([]dumpedMarker, error) {
 		return nil, nil
 	}
 	var out []dumpedMarker
-	var key bpfprobe.MarkerHistKey
-	var perCPU []bpfprobe.Hist
+	var key MarkerHistKey
+	var perCPU []Hist
 	iter := m.Iterate()
 	for iter.Next(&key, &perCPU) {
-		var agg bpfprobe.Hist
+		var agg Hist
 		for _, h := range perCPU {
 			mergeHist(&agg, h)
 		}

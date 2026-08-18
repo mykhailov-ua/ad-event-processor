@@ -11,7 +11,6 @@ import (
 
 	"github.com/bidshard/ad-event-processor/internal/clickhouse/migrate"
 	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/internal/database"
 
 	"github.com/google/uuid"
@@ -83,7 +82,7 @@ func TestFault_ForecastDeterministic(t *testing.T) {
 func TestFault_ForecastCHTimeout(t *testing.T) {
 	t.Parallel()
 	rec := httptest.NewRecorder()
-	writeForecastError(rec, adminapi.ErrForecastClickHouseTimeout)
+	writeForecastError(rec, ErrForecastClickHouseTimeout)
 	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
 	assert.Equal(t, "30", rec.Header().Get("Retry-After"))
 	var resp map[string]any

@@ -3,9 +3,6 @@ export type FreshnessBadgeProps = {
   lagSeconds?: number;
 };
 
-/**
- * ClickHouse data freshness indicator when lag or staleness is known.
- */
 export function FreshnessBadge({ stale = false, lagSeconds = 0 }: FreshnessBadgeProps) {
   const lag = lagSeconds ?? 0;
   if (!stale && lag === 0) return null;
@@ -17,7 +14,9 @@ export function FreshnessBadge({ stale = false, lagSeconds = 0 }: FreshnessBadge
 
   return (
     <span
-      className={stale ? 'freshness-badge freshness-badge--stale' : 'freshness-badge freshness-badge--ok'}
+      className={
+        stale ? 'freshness-badge freshness-badge--stale' : 'freshness-badge freshness-badge--ok'
+      }
       title={title}
     >
       {stale ? `Stale · ${lagText}` : `Fresh · ${lagText}`}

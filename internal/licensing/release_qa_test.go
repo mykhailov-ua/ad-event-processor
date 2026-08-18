@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Release QA harness labels (MILESTONE.md §8).
 const (
 	HarnessReleaseQAFuzzSmoke      = "release_qa_fuzz_smoke"
 	HarnessReleaseQAGarbledAlloc   = "release_qa_garbled_alloc"

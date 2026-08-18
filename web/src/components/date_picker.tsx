@@ -2,9 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from './button.js';
 import { Icon } from './icon.js';
 
-/**
- * Format a Date object to YYYY-MM-DD HH:mm for display.
- */
 export function formatDisplayDateTime(date: Date | null | undefined): string {
   if (!date || Number.isNaN(date.getTime())) return '';
   const pad = (n: number): string => String(n).padStart(2, '0');
@@ -18,14 +15,26 @@ function parseIsoValue(iso: string): Date {
 }
 
 function isSameDay(d1: Date, d2: Date): boolean {
-  return d1.getFullYear() === d2.getFullYear()
-    && d1.getMonth() === d2.getMonth()
-    && d1.getDate() === d2.getDate();
+  return (
+    d1.getFullYear() === d2.getFullYear() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getDate() === d2.getDate()
+  );
 }
 
 const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 const DAY_NAMES = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
@@ -46,9 +55,6 @@ export type DatePickerProps = {
   placeholder?: string;
 };
 
-/**
- * Theme-aware date and time picker popover.
- */
 export function DatePicker({
   id,
   value,
@@ -133,19 +139,22 @@ export function DatePicker({
       </div>
 
       {open ? (
-        <div
-          className="custom-date-popover elevation-raised"
-          onClick={(e) => e.stopPropagation()}
-        >
+        <div className="custom-date-popover elevation-raised" onClick={(e) => e.stopPropagation()}>
           <div className="cdp-header">
-            <button type="button" className="cdp-nav-btn" onClick={prevMonth}>‹</button>
+            <button type="button" className="cdp-nav-btn" onClick={prevMonth}>
+              ‹
+            </button>
             <span className="cdp-month-label">{`${MONTH_NAMES[viewMonth]} ${viewYear}`}</span>
-            <button type="button" className="cdp-nav-btn" onClick={nextMonth}>›</button>
+            <button type="button" className="cdp-nav-btn" onClick={nextMonth}>
+              ›
+            </button>
           </div>
 
           <div className="cdp-weekdays">
             {DAY_NAMES.map((d) => (
-              <span key={d} className="cdp-weekday">{d}</span>
+              <span key={d} className="cdp-weekday">
+                {d}
+              </span>
             ))}
           </div>
 
@@ -166,7 +175,9 @@ export function DatePicker({
                     'cdp-day',
                     isSelected ? 'cdp-day--selected' : '',
                     isToday ? 'cdp-day--today' : '',
-                  ].filter(Boolean).join(' ')}
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
                   onClick={() => {
                     const next = new Date(selectedDate);
                     next.setFullYear(viewYear, viewMonth, day);
@@ -192,7 +203,9 @@ export function DatePicker({
               }}
             >
               {HOUR_OPTS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
               ))}
             </select>
             <span className="cdp-time-sep">:</span>
@@ -207,7 +220,9 @@ export function DatePicker({
               }}
             >
               {MINUTE_OPTS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
               ))}
             </select>
           </div>

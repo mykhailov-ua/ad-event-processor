@@ -21,9 +21,6 @@ export type OpsLiveFeedHandle = {
 const STREAM_PATH = '/api/v1/ops/dashboard/stream';
 const DEFAULT_POLL_MS = 30_000;
 
-/**
- * Connect to the ops dashboard live feed (SSE) with parallel polling.
- */
 export function connectOpsLiveFeed(opts: OpsLiveFeedOpts): OpsLiveFeedHandle {
   let destroyed = false;
   let mode: OpsFeedMode = 'poll';
@@ -31,18 +28,12 @@ export function connectOpsLiveFeed(opts: OpsLiveFeedOpts): OpsLiveFeedHandle {
   let pollTimer: ReturnType<typeof setInterval> | null = null;
   const pollMs = opts.pollMs ?? DEFAULT_POLL_MS;
 
-  /**
-   * Switch feed mode and notify listeners.
-   */
   function setMode(next: OpsFeedMode): void {
     if (mode === next) return;
     mode = next;
     opts.onModeChange?.(next);
   }
 
-  /**
-   * Start the poll fallback timer.
-   */
   function startPoll(): void {
     if (pollTimer) return;
     pollTimer = setInterval(() => {
@@ -50,9 +41,6 @@ export function connectOpsLiveFeed(opts: OpsLiveFeedOpts): OpsLiveFeedHandle {
     }, pollMs);
   }
 
-  /**
-   * Open the SSE stream when EventSource is available.
-   */
   function connectStream(): void {
     if (typeof EventSource === 'undefined') return;
     es = new EventSource(STREAM_PATH);

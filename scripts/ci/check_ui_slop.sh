@@ -15,7 +15,7 @@ check_rg() {
     --glob '*.ts' --glob '*.js' \
     --glob '!**/placeholder.ts' \
     --glob '!**/report_stub.ts' \
-    2>/dev/null; then
+    2> /dev/null; then
     echo "Error: UI slop — $desc"
     failed=1
   fi

@@ -1,10 +1,7 @@
-/** Warn when outbox pending exceeds this count (operator overview). */
 export const OUTBOX_PENDING_WARN_THRESHOLD = 50;
 
-/** Critical outbox backlog threshold. */
 export const OUTBOX_PENDING_CRITICAL_THRESHOLD = 500;
 
-/** Campaign utilization % — little budget headroom remaining. */
 export const LOW_BUDGET_UTIL_PCT = 85;
 
 export type HomeAlertCard = {
@@ -58,16 +55,10 @@ export type HomeAlertInput = {
   buyerMode?: boolean;
 };
 
-/**
- * Build home-page alert cards from operator and buyer dashboard payloads.
- */
 export function buildHomeAlerts(input: HomeAlertInput): HomeAlertCard[] {
   const alerts: HomeAlertCard[] = [];
   const seen = new Set<string>();
 
-  /**
-   * Push a unique alert card.
-   */
   function push(card: HomeAlertCard): void {
     if (!card?.id || seen.has(card.id)) return;
     seen.add(card.id);
@@ -117,7 +108,9 @@ export function buildHomeAlerts(input: HomeAlertInput): HomeAlertCard[] {
       });
     }
 
-    const breaker = String(summary?.emergency_breaker ?? input.incidents?.emergency_breaker ?? '').toLowerCase();
+    const breaker = String(
+      summary?.emergency_breaker ?? input.incidents?.emergency_breaker ?? ''
+    ).toLowerCase();
     if (breaker === 'open') {
       push({
         id: 'emergency-breaker',
@@ -129,8 +122,8 @@ export function buildHomeAlerts(input: HomeAlertInput): HomeAlertCard[] {
     }
 
     const breakerStates = input.incidents?.breaker_states ?? {};
-    const openBreakers = Object.entries(breakerStates).filter(([, v]) =>
-      String(v).toLowerCase() === 'open',
+    const openBreakers = Object.entries(breakerStates).filter(
+      ([, v]) => String(v).toLowerCase() === 'open'
     );
     for (let i = 0; i < openBreakers.length; i++) {
       const [name] = openBreakers[i];
@@ -170,8 +163,10 @@ export function buildHomeAlerts(input: HomeAlertInput): HomeAlertCard[] {
         });
       }
 
-      if (message.toLowerCase().includes('registry_stale')
-        || (checkId.includes('registry') && status === 'fail')) {
+      if (
+        message.toLowerCase().includes('registry_stale') ||
+        (checkId.includes('registry') && status === 'fail')
+      ) {
         push({
           id: 'registry-stale',
           level: 'critical',
@@ -182,11 +177,17 @@ export function buildHomeAlerts(input: HomeAlertInput): HomeAlertCard[] {
       }
     }
 
-    const trackerSvc = input.doctor?.services?.find((s) =>
-      String(s.name ?? '').toLowerCase().includes('tracker'),
-    ) ?? input.summary?.services?.find((s) =>
-      String(s.name ?? s.id ?? '').toLowerCase().includes('tracker'),
-    );
+    const trackerSvc =
+      input.doctor?.services?.find((s) =>
+        String(s.name ?? '')
+          .toLowerCase()
+          .includes('tracker')
+      ) ??
+      input.summary?.services?.find((s) =>
+        String(s.name ?? s.id ?? '')
+          .toLowerCase()
+          .includes('tracker')
+      );
     const trackerDetail = String(trackerSvc?.detail ?? '').toLowerCase();
     if (trackerDetail.includes('registry_stale') || trackerDetail.includes('registry stale')) {
       push({
@@ -199,13 +200,18 @@ export function buildHomeAlerts(input: HomeAlertInput): HomeAlertCard[] {
     }
 
     const chCheck = checks.find((c) =>
-      String(c.id ?? c.name ?? '').toLowerCase().includes('clickhouse'),
+      String(c.id ?? c.name ?? '')
+        .toLowerCase()
+        .includes('clickhouse')
     );
     const chService = input.doctor?.services?.find((s) =>
-      String(s.name ?? '').toLowerCase().includes('clickhouse'),
+      String(s.name ?? '')
+        .toLowerCase()
+        .includes('clickhouse')
     );
-    const chBad = (chCheck?.status && chCheck.status !== 'ok' && chCheck.status !== 'pass')
-      || (chService?.status && chService.status !== 'ok' && chService.status !== 'disabled');
+    const chBad =
+      (chCheck?.status && chCheck.status !== 'ok' && chCheck.status !== 'pass') ||
+      (chService?.status && chService.status !== 'ok' && chService.status !== 'disabled');
     if (chBad) {
       push({
         id: 'ch-lag',

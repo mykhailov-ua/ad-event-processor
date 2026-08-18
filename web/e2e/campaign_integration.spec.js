@@ -1,4 +1,3 @@
-/** harness=mock_api — Playwright route.fulfill; does not prove Go handler or CH/PG. */
 import { test, expect } from '@playwright/test';
 import { mockAuthedSession, ADMIN_USER } from './helpers.js';
 
@@ -14,9 +13,6 @@ const CAMPAIGN = {
   pacing_mode: 'even',
 };
 
-/**
- * @param {import('@playwright/test').Page} page
- */
 async function mockCampaignApis(page) {
   await page.route(`**/api/v1/campaigns/${CAMPAIGN_ID}`, async (route) => {
     await route.fulfill({
@@ -105,7 +101,9 @@ test('Integration tab shows click + inbound S2S copy rows', async ({ page }) => 
   await expect(page.getByRole('tab', { name: 'Integration' })).toBeVisible();
   await expect(page.getByTestId('campaign-integration-kit')).toBeVisible();
   await expect(page.getByTestId('integration-click-url')).toContainText(CAMPAIGN_ID);
-  await expect(page.getByTestId('integration-inbound-url')).toContainText('https://trk.example.com/track');
+  await expect(page.getByTestId('integration-inbound-url')).toContainText(
+    'https://trk.example.com/track'
+  );
   await expect(page.getByTestId('integration-inbound-body')).toContainText('"type": "conversion"');
   await expect(page.getByTestId('integration-macro-table')).toContainText('{sub1}…{sub30}');
   await expect(page.getByTestId('traffic-guide')).toBeVisible();
@@ -132,7 +130,9 @@ test('CAPI tab loads and links back to Integration', async ({ page }) => {
   await page.goto(`/campaigns/${CAMPAIGN_ID}?tab=postbacks`);
   await expect(page.getByRole('tab', { name: 'CAPI & Postbacks' })).toBeVisible();
   await expect(page.getByTestId('campaign-capi-panel')).toBeVisible();
-  await expect(page.getByTestId('campaign-capi-panel').getByRole('link', { name: 'Integration' })).toBeVisible();
+  await expect(
+    page.getByTestId('campaign-capi-panel').getByRole('link', { name: 'Integration' })
+  ).toBeVisible();
 });
 
 test('CAPI tab shows test event code for Meta', async ({ page }) => {

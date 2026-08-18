@@ -16,7 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Red-team step 10 (automated): clock rewind via skew watch expires registry snapshot → ingest blocked.
 func TestRegistry_licenseRecheck_clockSkewBlocksIngest(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping registry skew integration test")

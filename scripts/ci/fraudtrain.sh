@@ -23,7 +23,7 @@ if [[ ! -f "${MODEL_PATH}" ]]; then
 fi
 
 echo "fraudtrain: Python contract tests"
-if python3 -c "import pytest" 2>/dev/null; then
+if python3 -c "import pytest" 2> /dev/null; then
   (cd "${MODEL_DIR}" && python3 -m pytest tests/ -q)
 else
   echo "fraudtrain: skip pytest (pip install -r model/requirements.txt)" >&2
@@ -47,7 +47,7 @@ echo "fraudtrain: Go ml-replay"
 go test ./cmd/ml-replay/... -count=1
 go run ./cmd/ml-replay -model "${MODEL_PATH}" -fixtures "${FIXTURES_DIR}" > /dev/null
 
-if python3 -c "import lightgbm" 2>/dev/null; then
+if python3 -c "import lightgbm" 2> /dev/null; then
   echo "fraudtrain: Python artifact validate"
   python3 "${MODEL_DIR}/artifact_bootstrap.py" validate --model "${MODEL_PATH}"
   echo "fraudtrain: fit smoke"
@@ -68,14 +68,14 @@ else
   echo "fraudtrain: skip Python validate (pip install -r model/requirements.txt)"
 fi
 
-if python3 -c "import clickhouse_connect" 2>/dev/null; then
+if python3 -c "import clickhouse_connect" 2> /dev/null; then
   if python3 -c "
 import sys
 sys.path.insert(0, '${MODEL_DIR}')
 from ch_client import connect_client, ping_client
 client = connect_client()
 sys.exit(0 if ping_client(client) else 1)
-" 2>/dev/null; then
+" 2> /dev/null; then
     echo "fraudtrain: features_export smoke"
     python3 "${MODEL_DIR}/features_export.py" --smoke
     echo "fraudtrain: evaluate smoke"
@@ -87,7 +87,7 @@ else
   echo "fraudtrain: skip CH smokes (clickhouse-connect not installed)"
 fi
 
-if command -v ruff >/dev/null 2>&1; then
+if command -v ruff > /dev/null 2>&1; then
   ruff check "${MODEL_DIR}/"
 fi
 

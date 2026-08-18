@@ -30,7 +30,6 @@ type campaignFlowSync struct {
 	gen      atomic.Uint64
 }
 
-// NewCampaignFlowSync builds the cold-path PG sync worker. Returns nil when disabled.
 func NewCampaignFlowSync(pool *pgxpool.Pool, table *CampaignFlowTable, interval time.Duration) *campaignFlowSync {
 	if pool == nil || table == nil {
 		return nil

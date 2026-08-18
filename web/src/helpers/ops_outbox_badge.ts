@@ -6,15 +6,9 @@ export type OpsOutboxBadgeHandle = {
   destroy: () => void;
 };
 
-/**
- * Keep the Operations nav badge in sync via SSE with 30s poll fallback.
- */
 export function startOpsOutboxBadge(onPending: (pending: number) => void): OpsOutboxBadgeHandle {
   let destroyed = false;
 
-  /**
-   * Pull outbox pending count from the ops summary endpoint.
-   */
   async function pullSummary(): Promise<void> {
     const [res] = await to(api('/api/v1/ops/dashboard/summary'));
     if (destroyed || !res?.data) return;
@@ -29,7 +23,9 @@ export function startOpsOutboxBadge(onPending: (pending: number) => void): OpsOu
         onPending(Number(payload.summary.outbox_pending) || 0);
       }
     },
-    onPoll: () => { pullSummary(); },
+    onPoll: () => {
+      pullSummary();
+    },
   });
 
   pullSummary();

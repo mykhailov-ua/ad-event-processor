@@ -1,5 +1,3 @@
-// Vendor-only CLI: issue offline license JWTs for on-prem pilot customers.
-// Private key never ships in customer tarballs — keep deploy/vendor/license_private.key local.
 package main
 
 import (

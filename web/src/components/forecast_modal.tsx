@@ -31,9 +31,6 @@ export type ForecastModalProps = {
   onClose: () => void;
 };
 
-/**
- * Campaign delivery forecast with P50/P90 and 503 retry countdown.
- */
 export function ForecastModal({ open, opts, onClose }: ForecastModalProps) {
   const [phase, setPhase] = useState<'idle' | 'loading' | 'retry' | 'error' | 'ready'>('idle');
   const [countdown, setCountdown] = useState(0);
@@ -67,16 +64,24 @@ export function ForecastModal({ open, opts, onClose }: ForecastModalProps) {
     };
     if (current.customerId) payload.customer_id = current.customerId;
 
-    const [res, err] = await to(api('/api/v1/forecast/campaign', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }));
+    const [res, err] = await to(
+      api('/api/v1/forecast/campaign', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      })
+    );
 
     if (err) {
-      const retryAfter = err instanceof ApiError
-        ? Number(err.responseHeaders?.get('Retry-After') ?? (err as Error & { retryAfter?: number }).retryAfter ?? 0)
-        : Number((err as Error & { retryAfter?: number }).retryAfter ?? 0);
-      const status = err instanceof ApiError ? err.status : (err as Error & { status?: number }).status;
+      const retryAfter =
+        err instanceof ApiError
+          ? Number(
+              err.responseHeaders?.get('Retry-After') ??
+                (err as Error & { retryAfter?: number }).retryAfter ??
+                0
+            )
+          : Number((err as Error & { retryAfter?: number }).retryAfter ?? 0);
+      const status =
+        err instanceof ApiError ? err.status : (err as Error & { status?: number }).status;
       if (status === 503 && retryAfter > 0) {
         clearRetryTimer();
         let remaining = retryAfter;
@@ -127,7 +132,12 @@ export function ForecastModal({ open, opts, onClose }: ForecastModalProps) {
   const curve = forecast?.spend_curve ?? [];
 
   return (
-    <Modal open={open} title="Campaign forecast" onClose={handleClose} testId="campaign-forecast-modal">
+    <Modal
+      open={open}
+      title="Campaign forecast"
+      onClose={handleClose}
+      testId="campaign-forecast-modal"
+    >
       {statusMessage ? <p>{statusMessage}</p> : null}
       {phase === 'ready' && forecast ? (
         <div className="stack">
@@ -155,9 +165,6 @@ export function ForecastModal({ open, opts, onClose }: ForecastModalProps) {
   );
 }
 
-/**
- * Hook for opening the forecast modal from campaign overview.
- */
 export function useForecastModal() {
   const [opts, setOpts] = useState<ForecastModalOpts | null>(null);
   return {

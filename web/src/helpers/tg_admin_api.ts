@@ -23,9 +23,6 @@ export type TelegramDeeplinkDTO = {
   expires_at: string;
 };
 
-/**
- * Fetch Telegram bot config for a campaign (null on 404).
- */
 export async function fetchTelegramBot(campaignId: string): Promise<TelegramBotDTO | null> {
   try {
     const res = await api(`/api/v1/telegram/bots/${campaignId}`);
@@ -36,12 +33,9 @@ export async function fetchTelegramBot(campaignId: string): Promise<TelegramBotD
   }
 }
 
-/**
- * Save Telegram bot config for a campaign.
- */
 export async function saveTelegramBot(
   campaignId: string,
-  bot: Partial<TelegramBotDTO>,
+  bot: Partial<TelegramBotDTO>
 ): Promise<void> {
   await apiConfirmed(`/api/v1/telegram/bots/${campaignId}`, {
     method: 'PUT',
@@ -57,19 +51,16 @@ export async function saveTelegramBot(
   });
 }
 
-/**
- * List Telegram postbacks for a campaign.
- */
 export async function fetchTelegramPostbacks(campaignId: string): Promise<TelegramPostbackDTO[]> {
   const q = new URLSearchParams({ campaign_id: campaignId });
   const res = await api(`/api/v1/telegram/postbacks?${q.toString()}`);
   return Array.isArray(res?.data) ? (res.data as TelegramPostbackDTO[]) : [];
 }
 
-/**
- * Create a Telegram postback URL.
- */
-export async function createTelegramPostback(campaignId: string, postbackUrl: string): Promise<void> {
+export async function createTelegramPostback(
+  campaignId: string,
+  postbackUrl: string
+): Promise<void> {
   await apiConfirmed('/api/v1/telegram/postbacks', {
     method: 'POST',
     body: JSON.stringify({
@@ -80,40 +71,31 @@ export async function createTelegramPostback(campaignId: string, postbackUrl: st
   });
 }
 
-/**
- * Update a Telegram postback URL.
- */
-export async function updateTelegramPostback(postbackId: string, postbackUrl: string): Promise<void> {
+export async function updateTelegramPostback(
+  postbackId: string,
+  postbackUrl: string
+): Promise<void> {
   await apiConfirmed(`/api/v1/telegram/postbacks/${postbackId}`, {
     method: 'PUT',
     body: JSON.stringify({ postback_url: postbackUrl }),
   });
 }
 
-/**
- * Delete a Telegram postback.
- */
 export async function deleteTelegramPostback(postbackId: string): Promise<void> {
   await apiConfirmed(`/api/v1/telegram/postbacks/${postbackId}`, {
     method: 'DELETE',
   });
 }
 
-/**
- * Fire a Telegram postback test.
- */
 export async function testTelegramPostback(postbackId: string): Promise<void> {
   await apiConfirmed(`/api/v1/telegram/postbacks/${postbackId}/test`, {
     method: 'POST',
   });
 }
 
-/**
- * Create a Telegram deeplink token with optional UTM attribution.
- */
 export async function createTelegramDeeplink(
   campaignId: string,
-  attribution: Record<string, string> = {},
+  attribution: Record<string, string> = {}
 ): Promise<TelegramDeeplinkDTO> {
   const res = await apiConfirmed('/api/v1/telegram/deeplink-tokens', {
     method: 'POST',

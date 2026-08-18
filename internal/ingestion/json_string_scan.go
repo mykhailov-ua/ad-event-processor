@@ -15,8 +15,6 @@ func decodeJSONU16(hex []byte) (uint16, bool) {
 	return v, true
 }
 
-// scanJSONStringEnd scans a JSON string starting at the opening quote at data[i].
-// Returns the index after the closing quote.
 func scanJSONStringEnd(data []byte, i, n int, b *jsonScanBudget) (int, bool) {
 	if i >= n || data[i] != '"' {
 		return i, false
@@ -56,7 +54,7 @@ func scanJSONStringEnd(data []byte, i, n int, b *jsonScanBudget) (int, bool) {
 				}
 				switch {
 				case cp >= 0xD800 && cp <= 0xDBFF:
-					// i points at the first hex digit of \uXXXX; the full pair needs 10 bytes (XXXX\uYYYY).
+
 					if i+10 > n || data[i+4] != '\\' || data[i+5] != 'u' {
 						return i, false
 					}
@@ -83,7 +81,6 @@ func scanJSONStringEnd(data []byte, i, n int, b *jsonScanBudget) (int, bool) {
 	return i, false
 }
 
-// scanJSONLiteralStringEnd scans a JSON string with no escape sequences allowed.
 func scanJSONLiteralStringEnd(data []byte, i, n int, b *jsonScanBudget) (int, bool) {
 	if i >= n || data[i] != '"' {
 		return i, false

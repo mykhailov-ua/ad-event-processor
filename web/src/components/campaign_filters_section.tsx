@@ -19,9 +19,6 @@ export type CampaignFiltersSectionProps = {
   onSaved?: () => void;
 };
 
-/**
- * Structured traffic filter editor for a campaign.
- */
 export function CampaignFiltersSection({
   campaignId,
   referrerFilter,
@@ -40,13 +37,21 @@ export function CampaignFiltersSection({
     setSaving(true);
     setError(null);
     const next = {
-      allowReferrers: allowInput.split(',').map((s) => s.trim()).filter(Boolean),
-      blockReferrers: blockInput.split(',').map((s) => s.trim()).filter(Boolean),
+      allowReferrers: allowInput
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+      blockReferrers: blockInput
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
       blockEmptyReferrer: blockEmpty,
     };
-    const [, err] = await to(patchCampaign(campaignId, {
-      referrer_filter: serializeTrafficFilter(next),
-    }));
+    const [, err] = await to(
+      patchCampaign(campaignId, {
+        referrer_filter: serializeTrafficFilter(next),
+      })
+    );
     setSaving(false);
     if (err) {
       if (err instanceof ConfirmCancelledError) return;
@@ -108,13 +113,7 @@ export function CampaignFiltersSection({
             disabled={saving}
             onClick={() => void save()}
           />
-          <Button
-            label="Reset"
-            variant="secondary"
-            size="sm"
-            disabled={saving}
-            onClick={reset}
-          />
+          <Button label="Reset" variant="secondary" size="sm" disabled={saving} onClick={reset} />
         </div>
       ) : null}
     </div>

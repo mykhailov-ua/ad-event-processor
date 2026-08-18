@@ -16,10 +16,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/bidshard/ad-event-processor/internal/domain/db"
-	"github.com/bidshard/ad-event-processor/internal/edge/allowlist"
+	"github.com/bidshard/ad-event-processor/internal/edge"
 	"github.com/bidshard/ad-event-processor/internal/ledger"
 	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 	"github.com/bidshard/ad-event-processor/pkg/naming"
@@ -32,9 +31,7 @@ import (
 
 var emailPIIPattern = regexp.MustCompile(`(?i)[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}`)
 
-type AuditLogDTO = adminapi.AuditLogDTO
-
-func (s *Service) ListAuditLogs(ctx context.Context, limit, offset int32, redactPII bool) ([]adminapi.AuditLogDTO, int64, error) {
+func (s *Service) ListAuditLogs(ctx context.Context, limit, offset int32, redactPII bool) ([]AuditLogDTO, int64, error) {
 	rows, total, err := s.ListAuditLogRows(ctx, limit, offset)
 	if err != nil {
 		return nil, 0, err
@@ -46,7 +43,7 @@ func (s *Service) ListAuditLogs(ctx context.Context, limit, offset int32, redact
 			changes = redactJSONPII(changes)
 			metadata = redactJSONPII(metadata)
 		}
-		dto := adminapi.AuditLogDTO{
+		dto := AuditLogDTO{
 			ID:         row.ID,
 			Action:     row.Action,
 			TargetType: row.TargetType,
@@ -122,8 +119,6 @@ var (
 	ErrConsentInvalidSignature = errors.New("invalid consent signature")
 	ErrConsentInvalidPayload   = errors.New("invalid consent payload")
 )
-
-type ConsentRecord = adminapi.ConsentRecord
 
 func (s *Service) RecordConsent(ctx context.Context, in ConsentRecord) error {
 	if in.UserID == "" {
@@ -251,7 +246,9 @@ func (s *Service) ProcessPrivacyErasureTick(ctx context.Context) error {
 	}
 	for _, row := range rows {
 		if err := s.advanceErasurePG(opCtx, row); err != nil {
-			_ = s.failErasure(opCtx, row.ID, err)
+			if failErr := s.failErasure(opCtx, row.ID, err); failErr != nil {
+				return fmt.Errorf("privacy erasure: mark pg anonymize failed: %w (cause: %v)", failErr, err)
+			}
 		}
 	}
 
@@ -264,7 +261,9 @@ func (s *Service) ProcessPrivacyErasureTick(ctx context.Context) error {
 	}
 	for _, row := range rows {
 		if err := s.enqueueErasureRedisPurge(opCtx, row); err != nil {
-			_ = s.failErasure(opCtx, row.ID, err)
+			if failErr := s.failErasure(opCtx, row.ID, err); failErr != nil {
+				return fmt.Errorf("privacy erasure: mark redis purge failed: %w (cause: %v)", failErr, err)
+			}
 		}
 	}
 
@@ -277,7 +276,9 @@ func (s *Service) ProcessPrivacyErasureTick(ctx context.Context) error {
 	}
 	for _, row := range rows {
 		if err := s.advanceErasureCH(opCtx, row); err != nil {
-			_ = s.failErasure(opCtx, row.ID, err)
+			if failErr := s.failErasure(opCtx, row.ID, err); failErr != nil {
+				return fmt.Errorf("privacy erasure: mark clickhouse anonymize failed: %w (cause: %v)", failErr, err)
+			}
 		}
 	}
 	return nil
@@ -543,10 +544,6 @@ var (
 	ErrFeedbackEmptyMessage = errors.New("message is required")
 )
 
-type SupportFeedbackRecord = adminapi.SupportFeedbackRecord
-
-type SupportFeedbackMeta = adminapi.SupportFeedbackMeta
-
 func (s *Service) SupportFeedbackMeta(ctx context.Context) (SupportFeedbackMeta, error) {
 	meta := SupportFeedbackMeta{
 		BinaryVersion: os.Getenv(naming.LegacyVendorEnvKey("BINARY_VERSION")),
@@ -654,9 +651,9 @@ func (s *Service) ListMarginGuardPolicies(ctx context.Context, campaignID uuid.U
 	return policies, nil
 }
 
-func (s *Service) GetCampaignMargin(ctx context.Context, campaignID uuid.UUID) (adminapi.CampaignMarginDTO, error) {
+func (s *Service) GetCampaignMargin(ctx context.Context, campaignID uuid.UUID) (CampaignMarginDTO, error) {
 	if s == nil || s.pool == nil {
-		return adminapi.CampaignMarginDTO{}, fmt.Errorf("service unavailable")
+		return CampaignMarginDTO{}, fmt.Errorf("service unavailable")
 	}
 	windowStart := time.Now().Add(-1 * time.Hour)
 	q := db.New(s.pool)
@@ -665,18 +662,18 @@ func (s *Service) GetCampaignMargin(ctx context.Context, campaignID uuid.UUID) (
 		CreatedAt:  pgtype.Timestamp{Time: windowStart, Valid: true},
 	})
 	if err != nil {
-		return adminapi.CampaignMarginDTO{}, err
+		return CampaignMarginDTO{}, err
 	}
 	thresholdBps := ledger.CostOverRevenueThresholdBps(nil, s.cfg)
 	policies, err := s.ListMarginGuardPolicies(ctx, campaignID)
 	if err != nil {
-		return adminapi.CampaignMarginDTO{}, err
+		return CampaignMarginDTO{}, err
 	}
 	if len(policies) > 0 {
 		thresholdBps = ledger.CostOverRevenueThresholdBps(policies[0], s.cfg)
 	}
 	limitMicro := ledger.CostOverRevenueLimitMicro(sums.AdvertiserSpendMicro, thresholdBps)
-	return adminapi.CampaignMarginDTO{
+	return CampaignMarginDTO{
 		CampaignID:           campaignID.String(),
 		WindowStart:          windowStart.UTC().Format(time.RFC3339),
 		WindowHours:          1,
@@ -690,7 +687,6 @@ func (s *Service) GetCampaignMargin(ctx context.Context, campaignID uuid.UUID) (
 	}, nil
 }
 
-// AttachCampaignListMarginBreach sets margin_breach on ACTIVE campaigns (1h window).
 func (s *Service) AttachCampaignListMarginBreach(ctx context.Context, items []CampaignDTO) {
 	if s == nil || len(items) == 0 {
 		return
@@ -708,7 +704,7 @@ func (s *Service) AttachCampaignListMarginBreach(ctx context.Context, items []Ca
 	}
 }
 
-func (s *Service) GetMarginGuardActivity(ctx context.Context, campaignID uuid.UUID) ([]adminapi.MarginGuardActivityRow, error) {
+func (s *Service) GetMarginGuardActivity(ctx context.Context, campaignID uuid.UUID) ([]MarginGuardActivityRow, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, policy_id, campaign_id, placement_id, action, reason, metrics, created_at
 		FROM margin_guard_activity
@@ -721,9 +717,9 @@ func (s *Service) GetMarginGuardActivity(ctx context.Context, campaignID uuid.UU
 	}
 	defer rows.Close()
 
-	var activities []adminapi.MarginGuardActivityRow
+	var activities []MarginGuardActivityRow
 	for rows.Next() {
-		var row adminapi.MarginGuardActivityRow
+		var row MarginGuardActivityRow
 		var metrics []byte
 		var createdAt time.Time
 		if err := rows.Scan(&row.ID, &row.PolicyID, &row.CampaignID, &row.PlacementID, &row.Action, &row.Reason, &metrics, &createdAt); err != nil {
@@ -1267,8 +1263,6 @@ func autoscaleTransferKey(
 	)
 }
 
-type BlacklistDTO = adminapi.BlacklistDTO
-
 func (s *Service) BlockIP(ctx context.Context, ip string, source string) error {
 	return s.BlockIPWithTTL(ctx, ip, source, nil)
 }
@@ -1283,7 +1277,7 @@ func (s *Service) BlockIPWithTTL(ctx context.Context, ip string, source string, 
 }
 
 func (s *Service) blockIPWithTTL(ctx context.Context, ip string, source string, ttlSeconds *int64, dryRun bool) (MutationPreview, error) {
-	if allowlist.IsProtected(ip) {
+	if edge.IsProtected(ip) {
 		return MutationPreview{}, fmt.Errorf("IP %s is protected by allowlist", ip)
 	}
 

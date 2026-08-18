@@ -1,4 +1,3 @@
-// CPA-M3 report row actions (mock API).
 import { test, expect } from '@playwright/test';
 import { mockAuthedSession, ADMIN_USER } from './helpers.js';
 
@@ -15,15 +14,17 @@ test('source-quality pause campaign invokes API before UI success', async ({ pag
       status: 200,
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        rows: [{
-          placement_id: 'facebook-feed',
-          campaign_id: CAMPAIGN_ID,
-          clicks: 120,
-          conversions: 4,
-          ivt_rate: 0.12,
-          roi_pct: 15.5,
-          spend_micro: 2500000,
-        }],
+        rows: [
+          {
+            placement_id: 'facebook-feed',
+            campaign_id: CAMPAIGN_ID,
+            clicks: 120,
+            conversions: 4,
+            ivt_rate: 0.12,
+            roi_pct: 15.5,
+            spend_micro: 2500000,
+          },
+        ],
         freshness: { as_of: '2026-08-01T00:00:00Z', consistency: 'eventual', stale: false },
       }),
     });
@@ -52,14 +53,16 @@ test('traffic-sources compare sends compare=previous query param', async ({ page
       status: 200,
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        rows: [{
-          channel: 'paid_search',
-          impressions: 1000,
-          clicks: 50,
-          spend_micro: 500000,
-          roi_pct: 12,
-          compare: { spend_micro_delta: 50000, clicks_delta: 5 },
-        }],
+        rows: [
+          {
+            channel: 'paid_search',
+            impressions: 1000,
+            clicks: 50,
+            spend_micro: 500000,
+            roi_pct: 12,
+            compare: { spend_micro_delta: 50000, clicks_delta: 5 },
+          },
+        ],
         freshness: { as_of: '2026-08-01T00:00:00Z', consistency: 'eventual', stale: false },
       }),
     });

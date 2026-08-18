@@ -1,12 +1,8 @@
-/** harness=mock_api — Playwright route.fulfill; does not prove Go handler or CH/PG. */
 import { test, expect } from '@playwright/test';
 import { mockAuthedSession, ADMIN_USER } from './helpers.js';
 
 const CUSTOMER_ID = '550e8400-e29b-41d4-a716-446655440000';
 
-/**
- * @param {import('@playwright/test').Page} page
- */
 async function mockOpsOverviewApis(page) {
   await page.route('**/api/v1/ops/doctor', async (route) => {
     await route.fulfill({
@@ -79,7 +75,7 @@ test('ops billing invariant shows mismatch badge and ledger link', async ({ page
   await expect(page.getByTestId('ops-invariant-billing-link')).toBeVisible();
   await expect(page.getByTestId('ops-invariant-ledger-link')).toHaveAttribute(
     'href',
-    `/billing?customer_id=${CUSTOMER_ID}&tab=ledger`,
+    `/billing?customer_id=${CUSTOMER_ID}&tab=ledger`
   );
 });
 

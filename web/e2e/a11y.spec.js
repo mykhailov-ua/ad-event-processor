@@ -1,4 +1,3 @@
-/** harness=mock_api — Playwright route.fulfill; does not prove Go handler or CH/PG. */
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { mockAuthedSession, ADMIN_USER } from './helpers.js';
@@ -116,9 +115,7 @@ test.describe('accessibility', () => {
     await page.goto('/settings');
     await page.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
-    const results = await new AxeBuilder({ page })
-      .include('[role="dialog"]')
-      .analyze();
+    const results = await new AxeBuilder({ page }).include('[role="dialog"]').analyze();
     expect(results.violations.filter((v) => v.impact === 'critical')).toEqual([]);
   });
 });

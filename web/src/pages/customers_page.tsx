@@ -4,9 +4,9 @@ import * as auth from '../helpers/auth.js';
 import { isTenantUser } from '../helpers/permissions.js';
 import { touchCustomerContext } from '../helpers/customer_context.js';
 import { formatUsdDecimal } from '../helpers/money.js';
-import type { CustomerDTO, CustomerListResponse } from '../types/api/customer.js';
+import type { CustomerDTO, CustomerListResponse } from '../types/customer.js';
 import { createSortState, sortRows, toggleSort } from '../lib/table_sort.js';
-import { useResource } from '../hooks/use_resource.js';
+import { useResource } from '../helpers/use_resource.js';
 import { ErrorBlock } from '../components/error_block.js';
 import { FilterToolbar } from '../components/filter_toolbar.js';
 import { Icon } from '../components/icon.js';
@@ -31,7 +31,9 @@ function TableSkeleton({ cols, rows = 5 }: { cols: number; rows?: number }) {
       {Array.from({ length: rows }, (_, rowIndex) => (
         <tr key={`skel-${rowIndex}`} className="data-table__row--skeleton" aria-hidden="true">
           {Array.from({ length: cols }, (__, colIndex) => (
-            <td key={`skel-${rowIndex}-${colIndex}`}><span className="skeleton-bar" /></td>
+            <td key={`skel-${rowIndex}-${colIndex}`}>
+              <span className="skeleton-bar" />
+            </td>
           ))}
         </tr>
       ))}
@@ -39,9 +41,6 @@ function TableSkeleton({ cols, rows = 5 }: { cols: number; rows?: number }) {
   );
 }
 
-/**
- * Customers list with search, sorting, and pagination.
- */
 export function CustomersPage() {
   const navigate = useNavigate();
   const user = auth.getUser();
@@ -60,7 +59,7 @@ export function CustomersPage() {
 
   const { data, loading, error } = useResource<CustomerListResponse>(
     tenant && tenantId ? null : buildUrl(page),
-    { skip: Boolean(tenant && tenantId) },
+    { skip: Boolean(tenant && tenantId) }
   );
 
   const customers = useMemo(() => {
@@ -73,9 +72,9 @@ export function CustomersPage() {
     });
     const q = searchQuery.trim().toLowerCase();
     if (!q) return sorted;
-    return sorted.filter((c) =>
-      (c.name ?? '').toLowerCase().includes(q)
-      || (c.id ?? '').toLowerCase().includes(q));
+    return sorted.filter(
+      (c) => (c.name ?? '').toLowerCase().includes(q) || (c.id ?? '').toLowerCase().includes(q)
+    );
   }, [data?.items, sortState, searchQuery]);
 
   if (tenant && tenantId) {
@@ -100,16 +99,17 @@ export function CustomersPage() {
   const sortHeader = (label: string, key: string) => {
     const active = sortState.key === key;
     const iconName = active
-      ? (sortState.dir === 'asc' ? 'chevron-up' : 'chevron-down')
+      ? sortState.dir === 'asc'
+        ? 'chevron-up'
+        : 'chevron-down'
       : 'arrow-up-down';
     return (
       <th
         key={key}
         scope="col"
-        className={[
-          'data-table__th--sortable',
-          active ? 'data-table__th--sorted' : '',
-        ].filter(Boolean).join(' ')}
+        className={['data-table__th--sortable', active ? 'data-table__th--sorted' : '']
+          .filter(Boolean)
+          .join(' ')}
         aria-sort={active ? (sortState.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
         tabIndex={0}
         onClick={() => onSort(key)}
@@ -145,15 +145,17 @@ export function CustomersPage() {
           searchPlaceholder="Filter by name or ID…"
           searchValue={searchQuery}
           onSearch={setSearchQuery}
-          pagination={totalPages > 1 ? (
-            <PaginationBar
-              label={`${page + 1} / ${totalPages}`}
-              prevDisabled={page === 0}
-              nextDisabled={page >= totalPages - 1}
-              onPrev={() => setPage((p) => Math.max(0, p - 1))}
-              onNext={() => setPage((p) => p + 1)}
-            />
-          ) : null}
+          pagination={
+            totalPages > 1 ? (
+              <PaginationBar
+                label={`${page + 1} / ${totalPages}`}
+                prevDisabled={page === 0}
+                nextDisabled={page >= totalPages - 1}
+                onPrev={() => setPage((p) => Math.max(0, p - 1))}
+                onNext={() => setPage((p) => p + 1)}
+              />
+            ) : null
+          }
         />
       </div>
 
@@ -174,7 +176,11 @@ export function CustomersPage() {
               <tr>
                 <td colSpan={5}>
                   <div className="empty-state">
-                    <Icon name="file-text" size={28} className="empty-state__icon text-muted mb-2" />
+                    <Icon
+                      name="file-text"
+                      size={28}
+                      className="empty-state__icon text-muted mb-2"
+                    />
                     <div className="empty-state__title">No customers found</div>
                     <div className="empty-state__desc text-muted text-sm">
                       Customers appear after they are created in the system.

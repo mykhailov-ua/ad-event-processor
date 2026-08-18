@@ -16,9 +16,6 @@ function listPendingIdempotencyScopes(): string[] {
   return out;
 }
 
-/**
- * Recovery banner for unfinished idempotency scopes in localStorage.
- */
 export function IdempotencyRecoveryBanner() {
   const pending = listPendingIdempotencyScopes();
   if (pending.length === 0) return null;

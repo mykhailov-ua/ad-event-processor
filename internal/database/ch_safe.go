@@ -6,8 +6,10 @@ import (
 	"unicode"
 )
 
-var gaqlDateRE = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
-var hexTokenRE = regexp.MustCompile(`^[0-9a-f]+$`)
+var (
+	gaqlDateRE = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
+	hexTokenRE = regexp.MustCompile(`^[0-9a-f]+$`)
+)
 
 func ValidClickHouseIdentifier(name string) bool {
 	if name == "" || len(name) > 128 {

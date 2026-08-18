@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// swappableRedis wraps a UniversalClient so stream workers survive testcontainer restart.
 type swappableRedis struct {
 	mu sync.RWMutex
 	redis.UniversalClient
@@ -142,8 +141,6 @@ func TestFault_LocalQuantaRedisSIGKILL_BudgetInvariant(t *testing.T) {
 		worker.SyncAll(ctx)
 	}
 
-	// Full-skip does not decrement budget:campaign on the hot path; after PG settlement the
-	// invariant derives remaining from PG+sync when the Redis budget key is absent.
 	require.NoError(t, infra.Redis.Del(ctx, camp.BudgetCampaignKey).Err())
 	domain.AssertBudgetInvariant(t, ctx, infra.Pool, infra.Redis, campaignID)
 

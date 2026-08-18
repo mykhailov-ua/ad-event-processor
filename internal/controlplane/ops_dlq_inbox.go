@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	db "github.com/bidshard/ad-event-processor/internal/domain/db"
 
 	"github.com/google/uuid"
@@ -26,15 +25,15 @@ func dlqInboxSourceFromProvider(provider string) string {
 	}
 }
 
-func (r *opsReader) ListDLQInbox(ctx context.Context, source, cursor string, limit int) (adminapi.DLQInboxListResult, error) {
+func (r *opsReader) ListDLQInbox(ctx context.Context, source, cursor string, limit int) (DLQInboxListResult, error) {
 	if limit <= 0 {
 		limit = 50
 	}
 	source = strings.ToLower(strings.TrimSpace(source))
 
 	var (
-		out        adminapi.DLQInboxListResult
-		merged     []adminapi.DLQInboxEntryDTO
+		out        DLQInboxListResult
+		merged     []DLQInboxEntryDTO
 		nextCursor string
 	)
 
@@ -44,7 +43,7 @@ func (r *opsReader) ListDLQInbox(ctx context.Context, source, cursor string, lim
 	if includeStream {
 		stream, err := r.listDLQEntries(ctx, cursor, limit)
 		if err != nil {
-			out.Errors = append(out.Errors, adminapi.FanOutSourceError{Source: "stream", Code: "SOURCE_UNAVAILABLE"})
+			out.Errors = append(out.Errors, FanOutSourceError{Source: "stream", Code: "SOURCE_UNAVAILABLE"})
 		} else {
 			out.Errors = append(out.Errors, stream.Errors...)
 			if stream.Partial {
@@ -52,7 +51,7 @@ func (r *opsReader) ListDLQInbox(ctx context.Context, source, cursor string, lim
 			}
 			nextCursor = stream.NextCursor
 			for _, row := range stream.Items {
-				merged = append(merged, adminapi.DLQInboxEntryDTO{
+				merged = append(merged, DLQInboxEntryDTO{
 					ID:         row.ID,
 					Source:     "stream",
 					CampaignID: row.CampaignID,
@@ -72,7 +71,7 @@ func (r *opsReader) ListDLQInbox(ctx context.Context, source, cursor string, lim
 	if includePostback {
 		postbackRows, err := r.listPostbackDLQInbox(ctx, source, limit)
 		if err != nil {
-			out.Errors = append(out.Errors, adminapi.FanOutSourceError{Source: "postback", Code: "SOURCE_UNAVAILABLE"})
+			out.Errors = append(out.Errors, FanOutSourceError{Source: "postback", Code: "SOURCE_UNAVAILABLE"})
 		} else {
 			merged = append(merged, postbackRows...)
 		}
@@ -87,12 +86,12 @@ func (r *opsReader) ListDLQInbox(ctx context.Context, source, cursor string, lim
 	out.Items = merged
 	out.NextCursor = nextCursor
 	if out.Items == nil {
-		out.Items = []adminapi.DLQInboxEntryDTO{}
+		out.Items = []DLQInboxEntryDTO{}
 	}
 	return out, nil
 }
 
-func (r *opsReader) listPostbackDLQInbox(ctx context.Context, sourceFilter string, limit int) ([]adminapi.DLQInboxEntryDTO, error) {
+func (r *opsReader) listPostbackDLQInbox(ctx context.Context, sourceFilter string, limit int) ([]DLQInboxEntryDTO, error) {
 	if r == nil || r.svc == nil || r.svc.GetPool() == nil {
 		return nil, fmt.Errorf("postgres pool not configured")
 	}
@@ -109,7 +108,7 @@ func (r *opsReader) listPostbackDLQInbox(ctx context.Context, sourceFilter strin
 	}
 	defer rows.Close()
 
-	var items []adminapi.DLQInboxEntryDTO
+	var items []DLQInboxEntryDTO
 	for rows.Next() {
 		var (
 			id         int64
@@ -132,7 +131,7 @@ func (r *opsReader) listPostbackDLQInbox(ctx context.Context, sourceFilter strin
 		if sourceFilter == "capi" && src != "capi" {
 			continue
 		}
-		items = append(items, adminapi.DLQInboxEntryDTO{
+		items = append(items, DLQInboxEntryDTO{
 			ID:         strconv.FormatInt(id, 10),
 			Source:     src,
 			CampaignID: campaignID.String(),
@@ -157,7 +156,7 @@ func (r *opsReader) RetryDLQInbox(ctx context.Context, source, id, idempotencyKe
 	case "stream":
 		shardID := parseInboxStreamShard(id)
 		entryID := parseInboxStreamEntryID(id)
-		return r.enqueueDLQRetry(ctx, adminapi.DLQRetryPayload{
+		return r.enqueueDLQRetry(ctx, DLQRetryPayload{
 			ShardID: shardID,
 			EntryID: entryID,
 			DLQID:   id,

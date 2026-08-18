@@ -2,11 +2,12 @@ package controlplane
 
 import (
 	"context"
+	"log/slog"
+	"time"
+
 	"github.com/bidshard/ad-event-processor/internal/controlplane/authz"
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/bidshard/ad-event-processor/internal/domain/db"
-	"log/slog"
-	"time"
 
 	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 
@@ -48,7 +49,6 @@ func (s *Service) auditLogMasked(ctx context.Context, q db.Querier, adminID uuid
 		Metadata:   metadataJSON,
 		IsMasked:   isMasked,
 	})
-
 	if err != nil {
 		slog.Error("failed to write audit log", "error", err, "admin_id", adminID, "action", action)
 	}

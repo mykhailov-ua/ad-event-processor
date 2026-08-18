@@ -1,4 +1,3 @@
-// Package piihash implements piihash support for BidShard.
 package piihash
 
 import (
@@ -107,6 +106,7 @@ func decodeSaltKey(saltHex, fallbackSecret string) ([keySize]byte, error) {
 func FixedString16(h [16]byte) string {
 	return string(h[:])
 }
+
 func TestHasher() *Hasher {
 	var key [keySize]byte
 	for i := range key {

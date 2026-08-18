@@ -1,4 +1,3 @@
-// Package gnetutil provides gnet connection helpers for the tracker hot path.
 package gnetutil
 
 import (
@@ -12,8 +11,6 @@ const (
 	DefaultConnMaxLifetime = 120 * time.Second
 )
 
-// ConnPolicy bounds partial length-prefixed frame reads on gnet TCP peers.
-// Shared by broker and region-proxy (see conn_idle_test harness labels in each server package).
 type ConnPolicy struct {
 	ReadIdle    time.Duration
 	MaxLifetime time.Duration
@@ -33,7 +30,6 @@ func (p ConnPolicy) MaxLifetimeDuration() time.Duration {
 	return DefaultConnMaxLifetime
 }
 
-// ConnState tracks per-TCP gnet connection deadlines for incomplete frames.
 type ConnState struct {
 	OpenedAt         time.Time
 	readIdleArmed    bool
@@ -77,9 +73,6 @@ func OnFrameProgress(c gnet.Conn, p ConnPolicy, ctx *ConnState) {
 	_ = c.SetReadDeadline(time.Now().Add(remaining))
 }
 
-// WaitIncomplete handles Peek waiting for more length-prefixed frame bytes.
-// Read idle is armed once per incomplete wait; drip bytes without a full frame do not extend it.
-// Returns a close reason ("read_idle" or "max_lifetime") when the peer should be closed.
 func WaitIncomplete(c gnet.Conn, p ConnPolicy, ctx *ConnState) string {
 	if ctx == nil {
 		return ""

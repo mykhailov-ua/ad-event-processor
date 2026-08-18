@@ -5,13 +5,12 @@ import { BootstrapPage } from './pages/bootstrap_page.js';
 import { InstallDonePage } from './pages/install_done_page.js';
 import { NotFoundPage } from './pages/not_found_page.js';
 
-const AppProviders = lazy(() => import('./components/app_providers.js').then((mod) => ({
-  default: mod.AppProviders,
-})));
+const AppProviders = lazy(() =>
+  import('./components/app_providers.js').then((mod) => ({
+    default: mod.AppProviders,
+  }))
+);
 
-/**
- * Bootstrap / install-done standalone boot (no app shell).
- */
 export function StandaloneBoot() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', storage.getTheme());

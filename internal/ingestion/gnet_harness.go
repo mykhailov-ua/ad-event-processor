@@ -31,7 +31,6 @@ func NewGnetHarnessConn(inbound []byte) *GnetHarnessConn {
 	}
 }
 
-// NewGnetBenchConn is like NewGnetHarnessConn but Write does not heap-allocate (E2E alloc gates).
 func NewGnetBenchConn(inbound []byte) *GnetHarnessConn {
 	c := NewGnetHarnessConn(inbound)
 	c.benchZeroAlloc = true
@@ -92,7 +91,6 @@ func (c *GnetHarnessConn) RemoteAddr() net.Addr {
 	return gnetHarnessRemoteAddr
 }
 
-// Append adds incremental inbound bytes (fault/drip drills).
 func (c *GnetHarnessConn) Append(b []byte) {
 	c.inbound = append(c.inbound, b...)
 }

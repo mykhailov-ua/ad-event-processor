@@ -1,14 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
-import type { BuyerCampaignPortfolioRow } from '../types/api/campaign.js';
+import type { BuyerCampaignPortfolioRow } from '../types/campaign.js';
 import { CommercialMetrics } from '../components/commercial_metrics.js';
 import type { MetricsBlockDTO } from '../types/metrics.js';
 import * as auth from '../helpers/auth.js';
 import { hasBoundCustomer, boundCustomerId } from '../helpers/buyer_session.js';
-import { fraudTierBandRows } from '../helpers/edge_fraud_tier.js';
+import { fraudTierBandRowsFromThresholds } from '../helpers/edge_fraud_tier.js';
+import { FraudMlTrustPanel } from '../components/fraud_ml_health.js';
+import { FraudIntegrationsPanel } from '../components/fraud_integrations_panel.js';
+import { FraudDecisionLookup } from '../components/fraud_decision_lookup.js';
 import { formatAmountMicro } from '../helpers/money.js';
 import { t } from '../helpers/i18n.js';
 import { validateCustomerIdField } from '../helpers/validators.js';
+import { can } from '../helpers/permissions.js';
+import { FraudLabelsPanel } from '../components/fraud_labels_panel.js';
 import { pollReportJob, downloadReportExport } from '../helpers/report_api.js';
 import { pushToastMessage } from '../helpers/toast_ui.js';
 import { to } from '../lib/to.js';
@@ -39,9 +44,11 @@ type AccountantClose = {
 };
 
 type FraudTierThresholds = {
+  scope?: string;
   pass_max?: number;
   suspect_max?: number;
   ivt_max?: number;
+  block_above?: number;
 };
 
 type FraudGeoHint = {
@@ -78,6 +85,12 @@ type RoleDashboardData = {
   ml_precision?: number;
   ml_recall?: number;
   ml_drift_detected?: boolean;
+  ml_drift_summary?: string;
+  ml_eval_generated_at?: string;
+  ml_eval_status?: 'healthy' | 'drift_detected' | 'eval_stale' | 'eval_unavailable';
+  ml_eval_stale?: boolean;
+  ml_label_method?: string;
+  ml_shards_consistent?: boolean | null;
   fraud_tier_thresholds?: FraudTierThresholds;
   geo_hints?: FraudGeoHint[];
   recent_labels?: FraudLabelRow[];
@@ -117,10 +130,7 @@ function Subsection({ title, children }: { title: string; children: ReactNode })
 
 type ExportJobState = Record<string, { status: string; error?: string }>;
 
-function syncExportJobState(
-  prev: ExportJobState,
-  jobs: ExportJobRow[],
-): ExportJobState {
+function syncExportJobState(prev: ExportJobState, jobs: ExportJobRow[]): ExportJobState {
   const next = { ...prev };
   for (let i = 0; i < jobs.length; i++) {
     const job = jobs[i];
@@ -169,7 +179,9 @@ function AdOpsBody({ data }: { data: RoleDashboardData }) {
               <tbody>
                 {campaigns.map((c) => (
                   <tr key={c.id}>
-                    <td><a href={`/campaigns/${c.id}`}>{c.name ?? c.id}</a></td>
+                    <td>
+                      <a href={`/campaigns/${c.id}`}>{c.name ?? c.id}</a>
+                    </td>
                     <td>{c.utilization_pct?.toFixed?.(1) ?? '—'}</td>
                     <td>{c.pacing_drift_pct?.toFixed?.(1) ?? '—'}</td>
                     <td className="font-mono">{formatAmountMicro(c.spend_micro ?? 0)}</td>
@@ -208,15 +220,22 @@ function AdOpsBody({ data }: { data: RoleDashboardData }) {
                     <tr key={`${s.campaign_id ?? ''}-${s.sub1 ?? ''}-${idx}`}>
                       <td>{s.sub1 ?? s.sub2 ?? '—'}</td>
                       <td>
-                        {s.campaign_id
-                          ? <a href={`/campaigns/${s.campaign_id}`}>{s.campaign_id.slice(0, 8)}</a>
-                          : '—'}
+                        {s.campaign_id ? (
+                          <a href={`/campaigns/${s.campaign_id}`}>{s.campaign_id.slice(0, 8)}</a>
+                        ) : (
+                          '—'
+                        )}
                       </td>
                       <td>{`${((s.ivt_rate ?? 0) * 100).toFixed(1)}%`}</td>
                       <td>{s.quality_score != null ? s.quality_score.toFixed(1) : '—'}</td>
                       <td className="font-mono">{formatAmountMicro(s.spend_micro ?? 0)}</td>
                       <td>
-                        <ButtonLink href={placementsHref} label="Placements" variant="ghost" size="sm" />
+                        <ButtonLink
+                          href={placementsHref}
+                          label="Placements"
+                          variant="ghost"
+                          size="sm"
+                        />
                       </td>
                     </tr>
                   );
@@ -299,12 +318,12 @@ function AccountantBody({
                 {jobs.map((j) => {
                   const live = exportJobState[j.id] ?? { status: j.status };
                   const status = live.status ?? j.status ?? 'PENDING';
-                  const badgeStatus = status === 'COMPLETED' ? 'ok'
-                    : status === 'FAILED' ? 'failed'
-                      : 'pending';
-                  const badgeKind = status === 'COMPLETED' || status === 'FAILED' || status === 'RUNNING'
-                    ? 'service'
-                    : 'invoice';
+                  const badgeStatus =
+                    status === 'COMPLETED' ? 'ok' : status === 'FAILED' ? 'failed' : 'pending';
+                  const badgeKind =
+                    status === 'COMPLETED' || status === 'FAILED' || status === 'RUNNING'
+                      ? 'service'
+                      : 'invoice';
                   return (
                     <tr key={j.id} data-testid={`export-job-${j.id}`}>
                       <td className="font-mono text-sm">{j.id.slice(0, 8)}</td>
@@ -320,7 +339,7 @@ function AccountantBody({
                             size="sm"
                             onClick={() => onDownload(j.id)}
                           />
-                        ) : (status === 'PENDING' || status === 'RUNNING') ? (
+                        ) : status === 'PENDING' || status === 'RUNNING' ? (
                           <span className="text-muted text-sm">Polling…</span>
                         ) : live.error ? (
                           <span className="text-danger text-sm">{live.error}</span>
@@ -338,16 +357,22 @@ function AccountantBody({
   );
 }
 
-function FraudBody({ data }: { data: RoleDashboardData }) {
+function FraudBody({ data, canWrite }: { data: RoleDashboardData; canWrite: boolean }) {
   const thresholds = data.fraud_tier_thresholds ?? {};
   const geoHints = Array.isArray(data.geo_hints) ? data.geo_hints : [];
-  const recentLabels = Array.isArray(data.recent_labels) ? data.recent_labels : [];
-  const customerQS = data.customer_id
-    ? `?customer_id=${encodeURIComponent(data.customer_id)}`
-    : '';
+  const customerQS = data.customer_id ? `?customer_id=${encodeURIComponent(data.customer_id)}` : '';
+  const customerId = data.customer_id ?? '';
+  const tierBands = fraudTierBandRowsFromThresholds(
+    thresholds.pass_max ?? 30,
+    thresholds.suspect_max ?? 60,
+    thresholds.ivt_max ?? 80
+  );
 
   return (
     <div className="stack stack--lg section-block" data-testid="fraud-dashboard">
+      <Subsection title="Trust & health">
+        <FraudMlTrustPanel data={data} />
+      </Subsection>
       <dl className="definition-list">
         <dt>Ghost IVT campaigns</dt>
         <dd>{String(data.ghost_ivt_campaigns ?? 0)}</dd>
@@ -355,32 +380,8 @@ function FraudBody({ data }: { data: RoleDashboardData }) {
         <dd>{String(data.labels_pending ?? 0)}</dd>
         <dt>Edge blocked (fraud tier)</dt>
         <dd className="font-mono">{String(data.edge_blocked_fraud ?? 0)}</dd>
-        <dt>ML active version</dt>
-        <dd className="font-mono">{data.ml_active_version_id ?? '—'}</dd>
-        <dt>ML artifact hash</dt>
-        <dd className="font-mono text-sm">
-          {data.ml_artifact_hash ? `${data.ml_artifact_hash.slice(0, 12)}…` : '—'}
-        </dd>
-        <dt>Shadow eval precision</dt>
-        <dd>
-          {data.ml_precision != null && data.ml_precision > 0
-            ? `${(data.ml_precision * 100).toFixed(1)}%`
-            : '—'}
-        </dd>
-        <dt>Shadow eval recall</dt>
-        <dd>
-          {data.ml_recall != null && data.ml_recall > 0
-            ? `${(data.ml_recall * 100).toFixed(1)}%`
-            : '—'}
-        </dd>
-        <dt>Model drift</dt>
-        <dd>
-          {data.ml_drift_detected
-            ? <StatusBadge status="warning" label="detected" />
-            : 'No'}
-        </dd>
       </dl>
-      <Subsection title="Edge fraud tier thresholds">
+      <Subsection title="Platform default tier bands">
         <div className="table-wrapper">
           <table className="data-table">
             <thead>
@@ -390,7 +391,7 @@ function FraudBody({ data }: { data: RoleDashboardData }) {
               </tr>
             </thead>
             <tbody>
-              {fraudTierBandRows().map((row) => (
+              {tierBands.map((row) => (
                 <tr key={row.tier}>
                   <td>{row.tier}</td>
                   <td className="font-mono">{row.range}</td>
@@ -398,9 +399,13 @@ function FraudBody({ data }: { data: RoleDashboardData }) {
               ))}
             </tbody>
           </table>
+          <p className="text-muted text-xs">
+            Platform defaults for new campaigns. Per-campaign sensitivity is configured on each
+            campaign&apos;s <a href="/campaigns">Fraud tab</a>.
+          </p>
           {thresholds.pass_max ? (
             <p className="text-muted text-xs">
-              {`API: pass≤${thresholds.pass_max}, suspect≤${thresholds.suspect_max}, ivt≤${thresholds.ivt_max}`}
+              {`API defaults: pass≤${thresholds.pass_max}, suspect≤${thresholds.suspect_max}, ivt≤${thresholds.ivt_max}, block≤${thresholds.block_above ?? thresholds.ivt_max}`}
             </p>
           ) : null}
         </div>
@@ -443,54 +448,50 @@ function FraudBody({ data }: { data: RoleDashboardData }) {
           </div>
         )}
         <p className="text-muted text-sm">
-          Review suspicious IPs via <a href="/ops/blacklist">ops blacklist</a>
-          {' '}(dry-run: POST with <code>dry_run=1</code>).
+          Review suspicious IPs via <a href="/ops/blacklist">ops blacklist</a> (dry-run: POST with{' '}
+          <code>dry_run=1</code>).
         </p>
       </Subsection>
-      <Subsection title="Manual labels queue">
-        {recentLabels.length === 0 ? (
-          <EmptyBlock
-            title="No manual labels in queue"
-            description="Fraud label review queue is empty."
-          />
+      <Subsection title="Integrations">
+        {customerId ? (
+          <FraudIntegrationsPanel customerId={customerId} />
         ) : (
-          <div className="table-wrapper">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th scope="col">IP hash</th>
-                  <th scope="col">Label</th>
-                  <th scope="col">Reason</th>
-                  <th scope="col">Created</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentLabels.map((row, idx) => (
-                  <tr key={`${row.ip_hash ?? ''}-${idx}`}>
-                    <td className="font-mono text-sm">{`${row.ip_hash?.slice(0, 8) ?? ''}…`}</td>
-                    <td>{row.label === 1 ? 'fraud' : 'legit'}</td>
-                    <td>{row.reason ?? '—'}</td>
-                    <td className="text-sm text-muted">{row.created_at ?? '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <EmptyBlock
+            title="Customer required"
+            description="Load the dashboard with a customer ID to view integration health."
+          />
+        )}
+      </Subsection>
+      <Subsection title="Why blocked?">
+        {customerId ? (
+          <FraudDecisionLookup customerId={customerId} canWrite={canWrite} />
+        ) : (
+          <EmptyBlock
+            title="Customer required"
+            description="Load the dashboard with a customer ID to look up decisions."
+          />
+        )}
+      </Subsection>
+      <Subsection title="Manual labels">
+        {customerId ? (
+          <FraudLabelsPanel customerId={customerId} canWrite={canWrite} />
+        ) : (
+          <EmptyBlock
+            title="Customer required"
+            description="Load the dashboard with a customer ID to manage labels."
+          />
         )}
       </Subsection>
     </div>
   );
 }
 
-/**
- * Role-specific dashboard (adops, cfo, accountant, fraud).
- */
 export function RoleDashboardPage() {
   const { role = '' } = useParams();
   const user = auth.getUser();
   const sessionScoped = hasBoundCustomer(user?.role);
-  const [customerInput, setCustomerInput] = useState(
-    () => (sessionScoped ? boundCustomerId(user) : ''),
+  const [customerInput, setCustomerInput] = useState(() =>
+    sessionScoped ? boundCustomerId(user) : ''
   );
   const [requested, setRequested] = useState(sessionScoped);
   const [loading, setLoading] = useState(false);
@@ -610,14 +611,14 @@ export function RoleDashboardPage() {
         />
       );
     }
-    if (role === 'fraud') return <FraudBody data={data} />;
-    return (
-      <EmptyBlock
-        title="Unknown role"
-        description="This dashboard role is not configured."
-      />
-    );
-  }, [data, role, exportJobState, downloadExportJob]);
+    if (role === 'fraud') {
+      const perms = user?.permissions ?? [];
+      const canWrite =
+        can(perms, 'campaigns:write') || can(perms, 'shards:write');
+      return <FraudBody data={data} canWrite={canWrite} />;
+    }
+    return <EmptyBlock title="Unknown role" description="This dashboard role is not configured." />;
+  }, [data, role, exportJobState, downloadExportJob, user?.permissions]);
 
   if (blockError) {
     return <ErrorBlock error={blockError} />;

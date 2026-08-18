@@ -1,11 +1,10 @@
 package payment
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
-
-	"context"
 
 	"github.com/bidshard/ad-event-processor/internal/config"
 	"github.com/bidshard/ad-event-processor/internal/notify"

@@ -28,7 +28,6 @@ type TelegramGateResult struct {
 	Pass   bool
 }
 
-// CheckTelegramBPF validates T9: tracker must not emit outbound connect() on hot path.
 func CheckTelegramBPF(outDir string) (TelegramGateResult, error) {
 	summaryPath := filepath.Join(outDir, "bpf", "maps", "summary.json")
 	data, err := os.ReadFile(summaryPath)
@@ -69,7 +68,6 @@ func CheckTelegramBPF(outDir string) (TelegramGateResult, error) {
 	return TelegramGateResult{Checks: checks, Pass: pass}, nil
 }
 
-// CheckTelegramSLA validates tracker handler p99 during soak (Prometheus).
 func CheckTelegramSLA(promURL string) (TelegramGateResult, error) {
 	prom := newPromClient(promURL)
 	raw := prom.scalar(`histogram_quantile(0.99, sum(rate(ad_http_request_duration_seconds_bucket{job="tracker"}[5m])) by (le)) * 1000`)
@@ -97,7 +95,6 @@ func CheckTelegramSLA(promURL string) (TelegramGateResult, error) {
 	return TelegramGateResult{Checks: []TelegramGateCheck{chk}, Pass: pass}, nil
 }
 
-// CheckTelegramHotPathGate runs BPF + SLA checks for Telegram T9 sign-off.
 func CheckTelegramHotPathGate(outDir, promURL string) (TelegramGateResult, error) {
 	bpfRes, err := CheckTelegramBPF(outDir)
 	if err != nil {
@@ -114,7 +111,6 @@ func CheckTelegramHotPathGate(outDir, promURL string) (TelegramGateResult, error
 	return merged, nil
 }
 
-// WriteTelegramGateReport writes telegram-gate.md and returns an error when checks fail.
 func WriteTelegramGateReport(outDir, promURL string) (string, error) {
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return "", err

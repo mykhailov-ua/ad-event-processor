@@ -6,9 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-var (
-	errMalformedJSON = errors.New("malformed json")
-)
+var errMalformedJSON = errors.New("malformed json")
 
 func ParseTrackRequestJSON(v *TrackRequest, data []byte) error {
 	return parseTrackRequestJSON(v, data)
@@ -79,8 +77,10 @@ func skipJSONValueBudgetDepth(data []byte, start int, bud *jsonScanBudget, maxDe
 	}
 }
 
-var jsonDelimiter [256]byte
-var hexLookup [256]byte
+var (
+	jsonDelimiter [256]byte
+	hexLookup     [256]byte
+)
 
 func init() {
 	jsonDelimiter[','] = 1

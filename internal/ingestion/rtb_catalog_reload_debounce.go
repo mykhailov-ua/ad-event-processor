@@ -7,7 +7,6 @@ import (
 
 const rtbCatalogReloadDebounce = 100 * time.Millisecond
 
-// runRtbCatalogReloadDebouncer coalesces rapid pubsub triggers into single reload calls.
 func runRtbCatalogReloadDebouncer(ctx context.Context, trigger <-chan struct{}, reload func(), debounce time.Duration) {
 	if debounce <= 0 {
 		debounce = rtbCatalogReloadDebounce

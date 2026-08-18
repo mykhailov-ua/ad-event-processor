@@ -3,9 +3,6 @@ import * as auth from '../helpers/auth.js';
 import { can, maskLevel } from '../helpers/permissions.js';
 import { CampaignTelegramSection } from '../components/campaign_telegram_section.js';
 
-/**
- * Standalone Telegram config page for a campaign.
- */
 export function CampaignTelegramPage() {
   const { id = '' } = useParams();
   const user = auth.getUser();
@@ -32,7 +29,9 @@ export function CampaignTelegramPage() {
         <p className="text-muted">
           <Link to={`/campaigns/${encodeURIComponent(id)}`}>← Campaign</Link>
           {' · '}
-          <Link to={`/reports/telegram?campaign_id=${encodeURIComponent(id)}`}>Open full analytics</Link>
+          <Link to={`/reports/telegram?campaign_id=${encodeURIComponent(id)}`}>
+            Open full analytics
+          </Link>
         </p>
       </div>
       <CampaignTelegramSection campaignId={id} canWrite={canWrite} />

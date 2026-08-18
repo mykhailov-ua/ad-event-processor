@@ -469,21 +469,25 @@ func (service *Service) ProcessCryptoWebhook(ctx context.Context, eventID string
 
 		if amountMicro < intent.AmountMicro {
 			slog.Warn("crypto webhook amount underpay", "intent_id", uuid.UUID(intent.ID.Bytes), "intent_amount", intent.AmountMicro, "webhook_amount", amountMicro)
-			_, _ = txQueries.UpdatePaymentIntentStatus(ctx, db.UpdatePaymentIntentStatusParams{
+			if _, err := txQueries.UpdatePaymentIntentStatus(ctx, db.UpdatePaymentIntentStatusParams{
 				ID:          intent.ID,
 				Status:      db.PaymentPaymentIntentStatusFAILED,
 				ProviderRef: pgtype.Text{String: providerRef, Valid: true},
-			})
+			}); err != nil {
+				return fmt.Errorf("mark underpay intent failed: %w", err)
+			}
 			return updateCryptoWebhookStatus(ctx, txQueries, eventID, db.PaymentWebhookEventStatusIGNORED, "underpay")
 		}
 
 		if amountMicro < service.cfg.CryptoMinPaymentMicro {
 			slog.Warn("crypto webhook amount below minimum", "intent_id", uuid.UUID(intent.ID.Bytes), "min_amount", service.cfg.CryptoMinPaymentMicro, "webhook_amount", amountMicro)
-			_, _ = txQueries.UpdatePaymentIntentStatus(ctx, db.UpdatePaymentIntentStatusParams{
+			if _, err := txQueries.UpdatePaymentIntentStatus(ctx, db.UpdatePaymentIntentStatusParams{
 				ID:          intent.ID,
 				Status:      db.PaymentPaymentIntentStatusFAILED,
 				ProviderRef: pgtype.Text{String: providerRef, Valid: true},
-			})
+			}); err != nil {
+				return fmt.Errorf("mark below-minimum intent failed: %w", err)
+			}
 			return updateCryptoWebhookStatus(ctx, txQueries, eventID, db.PaymentWebhookEventStatusIGNORED, "below minimum payment limit")
 		}
 

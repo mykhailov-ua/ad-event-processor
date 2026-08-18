@@ -8,16 +8,10 @@ export type CampaignStatusPayload = {
   [key: string]: unknown;
 };
 
-/**
- * Pause until the given number of milliseconds elapse.
- */
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/**
- * Pause a campaign after operator confirmation.
- */
 export async function pauseCampaign(id: string): Promise<void> {
   const scope = `campaign-pause:${id}`;
   await apiConfirmed(`/api/v1/selfserve/campaigns/${id}/pause`, {
@@ -29,9 +23,6 @@ export async function pauseCampaign(id: string): Promise<void> {
   invalidateBuyerDashboard();
 }
 
-/**
- * Resume a paused campaign after operator confirmation.
- */
 export async function resumeCampaign(id: string): Promise<void> {
   const scope = `campaign-resume:${id}`;
   await apiConfirmed(`/api/v1/selfserve/campaigns/${id}/resume`, {
@@ -43,13 +34,10 @@ export async function resumeCampaign(id: string): Promise<void> {
   invalidateBuyerDashboard();
 }
 
-/**
- * Poll campaign status until it matches expectedStatus or timeout.
- */
 export async function pollCampaignStatus(
   id: string,
   expectedStatus: string,
-  timeoutMs = 30000,
+  timeoutMs = 30000
 ): Promise<CampaignStatusPayload | undefined> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {

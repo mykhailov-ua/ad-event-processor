@@ -1,7 +1,3 @@
-/**
- * Monotonic generation counter for async commit guards.
- * Invariant: only the latest generation may commit (opGen === currentGen).
- */
 export type GenerationGuard = {
   next: () => number;
   isCurrent: (id: number) => boolean;
@@ -37,28 +33,19 @@ const guardTelemetry: GuardTelemetry = {
   in_flight_rejected: 0,
 };
 
-/**
- * Return async guard rejection counters.
- */
 export function guardTelemetryReport(): GuardTelemetry {
   return { ...guardTelemetry };
 }
 
-/**
- * Reset async guard telemetry counters.
- */
 export function guardTelemetryReset(): void {
   guardTelemetry.stale_write_prevented = 0;
   guardTelemetry.in_flight_rejected = 0;
 }
 
-/**
- * Return whether an async side-effect may commit to view state.
- */
 export function shouldCommitAsyncResult(
   opGen: number,
   currentGen: number,
-  destroyed = false,
+  destroyed = false
 ): boolean {
   const ok = !destroyed && opGen === currentGen;
   if (!ok && !destroyed && opGen !== currentGen) {
@@ -73,9 +60,6 @@ export type InFlightGuard = {
   busy: () => boolean;
 };
 
-/**
- * Single-flight guard: at most one in-flight mutation at a time.
- */
 export function createInFlightGuard(): InFlightGuard {
   let busy = false;
   return {

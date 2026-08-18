@@ -36,7 +36,7 @@ describe('traffic_source_templates', () => {
     const url = buildTemplatedClickURL(
       'https://trk.example.com/click?campaign_id={campaign_id}&sub1={sub1}',
       '550e8400-e29b-41d4-a716-446655440000',
-      templateParamMap(fb),
+      templateParamMap(fb)
     );
     assert.ok(url.startsWith('https://trk.example.com/click?'));
     assert.ok(url.includes('campaign_id=550e8400-e29b-41d4-a716-446655440000'));
@@ -54,7 +54,7 @@ describe('traffic_source_templates', () => {
       {
         dmr: true,
         utm: { utm_source: 'facebook', utm_medium: 'cpc', utm_campaign: 'summer' },
-      },
+      }
     );
     assert.ok(url.includes('dmr=1'));
     assert.ok(url.includes('utm_source=facebook'));

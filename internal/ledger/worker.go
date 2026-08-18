@@ -93,7 +93,6 @@ func (w *Worker) Start(ctx context.Context, interval time.Duration) {
 	}
 }
 
-// Wait blocks until in-flight RunCycle completes (shutdown drain before pool close).
 func (w *Worker) Wait() {
 	w.cycleWG.Wait()
 }

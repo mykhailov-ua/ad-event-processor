@@ -1,10 +1,8 @@
-// Package postback implements postback support for BidShard.
 package postback
 
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"log/slog"
 	"strings"
 
@@ -12,16 +10,15 @@ import (
 	db "github.com/bidshard/ad-event-processor/internal/domain/db"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const outboxEventSendPostback = "SEND_POSTBACK"
 
 type conversionPostbackStore interface {
-	GetPostbackConfig(ctx context.Context, id pgtype.UUID) (db.PostbackConfig, error)
-	GetCampaign(ctx context.Context, id pgtype.UUID) (db.Campaign, error)
-	CreateOutboxEvent(ctx context.Context, arg db.CreateOutboxEventParams) (db.OutboxEvent, error)
+	ListPostbackConfigsByCampaignIDs(ctx context.Context, ids []pgtype.UUID) ([]db.PostbackConfig, error)
+	ListCampaignsByIDs(ctx context.Context, ids []pgtype.UUID) ([]db.Campaign, error)
+	CreateOutboxEventsBatch(ctx context.Context, arg db.CreateOutboxEventsBatchParams) error
 }
 
 type ConversionPostbackEnqueuer struct {
@@ -41,67 +38,101 @@ func (e *ConversionPostbackEnqueuer) SetStore(queries conversionPostbackStore) {
 	}
 }
 
+type pendingConversionEvent struct {
+	event      *domain.Event
+	campaignID uuid.UUID
+}
+
 func (e *ConversionPostbackEnqueuer) OnBatchStored(ctx context.Context, events []*domain.Event) {
 	if e == nil || len(events) == 0 {
 		return
 	}
+	pending := make([]pendingConversionEvent, 0, len(events))
+	campaignSet := make(map[uuid.UUID]struct{})
 	for _, evt := range events {
-		if evt == nil {
+		if evt == nil || evt.GhostEvent || evt.ShadowEvent || evt.FraudReason != "" {
 			continue
 		}
-		if err := e.enqueueOne(ctx, evt); err != nil {
+		if evt.CampaignID == uuid.Nil || evt.ClickID == "" || evt.Type == "" {
+			continue
+		}
+		pending = append(pending, pendingConversionEvent{event: evt, campaignID: evt.CampaignID})
+		campaignSet[evt.CampaignID] = struct{}{}
+	}
+	if len(pending) == 0 {
+		return
+	}
+
+	campaignIDs := make([]pgtype.UUID, 0, len(campaignSet))
+	for id := range campaignSet {
+		campaignIDs = append(campaignIDs, pgtype.UUID{Bytes: id, Valid: true})
+	}
+
+	configs, err := e.queries.ListPostbackConfigsByCampaignIDs(ctx, campaignIDs)
+	if err != nil {
+		slog.Warn("conversion postback batch config load failed", "error", err)
+		return
+	}
+	configByCampaign := make(map[uuid.UUID]db.PostbackConfig, len(configs))
+	for _, cfg := range configs {
+		configByCampaign[uuid.UUID(cfg.CampaignID.Bytes)] = cfg
+	}
+
+	campaigns, err := e.queries.ListCampaignsByIDs(ctx, campaignIDs)
+	if err != nil {
+		slog.Warn("conversion postback batch campaign load failed", "error", err)
+		return
+	}
+	campaignByID := make(map[uuid.UUID]db.Campaign, len(campaigns))
+	for _, camp := range campaigns {
+		campaignByID[uuid.UUID(camp.ID.Bytes)] = camp
+	}
+
+	eventTypes := make([]string, 0, len(pending))
+	payloads := make([][]byte, 0, len(pending))
+	for _, item := range pending {
+		cfg, ok := configByCampaign[item.campaignID]
+		if !ok {
+			continue
+		}
+		if !eventTypeMatches(item.event.Type, cfg.TargetEvent) {
+			continue
+		}
+		camp, ok := campaignByID[item.campaignID]
+		if !ok || !camp.CustomerID.Valid {
+			continue
+		}
+		customerID, err := uuid.FromBytes(camp.CustomerID.Bytes[:])
+		if err != nil {
 			slog.Warn("conversion postback enqueue failed",
-				"campaign_id", evt.CampaignID,
-				"click_id", evt.ClickID,
-				"event_type", evt.Type,
+				"campaign_id", item.campaignID,
+				"click_id", item.event.ClickID,
 				"error", err,
 			)
+			continue
 		}
-	}
-}
-
-func (e *ConversionPostbackEnqueuer) enqueueOne(ctx context.Context, evt *domain.Event) error {
-	if evt.GhostEvent || evt.ShadowEvent || evt.FraudReason != "" {
-		return nil
-	}
-	if evt.CampaignID == uuid.Nil || evt.ClickID == "" || evt.Type == "" {
-		return nil
-	}
-
-	cfg, err := e.queries.GetPostbackConfig(ctx, pgtype.UUID{Bytes: evt.CampaignID, Valid: true})
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil
+		payload := buildPostbackPayloadFromEvent(item.event, customerID)
+		raw, err := json.Marshal(payload)
+		if err != nil {
+			slog.Warn("conversion postback enqueue failed",
+				"campaign_id", item.campaignID,
+				"click_id", item.event.ClickID,
+				"error", err,
+			)
+			continue
 		}
-		return err
+		eventTypes = append(eventTypes, outboxEventSendPostback)
+		payloads = append(payloads, raw)
 	}
-	if !eventTypeMatches(evt.Type, cfg.TargetEvent) {
-		return nil
+	if len(eventTypes) == 0 {
+		return
 	}
-
-	camp, err := e.queries.GetCampaign(ctx, pgtype.UUID{Bytes: evt.CampaignID, Valid: true})
-	if err != nil {
-		return err
+	if err := e.queries.CreateOutboxEventsBatch(ctx, db.CreateOutboxEventsBatchParams{
+		EventTypes: eventTypes,
+		Payloads:   payloads,
+	}); err != nil {
+		slog.Warn("conversion postback batch insert failed", "count", len(eventTypes), "error", err)
 	}
-	if !camp.CustomerID.Valid {
-		return nil
-	}
-	customerID, err := uuid.FromBytes(camp.CustomerID.Bytes[:])
-	if err != nil {
-		return err
-	}
-
-	payload := buildPostbackPayloadFromEvent(evt, customerID)
-	raw, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-
-	_, err = e.queries.CreateOutboxEvent(ctx, db.CreateOutboxEventParams{
-		EventType: outboxEventSendPostback,
-		Payload:   raw,
-	})
-	return err
 }
 
 func eventTypeMatches(got, want string) bool {

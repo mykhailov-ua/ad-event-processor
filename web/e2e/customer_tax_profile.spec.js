@@ -1,4 +1,3 @@
-/** harness=mock_api — Playwright route.fulfill; does not prove Go handler or CH/PG. */
 import { test, expect } from '@playwright/test';
 import { mockAuthedSession, ADMIN_USER, TENANT_USER } from './helpers.js';
 
@@ -20,9 +19,6 @@ const TAX_PROFILE = {
   tax_rate_bps: 825,
 };
 
-/**
- * @param {import('@playwright/test').Page} page
- */
 async function mockCustomerShell(page) {
   await page.route(`**/api/v1/customers/${CUSTOMER_ID}`, async (route) => {
     await route.fulfill({

@@ -21,10 +21,10 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
 if [[ -f "$ROOT/.env" ]]; then
-	set -a
-	# shellcheck disable=SC1091
-	source "$ROOT/.env"
-	set +a
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT/.env"
+  set +a
 fi
 
 BROKER_FRAUD_TOPIC="${BROKER_FRAUD_TOPIC:-ad-fraud-events}"
@@ -38,7 +38,7 @@ FRAUD_STREAM="${FRAUD_STREAM_NAME:-ad:fraud:stream}"
 log() { printf 'ingest-pipeline-metrics: %s\n' "$*"; }
 
 print_queries() {
-	cat <<EOF
+  cat << EOF
 # --- ingest path gauges ---
 ad_ingest_fraud_path  # 0=Redis fraud stream, 1=broker (broker-primary)
 
@@ -62,11 +62,11 @@ EOF
 }
 
 fetch_metric() {
-	local url="$1"
-	local pattern="$2"
-	if command -v curl >/dev/null 2>&1; then
-		curl -fsS --max-time 3 "$url" 2>/dev/null | grep -E "$pattern" || true
-	fi
+  local url="$1"
+  local pattern="$2"
+  if command -v curl > /dev/null 2>&1; then
+    curl -fsS --max-time 3 "$url" 2> /dev/null | grep -E "$pattern" || true
+  fi
 }
 
 log "metric catalog (Prometheus / Grafana)"
@@ -74,9 +74,9 @@ print_queries
 echo
 
 if [[ "${INGEST_METRICS_SKIP_LIVE:-0}" == "1" ]]; then
-	log "live scrape skipped (INGEST_METRICS_SKIP_LIVE=1)"
-	printf 'fault_proof fault=ingest_pipeline_metrics status=partial proof=catalog_only harness=script\n'
-	exit 0
+  log "live scrape skipped (INGEST_METRICS_SKIP_LIVE=1)"
+  printf 'fault_proof fault=ingest_pipeline_metrics status=partial proof=catalog_only harness=script\n'
+  exit 0
 fi
 
 log "live scrape processor: $PROC_URL"
@@ -88,5 +88,5 @@ fetch_metric "$TRACK_URL" '^(ad_ingest_fraud_path|ad_fraud_stream_pel_age_second
 echo
 
 printf 'fault_proof fault=ingest_pipeline_metrics status=partial proof=catalog+live_scrape harness=script ch_ingest_source=%s fraud_topic=%s\n' \
-	"${CH_INGEST_SOURCE:-}" "$BROKER_FRAUD_TOPIC"
+  "${CH_INGEST_SOURCE:-}" "$BROKER_FRAUD_TOPIC"
 log "done — save this output for before/after diff"

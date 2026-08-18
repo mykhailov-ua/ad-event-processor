@@ -10,10 +10,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/internal/controlplane/authz"
 	"github.com/bidshard/ad-event-processor/internal/costsync"
-	"github.com/bidshard/ad-event-processor/internal/edge/xdpstats"
+	"github.com/bidshard/ad-event-processor/internal/edge"
 	"github.com/bidshard/ad-event-processor/internal/licensing"
 	"github.com/bidshard/ad-event-processor/internal/openrtb"
 	"github.com/bidshard/ad-event-processor/internal/payment"
@@ -102,9 +101,9 @@ func (a platformAuthAdapter) Register(ctx context.Context, adminAPIKey, email, p
 	return err
 }
 
-func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.UniversalClient) adminapi.RouteRegistry {
+func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.UniversalClient) RouteRegistry {
 	if h == nil || h.svc == nil || pool == nil {
-		return adminapi.RouteRegistry{}
+		return RouteRegistry{}
 	}
 
 	limit := h.limit
@@ -122,7 +121,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 	}
 
 	svc := h.svc
-	composite := adminapi.NewCompositeReadService(pool, h.cfg)
+	composite := NewCompositeReadService(pool, h.cfg)
 	if composite != nil {
 		composite.SetCHQuery(svc.CHQuery())
 	}
@@ -131,13 +130,13 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 	if exportDir == "" {
 		exportDir = filepath.Join(".", "data", "billing-exports")
 	}
-	var exportHTTP *adminapi.ExportHTTPHandlers
+	var exportHTTP *ExportHTTPHandlers
 	if composite != nil {
-		jobRunner := adminapi.NewJobRunner(composite, exportDir)
+		jobRunner := NewJobRunner(composite, exportDir)
 		if h.cfg != nil {
 			jobRunner.ConfigureExport(int32(h.cfg.Billing.ExportFetchRows), time.Duration(h.cfg.Billing.ExportJobTimeoutMin)*time.Minute)
 		}
-		exportHTTP = &adminapi.ExportHTTPHandlers{
+		exportHTTP = &ExportHTTPHandlers{
 			JobRunner:               jobRunner,
 			ApplyRateLimit:          limit,
 			RequirePermission:       perm,
@@ -170,13 +169,14 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 	}
 
 	opsReader := newOpsReader(svc)
-	reportJobs := adminapi.NewReportJobRunner(filepath.Join(".", "data", "report-exports"), adminapi.ReportExportDeps{
+	fraudPresets := fraudPresetsAPIAdapter{svc: svc}
+	reportJobs := NewReportJobRunner(filepath.Join(".", "data", "report-exports"), ReportExportDeps{
 		Pool:    pool,
 		CHQuery: svc.CHQuery(),
 	})
 
-	return adminapi.RouteRegistry{
-		BillingHTTP: &adminapi.BillingHTTPHandlers{
+	return RouteRegistry{
+		BillingHTTP: &BillingHTTPHandlers{
 			Billing:                      h.billing,
 			InvoiceDelivery:              h.invoiceDelivery,
 			CompositeReads:               composite,
@@ -193,13 +193,13 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			LimitExportByCustomer:        h.limitExportByCustomer,
 			ResolveDisputeCustomerFilter: h.resolveDisputeCustomerFilter,
 		},
-		CryptoBillingWebhook: &adminapi.CryptoBillingWebhookHandlers{
+		CryptoBillingWebhook: &CryptoBillingWebhookHandlers{
 			Processor:           svc,
 			CryptoWebhookSecret: string(h.cfg.CryptoWebhookSecret),
 			BTCPayWebhookSecret: string(h.cfg.BTCPayWebhookSecret),
 			CryptomusAPIKey:     string(h.cfg.CryptomusAPIKey),
 		},
-		DoctorHTTP: &adminapi.DoctorHTTPHandlers{
+		DoctorHTTP: &DoctorHTTPHandlers{
 			Config: h.cfg,
 			PlatformConfig: func(ctx context.Context) (platformconfig.Config, error) {
 				cfg, _, err := svc.GetPlatformConfig(ctx)
@@ -215,15 +215,15 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 				},
 				LicenseState:       licenseWatcherState,
 				LicenseDiagnostics: licenseWatcherDiagnostics,
-				XDPStatsReader: func(ctx context.Context) (xdpstats.Snapshot, error) {
-					return xdpstats.ReadRedisAny(ctx, svc.RedisShards())
+				XDPStatsReader: func(ctx context.Context) (edge.Snapshot, error) {
+					return edge.ReadRedisAny(ctx, svc.RedisShards())
 				},
 			},
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
 			WriteServiceError: writeErr,
 		},
-		OpsHTTP: &adminapi.OpsHTTPHandlers{
+		OpsHTTP: &OpsHTTPHandlers{
 			OpsReader:               opsReader,
 			PaymentIntents:          h.payment,
 			ConsentRecorder:         svc,
@@ -241,10 +241,11 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 				pool:   pool,
 				logDir: h.cfg.Logger.Dir,
 			},
-			RUMStore: rumStoreAdapter{},
+			RUMStore:     rumStoreAdapter{},
+			FraudPresets: fraudPresets,
 		},
 		ExportHTTP: exportHTTP,
-		LicensingHTTP: &adminapi.LicensingHTTPHandlers{
+		LicensingHTTP: &LicensingHTTPHandlers{
 			Pool:                  pool,
 			LicenseService:        svc,
 			LicenseDiagnostics:    licenseWatcherDiagnostics,
@@ -253,7 +254,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			RequirePermission:     perm,
 			WriteServiceError:     writeErr,
 		},
-		ReportsHTTP: &adminapi.ReportsHTTPHandlers{
+		ReportsHTTP: &ReportsHTTPHandlers{
 			CampaignStats:             svc,
 			CampaignForecaster:        svc,
 			ReportJobs:                reportJobs,
@@ -268,7 +269,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			ResolveForecastCustomerID: h.resolveForecastCustomerID,
 			WriteServiceError:         writeErr,
 		},
-		DashboardsHTTP: &adminapi.DashboardsHTTPHandlers{
+		DashboardsHTTP: &DashboardsHTTPHandlers{
 			BuyerPortfolio:       svc,
 			CampaignDashboard:    svc,
 			RoleDashboards:       svc,
@@ -279,19 +280,19 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			ResolveCustomerID:    h.resolveCampaignsCustomerID,
 			WriteServiceError:    writeErr,
 			EdgeMetricsReader:    FetchEdgeMetrics,
-			XDPStatsReader: func(ctx context.Context) (xdpstats.Snapshot, error) {
-				return xdpstats.ReadRedisAny(ctx, svc.RedisShards())
+			XDPStatsReader: func(ctx context.Context) (edge.Snapshot, error) {
+				return edge.ReadRedisAny(ctx, svc.RedisShards())
 			},
 		},
-		ViewsHTTP: &adminapi.ViewsHTTPHandlers{
-			Service:                 adminapi.NewService(),
+		ViewsHTTP: &ViewsHTTPHandlers{
+			Store:                   NewViewsStore(),
 			ApplyRateLimit:          limit,
 			RequirePermission:       perm,
 			RequireAnyPermission:    permAny,
 			AuthorizeCustomerAccess: authCustomer,
 			WriteServiceError:       writeErr,
 		},
-		SelfServeHTTP: &adminapi.SelfServeHTTPHandlers{
+		SelfServeHTTP: &SelfServeHTTPHandlers{
 			Campaigns:                  svc,
 			Templates:                  selfServeTemplatesAdapter{svc: svc},
 			PaymentIntents:             h.payment,
@@ -306,25 +307,25 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			DefaultPaymentProvider:     selfServePaymentProvider,
 			CryptoSubProvider:          selfServeCryptoSubProvider,
 		},
-		PostbackHTTP: &adminapi.PostbackHTTPHandlers{
+		PostbackHTTP: &PostbackHTTPHandlers{
 			Pool:              pool,
 			EncryptionKey:     encKey,
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
 		},
-		CostSyncHTTP: &adminapi.CostSyncHTTPHandlers{
+		CostSyncHTTP: &CostSyncHTTPHandlers{
 			Pool:              pool,
 			EncryptionKey:     encKey,
 			Worker:            costWorker,
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
 		},
-		MarginGuardHTTP: &adminapi.MarginGuardHTTPHandlers{
+		MarginGuardHTTP: &MarginGuardHTTPHandlers{
 			Service:           svc,
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
 		},
-		SmartAlertsHTTP: &adminapi.SmartAlertsHTTPHandlers{
+		SmartAlertsHTTP: &SmartAlertsHTTPHandlers{
 			Service:           svc,
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
@@ -336,19 +337,19 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 				return u.UserID
 			},
 		},
-		DomainHealthHTTP: &adminapi.DomainHealthHTTPHandlers{
+		DomainHealthHTTP: &DomainHealthHTTPHandlers{
 			Service:           svc,
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
 			TLSAskToken:       string(h.cfg.Management.CaddyTLSAskToken),
 			TLSAskAllowLocal:  h.cfg.Management.CaddyTLSAskAllowLocal,
 		},
-		FlowHTTP: &adminapi.FlowHTTPHandlers{
+		FlowHTTP: &FlowHTTPHandlers{
 			Service:           svc,
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
 		},
-		IntegrationSchemaHTTP: &adminapi.IntegrationSchemaHTTPHandlers{
+		IntegrationSchemaHTTP: &IntegrationSchemaHTTPHandlers{
 			Pool:              pool,
 			EncryptionKey:     encKey,
 			TemplateCatalog:   svc,
@@ -362,8 +363,8 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 				return cfg.TrackingDomain
 			},
 		},
-		TeamHTTP: &adminapi.TeamHTTPHandlers{
-			Team:                 &adminapi.TeamOverviewService{Pool: pool},
+		TeamHTTP: &TeamHTTPHandlers{
+			Team:                 &TeamOverviewService{Pool: pool},
 			Governance:           svc,
 			ApplyRateLimit:       limit,
 			RequireAnyPermission: permAny,
@@ -378,7 +379,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			},
 			WriteServiceError: writeErr,
 		},
-		PublisherHTTP: &adminapi.PublisherHTTPHandlers{
+		PublisherHTTP: &PublisherHTTPHandlers{
 			Publisher:            publisherAdminAdapter{svc: svc},
 			ApplyRateLimit:       limit,
 			RequireAnyPermission: permAny,
@@ -388,7 +389,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			},
 			WriteServiceError: writeErr,
 		},
-		CommercialHTTP: &adminapi.CommercialHTTPHandlers{
+		CommercialHTTP: &CommercialHTTPHandlers{
 			Commercial:              commercialAdminAdapter{svc: svc},
 			ApplyRateLimit:          limit,
 			RequirePermission:       perm,
@@ -396,13 +397,13 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			AuthorizeCustomerAccess: authCustomer,
 			WriteServiceError:       writeErr,
 		},
-		RtbFloorsHTTP: &adminapi.RtbFloorsHTTPHandlers{
+		RtbFloorsHTTP: &RtbFloorsHTTPHandlers{
 			Service:           svc,
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
 			WriteServiceError: writeErr,
 		},
-		RtbHTTP: &adminapi.RtbHTTPHandlers{
+		RtbHTTP: &RtbHTTPHandlers{
 			Service:           &rtbAdminService{svc: svc},
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
@@ -426,22 +427,38 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 				return stats.Bids, stats.Wins, stats.SpendMicro, true
 			},
 		},
-		CampaignsHTTP: &adminapi.CampaignsHTTPHandlers{
+		CampaignsHTTP: &CampaignsHTTPHandlers{
 			Campaigns:               svc,
+			CampaignFraud:           campaignFraudAPIAdapter{svc: svc},
 			ApplyRateLimit:          limit,
 			RequireAnyPermission:    permAny,
 			AuthorizeCampaignAccess: authCampaign,
 			ResolveCustomerID:       h.resolveCampaignsCustomerID,
+			AllowFraudPreview:       h.allowFraudPreview,
 			WriteServiceError:       writeErr,
 		},
-		CustomersHTTP: &adminapi.CustomersHTTPHandlers{
+		FraudHTTP: &FraudHTTPHandlers{
+			Labels:                  fraudLabelsAPIAdapter{svc: svc},
+			Decisions:               fraudDecisionsAPIAdapter{svc: svc},
+			Integrations:            fraudIntegrationsAPIAdapter{svc: svc},
+			Overrides:               fraudOverridesAPIAdapter{svc: svc},
+			Presets:                 fraudPresets,
+			ApplyRateLimit:          limit,
+			AllowFraudDecision:      h.allowFraudDecision,
+			RequirePermission:       perm,
+			RequireAnyPermission:    permAny,
+			ResolveCustomerID:       h.resolveCampaignsCustomerID,
+			AuthorizeCampaignAccess: authCampaign,
+			WriteServiceError:       writeErr,
+		},
+		CustomersHTTP: &CustomersHTTPHandlers{
 			Customers:               svc,
 			ApplyRateLimit:          limit,
 			RequirePermission:       perm,
 			AuthorizeCustomerAccess: authCustomer,
 			WriteServiceError:       writeErr,
 		},
-		SupportHTTP: &adminapi.SupportHTTPHandlers{
+		SupportHTTP: &SupportHTTPHandlers{
 			Feedback: svc,
 			SupportBundle: supportBundleWriter{
 				pool:   pool,
@@ -451,18 +468,18 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			RequireAuth:       h.adminRequireAuth(),
 			WriteServiceError: writeErr,
 		},
-		MetaHTTP: &adminapi.MetaHTTPHandlers{
+		MetaHTTP: &MetaHTTPHandlers{
 			ApplyRateLimit: limit,
 			Enrich:         h.metaEnricher(),
 			WriteError:     writeErr,
 		},
-		EulaHTTP: &adminapi.EulaHTTPHandlers{
+		EulaHTTP: &EulaHTTPHandlers{
 			Service:           svc,
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
 			WriteServiceError: writeErr,
 		},
-		PlatformHTTP: &adminapi.PlatformHTTPHandlers{
+		PlatformHTTP: &PlatformHTTPHandlers{
 			Service:           svc,
 			AuthClient:        platformAuthAdapter{client: h.authClient},
 			Cfg:               h.cfg,
@@ -470,11 +487,11 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			RequirePermission: perm,
 			WriteServiceError: writeErr,
 		},
-		StubHTTP: &adminapi.StubHTTPHandlers{
+		StubHTTP: &StubHTTPHandlers{
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
 		},
-		TelegramHTTP: &adminapi.TelegramHTTPHandlers{
+		TelegramHTTP: &TelegramHTTPHandlers{
 			Telegram:             NewTelegramService(svc, pool, rdbs),
 			ApplyRateLimit:       limit,
 			RequireAnyPermission: permAny,

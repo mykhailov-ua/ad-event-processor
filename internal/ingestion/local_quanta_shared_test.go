@@ -10,8 +10,6 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-// Shared test helpers used by both race and !race test builds.
-
 type evalCountRedis struct {
 	redis.UniversalClient
 	evals atomic.Int64

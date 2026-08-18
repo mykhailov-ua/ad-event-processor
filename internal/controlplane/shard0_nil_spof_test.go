@@ -19,8 +19,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// rdbsWithNilShard0 simulates REDIS_SHARD0_OPTIONAL_STARTUP=1: tracker/control
-// start with rdbs[0]==nil while budget shards 1..N stay connected.
 func rdbsWithNilShard0(t *testing.T, n int) []redis.UniversalClient {
 	t.Helper()
 	require.GreaterOrEqual(t, n, 2)
@@ -35,8 +33,6 @@ func rdbsWithNilShard0(t *testing.T, n int) []redis.UniversalClient {
 	}
 	return rdbs
 }
-
-// --- P0 regression (fixed): must not panic; verify Redis side effects where applicable ---
 
 func TestShard0Nil_SyncWorkerSyncAllNoOpWithoutPanic(t *testing.T) {
 	w := domain.NewSyncWorker(nil, nil, nil, time.Hour, time.Hour, nil, 0)
@@ -99,8 +95,6 @@ func TestShard0Nil_PurgeUserDataRedisHealthyShards(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), n)
 }
-
-// --- P1 regression: best-effort fan-out succeeds on shards 1..N ---
 
 func TestShard0Nil_SyncKeyToAllShardsHealthyShards(t *testing.T) {
 	rdbs := rdbsWithNilShard0(t, 4)
@@ -221,8 +215,6 @@ func TestShard0Nil_FanoutAllNilShardsFails(t *testing.T) {
 	assert.Contains(t, err.Error(), "no connected redis shard")
 }
 
-// --- observability / partial paths ---
-
 func TestShard0Nil_HealthyShardsStillWritable(t *testing.T) {
 	rdbs := rdbsWithNilShard0(t, 4)
 	ctx := context.Background()
@@ -235,7 +227,6 @@ func TestShard0Nil_HealthyShardsStillWritable(t *testing.T) {
 }
 
 func TestShard0Nil_MiddlewareRevocationSkipsNil(t *testing.T) {
-	// Counterexample: not every control-plane path panics on nil shard 0.
 	rdbs := rdbsWithNilShard0(t, 4)
 	m := &AuthMiddleware{cfg: &config.Config{Env: "production"}}
 	payload := &identity.Payload{UserID: uuid.New(), Role: "admin"}

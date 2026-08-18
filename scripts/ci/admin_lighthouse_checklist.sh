@@ -10,7 +10,7 @@ ARTIFACT_DIR="${ADMIN_LIGHTHOUSE_ARTIFACT_DIR:-$ROOT/var/ci}"
 mkdir -p "$ARTIFACT_DIR"
 CHECKLIST="$ARTIFACT_DIR/lighthouse-inp-checklist.txt"
 
-cat >"$CHECKLIST" <<'EOF'
+cat > "$CHECKLIST" << 'EOF'
 Lighthouse INP checklist (admin UI release)
 
 1. Build production bundle: node web/scripts/build.mjs

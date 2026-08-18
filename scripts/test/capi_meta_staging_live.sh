@@ -25,14 +25,17 @@ POSTBACK_METRICS_URL="${POSTBACK_METRICS_URL:-http://127.0.0.1:9119/metrics}"
 CAMPAIGN_ID="${CAMPAIGN_ID:-}"
 
 log() { printf 'capi-meta-live: %s\n' "$*"; }
-die() { printf 'capi-meta-live: ERROR: %s\n' "$*" >&2; exit 1; }
+die() {
+  printf 'capi-meta-live: ERROR: %s\n' "$*" >&2
+  exit 1
+}
 
 [[ -n "$CAMPAIGN_ID" ]] || die "CAMPAIGN_ID is required (campaign with Facebook CAPI token in admin)"
 
-code="$(curl -sf -o /dev/null -w '%{http_code}' -m 5 "${TRACK_URL%/}/health" 2>/dev/null || echo 000)"
+code="$(curl -sf -o /dev/null -w '%{http_code}' -m 5 "${TRACK_URL%/}/health" 2> /dev/null || echo 000)"
 [[ "$code" == "200" ]] || die "tracker/edge health failed at ${TRACK_URL} (HTTP ${code})"
 
-if ! curl -sf -m 3 "$POSTBACK_METRICS_URL" >/dev/null 2>&1; then
+if ! curl -sf -m 3 "$POSTBACK_METRICS_URL" > /dev/null 2>&1; then
   if [[ -x "$ROOT/bin/postback-sender" ]]; then
     log "starting postback-sender (metrics ${POSTBACK_METRICS_URL})"
     if [[ -n "${DB_USER:-}" && -n "${DB_PASSWORD:-}" && -n "${DB_PORT:-}" && -n "${DB_NAME:-}" ]]; then
@@ -50,7 +53,7 @@ fi
 
 if [[ -n "${ADMIN_API_KEY:-}" ]]; then
   cfg="$(curl -sf -m 5 "${CONTROL_URL}/api/v1/postbacks/config" \
-    -H "X-Admin-API-Key: ${ADMIN_API_KEY}" 2>/dev/null || true)"
+    -H "X-Admin-API-Key: ${ADMIN_API_KEY}" 2> /dev/null || true)"
   if ! echo "$cfg" | grep -q "\"campaign_id\":\"${CAMPAIGN_ID}\""; then
     log "WARN: no postback config for campaign ${CAMPAIGN_ID} — configure CAPI & Postbacks in admin"
   elif ! echo "$cfg" | grep -q '"provider":"facebook"'; then

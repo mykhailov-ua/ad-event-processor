@@ -643,7 +643,7 @@ func (s *openrtb26ExtScan) record(k ortb26WinKeyID, at int) {
 			s.idxEidSource = at
 		}
 	case ortbWinKeyUids:
-		// anchor for uid id lookup
+
 	case ortbWinKeyID:
 		if s.inEidsSpan(at) && s.idxEidUID < 0 {
 			s.idxEidUID = at

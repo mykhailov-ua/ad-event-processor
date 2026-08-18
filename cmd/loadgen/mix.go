@@ -174,18 +174,12 @@ func (r *runner) telegramTraffic(base string, iter uint64) {
 	}
 }
 
-// clickProxyTraffic issues GET /click. Exercises proxy delivery only when the
-// pinned campaign is configured with click_delivery=proxy and a mock upstream;
-// otherwise it measures the redirect path.
 func (r *runner) clickProxyTraffic(base string, iter uint64) {
 	cid := r.pickCampaign(iter)
 	clickID := fmt.Sprintf("00000000-0000-4000-8000-%012x", iter)
 	r.get(fmt.Sprintf("%s/click?campaign_id=%s&click_id=%s&sub1=loadgen", base, cid, clickID))
 }
 
-// proxyVPNTraffic simulates residential/commercial proxy and VPN delivery via
-// datacenter-class X-Forwarded-For addresses. Exercises FraudFilter IsAnonymous
-// until GM-M1 L1.5 hard drops land.
 func (r *runner) proxyVPNTraffic(base string, iter uint64) {
 	cid := r.pickCampaign(iter)
 	body := r.validBody(iter)
@@ -195,8 +189,6 @@ func (r *runner) proxyVPNTraffic(base string, iter uint64) {
 	})
 }
 
-// flowRouteTraffic issues GET /click with a flow_id token so GM-M3 routing
-// drills can pin cohorts before the hot-path FlowRouter is wired.
 func (r *runner) flowRouteTraffic(base string, iter uint64) {
 	cid := r.pickCampaign(iter)
 	clickID := fmt.Sprintf("00000000-0000-4000-8000-%012x", iter)
@@ -204,7 +196,6 @@ func (r *runner) flowRouteTraffic(base string, iter uint64) {
 	r.get(fmt.Sprintf("%s/click?campaign_id=%s&click_id=%s&flow_id=%s&sub1=loadgen-flow", base, cid, clickID, flowID))
 }
 
-// ja3BlockTraffic issues GET /click with X-TLS-JA3 for GMA-M1 L1 blocklist drills.
 func (r *runner) ja3BlockTraffic(base string, iter uint64) {
 	cid := r.pickCampaign(iter)
 	clickID := fmt.Sprintf("00000000-0000-4000-8000-%012x", iter)
@@ -216,7 +207,6 @@ func (r *runner) ja3BlockTraffic(base string, iter uint64) {
 }
 
 func proxyVPNClientIP(iter uint64) string {
-	// Well-known hosting / CDN ranges used as mock proxy egress in load tests.
 	ips := []string{
 		"54.230.17.9",
 		"35.190.0.1",

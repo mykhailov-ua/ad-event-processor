@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
@@ -45,7 +44,7 @@ func TestDomainPark_createsPoolDomainAndHealthRow(t *testing.T) {
 	}
 	svc.SetCloudflareAPI(&mockCloudflareAPI{recordID: "rec-456", sslStatus: "full"})
 
-	resp, err := svc.ParkDomain(ctx, adminapi.ParkDomainRequest{
+	resp, err := svc.ParkDomain(ctx, ParkDomainRequest{
 		Domain:           "track.buyer.test",
 		CloudflareZoneID: "zone-abc",
 	})

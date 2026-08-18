@@ -134,7 +134,6 @@ func scanSuspiciousMaps() bool {
 }
 
 func guardSuspiciousMapNeedles() [][]byte {
-	// XOR 0x33 — avoids plaintext frida/gdb/lldb in rodata.
 	enc := [][]byte{
 		{0x55, 0x41, 0x5a, 0x5a, 0x52},
 		{0x54, 0x57, 0x56},
@@ -259,7 +258,6 @@ func SetGuardTextBaselineForTest(hash [32]byte) {
 	guardTextBaselineValid = true
 }
 
-// GuardTextFingerprint exposes a stable uint32 for tests without exporting full hash.
 func GuardTextFingerprint(hash [32]byte) uint32 {
 	return binary.LittleEndian.Uint32(hash[:4])
 }

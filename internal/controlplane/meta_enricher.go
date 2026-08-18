@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	billingdb "github.com/bidshard/ad-event-processor/internal/ledger/db"
 	"github.com/bidshard/ad-event-processor/internal/licensing"
 	"github.com/bidshard/ad-event-processor/pkg/legal"
@@ -14,9 +14,9 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func (h *Handler) metaEnricher() adminapi.MetaEnricher {
-	return func(ctx context.Context) (adminapi.MetaEnrichOut, error) {
-		out := adminapi.MetaEnrichOut{}
+func (h *Handler) metaEnricher() MetaEnricher {
+	return func(ctx context.Context) (MetaEnrichOut, error) {
+		out := MetaEnrichOut{}
 		if h == nil || h.svc == nil {
 			return out, nil
 		}
@@ -55,7 +55,9 @@ func (h *Handler) metaEnricher() adminapi.MetaEnricher {
 		}
 		var ent licensing.Entitlements
 		if len(licRow.EntitlementsJson) > 0 {
-			_ = json.Unmarshal(licRow.EntitlementsJson, &ent)
+			if err := json.Unmarshal(licRow.EntitlementsJson, &ent); err != nil {
+				return out, fmt.Errorf("decode license entitlements: %w", err)
+			}
 		}
 		var activeCampaigns int64
 		if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM campaigns WHERE status = 'ACTIVE'`).Scan(&activeCampaigns); err != nil {
@@ -70,7 +72,7 @@ func (h *Handler) metaEnricher() adminapi.MetaEnricher {
 			time.Now(),
 			policy.RenewBeforeDays,
 		)
-		out.License = adminapi.BuildMetaLicense(adminapi.MetaLicenseBuildInput{
+		out.License = BuildMetaLicense(MetaLicenseBuildInput{
 			State:          licRow.State,
 			BannerSeverity: licensing.BannerSeverity(licensing.LicenseState(licRow.State)),
 			PlanCode:       licRow.PlanCode,

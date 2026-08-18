@@ -1,6 +1,3 @@
-// Synthetic fraud-signal benches (harness: fraud_signals_filter_mock_registry).
-// fraudSignalsFilter stubs L1/L2 signal accumulation — not internal/fraud LGBM inference.
-// ML scoring latency: internal/fraud BenchmarkLGBMScorer_ScoreBatch10k and processor microbatch path.
 package ingestion
 
 import (
@@ -132,9 +129,6 @@ func TestFilterEngine_Check_zeroAlloc_fraudScoring(t *testing.T) {
 	}
 }
 
-// TestFilterEngine_FraudScoring_LatencySLA measures incremental FilterEngine.Check cost
-// (fraudSignalsFilter + accumulator vs countingFilter baseline). Not ML inference.
-// Budget aligns with platform-sla.mdc hot-path fraud accumulator (< 500 µs incremental).
 func TestFilterEngine_FraudScoring_LatencySLA(t *testing.T) {
 	const (
 		iterations = 4000

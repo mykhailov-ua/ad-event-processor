@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
+	"github.com/bidshard/ad-event-processor/internal/controlplane"
 	db "github.com/bidshard/ad-event-processor/internal/domain/db"
 	"github.com/bidshard/ad-event-processor/internal/testutil"
 
@@ -43,7 +43,7 @@ func TestPostbacksAdminAPIIntegration(t *testing.T) {
 	require.NoError(t, err)
 
 	key := []byte("postback-encryption-secret-key32")
-	handler := &adminapi.PostbackHTTPHandlers{
+	handler := &controlplane.PostbackHTTPHandlers{
 		Pool:          dbPool,
 		EncryptionKey: key,
 	}
@@ -51,7 +51,7 @@ func TestPostbacksAdminAPIIntegration(t *testing.T) {
 	mux := http.NewServeMux()
 	handler.Register(mux)
 
-	configReq := adminapi.UpdatePostbackConfigRequest{
+	configReq := controlplane.UpdatePostbackConfigRequest{
 		Provider:    "facebook",
 		URLTemplate: "https://mock.com",
 		APIToken:    "token123",
@@ -76,7 +76,7 @@ func TestPostbacksAdminAPIIntegration(t *testing.T) {
 	mux.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
 
-	var configs []adminapi.PostbackConfigDTO
+	var configs []controlplane.PostbackConfigDTO
 	err = json.NewDecoder(rec.Body).Decode(&configs)
 	require.NoError(t, err)
 	require.Len(t, configs, 1)
@@ -99,7 +99,7 @@ func TestPostbacksAdminAPIIntegration(t *testing.T) {
 	mux.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
 
-	var dlqs []adminapi.PostbackDlqDTO
+	var dlqs []controlplane.PostbackDlqDTO
 	err = json.NewDecoder(rec.Body).Decode(&dlqs)
 	require.NoError(t, err)
 	require.Len(t, dlqs, 1)

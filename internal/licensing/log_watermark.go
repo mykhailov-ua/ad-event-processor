@@ -10,8 +10,6 @@ var (
 	watermarkApplied bool
 )
 
-// UpdateLogWatermark attaches license identity fields to the default logger (cold path).
-// Safe to call on each license reload; attributes are replaced, not nested.
 func UpdateLogWatermark(claims *LicenseClaims) {
 	if claims == nil {
 		return

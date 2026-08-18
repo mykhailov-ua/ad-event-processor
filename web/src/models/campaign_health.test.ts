@@ -6,7 +6,7 @@ describe('deriveCampaignHealth', () => {
   it('flags margin breach as risk', () => {
     const health = deriveCampaignHealth(
       { status: 'ACTIVE', budget_limit: '100', current_spend: '10' },
-      { marginBreach: true },
+      { marginBreach: true }
     );
     assert.equal(health.level, 'risk');
     assert.match(health.title, /Margin guard breach/);
@@ -15,7 +15,7 @@ describe('deriveCampaignHealth', () => {
   it('warns when license is in grace', () => {
     const health = deriveCampaignHealth(
       { status: 'ACTIVE', budget_limit: '100', current_spend: '10' },
-      { licenseGrace: true },
+      { licenseGrace: true }
     );
     assert.equal(health.level, 'warn');
     assert.match(health.title, /grace/i);
@@ -24,7 +24,7 @@ describe('deriveCampaignHealth', () => {
   it('combines portfolio margin_breach with utilization', () => {
     const health = deriveCampaignHealth(
       { status: 'ACTIVE', budget_limit: '100', current_spend: '95' },
-      { portfolioRow: { utilization_pct: 95, margin_breach: true } },
+      { portfolioRow: { utilization_pct: 95, margin_breach: true } }
     );
     assert.equal(health.level, 'risk');
     assert.match(health.title, /Margin guard breach/);

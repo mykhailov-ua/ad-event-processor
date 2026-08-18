@@ -1,8 +1,3 @@
-/**
- * Static traffic-source presets for campaign Integration (click URL macros).
- * Catalog ships in the admin bundle — no DB seed required (§11.3).
- */
-
 export type TrafficSourceCategory =
   | 'social'
   | 'search'
@@ -15,9 +10,8 @@ export type TrafficSourceCategory =
 export type CostSyncNetwork = 'meta' | 'google' | 'tiktok';
 
 export type TrafficSourceParam = {
-  /** BidShard query key (sub1…sub30, ad_campaign_id, gclid, …). */
   key: string;
-  /** Network token or static label — left raw in the click URL when macro-shaped. */
+
   value: string;
   label?: string;
 };
@@ -26,29 +20,23 @@ export type TrafficSourceTemplate = {
   id: string;
   name: string;
   category: TrafficSourceCategory;
-  /** Cost Sync join network when ad_campaign_id / sub2 carries the external campaign id. */
+
   cost_sync?: CostSyncNetwork;
   params: TrafficSourceParam[];
   notes?: string;
 };
 
-/**
- * True when value is a network macro that must stay unencoded in the pasted URL.
- */
 export function isNetworkMacro(value: string): boolean {
   const v = String(value || '');
   return (
-    /\{\{[^}]+\}\}/.test(v)
-    || /\{[a-zA-Z_][a-zA-Z0-9_.]*\}/.test(v)
-    || /__[A-Z0-9_]+__/.test(v)
-    || /##[A-Z0-9_]+##/.test(v)
-    || /^\[[^\]]+\]$/.test(v)
+    /\{\{[^}]+\}\}/.test(v) ||
+    /\{[a-zA-Z_][a-zA-Z0-9_.]*\}/.test(v) ||
+    /__[A-Z0-9_]+__/.test(v) ||
+    /##[A-Z0-9_]+##/.test(v) ||
+    /^\[[^\]]+\]$/.test(v)
   );
 }
 
-/**
- * Flatten template params into a query map (subN + attribution keys).
- */
 export function templateParamMap(tpl: TrafficSourceTemplate): Record<string, string> {
   const out: Record<string, string> = {};
   for (const p of tpl.params) {
@@ -62,9 +50,6 @@ function p(key: string, value: string, label?: string): TrafficSourceParam {
   return label ? { key, value, label } : { key, value };
 }
 
-/**
- * Canonical 33-preset catalog (Facebook → Direct).
- */
 export const TRAFFIC_SOURCE_TEMPLATES: TrafficSourceTemplate[] = [
   {
     id: 'meta-facebook',
@@ -187,11 +172,7 @@ export const TRAFFIC_SOURCE_TEMPLATES: TrafficSourceTemplate[] = [
     id: 'linkedin-ads',
     name: 'LinkedIn Ads',
     category: 'social',
-    params: [
-      p('sub1', 'linkedin'),
-      p('sub2', '{{CAMPAIGN_ID}}'),
-      p('sub3', '{{CREATIVE_ID}}'),
-    ],
+    params: [p('sub1', 'linkedin'), p('sub2', '{{CAMPAIGN_ID}}'), p('sub3', '{{CREATIVE_ID}}')],
   },
   {
     id: 'microsoft-ads',
@@ -242,11 +223,7 @@ export const TRAFFIC_SOURCE_TEMPLATES: TrafficSourceTemplate[] = [
     id: 'revcontent',
     name: 'Revcontent',
     category: 'native',
-    params: [
-      p('sub1', '{widget_id}'),
-      p('sub2', '{adv_id}'),
-      p('sub3', '{content_id}'),
-    ],
+    params: [p('sub1', '{widget_id}'), p('sub2', '{adv_id}'), p('sub3', '{content_id}')],
   },
   {
     id: 'propellerads',
@@ -263,21 +240,13 @@ export const TRAFFIC_SOURCE_TEMPLATES: TrafficSourceTemplate[] = [
     id: 'push-house',
     name: 'Push.house',
     category: 'push',
-    params: [
-      p('sub1', '{site_id}'),
-      p('sub2', '{campaign_id}'),
-      p('sub3', '{creative_id}'),
-    ],
+    params: [p('sub1', '{site_id}'), p('sub2', '{campaign_id}'), p('sub3', '{creative_id}')],
   },
   {
     id: 'richads',
     name: 'RichAds',
     category: 'push',
-    params: [
-      p('sub1', '{site_id}'),
-      p('sub2', '{campaign_id}'),
-      p('sub3', '{banner_id}'),
-    ],
+    params: [p('sub1', '{site_id}'), p('sub2', '{campaign_id}'), p('sub3', '{banner_id}')],
   },
   {
     id: 'adsterra',
@@ -304,120 +273,73 @@ export const TRAFFIC_SOURCE_TEMPLATES: TrafficSourceTemplate[] = [
     id: 'trafficjunky',
     name: 'TrafficJunky',
     category: 'adult',
-    params: [
-      p('sub1', '{siteid}'),
-      p('sub2', '{campaignid}'),
-      p('sub3', '{bannerid}'),
-    ],
+    params: [p('sub1', '{siteid}'), p('sub2', '{campaignid}'), p('sub3', '{bannerid}')],
   },
   {
     id: 'juicyads',
     name: 'JuicyAds',
     category: 'adult',
-    params: [
-      p('sub1', '{site_id}'),
-      p('sub2', '{campaign_id}'),
-      p('sub3', '{spot_id}'),
-    ],
+    params: [p('sub1', '{site_id}'), p('sub2', '{campaign_id}'), p('sub3', '{spot_id}')],
   },
   {
     id: 'trafficstars',
     name: 'TrafficStars',
     category: 'adult',
-    params: [
-      p('sub1', '{site_id}'),
-      p('sub2', '{campaign_id}'),
-      p('sub3', '{creative_id}'),
-    ],
+    params: [p('sub1', '{site_id}'), p('sub2', '{campaign_id}'), p('sub3', '{creative_id}')],
   },
   {
     id: 'hilltopads',
     name: 'HilltopAds',
     category: 'push',
-    params: [
-      p('sub1', '{zoneid}'),
-      p('sub2', '{campaignid}'),
-      p('sub3', '{bannerid}'),
-    ],
+    params: [p('sub1', '{zoneid}'), p('sub2', '{campaignid}'), p('sub3', '{bannerid}')],
   },
   {
     id: 'zeropark',
     name: 'Zeropark',
     category: 'dsp',
-    params: [
-      p('sub1', '{target}'),
-      p('sub2', '{campaign_id}'),
-      p('sub3', '{visit_id}'),
-    ],
+    params: [p('sub1', '{target}'), p('sub2', '{campaign_id}'), p('sub3', '{visit_id}')],
   },
   {
     id: 'rollerads',
     name: 'RollerAds',
     category: 'push',
-    params: [
-      p('sub1', '{zone_id}'),
-      p('sub2', '{campaign_id}'),
-      p('sub3', '{banner_id}'),
-    ],
+    params: [p('sub1', '{zone_id}'), p('sub2', '{campaign_id}'), p('sub3', '{banner_id}')],
   },
   {
     id: 'bidvertiser',
     name: 'BidVertiser',
     category: 'native',
-    params: [
-      p('sub1', '[SUBID]'),
-      p('sub2', '[CAMPAIGNID]'),
-    ],
+    params: [p('sub1', '[SUBID]'), p('sub2', '[CAMPAIGNID]')],
   },
   {
     id: 'popcash',
     name: 'PopCash',
     category: 'push',
-    params: [
-      p('sub1', '[siteid]'),
-      p('sub2', '[campaignid]'),
-      p('sub3', '[category]'),
-    ],
+    params: [p('sub1', '[siteid]'), p('sub2', '[campaignid]'), p('sub3', '[category]')],
   },
   {
     id: 'popads',
     name: 'PopAds',
     category: 'push',
-    params: [
-      p('sub1', '[SITEID]'),
-      p('sub2', '[CAMPAIGNID]'),
-      p('sub3', '[FORMFACTOR]'),
-    ],
+    params: [p('sub1', '[SITEID]'), p('sub2', '[CAMPAIGNID]'), p('sub3', '[FORMFACTOR]')],
   },
   {
     id: 'clickadu',
     name: 'Clickadu',
     category: 'push',
-    params: [
-      p('sub1', '{zoneid}'),
-      p('sub2', '{campaignid}'),
-      p('sub3', '{bannerid}'),
-    ],
+    params: [p('sub1', '{zoneid}'), p('sub2', '{campaignid}'), p('sub3', '{bannerid}')],
   },
   {
     id: 'evadav',
     name: 'Evadav',
     category: 'push',
-    params: [
-      p('sub1', '{site_id}'),
-      p('sub2', '{campaign_id}'),
-      p('sub3', '{banner_id}'),
-    ],
+    params: [p('sub1', '{site_id}'), p('sub2', '{campaign_id}'), p('sub3', '{banner_id}')],
   },
   {
     id: 'richads-pop',
     name: 'RichAds Popunder',
     category: 'push',
-    params: [
-      p('sub1', '{site_id}'),
-      p('sub2', '{campaign_id}'),
-      p('sub3', 'pop'),
-    ],
+    params: [p('sub1', '{site_id}'), p('sub2', '{campaign_id}'), p('sub3', 'pop')],
   },
   {
     id: 'direct-custom',
@@ -428,9 +350,6 @@ export const TRAFFIC_SOURCE_TEMPLATES: TrafficSourceTemplate[] = [
   },
 ];
 
-/**
- * Lookup template by id.
- */
 export function trafficSourceById(id: string): TrafficSourceTemplate | null {
   for (let i = 0; i < TRAFFIC_SOURCE_TEMPLATES.length; i += 1) {
     if (TRAFFIC_SOURCE_TEMPLATES[i].id === id) return TRAFFIC_SOURCE_TEMPLATES[i];

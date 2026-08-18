@@ -42,7 +42,6 @@ func TestBrokerReplay_Integrity(t *testing.T) {
 	expectedHasher := sha256.New()
 	baseTime := time.Date(2026, 8, 8, 12, 0, 0, 0, time.UTC)
 
-	// Write 100 events to partition log
 	for i := range 100 {
 		clickID := uuid.New().String()
 		evtType := "click"
@@ -74,7 +73,6 @@ func TestBrokerReplay_Integrity(t *testing.T) {
 	require.NoError(t, partLog.Close())
 	expectedHash := hex.EncodeToString(expectedHasher.Sum(nil))
 
-	// Replay using Replayer
 	mockStore := &mockReplayStore{}
 	replayer := NewReplayer(ReplayConfig{
 		DataDir:   dataDir,
@@ -101,7 +99,6 @@ func TestBrokerReplay_TimestampFiltering(t *testing.T) {
 
 	baseTime := time.Date(2026, 8, 8, 12, 0, 0, 0, time.UTC)
 
-	// Write 10 events: i = 0..9 (time = 12:00 to 12:09)
 	for i := range 10 {
 		pbEvt := &pb.AdStreamEvent{
 			ClickId:       []byte(uuid.New().String()),
@@ -123,7 +120,6 @@ func TestBrokerReplay_TimestampFiltering(t *testing.T) {
 
 	require.NoError(t, partLog.Close())
 
-	// Filter interval: 12:03 to 12:06 (inclusive, 4 events: 12:03, 12:04, 12:05, 12:06)
 	fromTime := baseTime.Add(3 * time.Minute)
 	toTime := baseTime.Add(6 * time.Minute)
 

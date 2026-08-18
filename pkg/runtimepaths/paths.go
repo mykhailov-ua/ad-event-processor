@@ -1,4 +1,3 @@
-// Package runtimepaths resolves standard runtime directory locations.
 package runtimepaths
 
 import "fmt"

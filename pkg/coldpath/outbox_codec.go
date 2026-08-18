@@ -10,7 +10,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// OutboxProtoMagic prefixes protobuf-encoded outbox payloads stored in BYTEA/JSONB.
 const OutboxProtoMagic byte = 0x1f
 
 var (

@@ -33,7 +33,13 @@ export const OPS_METRIC_COLORS: Record<string, string> = {
   'edge-fraud-tier': '--danger',
 };
 
-export const OPS_DROP_COLORS: string[] = ['--warning', '--danger', '--info', '--accent', '--success'];
+export const OPS_DROP_COLORS: string[] = [
+  '--warning',
+  '--danger',
+  '--info',
+  '--accent',
+  '--success',
+];
 
 export const OPS_CHART_RANGE_OPTIONS: Array<{ value: number; label: string }> = [
   { value: 1, label: '1h' },
@@ -46,7 +52,6 @@ const HISTORY_MAX = 360;
 
 const snapshotHistory = new Map<string, MetricSoA>();
 
-/** Cold-path only — flat 2-point fallback (allocates; not used on paint path). */
 function flatPair(t0: number, v0: number, t1: number, v1: number): MetricPoint[] {
   return [
     { ts: t0, value: v0 },
@@ -54,9 +59,6 @@ function flatPair(t0: number, v0: number, t1: number, v1: number): MetricPoint[]
   ];
 }
 
-/**
- * Allocate a fixed-capacity SoA ring buffer.
- */
 function createSoABuffer(): MetricSoA {
   return {
     ts: new Float64Array(HISTORY_MAX),
@@ -65,17 +67,11 @@ function createSoABuffer(): MetricSoA {
   };
 }
 
-/**
- * Return range length in milliseconds.
- */
 export function rangeMsFromHours(hours: number): number {
   const h = Number(hours) || 24;
   return h * 60 * 60 * 1000;
 }
 
-/**
- * Parse API metric rows into sorted MetricPoint values.
- */
 export function parseApiPoints(rows: ApiMetricRow[] | null | undefined): MetricPoint[] {
   const out: MetricPoint[] = [];
   const n = rows?.length ?? 0;
@@ -89,15 +85,10 @@ export function parseApiPoints(rows: ApiMetricRow[] | null | undefined): MetricP
   return out;
 }
 
-/**
- * Convert cumulative points into a per-second rate series.
- */
 export function toRateSeries(points: MetricPoint[]): MetricPoint[] {
   const plen = points.length;
   if (plen < 2) {
-    return plen === 1
-      ? [{ ts: points[0].ts, value: 0 }]
-      : [];
+    return plen === 1 ? [{ ts: points[0].ts, value: 0 }] : [];
   }
   const out: MetricPoint[] = [];
   for (let i = 1; i < plen; i++) {
@@ -111,16 +102,13 @@ export function toRateSeries(points: MetricPoint[]): MetricPoint[] {
   return out;
 }
 
-/**
- * Copy points within range into SoA output buffers.
- */
 export function copyMetricPoints(
   points: Array<{ ts: number; value: number }> | null | undefined,
   fallbackValue: number,
   rangeMs: number,
   outTs: Float64Array,
   outVal: Float64Array,
-  now = Date.now(),
+  now = Date.now()
 ): number {
   const cutoff = now - rangeMs;
   let n = 0;
@@ -144,16 +132,13 @@ export function copyMetricPoints(
   return 2;
 }
 
-/**
- * Copy snapshot ring into SoA buffers (hot-path safe).
- */
 export function copySnapshotSeriesSoA(
   id: string,
   fallbackValue: number,
   rangeMs: number,
   outTs: Float64Array,
   outVal: Float64Array,
-  now = Date.now(),
+  now = Date.now()
 ): number {
   const ring = snapshotHistory.get(id);
   if (!ring || ring.len === 0) {
@@ -179,10 +164,10 @@ export function copySnapshotSeriesSoA(
   return 2;
 }
 
-/**
- * Filter metric points to the given range window.
- */
-export function filterSeriesByRange(points: MetricPoint[] | null | undefined, rangeMs: number): MetricPoint[] {
+export function filterSeriesByRange(
+  points: MetricPoint[] | null | undefined,
+  rangeMs: number
+): MetricPoint[] {
   const cutoff = Date.now() - rangeMs;
   const out: MetricPoint[] = [];
   const plen = points?.length ?? 0;
@@ -193,9 +178,6 @@ export function filterSeriesByRange(points: MetricPoint[] | null | undefined, ra
   return out;
 }
 
-/**
- * Record a live snapshot sample into the ring buffer.
- */
 export function recordSnapshot(id: string, value: number): void {
   let ring = snapshotHistory.get(id);
   if (!ring) {
@@ -220,9 +202,6 @@ export function recordSnapshot(id: string, value: number): void {
   ring.len = write + 1;
 }
 
-/**
- * Cold-path AoS view for specs / legacy callers (reuses two slot objects).
- */
 export function snapshotSeries(id: string, value: number, rangeMs: number): MetricPoint[] {
   const scratchTs = new Float64Array(2);
   const scratchVal = new Float64Array(2);
@@ -236,18 +215,17 @@ export function snapshotSeries(id: string, value: number, rangeMs: number): Metr
         out.push({ ts: ring.ts[i], value: ring.value[i] });
       }
     }
-    return out.length >= 2 ? out : flatPair(scratchTs[0], scratchVal[0], scratchTs[1], scratchVal[1]);
+    return out.length >= 2
+      ? out
+      : flatPair(scratchTs[0], scratchVal[0], scratchTs[1], scratchVal[1]);
   }
   return flatPair(scratchTs[0], scratchVal[0], scratchTs[1], scratchVal[1]);
 }
 
-/**
- * Normalize a point series into at least a flat pair within range.
- */
 export function normalizeSeries(
   points: MetricPoint[] | null | undefined,
   fallbackValue = 0,
-  rangeMs = rangeMsFromHours(24),
+  rangeMs = rangeMsFromHours(24)
 ): MetricPoint[] {
   const now = Date.now();
   const scratchTs = new Float64Array(2);
@@ -260,14 +238,13 @@ export function normalizeSeries(
     for (let i = 0; i < plen; i++) {
       if (points![i].ts >= cutoff) out.push(points![i]);
     }
-    return out.length >= 2 ? out : flatPair(scratchTs[0], scratchVal[0], scratchTs[1], scratchVal[1]);
+    return out.length >= 2
+      ? out
+      : flatPair(scratchTs[0], scratchVal[0], scratchTs[1], scratchVal[1]);
   }
   return flatPair(scratchTs[0], scratchVal[0], scratchTs[1], scratchVal[1]);
 }
 
-/**
- * Resolve a CSS color token for a metric id.
- */
 export function metricColorToken(id: string, dropIndex = 0): string {
   if (OPS_METRIC_COLORS[id]) return OPS_METRIC_COLORS[id];
   if (id.startsWith('drop-')) {

@@ -1,13 +1,14 @@
 package installer
 
 import (
-	"github.com/bidshard/ad-event-processor/pkg/naming"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/bidshard/ad-event-processor/pkg/naming"
 
 	"gopkg.in/yaml.v3"
 )

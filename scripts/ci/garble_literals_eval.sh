@@ -20,7 +20,7 @@ literals_size=$(stat -c%s "$OUT/literals/tracker")
 delta=$((literals_size - baseline_size))
 pct=0
 if [[ "$baseline_size" -gt 0 ]]; then
-	pct=$((delta * 100 / baseline_size))
+  pct=$((delta * 100 / baseline_size))
 fi
 
 echo ""

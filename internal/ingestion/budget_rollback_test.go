@@ -28,14 +28,11 @@ func TestUnifiedFilter_SetDeferStreamToProducer_DualStreamWriteFix(t *testing.T)
 
 	f.SetLocalQuantaDeps(LocalQuantaDeps{Stream: stream})
 
-	// Initially, the stream name should be "events"
 	require.Equal(t, "events", stream.stream)
 
-	// After setting defer stream to producer, the stream name must be "fcap:ignored" to prevent double writing
 	f.SetDeferStreamToProducer(true)
 	require.Equal(t, "fcap:ignored", stream.stream)
 
-	// Setting it back should restore the stream name
 	f.SetDeferStreamToProducer(false)
 	require.Equal(t, "events", stream.stream)
 }
@@ -58,15 +55,12 @@ func TestUnifiedFilter_RollbackDebit_LocalQuanta(t *testing.T) {
 
 	subSlot := debitSubSlot(campInfo, evt.UserID, evt.ClickID)
 
-	// Credit some budget
 	ledger.Credit(campID, 1000, 1000)
 	require.Equal(t, int64(1000), ledger.Remaining(campID))
 
-	// Spend some budget
 	require.True(t, ledger.TrySpendDebit(campID, subSlot, 100))
 	require.Equal(t, int64(900), ledger.Remaining(campID))
 
-	// Rollback the spend
 	f.RollbackDebit(context.Background(), evt, campInfo, 100, true)
 	require.Equal(t, int64(1000), ledger.Remaining(campID))
 }

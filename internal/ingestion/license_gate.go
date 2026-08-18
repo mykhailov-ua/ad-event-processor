@@ -5,7 +5,6 @@ import (
 	"github.com/bidshard/ad-event-processor/internal/licensing"
 )
 
-// LicenseStateReader is implemented by Registry for deployment JWT entitlements.
 type LicenseStateReader interface {
 	GetLicenseState() (licensing.LicenseState, licensing.Entitlements)
 }

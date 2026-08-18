@@ -1,6 +1,3 @@
-/**
- * Encode a numeric offset as a base64 cursor token.
- */
 export function encodeCursor(offset: number): string {
   const raw = String(offset);
   const bytes = new TextEncoder().encode(raw);
@@ -11,9 +8,6 @@ export function encodeCursor(offset: number): string {
   return btoa(binary);
 }
 
-/**
- * Decode a base64 cursor token back to a non-negative offset.
- */
 export function decodeCursor(cursor: string): number {
   if (!cursor) return 0;
   const binary = atob(cursor);

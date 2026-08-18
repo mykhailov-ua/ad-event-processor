@@ -6,12 +6,11 @@ import { fetchSelfServeInvoices } from '../helpers/selfserve_api.js';
 import { to } from '../lib/to.js';
 import { ErrorBlock } from '../components/error_block.js';
 
-/**
- * Self-serve billing: wallet top-up, statement, invoices.
- */
 export function SelfServeBillingPage() {
   const customerId = boundCustomerId(auth.getUser());
-  const [invoices, setInvoices] = useState<Array<{ id: string; status?: string; created_at?: string }>>([]);
+  const [invoices, setInvoices] = useState<
+    Array<{ id: string; status?: string; created_at?: string }>
+  >([]);
   const [error, setError] = useState<unknown>(null);
 
   useEffect(() => {
@@ -56,7 +55,11 @@ export function SelfServeBillingPage() {
                 </tr>
               ))}
               {invoices.length === 0 ? (
-                <tr><td colSpan={3} className="text-muted">No invoices yet.</td></tr>
+                <tr>
+                  <td colSpan={3} className="text-muted">
+                    No invoices yet.
+                  </td>
+                </tr>
               ) : null}
             </tbody>
           </table>

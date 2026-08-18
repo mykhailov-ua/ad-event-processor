@@ -1,4 +1,3 @@
-// Package domainhealth implements domainhealth support for BidShard.
 package domainhealth
 
 import (

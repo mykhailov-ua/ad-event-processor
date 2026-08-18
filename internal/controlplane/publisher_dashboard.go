@@ -10,19 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
-
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
 var ErrPublisherScopeRequired = errors.New("publisher seller_id bind required")
-
-type PublisherBind struct {
-	SellerID           string
-	PublisherAccountID string
-	CustomerID         uuid.UUID
-}
 
 func (s *Service) ResolvePublisherBind(ctx context.Context, userID uuid.UUID) (PublisherBind, error) {
 	pool := s.GetPool()
@@ -57,27 +49,27 @@ func (s *Service) ResolvePublisherBind(ctx context.Context, userID uuid.UUID) (P
 	return bind, nil
 }
 
-func (s *Service) GetPublisherDashboard(ctx context.Context, bind PublisherBind, from, to time.Time) (adminapi.PublisherDashboardDTO, error) {
-	out := adminapi.PublisherDashboardDTO{
+func (s *Service) GetPublisherDashboard(ctx context.Context, bind PublisherBind, from, to time.Time) (PublisherDashboardDTO, error) {
+	out := PublisherDashboardDTO{
 		SellerID:           bind.SellerID,
 		PublisherAccountID: bind.PublisherAccountID,
 		From:               from.UTC().Format(time.RFC3339),
 		To:                 to.UTC().Format(time.RFC3339),
-		KPIs:               adminapi.PublisherKPIsDTO{},
-		Placements:         []adminapi.PublisherPlacementDTO{},
+		KPIs:               PublisherKPIsDTO{},
+		Placements:         []PublisherPlacementDTO{},
 	}
 	chQuery := s.chQuery
 	if chQuery == nil {
 		return out, nil
 	}
-	chCtx, cancel := context.WithTimeout(ctx, adminapi.ReportCHQueryTimeout())
+	chCtx, cancel := context.WithTimeout(ctx, ReportCHQueryTimeout())
 	defer cancel()
 
 	needleSeller := bind.SellerID
 	needlePub := bind.PublisherAccountID
 	rows, err := chQuery.Query(chCtx, publisherPlacementStatsQuery, from, to, needleSeller, needlePub, needleSeller, needlePub, from, to, needleSeller, needlePub, needleSeller, needlePub)
 	if err != nil {
-		return adminapi.PublisherDashboardDTO{}, fmt.Errorf("publisher dashboard query: %w", err)
+		return PublisherDashboardDTO{}, fmt.Errorf("publisher dashboard query: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -88,7 +80,7 @@ func (s *Service) GetPublisherDashboard(ctx context.Context, bind PublisherBind,
 		var impressions, clicks uint64
 		var revenueMicro int64
 		if err := rows.Scan(&placementID, &impressions, &clicks, &revenueMicro); err != nil {
-			return adminapi.PublisherDashboardDTO{}, err
+			return PublisherDashboardDTO{}, err
 		}
 		totalImpressions += int64(impressions)
 		totalClicks += int64(clicks)
@@ -101,7 +93,7 @@ func (s *Service) GetPublisherDashboard(ctx context.Context, bind PublisherBind,
 		if impressions > 0 {
 			ecpmMicro = revenueMicro * 1000 / int64(impressions)
 		}
-		out.Placements = append(out.Placements, adminapi.PublisherPlacementDTO{
+		out.Placements = append(out.Placements, PublisherPlacementDTO{
 			PlacementID:  placementID,
 			Impressions:  int64(impressions),
 			Clicks:       int64(clicks),
@@ -111,7 +103,7 @@ func (s *Service) GetPublisherDashboard(ctx context.Context, bind PublisherBind,
 		})
 	}
 	if err := rows.Err(); err != nil {
-		return adminapi.PublisherDashboardDTO{}, err
+		return PublisherDashboardDTO{}, err
 	}
 
 	out.KPIs.Impressions = totalImpressions
@@ -127,7 +119,7 @@ func (s *Service) GetPublisherDashboard(ctx context.Context, bind PublisherBind,
 	return out, nil
 }
 
-func (s *Service) ListPublisherStatements(ctx context.Context, bind PublisherBind, from, to time.Time, limit, offset int32) ([]adminapi.PublisherStatementDTO, int64, error) {
+func (s *Service) ListPublisherStatements(ctx context.Context, bind PublisherBind, from, to time.Time, limit, offset int32) ([]PublisherStatementDTO, int64, error) {
 	pool := s.GetPool()
 	if pool == nil {
 		return nil, 0, errors.New("publisher service unavailable")
@@ -171,9 +163,9 @@ func (s *Service) ListPublisherStatements(ctx context.Context, bind PublisherBin
 	}
 	defer rows.Close()
 
-	items := make([]adminapi.PublisherStatementDTO, 0, limit)
+	items := make([]PublisherStatementDTO, 0, limit)
 	for rows.Next() {
-		var row adminapi.PublisherStatementDTO
+		var row PublisherStatementDTO
 		var amount int64
 		var createdAt time.Time
 		if err := rows.Scan(&row.ID, &amount, &createdAt, &row.CampaignID, &row.IdempotencyHash); err != nil {

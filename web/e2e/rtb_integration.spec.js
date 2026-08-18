@@ -1,4 +1,3 @@
-/** harness=mock_api — Playwright route.fulfill; does not prove Go handler or CH/PG. */
 import { test, expect } from '@playwright/test';
 import { mockAuthedSession } from './helpers.js';
 
@@ -42,16 +41,18 @@ test('RTB floors preview and apply use confirm on apply', async ({ page }) => {
         applied: dryRun ? 0 : 1,
         outbox_rows: dryRun ? 0 : 2,
         suggestions: dryRun
-          ? [{
-            placement_id: 'plc-1',
-            deal_id: 'deal-1',
-            current_floor_micro: 1000,
-            suggested_floor_micro: 1500,
-            win_rate: 0.42,
-            sample_n: 100,
-            floor_bucket_micro: 1000,
-            computed_at: '2026-08-12T10:00:00Z',
-          }]
+          ? [
+              {
+                placement_id: 'plc-1',
+                deal_id: 'deal-1',
+                current_floor_micro: 1000,
+                suggested_floor_micro: 1500,
+                win_rate: 0.42,
+                sample_n: 100,
+                floor_bucket_micro: 1000,
+                computed_at: '2026-08-12T10:00:00Z',
+              },
+            ]
           : [],
       }),
     });
@@ -107,5 +108,7 @@ test('RTB reconcile export downloads JSON summary', async ({ page }) => {
   await page.goto('/rtb/integration');
   await page.getByTestId('rtb-reconcile-export').click();
   await expect(page.getByTestId('rtb-reconcile-summary')).toBeVisible();
-  await expect(page.getByTestId('rtb-reconcile-summary').getByText('1200', { exact: true })).toBeVisible();
+  await expect(
+    page.getByTestId('rtb-reconcile-summary').getByText('1200', { exact: true })
+  ).toBeVisible();
 });

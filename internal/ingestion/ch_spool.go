@@ -13,7 +13,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"syscall"
-
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/domain"

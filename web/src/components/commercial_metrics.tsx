@@ -18,9 +18,6 @@ function MetricCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-/**
- * Commercial KPI cards from server metrics block.
- */
 export function CommercialMetrics({ kpis, masked = false }: CommercialMetricsProps) {
   if (!kpis) return null;
 

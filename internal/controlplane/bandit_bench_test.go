@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// Bandit update benches (harness: bandit_cold_worker).
 func BenchmarkBandit_Update(b *testing.B) {
 	a := uuid.MustParse("00000000-0000-4000-8000-000000000001")
 	bID := uuid.MustParse("00000000-0000-4000-8000-000000000002")

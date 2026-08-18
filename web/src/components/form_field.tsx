@@ -9,9 +9,6 @@ export type FormFieldProps = {
   children: ReactElement;
 };
 
-/**
- * Labeled form field with hint/error feedback.
- */
 export function FormField({
   label,
   htmlFor,
@@ -25,14 +22,18 @@ export function FormField({
 
   const control = isValidElement<{ id?: string; 'aria-invalid'?: boolean }>(children)
     ? cloneElement(children, {
-      id: children.props.id ?? controlId,
-      'aria-invalid': error ? true : undefined,
-    })
+        id: children.props.id ?? controlId,
+        'aria-invalid': error ? true : undefined,
+      })
     : children;
 
   let feedback: ReactNode = null;
   if (error) {
-    feedback = <div className="form-error" role="alert">{error}</div>;
+    feedback = (
+      <div className="form-error" role="alert">
+        {error}
+      </div>
+    );
   } else if (hint) {
     feedback = <p className="form-hint">{hint}</p>;
   }
@@ -43,9 +44,13 @@ export function FormField({
         'form-field',
         error ? 'form-field--error' : '',
         reserveFeedback ? 'form-field--reserve-feedback' : '',
-      ].filter(Boolean).join(' ')}
+      ]
+        .filter(Boolean)
+        .join(' ')}
     >
-      <label className="form-label" htmlFor={controlId}>{label}</label>
+      <label className="form-label" htmlFor={controlId}>
+        {label}
+      </label>
       {control}
       <div className="form-field__feedback">{feedback}</div>
     </div>

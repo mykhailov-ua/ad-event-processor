@@ -1,10 +1,9 @@
-
 services:
   redis:
     image: redis:7-alpine
     container_name: espx-broker-redis
     network_mode: host
-    command: ["redis-server", "--port", "6379", "--appendonly", "yes", "--tcp-backlog", "2048"]
+    command: ['redis-server', '--port', '6379', '--appendonly', 'yes', '--tcp-backlog', '2048']
 
   haproxy:
     image: haproxy:2.8-alpine

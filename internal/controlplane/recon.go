@@ -944,7 +944,13 @@ func (w *ReconWorker) reconcileCampaignSnapshot(
 
 	brokerPending := int64(0)
 	if w.svc.brokerDeltas != nil {
-		brokerPending, _ = w.svc.brokerDeltas.PendingDeltaMicro(ctx, campID)
+		var brokerErr error
+		brokerPending, brokerErr = w.svc.brokerDeltas.PendingDeltaMicro(ctx, campID)
+		if brokerErr != nil {
+			slog.Warn("budget snapshot recon: broker pending delta unavailable",
+				"campaign_id", campID, "error", brokerErr)
+			return false, false, true
+		}
 	}
 
 	pgRemaining := pg.budgetLimit - pg.currentSpend

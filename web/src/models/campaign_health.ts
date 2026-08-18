@@ -6,9 +6,6 @@ export type CampaignHealthVM = {
   title: string;
 };
 
-/**
- * Budget utilization percent from list campaign row.
- */
 export function budgetUtilPct(campaign: {
   budget_limit?: string | number;
   current_spend?: string | number;
@@ -20,11 +17,8 @@ export function budgetUtilPct(campaign: {
   return (spend / limit) * 100;
 }
 
-/**
- * Build attention lookup from buyer portfolio payload.
- */
 export function attentionByCampaignId(
-  attention: Array<{ id?: string; reason?: string }> | null | undefined,
+  attention: Array<{ id?: string; reason?: string }> | null | undefined
 ): Record<string, string> {
   const out: Record<string, string> = {};
   const rows = attention ?? [];
@@ -48,12 +42,9 @@ export type CampaignHealthContext = {
   licenseGrace?: boolean;
 };
 
-/**
- * Derive campaign health for list/detail badges.
- */
 export function deriveCampaignHealth(
   campaign: { status?: string; budget_limit?: string | number; current_spend?: string | number },
-  ctx: CampaignHealthContext = {},
+  ctx: CampaignHealthContext = {}
 ): CampaignHealthVM {
   const status = String(campaign?.status ?? '').toUpperCase();
   if (status === 'PAUSED') {

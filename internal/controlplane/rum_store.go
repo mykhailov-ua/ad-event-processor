@@ -8,7 +8,6 @@ import (
 
 const rumMaxEvents = 200
 
-// ClientRUMEvent is a sampled admin UI telemetry batch from the browser.
 type ClientRUMEvent struct {
 	ReceivedAt string          `json:"received_at"`
 	Path       string          `json:"path,omitempty"`

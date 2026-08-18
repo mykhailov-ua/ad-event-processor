@@ -7,7 +7,7 @@ cd "$ROOT"
 
 VERSION="${1:-}"
 if [[ -z "$VERSION" ]]; then
-	VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo dev)"
+  VERSION="$(git describe --tags --always --dirty 2> /dev/null || echo dev)"
 fi
 VERSION="${VERSION#v}"
 
@@ -20,10 +20,10 @@ rm -rf "$STAGE"
 mkdir -p "$STAGE/bidshard"
 
 copy_tree() {
-	local src="$1"
-	local dst="$2"
-	mkdir -p "$dst"
-	cp -a "$src" "$dst/"
+  local src="$1"
+  local dst="$2"
+  mkdir -p "$dst"
+  cp -a "$src" "$dst/"
 }
 
 # Root compose entry
@@ -65,7 +65,7 @@ chmod +x "$STAGE/bidshard/bin/ad-event-processor-install"
 
 mkdir -p "$STAGE/bidshard/deploy/vendor"
 if [[ -f "$ROOT/deploy/vendor/license_public.key" ]]; then
-	cp "$ROOT/deploy/vendor/license_public.key" "$STAGE/bidshard/deploy/vendor/"
+  cp "$ROOT/deploy/vendor/license_public.key" "$STAGE/bidshard/deploy/vendor/"
 fi
 
 mkdir -p "$OUT_DIR"

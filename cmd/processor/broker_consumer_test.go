@@ -103,7 +103,6 @@ func TestBrokerConsumerGroup_OnMessageProcessed(t *testing.T) {
 func TestBrokerConsumerGroup_BatchFetchAndOffsetCommit(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Start a local broker server
 	srv := bserver.NewServer("127.0.0.1:0", t.TempDir(), 1024*1024, 4096)
 	require.NoError(t, srv.Start())
 	defer srv.Stop()
@@ -111,7 +110,6 @@ func TestBrokerConsumerGroup_BatchFetchAndOffsetCommit(t *testing.T) {
 	addr := srv.Addr()
 	topic := "ch-events-test"
 
-	// Produce 500 events using BrokerProducer
 	bp, err := ingestion.NewBrokerProducer(ingestion.BrokerProducerConfig{
 		Topic:      topic,
 		BrokerAddr: addr,
@@ -130,7 +128,6 @@ func TestBrokerConsumerGroup_BatchFetchAndOffsetCommit(t *testing.T) {
 	}
 	require.NoError(t, bp.Close())
 
-	// Start BrokerConsumerGroup
 	mockStore := &mockEventStore{}
 	bcg, err := NewBrokerConsumerGroup(mockStore, BrokerConsumerGroupConfig{
 		BrokerAddr:     addr,
@@ -155,7 +152,6 @@ func TestBrokerConsumerGroup_BatchFetchAndOffsetCommit(t *testing.T) {
 
 	assert.GreaterOrEqual(t, mockStore.Count(), 500)
 
-	// Verify offset persistence on disk (5 batch produce messages committed = offset 5)
 	committed, err := bcg.OffsetTracker().GetCommittedOffset(topic, 0, "ch_consumer_test")
 	require.NoError(t, err)
 	assert.GreaterOrEqual(t, committed, uint64(5))
@@ -164,7 +160,6 @@ func TestBrokerConsumerGroup_BatchFetchAndOffsetCommit(t *testing.T) {
 func TestBrokerConsumerGroup_SpoolAndCatchupOnOutage(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Start local broker server
 	srv := bserver.NewServer("127.0.0.1:0", t.TempDir(), 1024*1024, 4096)
 	require.NoError(t, srv.Start())
 	defer srv.Stop()
@@ -190,7 +185,6 @@ func TestBrokerConsumerGroup_SpoolAndCatchupOnOutage(t *testing.T) {
 	}
 	require.NoError(t, bp.Close())
 
-	// Store configured to fail (simulating CH outage)
 	failingStore := &mockEventStore{failWrites: true}
 	bcg, err := NewBrokerConsumerGroup(failingStore, BrokerConsumerGroupConfig{
 		BrokerAddr:     addr,
@@ -206,14 +200,12 @@ func TestBrokerConsumerGroup_SpoolAndCatchupOnOutage(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	bcg.Start(ctx)
 
-	// Wait 200ms during outage; store should remain empty because writes fail
 	time.Sleep(200 * time.Millisecond)
 	assert.Equal(t, 0, failingStore.Count())
 
 	cancel()
 	_ = bcg.Wait(context.Background())
 
-	// Now simulate ClickHouse recovery: store allows writes
 	failingStore.mu.Lock()
 	failingStore.failWrites = false
 	failingStore.mu.Unlock()

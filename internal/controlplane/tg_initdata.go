@@ -19,7 +19,6 @@ func init() {
 	telegramPubKey, _ = hex.DecodeString(telegramPubKeyHex)
 }
 
-// ValidateInitData verifies the signature of raw initData from Telegram using the bot's secret token.
 func ValidateInitData(initData string, botToken string, authDateTTL int64) (map[string]string, error) {
 	if botToken == "" {
 		return nil, errors.New("empty bot token")

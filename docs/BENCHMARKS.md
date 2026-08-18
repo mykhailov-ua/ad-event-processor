@@ -213,13 +213,13 @@ bash scripts/test/run_bench.sh 'BenchmarkPostgresStoreBatch_integration' ./inter
 | 503 | 400 ns/op, 0 alloc |
 | H2 incomplete preface ×3 | `gnet.Close`, `ad_h2_hostile_disconnect_total` |
 
-### A.10 XDP (`internal/edge/bpf`)
+### A.10 XDP (`internal/edge`)
 
 Requires `edge_filter.o` + root/BTF. Harness `xdp_prog_test`: userspace `prog.Run` only — **not** kernel NIC RX or pinned-attach drops. Kernel proof: `edge-xdp-fault`, `scripts/test/xdp_resilience_drill.sh`, pinned attach drills ([EDGE_XDP.md](enterprise/EDGE_XDP.md)). Lab target: XDP decision p99 &lt; 10 µs on prog test path.
 
 ```bash
 bash scripts/dev/bpf_setup.sh
-go test -run='^$' -bench='BenchmarkXDP_' -benchmem ./internal/edge/bpf/ -count=5
+go test -run='^$' -bench='BenchmarkXDP_' -benchmem ./internal/edge/ -count=5
 ```
 
 Benches: `XDP_passSYN`, `XDP_passSYN_noFingerprint`, `XDP_dropBlocklist`, `XDP_passPPSACK`, `XDP_dropAnomaly`, `XDP_dropNonTCP`.

@@ -1,4 +1,4 @@
-import type { ReportCompareDeltas, ReportRow } from '../types/api/report.js';
+import type { ReportCompareDeltas, ReportRow } from '../types/report.js';
 import { formatAmountMicro } from './money.js';
 import { t } from './i18n.js';
 

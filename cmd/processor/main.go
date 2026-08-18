@@ -2,15 +2,14 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
-
-	"fmt"
-	"strconv"
 
 	"github.com/bidshard/ad-event-processor/internal/clickhouse/migrate"
 	"github.com/bidshard/ad-event-processor/internal/config"

@@ -1,6 +1,3 @@
-/**
- * React 404 page (Phase 1 proof route).
- */
 export function NotFoundPage() {
   return (
     <div className="error-page">
@@ -9,7 +6,9 @@ export function NotFoundPage() {
       <div className="error-page__desc text-muted mb-4">
         The requested route does not exist or is not implemented yet.
       </div>
-      <a href="/" className="btn btn--secondary btn--sm">Home</a>
+      <a href="/" className="btn btn--secondary btn--sm">
+        Home
+      </a>
     </div>
   );
 }

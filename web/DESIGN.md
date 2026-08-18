@@ -4,13 +4,15 @@ Spec for the embedded admin UI (`web/`).
 
 | Layer | Source of truth | Adopt |
 |-------|-----------------|--------|
-| **Visual** | [Vercel Geist](https://vercel.com/geist/introduction) | Tokens, type, surfaces, chrome — keep |
+| **Visual** | Neutral zinc dark (Linear / Cursor / shadcn) + Geist type | Near-black canvas, subtle borders, inverted primary CTA |
 | **UX / interaction** | [Grafana Saga](https://grafana.com/developers/saga/about/overview/) | Principles, alerts, forms, friction, page templates — adapt |
-| **UI chrome** | Geist + selective Saga patterns | Forms spacing, alert kinds, one primary CTA — where it fits BidShard density |
+| **UI chrome** | Zinc tokens + selective Saga patterns | Flat cards, 14px body, minimal sidebar chrome |
 
-**Not adopted:** `@grafana/ui`, Grafana Storybook components, Grafana palette/typography. **React:** allowed under [`.cursor/WEB_REACT_MIGRATION.md`](../.cursor/WEB_REACT_MIGRATION.md) (Phase 0+); legacy `mount()` views coexist until ported. No Geist React or npm UI kits.
+**Not adopted:** `@grafana/ui`, Grafana Storybook components, Grafana palette/typography as a full replacement for Geist tokens.
 
-Implementation: `web/src/styles/tokens.css` + `main.css` + `components.css` + `a11y.css`. Shared controls: `web/src/components/`. Confirm flows: `helpers/confirm_catalog.js` / `confirm_registry.js`. Toasts: `helpers/toast_ui.js`.
+**Stack:** React 19 + react-router-dom + TypeScript (`web/src/`). Routing: `app_routes.tsx`. Layout: `shell_layout.tsx`. Styling stays CSS tokens — not CSS-in-JS.
+
+Implementation: `web/src/styles/tokens.css` + `main.css` + `components.css` + `a11y.css`. Shared controls: `web/src/components/`. Confirm flows: `helpers/confirm_catalog.ts` / `confirm_registry.ts`. Toasts: `helpers/toast_ui.ts`.
 
 ---
 
@@ -52,7 +54,7 @@ Visual Geist rules that still apply:
 
 ## 2. Typography
 
-Geist type scale (CSS classes in `main.css`):
+Geist type scale (CSS classes in `system.css`):
 
 | Class | Size / weight | Use |
 |-------|----------------|-----|
@@ -64,6 +66,8 @@ Geist type scale (CSS classes in `main.css`):
 | `.text-copy-14` | 14px / 400 | Default body |
 | `.text-copy-13` | 13px / 400 | Dense tables, hints |
 | `.font-mono` | Geist Mono stack | IDs, money, KPI values |
+
+Type-scale tokens: `--text-2xs` (0.6875rem) through `--text-2xl` (1.5rem) in `tokens.css`.
 
 **Heading semantics (Saga Text pattern):** one `h1` per view; ranks continuous (`h1` → `h2` → `h3`). Change appearance with classes, not by skipping heading levels. Do not use color alone for emphasis — color is status.
 
@@ -87,13 +91,44 @@ Inspired by [Saga templates](https://grafana.com/developers/saga/templates/overv
 
 | Template | Structure | Examples |
 |----------|-----------|----------|
-| **Overview / hub** | `page-header` → alerts strip → KPI row → sections | Overview, Ops home, Reports hub |
-| **List** | `page-header` + filters + `data-table` + empty state | Campaigns, customers, blacklist |
-| **Detail** | `page-header` + tabs/panels + primary actions in header | Campaign detail, customer detail |
-| **Settings / form** | `page-header` + one or more `settings-panel` form bodies + action bar | Settings, margin guard, postback, filters |
+| **Overview / hub** | `PageHeader` → alerts strip → `KpiGrid` → sections | Overview, Ops home, Reports hub |
+| **List** | `PageHeader` + filters + `data-table` + `EmptyState` | Campaigns, customers, blacklist |
+| **Detail** | `PageHeader` + tabs/panels + primary actions in header | Campaign detail, customer detail |
+| **Settings / form** | `PageHeader` + stacked `SectionCard` bodies + action bar | Settings, margin guard, postback, filters |
 | **Wizard** | Stepper + one-column body + single primary CTA | Campaign wizard |
 
-Empty states: short title, one sentence why empty, optional single primary action — no decorative empty illustrations.
+Empty states: short title, one sentence why empty, optional single primary action — no decorative empty illustrations. Use `<EmptyState>` component.
+
+### 3.1 Component library (Phase 0)
+
+Standard layout components under `web/src/components/`:
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| `PageHeader` | `page_header.tsx` | h1 + breadcrumbs + desc + actions slot. Required on every authenticated page. |
+| `PageStack` | `page_stack.tsx` | Root wrapper that enforces `--space-lg` gap between sections. Prevents card collapse. |
+| `PageSkeleton` | `page_skeleton.tsx` | Shimmer loading state. Replaces bare "Loading…" text. |
+| `EmptyState` | `empty_state.tsx` | Standardized empty state: icon + title + desc + one CTA. |
+| `SectionCard` | `section_card.tsx` | Raised surface with optional header (wraps `.settings-panel`). |
+| `FormField` | `form_field.tsx` | Labeled field with hint/error slot and aria-invalid wiring. |
+
+### 3.2 CSS module split (Phase 0)
+
+`main.css` is now a pure `@import` entry. Domain CSS lives in:
+
+| Module | Contents |
+|--------|---------|
+| `shell.css` | Sidebar, main, #app-outlet, banner-slot, mobile |
+| `page.css` | page-header, breadcrumbs, error-page, login, dev-gallery |
+| `cards.css` | section-card, metric-card, settings-panel, doctor-panel, definition-list |
+| `tables.css` | data-table, skeleton-bar, empty-state |
+| `forms.css` | inputs, labels, checkboxes, date-picker, select, check |
+| `controls.css` | buttons, segmented-control, chips, filter-toolbar, pagination |
+| `feedback.css` | badges, banners, modals, toasts, cmd-palette, status-hint |
+| `charts.css` | chart-root, uPlot, ops-kpi-strip, metric-chart-card |
+| `components.css` | Size tokens + loading spinner overrides (canonical btn--primary) |
+
+Import order = cascade order. `components.css` must remain last.
 
 ---
 
@@ -194,11 +229,11 @@ Target: **WCAG 2.1 AA** intent (Saga accessibility posture), implemented with Ge
 
 ## 9. Do not
 
-- Adopt Grafana visual language (colors, type, denseness) as a replacement for Geist.
-- Import `@grafana/ui`, Geist React, or any npm UI kit into `web/src` (React view layer in `web/src/react/` only — see `WEB_REACT_MIGRATION.md`).
+- Adopt Grafana visual language (colors, type, denseness) as a replacement for Geist tokens.
+- Drop a full npm UI kit (MUI, Ant, Chakra) as the default layout system — it fights token-based CSS and duplicates primitives under `web/src/components/`.
 - Box-shadow on every card (Stripe/legacy dashboard style).
 - Accent-colored inactive nav items.
-- Hard-coded hex in `views/` — CSS variables only.
+- Hard-coded hex in page/components — CSS variables only.
 - Multiple primary buttons competing in one form.
 - Toast for persistent system faults that need an on-page path (use inline/banner).
 - Disable submit with no explanation.
@@ -206,22 +241,54 @@ Target: **WCAG 2.1 AA** intent (Saga accessibility posture), implemented with Ge
 
 ---
 
+## 10. Dependencies, charts, and bundle
+
+Admin is embedded in `control` (`go:embed` on `web/dist/`). **Dev** (`npm run dev`, port 5173) serves a fresh build; **production** serves whatever was built before `go build` — rebuild `web/dist` after UI changes.
+
+### npm dependencies
+
+- **Allowed:** chart libraries (Chart.js, ECharts, uPlot, Recharts, etc.), date/math utilities, small focused hooks — prefer lazy `import()` on route or tab activation.
+- **Discouraged:** monolithic UI kits that replace `tokens.css` + shared components; duplicate icon sets.
+- **Process:** add to `web/package.json`, run `npm ci`, keep types green (`npm run typecheck`).
+
+### Charts
+
+- Today: canvas helpers in `web/src/charts/` + **uPlot** for ops/campaign series.
+- New work: pick any maintained chart lib; **lazy-load** on the page that needs it (ops dashboards, reports, campaign detail). Match Geist/Saga chart rules (§1.2 rule 7): status colors sparingly; default series monochrome + one accent.
+- Do not fetch chart data the UI never renders (anti-slop §11).
+
+### Bundle posture (CI)
+
+`scripts/ci/admin_bundle_gate.sh` enforces **generous** uncompressed limits so chart deps are not blocked:
+
+| Check | Limit (approx.) |
+|-------|-----------------|
+| Total JS under `dist/src/` | 5 MB |
+| `main.js` entry | 1 MB |
+| Each lazy chunk | 2 MB |
+
+Goals: keep `main.js` tiny (shell + router), push heavy pages and chart vendors into lazy chunks, avoid duplicate chart stacks on the same route. If a feature needs headroom, raise the gate with a one-line comment in the script — not a DESIGN.md essay.
+
+**Not a goal:** sub‑1 MB total bundle at the expense of operator charts or maintainability.
+
+---
+
 ## 11. Anti-slop and honesty (2026 admin UI)
 
-Operators and buyers must never think a screen works when it does not. This section is the **product honesty** bar for `web/` — complementary to engineering DoD in [`.cursor/MILESTONE.md`](../.cursor/MILESTONE.md) §1.0. **React migration does not relax this bar** (see `WEB_REACT_MIGRATION.md` §4).
+Operators and buyers must never think a screen works when it does not. This section is the **product honesty** bar for `web/` — complementary to engineering DoD in [`.cursor/MILESTONE.md`](../.cursor/MILESTONE.md) §1.0.
 
 ### 11.1 What counts as slop / lying
 
 | Class | Example (forbidden) | Why |
 |-------|---------------------|-----|
-| **False live** | `live: true` in `REPORT_CATALOG` but route mounts `report_stub.js` | User pays for analytics that 501 |
-| **Dead fetch** | `api('/rtb/deals')` then always render “No rows — connect API” | Looks wired; data discarded — see `rtb_deals.ts` (allowlisted debt until §1.3.1) |
+| **False live** | `live: true` in `REPORT_CATALOG` but route mounts `report_stub_page` | User pays for analytics that 501 |
+| **Dead fetch** | `api('/rtb/deals')` then always render “No rows — connect API” | Looks wired; data discarded |
 | **Skeleton in prod copy** | Page desc “(skeleton)” while linked from `nav_config.ts` | Admits placeholder in GA chrome |
 | **Silent failure** | `catch` → empty table with no `renderErrorBlock` / toast | Hides outage as “no data” |
 | **Fake save** | Toast “Saved” before `apiConfirmed` resolves 2xx | User believes mutation persisted |
 | **Phantom fields** | Form submits `budget_limit` when `PatchCampaignRequest` has no such field | UI lies about server contract — see MILESTONE §1.2.4 |
 | **Demo KPIs** | Hardcoded `metric-card` numbers not from API | Fraudulent dashboard |
-| **Docs ≠ routes** | MILESTONE/DESIGN “shipped” without `routes.ts` + e2e | Agent/human marketing drift |
+| **Docs ≠ routes** | MILESTONE/DESIGN “shipped” without `app_routes.tsx` + e2e | Agent/human marketing drift |
 | **Mock e2e overclaim** | Playwright mock cited as backend/CH/PG proof | Spec `harness=mock_api`; use stack smoke or Go integration test |
 | **Marketing filler** | “Seamless”, “cutting-edge”, “revolutionize” in operator UI | AI boilerplate; no signal |
 | **Secret echo** | Show `api_token`, JWT, webhook secret after save | Security + fake “configured” state |
@@ -232,14 +299,14 @@ Operators and buyers must never think a screen works when it does not. This sect
 
 | Situation | Do this |
 |-----------|---------|
-| API not ready | **No nav link**; or `report_stub.js` + hub card without `live: true`; or `placeholder.ts` pattern (not in `nav_config`) |
-| API 501 / stub backend | `renderStubBanner` + link to live alternative ([`stub_banner.ts`](src/ui/stub_banner.ts)) |
+| API not ready | **No nav link**; or `report_stub_page` + hub card without `live: true` |
+| API 501 / stub backend | `StubBanner` + link to live alternative (`components/stub_banner.tsx`) |
 | API error / timeout | `renderErrorBlock` or `mapServiceError` toast — never blank table |
 | Partial fan-out (`503` + items) | Yellow `stub-banner` listing `errors[]` (ops outbox pattern) |
-| Report is GA | `live: true` + dedicated route in `routes.ts` + `report_live_routes_gate.sh` + handler returns rows or documented empty-state |
+| Report is GA | `live: true` + dedicated route in `app_routes.tsx` + `report_live_routes_gate.sh` + handler returns rows or documented empty-state |
 | Mutation | `apiConfirmed` + `confirm_registry` level matches blast radius |
 | Money | `formatUsdDecimal` / `formatAmountMicro` — never string concat `$` |
-| Types | `web/src/types/api/*` matches Go `json` tags — grep handler DTO before form |
+| Types | `web/src/types/*` matches Go `json` tags — grep handler DTO before form |
 | Agent claims “done” | Must cite green command: `bash scripts/ci/admin_web.sh` (includes slop gate) |
 
 ### 11.3 Verification (CI + manual)
@@ -260,10 +327,6 @@ Stack finance path (Go + Postgres testcontainer, not Playwright mock): `bash scr
 1. Playwright: mock API returns rows → table shows them; mock 500 → error visible.
 2. Manual: Network tab — no fetch on hidden tabs until selected (lazy ops tabs).
 3. `grep` view for `TODO` / `skeleton` / `FIXME` in user-visible strings.
-
-**Known debt (remove allowlist when fixed):**
-
-- `web/src/views/rtb_deals.ts` — §1.3.1 RTB deals CRUD ([MILESTONE](../.cursor/MILESTONE.md) §1.3.1).
 
 ### 11.4 Agent / LLM checklist
 

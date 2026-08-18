@@ -1,4 +1,3 @@
-
 services:
   tracker-0:
     build:
@@ -6,8 +5,8 @@ services:
       dockerfile: deploy/docker/Dockerfile
       args:
         SKIP_CODEGEN: ${SKIP_CODEGEN:-0}
-    entrypoint: ["/tracker"]
-    network_mode: "${NET_MODE:-host}"
+    entrypoint: ['/tracker']
+    network_mode: '${NET_MODE:-host}'
     env_file:
       - ../../.env
     environment:
@@ -35,7 +34,7 @@ services:
         limits:
           memory: 1G
     healthcheck:
-      test: ["CMD", "/tracker", "--health-probe", "/run/ad-event-processor/tracker/tracker-0.sock"]
+      test: ['CMD', '/tracker', '--health-probe', '/run/ad-event-processor/tracker/tracker-0.sock']
       interval: 5s
       timeout: 3s
       retries: 3
@@ -54,11 +53,10 @@ services:
       redis-3:
         condition: service_healthy
     logging:
-      driver: "json-file"
+      driver: 'json-file'
       options:
-        max-size: "100m"
-        max-file: "3"
-
+        max-size: '100m'
+        max-file: '3'
 
   tracker-1:
     build:
@@ -66,8 +64,8 @@ services:
       dockerfile: deploy/docker/Dockerfile
       args:
         SKIP_CODEGEN: ${SKIP_CODEGEN:-0}
-    entrypoint: ["/tracker"]
-    network_mode: "${NET_MODE:-host}"
+    entrypoint: ['/tracker']
+    network_mode: '${NET_MODE:-host}'
     env_file:
       - ../../.env
     environment:
@@ -92,7 +90,7 @@ services:
         limits:
           memory: 1G
     healthcheck:
-      test: ["CMD", "/tracker", "--health-probe", "/run/ad-event-processor/tracker/tracker-1.sock"]
+      test: ['CMD', '/tracker', '--health-probe', '/run/ad-event-processor/tracker/tracker-1.sock']
       interval: 5s
       timeout: 3s
       retries: 3
@@ -111,11 +109,10 @@ services:
       redis-3:
         condition: service_healthy
     logging:
-      driver: "json-file"
+      driver: 'json-file'
       options:
-        max-size: "100m"
-        max-file: "3"
-
+        max-size: '100m'
+        max-file: '3'
 
   tracker-2:
     build:
@@ -123,8 +120,8 @@ services:
       dockerfile: deploy/docker/Dockerfile
       args:
         SKIP_CODEGEN: ${SKIP_CODEGEN:-0}
-    entrypoint: ["/tracker"]
-    network_mode: "${NET_MODE:-host}"
+    entrypoint: ['/tracker']
+    network_mode: '${NET_MODE:-host}'
     env_file:
       - ../../.env
     environment:
@@ -149,7 +146,7 @@ services:
         limits:
           memory: 1G
     healthcheck:
-      test: ["CMD", "/tracker", "--health-probe", "/run/ad-event-processor/tracker/tracker-2.sock"]
+      test: ['CMD', '/tracker', '--health-probe', '/run/ad-event-processor/tracker/tracker-2.sock']
       interval: 5s
       timeout: 3s
       retries: 3
@@ -168,11 +165,10 @@ services:
       redis-3:
         condition: service_healthy
     logging:
-      driver: "json-file"
+      driver: 'json-file'
       options:
-        max-size: "100m"
-        max-file: "3"
-
+        max-size: '100m'
+        max-file: '3'
 
   tracker-3:
     build:
@@ -180,8 +176,8 @@ services:
       dockerfile: deploy/docker/Dockerfile
       args:
         SKIP_CODEGEN: ${SKIP_CODEGEN:-0}
-    entrypoint: ["/tracker"]
-    network_mode: "${NET_MODE:-host}"
+    entrypoint: ['/tracker']
+    network_mode: '${NET_MODE:-host}'
     env_file:
       - ../../.env
     environment:
@@ -206,7 +202,7 @@ services:
         limits:
           memory: 1G
     healthcheck:
-      test: ["CMD", "/tracker", "--health-probe", "/run/ad-event-processor/tracker/tracker-3.sock"]
+      test: ['CMD', '/tracker', '--health-probe', '/run/ad-event-processor/tracker/tracker-3.sock']
       interval: 5s
       timeout: 3s
       retries: 3
@@ -225,15 +221,14 @@ services:
       redis-3:
         condition: service_healthy
     logging:
-      driver: "json-file"
+      driver: 'json-file'
       options:
-        max-size: "100m"
-        max-file: "3"
-
+        max-size: '100m'
+        max-file: '3'
 
   nginx:
     image: openresty/openresty:alpine
-    network_mode: "${NET_MODE:-host}"
+    network_mode: '${NET_MODE:-host}'
     environment:
       - REDIS_HOST=127.0.0.1
       - REDIS_PORT=6479
@@ -270,11 +265,10 @@ services:
           memory: 1G
     restart: always
     logging:
-      driver: "json-file"
+      driver: 'json-file'
       options:
-        max-size: "100m"
-        max-file: "3"
-
+        max-size: '100m'
+        max-file: '3'
 
   processor:
     build:
@@ -282,8 +276,8 @@ services:
       dockerfile: deploy/docker/Dockerfile
       args:
         SKIP_CODEGEN: ${SKIP_CODEGEN:-0}
-    entrypoint: ["/processor"]
-    network_mode: "${NET_MODE:-host}"
+    entrypoint: ['/processor']
+    network_mode: '${NET_MODE:-host}'
     env_file:
       - ../../.env
     volumes:
@@ -323,7 +317,7 @@ services:
       - GOMEMLIMIT=1500MiB
       - GOGC=100
     healthcheck:
-      test: ["CMD", "/processor", "--health-probe", "http://127.0.0.1:8186/health"]
+      test: ['CMD', '/processor', '--health-probe', 'http://127.0.0.1:8186/health']
       interval: 10s
       timeout: 5s
       retries: 3
@@ -341,11 +335,10 @@ services:
       redis-0:
         condition: service_healthy
     logging:
-      driver: "json-file"
+      driver: 'json-file'
       options:
-        max-size: "100m"
-        max-file: "3"
-
+        max-size: '100m'
+        max-file: '3'
 
   processor-1:
     build:
@@ -353,8 +346,8 @@ services:
       dockerfile: deploy/docker/Dockerfile
       args:
         SKIP_CODEGEN: ${SKIP_CODEGEN:-0}
-    entrypoint: ["/processor"]
-    network_mode: "${NET_MODE:-host}"
+    entrypoint: ['/processor']
+    network_mode: '${NET_MODE:-host}'
     profiles:
       - multi-region
     env_file:
@@ -385,7 +378,7 @@ services:
       - GOMEMLIMIT=1500MiB
       - GOGC=100
     healthcheck:
-      test: ["CMD", "/processor", "--health-probe", "http://127.0.0.1:8187/health"]
+      test: ['CMD', '/processor', '--health-probe', 'http://127.0.0.1:8187/health']
       interval: 10s
       timeout: 5s
       retries: 3
@@ -403,11 +396,10 @@ services:
       redis-0:
         condition: service_healthy
     logging:
-      driver: "json-file"
+      driver: 'json-file'
       options:
-        max-size: "100m"
-        max-file: "3"
-
+        max-size: '100m'
+        max-file: '3'
 
   region-proxy:
     build:
@@ -415,8 +407,8 @@ services:
       dockerfile: deploy/docker/Dockerfile
       args:
         SKIP_CODEGEN: ${SKIP_CODEGEN:-0}
-    entrypoint: ["/region-proxy"]
-    network_mode: "${NET_MODE:-host}"
+    entrypoint: ['/region-proxy']
+    network_mode: '${NET_MODE:-host}'
     profiles:
       - multi-region
     env_file:
@@ -441,10 +433,10 @@ services:
       redis-0:
         condition: service_healthy
     logging:
-      driver: "json-file"
+      driver: 'json-file'
       options:
-        max-size: "100m"
-        max-file: "3"
+        max-size: '100m'
+        max-file: '3'
 
   broker:
     build:
@@ -452,8 +444,8 @@ services:
       dockerfile: deploy/docker/Dockerfile
       args:
         SKIP_CODEGEN: ${SKIP_CODEGEN:-0}
-    entrypoint: ["/broker"]
-    network_mode: "${NET_MODE:-host}"
+    entrypoint: ['/broker']
+    network_mode: '${NET_MODE:-host}'
     env_file:
       - ../../.env
     command:
@@ -467,7 +459,7 @@ services:
       - espx_broker_data:/tmp/espx-broker
       - ad_event_processor_run:/run/ad-event-processor:rw
     healthcheck:
-      test: ["CMD", "/broker", "--health-probe", "/run/ad-event-processor/broker/health.sock"]
+      test: ['CMD', '/broker', '--health-probe', '/run/ad-event-processor/broker/health.sock']
       interval: 5s
       timeout: 3s
       retries: 5
@@ -477,11 +469,10 @@ services:
       redis-0:
         condition: service_healthy
     logging:
-      driver: "json-file"
+      driver: 'json-file'
       options:
-        max-size: "100m"
-        max-file: "3"
-
+        max-size: '100m'
+        max-file: '3'
 
   control:
     build:
@@ -489,8 +480,8 @@ services:
       dockerfile: deploy/docker/Dockerfile
       args:
         SKIP_CODEGEN: ${SKIP_CODEGEN:-0}
-    entrypoint: ["/control"]
-    network_mode: "${NET_MODE:-host}"
+    entrypoint: ['/control']
+    network_mode: '${NET_MODE:-host}'
     profiles:
       - single_vps
       - ingest_only
@@ -536,7 +527,7 @@ services:
         limits:
           memory: 1536M
     healthcheck:
-      test: ["CMD", "/control", "--health-probe", "http://127.0.0.1:8188/health"]
+      test: ['CMD', '/control', '--health-probe', 'http://127.0.0.1:8188/health']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -551,17 +542,16 @@ services:
         condition: service_healthy
         required: false
     logging:
-      driver: "json-file"
+      driver: 'json-file'
       options:
-        max-size: "100m"
-        max-file: "3"
-
+        max-size: '100m'
+        max-file: '3'
 
   ingress:
     image: caddy:2.8-alpine
     profiles:
       - ingress
-    network_mode: "${NET_MODE:-host}"
+    network_mode: '${NET_MODE:-host}'
     env_file:
       - ../../.env
     volumes:
@@ -576,18 +566,16 @@ services:
         condition: service_healthy
     restart: always
     logging:
-      driver: "json-file"
+      driver: 'json-file'
       options:
-        max-size: "50m"
-        max-file: "3"
+        max-size: '50m'
+        max-file: '3'
 
-
-  # Enterprise lab only — requires BTF host, privileged, host network. Not in single_vps / compose_dev.
   edge-xdp:
     build:
       context: ../..
       dockerfile: deploy/edge/xdp/Dockerfile
-    network_mode: "${NET_MODE:-host}"
+    network_mode: '${NET_MODE:-host}'
     profiles:
       - enterprise-xdp
     privileged: true
@@ -617,11 +605,10 @@ services:
         condition: service_healthy
     restart: unless-stopped
     logging:
-      driver: "json-file"
+      driver: 'json-file'
       options:
-        max-size: "50m"
-        max-file: "3"
-
+        max-size: '50m'
+        max-file: '3'
 
   ivt-detector:
     build:
@@ -629,8 +616,8 @@ services:
       dockerfile: deploy/docker/Dockerfile
       args:
         SKIP_CODEGEN: ${SKIP_CODEGEN:-0}
-    entrypoint: ["/ivt-detector"]
-    network_mode: "${NET_MODE:-host}"
+    entrypoint: ['/ivt-detector']
+    network_mode: '${NET_MODE:-host}'
     profiles:
       - analytics_ml
       - resilience
@@ -653,10 +640,10 @@ services:
       clickhouse:
         condition: service_healthy
     logging:
-      driver: "json-file"
+      driver: 'json-file'
       options:
-        max-size: "100m"
-        max-file: "3"
+        max-size: '100m'
+        max-file: '3'
 
   fraud-scorer:
     build:
@@ -664,8 +651,8 @@ services:
       dockerfile: deploy/docker/Dockerfile
       args:
         SKIP_CODEGEN: ${SKIP_CODEGEN:-0}
-    entrypoint: ["/fraud-scorer"]
-    network_mode: "${NET_MODE:-host}"
+    entrypoint: ['/fraud-scorer']
+    network_mode: '${NET_MODE:-host}'
     profiles:
       - analytics_ml
       - fraud-scorer
@@ -691,11 +678,45 @@ services:
       clickhouse:
         condition: service_healthy
     logging:
-      driver: "json-file"
+      driver: 'json-file'
       options:
-        max-size: "100m"
-        max-file: "3"
+        max-size: '100m'
+        max-file: '3'
 
+  fraud-shadow-eval:
+    build:
+      context: ../..
+      dockerfile: model/Dockerfile.evaluate
+    network_mode: '${NET_MODE:-host}'
+    profiles:
+      - analytics_ml
+      - fraud-eval
+    env_file:
+      - ../../.env
+    environment:
+      - CH_READONLY_DSN=${CH_READONLY_DSN:-}
+      - CH_DSN=${CH_DSN}
+      - DB_DSN=${DB_DSN}
+      - FRAUD_EVAL_HOURS=${FRAUD_EVAL_HOURS:-168}
+      - FRAUD_EVAL_INTERVAL_SEC=${FRAUD_EVAL_INTERVAL_SEC:-21600}
+      - FRAUD_ARTIFACT_DIR=/var/fraudscore/artifacts
+    volumes:
+      - ../../var/fraudscore:/var/fraudscore:rw
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '100m'
+        max-file: '3'
 
   db:
     image: postgres:${POSTGRES_VERSION}
@@ -706,16 +727,36 @@ services:
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_DB=${DB_NAME}
     ports:
-      - "${DB_PORT}:${DB_PORT}"
+      - '${DB_PORT}:${DB_PORT}'
     command:
-      ["postgres", "-p", "${DB_PORT}", "-c", "unix_socket_directories=/run/ad-event-processor/postgresql", "-c", "max_connections=600", "-c", "shared_buffers=1GB", "-c", "work_mem=64MB", "-c", "maintenance_work_mem=256MB", "-c", "effective_cache_size=3GB"]
+      [
+        'postgres',
+        '-p',
+        '${DB_PORT}',
+        '-c',
+        'unix_socket_directories=/run/ad-event-processor/postgresql',
+        '-c',
+        'max_connections=600',
+        '-c',
+        'shared_buffers=1GB',
+        '-c',
+        'work_mem=64MB',
+        '-c',
+        'maintenance_work_mem=256MB',
+        '-c',
+        'effective_cache_size=3GB',
+      ]
     volumes:
       - db_data:/var/lib/postgresql/data
       - ad_event_processor_run:/run/ad-event-processor
     networks:
       - database
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h /run/ad-event-processor/postgresql -p ${DB_PORT} -U ${DB_USER} -d ${DB_NAME}"]
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -h /run/ad-event-processor/postgresql -p ${DB_PORT} -U ${DB_USER} -d ${DB_NAME}',
+        ]
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
@@ -724,11 +765,10 @@ services:
         limits:
           memory: 2G
     logging:
-      driver: "json-file"
+      driver: 'json-file'
       options:
-        max-size: "100m"
-        max-file: "3"
-
+        max-size: '100m'
+        max-file: '3'
 
   db-payment:
     image: postgres:${POSTGRES_VERSION}
@@ -744,16 +784,36 @@ services:
       - POSTGRES_PASSWORD=${PAYMENT_DB_PASSWORD}
       - POSTGRES_DB=${PAYMENT_DB_NAME}
     ports:
-      - "${PAYMENT_DB_PORT}:${PAYMENT_DB_PORT}"
+      - '${PAYMENT_DB_PORT}:${PAYMENT_DB_PORT}'
     command:
-      ["postgres", "-p", "${PAYMENT_DB_PORT}", "-c", "unix_socket_directories=/run/ad-event-processor/postgresql", "-c", "max_connections=100", "-c", "shared_buffers=256MB", "-c", "work_mem=16MB", "-c", "maintenance_work_mem=64MB", "-c", "effective_cache_size=768MB"]
+      [
+        'postgres',
+        '-p',
+        '${PAYMENT_DB_PORT}',
+        '-c',
+        'unix_socket_directories=/run/ad-event-processor/postgresql',
+        '-c',
+        'max_connections=100',
+        '-c',
+        'shared_buffers=256MB',
+        '-c',
+        'work_mem=16MB',
+        '-c',
+        'maintenance_work_mem=64MB',
+        '-c',
+        'effective_cache_size=768MB',
+      ]
     volumes:
       - db_payment_data:/var/lib/postgresql/data
       - ad_event_processor_run:/run/ad-event-processor
     networks:
       - database
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -p ${PAYMENT_DB_PORT} -U ${PAYMENT_DB_USER} -d ${PAYMENT_DB_NAME}"]
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -p ${PAYMENT_DB_PORT} -U ${PAYMENT_DB_USER} -d ${PAYMENT_DB_NAME}',
+        ]
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
@@ -762,21 +822,37 @@ services:
         limits:
           memory: 1G
     logging:
-      driver: "json-file"
+      driver: 'json-file'
       options:
-        max-size: "100m"
-        max-file: "3"
-
+        max-size: '100m'
+        max-file: '3'
 
   redis-0:
     image: redis:${REDIS_VERSION}
     env_file:
       - ../../.env
     ports:
-      - "6479:6379"
-    command: ["redis-server", "--port", "6379", "--unixsocket", "/run/ad-event-processor/redis/redis-0.sock", "--unixsocketperm", "777", "--requirepass", "${REDIS_PASSWORD}",
-              "--appendonly", "yes", "--appendfsync", "everysec",
-              "--maxmemory-policy", "noeviction", "--tcp-backlog", "2048"]
+      - '6479:6379'
+    command:
+      [
+        'redis-server',
+        '--port',
+        '6379',
+        '--unixsocket',
+        '/run/ad-event-processor/redis/redis-0.sock',
+        '--unixsocketperm',
+        '777',
+        '--requirepass',
+        '${REDIS_PASSWORD}',
+        '--appendonly',
+        'yes',
+        '--appendfsync',
+        'everysec',
+        '--maxmemory-policy',
+        'noeviction',
+        '--tcp-backlog',
+        '2048',
+      ]
     volumes:
       - redis_0_data:/data
       - ad_event_processor_run:/run/ad-event-processor
@@ -787,7 +863,7 @@ services:
     networks:
       - database
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "6379", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ['CMD', 'redis-cli', '-p', '6379', '-a', '${REDIS_PASSWORD}', 'ping']
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
@@ -797,10 +873,27 @@ services:
     env_file:
       - ../../.env
     ports:
-      - "6480:6379"
-    command: ["redis-server", "--port", "6379", "--unixsocket", "/run/ad-event-processor/redis/redis-1.sock", "--unixsocketperm", "777", "--requirepass", "${REDIS_PASSWORD}",
-              "--appendonly", "yes", "--appendfsync", "everysec",
-              "--maxmemory-policy", "noeviction", "--tcp-backlog", "2048"]
+      - '6480:6379'
+    command:
+      [
+        'redis-server',
+        '--port',
+        '6379',
+        '--unixsocket',
+        '/run/ad-event-processor/redis/redis-1.sock',
+        '--unixsocketperm',
+        '777',
+        '--requirepass',
+        '${REDIS_PASSWORD}',
+        '--appendonly',
+        'yes',
+        '--appendfsync',
+        'everysec',
+        '--maxmemory-policy',
+        'noeviction',
+        '--tcp-backlog',
+        '2048',
+      ]
     volumes:
       - redis_1_data:/data
       - ad_event_processor_run:/run/ad-event-processor
@@ -811,7 +904,7 @@ services:
     networks:
       - database
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "6379", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ['CMD', 'redis-cli', '-p', '6379', '-a', '${REDIS_PASSWORD}', 'ping']
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
@@ -821,10 +914,27 @@ services:
     env_file:
       - ../../.env
     ports:
-      - "6481:6379"
-    command: ["redis-server", "--port", "6379", "--unixsocket", "/run/ad-event-processor/redis/redis-2.sock", "--unixsocketperm", "777", "--requirepass", "${REDIS_PASSWORD}",
-              "--appendonly", "yes", "--appendfsync", "everysec",
-              "--maxmemory-policy", "noeviction", "--tcp-backlog", "2048"]
+      - '6481:6379'
+    command:
+      [
+        'redis-server',
+        '--port',
+        '6379',
+        '--unixsocket',
+        '/run/ad-event-processor/redis/redis-2.sock',
+        '--unixsocketperm',
+        '777',
+        '--requirepass',
+        '${REDIS_PASSWORD}',
+        '--appendonly',
+        'yes',
+        '--appendfsync',
+        'everysec',
+        '--maxmemory-policy',
+        'noeviction',
+        '--tcp-backlog',
+        '2048',
+      ]
     volumes:
       - redis_2_data:/data
       - ad_event_processor_run:/run/ad-event-processor
@@ -835,7 +945,7 @@ services:
     networks:
       - database
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "6379", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ['CMD', 'redis-cli', '-p', '6379', '-a', '${REDIS_PASSWORD}', 'ping']
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
@@ -845,10 +955,27 @@ services:
     env_file:
       - ../../.env
     ports:
-      - "6482:6379"
-    command: ["redis-server", "--port", "6379", "--unixsocket", "/run/ad-event-processor/redis/redis-3.sock", "--unixsocketperm", "777", "--requirepass", "${REDIS_PASSWORD}",
-              "--appendonly", "yes", "--appendfsync", "everysec",
-              "--maxmemory-policy", "noeviction", "--tcp-backlog", "2048"]
+      - '6482:6379'
+    command:
+      [
+        'redis-server',
+        '--port',
+        '6379',
+        '--unixsocket',
+        '/run/ad-event-processor/redis/redis-3.sock',
+        '--unixsocketperm',
+        '777',
+        '--requirepass',
+        '${REDIS_PASSWORD}',
+        '--appendonly',
+        'yes',
+        '--appendfsync',
+        'everysec',
+        '--maxmemory-policy',
+        'noeviction',
+        '--tcp-backlog',
+        '2048',
+      ]
     volumes:
       - redis_3_data:/data
       - ad_event_processor_run:/run/ad-event-processor
@@ -859,7 +986,7 @@ services:
     networks:
       - database
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "6379", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ['CMD', 'redis-cli', '-p', '6379', '-a', '${REDIS_PASSWORD}', 'ping']
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
@@ -871,10 +998,27 @@ services:
     env_file:
       - ../../.env
     ports:
-      - "6483:6379"
-    command: ["redis-server", "--port", "6379", "--unixsocket", "/run/ad-event-processor/redis/redis-4.sock", "--unixsocketperm", "777", "--requirepass", "${REDIS_PASSWORD}",
-              "--appendonly", "yes", "--appendfsync", "everysec",
-              "--maxmemory-policy", "noeviction", "--tcp-backlog", "2048"]
+      - '6483:6379'
+    command:
+      [
+        'redis-server',
+        '--port',
+        '6379',
+        '--unixsocket',
+        '/run/ad-event-processor/redis/redis-4.sock',
+        '--unixsocketperm',
+        '777',
+        '--requirepass',
+        '${REDIS_PASSWORD}',
+        '--appendonly',
+        'yes',
+        '--appendfsync',
+        'everysec',
+        '--maxmemory-policy',
+        'noeviction',
+        '--tcp-backlog',
+        '2048',
+      ]
     volumes:
       - redis_4_data:/data
       - ad_event_processor_run:/run/ad-event-processor
@@ -885,7 +1029,7 @@ services:
     networks:
       - database
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "6379", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ['CMD', 'redis-cli', '-p', '6379', '-a', '${REDIS_PASSWORD}', 'ping']
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
@@ -897,10 +1041,27 @@ services:
     env_file:
       - ../../.env
     ports:
-      - "6484:6379"
-    command: ["redis-server", "--port", "6379", "--unixsocket", "/run/ad-event-processor/redis/redis-5.sock", "--unixsocketperm", "777", "--requirepass", "${REDIS_PASSWORD}",
-              "--appendonly", "yes", "--appendfsync", "everysec",
-              "--maxmemory-policy", "noeviction", "--tcp-backlog", "2048"]
+      - '6484:6379'
+    command:
+      [
+        'redis-server',
+        '--port',
+        '6379',
+        '--unixsocket',
+        '/run/ad-event-processor/redis/redis-5.sock',
+        '--unixsocketperm',
+        '777',
+        '--requirepass',
+        '${REDIS_PASSWORD}',
+        '--appendonly',
+        'yes',
+        '--appendfsync',
+        'everysec',
+        '--maxmemory-policy',
+        'noeviction',
+        '--tcp-backlog',
+        '2048',
+      ]
     volumes:
       - redis_5_data:/data
       - ad_event_processor_run:/run/ad-event-processor
@@ -911,7 +1072,7 @@ services:
     networks:
       - database
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "6379", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ['CMD', 'redis-cli', '-p', '6379', '-a', '${REDIS_PASSWORD}', 'ping']
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
@@ -929,8 +1090,8 @@ services:
     env_file:
       - ../../.env
     ports:
-      - "${CH_PORT}:${CH_PORT}"
-      - "${CH_HTTP_PORT}:8123"
+      - '${CH_PORT}:${CH_PORT}'
+      - '${CH_HTTP_PORT}:8123'
     ulimits:
       nofile:
         soft: 262144
@@ -956,25 +1117,24 @@ services:
       - CLICKHOUSE_PASSWORD=${CH_PASSWORD}
       - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8123/ping || exit 1"]
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:8123/ping || exit 1']
       interval: 10s
       timeout: 5s
       retries: 3
     logging:
-      driver: "json-file"
+      driver: 'json-file'
       options:
-        max-size: "100m"
-        max-file: "3"
-
+        max-size: '100m'
+        max-file: '3'
 
   prometheus:
     image: prom/prometheus:latest
-    network_mode: "${NET_MODE:-host}"
+    network_mode: '${NET_MODE:-host}'
     profiles:
       - monitoring
       - single_vps
       - network_operator
-    command: ["--config.file=/etc/prometheus/prometheus.yaml", "--web.listen-address=:9190"]
+    command: ['--config.file=/etc/prometheus/prometheus.yaml', '--web.listen-address=:9190']
     volumes:
       - ../../deploy/monitoring/prometheus.yaml:/etc/prometheus/prometheus.yaml:ro
       - ../../deploy/monitoring/prometheus.rules.yaml:/etc/prometheus/prometheus.rules.yaml:ro
@@ -983,20 +1143,20 @@ services:
         limits:
           memory: 512M
     logging:
-      driver: "json-file"
+      driver: 'json-file'
       options:
-        max-size: "100m"
-        max-file: "3"
+        max-size: '100m'
+        max-file: '3'
 
   grafana:
     image: grafana/grafana:latest
-    network_mode: "${NET_MODE:-host}"
+    network_mode: '${NET_MODE:-host}'
     profiles:
       - monitoring
       - single_vps
       - network_operator
     volumes:
-      - ../../deploy/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../../deploy/monitoring/grafana-provisioning:/etc/grafana/provisioning:ro
     environment:
       - GF_SERVER_HTTP_PORT=3100
       - GF_AUTH_ANONYMOUS_ENABLED=true
@@ -1006,19 +1166,19 @@ services:
         limits:
           memory: 512M
     logging:
-      driver: "json-file"
+      driver: 'json-file'
       options:
-        max-size: "100m"
-        max-file: "3"
+        max-size: '100m'
+        max-file: '3'
 
   alertmanager:
     image: prom/alertmanager:latest
-    network_mode: "${NET_MODE:-host}"
+    network_mode: '${NET_MODE:-host}'
     profiles:
       - monitoring
       - single_vps
       - network_operator
-    command: ["--config.file=/etc/alertmanager/alertmanager.yaml", "--web.listen-address=:9093"]
+    command: ['--config.file=/etc/alertmanager/alertmanager.yaml', '--web.listen-address=:9093']
     volumes:
       - ../../deploy/monitoring/alertmanager.yaml:/etc/alertmanager/alertmanager.yaml:ro
     deploy:
@@ -1026,10 +1186,10 @@ services:
         limits:
           memory: 256M
     logging:
-      driver: "json-file"
+      driver: 'json-file'
       options:
-        max-size: "100m"
-        max-file: "3"
+        max-size: '100m'
+        max-file: '3'
 
   alertmanager-telegram:
     build:
@@ -1037,8 +1197,8 @@ services:
       dockerfile: deploy/docker/Dockerfile
       args:
         SKIP_CODEGEN: ${SKIP_CODEGEN:-0}
-    entrypoint: ["/alertmanager-telegram"]
-    network_mode: "${NET_MODE:-host}"
+    entrypoint: ['/alertmanager-telegram']
+    network_mode: '${NET_MODE:-host}'
     profiles:
       - monitoring
       - single_vps
@@ -1052,10 +1212,10 @@ services:
         limits:
           memory: 256M
     logging:
-      driver: "json-file"
+      driver: 'json-file'
       options:
-        max-size: "100m"
-        max-file: "3"
+        max-size: '100m'
+        max-file: '3'
 
   log-compactor:
     build:
@@ -1080,10 +1240,10 @@ services:
     profiles:
       - tools
     logging:
-      driver: "json-file"
+      driver: 'json-file'
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: '10m'
+        max-file: '3'
 
   log-evacuator:
     build:
@@ -1104,10 +1264,10 @@ services:
     profiles:
       - tools
     logging:
-      driver: "json-file"
+      driver: 'json-file'
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: '10m'
+        max-file: '3'
 
 networks:
   frontend:

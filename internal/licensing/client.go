@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/bidshard/ad-event-processor/pkg/coldpath"
 )
 
 type LicenseClient struct {
@@ -92,10 +94,11 @@ func (c *LicenseClient) Activate(ctx context.Context, deploymentID, fingerprint 
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		coldpath.CloseHTTPResponse(resp)
 		c.recordFailure()
 		return "", err
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer coldpath.CloseHTTPResponse(resp)
 
 	if resp.StatusCode != http.StatusOK {
 		c.recordFailure()
@@ -140,10 +143,11 @@ func (c *LicenseClient) Heartbeat(ctx context.Context, deploymentID, fingerprint
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		coldpath.CloseHTTPResponse(resp)
 		c.recordFailure()
 		return "", false, err
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer coldpath.CloseHTTPResponse(resp)
 
 	if resp.StatusCode == http.StatusNotModified {
 		c.recordSuccess()

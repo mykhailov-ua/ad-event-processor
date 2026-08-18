@@ -66,10 +66,6 @@ func BenchmarkCHSpoolMarshalPayload(b *testing.B) {
 	}
 }
 
-// BenchmarkPostgresStoreBatch_Mock measures StoreBatch against MockEventStore only.
-// Harness: mock_event_store — mock store only; not Postgres.
-// For Postgres write latency use BenchmarkPostgresStoreBatch_integration or processor
-// integration tests (e.g. TestFault_ProcessorPgGate_Overflow, TestFault_AdsProcessorPGNetworkPartition).
 func BenchmarkPostgresStoreBatch_Mock(b *testing.B) {
 	store := &MockEventStore{}
 	evt := benchWritePathEvent()
@@ -85,8 +81,6 @@ func BenchmarkPostgresStoreBatch_Mock(b *testing.B) {
 	}
 }
 
-// BenchmarkClickHouseStoreBatch_Spooled measures CH StoreBatch on the local spool path (CH insert fails).
-// Harness: ch_spool_local. Use for cold-path CH outage write perf; not Postgres.
 func BenchmarkClickHouseStoreBatch_Spooled(b *testing.B) {
 	dir := b.TempDir()
 	spool, err := OpenCHSpool(dir)
@@ -151,9 +145,6 @@ func setupPostgresStoreBench(b *testing.B) (*PostgresStore, func()) {
 	return store, cleanup
 }
 
-// BenchmarkPostgresStoreBatch_integration runs StoreBatch against testcontainers Postgres.
-// Harness: postgres_testcontainers. Skipped with -short. Not in make test-alloc-gate;
-// use scripts/test/run_bench.sh (see docs/DEVELOPMENT.md perf section).
 func BenchmarkPostgresStoreBatch_integration(b *testing.B) {
 	if testing.Short() {
 		b.Skip()

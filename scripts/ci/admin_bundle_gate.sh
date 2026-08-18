@@ -52,13 +52,13 @@ CHUNK_MAX=$((220 * 1024))
 CHUNK_DIR="$DIST_DIR/src/chunks"
 if [ -d "$CHUNK_DIR" ]; then
   while IFS= read -r -d '' chunk; do
-  chunk_bytes=$(wc -c < "$chunk")
-  chunk_name=$(basename "$chunk")
-  echo "chunk $chunk_name: $chunk_bytes bytes (soft limit: $CHUNK_MAX bytes)"
-  if [ "$chunk_bytes" -gt "$CHUNK_MAX" ]; then
-    echo "Error: lazy chunk $chunk_name exceeds soft limit"
-    exit 1
-  fi
+    chunk_bytes=$(wc -c < "$chunk")
+    chunk_name=$(basename "$chunk")
+    echo "chunk $chunk_name: $chunk_bytes bytes (soft limit: $CHUNK_MAX bytes)"
+    if [ "$chunk_bytes" -gt "$CHUNK_MAX" ]; then
+      echo "Error: lazy chunk $chunk_name exceeds soft limit"
+      exit 1
+    fi
   done < <(find "$CHUNK_DIR" -name '*.js' -print0)
 fi
 

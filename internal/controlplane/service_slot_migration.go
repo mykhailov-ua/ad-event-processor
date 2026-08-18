@@ -179,9 +179,6 @@ func (s *Service) EnsureSlotMigrationJobs(ctx context.Context, draftVersion int3
 	return nil
 }
 
-// CopySlotMigrationData copies campaign Redis keys for one slot. Post-copy activation
-// verification is O(campaigns × activation_keys) Redis EXISTS calls, batched via pipelines
-// (two round-trips per slot). Large slots may take minutes — plan operator timeout accordingly.
 func (s *Service) CopySlotMigrationData(ctx context.Context, version int32, slot int16) error {
 	if len(s.rdbs) == 0 {
 		return fmt.Errorf("no redis shards configured")

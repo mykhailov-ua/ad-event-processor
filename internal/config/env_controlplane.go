@@ -90,6 +90,7 @@ func loadManagementModules(cfg *Config) {
 		cfg.FraudScoring.ModelPath = "var/fraudscore/artifacts/model.txt"
 	}
 	cfg.FraudScoring.Standalone = getEnvBool("FRAUD_SCORER_STANDALONE", false)
+	cfg.FraudScoring.ExplainLiveScore = getEnvBool("FRAUD_EXPLAIN_LIVE_SCORE", false)
 
 	if len(cfg.AllowedOrigins) == 1 && cfg.AllowedOrigins[0] == "" {
 		cfg.AllowedOrigins = []string{"https://dashboard.example.com", "http://localhost:8188"}

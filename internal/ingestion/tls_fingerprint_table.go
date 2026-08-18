@@ -7,14 +7,12 @@ import (
 
 const tlsFingerprintMaxLen = 512
 
-// tlsFingerprintSnapshot holds blocked JA3/JA4 CRC32-IEEE hashes (immutable after publish).
 type tlsFingerprintSnapshot struct {
 	gen uint64
 	ja3 []uint32
 	ja4 []uint32
 }
 
-// TLSFingerprintTable is RCU-swapped JA3/JA4 blocklist for hot-path lookup.
 type TLSFingerprintTable struct {
 	active atomic.Pointer[tlsFingerprintSnapshot]
 }

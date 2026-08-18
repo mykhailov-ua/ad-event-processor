@@ -2,13 +2,11 @@ package controlplane
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
-	"errors"
-
-	"github.com/bidshard/ad-event-processor/internal/controlplane/adminapi"
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/bidshard/ad-event-processor/internal/domain/db"
 	"github.com/bidshard/ad-event-processor/pkg/coldpath"
@@ -53,7 +51,7 @@ func parsePatchLinkSigningTTLSec(raw *int32) (int32, bool, error) {
 	return v, true, nil
 }
 
-func resolvePatchBudgetLimitMicro(req adminapi.PatchCampaignRequest) (*int64, error) {
+func resolvePatchBudgetLimitMicro(req PatchCampaignRequest) (*int64, error) {
 	if req.BudgetLimitMicro != nil {
 		if *req.BudgetLimitMicro <= 0 {
 			return nil, errValidation("budget must be positive")
@@ -103,7 +101,9 @@ func (s *Service) applyCampaignBudgetPatch(ctx context.Context, q db.Querier, lo
 			if err := s.checkMediaBuyerBudgetCap(ctx, u.UserID, campaignID, newLimit); err != nil {
 				if errors.Is(err, ErrBudgetApprovalRequired) {
 					customerID := uuid.UUID(locked.CustomerID.Bytes)
-					_, _ = s.createBudgetApprovalPending(ctx, customerID, u.UserID, campaignID, locked.BudgetLimit, newLimit)
+					if _, createErr := s.createBudgetApprovalPending(ctx, customerID, u.UserID, campaignID, locked.BudgetLimit, newLimit); createErr != nil {
+						return fmt.Errorf("create budget approval pending: %w", createErr)
+					}
 				}
 				return err
 			}

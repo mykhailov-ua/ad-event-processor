@@ -37,7 +37,7 @@ func TestGenHWIDVectorArtifacts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	path := filepath.Join("testdata", "vectors", "argon2id_hwid.json")
+	path := filepath.Join("testdata", "argon2id_hwid.json")
 	if err := os.WriteFile(path, append(raw, '\n'), 0o644); err != nil {
 		t.Fatal(err)
 	}

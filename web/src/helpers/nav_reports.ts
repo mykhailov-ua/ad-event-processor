@@ -10,7 +10,6 @@ const OPERATOR_ONLY_KEYS = new Set([
 
 const AUDIT_KEYS = new Set(['ivt-by-source']);
 
-/** In-page tab targets for Telegram analytics (not sidebar rows — P0.2). */
 export const TELEGRAM_REPORT_PAGES = [
   { path: '/reports/telegram', label: 'Summary', icon: 'send' },
   { path: '/reports/telegram/funnel', label: 'Funnel', icon: 'git-branch' },
@@ -34,9 +33,6 @@ const TELEGRAM_PERMS: Pick<NavLink, 'perm' | 'altPerm'> = {
   altPerm: 'campaigns:read:masked',
 };
 
-/**
- * Sidebar Reports section (P0.1 / P0.2): hub + single Telegram entry only.
- */
 export function sidebarReportsNavLinks(): NavLink[] {
   return [
     {
@@ -54,9 +50,6 @@ export function sidebarReportsNavLinks(): NavLink[] {
   ];
 }
 
-/**
- * Cmd+K entries for individual live reports and Telegram sub-pages (not sidebar).
- */
 export function reportCommandPaletteLinks(): NavLink[] {
   const links: NavLink[] = [];
 

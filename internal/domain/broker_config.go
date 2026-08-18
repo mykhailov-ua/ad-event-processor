@@ -1,4 +1,3 @@
-// Package domain implements domain support for BidShard.
 package domain
 
 import "time"

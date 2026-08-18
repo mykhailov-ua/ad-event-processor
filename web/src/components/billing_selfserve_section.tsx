@@ -19,9 +19,6 @@ export type BillingSelfServeSectionProps = {
   buyerMode: boolean;
 };
 
-/**
- * Wallet top-up and self-serve statement for buyers/tenants.
- */
 export function BillingSelfServeSection({ customerId, buyerMode }: BillingSelfServeSectionProps) {
   const [amountInput, setAmountInput] = useState('100.00');
   const [topUpLoading, setTopUpLoading] = useState(false);
@@ -106,7 +103,9 @@ export function BillingSelfServeSection({ customerId, buyerMode }: BillingSelfSe
           <div className="stack mt-2" data-testid="billing-topup-result">
             <dl className="definition-list">
               <dt>Status</dt>
-              <dd data-testid="billing-topup-status">{formatPaymentStatus(paymentIntent.status)}</dd>
+              <dd data-testid="billing-topup-status">
+                {formatPaymentStatus(paymentIntent.status)}
+              </dd>
               {paymentIntent.provider_ref ? (
                 <>
                   <dt>Reference</dt>
@@ -116,7 +115,9 @@ export function BillingSelfServeSection({ customerId, buyerMode }: BillingSelfSe
             </dl>
             {cryptoDeposit ? (
               <div className="stack" data-testid="billing-crypto-deposit">
-                <p className="text-sm text-muted">{paymentIntent.deposit_network ?? 'USDT TRC-20'}</p>
+                <p className="text-sm text-muted">
+                  {paymentIntent.deposit_network ?? 'USDT TRC-20'}
+                </p>
                 <dl className="definition-list">
                   <dt>Deposit address</dt>
                   <dd>

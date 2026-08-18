@@ -7,11 +7,21 @@ import argparse
 import json
 import os
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from ch_client import ch_config_from_env, connect_client, ping_client
-from shadow_precision import format_markdown, run_drift_analysis, run_shadow_precision
+from ch_client import ch_client, ch_config_from_env, ping_client
+from manual_labels_export import load_manual_labels
+from pg_eval_store import upsert_ml_eval_report
+from shadow_precision import (
+    PROXY_LABEL_DEFINITION,
+    PROXY_LABEL_METHOD,
+    format_markdown,
+    run_audited_precision,
+    run_drift_analysis,
+    run_shadow_precision,
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ARTIFACT_DIR = os.environ.get("FRAUD_ARTIFACT_DIR", str(REPO_ROOT / "var" / "fraudscore" / "artifacts"))
@@ -35,6 +45,56 @@ def _default_hours() -> int:
         return 168
 
 
+def _error_report(err: Exception, *, hours: int, threshold: float) -> dict[str, Any]:
+    from shadow_precision import PROXY_LABEL_DEFINITION, PROXY_LABEL_METHOD, _empty_audited_metrics
+
+    clickhouse_config = ch_config_from_env()
+    proxy = {
+        "status": "error",
+        "error": str(err),
+        "host": clickhouse_config.host,
+        "port": clickhouse_config.port,
+        "database": clickhouse_config.database,
+        "hours": hours,
+        "threshold": threshold,
+        "labeled_rows": 0,
+        "label_method": PROXY_LABEL_METHOD,
+        "label_definition": PROXY_LABEL_DEFINITION,
+        "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+    audited = _empty_audited_metrics(hours=hours, threshold=threshold)
+    return _compose_eval_report(proxy, audited, hours=hours, threshold=threshold)
+
+
+def _compose_eval_report(
+    proxy: dict[str, Any],
+    audited: dict[str, Any],
+    *,
+    hours: int,
+    threshold: float,
+    drift: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    generated_at = proxy.get("generated_at") or datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    report: dict[str, Any] = {
+        "status": proxy.get("status", "empty"),
+        "generated_at": generated_at,
+        "hours": hours,
+        "threshold": threshold,
+        "proxy_metrics": dict(proxy),
+        "audited_metrics": audited,
+        "precision": float(proxy.get("precision", 0.0) or 0.0),
+        "recall": float(proxy.get("recall", 0.0) or 0.0),
+        "labeled_rows": int(proxy.get("labeled_rows", 0) or 0),
+        "label_method": PROXY_LABEL_METHOD,
+        "label_definition": PROXY_LABEL_DEFINITION,
+    }
+    if drift is not None:
+        report["drift"] = drift
+        if isinstance(drift, dict) and drift.get("drift_detected"):
+            report["drift_detected"] = True
+    return report
+
+
 def evaluate_shadow(
     *,
     hours: int,
@@ -42,28 +102,36 @@ def evaluate_shadow(
     allow_offline: bool = False,
 ) -> dict[str, Any]:
     try:
-        client = connect_client()
-        if not ping_client(client):
-            raise ConnectionError("clickhouse ping failed")
+        with ch_client() as client:
+            if not ping_client(client):
+                raise ConnectionError("clickhouse ping failed")
 
-        report = run_shadow_precision(client, hours=hours, threshold=threshold)
+            proxy = run_shadow_precision(client, hours=hours, threshold=threshold)
+            label_rows: list[tuple[str, int]] = []
+            dsn = os.environ.get("DB_DSN", "").strip()
+            if dsn:
+                try:
+                    label_rows = load_manual_labels(dsn)
+                except OSError as err:
+                    print(f"{LOG_PREFIX}: manual labels load failed: {err}", file=sys.stderr)
+            audited = run_audited_precision(client, label_rows, hours=hours, threshold=threshold)
 
-        meta_path = Path(ARTIFACT_DIR) / "metadata.json"
-        if meta_path.is_file():
-            with meta_path.open(encoding="utf-8") as f:
-                meta = json.load(f)
-            raw_stats = meta.get("raw_stats")
-            if raw_stats:
-                drift = run_drift_analysis(client, hours=hours, training_stats=raw_stats)
-                report["drift"] = drift
+            drift: dict[str, Any] | None = None
+            meta_path = Path(ARTIFACT_DIR) / "metadata.json"
+            if meta_path.is_file():
+                with meta_path.open(encoding="utf-8") as f:
+                    meta = json.load(f)
+                raw_stats = meta.get("raw_stats")
+                if raw_stats:
+                    drift = run_drift_analysis(client, hours=hours, training_stats=raw_stats)
 
-        return report
+            return _compose_eval_report(proxy, audited, hours=hours, threshold=threshold, drift=drift)
     except (ConnectionError, OSError, TimeoutError, ValueError, ImportError) as err:
         if allow_offline:
-            from shadow_precision import PROXY_LABEL_DEFINITION, PROXY_LABEL_METHOD
+            from shadow_precision import PROXY_LABEL_DEFINITION, PROXY_LABEL_METHOD, _empty_audited_metrics
 
             clickhouse_config = ch_config_from_env()
-            return {
+            proxy = {
                 "status": "skipped",
                 "reason": str(err),
                 "host": clickhouse_config.host,
@@ -74,8 +142,11 @@ def evaluate_shadow(
                 "labeled_rows": 0,
                 "label_method": PROXY_LABEL_METHOD,
                 "label_definition": PROXY_LABEL_DEFINITION,
+                "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
             }
-        raise
+            audited = _empty_audited_metrics(hours=hours, threshold=threshold)
+            return _compose_eval_report(proxy, audited, hours=hours, threshold=threshold)
+        return _error_report(err, hours=hours, threshold=threshold)
 
 
 def write_report(report: dict, output: Path, fmt: str) -> None:
@@ -127,6 +198,11 @@ def main() -> int:
         allow_offline=args.allow_offline,
     )
 
+    try:
+        upsert_ml_eval_report(report)
+    except Exception as err:  # noqa: BLE001 - persist failures must not hide eval errors
+        print(f"{LOG_PREFIX}: postgres upsert failed: {err}", file=sys.stderr)
+
     stem = Path(args.output) if args.output else DEFAULT_OUT_DIR / "shadow_eval_report"
     if args.format in {"json", "both"}:
         json_path = stem if str(stem).endswith(".json") else stem.with_suffix(".json")
@@ -146,6 +222,9 @@ def main() -> int:
 
     status = str(report.get("status", ""))
     labeled = int(report.get("labeled_rows", 0))
+    if status == "error":
+        print(f"{LOG_PREFIX}: eval failed: {report.get('error', 'unknown')}", file=sys.stderr)
+        return 1
     if status == "skipped" and args.allow_offline:
         return 0
     if status == "empty" and args.allow_offline:
