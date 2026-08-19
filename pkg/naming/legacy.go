@@ -1,4 +1,3 @@
-// Package naming holds legacy vendor identifiers kept for upgrade compatibility.
 package naming
 
 func DeprecatedVendorEnvPrefix() string {

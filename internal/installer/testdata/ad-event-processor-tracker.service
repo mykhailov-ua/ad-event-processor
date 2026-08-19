@@ -1,5 +1,5 @@
 [Unit]
-Description=BidShard Tracker
+Description=ad-event-processor Tracker
 After=network-online.target
 Wants=network-online.target
 StartLimitIntervalSec=10

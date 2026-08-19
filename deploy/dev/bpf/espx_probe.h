@@ -1,29 +1,29 @@
 
 
 
-#ifndef ESPX_PROBE_H
-#define ESPX_PROBE_H
+#ifndef AD_EVENT_PROCESSOR_PROBE_H
+#define AD_EVENT_PROCESSOR_PROBE_H
 
-#define ESPX_ROLE_TRACKER 1
-#define ESPX_ROLE_NGINX 2
-#define ESPX_ROLE_REDIS 3
-#define ESPX_ROLE_K6 4
-#define ESPX_ROLE_PROCESSOR 5
+#define AD_EVENT_PROCESSOR_ROLE_TRACKER 1
+#define AD_EVENT_PROCESSOR_ROLE_NGINX 2
+#define AD_EVENT_PROCESSOR_ROLE_REDIS 3
+#define AD_EVENT_PROCESSOR_ROLE_K6 4
+#define AD_EVENT_PROCESSOR_ROLE_PROCESSOR 5
 
-#define ESPX_MARKER_PROCESS_TRACK_ENTER 1
-#define ESPX_MARKER_PROCESS_TRACK_EXIT 2
-#define ESPX_MARKER_FILTER_CHECK_ENTER 3
-#define ESPX_MARKER_FILTER_CHECK_EXIT 4
+#define AD_EVENT_PROCESSOR_MARKER_PROCESS_TRACK_ENTER 1
+#define AD_EVENT_PROCESSOR_MARKER_PROCESS_TRACK_EXIT 2
+#define AD_EVENT_PROCESSOR_MARKER_FILTER_CHECK_ENTER 3
+#define AD_EVENT_PROCESSOR_MARKER_FILTER_CHECK_EXIT 4
 
-#define ESPX_SLOW_KIND_SYSCALL 1
-#define ESPX_SLOW_KIND_UPROBE 2
+#define AD_EVENT_PROCESSOR_SLOW_KIND_SYSCALL 1
+#define AD_EVENT_PROCESSOR_SLOW_KIND_UPROBE 2
 
-#define ESPX_HIST_BUCKETS 32
-#define ESPX_SLOW_SYSCALL_NS 10000000ULL  
-#define ESPX_DEFAULT_SAMPLE_RATE 1
+#define AD_EVENT_PROCESSOR_HIST_BUCKETS 32
+#define AD_EVENT_PROCESSOR_SLOW_SYSCALL_NS 10000000ULL  
+#define AD_EVENT_PROCESSOR_DEFAULT_SAMPLE_RATE 1
 
 struct espx_hist {
-	__u64 buckets[ESPX_HIST_BUCKETS];
+	__u64 buckets[AD_EVENT_PROCESSOR_HIST_BUCKETS];
 	__u64 count;
 	__u64 sum_ns;
 	__u64 max_ns;
@@ -51,19 +51,19 @@ struct espx_pid_stats {
 };
 
 
-#define ESPX_NR_read 0
-#define ESPX_NR_write 1
-#define ESPX_NR_writev 19
-#define ESPX_NR_connect 42
-#define ESPX_NR_fsync 74
-#define ESPX_NR_fdatasync 75
-#define ESPX_NR_sendto 44
-#define ESPX_NR_recvfrom 45
-#define ESPX_NR_futex 202
-#define ESPX_NR_epoll_wait 232
+#define AD_EVENT_PROCESSOR_NR_read 0
+#define AD_EVENT_PROCESSOR_NR_write 1
+#define AD_EVENT_PROCESSOR_NR_writev 19
+#define AD_EVENT_PROCESSOR_NR_connect 42
+#define AD_EVENT_PROCESSOR_NR_fsync 74
+#define AD_EVENT_PROCESSOR_NR_fdatasync 75
+#define AD_EVENT_PROCESSOR_NR_sendto 44
+#define AD_EVENT_PROCESSOR_NR_recvfrom 45
+#define AD_EVENT_PROCESSOR_NR_futex 202
+#define AD_EVENT_PROCESSOR_NR_epoll_wait 232
 
-#define ESPX_AF_INET 2
-#define ESPX_PG_PORT 5432
+#define AD_EVENT_PROCESSOR_AF_INET 2
+#define AD_EVENT_PROCESSOR_PG_PORT 5432
 
 static __always_inline __u16 espx_read_sockaddr_port(void *addr)
 {
@@ -74,7 +74,7 @@ static __always_inline __u16 espx_read_sockaddr_port(void *addr)
 		return 0;
 	if (bpf_probe_read_user(&family, sizeof(family), addr) < 0)
 		return 0;
-	if (family != ESPX_AF_INET)
+	if (family != AD_EVENT_PROCESSOR_AF_INET)
 		return 0;
 	if (bpf_probe_read_user(&port_be, sizeof(port_be), (char *)addr + 2) < 0)
 		return 0;
@@ -84,35 +84,35 @@ static __always_inline __u16 espx_read_sockaddr_port(void *addr)
 static __always_inline int espx_is_hot_syscall(long syscall_id)
 {
 	switch (syscall_id) {
-	case ESPX_NR_read:
-	case ESPX_NR_write:
-	case ESPX_NR_writev:
-	case ESPX_NR_fsync:
-	case ESPX_NR_fdatasync:
-	case ESPX_NR_connect:
-	case ESPX_NR_sendto:
-	case ESPX_NR_recvfrom:
-	case ESPX_NR_futex:
-	case ESPX_NR_epoll_wait:
+	case AD_EVENT_PROCESSOR_NR_read:
+	case AD_EVENT_PROCESSOR_NR_write:
+	case AD_EVENT_PROCESSOR_NR_writev:
+	case AD_EVENT_PROCESSOR_NR_fsync:
+	case AD_EVENT_PROCESSOR_NR_fdatasync:
+	case AD_EVENT_PROCESSOR_NR_connect:
+	case AD_EVENT_PROCESSOR_NR_sendto:
+	case AD_EVENT_PROCESSOR_NR_recvfrom:
+	case AD_EVENT_PROCESSOR_NR_futex:
+	case AD_EVENT_PROCESSOR_NR_epoll_wait:
 		return 1;
 	default:
 		return 0;
 	}
 }
-#define ESPX_NR_close 3
-#define ESPX_NR_dup 32
-#define ESPX_NR_socket 41
-#define ESPX_NR_accept 43
-#define ESPX_NR_openat 257
-#define ESPX_NR_accept4 288
-#define ESPX_NR_dup3 292
-#define ESPX_NR_pipe2 293
+#define AD_EVENT_PROCESSOR_NR_close 3
+#define AD_EVENT_PROCESSOR_NR_dup 32
+#define AD_EVENT_PROCESSOR_NR_socket 41
+#define AD_EVENT_PROCESSOR_NR_accept 43
+#define AD_EVENT_PROCESSOR_NR_openat 257
+#define AD_EVENT_PROCESSOR_NR_accept4 288
+#define AD_EVENT_PROCESSOR_NR_dup3 292
+#define AD_EVENT_PROCESSOR_NR_pipe2 293
 
 static __always_inline void espx_account_fd_exit(struct espx_pid_stats *st, long syscall_id, long ret)
 {
 	if (!st)
 		return;
-	if (syscall_id == ESPX_NR_close) {
+	if (syscall_id == AD_EVENT_PROCESSOR_NR_close) {
 		if (ret == 0)
 			st->fd_close++;
 		return;
@@ -120,18 +120,18 @@ static __always_inline void espx_account_fd_exit(struct espx_pid_stats *st, long
 	if (ret < 0)
 		return;
 	switch (syscall_id) {
-	case ESPX_NR_openat:
-	case ESPX_NR_dup:
-	case ESPX_NR_dup3:
-	case ESPX_NR_pipe2:
+	case AD_EVENT_PROCESSOR_NR_openat:
+	case AD_EVENT_PROCESSOR_NR_dup:
+	case AD_EVENT_PROCESSOR_NR_dup3:
+	case AD_EVENT_PROCESSOR_NR_pipe2:
 		st->fd_open++;
 		break;
-	case ESPX_NR_socket:
+	case AD_EVENT_PROCESSOR_NR_socket:
 		st->fd_open++;
 		st->socket_open++;
 		break;
-	case ESPX_NR_accept:
-	case ESPX_NR_accept4:
+	case AD_EVENT_PROCESSOR_NR_accept:
+	case AD_EVENT_PROCESSOR_NR_accept4:
 		st->fd_open++;
 		st->socket_accept++;
 		break;
@@ -264,7 +264,7 @@ static __always_inline void espx_hist_record(struct espx_hist *hist, __u64 delta
 		return;
 	v = delta_ns;
 	bucket = 0;
-	while (bucket + 1 < ESPX_HIST_BUCKETS && v > 1) {
+	while (bucket + 1 < AD_EVENT_PROCESSOR_HIST_BUCKETS && v > 1) {
 		v >>= 1;
 		bucket++;
 	}

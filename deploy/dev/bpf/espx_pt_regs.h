@@ -1,8 +1,8 @@
 
 
 
-#ifndef ESPX_PT_REGS_H
-#define ESPX_PT_REGS_H
+#ifndef AD_EVENT_PROCESSOR_PT_REGS_H
+#define AD_EVENT_PROCESSOR_PT_REGS_H
 
 struct pt_regs {
 	__u64 r15;

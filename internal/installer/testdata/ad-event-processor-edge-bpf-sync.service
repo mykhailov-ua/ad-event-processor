@@ -1,5 +1,5 @@
 [Unit]
-Description=BidShard edge BPF blacklist sync
+Description=ad-event-processor edge BPF blacklist sync
 After=network-online.target ad-event-processor-edge-xdp.service
 Requires=ad-event-processor-edge-xdp.service
 Wants=network-online.target

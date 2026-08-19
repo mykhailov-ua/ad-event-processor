@@ -5,6 +5,49 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 source "$SCRIPTS/lib/installer_env.sh"
 cd "$ROOT"
 
+DEV_LICENSE_REL="var/license.jwt"
+
+ensure_dev_license_file() {
+  mkdir -p var
+  if [[ ! -f "$DEV_LICENSE_REL" ]]; then
+    : > "$DEV_LICENSE_REL"
+    chmod 600 "$DEV_LICENSE_REL"
+  fi
+}
+
+license_write_path() {
+  local p
+  p="$(read_env_var AD_EVENT_PROCESSOR_LICENSE_PATH)"
+  if [[ -n "$p" && "$p" != "/etc/ad-event-processor/license.jwt" ]]; then
+    echo "$p"
+    return
+  fi
+  if [[ -f go.mod ]]; then
+    echo "$DEV_LICENSE_REL"
+    return
+  fi
+  echo "/etc/ad-event-processor/license.jwt"
+}
+
+write_license_token() {
+  local token="$1"
+  local dest
+  dest="$(license_write_path)"
+  if [[ "$dest" == /* ]]; then
+    if ! command -v sudo > /dev/null 2>&1; then
+      echo "ad-event-processor-install: sudo required to write $dest" >&2
+      exit 1
+    fi
+    sudo mkdir -p "$(dirname "$dest")"
+    printf '%s' "$token" | sudo tee "$dest" > /dev/null
+    sudo chmod 600 "$dest"
+    return
+  fi
+  mkdir -p "$(dirname "$dest")"
+  printf '%s' "$token" > "$dest"
+  chmod 600 "$dest"
+}
+
 YES=0
 SKIP_PROVISION=0
 SKIP_PREFLIGHT=0
@@ -77,7 +120,7 @@ load_install_env() {
   fi
   if [[ -f "$file" ]]; then
     set -a
-    # shellcheck disable=SC1090
+
     source "$file"
     set +a
   fi
@@ -100,10 +143,7 @@ ensure_env() {
     token="$(openssl rand -hex 32)"
     sed -i "s/^INSTALL_BOOTSTRAP_TOKEN=.*/INSTALL_BOOTSTRAP_TOKEN=${token}/" .env
   fi
-  if [[ ! -f license.jwt ]]; then
-    touch license.jwt
-    chmod 600 license.jwt
-  fi
+  ensure_dev_license_file
 }
 
 set_env_key() {
@@ -130,7 +170,7 @@ compute_deployment_fingerprint() {
   fi
   paths+=("$(pwd)")
   local lic_path
-  lic_path="$(installer_env_dual AD_EVENT_PROCESSOR_LICENSE_PATH ESPX_LICENSE_PATH)"
+  lic_path="$(installer_env_dual AD_EVENT_PROCESSOR_LICENSE_PATH AD_EVENT_PROCESSOR_LICENSE_PATH)"
   if [[ -z "$lic_path" ]]; then
     lic_path="/etc/ad-event-processor/license.jwt"
   fi
@@ -158,12 +198,16 @@ setup_offline_license() {
   local jwt
   jwt="$(installer_license_key)"
   if [[ -z "$jwt" ]]; then
-    jwt="${ESPX_LICENSE_KEY:-}"
+    jwt="${AD_EVENT_PROCESSOR_LICENSE_KEY:-}"
   fi
 
   set_env_key AD_EVENT_PROCESSOR_LICENSE_MODE "$mode"
   set_env_key AD_EVENT_PROCESSOR_LICENSE_SERVER ""
-  set_env_key AD_EVENT_PROCESSOR_LICENSE_PATH "/etc/ad-event-processor/license.jwt"
+  if [[ -f go.mod ]]; then
+    set_env_key AD_EVENT_PROCESSOR_LICENSE_PATH "$DEV_LICENSE_REL"
+  else
+    set_env_key AD_EVENT_PROCESSOR_LICENSE_PATH "/etc/ad-event-processor/license.jwt"
+  fi
   set_env_key AD_EVENT_PROCESSOR_TELEMETRY_OPT_IN "0"
   set_env_key AD_EVENT_PROCESSOR_LICENSE_REQUIRED "$(installer_license_required)"
 
@@ -186,12 +230,11 @@ setup_offline_license() {
   fi
 
   if [[ -z "$jwt" ]]; then
-    echo "ad-event-processor-install: set AD_EVENT_PROCESSOR_LICENSE_KEY (or legacy ESPX_LICENSE_KEY) to the monthly license JWT in install.env" >&2
+    echo "ad-event-processor-install: set AD_EVENT_PROCESSOR_LICENSE_KEY (or legacy AD_EVENT_PROCESSOR_LICENSE_KEY) to the monthly license JWT in install.env" >&2
     exit 1
   fi
 
-  printf '%s' "$jwt" > "$ROOT/license.jwt"
-  chmod 600 "$ROOT/license.jwt"
+  write_license_token "$jwt"
 }
 
 prompt_default() {
@@ -328,7 +371,7 @@ require_eula_acceptance() {
     exit 1
   fi
   echo ""
-  echo "BidShard on-premise license agreement (version ${EULA_VERSION})"
+  echo "ad-event-processor on-premise license agreement (version ${EULA_VERSION})"
   if [[ -f pkg/legal/EULA.txt ]]; then
     head -n 12 pkg/legal/EULA.txt
     echo "..."
@@ -351,7 +394,7 @@ collect_config() {
   local stripe_webhook="${STRIPE_WEBHOOK_SECRET:-}"
   local admin_email="${ADMIN_BOOTSTRAP_EMAIL:-}"
   local admin_password="${ADMIN_BOOTSTRAP_PASSWORD:-}"
-  local license_key="${ESPX_LICENSE_KEY:-}"
+  local license_key="${AD_EVENT_PROCESSOR_LICENSE_KEY:-}"
 
   if [[ "$YES" == "1" ]]; then
     if [[ -z "$admin_email" ]] || [[ -z "$admin_password" ]]; then
@@ -524,7 +567,7 @@ print_summary() {
     tracking_domain="$(python3 -c 'import json; print(json.load(open("platform_config.json")).get("tracking_domain",""))' 2> /dev/null || true)"
   fi
   echo ""
-  echo "=== BidShard ready ==="
+  echo "=== ad-event-processor ready ==="
   echo "Control UI:  http://127.0.0.1:${port}"
   echo "Login:       http://127.0.0.1:${port}/login"
   echo "Bootstrap UI: http://127.0.0.1:${port}/bootstrap (alternative to CLI install)"
@@ -566,7 +609,7 @@ cmd_up() {
   require_eula_acceptance
   setup_offline_license
   set -a
-  # shellcheck disable=SC1091
+
   source .env
   set +a
 
@@ -606,7 +649,7 @@ cmd_license_apply() {
     exit 1
   fi
   set -a
-  # shellcheck disable=SC1091
+
   source .env
   set +a
   local port key url body http_code
@@ -630,8 +673,7 @@ cmd_license_apply() {
   if [[ "$http_code" == "200" ]]; then
     echo "ad-event-processor-install: license applied"
     echo "$resp"
-    printf '%s' "$token" > "$ROOT/license.jwt"
-    chmod 600 "$ROOT/license.jwt"
+    write_license_token "$token"
     return 0
   fi
   echo "ad-event-processor-install: license apply failed (${http_code}): ${resp}" >&2
@@ -662,7 +704,7 @@ cmd_apply() {
   fi
   ensure_env
   set -a
-  # shellcheck disable=SC1091
+
   source .env
   set +a
   if [[ -x "$ROOT/bin/ad-event-processor-install" ]]; then
@@ -675,7 +717,7 @@ cmd_apply() {
 cmd_doctor() {
   ensure_env
   set -a
-  # shellcheck disable=SC1091
+
   source .env
   set +a
   run_doctor

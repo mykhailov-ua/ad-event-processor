@@ -9,8 +9,13 @@ import (
 )
 
 const (
-	defaultProductName = "BidShard"
-	defaultVendorName  = "BidShard"
+	defaultProductName = "ad-event-processor"
+	defaultVendorName  = "ad-event-processor"
+
+	// HTTPSafeViewHeader marks L1/L1.5/TLS safe-view substitution on ingest responses.
+	HTTPSafeViewHeader = "X-ad-event-processor-Safe-View"
+	// HTTPSafePageHeader marks click safe-page stub responses.
+	HTTPSafePageHeader = "X-ad-event-processor-Safe-Page"
 )
 
 var (

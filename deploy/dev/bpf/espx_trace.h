@@ -1,8 +1,8 @@
 
 
 
-#ifndef ESPX_TRACE_H
-#define ESPX_TRACE_H
+#ifndef AD_EVENT_PROCESSOR_TRACE_H
+#define AD_EVENT_PROCESSOR_TRACE_H
 
 typedef int pid_t;
 
